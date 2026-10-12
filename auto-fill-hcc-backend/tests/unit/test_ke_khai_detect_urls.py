@@ -16,6 +16,8 @@ def test_ke_khai_url_is_added_to_detect_without_mutating_registry_config():
     assert result[0]["detect"]["urlIncludes"] == [
         "maThuTuc=2.000815",
         "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e22-77ef-819f-e49460350904",
+        "matthc=2.000815",
+        "madvc=2.000815.",
     ]
     assert original_detect == {"urlIncludes": ["maThuTuc=2.000815"]}
     assert result[0] is not procedures[0]
@@ -35,4 +37,4 @@ def test_ke_khai_url_is_not_duplicated():
 
     result = with_ke_khai_detect_urls(procedures)
 
-    assert result[0]["detect"]["urlIncludes"] == [entry_url]
+    assert result[0]["detect"]["urlIncludes"] == [entry_url, "matthc=2.000815", "madvc=2.000815."]

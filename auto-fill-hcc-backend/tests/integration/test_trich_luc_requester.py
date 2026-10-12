@@ -105,7 +105,7 @@ def test_only_cccd_no_context_fills_ndk_not_requester():
     assert out["NDK_NgaySinh"]["value"] == "20/03/1972"
     assert out["NDK_GioiTinh"]["value"] == "Nam"
     assert out["NDK_SoDinhDanh"]["value"] == "034072010036"
-    assert out["NDK_NoiCuTru_TrongNuoc"]["value"]["xa"] == "Đoàn Kết"
+    assert out["NDK_NoiCuTru_TrongNuoc"]["value"]["xa"] == "Phường Đoàn Kết"
 
 
 def test_only_cccd_matches_formcontext_fills_requester_and_subject():

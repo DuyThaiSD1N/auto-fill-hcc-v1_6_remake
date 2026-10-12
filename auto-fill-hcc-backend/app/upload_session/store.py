@@ -177,6 +177,7 @@ async def append_files_with_limit(
     sid: str,
     metas: list[dict],
     max_total_bytes: int,
+    client_key: str = "",
 ) -> dict | None:
     """Thêm metadata nguyên tử khi tổng file sau cập nhật không vượt quota.
 
@@ -195,12 +196,17 @@ async def append_files_with_limit(
             }
         }
     }
+    query = {
+        "_id": sid,
+        "complete": {"$ne": True},
+        "$expr": {"$lte": [{"$add": [existing_total, incoming]}, max_total_bytes]},
+    }
+    if client_key:
+        # Điện thoại gửi lại cùng tệp (lỡ câu trả lời của lần trước) → không push lần hai. Kiểm
+        # trong CÙNG thao tác ghi nên hai lượt gửi lại chạy song song cũng chỉ một lượt được ghi.
+        query["files.client_key"] = {"$ne": client_key}
     return await get_db().upload_sessions.find_one_and_update(
-        {
-            "_id": sid,
-            "complete": {"$ne": True},
-            "$expr": {"$lte": [{"$add": [existing_total, incoming]}, max_total_bytes]},
-        },
+        query,
         {"$push": {"files": {"$each": metas}}, "$set": {"updated_at": _now()}},
         return_document=ReturnDocument.AFTER,
     )
@@ -348,6 +354,25 @@ async def delete_session(sid: str) -> None:
     p = Path(settings.storage_dir) / "upload_sessions" / sid
     if p.exists():
         shutil.rmtree(p)
+
+
+def unique_file_name(name: str, taken: set[str]) -> str:
+    """Tên không trùng tệp đã có: image.jpg → image-2.jpg, image-3.jpg…
+
+    Planner đính kèm tra kết quả OCR THEO TÊN tệp; hai tệp cùng tên (iPhone đặt mọi ảnh chụp từ
+    camera là image.jpg) thì tệp sau đè tệp trước, cả hai nhận chung chữ OCR → phân loại sai giấy.
+    Dạng "-2" (không phải " (2)") để extension vẫn coi là tên chung chung (isGenericDocumentNameForPlan)
+    và đặt tên tài liệu trên cổng theo loại giấy, không thành "image (2)".
+    """
+    if name not in taken:
+        return name
+    stem, dot, ext = name.rpartition(".")
+    if not dot or not stem:
+        stem, dot, ext = name, "", ""
+    n = 2
+    while f"{stem}-{n}{dot}{ext}" in taken:
+        n += 1
+    return f"{stem}-{n}{dot}{ext}"
 
 
 def new_file_id(name: str) -> str:

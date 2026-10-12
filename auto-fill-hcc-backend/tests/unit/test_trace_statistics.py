@@ -12,15 +12,12 @@ from app.traces.metadata import (
 from app.traces.repo import (
     _STEM_RULE_CUTOFF,
     _apply_current_account_names,
-    _daily_stats_pipeline,
-    _format_daily_dossier_counts,
     _format_stats_facets,
     _stats_account_context,
     _stats_pipeline,
     with_experience,
 )
 from app.traces.router import _parse_stats_range
-from scripts.export_thong_ke_lai_chau import _dem_ho_so
 
 
 def _meta(name: str, digest: str) -> dict:
@@ -224,53 +221,6 @@ def test_stats_pipeline_has_no_trace_limit_and_uses_half_open_upper_bound():
     assert "'$lt': 'end'" in rendered
 
 
-def test_daily_stats_pipeline_reuses_dossier_facets_and_keeps_first_timestamp():
-    pipeline = _daily_stats_pipeline({"created_at": {"$gte": "start", "$lt": "end"}})
-    facets = pipeline[-1]["$facet"]
-
-    assert set(facets) == {"nonSplitFileSets", "stemNonSplitFileSets", "splitDossiers"}
-    assert facets["nonSplitFileSets"][-1]["$group"]["firstAt"] == {"$min": "$created_at"}
-    assert facets["stemNonSplitFileSets"][-1]["$group"]["firstAt"] == {"$min": "$created_at"}
-    assert facets["splitDossiers"][-1]["$group"]["firstAt"] == {"$min": "$created_at"}
-
-
-def test_daily_dossier_counts_assign_each_dossier_to_its_first_vietnam_day():
-    result = _format_daily_dossier_counts({
-        "nonSplitFileSets": [
-            {
-                "_id": {"userId": "u1", "procedure": "p", "fileSet": ["a.pdf"], "emptyId": None},
-                "firstAt": datetime(2026, 8, 18, 10, tzinfo=timezone.utc),
-            },
-            {
-                "_id": {"userId": "u1", "procedure": "p", "fileSet": ["a.pdf", "b.pdf"], "emptyId": None},
-                "firstAt": datetime(2026, 8, 19, 1, tzinfo=timezone.utc),
-            },
-        ],
-        "stemNonSplitFileSets": [
-            {
-                "_id": {"userId": "u2", "procedure": "p", "fileSet": ["cccd.jpg"], "emptyId": None},
-                "firstAt": datetime(2026, 8, 18, 18, tzinfo=timezone.utc),
-            },
-            {
-                "_id": {"userId": "u2", "procedure": "p", "fileSet": ["cccd.pdf"], "emptyId": None},
-                "firstAt": datetime(2026, 8, 19, 2, tzinfo=timezone.utc),
-            },
-        ],
-        "splitDossiers": [
-            {
-                "_id": {"userId": "u1", "procedure": "signature", "dossierId": "d1"},
-                "firstAt": datetime(2026, 8, 18, 17, 1, tzinfo=timezone.utc),
-            }
-        ],
-    })
-
-    assert result == [
-        {"userId": "u1", "date": "2026-08-18", "count": 1},
-        {"userId": "u1", "date": "2026-08-19", "count": 1},
-        {"userId": "u2", "date": "2026-08-19", "count": 1},
-    ]
-
-
 def test_stats_official_scope_uses_current_commune_and_province_roles_only():
     accounts = [
         {"_id": "u-commune", "role": "commune"},
@@ -338,45 +288,6 @@ def test_old_dossier_criterion_groups_equal_and_subset_file_sets_transitively():
     ]
 
     assert count_distinct_attachment_sets(sets) == 4
-
-
-def test_export_deduplicates_same_files_but_keeps_request_count():
-    exact = [
-        {"request_id": "fill", "procedure": "p", "stats_version": 2, "dossier_ids": ["d1"]},
-        {"request_id": "attach", "procedure": "p", "stats_version": 2, "dossier_ids": ["d1"]},
-    ]
-    legacy = [
-        {"request_id": "old-1", "procedure": "p", "attachments": [{"name": "CCCD.pdf"}]},
-        {"request_id": "old-2", "procedure": "p", "attachments": [{"name": "CCCD.pdf"}]},
-    ]
-
-    exact_result = _dem_ho_so(exact)["p"]
-    legacy.extend([
-        {"request_id": "old-3", "procedure": "p", "attachments": [{"name": "  cccd.PDF  "}]},
-    ])
-    legacy_result = _dem_ho_so(legacy)["p"]
-
-    assert exact_result["count"] == 1
-    assert exact_result["requests"] == 2
-    assert legacy_result["count"] == 1
-    assert legacy_result["requests"] == 3
-    assert legacy_result["estimated"] == 1
-
-
-def test_export_split_trace_counts_only_its_tabs():
-    result = _dem_ho_so([
-        {
-            "request_id": "split-1",
-            "procedure": "chung-thuc-ban-sao",
-            "split": True,
-            "stats_version": 2,
-            "dossier_ids": ["split-1:1", "split-1:2"],
-            "attachments": [{"name": "a.pdf"}, {"name": "b.pdf"}],
-        }
-    ])["chung-thuc-ban-sao"]
-
-    assert result["count"] == 2
-    assert result["requests"] == 1
 
 
 def test_stats_pipeline_groups_non_split_by_normalized_file_set():

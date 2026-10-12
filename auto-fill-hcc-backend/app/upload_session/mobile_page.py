@@ -50,6 +50,10 @@ def render_mobile_page(sid: str) -> str:
   .btn.alt {{ background:#eef4ff; color:#2456c9; border:1px solid #cfe0ff; }}
   .btn.send {{ background:var(--teal-d); }}
   .btn:disabled {{ opacity:.45; }}
+  /* Trạng thái gửi của từng tài liệu trong khay (chờ / % đang gửi / lỗi) */
+  .cell .st {{ position:absolute; left:4px; right:4px; bottom:4px; background:rgba(13,125,82,.88); color:#fff;
+    font-size:11px; font-weight:700; text-align:center; border-radius:6px; padding:2px 0; }}
+  .cell .st.err {{ background:rgba(192,24,31,.9); }}
   #stat {{ font-size:12px; color:var(--muted); text-align:center; min-height:16px; }}
   /* ── Overlay Scan (camera sống, khử nền) — chụp thủ công + xem lại + gộp 1 PDF ── */
   .scan {{ position:fixed; inset:0; z-index:50; background:#000; display:none; flex-direction:column; }}
@@ -167,25 +171,51 @@ function renderStaged() {{
       media = document.createElement("img");
       media.src = s.url;
     }}
-    const x = document.createElement("button");
-    x.className = "x"; x.textContent = "×"; x.title = "Xoá tài liệu này";
-    x.addEventListener("click", () => {{
-      if (s.url) URL.revokeObjectURL(s.url);
-      staged = staged.filter((a) => a.id !== s.id);
-      renderStaged();
-    }});
-    cell.append(media, x);
+    cell.append(media);
+    // Tệp ĐANG gửi không cho xoá (đã có byte trên đường đi); tệp chờ/lỗi xoá được như cũ.
+    if (s.state !== "sending") {{
+      const x = document.createElement("button");
+      x.className = "x"; x.textContent = "×"; x.title = "Xoá tài liệu này";
+      x.addEventListener("click", () => {{
+        if (s.url) URL.revokeObjectURL(s.url);
+        staged = staged.filter((a) => a.id !== s.id);
+        renderStaged();
+      }});
+      cell.append(x);
+    }}
+    s.badge = null;
+    if (s.state) {{
+      const st = document.createElement("div");
+      st.className = "st" + (s.state === "error" ? " err" : "");
+      cell.append(st);
+      s.badge = st;
+      paintBadge(s);
+    }}
     wrap.appendChild(cell);
   }}
-  $("sendBtn").disabled = staged.length === 0;
-  $("sendBtn").textContent = staged.length ? `📤 Gửi ${{staged.length}} tài liệu` : "📤 Chưa có tài liệu để gửi";
+  $("sendBtn").disabled = sending || staged.length === 0;
+  $("sendBtn").textContent = sending ? "⏳ Đang gửi…"
+    : (staged.length ? `📤 Gửi ${{staged.length}} tài liệu` : "📤 Chưa có tài liệu để gửi");
   $("count").textContent = sentTotal
     ? `✅ Đã gửi ${{sentTotal}} tài liệu` + (staged.length ? ` · ${{staged.length}} đang chờ` : "")
     : (staged.length ? `${{staged.length}} tài liệu đang chờ gửi` : "Chưa chọn tài liệu nào");
 }}
 
+function paintBadge(s) {{
+  if (!s.badge) return;
+  s.badge.textContent = s.state === "sending" ? `⏳ ${{s.pct || 0}}%`
+    : s.state === "queued" ? "⏳ chờ" : s.state === "error" ? "⚠️ chưa gửi" : "";
+}}
+
+function newClientKey() {{
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}}
+
 function addFiles(fileList, isPdf) {{
-  for (const f of fileList) staged.push({{ id: ++uid, file: f, isPdf: !!isPdf, url: isPdf ? "" : URL.createObjectURL(f) }});
+  // `key` sinh MỘT lần cho mỗi tệp và giữ qua mọi lần gửi lại: máy chủ nhận ra lần gửi lại của
+  // tệp đã lưu (lỡ câu trả lời vì 4G) và không lưu bản trùng.
+  for (const f of fileList) staged.push({{ id: ++uid, key: newClientKey(), file: f, isPdf: !!isPdf, url: isPdf ? "" : URL.createObjectURL(f) }});
   renderStaged();
 }}
 
@@ -207,61 +237,148 @@ function compress(file) {{
   }});
 }}
 
-async function send() {{
-  if (!staged.length) return;
-  $("sendBtn").disabled = true;
-  const items = staged.slice();
-  $("stat").textContent = "⏳ Đang xử lý & gửi " + items.length + " tài liệu…";
-  // Ảnh: nén SONG SONG (canvas ~2000px). PDF: gửi NGUYÊN file (không nén được bằng canvas).
-  const blobs = await Promise.all(items.map((s) => s.isPdf ? s.file : compress(s.file)));
-  const fd = new FormData();
-  blobs.forEach((b, i) => fd.append("files", b, items[i].file.name || (items[i].isPdf ? "tai-lieu.pdf" : "anh.jpg")));
+// ── Gửi: MỖI TỆP MỘT LƯỢT, tối đa 2 tệp cùng lúc ──
+// Gửi cả khay trong một lượt thì máy tính phải chờ tệp CUỐI mới thấy tệp ĐẦU, đứt mạng là gửi lại
+// cả cục, và không có tiến độ nên bà con tưởng treo rồi đóng trang. 2 luồng tận dụng 4G (trễ cao,
+// hay rớt gói) tốt hơn 1; nhiều hơn thì tranh băng thông, dễ treo cả loạt.
+const SEND_CONCURRENCY = 2;
+const MAX_TRIES = 3;
+const STALL_MS = 30000;     // 30s không nhích byte nào = mạng "đứng hình" → huỷ, gửi lại
+const RESPONSE_MS = 60000;  // đã đẩy xong byte, chờ máy chủ trả lời
+let sending = false;
+let wakeLock = null;
+
+// Màn hình tắt thì trình duyệt điện thoại (nhất là iPhone) dừng luôn lượt gửi.
+async function keepAwake(on) {{
   try {{
-    const headers = new Headers();
-    if (UPLOAD_TOKEN) headers.set("X-Upload-Token", UPLOAD_TOKEN);
-    // THỬ LẠI khi lỗi MẠNG hoặc 5xx: 4G ở quầy hay chớp, cổng cũng có lúc 5xx nhất thời.
-    // KHÔNG thử lại với 4xx (tệp quá nặng, phiên hết hạn) — thử lại cũng hỏng y vậy.
-    // Khay `staged` GIỮ NGUYÊN cho tới khi máy chủ trả 200, hỏng thì bà con bấm Gửi lại được
-    // ngay, không phải chụp lại từ đầu.
-    const MAX_TRIES = 3;
-    let r = null, lastDetail = "";
-    for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {{
-      try {{
-        r = await fetch(`/api/v1/upload-sessions/${{SID}}/files`, {{
-          method: "POST", body: fd, headers,
-        }});
-      }} catch (_) {{
-        r = null;   // lỗi mạng
-      }}
-      if (r && r.ok) break;
-      if (r && r.status >= 400 && r.status < 500) {{
-        const e = await r.json().catch(() => null);
-        $("stat").textContent = "⚠️ " + ((e && e.detail) || "Gửi tài liệu lỗi, bà con thử lại nhé.");
-        $("sendBtn").disabled = false;
-        return;
-      }}
-      lastDetail = r ? `máy chủ báo lỗi ${{r.status}}` : "mất mạng";
-      if (attempt < MAX_TRIES) {{
-        $("stat").textContent = `⏳ ${{lastDetail}} — em đang gửi lại (${{attempt}}/${{MAX_TRIES - 1}})…`;
-        await new Promise((ok) => setTimeout(ok, 1500 * attempt));
-      }}
+    if (on && !wakeLock && navigator.wakeLock) {{
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {{ wakeLock = null; }});
+    }} else if (!on && wakeLock) {{
+      await wakeLock.release();
+      wakeLock = null;
     }}
-    if (!r || !r.ok) {{
-      $("stat").textContent = `⚠️ Chưa gửi được (${{lastDetail}}) — tài liệu vẫn còn đây, bà con bấm Gửi lại giúp em.`;
-      $("sendBtn").disabled = false;
-      return;
+  }} catch (_) {{ wakeLock = null; }}
+}}
+// Wake lock tự nhả khi trang bị ẩn — quay lại mà vẫn đang gửi thì xin lại.
+document.addEventListener("visibilitychange", () => {{
+  if (sending && document.visibilityState === "visible") keepAwake(true);
+}});
+window.addEventListener("beforeunload", (e) => {{
+  if (sending) {{ e.preventDefault(); e.returnValue = ""; }}
+}});
+
+function uploadOne(s, onProgress) {{
+  return new Promise((resolve) => {{
+    const xhr = new XMLHttpRequest();
+    let timer = null, settled = false, why = "mạng đứng";
+    const finish = (res) => {{ if (settled) return; settled = true; clearTimeout(timer); resolve(res); }};
+    const arm = (ms) => {{ clearTimeout(timer); timer = setTimeout(() => xhr.abort(), ms); }};
+    xhr.open("POST", `/api/v1/upload-sessions/${{SID}}/files`);
+    if (UPLOAD_TOKEN) xhr.setRequestHeader("X-Upload-Token", UPLOAD_TOKEN);
+    xhr.upload.onprogress = (e) => {{ arm(STALL_MS); if (e.lengthComputable) onProgress(e.loaded, e.total); }};
+    xhr.upload.onload = () => {{ why = "máy chủ chưa trả lời"; arm(RESPONSE_MS); }};
+    xhr.onload = () => {{
+      let data = null;
+      try {{ data = JSON.parse(xhr.responseText); }} catch (_) {{ data = null; }}
+      const detail = data && typeof data.detail === "string" ? data.detail : `máy chủ báo lỗi ${{xhr.status}}`;
+      finish({{ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, data, detail }});
+    }};
+    xhr.onerror = () => finish({{ ok: false, status: 0, detail: "mất mạng" }});
+    xhr.onabort = () => finish({{ ok: false, status: 0, detail: why }});
+    const fd = new FormData();
+    fd.append("files", s.payload, s.file.name || (s.isPdf ? "tai-lieu.pdf" : "anh.jpg"));
+    fd.append("client_key", s.key);
+    arm(STALL_MS);
+    xhr.send(fd);
+  }});
+}}
+
+// THỬ LẠI khi lỗi MẠNG hoặc 5xx (4G ở quầy hay chớp, cổng cũng có lúc 5xx nhất thời). KHÔNG thử
+// lại với 4xx (tệp quá nặng, phiên hết hạn) — thử lại cũng hỏng y vậy.
+async function sendWithRetry(s, progress) {{
+  let r = null;
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {{
+    s.pct = 0;
+    r = await uploadOne(s, (loaded, total) => {{
+      s.pct = Math.min(100, Math.round((loaded / (total || 1)) * 100));
+      s.sentBytes = Math.min(s.payload.size, loaded);
+      paintBadge(s);
+      progress();
+    }});
+    if (r.ok || (r.status >= 400 && r.status < 500)) return r;
+    if (attempt < MAX_TRIES) {{
+      $("stat").textContent = `⏳ ${{r.detail}} — em đang gửi lại "${{s.file.name || "tài liệu"}}" (${{attempt}}/${{MAX_TRIES - 1}})…`;
+      await new Promise((ok) => setTimeout(ok, 1500 * attempt));
     }}
-    const data = await r.json();
-    sentTotal = data.received || (sentTotal + staged.length);
-    staged.forEach((s) => {{ if (s.url) URL.revokeObjectURL(s.url); }});
-    staged = [];
-    renderStaged();
-    $("stat").textContent = "✅ Đã gửi! Bà con gửi thêm hoặc quay lại máy tính ạ.";
-  }} catch (err) {{
-    // Lỗi ngoài vòng gửi (nén ảnh, dựng FormData) — phần mạng đã có vòng thử lại ở trên.
-    $("stat").textContent = "⚠️ Chưa chuẩn bị được tài liệu để gửi, bà con thử lại nhé.";
-    $("sendBtn").disabled = false;
   }}
+  return r;
+}}
+
+function mb(n) {{ return (n / 1048576).toFixed(n >= 10485760 ? 0 : 1); }}
+
+async function send() {{
+  if (sending || !staged.length) return;
+  sending = true;
+  keepAwake(true);
+  const items = staged.slice();
+  items.forEach((s) => {{ s.state = "queued"; s.err = ""; s.sentBytes = 0; }});
+  renderStaged();
+  $("stat").textContent = "⏳ Đang chuẩn bị " + items.length + " tài liệu…";
+  let done = 0;
+  const failed = [];
+  try {{
+    // Ảnh: nén SONG SONG (canvas ~2000px) một lần, giữ lại cho các lần gửi lại. PDF gửi NGUYÊN.
+    await Promise.all(items.map(async (s) => {{ if (!s.payload) s.payload = s.isPdf ? s.file : await compress(s.file); }}));
+  }} catch (_) {{
+    sending = false;
+    keepAwake(false);
+    items.forEach((s) => {{ s.state = ""; }});
+    renderStaged();
+    $("stat").textContent = "⚠️ Chưa chuẩn bị được tài liệu để gửi, bà con thử lại nhé.";
+    return;
+  }}
+  const totalBytes = items.reduce((n, s) => n + (s.payload.size || 0), 0);
+  const progress = () => {{
+    const sent = items.reduce((n, s) => n + (s.sentBytes || 0), 0);
+    const pct = totalBytes ? Math.round((sent / totalBytes) * 100) : 0;
+    const active = items.filter((s) => s.state === "sending").length;
+    $("stat").textContent = `⏳ Đang gửi ${{Math.min(items.length, done + failed.length + active)}}/${{items.length}}`
+      + ` · ${{mb(sent)}}/${{mb(totalBytes)}}MB · ${{pct}}%`;
+  }};
+  const queue = items.slice();
+  async function worker() {{
+    while (queue.length) {{
+      const s = queue.shift();
+      if (!staged.includes(s)) continue; // bà con xoá khỏi khay trong lúc chờ tới lượt
+      s.state = "sending";
+      renderStaged();
+      progress();
+      const r = await sendWithRetry(s, progress);
+      if (r.ok) {{
+        done += 1;
+        s.sentBytes = s.payload.size;
+        sentTotal = Math.max(sentTotal + 1, Number(r.data && r.data.received) || 0);
+        // Gửi xong tệp nào RỜI KHAY ngay: đứt giữa chừng thì khay chỉ còn tệp chưa gửi, bấm
+        // Gửi lại không đẩy trùng tệp đã lên.
+        if (s.url) URL.revokeObjectURL(s.url);
+        staged = staged.filter((a) => a.id !== s.id);
+      }} else {{
+        s.state = "error";
+        s.err = r.detail;
+        failed.push(s);
+      }}
+      renderStaged();
+      progress();
+    }}
+  }}
+  await Promise.all(Array.from({{ length: Math.min(SEND_CONCURRENCY, queue.length) }}, worker));
+  sending = false;
+  keepAwake(false);
+  renderStaged();
+  $("stat").textContent = failed.length
+    ? `⚠️ Đã gửi ${{done}}/${{items.length}} tài liệu. ${{failed.length}} tài liệu chưa gửi được (${{failed[0].err}}) — vẫn còn trong khay, bà con bấm Gửi lại giúp em.`
+    : "✅ Đã gửi! Bà con gửi thêm hoặc quay lại máy tính ạ.";
 }}
 
 $("cam").addEventListener("change", (e) => {{ addFiles([...e.target.files], false); e.target.value = ""; }});

@@ -115,14 +115,14 @@ def test_so_bi_che_thieu_chu_so_khong_dien_va_bao_canh_bao():
     assert any("Điện thoại thương nhân" in w for w in warnings)
 
 
-def test_tinh_nop_don_chi_khi_kinh_gui_neu_dung_mot_tinh():
+def test_tinh_nop_don_theo_kinh_gui_roi_toi_tinh_tru_so():
     fields, _ = _run(_trader())
     assert fields[("data[tinhThanhPhoNopDon]", None)]["value"] == "Quảng Trị"
 
     toan_quoc = {**_trader(), "ThongBao_KinhGui": "Sở Công Thương các Tỉnh/Thành phố trên toàn quốc"}
-    fields, warnings = _run(toan_quoc)
-    assert ("data[tinhThanhPhoNopDon]", None) not in fields
-    assert any("Tỉnh / Thành Phố nộp đơn" in w for w in warnings)
+    fields, _ = _run(toan_quoc)
+    # "Kính gửi" không chỉ một tỉnh → lấy tỉnh trụ sở thương nhân.
+    assert fields[("data[tinhThanhPhoNopDon]", None)]["value"] == "Hà Nội"
 
 
 def test_moi_field_mapper_phat_deu_co_trong_ui_va_prompt_chi_dung_field_hop_le():

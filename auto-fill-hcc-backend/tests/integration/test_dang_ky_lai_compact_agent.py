@@ -6,11 +6,8 @@ import httpx
 import respx
 
 from app.config import settings
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.khai_sinh_dang_ky_lai import process as agent
 from app.pipelines.khai_sinh_dang_ky_lai.process import mapper, reason
-from app.pipelines.khai_sinh_dang_ky_lai.process.prompt import EXTRA_RULES
-from app.pipelines.khai_sinh_dang_ky_lai.process.schema import FIELDS
 
 
 def _file(name, typ="image/jpeg"):
@@ -73,7 +70,8 @@ def test_dang_ky_lai_normalizes_all_domestic_address_fields():
         assert result[name]["xa"] == "Phường Tân Hưng"
     assert result["MeNoiCuTru_TrongNuoc"]["diaChi"] == "861/27/4/3 Khu phố 4"
     assert result["ChaNoiCuTru_TrongNuoc"]["tinh"] == "Lâm Đồng"
-    assert result["ChaNoiCuTru_TrongNuoc"]["xa"] == "Xã Xuân Trường"
+    # Xã Xuân Trường (Lâm Đồng) đã nhập vào Đà Lạt theo sáp nhập 2025 → nhãn xã mới trên cổng.
+    assert result["ChaNoiCuTru_TrongNuoc"]["xa"] == "Phường Xuân Trường - Đà Lạt"
 
 
 def test_dang_ky_lai_address_normalization_preserves_full_names_and_deceased_marker():
@@ -101,12 +99,10 @@ def test_dang_ky_lai_address_normalization_preserves_full_names_and_deceased_mar
     result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
     assert result["nksNoiSinh_TrongNuoc"] == source_fields[0]["value"]
-    assert result["MeNoiCuTru_TrongNuoc"] == source_fields[1]["value"]
-
-
-def test_dang_ky_lai_prompt_requires_full_administrative_unit_names():
-    assert 'luôn trả "Thành phố Hồ Chí Minh"' in EXTRA_RULES
-    assert 'không trả "X.", "P.", "TT."' in EXTRA_RULES
+    # Mẹ đã chết: nhánh "Trong nước" chỉ có dropdown → tick "Khác" và ghi chữ vào ô tự do.
+    assert result["MeNoiCuTru"] == "Khác"
+    assert result["MeNoiCuTru_NuocNgoai"] == "Đã chết"
+    assert "MeNoiCuTru_TrongNuoc" not in result
 
 
 def test_dang_ky_lai_does_not_default_book_number_or_copies():
@@ -289,35 +285,6 @@ async def test_dang_ky_lai_compact_agent_derives_legacy_fields(monkeypatch):
     assert not res["errors"]
 
 
-def test_dang_ky_lai_compact_prompt_instructs_issuer_detection():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert "<critical_rules>" in system_prompt
-    assert "<output_contract>" in system_prompt
-    assert "<role_assignment>" in system_prompt
-    assert "<source_priority>" in system_prompt
-    assert "Requester_*" in system_prompt
-    assert "Subject_*" in system_prompt
-    assert "Father_*" in system_prompt
-    assert "Mother_*" in system_prompt
-    assert "một schema duy nhất" in system_prompt
-    assert "không theo giới tính giấy tờ" in system_prompt
-    assert "Cục Cảnh sát quản lý hành chính về trật tự xã hội" in system_prompt
-    assert "HoTenKS là field UI" in system_prompt
-    assert "không trả wrapper dài" in system_prompt.lower()
-    assert "Không lấy số thứ tự mục" in system_prompt
-    assert "Bản cam đoan là nguồn phụ" in system_prompt
-    assert "Father_ResidenceDomestic" in system_prompt
-    assert "Da Chet" in system_prompt
-    assert "D.d. Chat" in system_prompt
-    assert "L.D.d. Chat" in system_prompt
-    assert 'diaChi":"Đã chết' in system_prompt
-    assert "trước nhãn \"Họ, chữ đệm, tên người cha\"" in system_prompt
-    assert '"Subject_BirthDate":"17/11/1976"' in system_prompt
-    assert '{"fields":{"Subject_BirthDate":"1976"}}' in system_prompt
-    assert "ghi bằng chữ" in system_prompt
-
-
 @respx.mock
 async def test_dang_ky_lai_compact_agent_defaults_cccd_issuer(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
@@ -479,18 +446,24 @@ async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declarat
     assert d["GioiTinhKS"] == "Nữ"
     assert d["DanTocKS"] == "Kinh"
     assert d["nksQueQuan"] == "1"
-    assert d["nksQueQuan_TrongNuoc"]["tinh"] == "Hà Nam"
+    # Hà Nam đã nhập vào Ninh Bình theo sáp nhập 2025.
+    assert d["nksQueQuan_TrongNuoc"]["tinh"] == "Ninh Bình"
     assert d["HoTenChaKS"] == "NGUYỄN ĐỨC NGUYÊN"
     assert d["NamSinhChaKS"] == "1920"
-    assert d["ChaNoiCuTru"] == "1"
-    assert d["ChaNoiCuTru_TrongNuoc"]["diaChi"] == "Đã chết"
-    assert d["ChaNoiCuTru_TrongNuoc"]["tinh"] == ""
+    # "Đã chết" trơn (không tỉnh/xã) từ LLM chỉ được nhận khi khối reasoning chốt cha/mẹ đã chết;
+    # test này tắt reasoning nên sanitizer bỏ mục nơi cư trú, không tự điền "Đã chết".
+    assert "ChaNoiCuTru" not in d
+    assert "ChaNoiCuTru_NuocNgoai" not in d
+    assert "ChaNoiCuTru_TrongNuoc" not in d
     assert d["HoTenMeKS"] == "NGUYỄN THỊ THÔNG"
     assert d["NamSinhMeKS"] == "1932"
-    assert d["MeNoiCuTru"] == "1"
-    assert d["MeNoiCuTru_TrongNuoc"]["diaChi"] == "Đã chết"
-    assert d["MeNoiCuTru_TrongNuoc"]["tinh"] == ""
-    assert "SoDinhDanhCha" not in d
-    assert "SoDinhDanhMe" not in d
+    assert "MeNoiCuTru" not in d
+    assert "MeNoiCuTru_NuocNgoai" not in d
+    assert "MeNoiCuTru_TrongNuoc" not in d
+    # Không có số định danh cha/mẹ → chỉ phát lệnh xoá ô cổng điền sẵn, không điền số.
+    by_name = {f["name"]: f for f in res["fields"]}
+    for name in ("SoDinhDanhCha", "SoDinhDanhMe"):
+        assert by_name[name]["value"] == ""
+        assert by_name[name].get("clear") is True
     assert "soDKTruocDay" not in d
     assert not res["errors"]

@@ -99,7 +99,10 @@ def test_so_bi_che_va_ngay_trong_khong_dien_ma_canh_bao():
               "ThongBao_TuNgay": "  /  /2026", "ThongBao_DenNgay": ""}
     fields, warnings = _run(values)
     ui = _ui(fields)
-    assert (S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp") not in ui and (S_TB, "Số GPKD") not in ui
+    assert (S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp") not in ui
+    # Số GPKD thiếu chữ số: điền phần đọc được (lấy từ giấy, không bịa) kèm cảnh báo để cán bộ bổ sung.
+    assert ui[(S_TB, "Số GPKD")] == "310"
+    assert any("Số GPKD chỉ đọc được" in w for w in warnings)
     assert (S_UQ, "Số điện thoại") not in ui and (S_TB, "Từ ngày thực hiện") not in ui
     assert any("Mã số doanh nghiệp" in w for w in warnings)
     assert any("thời gian thực hiện" in w for w in warnings)

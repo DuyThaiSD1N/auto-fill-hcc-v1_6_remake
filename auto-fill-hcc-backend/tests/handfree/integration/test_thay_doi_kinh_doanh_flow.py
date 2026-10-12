@@ -4,6 +4,7 @@ pipeline chạy với page="__change__", start action mang workflow + businessFl
 import asyncio
 
 from app.channels.handfree.chat import flow, intents, pipeline_runner
+from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
 from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_pipeline,
@@ -32,7 +33,7 @@ def test_registry_entry_change_workflow():
     assert any(p["key"] == KEY for p in public_list())
     keys = [d["key"] for d in proc["requiredDocs"]]
     assert keys[:2] == ["thong_bao", "gcn_cu"], "GCN cũ là nguồn mã số tra cứu — phải nổi bật"
-    assert KEY in intents._PROCEDURE_HINTS
+    assert KEY in picker_prompt.PROCEDURE_HINTS
 
 
 async def test_bootstrap_pha_1_dung_o_man_tra_cuu():

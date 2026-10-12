@@ -14,7 +14,7 @@ import re
 import time
 
 from app.config import settings
-from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_oversized
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_merged, shrink_oversized
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -167,6 +167,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         sources = None if whole else [{"fileIndex": p["fileIndex"], "pageIndexes": p["pages"]} for p in parts]
         attachments.append(_item(file_index, name, document_name, str(doc.get("docType") or "").strip(), sources))
 
+    await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
         "replaceFiles": replace_files or None,

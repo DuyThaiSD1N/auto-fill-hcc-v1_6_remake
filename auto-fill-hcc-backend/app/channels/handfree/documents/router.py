@@ -192,6 +192,7 @@ async def _upload_files(sid: str, files: list[UploadFile], doc_key: str, sess: d
     committed_file_ids: list[str] = []
     metadata_persisted = False
     try:
+        taken_names = {str(f.get("name") or "") for f in sess.get("files", [])}
         with mon.span("pre.receive", files=len(files)):
             for uf in files:
                 filename = uf.filename or "anh.jpg"
@@ -226,6 +227,8 @@ async def _upload_files(sid: str, files: list[UploadFile], doc_key: str, sess: d
                 # Ảnh HEIC (iPhone) cổng không nhận → đổi JPG ngay tại đây để OCR/đính kèm chỉ thấy JPG.
                 filename, content_type, size = await run_in_threadpool(
                     heic.convert_file_if_heic, staged_path, filename, uf.content_type or "image/jpeg", size)
+                filename = store.unique_file_name(filename, taken_names)
+                taken_names.add(filename)
                 item = {"path": staged_path, "size": size}
                 staged.append(item)
                 payloads.append({

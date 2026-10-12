@@ -15,7 +15,7 @@ async def test_chat_process_passes_saved_form_context_to_pipeline(monkeypatch):
     captured: dict = {}
 
     async def fake_get_session(_sid):
-        return {"_id": "HS-TEST", "files": [{"name": "to-khai.pdf", "type": "application/pdf"}]}
+        return {"_id": "HS-TEST", "files": [{"fid": "f1", "name": "to-khai.pdf", "type": "application/pdf"}]}
 
     async def fake_get_conversation(_conv_id):
         return conversation
@@ -55,7 +55,7 @@ async def test_chat_process_creates_new_trace_when_reprocessing(monkeypatch):
     captured = {}
 
     async def fake_get_session(_sid):
-        return {"_id": "HS-REFILL", "files": [{"name": "cccd.pdf", "type": "application/pdf"}]}
+        return {"_id": "HS-REFILL", "files": [{"fid": "f1", "name": "cccd.pdf", "type": "application/pdf"}]}
 
     async def fake_pipeline(_files_by_role, _options):
         return {"fields": [{"name": "HoTen", "value": "A"}], "stats": {}}
@@ -105,7 +105,7 @@ async def test_owner_info_runs_without_legacy_ocr_provider_reset(monkeypatch):
     async def fake_get_session(_sid):
         return {
             "_id": "HS-OWNER",
-            "files": [{"name": "cccd.pdf", "type": "application/pdf"}],
+            "files": [{"fid": "f1", "name": "cccd.pdf", "type": "application/pdf"}],
         }
 
     async def fake_get_conversation(_conv_id):
@@ -171,7 +171,7 @@ async def test_chat_process_doc_cai_dat_nguoi_nop_theo_to_khai_cua_tai_khoan(mon
     captured: dict = {}
 
     async def fake_get_session(_sid):
-        return {"_id": "HS-TEST", "files": [{"name": "to-khai.pdf", "type": "application/pdf"}]}
+        return {"_id": "HS-TEST", "files": [{"fid": "f1", "name": "to-khai.pdf", "type": "application/pdf"}]}
 
     async def fake_get_conversation(_conv_id):
         return conversation

@@ -64,20 +64,20 @@ async def test_mai_tang_dan_cong_same_owner(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "ToKhai_ThanNhanHoTen": "Vũ Đình Thiết",
-            "ToKhai_ThanNhanNgaySinh": "26/04/2003",
-            "ToKhai_ThanNhanSoDienThoai": "0976134251",
-            "ToKhai_ThanNhanTruQuan": {
+            # Schema hai vai ChuHoSo_*/NguoiNop_*: chỉ có CCCD của người đứng khai → NguoiNop_* trống.
+            "ChuHoSo_HoTen": "Vũ Đình Thiết",
+            "ChuHoSo_NgaySinh": "26/04/2003",
+            "ChuHoSo_DienThoai": "0976134251",
+            "ChuHoSo_ThuongTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Lai Châu",
                 "xa": "Tân Phong",
                 "diaChi": "Tổ dân phố Tả Làn Than",
             },
-            "Person1_HoTen": "VŨ ĐÌNH THIẾT",
-            "Person1_SoDinhDanh": "040203015844",
-            "Person1_GioiTinh": "Nam",
-            "Person1_NgayCap": "25/04/2021",
-            "Person1_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "ChuHoSo_SoDinhDanh": "040203015844",
+            "ChuHoSo_GioiTinh": "Nam",
+            "ChuHoSo_NgayCap": "25/04/2021",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
         }
     })
 
@@ -93,6 +93,6 @@ async def test_mai_tang_dan_cong_same_owner(monkeypatch):
     assert d["data[phoneNumber]"] == "0976134251"
     assert d["data[identityNumber]"] == "040203015844"
     assert d["data[identityDate]"] == "25/04/2021"
-    assert d["data[province]"] == "Lai Châu"
+    assert d["data[province]"] == "Tỉnh Lai Châu"  # nhãn option cổng có tiền tố Tỉnh
     assert "data[ownerFullname]" not in d
     assert not res["errors"]

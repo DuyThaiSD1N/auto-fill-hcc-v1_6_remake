@@ -7,6 +7,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+import pytest
+
 from app.pipelines.chu_truong_dau_tu_lao_cai.attach import planner
 from app.pipelines.chu_truong_dau_tu_lao_cai.process import mapper
 from app.pipelines.chu_truong_dau_tu_lao_cai.process.schema import UI_COMP_BY_NAME
@@ -45,6 +47,9 @@ def _root() -> Path:
 
 
 def _snapshot_pages(code: str) -> list[str]:
+    # Snapshot cổng nằm ngoài repo (workspace hcc/thongtin) — máy CI không có thì bỏ qua.
+    if not (_root() / "thongtin").is_dir():
+        pytest.skip("thiếu snapshot cổng")
     folder = next(p for p in (_root() / "thongtin").iterdir() if p.name.startswith(code))
     return [p.read_text(encoding="utf-8", errors="ignore") for p in folder.iterdir() if p.suffix == ".html"]
 

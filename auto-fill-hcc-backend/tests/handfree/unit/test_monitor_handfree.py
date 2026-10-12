@@ -25,7 +25,7 @@ def env(monkeypatch):
         return '{"fields": {"HoTen": "Nguyễn Văn A"}, "d": [{"t": "cccd", "n": "Căn cước"}]}'
 
     async def fake_get_session(_sid):
-        return {"_id": "HS-1", "files": [{"name": "cccd.png", "type": "image/png"}]}
+        return {"_id": "HS-1", "files": [{"fid": "f1", "name": "cccd.png", "type": "image/png"}]}
 
     async def fake_get_conv(_conv_id):
         return captured["conv"]
@@ -45,6 +45,7 @@ def env(monkeypatch):
                         lambda _sid, _f: "data:image/png;base64,QUJD")
     monkeypatch.setattr(pipeline_runner.conv_store, "get", fake_get_conv)
     monkeypatch.setattr(pipeline_runner.conv_store, "save", noop)
+    monkeypatch.setattr(pipeline_runner.up_store, "set_shrunk_files", noop)
     monkeypatch.setattr(pipeline_runner, "broadcast", noop)
     monkeypatch.setattr(pipeline_runner, "_load_owner_user", noop)
     monkeypatch.setattr(pipeline_runner, "get_procedure", lambda _k: {"label": "Test", "review": False})

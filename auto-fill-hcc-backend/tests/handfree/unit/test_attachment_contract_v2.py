@@ -1,7 +1,3 @@
-from pathlib import Path
-
-import pytest
-
 from app.attachments.schemas import AttachmentPlanItem
 from app.channels.handfree.chat.flow import (
     _attachment_options,
@@ -10,7 +6,6 @@ from app.channels.handfree.chat.flow import (
     _wait_for_attachment_context,
 )
 from app.channels.handfree.chat.router import ClientContext, _clean_attachment_context, _clean_client_capabilities
-from app.process.schemas import FileItem
 
 
 def test_source_segments_survive_response_schema():
@@ -194,84 +189,3 @@ def test_attachment_options_negotiate_new_contract_without_breaking_old_client()
 
     modern["attachment_context"] = {}
     assert _wait_for_attachment_context(modern) is True
-
-
-@pytest.mark.parametrize(
-    "package",
-    [
-        "ket_hon", "khai_sinh_dang_ky_lai", "khai_tu", "trich_luc", "xac_nhan_tthn",
-        "chung_thuc_ban_sao", "chung_thuc_chu_ky",
-    ],
-)
-async def test_procedures_dispatch_v2_only_for_capable_extension(monkeypatch, package):
-    attach_module = __import__(f"app.pipelines.{package}.attach", fromlist=["plan"])
-    legacy_module = __import__(f"app.pipelines.{package}.attach.planner", fromlist=["plan"])
-    modern_module = __import__(f"app.pipelines.{package}.attach.planner_v2", fromlist=["plan"])
-    calls = []
-
-    async def legacy(*_args, **_kwargs):
-        calls.append("legacy")
-        return {"attachments": []}
-
-    async def modern(*_args, **_kwargs):
-        calls.append("v2")
-        return {"attachments": []}
-
-    monkeypatch.setattr(legacy_module, "plan", legacy)
-    monkeypatch.setattr(modern_module, "plan", modern)
-    files = [FileItem(
-        name="same.pdf", type="application/pdf",
-        dataUrl="data:application/pdf;base64,AAA", role="doc",
-    )]
-
-    await attach_module.plan(files, {}, None)
-    await attach_module.plan(files, {"supportsSourceSegments": True}, None)
-    assert calls == ["legacy", "v2"]
-
-
-def test_all_legacy_planners_do_not_join_ocr_by_filename():
-    root = Path(__file__).resolve().parents[2] / "app" / "pipelines"
-    procedures = {
-        "khai_sinh_lien_thong", "ket_hon", "ket_hon_nuoc_ngoai", "ket_hon_lai",
-        "khai_sinh_dang_ky_lai", "khai_tu", "khai_tu_dang_ky_lai",
-        "nhan_cha_me_con", "dang_ky_giam_ho", "trich_luc", "xac_nhan_tthn",
-        "chung_thuc_ban_sao", "chung_thuc_chu_ky",
-    }
-    for procedure in procedures:
-        source = (root / procedure / "attach" / "planner.py").read_text(encoding="utf-8")
-        assert "ocr_by_name" not in source, procedure
-        assert 'by_name = {item.get("name")' not in source, procedure
-
-
-def test_remaining_v2_planners_use_live_component_indexes():
-    from app.pipelines.chung_thuc_ban_sao.attach import planner_v2 as copy_cert
-    from app.pipelines.chung_thuc_chu_ky.attach import planner_v2 as signature
-    from app.pipelines.khai_sinh_dang_ky_lai.attach import planner_v2 as birth
-    from app.pipelines.trich_luc.attach import planner_v2 as extract
-    from app.pipelines.xac_nhan_tthn.attach import planner_v2 as marital
-
-    def options(*components):
-        return {"attachmentContext": {"components": [
-            {"index": index, "componentName": name}
-            for index, name in components
-        ]}}
-
-    assert birth._route_for_type(
-        "birth_certificate_copy", options((8, birth._ROW_2_COMPONENT))
-    )[:2] == ("existing", 8)
-    assert birth._context_slot(
-        options((11, birth._ROW_3_COMPONENT)), birth._ROW_3_COMPONENT
-    )[0] == 11
-    assert extract._route_for_type(
-        "residence_proof", options((9, extract._ROW_4_COMPONENT))
-    )[:2] == ("existing", 9)
-    assert marital._route_for_type(
-        "authorization", options((12, marital._ROW_5_COMPONENT))
-    )[:2] == ("existing", 12)
-    assert copy_cert._context_slot(
-        options((13, copy_cert.DEFAULT_COPY_CERTIFICATION_COMPONENT)),
-        copy_cert.DEFAULT_COPY_CERTIFICATION_COMPONENT,
-    )[0] == 13
-    assert signature._context_slot(
-        options((14, signature.IDENTITY_COMPONENT)), signature.IDENTITY_COMPONENT
-    )[0] == 14

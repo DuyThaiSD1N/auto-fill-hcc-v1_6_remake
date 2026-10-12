@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.channels.handfree.chat import flow, intents, store
+from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import Intent, fold, resolve, resolve_deterministic
 from app.channels.handfree.chat.intents import _resolve_machine  # noqa: SLF001 — nhánh máy/sđt (tất định)
 
@@ -149,7 +150,13 @@ def _mock_upload_service(monkeypatch):
     async def fake_progress(_sid):
         return {"received": 5, "total": 5, "docs": [], "unknown": 0, "complete": True}
 
+    def fake_show_qr(sid):
+        # Bản thật ký capability token HMAC (cần secret trong env) — test flow không cần.
+        return {"type": "show_qr", "session_id": sid,
+                "mobile_url": f"http://test/m/{sid}", "qr_png_base64": "xxx"}
+
     monkeypatch.setattr(flow.upload_service, "create_for_conversation", fake_create)
+    monkeypatch.setattr(flow.upload_service, "show_qr_action", fake_show_qr)
     monkeypatch.setattr(flow.upload_service, "progress_of", fake_progress)
     # Không cho spawn pipeline nền trong test (đụng Mongo/OCR thật) — docs/06.
     from app.channels.handfree.chat import pipeline_runner
@@ -369,6 +376,7 @@ async def test_doi_tuong_thuc_hien_tu_phap_truyen_tu_card_den_modal():
         "executionSubject": {
             "key": "authorized_person",
             "label": "Người khác ủy quyền",
+            "shortLabel": "do người khác ủy quyền",
             "portalValue": "canhan",
         },
     }
@@ -490,7 +498,7 @@ async def test_guide_login_nhac_passcode_mot_lan_moi_luot_modal():
     r = await _turn(conv, event)
     expected = "Công dân vui lòng nhập **passcode VNeID gồm 6 chữ số** vào màn hình, sau đó bấm **Xác nhận** để tiếp tục ạ."
     assert r.display_md == expected
-    assert "passcode VNeID gồm 6 chữ số" in r.tts_text
+    assert r.tts_text == vi.VNEID_PASSCODE_GUIDE["tts"]
     assert r.actions == []
 
     # React render lại khi modal vẫn mở không được tạo thêm bubble/TTS.
@@ -528,7 +536,7 @@ async def test_guide_login_huong_dan_ma_xac_nhan_va_chia_se_du_lieu_dung_modal()
     assert "Quyền, nghĩa vụ của chủ thể dữ liệu" in r.display_md
     assert "Xác nhận chia sẻ" in r.display_md
     assert "passcode 6 số của ứng dụng VNeID" in r.display_md
-    assert "passcode 6 số của ứng dụng VNeID" in r.tts_text
+    assert r.tts_text == vi.VNEID_DATA_SHARING_GUIDE["tts"]
     duplicate = await _turn(conv, sharing)
     assert duplicate.display_md == "" and duplicate.tts_text == ""
 
@@ -783,6 +791,7 @@ async def test_wizard_ket_hon_modal_chu_ho_so_ke_khai():
     assert r.actions[0]["executionSubject"] == {
         "key": "self",
         "label": "Làm thủ tục cho bản thân",
+        "shortLabel": "cho bản thân",
         "portalValue": "null",
     }
     # Modal chưa đóng kịp, FE báo lại → bấm lại nhưng im lặng.
@@ -1513,9 +1522,11 @@ async def test_bo_sung_toan_file_trung_van_hoan_tat():
 
 @pytest.mark.asyncio
 async def test_attach_plan_summary_short_and_page_status_does_not_dispatch_twice():
+    # Thủ tục wizard tư pháp cũ (trích lục đã sang trang một trang tu-phap-moi, giữ plan
+    # chờ nút "Đính kèm" nên không phát action ở attach_ready).
     conv = _conv()
     conv.update({
-        "procedure_key": "trich-luc-ks",
+        "procedure_key": "ket-hon",
         "state": "attaching",
         "upload_session_id": "HS-TEST01",
         "attach_plan": [{

@@ -6543,8 +6543,7 @@ PROCEDURES: list[dict] = [
         # dai-da-nang (panel "Thông tin chung"). Attach attp-row 11 dòng (dòng trùng + 1 dòng không tên →
         # componentIndex), hồ sơ thường 1 PDF gộp → tách theo trang. urlScope khoá host: CÙNG tên thủ tục với
         # bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai).
-        # Key trùng ke_khai_links.json (trước đây "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang", pipeline
-        # cũ dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang vẫn giữ thư mục nhưng không còn được gọi);
+        # Key trùng ke_khai_links.json (trước đây "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang");
         # mapping theo "Mapping_DKCapGCN_nhan_chuyen_nhuong_DuAnBDS_DaNang.xlsx" + ảnh ánh xạ đính kèm.
         "detect": {
             "urlScope": ["dichvucong.danang.gov.vn"],

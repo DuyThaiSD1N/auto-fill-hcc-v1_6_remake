@@ -279,7 +279,9 @@ async def test_default_mode_preserves_mixed_file_as_one_bundle(monkeypatch):
     assert result["extracted"]["attachmentMode"] == "preserve_files"
     assert len(result["attachments"]) == 1
     assert result["attachments"][0]["documentName"] == "Hồ sơ cải chính hộ tịch"
-    assert result["attachments"][0]["target"] == "new"
+    # Bộ hồ sơ gộp vào ô "Giấy tờ liên quan…" (ô mặc định 2 khi không có attachmentContext).
+    assert result["attachments"][0]["target"] == "existing"
+    assert result["attachments"][0]["componentIndex"] == 2
     assert "sourceSegments" not in result["attachments"][0]
     assert "sourceFileIndexes" not in result["attachments"][0]
 

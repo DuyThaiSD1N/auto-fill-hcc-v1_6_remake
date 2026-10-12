@@ -1,10 +1,7 @@
 """Compact agent đăng ký khai sinh thường: short facts -> legacy x-* UI fields."""
 
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
-from app.pipelines.khai_sinh_thuong.process import run as khai_sinh_thuong_process
+from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
 from app.pipelines.khai_sinh_thuong.process import mapper
-from app.pipelines.khai_sinh_thuong.process.prompt import EXTRA_RULES
-from app.pipelines.khai_sinh_thuong.process.schema import FIELDS
 from app.procedures.registry import get_pipeline, get_procedure
 
 
@@ -50,7 +47,7 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["GioiTinhKS"] == "Nam"
     assert values["nksNoiSinh"] == "1"
     assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "BỆNH VIỆN ĐA KHOA TỈNH"
-    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Tam Hợp"
+    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Xã Tam Hợp"  # nhãn xã hiện hành sau remap
 
     assert values["HoTenChaKS"] == "VŨ ĐÌNH THIẾT"
     assert values["SoDinhDanhCha"] == "040203015844"
@@ -65,19 +62,10 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["NoiCapDDMe"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
 
-def test_khai_sinh_thuong_prompt_forbids_ui_fields():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert "Gcs_* CHỈ lấy từ tài liệu có tiêu đề GIẤY CHỨNG SINH" in system_prompt
-    assert "CccdNam_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính \"Nam\"" in system_prompt
-    assert "CccdNu_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính \"Nữ\"" in system_prompt
-    assert "Không trả field mặc định hoặc field UI" in system_prompt
-    assert "HoVaTenC, SoDinhDanhC, HoTenKS" in system_prompt
-
-
 def test_registry_uses_regular_birth_pipeline():
     proc = get_procedure("khai-sinh-dang-ky-thuong")
 
-    assert proc["label"] == "Thủ tục đăng ký khai sinh"
+    assert proc["label"] == "Thủ tục đăng ký khai sinh (Cổng DVC quốc gia mới)"
     assert proc["hasAttachmentStep"] is True
-    assert get_pipeline("khai-sinh-dang-ky-thuong") is khai_sinh_thuong_process
+    # Cổng đã thay eForm cũ bằng SurveyJS (DVC quốc gia mới) → key chạy package khai_sinh_dvc_moi.
+    assert get_pipeline("khai-sinh-dang-ky-thuong") is khai_sinh_dvc_moi_process

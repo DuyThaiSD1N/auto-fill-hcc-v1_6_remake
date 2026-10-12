@@ -12,16 +12,8 @@ from app.users.password_vault import password_fields
 from app.db.mongo import connect, get_db
 
 # (username, password, name, xa, tinh, role)
-DANH_SACH = [
-    ("hcctanphong", "hcctanphong12", "Phường Tân Phong", "Tân Phong", "Lai Châu", "user"),
-    ("hccdoanket", "hccdoanket12", "Phường Đoàn Kết", "Đoàn Kết", "Lai Châu", "user"),
-    ("hcclamvien", "hcclamvien86", "Phường Lâm Viên - Lâm Đồng", "Lâm Viên", "Lâm Đồng", "user"),
-    ("hccxuantruong", "hccxuantruong86", "Phường Xuân Trường - Lâm Đồng", "Xuân Trường", "Lâm Đồng", "user"),
-    ("hcclangbiang", "hcclangbiang86", "Phường Lang biang - Lâm Đồng", "Lang Biang", "Lâm Đồng", "user"),
-    ("hcccamly", "hcccamly86", "Phường Cam ly - Lâm Đồng", "Cam Ly", "Lâm Đồng", "user"),
-    ("hccxuanhuong", "hccxuanhuong86", "Phường Xuân Hương- Lâm Đồng", "Xuân Hương", "Lâm Đồng", "user"),
-    ("hcctaleng", "hcctaleng12", "Xã Tả Lèng", "Tả Lèng", "Lai Châu", "user"),
-]
+# Không ghi tài khoản/mật khẩu thật vào repo: điền tạm khi chạy rồi xoá trước khi commit.
+DANH_SACH: list[tuple[str, str, str, str, str, str]] = []
 
 
 async def seed_one(db, username: str, password: str, name: str, xa: str, tinh: str, role: str) -> None:

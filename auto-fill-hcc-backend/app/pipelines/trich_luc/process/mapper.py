@@ -1477,12 +1477,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             card_wins_id_block = card_beats_record or card_is_cmnd_beside_personal_id
 
             # Số định danh: Ưu tiên HoTich_SoDinhDanh từ tờ khai, fallback ht_so (giấy tờ tùy thân trong giấy HT), cuối cùng mới CCCD
+            # Ô "số định danh cá nhân" chỉ nhận số 12 chữ số: CMND 9 số chỉ thuộc cụm giấy tờ tùy thân.
             add(
                 "NDK_SoDinhDanh",
-                card_id_when_id_matches(ct_so, values.get("HoTich_SoDinhDanh"))
-                or (ct_so if card_beats_record else None)
-                or ht_so
-                or ct_so,
+                next((
+                    candidate for candidate in (
+                        card_id_when_id_matches(ct_so, values.get("HoTich_SoDinhDanh")),
+                        ct_so if card_beats_record else None,
+                        ht_so,
+                        ct_so,
+                    )
+                    if len(_digits(candidate)) == 12
+                ), None),
             )
 
             # Trẻ DƯỚI 14 TUỔI chưa bắt buộc có thẻ căn cước: số 12 chữ số của các em là SỐ ĐỊNH
@@ -1494,7 +1500,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 or values.get("NguoiDuocCap_NgaySinh")
                 or _ct("ChuThe_NgaySinh")
             )
-            has_no_id_card = _is_under_14(ndk_ngay_sinh) and not ct_so
+            # Giấy hộ tịch chỉ in số định danh, không có dấu vết nào của một giấy tờ tùy thân (số,
+            # loại, ngày/nơi cấp, thẻ kèm) → không dựng cụm giấy tờ từ số đó: loại giấy là đoán.
+            no_id_document = not any((ht_loai, ht_so, ht_ngay, ht_noi, ct_loai, ct_so, ct_ngay, ct_noi))
+            has_no_id_card = (_is_under_14(ndk_ngay_sinh) and not ct_so) or no_id_document
 
             if not has_no_id_card:
                 # Số giấy tờ tùy thân: giống logic trên nhưng loại trừ số định danh khai sinh

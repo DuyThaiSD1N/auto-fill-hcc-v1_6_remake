@@ -1,0 +1,4 @@
+# Thư viện chỉ dùng khi chạy test (không vào image prod). Cài: pip install -r requirements-dev.txt
+-r requirements.txt
+mongomock==4.3.0
+beautifulsoup4==4.15.0

@@ -15,7 +15,8 @@ Nhiệm vụ DUY NHẤT: đọc OCR_TEXT của từng file và trả đúng type
 2. Mỗi tài liệu trả đúng MỘT type trong allowed_types.
 3. Phân loại theo BẢN CHẤT của tài liệu, không theo nội dung được nhắc bên trong. Ví dụ giấy ủy quyền có nhắc số Giấy chứng nhận quyền sử dụng đất vẫn là authorization, không phải asset_ownership_proof.
 4. Nếu không đủ bằng chứng để xếp vào nhóm cụ thể, trả other.
-5. Trả JSON object duy nhất, không markdown, không giải thích.
+5. Mỗi tài liệu trả thêm certificationTarget (true/false) theo certification_target_rules.
+6. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>
@@ -38,6 +39,18 @@ Nhiệm vụ DUY NHẤT: đọc OCR_TEXT của từng file và trả đúng type
 - other: tài liệu không thuộc các nhóm trên hoặc OCR không đủ thông tin.
 </type_definitions>
 
+<certification_target_rules>
+certificationTarget = true nghĩa là tài liệu này CHÍNH LÀ văn bản đem đi chứng thực trong hồ sơ hiện tại
+(không phải giấy tờ kèm theo để đối chiếu). type vẫn trả theo bản chất tài liệu như bình thường.
+- division_draft luôn có certificationTarget = true.
+- Tài liệu có trang/đoạn "LỜI CHỨNG THỰC" (lời chứng thực chữ ký, lời chứng thực hợp đồng/giao dịch/văn bản)
+  là văn bản đem đi chứng thực → true, dù type là authorization hay other.
+- Hồ sơ KHÔNG có tài liệu nào là division_draft: chọn ĐÚNG MỘT tài liệu có khả năng nhất là văn bản đem đi
+  chứng thực (văn bản do các bên lập và ký: giấy ủy quyền, cam kết, thỏa thuận…) và đánh true.
+- asset_ownership_proof, identity_document, death_proof, survey_adjustment là giấy tờ đối chiếu → luôn false.
+- Còn lại → false.
+</certification_target_rules>
+
 <classification_hints>
 - OCR có "DỰ THẢO" + "PHÂN CHIA DI SẢN", hoặc tiêu đề chính "VĂN BẢN PHÂN CHIA DI SẢN" / "VĂN BẢN THỎA THUẬN PHÂN CHIA DI SẢN" / "VĂN BẢN THỎA THUẬN PHÂN CHIA DI SẢN THỪA KẾ" thì chọn division_draft, kể cả khi bên trong có nhắc trích lục khai tử, CCCD, Giấy chứng nhận quyền sử dụng đất (đó chỉ là thông tin di sản/người thừa kế trong văn bản).
 - OCR có tiêu đề "GIẤY ỦY QUYỀN" / "VĂN BẢN ỦY QUYỀN" và có "BÊN ỦY QUYỀN"/"BÊN ĐƯỢC ỦY QUYỀN" thì chọn authorization, kể cả khi nội dung có nhắc số Giấy chứng nhận quyền sử dụng đất, thửa đất — vì bản chất là ủy quyền, không phải giấy chứng nhận.
@@ -52,10 +65,10 @@ Output đúng 1 JSON object, không bọc code fence.
 Sau JSON không output thêm ký tự nào.
 
 Schema:
-{"documents":[{"index":0,"type":"division_draft","title":"Dự thảo văn bản phân chia di sản"}]}
+{"documents":[{"index":0,"type":"division_draft","title":"Dự thảo văn bản phân chia di sản","certificationTarget":true}]}
 
 Ví dụ đúng:
-{"documents":[{"index":0,"type":"identity_document","title":"Căn cước công dân"},{"index":1,"type":"asset_ownership_proof","title":"Giấy chứng nhận quyền sử dụng đất"},{"index":2,"type":"division_draft","title":"Văn bản thỏa thuận phân chia di sản thừa kế"},{"index":3,"type":"authorization","title":"Văn bản ủy quyền"}]}
+{"documents":[{"index":0,"type":"identity_document","title":"Căn cước công dân","certificationTarget":false},{"index":1,"type":"asset_ownership_proof","title":"Giấy chứng nhận quyền sử dụng đất","certificationTarget":false},{"index":2,"type":"division_draft","title":"Văn bản thỏa thuận phân chia di sản thừa kế","certificationTarget":true},{"index":3,"type":"authorization","title":"Văn bản ủy quyền","certificationTarget":false}]}
 </output_contract>
 
 <reminder>

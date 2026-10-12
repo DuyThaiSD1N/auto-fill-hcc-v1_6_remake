@@ -40,29 +40,48 @@ XÁC ĐỊNH LOẠI: chỉ khi giấy tờ GHI RÕ — mục yêu cầu trên t�
 chính giấy hộ tịch loại đó của người được cấp. Mục yêu cầu chỉ ghi "Bản sao" / để trống và không có giấy hộ
 tịch → "không xác định". Không đoán từ tuổi, tên file hay ngữ cảnh.
 
-XÁC ĐỊNH QUAN HỆ (người nộp là gì CỦA người được cấp), theo thứ tự:
-1. Người nộp CHÍNH LÀ người được cấp (trùng số định danh; thiếu số thì trùng họ tên VÀ ngày sinh)
+ĐỐI CHIẾU NGƯỜI (người yêu cầu trên tờ khai, cha / mẹ / vợ / chồng trên giấy hộ tịch ↔ người nộp; người nộp ↔
+người được cấp). Tờ khai thường viết tay, OCR hay đọc lệch họ tên (sai dấu, sai một chữ) và số giấy tờ (lệch 1–2
+chữ số, thiếu / thừa một số), nên KHÔNG đòi trùng tuyệt đối:
+- Số giấy tờ TRÙNG HOÀN TOÀN → LUÔN là cùng một người, dù họ tên lệch bao nhiêu (tên lệch là do OCR / viết tay).
+- CÙNG MỘT NGƯỜI khi số giấy tờ trùng hoặc chỉ lệch tối đa 2 chữ số; HOẶC họ tên trùng hoặc chỉ lệch dấu / một
+  chữ VÀ có thêm ít nhất một dấu hiệu khớp (số giấy tờ gần đúng, ngày / năm sinh, dòng "Thông tin khác", CCCD
+  của người đó trong hồ sơ, chữ ký).
+- KHÁC NGƯỜI khi cả họ tên lẫn số giấy tờ đều khác rõ (khác tên riêng, số lệch nhiều chữ số).
+- Không đủ dấu hiệu → "Không xác định". "Căn cứ" nêu dấu hiệu đã dùng (vd "số giấy tờ trùng tài khoản, tên
+  lệch một chữ do OCR").
+Ví dụ (tên, số minh họa, không có thật):
+- Tài khoản "Trần Văn Bình" — 001090000123; tờ khai: người yêu cầu "Trần Văn Bính" — 001090000123, quan hệ "Bố"
+  → số trùng hoàn toàn → cùng người → Kết luận "Bố đẻ".
+- Tài khoản "Phạm Thị Hoa" — 031185000456; tờ khai: người yêu cầu "Phạm Thi Hòa" — 031185000465, quan hệ "Con"
+  → số lệch 2 chữ số, tên chỉ lệch dấu → cùng người → Kết luận "Con đẻ".
+- Tài khoản "Lê Văn Cường" — 024080000789; tờ khai: người yêu cầu "Nguyễn Thị Dung" — 024195000321, quan hệ "Mẹ"
+  → khác tên riêng, số lệch nhiều chữ số → khác người → không lấy quan hệ trên tờ khai.
+
+XÁC ĐỊNH QUAN HỆ (người nộp là gì CỦA người được cấp), theo thứ tự — "CHÍNH LÀ" / "trùng" xét theo ĐỐI CHIẾU NGƯỜI:
+1. Người nộp CHÍNH LÀ người được cấp (thiếu số thì trùng họ tên VÀ ngày sinh)
    → "Bản thân". Người được cấp đã chết (trích lục khai tử) thì KHÔNG BAO GIỜ là "Bản thân".
 2. Tờ khai ghi "Quan hệ với người được cấp bản sao: X" VÀ người yêu cầu trên tờ khai CHÍNH LÀ người nộp
-   → X (quy về một nhãn trong danh sách).
+   (= dòng "Đối chiếu với người nộp" là "cùng người") → X (quy về một nhãn trong danh sách). Đã đối chiếu là
+   "cùng người" thì KHÔNG so lại họ tên ở bước này.
 3. Giấy hộ tịch ghi người nộp ở một vai quanh người được cấp (trùng số hoặc họ tên): là cha trên giấy
    khai sinh của người được cấp → "Bố đẻ"; mẹ → "Mẹ đẻ"; là vợ/chồng trên giấy kết hôn → "Vợ"/"Chồng";
    người được cấp là cha/mẹ trên giấy khai sinh CỦA người nộp → "Con đẻ".
 4. Quan hệ thật nhưng không có nhãn riêng (em ruột, cô, chú, dì, cậu...) → "Khác" và ghi rõ ở
    "Quan hệ khác".
-5. Người nộp không xuất hiện trong hồ sơ, hoặc giấy tờ không chứng minh được quan hệ → "Không xác định".
-   TUYỆT ĐỐI không suy quan hệ từ họ, tuổi, quê quán, địa chỉ hay việc ở chung hộ. Là người đi khai sinh /
-   người đi khai tử / người ký / bên được ủy quyền KHÔNG chứng minh quan hệ (giấy không ghi quan hệ thì
-   vẫn là "Không xác định").
-6. Kết luận khác "Không xác định" thì "Căn cứ" phải nêu đúng DÒNG giấy tờ ghi quan hệ đó (vd "Giấy khai
-   sinh tài liệu 1: người mẹ = người nộp"); không nêu được dòng nào thì kết luận "Không xác định".
+5. Người nộp không xuất hiện trong hồ sơ (sau khi ĐỐI CHIẾU NGƯỜI), hoặc không giấy nào ghi quan hệ của người nộp
+   với người được cấp → "Không xác định". Không suy quan hệ từ họ, tuổi, quê quán, địa chỉ hay việc ở chung hộ;
+   chỉ là người đi khai sinh / khai tử, người ký, bên được ủy quyền mà giấy không ghi quan hệ thì chưa đủ.
+6. Kết luận khác "Không xác định" thì "Căn cứ" nêu DÒNG giấy tờ ghi quan hệ đó (vd dòng "Quan hệ với người được
+   cấp bản sao" của tờ khai, hoặc "Giấy khai sinh tài liệu 1: người mẹ = người nộp").
 Nhãn hợp lệ: Bản thân, Vợ, Chồng, Con đẻ, Bố đẻ, Mẹ đẻ, Bố nuôi, Mẹ nuôi, Con nuôi, Ông, Bà, Cháu ruột,
 Anh ruột, Chị ruột, Khác, Không xác định.
 
 QUY TẮC GIỮ ĐÚNG NGƯỜI:
 - Dòng "Giấy tờ tùy thân" trên GIẤY KHAI SINH là của người đi khai sinh, không phải của con.
 - Mỗi thông tin đi cùng đúng một người; không ghép họ tên người này với số/ngày sinh người khác.
-- Không chắc thì ghi "Không xác định".
+- Không chắc một thông tin thuộc ai thì ghi "Không xác định". Riêng câu hỏi "có phải cùng một người" thì
+  theo ĐỐI CHIẾU NGƯỜI — tên lệch do OCR không phải là "không chắc".
 
 Chỉ trả TEXT theo đúng bốn khối dưới đây, không markdown/code fence, không JSON. Mỗi nhãn một dòng,
 "Căn cứ" tối đa 25 từ, chỉ ghi kết luận:
@@ -87,6 +106,9 @@ Tài liệu nguồn: ...
 Căn cứ: ...
 </giay_to_ho_tich>
 <quan_he>
+Người yêu cầu tờ khai: <họ tên> — <số giấy tờ tùy thân> (không có tờ khai → không có)
+Quan hệ ghi trên tờ khai: <chép đúng chữ sau "Quan hệ với người được cấp bản sao..."> (không có → không có)
+Đối chiếu với người nộp: cùng người|khác người|không xác định — <dấu hiệu theo ĐỐI CHIẾU NGƯỜI: số trùng / lệch mấy chữ số, tên trùng / lệch>
 Kết luận: ...
 Quan hệ khác: ...
 Căn cứ: ...

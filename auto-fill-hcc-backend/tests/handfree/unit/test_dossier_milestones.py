@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from datetime import datetime, timezone
 
+import pytest
+
 from app.channels.handfree.chat import flow
 from app.channels.handfree.chat.intents import Intent
 from app.procedures.portal_submit import portal_submit_rules
@@ -37,6 +39,36 @@ def test_moc_bat_dau_khong_bi_dat_lai_khi_quay_lai_buoc_xac_nhan():
     first = conv["dossier_started_at"]
     flow._start_guide_login(conv)
     assert conv["dossier_started_at"] == first
+
+
+def test_moc_dang_nhap_xong_cham_o_lan_DAU_toi_trang_sau_dang_nhap():
+    """Thời gian làm hồ sơ tính từ lúc ĐĂNG NHẬP XONG: quét QR VNeID, nhập passcode không tính."""
+    conv = _conv()
+    flow._start_guide_login(conv)
+    assert "logged_in_at" not in conv  # mới xác nhận thủ tục, chưa tới trang sau đăng nhập
+    flow._login_ok_prefix(conv)
+    first = conv["logged_in_at"]
+    assert isinstance(first, datetime) and first >= conv["dossier_started_at"]
+    flow._login_ok_prefix(conv)  # quay lại bước nhận giấy tờ / bổ sung giấy: không dời mốc
+    assert conv["logged_in_at"] == first
+
+
+def test_so_ho_so_lay_moc_dang_nhap_xong_lam_moc_bat_dau(monkeypatch):
+    from app.channels.handfree.chat import router
+    captured = {}
+
+    async def fake_upsert(**kw):
+        captured.update(kw)
+    monkeypatch.setattr(router.dossiers_repo, "upsert_started", fake_upsert)
+    confirmed = datetime(2026, 10, 9, 1, 0, tzinfo=timezone.utc)
+    logged_in = datetime(2026, 10, 9, 1, 6, tzinfo=timezone.utc)
+    conv = _conv(dossier_started_at=confirmed, logged_in_at=logged_in, trace_request_id="req_x")
+    asyncio.run(router._sync_dossier(conv, persist=False))
+    assert captured["started_at"] == logged_in
+    # Nhánh chưa chấm mốc đăng nhập → lùi về mốc xác nhận thủ tục như trước.
+    conv = _conv(dossier_started_at=confirmed, trace_request_id="req_x")
+    asyncio.run(router._sync_dossier(conv, persist=False))
+    assert captured["started_at"] == confirmed
 
 
 def test_start_guide_login_gui_kem_luat_nhan_nut_nop():
@@ -291,6 +323,10 @@ def test_hkd_nut_nop_la_INPUT_khong_phai_button():
     assert rule["buttonIds"] == ["ctl00_C_BtnSave"]
     assert "nop ho so vao co quan dkkd" in rule["buttonText"]
     root = _P(__file__).resolve().parents[4]
+    # Mã nguồn 2 extension nằm ngoài repo (workspace hcc/) — máy CI không có thì bỏ phần kiểm content.js.
+    if not all((root / ext / "content.js").is_file()
+               for ext in ("auto-fill-hcc-extension", "tro-ly-nguoi-dan-extension")):
+        pytest.skip("thiếu mã nguồn extension")
     for ext in ("auto-fill-hcc-extension", "tro-ly-nguoi-dan-extension"):
         src = (root / ext / "content.js").read_text("utf-8")
         assert 'input[type="submit"]' in src, ext

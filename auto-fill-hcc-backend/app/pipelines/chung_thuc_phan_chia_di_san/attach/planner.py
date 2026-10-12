@@ -11,6 +11,11 @@ thủ tục này — mặc định TẮT):
     THÊM 1 thành phần hồ sơ mới; dự thảo LUÔN ở dòng 2 cố định.
 
 Phân loại tài liệu LLM-FIRST (không dùng rule keyword để quyết định type — chất lượng đặt ở prompt).
+Dòng dự thảo (bắt buộc) nhận văn bản phân chia di sản; hồ sơ không có văn bản đó thì nhận tài liệu LLM
+đánh ``certificationTarget`` (văn bản đem đi chứng thực, vd giấy ủy quyền kèm lời chứng chữ ký).
+
+Số thứ tự + tên 2 dòng cố định lấy từ bảng thật trên trang (``options.attachmentContext.components``):
+có cổng xếp dòng dự thảo lên trước dòng giấy chứng nhận. Không có bảng (extension cũ) → STT1/STT2 như cũ.
 """
 
 import re
@@ -92,6 +97,40 @@ def _normalize_type(value: str) -> str:
     return _DOC_OTHER
 
 
+def _live_rows(components: list | None) -> dict[str, tuple[int, str]]:
+    """{"asset"|"draft": (số thứ tự, tên nguyên văn)} của 2 dòng cố định trên trang; thiếu dòng nào thì
+    dùng STT/tên mặc định. Chỉ là định tuyến tất định theo tên dòng của cổng, không phân loại giấy tờ."""
+    rows = {"asset": (1, _ROW_1_COMPONENT), "draft": (2, _ROW_2_COMPONENT)}
+    found: dict[str, tuple[int, str]] = {}
+    for component in components or []:
+        if not isinstance(component, dict):
+            continue
+        try:
+            index = int(component.get("index"))
+        except (TypeError, ValueError):
+            continue
+        name = str(component.get("componentName") or "").strip()
+        folded = fold(name)
+        if index <= 0 or not folded:
+            continue
+        if "du thao" in folded:
+            found.setdefault("draft", (index, name))
+        elif "giay chung nhan quyen so huu" in folded or "quyen su dung" in folded:
+            found.setdefault("asset", (index, name))
+    rows.update(found)
+    return rows
+
+
+def _promoted_target(resolved: list[dict]) -> int | None:
+    """idx tài liệu thay vào dòng dự thảo khi hồ sơ không có văn bản phân chia di sản."""
+    if any(e["docType"] == _DOC_DIVISION_DRAFT for e in resolved):
+        return None
+    for entry in resolved:
+        if entry.get("certificationTarget") and entry["docType"] not in (_DOC_ASSET, _DOC_IDENTITY):
+            return entry["idx"]
+    return None
+
+
 def _label_for_type(doc_type: str, title: str = "") -> str:
     title = str(title or "").strip()
     folded = fold(title)
@@ -146,10 +185,11 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     parsed = client.extract_json_block(raw)
     parsed_docs = parsed.get("documents", []) or []
 
-    def _coerce(item: dict) -> dict[str, str]:
+    def _coerce(item: dict) -> dict:
         return {
             "type": _normalize_type(str(item.get("type") or item.get("docType") or "")),
             "title": str(item.get("title") or item.get("documentName") or "").strip(),
+            "certificationTarget": item.get("certificationTarget") is True,
         }
 
     out: dict[int, dict[str, str]] = {}
@@ -228,8 +268,9 @@ def _build_single_item(
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
-    llm_types: dict[int, dict[str, str]] | None = None,
+    llm_types: dict[int, dict] | None = None,
     split: bool = False,
+    components: list | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
     resolved: list[dict] = []
@@ -245,20 +286,28 @@ def build_plan_items(
             "fileName": file_name,
             "docType": doc_type,
             "title": str(detected.get("title") or "").strip(),
+            "certificationTarget": detected.get("certificationTarget") is True,
             "source": "llm" if detected.get("type") else "default",
         })
 
+    rows = _live_rows(components)
+    promoted = _promoted_target(resolved)
     if split:
-        return _build_split_plan(files, resolved, warnings)
-    return _build_merge_plan(files, resolved, warnings)
+        return _build_split_plan(files, resolved, warnings, rows, promoted)
+    return _build_merge_plan(files, resolved, warnings, rows, promoted)
 
 
 def _build_merge_plan(
     files: list[dict], resolved: list[dict], warnings: list[str],
+    rows: dict[str, tuple[int, str]], promoted: int | None,
 ) -> tuple[list[dict], list[str], list[dict]]:
-    """GỘP (như cũ): mọi giấy tờ ngoài dự thảo gộp chung dòng 1; dự thảo gộp dòng 2."""
-    draft_entries = [e for e in resolved if e["docType"] == _DOC_DIVISION_DRAFT]
-    rest_entries = [e for e in resolved if e["docType"] != _DOC_DIVISION_DRAFT]
+    """GỘP (như cũ): mọi giấy tờ ngoài dự thảo gộp chung dòng giấy chứng nhận; dự thảo vào dòng dự thảo."""
+    draft_entries = [e for e in resolved if e["docType"] == _DOC_DIVISION_DRAFT or e["idx"] == promoted]
+    rest_entries = [e for e in resolved if e not in draft_entries]
+    asset_index, asset_component = rows["asset"]
+    draft_index, draft_component = rows["draft"]
+    # Tài liệu thay chỗ dự thảo giữ tên loại giấy của nó ("Giấy ủy quyền"), không gắn nhãn dự thảo.
+    draft_name = _DRAFT_LABEL if promoted is None else _label_for_type(draft_entries[0]["docType"], draft_entries[0]["title"])
 
     used_names: set[str] = set()
     attachments: list[dict] = []
@@ -268,7 +317,7 @@ def _build_merge_plan(
         row1_name = _ROW_1_LABEL if len(rest_entries) > 1 else _label_for_type(
             rest_entries[0]["docType"], rest_entries[0]["title"]
         )
-        row1_item = _build_group_item(files, rest_entries, row1_name, _ROW_1_COMPONENT, 1, used_names)
+        row1_item = _build_group_item(files, rest_entries, row1_name, asset_component, asset_index, used_names)
         attachments.append(row1_item)
         for entry in rest_entries:
             classified.append({
@@ -276,21 +325,21 @@ def _build_merge_plan(
                 "type": entry["docType"],
                 "title": _label_for_type(entry["docType"], entry["title"]),
                 "target": "existing",
-                "componentIndex": 1,
+                "componentIndex": asset_index,
                 "mergedIntoFileIndex": row1_item["fileIndex"],
                 "source": entry["source"],
             })
 
     if draft_entries:
-        draft_item = _build_group_item(files, draft_entries, _DRAFT_LABEL, _ROW_2_COMPONENT, 2, used_names)
+        draft_item = _build_group_item(files, draft_entries, draft_name, draft_component, draft_index, used_names)
         attachments.append(draft_item)
         for entry in draft_entries:
             classified.append({
                 "fileName": entry["fileName"],
                 "type": entry["docType"],
-                "title": _DRAFT_LABEL,
+                "title": draft_name,
                 "target": "existing",
-                "componentIndex": 2,
+                "componentIndex": draft_index,
                 "mergedIntoFileIndex": draft_item["fileIndex"],
                 "source": entry["source"],
             })
@@ -300,6 +349,7 @@ def _build_merge_plan(
 
 def _build_split_plan(
     files: list[dict], resolved: list[dict], warnings: list[str],
+    rows: dict[str, tuple[int, str]], promoted: int | None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     """KHÔNG GỘP: mỗi giấy tờ 1 dòng. Dự thảo → dòng 2 cố định; giấy bổ trợ đầu tiên → dòng 1,
     còn lại mỗi cái thêm 1 thành phần hồ sơ mới. Giữ nguyên thứ tự file người dùng tải lên."""
@@ -308,21 +358,24 @@ def _build_split_plan(
     classified: list[dict] = []
     row1_used = False
     row2_used = False
+    asset_index, asset_component = rows["asset"]
+    draft_index, draft_component = rows["draft"]
 
     for entry in resolved:
-        is_draft = entry["docType"] == _DOC_DIVISION_DRAFT
+        is_draft = entry["docType"] == _DOC_DIVISION_DRAFT or entry["idx"] == promoted
         if is_draft and not row2_used:
-            # Dự thảo phân chia di sản → ô cố định dòng 2.
+            # Dự thảo phân chia di sản (hoặc văn bản đem đi chứng thực thay chỗ) → ô cố định dòng dự thảo.
             row2_used = True
+            label = _DRAFT_LABEL if entry["idx"] != promoted else _label_for_type(entry["docType"], entry["title"])
             item = _build_single_item(
-                files, entry, _DRAFT_LABEL, _ROW_2_COMPONENT, "existing", 2, used_names
+                files, entry, label, draft_component, "existing", draft_index, used_names
             )
         elif not is_draft and not row1_used:
-            # Giấy bổ trợ ĐẦU TIÊN → ô cố định dòng 1.
+            # Giấy bổ trợ ĐẦU TIÊN → ô cố định dòng giấy chứng nhận.
             row1_used = True
             label = _label_for_type(entry["docType"], entry["title"])
             item = _build_single_item(
-                files, entry, label, _ROW_1_COMPONENT, "existing", 1, used_names
+                files, entry, label, asset_component, "existing", asset_index, used_names
             )
         else:
             # Mọi giấy tờ còn lại (kể cả dự thảo thứ 2 hiếm gặp) → thêm thành phần hồ sơ mới.
@@ -381,7 +434,10 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types, split=split)
+    components = (options.get("attachmentContext") or {}).get("components") or []
+    attachments, warnings, classified = build_plan_items(
+        raw_files, ocr_results, llm_types, split=split, components=components
+    )
     errors.extend(warnings)
     skipped_ocr = [file["name"] for file in raw_files if file.get("type") not in _OCR_TYPES]
 

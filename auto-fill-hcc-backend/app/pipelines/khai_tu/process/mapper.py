@@ -333,8 +333,8 @@ def enrich(
         add("HoVaTenC", upper_person_name(requester_name))
     elif applicant_name:
         add("HoVaTenC", upper_person_name(applicant_name), default=True)
-    else:
-        add("HoVaTenC", "NGƯỜI YÊU CẦU", default=True)
+    # Cạn cả giấy tờ lẫn tài khoản cổng thì để trống: tên/số giả ("NGƯỜI YÊU CẦU", "000000000000")
+    # trông vẫn hợp lệ nên lọt qua khâu soát của cán bộ.
 
     # Giấy tờ tùy thân người yêu cầu.
     if requester_id:
@@ -354,10 +354,6 @@ def enrich(
         add("SoDinhDanhC", applicant_id, default=True)
         add("SoGiayToDinhDanhC", applicant_id, default=True)
         add("LoaiGiayToDinhDanhC", _doc_type(applicant_id, ""), default=True)
-    else:
-        add("SoDinhDanhC", "000000000000", default=True)
-        add("SoGiayToDinhDanhC", "000000000000", default=True)
-        add("LoaiGiayToDinhDanhC", "Căn cước công dân", default=True)
 
     # Nơi cư trú người yêu cầu.
     if requester_residence:

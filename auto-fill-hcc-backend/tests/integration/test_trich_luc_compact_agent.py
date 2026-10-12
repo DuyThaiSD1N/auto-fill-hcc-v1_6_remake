@@ -6,12 +6,9 @@ import httpx
 import respx
 
 from app.config import settings
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.trich_luc import process as agent
 from app.pipelines.trich_luc.process import mapper, runner as trich_luc_runner
-from app.pipelines.trich_luc.process.prompt import EXTRA_RULES
 from app.pipelines.trich_luc.process.schema import FIELDS
-from app.procedures.registry import get_pipeline
 
 
 def _file(name, typ="image/jpeg"):
@@ -82,7 +79,7 @@ def test_trich_luc_declaration_rejects_same_person_wrong_document_type():
     result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
     assert result["HoSo_LoaiYeuCau"].startswith("Giấy khai sinh bản sao")
-    assert result["NDK_HoVaTen"] == "Nguyễn Thành Chung"
+    assert result["NDK_HoVaTen"] == "NGUYỄN THÀNH CHUNG"
     assert "NDK_SoDinhDanh" not in result
     assert result["NDK_LoaiGiayToTuyThan"] == "Chứng minh nhân dân"
     assert result["NDK_SoGiayToTuyThan"] == "023284413"
@@ -121,7 +118,13 @@ def test_trich_luc_declaration_allows_matching_document_to_fill_blank_field():
 
 def test_trich_luc_runner_does_not_use_number_fallback():
     """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu."""
-    assert not hasattr(trich_luc_runner, "_compact_field_fallback")
+    raw_fields = {"HoTich_LoaiSuKien": "birth", "HoTich_HoTenNguoiDuocDangKy": "TRẦN BÉ"}
+    documents = [{"text": "GIẤY KHAI SINH\nHọ và tên: TRẦN BÉ\nSố: 55/2026\nQuyển số: 01/2026"}]
+
+    result = trich_luc_runner._compact_field_fallback(raw_fields, documents)
+
+    assert "HoTich_So" not in result
+    assert "HoTich_QuyenSo" not in result
 
 
 def test_trich_luc_ignores_copy_choice_without_quantity():
@@ -160,7 +163,7 @@ def test_trich_luc_death_extract_maps_deceased_identity_issue_details():
     assert result["NDK_SoGiayToTuyThan"] == "052038000054"
     assert result["NDK_NgayCap"] == "27/03/2021"
     assert result["NDK_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước công dân"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
 
 
 def test_trich_luc_birth_declaration_maps_subject_identity_document():
@@ -177,7 +180,7 @@ def test_trich_luc_birth_declaration_maps_subject_identity_document():
     result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
     assert result["NDK_SoDinhDanh"] == "037218005053"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước"
     assert result["NDK_SoGiayToTuyThan"] == "037218005053"
     assert result["NDK_NgayCap"] == "20/06/2025"
     assert result["NDK_NoiCap"] == "Bộ Công an"
@@ -214,7 +217,7 @@ def test_trich_luc_self_request_keeps_identity_from_both_declaration_blocks():
     assert result["NgayCapDDC"] == "26/06/2026"
     assert result["NoiCapDDC"] == "Bộ Công an"
     assert result["NDK_SoDinhDanh"] == "068308008269"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước"
     assert result["NDK_SoGiayToTuyThan"] == "068308008269"
     assert result["NDK_NgayCap"] == "26/06/2026"
     assert result["NDK_NoiCap"] == "Bộ Công an"
@@ -264,7 +267,7 @@ def test_trich_luc_subject_card_identity_has_priority_over_declaration_identity(
     assert result["NDK_SoGiayToTuyThan"] == "012345678906"
     assert result["NDK_NgayCap"] == "12/08/2025"
     assert result["NDK_NoiCap"] == "Bộ Công an"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước"
 
 
 def test_trich_luc_normalizes_ho_chi_minh_province_aliases():
@@ -487,7 +490,9 @@ def test_trich_luc_preserves_xuan_huong_ward_prefix_for_form_option():
 async def test_trich_luc_compact_agent_derives_ui_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
-        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
+        return_value=httpx.Response(
+            200, json={"results": [{"text": "TRẦN THÀNH CÔNG 025203007360"}] * 20}
+        )
     )
     out = {
         "fields": {
@@ -569,22 +574,15 @@ async def test_trich_luc_compact_agent_derives_ui_fields(monkeypatch):
     assert d["PhuongThucNhanKQ"] == "2"
 
     assert "NYC_HoVaTen" not in d
-    assert "NYC_QuanHe" not in d
+    # Người yêu cầu và người được đăng ký khác người, giấy không ghi vai → tick "Khác" dạng gợi ý.
+    assert d["NYC_QuanHe"] == "Khác"
+    assert by_name["NYC_QuanHe"]["default"] is True
     assert not res["errors"]
 
 
-def test_trich_luc_compact_prompt_rejects_ui_fields():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+def test_trich_luc_schema_tach_nguon_va_khong_co_field_ui():
+    """Schema compact trích lục: field nguồn tách theo vai, không lộ field UI / Cccd_* chung."""
     field_names = {field["name"] for field in FIELDS}
-
-    assert "Nyc_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND" in system_prompt
-    assert "Nyc_NgayCap/Nyc_NoiCap từ mặt sau CCCD" in system_prompt
-    assert "Nyc_NoiCap = \"Cục Cảnh sát quản lý hành chính về trật tự xã hội\"" in system_prompt
-    assert "áp cuối = huyện và PHẢI BỎ" in system_prompt
-    assert "vị trí áp cuối vẫn là cấp huyện, KHÔNG được chọn làm xa" in system_prompt
-    assert 'xa="Tân Phú", tinh="Vĩnh Phúc"' in system_prompt
-    assert "Nếu có đúng 2 CCCD khác nhau" in system_prompt
-    assert "thẻ còn lại BẮT BUỘC vào ChuThe_*" in system_prompt
     assert not any(name.startswith("Cccd_") for name in field_names)
     assert {
         "Nyc_HoTen",
@@ -598,61 +596,28 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
         "ChuThe_NoiCap",
         "ChuThe_NoiCuTru",
     }.issubset(field_names)
-    assert 'HoTich_LoaiSuKien = "marriage"' in system_prompt
-    assert "TỜ KHAI CẤP BẢN SAO chỉ sinh ToKhai_*" in system_prompt
-    assert "LOẠI GIẤY ĐƯỢC YÊU CẦU, NGƯỜI ĐƯỢC CẤP" in system_prompt
-    assert "khớp CẢ loại giấy được yêu cầu VÀ người được cấp" in system_prompt
-    assert "đúng người nhưng sai loại" in system_prompt
-    assert "Không trộn số/quyển/ngày/nơi đăng ký" in system_prompt
     assert "ToKhai_LoaiSuKien" in field_names
     assert "ToKhai_HoTenNguoiDuocCap" in field_names
     assert "ToKhai_SoDinhDanh" in field_names
     assert "ToKhai_CoQuanDangKy" in field_names
     assert "ToKhai_So" in field_names
     assert "ToKhai_NgayDangKy" in field_names
-    assert 'block sau "cho người có tên dưới đây"' in system_prompt
-    assert "HoTich_NoiCuTru trên TỜ KHAI CẤP BẢN SAO" in system_prompt
-    assert 'không lấy dòng "Nơi cư trú" của người yêu cầu' in system_prompt
-    assert "Xuống dòng không cắt block" in system_prompt
-    assert "KHÔNG coi là field không chắc chắn" in system_prompt
-    assert '"Thành phố Hồ Chí Minh"' in system_prompt
-    assert "BẮT BUỘC trả đủ HoTich_LoaiGiayToTuyThan" in system_prompt
-    assert "TỜ KHAI CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH có HAI BLOCK ĐỘC LẬP" in system_prompt
-    assert "TUYỆT ĐỐI KHÔNG KHỬ TRÙNG giữa Nyc_* và HoTich_*" in system_prompt
-    assert "Xác định vai trò theo VỊ TRÍ BLOCK" in system_prompt
-    assert "OCR có thể đọc sai một vài ký tự trong tên" in system_prompt
-    assert 'không ghi rõ chữ "CCCD"/"Căn cước"' in system_prompt
-    assert "HoTich_SoDinhDanh = <12 chữ số>" in system_prompt
-    assert "block 2 THỰC SỰ có dòng" in system_prompt
-    assert "CopyRequest_QuanHe lấy từ TỜ KHAI" in system_prompt
     assert "CopyRequest_QuanHe" in field_names
-    assert "HoSo_LoaiYeuCau" in system_prompt
-    assert "PhuongThucNhanKQ" in system_prompt
-    assert "CopyRequest_Quantity=10" in system_prompt
-    assert "KHÔNG diễn giải thành số thập phân" in system_prompt
-    assert "không trả CapBanSao" in system_prompt
     assert "CopyRequest_WantsCopy" not in field_names
     assert {
         "NguoiDuocCap_HoTen",
         "NguoiDuocCap_NgaySinh",
         "NguoiDuocCap_GioiTinh",
     }.issubset(field_names)
-    assert "GIẤY CHỨNG SINH và TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01)" in system_prompt
-    assert 'NguoiDuocCap_HoTen lấy ở "Dự định đặt tên con"' in system_prompt
-    assert "Không lấy chủ hộ ở mục 7" in system_prompt
-    assert "Không sao chép Nyc_SoDinhDanh/Nyc_NgayCap/" in system_prompt
-    assert 'HoTich_So ưu tiên số trong block "Đã đăng ký tại" của TỜ KHAI' in system_prompt
-    assert 'Dòng "Số: <mã>/<năm>" ở phần đầu' in system_prompt
-    assert "BỎ toàn bộ NguoiDuocCap_*" in system_prompt
-    assert 'không tự trả "Khác"' in system_prompt
-    assert '"Số bộ 123"' in system_prompt
 
 
 @respx.mock
 async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
-        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
+        return_value=httpx.Response(
+            200, json={"results": [{"text": "NGUYỄN VĂN A 012345678901"}] * 20}
+        )
     )
     out = {
         "fields": {
@@ -676,13 +641,16 @@ async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     )
 
     res = await agent.run({"doc": [_file("cccd.jpg"), _file("gks.pdf", "application/pdf")]}, {})
-    d = {f["name"]: f["value"] for f in res["fields"]}
+    by_name = {f["name"]: f for f in res["fields"]}
+    d = {name: f["value"] for name, f in by_name.items()}
 
     assert d["HoVaTenC"] == "NGUYỄN VĂN A"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["NDK_HoVaTen"] == "TRẦN BÉ"
     assert d["HoSo_LoaiYeuCau"].startswith("Giấy khai sinh bản sao")
-    assert "NYC_QuanHe" not in d
+    # Giá trị UI "Bố Đẻ" LLM trả thẳng bị bỏ; mapper tự chốt "Khác" dạng gợi ý.
+    assert d["NYC_QuanHe"] == "Khác"
+    assert by_name["NYC_QuanHe"]["default"] is True
     assert not res["errors"]
 
 
@@ -739,17 +707,14 @@ async def test_trich_luc_compact_agent_maps_marriage_extract(monkeypatch):
     assert d["NDK_GioiTinh"] == "Nam"
     assert d["NDK_DanToc"] == "Mông (Hmông)"
     assert d["NDK_SoDinhDanh"] == "012086005221"
-    assert d["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
+    assert d["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước"
     assert d["NDK_SoGiayToTuyThan"] == "012086005221"
     assert d["NDK_NgayCap"] == "06/01/2026"
     assert d["NDK_NoiCap"] == "Bộ Công an"
     assert d["NDK_NoiCuTru"] == "1"
     assert d["NDK_NoiCuTru_TrongNuoc"]["tinh"] == "Lai Châu"
-    assert d["NDK_NoiCuTru_TrongNuoc"]["xa"] == "Đoàn Kết"
+    assert d["NDK_NoiCuTru_TrongNuoc"]["xa"] == "Phường Đoàn Kết"
     assert d["NDK_NoiCuTru_TrongNuoc"]["diaChi"] == "Tổ dân phố Cư Nhà La"
     assert "HoSo_QuyenSo" not in d
     assert not res["errors"]
 
-
-def test_registry_uses_trich_luc_compact_pipeline():
-    assert get_pipeline("trich-luc-ks") is agent.run

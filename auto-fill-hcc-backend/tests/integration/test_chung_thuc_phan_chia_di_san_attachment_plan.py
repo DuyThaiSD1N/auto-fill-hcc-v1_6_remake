@@ -1,7 +1,6 @@
 import json
 
 from app.pipelines.chung_thuc_phan_chia_di_san.attach import planner
-from app.pipelines.chung_thuc_phan_chia_di_san.attach.prompt import SYSTEM_PROMPT, build_user_prompt
 from app.process.schemas import FileItem
 from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
 
@@ -24,8 +23,16 @@ async def test_phan_chia_di_san_attachment_plan_groups_row1_and_routes_draft(mon
             {"name": "du-thao.pdf", "text": "DỰ THẢO VĂN BẢN PHÂN CHIA DI SẢN"},
         ]
 
+    # LLM-first: loại giấy do LLM trả, planner không còn rule keyword đọc OCR.
     async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": []})
+        return json.dumps({"documents": [
+            {"index": 0, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"},
+            {"index": 1, "type": "death_proof", "title": "Trích lục khai tử"},
+            {"index": 2, "type": "division_draft", "title": "Văn bản thỏa thuận phân chia di sản thừa kế"},
+            {"index": 3, "type": "survey_adjustment", "title": "Phiếu đo đạc chỉnh lý thửa đất"},
+            {"index": 4, "type": "identity_document", "title": "Căn cước công dân"},
+            {"index": 5, "type": "division_draft", "title": "Dự thảo văn bản phân chia di sản"},
+        ]})
 
     monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(planner.client, "chat", fake_chat)
@@ -67,8 +74,12 @@ async def test_phan_chia_di_san_multiple_drafts_merge_into_row2(monkeypatch):
             {"name": "du-thao-2.pdf", "text": "VĂN BẢN PHÂN CHIA DI SẢN trang 2"},
         ]
 
+    # LLM-first: loại giấy do LLM trả, planner không còn rule keyword đọc OCR.
     async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": []})
+        return json.dumps({"documents": [
+            {"index": 0, "type": "division_draft", "title": "Dự thảo văn bản phân chia di sản"},
+            {"index": 1, "type": "division_draft", "title": "Văn bản phân chia di sản"},
+        ]})
 
     monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(planner.client, "chat", fake_chat)
@@ -113,38 +124,7 @@ async def test_phan_chia_di_san_draft_thoa_thuan_stays_on_row2(monkeypatch):
     assert res["extracted"]["classified"][0]["type"] == "division_draft"
 
 
-async def test_phan_chia_di_san_thoa_thuan_goes_to_row2(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {
-                "name": "thoa-thuan.pdf",
-                "text": (
-                    "VĂN BẢN THỎA THUẬN PHÂN CHIA DI SẢN THỪA KẾ\n"
-                    "Theo thông tin trích lục khai tử số 37/2025/TLKT.\n"
-                    "Theo Giấy chứng nhận quyền sử dụng đất số BC 466500.\n"
-                    "Bà Lù Thị Khen, CCCD số 012173002914."
-                ),
-            }
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({
-            "documents": [{"index": 0, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"}]
-        })
-
-    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(planner.client, "chat", fake_chat)
-
-    res = await planner.plan([_file("thoa-thuan.pdf")], {}, None)
-    item = res["attachments"][0]
-
-    assert item["componentIndex"] == 2
-    assert item["sourceFileIndexes"] == [0]
-    assert res["extracted"]["classified"][0]["type"] == "division_draft"
-    assert res["extracted"]["classified"][0]["source"] == "rule"
-
-
-async def test_phan_chia_di_san_unknown_document_is_skipped(monkeypatch):
+async def test_phan_chia_di_san_other_document_merges_into_row1(monkeypatch):
     async def fake_ocr_per_file(files):
         return [{"name": "phieu-hen.pdf", "text": "PHIẾU HẸN TRẢ KẾT QUẢ"}]
 
@@ -155,9 +135,14 @@ async def test_phan_chia_di_san_unknown_document_is_skipped(monkeypatch):
     monkeypatch.setattr(planner.client, "chat", fake_chat)
 
     res = await planner.plan([_file("phieu-hen.pdf")], {}, None)
+    items = res["attachments"]
 
-    assert res["attachments"] == []
-    assert any("đã bỏ qua" in err for err in res["errors"])
+    # Chế độ gộp: mọi giấy ngoài dự thảo vào dòng giấy chứng nhận — không bỏ sót file nào.
+    assert len(items) == 1
+    assert items[0]["target"] == "existing"
+    assert items[0]["componentIndex"] == 1
+    assert items[0]["needsAddComponent"] is False
+    assert res["extracted"]["classified"][0]["type"] == "other"
 
 
 def test_phan_chia_di_san_procedure_is_attach_only():
@@ -171,27 +156,3 @@ def test_phan_chia_di_san_procedure_is_attach_only():
     assert "Dự thảo/văn bản thỏa thuận phân chia di sản thừa kế" in proc["uploadHint"]
     assert get_pipeline("chung-thuc-phan-chia-di-san") is None
     assert get_attach_pipeline("chung-thuc-phan-chia-di-san") is not None
-
-
-def test_phan_chia_di_san_prompt_uses_ocr_text_only():
-    assert "division_draft" in SYSTEM_PROMPT
-    assert "death_proof" in SYSTEM_PROMPT
-    assert "inheritance_agreement" in SYSTEM_PROMPT
-    assert "Dòng 1 nhận và gộp chung" in SYSTEM_PROMPT
-    assert "Dòng 2 nhận dự thảo" in SYSTEM_PROMPT
-    assert "VĂN BẢN THỎA THUẬN PHÂN CHIA DI SẢN THỪA KẾ" in SYSTEM_PROMPT
-    assert "DỰ THẢO\" + \"PHÂN CHIA DI SẢN" in SYSTEM_PROMPT
-    assert "Không dùng tên file" in SYSTEM_PROMPT
-
-    prompt = build_user_prompt([
-        {
-            "index": 0,
-            "fileName": "du-thao.pdf",
-            "text": "DỰ THẢO VĂN BẢN PHÂN CHIA DI SẢN",
-        }
-    ])
-
-    assert "ocrText" in prompt
-    assert "DỰ THẢO VĂN BẢN PHÂN CHIA DI SẢN" in prompt
-    assert "du-thao.pdf" not in prompt
-    assert "fileName" not in prompt

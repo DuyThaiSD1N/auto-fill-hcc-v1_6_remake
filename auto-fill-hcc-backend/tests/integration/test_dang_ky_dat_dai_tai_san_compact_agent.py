@@ -55,8 +55,9 @@ async def test_dang_ky_dat_dai_tai_san_compact_agent_derives_ui_fields(monkeypat
     d = {f["name"]: f["value"] for f in res["fields"]}
 
     assert d["CongDan_tenCongDan"] == "VŨ ĐÌNH THIẾT"
-    assert d["CongDan_tenCoQuanToChuc"] == "VŨ ĐÌNH THIẾT"
-    assert d["CongDan_maSoThueNguoiNop"] == "040203015844"
+    # Tên tổ chức / MST chỉ dành cho pháp nhân: hồ sơ cá nhân không có ToChuc_* → để trống.
+    assert "CongDan_tenCoQuanToChuc" not in d
+    assert "CongDan_maSoThueNguoiNop" not in d
     assert d["CongDan_soCmnd"] == "040203015844"
     assert d["CongDan_soCCCD"] == "040203015844"
     assert d["CongDan_ngayCapCmnd"] == "02/07/2021"
@@ -123,7 +124,13 @@ def test_registry_uses_dang_ky_dat_dai_tai_san_compact_agent_mode():
     proc = get_procedure("dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai")
 
     assert get_pipeline("dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai") is agent.run
-    assert proc["label"] == "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận lần đầu đối với người ở nước ngoài"
+    assert proc["label"] == (
+        "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+        "quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, "
+        "người gốc Việt Nam định cư ở nước ngoài"
+    )
     assert proc["mode"] == "agent"
     assert proc["roles"] == []
-    assert "Giấy chứng nhận quyền sử dụng đất" in proc["uploadHint"]
+    # Danh mục Lai Châu: Đơn Mẫu số 13 là giấy chính, kèm CCCD người nộp.
+    assert "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 13" in proc["uploadHint"]
+    assert "CCCD/thẻ căn cước của người nộp hồ sơ" in proc["uploadHint"]

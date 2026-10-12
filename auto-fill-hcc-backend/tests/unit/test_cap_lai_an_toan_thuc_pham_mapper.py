@@ -1,5 +1,7 @@
 """Mapper tests for ATTP certificate reissue process."""
 
+from datetime import date
+
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.cap_lai_an_toan_thuc_pham import process as agent
 from app.pipelines.cap_lai_an_toan_thuc_pham.process import mapper
@@ -59,7 +61,8 @@ def test_cap_lai_an_toan_thuc_pham_maps_reissue_application_and_facility():
     assert d["data[ownerPhoneNumber]"] == "02471066866"
     assert "Số 56 Đường 30/04" in d["data[ownerAddress]"]
     assert d["data[tinhThanhPhoNopDon]"] == "Lai Châu"
-    assert d["data[ngayNopDon]"] == "15/09/2025"
+    # Ngày nộp đơn = ngày nộp lên cổng (hôm nay); ngày trên đơn giấy là quá khứ, ô ngày của cổng chặn.
+    assert d["data[ngayNopDon]"] == date.today().strftime("%d/%m/%Y")
     assert d["data[GCNCuSo]"] == "05/2022/GCNATTP-SCT"
     assert d["data[NgayCapGCNCu]"] == "08/09/2022"
     assert d["data[KyTen]"] == "PHAN NGUYÊN TRỌNG HUY"

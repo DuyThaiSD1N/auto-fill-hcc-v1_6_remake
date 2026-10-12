@@ -462,7 +462,11 @@ PHẦN GHI CHÚ NHỮNG THÔNG TIN THAY ĐỔI SAU NÀY
     )
     assert len(result["attachments"]) == 1
     item = result["attachments"][0]
-    assert item["target"] == "new"
+    # File gộp nhiều loại giấy tờ vào STT 3 (dòng tổng quát nhất của cổng) khi ô đó còn trống.
+    assert item["target"] == "existing"
+    assert item["componentIndex"] == 3
+    assert item["componentName"] == dang_ky_lai_khai_sinh._ROW_3_COMPONENT
+    assert item["needsAddComponent"] is False
     assert item["documentName"] == "Giấy tờ đăng ký lại khai sinh"
     assert "sourceSegments" not in item
     assert "sourceFileIndexes" not in item
@@ -503,9 +507,11 @@ TRÍCH LỤC KHAI TỬ
 
     item = result["attachments"][0]
     assert item["documentName"] == "Hồ sơ đăng ký lại khai sinh"
-    assert item["componentName"] == "Hồ sơ đăng ký lại khai sinh"
-    assert item["target"] == "new"
-    assert item["needsAddComponent"] is True
+    # File hỗn hợp vào STT 3 khi chưa có file đơn loại nào chiếm ô đó.
+    assert item["componentName"] == dang_ky_lai_khai_sinh._ROW_3_COMPONENT
+    assert item["target"] == "existing"
+    assert item["componentIndex"] == 3
+    assert item["needsAddComponent"] is False
     assert result["extracted"]["classified"][0]["documentName"] == "Hồ sơ đăng ký lại khai sinh"
 
 

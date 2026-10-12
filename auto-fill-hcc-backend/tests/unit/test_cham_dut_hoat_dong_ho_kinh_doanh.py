@@ -39,7 +39,7 @@ def test_builds_dissolution_and_applicant_pages_from_notice_and_certificate():
     assert dissolution["ctl00$C$UC_DW_DISSOLUTIONCtl$REASON_DESCFld"]["value"].startswith("Chủ hộ")
 
     applicant = {item["name"]: item for item in pages["nguoi-nop-ho-so"]}
-    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == "IS_REPRESENTATIVE_BUTTON"
+    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
     assert applicant["ctl00$C$PERSCtl$ADDRCCtl$CITY_IDFld"]["value"] == "Bắc Ninh"
     assert applicant["ctl00$C$PERSCtl$ADDRCCtl$WARD_IDFld"]["value"] == "Song Liễu"
 

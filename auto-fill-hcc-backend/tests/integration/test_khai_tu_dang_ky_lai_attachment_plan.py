@@ -68,7 +68,7 @@ async def test_khai_tu_dang_ky_lai_attach_routes_fixed_rows_and_new_components(m
     assert "Văn bản ủy quyền" in items[3]["componentName"]
 
 
-async def test_khai_tu_dang_ky_lai_attach_combined_file_with_death_info_goes_to_row_2(monkeypatch):
+async def test_khai_tu_dang_ky_lai_attach_combined_file_follows_llm_type_over_death_keywords(monkeypatch):
     async def fake_ocr_per_file(files):
         return [
             {
@@ -93,9 +93,12 @@ async def test_khai_tu_dang_ky_lai_attach_combined_file_with_death_info_goes_to_
     res = await planner.plan([_file("ho-so-gop.pdf")], {}, _session())
     item = res["attachments"][0]
 
-    assert item["target"] == "existing"
-    assert item["componentIndex"] == 2
-    assert item["needsAddComponent"] is False
+    # LLM-first: LLM đã phân loại file là giấy tùy thân → thành phần mới; dấu hiệu lăng mộ trong
+    # OCR chỉ là lưới đỡ khi LLM không trả gì, không được kéo file vào STT2.
+    assert res["extracted"]["classified"][0]["source"] == "llm"
+    assert item["target"] == "new"
+    assert item["componentIndex"] is None
+    assert item["needsAddComponent"] is True
 
 
 def test_khai_tu_dang_ky_lai_registry_has_attachment_pipeline():

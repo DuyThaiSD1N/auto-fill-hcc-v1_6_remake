@@ -7,6 +7,7 @@ from app.pipelines.ket_hon_nuoc_ngoai.attach import planner as khnn_attach
 from app.pipelines.ket_hon_nuoc_ngoai.process import mapper
 from app.pipelines.ket_hon_nuoc_ngoai.process.mapper import FOREIGN_DOC_TYPE
 from app.process.schemas import FileItem
+from app.services import ocr as ocr_service
 
 
 def _fields(d):
@@ -20,23 +21,23 @@ def _by_name(out):
 def test_mapper_viet_va_nuoc_ngoai():
     out = _by_name(mapper.enrich(_fields({
         # Nam: người Việt (CCCD Cục Cảnh sát).
-        "CccdNam_HoTen": "TRẦN VĂN A",
-        "CccdNam_SoDinhDanh": "040203015844",
-        "CccdNam_NgayCap": "02/07/2021",
-        "CccdNam_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-        "CccdNam_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Xã Hợp Thành", "diaChi": "Xóm 1"},
+        "Nam_HoTen": "TRẦN VĂN A",
+        "Nam_SoDinhDanh": "040203015844",
+        "Nam_NgayCap": "02/07/2021",
+        "Nam_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        "Nam_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Xã Hợp Thành", "diaChi": "Xóm 1"},
         # Nữ: người Trung Quốc (chứng minh thư nước ngoài).
-        "CccdNu_HoTen": "PHONG THỊ MỸ",
-        "CccdNu_SoDinhDanh": "532524200001",
-        "CccdNu_QuocTich": "Trung Quốc",
-        "CccdNu_TenGiayTo": "Chứng minh thư",
-        "CccdNu_NoiCap": "Cục công an huyện Nguyên Dương",
-        "CccdNu_NoiCuTru": {"quocGia": "Trung Quốc", "diaChi": "Thôn Ma Lật Trại, trấn Nguyên Dương, Vân Nam"},
-        "CccdNu_TinhTrangHonNhan": "chua_ket_hon",
+        "Nu_HoTen": "PHONG THỊ MỸ",
+        "Nu_SoDinhDanh": "532524200001",
+        "Nu_QuocTich": "Trung Quốc",
+        "Nu_TenGiayTo": "Chứng minh thư",
+        "Nu_NoiCap": "Cục công an huyện Nguyên Dương",
+        "Nu_NoiCuTru": {"quocGia": "Trung Quốc", "diaChi": "Thôn Ma Lật Trại, trấn Nguyên Dương, Vân Nam"},
+        "Nu_TinhTrangHonNhan": "chua_ket_hon",
     })))
 
     # Bên nam (VN): nhãn option mới theo nơi cấp, cư trú trong nước.
-    assert out["LoaiGiayToDinhDanh_BenNam"]["value"] == "Thẻ căn cước công dân"
+    assert out["LoaiGiayToDinhDanh_BenNam"]["value"] == "Căn cước công dân"
     assert out["QuocTichBenNam"]["value"] == "Việt Nam"
     assert out["NoiCuTru_BenNam"]["value"] == "1"
     assert out["NoiCuTru_BenNam_TrongNuoc"]["value"]["xa"] == "Hợp Thành"
@@ -58,16 +59,16 @@ def test_mapper_viet_va_nuoc_ngoai():
     assert out["SoLanKetHon_BenNu"]["value"] == "1"
     assert out["SoLanKetHon_BenNu"]["comp"] == "x-input-number"
 
-    # Không tác động radio "Loại đăng ký"; chỉ giữ mặc định không cấp bản sao.
+    # Không tác động radio "Loại đăng ký" và "Cấp bản sao" — giấy tờ không nói thì cán bộ tự chọn.
     assert "loaiDangKy" not in out
-    assert out["CapBanSao"]["value"] == "NO" and out["CapBanSao"].get("default") is True
+    assert "CapBanSao" not in out
 
 
 def test_mapper_drop_dang_co_vo_chong():
     """LLM lỡ bịa 'đang có vợ/chồng' → DROP tất định (người đi đăng ký kết hôn luôn độc thân)."""
     out = _by_name(mapper.enrich(_fields({
-        "CccdNam_HoTen": "TRẦN VĂN A",
-        "CccdNam_TinhTrangHonNhan": "dang_co_vo_chong",
+        "Nam_HoTen": "TRẦN VĂN A",
+        "Nam_TinhTrangHonNhan": "dang_co_vo_chong",
     })))
     assert "LoaiTinhTrangHonNhan_BenNam" not in out
     assert "SoLanKetHon_BenNam" not in out
@@ -90,7 +91,7 @@ async def test_attach_fixed_slots(monkeypatch):
             {"index": 3, "type": "identity_vn"},
         ]})
 
-    monkeypatch.setattr(khnn_attach.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ocr_service, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(khnn_attach.client, "chat", fake_chat)
 
     files = [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")

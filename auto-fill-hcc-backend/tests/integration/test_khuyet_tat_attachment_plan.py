@@ -2,6 +2,7 @@ import json
 
 from app.pipelines.khuyet_tat.attach import planner as khuyet_tat_attach
 from app.process.schemas import FileItem
+from app.services import ocr  # planner import ocr cục bộ trong plan()
 
 
 def _file(name: str) -> FileItem:
@@ -27,7 +28,7 @@ async def test_khuyet_tat_attach_maps_three_fixed_slots_and_skips_cccd(monkeypat
             ]
         }, ensure_ascii=False)
 
-    monkeypatch.setattr(khuyet_tat_attach.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(khuyet_tat_attach.client, "chat", fake_chat)
 
     res = await khuyet_tat_attach.plan(
@@ -60,7 +61,7 @@ async def test_khuyet_tat_attach_rule_fallback_when_llm_fails(monkeypatch):
     async def fake_chat(messages, max_tokens, enable_thinking):
         raise RuntimeError("llm down")
 
-    monkeypatch.setattr(khuyet_tat_attach.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(khuyet_tat_attach.client, "chat", fake_chat)
 
     res = await khuyet_tat_attach.plan([_file("don.pdf"), _file("ra-vien.pdf")], {}, None)

@@ -1,6 +1,10 @@
 from app.traces.metadata import build_attach_trace_attachments
 
 
+def _name_role(plan, files):
+    return [{"name": a["name"], "role": a["role"]} for a in build_attach_trace_attachments(plan, files)]
+
+
 def test_trace_keeps_original_names_and_upload_order():
     files = [
         {"name": "mat-truoc.jpg", "role": ""},
@@ -14,7 +18,7 @@ def test_trace_keeps_original_names_and_upload_order():
         "sourceFileIndexes": [0, 1],
     }]
 
-    assert build_attach_trace_attachments(plan, files) == [
+    assert _name_role(plan, files) == [
         {"name": "mat-truoc.jpg", "role": "Giấy tờ tùy thân"},
         {"name": "mat-sau.jpg", "role": "Giấy tờ tùy thân"},
         {"name": "khong-phan-loai.pdf", "role": ""},
@@ -36,7 +40,7 @@ def test_trace_maps_split_segments_back_to_source_file():
         },
     ]
 
-    assert build_attach_trace_attachments(plan, files) == [{
+    assert _name_role(plan, files) == [{
         "name": "ho-so-gop.pdf",
         "role": "Căn cước công dân · Giấy khai sinh",
     }]

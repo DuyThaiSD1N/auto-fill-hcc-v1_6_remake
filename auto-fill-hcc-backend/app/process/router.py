@@ -28,6 +28,9 @@ from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
 from app.pipelines.xac_nhan_tthn.process.mapper import (
     with_account_process_options as with_tthn_account_process_options,
 )
+from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process.mapper import (
+    with_account_process_options as with_dien_tich_nha_o_account_process_options,
+)
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
@@ -69,7 +72,8 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Hiệp Hòa lấy người ủy quyền
         # làm người yêu cầu TTHN, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết
         # làm chủ hồ sơ mai táng hưu trí xã hội, Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân
-        # Hương để số lượng bản sao cải chính hộ tịch = 0) do server đặt từ `user`.
+        # Hương để số lượng bản sao cải chính hộ tịch = 0, Đăk Bla ghi nội dung yêu cầu chỉ bằng tên thủ
+        # tục diện tích nhà ở thường trú) do server đặt từ `user`.
         prepared.pipeline_options = with_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
@@ -86,6 +90,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_cai_chinh_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_dien_tich_nha_o_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

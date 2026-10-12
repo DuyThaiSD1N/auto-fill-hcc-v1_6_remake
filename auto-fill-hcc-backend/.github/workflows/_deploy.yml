@@ -1,0 +1,116 @@
+name: _deploy (dùng chung)
+
+# Deploy một tag đã build sẵn trên GHCR lên prod. Không chạy trực tiếp: release.yml gọi sau khi
+# build, deploy.yml gọi khi bấm Run workflow (quay về / deploy lại tag cũ).
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+jobs:
+  check:
+    name: Kiểm tag + image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Tag đúng mẫu vDD.MM.YYYY[.n]
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          re='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
+          if [[ ! "$TAG" =~ $re ]]; then
+            echo "::error::'$TAG' không phải tag phát hành. Bấm Run workflow thì ô 'Use workflow from' phải chọn tab Tags → một tag vDD.MM.YYYY."
+            exit 1
+          fi
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Server chỉ kéo image về; tag chưa build (release lỗi giữa chừng) thì dừng ở đây, không đụng prod.
+      - name: Đủ 3 image trên GHCR
+        env:
+          TAG: ${{ inputs.tag }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+        run: |
+          for img in autofill-hcc-be autofill-hcc-fe autofill-hcc-monitor-fe; do
+            docker manifest inspect "$REGISTRY/$img:$TAG" >/dev/null \
+              || { echo "::error::Chưa có $REGISTRY/$img:$TAG — chạy lại workflow Release của tag này trước."; exit 1; }
+          done
+
+  deploy:
+    name: Deploy ${{ inputs.tag }} lên prod
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Secret deploy chỉ nằm trong Environment này; Environment chỉ cho ref là tag v*.
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      - name: Đủ cấu hình Environment production
+        env:
+          HAS_TS: ${{ secrets.TS_AUTHKEY != '' }}
+          HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+          HAS_KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS != '' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+        run: |
+          missing=()
+          [[ "$HAS_TS" == "true" ]] || missing+=("secret TS_AUTHKEY")
+          [[ "$HAS_KEY" == "true" ]] || missing+=("secret DEPLOY_SSH_KEY")
+          [[ "$HAS_KNOWN" == "true" ]] || missing+=("secret DEPLOY_KNOWN_HOSTS")
+          [[ -n "$DEPLOY_USER" ]] || missing+=("variable DEPLOY_USER")
+          [[ -n "$DEPLOY_HOST" ]] || missing+=("variable DEPLOY_HOST")
+          if ((${#missing[@]})); then
+            echo "::error::Environment production thiếu: ${missing[*]} (Settings → Environments → production)."
+            exit 1
+          fi
+
+      # Server nằm trong mạng Tailscale (100.x): runner tham gia tạm bằng auth key ephemeral,
+      # xong job thì tự rời mạng.
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: github-deploy-${{ github.run_id }}
+
+      # Khoá deploy bị ép chạy đúng server_deploy.sh (authorized_keys) → chỉ truyền được tag.
+      # known_hosts cố định: không tự tin máy lạ.
+      - name: SSH → server_deploy.sh ${{ inputs.tag }}
+        env:
+          TAG: ${{ inputs.tag }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key \
+              -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+              "$DEPLOY_TARGET" "$TAG"
+
+      - name: Tóm tắt
+        if: always()
+        env:
+          TAG: ${{ inputs.tag }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Deploy \`$TAG\` → prod: $RESULT"
+            echo ""
+            echo "- Lỗi /healthz thì server đã tự quay về bản chạy trước (xem log bước SSH)."
+            echo "- Quay về bản cũ: Actions → **Deploy (chọn tag)** → Run workflow → Tags → tag cũ."
+          } >> "$GITHUB_STEP_SUMMARY"

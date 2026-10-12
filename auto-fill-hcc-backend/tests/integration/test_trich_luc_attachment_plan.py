@@ -79,7 +79,9 @@ async def test_trich_luc_preserve_keeps_mixed_file_and_uses_bundle_name(monkeypa
     assert result["extracted"]["attachmentMode"] == "preserve_files"
     assert len(result["attachments"]) == 1
     assert result["attachments"][0]["documentName"] == "Hồ sơ trích lục hộ tịch"
-    assert result["attachments"][0]["target"] == "new"
+    # File hỗn hợp có trang CCCD → vào dòng giấy tờ tùy thân có sẵn thay vì thêm thành phần mới.
+    assert result["attachments"][0]["target"] == "existing"
+    assert result["attachments"][0]["componentIndex"] == 3
     assert "sourceSegments" not in result["attachments"][0]
     assert result["extracted"]["classified"][0]["type"] == "other"
     assert result["extracted"]["classified"][0]["source"] == "llm"

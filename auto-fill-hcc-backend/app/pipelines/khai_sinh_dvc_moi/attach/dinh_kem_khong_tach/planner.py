@@ -16,7 +16,7 @@ import time
 
 from app.config import settings
 from app.pipelines._shared.naming import fold, normalize_document_name
-from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_oversized
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_merged, shrink_oversized
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -208,6 +208,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     replace_files = await shrink_task
     names = [replace_files[str(i)]["name"] if str(i) in replace_files else f["name"] for i, f in enumerate(raw_files)]
     attachments = _merge_groups(build_plan_items(names, doc_types, doc_names), groups)
+    await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
         "replaceFiles": replace_files or None,

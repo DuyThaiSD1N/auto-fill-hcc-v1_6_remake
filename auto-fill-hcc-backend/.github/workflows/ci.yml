@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  # release.yml gọi lại đúng bộ kiểm này trước khi build image — không chép trùng.
+  workflow_call:
+
+# Push mới lên cùng nhánh thì huỷ lượt chạy cũ, đỡ tốn phút chạy.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (smoke + pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cùng bản Python với image prod (Dockerfile: python:3.11-slim).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Cài thư viện
+        run: pip install -r requirements-dev.txt
+
+      # Registry nạp lỗi (thiếu process/__init__.py, attach pipeline…) là BE không khởi động được.
+      - name: Smoke import
+        run: |
+          python -c "from app.procedures.registry import public_list; print('core', len(public_list()))"
+          python -c "from app.channels.handfree.procedure_registry import public_list; print('handfree', len(public_list()))"
+          python -c "import app.main"
+
+      # Không cần Mongo/secret: tests/conftest.py bỏ .env và chặn mọi kết nối mạng.
+      # Test cần snapshot cổng (thongtin/) hay mã extension nằm ngoài repo tự skip.
+      - name: Pytest
+        run: python -m pytest tests/unit tests/handfree/unit tests/integration tests/handfree/integration -q -rfEs -p no:cacheprovider
+
+  web:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [fe, monitor-fe]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - run: npm ci
+
+      # tsbuildinfo đã commit có thể báo "đã cập nhật" làm tsc -b bỏ qua kiểm kiểu → xoá để kiểm đủ.
+      - name: Build (tsc + vite)
+        run: |
+          rm -f tsconfig*.tsbuildinfo
+          npm run build

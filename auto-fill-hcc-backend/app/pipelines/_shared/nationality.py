@@ -83,10 +83,11 @@ _MAP: dict[str, str] = {
 }
 
 
-def normalize_nationality(raw: str | None, default: str = "Việt Nam") -> str:
+def normalize_nationality(raw: str | None, default: str = "Việt Nam", exact_only: bool = False) -> str:
     """Chuẩn hóa tên quốc tịch OCR → tên chính thức.
 
-    Trả default ("Việt Nam") khi raw rỗng hoặc không nhận ra.
+    Trả default ("Việt Nam") khi raw rỗng hoặc không nhận ra. ``exact_only`` bỏ bước khớp một phần (khóa ngắn
+    như "uk"/"anh" nằm lọt trong tên nước khác) — tên không có trong bảng giữ nguyên.
     """
     if not raw or not str(raw).strip():
         return default
@@ -95,6 +96,8 @@ def normalize_nationality(raw: str | None, default: str = "Việt Nam") -> str:
     mapped = _MAP.get(key)
     if mapped:
         return mapped
+    if exact_only:
+        return str(raw).strip()
     # Partial match: "cong hoa nhan dan trung hoa" chứa "trung hoa"
     for k, v in _MAP.items():
         if k in key or key in k:

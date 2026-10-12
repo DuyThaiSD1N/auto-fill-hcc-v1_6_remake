@@ -22,7 +22,7 @@ def test_sample_dossier_routes_application_certificate_and_extract_to_change_pur
     assert branch == "chuyen_muc_dich"
     assert [item["componentIndex"] for item in attachments] == [3, 4, 5]
     assert [item["fileIndex"] for item in attachments] == [0, 1, 2]
-    assert all(item["target"] == "attp-row" for item in attachments)
+    assert all(item["target"] == "existing" for item in attachments)
     assert all(item["branch"] == "chuyen_muc_dich" for item in classified)
 
 

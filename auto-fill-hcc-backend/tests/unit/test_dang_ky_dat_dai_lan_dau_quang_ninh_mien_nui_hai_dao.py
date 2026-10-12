@@ -30,7 +30,7 @@ def test_sample_application_and_measurement_bundle_route_once_to_real_rows():
     assert warnings == []
     assert len(attachments) == len(files) == 2
     assert [(item["fileIndex"], item["componentIndex"]) for item in attachments] == [(0, 2), (1, 12)]
-    assert all(item["target"] == "attp-row" for item in attachments)
+    assert all(item["target"] == "existing" for item in attachments)
     assert all(item["needsAddComponent"] is False for item in attachments)
     assert [item["docType"] for item in classified] == ["don_mau_15", "manh_trich_do"]
     assert all(item["componentIndex"] != 11 for item in attachments)

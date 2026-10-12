@@ -146,14 +146,27 @@ async def get_file(sid: str, fid: str):
     return Response(content=raw, media_type=meta.get("type") or "image/jpeg")
 
 
+def _files_with_client_key(sess: dict, client_key: str) -> list[dict]:
+    return [
+        {k: f.get(k) for k in ("fid", "name", "type", "size")}
+        for f in sess.get("files", [])
+        if f.get("client_key") == client_key
+    ]
+
+
 @router.post("/api/v1/upload-sessions/{sid}/files")
 async def upload_files(
     sid: str,
     files: list[UploadFile] = File(...),
     doc_key: str = Form(default=""),
     sess: dict = Depends(require_upload_session_access),
+    client_key: str = Form(default=""),
 ):
-    """Điện thoại gửi một lô ảnh; Auto Fill lưu phẳng rồi phát sự kiện WS."""
+    """Điện thoại gửi một lô ảnh; Auto Fill lưu phẳng rồi phát sự kiện WS.
+
+    ``client_key``: mã điện thoại tự sinh cho MỖI tệp. Gửi lại cùng mã (mạng 4G làm lỡ câu trả lời
+    dù máy chủ đã lưu) thì trả lại tệp đã lưu, không lưu thêm bản trùng.
+    """
     if upload_session_experience(sess) == "handfree":
         _require_handfree_enabled()
         # Compatibility window cho extension Handfree hiện hữu. Client mới dùng namespace
@@ -162,12 +175,19 @@ async def upload_files(
 
         return await upload_handfree_files(sid, files, doc_key, sess)
     ensure_upload_session_experience(sess, "autofill")
+    # Gọi thẳng hàm (không qua FastAPI) thì mặc định còn là đối tượng Form, không phải chuỗi.
+    client_key = client_key.strip()[:64] if isinstance(client_key, str) else ""
+    if client_key:
+        already = _files_with_client_key(sess, client_key)
+        if already:
+            return {"accepted": already, "received": len(sess.get("files", [])), "duplicate": True}
     max_bytes = settings.max_file_size_mb * 1024 * 1024
     max_total_bytes = settings.max_total_payload_mb * 1024 * 1024
     existing_bytes = store.total_file_bytes(sess)
     incoming_bytes = 0
     staged: list[dict] = []
     committed: list[str] = []
+    taken_names = {str(f.get("name") or "") for f in sess.get("files", [])}
     metadata_persisted = False
     accepted: list[dict] = []
     try:
@@ -198,6 +218,8 @@ async def upload_files(
             # Ảnh HEIC (iPhone) cổng không nhận → đổi JPG ngay tại đây để OCR/đính kèm chỉ thấy JPG.
             filename, content_type, size = await run_in_threadpool(
                 heic.convert_file_if_heic, staged_path, filename, uf.content_type or "image/jpeg", size)
+            filename = store.unique_file_name(filename, taken_names)
+            taken_names.add(filename)
             staged.append({
                 "path": staged_path,
                 "name": filename,
@@ -214,9 +236,18 @@ async def upload_files(
                 "name": item["name"],
                 "type": item["type"],
                 "size": item["size"],
+                **({"client_key": client_key} if client_key else {}),
             })
 
-        updated = await store.append_files_with_limit(sid, accepted, max_total_bytes)
+        updated = await store.append_files_with_limit(
+            sid, accepted, max_total_bytes, **({"client_key": client_key} if client_key else {}))
+        if not updated and client_key:
+            current = await store.get(sid) or {}
+            already = _files_with_client_key(current, client_key)
+            if already:
+                # Lượt gửi trùng chạy song song đã ghi trước: bỏ bytes của lượt này (finally dọn).
+                return {"accepted": already, "received": len(current.get("files", [])),
+                        "duplicate": True}
         if not updated:
             raise HTTPException(
                 status_code=413,

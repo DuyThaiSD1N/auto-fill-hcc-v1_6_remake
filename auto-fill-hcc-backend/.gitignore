@@ -13,4 +13,3 @@ venv/
 .ruff_cache/
 *.tar.gz
 *.archive.gz
-/scripts

@@ -84,7 +84,7 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
     assert d["HoTenBenNam"] == "VŨ ĐÌNH THIẾT"
     assert d["SoDinhDanh_BenNam"] == "040203015844"
     assert d["SoGiayToDinhDanh_BenNam"] == "040203015844"
-    assert d["LoaiGiayToDinhDanh_BenNam"] == "Thẻ căn cước công dân"
+    assert d["LoaiGiayToDinhDanh_BenNam"] == "Căn cước công dân"
     assert d["NgaySinhBenNam"] == "26/04/2003"
     assert d["NgayCapDD_BenNam"] == "02/07/2021"
     assert d["NoiCapDD_BenNam"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
@@ -94,7 +94,7 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
     assert d["NoiCuTru_BenNam_TrongNuoc"] == {
         "quocGia": "Việt Nam",
         "tinh": "Lâm Đồng",
-        "xa": "Xuân Hương",
+        "xa": "Phường Xuân Hương",
         "diaChi": "8D Đoàn Thị Điểm",
     }
 
@@ -108,13 +108,17 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
     assert d["NoiCuTru_BenNu_TrongNuoc"] == {
         "quocGia": "Việt Nam",
         "tinh": "Lâm Đồng",
-        "xa": "Đạ Huoai",
+        "xa": "Xã Đạ Huoai",
         "diaChi": "94 Lê Hồng Phong, Thôn 4",
     }
     assert d["CapBanSao"] == "Có"
     assert d["SoLuong"] == "2"
 
-    assert "LoaiTinhTrangHonNhan_BenNam" not in d
+    # Field UI agent tự trả ("Độc thân") bị bỏ; ô tình trạng hôn nhân chỉ mang mặc định nghiệp vụ
+    # của form (không giấy tờ nào nói gì) và được đánh dấu default để FE tô vàng.
+    status = next(f for f in res["fields"] if f["name"] == "LoaiTinhTrangHonNhan_BenNam")
+    assert status["value"] == "Hiện tại chưa đăng ký kết hôn với ai"
+    assert status.get("default") is True
     assert not res["errors"]
 
 
@@ -277,4 +281,3 @@ def test_registry_uses_ket_hon_compact_agent_mode():
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
-    assert "tự phân biệt theo giới tính" in proc["uploadHint"]

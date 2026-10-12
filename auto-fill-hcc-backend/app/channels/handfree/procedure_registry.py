@@ -1076,7 +1076,7 @@ PROCEDURES: list[dict] = [
                 "maThuTuc=1.014027",
                 "019d2bff-2d80-74d8-8515-90f6f61822f0",
             ],
-            "textIncludes": ["Thực hiện trợ cấp hưu trí xã hội", "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
+            "textIncludes": ["Thực hiện trợ cấp hưu trí xã hội"],
             "headingDisabled": True,
             "textPriority": True,
         },
@@ -1093,8 +1093,8 @@ PROCEDURES: list[dict] = [
         # biết cần mang gì, không phải đích đến riêng.
         "hideRepeatableHint": True,
         "requiredDocs": [
-            {"key": "don", "name": "Văn bản đề nghị hưởng trợ cấp hưu trí xã hội "
-             "(Mẫu số 01, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+            {"key": "don", "name": "Văn bản đề nghị hưởng trợ cấp hưu trí xã hội (Mẫu số 01)",
+             "icon": "📄",
              "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
              "sides": 1, "repeatable": True},
@@ -1107,8 +1107,7 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Văn bản đề nghị hưởng trợ cấp hưu trí xã hội (Mẫu số 01 ban hành kèm theo "
-            "Nghị định số 176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "1. Văn bản đề nghị hưởng trợ cấp hưu trí xã hội (Mẫu số 01) — nguồn chính để điền form.\n"
             "2. Căn cước công dân của người đề nghị.\n"
             "Hệ thống lấy chủ hồ sơ từ mục thông tin người đề nghị hưởng trợ cấp hưu trí xã hội.\n"
             "Bước Thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng nên mọi tệp đều được đính vào "

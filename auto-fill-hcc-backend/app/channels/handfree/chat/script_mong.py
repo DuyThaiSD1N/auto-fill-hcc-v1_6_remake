@@ -45,6 +45,27 @@ PROCEDURE_HMONG = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": "Cuv npe siv daim av ua puav pheej (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — xóa đăng ký biện pháp bảo đảm/giải chấp đất).
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "Rho npe siv daim av ua puav pheej (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
+    # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
+    "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",
+    "thay-doi-cai-chinh-ho-tich": "Hloov / kho ntaub ntawv hộ tịch",
+    "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": "Ntawv tso cai ua tsev nyob tshiab",
+    "cham-dut-hoat-dong-ho-kinh-doanh": "Kaw lag luam tsev neeg",
+    # BẢN NHÁP chờ anh Dư soát — có TỪ MỚI chưa xuất hiện ở bản dịch nào trong file (nyiaj, faus,
+    # xiam oob qhab, zaub mov, txhais lus, cog lus, qub txeeg qub teg, nyiaj laus…): soát kỹ hơn.
+    "chung-thuc-giao-dich-tai-san": "Lees paub daim ntawv cog lus txog khoom vaj khoom tsev",
+    "chung-thuc-phan-chia-di-san": "Lees paub daim ntawv faib qub txeeg qub teg",
+    "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
+    "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
+    "xac-dinh-muc-do-khuyet-tat": "Txiav txim qib xiam oob qhab",
+    "tro-cap-xa-hoi-hang-thang": "Nyiaj pab pej xeem txhua hli",
+    "ho-tro-mai-tang": "Nyiaj pab faus neeg tuag",
+    "ho-tro-mai-tang-huu-tri-xa-hoi": "Nyiaj pab faus neeg tau nyiaj laus pab pej xeem",
+    "dieu-chinh-huu-tri-xa-hoi": "Kho nyiaj laus pab pej xeem",
+    "tro-cap-tho-cung-liet-si": "Nyiaj pab teev hawm neeg tuag rau lub teb chaws",
+    "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
+    "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
+    "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

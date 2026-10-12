@@ -27,6 +27,7 @@ from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
 from app.traces.metadata import build_attach_trace_metadata
+from app.upload_session.store import unique_file_name
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/attachments", tags=["attachments"])
@@ -223,6 +224,12 @@ async def _prepare_attach(body: AttachmentPlanReq, user: dict):
         total_bytes += size
     if total_bytes > max_total:
         raise AppError("PAYLOAD_TOO_LARGE", f"Tổng payload vượt quá {settings.max_total_payload_mb}MB", 413)
+    # Planner tra OCR THEO TÊN tệp: tệp chọn từ máy trùng tên ảnh điện thoại thì nhận chung chữ OCR →
+    # phân loại sai giấy. Extension ghép kế hoạch với tệp theo fileIndex nên đổi tên ở đây an toàn.
+    taken_names: set[str] = set()
+    for f in body.files:
+        f.name = unique_file_name(f.name or "", taken_names)
+        taken_names.add(f.name)
 
     # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN, phường Nghĩa Lộ bỏ Tờ khai khai sinh)
     # do server đặt từ `user`, không nhận từ client.

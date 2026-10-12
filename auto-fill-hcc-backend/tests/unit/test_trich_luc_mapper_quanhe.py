@@ -16,11 +16,13 @@ def test_trich_luc_maps_declaration_relationship_to_radio_label():
     assert result["NYC_QuanHe"]["value"] == "Con Đẻ"
 
 
-def test_trich_luc_does_not_guess_ambiguous_ba_relationship():
+def test_trich_luc_ambiguous_ba_relationship_ticks_khac_with_default():
     result = _by_name(enrich([
         {"name": "ToKhai_LoaiSuKien", "value": "birth"},
         {"name": "ToKhai_HoTenNguoiDuocCap", "value": "TRẦN VĂN TRUNG"},
         {"name": "CopyRequest_QuanHe", "value": "Ba"},
     ]))
 
-    assert "NYC_QuanHe" not in result
+    # "Ba" nhập nhằng (bố Nam bộ vs Bà) → không đoán vai, chỉ tick "Khác" kèm viền vàng.
+    assert result["NYC_QuanHe"]["value"] == "Khác"
+    assert result["NYC_QuanHe"].get("default") is True

@@ -6,6 +6,7 @@ không wizard) → samePageAttach: kê khai ưu tiên trước dù attachmentTar
 đổi), attach xong chốt tóm tắt kết quả cả hai bước. Tỉnh chọn ở DVCQG CỐ ĐỊNH Bắc Ninh
 (agencyProvince), không lấy tỉnh tài khoản."""
 from app.channels.handfree.chat import flow, intents
+from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
 from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_pipeline,
@@ -38,7 +39,7 @@ def test_registry_entry_same_page_va_pipeline_noi_core():
     assert any(p["key"] == KEY for p in public_list())
     keys = [d["key"] for d in proc["requiredDocs"]]
     assert keys == ["don", "hop_dong", "gcn", "cccd", "khac"]
-    assert KEY in intents._PROCEDURE_HINTS
+    assert KEY in picker_prompt.PROCEDURE_HINTS
 
 
 async def test_confirm_navigate_va_thoai_doc_tinh_bac_ninh():
@@ -108,7 +109,9 @@ async def test_attach_report_tom_tat_ket_qua_hai_buoc():
         conv, intents.Intent("action", "attach_report", {"attached": 4, "errors": []}))
     assert conv["state"] == "done" and conv["attach_done"] is True
     assert "Tóm tắt" in r.display_md
-    assert "điền 12 ô" in r.tts_text and "4 tệp" in r.tts_text
+    # Lời đọc tạm bỏ con số (khối TTS-TẠM trong script_vi) — con số nằm ở phần hiển thị.
+    assert "điền 12 ô" in r.display_md and "4 tệp" in r.display_md
+    assert "Tóm tắt lại" in r.tts_text
 
 
 def test_upload_classifier_fallback_dung_o():

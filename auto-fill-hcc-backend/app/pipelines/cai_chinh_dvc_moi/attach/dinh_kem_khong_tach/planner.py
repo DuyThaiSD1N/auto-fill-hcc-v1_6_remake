@@ -161,14 +161,14 @@ def _render_pdf(raw: bytes, dpi: int, quality: int, gray: bool) -> bytes:
     return out.tobytes(garbage=4, deflate=True, no_new_id=True)
 
 
-def shrink_file(raw: bytes) -> tuple[bytes, str]:
-    """Nấc đầu tiên lọt `MAX_FILE_BYTES`; hết thang vẫn vượt thì trả bản nhỏ nhất kèm nhãn nấc sàn."""
+def shrink_file(raw: bytes, limit: int = MAX_FILE_BYTES) -> tuple[bytes, str]:
+    """Nấc đầu tiên lọt `limit`; hết thang vẫn vượt thì trả bản nhỏ nhất kèm nhãn nấc sàn."""
     best, label = raw, ""
     for dpi, quality, gray in _SHRINK_LADDER:
         out = _render_pdf(raw, dpi, quality, gray)
         if len(out) < len(best):
             best, label = out, f"{'xám' if gray else 'màu'} {dpi}dpi q{quality}"
-        if len(out) <= MAX_FILE_BYTES:
+        if len(out) <= limit:
             break
     return best, label
 
@@ -177,7 +177,11 @@ def _shrink_one(file: dict) -> dict | None:
     raw = _decode(file["dataUrl"])
     if len(raw) <= SHRINK_ABOVE_BYTES:
         return None
-    out, label = shrink_file(raw)
+    return _shrunk_entry(file, raw, MAX_FILE_BYTES)
+
+
+def _shrunk_entry(file: dict, raw: bytes, limit: int) -> dict:
+    out, label = shrink_file(raw, limit)
     stem = os.path.splitext(file["name"])[0] or "tai-lieu"
     return {
         "name": f"{stem}.pdf",
@@ -203,6 +207,45 @@ async def shrink_oversized(raw_files: list[dict], errors: list[str]) -> dict[str
         if r["bytes"] > MAX_FILE_BYTES:
             errors.append(f"Tệp {r['name']} nén hết mức vẫn {r['bytes'] / 1e6:.1f} MB, vượt giới hạn 2 MB của cổng.")
     return replaced
+
+
+def _source_indexes(item: dict) -> list[int]:
+    segments = item.get("sourceSegments") or []
+    indexes = [s.get("fileIndex") for s in segments] if segments else (item.get("sourceFileIndexes") or [])
+    return sorted({i for i in indexes if isinstance(i, int)})
+
+
+async def shrink_merged(raw_files: list[dict], attachments: list[dict], replaced: dict[str, dict],
+                        errors: list[str]) -> None:
+    """Tệp extension ghép từ nhiều tệp nguồn (hai mặt CCCD, các phần của bản tách) nặng xấp xỉ TỔNG các tệp nguồn:
+    từng tệp dưới ngưỡng nên `shrink_oversized` bỏ qua, nhưng tệp ghép vượt ~2.000.000 byte thì tường lửa của cổng
+    chặn lượt tải lên (trang báo tệp lỗi). Nén tiếp các tệp nguồn của tệp ghép quá cỡ cho tới khi tổng lọt
+    `MAX_FILE_BYTES`; cập nhật `replaced` (= `replaceFiles`) và tên tệp trong các mục đính kèm tại chỗ."""
+    def size(i: int) -> int:
+        entry = replaced.get(str(i))
+        return entry["bytes"] if entry else len(_decode(raw_files[i]["dataUrl"]))
+
+    for item in attachments:
+        indexes = [i for i in _source_indexes(item) if 0 <= i < len(raw_files) and raw_files[i].get("dataUrl")]
+        if len(indexes) < 2 or sum(size(i) for i in indexes) <= SHRINK_ABOVE_BYTES:
+            continue
+        budget = MAX_FILE_BYTES // len(indexes)
+        for i in indexes:
+            if size(i) <= budget:
+                continue
+            try:
+                replaced[str(i)] = await asyncio.to_thread(
+                    _shrunk_entry, raw_files[i], _decode(raw_files[i]["dataUrl"]), budget)
+            except Exception as e:  # noqa: BLE001 — nén hỏng thì để nguyên, extension báo khi cổng từ chối
+                errors.append(f"Không nén được {raw_files[i].get('name')}: {e}")
+        total = sum(size(i) for i in indexes)
+        if total > MAX_FILE_BYTES:
+            errors.append(f"Tệp ghép {item.get('documentName') or item.get('fileName')} nén hết mức vẫn "
+                          f"{total / 1e6:.1f} MB, vượt giới hạn 2 MB của cổng.")
+    for item in attachments:
+        entry = replaced.get(str(item.get("fileIndex")))
+        if entry:
+            item["fileName"] = entry["name"]
 
 
 def _max_tokens(texts: dict[int, str]) -> int:
@@ -276,6 +319,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     replace_files = await shrink_task
     names = [replace_files[str(i)]["name"] if str(i) in replace_files else f["name"] for i, f in enumerate(raw_files)]
     attachments = _merge_groups(build_plan_items(names, doc_types, doc_names), groups)
+    await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
         "replaceFiles": replace_files or None,

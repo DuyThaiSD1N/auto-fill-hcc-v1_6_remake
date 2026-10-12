@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     env: str = "production"
+    # Tag phát hành gắn vào image lúc build (Dockerfile ARG APP_VERSION); /healthz trả về để biết
+    # prod đang chạy bản nào và để script deploy xác nhận đã lên đúng bản. Build tay → "dev".
+    app_version: str = "dev"
     host: str = "0.0.0.0"
     port: int = 8000
 
@@ -105,17 +108,6 @@ class Settings(BaseSettings):
 
     # Storage — nơi lưu file/ảnh của mỗi request.
     storage_dir: str = "data/uploads"
-
-    # Batch server-to-server: API chỉ nhận/lưu hồ sơ, worker riêng mới OCR + LLM. Secret để
-    # trống = khóa toàn bộ API batch; không dùng chung JWT người dùng/extension.
-    batch_api_secret: str = ""
-    batch_storage_dir: str = "data/batch"
-    batch_worker_concurrency: int = 2
-    batch_max_pending_items: int = 5000
-    batch_max_attempts: int = 3
-    batch_lease_seconds: int = 600
-    batch_poll_seconds: float = 1.0
-    batch_min_free_disk_mb: int = 1024
 
     # Phiên tải ảnh qua QR: URL công khai điện thoại quét (domain BE) + TTL tự dọn phiên.
     mobile_base_url: str = "https://trolyhoso-hcc-admin.vnekyc.vn"

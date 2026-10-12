@@ -2,6 +2,7 @@ import json
 
 from app.pipelines.xet_tuyen_vien_chuc.attach import planner as xet_tuyen_attach
 from app.process.schemas import FileItem
+from app.services import ocr  # planner import ocr cục bộ trong plan()
 
 
 def _file(name: str) -> FileItem:
@@ -29,7 +30,7 @@ async def test_xet_tuyen_vien_chuc_attach_maps_phieu_to_fixed_slot_and_skips_ccc
             ]
         }, ensure_ascii=False)
 
-    monkeypatch.setattr(xet_tuyen_attach.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(xet_tuyen_attach.client, "chat", fake_chat)
 
     res = await xet_tuyen_attach.plan([_file("phieu.pdf"), _file("cccd.pdf")], {}, None)
@@ -57,7 +58,7 @@ async def test_xet_tuyen_vien_chuc_attach_rule_fallback_when_llm_fails(monkeypat
     async def fake_chat(messages, max_tokens, enable_thinking):
         raise RuntimeError("llm down")
 
-    monkeypatch.setattr(xet_tuyen_attach.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(xet_tuyen_attach.client, "chat", fake_chat)
 
     res = await xet_tuyen_attach.plan([_file("phieu.pdf")], {}, None)

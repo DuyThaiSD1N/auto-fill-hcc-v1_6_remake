@@ -12,6 +12,7 @@ import base64
 import logging
 import time
 
+from app.account_settings import service as account_settings
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tracing
 from app.monitor import persist as monitor_persist
@@ -200,6 +201,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
             options = with_hkd_account_process_options(options, owner_user, procedure_key)
             options = with_cai_chinh_account_process_options(options, owner_user, procedure_key)
+            # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
+            if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
+                options["submitterMode"] = "owner_as_submitter"
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

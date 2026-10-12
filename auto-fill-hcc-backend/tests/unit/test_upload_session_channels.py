@@ -92,6 +92,9 @@ async def test_autofill_upload_is_streamed_and_committed_atomically(monkeypatch,
         AsyncMock(side_effect=lambda _sid, metas, _limit: {**sess, "files": metas}),
     )
     monkeypatch.setattr(upload_router, "broadcast", AsyncMock())
+    # Ghi nhật ký + gia hạn phiên đi thẳng Mongo: không mock thì test chờ hết hạn kết nối (~60s).
+    monkeypatch.setattr(upload_router.audit, "log_uploaded", AsyncMock())
+    monkeypatch.setattr(store, "extend_autofill_expiry", AsyncMock())
 
     result = await upload_router.upload_files(
         sess["_id"],

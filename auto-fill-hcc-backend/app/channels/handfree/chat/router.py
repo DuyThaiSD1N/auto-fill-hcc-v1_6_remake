@@ -378,9 +378,11 @@ async def _sync_dossier(conv: dict, *, persist: bool = True) -> None:
     lượt chat, chứ không đợi lúc kết thúc. Chỉ chạy khi hồ sơ đã thực sự bắt đầu
     (_start_guide_login đã chấm mốc); phiên mới chào hỏi chưa chọn thủ tục thì bỏ qua.
     """
-    started_at = conv.get("dossier_started_at")
-    if not started_at:
+    if not conv.get("dossier_started_at"):
         return
+    # Thời gian làm hồ sơ tính TỪ LÚC ĐĂNG NHẬP XONG (flow._login_ok_prefix). Nhánh nào chưa chấm
+    # mốc đó thì lùi về mốc xác nhận thủ tục như trước.
+    started_at = conv.get("logged_in_at") or conv["dossier_started_at"]
     # Chỉ vào sổ khi hồ sơ đã CÓ VIỆC THẬT: một lượt ĐIỀN hoặc ĐÍNH KÈM (flow.dossier_has_real_work).
     # Mốc bắt đầu của Handfree chấm ngay lúc xác nhận thủ tục (_start_guide_login), nên chọn thủ
     # tục rồi bỏ giữa chừng cũng đẻ ra một dòng rỗng — Auto Fill không có chuyện đó vì nó chỉ
@@ -391,8 +393,7 @@ async def _sync_dossier(conv: dict, *, persist: bool = True) -> None:
     # nộp bị đếm ở cả hai kênh. Cú bấm lúc chưa có việc thật bị BỎ HẲN (xoá khỏi phiên) để về sau
     # có điền/đính cũng không ghi bù mốc cũ; lần nộp thật sau đó là một cú bấm mới.
     #
-    # `started_at` KHÔNG đổi: upsert_started dùng $setOnInsert, nên hồ sơ vẫn mang đúng mốc
-    # lúc xác nhận thủ tục, "Thời gian làm" không bị ngắn đi.
+    # `started_at` KHÔNG đổi sau lần ghi đầu: upsert_started dùng $setOnInsert.
     if not flow.dossier_has_real_work(conv):
         if conv.get("submit_clicked_at"):
             conv.update({"submit_clicked_at": None, "submit_clicked_source": "", "submit_click_id": "",

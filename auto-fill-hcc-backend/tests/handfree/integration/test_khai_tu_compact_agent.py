@@ -12,6 +12,7 @@ import respx
 from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.khai_tu import process as agent
+from app.pipelines.khai_tu_dvcqg import process as khai_tu_dvcqg_agent
 from app.pipelines.khai_tu.process.prompt import EXTRA_RULES
 from app.pipelines.khai_tu.process.schema import FIELDS
 from app.channels.handfree.procedure_registry import get_pipeline, get_procedure
@@ -31,81 +32,6 @@ def _fields_response(fields: dict) -> httpx.Response:
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-
-
-@respx.mock
-async def test_khai_tu_compact_agent_derives_ui_fields(monkeypatch):
-    _disable_external_fallbacks(monkeypatch)
-    # Runner mới lọc Gbt_* chống bịa: số/ngày/cơ quan phải CÓ BẰNG CHỨNG trên trang
-    # tiêu đề "GIẤY BÁO TỬ" (hoặc đúng mục trên tờ khai) mới được giữ lại.
-    gbt_page = (
-        "GIẤY BÁO TỬ\n"
-        "Số: 12/GBT\n"
-        "Cơ quan cấp: Trạm y tế xã Hợp Thành\n"
-        "Ngày cấp: 05/06/2026\n"
-    )
-    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
-        return_value=httpx.Response(200, json={"results": [{"text": gbt_page}] * 10})
-    )
-    fields = {
-        "Cccd_HoTen": "TRẦN VĂN A",
-        "Cccd_SoDinhDanh": "040203015844",
-        "Cccd_NgayCap": "2/7/2021",
-        "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-        "Cccd_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Nghệ An",
-                          "xa": "Xã Hợp Thành", "diaChi": "Xóm 1"},
-        "ToKhai_QuanHeNguoiYeuCau": "Con",
-        "NguoiMat_HoTen": "NGUYỄN THỊ B",
-        "NguoiMat_NgaySinh": "1950",
-        "NguoiMat_GioiTinh": "Nữ",
-        "NguoiMat_NoiCuTruCuoiCung": {"quocGia": "Việt Nam", "tinh": "Nghệ An",
-                                      "xa": "Phường Vinh", "diaChi": "Số 5"},
-        "NguoiMat_NgayMat": "05/06/2026",
-        "NguoiMat_GioMat": "06 giờ 38 phút",
-        "NguoiMat_NguyenNhanMat": "Tuổi cao sức yếu",
-        "Gbt_So": "12/GBT",
-        "Gbt_CoQuanCap": "Trạm y tế xã Hợp Thành",
-        "Gbt_NgayCap": "05/06/2026",
-    }
-    # Lượt 1: agent phân vai trả text KHÔNG có tag → context rỗng (fallback luồng cũ);
-    # lượt 2: agent trích xuất trả JSON fields.
-    respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        side_effect=[_llm_response("Không xác định được vai."), _fields_response(fields)]
-    )
-
-    res = await agent.run({"doc": [_file("cccd truoc.jpg"), _file("cccd sau.jpg"),
-                                   _file("giay bao tu.jpg")]}, {})
-    d = {f["name"]: f for f in res["fields"]}
-    v = {name: f["value"] for name, f in d.items()}
-
-    # Người yêu cầu (không có mỏ neo formContext → tin Cccd_* như cũ).
-    assert v["HoVaTenC"] == "TRẦN VĂN A"
-    assert v["SoDinhDanhC"] == "040203015844" and v["SoGiayToDinhDanhC"] == "040203015844"
-    # Option eForm cổng mới (đối chiếu thongtin/khai tử): "Thẻ căn cước công dân".
-    assert v["LoaiGiayToDinhDanhC"] == "Thẻ căn cước công dân"
-    assert v["NgayCapDDC"] == "02/07/2021"
-    assert v["nycNoiCuTru"] == "1" and v["nycNoiCuTru_TrongNuoc"]["xa"] == "Hợp Thành"
-    assert v["QuanHe"] == "Con"
-
-    # Người mất + sự kiện chết.
-    assert v["HoTen"] == "NGUYỄN THỊ B"
-    assert v["NgaySinh"] == "1950"          # chỉ có năm → điền năm (input trần)
-    assert v["GioiTinh"] == "Nữ"
-    assert v["nktQuocTich"] == "Việt Nam"
-    assert v["nktNoiCuTru"] == "1" and v["nktNoiCuTru_TrongNuoc"]["xa"] == "Vinh"
-    assert v["NgayMat"] == "05/06/2026"
-    assert v["GioMat"] == "06" and v["PhutMat"] == "38"
-    assert v["NguyenNhanMat"] == "Tuổi cao sức yếu"
-    # Không có nơi chết trong nguồn → mặc định trong nước, viền vàng.
-    assert v["nktNoiChet"] == "1" and d["nktNoiChet"].get("default") is True
-
-    # Giấy báo tử.
-    assert v["gbtLoai"] == "Giấy báo tử"
-    assert v["gbtSo"] == "12/GBT" and v["gbtNgay"] == "05/06/2026"
-
-    # Loại đăng ký không có trên tờ khai → mặc định "Đăng ký đúng hạn" (viền vàng).
-    assert v["loaiDangKy"] == "1" and d["loaiDangKy"].get("default") is True
-    assert not res["errors"]
 
 
 @respx.mock
@@ -163,7 +89,8 @@ def test_khai_tu_compact_prompt_chua_quy_tac_phan_vai():
 def test_registry_khai_tu_entry():
     proc = get_procedure("khai-tu")
 
-    assert get_pipeline("khai-tu") is agent.run
+    # Key "khai-tu" chạy package SurveyJS của Cổng DVC quốc gia (eForm cũ đã thay).
+    assert get_pipeline("khai-tu") is khai_tu_dvcqg_agent.run
     assert proc["mode"] == "agent" and proc["hasAttachmentStep"] is True
     assert not proc.get("hiddenFromList")           # đã đẩy lên card chọn thủ tục (2026-08-13)
     assert proc["needsAgencySelect"] is True

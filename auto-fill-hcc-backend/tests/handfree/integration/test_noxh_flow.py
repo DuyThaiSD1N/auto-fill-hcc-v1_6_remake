@@ -2,6 +2,7 @@
 cùng khuôn văn bằng: KHÔNG variant/trang chọn nơi; DVCQG chọn Tỉnh + gạt toggle "Sở"
 (select_agency soMode, không chọn sở cụ thể); wizard kê khai=1, đính kèm=2."""
 from app.channels.handfree.chat import flow, intents
+from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
 from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_pipeline,
@@ -33,7 +34,7 @@ def test_registry_entry_du_pipeline_va_wizard_igate():
     keys = [d["key"] for d in proc["requiredDocs"]]
     assert keys[:2] == ["don", "cccd"]
     assert {"doi_tuong", "dieu_kien"} <= set(keys)
-    assert KEY in intents._PROCEDURE_HINTS
+    assert KEY in picker_prompt.PROCEDURE_HINTS
 
 
 async def test_confirm_navigate_ngay_khong_variant():

@@ -32,14 +32,6 @@ def test_xac_nhan_tthn_maps_declared_purpose_to_other_detail():
     assert values["nhapmucdichkhac"] == "Bổ sung hồ sơ giao dịch dân sự"
 
 
-def test_xac_nhan_tthn_prompt_requires_purpose_from_current_declaration():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert 'BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng' in system_prompt
-    assert "TỜ KHAI hiện tại →" in system_prompt
-    assert "Python sẽ mặc định chọn" in system_prompt
-
-
 def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
     mapped = mapper.enrich(
         [
@@ -63,17 +55,6 @@ def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
 
     assert values["quanhevoinguoiduocxacminh"] == "1"
     assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
-
-
-def test_xac_nhan_tthn_prompt_allows_declared_married_and_self_relation():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert 'nội dung bắt đầu bằng "Chưa kết hôn"' in system_prompt
-    assert '"Chưa kết hôn lần hai"' in system_prompt
-    assert '"hiện tại đang có chồng" hoặc "hiện tại đang có vợ"' in system_prompt
-    assert 'TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng"' in system_prompt
-    assert "ToKhai_LaBanThan=true" in system_prompt
-    assert 'dòng quan hệ ghi "Tự khai"/"Bản thân"' in system_prompt
 
 
 def test_xac_nhan_tthn_maps_declared_spouse_name_without_marriage_certificate():
@@ -147,8 +128,10 @@ def test_xac_nhan_tthn_expands_commune_abbreviations():
         values = {field["name"]: field["value"] for field in mapped}
         return values["nycNoiCuTru_TrongNuoc"]
 
-    assert mapped_area("P.10")["xa"] == "Phường 10"
-    assert mapped_area("X. Tân Hà")["xa"] == "Xã Tân Hà"
+    # Viết tắt được mở rộng rồi remap sang tên hiện hành trong danh mục: Phường 10 (Đà Lạt cũ) đã
+    # sáp nhập vào Phường Xuân Hương - Đà Lạt; xã Tân Hà mang nhãn danh mục "Xã Tân Hà Lâm Hà".
+    assert mapped_area("P.10")["xa"] == "Phường Xuân Hương - Đà Lạt"
+    assert mapped_area("X. Tân Hà")["xa"] == "Xã Tân Hà Lâm Hà"
 
 
 def test_xac_nhan_tthn_prefers_declaration_residence_over_identity_card():
@@ -184,15 +167,6 @@ def test_xac_nhan_tthn_prefers_declaration_residence_over_identity_card():
         "diaChi": "20 Đường Mới",
     }
     assert values["nxnNoiCuTru_TrongNuoc"] == values["nycNoiCuTru_TrongNuoc"]
-
-
-def test_xac_nhan_tthn_prompt_requires_separate_declaration_residence():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert "ToKhai_NoiCuTru = dòng" in system_prompt
-    assert "BẮT BUỘC trả ToKhai_NoiCuTru" in system_prompt
-    assert "ToKhai_NoiCuTru → Cccd_NoiCuTru" in system_prompt
-    assert "output phải có ToKhai_NoiCuTru" in system_prompt
 
 
 @respx.mock
@@ -251,7 +225,7 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     assert d["QuocTichC1"] == "Việt Nam"
     assert d["SoDinhDanhC1"] == "040203015844"
     assert d["SoGiayToTuyThanC1"] == "040203015844"
-    assert by_name["SoGiayToTuyThanC1"]["aliases"] == ["SoGiayToDinhDanhC1"]
+    assert by_name["SoGiayToTuyThanC1"]["aliases"] == ["SoGiayToDinhDanhC1", "TenGiayToC1"]
     assert d["LoaiGiayToDinhDanhC1"] == "Căn cước công dân"
     assert d["NgayCapDDC1"] == "02/07/2021"
     assert d["NoiCapDDC1"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
@@ -331,23 +305,6 @@ async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
     assert d["HoVaTenC"] == "NGUYỄN VĂN A"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["NoiCapDDC1"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-
-
-def test_xac_nhan_tthn_compact_prompt_allows_declared_never_married_status():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert "mặc định NGƯỜI YÊU CẦU là BẢN THÂN" in system_prompt
-    assert "Cccd_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND" in system_prompt
-    assert "Không trả field UI/default" in system_prompt
-    assert "quanhevoinguoiduocxacminh" in system_prompt
-    assert "DivorceDecision_* lấy từ OCR" in system_prompt
-    assert "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ" in system_prompt  # nguồn giấy XNTTHN cũ
-    assert 'RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ' in system_prompt
-    assert '"Hiện tại chưa đăng ký kết hôn với ai"' in system_prompt
-    assert "Không suy luận tình trạng hôn nhân từ CCCD" in system_prompt
-    assert 'BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng' in system_prompt
-    assert "TỜ KHAI hiện tại →" in system_prompt
-    assert "Python sẽ mặc định chọn" in system_prompt
 
 
 def test_registry_uses_xac_nhan_tthn_compact_agent_mode():

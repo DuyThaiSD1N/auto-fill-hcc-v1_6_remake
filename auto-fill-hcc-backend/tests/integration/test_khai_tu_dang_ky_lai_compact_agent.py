@@ -94,13 +94,13 @@ async def test_khai_tu_dang_ky_lai_derives_ui_fields(monkeypatch):
     assert d["HoVaTenC"] == "CHẨU VẦN MINH"
     assert d["SoDinhDanhC"] == "012097004596"
     assert d["SoGiayToDinhDanhC"] == "012097004596"
-    assert d["LoaiGiayToDinhDanhC"] == "Thẻ căn cước công dân"
+    assert d["LoaiGiayToDinhDanhC"] == "Căn cước công dân"  # nơi cấp Cục Cảnh sát QLHC về TTXH
     assert d["NgayCapDDC"] == "07/08/2023"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["nycLoaiCuTru"] == "Thường trú"
     assert d["nycNoiCuTru"] == "1"
     assert d["nycNoiCuTru_TrongNuoc"]["tinh"] == "Lai Châu"
-    assert d["nycNoiCuTru_TrongNuoc"]["xa"] == "Tân Phong"
+    assert d["nycNoiCuTru_TrongNuoc"]["xa"] == "Phường Tân Phong"  # nhãn xã hiện hành sau remap
     assert d["QuanHe"] == "Con trai"
 
     assert d["HoTen"] == "CHẨU A PÓC"
@@ -110,7 +110,7 @@ async def test_khai_tu_dang_ky_lai_derives_ui_fields(monkeypatch):
     assert d["nktQuocTich"] == "Việt Nam"
     assert d["SoDinhDanh"] == "012066002534"
     assert d["SoGiayToDinhDanh"] == "012066002534"
-    assert d["LoaiGiayToDinhDanh"] == "Thẻ căn cước công dân"
+    assert d["LoaiGiayToDinhDanh"] == "Căn cước công dân"  # nơi cấp Cục Cảnh sát QLHC về TTXH
     assert d["NgayCapDD"] == "04/05/2023"
     assert d["NoiCapDD"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["nktLoaiCuTru"] == "Thường trú"
@@ -269,14 +269,14 @@ def test_khai_tu_dang_ky_lai_does_not_default_deceased_identity_issue_place_with
 
     d = {f["name"]: f["value"] for f in mapper.enrich(fields)}
 
-    assert d["HoTen"] == "Trịnh Thị Én"
+    assert d["HoTen"] == "TRỊNH THỊ ÉN"  # họ tên người viết HOA (upper_person_name)
     assert d["NgaySinh"] == "1945"
     assert "LoaiGiayToDinhDanh" not in d
     assert "SoGiayToDinhDanh" not in d
     assert "NgayCapDD" not in d
     assert "NoiCapDD" not in d
     assert d["nktNoiChet"] == "1"
-    assert d["nktNoiChet_TrongNuoc"]["xa"] == "Đoàn Kết"
+    assert d["nktNoiChet_TrongNuoc"]["xa"] == "Phường Đoàn Kết"  # nhãn xã hiện hành sau remap
     assert d["nktNoiChet_TrongNuoc"]["diaChi"] == "số nhà 03F đường Trần Hưng Đạo, tổ 4"
 
 

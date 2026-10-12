@@ -2,6 +2,10 @@
 
 OCR + LLM phân loại tài liệu (giấy tờ sở hữu / dự thảo giao dịch / CCCD / ủy quyền) rồi route
 2 hàng cố định + thêm thành phần mới. Helper đặt tên/fold dùng chung lấy từ _shared.
+Hồ sơ không có dự thảo giao dịch thì hàng dự thảo (bắt buộc) nhận tài liệu LLM đánh ``certificationTarget``.
+
+Số thứ tự + tên 2 hàng cố định lấy từ bảng thật trên trang (``options.attachmentContext.components``):
+có cổng xếp "Dự thảo giao dịch" lên trước hàng giấy chứng nhận. Không có bảng (extension cũ) → 1/2 như cũ.
 """
 import re
 import time
@@ -120,10 +124,11 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     parsed = client.extract_json_block(raw)
     parsed_docs = parsed.get("documents", []) or []
 
-    def _coerce(item: dict) -> dict[str, str]:
+    def _coerce(item: dict) -> dict:
         return {
             "type": _canonical_type(str(item.get("type") or "")),
             "title": str(item.get("title") or "").strip(),
+            "certificationTarget": item.get("certificationTarget") is True,
         }
 
     out: dict[int, dict[str, str]] = {}
@@ -183,11 +188,54 @@ def _retype_uy_quyen_transaction(
         return
 
 
-def _route_for_type(doc_type: str, asset_seen: int, transaction_seen: int) -> tuple[str, int | None, str]:
+def _live_rows(components: list | None) -> dict[str, tuple[int, str]]:
+    """{"asset"|"transaction": (số thứ tự, tên nguyên văn)} của 2 hàng cố định trên trang; thiếu hàng nào
+    thì dùng 1/2 mặc định. Chỉ là định tuyến tất định theo tên hàng của cổng, không phân loại giấy tờ."""
+    rows = {"asset": (1, _ROW_1_COMPONENT), "transaction": (2, _ROW_2_COMPONENT)}
+    found: dict[str, tuple[int, str]] = {}
+    for component in components or []:
+        if not isinstance(component, dict):
+            continue
+        try:
+            index = int(component.get("index"))
+        except (TypeError, ValueError):
+            continue
+        name = str(component.get("componentName") or "").strip()
+        folded = _fold(name)
+        if index <= 0 or not folded:
+            continue
+        if "du thao" in folded:
+            found.setdefault("transaction", (index, name))
+        elif "giay chung nhan quyen so huu" in folded or "quyen su dung" in folded:
+            found.setdefault("asset", (index, name))
+    rows.update(found)
+    return rows
+
+
+def _promoted_target(detected_types: dict[int, dict]) -> int | None:
+    """idx tài liệu thay vào hàng dự thảo khi hồ sơ không có dự thảo giao dịch."""
+    if any(d.get("type") == "transaction_draft" for d in detected_types.values()):
+        return None
+    for idx in sorted(detected_types):
+        detected = detected_types[idx]
+        if detected.get("certificationTarget") and detected.get("type") not in ("asset_ownership_proof", "identity_document"):
+            return idx
+    return None
+
+
+def _route_for_type(
+    doc_type: str,
+    asset_seen: int,
+    transaction_seen: int,
+    rows: dict[str, tuple[int, str]] | None = None,
+) -> tuple[str, int | None, str]:
+    rows = rows or _live_rows(None)
     if doc_type == "asset_ownership_proof" and asset_seen == 0:
-        return "existing", 1, _ROW_1_COMPONENT
+        index, name = rows["asset"]
+        return "existing", index, name
     if doc_type == "transaction_draft" and transaction_seen == 0:
-        return "existing", 2, _ROW_2_COMPONENT
+        index, name = rows["transaction"]
+        return "existing", index, name
     return "new", None, ""
 
 
@@ -199,8 +247,13 @@ def _build_item(
     asset_seen: int,
     transaction_seen: int,
     used_names: set[str],
+    rows: dict[str, tuple[int, str]] | None = None,
+    route_type: str | None = None,
 ) -> dict:
-    target, component_index, existing_component = _route_for_type(doc_type, asset_seen, transaction_seen)
+    # route_type: loại dùng để chọn hàng; khác doc_type khi tài liệu thay chỗ dự thảo giao dịch.
+    target, component_index, existing_component = _route_for_type(
+        route_type or doc_type, asset_seen, transaction_seen, rows
+    )
     fallback = _label_for_type(doc_type)
     document_name = _unique_document_name(_label_for_type(doc_type, title), used_names, fallback)
     component_name = existing_component if target == "existing" else document_name
@@ -222,7 +275,6 @@ async def plan(
     session: dict | None = None,
 ) -> dict:
     """Entry point đính kèm (gọi qua registry.get_attach_pipeline)."""
-    _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -259,6 +311,8 @@ async def plan(
         idx: dict(llm_types.get(idx) or {"type": "other", "title": ""}) for idx in range(len(raw_files))
     }
     _retype_uy_quyen_transaction(detected_types, {d["index"]: d["text"] for d in llm_docs})
+    rows = _live_rows(((options or {}).get("attachmentContext") or {}).get("components"))
+    promoted = _promoted_target(detected_types)
 
     asset_seen = 0
     transaction_seen = 0
@@ -268,6 +322,7 @@ async def plan(
     for idx, file in enumerate(raw_files):
         detected = detected_types[idx]
         doc_type = detected["type"]
+        route_type = "transaction_draft" if idx == promoted else doc_type
         item = _build_item(
             file,
             idx,
@@ -276,11 +331,13 @@ async def plan(
             asset_seen,
             transaction_seen,
             used_names,
+            rows,
+            route_type,
         )
         attachments.append(item)
-        if doc_type == "asset_ownership_proof":
+        if route_type == "asset_ownership_proof":
             asset_seen += 1
-        if doc_type == "transaction_draft":
+        if route_type == "transaction_draft":
             transaction_seen += 1
         classified.append({
             "fileName": file.get("name"),

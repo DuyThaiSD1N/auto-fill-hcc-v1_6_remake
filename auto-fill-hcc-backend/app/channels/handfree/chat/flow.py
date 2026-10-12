@@ -1023,6 +1023,8 @@ async def _handle_turn_inner(
             return Reply(*_fmt(vi.PROCEDURE_IN_PROGRESS,
                                procedure=_proc_label(conv),
                                step=vi.STEP_LABELS.get(state, state)))
+        if mid_flow:
+            return _switch_procedure_mid_flow(conv, intent.value)
         return _to_confirm_procedure(conv, intent.value)
     if intent.kind == "procedure_unclear":
         return _procedure_unclear(conv, intent.payload.get("candidates") or [])
@@ -1114,19 +1116,7 @@ async def _handle_turn_inner(
         # returnToStart() → xoá phiên, tạo phiên mới. Nhánh này chỉ chạy khi công dân NÓI
         # bằng miệng (LLM giải ra new_procedure). Một conversation = một hồ sơ, nên đường
         # nói-miệng cũng phải sinh phiên mới; bảo FE chạy đúng luồng của chip cho thống nhất.
-        conv["state"] = "greet"
-        conv["procedure_key"] = None
-        conv["procedure_variant"] = ""
-        conv["doc_method"] = None
-        conv["attach_mode"] = None
-        conv["docs_target"] = ""
-        conv["docs_page_context"] = {}
-        conv["docs_dispatch_key"] = ""
-        conv["owner_phase"] = False
-        conv["auto_attach_after_fill"] = False
-        _clear_documents_adjustment(conv)
-        conv["consent"] = None  # chấp thuận gắn với TỪNG thủ tục (phạm vi giấy tờ khác nhau)
-        conv["procedure_candidates"] = []
+        _reset_for_new_procedure(conv)
         r = Reply(*_fmt(vi.CHANGED_PROCEDURE_RESET))
         r.cards = [_service_list_card(conv)]
         # Reset tại chỗ ở trên là đường TƯƠNG THÍCH cho extension bản cũ (bỏ qua action lạ).
@@ -1245,6 +1235,42 @@ def _procedure_unclear(conv: dict, keys: list) -> Reply:
                     options_tts=" hay ".join(names)))
     r.chips = [{"label": n, "send": "__action:pick_procedure:" + json.dumps({"key": p["key"]})}
                for p, n in zip(procs, names)]
+    return r
+
+
+def _reset_for_new_procedure(conv: dict) -> None:
+    """Đưa hội thoại về chọn thủ tục: bỏ mọi thứ gắn với thủ tục cũ, giữ nơi làm + ngôn ngữ."""
+    conv["state"] = "greet"
+    conv["procedure_key"] = None
+    conv["procedure_variant"] = ""
+    conv["doc_method"] = None
+    conv["attach_mode"] = None
+    conv["docs_target"] = ""
+    conv["docs_page_context"] = {}
+    conv["docs_dispatch_key"] = ""
+    conv["owner_phase"] = False
+    conv["auto_attach_after_fill"] = False
+    _clear_documents_adjustment(conv)
+    conv["consent"] = None  # chấp thuận gắn với TỪNG thủ tục (phạm vi giấy tờ khác nhau)
+    conv["procedure_candidates"] = []
+
+
+def _switch_procedure_mid_flow(conv: dict, key: str) -> Reply:
+    """Đang làm dở thủ tục A mà công dân gọi tên thủ tục B: đi CHUNG đường với "Làm thủ tục khác".
+
+    Chỉ đổi procedure_key tại chỗ thì giữ lại chấp thuận, cách nộp giấy, phiên giấy tờ (đúng danh
+    mục của A) và hồ sơ trên sổ (đếm thời gian, mốc) của A cho B. Một conversation = một hồ sơ →
+    đã có hồ sơ thì bảo FE mở phiên mới rồi tự chọn B (`procedure_key`). Extension cũ bỏ qua
+    `procedure_key`, chỉ mở danh sách thủ tục; reset tại chỗ ở đây giữ nó chạy đúng như cũ.
+    """
+    started = bool(conv.get("dossier_started_at"))
+    _reset_for_new_procedure(conv)
+    r = _to_confirm_procedure(conv, key)
+    if started:
+        action = {"type": "new_conversation", "reason": "new_procedure"}
+        if conv.get("state") == "confirm_procedure":
+            action["procedure_key"] = key
+        r.actions = [*(r.actions or []), action]
     return r
 
 
@@ -1738,6 +1764,11 @@ def _say_once(conv: dict, key: str) -> bool:
 
 def _login_ok_prefix(conv: dict) -> tuple[str, str]:
     """Đánh dấu đã qua đăng nhập nhưng không phát thêm câu trạng thái trùng lặp."""
+    # Mốc BẮT ĐẦU LÀM HỒ SƠ tính thời gian làm: lần ĐẦU tới trang chỉ thấy được sau khi đăng
+    # nhập (thông tin chung, chủ hồ sơ, xin phép, nhận giấy tờ) — thời gian quét QR VNeID, nhập
+    # passcode không tính vào. Đã đăng nhập sẵn thì mốc này gần như trùng lúc xác nhận thủ tục.
+    if conv.get("dossier_started_at"):
+        conv.setdefault("logged_in_at", datetime.now(timezone.utc))
     if conv.get("needed_login", True):
         _say_once(conv, "login_ok")
     return "", ""
@@ -3593,10 +3624,11 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             r = Reply(*_fmt(vi.ATTACH_ALL_FILES_EXIST, note=recap, **recap_kw))
         elif errors:
             err_list = "\n".join(f"- {e}" for e in errors[:5])
-            r = Reply(*_fmt(vi.ATTACH_DONE_WITH_ERRORS, attached=attached, error_list=err_list,
-                            note=recap, **recap_kw))
+            # recap_kw đã mang sẵn "attached" khi có câu tóm tắt → gộp dict, không truyền trùng khoá.
+            r = Reply(*_fmt(vi.ATTACH_DONE_WITH_ERRORS, error_list=err_list,
+                            note=recap, **{**recap_kw, "attached": attached}))
         else:
-            r = Reply(*_fmt(vi.ATTACH_DONE, attached=attached, note=recap, **recap_kw))
+            r = Reply(*_fmt(vi.ATTACH_DONE, note=recap, **{**recap_kw, "attached": attached}))
         # Luồng dẫn từng bước: thay lời "tự bấm Nộp hồ sơ" bằng nút chuyển sang bước nhận kết
         # quả. Chế độ tách hồ sơ VẪN có nút, chỉ khác câu chữ: nút bấm qua sendToContent gắn
         # chặt tab của sidebar nên nó luôn chuyển đúng hồ sơ ở tab gốc; các tab tách không có

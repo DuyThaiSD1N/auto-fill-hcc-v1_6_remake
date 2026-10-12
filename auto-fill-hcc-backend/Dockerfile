@@ -12,13 +12,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-# Mạng tới pypi có lúc chỉ ~100 KB/s: timeout đọc mặc định 15s làm gói lớn đứt giữa chừng.
-ENV PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY scripts ./scripts
 
 EXPOSE 8000
+
+# Đặt SAU các lớp COPY/pip: đổi tag không làm cài lại thư viện.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 
 CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-4}"]

@@ -1,0 +1,99 @@
+name: Release
+
+# Push tag vDD.MM.YYYY[.n] (vd v11.10.2026, v11.10.2026.1) → test → build 3 image → đẩy GHCR →
+# deploy prod. Tag phải trỏ vào commit đã có trong main.
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Kiểm tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Chặn tag nhầm: sai mẫu, hoặc gắn lên commit chưa merge vào main (nhánh phụ, code dở).
+      - name: Đúng mẫu và nằm trên main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          re='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
+          if [[ ! "$TAG" =~ $re ]]; then
+            echo "::error::Tag '$TAG' sai mẫu vDD.MM.YYYY[.n] (vd v11.10.2026, v11.10.2026.1) — không phát hành."
+            exit 1
+          fi
+          commit="$(git rev-parse "$TAG^{commit}")"
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::Tag '$TAG' trỏ vào commit chưa có trong main — merge vào main rồi gắn tag lại."
+            exit 1
+          fi
+
+  test:
+    name: Test
+    needs: check
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build ${{ matrix.image }}
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: autofill-hcc-be
+            context: .
+          - image: autofill-hcc-fe
+            context: fe
+          - image: autofill-hcc-monitor-fe
+            context: monitor-fe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Runner là amd64 = kiến trúc server → build thẳng, không giả lập như buildx trên Mac ARM.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.ref_name }}
+          build-args: APP_VERSION=${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    name: Deploy
+    needs: build
+    uses: ./.github/workflows/_deploy.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

@@ -12,7 +12,6 @@ from app.account_settings.router import router as account_settings_router
 from app.attachments.router import router as attachments_router
 from app.dossiers.router import router as dossiers_router
 from app.auth.router import router as auth_router
-from app.batch.router import router as batch_router
 from app.config import settings
 from app.consent.router import router as consent_router
 from app.consents.router import router as consents_router
@@ -99,7 +98,6 @@ app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth_router)
 app.include_router(account_settings_router)  # cài đặt theo tài khoản cho cả hai extension
-app.include_router(batch_router)
 app.include_router(procedures_router)
 app.include_router(process_router)
 app.include_router(review_router)
@@ -161,4 +159,4 @@ if _static_dir.is_dir():
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True}
+    return {"ok": True, "version": settings.app_version}

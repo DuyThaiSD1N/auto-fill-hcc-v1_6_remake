@@ -26,12 +26,12 @@ def test_quanhe_tu_to_khai_khop_nhan_option():
         assert out["NYC_QuanHe"]["value"] == expect, raw
         assert out["NYC_QuanHe"]["comp"] == "x-radio"
 
-    # "Ba" trần nhập nhằng (bố Nam bộ vs Bà) → KHÔNG tick bừa.
-    out = _by_name(enrich(_fields(**base, CopyRequest_QuanHe="Ba")))
-    assert "NYC_QuanHe" not in out
-    # Không có dòng quan hệ → bỏ trống.
-    out = _by_name(enrich(_fields(**base)))
-    assert "NYC_QuanHe" not in out
+    # "Ba" trần nhập nhằng (bố Nam bộ vs Bà) hoặc không có dòng quan hệ → KHÔNG đoán vai cụ thể,
+    # chỉ tick "Khác" kèm viền vàng để cán bộ chọn lại.
+    for extra in ({"CopyRequest_QuanHe": "Ba"}, {}):
+        out = _by_name(enrich(_fields(**base, **extra)))
+        assert out["NYC_QuanHe"]["value"] == "Khác"
+        assert out["NYC_QuanHe"].get("default") is True
 
 
 def test_giay_to_tuy_than_chu_the_tu_thẻ_can_cuoc():
@@ -48,12 +48,15 @@ def test_giay_to_tuy_than_chu_the_tu_thẻ_can_cuoc():
     assert out["NDK_SoGiayToTuyThan"]["value"] == "045678901234"
     assert out["NDK_NgayCap"]["value"] == "03/04/2024"
     assert out["NDK_NoiCap"]["value"] == "Bộ Công an"
-    assert out["NDK_LoaiGiayToTuyThan"]["value"] == "Thẻ Căn cước"  # Bộ Công an → thẻ mới
+    assert out["NDK_LoaiGiayToTuyThan"]["value"] == "Thẻ căn cước"  # Bộ Công an → thẻ mới
 
-    # Số thẻ KHÔNG trùng số định danh chủ thể (LLM bắt nhầm thẻ mẹ) → bỏ toàn bộ.
+    # Số thẻ KHÔNG trùng số định danh chủ thể (LLM bắt nhầm thẻ mẹ) → bỏ toàn bộ cụm giấy tờ
+    # tùy thân: không lấy gì của thẻ đó, và chỉ có số định danh thì không đoán ra loại giấy tờ.
     wrong = dict(base, ChuThe_SoDinhDanh="036192014000")
     out = _by_name(enrich(_fields(**wrong)))
-    assert "NDK_NgayCap" not in out and "NDK_LoaiGiayToTuyThan" not in out
+    for name in ("NDK_NgayCap", "NDK_NoiCap", "NDK_LoaiGiayToTuyThan", "NDK_SoGiayToTuyThan"):
+        assert name not in out
+    assert out["NDK_SoDinhDanh"]["value"] == "045678901234"
 
 
 def test_quyen_so_di_tron_duong_ra_hoso():
@@ -85,8 +88,8 @@ def test_nguoi_yeu_cau_trung_chu_the_tu_lam_dien_noi_cu_tru():
 
 
 def test_nyc_nguoi_khac_van_khong_lay_dia_chi_cho_chu_the():
-    """Ca LÀM HỘ: CCCD của mẹ (số khác chủ thể) → mục II vẫn tích "Trong nước" + Việt Nam
-    (mặc định vàng), nhưng TUYỆT ĐỐI không nhét địa chỉ CHI TIẾT của mẹ vào ô của con."""
+    """Ca LÀM HỘ: CCCD của mẹ (số khác chủ thể) → TUYỆT ĐỐI không nhét địa chỉ của mẹ vào ô nơi
+    cư trú của con; không có nguồn riêng của con thì để trống cả mục."""
     out = _by_name(enrich(_fields(
         HoTich_LoaiSuKien="birth",
         HoTich_HoTenNguoiDuocDangKy="Nguyễn Văn Con",
@@ -96,10 +99,7 @@ def test_nyc_nguoi_khac_van_khong_lay_dia_chi_cho_chu_the():
         Nyc_NoiCuTru={"quocGia": "Việt Nam", "tinh": "Nghệ An",
                       "xa": "Xã Tam Hợp", "diaChi": "Xóm Long Thành"},
     )))
-    area = out["NDK_NoiCuTru_TrongNuoc"]["value"]
-    assert out["NDK_NoiCuTru_TrongNuoc"].get("default") is True   # chỉ là mặc định vàng
-    assert area == {"quocGia": "Việt Nam"}                        # KHÔNG có tỉnh/xã của mẹ
-    assert not area.get("tinh") and not area.get("xa")
+    assert "NDK_NoiCuTru_TrongNuoc" not in out
 
 
 def test_hai_noi_cu_tru_doc_lap_khong_muon_cheo():

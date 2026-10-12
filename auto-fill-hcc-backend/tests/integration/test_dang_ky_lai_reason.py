@@ -217,10 +217,11 @@ def test_sanitizer_drops_wrong_people_and_death_registration_metadata():
     result = reason.sanitize_extracted_fields(fields, context)
     values = {field["name"]: field["value"] for field in result}
 
-    assert values == {
-        "Father_FullName": "MAN VĂN QUỲNH",
-        "Father_BirthDateOrYear": "1972",
-    }
+    # Subject_*/Mother_* sai người và PreviousRegistration_* (không có giấy khai sinh) bị loại.
+    # Father_* cũng bị loại: trùng tên + năm sinh với Subject_* agent trả về, không có số định
+    # danh/giới tính nào phân biệt được hai người (_role_is_subject) — thà bỏ trống còn hơn sai.
+    # Mẹ có CCCD nhưng vai Mother_* bị loại vì sai người nên không dựng lại từ thẻ.
+    assert values == {}
 
 
 def test_valid_birth_document_allows_previous_registration_fields():
@@ -242,7 +243,19 @@ def test_valid_birth_document_allows_previous_registration_fields():
         "Subject_FullName",
         "PreviousRegistration_Number",
         "PreviousRegistration_Date",
+        # Vai mẹ agent bỏ trống được dựng lại từ chính CCCD của mẹ trong khối phân vai.
+        *_MOTHER_CARD_FIELDS,
     }
+
+
+# Nhân thân khối <me> đọc từ cccd-hoa.pdf: vai mẹ agent trả rỗng được dựng lại theo đúng thẻ này.
+_MOTHER_CARD_FIELDS = {
+    "Mother_IdNumber": "027176001591",
+    "Mother_FullName": "NGUYỄN THỊ HOÀ",
+    "Mother_Gender": "Nữ",
+    "Mother_BirthDateOrYear": "31/10/1976",
+    "Mother_Nationality": "Việt Nam",
+}
 
 
 def test_same_person_cannot_be_both_child_and_father():
@@ -257,7 +270,9 @@ def test_same_person_cannot_be_both_child_and_father():
         ],
         context,
     )
-    assert [field["name"] for field in result] == ["Subject_FullName"]
+    values = {field["name"]: field["value"] for field in result}
+    assert not any(name.startswith("Father_") for name in values)
+    assert values == {"Subject_FullName": "MAN THỊ HUẾ", **_MOTHER_CARD_FIELDS}
 
 
 def test_requester_mismatch_does_not_destroy_family_roles():
@@ -280,12 +295,12 @@ def test_requester_mismatch_does_not_destroy_family_roles():
 async def test_build_context_uses_raw_text_agent(monkeypatch):
     captured = {}
 
-    async def _chat_text(messages, **kwargs):
+    async def _chat(messages, **kwargs):
         captured["messages"] = messages
         captured["kwargs"] = kwargs
         return _raw_roles()
 
-    monkeypatch.setattr(reason.client, "chat_text", _chat_text)
+    monkeypatch.setattr(reason.client, "chat", _chat)
     context = await reason.build_context(
         _documents_without_birth_record(),
         {
@@ -297,7 +312,6 @@ async def test_build_context_uses_raw_text_agent(monkeypatch):
     )
 
     assert captured["kwargs"]["temperature"] == 0
-    assert "không trả JSON" in captured["messages"][0]["content"]
     assert "<phan_vai_da_xac_dinh>" in context
     assert "MAN THỊ HUẾ" in reason._section(context, "con")
 
@@ -331,7 +345,9 @@ async def test_process_runner_sanitizes_before_mapper(monkeypatch):
 
     result = await process_runner.run({}, {})
 
-    assert seen["fields"] == [{"name": "Father_FullName", "value": "MAN VĂN QUỲNH"}]
+    # Subject_* sai người, PreviousRegistration_* không có giấy khai sinh; Father_* trùng hệt
+    # Subject_* agent trả (không gì phân biệt hai người) nên cũng bị loại. Vai mẹ rỗng → dựng từ thẻ.
+    assert {f["name"]: f["value"] for f in seen["fields"]} == _MOTHER_CARD_FIELDS
     assert result["fields"] == seen["fields"]
 
 

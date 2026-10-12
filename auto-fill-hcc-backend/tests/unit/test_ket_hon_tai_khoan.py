@@ -35,8 +35,10 @@ _ACCOUNT_NAM = {"formContext": {
 MAPPERS = [ket_hon, ket_hon_lai, ket_hon_nuoc_ngoai]
 
 
-def _fields(*dicts):
-    return [{"name": k, "value": v} for d in dicts for k, v in d.items()]
+def _fields(*dicts, mapper=None):
+    # Kết hôn có yếu tố nước ngoài đặt tên nhóm nhân thân "Nam_*"/"Nu_*" (không mặc định là CCCD).
+    rename = (lambda k: k.removeprefix("Cccd")) if mapper is ket_hon_nuoc_ngoai else (lambda k: k)
+    return [{"name": rename(k), "value": v} for d in dicts for k, v in d.items()]
 
 
 def _values(out):
@@ -45,7 +47,7 @@ def _values(out):
 
 @pytest.mark.parametrize("mapper", MAPPERS)
 def test_ben_nam_trung_tai_khoan_ghi_de_toan_bo(mapper):
-    out = _values(mapper.enrich(_fields(_NAM, _NU), _ACCOUNT_NAM))
+    out = _values(mapper.enrich(_fields(_NAM, _NU, mapper=mapper), _ACCOUNT_NAM))
     assert out["HoTenBenNam"] == "TRẦN VĂN ÂN"
     assert out["SoDinhDanh_BenNam"] == out["SoGiayToDinhDanh_BenNam"] == "012086005221"
     assert out["NgayCapDD_BenNam"] == "16/01/2022"
@@ -61,7 +63,7 @@ def test_ben_nam_trung_tai_khoan_ghi_de_toan_bo(mapper):
 def test_ben_nu_khop_theo_ten_va_ngay_sinh(mapper):
     account = {"formContext": {"applicantFullname": "Lê Thị Bình", "applicantBirthday": "02/02/1989",
                                "applicantIdentityNumber": "012189003309", "applicantIdDate": "20/03/2024"}}
-    out = _values(mapper.enrich(_fields(_NAM, _NU), account))
+    out = _values(mapper.enrich(_fields(_NAM, _NU, mapper=mapper), account))
     assert out["SoDinhDanh_BenNu"] == "012189003309"
     assert out["NgayCapDD_BenNu"] == "20/03/2024"
     assert out["HoTenBenNam"] == "TRẦN VĂN AN"
@@ -71,13 +73,13 @@ def test_ben_nu_khop_theo_ten_va_ngay_sinh(mapper):
 def test_tai_khoan_nguoi_khac_khong_doi(mapper):
     account = {"formContext": {"applicantFullname": "Phạm Văn Cường", "applicantIdentityNumber": "001090000001",
                                "applicantBirthday": "03/03/1990"}}
-    assert mapper.enrich(_fields(_NAM, _NU), account) == mapper.enrich(_fields(_NAM, _NU))
+    assert mapper.enrich(_fields(_NAM, _NU, mapper=mapper), account) == mapper.enrich(_fields(_NAM, _NU, mapper=mapper))
 
 
 @pytest.mark.parametrize("mapper", MAPPERS)
 def test_gioi_tinh_trai_ben_khong_doi(mapper):
     account = {"formContext": {**_ACCOUNT_NAM["formContext"], "applicantGender": "Nữ"}}
-    assert mapper.enrich(_fields(_NAM, _NU), account) == mapper.enrich(_fields(_NAM, _NU))
+    assert mapper.enrich(_fields(_NAM, _NU, mapper=mapper), account) == mapper.enrich(_fields(_NAM, _NU, mapper=mapper))
 
 
 def test_so_lech_mot_chu_so_van_khop_khi_ten_gan_giong():

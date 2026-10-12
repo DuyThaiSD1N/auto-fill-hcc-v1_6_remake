@@ -284,7 +284,7 @@ async def test_combined_pipeline_broadcasts_only_after_process_and_attach(monkey
         "get",
         AsyncMock(return_value={
             "_id": "HS-BUSINESS",
-            "files": [{"name": "ho-so.pdf", "type": "application/pdf"}],
+            "files": [{"fid": "f1", "name": "ho-so.pdf", "type": "application/pdf"}],
         }),
     )
     monkeypatch.setattr(

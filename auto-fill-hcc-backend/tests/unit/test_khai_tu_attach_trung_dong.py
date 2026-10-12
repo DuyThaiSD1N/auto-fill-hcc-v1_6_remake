@@ -67,7 +67,9 @@ async def test_hai_chung_cu_cung_loai_khong_don_vao_cung_dong_va_trang_nhieu_gop
     items = result["attachments"]
 
     existing = [i for i in items if i["target"] == "existing"]
-    assert [i["componentIndex"] for i in existing] == [4], "dòng có sẵn chỉ nhận MỘT tài liệu"
+    assert [i["componentIndex"] for i in existing] == [3, 4], (
+        "tờ khai vào dòng Giấy báo tử (hồ sơ không có Giấy báo tử), chứng cứ vào dòng 4"
+    )
     cam_doan = next(i for i in items if i["documentName"] == "Bản cam đoan")
     assert cam_doan["target"] == "new" and cam_doan["componentName"] == "Bản cam đoan"
     # Trang 4 nhiễu đi cùng Bản cam đoan, không thành thành phần riêng.

@@ -84,7 +84,7 @@ def test_agricultural_and_non_agricultural_tax_are_distinct():
         (
             "TỜ KHAI THUẾ SỬ DỤNG ĐẤT PHI NÔNG NGHIỆP Mẫu số 04/TK-SDDPNN",
             "to_khai_04_sddpnn",
-            "attp-row",
+            "existing",
             3,
         ),
         (

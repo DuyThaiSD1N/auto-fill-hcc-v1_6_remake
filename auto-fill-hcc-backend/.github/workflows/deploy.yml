@@ -1,0 +1,19 @@
+name: Deploy (chọn tag)
+
+# Quay về bản cũ / deploy lại một tag đã build — KHÔNG build lại.
+# Actions → Deploy (chọn tag) → Run workflow → ô "Use workflow from" → tab Tags → chọn tag → Run.
+# Chỉ chọn được tag tạo SAU khi có file này (workflow chạy theo bản file nằm trong chính tag đó).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

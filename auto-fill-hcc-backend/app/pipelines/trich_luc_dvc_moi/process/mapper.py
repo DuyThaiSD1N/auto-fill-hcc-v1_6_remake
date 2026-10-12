@@ -143,6 +143,13 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
     block = section(context, "quan_he")
     relation = _quan_he_option(labeled_value(block, "Kết luận"))
     other = labeled_value(block, "Quan hệ khác")
+    # Phân vai hay để "Khác" + "Mẹ" thay vì nhãn "Mẹ đẻ" của danh mục → quy về nhãn. Và có lúc đã đối chiếu người
+    # yêu cầu tờ khai là "cùng người" với người nộp mà vẫn kết luận "Không xác định" → dùng chính kết quả đối chiếu
+    # đó cùng quan hệ nó chép từ tờ khai.
+    if relation == _OTHER and _quan_he_option(other) not in ("", _OTHER):
+        relation, other = _quan_he_option(other), ""
+    if not relation and _fold(labeled_value(block, "Đối chiếu với người nộp")).startswith("cung nguoi"):
+        relation = _quan_he_option(labeled_value(block, "Quan hệ ghi trên tờ khai"))
 
     if account_id and subject_id and account_id == subject_id and not deceased:
         return _SELF, "", ""

@@ -20,8 +20,21 @@ Nhiệm vụ của bạn là đọc OCR_TEXT của từng file và trả về đ
    có các điều khoản (phạm vi ủy quyền, thời hạn ủy quyền, quyền và nghĩa vụ các bên) và phần lời chứng thực.
 6. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước chỉ phân loại là identity_document khi OCR_TEXT thể hiện đó là
    giấy tờ tùy thân của cá nhân, không phải chỉ vì văn bản khác có số định danh cá nhân.
-7. Trả về JSON object duy nhất, không giải thích, không markdown.
+7. Mỗi tài liệu trả thêm certificationTarget (true/false) theo certification_target_rules.
+8. Trả về JSON object duy nhất, không giải thích, không markdown.
 </critical_rules>
+
+<certification_target_rules>
+certificationTarget = true nghĩa là tài liệu này CHÍNH LÀ văn bản đem đi chứng thực trong hồ sơ hiện tại
+(không phải giấy tờ kèm theo để đối chiếu). type vẫn trả theo bản chất tài liệu như bình thường.
+- transaction_draft luôn có certificationTarget = true.
+- Tài liệu có trang/đoạn "LỜI CHỨNG THỰC" (lời chứng thực chữ ký, lời chứng thực hợp đồng/giao dịch/văn bản)
+  là văn bản đem đi chứng thực → true, dù type là authorization hay other.
+- Hồ sơ KHÔNG có tài liệu nào là transaction_draft: chọn ĐÚNG MỘT tài liệu có khả năng nhất là văn bản đem đi
+  chứng thực (văn bản do các bên lập và ký: giấy ủy quyền, cam kết, thỏa thuận…) và đánh true.
+- asset_ownership_proof và identity_document là giấy tờ đối chiếu → luôn false.
+- Còn lại → false.
+</certification_target_rules>
 
 <allowed_types>
 Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
@@ -61,10 +74,10 @@ Output đúng 1 JSON object, không bọc trong code fence.
 Sau JSON, không output bất kỳ ký tự nào khác.
 
 Schema bắt buộc:
-{"documents":[{"index":0,"type":"asset_ownership_proof","title":"Đăng ký xe"}]}
+{"documents":[{"index":0,"type":"asset_ownership_proof","title":"Đăng ký xe","certificationTarget":false}]}
 
 Ví dụ đúng:
-{"documents":[{"index":0,"type":"asset_ownership_proof","title":"Đăng ký xe"},{"index":1,"type":"transaction_draft","title":"Hợp đồng chuyển nhượng quyền sở hữu xe mô tô"},{"index":2,"type":"identity_document","title":"Căn cước công dân"}]}
+{"documents":[{"index":0,"type":"asset_ownership_proof","title":"Đăng ký xe","certificationTarget":false},{"index":1,"type":"transaction_draft","title":"Hợp đồng chuyển nhượng quyền sở hữu xe mô tô","certificationTarget":true},{"index":2,"type":"identity_document","title":"Căn cước công dân","certificationTarget":false}]}
 
 Ví dụ sai:
 ```json

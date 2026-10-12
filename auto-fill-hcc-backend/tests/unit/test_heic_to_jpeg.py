@@ -65,6 +65,9 @@ async def test_phien_tai_anh_luu_heic_thanh_jpg(monkeypatch, tmp_path):
     monkeypatch.setattr(store, "append_files_with_limit",
                         AsyncMock(side_effect=lambda _sid, metas, _limit: {**sess, "files": metas}))
     monkeypatch.setattr(upload_router, "broadcast", AsyncMock())
+    # Ghi nhật ký + gia hạn phiên đi thẳng Mongo: không mock thì test chờ hết hạn kết nối (~60s).
+    monkeypatch.setattr(upload_router.audit, "log_uploaded", AsyncMock())
+    monkeypatch.setattr(store, "extend_autofill_expiry", AsyncMock())
 
     result = await upload_router.upload_files(
         sess["_id"], [UploadFile(filename="IMG_0001.HEIC", file=io.BytesIO(_heic_bytes()))], "", sess)

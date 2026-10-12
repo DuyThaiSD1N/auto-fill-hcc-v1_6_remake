@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.nationality import normalize_nationality
 from app.pipelines._shared.tai_khoan import apply_account_marriage
 from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_BO_CONG_AN,
@@ -176,8 +177,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if not (values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")):
             return
 
-        quoc_tich = values.get(f"{src}_QuocTich")
+        # Giấy tờ / tờ khai ghi tên thường gọi ("Mỹ") còn danh mục quốc gia của cổng dùng tên chính thức
+        # ("Hoa Kỳ") → không khớp option nào.
+        quoc_tich = normalize_nationality(values.get(f"{src}_QuocTich"), default="", exact_only=True)
         area = _area(values.get(f"{src}_NoiCuTru"))
+        if area and area.get("quocGia"):
+            area["quocGia"] = normalize_nationality(area["quocGia"], default="", exact_only=True)
         res_country = area.get("quocGia") if area else ""
         issuer_raw = values.get(f"{src}_NoiCap")
         vn_issuer = normalize_issuer(issuer_raw) in (ISSUER_BO_CONG_AN, ISSUER_CUC)
@@ -195,7 +200,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # TH1 — CHỈ bên người Việt: giấy tờ lệch CẢ tên lẫn số so với tờ khai → của người khác, nhân
         # thân theo tờ khai, bỏ ngày cấp/nơi cấp, tô vàng. Bên nước ngoài không xét: tờ khai ghi tên
         # phiên âm tiếng Việt nên tên LUÔN lệch hộ chiếu, chỉ còn số — OCR hỏng số là thành nhầm người.
-        side = "Nam" if src == "CccdNam" else "Nu"
+        side = src
         card_other = not foreign and _card_is_other_person(
             values.get(f"{src}_HoTen"), values.get(f"{src}_SoDinhDanh"),
             values.get(f"ToKhai{side}_HoTen"), values.get(f"ToKhai{side}_SoGiayTo"),
@@ -233,9 +238,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add(f"DanToc{dst}", dan_toc)
 
         if foreign:
-            # Giấy tờ nước ngoài: loại = "Giấy tờ khác..." + ô "Nhập tên giấy tờ" = tên giấy tờ thật.
+            # Giấy tờ nước ngoài: loại = "Giấy tờ khác..." + ô tên giấy tờ = tên giấy tờ thật.
+            # Form thật đặt name TenGiayTo_* (x-select-area) — không có ô NhapTenGiayTo_*.
             add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_DOC_TYPE)
-            add(f"NhapTenGiayTo_{dst}", values.get(f"{src}_TenGiayTo") or "Chứng minh thư")
+            add(f"TenGiayTo_{dst}", values.get(f"{src}_TenGiayTo") or "Chứng minh thư")
             # Giữ NGUYÊN VĂN (không chuẩn hóa về cơ quan VN), nhưng chỉ khi đó thật sự là tên
             # một cơ quan. Đọc nhầm ra địa danh thì để TRỐNG cho người dùng gõ: ô đỏ còn hơn một
             # cái tên tỉnh nằm chình ình ở ô "Cơ quan cấp" mà người soát hồ sơ dễ cho qua.
@@ -284,7 +290,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             if decision:
                 add(f"TTHN_LyHon{dst}", decision)
 
-    add_person("CccdNu", "BenNu")
-    add_person("CccdNam", "BenNam")
+    add_person("Nu", "BenNu")
+    add_person("Nam", "BenNam")
     return apply_account_marriage(out, options, _ui_field, _vn_area,
                                   lambda issuer: id_doc_type("Căn cước", issuer))

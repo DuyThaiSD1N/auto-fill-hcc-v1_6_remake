@@ -63,6 +63,10 @@ _OLD_PROVINCE_NAMES: dict[str, str] = {}
 # ambiguous ma _REMAP bo qua. correct_area() can biet mot ten la CO THAT (du mo ho) de khong "sua" no
 # sang mot xa ke ben, va can ten nguyen van de tra ve cho remap_area() xu ly tiep.
 _OLD_WARD_NAMES: dict[tuple[str, str], str] = {}
+# (fold(tinh_cu), fold(ten xa cu da bo ngoac huyen)) -> MOI cach viet nguyen van cua don vi cu (ke ca
+# entry ambiguous). _OLD_WARD_NAMES chi giu entry dau nen khong biet "Ba Tô" va "Thị trấn Ba Tơ" cung
+# mot khoa fold; _new_ward_only() can du ca de quyet mot ten co trung nguyen van don vi cu nao khong.
+_OLD_WARD_SPELLINGS: dict[tuple[str, str], set[str]] = {}
 
 # Lookup NGUOC: (fold_province(tinh MOI), fold_accent(xa CU)) -> ten xa MOI.
 #
@@ -247,7 +251,7 @@ def _load_remap_files() -> None:
     
     # Track duplicate keys to mark as ambiguous
     _duplicate_tracker: dict[tuple[str, str], list[dict]] = {}
-    _source_xa_cu: dict[tuple[str, str], str] = {}
+    _source_xa_cu: dict[tuple[str, str], list[str]] = {}
     
     for json_file in sorted(_DATA_DIR.glob("remap_*.json")):
         try:
@@ -263,6 +267,10 @@ def _load_remap_files() -> None:
                 _OLD_WARD_NAMES.setdefault(
                     (_fold(entry["tinh_cu"]), _fold(entry["xa_cu"])), entry["xa_cu"]
                 )
+                xa_cu_ten = _split_xa_cu_district(entry["xa_cu"])[0]
+                _OLD_WARD_SPELLINGS.setdefault(
+                    (_fold(entry["tinh_cu"]), _fold(xa_cu_ten)), set()
+                ).add(xa_cu_ten)
             # Bo qua entry ambiguous
             if entry.get("ambiguous"):
                 continue
@@ -300,26 +308,30 @@ def _load_remap_files() -> None:
                 _duplicate_tracker[key] = []
             _duplicate_tracker[key].append(mapping)
             # key da fold (mat dau) -- index nguoc can ten xa cu CON DAU de khong dong nham
-            # "Thanh" (Thanh) voi "Thanh" (Thanh).
-            _source_xa_cu.setdefault(key, xa_cu)
+            # "Thanh" (Thanh) voi "Thanh" (Thanh). Giu ten cu cua TUNG entry (song song voi
+            # _duplicate_tracker): mot khoa fold co the gom nhieu xa cu khac dau ("Ba Tô"/"Ba Tơ").
+            _source_xa_cu.setdefault(key, []).append(xa_cu)
     
     # Only add entries that are NOT duplicates (or are marked ambiguous)
     for key, mappings in _duplicate_tracker.items():
         # If there are multiple different mappings for the same key, skip them all (ambiguous)
         unique_mappings = {(m["tinh"], m["xa"]) for m in mappings}
+        sources = _source_xa_cu.get(key) or []
+        xa_cu_goc = sources[0] if sources else ""
         if len(unique_mappings) > 1:
             # Xa cu tach ra nhieu don vi moi, NHUNG mot trong so do GIU NGUYEN ten cu ->
             # chon chinh no. Day la truong hop don vi bi cat bot dia gioi ma van giu ten:
             # giay to ghi "X" thi kha nang cao thuoc "X" moi, khong phai mieng cat sang ten
             # khac. Bo tay o day nghia la tra ve ten CU -- mot ten khong con trong danh muc,
             # dropdown Phuong/Xa se do. So sanh bang _fold_accent de "Thanh" (nang) khong
-            # dong nham voi "Thanh" (huyen).
-            xa_cu_goc = _source_xa_cu.get(key) or ""
-            keepers = [m for m in mappings
-                       if _fold_accent(m["xa"]) == _fold_accent(xa_cu_goc)]
-            unique_keepers = {(m["tinh"], m["xa"]) for m in keepers}
+            # dong nham voi "Thanh" (huyen). So voi ten cu CUA CHINH entry do: so voi ten cu
+            # cua entry dau thi "Ba Tô"->"Xã Ba Tô" luon thang, nuot ca "Thị trấn Ba Tơ"->"Xã Ba Tơ".
+            keepers = [(m, src) for m, src in zip(mappings, sources)
+                       if _fold_accent(m["xa"]) == _fold_accent(src)]
+            unique_keepers = {(m["tinh"], m["xa"]) for m, _ in keepers}
             if len(unique_keepers) == 1:
-                mappings = keepers[:1]
+                mappings = [keepers[0][0]]
+                xa_cu_goc = keepers[0][1]
             else:
                 # Multiple different destinations for same source -> ambiguous, skip
                 import logging
@@ -341,7 +353,6 @@ def _load_remap_files() -> None:
         if tinh_cu_folded not in _TINH_ONLY:
             _TINH_ONLY[tinh_cu_folded] = mapping["tinh"]
 
-        xa_cu_goc = _source_xa_cu.get(key)
         if xa_cu_goc:
             _REMAP_SOURCE_ENTRIES.append((mapping["tinh"], xa_cu_goc, mapping["xa"]))
 
@@ -652,6 +663,34 @@ def is_current_area(tinh: str, xa: str) -> bool:
     if not str(xa or "").strip():
         return True
     return (_fold_province(_CURRENT_PROVINCES[province_key]), _fold_accent(xa)) in _CURRENT_PAIRS
+
+
+def _exact_name(value: str) -> str:
+    """So nguyen van ca nhan lan dau, chi bo khac biet hoa/thuong va khoang trang."""
+    return " ".join(unicodedata.normalize("NFC", value).casefold().split())
+
+
+def _new_ward_only(tinh: str, xa: str) -> Optional[str]:
+    """Ten xa CO NHAN chac chan la don vi HIEN HANH -> ten trong danh muc; khong chac -> None.
+
+    Bang sap nhap khoa theo ten fold (mat nhan, mat dau) nen ten moi trung ten mot xa cu khac nhan
+    hoac khac dau bi doi oan: "Phường Thanh Xuân" (Ha Noi moi) trung khoa "Xã Thanh Xuân" (Soc Son
+    cu) -> "Xã Nội Bài"; "Xã Ba Tơ" trung khoa "Ba Tô" -> "Xã Ba Tô". Chi khang dinh khi ten khop
+    NGUYEN VAN mot don vi hien hanh VA khong trung nguyen van don vi cu nao cung khoa: don vi cu co
+    nhan thi so ca nhan, khong nhan thi so ten con dau. Trung -> giay to cu hay moi deu co the
+    ("Phường Mường Thanh" vua la ten cu vua la ten moi) -> None, de cac buoc remap xu ly nhu cu.
+    """
+    full = canonical_ward(tinh, xa)
+    if not full or _exact_name(full) != _exact_name(xa):
+        return None
+    # Khoa tinh bo tien to ("Tỉnh"/"Thành phố") cho khop khoa tinh cu cua bang sap nhap.
+    for old in _OLD_WARD_SPELLINGS.get((_fold_province(tinh), _fold(xa)), ()):
+        if _WARD_LABEL_RE.match(old):
+            if _exact_name(old) == _exact_name(xa):
+                return None
+        elif _fold_accent(old) == _fold_accent(xa):
+            return None
+    return full
 
 
 # ---------------------------------------------------------------------------
@@ -1128,6 +1167,13 @@ def _remap_area_cached(
 
     tinh_folded = _fold(tinh)
 
+    # Buoc 1a: ten xa co nhan da chac chan la don vi hien hanh -> giu nguyen, khong tra bang sap
+    # nhap (cac bang ben duoi khoa theo ten fold nen dong nham ten moi voi xa cu cung khoa).
+    if xa_has_admin_label:
+        current_full = _new_ward_only(tinh, xa_expanded)
+        if current_full:
+            return (tinh, current_full, dia_chi)
+
     # Buoc 1b: giay to CO ghi cap huyen -> tra bang 3 khoa truoc. Day la duong DUY NHAT chon dung
     # duoc mot ten xa/phuong trung o nhieu huyen trong cung tinh cu (vd "Phường 1" cua TP Da Lat cu
     # va cua TP Bao Loc cu): bang 2 khoa buoc phai bo qua ca hai vi khong du can cu, con cap
@@ -1508,6 +1554,7 @@ def reload() -> None:
     _TINH_ONLY.clear()
     _OLD_PROVINCE_NAMES.clear()
     _OLD_WARD_NAMES.clear()
+    _OLD_WARD_SPELLINGS.clear()
     _REMAP_BY_DISTRICT.clear()
     _REMAP_SOURCE_ENTRIES.clear()
     _load_remap_files()

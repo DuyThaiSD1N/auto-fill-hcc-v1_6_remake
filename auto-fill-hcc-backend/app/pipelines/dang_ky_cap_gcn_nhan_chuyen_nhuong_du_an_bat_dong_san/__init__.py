@@ -14,7 +14,6 @@ Bước 2 là bảng attp-row 11 dòng, mỗi ô chỉ nhận MỘT tệp → m�
 (trùng tên dòng 4) và dòng 11 (bản "nếu có" của dòng 7) đính LẠI cùng tệp; dòng 1, 6, 9, 10 để trống khi hồ
 sơ không có. GCN của chủ đầu tư và tệp chứng từ tài chính là "Bản sao", còn lại "Bản chính".
 
-Thay thế pipeline cũ `dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang` (giữ nguyên thư mục cũ, registry
-trỏ sang package này). ⚠ CÙNG tên thủ tục với bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-
+Thay thế pipeline cũ `dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang` (đã xoá). ⚠ CÙNG tên thủ tục với bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-
 san-lao-cai, 1.115667) — chỉ tách nhau bằng `urlScope`.
 """

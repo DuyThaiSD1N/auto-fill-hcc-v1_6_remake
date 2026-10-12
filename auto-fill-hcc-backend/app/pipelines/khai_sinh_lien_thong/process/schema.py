@@ -120,6 +120,9 @@ UI_COMP_BY_NAME = {
     "LoaiXacNhanVNeID": "radio",
     "DkttIsTtBo": "checkbox",
     "DkttIsTtMe": "checkbox",
+    # Chủ hộ CT01 là bố/mẹ → người xác nhận và chủ sở hữu chỗ ở là chính người đó (1 = bố, 2 = mẹ).
+    "LoaiThanNhanXacNhan": "radio",
+    "LoaiChuSoHuuChoO": "radio",
     "DkttChuHo": "text",
     "DkttChuhoSoGiayTo": "text",
     "DkttMaQuanHe": "select",

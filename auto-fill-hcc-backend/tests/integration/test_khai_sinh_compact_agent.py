@@ -123,9 +123,10 @@ async def test_khai_sinh_compact_agent_derives_angular_fields(monkeypatch):
     }
     assert d["CapBanSao"] == "1"
     assert d["BanSaoSoLuong"] == "3"
-    assert d["LoaiXacNhanVNeID"] == "2"
-    assert d["DkttIsTtBo"] is True
-    assert d["DkttMaQuanHe"] == "Con đẻ"
+    # Không có tờ khai CT01 → không mặc định mục đăng ký thường trú (xác nhận VNeID, chủ hộ).
+    assert "LoaiXacNhanVNeID" not in d
+    assert "DkttIsTtBo" not in d
+    assert "DkttMaQuanHe" not in d
     assert not res["errors"]
 
 
@@ -390,9 +391,11 @@ def test_mapper_rejects_mother_name_as_child_but_keeps_birth_facts():
     assert "Ten" not in values
     assert values["NgaySinh"] == "13/06/2026"
     assert values["GioiTinh"] == "Nữ"
+    # Thiếu xã nơi sinh → bổ sung theo bảng bệnh viện (data_bv/bv_lam_dong.json).
     assert values["NsDiaChi"] == {
         "tinh": "Lâm Đồng",
         "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
+        "xa": "Phường Cam Ly",
     }
     assert values["MeHo"] == "PHAN"
     assert values["MeChuDem"] == "THỊ"

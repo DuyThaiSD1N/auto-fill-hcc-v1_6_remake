@@ -1,7 +1,6 @@
 import json
 
 from app.pipelines.khai_tu_dang_ky_lai.attach import planner
-from app.pipelines.khai_tu_dang_ky_lai.attach.prompt import SYSTEM_PROMPT, build_user_prompt
 from app.process.schemas import FileItem
 from app.channels.handfree.procedure_registry import get_attach_pipeline, get_procedure
 
@@ -68,54 +67,8 @@ async def test_khai_tu_dang_ky_lai_attach_routes_fixed_rows_and_new_components(m
     assert "Văn bản ủy quyền" in items[3]["componentName"]
 
 
-async def test_khai_tu_dang_ky_lai_attach_combined_file_with_death_info_goes_to_row_2(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {
-                "name": "ho-so-gop.pdf",
-                "text": (
-                    "CĂN CƯỚC CÔNG DÂN Số / No.: 012197004527\n"
-                    "LĂNG MỘ BÀ TRỊNH THỊ ÉN SINH NĂM 1945 TẠ THẾ 2008"
-                ),
-            }
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({
-            "documents": [
-                {"index": 0, "docType": "identity", "documentName": "Căn cước công dân"},
-            ]
-        })
-
-    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(planner.client, "chat", fake_chat)
-
-    res = await planner.plan([_file("ho-so-gop.pdf")], {}, _session())
-    item = res["attachments"][0]
-
-    assert item["target"] == "existing"
-    assert item["componentIndex"] == 2
-    assert item["needsAddComponent"] is False
-
-
 def test_khai_tu_dang_ky_lai_registry_has_attachment_pipeline():
     proc = get_procedure("khai-tu-dang-ky-lai")
 
     assert proc["hasAttachmentStep"] is True
     assert get_attach_pipeline("khai-tu-dang-ky-lai") is not None
-
-
-def test_khai_tu_dang_ky_lai_attachment_prompt_contract():
-    assert "death_proof" in SYSTEM_PROMPT
-    assert "LĂNG MỘ" in SYSTEM_PROMPT
-    assert "Tờ khai đăng ký lại khai tử bản giấy vẫn là paper_declaration" in SYSTEM_PROMPT
-    assert "ủy quyền" in SYSTEM_PROMPT
-    assert "authorization" in SYSTEM_PROMPT
-    assert "component \"Giấy tờ khác\"" in SYSTEM_PROMPT
-    assert "STT 1" in SYSTEM_PROMPT
-
-    user_prompt = build_user_prompt([{"index": 0, "fileName": "lang-mo.pdf", "text": "LĂNG MỘ"}])
-    assert "ocrText" in user_prompt
-    assert "LĂNG MỘ" in user_prompt
-    assert "fileName" not in user_prompt
-    assert "lang-mo.pdf" not in user_prompt

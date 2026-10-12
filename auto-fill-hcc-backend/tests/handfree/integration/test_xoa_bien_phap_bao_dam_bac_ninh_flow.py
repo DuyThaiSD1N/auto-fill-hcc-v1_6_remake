@@ -3,6 +3,7 @@ cùng cổng Liferay Bắc Ninh 2 tab CÙNG TRANG (samePageAttach) + tỉnh ch�
 (agencyProvince) + toggle "Sở" (agencySoFirst). Xác nhận capability + luồng điền→đính liền
 mạch giống hệt thủ tục đăng ký."""
 from app.channels.handfree.chat import flow, intents
+from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
 from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_pipeline,
@@ -34,7 +35,7 @@ def test_registry_entry_same_page_va_pipeline_noi_core():
     assert any(p["key"] == KEY for p in public_list())
     keys = [d["key"] for d in proc["requiredDocs"]]
     assert keys == ["don", "gcn", "hop_dong", "cccd", "khac"]
-    assert KEY in intents._PROCEDURE_HINTS
+    assert KEY in picker_prompt.PROCEDURE_HINTS
 
 
 async def test_confirm_navigate_link_uuid_va_thoai_tinh_bac_ninh():
@@ -93,7 +94,9 @@ async def test_attach_report_tom_tat_hai_buoc():
         conv, intents.Intent("action", "attach_report", {"attached": 2, "errors": []}))
     assert conv["state"] == "done" and conv["attach_done"] is True
     assert "Tóm tắt" in r.display_md
-    assert "điền 9 ô" in r.tts_text and "2 tệp" in r.tts_text
+    # Lời đọc tạm bỏ con số (khối TTS-TẠM trong script_vi) — con số nằm ở phần hiển thị.
+    assert "điền 9 ô" in r.display_md and "2 tệp" in r.display_md
+    assert "Tóm tắt lại" in r.tts_text
 
 
 def test_upload_classifier_fallback_dung_o():

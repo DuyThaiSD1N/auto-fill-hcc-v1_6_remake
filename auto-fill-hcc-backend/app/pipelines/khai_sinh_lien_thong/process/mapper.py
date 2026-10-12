@@ -456,13 +456,17 @@ def enrich(fields: list[dict]) -> list[dict]:
         if is_bo:
             add("DkttIsTtBo", True)
             add("DkttMaQuanHe", "Con đẻ")
+            add("LoaiThanNhanXacNhan", "1")
+            add("LoaiChuSoHuuChoO", "1")
             seen.add("DkttIsTtMe")
         elif is_me:
             add("DkttIsTtMe", True)
             add("DkttMaQuanHe", "Con đẻ")
+            add("LoaiThanNhanXacNhan", "2")
+            add("LoaiChuSoHuuChoO", "2")
             seen.add("DkttIsTtBo")
-        else:  # chủ hộ là người khác → điền tay 3 ô
-            seen.update({"DkttIsTtBo", "DkttIsTtMe"})
+        else:  # chủ hộ là người khác → điền tay 3 ô; không đủ căn cứ chọn bố/mẹ ở hai radio xác nhận / chủ sở hữu
+            seen.update({"DkttIsTtBo", "DkttIsTtMe", "LoaiThanNhanXacNhan", "LoaiChuSoHuuChoO"})
             add("DkttChuHo", ct01_ten)
             add("DkttChuhoSoGiayTo", ct01_sdd)
             add("DkttMaQuanHe", values.get("Ct01_QuanHeVoiChuHo"))

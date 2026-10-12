@@ -62,7 +62,8 @@ async def test_dang_ky_dat_dai_compact_agent_derives_ui_fields(monkeypatch):
     assert d["CongDan_ngayCapCmnd"] == "12/06/2021"
     assert d["CongDan_noiCapCmnd"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["CongDan_maDMQuocGia"] == "Việt Nam"
-    assert d["CongDan_diaChiNuocNgoai"] == "Việt Nam"
+    # Ô địa chỉ lấy từ nơi cư trú trên CCCD; LLM không trả Cccd_NoiCuTru → để trống.
+    assert "CongDan_diaChiNuocNgoai" not in d
     assert d["CongDan_soGCNGP"] == "AB 123456"
     assert "CH 00120" not in d["CongDan_soGCNGP"]
     assert d["CongDan_ngayCapGCNGP"] == "21/12/2010"
@@ -123,7 +124,10 @@ def test_registry_uses_dang_ky_dat_dai_compact_agent_mode():
     proc = get_procedure("dang-ky-dat-dai-lan-dau")
 
     assert get_pipeline("dang-ky-dat-dai-lan-dau") is agent.run
-    assert proc["label"] == "Đăng ký đất đai lần đầu"
+    assert proc["label"] == (
+        "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận quyền sử dụng đất, "
+        "quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất"
+    )
     assert proc["mode"] == "agent"
     assert proc["roles"] == []
     assert "Giấy chứng nhận quyền sử dụng đất" in proc["uploadHint"]

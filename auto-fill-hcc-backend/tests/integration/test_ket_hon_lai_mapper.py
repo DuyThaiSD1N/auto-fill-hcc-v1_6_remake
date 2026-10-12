@@ -50,7 +50,7 @@ def test_map_full_case():
     assert out["HoTenBenNu"]["value"] == "MÁ THỊ SỐ"
     assert out["SoDinhDanh_BenNu"]["value"] == "012189003303"
     assert out["SoGiayToDinhDanh_BenNu"]["value"] == "012189003303"
-    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == "Căn cước công dân"
+    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == "Thẻ căn cước"  # nơi cấp Bộ Công an
     assert out["NgaySinhBenNu"]["value"] == "01/01/1989"
     assert out["NgayCapDD_BenNu"]["value"] == "16/03/2026"
     assert out["NoiCapDD_BenNu"]["value"] == "Bộ Công an"        # bỏ đuôi tiếng Anh
@@ -122,8 +122,9 @@ def test_old_marriage_metadata_does_not_infer_number_or_book_from_birth_certific
     assert "soDangKyTruocDay" not in out
     assert "quyenDangKyTruocDay" not in out
     assert out["ngayDangKyTruocDay"]["value"] == "11/09/1995"
-    assert out["noiDangKyTruocDay_filter"]["value"] == "Thái Bình"
-    assert out["noiDangKyTruocDay"]["value"] == "Xã Bình Long"
+    assert out["noiDangKyTruocDay_filter"]["value"] == "Hưng Yên"  # Thái Bình nhập vào Hưng Yên (2025)
+    # "Xã Bình Long" không có trong bảng sáp nhập của Thái Bình → không chọn bừa xã hiện hành.
+    assert "noiDangKyTruocDay" not in out
 
 
 def test_old_marriage_schema_uses_specific_fields_and_restricts_sources():

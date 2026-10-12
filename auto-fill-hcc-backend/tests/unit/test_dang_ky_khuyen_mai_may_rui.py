@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+import pytest
+
 from app.pipelines.dang_ky_khuyen_mai_may_rui.attach import planner
 from app.pipelines.dang_ky_khuyen_mai_may_rui.process import mapper
 from app.pipelines.dang_ky_khuyen_mai_may_rui.process.schema import UI_COMP_BY_NAME
@@ -59,6 +61,9 @@ def _run(values, options=None):
 
 def _snapshot(name_part: str) -> str:
     root = Path(__file__).resolve().parents[3] / "thongtin"
+    # Snapshot cổng nằm ngoài repo (workspace hcc/thongtin) — máy CI không có thì bỏ qua.
+    if not root.is_dir():
+        pytest.skip("thiếu snapshot cổng")
     folder = next(p for p in root.iterdir() if p.name.startswith("196"))
     page = next(p for p in folder.iterdir() if p.suffix == ".html" and name_part in p.name)
     return page.read_text(encoding="utf-8", errors="ignore")
@@ -170,6 +175,8 @@ def test_planner_llm_chet_moi_tep_ve_dong_dang_ky():
 def test_component_name_khop_dung_mot_dong_tren_snapshot():
     # Tên tệp trên macOS ở dạng NFD → chọn trang đính kèm theo nội dung (có radio rdo_File), không theo tên.
     root = Path(__file__).resolve().parents[3] / "thongtin"
+    if not root.is_dir():
+        pytest.skip("thiếu snapshot cổng")
     folder = next(p for p in root.iterdir() if p.name.startswith("196"))
     pages = [p.read_text(encoding="utf-8", errors="ignore") for p in folder.iterdir() if p.suffix == ".html"]
     html = next(h for h in pages if "rdo_File" in h)

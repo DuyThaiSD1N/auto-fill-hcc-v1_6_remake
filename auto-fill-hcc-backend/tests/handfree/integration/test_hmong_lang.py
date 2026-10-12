@@ -207,23 +207,25 @@ async def test_voice_config_langs_theo_cau_hinh(monkeypatch):
     from app.channels.handfree.voice.router import voice_config
 
     monkeypatch.setattr(settings, "asr_grpc_uri_hmong", "")
-    cfg = await voice_config()
+    cfg = await voice_config(user={})
     assert cfg["langs"] == ["vi"]
 
     monkeypatch.setattr(settings, "asr_grpc_uri_hmong", "103.253.20.28:9113")
-    cfg = await voice_config()
+    cfg = await voice_config(user={})
     assert cfg["langs"] == ["vi", "hmong"]
 
 
 def test_tts_voice_theo_lang(monkeypatch):
-    from app.channels.handfree.voice.ws_tts import _config_frame, _voice_for
+    from app.channels.handfree.voice import catalog
+    from app.channels.handfree.voice.ws_tts import _config_frame
 
     monkeypatch.setattr(settings, "tts_voice", "phuongnhi-north")
     monkeypatch.setattr(settings, "tts_voice_hmong", "xi")
-    assert _voice_for("vi") == "phuongnhi-north"
-    assert _voice_for("hmong") == "xi"
-    assert '"voiceId": "xi"' in _config_frame("hmong")
-    assert '"voiceId": "phuongnhi-north"' in _config_frame("vi")
+    # ws_tts chọn giọng qua catalog.resolve_voice (máy quầy chưa chọn → mặc định env theo lang).
+    assert catalog.resolve_voice("vi", "") == "phuongnhi-north"
+    assert catalog.resolve_voice("hmong", "") == "xi"
+    assert '"voiceId": "xi"' in _config_frame("hmong", catalog.resolve_voice("hmong", ""))
+    assert '"voiceId": "phuongnhi-north"' in _config_frame("vi", catalog.resolve_voice("vi", ""))
 
 
 def test_first_greet_di_qua_boc_ngon_ngu():

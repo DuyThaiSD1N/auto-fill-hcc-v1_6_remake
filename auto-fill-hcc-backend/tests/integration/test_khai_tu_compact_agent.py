@@ -7,14 +7,10 @@ import respx
 
 from app.config import settings
 from app.pipelines.khai_tu import process as agent
-from app.pipelines.khai_tu.process.prompt import EXTRA_RULES
 from app.pipelines.khai_tu.process import reason
-from app.pipelines.khai_tu.process.runner import (
-    _canonicalize_deceased_fields,
-    _requester_hint,
-)
+from app.pipelines.khai_tu.process.runner import _canonicalize_deceased_fields
 from app.pipelines.khai_tu.process.schema import FIELDS
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
+from app.pipelines.khai_tu_dvcqg.process import run as khai_tu_dvcqg_process
 from app.procedures.registry import get_pipeline, get_procedure
 from app.services import ocr
 
@@ -197,8 +193,14 @@ async def test_khai_tu_rejects_unrelated_identity_card_after_role_analysis(
     assert "SoGiayToDinhDanh" not in values
     assert "NgayCapDD" not in values
     assert "NoiCapDD" not in values
-    assert "HoVaTenC" not in values
-    assert "SoDinhDanhC" not in values
+    # Thẻ người thứ ba không được thành người yêu cầu: mục người yêu cầu chỉ mang mặc định theo
+    # tài khoản cổng (formContext), đánh dấu default để FE tô vàng.
+    by_name = {field["name"]: field for field in res["fields"]}
+    assert by_name["HoVaTenC"]["value"] == "VŨ ĐÌNH THIẾT"
+    assert by_name["HoVaTenC"].get("default") is True
+    assert by_name["SoDinhDanhC"]["value"] == "040203015844"
+    assert by_name["SoDinhDanhC"].get("default") is True
+    assert "068063001858" not in json.dumps(values, ensure_ascii=False)
     assert "LÊ VĂN TRUNG" in res["reasoning_context"]
 
 
@@ -221,18 +223,6 @@ def test_khai_tu_role_context_rejects_wrong_requester_anchor():
     )
 
     assert context == ""
-
-
-def test_khai_tu_role_prompt_prioritizes_exactly_two_identity_cards():
-    prompt = reason._ROLE_PROMPT
-
-    exact_two = prompt.index("CASE ĐÚNG 2 CCCD/CMND")
-    unrelated = prompt.index("Chỉ khi không thuộc case đúng 2 thẻ")
-    assert exact_two < unrelated
-    assert "BẮT BUỘC gán thẻ khớp" in prompt
-    assert "thẻ còn lại cho người chết" in prompt
-    assert "Không cần thêm tờ khai/giấy báo tử" in prompt
-    assert "CCCD/CMND chỉ được gán cho một vai khi" not in prompt
 
 
 @respx.mock
@@ -309,7 +299,8 @@ async def test_khai_tu_compact_agent_derives_ui_fields(monkeypatch):
     assert d["HoVaTenC"] == "VŨ ĐÌNH THIẾT"
     assert d["SoDinhDanhC"] == "040203015844"
     assert d["SoGiayToDinhDanhC"] == "040203015844"
-    assert d["LoaiGiayToDinhDanhC"] == "Thẻ căn cước công dân"
+    # Nơi cấp Cục Cảnh sát QLHC về TTXH → "Căn cước công dân".
+    assert d["LoaiGiayToDinhDanhC"] == "Căn cước công dân"
     assert d["NgayCapDDC"] == "02/07/2021"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["nycLoaiCuTru"] == "Thường trú"
@@ -323,7 +314,8 @@ async def test_khai_tu_compact_agent_derives_ui_fields(monkeypatch):
     assert d["nktQuocTich"] == "Việt Nam"
     assert d["SoDinhDanh"] == "012040000001"
     assert d["SoGiayToDinhDanh"] == "012040000001"
-    assert d["LoaiGiayToDinhDanh"] == "Thẻ căn cước công dân"
+    # Không có nơi cấp → nhóm căn cước mặc định nhãn "Căn cước công dân" của dropdown eForm.
+    assert d["LoaiGiayToDinhDanh"] == "Căn cước công dân"
     assert d["nktLoaiCuTru"] == "Thường trú"
     assert d["nktNoiCuTru"] == "1"
     assert d["nktNoiCuTru_TrongNuoc"]["diaChi"] == "Bản Nậm Hàng"
@@ -518,7 +510,7 @@ def test_khai_tu_mapper_preserves_deceased_ethnicity_and_selected_residence_sour
     assert d["nktNoiCuTru_TrongNuoc"] == {
         "quocGia": "Việt Nam",
         "tinh": "Điện Biên",
-        "xa": "Thanh Nưa",
+        "xa": "Xã Thanh Nưa",  # nhãn xã hiện hành sau remap
         "diaChi": "Số 12, bản Nà Púng",
     }
     assert "CapBanSao" not in d
@@ -551,49 +543,6 @@ def test_khai_tu_mapper_does_not_use_death_notice_issuer_as_death_place():
     assert d["gbtCoQuanCap"] == "UBND xã MINH TÂN"
     assert d["nktNoiChet"] == "1"
     assert d["nktNoiChet_TrongNuoc"] == {"quocGia": "Việt Nam"}
-
-
-def test_khai_tu_compact_prompt_instructs_source_split():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-    assert "<task_contract>" in system_prompt
-    assert "<execution_order>" in system_prompt
-    assert "<document_inventory>" in system_prompt
-    assert "<role_routing>" in system_prompt
-    assert "<source_authority>" in system_prompt
-    assert "<verification_loop>" in system_prompt
-    assert "Cccd_* chỉ lấy giấy tờ người yêu cầu" in system_prompt
-    assert "đúng 2 CCCD và đúng 1 thẻ" in system_prompt
-    assert "thẻ còn lại là người chết" in system_prompt
-    assert "Giữ nguyên cụm họ tên, số giấy tờ" in system_prompt
-    assert "mục \"Nơi cư trú cuối cùng\" trong paper_declaration" in system_prompt
-    assert "\"Nơi thường trú/Place of residence\" trên deceased_identity, chỉ là fallback" in system_prompt
-    assert "Không thay nguồn ưu tiên chỉ vì nguồn thấp hơn trình bày rõ" in system_prompt
-    assert "CCCD/Căn cước thông thường KHÔNG in dân tộc" in system_prompt
-    assert "không làm mất dân tộc đọc rõ từ nguồn ưu tiên" in system_prompt
-    assert "CMND ghi \"Công an tỉnh/thành phố ...\" → giữ nguyên" in system_prompt
-    assert 'chỉ còn "QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI"' in system_prompt
-    assert '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"' in system_prompt
-    assert "Không lấy chữ ký cuối trang" in system_prompt
-    assert "Không diễn giải ô trống thành \"Không\"" in system_prompt
-    assert "bỏ cả CopyRequest_WantsCopy và CopyRequest_Quantity" in system_prompt
-    assert "Cơ quan/cơ sở cấp giấy báo tử KHÔNG mặc nhiên là nơi chết" in system_prompt
-    assert "Ưu tiên địa giới 2 cấp là bước CHUẨN HÓA SAU KHI CHỌN NGUỒN" in system_prompt
-    assert "Tờ khai có \"Dân tộc: <giá trị>\"" in system_prompt
-    assert "output không có hai CopyRequest_*" in system_prompt
-    assert "<source_priority_example>" in system_prompt
-    assert "Chọn paper_declaration" in system_prompt
-    assert '"tinh":"Minh Sơn","xa":"Bình An"' in system_prompt
-    assert "<historical_death_correspondence_case>" in system_prompt
-    assert '"đăng ký khai tử ... cho ông/bà <HỌ TÊN>"' in system_prompt
-    assert "CCCD không liên quan" in system_prompt
-    assert "Nơi an táng/mộ phần không mặc nhiên là nơi chết" in system_prompt
-    assert "KHÔNG phải Gbt_So/Gbt_NgayCap/Gbt_CoQuanCap" in system_prompt
-    assert 'Không xếp "TRÍCH LỤC KHAI TỬ" vào nhóm này' in system_prompt
-    assert "TLKT hoặc TLKT-BS TUYỆT ĐỐI KHÔNG được dùng" in system_prompt
-    assert "không xuất vào bất kỳ Gbt_* nào" in system_prompt
-    assert "không dùng địa chỉ người yêu cầu, vợ/chồng hoặc chủ hộ khác" in system_prompt
-    assert "Không suy giới tính chỉ từ cách xưng hô" in system_prompt
 
 
 def test_khai_tu_schema_prioritizes_declaration_for_deceased_residence():
@@ -643,27 +592,6 @@ def test_khai_tu_schema_keeps_requester_identity_out_of_deceased_fields():
     residence = descriptions["NguoiMat_NoiCuTruCuoiCung"]
     assert "xác nhận trực tiếp thuộc người chết" in residence
     assert "Không dùng địa chỉ người yêu cầu, vợ/chồng hoặc chủ hộ khác" in residence
-
-
-def test_khai_tu_requester_hint_routes_second_cccd_to_deceased():
-    hint = _requester_hint({
-        "formContext": {
-            "applicantFullname": "NGƯỜI YÊU CẦU",
-            "applicantIdentityNumber": "012345678901",
-        }
-    })
-
-    assert 'họ tên="NGƯỜI YÊU CẦU"' in hint
-    assert 'số định danh="012345678901"' in hint
-    assert "chỉ là mỏ neo phân vai" in hint
-    assert "đúng 2 CCCD" not in hint
-    assert "NguoiMat_NoiCuTruCuoiCung" not in hint
-
-    combined_rules = hint + EXTRA_RULES
-    assert combined_rules.index("<requester_context>") < combined_rules.index("<role_routing>")
-    source_block = combined_rules.index("\n<source_authority>\n")
-    assert combined_rules.index("<role_routing>") < source_block
-    assert source_block < combined_rules.index("<source_priority_example>")
 
 
 def test_khai_tu_canonicalizes_legacy_deceased_names_before_validation():
@@ -798,11 +726,11 @@ def test_khai_tu_schema_uses_new_deceased_prefix_and_keeps_death_notice_names():
 def test_registry_uses_khai_tu_compact_agent_mode():
     proc = get_procedure("khai-tu")
 
-    assert get_pipeline("khai-tu") is agent.run
+    # Cổng đã thay eForm cũ bằng SurveyJS (DVC quốc gia mới) → key chạy package khai_tu_dvcqg.
+    assert get_pipeline("khai-tu") is khai_tu_dvcqg_process
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
-    assert "tự phân biệt theo nội dung OCR" in proc["uploadHint"]
 
 
 def test_khai_tu_sanitize_bo_qua_so_cccd_nhac_trong_ly_do_loai():

@@ -2,6 +2,7 @@
 choose_variant (cấp mới/cấp lại) → DVCQG chỉ chọn TỈNH (ward rỗng) → trang MAE fill_mae_agency
 → wizard MAE (kê khai bước 1, đính kèm bước 2) → attach_plan mang attach_step=2."""
 from app.channels.handfree.chat import flow, intents
+from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
 from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_pipeline,
@@ -40,7 +41,7 @@ def test_choose_variant_intents_khai_bao_dung_handler():
     # dựng...) nên chỉ kiểm phải CHỨA đủ hai value của thuỷ sản, không khoá cứng bằng nhau.
     entries = {e["value"] for e in intents._STATE_INTENTS["choose_variant"]}
     assert {"variant_cap_moi", "variant_cap_lai"} <= entries
-    assert KEY in intents._PROCEDURE_HINTS
+    assert KEY in picker_prompt.PROCEDURE_HINTS
 
 
 async def test_confirm_mo_trang_ngay_khong_hoi_truong_hop_tu_dau():

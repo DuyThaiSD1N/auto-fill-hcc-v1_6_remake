@@ -41,33 +41,9 @@ def test_attachment_plan_routes_two_rows_adds_cccd_and_skips_business_registrati
     assert attachments[2]["needsAddComponent"] is True
     assert attachments[2]["quantity"] == 1
     assert "Trường hợp nộp trực tiếp" in attachments[2]["componentName"]
-    assert attachments[2]["documentName"] == "Căn cước công dân_File 3"
-    assert classified[2]["documentName"] == "Căn cước công dân_File 3"
+    assert attachments[2]["documentName"] == "Căn cước công dân"
+    assert classified[2]["docType"] == "cccd"
     assert classified[3]["skipped"] is True
-
-
-def test_cccd_attachment_uses_holder_name_from_ocr():
-    files = [_raw("cccd_thiet.pdf")]
-    ocr_results = [{
-        "name": "cccd_thiet.pdf",
-        "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên / Full name:\nVŨ ĐÌNH THIẾT\nSố / No.: 040203015844",
-    }]
-
-    attachments, warnings, classified = planner.build_plan_items(files, ocr_results)
-
-    assert warnings == []
-    assert attachments == [{
-        "fileIndex": 0,
-        "fileName": "cccd_thiet.pdf",
-        "documentName": "Căn cước công dân_Vũ Đình Thiết",
-        "componentName": planner._CCCD_COMPONENT,
-        "loaiBan": "Bản chính",
-        "quantity": 1,
-        "target": "add-document-dialog",
-        "needsAddComponent": True,
-        "detectedType": "cccd",
-    }]
-    assert classified[0]["documentName"] == "Căn cước công dân_Vũ Đình Thiết"
 
 
 def test_attachment_plan_uses_llm_result_for_every_rule_other():
@@ -83,16 +59,3 @@ def test_attachment_plan_uses_llm_result_for_every_rule_other():
     assert warnings == []
     assert attachments[0]["detectedType"] == "thuyet_minh"
     assert classified == [{"fileName": "scan-kho-doc.pdf", "docType": "thuyet_minh", "source": "llm"}]
-
-
-def test_attachment_plan_warns_when_llm_still_returns_other():
-    files = [_raw("tai-lieu-khac.pdf")]
-    ocr_results = [{"name": "tai-lieu-khac.pdf", "text": "Nội dung không đủ xác định."}]
-
-    attachments, warnings, classified = planner.build_plan_items(files, ocr_results, {0: "other"})
-
-    assert attachments == []
-    assert warnings == [
-        "Không xác định được loại giấy tờ cho file 'tai-lieu-khac.pdf' — vui lòng đính kèm thủ công."
-    ]
-    assert classified[0]["docType"] == "other"
