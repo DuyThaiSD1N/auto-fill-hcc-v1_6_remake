@@ -74,6 +74,11 @@ def _normalize(text: str) -> str:
     return t
 
 
+def _compact(normalized: str) -> str:
+    """Khoa so gan dung: bo khoang trang, gop "rn" -> "m" (OCR hay doc "m" thanh "rn")."""
+    return re.sub(r"[^a-z0-9]+", "", normalized).replace("rn", "m")
+
+
 def _load_hospital_files() -> None:
     """Load tat ca bv_*.json va build lookup list."""
     if not _DATA_DIR.exists():
@@ -96,7 +101,9 @@ def _load_hospital_files() -> None:
             if not ten or not xa or not tinh:
                 continue
             _HOSPITALS.append({
+                "ten": ten,
                 "ten_folded": _normalize(ten),
+                "key": _compact(_normalize(ten)),
                 "xa": xa,
                 "tinh": tinh,
             })
@@ -144,6 +151,85 @@ def lookup_hospital(name: Optional[str]) -> Optional[dict]:
     # Uu tien entry co ten ngan nhat (tranh khop qua rong, vd "benh vien" khop nhieu noi)
     best = min(candidates, key=lambda h: len(h["ten_folded"]))
     return {"xa": best["xa"], "tinh": best["tinh"]}
+
+
+# Sua chinh ta ten co so y te (cung cach correct_area() cua area_remap sua ten tinh/xa).
+# Ten trong bang deu bat dau bang "Benh vien"/"Trung tam y te" nen phan dau sua rieng; nguong loi
+# tinh tren CA ten: ngan hon 16 ky tu chiu 1 loi, duoi 24 chiu 2, tu 24 chiu 3.
+_HOSPITAL_FIX_LONG_LEN = 24
+_HOSPITAL_FIX_MID_LEN = 16
+_HOSPITAL_FIX_MIN_LEN = 12
+# OCR to khai viet tay hay doc "Bệnh viện" thanh "Biên Viên"/"Bênh viên"/"Bịnh viện".
+_HEAD_WORDS = ("benh vien", "trung tam y te", "tram y te", "phong kham")
+# Chu dung truoc ten co so tren to khai ("Tại Bệnh viện ...") -- bo qua khi so.
+_LEAD_WORDS = {"tai"}
+
+
+def _fix_head(normalized: str) -> str:
+    """Hai/ba tu dau lech chut it so voi "benh vien"/"trung tam y te"... -> viet lai cho dung."""
+    from app.pipelines._shared.area_remap import _edit_distance
+
+    tokens = normalized.split()
+    for head in _HEAD_WORDS:
+        n = len(head.split())
+        if len(tokens) <= n:
+            continue
+        got = "".join(tokens[:n])
+        want = head.replace(" ", "")
+        if got != want and _edit_distance(got, want, 2) <= 2:
+            return " ".join([head] + tokens[n:])
+    return normalized
+
+
+def _fix_limit(key: str) -> int:
+    if len(key) < _HOSPITAL_FIX_MID_LEN:
+        return 1
+    return 2 if len(key) < _HOSPITAL_FIX_LONG_LEN else 3
+
+
+def correct_hospital_name(text: Optional[str]) -> Optional[str]:
+    """Ten co so y te OCR doc sai chinh ta -> ten DUNG trong bang, giu nguyen phan duoi (dia chi).
+
+    Vi du: "Biên Viên Đa Khoa Hoàn mỉ Đà Lạt Đồi Long Thọ"
+        -> "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt Đồi Long Thọ".
+
+    Tra None khi khong can sua (ten da khop bang theo lookup_hospital) hoac khong du can cu:
+      - chi so voi PHAN DAU chuoi (bo "Tại"), thu moi do dai tien to;
+      - khoang cach Damerau (area_remap._edit_distance) trong nguong theo do dai ten;
+      - nhieu benh vien KHAC NHAU cung dat khoang cach nho nhat -> bo tay (vd "Nhi"/"Mắt Thái Bình").
+    Ket qua la PHONG DOAN co can cu: nguoi goi nen danh dau default cho can bo soat lai.
+    """
+    if not text or not _HOSPITALS or lookup_hospital(text):
+        return None
+    from app.pipelines._shared.area_remap import _edit_distance
+
+    words = str(text).split()
+    start = 0
+    while start < len(words) - 1 and _normalize(words[start]) in _LEAD_WORDS:
+        start += 1
+
+    best: dict[str, tuple[int, int, dict]] = {}  # ten_folded -> (dist, -end, entry)
+    for end in range(start + 1, len(words) + 1):
+        key = _compact(_fix_head(_normalize(" ".join(words[start:end]))))
+        if len(key) < _HOSPITAL_FIX_MIN_LEN:
+            continue
+        for h in _HOSPITALS:
+            limit = _fix_limit(h["key"])
+            dist = _edit_distance(key, h["key"], limit)
+            if dist > limit:
+                continue
+            cur = best.get(h["ten_folded"])
+            if cur is None or (dist, -end) < cur[:2]:
+                best[h["ten_folded"]] = (dist, -end, h)
+    if not best:
+        return None
+    top = min(dist for dist, _, _ in best.values())
+    winners = [(neg_end, h) for dist, neg_end, h in best.values() if dist == top]
+    if len(winners) != 1:
+        return None
+    neg_end, h = winners[0]
+    rest = " ".join(words[-neg_end:])
+    return f"{h['ten']} {rest}".strip()
 
 
 def reload() -> None:

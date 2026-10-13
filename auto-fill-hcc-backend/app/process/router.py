@@ -21,6 +21,9 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
+    with_account_process_options as with_khai_sinh_dang_ky_lai_account_process_options,
+)
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
@@ -89,6 +92,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # 4 phường Đà Lạt: khai sinh liên thông chọn giám hộ thẻ BHYT = mẹ, nơi KCB = BV Sản Nhi Lâm Đồng.
         prepared.pipeline_options = with_khai_sinh_lien_thong_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Phường Hiệp Hòa: đăng ký lại khai sinh có giấy ủy quyền thì người yêu cầu là bên ủy quyền.
+        prepared.pipeline_options = with_khai_sinh_dang_ky_lai_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

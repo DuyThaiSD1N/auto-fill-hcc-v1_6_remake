@@ -48,11 +48,15 @@ test("chỉ trang chủ DVC quốc gia tự mở và không dựng lại panel �
 test("về đúng trang chủ DVC tạo lượt trò chuyện mới", () => {
   const sidebar = fs.readFileSync(path.join(root, "sidebar.js"), "utf8");
   assert.match(content, /if \(IS_DVC_HOME\) sidebarQuery\.set\("fresh", "dvc-home"\)/);
-  assert.match(content, /sidebar\.html\?\$\{sidebarQuery\.toString\(\)\}/);
+  assert.match(content, /const trangKhung = _theHoSoPhu \? "companion\.html" : "sidebar\.html"/);
+  assert.match(content, /\$\{trangKhung\}\?\$\{sidebarQuery\.toString\(\)\}/);
   assert.match(sidebar, /START_FRESH_ON_DVC_HOME = params\.get\("fresh"\) === "dvc-home"/);
-  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*await api\.deleteConversation\("dvc-home"\)/);
-  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*await clearJourney\(\)/);
-  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*showStartScreen\(\)/);
+  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\) \{ await lamMoiVeTrangChuDVC\(j\); return; \}/);
+  const lamMoi = sidebar.match(/async function lamMoiVeTrangChuDVC\(j\) \{[\s\S]*?\n  \}\n/)?.[0] || "";
+  assert.match(lamMoi, /await api\.deleteConversation\("dvc-home"\)/);
+  assert.match(lamMoi, /await clearJourney\(\)/);
+  assert.match(lamMoi, /showStartScreen\(\)/);
+  assert.doesNotMatch(lamMoi, /clearCitizenDvcCookies/);
   assert.doesNotMatch(sidebar, /START_FRESH_ON_DVC_HOME[\s\S]{0,800}clearCitizenDvcCookies/);
 });
 

@@ -31,13 +31,14 @@ mkdir -p "${OUTPUT_DIR}"
   cd "${SCRIPT_DIR}"
   zip -rq "${OUTPUT_FILE}" . \
     -x '.git/*' \
+       '.github/*' \
        '.gitignore' \
        '.DS_Store' \
        'dist/*' \
        'tests/*' \
        'node_modules/*' \
        'build-zip.sh' \
-       'README.md' \
+       '*.md' \
        '*.zip'
 )
 

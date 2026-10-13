@@ -112,12 +112,13 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — tờ khai tách riêng vào Tk_NoiCuTruCha/Tk_NoiCuTruMe; với ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru: CCCD đúng người > giấy kết hôn > giấy chứng sinh > giấy khai sinh (xem mục D). Lấy trọn diaChi+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
 
 # ═══ G. GIẤY CHỨNG NHẬN KẾT HÔN (GcnKetHon_*) ═══
-- GcnKetHon_* CHỈ lấy từ tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.
+- NGUỒN theo thứ tự: (1) tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ; (2) nếu hồ sơ KHÔNG có giấy đó (hoặc giấy đó không đọc được trường nào) → dòng "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ (nếu cha, mẹ trẻ đã ĐKKH): Số: ..., Quyển số: ..., đăng ký ngày ... tại ..." trên TỜ KHAI ĐĂNG KÝ KHAI SINH (mẫu mới; OCR có thể dính dòng này vào cuối khối người cha). Chỉ có giấy chứng sinh/CCCD thì để trống.
+- Lấy từ dòng trên tờ khai: GcnKetHon_So = phần sau "Số:" (bỏ dấu chấm chỗ trống, vd "49..." → "49"); GcnKetHon_QuyenSo = phần sau "Quyển số:" (OCR có thể ra "Quyền số"), chỉ toàn dấu chấm → bỏ; GcnKetHon_NgayCap = "đăng ký ngày D tháng M năm Y" → dd/mm/yyyy; GcnKetHon_NoiCap = NGUYÊN VĂN phần sau "tại" tới hết tên cơ quan (vd "UBND xã A huyện B tỉnh C"), không kèm câu cam đoan phía sau. Vd generic: "Số: 12..., Quyển số: ....., đăng ký ngày 05 tháng 3 năm 2020 tại UBND xã A huyện B tỉnh C" → So="12", NgayCap="05/03/2020", NoiCap="UBND xã A huyện B tỉnh C".
 - BẮT BUỘC: HỄ CÓ giấy chứng nhận kết hôn trong hồ sơ → PHẢI trích ĐỦ GcnKetHon_So, GcnKetHon_QuyenSo, GcnKetHon_NgayCap, GcnKetHon_NoiCap. Đây là SỐ/NGÀY/NƠI CẤP CỦA CHÍNH TỜ GIẤY (dữ liệu của FORM), KHÔNG phải "thông tin cha/mẹ" → TUYỆT ĐỐI KHÔNG bỏ qua giấy kết hôn chỉ vì cha/mẹ đã có CCCD. Trường nào OCR THỰC SỰ không đọc được thì bỏ, KHÔNG bịa.
 - GcnKetHon_So lấy ở dòng "Số:" NGAY ĐẦU tài liệu, dạng "<số>/<năm>" (vd "119/2026") HOẶC chỉ "<số>" (vd "140"). LƯU Ý OCR hay MẤT DẤU: "Số" có thể hiện thành "Só"/"So" — vẫn phải nhận đúng.
 - GcnKetHon_QuyenSo lấy ở dòng "Quyển số:" (vd "01/2013").
 - GcnKetHon_NgayCap lấy từ "Ngày, tháng, năm đăng ký"/"Ngày cấp" (vd "01/02/2025"); GcnKetHon_NoiCap lấy từ "Nơi đăng ký kết hôn" (tên cơ quan, vd "UBND...").
-- TUYỆT ĐỐI KHÔNG lấy số/ngày của GIẤY CHỨNG SINH hay giấy tờ khác để điền GcnKetHon_*. Số giấy chứng sinh thường chứa "GCS" (vd "01327.GCS.12096.25") — KHÔNG phải số giấy CN kết hôn, không được dùng. Không tìm thấy đúng số → để trống.
+- TUYỆT ĐỐI KHÔNG lấy số/ngày của GIẤY CHỨNG SINH hay giấy tờ khác (ngoài hai nguồn trên) để điền GcnKetHon_*. Số giấy chứng sinh thường chứa "GCS" (vd "01327.GCS.12096.25") — KHÔNG phải số giấy CN kết hôn, không được dùng. Không tìm thấy đúng số → để trống.
 
 # ═══ H. LIÊN HỆ ═══
 - LienHe_SoDienThoai: CỐ GẮNG đọc số điện thoại liên hệ trong giấy tờ (vd dòng "Số điện thoại:..." trong văn bản/đơn). Trả số di động VN 10 số bắt đầu bằng "0"; sửa lỗi OCR phổ biến (S→5, O→0); nếu thiếu số 0 đứng đầu thì thêm vào. Không bịa nếu không đọc được.

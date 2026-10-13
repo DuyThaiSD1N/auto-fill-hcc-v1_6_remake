@@ -107,6 +107,8 @@
     // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
     // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
     supportsTuPhapMoi: true,
+    // Trang hộ tịch mới: điền xong tự đính kèm, nộp ở bước nào cũng sang phần sau nộp.
+    supportsTpmAutoFlow: true,
     // Công dân chọn một nút bằng lời → BE nhờ bấm hộ đúng nút đó (press_chip) hoặc báo nhóm nút đã
     // dùng (chip_used). Thiếu cờ → BE chạy thẳng lệnh của nút như trước.
     supportsVoiceChips: true,
@@ -1172,11 +1174,17 @@
         // (nút "Kiểm tra lại trang hiện tại" đã bỏ khỏi UI, yêu cầu 22/09/2026).
         fallbackChipShown = true;
         void verifyPortalState();
-      } else if (lastState === "done" && ctx.submitted && !submittedReported) {
+      } else if (!submittedReported && (
+        (lastState === "done" && (ctx.submitted || ctx.submittedToast))
+        // Toast "Gửi hồ sơ thành công" là lưới đỡ khi cú bấm nộp lọt: BE báo được nhận ở mọi bước
+        // (submit_anywhere) thì báo luôn, không chờ tới bước cuối. Cổng khác vẫn như cũ.
+        || (ctx.submittedToast && lastReplyData?.submit_anywhere)
+      )) {
         // Chốt TRƯỚC khi gọi BE: trang thành công giữ nguyên text rất lâu; nếu để reply
         // state=done khởi động watcher lại thì cùng hồ sơ sẽ sinh nhiều card hoàn tất.
         submittedReported = true;
         clearInterval(watcherTimer); watcherTimer = null;
+        if (ctx.submittedToast) void sendToContent({ action: "ackSubmitToast" });
         ask("__event:submitted", "system");
       }
     }, 3500);

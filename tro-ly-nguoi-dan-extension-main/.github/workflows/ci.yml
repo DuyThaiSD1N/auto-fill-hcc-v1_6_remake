@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Push mới lên cùng nhánh thì huỷ lượt chạy cũ, đỡ tốn phút chạy.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Cú pháp + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Không có package.json: test chỉ dùng node:test + thư viện có sẵn của Node.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Merge hỏng (dấu conflict, chép đè nửa file) làm Chrome bỏ nạp cả file → bắt ở đây trước.
+      - name: Cú pháp JS + JSON
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            node --check "$f" || { echo "::error file=$f::Lỗi cú pháp JS"; fail=1; }
+          done < <(git ls-files -z '*.js' ':!vendor/**' ':!dist/**')
+          while IFS= read -r -d '' f; do
+            node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$f" \
+              || { echo "::error file=$f::JSON không hợp lệ"; fail=1; }
+          done < <(git ls-files -z '*.json' ':!vendor/**' ':!dist/**')
+          exit "$fail"
+
+      # tests/test-*.js là script tự chạy (không dùng node:test): node --test coi mỗi file là một
+      # test, đạt khi thoát mã 0. Test so khớp với repo extension bên kia tự bỏ qua khi không có nó.
+      - name: Test
+        run: node --test tests/*.test.js tests/test-*.js

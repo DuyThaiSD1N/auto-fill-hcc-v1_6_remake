@@ -115,7 +115,8 @@
             if (finalText) this.onFinal(finalText);
           }
         } else if (msg.type === "error") {
-          this.onError({ name: "AsrError", message: msg.message || "Lỗi nhận giọng nói." });
+          // KHÔNG hiện nguyên văn lỗi máy chủ: chi tiết dịch vụ ASR có thể chứa địa chỉ nội bộ.
+          this.onError({ name: "AsrError", message: "Dịch vụ nhận giọng nói đang gặp sự cố, thử lại sau hoặc gõ chữ." });
           this._setState("error");
           this._teardown();
         } else if (msg.type === "end") {

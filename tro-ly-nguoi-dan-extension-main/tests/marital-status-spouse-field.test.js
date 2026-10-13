@@ -44,7 +44,7 @@ assert.equal(
   true,
   "Object chỉ có tên vợ/chồng vẫn phải được nhận diện là vùng tình trạng hôn nhân động",
 );
-assert.equal(sandbox.fillStructuredValue(container, value), true);
+assert.equal(sandbox.fillStructuredValue(container, value).any, true);
 assert.equal(spouseInput.value, "VŨ HỮU NINH");
 assert.equal(spouseInput.options.typing, true);
 assert.equal(spouseInput.options.commit, true);

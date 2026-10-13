@@ -96,9 +96,13 @@ function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false 
     browsingData: {
       async remove(options, dataTypes) { browsingDataRemovals.push({ options, dataTypes }); },
     },
-    storage: { local: { async get() { return {}; }, async set() {}, async remove() {} } },
+    storage: {
+      onChanged: { addListener() {} },
+      local: { async get() { return {}; }, async set() {}, async remove() {} },
+    },
     tabs: {
       onRemoved: { addListener() {} },
+      onCreated: { addListener() {} },
       async query() { return [{ id: 77 }, { id: 88 }]; },
       async sendMessage(tabId, message) { contentMessages.push({ tabId, message }); },
       async create() {}, async update() {}, async get() {}, async reload() {}, async remove() {},
@@ -106,14 +110,22 @@ function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false 
     runtime: {
       onMessage: { addListener(fn) { listeners.push(fn); } },
       onConnect: { addListener() {} }, lastError: null, sendMessage() {},
+      onInstalled: { addListener() {} },
+      onStartup: { addListener() {} },
     },
+    alarms: { onAlarm: { addListener() {} }, async create() {} },
     offscreen: { async hasDocument() { return false; }, async createDocument() {}, async closeDocument() {} },
   };
 
-  vm.runInNewContext(background, {
+  const context = {
     chrome, console, setTimeout, clearTimeout, Promise, Date, Number, Array, String,
     fetch: async () => { throw new Error("unexpected fetch"); },
-  });
+  };
+  // background.js nạp lib bằng importScripts như service worker thật → chạy file đó trong CÙNG context.
+  context.importScripts = (...files) => {
+    for (const file of files) vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context);
+  };
+  vm.runInNewContext(background, context);
 
   const dispatch = (message, tabId = 77) => new Promise((resolve, reject) => {
     let handled = false;

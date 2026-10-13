@@ -29,8 +29,8 @@ test("ba bước mở đầu là nhãn hướng dẫn, không mang hình thức 
 test("cổng báo nộp thành công hỏi giữ phiên và mặc định logout sau 2 phút", () => {
   assert.match(content, /body\.includes\("nop ho so thanh cong"\) \|\| body\.includes\("gui ho so thanh cong"\)/);
   assert.doesNotMatch(content, /body\.includes\("thanh cong"\) && body\.includes\("ma ho so"\)/);
-  assert.match(sidebar, /lastState === "done" && ctx\.submitted && !submittedReported/);
-  assert.match(sidebar, /submittedReported = true;\s*clearInterval\(watcherTimer\); watcherTimer = null;\s*ask\("__event:submitted"/);
+  assert.match(sidebar, /!submittedReported && \(\s*\(lastState === "done" && \(ctx\.submitted \|\| ctx\.submittedToast\)\)/);
+  assert.match(sidebar, /submittedReported = true;\s*clearInterval\(watcherTimer\); watcherTimer = null;\s*(if \(ctx\.submittedToast\)[^\n]*\n\s*)?ask\("__event:submitted"/);
   assert.match(sidebar, /a\.type === "await_logout_choice"/);
   assert.match(sidebar, /Number\(a\.delay_ms\) \|\| 120000/);
   assert.match(sidebar, /a\.type === "logout_citizen"[\s\S]*returnToStart\("completed"\)/);

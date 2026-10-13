@@ -14,8 +14,8 @@ test("checklist mở modal danh sách theo từng loại giấy tờ", () => {
   assert.match(sidebar, /className = "doc-files-btn"/);
   assert.match(sidebar, /openUploadFileList\(\{/);
   assert.match(sidebar, /event\.key !== "Tab"/);
-  assert.match(sidebar, /file\.doc_key === activeFileGroup\.docKey/);
-  assert.match(sidebar, /activeFileGroup\.unknown\s*\? !file\.doc_key/);
+  assert.match(sidebar, /function filesInGroup\(group\) \{[\s\S]*?group\.unknown\s*\? !file\.doc_key\s*: file\.doc_key === group\.docKey/);
+  assert.match(sidebar, /function filesInActiveGroup\(\) \{\s*return filesInGroup\(activeFileGroup\);/);
   assert.match(css, /\.file-list-dialog \{/);
 });
 
@@ -38,7 +38,7 @@ test("mọi REST upload-session từ extension đều đi qua Bearer auth", () =
 });
 
 test("xóa ngay theo fid, không có bước xác nhận", () => {
-  assert.match(sidebar, /deleteUploadSessionFile\(file\)/);
+  assert.match(sidebar, /deleteUploadSessionFile\(file, \{ thuCong: true \}\)/);
   assert.match(sidebar, /files\/\$\{encodeURIComponent\(file\.fid\)\}`,[\s\S]*method: "DELETE"/);
   assert.match(sidebar, /uploadSessionFiles\.filter\(\(item\) => item\.fid !== file\.fid\)/);
   assert.doesNotMatch(sidebar, /confirm\s*\(/);

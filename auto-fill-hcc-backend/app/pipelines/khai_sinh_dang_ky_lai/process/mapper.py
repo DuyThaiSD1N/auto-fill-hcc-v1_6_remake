@@ -63,6 +63,39 @@ def _fold(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+# Cấu hình theo tài khoản: phường Hiệp Hòa (Bắc Ninh) hồ sơ có giấy ủy quyền thì người yêu cầu (mục I)
+# là BÊN ỦY QUYỀN; nơi khác vẫn là bên được ủy quyền đi nộp. Mapper không biết tài khoản nên router
+# (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ
+# luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "khai-sinh-dang-ky-lai"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_bac_ninh_hiep_hoa(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Hiệp Hòa, Bắc Ninh ("Tỉnh"/"Thành phố Bắc Ninh" đều khớp).
+
+    Xã khớp ĐÚNG tên sau khi bỏ tiền tố (catalog cũ còn ghi "Xã Hiệp Hòa") để không dính nơi khác
+    có tên chứa "Hiệp Hòa".
+    """
+    if not user:
+        return False
+    xa = _fold(user.get("xa") or "")
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "bac ninh" in _fold(user.get("tinh") or "") and xa == "hiep hoa"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ người ủy quyền = người yêu cầu do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(_reason_mod.GRANTOR_AS_REQUESTER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_bac_ninh_hiep_hoa(user):
+        result[_reason_mod.GRANTOR_AS_REQUESTER_OPTION] = True
+    return result
+
+
 def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
@@ -256,7 +289,7 @@ _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Moth
 
 # Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ giấy ủy quyền, từ
 # tờ khai, hoặc đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con", "to_khai_khac", "the_nguoi_dang_nhap"})
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "nguoi_uy_quyen", "to_khai", "cccd_con", "to_khai_khac", "the_nguoi_dang_nhap"})
 
 # Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
 # NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
@@ -552,6 +585,57 @@ def _authorized_requester(values: dict, context: str) -> dict | None:
     }
 
 
+def _grantor_requester(values: dict, context: str) -> dict | None:
+    """Tài khoản bật cờ grantorAsRequester (phường Hiệp Hòa): người yêu cầu là BÊN ỦY QUYỀN.
+
+    Nhân thân đọc từ khối <nguoi_uy_quyen> reason.py dựng tất định từ mục "Bên ủy quyền". Bên ủy quyền
+    trùng một vai trong hồ sơ (thường là cha/mẹ, hoặc chính người được đăng ký lại) thì tick theo vai đó
+    và giấy tờ tùy thân lấy theo CCCD của vai đó — thẻ sạch hơn dòng viết trên giấy ủy quyền; không trùng
+    ai → "Khác". None khi không đọc được bên ủy quyền.
+    """
+    section = _reason_mod._section(context, _reason_mod.GRANTOR_TAG) if context else ""
+    if not section:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+
+    relation = "Khac"
+    for prefix, tick in (("Subject", "BanThan"), ("Father", "ChaDe"), ("Mother", "MeDe")):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            relation = tick
+            base = _person_from_role(values, prefix, context)
+            for key in _ID_DOC_KEYS:
+                person[key] = base.get(key) or person[key]
+            person = {key: person.get(key) or base.get(key) for key in person}
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "quan_he": relation,
+        "quan_he_default": False,
+        "loai_giay_to_default": not person["noi_cap"],
+        "source": "nguoi_uy_quyen",
+    }
+
+
 def _other_declaration_requester(values: dict, context: str) -> dict | None:
     """Hồ sơ nộp NHẦM tờ khai của thủ tục khác (vd cấp bản sao trích lục) → vẫn điền mục I theo
     dòng người yêu cầu trên tờ đó, nhưng ô quan hệ LUÔN tích "Khác".
@@ -644,8 +728,10 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
     Hồ sơ có GIẤY ỦY QUYỀN thì người yêu cầu LUÔN là BÊN ĐƯỢC ỦY QUYỀN (người đi nộp), thắng cả tờ
-    khai — xem _authorized_requester. Không có giấy ủy quyền thì quyết định bằng việc hồ sơ CÓ hay
-    KHÔNG có tờ khai/đơn:
+    khai — xem _authorized_requester. Riêng tài khoản bật cờ grantorAsRequester (phường Hiệp Hòa):
+    người yêu cầu là BÊN ỦY QUYỀN (_grantor_requester); không đọc được bên ủy quyền thì đi tiếp theo
+    tờ khai/CCCD như hồ sơ không có giấy ủy quyền. Không có giấy ủy quyền thì quyết định bằng việc hồ
+    sơ CÓ hay KHÔNG có tờ khai/đơn:
 
     A. CÓ TỜ KHAI: tờ khai là nguồn duy nhất của cả ô tích lẫn nhân thân người yêu cầu. Ghi đè
        thẳng lên dữ liệu cổng điền sẵn từ tài khoản VNeID đang đăng nhập (người nộp hộ thường
@@ -665,9 +751,15 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
            đè khối này, để cổng giữ nguyên dữ liệu VNeID; dữ liệu quét được đổ vào con/cha/mẹ.
     """
     # Có giấy ủy quyền: người đi nộp là bên được ủy quyền, kể cả khi tờ khai ghi người khác.
-    authorized = _authorized_requester(values, context)
-    if authorized:
-        return authorized
+    # Phường Hiệp Hòa: người yêu cầu là bên ủy quyền.
+    if _reason_mod.grantor_as_requester(options):
+        grantor = _grantor_requester(values, context)
+        if grantor:
+            return grantor
+    else:
+        authorized = _authorized_requester(values, context)
+        if authorized:
+            return authorized
 
     # Agent chỉ được trả Requester_* khi đọc từ tờ khai, nên bản thân việc có Requester_* đã là bằng
     # chứng; _has_declaration còn bắt được ca tờ khai chỉ tích ô quan hệ mà bỏ trống họ tên.

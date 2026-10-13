@@ -37,6 +37,9 @@ from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
+    with_account_process_options as with_khai_sinh_dang_ky_lai_account_process_options,
+)
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
@@ -196,6 +199,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
             options = with_hkd_account_process_options(options, owner_user, procedure_key)
             options = with_cai_chinh_account_process_options(options, owner_user, procedure_key)
+            options = with_khai_sinh_dang_ky_lai_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"

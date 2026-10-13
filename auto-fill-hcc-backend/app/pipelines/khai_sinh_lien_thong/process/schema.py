@@ -39,11 +39,12 @@ FIELDS: list[dict] = [
     {"name": "ThongTinMe_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,diaChi}: BẮT BUỘC trích khi CCCD cũ của đúng người mẹ có dòng 'Quê quán / Place of origin:' (OCR có thể chỉ còn 'Quê quán:'). , không dùng nơi cư trú mẹ thay quê quán. Nếu dòng quê quán chỉ ghi cấp huyện và tỉnh mà không có xã/phường thì không được coi tên huyện là xa, nhưng VẪN PHẢI trả field với phần xác định chắc chắn, tối thiểu là tinh; không được bỏ toàn bộ field."},
     {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruMe): ưu tiên CCCD/CMND được đối chiếu là của đúng người mẹ (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy kết hôn > giấy chứng sinh > giấy khai sinh. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
 
-    # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
-    {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026".'},
-    {"name": "GcnKetHon_QuyenSo", "desc": "Quyển số trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ nếu ghi riêng, ở mục 'Quyển số: ...'. Nếu không có không cần ghi vào"},
-    {"name": "GcnKetHon_NgayCap", "desc": "Ngày đăng ký/cấp giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, dd/mm/yyyy."},
-    {"name": "GcnKetHon_NoiCap", "desc": "Nơi đăng ký/cấp giấy chứng nhận kết hôn (tên cơ quan) trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, nếu có phải ghi rõ."},
+    # Marriage certificate facts: GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, không có thì dòng
+    # "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ" trên tờ khai mẫu mới (mục G).
+    {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn của cha mẹ, mục "Số:" trong GIẤY CHỨNG NHẬN KẾT HÔN (vd "119/2026"); không có giấy đó thì lấy "Số:" ở dòng "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ" trên TỜ KHAI ĐĂNG KÝ KHAI SINH.'},
+    {"name": "GcnKetHon_QuyenSo", "desc": "Quyển số giấy chứng nhận kết hôn của cha mẹ, mục 'Quyển số: ...' (giấy kết hôn, không có thì dòng thông tin giấy kết hôn trên tờ khai). Chỉ toàn dấu chấm/để trống thì bỏ."},
+    {"name": "GcnKetHon_NgayCap", "desc": "Ngày đăng ký kết hôn của cha mẹ, dd/mm/yyyy: giấy chứng nhận kết hôn, không có thì cụm 'đăng ký ngày ... tháng ... năm ...' ở dòng thông tin giấy kết hôn trên tờ khai."},
+    {"name": "GcnKetHon_NoiCap", "desc": "Nơi đăng ký kết hôn của cha mẹ (tên cơ quan, vd 'UBND xã ...'): giấy chứng nhận kết hôn, không có thì phần sau chữ 'tại' ở dòng thông tin giấy kết hôn trên tờ khai."},
 
     # Số điện thoại liên hệ (nếu giấy tờ có ghi).
     {"name": "LienHe_SoDienThoai", "desc": "Số điện thoại liên hệ đọc được trên giấy tờ; số di động VN 10 số bắt đầu bằng 0."},

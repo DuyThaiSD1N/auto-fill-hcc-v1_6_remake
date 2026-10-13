@@ -840,11 +840,13 @@ _AUTHORIZED_ISSUE_DATE_RE = re.compile(
 )
 
 
-def _authorized_block_lines(text: str) -> list[str]:
+def _authorized_block_lines(
+    text: str, header_re: re.Pattern = _AUTHORIZED_HEADER_RE, end_re: re.Pattern = _AUTHORIZED_BLOCK_END_RE
+) -> list[str]:
     """Các dòng thuộc mục "Bên được ủy quyền" đầu tiên có dữ liệu; rỗng nếu không có giấy ủy quyền."""
     lines = str(text or "").splitlines()
     for index, line in enumerate(lines):
-        header = _AUTHORIZED_HEADER_RE.match(_fold(line))
+        header = header_re.match(_fold(line))
         if not header:
             continue
         block: list[str] = []
@@ -854,7 +856,7 @@ def _authorized_block_lines(text: str) -> list[str]:
             block.append(inline)
         for follow in lines[index + 1:index + 12]:
             folded = _fold(follow)
-            if _AUTHORIZED_BLOCK_END_RE.match(folded):
+            if end_re.match(folded):
                 break
             if follow.strip():
                 block.append(follow.strip())
@@ -932,6 +934,67 @@ def _render_authorized(documents: list[dict]) -> str:
 def authorized_residence_area(line) -> dict | None:
     """Dòng nơi cư trú trên giấy ủy quyền -> object địa bàn; giấy ủy quyền hay ngăn bằng gạch ngang."""
     return _residence_from_declaration_line(re.sub(r"\s+[-–]\s+", ", ", str(line or "")))
+
+
+# ---------------------------------------------------------------------------
+# GIẤY ỦY QUYỀN — NGƯỜI ỦY QUYỀN LÀ NGƯỜI YÊU CẦU (cấu hình theo tài khoản)
+#
+# Phường Hiệp Hòa (Bắc Ninh) coi BÊN ỦY QUYỀN là người yêu cầu ở mục I; nơi khác vẫn là bên được ủy
+# quyền (xem trên). Server đặt cờ theo tài khoản (mapper.with_account_process_options); có cờ thì
+# Python đọc thêm mục "Bên ủy quyền" ra khối <nguoi_uy_quyen> cho mapper.
+# ---------------------------------------------------------------------------
+
+GRANTOR_AS_REQUESTER_OPTION = "grantorAsRequester"
+GRANTOR_TAG = "nguoi_uy_quyen"
+_GRANTOR_BASIS = 'Mục "Bên ủy quyền" trên giấy ủy quyền, Python đọc trực tiếp OCR.'
+
+# Dòng MỞ mục bên ủy quyền. Bỏ dòng nhắc cả hai bên ("Bên ủy quyền và bên được ủy quyền cam kết...",
+# dòng chữ ký "BÊN ỦY QUYỀN   BÊN ĐƯỢC ỦY QUYỀN").
+_GRANTOR_HEADER_RE = re.compile(
+    r"^(?:[ivx]+\s*[.)/]\s*|\d+\s*[.)/]\s*|[a-d]\s*[.)]\s*|[-+*•]\s*)?(?:ben\s+a\s*[(:-]?\s*)?"
+    r"(?:ben|nguoi)\s+uy\s+quyen\b(?!.*\b(?:duoc|nhan)\s+uy\s+quyen)(?!\s*va\b)"
+    r"\s*(?:\(\s*ben\s+a\s*\))?\)?\s*:?\s*(.*)$"
+)
+# Dòng mở mục khác → hết mục bên ủy quyền.
+_GRANTOR_BLOCK_END_RE = re.compile(
+    r"^(?:[ivx]+\s*[.)/]|\d+\s*[.)/])\s|"
+    r"^(?:ben\s+b\b|(?:ben|nguoi)\s+(?:duoc|nhan)\s+uy\s+quyen|noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket)\b|"
+    r"^[─━\-]{3,}\s*trang\b"
+)
+
+
+def grantor_as_requester(options: dict | None) -> bool:
+    return (options or {}).get(GRANTOR_AS_REQUESTER_OPTION) is True
+
+
+def _grantor_person(documents: list[dict]) -> dict | None:
+    """Bên ủy quyền ghi trên giấy ủy quyền trong hồ sơ; None nếu không có."""
+    for document in documents:
+        text = str(document.get("text") or "")
+        if "uy quyen" not in _fold(text):
+            continue
+        block = _authorized_block_lines(text, _GRANTOR_HEADER_RE, _GRANTOR_BLOCK_END_RE)
+        person = _authorized_person_from_lines(block)
+        if person["name"] or person["id"]:
+            return {**person, "source": document.get("name") or "(không tên)"}
+    return None
+
+
+def _render_grantor(documents: list[dict], options: dict | None) -> str:
+    person = _grantor_person(documents) if grantor_as_requester(options) else None
+    if not person:
+        return ""
+    lines = [
+        f"Họ tên: {person['name'] or 'Không xác định'}",
+        f"Năm sinh: {person['birth'] or 'Không xác định'}",
+        f"Số CCCD/CMND: {person['id'] or 'Không xác định'}",
+        f"Ngày cấp: {person['issue_date'] or 'Không xác định'}",
+        f"Nơi cấp: {person['issue_place'] or 'Không xác định'}",
+        f"Nơi cư trú: {person['residence'] or 'Không xác định'}",
+        f"Nguồn: {person['source']}",
+        f"Căn cứ: {_GRANTOR_BASIS}",
+    ]
+    return f"<{GRANTOR_TAG}>\n" + "\n".join(lines) + f"\n</{GRANTOR_TAG}>\n"
 
 
 # ---------------------------------------------------------------------------
@@ -2949,6 +3012,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         f"{_render_mrz_backs(documents)}"
         f"{_render_declared_roles(documents)}"
         f"{_render_authorized(documents)}"
+        f"{_render_grantor(documents, options)}"
         f"{'' if declaration_sources else _render_other_declaration(documents)}"
         "Khối <cha>/<me> có dòng \"Nguồn giấy tờ tùy thân\" nghĩa là Số CCCD/CMND, Ngày cấp, "
         "Nơi cấp trong khối đó đã đọc thẳng từ chính tấm CCCD/CMND của người đó: BẮT BUỘC trả "

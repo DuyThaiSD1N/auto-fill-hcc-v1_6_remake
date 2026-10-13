@@ -77,13 +77,14 @@ assert.match(
 );
 
 // Hai extension dùng chung một tiêu chí: no-handfree đã sửa trước, handfree không được tụt lại.
-const noHandfree = fs.readFileSync(
-  path.join(root, "..", "auto-fill-hcc-extension", "content.js"), "utf8",
-);
-assert.equal(
-  noHandfree.includes("attachmentKeyMatches"),
-  false,
-  "no-handfree cũng không được có hàm so kiểu chứa nhau",
-);
+// Chỉ so được khi có repo Auto Fill nằm cạnh (máy dev); CI chỉ checkout một repo.
+const noHandfreePath = path.join(root, "..", "auto-fill-hcc-extension", "content.js");
+if (fs.existsSync(noHandfreePath)) {
+  assert.equal(
+    fs.readFileSync(noHandfreePath, "utf8").includes("attachmentKeyMatches"),
+    false,
+    "no-handfree cũng không được có hàm so kiểu chứa nhau",
+  );
+}
 
 console.log("Handfree attachment duplicate names: exact matching on both fixed and dynamic rows passed");

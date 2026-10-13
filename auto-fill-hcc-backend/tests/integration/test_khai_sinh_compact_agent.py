@@ -449,6 +449,62 @@ def test_birth_place_hoan_my_da_lat_luon_ghi_doi_long_tho():
         "diaChi"] == "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
 
 
+def test_birth_place_sua_chinh_ta_ten_benh_vien_ocr_va_to_vang():
+    # Tờ khai viết tay: OCR đọc "Bệnh viện" → "Biên Viên", "Hoàn Mỹ" → "Hoàn mỉ" — so khớp chính xác trượt.
+    fields = mapper.enrich(_fields({
+        "Tk_HoTenCon": "Lê Văn An",
+        "Tk_NoiSinh": {"tinh": "Lâm Đồng", "xa": "Xuân Hương",
+                       "diaChi": "Biên Viên Đa Khoa Hoàn mỉ Đà Lạt Đồi Long Thọ"},
+        "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "xa": "Xuân Hương", "diaChi": "Bệnh viện Đa Khoa Hoàn Mỹ Đà Lạt"},
+    }))
+    ns = next(f for f in fields if f["name"] == "NsDiaChi")
+    assert ns["value"] == {"tinh": "Lâm Đồng", "xa": "Xuân Hương",
+                           "diaChi": "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt - Đồi Long Thọ"}
+    assert ns.get("default") is True
+
+    # Tên đọc đúng thì không đánh dấu đoán.
+    fields = mapper.enrich(_fields({
+        "Tk_HoTenCon": "Lê Văn An",
+        "Tk_NoiSinh": {"tinh": "Lâm Đồng", "xa": "Xuân Hương", "diaChi": "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt"},
+    }))
+    assert "default" not in next(f for f in fields if f["name"] == "NsDiaChi")
+
+
+def test_correct_hospital_name_chi_sua_khi_khop_mot_benh_vien():
+    from app.pipelines._shared.hospital_lookup import correct_hospital_name
+
+    assert correct_hospital_name("Tại Biên Viên Đa Khoa Hoàn mỉ Đà Lạt Đồi Long Thọ") == (
+        "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt Đồi Long Thọ")
+    assert correct_hospital_name("Bệnh viện Đa khoa Nam Đông Hưg") == "Bệnh viện Đa khoa Nam Đông Hưng"
+    # Đã khớp bảng, bệnh viện không có trong bảng, hay không phải cơ sở y tế → không đụng vào.
+    assert correct_hospital_name("Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt") is None
+    assert correct_hospital_name("Bệnh viện Đa khoa Hoàn Mỹ Cửu Long") is None
+    assert correct_hospital_name("Bệnh viện Đa khoa Nam Định") is None
+    assert correct_hospital_name("Thôn 3") is None
+
+
+def test_mapper_gcn_ket_hon_tu_to_khai_bo_cham_cho_trong():
+    # Tờ khai mẫu mới: "Số: 12..., Quyển số: ....., đăng ký ngày 05 tháng 3 năm 2020 tại UBND xã A".
+    fields = mapper.enrich(_fields({
+        "ThongTinBo_HoTen": "Lê Văn Bình",
+        "GcnKetHon_So": "12...",
+        "GcnKetHon_QuyenSo": ".....",
+        "GcnKetHon_NgayCap": "05/03/2020",
+        "GcnKetHon_NoiCap": "UBND xã Hòa Bình huyện Đông Sơn tỉnh Gia An.",
+    }))
+    d = {f["name"]: f["value"] for f in fields}
+    assert d["GiayCNKHSo"] == "12"
+    assert "GiayCNKHQuyenSo" not in d
+    assert d["GiayCNKHNgayCap"] == "05/03/2020"
+    assert d["GiayCNKHNoiCap"] == "UBND xã Hòa Bình huyện Đông Sơn tỉnh Gia An"
+
+
+def test_khai_sinh_prompt_cho_lay_gcn_ket_hon_tu_dong_tren_to_khai():
+    assert "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ" in EXTRA_RULES
+    so = next(f for f in FIELDS if f["name"] == "GcnKetHon_So")
+    assert "TỜ KHAI" in so["desc"]
+
+
 @respx.mock
 async def test_khai_sinh_compact_agent_rejects_direct_ui_keys(monkeypatch):
     _disable_external_fallbacks(monkeypatch)

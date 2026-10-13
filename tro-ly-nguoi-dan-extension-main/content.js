@@ -1252,6 +1252,41 @@
       && group.every((phrase) => typeof phrase === "string" && phrase && body.includes(phrase)));
   }
 
+  // Trang hộ tịch mới (Cổng DVC quốc gia) nộp xong KHÔNG chuyển trang, chỉ hiện toast "Gửi hồ sơ
+  // thành công" vài giây rồi tắt — watcher của sidebar đọc trang 3,5 giây/lần nên hay lọt. Theo dõi
+  // DOM để bắt NGAY lúc toast hiện và GIỮ dấu tới khi sidebar báo đã nhận (ackSubmitToast). Chỉ là
+  // lưới đỡ của cú bấm nộp; chỉ tính trên đúng trang nộp theo luật của BE.
+  let submitToastAt = 0;
+  const SUBMIT_TOAST_PHRASES = ["gui ho so thanh cong", "nop ho so thanh cong"];
+  function onSubmitRulePage() {
+    const rule = submitRules?.[location.hostname];
+    if (!rule?.urlPattern) return false;
+    try { return new RegExp(rule.urlPattern).test(location.pathname + location.hash); }
+    catch (_) { return false; }
+  }
+  function scanSubmitToast(nodes) {
+    if (submitToastAt || !onSubmitRulePage()) return;
+    for (const node of nodes || []) {
+      const text = node?.nodeType === 3 ? node.nodeValue : node?.textContent;
+      // Toast là khối chữ ngắn; khối lớn (cả form dựng lại) bỏ qua cho rẻ và khỏi khớp nhầm.
+      if (!text || text.length > 400) continue;
+      const folded = foldLabel(text);
+      if (SUBMIT_TOAST_PHRASES.some((p) => folded.includes(p))) {
+        submitToastAt = Date.now();
+        return;
+      }
+    }
+  }
+  if (IS_TOP_FRAME && typeof MutationObserver === "function" && document.documentElement) {
+    new MutationObserver((records) => {
+      if (submitToastAt || !submitRules) return;
+      for (const r of records) {
+        scanSubmitToast(r.type === "characterData" ? [r.target] : r.addedNodes);
+        if (submitToastAt) return;
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  }
+
   // Capture-phase: cổng có thể stopPropagation ở handler riêng của nút.
   document.addEventListener("click", (e) => {
     if (!IS_TOP_FRAME || !submitRules) return;
@@ -1356,6 +1391,11 @@
       return;
     }
     if (msg?.action === "togglePanel") { togglePanel(); sendResponse?.({ ok: true }); return; }
+    if (msg?.action === "ackSubmitToast" && IS_TOP_FRAME) {
+      submitToastAt = 0; // sidebar đã báo BE — hồ sơ kế tiếp trên cùng trang phải bắt lại từ đầu
+      sendResponse?.({ ok: true });
+      return;
+    }
     // Xem trước + nút tròn khung bên: chỉ frame chính có khung trên trang. Frame con im lặng,
     // KHÔNG trả lời — tabs.sendMessage tới mọi frame, frame con trả trước là nuốt câu trả lời thật.
     if (msg?.action === "tlndPreviewOpen") {
@@ -1712,6 +1752,8 @@
         // successText — khóa cả URL, xem matchSuccessText.
         submitted: body.includes("nop ho so thanh cong") || body.includes("gui ho so thanh cong")
           || matchSuccessText(body),
+        // Toast nộp thành công đã thấy (giữ dấu kể cả khi toast đã tắt) — xem scanSubmitToast.
+        submittedToast: !!submitToastAt,
       });
       return;
     }
