@@ -152,3 +152,16 @@ def test_registry_entry():
     assert "maThuTucHanhChinh=1.115468" in proc["detect"]["urlIncludes"]
     assert "dichvucong.bacninh.gov.vn" in proc["detect"]["urlScope"]
     assert get_attach_pipeline(_KEY) is not None
+
+
+def test_dinh_chinh_gcn_da_cap_nhan_ma_moi_1_115436():
+    # Cổng Bắc Ninh chuyển "Đính chính GCN đã cấp" sang 1.115436; link cũ 1.115476 vẫn phải nhận.
+    proc = get_procedure("dinh-chinh-gcn-da-cap-bac-ninh")
+    inc = proc["detect"]["urlIncludes"]
+    assert "maThuTucHanhChinh=1.115436" in inc and "maThuTucHanhChinh=1.115476" in inc
+    assert proc["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
+    # Không pipeline Bắc Ninh nào khác được khớp mã mới.
+    from app.procedures.registry import PROCEDURES
+    trung = [p["key"] for p in PROCEDURES
+             if "maThuTucHanhChinh=1.115436" in ((p.get("detect") or {}).get("urlIncludes") or [])]
+    assert trung == ["dinh-chinh-gcn-da-cap-bac-ninh"]

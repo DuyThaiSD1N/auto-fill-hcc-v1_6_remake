@@ -3901,13 +3901,15 @@ PROCEDURES: list[dict] = [
         # Cổng dichvucong.bacninh.gov.vn (Liferay + select2) — dùng engine fill-bacninh.js.
         # Cấu trúc = đơn Mẫu 18 + người nhận (giống cấp đổi) + đính kèm 4 nhóm (giống đính chính sai sót).
         # Mã thủ tục đã đổi 1.012790 -> 1.115476 theo danh mục đất đai của Sở Nông nghiệp và
-        # Môi trường (thông báo 1283/TB-SNNMT ngày 04/8/2026). Cổng chỉ còn phát mã mới.
-        # urlScope khoá host: 1.115476 là mã QUỐC GIA, cổng iGate tỉnh khác cũng dùng đúng mã đó —
+        # Môi trường (thông báo 1283/TB-SNNMT ngày 04/8/2026). Từ 10/2026 cổng Bắc Ninh lại chuyển
+        # thủ tục này sang mã 1.115436 (bản cấp tỉnh, maDonViHanhChinh=H05.34); giữ 1.115476 để link
+        # cũ còn lưu trong trình duyệt cán bộ vẫn nhận ra.
+        # urlScope khoá host: các mã trên là mã QUỐC GIA, cổng iGate tỉnh khác cũng dùng đúng mã đó —
         # không khoá thì mở trang ở tỉnh khác sẽ bị nhận nhầm rồi chạy engine fill-bacninh.js
         # trên DOM không phải của Bắc Ninh.
         "detect": {
             "urlScope": ["dichvucong.bacninh.gov.vn"],
-            "urlIncludes": ["maThuTucHanhChinh=1.115476"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115436", "maThuTucHanhChinh=1.115476"],
         },
         "label": "[Tỉnh Bắc Ninh] Đính chính giấy chứng nhận đã cấp",
         "mode": "agent",
