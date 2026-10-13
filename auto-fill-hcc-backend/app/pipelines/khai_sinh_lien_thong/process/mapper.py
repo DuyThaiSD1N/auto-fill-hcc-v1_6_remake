@@ -11,38 +11,55 @@ from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, U
 
 # Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
 # "Thông tin cấp thẻ BHYT" luôn chọn giám hộ trên thẻ = mẹ và nơi KCB ban đầu = Bệnh viện Sản - Nhi tỉnh Lâm
-# Đồng. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# Đồng. Phường Hải Châu (Đà Nẵng) chỉ chọn giám hộ trên thẻ = mẹ, nơi KCB để cán bộ tự chọn.
+# Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không
 # tự bật được cho xã khác.
 PROCEDURE_KEY = "khai-sinh-dang-ky"
 DA_LAT_BHYT_OPTION = "daLatBhytDefaults"
+HAI_CHAU_BHYT_OPTION = "haiChauBhytDefaults"
 _DA_LAT_WARDS = {"xuan huong", "lam vien", "cam ly", "lang biang"}
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 # ng-select Nơi KCB: extension gõ chuỗi này vào ô tìm rồi chọn option CHỨA nó.
 DA_LAT_NOI_KCB = "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
 
 
-def is_da_lat_bhyt_ward(user: dict | None) -> bool:
-    """True khi tài khoản thuộc phường Xuân Hương/Lâm Viên/Cam Ly/Lang Biang - Đà Lạt, tỉnh Lâm Đồng."""
+def _account_area(user: dict | None) -> tuple[str, str]:
+    """(tỉnh, xã) của tài khoản đã bỏ dấu, bỏ tiền tố Xã/Phường/Thị trấn."""
     if not user:
-        return False
+        return "", ""
     tinh = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("tinh"))).strip()
     xa = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("xa"))).strip()
     for prefix in _WARD_PREFIXES:
         if xa.startswith(prefix):
             xa = xa[len(prefix):].strip()
             break
+    return tinh, xa
+
+
+def is_da_lat_bhyt_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Xuân Hương/Lâm Viên/Cam Ly/Lang Biang - Đà Lạt, tỉnh Lâm Đồng."""
+    tinh, xa = _account_area(user)
     if xa.endswith(" da lat"):
         xa = xa[: -len(" da lat")].strip()
     return "lam dong" in tinh and xa in _DA_LAT_WARDS
 
 
+def is_hai_chau_bhyt_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc Phường Hải Châu, thành phố Đà Nẵng."""
+    tinh, xa = _account_area(user)
+    return "da nang" in tinh and xa == "hai chau"
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ mặc định BHYT Đà Lạt do server quyết theo tài khoản."""
+    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu) do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(DA_LAT_BHYT_OPTION, None)
+    result.pop(HAI_CHAU_BHYT_OPTION, None)
     if procedure == PROCEDURE_KEY and is_da_lat_bhyt_ward(user):
         result[DA_LAT_BHYT_OPTION] = True
+    if procedure == PROCEDURE_KEY and is_hai_chau_bhyt_ward(user):
+        result[HAI_CHAU_BHYT_OPTION] = True
     return result
 
 
@@ -559,6 +576,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if options.get(DA_LAT_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
         add("CskcbbdMa", DA_LAT_NOI_KCB, default=True)
+    # Phường Hải Châu - Đà Nẵng: chỉ giám hộ trên thẻ BHYT = mẹ.
+    if options.get(HAI_CHAU_BHYT_OPTION):
+        add("NguoiGiamHo", "Thông tin mẹ", default=True)
 
     for default in STATIC_DEFAULTS:
         if default["name"] not in seen:
