@@ -447,3 +447,147 @@ def test_sanitizer_fixes_issue_date_swapped_between_child_and_mother():
     assert values["Subject_IdIssuePlace"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert values["Mother_IdIssueDate"] == "06/06/2025"
     assert values["Mother_IdIssuePlace"] == "Bộ Công an"
+
+
+# Tờ khai viết tay: năm sinh mẹ bị OCR đọc lệch thành SAU năm sinh con, không có CCCD nào khác.
+_DECLARATION_MOTHER_YEAR_BROKEN = """CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH
+Kính gửi: (1) UBND Xã Yên Bình - Tỉnh Lào Cai
+Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN KHẢI
+Ngày, tháng, năm sinh: 10/02/1985
+Nơi cư trú: (2) Thôn 3 Xã Yên Bình . Tỉnh Lào Cai
+Giấy tờ tùy thân: (3) 015085000111 , Cục Cảnh sát QLHC về TTXH , Cấp ngày 01/04/2021
+Quan hệ với người được khai sinh: Bản Thân
+Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:
+Họ, chữ đệm, tên: TRẦN VĂN KHẢI
+Ngày, tháng, năm sinh: 10/02/1985 ghi bằng chữ: (Mười tháng Hai năm một nghìn chín trăm tám mươi lăm)
+Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam
+Nơi sinh: (4) Xã Yên Bình , Tỉnh Lào Cai
+Họ, chữ đệm, tên người mẹ: LÊ THỊ HẠNH
+Năm sinh: (5) 06/05/1989 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam
+Nơi cư trú: (2) Thôn 3 Xã Yên Bình , Tỉnh Lào Cai
+Giấy tờ tùy thân: (3) 015160001234
+Họ, chữ đệm, tên người cha: TRẦN VĂN BÌNH
+Năm sinh: (5) 15/08/1955 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam
+Nơi cư trú: (2) Đã chết
+Giấy tờ tùy thân: (3)
+Đã đăng ký khai sinh tại: (6) Ủy ban nhân dân Thị xã Yên Bái
+Tôi cam đoan những nội dung khai trên đây là đúng sự thật.
+"""
+
+
+def _broken_year_context() -> str:
+    return reason._render_context("", {}, [{"name": "to-khai.pdf", "text": _DECLARATION_MOTHER_YEAR_BROKEN}])
+
+
+def test_declared_mother_with_broken_birth_year_is_kept_not_wiped():
+    """Năm sinh mẹ lệch thế hệ mà vai chốt từ nhãn in sẵn tờ khai → giữ nguyên khối, gắn nhãn soát."""
+    me = reason._section(_broken_year_context(), "me")
+
+    assert reason._role_name(me) == "LÊ THỊ HẠNH"
+    assert reason._role_id(me) == "015160001234"
+    assert reason._labeled_value(me, "Ngày sinh") == "06/05/1989"
+    assert reason._labeled_value(me, reason._GENERATION_MISMATCH_LABEL)
+
+
+def test_inferred_mother_with_broken_birth_year_is_still_wiped():
+    """Vai KHÔNG đến từ nhãn tờ khai mà sai thế hệ thì vẫn xoá như cũ."""
+    sections = {
+        "con": "Họ tên: TRẦN VĂN KHẢI\nNgày sinh: 10/02/1985\nGiới tính: Nam\nCăn cứ phân vai: CCCD",
+        "me": "Họ tên: LÊ THỊ HẠNH\nNgày sinh: 06/05/1989\nGiới tính: Nữ\nCăn cứ phân vai: Người nữ duy nhất.",
+    }
+
+    me = reason._validate_family_sections(sections)["me"]
+
+    assert reason._is_unknown(me)
+
+
+def test_sanitizer_fills_full_mother_from_declaration_when_agent_drops_her():
+    """Agent bỏ sót cả vai mẹ → tờ khai lấp đủ; năm sinh giữ đúng OCR tờ khai, tô vàng."""
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN KHẢI"},
+        {"name": "Subject_BirthDate", "value": "10/02/1985"},
+        {"name": "Father_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_BirthDateOrYear", "value": "15/08/1955"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, _broken_year_context())
+    values = {field["name"]: field["value"] for field in result}
+    flagged = {field["name"] for field in result if field.get("default")}
+
+    assert values["Mother_FullName"] == "LÊ THỊ HẠNH"
+    assert values["Mother_IdNumber"] == "015160001234"
+    assert values["Mother_Ethnicity"] == "Kinh"
+    assert values["Mother_Nationality"] == "Việt Nam"
+    assert values["Mother_ResidenceDomestic"]["xa"] == "Xã Yên Bình"
+    assert values["Mother_ResidenceDomestic"]["diaChi"] == "Thôn 3"
+    assert values["Mother_BirthDateOrYear"] == "06/05/1989"
+    assert "Mother_BirthDateOrYear" in flagged
+
+
+def test_sanitizer_keeps_ocr_birth_year_when_agent_extracts_mother():
+    """Agent trích mẹ kèm CCCD: năm sinh KHÔNG bị sửa theo mã năm trong số CCCD, giữ đúng OCR."""
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN KHẢI"},
+        {"name": "Subject_BirthDate", "value": "10/02/1985"},
+        {"name": "Mother_FullName", "value": "LÊ THỊ HẠNH"},
+        {"name": "Mother_BirthDateOrYear", "value": "06/05/1989"},
+        {"name": "Mother_IdNumber", "value": "015160001234"},
+    ]
+
+    values = {f["name"]: f["value"] for f in reason.sanitize_extracted_fields(fields, _broken_year_context())}
+
+    assert values["Mother_BirthDateOrYear"] == "06/05/1989"
+    assert values["Mother_FullName"] == "LÊ THỊ HẠNH"
+
+
+def test_declaration_residence_splits_commune_written_without_comma():
+    area = reason._residence_from_declaration_line("Thôn 3 Xã Yên Bình , Tỉnh Lào Cai")
+
+    assert area["tinh"] == "Lào Cai"
+    assert area["xa"] == "Xã Yên Bình"
+    assert area["diaChi"] == "Thôn 3"
+
+
+_CAM_DOAN_KHOM_NAY_LA = """BẢN CAM ĐOAN
+Kính gửi (1): UBND phường Xuân Hương Đà Lạt
+Họ, chữ đệm, tên: PHẠM VĂN LỘC
+Tôi xin cam đoan nội dung sau đây: Tôi được đăng ký khai sinh tại Khóm Xuân An phường II Đà Lạt (Nay là phường Xuân Hương Đà Lạt tỉnh Lâm Đồng nhưng bản chính giấy khai sinh không còn lưu trữ.
+"""
+
+
+def _agency_fields(commune: str) -> list[dict]:
+    return [
+        {"name": "PreviousRegistration_AgencyProvince", "value": "Lâm Đồng"},
+        {"name": "PreviousRegistration_AgencyCommune", "value": commune},
+        {"name": "PreviousRegistration_Number", "value": "120"},
+    ]
+
+
+def test_birth_agency_takes_current_name_not_hamlet_from_commitment():
+    """Agent lấy KHÓM làm phường ("Phường Xuân An" → remap ra phường Phan Thiết) → câu cam đoan thắng."""
+    context = reason._render_birth_agency_phrases([{"name": "cam-doan.pdf", "text": _CAM_DOAN_KHOM_NAY_LA}])
+
+    values = {
+        field["name"]: field["value"]
+        for field in reason._apply_birth_agency_override(_agency_fields("Phường Xuân An"), context)
+    }
+
+    assert values["PreviousRegistration_AgencyProvince"] == "Lâm Đồng"
+    assert values["PreviousRegistration_AgencyCommune"] == "Phường Xuân Hương - Đà Lạt"
+    assert values["PreviousRegistration_Number"] == "120"
+
+
+def test_birth_agency_skips_hamlet_and_converts_roman_ward():
+    area = reason._agency_area_from_phrase("Khóm Xuân An phường II Đà Lạt", "Lâm Đồng")
+
+    assert area == {"tinh": "Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}
+
+
+def test_birth_agency_phrase_without_commune_keeps_agent_value():
+    text = "Đã đăng ký khai sinh tại: (6) Ủy ban nhân dân Thị xã Yên Bái\n"
+    context = reason._render_birth_agency_phrases([{"name": "to-khai.pdf", "text": text}])
+
+    fields = _agency_fields("Phường Yên Bái")
+
+    assert reason._apply_birth_agency_override(fields, context) == fields

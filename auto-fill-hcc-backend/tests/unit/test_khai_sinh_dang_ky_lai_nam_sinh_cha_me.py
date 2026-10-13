@@ -17,10 +17,11 @@ def test_cuu_nam_sinh_me_bang_ket_qua_agent_phan_vai():
     assert reason._labeled_value(out["me"], "Họ tên") == "Lê Thị B"
 
 
-def test_khong_cuu_duoc_thi_giu_khoi_me_tren_to_khai_chi_bo_nam_sinh():
+def test_khong_cuu_duoc_thi_giu_khoi_me_tren_to_khai_nam_sinh_dung_ocr():
     out = reason._validate_family_sections({"con": CON, "me": _me("1981")}, (), {})
-    assert reason._labeled_value(out["me"], "Ngày sinh") == "Không xác định"
+    assert reason._labeled_value(out["me"], "Ngày sinh") == "1981"
     assert reason._labeled_value(out["me"], "Dân tộc") == "Kinh"
+    assert reason._labeled_value(out["me"], reason._GENERATION_MISMATCH_LABEL)
 
 
 def test_khoi_khong_tu_nhan_to_khai_sai_the_he_van_xoa():

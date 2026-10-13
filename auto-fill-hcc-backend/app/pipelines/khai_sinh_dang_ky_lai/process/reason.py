@@ -1216,6 +1216,8 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
     identity = _digits(_first_match(block, (
         r"S[oố]\s+[dđ][iị]nh\s+danh[^:\n]*:?\s*([0-9][0-9 ]{8,})",
         r"(?:CCCD|CMND|C[aă]n\s+c[uư][oớ]c|Ch[uứ]ng\s+minh)[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
+        # Chỉ ghi số trơn sau nhãn mẫu: "Giấy tờ tùy thân: (3) 015153000043".
+        r"Gi[aấ]y\s+t[oờ]\s+t[uùư][yỳ]\s+th[aâ]n\s*:?\s*(?:\(\d+\))?[^0-9\n]{0,10}?([0-9][0-9 ]{8,})",
     )))
     residence = _strip_marker(_first_match(block, (r"N[oơ]i\s+c[uư]\s+tr[uú]\s*:?\s*([^\n\r]+)",)))
     # Quê quán chỉ có ở mục người được đăng ký lại khai sinh.
@@ -2174,6 +2176,15 @@ def _child_birth_from_card(section: str, documents, parent_years=()) -> str:
     return birth if breaks_generation and fits_generation else ""
 
 
+# Vai cha/mẹ chốt từ nhãn tờ khai nhưng năm sinh lệch thế hệ với con và không nguồn nào sửa được:
+# giữ nguyên theo tờ khai, năm sinh đúng như OCR, ô năm sinh tô vàng cho cán bộ soát.
+_GENERATION_MISMATCH_LABEL = "Đối chiếu thế hệ"
+_GENERATION_MISMATCH_VALUE = (
+    "Năm sinh tờ khai ghi không cách con đủ một thế hệ, không giấy tờ nào sửa được; "
+    "vẫn điền đầy đủ theo tờ khai, năm sinh cần soát lại."
+)
+
+
 def _validate_family_sections(sections: dict[str, str], documents=(), llm_sections=None) -> dict[str, str]:
     """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất.
 
@@ -2255,9 +2266,10 @@ def _validate_family_sections(sections: dict[str, str], documents=(), llm_sectio
                 result[tag] = _set_role_label(section, "Ngày sinh", birth)
                 continue
             if _from_declaration_label(section):
-                # Nhãn in sẵn trên tờ khai đã chốt đây là cha/mẹ: chỉ NĂM SINH là chữ đọc hỏng → bỏ trống năm
-                # sinh, giữ họ tên, dân tộc, quốc tịch, trạng thái tờ khai ghi rõ.
-                result[tag] = _set_role_label(section, "Ngày sinh", "Không xác định")
+                # Nhãn in sẵn trên tờ khai đã chốt đây là cha/mẹ, chỉ dòng năm sinh viết tay là lệch
+                # (req_b8cad8dd0b61: mẹ "06/05/1983", con 1979) → giữ nguyên cả khối theo tờ khai, năm sinh
+                # để ĐÚNG như OCR đọc, tô vàng cho cán bộ soát.
+                result[tag] = f"{section}\n{_GENERATION_MISMATCH_LABEL}: {_GENERATION_MISMATCH_VALUE}"
                 continue
             # Không nhãn tờ khai mà cũng không nguồn nào cứu được năm sinh: khối cha/mẹ sai thế hệ là
             # suy đoán hỏng, điền ra biểu mẫu còn tệ hơn bỏ trống.
@@ -2632,6 +2644,10 @@ _DISTRICT_LABEL_RE = re.compile(
 )
 
 
+# Nhãn xã/phường đứng GIỮA một cụm địa chỉ (không phải đầu cụm).
+_COMMUNE_LABEL_INSIDE_RE = re.compile(r"(?<=\S)\s+(?=(?:xã|phường|thị trấn|đặc khu)\s+\S)", re.IGNORECASE)
+
+
 def _area_or_none(tinh: str, xa: str, dia_chi: str, huyen: str = "") -> dict | None:
     """Ghép object địa chỉ rồi CHỈ trả về khi xã/phường thật sự chọn được trên cổng."""
     if not tinh or not xa:
@@ -2674,6 +2690,11 @@ def _residence_from_declaration_line(line: str) -> dict | None:
         return None
 
     tinh, rest = parts[-1], parts[:-1]
+    # Viết tay hay quên dấu phẩy giữa chi tiết và xã ("Thôn 1 Xã Yên Bình, Tỉnh Lào Cai") → cả cụm
+    # thành tên xã, tra danh mục trượt. Nhãn xã/phường đứng giữa cụm là ranh giới chắc chắn.
+    commune = _COMMUNE_LABEL_INSIDE_RE.search(rest[-1])
+    if commune:
+        rest = [*rest[:-1], rest[-1][:commune.start()].strip(), rest[-1][commune.start():].strip()]
     # Nhãn cấp huyện ghi rõ -> bỏ thẳng, không cần đoán.
     if len(rest) >= 2 and _DISTRICT_LABEL_RE.match(rest[-1]):
         return _area_or_none(tinh, rest[-2], ", ".join(rest[:-2]), huyen=rest[-1])
@@ -2687,6 +2708,123 @@ def _residence_from_declaration_line(line: str) -> dict | None:
             else None
         )
     )
+
+
+# Câu "đã/được đăng ký khai sinh tại ..." trên tờ khai/bản cam đoan — nguồn TẤT ĐỊNH của ô cơ quan
+# đăng ký khai sinh trước đây. req_09478af2ad07: "đăng ký khai sinh tại Khóm Xuân An phường II Đà Lạt
+# (Nay là phường Xuân Hương Đà Lạt tỉnh Lâm Đồng" → agent lấy KHÓM làm phường ("Phường Xuân An"), remap
+# đổi tiếp sang phường cũ trùng tên của Phan Thiết → "Phường Hàm Thắng".
+_BIRTH_AGENCY_TAG = "noi_dang_ky_khai_sinh_truoc_day"
+_BIRTH_AGENCY_PHRASE_RE = re.compile(
+    r"đ[aă]ng\s+k[ýy]\s+khai\s+sinh\s+t[ạa]i\s*:?\s*(?:\(\d+\)\s*)?([^\n]*)", re.IGNORECASE
+)
+_NOW_NAMED_RE = re.compile(r"\(?\s*nay\s+(?:là|thuộc)\s+(.+)", re.IGNORECASE)
+_AGENCY_COMMUNE_LABEL_RE = re.compile(r"(?<![^\W\d_])(xã|phường|thị\s+trấn|đặc\s+khu)\s+", re.IGNORECASE)
+_AGENCY_NAME_STOP_RE = re.compile(
+    r"[,;()]|\s(?:tỉnh|huyện|quận|thị\s+xã|thành\s+phố|tp\.?|nhưng|và|năm|ngày)(?![^\W\d_])", re.IGNORECASE
+)
+_AGENCY_DISTRICT_RE = re.compile(
+    r"(?<![^\W\d_])(?:huyện|quận|thị\s+xã|thành\s+phố|tp\.?)\s+([^,;()]+?)(?=\s*(?:[,;()]|\s+tỉnh(?![^\W\d_])|$))",
+    re.IGNORECASE,
+)
+_AGENCY_PROVINCE_RE = re.compile(r"(?<![^\W\d_])(?:tỉnh|thành\s+phố|tp\.?)\s+([^,;()]+)", re.IGNORECASE)
+_ROMAN_WARD = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9,
+               "X": 10, "XI": 11, "XII": 12}
+
+
+def _render_birth_agency_phrases(documents: list[dict]) -> str:
+    phrases = []
+    for document in documents:
+        for match in _BIRTH_AGENCY_PHRASE_RE.finditer(str(document.get("text") or "")):
+            phrase = " ".join(match.group(1).split())
+            if _AGENCY_COMMUNE_LABEL_RE.search(phrase) and phrase not in phrases:
+                phrases.append(phrase)
+    if not phrases:
+        return ""
+    lines = "".join(f"Câu ghi: {phrase}\n" for phrase in phrases)
+    return f"<{_BIRTH_AGENCY_TAG}>\n{lines}</{_BIRTH_AGENCY_TAG}>\n"
+
+
+def _agency_province(text: str, fallback: str) -> str:
+    for match in _AGENCY_PROVINCE_RE.finditer(text):
+        words = match.group(1).split()
+        # "thành phố Đà Lạt" là cấp huyện cũ — chỉ nhận khi đúng là tên tỉnh/thành hiện hành.
+        for size in range(len(words), 0, -1):
+            province = canonical_province(" ".join(words[:size]))
+            if province:
+                return province
+    return canonical_province(fallback) or fallback
+
+
+def _agency_area_from_phrase(text: str, province_fallback: str) -> dict | None:
+    """Một câu "đăng ký khai sinh tại ..." → {tinh, xa} hiện hành, hoặc None khi không chắc.
+
+    Đơn vị dưới xã (khóm/thôn/tổ/ấp/xóm/bản/khu phố) KHÔNG phải cơ quan đăng ký → lấy từ nhãn
+    xã/phường/thị trấn đầu tiên. Phường số La Mã ("phường II") đổi sang số để remap theo huyện cũ.
+    """
+    label = _AGENCY_COMMUNE_LABEL_RE.search(text)
+    if not label:
+        return None
+    province = _agency_province(text, province_fallback)
+    if not province:
+        return None
+    rest = text[label.end():]
+    stop = _AGENCY_NAME_STOP_RE.search(rest)
+    words = (rest[:stop.start()] if stop else rest).split()
+    district_match = _AGENCY_DISTRICT_RE.search(rest)
+    district = district_match.group(1).strip() if district_match else ""
+    kind = " ".join(label.group(1).split()).capitalize()
+    # Tên xã có thể dính liền huyện cũ ("phường II Đà Lạt") → thử tên dài nhất trước, phần dư làm gợi ý huyện.
+    for size in range(len(words), 0, -1):
+        name = words[:size]
+        if len(name) == 1 and name[0].upper() in _ROMAN_WARD:
+            name = [str(_ROMAN_WARD[name[0].upper()])]
+        hint = district or " ".join(words[size:])
+        area = _area_or_none(province, f"{kind} {' '.join(name)}", "", huyen=hint)
+        if area:
+            return {"tinh": str(area.get("tinh") or province), "xa": str(area.get("xa") or "")}
+    return None
+
+
+def _birth_agency_override(context: str, province_fallback: str) -> dict | None:
+    """Cơ quan đăng ký khai sinh trước đây chốt từ câu tờ khai/cam đoan; "(Nay là ...)" thắng tên cũ."""
+    phrases = [
+        line.partition(":")[2].strip()
+        for line in _section(context, _BIRTH_AGENCY_TAG).splitlines()
+        if line.startswith("Câu ghi:")
+    ]
+    for phrase in phrases:
+        now = _NOW_NAMED_RE.search(phrase)
+        area = _agency_area_from_phrase(now.group(1), province_fallback) if now else None
+        if area:
+            return area
+    for phrase in phrases:
+        before_now = _NOW_NAMED_RE.split(phrase)[0]
+        area = _agency_area_from_phrase(before_now, province_fallback)
+        if area:
+            return area
+    return None
+
+
+def _apply_birth_agency_override(fields: list[dict], context: str) -> list[dict]:
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    if not any(str(field.get("name") or "").startswith("PreviousRegistration_") for field in fields):
+        return fields
+    values = {field.get("name"): field.get("value") for field in fields if field.get("name")}
+    area = _birth_agency_override(context, str(values.get("PreviousRegistration_AgencyProvince") or ""))
+    if not area or not area.get("xa"):
+        return fields
+    overrides = {
+        "PreviousRegistration_AgencyProvince": area["tinh"],
+        "PreviousRegistration_AgencyCommune": area["xa"],
+    }
+    # Tên xã đã là tên hiện hành → bỏ huyện cũ agent đọc, tránh mapper remap lại theo huyện khác.
+    drop = {"PreviousRegistration_AgencyDistrict", *overrides}
+    result = [field for field in fields if field.get("name") not in drop]
+    for name, value in overrides.items():
+        result.append({"name": name, "comp": COMPACT_COMP_BY_NAME[name], "value": value})
+    return result
 
 
 def _declaration_residence_overrides(context: str, tag: str) -> dict:
@@ -3029,6 +3167,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "</to_khai_dang_ky_lai>\n"
         f"{_render_mrz_backs(documents)}"
         f"{_render_declared_roles(documents)}"
+        f"{_render_birth_agency_phrases(documents)}"
         f"{_render_authorized(documents)}"
         f"{_render_grantor(documents, options)}"
         f"{'' if declaration_sources else _render_other_declaration(documents)}"
@@ -3038,6 +3177,9 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         f"Khối <cha>/<me> có dòng \"{_NO_CARD_MATCH_LABEL}\" nghĩa là KHÔNG tấm CCCD/CMND nào trong hồ sơ "
         "là của người đó: trích TOÀN BỘ Father_*/Mother_* theo tờ khai (họ tên, số định danh, năm sinh...), "
         "TUYỆT ĐỐI không lấy số, ngày cấp, nơi cấp, ngày sinh từ CCCD của người khác.\n"
+        f"Khối <cha>/<me> có dòng \"{_GENERATION_MISMATCH_LABEL}\" nghĩa là chỉ năm sinh tờ khai ghi bị lệch: "
+        "vai đó VẪN LÀ cha/mẹ, BẮT BUỘC trích ĐẦY ĐỦ Father_*/Mother_* theo tờ khai (họ tên, năm sinh, dân tộc, "
+        "quốc tịch, nơi cư trú, giấy tờ tùy thân), không được bỏ vai.\n"
         f"Khối <con>/<cha>/<me> có dòng \"{_GENERATION_CARD_LABEL}\" nghĩa là tờ khai lệch với mọi CCCD và "
         "tấm thẻ trong khối đã được chốt theo ngày sinh + giới tính: nhân thân, số định danh, ngày cấp, nơi cấp, "
         "nơi cư trú lấy theo THẺ đó; chỉ ô thẻ không có mới lấy theo tờ khai.\n"
@@ -3148,6 +3290,9 @@ def _parent_birth_from_context(fields: list[dict], context: str) -> list[dict]:
         if not year or child_year - year >= 15:
             continue
         section = _section(context, tag)
+        # Vai giữ theo tờ khai với năm sinh đúng như OCR (xem _flag_generation_mismatch_births) → không bỏ.
+        if _labeled_value(section, _GENERATION_MISMATCH_LABEL):
+            continue
         context_year = _role_year(section)
         fixes[name] = _labeled_value(section, "Ngày sinh") if context_year and child_year - context_year >= 15 else None
     out = []
@@ -3549,8 +3694,31 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     # "có mà không điền". Không đè giá trị đã chốt theo thẻ.
     if context:
         result = _apply_declaration_fill(result, context)
+        result = _flag_generation_mismatch_births(result, context)
+        # Cơ quan đăng ký khai sinh trước đây: câu tờ khai/cam đoan đọc tất định thắng agent.
+        result = _apply_birth_agency_override(result, context)
 
     return result
+
+
+def _flag_generation_mismatch_births(fields: list[dict], context: str) -> list[dict]:
+    """Vai giữ theo tờ khai dù năm sinh lệch thế hệ: năm sinh để ĐÚNG như OCR tờ khai, tô vàng.
+
+    Không sửa năm theo mã năm trong số CCCD (bước đầu hàm sanitize có thể đã đổi) — cán bộ tự soát.
+    """
+    declared = {}
+    for tag in ("cha", "me"):
+        section = _section(context, tag)
+        if _labeled_value(section, _GENERATION_MISMATCH_LABEL):
+            declared[f"{_ROLE_PREFIX[tag]}BirthDateOrYear"] = _declared_date(_labeled_value(section, "Ngày sinh"))
+    if not declared:
+        return fields
+    return [
+        {**field, "value": declared[field["name"]] or field.get("value"), "default": True}
+        if field.get("name") in declared
+        else field
+        for field in fields
+    ]
 
 
 async def build_context(documents: list[dict], options: dict | None = None) -> str:

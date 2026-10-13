@@ -1149,7 +1149,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Các thông tin khác của mẹ
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"), me_default)
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
-        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
+        # Năm sinh tờ khai lệch thế hệ với con nhưng vẫn giữ vai theo tờ khai → tô vàng riêng ô này.
+        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default or "Mother_BirthDateOrYear" in default_names)
         add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default)
         add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
         _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default)
@@ -1178,7 +1179,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Các thông tin khác của cha
         add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
         add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)
-        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
+        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default or "Father_BirthDateOrYear" in default_names)
         add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default)
         add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)

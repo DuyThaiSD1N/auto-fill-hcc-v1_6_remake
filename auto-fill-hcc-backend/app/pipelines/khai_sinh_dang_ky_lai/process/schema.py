@@ -149,7 +149,8 @@ FIELDS: list[dict] = [
              'khai sinh/tờ khai đăng ký lại (dòng "Đã đăng ký khai sinh tại", "Nơi đăng ký khai sinh" hoặc '
              'phần UBND xã/phường ở đầu giấy khai sinh cũ). Trả kèm cấp hành chính, bỏ chữ "Ủy ban nhân dân"/'
              '"UBND": "Ủy ban nhân dân phường Điện Bàn Đông" → "Phường Điện Bàn Đông". KHÔNG lấy xã/phường '
-             "trên giấy kết hôn/khai tử/CCCD."},
+             "trên giấy kết hôn/khai tử/CCCD. Khóm/thôn/tổ/ấp/xóm/bản/khu phố KHÔNG phải xã/phường: "
+             '"Khóm Xuân An phường II Đà Lạt" → "Phường II". Giấy ghi "(Nay là phường X ...)" thì lấy tên hiện hành X.'},
     {"name": "PreviousRegistration_AgencyDistrict",
      "desc": 'Huyện/quận/thị xã/thành phố CŨ của cơ quan đăng ký khai sinh trước đây, nguyên văn trên giấy khai '
              'sinh cũ/trích lục/tờ khai đăng ký lại (vd "Ủy ban nhân dân phường 1, thành phố Đà Lạt" → "Đà Lạt"). '
