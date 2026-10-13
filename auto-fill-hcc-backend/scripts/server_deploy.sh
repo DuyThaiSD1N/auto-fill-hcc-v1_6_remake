@@ -7,7 +7,7 @@
 # GitHub Actions gọi qua SSH bằng khoá deploy bị ép chạy đúng script này
 # (authorized_keys: command="…/server_deploy.sh",no-pty,…) → tag nằm trong SSH_ORIGINAL_COMMAND.
 # Chạy tay trên server:
-#   ./server_deploy.sh v11.10.2026     # deploy tag (kéo image từ GHCR)
+#   ./server_deploy.sh v2026.10.12     # deploy tag (kéo image từ GHCR)
 #   ./server_deploy.sh rollback        # quay về bản chạy ngay trước đó (:prev)
 #
 # Chỉ đổi image của app / fe / monitor-fe: KHÔNG down, KHÔNG đụng service mongo, .env, ./data.
@@ -21,9 +21,11 @@ REGISTRY="${DEPLOY_REGISTRY:-ghcr.io/dev-f19}"
 COMPOSE=(docker compose -f compose.prod.yml)
 IMAGES=(autofill-hcc-be autofill-hcc-fe autofill-hcc-monitor-fe)
 SERVICES=(app fe monitor-fe)
-# vNgày.Tháng.Năm[.lần]: v11.10.2026, v11.10.2026.1 — khớp đúng mẫu mới chạy, chặn mọi chuỗi lạ
-# lọt qua SSH (tag còn được ghép vào tên image).
-TAG_RE='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
+# vNăm.Tháng.Ngày[.lần]: v2026.10.12, v2026.10.12.1 — năm trước để tên tag tự xếp đúng thứ tự thời
+# gian. Khớp đúng mẫu mới chạy, chặn mọi chuỗi lạ lọt qua SSH (tag còn được ghép vào tên image).
+TAG_RE='^v20[0-9]{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])(\.[1-9][0-9]{0,2})?$'
+# Mẫu cũ vNgày.Tháng.Năm (các tag tạo trước 12/10/2026) — vẫn nhận để quay về được bản cũ.
+LEGACY_TAG_RE='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 PULL_ATTEMPTS="${PULL_ATTEMPTS:-5}"
 PULL_RETRY_DELAY="${PULL_RETRY_DELAY:-15}"
@@ -33,8 +35,8 @@ HISTORY=deploy-history.log
 log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*"; }
 
 arg="${1:-${SSH_ORIGINAL_COMMAND:-}}"
-if [[ "$arg" != "rollback" && ! "$arg" =~ $TAG_RE ]]; then
-  log "Tham số không hợp lệ: '${arg}'. Dùng: server_deploy.sh vDD.MM.YYYY[.n] | rollback"
+if [[ "$arg" != "rollback" && ! "$arg" =~ $TAG_RE && ! "$arg" =~ $LEGACY_TAG_RE ]]; then
+  log "Tham số không hợp lệ: '${arg}'. Dùng: server_deploy.sh vYYYY.MM.DD[.n] | rollback"
   exit 2
 fi
 

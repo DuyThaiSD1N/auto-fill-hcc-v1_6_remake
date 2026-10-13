@@ -18,13 +18,13 @@ jobs:
       contents: read
       packages: read
     steps:
-      - name: Tag đúng mẫu vDD.MM.YYYY[.n]
+      - name: Tag đúng mẫu vYYYY.MM.DD[.n]
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          re='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
+          re='^v20[0-9]{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])(\.[1-9][0-9]{0,2})?$'
           if [[ ! "$TAG" =~ $re ]]; then
-            echo "::error::'$TAG' không phải tag phát hành. Bấm Run workflow thì ô 'Use workflow from' phải chọn tab Tags → một tag vDD.MM.YYYY."
+            echo "::error::'$TAG' không phải tag phát hành. Bấm Run workflow thì ô 'Use workflow from' phải chọn tab Tags → một tag vYYYY.MM.DD."
             exit 1
           fi
 

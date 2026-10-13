@@ -106,9 +106,9 @@ function Widget({ cell, ctx }: { cell: Cell; ctx: Ctx }) {
     body = cell.text
       ? <span>{cell.text}</span>
       : cell.status === "miss" ? <s>{show(cell.want)}</s>
-      : cell.status === "prefilled" ? <span className="ef-muted">(cổng tự điền)</span>
-      : cell.status === "auto" ? <span className="ef-muted">{cell.want !== undefined ? show(cell.want) : "(extension tự quyết)"}</span>
-      : <span className="ef-muted">{placeholder}</span>;
+        : cell.status === "prefilled" ? <span className="ef-muted">(cổng tự điền)</span>
+          : cell.status === "auto" ? <span className="ef-muted">{cell.want !== undefined ? show(cell.want) : "(extension tự quyết)"}</span>
+            : <span className="ef-muted">{placeholder}</span>;
   }
   return (
     <span className="ef-slot">

@@ -2,7 +2,7 @@
 
 Một tệp hay gộp nhiều giấy (tờ khai + CCCD + bản án...). LLM đọc cả hồ sơ theo TRANG trong MỘT lượt và chia thành từng
 giấy; mỗi giấy thành một mục đính kèm có `sourceSegments` (extension cắt đúng các trang) đặt vào ĐÚNG dòng có sẵn của
-bảng thành phần — tờ khai vào dòng tờ khai, giấy khác vào dòng giấy tờ. Không sót trang: trang LLM không nhắc tới gộp
+bảng thành phần — giấy XNTTHN cũ, giấy tờ ly hôn/khai tử, ủy quyền vào dòng riêng; giấy khác vào dòng giấy tờ hôn nhân. Không sót trang: trang LLM không nhắc tới gộp
 vào giấy liền trước của cùng tệp; chỉ trang LLM nói là trang trắng mới bỏ. Xã Nghĩa Hưng: bỏ các trang tờ khai.
 OCR/LLM lỗi → quay về chế độ không tách. Tệp trên 2 MB vẫn nén như chế độ không tách.
 """
@@ -16,7 +16,7 @@ from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import s
 from app.process.schemas import FileItem
 from app.services.llm import client
 
-from ..dinh_kem_khong_tach.planner import DOC_TYPES, ROW_GIAY_TO, ROWS, _document_name, _llm_document_name
+from ..dinh_kem_khong_tach.planner import DEFAULT_ROW, DOC_TYPES, ROWS, _document_name, _llm_document_name
 from ..dinh_kem_khong_tach.planner import both_sides, pair_card_sides
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from ..nghia_hung import OMITTED_DECLARATION_NOTE, omits_paper_declaration
@@ -25,7 +25,6 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _PAGE_RE = re.compile(r"(?m)^\W*Trang\s+(\d+)\s*/\s*(\d+)\W*$")
 _BLANK = "blank_page"
-DEFAULT_ROW = ROW_GIAY_TO
 ROW_BY_TYPE = ROWS
 
 

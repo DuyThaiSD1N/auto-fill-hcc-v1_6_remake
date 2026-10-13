@@ -8,12 +8,14 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.nationality import normalize_nationality
 from app.pipelines._shared.tai_khoan import account_context, date_key, matches_account
 
 from .reason import labeled_value, section
-from .schema import LOAI_CU_TRU, LOAI_GIAY_TO, MUC_DICH, NOI_CU_TRU, QUAN_HE, TINH_TRANG, UI_COMP_BY_NAME
+from .schema import GIOI_TINH, LOAI_CU_TRU, LOAI_GIAY_TO, MUC_DICH, NOI_CU_TRU, QUAN_HE, TINH_TRANG, UI_COMP_BY_NAME
 
 _DATE_RE = re.compile(r"\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b")
 _HCM_PROVINCE_KEYS = {"hochiminh", "tphochiminh", "thanhphohochiminh", "tphcm", "hcm"}
@@ -71,6 +73,13 @@ def _iso(ddmmyyyy: str) -> str:
     return f"{year}-{month}-{day}"
 
 
+def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
+    # Căn cước/CCCD luôn 12 chữ số → số 9 chữ số chỉ có thể là CMND cũ (trừ khi giấy ghi rõ hộ chiếu).
+    if len(_digits(number)) == 9 and "chieu" not in _fold(hint):
+        return "Chứng minh nhân dân"
+    return id_doc_type(hint or "Căn cước", issuer)
+
+
 def _area(value):
     if not isinstance(value, dict):
         return None
@@ -113,13 +122,20 @@ def _submitter_phone(value, context: str) -> str:
 def _relation(values: dict, context: str, options: dict | None) -> tuple[str, str, bool, str]:
     """(mã quan hệ, chữ quan hệ khác, suy đoán, cảnh báo). Kết luận của bước phân vai → đối chiếu tài khoản."""
     reasoned = labeled_value(section(context, "quan_he"), "Kết luận")
-    if reasoned:
-        return ("1", "", False, "") if _fold(reasoned) in _SELF_RELATIONS else ("2", reasoned, False, "")
     account = account_context(options)
-    if (account.get("HoTen") or account.get("SoDinhDanh")) and matches_account(
-        account, values.get("NguoiDuocCap_HoTen"), values.get("NguoiDuocCap_SoDinhDanh"),
-        values.get("NguoiDuocCap_NgaySinh"),
-    ):
+    subject = (values.get("NguoiDuocCap_HoTen"), values.get("NguoiDuocCap_SoDinhDanh"), values.get("NguoiDuocCap_NgaySinh"))
+    # None = không đủ dữ kiện đối chiếu (cổng không truyền tài khoản / không đọc được người được cấp).
+    is_account = matches_account(account, *subject) if (
+        (account.get("HoTen") or account.get("SoDinhDanh")) and (subject[0] or subject[1])) else None
+    other_warning = "Người nộp khác người được cấp — cán bộ ghi mối quan hệ khác."
+    if reasoned and _fold(reasoned) not in _SELF_RELATIONS:
+        return "2", reasoned, False, ""
+    if reasoned and is_account is not False:
+        return "1", "", False, ""
+    # Tài khoản đăng nhập rõ ràng là người khác: "Tự khai" trên tờ khai là của người yêu cầu, không phải người nộp.
+    if is_account is False:
+        return "2", "", True, other_warning
+    if is_account:
         return "1", "", True, ""
     return "", "", False, "Chưa xác định được quan hệ của người nộp với người được cấp — cán bộ chọn ô Quan hệ."
 
@@ -215,6 +231,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(name, " ".join(str(raw or "").split()))
 
     add("citizenPhone", _submitter_phone(values.get("NguoiNop_SoDienThoai"), context))
+    # Người nộp là chủ tài khoản định danh trong nước; chọn sẵn để cổng hiện địa chỉ thường trú đã đổ từ tài khoản.
+    add_choice("citizenNycNoicutru", NOI_CU_TRU, "1", default=True)
     # Quan hệ chốt trước: chọn "Khác" thì cổng mới hiện ô ghi quan hệ.
     relation, other, guessed, warning = _relation(values, context, options)
     if warning:
@@ -234,6 +252,33 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             item["lookup"] = True
     if not values.get("NguoiDuocCap_HoTen"):
         warnings.append("Không đọc được người được cấp Giấy XNTTHN — cán bộ nhập khối người được cấp.")
+
+    # Cổng tra được CSDL dân cư thì tự đổ các ô dưới (extension không ghi đè); tra không ra thì điền theo giấy tờ.
+    gender = _snap(GIOI_TINH, values.get("NguoiDuocCap_GioiTinh"))
+    if gender:
+        add_choice("citizenNDKGioitinh", GIOI_TINH, gender[0])
+    # Danh mục cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+    ethnic = values.get("NguoiDuocCap_DanToc") or values.get("GiayToKhac_DanToc")
+    add("citizenNDKDantoc", normalize_ethnic(co_ho_local_group(ethnic)) or None)
+    number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (
+        personal_id if values.get("NguoiDuocCap_NgayCap") else "")
+    nationality = values.get("NguoiDuocCap_QuocTich")
+    if nationality or number:
+        # Có thẻ căn cước/CMND mà giấy không ghi quốc tịch → công dân Việt Nam, tô vàng.
+        nationality = normalize_nationality(nationality, "Việt Nam", exact_only=True)
+        add("citizenField20", nationality, code="VN" if _fold(nationality) == "viet nam" else None,
+            default=not values.get("NguoiDuocCap_QuocTich"))
+    if number:
+        issue_date = _full_date(values.get("NguoiDuocCap_NgayCap"))
+        # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
+        issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
+            default_issuer(issue_date) if len(number) == 12 and issue_date else "")
+        id_type = _snap(LOAI_GIAY_TO, _id_doc_type_with_number(number, values.get("NguoiDuocCap_LoaiGiayTo"), issuer))
+        if id_type:
+            add_choice("citizenNDKLoaigiayto", LOAI_GIAY_TO, id_type[0])
+        add("citizenNDKSogiaytotuythan", number)
+        add_date("citizenNDKNgaycap", issue_date)
+        add("citizenNDKNocap", issuer)
 
     # Loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra nên đi trước. Loại cư trú không in trên giấy tờ nào →
     # mặc định Thường trú, tô vàng.
@@ -283,11 +328,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Mục đích đã được bước phân vai khôi phục câu chữ; không chắc thì vẫn điền nhưng tô vàng cho cán bộ soát.
     purpose_block = section(context, "muc_dich")
     purpose_text = labeled_value(purpose_block, "Nội dung")
-    purpose = _PURPOSE_BY_KEY.get(_fold(labeled_value(purpose_block, "Loại")).replace(" ", "_")) or "3"
-    # "Mục đích khác" bắt buộc kèm câu mục đích: không đọc được câu nào thì để cán bộ chọn.
-    if purpose == "3" and not purpose_text:
-        purpose = ""
-    add_choice("citizenField60", MUC_DICH, purpose)
+    purpose = _PURPOSE_BY_KEY.get(_fold(labeled_value(purpose_block, "Loại")).replace(" ", "_"))
+    # Không xác định được loại → mặc định "Sử dụng vào mục đích khác" (trường hợp phổ biến nhất), tô vàng.
+    add_choice("citizenField60", MUC_DICH, purpose or "3", default=not purpose)
+    purpose = purpose or "3"
     if purpose == "3":
         add("citizenField69", purpose_text, default=_fold(labeled_value(purpose_block, "Độ chắc")) == "thap")
     elif purpose in ("1", "2"):

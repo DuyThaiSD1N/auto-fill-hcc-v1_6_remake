@@ -449,6 +449,9 @@ def _docs_done_label(target: str) -> str:
 def _docs_done_label_for_conv(conv: dict) -> str:
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
+        if (tpm.is_active(get_procedure(conv.get("procedure_key") or ""))
+                and tpm.auto_flow(conv)):
+            return tpm.ADJUST_BOTH_LABEL
         return _DOCUMENT_ADJUSTMENT_LABELS[adjustment_target]
     # Nhánh ủy quyền: xong lượt này trợ lý điền HAI khối rồi đính luôn giấy ủy quyền, nên
     # nhãn "điền chủ hồ sơ đi" vừa sai vai vừa thiếu việc.
@@ -1029,7 +1032,15 @@ async def _handle_turn_inner(
     if intent.kind == "procedure_unclear":
         return _procedure_unclear(conv, intent.payload.get("candidates") or [])
     if intent.kind == "event" and intent.value == "submit_clicked":
-        return _record_submit_click(conv, intent.payload)
+        r = _record_submit_click(conv, intent.payload)
+        if tpm.is_active(current_proc) and tpm.auto_flow(conv):
+            conv["state"] = "done"  # bấm nộp = đã nộp, ở bước nào cũng vậy
+        return r
+    if tpm.is_active(current_proc) and tpm.auto_flow(conv):
+        if intent.kind == "event" and intent.value == "submitted":
+            return tpm.on_submitted(conv)
+        if intent.kind == "action" and intent.value == "tpm_adjust_done":
+            return await tpm.adjust_done(conv, intent.payload or {})
     # ── Đánh giá trải nghiệm ─────────────────────────────────────────────────────────────
     # Ở TẦNG TOÀN CỤC chứ không nằm trong _handle_done: card đánh giá giờ dựng được ngay từ cú
     # BẤM nút nộp, lúc đó state có thể vẫn là "attaching". Để trong _handle_done thì cú chạm mặt
@@ -1093,7 +1104,12 @@ async def _handle_turn_inner(
         # Đồng hồ tự-đăng-xuất 2 phút CHỈ khởi động khi cổng đã xác nhận thật (arm_timer) — chưa
         # xác nhận thì hiện nút nhưng chưa auto-đăng-xuất (cổng còn có thể báo thiếu giấy tờ).
         conv["submitted_logout_decision"] = "pending"
-        return _logout_choice_reply(arm_timer=bool(conv.get("submitted_completed")))
+        # Luồng tự động trang hộ tịch mới: bấm nộp = đã nộp, đồng hồ tự đăng xuất là bước nối
+        # ngay sau đánh giá, không chờ cổng xác nhận.
+        return _logout_choice_reply(arm_timer=bool(
+            conv.get("submitted_completed")
+            or (tpm.is_active(current_proc) and tpm.auto_flow(conv))
+        ))
 
     # Chọn "đăng xuất" / "nộp thêm hồ sơ" — Ở TẦNG TOÀN CỤC (như rate/rate_skip). 2 nút này hiện
     # ngay sau khi đánh giá xong, lúc đó state có thể VẪN là "attaching" (cổng chưa phát event
@@ -2549,7 +2565,8 @@ def _supplement_documents_chip() -> dict:
     }
 
 
-async def _start_documents_adjustment(conv: dict, target: str) -> Reply:
+async def _start_documents_adjustment(conv: dict, target: str, *, finish_action: str | None = None,
+                                      finish_detail: str | None = None) -> Reply:
     """Mở lại cùng phiên giấy tờ và ghi target để lần chốt chạy đúng pipeline."""
     if target not in _DOCUMENT_ADJUSTMENT_LABELS:
         return Reply(*_fmt(vi.DOCS_TARGET_UNKNOWN))
@@ -2592,8 +2609,8 @@ async def _start_documents_adjustment(conv: dict, target: str) -> Reply:
 
     template = (vi.ATTACH_SUPPLEMENT_ASK if session
                 else vi.ATTACH_SUPPLEMENT_SESSION_EXPIRED)
-    finish_action = _DOCUMENT_ADJUSTMENT_LABELS[target].removeprefix("✅ ")
-    finish_detail = (
+    finish_action = finish_action or _DOCUMENT_ADJUSTMENT_LABELS[target].removeprefix("✅ ")
+    finish_detail = finish_detail or (
         "em sẽ đọc lại toàn bộ danh sách giấy tờ và điền lại tờ khai"
         if target == "declaration"
         else "em sẽ kiểm tra toàn bộ danh sách còn lại và tự bỏ qua những tệp đã có trên hồ sơ"
@@ -3332,8 +3349,16 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # Không đổi state: pipeline kê khai vẫn phải nhận fields_ready/fill_report. Khi xong,
         # auto_attach_after_fill sẽ chuyển sang attaching và watcher chờ đúng bước 3.
         return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
+    tpm_auto = tpm.is_active(proc) and tpm.auto_flow(conv)
     if intent.kind == "event" and intent.value == "fields_ready":
+        if tpm_auto:
+            tpm.on_fields_ready(conv)
         return _fill_fields_reply(conv)
+    if (tpm_auto and conv.get("fields") and intent.kind == "event"
+            and intent.value in {"attach_ready", "pipeline_error"}):
+        # Kế hoạch đính kèm chạy nền từ lúc dữ liệu điền về: kết quả/lỗi của nó về khi form còn
+        # đang điền thì giữ đó, fill_report sẽ đính luôn hoặc lập lại kế hoạch.
+        return Reply()
     if intent.kind == "event" and intent.value == "pipeline_error":
         r = Reply(*_fmt(vi.PIPELINE_ERROR, error=conv.get("pipeline_error") or "không rõ"))
         r.chips = [{"label": "🔁 Thử lại", "send": "__event:docs_complete", "solid": True},

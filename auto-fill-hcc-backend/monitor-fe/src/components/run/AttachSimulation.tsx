@@ -130,7 +130,7 @@ function LinkDiagram({ plan, files }: { plan: PlanItem[]; files: string[] }) {
         <svg viewBox={`0 0 140 ${height}`} height={height} preserveAspectRatio="none" aria-hidden="true">
           {links.map(([f, c], k) => (
             <path key={k} d={`M0 ${f * ROW + ROW / 2 - 4} C70 ${f * ROW + ROW / 2 - 4}, 70 ${c * ROW + ROW / 2 - 4}, 140 ${c * ROW + ROW / 2 - 4}`}
-                  fill="none" stroke="var(--st-post)" strokeWidth="1.5" />
+              fill="none" stroke="var(--st-post)" strokeWidth="1.5" />
           ))}
         </svg>
         <div className="sim__col">

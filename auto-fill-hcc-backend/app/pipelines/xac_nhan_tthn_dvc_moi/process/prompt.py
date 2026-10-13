@@ -11,7 +11,13 @@ khoản → KHÔNG trích người nộp, trừ số điện thoại (xem <nguoi
 2. Nguồn họ tên, ngày sinh, số định danh: thẻ CCCD/căn cước CỦA CHÍNH người đó (bản in đáng tin hơn chữ viết tay) →
    tờ khai (khối sau câu "Đề nghị cấp...") → giấy XNTTHN cũ / giấy ủy quyền. Số trên tờ khai lệch vài chữ số so với
    thẻ của chính người đó → lấy theo thẻ. KHÔNG lấy số, ngày sinh từ thẻ của người khác (người nộp hộ, vợ/chồng).
-3. NguoiDuocCap_NoiCuTru = nơi cư trú HIỆN TẠI: dòng "Nơi cư trú" ở khối người được cấp trên tờ khai → nơi thường trú
+3. Giới tính, quốc tịch, giấy tờ tùy thân (loại, số, ngày cấp, nơi cấp) cùng nguồn như mục 2: thẻ của CHÍNH người được
+   cấp trước, rồi tới dòng "Giấy tờ tùy thân" ở khối người được cấp trên tờ khai. Nơi cấp chép đúng chữ; "Cục CS QLHC về
+   TTXH" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; căn cước mới "BỘ CÔNG AN" → "Bộ Công an". Dân tộc: thẻ
+   căn cước mẫu mới thường không in → trả theo TỪNG nguồn, mỗi nguồn một field: dòng "Dân tộc" ở khối người được cấp
+   trên tờ khai (hay chung dòng với giới tính, kẹp số chú thích: "Giới tính: (2) Nữ Dân tộc: (2) Kinh" → Kinh) hoặc
+   thẻ CMND cũ → NguoiDuocCap_DanToc; giấy tờ khác của chính người đó → GiayToKhac_DanToc. Không giấy nào ghi → bỏ.
+4. NguoiDuocCap_NoiCuTru = nơi cư trú HIỆN TẠI: dòng "Nơi cư trú" ở khối người được cấp trên tờ khai → nơi thường trú
    in trên thẻ của chính người đó. KHÔNG lấy địa chỉ trong dòng tình trạng hôn nhân (địa chỉ vợ/chồng, địa chỉ cũ),
    KHÔNG lấy "Nơi chết"/"Nơi thường trú cuối cùng" trên giấy chứng tử.
 </nguoi_duoc_cap>

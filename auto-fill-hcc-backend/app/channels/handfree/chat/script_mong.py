@@ -110,6 +110,11 @@ CHIP_HMONG = {
     "🔁 Điền lại": "Sau dua",
     "🔁 Điền lại thông tin": "Sau dua cov ntaub ntawv",
     "🔁 Đính kèm lại": "Muab tso dua",
+    "📎 Đính kèm lại": "Muab tso dua",
+    # Luồng tự động trang hộ tịch mới — ghép từ các nhãn "Hoàn tất điều chỉnh…" đã dịch.
+    "✅ Đủ giấy tờ — điền & đính kèm lại": "Muab txaus lawm, sau daim foos dua, muab tso dua",
+    "🔁 Đã đủ giấy tờ - Điền lại tờ khai": "Muab txaus lawm, sau daim foos dua",
+    "📎 Đã đủ giấy tờ - Đính kèm lại": "Muab txaus lawm, muab tso dua",
     "🗂️ Điều chỉnh giấy tờ": "Kho cov ntaub ntawv",
     # Nút chuyển bước / gửi hồ sơ của luồng dẫn từng bước (guidedSteps).
     "Xong, sang bước đính kèm →": "Tiav lawm, mus muab tso",
@@ -1340,6 +1345,28 @@ TPM_SUBMIT_BLOCKED = {
 TPM_SUBMIT_STUCK = {
     "md": "Kuv nias tsis tau lub pob xa ntaub ntawv. Pej xeem nias ncaj qha lub pob Lưu và nộp hồ sơ hauv qab nplooj ntawv.",
     "tts": "Kuv nias tsis tau lub pob xa ntaub ntawv. Pej xeem nias ncaj qha lub pob xa ntaub ntawv hauv qab nplooj ntawv.",
+}
+
+# Luồng tự động — cắt ghép từ TPM_ATTACH_WAIT_PLAN / TPM_ATTACH_DONE / TPM_ATTACH_ALL_EXIST /
+# TPM_RESULT_PICK / TPM_SUBMIT_HINT đã dịch, không thêm câu mới.
+TPM_AUTO_ATTACH_WAIT = {
+    "md": " Kuv tab tom npaj, tiav ces kuv muab ntaub ntawv tso kiag.",
+    "tts": " Kuv tab tom npaj, tiav ces kuv muab ntaub ntawv tso kiag.",
+}
+
+TPM_AUTO_ATTACH_DONE = {
+    "md": "Kuv muab {attached} daim tso tiav lawm.",
+    "tts": "Kuv muab tso tiav lawm.",
+}
+
+TPM_AUTO_ALL_EXIST = {
+    "md": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua.",
+    "tts": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua.",
+}
+
+TPM_AUTO_RESULT_DEFAULT = {
+    "md": " Kuv twb xaiv ib txoj kev. Xav hloov txoj twg ces nias txoj ntawd. Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Lưu và nộp hồ sơ kuv xa ntaub ntawv.",
+    "tts": " Kuv twb xaiv ib txoj kev. Xav hloov txoj twg ces nias txoj ntawd. Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias lub pob xa ntaub ntawv.",
 }
 
 TPM_DONE_REMIND = {

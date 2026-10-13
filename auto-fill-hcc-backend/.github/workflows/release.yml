@@ -1,6 +1,6 @@
 name: Release
 
-# Push tag vDD.MM.YYYY[.n] (vd v11.10.2026, v11.10.2026.1) → test → build 3 image → đẩy GHCR →
+# Push tag vYYYY.MM.DD[.n] (vd v2026.10.12, v2026.10.12.1) → test → build 3 image → đẩy GHCR →
 # deploy prod. Tag phải trỏ vào commit đã có trong main.
 on:
   push:
@@ -28,9 +28,9 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          re='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
+          re='^v20[0-9]{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])(\.[1-9][0-9]{0,2})?$'
           if [[ ! "$TAG" =~ $re ]]; then
-            echo "::error::Tag '$TAG' sai mẫu vDD.MM.YYYY[.n] (vd v11.10.2026, v11.10.2026.1) — không phát hành."
+            echo "::error::Tag '$TAG' sai mẫu vYYYY.MM.DD[.n] (vd v2026.10.12, v2026.10.12.1) — không phát hành."
             exit 1
           fi
           commit="$(git rev-parse "$TAG^{commit}")"
@@ -84,8 +84,10 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ github.ref_name }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # Cache lớp build để trên GHCR (tag :buildcache), không dùng type=gha: cache của Actions chỉ
+          # đọc được trong CÙNG ref (hoặc main) — mỗi tag phát hành là một ref mới nên luôn trượt cache.
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:buildcache,mode=max
 
   deploy:
     name: Deploy

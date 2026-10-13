@@ -1,8 +1,9 @@
 """Đính kèm cấp Giấy XNTTHN (Cổng DVC quốc gia mới).
 
-Bảng thành phần có dòng tờ khai và dòng "các giấy tờ sau" (CCCD, ủy quyền, bản án ly hôn, giấy chứng tử, giấy kết
-hôn, giấy XNTTHN cũ...), một dòng nhận nhiều tệp qua nút "Tải lên file", không có nút "Thêm thành phần". LLM đọc từng
-tệp để xếp đúng dòng; LLM lỗi / OCR hụt → dòng giấy tờ. Xã Nghĩa Hưng không đính tờ khai (cờ theo tài khoản).
+Bảng thành phần có 3 dòng cố định (giấy XNTTHN đã cấp trước đó / giấy tờ ly hôn, khai tử của vợ chồng / văn bản ủy
+quyền), một dòng nhận nhiều tệp qua nút "Tải lên file", không có nút "Thêm thành phần". LLM đọc từng tệp để xếp đúng
+dòng; tệp không thuộc dòng riêng nào (tờ khai, CCCD, giấy kết hôn...) đính chung dòng giấy tờ hôn nhân để không sót
+tệp. LLM lỗi / OCR hụt → dòng giấy tờ hôn nhân. Xã Nghĩa Hưng không đính tờ khai (cờ theo tài khoản).
 
 Cổng chỉ nhận tệp dưới 2 MB: tệp trên 2 MB được nén bằng đúng thang của cải chính (cùng Cổng DVC quốc gia mới), trả
 về ở `replaceFiles` để extension đính bản nén thay bản gốc. Tệp nhỏ hơn để nguyên. OCR vẫn đọc bản gốc.
@@ -25,13 +26,21 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 # slotName = đoạn đầu chữ của dòng trên cổng (extension khớp 40 ký tự đầu đã bỏ dấu).
-ROW_GIAY_TO = {"slotKey": "tthn_giay_to", "slotIndex": 1,
-               "slotName": "Người có yêu cầu cấp Giấy xác nhận tình trạng hôn nhân thực hiện việc nộp"}
-ROW_TO_KHAI = {"slotKey": "tthn_to_khai", "slotIndex": 2,
-               "slotName": "Tờ khai cấp Giấy xác nhận tình trạng hôn nhân"}
+ROW_CAP_LAI = {"slotKey": "tthn_giay_cu", "slotIndex": 0,
+               "slotName": "Trường hợp cá nhân yêu cầu cấp lại Giấy xác nhận tình trạng hôn nhân"}
+ROW_HON_NHAN = {"slotKey": "tthn_ly_hon_khai_tu", "slotIndex": 1,
+                "slotName": "Trường hợp người yêu cầu xác nhận tình trạng hôn nhân đã có vợ"}
+ROW_UY_QUYEN = {"slotKey": "tthn_uy_quyen", "slotIndex": 2,
+                "slotName": "Văn bản ủy quyền theo quy định của pháp luật"}
+DEFAULT_ROW = ROW_HON_NHAN
 DOC_TYPES = {"declaration", "identity", "authorization", "previous_certificate", "divorce_decision",
              "death_certificate", "marriage_certificate"}
-ROWS = {"declaration": ROW_TO_KHAI}
+ROWS = {
+    "previous_certificate": ROW_CAP_LAI,
+    "divorce_decision": ROW_HON_NHAN,
+    "death_certificate": ROW_HON_NHAN,
+    "authorization": ROW_UY_QUYEN,
+}
 
 
 def _document_name(file_name: str, doc_name: str) -> str:
@@ -121,7 +130,7 @@ def build_plan_items(file_names: list[str], doc_types: dict[int, str],
         if seen[document_name.lower()] > 1:
             document_name = f"{document_name} {seen[document_name.lower()]}"
         doc_type = doc_types.get(index) if doc_types.get(index) in DOC_TYPES else "other"
-        row = ROWS.get(doc_type, ROW_GIAY_TO)
+        row = ROWS.get(doc_type, DEFAULT_ROW)
         items.append({
             "fileIndex": index,
             "fileName": name,
@@ -192,7 +201,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     if texts:
         try:
             answers = await _classify_all(texts)
-        except Exception as exc:  # noqa: BLE001 — LLM lỗi → mọi tệp về dòng giấy tờ, giữ tên gốc
+        except Exception as exc:  # noqa: BLE001 — LLM lỗi → mọi tệp về dòng giấy tờ hôn nhân, giữ tên gốc
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
     doc_types = {i: str(a.get("docType") or "").strip() for i, a in answers.items()}

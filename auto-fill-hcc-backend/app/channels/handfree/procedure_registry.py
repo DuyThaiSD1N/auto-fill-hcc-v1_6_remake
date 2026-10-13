@@ -539,7 +539,8 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: giấy tờ chứng minh tình trạng hôn nhân.\n"
             "4. Các giấy tờ khác liên quan.\n"
             "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Bước 3: tờ khai vào dòng tờ khai, các giấy tờ còn lại vào dòng giấy tờ."
+            "Bước 3: giấy XNTTHN đã cấp vào dòng 1, bản án ly hôn / giấy chứng tử vào dòng 2, văn bản ủy quyền "
+            "dòng 3; giấy tờ khác đính chung dòng 2."
         ),
     },
     {

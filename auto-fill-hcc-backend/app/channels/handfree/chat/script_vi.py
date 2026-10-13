@@ -1899,6 +1899,37 @@ TPM_SUBMIT_STUCK = {
     ),
 }
 
+# ── Luồng TỰ ĐỘNG (tu_phap_moi.auto_flow): điền xong tự đính kèm, xong hiện luôn nút nộp ──
+# Câu đuôi sau báo cáo điền (note= của FILL_REPORT_REVIEW). TTS ngắn: câu "đính xong" về ngay sau.
+TPM_AUTO_ATTACH_WAIT = {
+    "md": "\n\nTiếp theo em sẽ đính kèm giấy tờ vào **Thành phần hồ sơ** ngay khi chuẩn bị xong ạ…",
+    "tts": " Tiếp theo em sẽ đính kèm giấy tờ vào thành phần hồ sơ ngay khi chuẩn bị xong ạ.",
+}
+
+TPM_AUTO_ATTACH_DONE = {
+    "md": "✅ Em đã đính xong **{attached} tệp** vào **Thành phần hồ sơ**.",
+    "tts": "Em đã đính xong các tệp vào thành phần hồ sơ.",
+}
+
+TPM_AUTO_ALL_EXIST = {
+    "md": "✅ Các tệp đều đã có sẵn trên **Thành phần hồ sơ**, em không đính trùng nữa.",
+    "tts": "Các tệp đều đã có sẵn trên thành phần hồ sơ, em không đính trùng nữa.",
+}
+
+# Cổng chọn sẵn một cách nhận kết quả; {label} = cách mặc định khai trong registry thủ tục.
+TPM_AUTO_RESULT_DEFAULT = {
+    "md": (
+        "\n\nHình thức nhận kết quả đang để mặc định **{label}**; công dân muốn đổi thì bấm "
+        "**Chọn hình thức nhận kết quả** rồi chọn hình thức tương ứng ạ. Rà lại xong, công dân "
+        "bấm **Lưu và nộp hồ sơ** để nộp."
+    ),
+    "tts": (
+        " Hình thức nhận kết quả đang để mặc định {label}; công dân muốn đổi thì bấm chọn hình "
+        "thức nhận kết quả rồi chọn hình thức tương ứng ạ. Rà lại xong, công dân bấm lưu và nộp "
+        "hồ sơ để nộp."
+    ),
+}
+
 TPM_DONE_REMIND = {
     "md": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",
     "tts": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",

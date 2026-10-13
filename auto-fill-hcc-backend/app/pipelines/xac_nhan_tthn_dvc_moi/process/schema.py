@@ -4,8 +4,9 @@ Tên câu hỏi + mã choice lấy từ formJson của cổng (mẫu "ThongTinNg
 `<tên>__<mã mẫu>` → backend chỉ gửi phần trước `__`, extension khớp theo tiền tố.
 
 Khối THÔNG TIN NGƯỜI NỘP do cổng đổ từ tài khoản định danh và khóa (trừ số điện thoại) → chỉ trích số điện thoại và
-quan hệ. Khối NGƯỜI ĐƯỢC CẤP: ba ô họ tên + ngày sinh + số định danh mang cờ `lookup` — cổng tra CSDL dân cư rồi tự đổ
-và khóa giới tính, dân tộc, quốc tịch, giấy tờ → không trích các ô đó.
+quan hệ. Khối NGƯỜI ĐƯỢC CẤP: ba ô họ tên + ngày sinh + số định danh mang cờ `lookup` — cổng tra CSDL dân cư rồi tự đổ giới
+tính, dân tộc, quốc tịch, giấy tờ; tra không ra thì các ô đó trống → vẫn gửi theo giấy tờ, extension chờ cổng tra và
+không ghi đè ô cổng đã đổ.
 
 Field gửi extension (engine chung content/surveyjs-main.js): {name, comp, value, code?, default?, lookup?}.
 """
@@ -16,6 +17,21 @@ FIELDS: list[dict] = [
     {"name": "NguoiDuocCap_NgaySinh", "desc": "Ngày sinh người được cấp, dd/mm/yyyy."},
     {"name": "NguoiDuocCap_SoDinhDanh",
      "desc": "Số định danh cá nhân (đúng 12 chữ số) của người được cấp. Số 9 chữ số là CMND → không trả ở đây."},
+    {"name": "NguoiDuocCap_GioiTinh", "desc": 'Giới tính người được cấp: "Nam" hoặc "Nữ" — chỉ khi giấy ghi.'},
+    {"name": "NguoiDuocCap_DanToc",
+     "desc": 'Dân tộc người được cấp: dòng "Dân tộc" ở khối người được cấp trên TỜ KHAI (BẮT BUỘC trả khi tờ khai có), '
+             'hoặc in trên thẻ CMND cũ của chính người đó. Dân tộc trên giấy tờ khác → GiayToKhac_DanToc.'},
+    {"name": "GiayToKhac_DanToc",
+     "desc": "Dân tộc của CHÍNH người được cấp ghi trên giấy tờ KHÁC tờ khai và thẻ: khối \"XÁC NHẬN\" của giấy XNTTHN "
+             "cũ, giấy chứng nhận kết hôn (đúng cột của người được cấp), xác nhận cư trú, giấy khai sinh của chính họ. "
+             "Trả KỂ CẢ khi đã có NguoiDuocCap_DanToc. Không lấy dân tộc của vợ/chồng, con, cha mẹ."},
+    {"name": "NguoiDuocCap_QuocTich", "desc": "Quốc tịch người được cấp nếu giấy ghi."},
+    {"name": "NguoiDuocCap_LoaiGiayTo",
+     "desc": "Loại giấy tờ tùy thân CỦA CHÍNH người được cấp: Căn cước, Căn cước công dân, CMND, Hộ chiếu..."},
+    {"name": "NguoiDuocCap_SoGiayTo", "desc": "Số giấy tờ tùy thân CỦA CHÍNH người được cấp."},
+    {"name": "NguoiDuocCap_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của người được cấp, dd/mm/yyyy."},
+    {"name": "NguoiDuocCap_NoiCap",
+     "desc": "Cơ quan cấp giấy tờ tùy thân của người được cấp, CHÉP ĐÚNG chữ trên giấy. Không ghi → bỏ."},
     {"name": "NguoiDuocCap_NoiCuTru",
      "desc": "Nơi cư trú hiện tại của người được cấp, object {quocGia,tinh,xa,diaChi[,huyen]}."},
     {"name": "NguoiNop_SoDienThoai",
@@ -73,7 +89,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("NguoiDuocCap_NgaySinh", "Marriage_Date", "BanAn_Date", "DivorceDecision_Date", "DeathCert_Date",
+for _name in ("NguoiDuocCap_NgaySinh", "NguoiDuocCap_NgayCap", "Marriage_Date", "BanAn_Date", "DivorceDecision_Date", "DeathCert_Date",
               "Period_TuNgay", "Period_DenNgay", "KetHonVoi_NgaySinh", "KetHonVoi_NgayCap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiDuocCap_NoiCuTru"] = "x-select-area"
@@ -81,12 +97,22 @@ COMPACT_COMP_BY_NAME["NguoiDuocCap_NoiCuTru"] = "x-select-area"
 UI_COMP_BY_NAME = {
     # Người nộp: khối khóa theo tài khoản, chỉ số điện thoại + quan hệ để mở.
     "citizenPhone": "sjs-text",
+    # Radio nơi cư trú của người nộp cổng để trống → cụm địa chỉ đổ từ tài khoản chỉ hiện sau khi chọn "Trong nước".
+    "citizenNycNoicutru": "sjs-radio",
     "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan": "sjs-radio",
     "citizenField13": "sjs-text",  # Mối quan hệ khác — hiện khi quan hệ = Khác
     # NGƯỜI ĐƯỢC CẤP — ba ô tra cứu CSDL dân cư đi đầu.
     "citizenNDKHochudemtenngdccap": "sjs-text",
     "citizenNDKNgaythangnamsinh": "sjs-date",
     "citizenNDKSoDinhDanh": "sjs-text",
+    # Cổng tự đổ sau khi tra cứu; tra không ra thì điền theo giấy tờ.
+    "citizenNDKGioitinh": "sjs-dropdown",
+    "citizenNDKDantoc": "sjs-dropdown",
+    "citizenField20": "sjs-dropdown",  # Quốc tịch
+    "citizenNDKLoaigiayto": "sjs-dropdown",
+    "citizenNDKSogiaytotuythan": "sjs-text",
+    "citizenNDKNgaycap": "sjs-date",
+    "citizenNDKNocap": "sjs-text",
     "citizenNDKLoaicutru": "sjs-dropdown",
     "citizenNDKnoicutru": "sjs-radio",
     # Cụm địa chỉ thường trú trong nước (radio = Trong nước, loại cư trú = Thường trú); quốc gia cổng mặc định VN.
@@ -134,6 +160,7 @@ UI_COMP_BY_NAME = {
 # Danh mục tĩnh trong formJson: {choice value: nhãn}. Mã tình trạng hôn nhân KHÁC eForm cũ (1 = chưa đăng ký,
 # 2 = đang có vợ/chồng).
 QUAN_HE = {"1": "Bản thân", "2": "Khác"}
+GIOI_TINH = {"1": "Nam", "2": "Nữ"}
 LOAI_CU_TRU = {"1": "Thường trú", "2": "Tạm trú", "3": "Nơi ở hiện tại"}
 NOI_CU_TRU = {"1": "Trong nước", "2": "Khác"}
 TINH_TRANG = {

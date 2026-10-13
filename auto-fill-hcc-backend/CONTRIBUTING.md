@@ -94,7 +94,7 @@ Thêm test để lần sau CI bắt được.
 
 ```bash
 git switch main && git pull                          # tag phải trỏ vào commit ĐÃ có trong main
-git tag v11.10.2026 && git push origin v11.10.2026     # mẫu vDD.MM.YYYY; cùng ngày lần 2: v11.10.2026.1
+git tag v2026.10.12 && git push origin v2026.10.12     # mẫu vYYYY.MM.DD; cùng ngày lần 2: v2026.10.12.1
 ```
 
 - Push tag là tự chạy: test → build image → đẩy GHCR → **deploy prod**. Theo dõi ở tab **Actions** → Release.
@@ -103,7 +103,8 @@ git tag v11.10.2026 && git push origin v11.10.2026     # mẫu vDD.MM.YYYY; cùn
 - **Quay về bản cũ:** Actions → **Deploy (chọn tag)** → **Run workflow** → ô *Use workflow from* → tab **Tags** →
   chọn tag cũ → Run. Không build lại, khoảng 1 phút.
 - Cần biến `.env` mới cho tính năng mới → sửa `.env` trên server **trước** khi gắn tag.
-- Xem tag mới nhất: `git tag --sort=-creatordate | head` (tên theo ngày nên không tự xếp đúng thứ tự).
+- Xem tag mới nhất: `git tag --sort=-v:refname | head` (năm trước nên tên tag tự xếp đúng thứ tự thời gian).
+- Tag cũ dạng `vDD.MM.YYYY` (trước 12/10/2026) vẫn quay về được bằng nút Deploy (chọn tag).
 
 ## 8. Phối hợp
 

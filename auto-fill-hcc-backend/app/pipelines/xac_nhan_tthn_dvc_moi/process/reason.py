@@ -32,8 +32,11 @@ Vợ/chồng (đã chết, đã ly hôn hay hiện tại), người làm chứng
 
 QUAN HỆ (người nộp là gì CỦA người được cấp):
 - Người nộp chính là người được cấp (trùng số định danh; thiếu số thì họ tên lệch tối đa một ký tự do OCR) → "Bản thân".
-- Người nộp là người yêu cầu trên tờ khai → lấy dòng "Quan hệ với người được cấp..." của tờ khai; dòng ghi "Tự khai",
-  "Bản thân", "Chính mình" → "Bản thân".
+- Người nộp CHÍNH LÀ người yêu cầu trên tờ khai (đối chiếu với <requester_context>) → lấy dòng "Quan hệ với người được
+  cấp..." của tờ khai; dòng ghi "Tự khai", "Bản thân", "Chính mình" → "Bản thân".
+- Dòng quan hệ trên tờ khai là quan hệ của NGƯỜI YÊU CẦU ghi trên tờ khai, KHÔNG phải của người nộp. Người nộp KHÁC người
+  yêu cầu (vd cán bộ / người khác nộp hộ bằng tài khoản của mình, "Có trong hồ sơ: Không") → TUYỆT ĐỐI không dùng dòng
+  đó; không có giấy tờ nào nói người nộp là gì của người được cấp → "Không xác định".
 - Người nộp là bên được ủy quyền → "Người được ủy quyền".
 - Giấy tờ khác ghi rõ quan hệ → quan hệ đó (vd "Con", "Mẹ").
 - Không có căn cứ → "Không xác định". Không suy từ họ, tuổi, địa chỉ.

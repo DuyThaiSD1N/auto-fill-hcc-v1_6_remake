@@ -44,6 +44,7 @@ def test_ban_than_tra_cuu_dan_cu_va_dia_chi():
                ("citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh", "citizenNDKSoDinhDanh"))
     assert v["citizenNDKnoicutru"]["code"] == "1" and v["citizenNDKLoaicutru"]["default"] is True
     assert "citizenField13" not in v
+    assert v["citizenNycNoicutru"]["code"] == "1" and v["citizenNycNoicutru"]["default"] is True
 
 
 def test_quan_he_khac_ghi_o_moi_quan_he():
@@ -57,7 +58,7 @@ def test_khong_ket_luan_quan_he_thi_doi_chieu_tai_khoan():
     assert v["citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"]["default"] is True
     v, warnings = _enrich({**BASE, "NguoiDuocCap_HoTen": "Trần Thị C", "NguoiDuocCap_SoDinhDanh": "001190000003",
                            "NguoiDuocCap_NgaySinh": "01/01/1999"}, "")
-    assert "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan" not in v and warnings
+    assert v["citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"]["code"] == "2" and warnings
 
 
 def test_ma_tinh_trang_theo_cong_moi():
@@ -113,11 +114,12 @@ def test_so_dien_thoai_va_so_ban_sao():
     assert "citizenPhone" not in v and v["citizenField70"]["value"] == "2"
 
 
-def test_planner_to_khai_vao_dong_to_khai_con_lai_vao_dong_giay_to():
-    items = planner.build_plan_items(["a.pdf", "b.pdf", "c.pdf"],
-                                     {0: "declaration", 1: "identity", 2: "la_qua"}, {})
-    assert [i["slotIndex"] for i in items] == [2, 1, 1]
-    assert [i["detectedType"] for i in items] == ["declaration", "identity", "other"]
+def test_planner_xep_dong_theo_loai_giay_con_lai_vao_dong_hon_nhan():
+    types = ["previous_certificate", "divorce_decision", "death_certificate", "authorization", "declaration",
+             "identity", "la_qua"]
+    items = planner.build_plan_items([f"{i}.pdf" for i in range(len(types))], dict(enumerate(types)), {})
+    assert [i["slotIndex"] for i in items] == [0, 1, 1, 2, 1, 1, 1]
+    assert items[-1]["detectedType"] == "other"
 
 
 @pytest.mark.skipif(not SNAPSHOT.exists(), reason="thiếu snapshot cổng")
@@ -134,3 +136,38 @@ def test_khoang_thoi_gian_ma_khong_co_hon_nhan_hien_tai_thi_chua_ket_hon():
     v, _ = _enrich({**BASE, "TinhTrangHonNhan": "khoang_thoi_gian", "Period_TuNgay": "19/06/2000",
                     "Period_DenNgay": "12/10/2024"}, _context())
     assert v["citizenTinhtranghonnhan"]["code"] == "1" and "citizenField56" not in v
+
+
+def test_khong_xac_dinh_muc_dich_thi_mac_dinh_muc_dich_khac():
+    v, _ = _enrich(BASE, _context(loai="không xác định", noi_dung="Không có"))
+    assert (v["citizenField60"]["code"], v["citizenField60"]["default"]) == ("3", True)
+    assert "citizenField69" not in v
+
+
+def test_tu_khai_tren_to_khai_nhung_nguoi_nop_khac_thi_quan_he_khac():
+    # Tài khoản (cán bộ nộp hộ) khác hẳn người được cấp: dù bước phân vai lỡ kết luận "Bản thân" vẫn không tích Bản thân.
+    other = {**BASE, "NguoiDuocCap_HoTen": "Trần Thị C", "NguoiDuocCap_SoDinhDanh": "001190000003",
+             "NguoiDuocCap_NgaySinh": "01/01/1999"}
+    v, warnings = _enrich(other, _context(relation="Bản thân"))
+    assert v["citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"]["code"] == "2"
+    assert v["citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"]["default"] is True and warnings
+
+
+def test_cong_tra_khong_ra_thi_van_dien_gioi_tinh_giay_to_theo_giay():
+    v, _ = _enrich({**BASE, "NguoiDuocCap_GioiTinh": "Nữ", "NguoiDuocCap_DanToc": "Kinh",
+                    "NguoiDuocCap_SoGiayTo": "001090000002", "NguoiDuocCap_NgayCap": "02/07/2021",
+                    "NguoiDuocCap_NoiCap": "Cục CS QLHC về TTXH"}, _context())
+    assert v["citizenNDKGioitinh"]["code"] == "2" and v["citizenNDKDantoc"]["value"] == "Kinh"
+    assert (v["citizenField20"]["code"], v["citizenField20"]["default"]) == ("VN", True)
+    assert v["citizenNDKLoaigiayto"]["code"] in ("5", "9") and v["citizenNDKSogiaytotuythan"]["value"] == "001090000002"
+    assert v["citizenNDKNgaycap"]["code"] == "2021-07-02"
+    assert v["citizenNDKNocap"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    names = list(v)
+    assert names.index("citizenNDKSoDinhDanh") < names.index("citizenNDKGioitinh")  # sau 3 ô tra cứu
+
+
+def test_dan_toc_lay_tu_giay_to_khac_khi_to_khai_khong_ghi():
+    v, _ = _enrich({**BASE, "GiayToKhac_DanToc": "Tày"}, _context())
+    assert v["citizenNDKDantoc"]["value"] == "Tày"
+    v, _ = _enrich({**BASE, "NguoiDuocCap_DanToc": "Kinh", "GiayToKhac_DanToc": "Tày"}, _context())
+    assert v["citizenNDKDantoc"]["value"] == "Kinh"

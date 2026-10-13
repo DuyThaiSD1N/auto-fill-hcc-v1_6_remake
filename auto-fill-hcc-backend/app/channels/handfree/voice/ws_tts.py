@@ -56,7 +56,8 @@ async def ws_tts(ws: WebSocket, lang: str = "vi", voice: str = ""):
         else settings.tts_ws_url
     )
     if not upstream_url or not settings.tts_api_key:
-        await ws.send_json({"error": "TTS chưa được cấu hình (TTS_WS_URL / TTS_API_KEY)."})
+        logger.error("[tts] thiếu cấu hình TTS_WS_URL / TTS_API_KEY")
+        await ws.send_json({"error": "tts not configured"})
         await ws.close()
         return
 

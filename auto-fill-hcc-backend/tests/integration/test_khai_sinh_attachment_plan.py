@@ -341,3 +341,37 @@ async def test_khai_sinh_moi_chung_sinh_vao_stt1_moi_to_khai_cu_tru_vao_stt2_con
     # Giấy chứng sinh đứng trước trong STT1.
     assert [it["fileName"] for it in res["attachments"] if it["slotIndex"] == 0][:2] == ["chung-sinh-1.pdf", "ghep.pdf"]
     assert res["extracted"]["skipped"] == []
+
+
+async def test_khai_sinh_nen_tep_tren_2mb_tra_replace_files(monkeypatch):
+    """Tệp trên 2 MB được nén như form DVC quốc gia mới: bản nén ở replaceFiles, fileName theo bản nén."""
+    import base64
+
+    from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach import planner as dvc_moi
+
+    async def fake_ocr_per_file(files):
+        return [{"name": "chung-sinh.jpg", "text": "GIẤY CHỨNG SINH"}, {"name": "cccd-me.pdf", "text": "CĂN CƯỚC"}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "docType": "birth_proof"}, {"index": 1, "docType": "other"}]})
+
+    def fake_entry(file, raw, limit):
+        return {"name": file["name"].rsplit(".", 1)[0] + ".pdf", "type": "application/pdf", "dataUrl": "data:,",
+                "originalBytes": len(raw), "bytes": limit - 1, "level": "test"}
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    monkeypatch.setattr(dvc_moi, "_shrunk_entry", fake_entry)
+    big = FileItem(name="chung-sinh.jpg", type="image/jpeg", role="doc",
+                   dataUrl="data:image/jpeg;base64," + base64.b64encode(b"x" * 2_100_000).decode())
+    small = FileItem(name="cccd-me.pdf", type="application/pdf", role="doc",
+                     dataUrl="data:application/pdf;base64," + base64.b64encode(b"x" * 500_000).decode())
+    res = await khai_sinh.plan_khai_sinh_attachments([big, small], {}, _session())
+
+    assert set(res["replaceFiles"]) == {"0"}  # tệp nhỏ để nguyên
+    assert res["replaceFiles"]["0"]["bytes"] <= dvc_moi.MAX_FILE_BYTES
+    by_index = {it["fileIndex"]: it for it in res["attachments"]}
+    assert by_index[0]["fileName"] == "chung-sinh.pdf" and by_index[0]["slotIndex"] == 0
+    assert by_index[1]["fileName"] == "cccd-me.pdf"
+    assert res["extracted"]["shrunk"][0]["originalBytes"] == 2_100_000
+    assert not [e for e in res["errors"] if "nén" in e]

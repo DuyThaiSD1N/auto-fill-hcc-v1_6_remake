@@ -28,6 +28,22 @@ router = APIRouter()
 
 _QUEUE_END = object()  # sentinel kết thúc stream gửi lên gRPC
 
+# Lỗi gửi về extension LUÔN là câu cố định: chi tiết gRPC/server ASR chứa địa chỉ dịch vụ nội bộ
+# (vd "address lookup failed for http://<ip>:<port>") và sẽ hiện nguyên văn trên sidebar công dân.
+# Chi tiết thật chỉ ghi log máy chủ.
+_CLIENT_ERROR = "Dịch vụ nhận giọng nói đang gặp sự cố, công dân thử lại sau hoặc gõ chữ giúp em ạ."
+
+
+def _grpc_target(uri: str) -> str:
+    """gRPC nhận "host:port", không nhận URL. Cấu hình hay ghi kèm http:// → bóc đi, kẻo mọi lượt
+    nói đều hỏng với lỗi phân giải tên miền."""
+    target = (uri or "").strip()
+    for scheme in ("http://", "https://", "grpc://", "grpcs://"):
+        if target.lower().startswith(scheme):
+            target = target[len(scheme):]
+            break
+    return target.rstrip("/")
+
 
 async def _request_gen(queue: asyncio.Queue):
     while True:
@@ -58,10 +74,8 @@ async def ws_asr(ws: WebSocket):
         return
     await ws.accept(subprotocol=subprotocol)
     if not settings.asr_grpc_uri or not settings.asr_grpc_token:
-        await ws.send_json({
-            "type": "error",
-            "message": "ASR chưa được cấu hình đủ (ASR_GRPC_URI / ASR_GRPC_TOKEN).",
-        })
+        logger.error("[asr] thiếu cấu hình ASR_GRPC_URI / ASR_GRPC_TOKEN")
+        await ws.send_json({"type": "error", "message": _CLIENT_ERROR})
         await ws.close()
         return
 
@@ -86,12 +100,12 @@ async def ws_asr(ws: WebSocket):
                     })
                 elif resp.status != 0:
                     logger.warning("[asr] grpc status=%s msg=%s", resp.status, resp.msg)
-                    await ws.send_json({"type": "error", "message": resp.msg or "asr error"})
+                    await ws.send_json({"type": "error", "message": _CLIENT_ERROR})
             await ws.send_json({"type": "end"})
         except grpc.aio.AioRpcError as e:
             logger.warning("[asr] grpc error: %s", e.details())
             try:
-                await ws.send_json({"type": "error", "message": e.details() or "Mất kết nối ASR."})
+                await ws.send_json({"type": "error", "message": _CLIENT_ERROR})
             except Exception:  # noqa: BLE001 — WS có thể đã đóng
                 pass
         except Exception:  # noqa: BLE001 — WS đóng giữa chừng là bình thường (FE teardown)
@@ -116,7 +130,7 @@ async def ws_asr(ws: WebSocket):
                 # lang="hmong" → server ASR tiếng Mông riêng (ASR_GRPC_URI_HMONG, vd :9113);
                 # chưa cấu hình thì rơi về server tiếng Việt để không chết phiên.
                 lang = str(parsed.get("lang") or "vi").lower()
-                grpc_uri = (
+                grpc_uri = _grpc_target(
                     settings.asr_grpc_uri_hmong
                     if lang == "hmong" and settings.asr_grpc_uri_hmong
                     else settings.asr_grpc_uri

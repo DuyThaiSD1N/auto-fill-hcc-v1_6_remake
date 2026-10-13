@@ -172,6 +172,7 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # chọn hình thức nhận kết quả, bấm nộp). Extension cũ không khai → BE báo cần cập nhật
         # thay vì dẫn vào trang mà engine cũ không điền được.
         "supportsTuPhapMoi": raw.get("supportsTuPhapMoi") is True,
+        "supportsTpmAutoFlow": raw.get("supportsTpmAutoFlow") is True,
         # Biết "bấm hộ" một nút khi công dân chọn nút đó bằng lời (action press_chip / chip_used).
         # Client cũ không khai → BE chạy thẳng lệnh của nút như trước.
         "supportsVoiceChips": raw.get("supportsVoiceChips") is True,
@@ -213,6 +214,12 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         "location": conv.get("location", {}),
         "execution_subject": conv.get("execution_subject", "self"),
         "replace_last": bool(reply.replace_last),
+        # Luồng tự động trang hộ tịch mới: sidebar được báo "đã nộp" (toast) ở MỌI bước. Cổng khác
+        # vẫn chỉ báo ở bước cuối — BE các bước khác không hiểu tín hiệu này.
+        "submit_anywhere": bool(
+            flow.tpm.is_active(get_procedure(conv.get("procedure_key") or ""))
+            and flow.tpm.auto_flow(conv)
+        ),
     }
 
 

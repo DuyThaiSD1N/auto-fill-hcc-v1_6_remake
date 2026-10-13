@@ -1418,7 +1418,8 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: bản án/quyết định ly hôn, giấy chứng tử của vợ/chồng, giấy chứng nhận kết hôn, giấy xác nhận "
             "tình trạng hôn nhân đã cấp, văn bản ủy quyền.\n"
             "Thông tin người nộp do cổng điền sẵn từ VNeID; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
-            "Bước đính kèm: tờ khai vào dòng tờ khai, các giấy tờ còn lại vào dòng giấy tờ."
+            "Bước đính kèm: giấy XNTTHN đã cấp vào dòng 1, bản án ly hôn / giấy chứng tử vào dòng 2, văn bản ủy quyền "
+            "dòng 3; giấy tờ khác (tờ khai, CCCD, giấy kết hôn) đính chung dòng 2."
         ),
     },
     {
