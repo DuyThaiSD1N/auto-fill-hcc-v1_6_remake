@@ -1,8 +1,9 @@
 import { createElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { findSim, loadAngularForm, loadAreaCatalog, loadForm, type SimEntry } from "../../simulations/registry";
+import { findSim, loadAngularForm, loadAreaCatalog, loadForm, loadSurveyForm, type SimEntry } from "../../simulations/registry";
 import { foldChoice, simulateEform, type Cell, type Eform, type EformResult, type SimStats, type Unmatched as UnmatchedRow } from "../../simulations/eform";
 import { simulateAngular, type AreaCatalog, type NgField, type NgForm } from "../../simulations/angular";
-import { toFields, type UiField } from "../../simulations/fill";
+import { simulateSurveyJs, type SjsField, type SjsForm, type SjsResult, type SjsRow, type SjsSection } from "../../simulations/surveyjs";
+import { isSurveyJsOutput, toFields, type UiField } from "../../simulations/fill";
 import { useAsync } from "../../hooks";
 import { formatDateTime } from "../../format";
 import type { RunDetail } from "../../types";
@@ -299,6 +300,88 @@ function AngularSimulation({ form, area, run }: { form: NgForm; area: AreaCatalo
   );
 }
 
+function SjsFieldView({ f, sim, ctx }: { f: SjsField; sim: SjsResult; ctx: Ctx }) {
+  const cell = sim.cells.get(f.name);
+  if (!cell) return null;
+  const span = f.span && f.span > 1 ? { gridColumn: `span ${f.span}` } : undefined;
+  const label = <>{f.label}{f.required ? <em className="ef-req"> *</em> : null}</>;
+  if (f.inlineLabel) {
+    return (
+      <div className={`sjs-inline${f.kind === "radio" ? " sjs-inline--radio" : ""}`} style={span}>
+        <span className="sjs-inline__label">{label}</span>
+        <Widget cell={cell} ctx={ctx} />
+      </div>
+    );
+  }
+  if (f.kind === "radio") {
+    return (
+      <div className="sjs-radio" style={span}>
+        {f.label ? <span className="sjs-radio__label">{label}</span> : null}
+        <Widget cell={cell} ctx={ctx} />
+      </div>
+    );
+  }
+  return (
+    <div className="sjs-field" style={span}>
+      <span className="sjs-field__label">{label}</span>
+      <Widget cell={cell} ctx={ctx} />
+    </div>
+  );
+}
+
+function SjsRowView({ row, sim, ctx }: { row: SjsRow; sim: SjsResult; ctx: Ctx }) {
+  if (row.text) return <p className="sjs-text">{row.text}</p>;
+  const shown = (row.fields ?? []).filter((f) => sim.visible.has(f.name) || sim.cells.get(f.name)?.status === "hidden-value");
+  if (!shown.length) return null;
+  const cols = row.cols ?? shown.reduce((n, f) => n + (f.span ?? 1), 0);
+  return (
+    <div className="sjs-row" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      {shown.map((f) => <SjsFieldView key={f.name} f={f} sim={sim} ctx={ctx} />)}
+    </div>
+  );
+}
+
+function SjsSectionView({ sec, sim, ctx }: { sec: SjsSection; sim: SjsResult; ctx: Ctx }) {
+  return (
+    <section className="sjs-sec">
+      {sec.title ? <h3>{sec.title}</h3> : null}
+      {sec.rows.map((row, i) => <SjsRowView key={i} row={row} sim={sim} ctx={ctx} />)}
+    </section>
+  );
+}
+
+/** Biểu mẫu SurveyJS (Cổng DVC quốc gia mới): dựng như trang /nop-ho-so — khung Kính gửi, khung thủ tục chứa các
+ *  khối có vạch tiêu đề, ô nhãn nổi trên viền; ô ẩn theo radio/loại cư trú chỉ hiện khi điều kiện thoả. */
+function SurveySimulation({ form, area, run }: { form: SjsForm; area: AreaCatalog; run: RunDetail }) {
+  const response = run.steps?.outputs?.response;
+  const sim = useMemo(() => simulateSurveyJs(form, toFields(response), area), [form, area, response]);
+  const notFound = new Set(((run.trace?.report?.notFound as string[] | undefined) ?? []).map((n) => n.toLowerCase()));
+  const ctx: Ctx = { notFound };
+  // Khối liền nhau không có khung riêng → chung một khung mang tên thủ tục.
+  const groups: { box: boolean; sections: SjsSection[] }[] = [];
+  for (const sec of form.sections) {
+    const box = sec.frame === "box";
+    const last = groups[groups.length - 1];
+    if (!box && last && !last.box) last.sections.push(sec);
+    else groups.push({ box, sections: [sec] });
+  }
+  return (
+    <div className="sim-form-wrap">
+      <Summary stats={sim.stats} cells={[...sim.cells.values()].filter((c) => sim.visible.has(c.key) || c.status === "hidden-value")}
+        source={<>Mẫu dựng theo trang thật: <span className="mono">{form.source}</span> · {formatDateTime(form.capturedAt)}{form.note ? ` · ${form.note}` : ""}</>} />
+      <div className="sjs-page">
+        {groups.map((g, gi) => (
+          <div key={gi} className={`sjs-card${g.box ? " sjs-card--box" : ""}`}>
+            {!g.box ? <h2 className="sjs-card__title">{form.title}</h2> : null}
+            {g.sections.map((sec, si) => <SjsSectionView key={si} sec={sec} sim={sim} ctx={ctx} />)}
+          </div>
+        ))}
+      </div>
+      <Unmatched list={sim.unmatched} />
+    </div>
+  );
+}
+
 function Simulation({ entry, forms, run }: { entry: SimEntry; forms: Eform[]; run: RunDetail }) {
   const response = run.steps?.outputs?.response;
   const fields = useMemo(() => toFields(response), [response]);
@@ -339,14 +422,20 @@ function Simulation({ entry, forms, run }: { entry: SimEntry; forms: Eform[]; ru
 export default function FormSimulation({ run }: { run: RunDetail }) {
   const procedure = run.trace?.procedure ?? (run.steps?.meta?.procedure as string | undefined);
   const entry = findSim(procedure);
+  // Thủ tục đã chuyển sang Cổng DVC quốc gia mới vẫn còn lượt cũ (eForm moj) cùng mã → chọn mẫu theo output lượt.
+  const useSurvey = !!entry?.surveyjs && (isSurveyJsOutput(toFields(run.steps?.outputs?.response)) || !entry.forms?.length);
   const { data, error, loading, reload } = useAsync(async () => {
     if (!entry) return null;
     if (entry.angular) {
       const [form, area] = await Promise.all([loadAngularForm(entry.angular), loadAreaCatalog()]);
       return { kind: "angular" as const, form, area };
     }
+    if (useSurvey && entry.surveyjs) {
+      const [form, area] = await Promise.all([loadSurveyForm(entry.surveyjs), loadAreaCatalog()]);
+      return { kind: "surveyjs" as const, form, area };
+    }
     return { kind: "eform" as const, forms: await Promise.all((entry.forms ?? []).map(loadForm)) };
-  }, entry?.key ?? "none");
+  }, `${entry?.key ?? "none"}:${useSurvey ? "sjs" : "eform"}`);
   if (!entry) {
     return <EmptyState title={`Chưa có mẫu mô phỏng cho thủ tục "${procedure ?? "?"}"`} hint="Tạo thư mục monitor-fe/src/simulations/thu-tuc/<key thủ tục>/index.ts khai mẫu (xem docs/web-monitor/mo-phong-form.md)." />;
   }
@@ -356,5 +445,6 @@ export default function FormSimulation({ run }: { run: RunDetail }) {
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !data) return <Spinner label="Đang tải mẫu form" />;
   if (data.kind === "angular") return <AngularSimulation form={data.form} area={data.area} run={run} />;
+  if (data.kind === "surveyjs") return <SurveySimulation form={data.form} area={data.area} run={run} />;
   return <Simulation entry={entry} forms={data.forms} run={run} />;
 }

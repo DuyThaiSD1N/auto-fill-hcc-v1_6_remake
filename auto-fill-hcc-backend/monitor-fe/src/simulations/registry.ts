@@ -7,17 +7,23 @@
 //   - mau-angular/<tên>.json : mẫu form Angular (cổng liên thông) chụp bằng scripts/capture-angular-form.js;
 //   - mau-eform/_dia-gioi.json : trỏ danh mục tỉnh + xã theo tỉnh trong _danh-muc (dùng cho cả form Angular);
 //   - angular.ts (engine khớp của form Angular).
+//   - mau-surveyjs/<tên>.json : mẫu biểu mẫu SurveyJS (Cổng DVC quốc gia mới) dựng lại theo trang thật, kèm bảng
+//     thành phần hồ sơ cho mô phỏng đính kèm; surveyjs.ts (engine khớp).
 // RIÊNG mỗi thủ tục: thư mục thu-tuc/<key-thủ-tục>/ (key theo app/procedures/registry.py), index.ts khai các
 //   mẫu thủ tục dùng (thứ tự = thứ tự tờ khai trên cổng) + ghi chú; luật riêng của thủ tục cũng đặt ở đây.
 // Chi tiết: docs/web-monitor/mo-phong-form.md
 import type { AreaCatalog, NgForm } from "./angular";
 import type { Eform, Opt } from "./eform";
+import type { SjsForm } from "./surveyjs";
 
 export interface ProcedureSim {
   /** id mẫu e-form hộ tịch trong mau-eform/, theo thứ tự tờ khai trên cổng. */
   forms?: number[];
   /** Hoặc: tên mẫu form Angular trong mau-angular/ (cổng liên thông). */
   angular?: string;
+  /** Tên mẫu biểu mẫu SurveyJS trong mau-surveyjs/ (Cổng DVC quốc gia mới). Khai cùng `forms` khi thủ tục đã
+   *  chuyển cổng: lượt có output "sjs-*" dựng bằng mẫu này, lượt cũ vẫn dựng bằng `forms`. */
+  surveyjs?: string;
   note?: string;
 }
 
@@ -57,4 +63,12 @@ export async function loadAreaCatalog(): Promise<AreaCatalog> {
   const [index, all] = await Promise.all([areaIndex["./mau-eform/_dia-gioi.json"](), loadLists()]);
   const { provinces, wards } = index.default;
   return { provinces: all[provinces] ?? [], wards: (value) => all[wards[value]] ?? [] };
+}
+
+const surveyForms = import.meta.glob<{ default: SjsForm }>("./mau-surveyjs/*.json");
+
+export async function loadSurveyForm(name: string): Promise<SjsForm> {
+  const load = surveyForms[`./mau-surveyjs/${name}.json`];
+  if (!load) throw new Error(`Chưa có mẫu biểu mẫu ${name} trong mau-surveyjs/`);
+  return (await load()).default;
 }

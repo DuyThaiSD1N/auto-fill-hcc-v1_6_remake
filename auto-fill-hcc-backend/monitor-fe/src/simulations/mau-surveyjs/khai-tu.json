@@ -1,0 +1,191 @@
+{
+  "source": "dichvucong.gov.vn/nop-ho-so?formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4",
+  "title": "Thủ tục đăng ký khai tử",
+  "capturedAt": "2026-10-13T00:00:00.000Z",
+  "note": "Dựng lại theo ảnh chụp trang thật; tên câu hỏi + mã option theo app/pipelines/khai_tu_dvcqg/process/schema.py (mẫu ThongTinNguoiNopKhaiTuGopVer2Catalog). Ô tên bắt đầu \"~\" là ô BE không gửi, chưa chụp được tên thật.",
+  "sections": [
+    {
+      "title": "",
+      "frame": "box",
+      "rows": [
+        { "fields": [
+          { "name": "~kinhGui", "kind": "text", "label": "KÍNH GỬI", "inlineLabel": true,
+            "auto": "extension điền \"UBND <phường/xã của tài khoản trợ lý>\" khi ô còn trống" }
+        ] }
+      ]
+    },
+    {
+      "title": "THÔNG TIN NGƯỜI NỘP",
+      "rows": [
+        { "fields": [
+          { "name": "~nguoiNop_HoTen", "kind": "text", "label": "Họ, chữ đệm, tên", "required": true, "readonly": true },
+          { "name": "~nguoiNop_SoDinhDanh", "kind": "text", "label": "Số định danh cá nhân", "required": true, "readonly": true },
+          { "name": "~nguoiNop_NgaySinh", "kind": "date", "label": "Ngày Sinh", "readonly": true },
+          { "name": "citizenPhone", "kind": "text", "label": "Số điện thoại", "required": true }
+        ] },
+        { "fields": [
+          { "name": "~nguoiNop_LoaiGiayTo", "kind": "dropdown", "label": "Loại Giấy tờ tùy thân", "required": true, "readonly": true },
+          { "name": "~nguoiNop_SoGiayTo", "kind": "text", "label": "Số giấy tờ tùy thân", "readonly": true },
+          { "name": "~nguoiNop_NoiCap", "kind": "text", "label": "Nơi cấp", "required": true, "readonly": true },
+          { "name": "~nguoiNop_NgayCap", "kind": "date", "label": "Ngày cấp", "required": true, "readonly": true },
+          { "name": "~nguoiNop_LoaiCuTru", "kind": "dropdown", "label": "Loại cư trú", "prefilled": true,
+            "options": [["1", "Thường trú"], ["2", "Tạm trú"], ["3", "Nơi ở hiện tại"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "~nguoiNop_NoiCuTru", "kind": "radio", "label": "", "prefilled": true, "span": 4,
+            "options": [["1", "Trong nước"], ["2", "Khác"]] }
+        ] },
+        { "fields": [
+          { "name": "~nguoiNop_QuocGia", "kind": "dropdown", "label": "Quốc gia nơi cư trú", "required": true, "prefilled": true },
+          { "name": "~nguoiNop_Tinh", "kind": "dropdown", "label": "Nơi cư trú Tỉnh/ Thành phố", "required": true, "readonly": true },
+          { "name": "~nguoiNop_Xa", "kind": "dropdown", "label": "Nơi cư trú Phường/ Xã", "required": true, "readonly": true },
+          { "name": "~nguoiNop_DiaChi", "kind": "text", "label": "Địa chỉ chi tiết", "readonly": true }
+        ] },
+        { "fields": [
+          { "name": "citizenmoiquanhe", "kind": "text", "label": "Quan hệ với người được khai tử", "required": true }
+        ] }
+      ]
+    },
+    {
+      "title": "NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ",
+      "rows": [
+        { "fields": [
+          { "name": "citizenNDK_HoVaTen", "kind": "text", "label": "Họ, chữ đệm, tên" },
+          { "name": "citizenNDK_SoDinhDanh", "kind": "text", "label": "Số định danh cá nhân",
+            "pattern": "^\\d{12}$", "patternHint": "đúng 12 chữ số" },
+          { "name": "citizenNDK_NgaySinh", "kind": "text", "label": "Ngày, tháng, năm sinh (dd/mm/yyyy)",
+            "pattern": "^(\\d{2}/\\d{2}/\\d{4}|\\d{2}/\\d{4}|\\d{4})$", "patternHint": "dd/mm/yyyy, mm/yyyy hoặc yyyy" }
+        ] },
+        { "fields": [
+          { "name": "citizenGioitinh_NgdcKT", "kind": "dropdown", "label": "Giới tính", "options": [["1", "Nam"], ["2", "Nữ"]] },
+          { "name": "citizenDantoc_NgdcKT", "kind": "dropdown", "label": "Dân tộc", "options": [
+            ["01", "Kinh"], ["02", "Tày"], ["03", "Thái"], ["04", "Hoa"], ["05", "Khơ-me"], ["06", "Mường"], ["07", "Nùng"],
+            ["08", "H'Mông"], ["09", "Dao"], ["10", "Gia-rai"], ["11", "Ngái"], ["12", "Ê-đê"], ["13", "Ba na"],
+            ["14", "Xơ-Đăng"], ["15", "Sán Chay"], ["16", "Cơ-ho"], ["17", "Chăm"], ["18", "Sán Dìu"], ["19", "Hrê"],
+            ["20", "Mnông"], ["21", "Ra-glai"], ["22", "Xtiêng"], ["23", "Bru-Vân Kiều"], ["24", "Thổ"], ["25", "Giáy"],
+            ["26", "Cơ-tu"], ["27", "Giẻ Triêng"], ["28", "Mạ"], ["29", "Khơ-mú"], ["30", "Co"], ["31", "Tà-ôi"],
+            ["32", "Chơ-ro"], ["33", "Kháng"], ["34", "Xinh-mun"], ["35", "Hà Nhì"], ["36", "Chu ru"], ["37", "Lào"],
+            ["38", "La Chí"], ["39", "La Ha"], ["40", "Phù Lá"], ["41", "La Hủ"], ["42", "Lự"], ["43", "Lô Lô"],
+            ["44", "Chứt"], ["45", "Mảng"], ["46", "Pà Thẻn"], ["47", "Cơ Lao"], ["48", "Cống"], ["49", "Bố Y"],
+            ["50", "Si La"], ["51", "Pu Péo"], ["52", "Brâu"], ["53", "Ơ Đu"], ["54", "Rơ măm"], ["55", "Người nước ngoài"],
+            ["56", "Không rõ"]] },
+          { "name": "citizenQuoctich_NgdcKT", "kind": "dropdown", "label": "Quốc tịch" }
+        ] },
+        { "fields": [
+          { "name": "citizenLoaiGiaytotuythan_NgdcKT", "kind": "dropdown", "label": "Loại Giấy tờ tùy thân", "options": [
+            ["2", "Chứng minh nhân dân"], ["3", "Giấy chứng minh sĩ quan quân đội nhân dân Việt Nam"],
+            ["4", "Giấy chứng minh công an nhân dân"], ["5", "Căn cước công dân"], ["6", "Hộ chiếu"], ["7", "Sổ hộ khẩu"],
+            ["8", "Các loại giấy tờ tùy thân khác"], ["9", "Thẻ căn cước"], ["10", "Giấy chứng nhận căn cước"]] },
+          { "name": "citizenSogiaytotuythan_NgdcKT", "kind": "text", "label": "Số giấy tờ tùy thân" },
+          { "name": "citizenField19", "kind": "date", "label": "Ngày cấp giấy tờ tùy thân" }
+        ] },
+        { "fields": [
+          { "name": "citizenNoicapgiaytotuythan_NgdcKT", "kind": "text", "label": "Nơi cấp giấy tờ tùy thân" },
+          { "name": "citizenField56", "kind": "text", "label": "Ngày, tháng, năm chết (dd/mm/yyyy)", "required": true,
+            "pattern": "^(\\d{2}/\\d{2}/\\d{4}|\\d{2}/\\d{4}|\\d{4})$", "patternHint": "dd/mm/yyyy, mm/yyyy hoặc yyyy" },
+          { "name": "citizenGiomat", "kind": "text", "label": "Giờ chết" },
+          { "name": "citizenPhutmat", "kind": "text", "label": "Phút chết" }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNDKLoaidangky", "kind": "dropdown", "label": "Loại đăng ký", "required": true, "span": 2,
+            "options": [["1", "Đăng ký đúng hạn"], ["4", "Đăng ký quá hạn"], ["5", "Đăng ký khai tử cho người chết đã lâu"]] },
+          { "name": "citizenNDKLoaicutru", "kind": "dropdown", "label": "Loại cư trú", "span": 2,
+            "options": [["1", "Thường trú"], ["2", "Tạm trú"], ["3", "Nơi ở hiện tại"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNDKnoicutru", "kind": "radio", "span": 4,
+            "label": "Nơi cư trú cuối cùng(nơi thường trú/nơi tạm trú/nơi đang sinh sống)",
+            "options": [["1", "Trong nước"], ["2", "Khác"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "~citizenNDKQG_TrongNuoc", "kind": "dropdown", "label": "Quốc gia", "readonly": true,
+            "visibleIf": { "citizenNDKnoicutru": ["1"] } },
+          { "name": "citizenNDKTinh_Thtru", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "citizenNDKXa_Thtru", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "citizenNDKTinh_Thtru",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "citizenNDKDiaChi_Thtru", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "citizenNDKTinh_Tamtru", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "citizenNDKXa_Tamtru", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "citizenNDKTinh_Tamtru",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "citizenNDKDiachi_Tamtru", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "citizenNDKTinh_Ohientai", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "citizenNDKXa_Ohientai", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "citizenNDKTinh_Ohientai",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "citizenNDKDiachi_Ohientai", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "citizenNDKQG_Khac", "kind": "dropdown", "label": "Quốc gia",
+            "visibleIf": { "citizenNDKnoicutru": ["2"] } },
+          { "name": "citizenNDKDiaChi_Khac", "kind": "text", "label": "Địa chỉ",
+            "visibleIf": { "citizenNDKnoicutru": ["2"] } }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNoichet", "kind": "radio", "label": "Nơi chết:", "inlineLabel": true, "span": 4,
+            "options": [["1", "Trong nước"], ["2", "Khác"]] }
+        ] },
+        { "fields": [
+          { "name": "~noiChet_QuocGia", "kind": "dropdown", "label": "Quốc gia", "options": [["VN", "Việt Nam"]],
+            "visibleIf": { "citizenNoichet": ["1"] } },
+          { "name": "~noiChet_Tinh", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNoichet": ["1"] } },
+          { "name": "~noiChet_Xa", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "~noiChet_Tinh",
+            "visibleIf": { "citizenNoichet": ["1"] } },
+          { "name": "~noiChet_DiaChi", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNoichet": ["1"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenNguyennhanchet_NgdcKT", "kind": "text", "label": "Nguyên nhân chết" }
+        ] }
+      ]
+    },
+    {
+      "title": "GIẤY BÁO TỬ",
+      "rows": [
+        { "fields": [
+          { "name": "citizenLoaigiaybaotu", "kind": "dropdown", "label": "Loại giấy báo tử" }
+        ] },
+        { "fields": [
+          { "name": "citizenSogiaybaotu_NgdcKT", "kind": "text", "label": "Số giấy báo tử" },
+          { "name": "citizenNgaythangnamcapgiaybaotu", "kind": "date", "label": "Ngày, tháng, năm cấp giấy báo tử" },
+          { "name": "citizenCoquancapgiaybaotucochuthichneukhongcothidetrong", "kind": "text",
+            "label": "Cơ quan cấp giấy báo tử (có chú thích nếu không có thì để trống)" }
+        ] },
+        { "fields": [
+          { "name": "citizenSoluongbansaonguoiyeucaudenghi", "kind": "text", "label": "Số lượng bản sao (điền 0 nếu không cần)",
+            "required": true, "pattern": "^\\d+$", "patternHint": "số nguyên" }
+        ] }
+      ]
+    },
+    {
+      "title": "ĐỊA ĐIỂM, NGÀY LẬP TỜ KHAI",
+      "rows": [
+        { "fields": [
+          { "name": "~tai", "kind": "dropdown", "label": "Tại",
+            "auto": "extension chọn tỉnh/thành của tài khoản trợ lý khi ô còn trống" },
+          { "name": "~ngayLap", "kind": "text", "label": "Ngày", "prefilled": true },
+          { "name": "~thangLap", "kind": "text", "label": "Tháng", "prefilled": true },
+          { "name": "~namLap", "kind": "text", "label": "năm", "prefilled": true }
+        ] }
+      ]
+    },
+    {
+      "title": "",
+      "frame": "box",
+      "rows": [
+        { "cols": 3, "fields": [
+          { "name": "~hinhThucNhanKetQua", "kind": "dropdown", "label": "Hình thức nhận kết quả", "prefilled": true }
+        ] }
+      ]
+    }
+  ],
+  "components": [
+    { "name": "- Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp. Trường hợp người yêu cầu đã nộp bản điện tử Giấy báo tử hoặc cơ quan đăng ký hộ tịch đã khai thác được dữ liệu điện tử có ký số của Giấy báo tử thì không phải nộp bản giấy.", "banChinh": 1, "banSao": 0 },
+    { "name": "- Văn bản ủy quyền (được chứng thực) theo quy định của pháp luật trong trường hợp ủy quyền thực hiện việc đăng ký khai tử. Trường hợp người có trách nhiệm đăng ký khai tử ủy quyền cho người khác thực hiện việc đăng ký khai tử mà người được ủy quyền là ông, bà, cha, mẹ, con, vợ, chồng, anh, chị, em ruột của người ủy quyền thì văn bản ủy quyền không phải chứng thực.", "banChinh": 1, "banSao": 0 },
+    { "name": "- Giấy tờ, tài liệu, chứng cứ do cơ quan, tổ chức có thẩm quyền cấp hoặc xác nhận hợp lệ chứng minh sự kiện chết đối với trường hợp đăng ký khai tử cho người chết đã lâu, không có Giấy báo tử hoặc giấy tờ thay thế Giấy báo tử.", "banChinh": 1, "banSao": 0 },
+    { "name": "- Trường hợp không xác định được nơi cư trú cuối cùng của người chết thì xuất trình giấy tờ chứng minh nơi người đó chết hoặc nơi phát hiện thi thể của người chết.", "banChinh": 1, "banSao": 0 }
+  ]
+}
