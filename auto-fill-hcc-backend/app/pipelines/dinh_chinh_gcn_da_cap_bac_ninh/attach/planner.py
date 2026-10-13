@@ -6,8 +6,9 @@ NHÓM theo `componentName` (substring nhãn dòng đã fold dấu), tick checkbo
 gán file vào ô Bản chính.
 
 Gom file theo CHÚ GIẢI hồ sơ mẫu:
-- Đơn Mẫu 18 + CCCD người yêu cầu → nhóm "Đơn đăng ký biến động đất đai... Mẫu số 18".
-- Bản gốc GCN → nhóm "Giấy chứng nhận đã cấp" (mã TP-H05.000040).
+- Đơn Mẫu 18 (hoặc Đơn đăng ký đất đai Mẫu 13 người dân hay nộp thay) + CCCD người yêu cầu
+  → nhóm "Mẫu số 18. Đơn đăng ký biến động đất đai..." (TP-H05.000026).
+- Bản gốc GCN → nhóm "Giấy chứng nhận đã cấp" (mã TP-H05.000165.S, crawl 13/10/2026 eformId 2892).
 - Giấy tờ chứng minh sai sót → nhóm "Giấy tờ chứng minh sai sót".
 - Văn bản ủy quyền → nhóm "Văn bản về việc ủy quyền".
 
@@ -33,10 +34,10 @@ _CONFIDENT_LLM_TYPES = {"identity", "application", "land_certificate", "authoriz
 
 # Nhãn nhận dạng NHÓM thành phần hồ sơ (FE khớp theo substring đã fold dấu).
 _COMP_APPLICATION = "Đơn đăng ký biến động đất đai"
-# Cổng đổi tên nhóm thành "Giấy chứng nhận đã cấp, trừ trường hợp…" (bỏ chữ "Bản gốc") → khớp theo MÃ
-# thành phần như cap_doi_gcn_bac_ninh. Không dùng "Giấy chứng nhận đã cấp" trần: nhóm "Giấy tờ chứng
-# minh sai sót" cũng chứa cụm đó ở cuối câu.
-_COMP_LAND_CERT = "TP-H05.000040"
+# Khớp nhóm GCN theo MÃ thành phần. Không dùng "Giấy chứng nhận đã cấp" trần: nhóm "Giấy tờ chứng
+# minh sai sót" cũng chứa cụm đó ở cuối câu. Cổng đổi mã TP-H05.000040 → TP-H05.000165.S (crawl
+# 13/10/2026): giữ mã cũ thì FE không thấy dòng nào, file GCN rơi khỏi hồ sơ.
+_COMP_LAND_CERT = "TP-H05.000165"
 _COMP_ERROR_PROOF = "Giấy tờ chứng minh sai sót"
 _COMP_AUTHORIZATION = "Văn bản về việc ủy quyền"
 
@@ -77,8 +78,10 @@ def _detect_route_type(ocr_text: str) -> str | None:
     haystack = _fold(ocr_text or "")
     if not haystack.strip():
         return None
-    # Đơn Mẫu 18 (ưu tiên trước identity: đơn cũng ghi số định danh người khai).
-    if "mau so 18" in haystack or "dang ky bien dong" in haystack:
+    # Đơn Mẫu 18 (ưu tiên trước identity: đơn cũng ghi số định danh người khai). Đơn đăng ký đất đai
+    # Mẫu 13 cũng là đơn của người dân; phải bắt TRƯỚC nhánh GCN vì đơn này có cụm "đề nghị cấp Giấy
+    # chứng nhận" + "quyền sử dụng đất" → trước đây bị đính nhầm vào ô GCN.
+    if any(k in haystack for k in ("mau so 18", "dang ky bien dong", "mau so 13", "don dang ky dat dai")):
         return "application"
     if "giay uy quyen" in haystack or "van ban uy quyen" in haystack or "hop dong uy quyen" in haystack:
         return "authorization"
@@ -98,7 +101,9 @@ def _detect_route_by_filename(name: str) -> str | None:
         return None
     if "uy quyen" in h:
         return "authorization"
-    if "mau so 18" in h or ("don" in h and ("bien dong" in h or "dang ky" in h or "dki" in h or "dkbd" in h)):
+    if "mau so 18" in h or ("don" in h and (
+        "bien dong" in h or "dang ky" in h or "dki" in h or "dkbd" in h or re.search(r"\bdk\b", h)
+    )):
         return "application"
     if "can cuoc" in h or "cccd" in h or "cmnd" in h or "cmt" in h or "the cc" in h:
         return "identity"

@@ -58,7 +58,8 @@ def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
     if not str(fields.get("Don_KinhGui") or "").strip():
         m = _KINHGUI_RE.search(text)
         if m:
-            kg = re.sub(r"\(\s*\d+\s*\)\s*$", "", m.group(1)).strip()
+            # Ký hiệu chú thích "(1)" có thể đứng cuối hoặc ĐẦU dòng ("Kính gửi: (1) UBND xã ...").
+            kg = re.sub(r"^\s*\(\s*\d+\s*\)\s*|\s*\(\s*\d+\s*\)\s*$", "", m.group(1)).strip()
             kg = _clean_line(kg)
             if kg:
                 fields["Don_KinhGui"] = kg

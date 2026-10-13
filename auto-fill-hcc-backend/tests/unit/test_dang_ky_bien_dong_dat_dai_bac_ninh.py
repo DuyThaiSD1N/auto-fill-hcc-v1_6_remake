@@ -165,3 +165,51 @@ def test_dinh_chinh_gcn_da_cap_nhan_ma_moi_1_115436():
     trung = [p["key"] for p in PROCEDURES
              if "maThuTucHanhChinh=1.115436" in ((p.get("detect") or {}).get("urlIncludes") or [])]
     assert trung == ["dinh-chinh-gcn-da-cap-bac-ninh"]
+
+
+def test_dinh_chinh_gcn_da_cap_dinh_kem_theo_form_moi():
+    # Crawl 13/10/2026 (eformId 2892): nhóm GCN đổi mã TP-H05.000040 → TP-H05.000165.S. Đơn đăng ký
+    # đất đai Mẫu 13 có cụm "Giấy chứng nhận" + "quyền sử dụng đất" nhưng phải vào nhóm Đơn.
+    from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.attach import planner as dc_planner
+
+    don_m13 = (
+        "Mẫu số 13. Đơn đăng ký đất đai, tài sản gắn liền với đất\n"
+        "ĐƠN ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT\nKính gửi: UBND phường Ví Dụ (1)\n"
+        "Trường hợp đề nghị cấp Giấy chứng nhận ... Nhận quyền sử dụng đất của ông Nguyễn Văn B"
+    )
+    gcn = "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT, QUYỀN SỞ HỮU NHÀ Ở VÀ TÀI SẢN KHÁC GẮN LIỀN VỚI ĐẤT"
+    assert dc_planner._detect_route_type(don_m13) == "application"
+    assert dc_planner._detect_route_type(gcn) == "land_certificate"
+    assert dc_planner._detect_route_by_filename("Đơn đk đất đai, ds người sd chung.pdf") == "application"
+
+    gcn_item = dc_planner._build_item({"name": "so.pdf"}, 1, "land_certificate", "Giấy chứng nhận QSDĐ")
+    assert gcn_item["componentName"] == "TP-H05.000165"
+    # Tên dòng cổng hiện tại (crawl) phải chứa đúng componentName của từng nhóm.
+    rows = [
+        "TP-H05.000026 Mẫu số 18. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất",
+        "TP-H05.000165.S Giấy chứng nhận đã cấp.",
+        "TP-H05.000175.S Giấy tờ chứng minh sai sót thông tin của người được cấp Giấy chứng nhận",
+        "TP-H05.000115.S Văn bản về việc ủy quyền theo quy định của pháp luật về dân sự",
+    ]
+    for comp, _label in dc_planner._ROUTE.values():
+        assert sum(comp in r for r in rows) == 1, comp
+
+
+def test_dinh_chinh_gcn_da_cap_kinh_gui_va_hien_trang():
+    from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.process import fallback as dc_fallback
+    from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.process import mapper as dc_mapper
+    from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.process import schema as dc_schema
+
+    got = dc_fallback.apply_ocr_fallback({}, [{"text": "Kính gửi: (1) UBND xã Ví Dụ\nHọ tên: A"}])
+    assert got["Don_KinhGui"] == "UBND xã Ví Dụ"
+
+    out = {f["name"]: f for f in dc_mapper.enrich([
+        {"name": "Don_KinhGui", "value": "(1) Chi nhánh VP ĐKĐĐ Ví Dụ"},
+        {"name": "Don_HienTrang", "value": "Sử dụng ổn định, không tranh chấp"},
+    ])}
+    assert out[dc_schema.K_KINHGUI]["value"] == "Chi nhánh VP ĐKĐĐ Ví Dụ"
+    assert out["HienTrangSuDungDatSuDungOnDinh"] == {
+        "name": "HienTrangSuDungDatSuDungOnDinh", "comp": "bn-textarea",
+        "value": "Sử dụng ổn định, không tranh chấp",
+    }
+    assert "Don_HienTrang" in dc_schema.ALLOWED

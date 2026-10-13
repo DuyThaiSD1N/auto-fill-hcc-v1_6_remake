@@ -54,6 +54,9 @@ FIELDS: list[dict] = [
     {"name": "Don_RanhGioi",
      "desc": 'Dòng "(3) Sự thay đổi ranh giới so với ranh giới được cấp Giấy chứng nhận" của Đơn, NGUYÊN '
              "VĂN. Không có → bỏ, KHÔNG suy luận."},
+    {"name": "Don_HienTrang",
+     "desc": 'Dòng "- Hiện trạng sử dụng đất" (sử dụng ổn định…) của Đơn, NGUYÊN VĂN. Đơn không ghi → bỏ, '
+             "KHÔNG tự suy \"sử dụng ổn định\"."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -65,7 +68,7 @@ COMPACT_COMP_BY_NAME["Cccd_NgayCap"] = "x-date"
 # ---- UI thân đơn Mẫu 18 (element_*) — khớp CLASS eform-element-<Key>, name = KEY ----
 # Cổng đã thay form: nhãn đổi từ "a) Tên"/"c) Địa chỉ"/"2. Nội dung biến động" sang "- Tên(2)"/
 # "- Địa chỉ"/"II. Nội dung biến động(3)" nên khớp NHÃN cũ trượt cả thân đơn. Class ngữ nghĩa
-# (crawl DOM 27/09/2026, eformId 2883) ổn định hơn nhãn — cùng bộ key với dang_ky_bien_dong_dat_dai_bac_ninh.
+# (crawl DOM 27/09/2026 eformId 2883; crawl lại 13/10/2026 eformId 2892, thêm ô Hiện trạng) ổn định hơn nhãn — cùng bộ key với dang_ky_bien_dong_dat_dai_bac_ninh.
 K_KINHGUI = "KinhGui"
 K_TEN = "Ten2"
 K_GIAYTO = "GiayToNhanThanphapNhan"
@@ -81,6 +84,7 @@ K_GIAYTO3 = "3"
 K_THANHVIENHO = "1ThanhVienHoGiaDinh5"
 K_TRANHCHAP = "2TinhTrangTranhChapDatDai"
 K_RANHGIOI = "3SuThayDoiRanhGioiSoVoiRanhGioiDuocCapGiayChungNha"
+K_HIENTRANG = "HienTrangSuDungDatSuDungOnDinh"
 
 # ---- Người nhận kết quả (khớp NAME — id DOM là _org_bn_hoso_noptructuyen_<name>) ----
 N_HOTEN = "nhanTaiNhahoTen"
@@ -104,6 +108,7 @@ UI_COMP_BY_NAME = {
     K_THANHVIENHO: "bn-input",
     K_TRANHCHAP: "bn-input",
     K_RANHGIOI: "bn-input",
+    K_HIENTRANG: "bn-textarea",
     N_HOTEN: "bn-input",
     N_CCCD: "bn-input",
     N_SDT: "bn-input",

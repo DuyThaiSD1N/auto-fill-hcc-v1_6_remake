@@ -22,6 +22,8 @@ Thủ tục có các thành phần hồ sơ:
 1. Chỉ phân loại theo OCR_TEXT. KHÔNG dùng tên file, thứ tự file, hay giả định bên ngoài.
 2. Giấy tờ tùy thân (CCCD/CMND/Thẻ căn cước/Căn cước điện tử/Hộ chiếu) → type = identity.
 3. Đơn đăng ký biến động đất đai / có cụm "Mẫu số 18" / "đăng ký biến động" → type = application.
+   Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 13, kể cả danh sách thửa Mẫu 13a/13b kèm
+   theo) cũng là ĐƠN → application, KHÔNG phải land_certificate dù có cụm "Giấy chứng nhận".
 4. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu nhà ở / tài sản gắn liền với đất
    (sổ đỏ/sổ hồng) → type = land_certificate.
 5. Văn bản/giấy ủy quyền → type = authorization.

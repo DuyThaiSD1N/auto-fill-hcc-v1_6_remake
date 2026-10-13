@@ -25,6 +25,14 @@ def _text(value) -> str | None:
     return " ".join(text.split()).strip(" ,;") or None
 
 
+def _kinh_gui(value) -> str | None:
+    """Bỏ ký hiệu chú thích "(1)" ở đầu/cuối dòng Kính gửi của mẫu in."""
+    text = _text(value)
+    if not text:
+        return None
+    return re.sub(r"^\(\s*\d+\s*\)\s*|\s*\(\s*\d+\s*\)$", "", text).strip() or None
+
+
 def _digits(value) -> str | None:
     return re.sub(r"\D+", "", str(value or "")) or None
 
@@ -82,7 +90,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     dia_chi = _flatten_address(v.get("Don_DiaChi"))
 
     # Thân đơn (Đơn Mẫu 18). Nơi/ngày khai hồ sơ cổng tự điền sẵn → không phát.
-    add(S.K_KINHGUI, _text(v.get("Don_KinhGui")))
+    add(S.K_KINHGUI, _kinh_gui(v.get("Don_KinhGui")))
     add(S.K_TEN, ho_ten)
     add(S.K_GIAYTO, _giay_to_nhan_than(so_dd, v.get("Cccd_NgayCap"), v.get("Cccd_NoiCap")))
     add(S.K_DIACHI, dia_chi)
@@ -96,6 +104,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     add(S.K_THANHVIENHO, _text(v.get("Don_ThanhVienHo")))
     add(S.K_TRANHCHAP, _text(v.get("Don_TranhChap")))
     add(S.K_RANHGIOI, _text(v.get("Don_RanhGioi")))
+    add(S.K_HIENTRANG, _text(v.get("Don_HienTrang")))
 
     # Người nhận kết quả (tự nộp → cùng người đứng đơn). Tỉnh/phường người nhận là select cascade,
     # để user chọn tay theo địa bàn.
