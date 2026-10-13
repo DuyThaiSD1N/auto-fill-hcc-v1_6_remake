@@ -448,6 +448,8 @@ from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.attach impor
 from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.process import run as dien_mat_troi_mai_nha_process
 from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.attach import plan as mien_giam_hoc_phi_gdnn_attach
 from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.process import run as mien_giam_hoc_phi_gdnn_process
+from app.pipelines.dang_ky_noi_quy_lao_dong.attach import plan as dang_ky_noi_quy_lao_dong_attach
+from app.pipelines.dang_ky_noi_quy_lao_dong.process import run as dang_ky_noi_quy_lao_dong_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7664,6 +7666,40 @@ PROCEDURES: list[dict] = [
             "không đính."
         ),
     },
+    {
+        "key": "dang-ky-noi-quy-lao-dong",
+        # Mã TTHC 2.001955 — cổng DVCQG (Bộ Nội vụ), Form.io (engine fillFormStandard dom-*) theo
+        # Mapping_DangKy_NoiQuyLaoDong_BoNoiVu.xlsx. Phần I người nộp khoá họ tên/CCCD/ngày sinh theo tài khoản →
+        # mốc formContext. Chủ hồ sơ LUÔN là doanh nghiệp: bỏ tích "Người nộp là chủ hồ sơ", chọn chonDoiTuong1 =
+        # "Tổ chức/Doanh nghiệp", họ tên/CCCD Phần II là của người đại diện theo pháp luật. Đính kèm attp-row 4 dòng
+        # (Quyết định + Nội quy ghép 1 file vào dòng 1) + Giấy ủy quyền qua modal "Thêm giấy tờ". Không urlScope để
+        # URL kê khai DVCQG (with_ke_khai_detect_urls) vẫn khớp.
+        "detect": {
+            "textIncludes": ["đăng ký nội quy lao động"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký nội quy lao động của doanh nghiệp",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF scan):\n"
+            "1. Văn bản (công văn) đề nghị đăng ký nội quy lao động gửi Sở Nội vụ — nguồn chính cho thông tin doanh "
+            "nghiệp.\n"
+            "2. Quyết định ban hành Nội quy lao động + toàn văn Nội quy lao động.\n"
+            "3. Biên bản hội nghị đối thoại / văn bản góp ý của tổ chức đại diện người lao động tại cơ sở.\n"
+            "4. Văn bản quy định về kỷ luật lao động, trách nhiệm vật chất (nếu có).\n"
+            "5. Giấy ủy quyền (khi người nộp không phải người đại diện theo pháp luật); CCCD nếu có.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung OCR.\n"
+            "Form điền: người nộp (phần sửa được), chủ hồ sơ = doanh nghiệp (tên, mã số thuế, người đại diện, trụ sở, "
+            "SĐT), ghi chú theo Quyết định ban hành, bảng 'Hồ sơ kèm theo gồm'.\n"
+            "Bước đính kèm (đều 1 Bản chính): Quyết định + Nội quy ghép 1 file → dòng 1; biên bản đối thoại / góp ý → "
+            "dòng 2; văn bản kỷ luật, trách nhiệm vật chất → dòng 3 (không có thì để trống); văn bản đề nghị → dòng 4; "
+            "Giấy ủy quyền → dòng mới qua '+ Thêm giấy tờ'."
+        ),
+    },
 ]
 
 
@@ -7854,6 +7890,7 @@ _PIPELINE = {
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
+    "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -8073,6 +8110,7 @@ _ATTACH_PIPELINE = {
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_attach,
+    "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

@@ -2080,6 +2080,14 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-c7e3-746e-8437-305980ee5536",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-noi-quy-lao-dong",
+      "code": "2.001955",
+      "label": "Đăng ký nội quy lao động của doanh nghiệp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-42a2-76ce-9565-812f8b562c71",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }
