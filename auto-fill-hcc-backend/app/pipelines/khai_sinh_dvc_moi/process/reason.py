@@ -31,20 +31,26 @@ Chỉ xác định:
 
 XÁC ĐỊNH VAI, theo thứ tự nguồn:
 a. TỜ KHAI ĐĂNG KÝ KHAI SINH: người sau câu "Đề nghị cơ quan đăng ký khai sinh cho người dưới đây" là CON; các
-   dòng "Họ, chữ đệm, tên người mẹ" / "người cha" là MẸ / CHA. Tờ khai để trống dòng người cha → CHA "Không xác
-   định" và loại khai sinh "Chưa xác định được cha", KHÔNG lấy cha từ giấy chứng sinh / bản cam đoan (tương tự mẹ).
+   dòng "Họ, chữ đệm, tên người mẹ" / "người cha" là MẸ / CHA. Hồ sơ CÓ tờ khai mà tờ khai để trống dòng người cha →
+   CHA "Không xác định" và loại khai sinh "Chưa xác định được cha", KHÔNG lấy cha từ giấy chứng sinh / bản cam đoan
+   (tương tự mẹ). Quy tắc này CHỈ áp khi hồ sơ có tờ khai.
 b. GIẤY CHỨNG SINH: con là "Dự định đặt tên con" (tên có thể bị gạch sửa tay — lấy tên khớp tờ khai), mẹ là
    người sinh; giấy chứng sinh KHÔNG có cha.
-c. GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ: chồng là CHA, vợ là MẸ.
+c. GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ: chồng là CHA, vợ là MẸ. Hồ sơ KHÔNG có tờ khai mà có giấy kết hôn với VỢ trùng
+   MẸ (người sinh trên giấy chứng sinh) → CHA = CHỒNG trên giấy kết hôn (con sinh trong thời kỳ hôn nhân), loại khai
+   sinh "Đã xác định được cả cha lẫn mẹ". Giấy chứng sinh không ghi cha KHÔNG có nghĩa là chưa xác định được cha.
 d. Giấy cam đoan / văn bản người làm chứng về việc sinh; trích lục khai tử của cha/mẹ (người đó ĐÃ CHẾT).
 e. CCCD: gán vào đúng người có cùng họ tên / số định danh ở các giấy trên; không gán theo giới tính khi giấy tờ đã
    ghi rõ tên cha/mẹ. Người đi khai tử, người làm chứng, cán bộ ký không phải cha/mẹ/con.
 
 QUAN HỆ (người nộp là gì CỦA CON):
-- Người nộp là MẸ (trùng số định danh; thiếu số thì trùng họ tên) → "Mẹ"; là CHA → "Cha".
+- Người nộp là MẸ → "Mẹ"; là CHA → "Cha". Đối chiếu người nộp với cha/mẹ: số trùng → cùng người. Giấy tờ cũ (giấy
+  kết hôn, CMND) ghi CMND 9 số còn tài khoản là số định danh 12 số → hai số KHÁC LOẠI, không đem so; họ tên trùng →
+  cùng người, "Có trong hồ sơ: Có".
 - Người nộp CHÍNH LÀ người được khai sinh (tự đăng ký cho mình, tờ khai ghi "Chính tôi"/"Bản thân") → "Bản thân".
 - Người nộp là người khác (ông, bà, anh, chị, người được ủy quyền...) → "Khác" và ghi rõ ở "Quan hệ cụ thể" theo
-  đúng giấy tờ (vd dòng quan hệ trên tờ khai khi người yêu cầu trên tờ khai chính là người nộp).
+  đúng giấy tờ (vd dòng quan hệ trên tờ khai khi người yêu cầu trên tờ khai chính là người nộp). Không giấy nào nói
+  người nộp là gì của con → "Quan hệ cụ thể: Không có"; KHÔNG ghi câu giải thích hay "Người nộp hồ sơ" vào dòng này.
 - Không đủ thông tin → "Không xác định". Không suy từ họ, tuổi, địa chỉ.
 
 LOẠI KHAI SINH (một trong): Đã xác định được cả cha lẫn mẹ | Chưa xác định được mẹ | Chưa xác định được cha |
@@ -83,7 +89,7 @@ Nguồn: ...
 </cha>
 <quan_he>
 Kết luận: Mẹ|Cha|Bản thân|Khác|Không xác định
-Quan hệ cụ thể: ...
+Quan hệ cụ thể: <TÊN quan hệ ngắn: Ông nội, Bà ngoại, Anh ruột, Người được ủy quyền...>|Không có
 Căn cứ: ...
 </quan_he>
 <loai_khai_sinh>

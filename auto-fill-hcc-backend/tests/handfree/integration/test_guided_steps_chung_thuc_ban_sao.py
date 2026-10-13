@@ -180,7 +180,7 @@ async def test_che_do_tach_ho_so_van_co_nut_chuyen_buoc_cho_ho_so_o_tab_goc():
     r = await _attach_ok(conv)
     cta = r.chips[-1]
     assert cta["send"] == "__action:guided_next" and cta["phase"] == "attachment"
-    assert "hồ sơ ở tab này" in r.display_md
+    assert "Tab này" in r.display_md
     assert "từng tab" in r.display_md, "phải dặn công dân tự bấm nộp ở các tab còn lại"
     assert "Thông tin nhận kết quả" in r.display_md
 
@@ -211,7 +211,7 @@ async def test_client_khong_co_engine_van_nhan_huong_dan_ba_phuong_thuc():
     một cú bấm không bao giờ xảy ra → giữ nguyên câu hướng dẫn tự bấm."""
     r = await _to_result_step(_after_attach(NEW_CLIENT))
     for phrase in ("bản giấy có đóng dấu", "trực tuyến", "bưu chính"):
-        assert phrase in r.display_md
+        assert phrase in r.display_md.lower()
     assert "đơn vị bưu chính" in r.display_md, "chọn bưu chính là phải điền thêm cả khối địa chỉ"
     assert r.chips[0]["send"] == "__action:guided_submit"
     assert not r.actions and not r.cards
@@ -222,7 +222,7 @@ async def test_tu_chon_san_ban_giay_va_gat_cong_tac_tren_trang():
     r = await _to_result_step(conv)
     assert "Em đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
     # Câu chốt đi kèm MỌI lượt chọn, và nút Gửi hồ sơ phải in đậm cho nổi.
-    assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+    assert "bấm **Gửi hồ sơ** để nộp" in r.display_md
     card = r.cards[0]
     assert card["kind"] == "result_methods" and card["selected"] == "paper"
     assert [o["key"] for o in card["options"]] == ["paper", "online", "postal"]
@@ -253,7 +253,7 @@ async def test_ban_giay_va_truc_tuyen_khong_doi_dien_them_gi():
             "method": cach, "ok": True, "missing": [],
         }))
         assert "điền" not in r.display_md.replace("điền hộ", ""), f"{cach} không phải điền gì thêm"
-        assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+        assert "bấm **Gửi hồ sơ** để nộp" in r.display_md
 
 
 async def test_chi_buu_chinh_moi_dan_cong_dan_tu_dien():
@@ -263,9 +263,9 @@ async def test_chi_buu_chinh_moi_dan_cong_dan_tu_dien():
     r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
         "method": "postal", "ok": True, "missing": [],
     }))
-    assert "công dân điền trực tiếp trên trang" in r.display_md
+    assert "**tự điền** tên, địa chỉ người nhận trên trang" in r.display_md
     assert not r.actions, "trợ lý KHÔNG điền hộ địa chỉ/người nhận"
-    assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+    assert "bấm **Gửi hồ sơ** để nộp" in r.display_md
 
 
 async def test_chi_buu_chinh_moi_duoc_soi_o_trong():

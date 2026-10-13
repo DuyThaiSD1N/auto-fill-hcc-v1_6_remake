@@ -15,6 +15,7 @@ from .schema import UI_COMP_BY_NAME
 
 _MOTHER, _FATHER, _OTHER = "Mẹ", "Cha", "Khác"
 _SELF_TEXT = "Bản thân"
+_MAX_RELATION_WORDS = 5  # "Người được ủy quyền", "Bà ngoại" — dài hơn là câu giải thích
 _DANG_KY_DUNG_HAN = "Đăng ký đúng hạn"
 _DANG_KY_QUA_HAN = "Đăng ký quá hạn"
 _DANG_KY_CO_HO_SO = "Đăng ký cho người đã có hồ sơ, giấy tờ cá nhân"
@@ -94,10 +95,14 @@ def _birth_place(value):
 
 
 def _same_person(account_name: str, account_id: str, name, ids: list) -> tuple[bool, bool]:
-    """(cùng người, chỉ khớp họ tên). Có số hai phía thì số quyết định."""
+    """(cùng người, chỉ khớp họ tên). Có số CÙNG LOẠI hai phía thì số quyết định.
+
+    Giấy tờ cũ (giấy kết hôn, CMND) ghi CMND 9 số còn tài khoản là số định danh 12 số: hai số khác loại, khác nhau là
+    chuyện đổi giấy tờ chứ không phải hai người → so họ tên."""
     numbers = {_digits(v) for v in ids if _digits(v)}
-    if account_id and numbers:
-        return account_id in numbers, False
+    comparable = {number for number in numbers if len(number) == len(account_id)}
+    if account_id and comparable:
+        return account_id in comparable, False
     if account_name and name and _fold(account_name) == _fold(name):
         return True, True
     return False, False
@@ -130,6 +135,9 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, st
         reasoned_block = section(context, "quan_he")
         if not detail and _fold(labeled_value(reasoned_block, "Kết luận")) == "khac":
             detail = labeled_value(reasoned_block, "Quan hệ cụ thể")
+            # Ô cổng cần TÊN quan hệ ("Ông nội"); agent lỡ ghi câu giải thích thì không điền câu đó ra form.
+            if len(detail.split()) > _MAX_RELATION_WORDS:
+                detail = ""
         if not detail:
             return _OTHER, "", False, "Người nộp không phải cha/mẹ — cán bộ ghi rõ ô 'Quan hệ khác'."
         return _OTHER, detail, False, ""

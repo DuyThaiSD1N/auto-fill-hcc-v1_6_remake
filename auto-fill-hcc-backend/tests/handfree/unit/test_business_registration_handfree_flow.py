@@ -49,8 +49,7 @@ def test_hkdonline_home_starts_bootstrap_once():
 
 
 def test_home_guidance_does_not_claim_a_draft_exists_yet():
-    assert "trang chủ" in vi.BUSINESS_PREPARING["md"]
-    assert "trang kê khai" in vi.BUSINESS_PREPARING["md"]
+    assert "Thành lập mới hộ kinh doanh" in vi.BUSINESS_PREPARING["md"]
     assert "hồ sơ nháp" not in vi.BUSINESS_PREPARING["md"]
 
 
@@ -93,7 +92,7 @@ async def test_docs_complete_spawns_combined_business_job(monkeypatch):
     assert conv["state"] == "filling"
     assert conv["pipeline_status"] == "running"
     assert spawned == [("business", ("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh"))]
-    assert "8 khối thông tin" in reply.display_md
+    assert "chuẩn bị điền" in reply.display_md
 
 
 def test_business_ready_emits_one_combined_extension_action():
@@ -137,8 +136,8 @@ async def test_success_report_moves_to_done_and_updates_both_traces(monkeypatch)
     assert conv["state"] == "done"
     assert conv["attach_done"] is True
     assert "8/8" in reply.display_md
-    assert "rà soát các thông tin đã điền ở từng khối" in reply.display_md
-    assert "các tệp đã đính kèm" in reply.display_md
+    assert "rà lại" in reply.display_md
+    assert "tự bấm **Nộp hồ sơ**" in reply.display_md
     assert [(request_id, kind) for request_id, kind, _ in reports] == [
         ("trace-fill", "autofill"), ("trace-attach", "attach")
     ]

@@ -10,27 +10,20 @@ from app.dossiers.rating_card import RATING_CARD  # noqa: F401  (re-export cho f
 
 GREET = {
     "md": (
-        "**Xin chào công dân!** Em là **Trợ lý nhân dân**, hỗ trợ làm thủ tục hành chính công ạ.\n\n"
-        "Công dân kiểm tra **nơi làm thủ tục** bên dưới rồi **chọn thủ tục** cần làm — "
-        "bấm vào thẻ hoặc gõ/nói tên thủ tục đều được ạ."
+        "**Xin chào công dân!** Em là Trợ lý nhân dân.\n\n"
+        "Công dân kiểm tra **nơi làm thủ tục**, rồi **chọn thủ tục** bên dưới (bấm thẻ hoặc nói tên) ạ."
     ),
-    "tts": (
-        "Xin chào công dân em là Trợ lý nhân dân. "
-        "Công dân chọn thủ tục cần làm, bấm vào thẻ hoặc nói tên thủ tục đều được ạ."
-    ),
+    "tts": "Xin chào công dân, em là Trợ lý nhân dân. Công dân bấm chọn, hoặc nói tên thủ tục cần làm ạ.",
 }
 
 # Thứ tự MỚI: chọn thủ tục trước, chọn nơi sau. Màn chào không còn card chọn nơi nên câu chào
 # cũng không được bảo công dân "kiểm tra nơi làm thủ tục bên dưới".
 GREET_PROCEDURE_FIRST = {
     "md": (
-        "**Xin chào công dân!** Em là **Trợ lý nhân dân**, hỗ trợ làm thủ tục hành chính công ạ.\n\n"
-        "Công dân **chọn thủ tục** cần làm bên dưới — bấm vào thẻ hoặc gõ/nói tên thủ tục đều được ạ."
+        "**Xin chào công dân!** Em là Trợ lý nhân dân.\n\n"
+        "Công dân **chọn thủ tục** bên dưới (bấm thẻ hoặc nói tên) ạ."
     ),
-    "tts": (
-        "Xin chào công dân em là Trợ lý nhân dân. "
-        "Công dân chọn thủ tục cần làm, bấm vào thẻ hoặc nói tên thủ tục đều được ạ."
-    ),
+    "tts": "Xin chào công dân, em là Trợ lý nhân dân. Công dân bấm chọn, hoặc nói tên thủ tục cần làm ạ.",
 }
 
 # Nơi làm thủ tục giờ hiện NGAY TRONG lượt xác nhận → mời công dân soát nó trước khi đồng ý.
@@ -38,96 +31,81 @@ GREET_PROCEDURE_FIRST = {
 # dưới": người lớn tuổi đọc câu hỏi có/không nhanh hơn là tự đối chiếu ba dòng trong card.
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Dạ, công dân làm **{procedure}** ở **{ward}, {province}**, **{subject}** — đúng không ạ?\n\n"
-        "Nếu đúng thì công dân bấm **Đồng ý**; chưa đúng thì chọn lại ở bên dưới rồi bấm "
-        "**Đồng ý** nhé."
+        "Dạ, công dân làm **{procedure}** · **{ward}, {province}** · **{subject}** — đúng không ạ?\n\n"
+        "Đúng → bấm **Đồng ý**. Chưa đúng → chọn lại bên dưới → bấm **Đồng ý**."
     ),
     "tts": (
-        "Dạ, công dân làm thủ tục {procedure} ở {ward}, {province}, {subject} — đúng không ạ? "
-        "Nếu đúng thì công dân bấm đồng ý; chưa đúng thì chọn lại ở bên dưới rồi bấm đồng ý nhé."
+        "Dạ, công dân làm thủ tục {procedure}, tại {ward}, {province}, {subject}, đúng không ạ? "
+        "Đúng thì bấm Đồng ý."
     ),
 }
 
 GREET_RETURNING = {
-    "md": "Công dân đang làm dở thủ tục **{procedure}** (đến bước: {step_label}). Công dân muốn **tiếp tục** hay **làm thủ tục khác** ạ?",
-    "tts": "Công dân đang làm dở thủ tục {procedure}. Công dân muốn tiếp tục hay làm thủ tục khác ạ?",
+    "md": (
+        "Công dân đang làm dở **{procedure}** (bước: {step_label}). "
+        "**Tiếp tục** hay **làm thủ tục khác** ạ?"
+    ),
+    "tts": "Dạ, công dân đang làm dở thủ tục {procedure}. Làm tiếp, hay làm thủ tục khác ạ?",
 }
 
 CONFIRM_PROCEDURE = {
-    "md": "Dạ, công dân muốn làm **{procedure}** tại **{ward}, {province}** đúng không ạ?",
-    "tts": "Dạ công dân muốn làm thủ tục {procedure} tại {ward} {province} đúng không ạ?",
+    "md": "Dạ, công dân làm **{procedure}** tại **{ward}, {province}**, đúng không ạ?",
+    "tts": "Dạ, công dân làm thủ tục {procedure}, tại {ward}, {province}, đúng không ạ?",
 }
 
 PROCEDURE_NOT_RECOGNIZED = {
     "md": (
-        "Dạ em chưa nhận ra thủ tục công dân cần ạ. Hiện em hỗ trợ **{count} thủ tục** trong danh sách bên dưới — "
-        "công dân bấm chọn hoặc nói lại tên giúp em nhé."
+        "Dạ em chưa nhận ra thủ tục ạ. "
+        "Công dân **chọn 1 trong {count} thủ tục** bên dưới, hoặc nói lại tên."
     ),
-    "tts": "Dạ em chưa nhận ra thủ tục công dân cần. Công dân chọn trong danh sách hoặc nói lại tên giúp em nhé.",
+    "tts": "Dạ, em chưa nhận ra thủ tục. Công dân chọn trong danh sách, hoặc nói lại tên ạ.",
 }
 
 # Câu gõ/nói hợp với nhiều thủ tục → hỏi lại kèm nút gợi ý. options_* là tên thủ tục lấy từ registry.
 PROCEDURE_UNCLEAR = {
-    "md": (
-        "Dạ em chưa chắc công dân cần thủ tục nào ạ. Có phải một trong các thủ tục sau không?\n\n"
-        "{options_md}\n\nCông dân bấm chọn hoặc nói rõ thêm giúp em nhé."
-    ),
-    "tts": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải {options_tts} không ạ? "
-           "Công dân bấm chọn hoặc nói rõ thêm giúp em nhé.",
+    "md": "Dạ, công dân cần thủ tục nào ạ?\n\n{options_md}",
+    "tts": "Dạ, có phải {options_tts} không ạ? Công dân bấm chọn giúp em.",
 }
 
 # Thủ tục đặc thù tỉnh (provinceOnly) mà tài khoản đang đăng nhập ở tỉnh khác → không mở được.
 PROCEDURE_PROVINCE_LOCKED = {
-    "md": (
-        "Dạ **{procedure}** hiện chỉ áp dụng ở **{provinces}** ạ. Tài khoản mình đang ở tỉnh khác "
-        "nên chưa làm được thủ tục này. Công dân chọn thủ tục khác trong danh sách bên dưới giúp em nhé."
-    ),
-    "tts": (
-        "Dạ thủ tục {procedure} hiện chỉ áp dụng ở {provinces}, tài khoản mình ở tỉnh khác nên "
-        "chưa làm được ạ. Công dân chọn thủ tục khác giúp em nhé."
-    ),
+    "md": "Dạ, **{procedure}** chỉ làm được ở **{provinces}** ạ. Công dân chọn thủ tục khác bên dưới.",
+    "tts": "Dạ, thủ tục này chỉ làm được ở {provinces}. Công dân chọn thủ tục khác ạ.",
 }
 
 GUIDE_LOGIN = {
-    "md": (
-        "Em đang đưa công dân sang trang thủ tục. Nếu trang yêu cầu đăng nhập, công dân mở app **VNeID** "
-        "trên điện thoại → chọn **Quét QR** → quét mã trên màn hình để đăng nhập ạ.\n\n"
-        "Đăng nhập xong em sẽ tự nhận ra và hướng dẫn tiếp 😊"
-    ),
+    "md": "Nếu trang hiện mã đăng nhập: mở app **VNeID** → **Quét QR** → quét mã trên màn hình ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Công dân mở app VNeID trên điện thoại chọn Quét QR, rồi quét mã trên màn hình để đăng nhập. "
     # "Đăng nhập xong em sẽ hướng dẫn tiếp ạ."
     # ),
-    "tts": "Công dân mở app vi en ai đi trên điện thoại chọn Quét quy rờ, rồi quét mã trên màn hình để đăng nhập. Đăng nhập xong em sẽ hướng dẫn tiếp ạ.",
+    "tts": "Nếu trang hiện mã, công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã ạ.",
 }
 
 # Máy quét trả tệp lẻ tẻ (scan-bridge) → công dân chủ động bấm "Đã đưa đủ" khi xong. Câu này NỐI
 # vào SCAN_PICK. (Đường chọn tệp tay khi máy chưa cài agent vẫn tự chốt theo đợt như trước.)
 SCAN_AUTO_RUN_NOTE = {
-    "md": " Xong hết, công dân bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.",
-    "tts": " Xong hết thì công dân bấm nút Đã đưa đủ giấy tờ để em bắt đầu xử lý ạ.",
+    "md": " Xong hết → bấm **Đã đưa đủ giấy tờ** ạ.",
+    "tts": " Xong hết thì bấm Đã đưa đủ giấy tờ ạ.",
 }
 
 GUIDE_AGENCY_SELECT = {
     "md": (
-        "Em đang mở trang thủ tục **{procedure}**. Em sẽ **tự chọn cơ quan thực hiện** "
-        "(**{ward}, {province}**) và bấm **Nộp trực tuyến** giúp công dân."
+        "Em đang mở **{procedure}**, tự chọn **{ward}, {province}** và bấm **Nộp trực tuyến**. "
+        "Công dân chờ chút ạ."
     ),
-    "tts": "Em đang mở trang thủ tục và sẽ tự chọn cơ quan {ward}, {province} rồi bấm nộp trực tuyến giúp công dân.",
+    "tts": "Em đang mở trang và tự chọn cơ quan. Công dân chờ em chút ạ.",
 }
 
 # Thủ tục cổng Bộ NN&MT (agencyProvinceOnly): trang DVCQG chỉ cần chọn TỈNH rồi Đồng ý;
 # kết quả đầu tiên "Nộp trực tuyến" chính là Sở chuyên ngành.
 GUIDE_AGENCY_SELECT_PROVINCE = {
     "md": (
-        "Em đang mở trang thủ tục **{procedure}**. Em sẽ **tự chọn tỉnh {province}**, bấm "
-        "**Đồng ý** và chọn **{agency}** để **Nộp trực tuyến** giúp công dân."
+        "Em đang mở **{procedure}**, tự chọn **tỉnh {province}** → **{agency}** → **Nộp trực tuyến**. "
+        "Công dân chờ chút ạ."
     ),
-    "tts": (
-        "Em đang mở trang thủ tục và sẽ tự chọn tỉnh {province}, bấm đồng ý rồi nộp trực tuyến "
-        "ở {agency} giúp công dân."
-    ),
+    "tts": "Em đang mở trang và tự chọn cơ quan. Công dân chờ em chút ạ.",
 }
 
 # Hỏi "Trường hợp giải quyết" (cấp mới / cấp lại) NGAY sau khi xác nhận thủ tục — lựa chọn
@@ -136,119 +114,83 @@ GUIDE_AGENCY_SELECT_PROVINCE = {
 # thành {options_md}/{options_tts} rồi mới nhét vào đây, nên câu này dùng chung cho mọi thủ tục
 # có bước "Chọn trường hợp giải quyết", không riêng cấp mới/cấp lại.
 CHOOSE_VARIANT = {
-    "md": (
-        "Dạ, thủ tục **{procedure}** đang ở bước **Chọn trường hợp giải quyết** ạ. "
-        "Có {count} trường hợp:\n\n{options_md}\n\nCông dân chọn trường hợp nào ạ?"
-    ),
-    "tts": (
-        "Dạ, mình đang ở bước chọn trường hợp giải quyết. Có {count} trường hợp: {options_tts}. "
-        "Công dân chọn trường hợp nào ạ?"
-    ),
+    "md": "Dạ, **{procedure}** có {count} trường hợp, công dân chọn 1 ạ:\n\n{options_md}",
+    "tts": "Dạ, có {count} trường hợp: {options_tts}. Công dân chọn trường hợp nào ạ?",
 }
 
 CHOOSE_VARIANT_REMIND = {
-    "md": "Dạ, công dân chọn giúp em một trường hợp bên dưới để em làm tiếp ạ:\n\n{options_md}",
-    "tts": "Dạ, công dân chọn giúp em một trường hợp để em làm tiếp ạ: {options_tts}.",
+    "md": "Dạ, công dân chọn 1 trường hợp ạ:\n\n{options_md}",
+    "tts": "Dạ, công dân chọn một trường hợp: {options_tts} ạ.",
 }
 
 # Bước "Chọn trường hợp giải quyết" ở dạng HỘP THOẠI chỉ có Đơn vị thực hiện + Trường hợp giải
 # quyết (cổng Bộ Xây dựng) — không có ô Tỉnh/radio Sở như trang MAE nên không nhắc tới chúng.
 VARIANT_DIALOG_AUTOFILL_GUIDE = {
-    "md": (
-        "Dạ, em chọn trường hợp **{variant_label}** rồi ấn **Đồng ý** để sang trang kê khai nhé ạ."
-    ),
-    "tts": (
-        "Dạ, em chọn trường hợp {variant_label} rồi ấn đồng ý để sang trang kê khai nhé ạ."
-    ),
+    "md": "Em chọn **{variant_label}** → bấm **Đồng ý** để sang trang kê khai ạ.",
+    "tts": "Dạ, em chọn trường hợp {variant_label}, rồi bấm Đồng ý ạ.",
 }
 
 # Trang MAE "chọn nơi và loại": bot tự điền Tỉnh + Sở + Trường hợp giải quyết rồi bấm
 # "Đồng ý và tiếp tục" — câu hướng dẫn theo yêu cầu nghiệp vụ.
 MAE_AGENCY_AUTOFILL_GUIDE = {
-    "md": (
-        "Dạ, em chọn **tỉnh {province}** và **{agency}**, em tự chọn trường hợp "
-        "**{variant_label}** rồi ấn **Đồng ý và tiếp tục** để vào trang kê khai nhé ạ."
-    ),
-    "tts": (
-        "Em đã chọn tỉnh {province} và {agency}, mình tự chọn cho em trường hợp "
-        "{variant_label} rồi ấn đồng ý và tiếp tục để vào trang kê khai nhé ạ."
-    ),
+    "md": "Em chọn **tỉnh {province}** · **{agency}** · **{variant_label}** → bấm **Đồng ý và tiếp tục** ạ.",
+    "tts": "Dạ, em chọn tỉnh {province}, {agency}, trường hợp {variant_label}, rồi bấm Đồng ý và tiếp tục ạ.",
 }
 
 # Hộp thoại chọn cơ quan của cổng bộ KHÔNG có ô "Trường hợp giải quyết" (vd Bộ Nội vụ: UBND tỉnh →
 # Sở/Ban ngành → Sở Nội vụ). Câu của MAE nhắc tên trường hợp nên dùng lại sẽ ra câu cụt.
 AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
-    "md": (
-        "Dạ ở phần **Cơ quan thực hiện**, em chọn **UBND {province}** và **{agency}**, giờ em "
-        "bấm **Đồng ý và tiếp tục** để qua trang **Thông tin hồ sơ** nhé ạ."
-    ),
-    "tts": (
-        "Dạ ở phần cơ quan thực hiện, em chọn ủy ban nhân dân {province} và {agency}, giờ em "
-        "bấm đồng ý và tiếp tục để qua trang thông tin hồ sơ nhé ạ."
-    ),
+    "md": "Em chọn **UBND {province}** · **{agency}** → bấm **Đồng ý và tiếp tục** ạ.",
+    "tts": "Dạ, em chọn ủy ban nhân dân {province}, {agency}, rồi bấm Đồng ý và tiếp tục ạ.",
 }
 
 # Cùng hộp thoại đó nhưng thủ tục giải quyết ở CẤP XÃ (Bộ Nội vụ, người có công từ trần): chọn
 # Tỉnh + Phường/Xã chứ không phải Sở, nên câu trên dùng lại sẽ đọc sai cấp cơ quan.
 AGENCY_WARD_DIALOG_AUTOFILL_GUIDE = {
-    "md": (
-        "Dạ ở phần **Cơ quan thực hiện**, em chọn **{province}** và **{ward}**, giờ em bấm "
-        "**Đồng ý và tiếp tục** để qua trang **Thông tin hồ sơ** nhé ạ."
-    ),
-    "tts": (
-        "Dạ ở phần cơ quan thực hiện, em chọn {province} và {ward}, giờ em bấm đồng ý và tiếp "
-        "tục để qua trang thông tin hồ sơ nhé ạ."
-    ),
+    "md": "Em chọn **{province}** · **{ward}** → bấm **Đồng ý và tiếp tục** ạ.",
+    "tts": "Dạ, em chọn {province}, {ward}, rồi bấm Đồng ý và tiếp tục ạ.",
 }
 
 MAE_AGENCY_FAILED = {
     "md": (
-        "⚠️ Em chưa chọn tự động được trên trang: *{error}*\n\n"
-        "Công dân chọn tay giúp em: **Tỉnh {province}** → **Sở/Ban ngành** → **{agency}** → "
-        "**Trường hợp {variant_label}** rồi bấm **Đồng ý và tiếp tục** ạ."
+        "⚠️ Em chưa tự chọn được (*{error}*).\n\n"
+        "Công dân chọn tay: "
+        "**Tỉnh {province}** → **Sở/Ban ngành** → **{agency}** → **{variant_label}** → bấm "
+        "**Đồng ý và tiếp tục** ạ."
     ),
     "tts": (
-        "Em chưa chọn tự động được ạ. Công dân chọn tay giúp em tỉnh {province}, mục sở ban "
-        "ngành chọn {agency}, trường hợp {variant_label}, rồi bấm đồng ý và tiếp tục ạ."
+        "Dạ, em chưa tự chọn được. "
+        "Công dân chọn tỉnh {province}, {agency}, trường hợp {variant_label}, "
+        "rồi bấm Đồng ý và tiếp tục ạ."
     ),
 }
 
 MAE_AGENCY_WARD_FAILED = {
     "md": (
-        "⚠️ Em chưa chọn tự động được trên trang: *{error}*\n\n"
-        "Công dân chọn tay giúp em: **{province}** → **Phường/Xã** → **{ward}** rồi bấm "
-        "**Đồng ý và tiếp tục** ạ."
+        "⚠️ Em chưa tự chọn được (*{error}*).\n\n"
+        "Công dân chọn tay: **{province}** → **Phường/Xã** → **{ward}** → bấm **Đồng ý và tiếp tục** ạ."
     ),
     "tts": (
-        "Em chưa chọn tự động được ạ. Công dân chọn tay giúp em {province}, mục phường xã chọn "
-        "{ward}, rồi bấm đồng ý và tiếp tục ạ."
+        "Dạ, em chưa tự chọn được. "
+        "Công dân chọn {province}, phường xã {ward}, rồi bấm Đồng ý và tiếp tục ạ."
     ),
 }
 
 # Liên thông: trang "Chọn cơ quan thực hiện" (Angular, KHÔNG có needsAgencySelect nên bot không
 # tự chọn) → dặn người dân chọn tỉnh/xã + bấm tiếp, nói 1 lần; sang trang kê khai thì thôi.
 AGENCY_MANUAL_GUIDE = {
-    "md": (
-        "Dạ, công dân **chọn cơ quan thực hiện** (tỉnh/xã) trên trang rồi bấm **tiếp tục** giúp em ạ "
-        "— sang bước **kê khai** em hướng dẫn tiếp ngay 😊"
-    ),
-    "tts": (
-        "Dạ công dân chọn cơ quan thực hiện gồm tỉnh và xã trên trang rồi bấm tiếp tục ạ. "
-        "Sang bước kê khai em hướng dẫn tiếp ngay."
-    ),
+    "md": "Công dân chọn **tỉnh, xã** trên trang → bấm **Chuyển bước tiếp theo** ạ.",
+    "tts": "Công dân chọn tỉnh và xã trên trang, rồi bấm Chuyển bước tiếp theo ạ.",
 }
 
 # Trợ lý ĐIỀN HỘ bước chọn cơ quan (liên thông khai sinh): loại khai sinh, tỉnh/xã theo nơi ở,
 # trường hợp khai sinh/ĐKTT, tick "Cùng địa bàn". Điền xong người dân tự bấm "Chuyển bước tiếp theo".
 AGENCY_AUTOFILL_GUIDE = {
     "md": (
-        "Dạ, em **chọn giúp** công dân **cơ quan thực hiện** (khai sinh, thường trú, BHYT) theo nơi ở "
-        "**{ward}, {province}** ạ. Chọn xong công dân bấm **Chuyển bước tiếp theo** giúp em nhé 😊"
+        "Em đang chọn **cơ quan thực hiện** theo nơi ở **{ward}, {province}**. "
+        "Xong → công dân bấm **Chuyển bước tiếp theo** ạ."
     ),
-    "tts": (
-        "Dạ, em chọn giúp công dân cơ quan thực hiện theo nơi ở của công dân. "
-        "Xong công dân bấm Chuyển bước tiếp theo giúp em ạ."
-    ),
+    "tts": "Em đang chọn cơ quan cho công dân. Xong thì công dân bấm Chuyển bước tiếp theo ạ.",
 }
 
 # MỘT CÂU duy nhất đọc TRÊN chính trang login SSO (Hướng A): xác nhận cơ quan + dặn VNeID/Quét QR
@@ -256,36 +198,31 @@ AGENCY_AUTOFILL_GUIDE = {
 # (action collapse_after_tts ở flow) để lộ mã QR cho công dân quét.
 QR_LOGIN_GUIDE = {
     "md": (
-        "✅ Em đã chọn cơ quan **{ward}, {province}** và mở bước **đăng nhập** ạ. "
-        "Công dân mở app **VNeID** trên điện thoại → chọn **Quét QR** → quét mã trên màn hình "
-        "để đăng nhập ạ. Xong em hướng dẫn tiếp ngay 😊"
+        "✓ Đã chọn **{ward}, {province}**.\n\n"
+        "Công dân mở app **VNeID** → **Quét QR** → quét mã trên màn hình ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã chọn cơ quan {ward}, {province} và mở bước đăng nhập ạ. "
     # "Công dân mở app VNeID chọn Quét QR rồi quét mã trên màn hình để đăng nhập. Xong em hướng dẫn tiếp ạ."
     # ),
-    "tts": "Em đã chọn cơ quan {ward}, {province} và mở bước đăng nhập ạ. Công dân mở app vi en ai đi chọn Quét quy rờ rồi quét mã trên màn hình để đăng nhập. Xong em hướng dẫn tiếp ạ.",
+    "tts": (
+        "Em đã chọn cơ quan. "
+        "Công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã trên màn hình ạ."
+    ),
 }
 
 # Các modal xác thực nối tiếp dùng chung URL SSO. Extension chỉ nhận diện trạng thái trang;
 # toàn bộ lời hướng dẫn vẫn do backend quản lý.
 VNEID_LOGIN_CODE_GUIDE = {
-    "md": (
-        "Công dân vui lòng nhập **mã xác nhận đăng nhập** theo yêu cầu trên màn hình, "
-        "sau đó bấm **Xác nhận** để tiếp tục ạ."
-    ),
-    "tts": (
-        "Công dân vui lòng nhập mã xác nhận đăng nhập theo yêu cầu trên màn hình, "
-        "sau đó bấm Xác nhận để tiếp tục ạ."
-    ),
+    "md": "Công dân nhập **mã xác nhận** → bấm **Xác nhận** ạ.",
+    "tts": "Công dân nhập mã xác nhận, rồi bấm Xác nhận ạ.",
 }
 
 VNEID_DATA_SHARING_GUIDE = {
     "md": (
-        "Công dân tích vào ô **“Tôi đã đọc và hiểu rõ nội dung mục đích; Quyền, nghĩa vụ "
-        "của chủ thể dữ liệu và đồng ý với các nội dung này”**, sau đó bấm "
-        "**Xác nhận chia sẻ**, rồi nhập **passcode 6 số của ứng dụng VNeID** để tiếp tục ạ."
+        "Công dân tích ô **“Tôi đã đọc và hiểu rõ…”** → bấm **Xác nhận chia sẻ** → nhập "
+        "**passcode VNeID** (6 số) ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
@@ -293,85 +230,67 @@ VNEID_DATA_SHARING_GUIDE = {
     # "của chủ thể dữ liệu, và đồng ý với các nội dung này. Sau đó bấm Xác nhận chia sẻ "
     # "rồi nhập passcode 6 số của ứng dụng VNeID để tiếp tục ạ."
     # ),
-    "tts": "Công dân tích vào ô Tôi đã đọc và hiểu rõ nội dung mục đích, quyền và nghĩa vụ của chủ thể dữ liệu, và đồng ý với các nội dung này. Sau đó bấm Xác nhận chia sẻ rồi nhập passcode 6 số của ứng dụng vi en ai đi để tiếp tục ạ.",
+    "tts": (
+        "Công dân tích ô Tôi đã đọc và hiểu rõ, bấm Xác nhận chia sẻ, "
+        "rồi nhập mật mã sáu số của vi en ai đi ạ."
+    ),
 }
 
 VNEID_PASSCODE_GUIDE = {
-    "md": (
-        "Công dân vui lòng nhập **passcode VNeID gồm 6 chữ số** vào màn hình, "
-        "sau đó bấm **Xác nhận** để tiếp tục ạ."
-    ),
+    "md": "Công dân nhập **passcode VNeID** (6 số) → bấm **Xác nhận** ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Công dân vui lòng nhập passcode VNeID gồm 6 chữ số vào màn hình, "
     # "sau đó bấm Xác nhận để tiếp tục ạ."
     # ),
-    "tts": "Công dân vui lòng nhập passcode vi en ai đi gồm 6 chữ số vào màn hình, sau đó bấm Xác nhận để tiếp tục ạ.",
+    "tts": "Công dân nhập mật mã sáu số, rồi bấm Xác nhận ạ.",
 }
 
 # Người dân gõ/nói giữa lúc chờ — nhắc NGẮN theo đúng việc đang chờ, kèm nút phao.
 WAIT_LOGIN_REMIND = {
     "md": (
-        "Dạ, em đang chờ công dân **đăng nhập VNeID** ạ — mở app → **Quét QR** giúp em nhé. "
-        "Nếu đã vào được trang kê khai mà em chưa nhận ra, công dân bấm nút dưới ạ."
+        "Em đang chờ công dân **đăng nhập VNeID** ạ. "
+        "Đã vào trang kê khai mà em chưa nhận ra → bấm nút dưới."
     ),
-    "tts": "Dạ em đang chờ công dân đăng nhập ạ. Nếu đã vào được trang kê khai, công dân bấm nút trên màn hình giúp em nhé.",
+    "tts": "Dạ, em đang chờ công dân đăng nhập. Đã vào trang kê khai thì bấm nút bên dưới ạ.",
 }
 
 # Nút phao chỉ yêu cầu extension kiểm tra lại DOM, không phải lời xác nhận đã đăng nhập.
 # Hai câu này được dùng khi chính lần kiểm tra tay cho thấy trang vẫn chưa sẵn sàng.
 LOGIN_STILL_REQUIRED = {
-    "md": (
-        "Trang hiện tại vẫn đang ở bước **đăng nhập VNeID**. Công dân hoàn tất đăng nhập "
-        "giúp em; khi vào trang làm hồ sơ em sẽ tự nhận ra ạ."
-    ),
+    "md": "Trang vẫn ở bước **đăng nhập VNeID**. Công dân đăng nhập xong, em tự làm tiếp ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Trang hiện tại vẫn đang ở bước đăng nhập VNeID. Công dân hoàn tất đăng nhập "
     # "giúp em. Khi vào trang làm hồ sơ em sẽ tự nhận ra ạ."
     # ),
-    "tts": "Trang hiện tại vẫn đang ở bước đăng nhập vi en ai đi. Công dân hoàn tất đăng nhập giúp em. Khi vào trang làm hồ sơ em sẽ tự nhận ra ạ.",
+    "tts": "Dạ, trang vẫn ở bước đăng nhập. Công dân đăng nhập xong, em tự làm tiếp ạ.",
 }
 
 PORTAL_NOT_READY = {
-    "md": (
-        "Em kiểm tra thấy trang hiện tại **chưa vào phần làm hồ sơ**. Công dân tiếp tục "
-        "các bước trên cổng; khi trang hồ sơ mở em sẽ tự nhận ra ạ."
-    ),
-    "tts": (
-        "Em kiểm tra thấy trang hiện tại chưa vào phần làm hồ sơ. Công dân tiếp tục "
-        "các bước trên cổng. Khi trang hồ sơ mở em sẽ tự nhận ra ạ."
-    ),
+    "md": "Trang **chưa vào phần làm hồ sơ**. Công dân làm tiếp trên cổng, tới nơi em tự nhận ra ạ.",
+    "tts": "Dạ, trang chưa vào phần làm hồ sơ. Công dân làm tiếp trên trang ạ.",
 }
 
 WAIT_PORTAL_REMIND = {
-    "md": (
-        "Dạ, em đang chờ trang chuyển sang **bước kê khai** ạ. "
-        "Nếu công dân đã thấy form kê khai mà em chưa nhận ra, bấm nút dưới giúp em nhé."
-    ),
-    "tts": (
-        "Dạ em đang chờ trang chuyển sang bước kê khai ạ. "
-        "Nếu công dân đã thấy form kê khai mà em chưa nhận ra, bấm nút trên màn hình giúp em nhé."
-    ),
+    "md": "Em đang chờ trang sang **bước kê khai** ạ. Đã thấy tờ khai mà em chưa nhận ra → bấm nút dưới.",
+    "tts": "Dạ, em đang chờ trang kê khai. Đã thấy tờ khai thì công dân bấm nút bên dưới ạ.",
 }
 
 WAIT_ATTACH_PORTAL_REMIND = {
     "md": (
-        "Dạ, em đang chờ trang chuyển sang **Thành phần hồ sơ** ạ. Nếu công dân đã thấy bảng "
-        "đính kèm mà em chưa nhận ra, bấm nút dưới giúp em nhé."
+        "Em đang chờ trang sang **Thành phần hồ sơ** ạ. "
+        "Đã thấy bảng đính kèm mà em chưa nhận ra → bấm nút dưới."
     ),
-    "tts": (
-        "Dạ em đang chờ trang chuyển sang thành phần hồ sơ ạ. Nếu công dân đã thấy bảng đính kèm, "
-        "bấm nút trên màn hình giúp em nhé."
-    ),
+    "tts": "Dạ, em đang chờ trang thành phần hồ sơ. Đã thấy bảng đính kèm thì công dân bấm nút bên dưới ạ.",
 }
 
 AGENCY_SELECT_FAILED = {
     "md": (
-        "⚠️ Em chưa chọn được cơ quan tự động: *{error}*\n\n"
-        "Công dân chọn tay giúp em: **{ward}, {province}** rồi bấm **Đồng ý** ạ."
+        "⚠️ Em chưa tự chọn được cơ quan (*{error}*).\n\n"
+        "Công dân chọn **{ward}, {province}** → bấm **Đồng ý** ạ."
     ),
-    "tts": "Em chưa chọn tự động được công dân chọn tay giúp em rồi bấm đồng ý ạ.",
+    "tts": "Dạ, em chưa tự chọn được. Công dân chọn {ward}, {province}, rồi bấm Đồng ý ạ.",
 }
 
 # Thủ tục mà trang kết quả DVCQG ra NHIỀU thẻ (Sở lẫn UBND xã cùng tiếp nhận) và thẻ đầu KHÔNG
@@ -379,79 +298,71 @@ AGENCY_SELECT_FAILED = {
 # nó bấm thẻ đầu.
 AGENCY_CARD_MANUAL_GUIDE = {
     "md": (
-        "Dạ, ở bước **Chọn cơ quan thực hiện**, công dân chọn **{ward}, {province}**, bấm "
-        "**Đồng ý**, rồi bấm **Nộp trực tuyến** ở đúng thẻ có dòng **{card}** giúp em ạ — "
-        "thủ tục này có nhiều thẻ, thẻ đầu tiên là của Sở nên không phải thẻ đó ạ."
+        "Công dân chọn **{ward}, {province}** → **Đồng ý** → bấm **Nộp trực tuyến** ở thẻ có dòng "
+        "**{card}** ạ.\n\n"
+        "⚠️ Không bấm thẻ đầu tiên (thẻ của Sở)."
     ),
     "tts": (
-        "Dạ, công dân chọn {ward}, {province}, bấm đồng ý, rồi bấm nộp trực tuyến ở đúng thẻ có "
-        "dòng {card} giúp em ạ. Thẻ đầu tiên là của Sở nên không phải thẻ đó ạ."
+        "Dạ, công dân chọn {ward}, {province}, bấm Đồng ý. "
+        "Rồi bấm Nộp trực tuyến ở thẻ có dòng {card}, không bấm thẻ đầu tiên ạ."
     ),
 }
 
 # Đã chọn xong tỉnh/xã + Đồng ý nhưng không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
 AGENCY_CARD_MISSING = {
     "md": (
-        "⚠️ Em chưa thấy thẻ có dòng **{card}** để bấm **Nộp trực tuyến** ạ.\n\n"
-        "Công dân tìm giúp em thẻ có dòng đó trong danh sách rồi bấm **Nộp trực tuyến** — "
-        "đừng bấm thẻ đầu tiên vì đó là thẻ của Sở ạ."
+        "⚠️ Em chưa thấy thẻ có dòng **{card}** ạ.\n\n"
+        "Công dân tìm thẻ đó → bấm **Nộp trực tuyến**. Không bấm thẻ đầu tiên (thẻ của Sở)."
     ),
     "tts": (
-        "Em chưa thấy thẻ có dòng {card} ạ. Công dân tìm giúp em thẻ đó rồi bấm nộp trực tuyến, "
-        "đừng bấm thẻ đầu tiên vì đó là thẻ của Sở ạ."
+        "Dạ, em chưa thấy thẻ có dòng {card}. "
+        "Công dân tìm thẻ đó, bấm Nộp trực tuyến, không bấm thẻ đầu tiên ạ."
     ),
 }
 
 GUIDE_LOGIN_NO_URL = {
     "md": (
-        "Dạ thủ tục **{procedure}** em chưa có sẵn đường dẫn trang kê khai. "
-        "Công dân mở trang thủ tục trên cổng dịch vụ công giúp em, em sẽ tự nhận ra và hỗ trợ tiếp ạ."
+        "Dạ, em chưa có đường dẫn **{procedure}**. "
+        "Công dân mở trang thủ tục trên Cổng dịch vụ công, em hỗ trợ tiếp ạ."
     ),
-    "tts": "Công dân mở trang thủ tục trên cổng dịch vụ công giúp em, em sẽ tự nhận ra và hỗ trợ tiếp ạ.",
+    "tts": "Dạ, công dân mở trang thủ tục trên Cổng dịch vụ công giúp em ạ.",
 }
 
 # Intro chỉ nêu bước trên cổng đã tới; không lặp lại trạng thái đăng nhập.
 ASK_DOC_METHOD = {
     "md": (
-        "{intro_md} Để làm **{procedure}**, công dân cần chuẩn bị giấy tờ sau:\n\n{doc_list}\n\n"
-        "**Công dân sẽ cung cấp giấy tờ bằng cách nào ạ?** Chọn 1 cách bên dưới:"
+        "{intro_md} Để làm **{procedure}**, công dân cần:\n\n"
+        "{doc_list}\n\n"
+        "**Công dân gửi giấy tờ bằng cách nào ạ?**"
     ),
-    "tts": (
-        "{intro_tts} Công dân cần chuẩn bị: {doc_list_tts}. "
-        "Công dân muốn cung cấp giấy tờ bằng cách nào ạ? Chụp bằng điện thoại hay scan tại quầy ạ?"
-    ),
+    "tts": "{intro_tts} Công dân cần: {doc_list_tts}. Công dân chụp bằng điện thoại, hay quét tại quầy ạ?",
 }
 
 INTRO_LOGIN_OK = {"md": "", "tts": ""}
-INTRO_FORM_REACHED = {"md": "Đã vào trang kê khai ✓", "tts": "Mình đã vào trang kê khai rồi ạ."}
+INTRO_FORM_REACHED = {"md": "Đã vào trang kê khai ✓", "tts": "Đã vào trang kê khai."}
 INTRO_OWNER_REACHED = {
     "md": "Đã vào bước Thông tin chủ hồ sơ ✓",
-    "tts": "Mình đã vào bước thông tin chủ hồ sơ rồi ạ.",
+    "tts": "Đã vào bước thông tin chủ hồ sơ.",
 }
 # Quét sớm: công dân đang đứng ở trang có FORM, đưa giấy tờ ra mà không biết để làm gì thì
 # tưởng đã sang bước đính kèm. Nói thẳng việc sắp làm.
 INTRO_OWNER_SCAN_REACHED = {
-    "md": "Đã vào bước Thông tin chủ hồ sơ ✓ Em sẽ **điền thông tin chủ hồ sơ** trước cho công dân ạ.",
-    "tts": "Mình đã vào bước thông tin chủ hồ sơ rồi ạ. Em sẽ điền thông tin chủ hồ sơ trước cho công dân.",
+    "md": "✓ Đã vào **Thông tin chủ hồ sơ**. Em điền phần này trước ạ.",
+    "tts": "Đã vào bước chủ hồ sơ. Em điền phần này trước ạ.",
 }
 # Nhánh ỦY QUYỀN: trang đổi nhãn khối thành "Thông tin người nộp hồ sơ" và mọc thêm khối
 # "Thông tin ủy quyền cá nhân" → nói thẳng là sẽ điền HAI khối, và vì sao.
 INTRO_AUTHORIZATION_SCAN_REACHED = {
     "md": (
-        "Đã vào bước **Thông tin người nộp hồ sơ và ủy quyền** ✓ Vì **Đối tượng thực hiện** là "
-        "**Người khác ủy quyền**, em sẽ điền **hai khối**: **Thông tin người nộp hồ sơ** và "
-        "**Thông tin ủy quyền cá nhân** ạ."
+        "✓ Đã vào **Người nộp hồ sơ và ủy quyền**. Vì là **ủy quyền**, em điền 2 phần: "
+        "**Người nộp hồ sơ** và **Thông tin ủy quyền cá nhân** ạ."
     ),
-    "tts": (
-        "Đã vào bước thông tin người nộp hồ sơ và ủy quyền. Vì đối tượng thực hiện là người "
-        "khác ủy quyền, em sẽ điền hai khối: thông tin người nộp hồ sơ và thông tin ủy quyền "
-        "cá nhân ạ."
-    ),
+    "tts": "Đã vào bước ủy quyền. Em sẽ điền hai phần: người nộp hồ sơ và thông tin ủy quyền ạ.",
 }
 
 INTRO_ATTACH_REACHED = {
     "md": "Đã vào bước Thành phần hồ sơ ✓",
-    "tts": "Mình đã vào bước thành phần hồ sơ rồi ạ.",
+    "tts": "Đã vào bước thành phần hồ sơ.",
 }
 
 # Wizard hồ sơ cổng React (kết hôn): modal "Thông tin chung" → bước Thông tin chủ hồ sơ
@@ -459,184 +370,118 @@ INTRO_ATTACH_REACHED = {
 # đã bỏ CONFIRM_INFO_MODAL khỏi luồng theo yêu cầu; hành động confirm_info_modal vẫn chạy ở flow).
 
 OWNER_INFO_GUIDE = {
-    "md": (
-        "Công dân điền **Thông tin chủ hồ sơ** (số điện thoại, thư điện tử, địa chỉ) rồi bấm "
-        "nút tiếp tục của trang để sang **bước kê khai** giúp em ạ — vào đến nơi em hướng dẫn tiếp ngay 😊"
-    ),
-    "tts": (
-        "Công dân điền thông tin chủ hồ sơ gồm số điện thoại, thư điện tử, địa chỉ, "
-        "rồi bấm tiếp tục để sang bước kê khai ạ. Vào đến nơi em hướng dẫn tiếp ngay."
-    ),
+    "md": "Công dân điền **Thông tin chủ hồ sơ** (SĐT, email, địa chỉ) → bấm nút tiếp tục trên trang ạ.",
+    "tts": "Công dân điền số điện thoại, thư điện tử, địa chỉ, rồi bấm nút tiếp tục trên trang ạ.",
 }
 
 OWNER_INFO_ATTACH_GUIDE = {
-    "md": (
-        "Công dân điền **Thông tin chủ hồ sơ** (số điện thoại, thư điện tử, địa chỉ) rồi bấm "
-        "nút tiếp tục của trang giúp em ạ, trang sẽ "
-        "chuyển tới **Thành phần hồ sơ** và em hướng dẫn đính kèm ngay 😊"
-    ),
-    "tts": (
-        "Công dân điền thông tin chủ hồ sơ gồm số điện thoại, thư điện tử, địa chỉ rồi bấm tiếp tục ạ. "
-        "Trang sẽ chuyển tới thành phần hồ sơ."
-    ),
+    "md": "Công dân điền **Thông tin chủ hồ sơ** (SĐT, email, địa chỉ) → bấm nút tiếp tục trên trang ạ.",
+    "tts": "Công dân điền số điện thoại, thư điện tử, địa chỉ, rồi bấm nút tiếp tục trên trang ạ.",
 }
 
 DOCS_COMPLETE_OWNER = {
-    "md": "Dạ, em đã nhận **{files_count} tệp** và đang xác định thông tin của đúng chủ hồ sơ…",
-    "tts": "Dạ, em đã nhận giấy tờ và đang xác định thông tin của đúng chủ hồ sơ ạ.",
+    "md": "✓ Đã nhận **{files_count} tệp**. Em đang tìm thông tin chủ hồ sơ…",
+    "tts": "Dạ, em đã nhận giấy tờ. Công dân chờ em chút ạ.",
 }
 OWNER_PROCESSING = {
-    "md": "Dạ em đang đối chiếu họ tên hoặc số định danh của chủ hồ sơ, sắp xong rồi ạ…",
-    "tts": "Dạ em đang đối chiếu thông tin chủ hồ sơ, sắp xong rồi ạ.",
+    "md": "Em đang đối chiếu chủ hồ sơ, sắp xong ạ…",
+    "tts": "Dạ, em đang đối chiếu, sắp xong rồi ạ.",
 }
 OWNER_FIELDS_READY = {
-    "md": "Em đã xác định đúng chủ hồ sơ và tìm thấy **{count} thông tin**. Em điền vào trang ngay ạ.",
-    "tts": "Em đã xác định đúng chủ hồ sơ và sẽ điền các thông tin tìm thấy ngay ạ.",
+    "md": "✓ Đã xác định chủ hồ sơ, tìm thấy **{count} thông tin**. Em điền ngay ạ.",
+    "tts": "Dạ, em điền thông tin chủ hồ sơ ngay ạ.",
 }
 OWNER_FIELDS_UNMATCHED = {
-    "md": (
-        "Em thấy trong tài liệu công dân cung cấp **không có thông tin phù hợp** để điền vào phần "
-        "**Thông tin chủ hồ sơ**. Công dân bổ sung các ô còn thiếu giúp em ạ."
-    ),
-    "tts": (
-        "Em thấy trong tài liệu công dân cung cấp không có thông tin phù hợp để điền vào phần "
-        "Thông tin chủ hồ sơ. Công dân bổ sung các ô còn thiếu giúp em ạ."
-    ),
+    "md": "Giấy tờ **chưa có thông tin chủ hồ sơ** ạ. Công dân điền các ô còn thiếu giúp em.",
+    "tts": "Dạ, giấy tờ chưa có thông tin chủ hồ sơ. Công dân điền giúp em ạ.",
 }
 OWNER_FIELDS_EMPTY = {
     "md": (
-        "Em chưa xác định chắc chắn được thông tin của chủ hồ sơ nên **không tự điền**. "
-        "Công dân bổ sung các ô còn thiếu rồi bấm **Bước tiếp theo** giúp em ạ."
+        "Em chưa chắc ai là chủ hồ sơ nên **không tự điền** ạ. "
+        "Công dân điền ô còn thiếu → bấm **Bước tiếp theo**."
     ),
-    "tts": "Em chưa xác định chắc chắn được chủ hồ sơ nên không tự điền. Công dân bổ sung rồi bấm bước tiếp theo giúp em ạ.",
+    "tts": "Dạ, em chưa chắc chủ hồ sơ nên chưa điền. Công dân điền, rồi bấm Bước tiếp theo ạ.",
 }
 OWNER_PIPELINE_ERROR = {
-    "md": (
-        "Em chưa đọc được thông tin chủ hồ sơ ({error}). Em sẽ không đoán dữ liệu; "
-        "công dân điền phần còn thiếu rồi bấm **Bước tiếp theo** giúp em ạ."
-    ),
-    "tts": "Em chưa đọc được thông tin chủ hồ sơ nên không tự điền. Công dân điền phần còn thiếu rồi bấm bước tiếp theo giúp em ạ.",
+    "md": "⚠️ Em chưa đọc được chủ hồ sơ ({error}). Công dân điền ô còn thiếu → bấm **Bước tiếp theo** ạ.",
+    "tts": "Dạ, em chưa đọc được. Công dân điền, rồi bấm Bước tiếp theo ạ.",
 }
 OWNER_FILL_DONE = {
-    "md": (
-        "✅ Em đã điền xong **{completed}**.{missing_note}\n\n"
-        "Công dân kiểm tra rồi bấm **Bước tiếp theo**."
-    ),
-    "tts": (
-        "Em đã điền xong {completed}.{missing_tts} "
-        "Công dân kiểm tra rồi bấm bước tiếp theo."
-    ),
+    "md": "✓ Đã điền **{completed}**.{missing_note}\n\nCông dân kiểm tra → bấm **Bước tiếp theo** ạ.",
+    "tts": "Dạ, em đã điền {completed}.{missing_tts} Công dân kiểm tra, rồi bấm Bước tiếp theo ạ.",
 }
 OWNER_FILL_NOT_APPLIED = {
     "md": (
-        "Em đã đọc được dữ liệu nhưng trang **chưa nhận lệnh điền**: {error}. "
-        "Công dân giữ nguyên trang này và chọn **Điền lại thông tin chủ hồ sơ** giúp em ạ."
+        "⚠️ Trang chưa nhận lệnh điền ({error}). "
+        "Công dân giữ nguyên trang → bấm **Điền lại thông tin chủ hồ sơ** ạ."
     ),
-    "tts": (
-        "Em đã đọc được dữ liệu nhưng trang chưa nhận lệnh điền. "
-        "Công dân giữ nguyên trang và chọn điền lại thông tin chủ hồ sơ giúp em ạ."
-    ),
+    "tts": "Dạ, trang chưa nhận. Công dân bấm Điền lại thông tin chủ hồ sơ ạ.",
 }
 MAIN_FORM_PROCESSING = {
-    "md": "Bây giờ em sẽ **điền thông tin kê khai** giúp công dân nhé.",
-    "tts": "Bây giờ em sẽ điền thông tin kê khai giúp công dân nhé.",
+    "md": "Giờ em **điền tờ khai** giúp công dân ạ.",
+    "tts": "Giờ em điền tờ khai ạ.",
 }
 WAIT_ATTACHMENT_PAGE = {
-    "md": (
-        "\n\nSau khi kiểm tra xong, công dân chuyển sang **Thành phần hồ sơ**; "
-        "khi trang mở, em sẽ tự đính kèm giấy tờ vào hồ sơ ạ."
-    ),
-    "tts": (
-        " Sau khi kiểm tra xong, công dân chuyển sang thành phần hồ sơ. "
-        "Khi trang mở, em sẽ tự đính kèm giấy tờ vào hồ sơ ạ."
-    ),
+    "md": "\n\nKiểm tra xong → chuyển sang **Thành phần hồ sơ**, em tự đính kèm ạ.",
+    "tts": " Kiểm tra xong, công dân sang bước thành phần hồ sơ, em sẽ tự đính kèm ạ.",
 }
 # Cổng 2 tab cùng trang (Bắc Ninh): công dân KHÔNG phải chuyển bước — bot tự mở tab
 # "Tải thành phần hồ sơ" và đính kèm ngay sau khi điền xong đơn.
 WAIT_ATTACHMENT_SAME_PAGE = {
-    "md": (
-        "\n\nGiờ em **chuyển sang phần Tải thành phần hồ sơ** và tự đính kèm giấy tờ vào "
-        "hồ sơ — công dân chờ em thêm chút nhé ạ…"
-    ),
-    "tts": (
-        " Giờ em chuyển sang phần tải thành phần hồ sơ và tự đính kèm giấy tờ vào hồ sơ. "
-        "Công dân chờ em thêm chút nhé ạ."
-    ),
+    "md": "\n\nGiờ em sang **Tải thành phần hồ sơ** và tự đính kèm, công dân chờ chút ạ…",
+    "tts": " Giờ em tự đính kèm giấy tờ, công dân chờ chút ạ.",
 }
 # Chốt kết quả CẢ HAI bước (điền đơn + đính kèm) sau khi luồng cùng-trang chạy liền mạch.
 SAME_PAGE_TWO_STEP_SUMMARY = {
-    "md": (
-        "\n\n📋 Tóm tắt: **Nhập đơn đăng ký** — điền {filled} ô ✓ · "
-        "**Tải thành phần hồ sơ** — đính kèm {attached} tệp ✓"
-    ),
+    "md": "\n\n📋 **Đơn đăng ký**: {filled} ô ✓ · **Thành phần hồ sơ**: {attached} tệp ✓",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # " Tóm tắt lại: phần nhập đơn đăng ký em đã điền {filled} ô, phần thành phần hồ sơ "
     # "em đã đính kèm {attached} tệp ạ."
     # ),
-    "tts": " Tóm tắt lại: phần nhập đơn đăng ký em đã điền các ô, phần thành phần hồ sơ em đã đính kèm các tệp ạ.",
+    "tts": " Em đã điền đơn và đính kèm xong ạ.",
 }
 REFILL_PROCESSING = {
-    "md": (
-        "🔁 Em đang **đọc lại giấy tờ và điền lại thông tin kê khai**. "
-        "Công dân giữ nguyên trang này và chờ em một chút ạ…"
-    ),
-    "tts": (
-        "Em đang đọc lại giấy tờ và điền lại thông tin kê khai. "
-        "Công dân giữ nguyên trang này và chờ em một chút ạ."
-    ),
+    "md": "🔁 Em đang **điền lại tờ khai**. Công dân giữ nguyên trang, chờ chút ạ…",
+    "tts": "Dạ, em đang điền lại. Công dân giữ nguyên trang ạ.",
 }
 REFILL_ALREADY_RUNNING = {
-    "md": "Dạ, em đang điền lại thông tin rồi ạ. Công dân chờ em một chút nhé.",
-    "tts": "Dạ, em đang điền lại thông tin rồi ạ. Công dân chờ em một chút nhé.",
+    "md": "Em đang điền lại rồi, công dân chờ chút ạ.",
+    "tts": "Dạ, em đang điền lại, công dân chờ chút ạ.",
 }
 REFILL_WRONG_PAGE = {
-    "md": (
-        "Hiện mình không ở trang **Kê khai thông tin**. Công dân quay lại trang Kê khai, "
-        "rồi bấm **Điền lại thông tin** giúp em nhé ạ."
-    ),
-    "tts": (
-        "Hiện mình không ở trang kê khai thông tin. Công dân quay lại trang kê khai, "
-        "rồi bấm điền lại thông tin giúp em nhé ạ."
-    ),
+    "md": "Mình chưa ở trang **Kê khai** ạ. Công dân quay lại trang Kê khai → bấm **Điền lại thông tin**.",
+    "tts": "Dạ, công dân quay lại trang kê khai, rồi bấm Điền lại thông tin ạ.",
 }
 REVIEW_ATTACHMENT_ACTION = {
-    "md": (
-        "\n\nSau khi kiểm tra xong, công dân chuyển sang **Thành phần hồ sơ**, rồi bấm "
-        "**Đính kèm giấy tờ** trong Trợ lý để em thực hiện ạ."
-    ),
-    "tts": (
-        " Sau khi kiểm tra xong, công dân chuyển sang thành phần hồ sơ, rồi bấm "
-        "đính kèm giấy tờ trong Trợ lý để em thực hiện ạ."
-    ),
+    "md": "\n\nKiểm tra xong → sang **Thành phần hồ sơ** → bấm **Đính kèm giấy tờ** trong Trợ lý ạ.",
+    "tts": " Kiểm tra xong, công dân sang bước thành phần hồ sơ, rồi bấm Đính kèm giấy tờ ạ.",
 }
 
 # ── Xin phép xử lý dữ liệu cá nhân (Luật 91/2025/QH15) — TRƯỚC khi nhận/đọc giấy tờ ──
 # Intro nối mốc trang hiện tại như ASK_DOC_METHOD; không đọc lại trạng thái đăng nhập.
 CONSENT_INTRO = {
     "md": (
-        "{intro_md} Trước khi nhận và đọc giấy tờ, em cần **công dân cho phép xử lý dữ liệu "
-        "cá nhân** ạ. Công dân đọc nội dung trong thẻ dưới đây, tích **2 ô xác nhận** rồi bấm "
-        "**Đồng ý và tự động điền** nhé. Nếu không đồng ý, công dân chọn **Tự nhập** — "
-        "em sẽ không đọc giấy tờ ạ."
+        "{intro_md} Trước khi đọc giấy tờ, em cần **công dân cho phép xử lý dữ liệu cá nhân** ạ.\n\n"
+        "- Đồng ý → tích **2 ô** → bấm **Đồng ý và tự động điền**\n- Không đồng ý → bấm "
+        "**Không đồng ý · Tự nhập** (em không đọc giấy tờ)"
     ),
     "tts": (
-        "{intro_tts} Trước khi nhận và đọc giấy tờ, em cần công dân cho phép xử lý dữ liệu cá nhân ạ. "
-        "Trong thủ tục này em sẽ chỉ đọc: {doc_list_tts}, để tự động điền biểu mẫu và chuẩn bị "
-        "tệp đính kèm. Công dân đọc nội dung trong thẻ, tích hai ô xác nhận, rồi bấm Đồng ý và tự động điền. "
-        "Nếu không đồng ý, công dân chọn tự nhập, em sẽ không đọc giấy tờ ạ."
+        "{intro_tts} Em cần công dân cho phép xử lý dữ liệu cá nhân ạ. "
+        "Em chỉ đọc {doc_list_tts} để điền tờ khai và đính kèm hồ sơ. "
+        "Đồng ý thì tích hai ô, bấm Đồng ý và tự động điền. Không thì bấm Không đồng ý, tự nhập."
     ),
 }
 
 CONSENT_ATTACH_INTRO = {
     "md": (
-        "{intro_md} Trước khi nhận và tự động đính kèm giấy tờ, em cần **công dân cho phép xử lý "
-        "dữ liệu cá nhân** ạ. Công dân đọc nội dung trong thẻ dưới đây, tích **2 ô xác nhận** rồi "
-        "bấm **Đồng ý và tự động đính kèm** nhé."
+        "{intro_md} Trước khi đính kèm giấy tờ, "
+        "em cần **công dân cho phép xử lý dữ liệu cá nhân** ạ.\n\n"
+        "Đồng ý → tích **2 ô** → bấm **Đồng ý và tự động đính kèm**."
     ),
     "tts": (
-        "{intro_tts} Trước khi nhận và tự động đính kèm {doc_list_tts}, em cần công dân cho phép "
-        "xử lý dữ liệu cá nhân ạ. Công dân đọc nội dung trong thẻ, tích hai ô xác nhận rồi bấm đồng ý."
+        "{intro_tts} Em cần công dân cho phép xử lý dữ liệu để đính kèm {doc_list_tts} ạ. "
+        "Công dân tích hai ô, rồi bấm Đồng ý và tự động đính kèm."
     ),
 }
 
@@ -723,201 +568,140 @@ CONSENT_LEGAL_MD = """*Theo Luật số 91/2025/QH15 ngày 26/6/2025 — Luật 
 **5.** Khi nhận được yêu cầu của chủ thể dữ liệu cá nhân để thực hiện quyền của chủ thể dữ liệu cá nhân quy định tại khoản 1 Điều này, bên kiểm soát dữ liệu cá nhân, bên kiểm soát và xử lý dữ liệu cá nhân phải kịp thời thực hiện trong thời hạn theo quy định của pháp luật."""
 
 CONSENT_ACCEPTED = {
-    "md": (
-        "✅ Đã ghi nhận sự đồng ý của công dân — mã nhật ký **{log_id}**, lúc {time}, "
-        "bản nội dung v{version}."
-    ),
-    "tts": "Em đã ghi nhận sự đồng ý của công dân rồi ạ.",
+    "md": "✓ Đã ghi nhận đồng ý — mã **{log_id}**, {time}, bản v{version}.",
+    "tts": "Dạ, em đã ghi nhận đồng ý ạ.",
 }
 
 CONSENT_DECLINED = {
     "md": (
-        "Dạ em tôn trọng quyết định của công dân ✓ Em sẽ **không đọc và không xử lý** giấy tờ nào. "
-        "Công dân tự điền biểu mẫu trên trang giúp em nhé — lúc nào muốn em hỗ trợ đọc–điền, "
-        "công dân bấm **Xem lại và đồng ý** ạ."
+        "✓ Em sẽ **không đọc** giấy tờ nào. Công dân tự điền trên trang ạ.\n\n"
+        "Cần em hỗ trợ → bấm **Xem lại và đồng ý**."
     ),
-    "tts": (
-        "Dạ em tôn trọng quyết định của công dân. Em sẽ không đọc và không xử lý giấy tờ nào, "
-        "công dân tự điền biểu mẫu trên trang nhé. Lúc nào muốn em hỗ trợ, công dân bấm xem lại và đồng ý ạ."
-    ),
+    "tts": "Dạ, em sẽ không đọc giấy tờ. Công dân tự điền trên trang ạ.",
 }
 
 CONSENT_RESHOW = {
-    "md": "Dạ, công dân đọc lại nội dung xin phép dưới đây rồi xác nhận giúp em ạ:",
-    "tts": "Dạ, công dân đọc lại nội dung xin phép rồi xác nhận giúp em ạ.",
+    "md": "Dạ, công dân đọc lại và xác nhận giúp em ạ:",
+    "tts": "Dạ, công dân đọc lại và xác nhận giúp em ạ.",
 }
 
 CONSENT_REMIND = {
     "md": (
-        "Dạ công dân xác nhận **thẻ xin phép xử lý dữ liệu** bên trên giúp em ạ — "
-        "đồng ý thì tích 2 ô rồi bấm **Đồng ý và tự động điền**, "
-        "không thì chọn **Không đồng ý · Tự nhập** nhé."
+        "Công dân xác nhận **thẻ xin phép** bên trên ạ:\n\n"
+        "- Đồng ý → tích **2 ô** → **Đồng ý và tự động điền**\n- Không → **Không đồng ý · Tự nhập**"
     ),
     "tts": (
-        "Dạ công dân xác nhận thẻ xin phép bên trên giúp em ạ. Đồng ý thì tích hai ô rồi bấm "
-        "đồng ý và tự động điền, không thì chọn tự nhập nhé."
+        "Dạ, công dân xác nhận thẻ xin phép bên trên ạ. "
+        "Đồng ý thì tích hai ô, rồi bấm Đồng ý và tự động điền."
     ),
 }
 
 QR_WAITING = {
-    "md": (
-        "Dạ công dân chọn **📱 Gửi giấy tờ qua điện thoại** ✓\n\n"
-        "Mời công dân mở **camera điện thoại**, quét **mã QR** dưới đây — "
-        "điện thoại sẽ hiện trang chụp ảnh giấy tờ ạ."
-    ),
+    "md": "✓ **Chụp bằng điện thoại**\n\nCông dân mở **camera điện thoại** → quét **mã QR** dưới đây ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": "Mời công dân mở camera điện thoại rồi quét mã QR trên màn hình để tải ảnh giấy tờ lên ạ.",
-    "tts": "Mời công dân mở camera điện thoại rồi quét mã quy rờ trên màn hình để tải ảnh giấy tờ lên ạ.",
+    "tts": "Dạ, công dân mở camera điện thoại, quét mã quy rờ trên màn hình ạ.",
 }
 
 MOBILE_CONNECTED = {
     "md": (
-        "📱 Điện thoại đã kết nối ✓ Công dân **chụp lần lượt** theo danh sách trên điện thoại "
-        "(CCCD chụp cả 2 mặt), hoặc **chọn nhiều ảnh có sẵn** — em tự nhận dạng và cập nhật "
-        "tiến trình ngay tại đây ạ."
+        "📱 ✓ Điện thoại đã kết nối.\n\n"
+        "Công dân chụp lần lượt theo danh sách (**CCCD chụp 2 mặt**), hoặc chọn ảnh có sẵn ạ."
     ),
-    "tts": (
-        "Điện thoại đã kết nối rồi ạ. Công dân chụp lần lượt từng giấy tờ theo danh sách, "
-        "căn cước chụp cả hai mặt. Em sẽ báo ngay khi nhận được từng ảnh ạ."
-    ),
+    "tts": "Dạ, điện thoại đã kết nối. Công dân chụp từng giấy tờ, căn cước chụp hai mặt ạ.",
 }
 
 MOBILE_CONNECTED_ATTACH = {
     "md": (
-        "📱 Điện thoại đã kết nối ✓ Công dân chụp hoặc chọn tất cả **giấy tờ cần chứng thực bản sao**. "
-        "xong công dân bấm **Gửi tất cả** trên điện thoại ạ."
+        "📱 ✓ Điện thoại đã kết nối.\n\n"
+        "Công dân chụp/chọn tất cả **giấy tờ cần chứng thực bản sao** → bấm **Gửi tất cả** ạ."
     ),
-    "tts": (
-        "Điện thoại đã kết nối rồi ạ. Công dân chụp hoặc chọn tất cả giấy tờ cần chứng thực bản sao, "
-        "Xong công dân bấm gửi tất cả nhé."
-    ),
+    "tts": "Dạ, điện thoại đã kết nối. Công dân chụp hết giấy cần chứng thực, rồi bấm Gửi tất cả ạ.",
 }
 
 # Chỉ nói SỐ ĐÃ NHẬN, không "x/y" — tổng gồm slot tuỳ chọn dễ làm công dân tưởng còn thiếu.
 DOCS_COMPLETE_NEXT_STEP = {
-    "md": (
-        "✅ Em đã nhận **{files_count} tệp giấy tờ** theo phiên **{sid}**.\n\n"
-        "Em đang **tự đọc (OCR)** và chuẩn bị điền vào form bên trái — "
-        "khoảng nửa phút, công dân chờ em chút nhé…"
-    ),
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc và điền tờ khai, khoảng **30 giây** ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. "
     # "Em đang tự đọc và chuẩn bị điền vào form bên trái, khoảng nửa phút, công dân chờ em chút nhé."
     # ),
-    "tts": "Em đã nhận các tệp giấy tờ. Em đang tự đọc và chuẩn bị điền vào form bên trái, khoảng nửa phút, công dân chờ em chút nhé.",
+    "tts": "Dạ, em đã nhận giấy tờ. Công dân chờ em khoảng nửa phút ạ.",
 }
 
 DOCS_COMPLETE_ATTACH = {
-    "md": (
-        "✅ Em đã nhận **{files_count} tệp giấy tờ** theo phiên **{sid}**.\n\n"
-        "Em đang chuẩn bị đính tất cả tệp vào **cùng một hồ sơ**, công dân chờ em chút ạ…"
-    ),
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đính tất cả vào **một hồ sơ**, công dân chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, "
     # "công dân chờ em chút ạ."
     # ),
-    "tts": "Em đã nhận các tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, công dân chờ em chút ạ.",
+    "tts": "Dạ, em đã nhận giấy tờ. Công dân chờ em chút ạ.",
 }
 
 DOCS_TARGET_UNKNOWN = {
     "md": (
-        "Em chưa xác định được công dân đang đứng ở bước **Thông tin chủ hồ sơ**, "
-        "**Kê khai thông tin** hay **Thành phần hồ sơ**. Em vẫn giữ nguyên các tệp đã nhận; "
-        "công dân giữ đúng trang cần làm rồi bấm lại nút bên dưới giúp em ạ."
+        "Em chưa biết trang đang ở bước nào ạ. Giấy tờ vẫn được giữ.\n\n"
+        "Công dân mở đúng trang cần làm → bấm lại nút dưới."
     ),
-    "tts": (
-        "Em chưa xác định được công dân đang đứng ở bước nào. Em vẫn giữ nguyên các tệp đã nhận. "
-        "Công dân giữ đúng trang cần làm rồi bấm lại giúp em ạ."
-    ),
+    "tts": "Dạ, em chưa biết trang đang ở bước nào. Công dân mở đúng trang, rồi bấm lại nút bên dưới ạ.",
 }
 
 BUSINESS_PREPARING = {
-    "md": (
-        "Em đã vào trang chủ của **Hệ thống thông tin đăng ký hộ kinh doanh**. Giờ em sẽ "
-        "vào thẳng trang kê khai **Thành lập mới hộ kinh doanh** giúp công dân ạ. "
-        "Công dân chờ em một chút, chưa cần thao tác trên trang."
-    ),
-    "tts": (
-        "Em đã vào trang chủ của Hệ thống thông tin đăng ký hộ kinh doanh. Giờ em sẽ vào thẳng "
-        "trang kê khai Thành lập mới hộ kinh doanh giúp công dân ạ. "
-        "Công dân chờ em một chút, chưa cần thao tác trên trang."
-    ),
+    "md": "Em đang mở trang **Thành lập mới hộ kinh doanh**. Công dân chờ chút, **chưa cần bấm gì** ạ.",
+    "tts": "Em đang mở trang kê khai. Công dân chờ chút, chưa cần bấm gì ạ.",
 }
 
 # Luồng THAY ĐỔI nội dung ĐK hộ kinh doanh — bootstrap pha 1 chỉ tới màn tra cứu hộ KD.
 BUSINESS_PREPARING_CHANGE = {
-    "md": (
-        "Em đã vào **Hệ thống thông tin đăng ký hộ kinh doanh**. Em sẽ chọn "
-        "**Đăng ký thay đổi nội dung đăng ký hộ kinh doanh** và mở bước **tìm kiếm hộ kinh "
-        "doanh** giúp công dân ạ. Công dân chờ em một chút, chưa cần thao tác trên trang."
-    ),
-    "tts": (
-        "Em đã vào Hệ thống thông tin đăng ký hộ kinh doanh. Em sẽ chọn đăng ký thay đổi nội "
-        "dung và mở bước tìm kiếm hộ kinh doanh giúp công dân ạ. "
-        "Công dân chờ em một chút, chưa cần thao tác trên trang."
-    ),
+    "md": "Em đang mở trang **Đăng ký thay đổi hộ kinh doanh**. Công dân chờ chút, **chưa cần bấm gì** ạ.",
+    "tts": "Em đang mở trang kê khai. Công dân chờ chút, chưa cần bấm gì ạ.",
 }
 
 BUSINESS_DOCS_COMPLETE_CHANGE = {
     "md": (
-        "✅ Em đã nhận **{files_count} tệp giấy tờ** theo phiên **{sid}**.\n\n"
-        "Em đang đọc hồ sơ để lấy **mã số hộ kinh doanh**, so sánh nội dung hiện tại với đề "
-        "nghị thay đổi và phân loại giấy tờ đính kèm. Xong em sẽ tự tra cứu và điền, công dân "
-        "chờ em chút ạ…"
+        "✓ Đã nhận **{files_count} tệp**.\n\n"
+        "Em đang lấy **mã số hộ kinh doanh** và nội dung thay đổi, công dân chờ chút ạ…"
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. Em đang đọc hồ sơ để lấy mã số hộ kinh doanh "
     # "và so sánh nội dung thay đổi. Công dân chờ em chút ạ."
     # ),
-    "tts": "Em đã nhận các tệp giấy tờ. Em đang đọc hồ sơ để lấy mã số hộ kinh doanh và so sánh nội dung thay đổi. Công dân chờ em chút ạ.",
+    "tts": "Dạ, em đã nhận giấy tờ. Công dân chờ em chút ạ.",
 }
 
 BUSINESS_READY_CHANGE = {
     "md": (
-        "Em đã đọc xong giấy tờ ✓ Bây giờ em sẽ **tra cứu hộ kinh doanh theo mã số**, chọn "
-        "loại đăng ký thay đổi, rồi tự điền các khối thông tin **cần sửa** và đính kèm hồ sơ. "
-        "Trong lúc xử lý, công dân **chưa thao tác trên trang** giúp em ạ."
+        "✓ Đã đọc xong giấy tờ. Em đang tra cứu, điền phần **cần thay đổi** và đính kèm.\n\n"
+        "Công dân **chưa bấm gì** trên trang giúp em ạ."
     ),
-    "tts": (
-        "Em đã đọc xong giấy tờ. Em sẽ tra cứu hộ kinh doanh theo mã số, chọn loại đăng ký "
-        "thay đổi, rồi tự điền các khối cần sửa và đính kèm hồ sơ. "
-        "Trong lúc xử lý công dân chưa thao tác trên trang giúp em ạ."
-    ),
+    "tts": "Dạ, em đang tự điền. Công dân chờ, chưa bấm gì trên trang ạ.",
 }
 
 BUSINESS_DOCS_COMPLETE = {
-    "md": (
-        "✅ Em đã nhận **{files_count} tệp giấy tờ** theo phiên **{sid}**.\n\n"
-        "Em đang đọc hồ sơ, chuẩn bị dữ liệu cho **8 khối thông tin** và phân loại giấy tờ "
-        "đính kèm. Xong em sẽ tự điền lần lượt, công dân chờ em chút ạ…"
-    ),
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc và chuẩn bị điền, công dân chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin "
     # "và phân loại giấy tờ đính kèm. Công dân chờ em chút ạ."
     # ),
-    "tts": "Em đã nhận các tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin và phân loại giấy tờ đính kèm. Công dân chờ em chút ạ.",
+    "tts": "Dạ, em đã nhận giấy tờ. Công dân chờ em chút ạ.",
 }
 
 BUSINESS_READY = {
     "md": (
-        "Em đã đọc xong giấy tờ ✓ Bây giờ em sẽ tự điền và lưu lần lượt **8 khối dữ liệu**, "
-        "sau đó tự đính kèm hồ sơ. Trong lúc xử lý, công dân **chưa thao tác trên trang** giúp em ạ."
+        "✓ Đã đọc xong giấy tờ. Em đang điền **8 khối dữ liệu** và đính kèm.\n\n"
+        "Công dân **chưa bấm gì** trên trang giúp em ạ."
     ),
-    "tts": (
-        "Em đã đọc xong giấy tờ. Em sẽ tự điền và lưu lần lượt tám khối dữ liệu, rồi tự đính kèm hồ sơ. "
-        "Trong lúc xử lý công dân chưa thao tác trên trang giúp em ạ."
-    ),
+    "tts": "Dạ, em đang tự điền. Công dân chờ, chưa bấm gì trên trang ạ.",
 }
 
 BUSINESS_DONE = {
     "md": (
-        "✅ Em đã điền đủ **{filled_pages}/{total_pages} khối dữ liệu** và đính kèm **{attached} tệp**.\n\n"
-        "Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. "
-        "Sau khi kiểm tra xong, công dân tự bấm **Nộp hồ sơ** trên trang giúp em."
+        "✓ Đã điền **{filled_pages}/{total_pages} khối** · đính **{attached} tệp**.\n\n"
+        "Công dân rà lại → tự bấm **Nộp hồ sơ** ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
@@ -925,65 +709,48 @@ BUSINESS_DONE = {
     # "Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. "
     # "Sau khi kiểm tra xong, công dân tự bấm nộp hồ sơ trên trang giúp em."
     # ),
-    "tts": "Em đã điền đủ các khối dữ liệu và đính kèm các tệp. Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. Sau khi kiểm tra xong, công dân tự bấm nộp hồ sơ trên trang giúp em.",
+    "tts": "Dạ, em đã điền và đính kèm xong. Công dân xem lại, rồi tự bấm Nộp hồ sơ ạ.",
 }
 
 BUSINESS_STOPPED = {
     "md": (
-        "⏹️ Em đã dừng tiến trình tự động kê khai theo yêu cầu.\n\n"
+        "⏹️ Đã dừng theo yêu cầu.\n\n"
         "**Tiến độ:** {fill_status}\n\n"
         "**Đính kèm:** {attachment_status}\n\n"
-        "Các thông tin đã lưu trên cổng vẫn được giữ lại."
+        "Thông tin đã lưu trên cổng vẫn được giữ."
     ),
-    "tts": (
-        "Em đã dừng tiến trình tự động kê khai theo yêu cầu. {fill_status_tts}. "
-        "{attachment_status_tts}. Các thông tin đã lưu trên cổng vẫn được giữ lại ạ."
-    ),
+    "tts": "Dạ, em đã dừng. {fill_status_tts}. {attachment_status_tts}. Thông tin đã lưu vẫn còn ạ.",
 }
 
 BUSINESS_FAILED_PROGRESS = {
     "md": (
-        "⚠️ Luồng tự động kê khai đang dừng tại một bước: *{error}*\n\n"
+        "⚠️ Tự điền đang dừng (*{error}*).\n\n"
         "**Tiến độ:** {fill_status}\n\n"
         "**Đính kèm:** {attachment_status}\n\n"
-        "Các thông tin đã lưu trên cổng vẫn được giữ lại. Công dân bấm **Thử lại** để em xử lý lại ạ."
+        "Thông tin đã lưu vẫn được giữ. Công dân bấm **Thử lại** ạ."
     ),
-    "tts": (
-        "Luồng tự động kê khai đang dừng tại một bước. {fill_status_tts}. "
-        "{attachment_status_tts}. Các thông tin đã lưu trên cổng vẫn được giữ lại. "
-        "Công dân bấm thử lại để em xử lý lại ạ."
-    ),
+    "tts": "Dạ, việc tự điền đang dừng. {fill_status_tts}. {attachment_status_tts}. Công dân bấm Thử lại ạ.",
 }
 
 BUSINESS_FAILED = {
-    "md": (
-        "⚠️ Luồng tự điền hộ kinh doanh đang dừng tại một bước: *{error}*\n\n"
-        "Dữ liệu và giấy tờ vẫn được giữ lại. Công dân bấm **Thử lại** để em tiếp tục từ trạng thái hiện tại ạ."
-    ),
-    "tts": (
-        "Luồng tự điền hộ kinh doanh đang dừng tại một bước. Dữ liệu vẫn được giữ lại. "
-        "Công dân bấm thử lại để em tiếp tục ạ."
-    ),
+    "md": "⚠️ Tự điền đang dừng (*{error}*). Dữ liệu vẫn được giữ.\n\nCông dân bấm **Thử lại** ạ.",
+    "tts": "Dạ, việc tự điền đang dừng. Công dân bấm Thử lại ạ.",
 }
 
 DOCS_FORCED_MISSING = {
-    "md": (
-        "Dạ công dân chốt gửi với **{files_count} tệp**. Em vẫn đọc và điền phần có được; "
-        "thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý, công dân chờ chút…"
-    ),
+    "md": "Dạ, em làm tiếp với **{files_count} tệp** hiện có. Thiếu gì em sẽ hỏi lại ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Dạ công dân chốt gửi với {files_count} tệp. Em vẫn đọc và điền phần có được, "
     # "thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý công dân chờ chút nhé."
     # ),
-    "tts": "Dạ công dân chốt gửi với các tệp hiện có. Em vẫn đọc và điền phần có được, thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý công dân chờ chút nhé.",
+    "tts": "Dạ, em làm tiếp với giấy tờ hiện có. Thiếu gì em sẽ hỏi lại ạ.",
 }
 
 FILL_READY = {
     "md": (
-        "Xong rồi ạ! Em đã đọc được **{count} trường thông tin** và đang điền vào form bên trái. "
-        "Công dân nhìn sang form **kiểm tra lại** giúp em nhé — ô viền **vàng** là em đặt mặc định, "
-        "ô viền **đỏ** là còn thiếu."
+        "✓ Đã đọc **{count} thông tin**, đang điền vào tờ khai bên trái.\n\n"
+        "Công dân kiểm tra lại: ô **vàng** = em điền mặc định, ô **đỏ** = còn thiếu ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
@@ -991,121 +758,99 @@ FILL_READY = {
     # "Công dân nhìn sang form kiểm tra lại giúp em nhé. Ô viền vàng là em đặt mặc định, "
     # "ô viền đỏ là còn thiếu ạ."
     # ),
-    "tts": "Em đã đọc được các trường thông tin và đang điền vào form bên trái. Công dân nhìn sang form kiểm tra lại giúp em nhé. Ô viền vàng là em đặt mặc định, ô viền đỏ là còn thiếu ạ.",
+    "tts": "Dạ, xong rồi ạ. Công dân kiểm tra tờ khai. Ô vàng là điền sẵn, ô đỏ là còn thiếu.",
 }
 
 FILL_REPORT_REVIEW = {
-    "md": (
-        "Em điền được **{filled} ô** ✓{missing_note}\n\n"
-        "Công dân rà lại trên form và sửa trực tiếp ô nào chưa đúng."
-    ),
+    "md": "Em điền được **{filled} ô** ✓{missing_note}\n\nCông dân rà lại, ô nào sai thì sửa trực tiếp ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em điền xong {filled} ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp "
     # "ô nào chưa đúng giúp em ạ."
     # ),
-    "tts": "Em điền xong các ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp ô nào chưa đúng giúp em ạ.",
+    "tts": "Dạ, em điền xong rồi. Ô nào sai, công dân sửa trực tiếp ạ.",
 }
 
 PIPELINE_ERROR = {
-    "md": (
-        "⚠️ Em gặp lỗi khi đọc giấy tờ: *{error}*\n\n"
-        "Công dân bấm **thử lại** giúp em, hoặc chụp lại giấy tờ rõ hơn ạ."
-    ),
-    "tts": "Em gặp lỗi khi đọc giấy tờ công dân bấm thử lại giúp em nhé.",
+    "md": "⚠️ Em chưa đọc được giấy tờ (*{error}*).\n\nCông dân bấm **Thử lại**, hoặc chụp lại rõ hơn ạ.",
+    "tts": "Dạ, em chưa đọc được. Công dân bấm Thử lại, hoặc chụp lại rõ hơn ạ.",
 }
 
 ATTACH_PIPELINE_ERROR = {
-    "md": (
-        "⚠️ Em gặp lỗi khi chuẩn bị đính kèm giấy tờ: *{error}*\n\n"
-        "Các tệp đã nhận vẫn còn trong phiên; công dân bấm **thử lại** giúp em ạ."
-    ),
-    "tts": "Em gặp lỗi khi chuẩn bị đính kèm. Các tệp vẫn còn, công dân bấm thử lại giúp em nhé.",
+    "md": "⚠️ Lỗi khi chuẩn bị đính kèm (*{error}*). Tệp vẫn được giữ.\n\nCông dân bấm **Thử lại** ạ.",
+    "tts": "Dạ, em gặp lỗi. Công dân bấm Thử lại ạ.",
 }
 
 ATTACH_PLANNING = {
-    "md": "Dạ, em đang **lập kế hoạch đính kèm** giấy tờ vào thành phần hồ sơ, chờ em chút ạ…",
-    "tts": "Em đang lập kế hoạch đính kèm giấy tờ, công dân chờ chút ạ.",
+    "md": "Em đang xếp giấy tờ để đính kèm, chờ chút ạ…",
+    "tts": "Dạ, công dân chờ em chút ạ.",
 }
 
 ATTACH_RUNNING = {
-    "md": "Dạ, em đang **đính kèm giấy tờ vào hồ sơ** rồi ạ. Công dân chờ em hoàn tất một chút nhé.",
-    "tts": "Dạ em đang đính kèm giấy tờ vào hồ sơ rồi ạ. Công dân chờ em hoàn tất một chút nhé.",
+    "md": "Em đang đính kèm, công dân chờ chút ạ…",
+    "tts": "Dạ, em đang đính kèm, công dân chờ chút ạ.",
 }
 
 ATTACH_REQUEST_ON_DECLARATION = {
     "md": (
-        "Mình đang ở trang **Kê khai thông tin**. Công dân rà soát lại form rồi chuyển sang "
-        "bước **Thành phần hồ sơ** giúp em nhé; sang đó em sẽ tự đính kèm giấy tờ ạ."
+        "Mình đang ở trang **Kê khai**. "
+        "Công dân xem lại → chuyển sang **Thành phần hồ sơ**, em tự đính kèm ạ."
     ),
-    "tts": (
-        "Mình đang ở trang kê khai thông tin. Công dân rà soát lại form rồi chuyển sang bước "
-        "thành phần hồ sơ giúp em nhé. Sang đó em sẽ tự đính kèm giấy tờ ạ."
-    ),
+    "tts": "Mình đang ở trang kê khai. Công dân xem lại, rồi sang bước thành phần hồ sơ ạ.",
 }
 
 ATTACH_REQUEST_UNKNOWN = {
-    "md": (
-        "Em chưa nhận rõ yêu cầu. Công dân nói lại ngắn gọn, ví dụ "
-        "**“đính kèm giấy tờ”** giúp em ạ."
-    ),
-    "tts": (
-        "Em chưa nhận rõ yêu cầu. Công dân nói lại ngắn gọn, ví dụ đính kèm giấy tờ "
-        "giúp em ạ."
-    ),
+    "md": "Em chưa rõ ý ạ. Công dân nói ngắn gọn, ví dụ **“đính kèm giấy tờ”**.",
+    "tts": "Dạ, em chưa rõ. Công dân nói ngắn gọn, ví dụ: đính kèm giấy tờ ạ.",
 }
 
 # Máy quầy đã chọn "mỗi tài liệu một hồ sơ riêng" trong Cài đặt → không hỏi giữa luồng,
 # nhưng phải BÁO vì tách hồ sơ mở nhiều tab (câu này nối vào sau DOCS_COMPLETE_ATTACH).
 ATTACH_MODE_PRESET_SPLIT = {
-    "md": "\n\nTheo **cài đặt** của quầy, em sẽ tách **mỗi tài liệu một hồ sơ riêng** ạ.",
-    "tts": " Theo cài đặt của quầy, em sẽ tách mỗi tài liệu một hồ sơ riêng ạ.",
+    "md": "\n\nTheo cài đặt quầy: **mỗi tài liệu một hồ sơ riêng** ạ.",
+    "tts": " Theo cài đặt quầy, mỗi tài liệu một hồ sơ riêng ạ.",
 }
 
 ATTACH_MODE_ASK = {
     "md": (
-        "Dạ, em đã nhận **{files_count} tệp**. Công dân muốn đưa các tài liệu vào "
-        "**một hồ sơ** hay **mỗi tài liệu một hồ sơ riêng** ạ?"
+        "✓ Đã nhận **{files_count} tệp**. "
+        "Công dân muốn **gộp một hồ sơ** hay **mỗi tài liệu một hồ sơ** ạ?"
     ),
-    "tts": (
-        "Dạ, công dân muốn đính kèm tất cả tài liệu trong một hồ sơ, "
-        "hay mỗi tài liệu trong một hồ sơ riêng ạ?"
-    ),
+    "tts": "Dạ, công dân muốn gộp một hồ sơ, hay mỗi tài liệu một hồ sơ ạ?",
 }
 
 ATTACH_MODE_SELECTED = {
-    "md": "Dạ, công dân chọn **{mode}** ✓\n\nEm đang đọc và chuẩn bị tài liệu, công dân chờ chút ạ…",
-    "tts": "Dạ, công dân chọn {mode}. Em đang đọc và chuẩn bị tài liệu, công dân chờ chút ạ.",
+    "md": "✓ **{mode}**. Em đang chuẩn bị, công dân chờ chút ạ…",
+    "tts": "Dạ, đã chọn {mode}. Công dân chờ em chút ạ.",
 }
 
 ATTACH_PLAN_READY = {
-    "md": (
-        "📎 Kế hoạch đính kèm đã xong — **{count} mục**:\n\n{plan_list}\n\n"
-        "Em đang **tự đính từng tệp** vào thành phần hồ sơ trên trang, công dân chờ chút ạ…"
-    ),
+    "md": "📎 Đã xếp xong **{count} mục**:\n\n{plan_list}\n\nEm đang đính từng tệp, chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": "Kế hoạch đính kèm xong rồi, {count} mục. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
-    "tts": "Kế hoạch đính kèm xong rồi ạ. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
+    "tts": "Dạ, em đang đính từng tệp, công dân chờ chút ạ.",
 }
 
 ATTACH_PLAN_READY_SPLIT = {
     "md": (
-        "📎 Kế hoạch đính kèm đã xong — **{count} tài liệu**:\n\n{plan_list}\n\n"
-        "Em sẽ đưa **mỗi tài liệu vào một hồ sơ riêng** và xử lý lần lượt từng tab ạ…"
+        "📎 Đã xếp xong **{count} tài liệu**:\n\n"
+        "{plan_list}\n\n"
+        "Mỗi tài liệu **một hồ sơ riêng**, em làm lần lượt từng tab ạ…"
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Kế hoạch đính kèm xong rồi, {count} tài liệu. "
     # "Em sẽ đưa mỗi tài liệu vào một hồ sơ riêng và xử lý lần lượt từng tab ạ."
     # ),
-    "tts": "Kế hoạch đính kèm xong rồi ạ. Em sẽ đưa mỗi tài liệu vào một hồ sơ riêng và xử lý lần lượt từng tab ạ.",
+    "tts": "Dạ, mỗi tài liệu một hồ sơ riêng. Em làm lần lượt ạ.",
 }
 
 ATTACH_PLAN_READY_SIGNATURE_SPLIT = {
     "md": (
-        "📎 Kế hoạch đính kèm đã xong — **{count} hồ sơ**:\n\n{plan_list}\n\n"
-        "Mỗi hồ sơ có **một giấy tờ cần chứng thực chữ ký ở STT 1**; riêng hồ sơ đầu tiên "
-        "có thêm **giấy tờ tùy thân ở STT 2**. Em sẽ xử lý lần lượt từng tab ạ…"
+        "📎 Đã xếp xong **{count} hồ sơ**:\n\n"
+        "{plan_list}\n\n"
+        "Mỗi hồ sơ: **giấy cần chứng thực chữ ký** ở STT 1; "
+        "hồ sơ đầu có thêm **giấy tùy thân** ở STT 2. Em làm lần lượt từng tab ạ…"
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
@@ -1113,233 +858,179 @@ ATTACH_PLAN_READY_SIGNATURE_SPLIT = {
     # "chữ ký ở mục một; hồ sơ đầu tiên có thêm giấy tờ tùy thân ở mục hai. "
     # "Em sẽ xử lý lần lượt từng tab ạ."
     # ),
-    "tts": "Kế hoạch đính kèm xong rồi ạ. Mỗi hồ sơ có một giấy tờ cần chứng thực chữ ký ở mục một; hồ sơ đầu tiên có thêm giấy tờ tùy thân ở mục hai. Em sẽ xử lý lần lượt từng tab ạ.",
+    "tts": "Dạ, em đã xếp xong. Em làm lần lượt từng hồ sơ ạ.",
 }
 
 # Đòi đính kèm khi trang còn ở bước kê khai (wizard chưa sang "Thành phần hồ sơ") —
 # chạy engine lúc này sẽ ra "0 tệp" vô nghĩa → dặn chuyển bước, sang đến nơi tự đính.
 ATTACH_WRONG_PAGE = {
     "md": (
-        "Dạ công dân đang ở bước **Kê khai thông tin** ạ. Công dân bấm nút tiếp tục của trang "
-        "để chuyển sang bước **Thành phần hồ sơ** — vào đến nơi em **tự đính kèm** giấy tờ ngay ạ."
+        "Đang ở bước **Kê khai** ạ. "
+        "Công dân bấm tiếp tục trên trang để sang **Thành phần hồ sơ**, em tự đính kèm ngay."
     ),
-    "tts": (
-        "Dạ công dân đang ở bước kê khai thông tin ạ. Công dân bấm tiếp tục để chuyển sang "
-        "bước thành phần hồ sơ, vào đến nơi em tự đính kèm giấy tờ ngay ạ."
-    ),
+    "tts": "Dạ, công dân bấm tiếp tục để sang bước thành phần hồ sơ ạ.",
 }
 
 ATTACH_PAGE_REACHED = {
-    "md": "Thấy bước **Thành phần hồ sơ** rồi ✓ Em đính kèm giấy tờ vào hồ sơ ngay ạ…",
-    "tts": "Thấy bước thành phần hồ sơ rồi ạ. Em đính kèm giấy tờ vào hồ sơ ngay ạ.",
+    "md": "✓ Đã sang **Thành phần hồ sơ**. Em đính kèm ngay ạ…",
+    "tts": "Dạ, em đính kèm ngay ạ.",
 }
 
 ATTACH_NONE = {
     "md": (
-        "⚠️ Em chưa gắn được tệp nào vào hồ sơ{error_note}. "
-        "Công dân kiểm tra trang đang ở bước **Thành phần hồ sơ** giúp em, rồi bấm **Đính kèm lại** ạ."
+        "⚠️ Chưa đính được tệp nào{error_note}.\n\n"
+        "Công dân kiểm tra trang đang ở **Thành phần hồ sơ** → bấm **Đính kèm lại** ạ."
     ),
-    "tts": (
-        "Em chưa gắn được tệp nào vào hồ sơ ạ. Công dân kiểm tra trang đang ở bước "
-        "thành phần hồ sơ giúp em, rồi bấm đính kèm lại nhé."
-    ),
+    "tts": "Dạ, em chưa đính được. Công dân kiểm tra trang, rồi bấm Đính kèm lại ạ.",
 }
 
 # Kế hoạch có tệp KHÔNG xếp được vào hồ sơ nào (vd giấy tùy thân không khớp người ký của văn bản
 # nào). Nói NGAY ở bước báo kế hoạch để cán bộ biết trước tệp nào sẽ không được đính.
 ATTACH_PLAN_SKIPPED_NOTE = {
     "md": "\n\n⚠️ {skipped_note}",
-    "tts": " Có giấy tờ em chưa xếp được vào hồ sơ nào nên em sẽ bỏ qua ạ.",
+    "tts": " Có giấy tờ em chưa xếp được, sẽ bỏ qua ạ.",
 }
 
 # Thử lại mà vẫn 0 tệp: KHÔNG mời bấm lại nữa (kế hoạch cũ được phát lại y nguyên nên kết quả y
 # nguyên). Chỉ đường thoát thật: sửa giấy tờ rồi lập kế hoạch mới.
 ATTACH_NONE_REPEAT = {
     "md": (
-        "⚠️ Em vẫn chưa gắn được tệp nào vào hồ sơ{error_note}.\n\n"
-        "Bấm lại cũng ra kết quả cũ vì em dùng lại đúng kế hoạch đó ạ. Công dân bấm "
-        "**🗂️ Điều chỉnh giấy tờ** để bỏ hoặc chụp lại giấy tờ chưa đúng, em lập kế hoạch mới ngay."
+        "⚠️ Vẫn chưa đính được tệp nào{error_note}.\n\n"
+        "Bấm lại cũng không đổi kết quả. "
+        "Công dân bấm **🗂️ Điều chỉnh giấy tờ** để bỏ hoặc chụp lại giấy chưa đúng ạ."
     ),
-    "tts": (
-        "Em vẫn chưa gắn được tệp nào vào hồ sơ ạ. Bấm lại cũng ra kết quả cũ, công dân bấm "
-        "điều chỉnh giấy tờ để bỏ hoặc chụp lại giấy tờ chưa đúng, em lập kế hoạch mới ngay ạ."
-    ),
+    "tts": "Dạ, vẫn chưa đính được. Công dân bấm Điều chỉnh giấy tờ, chụp lại giấy chưa đúng ạ.",
 }
 
 ATTACH_DONE = {
-    "md": (
-        "✅ Em đã đính xong **{attached} tệp** vào thành phần hồ sơ.\n\n"
-        "Công dân **rà lại lần cuối** trên trang rồi bấm **Nộp hồ sơ / Gửi hồ sơ** giúp em ạ — "
-        "bước nộp cuối em để công dân tự bấm cho chắc chắn."
-    ),
+    "md": "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại lần cuối → tự bấm **Nộp hồ sơ / Gửi hồ sơ** ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã đính xong {attached} tệp vào hồ sơ rồi ạ. "
     # "Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé."
     # ),
-    "tts": "Em đã đính xong các tệp vào hồ sơ rồi ạ. Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé.",
+    "tts": "Dạ, em đính kèm xong. Công dân xem lại, rồi tự bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_DONE_WITH_ERRORS = {
     "md": (
-        "⚠️ Em đính được **{attached} tệp**, còn lỗi:\n\n{error_list}\n\n"
-        "Công dân đính tay phần còn thiếu (nút *Chọn tệp đính kèm* trên trang) rồi bấm **Nộp hồ sơ** giúp em ạ."
+        "⚠️ Đính được **{attached} tệp**, còn lỗi:\n\n"
+        "{error_list}\n\n"
+        "Công dân đính tay (*Chọn tệp đính kèm*) → bấm **Nộp hồ sơ** ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": "Em đính được {attached} tệp, còn vài mục lỗi. Công dân đính tay phần còn thiếu rồi nộp hồ sơ giúp em ạ.",
-    "tts": "Em đính được một số tệp, còn vài mục lỗi. Công dân đính tay phần còn thiếu rồi nộp hồ sơ giúp em ạ.",
+    "tts": "Dạ, còn vài tệp lỗi. Công dân đính tay, rồi bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_SUPPLEMENT_ASK = {
     "md": (
-        "Dạ, em đã mở lại phiên **{session_id}** cùng toàn bộ danh sách giấy tờ đã cung cấp. "
-        "Công dân có thể bấm vào từng loại giấy tờ để **xem hoặc xóa tệp** như trước ạ.\n\n"
-        "Nếu muốn thêm tệp, công dân chọn **Chụp bằng điện thoại** hoặc **Scan tại quầy** "
-        "bên dưới. Xong rồi bấm **{finish_action}**; {finish_detail} ạ."
+        "Em đã mở lại danh sách giấy tờ. "
+        "Bấm từng loại để **xem/xoá**, hoặc thêm bằng **Chụp bằng điện thoại** / **Scan tại quầy**.\n\n"
+        "Xong → bấm **{finish_action}**; {finish_detail} ạ."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Dạ, em đã mở lại toàn bộ danh sách giấy tờ. Công dân có thể xem, xóa hoặc thêm "
     # "tệp nếu cần, rồi bấm {finish_action} ạ."
     # ),
-    "tts": "Dạ, em đã mở lại toàn bộ danh sách giấy tờ. Công dân có thể xem, xóa hoặc thêm tệp nếu cần, rồi bấm nút xác nhận bên dưới ạ.",
+    "tts": "Dạ, công dân xem, xoá hoặc thêm tệp. Xong thì bấm nút xác nhận bên dưới ạ.",
 }
 
 ATTACH_SUPPLEMENT_SESSION_EXPIRED = {
-    "md": (
-        "⚠️ Phiên giấy tờ cũ đã hết hạn nên em không khôi phục được danh sách trước đó. "
-        "Công dân chọn cách cung cấp giấy tờ để tải lại các tệp cần xử lý giúp em ạ."
-    ),
-    "tts": (
-        "Phiên giấy tờ cũ đã hết hạn. Công dân chọn cách cung cấp giấy tờ để tải lại "
-        "các tệp cần xử lý giúp em ạ."
-    ),
+    "md": "⚠️ Danh sách giấy tờ cũ đã hết hạn. Công dân chọn cách gửi để gửi lại ạ.",
+    "tts": "Dạ, danh sách cũ đã hết hạn. Công dân gửi lại giấy tờ ạ.",
 }
 
 DOCUMENT_ADJUSTMENT_WRONG_PAGE = {
     "md": (
-        "Mình chưa ở trang **Kê khai thông tin** nên em chưa thể điền lại tờ khai. "
-        "Em vẫn giữ nguyên danh sách giấy tờ; công dân quay lại trang Kê khai rồi bấm "
-        "**Hoàn tất điều chỉnh, điền lại tờ khai** giúp em ạ."
+        "Mình chưa ở trang **Kê khai** ạ. Giấy tờ vẫn được giữ.\n\n"
+        "Công dân quay lại trang Kê khai → bấm **Hoàn tất điều chỉnh, điền lại tờ khai**."
     ),
-    "tts": (
-        "Mình chưa ở trang kê khai thông tin nên em chưa thể điền lại tờ khai. "
-        "Công dân quay lại trang kê khai rồi bấm hoàn tất điều chỉnh giúp em ạ."
-    ),
+    "tts": "Dạ, công dân quay lại trang kê khai, rồi bấm Hoàn tất điều chỉnh ạ.",
 }
 
 ATTACH_SUPPLEMENT_AFTER_SUBMIT = {
-    "md": "Hồ sơ đã được **nộp thành công**, nên em không thể sửa danh sách giấy tờ của hồ sơ này nữa ạ.",
-    "tts": "Hồ sơ đã nộp thành công nên em không thể sửa danh sách giấy tờ của hồ sơ này nữa ạ.",
+    "md": "Hồ sơ đã **nộp thành công**, không sửa giấy tờ được nữa ạ.",
+    "tts": "Dạ, hồ sơ đã nộp, không sửa được nữa ạ.",
 }
 
 ATTACH_ALL_FILES_EXIST = {
     "md": (
-        "✅ Em đã kiểm tra lại danh sách giấy tờ. Các tệp còn lại đều đã có trên hồ sơ "
-        "nên em không đính trùng thêm ạ.\n\n"
-        "Công dân rà lại lần cuối rồi bấm **Nộp hồ sơ / Gửi hồ sơ** giúp em nhé."
+        "✓ Các tệp đã có sẵn trên hồ sơ, em không đính trùng.\n\n"
+        "Công dân rà lại → bấm **Nộp hồ sơ / Gửi hồ sơ** ạ."
     ),
-    "tts": (
-        "Em đã kiểm tra lại. Các tệp còn lại đều đã có trên hồ sơ nên em không đính "
-        "trùng thêm ạ. Công dân rà lại rồi nộp hồ sơ giúp em nhé."
-    ),
+    "tts": "Dạ, tệp đã có đủ. Công dân xem lại, rồi bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_SPLIT_DONE = {
     "md": (
-        "✅ Em đã đính xong **{succeeded}/{total} hồ sơ**, mỗi tài liệu nằm trong một hồ sơ riêng.\n\n"
-        "Công dân rà lại từng tab rồi bấm **Nộp hồ sơ / Gửi hồ sơ** giúp em ạ — "
-        "bước nộp cuối em để công dân tự bấm cho chắc chắn."
+        "✓ Đã đính **{succeeded}/{total} hồ sơ** (mỗi tài liệu một hồ sơ).\n\n"
+        "Công dân rà từng tab → tự bấm **Nộp hồ sơ / Gửi hồ sơ** ạ."
     ),
-    "tts": (
-        "Em đã đính xong {succeeded} trên {total} hồ sơ, mỗi tài liệu trong một hồ sơ riêng. "
-        "Công dân rà lại từng tab rồi bấm nộp hồ sơ giúp em nhé."
-    ),
+    "tts": "Dạ, em đính xong {succeeded} trên {total} hồ sơ. Công dân xem từng hồ sơ, rồi bấm Nộp ạ.",
 }
 
 ATTACH_SPLIT_DONE_WITH_ERRORS = {
     "md": (
-        "⚠️ Em đính được **{succeeded}/{total} hồ sơ**, còn lỗi:\n\n{error_list}\n\n"
-        "Công dân kiểm tra các tab còn thiếu và đính tay giúp em ạ."
+        "⚠️ Đính được **{succeeded}/{total} hồ sơ**, còn lỗi:\n\n"
+        "{error_list}\n\n"
+        "Công dân kiểm tra tab còn thiếu và đính tay ạ."
     ),
-    "tts": (
-        "Em đính được {succeeded} trên {total} hồ sơ, còn một số hồ sơ lỗi. "
-        "Công dân kiểm tra các tab còn thiếu giúp em ạ."
-    ),
+    "tts": "Dạ, em đính được {succeeded} trên {total} hồ sơ. Công dân đính tay phần còn thiếu ạ.",
 }
 
 SCAN_PICK = {
     "md": (
-        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
-        "Công dân **đặt giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan** — scan tới đâu "
-        "em **tự nhận** tới đó vào hồ sơ, công dân không phải chọn tệp ạ."
+        "✓ **Scan tại quầy**\n\n"
+        "Công dân đặt giấy lên máy quét → bấm **Scan**. Quét tờ nào em tự nhận tờ đó ạ."
     ),
-    "tts": (
-        "Dạ công dân đặt giấy tờ lên máy quét rồi bấm nút Scan. "
-        "Scan tới đâu thì em tự nhận giấy tờ đó vào hồ sơ ạ."
-    ),
+    "tts": "Dạ, công dân đặt giấy lên máy, rồi bấm nút quét. Em tự nhận từng tờ ạ.",
 }
 
 # Checklist CHỈ MỘT ô (chứng thực bản sao, chữ ký người dịch): tên ô lấy từ chính checklist,
 # không ghi cứng — thủ tục khác đọc "giấy tờ cần chứng thực bản sao" là nói sai thủ tục.
 SCAN_PICK_ATTACH = {
     "md": (
-        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
-        "Công dân **đặt giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan**. Scan tới đâu em "
-        "**tự nhận** tới đó — tất cả nhận thẳng là **{doc_name}**, "
-        "không phân loại ở bước này ạ."
+        "✓ **Scan tại quầy**\n\n"
+        "Công dân đặt giấy lên máy quét → bấm **Scan**. Tất cả nhận là **{doc_name}** ạ."
     ),
-    "tts": (
-        "Dạ công dân đặt giấy tờ lên máy quét rồi bấm nút Scan. Em tự nhận tất cả là "
-        "{doc_name} ạ."
-    ),
+    "tts": "Dạ, công dân đặt giấy lên máy, rồi bấm nút quét. Em nhận tất cả là {doc_name} ạ.",
 }
 
 # Bước chủ hồ sơ nhận HAI loại giấy dùng vào hai việc khác nhau → ở đây trợ lý CÓ phân loại,
 # không được đọc câu "tất cả nhận thẳng là giấy tờ cần chứng thực" của bước đính kèm.
 SCAN_PICK_OWNER = {
     "md": (
-        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
-        "Công dân **đặt lần lượt từng giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan** — cả "
-        "**căn cước công dân của chủ hồ sơ** lẫn **giấy tờ cần chứng thực**. Scan tới đâu em "
-        "**tự nhận và tự xếp đúng loại** tới đó, công dân không phải chọn tệp ạ."
+        "✓ **Scan tại quầy**\n\n"
+        "Công dân quét lần lượt **CCCD chủ hồ sơ** và **giấy tờ cần chứng thực** → bấm **Scan**. "
+        "Em tự nhận và xếp loại ạ."
     ),
-    "tts": (
-        "Dạ công dân đặt lần lượt từng giấy tờ lên máy quét rồi bấm nút Scan, cả căn cước công "
-        "dân của chủ hồ sơ lẫn giấy tờ cần chứng thực. Scan tới đâu em tự nhận và tự xếp đúng "
-        "loại tới đó ạ."
-    ),
+    "tts": "Dạ, công dân lần lượt quét căn cước chủ hồ sơ và giấy cần chứng thực. Em tự nhận và xếp loại ạ.",
 }
 
 PROFILE_ASK_PHONE = {
-    "md": (
-        "Dạ công dân chọn **📁 Lấy dữ liệu đã lưu** ✓\n\n"
-        "Công dân đọc/nhập **số điện thoại** đã dùng để lưu hồ sơ lần trước giúp em ạ."
-    ),
-    "tts": "Công dân đọc số điện thoại đã dùng để lưu hồ sơ lần trước giúp em ạ.",
+    "md": "✓ **Lấy dữ liệu đã lưu**\n\nCông dân đọc hoặc nhập **số điện thoại** đã lưu lần trước ạ.",
+    "tts": "Dạ, công dân đọc số điện thoại đã lưu lần trước ạ.",
 }
 
 PROFILE_NOT_FOUND = {
-    "md": (
-        "Dạ em **chưa tìm thấy hồ sơ đã lưu** với số **{phone}** ạ. "
-        "Công dân kiểm tra lại số, hoặc chọn cách khác bên dưới nhé:"
-    ),
-    "tts": "Em chưa tìm thấy hồ sơ đã lưu với số này ạ. Công dân kiểm tra lại số hoặc chọn cách khác nhé.",
+    "md": "Em chưa tìm thấy hồ sơ với số **{phone}** ạ. Công dân kiểm tra lại số, hoặc chọn cách khác:",
+    "tts": "Dạ, em chưa tìm thấy hồ sơ với số này. Công dân kiểm tra lại số ạ.",
 }
 
 PROFILE_APPLIED = {
     "md": (
-        "✅ Em tìm thấy **hồ sơ đã lưu** của công dân ({count} giấy tờ) — không phải chụp lại gì cả!\n\n"
-        "Em bắt đầu **đọc và điền vào form** luôn nhé, công dân chờ chút ạ…"
+        "✓ Đã tìm thấy hồ sơ đã lưu ({count} giấy tờ), không cần chụp lại.\n\n"
+        "Em đang điền, công dân chờ chút ạ…"
     ),
-    "tts": "Em tìm thấy hồ sơ đã lưu của công dân rồi, không phải chụp lại gì cả. Em điền vào form luôn nhé.",
+    "tts": "Dạ, em tìm thấy hồ sơ đã lưu, không cần chụp lại. Công dân chờ em chút ạ.",
 }
 
 DONE_SUBMITTED = {
     "md": (
-        "Dạ, công dân đã hoàn thành việc nộp hồ sơ lên **Cổng Dịch vụ công**. "
-        "Công dân có muốn em đăng xuất tài khoản **VNeID** giúp mình luôn không ạ?\n\n"
-        "Nếu chưa chọn, em sẽ tự đăng xuất sau **2 phút** để bảo vệ tài khoản."
+        "✓ Đã nộp hồ sơ lên **Cổng Dịch vụ công**.\n\n"
+        "Công dân có muốn **đăng xuất VNeID** luôn không ạ? Sau **2 phút** em tự đăng xuất."
     ),
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
@@ -1347,72 +1038,72 @@ DONE_SUBMITTED = {
     # "em đăng xuất tài khoản VNeID giúp mình luôn không ạ? Nếu chưa chọn, em sẽ tự "
     # "đăng xuất sau hai phút để bảo vệ tài khoản."
     # ),
-    "tts": "Công dân đã hoàn thành việc nộp hồ sơ lên Cổng Dịch vụ công. Công dân có muốn em đăng xuất tài khoản vi en ai đi giúp mình luôn không ạ? Nếu chưa chọn, em sẽ tự đăng xuất sau hai phút để bảo vệ tài khoản.",
+    "tts": (
+        "Dạ, công dân đã nộp xong. Có đăng xuất vi en ai đi luôn không ạ? "
+        "Sau hai phút em sẽ tự đăng xuất."
+    ),
 }
 
 # Lời mời đánh giá (đọc khi hiện card đánh giá NGAY sau nộp thành công, trước 2 nút đăng xuất).
 RATE_INVITE = {
     "md": (
-        "Dạ, công dân đã nộp hồ sơ thành công 🎉 Trước khi kết thúc, công dân **đánh giá giúp em** "
-        "hôm nay Trợ lý hỗ trợ thế nào ạ? Chỉ cần chạm một dòng, không bắt buộc."
+        "🎉 Nộp hồ sơ thành công!\n\n"
+        "Công dân **chạm 1 dòng** để đánh giá Trợ lý hôm nay ạ (không bắt buộc)."
     ),
-    "tts": (
-        "Dạ công dân đã nộp hồ sơ thành công. Trước khi kết thúc, công dân đánh giá giúp em hôm nay "
-        "Trợ lý hỗ trợ thế nào ạ? Chỉ cần chạm một dòng, không bắt buộc."
-    ),
+    "tts": "Dạ, nộp hồ sơ thành công. Công dân chạm một dòng để đánh giá giúp em ạ.",
 }
 
 PHONE_SUBSCRIBED = {
-    "md": "✅ Em đã ghi nhận số **{phone}** — có tiến độ mới em nhắn công dân ngay ạ.",
-    "tts": "Em đã ghi nhận số điện thoại, có tiến độ mới em nhắn công dân ngay ạ.",
+    "md": "✓ Đã lưu số **{phone}**. Có tiến độ mới em nhắn ngay ạ.",
+    "tts": "Dạ, em đã lưu số. Có tiến độ em sẽ nhắn ạ.",
 }
 
 PHONE_INVALID = {
-    "md": "Dạ số **{phone}** chưa đúng định dạng ạ — công dân đọc lại 10 số bắt đầu bằng 0 giúp em nhé.",
-    "tts": "Dạ số này chưa đúng, công dân đọc lại mười số bắt đầu bằng số không giúp em nhé.",
+    "md": "Số **{phone}** chưa đúng ạ. Công dân đọc lại **10 số, bắt đầu bằng 0**.",
+    "tts": "Dạ, số chưa đúng. Công dân đọc lại mười số, bắt đầu bằng số không ạ.",
 }
 
 
 PROFILE_NEED_PHONE = {
-    "md": "Dạ, để **lưu hồ sơ** công dân cho em xin **số điện thoại** làm chìa khoá tra cứu ạ.",
-    "tts": "Để lưu hồ sơ, công dân cho em xin số điện thoại làm chìa khoá tra cứu ạ.",
+    "md": "Để **lưu hồ sơ**, công dân cho em xin **số điện thoại** ạ.",
+    "tts": "Dạ, công dân cho em xin số điện thoại để lưu hồ sơ ạ.",
 }
 
 PROFILE_SAVED = {
     "md": (
-        "💾 Đã **lưu hồ sơ** theo số **{phone}** ({count} giấy tờ). "
-        "Lần sau công dân chỉ cần chọn **📁 Lấy dữ liệu đã lưu** + đọc số này là xong ạ.\n\n"
-        "🔒 Muốn xoá lúc nào, công dân bấm **🗑️ Xóa dữ liệu** hoặc nói \"xoá hồ sơ của tôi\"."
+        "💾 Đã lưu hồ sơ theo số **{phone}** ({count} giấy tờ).\n\n"
+        "Lần sau: chọn **📁 Lấy dữ liệu đã lưu** + đọc số này.\n\n"
+        "🔒 Muốn xoá: bấm **🗑️ Xóa dữ liệu**."
     ),
-    "tts": "Đã lưu hồ sơ theo số điện thoại của công dân. Lần sau chỉ cần đọc số này là không phải chụp lại giấy tờ ạ.",
+    "tts": "Dạ, em đã lưu hồ sơ. Lần sau công dân chỉ cần đọc số điện thoại này ạ.",
 }
 
 DATA_DELETED = {
-    "md": "🗑️ Em đã **xoá toàn bộ** dữ liệu: hồ sơ đã lưu, ảnh giấy tờ và phiên làm việc. Cảm ơn công dân đã sử dụng ạ!",
-    "tts": "Em đã xoá toàn bộ dữ liệu của công dân. Cảm ơn công dân đã sử dụng ạ.",
+    "md": "🗑️ Đã xoá toàn bộ dữ liệu (hồ sơ, ảnh giấy tờ, phiên). Cảm ơn công dân ạ!",
+    "tts": "Dạ, em đã xoá hết dữ liệu. Cảm ơn công dân ạ.",
 }
 
 CHANGED_LOCATION = {
-    "md": "Dạ, em đã chọn nơi làm thủ tục thành **{ward}, {province}** ✓",
-    "tts": "Em đã chọn nơi làm thủ tục thành {ward}, {province}.",
+    "md": "✓ Đã đổi nơi làm: **{ward}, {province}**",
+    "tts": "Dạ, em đã đổi sang {ward}, {province} ạ.",
 }
 
 CHANGED_PROCEDURE_RESET = {
-    "md": "Dạ, mình đổi sang thủ tục khác nhé. Công dân chọn thủ tục bên dưới ạ:",
-    "tts": "Dạ, mình đổi sang thủ tục khác. Công dân chọn thủ tục ạ.",
+    "md": "Dạ, công dân chọn thủ tục khác bên dưới ạ:",
+    "tts": "Dạ, công dân chọn thủ tục khác ạ.",
 }
 
 OFF_SCOPE = {
     "md": (
-        "Dạ, câu này nằm ngoài phạm vi em được đào tạo ạ 🙏 "
-        "Em hỗ trợ được **{count} thủ tục**: {procedures}. Công dân cần làm thủ tục nào ạ?"
+        "Dạ, việc này em chưa hỗ trợ ạ 🙏 Em làm được **{count} thủ tục**: {procedures}.\n\n"
+        "Công dân cần thủ tục nào ạ?"
     ),
-    "tts": "Dạ, câu này ngoài phạm vi em hỗ trợ ạ. Công dân cần làm thủ tục nào trong danh sách ạ?",
+    "tts": "Dạ, việc này em chưa hỗ trợ. Công dân cần làm thủ tục nào ạ?",
 }
 
 FALLBACK_CLARIFY = {
-    "md": "Dạ công dân nói rõ hơn giúp em với ạ — công dân muốn **{hint}** phải không ạ?",
-    "tts": "Dạ công dân nói rõ hơn giúp em với ạ.",
+    "md": "Dạ, có phải công dân muốn **{hint}** không ạ?",
+    "tts": "Dạ, có phải công dân muốn {hint} không ạ?",
 }
 
 # Thẻ hướng dẫn đặt giấy lên máy quét (ảnh + lời), extension DỰNG như SCAN_FEEDBACK.
@@ -1432,59 +1123,59 @@ SCAN_GUIDE = {
 # còn lại; /voice/config đẩy cả cụm xuống extension.
 # {count} là số tệp đã nhận. "tts" đọc ở tệp ĐẦU (nói đủ hướng dẫn), "ttsMore" cho các tệp sau.
 SCAN_FEEDBACK = {
-    "md": ("🖨️ Em đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
-           "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
-           "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ."),
-    "tts": ("Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan, "
-            "em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ."),
+    "md": (
+        "🖨️ ✓ Đã nhận **{count} tệp**.\n\n"
+        "- Còn giấy → đặt tiếp vào máy\n- Đủ rồi → bấm **Đã đưa đủ giấy tờ**"
+    ),
+    "tts": "Dạ, em đã nhận một tệp. Còn giấy thì quét tiếp, đủ rồi thì bấm Đã đưa đủ giấy tờ ạ.",
     "ttsMore": ("Em đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp "
                 "vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ."),
 }
 
 # Xác nhận đổi ngôn ngữ. LANG_OFF cố tình CHỈ có tiếng Việt: lượt này _TURN_LANG đã là "vi".
 LANG_ON = {
-    "md": "Dạ, em bật **chế độ tiếng Mông** rồi ạ — em sẽ đọc và nghe bằng tiếng Mông.",
-    "tts": "Dạ, em bật chế độ tiếng Mông rồi ạ.",
+    "md": "✓ Đã bật **tiếng Mông**.",
+    "tts": "Dạ, em đã bật tiếng Mông ạ.",
 }
 
 LANG_OFF = {
-    "md": "Dạ, em chuyển về **tiếng Việt** rồi ạ.",
-    "tts": "Dạ, em chuyển về tiếng Việt rồi ạ.",
+    "md": "✓ Đã chuyển về **tiếng Việt**.",
+    "tts": "Dạ, em đã chuyển về tiếng Việt ạ.",
 }
 
 # Câu trả lời hỏi-tự-do và các câu trấn an. Trước đây dựng thẳng bằng f-string trong flow.py
 # nên KHÔNG có bản Mông nào — quầy Lai Châu bật tiếng Mông vẫn nghe tiếng phổ thông.
 PROCEDURE_IN_PROGRESS = {
-    "md": ("Dạ mình đang làm **{procedure}** rồi ạ — đến bước **{step}**. "
-           "Công dân cứ tiếp tục theo hướng dẫn nhé."),
-    "tts": "Dạ mình đang làm {procedure} rồi ạ, công dân cứ tiếp tục theo hướng dẫn nhé.",
+    "md": "Mình đang làm **{procedure}**, bước **{step}** ạ. Công dân cứ làm theo hướng dẫn nhé.",
+    "tts": "Dạ, mình đang làm thủ tục {procedure}. Công dân cứ làm theo hướng dẫn ạ.",
 }
 
 DOC_LIST_ANSWER = {
     "md": "Dạ, để làm **{procedure}** công dân cần:\n\n{documents_md}",
-    "tts": "Dạ, công dân cần chuẩn bị: {documents_tts}.",
+    "tts": "Dạ, công dân cần: {documents_tts}.",
 }
 
 ANSWER_ONLY_DOCS_AND_STEPS = {
-    "md": ("Dạ, về **{procedure}**: em nắm chắc nhất phần **giấy tờ cần chuẩn bị** và các bước "
-           "nộp trực tuyến; chi tiết khác (lệ phí, thời hạn) công dân xem trên trang thủ tục "
-           "giúp em ạ."),
-    "tts": "Dạ, chi tiết này công dân xem thêm trên trang thủ tục giúp em ạ.",
+    "md": (
+        "Dạ, em chỉ nắm phần **giấy tờ** và **các bước nộp**. "
+        "Lệ phí, thời hạn công dân xem trên trang thủ tục ạ."
+    ),
+    "tts": "Dạ, phần này công dân xem trên trang thủ tục ạ.",
 }
 
 PICK_FILES_AGAIN = {
-    "md": "Dạ, công dân chọn thêm tệp trong cửa sổ vừa mở ạ.",
-    "tts": "Công dân chọn thêm tệp nhé.",
+    "md": "Công dân chọn thêm tệp trong cửa sổ vừa mở ạ.",
+    "tts": "Dạ, công dân chọn thêm tệp ạ.",
 }
 
 BUSINESS_STILL_PROCESSING = {
-    "md": "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ…",
-    "tts": "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ.",
+    "md": "Em vẫn đang xử lý, công dân chờ chút ạ…",
+    "tts": "Dạ, em vẫn đang xử lý, công dân chờ chút ạ.",
 }
 
 STILL_READING_DOCUMENTS = {
-    "md": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ…",
-    "tts": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ.",
+    "md": "Em vẫn đang đọc giấy tờ, sắp xong ạ…",
+    "tts": "Dạ, em sắp xong rồi ạ.",
 }
 
 # ── Dẫn từng bước wizard (guidedSteps) ────────────────────────────────────────────────────
@@ -1494,134 +1185,83 @@ STILL_READING_DOCUMENTS = {
 
 GUIDED_OWNER_STEP = {
     "md": (
-        "Công dân điền hoặc chỉnh sửa **Thông tin chủ hồ sơ**: ngày cấp và nơi cấp căn cước "
-        "công dân, số điện thoại, địa chỉ chi tiết.\n\n"
-        "Xong rồi công dân bấm nút bên dưới, em chuyển sang bước **{attachment_step}** giúp ạ."
+        "Công dân điền/sửa **Thông tin chủ hồ sơ**: ngày cấp, nơi cấp CCCD, SĐT, địa chỉ.\n\n"
+        "Xong → bấm nút dưới để sang **{attachment_step}** ạ."
     ),
-    "tts": (
-        "Công dân điền hoặc chỉnh sửa thông tin chủ hồ sơ, gồm ngày cấp và nơi cấp căn cước "
-        "công dân, số điện thoại, địa chỉ chi tiết. Xong rồi công dân bấm nút bên dưới, "
-        "em chuyển bước giúp ạ."
-    ),
+    "tts": "Công dân điền ngày cấp, nơi cấp căn cước, số điện thoại, địa chỉ. Xong thì bấm nút bên dưới ạ.",
 }
 
 # Chặn TRƯỚC khi bấm nút của cổng: cổng chỉ tô đỏ ô thiếu ở cuối trang, công dân không thấy.
 GUIDED_OWNER_MISSING = {
-    "md": (
-        "Dạ trang còn thiếu **{missing_note}** ạ. Công dân điền nốt rồi bấm lại nút bên dưới "
-        "giúp em nhé."
-    ),
-    "tts": (
-        "Dạ trang còn thiếu {missing_tts} ạ. Công dân điền nốt rồi bấm lại nút bên dưới giúp em nhé."
-    ),
+    "md": "Trang còn thiếu **{missing_note}** ạ. Công dân điền nốt → bấm lại nút dưới.",
+    "tts": "Dạ, còn thiếu {missing_tts}. Công dân điền nốt, rồi bấm lại nút bên dưới ạ.",
 }
 
 GUIDED_ATTACH_DONE = {
-    "md": (
-        "✅ Em đã đính xong **{attached} tệp** vào thành phần hồ sơ.\n\n"
-        "Công dân rà soát lại các mục đã đính kèm trên trang; xong rồi bấm nút bên dưới để em "
-        "chuyển sang bước **{result_step}** ạ."
-    ),
-    "tts": (
-        "Em đã đính xong các tệp vào thành phần hồ sơ rồi ạ. Công dân rà soát lại các mục đã "
-        "đính kèm trên trang, xong rồi bấm nút bên dưới để em chuyển sang bước thông tin nhận "
-        "kết quả ạ."
-    ),
+    "md": "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại → bấm nút dưới để sang **{result_step}** ạ.",
+    "tts": "Dạ, em đính kèm xong. Công dân xem lại, rồi bấm nút bên dưới ạ.",
 }
 
 # Cổng chặn bằng toast/thông báo đỏ (vd "Vui lòng đính kèm đủ Hồ sơ bắt buộc"). Toast tự tắt
 # sau vài giây và nằm ở góc màn hình — đọc lại nguyên văn cho công dân biết vì sao chưa qua bước.
 GUIDED_STEP_BLOCKED = {
-    "md": (
-        "⚠️ Trang chưa cho chuyển bước, trang báo: *{portal_message}*\n\n"
-        "Công dân xử lý giúp em rồi bấm lại nút bên dưới ạ."
-    ),
-    "tts": (
-        "Trang chưa cho chuyển bước ạ. Trang báo: {portal_message}. "
-        "Công dân xử lý giúp em rồi bấm lại nút bên dưới ạ."
-    ),
+    "md": "⚠️ Trang báo: *{portal_message}*\n\nCông dân xử lý xong → bấm lại nút dưới ạ.",
+    "tts": "Dạ, trang báo: {portal_message}. Công dân sửa xong, rồi bấm lại nút bên dưới ạ.",
 }
 
 # Dùng chung cho cả nút chuyển bước lẫn nút gửi hồ sơ → không nêu tên nút cụ thể.
 GUIDED_STEP_STUCK = {
-    "md": (
-        "⚠️ Em đã bấm nút trên trang nhưng trang chưa chuyển ạ. Công dân xem trên trang còn "
-        "ô nào báo đỏ không, xử lý xong thì bấm lại nút bên dưới giúp em."
-    ),
-    "tts": (
-        "Em đã bấm nút trên trang nhưng trang chưa chuyển ạ. Công dân xem trên trang còn ô nào "
-        "báo đỏ không, xử lý xong thì bấm lại nút bên dưới giúp em."
-    ),
+    "md": "⚠️ Trang chưa chuyển bước. Công dân xem ô nào **báo đỏ**, sửa xong → bấm lại nút dưới ạ.",
+    "tts": "Dạ, trang chưa chuyển. Công dân sửa ô báo đỏ, rồi bấm lại nút bên dưới ạ.",
 }
 
 # Bước cuối: trợ lý KHÔNG tự chọn hộ (phương thức nhận kết quả là ý muốn của công dân, chọn
 # sai là phải làm lại hồ sơ) — chỉ nói kỹ từng lựa chọn và các ô đi kèm.
 GUIDED_RESULT_STEP = {
     "md": (
-        "Đã vào bước **{result_step}** ✓ Công dân chọn **một** cách nhận kết quả trên trang ạ:\n\n"
-        "1. **Nhận kết quả bản giấy có đóng dấu** — gạt nút bật lên, rồi chọn thêm **nơi nhận "
-        "kết quả trực tiếp** để đến lấy.\n"
-        "2. **Nhận kết quả trực tuyến** — nhận bản điện tử ngay trên hệ thống, không phải đến quầy.\n"
-        "3. **Dịch vụ bưu chính công ích** — bưu điện mang kết quả đến tận địa chỉ; chọn cách này "
-        "thì điền thêm **đơn vị bưu chính**, **họ và tên**, **số điện thoại người nhận**, "
-        "**tỉnh/thành phố**, **phường/xã** và **số nhà, tên đường**.\n\n"
-        "Chọn xong, công dân bấm nút bên dưới hoặc bấm **{submit_label}** trên trang, cách nào "
-        "cũng được ạ."
+        "✓ Đã vào **{result_step}**. Công dân chọn **1** cách nhận kết quả ạ:\n\n"
+        "1. **Bản giấy có đóng dấu** — chọn thêm nơi đến lấy.\n2. "
+        "**Trực tuyến** — nhận bản điện tử, không phải đến quầy.\n3. "
+        "**Bưu chính công ích** — điền đơn vị bưu chính, người nhận, SĐT, địa chỉ.\n\n"
+        "Chọn xong → bấm nút dưới hoặc **{submit_label}** ạ."
     ),
     "tts": (
-        "Đã vào bước thông tin nhận kết quả. Công dân chọn một cách nhận kết quả trên trang ạ. "
-        "Cách một, nhận bản giấy có đóng dấu, chọn xong phải chọn thêm nơi đến lấy kết quả. "
-        "Cách hai, nhận kết quả trực tuyến, nhận bản điện tử ngay trên hệ thống. "
-        "Cách ba, dịch vụ bưu chính công ích, bưu điện mang đến tận địa chỉ, chọn cách này thì "
-        "điền thêm đơn vị bưu chính, họ và tên, số điện thoại người nhận, tỉnh thành phố, "
-        "phường xã và số nhà tên đường. "
-        "Chọn xong, công dân bấm nút bên dưới hoặc bấm nút gửi hồ sơ trên trang đều được ạ."
+        "Dạ, công dân chọn một cách nhận kết quả: "
+        "nhận bản giấy tại quầy, nhận bản điện tử, hoặc gửi qua bưu điện. "
+        "Chọn bưu điện thì điền thêm địa chỉ người nhận. Chọn xong thì bấm nút bên dưới ạ."
     ),
 }
 
 GUIDED_SUBMIT_SENT = {
-    "md": "Em đã bấm **{submit_label}** giúp công dân, công dân chờ trang xác nhận chút ạ…",
-    "tts": "Em đã bấm gửi hồ sơ giúp công dân, công dân chờ trang xác nhận chút ạ.",
+    "md": "Em đã bấm **{submit_label}**, chờ trang xác nhận chút ạ…",
+    "tts": "Dạ, em đã gửi hồ sơ. Công dân chờ chút ạ.",
 }
 
 # Trang đã điền đủ mọi ô bắt buộc → không bắt công dân quét giấy tờ ở bước này nữa, giấy tờ
 # để sang bước Thành phần hồ sơ nhận một thể.
 GUIDED_OWNER_READY = {
     "md": (
-        "Đã vào bước **Thông tin chủ hồ sơ** ✓\n\n"
-        "Em xem thông tin trên trang đã đủ rồi ạ. Công dân đọc lại một lượt cho "
-        "chắc, xong bấm nút bên dưới để em chuyển sang bước **{attachment_step}** nhé."
+        "✓ **Thông tin chủ hồ sơ** đã đủ.\n\n"
+        "Công dân đọc lại → bấm nút dưới để sang **{attachment_step}** ạ."
     ),
-    "tts": (
-        "Đã vào bước thông tin chủ hồ sơ. Em xem thông tin trên trang đã đủ rồi ạ. "
-        "Công dân đọc lại một lượt cho chắc, xong bấm nút bên dưới để em chuyển bước nhé."
-    ),
+    "tts": "Dạ, thông tin chủ hồ sơ đã đủ. Công dân đọc lại, rồi bấm nút bên dưới ạ.",
 }
 
 # Hỏi RIÊNG thẻ căn cước: nó được quét để lấy ngày cấp/nơi cấp điền form, nhưng chưa chắc
 # công dân muốn chứng thực chính thẻ đó. Các giấy còn lại mặc định là giấy đem đi chứng thực.
 GUIDED_CERTIFY_ASK = {
-    "md": (
-        "Trong giấy tờ công dân vừa đưa có **thẻ Căn cước công dân**. Công dân có **chứng thực "
-        "bản sao** thẻ này luôn không ạ?"
-    ),
-    "tts": (
-        "Trong giấy tờ công dân vừa đưa có thẻ căn cước công dân. Công dân có chứng thực bản sao "
-        "thẻ này luôn không ạ?"
-    ),
+    "md": "Có **thẻ Căn cước công dân** trong giấy tờ. Công dân có **chứng thực bản sao** thẻ này không ạ?",
+    "tts": "Dạ, công dân có chứng thực luôn thẻ căn cước không ạ?",
 }
 
 # Công dân tự điền xong rồi tự bấm sang bước Thành phần hồ sơ trong lúc trợ lý còn đang chờ
 # giấy tờ. Checklist của bước chủ hồ sơ hết nghĩa ở đây → phải nói đã sang bước nào.
 GUIDED_DOCS_STEP_SWITCHED = {
     "md": (
-        "Đã vào bước **Thành phần hồ sơ** ✓ Từ đây em chỉ nhận **giấy tờ cần chứng thực** thôi ạ.\n\n"
-        "Công dân đưa nốt giấy tờ còn lại rồi bấm nút bên dưới để em đính kèm nhé."
+        "✓ Đã sang **Thành phần hồ sơ**. Từ đây em chỉ nhận **giấy cần chứng thực**.\n\n"
+        "Công dân đưa nốt giấy tờ → bấm nút dưới ạ."
     ),
-    "tts": (
-        "Đã vào bước thành phần hồ sơ. Từ đây em chỉ nhận giấy tờ cần chứng thực thôi ạ. "
-        "Công dân đưa nốt giấy tờ còn lại rồi bấm nút bên dưới để em đính kèm nhé."
-    ),
+    "tts": "Dạ, đã sang bước thành phần hồ sơ. Công dân đưa nốt giấy cần chứng thực, rồi bấm nút bên dưới ạ.",
 }
 
 # Thẻ căn cước đã quét ở bước trước: trợ lý KHÔNG chạy pipeline chủ hồ sơ (công dân tự điền)
@@ -1629,45 +1269,34 @@ GUIDED_DOCS_STEP_SWITCHED = {
 # chứng thực cho công dân NHÌN THẤY và tự quyết; giấu tệp đi mà vẫn đính là tệ nhất.
 GUIDED_IDENTITY_MOVED_NOTE = {
     "md": (
-        "\n\nThẻ **Căn cước công dân** công dân đã đưa, em xếp vào **giấy tờ cần chứng thực**. "
-        "Nếu thẻ đó không cần chứng thực, công dân bấm vào mục giấy tờ để xoá giúp em ạ."
+        "\n\n"
+        "Thẻ **Căn cước** em xếp vào **giấy cần chứng thực**. "
+        "Không cần chứng thực thì bấm vào mục đó để xoá ạ."
     ),
-    "tts": (
-        " Thẻ căn cước công dân công dân đã đưa, em xếp vào giấy tờ cần chứng thực. "
-        "Nếu thẻ đó không cần chứng thực, công dân xoá giúp em ạ."
-    ),
+    "tts": " Thẻ căn cước em xếp vào giấy cần chứng thực. Không cần thì công dân xoá ạ.",
 }
 
 GUIDED_AUTHORIZATION_ATTACHED = {
-    "md": "📎 Em đã đính kèm **giấy ủy quyền** vào hồ sơ ạ.",
-    "tts": "Em đã đính kèm giấy ủy quyền vào hồ sơ ạ.",
+    "md": "📎 ✓ Đã đính **giấy ủy quyền**.",
+    "tts": "Dạ, em đã đính giấy ủy quyền ạ.",
 }
 
 GUIDED_AUTHORIZATION_ATTACH_FAILED = {
     "md": (
-        "⚠️ Em chưa đính kèm được **giấy ủy quyền** ({error}).\n\n"
-        "Công dân bấm **Chọn tệp đính kèm** ở dòng giấy ủy quyền trên trang giúp em ạ."
+        "⚠️ Chưa đính được **giấy ủy quyền** ({error}).\n\n"
+        "Công dân bấm **Chọn tệp đính kèm** ở dòng giấy ủy quyền ạ."
     ),
-    "tts": (
-        "Em chưa đính kèm được giấy ủy quyền ạ. Công dân bấm chọn tệp đính kèm ở dòng giấy "
-        "ủy quyền trên trang giúp em nhé."
-    ),
+    "tts": "Dạ, em chưa đính được giấy ủy quyền. Công dân bấm Chọn tệp đính kèm ở dòng đó ạ.",
 }
 
 GUIDED_CERTIFY_YES = {
-    "md": "Dạ, em sẽ chứng thực bản sao cả **thẻ Căn cước công dân** cho công dân ạ.",
-    "tts": "Dạ, em sẽ chứng thực bản sao cả thẻ căn cước công dân cho công dân ạ.",
+    "md": "✓ Em chứng thực cả **thẻ Căn cước** ạ.",
+    "tts": "Dạ, em chứng thực cả thẻ căn cước ạ.",
 }
 
 GUIDED_CERTIFY_NO = {
-    "md": (
-        "Dạ, em chỉ dùng thẻ **Căn cước công dân** để điền thông tin thôi, **không** đính vào "
-        "hồ sơ chứng thực ạ."
-    ),
-    "tts": (
-        "Dạ, em chỉ dùng thẻ căn cước công dân để điền thông tin thôi, không đính vào hồ sơ "
-        "chứng thực ạ."
-    ),
+    "md": "✓ Thẻ **Căn cước** chỉ dùng để điền, **không** đính vào hồ sơ ạ.",
+    "tts": "Dạ, thẻ căn cước chỉ dùng để điền thông tin ạ.",
 }
 
 # Nhãn nút trong khung chat: ngắn, đọc là hiểu bấm xong đi đâu.
@@ -1677,76 +1306,48 @@ GUIDED_OWNER_CTA = "Xong, sang bước đính kèm →"
 # Trợ lý gạt sẵn công tắc "bản giấy" — cách đại đa số công dân ra quầy đang chọn. Vẫn nói rõ
 # đây là ĐỀ XUẤT và đổi được trong một chạm.
 GUIDED_RESULT_PICK = {
-    "md": (
-        "Đã vào bước **{result_step}** ✓\n\n"
-        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn **{label}** — công dân bấm "
-        "chọn cách khác nếu muốn đổi nhé."
-    ),
-    "tts": (
-        "Đã vào bước thông tin nhận kết quả. Công dân muốn nhận kết quả bằng cách nào ạ? "
-        "Em đang chọn {label}. Công dân bấm chọn cách khác nếu muốn đổi nhé."
-    ),
+    "md": "✓ Đã vào **{result_step}**.\n\nEm đang chọn **{label}**. Muốn đổi → bấm cách khác ạ.",
+    "tts": "Dạ, em chọn sẵn {label}. Muốn đổi, công dân bấm cách khác ạ.",
 }
 
 # Câu chốt đi kèm MỌI lượt chọn cách nhận kết quả — dùng qua note= của _fmt để bản Mông cũng
 # nối đúng khối của nó, không lẫn Việt vào lời đọc Mông.
 GUIDED_RESULT_SUBMIT_HINT = {
-    "md": "\n\nCông dân kiểm tra thông tin, nếu đã ổn thì bấm **{submit_label}** để em nộp hồ sơ ạ.",
-    "tts": " Công dân kiểm tra thông tin, nếu đã ổn thì bấm {submit_label} để em nộp hồ sơ ạ.",
+    "md": "\n\nKiểm tra xong → bấm **{submit_label}** để nộp ạ.",
+    "tts": " Kiểm tra xong, công dân bấm {submit_label} ạ.",
 }
 
 GUIDED_RESULT_PICKED = {
-    "md": "✅ Em đã chọn **{label}** trên trang.",
-    "tts": "Em đã chọn {label} trên trang.",
+    "md": "✓ Đã chọn **{label}**.",
+    "tts": "Dạ, em đã chọn {label} ạ.",
 }
 
 # CHỈ dịch vụ bưu chính mới đòi thêm thông tin. Địa chỉ/người nhận là dữ liệu riêng của công
 # dân, điền hộ mà sai là kết quả đi lạc chỗ.
 GUIDED_RESULT_NEEDS_INPUT = {
-    "md": (
-        "✅ Em đã chọn **{label}** trên trang.\n\n"
-        "Cách này cần thêm thông tin người nhận — công dân điền trực tiếp trên trang giúp em "
-        "nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ."
-    ),
-    "tts": (
-        "Em đã chọn {label} trên trang. Cách này cần thêm thông tin người nhận, công dân điền "
-        "trực tiếp trên trang giúp em nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ."
-    ),
+    "md": "✓ Đã chọn **{label}**.\n\nCông dân **tự điền** tên, địa chỉ người nhận trên trang ạ.",
+    "tts": "Dạ, em đã chọn {label}. Công dân tự điền tên và địa chỉ người nhận ạ.",
 }
 
 GUIDED_RESULT_MISSING = {
-    "md": (
-        "✅ Em đã chọn **{label}** trên trang.\n\n"
-        "Trang còn thiếu **{missing_note}** — công dân điền nốt giúp em ạ."
-    ),
-    "tts": (
-        "Em đã chọn {label} trên trang. Trang còn thiếu {missing_tts}. Công dân điền nốt "
-        "giúp em ạ."
-    ),
+    "md": "✓ Đã chọn **{label}**.\n\nCòn thiếu **{missing_note}**, công dân điền nốt ạ.",
+    "tts": "Dạ, em đã chọn {label}. Còn thiếu {missing_tts}, công dân điền nốt ạ.",
 }
 
 GUIDED_RESULT_FAILED = {
-    "md": (
-        "⚠️ Em chưa gạt được công tắc **{label}** trên trang. Công dân gạt giúp em ngay trên "
-        "trang rồi bấm **{submit_label}** ạ."
-    ),
-    "tts": (
-        "Em chưa gạt được công tắc {label} trên trang. Công dân gạt giúp em ngay trên trang "
-        "rồi bấm {submit_label} ạ."
-    ),
+    "md": "⚠️ Em chưa gạt được **{label}**. Công dân gạt trên trang → bấm **{submit_label}** ạ.",
+    "tts": "Dạ, em chưa chọn được {label}. Công dân gạt trên trang, rồi bấm {submit_label} ạ.",
 }
 
 GUIDED_ATTACH_SPLIT_DONE = {
     "md": (
-        "✅ Em đã đính xong **{succeeded}/{total} hồ sơ**, mỗi tài liệu nằm trong một hồ sơ riêng.\n\n"
-        "Bấm nút bên dưới để em chuyển **hồ sơ ở tab này** sang bước **{result_step}**. "
-        "Các hồ sơ còn lại công dân mở từng tab rồi bấm **Nộp hồ sơ / Gửi hồ sơ** ngay trên "
-        "trang giúp em ạ."
+        "✓ Đã đính **{succeeded}/{total} hồ sơ**.\n\n"
+        "- Tab này: bấm nút dưới để sang **{result_step}**\n- Tab khác: "
+        "mở từng tab → bấm **Nộp hồ sơ / Gửi hồ sơ**"
     ),
     "tts": (
-        "Em đã đính xong {succeeded} trên {total} hồ sơ, mỗi tài liệu trong một hồ sơ riêng. "
-        "Công dân bấm nút bên dưới để em chuyển hồ sơ ở tab này sang bước thông tin nhận kết "
-        "quả; các hồ sơ còn lại công dân mở từng tab rồi bấm nộp hồ sơ giúp em nhé."
+        "Dạ, em đính xong {succeeded} trên {total} hồ sơ. Hồ sơ này, công dân bấm nút bên dưới. "
+        "Hồ sơ khác, công dân mở ra rồi bấm Nộp ạ."
     ),
 }
 
@@ -1763,176 +1364,123 @@ TPM_SUBMIT_CTA = "💾 Lưu và nộp hồ sơ"
 # Extension trên máy quầy chưa có engine cho trang mới — dẫn vào là kẹt ở trang không điền được.
 TPM_UPDATE_REQUIRED = {
     "md": (
-        "⚠️ Cổng Dịch vụ công đã đổi sang **mẫu nộp hồ sơ mới** cho thủ tục **{procedure}**, "
-        "bản Trợ lý đang cài chưa làm được mẫu này.\n\n"
-        "Cán bộ cập nhật Trợ lý lên bản mới nhất rồi mở lại giúp em ạ. Trong lúc chờ, công dân "
-        "có thể chọn thủ tục khác."
+        "⚠️ Cổng đã đổi **mẫu mới** cho **{procedure}**, Trợ lý bản này chưa hỗ trợ.\n\n"
+        "Cán bộ cập nhật Trợ lý rồi mở lại ạ. Trong lúc chờ, công dân có thể chọn thủ tục khác."
     ),
-    "tts": (
-        "Cổng dịch vụ công đã đổi sang mẫu nộp hồ sơ mới cho thủ tục này, bản trợ lý đang cài "
-        "chưa làm được. Cán bộ cập nhật trợ lý lên bản mới nhất rồi mở lại giúp em ạ."
-    ),
+    "tts": "Dạ, cổng đã đổi mẫu mới, em chưa làm được thủ tục này. Nhờ cán bộ cập nhật trợ lý ạ.",
 }
 
 # Câu đuôi sau báo cáo điền (note= của FILL_REPORT_REVIEW): planner đính kèm chạy nền ngay lúc này.
 TPM_FILL_NEXT = {
-    "md": (
-        "\n\nTrong lúc công dân rà, em xếp sẵn giấy tờ vào đúng dòng **Thành phần hồ sơ**. "
-        "Rà xong, công dân bấm **Đính kèm thành phần hồ sơ** để em đính ngay trên trang này ạ."
-    ),
-    "tts": (
-        " Trong lúc công dân rà, em xếp sẵn giấy tờ vào đúng dòng thành phần hồ sơ. Rà xong, "
-        "công dân bấm đính kèm thành phần hồ sơ để em đính ngay trên trang này ạ."
-    ),
+    "md": "\n\nEm đang xếp sẵn giấy tờ. Rà xong → bấm **Đính kèm thành phần hồ sơ** ạ.",
+    "tts": " Xem xong, công dân bấm Đính kèm thành phần hồ sơ ạ.",
 }
 
 TPM_ATTACH_WAIT_PLAN = {
-    "md": "Em đang xếp giấy tờ vào đúng dòng thành phần hồ sơ, xong là em đính kèm ngay — công dân chờ em chút nhé ạ…",
-    "tts": "Em đang xếp giấy tờ vào đúng dòng thành phần hồ sơ, xong là em đính kèm ngay. Công dân chờ em chút nhé ạ.",
+    "md": "Em đang xếp giấy tờ, xong là đính ngay, chờ chút ạ…",
+    "tts": "Dạ, công dân chờ em chút ạ.",
 }
 
 TPM_ATTACH_DONE = {
-    "md": (
-        "✅ Em đã đính xong **{attached} tệp** vào **Thành phần hồ sơ**.\n\n"
-        "Công dân rà lại các dòng giấy tờ trên trang, rồi bấm **Chọn hình thức nhận kết quả** "
-        "để em chọn cách nhận ạ."
-    ),
-    "tts": (
-        "Em đã đính xong các tệp vào thành phần hồ sơ. Công dân rà lại trên trang, rồi bấm chọn "
-        "hình thức nhận kết quả giúp em ạ."
-    ),
+    "md": "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại → bấm **Chọn hình thức nhận kết quả** ạ.",
+    "tts": "Dạ, em đính kèm xong. Công dân xem lại, rồi bấm Chọn hình thức nhận kết quả ạ.",
 }
 
 TPM_ATTACH_ALL_EXIST = {
-    "md": (
-        "✅ Các tệp đều đã có sẵn trên **Thành phần hồ sơ**, em không đính trùng nữa.\n\n"
-        "Công dân bấm **Chọn hình thức nhận kết quả** để đi tiếp ạ."
-    ),
-    "tts": (
-        "Các tệp đều đã có sẵn trên thành phần hồ sơ, em không đính trùng nữa. Công dân bấm "
-        "chọn hình thức nhận kết quả để đi tiếp ạ."
-    ),
+    "md": "✓ Các tệp đã có sẵn, em không đính trùng.\n\nCông dân bấm **Chọn hình thức nhận kết quả** ạ.",
+    "tts": "Dạ, tệp đã có đủ. Công dân bấm Chọn hình thức nhận kết quả ạ.",
 }
 
 TPM_ATTACH_DONE_WITH_ERRORS = {
     "md": (
-        "⚠️ Em đính được **{attached} tệp**, còn lỗi:\n\n{error_list}\n\n"
-        "Công dân bấm **Đính kèm lại** để em thử lần nữa (tệp đã có em tự bỏ qua), hoặc "
-        "**Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
+        "⚠️ Đính được **{attached} tệp**, còn lỗi:\n\n"
+        "{error_list}\n\n"
+        "Bấm **Đính kèm lại** để thử lần nữa, hoặc **Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
     ),
-    "tts": (
-        "Em đính được một phần, còn vài tệp chưa đính được. Công dân bấm đính kèm lại để em thử "
-        "lần nữa, hoặc điều chỉnh giấy tờ nếu tệp chưa đúng ạ."
-    ),
+    "tts": "Dạ, còn vài tệp lỗi. Công dân bấm Đính kèm lại, hoặc Điều chỉnh giấy tờ ạ.",
 }
 
 TPM_ATTACH_NONE = {
     "md": (
-        "⚠️ Em chưa gắn được tệp nào vào hồ sơ{error_note}. Công dân bấm **Đính kèm lại** để em "
-        "thử lần nữa, hoặc **Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
+        "⚠️ Chưa đính được tệp nào{error_note}.\n\n"
+        "Bấm **Đính kèm lại** để thử lần nữa, hoặc **Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
     ),
-    "tts": (
-        "Em chưa gắn được tệp nào vào hồ sơ ạ. Công dân bấm đính kèm lại để em thử lần nữa, "
-        "hoặc điều chỉnh giấy tờ nếu tệp chưa đúng ạ."
-    ),
+    "tts": "Dạ, em chưa đính được. Công dân bấm Đính kèm lại, hoặc Điều chỉnh giấy tờ ạ.",
 }
 
 TPM_RESULT_PICK = {
-    "md": (
-        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn **{label}** — công dân bấm "
-        "chọn cách khác nếu muốn đổi nhé."
-    ),
-    "tts": (
-        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn {label}. Công dân bấm chọn "
-        "cách khác nếu muốn đổi nhé."
-    ),
+    "md": "Em đang chọn **{label}**. Muốn đổi → bấm cách khác ạ.",
+    "tts": "Dạ, em chọn sẵn {label}. Muốn đổi, công dân bấm cách khác ạ.",
 }
 
 # Câu chốt đi kèm mọi lượt chọn cách nhận (note=).
 TPM_SUBMIT_HINT = {
-    "md": "\n\nKiểm tra xong, công dân bấm **Lưu và nộp hồ sơ** — em soát các ô bắt buộc rồi nộp giúp ạ.",
-    "tts": " Kiểm tra xong, công dân bấm lưu và nộp hồ sơ, em soát các ô bắt buộc rồi nộp giúp ạ.",
+    "md": "\n\nKiểm tra xong → bấm **Lưu và nộp hồ sơ** ạ.",
+    "tts": " Kiểm tra xong, công dân bấm Lưu và nộp hồ sơ ạ.",
 }
 
 TPM_RESULT_FAILED = {
     "md": (
-        "⚠️ Em chưa chọn được **{label}** ở ô **Hình thức nhận kết quả**. Công dân chọn giúp em "
-        "ngay trên trang rồi bấm **Lưu và nộp hồ sơ** ạ."
+        "⚠️ Em chưa chọn được **{label}**. "
+        "Công dân chọn ở ô **Hình thức nhận kết quả** → bấm **Lưu và nộp hồ sơ** ạ."
     ),
-    "tts": (
-        "Em chưa chọn được {label} ở ô hình thức nhận kết quả. Công dân chọn giúp em ngay trên "
-        "trang rồi bấm lưu và nộp hồ sơ ạ."
-    ),
+    "tts": "Dạ, em chưa chọn được {label}. Công dân chọn trên trang, rồi bấm Lưu và nộp hồ sơ ạ.",
 }
 
 # Ô thiếu do FE đọc THẲNG trên trang (ô bắt buộc của form + khối nhận kết quả qua bưu điện).
 TPM_SUBMIT_MISSING = {
     "md": (
-        "⚠️ Em chưa nộp vì trang còn thiếu: **{missing_note}** (em đã tô đỏ trên trang). Công "
-        "dân điền nốt rồi bấm lại **Lưu và nộp hồ sơ** giúp em ạ."
+        "⚠️ Chưa nộp, còn thiếu: **{missing_note}** (đã tô đỏ).\n\n"
+        "Công dân điền nốt → bấm lại **Lưu và nộp hồ sơ** ạ."
     ),
-    "tts": (
-        "Em chưa nộp vì trang còn thiếu {missing_tts}. Em đã tô đỏ trên trang, công dân điền "
-        "nốt rồi bấm lại lưu và nộp hồ sơ giúp em ạ."
-    ),
+    "tts": "Dạ, còn thiếu {missing_tts}. Công dân điền ô tô đỏ, rồi bấm lại Lưu và nộp hồ sơ ạ.",
 }
 
 TPM_SUBMIT_BLOCKED = {
-    "md": (
-        "⚠️ Trang chưa nhận hồ sơ, trang báo: *{portal_message}*\n\n"
-        "Công dân xử lý giúp em rồi bấm lại **Lưu và nộp hồ sơ** ạ."
-    ),
-    "tts": (
-        "Trang chưa nhận hồ sơ ạ. Trang báo: {portal_message}. Công dân xử lý giúp em rồi bấm "
-        "lại lưu và nộp hồ sơ ạ."
-    ),
+    "md": "⚠️ Trang báo: *{portal_message}*\n\nCông dân xử lý xong → bấm lại **Lưu và nộp hồ sơ** ạ.",
+    "tts": "Dạ, trang báo: {portal_message}. Công dân sửa xong, rồi bấm lại Lưu và nộp hồ sơ ạ.",
 }
 
 TPM_SUBMIT_STUCK = {
-    "md": (
-        "⚠️ Em chưa bấm được nút **Lưu và nộp hồ sơ** trên trang. Công dân bấm trực tiếp nút đó "
-        "ở cuối trang giúp em ạ."
-    ),
-    "tts": (
-        "Em chưa bấm được nút lưu và nộp hồ sơ trên trang. Công dân bấm trực tiếp nút đó ở cuối "
-        "trang giúp em ạ."
-    ),
+    "md": "⚠️ Em chưa bấm được **Lưu và nộp hồ sơ**. Công dân bấm nút đó ở cuối trang ạ.",
+    "tts": "Dạ, công dân bấm nút Lưu và nộp hồ sơ ở cuối trang ạ.",
 }
 
 # ── Luồng TỰ ĐỘNG (tu_phap_moi.auto_flow): điền xong tự đính kèm, xong hiện luôn nút nộp ──
 # Câu đuôi sau báo cáo điền (note= của FILL_REPORT_REVIEW). TTS ngắn: câu "đính xong" về ngay sau.
 TPM_AUTO_ATTACH_WAIT = {
-    "md": "\n\nTiếp theo em sẽ đính kèm giấy tờ vào **Thành phần hồ sơ** ngay khi chuẩn bị xong ạ…",
-    "tts": " Tiếp theo em sẽ đính kèm giấy tờ vào thành phần hồ sơ ngay khi chuẩn bị xong ạ.",
+    "md": "\n\nChuẩn bị xong em đính kèm ngay ạ…",
+    "tts": " Chuẩn bị xong em đính kèm ngay ạ.",
 }
 
 TPM_AUTO_ATTACH_DONE = {
-    "md": "✅ Em đã đính xong **{attached} tệp** vào **Thành phần hồ sơ**.",
-    "tts": "Em đã đính xong các tệp vào thành phần hồ sơ.",
+    "md": "✓ Đã đính **{attached} tệp**.",
+    "tts": "Dạ, em đính kèm xong.",
 }
 
 TPM_AUTO_ALL_EXIST = {
-    "md": "✅ Các tệp đều đã có sẵn trên **Thành phần hồ sơ**, em không đính trùng nữa.",
-    "tts": "Các tệp đều đã có sẵn trên thành phần hồ sơ, em không đính trùng nữa.",
+    "md": "✓ Các tệp đã có sẵn, em không đính trùng.",
+    "tts": "Dạ, tệp đã có đủ.",
 }
 
 # Cổng chọn sẵn một cách nhận kết quả; {label} = cách mặc định khai trong registry thủ tục.
 TPM_AUTO_RESULT_DEFAULT = {
     "md": (
-        "\n\nHình thức nhận kết quả đang để mặc định **{label}**; công dân muốn đổi thì bấm "
-        "**Chọn hình thức nhận kết quả** rồi chọn hình thức tương ứng ạ. Rà lại xong, công dân "
-        "bấm **Lưu và nộp hồ sơ** để nộp."
+        "\n\n"
+        "Hình thức nhận kết quả đang để mặc định **{label}**; "
+        "công dân muốn đổi thì bấm **Chọn hình thức nhận kết quả** rồi chọn hình thức tương ứng ạ. "
+        "Rà xong → bấm **Lưu và nộp hồ sơ** ạ."
     ),
     "tts": (
-        " Hình thức nhận kết quả đang để mặc định {label}; công dân muốn đổi thì bấm chọn hình "
-        "thức nhận kết quả rồi chọn hình thức tương ứng ạ. Rà lại xong, công dân bấm lưu và nộp "
-        "hồ sơ để nộp."
+        " Hình thức nhận kết quả đang để mặc định {label}; "
+        "công dân muốn đổi thì bấm chọn hình thức nhận kết quả rồi chọn hình thức tương ứng ạ. "
+        "Rà xong, công dân bấm Lưu và nộp hồ sơ ạ."
     ),
 }
 
 TPM_DONE_REMIND = {
-    "md": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",
-    "tts": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",
+    "md": "Công dân bấm nút dưới để đi tiếp ạ.",
+    "tts": "Dạ, công dân bấm nút bên dưới ạ.",
 }
 
 # Nhãn bước hiển thị trên thanh tiến trình (progress.label) — khớp docs/03a §3.
@@ -1976,28 +1524,20 @@ OWNER_RESEND_DOCS_CTA = "📷 Gửi lại giấy tờ"
 
 # Câu gõ/nói không ra việc gì ở bước đang làm. options_* là nhãn các nút đang hiện.
 VOICE_NOT_UNDERSTOOD = {
-    "md": "Dạ em chưa hiểu ý công dân ạ. Công dân nói lại ngắn gọn hoặc bấm nút trên màn hình giúp em nhé.",
-    "tts": "Dạ em chưa hiểu ý công dân. Công dân nói lại ngắn gọn hoặc bấm nút trên màn hình giúp em nhé.",
+    "md": "Em chưa hiểu ý ạ. Công dân nói lại ngắn gọn, hoặc bấm nút trên màn hình.",
+    "tts": "Dạ, em chưa hiểu. Công dân nói lại ngắn gọn, hoặc bấm nút trên màn hình ạ.",
 }
 VOICE_NOT_UNDERSTOOD_OPTIONS = {
-    "md": "Dạ em chưa hiểu ý công dân ạ. Ở bước này công dân có thể nói: {options_md}.",
-    "tts": "Dạ em chưa hiểu ý công dân. Ở bước này công dân có thể nói: {options_tts}.",
+    "md": "Em chưa hiểu ý ạ. Ở bước này công dân có thể nói: {options_md}.",
+    "tts": "Dạ, em chưa hiểu. Công dân có thể nói: {options_tts}.",
 }
 
 # Sửa nơi làm bằng lời: tên xã nghe được khớp nhiều xã / không trọn tên. options_* là tên xã.
 PLACE_WARD_UNCLEAR = {
-    "md": (
-        "Dạ em chưa chắc phường/xã nào ạ. Có phải một trong các nơi sau không?\n\n{options_md}\n\n"
-        "Công dân bấm chọn hoặc nói lại tên phường/xã giúp em nhé."
-    ),
-    "tts": "Dạ em chưa chắc phường xã nào. Có phải {options_tts} không ạ? "
-           "Công dân bấm chọn hoặc nói lại tên phường xã giúp em nhé.",
+    "md": "Dạ, phường/xã nào ạ?\n\n{options_md}",
+    "tts": "Dạ, có phải {options_tts} không ạ? Công dân bấm chọn, hoặc nói lại tên xã.",
 }
 PLACE_NOT_HEARD = {
-    "md": (
-        "Dạ em chưa nghe rõ công dân muốn đổi nơi làm hay người làm thủ tục ạ. Công dân nói lại tên "
-        "**phường/xã, tỉnh/thành phố** hoặc **làm thủ tục cho ai**, hoặc chọn ngay bên dưới giúp em nhé."
-    ),
-    "tts": "Dạ em chưa nghe rõ. Công dân nói lại tên phường xã, tỉnh thành phố, hoặc làm thủ tục cho ai, "
-           "hoặc chọn ngay bên dưới giúp em nhé.",
+    "md": "Dạ em chưa nghe rõ ạ. Công dân nói lại **tên phường/xã** hoặc **làm cho ai**, hoặc chọn bên dưới.",
+    "tts": "Dạ, em chưa nghe rõ. Công dân nói lại tên phường xã, hoặc làm thủ tục cho ai ạ.",
 }

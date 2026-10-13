@@ -2119,6 +2119,14 @@ def _parent_birth_from_documents(section: str, documents, child_year: int) -> st
     return found.pop() if len(found) == 1 else ""
 
 
+def _llm_parent_birth(section: str, llm_section: str, child_year: int) -> str:
+    """Năm sinh agent phân vai đọc cho CÙNG người (họ tên khớp) khi năm này hợp thế hệ với con."""
+    if not llm_section or not _names_align(_role_name(section), _role_name(llm_section)):
+        return ""
+    year = _role_year(llm_section)
+    return _labeled_value(llm_section, "Ngày sinh") if year and child_year - year >= 15 else ""
+
+
 def _child_birth_from_card(section: str, documents, parent_years=()) -> str:
     """Ngày sinh in trên CHÍNH tấm CCCD/CMND của người trong khối <con>.
 
@@ -2166,8 +2174,11 @@ def _child_birth_from_card(section: str, documents, parent_years=()) -> str:
     return birth if breaks_generation and fits_generation else ""
 
 
-def _validate_family_sections(sections: dict[str, str], documents=()) -> dict[str, str]:
-    """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất."""
+def _validate_family_sections(sections: dict[str, str], documents=(), llm_sections=None) -> dict[str, str]:
+    """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất.
+
+    llm_sections: khối vai đúng như agent phân vai trả, TRƯỚC khi Python ghép lại theo tờ khai — dùng để cứu năm
+    sinh cha/mẹ khi chữ viết tay trên tờ khai bị OCR đọc lệch."""
     result = dict(sections)
 
     # Mục cha/mẹ bị gạch "Không có" trên tờ khai phải trả về khối Không xác định, nếu không cả vai
@@ -2235,14 +2246,21 @@ def _validate_family_sections(sections: dict[str, str], documents=()) -> dict[st
             parent_year = _role_year(section)
             if not parent_year or child_year - parent_year >= 15:
                 continue
-            birth = _parent_birth_from_documents(section, documents, child_year)
+            birth = _parent_birth_from_documents(section, documents, child_year) or _llm_parent_birth(
+                section, (llm_sections or {}).get(tag, ""), child_year
+            )
             if birth:
-                # Giấy tờ khác của chính người đó chốt được năm sinh hợp lý: sửa mỗi dòng năm
-                # sinh, giữ nguyên cả khối để biểu mẫu vẫn có đủ mục cha/mẹ.
+                # Giấy tờ khác của chính người đó (hoặc agent phân vai đọc cả hồ sơ) chốt được năm sinh hợp lý:
+                # sửa mỗi dòng năm sinh, giữ nguyên cả khối để biểu mẫu vẫn có đủ mục cha/mẹ.
                 result[tag] = _set_role_label(section, "Ngày sinh", birth)
                 continue
-            # Không giấy nào cứu được năm sinh thì vẫn xoá vai: khối cha/mẹ sai thế hệ mà không
-            # có nguồn nào xác nhận là dữ liệu hỏng, điền ra biểu mẫu còn tệ hơn bỏ trống.
+            if _from_declaration_label(section):
+                # Nhãn in sẵn trên tờ khai đã chốt đây là cha/mẹ: chỉ NĂM SINH là chữ đọc hỏng → bỏ trống năm
+                # sinh, giữ họ tên, dân tộc, quốc tịch, trạng thái tờ khai ghi rõ.
+                result[tag] = _set_role_label(section, "Ngày sinh", "Không xác định")
+                continue
+            # Không nhãn tờ khai mà cũng không nguồn nào cứu được năm sinh: khối cha/mẹ sai thế hệ là
+            # suy đoán hỏng, điền ra biểu mẫu còn tệ hơn bỏ trống.
             result[tag] = _unknown_role_section(
                 "Năm sinh không tạo được khoảng cách thế hệ cha/mẹ - con hợp lý."
             )
@@ -2932,7 +2950,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     if not any(not _is_unknown(s) for s in sections.values()):
         return ""
 
-    sections = _validate_family_sections(sections, documents)
+    sections = _validate_family_sections(sections, documents, {tag: _section(raw, tag) for tag in _FAMILY_TAGS})
 
     # Tờ khai chốt AI là cha/mẹ; tấm CCCD của chính người đó chốt SỐ ĐỊNH DANH, NGÀY CẤP, NƠI CẤP.
     sections = _apply_identity_card_facts(sections, documents)
@@ -3116,6 +3134,32 @@ def _reconcile_birth_fields(fields: list[dict]) -> list[dict]:
     ]
 
 
+def _parent_birth_from_context(fields: list[dict], context: str) -> list[dict]:
+    """Năm sinh cha/mẹ agent trích chép từ tờ khai mà trẻ hơn con < 15 năm (chữ viết tay đọc lệch) → lấy theo khối
+    vai đã kiểm thế hệ; khối đó cũng không có năm hợp lý thì bỏ field, không điền con số phi lý."""
+    values = {field.get("name"): field.get("value") for field in fields if field.get("name")}
+    child_year = _year_of(values.get("Subject_BirthDate")) or _role_year(_section(context, "con"))
+    if not child_year:
+        return fields
+    fixes: dict[str, str | None] = {}
+    for prefix, tag in (("Father_", "cha"), ("Mother_", "me")):
+        name = prefix + "BirthDateOrYear"
+        year = _year_of(values.get(name))
+        if not year or child_year - year >= 15:
+            continue
+        section = _section(context, tag)
+        context_year = _role_year(section)
+        fixes[name] = _labeled_value(section, "Ngày sinh") if context_year and child_year - context_year >= 15 else None
+    out = []
+    for field in fields:
+        name = field.get("name")
+        if name not in fixes:
+            out.append(field)
+        elif fixes[name]:
+            out.append({**field, "value": fixes[name]})
+    return out
+
+
 _FOREIGN_ID_SUFFIXES = ("IdNumber", "IdIssueDate", "IdIssuePlace", "BirthDateFromId")
 
 
@@ -3279,7 +3323,7 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     3. Loại bỏ trùng lặp với Subject
     4. Xóa địa chỉ "Đã chết" không hợp lệ từ LLM
     """
-    fields = _reconcile_birth_fields(_drop_foreign_ids(fields, context))
+    fields = _parent_birth_from_context(_reconcile_birth_fields(_drop_foreign_ids(fields, context)), context)
     values = {
         field.get("name"): field.get("value")
         for field in fields

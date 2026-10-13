@@ -41,7 +41,9 @@ FIELDS: list[dict] = [
     {"name": "Con_QueQuan", "desc": "Quê quán người được khai sinh, object {quocGia,tinh,xa,diaChi[,huyen]}."},
     *_person("Me", "MẸ của người được khai sinh"),
     *_person("Cha", "CHA của người được khai sinh"),
-    {"name": "NguoiYeuCau_HoTen", "desc": "Họ tên người yêu cầu ghi ở phần đầu tờ khai đăng ký khai sinh."},
+    {"name": "NguoiYeuCau_HoTen",
+     "desc": "Họ tên người yêu cầu ghi ở phần đầu TỜ KHAI đăng ký khai sinh. Hồ sơ không có tờ khai → BỎ cả nhóm "
+             "NguoiYeuCau_*, không lấy mẹ/cha trên giấy chứng sinh, CCCD, giấy kết hôn."},
     {"name": "NguoiYeuCau_SoDinhDanh", "desc": "Số giấy tờ tùy thân của người yêu cầu trên tờ khai."},
     {"name": "NguoiYeuCau_QuanHe",
      "desc": "Dòng 'Quan hệ với người được khai sinh' trên tờ khai, chép đúng chữ (vd 'Mẹ', 'Bà nội', 'Chính tôi')."},

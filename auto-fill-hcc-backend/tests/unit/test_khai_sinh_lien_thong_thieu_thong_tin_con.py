@@ -108,35 +108,3 @@ def test_khong_co_co_giu_mac_dinh_cha_va_bo_trong_noi_kcb():
     fields = _fields(_run(_HO_SO))
     assert fields["NguoiGiamHo"] == "Thông tin cha"
     assert "CskcbbdMa" not in fields
-
-
-# --- Phường Hải Châu - Đà Nẵng: chỉ chọn giám hộ trên thẻ BHYT = mẹ ---
-from app.pipelines.khai_sinh_lien_thong.process.mapper import HAI_CHAU_BHYT_OPTION
-
-
-@pytest.mark.parametrize("user", [
-    {"tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"},
-    {"tinh": "Đà Nẵng", "xa": "Hải Châu"},
-])
-def test_hai_chau_bat_co_bhyt(user):
-    opts = with_account_process_options({}, user, "khai-sinh-dang-ky")
-    assert opts.get(HAI_CHAU_BHYT_OPTION) is True
-    assert DA_LAT_BHYT_OPTION not in opts
-
-
-@pytest.mark.parametrize("user, procedure", [
-    ({"tinh": "Thành phố Đà Nẵng", "xa": "Phường Liên Chiểu"}, "khai-sinh-dang-ky"),
-    ({"tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"}, "khai-tu-lien-thong"),
-    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}, "khai-sinh-dang-ky"),
-])
-def test_ngoai_hai_chau_khong_bat_co_va_client_khong_tu_bat(user, procedure):
-    opts = with_account_process_options({HAI_CHAU_BHYT_OPTION: True}, user, procedure)
-    assert HAI_CHAU_BHYT_OPTION not in opts
-
-
-def test_hai_chau_chon_me_va_khong_dien_noi_kcb():
-    rows = enrich([{"name": k, "value": v} for k, v in _HO_SO.items()], {HAI_CHAU_BHYT_OPTION: True})
-    by = {f["name"]: f for f in rows}
-    assert by["NguoiGiamHo"]["value"] == "Thông tin mẹ"
-    assert "CskcbbdMa" not in by
-    assert [f["name"] for f in rows].count("NguoiGiamHo") == 1

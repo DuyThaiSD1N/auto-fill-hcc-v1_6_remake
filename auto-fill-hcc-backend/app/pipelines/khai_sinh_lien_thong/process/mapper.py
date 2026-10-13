@@ -5,61 +5,44 @@ import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
-from app.pipelines._shared.hospital_lookup import correct_hospital_name, lookup_hospital
+from app.pipelines._shared.hospital_lookup import lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
 
 # Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
 # "Thông tin cấp thẻ BHYT" luôn chọn giám hộ trên thẻ = mẹ và nơi KCB ban đầu = Bệnh viện Sản - Nhi tỉnh Lâm
-# Đồng. Phường Hải Châu (Đà Nẵng) chỉ chọn giám hộ trên thẻ = mẹ, nơi KCB để cán bộ tự chọn.
-# Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# Đồng. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không
 # tự bật được cho xã khác.
 PROCEDURE_KEY = "khai-sinh-dang-ky"
 DA_LAT_BHYT_OPTION = "daLatBhytDefaults"
-HAI_CHAU_BHYT_OPTION = "haiChauBhytDefaults"
 _DA_LAT_WARDS = {"xuan huong", "lam vien", "cam ly", "lang biang"}
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 # ng-select Nơi KCB: extension gõ chuỗi này vào ô tìm rồi chọn option CHỨA nó.
 DA_LAT_NOI_KCB = "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
 
 
-def _account_area(user: dict | None) -> tuple[str, str]:
-    """(tỉnh, xã) của tài khoản đã bỏ dấu, bỏ tiền tố Xã/Phường/Thị trấn."""
+def is_da_lat_bhyt_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Xuân Hương/Lâm Viên/Cam Ly/Lang Biang - Đà Lạt, tỉnh Lâm Đồng."""
     if not user:
-        return "", ""
+        return False
     tinh = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("tinh"))).strip()
     xa = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("xa"))).strip()
     for prefix in _WARD_PREFIXES:
         if xa.startswith(prefix):
             xa = xa[len(prefix):].strip()
             break
-    return tinh, xa
-
-
-def is_da_lat_bhyt_ward(user: dict | None) -> bool:
-    """True khi tài khoản thuộc phường Xuân Hương/Lâm Viên/Cam Ly/Lang Biang - Đà Lạt, tỉnh Lâm Đồng."""
-    tinh, xa = _account_area(user)
     if xa.endswith(" da lat"):
         xa = xa[: -len(" da lat")].strip()
     return "lam dong" in tinh and xa in _DA_LAT_WARDS
 
 
-def is_hai_chau_bhyt_ward(user: dict | None) -> bool:
-    """True khi tài khoản thuộc Phường Hải Châu, thành phố Đà Nẵng."""
-    tinh, xa = _account_area(user)
-    return "da nang" in tinh and xa == "hai chau"
-
-
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu) do server quyết theo tài khoản."""
+    """Trả bản sao options với cờ mặc định BHYT Đà Lạt do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(DA_LAT_BHYT_OPTION, None)
-    result.pop(HAI_CHAU_BHYT_OPTION, None)
     if procedure == PROCEDURE_KEY and is_da_lat_bhyt_ward(user):
         result[DA_LAT_BHYT_OPTION] = True
-    if procedure == PROCEDURE_KEY and is_hai_chau_bhyt_ward(user):
-        result[HAI_CHAU_BHYT_OPTION] = True
     return result
 
 
@@ -99,6 +82,12 @@ def _ethnicity_for_form(value) -> tuple[str, str]:
 _HOAN_MY_DA_LAT = "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt - Đồi Long Thọ"
 
 
+def _blank_dots(value) -> str:
+    """Bỏ dấu chấm điền chỗ trống của mẫu in ("49..." → "49"); chỉ có chấm → rỗng."""
+    text = re.sub(r"[.…\s]+$", "", str(value or "")).strip()
+    return text if re.search(r"\w", text) else ""
+
+
 def _norm_birth_place(area):
     """Nơi sinh là cơ sở y tế tuyến tỉnh (vd "Bệnh viện đa khoa TỈNH") mà OCR ghi tắt, thiếu tên
     tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>"."""
@@ -123,21 +112,6 @@ def _norm_birth_place(area):
     if not xa and "benh vien da khoa tinh" in combined and "lai chau" in combined:
         out["xa"] = "Tân Phong"
     return out
-
-
-def _correct_birth_facility(area) -> tuple[dict | None, bool]:
-    """Tên cơ sở y tế ở nơi sinh bị OCR đọc sai chính tả (tờ khai viết tay: "Biên Viên Đa Khoa
-    Hoàn mỉ Đà Lạt") → sửa về tên đúng trong bảng bệnh viện, giữ phần địa chỉ phía sau.
-
-    Cùng cách sửa tên tỉnh/xã của area_remap.correct_area(); trả (area, đã_sửa) để tô vàng ô nơi sinh.
-    """
-    if not isinstance(area, dict):
-        return area, False
-    dia = area.get("diaChi") or area.get("dia_chi") or area.get("diachi")
-    fixed = correct_hospital_name(dia)
-    if not fixed:
-        return area, False
-    return {**area, "diaChi": fixed}, True
 
 
 def _province_key(value) -> str:
@@ -178,12 +152,6 @@ def _is_birth_cert_serial(value) -> bool:
     """Số giấy chứng sinh (vd "01327.GCS.12096.25") — KHÔNG phải số giấy CN kết hôn."""
     text = str(value or "").upper()
     return "GCS" in text or "CHUNG SINH" in text or "CHỨNG SINH" in text
-
-
-def _clean_blank_dots(value) -> str:
-    """Bỏ dấu chấm/gạch điền chỗ trống của mẫu in ("Số: 49...", "Quyển số: ....") → "49" / ""."""
-    text = re.sub(r"^[\s.…_\-,:;]+|[\s.…_\-,:;]+$", "", " ".join(str(value or "").split()))
-    return text if re.search(r"\w", text) else ""
 
 
 def _clean_phone(value) -> str:
@@ -347,13 +315,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
     # lẫn tờ khai — has_child = False — chạy tới phần quê quán là nổ UnboundLocalError
     # "cannot access local variable 'is_lam_dong'", công dân chỉ thấy "Xử lý giấy tờ chưa xong".
-    # Tên cơ sở y tế sai chính tả OCR được sửa TRƯỚC khi đối chiếu tỉnh theo bảng bệnh viện.
-    ns_raw = values.get("Tk_NoiSinh")
-    if ns_raw:
-        ns_raw, ns_corrected = _correct_birth_facility(ns_raw)
-        ns_raw = _fix_tk_birth_province(ns_raw, values.get("Gcs_NoiSinh"))
-    else:
-        ns_raw, ns_corrected = _correct_birth_facility(values.get("Gcs_NoiSinh"))
+    ns_raw = _fix_tk_birth_province(values.get("Tk_NoiSinh"), values.get("Gcs_NoiSinh")) or values.get("Gcs_NoiSinh")
     ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
     birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
     is_lam_dong = "lam dong" in birth_province
@@ -424,7 +386,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Bổ sung tinh nếu LLM cũng bỏ trống
                 if not ns_area.get("tinh"):
                     ns_area["tinh"] = bv_info["tinh"]
-        add("NsDiaChi", ns_area, default=ns_corrected)
+        add("NsDiaChi", ns_area)
 
     if has_mother:
         add_name("Me", values.get("ThongTinMe_HoTen"))
@@ -492,17 +454,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.
-    # Dòng kết hôn trên tờ khai mẫu mới để chấm chỗ trống ("Số: 49...", "Quyển số: ....") → bỏ chấm.
-    gcn_so = _clean_blank_dots(values.get("GcnKetHon_So"))
-    if gcn_so and _is_birth_cert_serial(gcn_so):
-        gcn_so = None
-    gcn_quyen_so = _clean_blank_dots(values.get("GcnKetHon_QuyenSo"))
-    gcn_noi_cap = _clean_blank_dots(values.get("GcnKetHon_NoiCap"))
-    if any([gcn_so, gcn_quyen_so, values.get("GcnKetHon_NgayCap"), gcn_noi_cap]):
-        add("GiayCNKHSo", gcn_so)
-        add("GiayCNKHQuyenSo", gcn_quyen_so)
-        add("GiayCNKHNgayCap", values.get("GcnKetHon_NgayCap"))
-        add("GiayCNKHNoiCap", gcn_noi_cap)
+    # Giấy kết hôn thật thắng dòng người dân chép lên tờ khai; ô giấy thật không đọc được thì tờ khai bù.
+    gcn = {key: _blank_dots(values.get(f"GcnKetHon_{key}")) or _blank_dots(values.get(f"Tk_GcnKetHon_{key}"))
+           for key in ("So", "QuyenSo", "NgayCap", "NoiCap")}
+    if gcn["So"] and _is_birth_cert_serial(gcn["So"]):
+        gcn["So"] = ""
+    if any(gcn.values()):
+        add("GiayCNKHSo", gcn["So"])
+        add("GiayCNKHQuyenSo", gcn["QuyenSo"])
+        add("GiayCNKHNgayCap", gcn["NgayCap"])
+        add("GiayCNKHNoiCap", gcn["NoiCap"])
 
     # Quan hệ người yêu cầu với người được khai sinh. Danh tính người yêu cầu (tên + CCCD) do
     # cổng tự đổ từ tài khoản đăng nhập vào ô readonly trên form → chỉ extension đọc được. Ta
@@ -576,9 +537,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if options.get(DA_LAT_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
         add("CskcbbdMa", DA_LAT_NOI_KCB, default=True)
-    # Phường Hải Châu - Đà Nẵng: chỉ giám hộ trên thẻ BHYT = mẹ.
-    if options.get(HAI_CHAU_BHYT_OPTION):
-        add("NguoiGiamHo", "Thông tin mẹ", default=True)
 
     for default in STATIC_DEFAULTS:
         if default["name"] not in seen:

@@ -223,7 +223,7 @@ async def test_happy_path_den_ask_doc_method():
 
     r = await _accept_consent(conv)
     assert conv["state"] == "ask_doc_method"
-    assert "Đã ghi nhận sự đồng ý" in r.display_md and "TLND-" in r.display_md
+    assert "Đã ghi nhận đồng ý" in r.display_md and "TLND-" in r.display_md
     assert any(c["kind"] == "doc_options" for c in r.cards)
     assert "Căn cước công dân" in r.display_md  # danh sách giấy tờ sinh từ registry
 
@@ -426,7 +426,7 @@ async def test_guide_login_hai_nhanh_theo_trang():
 
     r = await _turn(conv, '__event:page_status:{"loginPage": true, "loggedIn": false}')
     # 1 CÂU duy nhất: xác nhận cơ quan + kịch bản VNeID/QR; đọc xong FE thu gọn (collapse_after_tts).
-    assert "đã chọn cơ quan" in r.display_md and "VNeID" in r.display_md and "Quét QR" in r.display_md
+    assert "Đã chọn **" in r.display_md and "VNeID" in r.display_md and "Quét QR" in r.display_md
     assert any(a["type"] == "collapse_after_tts" for a in r.actions)
 
     r = await _turn(conv, '__event:page_status:{"formKind": "angular", "loggedIn": true}')
@@ -471,7 +471,7 @@ async def test_nut_kiem_tra_trang_khong_duoc_bo_qua_dang_nhap():
         '__event:page_status:{"loginPage":true,"loggedIn":false,"manualCheck":true}',
     )
     assert conv["state"] == "guide_login"
-    assert "vẫn đang ở bước **đăng nhập VNeID**" in still_login.display_md
+    assert "vẫn ở bước **đăng nhập VNeID**" in still_login.display_md
 
     not_ready = await _turn(
         conv,
@@ -496,7 +496,7 @@ async def test_guide_login_nhac_passcode_mot_lan_moi_luot_modal():
     event = ('__event:page_status:{"loginPage":true,"loggedIn":false,'
              '"vneidPasscodePrompt":true}')
     r = await _turn(conv, event)
-    expected = "Công dân vui lòng nhập **passcode VNeID gồm 6 chữ số** vào màn hình, sau đó bấm **Xác nhận** để tiếp tục ạ."
+    expected = "Công dân nhập **passcode VNeID** (6 số) → bấm **Xác nhận** ạ."
     assert r.display_md == expected
     assert r.tts_text == vi.VNEID_PASSCODE_GUIDE["tts"]
     assert r.actions == []
@@ -523,7 +523,7 @@ async def test_guide_login_huong_dan_ma_xac_nhan_va_chia_se_du_lieu_dung_modal()
     login_code = ('__event:page_status:{"loginPage":true,"loggedIn":false,'
                   '"vneidLoginCodePrompt":true}')
     r = await _turn(conv, login_code)
-    assert "mã xác nhận đăng nhập" in r.display_md
+    assert "**mã xác nhận**" in r.display_md
     assert "Xác nhận" in r.display_md
     assert r.actions == []
     duplicate = await _turn(conv, login_code)
@@ -532,10 +532,9 @@ async def test_guide_login_huong_dan_ma_xac_nhan_va_chia_se_du_lieu_dung_modal()
     sharing = ('__event:page_status:{"loginPage":true,"loggedIn":true,'
                '"vneidDataSharingPrompt":true}')
     r = await _turn(conv, sharing)
-    assert "Tôi đã đọc và hiểu rõ nội dung mục đích" in r.display_md
-    assert "Quyền, nghĩa vụ của chủ thể dữ liệu" in r.display_md
+    assert "Tôi đã đọc và hiểu rõ" in r.display_md
     assert "Xác nhận chia sẻ" in r.display_md
-    assert "passcode 6 số của ứng dụng VNeID" in r.display_md
+    assert "**passcode VNeID** (6 số)" in r.display_md
     assert r.tts_text == vi.VNEID_DATA_SHARING_GUIDE["tts"]
     duplicate = await _turn(conv, sharing)
     assert duplicate.display_md == "" and duplicate.tts_text == ""
@@ -543,7 +542,7 @@ async def test_guide_login_huong_dan_ma_xac_nhan_va_chia_se_du_lieu_dung_modal()
     passcode = ('__event:page_status:{"loginPage":true,"loggedIn":false,'
                 '"vneidPasscodePrompt":true}')
     r = await _turn(conv, passcode)
-    assert "passcode VNeID gồm 6 chữ số" in r.display_md
+    assert "**passcode VNeID** (6 số)" in r.display_md
 
 
 @pytest.mark.asyncio
@@ -836,7 +835,7 @@ async def test_ket_hon_owner_roi_ke_khai_roi_tu_dinh_kem(monkeypatch):
     await _turn(conv, "scan tại quầy")
     r = await _turn(conv, "__event:docs_complete")
     assert conv["state"] == "owner_filling"
-    assert "đúng chủ hồ sơ" in r.display_md
+    assert "tìm thông tin chủ hồ sơ" in r.display_md
 
     conv["owner_fields"] = [{
         "key": "issueDate", "label": "Ngày cấp", "comp": "owner-date",
@@ -852,8 +851,8 @@ async def test_ket_hon_owner_roi_ke_khai_roi_tu_dinh_kem(monkeypatch):
     monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
     r = await _turn(conv, '__event:page_status:{"wizardStep":2,"loggedIn":true}')
     assert conv["state"] == "filling" and len(process_calls) == 1
-    assert r.display_md == "Bây giờ em sẽ **điền thông tin kê khai** giúp công dân nhé."
-    assert r.tts_text == "Bây giờ em sẽ điền thông tin kê khai giúp công dân nhé."
+    assert r.display_md == "Giờ em **điền tờ khai** giúp công dân ạ."
+    assert r.tts_text == "Giờ em điền tờ khai ạ."
 
     conv["fields"] = [{"name": "HoTenBenNam", "comp": "x-input", "value": "VŨ ĐÌNH THIẾT"}]
     await _turn(conv, "__event:fields_ready")
@@ -898,7 +897,7 @@ async def test_owner_sang_ke_khai_bang_mau_dien_tu_khi_stepper_khong_doc_duoc(mo
     assert conv["state"] == "filling"
     assert conv["docs_target"] == "declaration"
     assert len(process_calls) == 1
-    assert "điền thông tin kê khai" in r.display_md
+    assert "**điền tờ khai**" in r.display_md
 
 
 @pytest.mark.asyncio
@@ -922,9 +921,9 @@ async def test_owner_fill_report_noi_ro_ten_truong_con_thieu():
         '"keptLabels":["Ngày cấp"],"notFound":["Số điện thoại"]}',
     )
     assert r.display_md == (
-        "✅ Em đã điền xong **ngày cấp, nơi cấp và địa chỉ**.\n\n"
+        "✓ Đã điền **ngày cấp, nơi cấp và địa chỉ**.\n\n"
         "Còn thiếu **số điện thoại**, công dân vui lòng tự điền giúp em.\n\n"
-        "Công dân kiểm tra rồi bấm **Bước tiếp theo**."
+        "Công dân kiểm tra → bấm **Bước tiếp theo** ạ."
     )
     assert "2 mục" not in r.display_md and "1 mục" not in r.display_md
 
@@ -1104,7 +1103,7 @@ async def test_attach_dung_trang_moi_dinh():
     conv["attach_plan"] = [{"fileIndex": 0, "documentName": "CCCD", "componentName": "CCCD"}]
 
     r = await _turn(conv, '__event:attach_blocked:{"wizardStep": 2}')
-    assert "Kê khai thông tin" in r.display_md and conv["state"] == "attaching"
+    assert "bước **Kê khai**" in r.display_md and conv["state"] == "attaching"
 
     r = await _turn(conv, '__event:page_status:{"wizardStep": 2}')
     assert r.display_md == "" and not r.actions  # chưa tới bước đính → im lặng chờ
@@ -1170,7 +1169,7 @@ async def test_bo_sung_giay_to_mo_lai_cung_phien_va_lap_plan_toan_bo(monkeypatch
         "send": "__action:docs_done",
         "solid": True,
     }]
-    assert "HS-OLD" in r.display_md
+    assert "mở lại danh sách giấy tờ" in r.display_md
 
     choose = await _turn(conv, "scan tại quầy")
     assert conv["state"] == "collecting_docs"
@@ -1565,11 +1564,11 @@ async def test_done_flow_waits_for_logout_choice_and_supports_both_branches():
     conv["state"] = "done"
 
     r = await _turn(conv, "__event:submitted")
-    assert "hoàn thành việc nộp hồ sơ" in r.display_md
+    assert "Đã nộp hồ sơ" in r.display_md
     assert "2 phút" in r.display_md
-    assert "đăng xuất tài khoản" in r.display_md
-    assert "đăng xuất tài khoản" in r.tts_text
-    assert "sau hai phút" in r.tts_text
+    assert "đăng xuất VNeID" in r.display_md
+    assert "đăng xuất vi en ai đi" in r.tts_text
+    assert "Sau hai phút" in r.tts_text
     assert r.cards == []
     assert r.chips == [
         {"label": "Có, hãy đăng xuất", "send": "__action:logout_citizen", "solid": True},
@@ -1627,7 +1626,7 @@ async def test_lay_du_lieu_da_luu():
     r = await _turn(conv, "0912345678")
     assert conv["state"] == "filling"                       # profile áp xong → pipeline chạy
     assert conv["upload_session_id"] == "HS-PROFILE"
-    assert "không phải chụp lại" in r.display_md
+    assert "không cần chụp lại" in r.display_md
 
     # SĐT không có profile → báo + đưa lại lựa chọn
     conv2 = _conv()
@@ -1789,9 +1788,9 @@ async def test_bat_dau_tu_ke_khai_tu_dong_noi_tiep_dinh_kem_cung_phien(monkeypat
     assert any(chip.get("send") == "__action:refill" for chip in r.chips)
     assert any(chip.get("send") == "__action:add_documents" for chip in r.chips)
     assert "Thành phần hồ sơ" in r.display_md
-    assert "khi trang mở, em sẽ tự đính kèm giấy tờ" in r.display_md
+    assert "em tự đính kèm" in r.display_md
     assert "bấm **Đính kèm giấy tờ**" not in r.display_md
-    assert "Khi trang mở, em sẽ tự đính kèm giấy tờ" in r.tts_text
+    assert "em sẽ tự đính kèm" in r.tts_text
     assert calls == [("process", "HS-DIRECT-DECLARATION")]
 
     r = await _turn(
@@ -1848,7 +1847,7 @@ async def test_dien_lai_thong_tin_chay_lai_pipeline_backend(state, monkeypatch):
     assert conv["pipeline_status"] == "running"
     assert conv["fill_report"] == {}
     assert r.actions == []  # không phát lại fields cache ngay trong lượt bấm
-    assert "đọc lại giấy tờ" in r.display_md
+    assert "**điền lại tờ khai**" in r.display_md
     assert saved == [("filling", "running")]
     assert calls == [(
         conv["_id"], "HS-REFILL", "ket-hon",
@@ -1884,7 +1883,7 @@ async def test_dien_lai_thong_tin_chan_khi_khong_o_trang_ke_khai(monkeypatch):
     r = await flow.handle_turn(conv, Intent("action", "refill"))
 
     assert conv["state"] == "attaching"
-    assert "không ở trang **Kê khai thông tin**" in r.display_md
+    assert "chưa ở trang **Kê khai**" in r.display_md
     assert calls == []
     assert saved == []
 
@@ -1913,8 +1912,8 @@ async def test_intent_dinh_kem_khi_con_o_ke_khai_nhac_ra_soat_va_chuyen_buoc(
     r = await flow.handle_turn(conv, Intent("action", "request_attach"))
 
     assert conv["state"] == expected_state
-    assert "Kê khai thông tin" in r.display_md
-    assert "rà soát lại form" in r.display_md
+    assert "trang **Kê khai**" in r.display_md
+    assert "xem lại" in r.display_md
     assert "Thành phần hồ sơ" in r.display_md
     assert "tự đính kèm" in r.display_md
 
@@ -1933,9 +1932,9 @@ async def test_unknown_khi_cho_chuyen_trang_khong_bao_planner_dang_chay():
 
     r = await flow.handle_turn(conv, Intent("unknown"))
 
-    assert "Kê khai thông tin" in r.display_md
+    assert "trang **Kê khai**" in r.display_md
     assert "Thành phần hồ sơ" in r.display_md
-    assert "lập kế hoạch đính kèm" not in r.display_md
+    assert "xếp giấy tờ" not in r.display_md
     assert conv["attachment_plan_started"] is False
 
 
@@ -1952,7 +1951,7 @@ async def test_unknown_chi_bao_planner_khi_pipeline_thuc_su_running():
 
     r = await flow.handle_turn(conv, Intent("unknown"))
 
-    assert "lập kế hoạch đính kèm" in r.display_md
+    assert "xếp giấy tờ" in r.display_md
 
 
 @pytest.mark.asyncio
@@ -1987,8 +1986,8 @@ async def test_request_attach_dung_live_page_context_khong_dung_target_ke_khai_c
     assert conv["pipeline_status"] == "running"
     assert conv["attachment_plan_started"] is True
     assert spawned == ["attach-job"]
-    assert "lập kế hoạch đính kèm" in r.display_md
-    assert "Kê khai thông tin" not in r.display_md
+    assert "xếp giấy tờ" in r.display_md
+    assert "trang **Kê khai**" not in r.display_md
 
 
 @pytest.mark.asyncio
@@ -2270,7 +2269,7 @@ async def test_chot_giay_to_khong_doan_owner_khi_context_moi_khong_nhan_dien_duo
     assert conv["docs_target"] == ""
     assert conv["owner_phase"] is False
     assert conv["pipeline_status"] == "waiting_page_target"
-    assert "chưa xác định" in r.display_md.lower()
+    assert "chưa biết trang đang ở bước nào" in r.display_md.lower()
 
 
 @pytest.mark.asyncio

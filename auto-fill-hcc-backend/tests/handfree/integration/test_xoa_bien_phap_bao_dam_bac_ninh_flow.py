@@ -93,10 +93,10 @@ async def test_attach_report_tom_tat_hai_buoc():
     r = await flow.handle_turn(
         conv, intents.Intent("action", "attach_report", {"attached": 2, "errors": []}))
     assert conv["state"] == "done" and conv["attach_done"] is True
-    assert "Tóm tắt" in r.display_md
+    assert "📋 **Đơn đăng ký**" in r.display_md
     # Lời đọc tạm bỏ con số (khối TTS-TẠM trong script_vi) — con số nằm ở phần hiển thị.
-    assert "điền 9 ô" in r.display_md and "2 tệp" in r.display_md
-    assert "Tóm tắt lại" in r.tts_text
+    assert "9 ô ✓" in r.display_md and "2 tệp" in r.display_md
+    assert "điền đơn và đính kèm xong" in r.tts_text
 
 
 def test_upload_classifier_fallback_dung_o():

@@ -44,7 +44,7 @@ async def test_lan_hai_doi_sang_duong_thoat_sua_giay_to():
     assert conv["attach_fail_streak"] == 2
     # Nút sửa giấy tờ đứng TRƯỚC: đó mới là đường lập lại kế hoạch; bấm lại chỉ phát lại kế hoạch cũ.
     assert [chip["send"] for chip in r.chips] == ["__action:add_documents", "__event:attach_ready"]
-    assert "Bấm lại cũng ra kết quả cũ" in r.display_md
+    assert "Bấm lại cũng không đổi kết quả" in r.display_md
 
 
 @pytest.mark.asyncio

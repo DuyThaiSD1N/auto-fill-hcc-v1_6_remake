@@ -43,7 +43,7 @@ async def test_bootstrap_pha_1_dung_o_man_tra_cuu():
     action = r.actions[0]
     assert action["type"] == "prepare_business_registration"
     assert action["workflow"] == "change" and action["stop_at"] == "search-business"
-    assert "tìm kiếm hộ kinh" in r.display_md.lower()
+    assert "thay đổi hộ kinh doanh" in r.display_md.lower()
     # Lượt page_status sau (đang bootstrap) không phát trùng action.
     r2 = await flow.handle_turn(conv, intents.Intent(
         "event", "page_status", {"businessHost": True, "businessStage": "select-registration"}))
@@ -117,7 +117,7 @@ def test_ready_action_mang_workflow_va_business_flow():
     action = r.actions[0]
     assert action["workflow"] == "change"
     assert action["businessFlow"]["pageOrder"] == ["nguoi-nop-ho-so"]
-    assert "tra cứu hộ kinh doanh" in r.display_md.lower()
+    assert "đang tra cứu" in r.display_md.lower()
 
 
 def test_upload_classifier_da_dang_ky():

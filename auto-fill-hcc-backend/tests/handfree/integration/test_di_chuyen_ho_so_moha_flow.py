@@ -57,7 +57,7 @@ async def test_buoc_b_dien_luon_khong_hoi_truong_hop():
     # Đúng câu đã chốt: nêu UBND tỉnh + Sở Nội vụ + trang Thông tin hồ sơ, không nhắc "trường hợp".
     assert "UBND Tỉnh Cao Bằng" in r.display_md
     assert "Sở Nội vụ" in r.display_md
-    assert "Thông tin hồ sơ" in r.display_md
+    assert "**Đồng ý và tiếp tục**" in r.display_md
     assert "trường hợp" not in r.display_md.lower()
 
 

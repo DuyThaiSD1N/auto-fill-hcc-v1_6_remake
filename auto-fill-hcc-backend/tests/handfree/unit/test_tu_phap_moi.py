@@ -49,7 +49,7 @@ def test_extension_cu_bao_cap_nhat_khong_dan_vao_trang():
     reply = flow._start_guide_login(conv)
     assert conv["state"] == "confirm_procedure"
     assert not any(a.get("type") == "navigate" for a in reply.actions)
-    assert "mẫu nộp hồ sơ mới" in reply.display_md
+    assert "**mẫu mới**" in reply.display_md
 
 
 def test_extension_moi_van_chon_co_quan_nhu_cu():
@@ -228,15 +228,15 @@ async def test_auto_dien_xong_ke_hoach_san_thi_dinh_luon(spawned):
     assert reply.actions and reply.actions[0]["type"] == "attach_plan"
     # Cùng bong bóng: báo điền + kế hoạch đính kèm (tệp nào → dòng nào).
     assert "Em điền được **9 ô**" in reply.display_md
-    assert "Kế hoạch đính kèm đã xong" in reply.display_md and "gbt.pdf" in reply.display_md
-    assert "Kế hoạch đính kèm xong" in reply.tts_text
+    assert "Đã xếp xong" in reply.display_md and "gbt.pdf" in reply.display_md
+    assert "đính từng tệp" in reply.tts_text
     assert "__action:tpm_attach" not in _sends(reply)
 
 
 async def test_auto_dien_xong_ke_hoach_chua_xong_thi_bao_roi_tu_dinh_khi_ve(spawned):
     conv = _auto("filling", pipeline_status="running", attachment_plan_started=True)
     reply = await _turn(conv, "action", "fill_report", {"filled": 9, "notFound": []})
-    assert not reply.actions and "ngay khi chuẩn bị xong" in reply.display_md
+    assert not reply.actions and "Chuẩn bị xong em đính kèm ngay" in reply.display_md
     assert spawned == []  # kế hoạch đang chạy từ lúc dữ liệu về — không lập lại
     conv.update(pipeline_status="attach_ready", attach_plan=[{"fileName": "gbt.pdf"}])
     reply = await _turn(conv, "event", "attach_ready")

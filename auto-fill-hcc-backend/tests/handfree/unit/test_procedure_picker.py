@@ -170,7 +170,7 @@ def test_mo_ho_thi_hoi_lai_kem_nut_goi_y_va_luu_goi_y():
     conv = _conv()
     r = flow._procedure_unclear(conv, ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi", "cap-ban-sao-van-bang-so-goc"])
     assert conv["procedure_candidates"] == ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]  # khóa tỉnh bị bỏ
-    assert "chưa chắc" in r.display_md and "mai táng" in r.display_md
+    assert "thủ tục nào" in r.display_md and "mai táng" in r.display_md
     assert [c["send"] for c in r.chips] == [
         '__action:pick_procedure:{"key": "ho-tro-mai-tang"}',
         '__action:pick_procedure:{"key": "ho-tro-mai-tang-huu-tri-xa-hoi"}',

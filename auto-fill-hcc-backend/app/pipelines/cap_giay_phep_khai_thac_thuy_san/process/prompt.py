@@ -23,7 +23,9 @@ sát QLHC về TTXH / Bộ Công an). ThuongTru tách object {quocGia,tinh,xa,di
 nhà/khóm/ấp/thôn).
 
 ⚠ NGÀY CẤP CCCD (NguoiDeNghi_NgayCap): ưu tiên lấy 'Ngày cấp'/'Ngày cấp CCCD' ghi trên Đơn Mẫu 04/05.KT.
-→ LẤY TỪ Đơn/Tờ khai, KHÔNG điền ngày khác, KHÔNG bịa.
+Đơn để trống mục này → lấy ở MẶT SAU thẻ CCCD: dòng 'Ngày, tháng, năm / Date, month, year' ngay trên chữ ký
+Cục trưởng (đó là ngày cấp thẻ); thẻ CĂN CƯỚC mẫu mới: dòng 'Ngày cấp / Date of issue'. KHÔNG lấy ngày sinh,
+ngày 'Có giá trị đến', ngày trên Giấy phép. Không có nguồn nào → BỎ TRỐNG, KHÔNG bịa.
 
 ⚠ NGÀY SINH (NguoiDeNghi_NgaySinh): CHỈ lấy từ CCCD (dòng 'Ngày sinh/Date of birth'). Đơn Mẫu 04/05.KT
 KHÔNG có mục ngày sinh → nếu hồ sơ chỉ có Đơn (không có ảnh CCCD) thì BỎ TRỐNG ngày sinh. TUYỆT ĐỐI KHÔNG

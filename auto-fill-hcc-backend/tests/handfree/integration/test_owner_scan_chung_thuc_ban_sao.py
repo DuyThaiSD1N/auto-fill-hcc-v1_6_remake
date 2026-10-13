@@ -347,7 +347,7 @@ def test_cau_scan_o_buoc_chu_ho_so_khong_noi_la_khong_phan_loai():
     proc_obj = flow.get_procedure(KEY)
     owner = flow._scan_pick_template(_conv(docs_target="owner"), proc_obj)
     assert "không phân loại" not in owner["md"]
-    assert "tự xếp đúng loại" in owner["md"]
+    assert "xếp loại" in owner["md"]
     attach = flow._scan_pick_template(_conv(docs_target="attachment"), proc_obj)
     assert attach is flow.vi.SCAN_PICK_ATTACH, "bước đính kèm giữ nguyên câu cũ"
 
@@ -524,7 +524,7 @@ async def test_the_can_cuoc_da_quet_duoc_chuyen_sang_giay_can_chung_thuc(monkeyp
     r = await _jump_to_attach(conv)
     assert moved == [("sid", "cccd_chu_ho_so", "khac")]
     # Nói rõ để công dân tự bỏ ra nếu không muốn chứng thực thẻ đó.
-    assert "Căn cước công dân" in r.display_md and "xoá" in r.display_md
+    assert "Căn cước" in r.display_md and "xoá" in r.display_md
 
 
 async def test_khong_co_the_can_cuoc_thi_khong_noi_thua(monkeypatch):

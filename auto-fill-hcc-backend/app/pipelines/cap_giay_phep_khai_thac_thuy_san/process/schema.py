@@ -16,8 +16,10 @@ _PERSON_FIELDS = [
     ("SoDinhDanh", "Số CCCD/CMND/căn cước/định danh cá nhân {who}. Đọc CCCD (mặt trước/MRZ) hoặc Đơn Mẫu "
         "04/05.KT mục 'Mã định danh/Số CCCD'. Chỉ chữ số. Ưu tiên số 12 chữ số (CCCD/căn cước) hơn số 9 "
         "chữ số (CMND) nếu có cả hai."),
-    ("NgayCap", "Ngày cấp CCCD/CMND {who}, dd/mm/yyyy. Lấy thông tin 'Ngày cấp' ghi trên Đơn Mẫu 04/05.KT (mục "
-        "'Ngày cấp'/'Ngày cấp CCCD')."),
+    ("NgayCap", "Ngày cấp CCCD/CMND {who}, dd/mm/yyyy. Ưu tiên 'Ngày cấp' ghi trên Đơn Mẫu 04/05.KT (mục "
+        "'Ngày cấp'/'Ngày cấp CCCD'); Đơn để trống → mặt sau thẻ CCCD, dòng 'Ngày, tháng, năm / Date, month, "
+        "year' trên chữ ký Cục trưởng (thẻ căn cước mới: 'Ngày cấp / Date of issue'). KHÔNG lấy ngày sinh / "
+        "'Có giá trị đến'."),
     ("NoiCap", 'Nơi cấp/cơ quan cấp giấy tờ {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ '
         'XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Đơn Mẫu 04/05.KT (mục Cơ quan cấp).'),

@@ -174,3 +174,20 @@ def test_attach_rows():
         ROW_CHUNG_SINH["slotName"], ROWS["authorization"]["slotName"], ROWS["surrogacy_doc"]["slotName"],
         ROWS["abandoned_record"]["slotName"], ROW_CHUNG_SINH["slotName"],
     ]
+
+
+def test_giay_ket_hon_ghi_cmnd_cu_cua_cha_van_nhan_nguoi_nop_la_cha():
+    # Giấy kết hôn ghi CMND 9 số của chồng; tài khoản là số định danh 12 số → khác loại, không phải hai người.
+    values = {"Cha_HoTen": "Trần Văn D", "Cha_SoGiayTo": "025123456", "Me_HoTen": "Lê Thị E",
+              "Me_SoDinhDanh": "001197000005"}
+    out, warnings = _enrich(values, _context(relation="Khác"),
+                            {"applicantFullname": "TRẦN VĂN D", "applicantIdentityNumber": "001084000004"})
+    relation = next(f for f in out if f["name"] == "citizenQuanhevoinguoiduockhaisinh")
+    assert relation["value"] == "Cha" and not any("không phải cha/mẹ" in w for w in warnings)
+
+
+def test_so_cung_loai_khac_nhau_thi_van_la_nguoi_khac_du_trung_ten():
+    values = {"Cha_HoTen": "Trần Văn D", "Cha_SoDinhDanh": "001084999999", "Me_HoTen": "Lê Thị E"}
+    out, _ = _enrich(values, _context(relation="Khác"),
+                     {"applicantFullname": "TRẦN VĂN D", "applicantIdentityNumber": "001084000004"})
+    assert next(f for f in out if f["name"] == "citizenQuanhevoinguoiduockhaisinh")["value"] == "Khác"
