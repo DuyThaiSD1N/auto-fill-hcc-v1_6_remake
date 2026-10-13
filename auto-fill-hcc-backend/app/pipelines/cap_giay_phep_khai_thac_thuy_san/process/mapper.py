@@ -173,8 +173,35 @@ def _full_address(area: dict | None) -> str | None:
     return joined or None
 
 
+_CCCD_PARTS = ("HoTen", "SoDinhDanh", "NgaySinh", "GioiTinh", "NgayCap", "NoiCap", "ThuongTru")
+
+
+def _card_for(values: dict, identity: str | None, name: str | None = None) -> dict:
+    """Thẻ CCCD vật lý (Cccd1_*/Cccd2_*) trùng SỐ định danh; chỉ khi không có số mới so họ tên."""
+    for prefix in ("Cccd1", "Cccd2"):
+        card_id = _identity(values.get(f"{prefix}_SoDinhDanh"))
+        card_name = _text(values.get(f"{prefix}_HoTen"))
+        if (identity and card_id == identity) or (
+            not identity and name and card_name and _fold(card_name) == _fold(name)
+        ):
+            return {part: values.get(f"{prefix}_{part}") for part in _CCCD_PARTS}
+    return {}
+
+
+def _fill_from_card(values: dict, group: str, card: dict) -> None:
+    """LLM tách vai hay bỏ sót ô (vd nơi thường trú người nộp) dù thẻ có → bù ô trống từ đúng thẻ đó."""
+    for part, value in card.items():
+        if values.get(f"{group}_{part}") in (None, "", {}, []) and value not in (None, "", {}, []):
+            values[f"{group}_{part}"] = value
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
+    _fill_from_card(
+        values,
+        "NguoiDeNghi",
+        _card_for(values, _identity(values.get("NguoiDeNghi_SoDinhDanh")), _text(values.get("NguoiDeNghi_HoTen"))),
+    )
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[tuple[str, int | None]] = set()
@@ -231,6 +258,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("ownerFullname") or ctx.get("fullname"))
     ctx_identity = _identity(ctx.get("applicantIdentityNumber") or ctx.get("ownerIdentityNumber") or ctx.get("identityNumber"))
 
+    # CCCD người nộp: thẻ trùng SỐ CCCD tài khoản cổng (Phần I), không có thì trùng số LLM ghi ở NguoiNop_*.
+    # Thẻ của chính chủ tàu thì không phải người nộp thay.
+    nop_card = {}
+    for nop_id in (ctx_identity, _identity(values.get("NguoiNop_SoDinhDanh"))):
+        if nop_id and nop_id != identity:
+            nop_card = _card_for(values, nop_id)
+            if nop_card:
+                break
+    llm_nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
+    if nop_card and llm_nop_id and llm_nop_id != _identity(nop_card.get("SoDinhDanh")):
+        # LLM gán NguoiNop_* cho người khác thẻ đã khớp số CCCD tài khoản → bỏ, lấy theo thẻ.
+        for part in _CCCD_PARTS:
+            values.pop(f"NguoiNop_{part}", None)
+    _fill_from_card(values, "NguoiNop", nop_card)
+
     nop_ext_name = _text(values.get("NguoiNop_HoTen"))
     nop_ext_id = _identity(values.get("NguoiNop_SoDinhDanh"))
 
@@ -274,6 +316,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
         add("data[email]", _text(values.get("NguoiNop_Email")))
         add("data[isOwnerDossierCheck]", False)
+        if not _area(values.get("NguoiNop_ThuongTru")):
+            warnings.append("Hồ sơ không có CCCD của người nộp (hoặc không đọc được nơi thường trú) — mục 'Thông "
+                            "tin người nộp hồ sơ' chưa có địa chỉ, vui lòng kiểm tra/bổ sung tay.")
 
         # Phần II cổng đổ sẵn theo TÀI KHOẢN (người nộp thay) → ô nào giấy tờ chủ tàu không có thì xoá trắng.
         put("data[ownerFullname]", name)

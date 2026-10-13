@@ -3,7 +3,8 @@ Form.io). Field-key nhân thân data[...] TRÙNG KHÍT #97/#92.
 
 Form CHỈ có nhân thân Phần I/II — thông tin tàu nằm trong file Đơn Mẫu 04/05.KT đính kèm, KHÔNG nhập form.
 
-Nhóm field: NguoiDeNghi_* (chủ tàu = chủ hồ sơ) / NguoiNop_* (tài khoản nộp — chỉ khi nộp thay).
+Nhóm field: NguoiDeNghi_* (chủ tàu = chủ hồ sơ) / NguoiNop_* (tài khoản nộp — chỉ khi nộp thay) /
+Cccd1_*, Cccd2_* (thẻ CCCD vật lý chưa gán vai — mapper so số định danh để bù hai nhóm trên).
 """
 
 _PERSON_FIELDS = [
@@ -45,6 +46,23 @@ for _name, _tmpl in _PERSON_FIELDS:
         "name": f"NguoiNop_{_name}",
         "desc": _tmpl.format(who="NGƯỜI NỘP (chỉ khi nộp thay & có CCCD người nộp)", src="CCCD của NGƯỜI NỘP"),
     })
+
+# --- Các thẻ CCCD vật lý trong hồ sơ, CHƯA gán vai (như xoa_dang_ky_tau_ca). LLM hay bỏ sót nơi thường trú
+# của người nộp khi phải tự tách vai → mapper so SỐ CCCD với tài khoản cổng/chủ tàu để bù NguoiNop_*/NguoiDeNghi_*.
+_CCCD_FIELDS = [
+    ("HoTen", "Họ tên trên thẻ CCCD/căn cước vật lý thứ {n}; đối chiếu dòng MRZ cuối (HO<<TEN<DEM)."),
+    ("SoDinhDanh", "Số định danh trên thẻ thứ {n}; chỉ chữ số, có thể đọc từ MRZ mặt sau."),
+    ("NgaySinh", "Ngày sinh trên thẻ thứ {n}, dd/mm/yyyy."),
+    ("GioiTinh", 'Giới tính trên thẻ thứ {n}: "Nam" hoặc "Nữ".'),
+    ("NgayCap", "Ngày cấp ở mặt sau thẻ thứ {n}, dd/mm/yyyy. KHÔNG lấy ngày hết hạn hoặc ngày sinh; mặt sau "
+        "không có trong hồ sơ thì bỏ."),
+    ("NoiCap", "Cơ quan cấp ở mặt sau thẻ thứ {n} (Cục Cảnh sát quản lý hành chính về trật tự xã hội / Bộ Công an)."),
+    ("ThuongTru", "Nơi thường trú/Place of residence trên thẻ thứ {n}, object {{quocGia,tinh,xa,diaChi}}. "
+        "KHÔNG lấy quê quán. tinh=CHỈ TÊN tỉnh/thành phố, xa=phường/xã, diaChi=số nhà/thôn/tổ dân phố."),
+]
+for _n in (1, 2):
+    for _name, _tmpl in _CCCD_FIELDS:
+        FIELDS.append({"name": f"Cccd{_n}_{_name}", "desc": _tmpl.format(n="nhất" if _n == 1 else "hai")})
 
 # --- Nội dung Đơn đề nghị (Phần III) — chung cho cả 2 trường hợp ---
 FIELDS += [
@@ -91,7 +109,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _p in ("NguoiDeNghi_", "NguoiNop_"):
+for _p in ("NguoiDeNghi_", "NguoiNop_", "Cccd1_", "Cccd2_"):
     COMPACT_COMP_BY_NAME[f"{_p}NgaySinh"] = "x-date"
     COMPACT_COMP_BY_NAME[f"{_p}NgayCap"] = "x-date"
     COMPACT_COMP_BY_NAME[f"{_p}ThuongTru"] = "x-select-area"

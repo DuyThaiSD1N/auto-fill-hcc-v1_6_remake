@@ -16,6 +16,12 @@ HAI vai — tách RIÊNG:
 
 ⚠ KHÔNG lấy CCCD người nộp thay làm NguoiDeNghi_* — giấy phép cấp cho chủ tàu đứng tên Đơn.
 
+THẺ CCCD VẬT LÝ (Cccd1_*/Cccd2_*): ngoài việc tách vai ở trên, chép riêng TỪNG thẻ CCCD/căn cước thực sự có
+trong hồ sơ (ảnh/trang thẻ) vào Cccd1_* rồi Cccd2_* — KHÔNG tự gán vai, thứ tự không mang ý nghĩa, Python so
+số định danh để biết thẻ nào của người nộp/chủ tàu. Gộp mặt trước/sau cùng người theo số/MRZ. Mỗi thẻ trích
+đủ HoTen, SoDinhDanh, NgaySinh, GioiTinh, NgayCap, NoiCap, ThuongTru nếu thẻ có. Không lấy số CCCD chỉ được
+nhắc trong Đơn. Chỉ có một thẻ thì bỏ trống Cccd2_*.
+
 NGUỒN NHÂN THÂN (NguoiDeNghi_*): ưu tiên CCCD; bổ sung từ Đơn Mẫu 04/05.KT (Họ tên chủ tàu, Mã định
 danh/CCCD, Loại giấy tờ, Cơ quan cấp, ngày cấp, Nơi thường trú, Điện thoại). Số định danh ưu tiên 12 chữ
 số. Nơi cấp: CCCD gắn chip không in nhãn riêng → lấy 'Cơ quan cấp' ở Đơn. Chuẩn hóa tên cơ quan (Cục Cảnh
