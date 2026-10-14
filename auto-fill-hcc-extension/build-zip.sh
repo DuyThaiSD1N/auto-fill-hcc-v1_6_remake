@@ -10,10 +10,12 @@ OUT="$SRC/../auto-fill-hcc-extension-v${VERSION:-dev}.zip"
 rm -f "$OUT"
 cd "$SRC"
 
-# -r đệ quy, -X bỏ metadata mac (uid/gid...). Loại: git, junk mac, tests, docs, tài liệu, zip cũ, sourcemap,
-# và chính script build này.
+# -r đệ quy, -X bỏ metadata mac (uid/gid...). Loại: git, CI, cache pytest, junk mac, tests, docs, tài liệu,
+# zip cũ, sourcemap, và chính script build này.
 zip -r -X "$OUT" . \
   -x '.git/*' \
+  -x '.github/*' \
+  -x '.pytest_cache/*' \
   -x '*/.DS_Store' -x '.DS_Store' \
   -x '__MACOSX/*' \
   -x 'tests/*' \
@@ -27,6 +29,6 @@ echo "✅ Đã tạo: $OUT"
 echo "   Dung lượng: $(du -h "$OUT" | cut -f1)"
 echo "   Số file:    $(unzip -l "$OUT" | tail -1 | awk '{print $2}')"
 echo "── Kiểm tra không lẫn file thừa (phải RỖNG) ──"
-unzip -l "$OUT" | grep -E '\.git/|\.DS_Store|/tests/|/docs/|\.md$|\.map$' || echo "   (sạch — không có file thừa)"
+unzip -l "$OUT" | grep -E '\.git/|\.github/|\.pytest_cache/|\.DS_Store|/tests/|/docs/|\.md$|\.map$' || echo "   (sạch — không có file thừa)"
 echo "── manifest.json phải ở gốc archive ──"
 unzip -l "$OUT" | grep -E ' manifest\.json$' || echo "   ⚠ KHÔNG thấy manifest.json ở gốc!"

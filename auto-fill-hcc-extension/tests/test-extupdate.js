@@ -45,6 +45,8 @@ function dungMoiTruong({ versionDangChay = "1.0.0", trangThai = "mo-khong-lam-vi
       },
     },
     document: {},
+    // Khối trích có cả các const khoá storage theo tab (vd SCAN_WATERMARK_KEY) — popup ngoài panel = null.
+    EMBEDDED_TAB_ID: null,
     async saveSession() { vet.saveSession++; },
     chrome: {
       runtime: {
@@ -135,7 +137,7 @@ const doiMotNhip = () => new Promise((r) => setImmediate(() => setImmediate(r)))
 
   await chay("hang doi tach ho so dang chay -> hoan lai", async () => {
     const { sandbox, vet } = dungMoiTruong({
-      versionDangChay: "1.17.0.1", queue: { items: [1] },
+      versionDangChay: "1.17.0.1", queue: { items: [1], startedAt: Date.now() },
     });
     sandbox.extUpdateGhiNhan("1.17.0.2");
     await doiMotNhip();

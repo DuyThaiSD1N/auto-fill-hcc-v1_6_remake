@@ -50,7 +50,7 @@ assert.match(
 );
 assert.match(
   popupSource,
-  /async function selectProcedure\(key, \{ source = "manual" \} = \{\}\)[\s\S]*?manualProcedureOverride = true;[\s\S]*?procedureAutoDetected = false;/,
+  /async function selectProcedure\(key, \{ source = "manual"[^}]*\} = \{\}\)[\s\S]*?if \(source === "manual"\) \{\s*manualProcedureOverride = true;\s*procedureAutoDetected = false;/,
   "Chọn từ dropdown phải chuyển sang chế độ thủ công",
 );
 assert.match(
@@ -64,7 +64,7 @@ assert.match(
   "Lựa chọn tay phải sống qua DOM update và chỉ reset khi URL đổi/reload",
 );
 assert.ok(
-  (popupSource.match(/selectProcedure\(key, \{ source: "auto" \}\)/g) || []).length >= 2,
+  (popupSource.match(/selectProcedure\(key, \{\s*source: "auto",/g) || []).length >= 2,
   "Nhận diện ban đầu và SPA phải đánh dấu rõ nguồn tự động",
 );
 

@@ -120,6 +120,19 @@
     if (el) el.setAttribute(MARK_ATTR, kind);
   }
 
+  // CUỘN THEO việc đang làm: model survey nhận cả loạt giá trị trong MỘT lệnh nên trang đứng im —
+  // người ngồi trước màn hình không thấy trợ lý điền/đính tới đâu. Điền: lướt lần lượt qua từng ô
+  // vừa điền (cả lượt tối đa ~3 giây để không làm chậm). Đính: cuộn tới đúng dòng đang tải lên.
+  // Đính xong cả lượt: về đầu trang.
+  const FOLLOW_TOTAL_MS = 3000;
+  const followDelay = (count) => Math.max(40, Math.min(150, Math.floor(FOLLOW_TOTAL_MS / Math.max(1, count))));
+  function followTo(el) {
+    try { el?.scrollIntoView?.({ block: "center", behavior: "smooth" }); } catch (_) { /* trang đổi DOM — bỏ qua */ }
+  }
+  function backToTop() {
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (_) { /* bỏ qua */ }
+  }
+
   function markField(field, ok) {
     setMark(questionEl(field.name), ok ? (field.default ? "default" : "filled") : "not-filled");
   }
@@ -140,6 +153,7 @@
     const byName = new Map((res.ok ? res.results || [] : []).map((r) => [r.name, r]));
     if (!res.ok) console.warn("[AutoFill-SurveyJS] không đọc được model survey:", res.error);
 
+    const delay = followDelay(fields.length);
     for (const field of fields) {
       let r = byName.get(field.name) || { ok: false, reason: res.error || "not-found" };
       const domRetry = !r.ok && r.reason !== "readonly" &&
@@ -158,9 +172,13 @@
       }
       if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok));
       else markField(field, r.ok);
+      followTo(questionEl(field.name));
+      await sleep(delay);
     }
 
-    const place = { kinhGui: kinhGuiFromWard(toolAccount?.xa), tai: String(toolAccount?.tinh || "").trim() };
+    // Nơi chọn ở thẻ "Chọn cơ quan thực hiện" thắng tài khoản (nộp hộ về xã khác); không qua bước chọn → tài khoản.
+    const where = H.chosenAgency ? await H.chosenAgency.placeForPage(location.href, toolAccount) : toolAccount;
+    const place = { kinhGui: kinhGuiFromWard(where?.xa), tai: String(where?.tinh || "").trim() };
     if (place.kinhGui || place.tai) {
       const placeRes = await callMain({ op: "fillPlace", place }, 20000);
       for (const r of placeRes.results || []) {
@@ -282,7 +300,10 @@
           const text = rowText();
           return count(text, wanted) > before || (text !== beforeText && count(text, head) > beforeHead);
         };
+        followTo(row);
+        await sleep(250); // cho trang cuộn tới dòng trước khi bấm "Tải lên file"
         let portalError = "";
+        let toastsBefore = new Set();
         // Một lượt: bấm "Tải lên file" của dòng → chờ cổng THẬT SỰ mở input (MAIN world bắt lệnh mở hộp chọn tệp
         // và gắn data-hcc-picker) → nạp MỘT tệp vào input dùng chung (không multiple) → chờ tên tệp hiện trên dòng.
         // Cổng còn bận lượt trước thì bỏ qua cú bấm (không có dấu) → bấm lại ngay, không chờ hết hạn.
@@ -305,7 +326,7 @@
         const attempt = async (ticks) => {
           const input = await openPicker();
           if (!input) return false;
-          const toastsBefore = new Set(portalToasts());
+          toastsBefore = new Set(portalToasts());
           if (!setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) return false;
           for (let t = 0; t < ticks && !portalError; t++) {
             await sleep(200);
@@ -343,9 +364,20 @@
         }
         if (outcome === "error" || outcome === "timeout") {
           ok = false;
-          portalError = outcome === "error"
-            ? "cổng từ chối khi tải lên — thường do tệp quá lớn (gần 2 MB), nén nhỏ rồi đính lại"
-            : "cổng không ghi nhận tệp sau khi tải — đính lại tệp này trước khi nộp";
+          if (outcome === "error") {
+            // Lý do lấy theo toast cổng hiện khi tải hỏng: chỉ toast nói về dung lượng mới là lỗi dung lượng; "Upload
+            // file thất bại" (vd tường lửa cổng chặn — tệp nhỏ cũng bị) không phải, khuyên nén là sai hướng.
+            let toast = "";
+            for (let w = 0; w < 5 && !toast; w++) {
+              toast = portalToasts().find((msg) => !toastsBefore.has(msg)) || "";
+              if (!toast) await sleep(200);
+            }
+            portalError = /\d ?mb|dung luong/.test(fold(toast))
+              ? "tệp quá lớn (cổng chỉ nhận tệp dưới 2 MB), nén nhỏ rồi đính lại"
+              : "đính kèm file thất bại, đính lại tệp này";
+          } else {
+            portalError = "cổng không ghi nhận tệp sau khi tải — đính lại tệp này trước khi nộp";
+          }
           await callMain({ op: "removeUploads", name: file.name, statuses: ["error", "pending", "uploading"] }, 15000);
         }
         console.info("[AutoFill-SurveyJS] đính kèm", {
@@ -364,6 +396,7 @@
       console.info("[AutoFill-SurveyJS] xong lượt đính", { totalMs: Date.now() - runStartedAt, errors: errors.length });
     } finally {
       await callMain({ op: "suppressPicker", on: false }, 5000);
+      backToTop();
     }
     if (errors.length) {
       return {

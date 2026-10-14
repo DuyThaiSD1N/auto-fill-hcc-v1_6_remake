@@ -76,6 +76,7 @@ const agencyFillBtn = document.getElementById("agencyFillBtn");
 const proxyFillBtn = document.getElementById("proxyFillBtn");
 const ocrBtn = document.getElementById("ocrBtn");
 const attachStepBtn = document.getElementById("attachStepBtn");
+const fillAttachBtn = document.getElementById("fillAttachBtn");
 const dangKyBySelect = document.getElementById("dangKyBy");
 const dangKyByLabel = document.querySelector('label[for="dangKyBy"]');
 const requestModeSelect = document.getElementById("requestMode");
@@ -379,6 +380,24 @@ async function restoreSplitProgressStatus() {
     const progress = stored?.[SPLIT_ATTACH_PROGRESS_KEY];
     if (!progress || Number(progress.originTabId) !== Number(splitProgressOriginTabId)) return false;
     return renderSplitProgress(progress);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function clearSplitProgressForCurrentTab() {
+  activeSplitRunId = null;
+  try {
+    const tabId = await getTargetTabId();
+    splitProgressOriginTabId = tabId || null;
+    if (!tabId) return false;
+    const stored = await chrome.storage.local.get(SPLIT_ATTACH_PROGRESS_KEY);
+    const progress = stored?.[SPLIT_ATTACH_PROGRESS_KEY];
+    // Key tiến độ dùng chung cho extension. Chỉ xóa banner do đúng tab/phiên này tạo ra,
+    // không làm mất trạng thái hàng đợi đang hiển thị ở tab hồ sơ khác.
+    if (!progress || Number(progress.originTabId) !== Number(tabId)) return false;
+    await chrome.storage.local.remove(SPLIT_ATTACH_PROGRESS_KEY);
+    return true;
   } catch (_) {
     return false;
   }
@@ -707,6 +726,7 @@ logoutBtn.addEventListener("click", async () => {
 if (newSessionBtn) {
   newSessionBtn.addEventListener("click", async () => {
     await clearSession();
+    await clearSplitProgressForCurrentTab();
     files.length = 0;
     lastProcessSession = null;
     resetScanRecentSuggestState(); // công dân tiếp theo, cùng popup đang mở → gợi ý lại từ đầu
@@ -1070,7 +1090,10 @@ async function selectProcedure(key, { source = "manual", confirmedNavigation = f
   }
   const selectionChanged = selectedProcedureKey !== next.key;
   const workOwnerChanged = workProcedureKey !== next.key;
-  if (shouldResetProcedureWork(next.key)) resetProcedureWorkState();
+  if (shouldResetProcedureWork(next.key)) {
+    resetProcedureWorkState();
+    await clearSplitProgressForCurrentTab();
+  }
   selectedProcedureKey = next.key;
   workProcedureKey = next.key;
   selectedBusinessPageKey = Array.isArray(next.pages) && next.pages.length ? next.pages[0].key : "";
@@ -1263,48 +1286,6 @@ function detectUrlScopeOk(detect, url) {
   return scope.some((u) => u && url.includes(String(u).toLowerCase()));
 }
 
-// Cổng DVC quốc gia (dichvucong.gov.vn): chỉ biểu mẫu /nop-ho-so mới là trang của MỘT thủ tục. Mọi trang
-// còn lại (chi tiết thủ tục /thu-tuc-hanh-chinh/<uuid>, trang chủ, danh sách, tra cứu...) là trang THÔNG TIN,
-// in kèm tên NHIỀU thủ tục khác: cột "Tìm kiếm nhiều nhất", "Thủ tục hành chính liên quan", menu. Khớp
-// textIncludes/heading ở đây là nhận nhầm (vd đang xem "Công nhận đăng kiểm viên tàu biển" mà tự chọn
-// "Thông báo phát triển nguồn điện mặt trời mái nhà" chỉ vì tên này nằm ở cột bên phải) → chỉ tin URL.
-function dvcqgPageUrl(url) {
-  try {
-    const parsed = new URL(String(url || ""));
-    const host = parsed.hostname.toLowerCase();
-    return host === "dichvucong.gov.vn" || host === "www.dichvucong.gov.vn" ? parsed : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-function isDvcqgInfoPageUrl(url) {
-  const parsed = dvcqgPageUrl(url);
-  return !!parsed && !parsed.pathname.toLowerCase().startsWith("/nop-ho-so");
-}
-
-function isDvcqgProcedureDetailUrl(url) {
-  const parsed = dvcqgPageUrl(url);
-  return !!parsed && /^\/thu-tuc-hanh-chinh\/[^/]+/i.test(parsed.pathname);
-}
-
-function dvcqgDetailPath(url) {
-  const parsed = dvcqgPageUrl(url);
-  return parsed ? parsed.pathname.toLowerCase().replace(/\/+$/, "") : "";
-}
-
-// Trang chi tiết thủ tục khớp ĐÚNG UUID một link "Đi đến thủ tục" (ke_khai_links của backend) → thủ tục đó.
-// So nguyên path, không so chữ trên trang.
-function dvcqgKeKhaiLinkKey(url, detectables) {
-  if (!isDvcqgProcedureDetailUrl(url) || typeof keKhaiLinks !== "function") return "";
-  const path = dvcqgDetailPath(url);
-  const link = (keKhaiLinks() || []).find((item) => item?.key
-    && isDvcqgProcedureDetailUrl(item.url)
-    && dvcqgDetailPath(item.url) === path
-    && detectables.some((p) => p.key === item.key));
-  return link ? link.key : "";
-}
-
 // Mã loại hình doanh nghiệp của cổng ĐKKD qua mạng (trùng value radio $CtlEntType: SC = công ty
 // cổ phần, LLC1/LLC2 = TNHH một/hai thành viên trở lên, PRI = doanh nghiệp tư nhân, PARTNER = hợp
 // danh). Cổng in nhãn loại hình MỖI CHỖ MỘT KIỂU — khối "Thông tin về hồ sơ" có bản ghi "Công ty
@@ -1412,12 +1393,9 @@ function detectProcedureKeyFromSignals(signals) {
     }
   }
 
-  // Trang thông tin của Cổng DVC quốc gia: bỏ mọi bước khớp chữ/heading (xem isDvcqgInfoPageUrl).
-  const dvcqgInfoPage = isDvcqgInfoPageUrl(url);
-
   // 0) Một số thủ tục dùng chung URL cổng chứng thực, nên cần ưu tiên cụm tên thủ tục
   //    rất đặc trưng trước rule URL chung.
-  if (body && !dvcqgInfoPage) {
+  if (body) {
     let bestPriority = "";
     let bestPriorityScore = 0;
     for (const p of detectables) {
@@ -1443,10 +1421,6 @@ function detectProcedureKeyFromSignals(signals) {
     if (!detectUrlScopeOk(p.detect, url)) continue;
     if (inc.some((u) => u && url.includes(String(u).toLowerCase()))) return p.key;
   }
-
-  // Trang thông tin DVCQG: ngoài rule URL ở trên chỉ còn khớp đúng UUID link "Đi đến thủ tục".
-  // Không khớp gì thì để TRỐNG cho cán bộ tự chọn, thà không nhận diện còn hơn nhận nhầm.
-  if (dvcqgInfoPage) return dvcqgKeKhaiLinkKey(url, detectables);
 
   // 2) Heading khớp tên thủ tục (eForm hộ tịch/chứng thực moj). Chọn label DÀI NHẤT khớp
   //    để tránh nhầm (vd "đăng ký khai sinh" vs "đăng ký lại khai sinh").
@@ -1532,13 +1506,6 @@ async function clearAutoDetectedSelection() {
   if (hadSelected) await saveSession();
 }
 
-// Đang ở trang chi tiết một thủ tục DVCQG chưa hỗ trợ (UUID không khớp thủ tục nào). Lựa chọn còn lại từ
-// trang trước chắc chắn không phải thủ tục đang xem → xóa nhãn (giữ file như clearAutoDetectedSelection),
-// panel về "Chưa có thủ tục nào được chọn!" để cán bộ tự chọn. Hai nơi gọi đã bỏ qua khi chọn tay.
-async function enterUnknownDvcqgProcedureMode() {
-  await clearAutoDetectedSelection();
-}
-
 // Gọi content script lấy tín hiệu trang → nếu nhận diện được thì chọn và ghi nhận nguồn tự động.
 async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
   // Người dùng đã sửa detect sai: giữ lựa chọn tay đến khi reload/chuyển URL.
@@ -1582,11 +1549,6 @@ async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
       await enterBusinessProcedureChoiceMode();
       return false;
     }
-    // Trang chi tiết DVCQG chưa hỗ trợ: bỏ lựa chọn cũ, để trống cho cán bộ tự chọn.
-    if (isDvcqgProcedureDetailUrl(res?.signals?.url)) {
-      await enterUnknownDvcqgProcedureMode();
-      return false;
-    }
     // Cổng THƯỜNG: không nhận ra thủ tục nào + đang có lựa chọn TỰ nhận diện (không phải chọn tay) →
     // xóa để panel không kẹt "Đang chọn: A" khi đã sang trang/thủ tục khác. CHỈ xóa khi có res.signals
     // (trang thật) — tránh xóa oan lúc content script chưa gắn kịp (đã retry [0,400,1200] ở trên).
@@ -1627,11 +1589,11 @@ async function reDetectProcedureOnNav(run = 0) {
     // autoDetectProcedure ở trên).
     if (shouldClearProcedureOnEnterprisePortal(res?.signals)) {
       await enterBusinessProcedureChoiceMode();
-    } else if (isDvcqgProcedureDetailUrl(res?.signals?.url)) {
-      await enterUnknownDvcqgProcedureMode();
-    } else if (res?.signals && selectedProcedureKey && !manualProcedureOverride) {
-      // Cổng THƯỜNG: sang trang/thủ tục KHÁC không detect được + lựa chọn hiện tại là do TỰ nhận diện →
-      // xóa để không kẹt "Đang chọn: A". Chỉ khi có res.signals (trang thật) và không phải chọn tay.
+      return;
+    }
+    // Cổng THƯỜNG: sang trang/thủ tục KHÁC không detect được + lựa chọn hiện tại là do TỰ nhận diện →
+    // xóa để không kẹt "Đang chọn: A". Chỉ khi có res.signals (trang thật) và không phải chọn tay.
+    if (res?.signals && selectedProcedureKey && !manualProcedureOverride) {
       await clearAutoDetectedSelection();
     }
   } catch (e) {
@@ -2233,6 +2195,55 @@ function refreshAttachStepUI() {
   attachStepBtn.hidden = !cfg.hasAttachmentStep || isAttachMode() || !!currentBusinessPages().length ||
     !!cfg.fillWithAttach;
   attachStepBtn.disabled = !cfg.hasAttachmentStep || !files.length || window.__AUTOFILL_HCC_POPUP_BUSY__;
+  if (fillAttachBtn) {
+    fillAttachBtn.hidden = !fillAttachAvailable();
+    fillAttachBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+  }
+}
+
+// ===== "Điền biểu mẫu và đính kèm hồ sơ" — trang nộp hồ sơ mới của Cổng DVC quốc gia =====
+// Trang SurveyJS có form, bảng Thành phần hồ sơ và hình thức nhận kết quả cùng MỘT trang → điền
+// xong đính kèm luôn được, không chờ chuyển bước. Cổng khác (wizard) đính kèm ở trang sau nên nút
+// chỉ hiện khi CHÍNH trang đang mở là form mới — cùng mã thủ tục có thể còn chạy trên cổng cũ.
+let pageFormKind = "";
+let fillAttachRequested = false;
+
+function fillAttachAvailable() {
+  const cfg = currentConfig();
+  return pageFormKind === "surveyjs" && !!cfg.hasAttachmentStep && !cfg.fillWithAttach &&
+    !isAttachMode() && !currentBusinessPages().length;
+}
+
+// Hỏi THẲNG một lần, không thử lại / tiêm lại script như sendToContent: hỏi định kỳ mà gặp trang
+// không có content script (trang chrome://, tab đang tải) thì im lặng chờ nhịp sau.
+async function probeFormKind() {
+  if (!currentConfig().hasAttachmentStep) return;
+  const tabId = await getTargetTabId();
+  if (!tabId) return;
+  const kind = await new Promise((resolve) => {
+    try {
+      chrome.tabs.sendMessage(tabId, { action: "getFormKind" }, (res) => {
+        void chrome.runtime.lastError;
+        resolve(typeof res?.formKind === "string" ? res.formKind : pageFormKind);
+      });
+    } catch (_) { resolve(pageFormKind); }
+  });
+  if (kind !== pageFormKind) {
+    pageFormKind = kind;
+    refreshAttachStepUI();
+  }
+}
+setInterval(() => { void probeFormKind(); }, 2500);
+
+if (fillAttachBtn) {
+  fillAttachBtn.addEventListener("click", async () => {
+    if (window.__AUTOFILL_HCC_POPUP_BUSY__ || ocrBtn.disabled) return;
+    // Hỏi đồng ý ở ĐÂY trước: nút quét bên dưới cũng hỏi, nhưng đồng ý xong nó tự bấm lại CHÍNH
+    // nó (không phải nút này) → cờ đính kèm sau khi điền sẽ mất.
+    if (!(await requireConsent(fillAttachBtn))) return;
+    fillAttachRequested = true;
+    ocrBtn.click(); // cùng một đường quét–điền với nút "Quét và nhập dữ liệu", xong thì đính luôn
+  });
 }
 
 // Mở/đóng khối chi tiết giấy tờ + báo lại chiều cao để panel (iframe) co giãn theo.
@@ -4573,6 +4584,9 @@ document.getElementById("consentLegalBack")?.addEventListener("click", () => sho
 // ===== OCR & điền =====
 ocrBtn.addEventListener("click", async () => {
   if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+  // Bấm từ nút "Điền biểu mẫu và đính kèm hồ sơ" → điền xong đính kèm luôn (attachAfterFill).
+  const attachAfter = fillAttachRequested;
+  fillAttachRequested = false;
   // Chốt chặn PDPL phải đứng TRƯỚC bước mở hồ sơ của cổng doanh nghiệp.
   //
   // Bấm nút khi chưa vào khối dữ liệu là lệnh "mở hồ sơ": wizard chạy 3 bước rồi trang tải lại,
@@ -4644,7 +4658,6 @@ ocrBtn.addEventListener("click", async () => {
     // Các thủ tục cần đối chiếu người yêu cầu cổng đã điền sẵn (VNeID) với CCCD upload.
     if (
       cfg.key === "ho-tro-mai-tang" ||
-      cfg.key === "ho-tro-mai-tang-1116910" ||
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
@@ -4866,7 +4879,7 @@ ocrBtn.addEventListener("click", async () => {
     try { await maybeShowReview(res.requestId || res.sessionId, res.reviewToken); }
     catch (err) { console.warn("[AutoFill] review:", err); }
 
-    if (cfg.fillWithAttach) await attachAfterFill(fillOutcome, res.sessionId);
+    if (cfg.fillWithAttach || attachAfter) await attachAfterFill(fillOutcome, res.sessionId);
   } catch (e) {
     if (e.unauthorized) {
       await AuthStore.clearTokens();

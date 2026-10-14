@@ -23,11 +23,10 @@ assert.match(settingsHtml, /Có tách hồ sơ khi đính kèm/);
 assert.match(settingsHtml, /Hai mặt CCCD cùng chủ thể vẫn được gộp thành một tài liệu/);
 
 assert.match(settings, /const SPLIT_DOCUMENTS_SETTING_KEY = "autofill_attach_split_documents"/);
-assert.match(settings, /chrome\.storage\.local\.get\(\{ \[SPLIT_DOCUMENTS_SETTING_KEY\]: false \}\)/);
-assert.match(
-  settings,
-  /\[SPLIT_DOCUMENTS_SETTING_KEY\]: splitDocumentsSetting\.checked === true/
-);
+assert.match(settings, /chrome\.storage\.local\.get\(\{\s*\[SPLIT_DOCUMENTS_SETTING_KEY\]: false,/);
+assert.match(settings, /splitDocumentsSetting\.checked = values\[SPLIT_DOCUMENTS_SETTING_KEY\] === true/);
+assert.match(settings, /chrome\.storage\.local\.set\(\{ \[key\]: input\.checked === true \}\)/);
+assert.match(settings, /bindToggle\(splitDocumentsSetting, SPLIT_DOCUMENTS_SETTING_KEY\)/);
 
 assert.match(popup, /const SPLIT_DOCUMENTS_SETTING_KEY = "autofill_attach_split_documents"/);
 assert.match(popup, /await restoreSplitDocumentsSetting\(\)/);

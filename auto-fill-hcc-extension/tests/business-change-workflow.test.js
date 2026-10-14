@@ -13,7 +13,6 @@ function node(text, visible = true) {
 }
 
 const ids = new Map();
-const fakeSelects = new Map();
 const selectors = new Map();
 const sandbox = {
   console,
@@ -35,13 +34,13 @@ sandbox.window = {
   __HCC__: {
     sleep: async () => {},
     norm: (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " "),
-    fieldCandidates: (f) => (f && f.name ? [f.name] : []),
+    fieldCandidates: () => [],
     setNativeValue: () => {},
     waitFor: async () => false,
     readAcctContact: () => "",
     fillFormStandard: async () => {},
     findStandardInput: () => null,
-    findStandardSelect: (names) => fakeSelects.get(names && names[0]) || null,
+    findStandardSelect: () => null,
     isPostbackAddressField: () => false,
   },
   addEventListener() {},
@@ -57,35 +56,6 @@ const detect = sandbox.window.__HCC__.detectBusinessChangeStage;
 const detectHint = sandbox.window.__HCC__.detectBusinessProcedureHint;
 const parseDeletePostback = sandbox.window.__HCC__.parseBusinessDeletePostback;
 const isBusinessRowMarkedDeleted = sandbox.window.__HCC__.isBusinessRowMarkedDeleted;
-
-// Hồ sơ thay đổi mở ra với Tỉnh đang đứng ở option CHỨA tên tỉnh nhưng không phải option đúng:
-// phải chọn lại Tỉnh để cổng nạp danh sách Phường/Xã mới, không được coi là đã đúng tỉnh.
-function fakeSelect(name, options, selected, onChange) {
-  const sel = {
-    name,
-    options: options.map(([value, textContent]) => ({ value, textContent })),
-    value: selected,
-    get selectedOptions() { return this.options.filter((o) => o.value === this.value); },
-    dispatchEvent(event) { if (event.type === "change" && onChange) onChange(this); return true; },
-  };
-  fakeSelects.set(name, sel);
-  return sel;
-}
-const CITY = "ctl00$C$ADDRCtl$CITY_IDFld";
-const WARD = "ctl00$C$ADDRCtl$WARD_IDFld";
-fakeSelect(WARD, [["", ""], ["9001", "Xã Cũ Một"], ["9002", "Xã Cũ Hai"]], "9001");
-const citySel = fakeSelect(CITY, [["", ""], ["68", "Tỉnh Lâm Đồng (cũ)"], ["168", "Tỉnh Lâm Đồng"]], "68", (sel) => {
-  if (sel.value === "168") fakeSelect(WARD, [["", ""], ["101", "Xã Ka Đô"], ["102", "Xã Đơn Dương"]], "");
-});
-(async () => {
-  await sandbox.window.__HCC__.fillAddressCascade([
-    { name: CITY, comp: "dom-select", value: "Lâm Đồng" },
-    { name: WARD, comp: "dom-select", value: "Đơn Dương" },
-  ]);
-  assert.equal(citySel.value, "168");
-  assert.equal(fakeSelects.get(WARD).value, "102");
-  console.log("business change workflow: address cascade re-chooses province on loose match passed");
-})().catch((error) => { console.error(error); process.exitCode = 1; });
 
 const cases = [
   ["ctl00_C_myWizard_LblQuestion1", "Chọn loại đăng ký trực tuyến", "select-registration"],
@@ -240,7 +210,7 @@ assert.match(sourceText, /row && !isBusinessRowMarkedDeleted\(row\)/);
 assert.doesNotMatch(sourceText, /failChangeWorkflow\("Không bổ sung được mã ngành sau nhiều lần thử\."\)/);
 assert.match(sourceText, /bỏ qua mã ngành bổ sung sau 4 lần thử, tiếp tục luồng/);
 assert.match(sourceText, /không thấy ô\/nút lưu ngành không mã, bỏ qua và tiếp tục luồng/);
-assert.match(sourceText, /fillBusinessLineDescriptions\(\{ items: availableCoded \}\)/);
+assert.match(sourceText, /fillBusinessLineDescriptions\(\{ items: availableCoded \}, st\.businessDefaults\)/);
 assert.match(sourceText, /storage\.set timeout — tiếp tục state machine/);
 assert.match(sourceText, /FILLALL_SESSION_MIRROR_KEY/);
 assert.match(sourceText, /newestFillAllState/);

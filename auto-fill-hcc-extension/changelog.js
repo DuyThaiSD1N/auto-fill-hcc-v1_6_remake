@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.1",
+    date: "13/10/2026",
+    items: [
+      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): thêm nút \"Điền biểu mẫu và đính kèm hồ sơ\" làm cả hai việc một lần.",
+      "Bộ Xây dựng: nhận đúng thủ tục gia hạn giấy phép xây dựng có tên dài.",
+      "Điền đúng người nộp: miễn, giảm học phí (Bộ GD&ĐT); đăng ký nội quy lao động (Bộ Nội vụ).",
+    ],
+  },
+  {
     version: "1.23",
     date: "12/10/2026",
     items: [

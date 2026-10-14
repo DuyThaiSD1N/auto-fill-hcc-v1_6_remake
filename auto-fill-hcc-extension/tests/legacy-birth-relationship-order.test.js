@@ -66,8 +66,13 @@ assert.doesNotMatch(
 );
 assert.match(
   source,
-  /legacyFieldHasName\(field, LEGACY_BIRTH_RELATION_NAME\) \? 350 : 200/,
+  /isLegacyRelationDriver\(field\) \? 350 : 200/,
   "QuanHe phải có nhịp chờ riêng trước khi điền con/cha/mẹ",
+);
+assert.match(
+  source,
+  /const LEGACY_RELATION_NAMES = \[LEGACY_BIRTH_RELATION_NAME,/,
+  "Nhịp chờ riêng phải áp cho QuanHe khai sinh",
 );
 assert.match(
   source,

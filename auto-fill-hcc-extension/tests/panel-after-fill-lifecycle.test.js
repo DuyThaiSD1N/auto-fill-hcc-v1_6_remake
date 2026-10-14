@@ -53,7 +53,11 @@ assert.doesNotMatch(dispatchSource, /\$\{filled\}\s*\/\s*\$\{allFields\.length\}
 
 assert.match(contentSource, /const SS_AUTO_MIN = "__af_panel_auto_min"/);
 assert.match(contentSource, /phase: "filling"/);
-assert.match(contentSource, /phase: "filled"/);
+// Fill xong giữ panel ở dạng icon: markPanelFillComplete chỉ xoá cờ after-fill, không chuyển sang "filled".
+assert.match(
+  contentSource,
+  /msg\?\.action === "markPanelFillComplete"[\s\S]*?clearAutoMinState\(\);\s*sendResponse\(\{ ok: true, armed: false \}\)/,
+);
 assert.match(contentSource, /state\.phase !== "filled" \|\| !hasVisibleAttachmentTarget\(\)/);
 assert.match(contentSource, /restorePanel\(\); \/\/ đồng thời xoá cờ → chỉ tự mở đúng một lần/);
 assert.match(contentSource, /location\.hostname\.includes\("hokinhdoanh\.dkkd\.gov\.vn"\)/);
@@ -121,6 +125,9 @@ async function testDispatchRuntime() {
     console: { warn: (...args) => events.push(["warn", ...args]) },
     currentUser: null,
     currentConfig: () => ({ key: "procedure-a" }),
+    BAC_NINH_THREE_STEP_PROCEDURES: new Set(),
+    saveSession: async () => true,
+    files: [],
     buildBusinessDefaults: () => null,
     setStatus: (message, type, detailItems = []) => events.push(["status", message, type, detailItems]),
     showPageToast: async (message, kind) => runtime.sendToContent({ action: "showPageToast", message, kind }),

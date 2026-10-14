@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "12/10";
+  const APP_RELEASE_DATE = "13/10";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1688,6 +1688,13 @@
       // Chỉ frame TRÊN CÙNG trả lời (URL + heading nằm ở trang gốc, không phải iframe con).
       if (window.top !== window) return;
       sendResponse({ ok: true, signals: collectProcedureSignals() });
+      return;
+    }
+    // Panel hỏi định kỳ loại form của trang (nút "Điền biểu mẫu và đính kèm hồ sơ" chỉ hiện ở trang
+    // nộp hồ sơ mới — SurveyJS, form và thành phần hồ sơ cùng một trang). Chỉ đọc DOM, rẻ.
+    if (msg?.action === "getFormKind") {
+      if (window.top !== window) return;
+      sendResponse({ ok: true, formKind: detectFormKind() || "" });
       return;
     }
     if (msg?.action === "getPortalFlowState") {

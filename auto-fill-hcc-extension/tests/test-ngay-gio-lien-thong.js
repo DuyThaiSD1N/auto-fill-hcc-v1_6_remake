@@ -15,7 +15,9 @@ const path = require("node:path");
 function napEngine() {
   const src = fs.readFileSync(path.join(__dirname, "..", "content", "fill-angular.js"), "utf8");
   const window = { __HCC__: {} };
-  new Function("window", "document", src)(window, { querySelectorAll: () => [] });
+  // File tự đăng ký listener tin nhắn lúc nạp → cần chrome giả, không dùng tới.
+  const chrome = { runtime: { onMessage: { addListener() {} } } };
+  new Function("window", "document", "chrome", src)(window, { querySelectorAll: () => [] }, chrome);
   return window.__HCC__;
 }
 

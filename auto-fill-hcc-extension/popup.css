@@ -360,6 +360,20 @@ input, select, textarea { font-family: inherit; }
 
 .secondary-btn:hover { background: #1b5e20; }
 
+/* "Điền biểu mẫu và đính kèm hồ sơ" (trang nộp hồ sơ mới): nút gộp, đặt cuối nhóm — to và khác màu
+   hai nút làm từng việc phía trên để cán bộ nhận ra đây là lối nhanh. */
+.fill-attach-btn {
+  margin-top: 10px;
+  padding: 11px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #e8590c;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(232, 89, 12, .35);
+}
+.fill-attach-btn:hover { background: #c2410c; }
+.fill-attach-btn:disabled { box-shadow: none; }
+
 /* Trong luồng ba bước Bắc Ninh, nút chính nằm ngay sau nút ủy quyền nên không nhận
    margin-top của .secondary-btn. Tạo khoảng cách dưới để ba hành động không dính nhau. */
 #proxyFillBtn:not([hidden]) { margin-bottom: 6px; }
