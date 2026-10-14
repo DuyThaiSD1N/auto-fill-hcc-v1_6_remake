@@ -27,7 +27,11 @@ test("tải TỪNG tệp: chờ trạng thái thật trước tệp kế; kẹt 
   const remember = fill.indexOf("rememberAttached({ hash, name: file.name, row: rowKey })");
   assert.ok(verify > 0 && retry > verify && fail > retry && remember > fail, "kiểm → nạp lại → báo lỗi → mới ghi nhớ");
   assert.match(fill, /op: "removeUploads", name: file\.name, statuses: \["pending", "uploading"\]/);
-  assert.match(fill, /cổng từ chối khi tải lên/);
+  // Lý do theo toast cổng: chỉ toast nói dung lượng mới báo dung lượng; "Upload file thất bại" thì không.
+  assert.match(fill, /toastsBefore\.has\(msg\)\) \|\| ""/);
+  assert.match(fill, /tệp quá lớn \(cổng chỉ nhận tệp dưới 2 MB\)/);
+  assert.match(fill, /đính kèm file thất bại/);
+  assert.doesNotMatch(fill, /thường do tệp quá lớn/);
   assert.match(fill, /cổng không ghi nhận tệp sau khi tải/);
   assert.match(fill, /op: "removeUploads", statuses: \["error", "pending", "uploading"\] \}, 30000/);
   assert.match(fill, /if \(!last\) return "unknown";/);

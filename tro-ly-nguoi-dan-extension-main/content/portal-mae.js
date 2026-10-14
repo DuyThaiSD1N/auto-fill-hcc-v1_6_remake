@@ -50,16 +50,9 @@
   // Hai biến thể cùng template Angular: trang "chọn nơi và loại" của MAE/GD&ĐT dùng id
   // ngSelectAgencyForm1 (đủ Tỉnh + radio Sở + Sở + Trường hợp), còn cổng Bộ Xây dựng mở HỘP
   // THOẠI id ngSelectAgencyForm chỉ có Đơn vị thực hiện + Trường hợp giải quyết.
-  // Chỉ form đang HIỆN: cổng Bộ Xây dựng giữ khối hộp thoại (ẩn) trong DOM cả khi đã sang trang kê
-  // khai — tin form ẩn là đọc/chọn nhầm ô của trang khác.
   const maeForm = () =>
-    Array.from(document.querySelectorAll("form#ngSelectAgencyForm1, form#ngSelectAgencyForm"))
-      .find((form) => isVisible(form)) || null;
-  // Tìm ô TRONG form đang hiện trước (trang kê khai có thể có mat-select trùng formcontrolname).
-  const matSelect = (control) => {
-    const selector = `mat-select[formcontrolname="${control}"]`;
-    return maeForm()?.querySelector(selector) || document.querySelector(selector);
-  };
+    document.querySelector("form#ngSelectAgencyForm1, form#ngSelectAgencyForm");
+  const matSelect = (control) => document.querySelector(`mat-select[formcontrolname="${control}"]`);
   const matSelectValue = (sel) => fold(sel?.querySelector?.(".mat-select-value-text")?.textContent || "");
 
   function overlayOptions() {
@@ -89,8 +82,7 @@
       if (!opt) await sleep(250);
     }
     if (!opt) {
-      // body.click() không đóng được mat-select → panel treo trên hộp thoại. Đóng đúng cách.
-      await closeMatPanel("");
+      try { document.body.click(); } catch (_) { /* đóng panel */ }
       return {
         error: `Không thấy option "${label}". Panel hiện: ` +
           (seen.length ? seen.join(" | ").slice(0, 220) : "(trống)"),
@@ -133,9 +125,6 @@
     // phép..." (KHÔNG chứa "cấp mới") → cấp mới nhận bằng LOẠI TRỪ token cần tránh ("cap lai");
     // cấp lại bắt buộc chứa "cap lai".
     const good = (text) => {
-      // Thủ tục không khai trường hợp nào (hộp thoại Bộ Xây dựng, BE không gửi token) → giữ
-      // lựa chọn cổng đang để; chưa có thì lấy option đầu như chính cổng vẫn làm.
-      if (!variantMatch && !variantAvoid) return true;
       if (variantAvoid && text.includes(variantAvoid)) return false;
       if (variantMatch && text.includes(variantMatch)) return true;
       return !!variantAvoid; // có token tránh (cap_moi) → option "sạch" là hợp lệ
@@ -143,116 +132,6 @@
     if (current && good(current)) return { ok: true, kept: true };
     const res = await pickMatOption(sel, good, variantLabel || variantMatch || "trường hợp");
     if (res.error) return { error: `Trường hợp giải quyết: ${res.error}` };
-    return res;
-  }
-
-  // ── Hộp thoại "Chọn trường hợp giải quyết" (Bộ Xây dựng): ĐỌC danh sách lựa chọn ──────────
-  // BE hỏi công dân nơi xử lý (Đơn vị thực hiện) + trường hợp/thời gian (Trường hợp giải quyết)
-  // theo đúng chữ trên cổng, nên phải mở từng ô, đọc option rồi đóng lại mà KHÔNG đổi giá trị.
-  const textOf = (el) => String(el?.textContent || "").replace(/\s+/g, " ").trim();
-  const matSelectRaw = (sel) =>
-    textOf(sel?.querySelector?.(".mat-select-value-text, .mat-mdc-select-value-text"));
-
-  // Option của ĐÚNG dropdown vừa mở: panel mang id "<id mat-select>-panel" (aria-controls/owns
-  // trỏ tới nó). Không tìm thấy panel riêng mới quét chung overlay — tránh đọc lẫn danh sách của
-  // một dropdown khác chưa kịp đóng.
-  function panelOptions(sel) {
-    let scoped = null;
-    const ids = [sel?.id ? `${sel.id}-panel` : "",
-      ...String(sel?.getAttribute?.("aria-controls") || sel?.getAttribute?.("aria-owns") || "")
-        .split(/\s+/)].filter(Boolean);
-    for (const id of ids) {
-      const node = document.getElementById(id);
-      if (!node) continue;
-      const inside = node.matches("mat-option") ? [node] : Array.from(node.querySelectorAll("mat-option"));
-      if (inside.length) { scoped = (scoped || []).concat(inside); }
-    }
-    return (scoped || overlayOptions()).filter((o) => {
-      if (!isVisible(o)) return false;
-      if (o.classList.contains("mat-option-disabled") || o.getAttribute("aria-disabled") === "true") {
-        return false;
-      }
-      if (o.querySelector("input")) return false; // dòng ô tìm kiếm của ngx-mat-select-search
-      return !!textOf(o);
-    });
-  }
-
-  // Đóng dropdown mà KHÔNG đóng hộp thoại: bấm lại option đang chọn (giá trị giữ nguyên); không
-  // có thì bấm lớp nền trong suốt CUỐI CÙNG — lớp nền đầu tiên thuộc hộp thoại, bấm vào là đóng
-  // luôn cả hộp thoại.
-  async function closeMatPanel(currentText) {
-    const options = overlayOptions();
-    const selected = options.find((o) => o.classList.contains("mat-selected")
-      || o.getAttribute("aria-selected") === "true")
-      || (currentText ? options.find((o) => fold(o.textContent) === fold(currentText)) : null);
-    if (selected) {
-      clickLikeUser(selected);
-    } else {
-      const backdrops = document.querySelectorAll(
-        ".cdk-overlay-transparent-backdrop, .cdk-overlay-backdrop");
-      const last = backdrops[backdrops.length - 1];
-      if (last) clickLikeUser(last);
-    }
-    await waitFor(() => !overlayOptions().length, 1500, 100);
-  }
-
-  async function readMatSelectOptions(control) {
-    const sel = matSelect(control);
-    if (!sel || !isVisible(sel)) return null; // ô ẩn = cổng đã tự chọn lựa chọn duy nhất
-    // Còn dropdown khác đang mở (hoặc đang đóng dở) → đóng hẳn trước, không thì đọc lẫn danh sách.
-    if (overlayOptions().length) await closeMatPanel("");
-    const current = matSelectRaw(sel);
-    clickLikeUser(sel.querySelector(".mat-select-trigger") || sel);
-    const read = () => panelOptions(sel);
-    let options = (await waitFor(() => (read().length ? read() : null), 3000)) || [];
-    if (options.length) {
-      await sleep(250); // danh sách có thể nạp dần → đọc lại một nhịp cho đủ
-      options = read();
-    }
-    const labels = Array.from(new Set(options.map(textOf))).slice(0, 40);
-    await closeMatPanel(current);
-    return { options: labels, current };
-  }
-
-  // Ô "Trường hợp giải quyết" chỉ hiện khi thủ tục có từ 2 trường hợp, và Angular render nó SAU
-  // ô Đơn vị thực hiện. Đọc ngay lúc hộp thoại vừa mở là tưởng "không có gì để hỏi" rồi bấm
-  // Đồng ý với trường hợp mặc định → chờ ô này một nhịp trước khi đọc.
-  const MAE_PROCESS_WAIT_MS = 2500;
-
-  async function readMaeDialogOptions() {
-    const form = maeForm();
-    if (!form || form.id !== "ngSelectAgencyForm") return { ok: false, reason: "not-dialog" };
-    await waitFor(() => {
-      const process = matSelect("procedureProcess");
-      return process && isVisible(process);
-    }, MAE_PROCESS_WAIT_MS);
-    const out = { ok: true };
-    for (const [key, control] of [["agency", "agency"], ["process", "procedureProcess"]]) {
-      const res = await readMatSelectOptions(control);
-      if (res && res.options.length) out[key] = res;
-    }
-    // Hai ô ra CÙNG một danh sách = đọc lẫn panel → không gửi ô nơi xử lý (giữ nguyên trên cổng).
-    if (out.agency && out.process
-      && out.agency.options.join("\n") === out.process.options.join("\n")) {
-      delete out.agency;
-    }
-    return out;
-  }
-
-  // Chọn ĐÚNG nhãn công dân đã chốt (BE gửi lại nguyên văn chữ đọc từ cổng).
-  async function pickExactOption(control, label, what) {
-    const want = fold(label);
-    const sel = await waitFor(() => {
-      const el = matSelect(control);
-      return el && isVisible(el) ? el : null;
-    }, 3000);
-    if (!sel) return { ok: true, skipped: true };
-    // Nhãn có thể đã bị cắt bớt phần đuôi trên đường đi (nhãn trường hợp của cổng rất dài) →
-    // nhãn đủ dài thì chấp nhận khớp phần ĐẦU; nhãn ngắn vẫn phải khớp trọn để không nhầm dòng.
-    const same = (text) => text === want || (want.length >= 60 && text.startsWith(want));
-    if (same(matSelectValue(sel))) return { ok: true, kept: true };
-    const res = await pickMatOption(sel, same, label);
-    if (res.error) return { error: `${what}: ${res.error}` };
     return res;
   }
 
@@ -268,9 +147,7 @@
     return byText("dong y va tiep tuc") || byText("dong y") || null;
   }
 
-  async function fillMaeAgency({
-    province, agency, ward, agencyLevel, variant, variantMatch, variantAvoid, agencyExact, processExact,
-  }) {
+  async function fillMaeAgency({ province, agency, ward, agencyLevel, variant, variantMatch, variantAvoid }) {
     const form = await waitFor(maeForm, 6000);
     if (!form) return { error: "Không thấy form chọn cơ quan trên trang." };
 
@@ -279,23 +156,16 @@
     // chậm — trang MAE thật mà ô chưa kịp hiện thì bị bỏ qua im lặng, hỏng đường đang chạy tốt.
     if (form.id === "ngSelectAgencyForm") {
       // Đơn vị thực hiện đã được chọn từ bước "Chọn cơ quan thực hiện" trên DVCQG → giữ nguyên,
-      // chỉ đụng vào khi backend gửi tên cơ quan cụ thể (nhãn đúng nguyên văn công dân đã chọn,
-      // hoặc tên Sở để khớp chứa).
-      if (fold(agencyExact)) {
-        const unitRes = await pickExactOption("agency", agencyExact, "Đơn vị thực hiện");
-        if (unitRes.error) return unitRes;
-        await sleep(400); // đổi đơn vị có thể nạp lại danh sách trường hợp
-      } else if (fold(agency)) {
+      // chỉ đụng vào khi backend gửi tên cơ quan cụ thể.
+      if (fold(agency)) {
         const unitSel = await waitFor(() => matSelect("agency"), 5000);
         if (unitSel && !matSelectValue(unitSel).includes(fold(agency))) {
           const res = await pickMatOption(unitSel, (text) => text.includes(fold(agency)), agency);
           if (res.error) return { error: `Đơn vị thực hiện: ${res.error}` };
         }
       }
-      const processRes = fold(processExact)
-        ? await pickExactOption("procedureProcess", processExact, "Trường hợp giải quyết")
-        : await pickProcedureProcess(
-          fold(variantMatch), fold(variantAvoid), variant || "trường hợp giải quyết");
+      const processRes = await pickProcedureProcess(
+        fold(variantMatch), fold(variantAvoid), variant || "trường hợp giải quyết");
       if (processRes.error) return processRes;
       const agreeBtn = await waitFor(findAgreeButton, 4000);
       if (!agreeBtn) return { error: 'Không thấy nút "Đồng ý".' };
@@ -389,21 +259,9 @@
       variant: msg.variant || "",
       variantMatch: msg.variantMatch || "",
       variantAvoid: msg.variantAvoid || "",
-      agencyExact: msg.agencyExact || "",
-      processExact: msg.processExact || "",
     })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: String(e?.message || e) }));
-    return true; // async
-  });
-
-  // Đọc danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (gọi lúc gửi page_status).
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.action !== "readMaeDialogOptions") return;
-    if (!maeForm()) return;
-    readMaeDialogOptions()
-      .then(sendResponse)
-      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
     return true; // async
   });
 })();
