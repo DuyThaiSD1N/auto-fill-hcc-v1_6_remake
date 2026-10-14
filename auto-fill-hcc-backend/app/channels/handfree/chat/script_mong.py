@@ -48,6 +48,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
     # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
     "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có (khai sinh + ntaub ntawv = giấy tờ).
+    "khai-sinh-da-co-ho-so": "Cuv npe yug me nyuam rau tus neeg twb muaj ntaub ntawv",
     "thay-doi-cai-chinh-ho-tich": "Hloov / kho ntaub ntawv hộ tịch",
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": "Ntawv tso cai ua tsev nyob tshiab",
     "cham-dut-hoat-dong-ho-kinh-doanh": "Kaw lag luam tsev neeg",

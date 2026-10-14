@@ -178,3 +178,24 @@ def test_so_dien_thoai_bo_khi_nguoi_nop_khong_co_trong_ho_so_hoac_sai_dang():
     assert "citizenPhone" not in _by(out)
     out, _ = _enrich({**BASE, "NguoiNop_SoDienThoai": "091234"}, _context_nguoi_nop("Có"))
     assert "citizenPhone" not in _by(out)
+
+
+_TO_KHAI = ("TỜ KHAI ĐĂNG KÝ KHAI TỬ\nHọ, chữ đệm, tên người yêu cầu: Tran Thi C\nDân tộc: Tày\n"
+            "Đề nghị cơ quan đăng ký khai tử cho người có tên dưới đây:\nHọ, chữ đệm, tên: NGUYEN VAN A\n"
+            "Giới tính: (2) Nam Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam\nNơi cư trú cuối cùng: Xóm 5\n")
+
+
+def test_dan_toc_llm_bo_sot_thi_doc_tu_to_khai():
+    from app.pipelines.khai_tu_dvcqg.process.runner import _compact_field_fallback
+
+    docs = [{"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên: NGUYEN VAN A"}, {"name": "tk.pdf", "text": _TO_KHAI}]
+    assert _compact_field_fallback({"NguoiMat_HoTen": "NGUYEN VAN A"}, docs)["NguoiMat_DanToc"] == "Kinh"
+    assert _compact_field_fallback({"NguoiMat_DanToc": "Mường"}, docs)["NguoiMat_DanToc"] == "Mường"
+    trong = _TO_KHAI.replace("(2) Kinh", "......")
+    assert "NguoiMat_DanToc" not in _compact_field_fallback({}, [{"name": "tk.pdf", "text": trong}])
+    assert "NguoiMat_DanToc" not in _compact_field_fallback({}, docs[:1])
+
+
+def test_dan_toc_kem_so_chu_thich_van_snap_danh_muc():
+    out, _ = _enrich({**BASE, "NguoiMat_DanToc": "(2) Kinh"})
+    assert _by(out)["citizenDantoc_NgdcKT"]["code"] == "01"

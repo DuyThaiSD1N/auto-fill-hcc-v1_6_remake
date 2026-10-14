@@ -229,7 +229,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     add_choice("citizenGioitinh_NgdcKT", _snap(GIOI_TINH, values.get("NguoiMat_GioiTinh")))
     # Danh mục cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
-    dan_toc = co_ho_local_group(values.get("NguoiMat_DanToc"))
+    dan_toc = co_ho_local_group(re.sub(r"\(\d+\)", " ", str(values.get("NguoiMat_DanToc") or "")).strip())
     add_choice("citizenDantoc_NgdcKT",
                _snap(DAN_TOC, dan_toc, _DAN_TOC_ALIAS) or _snap(DAN_TOC, normalize_ethnic(dan_toc), _DAN_TOC_ALIAS))
     quoc_tich = values.get("NguoiMat_QuocTich")

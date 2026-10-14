@@ -35,7 +35,9 @@ trích người nộp, trừ số điện thoại (ô cổng để trống, xem 
    nơi thường trú trên CCCD người mất (cuối cùng). Không dùng địa chỉ người yêu cầu / vợ chồng / chủ hộ.
 5. Ngày chết, giờ chết, nơi chết, nguyên nhân: giấy báo tử / giấy tờ thay thế → tờ khai. Nơi chết chỉ từ nhãn
    "Nơi chết"/"Nơi tử vong"; cơ quan cấp giấy báo tử không mặc nhiên là nơi chết; nơi an táng không phải nơi chết.
-6. Dân tộc chỉ khi giấy ghi rõ; CCCD thường không in dân tộc → không suy.
+6. NguoiMat_DanToc: dòng "Dân tộc" trong khối người mất của tờ khai (thường chung dòng "Giới tính ... Dân tộc ...
+   Quốc tịch ...") hoặc giấy báo tử / trích lục; bỏ số chú thích "(2)", chỉ trả tên dân tộc (vd "Kinh"). CCCD
+   thường không in dân tộc → không suy từ thẻ.
 </nguoi_mat>
 
 <giay_bao_tu>

@@ -167,6 +167,10 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "khai-sinh-dang-ky-lai": ["đăng ký lại khai sinh", "khai sinh lại vì sổ hộ tịch gốc bị mất",
                               "đã đăng ký khai sinh trước đây nhưng cơ quan không còn lưu sổ",
                               "làm lại khai sinh do cả bản chính lẫn sổ gốc đều mất"],
+    # CHƯA TỪNG đăng ký khai sinh nhưng đã có giấy tờ cá nhân; từng đăng ký mà mất sổ gốc là đăng ký lại.
+    "khai-sinh-da-co-ho-so": ["khai sinh cho người đã có căn cước nhưng chưa có giấy khai sinh",
+                              "chưa từng đăng ký khai sinh nhưng đã có học bạ, bằng cấp, CCCD",
+                              "người lớn chưa có giấy khai sinh, đã có hồ sơ giấy tờ cá nhân"],
     "khai-tu-dang-ky-lai": ["đăng ký lại khai tử", "làm lại khai tử do sổ hộ tịch gốc bị mất",
                             "đã khai tử trước đây nhưng sổ hộ tịch bị mất, hư hỏng"],
     # ── Cổng Bộ Xây dựng (luồng chung "xay-dung") ──

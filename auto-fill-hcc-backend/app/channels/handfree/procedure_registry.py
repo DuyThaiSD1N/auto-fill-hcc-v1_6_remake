@@ -343,6 +343,44 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Cùng eForm "Tờ khai đăng ký khai sinh" với đăng ký lại khai sinh (1.004884) nhưng người được
+        # khai sinh CHƯA TỪNG đăng ký khai sinh, chỉ có sẵn hồ sơ, giấy tờ cá nhân (CCCD, học bạ...).
+        # Planner đính kèm chưa có nhánh tách giấy tờ → không bật supportsSplitDocuments.
+        "key": "khai-sinh-da-co-ho-so",
+        "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
+        "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
+        "shortLabel": "Khai sinh (đã có giấy tờ cá nhân)",
+        "subtitle": "Khai sinh cho người chưa từng đăng ký nhưng đã có CCCD, học bạ, bằng cấp…",
+        "icon": "🪪",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
+        # Mỗi slot tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "khac", "name": "Hồ sơ, giấy tờ cá nhân đã có (CCCD, học bạ, bằng cấp, thẻ BHYT…)",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đăng ký khai sinh (nếu có)", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cam_doan", "name": "Bản cam đoan chưa được đăng ký khai sinh (nếu có)",
+             "icon": "✍️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Hồ sơ, giấy tờ cá nhân đã có: CCCD, thẻ BHYT, giấy tờ cư trú, học bạ, bằng tốt nghiệp, "
+            "giấy chứng nhận kết hôn, trích lục khai tử của cha/mẹ...\n"
+            "2. Tờ khai đăng ký khai sinh và bản cam đoan chưa được đăng ký khai sinh (nếu có).\n"
+            "3. Văn bản ủy quyền (nếu nhờ người khác làm thay).\n"
+            "Hệ thống tự nhận dạng người được khai sinh, cha, mẹ theo nội dung giấy tờ.\n"
+            "Bước 3: bản cam đoan vào STT 2; giấy tờ cá nhân dồn chung vào STT 3; ủy quyền vào STT 5."
+        ),
+    },
+    {
         "key": "khai-tu",
         "detect": {
             "urlIncludes": ["formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4"],
