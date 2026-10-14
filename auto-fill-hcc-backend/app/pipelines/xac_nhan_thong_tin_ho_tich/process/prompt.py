@@ -22,7 +22,7 @@ thông tin hộ tịch cho bố) hoặc CÙNG một người.
 - ToKhai_QuanHe / ToKhai_LyDo / ToKhai_NoiDung chép đúng chữ trên tờ khai; không có thì bỏ.
 - Tờ khai viết tay nên OCR hay sai dấu/chữ trong TÊN NGƯỜI. Khi chép Dt_HoTen và ToKhai_NoiDung, tên nào
   ứng với người trên GIẤY KHAI SINH (người được khai sinh, mẹ, cha) thì viết theo chính tả trên giấy khai
-  sinh (vd tờ khai OCR "Nguyễn Thị Mỹ", giấy khai sinh ghi mẹ "NGUYỄN THỊ NỶ" → "Nguyễn Thị Nỷ").
+  sinh (vd tờ khai OCR "Trần Thị Mụ", giấy khai sinh ghi mẹ "TRẦN THỊ NỤ" → "Trần Thị Nụ").
 - Ngày cấp giấy tờ tùy thân KHÔNG phải ngày ký tờ khai ("Làm tại ..., ngày ... tháng ... năm ...").
 </to_khai_rules>
 

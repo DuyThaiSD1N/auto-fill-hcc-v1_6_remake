@@ -2,11 +2,13 @@
 
 Bảng thành phần hồ sơ trên cổng:
   1. Mẫu điện tử tương tác đề nghị xác nhận thông tin hộ tịch → cổng tự sinh Tờ khai.pdf, KHÔNG đính.
-  2. Giấy tờ, tài liệu có liên quan đến nội dung đề nghị xác nhận → giấy khai sinh (ưu tiên) / giấy hộ
-     tịch; CCCD/CMND và giấy liên quan khác không còn chỗ ở dòng 2 thì thêm thành phần mới.
+     Tờ khai bản giấy (có chữ ký) chính là nội dung dòng này → bỏ qua, không thêm thành phần mới.
+  2. Giấy tờ, tài liệu có liên quan đến nội dung đề nghị xác nhận → TẤT CẢ giấy khai sinh / giấy hộ tịch,
+     CCCD/CMND và giấy liên quan khác, dòng nhận nhiều tệp. Riêng giấy tùy thân: merge_identity_attachments
+     chỉ cho MỘT chủ thể ở dòng có sẵn → CCCD người thứ hai thành thành phần mới.
   3. Văn bản ủy quyền (được chứng thực)                          → văn bản ủy quyền (con/cha/mẹ… nộp thay
      thì miễn, hồ sơ thường không có).
-Tờ khai bản giấy (có chữ ký) → thêm thành phần mới như trích lục.
+Giấy không nhận ra loại → thêm thành phần mới.
 Hai mặt CCCD cùng người được gộp bằng ``sourceFileIndexes``.
 """
 
@@ -31,9 +33,8 @@ _ALLOWED_TYPES = {"paper_declaration", "civil_status", "identity", "authorizatio
 _ROW_RELATED = (2, "Giấy tờ, tài liệu có liên quan đến nội dung đề nghị xác nhận thông tin hộ tịch")
 _ROW_AUTHORIZATION = (3, "Văn bản ủy quyền")
 
-# Thứ tự giành dòng 2: giấy hộ tịch trước (mapping: "đính kèm bản chụp Giấy khai sinh"), rồi CCCD, rồi
-# giấy liên quan khác.
-_ROW_PRIORITY = {"civil_status": 0, "identity": 1, "related": 2}
+# Mapping dòng 2: "đính kèm bản chụp Giấy khai sinh + CCCD/CMND" → mọi giấy loại này đều vào dòng 2.
+_ROW_RELATED_TYPES = {"civil_status", "identity", "related"}
 
 _LABELS = {
     "paper_declaration": "Tờ khai bản giấy",
@@ -164,16 +165,6 @@ def build_plan_items(
         llm_item = llm_by_index.get(index)
         types[index] = llm_item["type"] if llm_item else _rule_doc_type(ocr_text_by_index.get(index, ""))
 
-    # Chốt dòng CÓ SẴN trước theo độ ưu tiên, không theo thứ tự upload.
-    slot_owner: dict[int, int] = {}
-    related = [i for i, t in types.items() if t in _ROW_PRIORITY]
-    if related:
-        slot_owner[_ROW_RELATED[0]] = min(related, key=lambda i: (_ROW_PRIORITY[types[i]], i))
-    authorization = [i for i, t in types.items() if t == "authorization"]
-    if authorization:
-        slot_owner[_ROW_AUTHORIZATION[0]] = authorization[0]
-    row_by_file = {file_index: row for row, file_index in slot_owner.items()}
-
     attachments: list[dict] = []
     classified: list[dict] = []
     used_names: set[str] = set()
@@ -183,6 +174,14 @@ def build_plan_items(
         doc_type = types[index]
         llm_item = llm_by_index.get(index) or {}
         text = ocr_text_by_index.get(index, "")
+        if doc_type == "paper_declaration":
+            # Dòng 1 đã có Tờ khai.pdf cổng sinh từ eForm — không đính lại bản giấy.
+            classified.append({
+                "fileIndex": index, "fileName": file.get("name"), "type": doc_type,
+                "documentName": _LABELS[doc_type], "target": "skip",
+                "reason": "Dòng 1 dùng Tờ khai điện tử cổng tự sinh",
+            })
+            continue
         if doc_type == "identity":
             identity_indexes.add(index)
             subject_by_index[index] = llm_item.get("subjectName") or ""
@@ -193,10 +192,9 @@ def build_plan_items(
             base = _LABELS[doc_type]
         document_name = _unique_document_name(base, used_names, _LABELS[doc_type])
 
-        row = row_by_file.get(index)
-        if row == _ROW_RELATED[0]:
+        if doc_type in _ROW_RELATED_TYPES:
             target, component_index, component_name = "existing", *_ROW_RELATED
-        elif row == _ROW_AUTHORIZATION[0]:
+        elif doc_type == "authorization":
             target, component_index, component_name = "existing", *_ROW_AUTHORIZATION
         else:
             target, component_index, component_name = "new", None, document_name

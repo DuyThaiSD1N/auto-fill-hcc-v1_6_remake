@@ -71,7 +71,7 @@ def _gender(value: Any) -> str | None:
 
 
 def _person_name(value: Any) -> str | None:
-    """Họ tên dạng "Nguyễn Bật Vấn" — CCCD in hoa toàn bộ, tờ khai viết thường."""
+    """Họ tên dạng "Lê Văn Hùng" — CCCD in hoa toàn bộ, tờ khai viết thường."""
     text = _text(value)
     if not text:
         return None
@@ -130,7 +130,7 @@ def _requester(values: dict) -> dict:
 
 
 def _skeleton(value: Any) -> str:
-    """Bỏ dấu + khoảng trắng: "Nguyễn Bất Văn" và "NGUYỄN BẬT VẤN" cùng một khung chữ."""
+    """Bỏ dấu + khoảng trắng: "Lê văn Hưng" và "LÊ VĂN HÙNG" cùng một khung chữ."""
     return _fold(value).replace(" ", "")
 
 
@@ -170,7 +170,7 @@ def _drop_impossible_cmnd_date(person: dict, who: str, warnings: list[str]) -> N
 
 
 def _one_edit_apart(a: str, b: str) -> bool:
-    """Hai chuỗi lệch đúng MỘT ký tự (thay/thêm/bớt) — kiểu OCR đọc "Nỷ" thành "Mỹ", "Xưa" thành "Sủa"."""
+    """Hai chuỗi lệch đúng MỘT ký tự (thay/thêm/bớt) — kiểu OCR đọc "Nụ" thành "Mụ", "Xuân" thành "Suân"."""
     if a == b or abs(len(a) - len(b)) > 1:
         return False
     if len(a) == len(b):

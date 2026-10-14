@@ -302,6 +302,8 @@ from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_att
 from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach import plan as xac_nhan_tthn_dvc_moi_attach
 from app.pipelines.xac_nhan_tthn_dvc_moi.process import run as xac_nhan_tthn_dvc_moi_process
+from app.pipelines.xac_nhan_thong_tin_ho_tich.attach import plan as xac_nhan_thong_tin_ho_tich_attach
+from app.pipelines.xac_nhan_thong_tin_ho_tich.process import run as xac_nhan_thong_tin_ho_tich_process
 from app.pipelines.thi_tuyen_cong_chuc.attach import plan as thi_tuyen_cong_chuc_attach
 from app.pipelines.thi_tuyen_cong_chuc.process import run as thi_tuyen_cong_chuc_process
 from app.pipelines.thi_tuyen_cong_chuc_mot_cua_moha.attach import (
@@ -1237,6 +1239,37 @@ PROCEDURES: list[dict] = [
             "Khối người nộp giữ nguyên theo tài khoản. Hệ thống tự chọn Quan hệ (Cha / Mẹ / Khác), Loại khai sinh, "
             "Loại đăng ký; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
             "Đính kèm: mang thai hộ / bỏ rơi / ủy quyền vào đúng dòng; mọi giấy tờ khác đính chung dòng Giấy chứng sinh."
+        ),
+    },
+    {
+        "key": "xac-nhan-thong-tin-ho-tich",
+        # Mã TTHC 2.002516, nhóm hộ tịch, cổng dichvucongnganhtuphap.moj.gov.vn (link kê khai trên Cổng DVC
+        # quốc gia chuyển sang sau khi chọn cơ quan). Pipeline trả HAI bộ ô: trang "Thông tin chủ hồ sơ"
+        # (data[...]) và eForm hộ tịch trong iframe tokhaidientu.moj.gov.vn (x-*: Mục I, Mục II, nội dung,
+        # lý do); content.js tách theo frame. Cụm tên ngắn → tắt heading để không ăn nhầm tên dài.
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.002516"],
+            "textIncludes": ["xác nhận thông tin hộ tịch"],
+            "headingDisabled": True,
+        },
+        "label": "Xác nhận thông tin hộ tịch",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị xác nhận thông tin hộ tịch (có chữ ký người yêu cầu).\n"
+            "2. Giấy khai sinh của người được xác nhận.\n"
+            "3. CCCD/CMND của người yêu cầu và của người được xác nhận (nếu có).\n"
+            "4. Nếu có: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước 1: mục 'Thông tin người nộp hồ sơ' = người yêu cầu (tờ khai + CCCD), mục 'Thông tin chủ hồ "
+            "sơ' = người được xác nhận (tờ khai / giấy khai sinh + CCCD/CMND). Số điện thoại, email phải tự nhập.\n"
+            "Bước 'Kê khai thông tin' (tờ khai điện tử): điền mục I người yêu cầu, mục II người được xác nhận, "
+            "nội dung và lý do xác nhận; phương thức nhận kết quả và cấp bản sao tự chọn.\n"
+            "Bước 'Thành phần hồ sơ': dòng 1 là Tờ khai điện tử cổng tự sinh (tờ khai bản giấy không đính lại); "
+            "giấy khai sinh + CCCD/CMND → dòng 2; văn bản ủy quyền → dòng 3."
         ),
     },
     {
@@ -7725,6 +7758,7 @@ _PIPELINE = {
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_process,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_process,
+    "xac-nhan-thong-tin-ho-tich": xac_nhan_thong_tin_ho_tich_process,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_process,
@@ -8027,6 +8061,7 @@ _ATTACH_PIPELINE = {
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
     "doi-cap-lai-giay-xac-nhan-khuyet-tat": doi_cap_lai_giay_xac_nhan_khuyet_tat_attach,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_attach,
+    "xac-nhan-thong-tin-ho-tich": xac_nhan_thong_tin_ho_tich_attach,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_attach,
     "xet-tuyen-vien-chuc-lai-chau": xet_tuyen_vien_chuc_lai_chau_attach,
     "xet-tuyen-cong-chuc": xet_tuyen_cong_chuc_attach,
