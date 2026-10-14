@@ -44,6 +44,9 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
     """Đưa MỎ NEO người nộp (tên+CCCD cổng tự điền từ VNeID) vào prompt để LLM trích đúng người.
     Có CCCD người nộp trong hồ sơ → trích NguoiNop_* từ đúng tài liệu đó (kể cả khi khác người trên
     GCN/Đơn). Không có CCCD người nộp → để trống NguoiNop_*. Không có mỏ neo → giữ hành vi tự nộp."""
+    # Cài đặt "Lấy người nộp theo tờ khai": bỏ mốc tài khoản, trích người đứng Đơn như tự nộp.
+    if mapper.theo_to_khai(options):
+        return ""
     context = (options or {}).get("formContext") or {}
     raw_name = context.get("applicantFullname") or context.get("fullname") or ""
     name = _norm_text(raw_name)

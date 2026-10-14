@@ -181,6 +181,11 @@ def _form_context(options: dict | None) -> dict:
     }
 
 
+def theo_to_khai(options: dict | None) -> bool:
+    """Cài đặt tài khoản "Lấy người nộp theo tờ khai" → Phần I theo người đứng Đơn, bỏ mốc tài khoản."""
+    return str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+
+
 def _has_context_anchor(context: dict) -> bool:
     return bool(_identity(context.get("applicant_identity")) or _fold(context.get("applicant_name")))
 
@@ -226,9 +231,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     residence = _area(values.get("NguoiNop_ThuongTru"))
 
     # Chỉ đè Phần I khi khớp tài khoản đang đăng nhập (tránh đè nhầm thông tin người khác VNeID đã điền).
-    # Không có anchor (tài khoản trống) → cứ điền theo giấy tờ.
+    # Không có anchor (tài khoản trống) hoặc bật "theo tờ khai" → cứ điền theo giấy tờ.
     can_fill_applicant = (
-        not _has_context_anchor(context)
+        theo_to_khai(options)
+        or not _has_context_anchor(context)
         or _same_person(identity, name, context.get("applicant_identity"), context.get("applicant_name"))
     )
 
