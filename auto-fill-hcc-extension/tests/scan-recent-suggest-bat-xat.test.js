@@ -9,7 +9,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+// Checkout Windows (core.autocrlf) ra CRLF — chuẩn về LF để cắt đoạn theo "\n}\n" như trên CI.
+const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8").replace(/\r\n/g, "\n");
 const settingsJs = fs.readFileSync(path.join(root, "settings.js"), "utf8");
 const settingsHtml = fs.readFileSync(path.join(root, "settings.html"), "utf8");
 const popupHtml = fs.readFileSync(path.join(root, "popup.html"), "utf8");

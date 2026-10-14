@@ -3,6 +3,16 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.5",
+    date: "14/10/2026",
+    items: [
+      "Cổng DVC quốc gia: ô \"Kính gửi\" / \"Tại\" lấy theo cơ quan đã chọn ở bước \"Chọn cơ quan thực hiện\" (nộp hộ về xã khác vẫn đúng nơi nhận).",
+      "Trang nộp hồ sơ mới: trang tự cuộn theo ô đang điền và dòng đang đính kèm, xong thì về đầu trang.",
+      "Không còn tự chọn nhầm thủ tục khi đang xem trang thông tin thủ tục trên Cổng DVC quốc gia.",
+      "Hộ kinh doanh: chọn lại đúng Tỉnh khi hồ sơ cũ đang đứng ở tỉnh trước sáp nhập, không còn thiếu Phường/Xã.",
+    ],
+  },
+  {
     version: "1.23.1",
     date: "13/10/2026",
     items: [

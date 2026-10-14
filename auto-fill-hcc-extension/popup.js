@@ -1286,6 +1286,48 @@ function detectUrlScopeOk(detect, url) {
   return scope.some((u) => u && url.includes(String(u).toLowerCase()));
 }
 
+// Cổng DVC quốc gia (dichvucong.gov.vn): chỉ biểu mẫu /nop-ho-so mới là trang của MỘT thủ tục. Mọi trang
+// còn lại (chi tiết thủ tục /thu-tuc-hanh-chinh/<uuid>, trang chủ, danh sách, tra cứu...) là trang THÔNG TIN,
+// in kèm tên NHIỀU thủ tục khác: cột "Tìm kiếm nhiều nhất", "Thủ tục hành chính liên quan", menu. Khớp
+// textIncludes/heading ở đây là nhận nhầm (vd đang xem "Công nhận đăng kiểm viên tàu biển" mà tự chọn
+// "Thông báo phát triển nguồn điện mặt trời mái nhà" chỉ vì tên này nằm ở cột bên phải) → chỉ tin URL.
+function dvcqgPageUrl(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    const host = parsed.hostname.toLowerCase();
+    return host === "dichvucong.gov.vn" || host === "www.dichvucong.gov.vn" ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isDvcqgInfoPageUrl(url) {
+  const parsed = dvcqgPageUrl(url);
+  return !!parsed && !parsed.pathname.toLowerCase().startsWith("/nop-ho-so");
+}
+
+function isDvcqgProcedureDetailUrl(url) {
+  const parsed = dvcqgPageUrl(url);
+  return !!parsed && /^\/thu-tuc-hanh-chinh\/[^/]+/i.test(parsed.pathname);
+}
+
+function dvcqgDetailPath(url) {
+  const parsed = dvcqgPageUrl(url);
+  return parsed ? parsed.pathname.toLowerCase().replace(/\/+$/, "") : "";
+}
+
+// Trang chi tiết thủ tục khớp ĐÚNG UUID một link "Đi đến thủ tục" (ke_khai_links của backend) → thủ tục đó.
+// So nguyên path, không so chữ trên trang.
+function dvcqgKeKhaiLinkKey(url, detectables) {
+  if (!isDvcqgProcedureDetailUrl(url) || typeof keKhaiLinks !== "function") return "";
+  const path = dvcqgDetailPath(url);
+  const link = (keKhaiLinks() || []).find((item) => item?.key
+    && isDvcqgProcedureDetailUrl(item.url)
+    && dvcqgDetailPath(item.url) === path
+    && detectables.some((p) => p.key === item.key));
+  return link ? link.key : "";
+}
+
 // Mã loại hình doanh nghiệp của cổng ĐKKD qua mạng (trùng value radio $CtlEntType: SC = công ty
 // cổ phần, LLC1/LLC2 = TNHH một/hai thành viên trở lên, PRI = doanh nghiệp tư nhân, PARTNER = hợp
 // danh). Cổng in nhãn loại hình MỖI CHỖ MỘT KIỂU — khối "Thông tin về hồ sơ" có bản ghi "Công ty
@@ -1393,9 +1435,12 @@ function detectProcedureKeyFromSignals(signals) {
     }
   }
 
+  // Trang thông tin của Cổng DVC quốc gia: bỏ mọi bước khớp chữ/heading (xem isDvcqgInfoPageUrl).
+  const dvcqgInfoPage = isDvcqgInfoPageUrl(url);
+
   // 0) Một số thủ tục dùng chung URL cổng chứng thực, nên cần ưu tiên cụm tên thủ tục
   //    rất đặc trưng trước rule URL chung.
-  if (body) {
+  if (body && !dvcqgInfoPage) {
     let bestPriority = "";
     let bestPriorityScore = 0;
     for (const p of detectables) {
@@ -1421,6 +1466,10 @@ function detectProcedureKeyFromSignals(signals) {
     if (!detectUrlScopeOk(p.detect, url)) continue;
     if (inc.some((u) => u && url.includes(String(u).toLowerCase()))) return p.key;
   }
+
+  // Trang thông tin DVCQG: ngoài rule URL ở trên chỉ còn khớp đúng UUID link "Đi đến thủ tục".
+  // Không khớp gì thì để TRỐNG cho cán bộ tự chọn, thà không nhận diện còn hơn nhận nhầm.
+  if (dvcqgInfoPage) return dvcqgKeKhaiLinkKey(url, detectables);
 
   // 2) Heading khớp tên thủ tục (eForm hộ tịch/chứng thực moj). Chọn label DÀI NHẤT khớp
   //    để tránh nhầm (vd "đăng ký khai sinh" vs "đăng ký lại khai sinh").
@@ -1506,6 +1555,13 @@ async function clearAutoDetectedSelection() {
   if (hadSelected) await saveSession();
 }
 
+// Đang ở trang chi tiết một thủ tục DVCQG chưa hỗ trợ (UUID không khớp thủ tục nào). Lựa chọn còn lại từ
+// trang trước chắc chắn không phải thủ tục đang xem → xóa nhãn (giữ file như clearAutoDetectedSelection),
+// panel về "Chưa có thủ tục nào được chọn!" để cán bộ tự chọn. Hai nơi gọi đã bỏ qua khi chọn tay.
+async function enterUnknownDvcqgProcedureMode() {
+  await clearAutoDetectedSelection();
+}
+
 // Gọi content script lấy tín hiệu trang → nếu nhận diện được thì chọn và ghi nhận nguồn tự động.
 async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
   // Người dùng đã sửa detect sai: giữ lựa chọn tay đến khi reload/chuyển URL.
@@ -1549,6 +1605,11 @@ async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
       await enterBusinessProcedureChoiceMode();
       return false;
     }
+    // Trang chi tiết DVCQG chưa hỗ trợ: bỏ lựa chọn cũ, để trống cho cán bộ tự chọn.
+    if (isDvcqgProcedureDetailUrl(res?.signals?.url)) {
+      await enterUnknownDvcqgProcedureMode();
+      return false;
+    }
     // Cổng THƯỜNG: không nhận ra thủ tục nào + đang có lựa chọn TỰ nhận diện (không phải chọn tay) →
     // xóa để panel không kẹt "Đang chọn: A" khi đã sang trang/thủ tục khác. CHỈ xóa khi có res.signals
     // (trang thật) — tránh xóa oan lúc content script chưa gắn kịp (đã retry [0,400,1200] ở trên).
@@ -1589,11 +1650,11 @@ async function reDetectProcedureOnNav(run = 0) {
     // autoDetectProcedure ở trên).
     if (shouldClearProcedureOnEnterprisePortal(res?.signals)) {
       await enterBusinessProcedureChoiceMode();
-      return;
-    }
-    // Cổng THƯỜNG: sang trang/thủ tục KHÁC không detect được + lựa chọn hiện tại là do TỰ nhận diện →
-    // xóa để không kẹt "Đang chọn: A". Chỉ khi có res.signals (trang thật) và không phải chọn tay.
-    if (res?.signals && selectedProcedureKey && !manualProcedureOverride) {
+    } else if (isDvcqgProcedureDetailUrl(res?.signals?.url)) {
+      await enterUnknownDvcqgProcedureMode();
+    } else if (res?.signals && selectedProcedureKey && !manualProcedureOverride) {
+      // Cổng THƯỜNG: sang trang/thủ tục KHÁC không detect được + lựa chọn hiện tại là do TỰ nhận diện →
+      // xóa để không kẹt "Đang chọn: A". Chỉ khi có res.signals (trang thật) và không phải chọn tay.
       await clearAutoDetectedSelection();
     }
   } catch (e) {
@@ -4658,6 +4719,7 @@ ocrBtn.addEventListener("click", async () => {
     // Các thủ tục cần đối chiếu người yêu cầu cổng đã điền sẵn (VNeID) với CCCD upload.
     if (
       cfg.key === "ho-tro-mai-tang" ||
+      cfg.key === "ho-tro-mai-tang-1116910" ||
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||

@@ -2271,13 +2271,20 @@
    * Phải nới theo CÙNG luật với areaFindOption (khớp lỏng "chứa"): danh sách của cổng ghi
    * "Huyện Hòa Vang" trong khi hồ sơ ghi "Hòa Vang" — so khớp tuyệt đối thì option ta vừa chọn
    * đúng lại bị đọc là "chưa chọn được", rồi cấp Phường/Xã bị bỏ oan vì tưởng Tỉnh chưa vào.
+   *
+   * Nhưng danh sách CÓ option khớp tuyệt đối thì chỉ nhận đúng option đó: hồ sơ thay đổi hộ kinh
+   * doanh mở ra với địa chỉ cũ, ô Tỉnh có thể đang đứng ở một option khác mà tên vẫn CHỨA tên tỉnh
+   * (vd tỉnh trước sáp nhập). Nhận lỏng ở đây là bỏ qua bước chọn Tỉnh → danh sách Phường/Xã vẫn
+   * của tỉnh cũ, không có xã mới → hụt Phường/Xã.
    */
   function areaAccepts(sel, target) {
     const t = areaFold(target);
     if (!t) return false;
     const cur = areaFold(areaSelectedText(sel));
     if (!cur) return false;
-    return cur === t || (t.length > 2 && cur.includes(t));
+    if (cur === t) return true;
+    const exact = Array.from(sel.options || []).some((o) => o.value && areaFold(o.textContent) === t);
+    return !exact && t.length > 2 && cur.includes(t);
   }
 
   function areaChoose(sel, target) {
