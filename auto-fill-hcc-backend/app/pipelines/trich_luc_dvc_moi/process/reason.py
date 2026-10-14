@@ -36,9 +36,13 @@ d. Chỉ có giấy chứng sinh / tờ khai cư trú CT01 → người con trê
 e. Chỉ có CCCD: một thẻ khớp tài khoản và không có ai khác → chính người nộp; có thêm đúng một thẻ
    người khác → người đó.
 
-XÁC ĐỊNH LOẠI: chỉ khi giấy tờ GHI RÕ — mục yêu cầu trên tờ khai / giấy ủy quyền nêu tên loại, hoặc hồ sơ có
-chính giấy hộ tịch loại đó của người được cấp. Mục yêu cầu chỉ ghi "Bản sao" / để trống và không có giấy hộ
-tịch → "không xác định". Không đoán từ tuổi, tên file hay ngữ cảnh.
+XÁC ĐỊNH LOẠI: chỉ khi giấy tờ GHI RÕ, theo thứ tự:
+1. Mục yêu cầu trên tờ khai ("Đề nghị cơ quan cấp bản sao trích lục ...") / giấy ủy quyền nêu tên loại → LẤY
+   ĐÚNG loại đó, kể cả khi hồ sơ kèm giấy hộ tịch loại KHÁC. Giấy kèm theo chỉ là giấy chứng minh, không đổi
+   loại: tờ khai xin "Khai sinh" kèm trích lục khai tử của chính người đó (để mở thừa kế) → vẫn "khai sinh".
+2. Mục yêu cầu không nêu loại → hồ sơ có chính giấy hộ tịch loại đó của người được cấp.
+3. Mục yêu cầu chỉ ghi "Bản sao" / để trống và không có giấy hộ tịch → "không xác định".
+Không đoán từ tuổi, tên file hay ngữ cảnh.
 
 ĐỐI CHIẾU NGƯỜI (người yêu cầu trên tờ khai, cha / mẹ / vợ / chồng trên giấy hộ tịch ↔ người nộp; người nộp ↔
 người được cấp). Tờ khai thường viết tay, OCR hay đọc lệch họ tên (sai dấu, sai một chữ) và số giấy tờ (lệch 1–2
@@ -101,6 +105,7 @@ Nguồn: ...
 Căn cứ phân vai: ...
 </nguoi_duoc_cap>
 <giay_to_ho_tich>
+Loại ghi trên tờ khai: <chép đúng chữ sau "Đề nghị cơ quan cấp bản sao trích lục" / loại nêu trong giấy ủy quyền> (không có → không có)
 Loại trích lục cần cấp: khai sinh|kết hôn|khai tử|giám hộ|chấm dứt giám hộ|nhận cha mẹ con|nuôi con nuôi|thay đổi cải chính|ghi chú ly hôn|giám sát giám hộ|chấm dứt giám sát giám hộ|không xác định
 Tài liệu nguồn: ...
 Căn cứ: ...

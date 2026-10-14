@@ -39,6 +39,16 @@ _EVENT_FROM_REASON = {
     "thay doi cai chinh": "civil_change", "ghi chu ly hon": "divorce", "giam sat giam ho": "supervision",
     "cham dut giam sat giam ho": "supervision_end",
 }
+# Cụm nhận loại trong chữ chép nguyên từ mục yêu cầu tờ khai; cụm dài đứng trước để "chấm dứt giám hộ" không
+# bị đếm thêm thành "giám hộ".
+_DECLARED_EVENT_PHRASES = (
+    ("cham dut giam sat giam ho", "supervision_end"), ("giam sat giam ho", "supervision"),
+    ("cham dut giam ho", "guardianship_end"), ("giam ho", "guardianship"),
+    ("nhan cha me con", "parent_child"), ("nuoi con nuoi", "adoption"),
+    ("thay doi", "civil_change"), ("cai chinh", "civil_change"), ("xac dinh lai dan toc", "civil_change"),
+    ("ly hon", "divorce"), ("ket hon", "marriage"), ("khai tu", "death"), ("khai sinh", "birth"),
+)
+_GIAY_TO_DETAIL_KEYS = ("GiayTo_TenGiayTo", "GiayTo_CoQuanDangKy", "GiayTo_So", "GiayTo_QuyenSo", "GiayTo_NgayDangKy")
 
 # Cách gọi khác của cùng một nhãn quan hệ trên cổng. "ba" trần không nhận: fold dấu rồi không
 # phân biệt được "bà" với cách gọi bố.
@@ -160,7 +170,24 @@ def _area(value):
     return remapped
 
 
+def _declared_event(context: str) -> str:
+    """Loại ghi ở mục yêu cầu tờ khai — chỉ nhận khi chữ chép ra nêu đúng MỘT loại."""
+    text = " " + re.sub(r"[^a-z]+", " ", _fold(labeled_value(section(context, "giay_to_ho_tich"),
+                                                             "Loại ghi trên tờ khai"))) + " "
+    found = set()
+    for phrase, code in _DECLARED_EVENT_PHRASES:
+        if f" {phrase} " in text:
+            found.add(code)
+            text = text.replace(f" {phrase} ", "  ")
+    return found.pop() if len(found) == 1 else ""
+
+
 def _event_type(values: dict, context: str) -> str:
+    # Mục yêu cầu tờ khai thắng giấy hộ tịch kèm theo: xin bản sao khai sinh kèm trích lục khai tử (mở thừa
+    # kế) vẫn là khai sinh, dù lượt phân vai/trích có kết luận theo giấy kèm.
+    declared = _declared_event(context)
+    if declared:
+        return declared
     event = str(values.get("GiayTo_LoaiSuKien") or "").strip().lower()
     if event in _EVENT_TO_OPTION:
         return event
@@ -220,6 +247,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         seen.add(name)
 
     event = _event_type(values, context)
+    extracted_event = str(values.get("GiayTo_LoaiSuKien") or "").strip().lower()
+    if extracted_event in _EVENT_TO_OPTION and extracted_event != event:
+        # Lượt trích lấy số/ngày/cơ quan từ giấy hộ tịch khác loại tờ khai yêu cầu → không phải nguồn.
+        values = {k: v for k, v in values.items() if k not in _GIAY_TO_DETAIL_KEYS}
+        warnings.append("Thông tin đăng ký hộ tịch đọc ra thuộc giấy khác loại tờ khai yêu cầu — đã bỏ trống, "
+                        "cán bộ nhập số, ngày, nơi đăng ký theo tờ khai.")
     # Quan hệ phải chốt TRƯỚC: chọn "Bản thân" thì cổng tự đổ khối người được cấp từ người nộp,
     # chọn khác thì cổng dựng lại khối đó — điền nhân thân trước sẽ bị xóa.
     relation, other, warning = _relation(values, context, options, event)

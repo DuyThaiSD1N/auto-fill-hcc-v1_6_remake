@@ -20,11 +20,11 @@ def _fold(value: str) -> str:
     return re.sub(r"\s+", " ", "".join(c for c in text if unicodedata.category(c) != "Mn")).lower()
 
 
-def _context(relation="", other="", subject_id="", status="còn sống", event="khai sinh"):
+def _context(relation="", other="", subject_id="", status="còn sống", event="khai sinh", declared="không có"):
     return (
         "<phan_vai_da_xac_dinh>\n"
         f"<nguoi_duoc_cap>\nHọ tên: TRAN THI B\nSố định danh: {subject_id}\nTrạng thái: {status}\n</nguoi_duoc_cap>\n"
-        f"<giay_to_ho_tich>\nLoại trích lục cần cấp: {event}\n</giay_to_ho_tich>\n"
+        f"<giay_to_ho_tich>\nLoại ghi trên tờ khai: {declared}\nLoại trích lục cần cấp: {event}\n</giay_to_ho_tich>\n"
         f"<quan_he>\nKết luận: {relation}\nQuan hệ khác: {other}\nCăn cứ: x\n</quan_he>\n"
         "</phan_vai_da_xac_dinh>"
     )
@@ -133,6 +133,34 @@ def test_all_extract_types_map_to_portal_option(reason_event, code):
     out, _ = _enrich(values, _context("Mẹ đẻ", event=reason_event))
     by = {f["name"]: f for f in out}
     assert by["citizenLoaiViecYeuCau"]["value"] == mapper._EVENT_TO_OPTION[code]
+
+
+def test_to_khai_ghi_khai_sinh_thang_trich_luc_khai_tu_kem_theo():
+    # Tờ khai xin bản sao khai sinh, hồ sơ kèm trích lục khai tử của chính người đó (mở thừa kế).
+    values = {**SUBJECT, "GiayTo_LoaiSuKien": "death", "GiayTo_TenGiayTo": "Trích lục khai tử",
+              "GiayTo_So": "175/2025", "GiayTo_NgayDangKy": "17/11/2025"}
+    out, warnings = _enrich(values, _context("Con đẻ", status="đã chết", event="khai tử", declared="Khai Sinh"))
+    by = {f["name"]: f for f in out}
+    assert by["citizenLoaiViecYeuCau"]["value"] == mapper._EVENT_TO_OPTION["birth"]
+    assert by["citizenTenGiayToHoTich"]["value"] == "Giấy khai sinh"
+    assert not {"citizencauhoi3", "citizencauhoi5", "citizenHoSo_CoQuanDangKy"} & set(by)
+    assert any("khác loại" in w for w in warnings)
+
+
+@pytest.mark.parametrize("declared,code", [
+    ("Trích lục khai tử", "death"), ("chấm dứt giám hộ", "guardianship_end"),
+    ("nhận cha, mẹ, con", "parent_child"), ("Giấy khai sinh (bản sao)", "birth"),
+])
+def test_loai_ghi_tren_to_khai_map_dung(declared, code):
+    assert mapper._declared_event(_context(declared=declared)) == code
+
+
+@pytest.mark.parametrize("declared", ["Bản sao", "không có", "khai sinh, kết hôn"])
+def test_loai_ghi_tren_to_khai_mo_ho_thi_theo_ket_luan(declared):
+    out, _ = _enrich(SUBJECT, _context("Mẹ đẻ", declared=declared))
+    by = {f["name"]: f for f in out}
+    assert by["citizenLoaiViecYeuCau"]["value"] == mapper._EVENT_TO_OPTION["birth"]
+    assert by["citizencauhoi3"]["value"] == "12/1990"
 
 
 def test_llm_self_rejected_when_identity_differs():

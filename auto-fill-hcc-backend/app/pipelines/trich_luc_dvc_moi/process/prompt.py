@@ -49,6 +49,8 @@ Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG tríc
 <giay_to_ho_tich>
 9. GiayTo_LoaiSuKien CHỈ khi giấy tờ GHI RÕ loại: mục (4) tờ khai / giấy ủy quyền ghi tên loại trích lục
    (vd "Giấy khai sinh", "Trích lục khai tử"), hoặc hồ sơ có chính giấy hộ tịch loại đó của người được cấp.
+   Mục (4) đã ghi loại thì LUÔN theo mục (4), dù hồ sơ kèm giấy hộ tịch loại khác (vd xin "Khai sinh" kèm
+   trích lục khai tử để mở thừa kế → "birth"; trích lục khai tử không phải nguồn GiayTo_*).
    Mục (4) chỉ ghi "Bản sao" / để trống và không có giấy hộ tịch → BỎ field; KHÔNG suy loại từ tuổi, từ
    "Số chứng nhận", từ việc người được cấp còn sống hay không. Các field GiayTo_* còn lại ưu tiên khối "Đã đăng ký tại ..." của tờ khai, thiếu thì lấy trên
    CHÍNH giấy hộ tịch cùng loại và cùng người được cấp. Giấy khác loại hoặc khác người không phải nguồn.
