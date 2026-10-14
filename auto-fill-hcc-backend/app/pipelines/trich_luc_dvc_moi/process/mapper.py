@@ -95,17 +95,32 @@ def _date_key(value) -> tuple | None:
     return (int(match[3]), int(match[2]), int(match[1])) if match else None
 
 
-def _card_not_recipient(number, birth, gender, issue_date, event: str, event_date) -> bool:
+def _card_on_declaration(context: str, name, number: str) -> bool:
+    """Tờ khai ghi người yêu cầu trùng tên người được cấp và kèm đúng số thẻ này → thẻ chắc chắn của họ."""
+    value = labeled_value(section(context, "quan_he"), "Người yêu cầu tờ khai")
+    parts = re.split(r"\s+[—–-]\s+", value, maxsplit=1)
+    if len(parts) != 2 or not number:
+        return False
+    return _digits(parts[1]) == number and bool(parts[0]) and _fold(parts[0]) == _fold(name)
+
+
+def _card_birth_year_mismatch(number, birth) -> bool:
+    card_year = id_birth_year(number)
+    birth_year = re.search(r"(\d{4})\s*$", str(birth or ""))
+    return bool(card_year and birth_year and card_year != int(birth_year[1]))
+
+
+def _card_not_recipient(number, birth, gender, issue_date, event: str, event_date,
+                        on_declaration: bool = False) -> bool:
     """Thẻ đọc ra mâu thuẫn với chính người được cấp → thẻ của người khác trong hồ sơ bị gán nhầm.
 
     Số căn cước mã hoá giới tính + năm sinh chủ thẻ; người đã chết không thể được cấp thẻ sau ngày khai tử.
+    Tờ khai đã ghép thẻ với đúng tên người được cấp thì lệch năm sinh là do giấy ghi sai ngày sinh, không bỏ thẻ.
     """
     card_gender = id_gender(number)
     if card_gender and _fold(gender) in {"nam", "nu"} and _fold(card_gender) != _fold(gender):
         return True
-    card_year = id_birth_year(number)
-    birth_year = re.search(r"(\d{4})\s*$", str(birth or ""))
-    if card_year and birth_year and card_year != int(birth_year[1]):
+    if not on_declaration and _card_birth_year_mismatch(number, birth):
         return True
     issued, died = _date_key(issue_date), _date_key(event_date)
     return event == "death" and bool(issued and died) and issued > died
@@ -220,7 +235,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenNDK_HoVaTen", upper_person_name(name))
         personal_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
         issue_date = values.get("NguoiDuocCap_NgayCap")
-        card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if issue_date else "")
+        # Số căn cước/CCCD chính là số định danh 12 số → thiếu số giấy tờ thì lấy số định danh (trẻ dưới 14 tuổi
+        # chưa có thẻ được chặn ở dưới).
+        card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if len(personal_id) == 12 else "")
         # Số trùng tài khoản mà người được cấp đã chết hoặc khác tên chủ tài khoản → thẻ của người nộp bị gán nhầm
         # (hay gặp: trích lục khai tử kèm CCCD người thân, giấy hộ tịch để trống giấy tờ tùy thân) → bỏ cả cụm.
         account_name, account_id = requester_context(options)
@@ -230,14 +247,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                             "nhập giấy tờ tùy thân của người được cấp.")
             card_number = personal_id = ""
         birth = values.get("NguoiDuocCap_NgaySinh")
+        on_declaration = _card_on_declaration(context, name, card_number or personal_id)
         if (card_number or personal_id) and _card_not_recipient(
             card_number or personal_id, birth, values.get("NguoiDuocCap_GioiTinh"), issue_date, event,
-            values.get("GiayTo_NgayDangKy"),
+            values.get("GiayTo_NgayDangKy"), on_declaration,
         ):
             warnings.append("Giấy tờ tùy thân đọc ra không khớp người được cấp (giới tính/năm sinh trong số thẻ, "
                             "hoặc thẻ cấp sau ngày khai tử) — đã bỏ trống, cán bộ nhập giấy tờ tùy thân của người "
                             "được cấp.")
             card_number = personal_id = ""
+        elif on_declaration and _card_birth_year_mismatch(card_number or personal_id, birth):
+            warnings.append("Năm sinh mã hoá trong số căn cước lệch ngày sinh người được cấp trên giấy tờ — cán bộ "
+                            "kiểm tra lại ngày sinh.")
         add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else "")
         add("citizenNDK_NgaySinh", birth)
 

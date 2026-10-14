@@ -289,3 +289,25 @@ def test_the_khop_nguoi_da_chet_van_giu():
     out, _ = _enrich(_the_nguoi_khac(NguoiDuocCap_SoGiayTo="001034000009", NguoiDuocCap_NgayCap="01/01/2005"),
                      _context("Con đẻ"))
     assert "citizenNDK_SoGiayToTuyThan" in _names(out)
+
+
+def test_chi_co_so_dinh_danh_van_dien_loai_va_so_giay_to():
+    # Số CCCD chính là số định danh: không đọc được số giấy tờ / ngày cấp thì vẫn điền từ số định danh.
+    values = {k: v for k, v in SUBJECT.items() if k not in ("NguoiDuocCap_SoGiayTo", "NguoiDuocCap_NgayCap")}
+    out, _ = _enrich(values, _context("Mẹ đẻ"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizenNDK_SoGiayToTuyThan") == SUBJECT["NguoiDuocCap_SoDinhDanh"]
+    assert by.get("citizenNDK_LoaiGiayToTuyThan")
+
+
+def test_to_khai_ghep_the_dung_nguoi_lech_nam_sinh_van_giu():
+    # Tờ khai ghi ngày sinh người được cấp lệch năm mã hoá trong thẻ, nhưng người yêu cầu cùng tên + đúng số thẻ.
+    values = {**SUBJECT, "NguoiDuocCap_NgaySinh": "01/02/1970"}
+    context = _context("Không xác định").replace(
+        "<quan_he>\n", "<quan_he>\nNgười yêu cầu tờ khai: TRAN THI B — 001190000002\n")
+    out, warnings = _enrich(values, context)
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizenNDK_SoGiayToTuyThan") == "001190000002"
+    assert by.get("citizenNDK_LoaiGiayToTuyThan")
+    assert any("kiểm tra lại ngày sinh" in w for w in warnings)
+    assert not any("không khớp người được cấp" in w for w in warnings)

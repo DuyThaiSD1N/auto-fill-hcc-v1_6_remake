@@ -183,6 +183,7 @@ KEY_FIELDS_BY_PROCEDURE: dict[str, list] = {
     "dang-ky-dat-dai-lan-dau": _DAT_DAI,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": _DAT_DAI,
     "ho-tro-mai-tang": _MAI_TANG,
+    "ho-tro-mai-tang-1116910": _MAI_TANG,
     "ho-tro-mai-tang-huu-tri-xa-hoi": _MAI_TANG,
     "dieu-chinh-huu-tri-xa-hoi": _MAI_TANG,
     # Cùng cổng Bộ Y tế, schema dùng ĐÚNG bộ tên ô data[...] này cho hai vai người nộp/chủ hồ sơ.

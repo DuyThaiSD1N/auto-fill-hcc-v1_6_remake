@@ -275,8 +275,16 @@
     {
       "key": "ho-tro-mai-tang",
       "code": "1.001731",
-      "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
+      "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội (1.001731)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-mai-tang-1116910",
+      "code": "1.116910",
+      "label": "[Tỉnh Ninh Bình] Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79",
       "needsAgencySelect": true,
       "autoConfirm": true
     },

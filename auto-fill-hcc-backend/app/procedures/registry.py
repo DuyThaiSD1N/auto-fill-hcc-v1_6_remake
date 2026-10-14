@@ -5197,12 +5197,43 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang",
+        # Cùng tên thủ tục có HAI mã TTHC (1.001731 và 1.116910 của Ninh Bình, xem entry ngay dưới) →
+        # label kèm mã trong ngoặc để cán bộ phân biệt; textIncludes giữ tên trơn để vẫn nhận trên trang nộp.
         "detect": {
             "urlIncludes": ["maThuTuc=1.001731"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],
             "headingDisabled": True,
         },
-        "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
+        "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội (1.001731)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Nếu người nộp hồ sơ là chủ hồ sơ: tải CCCD của người đó.\n"
+            "2. Nếu người nộp và chủ hồ sơ khác nhau: tải CCCD của cả hai người; "
+            "hệ thống sẽ so với thông tin người nộp đang có trên form để xác định chủ hồ sơ.\n"
+            "Bước 3 (đính kèm) — chuẩn bị các giấy tờ sau, hệ thống tự xếp vào đúng ô:\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04).\n"
+            "2. Bản sao giấy chứng tử/giấy báo tử (hoặc trích lục khai tử) của đối tượng.\n"
+            "3. Nếu có: bản sao quyết định/danh sách thôi hưởng trợ cấp BHXH.\n"
+            "Bước thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng (Tờ khai Mẫu số 02 - NĐ 176/2025) nên "
+            "MỌI file đều được đính vào dòng đó; file không phải Tờ khai vẫn đính kèm nhưng có cảnh báo."
+        ),
+    },
+    {
+        "key": "ho-tro-mai-tang-1116910",
+        # Mã TTHC thứ hai (Ninh Bình) của "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội" (DVCQG
+        # /thu-tuc-hanh-chinh/01a0f66e-…) — label mang tiền tố tỉnh. Cùng Tờ khai Mẫu số 04 nên dùng CHUNG pipeline
+        # ho_tro_mai_tang. Tên trùng nguyên văn với 1.001731 → textIncludes phải kèm MÃ, tổng cụm dài
+        # hơn nên thắng entry 1.001731 khi trang có in mã.
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
+            "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội", "1.116910"],
+            "headingDisabled": True,
+        },
+        "label": "[Tỉnh Ninh Bình] Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -7842,6 +7873,7 @@ _PIPELINE = {
         dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
+    "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
@@ -8038,6 +8070,7 @@ _ATTACH_PIPELINE = {
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": chung_thuc_sua_doi_giao_dich_attach,
     "chung-thuc-tu-choi-nhan-di-san": chung_thuc_tu_choi_di_san_attach,
     "ho-tro-mai-tang": ho_tro_mai_tang_attach,
+    "ho-tro-mai-tang-1116910": ho_tro_mai_tang_attach,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,

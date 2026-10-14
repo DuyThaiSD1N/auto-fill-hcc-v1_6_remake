@@ -302,10 +302,22 @@ def test_registry_uses_ho_tro_mai_tang_process_pipeline():
 
     assert get_pipeline("ho-tro-mai-tang") is agent.run
     assert proc["mode"] == "agent"
-    assert proc["label"] == "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"
-    assert proc["detect"]["textIncludes"] == [proc["label"]]
+    assert proc["label"] == "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội (1.001731)"
+    assert proc["detect"]["textIncludes"] == ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"]
     assert proc["roles"] == []
     assert "người nộp và chủ hồ sơ khác nhau" in proc["uploadHint"]
+
+
+def test_ma_1116910_dung_chung_pipeline_ho_tro_mai_tang():
+    proc = get_procedure("ho-tro-mai-tang-1116910")
+
+    assert get_pipeline("ho-tro-mai-tang-1116910") is agent.run
+    assert get_attach_pipeline("ho-tro-mai-tang-1116910") is get_attach_pipeline("ho-tro-mai-tang")
+    assert proc["label"] == "[Tỉnh Ninh Bình] Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"
+    assert "maThuTuc=1.116910" in proc["detect"]["urlIncludes"]
+    # Tên trùng mã 1.001731 → phải kèm mã để thắng khi khớp theo chữ trên trang.
+    assert proc["detect"]["textIncludes"] == ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội", "1.116910"]
+    assert proc["uploadHint"] == get_procedure("ho-tro-mai-tang")["uploadHint"]
 
 
 def test_registry_uses_independent_pipeline_for_ho_tro_mai_tang_huu_tri_xa_hoi():

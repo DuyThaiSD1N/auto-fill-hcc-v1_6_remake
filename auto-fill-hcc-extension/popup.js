@@ -4644,6 +4644,7 @@ ocrBtn.addEventListener("click", async () => {
     // Các thủ tục cần đối chiếu người yêu cầu cổng đã điền sẵn (VNeID) với CCCD upload.
     if (
       cfg.key === "ho-tro-mai-tang" ||
+      cfg.key === "ho-tro-mai-tang-1116910" ||
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
