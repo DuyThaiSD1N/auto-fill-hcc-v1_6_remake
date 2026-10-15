@@ -93,7 +93,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         context_builder=_submitter_context,
     )
-    mapped_fields, warnings = mapper.enrich(res["fields"], options)
+    mapped_fields, warnings = mapper.enrich(res["fields"], options, ocr_text=res.get("ocr_text"))
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)
