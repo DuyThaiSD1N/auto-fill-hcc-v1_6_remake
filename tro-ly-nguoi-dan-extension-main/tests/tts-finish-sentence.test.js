@@ -39,12 +39,14 @@ assert.match(replyBody, /window\.__hccTTS\?\.speak\?\.\(d\.tts_text, d\.tts_lang
 const incAfterStop = replyBody.indexOf("replyTtsInFlight += 1");
 assert.ok(incAfterStop > replyBody.indexOf("if (!queueThisReply)"),
   "replyTtsInFlight phải tăng sau nhánh rẽ, tức là tăng cho MỌI lượt");
-assert.match(replyBody, /replyTtsInFlight === 0\) startVoice\(\)/,
+assert.match(replyBody, /replyTtsInFlight === 0\) listenWhenQuiet\(\)/,
   "chỉ mở mic khi hàng đợi đã cạn");
 
 // ── Trường hợp fill_report cũ vẫn giữ ───────────────────────────────────────────────────
 // Đây là lý do cơ chế xếp hàng tồn tại từ đầu; gộp điều kiện không được làm mất nó.
-assert.match(replyBody, /prevState === "filling" && d\.state === "reviewing"/);
+assert.match(replyBody, /prevState === "filling" && \(?d\.state === "reviewing"/);
+// Báo điền xong của vòng bổ sung ô trống (có bong bóng phụ) cũng xếp hàng sau câu "đang điền".
+assert.match(replyBody, /d\.state === "reviewing" \|\| fillTail/);
 
 // ── Barge-in vẫn cắt ────────────────────────────────────────────────────────────────────
 const startVoice = sidebar.slice(sidebar.indexOf("async function startVoice()"));

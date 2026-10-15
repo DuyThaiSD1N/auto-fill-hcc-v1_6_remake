@@ -112,7 +112,10 @@
             this._setState("final");
             // Push-to-talk: chốt 1 câu → dừng mic, đóng WS, báo caller.
             this._teardown();
+            // Chốt RỖNG (tiếng ồn, tiếng loa) cũng phải báo dừng — không thì bên gọi vẫn tưởng mic
+            // đang nghe ("Đang nghe…" treo, vòng rảnh tay không mở lại mic).
             if (finalText) this.onFinal(finalText);
+            else this._setState("stopped");
           }
         } else if (msg.type === "error") {
           // KHÔNG hiện nguyên văn lỗi máy chủ: chi tiết dịch vụ ASR có thể chứa địa chỉ nội bộ.

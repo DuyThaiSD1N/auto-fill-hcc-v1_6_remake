@@ -245,6 +245,17 @@ body.hmong-region .start-btn-hm { display: block; }
 .start-btn:hover { background: var(--teal-d); }
 .start-btn:active { transform: scale(.985); }
 .start-btn:disabled { opacity: .65; cursor: default; transform: none; }
+/* Bắt đầu bằng giọng nói: bấm rồi nói "bắt đầu" (hoặc tên thủ tục). Khung nghe ở chân trang bị ẩn ở
+   màn này nên trạng thái đang nghe hiện ngay trên nút. */
+.start-mic {
+  width: 100%; max-width: 310px; min-height: 44px; margin-top: 10px;
+  border: 1.5px solid var(--teal); border-radius: 12px; cursor: pointer;
+  background: #fff; color: var(--teal-d);
+  font-size: 13.5px; font-weight: 700;
+  transition: background .15s;
+}
+.start-mic:hover { background: var(--teal-soft); }
+.start-mic.listening { background: var(--teal-soft); box-shadow: 0 0 0 4px rgba(18, 160, 106, .18); }
 .start-note {
   max-width: 305px; margin: 11px 0 0;
   color: var(--muted); font-size: 11px; line-height: 1.45;
@@ -441,6 +452,15 @@ body.settings-mode .bot-f { display: none; }
 .chip:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .chip:disabled:hover { background: #fff; }
 .chip.solid:disabled:hover { background: var(--teal); }
+/* Nút điều hướng theo nghĩa (chip.tone do BE gắn): bỏ qua = cam (như ô trống không bắt buộc),
+   sửa ô trước = xanh dương, dừng = đỏ nhạt, tải lại = xanh dương đặc (việc chính lúc đó). */
+.chip.tone-skip { --chip-bg: #fff7ea; --chip-hover: #ffeccc; --chip-line: #f2cf94; --chip-ink: #a65f00; }
+.chip.tone-back { --chip-bg: #eef3fd; --chip-hover: #dfe9fc; --chip-line: #c3d4f6; --chip-ink: #2457c5; }
+.chip.tone-stop { --chip-bg: #fdf0ef; --chip-hover: #fbe0dd; --chip-line: #f1c4bf; --chip-ink: #b4372b; }
+.chip.tone-reload { --chip-bg: var(--blue); --chip-hover: #2459c4; --chip-line: var(--blue); --chip-ink: #fff; }
+.chip[class*=" tone-"] { background: var(--chip-bg); border-color: var(--chip-line); color: var(--chip-ink); }
+.chip[class*=" tone-"]:hover { background: var(--chip-hover); }
+.chip[class*=" tone-"]:disabled:hover { background: var(--chip-bg); }
 .chips.logout-choice { flex-wrap: nowrap; margin-top: 2px; }
 .chips.logout-choice .chip {
   flex: 1 1 0; min-width: 0; border-radius: 9px; padding: 9px 10px;
@@ -972,6 +992,36 @@ body.settings-mode .bot-f { display: none; }
 .qr-cap span { color: var(--muted); font-weight: 400; }
 .qr-card .prog { width: 100%; align-self: auto; }
 .qr-stat { font-size: 11px; color: var(--muted); }
+/* QR hướng dẫn làm thủ tục (hiện trước câu xác nhận thủ tục) */
+.guide-qr { padding-bottom: 12px; }
+.guide-qr-t {
+  font-size: 13.5px; line-height: 1.45; font-weight: 600; color: #16352a; text-align: center;
+}
+/* Tên nút trong lời dẫn: tô nền như bút dạ quang, cùng màu nút "Mở hướng dẫn" bên dưới. */
+.guide-qr-t mark {
+  background: #d4f2e2; color: #0f7a4f; font-weight: 800;
+  padding: 1px 6px; border-radius: 6px; white-space: nowrap;
+}
+/* Hai nút cùng một hàng, cao bằng nhau. */
+.guide-qr-actions {
+  display: flex; align-items: stretch; justify-content: center; gap: 10px;
+  flex-wrap: wrap; width: 100%;
+}
+.guide-qr-actions > * { box-sizing: border-box; min-height: 40px; line-height: 1.2; }
+.guide-qr-skip {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 18px; border: 1px solid var(--line); border-radius: 999px;
+  background: #f4f7f5; color: #3d5a4d; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.guide-qr-skip:hover { background: #e7efea; }
+.guide-qr .qr-img { background: #fff; padding: 6px; box-sizing: border-box; }
+.guide-qr-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 22px; border-radius: 999px;
+  background: #0f7a4f; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none;
+  box-shadow: 0 2px 6px rgba(15, 122, 79, 0.25);
+}
+.guide-qr-link:hover { background: #0c6641; }
 
 /* ── Card tiến trình xử lý giấy tờ (OCR/LLM chạy 30–90s — cho công dân thấy máy đang làm gì) ── */
 .pipe-card {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -80,6 +80,7 @@
         "content/bbox-overlay.js",
         "content/fill-core.js",
         "content/fill-legacy.js",
+        "content/field-review.js",
         "content/fill-angular.js",
         "content/fill-bacninh.js",
         "content/attach-core.js",

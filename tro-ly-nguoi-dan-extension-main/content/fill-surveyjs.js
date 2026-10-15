@@ -450,8 +450,11 @@
     return String(input?.value || "").trim();
   }
 
+  // {name, phone, tinh, xa, diaChi} của người yêu cầu trên tờ khai — đọc qua model (dropdown lấy nhãn).
+  const readSurveyJsRequester = () => callMain({ op: "requesterInfo" }, 5000);
+
   Object.assign(H, {
-    isSurveyDossierPage, fillFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue,
+    isSurveyDossierPage, fillFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue, readSurveyJsRequester,
     markEmptyRequired, injectSurveyJsMarkStyles: injectMarkStyles, setSurveyJsMark: setMark,
   });
 })();

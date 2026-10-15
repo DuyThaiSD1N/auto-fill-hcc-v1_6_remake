@@ -100,6 +100,79 @@
     return { ok: true, clicked: true, message };
   }
 
+  // ── Bước cuối của Kê khai (eForm tư pháp): "Xem trước" → hộp thoại "Xem tờ khai điện tử" → "Xác nhận" ──
+  // Nút Xem trước dùng chung data-e2e="btn-next" với nút Bước tiếp theo → luôn kiểm chữ.
+  const PREVIEW_SELECTORS = ["#xem-truoc-to-khai", 'button[data-e2e="btn-next"]'];
+  const PREVIEW_TEXTS = ["xem truoc"];
+  // Hộp thoại Radix là position:fixed → offsetParent luôn null, isVisible() coi là ẩn. Xét theo khung hiển thị.
+  const shown = (el) => !!el && el.getClientRects().length > 0;
+  // Tiêu đề thường là "Xem tờ khai điện tử"; nhận cả "Xem trước tờ khai" và alertdialog cho bản cổng khác.
+  const isPreviewTitle = (text) => text.includes("xem to khai")
+    || (text.includes("xem truoc") && text.includes("to khai"));
+  const previewDialog = () => Array.from(document.querySelectorAll('[role="dialog"],[role="alertdialog"]'))
+    .find((el) => shown(el) && isPreviewTitle(fold(el.textContent)));
+
+  async function openPreview(button) {
+    const watched = await pressAndWatch(button);
+    // Cổng dựng bản xem trước (PDF) có lúc quá 10 giây → chờ tới ~20 giây. Cổng đã nháy toast chặn (còn
+    // ô bắt buộc trống) thì bản xem trước sẽ không mở → chỉ chờ thêm ~3 giây rồi báo.
+    const limit = watched.message ? 12 : 80;
+    for (let i = 0; i < limit && !previewDialog(); i++) await sleep(250);
+    return { ok: true, opened: !!previewDialog(), message: previewDialog() ? "" : watched.message };
+  }
+
+  // Bản xem trước VỪA MỞ (trợ lý bấm hay công dân tự bấm "Xem trước") → báo sidebar để trợ lý sang bước
+  // Xác nhận. Chỉ báo lúc chuyển từ đóng sang mở; frame nào có hộp thoại thì frame đó báo.
+  let previewWasOpen = false;
+  setInterval(() => {
+    const open = !!previewDialog();
+    if (open && !previewWasOpen) {
+      try {
+        chrome.runtime.sendMessage({ action: "declarationPreviewSeen" }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload → bỏ qua */ }
+    }
+    previewWasOpen = open;
+  }, 800);
+
+  async function confirmPreview(dialog) {
+    const button = Array.from(dialog.querySelectorAll("button"))
+      .find((el) => isVisible(el) && fold(el.textContent) === "xac nhan")
+      || Array.from(dialog.querySelectorAll("button")).find((el) => isVisible(el) && fold(el.textContent).includes("xac nhan"));
+    if (!button) return { ok: false, message: "không thấy nút Xác nhận trong bản xem trước" };
+    const watched = await pressAndWatch(button);
+    return { ok: true, clicked: true, message: watched.message };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    const action = msg?.action;
+    if (!["declarationPreview", "declarationConfirm", "declarationPreviewClose"].includes(action)) return;
+    const previewButton = findButton(PREVIEW_SELECTORS, PREVIEW_TEXTS);
+    const dialog = previewDialog();
+    // Frame không có trang Kê khai (không nút Xem trước, không bản xem trước) thì IM để frame đúng trả lời.
+    if (!previewButton && !dialog) return;
+    if (action === "declarationPreview") {
+      if (dialog) { sendResponse({ ok: true, opened: true, message: "" }); return; }
+      if (previewButton.disabled) { sendResponse({ ok: false, opened: false, message: "" }); return; }
+      openPreview(previewButton).then(sendResponse)
+        .catch((e) => sendResponse({ ok: false, opened: false, message: String(e?.message || e) }));
+      return true;
+    }
+    if (action === "declarationConfirm") {
+      if (!dialog) { sendResponse({ ok: false, noPreview: true, message: "" }); return; }
+      confirmPreview(dialog).then(sendResponse)
+        .catch((e) => sendResponse({ ok: false, message: String(e?.message || e) }));
+      return true;
+    }
+    // Đóng bản xem trước để sửa tiếp: Radix đóng hộp thoại bằng phím Esc.
+    if (dialog) {
+      const close = Array.from(dialog.querySelectorAll("button"))
+        .find((el) => isVisible(el) && /^(dong|huy|quay lai)$/.test(fold(el.textContent)));
+      if (close) clickLikeUser(close);
+      else document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    }
+    sendResponse({ ok: true });
+  });
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const submit = msg?.action === "guidedSubmit";
     if (msg?.action !== "guidedClickNext" && !submit) return;

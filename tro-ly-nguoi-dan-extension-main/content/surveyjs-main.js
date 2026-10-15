@@ -386,6 +386,45 @@
     return { ok: true, results };
   }
 
+  // Khối người nộp/người yêu cầu của tờ khai (họ tên cổng đổ từ tài khoản; SĐT, nơi cư trú do trợ lý/công dân
+  // điền) → làm thông tin người nhận kết quả qua bưu điện. Tên ô địa chỉ khác nhau giữa biểu mẫu → dò theo nhãn
+  // trong CÙNG khối với ô họ tên, dừng ở ô đầu tiên của người khác (NDK/Ngdc = người được đăng ký/được cấp…).
+  const OTHER_PERSON = /NDK|Ngdc/i;
+  function shownText(q) {
+    if (!q || q.isEmpty?.()) return "";
+    const item = q.selectedItem;
+    return String(item?.text ?? item?.calculatedText ?? q.displayValue ?? q.value ?? "").trim();
+  }
+
+  function requesterInfo() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    const nameQ = findQuestion(survey, "citizenName");
+    const info = { name: shownText(nameQ), phone: shownText(findQuestion(survey, "citizenPhone")),
+      tinh: "", xa: "", diaChi: "" };
+    const anchor = nameQ && document.querySelector(`[data-name="${CSS.escape(nameQ.name)}"]`);
+    const scope = anchor?.closest(".sd-panel") || anchor?.closest(".sd-page");
+    let started = false;
+    for (const node of scope ? scope.querySelectorAll("[data-name]") : []) {
+      const dn = node.getAttribute("data-name") || "";
+      if (node === anchor) { started = true; continue; }
+      if (!started) continue;
+      if (OTHER_PERSON.test(dn)) break;
+      const q = survey.getQuestionByName(dn);
+      if (!q || !q.isVisible) continue;
+      const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
+        .map((l) => l.textContent).join(" ") || q.title);
+      const type = q.getType?.();
+      if (type === "dropdown" && !info.tinh && /tinh thanh pho/.test(label)) info.tinh = shownText(q);
+      else if (type === "dropdown" && !info.xa && /xa phuong|phuong xa/.test(label)) info.xa = shownText(q);
+      else if (type === "text" && !info.phone && /dien thoai/.test(label)) info.phone = shownText(q);
+      else if (type === "text" && !info.diaChi && /chi tiet|dia chi/.test(label) && !/email|thu dien tu/.test(label)) {
+        info.diaChi = shownText(q);
+      }
+    }
+    return { ok: true, ...info };
+  }
+
   // Ô bắt buộc còn trống sau khi điền (kể cả ô BE không gửi, vd quan hệ chưa xác định) → tô đỏ.
   // Cổng có ô bắt buộc chỉ đánh dấu bằng "*" trong nhãn (isRequired = false, kiểm tra ở validator riêng của
   // cổng), vd "Quan hệ với người được khai tử *" → xét cả nhãn hiển thị.
@@ -491,6 +530,7 @@
       if (payload.op === "setValues") result = await setValues(Array.isArray(payload.fields) ? payload.fields : []);
       else if (payload.op === "fillPlace") result = await fillPlace(payload.place || {});
       else if (payload.op === "emptyRequired") result = emptyRequired();
+      else if (payload.op === "requesterInfo") result = requesterInfo();
       else if (payload.op === "uploadStatus") {
         result = { ok: true, statuses: uploadEntries(String(payload.name || "")).map((e) => e.status) };
       } else if (payload.op === "removeUploads") {

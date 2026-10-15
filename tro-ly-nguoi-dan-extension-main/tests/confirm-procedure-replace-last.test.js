@@ -28,3 +28,34 @@ test("câu xác nhận đi kèm card chọn nơi được đánh dấu để lư
   assert.match(sau.slice(0, 600),
     /d\.state === "confirm_procedure"[\s\S]*c\.kind === "location_picker"[\s\S]*dataset\.ask = "confirm-procedure"/);
 });
+
+test("đăng ký lại khai sinh: QR hướng dẫn hiện trước, câu xác nhận vẽ sau khi đọc xong + chờ", () => {
+  assert.match(sidebar, /"khai-sinh-dang-ky-lai":\s*\{\s*url: "https:\/\/drive\.google\.com\/file\/d\/1ObePKXQq2rS62F72ipMMmXVVS399rMs4\//);
+  assert.match(sidebar, /HUONG_DAN_CHO_MS = 15000/);
+  const dau = render.slice(0, render.indexOf("lastReplyData = d;", render.indexOf("return;")));
+  assert.match(dau, /!opts\?\.noTts && !opts\?\.sauHuongDan && canHuongDanQr\(d\)[\s\S]*hienHuongDanQr\(d\);\s*return;/);
+  assert.match(sidebar, /speak\?\.\(HUONG_DAN_LOI, "vi", demCho\)/);
+  assert.match(sidebar, /renderReply\(d, \{ sauHuongDan: true, imLang: daMoHuongDan \}\)/);
+});
+
+test("bấm Mở hướng dẫn: câu xác nhận vẫn hiện nhưng không đọc; bỏ qua / chờ 15s thì đọc như thường", () => {
+  assert.match(sidebar, /\.guide-qr-link"\)\?\.addEventListener\("click", \(\) => \{\s*daMoHuongDan = true;/);
+  assert.match(render, /else if \(!opts\?\.imLang && !duplicateLogoutChoice && d\.tts_text && voiceCfg\.tts\)/);
+  assert.match(render, /const willSpeak = [^;]*!opts\?\.imLang;/);
+});
+
+test("QR hướng dẫn có đủ các thủ tục tư pháp, mỗi thủ tục đúng link Drive", () => {
+  const bang = {
+    "khai-sinh-dang-ky-lai": "1ObePKXQq2rS62F72ipMMmXVVS399rMs4",
+    "xac-nhan-tinh-trang-hon-nhan": "1K72MmetiOzQuVywsyest5ZP-GpZGJS6G",
+    "khai-sinh-dang-ky": "1GrI9R8FRMUpphFxsIH2QdGR3h1wojwlk",
+    "ket-hon": "1yM72x0kkgS0ouLuCjejiTLGYJ0cEyFGR",
+    "khai-sinh-dang-ky-thuong": "1_c-8Xx4O9KqTH9KbCG0uqQlPNRH3-2du",
+    "chung-thuc-ban-sao": "1rv3_eC98iTnAZX0Bc9cKnWQLsGCPq9Bi",
+    "thay-doi-cai-chinh-ho-tich": "1_pns6gVNa2gP0aIWI3FfcyVk1A05FCAB",
+  };
+  for (const [key, id] of Object.entries(bang)) {
+    const re = new RegExp(`"${key}":\\s*\\{\\s*url: "https://drive\\.google\\.com/file/d/${id}/view`);
+    assert.match(sidebar, re, key);
+  }
+});

@@ -59,7 +59,7 @@ assert.match(langBar.slice(0, langBar.indexOf("\n  }")), /renderVoiceSettings\(\
 // ── tts.js gửi kèm giọng ────────────────────────────────────────────────────────────────
 assert.match(tts, /function setVoice\(map\)/);
 assert.match(tts, /if \(voice\) params\.set\("voice", voice\);/);
-assert.match(tts, /window\.__hccTTS = \{ speak, stop, setMuted, setVoice \};/);
+assert.match(tts, /window\.__hccTTS = \{ speak, stop, setMuted, setVoice, isSpeaking \};/);
 // Giọng giữ trong service, KHÔNG thêm tham số vào speak(): các chỗ gọi speak rải rác trong
 // sidebar, thêm tham số là dễ sót một chỗ rồi đọc lẫn giọng giữa chừng.
 assert.match(tts, /function speak\(text, lang = "vi", onDone\)/);

@@ -207,6 +207,9 @@
           transition: transform .3s cubic-bezier(.4,0,.2,1);
           background: #fff; box-shadow: -8px 0 32px rgba(15,40,80,.14);
           display: block;
+          /* Hộp thoại Radix của cổng (vd "Xem tờ khai điện tử") đặt pointer-events:none lên body khi mở;
+             khung gắn trong body sẽ thừa hưởng → mọi nút Trợ lý bấm không ăn. Đặt tường minh để không kế thừa. */
+          pointer-events: auto;
         }
         :host(.open) { transform: translateX(0); }
         iframe { width:100%; height:100%; border:0; display:block; background:#fff; }
@@ -1649,6 +1652,13 @@
       // Modal xác thực là bằng chứng mạnh hơn nhãn tài khoản phía sau modal. Sau OTP, cổng
       // có thể đã hiện trạng thái đăng nhập nhưng vẫn bắt buộc công dân chia sẻ/passcode.
       if (vneidLoginCodePrompt || vneidDataSharingPrompt || vneidPasscodePrompt) loginPage = true;
+      // VNeID đôi khi lỗi không dựng mã QR (khung QR 192px trống, ảnh img[alt="qr_images"] không có/không tải
+      // được). Chờ trang đứng yên ~6 giây rồi mới kết luận, tránh báo nhầm lúc ảnh còn đang tải.
+      const qrImage = document.querySelector('img[alt="qr_images"]');
+      const loginQrMissing = loginPage && /dancuquocgia/.test(location.hostname)
+        && !vneidLoginCodePrompt && !vneidDataSharingPrompt && !vneidPasscodePrompt
+        && !!document.querySelector("#username") && performance.now() > 6000
+        && !(qrImage && qrImage.complete && qrImage.naturalWidth > 0 && qrImage.getClientRects().length > 0);
       // Modal "Thông tin chung" của wizard hồ sơ — nút Xác nhận có data-e2e (hook test của cổng).
       const infoModalBtn = document.querySelector('button[data-e2e="confirm-button-information"]');
       const infoModal = !!(infoModalBtn && infoModalBtn.offsetParent !== null);
@@ -1730,6 +1740,7 @@
         vneidLoginCodePrompt,
         vneidDataSharingPrompt,
         vneidPasscodePrompt,
+        loginQrMissing,
         infoModal,
         wizardStep,
         // Thông tin định danh của đúng người đang đứng tên chủ hồ sơ. Backend dùng làm
@@ -1769,6 +1780,8 @@
     if (t === "minimizePanel") minimizePanel();
     else if (t === "restorePanel") restorePanel();
     else if (t === "closePanel") closePanel();
+    // Nút "Tải lại trang" của sidebar (VNeID không hiện mã QR).
+    else if (t === "reloadPage") location.reload();
   });
 
 })();

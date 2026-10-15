@@ -46,6 +46,12 @@
       out = out.replace(/ {2,}/g, " ");
       return out.trim();
     }
+    // Mũi tên (giọng đọc bỏ qua hoặc đọc sai): mũi tên đầu mỗi câu đọc "thì", các mũi tên sau đọc "rồi" —
+    // "Chưa đúng → chọn lại bên dưới → bấm Đồng ý" = "Chưa đúng thì chọn lại bên dưới rồi bấm Đồng ý".
+    out = out.replace(/[^.!?\n]+/g, (cau) => {
+      let thu = 0;
+      return cau.replace(/\s*(?:→|->|⇒|=>)\s*/g, () => (thu++ === 0 ? " thì " : " rồi "));
+    });
     out = out.replace(/(\d{1,3}(?:\.\d{3})+)/g, (m) => m.replace(/\./g, ""));
     out = out.replace(/(\d{1,3}(?:,\d{3})+)/g, (m) => m.replace(/,/g, ""));
     out = out.replace(/(\d+)\s*(đồng|vnđ|VNĐ|đ)\b/gi, (_, num) => numberToVietnamese(parseInt(num)) + " đồng");
@@ -84,6 +90,10 @@
   let _generation = 0;
   const _idPrefix = Math.random().toString(36).slice(2, 8); // nhiều tab không giẫm id nhau
   const _pending = {}; // id → onDone (vòng rảnh tay: đọc xong → mở mic)
+  // Câu đang đọc / chờ đọc (kể cả câu không cần onDone) → vòng rảnh tay không mở mic chen ngang.
+  // id → lúc bắt đầu; quá hạn coi như đã xong (offscreen bị đóng giữa chừng thì không có event done).
+  const _active = {};
+  const ACTIVE_STALE_MS = 90 * 1000;
 
   // Giọng máy quầy đã chọn, theo từng ngôn ngữ: { vi: "...", hmong: "..." }. Rỗng = để BE
   // dùng mặc định. Giữ ở đây thay vì truyền qua từng lời gọi speak() — các chỗ gọi rải rác
@@ -115,12 +125,14 @@
     }
     const id = `${_idPrefix}-${++_idSeq}`;
     const generation = _generation;
+    _active[id] = Date.now();
     void (async () => {
       const accessToken = await window.tlndAuth?.getAccessToken?.();
       // Người dùng đã barge-in/mute trong lúc refresh token: không được phát câu cũ hoặc
       // gọi onDone để tự mở micro trở lại.
       if (generation !== _generation) return;
       if (!accessToken) {
+        delete _active[id];
         if (onDone) setTimeout(onDone, 0);
         return;
       }
@@ -138,6 +150,7 @@
         );
       } catch (_) {
         delete _pending[id];
+        delete _active[id];
         if (onDone) setTimeout(onDone, 0);
       }
     })();
@@ -147,6 +160,7 @@
     // barge-in/mute: xóa callback (KHÔNG bắn onDone) — người ngắt lời tự quyết bước kế.
     _generation++;
     for (const k of Object.keys(_pending)) delete _pending[k];
+    for (const k of Object.keys(_active)) delete _active[k];
     try {
       chrome.runtime.sendMessage({ type: "tts-stop" }, () => void chrome.runtime.lastError);
     } catch (_) { /* bỏ qua */ }
@@ -157,13 +171,22 @@
     if (_muted) stop();
   }
 
+  function isSpeaking() {
+    const now = Date.now();
+    for (const [id, at] of Object.entries(_active)) {
+      if (now - at > ACTIVE_STALE_MS) delete _active[id];
+    }
+    return Object.keys(_active).length > 0;
+  }
+
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type !== "tts-event") return;
+    delete _active[msg.id];
     const cb = _pending[msg.id];
     if (!cb) return; // của tab khác / đã stop / sidebar đời trước
     delete _pending[msg.id];
     try { cb(); } catch (_) { /* nuốt lỗi callback */ }
   });
 
-  window.__hccTTS = { speak, stop, setMuted, setVoice };
+  window.__hccTTS = { speak, stop, setMuted, setVoice, isSpeaking };
 })();
