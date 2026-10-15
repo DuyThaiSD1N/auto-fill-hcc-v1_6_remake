@@ -70,6 +70,13 @@ PROCEDURE_HMONG = {
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
     "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — luồng chung "xay-dung"). Có TỪ MỚI (npaj = quy
+    # hoạch, ntug kev = vỉa hè, ib ntus = tạm thời, Nyab Laj = Việt Nam, Nplog = Lào): soát kỹ hơn.
+    "dieu-chinh-giay-phep-xay-dung": "Kho ntawv tso cai ua tsev",
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": "Ntawv tso cai kho thiab txhim kho tsev",
+    "cung-cap-thong-tin-quy-hoach": "Muab ntaub ntawv npaj nroog thiab zos",
+    "cap-phep-long-duong-via-he": "Ntawv tso cai siv txoj kev, ntug kev ib ntus",
+    "cap-giay-phep-lien-van-viet-lao": "Ntawv tso cai tsheb mus los Nyab Laj thiab Nplog",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).
@@ -133,6 +140,8 @@ CHIP_HMONG = {
     "🗑️ Xóa dữ liệu": "Rho tawm",
     # Nhãn động (không nằm trong literal "label": ... của flow):
     "Kiểm tra lại trang hiện tại": "Xyuas dua nplooj no",
+    # NỢ DỊCH: ghép "Ua dua" (thử lại) + "nplooj no" (trang này), chờ người soát.
+    "🔄 Tải lại trang": "Ua dua nplooj no",
     "✅ Đã đưa đủ giấy tờ, xử lý đi": "Muab txaus lawm, ua mus",
     "✅ Đã đưa đủ giấy tờ, điền chủ hồ sơ đi": "Muab txaus lawm, sau tus tswv",
     "✅ Đã đưa đủ giấy tờ, điền tờ khai đi": "Muab txaus lawm, sau daim foos",
@@ -272,6 +281,11 @@ CONFIRM_PROCEDURE = {
     "tts": "Pej xeem xav ua {procedure} ntawm {ward} {province}, puas yog?",
 }
 
+# NỢ DỊCH: cắt từ GREET_PROCEDURE_FIRST, chờ người soát.
+GREET_START_ONLY = {
+    "md": "Pej xeem xaiv cov ntaub ntawv xav ua hauv qab no — nias rau daim ntawv los yog hais lub npe.",
+    "tts": "Pej xeem xaiv cov ntaub ntawv xav ua hauv qab no, nias rau daim ntawv los yog hais lub npe.",
+}
 GREET_PROCEDURE_FIRST = {
     "md": (
         "Nyob zoo pej xeem! Kuv yog Tus pab pej xeem, pab ua cov ntaub ntawv hauv nom tswv. "
@@ -352,6 +366,13 @@ AGENCY_AUTOFILL_GUIDE = {
     "tts": "Kuv xaiv qhov chaw ua pab pej xeem raws qhov chaw nyob. Tiav lawm pej xeem nias mus kauj ruam tom ntej.",
 }
 
+# NỢ DỊCH: chưa có bản dịch câu "trang VNeID chưa hiện mã QR, tải lại trang" — tạm dùng câu nhắc nhập
+# VNeID có sẵn (LOGIN_STILL_REQUIRED) + "F5"; chờ người dịch.
+LOGIN_QR_MISSING = {
+    "md": "Nplooj ntawv tseem nyob kauj ruam nkag VNeID. Pej xeem nias F5 los yog nkag kom tiav.",
+    "tts": "Nplooj ntawv tseem nyob kauj ruam nkag. Pej xeem nias F5 los yog nkag kom tiav.",
+}
+LOGIN_QR_MISSING_F5 = LOGIN_QR_MISSING
 QR_LOGIN_GUIDE = {
     "md": (
         "Kuv xaiv qhov chaw {ward}, {province} tiav thiab qhib kauj ruam nkag lawm. "
@@ -936,6 +957,11 @@ ANSWER_ONLY_DOCS_AND_STEPS = {
     "tts": "Lwm yam pej xeem saib hauv nplooj ntawv.",
 }
 
+# NỢ DỊCH: ghép từ cụm có sẵn ("nias lub pob hauv qab", nhãn nút "Xaiv ntxiv file"), chờ người soát.
+PICK_FILES_BY_HAND = {
+    "md": "Pej xeem nias lub pob **📁 Xaiv ntxiv file** hauv qab.",
+    "tts": "Pej xeem nias lub pob Xaiv ntxiv file hauv qab.",
+}
 PICK_FILES_AGAIN = {
     "md": "Kuv qhib qhov xaiv ntaub ntawv lawm. Pej xeem xaiv ntaub ntawv ntxiv.",
     "tts": "Kuv qhib qhov xaiv ntaub ntawv lawm. Pej xeem xaiv ntxiv.",

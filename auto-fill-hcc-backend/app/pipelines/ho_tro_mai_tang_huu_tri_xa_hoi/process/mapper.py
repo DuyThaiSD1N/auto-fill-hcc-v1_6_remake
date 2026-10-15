@@ -230,6 +230,19 @@ def enrich(
     options: dict | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Xác thực người nộp rồi phát hai khối UI theo đúng vai trò."""
+    out, warnings = _enrich_roles(fields, options)
+    if (options or {}).get(CLEAR_EMAIL_OPTION) is True:
+        # Phát SAU khối người nộp: cổng tự nạp email tài khoản cán bộ khi điền/tick người nộp nên
+        # phải xoá cuối cùng. `clear`: extension không tô xanh ô trống.
+        out = [f for f in out if f["name"] != "data[email]"]
+        out.append({"name": "data[email]", "comp": UI_COMP_BY_NAME["data[email]"], "value": "", "clear": True})
+    return out, warnings
+
+
+def _enrich_roles(
+    fields: list[dict],
+    options: dict | None = None,
+) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     owner = _person(values, "ChuHoSo")
     requester = _person(values, "NguoiNop")

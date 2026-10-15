@@ -28,6 +28,19 @@ def enabled(conv: dict, proc: dict | None) -> bool:
     return (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True
 
 
+def result_flow_enabled(conv: dict, proc: dict | None) -> bool:
+    """Đoạn cuối: đính kèm xong → nút sang bước nhận kết quả → gạt cách nhận → nút Gửi hồ sơ.
+
+    Bật theo cả luồng dẫn từng bước (`enabled`), HOẶC riêng cờ `attachToResult` cho thủ tục đã có
+    luồng bước chủ hồ sơ của mình (kê khai tư pháp: xin đồng ý + điền chủ hồ sơ) — cờ này không đụng
+    bước 1, chỉ mở đoạn từ Thành phần hồ sơ trở đi."""
+    if enabled(conv, proc):
+        return True
+    if not config(proc).get("attachToResult"):
+        return False
+    return (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True
+
+
 def owner_scan_enabled(conv: dict, proc: dict | None) -> bool:
     """Quét giấy tờ ngay ở bước chủ hồ sơ. Gác bằng CỜ RIÊNG, không dùng ownerInfo.enabled
     của registry: cờ đó cũng bật cho extension cũ, mà bản cũ nhận giấy ở bước 1 xong sẽ kẹt

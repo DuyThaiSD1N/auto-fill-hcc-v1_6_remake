@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from app.channels.handfree.chat import consent as consent_log
+from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
@@ -790,6 +791,8 @@ async def handle_turn(
         r.actions = [{"type": "press_chip", "send": voice_send}]
         return r
     reply = await _handle_turn_inner(conv, intent, client_page_context)
+    field_review.finalize(conv, intent, reply)
+    _lock_docs_chips(conv, intent, reply)
     if free_text and not (reply.display_md or reply.chips or reply.cards or reply.actions):
         # Công dân đã gõ/nói mà bước hiện tại không có phản hồi → nói rõ là chưa hiểu.
         reply = not_understood_reply(conv)
@@ -812,6 +815,20 @@ _VOICE_BLOCKED_SENDS = {
 }
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
+def _lock_docs_chips(conv: dict, intent: Intent, reply) -> None:
+    """Chốt giấy tờ xong và pipeline đã chạy → khoá nút "Đã đưa đủ" + nhóm nút chọn tệp/đổi cách gửi như khi
+    bấm tay. Lượt chốt TỰ ĐỘNG (chọn tệp từ máy với auto_run, điện thoại báo xong qua WS) không đi qua cú bấm
+    nên extension không tự khoá → nút còn sống, bấm lại là chạy trùng."""
+    if (intent.kind, intent.value) not in {("action", "docs_done"), ("event", "docs_complete")}:
+        return
+    if conv.get("pipeline_status") != "running":
+        return
+    if any(c.get("send") == "__action:docs_done" for c in reply.chips or []):
+        return  # chưa chốt được (sai trang…) → nút chốt mới trong chính lượt này phải bấm được
+    reply.actions = [*reply.actions, *({"type": "chip_used", "send": send} for send in (
+        "__action:docs_done", "__action:pick_files_again", "__action:reshow_qr"))]
+
+
 _VOICE_PRESS_SENDS = {"__action:guided_next", "__action:docs_done", "__event:docs_complete"}
 
 
@@ -932,6 +949,10 @@ async def _handle_turn_inner(
         # Mọi request mới là một cơ hội thu hồi action mà sidebar đã làm mất. Action đang chạy
         # thật được extension gia hạn mỗi 10 giây nên không bị phát trùng dù xử lý lâu.
         _expire_attach_action(conv)
+    # Vòng bổ sung ô còn trống trên tờ khai: lệnh/sự kiện riêng, không phụ thuộc state.
+    review_reply = await field_review.handle(conv, current_proc, intent)
+    if review_reply is not None:
+        return review_reply
     if intent.kind == "event" and intent.value == "page_status":
         principal = intent.payload.get("principal") or {}
         if principal:
@@ -1002,7 +1023,7 @@ async def _handle_turn_inner(
     business_page_status = (
         state == "filling" and _is_business_flow(current_proc)
     )
-    guided_on = guided.enabled(conv, current_proc)
+    guided_on = guided.result_flow_enabled(conv, current_proc)
     # Luồng dẫn từng bước cần nghe page_status CẢ Ở state "done": đính kèm xong là state đã về
     # done, nhưng công dân còn hai bước nữa trên cổng (nhận kết quả → gửi hồ sơ). Không mở thì
     # công dân tự bấm sang bước 4 sẽ không được hướng dẫn gì.
@@ -1414,13 +1435,24 @@ def _handle_greet(conv: dict, intent: Intent) -> Reply:
     # khiến công dân tưởng trợ lý không nghe thấy gì.
     if intent.kind == "unknown" and intent.payload.get("free_text"):
         return _procedure_not_recognized(conv)
+    # Đọc xong câu chào thì tự mở mic một lượt để công dân nói tên thủ tục ngay (extension cũ bỏ qua).
+    listen = [{"type": "listen_after_tts"}]
+    if intent.kind == "action" and intent.value == "start_only":
+        # Có thể là câu ĐẦU của phiên (nói ở màn bắt đầu, chưa có câu chào) → kèm luôn thẻ chọn thủ tục.
+        r = Reply(*_fmt(vi.GREET_START_ONLY))
+        r.cards = ([_service_list_card(conv)] if _procedure_first(conv)
+                   else [_location_card(conv), _service_list_card(conv)])
+        r.actions = listen
+        return r
     # Lượt đầu / lệnh không thuộc màn chào → chào + card chọn nơi + chọn thủ tục.
     if _procedure_first(conv):
         r = Reply(*_fmt(vi.GREET_PROCEDURE_FIRST))
         r.cards = [_service_list_card(conv)]
+        r.actions = listen
         return r
     r = Reply(*_fmt(vi.GREET))
     r.cards = [_location_card(conv), _service_list_card(conv)]
+    r.actions = listen
     return r
 
 
@@ -2156,10 +2188,11 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     nói/gõ tự nhiên → consent_agree / consent_decline (bảng _STATE_INTENTS)."""
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     accepted: bool | None = None
-    method, checks = "chip", []
+    method, checks, prechecked = "chip", [], False
     if intent.kind == "action" and intent.value == "consent":
         accepted = bool(intent.payload.get("accepted"))
         checks = list(intent.payload.get("checks") or [])
+        prechecked = intent.payload.get("prechecked") is True
     elif (intent.kind == "action" and intent.value == "consent_agree") or intent.kind == "confirm":
         # Nói "đồng ý" là khẳng định tường minh — hợp lệ, ghi rõ method=verbal trong log. Câu hỏi
         # duy nhất đang chờ ở bước này là xin phép, nên "đồng ý"/"đồng ý tất cả" mà bộ phân loại
@@ -2175,7 +2208,8 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     if accepted is None:
         return Reply(*_fmt(vi.CONSENT_REMIND))
 
-    entry = consent_log.build_entry(conv, proc, accepted=accepted, method=method, checks=checks)
+    entry = consent_log.build_entry(conv, proc, accepted=accepted, method=method, checks=checks,
+                                    prechecked=prechecked)
     conv["consent"] = {"accepted": accepted, "id": entry["_id"],
                        "version": entry["version"], "at": entry["at"].isoformat()}
     await consent_log.persist(entry)
@@ -2385,6 +2419,14 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # không thấy — tin số bước stepper.
         return _to_ask_doc_method(conv)
     if ctx.get("wizardStep") == owner_step:
+        if field_review.owner_ready(conv, proc, ctx):
+            # Cổng đã đổ đủ ô bắt buộc từ tài khoản: chưa xin đồng ý / giấy tờ ở bước này, đưa nút
+            # sang Kê khai; tới đó luồng cũ xin đồng ý và nhận giấy tờ để điền tờ khai.
+            conv["owner_phase"] = False
+            if _say_once(conv, "owner_info"):
+                _login_ok_prefix(conv)
+                return field_review.owner_ready_reply()
+            return Reply()
         # Thủ tục có ownerInfo: xin consent + nhận tài liệu NGAY tại bước chủ hồ sơ.
         if (proc.get("ownerInfo") or {}).get("enabled"):
             conv["owner_phase"] = True
@@ -2421,6 +2463,18 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         conv["needed_login"] = True
         if manual_check:
             return Reply(*_fmt(vi.LOGIN_STILL_REQUIRED))
+        if ctx.get("loginQrMissing"):
+            # VNeID lỗi không dựng mã QR: bảo quét là vô ích → hướng dẫn tải lại trang (một lần mỗi
+            # lần mất QR; QR hiện lại thì mở lại mốc để lần lỗi sau vẫn được nhắc).
+            if not _say_once(conv, "qr_missing"):
+                return Reply()
+            if (conv.get("client_capabilities") or {}).get("supportsPageReload") is True:
+                r = Reply(*_fmt(vi.LOGIN_QR_MISSING))
+                r.chips = [{"label": "🔄 Tải lại trang", "send": "__action:reload_page", "solid": True}]
+                return r
+            return Reply(*_fmt(vi.LOGIN_QR_MISSING_F5))
+        if "qr_missing" in (conv.get("milestones") or []):
+            conv["milestones"].remove("qr_missing")
         if _say_once(conv, "qr_guide"):
             # Hướng A: đọc kịch bản đăng nhập (xác nhận cơ quan + VNeID/QR, 1 câu) NGAY trên
             # trang login (panel còn hiện) → đọc xong FE tự thu gọn (collapse_after_tts) lộ QR.
@@ -2439,6 +2493,10 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if intent.kind == "event" and intent.value == "page_status":
         return _guide_login_on_page(conv, proc, loc, intent.payload)
+    if intent.kind == "action" and intent.value == "reload_page":
+        r = Reply()
+        r.actions = [{"type": "reload_page"}]
+        return r
     if (intent.kind == "action" and intent.value == "retry_business_prepare"
             and _is_business_flow(proc)):
         conv["business_prepare_started"] = True
@@ -2963,6 +3021,10 @@ async def _handle_qr_waiting(conv: dict, intent: Intent) -> Reply:
 
 
 async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
+    if intent.kind == "action" and intent.value == "pick_files_by_hand" and conv.get("doc_method") == "scan":
+        r = Reply(*_fmt(vi.PICK_FILES_BY_HAND))
+        r.chips = [{"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again", "solid": True}]
+        return r
     # Đổi sang cách khác (qr↔scan) giữa chừng → giữ nguyên phiên (file đã tải còn).
     if (intent.kind == "action" and intent.value == "request_attach"
             and conv.get("docs_target") == "declaration"):
@@ -3010,8 +3072,16 @@ def _fill_fields_reply(conv: dict) -> Reply:
     fields = conv.get("fields") or []
     r = Reply(*_fmt(vi.FILL_READY, count=len(fields)))
     r.actions = [{"type": "fill_fields", "fields": fields}]  # hợp đồng CŨ nguyên xi (docs/00 §4)
-    if tpm.is_active(get_procedure(conv.get("procedure_key") or "")):
+    proc = get_procedure(conv.get("procedure_key") or "")
+    if tpm.is_active(proc):
         r.actions[0]["toolAccount"] = tpm.tool_account(conv)
+    review = field_review.fill_action_extra(conv, proc)
+    if review:
+        # Tô xanh / cam / đỏ thay vì vàng / đỏ → câu cũng đổi; lệnh điền giữ nguyên.
+        actions = r.actions
+        r = field_review.fill_ready_reply(len(fields))
+        r.actions = actions
+        r.actions[0]["fieldReview"] = review
     return r
 
 
@@ -3696,7 +3766,10 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
         )
-        r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=tail))
+        # Vòng bổ sung tách câu đuôi (bước tiếp theo) thành bong bóng riêng sau bong bóng số ô trống.
+        reviewing = field_review.reviewing_fill(conv, proc, intent.payload.get("review"))
+        r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
+                        note=None if reviewing else tail))
         # Một lượt điều chỉnh kê khai kết thúc ở report thật từ extension. Xóa target tạm
         # trước khi render để lần sau nút Điều chỉnh mở một lượt mới độc lập.
         _clear_documents_adjustment(conv)
@@ -3709,6 +3782,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
                        {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip()]
+        field_review.decorate_fill_report(conv, proc, r, intent.payload.get("review"), tail)
         return r
     # Đang chạy pipeline mà user hỏi/gõ → trấn an.
     return Reply(*_fmt(vi.STILL_READING_DOCUMENTS))
@@ -3950,7 +4024,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # quả. Chế độ tách hồ sơ VẪN có nút, chỉ khác câu chữ: nút bấm qua sendToContent gắn
         # chặt tab của sidebar nên nó luôn chuyển đúng hồ sơ ở tab gốc; các tab tách không có
         # khung lái nên công dân tự bấm trên trang, và câu thoại phải nói rõ điều đó.
-        guided_step = guided.enabled(conv, proc_done)
+        guided_step = guided.result_flow_enabled(conv, proc_done)
         if guided_step and not errors and not (attached == 0 and skipped > 0):
             guided_kw = {"attached": attached, **guided.step_labels(proc_done)}
             if recap:

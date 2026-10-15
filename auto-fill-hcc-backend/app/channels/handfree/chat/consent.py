@@ -39,7 +39,7 @@ SCOPE = (
 
 
 def build_entry(conv: dict, proc: dict, accepted: bool,
-                method: str = "chip", checks: list | None = None) -> dict:
+                method: str = "chip", checks: list | None = None, prechecked: bool = False) -> dict:
     from app.channels.handfree.chat import script_vi as vi  # import trễ — script_vi là file text, tránh vòng
 
     now = datetime.now(timezone.utc)
@@ -53,6 +53,9 @@ def build_entry(conv: dict, proc: dict, accepted: bool,
         # chip: bấm nút trên card | verbal: nói/gõ "đồng ý" (khẳng định tường minh vẫn hợp lệ)
         "method": method,
         "checks": list(checks or []),
+        # Card mới tích sẵn 2 ô cam kết, công dân chỉ bấm "Đồng ý" → ghi rõ để đối soát không hiểu
+        # nhầm là công dân tự tích từng ô. Extension cũ không gửi → False.
+        "prechecked": bool(prechecked),
         # Nguyên văn 2 câu cam kết TẠI THỜI ĐIỂM tick — script sửa sau này không đổi được log cũ.
         "statements": list(vi.CONSENT_CARD_TEXT["checks"]),
         "version": VERSION,

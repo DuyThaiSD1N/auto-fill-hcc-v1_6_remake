@@ -93,6 +93,12 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": f"chọn lựa chọn số {n} (thứ {word}) trong danh sách đang hỏi"}
         for n, word in ((1, "nhất"), (2, "hai"), (3, "ba"), (4, "tư"), (5, "năm"), (6, "sáu"))
     ],
+    # Màn chào: câu chỉ xin bắt đầu (nói ở màn bắt đầu rồi chuyển vào chat) → mời chọn / nói tên thủ tục,
+    # không báo "chưa nhận ra thủ tục".
+    "greet": [
+        {"kind": "action", "value": "start_only",
+         "desc": "chỉ muốn bắt đầu / bắt đầu làm thủ tục / làm hồ sơ mà CHƯA nêu tên hay mô tả thủ tục nào"},
+    ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
          "desc": "báo đã đăng nhập xong / đã vào được trang kê khai"},
@@ -120,6 +126,9 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn đính kèm/chuyển sang phần đính kèm khi trang hiện tại vẫn là kê khai"},
         {"kind": "action", "value": "reshow_qr",
          "desc": "muốn chụp lại / hiện lại mã QR"},
+        # Hộp chọn tệp chỉ mở được bằng cú bấm thật → lời nói chỉ được mời bấm nút (flow).
+        {"kind": "action", "value": "pick_files_by_hand",
+         "desc": "muốn chọn / thêm / tải tệp từ máy tính (mở cửa sổ chọn tệp) — KHÔNG phải yêu cầu đính kèm"},
     ],
     "owner_waiting_next": [
         {"kind": "action", "value": "retry_owner_fill",
@@ -259,6 +268,10 @@ DUY NHẤT một JSON:
 - button: câu của người dân làm ĐÚNG việc của một NÚT ĐANG HIỆN trên màn hình (nói thay cho bấm
   nút) → value = SỐ của nút đó trong danh sách NÚT ĐANG HIỆN. Ưu tiên button hơn mọi kind khác khi
   câu khớp rõ một nút; không khớp rõ nút nào → xét các kind dưới.{buttons}
+  NÚT LÀM LẠI / XOÁ VIỆC ĐÃ LÀM (điền lại thông tin, điều chỉnh / thêm / xoá giấy tờ, hoàn tất điều chỉnh
+  và điền lại tờ khai, dừng bổ sung): CHỈ chọn khi câu NÓI RÕ đúng việc đó ("điền lại đi", "tôi muốn thêm
+  giấy tờ", "sửa giấy tờ", "điền lại tờ khai"). Câu xác nhận chung chung ("được rồi", "đúng rồi", "ok",
+  "xong rồi", "ừ") KHÔNG BAO GIỜ là các nút này — bấm nhầm là mất phần công dân vừa điền → dùng confirm.
 
 - procedure: người dân muốn LÀM hoặc ĐỔI SANG một thủ tục hành chính (nêu tên hoặc mô tả thủ tục,
   kể cả nói tắt, sai chính tả) → value = "" (một agent khác sẽ xác định đúng thủ tục). Chỉ dùng

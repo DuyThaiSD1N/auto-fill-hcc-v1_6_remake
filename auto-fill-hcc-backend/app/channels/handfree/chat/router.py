@@ -15,7 +15,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, flow, intents, store
+from app.channels.handfree.chat import access, field_review, flow, intents, store
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.config import settings
@@ -137,6 +137,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsPageBoundDocsComplete": raw.get("supportsPageBoundDocsComplete") is True,
         "supportsAttachActionLease": raw.get("supportsAttachActionLease") is True,
         "supportsScanAutoRun": raw.get("supportsScanAutoRun") is True,
+        # Biết tải lại trang cổng theo lệnh reload_page (VNeID không hiện mã QR).
+        "supportsPageReload": raw.get("supportsPageReload") is True,
         # Bản extension mới hiểu card "rating" (đánh giá trước đăng xuất). Client cũ không khai
         # → BE giữ nguyên luồng cũ (hiện thẳng 2 nút đăng xuất/nộp thêm), không vỡ.
         "supportsRating": raw.get("supportsRating") is True,
@@ -180,6 +182,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # dựng), vẽ thẻ mae_dialog_choice và chọn đúng nhãn (agencyExact/processExact). Client cũ
         # không khai → BE giữ đường variants khai sẵn trong registry.
         "supportsMaeDialogChoice": raw.get("supportsMaeDialogChoice") is True,
+        # Biết tô ô theo 3 màu và dẫn công dân bổ sung từng ô trống trên tờ khai eForm (action
+        # field_review_*). Client cũ không khai → BE giữ nguyên báo cáo điền như trước.
+        "supportsFieldReview": raw.get("supportsFieldReview") is True,
     }
 
 
@@ -337,6 +342,10 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
+        # Đang hỏi một ô trên tờ khai: câu gõ/nói là câu trả lời cho ô đó — vòng bổ sung tự hiểu bằng
+        # LLM riêng (biết nhãn ô, danh sách lựa chọn), không qua bộ phân loại ý định chung.
+        if intent is None and field_review.asking(conv) and message and not message.startswith("__"):
+            intent = intents.Intent("action", "field_review_answer", {"text": message})
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
         if intent is None:

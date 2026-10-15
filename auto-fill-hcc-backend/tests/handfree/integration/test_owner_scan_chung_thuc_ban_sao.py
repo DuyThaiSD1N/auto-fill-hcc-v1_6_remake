@@ -394,15 +394,18 @@ def test_thu_tuc_mot_o_doc_dung_ten_o_cua_chinh_no():
 
 
 def test_thu_tuc_khong_khai_requiredDocs_van_doc_theo_uploadHint():
-    """`dang-ky-giam-ho` không khai requiredDocs → `_doc_list` phải giữ đường fallback
-    uploadHint của nó, không bị đẩy sang danh sách giấy tờ chung."""
+    """Thủ tục không khai requiredDocs → `_doc_list` phải giữ đường fallback uploadHint của nó,
+    không bị đẩy sang danh sách giấy tờ chung. Registry hiện đã khai requiredDocs cho mọi thủ tục
+    (kể cả `dang-ky-giam-ho`) nên gỡ requiredDocs trên bản sao để giữ đường fallback được kiểm."""
     from app.channels.handfree.chat import guided_steps as guided
 
-    proc_obj = flow.get_procedure("dang-ky-giam-ho")
-    assert not proc_obj.get("requiredDocs"), "thủ tục này phải chưa khai thì test mới có nghĩa"
+    proc_obj = {k: v for k, v in flow.get_procedure("dang-ky-giam-ho").items() if k != "requiredDocs"}
+    assert proc_obj.get("uploadHint"), "cần uploadHint thì test mới có nghĩa"
     conv = _conv(SCAN_CLIENT, procedure_key="dang-ky-giam-ho", docs_target="owner")
     by_step = guided.docs_for_target(conv, proc_obj, "owner")
     assert flow._doc_list(proc_obj, by_step) == flow._doc_list(proc_obj)
+    md, _ = flow._doc_list(proc_obj)
+    assert "- 1. Tờ khai đăng ký giám hộ." in md        # đọc theo uploadHint, không phải danh sách chung
 
 
 # ── Công dân tự điền rồi tự sang bước đính kèm giữa lúc trợ lý đang chờ giấy tờ ───────────

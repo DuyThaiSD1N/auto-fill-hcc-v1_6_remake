@@ -1,5 +1,5 @@
 """Cho thuê, cho thuê mua nhà ở xã hội (Bộ Xây dựng — dvc.moc, nền iGate) — luồng handfree
-cùng khuôn văn bằng: KHÔNG variant/trang chọn nơi; DVCQG chọn Tỉnh + gạt toggle "Sở"
+cùng khuôn văn bằng: KHÔNG variant khai sẵn (hộp thoại trường hợp đọc từ cổng — maePortal); DVCQG chọn Tỉnh + gạt toggle "Sở"
 (select_agency soMode, không chọn sở cụ thể); wizard kê khai=1, đính kèm=2."""
 from app.channels.handfree.chat import flow, intents
 from app.channels.handfree.chat.procedure_picker import prompt as picker_prompt
@@ -29,7 +29,10 @@ def test_registry_entry_du_pipeline_va_wizard_igate():
     assert proc["wizard"] == {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4}
     assert proc["agencyProvinceOnly"] and proc["agencySoFirst"]
     assert proc["agencyDeptLabel"] == "Sở Xây dựng"
-    assert "variants" not in proc and "maePortal" not in proc
+    # Luồng chung "xay-dung": hộp thoại "Chọn trường hợp giải quyết" đọc từ cổng (maePortal),
+    # NOXH không khai variants dự phòng.
+    assert proc["flowProfile"] == "xay-dung" and proc["maePortal"] is True
+    assert "variants" not in proc
     assert any(p["key"] == KEY for p in public_list())
     keys = [d["key"] for d in proc["requiredDocs"]]
     assert keys[:2] == ["don", "cccd"]
