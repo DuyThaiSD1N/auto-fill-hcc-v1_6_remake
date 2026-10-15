@@ -13,32 +13,44 @@ Nhóm field:
 
 _DS_SRC = "Danh sách đăng ký hành nghề (Mẫu 01 Phụ lục II NĐ 96/2023/NĐ-CP)"
 _CCCD_SRC = "CCCD / thẻ Căn cước của NGƯỜI ĐẠI DIỆN (người chịu trách nhiệm chuyên môn) của cơ sở"
+# Số CCCD ghi TRONG hợp đồng lao động / chứng chỉ, giấy phép hành nghề là của NGƯỜI HÀNH NGHỀ, không phải
+# của người đại diện dù cùng trang có tên giám đốc ký.
+_CCCD_ONLY = ("CHỈ đọc trên chính THẺ CCCD/căn cước (bản chụp/bản sao thẻ). KHÔNG lấy số/ngày ghi trong hợp đồng "
+    "lao động, chứng chỉ hành nghề, giấy phép hành nghề — đó là của người hành nghề/người lao động.")
 
 # --- Cơ sở khám bệnh, chữa bệnh ---
 FIELDS: list[dict] = [
     {"name": "CoSo_Ten", "desc": f"Tên CƠ SỞ KHÁM BỆNH, CHỮA BỆNH — mục 1 của {_DS_SRC} (vd 'Trạm Y tế xã "
-        "Mường Than', 'Trung tâm Y tế huyện Nậm Nhùn'). Chép nguyên văn, KHÔNG kèm số thứ tự/nhãn mục."},
+        "A', 'Trung tâm Y tế huyện B'). Chép nguyên văn, KHÔNG kèm số thứ tự/nhãn mục, bỏ dấu chấm cuối."},
     {"name": "CoSo_DiaChi", "desc": f"ĐỊA CHỈ cơ sở khám bệnh, chữa bệnh — mục 2 của {_DS_SRC}, object "
         "{quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/thôn/bản/tổ (KHÔNG "
         "kèm phường/xã/tỉnh). Tên cơ sở dạng 'Trạm Y tế xã X' mà mục địa chỉ chỉ ghi tỉnh → xa='Xã X'."},
-    {"name": "CoSo_NguoiChiuTrachNhiem", "desc": f"Họ tên NGƯỜI CHỊU TRÁCH NHIỆM CHUYÊN MÔN / người đứng đầu "
-        f"cơ sở ghi ở {_DS_SRC} (dòng 'Người chịu trách nhiệm chuyên môn' hoặc người ký cuối danh sách). "
-        "Danh sách không ghi thì bỏ trống."},
-    {"name": "CoSo_CacCoSoKhac", "desc": "Hồ sơ có NHIỀU danh sách của CÁC CƠ SỞ KHÁC NHAU: liệt kê tên các "
-        "cơ sở CÒN LẠI (ngoài CoSo_Ten), ngăn cách bằng ';'. Chỉ một cơ sở → bỏ trống."},
+    {"name": "CoSo_NguoiChiuTrachNhiem", "desc": f"Họ tên NGƯỜI ĐỨNG ĐẦU cơ sở = người KÝ cuối {_DS_SRC} "
+        "(dưới chức danh 'GIÁM ĐỐC'/'TRƯỞNG TRẠM'/'THỦ TRƯỞNG ĐƠN VỊ'…, chữ ký + dấu). Chỉ khi danh sách KHÔNG "
+        "có người ký mới lấy dòng riêng 'Người chịu trách nhiệm chuyên môn' của cơ sở. KHÔNG lấy người trong "
+        "BẢNG người hành nghề dù cột 'Vị trí chuyên môn' ghi 'chịu trách nhiệm chuyên môn kỹ thuật'. "
+        "Không có thì bỏ trống."},
+    {"name": "CoSo_DienThoai", "desc": "Số điện thoại của CƠ SỞ (hoặc người đại diện cơ sở) ghi trên giấy tờ "
+        "của cơ sở: danh sách, báo cáo, tiêu đề công văn, hoặc HỢP ĐỒNG LAO ĐỘNG ở phần BÊN SỬ DỤNG LAO ĐỘNG ("
+        "'Đại diện cho: <cơ sở> … Điện thoại: …'). KHÔNG lấy số điện thoại của người lao động/người hành nghề. "
+        "Chỉ chữ số. Không có → bỏ trống."},
+    {"name": "CoSo_CacCoSoKhac", "desc": "Hồ sơ có NHIỀU FILE danh sách của CÁC CƠ SỞ KHÁC NHAU (mỗi file một "
+        "mục 1 'Tên cơ sở' riêng): liệt kê tên các cơ sở CÒN LẠI (ngoài CoSo_Ten), ngăn cách bằng ';'. Dòng "
+        "tiêu đề nhóm GIỮA bảng như 'ĐIỂM TRẠM Y TẾ SỐ 1 …', 'Phòng khám …' thuộc CÙNG danh sách thì KHÔNG "
+        "phải cơ sở khác. Chỉ một cơ sở → bỏ trống."},
 ]
 
 # --- Người đại diện của cơ sở (Phần II: ngày sinh, giới tính, CCCD) ---
 FIELDS += [
     {"name": "NguoiDaiDien_HoTen", "desc": f"Họ và tên NGƯỜI ĐẠI DIỆN của cơ sở, lấy từ {_CCCD_SRC}. Ghi IN HOA."},
-    {"name": "NguoiDaiDien_NgaySinh", "desc": f"Ngày sinh NGƯỜI ĐẠI DIỆN, dd/mm/yyyy — {_CCCD_SRC}."},
+    {"name": "NguoiDaiDien_NgaySinh", "desc": f"Ngày sinh NGƯỜI ĐẠI DIỆN, dd/mm/yyyy — {_CCCD_SRC}. {_CCCD_ONLY}"},
     {"name": "NguoiDaiDien_GioiTinh", "desc": f'Giới tính NGƯỜI ĐẠI DIỆN: "Nam" hoặc "Nữ", đọc ở {_CCCD_SRC}. '
         "KHÔNG suy từ họ tên."},
     {"name": "NguoiDaiDien_SoDinhDanh", "desc": f"Số CCCD/căn cước/định danh NGƯỜI ĐẠI DIỆN — {_CCCD_SRC}. Chỉ "
-        "chữ số, ưu tiên số 12 chữ số. Hồ sơ KHÔNG có CCCD của người đại diện thì BỎ TRỐNG — tuyệt đối "
-        "không lấy số của người nộp thay."},
+        f"chữ số, ưu tiên số 12 chữ số. {_CCCD_ONLY} Hồ sơ KHÔNG có thẻ CCCD của người đại diện thì BỎ TRỐNG — "
+        "tuyệt đối không lấy số của người nộp thay hay người hành nghề."},
     {"name": "NguoiDaiDien_NgayCapCCCD", "desc": f"Ngày cấp CCCD NGƯỜI ĐẠI DIỆN (mặt sau thẻ), dd/mm/yyyy — "
-        f"{_CCCD_SRC}."},
+        f"{_CCCD_SRC}. {_CCCD_ONLY}"},
     {"name": "NguoiDaiDien_NoiCapCCCD", "desc": "Nơi cấp CCCD NGƯỜI ĐẠI DIỆN. Mặt sau CCCD ghi \"CỤC TRƯỞNG CỤC "
         'CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã '
         'hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an".'},
@@ -73,6 +85,7 @@ UI_COMP_BY_NAME = {
     "data[ownerProvince]": "dom-select",       # địa chỉ cơ sở — Tỉnh/Thành phố.
     "data[ownerDistrict]": "dom-select",       # địa chỉ cơ sở — Phường/Xã.
     "data[ownerAddress]": "dom-input",         # địa chỉ cơ sở — chi tiết.
+    "data[ownerPhoneNumber]": "dom-input",     # SĐT cơ sở nếu giấy tờ có (vd hợp đồng lao động).
     "data[ownerNation]": "dom-select",         # "Quốc gia", mặc định Việt Nam.
-    # data[ownerPhoneNumber] / ownerEmail / ownerFax / ghiChu: không có trong giấy tờ → cán bộ tự nhập.
+    # data[ownerEmail] / ownerFax / ghiChu: không có trong giấy tờ → cán bộ tự nhập.
 }

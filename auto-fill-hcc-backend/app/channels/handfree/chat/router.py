@@ -15,7 +15,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, flow, intents, store
+from app.channels.handfree.chat import access, field_review, flow, intents, store
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.config import settings
@@ -137,6 +137,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsPageBoundDocsComplete": raw.get("supportsPageBoundDocsComplete") is True,
         "supportsAttachActionLease": raw.get("supportsAttachActionLease") is True,
         "supportsScanAutoRun": raw.get("supportsScanAutoRun") is True,
+        # Biết tải lại trang cổng theo lệnh reload_page (VNeID không hiện mã QR).
+        "supportsPageReload": raw.get("supportsPageReload") is True,
         # Bản extension mới hiểu card "rating" (đánh giá trước đăng xuất). Client cũ không khai
         # → BE giữ nguyên luồng cũ (hiện thẳng 2 nút đăng xuất/nộp thêm), không vỡ.
         "supportsRating": raw.get("supportsRating") is True,
@@ -180,9 +182,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # dựng), vẽ thẻ mae_dialog_choice và chọn đúng nhãn (agencyExact/processExact). Client cũ
         # không khai → BE giữ đường variants khai sẵn trong registry.
         "supportsMaeDialogChoice": raw.get("supportsMaeDialogChoice") is True,
-        # Biết tô từng ô tờ khai eForm 3 màu, dẫn con trỏ tới ô trống kế tiếp và điền đúng một ô
-        # (content/field-review.js, action field_review_*), bấm Xem trước / Xác nhận tờ khai.
-        # Client cũ không khai → BE giữ nguyên báo cáo điền như trước.
+        # Biết tô ô theo 3 màu và dẫn công dân bổ sung từng ô trống trên tờ khai eForm (action
+        # field_review_*). Client cũ không khai → BE giữ nguyên báo cáo điền như trước.
         "supportsFieldReview": raw.get("supportsFieldReview") is True,
     }
 
@@ -341,18 +342,14 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
-        # Đang hỏi một ô của tờ khai: câu nói/gõ là GIÁ TRỊ của ô đó (hoặc bỏ qua / sửa ô trước /
-        # dừng), không phải ý định của bước — bộ phân loại chung sẽ hiểu "Nam" hay "15/3/1990"
-        # thành unknown.
-        field = flow.field_review_question(conv)
-        if intent is None and field and message and not message.startswith("__"):
-            intent = await intents.resolve_field_answer(
-                message, field, can_go_back=flow.field_review_can_go_back(conv),
-            )
+        # Đang hỏi một ô trên tờ khai: câu gõ/nói là câu trả lời cho ô đó — vòng bổ sung tự hiểu bằng
+        # LLM riêng (biết nhãn ô, danh sách lựa chọn), không qua bộ phân loại ý định chung.
+        if intent is None and field_review.asking(conv) and message and not message.startswith("__"):
+            intent = intents.Intent("action", "field_review_answer", {"text": message})
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
-        # "Sang bước tiếp theo / bước nhận kết quả" ở trang Thành phần hồ sơ → bấm hộ nút chuyển bước,
-        # TRƯỚC bộ phân loại LLM (LLM từng hiểu câu này là đổi thủ tục → reset hồ sơ).
+        # Câu nói về chuyển bước trên wizard ("bước tiếp theo" ở Thành phần hồ sơ, "gửi hồ sơ" ở bước nhận
+        # kết quả) → lệnh tất định TRƯỚC bộ phân loại LLM (LLM từng hiểu là đổi thủ tục → reset hồ sơ).
         if intent is None and message and not message.startswith("__"):
             intent = flow.next_step_by_voice(
                 conv, message, req.client_context.page_context if req.client_context else None,

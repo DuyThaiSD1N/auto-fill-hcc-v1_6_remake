@@ -523,13 +523,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             not ct01_sdd_d and ct01_ten_f and has_mother and ct01_ten_f == _fold(values.get("ThongTinMe_HoTen"))
         )
 
+        # Một số phiên bản form không có ô tick "Bố/Mẹ là chủ hộ" → vẫn phải có tên + số định danh chủ hộ.
+        # Phát 2 ô chữ TRƯỚC ô tick: form có ô tick thì tích sau cùng, cổng tự đổ lại theo khối cha/mẹ.
         if is_bo:
+            add("DkttChuHo", ct01_ten or values.get("ThongTinBo_HoTen"))
+            add("DkttChuhoSoGiayTo", ct01_sdd or values.get("ThongTinBo_SoDinhDanh"))
             add("DkttIsTtBo", True)
             add("DkttMaQuanHe", "Con đẻ")
             add("LoaiThanNhanXacNhan", "1")
             add("LoaiChuSoHuuChoO", "1")
             seen.add("DkttIsTtMe")
         elif is_me:
+            add("DkttChuHo", ct01_ten or values.get("ThongTinMe_HoTen"))
+            add("DkttChuhoSoGiayTo", ct01_sdd or values.get("ThongTinMe_SoDinhDanh"))
             add("DkttIsTtMe", True)
             add("DkttMaQuanHe", "Con đẻ")
             add("LoaiThanNhanXacNhan", "2")

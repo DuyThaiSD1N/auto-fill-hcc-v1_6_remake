@@ -180,7 +180,24 @@ PROCEDURES: list[dict] = [
         "icon": "🤝",
         "flowProfile": "tu-phap",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671b-75fa-82fb-8ad05a37f638",
+        # Checklist phiên QR/scan. Tờ khai + CCCD là nguồn chính điền form; attach planner tự
+        # phân loại theo nội dung (cử người giám hộ / cam đoan / giấy tờ chỗ ở…) nên các giấy tờ
+        # chứng minh gom chung slot "khac". Mỗi nhóm tính theo TỆP.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đăng ký giám hộ", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người yêu cầu và người giám hộ",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "ho_tich", "name": "Giấy khai sinh hoặc giấy tờ tùy thân của người được giám hộ",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản cử người giám hộ, giấy tờ chứng minh điều kiện giám hộ "
+             "(nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
         "mode": "agent",
+        "review": False,  # TẠM TẮT rà soát bbox như các thủ tục tư pháp khác; bật lại khi cần
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -819,6 +836,52 @@ PROCEDURES: list[dict] = [
             "được hưởng di sản, giấy ủy quyền đi nộp hồ sơ.\n"
             "Bước Thành phần hồ sơ: dự thảo vào dòng 2; mọi giấy tờ còn lại gộp chung một tệp PDF "
             "vào dòng 1."
+        ),
+    },
+    {
+        "key": "chung-thuc-tu-choi-nhan-di-san",
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản ngay trên: đi
+        # thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps (luồng cũ).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95e6-7578-ba2d-d1b4373cd174",
+                "maThuTuc=2.001016",
+            ],
+        },
+        "label": "Chứng thực văn bản từ chối nhận di sản",
+        "shortLabel": "Chứng thực văn bản từ chối nhận di sản",
+        "subtitle": "Chứng thực văn bản người thừa kế từ chối nhận phần di sản được hưởng",
+        "icon": "📜",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95e6-7578-ba2d-d1b4373cd174",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) dự thảo văn bản từ chối nhận di sản, (2) GCN sở hữu/sử dụng +
+        # CCCD + giấy chứng tử (planner gộp một PDF). Ủy quyền/giấy khác thêm thành phần mới.
+        # KHÔNG bật supportsSplitDocuments: giữ mặc định gộp của planner core. Bộ phân loại lúc tải
+        # lên (pipelines/chung_thuc_tu_choi_di_san/handfree) xếp tệp vào đúng ô, planner vẫn tự
+        # phân loại lại theo nội dung lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "du_thao", "name": "Dự thảo văn bản từ chối nhận di sản", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản là di sản "
+             "(sổ đỏ, đăng ký xe…)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Dự thảo văn bản từ chối nhận di sản.\n"
+            "2. Giấy chứng nhận quyền sở hữu/quyền sử dụng hoặc giấy tờ thay thế của tài sản là di sản.\n"
+            "3. Nếu có: căn cước của người từ chối, giấy chứng tử/trích lục khai tử của người để lại "
+            "di sản, giấy ủy quyền đi nộp hồ sơ.\n"
+            "Bước Thành phần hồ sơ: dự thảo vào dòng 1; giấy chứng nhận, căn cước, giấy chứng tử gộp "
+            "chung một tệp PDF vào dòng 2; ủy quyền/giấy tờ khác thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -1880,6 +1943,41 @@ PROCEDURES: list[dict] = [
             "3. Căn cước công dân của người nộp / người đại diện.\n"
             "4. Nếu có: giấy chứng nhận đăng ký doanh nghiệp, giấy cam kết, hợp đồng thuê nhà, "
             "giấy phép cũ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-lien-van-viet-lao",
+        # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io) — Phần I người nộp + Phần II đề nghị cùng trang
+        # kê khai. Danh sách phương tiện (Phần III) nạp từ hồ sơ xe của tài khoản → người dân tự
+        # bấm "Thêm xe"; extension chỉ điền Phần I/II và tick dòng đính kèm.
+        "flowProfile": "xay-dung",
+        "label": "Cấp, cấp lại Giấy phép liên vận giữa Việt Nam và Lào",
+        "shortLabel": "Giấy phép liên vận Việt Nam - Lào",
+        "subtitle": "Cấp mới / cấp lại giấy phép liên vận cho xe đi Lào",
+        "icon": "🚚",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-2aa0-754f-9f94-b2b89ed0f198",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "requiredDocs": [
+            {"key": "don", "name": "Giấy đề nghị cấp, cấp lại Giấy phép liên vận Việt Nam - Lào "
+             "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "dang_ky_xe", "name": "Giấy chứng nhận đăng ký xe ô tô của phương tiện",
+             "icon": "🚗", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Hợp đồng dự án tại Lào, quyết định cử đi công tác, hợp đồng "
+             "thuê xe (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp, cấp lại Giấy phép liên vận Việt Nam - Lào, đã ký.\n"
+            "2. Căn cước công dân của người đứng đơn.\n"
+            "3. Giấy chứng nhận đăng ký xe ô tô của phương tiện xin cấp phép.\n"
+            "4. Nếu có: hợp đồng/tài liệu công trình, dự án tại Lào; quyết định cử đi công tác (xe "
+            "công vụ); hợp đồng thuê phương tiện (xe không chính chủ).\n"
+            "Danh sách phương tiện trên đơn: bạn tự bấm 'Thêm xe' và chọn biển số đã đăng ký.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },

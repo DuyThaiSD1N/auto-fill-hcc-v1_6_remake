@@ -4,12 +4,13 @@
 ENGINE TÁCH/GỘP (như dinh_chinh_gcn_da_cap_da_nang): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG
 TRANG + loại cho từng đoạn → hậu xử lý tất định (chống chồng/thiếu trang) → mỗi đoạn thành 1 attachment kèm
 `sourceSegments` (pageIndexes). FE tự tách PDF gộp thành từng PDF con rồi attp-row gom theo dòng (1 dòng
-nhận được NHIỀU file). Xử lý được cả 1 PDF gộp cả hồ sơ lẫn nhiều file riêng.
+nhận được NHIỀU file).
+NAY KHÔNG TÁCH FILE: các đoạn chỉ dùng để nhận loại; mỗi file tải lên đính nguyên vẹn thành đúng 1 mục.
 
 Bảng 6 dòng (đều "1 Bản chính"):
   [1] Đơn đề nghị CẤP LẠI (Mẫu 11 PL I)          ← don_cap_lai
-  [2] GCN đủ ĐKKD dược bị ghi sai do lỗi cơ quan  ← gcn_du_dkkd_duoc, CHỈ khi hồ sơ là CẤP LẠI (có Đơn cấp
-                                                    lại); hồ sơ điều chỉnh thì không đính, báo để cán bộ tự quyết
+  [2] GCN đủ ĐKKD dược bị ghi sai do lỗi cơ quan  ← gcn_du_dkkd_duoc; hồ sơ điều chỉnh cũng đính vào dòng
+                                                    này (bảng không có dòng nào khác nhận GCN đã cấp)
   [3] Đơn đề nghị ĐIỀU CHỈNH (Mẫu 12 PL I)        ← don_dieu_chinh
   [4] Chứng chỉ hành nghề dược                    ← cchn_duoc
   [5] GCN đăng ký DN / tài liệu pháp lý thay đổi  ← giay_to_phap_ly (GCN ĐKHKD, GCN ĐKDN, GPP... cùng dòng)
@@ -297,7 +298,18 @@ def build_plan_items(
             doc_type = _rule_type(seg_text)
         typed.append((segment, doc_type, seg_text))
 
-    is_cap_lai = any(doc_type == _DON_CAP_LAI for _, doc_type, _ in typed)
+    # Không tách file: mỗi file người dùng tải lên đính NGUYÊN VẸN thành 1 mục, loại lấy theo giấy tờ đầu tiên
+    # nhận được trong file (vd thuyết minh an ninh kèm bản kê vị trí, trang thiết bị, sơ đồ vẫn là 1 file).
+    per_file: dict[int, list[tuple[dict, str, str]]] = {}
+    for entry in typed:
+        per_file.setdefault(entry[0]["fileIndex"], []).append(entry)
+    typed = []
+    for file_index, entries in sorted(per_file.items()):
+        chosen = next((e for e in entries if e[1] in _ROWS), None) or next(
+            (e for e in entries if e[1] == _CCCD), entries[0])
+        whole = {**chosen[0], "pageFrom": 1, "pageTo": file_meta[file_index]["pageCount"]}
+        typed.append((whole, chosen[1], "\n".join(e[2] for e in entries)))
+
     attachments: list[dict] = []
     classified: list[dict] = []
     warnings: list[str] = []
@@ -314,13 +326,6 @@ def build_plan_items(
 
         if doc_type == _CCCD:
             classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
-        if doc_type == _GCN_DKKD and not is_cap_lai:
-            warnings.append(
-                f"{where}: Giấy chứng nhận đủ điều kiện kinh doanh dược — dòng 2 chỉ dùng khi CẤP LẠI do cơ quan "
-                "cấp ghi sai, hồ sơ này là điều chỉnh nên không đính kèm; nếu Sở yêu cầu thì đính tay."
-            )
-            classified.append({**base, "target": "skip", "reason": "chỉ đính khi cấp lại"})
             continue
         if doc_type not in _ROWS:
             skipped_pages.append(where)

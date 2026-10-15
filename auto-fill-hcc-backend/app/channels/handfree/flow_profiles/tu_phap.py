@@ -86,10 +86,13 @@ TU_PHAP_FLOW: dict = {
         "attachmentStepLabel": "Thành phần hồ sơ",
         "resultStepLabel": "Thông tin nhận kết quả",
         "submitLabel": "Gửi hồ sơ",
-        # Bước Thông tin nhận kết quả của cổng tư pháp 4 bước: cùng ba công tắc (nhãn kiểm trên cổng
-        # thật với chứng thực bản sao 24/09/2026, khớp cả kết hôn / đăng ký lại khai sinh 15/10/2026).
-        # Thủ tục chưa bật dẫn từng bước vẫn dùng: công dân nói "sang bước tiếp theo" ở Thành phần hồ
-        # sơ thì trợ lý bấm hộ rồi hiện thẻ chọn cách nhận này. Ý nghĩa các khóa: xem chung-thuc-ban-sao.
+        # Riêng đoạn cuối (đính kèm xong → bước nhận kết quả → Gửi hồ sơ) bật cho MỌI thủ tục tư
+        # pháp cũ, kể cả khi `enabled` tắt: bước chủ hồ sơ giữ luồng riêng của từng thủ tục.
+        "attachToResult": True,
+        # Bước Thông tin nhận kết quả: cổng để CẢ BA công tắc tắt, không có mặc định nào.
+        # `label` phải đúng NGUYÊN VĂN chữ trên cổng — FE khớp công tắc theo nhãn đã fold dấu,
+        # KHÔNG theo id (id Radix sinh lại mỗi lần render). `needsInput`: CHỈ bưu chính mới đòi
+        # thêm thông tin người nhận. Trợ lý chỉ tick, không bao giờ điền hộ địa chỉ/người nhận.
         "resultMethods": [
             {"key": "paper", "label": "Nhận kết quả bản giấy có đóng dấu", "icon": "📄",
              "desc": "Nhận bản giấy có đóng dấu của cơ quan.", "default": True},

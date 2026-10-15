@@ -167,7 +167,8 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     # Các thủ tục khác của cổng Bộ Xây dựng: cùng luồng chung "xay-dung", cùng hộp thoại.
     for key in ("dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
-                "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he"):
+                "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
+                "cap-giay-phep-lien-van-viet-lao"):
         moc_other = procedures.pop(key)
         assert moc_other["flowProfile"] == "xay-dung", key
         assert moc_other["maePortal"] is True, key
@@ -307,7 +308,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     attach_only = {
         "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san",
         "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-phan-chia-di-san",
-        "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
+        "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-tu-choi-nhan-di-san",
     }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
@@ -334,8 +335,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP);
     # +2 attach-only tư pháp "chung-thuc-phan-chia-di-san", "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich";
     # +5 cổng Bộ Xây dựng (luồng chung "xay-dung"): điều chỉnh GPXD, sửa chữa cải tạo, thông tin
-    # quy hoạch, thẩm định BCNCKT, lòng đường vỉa hè.
-    assert len(procedures) == 41
+    # quy hoạch, thẩm định BCNCKT, lòng đường vỉa hè; +1 liên vận Việt Nam - Lào (cùng luồng).
+    # (Trước khi thêm liên vận danh sách thực tế đã là 42, số cũ 41 chưa được cập nhật.)
+    # +1 attach-only tư pháp "chung-thuc-tu-choi-nhan-di-san".
+    assert len(procedures) == 44
 
     for procedure in procedures:
         key = procedure["key"]

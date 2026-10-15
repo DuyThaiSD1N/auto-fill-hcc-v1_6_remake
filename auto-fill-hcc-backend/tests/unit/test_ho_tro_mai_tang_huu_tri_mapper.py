@@ -191,3 +191,30 @@ NGƯỜI KÝ TRÍCH LỤC
     assert "owner_support_ocr" in context
     assert "068049000055" not in context
     assert "ĐẶNG VĂN LONG" not in context
+
+
+def test_nghia_hung_account_sets_clear_email_flag_only_for_this_procedure():
+    """Cờ xoá email do server đặt theo tài khoản; client tự gửi cờ cho xã khác bị gỡ."""
+    nghia_hung = {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng"}
+    other = {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng Đông"}
+    key = mapper.PROCEDURE_KEY
+    assert mapper.with_account_process_options({}, nghia_hung, key)[mapper.CLEAR_EMAIL_OPTION] is True
+    assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options(
+        {mapper.CLEAR_EMAIL_OPTION: True}, other, key
+    )
+    assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options({}, nghia_hung, "ho-tro-mai-tang")
+
+
+def test_clear_email_flag_emits_clear_after_requester_block():
+    compact = [{"name": k, "value": v} for k, v in _DANG_VAN_LAM.items()]
+    fields, _ = mapper.enrich(compact, {"submitterMode": "owner_as_submitter", mapper.CLEAR_EMAIL_OPTION: True})
+    email = [f for f in fields if f["name"] == "data[email]"]
+    assert email == [{"name": "data[email]", "comp": "dom-input", "value": "", "clear": True}]
+    assert fields[-1]["name"] == "data[email]"
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"          # các ô khác vẫn điền như thường
+
+
+def test_without_flag_email_untouched():
+    got, _ = _run_mode(_DANG_VAN_LAM)
+    assert "data[email]" not in got

@@ -368,6 +368,8 @@ from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.process import run as cap_gp_khai_thac_ts_process
 from app.pipelines.cap_lai_CCHN_thu_y.attach import plan as cap_lai_cchn_thu_y_attach
 from app.pipelines.cap_lai_CCHN_thu_y.process import run as cap_lai_cchn_thu_y_process
+from app.pipelines.dang_ky_hanh_nghe.attach import plan as dang_ky_hanh_nghe_attach
+from app.pipelines.dang_ky_hanh_nghe.process import run as dang_ky_hanh_nghe_process
 from app.pipelines.gia_han_chung_chi_hanh_nghe_thu_y.attach import plan as gia_han_cchn_thu_y_attach
 from app.pipelines.gia_han_chung_chi_hanh_nghe_thu_y.process import run as gia_han_cchn_thu_y_process
 from app.pipelines.cap_gcn_dang_ky_tau_ca.attach import plan as cap_gcn_dang_ky_tau_ca_attach
@@ -6040,7 +6042,8 @@ PROCEDURES: list[dict] = [
         # selectSo, phải tích "Sở" ở khối "Chọn cơ quan thực hiện" mới vào được form. URL trang chi tiết
         # DVCQG được with_ke_khai_detect_urls ghép thêm vào urlIncludes. Cụm tên ngắn và dễ trùng
         # ("đăng ký hành nghề công chứng"...) nên KHÔNG bật textPriority và tắt heading (heading so
-        # startsWith sẽ ăn nhầm tên dài hơn). CHƯA có pipeline điền — mới bật tìm kiếm + nhận diện.
+        # startsWith sẽ ăn nhầm tên dài hơn). Form.io: Phần II chủ hồ sơ = cơ sở khám bệnh, chữa bệnh;
+        # attach attp-row 4 dòng (danh sách lần đầu / đã thay đổi / báo cáo / đã bổ sung).
         "detect": {
             "urlIncludes": ["maThuTuc=1.012275"],
             "textIncludes": ["Đăng ký hành nghề"],
@@ -6051,6 +6054,22 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Danh sách đăng ký người hành nghề (Mẫu 01 Phụ lục II NĐ 96/2023/NĐ-CP) của cơ sở khám bệnh, "
+            "chữa bệnh — PDF/ảnh scan có ký tên, đóng dấu (hoặc file .docx).\n"
+            "2. CCCD / thẻ Căn cước (mặt trước + mặt sau) của người đứng đầu cơ sở (người ký danh sách) — để "
+            "lấy ngày sinh, giới tính, số CCCD của chủ hồ sơ.\n"
+            "3. Nếu có: Báo cáo; danh sách ĐÃ THAY ĐỔI hoặc ĐÃ BỔ SUNG người hành nghề.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Mục 'Thông tin người nộp hồ sơ' cổng tự đổ từ tài khoản VNeID nên KHÔNG điền; extension bỏ tích "
+            "'Người nộp hồ sơ là chủ hồ sơ' rồi điền mục 'Thông tin chủ hồ sơ' = tên + địa chỉ cơ sở (từ danh "
+            "sách) và nhân thân người đứng đầu (từ CCCD). Số điện thoại, email, fax phải tự nhập.\n"
+            "Bước đính kèm: danh sách → dòng 1 'Danh sách đăng ký hành nghề' (nhiều cơ sở thì cùng dòng 1), "
+            "danh sách đã thay đổi → dòng 2, Báo cáo → dòng 3, danh sách đã bổ sung → dòng 4; chọn '1 Bản "
+            "chính'. CCCD chỉ dùng ở bước thông tin.\n"
+            "Hình thức nhận kết quả, ô cam kết và mã xác nhận (captcha) vẫn phải tự làm."
+        ),
     },
     {
         "key": "cong-bo-co-so-du-dieu-kien-tiem-chung",
@@ -7903,6 +7922,7 @@ _PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
+    "dang-ky-hanh-nghe": dang_ky_hanh_nghe_process,
     "gia-han-chung-chi-hanh-nghe-thu-y": gia_han_cchn_thu_y_process,
     "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_process,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_process,
@@ -8119,6 +8139,7 @@ _ATTACH_PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
+    "dang-ky-hanh-nghe": dang_ky_hanh_nghe_attach,
     "gia-han-chung-chi-hanh-nghe-thu-y": gia_han_cchn_thu_y_attach,
     "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_attach,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_attach,

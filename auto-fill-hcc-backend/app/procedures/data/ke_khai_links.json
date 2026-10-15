@@ -503,9 +503,9 @@
     },
     {
       "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot",
-      "code": "1.115446",
+      "code": "1.012796",
       "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f10fb-9fa4-7462-9c30-f264a10e839b",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -1601,6 +1601,14 @@
       "key": "cap-giay-chung-nhan-lan-dau",
       "code": "1.013978",
       "label": "Quảng Ngãi - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-lan-dau-cap-xa",
+      "code": "1.013978",
+      "label": "(Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
       "needsAgencySelect": true,
       "autoConfirm": true

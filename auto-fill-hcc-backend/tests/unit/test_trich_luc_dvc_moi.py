@@ -20,12 +20,14 @@ def _fold(value: str) -> str:
     return re.sub(r"\s+", " ", "".join(c for c in text if unicodedata.category(c) != "Mn")).lower()
 
 
-def _context(relation="", other="", subject_id="", status="còn sống", event="khai sinh", declared="không có"):
+def _context(relation="", other="", subject_id="", status="còn sống", event="khai sinh", declared="không có",
+             to_khai="không có", doi_chieu="không xác định"):
     return (
         "<phan_vai_da_xac_dinh>\n"
         f"<nguoi_duoc_cap>\nHọ tên: TRAN THI B\nSố định danh: {subject_id}\nTrạng thái: {status}\n</nguoi_duoc_cap>\n"
         f"<giay_to_ho_tich>\nLoại ghi trên tờ khai: {declared}\nLoại trích lục cần cấp: {event}\n</giay_to_ho_tich>\n"
-        f"<quan_he>\nKết luận: {relation}\nQuan hệ khác: {other}\nCăn cứ: x\n</quan_he>\n"
+        f"<quan_he>\nQuan hệ ghi trên tờ khai: {to_khai}\nĐối chiếu với người nộp: {doi_chieu}\n"
+        f"Kết luận: {relation}\nQuan hệ khác: {other}\nCăn cứ: x\n</quan_he>\n"
         "</phan_vai_da_xac_dinh>"
     )
 
@@ -165,7 +167,7 @@ def test_loai_ghi_tren_to_khai_mo_ho_thi_theo_ket_luan(declared):
 
 def test_llm_self_rejected_when_identity_differs():
     out, warnings = _enrich(SUBJECT, _context("Bản thân"))
-    assert "citizenQuanhe" not in _names(out)
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Khác"
     assert "citizenNDK_HoVaTen" in _names(out)
     assert warnings
 
@@ -173,7 +175,7 @@ def test_llm_self_rejected_when_identity_differs():
 def test_self_never_for_deceased():
     values = {**SUBJECT, "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"], "GiayTo_LoaiSuKien": "death"}
     out, warnings = _enrich(values, _context("Bản thân", status="đã chết", event="khai tử"))
-    assert "citizenQuanhe" not in _names(out)
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Khác"
     assert warnings
 
 
@@ -182,12 +184,42 @@ def test_other_relation_needs_text():
     by = {f["name"]: f for f in out}
     assert by["citizenQuanhe"]["value"] == "Khác" and by["citizenField8"]["value"] == "Em ruột"
     out, warnings = _enrich(SUBJECT, _context("Khác"))
-    assert "citizenQuanhe" not in _names(out) and warnings
+    by = {f["name"]: f for f in out}
+    assert by["citizenQuanhe"]["value"] == "Khác" and by["citizenQuanhe"].get("default") is True
+    assert "citizenField8" not in by and warnings
 
 
-def test_unknown_relation_left_blank_with_warning():
+def test_khong_co_to_khai_chon_khac_khong_de_trong():
+    # Hồ sơ chỉ có giấy khai sinh, không tờ khai → không có quan hệ để lấy, cổng không cho để trống.
     out, warnings = _enrich(SUBJECT, _context("Không xác định"))
-    assert "citizenQuanhe" not in _names(out)
+    by = {f["name"]: f for f in out}
+    assert by["citizenQuanhe"]["value"] == "Khác" and by["citizenQuanhe"].get("default") is True
+    assert "citizenField8" not in by
+    assert "citizenNDK_HoVaTen" in by
+    assert warnings
+
+
+@pytest.mark.parametrize("to_khai,doi_chieu,expected", [
+    ("Mẹ", "không xác định", "Mẹ đẻ"),
+    ("Bố", "cùng người — số trùng", "Bố đẻ"),
+    ("con", "không xác định", "Con đẻ"),
+])
+def test_quan_he_tren_to_khai_thang_khi_phan_vai_chua_chot(to_khai, doi_chieu, expected):
+    out, warnings = _enrich(SUBJECT, _context("Không xác định", to_khai=to_khai, doi_chieu=doi_chieu))
+    by = {f["name"]: f for f in out}
+    assert by["citizenQuanhe"]["value"] == expected and not by["citizenQuanhe"].get("default")
+    assert not warnings
+
+
+def test_quan_he_tren_to_khai_khong_co_nhan_thi_khac_kem_chu():
+    out, _ = _enrich(SUBJECT, _context("Không xác định", to_khai="Em ruột"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhe"] == "Khác" and by["citizenField8"] == "Em ruột"
+
+
+def test_to_khai_cua_nguoi_khac_khong_lay_quan_he():
+    out, warnings = _enrich(SUBJECT, _context("Không xác định", to_khai="Mẹ", doi_chieu="khác người — số lệch"))
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Khác"
     assert warnings
 
 

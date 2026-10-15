@@ -9,9 +9,6 @@ Tương thích: bật khi CẢ HAI cùng đồng ý — thủ tục khai `guided
 gọi `_fmt(vi.GUIDED_*)` bên flow.py để hàng rào kiểm bản Mông soi được.
 """
 
-import json
-import re
-
 from app.channels.handfree.chat import script_vi as vi
 
 # Tên pha do backend đặt, đi theo chip/action ra FE rồi quay về trong báo cáo. Không dùng số
@@ -27,6 +24,19 @@ def config(proc: dict | None) -> dict:
 
 def enabled(conv: dict, proc: dict | None) -> bool:
     if not config(proc).get("enabled"):
+        return False
+    return (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True
+
+
+def result_flow_enabled(conv: dict, proc: dict | None) -> bool:
+    """Đoạn cuối: đính kèm xong → nút sang bước nhận kết quả → gạt cách nhận → nút Gửi hồ sơ.
+
+    Bật theo cả luồng dẫn từng bước (`enabled`), HOẶC riêng cờ `attachToResult` cho thủ tục đã có
+    luồng bước chủ hồ sơ của mình (kê khai tư pháp: xin đồng ý + điền chủ hồ sơ) — cờ này không đụng
+    bước 1, chỉ mở đoạn từ Thành phần hồ sơ trở đi."""
+    if enabled(conv, proc):
+        return True
+    if not config(proc).get("attachToResult"):
         return False
     return (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True
 
@@ -309,82 +319,3 @@ def select_result_method_action(proc: dict | None, key: str) -> dict | None:
 def is_result_step(proc: dict | None, page_context: dict | None) -> bool:
     step = (page_context or {}).get("wizardStep")
     return isinstance(step, int) and step == _wizard(proc, "resultStep", 4)
-
-
-# ── Bổ sung ô còn trống trên tờ khai eForm (vòng field review) ──
-# Extension tô từng ô (xanh có giá trị / cam trống không bắt buộc / đỏ trống bắt buộc), đưa con trỏ
-# tới ô trống kế tiếp, đọc danh sách lựa chọn và điền đúng một ô (content/field-review.js). File này
-# dựng lệnh + nút; câu thoại và điều phối ở flow.py.
-
-# Hỏi lựa chọn bằng nút khi danh sách ngắn (Giới tính, Có/Không…); dài hơn thì công dân nói tên.
-FIELD_OPTION_CHIPS_MAX = 6
-
-
-def field_review_supported(conv: dict, proc: dict | None) -> bool:
-    """Extension khai `supportsFieldReview`; thủ tục tắt riêng bằng `fieldReview.enabled = False`."""
-    if ((proc or {}).get("fieldReview") or {}).get("enabled") is False:
-        return False
-    return (conv.get("client_capabilities") or {}).get("supportsFieldReview") is True
-
-
-def field_review_required(proc: dict | None) -> list[str]:
-    """Tên ô (name của x-*) cổng bắt buộc mà chưa có chấm đỏ trước khi bấm Xem trước."""
-    return [str(n) for n in ((proc or {}).get("fieldReview") or {}).get("required") or [] if n]
-
-
-def field_review_next_action(review: dict, *, apply: dict | None = None, focus: str = "") -> dict:
-    """Điền ô vừa trả lời (apply), rồi tìm ô trống kế tiếp — hoặc về đúng ô `focus` để sửa."""
-    return {
-        "type": "field_review_next",
-        "required": list(review.get("required") or []),
-        "skip": list(review.get("skip") or []),
-        "apply": apply,
-        "focus": focus,
-    }
-
-
-def field_label(field: dict) -> str:
-    """Nhãn đọc được: bỏ số thứ tự "(8)" và dấu ":" của cổng; ô con khối địa chỉ ghép tên khối."""
-    def clean(text: object) -> str:
-        text = re.sub(r"^\(\s*\d+\s*\)\s*", "", str(text or "").strip())
-        return re.sub(r"^[:\s–-]+|[:\s–-]+$", "", text)
-
-    label, group = clean(field.get("label")), clean(field.get("group"))
-    if group and group.casefold() != label.casefold():
-        return f"{group} – {label}" if label else group
-    return label or "ô đang hỏi"
-
-
-def field_option_chips(field: dict) -> list[dict]:
-    options = [str(o) for o in field.get("options") or [] if str(o or "").strip()]
-    if str(field.get("kind")) not in ("select", "radio") or not 0 < len(options) <= FIELD_OPTION_CHIPS_MAX:
-        return []
-    return [{"label": o, "send": "__action:field_review_answer:" + json.dumps({"value": o}, ensure_ascii=False)}
-            for o in options]
-
-
-def field_review_question_chips(can_go_back: bool) -> list[dict]:
-    """Nút điều hướng của câu hỏi ô — màu theo nghĩa (chip.tone), extension cũ bỏ qua khóa này."""
-    chips = [{"label": vi.FIELD_REVIEW_SKIP_CTA, "send": "__action:field_review_skip", "tone": "skip"}]
-    if can_go_back:
-        chips.append({"label": vi.FIELD_REVIEW_BACK_CTA, "send": "__action:field_review_back", "tone": "back"})
-    chips.append({"label": vi.FIELD_REVIEW_STOP_CTA, "send": "__action:field_review_stop", "tone": "stop"})
-    return chips
-
-
-def field_review_preview_chip() -> dict:
-    return _cta(vi.FIELD_REVIEW_PREVIEW_CTA, "__action:field_review_preview")
-
-
-def declaration_preview_action(review: dict) -> dict:
-    """Bấm "Xem trước" của tờ khai; còn ô bắt buộc trống thì cổng không mở mà nháy chấm đỏ."""
-    return {"type": "declaration_preview", "required": list(review.get("required") or [])}
-
-
-def declaration_confirm_action(proc: dict | None) -> dict:
-    """Bấm "Xác nhận" trong bản xem trước, rồi đối chiếu thanh bước đã sang Thành phần hồ sơ."""
-    return {"type": "declaration_confirm", "expectStep": _wizard(proc, "attachmentStep", 3)}
-
-
-def field_review_confirm_chip() -> dict:
-    return _cta(vi.FIELD_REVIEW_CONFIRM_CTA, "__action:field_review_confirm")

@@ -77,6 +77,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                     "chứng thực thỏa thuận phân chia di sản", "chia di sản thừa kế",
                                     "chia thừa kế nhà đất", "làm giấy chia thừa kế",
                                     "phân chia tài sản thừa kế của bố mẹ đã mất"],
+    # TỪ CHỐI phần di sản mình được hưởng — KHÁC phân chia di sản ngay trên (các bên thỏa thuận chia).
+    "chung-thuc-tu-choi-nhan-di-san": ["chứng thực văn bản từ chối nhận di sản",
+                                       "từ chối nhận thừa kế", "không nhận phần thừa kế",
+                                       "nhường phần thừa kế cho anh chị em",
+                                       "làm giấy từ chối di sản của bố mẹ"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -186,6 +191,9 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-phep-long-duong-via-he": ["xin phép sử dụng vỉa hè", "sử dụng tạm lòng đường",
                                    "giấy phép dùng vỉa hè", "xin phép tổ chức sự kiện trên vỉa hè",
                                    "tập kết vật liệu trên vỉa hè"],
+    "cap-giay-phep-lien-van-viet-lao": ["giấy phép liên vận Lào", "xin giấy phép cho xe đi Lào",
+                                        "cấp lại giấy phép liên vận Việt Lào",
+                                        "xe ô tô sang Lào"],
 }
 
 

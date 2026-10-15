@@ -150,6 +150,8 @@ UI_COMP_BY_NAME = {
     "data[district]": "dom-select",
     "data[address]": "dom-input",
     "data[phoneNumber]": "dom-input",
+    # Chỉ dùng để XOÁ ô (cờ clearEmail của xã Nghĩa Hưng); pipeline không trích email.
+    "data[email]": "dom-input",
 
     # Chủ hồ sơ.
     "data[ownerFullname]": "dom-input",

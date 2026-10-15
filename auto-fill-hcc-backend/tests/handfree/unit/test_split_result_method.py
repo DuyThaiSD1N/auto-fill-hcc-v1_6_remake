@@ -40,8 +40,14 @@ def test_extension_chua_co_engine_gat_thi_khong_gui():
 
 
 def test_thu_tuc_khong_co_cach_nhan_ket_qua_thi_khong_gui():
-    action = flow._attach_plan_action(_conv("split", key="chung-thuc-chu-ky"), [])
+    action = flow._attach_plan_action(_conv("split", key="cap-ban-sao-van-bang-so-goc"), [])
     assert "resultMethod" not in action
+
+
+def test_chung_thuc_chu_ky_tach_ho_so_cung_gat_ban_giay():
+    """Mọi thủ tục tư pháp cũ có bước nhận kết quả (attachToResult) — tab tách cũng tự gạt bản giấy."""
+    action = flow._attach_plan_action(_conv("split", key="chung-thuc-chu-ky"), [])
+    assert action["resultMethod"]["method"] == "paper"
 
 
 def test_gui_kem_danh_sach_de_khung_phu_ve_card():

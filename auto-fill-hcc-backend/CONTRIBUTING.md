@@ -92,6 +92,8 @@ Thêm test để lần sau CI bắt được.
 
 ## 7. Phát hành lên prod
 
+Chi tiết (theo dõi, xử lý sự cố, cấu hình): [docs/ci-cd.md](docs/ci-cd.md).
+
 ```bash
 git switch main && git pull                          # tag phải trỏ vào commit ĐÃ có trong main
 git tag v2026.10.12 && git push origin v2026.10.12     # mẫu vYYYY.MM.DD; cùng ngày lần 2: v2026.10.12.1

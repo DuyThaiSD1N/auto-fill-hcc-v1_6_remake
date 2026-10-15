@@ -217,22 +217,24 @@ async def test_client_khong_co_engine_van_nhan_huong_dan_ba_phuong_thuc():
     assert not r.actions and not r.cards
 
 
-async def test_tu_chon_san_ban_giay_va_gat_cong_tac_tren_trang():
+async def test_hien_the_khong_tu_chon_cong_dan_chon_moi_gat_cong_tac():
+    # 15/10/2026: trợ lý KHÔNG gạt sẵn cách nào (trước đây gạt sẵn bản giấy) — công dân tự chọn.
     conv = _after_attach(RESULT_CLIENT)
     r = await _to_result_step(conv)
-    assert "Em đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
-    # Câu chốt đi kèm MỌI lượt chọn, và nút Gửi hồ sơ phải in đậm cho nổi.
-    assert "bấm **Gửi hồ sơ** để nộp" in r.display_md
+    assert "Công dân chọn **một** cách nhận kết quả" in r.display_md
     card = r.cards[0]
-    assert card["kind"] == "result_methods" and card["selected"] == "paper"
+    assert card["kind"] == "result_methods" and card["selected"] == ""
     assert [o["key"] for o in card["options"]] == ["paper", "online", "postal"]
+    assert not r.actions and conv["result_method"] == ""
+    assert r.chips[0]["send"] == "__action:guided_submit"
+
+    r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "paper"}))
     action = r.actions[0]
     assert action["type"] == "select_result_method" and action["method"] == "paper"
     # Cổng dùng switch chứ không phải radio → FE phải biết cả ba nhãn để tắt cái đang bật.
     assert len(action["allLabels"]) == 3
     assert action["label"] == "Nhận kết quả bản giấy có đóng dấu", "phải đúng chữ trên cổng"
-    assert conv["result_method"] == "paper"
-    assert r.chips[0]["send"] == "__action:guided_submit"
+    assert conv["result_method"] == "paper" and r.cards[0]["selected"] == "paper"
 
 
 async def test_doi_sang_cach_khac_thi_gat_lai_cong_tac_do():
@@ -272,7 +274,8 @@ async def test_chi_buu_chinh_moi_duoc_soi_o_trong():
     """FE chỉ quét ô bắt buộc cho cách đòi thêm thông tin — quét cả trang cho cách không đòi
     gì là mời gọi báo nhầm ô của khối khác."""
     conv = _after_attach(RESULT_CLIENT)
-    r = await _to_result_step(conv)
+    await _to_result_step(conv)
+    r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "paper"}))
     assert r.actions[0]["needsInput"] is False, "bản giấy không đòi gì thêm"
     r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "postal"}))
     assert r.actions[0]["needsInput"] is True

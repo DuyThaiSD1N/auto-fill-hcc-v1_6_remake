@@ -18,7 +18,6 @@ import logging
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from datetime import date
 
 from app.channels.handfree.chat import procedure_picker, store
 from app.channels.handfree.procedure_registry import procedure_code, public_list
@@ -94,6 +93,12 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": f"chọn lựa chọn số {n} (thứ {word}) trong danh sách đang hỏi"}
         for n, word in ((1, "nhất"), (2, "hai"), (3, "ba"), (4, "tư"), (5, "năm"), (6, "sáu"))
     ],
+    # Màn chào: câu chỉ xin bắt đầu (nói ở màn bắt đầu rồi chuyển vào chat) → mời chọn / nói tên thủ tục,
+    # không báo "chưa nhận ra thủ tục".
+    "greet": [
+        {"kind": "action", "value": "start_only",
+         "desc": "chỉ muốn bắt đầu / bắt đầu làm thủ tục / làm hồ sơ mà CHƯA nêu tên hay mô tả thủ tục nào"},
+    ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
          "desc": "báo đã đăng nhập xong / đã vào được trang kê khai"},
@@ -121,6 +126,9 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn đính kèm/chuyển sang phần đính kèm khi trang hiện tại vẫn là kê khai"},
         {"kind": "action", "value": "reshow_qr",
          "desc": "muốn chụp lại / hiện lại mã QR"},
+        # Hộp chọn tệp chỉ mở được bằng cú bấm thật → lời nói chỉ được mời bấm nút (flow).
+        {"kind": "action", "value": "pick_files_by_hand",
+         "desc": "muốn chọn / thêm / tải tệp từ máy tính (mở cửa sổ chọn tệp) — KHÔNG phải yêu cầu đính kèm"},
     ],
     "owner_waiting_next": [
         {"kind": "action", "value": "retry_owner_fill",
@@ -170,7 +178,7 @@ _GLOBAL_INTENTS: list[dict] = [
              "KHÔNG phải câu xin sang bước tiếp theo / bước nhận kết quả của hồ sơ đang làm"},
 ]
 
-# ── "Sang bước tiếp theo" bằng lời ──
+# ── Chuyển bước wizard bằng lời ──
 # Câu xin chuyển bước trên cổng ("sang bước nhận kết quả", "bước tiếp theo đi"). Phải tất định: LLM từng
 # xếp "sang bước nhận kết quả" vào new_procedure → reset cả hồ sơ đang làm. Bắt buộc có chữ "bước"/"tiếp
 # theo" — "nhận kết quả qua bưu điện" ở bước 4 là chọn cách nhận, không phải chuyển bước.
@@ -178,27 +186,29 @@ _NEXT_STEP_RE = re.compile(
     r"(?:^|\s)(?:buoc tiep|tiep theo|buoc sau|buoc nhan ket qua"
     r"|(?:sang|qua|chuyen|toi|den|tiep)\s+(?:sang\s+|qua\s+)?buoc)(?:\s|$)"
 )
+# "Gửi hồ sơ / nộp hồ sơ / gửi đi" ở bước Thông tin nhận kết quả (flow chỉ nhắc công dân tự bấm).
+_SUBMIT_RE = re.compile(r"(?:^|\s)(?:gui|nop)\s+(?:ho so|di|luon|nhe|giup)(?:\s|$)")
 # Không tính "đừng": bỏ dấu thành "dung", trùng "đúng".
-_NEXT_STEP_NEGATION_RE = re.compile(r"(?:^|\s)(?:khong|chua|khoan|thoi)(?:\s|$)")
-_NEXT_STEP_MAX_WORDS = 12
+_STEP_NEGATION_RE = re.compile(r"(?:^|\s)(?:khong|chua|khoan|thoi)(?:\s|$)")
+_STEP_MAX_WORDS = 12
+
+
+def _step_words(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", fold(str(text or ""))))
 
 
 def asks_next_step(text: str) -> bool:
-    said = " ".join(re.findall(r"[a-z0-9]+", fold(str(text or ""))))
-    if not said or len(said.split()) > _NEXT_STEP_MAX_WORDS:
+    said = _step_words(text)
+    if not said or len(said.split()) > _STEP_MAX_WORDS:
         return False
-    return bool(_NEXT_STEP_RE.search(said)) and not _NEXT_STEP_NEGATION_RE.search(said)
-
-
-# "Gửi hồ sơ / nộp hồ sơ / gửi đi" ở bước Thông tin nhận kết quả (flow chỉ nhắc công dân tự bấm).
-_SUBMIT_RE = re.compile(r"(?:^|\s)(?:gui|nop)\s+(?:ho so|di|luon|nhe|giup)(?:\s|$)")
+    return bool(_NEXT_STEP_RE.search(said)) and not _STEP_NEGATION_RE.search(said)
 
 
 def asks_submit(text: str) -> bool:
-    said = " ".join(re.findall(r"[a-z0-9]+", fold(str(text or ""))))
-    if not said or len(said.split()) > _NEXT_STEP_MAX_WORDS:
+    said = _step_words(text)
+    if not said or len(said.split()) > _STEP_MAX_WORDS:
         return False
-    return bool(_SUBMIT_RE.search(said)) and not _NEXT_STEP_NEGATION_RE.search(said)
+    return bool(_SUBMIT_RE.search(said)) and not _STEP_NEGATION_RE.search(said)
 
 
 def _resolve_machine(message: str) -> Intent | None:
@@ -276,169 +286,6 @@ def resolve_logout_choice(message: str) -> str | None:
     return None
 
 
-# ── Trả lời MỘT ô của tờ khai (vòng bổ sung ô trống, flow.field_review_question) ──
-# Câu công dân nói lúc này là GIÁ TRỊ của ô, nên không đi qua bộ phân loại ý định chung. Đường
-# tất định đi trước (trùng hẳn một lựa chọn, ngày viết bằng số); còn lại để LLM chuẩn hoá rồi
-# KIỂM LẠI: ô chọn phải ra đúng một lựa chọn có trên cổng, ô ngày phải ra ngày có thật.
-
-# Danh sách dài hơn (Quốc gia ~250 nước) chỉ đưa vài ví dụ cho LLM; khớp tên do bước kiểm lại lo.
-_FIELD_OPTIONS_FOR_LLM = 120
-_PLACE_PREFIX_RE = re.compile(r"^(?:tinh|thanh pho|phuong|xa|thi tran|dac khu|quan|huyen)\s+")
-# Chỉ dùng khi LLM lỗi: không có nó thì câu "bỏ qua" bị điền thẳng vào ô chữ.
-_FIELD_FALLBACK_SKIP = {"bo qua", "bo qua o nay", "khong co", "khong biet", "de trong", "qua"}
-_FIELD_FALLBACK_STOP = {"dung", "dung lai", "thoi", "dung bo sung", "khong hoi nua"}
-
-_FIELD_ANSWER_SYSTEM = """Bạn giúp trợ lý điền tờ khai hành chính. Trợ lý vừa hỏi công dân MỘT ô trên tờ khai:
-- Ô: {label}
-- Loại ô: {kind}{options}
-
-Đọc câu trả lời của công dân và trả DUY NHẤT một JSON:
-{{"action": "<answer|skip|back|stop|unclear>", "value": "<giá trị>"}}
-
-- answer: công dân nói giá trị cho ô này → value là giá trị đã chuẩn hoá:
-  + ô ngày: "dd/mm/yyyy" (vd "mười lăm tháng ba năm một chín chín mươi" → "15/03/1990"); ô năm: "yyyy";
-  + ô chọn: chép NGUYÊN VĂN đúng một lựa chọn trong danh sách, gần nghĩa nhất với câu; không lựa
-    chọn nào khớp → unclear;
-  + ô chữ: đúng nội dung công dân nói, bỏ lời đệm ("dạ", "là", "ghi là", "của tôi là"); họ tên và
-    địa danh viết hoa chữ cái đầu mỗi từ; số giấy tờ, số điện thoại viết liền các chữ số.
-- skip: muốn bỏ qua ô này, không có, không biết, để trống.
-- back: muốn sửa lại ô vừa điền ngay trước đó.
-- stop: muốn dừng hỏi, tự điền tiếp, hoặc chuyển sang việc khác.
-- unclear: không hiểu được câu.
-
-Câu có thể đến từ NHẬN GIỌNG NÓI: không dấu, sai chính tả, số đọc thành chữ, nghe nhầm âm gần
-giống — hiểu theo nghĩa gần nhất. Chỉ trả JSON, không giải thích."""
-
-
-def _strip_answer(text: str) -> str:
-    """Bỏ khoảng trắng, ngoặc kép và dấu câu nhận giọng nói hay gắn vào cuối câu."""
-    return re.sub(r"^[\s\"'“”«»]+|[\s\"'“”«».,!?…;:]+$", "", str(text or ""))
-
-
-def match_field_option(value: str, options: list[str]) -> str | None:
-    """Khớp tất định một câu với danh sách lựa chọn của ô; mơ hồ (nhiều lựa chọn) → None.
-
-    Thứ tự: trùng hẳn (bỏ dấu) → trùng khi bỏ tiền tố hành chính ("hiệp hòa" ↔ "Phường Hiệp
-    Hòa") → câu nằm trọn trong đúng MỘT lựa chọn. "Nam" trùng hẳn lựa chọn "Nam" nên không
-    bị coi là mơ hồ với "Việt Nam".
-    """
-    want = fold(_strip_answer(value))
-    if not want:
-        return None
-    folded = [(option, fold(option)) for option in options or [] if str(option or "").strip()]
-    for option, text in folded:
-        if text == want:
-            return option
-    bare_want = _PLACE_PREFIX_RE.sub("", want)
-    bare = [option for option, text in folded if _PLACE_PREFIX_RE.sub("", text) == bare_want]
-    if len(bare) == 1:
-        return bare[0]
-    if len(bare_want) >= 3:
-        pattern = re.compile(rf"(?:^|\W){re.escape(bare_want)}(?:\W|$)")
-        inside = [option for option, text in folded if pattern.search(text)]
-        if len(inside) == 1:
-            return inside[0]
-    return None
-
-
-def normalize_field_date(value: str, year_only: bool = False) -> str | None:
-    """Ngày viết bằng số → "dd/mm/yyyy" (ô năm → "yyyy"); ngày không có thật → None."""
-    numbers = re.findall(r"\d+", str(value or ""))
-    if year_only:
-        years = [n for n in numbers if len(n) == 4 and 1900 <= int(n) <= 2100]
-        return years[-1] if years else None
-    if len(numbers) < 3 or len(numbers[2]) != 4:
-        return None
-    day, month, year = (int(n) for n in numbers[:3])
-    try:
-        date(year, month, day)
-    except ValueError:
-        return None
-    return f"{day:02d}/{month:02d}/{year}"
-
-
-def _field_answer(field: dict, value: str, heard: str) -> Intent:
-    """Kiểm lại giá trị theo loại ô; không hợp lệ → hỏi lại chứ không điền bừa."""
-    kind = str(field.get("kind") or "text")
-    options = [str(o) for o in field.get("options") or []]
-    if kind in ("select", "radio") and options:
-        picked = match_field_option(value, options)
-        if not picked:
-            return Intent("action", "field_review_unclear", {"heard": heard, "reason": "no_option"})
-        return Intent("action", "field_review_answer", {"value": picked, "heard": heard})
-    if kind == "date":
-        normalized = normalize_field_date(value, bool(field.get("yearOnly")))
-        if not normalized:
-            return Intent("action", "field_review_unclear", {"heard": heard})
-        return Intent("action", "field_review_answer", {"value": normalized, "heard": heard})
-    cleaned = _strip_answer(value)
-    if not cleaned:
-        return Intent("action", "field_review_unclear", {"heard": heard})
-    return Intent("action", "field_review_answer", {"value": cleaned[:300], "heard": heard})
-
-
-def _field_kind_desc(field: dict) -> str:
-    kind = str(field.get("kind") or "text")
-    if kind == "date":
-        return "ô năm" if field.get("yearOnly") else "ô ngày (ngày/tháng/năm)"
-    if kind in ("select", "radio"):
-        return "ô chọn một lựa chọn trong danh sách"
-    return "ô chữ"
-
-
-def _field_options_block(field: dict) -> str:
-    options = [str(o) for o in field.get("options") or [] if str(o or "").strip()]
-    if not options:
-        return ""
-    if len(options) <= _FIELD_OPTIONS_FOR_LLM:
-        return "\n- Danh sách lựa chọn:\n" + "\n".join(f"  + {o}" for o in options)
-    return (f"\n- Danh sách dài {len(options)} lựa chọn (vd: {', '.join(options[:20])}…): "
-            "ghi đúng tên công dân nói, có dấu.")
-
-
-async def resolve_field_answer(text: str, field: dict, *, can_go_back: bool = False) -> Intent:
-    """Câu công dân trả lời ô đang hỏi → field_review_answer / _skip / _back / _stop / _unclear."""
-    heard = str(text or "").strip()[:300]
-    kind = str(field.get("kind") or "text")
-    options = [str(o) for o in field.get("options") or []]
-    # Đường tất định: chọn đúng tên một lựa chọn, hoặc đọc ngày bằng số — không tốn lượt LLM.
-    if kind in ("select", "radio") and match_field_option(heard, options):
-        return _field_answer(field, heard, heard)
-    if kind == "date" and normalize_field_date(heard, bool(field.get("yearOnly"))):
-        return _field_answer(field, heard, heard)
-    label = str(field.get("label") or "")
-    if field.get("section"):
-        label = f"{label} (mục {field['section']})"
-    try:
-        raw = await llm_chat(
-            [
-                {"role": "system", "content": _FIELD_ANSWER_SYSTEM.format(
-                    label=label, kind=_field_kind_desc(field), options=_field_options_block(field))},
-                {"role": "user", "content": heard},
-            ],
-            temperature=0.0,
-            max_tokens=120,
-        )
-        m = re.search(r"\{[\s\S]*\}", raw or "")
-        data = json.loads(m.group(0)) if m else {}
-        action = str(data.get("action") or "unclear")
-        if action == "answer":
-            return _field_answer(field, str(data.get("value") or ""), heard)
-        if action == "back" and not can_go_back:
-            return Intent("action", "field_review_unclear", {"heard": heard})
-        if action in ("skip", "back", "stop"):
-            return Intent("action", f"field_review_{action}", {"heard": heard})
-        return Intent("action", "field_review_unclear", {"heard": heard})
-    except Exception as e:  # noqa: BLE001 — LLM là best-effort, vòng bổ sung phải sống tiếp
-        logger.warning("[intents] LLM hiểu câu trả lời ô lỗi: %s", e)
-    folded = fold(_strip_answer(heard))
-    if folded in _FIELD_FALLBACK_SKIP:
-        return Intent("action", "field_review_skip", {"heard": heard})
-    if folded in _FIELD_FALLBACK_STOP:
-        return Intent("action", "field_review_stop", {"heard": heard})
-    return _field_answer(field, heard, heard)
-
-
 def _state_action_block(state: str) -> str:
     entries = _GLOBAL_INTENTS + _STATE_INTENTS.get(state, [])
     if not entries:
@@ -454,6 +301,10 @@ DUY NHẤT một JSON:
 - button: câu của người dân làm ĐÚNG việc của một NÚT ĐANG HIỆN trên màn hình (nói thay cho bấm
   nút) → value = SỐ của nút đó trong danh sách NÚT ĐANG HIỆN. Ưu tiên button hơn mọi kind khác khi
   câu khớp rõ một nút; không khớp rõ nút nào → xét các kind dưới.{buttons}
+  NÚT LÀM LẠI / XOÁ VIỆC ĐÃ LÀM (điền lại thông tin, điều chỉnh / thêm / xoá giấy tờ, hoàn tất điều chỉnh
+  và điền lại tờ khai, dừng bổ sung): CHỈ chọn khi câu NÓI RÕ đúng việc đó ("điền lại đi", "tôi muốn thêm
+  giấy tờ", "sửa giấy tờ", "điền lại tờ khai"). Câu xác nhận chung chung ("được rồi", "đúng rồi", "ok",
+  "xong rồi", "ừ") KHÔNG BAO GIỜ là các nút này — bấm nhầm là mất phần công dân vừa điền → dùng confirm.
 
 - procedure: người dân muốn LÀM hoặc ĐỔI SANG một thủ tục hành chính (nêu tên hoặc mô tả thủ tục,
   kể cả nói tắt, sai chính tả) → value = "" (một agent khác sẽ xác định đúng thủ tục). Chỉ dùng

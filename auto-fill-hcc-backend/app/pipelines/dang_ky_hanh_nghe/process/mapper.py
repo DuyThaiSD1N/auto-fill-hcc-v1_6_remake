@@ -112,6 +112,40 @@ def _gender(value: Any) -> str | None:
     return None
 
 
+def _phone(value: Any) -> str | None:
+    digits = re.sub(r"\D+", "", _text(value) or "")
+    if digits.startswith("84") and len(digits) == 11:
+        digits = "0" + digits[2:]
+    return digits if 10 <= len(digits) <= 11 and digits.startswith("0") else None
+
+
+# Ranh giới đoạn OCR: header file "===== a.pdf (tiengnoi) =====" và vạch trang "───── Trang 3/7 ─────".
+_OCR_SEGMENT_RE = re.compile(r"^={3,}.*={3,}\s*$|[─\-]{3,}\s*Trang\s+\d+\s*/\s*\d+\s*[─\-]{3,}",
+                             re.IGNORECASE | re.MULTILINE)
+_ID_CARD_MARKERS = ("can cuoc", "chung minh nhan dan", "identity card")
+# Trang có các dấu này là giấy tờ của NGƯỜI HÀNH NGHỀ / người lao động — số CCCD in trong đó không phải
+# của người đại diện dù cùng trang có tên giám đốc ký.
+_NOT_ID_CARD_MARKERS = ("hop dong", "chung chi hanh nghe", "giay phep hanh nghe", "danh sach dang ky")
+
+
+def _identity_on_id_card(identity: str | None, ocr_text: str | None) -> bool | None:
+    """Số CCCD người đại diện có nằm trên một trang THẺ CCCD/căn cước không.
+
+    None = không đủ căn cứ (không có OCR hoặc số không thấy ở đâu) → giữ nguyên, không chặn oan."""
+    if not identity or not ocr_text:
+        return None
+    found = False
+    for page in _OCR_SEGMENT_RE.split(ocr_text):
+        if not any(re.sub(r"\D+", "", cand) == identity
+                   for cand in re.findall(r"(?:\d[ \t.\-]*){9,12}", page)):
+            continue
+        found = True
+        folded = _fold(page)
+        if any(m in folded for m in _ID_CARD_MARKERS) and not any(m in folded for m in _NOT_ID_CARD_MARKERS):
+            return True
+    return False if found else None
+
+
 def _same_person(a: Any, b: Any) -> bool:
     """So họ tên bỏ dấu, bỏ khoảng trắng/ký tự lạ — chịu được IN HOA và OCR dính chữ."""
     key_a = re.sub(r"[^a-z]+", "", _fold(a))
@@ -129,7 +163,9 @@ _NGUOI_DAI_DIEN_FIELDS = (
 )
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+def enrich(
+    fields: list[dict], options: dict | None = None, ocr_text: str | None = None,
+) -> tuple[list[dict], list[str]]:
     context = (options or {}).get("formContext") or {}
     submitter = context.get("applicantFullname") or context.get("fullname") or ""
     values = _by_name(fields)
@@ -146,11 +182,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    co_so = _text(values.get("CoSo_Ten"))
+    # Mục 1 danh sách hay kết thúc bằng dấu chấm ("Tên cơ sở …: Trạm Y tế xã A.").
+    co_so = (_text(values.get("CoSo_Ten")) or "").rstrip(" .") or None
     nguoi_chiu_tn = _text(values.get("CoSo_NguoiChiuTrachNhiem"))
     dai_dien = _text(values.get("NguoiDaiDien_HoTen"))
 
-    # CHẶN CCCD SAI NGƯỜI (req_bb6d9a7bfd29): hồ sơ có danh sách do Lò Văn Sơn ký + CCCD của người NỘP,
+    # CHẶN CCCD SAI NGƯỜI: hồ sơ có danh sách do giám đốc trạm ký + CCCD của người NỘP,
     # LLM vẫn đổ CCCD người nộp vào NguoiDaiDien_* → Phần II mang ngày sinh/số CCCD của người khác.
     # Danh sách đã ghi người chịu trách nhiệm mà CCCD KHÁC tên đó → CCCD không phải của người đại diện,
     # bỏ TOÀN BỘ nhân thân từ CCCD. Không chờ LLM tự tuân prompt.
@@ -161,6 +198,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             values.pop(key, None)
         dai_dien = None
     identity = _identity(values.get("NguoiDaiDien_SoDinhDanh"))
+    # CHẶN CCCD LẤY TỪ GIẤY TỜ KHÁC: hồ sơ không có thẻ CCCD của giám đốc nhưng có hợp đồng lao động
+    # (giám đốc ký, kèm "Số CCCD/CMT" của NGƯỜI LAO ĐỘNG) → LLM gán số đó cho giám đốc, tên vẫn khớp người
+    # ký nên chặn ở trên không bắt được. Số không nằm trên trang thẻ CCCD nào → bỏ nhân thân từ CCCD.
+    cccd_ngoai_the = None
+    if _identity_on_id_card(identity, ocr_text) is False:
+        cccd_ngoai_the = identity
+        for key in _NGUOI_DAI_DIEN_FIELDS[1:]:
+            values.pop(key, None)
+        identity = None
     dia_chi = _area(values.get("CoSo_DiaChi"))
 
     # Bỏ tích "Người nộp hồ sơ là chủ hồ sơ": chủ hồ sơ là cơ sở, không phải tài khoản đang đăng nhập.
@@ -187,6 +233,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                 "lòng bổ sung thôn/bản/số nhà nếu có."
             )
         add("data[ownerAddress]", chi_tiet)
+    phone = _phone(values.get("CoSo_DienThoai"))
+    add("data[ownerPhoneNumber]", phone)
     add("data[ownerNation]", "Việt Nam" if owner_name or identity else None)
 
     if not co_so:
@@ -204,6 +252,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             f"CCCD trong hồ sơ là của {rejected_cccd}, KHÔNG phải người chịu trách nhiệm chuyên môn ghi trên "
             f"danh sách ({nguoi_chiu_tn}) — không dùng CCCD này cho mục Thông tin chủ hồ sơ. Vui lòng tải CCCD "
             f"của {nguoi_chiu_tn} hoặc điền tay ngày sinh, giới tính, số CCCD."
+        )
+    elif cccd_ngoai_the:
+        warnings.append(
+            f"Số {cccd_ngoai_the} chỉ có trong hợp đồng/chứng chỉ của người hành nghề, không nằm trên thẻ CCCD "
+            "của người đại diện cơ sở — không dùng cho mục Thông tin chủ hồ sơ. Vui lòng tải CCCD người đại "
+            "diện hoặc điền tay ngày sinh, giới tính, số CCCD."
         )
     elif not identity:
         warnings.append(
@@ -223,6 +277,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             f"Hồ sơ có danh sách của nhiều cơ sở; mục Thông tin chủ hồ sơ đang điền theo {co_so}. Các cơ sở "
             f"khác: {khac}."
         )
-    warnings.append("Số điện thoại chủ hồ sơ (bắt buộc) không có trong giấy tờ — vui lòng nhập tay.")
+    if not phone:
+        warnings.append("Số điện thoại chủ hồ sơ (bắt buộc) không có trong giấy tờ — vui lòng nhập tay.")
 
     return out, warnings

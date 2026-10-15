@@ -77,3 +77,25 @@ def test_ct01_chu_ho_nguoi_khac_khong_tu_dong_chon_bo():
     assert out["DkttMaQuanHe"]["value"] == "Cháu nội"
     assert "LoaiThanNhanXacNhan" not in out
     assert "LoaiChuSoHuuChoO" not in out
+
+
+def test_ct01_chu_ho_la_bo_van_dien_ten_va_so_dinh_danh_truoc_o_tick():
+    # Form không có ô tick "Bố là chủ hộ" vẫn cần đủ tên + số định danh; form có ô tick thì tích sau cùng.
+    fields = enrich(_fields(**{**_CT01_KHOP_ME, "Ct01_ChuHoHoTen": "Nguyễn Văn Bố",
+                               "Ct01_ChuHoSoDinhDanh": "012345678901"}))
+    out = _by_name(fields)
+    order = [f["name"] for f in fields]
+
+    assert out["DkttChuHo"]["value"] == "NGUYỄN VĂN BỐ"
+    assert out["DkttChuhoSoGiayTo"]["value"] == "012345678901"
+    assert out["DkttMaQuanHe"]["value"] == "Con đẻ"
+    assert order.index("DkttChuHo") < order.index("DkttIsTtBo")
+    assert order.index("DkttChuhoSoGiayTo") < order.index("DkttIsTtBo")
+
+
+def test_ct01_chu_ho_la_me_khop_ten_lay_so_dinh_danh_cua_me():
+    out = _by_name(enrich(_fields(**{**_CT01_KHOP_ME, "Ct01_ChuHoSoDinhDanh": ""})))
+
+    assert out["DkttIsTtMe"]["value"] is True
+    assert out["DkttChuHo"]["value"] == "TRẦN THỊ MẸ"
+    assert out["DkttChuhoSoGiayTo"]["value"] == "098765432109"

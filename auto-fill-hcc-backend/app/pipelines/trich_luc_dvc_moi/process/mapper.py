@@ -212,20 +212,25 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
     # đó cùng quan hệ nó chép từ tờ khai.
     if relation == _OTHER and _quan_he_option(other) not in ("", _OTHER):
         relation, other = _quan_he_option(other), ""
-    if not relation and _fold(labeled_value(block, "Đối chiếu với người nộp")).startswith("cung nguoi"):
-        relation = _quan_he_option(labeled_value(block, "Quan hệ ghi trên tờ khai"))
+    # Người nộp luôn là chủ tài khoản VNeID nên quan hệ ghi trên tờ khai là quan hệ của tài khoản — chỉ bỏ khi
+    # phân vai đối chiếu rõ là khác người. Chữ không có nhãn riêng (em ruột, cô, chú...) → "Khác" + chữ đó.
+    declared = labeled_value(block, "Quan hệ ghi trên tờ khai")
+    declared_ok = bool(declared) and not _fold(labeled_value(block, "Đối chiếu với người nộp")).startswith("khac nguoi")
+    if declared_ok and (not relation or (relation == _OTHER and not other)):
+        relation = _quan_he_option(declared) or _OTHER
+        other = declared if relation == _OTHER and _quan_he_option(declared) != _OTHER else other
 
     if account_id and subject_id and account_id == subject_id and not deceased:
         return _SELF, "", ""
     if relation == _SELF:
         same_name = bool(account_name) and _fold(account_name) == _fold(subject_name)
         if deceased or (account_id and subject_id) or not same_name:
-            return "", "", ("Phân vai kết luận \"Bản thân\" nhưng người nộp không khớp người được cấp — "
-                            "cán bộ chọn ô Quan hệ.")
-    if relation == _OTHER and not other:
-        relation = ""
-    if not relation:
-        return "", "", "Chưa xác định được quan hệ của người nộp với người được cấp — cán bộ chọn ô Quan hệ."
+            return _OTHER, "", ("Phân vai kết luận \"Bản thân\" nhưng người nộp không khớp người được cấp — đã "
+                                "chọn \"Khác\", cán bộ kiểm tra lại ô Quan hệ.")
+    # Cổng không cho để trống ô Quan hệ: không xác định được thì chọn "Khác".
+    if not relation or (relation == _OTHER and not other):
+        return _OTHER, "", ("Chưa xác định được quan hệ của người nộp với người được cấp (tờ khai không ghi) — "
+                            "đã chọn \"Khác\", cán bộ kiểm tra lại ô Quan hệ.")
     return relation, other if relation == _OTHER else "", ""
 
 
@@ -258,7 +263,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     relation, other, warning = _relation(values, context, options, event)
     if warning:
         warnings.append(warning)
-    add("citizenQuanhe", relation)
+    # "Khác" không kèm chữ là lựa chọn mặc định, không đọc từ giấy → viền vàng.
+    add("citizenQuanhe", relation, default=relation == _OTHER and not other)
     add("citizenField8", other)
 
     if relation != _SELF:
