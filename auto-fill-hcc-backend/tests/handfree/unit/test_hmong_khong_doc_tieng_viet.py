@@ -80,8 +80,18 @@ def test_moi_template_duoc_fmt_dung_deu_co_twin_mong():
     used = set(re.findall(r"_fmt\(\s*vi\.([A-Z_][A-Z0-9_]*)", code))
     assert used, "không parse được lời gọi _fmt nào — regex hỏng"
     missing = sorted(n for n in used - _NOT_REACHABLE_IN_HMONG
-                     if not isinstance(getattr(mong, n, None), dict))
+                     if not isinstance(getattr(mong, n, None), dict)
+                     # Vòng bổ sung ô trống (FIELD_REVIEW_*) chỉ bật ở tiếng Việt — xem test dưới.
+                     and not n.startswith("FIELD_REVIEW_"))
     assert not missing, "template đang dùng nhưng chưa có bản Mông: " + ", ".join(missing)
+
+
+def test_vong_bo_sung_o_trong_tat_o_tieng_mong():
+    """FIELD_REVIEW_* được miễn bản Mông vì vòng này hỏi đúng NHÃN Ô đọc nguyên văn từ cổng (chữ
+    Việt) — giọng Mông đọc lên không ai nghe ra. Miễn trừ chỉ đúng khi tiếng Mông thật sự tắt nó."""
+    conv = {"lang": "hmong", "client_capabilities": {"supportsFieldReview": True}}
+    assert not flow._field_review_enabled(conv, {"key": "ket-hon"})
+    assert flow._field_review_enabled({**conv, "lang": "vi"}, {"key": "ket-hon"})
 
 
 

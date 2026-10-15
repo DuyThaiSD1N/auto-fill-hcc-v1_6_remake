@@ -180,6 +180,10 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # dựng), vẽ thẻ mae_dialog_choice và chọn đúng nhãn (agencyExact/processExact). Client cũ
         # không khai → BE giữ đường variants khai sẵn trong registry.
         "supportsMaeDialogChoice": raw.get("supportsMaeDialogChoice") is True,
+        # Biết tô từng ô tờ khai eForm 3 màu, dẫn con trỏ tới ô trống kế tiếp và điền đúng một ô
+        # (content/field-review.js, action field_review_*), bấm Xem trước / Xác nhận tờ khai.
+        # Client cũ không khai → BE giữ nguyên báo cáo điền như trước.
+        "supportsFieldReview": raw.get("supportsFieldReview") is True,
     }
 
 
@@ -337,6 +341,14 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
+        # Đang hỏi một ô của tờ khai: câu nói/gõ là GIÁ TRỊ của ô đó (hoặc bỏ qua / sửa ô trước /
+        # dừng), không phải ý định của bước — bộ phân loại chung sẽ hiểu "Nam" hay "15/3/1990"
+        # thành unknown.
+        field = flow.field_review_question(conv)
+        if intent is None and field and message and not message.startswith("__"):
+            intent = await intents.resolve_field_answer(
+                message, field, can_go_back=flow.field_review_can_go_back(conv),
+            )
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
         if intent is None:

@@ -1581,3 +1581,123 @@ PLACE_NOT_HEARD = {
     "md": "Dạ em chưa nghe rõ ạ. Công dân nói lại **tên phường/xã** hoặc **làm cho ai**, hoặc chọn bên dưới.",
     "tts": "Dạ, em chưa nghe rõ. Công dân nói lại tên phường xã, hoặc làm thủ tục cho ai ạ.",
 }
+
+# ── Bổ sung ô còn trống trên tờ khai eForm (vòng field review) ──
+# Chỉ chạy ở tiếng Việt: nhãn ô là chữ đọc nguyên văn từ cổng, đọc bằng giọng Mông không ai nghe ra.
+# {label} = nhãn ô trên tờ khai, {heard} = câu công dân vừa nói, {portal_message} = lời cổng báo.
+FIELD_REVIEW_OFFER = {
+    "md": ("\n\nTrên tờ khai còn **{required} ô bắt buộc** (viền đỏ) và **{optional} ô không bắt buộc** "
+           "(viền cam) đang trống. Em hỏi lần lượt từng ô để điền giúp nhé?"),
+    "tts": " Tờ khai còn {required} ô bắt buộc và {optional} ô không bắt buộc đang trống. "
+           "Em hỏi lần lượt từng ô để điền giúp nhé?",
+}
+FIELD_REVIEW_ALL_FILLED = {
+    "md": "\n\nTờ khai **không còn ô trống**. Công dân xem lại, xong em mở **bản xem trước** để xác nhận ạ.",
+    "tts": " Tờ khai không còn ô trống. Công dân xem lại, xong em mở bản xem trước để xác nhận ạ.",
+}
+FIELD_REVIEW_START = {
+    "md": "Dạ, em tìm ô còn trống đầu tiên ạ…",
+    "tts": "Dạ, em tìm ô còn trống đầu tiên ạ.",
+}
+FIELD_REVIEW_APPLIED = {
+    "md": "✓ Đã điền **{label}**: {value}",
+    "tts": "Đã điền {label}. ",
+}
+FIELD_REVIEW_NOT_APPLIED = {
+    "md": "⚠️ Em chưa điền được **{label}**, công dân điền tay ô này giúp em ạ.",
+    "tts": "Em chưa điền được {label}, công dân điền tay giúp em. ",
+}
+FIELD_REVIEW_ASK = {
+    "md": "**{label}**{section_md} · {badge}",
+    "tts": "Ô {label}. ",
+}
+FIELD_REVIEW_HINT_CHOOSE = {
+    "md": "\n\nCông dân chọn bên dưới hoặc nói lựa chọn ạ.",
+    "tts": "Công dân chọn bên dưới hoặc nói lựa chọn ạ.",
+}
+FIELD_REVIEW_HINT_SAY_OPTION = {
+    "md": "\n\nCông dân nói tên cần chọn ạ, ví dụ: {examples}.",
+    "tts": "Công dân nói tên cần chọn ạ.",
+}
+FIELD_REVIEW_HINT_DATE = {
+    "md": "\n\nCông dân nói **ngày, tháng, năm** ạ.",
+    "tts": "Công dân nói ngày, tháng, năm ạ.",
+}
+FIELD_REVIEW_HINT_YEAR = {
+    "md": "\n\nCông dân nói **năm** ạ.",
+    "tts": "Công dân nói năm ạ.",
+}
+FIELD_REVIEW_HINT_TEXT = {
+    "md": "\n\nCông dân nói hoặc gõ nội dung ô này ạ.",
+    "tts": "Công dân nói hoặc gõ nội dung ô này ạ.",
+}
+FIELD_REVIEW_BADGE_REQUIRED = "🔴 bắt buộc"
+FIELD_REVIEW_BADGE_OPTIONAL = "🟠 không bắt buộc, bỏ qua được"
+FIELD_REVIEW_UNCLEAR = {
+    "md": "Em chưa nghe rõ cho ô **{label}** ạ. Công dân nói lại giúp em.",
+    "tts": "Em chưa nghe rõ cho ô {label}. Công dân nói lại giúp em ạ. ",
+}
+FIELD_REVIEW_NO_OPTION = {
+    "md": "Em không thấy “{heard}” trong danh sách của ô **{label}** ạ. Công dân nói lại hoặc chọn bên dưới.",
+    "tts": "Em không thấy lựa chọn đó trong danh sách của ô {label}. Công dân nói lại giúp em ạ. ",
+}
+FIELD_REVIEW_WARD_FAILED = {
+    "md": ("Cổng **chưa tải được danh sách phường/xã** của {province}, em đã thử chọn lại tỉnh mà vẫn chưa được ạ. "
+           "Công dân chọn tay ô **{label}** trên tờ khai, hoặc bỏ qua để em hỏi ô tiếp theo."),
+    "tts": "Cổng chưa tải được danh sách phường xã. Công dân chọn tay ô này, hoặc bỏ qua để em hỏi ô tiếp theo ạ.",
+}
+FIELD_REVIEW_DONE = {
+    "md": ("Xong vòng bổ sung ạ: còn **{required} ô bắt buộc** và **{optional} ô không bắt buộc** đang trống."
+           "\n\nCông dân xem lại tờ khai, rồi em mở **bản xem trước** để xác nhận."),
+    "tts": "Xong vòng bổ sung rồi ạ. Công dân xem lại tờ khai, rồi em mở bản xem trước để xác nhận.",
+}
+FIELD_REVIEW_DONE_ALL = {
+    "md": "Xong rồi ạ, tờ khai **đã đủ các ô**.\n\nCông dân xem lại, rồi em mở **bản xem trước** để xác nhận.",
+    "tts": "Xong rồi ạ, tờ khai đã đủ các ô. Công dân xem lại, rồi em mở bản xem trước để xác nhận.",
+}
+FIELD_REVIEW_LOST = {
+    "md": "Em chưa đọc được các ô trên tờ khai ạ. Công dân tự rà lại giúp em, xong em mở **bản xem trước**.",
+    "tts": "Em chưa đọc được các ô trên tờ khai. Công dân tự rà lại giúp em, xong em mở bản xem trước ạ.",
+}
+FIELD_REVIEW_STOPPED = {
+    "md": "Dạ, em dừng bổ sung. Công dân sửa trực tiếp trên tờ khai, xong em mở **bản xem trước** ạ.",
+    "tts": "Dạ, em dừng bổ sung. Công dân sửa trực tiếp trên tờ khai, xong em mở bản xem trước ạ.",
+}
+FIELD_REVIEW_PREVIEWING = {
+    "md": "Em mở **bản xem trước** tờ khai ạ…",
+    "tts": "Em mở bản xem trước tờ khai ạ.",
+}
+FIELD_REVIEW_PREVIEW_OPENED = {
+    "md": ("Bản xem trước tờ khai đang mở ạ. Công dân đọc lại, đúng hết thì em bấm **Xác nhận** "
+           "để sang **Thành phần hồ sơ**."),
+    "tts": "Bản xem trước tờ khai đang mở. Công dân đọc lại, đúng hết thì em bấm xác nhận để sang bước thành phần hồ sơ ạ.",
+}
+FIELD_REVIEW_PREVIEW_BLOCKED = {
+    "md": "Cổng chưa mở bản xem trước: còn **{required} ô bắt buộc** đang trống (viền đỏ) ạ.{portal_message}",
+    "tts": "Cổng chưa mở bản xem trước, vì còn {required} ô bắt buộc đang trống ạ.",
+}
+FIELD_REVIEW_PREVIEW_FAILED = {
+    "md": "Em chưa mở được bản xem trước ạ.{portal_message} Công dân bấm **Xem trước** trên tờ khai giúp em.",
+    "tts": "Em chưa mở được bản xem trước. Công dân bấm nút xem trước trên tờ khai giúp em ạ.",
+}
+FIELD_REVIEW_CONFIRMED = {
+    "md": "✓ Đã xác nhận tờ khai, đang sang bước **Thành phần hồ sơ** ạ.",
+    "tts": "Em đã xác nhận tờ khai, đang sang bước thành phần hồ sơ ạ.",
+}
+FIELD_REVIEW_CONFIRM_FAILED = {
+    "md": "Em chưa sang được **Thành phần hồ sơ** ạ.{portal_message} Công dân bấm **Xác nhận** trên bản xem trước giúp em.",
+    "tts": "Em chưa sang được bước thành phần hồ sơ. Công dân bấm xác nhận trên bản xem trước giúp em ạ.",
+}
+# Nguyên văn lời cổng báo, chèn vào {portal_message} của các câu trên.
+FIELD_REVIEW_PORTAL_SAYS = " Cổng báo: “{message}”."
+FIELD_REVIEW_START_CTA = "✍️ Bổ sung từng ô"
+FIELD_REVIEW_AGAIN_CTA = "✍️ Hỏi lại các ô đã bỏ qua"
+FIELD_REVIEW_MISSING_CTA = "✍️ Bổ sung ô còn thiếu"
+FIELD_REVIEW_PREVIEW_CTA = "👁️ Xem trước tờ khai"
+FIELD_REVIEW_PREVIEW_RETRY_CTA = "🔁 Mở lại bản xem trước"
+FIELD_REVIEW_SKIP_OFFER_CTA = "Bỏ qua, xem trước tờ khai"
+FIELD_REVIEW_SKIP_CTA = "Bỏ qua ô này"
+FIELD_REVIEW_BACK_CTA = "↩️ Sửa ô vừa điền"
+FIELD_REVIEW_STOP_CTA = "Dừng bổ sung"
+FIELD_REVIEW_CONFIRM_CTA = "✅ Xác nhận tờ khai"
+FIELD_REVIEW_EDIT_CTA = "✏️ Sửa tiếp"

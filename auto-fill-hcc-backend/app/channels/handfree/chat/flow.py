@@ -19,7 +19,7 @@ from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tu_phap_moi as tpm
-from app.channels.handfree.chat.intents import Intent, fold
+from app.channels.handfree.chat.intents import Intent, fold, match_field_option
 from app.locations.catalog import (
     PROVINCES,
     handfree_agency_ward,
@@ -1161,10 +1161,26 @@ async def _handle_turn_inner(
         tpm_reply = await tpm.handle(conv, current_proc, intent)
         if tpm_reply is not None:
             return tpm_reply
+    review_stop = False
+    if state in ("reviewing", "attaching") and conv.get("field_review"):
+        if not _field_review_enabled(conv, current_proc) or (
+                intent.kind == "event" and intent.value == "page_status"
+                and _attachment_page_reached(conv, current_proc, intent.payload)):
+            # Trang đã sang Thành phần hồ sơ (bấm hộ hay công dân tự bấm), hoặc vừa đổi sang
+            # tiếng Mông → vòng bổ sung xong, để handler của bước chạy như thường, chỉ gỡ con
+            # trỏ trên tờ khai.
+            conv.pop("field_review", None)
+            review_stop = True
+        else:
+            review_reply = _handle_field_review(conv, current_proc, intent)
+            if review_reply is not None:
+                return review_reply
     handler = _HANDLERS.get(state, _handle_greet)
     result = handler(conv, intent)
     if asyncio.iscoroutine(result):  # một số handler cần I/O (tạo phiên QR, chạy pipeline...)
         result = await result
+    if review_stop:
+        result.actions = [{"type": "field_review_stop"}, *result.actions]
     return result
 
 
@@ -1285,6 +1301,7 @@ def _reset_for_new_procedure(conv: dict) -> None:
     _clear_documents_adjustment(conv)
     conv["consent"] = None  # chấp thuận gắn với TỪNG thủ tục (phạm vi giấy tờ khác nhau)
     conv["procedure_candidates"] = []
+    conv.pop("field_review", None)
 
 
 def _switch_procedure_mid_flow(conv: dict, key: str) -> Reply:
@@ -3010,8 +3027,14 @@ def _fill_fields_reply(conv: dict) -> Reply:
     fields = conv.get("fields") or []
     r = Reply(*_fmt(vi.FILL_READY, count=len(fields)))
     r.actions = [{"type": "fill_fields", "fields": fields}]  # hợp đồng CŨ nguyên xi (docs/00 §4)
-    if tpm.is_active(get_procedure(conv.get("procedure_key") or "")):
+    proc = get_procedure(conv.get("procedure_key") or "")
+    if tpm.is_active(proc):
         r.actions[0]["toolAccount"] = tpm.tool_account(conv)
+    # Lượt điền mới: vòng bổ sung của lượt trước (nếu còn dở) hết hiệu lực.
+    conv.pop("field_review", None)
+    if _field_review_enabled(conv, proc):
+        # Điền xong extension tô lại từng ô 3 màu và gửi số ô kèm fill_report (khóa "review").
+        r.actions[0]["fieldReview"] = {"required": guided.field_review_required(proc)}
     return r
 
 
@@ -3692,6 +3715,12 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
         # Câu đuôi đi qua note= của _fmt: nối tay sẽ lẫn khối Việt–Mông và bắt giọng Mông
         # đọc chữ Việt (xem chú thích ở _fmt).
+        review_stats = _field_review_stats(intent.payload.get("review"))
+        if review_stats is not None and not same_page_attach and _field_review_enabled(conv, proc):
+            # Extension đã tô từng ô và đếm ô trống → mời bổ sung từng ô, rồi tự Xem trước /
+            # Xác nhận tờ khai thay vì bảo công dân tự tìm đường sang Thành phần hồ sơ.
+            _clear_documents_adjustment(conv)
+            return _field_review_offer(conv, proc, rep, review_stats, note)
         tail = (
             (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
@@ -3773,6 +3802,311 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
                {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                _supplement_documents_chip()]
     return r
+
+
+# ── Bổ sung ô còn trống trên tờ khai eForm (field review) ────────────────────────────────────
+# Điền xong, extension tô từng ô và đếm ô trống. Trợ lý hỏi lần lượt từng ô (nói, gõ hoặc bấm),
+# extension điền đúng ô đó rồi tìm ô trống kế tiếp. Xong thì bấm hộ "Xem trước" → "Xác nhận" để
+# sang Thành phần hồ sơ; bước đính kèm chạy tiếp như cũ khi trang báo đã sang bước đó.
+# Trạng thái nằm trong conv["field_review"]; state chính (reviewing/attaching) giữ nguyên, nên
+# mọi nút cũ (Điền lại, Điều chỉnh giấy tờ, đính kèm) vẫn chạy đúng handler của nó.
+#   status: offer → asking ⇄ applying → done → previewing → previewed → confirming
+
+_FIELD_REVIEW_FILLED_MAX = 50
+_FIELD_REVIEW_OPTIONS_MAX = 400
+
+
+def _field_review_enabled(conv: dict, proc: dict | None) -> bool:
+    # Chỉ tiếng Việt: nhãn ô là chữ đọc nguyên văn từ cổng, giọng Mông đọc lên không ai nghe ra.
+    if (conv.get("lang") or "vi") != "vi":
+        return False
+    # Trang nộp một trang (SurveyJS) và cổng 2 tab cùng trang không dùng tờ khai eForm x-*.
+    if tpm.is_active(proc) or (proc or {}).get("samePageAttach"):
+        return False
+    return guided.field_review_supported(conv, proc)
+
+
+def _field_review_stats(raw: object) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+
+    def count(key: str) -> int:
+        try:
+            return max(0, int(raw.get(key) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    return {"filled": count("filled"), "optional": count("optional"), "required": count("required")}
+
+
+def field_review_question(conv: dict) -> dict | None:
+    """Ô đang chờ công dân trả lời — router đưa câu nói/gõ sang intents.resolve_field_answer."""
+    review = conv.get("field_review") or {}
+    if review.get("status") != "asking" or conv.get("state") not in ("reviewing", "attaching"):
+        return None
+    if (conv.get("lang") or "vi") != "vi":
+        return None
+    current = review.get("current")
+    return current if isinstance(current, dict) and current.get("key") else None
+
+
+def field_review_can_go_back(conv: dict) -> bool:
+    return bool((conv.get("field_review") or {}).get("filled"))
+
+
+def _portal_says(message: object) -> str:
+    text = str(message or "").strip()[:200]
+    return vi.FIELD_REVIEW_PORTAL_SAYS.format(message=text) if text else ""
+
+
+def _field_review_offer(conv: dict, proc: dict, rep: dict, stats: dict, missing_note: str) -> Reply:
+    conv["field_review"] = {
+        "status": "offer", "required": guided.field_review_required(proc),
+        "skip": [], "current": None, "filled": [], "pending": None, "stats": stats,
+    }
+    empty = stats["required"] + stats["optional"]
+    r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=missing_note,
+                    note=vi.FIELD_REVIEW_OFFER if empty else vi.FIELD_REVIEW_ALL_FILLED,
+                    required=stats["required"], optional=stats["optional"]))
+    if empty:
+        r.chips = [
+            {"label": vi.FIELD_REVIEW_START_CTA, "send": "__action:field_review_start", "solid": True},
+            {"label": vi.FIELD_REVIEW_SKIP_OFFER_CTA, "send": "__action:field_review_preview"},
+        ]
+        r.actions = [{"type": "listen_after_tts"}]  # câu hỏi "em hỏi từng ô nhé?" chờ trả lời ngay
+    else:
+        r.chips = [guided.field_review_preview_chip()]
+    r.chips += [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"}, _supplement_documents_chip()]
+    return r
+
+
+def _field_review_reply(main: tuple[str, str], lead: tuple[str, str] | None = None) -> Reply:
+    """Câu chính, kèm bong bóng phụ đứng TRƯỚC (kết quả ô vừa điền / lời báo chưa nghe rõ).
+    Lời đọc của hai bong bóng đi chung một lượt đọc."""
+    r = Reply(main[0], (lead[1] if lead else "") + main[1])
+    if lead:
+        r.actions = [{"type": "lead_message", "md": lead[0]}]
+    return r
+
+
+def _field_review_ask(conv: dict, review: dict, field: dict, lead: tuple[str, str] | None = None) -> Reply:
+    label = guided.field_label(field)
+    kind = str(field.get("kind") or "text")
+    options = [str(o) for o in field.get("options") or [] if str(o or "").strip()]
+    option_chips = guided.field_option_chips(field)
+    if field.get("optionsFailed"):
+        main = _fmt(vi.FIELD_REVIEW_WARD_FAILED, label=label, province=str(field.get("province") or ""))
+        option_chips = []
+    else:
+        if option_chips:
+            hint = vi.FIELD_REVIEW_HINT_CHOOSE
+        elif kind in ("select", "radio") and options:
+            hint = vi.FIELD_REVIEW_HINT_SAY_OPTION
+        elif kind == "date":
+            hint = vi.FIELD_REVIEW_HINT_YEAR if field.get("yearOnly") else vi.FIELD_REVIEW_HINT_DATE
+        else:
+            hint = vi.FIELD_REVIEW_HINT_TEXT
+        section = str(field.get("section") or "").strip()
+        main = _fmt(
+            vi.FIELD_REVIEW_ASK, note=hint, label=label,
+            section_md=f" _({section})_" if section else "",
+            badge=vi.FIELD_REVIEW_BADGE_REQUIRED if field.get("required") else vi.FIELD_REVIEW_BADGE_OPTIONAL,
+            examples=", ".join(options[:3]),
+        )
+    review["status"] = "asking"
+    review["current"] = {
+        "key": str(field.get("key") or ""), "name": str(field.get("name") or ""),
+        "role": str(field.get("role") or ""), "kind": kind, "yearOnly": bool(field.get("yearOnly")),
+        "label": str(field.get("label") or ""), "group": str(field.get("group") or ""),
+        "section": str(field.get("section") or ""), "required": bool(field.get("required")),
+        "options": options[:_FIELD_REVIEW_OPTIONS_MAX], "optionsFailed": bool(field.get("optionsFailed")),
+    }
+    r = _field_review_reply(main, lead)
+    r.actions.append({"type": "listen_after_tts"})
+    r.chips = option_chips + guided.field_review_question_chips(field_review_can_go_back(conv))
+    return r
+
+
+def _field_review_finished(review: dict, lead: tuple[str, str] | None, lost: bool) -> Reply:
+    review["status"] = "done"
+    review["current"] = None
+    stats = review.get("stats") or {}
+    if lost:
+        main = _fmt(vi.FIELD_REVIEW_LOST)
+    elif not (stats.get("required") or stats.get("optional")):
+        main = _fmt(vi.FIELD_REVIEW_DONE_ALL)
+    else:
+        main = _fmt(vi.FIELD_REVIEW_DONE, required=stats.get("required", 0), optional=stats.get("optional", 0))
+    r = _field_review_reply(main, lead)
+    r.chips = [guided.field_review_preview_chip()]
+    if review.get("skip") or lost:
+        r.chips.append({"label": vi.FIELD_REVIEW_AGAIN_CTA,
+                        "send": '__action:field_review_start:{"again":true}'})
+    return r
+
+
+def _field_review_on_focus(conv: dict, review: dict, payload: dict) -> Reply:
+    """Extension báo kết quả ô vừa điền (nếu có) và ô trống kế tiếp (hoặc hết ô)."""
+    lead = None
+    applied = payload.get("applied")
+    pending = review.get("pending") or {}
+    if isinstance(applied, dict) and applied.get("key"):
+        label = pending.get("label") if pending.get("key") == applied["key"] else ""
+        label = label or guided.field_label(review.get("current") or {})
+        if applied.get("ok"):
+            filled = [f for f in review.get("filled") or [] if f.get("key") != applied["key"]]
+            filled.append({"key": applied["key"], "label": label, "value": pending.get("value", "")})
+            review["filled"] = filled[-_FIELD_REVIEW_FILLED_MAX:]
+            lead = _fmt(vi.FIELD_REVIEW_APPLIED, label=label, value=pending.get("value", ""))
+        else:
+            # Extension cũng tự bỏ qua ô điền hỏng ở lượt này; ghi lại để lượt sau không hỏi lại.
+            review["skip"] = [*review.get("skip", []), str(applied["key"])]
+            lead = _fmt(vi.FIELD_REVIEW_NOT_APPLIED, label=label)
+    review["pending"] = None
+    stats = _field_review_stats(payload.get("stats"))
+    if stats is not None:
+        review["stats"] = stats
+    field = payload.get("field")
+    if isinstance(field, dict) and field.get("key"):
+        return _field_review_ask(conv, review, field, lead)
+    return _field_review_finished(review, lead, lost=stats is None and lead is None)
+
+
+def _field_review_apply(review: dict, current: dict, value: str) -> Reply:
+    review["status"] = "applying"
+    review["pending"] = {"key": current["key"], "label": guided.field_label(current), "value": value}
+    r = Reply()  # extension điền xong báo lại field_review_focus, lúc đó mới có câu để nói
+    r.actions = [guided.field_review_next_action(review, apply={"key": current["key"], "value": value})]
+    return r
+
+
+def _handle_field_review(conv: dict, proc: dict, intent: Intent) -> Reply | None:
+    """Lệnh/sự kiện của vòng bổ sung; None = không phải việc của vòng này, để handler state xử."""
+    review = conv["field_review"]
+    status = review.get("status")
+    payload = intent.payload if isinstance(intent.payload, dict) else {}
+    if intent.kind == "confirm":
+        # "Có", "đúng rồi" trả lời đúng câu đang hỏi của vòng bổ sung.
+        name = {"offer": "field_review_start", "done": "field_review_preview",
+                "previewed": "field_review_confirm"}.get(status)
+        if not name:
+            return None
+    elif intent.kind in ("action", "event") and intent.value.startswith("field_review"):
+        name = intent.value
+    else:
+        return None
+    current = review.get("current") if isinstance(review.get("current"), dict) else None
+
+    if name == "field_review_start":
+        if payload.get("again"):
+            review["skip"] = []
+        review["status"] = "applying"
+        review["current"] = None
+        r = Reply(*_fmt(vi.FIELD_REVIEW_START))
+        r.actions = [guided.field_review_next_action(review)]
+        return r
+    if name == "field_review_focus":
+        return _field_review_on_focus(conv, review, payload)
+    if name == "field_review_answer":
+        if not current or status != "asking":
+            return Reply()  # nút của câu hỏi cũ bấm muộn
+        value = str(payload.get("value") or "").strip()[:300]
+        options = current.get("options") or []
+        if value and current.get("kind") in ("select", "radio") and options:
+            value = match_field_option(value, options) or ""
+        if not value:
+            unclear = _fmt(vi.FIELD_REVIEW_UNCLEAR, label=guided.field_label(current))
+            return _field_review_ask(conv, review, current, unclear)
+        return _field_review_apply(review, current, value)
+    if name == "field_review_unclear":
+        if not current:
+            return Reply()
+        label = guided.field_label(current)
+        lead = (_fmt(vi.FIELD_REVIEW_NO_OPTION, label=label, heard=str(payload.get("heard") or "")[:80])
+                if payload.get("reason") == "no_option" else _fmt(vi.FIELD_REVIEW_UNCLEAR, label=label))
+        return _field_review_ask(conv, review, current, lead)
+    if name == "field_review_skip":
+        if not current or status != "asking":
+            return Reply()
+        review["skip"] = [*review.get("skip", []), current["key"]]
+        review["status"] = "applying"
+        r = Reply()
+        r.actions = [guided.field_review_next_action(review)]
+        return r
+    if name == "field_review_back":
+        filled = list(review.get("filled") or [])
+        if not filled:
+            return _field_review_ask(conv, review, current) if current else Reply()
+        last = filled.pop()
+        review["filled"] = filled
+        review["status"] = "applying"
+        r = Reply()
+        r.actions = [guided.field_review_next_action(review, focus=str(last.get("key") or ""))]
+        return r
+    if name == "field_review_stop":
+        review["status"] = "done"
+        review["current"] = None
+        r = Reply(*_fmt(vi.FIELD_REVIEW_STOPPED))
+        r.chips = [guided.field_review_preview_chip(),
+                   {"label": vi.FIELD_REVIEW_START_CTA, "send": '__action:field_review_start:{"again":true}'}]
+        r.actions = [{"type": "field_review_stop"}]
+        return r
+    if name == "field_review_preview":
+        review["status"] = "previewing"
+        review["current"] = None
+        r = Reply(*_fmt(vi.FIELD_REVIEW_PREVIEWING))
+        r.actions = [{"type": "field_review_stop"}, guided.declaration_preview_action(review)]
+        return r
+    if name == "field_review_preview_report":
+        if payload.get("opened"):
+            review["status"] = "previewed"
+            r = Reply(*_fmt(vi.FIELD_REVIEW_PREVIEW_OPENED))
+            r.chips = [guided.field_review_confirm_chip(),
+                       {"label": vi.FIELD_REVIEW_EDIT_CTA, "send": "__action:field_review_edit"}]
+            r.actions = [{"type": "listen_after_tts"}]
+            return r
+        review["status"] = "done"
+        stats = _field_review_stats(payload.get("stats"))
+        if stats is not None:
+            review["stats"] = stats
+        retry = {"label": vi.FIELD_REVIEW_PREVIEW_RETRY_CTA, "send": "__action:field_review_preview"}
+        missing = {"label": vi.FIELD_REVIEW_MISSING_CTA, "send": '__action:field_review_start:{"again":true}',
+                   "solid": True}
+        if stats and stats["required"]:
+            r = Reply(*_fmt(vi.FIELD_REVIEW_PREVIEW_BLOCKED, required=stats["required"],
+                            portal_message=_portal_says(payload.get("message"))))
+            r.chips = [missing, retry]
+        else:
+            r = Reply(*_fmt(vi.FIELD_REVIEW_PREVIEW_FAILED, portal_message=_portal_says(payload.get("message"))))
+            r.chips = [retry, {**missing, "solid": False}]
+        return r
+    if name == "field_review_edit":
+        review["skip"] = []
+        review["status"] = "applying"
+        review["current"] = None
+        r = Reply(*_fmt(vi.FIELD_REVIEW_START))
+        r.actions = [{"type": "declaration_preview_close"}, guided.field_review_next_action(review)]
+        return r
+    if name == "field_review_confirm":
+        review["status"] = "confirming"
+        r = Reply()  # extension hiện "Đang xác nhận tờ khai…" và báo lại field_review_confirm_report
+        r.actions = [guided.declaration_confirm_action(proc)]
+        return r
+    if name == "field_review_confirm_report":
+        if payload.get("ok"):
+            conv.pop("field_review", None)
+            r = Reply(*_fmt(vi.FIELD_REVIEW_CONFIRMED))
+            if conv.get("state") == "reviewing":
+                # Thủ tục chưa tự đính kèm: sang được bước rồi thì nút đính kèm là việc kế tiếp.
+                r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True}]
+            return r
+        review["status"] = "done" if payload.get("noPreview") else "previewed"
+        r = Reply(*_fmt(vi.FIELD_REVIEW_CONFIRM_FAILED, portal_message=_portal_says(payload.get("message"))))
+        r.chips = ([] if payload.get("noPreview") else
+                   [guided.field_review_confirm_chip()])
+        r.chips.append({"label": vi.FIELD_REVIEW_PREVIEW_RETRY_CTA, "send": "__action:field_review_preview"})
+        return r
+    return Reply()
 
 
 async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
