@@ -37,3 +37,19 @@ test("đăng ký lại khai sinh: QR hướng dẫn hiện trước, câu xác n
   assert.match(sidebar, /speak\?\.\(HUONG_DAN_LOI, "vi", demCho\)/);
   assert.match(sidebar, /renderReply\(d, \{ sauHuongDan: true \}\)/);
 });
+
+test("QR hướng dẫn có đủ các thủ tục tư pháp, mỗi thủ tục đúng link Drive", () => {
+  const bang = {
+    "khai-sinh-dang-ky-lai": "1ObePKXQq2rS62F72ipMMmXVVS399rMs4",
+    "xac-nhan-tinh-trang-hon-nhan": "1K72MmetiOzQuVywsyest5ZP-GpZGJS6G",
+    "khai-sinh-dang-ky": "1GrI9R8FRMUpphFxsIH2QdGR3h1wojwlk",
+    "ket-hon": "1yM72x0kkgS0ouLuCjejiTLGYJ0cEyFGR",
+    "khai-sinh-dang-ky-thuong": "1_c-8Xx4O9KqTH9KbCG0uqQlPNRH3-2du",
+    "chung-thuc-ban-sao": "1rv3_eC98iTnAZX0Bc9cKnWQLsGCPq9Bi",
+    "thay-doi-cai-chinh-ho-tich": "1_pns6gVNa2gP0aIWI3FfcyVk1A05FCAB",
+  };
+  for (const [key, id] of Object.entries(bang)) {
+    const re = new RegExp(`"${key}":\\s*\\{\\s*url: "https://drive\\.google\\.com/file/d/${id}/view`);
+    assert.match(sidebar, re, key);
+  }
+});

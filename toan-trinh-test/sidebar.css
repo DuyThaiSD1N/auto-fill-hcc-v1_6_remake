@@ -989,7 +989,11 @@ body.settings-mode .bot-f { display: none; }
 .guide-qr-t {
   font-size: 13.5px; line-height: 1.45; font-weight: 600; color: #16352a; text-align: center;
 }
-.guide-qr-t b { font-weight: 800; color: #0f7a4f; }
+/* Tên nút trong lời dẫn: tô nền như bút dạ quang, cùng màu nút "Mở hướng dẫn" bên dưới. */
+.guide-qr-t mark {
+  background: #d4f2e2; color: #0f7a4f; font-weight: 800;
+  padding: 1px 6px; border-radius: 6px; white-space: nowrap;
+}
 /* Hai nút cùng một hàng, cao bằng nhau. */
 .guide-qr-actions {
   display: flex; align-items: stretch; justify-content: center; gap: 10px;
