@@ -2684,7 +2684,9 @@ def _residence_from_declaration_line(line: str) -> dict | None:
     if any(marker in folded for marker in _DEAD_RESIDENCE_MARKERS):
         return None
 
-    parts = [part.strip(" .;") for part in re.split(r"[,\n]", text)]
+    # Chữ viết tay hay ngăn bằng dấu chấm đứng riêng ("Xã Yên Bình . Tỉnh Lào Cai"); chấm dính chữ là
+    # viết tắt ("TP. Huế", "P.Kim Trà") nên không tách.
+    parts = [part.strip(" .;") for part in re.split(r"[,\n]|\s\.\s", text)]
     parts = [part for part in parts if part]
     if len(parts) < 2:
         return None
@@ -2828,14 +2830,34 @@ def _apply_birth_agency_override(fields: list[dict], context: str) -> list[dict]
 
 
 def _declaration_residence_overrides(context: str, tag: str) -> dict:
-    """Nơi cư trú của vai này đã chốt từ tờ khai -> giá trị bắt buộc của bước trích xuất."""
+    """Nơi cư trú của vai này đã chốt từ tờ khai -> giá trị bắt buộc của bước trích xuất.
+
+    Đọc từ khối tờ khai GỐC, không đọc dòng "Nơi cư trú" của khối vai: khối vai bù nhãn trống bằng
+    CCCD/kết quả agent, nên tờ khai bỏ trống ô này thì dòng đó đã là địa chỉ in trên thẻ.
+    """
     section = _section(context, tag)
     if not section or _is_unknown(section):
         return {}
     if _DECLARATION_ROLE_BASIS not in _labeled_value(section, "Căn cứ phân vai"):
         return {}
-    area = _residence_from_declaration_line(_labeled_value(section, _RESIDENCE_LABEL))
+    declared = _section(context, f"{_DECLARED_ROLES_TAG}_{tag}")
+    area = _residence_from_declaration_line(_declared_value(declared, _RESIDENCE_LABEL))
     return {_ROLE_PREFIX[tag] + "ResidenceDomestic": area} if area else {}
+
+
+def _requester_declaration_residence_override(context: str) -> dict:
+    """Nơi cư trú người yêu cầu theo tờ khai, khi mục I đúng là người tờ khai ghi.
+
+    Giấy ủy quyền/thẻ người đăng nhập chốt người yêu cầu KHÁC người trên tờ khai thì để nguyên.
+    """
+    declared = _section(context, f"{_DECLARED_ROLES_TAG}_nguoi_yeu_cau")
+    requester = _section(context, "nguoi_yeu_cau")
+    if not declared or not requester or _is_unknown(requester):
+        return {}
+    if not _names_align(_role_name(requester), _role_name(declared)):
+        return {}
+    area = _residence_from_declaration_line(_declared_value(declared, _RESIDENCE_LABEL))
+    return {"Requester_ResidenceDomestic": area} if area else {}
 
 
 def _declaration_hometown_override(context: str) -> dict:
@@ -2862,26 +2884,21 @@ def _apply_declaration_residence_overrides(
     Mục 1 của <uu_tien_nguon> nói rõ tờ khai là nguồn số 1 cho nơi cư trú, nhưng CCCD cũng IN
     nơi thường trú nên agent rất hay lấy nhầm theo thẻ — và lấy nhầm KHÔNG ĐỀU giữa hai vai
     (req_e783af63a58e: cha đúng theo tờ khai, mẹ lại theo CCCD). Dặn bằng chữ không đủ, nên
-    chốt lại bằng Python ở đây.
+    chốt lại bằng Python ở đây. Người yêu cầu cũng vậy (mục I).
 
     Chỉ ghi đè khi CẢ HAI điều kiện đúng: khối vai dựng tất định từ tờ khai, và dòng nơi cư trú
-    tách ra được một xã/phường CÓ trong danh mục hiện hành. Thiếu một trong hai thì giữ nguyên
-    kết quả của bước trích xuất.
+    tờ khai tách ra được một xã/phường CÓ trong danh mục hiện hành. Thiếu một trong hai thì giữ
+    nguyên kết quả của bước trích xuất. Vai chốt CCCD theo thế hệ cũng theo tờ khai: thẻ chỉ thắng
+    nhân thân, địa chỉ luôn ưu tiên tờ khai (thẻ in địa chỉ cũ, có khi trước cả lần chuyển nhà).
     """
     from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
 
-    extracted = {str(field.get("name") or "") for field in fields if field.get("value")}
     overrides: dict[str, dict] = {}
     for tag in ("cha", "me"):
-        prefix = _ROLE_PREFIX[tag]
-        if prefix in invalid_prefixes:
-            continue
-        # Vai chốt CCCD theo thế hệ: nơi cư trú theo thẻ trước, tờ khai chỉ bù khi agent bỏ trống.
-        if _labeled_value(_section(context, tag), _GENERATION_CARD_LABEL) and (
-            prefix + "ResidenceDomestic" in extracted
-        ):
+        if _ROLE_PREFIX[tag] in invalid_prefixes:
             continue
         overrides.update(_declaration_residence_overrides(context, tag))
+    overrides.update(_requester_declaration_residence_override(context))
     if _ROLE_PREFIX["con"] not in invalid_prefixes:
         overrides.update(_declaration_hometown_override(context))
     if not overrides:
@@ -3181,8 +3198,8 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "vai đó VẪN LÀ cha/mẹ, BẮT BUỘC trích ĐẦY ĐỦ Father_*/Mother_* theo tờ khai (họ tên, năm sinh, dân tộc, "
         "quốc tịch, nơi cư trú, giấy tờ tùy thân), không được bỏ vai.\n"
         f"Khối <con>/<cha>/<me> có dòng \"{_GENERATION_CARD_LABEL}\" nghĩa là tờ khai lệch với mọi CCCD và "
-        "tấm thẻ trong khối đã được chốt theo ngày sinh + giới tính: nhân thân, số định danh, ngày cấp, nơi cấp, "
-        "nơi cư trú lấy theo THẺ đó; chỉ ô thẻ không có mới lấy theo tờ khai.\n"
+        "tấm thẻ trong khối đã được chốt theo ngày sinh + giới tính: nhân thân, số định danh, ngày cấp, nơi cấp "
+        "lấy theo THẺ đó, chỉ ô thẻ không có mới lấy theo tờ khai; nơi cư trú vẫn lấy theo tờ khai.\n"
         f"Khối <cha>/<me> có dòng \"{_OWN_CARD_LABEL}\" nghĩa là CCCD khớp họ tên người tờ khai ghi (số tờ khai "
         "lệch do viết tay/OCR): họ tên, ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp lấy theo THẺ; "
         "dân tộc, quốc tịch, nơi cư trú vẫn lấy theo tờ khai.\n"

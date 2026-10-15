@@ -57,6 +57,8 @@ PROCEDURE_HMONG = {
     # xiam oob qhab, zaub mov, txhais lus, cog lus, qub txeeg qub teg, nyiaj laus…): soát kỹ hơn.
     "chung-thuc-giao-dich-tai-san": "Lees paub daim ntawv cog lus txog khoom vaj khoom tsev",
     "chung-thuc-phan-chia-di-san": "Lees paub daim ntawv faib qub txeeg qub teg",
+    # BẢN NHÁP chờ anh Dư soát — "tsis kam txais" (từ chối nhận) là TỪ MỚI.
+    "chung-thuc-tu-choi-nhan-di-san": "Lees paub daim ntawv tsis kam txais qub txeeg qub teg",
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
     "xac-dinh-muc-do-khuyet-tat": "Txiav txim qib xiam oob qhab",

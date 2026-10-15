@@ -2292,6 +2292,18 @@ async function _fillDatagridVehicleRow(idx, v) {
   }
 }
 
+// Đọc giá trị hiển thị hiện tại của 1 ô (input value hoặc Choices single item) để BIẾT ô đã điền đúng chưa.
+function _rowCellValue(base, sub) {
+  const el = document.querySelector(`[name="${CSS.escape(base + sub)}"]`);
+  if (!el) return "";
+  const group = standardMarkTarget(el);
+  const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+  if (choices) {
+    const label = currentChoicesValue(choices);
+    return label && !isPlaceholderText(label) ? label : "";
+  }
+  return String(el.value || "").trim();
+}
 
 function _cellMatches(base, sub, val) {
   if (val == null || val === "") return true;

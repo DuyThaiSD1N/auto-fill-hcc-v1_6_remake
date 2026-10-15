@@ -66,12 +66,33 @@ def is_lao_cai_cam_duong(user: dict | None) -> bool:
     return "lao cai" in tinh and xa == "cam duong"
 
 
+# Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) không điền email người nộp. Cổng tự nạp email
+# tài khoản cán bộ vào ô "Email liên hệ" nên phải XOÁ ô; nơi khác giữ nguyên ô email như cũ.
+CLEAR_EMAIL_OPTION = "clearEmail"
+
+
+def is_ninh_binh_nghia_hung(user: dict | None) -> bool:
+    """True khi tài khoản thuộc xã Nghĩa Hưng, tỉnh Ninh Bình (khớp tỉnh và ĐÚNG tên xã)."""
+    if not user:
+        return False
+    tinh = _norm_text(user.get("tinh"))
+    xa = _norm_text(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "ninh binh" in tinh and xa == "nghia hung"
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ người chết là chủ hồ sơ do server quyết theo tài khoản."""
+    """Trả bản sao options với các cờ theo tài khoản do server quyết (người chết là chủ hồ sơ, xoá email)."""
     result = dict(options or {})
     result.pop(DECEASED_AS_OWNER_OPTION, None)
+    result.pop(CLEAR_EMAIL_OPTION, None)
     if procedure == PROCEDURE_KEY and is_lao_cai_cam_duong(user):
         result[DECEASED_AS_OWNER_OPTION] = True
+    if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
+        result[CLEAR_EMAIL_OPTION] = True
     return result
 
 

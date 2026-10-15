@@ -2,6 +2,7 @@
 
 - Chứng thực văn bản phân chia di sản (2.001406)
 - Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch (2.000913)
+- Chứng thực văn bản từ chối nhận di sản (2.001016)
 
 Luồng cũ nghĩa là: không consent, không bước chủ hồ sơ, không guidedSteps, không hỏi gộp/tách
 nhiều hồ sơ, planner core chạy mặc định — đúng như bản extension trên chợ đang nhận.
@@ -24,6 +25,9 @@ CASES = {
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": (
         "2.000913", "019d2bfd-8e59-72ab-ae1a-a2985865d253",
         ["du_thao", "giao_dich_cu", "so_huu", "khac"],
+    ),
+    "chung-thuc-tu-choi-nhan-di-san": (
+        "2.001016", "019d2bfd-95e6-7578-ba2d-d1b4373cd174", ["du_thao", "so_huu", "khac"],
     ),
 }
 KEYS = list(CASES)

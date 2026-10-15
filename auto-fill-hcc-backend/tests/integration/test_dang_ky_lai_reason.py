@@ -541,6 +541,56 @@ def test_sanitizer_keeps_ocr_birth_year_when_agent_extracts_mother():
     assert values["Mother_FullName"] == "LÊ THỊ HẠNH"
 
 
+_CARD_RESIDENCE = {"quocGia": "Việt Nam", "tinh": "Thành phố Huế", "xa": "Phường Kim Trà", "diaChi": "An Thuận"}
+
+
+def _residence_fields() -> list[dict]:
+    return [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN KHẢI"},
+        {"name": "Subject_BirthDate", "value": "10/02/1985"},
+        {"name": "Mother_FullName", "value": "LÊ THỊ HẠNH"},
+        {"name": "Mother_IdNumber", "value": "015160001234"},
+        {"name": "Mother_ResidenceDomestic", "value": dict(_CARD_RESIDENCE)},
+        {"name": "Requester_FullName", "value": "TRẦN VĂN KHẢI"},
+        {"name": "Requester_ResidenceDomestic", "value": dict(_CARD_RESIDENCE)},
+    ]
+
+
+def test_residence_follows_declaration_not_cccd_for_parent_and_requester():
+    """Hồ sơ có cả tờ khai lẫn CCCD: agent lấy nơi cư trú theo thẻ thì vẫn đặt lại theo tờ khai."""
+    values = {f["name"]: f["value"] for f in reason.sanitize_extracted_fields(_residence_fields(), _broken_year_context())}
+
+    for name in ("Mother_ResidenceDomestic", "Requester_ResidenceDomestic"):
+        assert values[name]["tinh"] == "Lào Cai"
+        assert values[name]["xa"] == "Xã Yên Bình"
+        assert values[name]["diaChi"] == "Thôn 3"
+
+
+def test_residence_follows_declaration_even_when_card_chosen_by_generation():
+    context = _broken_year_context()
+    me = reason._section(context, "me")
+    stamped = f"{me}\n{reason._GENERATION_CARD_LABEL}: {reason._GENERATION_CARD_VALUE}"
+    context = context.replace(me, stamped, 1)
+
+    values = {f["name"]: f["value"] for f in reason.sanitize_extracted_fields(_residence_fields(), context)}
+
+    assert values["Mother_ResidenceDomestic"]["xa"] == "Xã Yên Bình"
+
+
+def test_residence_not_overridden_by_role_line_filled_from_card():
+    """Tờ khai bỏ trống nơi cư trú: dòng bù từ thẻ trong khối vai không được coi là tờ khai."""
+    context = _broken_year_context()
+    blank = context.replace("Nơi cư trú: Thôn 3 Xã Yên Bình , Tỉnh Lào Cai", "Nơi cư trú: Không xác định")
+    me = reason._section(blank, "me")
+    blank = blank.replace(
+        me, me.replace("Nơi cư trú: Không xác định", "Nơi cư trú: Thôn 3 Xã Yên Bình , Tỉnh Lào Cai"), 1
+    )
+
+    values = {f["name"]: f["value"] for f in reason.sanitize_extracted_fields(_residence_fields(), blank)}
+
+    assert values["Mother_ResidenceDomestic"] == _CARD_RESIDENCE
+
+
 def test_declaration_residence_splits_commune_written_without_comma():
     area = reason._residence_from_declaration_line("Thôn 3 Xã Yên Bình , Tỉnh Lào Cai")
 

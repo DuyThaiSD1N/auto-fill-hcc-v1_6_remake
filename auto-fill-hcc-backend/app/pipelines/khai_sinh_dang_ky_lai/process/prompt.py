@@ -85,7 +85,7 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    ⚠ DANH SÁCH NÀY ĐÓNG — ĐÚNG NĂM ô lấy theo CCCD: số định danh, ngày cấp, nơi cấp, ngày sinh,
    giới tính. Mọi ô KHÁC vẫn theo mục 1 (TỜ KHAI TRƯỚC). ❌ CẤM suy rộng "thông tin in trên thẻ" sang
    các ô khác — NƠI CƯ TRÚ, QUÊ QUÁN, NƠI SINH in trên CCCD KHÔNG được đè lên tờ khai. Tờ khai có
-   dòng "Nơi cư trú" của cha/mẹ thì Father_/Mother_ResidenceDomestic lấy ĐÚNG dòng đó, kể cả khi CCCD
+   dòng "Nơi cư trú" của cha/mẹ/người yêu cầu thì Father_/Mother_/Requester_ResidenceDomestic lấy ĐÚNG dòng đó, kể cả khi CCCD
    của chính người đó ghi địa chỉ khác (thẻ cũ, chưa đổi sau khi chuyển hộ khẩu hoặc sau sáp nhập).
    VD: tờ khai ghi "Nơi cư trú: (2) Tân Hà - Lâm Hà, tỉnh Lâm Đồng" còn CCCD mẹ ghi "Thôn Đức Long,
    Hoài Đức, Lâm Hà, Lâm Đồng" → Mother_ResidenceDomestic = {"quocGia":"Việt Nam","tinh":"Lâm Đồng",
