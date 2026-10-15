@@ -1403,6 +1403,24 @@ TPM_RESULT_FAILED = {
     "tts": "Kuv xaiv tsis tau txoj kev txais txiaj ntsig. Pej xeem xaiv pab kuv ntawm nplooj ntawv ces nias lub pob xa ntaub ntawv.",
 }
 
+# Bưu điện, đã điền người nhận theo tờ khai — cắt ghép từ GUIDED_RESULT_PICKED / GUIDED_RESULT_MISSING đã
+# dịch (khối Việt vẫn nói rõ ô nào đã điền), không thêm câu mới.
+TPM_RESULT_RECIPIENT_FILLED = {
+    "md": "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv.",
+    "tts": "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv.",
+}
+
+TPM_RESULT_RECIPIENT_PARTIAL = {
+    "md": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Nplooj ntawv tseem tshuav qhov "
+        "khoob — pej xeem sau ntxiv rau saum nplooj ntawv."
+    ),
+    "tts": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Nplooj ntawv tseem tshuav qhov "
+        "khoob, pej xeem sau ntxiv rau saum nplooj ntawv."
+    ),
+}
+
 TPM_SUBMIT_MISSING = {
     "md": "Kuv tseem tsis tau xa vim nplooj ntawv tseem tshuav qhov khoob, kuv cim thawv liab. Pej xeem sau ntxiv ces nias Lưu và nộp hồ sơ dua.",
     "tts": "Kuv tseem tsis tau xa vim nplooj ntawv tseem tshuav qhov khoob, kuv cim thawv liab. Pej xeem sau ntxiv ces nias lub pob xa ntaub ntawv dua.",

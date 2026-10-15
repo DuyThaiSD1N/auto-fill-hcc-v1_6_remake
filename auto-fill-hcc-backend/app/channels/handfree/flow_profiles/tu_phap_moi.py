@@ -18,7 +18,8 @@ TU_PHAP_MOI_FLOW: dict = {
         # `label` phải đúng NGUYÊN VĂN option của ô "Hình thức nhận kết quả" (cc-select) —
         # FE khớp option theo nhãn đã fold dấu. Cổng chọn sẵn option đầu.
         # `needsInput`: chỉ bưu điện mọc khối "THÔNG TIN NHẬN KẾT QUẢ" (người nhận, điện thoại,
-        # đơn vị vận chuyển, tỉnh, xã, địa chỉ); trợ lý chỉ kiểm tra, không điền hộ.
+        # đơn vị vận chuyển, tỉnh, xã, địa chỉ); extension điền theo người yêu cầu trên tờ khai rồi
+        # báo ô còn trống.
         "resultMethods": [
             {"key": "counter", "label": "Trả kết quả tại bộ phận tiếp nhận và trả kết quả",
              "icon": "🏢", "desc": "Nhận kết quả trực tiếp tại bộ phận một cửa.", "default": True},

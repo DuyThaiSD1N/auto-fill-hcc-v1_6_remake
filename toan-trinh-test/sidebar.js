@@ -1365,8 +1365,8 @@
   }
 
   // Gạt công tắc "cách nhận kết quả" trên trang rồi báo BE. Ô phụ mọc ra sau khi bật (địa chỉ,
-  // người nhận…) thì engine đọc dấu * của chính cổng và trả về đây — trợ lý chỉ NÓI ra, không
-  // bao giờ điền hộ.
+  // người nhận…) thì engine đọc dấu * của chính cổng và trả về đây. Riêng trang nộp một trang của cổng
+  // DVC mới, engine điền khối người nhận theo người yêu cầu trên tờ khai trước khi soi ô trống.
   async function runSelectResultMethod(a) {
     setStatus("Đang chọn cách nhận kết quả…");
     const res = await sendToContent({
@@ -1377,6 +1377,8 @@
     await ask(`__action:result_method_report:${JSON.stringify({
       method: a.method || "",
       ok: !!res?.ok,
+      // Trang nộp một trang của cổng DVC mới: ô người nhận đã điền theo người yêu cầu trên tờ khai.
+      filled: Array.isArray(res?.filled) ? res.filled : [],
       missing: Array.isArray(res?.missing) ? res.missing : [],
       error: res?.error || "",
     })}`, "system");

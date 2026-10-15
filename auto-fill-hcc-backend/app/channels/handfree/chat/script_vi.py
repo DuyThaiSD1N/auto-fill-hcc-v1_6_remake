@@ -1504,6 +1504,21 @@ TPM_SUBMIT_HINT = {
     "tts": " Kiểm tra xong, công dân bấm Lưu và nộp hồ sơ ạ.",
 }
 
+# Bưu điện trên trang một trang: FE điền khối người nhận theo NGƯỜI YÊU CẦU trên tờ khai.
+TPM_RESULT_RECIPIENT_FILLED = {
+    "md": ("✓ Đã chọn **{label}**.\n\nEm đã điền **{filled_note}** của người nhận theo người yêu cầu "
+           "trên tờ khai, công dân kiểm tra lại ạ."),
+    "tts": "Dạ, em đã chọn {label} và điền thông tin người nhận theo người yêu cầu trên tờ khai. "
+           "Công dân kiểm tra lại ạ.",
+}
+
+TPM_RESULT_RECIPIENT_PARTIAL = {
+    "md": ("✓ Đã chọn **{label}**.\n\nEm đã điền **{filled_note}** theo người yêu cầu trên tờ khai. "
+           "Còn thiếu **{missing_note}**, công dân điền nốt ạ."),
+    "tts": "Dạ, em đã chọn {label} và điền thông tin người nhận theo tờ khai. "
+           "Còn thiếu {missing_tts}, công dân điền nốt ạ.",
+}
+
 TPM_RESULT_FAILED = {
     "md": (
         "⚠️ Em chưa chọn được **{label}**. "

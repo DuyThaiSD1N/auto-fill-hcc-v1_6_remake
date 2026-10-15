@@ -146,6 +146,22 @@ async def test_buu_dien_bao_o_con_trong():
     assert _sends(reply) == ["__action:tpm_submit"]
 
 
+async def test_buu_dien_dien_nguoi_nhan_theo_nguoi_yeu_cau():
+    conv = _conv("done", attach_done=True, result_method="postal")
+    reply = await _turn(conv, "action", "result_method_report",
+                        {"method": "postal", "ok": True, "missing": [],
+                         "filled": ["Tên người nhận", "Số điện thoại", "Địa chỉ"]})
+    assert "người yêu cầu trên tờ khai" in reply.display_md
+    assert "Tên người nhận" in reply.display_md and "Còn thiếu" not in reply.display_md
+    assert "tự điền" not in reply.display_md
+
+    reply = await _turn(conv, "action", "result_method_report",
+                        {"method": "postal", "ok": True, "missing": ["Chọn Xã/Phường"],
+                         "filled": ["Tên người nhận"]})
+    assert "Còn thiếu" in reply.display_md and "Chọn Xã/Phường" in reply.display_md
+    assert _sends(reply) == ["__action:tpm_submit"]
+
+
 async def test_nop_ho_so_soat_truoc_roi_moi_bam():
     conv = _conv("done", attach_done=True, result_method="counter")
     reply = await _turn(conv, "action", "tpm_submit")

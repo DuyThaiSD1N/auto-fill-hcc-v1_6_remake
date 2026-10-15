@@ -288,7 +288,8 @@ def _pick_result_method_reply(conv: dict, proc: dict, payload: dict):
 
 
 def _result_method_report_reply(conv: dict, proc: dict, payload: dict):
-    """FE báo đã chọn trên ô "Hình thức nhận kết quả"; bưu điện thì kèm ô còn trống."""
+    """FE báo đã chọn trên ô "Hình thức nhận kết quả"; bưu điện thì kèm ô đã điền theo người yêu
+    cầu trên tờ khai (`filled`) và ô còn trống (`missing`)."""
     from app.channels.handfree.chat import flow
 
     key = str(payload.get("method") or conv.get("result_method") or "")
@@ -298,7 +299,15 @@ def _result_method_report_reply(conv: dict, proc: dict, payload: dict):
         r = flow.Reply(*flow._fmt(vi.TPM_RESULT_FAILED, label=label))
     else:
         missing = _missing_labels(payload)
-        if missing:
+        filled = [str(x).strip() for x in (payload.get("filled") or []) if str(x).strip()]
+        if filled:
+            missing_text = flow._join_owner_labels(missing)
+            r = flow.Reply(*flow._fmt(
+                vi.TPM_RESULT_RECIPIENT_PARTIAL if missing else vi.TPM_RESULT_RECIPIENT_FILLED,
+                note=vi.TPM_SUBMIT_HINT, label=label, filled_note=flow._join_owner_labels(filled),
+                missing_note=missing_text, missing_tts=missing_text,
+            ))
+        elif missing:
             text = flow._join_owner_labels(missing)
             r = flow.Reply(*flow._fmt(vi.GUIDED_RESULT_MISSING, note=vi.TPM_SUBMIT_HINT,
                                       label=label, missing_note=text, missing_tts=text))

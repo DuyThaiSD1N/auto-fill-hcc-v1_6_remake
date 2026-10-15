@@ -80,7 +80,7 @@
       : { ok: false, error: "Chọn option mà ô Hình thức nhận kết quả không đổi." };
   }
 
-  // ── Khối "THÔNG TIN NHẬN KẾT QUẢ" (chỉ hiện khi chọn bưu điện) — trợ lý chỉ kiểm, không điền hộ ──
+  // ── Khối "THÔNG TIN NHẬN KẾT QUẢ" (chỉ hiện khi chọn bưu điện) — điền theo người yêu cầu, rồi kiểm ô trống ──
   // id lấy từ DOM thật của cổng; ô chọn (đơn vị vận chuyển, tỉnh, xã) là nút listbox, còn trống thì
   // hiện chữ mờ "Chọn … *".
   const POSTAL_FIELDS = [
@@ -122,11 +122,90 @@
     return { missing, first };
   }
 
+  // ── Điền khối người nhận theo NGƯỜI YÊU CẦU trên tờ khai (16/10/2026) ──
+  // Họ tên, SĐT, tỉnh, xã, địa chỉ chi tiết chép từ khối người nộp/người yêu cầu của form SurveyJS cùng trang;
+  // đơn vị vận chuyển chọn Bưu điện. Chỉ điền ô CÒN TRỐNG — công dân đã gõ/chọn thì giữ nguyên. Ô nào không
+  // khớp được thì để trống, postalMissing báo lại như cũ.
+  const placeKey = (s) => fold(s).replace(/[^a-z0-9]+/g, " ").trim()
+    .replace(/^(tinh|thanh pho|tp|xa|phuong|thi tran|dac khu)\s+/, "");
+  const fieldLabel = (el) => postalFieldState(el).label.replace(/\s*\*\s*$/, "").trim();
+  const visibleOptions = () => Array.from(document.querySelectorAll('[role="option"]')).filter(isVisible);
+
+  async function waitOptions(ms) {
+    for (let waited = 0; ; waited += 150) {
+      const options = visibleOptions();
+      if (options.length || waited >= ms) return options;
+      await sleep(150);
+    }
+  }
+
+  // Listbox của cổng: thử click, rồi nhấn chuột (thư viện mở theo pointerdown), rồi phím ↓.
+  async function openListbox(el, ms) {
+    const btn = el.matches('button, [role="combobox"], [aria-haspopup]')
+      ? el : (el.querySelector('button, [role="combobox"], [aria-haspopup]') || el);
+    btn.scrollIntoView?.({ block: "center" });
+    btn.click();
+    let options = await waitOptions(ms);
+    if (!options.length) {
+      btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse", isPrimary: true }));
+      btn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0, view: window }));
+      options = await waitOptions(600);
+    }
+    if (!options.length) {
+      btn.focus?.();
+      btn.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+      options = await waitOptions(600);
+    }
+    return options;
+  }
+
+  async function pickListbox(id, matches, ms = 900) {
+    const el = document.getElementById(id);
+    if (!el || !isVisible(el) || !postalFieldState(el).empty) return "";
+    const options = await openListbox(el, ms);
+    const option = options.find((o) => matches(plainText(o)));
+    if (!option) {
+      (document.activeElement || el).dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      await sleep(150);
+      return "";
+    }
+    option.click();
+    await sleep(300);
+    if (postalFieldState(el).empty) { clickLikeUser(option); await sleep(300); }
+    return postalFieldState(el).empty ? "" : fieldLabel(el);
+  }
+
+  function fillText(id, value) {
+    const el = document.getElementById(id);
+    if (!value || !el || !isVisible(el) || String(el.value || "").trim()) return "";
+    H.setNativeValue(el, value, { typing: true, commit: true });
+    return String(el.value || "").trim() ? fieldLabel(el) : "";
+  }
+
+  async function fillRecipientFromRequester() {
+    if (typeof H.readSurveyJsRequester !== "function" || typeof H.setNativeValue !== "function") return [];
+    const who = await H.readSurveyJsRequester();
+    if (!who?.ok) return [];
+    const done = [
+      fillText("id-recipientName", who.name),
+      fillText("id-recipientPhone", String(who.phone || "").replace(/[^\d+]/g, "")),
+    ];
+    done.push(await pickListbox("partnerCode", (text) => /buu dien|buu chinh|vnpost/.test(fold(text))));
+    const province = placeKey(who.tinh);
+    const ward = placeKey(who.xa);
+    if (province) done.push(await pickListbox("recipientProvinceCode", (text) => placeKey(text) === province));
+    // Danh mục xã nạp theo tỉnh vừa chọn → chờ lâu hơn.
+    if (ward) done.push(await pickListbox("recipientComuneCode", (text) => placeKey(text) === ward, 3000));
+    done.push(fillText("id-recipientAddress", who.diaChi));
+    return done.filter(Boolean);
+  }
+
   async function selectResultMethodOnPage({ label, needsInput }) {
     const res = await chooseResultMethod(label);
     if (!res.ok || !needsInput) return { ...res, missing: [] };
     await sleep(600); // React dựng khối nhận kết quả của cách vừa chọn
-    return { ok: true, missing: postalMissing({ mark: true }).missing };
+    const filled = await fillRecipientFromRequester();
+    return { ok: true, filled, missing: postalMissing({ mark: true }).missing };
   }
 
   // ── Nộp: soát trước, đủ mới bấm "Lưu và nộp hồ sơ" ──
@@ -148,7 +227,9 @@
       : { names: [], labels: [], firstEl: null };
     const missing = [...required.labels];
     let first = required.firstEl;
+    // Bưu điện: công dân tự chọn trên trang (không qua trợ lý) thì vẫn điền người nhận theo người yêu cầu.
     if (fold(selectedLabel(resultSelectWrapper())).includes("buu dien")) {
+      await fillRecipientFromRequester();
       const postal = postalMissing({ mark: true });
       missing.push(...postal.missing);
       first = first || postal.first;
