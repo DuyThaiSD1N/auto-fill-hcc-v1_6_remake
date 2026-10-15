@@ -170,7 +170,10 @@ def test_mo_ho_thi_hoi_lai_kem_nut_goi_y_va_luu_goi_y():
     conv = _conv()
     r = flow._procedure_unclear(conv, ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi", "cap-ban-sao-van-bang-so-goc"])
     assert conv["procedure_candidates"] == ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]  # khóa tỉnh bị bỏ
-    assert "thủ tục nào" in r.display_md and "mai táng" in r.display_md
+    assert "muốn làm thủ tục **Hỗ trợ chi phí mai táng — đối tượng bảo trợ xã hội** hay **" in r.display_md
+    assert "nói tên thủ tục" in r.display_md and " hay Hỗ trợ chi phí mai táng" in r.tts_text
+    # Hỏi bằng tên rồi tự mở mic nghe công dân nói, không bắt phải bấm nút.
+    assert r.actions == [{"type": "listen_after_tts"}]
     assert [c["send"] for c in r.chips] == [
         '__action:pick_procedure:{"key": "ho-tro-mai-tang"}',
         '__action:pick_procedure:{"key": "ho-tro-mai-tang-huu-tri-xa-hoi"}',
@@ -178,6 +181,46 @@ def test_mo_ho_thi_hoi_lai_kem_nut_goi_y_va_luu_goi_y():
     # Bấm/chọn xong thì bỏ gợi ý — lượt sau không còn đọc agent chọn thủ tục trước.
     flow._to_confirm_procedure(conv, "ho-tro-mai-tang")
     assert conv["procedure_candidates"] == []
+
+
+_KHAI_SINH = ["khai-sinh-dang-ky-thuong", "khai-sinh-dang-ky"]       # đơn lẻ, liên thông
+_MAI_TANG = ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]    # bảo trợ xã hội, hưu trí xã hội
+
+
+@pytest.mark.parametrize("said, keys, want", [
+    ("Liên thông", _KHAI_SINH, "khai-sinh-dang-ky"),
+    ("lien thong dang ky khai sinh.", _KHAI_SINH, "khai-sinh-dang-ky"),
+    ("đăng ký khai sinh", _KHAI_SINH, "khai-sinh-dang-ky-thuong"),     # đủ tên bản đơn lẻ, thiếu "liên thông"
+    ("cái thứ hai", _KHAI_SINH, "khai-sinh-dang-ky"),
+    ("cái đầu", _KHAI_SINH, "khai-sinh-dang-ky-thuong"),
+    ("đối tượng bảo trợ", _MAI_TANG, "ho-tro-mai-tang"),
+    ("hưu trí xã hội", _MAI_TANG, "ho-tro-mai-tang-huu-tri-xa-hoi"),
+    # Chưa chắc → để agent chọn thủ tục hiểu.
+    ("khai sinh", _KHAI_SINH, ""),
+    ("không phải liên thông", _KHAI_SINH, ""),
+    ("người khuyết tật", _MAI_TANG, ""),
+    ("tôi là con thứ hai trong nhà, bố tôi mới mất hôm qua", _MAI_TANG, ""),
+])
+def test_tra_loi_cau_hoi_lai_nhan_ten_thu_tuc_tat_dinh(said, keys, want):
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    assert intents.match_candidate_procedure(said, [get_procedure(k) for k in keys]) == want
+
+
+async def test_noi_ten_thu_tuc_sau_cau_hoi_lai_chon_luon_khong_goi_llm(llm):
+    calls, _replies = llm
+    i = await intents.resolve("liên thông", "greet", _conv(candidates=_KHAI_SINH))
+    assert (i.kind, i.value) == ("pick_procedure", "khai-sinh-dang-ky")
+    assert calls == {"picker": [], "classifier": []}
+
+
+async def test_cau_tra_loi_chua_chac_van_qua_agent_chon_thu_tuc(llm):
+    calls, replies = llm
+    replies["picker"].append(_pick("khai-sinh-dang-ky-thuong"))
+    i = await intents.resolve("chỉ làm giấy khai sinh thôi em", "greet", _conv(candidates=_KHAI_SINH))
+    assert (i.kind, i.value) == ("pick_procedure", "khai-sinh-dang-ky-thuong")
+    assert len(calls["picker"]) == 1
+    assert "PHẦN RIÊNG của tên MỘT gợi ý" in calls["picker"][0][0]["content"]
 
 
 def test_mo_ho_ma_khong_goi_y_nao_hop_le_thi_noi_chua_nhan_ra():

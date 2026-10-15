@@ -1276,10 +1276,13 @@ def _procedure_unclear(conv: dict, keys: list) -> Reply:
     conv["procedure_candidates"] = [p["key"] for p in procs]
     names = [p.get("shortLabel") or p["label"] for p in procs]
     r = Reply(*_fmt(vi.PROCEDURE_UNCLEAR,
-                    options_md="\n".join(f"- **{n}**" for n in names),
-                    options_tts=" hay ".join(names)))
+                    options_md=" hay ".join(f"**{n}**" for n in names),
+                    options_tts=", hay ".join(names)))
     r.chips = [{"label": n, "send": "__action:pick_procedure:" + json.dumps({"key": p["key"]})}
                for p, n in zip(procs, names)]
+    # Câu hỏi chờ công dân NÓI tên thủ tục: đọc xong tự mở mic một lượt, không bắt phải bấm nút.
+    # Câu trả lời đi qua intents.resolve → match_candidate_procedure trước, agent chọn thủ tục sau.
+    r.actions = [{"type": "listen_after_tts"}]
     return r
 
 

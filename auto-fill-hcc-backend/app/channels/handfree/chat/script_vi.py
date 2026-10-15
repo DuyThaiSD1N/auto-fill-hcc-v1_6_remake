@@ -61,10 +61,11 @@ PROCEDURE_NOT_RECOGNIZED = {
     "tts": "Dạ, em chưa nhận ra thủ tục. Công dân chọn trong danh sách, hoặc nói lại tên ạ.",
 }
 
-# Câu gõ/nói hợp với nhiều thủ tục → hỏi lại kèm nút gợi ý. options_* là tên thủ tục lấy từ registry.
+# Câu gõ/nói hợp với nhiều thủ tục → hỏi lại bằng tên từng thủ tục, đọc xong tự mở mic nghe công
+# dân nói tên (nút gợi ý vẫn hiện bên dưới). options_* là tên thủ tục lấy từ registry ("A hay B").
 PROCEDURE_UNCLEAR = {
-    "md": "Dạ, công dân cần thủ tục nào ạ?\n\n{options_md}",
-    "tts": "Dạ, có phải {options_tts} không ạ? Công dân bấm chọn giúp em.",
+    "md": "Dạ, công dân muốn làm thủ tục {options_md} ạ?\n\nCông dân **nói tên thủ tục**, hoặc bấm chọn bên dưới.",
+    "tts": "Dạ, công dân muốn làm thủ tục {options_tts} ạ? Công dân nói tên thủ tục giúp em.",
 }
 
 # Thủ tục đặc thù tỉnh (provinceOnly) mà tài khoản đang đăng nhập ở tỉnh khác → không mở được.
