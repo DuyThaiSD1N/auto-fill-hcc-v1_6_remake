@@ -459,6 +459,8 @@
   async function ask(message, source = "text", displayText = "", uiOptions = {}) {
     const userInitiated = source === "text" || source === "voice" || source === "chip";
     if (userInitiated) markActivity();
+    // Công dân nói/bấm tiếp trong lúc chờ hướng dẫn QR → câu xác nhận đang hẹn đã lỗi thời.
+    if (userInitiated) huyHuongDanHen();
     if (busy) {
       if (source === "system" || source === "chip") {
         // Trả Promise chỉ resolve sau khi lượt xếp hàng THỰC SỰ gọi xong backend. Queue tách hồ sơ
@@ -697,7 +699,93 @@
       $meterBar.style.width = `${Math.min(100, Math.round((p.step / p.total) * 100))}%`;
     }
   }
+  // Hướng dẫn bằng video/tài liệu trước câu xác nhận thủ tục: hiện QR + link ngay dưới tin công
+  // dân, đọc lời giới thiệu, đọc xong chờ HUONG_DAN_CHO_MS rồi mới vẽ câu "Dạ, công dân làm…" +
+  // card nơi làm. QR vẽ sẵn thành path SVG (lưới 45×45, viền 2 ô) — extension không có thư viện QR.
+  const HUONG_DAN_THU_TUC = {
+    "khai-sinh-dang-ky-lai": {
+      url: "https://drive.google.com/file/d/1ObePKXQq2rS62F72ipMMmXVVS399rMs4/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h1v1h-1zM20 2h1v1h-1zM23 2h1v1h-1zM28 2h1v1h-1zM31 2h3v1h-3zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM15 3h2v1h-2zM18 3h2v1h-2zM21 3h2v1h-2zM32 3h3v1h-3zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h3v1h-3zM17 4h1v1h-1zM19 4h2v1h-2zM23 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM12 5h4v1h-4zM17 5h2v1h-2zM24 5h1v1h-1zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM16 6h2v1h-2zM20 6h2v1h-2zM24 6h1v1h-1zM26 6h3v1h-3zM30 6h2v1h-2zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM15 7h2v1h-2zM18 7h2v1h-2zM22 7h1v1h-1zM25 7h4v1h-4zM31 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM12 9h5v1h-5zM21 9h2v1h-2zM25 9h1v1h-1zM27 9h2v1h-2zM32 9h1v1h-1zM34 9h1v1h-1zM2 10h1v1h-1zM5 10h6v1h-6zM12 10h2v1h-2zM19 10h2v1h-2zM26 10h1v1h-1zM28 10h4v1h-4zM33 10h1v1h-1zM35 10h1v1h-1zM38 10h1v1h-1zM40 10h3v1h-3zM4 11h1v1h-1zM7 11h1v1h-1zM13 11h3v1h-3zM17 11h1v1h-1zM20 11h2v1h-2zM24 11h2v1h-2zM28 11h3v1h-3zM33 11h1v1h-1zM35 11h1v1h-1zM38 11h1v1h-1zM2 12h5v1h-5zM8 12h1v1h-1zM10 12h1v1h-1zM13 12h2v1h-2zM16 12h5v1h-5zM25 12h1v1h-1zM28 12h4v1h-4zM35 12h2v1h-2zM40 12h1v1h-1zM3 13h2v1h-2zM9 13h3v1h-3zM13 13h2v1h-2zM16 13h1v1h-1zM19 13h4v1h-4zM24 13h1v1h-1zM28 13h1v1h-1zM31 13h1v1h-1zM33 13h3v1h-3zM37 13h3v1h-3zM41 13h1v1h-1zM2 14h3v1h-3zM6 14h1v1h-1zM8 14h1v1h-1zM12 14h2v1h-2zM18 14h2v1h-2zM23 14h1v1h-1zM25 14h2v1h-2zM28 14h2v1h-2zM31 14h1v1h-1zM34 14h4v1h-4zM3 15h2v1h-2zM6 15h2v1h-2zM11 15h2v1h-2zM14 15h1v1h-1zM19 15h4v1h-4zM31 15h1v1h-1zM33 15h1v1h-1zM38 15h1v1h-1zM41 15h1v1h-1zM3 16h1v1h-1zM5 16h4v1h-4zM10 16h1v1h-1zM13 16h3v1h-3zM18 16h1v1h-1zM20 16h3v1h-3zM24 16h4v1h-4zM29 16h1v1h-1zM35 16h2v1h-2zM38 16h2v1h-2zM42 16h1v1h-1zM2 17h1v1h-1zM4 17h1v1h-1zM10 17h1v1h-1zM12 17h2v1h-2zM15 17h1v1h-1zM17 17h1v1h-1zM22 17h1v1h-1zM25 17h1v1h-1zM30 17h1v1h-1zM33 17h1v1h-1zM35 17h1v1h-1zM37 17h6v1h-6zM3 18h3v1h-3zM7 18h4v1h-4zM13 18h1v1h-1zM16 18h1v1h-1zM24 18h1v1h-1zM27 18h1v1h-1zM29 18h2v1h-2zM33 18h1v1h-1zM35 18h1v1h-1zM42 18h1v1h-1zM3 19h3v1h-3zM7 19h1v1h-1zM9 19h1v1h-1zM12 19h2v1h-2zM18 19h2v1h-2zM21 19h3v1h-3zM29 19h1v1h-1zM33 19h3v1h-3zM38 19h1v1h-1zM40 19h1v1h-1zM2 20h1v1h-1zM4 20h2v1h-2zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM15 20h2v1h-2zM19 20h4v1h-4zM25 20h1v1h-1zM27 20h3v1h-3zM33 20h1v1h-1zM37 20h4v1h-4zM42 20h1v1h-1zM2 21h6v1h-6zM11 21h2v1h-2zM14 21h1v1h-1zM17 21h2v1h-2zM21 21h1v1h-1zM23 21h1v1h-1zM25 21h1v1h-1zM27 21h1v1h-1zM29 21h8v1h-8zM38 21h1v1h-1zM40 21h2v1h-2zM3 22h3v1h-3zM7 22h5v1h-5zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM20 22h2v1h-2zM23 22h1v1h-1zM25 22h1v1h-1zM27 22h1v1h-1zM35 22h2v1h-2zM41 22h1v1h-1zM2 23h4v1h-4zM7 23h1v1h-1zM11 23h1v1h-1zM13 23h1v1h-1zM15 23h3v1h-3zM19 23h1v1h-1zM21 23h1v1h-1zM24 23h3v1h-3zM32 23h2v1h-2zM35 23h1v1h-1zM37 23h3v1h-3zM2 24h2v1h-2zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h2v1h-2zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM22 24h4v1h-4zM27 24h1v1h-1zM29 24h1v1h-1zM32 24h1v1h-1zM35 24h1v1h-1zM37 24h1v1h-1zM40 24h1v1h-1zM3 25h2v1h-2zM11 25h1v1h-1zM13 25h1v1h-1zM15 25h1v1h-1zM17 25h3v1h-3zM21 25h1v1h-1zM26 25h1v1h-1zM28 25h1v1h-1zM30 25h6v1h-6zM39 25h1v1h-1zM41 25h2v1h-2zM2 26h2v1h-2zM6 26h3v1h-3zM11 26h1v1h-1zM13 26h1v1h-1zM15 26h2v1h-2zM18 26h1v1h-1zM21 26h2v1h-2zM24 26h3v1h-3zM30 26h1v1h-1zM34 26h3v1h-3zM38 26h2v1h-2zM42 26h1v1h-1zM2 27h3v1h-3zM6 27h2v1h-2zM12 27h1v1h-1zM15 27h1v1h-1zM18 27h3v1h-3zM25 27h1v1h-1zM27 27h4v1h-4zM32 27h1v1h-1zM34 27h5v1h-5zM40 27h2v1h-2zM6 28h1v1h-1zM8 28h2v1h-2zM11 28h1v1h-1zM14 28h1v1h-1zM16 28h2v1h-2zM21 28h2v1h-2zM29 28h2v1h-2zM32 28h3v1h-3zM39 28h1v1h-1zM42 28h1v1h-1zM3 29h1v1h-1zM5 29h1v1h-1zM7 29h1v1h-1zM10 29h3v1h-3zM17 29h1v1h-1zM21 29h2v1h-2zM24 29h2v1h-2zM28 29h2v1h-2zM32 29h2v1h-2zM37 29h6v1h-6zM2 30h1v1h-1zM5 30h1v1h-1zM8 30h2v1h-2zM17 30h1v1h-1zM19 30h1v1h-1zM22 30h1v1h-1zM27 30h1v1h-1zM29 30h1v1h-1zM31 30h1v1h-1zM33 30h1v1h-1zM36 30h2v1h-2zM39 30h1v1h-1zM2 31h1v1h-1zM4 31h3v1h-3zM10 31h1v1h-1zM12 31h1v1h-1zM14 31h2v1h-2zM17 31h1v1h-1zM19 31h2v1h-2zM22 31h1v1h-1zM25 31h2v1h-2zM28 31h1v1h-1zM31 31h2v1h-2zM36 31h1v1h-1zM38 31h2v1h-2zM2 32h2v1h-2zM5 32h6v1h-6zM13 32h1v1h-1zM15 32h2v1h-2zM22 32h4v1h-4zM27 32h1v1h-1zM30 32h1v1h-1zM32 32h2v1h-2zM35 32h1v1h-1zM40 32h1v1h-1zM42 32h1v1h-1zM2 33h4v1h-4zM7 33h1v1h-1zM10 33h2v1h-2zM20 33h1v1h-1zM26 33h2v1h-2zM29 33h2v1h-2zM33 33h2v1h-2zM36 33h2v1h-2zM39 33h3v1h-3zM2 34h3v1h-3zM6 34h4v1h-4zM13 34h2v1h-2zM16 34h1v1h-1zM19 34h1v1h-1zM24 34h1v1h-1zM28 34h1v1h-1zM30 34h11v1h-11zM10 35h2v1h-2zM15 35h1v1h-1zM18 35h4v1h-4zM25 35h3v1h-3zM29 35h2v1h-2zM33 35h2v1h-2zM38 35h3v1h-3zM2 36h7v1h-7zM10 36h1v1h-1zM13 36h2v1h-2zM16 36h2v1h-2zM23 36h1v1h-1zM25 36h1v1h-1zM27 36h1v1h-1zM29 36h1v1h-1zM31 36h4v1h-4zM36 36h1v1h-1zM38 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h1v1h-1zM16 37h2v1h-2zM20 37h1v1h-1zM22 37h1v1h-1zM27 37h1v1h-1zM31 37h1v1h-1zM34 37h1v1h-1zM38 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h2v1h-2zM14 38h1v1h-1zM16 38h4v1h-4zM23 38h3v1h-3zM27 38h1v1h-1zM29 38h1v1h-1zM31 38h8v1h-8zM40 38h1v1h-1zM42 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h4v1h-4zM15 39h2v1h-2zM18 39h1v1h-1zM20 39h1v1h-1zM22 39h3v1h-3zM28 39h1v1h-1zM30 39h2v1h-2zM34 39h1v1h-1zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM17 40h3v1h-3zM21 40h2v1h-2zM26 40h1v1h-1zM28 40h2v1h-2zM32 40h4v1h-4zM37 40h2v1h-2zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM11 41h2v1h-2zM16 41h1v1h-1zM19 41h3v1h-3zM24 41h3v1h-3zM29 41h2v1h-2zM34 41h1v1h-1zM36 41h1v1h-1zM38 41h3v1h-3zM42 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM14 42h1v1h-1zM16 42h3v1h-3zM20 42h1v1h-1zM22 42h1v1h-1zM24 42h4v1h-4zM30 42h1v1h-1zM33 42h2v1h-2zM38 42h1v1h-1z",
+    },
+  };
+  const HUONG_DAN_LOI = "Trợ lý nhân dân gửi đường link và mã QR công dân quét hoặc nhấp trực tiếp "
+    + "vào link để xem hướng dẫn làm thủ tục dịch vụ công trên Trợ lý nhân dân.";
+  const HUONG_DAN_CHO_MS = 15000;
+  // Đọc lời giới thiệu bị stop() (mute/ngắt lời) thì onDone không bắn → mốc dự phòng để không kẹt.
+  const HUONG_DAN_TOI_DA_MS = 45000;
+  let huongDanHen = null;
+  // Thủ tục đã hiện QR ở lượt xác nhận này. Rảnh tay mở mic trong 15s chờ → công dân nói gì đó thì BE
+  // hỏi lại câu xác nhận; không có cờ này QR sẽ hiện lặp. Rời bước xác nhận / về đầu thì xoá.
+  let huongDanDaHien = "";
+  function huyHuongDanHen() {
+    if (!huongDanHen) return;
+    clearTimeout(huongDanHen.cho);
+    clearTimeout(huongDanHen.toiDa);
+    huongDanHen = null;
+  }
+  function canHuongDanQr(d) {
+    return !d.replace_last && d.state === "confirm_procedure"
+      && !!HUONG_DAN_THU_TUC[d.procedure_key] && huongDanDaHien !== d.procedure_key
+      && (d.cards || []).some((c) => c.kind === "location_picker");
+  }
+  function hienHuongDanQr(d) {
+    huyHuongDanHen();
+    huongDanDaHien = d.procedure_key;
+    const hd = HUONG_DAN_THU_TUC[d.procedure_key];
+    const el = document.createElement("div");
+    el.className = "qr-card guide-qr";
+    const n = hd.qrSize;
+    el.innerHTML = `
+      <div class="guide-qr-t">${window.escapeHtml(HUONG_DAN_LOI)
+    .replace("đường link", "<b>đường link</b>")}</div>
+      <svg class="qr-img" viewBox="0 0 ${n} ${n}" role="img" aria-label="Mã QR xem hướng dẫn"
+        shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/>
+        <path d="${hd.qrPath}" fill="#000"/></svg>
+      <div class="guide-qr-actions">
+        <a class="guide-qr-link" href="${window.escapeHtml(hd.url)}" target="_blank"
+          rel="noopener noreferrer">Mở hướng dẫn</a>
+        <button type="button" class="guide-qr-skip" title="Bỏ qua hướng dẫn">Bỏ qua ➜</button>
+      </div>`;
+    addNode(el);
+    const hen = { cho: null, toiDa: null };
+    huongDanHen = hen;
+    const $skip = el.querySelector(".guide-qr-skip");
+    const hienXacNhan = () => {
+      if (huongDanHen !== hen) return;
+      huyHuongDanHen();
+      $skip?.remove();
+      renderReply(d, { sauHuongDan: true });
+    };
+    // Bỏ qua: cắt lời giới thiệu đang đọc, hiện ngay câu xác nhận thủ tục (không chờ 15s).
+    $skip?.addEventListener("click", () => {
+      if (huongDanHen !== hen) { $skip.remove(); return; }
+      markActivity();
+      stopReplyTts();
+      hienXacNhan();
+    });
+    const demCho = () => {
+      if (huongDanHen !== hen || hen.cho) return;
+      hen.cho = setTimeout(hienXacNhan, HUONG_DAN_CHO_MS);
+    };
+    hen.toiDa = setTimeout(hienXacNhan, HUONG_DAN_TOI_DA_MS);
+    if (voiceCfg.tts && !ttsMuted) {
+      stopReplyTts();
+      pauseMic(); // mic đang mở (rảnh tay) sẽ thu luôn tiếng loa đọc lời giới thiệu
+      window.__hccTTS?.speak?.(HUONG_DAN_LOI, "vi", demCho);
+    } else {
+      demCho();
+    }
+  }
+
   function renderReply(d, opts) {
+    // Lượt LIVE vừa chốt thủ tục có hướng dẫn → QR trước, câu xác nhận vẽ sau (hienHuongDanQr).
+    if (!opts?.noTts && !opts?.sauHuongDan && canHuongDanQr(d)) {
+      lastReplyData = d;
+      hienHuongDanQr(d);
+      return;
+    }
+    if (d.state && d.state !== "confirm_procedure") huongDanDaHien = "";
     lastReplyData = d;
     renderingLiveReply = !opts?.noTts; // khôi phục phiên (noTts) → renderDocOptions không tự chọn Scan
     if (d.lang) syncLangUI(d.lang); // BE là nguồn sự thật về chế độ tiếng Mông
@@ -4630,6 +4718,8 @@
       completionLogoutState = null;
       await writeCompletionLogoutState(null);
       stopIdleTracking();
+      huyHuongDanHen();
+      huongDanDaHien = "";
       stopVoice?.();
       stopReplyTts();
       setHandsfree?.(false);

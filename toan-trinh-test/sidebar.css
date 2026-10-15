@@ -984,6 +984,32 @@ body.settings-mode .bot-f { display: none; }
 .qr-cap span { color: var(--muted); font-weight: 400; }
 .qr-card .prog { width: 100%; align-self: auto; }
 .qr-stat { font-size: 11px; color: var(--muted); }
+/* QR hướng dẫn làm thủ tục (hiện trước câu xác nhận thủ tục) */
+.guide-qr { padding-bottom: 12px; }
+.guide-qr-t {
+  font-size: 13.5px; line-height: 1.45; font-weight: 600; color: #16352a; text-align: center;
+}
+.guide-qr-t b { font-weight: 800; color: #0f7a4f; }
+/* Hai nút cùng một hàng, cao bằng nhau. */
+.guide-qr-actions {
+  display: flex; align-items: stretch; justify-content: center; gap: 10px;
+  flex-wrap: wrap; width: 100%;
+}
+.guide-qr-actions > * { box-sizing: border-box; min-height: 40px; line-height: 1.2; }
+.guide-qr-skip {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 18px; border: 1px solid var(--line); border-radius: 999px;
+  background: #f4f7f5; color: #3d5a4d; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.guide-qr-skip:hover { background: #e7efea; }
+.guide-qr .qr-img { background: #fff; padding: 6px; box-sizing: border-box; }
+.guide-qr-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 22px; border-radius: 999px;
+  background: #0f7a4f; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none;
+  box-shadow: 0 2px 6px rgba(15, 122, 79, 0.25);
+}
+.guide-qr-link:hover { background: #0c6641; }
 
 /* ── Card tiến trình xử lý giấy tờ (OCR/LLM chạy 30–90s — cho công dân thấy máy đang làm gì) ── */
 .pipe-card {

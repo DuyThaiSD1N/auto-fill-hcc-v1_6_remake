@@ -28,3 +28,12 @@ test("câu xác nhận đi kèm card chọn nơi được đánh dấu để lư
   assert.match(sau.slice(0, 600),
     /d\.state === "confirm_procedure"[\s\S]*c\.kind === "location_picker"[\s\S]*dataset\.ask = "confirm-procedure"/);
 });
+
+test("đăng ký lại khai sinh: QR hướng dẫn hiện trước, câu xác nhận vẽ sau khi đọc xong + chờ", () => {
+  assert.match(sidebar, /"khai-sinh-dang-ky-lai":\s*\{\s*url: "https:\/\/drive\.google\.com\/file\/d\/1ObePKXQq2rS62F72ipMMmXVVS399rMs4\//);
+  assert.match(sidebar, /HUONG_DAN_CHO_MS = 15000/);
+  const dau = render.slice(0, render.indexOf("lastReplyData = d;", render.indexOf("return;")));
+  assert.match(dau, /!opts\?\.noTts && !opts\?\.sauHuongDan && canHuongDanQr\(d\)[\s\S]*hienHuongDanQr\(d\);\s*return;/);
+  assert.match(sidebar, /speak\?\.\(HUONG_DAN_LOI, "vi", demCho\)/);
+  assert.match(sidebar, /renderReply\(d, \{ sauHuongDan: true \}\)/);
+});
