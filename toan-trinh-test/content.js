@@ -207,6 +207,9 @@
           transition: transform .3s cubic-bezier(.4,0,.2,1);
           background: #fff; box-shadow: -8px 0 32px rgba(15,40,80,.14);
           display: block;
+          /* Hộp thoại Radix của cổng (vd "Xem tờ khai điện tử") đặt pointer-events:none lên body khi mở;
+             khung gắn trong body sẽ thừa hưởng → mọi nút Trợ lý bấm không ăn. Đặt tường minh để không kế thừa. */
+          pointer-events: auto;
         }
         :host(.open) { transform: translateX(0); }
         iframe { width:100%; height:100%; border:0; display:block; background:#fff; }

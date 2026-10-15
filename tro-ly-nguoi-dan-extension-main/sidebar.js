@@ -2775,6 +2775,7 @@
       // nền thì cán bộ bấm "Đã đưa đủ" ngay là cache chưa kịp ghi → vẫn phải tải.
       await cacheUploadedBlobs(uploadSid, files, data?.accepted);
       if (data?.progress) renderDocProgress(data.progress, { preserveScroll: !$fileListScrim?.hidden });
+      if (data?.progress && source === "picker") announceFilesReceived(data.progress);
       if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
       const unknown = (data?.accepted || []).filter((a) => !a.doc_key).length;
       if (unknown) addBotMd(`⚠️ **${unknown} tệp** em chưa nhận ra loại — công dân scan lại rõ hơn hoặc cứ bấm "Đã đưa đủ" để em xử lý phần nhận được ạ.`);
@@ -3018,6 +3019,31 @@
       try { stopReplyTts(); } catch (_) { /* ignore */ }
       window.__hccTTS?.speak?.(tts, hmPack ? "hmong" : "vi");
     }
+  }
+
+  // Tệp về từ ĐIỆN THOẠI (WS progress) hoặc CHỌN TỆP: CHỈ NÓI "em đã nhận N tệp mà công dân gửi lên nhé", không chèn
+  // chữ vào chat (danh sách giấy tờ đã hiện số tệp). Chỉ nói khi số tệp TĂNG (WS bắn progress cả lúc
+  // phân loại xong, không được đọc lặp). Máy quét đã có thẻ + lời riêng (renderScanFeedback).
+  let filesAnnouncedSid = "";
+  let filesAnnouncedCount = 0;
+  let filesAnnounceTtsTimer = null;
+  function announceFilesReceived(p) {
+    if (!p || !uploadSid) return;
+    if (filesAnnouncedSid !== uploadSid) { filesAnnouncedSid = uploadSid; filesAnnouncedCount = 0; }
+    const n = Number(p.files_count ?? p.received) || 0;
+    if (n <= filesAnnouncedCount) { filesAnnouncedCount = n; return; } // xoá bớt tệp → hạ mốc, không báo
+    filesAnnouncedCount = n;
+    if (document.getElementById("scan-feedback-card")) return;
+    // Điện thoại gửi nhiều ảnh liền nhau → gom, chỉ đọc con số cuối.
+    if (filesAnnounceTtsTimer) clearTimeout(filesAnnounceTtsTimer);
+    filesAnnounceTtsTimer = setTimeout(() => {
+      filesAnnounceTtsTimer = null;
+      if (!voiceCfg?.tts || ttsMuted) return;
+      try { stopReplyTts(); } catch (_) { /* ignore */ }
+      // Câu chỉ có tiếng Việt → đọc giọng Việt (giọng đi theo ngôn ngữ của chữ, không theo chế độ).
+      const lang = "vi";
+      window.__hccTTS?.speak?.(`Em đã nhận ${filesAnnouncedCount} tệp mà công dân gửi lên nhé.`, lang);
+    }, 800);
   }
 
   // Lightbox phóng to ảnh — click nền hoặc Esc để đóng.
@@ -3400,6 +3426,7 @@
           ask("__event:mobile_connected", "system");
         } else if (d.type === "progress") {
           renderDocProgress(d, { preserveScroll: !$fileListScrim?.hidden });
+          if (scanUploadingRel.size === 0) announceFilesReceived(d); // tệp máy quét đã có thẻ riêng
           if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
           // Kéo ngầm NGAY khi tệp về, trong lúc công dân còn đang chụp tệp sau → tới bước đính
           // thì phần lớn đã nằm sẵn trên máy, không phải ngồi chờ tải.
