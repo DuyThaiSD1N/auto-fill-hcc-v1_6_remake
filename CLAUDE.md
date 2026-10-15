@@ -107,6 +107,9 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-10-15, sau commit "update BE mới" 1563676 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`11 failed, 2659 passed, 39 skipped, 3 errors` — 4 `test_heic_to_jpeg` + 7 test v2 trả 422, cùng nguyên nhân môi trường như dưới.
+
 Baseline ngày 2026-10-12, sau commit "thay BE mới" 8b35314 (máy local, plugin win_socketpair, chưa đặt
 PYTHONUTF8): `15 failed, 2400 passed, 38 skipped, 3 errors`. Cả 15 đỏ là môi trường, chạy trong image Docker đều pass:
 4 `test_heic_to_jpeg` (local thiếu `pillow-heif`), 4 `test_mobile_send_queue` (cp1252; có `PYTHONUTF8=1` thì pass),

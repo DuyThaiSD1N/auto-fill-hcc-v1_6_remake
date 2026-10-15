@@ -201,6 +201,9 @@
   // Ô có cờ `lookup` (vd họ tên + số định danh + ngày sinh người mất ở khai tử) kích hoạt API tra cứu CSDL dân
   // cư của cổng: điền xong nhóm đó thì chờ cổng tra, ô nào cổng vừa tự đổ thì không ghi đè.
   const LOOKUP_WAIT_MS = 2500;
+  // Cổng tra CSDL có khi trả về SAU LOOKUP_WAIT_MS rồi đổ lại cả khối giấy tờ người mất: ô CSDL không có (vd
+  // ngày cấp CCCD) bị xoá trắng sau khi đã điền → chờ thêm, ghi lại ô đã điền mà nay trống.
+  const LOOKUP_REFILL_MS = [1500, 3000];
 
   async function setValues(fields) {
     const survey = findSurvey();
@@ -239,6 +242,18 @@
         if (r.ok && (field.comp === "sjs-dropdown" || field.comp === "sjs-radio")) await sleep(250);
       } catch (e) {
         results.push({ name: field.name, ok: false, reason: String(e?.message || e) });
+      }
+    }
+    if (lookupDone) {
+      const written = fields.filter((f) => !f.lookup && f.comp !== "sjs-area" &&
+        results.some((r) => r.name === f.name && r.ok && !r.kept));
+      for (const ms of LOOKUP_REFILL_MS) {
+        await sleep(ms);
+        for (const field of written) {
+          const q = findQuestion(survey, field.name);
+          if (!q || q.isReadOnly || !q.isEmpty?.()) continue;
+          try { await setOne(survey, field); } catch { /* lượt sau thử lại */ }
+        }
       }
     }
     return { ok: true, results };
