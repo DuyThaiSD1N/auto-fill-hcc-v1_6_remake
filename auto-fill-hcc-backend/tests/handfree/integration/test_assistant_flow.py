@@ -2493,6 +2493,138 @@ async def test_bo_sung_o_trong_cong_chan_xem_truoc_va_trang_tu_sang_buoc_3(monke
 
 
 @pytest.mark.asyncio
+async def test_bo_sung_o_cong_dan_tu_bam_xem_truoc():
+    conv = _fr_conv()
+    await _turn(conv, "__event:fields_ready")
+    await _turn(conv, '__action:fill_report:{"filled":20,"review":{"filled":20,"optional":0,"required":0}}')
+    await _turn(conv, "__action:field_review_preview")
+    await _turn(conv, '__action:field_review_preview_report:{"opened":false,"message":"","stats":null}')
+    assert conv["field_review"]["status"] == "done"
+
+    # Công dân tự bấm "Xem trước" trên cổng → trang báo bản xem trước vừa mở → sang bước Xác nhận.
+    r = await _turn(conv, '__action:field_review_preview_report:{"opened":true,"source":"page"}')
+    assert conv["field_review"]["status"] == "previewed"
+    assert _sends(r)[0] == "__action:field_review_confirm"
+
+    # Trang báo trùng (đóng rồi mở lại bản xem trước) → im, không nói lại.
+    r = await _turn(conv, '__action:field_review_preview_report:{"opened":true,"source":"page"}')
+    assert not r.display_md and not r.chips and conv["field_review"]["status"] == "previewed"
+
+
+def _next_step_conv(state="done", capable=True):
+    conv = _conv()
+    conv.update({"procedure_key": "khai-sinh-dang-ky-lai", "state": state,
+                 "client_capabilities": {"supportsGuidedSteps": capable}})
+    return conv
+
+
+@pytest.mark.parametrize("said", ["sang bước nhận kết quả", "Bước tiếp theo đi.", "chuyển sang bước tiếp theo",
+                                  "em ơi qua bước sau giúp chị"])
+@pytest.mark.parametrize("state", ["reviewing", "attaching", "done"])
+def test_noi_sang_buoc_tiep_o_thanh_phan_ho_so_la_bam_buoc_tiep_theo(said, state):
+    # Trước đây LLM xếp "sang bước nhận kết quả" vào new_procedure → reset cả hồ sơ.
+    intent = flow.next_step_by_voice(_next_step_conv(state), said, {"wizardStep": 3})
+    assert intent == Intent("action", "voice_next_step", {"phase": "attachment"})
+
+
+@pytest.mark.parametrize("said,page,capable", [
+    ("nhận kết quả qua bưu điện", {"wizardStep": 3}, True),     # chọn cách nhận, không phải chuyển bước
+    ("chưa sang bước tiếp theo", {"wizardStep": 3}, True),      # phủ định
+    ("sang bước nhận kết quả", {"wizardStep": 4}, True),        # đã ở bước nhận kết quả
+    ("sang bước nhận kết quả", {"wizardStep": 2}, True),        # kê khai: đi bằng Xem trước / Xác nhận
+    ("sang bước nhận kết quả", {}, True),                       # không biết trang đang ở đâu
+    ("sang bước nhận kết quả", {"wizardStep": 3}, False),       # extension chưa biết bấm hộ
+])
+def test_noi_sang_buoc_tiep_khong_bat_nham(said, page, capable):
+    assert flow.next_step_by_voice(_next_step_conv(capable=capable), said, page) is None
+
+
+@pytest.mark.asyncio
+async def test_noi_sang_buoc_tiep_bam_hop_roi_bao_ket_qua():
+    conv = _next_step_conv()
+    r = await flow.handle_turn(conv, Intent("action", "voice_next_step", {"phase": "attachment"}))
+    assert r.actions == [{"type": "guided_click_next", "phase": "attachment", "expectStep": 4}]
+    assert "Thông tin nhận kết quả" in r.display_md and conv["state"] == "done"
+
+    r = await _turn(conv, '__action:guided_step_report:{"phase":"attachment","ok":true,"message":"","wizardStep":4}')
+    assert "✓ Đã sang **Thông tin nhận kết quả**" in r.display_md and "Gửi hồ sơ" in r.display_md
+
+    r = await _turn(conv, '__action:guided_step_report:{"phase":"attachment","ok":false,'
+                          '"message":"Vui lòng đính kèm đủ hồ sơ","wizardStep":3}')
+    assert "chưa cho sang bước tiếp theo" in r.display_md and "Vui lòng đính kèm đủ hồ sơ" in r.display_md
+
+
+@pytest.mark.asyncio
+async def test_sang_buoc_nhan_ket_qua_bang_loi_hien_the_chon_cach_nhan():
+    # Thủ tục tư pháp CHƯA bật dẫn từng bước (đăng ký lại khai sinh) mà extension gạt được công tắc.
+    conv = _next_step_conv()
+    conv["client_capabilities"]["supportsResultMethod"] = True
+    r = await _turn(conv, '__action:guided_step_report:{"phase":"attachment","ok":true,"message":"","wizardStep":4}')
+    # Hiện thẻ nhưng KHÔNG tự chọn/gạt cách nào — công dân tự chọn.
+    assert r.cards[0]["kind"] == "result_methods" and r.cards[0]["selected"] == ""
+    assert not r.actions and conv["result_method"] == ""
+    assert "chọn **một** cách nhận kết quả" in r.display_md
+
+    r = await _turn(conv, '__action:pick_result_method:{"method":"online"}')
+    assert r.cards[0]["selected"] == "online" and conv["result_method"] == "online"
+    r = await _turn(conv, '__action:result_method_report:{"method":"online","ok":true}')
+    assert "Đã chọn" in r.display_md
+
+    # Bấm Gửi hồ sơ trong khung chat → trợ lý bấm nút của cổng, nói đã gửi.
+    r = await _turn(conv, "__action:guided_submit")
+    assert r.actions[0]["type"] == "guided_submit" and "Gửi hồ sơ" in r.display_md
+
+    # Báo cáo gạt công tắc đến MUỘN sau khi đã gửi → không được nói "Đã chọn …".
+    conv["submit_clicked_at"] = datetime.now(timezone.utc)
+    r = await _turn(conv, '__action:result_method_report:{"method":"online","ok":true}')
+    assert not r.display_md and not r.cards
+
+
+@pytest.mark.asyncio
+async def test_dinh_kem_xong_noi_sang_buoc_nhan_ket_qua_kem_nut():
+    conv = _next_step_conv(state="attaching")
+    conv["procedure_key"] = "ket-hon"
+    conv["client_capabilities"]["supportsResultMethod"] = True
+    conv["attach_plan"] = [{"fileIndex": 0, "documentName": "CCCD", "componentName": "CCCD"}]
+    r = await _turn(conv, '__action:attach_report:{"attached": 2, "errors": []}')
+    assert conv["state"] == "done"
+    assert "để sang **Thông tin nhận kết quả**" in r.display_md and "Nộp hồ sơ" not in r.display_md
+    assert _sends(r) == ["__action:add_documents", "__action:guided_next"]
+    assert r.chips[-1]["phase"] == "attachment"
+
+    # Bấm nút đó = lệnh nói "bước tiếp theo": bấm hộ nút của cổng.
+    r = await _turn(conv, '__action:guided_next:{"phase":"attachment"}')
+    assert r.actions == [{"type": "guided_click_next", "phase": "attachment", "expectStep": 4}]
+
+
+@pytest.mark.parametrize("said,expect", [
+    ("gửi hồ sơ", "voice_submit_hint"), ("nộp hồ sơ đi", "voice_submit_hint"),
+    ("nhận kết quả bản giấy", None), ("chưa gửi hồ sơ", None),
+])
+def test_noi_gui_ho_so_o_buoc_nhan_ket_qua_chi_nhac_tu_bam(said, expect):
+    intent = flow.next_step_by_voice(_next_step_conv(), said, {"wizardStep": 4})
+    assert (intent.value if intent else None) == expect
+
+
+@pytest.mark.asyncio
+async def test_nhac_tu_bam_gui_ho_so():
+    conv = _next_step_conv()
+    conv["client_capabilities"]["supportsResultMethod"] = True
+    r = await flow.handle_turn(conv, Intent("action", "voice_submit_hint"))
+    assert "tự bấm **Gửi hồ sơ**" in r.display_md and not r.actions  # KHÔNG tự nộp
+    assert _sends(r) == ["__action:guided_submit"]
+
+
+@pytest.mark.asyncio
+async def test_xem_truoc_ngoai_vong_bo_sung_o_thi_im():
+    conv = _fr_conv(capable=False)
+    await _turn(conv, "__event:fields_ready")
+    assert "field_review" not in conv
+    r = await _turn(conv, '__action:field_review_preview_report:{"opened":true,"source":"page"}')
+    assert not r.display_md and not r.chips and not r.actions
+
+
+@pytest.mark.asyncio
 async def test_bo_sung_o_xa_khong_tai_duoc_danh_sach():
     conv = _fr_conv()
     await _turn(conv, "__event:fields_ready")

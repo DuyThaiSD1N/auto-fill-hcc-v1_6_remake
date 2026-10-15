@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from app.channels.handfree.chat import procedure_picker, store
-from app.channels.handfree.procedure_registry import get_procedure, procedure_code, public_list
+from app.channels.handfree.procedure_registry import procedure_code, public_list
 from app.services.llm.client import chat as llm_chat
 
 _CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
@@ -166,8 +166,39 @@ _STATE_INTENTS: dict[str, list[dict]] = {
 # Lệnh dùng được ở MỌI state.
 _GLOBAL_INTENTS: list[dict] = [
     {"kind": "action", "value": "new_procedure",
-     "desc": "muốn bỏ thủ tục đang làm, chọn thủ tục khác mà CHƯA nêu tên thủ tục mới (nêu tên → kind procedure)"},
+     "desc": "muốn bỏ thủ tục đang làm, chọn thủ tục khác mà CHƯA nêu tên thủ tục mới (nêu tên → kind procedure). "
+             "KHÔNG phải câu xin sang bước tiếp theo / bước nhận kết quả của hồ sơ đang làm"},
 ]
+
+# ── "Sang bước tiếp theo" bằng lời ──
+# Câu xin chuyển bước trên cổng ("sang bước nhận kết quả", "bước tiếp theo đi"). Phải tất định: LLM từng
+# xếp "sang bước nhận kết quả" vào new_procedure → reset cả hồ sơ đang làm. Bắt buộc có chữ "bước"/"tiếp
+# theo" — "nhận kết quả qua bưu điện" ở bước 4 là chọn cách nhận, không phải chuyển bước.
+_NEXT_STEP_RE = re.compile(
+    r"(?:^|\s)(?:buoc tiep|tiep theo|buoc sau|buoc nhan ket qua"
+    r"|(?:sang|qua|chuyen|toi|den|tiep)\s+(?:sang\s+|qua\s+)?buoc)(?:\s|$)"
+)
+# Không tính "đừng": bỏ dấu thành "dung", trùng "đúng".
+_NEXT_STEP_NEGATION_RE = re.compile(r"(?:^|\s)(?:khong|chua|khoan|thoi)(?:\s|$)")
+_NEXT_STEP_MAX_WORDS = 12
+
+
+def asks_next_step(text: str) -> bool:
+    said = " ".join(re.findall(r"[a-z0-9]+", fold(str(text or ""))))
+    if not said or len(said.split()) > _NEXT_STEP_MAX_WORDS:
+        return False
+    return bool(_NEXT_STEP_RE.search(said)) and not _NEXT_STEP_NEGATION_RE.search(said)
+
+
+# "Gửi hồ sơ / nộp hồ sơ / gửi đi" ở bước Thông tin nhận kết quả (flow chỉ nhắc công dân tự bấm).
+_SUBMIT_RE = re.compile(r"(?:^|\s)(?:gui|nop)\s+(?:ho so|di|luon|nhe|giup)(?:\s|$)")
+
+
+def asks_submit(text: str) -> bool:
+    said = " ".join(re.findall(r"[a-z0-9]+", fold(str(text or ""))))
+    if not said or len(said.split()) > _NEXT_STEP_MAX_WORDS:
+        return False
+    return bool(_SUBMIT_RE.search(said)) and not _NEXT_STEP_NEGATION_RE.search(said)
 
 
 def _resolve_machine(message: str) -> Intent | None:
@@ -464,59 +495,6 @@ def _free_text_unknown() -> Intent:
     return Intent("unknown", payload={"free_text": True})
 
 
-# ── Trả lời câu hỏi lại "thủ tục A hay B?" ──
-# Công dân thường chỉ nói PHẦN RIÊNG của tên ("liên thông", "đối tượng bảo trợ") hoặc thứ tự ("cái thứ
-# hai"). Nhận tất định những câu chắc chắn; còn lại để agent chọn thủ tục ghép với gợi ý như cũ.
-_CANDIDATE_MAX_WORDS = 15          # câu dài thường kể chuyện, để LLM hiểu
-_ORDINAL_MAX_WORDS = 6             # "tôi là con thứ hai trong nhà" không phải chọn thứ tự
-_CANDIDATE_NEGATION_RE = re.compile(r"(?:^|\s)(?:khong|chua|thoi)(?:\s|$)")
-_CANDIDATE_FILLER = {"thu", "tuc", "cho", "va", "cua", "lam", "cai"}
-_ORDINAL_RE = [
-    (0, re.compile(r"(?:^|\s)(?:thu nhat|thu 1|so 1|dau tien|cai dau|cai truoc)(?:\s|$)")),
-    (1, re.compile(r"(?:^|\s)(?:thu hai|thu 2|so 2)(?:\s|$)")),
-    (2, re.compile(r"(?:^|\s)(?:thu ba|thu 3|so 3)(?:\s|$)")),
-    (-1, re.compile(r"(?:^|\s)(?:cuoi|cuoi cung|cai sau|sau cung)(?:\s|$)")),
-]
-
-
-def _name_words(proc: dict) -> list[str]:
-    name = proc.get("shortLabel") or proc.get("label") or ""
-    return [w for w in re.findall(r"[a-z0-9]+", fold(name)) if w not in _CANDIDATE_FILLER]
-
-
-def match_candidate_procedure(text: str, candidates: list[dict]) -> str:
-    """Câu trả lời cho câu hỏi lại → key thủ tục, hoặc "" khi chưa chắc (để LLM xử).
-
-    Thứ tự: nói đủ cả tên một thủ tục ("đăng ký khai sinh" ⊂ chỉ bản đơn lẻ, vì bản liên thông còn
-    chữ "liên thông") → nói phần riêng của tên ("liên thông") → nói thứ tự ("cái thứ hai"). Câu có
-    phủ định ("không phải liên thông") luôn để LLM hiểu.
-    """
-    said = fold(_strip_answer(text))
-    words = said.split()
-    if not words or len(words) > _CANDIDATE_MAX_WORDS or len(candidates) < 2:
-        return ""
-    if _CANDIDATE_NEGATION_RE.search(said):
-        return ""
-    said_words = set(re.findall(r"[a-z0-9]+", said))
-    names = [_name_words(p) for p in candidates]
-    full = [p["key"] for p, name in zip(candidates, names) if name and set(name) <= said_words]
-    if len(full) == 1:
-        return full[0]
-    hits = []
-    for i, (proc, name) in enumerate(zip(candidates, names)):
-        others = {w for j, other in enumerate(names) if j != i for w in other}
-        own = set(name) - others
-        if own and len(own & said_words) >= min(2, len(own)):
-            hits.append(proc["key"])
-    if len(hits) == 1:
-        return hits[0]
-    if not hits and len(words) <= _ORDINAL_MAX_WORDS:
-        for index, pattern in _ORDINAL_RE:
-            if pattern.search(said) and -len(candidates) <= index < len(candidates):
-                return candidates[index]["key"]
-    return ""
-
-
 async def _pick_procedure(text: str, conv: dict) -> Intent | None:
     """Agent chọn thủ tục → Intent. None = câu không nói về thủ tục nào."""
     res = await procedure_picker.pick(text, conv)
@@ -640,10 +618,6 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     # (2) Màn chào / vừa gợi ý thủ tục: gần như mọi câu là chọn thủ tục → agent chọn thủ tục trước,
     # chỉ câu không nói về thủ tục mới sang bộ phân loại (1 lượt LLM cho trường hợp thường gặp).
     if state == "greet" or conv.get("procedure_candidates"):
-        shown = [p for k in conv.get("procedure_candidates") or [] if (p := get_procedure(str(k)))]
-        matched = match_candidate_procedure(text, shown)
-        if matched:
-            return Intent("pick_procedure", matched)
         picked = await _pick_procedure(text, conv)
         if picked is not None:
             return picked

@@ -106,15 +106,33 @@
   const PREVIEW_TEXTS = ["xem truoc"];
   // Hộp thoại Radix là position:fixed → offsetParent luôn null, isVisible() coi là ẩn. Xét theo khung hiển thị.
   const shown = (el) => !!el && el.getClientRects().length > 0;
-  const previewDialog = () => Array.from(document.querySelectorAll('[role="dialog"]'))
-    .find((el) => shown(el) && fold(el.textContent).includes("xem to khai"));
+  // Tiêu đề thường là "Xem tờ khai điện tử"; nhận cả "Xem trước tờ khai" và alertdialog cho bản cổng khác.
+  const isPreviewTitle = (text) => text.includes("xem to khai")
+    || (text.includes("xem truoc") && text.includes("to khai"));
+  const previewDialog = () => Array.from(document.querySelectorAll('[role="dialog"],[role="alertdialog"]'))
+    .find((el) => shown(el) && isPreviewTitle(fold(el.textContent)));
 
   async function openPreview(button) {
     const watched = await pressAndWatch(button);
-    // Cổng dựng bản xem trước (PDF) mất vài giây; còn ô bắt buộc trống thì không mở, chỉ nháy toast.
-    for (let i = 0; i < 30 && !previewDialog(); i++) await sleep(250);
+    // Cổng dựng bản xem trước (PDF) có lúc quá 10 giây → chờ tới ~20 giây. Cổng đã nháy toast chặn (còn
+    // ô bắt buộc trống) thì bản xem trước sẽ không mở → chỉ chờ thêm ~3 giây rồi báo.
+    const limit = watched.message ? 12 : 80;
+    for (let i = 0; i < limit && !previewDialog(); i++) await sleep(250);
     return { ok: true, opened: !!previewDialog(), message: previewDialog() ? "" : watched.message };
   }
+
+  // Bản xem trước VỪA MỞ (trợ lý bấm hay công dân tự bấm "Xem trước") → báo sidebar để trợ lý sang bước
+  // Xác nhận. Chỉ báo lúc chuyển từ đóng sang mở; frame nào có hộp thoại thì frame đó báo.
+  let previewWasOpen = false;
+  setInterval(() => {
+    const open = !!previewDialog();
+    if (open && !previewWasOpen) {
+      try {
+        chrome.runtime.sendMessage({ action: "declarationPreviewSeen" }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload → bỏ qua */ }
+    }
+    previewWasOpen = open;
+  }, 800);
 
   async function confirmPreview(dialog) {
     const button = Array.from(dialog.querySelectorAll("button"))

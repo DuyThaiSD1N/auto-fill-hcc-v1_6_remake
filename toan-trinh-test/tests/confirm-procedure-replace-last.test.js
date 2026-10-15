@@ -35,7 +35,13 @@ test("đăng ký lại khai sinh: QR hướng dẫn hiện trước, câu xác n
   const dau = render.slice(0, render.indexOf("lastReplyData = d;", render.indexOf("return;")));
   assert.match(dau, /!opts\?\.noTts && !opts\?\.sauHuongDan && canHuongDanQr\(d\)[\s\S]*hienHuongDanQr\(d\);\s*return;/);
   assert.match(sidebar, /speak\?\.\(HUONG_DAN_LOI, "vi", demCho\)/);
-  assert.match(sidebar, /renderReply\(d, \{ sauHuongDan: true \}\)/);
+  assert.match(sidebar, /renderReply\(d, \{ sauHuongDan: true, imLang: daMoHuongDan \}\)/);
+});
+
+test("bấm Mở hướng dẫn: câu xác nhận vẫn hiện nhưng không đọc; bỏ qua / chờ 15s thì đọc như thường", () => {
+  assert.match(sidebar, /\.guide-qr-link"\)\?\.addEventListener\("click", \(\) => \{\s*daMoHuongDan = true;/);
+  assert.match(render, /else if \(!opts\?\.imLang && !duplicateLogoutChoice && d\.tts_text && voiceCfg\.tts\)/);
+  assert.match(render, /const willSpeak = [^;]*!opts\?\.imLang;/);
 });
 
 test("QR hướng dẫn có đủ các thủ tục tư pháp, mỗi thủ tục đúng link Drive", () => {

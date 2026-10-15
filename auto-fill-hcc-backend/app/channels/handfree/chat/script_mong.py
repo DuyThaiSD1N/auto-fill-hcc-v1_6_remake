@@ -1136,6 +1136,37 @@ GUIDED_RESULT_SUBMIT_HINT = {
     "tts": " Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ kuv xa ntaub ntawv.",
 }
 
+# "Sang bước tiếp theo" bằng lời ở Thành phần hồ sơ — ghép từ các câu Mông đã dùng ở trên
+# (GUIDED_ATTACH_DONE, GUIDED_RESULT_PICK, GUIDED_OWNER_MISSING), tên bước viết thẳng trong câu.
+VOICE_NEXT_STEP = {
+    "md": "Kuv pab hloov mus rau Thông tin nhận kết quả.",
+    "tts": "Kuv pab hloov mus rau Thông tin nhận kết quả.",
+}
+VOICE_NEXT_STEP_DONE = {
+    "md": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xaiv txoj kev txais txiaj ntsig, "
+          "zoo lawm ces nias Gửi hồ sơ.",
+    "tts": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xaiv txoj kev txais txiaj ntsig, "
+           "zoo lawm ces nias Gửi hồ sơ.",
+}
+ATTACH_DONE_NEXT_STEP = {
+    "md": ("Kuv muab {attached} daim tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob "
+           "hauv qab no, kuv pab hloov mus rau Thông tin nhận kết quả."),
+    "tts": ("Kuv muab tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob hauv qab no, "
+            "kuv pab hloov mus rau Thông tin nhận kết quả."),
+}
+VOICE_RESULT_CHOOSE = {
+    "md": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li cas ne?",
+    "tts": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li cas ne?",
+}
+VOICE_SUBMIT_SELF = {
+    "md": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
+    "tts": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
+}
+VOICE_NEXT_STEP_BLOCKED = {
+    "md": "Nplooj ntawv tseem tsis tau mus kauj ruam tom ntej. Pej xeem xyuas dua ces nias mus kauj ruam tom ntej.",
+    "tts": "Nplooj ntawv tseem tsis tau mus kauj ruam tom ntej. Pej xeem xyuas dua ces nias mus kauj ruam tom ntej.",
+}
+
 GUIDED_RESULT_PICKED = {
     "md": "Kuv twb xaiv txoj kev txais txiaj ntsig rau saum nplooj ntawv lawm.",
     "tts": "Kuv twb xaiv txoj kev txais txiaj ntsig rau saum nplooj ntawv lawm.",

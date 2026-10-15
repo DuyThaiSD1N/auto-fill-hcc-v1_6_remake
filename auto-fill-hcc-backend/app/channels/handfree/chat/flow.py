@@ -645,7 +645,10 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
     # Tách nhiều hồ sơ: các tab tách chạy khung hồ sơ phụ CHỈ ĐỌC — không nói chuyện với BE nên
     # không bao giờ nhận lệnh select_result_method của hồ sơ chính. Gửi sẵn lệnh gạt mặc định
     # theo đây để khung phụ tự gạt trên chính trang của nó khi tới bước nhận kết quả.
-    if action["mode"] == "split" and guided.result_methods_enabled(conv, proc):
+    # Chỉ thủ tục bật dẫn từng bước: profile tư pháp khai resultMethods cho mọi thủ tục 4 bước, nhưng
+    # tab tách của thủ tục chưa bật vẫn giữ như cũ (công dân tự chọn cách nhận trên trang).
+    if (action["mode"] == "split" and guided.enabled(conv, proc)
+            and guided.result_methods_enabled(conv, proc)):
         default = guided.default_result_method(proc) or {}
         result_action = guided.select_result_method_action(proc, str(default.get("key") or ""))
         if result_action:
@@ -1011,6 +1014,9 @@ async def _handle_turn_inner(
         "guide_login", "choose_mae_dialog", "owner_waiting_next", "attaching"
     ) and not business_page_status and not guided_page_status:
         return Reply()
+    voice_next = await _voice_next_step(conv, current_proc, intent, guided_on)
+    if voice_next is not None:
+        return voice_next
     if guided_on:
         # Đổi bước mà KHÔNG bấm nút của trợ lý (công dân tự bấm nút cuối trang cổng) vẫn phải
         # được hướng dẫn tiếp. Watcher trang gửi page_status khi chữ ký trang đổi.
@@ -1175,6 +1181,11 @@ async def _handle_turn_inner(
             review_reply = _handle_field_review(conv, current_proc, intent)
             if review_reply is not None:
                 return review_reply
+    if (not review_stop and intent.kind in ("action", "event")
+            and intent.value == "field_review_preview_report"):
+        # Trang báo bản xem trước mở khi không có vòng bổ sung ô (công dân tự bấm ngoài vòng) → im,
+        # đừng để handler của bước coi là câu lạ.
+        return Reply()
     handler = _HANDLERS.get(state, _handle_greet)
     result = handler(conv, intent)
     if asyncio.iscoroutine(result):  # một số handler cần I/O (tạo phiên QR, chạy pipeline...)
@@ -1276,13 +1287,10 @@ def _procedure_unclear(conv: dict, keys: list) -> Reply:
     conv["procedure_candidates"] = [p["key"] for p in procs]
     names = [p.get("shortLabel") or p["label"] for p in procs]
     r = Reply(*_fmt(vi.PROCEDURE_UNCLEAR,
-                    options_md=" hay ".join(f"**{n}**" for n in names),
-                    options_tts=", hay ".join(names)))
+                    options_md="\n".join(f"- **{n}**" for n in names),
+                    options_tts=" hay ".join(names)))
     r.chips = [{"label": n, "send": "__action:pick_procedure:" + json.dumps({"key": p["key"]})}
                for p, n in zip(procs, names)]
-    # Câu hỏi chờ công dân NÓI tên thủ tục: đọc xong tự mở mic một lượt, không bắt phải bấm nút.
-    # Câu trả lời đi qua intents.resolve → match_candidate_procedure trước, agent chọn thủ tục sau.
-    r.actions = [{"type": "listen_after_tts"}]
     return r
 
 
@@ -3136,6 +3144,10 @@ def _pick_result_method_reply(conv: dict, proc: dict, intent: Intent) -> Reply:
 def _result_method_report_reply(conv: dict, proc: dict, intent: Intent) -> Reply:
     """FE báo kết quả gạt công tắc. Không gạt được thì nói thẳng để công dân tự gạt — im lặng
     là họ ngồi chờ một cú bấm không bao giờ xảy ra."""
+    if conv.get("submit_clicked_at") or conv.get("submitted_completed"):
+        # Báo cáo gạt công tắc đến MUỘN sau khi hồ sơ đã gửi → "✓ Đã chọn …" lúc này là sai chuyện,
+        # lời đúng là "đã gửi/nộp hồ sơ" (đường submit_clicked / submitted lo).
+        return Reply()
     key = str(intent.payload.get("method") or conv.get("result_method") or "")
     method = guided.result_method(proc, key) or {}
     label = str(method.get("label") or "")
@@ -3161,6 +3173,94 @@ def _result_method_report_reply(conv: dict, proc: dict, intent: Intent) -> Reply
     r.cards = [guided.result_methods_card(proc, key)]
     r.chips = [guided.submit_cta_chip()]
     return r
+
+
+def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> Intent | None:
+    """Câu NÓI về chuyển bước trên wizard cổng → lệnh tất định. None = không phải / không đúng trang
+    → bộ phân loại như thường.
+
+    - Thành phần hồ sơ + "sang bước tiếp theo / bước nhận kết quả" → bấm hộ "Bước tiếp theo".
+    - Thông tin nhận kết quả + "gửi hồ sơ / nộp hồ sơ" → chỉ NHẮC công dân tự bấm (nộp hồ sơ không chạy
+      bằng lời, xem _VOICE_BLOCKED_SENDS). Không bắt thì bộ phân loại khớp nhầm câu này vào nút cách
+      nhận kết quả đang hiện → trợ lý báo "Đã chọn …" ngay lúc công dân muốn gửi.
+
+    Router gọi TRƯỚC bộ phân loại LLM: LLM từng xếp "sang bước nhận kết quả" vào new_procedure → reset
+    cả hồ sơ. Chỉ nhận theo trang thật (wizardStep sidebar gửi kèm lượt nói), không theo state: đính
+    kèm tay trên cổng thì state vẫn có thể là reviewing/done.
+    """
+    from app.channels.handfree.chat.intents import asks_next_step, asks_submit
+
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if not proc.get("wizard"):
+        return None
+    # Extension phải biết bấm hộ nút chuyển bước (action guided_click_next).
+    if (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is not True:
+        return None
+    step = _docs_page_context(page_context)["wizardStep"]
+    if not step:
+        return None
+    if step == _wizard_step(proc, "attachmentStep", 3) and asks_next_step(message):
+        return Intent("action", "voice_next_step", {"phase": guided.ATTACHMENT})
+    if step == _wizard_step(proc, "resultStep", 4) and asks_submit(message):
+        return Intent("action", "voice_submit_hint")
+    return None
+
+
+# Lượt của bước Thông tin nhận kết quả (chọn cách nhận, gửi hồ sơ). Thủ tục chưa bật dẫn từng bước
+# vẫn tới được bước này bằng lệnh nói "sang bước tiếp theo" → đi chung đường với bản dẫn từng bước.
+_RESULT_STEP_ACTIONS = {"pick_result_method", "result_method_report", "guided_submit", "guided_submit_report"}
+
+
+def _voice_steps_on(conv: dict, proc: dict) -> bool:
+    """Thủ tục wizard tư pháp CHƯA bật dẫn từng bước nhưng vẫn chuyển bước được bằng nút trong khung chat
+    / bằng lời (extension bấm hộ được nút cổng + thủ tục khai cách nhận kết quả)."""
+    return (not guided.enabled(conv, proc) and not tpm.is_active(proc) and bool(proc.get("wizard"))
+            and bool(guided.result_methods(proc))
+            and (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True)
+
+
+def _result_choose_reply(conv: dict, proc: dict) -> Reply:
+    """Sang Thông tin nhận kết quả (thủ tục chưa bật dẫn từng bước): hiện thẻ cách nhận, KHÔNG gạt sẵn
+    cách nào — công dân tự chọn, trợ lý chỉ gạt đúng công tắc công dân chọn."""
+    conv["result_method"] = ""
+    r = Reply(*_fmt(vi.VOICE_RESULT_CHOOSE, **guided.step_labels(proc)))
+    r.cards = [guided.result_methods_card(proc, "")]
+    return r
+
+
+async def _voice_next_step(conv: dict, proc: dict, intent: Intent, guided_on: bool) -> Reply | None:
+    """Lệnh nói chuyển bước + báo cáo cú bấm đó (thủ tục chưa bật luồng dẫn từng bước; thủ tục đã bật
+    thì báo cáo đi đường _handle_guided_action như cú bấm nút)."""
+    if intent.kind != "action":
+        return None
+    labels = guided.step_labels(proc)
+    # Nút "Xong, sang bước nhận kết quả →" sau lời báo đính kèm xong = cùng việc với lệnh nói.
+    nut_sang_buoc = (intent.value == "guided_next" and not guided_on
+                     and str(intent.payload.get("phase") or "") == guided.ATTACHMENT)
+    if intent.value == "voice_next_step" or nut_sang_buoc:
+        r = Reply(*_fmt(vi.VOICE_NEXT_STEP, **labels))
+        r.actions = [guided.click_next_action(proc, guided.ATTACHMENT)]
+        return r
+    if intent.value == "voice_submit_hint":
+        r = Reply(*_fmt(vi.VOICE_SUBMIT_SELF, **labels))
+        # Nút Gửi hồ sơ trong khung chat chỉ khi có đường xử lý cú bấm đó (guided_submit).
+        if guided_on or guided.result_methods_enabled(conv, proc):
+            r.chips = [guided.submit_cta_chip()]
+        return r
+    if guided_on:
+        return None
+    if (intent.value == "guided_step_report"
+            and str(intent.payload.get("phase") or "") == guided.ATTACHMENT):
+        if not intent.payload.get("ok"):
+            return Reply(*_fmt(vi.VOICE_NEXT_STEP_BLOCKED,
+                               portal_message=_portal_says(intent.payload.get("message"))))
+        if guided.result_methods_enabled(conv, proc):
+            _say_once(conv, "guided_result")
+            return _result_choose_reply(conv, proc)  # thẻ chọn cách nhận, chưa chọn sẵn cách nào
+        return Reply(*_fmt(vi.VOICE_NEXT_STEP_DONE, **labels))
+    if intent.value in _RESULT_STEP_ACTIONS and guided.result_methods_enabled(conv, proc):
+        return await _handle_guided_action(conv, proc, intent)
+    return None
 
 
 async def _handle_guided_action(conv: dict, proc: dict, intent: Intent) -> Reply | None:
@@ -4062,6 +4162,10 @@ def _handle_field_review(conv: dict, proc: dict, intent: Intent) -> Reply | None
         return r
     if name == "field_review_preview_report":
         if payload.get("opened"):
+            # Trang báo bản xem trước vừa mở (công dân tự bấm "Xem trước") trùng lúc đã ở bước xem
+            # trước / đang xác nhận → câu đó đã nói rồi, im.
+            if status in ("previewed", "confirming"):
+                return Reply()
             review["status"] = "previewed"
             r = Reply(*_fmt(vi.FIELD_REVIEW_PREVIEW_OPENED))
             r.chips = [guided.field_review_confirm_chip(),
@@ -4288,6 +4392,13 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # chặt tab của sidebar nên nó luôn chuyển đúng hồ sơ ở tab gốc; các tab tách không có
         # khung lái nên công dân tự bấm trên trang, và câu thoại phải nói rõ điều đó.
         guided_step = guided.enabled(conv, proc_done)
+        # Thủ tục tư pháp chưa bật dẫn từng bước nhưng chuyển bước được bằng nút/lời: đính xong thì chỉ
+        # sang bước nhận kết quả (kèm nút), không bảo "tự bấm Nộp hồ sơ" khi cổng còn một bước nữa.
+        step_by_voice = (not guided_step and _voice_steps_on(conv, proc_done) and not errors
+                         and not (attached == 0 and skipped > 0) and conv.get("attach_mode") != "split")
+        if step_by_voice:
+            r = Reply(*_fmt(vi.ATTACH_DONE_NEXT_STEP, note=recap,
+                            **{**recap_kw, "attached": attached, **guided.step_labels(proc_done)}))
         if guided_step and not errors and not (attached == 0 and skipped > 0):
             guided_kw = {"attached": attached, **guided.step_labels(proc_done)}
             if recap:
@@ -4302,7 +4413,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # Thứ tự: sửa giấy tờ trước, nút chuyển bước xuống cuối — nó tràn ngang và nổi bật nên
         # đứng cuối mới không át nút còn lại.
         r.chips = [_supplement_documents_chip()]
-        if guided_step:
+        if guided_step or step_by_voice:
             r.chips.append(guided.attach_cta_chip())
         # Không bắt công dân bấm thêm nút hoàn thành. state=done bật watcher; khi cổng báo
         # nộp thành công, event submitted sẽ hiển thị lời chốt rồi tự về màn bắt đầu.

@@ -120,7 +120,7 @@ test("nút của vòng bổ sung có màu theo nghĩa (tone do BE gắn), tên l
 test("Kê khai: bấm Xem trước (kiểm chữ, id #xem-truoc-to-khai) rồi Xác nhận trong hộp thoại 'Xem tờ khai điện tử'", () => {
   const guided = strip(fs.readFileSync(path.join(root, "content", "guided-steps.js"), "utf8"));
   assert.match(guided, /const PREVIEW_SELECTORS = \["#xem-truoc-to-khai", 'button\[data-e2e="btn-next"\]'\];/);
-  assert.match(guided, /fold\(el\.textContent\)\.includes\("xem to khai"\)/);
+  assert.match(guided, /text\.includes\("xem to khai"\)/);
   assert.match(guided, /fold\(el\.textContent\) === "xac nhan"/);
   // Frame không có trang Kê khai thì im.
   assert.match(guided, /if \(!previewButton && !dialog\) return;/);
@@ -138,5 +138,20 @@ test("bước chủ hồ sơ: chờ cổng đổ xong dữ liệu tài khoản v
 test("bản xem trước là hộp thoại position:fixed → nhận theo khung hiển thị, không theo offsetParent", () => {
   const guided = strip(fs.readFileSync(path.join(root, "content", "guided-steps.js"), "utf8"));
   assert.match(guided, /const shown = \(el\) => !!el && el\.getClientRects\(\)\.length > 0;/);
-  assert.match(guided, /\.find\(\(el\) => shown\(el\) && fold\(el\.textContent\)\.includes\("xem to khai"\)\);/);
+  assert.match(guided, /\.find\(\(el\) => shown\(el\) && isPreviewTitle\(fold\(el\.textContent\)\)\);/);
+});
+
+test("bản xem trước mở (công dân tự bấm Xem trước, hoặc mở muộn) → trang báo sidebar, sidebar báo BE đã mở", () => {
+  const guided = strip(fs.readFileSync(path.join(root, "content", "guided-steps.js"), "utf8"));
+  // Cổng dựng PDF có lúc quá 10s: chưa thấy toast chặn thì chờ ~20s.
+  assert.match(guided, /const limit = watched\.message \? 12 : 80;/);
+  // Chỉ báo lúc chuyển đóng → mở.
+  assert.match(guided, /if \(open && !previewWasOpen\) \{[\s\S]*?action: "declarationPreviewSeen"/);
+  // Sidebar: đúng tab, trợ lý đang tự bấm thì không báo trùng, chỉ ở bước tờ khai.
+  const nghe = sidebar.slice(sidebar.indexOf('message?.action !== "declarationPreviewSeen"'));
+  assert.match(nghe, /Number\(sender\?\.tab\?\.id\) !== Number\(TAB_ID\)/);
+  assert.match(nghe, /if \(previewByAssistant\) \{ previewSeenWhileAssistant = true; return; \}/);
+  assert.match(nghe, /\["reviewing", "attaching"\]\.includes\(lastState\)/);
+  assert.match(sidebar, /__action:field_review_preview_report:\$\{JSON\.stringify\(\{ opened: true, source: "page" \}\)\}/);
+  assert.match(sidebar, /if \(!res\?\.opened && previewSeenWhileAssistant\) reportPreviewSeen\(\);/);
 });

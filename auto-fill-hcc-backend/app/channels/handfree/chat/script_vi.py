@@ -35,8 +35,10 @@ CONFIRM_PROCEDURE_WITH_LOCATION = {
         "Đúng → bấm **Đồng ý**. Chưa đúng → chọn lại bên dưới → bấm **Đồng ý**."
     ),
     "tts": (
+        # Đọc dòng hướng dẫn trên màn hình: mũi tên đầu câu đọc "thì", mũi tên sau đọc "rồi". Thêm "Nếu":
+        # "…đúng không ạ? Đúng thì…" hai chữ "đúng" sát nhau làm giọng đọc nghe như bị lắp.
         "Dạ, công dân làm thủ tục {procedure}, tại {ward}, {province}, {subject}, đúng không ạ? "
-        "Đúng thì bấm Đồng ý."
+        "Nếu đúng thì bấm Đồng ý. Nếu chưa đúng thì chọn lại bên dưới rồi bấm Đồng ý."
     ),
 }
 
@@ -61,11 +63,10 @@ PROCEDURE_NOT_RECOGNIZED = {
     "tts": "Dạ, em chưa nhận ra thủ tục. Công dân chọn trong danh sách, hoặc nói lại tên ạ.",
 }
 
-# Câu gõ/nói hợp với nhiều thủ tục → hỏi lại bằng tên từng thủ tục, đọc xong tự mở mic nghe công
-# dân nói tên (nút gợi ý vẫn hiện bên dưới). options_* là tên thủ tục lấy từ registry ("A hay B").
+# Câu gõ/nói hợp với nhiều thủ tục → hỏi lại kèm nút gợi ý. options_* là tên thủ tục lấy từ registry.
 PROCEDURE_UNCLEAR = {
-    "md": "Dạ, công dân muốn làm thủ tục {options_md} ạ?\n\nCông dân **nói tên thủ tục**, hoặc bấm chọn bên dưới.",
-    "tts": "Dạ, công dân muốn làm thủ tục {options_tts} ạ? Công dân nói tên thủ tục giúp em.",
+    "md": "Dạ, công dân cần thủ tục nào ạ?\n\n{options_md}",
+    "tts": "Dạ, có phải {options_tts} không ạ? Công dân bấm chọn giúp em.",
 }
 
 # Thủ tục đặc thù tỉnh (provinceOnly) mà tài khoản đang đăng nhập ở tỉnh khác → không mở được.
@@ -1393,6 +1394,38 @@ GUIDED_ATTACH_SPLIT_DONE = {
 
 GUIDED_ATTACH_CTA = "Xong, sang bước nhận kết quả →"
 GUIDED_SUBMIT_CTA = "📨 Gửi hồ sơ"
+
+# Công dân NÓI "sang bước tiếp theo / bước nhận kết quả" ở trang Thành phần hồ sơ → trợ lý bấm hộ
+# "Bước tiếp theo" (kể cả thủ tục chưa bật luồng dẫn từng bước).
+VOICE_NEXT_STEP = {
+    "md": "Em bấm **Bước tiếp theo** sang **{result_step}** ạ…",
+    "tts": "Dạ, em chuyển sang bước {result_step} ạ.",
+}
+VOICE_NEXT_STEP_DONE = {
+    "md": "✓ Đã sang **{result_step}**. Công dân chọn cách nhận kết quả trên trang, rồi bấm **{submit_label}** ạ.",
+    "tts": "Dạ, đã sang bước {result_step}. Công dân chọn cách nhận kết quả, rồi bấm {submit_label} ạ.",
+}
+# Thủ tục tư pháp chưa bật dẫn từng bước: đính kèm xong → sang bước nhận kết quả (nút hoặc nói), chưa nộp.
+ATTACH_DONE_NEXT_STEP = {
+    "md": ("✓ Đã đính **{attached} tệp**.\n\n"
+           "Công dân rà lại → bấm nút dưới (hoặc nói **“bước tiếp theo”**) để sang **{result_step}** ạ."),
+    "tts": "Dạ, em đính kèm xong. Công dân xem lại, rồi bấm nút bên dưới để sang bước {result_step} ạ.",
+}
+# Đã sang Thông tin nhận kết quả: hiện thẻ, KHÔNG chọn sẵn — công dân tự chọn.
+VOICE_RESULT_CHOOSE = {
+    "md": "✓ Đã vào **{result_step}**. Công dân chọn **một** cách nhận kết quả bên dưới (bấm hoặc nói tên) ạ.",
+    "tts": "Dạ, đã sang bước {result_step}. Công dân chọn một cách nhận kết quả bên dưới ạ.",
+}
+# Công dân NÓI "gửi hồ sơ" ở bước Thông tin nhận kết quả: nộp hồ sơ không chạy bằng lời → nhắc tự bấm.
+VOICE_SUBMIT_SELF = {
+    "md": "Dạ, công dân kiểm tra lại rồi tự bấm **{submit_label}** giúp em ạ.",
+    "tts": "Dạ, công dân kiểm tra lại, rồi tự bấm {submit_label} giúp em ạ.",
+}
+VOICE_NEXT_STEP_BLOCKED = {
+    "md": "⚠️ Trang chưa cho sang bước tiếp theo ạ.{portal_message}\n\n"
+          "Công dân kiểm tra lại trang, rồi bấm **Bước tiếp theo** giúp em.",
+    "tts": "Dạ, trang chưa cho sang bước tiếp theo. Công dân kiểm tra lại, rồi bấm Bước tiếp theo giúp em ạ.",
+}
 
 # ── Tư pháp luồng mới: trang nộp MỘT TRANG của Cổng DVC quốc gia (chat/tu_phap_moi.py) ──
 # Form, thành phần hồ sơ và hình thức nhận kết quả nằm cùng một trang: không có câu "chuyển

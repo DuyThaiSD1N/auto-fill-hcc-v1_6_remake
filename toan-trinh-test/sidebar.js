@@ -782,11 +782,14 @@
     const hen = { cho: null, toiDa: null };
     huongDanHen = hen;
     const $skip = el.querySelector(".guide-qr-skip");
+    // Đã bấm "Mở hướng dẫn" → công dân đang xem video ở tab khác: câu xác nhận vẫn hiện nhưng KHÔNG đọc,
+    // kẻo đè tiếng video. Bỏ qua / chờ đủ 15s mà chưa mở hướng dẫn thì đọc như thường.
+    let daMoHuongDan = false;
     const hienXacNhan = () => {
       if (huongDanHen !== hen) return;
       huyHuongDanHen();
       $skip?.remove();
-      renderReply(d, { sauHuongDan: true });
+      renderReply(d, { sauHuongDan: true, imLang: daMoHuongDan });
     };
     // Bỏ qua: cắt lời giới thiệu đang đọc, hiện ngay câu xác nhận thủ tục (không chờ 15s).
     $skip?.addEventListener("click", () => {
@@ -799,6 +802,14 @@
       if (huongDanHen !== hen || hen.cho) return;
       hen.cho = setTimeout(hienXacNhan, HUONG_DAN_CHO_MS);
     };
+    // Mở hướng dẫn: cắt lời giới thiệu đang đọc (stop() không bắn onDone → tự đếm 15s từ lúc bấm).
+    el.querySelector(".guide-qr-link")?.addEventListener("click", () => {
+      daMoHuongDan = true;
+      if (huongDanHen !== hen) return;
+      markActivity();
+      stopReplyTts();
+      demCho();
+    });
     hen.toiDa = setTimeout(hienXacNhan, HUONG_DAN_TOI_DA_MS);
     if (voiceCfg.tts && !ttsMuted) {
       stopReplyTts();
@@ -874,10 +885,11 @@
     // Câu hỏi cần công dân trả lời ngay (vd hỏi từng ô còn trống): đọc xong tự mở mic MỘT lượt,
     // kể cả khi không bật Rảnh tay.
     const listenAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "listen_after_tts");
-    const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted;
+    const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted && !opts?.imLang;
     // noTts: render lại reply CŨ khi khôi phục phiên — không đọc lại câu đã đọc rồi.
+    // imLang: lượt live nhưng không đọc (công dân đang xem video hướng dẫn) — mic đi như khi tắt TTS.
     if (opts?.noTts) { /* bỏ đọc */ }
-    else if (!duplicateLogoutChoice && d.tts_text && voiceCfg.tts) {
+    else if (!opts?.imLang && !duplicateLogoutChoice && d.tts_text && voiceCfg.tts) {
       // Mặc định chuyển bước là CẮT câu cũ, để bot không đọc hướng dẫn đã hết hiệu lực.
       // Hai trường hợp xếp hàng thay vì cắt:
       //   1. fill_report đến ngay sau action điền form — nó là phần tiếp nối của fields_ready,
@@ -1273,20 +1285,44 @@
 
   // Kê khai eForm tư pháp (vòng bổ sung ô): bấm "Xem trước" rồi báo BE. Cổng không mở bản xem trước khi còn ô
   // bắt buộc trống — lúc đó chấm đỏ hiện trong tờ khai, tô lại để BE biết còn mấy ô đỏ.
+  // Trợ lý đang tự bấm Xem trước → tín hiệu "bản xem trước vừa mở" của trang là của cú bấm này, không báo trùng.
+  let previewByAssistant = false;
+  let previewSeenWhileAssistant = false;
   async function runDeclarationPreview(required) {
-    setStatus("Đang mở xem trước tờ khai…");
-    const res = await sendToContent({ action: "declarationPreview" });
-    let stats = null;
-    if (!res?.opened) {
-      await new Promise((r) => setTimeout(r, 400)); // chấm đỏ của cổng hiện sau cú bấm một nhịp
-      const marked = await sendToContent({ action: "fieldReviewMark", required });
-      stats = marked?.stats || null;
+    previewByAssistant = true;
+    previewSeenWhileAssistant = false;
+    try {
+      setStatus("Đang mở xem trước tờ khai…");
+      const res = await sendToContent({ action: "declarationPreview" });
+      let stats = null;
+      if (!res?.opened) {
+        await new Promise((r) => setTimeout(r, 400)); // chấm đỏ của cổng hiện sau cú bấm một nhịp
+        const marked = await sendToContent({ action: "fieldReviewMark", required });
+        stats = marked?.stats || null;
+      }
+      setStatus("");
+      await ask(`__action:field_review_preview_report:${JSON.stringify({
+        opened: !!res?.opened, message: res?.message || "", stats,
+      })}`, "system");
+      // Cổng mở bản xem trước MUỘN, sau lúc trợ lý đã báo chưa mở được → báo lại là đã mở.
+      if (!res?.opened && previewSeenWhileAssistant) reportPreviewSeen();
+    } finally {
+      previewByAssistant = false;
     }
-    setStatus("");
-    await ask(`__action:field_review_preview_report:${JSON.stringify({
-      opened: !!res?.opened, message: res?.message || "", stats,
-    })}`, "system");
   }
+  function reportPreviewSeen() {
+    void ask(`__action:field_review_preview_report:${JSON.stringify({ opened: true, source: "page" })}`, "system");
+  }
+  // Công dân TỰ bấm "Xem trước" trên trang (hoặc bản xem trước mở muộn) → trợ lý cũng nhận ra và sang bước
+  // Xác nhận. Chỉ ở bước tờ khai; BE tự im nếu đã ở bước xem trước/xác nhận hoặc không có vòng bổ sung ô.
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.action !== "declarationPreviewSeen") return;
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return;
+    if (previewByAssistant) { previewSeenWhileAssistant = true; return; }
+    if (!["reviewing", "attaching"].includes(lastState)) return;
+    markActivity();
+    reportPreviewSeen();
+  });
 
   // Bấm "Xác nhận" trong bản xem trước rồi đối chiếu thanh bước: sang Thành phần hồ sơ thật mới báo được.
   async function runDeclarationConfirm(expect) {

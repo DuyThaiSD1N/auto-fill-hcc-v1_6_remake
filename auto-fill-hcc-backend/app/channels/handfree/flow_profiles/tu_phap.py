@@ -86,6 +86,19 @@ TU_PHAP_FLOW: dict = {
         "attachmentStepLabel": "Thành phần hồ sơ",
         "resultStepLabel": "Thông tin nhận kết quả",
         "submitLabel": "Gửi hồ sơ",
+        # Bước Thông tin nhận kết quả của cổng tư pháp 4 bước: cùng ba công tắc (nhãn kiểm trên cổng
+        # thật với chứng thực bản sao 24/09/2026, khớp cả kết hôn / đăng ký lại khai sinh 15/10/2026).
+        # Thủ tục chưa bật dẫn từng bước vẫn dùng: công dân nói "sang bước tiếp theo" ở Thành phần hồ
+        # sơ thì trợ lý bấm hộ rồi hiện thẻ chọn cách nhận này. Ý nghĩa các khóa: xem chung-thuc-ban-sao.
+        "resultMethods": [
+            {"key": "paper", "label": "Nhận kết quả bản giấy có đóng dấu", "icon": "📄",
+             "desc": "Nhận bản giấy có đóng dấu của cơ quan.", "default": True},
+            {"key": "online", "label": "Nhận kết quả trực tuyến", "icon": "🌐",
+             "desc": "Nhận bản điện tử ngay trên hệ thống."},
+            {"key": "postal", "label": "Dịch vụ bưu chính công ích", "icon": "📮",
+             "desc": "Nhân viên bưu điện sẽ đến địa chỉ trả kết quả để trả hồ sơ.",
+             "needsInput": True},
+        ],
     },
     "ownerInfo": {
         "enabled": True,

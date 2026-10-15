@@ -46,6 +46,12 @@
       out = out.replace(/ {2,}/g, " ");
       return out.trim();
     }
+    // Mũi tên (giọng đọc bỏ qua hoặc đọc sai): mũi tên đầu mỗi câu đọc "thì", các mũi tên sau đọc "rồi" —
+    // "Chưa đúng → chọn lại bên dưới → bấm Đồng ý" = "Chưa đúng thì chọn lại bên dưới rồi bấm Đồng ý".
+    out = out.replace(/[^.!?\n]+/g, (cau) => {
+      let thu = 0;
+      return cau.replace(/\s*(?:→|->|⇒|=>)\s*/g, () => (thu++ === 0 ? " thì " : " rồi "));
+    });
     out = out.replace(/(\d{1,3}(?:\.\d{3})+)/g, (m) => m.replace(/\./g, ""));
     out = out.replace(/(\d{1,3}(?:,\d{3})+)/g, (m) => m.replace(/,/g, ""));
     out = out.replace(/(\d+)\s*(đồng|vnđ|VNĐ|đ)\b/gi, (_, num) => numberToVietnamese(parseInt(num)) + " đồng");

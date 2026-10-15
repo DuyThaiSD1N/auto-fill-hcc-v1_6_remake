@@ -351,6 +351,12 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             )
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
+        # "Sang bước tiếp theo / bước nhận kết quả" ở trang Thành phần hồ sơ → bấm hộ nút chuyển bước,
+        # TRƯỚC bộ phân loại LLM (LLM từng hiểu câu này là đổi thủ tục → reset hồ sơ).
+        if intent is None and message and not message.startswith("__"):
+            intent = flow.next_step_by_voice(
+                conv, message, req.client_context.page_context if req.client_context else None,
+            )
         if intent is None:
             intent = await intents.resolve(message, conv.get("state", "greet"), conv)
         reply = await flow.handle_turn(
