@@ -463,6 +463,11 @@
   async function ask(message, source = "text", displayText = "", uiOptions = {}) {
     const userInitiated = source === "text" || source === "voice" || source === "chip";
     if (userInitiated) markActivity();
+    // Đang hiện QR hướng dẫn mà công dân nói/gõ "bỏ qua" → như bấm nút Bỏ qua, không gửi BE.
+    if ((source === "voice" || source === "text") && huongDanHen?.boQua && laCauBoQua(message)) {
+      huongDanHen.boQua();
+      return;
+    }
     // Công dân nói/bấm tiếp trong lúc chờ hướng dẫn QR → câu xác nhận đang hẹn đã lỗi thời.
     if (userInitiated) huyHuongDanHen();
     if (busy) {
@@ -767,7 +772,14 @@
     if (!huongDanHen) return;
     clearTimeout(huongDanHen.cho);
     clearTimeout(huongDanHen.toiDa);
+    huongDanHen.$skip?.remove();
     huongDanHen = null;
+  }
+  // "Bỏ qua", "bỏ qua đi", "bỏ qua hướng dẫn"… — câu ngắn có cụm "bỏ qua" (ASR hay thêm dấu câu).
+  function laCauBoQua(text) {
+    const t = String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/gi, "d").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").trim().replace(/\s+/g, " ");
+    return /(^| )bo qua( |$)/.test(t) && t.split(" ").length <= 5;
   }
   function canHuongDanQr(d) {
     return !d.replace_last && d.state === "confirm_procedure"
@@ -793,28 +805,47 @@
         <button type="button" class="guide-qr-skip" title="Bỏ qua hướng dẫn">Bỏ qua ➜</button>
       </div>`;
     addNode(el);
-    const hen = { cho: null, toiDa: null };
+    const hen = { cho: null, toiDa: null, $skip: el.querySelector(".guide-qr-skip") };
     huongDanHen = hen;
-    const $skip = el.querySelector(".guide-qr-skip");
-    // Đã bấm "Mở hướng dẫn" → công dân đang xem video ở tab khác: câu xác nhận vẫn hiện nhưng KHÔNG đọc,
-    // kẻo đè tiếng video. Bỏ qua / chờ đủ 15s mà chưa mở hướng dẫn thì đọc như thường.
+    // Câu "Dạ, công dân làm…" + card nơi làm hiện NGAY dưới QR (chưa đọc) → công dân làm tiếp được luôn,
+    // không phải chờ hết hướng dẫn hay bấm Bỏ qua. Câu đó đọc sau: Bỏ qua / chờ đủ 15s.
+    renderReply(d, { sauHuongDan: true, imLang: true, choHuongDan: true });
+    // Đã bấm "Mở hướng dẫn" → công dân đang xem video ở tab khác: KHÔNG đọc câu xác nhận, kẻo đè tiếng video.
     let daMoHuongDan = false;
-    const hienXacNhan = () => {
+    const docXacNhan = () => {
       if (huongDanHen !== hen) return;
       huyHuongDanHen();
-      $skip?.remove();
-      renderReply(d, { sauHuongDan: true, imLang: daMoHuongDan });
+      if (daMoHuongDan || !d.tts_text || !voiceCfg.tts || ttsMuted) return;
+      const listenAfter = (d.actions || []).some((a) => a.type === "listen_after_tts");
+      stopReplyTts();
+      pauseMic(); // mic đang nghe "bỏ qua" sẽ thu luôn tiếng loa đọc câu xác nhận
+      replyTtsInFlight += 1;
+      window.__hccTTS?.speak?.(d.tts_text, d.tts_lang || "vi", () => {
+        replyTtsInFlight = Math.max(0, replyTtsInFlight - 1);
+        if ((handsfree || listenAfter) && replyTtsInFlight === 0) listenWhenQuiet();
+      });
     };
-    // Bỏ qua: cắt lời giới thiệu đang đọc, hiện ngay câu xác nhận thủ tục (không chờ 15s).
-    $skip?.addEventListener("click", () => {
-      if (huongDanHen !== hen) { $skip.remove(); return; }
+    // Bỏ qua (bấm nút hoặc nói "bỏ qua"): cắt lời giới thiệu đang đọc, đọc ngay câu xác nhận (không chờ 15s).
+    hen.boQua = () => {
+      if (huongDanHen !== hen) return;
       markActivity();
       stopReplyTts();
-      hienXacNhan();
+      docXacNhan();
+    };
+    hen.$skip?.addEventListener("click", () => {
+      if (huongDanHen !== hen) { hen.$skip.remove(); return; }
+      hen.boQua();
     });
     const demCho = () => {
       if (huongDanHen !== hen || hen.cho) return;
-      hen.cho = setTimeout(hienXacNhan, HUONG_DAN_CHO_MS);
+      hen.cho = setTimeout(docXacNhan, HUONG_DAN_CHO_MS);
+    };
+    // Đọc xong lời giới thiệu → mở mic (kể cả không bật Rảnh tay) nghe công dân nói "bỏ qua"
+    // hoặc trả lời luôn câu xác nhận đang hiện bên dưới.
+    const sauLoiGioiThieu = () => {
+      if (huongDanHen !== hen) return;
+      demCho();
+      listenWhenQuiet();
     };
     // Mở hướng dẫn: cắt lời giới thiệu đang đọc (stop() không bắn onDone → tự đếm 15s từ lúc bấm).
     el.querySelector(".guide-qr-link")?.addEventListener("click", () => {
@@ -824,13 +855,13 @@
       stopReplyTts();
       demCho();
     });
-    hen.toiDa = setTimeout(hienXacNhan, HUONG_DAN_TOI_DA_MS);
+    hen.toiDa = setTimeout(docXacNhan, HUONG_DAN_TOI_DA_MS);
     if (voiceCfg.tts && !ttsMuted) {
       stopReplyTts();
       pauseMic(); // mic đang mở (rảnh tay) sẽ thu luôn tiếng loa đọc lời giới thiệu
-      window.__hccTTS?.speak?.(HUONG_DAN_LOI, "vi", demCho);
+      window.__hccTTS?.speak?.(HUONG_DAN_LOI, "vi", sauLoiGioiThieu);
     } else {
-      demCho();
+      sauLoiGioiThieu();
     }
   }
 
@@ -902,6 +933,7 @@
     const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted && !opts?.imLang;
     // noTts: render lại reply CŨ khi khôi phục phiên — không đọc lại câu đã đọc rồi.
     // imLang: lượt live nhưng không đọc (công dân đang xem video hướng dẫn) — mic đi như khi tắt TTS.
+    // choHuongDan: vẽ cùng lúc với QR hướng dẫn — chưa mở mic, hienHuongDanQr mở sau lời giới thiệu.
     if (opts?.noTts) { /* bỏ đọc */ }
     else if (!opts?.imLang && !duplicateLogoutChoice && d.tts_text && voiceCfg.tts) {
       // Mặc định chuyển bước là CẮT câu cũ, để bot không đọc hướng dẫn đã hết hiệu lực.
@@ -929,7 +961,7 @@
         // Nếu còn câu nối tiếp trong hàng đợi thì chưa mở mic, tránh ASR barge-in cắt câu sau.
         if ((handsfree || listenAfter) && !completionReturnTimer && replyTtsInFlight === 0) listenWhenQuiet();
       });
-    } else if (handsfree || listenAfter) {
+    } else if ((handsfree || listenAfter) && !opts?.choHuongDan) {
       // Lượt không có lời đọc (tts tắt, hoặc lượt hệ thống im lặng giữa lúc câu trước còn đang đọc).
       listenWhenQuiet();
     }
@@ -5065,6 +5097,7 @@
   // làm mic nghỉ một nhịp, vòng canh ensureMic tự mở lại khi bot đang chờ công dân nói.
   let micErrors = 0;       // lỗi kết nối liên tiếp → chờ lâu dần trước khi mở lại
   let pendingListen = false; // câu hỏi cần nghe ngay (listen_after_tts) mà bot còn đang nói / thao tác
+  let micHuyCau = false; // bấm ✕ khung nghe → bỏ câu đang nói dở: partial/final về muộn không đổ vào ô nhập
   let micRetryAt = 0;
   let micStartedAt = 0;
   let micLastEventAt = 0;
@@ -5230,6 +5263,8 @@
     if (label) setStatus(label); else setStatus("");
   }
   document.getElementById("vp-close")?.addEventListener("click", () => {
+    micHuyCau = true;
+    $input.value = "";
     if (handsfree) setHandsfree(false); else stopVoice();
   });
 
@@ -5239,6 +5274,7 @@
     if (document.body.classList.contains("settings-mode") || !voiceCfg.asr || voiceListening) return;
     stopReplyTts(); // đang đọc mà mở mic = ngắt lời (barge-in)
     pendingListen = false;
+    micHuyCau = false;
     micStartedAt = micLastEventAt = Date.now();
     setMicUI(true, "Đang kết nối micro…", true);
     const accessToken = await window.tlndAuth?.getAccessToken?.();
@@ -5402,11 +5438,13 @@
         if (handsfree) ensureMic();
       }
     } else if (msg.event === "partial") {
+      if (micHuyCau) return;
       $input.value = msg.text || "";
       if ($vpInterim) $vpInterim.textContent = msg.text ? `“${msg.text}…”` : "";
     } else if (msg.event === "final") {
       setMicUI(false);
       $input.value = "";
+      if (micHuyCau) return;
       const text = (msg.text || "").trim();
       if (startByVoice) {
         startByVoice = false;

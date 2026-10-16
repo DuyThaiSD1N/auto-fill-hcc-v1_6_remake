@@ -27,8 +27,12 @@ test("setMicUI: đang nghe thì hiện khung, tắt thì ẩn khung và trả v�
   assert.match(js, /if \(\$vpInterim\) \$vpInterim\.textContent = msg\.text/);
 });
 
-test("nút ✕ tắt micro (đang rảnh tay thì tắt cả rảnh tay)", () => {
-  assert.match(js, /getElementById\("vp-close"\)\?\.addEventListener\("click", \(\) => \{\s*if \(handsfree\) setHandsfree\(false\); else stopVoice\(\);/);
+test("nút ✕ tắt micro (đang rảnh tay thì tắt cả rảnh tay), xoá luôn câu đang nói dở", () => {
+  assert.match(js, /getElementById\("vp-close"\)\?\.addEventListener\("click", \(\) => \{\s*micHuyCau = true;\s*\$input\.value = "";\s*if \(handsfree\) setHandsfree\(false\); else stopVoice\(\);/);
+  // partial/final về muộn sau ✕ không đổ chữ xuống ô nhập, không gửi đi
+  assert.match(js, /msg\.event === "partial"\) \{\s*if \(micHuyCau\) return;/);
+  assert.match(js, /msg\.event === "final"\) \{\s*setMicUI\(false\);\s*\$input\.value = "";\s*if \(micHuyCau\) return;/);
+  assert.match(js, /pendingListen = false;\s*micHuyCau = false;/);
 });
 
 test("chip Chọn/Làm thủ tục khác + câu nói tương đương → mở danh sách thủ tục, không về trang chủ", () => {

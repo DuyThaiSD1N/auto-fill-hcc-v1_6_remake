@@ -583,7 +583,7 @@ body.settings-mode .bot-f { display: none; }
 }
 .tl-tn {
   font-size: 12.5px; font-weight: 800; line-height: 1.2;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .tl-hm { font-style: italic; color: var(--muted); font-size: 10.5px; line-height: 1.2; }
 
@@ -960,7 +960,7 @@ body.settings-mode .bot-f { display: none; }
   flex: 1; min-width: 0;
   color: var(--ink); font-size: 11.5px; font-weight: 650;
   overflow-wrap: anywhere;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .file-list-delete {
   width: 34px; height: 34px; flex-shrink: 0;
@@ -993,7 +993,7 @@ body.settings-mode .bot-f { display: none; }
 .qr-card .prog { width: 100%; align-self: auto; }
 .qr-stat { font-size: 11px; color: var(--muted); }
 /* QR hướng dẫn làm thủ tục (hiện trước câu xác nhận thủ tục) */
-.guide-qr { padding-bottom: 12px; }
+.guide-qr { padding: 12px 14px 10px; gap: 6px; }
 .guide-qr-t {
   font-size: 13.5px; line-height: 1.45; font-weight: 600; color: #16352a; text-align: center;
 }
@@ -1014,7 +1014,7 @@ body.settings-mode .bot-f { display: none; }
   background: #f4f7f5; color: #3d5a4d; font-size: 14px; font-weight: 700; cursor: pointer;
 }
 .guide-qr-skip:hover { background: #e7efea; }
-.guide-qr .qr-img { background: #fff; padding: 6px; box-sizing: border-box; }
+.guide-qr .qr-img { width: 104px; height: 104px; background: #fff; padding: 4px; box-sizing: border-box; }
 .guide-qr-link {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 9px 22px; border-radius: 999px;

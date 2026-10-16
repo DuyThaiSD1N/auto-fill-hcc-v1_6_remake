@@ -64,7 +64,7 @@ test("sidebar: tìm ô kế tiếp rồi báo BE, gỡ con trỏ khi dừng", ()
 test("sidebar: câu hỏi ô đọc xong tự mở mic một lượt", () => {
   assert.match(sidebar, /const listenAfter = !opts\?\.noTts && \(d\.actions \|\| \[\]\)\.some\(\(a\) => a\.type === "listen_after_tts"\);/);
   assert.match(sidebar, /if \(\(handsfree \|\| listenAfter\) && !completionReturnTimer && replyTtsInFlight === 0\) listenWhenQuiet\(\);/);
-  assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);/);
+  assert.match(sidebar, /\} else if \(\(handsfree \|\| listenAfter\) && !opts\?\.choHuongDan\) \{\s*listenWhenQuiet\(\);/);
 });
 
 test("ô năm sinh (x-date-text): chỉ có năm là đã điền; danh sách lựa chọn không cắt ở 200", () => {
