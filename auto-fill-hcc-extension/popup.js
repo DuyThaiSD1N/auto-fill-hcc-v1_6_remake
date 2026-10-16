@@ -4830,6 +4830,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.013831: cùng form bước 2 + mapper với 1.115668; hồ sơ chuyển nhượng hay nộp qua người
       // được ủy quyền → cần mốc tài khoản để tách người nộp khỏi chủ hồ sơ.
       cfg.key === "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai" ||
+      // [Lào Cai] 1.013833 (đổi tên/thay đổi thông tin người SDĐ): cùng mapper với 1.115668; mốc tài khoản
+      // quyết định người nộp có phải chủ hồ sơ không (bù nhân thân, cảnh báo Di động khi nộp thay).
+      cfg.key === "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai" ||
       // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
       // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||

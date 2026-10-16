@@ -220,6 +220,12 @@ from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_thua_ke_tang_cho_dvcqg_lao_ca
 from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_thua_ke_tang_cho_dvcqg_lao_cai.attach import (
     plan as dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_attach,
 )
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.process import (
+    run as dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_process,
+)
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.attach import (
+    plan as dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_attach,
+)
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -5089,6 +5095,50 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai",
+        # Mã 1.013833.H38 — cùng cổng dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với
+        # 1.115668 / 1.013831, pipeline dùng lại UI + mapper của 1.115668 (mapping "Mapping_DK_bien_dong_….xlsx").
+        # Khác: không có bên nhận — chủ hồ sơ là người đứng tên đầu ở Đơn mục 1.1; bảng Thành phần hồ sơ 7 dòng.
+        # textPriority + mã "1.013833" tách khỏi các thủ tục đăng ký biến động khác cùng cổng. CHỈ khớp mã: tên
+        # thủ tục trên cổng Lào Cai không trùng nguyên văn tên DVCQG, thêm cụm tên là trượt nhận diện và popup
+        # giữ nhầm thủ tục chọn trước (đã gặp: chạy pipeline 1.013831). Key trùng mục ke_khai_links (1.013833).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["1.013833"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng "
+            "đất, chủ sở hữu tài sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi "
+            "hạn chế quyền; thay đổi quyền đối với thửa đất liền kề; giảm diện tích do sạt lở tự nhiên (1.013833)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 24 / Mẫu số 18 NĐ 151/2025) → dòng 4.\n"
+            "2. Giấy chứng nhận đã cấp (kể cả trang bổ sung, bản sao chứng thực) → dòng 6, để nguyên một tệp. "
+            "Dòng này có nhãn 'giấy': người dân nộp BẢN GỐC tại Bộ phận một cửa.\n"
+            "3. Văn bản cam kết/thỏa thuận của các thành viên hộ gia đình (kèm lời chứng thực) hoặc văn bản cơ "
+            "quan có thẩm quyền cho phép/công nhận việc thay đổi → dòng 2.\n"
+            "4. Giấy tờ chứng minh việc đổi tên/đổi thông tin (CCCD, trích lục cải chính, GCN đăng ký doanh "
+            "nghiệp đổi tên…) → dòng 1; giấy ủy quyền → dòng 3; mảnh trích đo → dòng 5; văn bản thay đổi "
+            "quyền của người có quyền lợi liên quan → dòng 7. Giấy chứng nhận kết hôn → 'Giấy tờ khác'.\n"
+            "Tệp tải trùng nội dung (cùng một giấy tải hai lần) trợ lý bỏ qua, không đính lại.\n"
+            "Chủ hồ sơ = người đứng tên ĐẦU TIÊN ở Đơn mục 1.1 (hộ gia đình → chọn 'Cá nhân'); người ở mục 1.2 "
+            "không có ô riêng trên cổng. Ngày sinh/ngày cấp/nơi cấp lấy CCCD → văn bản cam kết (Giấy chứng "
+            "nhận chỉ ghi năm sinh); địa chỉ CCCD → Đơn → văn bản cam kết → Giấy chứng nhận; di động Đơn mục "
+            "1.1, trống thì tạm lấy số ở mục 1.2 và cảnh báo.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly theo tài khoản định danh — đăng "
+            "nhập đúng tài khoản của NGƯỜI ĐI NỘP. Di động (*) người nộp điền theo số trên Đơn; nộp thay thì sửa "
+            "lại nếu người nộp muốn nhận thông báo bằng số của mình.\n"
+            "Ô 'Về việc' (*) do cổng điền sẵn — trợ lý KHÔNG ghi đè; 'Ghi chú' để cán bộ tự ghi."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -7984,6 +8034,8 @@ _PIPELINE = {
         xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai_process,
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai":
         dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_process,
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai":
+        dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
@@ -8096,6 +8148,8 @@ _ATTACH_PIPELINE = {
         xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai_attach,
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai":
         dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_attach,
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai":
+        dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

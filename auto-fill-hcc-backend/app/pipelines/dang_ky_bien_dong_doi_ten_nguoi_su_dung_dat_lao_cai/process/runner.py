@@ -1,0 +1,29 @@
+"""Compact agent pipeline cho thủ tục 1.013833 (Lào Cai) — đăng ký biến động đổi tên, thay đổi thông tin."""
+
+from app.pipelines._shared.compact_agent import runner
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.process import mapper
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.process.prompt import EXTRA_RULES
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.process.schema import (
+    ALIASES,
+    ALLOWED,
+    COMPACT_COMP_BY_NAME,
+    FIELDS,
+)
+
+
+async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    res = await runner.run(
+        files_by_role,
+        fields=FIELDS,
+        allowed=ALLOWED,
+        comp_by_name=COMPACT_COMP_BY_NAME,
+        aliases=ALIASES,
+        extra_rules=EXTRA_RULES,
+        options=options,
+    )
+    # options mang formContext (VNeID người đăng nhập) — mapper cần nó để biết người nộp có phải chủ hồ sơ
+    # không — và submitterMode để biết lấy người nộp theo tài khoản hay theo tờ khai.
+    res["fields"], warnings = mapper.enrich(res["fields"], options)
+    if warnings:
+        res.setdefault("errors", []).extend(warnings)
+    return res
