@@ -226,6 +226,12 @@ from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.process i
 from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai.attach import (
     plan as dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_attach,
 )
+from app.pipelines.dinh_chinh_gcn_da_cap_dvcqg_lao_cai.process import (
+    run as dinh_chinh_gcn_da_cap_dvcqg_lao_cai_process,
+)
+from app.pipelines.dinh_chinh_gcn_da_cap_dvcqg_lao_cai.attach import (
+    plan as dinh_chinh_gcn_da_cap_dvcqg_lao_cai_attach,
+)
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -5139,6 +5145,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dinh-chinh-gcn-da-cap-dvcqg-lao-cai",
+        # Mã TTHC 1.012790 (Văn phòng đăng ký đất đai tỉnh Lào Cai) — key TRÙNG ke_khai_links.json. Cùng cổng
+        # dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với 1.115668 / 1.013833 (mapping
+        # "Mapping_Dinh_chinh_GCN_Mau24.xlsx"); bảng Thành phần hồ sơ 4 dòng.
+        # Chỉ khớp MÃ như 1.013833: tên "Đính chính Giấy chứng nhận đã cấp" là chuỗi con của 1.115686 (đính chính
+        # GCN cấp lần đầu có sai sót) và của bản Bắc Ninh/Ninh Bình — urlScope khoá host Lào Cai, mã tách 1.115686.
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["1.012790"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lào Cai] Đính chính Giấy chứng nhận đã cấp (1.012790)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24) ghi nội dung đính chính → dòng 4 "
+            "'Đơn đề nghị đính chính' (bắt buộc).\n"
+            "2. Giấy chứng nhận đã cấp (đủ trang, kể cả 'Những thay đổi sau khi cấp') → dòng 1 'Bản gốc Giấy chứng "
+            "nhận'. Người dân nộp BẢN GỐC tại Bộ phận một cửa.\n"
+            "3. Nếu có: giấy tờ chứng minh sai sót (giấy khai sinh, trích lục, quyết định, phiếu đo đạc…) → dòng 2; "
+            "văn bản ủy quyền → dòng 3. Không có thì để trống, không tích.\n"
+            "4. CCCD (nếu có) — dùng để điền ngày sinh, ngày cấp; đính xuống 'Giấy tờ khác'.\n"
+            "Chủ hồ sơ = người đứng tên ĐẦU TIÊN ở Đơn mục 1. Số CCCD/địa chỉ ưu tiên dòng chỉnh lý mới nhất trên "
+            "Giấy chứng nhận, không dùng CMND 9 số cũ. Mỗi tệp tối đa 6 MB, đính nguyên file.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly theo tài khoản định danh — đăng nhập "
+            "đúng tài khoản của NGƯỜI ĐI NỘP.\n"
+            "Khối 'Thông tin cung cấp thêm' (họ tên, điện thoại người nộp, địa chỉ thửa đất, diện tích) cán bộ nhập "
+            "tay — trợ lý gửi giá trị gợi ý ở phần cảnh báo. Ô 'Về việc' (*) cổng điền sẵn — KHÔNG ghi đè."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -8036,6 +8077,7 @@ _PIPELINE = {
         dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_process,
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai":
         dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_process,
+    "dinh-chinh-gcn-da-cap-dvcqg-lao-cai": dinh_chinh_gcn_da_cap_dvcqg_lao_cai_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
@@ -8150,6 +8192,7 @@ _ATTACH_PIPELINE = {
         dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_attach,
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai":
         dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_lao_cai_attach,
+    "dinh-chinh-gcn-da-cap-dvcqg-lao-cai": dinh_chinh_gcn_da_cap_dvcqg_lao_cai_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

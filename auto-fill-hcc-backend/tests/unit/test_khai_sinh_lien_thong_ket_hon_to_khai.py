@@ -83,3 +83,43 @@ def test_noi_cu_tru_me_van_uu_tien_nguon_khac_truoc_giay_chung_sinh():
                     "ThongTinMe_NoiCuTru": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn B"},
                     "Gcs_NoiThuongTruMe": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn A"}})
     assert out["MeDiaChi"]["diaChi"] == "Thôn B"
+
+
+def test_khong_co_cccd_cha_lay_cha_tu_ben_chong_tren_giay_ket_hon():
+    out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI", "ThongTinMe_SoDinhDanh": "001190000001",
+                    "GcnKetHon_Vo_HoTen": "TRẦN THỊ MAI", "GcnKetHon_Chong_HoTen": "Nguyễn Văn An",
+                    "GcnKetHon_Chong_NgaySinh": "06/02/1985", "GcnKetHon_Chong_SoGiayTo": "33A012345678",
+                    "GcnKetHon_Chong_DanToc": "Kinh"})
+    assert out["ChaHoTen"] == "NGUYỄN VĂN AN"
+    assert out["ChaNgaySinh"] == "06/02/1985"
+    assert out["ChaMaDanToc"] == "Kinh"
+    # Chưa có số định danh → điền số chứng minh quân đội, giữ chữ cái.
+    assert out["ChaSoGiayTo"] == "33A012345678"
+    assert out["NycQuanHe"]["chaTen"] == "NGUYỄN VĂN AN"
+
+
+def test_khong_co_cccd_cha_dien_so_cmnd_9_so_tren_giay_ket_hon():
+    out = _by_name({"GcnKetHon_Chong_HoTen": "Nguyễn Văn An", "GcnKetHon_Chong_SoGiayTo": "123 456 789"})
+    assert out["ChaSoGiayTo"] == "123456789"
+
+
+def test_da_co_so_dinh_danh_cha_khong_bi_so_tren_giay_ket_hon_de():
+    out = _by_name({"ThongTinBo_HoTen": "NGUYỄN VĂN AN", "ThongTinBo_SoDinhDanh": "001085000001",
+                    "GcnKetHon_Chong_HoTen": "Nguyễn Văn An", "GcnKetHon_Chong_SoGiayTo": "33A012345678"})
+    assert out["ChaSoGiayTo"] == "001085000001"
+
+
+def test_khong_co_thong_tin_me_lay_me_tu_ben_vo_tren_giay_ket_hon():
+    out = _by_name({"ThongTinBo_HoTen": "NGUYỄN VĂN AN", "GcnKetHon_Chong_HoTen": "NGUYỄN VĂN AN",
+                    "GcnKetHon_Vo_HoTen": "Trần Thị Mai", "GcnKetHon_Vo_NgaySinh": "07/05/1990",
+                    "GcnKetHon_Vo_SoGiayTo": "001190000001"})
+    assert (out["MeHo"], out["MeChuDem"], out["MeTen"]) == ("TRẦN", "THỊ", "MAI")
+    assert out["MeNgaySinh"] == "07/05/1990"
+    assert out["MeSoGiayTo"] == "001190000001"
+
+
+def test_cha_da_co_tu_nguon_khac_ma_khac_ten_thi_khong_lay_ben_chong():
+    out = _by_name({"ThongTinBo_HoTen": "LÊ VĂN BÌNH", "GcnKetHon_Chong_HoTen": "Nguyễn Văn An",
+                    "GcnKetHon_Chong_NgaySinh": "06/02/1985"})
+    assert out["ChaHoTen"] == "LÊ VĂN BÌNH"
+    assert "ChaNgaySinh" not in out

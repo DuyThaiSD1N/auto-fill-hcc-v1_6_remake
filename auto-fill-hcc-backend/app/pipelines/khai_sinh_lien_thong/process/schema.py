@@ -49,11 +49,11 @@ FIELDS: list[dict] = [
     # hoặc trùng họ tên) với cha/mẹ để bù ô còn thiếu (vd giấy chứng sinh chỉ ghi năm sinh mẹ).
     {"name": "GcnKetHon_Vo_HoTen", "desc": "Họ tên VỢ (bên nữ) trên GIẤY CHỨNG NHẬN KẾT HÔN. CHỈ lấy từ giấy kết hôn, BẮT BUỘC trả khi hồ sơ có giấy kết hôn."},
     {"name": "GcnKetHon_Vo_NgaySinh", "desc": "Ngày, tháng, năm sinh của VỢ trên GIẤY CHỨNG NHẬN KẾT HÔN, dd/mm/yyyy (vd '7/5/1990' → '07/05/1990'). CHỈ lấy từ giấy kết hôn."},
-    {"name": "GcnKetHon_Vo_SoGiayTo", "desc": "Số giấy tờ tùy thân của VỢ ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh), CHỈ chữ số. CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Vo_SoGiayTo", "desc": "Số giấy tờ tùy thân của VỢ ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh/chứng minh quân đội), chép nguyên số, GIỮ chữ cái nếu có (vd chứng minh quân đội '33A021121427'), bỏ khoảng trắng/dấu chấm. CHỈ lấy từ giấy kết hôn."},
     {"name": "GcnKetHon_Vo_DanToc", "desc": "Dân tộc của VỢ trên GIẤY CHỨNG NHẬN KẾT HÔN."},
     {"name": "GcnKetHon_Chong_HoTen", "desc": "Họ tên CHỒNG (bên nam) trên GIẤY CHỨNG NHẬN KẾT HÔN. CHỈ lấy từ giấy kết hôn, BẮT BUỘC trả khi hồ sơ có giấy kết hôn."},
     {"name": "GcnKetHon_Chong_NgaySinh", "desc": "Ngày, tháng, năm sinh của CHỒNG trên GIẤY CHỨNG NHẬN KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ giấy kết hôn."},
-    {"name": "GcnKetHon_Chong_SoGiayTo", "desc": "Số giấy tờ tùy thân của CHỒNG ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh), CHỈ chữ số. CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Chong_SoGiayTo", "desc": "Số giấy tờ tùy thân của CHỒNG ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh/chứng minh quân đội), chép nguyên số, GIỮ chữ cái nếu có (vd chứng minh quân đội '33A021121427'), bỏ khoảng trắng/dấu chấm. CHỈ lấy từ giấy kết hôn."},
     {"name": "GcnKetHon_Chong_DanToc", "desc": "Dân tộc của CHỒNG trên GIẤY CHỨNG NHẬN KẾT HÔN."},
     # Cùng thông tin nhưng chép từ dòng in sẵn trên TỜ KHAI (hồ sơ hay không kèm giấy kết hôn thật).
     {"name": "Tk_GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn ghi trên dòng "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ" của TỜ KHAI (mục G).'},

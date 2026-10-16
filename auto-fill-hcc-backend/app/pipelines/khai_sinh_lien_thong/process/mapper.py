@@ -323,15 +323,22 @@ def _is_year_only(value) -> bool:
 def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
     """Bù thông tin cha/mẹ từ bên tương ứng trên GIẤY KẾT HÔN khi đúng là một người.
 
-    Đúng người = trùng số giấy tờ, hoặc trùng họ tên (bỏ dấu/hoa thường). Chỉ bù ô còn trống; riêng
-    ngày sinh chỉ có năm (giấy chứng sinh hay ghi "1990") được thay bằng ngày đầy đủ cùng năm.
+    Đúng người = trùng số giấy tờ, hoặc trùng họ tên (bỏ dấu/hoa thường). Vai trò chưa có danh tính
+    từ nguồn nào khác (vd hồ sơ không kèm CCCD cha, giấy chứng sinh không ghi cha) → nhận luôn bên
+    tương ứng trên giấy kết hôn. Chỉ bù ô còn trống; riêng ngày sinh chỉ có năm (giấy chứng sinh hay
+    ghi "1990") được thay bằng ngày đầy đủ cùng năm.
     """
     gcn = {key: values.get(f"GcnKetHon_{side}_{key}") for key in ("HoTen", "NgaySinh", "SoGiayTo", "DanToc")}
     gcn_id = _digits(gcn["SoGiayTo"])
     role_id = _digits(values.get(f"{role}_SoDinhDanh"))
     gcn_name = " ".join(_fold(gcn["HoTen"]).split())
     role_name = " ".join(_fold(values.get(f"{role}_HoTen")).split())
-    if not ((gcn_id and gcn_id == role_id) or (gcn_name and gcn_name == role_name)):
+    role_empty = not role_id and not role_name
+    if not (
+        (gcn_id and gcn_id == role_id)
+        or (gcn_name and gcn_name == role_name)
+        or (role_empty and gcn_name)
+    ):
         return
     if gcn["HoTen"] and not values.get(f"{role}_HoTen"):
         values[f"{role}_HoTen"] = _upper_name(gcn["HoTen"])
@@ -341,9 +348,12 @@ def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
         not current or (_is_year_only(current) and str(current).strip() == birth[-4:])
     ):
         values[f"{role}_NgaySinh"] = birth
-    # Số giấy tờ trên giấy kết hôn cũ hay là CMND 9 số — chỉ nhận số định danh 12 số.
-    if len(gcn_id) == 12 and not role_id:
-        values[f"{role}_SoDinhDanh"] = gcn_id
+    # Chưa có số định danh từ nguồn khác → điền số giấy tờ trên giấy kết hôn. Số 12 số là số định danh;
+    # còn lại (CMND 9 số, chứng minh quân đội dạng "33A021121427") giữ nguyên cả chữ cái.
+    if gcn_id and not role_id:
+        values[f"{role}_SoDinhDanh"] = (
+            gcn_id if len(gcn_id) == 12 else re.sub(r"[^0-9A-Za-z]", "", str(gcn["SoGiayTo"])).upper()
+        )
     if gcn["DanToc"] and not values.get(f"{role}_DanToc"):
         values[f"{role}_DanToc"] = gcn["DanToc"]
 
