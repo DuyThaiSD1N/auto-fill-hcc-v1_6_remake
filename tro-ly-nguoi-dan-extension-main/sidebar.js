@@ -4352,6 +4352,8 @@
       attachments: first.attachments,
       procedure: a.procedure || "",
       mode: "split",
+      // Hồ sơ 1 là CHÍNH hồ sơ đang mở: đính kèm lại thì gỡ tệp lượt trước. Các tab tách là hồ sơ mới.
+      clearExisting: a.clearExisting === true,
     });
 
     const reloadable = new Set([
@@ -4507,6 +4509,8 @@
         attachments: sendAttachments,
         procedure: a.procedure || "",
         mode: a.mode || "merge",
+        // BE đánh dấu lượt đính kèm LẠI trên cùng hồ sơ → gỡ tệp lượt trước rồi mới đính.
+        clearExisting: a.clearExisting === true,
       });
       setStatus("");
       const report = {

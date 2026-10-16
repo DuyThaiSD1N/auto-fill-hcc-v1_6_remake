@@ -46,3 +46,13 @@ test("WebSocket tự nối lại và phiên upload được khôi phục sau rel
   assert.match(sidebar, /if \(conv\.upload_session_id\)/);
   assert.match(sidebar, /subscribeUploadSession\(conv\.upload_session_id\)/);
 });
+
+test("đính kèm lại: gỡ tệp lượt trước (thùng rác dòng thêm, X dòng có sẵn) rồi mới đính", () => {
+  const core = fs.readFileSync(path.join(root, "content", "attach-core.js"), "utf8");
+  assert.match(sidebar, /clearExisting: a\.clearExisting === true/);
+  assert.match(core, /clearExisting: msg\.clearExisting === true/);
+  assert.match(core, /if \(opts\.clearExisting\) \{[\s\S]*?await clearPreviousAttachments\(\)/);
+  const fn = core.slice(core.indexOf("async function clearPreviousAttachments"));
+  // Dòng "Thêm thành phần hồ sơ" xóa bằng thùng rác TRƯỚC, sau đó mới bấm X trên tệp dòng có sẵn.
+  assert.ok(fn.indexOf("clearAddedAttachmentRows()") < fn.indexOf("findRemoveAttachmentButton(row).click()"));
+});

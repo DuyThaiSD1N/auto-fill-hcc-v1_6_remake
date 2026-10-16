@@ -131,6 +131,45 @@ def _norm_birth_place(area):
     return out
 
 
+# Tên cơ sở y tế IN HOA (dòng "Tại:" của giấy chứng sinh) → viết hoa theo quy tắc: hoa chữ đầu mỗi từ
+# (tên riêng), rồi hạ các cụm chung về chữ thường.
+_FACILITY_PHRASES = (
+    ("Bệnh Viện", "Bệnh viện"),
+    ("Trung Tâm Y Tế", "Trung tâm Y tế"),
+    ("Trạm Y Tế", "Trạm Y tế"),
+    ("Phòng Khám", "Phòng khám"),
+    ("Nhà Hộ Sinh", "Nhà hộ sinh"),
+    ("Đa Khoa", "đa khoa"),
+    ("Quân Y", "Quân y"),
+    ("Đại Học", "Đại học"),
+    ("Y Học Cổ Truyền", "Y học cổ truyền"),
+)
+_FACILITY_ADMIN_WORDS = re.compile(r"(?<=\s)(Tỉnh|Thành Phố|Huyện|Quận|Thị Xã|Phường|Xã|Số|Cơ Sở)(?=\s|$)")
+
+
+def _facility_word(word: str) -> str:
+    if any(c.isdigit() for c in word) or re.fullmatch(r"[IVX]{2,}", word):
+        return word
+    return "-".join(p[:1].upper() + p[1:].lower() for p in word.split("-"))
+
+
+def _facility_name_case(value) -> str:
+    """'BỆNH VIỆN SẢN - NHI X SỐ 2 TỈNH X' → 'Bệnh viện Sản - Nhi X số 2'. Chỉ đổi khi chuỗi IN HOA hết;
+    đuôi 'tỉnh/thành phố <T>' lặp lại tên đã có trong tên cơ sở thì bỏ."""
+    text = " ".join(str(value or "").split())
+    if not text:
+        return text
+    if not any(c.islower() for c in text):
+        text = " ".join(_facility_word(w) for w in text.split(" "))
+        for old, new in _FACILITY_PHRASES:
+            text = re.sub(rf"\b{old}\b", new, text)
+        text = _FACILITY_ADMIN_WORDS.sub(lambda m: m.group(1).lower(), text)
+    match = re.match(r"^(.+?)[\s,\-]+(tỉnh|thành phố|tp\.?)\s+(.+)$", text, flags=re.IGNORECASE)
+    if match and _fold(match.group(3)) in _fold(match.group(1)):
+        text = match.group(1).strip()
+    return text
+
+
 def _province_key(value) -> str:
     """Tên tỉnh đã fold, bỏ tiền tố loại đơn vị ("tỉnh"/"thành phố"/"tp")."""
     return re.sub(r"^(tinh|thanh pho|tp\.?)\s+", "", _fold(value)).strip()
@@ -273,6 +312,42 @@ def _area(value):
     return remap_area(out) if out else None
 
 
+def _digits(value) -> str:
+    return re.sub(r"\D", "", str(value or ""))
+
+
+def _is_year_only(value) -> bool:
+    return bool(re.fullmatch(r"\d{4}", str(value or "").strip()))
+
+
+def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
+    """Bù thông tin cha/mẹ từ bên tương ứng trên GIẤY KẾT HÔN khi đúng là một người.
+
+    Đúng người = trùng số giấy tờ, hoặc trùng họ tên (bỏ dấu/hoa thường). Chỉ bù ô còn trống; riêng
+    ngày sinh chỉ có năm (giấy chứng sinh hay ghi "1990") được thay bằng ngày đầy đủ cùng năm.
+    """
+    gcn = {key: values.get(f"GcnKetHon_{side}_{key}") for key in ("HoTen", "NgaySinh", "SoGiayTo", "DanToc")}
+    gcn_id = _digits(gcn["SoGiayTo"])
+    role_id = _digits(values.get(f"{role}_SoDinhDanh"))
+    gcn_name = " ".join(_fold(gcn["HoTen"]).split())
+    role_name = " ".join(_fold(values.get(f"{role}_HoTen")).split())
+    if not ((gcn_id and gcn_id == role_id) or (gcn_name and gcn_name == role_name)):
+        return
+    if gcn["HoTen"] and not values.get(f"{role}_HoTen"):
+        values[f"{role}_HoTen"] = _upper_name(gcn["HoTen"])
+    birth = str(gcn["NgaySinh"] or "").strip()
+    current = values.get(f"{role}_NgaySinh")
+    if re.fullmatch(r"\d{2}/\d{2}/\d{4}", birth) and (
+        not current or (_is_year_only(current) and str(current).strip() == birth[-4:])
+    ):
+        values[f"{role}_NgaySinh"] = birth
+    # Số giấy tờ trên giấy kết hôn cũ hay là CMND 9 số — chỉ nhận số định danh 12 số.
+    if len(gcn_id) == 12 and not role_id:
+        values[f"{role}_SoDinhDanh"] = gcn_id
+    if gcn["DanToc"] and not values.get(f"{role}_DanToc"):
+        values[f"{role}_DanToc"] = gcn["DanToc"]
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic Angular form fields from compact source facts."""
     options = options or {}
@@ -288,6 +363,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     ):
         if name_field in values:
             values[name_field] = _upper_name(values[name_field])
+    _fill_from_marriage_cert(values, "ThongTinMe", "Vo")
+    _fill_from_marriage_cert(values, "ThongTinBo", "Chong")
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -327,6 +404,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     )
     has_father = bool(values.get("ThongTinBo_SoDinhDanh") or values.get("ThongTinBo_HoTen"))
     has_mother = bool(values.get("ThongTinMe_SoDinhDanh") or values.get("ThongTinMe_HoTen"))
+    # LLM hay bỏ ThongTinMe_NoiCuTru khi mẹ không có CCCD mà giấy kết hôn (cũ) ghi địa chỉ khác giấy chứng
+    # sinh → lấy dòng thường trú mẹ trên giấy chứng sinh làm nguồn dự phòng.
+    me_noi_cu_tru = (
+        _area(values.get("Tk_NoiCuTruMe"))
+        or _area(values.get("ThongTinMe_NoiCuTru"))
+        or _area(values.get("Gcs_NoiThuongTruMe"))
+    )
 
     # Ngoại lệ Lâm Đồng dùng ở HAI nơi: dân tộc con (trong khối has_child) và quê quán con
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
@@ -403,6 +487,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Bổ sung tinh nếu LLM cũng bỏ trống
                 if not ns_area.get("tinh"):
                     ns_area["tinh"] = bv_info["tinh"]
+        if ns_area and ns_area.get("diaChi"):
+            ns_area = {**ns_area, "diaChi": _facility_name_case(ns_area["diaChi"])}
         add("NsDiaChi", ns_area)
 
     if has_mother:
@@ -415,8 +501,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("MeMaQuocTich", values.get("ThongTinMe_QuocTich") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         add("MeMaQuocGia", "Việt Nam")
-        # Nơi cư trú mẹ: TỜ KHAI trước, rồi mới tới nguồn khác (ThongTinMe_NoiCuTru — CCCD đứng đầu).
-        add("MeDiaChi", _area(values.get("Tk_NoiCuTruMe")) or _area(values.get("ThongTinMe_NoiCuTru")))
+        # Nơi cư trú mẹ: TỜ KHAI trước, rồi ThongTinMe_NoiCuTru (CCCD đứng đầu), cuối cùng giấy chứng sinh.
+        add("MeDiaChi", me_noi_cu_tru)
 
     if has_father:
         add_name("Cha", values.get("ThongTinBo_HoTen"))

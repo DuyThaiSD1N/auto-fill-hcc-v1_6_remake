@@ -518,20 +518,59 @@ def _attachment_options(conv: dict, extra: dict | None = None) -> dict:
     return options
 
 
-def _attach_plan_split_changed(conv: dict) -> bool:
-    """Cài đặt tách giấy tờ đã đổi so với lúc lập kế hoạch đang lưu (planner tự chạy ngay khi
-    dữ liệu điền về, cán bộ hay bật "tách" sau đó rồi mới bấm Đính kèm lại)."""
-    wanted = _attachment_options(conv).get("splitDocuments") is True
-    return wanted != (conv.get("attach_plan_split_documents") is True)
-
-
 def _preset_attach_mode(conv: dict) -> str:
     """Cách đính kèm chứng thực đã chọn sẵn trong màn Cài đặt của máy quầy (gộp/tách hồ sơ).
 
-    Chỉ đọc khi hội thoại CHƯA chốt attach_mode: đổi cài đặt giữa chừng không đổi hồ sơ
-    đang chạy (queue split đa-tab phải ổn định), thủ tục sau tự nhận giá trị mới."""
+    Chỉ có nghĩa với hai thủ tục chứng thực có lựa chọn gộp/tách. Đổi cài đặt giữa chừng thì áp
+    ở lượt đính kèm KẾ TIẾP (giống auto-fill đọc ô tick mỗi lần bấm), nhưng không bao giờ đổi
+    lượt đang chạy — queue split đa-tab phải ổn định (xem _attach_plan_settings_changed)."""
+    if conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES:
+        return ""
     mode = (conv.get("attachment_preferences") or {}).get("attachMode")
     return mode if mode in ("merge", "split") else ""
+
+
+def _attach_mode_options(conv: dict) -> dict:
+    """splitMode cho planner theo attach_mode đã chốt; chưa chốt thì không gửi khóa."""
+    mode = conv.get("attach_mode")
+    return {"splitMode": mode == "split"} if mode in ("merge", "split") else {}
+
+
+def _attach_plan_settings_changed(conv: dict) -> bool:
+    """Cài đặt đính kèm đã đổi so với lúc lập kế hoạch đang lưu: tách giấy tờ trong file, hoặc
+    gộp/tách hồ sơ của chứng thực. Planner tự chạy ngay khi dữ liệu điền về, cán bộ hay đổi cài
+    đặt sau đó rồi mới bấm Đính kèm lại — phát lại kế hoạch cũ là phải làm lại cả luồng."""
+    wanted = _attachment_options(conv).get("splitDocuments") is True
+    if wanted != (conv.get("attach_plan_split_documents") is True):
+        return True
+    preset = _preset_attach_mode(conv)
+    planned_mode = conv.get("attach_plan_attach_mode") or conv.get("attach_mode")
+    return bool(preset) and preset != planned_mode
+
+
+def _replan_attach_if_settings_changed(conv: dict) -> "Reply | None":
+    """Cài đặt đổi → bỏ kế hoạch cũ, lập lại theo cài đặt mới ngay trên phiên giấy tờ hiện tại.
+
+    Không đụng lượt đang đính (lease còn) — đổi giữa chừng sẽ làm vỡ queue tách đa-tab."""
+    if (not conv.get("attach_plan") or conv.get("attach_action_in_progress")
+            or not _attach_plan_settings_changed(conv)):
+        return None
+    from app.channels.handfree.chat import pipeline_runner
+
+    preset = _preset_attach_mode(conv)
+    if preset:
+        conv["attach_mode"] = preset
+    conv["attach_plan"] = []
+    conv["attach_errors"] = []
+    conv["attach_fail_streak"] = 0
+    conv["attach_done"] = False
+    conv["attachment_plan_started"] = True
+    conv["pipeline_status"] = "running"
+    pipeline_runner.spawn(pipeline_runner.run_attach(
+        conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or "",
+        _attachment_options(conv, _attach_mode_options(conv)),
+    ))
+    return Reply(*_fmt(vi.ATTACH_PLANNING))
 
 
 def _attach_mode_chips() -> list:
@@ -551,10 +590,14 @@ def _attach_mode_gate(conv: dict, proc: dict, files_count: int = 0):
     "mỗi tài liệu một hồ sơ riêng" và âm thầm gộp tất cả vào một hồ sơ.
     """
     if (proc.get("mode") != "attach"
-            or conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES
-            or conv.get("attach_mode")):
+            or conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES):
         return None, False
     preset = _preset_attach_mode(conv)
+    # Cài đặt máy quầy luôn thắng lựa chọn cũ của hội thoại: lượt "Điều chỉnh giấy tờ" sau khi
+    # cán bộ đổi gộp ↔ tách phải đính theo cài đặt mới, không bắt mở luồng mới từ đầu.
+    if conv.get("attach_mode"):
+        conv["attach_mode"] = preset or conv["attach_mode"]
+        return None, False
     if preset:
         conv["attach_mode"] = preset
         # Tách nhiều hồ sơ là hành vi lớn (mở nhiều tab) — báo 1 câu cho công dân biết.
@@ -670,6 +713,10 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
                 for method in guided.result_methods(proc)
             ]
             action["resultMethod"] = result_action
+    # Hồ sơ này đã có tệp do lượt đính kèm trước đính vào (đổi gộp/tách, điều chỉnh giấy tờ, Đính kèm lại):
+    # extension gỡ tệp lượt trước rồi mới đính, không để bảng lẫn tệp cũ với kế hoạch mới.
+    if conv.get("attach_has_files"):
+        action["clearExisting"] = True
     dispatch_id = _begin_attach_action(conv)
     if dispatch_id:
         action["dispatch_id"] = dispatch_id
@@ -1308,6 +1355,7 @@ def _reset_for_new_procedure(conv: dict) -> None:
     conv["mae_dialog_choice_labels"] = {}
     conv["doc_method"] = None
     conv["attach_mode"] = None
+    conv["attach_has_files"] = False
     conv["docs_target"] = ""
     conv["docs_page_context"] = {}
     conv["docs_dispatch_key"] = ""
@@ -1361,6 +1409,7 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
         return r
     if conv.get("procedure_key") != key:
         conv["attach_mode"] = None  # lựa chọn tách/gộp không được rò sang thủ tục khác
+        conv["attach_has_files"] = False  # hồ sơ mới: lượt đầu không gỡ tệp nào
         conv["procedure_variant"] = ""  # trường hợp giải quyết gắn với TỪNG thủ tục
         conv["mae_dialog_options"] = {}
         conv["mae_dialog_choice"] = {}
@@ -3925,10 +3974,9 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # Công dân đang đứng đúng trang: dùng plan đã lưu nếu có; nếu chưa có thì khởi động
         # planner ngay. Không rơi xuống câu "đang ở Kê khai" chỉ vì pipeline_status còn là
         # waiting_attachment_page từ thời điểm điền form xong.
-        if (conv.get("attach_plan") and not conv.get("attach_action_in_progress")
-                and _attach_plan_split_changed(conv)):
-            conv["attach_plan"] = []
-            conv["attachment_plan_started"] = False
+        replan = _replan_attach_if_settings_changed(conv)
+        if replan is not None:
+            return replan
         if conv.get("attach_plan") and not conv.get("attach_action_in_progress"):
             return await _handle_attaching(conv, Intent("event", "attach_ready"))
         if conv.get("pipeline_status") == "error":
@@ -3939,7 +3987,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             conv["pipeline_status"] = "running"
             pipeline_runner.spawn(pipeline_runner.run_attach(
                 conv["_id"], conv.get("upload_session_id") or "",
-                conv.get("procedure_key") or "", _attachment_options(conv),
+                conv.get("procedure_key") or "",
+                _attachment_options(conv, _attach_mode_options(conv)),
             ))
             return Reply(*_fmt(vi.ATTACH_PLANNING))
         if conv.get("attach_action_in_progress"):
@@ -3949,6 +3998,11 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # phát action; nếu trang chưa đúng bước, attach_blocked sẽ mở khóa để thử lại.
         if conv.get("attach_action_in_progress"):
             return Reply()
+        # Nút "🔁 Đính kèm lại" cũng đi đường này: cán bộ vừa đổi gộp/tách trong Cài đặt thì
+        # lập lại kế hoạch theo cài đặt mới thay vì phát lại kế hoạch cũ.
+        replan = _replan_attach_if_settings_changed(conv)
+        if replan is not None:
+            return replan
         plan = conv.get("attach_plan") or []
         plan_list = "\n".join(_attachment_plan_line(p) for p in plan[:10]) or "- (không có mục nào)"
         if conv.get("attach_mode") == "split" and conv.get("procedure_key") == "chung-thuc-chu-ky":
@@ -3989,6 +4043,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         plan = conv.get("attach_plan") or []
         proc = get_procedure(conv.get("procedure_key") or "") or {}
         attachment_page_reached = _attachment_page_reached(conv, proc, intent.payload)
+        if attachment_page_reached and plan and not conv.get("attach_done"):
+            replan = _replan_attach_if_settings_changed(conv)
+            if replan is not None:
+                return replan
         if (
             attachment_page_reached
             and plan
@@ -4007,11 +4065,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             conv["pipeline_status"] = "running"
             pipeline_runner.spawn(pipeline_runner.run_attach(
                 conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or "",
-                _attachment_options(
-                    conv,
-                    ({"splitMode": conv.get("attach_mode") == "split"}
-                     if conv.get("attach_mode") in ("merge", "split") else {}),
-                )))
+                _attachment_options(conv, _attach_mode_options(conv))))
             return Reply(*_fmt(vi.ATTACH_PLANNING))
         return Reply()  # trang chưa tới bước đính kèm → im lặng chờ
     if intent.kind == "action" and intent.value == "attach_report":
@@ -4024,6 +4078,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         if report_dispatch_id and current_dispatch_id and report_dispatch_id != current_dispatch_id:
             return Reply()  # report trễ không được chốt hoặc xóa lease của lượt đang chạy.
         _clear_attach_action(conv)
+        if attached > 0:
+            conv["attach_has_files"] = True  # lượt đính kèm sau trên hồ sơ này phải gỡ tệp cũ
         from app.channels.handfree.chat import tracing
         report = {"attached": attached, "skipped": skipped, "errors": errors,
                   "mode": intent.payload.get("mode") or conv.get("attach_mode") or "merge"}

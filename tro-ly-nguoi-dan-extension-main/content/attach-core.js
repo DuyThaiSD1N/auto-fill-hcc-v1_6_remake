@@ -2001,37 +2001,65 @@ function forceRow1PlanItem(item, procedure) {
   };
 }
 
+// Nút thùng rác ở cột Thao Tác — CHỈ dòng do "Thêm thành phần hồ sơ" sinh ra mới có (dòng có sẵn
+// trong form chỉ có xem/in). Bấm là xóa cả dòng lẫn tệp của nó.
+function findAddedRowDeleteButton(row) {
+  return Array.from(row?.querySelectorAll?.('img[alt="delete"]') || [])
+    .map((img) => img.closest("button"))
+    .find((b) => b && isVisible(b)) || null;
+}
+
+// Cổng hiện HỘP XÁC NHẬN role="alertdialog" ("Bạn có muốn xóa tệp đính kèm" / nút "Xác nhận") — role
+// KHÁC "dialog" nên findLatestDialog không bắt được.
+function findDeleteConfirmDialog() {
+  return Array.from(document.querySelectorAll('[role="alertdialog"], [role="dialog"]'))
+    .filter(isVisible)
+    .find((d) => foldedNodeText(d).includes("xoa")) || null;
+}
+
+async function confirmDeleteDialog(dialog) {
+  const yes = dialog ? findButtonByText(dialog, ["Xác nhận", "Đồng ý", "Xóa", "Có"]) : null;
+  if (yes) { yes.click(); await sleep(300); }
+}
+
 async function clearAddedAttachmentRows() {
   let removed = 0;
   for (let guard = 0; guard < 20; guard++) {
-    const rows = findAttachmentRows();
-    const deletable = rows.find((row) =>
-      Array.from(row.querySelectorAll('img[alt="delete"]')).some((img) => isVisible(img.closest("button") || img))
-    );
-    if (!deletable) break;
-    const btn = Array.from(deletable.querySelectorAll('img[alt="delete"]'))
-      .map((img) => img.closest("button"))
-      .find((b) => b && isVisible(b));
+    const btn = findAttachmentRows().map(findAddedRowDeleteButton).find(Boolean);
     if (!btn) break;
     const before = findAttachmentRows().length;
     btn.click();
-    // Cổng hiện HỘP XÁC NHẬN role="alertdialog" ("Bạn có muốn xóa tệp đính kèm" / nút "Xác nhận") — role
-    // KHÁC "dialog" nên findLatestDialog không bắt được. Đợi alertdialog rồi bấm "Xác nhận".
-    const confirmDlg = await waitFor(() =>
-      Array.from(document.querySelectorAll('[role="alertdialog"], [role="dialog"]'))
-        .filter(isVisible)
-        .find((d) => foldedNodeText(d).includes("xoa")) || null,
-      2000, 100
-    );
-    if (confirmDlg) {
-      const yes = findButtonByText(confirmDlg, ["Xác nhận", "Đồng ý", "Xóa", "Có"]);
-      if (yes) { yes.click(); await sleep(300); }
-    }
+    await confirmDeleteDialog(await waitFor(findDeleteConfirmDialog, 2000, 100));
     const shrank = await waitFor(() => findAttachmentRows().length < before, 2500, 100);
     if (!shrank) break; // không xóa được → dừng, tránh lặp vô hạn
     removed++;
   }
   return removed;
+}
+
+// Đính kèm LẠI trên cùng hồ sơ (đổi gộp/tách, điều chỉnh giấy tờ): gỡ sạch tệp của lượt trước rồi
+// mới đính theo kế hoạch mới — giữ tệp cũ thì đổi gộp ↔ tách vẫn ra bảng của lượt trước.
+//  - dòng thêm từ "Thêm thành phần hồ sơ" → bấm thùng rác (xóa cả dòng);
+//  - dòng có sẵn trong form → bấm X trên tên tệp (dòng giữ nguyên, chỉ bỏ tệp).
+// Dòng không có X (vd Tờ khai do cổng tự sinh ở STT1) và dòng giấy ủy quyền thì không đụng tới.
+async function clearPreviousAttachments() {
+  const removedRows = await clearAddedAttachmentRows();
+  let removedFiles = 0;
+  const failed = new Set();
+  for (let guard = 0; guard < 30; guard++) {
+    const row = findAttachmentRows().find((r) =>
+      !failed.has(r) && rowAttachedFileName(r) && findRemoveAttachmentButton(r));
+    if (!row) break;
+    findRemoveAttachmentButton(row).click();
+    const dialog = await waitFor(() => findDeleteConfirmDialog() || (!rowAttachedFileName(row) ? "gone" : null),
+      2000, 100);
+    if (dialog && dialog !== "gone") await confirmDeleteDialog(dialog);
+    const gone = await waitFor(() => !row.isConnected || !rowAttachedFileName(row), 2500, 100);
+    if (gone) removedFiles++;
+    else failed.add(row); // không gỡ được → bỏ qua dòng này, tránh lặp vô hạn
+  }
+  console.log("[TLND-Attach] gỡ tệp lượt trước", { removedRows, removedFiles, failed: failed.size });
+  return { removedRows, removedFiles };
 }
 
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
@@ -2062,6 +2090,10 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     const attpItems = allAttachments.filter((item) => item.target === "attp-row");
     if (attpItems.length && attpItems.length === allAttachments.length) {
       return await attachFilesByAttpRow(payloadFiles, attpItems);
+    }
+
+    if (opts.clearExisting) {
+      try { await clearPreviousAttachments(); } catch (e) { console.warn("[TLND-Attach] gỡ tệp lượt trước:", e); }
     }
 
     const fixedItems = allAttachments.filter((item) => item.target === "fixed-slot");
@@ -2327,7 +2359,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
     if (!files.length) { sendResponse({ error: "Không có file nào để đính kèm." }); return; }
     if (!attachments.length) { sendResponse({ error: "Không có kế hoạch đính kèm từ backend." }); return; }
-    attachFilesByPlan(files, attachments, msg.procedure || "", { mode: msg.mode || "merge" })
+    attachFilesByPlan(files, attachments, msg.procedure || "", {
+      mode: msg.mode || "merge", clearExisting: msg.clearExisting === true,
+    })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: `Lỗi đính kèm: ${e?.message || e}` }));
     return true; // async

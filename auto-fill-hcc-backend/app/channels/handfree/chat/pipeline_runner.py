@@ -506,6 +506,11 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         conv["attach_plan"] = result.get("attachments", [])
         # Kế hoạch lập theo cài đặt tách giấy tờ nào: đổi cài đặt rồi bấm "Đính kèm lại" thì lập lại.
         conv["attach_plan_split_documents"] = attach_options.get("splitDocuments") is True
+        # Cùng lý do cho gộp/tách hồ sơ chứng thực: thiếu splitMode = kế hoạch không gắn chế độ.
+        conv["attach_plan_attach_mode"] = (
+            ("split" if attach_options.get("splitMode") is True else "merge")
+            if "splitMode" in attach_options else None
+        )
         conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")
         conv["attach_plan_replace_files"] = replace_by_fid
         conv["attach_errors"] = result.get("errors", [])

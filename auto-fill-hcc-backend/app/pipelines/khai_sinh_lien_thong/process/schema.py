@@ -37,13 +37,24 @@ FIELDS: list[dict] = [
     {"name": "ThongTinMe_DanToc", "desc": "Dân tộc MẸ: BẮT BUỘC trích khi một trong các nguồn ghi rõ, theo đúng ưu tiên: (1) GIẤY CHỨNG SINH — dòng 'Dân tộc' trong khối thông tin mẹ, gần họ tên/ngày sinh/số ĐDCN của mẹ; (2) GIẤY CHỨNG NHẬN KẾT HÔN — dòng 'Dân tộc' thuộc khối vợ/bên nữ; (3) TỜ KHAI ĐĂNG KÝ KHAI SINH — dòng 'Dân tộc' thuộc khối người mẹ. Có nguồn ưu tiên cao hơn thì không thay bằng nguồn thấp hơn. Đọc được giá trị thì phải trả field dù cách ghi ít gặp; chỉ bỏ khi cả ba nguồn đều không ghi. CCCD thường không in dân tộc."},
     {"name": "ThongTinMe_QuocTich", "desc": "Quốc tịch mẹ: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "ThongTinMe_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,diaChi}: BẮT BUỘC trích khi CCCD cũ của đúng người mẹ có dòng 'Quê quán / Place of origin:' (OCR có thể chỉ còn 'Quê quán:'). , không dùng nơi cư trú mẹ thay quê quán. Nếu dòng quê quán chỉ ghi cấp huyện và tỉnh mà không có xã/phường thì không được coi tên huyện là xa, nhưng VẪN PHẢI trả field với phần xác định chắc chắn, tối thiểu là tinh; không được bỏ toàn bộ field."},
-    {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruMe): ưu tiên CCCD/CMND được đối chiếu là của đúng người mẹ (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy kết hôn > giấy chứng sinh > giấy khai sinh. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
+    {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruMe): ưu tiên CCCD/CMND được đối chiếu là của đúng người mẹ (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy chứng sinh (dòng 'Nơi đăng ký thường trú' khối mẹ) > giấy kết hôn > giấy khai sinh. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
+    {"name": "Gcs_NoiThuongTruMe", "desc": "Dòng 'Nơi đăng ký thường trú'/'Nơi thường trú'/'Nơi cư trú' trong KHỐI MẸ của GIẤY CHỨNG SINH, object {tinh,xa,diaChi} (tách theo mục F). BẮT BUỘC trả khi giấy chứng sinh có dòng này, kể cả khi đã trả ThongTinMe_NoiCuTru. Không có tỉnh thì suy từ thành phố/xã ghi trên dòng."},
 
     # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
     {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026".'},
     {"name": "GcnKetHon_QuyenSo", "desc": "Quyển số trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ nếu ghi riêng, ở mục 'Quyển số: ...'. Nếu không có không cần ghi vào"},
     {"name": "GcnKetHon_NgayCap", "desc": "Ngày đăng ký/cấp giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, dd/mm/yyyy."},
     {"name": "GcnKetHon_NoiCap", "desc": "Nơi đăng ký/cấp giấy chứng nhận kết hôn (tên cơ quan) trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, nếu có phải ghi rõ."},
+    # Hai bên ghi trên GIẤY CHỨNG NHẬN KẾT HÔN — chép NGUYÊN theo giấy, mapper tự đối chiếu (trùng số giấy tờ
+    # hoặc trùng họ tên) với cha/mẹ để bù ô còn thiếu (vd giấy chứng sinh chỉ ghi năm sinh mẹ).
+    {"name": "GcnKetHon_Vo_HoTen", "desc": "Họ tên VỢ (bên nữ) trên GIẤY CHỨNG NHẬN KẾT HÔN. CHỈ lấy từ giấy kết hôn, BẮT BUỘC trả khi hồ sơ có giấy kết hôn."},
+    {"name": "GcnKetHon_Vo_NgaySinh", "desc": "Ngày, tháng, năm sinh của VỢ trên GIẤY CHỨNG NHẬN KẾT HÔN, dd/mm/yyyy (vd '7/5/1990' → '07/05/1990'). CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Vo_SoGiayTo", "desc": "Số giấy tờ tùy thân của VỢ ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh), CHỈ chữ số. CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Vo_DanToc", "desc": "Dân tộc của VỢ trên GIẤY CHỨNG NHẬN KẾT HÔN."},
+    {"name": "GcnKetHon_Chong_HoTen", "desc": "Họ tên CHỒNG (bên nam) trên GIẤY CHỨNG NHẬN KẾT HÔN. CHỈ lấy từ giấy kết hôn, BẮT BUỘC trả khi hồ sơ có giấy kết hôn."},
+    {"name": "GcnKetHon_Chong_NgaySinh", "desc": "Ngày, tháng, năm sinh của CHỒNG trên GIẤY CHỨNG NHẬN KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Chong_SoGiayTo", "desc": "Số giấy tờ tùy thân của CHỒNG ghi trên GIẤY CHỨNG NHẬN KẾT HÔN (CMND/CCCD/số định danh), CHỈ chữ số. CHỈ lấy từ giấy kết hôn."},
+    {"name": "GcnKetHon_Chong_DanToc", "desc": "Dân tộc của CHỒNG trên GIẤY CHỨNG NHẬN KẾT HÔN."},
     # Cùng thông tin nhưng chép từ dòng in sẵn trên TỜ KHAI (hồ sơ hay không kèm giấy kết hôn thật).
     {"name": "Tk_GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn ghi trên dòng "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ" của TỜ KHAI (mục G).'},
     {"name": "Tk_GcnKetHon_QuyenSo", "desc": "Quyển số ghi trên dòng đó của TỜ KHAI; để chấm/trống → bỏ."},
@@ -72,9 +83,10 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
-for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_GcnKetHon_NgayCap", "Tk_NgaySinhCon"):
+for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_GcnKetHon_NgayCap", "Tk_NgaySinhCon",
+              "GcnKetHon_Vo_NgaySinh", "GcnKetHon_Chong_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {
