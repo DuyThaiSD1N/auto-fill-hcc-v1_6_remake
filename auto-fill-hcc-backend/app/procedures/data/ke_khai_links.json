@@ -1697,6 +1697,48 @@
       "autoConfirm": true
     },
     {
+      "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai",
+      "code": "1.013947",
+      "label": "[Lào Cai] Xác nhận tiếp tục sử dụng đất nông nghiệp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8677-74ff-8111-ee0c889b713f",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "submitCardIncludes": "Sở Nông nghiệp và Môi trường tỉnh Lào Cai",
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai",
+      "code": "1.013831",
+      "label": "[Lào Cai] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai",
+      "code": "1.013833",
+      "label": "[Lào Cai] Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, chủ sở hữu tài sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi hạn chế quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất hoặc có thay đổi quyền đối với thửa đất liền kề; giảm diện tích thửa đất do sạt lở tự nhiên",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ed2-77ba-9ecd-737733a74667",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "submitCardIncludes": "Sở Nông nghiệp và Môi trường tỉnh Lào Cai",
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-dvcqg-lao-cai",
+      "code": "1.012790",
+      "label": "[Lào Cai] Đính chính Giấy chứng nhận đã cấp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-cap-gcn-da-chuyen-quyen-truoc-01-8-2024",
       "code": "1.115666",
       "label": "Đăng ký, cấp Giấy chứng nhận đối với trường hợp đã chuyển quyền sử dụng đất trước ngày 01 tháng 8 năm 2024 mà bên chuyển quyền đã được cấp Giấy chứng nhận nhưng chưa thực hiện thủ tục chuyển quyền theo quy định",

@@ -4825,6 +4825,8 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi" ||
       // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
       cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep" ||
+      // [Lào Cai] 1.013947: cùng form bước 2 + mapper với 1.115677 → cũng cần mốc tài khoản.
+      cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai" ||
       // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
       // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
