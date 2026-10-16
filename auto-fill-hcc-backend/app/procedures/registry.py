@@ -214,6 +214,12 @@ from app.pipelines.xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai.process imp
 from app.pipelines.xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai.attach import (
     plan as xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai_attach,
 )
+from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_thua_ke_tang_cho_dvcqg_lao_cai.process import (
+    run as dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_process,
+)
+from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_thua_ke_tang_cho_dvcqg_lao_cai.attach import (
+    plan as dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_attach,
+)
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -5043,6 +5049,46 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai",
+        # Mã 1.013831.H38 — cùng cổng dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với
+        # 1.115668 (`dang-ky-bien-dong-dat-dai-lao-cai`, mapping "Mapping_DKBD_Buoc2_NguoiNop_ChuHoSo.xlsx"),
+        # pipeline dùng lại schema/mapper của 1.115668. Khác: Đơn Mẫu số 18 (NĐ 151/2025) và bảng Thành phần
+        # hồ sơ PHẲNG 15 dòng (không chia nhánh a/b).
+        # Hai thủ tục CÙNG cụm tên "chuyển đổi … dồn điền" trên cổng → textPriority + mã "1.013831" mới tách
+        # được; trang 1.115668 không có mã này nên vẫn rơi về entry kia. Key trùng mục ke_khai_links (1.013831).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["1.013831", "chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các "
+            "trường hợp chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn bằng quyền sử dụng đất; cho thuê, "
+            "cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng (1.013831)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18 NĐ 151/2025) → dòng 6. Nhiều thửa thì mỗi thửa một "
+            "Đơn, trợ lý gom chung dòng và ghi Số bản = số tệp.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp → dòng 7.\n"
+            "3. Hợp đồng/văn bản chuyển nhượng, tặng cho, thừa kế, góp vốn (công chứng) → dòng 9.\n"
+            "4. Tờ khai thuế TNCN → dòng 2; Tờ khai lệ phí trước bạ → dòng 15 (mỗi thửa một tờ).\n"
+            "5. Giấy ủy quyền → 'Giấy tờ khác' tên 'Ủy quyền' (KHÔNG đính dòng 10 'Văn bản về việc đại "
+            "diện'); CCCD, giấy chứng nhận kết hôn → 'Giấy tờ khác'.\n"
+            "Tệp tải trùng nội dung (cùng một giấy tải hai lần) trợ lý bỏ qua, không đính lại.\n"
+            "Chủ hồ sơ = BÊN NHẬN chuyển quyền đứng tên Đơn mục 1.1. Người nộp thường là người được ủy quyền "
+            "— đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP (ô Họ tên/Số Căn cước readonly theo tài khoản). "
+            "Ngày sinh chủ hồ sơ lấy CCCD → giấy tờ ghi đủ ngày → Tờ khai LPTB [05]/TNCN [11.4]; địa chỉ "
+            "CCCD → Hợp đồng → Đơn → Tờ khai LPTB; di động Đơn mục 1.7 → Tờ khai LPTB [11].\n"
+            "Ô 'Về việc' (*) do cổng điền sẵn — trợ lý KHÔNG ghi đè; 'Ghi chú' để cán bộ tự ghi."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -7936,6 +7982,8 @@ _PIPELINE = {
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai":
         xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai_process,
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai":
+        dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
@@ -8046,6 +8094,8 @@ _ATTACH_PIPELINE = {
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai":
         xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_lao_cai_attach,
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai":
+        dang_ky_bien_dong_chuyen_nhuong_dvcqg_lao_cai_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,
