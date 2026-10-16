@@ -30,6 +30,9 @@ from app.pipelines.khai_sinh_lien_thong.process.mapper import (
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
+from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.mapper import (
+    with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
+)
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process.mapper import (
     with_account_process_options as with_dien_tich_nha_o_account_process_options,
 )
@@ -96,6 +99,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # Phường Hiệp Hòa: đăng ký lại khai sinh có giấy ủy quyền thì người yêu cầu là bên ủy quyền.
         prepared.pipeline_options = with_khai_sinh_dang_ky_lai_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Phường Yên Bái: trợ cấp xã hội + nhận chăm sóc lấy đối tượng hưởng trợ cấp vừa nộp vừa là chủ hồ sơ.
+        prepared.pipeline_options = with_tro_cap_nhan_cham_soc_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

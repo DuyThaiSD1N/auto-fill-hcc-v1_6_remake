@@ -13,6 +13,9 @@ HAI vai:
                                  ô SĐT chủ hồ sơ là bắt buộc.
   data[ghiChu]                 — "Người nộp là người giám hộ (<quan hệ>) của chủ hồ sơ" khi người nộp là
                                  người khai thay và tờ khai ghi quan hệ.
+Cờ subjectAsSubmitter (phường Yên Bái): Phần I = ĐỐI TƯỢNG (bỏ qua người khai thay lẫn mốc tài khoản), TÍCH
+isOwnerDossierCheck để cổng tự đổ Phần I → Phần II, KHÔNG điền owner_* và ghiChu. Đối tượng không có SĐT → dùng
+SĐT người khai thay vì ô SĐT người nộp bắt buộc. Runner kèm enableInput cho họ tên + CCCD Phần I.
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
 """
 
@@ -26,6 +29,34 @@ from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import ISSUER_BO_CONG_AN, ISSUER_CUC, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.schema import UI_COMP_BY_NAME
+
+
+# Cấu hình theo tài khoản: phường Yên Bái (Lào Cai) khai ĐỐI TƯỢNG hưởng trợ cấp vừa là người nộp vừa là chủ
+# hồ sơ, kể cả khi tờ khai có người giám hộ; nơi khác giữ nguyên logic. Mapper không biết tài khoản nên router
+# (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ luôn bị
+# ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang"
+SUBJECT_AS_SUBMITTER_OPTION = "subjectAsSubmitter"
+
+
+def is_lao_cai_yen_bai(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Yên Bái, tỉnh Lào Cai (khớp tỉnh và ĐÚNG tên phường)."""
+    if not user:
+        return False
+    return "lao cai" in _fold(user.get("tinh")) and _locality_key(user.get("xa")) == "yen bai"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ theo tài khoản do server quyết (đối tượng vừa nộp vừa là chủ hồ sơ)."""
+    result = dict(options or {})
+    result.pop(SUBJECT_AS_SUBMITTER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_lao_cai_yen_bai(user):
+        result[SUBJECT_AS_SUBMITTER_OPTION] = True
+    return result
+
+
+def subject_as_submitter(options: dict | None) -> bool:
+    return (options or {}).get(SUBJECT_AS_SUBMITTER_OPTION) is True
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -286,7 +317,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     declarant["issuer"] = _issuer(values.get("NguoiNop_NoiCap"), declarant["id_date"], declarant["identity"])
     has_declarant = bool(declarant["name"] or declarant["identity"])
 
-    if anchor:
+    subject_submits = subject_as_submitter(options) and bool(subject["name"] or subject["identity"])
+    if subject_submits:
+        # Yên Bái: đối tượng tự đứng tên cả hai phần; SĐT trống thì mượn SĐT người khai thay (ô bắt buộc).
+        submitter = {**subject, "phone": subject["phone"] or declarant["phone"]}
+        submitter_is_declarant = False
+    elif anchor:
         candidates = [declarant, subject] if has_declarant else [subject]
         matched = _account_submitter(candidates, anchor)
         if matched is None:
@@ -330,6 +366,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # Cổng nhớ email của lượt nộp trước và tự điền lại → hồ sơ không có email người nộp thì XOÁ ô.
         out.append({"name": "data[email]", "comp": UI_COMP_BY_NAME["data[email]"], "value": "", "clear": True})
         seen.add("data[email]")
+
+    if subject_submits:
+        # Người nộp là chủ hồ sơ: tích để cổng tự đổ Phần I → Phần II, không đè owner_*.
+        add("data[isOwnerDossierCheck]", True)
+        return out, warnings
 
     # --- Mở khoá Phần II: BỎ TÍCH "Người nộp là chủ hồ sơ" ---
     add("data[isOwnerDossierCheck]", False)

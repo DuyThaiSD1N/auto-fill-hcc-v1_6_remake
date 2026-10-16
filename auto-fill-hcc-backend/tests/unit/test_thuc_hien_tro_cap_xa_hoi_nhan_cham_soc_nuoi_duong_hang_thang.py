@@ -115,6 +115,66 @@ def test_khong_co_nguoi_khai_thay_thi_doi_tuong_tu_nop():
     assert "data[ghiChu]" not in ui
 
 
+# --- Phường Yên Bái (cờ subjectAsSubmitter): đối tượng vừa nộp vừa là chủ hồ sơ ---
+_YEN_BAI_USER = {"tinh": "Tỉnh Lào Cai", "xa": "Phường Yên Bái"}
+
+
+def _yen_bai(options):
+    return mapper.with_account_process_options(options, _YEN_BAI_USER, _KEY)
+
+
+def test_co_subject_as_submitter_chi_bat_cho_phuong_yen_bai():
+    assert _yen_bai({})[mapper.SUBJECT_AS_SUBMITTER_OPTION] is True
+    for user in ({"tinh": "Tỉnh Lào Cai", "xa": "Phường Cam Đường"}, {"tinh": "Tỉnh Yên Bái", "xa": "Xã Yên Bái"}, None):
+        assert mapper.SUBJECT_AS_SUBMITTER_OPTION not in mapper.with_account_process_options({}, user, _KEY)
+    # Thủ tục khác hoặc client tự gửi cờ đều bị gỡ.
+    assert mapper.SUBJECT_AS_SUBMITTER_OPTION not in mapper.with_account_process_options({}, _YEN_BAI_USER, "khac")
+    assert mapper.SUBJECT_AS_SUBMITTER_OPTION not in mapper.with_account_process_options(
+        {mapper.SUBJECT_AS_SUBMITTER_OPTION: True}, None, _KEY
+    )
+
+
+def test_yen_bai_doi_tuong_vua_nop_vua_la_chu_ho_so_du_co_nguoi_giam_ho():
+    ui, warnings = _mapped({**_guardian(), "DoiTuong_DienThoai": "0987654321"}, _yen_bai(_DECLARATION_MODE))
+
+    assert not warnings
+    assert ui["data[fullname]"] == "LÊ MINH ANH"
+    assert ui["data[identityNumber]"] == "001319012345"
+    assert ui["data[birthday]"] == "03/02/2019"
+    assert ui["data[idIssuePlace]"] == "Bộ Công an"
+    assert ui["data[province]"] == "Thành phố Hà Nội"
+    assert ui["data[phoneNumber]"] == "0987654321"
+    # Tích để cổng tự đổ Phần I → Phần II, không điền owner_* và ghi chú người giám hộ.
+    assert ui["data[isOwnerDossierCheck]"] is True
+    assert not any(name.startswith("data[owner") for name in ui)
+    assert "data[ghiChu]" not in ui
+
+
+def test_yen_bai_doi_tuong_khong_co_sdt_thi_dung_sdt_nguoi_giam_ho():
+    ui, _ = _mapped(_guardian(), _yen_bai(_DECLARATION_MODE))
+    assert ui["data[phoneNumber]"] == "0912345678"
+
+
+def test_yen_bai_bo_qua_moc_tai_khoan_nguoi_giam_ho():
+    ui, warnings = _mapped(_guardian(), _yen_bai({
+        "formContext": {"applicantFullname": "Lê Văn Bình", "applicantIdentityNumber": "001090054321"}
+    }))
+    assert not warnings
+    assert ui["data[fullname]"] == "LÊ MINH ANH"
+    assert ui["data[identityNumber]"] == "001319012345"
+    assert ui["data[isOwnerDossierCheck]"] is True
+
+
+async def test_runner_yen_bai_mo_khoa_o_ho_ten_va_cccd(monkeypatch):
+    async def fake_run(*args, **kwargs):
+        return {"fields": [{"name": k, "value": v} for k, v in _guardian().items()]}
+
+    monkeypatch.setattr(process_runner.runner, "run", fake_run)
+    res = await process_runner.run({}, _yen_bai({}))
+    enabled = {f["name"] for f in res["fields"] if f.get("enableInput")}
+    assert enabled == {"data[fullname]", "data[identityNumber]"}
+
+
 def test_so_dinh_danh_nguoi_khai_sai_do_dai_thi_bo():
     ui, _ = _mapped({**_guardian(), "NguoiNop_SoDinhDanh": "0010900543210"}, _DECLARATION_MODE)
     assert ui["data[fullname]"] == "LÊ VĂN BÌNH"

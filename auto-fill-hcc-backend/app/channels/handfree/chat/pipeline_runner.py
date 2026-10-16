@@ -44,6 +44,9 @@ from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_atta
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
+from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.mapper import (
+    with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
+)
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
@@ -204,6 +207,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_cai_chinh_account_process_options(options, owner_user, procedure_key)
             options = with_khai_sinh_dang_ky_lai_account_process_options(options, owner_user, procedure_key)
             options = with_khai_sinh_lien_thong_account_process_options(options, owner_user, procedure_key)
+            options = with_tro_cap_nhan_cham_soc_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"
@@ -500,6 +504,8 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             rec.output("response", {"attach_plan": result.get("attachments"),
                                     "stt1VirtualCopy": result.get("stt1VirtualCopy")})
         conv["attach_plan"] = result.get("attachments", [])
+        # Kế hoạch lập theo cài đặt tách giấy tờ nào: đổi cài đặt rồi bấm "Đính kèm lại" thì lập lại.
+        conv["attach_plan_split_documents"] = attach_options.get("splitDocuments") is True
         conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")
         conv["attach_plan_replace_files"] = replace_by_fid
         conv["attach_errors"] = result.get("errors", [])

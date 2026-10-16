@@ -518,6 +518,13 @@ def _attachment_options(conv: dict, extra: dict | None = None) -> dict:
     return options
 
 
+def _attach_plan_split_changed(conv: dict) -> bool:
+    """Cài đặt tách giấy tờ đã đổi so với lúc lập kế hoạch đang lưu (planner tự chạy ngay khi
+    dữ liệu điền về, cán bộ hay bật "tách" sau đó rồi mới bấm Đính kèm lại)."""
+    wanted = _attachment_options(conv).get("splitDocuments") is True
+    return wanted != (conv.get("attach_plan_split_documents") is True)
+
+
 def _preset_attach_mode(conv: dict) -> str:
     """Cách đính kèm chứng thực đã chọn sẵn trong màn Cài đặt của máy quầy (gộp/tách hồ sơ).
 
@@ -3918,6 +3925,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # Công dân đang đứng đúng trang: dùng plan đã lưu nếu có; nếu chưa có thì khởi động
         # planner ngay. Không rơi xuống câu "đang ở Kê khai" chỉ vì pipeline_status còn là
         # waiting_attachment_page từ thời điểm điền form xong.
+        if (conv.get("attach_plan") and not conv.get("attach_action_in_progress")
+                and _attach_plan_split_changed(conv)):
+            conv["attach_plan"] = []
+            conv["attachment_plan_started"] = False
         if conv.get("attach_plan") and not conv.get("attach_action_in_progress"):
             return await _handle_attaching(conv, Intent("event", "attach_ready"))
         if conv.get("pipeline_status") == "error":

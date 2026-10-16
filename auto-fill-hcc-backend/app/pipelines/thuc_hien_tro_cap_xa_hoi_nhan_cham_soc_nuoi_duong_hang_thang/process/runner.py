@@ -24,9 +24,10 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
     )
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
-    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
-        # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người nộp theo tờ khai có thể là người
-        # khác nên kèm enableInput để extension bỏ disabled trước khi ghi, cán bộ còn sửa được khi OCR sai.
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter" or mapper.subject_as_submitter(options):
+        # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người nộp theo tờ khai (hoặc đối tượng
+        # với cờ Yên Bái) có thể là người khác nên kèm enableInput để extension bỏ disabled trước khi ghi, cán bộ
+        # còn sửa được khi OCR sai.
         for field in mapped_fields:
             if field.get("name") in ("data[fullname]", "data[identityNumber]") and field.get("occurrence") in (None, 0):
                 field["enableInput"] = True
