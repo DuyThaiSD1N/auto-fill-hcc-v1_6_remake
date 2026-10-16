@@ -21,6 +21,9 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_ninh_binh.process.mapper import (
+    with_account_process_options as with_giao_dat_ninh_binh_account_process_options,
+)
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
     with_account_process_options as with_khai_sinh_dang_ky_lai_account_process_options,
 )
@@ -103,6 +106,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # Phường Yên Bái: trợ cấp xã hội + nhận chăm sóc lấy đối tượng hưởng trợ cấp vừa nộp vừa là chủ hồ sơ.
         prepared.pipeline_options = with_tro_cap_nhan_cham_soc_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Xã Nghĩa Hưng: giao/thuê/chuyển mục đích đất Ninh Bình lấy chủ hồ sơ đứng luôn phần người nộp.
+        prepared.pipeline_options = with_giao_dat_ninh_binh_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

@@ -169,3 +169,69 @@ def test_registry_has_scoped_ninh_binh_process_and_attachment_pipeline():
     assert len(procedure["detect"]["textIncludes"]) == 2
     assert get_pipeline(key) is not None
     assert get_attach_pipeline(key) is not None
+
+
+_NGHIA_HUNG_USER = {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng"}
+
+# Đơn do vợ ký "Người làm đơn" + CCCD đính kèm của vợ, không có ủy quyền → model tách vợ thành người nộp.
+_SPOUSE_SIGNED_FIELDS = [
+    {"name": "ChuHoSo_HoTen", "value": "TRẦN VĂN BÌNH"},
+    {"name": "ChuHoSo_NgaySinh", "value": "05/06/1962"},
+    {"name": "ChuHoSo_GioiTinh", "value": "Nam"},
+    {"name": "ChuHoSo_SoDinhDanh", "value": "036062001234"},
+    {"name": "ChuHoSo_NgayCap", "value": "10/05/2023"},
+    {"name": "ChuHoSo_NoiCap", "value": "Cục CS QLHC về TTXH"},
+    {"name": "ChuHoSo_NoiCuTru", "value": {"tinh": "Ninh Bình", "xa": "Nghĩa Hưng", "diaChi": "Thôn Đông"}},
+    {"name": "NguoiNop_HoTen", "value": "LÊ THỊ HOA"},
+    {"name": "NguoiNop_NgaySinh", "value": "07/08/1965"},
+    {"name": "NguoiNop_GioiTinh", "value": "Nữ"},
+    {"name": "NguoiNop_SoDinhDanh", "value": "036165005678"},
+    {"name": "NguoiNop_NgayCap", "value": "20/10/2024"},
+    {"name": "NguoiNop_NoiCap", "value": "Bộ Công an"},
+    {"name": "NguoiNop_NoiCuTru", "value": {"tinh": "Ninh Bình", "xa": "Nghĩa Hưng", "diaChi": "Thôn Đông"}},
+    {"name": "Don_NoiDungDeNghi", "value": "Cho phép chuyển mục đích sử dụng đất"},
+]
+
+
+def test_nghia_hung_account_sets_owner_as_submitter_flag_only_for_this_procedure():
+    key = "giao-thue-chuyen-muc-dich-dat-ninh-binh"
+
+    assert mapper.owner_as_submitter(mapper.with_account_process_options({}, _NGHIA_HUNG_USER, key))
+    assert not mapper.owner_as_submitter(
+        mapper.with_account_process_options({}, _NGHIA_HUNG_USER, "giao-thue-chuyen-muc-dich-dat-quang-ngai")
+    )
+    assert not mapper.owner_as_submitter(
+        mapper.with_account_process_options({}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư"}, key)
+    )
+    # Client tự gửi cờ cũng bị server ghi đè theo tài khoản.
+    assert not mapper.owner_as_submitter(
+        mapper.with_account_process_options({"ownerAsSubmitter": True}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư"}, key)
+    )
+
+
+def test_nghia_hung_owner_fills_both_parts_even_when_model_split_a_submitter():
+    options = mapper.with_account_process_options({}, _NGHIA_HUNG_USER, "giao-thue-chuyen-muc-dich-dat-ninh-binh")
+
+    out, warnings = mapper.enrich(_SPOUSE_SIGNED_FIELDS, options)
+    values = _values(out)
+
+    assert values["data[ownerFullname]"] == "TRẦN VĂN BÌNH"
+    assert values["data[isOwnerDossier]"] is True
+    assert values["data[fullname]"] == "TRẦN VĂN BÌNH"
+    assert values["data[birthday]"] == "05/06/1962"
+    assert values["data[gender]"] == "Nam"
+    assert values["data[identityNumber]"] == "036062001234"
+    assert values["data[identityDate]"] == "10/05/2023"
+    assert values["data[hoTen]"] == "TRẦN VĂN BÌNH"
+    assert values["data[soCCCD]"] == "036062001234"
+    assert "Thôn Đông" in values["data[diaChi]"]
+    assert warnings == []
+
+
+def test_other_wards_keep_separate_submitter():
+    out, _ = mapper.enrich(_SPOUSE_SIGNED_FIELDS, {})
+    values = _values(out)
+
+    assert values["data[isOwnerDossier]"] is False
+    assert values["data[fullname]"] == "LÊ THỊ HOA"
+    assert values["data[identityNumber]"] == "036165005678"

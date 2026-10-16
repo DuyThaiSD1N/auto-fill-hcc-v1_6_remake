@@ -9,8 +9,29 @@ from typing import Any
 from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import is_ninh_binh_nghia_hung
 
 from .schema import UI_COMP_BY_NAME
+
+# Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) khai CHỦ HỒ SƠ vừa là người nộp, kể cả khi Đơn do
+# người nhà ký, CCCD đính kèm là của người khác hay hồ sơ có ủy quyền; nơi khác giữ nguyên logic. Mapper
+# không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options
+# để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "giao-thue-chuyen-muc-dich-dat-ninh-binh"
+OWNER_AS_SUBMITTER_OPTION = "ownerAsSubmitter"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ theo tài khoản do server quyết (chủ hồ sơ đứng luôn phần người nộp)."""
+    result = dict(options or {})
+    result.pop(OWNER_AS_SUBMITTER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
+        result[OWNER_AS_SUBMITTER_OPTION] = True
+    return result
+
+
+def owner_as_submitter(options: dict | None) -> bool:
+    return (options or {}).get(OWNER_AS_SUBMITTER_OPTION) is True
 
 
 def _by_name(fields: list[dict]) -> dict[str, Any]:
@@ -89,7 +110,6 @@ def _full_address(area: dict | None) -> str | None:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    del options
     values = _by_name(fields)
     out: list[dict] = []
     seen: set[str] = set()
@@ -109,6 +129,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_name = _text(values.get("ChuHoSo_HoTen"))
     applicant_name = _text(values.get("NguoiNop_HoTen")) or owner_name
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
+    if owner_name and owner_as_submitter(options):
+        # Xã Nghĩa Hưng: bỏ qua người nộp model tách ra, chủ hồ sơ đứng cả hai phần.
+        applicant_name = owner_name
+        authorized = False
 
     # Không có giấy ủy quyền: dùng toàn bộ fact chủ hồ sơ cho người nộp, không chỉ sao chép họ tên.
     source_prefix = "NguoiNop" if authorized else "ChuHoSo"
