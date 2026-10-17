@@ -350,6 +350,8 @@ from app.pipelines.xet_tuyen_vien_chuc_lai_chau.attach import plan as xet_tuyen_
 from app.pipelines.xet_tuyen_vien_chuc_lai_chau.process import run as xet_tuyen_vien_chuc_lai_chau_process
 from app.pipelines.cap_lai_to_quoc_ghi_cong.attach import plan as cap_lai_to_quoc_ghi_cong_attach
 from app.pipelines.cap_lai_to_quoc_ghi_cong.process import run as cap_lai_to_quoc_ghi_cong_process
+from app.pipelines.cap_bo_sung_cap_lai_giay_chung_nhan_nguoi_co_cong.attach import plan as cap_bs_cl_gcn_ncc_attach
+from app.pipelines.cap_bo_sung_cap_lai_giay_chung_nhan_nguoi_co_cong.process import run as cap_bs_cl_gcn_ncc_process
 from app.pipelines.bo_sung_than_nhan_liet_si.attach import plan as bo_sung_than_nhan_liet_si_attach
 from app.pipelines.bo_sung_than_nhan_liet_si.process import run as bo_sung_than_nhan_liet_si_process
 from app.pipelines.tham_vieng_mo_liet_si.attach import plan as tham_vieng_mo_liet_si_attach
@@ -5719,6 +5721,39 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
+        # Mã TTHC 1.010814 — key TRÙNG ke_khai_links.json. Cổng Form.io "Quy trình liên thông Xã - Sở Nội vụ"
+        # (cùng họ field data[...] với Cấp lại Bằng TQGC): Phần I người nộp khoá họ tên/ngày sinh/CCCD theo tài
+        # khoản, Phần II chủ hồ sơ, Phần III mẫu khai Đơn M25 dùng lại tên field Phần I (occurrence 1). Bảng thành
+        # phần hồ sơ 1 dòng (Đơn Mẫu 25) + "Thêm giấy tờ". URL SPA không mang mã → nhận theo tên thủ tục; không khai
+        # urlScope để URL kê khai DVCQG (with_ke_khai_detect_urls) vẫn khớp.
+        "detect": {
+            "textIncludes": ["cấp bổ sung hoặc cấp lại giấy chứng nhận người có công"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp bổ sung hoặc cấp lại giấy chứng nhận người có công do ngành Lao động - Thương binh và Xã hội "
+            "quản lý và giấy chứng nhận thân nhân liệt sĩ"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp bổ sung hoặc cấp lại giấy chứng nhận (Mẫu số 25 Phụ lục I NĐ 131/2021/NĐ-CP) đã ký "
+            "— nguồn chính: diện người có công, quyết định hưởng trợ cấp, loại giấy chứng nhận, lý do.\n"
+            "2. CCCD của người làm đơn — họ tên, ngày sinh, giới tính, số/ngày/nơi cấp, nơi thường trú.\n"
+            "3. Nếu có: giấy chứng nhận đã cấp (bản bị hư hỏng / cần bổ sung thông tin).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Ô họ tên, ngày sinh, số CCCD của người nộp cổng lấy theo tài khoản (không sửa được). Người làm đơn trùng "
+            "tài khoản thì tích 'Người nộp hồ sơ là chủ hồ sơ' và sửa giới tính, ngày cấp, nơi cấp, địa chỉ, SĐT.\n"
+            "Bước đính kèm: Đơn Mẫu 25 → dòng 1 (Bản chính); giấy chứng nhận cũ, CCCD và giấy tờ khác thêm dòng qua "
+            "'+ Thêm giấy tờ'."
+        ),
+    },
+    {
         "key": "bo-sung-than-nhan-liet-si",
         "detect": {
             "urlIncludes": ["maThuTuc=1.010825"],
@@ -8132,6 +8167,7 @@ _PIPELINE = {
     "thi-tuyen-cong-chuc": thi_tuyen_cong_chuc_process,
     "thi-tuyen-cong-chuc-mot-cua-moha": thi_tuyen_cong_chuc_mot_cua_moha_process,
     "cap-lai-to-quoc-ghi-cong": cap_lai_to_quoc_ghi_cong_process,
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": cap_bs_cl_gcn_ncc_process,
     "bo-sung-than-nhan-liet-si": bo_sung_than_nhan_liet_si_process,
     "tham-vieng-mo-liet-si": tham_vieng_mo_liet_si_process,
     "tro-cap-tho-cung-liet-si": tro_cap_tho_cung_liet_si_process,
@@ -8357,6 +8393,7 @@ _ATTACH_PIPELINE = {
     "thi-tuyen-cong-chuc": thi_tuyen_cong_chuc_attach,
     "thi-tuyen-cong-chuc-mot-cua-moha": thi_tuyen_cong_chuc_mot_cua_moha_attach,
     "cap-lai-to-quoc-ghi-cong": cap_lai_to_quoc_ghi_cong_attach,
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": cap_bs_cl_gcn_ncc_attach,
     "bo-sung-than-nhan-liet-si": bo_sung_than_nhan_liet_si_attach,
     "tham-vieng-mo-liet-si": tham_vieng_mo_liet_si_attach,
     "tro-cap-tho-cung-liet-si": tro_cap_tho_cung_liet_si_attach,
