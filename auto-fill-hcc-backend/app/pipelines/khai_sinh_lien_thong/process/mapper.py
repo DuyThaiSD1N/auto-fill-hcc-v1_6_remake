@@ -5,7 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
-from app.pipelines._shared.hospital_lookup import lookup_hospital
+from app.pipelines._shared.hospital_lookup import hospital_area, lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
 
@@ -488,15 +488,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("DantocKhac", dan_toc_con_khac, default=dan_toc_suy_luan)
         add("MaQuocTich", "Việt Nam")
         add("NsMaQuocGia", "Việt Nam")
-        # Nơi sinh: nếu LLM không suy ra được xa → tra bảng bệnh viện để bổ sung xa + tinh.
-        if ns_area and not ns_area.get("xa"):
-            dia_chi = ns_area.get("diaChi") or ""
-            bv_info = lookup_hospital(dia_chi)
-            if bv_info:
-                ns_area = {**ns_area, "xa": bv_info["xa"]}
-                # Bổ sung tinh nếu LLM cũng bỏ trống
-                if not ns_area.get("tinh"):
-                    ns_area["tinh"] = bv_info["tinh"]
+        # Nơi sinh là bệnh viện có trong bảng → xã theo bảng (đè cả xã OCR đọc sai), tỉnh bù khi trống.
+        ns_area = hospital_area(ns_area)
         if ns_area and ns_area.get("diaChi"):
             ns_area = {**ns_area, "diaChi": _facility_name_case(ns_area["diaChi"])}
         add("NsDiaChi", ns_area)

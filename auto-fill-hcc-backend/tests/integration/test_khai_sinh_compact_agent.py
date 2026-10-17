@@ -395,7 +395,7 @@ def test_mapper_rejects_mother_name_as_child_but_keeps_birth_facts():
     assert values["NsDiaChi"] == {
         "tinh": "Lâm Đồng",
         "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
-        "xa": "Phường Cam Ly",
+        "xa": "Phường Cam Ly - Đà Lạt",
     }
     assert values["MeHo"] == "PHAN"
     assert values["MeChuDem"] == "THỊ"

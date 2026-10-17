@@ -123,3 +123,28 @@ def test_cha_da_co_tu_nguon_khac_ma_khac_ten_thi_khong_lay_ben_chong():
                     "GcnKetHon_Chong_NgaySinh": "06/02/1985"})
     assert out["ChaHoTen"] == "LÊ VĂN BÌNH"
     assert "ChaNgaySinh" not in out
+
+
+def test_benh_vien_co_trong_bang_lay_xa_theo_bang_de_xa_ocr_doc_sai():
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Lâm Đồng", "xa": "Phường Can Lư",
+        "diaChi": "Bệnh viện đa khoa tỉnh Lâm Đồng Số 01 Phạm Ngọc Thạch"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Cam Ly - Đà Lạt"
+    assert out["NsDiaChi"]["tinh"] == "Lâm Đồng"
+
+
+def test_benh_vien_ten_cu_the_hon_thang_ten_goc():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    assert lookup_hospital("Bệnh viện Sản Nhi Bắc Ninh số 2, đường X")["xa"] == "Phường Võ Cường"
+    assert lookup_hospital("BV Đa khoa Anh Quất cơ sở 2")["xa"] == "Phường Tiền Phong"
+
+
+def test_ten_chung_chung_khong_khop_benh_vien_nao():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh") is None
+
+
+def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Hà Nội", "xa": "Phường Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Hai Bà Trưng"

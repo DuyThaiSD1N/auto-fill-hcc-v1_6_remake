@@ -6,7 +6,7 @@ from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_CO
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
-from app.pipelines._shared.hospital_lookup import lookup_hospital
+from app.pipelines._shared.hospital_lookup import hospital_area
 
 # Đổi tên tỉnh/thành theo sắp xếp đơn vị hành chính 2025 (giấy tờ cũ ghi tên cũ → chuẩn hóa tên mới).
 _TINH_RENAME = {"thua thien hue": "Huế"}
@@ -487,14 +487,8 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
         noi_sinh_raw = _area(values.get("Gcs_NoiSinh"))
         if noi_sinh_raw:
             noi_sinh_raw = _birth_place(values, "Gcs_NoiSinh", "TkKs_NoiSinh")
-        noi_sinh = noi_sinh_raw
-        if noi_sinh_raw and not noi_sinh_raw.get("xa"):
-            dia_chi = noi_sinh_raw.get("diaChi") or ""
-            bv_info = lookup_hospital(dia_chi)
-            if bv_info:
-                noi_sinh = {**noi_sinh_raw, "xa": bv_info["xa"]}
-                if not noi_sinh_raw.get("tinh"):
-                    noi_sinh["tinh"] = bv_info["tinh"]
+        # Bệnh viện có trong bảng → xã theo bảng (đè cả xã OCR đọc sai), tỉnh bù khi trống.
+        noi_sinh = hospital_area(noi_sinh_raw)
         
         return {
             "ho_ten": values.get("Gcs_HoTenCon"),

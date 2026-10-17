@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.7",
+    date: "16/10/2026",
+    items: [
+      "Lào Cai: đối chiếu đúng người nộp với tài khoản cho xác nhận tiếp tục sử dụng đất nông nghiệp, đăng ký biến động (chuyển nhượng, thừa kế, tặng cho; đổi tên người sử dụng đất) và đính chính giấy chứng nhận đã cấp.",
+    ],
+  },
+  {
     version: "1.23.5",
     date: "14/10/2026",
     items: [

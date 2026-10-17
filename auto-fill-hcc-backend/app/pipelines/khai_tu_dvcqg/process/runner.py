@@ -31,19 +31,68 @@ def _dan_toc_to_khai(documents: list[dict]) -> str:
     return ""
 
 
-def _compact_field_fallback(raw_fields, documents: list[dict]):
-    """LLM hay bỏ sót dân tộc khi nó nằm giữa dòng giới tính / quốc tịch → đọc thẳng từ tờ khai."""
+# Ngày chết đủ ngày/tháng/năm. Tờ khai in sẵn "ngày ...30... tháng 5.... năm 1989" (dấu chấm điền chỗ
+# trống), văn bản xác minh "chết ngày 30 tháng 5 năm 1989", phiếu ghi tay "Mất : 30 - 05 - 1989".
+_DOT = r"[\s.…_]*"
+_NGAY_CHET = (
+    re.compile(rf"(?:chết|tử\s*vong|mất)[^\n]{{0,40}}?ngày{_DOT}(\d{{1,2}}){_DOT}tháng{_DOT}(\d{{1,2}}){_DOT}"
+               rf"năm{_DOT}(\d{{4}})(?!\d)", re.IGNORECASE),
+    re.compile(r"(?:chết|tử\s*vong|mất)\s*(?:ngày\s*)?[:：]?\s*(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})(?!\d)",
+               re.IGNORECASE),
+)
+
+
+def _ngay_chet_day_du(documents: list[dict], year: str) -> str:
+    """Ngày chết dd/mm/yyyy cùng năm LLM đã đọc; các giấy ghi lệch nhau thì bỏ, không đoán."""
+    found = set()
+    for doc in documents or []:
+        for pattern in _NGAY_CHET:
+            for match in pattern.finditer(str(doc.get("text") or "")):
+                day, month, y = int(match.group(1)), int(match.group(2)), match.group(3)
+                if y == year and 1 <= day <= 31 and 1 <= month <= 12:
+                    found.add(f"{day:02d}/{month:02d}/{y}")
+    return found.pop() if len(found) == 1 else ""
+
+
+def _get(raw_fields, name: str):
     if isinstance(raw_fields, dict):
-        if not raw_fields.get("NguoiMat_DanToc"):
-            value = _dan_toc_to_khai(documents)
-            if value:
-                raw_fields["NguoiMat_DanToc"] = value
-    elif isinstance(raw_fields, list):
-        if not any(isinstance(f, dict) and f.get("name") == "NguoiMat_DanToc" and f.get("value")
-                   for f in raw_fields):
-            value = _dan_toc_to_khai(documents)
-            if value:
-                raw_fields.append({"name": "NguoiMat_DanToc", "value": value})
+        return raw_fields.get(name)
+    for f in raw_fields:
+        if isinstance(f, dict) and f.get("name") == name and f.get("value"):
+            return f.get("value")
+    return None
+
+
+def _set(raw_fields, name: str, value) -> None:
+    if isinstance(raw_fields, dict):
+        raw_fields[name] = value
+        return
+    for f in raw_fields:
+        if isinstance(f, dict) and f.get("name") == name:
+            f["value"] = value
+            return
+    raw_fields.append({"name": name, "value": value})
+
+
+def _compact_field_fallback(raw_fields, documents: list[dict]):
+    """Bù tất định các ô LLM hay đọc thiếu trên tờ khai.
+
+    - Dân tộc nằm giữa dòng giới tính / quốc tịch → LLM hay bỏ sót.
+    - Ngày chết: LLM hay chỉ trả năm khi tờ khai điền ngày/tháng giữa dấu chấm, hoặc khi văn bản
+      xác minh chỉ ghi "chết năm 1989" → tìm ngày đủ cùng năm trên các giấy.
+    """
+    if not isinstance(raw_fields, (dict, list)):
+        return raw_fields
+    if not _get(raw_fields, "NguoiMat_DanToc"):
+        value = _dan_toc_to_khai(documents)
+        if value:
+            _set(raw_fields, "NguoiMat_DanToc", value)
+    # Chỉ nâng "yyyy" / "mm/yyyy" lên ngày đủ khi khớp năm (và tháng nếu LLM đã có tháng).
+    partial = re.fullmatch(r"(?:(\d{1,2})[/\-.])?(\d{4})", str(_get(raw_fields, "NguoiMat_NgayMat") or "").strip())
+    if partial:
+        full = _ngay_chet_day_du(documents, partial.group(2))
+        if full and (not partial.group(1) or int(partial.group(1)) == int(full[3:5])):
+            _set(raw_fields, "NguoiMat_NgayMat", full)
     return raw_fields
 
 

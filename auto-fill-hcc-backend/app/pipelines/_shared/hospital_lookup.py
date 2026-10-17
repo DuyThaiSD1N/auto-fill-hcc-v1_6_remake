@@ -4,10 +4,10 @@ Cach dung:
     from app.pipelines._shared.hospital_lookup import lookup_hospital
 
     area = lookup_hospital("Bệnh viện Đa khoa tỉnh Lâm Đồng")
-    # -> {"xa": "Phường Cam Ly", "tinh": "Tỉnh Lâm Đồng"}
+    # -> {"xa": "Phường Cam Ly - Đà Lạt", "tinh": "Tỉnh Lâm Đồng"}
 
     area = lookup_hospital("BV da khoa lam dong")   # fold, khong phan biet dau
-    # -> {"xa": "Phường Cam Ly", "tinh": "Tỉnh Lâm Đồng"}
+    # -> {"xa": "Phường Cam Ly - Đà Lạt", "tinh": "Tỉnh Lâm Đồng"}
 
 Cach them tinh moi:
     Tao file JSON ten bv_<ten_tinh>.json trong thu muc _shared/data_bv/.
@@ -16,7 +16,7 @@ Cach them tinh moi:
 Cau truc moi entry JSON:
     {
         "ten":  "Bệnh viện Đa khoa tỉnh Lâm Đồng",
-        "xa":   "Phường Cam Ly",
+        "xa":   "Phường Cam Ly - Đà Lạt",
         "tinh": "Tỉnh Lâm Đồng"
     }
 
@@ -64,6 +64,14 @@ _ABBREVIATIONS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\btyt\b"), "tram y te"),
     (re.compile(r"\bkv\b"), "khu vuc"),
 ]
+
+
+# Tu chung chung cua ten co so y te + don vi hanh chinh: chuoi tra chi con cac tu nay thi khong du
+# de nhan ra benh vien nao.
+_GENERIC_WORDS = re.compile(
+    r"\b(benh vien|da khoa|trung tam y te|tram y te|phong kham|nha ho sinh|khu vuc|tinh|thanh pho|"
+    r"huyen|quan|thi xa|phuong|xa|so|co so)\b"
+)
 
 
 def _normalize(text: str) -> str:
@@ -131,19 +139,38 @@ def lookup_hospital(name: Optional[str]) -> Optional[dict]:
         if h["ten_folded"] == needle:
             return {"xa": h["xa"], "tinh": h["tinh"]}
 
-    # Buoc 2: mo rong (chuoi con)
-    # Giu ca hai huong: needle ⊂ ten_bang (OCR lay du hon) va ten_bang ⊂ needle (OCR lay thieu)
-    candidates: list[dict] = []
-    for h in _HOSPITALS:
-        if needle in h["ten_folded"] or h["ten_folded"] in needle:
-            candidates.append(h)
+    # Buoc 2: ten_bang nam tron trong needle (giay ghi them so nha/duong/tinh sau ten benh vien,
+    # vd "Benh vien da khoa tinh Lam Dong So 01 Pham Ngoc Thach"). Lay ten DAI nhat = cu the nhat
+    # ("... so 2", "... co so 2" thang ten goc).
+    padded = f" {needle} "
+    contained = [h for h in _HOSPITALS if f" {h['ten_folded']} " in padded]
+    if contained:
+        best = max(contained, key=lambda h: len(h["ten_folded"]))
+        return {"xa": best["xa"], "tinh": best["tinh"]}
 
+    # Buoc 3: needle nam trong ten_bang (OCR lay thieu chu). Needle chi gom tu chung chung
+    # ("benh vien da khoa tinh") khop qua nhieu noi → bo. Lay entry ngan nhat (it nham nhat).
+    if not _GENERIC_WORDS.sub(" ", needle).strip():
+        return None
+    candidates = [h for h in _HOSPITALS if f" {needle} " in f" {h['ten_folded']} "]
     if not candidates:
         return None
-
-    # Uu tien entry co ten ngan nhat (tranh khop qua rong, vd "benh vien" khop nhieu noi)
     best = min(candidates, key=lambda h: len(h["ten_folded"]))
     return {"xa": best["xa"], "tinh": best["tinh"]}
+
+
+def hospital_area(area: Optional[dict]) -> Optional[dict]:
+    """Noi sinh la co so y te CO trong bang → xa/phuong lay theo bang, ke ca khi giay da ghi xa khac.
+
+    To khai viet tay hay bi OCR doc sai ten xa (vd "Phuong Can Lu"), con ten benh vien thi doc dung;
+    biet benh vien la biet dung xa. Tinh chi bu khi giay bo trong. Khong nhan ra benh vien → giu nguyen.
+    """
+    if not isinstance(area, dict):
+        return area
+    hospital = lookup_hospital(area.get("diaChi") or area.get("dia_chi") or area.get("diachi"))
+    if not hospital:
+        return area
+    return {**area, "xa": hospital["xa"], "tinh": area.get("tinh") or hospital["tinh"]}
 
 
 def reload() -> None:

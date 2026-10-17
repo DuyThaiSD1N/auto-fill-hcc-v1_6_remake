@@ -196,6 +196,25 @@ def test_dan_toc_llm_bo_sot_thi_doc_tu_to_khai():
     assert "NguoiMat_DanToc" not in _compact_field_fallback({}, docs[:1])
 
 
+def test_ngay_chet_llm_chi_tra_nam_thi_lay_ngay_du_tren_giay():
+    from app.pipelines.khai_tu_dvcqg.process.runner import _compact_field_fallback
+
+    to_khai = "Đã chết vào lúc: giờ phút, ngày ...30... tháng 5.... năm 1989...\nNơi chết: thôn 3"
+    xac_minh = "Ông Nguyễn Văn A chết ngày 30 tháng 5 năm 1989; gia đình chưa đăng ký khai tử."
+    phieu = "Sinh : 01 - 02 - 1920\nMất : 30 - 05 - 1989"
+    for text in (to_khai, xac_minh, phieu):
+        assert _compact_field_fallback({"NguoiMat_NgayMat": "1989"}, [{"text": text}])["NguoiMat_NgayMat"] == "30/05/1989"
+    out = _compact_field_fallback([{"name": "NguoiMat_NgayMat", "value": "05/1989"}], [{"text": to_khai}])
+    assert {"name": "NguoiMat_NgayMat", "value": "30/05/1989"} in out
+    # Lệch năm/tháng, hoặc các giấy ghi ngày khác nhau → giữ nguyên, không đoán.
+    assert _compact_field_fallback({"NguoiMat_NgayMat": "1990"}, [{"text": to_khai}])["NguoiMat_NgayMat"] == "1990"
+    assert _compact_field_fallback({"NguoiMat_NgayMat": "06/1989"}, [{"text": to_khai}])["NguoiMat_NgayMat"] == "06/1989"
+    lech = [{"text": to_khai}, {"text": "Mất : 29 - 05 - 1989"}]
+    assert _compact_field_fallback({"NguoiMat_NgayMat": "1989"}, lech)["NguoiMat_NgayMat"] == "1989"
+    # LLM đã đọc đủ ngày thì không đụng.
+    assert _compact_field_fallback({"NguoiMat_NgayMat": "29/05/1989"}, [{"text": to_khai}])["NguoiMat_NgayMat"] == "29/05/1989"
+
+
 def test_dan_toc_kem_so_chu_thich_van_snap_danh_muc():
     out, _ = _enrich({**BASE, "NguoiMat_DanToc": "(2) Kinh"})
     assert _by(out)["citizenDantoc_NgdcKT"]["code"] == "01"

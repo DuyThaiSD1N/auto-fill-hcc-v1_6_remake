@@ -8,7 +8,7 @@ from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
-from app.pipelines._shared.hospital_lookup import lookup_hospital
+from app.pipelines._shared.hospital_lookup import hospital_area
 
 from .reason import LOAI_KHAI_SINH_OPTIONS, labeled_value, requester_context, section
 from .schema import UI_COMP_BY_NAME
@@ -86,12 +86,8 @@ def _area(value):
 
 def _birth_place(value):
     area = _area(value)
-    # Sinh tại cơ sở y tế mà giấy không ghi xã → tra danh mục bệnh viện để bù xã/tỉnh.
-    if area and not area.get("xa") and area.get("diaChi"):
-        hospital = lookup_hospital(area["diaChi"])
-        if hospital:
-            area = {**area, "xa": hospital["xa"], "tinh": area.get("tinh") or hospital["tinh"]}
-    return area
+    # Sinh tại cơ sở y tế có trong danh mục bệnh viện → xã theo danh mục (đè cả xã OCR đọc sai), tỉnh bù khi trống.
+    return hospital_area(area)
 
 
 def _same_person(account_name: str, account_id: str, name, ids: list) -> tuple[bool, bool]:
