@@ -270,6 +270,8 @@ from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.attach import plan as ho_tro
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.process import run as ho_tro_chi_phi_hoa_tang_bac_ninh_process
 from app.pipelines.ho_tro_chi_phi_hoa_tang_quang_ngai.attach import plan as ho_tro_chi_phi_hoa_tang_quang_ngai_attach
 from app.pipelines.ho_tro_chi_phi_hoa_tang_quang_ngai.process import run as ho_tro_chi_phi_hoa_tang_quang_ngai_process
+from app.pipelines.ho_tro_chi_phi_van_chuyen_nguoi_tu_vong_den_co_so_hoa_tang.attach import plan as ho_tro_cp_van_chuyen_hoa_tang_attach
+from app.pipelines.ho_tro_chi_phi_van_chuyen_nguoi_tu_vong_den_co_so_hoa_tang.process import run as ho_tro_cp_van_chuyen_hoa_tang_process
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.attach import plan as dang_ky_nha_o_xa_hoi_bac_ninh_attach
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.process import run as dang_ky_nha_o_xa_hoi_bac_ninh_process
 from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ninh_attach
@@ -2172,6 +2174,38 @@ PROCEDURES: list[dict] = [
             "CCCD và giấy tờ không có dòng riêng được đính chung tại dòng Tờ khai đề nghị — cán bộ có "
             "thể tách sang dòng '+ Thêm giấy tờ' nếu cổng yêu cầu. Ô Bản chính/Bản sao do cán bộ tự "
             "chọn.\n"
+        ),
+    },
+    {
+        "key": "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang",
+        # Mã TTHC 3.000721 — key TRÙNG ke_khai_links.json. Thủ tục theo NQ 75/2026/NQ-HĐND TP Đà Nẵng, form
+        # Form.io cổng DVC Đà Nẵng cùng contact block với cap-doi-gcn-da-nang (ownerFullname + isOwnerDossier +
+        # khối người nộp). Attach attp-row 3 dòng: Đơn → dòng 1, Hợp đồng/Biên bản giao nhận hũ tro cốt → dòng 3,
+        # dòng 2 (Quyết định của UBND) là kết quả nên không đính; PDF gộp đính chung vào cả dòng 1 và 3. Không
+        # khai urlScope để URL kê khai DVCQG (with_ke_khai_detect_urls) vẫn khớp; cụm tên không trùng thủ tục
+        # hỏa táng Quảng Ngãi/Bắc Ninh.
+        "detect": {
+            "textIncludes": ["Hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên:\n"
+            "1. Đơn đề nghị hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng (Mẫu ban hành kèm Nghị "
+            "quyết 75/2026/NQ-HĐND) đã kê khai, ký tên — nguồn chính: người đứng ra hỏa táng (Mục II).\n"
+            "2. Hợp đồng dịch vụ hỏa táng và Biên bản giao nhận hũ đựng tro cốt.\n"
+            "3. CCCD của người đứng ra hỏa táng (và của người nộp thay nếu có).\n"
+            "4. Nếu nộp thay: văn bản ủy quyền/giấy giới thiệu.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR. Có thể scan gộp "
+            "nhiều giấy tờ trong một PDF.\n"
+            "Đính kèm: Đơn → dòng 1 (Bản chính); Hợp đồng + Biên bản giao nhận → dòng 3 (Bản sao); PDF gộp được "
+            "đính chung vào cả hai dòng, không tách trang. Dòng 2 (Quyết định hỗ trợ của UBND) là kết quả giải "
+            "quyết, không đính. Người chết không có ô trên form — thông tin nằm trong Đơn đính kèm.\n"
         ),
     },
     {
@@ -8109,6 +8143,7 @@ _PIPELINE = {
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_process,
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": ho_tro_cp_van_chuyen_hoa_tang_process,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_process,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_process,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_process,
@@ -8337,6 +8372,7 @@ _ATTACH_PIPELINE = {
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_attach,
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": ho_tro_cp_van_chuyen_hoa_tang_attach,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_attach,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_attach,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_attach,
