@@ -108,6 +108,92 @@
     return Array.from(document.querySelectorAll(selector)).filter(isVisible).map(textOf).filter(Boolean);
   }
 
+  function documentHints(item) {
+    const hints = Array.isArray(item?.formOptionHints) ? item.formOptionHints : [];
+    return [...hints, String(item?.componentName || "")].map((hint) => String(hint || "").trim()).filter(Boolean);
+  }
+
+  // Chọn mục "Giấy tờ" trong các option đang hiện, theo thứ tự ưu tiên:
+  //   1. formOptionHints của plan (BE khai, cụ thể → chung) rồi componentName — mục nào CHỨA chuỗi đó;
+  //   2. (allowLoose) mục trùng ≥ 60% số từ của componentName, rồi mục chung "… khác".
+  // Không đạt thì trả null — KHÔNG chọn bừa.
+  function chooseDocumentOption(item, { allowLoose = false } = {}) {
+    const entries = visibleOptions().map((option) => ({ option, text: textOf(option), key: fold(textOf(option)) }))
+      .filter((entry) => entry.key);
+    if (!entries.length) return null;
+    for (const hint of documentHints(item).map(fold)) {
+      const hit = entries.find((entry) => entry.key === hint) || entries.find((entry) => entry.key.includes(hint));
+      if (hit) return hit;
+    }
+    if (!allowLoose) return null;
+    const want = new Set(fold(item?.componentName).split(" ").filter((word) => word.length > 1));
+    let best = null;
+    let bestScore = 0;
+    for (const entry of entries) {
+      const words = new Set(entry.key.split(" "));
+      const score = want.size ? [...want].filter((word) => words.has(word)).length / want.size : 0;
+      if (score > bestScore) { bestScore = score; best = entry; }
+    }
+    if (best && bestScore >= 0.6) return best;
+    return entries.find((entry) => /\bkhac\b/.test(entry.key)) || null;
+  }
+
+  function logDocumentCatalog() {
+    const texts = visibleOptions().map(textOf).filter(Boolean);
+    if (texts.length) console.info("[AutoFill-AddDoc] Danh mục Giấy tờ đang hiện:", texts);
+    return texts;
+  }
+
+  // Ô "Giấy tờ" dạng DANH SÁCH CHỌN (mat-select).
+  async function pickDocumentFromSelect(select, item) {
+    clickControl(select.querySelector(".mat-select-trigger") || select);
+    if (!(await waitFor(() => visibleOptions().length, 5000, 120))) {
+      throw new Error("Không mở được danh sách Giấy tờ trong modal.");
+    }
+    const texts = logDocumentCatalog();
+    const picked = chooseDocumentOption(item, { allowLoose: true });
+    if (!picked) {
+      throw new Error(`Danh mục Giấy tờ của cổng không có mục khớp "${item?.componentName}". `
+        + `Một số mục: ${texts.slice(0, 8).join(" | ")}`);
+    }
+    clickControl(picked.option);
+    const selected = await waitFor(() => fold(textOf(select.querySelector(".mat-select-value") || select))
+      .includes(picked.key), 3000, 100);
+    if (!selected) throw new Error(`Danh sách Giấy tờ chưa nhận mục "${picked.text}".`);
+    return picked.text;
+  }
+
+  // Ô "Giấy tờ" dạng GÕ + GỢI Ý (input + mat-autocomplete, vd Quảng Ngãi). Nút Đồng ý chỉ mở khi đã
+  // CHỌN một gợi ý, nên lần lượt: gõ từng hint → chọn mục chứa hint; hết hint thì xoá ô, mở toàn bộ
+  // danh mục bằng mũi tên ▾ và chọn lỏng. Trả null khi không chọn được (bên gọi để tên tự gõ).
+  async function pickDocumentFromAutocomplete(input, item) {
+    const select = async (entry) => {
+      clickControl(entry.option);
+      const ok = await waitFor(() => fold(input.value) === entry.key, 3000, 100);
+      if (!ok) throw new Error(`Ô Giấy tờ chưa nhận mục "${entry.text}".`);
+      return entry.text;
+    };
+    for (const hint of documentHints(item)) {
+      input.focus();
+      setInput(input, hint);
+      // Gợi ý có thể gọi API → chờ option chứa đúng hint (hoặc tới hạn).
+      await waitFor(() => chooseDocumentOption(item), 2500, 150);
+      logDocumentCatalog();
+      const picked = chooseDocumentOption(item);
+      if (picked) return await select(picked);
+    }
+    setInput(input, "");
+    input.focus();
+    input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    clickControl(input);
+    const arrow = input.closest("mat-form-field")?.querySelector(".mat-form-field-suffix mat-icon");
+    if (arrow && !visibleOptions().length) clickControl(arrow);
+    await waitFor(() => visibleOptions().length, 4000, 150);
+    logDocumentCatalog();
+    const picked = chooseDocumentOption(item, { allowLoose: true });
+    return picked ? await select(picked) : null;
+  }
+
   // Tạo MỘT hàng giấy tờ qua modal — chạy trực tiếp trong isolated world (dùng cho cổng KHÔNG có script
   // MAIN-world riêng). Trả về tên hàng thực tế được render để engine upload khớp đúng.
   async function ensureOneDocumentRowIsolated(item) {
@@ -129,17 +215,40 @@
         .find((node) => fold(textOf(node)).includes("them giay to")), 5000, 100);
     if (!dialog) throw new Error("Không mở được modal Thêm giấy tờ.");
 
-    const formInput = dialog.querySelector('input[formcontrolname="form"]');
-    if (!formInput) throw new Error("Modal Thêm giấy tờ không có ô Giấy tờ.");
-    formInput.focus();
-    setInput(formInput, componentName);
+    let optionText = componentName;
+    const formSelect = dialog.querySelector('mat-select[formcontrolname="form"]');
+    if (formSelect) {
+      // Cổng iGate tỉnh (Quảng Ngãi): ô "Giấy tờ" là DANH SÁCH CHỌN cố định, không gõ được tên.
+      optionText = await pickDocumentFromSelect(formSelect, item);
+    } else {
+      const formInput = dialog.querySelector('input[formcontrolname="form"]');
+      if (!formInput) throw new Error("Modal Thêm giấy tờ không có ô Giấy tờ.");
+      if (Array.isArray(item?.formOptionHints) && item.formOptionHints.length) {
+        // Plan có gợi ý danh mục (Quảng Ngãi): chọn mục cổng theo gợi ý.
+        const chosen = await pickDocumentFromAutocomplete(formInput, item);
+        if (chosen) optionText = chosen;
+        else {
+          // Không chọn được: thử tên tự gõ; cổng bắt chọn gợi ý thì Đồng ý vẫn khóa → báo lỗi bên dưới.
+          setInput(formInput, componentName);
+          formInput.dispatchEvent(new Event("blur", { bubbles: true }));
+        }
+      } else {
+        formInput.focus();
+        setInput(formInput, componentName);
 
-    const documentOption = await waitFor(() => matchingOption(componentName), 10000, 150);
-    if (!documentOption) throw new Error("Không tìm thấy option Giấy tờ trong autocomplete.");
-    const optionText = textOf(documentOption);
-    clickControl(documentOption);
-    const documentSelected = await waitFor(() => fold(formInput.value) === fold(optionText), 3000, 100);
-    if (!documentSelected) throw new Error("Autocomplete chưa nhận option Giấy tờ đã chọn.");
+        const documentOption = await waitFor(() => matchingOption(componentName), 6000, 150);
+        if (documentOption) {
+          optionText = textOf(documentOption);
+          clickControl(documentOption);
+          const documentSelected = await waitFor(() => fold(formInput.value) === fold(optionText), 3000, 100);
+          if (!documentSelected) throw new Error("Autocomplete chưa nhận option Giấy tờ đã chọn.");
+        } else {
+          // Ô Giấy tờ nhận TÊN TỰ GÕ: giữ chữ đã gõ; form không hợp lệ thì nút Đồng ý vẫn disabled và báo lỗi bên dưới.
+          formInput.dispatchEvent(new Event("blur", { bubbles: true }));
+          if (fold(formInput.value) !== fold(componentName)) setInput(formInput, componentName);
+        }
+      }
+    }
     await sleep(500);
 
     const typeSelect = dialog.querySelector('mat-select[formcontrolname="type"]');
@@ -239,8 +348,13 @@
         rows = result?.rows || [];
       } else {
         // Cổng khác cùng modal (byt...): chạy thẳng isolated world, tuần tự từng item.
+        // Nhiều tệp cùng một dòng (vd Đơn + Bản cam kết + GCN): chỉ tạo dòng MỘT lần. Tên dòng thật là
+        // tên mục danh mục cổng (có thể khác componentName) nên phải nhớ theo componentName gốc.
+        const created = new Map();
         for (let index = 0; index < (items || []).length; index++) {
-          const componentName = await ensureOneDocumentRowIsolated(items[index]);
+          const key = fold(items[index]?.componentName);
+          const componentName = created.get(key) || await ensureOneDocumentRowIsolated(items[index]);
+          created.set(key, componentName);
           rows.push({ index, componentName });
         }
       }

@@ -247,14 +247,23 @@ async function sendToContent(payload) {
     try {
       // Modal NNMT phải chạy cùng MAIN world với Angular/Zone.js. Inject riêng trước bridge
       // isolated để tab đang mở vẫn hoạt động ngay sau khi người dùng reload extension.
-      await chrome.scripting.executeScript({
-        target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
+      // allFrames bị Chrome từ chối CẢ LƯỢT nếu trang nhúng iframe tên miền ngoài manifest (vd cổng
+      // Quảng Ngãi) → lùi về chỉ trang chính, nơi form thường nằm.
+      const inject = async (opts) => {
+        if (isAttachmentAction) return chrome.scripting.executeScript({ ...opts, target: { tabId } });
+        try {
+          return await chrome.scripting.executeScript({ ...opts, target: { tabId, allFrames: true } });
+        } catch (e) {
+          console.warn("[Popup] Inject mọi frame lỗi, thử riêng trang chính:", e?.message || e);
+          return chrome.scripting.executeScript({ ...opts, target: { tabId } });
+        }
+      };
+      await inject({
         world: "MAIN",
         // formio-select-main.js: cầu nối select Form.io nguồn từ xa — thiếu thì ô đó lùi về đường gõ DOM.
         files: ["content/attach-mae-main.js", "content/formio-select-main.js"],
       });
-      await chrome.scripting.executeScript({
-        target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
+      await inject({
         // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
         // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
         // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.

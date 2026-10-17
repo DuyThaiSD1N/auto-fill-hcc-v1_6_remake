@@ -2291,9 +2291,14 @@
       "form input[name], form select[name], form textarea[name], " +
       ".form-wrapper input[name], .form-wrapper select[name], .form-wrapper textarea[name]"
     ).length;
+    // Form.io (cổng iGate tỉnh, vd Quảng Ngãi "tính lại tiền SDĐ"): ô data[...] có thể render NGOÀI
+    // <form>/.form-wrapper → đếm riêng, nếu không frame chứa form im lặng và popup báo "Không kết nối được trang".
+    const formioCount = document.querySelectorAll(
+      'input[name^="data["], select[name^="data["], textarea[name^="data["]'
+    ).length;
     if (ngCount >= 3) return "angular";
     if (legacyCount >= 3) return "legacy";
-    if (standardCount >= 3) return "standard";
+    if (standardCount >= 3 || formioCount >= 3) return "standard";
     return "";
   }
 
@@ -2351,6 +2356,12 @@
       // sẵn, chỉ có nút "Thêm thành phần hồ sơ" để tự thêm từng dòng → vẫn là trang đính kèm hợp lệ.
       // Thiếu nhánh này thì collectAttachmentContext bị gate trượt → không sendResponse → "Không kết nối được trang".
       findButtonByText(document, ["Thêm thành phần hồ sơ"]) ||
+      // Cổng iGate tỉnh (vd Quảng Ngãi "tính lại tiền SDĐ"): bảng "Không có thông tin giấy tờ", chỉ có nút
+      // "+ Thêm giấy tờ" (modal app-add-form, engine content/attach-mae.js) → cũng là trang đính kèm.
+      // Quảng Ngãi render nút này là <a class="btn_addNewFile mat-stroked-button">, KHÔNG phải <button>.
+      findButtonByText(document, ["Thêm giấy tờ"]) ||
+      Array.from(document.querySelectorAll("a.btn_addNewFile, a.mat-stroked-button, a[role='button']"))
+        .some((node) => isVisible(node) && foldedNodeText(node).endsWith("them giay to")) ||
       // Cổng DVC quốc gia mới: nút icon "Tải lên file" theo dòng, input file ẩn dùng chung ngoài bảng.
       document.querySelector('button[title="Tải lên file"]') ||
       fixedSlotUploadInputs().length > 0 // cổng Bộ VHTTDL: input file trong <app-upload-flie-multi> (nút icon, không chữ "Chọn tệp")

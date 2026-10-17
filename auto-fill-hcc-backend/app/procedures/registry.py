@@ -132,6 +132,12 @@ from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as da
 from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_quang_ninh.attach import (
     plan as tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
 )
+from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_quang_ngai.process import (
+    run as tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
+)
+from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_quang_ngai.attach import (
+    plan as tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_attach,
+)
 from app.pipelines.cap_lai_gcn_do_bi_mat_quang_ninh.attach import (
     plan as cap_lai_gcn_do_bi_mat_quang_ninh_attach,
 )
@@ -2764,6 +2770,40 @@ PROCEDURES: list[dict] = [
             "hệ thống liệt kê giấy tờ nằm chung và đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' "
             "để cán bộ dán vào.\n"
             "Văn bản ủy quyền và giấy tờ ngoài danh mục được thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai",
+        # 1.115148 — key TRÙNG ke_khai_links. Cùng mã với bản Quảng Ninh ở trên nên urlScope là thứ chống
+        # tráo giữa hai tỉnh; cổng iGate Angular, URL /vi/padsvc/apply-online/<ObjectId> không mang mã.
+        "detect": {
+            "urlScope": ["dichvucong.quangngai.gov.vn"],
+            "textIncludes": [
+                "tính lại tiền sử dụng đất",
+                "50/2026/NĐ-CP",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Quảng Ngãi] Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, "
+            "c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên:\n"
+            "1. Đơn đề nghị tính lại tiền sử dụng đất (kèm Bản cam kết và Bản sao Giấy chứng nhận, có thể "
+            "gộp một PDF) — dùng để điền thông tin chủ hồ sơ, nội dung đề nghị và địa chỉ thửa đất.\n"
+            "2. Bản sao thông báo nộp tiền sử dụng đất.\n"
+            "3. Biên lai đã nộp tiền vào Ngân sách nhà nước.\n"
+            "4. CCCD người sử dụng đất (nếu có); nộp thay thì kèm giấy ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: cổng không có danh mục giấy tờ sẵn — hệ thống bấm '+ Thêm giấy tờ' tạo các dòng "
+            "Đơn đề nghị (Bản chính), Thông báo nộp tiền và Biên lai (Bản sao) rồi tải tệp. File gộp "
+            "Đơn + Bản cam kết + GCN đính nguyên vào dòng Đơn, không tách trang."
         ),
     },
     {
@@ -8014,6 +8054,7 @@ _PIPELINE = {
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_process,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_process,
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_process,
+    "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
     "su-dung-dat-ket-hop-da-muc-dich-cap-xa": su_dung_dat_ket_hop_da_muc_dich_cap_xa_process,
@@ -8228,6 +8269,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh": tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
+    "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_attach,
     "cap-lai-gcn-do-bi-mat-quang-ninh": cap_lai_gcn_do_bi_mat_quang_ninh_attach,
     "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh": (
         dang_ky_bien_dong_chuyen_muc_dich_sdd_khong_xin_phep_quang_ninh_attach

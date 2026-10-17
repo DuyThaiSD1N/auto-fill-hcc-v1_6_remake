@@ -82,6 +82,10 @@ class AttachmentPlanItem(BaseModel):
     # Dùng cho target "add-document-dialog": modal "Thêm giấy tờ" không tạo được dòng (cổng không có
     # loại giấy tờ này trong danh mục…) thì FE ĐÍNH CHUNG tệp vào dòng attp-row có tên này thay vì bỏ.
     fallbackComponentName: str | None = None
+    # Dùng cho target "add-document-dialog" khi ô "Giấy tờ" của modal là DANH SÁCH CHỌN cố định (cổng
+    # Quảng Ngãi): FE chọn mục đầu tiên chứa một gợi ý (thứ tự cụ thể → chung). Không khai ở đây thì
+    # response_model lược mất.
+    formOptionHints: list[str] | None = None
     # Dùng cho engine attp-row: các dòng cổng TICK SẴN nhưng hồ sơ không có giấy tờ (vd "Giấy phép lao
     # động … đối với người nước ngoài") → FE BỎ TICK nếu dòng chưa có tệp và không nằm trong kế hoạch.
     untickRows: list[str] | None = None
