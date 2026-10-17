@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.8",
+    date: "17/10/2026",
+    items: [
+      "Hỗ trợ điền các thủ tục form của Quảng Ngãi.",
+    ],
+  },
+  {
     version: "1.23.7",
     date: "16/10/2026",
     items: [

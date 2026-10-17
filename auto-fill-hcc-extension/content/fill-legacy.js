@@ -383,6 +383,7 @@ async function fillLegacyComponent(container, field) {
     case "x-select": return fillSelect(container, field);
     case "x-select-default": return fillSelectDefault(container, field);
     case "x-select-area": return fillSelectArea(container, field);
+    case "x-table": return fillTable(container, field);
     default: return false;
   }
 }
@@ -729,6 +730,8 @@ async function fillForm(fields) {
     }
     // Tìm container theo name chính rồi tới alias; ghi nhận tên KHỚP để filler dùng đúng.
     let found = findNamedElement(f.comp, candidates);
+    // Bảng lặp dòng: một số mẫu gắn name lên thẻ bọc khác x-table.
+    if (!found.el && f.comp === "x-table") found = findNamedElement("*", candidates);
     // x-select-area động (vd khối "Số bản án/Quyết định ly hôn") chỉ được cổng render SAU KHI
     // field driver (x-select "Tình trạng hôn nhân") vừa chọn xong — container có thể CHƯA có
     // trong DOM ngay lúc này, nên chờ thêm thay vì bỏ cuộc ngay ở lần thử đầu.
@@ -906,6 +909,97 @@ function fillDate(container, f) {
   if (dateInput) { setNativeValue(dateInput, `${yyyy}-${mm}-${dd}`); any = true; }
   if (any) markFilled((day || month || year)?.parentElement || container);
   return any;
+}
+
+// x-table (bảng lặp dòng, vd "Quá trình hoạt động" của văn bản đề nghị cấp CCHN luật sư): value là mảng dòng
+// {tuNgay, denNgay, chucDanh, coQuan, ghiChu}. DOM chỉ dựng sẵn 1 dòng mẫu → bấm nút "+" tới đủ số dòng. Ô ngày là
+// nhóm g-input-day/month/year (+ input type="date"), ô chữ là input text; ghép theo THỨ TỰ cột nên không phụ thuộc
+// vào việc có cột STT hay không. Ngày đi vào ô ngày thứ 1/2, chữ vào ô chữ thứ 1/2/3.
+const TABLE_DATE_KEYS = ["tuNgay", "denNgay"];
+const TABLE_TEXT_KEYS = ["chucDanh", "coQuan", "ghiChu"];
+
+function legacyTableRows(container) {
+  return Array.from(container.querySelectorAll("tr")).filter((tr) =>
+    Array.from(tr.querySelectorAll("input")).some((input) => isLegacyTableInput(input))
+  );
+}
+
+function isLegacyTableInput(input) {
+  const type = String(input.type || "text").toLowerCase();
+  if (type === "hidden" || type === "checkbox" || type === "radio" || type === "button") return false;
+  return !input.classList.contains("hidden");
+}
+
+function legacyTableAddButton(container) {
+  const nodes = Array.from(container.querySelectorAll("button, a, [role='button'], i, span"));
+  const isRemove = (node) => /xoa|xóa|remove|delete|trash|minus|close/i.test(
+    `${node.className || ""} ${node.getAttribute("title") || ""} ${node.textContent || ""}`
+  );
+  const isAdd = (node) => {
+    const text = String(node.textContent || "").trim();
+    const meta = `${node.className || ""} ${node.getAttribute("title") || ""} ${node.getAttribute("aria-label") || ""}`;
+    return text === "+" || /^thêm/i.test(text) || /\b(add|plus)\b|fa-plus|icon-plus|btn-add/i.test(meta);
+  };
+  const hit = nodes.find((node) => isAdd(node) && !isRemove(node));
+  return hit ? (hit.closest("button, a, [role='button']") || hit) : null;
+}
+
+function fillLegacyTableDate(cell, value) {
+  const m = String(value || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return false;
+  const dd = m[1].padStart(2, "0");
+  const mm = m[2].padStart(2, "0");
+  const yyyy = m[3];
+  const day = cell.querySelector(".g-input-day, input[name$='-day'], input[id$='-day']");
+  const month = cell.querySelector(".g-input-month, input[name$='-month'], input[id$='-month']");
+  const year = cell.querySelector(".g-input-year, input[name$='-year'], input[id$='-year']");
+  const picker = cell.querySelector('input[type="date"]');
+  let any = false;
+  if (day) { setNativeValue(day, dd, { typing: true, commit: true }); any = true; }
+  if (month) { setNativeValue(month, mm, { typing: true, commit: true }); any = true; }
+  if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); any = true; }
+  if (picker) { setNativeValue(picker, `${yyyy}-${mm}-${dd}`); any = true; }
+  if (any) markFilled((day || month || year || picker).parentElement || cell);
+  return any;
+}
+
+async function fillTable(container, f) {
+  const rows = Array.isArray(f.value) ? f.value.filter((row) => row && typeof row === "object") : [];
+  if (!rows.length) return false;
+  while (legacyTableRows(container).length < rows.length) {
+    const before = legacyTableRows(container).length;
+    const add = legacyTableAddButton(container);
+    if (!add) break;
+    add.click();
+    const grew = await waitFor(() => legacyTableRows(container).length > before, 1500, 80);
+    if (!grew) break;
+  }
+  const domRows = legacyTableRows(container);
+  let filledRows = 0;
+  for (let i = 0; i < rows.length && i < domRows.length; i++) {
+    const cells = Array.from(domRows[i].children).filter((cell) =>
+      Array.from(cell.querySelectorAll("input")).some((input) => isLegacyTableInput(input))
+    );
+    const dateCells = cells.filter((cell) => cell.querySelector(".g-input-day, input[type='date']"));
+    const textCells = cells.filter((cell) => !dateCells.includes(cell));
+    let any = false;
+    TABLE_DATE_KEYS.forEach((key, idx) => {
+      if (dateCells[idx] && rows[i][key] && fillLegacyTableDate(dateCells[idx], rows[i][key])) any = true;
+    });
+    TABLE_TEXT_KEYS.forEach((key, idx) => {
+      const value = String(rows[i][key] || "").trim();
+      const input = textCells[idx] && Array.from(textCells[idx].querySelectorAll("input, textarea")).find(isLegacyTableInput);
+      if (!input || !value) return;
+      setNativeValue(input, value, { typing: true, commit: true });
+      markFilled(input.parentElement || input);
+      any = true;
+    });
+    if (any) filledRows++;
+  }
+  if (filledRows < rows.length) {
+    console.warn(`[AutoFill] Bảng ${f.name}: điền ${filledRows}/${rows.length} dòng — kiểm tra nút "+" thêm dòng.`);
+  }
+  return filledRows > 0;
 }
 
 function fillDateText(container, f) {

@@ -488,6 +488,8 @@ from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.attach import plan as 
 from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.process import run as mien_giam_hoc_phi_gdnn_process
 from app.pipelines.dang_ky_noi_quy_lao_dong.attach import plan as dang_ky_noi_quy_lao_dong_attach
 from app.pipelines.dang_ky_noi_quy_lao_dong.process import run as dang_ky_noi_quy_lao_dong_process
+from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.attach import plan as cchn_luat_su_attach
+from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.process import run as cchn_luat_su_process
 
 PROCEDURES: list[dict] = [
     {
@@ -8075,6 +8077,43 @@ PROCEDURES: list[dict] = [
             "Giấy ủy quyền → dòng mới qua '+ Thêm giấy tờ'."
         ),
     },
+    {
+        "key": "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su",
+        # Mã TTHC 1.000688 (nộp tại Sở Tư pháp). Cổng DVCQG wizard tư pháp: bước Kê khai là eForm "VĂN BẢN ĐỀ NGHỊ
+        # CẤP/CẤP LẠI CHỨNG CHỈ HÀNH NGHỀ LUẬT SƯ" (tokhaidientu.moj.gov.vn) — engine legacy x-*, kèm bảng x-table
+        # HoSo_QuaTrinhHoatDong. Mã + URL kê khai ghép từ ke_khai_links. Cụm tên đủ dài để không trùng thủ tục cấp
+        # chứng chỉ hành nghề luật sư thường (không miễn đào tạo).
+        "detect": {
+            "textIncludes": ["cấp chứng chỉ hành nghề luật sư đối với người được miễn đào tạo nghề luật sư"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp Chứng chỉ hành nghề luật sư đối với người được miễn đào tạo nghề luật sư, miễn tập sự hành nghề "
+            "luật sư"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi giấy tờ một file, hệ thống KHÔNG tách trang):\n"
+            "1. Văn bản đề nghị cấp Chứng chỉ hành nghề luật sư bản giấy đã ký — nguồn chính của tờ khai (lý do miễn "
+            "tập sự, quá trình hoạt động, khen thưởng, truy cứu trách nhiệm hình sự).\n"
+            "2. Bằng cử nhân luật / thạc sỹ luật (bản sao chứng thực).\n"
+            "3. Quyết định bổ nhiệm chức danh tư pháp (điều tra viên, kiểm sát viên, thẩm phán…), quyết định xuất ngũ/"
+            "nghỉ hưu — chứng minh được miễn tập sự.\n"
+            "4. Phiếu lý lịch tư pháp; văn bản giải trình, cam kết có xác nhận (nếu có); Giấy chứng nhận sức khỏe.\n"
+            "5. CCCD (nếu có) để đối chiếu nhân thân.\n"
+            "Mục (1)–(6) cổng đổ theo tài khoản VNeID — nên đăng nhập bằng tài khoản của chính người đề nghị; hệ "
+            "thống ghi đè theo giấy tờ và cảnh báo khi lệch. Bảng quá trình hoạt động được tự thêm dòng.\n"
+            "Bước đính kèm: Bằng → dòng 1; quyết định bổ nhiệm/xuất ngũ → dòng 2; Giấy sức khỏe → dòng 3 (không có "
+            "thì để trống); văn bản giải trình, cam kết + Phiếu LLTP → dòng 4; dòng 5 là Tờ khai cổng tự sinh, không "
+            "đính đè; Văn bản đề nghị bản giấy thêm thành phần mới 'Đơn đề nghị cấp Chứng chỉ hành nghề luật sư'. "
+            "Nhiều file cùng dòng gộp một PDF."
+        ),
+    },
 ]
 
 
@@ -8279,6 +8318,7 @@ _PIPELINE = {
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -8512,6 +8552,7 @@ _ATTACH_PIPELINE = {
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_attach,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}
