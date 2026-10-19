@@ -117,6 +117,10 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     linked_birth = procedures.pop("khai-sinh-dang-ky")
     assert linked_birth.get("flowProfile") is None
+    # Liên thông khai tử: cùng cổng lienthong (Angular) với liên thông khai sinh, nhận theo URL.
+    linked_death = procedures.pop("khai-tu-lien-thong")
+    assert linked_death.get("flowProfile") is None
+    assert linked_death["detect"]["urlIncludes"] == ["lienthong.dichvucong.gov.vn/#/ke-khai/1.006714"]
     business = procedures.pop("dang-ky-kinh-doanh")
     assert business.get("flowProfile") is None
     assert business["businessWorkflow"] == "create"
@@ -204,6 +208,22 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert byt_allowance["detect"]["urlScope"] == ["dichvucongbyt.moh.gov.vn"]
     # Tên hai thủ tục gần trùng: dấu hiệu nhận trang phải là cụm CHỈ thủ tục này có.
     assert byt_allowance["detect"]["textIncludes"] == ["chăm sóc, nuôi dưỡng hàng tháng"]
+    # Bản NĐ 335 (1.116909) của trợ cấp xã hội: cùng khung, bảng 2 dòng (không dồn tệp); tên gần trùng
+    # nên dấu hiệu nhận trang của mỗi bên KHÔNG được khớp nhãn bên kia.
+    byt_allowance_335 = procedures.pop("thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang")
+    assert byt_allowance_335.get("flowProfile") is None
+    assert byt_allowance_335["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in byt_allowance_335 and "agencySoFirst" not in byt_allowance_335
+    assert byt_allowance_335["wizard"] == byt_pension["wizard"]
+    assert byt_allowance_335["hasAttachmentStep"] is True
+    assert "hideRepeatableHint" not in byt_allowance_335
+    assert byt_allowance_335["detect"]["urlIncludes"][0] == "maThuTuc=1.116909"
+    for marker, other in ((byt_allowance_335, byt_allowance), (byt_allowance, byt_allowance_335)):
+        phrase = marker["detect"]["textIncludes"][0].lower()
+        assert phrase in marker["label"].lower()
+        assert phrase not in other["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
+    assert byt_allowance_335["shortLabel"] != byt_allowance["shortLabel"]
+    assert len(byt_allowance_335["shortLabel"]) >= 30
     # Hỗ trợ mai táng: cùng khung hưu trí, bảng CHỈ MỘT DÒNG nên vẫn dồn tệp (hideRepeatableHint).
     byt_funeral = procedures.pop("ho-tro-mai-tang-huu-tri-xa-hoi")
     assert byt_funeral.get("flowProfile") is None
@@ -239,6 +259,18 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "hideRepeatableHint" not in byt_disability
     assert byt_disability["detect"]["urlIncludes"][0] == "maThuTuc=1.001699"
     assert len(byt_disability["shortLabel"]) >= 30
+    # Đổi, cấp lại Giấy xác nhận khuyết tật: CÙNG eForm Mẫu số 01 nhưng bảng thành phần hồ sơ chỉ
+    # MỘT dòng → ngược với thủ tục trên, phải bật hideRepeatableHint.
+    byt_disability_reissue = procedures.pop("doi-cap-lai-giay-xac-nhan-khuyet-tat")
+    assert byt_disability_reissue.get("flowProfile") is None
+    assert byt_disability_reissue["needsAgencySelect"] is True
+    assert byt_disability_reissue["wizard"] == byt_pension["wizard"]
+    assert byt_disability_reissue["hideRepeatableHint"] is True
+    assert byt_disability_reissue["detect"]["urlIncludes"][0] == "maThuTuc=1.001653"
+    reissue_phrase = byt_disability_reissue["detect"]["textIncludes"][0].lower()
+    assert reissue_phrase in byt_disability_reissue["label"].lower()
+    assert reissue_phrase not in byt_disability["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
+    assert byt_disability_reissue["shortLabel"] != byt_disability["shortLabel"]
     # Bộ Nội vụ: chọn cơ quan HAI BƯỚC — DVCQG bật "Sở" (agencySoFirst) rồi hộp thoại cổng bộ
     # (maePortal) chọn Sở Nội vụ; hộp thoại không có trường hợp giải quyết nên KHÔNG có variants.
     moha_move = procedures.pop("di-chuyen-ho-so-nguoi-huong-tro-cap")
@@ -353,7 +385,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 "khai-tu-lien-thong"; +1 tư pháp chọn Sở "yeu-cau-tro-giup-phap-ly".
     # +1 tư pháp "xac-nhan-thong-tin-ho-tich"; +2 HkdOnline "tam-ngung-kinh-doanh",
     # "cap-lai-cap-doi-gcn-ho-kinh-doanh".
-    assert len(procedures) == 52
+    # +1 cổng Bộ Y tế "doi-cap-lai-giay-xac-nhan-khuyet-tat" (1.001653).
+    # +1 cổng Bộ Y tế "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang" (1.116909).
+    assert len(procedures) == 54
 
     for procedure in procedures:
         key = procedure["key"]

@@ -59,6 +59,9 @@ PROCEDURE_HMONG = {
     "cham-dut-hoat-dong-ho-kinh-doanh": "Kaw lag luam tsev neeg",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("dua tshiab" = lại, "lag luam tsev neeg").
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": "Daim ntawv lag luam tsev neeg dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có: "Kaw lag luam tsev neeg" (chấm dứt HKD) +
+    # "ib ntus" (tạm thời, như "cap-phep-long-duong-via-he").
+    "tam-ngung-kinh-doanh": "Kaw lag luam tsev neeg ib ntus",
     # BẢN NHÁP chờ anh Dư soát — có TỪ MỚI chưa xuất hiện ở bản dịch nào trong file (nyiaj, faus,
     # xiam oob qhab, zaub mov, txhais lus, cog lus, qub txeeg qub teg, nyiaj laus…): soát kỹ hơn.
     "chung-thuc-giao-dich-tai-san": "Lees paub daim ntawv cog lus txog khoom vaj khoom tsev",
@@ -76,7 +79,12 @@ PROCEDURE_HMONG = {
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
     "xac-dinh-muc-do-khuyet-tat": "Txiav txim qib xiam oob qhab",
+    # BẢN NHÁP chờ anh Dư soát — "pauv" (đổi) là TỪ MỚI.
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": "Pauv, muab daim ntawv lees paub xiam oob qhab dua tshiab",
     "tro-cap-xa-hoi-hang-thang": "Nyiaj pab pej xeem txhua hli",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("nyiaj pab pej xeem", "saib xyuas", "txhua hli").
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang":
+        "Nyiaj pab pej xeem thiab txais saib xyuas, yug txhua hli",
     "ho-tro-mai-tang": "Nyiaj pab faus neeg tuag",
     "ho-tro-mai-tang-huu-tri-xa-hoi": "Nyiaj pab faus neeg tau nyiaj laus pab pej xeem",
     "dieu-chinh-huu-tri-xa-hoi": "Kho nyiaj laus pab pej xeem",

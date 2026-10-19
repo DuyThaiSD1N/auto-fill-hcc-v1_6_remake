@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.10",
+    date: "19/10/2026",
+    items: [
+      "Trang nộp hồ sơ cũ: Tỉnh đã chọn đúng mà Xã chưa vào thì chỉ chọn lại Xã, không xoá Tỉnh và ô Địa chỉ đã điền.",
+      "Thủ tục được cấu hình không cần đính kèm giấy tờ nào (vd chỉ đính văn bản ủy quyền mà hồ sơ không có) không còn báo lỗi.",
+    ],
+  },
+  {
     version: "1.23.9",
     date: "19/10/2026",
     items: [

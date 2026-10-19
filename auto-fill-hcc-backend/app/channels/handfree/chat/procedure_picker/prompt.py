@@ -158,6 +158,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "xac-dinh-muc-do-khuyet-tat": ["xác định mức độ khuyết tật", "xác định lại mức độ khuyết tật",
                                    "cấp giấy xác nhận khuyết tật", "làm giấy khuyết tật",
                                    "giám định mức độ khuyết tật", "xin giấy chứng nhận khuyết tật"],
+    # ĐÃ CÓ giấy xác nhận khuyết tật, chỉ xin lại/đổi giấy (mất, hư hỏng) — không giám định lại mức
+    # độ. Muốn xác định lại mức độ thì vẫn thuộc "xac-dinh-muc-do-khuyet-tat" ở trên.
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": ["cấp lại giấy xác nhận khuyết tật",
+                                             "đổi giấy xác nhận khuyết tật",
+                                             "mất giấy xác nhận khuyết tật",
+                                             "giấy khuyết tật bị rách, hư hỏng muốn làm lại",
+                                             "cấp đổi giấy chứng nhận khuyết tật"],
     # Hai thủ tục mai táng chỉ khác NHÓM ĐỐI TƯỢNG → cụm "mai táng" trơn KHÔNG thuộc bên nào; để
     # LLM đọc cả câu rồi quyết, hoặc hỏi lại. Nhét vào một bên là bên kia không bao giờ được chọn.
     "ho-tro-mai-tang": ["hỗ trợ mai táng cho đối tượng bảo trợ xã hội",
@@ -174,6 +181,16 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                   "trợ cấp cho người nhiễm HIV",
                                   "điều chỉnh trợ cấp xã hội hàng tháng",
                                   "thôi hưởng trợ cấp xã hội hàng tháng"],
+    # Bản MỚI theo NĐ 335/2026 (mã 1.116909) của thủ tục trên — cùng nhóm đối tượng. Chỉ nhận cụm
+    # gắn với NĐ 335, tờ khai Mẫu số 01/02 mới hoặc việc NHẬN chăm sóc, nuôi dưỡng; "trợ cấp xã hội"
+    # trơn để LLM đọc cả câu hoặc hỏi lại, nhét vào một bên là bên kia không bao giờ được chọn.
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": [
+        "trợ cấp xã hội theo Nghị định 335",
+        "trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng",
+        "nhận chăm sóc, nuôi dưỡng đối tượng bảo trợ xã hội tại gia đình",
+        "nhận nuôi dưỡng trẻ mồ côi tại nhà, xin hỗ trợ kinh phí",
+        "hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng hằng tháng",
+        "tờ khai trợ cấp xã hội mẫu số 01 mới"],
     "cap-ban-sao-van-bang-so-goc": ["bản sao văn bằng", "bản sao chứng chỉ", "bản sao bằng tốt nghiệp",
                                     "mất bằng tốt nghiệp", "xin lại bằng cấp ba", "trích lục văn bằng"],
     "cho-thue-thue-mua-nha-o-xa-hoi": ["thuê nhà ở xã hội", "thuê mua nhà ở xã hội",

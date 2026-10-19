@@ -2325,11 +2325,22 @@ function handleFillMessage(msg, _sender, sendResponse) {
   if (msg.action !== "fillFields") return;
   const formKind = detectFormKind();
   if (!formKind) return; // frame không chứa form thật
-  const fields = Array.isArray(msg.fields) ? msg.fields : [];
+  let fields = Array.isArray(msg.fields) ? msg.fields : [];
   if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
-  const forceStandard = fields.some((f) =>
-    String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
-  );
+  const isStandardField = (f) =>
+    String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[");
+  const isLegacyField = (f) => String(f?.comp || "").startsWith("x-");
+  // Một thủ tục có thể trả HAI bộ ô cho hai frame (vd Xác nhận thông tin hộ tịch: trang cổng Form.io
+  // data[...] + eForm hộ tịch x-* trong iframe tokhaidientu). Không tách thì ô data[...] ép frame eForm
+  // sang engine standard và toàn bộ ô x-* bị bỏ. Frame nào chỉ giữ bộ của mình; không còn ô nào thì im
+  // lặng để frame kia trả lời sidebar.
+  if (fields.some(isStandardField) && fields.some(isLegacyField)) {
+    fields = formKind === "legacy"
+      ? fields.filter((f) => !isStandardField(f))
+      : fields.filter((f) => !isLegacyField(f));
+    if (!fields.length) return;
+  }
+  const forceStandard = fields.some(isStandardField);
   // Bắc Ninh engine riêng (khớp theo NHÃN) — ưu tiên trước mọi nhánh khác.
   if (formKind === "surveyjs") {
     if (typeof H.fillFormSurveyJs !== "function") {

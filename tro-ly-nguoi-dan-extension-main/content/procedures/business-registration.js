@@ -22,6 +22,7 @@
     "thong-tin-ve-von": "Thông tin về vốn",
     "thong-tin-ve-thue": "Thông tin về thuế",
     "cham-dut-hoat-dong": "Chấm dứt hoạt động",
+    "tam-ngung-hoat-dong": "Tạm ngừng kinh doanh",
     "thong-tin-de-nghi-cap-lai": "Thông tin đề nghị cấp lại GCN/GXNTĐ",
     "nguoi-nop-ho-so": "Người nộp hồ sơ",
   };
@@ -56,6 +57,12 @@
     // dùng "Chấm dứt hoạt động". Đây là cùng một trang Dissolution.aspx theo HTML thực tế.
     if (wanted.includes("thong bao quyet dinh giai the") || wanted.includes("cham dut hoat dong")) {
       return { pageKey: "cham-dut-hoat-dong", label };
+    }
+    // Trang chính nhánh SUSPEN (DW_SUSPENSIONEdit.aspx): menu trái là "Tạm ngừng kinh doanh" (đã
+    // xác nhận trên cổng thật); breadcrumb chưa có ảnh xác nhận nên khớp thêm hai cụm khả dĩ.
+    if (wanted.includes("tam ngung kinh doanh") || wanted.includes("tam ngung hoat dong")
+      || wanted.includes("thong bao tam ngung")) {
+      return { pageKey: "tam-ngung-hoat-dong", label };
     }
     // Breadcrumb của DW_RE_ISSUANCEEdit.aspx rút gọn khác nhãn menu trái.
     if (wanted.includes("thong tin cap lai gcn gxn") || wanted.includes("de nghi cap lai gcn gxntd")) {
@@ -230,6 +237,9 @@
     if (detected.stage === "main" && detected.pageKey === "cham-dut-hoat-dong") {
       return "dissolution";
     }
+    if (detected.stage === "main" && detected.pageKey === "tam-ngung-hoat-dong") {
+      return "suspension";
+    }
     if (detected.stage === "main" && detected.pageKey === "thong-tin-de-nghi-cap-lai") {
       return "reissue";
     }
@@ -239,6 +249,7 @@
     }
     if (["main", "main-root"].includes(detected.stage) && registrationType.includes("thay doi")) {
       if (findBusinessPageLink("Chấm dứt hoạt động")) return "dissolution";
+      if (findBusinessPageLink("Tạm ngừng kinh doanh")) return "suspension";
       return "change-exact";
     }
     if (detected.stage === "confirm") {
@@ -264,6 +275,9 @@
     // của chính hồ sơ vẫn có mục Chấm dứt hoạt động nên đủ để nhận diện nhánh dissolution.
     if (registrationType.includes("thay doi") && findBusinessPageLink("Chấm dứt hoạt động")) {
       return "dissolution";
+    }
+    if (registrationType.includes("thay doi") && findBusinessPageLink("Tạm ngừng kinh doanh")) {
+      return "suspension";
     }
     if (registrationType.includes("cap lai")) return "reissue";
     if (page.pageKey && registrationType.includes("thay doi")) return "change";
@@ -625,7 +639,10 @@
 
   async function stepChangeBootstrap(st) {
     const detected = detectBusinessChangeStage();
-    const flow = st.businessFlow || {};
+    // Pha 1 trợ lý (prepare) chưa có businessFlow từ pipeline: luồng cấp lại vẫn phải chọn REI
+    // ở màn chọn loại đăng ký, không rơi về CHN như chấm dứt/tạm ngừng.
+    const flow = st.businessFlow
+      || (st.workflow === "reissue" ? { wizardType: "reissue", registrationOption: "REI" } : {});
     const search = st.businessSearch || flow.search || {};
     const effectiveFlow = { ...flow, search };
     console.log("[ChangeHKD] bootstrap", detected.stage, search);
@@ -731,14 +748,16 @@
       const next = document.getElementById("ctl00_C_myWizard_StepNavigationTemplateContainerID_StepNextButton");
       if (!amendment || !next) return void failChangeWorkflow("Thiếu lựa chọn loại đăng ký thay đổi hoặc nút Tiếp theo ở bước 3.");
 
-      // DISSOLU có AutoPostBack ngay khi chọn. Persist trước rồi chờ reload; nếu cổng không reload
-      // thì nhịp hẹn giờ kế tiếp sẽ thấy radio đã checked và bấm Tiếp theo.
-      if (amendmentValue === "DISSOLU" && !amendment.checked) {
+      // DISSOLU và SUSPEN (Tạm ngừng kinh doanh) đều có AutoPostBack ngay khi chọn. Persist trước
+      // rồi chờ reload; nếu cổng không reload thì nhịp hẹn giờ kế tiếp sẽ thấy radio đã checked và
+      // bấm Tiếp theo.
+      const autoPostback = amendmentValue === "DISSOLU" || amendmentValue === "SUSPEN";
+      if (autoPostback && !amendment.checked) {
         await setFillAllState(st);
         selectNativeRadio(amendment);
         return void setTimeout(stepFillAll, 1200);
       }
-      if (amendmentValue !== "DISSOLU") selectNativeRadio(amendment);
+      if (!autoPostback) selectNativeRadio(amendment);
       if (amendmentValue === "CHAPAR") {
         const nameValue = flow.nameChange ? "Y" : "N";
         const nameRadio = document.querySelector(`input[name="ctl00$C$myWizard$NAME_CHANGE_YN_IDFld"][value="${nameValue}"]`);
@@ -2465,6 +2484,8 @@
     DISSOLUTION_FAMILY_MINUTES: { attId: "", droptyple: "", label: "Bản sao biên bản họp thành viên hộ gia đình" },
     TAX_TERMINATION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hiệu lực mã số thuế của Cơ quan thuế" },
     DISSOLUTION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hoạt động hộ kinh doanh" },
+    // Nhãn CATEGORY trên cổng (khác tên pháp lý "Giấy đề nghị đăng ký tạm ngừng..." — Mẫu số 3).
+    SUSPENSION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc tạm ngừng kinh doanh" },
     BUSINESS_REG_CERT_ORIGINAL: { attId: "", droptyple: "", label: "Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh" },
     CPID: { attId: "2_CPID", droptyple: "CPID", label: "Bản sao giấy tờ pháp lý của cá nhân" },
     TRANSFER: { attId: "", droptyple: "", label: "Hợp đồng mua bán hoặc các giấy tờ chứng minh hoàn tất việc mua bán; hợp đồng tặng cho; bản sao văn bản xác nhận quyền thừa kế hợp pháp" },

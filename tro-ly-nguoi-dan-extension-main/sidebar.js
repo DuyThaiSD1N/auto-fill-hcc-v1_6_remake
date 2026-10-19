@@ -4492,9 +4492,11 @@
         // page_status không bị xếp hàng rồi chờ ngược chính request hiện tại.
         setTimeout(() => { void verifyPortalState(); }, 0);
       } else if (a.type === "prepare_business_registration") {
-        setStatus(a.workflow === "change"
-          ? "Đang mở luồng Đăng ký thay đổi hộ kinh doanh…"
-          : "Đang mở trang kê khai Thành lập mới hộ kinh doanh…");
+        setStatus(a.workflow === "reissue"
+          ? "Đang mở luồng Cấp lại Giấy chứng nhận hộ kinh doanh…"
+          : a.workflow && a.workflow !== "create"
+            ? "Đang mở luồng Đăng ký thay đổi hộ kinh doanh…"
+            : "Đang mở trang kê khai Thành lập mới hộ kinh doanh…");
         const res = await sendToContent({
           action: "prepareBusinessRegistration",
           workflow: a.workflow || "",

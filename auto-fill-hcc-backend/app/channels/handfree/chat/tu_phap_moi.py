@@ -209,7 +209,7 @@ async def _request_attach(conv: dict):
     if conv.get("attach_action_in_progress"):
         return flow.Reply(*flow._fmt(vi.ATTACH_RUNNING))
     if (conv.get("pipeline_status") == "attach_ready" and conv.get("attach_plan")
-            and not flow._attach_plan_split_changed(conv)):
+            and not flow._attach_plan_settings_changed(conv)):
         return await flow._handle_attaching(conv, Intent("event", "attach_ready"))
     if conv.get("pipeline_status") == "running" and conv.get("attachment_plan_started"):
         return flow.Reply(*flow._fmt(vi.TPM_ATTACH_WAIT_PLAN))

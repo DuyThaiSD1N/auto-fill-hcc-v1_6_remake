@@ -1359,6 +1359,14 @@ async function fillSelectArea(container, f) {
   state.fills++;
   const any = await fillAreaWidgets(container, data, { markMissing: false });
   if (legacyAreaRolesFilled(container, data)) return any;
+  // Tỉnh đã vào, chỉ Xã trượt → khối KHÔNG hỏng (danh sách xã nạp chậm, hoặc xã cũ đã sáp nhập không còn
+  // trên cổng). Tick lại ô phạm vi làm cổng xóa trắng cả khối, mất luôn Tỉnh vừa điền → chỉ chọn lại Xã
+  // MỘT lần; vẫn trượt thì giữ nguyên Tỉnh + Địa chỉ, tô đỏ riêng ô Xã cho người dùng tự chọn.
+  if (data.tinh && data.xa && legacyAreaRoleFilled(container, data, "tinh")) {
+    state.fills = LEGACY_AREA_MAX_FILLS;
+    await retryLegacyAreaWard(container, data);
+    return true;
+  }
   if (!(await resetLegacyAreaScope(container))) {
     // Không tìm được ô "Trong nước/Khác" để tick lại thì điền lần 2 cũng ra kết quả cũ → tô đỏ luôn.
     state.fills = LEGACY_AREA_MAX_FILLS;
@@ -1386,13 +1394,30 @@ function legacyAreaWidgetsByRole(container) {
   return byRole;
 }
 
+function legacyAreaRoleFilled(container, data, role) {
+  const widget = legacyAreaWidgetsByRole(container)[role];
+  return !!widget && legacyChoiceMatches(widget.querySelector(".input-field-select")?.textContent, data[role]);
+}
+
 // Tỉnh/Xã đã chọn đúng chưa — dùng để biết có phải dựng lại khối địa chỉ rồi điền lần 2 không.
 function legacyAreaRolesFilled(container, data) {
-  const byRole = legacyAreaWidgetsByRole(container);
-  const picked = (role) => byRole[role]?.querySelector(".input-field-select")?.textContent || "";
-  if (data.tinh && !(byRole.tinh && legacyChoiceMatches(picked("tinh"), data.tinh))) return false;
-  if (data.xa && !(byRole.xa && legacyChoiceMatches(picked("xa"), data.xa))) return false;
-  return true;
+  return ["tinh", "xa"].every((role) => !data[role] || legacyAreaRoleFilled(container, data, role));
+}
+
+// Lượt 2 khi Tỉnh đã vào mà Xã trượt: chờ danh sách xã nạp nốt rồi chọn lại riêng Xã. Không đụng Tỉnh.
+async function retryLegacyAreaWard(container, data) {
+  console.warn(`[AutoFill] Xã "${data.xa}" chưa vào — chọn lại Xã lần 2, giữ nguyên Tỉnh.`);
+  await sleep(600);
+  const ward = legacyAreaWidgetsByRole(container).xa;
+  const ok = ward ? await pickInWidget(ward, data.xa) : false;
+  if (!ward) markMissingAreaRoles(container, data);
+  // Chọn Xã có thể làm cổng xóa ô Địa chỉ → ghi lại nếu mất.
+  const addr = container.querySelector("input.input-field");
+  if (addr && !legacyAreaDetailFilled(container, data)) {
+    setNativeValue(addr, data.diaChi);
+    markFilled(addr.parentElement || addr);
+  }
+  return ok;
 }
 
 // Ô "Địa chỉ" (số nhà/đường) trong khối đã đúng giá trị cần điền chưa.
@@ -1459,8 +1484,9 @@ async function resetLegacyAreaScope(container) {
   return true;
 }
 
-// Mỗi khối địa chỉ chỉ được điền TỐI ĐA hai lượt trong một lần fill: lượt đầu, rồi nếu Tỉnh/Xã
-// chưa vào thì tick lại ô phạm vi ("Khác" → "Trong nước") cho cổng dựng lại khối và điền lượt hai.
+// Mỗi khối địa chỉ chỉ được điền TỐI ĐA hai lượt trong một lần fill: lượt đầu, rồi nếu TỈNH chưa vào
+// thì tick lại ô phạm vi ("Khác" → "Trong nước") cho cổng dựng lại khối và điền lượt hai; Tỉnh vào mà
+// chỉ Xã trượt thì lượt hai chỉ chọn lại Xã (retryLegacyAreaWard), không xóa Tỉnh.
 // Hết hai lượt là CHỐT: các pass sửa lỗi phía sau không chọn lại dropdown nữa. Chọn đi chọn lại
 // không chữa được khối cổng dựng hỏng, mà mỗi lượt lại làm mất ô "Địa chỉ" và tốn vài giây.
 const LEGACY_AREA_MAX_FILLS = 2;

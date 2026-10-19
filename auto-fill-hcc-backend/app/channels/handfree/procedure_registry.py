@@ -1853,6 +1853,60 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+        # CÙNG cổng Bộ Y tế, cùng eForm Mẫu số 01 và cùng wizard với "xac-dinh-muc-do-khuyet-tat";
+        # khác mã TTHC nên URL tách được. Khác ở bước đính kèm: bảng thành phần hồ sơ CHỈ MỘT DÒNG
+        # (Đơn đề nghị Mẫu số 01) → planner dồn mọi tệp vào dòng đó, nên bật hideRepeatableHint.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.001653",
+                "019d2bfe-b7ab-731d-844a-5e232b77afef",
+            ],
+            # Trang dùng chung eForm với thủ tục xác định mức độ → cụm "mức độ khuyết tật" có thể
+            # xuất hiện ở đây; lấy cụm tên riêng "cấp lại giấy xác nhận khuyết tật".
+            "textIncludes": ["cấp lại giấy xác nhận khuyết tật"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đổi, cấp lại Giấy xác nhận khuyết tật",
+        "shortLabel": "Đổi, cấp lại Giấy xác nhận khuyết tật (mất, hư hỏng)",
+        "subtitle": "Cấp đổi hoặc cấp lại Giấy xác nhận khuyết tật bị mất, hư hỏng",
+        "icon": "♿",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7ab-731d-844a-5e232b77afef",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp đổi, cấp lại Giấy xác nhận khuyết tật "
+             "(Mẫu số 01) — đã ký, đã tích ô Cấp lại hoặc Cấp đổi", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người khuyết tật hoặc người đại diện "
+             "đứng đơn", "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "giay_xac_nhan_cu", "name": "Giấy xác nhận khuyết tật cũ (nếu còn, khi cấp "
+             "đổi hoặc giấy bị hư hỏng)", "icon": "♿", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp đổi, cấp lại Giấy xác nhận khuyết tật (Mẫu số 01), đã ký và đã "
+            "tích ô Cấp lại hoặc Cấp đổi — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người khuyết tật hoặc người đại diện đứng đơn.\n"
+            "3. Nếu còn: Giấy xác nhận khuyết tật cũ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người khuyết tật và người đại diện/người nộp hồ sơ có thể là HAI người khác "
+            "nhau — không ghép thông tin của hai người vào nhau.\n"
+            "Bước Thành phần hồ sơ: cổng chỉ có ĐÚNG MỘT dòng (Đơn đề nghị Mẫu số 01) nên mọi tệp "
+            "đều được đính vào dòng đó; tệp không phải Đơn đề nghị vẫn đính được nhưng có cảnh "
+            "báo để cán bộ soát."
+        ),
+    },
+    {
         "key": "ho-tro-mai-tang",
         # CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
         # (bảo trợ xã hội thay vì người hưởng trợ cấp hưu trí xã hội). Bảng thành phần hồ sơ cũng
@@ -2013,6 +2067,62 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Chủ hồ sơ là ĐỐI TƯỢNG hưởng trợ cấp, không phải người đi nộp thay.\n"
             "Bước Thành phần hồ sơ: bảng có nhiều dòng, mỗi giấy tờ được tích vào đúng dòng của nó."
+        ),
+    },
+    {
+        "key": "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+        # Mã 1.116909 (NĐ 335/2026/NĐ-CP) — bản MỚI của "tro-cap-xa-hoi-hang-thang" (1.001776) ở trên:
+        # CÙNG cổng Bộ Y tế, cùng cách chọn cơ quan (Tỉnh + Xã), cùng wizard. Bảng thành phần hồ sơ 2
+        # dòng (Mẫu số 01 / Mẫu số 02) → KHÔNG đặt hideRepeatableHint. URL SPA của cổng không mang mã
+        # → nhận trang theo cụm tên CHỈ thủ tục này có ("trợ cấp xã hội và nhận chăm sóc"); nhãn thủ
+        # tục cũ không chứa cụm này, và cụm của thủ tục cũ ("...hàng tháng") không khớp "hằng tháng".
+        # Cờ subjectAsSubmitter (phường Yên Bái) do pipeline_runner đặt theo tài khoản.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.116909",
+                "01a0f668-d09b-7368-9850-3c8288daf506",
+            ],
+            "textIncludes": ["trợ cấp xã hội và nhận chăm sóc"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thực hiện trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng, hỗ trợ kinh phí nhận chăm sóc, "
+            "nuôi dưỡng hằng tháng"
+        ),
+        "shortLabel": "Trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng hằng tháng (NĐ 335)",
+        "subtitle": "Trợ cấp xã hội, hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng theo NĐ 335/2026",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f668-d09b-7368-9850-3c8288daf506",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị trợ cấp xã hội (Mẫu số 01) hoặc Tờ khai "
+             "nhận chăm sóc, nuôi dưỡng (Mẫu số 02) theo NĐ 335/2026 — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của đối tượng hưởng trợ cấp và của người "
+             "giám hộ/người khai thay", "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: Giấy xác nhận khuyết tật, Giấy khai "
+             "sinh, Giấy xác nhận thông tin về cư trú", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị trợ cấp xã hội (Mẫu số 01) HOẶC Tờ khai nhận chăm sóc, nuôi dưỡng "
+            "(Mẫu số 02) theo NĐ 335/2026/NĐ-CP, đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của đối tượng hưởng trợ cấp và của người giám hộ/người khai thay.\n"
+            "3. Nếu có: Giấy xác nhận khuyết tật, Giấy khai sinh, Giấy xác nhận thông tin về cư trú.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là ĐỐI TƯỢNG hưởng trợ cấp; người giám hộ/người khai thay điền vào phần người "
+            "nộp. Đối tượng không có số điện thoại thì dùng số của người khai thay.\n"
+            "Bước Thành phần hồ sơ: Tờ khai Mẫu 01 + căn cước + giấy xác nhận khuyết tật đính chung "
+            "dòng Mẫu số 01; Tờ khai Mẫu 02 vào dòng Mẫu số 02 (không có thì bỏ trống dòng này)."
         ),
     },
     {
