@@ -29,31 +29,18 @@ test("câu xác nhận đi kèm card chọn nơi được đánh dấu để lư
     /d\.state === "confirm_procedure"[\s\S]*c\.kind === "location_picker"[\s\S]*dataset\.ask = "confirm-procedure"/);
 });
 
-test("đăng ký lại khai sinh: QR hướng dẫn hiện trước, câu xác nhận vẽ ngay bên dưới (chưa đọc), đọc sau khi chờ", () => {
+test("QR hướng dẫn hiện trước, lời giới thiệu chỉ hiển thị không đọc; câu xác nhận vẽ và đọc ngay bên dưới", () => {
   assert.match(sidebar, /"khai-sinh-dang-ky-lai":\s*\{\s*url: "https:\/\/drive\.google\.com\/file\/d\/1ObePKXQq2rS62F72ipMMmXVVS399rMs4\//);
-  assert.match(sidebar, /HUONG_DAN_CHO_MS = 15000/);
   const dau = render.slice(0, render.indexOf("lastReplyData = d;", render.indexOf("return;")));
   assert.match(dau, /!opts\?\.noTts && !opts\?\.sauHuongDan && canHuongDanQr\(d\)[\s\S]*hienHuongDanQr\(d\);\s*return;/);
-  assert.match(sidebar, /addNode\(el\);[\s\S]{0,400}renderReply\(d, \{ sauHuongDan: true, imLang: true, choHuongDan: true \}\);/);
-  assert.match(render, /\} else if \(\(handsfree \|\| listenAfter\) && !opts\?\.choHuongDan\) \{/);
-  assert.match(sidebar, /hen\.cho = setTimeout\(docXacNhan, HUONG_DAN_CHO_MS\);/);
-  assert.match(sidebar, /if \(daMoHuongDan \|\| !d\.tts_text \|\| !voiceCfg\.tts \|\| ttsMuted\) return;/);
+  const qr = sidebar.match(/function hienHuongDanQr\(d\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(qr, /addNode\(el\);[\s\S]{0,400}renderReply\(d, \{ sauHuongDan: true \}\);/);
+  assert.doesNotMatch(sidebar, /speak\?\.\(HUONG_DAN_LOI/);
+  assert.doesNotMatch(sidebar, /HUONG_DAN_CHO_MS|guide-qr-skip|laCauBoQua/);
 });
 
-test("đọc xong lời giới thiệu thì mở mic; nói/gõ \"bỏ qua\" = bấm nút Bỏ qua, không gửi BE", () => {
-  assert.match(sidebar, /speak\?\.\(HUONG_DAN_LOI, "vi", sauLoiGioiThieu\)/);
-  assert.match(sidebar, /const sauLoiGioiThieu = \(\) => \{\s*if \(huongDanHen !== hen\) return;\s*demCho\(\);\s*listenWhenQuiet\(\);/);
-  assert.match(sidebar, /huongDanHen\?\.boQua && laCauBoQua\(message\)\) \{\s*huongDanHen\.boQua\(\);\s*return;/);
-  const fn = sidebar.match(/function laCauBoQua[\s\S]*?\n  \}/)[0];
-  const laCauBoQua = new Function(`${fn}; return laCauBoQua;`)();
-  for (const t of ["Bỏ qua.", "bỏ qua đi", "Bỏ qua hướng dẫn nhé", "BỎ QUA!"]) assert.equal(laCauBoQua(t), true, t);
-  for (const t of ["bỏ", "khai sinh", "không bỏ qua bước này mà làm tiếp thủ tục khai sinh"]) assert.equal(laCauBoQua(t), false, t);
-});
-
-test("bấm Mở hướng dẫn: câu xác nhận vẫn hiện nhưng không đọc; bỏ qua / chờ 15s thì đọc như thường", () => {
-  assert.match(sidebar, /\.guide-qr-link"\)\?\.addEventListener\("click", \(\) => \{\s*daMoHuongDan = true;/);
-  assert.match(render, /else if \(!opts\?\.imLang && !duplicateLogoutChoice && d\.tts_text && voiceCfg\.tts\)/);
-  assert.match(render, /const willSpeak = [^;]*!opts\?\.imLang;/);
+test("bấm Mở hướng dẫn thì cắt câu đang đọc, kẻo đè tiếng video", () => {
+  assert.match(sidebar, /\.guide-qr-link"\)\?\.addEventListener\("click", \(\) => \{\s*markActivity\(\);\s*stopReplyTts\(\);/);
 });
 
 test("QR hướng dẫn có đủ các thủ tục tư pháp, mỗi thủ tục đúng link Drive", () => {

@@ -3741,6 +3741,8 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     errors: planRes.errors,
   });
   const rawAttachments = planRes.attachments || [];
+  // Kế hoạch rỗng CÓ CHỦ Ý theo cấu hình tài khoản (vd TTHN Đông Hà chỉ đính ủy quyền, hồ sơ không có) → xong.
+  if (!rawAttachments.length && planRes.nothingToAttach === true) return { ok: true, message: "" };
   if (!rawAttachments.length) {
     // Backend trả lý do cụ thể trong errors (vd không tìm thấy giấy chứng sinh) → hiện cho người dùng.
     const reason = Array.isArray(planRes.errors) && planRes.errors.length

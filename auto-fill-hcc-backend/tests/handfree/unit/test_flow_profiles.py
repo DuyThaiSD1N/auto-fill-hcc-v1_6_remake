@@ -274,6 +274,14 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert business_dissolution.get("flowProfile") is None
     assert business_dissolution["businessWorkflow"] == "dissolution"
     assert len(business_dissolution["pages"]) == 2
+    # Tạm ngừng (radio SUSPEN) đi chung wizard với chấm dứt; cấp lại GCN rẽ ngay ở màn chọn loại
+    # đăng ký (radio REI). Cả hai dừng ở màn tra cứu mã số, chỉ 2 trang phải điền.
+    for business_key, workflow in (("tam-ngung-kinh-doanh", "suspension"),
+                                   ("cap-lai-cap-doi-gcn-ho-kinh-doanh", "reissue")):
+        business_two_page = procedures.pop(business_key)
+        assert business_two_page.get("flowProfile") is None
+        assert business_two_page["businessWorkflow"] == workflow
+        assert len(business_two_page["pages"]) == 2
     # Cổng tỉnh Bắc Ninh (Liferay eForm 2 tab cùng trang): không profile tư pháp, không wizard;
     # tỉnh chọn cố định Bắc Ninh + toggle "Sở" (agencySoFirst), điền xong tự đính kèm ngay.
     for bn_key in ("dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh"):
@@ -343,7 +351,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 attach-only tư pháp "cap-ban-sao-so-goc".
     # +1 attach-only tư pháp "bau-to-truong-to-hoa-giai".
     # +1 "khai-tu-lien-thong"; +1 tư pháp chọn Sở "yeu-cau-tro-giup-phap-ly".
-    assert len(procedures) == 49
+    # +1 tư pháp "xac-nhan-thong-tin-ho-tich"; +2 HkdOnline "tam-ngung-kinh-doanh",
+    # "cap-lai-cap-doi-gcn-ho-kinh-doanh".
+    assert len(procedures) == 52
 
     for procedure in procedures:
         key = procedure["key"]

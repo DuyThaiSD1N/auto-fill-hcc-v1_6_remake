@@ -12,3 +12,8 @@ test("thẻ xin phép: 2 ô cam kết tích sẵn, nút Đồng ý bấm đượ
   assert.match(sidebar, /boxes\.forEach\(\(b\) => b\.addEventListener\("change", sync\)\);[\s\S]{0,300}?sync\(\);/);
   assert.match(sidebar, /accepted, checks: boxes\.map\(\(b\) => b\.checked\), prechecked: true,/);
 });
+
+test("phạm vi + mục đích xử lý dữ liệu nằm trong khối thu gọn như khối Điều 4, chữ giữ nguyên", () => {
+  const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "sidebar.js"), "utf8");
+  assert.match(src, /<details class="clegal cinfo"><summary>Phạm vi, mục đích xử lý dữ liệu<\/summary>[\s\S]*?card\.scope_md[\s\S]*?card\.purpose_md[\s\S]*?<\/details>/);
+});

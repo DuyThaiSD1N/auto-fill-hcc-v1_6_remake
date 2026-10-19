@@ -27,7 +27,11 @@ XÁC ĐỊNH NGƯỜI ĐƯỢC CẤP (theo thứ tự):
 a. Tờ khai: người có tên SAU câu "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây".
 b. Không có tờ khai mà có GIẤY ỦY QUYỀN: BÊN ỦY QUYỀN (người cần giấy) là người được cấp; bên được ủy quyền là người
    đi nộp hộ.
-c. Không có cả hai: người đứng tên trên giấy XNTTHN cũ / thẻ CCCD duy nhất của hồ sơ.
+c. Không có cả hai: người đứng tên trên giấy XNTTHN cũ → người đứng tên THẺ CCCD/căn cước/CMND của hồ sơ.
+NGƯỜI ĐÃ CHẾT (người được khai tử trên giấy chứng tử, trích lục khai tử, giấy báo tử, tờ khai đăng ký khai tử) KHÔNG
+BAO GIỜ là người được cấp — người chết không xin xác nhận tình trạng hôn nhân. Hồ sơ chỉ gồm thẻ CCCD của một người +
+giấy khai tử của người khác → người được cấp là người đứng tên thẻ CCCD; số định danh, ngày sinh in trên giấy khai tử
+là của người chết, không dùng.
 Vợ/chồng (đã chết, đã ly hôn hay hiện tại), người làm chứng, cán bộ ký không phải người được cấp.
 
 QUAN HỆ (người nộp là gì CỦA người được cấp):
@@ -120,22 +124,79 @@ def requester_context(options: dict | None) -> tuple[str, str]:
     )
 
 
+def _doc_text(document: dict) -> str:
+    return _fold(f"{document.get('name') or ''}\n{document.get('text') or ''}")
+
+
+def _is_death_doc(document: dict) -> bool:
+    # "chứng từ" cũng gập thành "chung tu" → khớp cả cụm "giay chung tu". Tờ khai / giấy XNTTHN cũ hay nhắc "giấy
+    # chứng tử" trong dòng tình trạng hôn nhân → không tính là giấy khai tử.
+    text = _doc_text(document)
+    return any(m in text for m in ("khai tu", "giay chung tu", "giay bao tu")) and "tinh trang hon nhan" not in text
+
+
+def _is_identity_doc(document: dict) -> bool:
+    text = _doc_text(document)
+    return not _is_death_doc(document) and any(
+        m in text for m in ("can cuoc", "chung minh nhan dan", "identity card"))
+
+
 def _document_hints(documents: list[dict], options: dict | None) -> str:
-    """Mỏ neo tất định: tài liệu nào chứa đúng số định danh của tài khoản."""
+    """Mỏ neo tất định: tài liệu nào chứa đúng số định danh của tài khoản, tài liệu nào là giấy khai tử."""
     name, number = requester_context(options)
     hits = [
         str(index)
         for index, document in enumerate(documents, start=1)
         if number and number in _digits(document.get("text"))
     ]
-    return "\n".join([
+    deaths = [str(index) for index, document in enumerate(documents, start=1) if _is_death_doc(document)]
+    lines = [
         "<requester_context>",
         f'Họ tên chủ tài khoản (người nộp): "{name or "không có"}".',
         f'Số định danh chủ tài khoản: "{number or "không có"}".',
         "Tài liệu chứa đúng số định danh này: " + (", ".join(hits) if hits else "không có") + ".",
         "Tài khoản là MỐC để tính quan hệ, không phải dữ liệu của người được cấp.",
-        "</requester_context>",
-    ])
+    ]
+    if deaths:
+        lines.append(f"Giấy khai tử: tài liệu {', '.join(deaths)} — người được khai tử trong đó KHÔNG phải người được cấp.")
+    lines.append("</requester_context>")
+    return "\n".join(lines)
+
+
+def _dead_subject_fix(raw: str, documents: list[dict]) -> str:
+    """Hồ sơ không tờ khai / ủy quyền / giấy XNTTHN cũ, gồm thẻ căn cước + giấy khai tử mà bước phân vai lại chọn người
+    chỉ có mặt trong giấy khai tử (người chết) → khối <nguoi_duoc_cap> thay thế trỏ về người đứng tên thẻ. "" = giữ."""
+    texts = [_doc_text(document) for document in documents]
+    if not documents or any("tinh trang hon nhan" in t or "uy quyen" in t for t in texts):
+        return ""
+    deaths = [i for i, document in enumerate(documents) if _is_death_doc(document)]
+    identities = [i for i, document in enumerate(documents) if _is_identity_doc(document)]
+    if not deaths or not identities:
+        return ""
+    block = section(raw, "nguoi_duoc_cap")
+    number = _digits(labeled_value(block, "Số định danh"))
+    name = _fold(labeled_value(block, "Họ tên"))
+    number = number if len(number) >= 9 else ""
+    if not number and len(name) < 5:
+        return ""
+
+    def mentions(i: int) -> bool:
+        if number:
+            return number in _digits(documents[i].get("text"))
+        return name in texts[i]
+
+    others = [i for i in range(len(documents)) if i not in deaths]
+    if not any(mentions(i) for i in deaths) or any(mentions(i) for i in others):
+        return ""
+    where = ", ".join(str(i + 1) for i in identities)
+    return (
+        f"Họ tên: người đứng tên thẻ căn cước/CCCD ở tài liệu {where}\n"
+        "Số định danh: theo thẻ đó\n"
+        "Ngày sinh: theo thẻ đó\n"
+        f"Nguồn: thẻ căn cước tài liệu {where}\n"
+        f"Căn cứ phân vai: hồ sơ không có tờ khai/ủy quyền; {labeled_value(block, 'Họ tên') or 'người đã chọn'} chỉ có "
+        "trong giấy khai tử là người đã chết, không phải người được cấp."
+    )
 
 
 def _build_user_content(documents: list[dict], options: dict | None) -> str:
@@ -162,10 +223,14 @@ def labeled_value(block: str, label: str) -> str:
     return "" if _fold(value) in {"", "...", "khong xac dinh", "khong co", "khong ro"} else value
 
 
-def _render_context(raw: str, options: dict | None) -> str:
+def _render_context(raw: str, options: dict | None, documents: list[dict] | None = None) -> str:
     blocks = {tag: section(raw, tag) for tag in _TAGS}
     if not blocks["nguoi_duoc_cap"]:
         return ""
+    fixed = _dead_subject_fix(raw, documents or [])
+    if fixed:
+        # Quan hệ đã tính theo người chết → bỏ, mapper đối chiếu lại tài khoản với người đứng tên thẻ.
+        blocks["nguoi_duoc_cap"], blocks["quan_he"] = fixed, ""
     name, number = requester_context(options)
     body = "\n".join(f"<{tag}>\n{value or 'Không xác định'}\n</{tag}>" for tag, value in blocks.items())
     return (
@@ -192,4 +257,4 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options)
+    return _render_context(raw, options, documents)

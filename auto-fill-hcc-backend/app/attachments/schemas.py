@@ -109,6 +109,9 @@ class AttachmentPlanResp(BaseModel):
     # Bản nén thay tệp gốc vượt giới hạn dung lượng của cổng (Cổng DVC quốc gia mới < 2 MB), khóa = fileIndex
     # dạng chuỗi, giá trị {name, type, dataUrl, ...}. Extension thay tệp trước khi đính. None = không thay.
     replaceFiles: dict[str, dict[str, Any]] | None = None
+    # True = kế hoạch rỗng CÓ CHỦ Ý theo cấu hình tài khoản (vd TTHN phường Đông Hà chỉ đính ủy quyền mà hồ sơ
+    # không có ủy quyền): extension coi như đính xong, không báo "Chưa đính kèm được". None với mọi trường hợp khác.
+    nothingToAttach: bool | None = None
 
 
 class ClientAttachmentFileMeta(BaseModel):

@@ -655,6 +655,52 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xac-nhan-thong-tin-ho-tich",
+        # Mã 2.002516, cổng Bộ Tư pháp. Pipeline trả HAI bộ ô: trang cổng Form.io (data[...]: Phần 1 người
+        # nộp = người yêu cầu, Phần 2 chủ hồ sơ = người được xác nhận) và eForm hộ tịch x-* trong iframe
+        # tokhaidientu; extension tách bộ theo frame (fill-core.js). Planner đính kèm chưa có nhánh tách
+        # giấy tờ → không bật supportsSplitDocuments.
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.002516"],
+            "textIncludes": ["xác nhận thông tin hộ tịch"],
+            "headingDisabled": True,
+        },
+        "label": "Xác nhận thông tin hộ tịch",
+        "shortLabel": "Xác nhận thông tin hộ tịch",
+        "subtitle": "Xác nhận thông tin hộ tịch đã đăng ký (khai sinh, kết hôn, khai tử…)",
+        "icon": "🧾",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-a586-71fe-8c10-836e09f0a879",
+        # Mỗi nhóm tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị xác nhận thông tin hộ tịch", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "ho_tich", "name": "Giấy khai sinh của người được xác nhận", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "CCCD của người yêu cầu và người được xác nhận (nếu có)", "icon": "🪪",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "🖋️",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị xác nhận thông tin hộ tịch (có chữ ký người yêu cầu).\n"
+            "2. Giấy khai sinh của người được xác nhận.\n"
+            "3. CCCD/CMND của người yêu cầu và của người được xác nhận (nếu có).\n"
+            "4. Nếu có: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước Thành phần hồ sơ: dòng 1 là Tờ khai điện tử cổng tự sinh (tờ khai bản giấy không đính "
+            "lại); giấy khai sinh + CCCD/CMND vào dòng 2; văn bản ủy quyền vào dòng 3."
+        ),
+    },
+    {
         "key": "dang-ky-kinh-doanh",
         # Trang DVCQG chỉ là điểm vào. Sau đăng nhập, hồ sơ chạy trên HkdOnline WebForms
         # và reload toàn trang sau gần như mọi thao tác; extension nhận diện bằng DOM + domain.
@@ -2337,6 +2383,103 @@ PROCEDURES: list[dict] = [
             "vụ thuế.\n"
             "4. Nếu hộ gia đình cùng thành lập: biên bản họp thành viên hộ gia đình.\n"
             "5. Nếu có: căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "tam-ngung-kinh-doanh",
+        # HkdOnline, businessWorkflow "suspension" — cùng wizard "Chọn loại đăng ký thay đổi" với
+        # chấm dứt (radio SUSPEN, có AutoPostBack). Bootstrap dừng ở màn TRA CỨU hộ kinh doanh để
+        # nhận giấy tờ trước (mã số nằm trong GCN), pipeline xong FE mới đi nốt wizard rồi điền
+        # trang DW_SUSPENSIONEdit (từ ngày / đến ngày / lý do) + Người nộp hồ sơ.
+        "detect": {
+            "urlIncludes": [
+                "hokinhdoanh.dkkd.gov.vn",
+                "019d2bfb-d768-7446-bd77-3bb11051041c",
+            ],
+            "headingDisabled": True,
+        },
+        "label": "Tạm ngừng kinh doanh hộ kinh doanh",
+        "shortLabel": "Tạm ngừng hộ kinh doanh",
+        "subtitle": "Tạm ngừng hộ kinh doanh trong một thời gian rồi kinh doanh lại",
+        "icon": "⏸️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d768-7446-bd77-3bb11051041c",
+        "needsAgencySelect": True,
+        "businessWorkflow": "suspension",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Giấy đề nghị đăng ký tạm ngừng kinh doanh (ghi rõ thời "
+             "gian và lý do tạm ngừng) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận đăng ký hộ kinh doanh (để lấy mã số tra "
+             "cứu)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Chỉ 2 trang: nội dung tạm ngừng + người nộp hồ sơ (khớp registry lõi).
+        "pages": [
+            {"key": "tam-ngung-hoat-dong", "label": "Tạm ngừng kinh doanh"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký tạm ngừng kinh doanh, đã ký (ghi rõ tạm ngừng từ ngày ... đến "
+            "hết ngày ..., lý do tạm ngừng).\n"
+            "2. Giấy chứng nhận đăng ký hộ kinh doanh — QUAN TRỌNG: hệ thống lấy mã số hộ kinh "
+            "doanh từ đây để tra cứu.\n"
+            "3. Nếu có: căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-lai-cap-doi-gcn-ho-kinh-doanh",
+        # HkdOnline, businessWorkflow "reissue" — KHÁC chấm dứt/tạm ngừng: rẽ ngay ở màn chọn loại
+        # đăng ký (radio REI, không qua "Chọn loại đăng ký thay đổi"). Bootstrap dừng ở màn TRA CỨU
+        # hộ kinh doanh để nhận giấy tờ trước (mã số nằm trong Giấy đề nghị/GCN), pipeline xong FE
+        # mới đi nốt wizard rồi điền trang DW_RE_ISSUANCEEdit (cấp lại/cấp đổi + lý do) + Người nộp.
+        "detect": {
+            "urlIncludes": [
+                "hokinhdoanh.dkkd.gov.vn",
+                "019d2bfc-d9d1-7475-8e58-1aa4479901eb",
+            ],
+            "headingDisabled": True,
+        },
+        "label": "Cấp lại, cấp đổi Giấy chứng nhận đăng ký hộ kinh doanh",
+        "shortLabel": "Cấp lại GCN hộ kinh doanh",
+        "subtitle": "Xin cấp lại GCN hộ kinh doanh bị mất, hỏng hoặc cấp đổi sang mẫu mới",
+        "icon": "📑",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9d1-7475-8e58-1aa4479901eb",
+        "needsAgencySelect": True,
+        "businessWorkflow": "reissue",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "de_nghi", "name": "Giấy đề nghị cấp lại/cấp đổi Giấy chứng nhận đăng ký hộ "
+             "kinh doanh (Mẫu số 2) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận đăng ký hộ kinh doanh cũ (nếu còn — để "
+             "lấy mã số tra cứu)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Chỉ 2 trang: thông tin đề nghị cấp lại + người nộp hồ sơ (khớp registry lõi).
+        "pages": [
+            {"key": "thong-tin-de-nghi-cap-lai", "label": "Thông tin đề nghị cấp lại GCN/GXNTĐ"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp lại/cấp đổi Giấy chứng nhận đăng ký hộ kinh doanh (Mẫu số 2), đã "
+            "ký — QUAN TRỌNG: hệ thống lấy mã số hộ kinh doanh và lý do cấp lại từ đây.\n"
+            "2. Nếu còn: Giấy chứng nhận đăng ký hộ kinh doanh cũ.\n"
+            "3. Nếu có: căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },

@@ -53,8 +53,12 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có (khai sinh + ntaub ntawv = giấy tờ).
     "khai-sinh-da-co-ho-so": "Cuv npe yug me nyuam rau tus neeg twb muaj ntaub ntawv",
     "thay-doi-cai-chinh-ho-tich": "Hloov / kho ntaub ntawv hộ tịch",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("lees paub" = xác nhận, "ntaub ntawv hộ tịch").
+    "xac-nhan-thong-tin-ho-tich": "Lees paub ntaub ntawv hộ tịch",
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": "Ntawv tso cai ua tsev nyob tshiab",
     "cham-dut-hoat-dong-ho-kinh-doanh": "Kaw lag luam tsev neeg",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("dua tshiab" = lại, "lag luam tsev neeg").
+    "cap-lai-cap-doi-gcn-ho-kinh-doanh": "Daim ntawv lag luam tsev neeg dua tshiab",
     # BẢN NHÁP chờ anh Dư soát — có TỪ MỚI chưa xuất hiện ở bản dịch nào trong file (nyiaj, faus,
     # xiam oob qhab, zaub mov, txhais lus, cog lus, qub txeeg qub teg, nyiaj laus…): soát kỹ hơn.
     "chung-thuc-giao-dich-tai-san": "Lees paub daim ntawv cog lus txog khoom vaj khoom tsev",

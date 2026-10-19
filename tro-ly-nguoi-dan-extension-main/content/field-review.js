@@ -276,12 +276,19 @@
     hintTarget = null;
   }
 
-  async function focusSlot(slot, hintText = "Trợ lý đang hỏi ô này · công dân nói vào mic hoặc gõ ở khung trợ lý") {
+  const ASK_HINT = "Trợ lý đang hỏi ô này · công dân nói vào mic hoặc gõ ở khung trợ lý";
+
+  function focusSlot(slot, hintText = ASK_HINT) {
+    return focusBox(slot.box, hintText);
+  }
+
+  async function focusBox(box, hintText = ASK_HINT) {
+    injectStyles();
     unfocus();
-    slot.box.scrollIntoView({ block: "center", behavior: "smooth" });
+    box.scrollIntoView({ block: "center", behavior: "smooth" });
     await sleep(450);
     const cur = cursorEl();
-    const r = slot.box.getBoundingClientRect();
+    const r = box.getBoundingClientRect();
     cur.classList.add("show");
     cur.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 120))}px, `
       + `${Math.round(r.top + r.height * 0.55)}px)`;
@@ -289,14 +296,17 @@
     cur.classList.remove("click");
     void cur.offsetWidth;
     cur.classList.add("click");
-    slot.box.classList.add(ASKING);
+    box.classList.add(ASKING);
     const hint = document.createElement("div");
     hint.id = "tlnd-fr-hint";
     hint.textContent = hintText;
     document.body.appendChild(hint);
-    hintTarget = slot.box;
+    hintTarget = box;
     placeHint();
   }
+
+  // Con trỏ + khung gợi ý dùng chung cho form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
+  H.fieldReviewPointer = { focus: focusBox, unfocus };
 
   // Danh sách lựa chọn của ô chọn: mở dropdown đọc chữ rồi đóng lại (danh sách Tỉnh/Xã nạp sau khi mở).
   async function readOptions(slot, wait = 2500) {

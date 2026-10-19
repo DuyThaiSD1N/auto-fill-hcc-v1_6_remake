@@ -20,7 +20,6 @@
   const stripAdmin = (s) => fold(s).replace(/^(tinh|thanh pho|tp|xa|phuong|thi tran|dac khu)\s+/, "");
 
   // ---- Tìm model survey qua fiber React ----
-  let cachedSurvey = null;
   const isSurvey = (o) => !!o && typeof o.getQuestionByName === "function" && typeof o.getAllQuestions === "function";
 
   function fiberOf(el) {
@@ -40,13 +39,28 @@
     return null;
   }
 
+  // Model gắn với các ô ĐANG HIỂN THỊ, tìm lại ở mỗi lệnh — không giữ model qua các lệnh: cổng là ứng dụng một
+  // trang, chuyển hồ sơ / dựng lại biểu mẫu thì tạo model mới mà trang không tải lại; model cũ vẫn nhận giá trị và
+  // báo đã điền nhưng không còn trên màn hình (ô viền xanh mà trống). Trang có nhiều model (bản ẩn cùng câu hỏi)
+  // → lấy model gắn với nhiều ô đang hiện nhất.
   function findSurvey() {
-    if (cachedSurvey && document.querySelector("[data-name]")) return cachedSurvey;
-    const nodes = Array.from(document.querySelectorAll(".sd-root-modern, .sv-root-modern, [data-name]")).slice(0, 40);
-    for (const node of nodes) {
+    const nodes = Array.from(document.querySelectorAll("[data-name]"));
+    const shown = nodes.filter((n) => n.offsetParent !== null);
+    const counts = new Map();
+    for (const node of (shown.length ? shown : nodes).slice(0, 40)) {
       const fiber = fiberOf(node);
       const survey = fiber && surveyFromFiber(fiber);
-      if (survey) { cachedSurvey = survey; return survey; }
+      if (survey && survey.getQuestionByName(node.getAttribute("data-name"))) {
+        counts.set(survey, (counts.get(survey) || 0) + 1);
+      }
+    }
+    let best = null;
+    for (const [survey, n] of counts) if (!best || n > counts.get(best)) best = survey;
+    if (best) return best;
+    for (const node of document.querySelectorAll(".sd-root-modern, .sv-root-modern")) {
+      const fiber = fiberOf(node);
+      const survey = fiber && surveyFromFiber(fiber);
+      if (survey) return survey;
     }
     return null;
   }
@@ -205,8 +219,21 @@
   const LOOKUP_WAIT_MS = 2500;
 
   async function setValues(fields) {
-    const survey = findSurvey();
+    let survey = findSurvey();
     if (!survey) return { ok: false, error: "no-survey" };
+    let res;
+    // Cổng dựng lại biểu mẫu GIỮA lượt điền (máy chậm, danh mục tải xong muộn) → giá trị nằm ở model đã bị thay:
+    // điền lại một lần trên model mới.
+    for (let lan = 0; lan < 2; lan++) {
+      res = await setValuesOn(survey, fields);
+      const now = findSurvey();
+      if (!now || now === survey) return res;
+      survey = now;
+    }
+    return res;
+  }
+
+  async function setValuesOn(survey, fields) {
     installRelationGuards(survey);
     // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.
     toolWriting = true;
@@ -456,6 +483,112 @@
     };
   }
 
+  // ---- Bổ sung ô còn trống sau khi điền (content/field-review-surveyjs.js) ----
+  // Chỉ các câu ĐANG HIỆN trên trang, theo thứ tự DOM: model khai cả câu ẩn (visible:false, có câu vẫn isRequired
+  // như citizenTinhtranghonnhanmap*), và tiêu đề trong model thường chỉ là tên câu — nhãn thật nằm trên trang.
+  const REVIEW_KINDS = { dropdown: "select", radiogroup: "radio", text: "text", comment: "text" };
+  const shownQuestionEl = (q) => Array.from(document.querySelectorAll(`[data-name="${CSS.escape(q.name)}"]`))
+    .find((el) => el.getClientRects().length > 0) || null;
+
+  function reviewKind(q) {
+    const type = q.getType?.() || "";
+    if (type === "text" && q.inputType === "date") return "date";
+    return REVIEW_KINDS[type] || "";
+  }
+
+  function reviewValue(q, kind) {
+    if (q.isEmpty?.()) return "";
+    if (kind === "select" || kind === "radio") return shownText(q);
+    if (kind === "date") {
+      const m = String(q.value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(q.value || "");
+    }
+    return String(q.value ?? "").trim();
+  }
+
+  // Tiêu đề khối gần nhất có chữ — khối điều kiện (vd "đã ly hôn") không có tiêu đề → lấy khối bọc ngoài.
+  function sectionTitle(node) {
+    for (let panel = node.closest(".sd-panel"); panel; panel = panel.parentElement?.closest(".sd-panel")) {
+      const title = Array.from(panel.querySelectorAll(".sd-panel__title")).find((t) => t.closest(".sd-panel") === panel);
+      const text = String(title?.textContent || "").replace(/\s+/g, " ").trim();
+      if (text) return text;
+    }
+    return "";
+  }
+
+  function reviewList() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    const questions = [];
+    const seen = new Set();
+    for (const node of document.querySelectorAll(".sd-question[data-name]")) {
+      if (!node.getClientRects().length) continue;
+      const q = survey.getQuestionByName(node.getAttribute("data-name"));
+      if (!q || seen.has(q.name) || !q.isVisible || q.isReadOnly) continue;
+      const kind = reviewKind(q);
+      if (!kind) continue;
+      seen.add(q.name);
+      questions.push({
+        name: q.name, kind,
+        // "Số lượng bản sao * (điền 0 nếu không cần)": dấu "*" có thể nằm giữa nhãn.
+        label: questionLabel(q).replace(/\s*\*\s*/g, " ").trim(),
+        required: !!q.isRequired || labelMarksRequired(q),
+        value: reviewValue(q, kind),
+        section: sectionTitle(node),
+        options: kind === "radio" ? choicesOf(q).map((c) => c.text.trim()) : [],
+      });
+    }
+    return { ok: true, questions };
+  }
+
+  // Ô Xã/Phường: ô Tỉnh/Thành phố đứng trước nó trong cùng khối.
+  function provinceBefore(survey, q) {
+    const node = shownQuestionEl(q);
+    if (!node || !/xa phuong|phuong xa/.test(fold(questionLabel(q)))) return null;
+    let found = null;
+    for (const el of (node.closest(".sd-panel") || document).querySelectorAll(".sd-question[data-name]")) {
+      if (el === node) break;
+      const p = survey.getQuestionByName(el.getAttribute("data-name"));
+      if (p?.getType?.() === "dropdown" && p.isVisible && /tinh thanh pho/.test(fold(questionLabel(p)))) found = p;
+    }
+    return found;
+  }
+
+  // Cổng hay hỏng nạp danh sách Xã sau khi chọn Tỉnh: bấm "Làm mới" cạnh ô; vẫn rỗng thì chọn lại tỉnh cho cổng
+  // nạp lại danh sách (gán lại đúng giá trị cũ thì model không đổi nên phải xoá rồi gán).
+  async function reloadChoices(survey, q) {
+    const refresh = shownQuestionEl(q)?.querySelector('button[title="Làm mới"]');
+    if (refresh) {
+      refresh.click();
+      if (await waitChoices(q, 3000)) return;
+    }
+    const province = provinceBefore(survey, q);
+    if (!province || province.isEmpty?.()) return;
+    const value = province.value;
+    province.value = undefined;
+    await sleep(300);
+    province.value = value;
+    if (!(await waitChoices(q, 3000))) await openToLoad(q);
+  }
+
+  async function reviewChoices(name) {
+    const survey = findSurvey();
+    const q = survey?.getQuestionByName(name);
+    if (!q) return { ok: false, error: "not-found" };
+    const texts = () => [...new Set(choicesOf(q).map((c) => c.text.trim()).filter(Boolean))].slice(0, 400);
+    if (!(await waitChoices(q, 1500))) await openToLoad(q);
+    if (!texts().length) await reloadChoices(survey, q);
+    const options = texts();
+    const province = options.length ? null : provinceBefore(survey, q);
+    return { ok: true, options, province: province ? shownText(province) : "" };
+  }
+
+  async function reviewSet(name, kind, value) {
+    const comp = { select: "sjs-dropdown", radio: "sjs-radio", date: "sjs-date" }[kind] || "sjs-text";
+    const res = await setValues([{ name, comp, value }]);
+    return res.ok ? (res.results?.[0] || { ok: false, reason: "not-found" }) : res;
+  }
+
   // ---- Trạng thái tải lên của tệp đính kèm ----
   // Cổng hiện tên tệp lên dòng ngay khi bắt đầu tải và GIỮ dòng đó khi tải hỏng (biểu tượng đỏ — vd tường lửa của
   // cổng chặn tệp gần 2 MB) → tên tệp không đủ làm bằng chứng. Trạng thái thật nằm ở props React `fileInfo` của
@@ -531,6 +664,11 @@
       else if (payload.op === "fillPlace") result = await fillPlace(payload.place || {});
       else if (payload.op === "emptyRequired") result = emptyRequired();
       else if (payload.op === "requesterInfo") result = requesterInfo();
+      else if (payload.op === "reviewList") result = reviewList();
+      else if (payload.op === "reviewChoices") result = await reviewChoices(String(payload.name || ""));
+      else if (payload.op === "reviewSet") {
+        result = await reviewSet(String(payload.name || ""), String(payload.kind || ""), String(payload.value ?? ""));
+      }
       else if (payload.op === "uploadStatus") {
         result = { ok: true, statuses: uploadEntries(String(payload.name || "")).map((e) => e.status) };
       } else if (payload.op === "removeUploads") {

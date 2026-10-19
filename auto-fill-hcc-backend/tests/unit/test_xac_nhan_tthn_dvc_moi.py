@@ -171,3 +171,109 @@ def test_dan_toc_lay_tu_giay_to_khac_khi_to_khai_khong_ghi():
     assert v["citizenNDKDantoc"]["value"] == "Tày"
     v, _ = _enrich({**BASE, "NguoiDuocCap_DanToc": "Kinh", "GiayToKhac_DanToc": "Tày"}, _context())
     assert v["citizenNDKDantoc"]["value"] == "Kinh"
+
+
+DONG_HA = {"tinh": "Tỉnh Quảng Trị", "xa": "Phường Đông Hà"}
+
+
+def test_dong_ha_chi_dinh_uy_quyen_theo_tai_khoan():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
+
+    key = "xac-nhan-tinh-trang-hon-nhan"
+    assert with_account_attach_options({}, DONG_HA, key) == {"onlyAuthorization": True}
+    # Client không tự bật được; phường khác tên gần giống / thủ tục khác → không có cờ.
+    assert with_account_attach_options({"onlyAuthorization": True}, {"tinh": "Tỉnh Quảng Trị", "xa": "Phường Nam Đông Hà"}, key) == {}
+    assert with_account_attach_options({}, {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đông Hà"}, key) == {}
+    assert with_account_attach_options({}, DONG_HA, "ket-hon") == {}
+
+
+def _fake_portal(monkeypatch, module, chat_json: dict, texts: list[str]):
+    import json
+
+    from app.services import ocr
+
+    async def fake_ocr_per_file(files):
+        return [{"name": f["name"], "text": texts[i]} for i, f in enumerate(files)]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps(chat_json, ensure_ascii=False)
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(module.client, "chat", fake_chat)
+
+
+def _files(n: int):
+    from app.process.schemas import FileItem
+
+    return [FileItem(name=f"{i}.pdf", type="application/pdf", dataUrl="data:application/pdf;base64,JVBERi0=", role="doc")
+            for i in range(n)]
+
+
+async def test_dong_ha_khong_tach_chi_giu_uy_quyen(monkeypatch):
+    _fake_portal(monkeypatch, planner, {"documents": [
+        {"index": 0, "docType": "declaration", "documentName": "Tờ khai"},
+        {"index": 1, "docType": "authorization", "documentName": "Văn bản ủy quyền"},
+        {"index": 2, "docType": "divorce_decision", "documentName": "Quyết định ly hôn"},
+    ]}, ["tờ khai", "ủy quyền", "ly hôn"])
+    result = await planner.plan(_files(3), {"onlyAuthorization": True})
+    assert [(a["fileIndex"], a["slotIndex"]) for a in result["attachments"]] == [(1, 2)]
+    # Bỏ im lặng: không có thông báo "Chưa đính kèm được" cho các giấy bị bỏ.
+    assert result["errors"] == [] and result["nothingToAttach"] is None
+    # Không có cờ → đính đủ như mọi nơi.
+    assert len((await planner.plan(_files(3), {}))["attachments"]) == 3
+
+
+async def test_dong_ha_tach_cat_dung_trang_uy_quyen(monkeypatch):
+    from app.pipelines.xac_nhan_tthn_dvc_moi.attach.dinh_kem_tach import planner as split_planner
+
+    _fake_portal(monkeypatch, split_planner, {"documents": [
+        {"fileIndex": 0, "pages": [1], "docType": "declaration", "documentName": "Tờ khai"},
+        {"fileIndex": 0, "pages": [2], "docType": "authorization", "documentName": "Văn bản ủy quyền"},
+    ]}, ["Trang 1/2\ntờ khai\nTrang 2/2\nủy quyền"])
+    result = await split_planner.plan(_files(1), {"onlyAuthorization": True})
+    assert len(result["attachments"]) == 1
+    item = result["attachments"][0]
+    assert item["slotIndex"] == 2 and item["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [1]}]
+
+
+async def test_dong_ha_khong_thay_uy_quyen_thi_khong_dinh_va_khong_bao_loi(monkeypatch):
+    _fake_portal(monkeypatch, planner, {"documents": [{"index": 0, "docType": "identity", "documentName": "CCCD"}]},
+                 ["căn cước"])
+    result = await planner.plan(_files(1), {"onlyAuthorization": True})
+    assert result["attachments"] == []
+    # Extension coi là đính xong (nothingToAttach), không báo lỗi.
+    assert result["errors"] == [] and result["nothingToAttach"] is True
+
+
+CCCD_SONG = {"name": "cccd.jpg", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 001090000002\nHọ và tên: NGUYỄN VĂN B\nNgày sinh: 05/03/1990"}
+KHAI_TU = {"name": "trich_luc.pdf", "text": "TRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: TRẦN THỊ D\nNgày sinh: 01/02/1950\n"
+                                             "Số định danh cá nhân: 001150000004\nNgày chết: 10/10/2025"}
+
+
+def _role(name: str, number: str) -> str:
+    return (f"<nguoi_duoc_cap>\nHọ tên: {name}\nSố định danh: {number}\nNgày sinh: 01/02/1950\nNguồn: x\n</nguoi_duoc_cap>\n"
+            "<quan_he>\nKết luận: Con\n</quan_he>")
+
+
+def test_cccd_va_khai_tu_khong_lay_nguoi_chet_lam_nguoi_duoc_cap():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    docs = [CCCD_SONG, KHAI_TU]
+    assert "Giấy khai tử: tài liệu 2" in reason._document_hints(docs, {"formContext": ACCOUNT})
+    out = reason._render_context(_role("TRẦN THỊ D", "001150000004"), {"formContext": ACCOUNT}, docs)
+    subject = reason.section(out, "nguoi_duoc_cap")
+    assert "tài liệu 1" in subject and "001150000004" not in subject
+    assert "Con" not in reason.section(out, "quan_he")
+    # Phân vai đã đúng người đứng tên thẻ → giữ nguyên.
+    out = reason._render_context(_role("NGUYỄN VĂN B", "001090000002"), {"formContext": ACCOUNT}, docs)
+    assert "001090000002" in reason.section(out, "nguoi_duoc_cap")
+
+
+def test_co_to_khai_thi_khong_can_thiep_nguoi_duoc_cap():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    to_khai = {"name": "to_khai.pdf", "text": "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN\nĐề nghị cấp ... TRẦN THỊ D\n"
+                                               "Số định danh: 001150000004\nGóa, theo giấy chứng tử số 01"}
+    assert not reason._is_death_doc(to_khai)
+    out = reason._render_context(_role("TRẦN THỊ D", "001150000004"), {}, [to_khai, CCCD_SONG, KHAI_TU])
+    assert "001150000004" in reason.section(out, "nguoi_duoc_cap")

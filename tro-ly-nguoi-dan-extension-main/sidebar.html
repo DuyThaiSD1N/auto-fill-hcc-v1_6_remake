@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="16/10/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="13/10/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -229,7 +229,8 @@
       </ol>
       <button id="start-btn" class="start-btn" type="button">Bắt đầu làm thủ tục<span class="hm-only start-btn-hm">Pib ua ntaub ntawv</span></button>
       <button id="start-mic-btn" class="start-mic" type="button">🎤 <span class="start-mic-l">Hoặc bấm vào đây rồi nói "bắt đầu"</span></button>
-      <p class="start-note">Có thể gõ hoặc nói để trò chuyện. Phiên sẽ tự kết thúc nếu không thao tác trong 10 phút.</p>
+      <p id="start-heard" class="start-heard" aria-live="polite" hidden></p>
+      <p class="start-note">Có thể gõ hoặc nói để trò chuyện. Phiên sẽ tự kết thúc nếu không thao tác trong 20 phút.</p>
     </section>
 
     <!-- Popover tài khoản (nút 👤): tên + nơi gắn acc + đăng xuất -->

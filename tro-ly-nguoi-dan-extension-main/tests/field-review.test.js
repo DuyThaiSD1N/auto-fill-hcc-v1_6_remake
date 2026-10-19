@@ -57,14 +57,15 @@ test("sidebar: khai cờ, tô màu sau khi điền và gửi số ô kèm báo c
 });
 
 test("sidebar: tìm ô kế tiếp rồi báo BE, gỡ con trỏ khi dừng", () => {
-  assert.match(sidebar, /a\.type === "field_review_next"[\s\S]*?action: "fieldReviewNext", required: a\.required \|\| \[\], skip: a\.skip \|\| \[\], apply: a\.apply \|\| null,[\s\S]*?ask\(`__event:field_review_focus:/);
+  // Lệnh của BE (required, skip, apply, focus, noAsk…) chuyển nguyên sang content script.
+  assert.match(sidebar, /a\.type === "field_review_next"[\s\S]*?sendToContent\(\{ \.\.\.a, action: "fieldReviewNext" \}\);[\s\S]*?ask\(`__event:field_review_focus:/);
   assert.match(sidebar, /a\.type === "field_review_stop"[\s\S]*?action: "fieldReviewStop"/);
 });
 
 test("sidebar: câu hỏi ô đọc xong tự mở mic một lượt", () => {
   assert.match(sidebar, /const listenAfter = !opts\?\.noTts && \(d\.actions \|\| \[\]\)\.some\(\(a\) => a\.type === "listen_after_tts"\);/);
   assert.match(sidebar, /if \(\(handsfree \|\| listenAfter\) && !completionReturnTimer && replyTtsInFlight === 0\) listenWhenQuiet\(\);/);
-  assert.match(sidebar, /\} else if \(\(handsfree \|\| listenAfter\) && !opts\?\.choHuongDan\) \{\s*listenWhenQuiet\(\);/);
+  assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);/);
 });
 
 test("ô năm sinh (x-date-text): chỉ có năm là đã điền; danh sách lựa chọn không cắt ở 200", () => {
@@ -81,7 +82,7 @@ test("khối x-select-area không có dropdown (vd Số lượng bản sao) là 
 
 test("sửa ô vừa điền: về đúng ô đó dù đã có giá trị", () => {
   assert.match(review, /let slot = \(msg\.focus && list\.find\(\(s\) => s\.key === msg\.focus\)\)\s*\|\| list\.find/);
-  assert.match(sidebar, /focus: a\.focus \|\| "",/);
+  assert.match(sidebar, /sendToContent\(\{ \.\.\.a, action: "fieldReviewNext" \}\)/);
 });
 
 test("bong bóng kết quả ô trước hiện riêng, phía trên câu hỏi", () => {

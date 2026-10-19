@@ -39,7 +39,7 @@ test("bot sắp đọc thì tắt mic trước (không thu tiếng loa của bot
 
 test("nhớ rảnh tay theo tab qua các lần cổng tải lại trang", () => {
   assert.match(sidebar, /const HANDSFREE_KEY = TAB_ID \? `tlnd_handsfree:\$\{TAB_ID\}` : "";/);
-  assert.match(sidebar, /function setHandsfree\(on\) \{[\s\S]{0,120}?rememberHandsfree\(on\);/);
+  assert.match(sidebar, /function setHandsfree\(on, \{ listen = true \} = \{\}\) \{[\s\S]{0,120}?rememberHandsfree\(on\);/);
   assert.match(sidebar, /get\(\[HANDSFREE_KEY\], \(res\) => \{[\s\S]*?handsfree = true;/);
   // Nộp xong (chờ đăng xuất) thì xoá.
   assert.match(sidebar, /handsfree = false;\s*rememberHandsfree\(false\);/);
@@ -48,7 +48,7 @@ test("nhớ rảnh tay theo tab qua các lần cổng tải lại trang", () => 
 test("tự mở mic không bao giờ cắt câu bot đang đọc (mở mic = tạo lại offscreen đang phát loa)", () => {
   assert.match(sidebar, /function listenWhenQuiet\(\) \{\s*if \(window\.__hccTTS\?\.isSpeaking\?\.\(\) \|\| busy \|\| botWorking\(\)\) \{[\s\S]*?return;\s*\}\s*startVoice\(\);/);
   // Lượt không có lời đọc (lượt hệ thống im lặng) KHÔNG gọi thẳng startVoice nữa.
-  assert.match(sidebar, /\} else if \(\(handsfree \|\| listenAfter\) && !opts\?\.choHuongDan\) \{\s*listenWhenQuiet\(\);\s*\}/);
+  assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);\s*\}/);
   assert.match(sidebar, /replyTtsInFlight === 0\) listenWhenQuiet\(\);/);
 });
 

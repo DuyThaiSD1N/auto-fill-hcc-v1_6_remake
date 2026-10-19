@@ -231,7 +231,8 @@ async def _prepare_attach(body: AttachmentPlanReq, user: dict):
         f.name = unique_file_name(f.name or "", taken_names)
         taken_names.add(f.name)
 
-    # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN, phường Nghĩa Lộ bỏ Tờ khai khai sinh)
+    # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN, phường Đông Hà chỉ đính ủy quyền TTHN,
+    # phường Nghĩa Lộ bỏ Tờ khai khai sinh)
     # do server đặt từ `user`, không nhận từ client.
     options = with_account_attach_options(body.options, user, body.procedure)
     options = with_nghia_lo_attach_options(options, user, body.procedure)

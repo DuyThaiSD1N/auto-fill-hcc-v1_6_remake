@@ -3,7 +3,8 @@
 Bảng thành phần có 3 dòng cố định (giấy XNTTHN đã cấp trước đó / giấy tờ ly hôn, khai tử của vợ chồng / văn bản ủy
 quyền), một dòng nhận nhiều tệp qua nút "Tải lên file", không có nút "Thêm thành phần". LLM đọc từng tệp để xếp đúng
 dòng; tệp không thuộc dòng riêng nào (tờ khai, CCCD, giấy kết hôn...) đính chung dòng giấy tờ hôn nhân để không sót
-tệp. LLM lỗi / OCR hụt → dòng giấy tờ hôn nhân. Xã Nghĩa Hưng không đính tờ khai (cờ theo tài khoản).
+tệp. LLM lỗi / OCR hụt → dòng giấy tờ hôn nhân. Xã Nghĩa Hưng không đính tờ khai; phường Đông Hà chỉ đính
+văn bản ủy quyền (cờ theo tài khoản).
 
 Cổng chỉ nhận tệp dưới 2 MB: tệp trên 2 MB được nén bằng đúng thang của cải chính (cùng Cổng DVC quốc gia mới), trả
 về ở `replaceFiles` để extension đính bản nén thay bản gốc. Tệp nhỏ hơn để nguyên. OCR vẫn đọc bản gốc.
@@ -20,7 +21,7 @@ from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import s
 from app.process.schemas import FileItem
 from app.services.llm import client
 
-from ..nghia_hung import OMITTED_DECLARATION_NOTE, omits_paper_declaration
+from ..nghia_hung import OMITTED_DECLARATION_NOTE, keep_only_authorization, omits_paper_declaration, only_authorization
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
@@ -219,9 +220,13 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         for item in [a for a in attachments if a["detectedType"] == "declaration"]:
             attachments.remove(item)
             errors.append(f"{OMITTED_DECLARATION_NOTE}: {item['fileName']}")
+    if only_authorization(options):
+        keep_only_authorization(attachments)
     await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
+        # Đông Hà: hồ sơ không có ủy quyền thì không đính gì — extension coi là xong, không báo lỗi.
+        "nothingToAttach": (only_authorization(options) and not attachments) or None,
         "replaceFiles": replace_files or None,
         "extracted": {
             "documents": [f["name"] for f in raw_files],

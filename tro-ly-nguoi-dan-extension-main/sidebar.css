@@ -256,6 +256,16 @@ body.hmong-region .start-btn-hm { display: block; }
 }
 .start-mic:hover { background: var(--teal-soft); }
 .start-mic.listening { background: var(--teal-soft); box-shadow: 0 0 0 4px rgba(18, 160, 106, .18); }
+/* Lời công dân vừa nói ở màn bắt đầu: cùng dáng bong bóng của công dân trong khung chat. Đang nói thì chữ
+   nhạt + "…", nói xong thì đậm hẳn rồi mới vào phiên; không nghe được gì thì nhắc nói lại. */
+.start-heard {
+  align-self: center; box-sizing: border-box; max-width: 310px; margin: 10px 0 0; padding: 9px 13px;
+  border-radius: 14px 14px 4px 14px; background: var(--teal); color: #fff;
+  font-size: 14px; line-height: 1.4; text-align: left; overflow-wrap: anywhere;
+}
+.start-heard[hidden] { display: none; }
+.start-heard.partial { opacity: .72; font-style: italic; }
+.start-heard.miss { border-radius: 12px; background: var(--teal-soft); color: var(--teal-d); font-weight: 600; }
 .start-note {
   max-width: 305px; margin: 11px 0 0;
   color: var(--muted); font-size: 11px; line-height: 1.45;
@@ -687,7 +697,6 @@ body.settings-mode .bot-f { display: none; }
 .srow-tn { font-size: 14px; font-weight: 800; line-height: 1.25; }
 .srow-hm { font-style: italic; color: var(--muted); font-size: 11px; margin-top: 1px; }
 .srow-sd { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.srow-cd { font-size: 10.5px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
 .srow mark { background: #fdf0c8; color: inherit; border-radius: 3px; padding: 0 1px; }
 .srow-ch { color: #9fb2c4; font-size: 18px; flex: none; }
 .snone {
@@ -830,13 +839,6 @@ body.settings-mode .bot-f { display: none; }
   content: "✓"; margin-left: auto; align-self: center;
   color: var(--teal-d); font-size: 17px; font-weight: 800;
 }
-/* Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): nhóm Nơi xử lý / Trường hợp. */
-.mae-dialog-choice .mdc-title {
-  color: var(--teal-d); font-weight: 800; font-size: 11px;
-  text-transform: uppercase; letter-spacing: .06em; margin-top: 4px;
-}
-.mae-dialog-choice .opt.picked { cursor: pointer; }
-.mae-dialog-choice .chip.solid { align-self: stretch; justify-content: center; margin-top: 4px; }
 
 /* ── Nơi làm thủ tục: nhãn trên, ô chọn dưới — dễ đọc, dễ chạm ── */
 .loc {
@@ -1002,18 +1004,12 @@ body.settings-mode .bot-f { display: none; }
   background: #d4f2e2; color: #0f7a4f; font-weight: 800;
   padding: 1px 6px; border-radius: 6px; white-space: nowrap;
 }
-/* Hai nút cùng một hàng, cao bằng nhau. */
+/* Hàng nút dưới mã QR. */
 .guide-qr-actions {
   display: flex; align-items: stretch; justify-content: center; gap: 10px;
   flex-wrap: wrap; width: 100%;
 }
 .guide-qr-actions > * { box-sizing: border-box; min-height: 40px; line-height: 1.2; }
-.guide-qr-skip {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 9px 18px; border: 1px solid var(--line); border-radius: 999px;
-  background: #f4f7f5; color: #3d5a4d; font-size: 14px; font-weight: 700; cursor: pointer;
-}
-.guide-qr-skip:hover { background: #e7efea; }
 .guide-qr .qr-img { width: 104px; height: 104px; background: #fff; padding: 4px; box-sizing: border-box; }
 .guide-qr-link {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1125,6 +1121,8 @@ body.settings-mode .bot-f { display: none; }
   padding: 0 11px 11px;
   font-size: 11.5px; line-height: 1.5; color: #3c5064;
 }
+/* Khối phạm vi + mục đích: hai ô màu xếp dọc, đủ ngắn nên không cần cuộn riêng. */
+.consent-card .cinfo .clegal-b { display: flex; flex-direction: column; gap: 6px; max-height: none; }
 /* Căn TRÁI, thẳng mép với các ô tick bên dưới — dễ quét mắt & với ngón cái. Viền teal
    cho rõ là bấm được, vùng chạm rộng hơn. */
 .consent-card .callall {

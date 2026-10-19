@@ -7,7 +7,10 @@ khoản → KHÔNG trích người nộp, trừ số điện thoại (xem <nguoi
 </ho_so>
 
 <nguoi_duoc_cap>
-1. Người được cấp theo đúng khối <nguoi_duoc_cap> đã chốt ở bước phân vai.
+1. Người được cấp theo đúng khối <nguoi_duoc_cap> đã chốt ở bước phân vai. Người được khai tử trên giấy chứng tử /
+   trích lục khai tử / giấy báo tử là người ĐÃ CHẾT, không bao giờ là người được cấp: hồ sơ chỉ có thẻ CCCD của một
+   người + giấy khai tử của người khác → NguoiDuocCap_* lấy theo thẻ CCCD, KHÔNG lấy họ tên, ngày sinh, số định danh
+   của người chết.
 2. Nguồn họ tên, ngày sinh, số định danh: thẻ CCCD/căn cước CỦA CHÍNH người đó (bản in đáng tin hơn chữ viết tay) →
    tờ khai (khối sau câu "Đề nghị cấp...") → giấy XNTTHN cũ / giấy ủy quyền. Số trên tờ khai lệch vài chữ số so với
    thẻ của chính người đó → lấy theo thẻ. KHÔNG lấy số, ngày sinh từ thẻ của người khác (người nộp hộ, vợ/chồng).

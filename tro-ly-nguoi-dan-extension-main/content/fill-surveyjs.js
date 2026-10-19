@@ -456,5 +456,6 @@
   Object.assign(H, {
     isSurveyDossierPage, fillFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue, readSurveyJsRequester,
     markEmptyRequired, injectSurveyJsMarkStyles: injectMarkStyles, setSurveyJsMark: setMark,
+    callSurveyJs: callMain, surveyJsQuestionEl: questionEl,
   });
 })();
