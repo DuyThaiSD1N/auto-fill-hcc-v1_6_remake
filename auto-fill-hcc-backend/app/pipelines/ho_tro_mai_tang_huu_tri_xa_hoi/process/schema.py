@@ -81,7 +81,7 @@ FIELDS: list[dict] = [
     },
 ]
 
-# Chỉ dùng khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường): người chết là chủ hồ sơ trên
+# Chỉ dùng khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường, xã Bình Chương): người chết là chủ hồ sơ trên
 # cổng nên phải trích thêm nhóm NguoiMat_*. Tài khoản khác không thấy nhóm này.
 DECEASED_FIELDS: list[dict] = [
     {

@@ -205,6 +205,18 @@ def test_nghia_hung_account_sets_clear_email_flag_only_for_this_procedure():
     assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options({}, nghia_hung, "ho-tro-mai-tang")
 
 
+def test_binh_chuong_account_sets_deceased_as_owner_flag_only_for_this_procedure():
+    """Xã Bình Chương (Quảng Ngãi) lấy người chết làm chủ hồ sơ như Cam Đường; xã khác bị gỡ cờ."""
+    binh_chuong = {"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Bình Chương"}
+    key = mapper.PROCEDURE_KEY
+    assert mapper.with_account_process_options({}, binh_chuong, key)[mapper.DECEASED_AS_OWNER_OPTION] is True
+    for other in ({"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Bình Châu"}, {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Bình Chương"}):
+        assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options(
+            {mapper.DECEASED_AS_OWNER_OPTION: True}, other, key
+        )
+    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, binh_chuong, "ho-tro-mai-tang")
+
+
 def test_clear_email_flag_emits_clear_after_requester_block():
     compact = [{"name": k, "value": v} for k, v in _DANG_VAN_LAM.items()]
     fields, _ = mapper.enrich(compact, {"submitterMode": "owner_as_submitter", mapper.CLEAR_EMAIL_OPTION: True})

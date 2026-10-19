@@ -10,6 +10,14 @@
   if (window.__HCC_SJS_HANDLER__) document.removeEventListener(REQUEST_EVENT, window.__HCC_SJS_HANDLER__);
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Engine nhẹ (máy yếu): chờ trang vẽ xong theo khung hình thay vì mốc giờ cố định — máy yếu vẽ chậm thì khung
+  // hình tới chậm theo. Tab ẩn không có khung hình → chặn trần 1 giây.
+  const nextFrame = () => Promise.race([new Promise((r) => requestAnimationFrame(() => r())), sleep(1000)]);
+  async function settle(ms) {
+    await nextFrame();
+    await nextFrame();
+    await sleep(ms);
+  }
   const fold = (s) => String(s ?? "")
     .replace(/Đ/g, "D").replace(/đ/g, "d")
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -90,7 +98,7 @@
     const t0 = Date.now();
     while (Date.now() - t0 < timeout) {
       if (choicesOf(q).length) return true;
-      await sleep(200);
+      await sleep(300);
     }
     return false;
   }
@@ -102,7 +110,7 @@
 
   // Dropdown nạp danh mục lười qua API của cổng (tỉnh, xã theo tỉnh): mở dropdown một lần như cán bộ bấm để
   // cổng tự nạp, chờ danh sách về rồi đóng lại.
-  async function openToLoad(q, timeout = 6000) {
+  async function openToLoad(q, timeout = 10000) {
     const root = document.querySelector(`[data-name="${CSS.escape(q.name)}"]`);
     const opener = root?.querySelector(".sd-dropdown, [role='combobox']");
     if (!opener) return false;
@@ -110,7 +118,7 @@
     opener.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     opener.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     const t0 = Date.now();
-    while (Date.now() - t0 < timeout && choicesOf(q).length <= before) await sleep(150);
+    while (Date.now() - t0 < timeout && choicesOf(q).length <= before) await sleep(300);
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     document.activeElement?.blur?.();
     return choicesOf(q).length > before;
@@ -125,8 +133,8 @@
       }
       return bestChoice(q, value);
     };
-    // Cascade tỉnh→xã: danh mục có thể đang tải sau khi ô cha vừa đổi → chờ ngắn trước.
-    await waitChoices(q, 2000);
+    // Cascade tỉnh→xã: danh mục có thể đang tải sau khi ô cha vừa đổi → chờ ngắn trước (máy yếu chờ lâu hơn).
+    await waitChoices(q, 4000);
     let choice = pick();
     if (!choice && await openToLoad(q)) choice = pick();
     if (!choice) return { ok: false, reason: choicesOf(q).length ? "no-match" : "no-choices" };
@@ -160,21 +168,34 @@
     const radio = field.radio ? findQuestion(survey, field.radio) : null;
     const radioEl = radio && document.querySelector(`[data-name="${CSS.escape(radio.name)}"]`);
     const scope = radioEl?.closest(".sd-panel") || document;
-    await sleep(400);
-    const candidates = [];
-    // Một khối có thể chứa nhiều cụm địa chỉ (khai sinh: Nơi sinh + Quê quán) → chỉ lấy các ô nằm SAU radio
-    // này và TRƯỚC radio kế tiếp theo thứ tự DOM.
-    let afterRadio = !radioEl;
-    for (const node of scope.querySelectorAll("[data-name]")) {
-      if (node === radioEl) { afterRadio = true; continue; }
-      if (!afterRadio) continue;
-      const q = survey.getQuestionByName(node.getAttribute("data-name"));
-      if (radioEl && q?.getType?.() === "radiogroup") break;
-      if (!q || q === radio || q.isReadOnly || !q.isVisible) continue;
-      const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
-        .map((l) => l.textContent).join(" ") || q.title);
-      candidates.push({ q, label, type: q.getType?.() });
-    }
+    const collect = () => {
+      const found = [];
+      // Một khối có thể chứa nhiều cụm địa chỉ (khai sinh: Nơi sinh + Quê quán) → chỉ lấy các ô nằm SAU radio
+      // này và TRƯỚC radio kế tiếp theo thứ tự DOM.
+      let afterRadio = !radioEl;
+      for (const node of scope.querySelectorAll("[data-name]")) {
+        if (node === radioEl) { afterRadio = true; continue; }
+        if (!afterRadio) continue;
+        const q = survey.getQuestionByName(node.getAttribute("data-name"));
+        if (radioEl && q?.getType?.() === "radiogroup") break;
+        if (!q || q === radio || q.isReadOnly || !q.isVisible) continue;
+        const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
+          .map((l) => l.textContent).join(" ") || q.title);
+        found.push({ q, label, type: q.getType?.() });
+      }
+      return found;
+    };
+    // Khối địa chỉ chỉ hiện sau khi chọn radio, máy yếu vẽ chậm → chờ tới khi ô cần điền đã có (trần 3 giây)
+    // thay vì đoán một mốc giờ.
+    const ready = (list) => (value.tinh
+      ? list.some((c) => c.type === "dropdown" && /tinh thanh pho/.test(c.label))
+      : list.length > 0);
+    const t0 = Date.now();
+    let candidates;
+    do {
+      await settle(100);
+      candidates = collect();
+    } while (!ready(candidates) && Date.now() - t0 < 3000);
     const pick = (re, type) => candidates.find((c) => c.type === type && re.test(c.label))?.q || null;
     const steps = [
       [pick(/quoc gia/, "dropdown"), value.quocGia || "Việt Nam"],
@@ -206,13 +227,32 @@
     const survey = findSurvey();
     if (!survey) return { ok: false, error: "no-survey" };
     installRelationGuards(survey);
+    const resumeAnimations = pauseAnimations(survey);
     // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.
     toolWriting = true;
     try {
       return await setValuesCore(survey, fields);
     } finally {
       toolWriting = false;
+      resumeAnimations?.();
     }
+  }
+
+  // Engine nhẹ: tắt hiệu ứng mở/đóng khối, hiện/ẩn ô của SurveyJS trong lúc điền — mỗi radio đổi làm hiện ra
+  // cả khối, máy yếu phải dựng từng khung chuyển động. Bản survey-core của cổng không có API này thì bỏ qua.
+  function pauseAnimations(survey) {
+    try {
+      if (typeof survey.blockAnimations === "function" && typeof survey.releaseAnimations === "function") {
+        survey.blockAnimations();
+        return () => { try { survey.releaseAnimations(); } catch { /* survey đã huỷ */ } };
+      }
+      if (typeof survey.animationEnabled === "boolean") {
+        const before = survey.animationEnabled;
+        survey.animationEnabled = false;
+        return () => { survey.animationEnabled = before; };
+      }
+    } catch { /* bỏ qua: điền như thường */ }
+    return null;
   }
 
   async function setValuesCore(survey, fields) {
@@ -235,13 +275,36 @@
         const r = field.comp === "sjs-area" ? await setArea(survey, field) : await setOne(survey, field);
         if (field.lookup) r.lookup = true;
         results.push({ name: field.name, ...r });
-        // Đổi quan hệ / radio làm cổng dựng lại hoặc hiện thêm ô phía sau → chờ render.
-        if (r.ok && (field.comp === "sjs-dropdown" || field.comp === "sjs-radio")) await sleep(250);
+        // Đổi quan hệ / radio làm cổng dựng lại hoặc hiện thêm ô phía sau → chờ render (máy yếu: chờ khung hình).
+        if (r.ok && (field.comp === "sjs-dropdown" || field.comp === "sjs-radio")) await settle(150);
       } catch (e) {
         results.push({ name: field.name, ok: false, reason: String(e?.message || e) });
       }
     }
+    // Gán được chưa chắc còn giữ: cổng có thể xoá lại sau đó (resetValueIf của ô quan hệ chạy trễ trên máy yếu)
+    // → chờ trang yên rồi đọc lại model, ô đang hiện mà trống thì báo đỏ thay vì xanh.
+    await settle(300);
+    for (const r of results) verifyKept(survey, r);
     return { ok: true, results };
+  }
+
+  const CLEARED = "cleared-after-set";
+  // Chỉ xét ô còn hiện: ô bị lựa chọn sau làm ẩn đi thì SurveyJS xoá giá trị là đúng. Không tìm thấy ô
+  // (cổng dựng lại khối) → không đủ căn cứ, giữ kết quả cũ. Ô cổng tự đổ (kept) không phải giá trị của engine.
+  function clearedAfterSet(q) {
+    return !!q && q.isVisible && typeof q.isEmpty === "function" && q.isEmpty();
+  }
+
+  function verifyKept(survey, r) {
+    if (!r.ok || r.kept) return;
+    if (Array.isArray(r.parts)) {
+      for (const part of r.parts) {
+        if (part.ok && clearedAfterSet(survey.getQuestionByName(part.name))) part.ok = false;
+      }
+      if (r.parts.some((part) => !part.ok)) Object.assign(r, { ok: false, reason: CLEARED });
+      return;
+    }
+    if (clearedAfterSet(findQuestion(survey, r.name))) Object.assign(r, { ok: false, reason: CLEARED });
   }
 
   // ---- Giữ khối thông tin người được cấp khi đổi ô "Quan hệ…" ----

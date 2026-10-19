@@ -4751,6 +4751,7 @@
         const res = await sendToContent({
           action: "confirmInfoModal",
           executionSubject: a.executionSubject || null,
+          infoFields: a.infoFields || null,
         });
         await new Promise((r) => setTimeout(r, 1200));
         setStatus("");
@@ -4762,7 +4763,9 @@
           });
           if (infoModalTries <= 3) sendPageStatus();
           else {
-            setStatus("⚠️ Công dân chọn Đối tượng thực hiện rồi bấm Xác nhận giúp em ạ.", true);
+            setStatus(a.infoFields
+              ? "⚠️ Công dân chọn nốt các ô trong Thông tin chung rồi bấm Xác nhận giúp em ạ."
+              : "⚠️ Công dân chọn Đối tượng thực hiện rồi bấm Xác nhận giúp em ạ.", true);
             setTimeout(() => setStatus(""), 5000);
           }
         } else if (infoModalTries <= 3) {

@@ -3,6 +3,7 @@
 - Chứng thực văn bản phân chia di sản (2.001406)
 - Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch (2.000913)
 - Chứng thực văn bản từ chối nhận di sản (2.001016)
+- Chứng thực di chúc (2.001019)
 
 Luồng cũ nghĩa là: không consent, không bước chủ hồ sơ, không guidedSteps, không hỏi gộp/tách
 nhiều hồ sơ, planner core chạy mặc định — đúng như bản extension trên chợ đang nhận.
@@ -28,6 +29,9 @@ CASES = {
     ),
     "chung-thuc-tu-choi-nhan-di-san": (
         "2.001016", "019d2bfd-95e6-7578-ba2d-d1b4373cd174", ["du_thao", "so_huu", "khac"],
+    ),
+    "chung-thuc-di-chuc": (
+        "2.001019", "019d2bfd-95f0-7610-845f-c097f144bd55", ["du_thao", "so_huu", "khac"],
     ),
 }
 KEYS = list(CASES)
@@ -118,3 +122,84 @@ async def test_phan_loai_luc_tai_len(monkeypatch, key, llm_answer, expected):
         get_procedure(key)["requiredDocs"], [], None, procedure_key=key,
     )
     assert out[0]["doc_key"] == expected
+
+
+# Cấp bản sao từ sổ gốc (2.000908): cùng khung luồng cũ, nhưng giấy tờ chỉ là hộ tịch + CCCD nên
+# KHÔNG có bộ phân loại riêng — khóa ô trùng loại của bộ từ khóa chung.
+BAN_SAO_SO_GOC = "cap-ban-sao-so-goc"
+
+
+def test_cap_ban_sao_so_goc_khung_attach_only():
+    proc = get_procedure(BAN_SAO_SO_GOC)
+    signature = get_procedure("chung-thuc-chu-ky")
+    assert proc["mode"] == "attach" and proc["flowProfile"] == "tu-phap"
+    assert proc["requiresConsent"] is False and proc["ownerInfo"]["enabled"] is False
+    assert proc["wizard"] == signature["wizard"]
+    assert proc["guidedSteps"] == signature["guidedSteps"]
+    assert proc["keKhaiUrl"].endswith("019d2bfd-8e5d-72f9-8cf2-c71780251483")
+    assert "maThuTuc=2.000908" in proc["detect"]["urlIncludes"]
+    assert [d["key"] for d in proc["requiredDocs"]] == ["ho_tich", "cccd", "khac"]
+    assert classifier_registry.get_upload_classifier(BAN_SAO_SO_GOC) is None
+    conv = _conv(BAN_SAO_SO_GOC, attachment_preferences={"attachMode": "split"})
+    question, preset_split = flow._attach_mode_gate(conv, proc, files_count=3)
+    assert question is None and preset_split is False
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("CĂN CƯỚC CÔNG DÂN Họ và tên NGUYỄN VĂN A Ngày sinh 01/01/1990", "cccd"),
+    ("GIẤY KHAI SINH Họ, chữ đệm, tên: TRẦN THỊ B", "ho_tich"),
+    ("GIẤY CHỨNG NHẬN KẾT HÔN Họ, chữ đệm, tên chồng", "ho_tich"),
+])
+async def test_cap_ban_sao_so_goc_phan_loai_chung(monkeypatch, text, expected):
+    async def fake_ocr(files, **_):
+        return [{"name": f["name"], "text": text} for f in files]
+
+    async def fake_chat(*_args, **_kw):
+        raise AssertionError("bộ từ khóa chung đã nhận ra, không được hỏi LLM")
+
+    monkeypatch.setattr(classify.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
+    out = await classify.classify_files(
+        [{"name": "tep.jpg", "type": "image/jpeg", "dataUrl": "data:,"}],
+        get_procedure(BAN_SAO_SO_GOC)["requiredDocs"], [], None, procedure_key=BAN_SAO_SO_GOC,
+    )
+    assert out[0]["doc_key"] == expected
+
+
+# Bầu tổ trưởng tổ hòa giải (2.000950): cùng khung luồng cũ, không bộ phân loại riêng — biên bản
+# và giấy đề nghị không có trong bộ từ khóa chung nên hỏi LLM theo TÊN Ô checklist.
+TO_HOA_GIAI = "bau-to-truong-to-hoa-giai"
+
+
+def test_bau_to_truong_to_hoa_giai_khung_attach_only():
+    proc = get_procedure(TO_HOA_GIAI)
+    signature = get_procedure("chung-thuc-chu-ky")
+    assert proc["mode"] == "attach" and proc["flowProfile"] == "tu-phap"
+    assert proc["requiresConsent"] is False and proc["ownerInfo"]["enabled"] is False
+    assert proc["wizard"] == signature["wizard"]
+    assert proc["guidedSteps"] == signature["guidedSteps"]
+    assert proc["keKhaiUrl"].endswith("019d2bfd-95cf-74f7-8f8e-81c925ae839a")
+    assert "maThuTuc=2.000950" in proc["detect"]["urlIncludes"]
+    assert [d["key"] for d in proc["requiredDocs"]] == ["bien_ban", "de_nghi", "khac"]
+    assert classifier_registry.get_upload_classifier(TO_HOA_GIAI) is None
+    conv = _conv(TO_HOA_GIAI, attachment_preferences={"attachMode": "split"})
+    question, preset_split = flow._attach_mode_gate(conv, proc, files_count=3)
+    assert question is None and preset_split is False
+
+
+@pytest.mark.parametrize("llm_answer", ["bien_ban", "de_nghi"])
+async def test_bau_to_truong_to_hoa_giai_phan_loai_theo_ten_o(monkeypatch, llm_answer):
+    async def fake_ocr(files, **_):
+        return [{"name": f["name"], "text": "BIÊN BẢN VỀ KẾT QUẢ BIỂU QUYẾT tổ hòa giải"}
+                for f in files]
+
+    async def fake_chat(*_args, **_kw):
+        return '{"doc_key":"%s"}' % llm_answer
+
+    monkeypatch.setattr(classify.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
+    out = await classify.classify_files(
+        [{"name": "tep.jpg", "type": "image/jpeg", "dataUrl": "data:,"}],
+        get_procedure(TO_HOA_GIAI)["requiredDocs"], [], None, procedure_key=TO_HOA_GIAI,
+    )
+    assert out[0]["doc_key"] == llm_answer

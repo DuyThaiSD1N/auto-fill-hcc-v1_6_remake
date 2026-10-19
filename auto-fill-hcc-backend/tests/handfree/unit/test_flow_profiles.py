@@ -309,6 +309,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san",
         "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-phan-chia-di-san",
         "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-tu-choi-nhan-di-san",
+        "chung-thuc-di-chuc", "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai",
     }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
@@ -338,7 +339,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # quy hoạch, thẩm định BCNCKT, lòng đường vỉa hè; +1 liên vận Việt Nam - Lào (cùng luồng).
     # (Trước khi thêm liên vận danh sách thực tế đã là 42, số cũ 41 chưa được cập nhật.)
     # +1 attach-only tư pháp "chung-thuc-tu-choi-nhan-di-san".
-    assert len(procedures) == 44
+    # +1 attach-only tư pháp "chung-thuc-di-chuc".
+    # +1 attach-only tư pháp "cap-ban-sao-so-goc".
+    # +1 attach-only tư pháp "bau-to-truong-to-hoa-giai".
+    # +1 "khai-tu-lien-thong"; +1 tư pháp chọn Sở "yeu-cau-tro-giup-phap-ly".
+    assert len(procedures) == 49
 
     for procedure in procedures:
         key = procedure["key"]

@@ -44,7 +44,7 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
-# Cấu hình theo tài khoản: phường Cam Đường (Lào Cai) khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng; người
+# Cấu hình theo tài khoản: phường Cam Đường (Lào Cai) và xã Bình Chương (Quảng Ngãi) khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng; người
 # đứng ra mai táng chỉ còn là ứng viên người nộp. Nơi khác giữ nguyên logic. Mapper không biết tài
 # khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server
 # tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
@@ -64,6 +64,19 @@ def is_lao_cai_cam_duong(user: dict | None) -> bool:
             xa = xa[len(prefix):].strip()
             break
     return "lao cai" in tinh and xa == "cam duong"
+
+
+def is_quang_ngai_binh_chuong(user: dict | None) -> bool:
+    """True khi tài khoản thuộc xã Bình Chương, tỉnh Quảng Ngãi (khớp tỉnh và ĐÚNG tên xã)."""
+    if not user:
+        return False
+    tinh = _norm_text(user.get("tinh"))
+    xa = _norm_text(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "quang ngai" in tinh and xa == "binh chuong"
 
 
 # Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) không điền email người nộp. Cổng tự nạp email
@@ -89,7 +102,7 @@ def with_account_process_options(options: dict | None, user: dict | None, proced
     result = dict(options or {})
     result.pop(DECEASED_AS_OWNER_OPTION, None)
     result.pop(CLEAR_EMAIL_OPTION, None)
-    if procedure == PROCEDURE_KEY and is_lao_cai_cam_duong(user):
+    if procedure == PROCEDURE_KEY and (is_lao_cai_cam_duong(user) or is_quang_ngai_binh_chuong(user)):
         result[DECEASED_AS_OWNER_OPTION] = True
     if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
         result[CLEAR_EMAIL_OPTION] = True

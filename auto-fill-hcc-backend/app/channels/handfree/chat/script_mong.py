@@ -25,6 +25,8 @@ PROCEDURE_HMONG = {
     "xac-nhan-tinh-trang-hon-nhan": "Ntawv lees paub tsis tau muaj txij nkawm",
     "khai-sinh-dang-ky-lai": "Cuv npe yug me nyuam dua tshiab",
     "khai-tu": "Cuv npe tuag",
+    # BẢN NHÁP chờ anh Dư soát (theo mẫu "khai-sinh-dang-ky": thêm "(txuas ntxiv)" = liên thông).
+    "khai-tu-lien-thong": "Cuv npe tuag (txuas ntxiv)",
     "dang-ky-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
     "dang-ky-giam-ho": "Cuv npe saib xyuas tus neeg",
     "ket-hon-nuoc-ngoai": "Cuv npe yuav txiv/poj niam nrog neeg txawv teb chaws",
@@ -59,6 +61,14 @@ PROCEDURE_HMONG = {
     "chung-thuc-phan-chia-di-san": "Lees paub daim ntawv faib qub txeeg qub teg",
     # BẢN NHÁP chờ anh Dư soát — "tsis kam txais" (từ chối nhận) là TỪ MỚI.
     "chung-thuc-tu-choi-nhan-di-san": "Lees paub daim ntawv tsis kam txais qub txeeg qub teg",
+    # BẢN NHÁP chờ anh Dư soát — "lus nauj tshwm" (di chúc) là TỪ MỚI.
+    "chung-thuc-di-chuc": "Lees paub daim ntawv lus nauj tshwm",
+    # BẢN NHÁP chờ anh Dư soát — "phau qub" (sổ gốc) là TỪ MỚI.
+    "cap-ban-sao-so-goc": "Daim ntawv theej los ntawm phau qub",
+    # BẢN NHÁP chờ anh Dư soát — "pab neeg sib haum xeeb" (tổ hòa giải) là TỪ MỚI.
+    "bau-to-truong-to-hoa-giai": "Xaiv thawj coj pab neeg sib haum xeeb",
+    # BẢN NHÁP chờ anh Dư soát — "kev pab txog kev cai lij choj" (trợ giúp pháp lý) là TỪ MỚI.
+    "yeu-cau-tro-giup-phap-ly": "Thov kev pab txog kev cai lij choj",
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
     "xac-dinh-muc-do-khuyet-tat": "Txiav txim qib xiam oob qhab",

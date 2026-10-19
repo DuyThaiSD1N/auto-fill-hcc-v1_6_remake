@@ -57,7 +57,7 @@ QUY TẮC FIELD:
 - Không tạo field không có bằng chứng OCR."""
 
 
-# Nối sau EXTRA_RULES khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường).
+# Nối sau EXTRA_RULES khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường, xã Bình Chương).
 DECEASED_OWNER_RULES = """
 
 CẤU HÌNH TÀI KHOẢN: NGƯỜI CHẾT LÀ CHỦ HỒ SƠ TRÊN CỔNG
@@ -65,9 +65,13 @@ CẤU HÌNH TÀI KHOẢN: NGƯỜI CHẾT LÀ CHỦ HỒ SƠ TRÊN CỔNG
   ngoại lệ duy nhất cho quy tắc "không trích người chết"; ChuHoSo_* và NguoiNop_* giữ nguyên nghĩa và
   cách lấy như trên (ChuHoSo_* vẫn là người đứng ra mai táng, không phải người chết).
 - Nguồn NguoiMat_*: mục I "Thông tin người chết" (Mẫu số 04) hoặc mục 2 "Thông tin người chết được tổ
-  chức mai táng" (Mẫu số 02) của tờ khai; khối chính "Họ, chữ đệm, tên" trên Trích lục khai tử/Giấy báo tử.
+  chức mai táng" (Mẫu số 02, Mẫu số 03) của tờ khai; khối chính "Họ, chữ đệm, tên" trên Trích lục khai
+  tử/Giấy báo tử.
 - Mẫu số 02: mục 1 "Thông tin người đề nghị (người khai)" và mục 3.1 "cá nhân, thân nhân đứng ra tổ chức
   mai táng" là người đứng ra mai táng -> nguồn ChuHoSo_*; mục 2 là người chết -> nguồn NguoiMat_*.
+- Mẫu số 03 "Tờ khai đề nghị hỗ trợ chi phí mai táng" (1 tờ): mục 1 "Thông tin người đề nghị" (họ tên,
+  số định danh, ngày cấp, nơi cấp, nơi cư trú) là người đứng ra mai táng -> nguồn ChuHoSo_*; mục 2
+  "Thông tin người chết được tổ chức mai táng" -> nguồn NguoiMat_* (kể cả ngày cấp/nơi cấp của người chết).
 - Họ tên, ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp của người chết ưu tiên Trích lục khai
   tử/giấy tờ định danh của chính người chết; NguoiMat_NoiCuTru lấy dòng "Nơi cư trú" của người chết trên
   tờ khai, tuyệt đối không lấy "Nơi chết" hay "Nơi đăng ký khai tử".

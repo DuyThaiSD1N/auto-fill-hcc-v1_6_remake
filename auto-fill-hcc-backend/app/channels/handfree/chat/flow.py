@@ -2357,6 +2357,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             selected = _execution_subject_selection(conv, proc)
             if selected:
                 action["executionSubject"] = selected
+        # Thủ tục cấp Sở: modal còn ô Cấp thực hiện / Thủ tục / Cơ quan thực hiện phải chọn trước.
+        if proc.get("infoModalFields"):
+            action["infoFields"] = proc["infoModalFields"]
         r.actions = [action]
         return r
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):

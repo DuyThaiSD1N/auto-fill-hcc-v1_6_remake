@@ -209,3 +209,39 @@ def test_reason_doc_muc_ben_uy_quyen_chi_khi_bat_co():
     assert reason._labeled_value(block, "Số CCCD/CMND") == "001160000003"
     assert reason._labeled_value(block, "Ngày cấp") == "10/05/2021"
     assert reason._authorized_person(docs)["name"] == "Lê Văn Bình"
+
+
+_XUAN_HUONG = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}
+_DECEASED = {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": "Đã chết"}
+
+
+def _run_deceased_parents(user):
+    fields = {**_FIELDS, "Mother_FullName": "Nguyễn Thị Hoa", "Mother_ResidenceDomestic": _DECEASED,
+              "Father_FullName": "Trần Văn Cường", "Father_ResidenceDomestic": _DECEASED}
+    context = _CONTEXT.format(ten="Lê Văn Bình", so="001056000002", co="Có")
+    options = mapper.with_account_process_options({"_reasoning_context": context}, user, "khai-sinh-dang-ky-lai")
+    out = mapper.enrich([{"name": k, "value": v} for k, v in fields.items()], options)
+    return {f["name"]: f["value"] for f in out}
+
+
+def test_xuan_huong_cha_me_da_chet_chon_khong_co_thong_tin_va_viet_nam():
+    v = _run_deceased_parents(_XUAN_HUONG)
+    for prefix in ("Cha", "Me"):
+        assert v[f"{prefix}LoaiCuTru"] == "Không có thông tin"
+        assert v[f"{prefix}NoiCuTru"] == "Khác"
+        assert v[f"{prefix}NoiCuTru_NuocNgoai"] == {"quocGia": "Việt Nam", "diaChi": "Đã chết"}
+
+
+def test_noi_khac_cha_me_da_chet_giu_nhu_cu():
+    v = _run_deceased_parents({"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"})
+    for prefix in ("Cha", "Me"):
+        assert f"{prefix}LoaiCuTru" not in v
+        assert v[f"{prefix}NoiCuTru_NuocNgoai"] == "Đã chết"
+
+
+def test_co_xuan_huong_chi_bat_cho_dung_phuong_va_dung_thu_tuc():
+    assert mapper.with_account_process_options({}, _XUAN_HUONG, "khai-sinh-dang-ky-lai")["deceasedParentNoInfo"]
+    assert "deceasedParentNoInfo" not in mapper.with_account_process_options(
+        {"deceasedParentNoInfo": True}, _HIEP_HOA, "khai-sinh-dang-ky-lai")
+    assert "deceasedParentNoInfo" not in mapper.with_account_process_options(
+        {}, _XUAN_HUONG, "thay-doi-cai-chinh-ho-tich")

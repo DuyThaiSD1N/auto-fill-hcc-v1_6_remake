@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23.9",
+    date: "19/10/2026",
+    items: [
+      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): điền xong kiểm tra lại từng ô — ô bị cổng tự xoá sau khi điền giờ tô đỏ thay vì báo xanh.",
+      "Chạy nhẹ hơn trên máy cấu hình thấp: không cuộn theo từng ô, chờ biểu mẫu lâu hơn trước khi báo lỗi.",
+    ],
+  },
+  {
     version: "1.23.8",
     date: "17/10/2026",
     items: [

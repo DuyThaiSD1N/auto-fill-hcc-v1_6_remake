@@ -1069,24 +1069,140 @@
     return { kept: false, selected };
   }
 
-  async function confirmInfoModal(executionSubject) {
+  // Thủ tục nộp ở cấp Sở: modal còn thêm Cấp thực hiện → Thủ tục → Cơ quan thực hiện → Đơn vị
+  // tiếp nhận, ô sau chỉ nạp khi ô trước đã chọn. Nhãn có dấu "*" con nên KHÔNG dùng leafByText.
+  const INFO_COMBO_SELECTOR = '[role="combobox"], button[aria-haspopup="listbox"]';
+  const cleanInfoLabel = (s) => fold(s).replace(/[*:]/g, "").trim();
+
+  function infoFieldLabel(dialog, label) {
+    const wanted = cleanInfoLabel(label);
+    const hits = Array.from(dialog.querySelectorAll("label,p,span,div")).filter((el) => {
+      if (el.querySelector(INFO_COMBO_SELECTOR) || !isVisible(el)) return false;
+      const text = cleanInfoLabel(el.textContent);
+      return text === wanted || text.startsWith(`${wanted} `);
+    });
+    // Node sâu nhất = nhãn thật, không phải khối bọc cả ô.
+    return hits.find((el) => !hits.some((other) => other !== el && el.contains(other))) || null;
+  }
+
+  function infoCombos(dialog) {
+    return Array.from(dialog.querySelectorAll(INFO_COMBO_SELECTOR)).filter(isVisible);
+  }
+
+  function infoFieldCombobox(dialog, label) {
+    const node = infoFieldLabel(dialog, label);
+    if (!node) return null;
+    // Ô ĐẦU TIÊN đứng sau nhãn — leo lên cha dễ vớ nhầm ô của trường đứng trước.
+    return infoCombos(dialog).find((el) =>
+      node.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) || null;
+  }
+
+  function infoComboValue(control) {
+    return control?.tagName === "INPUT" ? String(control.value || "").trim() : nodeText(control);
+  }
+
+  function infoComboEmpty(control) {
+    const value = fold(infoComboValue(control));
+    return !value || value.startsWith("chon") || value.startsWith("tim kiem");
+  }
+
+  function infoOptionNodes(roots) {
+    const nodes = [];
+    for (const root of roots) {
+      if (!root.isConnected) continue;
+      nodes.push(...[root, ...root.querySelectorAll('[role="option"], [cmdk-item]')]
+        .filter((el) => el.matches?.('[role="option"], [cmdk-item]') && isVisible(el)));
+    }
+    const options = nodes.length ? nodes : optionCandidates(roots);
+    return options.filter((el) => {
+      const text = fold(nodeText(el));
+      return text && !/^(khong co|khong tim thay|no result|tim kiem|chon )/.test(text);
+    });
+  }
+
+  async function pickInfoField(control, wanted) {
+    const roots = await openAndCollect(control);
+    const target = fold(wanted);
+    const find = () => infoOptionNodes(roots).find((el) => fold(nodeText(el)).includes(target));
+    let option = await waitFor(find, 3000, 150);
+    if (!option) {
+      if (control.tagName === "INPUT") {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(control, wanted);
+        control.dispatchEvent(new Event("input", { bubbles: true }));
+      } else {
+        typeIntoSearch(roots, wanted);
+      }
+      option = await waitFor(find, 3000, 150);
+    }
+    if (!option) {
+      const seen = infoOptionNodes(roots).slice(0, 8).map(nodeText);
+      document.body.click();
+      throw new Error(`Không thấy "${wanted}"; danh sách đang có: ${seen.join(" | ") || "(trống)"}`);
+    }
+    option.scrollIntoView?.({ block: "nearest" });
+    clickLikeUser(option);
+    if (!await waitFor(() => fold(infoComboValue(control)).includes(target), 3000, 120)) {
+      throw new Error(`Trang chưa nhận lựa chọn ${wanted}`);
+    }
+  }
+
+  async function fillInfoFields(dialog, fields) {
+    const chosen = [];
+    for (const field of fields) {
+      const control = await waitFor(() => infoFieldCombobox(dialog, field.label), 4000, 150);
+      if (!control) throw new Error(`Không tìm thấy ô ${field.label}`);
+      const current = infoComboValue(control);
+      if (!infoComboEmpty(control) && fold(current).includes(fold(field.value))) continue;
+      await pickInfoField(control, field.value);
+      chosen.push(`${field.label}: ${infoComboValue(control)}`);
+      await sleep(600); // cổng gọi API nạp ô phụ thuộc
+    }
+    // Ô còn trống (điển hình Đơn vị tiếp nhận): lấy lựa chọn ĐẦU, như cán bộ hay để mặc định.
+    // Danh sách rỗng hẳn = ô không áp dụng; có lựa chọn mà chọn không được thì báo lỗi, KHÔNG
+    // bấm Xác nhận để khỏi gửi hồ sơ thiếu nơi tiếp nhận.
+    const subject = infoSubjectCombobox(dialog);
+    for (let index = 0; index < infoCombos(dialog).length; index += 1) {
+      const control = infoCombos(dialog)[index];
+      if (!control || control === subject || !infoComboEmpty(control)) continue;
+      const roots = await openAndCollect(control);
+      const option = await waitFor(() => infoOptionNodes(roots)[0], 4000, 200);
+      if (!option) {
+        document.body.click();
+        await sleep(300);
+        continue;
+      }
+      const label = nodeText(option);
+      clickLikeUser(option);
+      if (!await waitFor(() => !infoComboEmpty(control), 3000, 120)) {
+        throw new Error(`Trang chưa nhận lựa chọn ${label}`);
+      }
+      chosen.push(label);
+      await sleep(600);
+    }
+    infoLog("fields:filled", { chosen });
+    return chosen;
+  }
+
+  async function confirmInfoModal(executionSubject, infoFields) {
     const btn = Array.from(document.querySelectorAll(
       'button[data-e2e="confirm-button-information"]'
     )).find(isVisible);
     if (!btn) return null; // frame không có modal → để frame đúng trả lời
     const dialog = btn.closest('[role="dialog"]');
     if (!dialog || !isVisible(dialog)) throw new Error("Không tìm thấy modal Thông tin chung");
+    const fields = Array.isArray(infoFields) ? infoFields.filter((f) => f?.label && f?.value) : [];
+    const chosen = fields.length ? await fillInfoFields(dialog, fields) : [];
     const subjectResult = await selectInfoSubject(dialog, executionSubject);
-    infoLog("confirm:click", { executionSubject: executionSubject || null, subjectResult });
+    infoLog("confirm:click", { executionSubject: executionSubject || null, subjectResult, chosen });
     clickLikeUser(btn);
-    return { ok: true, ...subjectResult };
+    return { ok: true, ...subjectResult, chosen };
   }
 
   // Modal "Thông tin chung" của wizard hồ sơ: chọn Đối tượng thực hiện theo contract
   // backend rồi mới bấm "Xác nhận". data-e2e là hook ổn định hơn class Tailwind động.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "confirmInfoModal") return;
-    confirmInfoModal(msg.executionSubject || null)
+    confirmInfoModal(msg.executionSubject || null, msg.infoFields || null)
       .then((result) => {
         if (result) sendResponse(result);
       })

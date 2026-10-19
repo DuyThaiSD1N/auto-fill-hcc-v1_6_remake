@@ -214,7 +214,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
-    # Cờ theo tài khoản (phường Cam Đường): người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
+    # Cờ theo tài khoản (phường Cam Đường, xã Bình Chương): người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
     deceased_owner = (options or {}).get(mapper.DECEASED_AS_OWNER_OPTION) is True
     res = await runner.run(
         files_by_role,

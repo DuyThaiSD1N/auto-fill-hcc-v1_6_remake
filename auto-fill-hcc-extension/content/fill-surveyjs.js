@@ -120,21 +120,34 @@
     if (el) el.setAttribute(MARK_ATTR, kind);
   }
 
-  // CUỘN THEO việc đang làm: model survey nhận cả loạt giá trị trong MỘT lệnh nên trang đứng im —
-  // người ngồi trước màn hình không thấy trợ lý điền/đính tới đâu. Điền: lướt lần lượt qua từng ô
-  // vừa điền (cả lượt tối đa ~3 giây để không làm chậm). Đính: cuộn tới đúng dòng đang tải lên.
-  // Đính xong cả lượt: về đầu trang.
-  const FOLLOW_TOTAL_MS = 3000;
-  const followDelay = (count) => Math.max(40, Math.min(150, Math.floor(FOLLOW_TOTAL_MS / Math.max(1, count))));
+  // ENGINE NHẸ (chạy được trên máy quầy cấu hình thấp): biểu mẫu SurveyJS lớn vừa vẽ lại vừa cuộn mượt theo từng
+  // ô làm máy yếu đơ → không lướt theo từng ô; điền xong nhảy thẳng tới ô đỏ đầu tiên. Đính: nhảy tới đúng dòng
+  // đang tải lên, xong cả lượt về đầu trang. Không cuộn mượt (behavior "auto").
   function followTo(el) {
-    try { el?.scrollIntoView?.({ block: "center", behavior: "smooth" }); } catch (_) { /* trang đổi DOM — bỏ qua */ }
+    try { el?.scrollIntoView?.({ block: "center", behavior: "auto" }); } catch (_) { /* trang đổi DOM — bỏ qua */ }
   }
   function backToTop() {
-    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (_) { /* bỏ qua */ }
+    try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (_) { /* bỏ qua */ }
   }
 
-  function markField(field, ok) {
-    setMark(questionEl(field.name), ok ? (field.default ? "default" : "filled") : "not-filled");
+  // Dò [data-name] MỘT lần cho cả lượt thay vì quét cả trang + getComputedStyle cho từng ô; trượt thì dò như thường.
+  function questionIndex() {
+    const index = new Map();
+    for (const node of document.querySelectorAll("[data-name]")) {
+      const dn = node.getAttribute("data-name") || "";
+      for (const key of new Set([dn, dn.replace(/__\d+$/, "")])) {
+        const cur = index.get(key);
+        if (!cur || (cur.offsetParent === null && node.offsetParent !== null)) index.set(key, node);
+      }
+    }
+    return (name) => {
+      const el = index.get(name);
+      return el?.isConnected ? el : questionEl(name);
+    };
+  }
+
+  function markField(field, ok, find = questionEl) {
+    setMark(find(field.name), ok ? (field.default ? "default" : "filled") : "not-filled");
   }
 
   // "UBND xã X" từ tên xã của tài khoản trợ lý ("Xã X" / "Phường X" / "X").
@@ -149,14 +162,15 @@
     injectMarkStyles();
     document.querySelectorAll(`[${MARK_ATTR}]`).forEach((el) => el.removeAttribute(MARK_ATTR));
     const result = { filled: 0, notFound: [], errors: [], skipped: [] };
-    const res = await callMain({ op: "setValues", fields });
+    const res = await callMain({ op: "setValues", fields }, 120000);
     const byName = new Map((res.ok ? res.results || [] : []).map((r) => [r.name, r]));
     if (!res.ok) console.warn("[AutoFill-SurveyJS] không đọc được model survey:", res.error);
 
-    const delay = followDelay(fields.length);
+    const find = questionIndex();
     for (const field of fields) {
       let r = byName.get(field.name) || { ok: false, reason: res.error || "not-found" };
-      const domRetry = !r.ok && r.reason !== "readonly" &&
+      // Cổng chủ động xoá lại sau khi điền ("cleared-after-set") → không gõ đè qua DOM, tô đỏ cho cán bộ xem.
+      const domRetry = !r.ok && r.reason !== "readonly" && r.reason !== "cleared-after-set" &&
         (field.comp === "sjs-dropdown" || (!res.ok && field.comp === "sjs-text"));
       if (domRetry) {
         const ok = field.comp === "sjs-dropdown"
@@ -170,28 +184,28 @@
         result.notFound.push(field.name);
         console.warn("[AutoFill-SurveyJS] chưa điền", field.name, r.reason);
       }
-      if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok));
-      else markField(field, r.ok);
-      followTo(questionEl(field.name));
-      await sleep(delay);
+      if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok, find));
+      else markField(field, r.ok, find);
     }
 
     // Nơi chọn ở thẻ "Chọn cơ quan thực hiện" thắng tài khoản (nộp hộ về xã khác); không qua bước chọn → tài khoản.
     const where = H.chosenAgency ? await H.chosenAgency.placeForPage(location.href, toolAccount) : toolAccount;
     const place = { kinhGui: kinhGuiFromWard(where?.xa), tai: String(where?.tinh || "").trim() };
     if (place.kinhGui || place.tai) {
-      const placeRes = await callMain({ op: "fillPlace", place }, 20000);
+      const placeRes = await callMain({ op: "fillPlace", place }, 40000);
       for (const r of placeRes.results || []) {
         if (r.ok) result.filled++;
-        markField({ name: r.name, default: true }, r.ok);
+        markField({ name: r.name, default: true }, r.ok, find);
       }
     }
 
-    const empty = await callMain({ op: "emptyRequired" }, 10000);
+    const empty = await callMain({ op: "emptyRequired" }, 20000);
     for (const name of empty.names || []) {
-      const el = questionEl(name);
+      const el = find(name);
       if (el && !el.getAttribute(MARK_ATTR)) setMark(el, "not-filled");
     }
+    // Không lướt theo từng ô → điền xong nhảy thẳng tới ô cần cán bộ xem đầu tiên.
+    followTo(document.querySelector(`[${MARK_ATTR}="not-filled"]`));
     return result;
   }
 
@@ -239,6 +253,9 @@
     } catch { return ""; }
   }
 
+  // Nhịp dò tên tệp / trạng thái tải: mỗi lượt dò quét mọi dòng bảng + đọc props React → thưa (400 ms) cho máy yếu.
+  const UPLOAD_TICK_MS = 400;
+
   // Trạng thái tải của tệp mới nhất mang tên `name` (MAIN world đọc props React của dòng tệp), chờ hết
   // pending/uploading. Không đọc được (cổng đổi cấu trúc / bản MAIN cũ) → "unknown": giữ kết quả theo tên tệp.
   async function uploadOutcome(name, ticks) {
@@ -248,7 +265,7 @@
       last = Array.isArray(res?.statuses) ? res.statuses[res.statuses.length - 1] || "" : "";
       if (!last) return "unknown";
       if (last !== "pending" && last !== "uploading") return last;
-      await sleep(200);
+      await sleep(UPLOAD_TICK_MS);
     }
     console.warn("[AutoFill-SurveyJS] hết hạn chờ trạng thái tải", { file: name, status: last });
     return "timeout";
@@ -329,7 +346,7 @@
           toastsBefore = new Set(portalToasts());
           if (!setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) return false;
           for (let t = 0; t < ticks && !portalError; t++) {
-            await sleep(200);
+            await sleep(UPLOAD_TICK_MS);
             if (shown()) return true;
             // Lời từ chối dung lượng/định dạng ("Vui lòng chọn tệp nhỏ hơn 2MB!", "…tệp đúng định dạng!") không
             // chứa chữ lỗi nào → phải khớp riêng, không thì chờ hết hạn rồi nạp lại lần hai trong khi cổng đã từ
@@ -343,7 +360,7 @@
         // Tệp đã nạp mà hết hạn vẫn chưa hiện → nạp lại MỘT lần (kiểm lại trước để không đính trùng tệp lên muộn).
         // Hạn = 10s + 5s mỗi MB: tệp nặng đang tải dở mà nạp lại là đính trùng.
         const sizeMb = Math.ceil((file.size || 0) / (1024 * 1024));
-        const firstTicks = Math.min(300, 50 + sizeMb * 25);
+        const firstTicks = Math.round(Math.min(60000, 10000 + sizeMb * 5000) / UPLOAD_TICK_MS);
         const startedAt = Date.now();
         let attempts = 1;
         let ok = await attempt(firstTicks);

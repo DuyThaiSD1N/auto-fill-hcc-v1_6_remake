@@ -20,6 +20,9 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "ket-hon": ["đăng ký kết hôn trong nước", "làm giấy đăng ký kết hôn", "lấy giấy kết hôn", "cưới"],
     "khai-tu": ["làm giấy khai tử", "làm giấy chứng tử", "báo tử cho người nhà mới mất",
                 "người nhà mất cần đăng ký khai tử"],
+    "khai-tu-lien-thong": ["khai tử liên thông", "liên thông đăng ký khai tử",
+                           "làm khai tử kèm xóa hộ khẩu cho người mất",
+                           "khai tử, xóa đăng ký thường trú và nhận tiền mai táng phí một lần"],
     "ket-hon-nuoc-ngoai": ["kết hôn với người nước ngoài", "lấy chồng/vợ nước ngoài",
                            "chồng/vợ là người nước ngoài", "kết hôn với Việt kiều",
                            "kết hôn với người Việt Nam định cư ở nước ngoài"],
@@ -82,6 +85,26 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                        "từ chối nhận thừa kế", "không nhận phần thừa kế",
                                        "nhường phần thừa kế cho anh chị em",
                                        "làm giấy từ chối di sản của bố mẹ"],
+    # Người CÒN SỐNG lập di chúc để lại tài sản — KHÁC phân chia / từ chối di sản ngay trên (việc
+    # của người thừa kế sau khi người để lại di sản đã mất).
+    "chung-thuc-di-chuc": ["chứng thực di chúc", "làm di chúc", "lập di chúc để lại nhà đất",
+                           "viết di chúc cho con cháu", "chứng thực giấy di chúc"],
+    # Bản sao giấy tờ KHÔNG phải hộ tịch (hộ tịch là trích lục) và không phải văn bằng (Bộ GD&ĐT),
+    # do cơ quan đang giữ sổ gốc cấp.
+    "cap-ban-sao-so-goc": ["cấp bản sao từ sổ gốc", "xin bản sao từ sổ gốc",
+                           "mất bản chính, xin bản sao từ sổ gốc ở cơ quan đã cấp",
+                           "xin lại bản sao giấy tờ cơ quan còn lưu sổ gốc"],
+    # Việc của thôn/tổ dân phố (trưởng ban công tác Mặt trận) sau khi bầu tổ trưởng tổ hòa giải —
+    # KHÁC hòa giải tranh chấp đất đai (người dân xin hòa giải một vụ tranh chấp).
+    "bau-to-truong-to-hoa-giai": ["bầu tổ trưởng tổ hòa giải", "công nhận tổ trưởng tổ hòa giải",
+                                  "đề nghị công nhận tổ trưởng hòa giải ở thôn",
+                                  "nộp biên bản bầu tổ trưởng tổ hòa giải"],
+    # Người dân xin luật sư/trợ giúp viên MIỄN PHÍ (hộ nghèo, khuyết tật, người bị buộc tội…) —
+    # KHÁC hòa giải tranh chấp và chứng thực.
+    "yeu-cau-tro-giup-phap-ly": ["trợ giúp pháp lý", "yêu cầu trợ giúp pháp lý",
+                                 "xin luật sư miễn phí", "nhờ luật sư bào chữa miễn phí",
+                                 "hộ nghèo cần tư vấn pháp luật miễn phí",
+                                 "xin trợ giúp viên pháp lý"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -236,6 +259,10 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   "làm giấy khai sinh cho con/cho bé" (kể cả viết không dấu, nghe nhầm) không có các dấu hiệu trên →
   unclear với HAI thủ tục, đơn lẻ đứng trước. Nhắc tới "con", "bé", "trẻ sơ sinh" KHÔNG phải dấu
   hiệu — khai sinh nào cũng cho trẻ.
+- Đăng ký khai tử (đơn lẻ) vs khai tử LIÊN THÔNG (kèm xóa đăng ký thường trú + trợ cấp mai táng phí).
+  Chọn LIÊN THÔNG khi câu nói rõ liên thông, hoặc nói khai tử KÈM xóa hộ khẩu/xóa thường trú hay
+  KÈM mai táng phí. Câu chỉ nói khai tử/chứng tử/báo tử, không kèm gì → đăng ký khai tử đơn lẻ.
+  Chỉ xin tiền mai táng (không nhắc khai tử) → xem quy tắc hai thủ tục mai táng bên dưới.
 - ĐĂNG KÝ LẠI (khai sinh, kết hôn, khai tử) = việc đã đăng ký trước đây nhưng SỔ HỘ TỊCH GỐC ở cơ
   quan bị mất/hư hỏng. Sổ gốc còn, chỉ cần BẢN SAO/trích lục → trích lục hộ tịch. Cải chính/thay
   đổi/bổ sung hộ tịch = SỬA thông tin đã đăng ký. Chỉ nói "mất giấy khai sinh" mà không rõ sổ gốc
@@ -266,6 +293,10 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   SẢN (KHÁC hẳn chứng thực bản sao một tờ giấy); "công chứng BẢN DỊCH", "chứng thực chữ ký NGƯỜI
   DỊCH", "dịch thuật công chứng" = chứng thực chữ ký NGƯỜI DỊCH (KHÁC chứng thực chữ ký thường — cái
   đó là chữ ký của chính người yêu cầu).
+- "CẤP BẢN SAO TỪ SỔ GỐC" = cơ quan đang giữ sổ gốc cấp lại bản sao (người dân không còn bản chính),
+  KHÁC chứng thực bản sao (đem BẢN CHÍNH tới để sao y). Bản sao giấy khai sinh/kết hôn/khai tử là
+  trích lục hộ tịch; bản sao văn bằng, chứng chỉ là thủ tục văn bằng — chỉ chọn "cấp bản sao từ sổ
+  gốc" khi câu nói rõ "sổ gốc" hoặc giấy tờ không thuộc hai nhóm đó.
 - Câu có "chưa"/"không" là phủ định — "không làm kết hôn nữa" KHÔNG phải muốn làm kết hôn.
 
 Câu của người dân CÓ THỂ là TIẾNG MÔNG (Hmong, chữ RPA — vd "kuv xav cuv npe yug me nyuam" = tôi

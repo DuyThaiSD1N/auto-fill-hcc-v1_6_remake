@@ -443,6 +443,50 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "khai-tu-lien-thong",
+        # Liên thông khai tử nằm trên cổng riêng lienthong.dichvucong.gov.vn (SPA hash-route, Angular)
+        # như liên thông khai sinh → nhận diện THEO URL, mã 1.006714 (cùng URL với app/procedures/registry.py
+        # — đổi mã một bên phải đổi cả bên kia). KHÁC "khai-tu" ở trên (Cổng DVC quốc gia, SurveyJS).
+        "detect": {
+            "urlIncludes": ["lienthong.dichvucong.gov.vn/#/ke-khai/1.006714"],
+            "headingDisabled": True,
+        },
+        "review": False,  # cùng lý do với liên thông khai sinh: đỡ 1 lượt OCR rà soát bbox
+        "label": "Liên thông đăng ký khai tử, xóa đăng ký thường trú, trợ cấp mai táng phí",
+        "shortLabel": "Liên thông đăng ký khai tử",
+        "subtitle": "Khai tử + xóa đăng ký thường trú + trợ cấp mai táng phí",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://lienthong.dichvucong.gov.vn/#/ke-khai/1.006714",
+        # Trích xuất dùng chung agent "khai-tu" nên checklist giữ cùng bộ key với "khai-tu".
+        # CCCD chỉ để đọc thông tin, planner không đính (bước 04 chỉ có dòng giấy báo tử/chứng cứ thay thế).
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "cccd", "name": "Căn cước công dân", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "bao_tu", "name": "Giấy báo tử hoặc giấy tờ thay giấy báo tử", "icon": "📃",
+             "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đăng ký khai tử (nếu có)", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        # Form Angular — chế độ agent: không gắn role, BE tự phân biệt người yêu cầu/người chết.
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước công dân của người yêu cầu và người được khai tử nếu có (chỉ để đọc thông tin).\n"
+            "2. Giấy báo tử hoặc giấy tờ thay thế giấy báo tử.\n"
+            "3. Tờ khai đăng ký khai tử bản giấy nếu có.\n"
+            "4. Giấy tờ liên quan khác.\n"
+            "Người yêu cầu do cổng điền sẵn từ VNeID; thông tin chủ hộ và mai táng phí cán bộ tự chọn.\n"
+            "Bước đính kèm: giấy báo tử và tờ khai vào dòng 1; chứng cứ thay thế giấy báo tử "
+            "(người chết đã lâu) vào dòng 2."
+        ),
+    },
+    {
         "key": "khai-tu-dang-ky-lai",
         "detect": {"urlIncludes": ["maThuTuc=1.005461"]},
         "label": "Thủ tục đăng ký lại khai tử",
@@ -885,6 +929,52 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chung-thuc-di-chuc",
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với từ chối nhận di sản ngay trên: đi
+        # thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps (luồng cũ).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95f0-7610-845f-c097f144bd55",
+                "maThuTuc=2.001019",
+            ],
+        },
+        "label": "Chứng thực di chúc",
+        "shortLabel": "Chứng thực di chúc",
+        "subtitle": "Chứng thực di chúc người lập định đoạt tài sản để lại cho người thừa kế",
+        "icon": "📜",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95f0-7610-845f-c097f144bd55",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) dự thảo di chúc (planner gộp CCCD các bên vào cùng PDF),
+        # (2) GCN sở hữu/sử dụng tài sản. Không có dự thảo thì CCCD thêm thành phần mới.
+        # KHÔNG bật supportsSplitDocuments: giữ mặc định gộp của planner core. Bộ phân loại lúc tải
+        # lên (pipelines/chung_thuc_di_chuc/handfree) xếp tệp vào đúng ô, planner vẫn tự phân loại
+        # lại theo nội dung lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "du_thao", "name": "Dự thảo di chúc", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản trong di chúc "
+             "(sổ đỏ, đăng ký xe…)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Dự thảo di chúc.\n"
+            "2. Giấy chứng nhận quyền sở hữu/quyền sử dụng hoặc giấy tờ thay thế của tài sản trong "
+            "di chúc.\n"
+            "3. Nếu có: căn cước của người lập di chúc và các bên liên quan.\n"
+            "Bước Thành phần hồ sơ: dự thảo di chúc vào dòng 1, căn cước gộp chung một tệp PDF với "
+            "dự thảo; giấy chứng nhận tài sản vào dòng 2."
+        ),
+    },
+    {
         "key": "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
         # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản / giao dịch tài
         # sản: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps
@@ -1006,6 +1096,159 @@ PROCEDURES: list[dict] = [
             "Giấy tờ cần tải lên:\n"
             "1. Các giấy tờ, văn bản cần chứng thực chữ ký/điểm chỉ (không giới hạn số lượng).\n"
             "2. Căn cước công dân của người yêu cầu."
+        ),
+    },
+    {
+        "key": "cap-ban-sao-so-goc",
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với nhóm chứng thực ngay trên: đi
+        # thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps (luồng cũ).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-8e5d-72f9-8cf2-c71780251483",
+                "maThuTuc=2.000908",
+            ],
+        },
+        "label": "Cấp bản sao từ sổ gốc",
+        "shortLabel": "Cấp bản sao từ sổ gốc",
+        "subtitle": "Xin bản sao giấy tờ từ sổ gốc cơ quan đang lưu giữ",
+        "icon": "📚",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e5d-72f9-8cf2-c71780251483",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) giấy tờ chứng minh quan hệ với người được cấp bản chính,
+        # (2) giấy tờ tùy thân người yêu cầu. Khóa ô trùng loại của bộ phân loại chung lúc tải lên
+        # (ho_tich: khai sinh/kết hôn/trích lục; cccd) nên không cần bộ phân loại riêng; giấy khác
+        # (báo tử, sổ hộ khẩu…) do LLM theo tên ô. Planner core tự định tuyến lại theo OCR lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "ho_tich", "name": "Giấy tờ chứng minh quan hệ với người được cấp bản chính "
+             "(giấy khai sinh, giấy chứng nhận kết hôn, giấy báo tử…)", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người yêu cầu", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước công dân của người yêu cầu.\n"
+            "2. Nếu người yêu cầu không phải người được cấp bản chính: giấy tờ chứng minh quan hệ "
+            "(giấy khai sinh, giấy chứng nhận kết hôn, giấy báo tử/trích lục khai tử…).\n"
+            "Bước Thành phần hồ sơ: giấy tờ chứng minh quan hệ vào dòng 1; căn cước vào dòng 2."
+        ),
+    },
+    {
+        "key": "bau-to-truong-to-hoa-giai",
+        # Cổng React mới (Bộ Tư pháp — hòa giải ở cơ sở), cùng khung attach-only với nhóm chứng thực
+        # ngay trên: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG
+        # guidedSteps. Cổng hiển thị tên "Thủ tục công nhận tổ trưởng tổ hòa giải (cấp xã)".
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95cf-74f7-8f8e-81c925ae839a",
+                "maThuTuc=2.000950",
+            ],
+        },
+        "label": "Thủ tục bầu tổ trưởng tổ hòa giải (cấp xã)",
+        "shortLabel": "Bầu tổ trưởng tổ hòa giải",
+        "subtitle": "Đề nghị công nhận tổ trưởng tổ hòa giải sau khi bầu ở thôn, tổ dân phố",
+        "icon": "🤝",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95cf-74f7-8f8e-81c925ae839a",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) biên bản bầu (Mẫu 04, kèm Mẫu 01), (2) văn bản đề nghị công
+        # nhận (Mẫu 07, kèm Mẫu 06/10). Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc
+        # tải lên; planner (bau_to_truong_to_hoa_giai.attach) tự phân loại lại theo OCR lúc đính,
+        # gộp nhiều tệp cùng dòng thành một PDF và bỏ qua giấy ngoài hai nhóm.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "bien_ban", "name": "Biên bản kết quả biểu quyết bầu tổ trưởng tổ hòa giải "
+             "(Mẫu 04, kèm biên bản bầu hòa giải viên nếu có)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "de_nghi", "name": "Văn bản đề nghị công nhận tổ trưởng tổ hòa giải (Mẫu 07, "
+             "kèm danh sách hòa giải viên nếu có)", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Biên bản kết quả biểu quyết bầu tổ trưởng tổ hòa giải (Mẫu 04), kèm biên bản bầu "
+            "hòa giải viên (Mẫu 01) nếu có.\n"
+            "2. Giấy đề nghị công nhận tổ trưởng tổ hòa giải (Mẫu 07), kèm danh sách đề nghị công nhận "
+            "hòa giải viên (Mẫu 06) và tổng hợp danh sách hòa giải viên (Mẫu 10) nếu có.\n"
+            "Bước Thành phần hồ sơ: biên bản vào dòng 1, văn bản đề nghị vào dòng 2; nhiều tệp cùng "
+            "dòng được gộp thành một PDF."
+        ),
+    },
+    {
+        "key": "yeu-cau-tro-giup-phap-ly",
+        # Mã TTHC 2.000829 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). DVCQG "Chọn
+        # cơ quan thực hiện": chọn Tỉnh → gạt toggle "Sở" (KHÔNG chọn sở cụ thể) → Đồng ý → "Nộp
+        # trực tuyến" kết quả ĐẦU TIÊN (Sở Tư pháp) — agencyProvinceOnly + agencySoFirst. Sau đó là
+        # wizard tư pháp 4 bước: bước Kê khai là eForm "ĐƠN YÊU CẦU TRỢ GIÚP PHÁP LÝ" (legacy x-*).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-8e3d-737e-8aca-295dd1f2ea9f",
+                "maThuTuc=2.000829",
+            ],
+            "textIncludes": ["Thủ tục yêu cầu trợ giúp pháp lý"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục yêu cầu trợ giúp pháp lý",
+        "shortLabel": "Yêu cầu trợ giúp pháp lý",
+        "subtitle": "Xin luật sư, trợ giúp viên pháp lý giúp miễn phí (Sở Tư pháp)",
+        "icon": "⚖️",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e3d-737e-8aca-295dd1f2ea9f",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        # Modal "Thông tin chung" của thủ tục cấp Sở có thêm Cấp thực hiện → Thủ tục → Cơ quan thực
+        # hiện → Đơn vị tiếp nhận (ô sau nạp theo ô trước). Extension chọn theo thứ tự này (khớp
+        # chuỗi con, fold dấu), ô còn trống sau đó (Đơn vị tiếp nhận) lấy lựa chọn đầu.
+        "infoModalFields": [
+            {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"},
+            {"label": "Thủ tục", "value": "trợ giúp pháp lý"},
+            {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
+        ],
+        # Planner (yeu_cau_tro_giup_phap_ly.attach) tự phân loại lại theo OCR lúc đính: giấy chứng
+        # minh diện + CCCD gộp một PDF vào dòng 1; dòng 2 là Tờ khai cổng tự sinh, không đính đè;
+        # đơn bản giấy / ủy quyền / giấy khác thêm thành phần hồ sơ mới.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "chung_minh_dien", "name": "Giấy tờ chứng minh thuộc diện trợ giúp pháp lý "
+             "(thông báo của cơ quan tố tụng, giấy chứng nhận hộ nghèo, xác nhận khuyết tật…)",
+             "icon": "📃", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người được trợ giúp pháp lý", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "don", "name": "Đơn yêu cầu trợ giúp pháp lý bản giấy (Mẫu 02-TP-TGPL, nếu có)",
+             "icon": "📄", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy tờ chứng minh thuộc diện được trợ giúp pháp lý — thường là Thông báo về trợ giúp "
+            "pháp lý của cơ quan tiến hành tố tụng; hoặc giấy chứng nhận hộ nghèo, xác nhận khuyết tật…\n"
+            "2. Căn cước công dân của người được trợ giúp pháp lý (cả 2 mặt).\n"
+            "3. Nếu có: Đơn yêu cầu trợ giúp pháp lý bản giấy (Mẫu 02-TP-TGPL), văn bản ủy quyền.\n"
+            "Bước Thành phần hồ sơ: giấy chứng minh diện + căn cước gộp một tệp vào dòng 1; dòng 2 là "
+            "Tờ khai cổng tự sinh; đơn bản giấy, ủy quyền thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -2240,6 +2483,7 @@ _PUBLIC_PRIORITY_KEYS = (
     "xac-nhan-tinh-trang-hon-nhan",
     "khai-sinh-dang-ky-lai",
     "khai-tu",
+    "khai-tu-lien-thong",
     "dang-ky-kinh-doanh",
 )
 _PUBLIC_TRAILING_KEYS = (

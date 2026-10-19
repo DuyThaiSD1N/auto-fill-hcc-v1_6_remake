@@ -9,6 +9,7 @@ from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 from app.pipelines._shared.tai_khoan import account_context, matches_account
+from app.pipelines.cai_chinh_dvc_moi.process.mapper import is_lam_dong_xuan_huong
 from app.monitor import recorder as mon
 from app.pipelines.khai_sinh_dang_ky_lai.process import reason as _reason_mod
 
@@ -68,6 +69,9 @@ def _fold(value: str) -> str:
 # (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ
 # luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
 PROCEDURE_KEY = "khai-sinh-dang-ky-lai"
+# Phường Xuân Hương (Lâm Đồng): cha/mẹ đã chết thì chọn sẵn Loại cư trú "Không có thông tin" và
+# Quốc gia nơi cư trú "Việt Nam" (nhánh "Khác"), ô Địa chỉ vẫn ghi "Đã chết". Nơi khác giữ như cũ.
+DECEASED_PARENT_NO_INFO_OPTION = "deceasedParentNoInfo"
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 
 
@@ -91,8 +95,11 @@ def with_account_process_options(options: dict | None, user: dict | None, proced
     """Trả bản sao options với cờ người ủy quyền = người yêu cầu do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(_reason_mod.GRANTOR_AS_REQUESTER_OPTION, None)
+    result.pop(DECEASED_PARENT_NO_INFO_OPTION, None)
     if procedure == PROCEDURE_KEY and is_bac_ninh_hiep_hoa(user):
         result[_reason_mod.GRANTOR_AS_REQUESTER_OPTION] = True
+    if procedure == PROCEDURE_KEY and is_lam_dong_xuan_huong(user):
+        result[DECEASED_PARENT_NO_INFO_OPTION] = True
     return result
 
 
@@ -214,16 +221,23 @@ def _resolve_residence(values: dict, prefix: str, context: str = ""):
     return None
 
 
-def _add_residence(add, prefix: str, residence, default: bool = False) -> None:
+def _add_residence(add, prefix: str, residence, default: bool = False, no_info: bool = False) -> None:
     """Phát mục "Nơi cư trú" của cha/mẹ (prefix = "Cha" | "Me").
 
     Cha/mẹ ĐÃ CHẾT: giấy tờ ghi "Đã chết" thay cho địa chỉ. Nhánh "Trong nước" chỉ có dropdown
     tỉnh/xã nên KHÔNG gõ được chữ này — phải tick "Khác" để form hiện ô nhập tự do rồi mới ghi
-    chữ vào đó. Cũng không đặt *LoaiCuTru vì người đã mất không còn loại cư trú.
+    chữ vào đó. Mặc định không đặt *LoaiCuTru vì người đã mất không còn loại cư trú; tài khoản bật
+    cờ deceasedParentNoInfo (no_info) thì chọn "Không có thông tin" và Quốc gia "Việt Nam".
     """
     if residence and _is_deceased_marker(residence):
+        if no_info:
+            add(f"{prefix}LoaiCuTru", "Không có thông tin", default)
         add(f"{prefix}NoiCuTru", "Khác", default)
-        add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"), default)
+        if no_info:
+            # Dict không có tỉnh/xã → extension chọn ô Quốc gia rồi ghi chữ vào ô Địa chỉ.
+            add(f"{prefix}NoiCuTru_NuocNgoai", {"quocGia": "Việt Nam", "diaChi": residence.get("diaChi")}, default)
+        else:
+            add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"), default)
         return
     add(f"{prefix}LoaiCuTru", "Thường trú", default)
     if residence:
@@ -998,6 +1012,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
     default_names = {f.get("name") for f in fields if f.get("default")}
     context: str = (options or {}).get("_reasoning_context") or ""
+    deceased_no_info = (options or {}).get(DECEASED_PARENT_NO_INFO_OPTION) is True
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -1153,7 +1168,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default or "Mother_BirthDateOrYear" in default_names)
         add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default)
         add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
-        _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default)
+        _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default, deceased_no_info)
 
     # IV. Cha. LUÔN ghi đè thông tin cha lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
     # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Father_* nào.
@@ -1182,7 +1197,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default or "Father_BirthDateOrYear" in default_names)
         add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default)
         add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
-        _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)
+        _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default, deceased_no_info)
     elif has_subject:
         # Hồ sơ đọc được nhưng KHÔNG có thông tin cha: xoá trắng khối cha để không sót dữ liệu cổng
         # đã điền sẵn. Radio/ô địa chỉ extension không xoá được nên không gửi.
