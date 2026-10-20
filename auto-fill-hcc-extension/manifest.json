@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.23.10",
+  "version": "1.24",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [

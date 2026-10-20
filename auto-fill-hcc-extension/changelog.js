@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.24",
+    date: "19/10/2026",
+    items: [
+      "Gộp các bản sửa 1.23.1 – 1.23.10 thành bản ổn định.",
+      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): nút \"Điền biểu mẫu và đính kèm hồ sơ\" một lần; điền xong tự kiểm tra lại, ô bị cổng xoá thì tô đỏ.",
+      "Trang nộp hồ sơ cũ: Tỉnh đúng mà Xã chưa vào thì chỉ chọn lại Xã, giữ nguyên Tỉnh và Địa chỉ.",
+      "Hỗ trợ thêm thủ tục form của Quảng Ngãi; Lào Cai đối chiếu đúng người nộp cho các thủ tục đất đai.",
+      "Chạy nhẹ hơn trên máy cấu hình thấp.",
+    ],
+  },
+  {
     version: "1.23.10",
     date: "19/10/2026",
     items: [
