@@ -9,7 +9,7 @@ const js = fs.readFileSync(path.join(__dirname, "..", "sidebar.js"), "utf8");
 const fn = js.slice(js.indexOf("function subscribeUploadSession(sid)"), js.indexOf("connect();\n  }", js.indexOf("function subscribeUploadSession(sid)")));
 
 test("chỉ đồng bộ lại ở lần NỐI LẠI, không phải lần mở đầu", () => {
-  assert.match(fn, /if \(everOpened\) void resyncAfterReconnect\(\);\s*everOpened = true;/);
+  assert.match(fn, /if \(everOpened\) \{\s*void resyncAfterReconnect\(\);[\s\S]*?\}\s*everOpened = true;/);
   assert.match(fn, /let everOpened = false;/);
 });
 

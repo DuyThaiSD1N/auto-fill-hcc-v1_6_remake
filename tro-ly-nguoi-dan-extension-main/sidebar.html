@@ -78,138 +78,160 @@
     <!-- Thanh tiến độ toàn trình: chạy theo progress.step/total BE trả -->
     <div class="step-meter" aria-hidden="true"><i id="step-meter-bar"></i></div>
 
-    <!-- Cài đặt mở NGAY trong panel để không làm mất ngữ cảnh hội thoại/trang DVC. -->
+    <!-- Cài đặt mở NGAY trong panel để không làm mất ngữ cảnh hội thoại/trang DVC. Chia nhóm theo tần suất dùng tại
+         quầy; mỗi dòng có .settings-row-status riêng để báo lưu / lỗi ngay chỗ vừa bấm (màn cuộn thì dòng báo cuối
+         trang không nhìn thấy). -->
     <section class="settings-screen" id="settings-screen" aria-labelledby="settings-title" hidden>
       <div class="settings-head">
         <button id="settings-back-btn" class="settings-back" type="button" aria-label="Quay lại hội thoại">←</button>
         <div>
           <h1 id="settings-title">Cài đặt</h1>
-          <p>Tùy chỉnh cách Trợ lý xử lý hồ sơ.</p>
+          <p>Lưu trên máy này. Mục gắn nhãn "Tài khoản" đi theo tài khoản đăng nhập.</p>
         </div>
       </div>
 
-      <!-- Khung hiển thị: đẩy trang (mặc định, chạy trên MỌI trình duyệt) hay khung bên
-           của chính trình duyệt. Ô khung bên bị khoá trên máy thiếu chrome.sidePanel
-           (Chrome/Edge < 114, Cốc Cốc cũ) — xem panelMode trong sidebar.js. -->
-      <div class="settings-card settings-card-col">
-        <div class="settings-copy">
-          <label id="panel-mode-label">Vị trí khung Trợ lý</label>
-          <p id="panel-mode-description">
-            Đẩy trang: khung nằm trong trang web, trang co lại nhường chỗ.
-            Khung bên: dùng khung bên sẵn có của trình duyệt, mở bằng biểu tượng Trợ lý
-            trên thanh công cụ.
-          </p>
+      <h2 class="settings-group-title">Nhận giấy tờ</h2>
+      <div class="settings-group">
+        <!-- Luôn dùng máy scan: bật thì bước tải giấy TỰ vào Scan tại quầy (bỏ câu hỏi QR/Scan).
+             FE-only — xem preferScan trong sidebar.js. -->
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-copy">
+              <label id="prefer-scan-label" for="prefer-scan-switch">Luôn dùng máy scan tại quầy</label>
+              <p id="prefer-scan-description">Bỏ qua câu hỏi chọn QR hay scan, vào thẳng bước scan tại quầy.</p>
+            </div>
+            <button id="prefer-scan-switch" class="settings-switch" type="button" role="switch"
+                    aria-checked="false" aria-labelledby="prefer-scan-label"
+                    aria-describedby="prefer-scan-description">
+              <span class="settings-switch-knob"></span>
+            </button>
+          </div>
+          <p class="settings-row-status" id="prefer-scan-status" role="status" aria-live="polite"></p>
         </div>
-        <div class="settings-seg" id="panel-mode-group" role="radiogroup"
-             aria-labelledby="panel-mode-label" aria-describedby="panel-mode-description">
-          <button id="panel-mode-push" type="button" role="radio" aria-checked="true">
-            ↔️ Đẩy trang
-          </button>
-          <button id="panel-mode-side" type="button" role="radio" aria-checked="false">
-            🗔 Khung bên trình duyệt
-          </button>
-        </div>
-        <p class="settings-note" id="panel-mode-note" hidden></p>
       </div>
 
-      <div class="settings-card">
-        <div class="settings-copy">
-          <label id="attach-split-label" for="attach-split-switch">Tách giấy tờ trong file</label>
-          <p id="attach-split-description">
-            Tự tách file có nhiều giấy tờ; hai mặt CCCD cùng người vẫn gộp chung.
-          </p>
+      <h2 class="settings-group-title">Đính kèm hồ sơ</h2>
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-copy">
+              <label id="attach-split-label" for="attach-split-switch">Tách tệp có nhiều giấy tờ</label>
+              <p id="attach-split-description">
+                Tệp chứa nhiều giấy (tờ khai, CCCD…) được tách ra, mỗi giấy đính đúng dòng. Hai mặt CCCD của một
+                người vẫn để chung. Chỉ thủ tục có hỗ trợ.
+              </p>
+            </div>
+            <button id="attach-split-switch" class="settings-switch" type="button" role="switch"
+                    aria-checked="false" aria-labelledby="attach-split-label"
+                    aria-describedby="attach-split-description">
+              <span class="settings-switch-knob"></span>
+            </button>
+          </div>
+          <p class="settings-row-status" id="attach-split-status" role="status" aria-live="polite"></p>
         </div>
-        <button id="attach-split-switch" class="settings-switch" type="button" role="switch"
-                aria-checked="false" aria-labelledby="attach-split-label"
-                aria-describedby="attach-split-description">
-          <span class="settings-switch-knob"></span>
-        </button>
+
+        <!-- Đổi tên tệp khi đính kèm: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings),
+             khoá tới khi đọc được giá trị từ BE — xem refreshAccountSettings trong sidebar.js. -->
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-copy">
+              <label id="rename-files-label" for="rename-files-switch">Đặt tên tệp theo loại giấy tờ</label><span
+                class="settings-chip">Tài khoản</span>
+              <p id="rename-files-description">
+                Bật: tệp đính lên cổng mang tên loại giấy, vd "Căn cước công dân". Tắt: giữ tên tệp gốc (tệp đã tách
+                hoặc gộp vẫn đặt theo loại giấy).
+              </p>
+            </div>
+            <button id="rename-files-switch" class="settings-switch on" type="button" role="switch"
+                    aria-checked="true" aria-labelledby="rename-files-label"
+                    aria-describedby="rename-files-description" disabled>
+              <span class="settings-switch-knob"></span>
+            </button>
+          </div>
+          <p class="settings-row-status" id="rename-files-status" role="status" aria-live="polite"></p>
+        </div>
+
+        <!-- Cách đính kèm CHỨNG THỰC: chọn sẵn ở đây thay cho câu hỏi "1 hồ sơ hay nhiều
+             hồ sơ" giữa luồng (BE đọc attachment_preferences.attachMode; BE cũ vẫn hỏi chip). -->
+        <div class="settings-row">
+          <div class="settings-copy">
+            <label id="attach-mode-label">Chứng thực: nộp thành</label>
+            <p id="attach-mode-description">Dùng cho chứng thực bản sao, chữ ký, chữ ký người dịch.</p>
+          </div>
+          <div class="settings-seg" id="attach-mode-group" role="radiogroup"
+               aria-labelledby="attach-mode-label" aria-describedby="attach-mode-description">
+            <button id="attach-mode-merge" type="button" role="radio" aria-checked="true">
+              <b>1 hồ sơ chung</b><small>gộp chung một hồ sơ</small>
+            </button>
+            <button id="attach-mode-split" type="button" role="radio" aria-checked="false">
+              <b>Mỗi tài liệu 1 hồ sơ</b><small>mỗi tab một hồ sơ</small>
+            </button>
+          </div>
+          <p class="settings-row-status" id="attach-mode-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+      <p class="settings-group-note">Thay đổi áp dụng từ lần đính kèm tiếp theo.</p>
+
+      <h2 class="settings-group-title">Điền tờ khai</h2>
+      <div class="settings-group">
+        <!-- Lấy người nộp theo tờ khai: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings); BE đọc khi
+             chạy pipeline → options.submitterMode. Khoá tới khi đọc được giá trị từ BE như công tắc đổi tên tệp. -->
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-copy">
+              <label id="submitter-declaration-label" for="submitter-declaration-switch">Lấy người nộp theo tờ
+                khai</label><span class="settings-chip">Tài khoản</span>
+              <p id="submitter-declaration-description">
+                Tắt: người nộp theo tài khoản đăng nhập cổng. Bật: người nộp theo người ghi trên tờ khai. Chỉ một số
+                thủ tục hỗ trợ.
+              </p>
+            </div>
+            <button id="submitter-declaration-switch" class="settings-switch" type="button" role="switch"
+                    aria-checked="false" aria-labelledby="submitter-declaration-label"
+                    aria-describedby="submitter-declaration-description" disabled>
+              <span class="settings-switch-knob"></span>
+            </button>
+          </div>
+          <p class="settings-row-status" id="submitter-declaration-status" role="status" aria-live="polite"></p>
+        </div>
       </div>
 
-      <!-- Đổi tên tệp khi đính kèm: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings),
-           khoá tới khi đọc được giá trị từ BE — xem refreshAccountSettings trong sidebar.js. -->
-      <div class="settings-card">
-        <div class="settings-copy">
-          <label id="rename-files-label" for="rename-files-switch">Đổi tên tệp theo loại giấy tờ</label>
-          <p id="rename-files-description">
-            Tệp tải lên cổng (và ô "Tên tài liệu" của ví) đặt theo loại giấy tờ. Tắt thì giữ tên tệp gốc;
-            tệp gộp/tách vẫn theo loại giấy tờ. Lưu theo tài khoản.
-          </p>
+      <h2 class="settings-group-title">Hiển thị &amp; giọng đọc</h2>
+      <div class="settings-group">
+        <!-- Khung hiển thị: đẩy trang (mặc định, chạy trên MỌI trình duyệt) hay khung bên
+             của chính trình duyệt. Ô khung bên bị khoá trên máy thiếu chrome.sidePanel
+             (Chrome/Edge < 114, Cốc Cốc cũ) — xem panelMode trong sidebar.js. -->
+        <div class="settings-row">
+          <div class="settings-copy">
+            <label id="panel-mode-label">Vị trí khung Trợ lý</label>
+            <p id="panel-mode-description">Khung bên mở lại bằng biểu tượng Trợ lý trên thanh công cụ.</p>
+          </div>
+          <div class="settings-seg" id="panel-mode-group" role="radiogroup"
+               aria-labelledby="panel-mode-label" aria-describedby="panel-mode-description">
+            <button id="panel-mode-push" type="button" role="radio" aria-checked="true">
+              <b>Trong trang</b><small>trang thu hẹp lại</small>
+            </button>
+            <button id="panel-mode-side" type="button" role="radio" aria-checked="false">
+              <b>Khung bên</b><small>của trình duyệt</small>
+            </button>
+          </div>
+          <p class="settings-note" id="panel-mode-note" hidden></p>
+          <p class="settings-row-status" id="panel-mode-status" role="status" aria-live="polite"></p>
         </div>
-        <button id="rename-files-switch" class="settings-switch on" type="button" role="switch"
-                aria-checked="true" aria-labelledby="rename-files-label"
-                aria-describedby="rename-files-description" disabled>
-          <span class="settings-switch-knob"></span>
-        </button>
-      </div>
 
-      <!-- Lấy người nộp theo tờ khai: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings); BE đọc khi
-           chạy pipeline → options.submitterMode. Khoá tới khi đọc được giá trị từ BE như công tắc đổi tên tệp. -->
-      <div class="settings-card">
-        <div class="settings-copy">
-          <label id="submitter-declaration-label" for="submitter-declaration-switch">Lấy người nộp theo tờ khai</label>
-          <p id="submitter-declaration-description">
-            Tắt (mặc định): người nộp lấy theo tài khoản đăng nhập trên cổng, chỉ điền khi giấy tờ khớp đúng người.
-            Bật: lấy người nộp theo tờ khai trong hồ sơ. Chỉ thủ tục đã hỗ trợ. Lưu theo tài khoản.
-          </p>
-        </div>
-        <button id="submitter-declaration-switch" class="settings-switch" type="button" role="switch"
-                aria-checked="false" aria-labelledby="submitter-declaration-label"
-                aria-describedby="submitter-declaration-description" disabled>
-          <span class="settings-switch-knob"></span>
-        </button>
-      </div>
-
-      <!-- Ưu tiên Scan tại quầy: bật thì bước tải giấy TỰ vào Scan tại quầy (bỏ câu hỏi QR/Scan).
-           FE-only — xem preferScan trong sidebar.js. -->
-      <div class="settings-card">
-        <div class="settings-copy">
-          <label id="prefer-scan-label" for="prefer-scan-switch">Ưu tiên Scan tại quầy</label>
-          <p id="prefer-scan-description">
-            Khi tải giấy tờ, tự chọn Scan tại quầy — không hỏi QR/Scan nữa. Bỏ chọn thì vẫn hỏi như thường.
-          </p>
-        </div>
-        <button id="prefer-scan-switch" class="settings-switch" type="button" role="switch"
-                aria-checked="false" aria-labelledby="prefer-scan-label"
-                aria-describedby="prefer-scan-description">
-          <span class="settings-switch-knob"></span>
-        </button>
-      </div>
-
-      <!-- Cách đính kèm CHỨNG THỰC: chọn sẵn ở đây thay cho câu hỏi "1 hồ sơ hay nhiều
-           hồ sơ" giữa luồng (BE đọc attachment_preferences.attachMode; BE cũ vẫn hỏi chip). -->
-      <div class="settings-card settings-card-col">
-        <div class="settings-copy">
-          <label id="attach-mode-label">Đính kèm chứng thực</label>
-          <p id="attach-mode-description">
-            Chứng thực bản sao / chữ ký: đưa tất cả tài liệu vào một hồ sơ,
-            hoặc tách mỗi tài liệu một hồ sơ riêng.
-          </p>
-        </div>
-        <div class="settings-seg" id="attach-mode-group" role="radiogroup"
-             aria-labelledby="attach-mode-label" aria-describedby="attach-mode-description">
-          <button id="attach-mode-merge" type="button" role="radio" aria-checked="true">
-            📎 Trong 1 hồ sơ
-          </button>
-          <button id="attach-mode-split" type="button" role="radio" aria-checked="false">
-            🗂️ Mỗi tài liệu 1 hồ sơ
-          </button>
+        <!-- GIỌNG ĐỌC: danh mục do BE cấp (/api/v1/voice/config → voices), nên thêm/bớt giọng
+             KHÔNG phải phát hành lại extension. Cả dòng TỰ ẨN khi ngôn ngữ chỉ có một giọng —
+             bày một ô chọn duy nhất bấm vào không đổi gì là làm cán bộ tưởng hỏng. -->
+        <div class="settings-row" id="voice-card" hidden>
+          <div class="settings-copy">
+            <label id="voice-label">Giọng đọc</label>
+            <p id="voice-description">Áp dụng từ câu đọc tiếp theo.</p>
+          </div>
+          <div class="settings-seg" id="voice-group" role="radiogroup"
+               aria-labelledby="voice-label" aria-describedby="voice-description"></div>
+          <p class="settings-row-status" id="voice-status" role="status" aria-live="polite"></p>
         </div>
       </div>
-      <p class="settings-note">Áp dụng từ lượt đính kèm tiếp theo.</p>
-
-      <!-- GIỌNG ĐỌC: danh mục do BE cấp (/api/v1/voice/config → voices), nên thêm/bớt giọng
-           KHÔNG phải phát hành lại extension. Cả thẻ TỰ ẨN khi ngôn ngữ chỉ có một giọng —
-           bày một ô chọn duy nhất bấm vào không đổi gì là làm cán bộ tưởng hỏng. -->
-      <div class="settings-card settings-card-col" id="voice-card" hidden>
-        <div class="settings-copy">
-          <label id="voice-label">Giọng đọc</label>
-          <p id="voice-description">Chọn giọng Trợ lý dùng để đọc. Áp dụng từ câu đọc tiếp theo.</p>
-        </div>
-        <div class="settings-seg" id="voice-group" role="radiogroup"
-             aria-labelledby="voice-label" aria-describedby="voice-description"></div>
-      </div>
-      <p class="settings-saved" id="settings-saved" role="status" aria-live="polite"></p>
     </section>
 
     <!-- Màn chờ tại quầy: chưa tạo conversation cho tới khi người dân chủ động bắt đầu. -->

@@ -15,8 +15,8 @@ test("cài đặt mở trong panel và bánh răng đứng cạnh tài khoản",
   assert.ok(settingsButton > 0);
   assert.ok(accountButton > settingsButton);
   assert.match(html, /id="settings-screen"/);
-  assert.match(html, /Tách giấy tờ trong file/);
-  assert.match(html, /Tự tách file có nhiều giấy tờ; hai mặt CCCD cùng người vẫn gộp chung\./);
+  assert.match(html, /Tách tệp có nhiều giấy tờ/);
+  assert.match(html, /Hai mặt CCCD của một\s+người vẫn để chung\./);
   assert.match(css, /body\.settings-mode[\s\S]*\.bot-b[\s\S]*display: none/);
   assert.match(sidebar, /function openSettingsScreen\(\)/);
   assert.match(sidebar, /function closeSettingsScreen\(/);
@@ -35,8 +35,8 @@ test("tùy chọn lưu theo máy và đi xuyên client context dưới dạng bo
 
 test("cách đính kèm chứng thực chọn sẵn ở Cài đặt: 2 option, mặc định merge, lưu theo máy", () => {
   // UI: card riêng + segmented 2 nút (radio) — không còn bắt buộc trả lời chip giữa luồng.
-  assert.match(html, /Đính kèm chứng thực/);
-  assert.match(html, /id="attach-mode-merge"[\s\S]{0,200}Trong 1 hồ sơ/);
+  assert.match(html, /Chứng thực: nộp thành/);
+  assert.match(html, /id="attach-mode-merge"[\s\S]{0,200}1 hồ sơ chung/);
   assert.match(html, /id="attach-mode-split"[\s\S]{0,200}Mỗi tài liệu 1 hồ sơ/);
   assert.match(html, /id="attach-mode-group" role="radiogroup"/);
   assert.match(css, /\.settings-seg \{/);

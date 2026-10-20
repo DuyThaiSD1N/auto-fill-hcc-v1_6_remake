@@ -654,6 +654,21 @@
     return { ok: true, removed };
   }
 
+  // Vòng bổ sung ô (luồng bản 2): mỗi lần một giá trị của form đổi (công dân gõ thẳng, trợ lý điền) báo cho
+  // content/field-review-surveyjs.js đếm lại ô và tô lại màu. Model có thể dựng lại khi React vẽ lại → gắn theo
+  // từng model.
+  const CHANGED_EVENT = "__TLND_SJS_CHANGED__";
+  const watchedSurveys = new WeakSet();
+  function reviewWatch() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    if (!watchedSurveys.has(survey)) {
+      watchedSurveys.add(survey);
+      survey.onValueChanged.add(() => document.dispatchEvent(new CustomEvent(CHANGED_EVENT)));
+    }
+    return { ok: true };
+  }
+
   async function handleRequest(event) {
     let requestId = "";
     let result;
@@ -666,6 +681,7 @@
       else if (payload.op === "requesterInfo") result = requesterInfo();
       else if (payload.op === "reviewList") result = reviewList();
       else if (payload.op === "reviewChoices") result = await reviewChoices(String(payload.name || ""));
+      else if (payload.op === "reviewWatch") result = reviewWatch();
       else if (payload.op === "reviewSet") {
         result = await reviewSet(String(payload.name || ""), String(payload.kind || ""), String(payload.value ?? ""));
       }

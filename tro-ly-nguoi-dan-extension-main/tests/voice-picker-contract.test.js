@@ -26,8 +26,8 @@ assert.ok(!/phuongnhi|vuado/.test(html), "sidebar.html không được nhúng id
 assert.match(sidebar, /\$voiceCard\.hidden = list\.length < 2;/);
 assert.match(html, /id="voice-card"[^>]*hidden/);
 // `hidden` của trình duyệt là display:none ở tầng USER-AGENT nên THUA mọi rule display của
-// tác giả: .settings-card đặt display:flex → thẻ có hidden vẫn hiện ra RỖNG. Đã gặp thật.
-assert.match(css, /\.settings-card\[hidden\]\s*\{\s*display:\s*none/);
+// tác giả: khối đặt display riêng → khối có hidden vẫn hiện ra RỖNG. Đã gặp thật.
+assert.match(css, /\.settings-row\[hidden\]\s*\{\s*display:\s*none/);
 // Mọi khối ẩn/hiện khác trong file cũng phải khai lại, nếu không lặp lại đúng lỗi này.
 for (const block of ["lang-bar", "start-screen", "settings-screen"]) {
   assert.match(css, new RegExp(`\\.${block}\\[hidden\\]`), `${block} thiếu rule [hidden]`);

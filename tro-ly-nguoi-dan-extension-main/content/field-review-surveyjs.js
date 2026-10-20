@@ -11,6 +11,8 @@
 // sẵn 0) còn 0 mà công dân chưa trả lời trong vòng này thì coi là trống; ô textDates (ô chữ cổng kiểm regex ngày,
 // vd ngày chết khai tử) báo BE là ô ngày nhận cả tháng-năm / năm nhưng ghi vào cổng dạng chữ; ô lookup (tra cứu CSDL
 // dân cư) điền xong chờ cổng đổ dữ liệu rồi mới tìm ô kế tiếp.
+// Sau lượt tô đầu tiên, theo dõi form: giá trị nào đổi (công dân gõ thẳng trên cổng) thì ~1 giây sau tô lại màu,
+// đếm lại và báo sidebar khi số ô đổi (sidebar chuyển BE: __event:field_review_status).
 (() => {
   if (window.__TLND_FIELD_REVIEW_SJS__) return;
   window.__TLND_FIELD_REVIEW_SJS__ = true;
@@ -24,6 +26,11 @@
   const baseName = (name) => String(name || "").replace(/__\d+$/, "");
   // Ô công dân đã trả lời qua vòng bổ sung (giá trị nào cũng là của công dân, kể cả 0).
   const answered = new Set();
+  const CHANGED_EVENT = "__TLND_SJS_CHANGED__";
+  const WATCH_DEBOUNCE_MS = 1000;
+  let watchRules = null;   // bộ quy tắc ô của lượt điền gần nhất (BE gửi kèm fieldReviewMark)
+  let watchTimer = null;
+  let lastStatsKey = "";   // số ô của lần đếm gần nhất — trợ lý tự điền trong vòng hỏi cũng đếm lại ở next()
 
   function injectStyles() {
     H.injectSurveyJsMarkStyles?.();
@@ -67,8 +74,27 @@
       H.setSurveyJsMark?.(questionEl(q.name), kind);
       stats[q.value ? "filled" : q.required ? "required" : "optional"] += 1;
     }
+    lastStatsKey = JSON.stringify(stats);
     return { list, stats };
   }
+
+  async function watch(msg) {
+    watchRules = msg;
+    await H.callSurveyJs({ op: "reviewWatch" }, 5000);
+  }
+
+  document.addEventListener(CHANGED_EVENT, () => {
+    if (!watchRules) return;
+    clearTimeout(watchTimer);
+    watchTimer = setTimeout(async () => {
+      const before = lastStatsKey;
+      const { stats } = await markAll(watchRules);
+      if (lastStatsKey === before) return;
+      try {
+        chrome.runtime.sendMessage({ __tlnd: "fieldReviewStats", stats }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload: bỏ lượt báo này */ }
+    }, WATCH_DEBOUNCE_MS);
+  });
 
   function unfocus() {
     document.querySelectorAll(`[${ASKING_ATTR}]`).forEach((el) => el.removeAttribute(ASKING_ATTR));
@@ -115,7 +141,10 @@
     }
     const { list, stats } = await markAll(msg);
     // focus: công dân xin sửa một ô đã hỏi → về đúng ô đó dù đã có giá trị; không thì ô trống kế tiếp.
-    const q = (msg.focus && list.find((x) => x.name === msg.focus)) || list.find((x) => !x.value && !skip.has(x.name));
+    // requiredFirst (BE luồng bản 2): hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc.
+    const q = (msg.focus && list.find((x) => x.name === msg.focus))
+      || (msg.requiredFirst && list.find((x) => !x.value && x.required && !skip.has(x.name)))
+      || list.find((x) => !x.value && !skip.has(x.name));
     if (!q) { unfocus(); return { ok: true, applied, field: null, stats }; }
     let options = q.kind === "radio" ? q.options || [] : [];
     let province = "";
@@ -134,8 +163,10 @@
     // all_frames: chỉ frame chứa form SurveyJS trả lời; tờ khai eForm do content/field-review.js trả lời.
     if (H.detectFormKind?.() !== "surveyjs" || typeof H.callSurveyJs !== "function") return;
     if (action === "fieldReviewMark") {
-      markAll(msg).then(({ stats }) => sendResponse({ ok: true, stats }))
-        .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+      markAll(msg).then(async ({ stats }) => {
+        await watch(msg);
+        sendResponse({ ok: true, stats });
+      }).catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
       return true;
     }
     if (action === "fieldReviewStop") {

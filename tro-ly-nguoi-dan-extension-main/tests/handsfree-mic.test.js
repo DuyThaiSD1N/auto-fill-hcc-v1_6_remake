@@ -63,3 +63,10 @@ test("bot đang THAO TÁC trên trang (điền, chọn cơ quan, bấm, đính�
   // Mic đang mở mà bot bắt đầu nói / thao tác → vòng canh tắt mic.
   assert.match(sidebar, /if \(handsfree && voiceListening && \(botWorking\(\) \|\| window\.__hccTTS\?\.isSpeaking\?\.\(\)\)\) \{\s*pauseMic\(\);/);
 });
+
+test("màn chọn thủ tục: bấm Bắt đầu (chưa Rảnh tay) thì không tự mở mic; bắt đầu bằng giọng nói (Rảnh tay) thì mở", () => {
+  const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "sidebar.js"), "utf8")
+    .replace(/^\s*\/\/.*$/gm, "");
+  require("node:assert/strict").match(src,
+    /some\(\(a\) => a\.type === "listen_after_tts"\)\s*&& !\(d\.state === "greet" && !handsfree\);/);
+});

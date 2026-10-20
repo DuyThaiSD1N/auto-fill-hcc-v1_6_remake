@@ -123,6 +123,9 @@
     supportsFieldReview: true,
     // Cùng vòng bổ sung ô trên form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
     supportsFieldReviewSurvey: true,
+    // Trang nộp một trang, luồng bản 2: thẻ tiến trình nhiều bước (action pipeline_steps), tắt chú giải màu cũ
+    // (noLegend), báo BE mỗi khi số ô trống đổi lúc công dân tự gõ trên cổng (__event:field_review_status).
+    supportsFlowV2: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -416,6 +419,14 @@
     if (voiceCfg.tts && !ttsMuted) window.__hccTTS?.speak?.(ATTACH_RETRY_TEXT, "vi", () => {});
   });
 
+  // Công dân tự gõ trên form SurveyJS: content/field-review-surveyjs.js đếm lại ô (đã tô lại màu) và báo số mới.
+  // BE chỉ lên tiếng khi ô bắt buộc vừa về 0 (hiện nút đi tiếp), còn lại im lặng.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "fieldReviewStats" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    if (!msg.stats || typeof msg.stats !== "object") return;
+    ask(`__event:field_review_status:${JSON.stringify({ stats: msg.stats })}`, "system");
+  });
+
   function sendToBackground(payload) {
     return new Promise((resolve) => {
       try {
@@ -462,6 +473,29 @@
   let pendingReturnReason = "";
   let pendingReturnProcedure = "";
   const pendingQueue = [];
+  // BE khởi động lại (deploy, vài giây tới vài chục giây): lệnh hệ thống / cú bấm nút gửi đúng lúc đó mà bỏ luôn
+  // là hội thoại đứng im (BE không biết đã điền / đã đính xong). Thử lại tới khi BE lên lại, tối đa 90 giây. Câu
+  // gõ / nói tự do không thử lại — công dân nói lại được. Hết hạn mà chưa vào được: nút "Thử lại".
+  const ASK_RETRY_MAX_MS = 90000;
+  const isTransientAskError = (e) => [502, 503, 504].includes(e?.status) || (!e?.status && e?.name !== "AbortError");
+  async function apiAskRetrying(message, opts, source) {
+    const retry = source === "system" || source === "chip";
+    const deadline = Date.now() + ASK_RETRY_MAX_MS;
+    let attempt = 0;
+    for (;;) {
+      try {
+        const data = await api.ask(message, opts);
+        if (attempt) setStatus("");
+        return data;
+      } catch (e) {
+        if (!retry || !isTransientAskError(e) || Date.now() >= deadline) throw e;
+        attempt += 1;
+        setStatus("⚠️ Máy chủ đang khởi động lại, em đang thử lại…", true);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** (attempt - 1), 5000)));
+      }
+    }
+  }
+
   async function ask(message, source = "text", displayText = "", uiOptions = {}) {
     const userInitiated = source === "text" || source === "voice" || source === "chip";
     if (userInitiated) markActivity();
@@ -527,7 +561,7 @@
       // Phiên MỚI (Bắt đầu / Trò chuyện mới / về trang chủ) sinh ra với đúng ngôn ngữ đang
       // chọn → câu chào đầu tiên đã là tiếng Mông, không phải chào tiếng Việt rồi mới đổi.
       const preferredLang = (voiceLang === "hmong" && _hmongAllowed()) ? "hmong" : "";
-      const data = await api.ask(message, { source, displayText, clientContext, preferredLang });
+      const data = await apiAskRetrying(message, { source, displayText, clientContext, preferredLang }, source);
       hideTyping();
       await saveJourney({ touch: userInitiated });
       renderReply(data);
@@ -538,6 +572,10 @@
       hideTyping();
       setStatus(`Không gọi được trợ lý: ${e?.message || e}. Kiểm tra backend đang chạy?`, true);
       setTimeout(() => setStatus(""), 5000);
+      if ((source === "system" || source === "chip") && isTransientAskError(e)) {
+        addBotMd("⚠️ Máy chủ chưa phản hồi, em chưa làm tiếp được. Bấm **Thử lại** khi máy chủ đã chạy lại ạ.");
+        renderChips([{ label: "🔁 Thử lại", send: message, solid: true }]);
+      }
     } finally {
       restorePreservedScroll();
       if (preserveScroll) requestAnimationFrame(restorePreservedScroll);
@@ -852,8 +890,10 @@
     // Chỉ áp cho reply LIVE (không phải khôi phục phiên noTts, kẻo mở lại tay bị auto-thu-gọn).
     const collapseAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "collapse_after_tts");
     // Câu hỏi cần công dân trả lời ngay (vd hỏi từng ô còn trống): đọc xong tự mở mic MỘT lượt,
-    // kể cả khi không bật Rảnh tay.
-    const listenAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "listen_after_tts");
+    // kể cả khi không bật Rảnh tay. Riêng màn chọn thủ tục (câu chào): chỉ mở mic khi đang Rảnh tay — bấm
+    // "Bắt đầu làm thủ tục" là chọn bằng tay; bắt đầu bằng giọng nói thì Rảnh tay đã bật nên mic vẫn mở.
+    const listenAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "listen_after_tts")
+      && !(d.state === "greet" && !handsfree);
     const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted;
     // noTts: render lại reply CŨ khi khôi phục phiên — không đọc lại câu đã đọc rồi.
     if (opts?.noTts) { /* bỏ đọc */ }
@@ -867,8 +907,12 @@
       // Ngắt lời bằng micro (barge-in) thì VẪN cắt ở cả hai — người nói được ưu tiên.
       // Báo điền xong có bong bóng phụ (vòng bổ sung ô trống) cũng là phần nối tiếp của câu "đang điền".
       const fillTail = (d.actions || []).some((a) => a.type === "trail_message");
+      // Thẻ tiến trình nhiều bước: các khung (kết quả điền → kết quả đính kèm → kết luận) nối tiếp nhau trong
+      // cùng một lượt xử lý, khung sau tới khi câu trước còn đang đọc.
+      const stepsTail = (d.actions || []).some((a) => a.type === "pipeline_steps");
       const queueThisReply = replyTtsInFlight > 0
         && ((prevState === "filling" && (d.state === "reviewing" || fillTail))
+          || stepsTail
           || voiceCfg?.finishSentenceBeforeNext === true);
       if (!queueThisReply) stopReplyTts();
       else console.debug("[TLND] xếp TTS sau câu đang đọc, không cắt ngang");
@@ -2250,10 +2294,79 @@
     $pipe.querySelector(".pipe-h").textContent = "⚠️ Xử lý giấy tờ chưa xong được";
   }
 
+  // ── Thẻ tiến trình nhiều bước do BE điều khiển (trang nộp một trang, luồng bản 2) ──
+  // Action pipeline_steps: có `steps` = dựng thẻ mới; không có = cập nhật thẻ đang hiện (bước `active` đang chạy,
+  // các bước trước đã xong; `done` = xong hết; `failed` = bước đang chạy lỗi). Bước đổi theo mốc thật (dữ liệu về,
+  // điền xong, đính xong); giữa hai mốc thanh chỉ nhích dần về gần mốc kế, không tự đầy.
+  let $steps = null;
+  let stepsTimer = null;
+  let stepsWidth = 0;
+
+  function stepsBarTo(width) {
+    stepsWidth = Math.max(stepsWidth, width);
+    const bar = $steps?.querySelector(".steps-bar > i");
+    if (bar) bar.style.width = `${stepsWidth.toFixed(1)}%`;
+  }
+
+  function renderStepsCard(a) {
+    if (Array.isArray(a.steps) && a.steps.length) {
+      clearInterval(stepsTimer);
+      stepsWidth = 0;
+      $steps = document.createElement("div");
+      $steps.className = "steps-card";
+      $steps.innerHTML = `
+        <div class="steps-h"><span class="steps-orb" aria-hidden="true"></span>
+          <span class="steps-title"></span><span class="steps-count"></span></div>
+        <div class="steps-bar" aria-hidden="true"><i></i></div>
+        <ol class="steps-list">${a.steps.map((label) => `
+          <li class="steps-item"><span class="steps-ic"></span>
+            <span class="steps-label">${window.escapeHtml(String(label))}</span></li>`).join("")}</ol>`;
+      addNode($steps);
+    }
+    if (!$steps) return;
+    const items = [...$steps.querySelectorAll(".steps-item")];
+    const total = items.length;
+    const done = a.done === true;
+    const failed = !done && a.failed === true;
+    const active = Math.min(Math.max(0, Number(a.active) || 0), total - 1);
+    items.forEach((li, i) => {
+      const state = done || i < active ? "done" : i === active ? (failed ? "failed" : "active") : "todo";
+      if (li.dataset.state === state) return;
+      li.dataset.state = state;
+      li.querySelector(".steps-ic").textContent = state === "done" ? "✓" : state === "failed" ? "!" : String(i + 1);
+    });
+    $steps.dataset.state = done ? "done" : failed ? "failed" : "running";
+    $steps.querySelector(".steps-orb").hidden = done || failed;
+    $steps.querySelector(".steps-title").textContent = done ? `✅ Đã hoàn thành ${total} bước`
+      : failed ? "⚠️ Còn bước chưa xong" : "Đang xử lý hồ sơ";
+    $steps.querySelector(".steps-count").textContent = done || failed ? "" : `Bước ${active + 1}/${total}`;
+    clearInterval(stepsTimer);
+    if (done) {
+      stepsBarTo(100);
+    } else {
+      stepsBarTo((100 * active) / total + 3);
+      if (!failed) {
+        const ceiling = (100 * (active + 1)) / total - 4;
+        stepsTimer = setInterval(() => stepsBarTo(stepsWidth + Math.max(0.05, (ceiling - stepsWidth) * 0.04)), 500);
+      }
+    }
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+
+  function failStepsCard() {
+    if (!$steps || $steps.dataset.state !== "running") return;
+    const items = [...$steps.querySelectorAll(".steps-item")];
+    const active = Math.max(0, items.findIndex((li) => li.dataset.state === "active"));
+    renderStepsCard({ active, failed: true });
+  }
+
   // BE vào owner_filling/filling = pipeline bắt đầu chạy. Chỉ dựng card chờ khi phản hồi
   // chưa có action điền tức thời; áp dụng cả lần xử lý đầu và lần điền lại thông tin.
   function updatePipeFromState(prev, d) {
     const st = d.state || prev;
+    if (st === "collecting_docs" || st === "qr_waiting") failStepsCard();
+    // Luồng có thẻ nhiều bước (BE gửi pipeline_steps): không dựng thêm card một dòng.
+    if ((d.actions || []).some((a) => a.type === "pipeline_steps")) return;
     const willFill = (d.actions || []).some((a) =>
       a.type === "fill_fields" || a.type === "fill_owner_fields");
     if ((st === "owner_filling" || st === "filling") && prev !== st && !willFill) {
@@ -3644,7 +3757,12 @@
         reconnectAttempt = 0;
         // Sự kiện phát lúc WS đang đứt KHÔNG được gửi lại → nối lại là đọc lại tiến độ phiên, nếu
         // không danh sách giấy tờ đứng yên và nút "Đã đưa đủ giấy tờ" vẫn khoá dù máy chủ đã có tệp.
-        if (everOpened) void resyncAfterReconnect();
+        if (everOpened) {
+          void resyncAfterReconnect();
+          // Nối lại giữa lúc xử lý (thường do BE khởi động lại): sự kiện "xong" phát lúc đứt bị lỡ, tác vụ nền có
+          // thể đã chết theo BE → nhờ BE bù sự kiện / chạy lại tác vụ.
+          if (["filling", "owner_filling", "attaching"].includes(lastState)) ask("__event:pipeline_resync", "system");
+        }
         everOpened = true;
       };
       ws.onmessage = (ev) => {
@@ -4618,7 +4736,8 @@
         });
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
-        renderFillLegend(a.fields, res);
+        // Luồng bản 2: BE nói kết quả điền ở khung riêng theo số ô cổng đang hiện → không vẽ chú giải đếm từ payload.
+        if (!a.noLegend) renderFillLegend(a.fields, res);
         // Báo BE kết quả điền THẬT (engine trả {filled, notFound, errors}) → bot sang rà soát.
         const report = { filled: res?.filled || 0, notFound: res?.notFound || [], errors: res?.errors || [] };
         if (a.fieldReview) {
@@ -4628,6 +4747,8 @@
           if (marked?.stats) report.review = marked.stats;
         }
         ask(`__action:fill_report:${JSON.stringify(report)}`, "system");
+      } else if (a.type === "pipeline_steps") {
+        renderStepsCard(a);
       } else if (a.type === "field_review_next") {
         // Điền ô vừa trả lời (nếu có), tìm ô trống kế tiếp, đưa con trỏ tới đó rồi báo BE hỏi ô đó.
         setStatus("Đang tìm ô còn trống…");
@@ -5110,7 +5231,9 @@
       // .settings-seg khác, nếu không cán bộ nhìn hai ô giống hệt nhau, bấm rồi cũng không
       // biết đã đổi chưa.
       btn.classList.toggle("on", v.id === current);
-      btn.textContent = `${v.gender === "nam" ? "👨" : "👩"} ${v.label}`;
+      const name = document.createElement("b");
+      name.textContent = v.label;
+      btn.append(name);
       btn.addEventListener("click", () => saveVoice(v.id));
       return btn;
     }));
@@ -5122,10 +5245,10 @@
     window.__hccTTS?.setVoice?.(voiceChoice);
     chrome.storage?.local.set({ [VOICE_KEY]: voiceChoice }, () => {
       if (chrome.runtime.lastError) {
-        if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+        announceSettingFailed("voice-status", () => saveVoice(id));
         return;
       }
-      announceAttachmentSettingsSaved();
+      announceSettingSaved("voice-status");
     });
   }
 
@@ -5679,13 +5802,12 @@
   const $panelModePush = document.getElementById("panel-mode-push");
   const $panelModeSide = document.getElementById("panel-mode-side");
   const $panelModeNote = document.getElementById("panel-mode-note");
-  const $settingsSaved = document.getElementById("settings-saved");
   const $accBtn = document.getElementById("acc-btn");
   const $accPop = document.getElementById("acc-pop");
   let settingsReturnScrollTop = 0;
   let settingsPreviousSubtitle = "";
   let settingsResumeHandsfree = false;
-  let settingsSavedTimer = null;
+  const settingsStatusTimers = new Map();
   const CAN_REMEMBER_LOGIN = chrome.extension?.inIncognitoContext !== true;
   let rememberedLoginLoaded = false;
   let loginPrefillRun = 0;
@@ -5772,11 +5894,32 @@
     });
   }
 
-  function announceAttachmentSettingsSaved() {
-    if (!$settingsSaved) return;
-    $settingsSaved.textContent = "Đã lưu cài đặt.";
-    if (settingsSavedTimer) clearTimeout(settingsSavedTimer);
-    settingsSavedTimer = setTimeout(() => { $settingsSaved.textContent = ""; }, 1800);
+  // Báo ngay dưới dòng vừa bấm: "✓ Đã lưu" tự tắt; lỗi giữ lại kèm nút Thử lại tới khi bấm.
+  function setSettingStatus(id, text, { error = false, pending = false, retry = null } = {}) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    clearTimeout(settingsStatusTimers.get(id));
+    el.classList.toggle("error", error);
+    el.classList.toggle("pending", pending);
+    el.textContent = text;
+    if (retry) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Thử lại";
+      btn.addEventListener("click", () => {
+        markActivity();
+        setSettingStatus(id, "");
+        retry();
+      });
+      el.append(btn);
+    }
+  }
+  function announceSettingSaved(id) {
+    setSettingStatus(id, "✓ Đã lưu");
+    settingsStatusTimers.set(id, setTimeout(() => setSettingStatus(id, ""), 1800));
+  }
+  function announceSettingFailed(id, retry = null) {
+    setSettingStatus(id, "Chưa lưu được.", { error: true, retry });
   }
 
   function saveAttachmentSettings(value) {
@@ -5786,10 +5929,10 @@
       { [ATTACH_SPLIT_DOCUMENTS_KEY]: attachSplitDocuments },
       () => {
         if (chrome.runtime.lastError) {
-          if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+          announceSettingFailed("attach-split-status", () => saveAttachmentSettings(value));
           return;
         }
-        announceAttachmentSettingsSaved();
+        announceSettingSaved("attach-split-status");
       },
     );
   }
@@ -5828,14 +5971,24 @@
     });
   }
 
-  // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc.
+  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status"];
+
+  // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc và nói rõ lý do kèm
+  // Thử lại — công tắc mờ không chữ thì cán bộ tưởng hỏng.
   async function refreshAccountSettings() {
+    if (!accountSettingsLoaded) {
+      for (const id of ACCOUNT_STATUS_IDS) setSettingStatus(id, "Đang tải cài đặt tài khoản…", { pending: true });
+    }
     try {
       await storeAccountSettings(await api.getAccountSettings());
+      for (const id of ACCOUNT_STATUS_IDS) setSettingStatus(id, "");
     } catch (e) {
       console.warn("[TLND] Không tải được cài đặt tài khoản:", e);
       accountSettingsLoaded = false;
       renderAccountSettings();
+      for (const id of ACCOUNT_STATUS_IDS) {
+        setSettingStatus(id, "Chưa tải được cài đặt tài khoản.", { error: true, retry: refreshAccountSettings });
+      }
     }
   }
 
@@ -5848,23 +6001,23 @@
     chrome.storage.local.remove([ACCOUNT_SETTINGS_KEY], () => { void chrome.runtime.lastError; });
   }
 
-  async function saveAccountSetting(changes) {
+  async function saveAccountSetting(changes, statusId) {
     if (!accountSettingsLoaded) return;
     accountSettingsLoaded = false; // khoá trong lúc lưu, chống bấm dồn
     renderAccountSettings();
     try {
       await storeAccountSettings(await api.updateAccountSettings(changes));
-      announceAttachmentSettingsSaved();
+      announceSettingSaved(statusId);
     } catch (e) {
       console.warn("[TLND] Không lưu được cài đặt tài khoản:", e);
       accountSettingsLoaded = true;
       renderAccountSettings();
-      if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+      announceSettingFailed(statusId, () => saveAccountSetting(changes, statusId));
     }
   }
 
   function saveRenameAttachmentFiles(value) {
-    return saveAccountSetting({ renameAttachmentFiles: value === true });
+    return saveAccountSetting({ renameAttachmentFiles: value === true }, "rename-files-status");
   }
 
   function savePreferScan(value) {
@@ -5874,10 +6027,10 @@
       { [PREFER_SCAN_KEY]: preferScan },
       () => {
         if (chrome.runtime.lastError) {
-          if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+          announceSettingFailed("prefer-scan-status", () => savePreferScan(value));
           return;
         }
-        announceAttachmentSettingsSaved();
+        announceSettingSaved("prefer-scan-status");
       },
     );
   }
@@ -5889,10 +6042,10 @@
       { [ATTACH_MODE_KEY]: attachMode },
       () => {
         if (chrome.runtime.lastError) {
-          if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+          announceSettingFailed("attach-mode-status", () => saveAttachMode(value));
           return;
         }
-        announceAttachmentSettingsSaved();
+        announceSettingSaved("attach-mode-status");
       },
     );
   }
@@ -5938,10 +6091,11 @@
     } catch (_) {
       panelMode = truoc;
       renderPanelMode();
-      if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+      // Không kèm Thử lại: chuyển sang khung bên phải mở trong chính cú bấm của cán bộ.
+      announceSettingFailed("panel-mode-status");
       return;
     }
-    announceAttachmentSettingsSaved();
+    announceSettingSaved("panel-mode-status");
     // background nghe storage.onChanged rồi đặt openPanelOnActionClick, đường sidebar
     // cho từng tab, VÀ báo panelModeChanged cho mọi tab. Đường riêng dưới đây chỉ thêm
     // moKhung cho đúng tab công dân vừa bấm — tab đó phải thấy khung mở ra ngay.
@@ -6037,7 +6191,7 @@
   });
   $submitterDeclarationSwitch?.addEventListener("click", () => {
     markActivity();
-    void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration });
+    void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration }, "submitter-declaration-status");
   });
   $attachSplitSwitch?.addEventListener("click", () => {
     markActivity();

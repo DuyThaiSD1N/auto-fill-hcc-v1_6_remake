@@ -63,7 +63,7 @@ test("sidebar: tìm ô kế tiếp rồi báo BE, gỡ con trỏ khi dừng", ()
 });
 
 test("sidebar: câu hỏi ô đọc xong tự mở mic một lượt", () => {
-  assert.match(sidebar, /const listenAfter = !opts\?\.noTts && \(d\.actions \|\| \[\]\)\.some\(\(a\) => a\.type === "listen_after_tts"\);/);
+  assert.match(sidebar, /const listenAfter = !opts\?\.noTts && \(d\.actions \|\| \[\]\)\.some\(\(a\) => a\.type === "listen_after_tts"\)/);
   assert.match(sidebar, /if \(\(handsfree \|\| listenAfter\) && !completionReturnTimer && replyTtsInFlight === 0\) listenWhenQuiet\(\);/);
   assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);/);
 });
@@ -81,7 +81,7 @@ test("khối x-select-area không có dropdown (vd Số lượng bản sao) là 
 });
 
 test("sửa ô vừa điền: về đúng ô đó dù đã có giá trị", () => {
-  assert.match(review, /let slot = \(msg\.focus && list\.find\(\(s\) => s\.key === msg\.focus\)\)\s*\|\| list\.find/);
+  assert.match(review, /let slot = \(msg\.focus && list\.find\(\(s\) => s\.key === msg\.focus\)\)\s*\|\| \(msg\.requiredFirst && list\.find/);
   assert.match(sidebar, /sendToContent\(\{ \.\.\.a, action: "fieldReviewNext" \}\)/);
 });
 

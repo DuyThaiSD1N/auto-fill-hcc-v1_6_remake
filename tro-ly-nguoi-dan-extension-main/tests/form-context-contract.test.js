@@ -17,7 +17,7 @@ test("trợ lý gửi formContext vào chat giống auto-fill", () => {
   assert.match(sidebar, /form_context: formResult\?\.formContext \|\| \{\}/);
   assert.match(sidebar, /attachment_context: attachmentResult\?\.attachmentContext \|\| \{\}/);
   // preferredLang: ngôn ngữ máy quầy (tiếng Mông) để phiên MỚI chào đúng tiếng ngay lượt đầu.
-  assert.match(sidebar, /api\.ask\(message, \{ source, displayText, clientContext, preferredLang \}\)/);
+  assert.match(sidebar, /apiAskRetrying\(message, \{ source, displayText, clientContext, preferredLang \}, source\)/);
 });
 
 test("formContext báo đơn xin nhận con nuôi đang mở (eForm trong Thành phần hồ sơ)", () => {

@@ -29,7 +29,7 @@ assert.match(slice(sidebar, "function forgetAccountSettings", "\n  }\n"), /submi
   "đăng xuất không được để cài đặt của cán bộ trước áp sang người sau");
 assert.match(slice(sidebar, "function renderSubmitterDeclarationSetting", "\n  }\n"),
   /\.disabled = !accountSettingsLoaded/, "khoá khi chưa đọc được / đang lưu");
-assert.match(sidebar, /saveAccountSetting\(\{ submitterFromDeclaration: !submitterFromDeclaration \}\)/,
+assert.match(sidebar, /saveAccountSetting\(\{ submitterFromDeclaration: !submitterFromDeclaration \}, "submitter-declaration-status"\)/,
   "bấm công tắc gửi đúng khoá lên BE");
 
 // Chế độ tờ khai: BE gắn enableInput cho họ tên + CCCD Phần I → engine điền phải bỏ disabled trước khi ghi.

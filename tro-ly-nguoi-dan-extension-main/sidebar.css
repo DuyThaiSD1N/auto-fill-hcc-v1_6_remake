@@ -288,7 +288,7 @@ body.start-mode .bot-f { display: none; }
 .settings-screen[hidden] { display: none; }
 .settings-head {
   display: flex; align-items: flex-start; gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
 }
 .settings-back {
   width: 36px; height: 36px; flex-shrink: 0;
@@ -306,23 +306,36 @@ body.start-mode .bot-f { display: none; }
   margin: 3px 0 0; color: var(--muted);
   font-size: 12px; line-height: 1.45;
 }
-.settings-card {
-  display: flex; align-items: center; gap: 14px;
-  padding: 15px; border: 1px solid var(--line); border-radius: 14px;
-  background: #fff; box-shadow: var(--card-shadow);
+.settings-group-title {
+  margin: 18px 4px 7px; color: var(--muted);
+  font-size: 11px; line-height: 1.3; font-weight: 750;
+  letter-spacing: .06em; text-transform: uppercase;
 }
+/* Mỗi nhóm một khối trắng, các dòng ngăn bằng đường kẻ — khoảng cách đều nhờ padding của dòng. */
+.settings-group {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: #fff; box-shadow: var(--card-shadow); overflow: hidden;
+}
+.settings-row { padding: 14px 15px; }
+.settings-row + .settings-row { border-top: 1px solid var(--line); }
 /* `hidden` của trình duyệt là display:none ở tầng user-agent, THUA mọi rule display của
-   tác giả — .settings-card đặt display:flex nên thẻ có hidden vẫn hiện (rỗng). Mọi khối
-   ẩn/hiện trong file này đều phải khai lại như dưới (xem .lang-bar, .start-screen…). */
-.settings-card[hidden] { display: none; }
+   tác giả. Mọi khối ẩn/hiện trong file này đều phải khai lại như dưới (xem .lang-bar, .start-screen…). */
+.settings-row[hidden] { display: none; }
+.settings-row-main { display: flex; align-items: center; gap: 14px; }
 .settings-copy { flex: 1; min-width: 0; }
 .settings-copy label {
-  display: block; color: var(--navy);
+  color: var(--navy);
   font-size: 14px; line-height: 1.35; font-weight: 750; cursor: pointer;
 }
 .settings-copy p {
   margin: 5px 0 0; color: var(--muted);
-  font-size: 12px; line-height: 1.45;
+  font-size: 12.5px; line-height: 1.45;
+}
+/* Nhãn mục lưu theo tài khoản (BE) — mục không gắn nhãn lưu trên máy này. */
+.settings-chip {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; vertical-align: 1px;
+  border-radius: 999px; background: var(--teal-soft); color: var(--teal-d);
+  font-size: 10.5px; line-height: 1.5; font-weight: 700; white-space: nowrap;
 }
 .settings-switch {
   position: relative; width: 46px; height: 26px; flex: 0 0 46px;
@@ -339,13 +352,8 @@ body.start-mode .bot-f { display: none; }
 .settings-switch.on { background: var(--teal); }
 .settings-switch:disabled { opacity: .45; cursor: not-allowed; }
 .settings-switch.on .settings-switch-knob { transform: translateX(20px); }
-/* Card xếp dọc cho control rộng (segmented) — sidebar 400px không đủ chỗ xếp ngang. */
-.settings-card-col { flex-direction: column; align-items: stretch; gap: 10px; }
-.settings-card-col + .settings-card-col,
-.settings-card + .settings-card-col,
-.settings-card-col + .settings-card { margin-top: 10px; }
 .settings-seg {
-  display: flex; gap: 6px;
+  display: flex; gap: 6px; margin-top: 10px;
   padding: 4px; border: 1px solid var(--line); border-radius: 12px;
   background: #f0f5f2;
 }
@@ -355,7 +363,11 @@ body.start-mode .bot-f { display: none; }
   background: transparent; color: var(--muted); cursor: pointer;
   font-size: 12px; line-height: 1.3; font-weight: 650;
   transition: background .15s ease, color .15s ease;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
+/* Nút chọn = tên + một dòng chú thích, thay cho emoji (hiển thị khác nhau giữa các máy quầy). */
+.settings-seg button b { font-size: 12.5px; font-weight: 700; }
+.settings-seg button small { color: var(--muted); font-size: 11px; font-weight: 500; }
 /* Ô chưa chọn: hover phải NHÌN THẤY được, không chỉ đổi màu chữ — hai ô cạnh nhau cùng nền
    trong suốt thì cán bộ không biết con trỏ đang ở ô nào. Ô .on giữ nguyên nền trắng. */
 .settings-seg button:not(.on):not([disabled]):hover {
@@ -370,12 +382,23 @@ body.start-mode .bot-f { display: none; }
   background: #fff; color: var(--teal-d);
   border-color: #acd5c1; box-shadow: 0 1px 4px rgba(23, 58, 94, .14);
 }
-.settings-note,
-.settings-saved {
+.settings-note {
   margin: 9px 3px 0; color: var(--muted);
   font-size: 11.5px; line-height: 1.45;
 }
-.settings-saved { min-height: 17px; color: var(--teal-d); font-weight: 650; }
+.settings-group-note { margin: 7px 4px 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.settings-row-status {
+  margin: 7px 0 0; color: var(--teal-d);
+  font-size: 11.5px; line-height: 1.4; font-weight: 650;
+}
+.settings-row-status:empty { display: none; }
+.settings-row-status.error { color: #c2410c; }
+.settings-row-status.pending { color: var(--muted); font-weight: 500; }
+.settings-row-status button {
+  margin-left: 6px; padding: 2px 9px; border: 1px solid #f0c7ae; border-radius: 8px;
+  background: #fff7f2; color: #c2410c; font: inherit; font-weight: 700; cursor: pointer;
+}
+.settings-row-status button:focus-visible { outline: 2px solid #c2410c; outline-offset: 1px; }
 
 body.settings-mode .bot-h { gap: 0; }
 body.settings-mode .bot-h .tbar,
@@ -1058,6 +1081,86 @@ body.settings-mode .bot-f { display: none; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Thẻ tiến trình nhiều bước (trang nộp một trang, luồng bản 2): bóc tách → điền → đính kèm ──
+   BE chuyển bước theo mốc thật; thẻ cập nhật tại chỗ, không đẻ thêm bong bóng. */
+.steps-card {
+  align-self: stretch;
+  display: flex; flex-direction: column; gap: 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 13px;
+  padding: 12px 14px 13px;
+  box-shadow: var(--card-shadow);
+  transition: border-color .4s, box-shadow .4s;
+}
+.steps-h { display: flex; align-items: center; gap: 8px; }
+.steps-title { flex: 1; min-width: 0; font-weight: 800; font-size: 12.5px; color: var(--navy); }
+.steps-count { font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.steps-orb {
+  width: 16px; height: 16px; flex-shrink: 0; border-radius: 999px;
+  background: conic-gradient(from 0deg, var(--teal) 0 25%, #d7ece2 25% 100%);
+  -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px);
+          mask: radial-gradient(circle, transparent 4px, #000 4.5px);
+  animation: spin 1s linear infinite;
+}
+.steps-bar { height: 5px; border-radius: 999px; background: #e9f1ec; overflow: hidden; }
+.steps-bar > i {
+  position: relative; display: block; height: 100%; width: 0; border-radius: inherit; overflow: hidden;
+  background: linear-gradient(90deg, #34c08a, var(--teal));
+  transition: width .6s cubic-bezier(.2, .8, .2, 1);
+}
+.steps-bar > i::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .55) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: steps-sheen 1.6s ease-in-out infinite;
+}
+@keyframes steps-sheen { to { transform: translateX(100%); } }
+.steps-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.steps-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 12.5px; }
+/* Đường nối giữa hai vòng tròn: nền xám, phủ xanh khi bước trên đã xong. */
+.steps-item:not(:last-child)::before,
+.steps-item:not(:last-child)::after {
+  content: ""; position: absolute; left: 11px; top: 27px; width: 2px; height: calc(100% - 22px);
+  border-radius: 2px; background: #e3ebe6;
+}
+.steps-item:not(:last-child)::after {
+  background: var(--teal); transform-origin: top; transform: scaleY(0); transition: transform .5s ease-out;
+}
+.steps-item[data-state="done"]:not(:last-child)::after { transform: scaleY(1); }
+.steps-ic {
+  position: relative; width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px;
+  display: grid; place-items: center;
+  background: #eef2f4; color: #7b8c9c; font-size: 11px; font-weight: 800;
+  transition: background .3s, color .3s;
+}
+.steps-label { flex: 1; min-width: 0; color: var(--muted); transition: color .3s; }
+.steps-item[data-state="active"] .steps-ic { background: #eaf6f0; color: var(--teal-d); }
+/* Bước đang chạy: vòng xoay quanh số thứ tự + chữ lấp lánh. */
+.steps-item[data-state="active"] .steps-ic::before {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit;
+  border: 2px solid transparent; border-top-color: var(--teal); border-right-color: rgba(18, 160, 106, .35);
+  animation: spin .9s linear infinite;
+}
+.steps-item[data-state="active"] .steps-label {
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--navy) 0%, var(--navy) 40%, #4fc796 50%, var(--navy) 60%, var(--navy) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: steps-shimmer 2.2s linear infinite;
+}
+@keyframes steps-shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.steps-item[data-state="done"] .steps-ic { background: var(--teal); color: #fff; animation: steps-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+.steps-item[data-state="done"] .steps-label { color: #126c50; font-weight: 600; }
+@keyframes steps-pop { 0% { transform: scale(.55); } 100% { transform: scale(1); } }
+.steps-item[data-state="failed"] .steps-ic { background: #fde8e8; color: #b91c1c; }
+.steps-item[data-state="failed"] .steps-label { color: #b91c1c; font-weight: 700; }
+.steps-card[data-state="done"] { border-color: #bfe3d1; box-shadow: 0 0 0 3px rgba(18, 160, 106, .08), var(--card-shadow); }
+.steps-card[data-state="done"] .steps-title { color: var(--teal-d); }
+.steps-card[data-state="done"] .steps-bar > i::after,
+.steps-card[data-state="failed"] .steps-bar > i::after { animation: none; display: none; }
+.steps-card[data-state="failed"] { border-color: #f0c4c4; background: #fffafa; }
+.steps-card[data-state="failed"] .steps-title { color: #b91c1c; }
+.steps-card[data-state="failed"] .steps-bar > i { background: #e8a5a5; }
+
 /* ── Card xin phép xử lý dữ liệu (Luật 91/2025 — demo bước 5) ── */
 .consent-card {
   align-self: stretch;
@@ -1196,6 +1299,10 @@ body.settings-mode .bot-f { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .wave i, .typing i, .pipe-spin, .svc-sheet,
   .chip.cta, .chip.cta::before, .start-btn, .docs-done-actions .chip { animation: none; }
+  .steps-orb, .steps-bar > i::after, .steps-item .steps-ic, .steps-item .steps-ic::before,
+  .steps-item .steps-label { animation: none; }
+  .steps-bar > i, .steps-item::after, .steps-ic, .steps-label { transition: none; }
+  .steps-item[data-state="active"] .steps-label { color: var(--navy); background: none; }
   .svc2, .svc2 .arr, .chip, .step-meter > i, .file-list-row,
   .tl, .allbar, .srow, .svc-sheet-close, .svc-voice,
   .rating-opt, .rating-chip, .rating-mic, .rating-submit, .tlnd-toast { transition: none; }

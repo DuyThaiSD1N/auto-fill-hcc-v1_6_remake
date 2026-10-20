@@ -240,8 +240,31 @@
       else if (slot.required) { slot.box.classList.add("autofill-not-filled"); stats.required += 1; }
       else { slot.box.classList.add("tlnd-fr-optional"); stats.optional += 1; }
     }
+    lastStatsKey = JSON.stringify(stats);
     return { list, stats };
   }
+
+  // Sau lượt tô đầu tiên (fieldReviewMark), theo dõi tờ khai: công dân gõ / chọn thẳng trên trang thì ~1 giây sau tô
+  // lại màu, đếm lại và báo sidebar khi số ô đổi (sidebar chuyển BE: __event:field_review_status → hiện nút Xem trước
+  // to khi ô bắt buộc về 0). Trợ lý tự điền trong vòng hỏi cũng đếm lại ở next() nên không báo trùng.
+  const WATCH_DEBOUNCE_MS = 1000;
+  let watchRequired = null;
+  let watchTimer = null;
+  let lastStatsKey = "";
+  function onFormEdited() {
+    if (!watchRequired || !document.querySelector(SLOT_SELECTOR)) return;
+    clearTimeout(watchTimer);
+    watchTimer = setTimeout(() => {
+      const before = lastStatsKey;
+      const { stats } = markAll(watchRequired);
+      if (lastStatsKey === before) return;
+      try {
+        chrome.runtime.sendMessage({ __tlnd: "fieldReviewStats", stats }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload: bỏ lượt báo này */ }
+    }, WATCH_DEBOUNCE_MS);
+  }
+  document.addEventListener("input", onFormEdited, true);
+  document.addEventListener("change", onFormEdited, true);
 
   // ── Con trỏ + ô đang hỏi ──
 
@@ -456,7 +479,9 @@
     }
     let { list, stats } = markAll(msg.required);
     // focus: công dân xin sửa ô vừa điền → về đúng ô đó dù đã có giá trị; không thì ô trống kế tiếp.
+    // requiredFirst (BE luồng bản 2): hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc.
     let slot = (msg.focus && list.find((s) => s.key === msg.focus))
+      || (msg.requiredFirst && list.find((s) => !s.value() && s.required && !skip.has(s.key)))
       || list.find((s) => !s.value() && !skip.has(s.key));
     if (!slot) { unfocus(); return { ok: true, applied, field: null, stats }; }
     let options = await readOptions(slot);
@@ -480,6 +505,7 @@
     // all_frames: chỉ frame chứa tờ khai eForm trả lời, frame khác im lặng.
     if (H.detectFormKind?.() !== "legacy" || !document.querySelector(SLOT_SELECTOR)) return;
     if (action === "fieldReviewMark") {
+      watchRequired = msg.required || [];
       sendResponse({ ok: true, stats: markAll(msg.required).stats });
       return;
     }
