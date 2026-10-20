@@ -520,8 +520,12 @@ function detectCombinedBirthFormVariant() {
   const hasNamedControl = (name) => !!document.querySelector(`[name="${CSS.escape(name)}"]`);
   const birthSignature = ["HoTenKS", "HoTenMeKS", "HoTenChaKS"];
   const recognitionSignature = ["HotenA", "hotenB", "loaiXacNhan"];
+  // Đơn xin nhận con nuôi (eForm NCNV5) mở từ dòng 5 bảng Thành phần hồ sơ của thủ tục nuôi con nuôi
+  // trong nước — cũng chỉ hiện khi công dân bấm "Khai tờ khai" nên trợ lý cần biết tờ khai đang mở.
+  const adoptionSignature = ["HoVaTenCN", "truongHopNhanNuoi"];
   const birthMatches = birthSignature.filter(hasNamedControl);
   const recognitionMatches = recognitionSignature.filter(hasNamedControl);
+  const adoptionMatches = adoptionSignature.filter(hasNamedControl);
 
   let formVariant = "";
   let formSignature = [];
@@ -531,6 +535,10 @@ function detectCombinedBirthFormVariant() {
   } else if (recognitionMatches.length === recognitionSignature.length && birthMatches.length === 0) {
     formVariant = "parent_child_recognition";
     formSignature = recognitionMatches;
+  } else if (adoptionMatches.length === adoptionSignature.length
+    && birthMatches.length === 0 && recognitionMatches.length === 0) {
+    formVariant = "adoption_application";
+    formSignature = adoptionMatches;
   }
   if (!formVariant) return null;
 

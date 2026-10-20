@@ -36,6 +36,11 @@ PROCEDURE_HMONG = {
     "dang-ky-lai-ket-hon": "Cuv npe yuav txiv yuav poj niam dua tshiab",
     "khai-tu-dang-ky-lai": "Cuv npe tuag dua tshiab",
     "dang-ky-nhan-cha-me-con": "Cuv npe lees txiv, niam, me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe yug me nyuam" (khai sinh) + "lees txiv, niam, me nyuam"
+    # (nhận cha, mẹ, con); "thiab" = và.
+    "khai-sinh-ket-hop-nhan-cha-me-con": "Cuv npe yug me nyuam thiab lees txiv, niam, me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — "tu me nyuam" (nhận nuôi con) và "hauv teb chaws" (trong nước) là TỪ MỚI.
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": "Cuv npe tu me nyuam (hauv teb chaws)",
     "chung-thuc-ban-sao": "Lees paub daim ntawv theej",
     "chung-thuc-chu-ky": "Lees paub kos npe",
     # BẢN NHÁP chờ anh Dư soát (thủ tục Bộ NN&MT — cấp/cấp lại giấy phép đánh bắt cá).
@@ -286,6 +291,8 @@ DOC_SLOT_HMONG = {
     "giay_de_nghi": "Ntawv thov",
     "chung_sinh": "Ntawv chứng sinh",
     "chung_minh_tthn": "Ntawv pov thawj hôn nhân",
+    # BẢN NHÁP chờ anh Dư soát — "kuaj mob" (khám bệnh) là TỪ MỚI.
+    "suc_khoe": "Ntawv kuaj mob (sức khỏe)",
     "bien_ban": "Biên bản",
 }
 

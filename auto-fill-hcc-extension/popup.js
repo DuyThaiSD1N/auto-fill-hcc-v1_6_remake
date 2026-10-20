@@ -109,10 +109,17 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     sourceLabel: "người được ủy quyền",
     missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
   }],
+  // 1.115470 — cùng đơn Mẫu 18 và pipeline với 1.115468, chỉ khác tên thủ tục.
+  ["dang-ky-bien-dong-thoa-thuan-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người được ủy quyền",
+    missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
+  }],
 ]);
 const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
   "ho-tro-chi-phi-hoa-tang-bac-ninh",
   "dang-ky-bien-dong-dat-dai-bac-ninh",
+  "dang-ky-bien-dong-thoa-thuan-bac-ninh",
 ]);
 const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;

@@ -19,3 +19,10 @@ test("trợ lý gửi formContext vào chat giống auto-fill", () => {
   // preferredLang: ngôn ngữ máy quầy (tiếng Mông) để phiên MỚI chào đúng tiếng ngay lượt đầu.
   assert.match(sidebar, /api\.ask\(message, \{ source, displayText, clientContext, preferredLang \}\)/);
 });
+
+test("formContext báo đơn xin nhận con nuôi đang mở (eForm trong Thành phần hồ sơ)", () => {
+  // BE chỉ điền khi formVariant khớp declarationEforms của thủ tục nuôi con nuôi trong nước.
+  assert.match(fillCore, /const adoptionSignature = \["HoVaTenCN", "truongHopNhanNuoi"\];/);
+  assert.match(fillCore, /formVariant = "adoption_application";/);
+  assert.match(fillCore, /\.\.\.\(combinedVariant \|\| \{\}\),/);
+});

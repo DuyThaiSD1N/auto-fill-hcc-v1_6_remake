@@ -404,11 +404,20 @@ def _docs_page_context(raw: dict | None) -> dict:
     }
 
 
-def _resolve_docs_target(proc: dict, page_context: dict | None) -> str:
+def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | None = None) -> str:
     """Suy ra đúng nghiệp vụ từ trang hiện tại theo flow profile của thủ tục.
 
     Marker bước sau được ưu tiên vì SPA có thể còn giữ DOM/iframe của bước trước.
     """
+    target = _resolve_page_docs_target(proc, page_context)
+    if target == "attachment" and conv is not None and _eform_pending(conv, proc):
+        # Tờ khai điện tử mở từ chính bảng Thành phần hồ sơ: giấy tờ nhận ở bước này trước hết để
+        # điền tờ khai, công dân đi tiếp sang đính kèm thì mới là target attachment.
+        return "declaration"
+    return target
+
+
+def _resolve_page_docs_target(proc: dict, page_context: dict | None) -> str:
     if _is_business_flow(proc):
         return "business"
     ctx = _docs_page_context(page_context)
@@ -428,7 +437,7 @@ def _resolve_docs_target(proc: dict, page_context: dict | None) -> str:
 
 def _remember_docs_target(conv: dict, proc: dict, page_context: dict | None) -> tuple[str, bool]:
     """Lưu target mới nếu page context nhận diện chắc chắn; trả (target, changed)."""
-    target = _resolve_docs_target(proc, page_context)
+    target = _resolve_docs_target(proc, page_context, conv)
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target and conv.get("state") in {
         "ask_doc_method", "qr_waiting", "collecting_docs",
@@ -789,6 +798,9 @@ async def _continue_adjustment_on_attachment_page(
     if _documents_adjustment_target(conv) != "declaration":
         return None
     if not conv.get("upload_session_id"):
+        return None
+    if _eform_pending(conv, proc):
+        # Tờ khai điện tử nằm ngay trong bảng Thành phần hồ sơ: đứng ở bước 3 vẫn là điền lại tờ khai.
         return None
     if not _attachment_page_reached(conv, proc, page_context):
         return None
@@ -1361,6 +1373,10 @@ def _reset_for_new_procedure(conv: dict) -> None:
     conv["docs_dispatch_key"] = ""
     conv["owner_phase"] = False
     conv["auto_attach_after_fill"] = False
+    conv["eform_flow"] = False
+    conv["eforms_filled"] = []
+    conv["eforms_attach_started"] = False
+    conv["eform_running"] = None
     _clear_documents_adjustment(conv)
     conv["consent"] = None  # chấp thuận gắn với TỪNG thủ tục (phạm vi giấy tờ khác nhau)
     conv["procedure_candidates"] = []
@@ -2773,7 +2789,7 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         (conv.get("client_capabilities") or {}).get("supportsPageBoundDocsComplete")
     )
     captured_now = "pageContextCaptured" in (page_context or {})
-    target = _resolve_docs_target(proc, page_context)
+    target = _resolve_docs_target(proc, page_context, conv)
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
         # Lượt điều chỉnh phải chạy lại đúng pipeline của bước đã mở yêu cầu. Page context
@@ -2878,6 +2894,9 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         pipeline_runner.spawn(pipeline_runner.run_owner_info(
             conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or ""))
         return Reply(*_fmt(vi.DOCS_COMPLETE_OWNER, files_count=files_count))
+
+    if target == "declaration" and _eform_pending(conv, proc):
+        return await _eform_start(conv, proc, files_count=files_count)
 
     if target == "declaration":
         conv["owner_phase"] = False
@@ -3638,6 +3657,17 @@ async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
     if (
         intent.kind == "event"
         and intent.value == "page_status"
+        and _eform_pending(conv, proc)
+        and (_declaration_page_reached(proc, intent.payload)
+             or _attachment_page_reached(conv, proc, intent.payload))
+    ):
+        if conv.get("main_processing_started"):
+            return Reply()
+        _enter_eform_phase(conv, reset=True)
+        return _eform_guide_reply(conv, proc, vi.EFORM_OPEN_GUIDE)
+    if (
+        intent.kind == "event"
+        and intent.value == "page_status"
         and _declaration_page_reached(proc, intent.payload)
     ):
         if conv.get("main_processing_started"):
@@ -3843,6 +3873,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         conv["fill_report"] = rep
         if tpm.is_active(proc):
             return await tpm.fill_report_reply(conv, rep)
+        if conv.get("eform_flow") and _eforms(proc):
+            return await _eform_fill_report(conv, proc, rep)
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
             and get_attach_pipeline(conv.get("procedure_key") or "")
@@ -3898,6 +3930,161 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
     return Reply(*_fmt(vi.STILL_READING_DOCUMENTS))
 
 
+# ── Tờ khai điện tử mở bằng nút "Khai tờ khai" trong bảng Thành phần hồ sơ ──
+# (registry: declarationEforms). Trang Kê khai không có tờ khai, mỗi mẫu chỉ hiện khi công dân tự bấm
+# nút của dòng đó → trợ lý không tự điền mà bảo công dân mở tờ khai rồi bấm "Điền tờ khai". Pipeline
+# chọn mẫu theo formVariant mà extension đọc từ chính frame tờ khai đang mở.
+_FILL_EFORM_CHIP = {"label": "✍️ Điền tờ khai", "send": "__action:fill_eform", "solid": True}
+
+
+def _eforms(proc: dict | None) -> list[dict]:
+    return [
+        item for item in ((proc or {}).get("declarationEforms") or [])
+        if isinstance(item, dict) and item.get("variant")
+    ]
+
+
+def _eform_pending(conv: dict, proc: dict | None) -> bool:
+    """Còn ở chặng điền tờ khai: chưa sang đính kèm thì bước Thành phần hồ sơ vẫn là kê khai."""
+    return (bool(_eforms(proc)) and (proc or {}).get("mode") != "attach"
+            and not conv.get("eforms_attach_started"))
+
+
+def _eform_by_variant(proc: dict, variant: str) -> dict:
+    return next((item for item in _eforms(proc) if item["variant"] == variant), {})
+
+
+def _eform_open_now(conv: dict, proc: dict) -> dict | None:
+    """Mẫu đang mở trên cổng ở CHÍNH lượt này (router xoá formVariant khi tờ khai đã đóng)."""
+    context = conv.get("form_context") or {}
+    variant = str(context.get("formVariant") or "")
+    if not variant or not _eform_by_variant(proc, variant):
+        return None
+    return {"formVariant": variant, "formSignature": list(context.get("formSignature") or [])}
+
+
+def _next_eform(conv: dict, proc: dict) -> dict | None:
+    filled = set(conv.get("eforms_filled") or [])
+    return next((item for item in _eforms(proc) if item["variant"] not in filled), None)
+
+
+def _enter_eform_phase(conv: dict, *, reset: bool) -> None:
+    conv["eform_flow"] = True
+    if reset:
+        conv["eforms_filled"] = []
+        conv["eforms_attach_started"] = False
+    conv["eform_running"] = None
+    conv["state"] = "reviewing"
+    conv["owner_phase"] = False
+    conv["main_processing_started"] = True
+    conv["auto_attach_after_fill"] = False
+    conv["pipeline_status"] = ""
+
+
+def _eform_guide_reply(conv: dict, proc: dict, template: dict, **kw) -> Reply:
+    item = _next_eform(conv, proc) or _eforms(proc)[0]
+    r = Reply(*_fmt(template, row=item.get("row") or "", label=item.get("label") or "", **kw))
+    r.chips = [_FILL_EFORM_CHIP,
+               {"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review"}]
+    return r
+
+
+async def _eform_start(conv: dict, proc: dict, *, files_count: int) -> Reply:
+    """Giấy tờ đã đủ: tờ khai đang mở sẵn thì điền luôn, chưa mở thì chờ công dân mở."""
+    # Bộ giấy tờ mới (lần đầu / điều chỉnh) thì điền lại cả hai tờ khai; "Thử lại" sau lỗi pipeline
+    # thì giữ các tờ khai đã điền xong.
+    _enter_eform_phase(conv, reset=bool(
+        _documents_adjustment_target(conv) or not conv.get("eform_flow")
+    ))
+    if _eform_open_now(conv, proc):
+        return await _eform_fill(conv, proc)
+    return _eform_guide_reply(conv, proc, vi.EFORM_DOCS_READY, files_count=files_count)
+
+
+async def _eform_fill(conv: dict, proc: dict) -> Reply:
+    """Công dân bấm "Điền tờ khai": chạy pipeline cho đúng mẫu đang mở."""
+    from app.channels.handfree.chat import pipeline_runner
+
+    if conv.get("pipeline_status") == "running":
+        return Reply(*_fmt(vi.REFILL_ALREADY_RUNNING))
+    eform = _eform_open_now(conv, proc)
+    if not eform:
+        return _eform_guide_reply(conv, proc, vi.EFORM_NOT_OPEN)
+    sid = str(conv.get("upload_session_id") or "")
+    procedure_key = str(conv.get("procedure_key") or "")
+    if not sid or not procedure_key:
+        return Reply(*_fmt(vi.PIPELINE_ERROR, error="không còn phiên giấy tờ để điền tờ khai"))
+
+    conv["eform_flow"] = True
+    conv["eform_running"] = eform
+    conv["state"] = "filling"
+    conv["pipeline_status"] = "running"
+    conv["pipeline_error"] = ""
+    conv["fill_report"] = {}
+    conv["auto_attach_after_fill"] = False
+    # run_process đọc conversation từ Mongo: lưu trước khi tạo task (như điền lại).
+    await conv_store.save(conv)
+    pipeline_runner.spawn(pipeline_runner.run_process(conv["_id"], sid, procedure_key))
+    label = _eform_by_variant(proc, eform["formVariant"]).get("label") or "tờ khai"
+    return Reply(*_fmt(vi.EFORM_FILLING, label=label))
+
+
+async def _eform_fill_report(conv: dict, proc: dict, rep: dict) -> Reply:
+    from app.channels.handfree.chat import tracing
+
+    variant = str((conv.get("eform_running") or {}).get("formVariant") or "")
+    filled = list(conv.get("eforms_filled") or [])
+    if variant and variant not in filled:
+        filled.append(variant)
+    conv["eforms_filled"] = filled
+    conv["eform_running"] = None
+    conv["state"] = "reviewing"
+    conv["pipeline_status"] = ""
+    await tracing.set_report(conv.get("trace_request_id"), "autofill", rep)
+    _clear_documents_adjustment(conv)
+
+    missing = rep["notFound"]
+    note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
+    nxt = _next_eform(conv, proc)
+    r = Reply(*_fmt(
+        vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
+        note=vi.EFORM_NEXT if nxt else vi.EFORM_ALL_FILLED,
+        row=(nxt or {}).get("row") or "", label=(nxt or {}).get("label") or "",
+    ))
+    if nxt:
+        r.chips = [_FILL_EFORM_CHIP,
+                   {"label": "🔁 Điền lại tờ khai đang mở", "send": "__action:refill"},
+                   {"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review"}]
+    else:
+        r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
+                   {"label": "🔁 Điền lại tờ khai đang mở", "send": "__action:refill"},
+                   _supplement_documents_chip()]
+    return r
+
+
+async def _handle_eform_reviewing(conv: dict, proc: dict, intent: Intent) -> Reply | None:
+    """Chặng chờ/điền tờ khai điện tử. None = để _handle_reviewing xử lý như thường."""
+    if intent.kind == "action" and intent.value in {"fill_eform", "refill"}:
+        return await _eform_fill(conv, proc)
+    if (intent.kind == "action" and intent.value in {"confirm_review", "request_attach"}) \
+            or intent.kind == "confirm":
+        # Đang đứng sẵn ở Thành phần hồ sơ: không chờ chuyển bước, lập kế hoạch đính kèm luôn.
+        conv["eforms_attach_started"] = True
+        conv["docs_target"] = "attachment"
+        conv["state"] = "attaching"
+        conv["pipeline_status"] = ""
+        conv["attachment_plan_started"] = False
+        return await _handle_attaching(conv, Intent("action", "request_attach", {}))
+    if intent.kind == "action" and intent.value == "add_documents":
+        return None
+    if intent.kind == "event":
+        return Reply()
+    # Câu hỏi/gõ khác: nhắc lại đúng việc đang chờ.
+    if _next_eform(conv, proc):
+        return _eform_guide_reply(conv, proc, vi.EFORM_OPEN_GUIDE)
+    return None
+
+
 async def _restart_declaration_pipeline(conv: dict) -> Reply:
     """Chạy lại OCR/LLM cho chính phiên giấy tờ, không phát lại fields đã cache."""
     from app.channels.handfree.chat import pipeline_runner
@@ -3927,6 +4114,11 @@ async def _restart_declaration_pipeline(conv: dict) -> Reply:
 async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
     from app.channels.handfree.chat import pipeline_runner
 
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if conv.get("eform_flow") and _eforms(proc):
+        eform_reply = await _handle_eform_reviewing(conv, proc, intent)
+        if eform_reply is not None:
+            return eform_reply
     if intent.kind == "action" and intent.value == "refill":
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
@@ -3960,6 +4152,11 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
 
 
 async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
+    if intent.kind == "action" and intent.value in {"refill", "fill_eform"} and conv.get("eform_flow"):
+        proc = get_procedure(conv.get("procedure_key") or "") or {}
+        if _eforms(proc):
+            # Công dân mở lại một tờ khai để sửa: điền lại đúng mẫu đang mở, không đụng đính kèm.
+            return await _eform_fill(conv, proc)
     if intent.kind == "action" and intent.value == "refill":
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
