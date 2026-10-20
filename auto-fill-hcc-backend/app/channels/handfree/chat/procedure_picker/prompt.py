@@ -31,6 +31,18 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                             "đã kết hôn trước đây nhưng cơ quan không còn lưu sổ"],
     "dang-ky-nhan-cha-me-con": ["nhận cha/mẹ/con", "cha nhận con", "con nhận cha/mẹ",
                                 "nhận con ngoài giá thú", "nhận cha cho con chưa có tên bố trong giấy khai sinh"],
+    # Con CHƯA có giấy khai sinh: khai sinh và nhận cha/mẹ cùng một hồ sơ. Con đã có giấy khai sinh,
+    # chỉ bổ sung cha/mẹ → "dang-ky-nhan-cha-me-con"; khai sinh có đủ cha mẹ đã kết hôn → khai sinh thường.
+    "khai-sinh-ket-hop-nhan-cha-me-con": ["khai sinh kết hợp nhận cha, mẹ, con",
+                                          "làm giấy khai sinh cho con và nhận cha cùng lúc",
+                                          "bố mẹ chưa đăng ký kết hôn, làm khai sinh có tên bố cho con",
+                                          "khai sinh cho con ngoài giá thú có cha nhận con",
+                                          "khai sinh và nhận con chung một hồ sơ"],
+    # NHẬN CON NUÔI (quan hệ cha mẹ – con theo pháp luật) — KHÁC giám hộ và KHÁC trợ cấp nhận chăm sóc,
+    # nuôi dưỡng đối tượng bảo trợ xã hội (chỉ xin hỗ trợ kinh phí, không đổi quan hệ nhân thân).
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": ["đăng ký nuôi con nuôi", "xin nhận con nuôi",
+                                         "nhận cháu ruột làm con nuôi", "nhận con riêng của vợ/chồng làm con nuôi",
+                                         "nhận trẻ bị bỏ rơi làm con nuôi", "đơn xin nhận con nuôi trong nước"],
     "dang-ky-giam-ho": ["đăng ký giám hộ", "làm người giám hộ cho trẻ mồ côi",
                         "giám hộ cho người mất năng lực hành vi dân sự"],
     # THÔI/KẾT THÚC việc giám hộ đã đăng ký — KHÁC đăng ký giám hộ (bắt đầu làm người giám hộ).

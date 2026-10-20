@@ -19,7 +19,7 @@ from app.process.schemas import FileItem
 from app.services.llm import client
 
 from . import catalog
-from .prompt import SYSTEM_PROMPT, build_user_prompt
+from .prompt import build_user_prompt, system_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
@@ -46,12 +46,14 @@ def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
         n += 1
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[str, str]]:
+async def _classify_with_llm(
+    documents: list[dict[str, Any]], ma: str = catalog.MA_CHUYEN_QUYEN
+) -> dict[int, dict[str, str]]:
     if not documents:
         return {}
     docs = [{"index": item["index"], "text": _truncate_text(item.get("text", ""))} for item in documents]
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt(ma)},
         {"role": "user", "content": build_user_prompt(docs)},
     ]
     raw = await client.chat(messages, max_tokens=800, enable_thinking=settings.agent_reasoning)
@@ -61,7 +63,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     def _coerce(item: dict) -> dict[str, str]:
         label = str(item.get("label") or "").strip()
         return {
-            "label": label if catalog.is_valid(label) else "",
+            "label": label if catalog.is_valid(label, ma) else "",
             "documentName": str(item.get("documentName") or "").strip(),
         }
 
@@ -86,8 +88,10 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     return out
 
 
-def _build_item(file: dict, idx: int, label: str, document_name: str) -> dict:
-    target, component_name = catalog.resolve(label)
+def _build_item(
+    file: dict, idx: int, label: str, document_name: str, ma: str = catalog.MA_CHUYEN_QUYEN
+) -> dict:
+    target, component_name = catalog.resolve(label, ma)
     return {
         "fileIndex": idx,
         "fileName": str(file.get("name") or f"file-{idx + 1}"),
@@ -100,7 +104,12 @@ def _build_item(file: dict, idx: int, label: str, document_name: str) -> dict:
     }
 
 
-async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+async def plan(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+    ma: str = catalog.MA_CHUYEN_QUYEN,
+) -> dict:
     _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
@@ -125,7 +134,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_types: dict[int, dict[str, str]] = {}
     if any(d["text"].strip() for d in llm_docs):
         try:
-            llm_types = await _classify_with_llm(llm_docs)
+            llm_types = await _classify_with_llm(llm_docs, ma)
         except Exception as e:  # noqa: BLE001
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
@@ -138,8 +147,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
 
         # LLM-FIRST: dùng nhãn LLM nếu hợp lệ; không rõ / "khac" → "khac" (ô File đính kèm khác).
         label = detected.get("label") or ""
-        route_src = "llm" if catalog.is_valid(label) else ""
-        if not catalog.is_valid(label) or label == "":
+        route_src = "llm" if catalog.is_valid(label, ma) else ""
+        if not catalog.is_valid(label, ma) or label == "":
             label = "khac"
             route_src = route_src or "default"
 
@@ -147,7 +156,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         base = (detected.get("documentName") if route_src == "llm" else "") or fallback_label
         document_name = _unique_document_name(base, used_names, fallback_label)
 
-        item = _build_item(file, idx, label, document_name)
+        item = _build_item(file, idx, label, document_name, ma)
         attachments.append(item)
         classified.append({
             "fileName": file.get("name"),

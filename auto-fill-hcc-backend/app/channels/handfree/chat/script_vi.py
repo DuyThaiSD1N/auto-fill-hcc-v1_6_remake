@@ -531,6 +531,58 @@ REVIEW_ATTACHMENT_ACTION = {
     "tts": " Kiểm tra xong, công dân sang bước thành phần hồ sơ, rồi bấm Đính kèm giấy tờ ạ.",
 }
 
+# Tờ khai điện tử mở bằng nút "Khai tờ khai" trong bảng Thành phần hồ sơ (registry declarationEforms,
+# vd khai sinh kết hợp nhận cha, mẹ, con): trợ lý chỉ điền được khi công dân đã tự mở tờ khai.
+EFORM_DOCS_READY = {
+    "md": (
+        "✓ Đã nhận **{files_count} tệp**.\n\n"
+        "Thủ tục này điền tờ khai ngay ở bước **Thành phần hồ sơ**: công dân nhấn nút **Khai tờ khai** "
+        "ở dòng {row} (*{label}*), đợi tờ khai mở ra rồi bấm **✍️ Điền tờ khai** để em điền ạ."
+    ),
+    "tts": (
+        "Dạ, em đã nhận giấy tờ. Công dân nhấn nút Khai tờ khai ở dòng {row} trên cổng, "
+        "tờ khai mở ra thì bấm Điền tờ khai để em điền ạ."
+    ),
+}
+EFORM_OPEN_GUIDE = {
+    "md": (
+        "Thủ tục này điền tờ khai ở bước **Thành phần hồ sơ**: công dân sang bước đó, nhấn nút "
+        "**Khai tờ khai** ở dòng {row} (*{label}*), đợi tờ khai mở ra rồi bấm **✍️ Điền tờ khai** ạ."
+    ),
+    "tts": (
+        "Công dân sang bước thành phần hồ sơ, nhấn nút Khai tờ khai ở dòng {row}, "
+        "tờ khai mở ra thì bấm Điền tờ khai ạ."
+    ),
+}
+EFORM_NOT_OPEN = {
+    "md": (
+        "Em chưa thấy tờ khai nào đang mở. Công dân nhấn nút **Khai tờ khai** ở dòng {row} "
+        "(*{label}*) trên cổng, đợi tờ khai hiện ra rồi bấm lại **✍️ Điền tờ khai** ạ."
+    ),
+    "tts": (
+        "Em chưa thấy tờ khai đang mở. Công dân nhấn nút Khai tờ khai ở dòng {row}, "
+        "tờ khai hiện ra rồi bấm lại Điền tờ khai ạ."
+    ),
+}
+EFORM_FILLING = {
+    "md": "Em đang điền **{label}**. Công dân giữ nguyên tờ khai đang mở, chờ chút ạ…",
+    "tts": "Dạ, em đang điền tờ khai. Công dân giữ nguyên tờ khai, chờ chút ạ.",
+}
+EFORM_NEXT = {
+    "md": (
+        "\n\nRà xong công dân lưu tờ khai này, rồi nhấn **Khai tờ khai** ở dòng {row} (*{label}*) "
+        "và bấm **✍️ Điền tờ khai** ạ."
+    ),
+    "tts": " Rà xong công dân lưu tờ khai, rồi mở tờ khai ở dòng {row} và bấm Điền tờ khai ạ.",
+}
+EFORM_ALL_FILLED = {
+    "md": (
+        "\n\nĐã điền xong các tờ khai. Rà xong công dân lưu tờ khai, đóng lại rồi bấm "
+        "**📎 Đính kèm giấy tờ** để em đính kèm ạ."
+    ),
+    "tts": " Đã điền xong các tờ khai. Công dân lưu tờ khai, đóng lại rồi bấm Đính kèm giấy tờ ạ.",
+}
+
 # ── Xin phép xử lý dữ liệu cá nhân (Luật 91/2025/QH15) — TRƯỚC khi nhận/đọc giấy tờ ──
 # Intro nối mốc trang hiện tại như ASK_DOC_METHOD; không đọc lại trạng thái đăng nhập.
 CONSENT_INTRO = {

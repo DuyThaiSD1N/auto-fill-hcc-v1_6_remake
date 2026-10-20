@@ -390,7 +390,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Y tế "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang" (1.116909).
     # +3 tư pháp: "dang-ky-cham-dut-giam-ho", "chung-thuc-chu-ky-nguoi-dich-khong-ctv" (attach-only),
     # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" (chọn Sở).
-    assert len(procedures) == 57
+    # +2 hộ tịch "khai-sinh-ket-hop-nhan-cha-me-con", "dang-ky-nuoi-con-nuoi-trong-nuoc".
+    assert len(procedures) == 59
 
     for procedure in procedures:
         key = procedure["key"]
