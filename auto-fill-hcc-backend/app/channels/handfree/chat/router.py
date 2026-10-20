@@ -185,6 +185,11 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết tô ô theo 3 màu và dẫn công dân bổ sung từng ô trống trên tờ khai eForm (action
         # field_review_*). Client cũ không khai → BE giữ nguyên báo cáo điền như trước.
         "supportsFieldReview": raw.get("supportsFieldReview") is True,
+        # Cùng vòng bổ sung ô trên form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
+        # Bản chỉ có supportsFieldReview không đọc được form này → BE giữ báo cáo điền như trước.
+        "supportsFieldReviewSurvey": raw.get("supportsFieldReviewSurvey") is True,
+        # Luồng bản 2 của trang một trang (thẻ tiến trình 3 bước, chỉ hiện nút đi tiếp khi đủ ô bắt buộc).
+        "supportsFlowV2": raw.get("supportsFlowV2") is True,
     }
 
 
@@ -301,18 +306,6 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             conv["form_context"]["applicantAddress"] = {
                 key: str(address.get(key) or "")[:200] for key in ("tinh", "xa", "diaChi")
             }
-    # Mẫu điện tử ĐANG MỞ (khai sinh / nhận cha, mẹ, con) chỉ đúng cho chính lượt này: tờ khai đóng
-    # thì không frame nào trả formContext → phải xoá, không được giữ mẫu cũ như mỏ neo người yêu cầu.
-    form_variant = str(raw_form_context.get("formVariant") or "")[:40]
-    form_signature = raw_form_context.get("formSignature")
-    stored_form_context = conv.get("form_context")
-    if isinstance(stored_form_context, dict):
-        if form_variant and isinstance(form_signature, list):
-            stored_form_context["formVariant"] = form_variant
-            stored_form_context["formSignature"] = [str(name)[:40] for name in form_signature[:10]]
-        else:
-            stored_form_context.pop("formVariant", None)
-            stored_form_context.pop("formSignature", None)
 
     if req.client_context:
         capabilities = req.client_context.capabilities or {}

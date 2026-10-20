@@ -217,15 +217,15 @@ async def test_client_khong_co_engine_van_nhan_huong_dan_ba_phuong_thuc():
     assert not r.actions and not r.cards
 
 
-async def test_hien_the_khong_tu_chon_cong_dan_chon_moi_gat_cong_tac():
-    # 15/10/2026: trợ lý KHÔNG gạt sẵn cách nào (trước đây gạt sẵn bản giấy) — công dân tự chọn.
+async def test_gat_san_ban_giay_co_dong_dau_cong_dan_doi_duoc():
+    # Tư pháp form cũ: trợ lý gạt sẵn "Nhận kết quả bản giấy có đóng dấu" rồi mời đổi.
     conv = _after_attach(RESULT_CLIENT)
     r = await _to_result_step(conv)
-    assert "Công dân chọn **một** cách nhận kết quả" in r.display_md
+    assert "Em đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
     card = r.cards[0]
-    assert card["kind"] == "result_methods" and card["selected"] == ""
+    assert card["kind"] == "result_methods" and card["selected"] == "paper"
     assert [o["key"] for o in card["options"]] == ["paper", "online", "postal"]
-    assert not r.actions and conv["result_method"] == ""
+    assert r.actions[0]["type"] == "select_result_method" and conv["result_method"] == "paper"
     assert r.chips[0]["send"] == "__action:guided_submit"
 
     r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "paper"}))
@@ -251,6 +251,7 @@ async def test_ban_giay_va_truc_tuyen_khong_doi_dien_them_gi():
     for cach in ("paper", "online"):
         conv = _after_attach(RESULT_CLIENT)
         await _to_result_step(conv)
+        await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": cach}))
         r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
             "method": cach, "ok": True, "missing": [],
         }))

@@ -135,7 +135,59 @@ def _build_item(file: dict, idx: int, document_name: str,
     }
 
 
+def build_plan_items(
+    files: list[dict], ocr_results: list[dict], llm_types: dict[int, dict[str, str]],
+) -> tuple[list[dict], list[dict]]:
+    """Xếp dòng cho từng tệp đã phân loại — dùng chung cho chế độ không tách và chế độ tách (mỗi giấy một tệp ảo)."""
+    ocr_by_name = {r.get("name"): r for r in ocr_results}
+    attachments: list[dict] = []
+    classified: list[dict] = []
+    used_names: set[str] = set()
+    used_slots: set[int] = set()  # ô cố định đã bị chiếm
+    # Người dân hay chụp CCCD 2 mặt thành 2 file rời → gom CÙNG NGƯỜI thành 1 PDF (helper hậu xử lý).
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
+    for idx, file in enumerate(files):
+        detected = llm_types.get(idx) or {"type": "other", "documentName": ""}
+        doc_type = detected["type"]
+        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        if doc_type == "identity_vn":  # CCCD/CMND công dân VN → ứng viên gộp 2 mặt
+            identity_indexes.add(idx)
+        base_name = detected.get("documentName") or _LABELS.get(doc_type, _LABELS["other"]) or file.get("name")
+        document_name = _unique_document_name(base_name, used_names, _LABELS.get(doc_type, _LABELS["other"]))
+
+        slot = _FIXED_SLOT.get(doc_type)
+        if slot and slot[0] not in used_slots:  # ô cố định còn trống → chiếm
+            used_slots.add(slot[0])
+            target, component_index, component_name = "existing", slot[0], slot[1]
+        else:  # không có ô sẵn / ô đã bị chiếm → thành phần mới
+            target, component_index, component_name = "new", None, ""
+
+        item = _build_item(file, idx, document_name, target, component_index, component_name)
+        attachments.append(item)
+        classified.append({
+            "fileName": file.get("name"), "type": doc_type, "documentName": document_name,
+            "target": item["target"], "componentIndex": item["componentIndex"],
+        })
+
+    # Gộp CCCD 2 mặt cùng người → 1 item mang sourceFileIndexes (FE ghép pdf-lib); 2 người khác KHÔNG gộp.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
+    return attachments, classified
+
+
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    """Chỉ boolean ``True`` mới tách giấy theo trang; client cũ / mất option luôn giữ nguyên từng tệp."""
+    if (options or {}).get("splitDocuments") is True:
+        # Import muộn: nhánh tách import ngược hàm xếp dòng của file này.
+        from app.pipelines.ket_hon_nuoc_ngoai.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_without_split(files, options, session)
+
+
+async def plan_without_split(
+    files: list[FileItem], options: dict | None = None, session: dict | None = None,
+) -> dict:
     _ = options or {}
     _ = session
     errors: list[str] = []
@@ -166,38 +218,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments: list[dict] = []
-    classified: list[dict] = []
-    used_names: set[str] = set()
-    used_slots: set[int] = set()  # ô cố định đã bị chiếm
-    # Người dân hay chụp CCCD 2 mặt thành 2 file rời → gom CÙNG NGƯỜI thành 1 PDF (helper hậu xử lý).
-    ocr_text_by_index: dict[int, str] = {}
-    identity_indexes: set[int] = set()
-    for idx, file in enumerate(raw_files):
-        detected = llm_types.get(idx) or {"type": "other", "documentName": ""}
-        doc_type = detected["type"]
-        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if doc_type == "identity_vn":  # CCCD/CMND công dân VN → ứng viên gộp 2 mặt
-            identity_indexes.add(idx)
-        base_name = detected.get("documentName") or _LABELS.get(doc_type, _LABELS["other"]) or file.get("name")
-        document_name = _unique_document_name(base_name, used_names, _LABELS.get(doc_type, _LABELS["other"]))
-
-        slot = _FIXED_SLOT.get(doc_type)
-        if slot and slot[0] not in used_slots:  # ô cố định còn trống → chiếm
-            used_slots.add(slot[0])
-            target, component_index, component_name = "existing", slot[0], slot[1]
-        else:  # không có ô sẵn / ô đã bị chiếm → thành phần mới
-            target, component_index, component_name = "new", None, ""
-
-        item = _build_item(file, idx, document_name, target, component_index, component_name)
-        attachments.append(item)
-        classified.append({
-            "fileName": file.get("name"), "type": doc_type, "documentName": document_name,
-            "target": item["target"], "componentIndex": item["componentIndex"],
-        })
-
-    # Gộp CCCD 2 mặt cùng người → 1 item mang sourceFileIndexes (FE ghép pdf-lib); 2 người khác KHÔNG gộp.
-    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
+    attachments, classified = build_plan_items(raw_files, ocr_results, llm_types)
 
     return {
         "attachments": attachments,

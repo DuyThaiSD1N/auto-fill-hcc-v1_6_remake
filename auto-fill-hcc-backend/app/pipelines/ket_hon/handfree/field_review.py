@@ -14,3 +14,7 @@ REQUIRED = (
 # Yêu cầu chung của hai bên nhưng nằm dưới tiêu đề "II. Thông tin bên nam" → hỏi không kèm tên phần.
 # ThongTin = ô "Số lượng bản sao", cổng chỉ dựng sau khi chọn "Có" ở ô Đề nghị cấp bản sao.
 NO_SECTION = ("loaiDangKy", "CapBanSao", "ThongTin")
+
+# Ô "Đề nghị cấp bản sao" (Có/Không) và ô số lượng cổng chỉ dựng sau khi chọn Có: công dân nói "có, ba bản" hoặc chỉ
+# "ba bản" thì chọn Có rồi điền luôn số lượng, không hỏi lại.
+COPY_QUANTITY = ("CapBanSao", "ThongTin")

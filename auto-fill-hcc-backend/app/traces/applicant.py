@@ -13,6 +13,7 @@ _REQUESTER_RAW_KEYS = (
     "Requester_FullName",
     "Cccd_HoTen",
     "CccdNam_HoTen",
+    "BenNam_HoTen",
     "Nam_HoTen",
     "ToKhai_HoTenNguoiYeuCau",
 )

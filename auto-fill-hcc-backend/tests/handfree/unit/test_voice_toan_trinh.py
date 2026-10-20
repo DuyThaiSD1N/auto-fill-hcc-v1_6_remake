@@ -136,13 +136,44 @@ def test_luot_chi_co_chu_giu_nut_cung_buoc_bo_nut_khi_sang_buoc_khac():
     assert conv["voice_options"] is None
 
 
-def test_khong_noi_thay_nut_nop_ho_so():
-    conv = _conv("done")
+def test_noi_duoc_nut_nop_ho_so_tru_che_do_mong():
     r = flow.Reply("x")
     r.chips = [{"label": "Gửi hồ sơ", "send": "__action:guided_submit"},
                {"label": "Nhận bản giấy", "send": '__action:pick_result_method:{"method":"paper"}'}]
+    conv = _conv("done")
+    flow.update_voice_options(conv, r)
+    assert [i["label"] for i in conv["voice_options"]["items"]] == ["Gửi hồ sơ", "Nhận bản giấy"]
+    conv = _conv("done")
+    conv["lang"] = "hmong"
     flow.update_voice_options(conv, r)
     assert [i["label"] for i in conv["voice_options"]["items"]] == ["Nhận bản giấy"]
+
+
+async def test_noi_nop_ho_so_thi_hoi_xac_nhan_roi_moi_nop():
+    # Trang nộp một trang (khai sinh form mới): nút "Lưu và nộp hồ sơ".
+    conv = _conv("done", caps={"supportsTuPhapMoi": True, "supportsTpmAutoFlow": True})
+    chip = {"label": "💾 Lưu và nộp hồ sơ", "send": "__action:tpm_submit", "solid": True, "cta": True}
+    conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
+    asked = await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
+    assert asked.display_md == ("Công dân chắc chắn **nộp hồ sơ** chứ ạ? Nói **Có** hoặc bấm **Lưu và nộp hồ sơ** để "
+                                "em nộp ạ.")
+    assert not any(a.get("type") == "guided_submit" for a in asked.actions)
+    assert asked.chips[0]["send"] == '__action:tpm_submit:{"voiceConfirmed":true}'
+    # Sự kiện nền xen giữa không làm mất câu hỏi xác nhận.
+    await flow.handle_turn(conv, Intent("event", "field_review_status", {"stats": {}}))
+    done = await flow.handle_turn(conv, Intent("confirm"))
+    assert any(a.get("type") == "guided_submit" for a in done.actions)
+    assert "voice_submit_confirm" not in conv
+
+
+async def test_noi_khong_thi_chua_nop_va_giu_nut():
+    conv = _conv("done")
+    chip = {"label": "💾 Lưu và nộp hồ sơ", "send": "__action:tpm_submit", "solid": True, "cta": True}
+    conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
+    await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
+    reply = await flow.handle_turn(conv, Intent("deny"))
+    assert reply.display_md.startswith("Dạ, em chưa nộp.") and "**Lưu và nộp hồ sơ**" in reply.display_md
+    assert reply.chips == [chip] and not reply.actions
 
 
 async def test_bo_phan_loai_chon_nut_ra_dung_lenh_cua_nut(monkeypatch):

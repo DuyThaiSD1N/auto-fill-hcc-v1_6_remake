@@ -18,7 +18,10 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 5. Tờ khai đăng ký lại khai tử bản giấy vẫn là paper_declaration và sẽ thêm thành phần hồ sơ mới; không xếp tờ khai vào STT 2 chỉ vì tờ khai có dòng "Đã chết".
 6. CCCD/CMND/hộ chiếu/căn cước là identity và sẽ thêm thành phần hồ sơ mới.
 7. Giấy KHAI SINH/KHAI SANH/GIẤY CHỨNG SINH/GIẤY CHỨNG NHẬN BẢO SANH là other (thêm thành phần hồ sơ mới), TUYỆT ĐỐI KHÔNG phải death_proof — kể cả khi là giấy của chính người đã chết. Chỉ Giấy chứng tử / Giấy báo tử / Trích lục khai tử mới được vào STT 2.
-8. Trả JSON object duy nhất, không markdown, không giải thích.
+8. Với identity, trả thêm subjectName = họ tên CHỦ THẺ đọc chắc trên chính thẻ (dòng "Họ và tên" / "Họ, chữ đệm và
+   tên khai sinh"). Mặt sau thẻ không có dòng họ tên, hoặc đọc không chắc → "". Không lấy tên cán bộ ký, người đã
+   chết hay người thân ghi trên giấy khác. Loại giấy khác để subjectName "".
+9. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>
@@ -51,10 +54,10 @@ Output đúng 1 JSON object, không bọc code fence.
 Sau JSON không output thêm ký tự nào.
 
 Schema:
-{"documents":[{"index":0,"docType":"death_proof","documentName":"Thông tin lăng mộ"}]}
+{"documents":[{"index":0,"docType":"death_proof","documentName":"Thông tin lăng mộ","subjectName":""}]}
 
 Ví dụ đúng:
-{"documents":[{"index":0,"docType":"paper_declaration","documentName":"Tờ khai bản giấy"},{"index":1,"docType":"death_proof","documentName":"Thông tin lăng mộ"},{"index":2,"docType":"identity","documentName":"Căn cước công dân"}]}
+{"documents":[{"index":0,"docType":"paper_declaration","documentName":"Tờ khai bản giấy","subjectName":""},{"index":1,"docType":"death_proof","documentName":"Thông tin lăng mộ","subjectName":""},{"index":2,"docType":"identity","documentName":"Căn cước công dân","subjectName":"Nguyễn Văn A"}]}
 
 Ví dụ sai:
 ```json

@@ -231,7 +231,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert byt_funeral["wizard"] == byt_pension["wizard"]
     assert byt_funeral["hideRepeatableHint"] is True
     # Mai táng cho đối tượng BẢO TRỢ xã hội: cùng khung, chỉ khác nhóm đối tượng.
-    byt_funeral_social = procedures.pop("ho-tro-mai-tang")
+    byt_funeral_social = procedures.pop("ho-tro-mai-tang-1116910")
     assert byt_funeral_social.get("flowProfile") is None
     assert byt_funeral_social["needsAgencySelect"] is True
     assert byt_funeral_social["wizard"] == byt_pension["wizard"]
@@ -347,7 +347,8 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     attach_only = {
         "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san",
-        "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-phan-chia-di-san",
+        "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-chu-ky-nguoi-dich-khong-ctv",
+        "chung-thuc-phan-chia-di-san",
         "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-tu-choi-nhan-di-san",
         "chung-thuc-di-chuc", "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai",
     }
@@ -370,7 +371,7 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 "dieu-chinh-huu-tri-xa-hoi" (Bộ Y tế), +1 "cham-dut-hoat-dong-ho-kinh-doanh"
     # +1 "cap-giay-phep-xay-dung-moi-nha-o-rieng-le" (Bộ Xây dựng)
     # +4 cổng Bộ Y tế dùng lại core sẵn có: "tro-cap-xa-hoi-hang-thang",
-    # "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang", "xac-dinh-muc-do-khuyet-tat";
+    # "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang" (nay là "ho-tro-mai-tang-1116910"), "xac-dinh-muc-do-khuyet-tat";
     # +3 cổng Bộ Nội vụ: "di-chuyen-ho-so-nguoi-huong-tro-cap" (cấp Sở),
     # "uu-dai-ncc-tu-tran" + "tro-cap-tho-cung-liet-si" (cấp xã);
     # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP);
@@ -387,7 +388,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # "cap-lai-cap-doi-gcn-ho-kinh-doanh".
     # +1 cổng Bộ Y tế "doi-cap-lai-giay-xac-nhan-khuyet-tat" (1.001653).
     # +1 cổng Bộ Y tế "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang" (1.116909).
-    assert len(procedures) == 54
+    # +3 tư pháp: "dang-ky-cham-dut-giam-ho", "chung-thuc-chu-ky-nguoi-dich-khong-ctv" (attach-only),
+    # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" (chọn Sở).
+    assert len(procedures) == 57
 
     for procedure in procedures:
         key = procedure["key"]

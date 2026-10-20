@@ -67,6 +67,8 @@ def test_khong_dung_chuoi_tieng_viet_tran_trong_Reply():
 _NOT_REACHABLE_IN_HMONG = {
     "PROFILE_APPLIED", "PROFILE_ASK_PHONE", "PROFILE_NEED_PHONE", "PROFILE_NOT_FOUND",
     "PROFILE_SAVED", "LANG_OFF",
+    # Nộp hồ sơ bằng lời chỉ bật ở tiếng Việt (chế độ Mông nút nộp không vào danh sách nói được).
+    "VOICE_SUBMIT_CONFIRM", "VOICE_SUBMIT_CANCELLED",
 }
 
 

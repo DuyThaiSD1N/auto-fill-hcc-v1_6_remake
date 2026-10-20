@@ -305,6 +305,7 @@ PROCEDURES: list[dict] = [
         "subtitle": "Kết hôn với người nước ngoài / công dân VN định cư ở nước ngoài",
         "icon": "🌏",
         "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
         # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN/trích lục/khai tử.
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e13-728a-a0cd-635811d8432e",
         # Giấy tờ nước ngoài (hộ chiếu/CMND nước khác) OCR có thể không tự nhận loại →
@@ -337,6 +338,7 @@ PROCEDURES: list[dict] = [
         "subtitle": "Đăng ký lại kết hôn khi sổ hộ tịch/bản chính bị mất",
         "icon": "💞",
         "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
         # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN/trích lục/khai tử.
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-f82cb6606242",
         # GCN kết hôn cũ BẮT BUỘC: nguồn duy nhất của số/ngày/nơi đăng ký trước đây + là
@@ -532,6 +534,7 @@ PROCEDURES: list[dict] = [
         "subtitle": "Đăng ký lại khai tử khi thông tin đăng ký trước đây bị mất hoặc hư hỏng",
         "icon": "🕯️",
         "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6ebc-709e-8678-a9f8b66738f2",
         # Cổng eForm hộ tịch dùng các component x-*; extension đã có fill-legacy tương ứng.
         "hideRepeatableHint": True,
@@ -596,99 +599,6 @@ PROCEDURES: list[dict] = [
             "\nBước 3: eForm online ở STT 1 bỏ qua; kết quả ADN/văn bản y tế/giám định vào STT 2; "
             "nếu không có văn bản xác nhận quan hệ thì văn bản cam đoan + người làm chứng vào STT 3; "
             "tờ khai bản giấy, CCCD/căn cước và giấy khai sinh/giấy chứng sinh thêm thành phần hồ sơ mới."
-        ),
-    },
-    {
-        "key": "khai-sinh-ket-hop-nhan-cha-me-con",
-        "detect": {"urlIncludes": ["maThuTuc=1.000689"]},
-        "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con",
-        "shortLabel": "Khai sinh kết hợp nhận Cha, Mẹ, Con",
-        "subtitle": "Khai sinh cho con đồng thời nhận cha, mẹ, con",
-        "icon": "👶",
-        "flowProfile": "tu-phap",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faf-768a-9224-9cb889436133",
-        # Bước Kê khai thông tin KHÔNG có tờ khai: hai mẫu điện tử nằm ở dòng 1, 2 của bảng Thành
-        # phần hồ sơ, chỉ hiện ra khi công dân tự bấm nút "Khai tờ khai" của dòng đó. Trợ lý nhận
-        # giấy tờ xong thì CHỜ: bảo công dân mở từng tờ khai rồi bấm "Điền tờ khai"; pipeline điền
-        # đúng mẫu đang mở theo formVariant. Điền đủ hai tờ khai mới sang đính kèm như thường.
-        "declarationEforms": [
-            {"variant": "birth_registration", "row": 1, "label": "Tờ khai đăng ký khai sinh"},
-            {"variant": "parent_child_recognition", "row": 2,
-             "label": "Tờ khai đăng ký nhận cha, mẹ, con"},
-        ],
-        # Tờ khai giấy là nguồn chính của quan hệ cha/mẹ/con; CCCD sides=4 cho cha + mẹ × 2 mặt.
-        "requiredDocs": [
-            {"key": "to_khai", "name": "Tờ khai đăng ký khai sinh và tờ khai nhận cha, mẹ, con",
-             "icon": "📄", "sides": 2},
-            {"key": "cccd", "name": "CCCD của người yêu cầu và các bên (cha, mẹ)", "icon": "🪪",
-             "sides": 4},
-            {"key": "chung_sinh", "name": "Giấy chứng sinh", "icon": "📃", "sides": 1},
-            {"key": "khac", "name": "Chứng cứ quan hệ cha, mẹ, con (kết quả ADN…), giấy tờ chứng minh "
-             "tình trạng hôn nhân (nếu có)", "icon": "📎", "sides": 5, "optional": True},
-        ],
-        "mode": "agent",
-        "review": False,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên để điền cả hai mẫu điện tử:\n"
-            "1. Tờ khai đăng ký khai sinh.\n"
-            "2. Tờ khai đăng ký nhận cha, mẹ, con.\n"
-            "3. Giấy chứng sinh.\n"
-            "4. CCCD/Căn cước của người yêu cầu và các bên liên quan.\n"
-            "5. Kết quả ADN hoặc văn bản xác nhận quan hệ cha, mẹ, con.\n"
-            "6. Nếu có: giấy chứng tử, quyết định/bản án ly hôn chứng minh tình trạng hôn nhân.\n"
-            "Điền: công dân bấm \"Khai tờ khai\" ở dòng 1 rồi dòng 2 của Thành phần hồ sơ, mỗi lần "
-            "tờ khai mở ra thì bấm \"Điền tờ khai\" trong Trợ lý.\n"
-            "Bước đính kèm: tờ khai giấy chỉ dùng để OCR; giấy chứng sinh vào STT 3; "
-            "kết quả ADN/văn bản giám định vào STT 4; CCCD và chứng cứ tình trạng hôn nhân "
-            "được thêm thành phần hồ sơ mới."
-        ),
-    },
-    {
-        "key": "dang-ky-nuoi-con-nuoi-trong-nuoc",
-        "detect": {"textIncludes": ["Đăng ký việc nuôi con nuôi trong nước"], "headingDisabled": True},
-        "label": "Đăng ký việc nuôi con nuôi trong nước",
-        "shortLabel": "Nuôi con nuôi trong nước",
-        "subtitle": "Đăng ký việc nhận nuôi con nuôi trong nước",
-        "icon": "🤱",
-        "flowProfile": "tu-phap",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9dae-705f-a893-0c4e1f0c32a7",
-        # Giống khai sinh kết hợp nhận cha, mẹ, con: Kê khai thông tin KHÔNG có tờ khai, đơn xin nhận
-        # con nuôi (eForm NCNV5) nằm ở dòng 5 bảng Thành phần hồ sơ, chỉ hiện khi công dân bấm "Khai tờ
-        # khai". Dòng 6 (Đơn đăng ký nhu cầu nhận trẻ em) chưa có pipeline → không khai ở đây.
-        "declarationEforms": [
-            {"variant": "adoption_application", "row": 5, "label": "Đơn xin nhận con nuôi"},
-        ],
-        # Đơn là nguồn chính của cả hồ sơ; CCCD sides=4 cho cha + mẹ nuôi × 2 mặt.
-        "requiredDocs": [
-            {"key": "to_khai", "name": "Đơn xin nhận con nuôi", "icon": "📄", "sides": 4},
-            {"key": "cccd", "name": "CCCD của cha, mẹ nuôi", "icon": "🪪", "sides": 4},
-            {"key": "ho_tich", "name": "Giấy khai sinh của trẻ được nhận làm con nuôi", "icon": "📜",
-             "sides": 1},
-            {"key": "chung_minh_tthn", "name": "Giấy chứng nhận kết hôn (vợ chồng cùng nhận) hoặc giấy "
-             "xác nhận tình trạng hôn nhân (người đơn thân)", "icon": "💍", "sides": 1},
-            {"key": "suc_khoe", "name": "Giấy khám sức khỏe của cha, mẹ nuôi", "icon": "🩺", "sides": 2},
-            {"key": "khac", "name": "Giấy tờ chứng minh chỗ ở, thu nhập; ảnh, giấy khám sức khỏe của trẻ; "
-             "giấy tờ của cha/mẹ đẻ (nếu có)", "icon": "📎", "sides": 5, "optional": True},
-        ],
-        "mode": "agent",
-        "review": False,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên để điền đơn xin nhận con nuôi:\n"
-            "1. Đơn xin nhận con nuôi trong nước — nguồn chính của phần cha/mẹ nuôi, con nuôi, nơi trẻ đang sống.\n"
-            "2. CCCD/căn cước của cha mẹ nuôi; giấy chứng nhận kết hôn (vợ chồng cùng nhận).\n"
-            "3. Giấy khai sinh của trẻ.\n"
-            "4. Giấy khám sức khỏe, giấy tờ chứng minh chỗ ở/thu nhập (sổ đỏ, bảng lương, xác nhận thu nhập), "
-            "ảnh của trẻ, giấy tờ của mẹ đẻ nếu có.\n"
-            "Điền: công dân bấm \"Khai tờ khai\" ở dòng 5 (Đơn xin nhận con nuôi) của Thành phần hồ sơ, "
-            "tờ khai mở ra thì bấm \"Điền tờ khai\" trong Trợ lý.\n"
-            "Bước đính kèm: CCCD cha mẹ nuôi→STT 1; giấy khám sức khỏe cha mẹ nuôi→STT 2; giấy tờ hoàn "
-            "cảnh, chỗ ở, thu nhập→STT 3; giấy chứng nhận kết hôn→STT 4; STT 5–6 là tờ khai trên cổng, "
-            "không đính file. Giấy khai sinh, giấy khám sức khỏe, ảnh của trẻ, CCCD/giấy tờ của mẹ đẻ "
-            "được thêm thành phần hồ sơ mới."
         ),
     },
     {

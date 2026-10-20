@@ -1,4 +1,4 @@
-"""Compact agent đăng ký kết hôn: OCR text -> CccdNam/CccdNu -> legacy UI fields."""
+"""Compact agent đăng ký kết hôn: OCR text -> BenNam/BenNu -> legacy UI fields."""
 
 import json
 
@@ -9,6 +9,7 @@ from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.ket_hon import process as agent
 from app.pipelines.ket_hon.process import mapper, runner as ket_hon_runner
+from app.pipelines.ket_hon.process import base_prompt as ket_hon_base_prompt
 from app.pipelines.ket_hon.process.prompt import EXTRA_RULES
 from app.pipelines.ket_hon.process.schema import FIELDS
 from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
@@ -30,11 +31,11 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
     )
     out = {
         "fields": {
-            "CccdNam_HoTen": "VŨ ĐÌNH THIẾT",
-            "CccdNam_SoDinhDanh": "040203015844",
-            "CccdNam_NgaySinh": "26/4/2003",
-            "CccdNam_NgayCap": "2/7/2021",
-            "CccdNam_NoiCuTru_TrongNuoc": {
+            "BenNam_HoTen": "VŨ ĐÌNH THIẾT",
+            "BenNam_SoDinhDanh": "040203015844",
+            "BenNam_NgaySinh": "26/4/2003",
+            "BenNam_NgayCap": "2/7/2021",
+            "BenNam_NoiCuTru_TrongNuoc": {
                 "quocGia": "Việt Nam",
                 "tinh": "Nghệ An",
                 "xa": "Xã cũ bên nam",
@@ -46,12 +47,12 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
                 "xa": "Phường Xuân Hương",
                 "diaChi": "8D Đoàn Thị Điểm",
             },
-            "CccdNu_HoTen": "PHẠM NGỌC THỦY",
-            "CccdNu_SoDinhDanh": "012193000851",
-            "CccdNu_NgaySinh": "20/03/1993",
-            "CccdNu_NgayCap": "06/02/2024",
-            "CccdNu_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "CccdNu_NoiCuTru_TrongNuoc": {
+            "BenNu_HoTen": "PHẠM NGỌC THỦY",
+            "BenNu_SoDinhDanh": "012193000851",
+            "BenNu_NgaySinh": "20/03/1993",
+            "BenNu_NgayCap": "06/02/2024",
+            "BenNu_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "BenNu_NoiCuTru_TrongNuoc": {
                 "quocGia": "Việt Nam",
                 "tinh": "Lai Châu",
                 "xa": "Xã cũ bên nữ",
@@ -123,28 +124,28 @@ async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
 
 
 def test_ket_hon_compact_prompt_instructs_gender_split():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    system_prompt = ket_hon_base_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
     field_desc = {field["name"]: field["desc"] for field in FIELDS}
 
-    assert "Nam -> nhóm CccdNam_*" in system_prompt
-    assert "Nữ -> nhóm CccdNu_*" in system_prompt
+    assert "Nam -> nhóm BenNam_*" in system_prompt
+    assert "Nữ -> nhóm BenNu_*" in system_prompt
     assert "Không phân biệt nam/nữ theo tên file" in system_prompt
     assert "CHỈ đọc ở MẶT TRƯỚC" in system_prompt
     assert "TUYỆT ĐỐI không" in system_prompt and "MRZ/IDVNM ở mặt sau" in system_prompt
     assert "không dùng MRZ để bù" in system_prompt
-    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["CccdNam_SoDinhDanh"]
-    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["CccdNu_SoDinhDanh"]
-    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["CccdNam_SoDinhDanh"]
-    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["CccdNu_SoDinhDanh"]
-    assert "BẮT BUỘC cố đọc CccdNam_NoiCap/CccdNu_NoiCap" in system_prompt
+    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["BenNam_SoDinhDanh"]
+    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["BenNu_SoDinhDanh"]
+    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["BenNam_SoDinhDanh"]
+    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["BenNu_SoDinhDanh"]
+    assert "BẮT BUỘC cố đọc BenNam_NoiCap/BenNu_NoiCap" in system_prompt
     assert "Bộ Công an" in system_prompt
     assert "HoTenBenNam" in system_prompt
     assert "Không trả field UI/default" in system_prompt
     assert '"TỜ KHAI ĐĂNG KÝ KẾT HÔN"' in system_prompt
     assert "Nếu có số lượng dương thì BẮT BUỘC trả CopyRequest_WantsCopy" in system_prompt
     assert "TUYỆT ĐỐI không mặc định" in system_prompt
-    assert "CHỈ lấy từ CCCD/CMND của bên nam" in field_desc["CccdNam_NoiCuTru_TrongNuoc"]
-    assert "CHỈ lấy từ CCCD/CMND của bên nữ" in field_desc["CccdNu_NoiCuTru_TrongNuoc"]
+    assert "CHỈ lấy từ CCCD/CMND của bên nam" in field_desc["BenNam_NoiCuTru_TrongNuoc"]
+    assert "CHỈ lấy từ CCCD/CMND của bên nữ" in field_desc["BenNu_NoiCuTru_TrongNuoc"]
     assert "CHỈ lấy từ tờ khai" in field_desc["ToKhaiNam_NoiCuTru_TrongNuoc"]
     assert "CHỈ lấy từ tờ khai" in field_desc["ToKhaiNu_NoiCuTru_TrongNuoc"]
     assert "mapper sẽ tự ưu tiên tờ khai" in system_prompt
@@ -156,24 +157,24 @@ def test_ket_hon_compact_prompt_instructs_gender_split():
 
 
 def test_ket_hon_ethnicity_requires_explicit_labeled_source():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    system_prompt = ket_hon_base_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
     field_desc = {field["name"]: field["desc"] for field in FIELDS}
 
     assert 'không xuất hiện nhãn "Dân tộc" → BỎ CẢ HAI field dân tộc' in system_prompt
     assert "không suy đoán dân tộc" in system_prompt
     assert "Dân tộc phổ biến" not in system_prompt
-    assert "thiếu nhãn thì bỏ field" in field_desc["CccdNam_DanToc"]
-    assert "thiếu nhãn thì bỏ field" in field_desc["CccdNu_DanToc"]
+    assert "thiếu nhãn thì bỏ field" in field_desc["BenNam_DanToc"]
+    assert "thiếu nhãn thì bỏ field" in field_desc["BenNu_DanToc"]
 
     # Hai CCCD không cung cấp dân tộc: compact output không có field dân tộc thì mapper
     # cũng tuyệt đối không tự tạo giá trị cho form.
     mapped = {
         field["name"]: field["value"]
         for field in mapper.enrich([
-            {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
-            {"name": "CccdNam_SoDinhDanh", "value": "001001001001"},
-            {"name": "CccdNu_HoTen", "value": "NGƯỜI NỮ"},
-            {"name": "CccdNu_SoDinhDanh", "value": "002002002002"},
+            {"name": "BenNam_HoTen", "value": "NGƯỜI NAM"},
+            {"name": "BenNam_SoDinhDanh", "value": "001001001001"},
+            {"name": "BenNu_HoTen", "value": "NGƯỜI NỮ"},
+            {"name": "BenNu_SoDinhDanh", "value": "002002002002"},
         ])
     }
     assert "DanTocBenNam" not in mapped
@@ -182,10 +183,10 @@ def test_ket_hon_ethnicity_requires_explicit_labeled_source():
 
 def test_ket_hon_drops_inferred_ethnicity_when_two_cccd_have_no_ethnicity_label():
     hallucinated = {
-        "CccdNam_HoTen": "NGƯỜI NAM",
-        "CccdNam_DanToc": "DÂN TỘC SUY ĐOÁN",
-        "CccdNu_HoTen": "NGƯỜI NỮ",
-        "CccdNu_DanToc": "DÂN TỘC SUY ĐOÁN",
+        "BenNam_HoTen": "NGƯỜI NAM",
+        "BenNam_DanToc": "DÂN TỘC SUY ĐOÁN",
+        "BenNu_HoTen": "NGƯỜI NỮ",
+        "BenNu_DanToc": "DÂN TỘC SUY ĐOÁN",
     }
     two_identity_cards = [
         {"text": "CĂN CƯỚC - Họ và tên: NGƯỜI NAM - Giới tính: Nam - Nơi cư trú: Bản A"},
@@ -194,14 +195,14 @@ def test_ket_hon_drops_inferred_ethnicity_when_two_cccd_have_no_ethnicity_label(
 
     filtered = ket_hon_runner._compact_field_fallback(hallucinated, two_identity_cards)
 
-    assert filtered["CccdNam_HoTen"] == "NGƯỜI NAM"
-    assert filtered["CccdNu_HoTen"] == "NGƯỜI NỮ"
-    assert "CccdNam_DanToc" not in filtered
-    assert "CccdNu_DanToc" not in filtered
+    assert filtered["BenNam_HoTen"] == "NGƯỜI NAM"
+    assert filtered["BenNu_HoTen"] == "NGƯỜI NỮ"
+    assert "BenNam_DanToc" not in filtered
+    assert "BenNu_DanToc" not in filtered
 
 
 def test_ket_hon_keeps_ethnicity_when_document_has_explicit_label():
-    extracted = {"CccdNam_DanToc": "Kinh", "CccdNu_DanToc": "Mông"}
+    extracted = {"BenNam_DanToc": "Kinh", "BenNu_DanToc": "Mông"}
     declaration = [{"text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nDân tộc | Kinh | Mông"}]
 
     assert ket_hon_runner._compact_field_fallback(extracted, declaration) == extracted
@@ -209,10 +210,10 @@ def test_ket_hon_keeps_ethnicity_when_document_has_explicit_label():
 
 def test_ket_hon_does_not_recheck_divorce_status_after_llm():
     extracted = {
-        "CccdNu_HoTen": "NGƯỜI NỮ",
-        "CccdNu_TinhTrangHonNhan": "3",
-        "CccdNam_HoTen": "NGƯỜI NAM",
-        "CccdNam_TinhTrangHonNhan": "3",
+        "BenNu_HoTen": "NGƯỜI NỮ",
+        "BenNu_TinhTrangHonNhan": "3",
+        "BenNam_HoTen": "NGƯỜI NAM",
+        "BenNam_TinhTrangHonNhan": "3",
     }
     documents = [{"text": "QUYẾT ĐỊNH LY HÔN"}]
 
@@ -339,9 +340,9 @@ def test_ket_hon_mapper_normalizes_ho_chi_minh_province_aliases():
     )
     for province in aliases:
         mapped = {field["name"]: field["value"] for field in mapper.enrich([
-            {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
-            {"name": "CccdNam_SoDinhDanh", "value": "079000000001"},
-            {"name": "CccdNam_NoiCuTru_TrongNuoc", "value": {
+            {"name": "BenNam_HoTen", "value": "NGƯỜI NAM"},
+            {"name": "BenNam_SoDinhDanh", "value": "079000000001"},
+            {"name": "BenNam_NoiCuTru_TrongNuoc", "value": {
                 "quocGia": "Việt Nam",
                 "tinh": province,
                 "xa": "P15",
@@ -370,11 +371,11 @@ def test_ket_hon_registration_type_has_no_default_but_keeps_explicit_declaration
     def mapped(compact_fields):
         return {field["name"]: field for field in mapper.enrich(compact_fields)}
 
-    without_declaration = mapped([{"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"}])
+    without_declaration = mapped([{"name": "BenNam_HoTen", "value": "NGƯỜI NAM"}])
     assert "loaiDangKy" not in without_declaration
 
     explicit = mapped([
-        {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+        {"name": "BenNam_HoTen", "value": "NGƯỜI NAM"},
         {"name": "ToKhai_LoaiDangKy", "value": "Đăng ký lần đầu"},
     ])
     assert explicit["loaiDangKy"]["value"] == "1"

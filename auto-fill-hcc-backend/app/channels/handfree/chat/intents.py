@@ -176,6 +176,9 @@ _GLOBAL_INTENTS: list[dict] = [
     {"kind": "action", "value": "new_procedure",
      "desc": "muốn bỏ thủ tục đang làm, chọn thủ tục khác mà CHƯA nêu tên thủ tục mới (nêu tên → kind procedure). "
              "KHÔNG phải câu xin sang bước tiếp theo / bước nhận kết quả của hồ sơ đang làm"},
+    {"kind": "action", "value": "repeat",
+     "desc": "CHƯA NGHE RÕ / chưa hiểu câu trợ lý vừa nói và muốn trợ lý NÓI LẠI (\"sao cơ\", \"gì cơ\", \"hả\", "
+             "\"nói lại đi\", \"em nói gì\", \"nhắc lại\") — không hỏi thêm thông tin gì mới"},
 ]
 
 # ── Chuyển bước wizard bằng lời ──
@@ -305,6 +308,9 @@ DUY NHẤT một JSON:
   và điền lại tờ khai, dừng bổ sung): CHỈ chọn khi câu NÓI RÕ đúng việc đó ("điền lại đi", "tôi muốn thêm
   giấy tờ", "sửa giấy tờ", "điền lại tờ khai"). Câu xác nhận chung chung ("được rồi", "đúng rồi", "ok",
   "xong rồi", "ừ") KHÔNG BAO GIỜ là các nút này — bấm nhầm là mất phần công dân vừa điền → dùng confirm.
+  Quy tắc trên CHỈ cho nút làm lại / xoá. NÚT ĐI TIẾP ("Xong, sang bước…", "Bước tiếp theo") mà trợ lý vừa mời
+  công dân kiểm tra thông tin rồi bấm: câu "đúng rồi", "thông tin đã đúng", "đúng hết rồi", "ok sang đi" là
+  chọn nút đi tiếp đó (button).
 
 - procedure: người dân muốn LÀM hoặc ĐỔI SANG một thủ tục hành chính (nêu tên hoặc mô tả thủ tục,
   kể cả nói tắt, sai chính tả) → value = "" (một agent khác sẽ xác định đúng thủ tục). Chỉ dùng
@@ -324,7 +330,8 @@ DUY NHẤT một JSON:
   KHÔNG phải deny; deny chỉ khi công dân không muốn làm THỦ TỤC này.
   Ở bước consent: "đồng ý", "đồng ý tất cả", "đồng ý hết", "chọn tất cả" là ĐỒNG Ý cho xử lý dữ
   liệu (consent_agree / nút đồng ý).
-- ask_question: hỏi thông tin (lệ phí, thời gian, giấy tờ cần...) → value = câu hỏi rút gọn.
+- ask_question: hỏi thông tin (lệ phí, thời gian, giấy tờ cần...) → value = câu hỏi rút gọn. Câu hỏi lại vì
+  chưa nghe rõ ("sao cơ", "gì cơ", "hả") KHÔNG phải ask_question → state_action "repeat".
 - unknown: không xếp được → value = "".
 
 Câu có thể đến từ NHẬN GIỌNG NÓI: có thể không dấu, sai chính tả, nghe nhầm âm gần giống — hiểu

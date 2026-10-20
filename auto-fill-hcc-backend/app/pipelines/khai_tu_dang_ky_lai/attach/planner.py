@@ -41,6 +41,12 @@ _PAPER_DECLARATION_LABEL = "Tờ khai bản giấy"
 _IDENTITY_LABEL = "Căn cước công dân"
 _OTHER_LABEL = "Tài liệu đăng ký lại khai tử"
 
+# Lưới dự phòng khi LLM không trả subjectName: dòng họ tên in trên mặt trước thẻ.
+_SUBJECT_NAME_RE = re.compile(
+    r"(?im:(?:họ\s*(?:,\s*chữ\s*đệm)?\s*(?:,|và)?\s*tên(?:\s*khai\s*sinh)?|full\s*name)"
+    r"(?:\s*/\s*full\s*name)?\s*:?)[ \t]*\n?[ \t]*([A-ZÀ-ỸĐ][A-ZÀ-ỸĐ ]{3,60})"
+)
+
 _ROW_2_COMPONENT = (
     "- Bản sao Giấy chứng tử trước đây được cấp hợp lệ. Nếu không có bản sao Giấy chứng tử "
     "trước đây được cấp hợp lệ thì nộp bản sao hồ sơ, giấy tờ liên quan có nội dung chứng minh "
@@ -50,6 +56,23 @@ _ROW_3_COMPONENT = (
     "- Văn bản ủy quyền theo quy định của pháp luật trong trường hợp ủy quyền thực hiện việc "
     "đăng ký lại khai tử."
 )
+
+
+def _clean_subject_name(value: Any) -> str:
+    subject = re.sub(r"\s+", " ", str(value or "")).strip(" :-")
+    if fold(subject) in {"", "ho ten", "ho va ten", "full name", "khong ro"}:
+        return ""
+    return subject[:40].strip()
+
+
+def _subject_from_text(text: str) -> str:
+    match = _SUBJECT_NAME_RE.search(str(text or ""))
+    return _clean_subject_name(match.group(1)) if match else ""
+
+
+def _identity_name(subject_name: Any) -> str:
+    subject = _clean_subject_name(subject_name)
+    return normalize_document_name(f"CCCD {subject}", _IDENTITY_LABEL) if subject else _IDENTITY_LABEL
 
 
 def _truncate_text(text: str, limit: int = 3000) -> str:
@@ -200,6 +223,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
         return {
             "type": _normalize_doc_type(str(item.get("docType") or item.get("type") or "")),
             "documentName": str(item.get("documentName") or item.get("title") or "").strip(),
+            "subjectName": str(item.get("subjectName") or "").strip(),
         }
 
     out: dict[int, dict[str, str]] = {}
@@ -262,6 +286,7 @@ def build_plan_items(
     classified: list[dict] = []
     ocr_text_by_index: dict[int, str] = {}
     identity_indexes: set[int] = set()
+    subject_by_index: dict[int, str] = {}
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -283,6 +308,9 @@ def build_plan_items(
             doc_type = _DOC_OTHER
         if doc_type == _DOC_IDENTITY:
             identity_indexes.add(idx)
+        # Họ tên chủ thẻ để đặt tên dòng CCCD theo người; LLM trước, dòng họ tên trong OCR chỉ là lưới dự phòng.
+        subject_by_index[idx] = _clean_subject_name(detected.get("subjectName")) or (
+            _subject_from_text(text) if doc_type == _DOC_IDENTITY else "")
         document_name = _resolve_document_name(file, doc_type, detected, used_names)
         item = _build_item(file, idx, doc_type, document_name)
         attachments.append(item)
@@ -297,11 +325,48 @@ def build_plan_items(
 
     # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau) vào ô giấy tùy thân.
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
+    _name_identity_by_subject(attachments, classified, identity_indexes, subject_by_index)
 
     return attachments, classified
 
 
+def _name_identity_by_subject(attachments: list[dict], classified: list[dict], identity_indexes: set[int],
+                              subject_by_index: dict[int, str]) -> None:
+    """Dòng CCCD đặt tên "CCCD <Họ tên>" thay vì "Căn cước công dân 2, 3…". Đặt SAU khi gộp hai mặt: item gộp
+    có thể mang tên của mặt sau (không có dòng họ tên) → lấy họ tên từ bất kỳ mặt nào trong nhóm."""
+    def sources(item: dict) -> list[int]:
+        return list(item.get("sourceFileIndexes") or [item.get("fileIndex")])
+
+    is_identity = [any(i in identity_indexes for i in sources(item)) for item in attachments]
+    used = {fold(item.get("documentName")) for item, ident in zip(attachments, is_identity) if not ident}
+    for item, ident in zip(attachments, is_identity):
+        if not ident:
+            continue
+        subject = next((subject_by_index.get(i) for i in sources(item) if subject_by_index.get(i)), "")
+        name = _unique_document_name(_identity_name(subject), used, _IDENTITY_LABEL)
+        item["documentName"] = item["detectedType"] = name
+        if item.get("target") == "new":
+            item["componentName"] = name
+        for i in sources(item):
+            if isinstance(i, int) and 0 <= i < len(classified):
+                classified[i]["documentName"] = name
+
+
 async def plan(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    """Chỉ boolean ``True`` mới tách giấy theo trang; client cũ / mất option luôn giữ nguyên từng tệp."""
+    if (options or {}).get("splitDocuments") is True:
+        # Import muộn: nhánh tách import ngược hàm xếp dòng của file này.
+        from app.pipelines.khai_tu_dang_ky_lai.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_without_split(files, options, session)
+
+
+async def plan_without_split(
     files: list[FileItem],
     options: dict | None = None,
     session: dict | None = None,

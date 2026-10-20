@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import time
 
 import pytest
@@ -133,11 +134,19 @@ async def test_recorder_khong_ro_sang_task_khac():
 
 
 def test_chi_phi_ghi_nho_tren_duong_chinh():
-    rec_mod.start("autofill", "autofill")
-    t0 = time.perf_counter()
-    for _ in range(2000):
-        with rec_mod.span("llm.extract", purpose="x"):
-            pass
-    elapsed_ms = (time.perf_counter() - t0) * 1000
+    # Máy CI dùng chung có lúc khựng (CPU bị chia, gc giữa chừng) → một lượt đo đơn lẻ vọt quá ngưỡng dù code
+    # không chậm. Tắt gc lúc đo và lấy lượt nhanh nhất trong 3 lượt: code chậm thật thì cả 3 lượt đều vượt.
+    best_ms = float("inf")
+    gc.disable()
+    try:
+        for _ in range(3):
+            rec_mod.start("autofill", "autofill", fresh=True)
+            t0 = time.perf_counter()
+            for _ in range(2000):
+                with rec_mod.span("llm.extract", purpose="x"):
+                    pass
+            best_ms = min(best_ms, (time.perf_counter() - t0) * 1000)
+    finally:
+        gc.enable()
     # 2000 span ~ gấp 40 lần một request thật; phải dưới 100 ms (≈ < 50 µs/span).
-    assert elapsed_ms < 100
+    assert best_ms < 100

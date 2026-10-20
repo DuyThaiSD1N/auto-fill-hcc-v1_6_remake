@@ -9,12 +9,15 @@ extension chạy không sửa.
 """
 import asyncio
 import base64
+import functools
 import logging
 import time
+from datetime import datetime, timezone
 
 from app.account_settings import service as account_settings
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tracing
+from app.db.mongo import get_db
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
 from app.channels.handfree.procedure_registry import (
@@ -181,6 +184,52 @@ async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | N
     return by_source or None
 
 
+# Tác vụ nền chạy ngay trong tiến trình BE (4 worker uvicorn): BE khởi động lại là tác vụ mất mà hồ sơ vẫn ghi
+# pipeline_status="running". Tác vụ ghi nhịp tim vào collection riêng (không nằm trong bản ghi hội thoại — flow lưu
+# hội thoại bằng replace_one sẽ ghi đè) để lượt đồng bộ sau khi nối lại (__event:pipeline_resync) biết mà chạy lại.
+_HEARTBEAT_S = 10
+_STALE_S = 45
+
+
+async def _heartbeat(conv_id: str, kind: str) -> None:
+    while True:
+        try:
+            await get_db().pipeline_heartbeats.update_one(
+                {"_id": conv_id}, {"$set": {"kind": kind, "at": datetime.now(timezone.utc)}}, upsert=True)
+        except Exception as e:  # noqa: BLE001 — nhịp tim lỗi không được làm hỏng tác vụ chính
+            logger.warning("[pipeline] ghi nhịp tim lỗi (%s): %s", conv_id, e)
+        await asyncio.sleep(_HEARTBEAT_S)
+
+
+def _tracked(kind: str):
+    def wrap(fn):
+        @functools.wraps(fn)
+        async def run(conv_id: str, *args, **kwargs):
+            beat = asyncio.create_task(_heartbeat(conv_id, kind))
+            try:
+                return await fn(conv_id, *args, **kwargs)
+            finally:
+                beat.cancel()
+                try:
+                    await get_db().pipeline_heartbeats.delete_one({"_id": conv_id, "kind": kind})
+                except Exception:  # noqa: BLE001
+                    pass
+        return run
+    return wrap
+
+
+async def last_heartbeat(conv_id: str) -> tuple[str, bool]:
+    """(loại tác vụ gần nhất, còn sống). Không có bản ghi = không có tác vụ nào đang chạy cho hồ sơ này."""
+    doc = await get_db().pipeline_heartbeats.find_one({"_id": conv_id}) or {}
+    at = doc.get("at")
+    if not isinstance(at, datetime):
+        return str(doc.get("kind") or ""), False
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=timezone.utc)
+    return str(doc.get("kind") or ""), (datetime.now(timezone.utc) - at).total_seconds() < _STALE_S
+
+
+@_tracked("process")
 async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
     """OCR + trích field (state filling). Xong → conv.fields + WS `fields_ready`."""
     rec = _start_recorder("autofill", conv_id, sid, procedure_key)
@@ -201,11 +250,6 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options: dict = {}
             if conv and conv.get("form_context"):
                 options["formContext"] = dict(conv["form_context"])
-            eform = (conv or {}).get("eform_running")
-            if proc.get("declarationEforms") and isinstance(eform, dict):
-                # Mẫu điện tử chốt lúc công dân bấm "Điền tờ khai": lượt chat đến sau (tờ khai vừa
-                # đóng/đổi) có thể đã xoá formVariant khỏi form_context trước khi task này đọc.
-                options["formContext"] = {**options.get("formContext", {}), **eform}
             if proc.get("review"):
                 options["_review"] = True
             owner_user = await _load_owner_user(conv, sess)
@@ -249,6 +293,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         conv["extracted"] = result.get("extracted", {})
         conv["pipeline_status"] = "fields_ready"
         conv["pipeline_error"] = ""
+        conv["fields_dispatched"] = False
         mon.output("response", {"fields": conv["fields"]})
         # Trace kênh sidebar (kèm ảnh — consent v1.1): giữ request_id để fill_report
         # thật từ FE gắn vào đúng trace.
@@ -279,6 +324,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         _finish_recorder(rec, error_request_id)
 
 
+@_tracked("business")
 async def run_business_registration(conv_id: str, sid: str, procedure_key: str) -> None:
     """Chuẩn bị trọn gói cho HkdOnline: 8 trang + kế hoạch đính kèm.
 
@@ -373,6 +419,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         _finish_recorder(failed, error_request_id)
 
 
+@_tracked("owner")
 async def run_owner_info(conv_id: str, sid: str, procedure_key: str) -> None:
     """Extract the matched owner's fields before the main declaration page."""
     # Không ghi traces (kind mới sẽ lẫn vào cách đếm hồ sơ cũ) — chỉ trace_steps cho web Monitor.
@@ -422,6 +469,7 @@ async def run_owner_info(conv_id: str, sid: str, procedure_key: str) -> None:
         conv["authorization_match"] = result.get("authorization_match") or {}
         conv["owner_errors"] = list(result.get("errors") or [])
         conv["pipeline_status"] = "owner_fields_ready"
+        conv["owner_fields_dispatched"] = False
         conv["pipeline_error"] = ""
         mon.output("response", {"owner_fields": plan, "owner_match": conv["owner_match"]})
         with mon.span("persist.db"):
@@ -444,6 +492,7 @@ async def run_owner_info(conv_id: str, sid: str, procedure_key: str) -> None:
         _finish_recorder(rec, error_request_id)
 
 
+@_tracked("attach")
 async def run_attach(conv_id: str, sid: str, procedure_key: str,
                      options: dict | None = None) -> None:
     """Lập kế hoạch đính kèm (state attaching). Xong → conv.attach_plan + WS `attach_ready`."""

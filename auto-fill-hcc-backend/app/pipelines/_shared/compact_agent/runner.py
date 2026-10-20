@@ -197,6 +197,7 @@ async def run(
     max_tokens: int = _COMPACT_AGENT_MAX_TOKENS,
     system_prompt_builder=None,
     user_content_builder=None,
+    ocr_fn=None,
 ) -> dict:
     errors: list[str] = []
     files = flatten(files_by_role)
@@ -213,7 +214,8 @@ async def run(
             for f in docx_files:
                 docx_image_files.extend(_extract_docx_images(f))
     ocr_files = regular_ocr_files + docx_image_files
-    ocr_results_raw = await ocr.ocr_per_file(ocr_files) if ocr_files else []
+    # Thủ tục cần biến đổi ảnh trước OCR (vd tách thẻ) truyền ocr_fn: nhận và trả đúng thứ tự như ocr_per_file.
+    ocr_results_raw = await (ocr_fn or ocr.ocr_per_file)(ocr_files) if ocr_files else []
     regular_results = ocr_results_raw[:len(regular_ocr_files)]
     docx_image_results = ocr_results_raw[len(regular_ocr_files):]
     ocr_iter = iter(regular_results)

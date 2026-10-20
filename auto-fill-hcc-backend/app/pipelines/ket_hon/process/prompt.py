@@ -1,8 +1,85 @@
-"""Procedure-specific compact prompt rules for "Đăng ký kết hôn"."""
+"""Luật trích theo TỪNG LOẠI GIẤY của thủ tục "Đăng ký kết hôn" — chèn vào <quy_tac_theo_giay> của base_prompt.
+
+Khung chung (vai trò, giấy nào → nhóm field nào, bên nam/bên nữ, định dạng, địa chỉ, output) nằm ở base_prompt;
+ở đây chỉ luật riêng từng giấy. Ví dụ chỉ dùng tên giả / mô tả: model từng chép nguyên giá trị của ví dụ (số bản
+án, tên đương sự) vào hồ sơ không hề có văn bản đó.
+"""
 
 EXTRA_RULES = """
-Đầu vào gồm giấy tờ của hai người đăng ký kết hôn (CCCD/CMND, tờ khai và giấy tờ liên quan),
-có thể không được gắn role chồng/vợ.
+<the_can_cuoc>
+- SỐ ĐỊNH DANH (BenNam_SoDinhDanh, BenNu_SoDinhDanh): CHỈ đọc ở MẶT TRƯỚC thẻ, đúng dãy 12 chữ số ngay sau nhãn
+  "Số / No." hoặc "Số định danh cá nhân / Personal identification number" (CMND cũ: 9 số). TUYỆT ĐỐI không lấy bất kỳ
+  cụm số nào từ dòng MRZ/IDVNM ở mặt sau, kể cả khi mặt sau có chuỗi giống số định danh — dòng mã máy chỉ dùng để
+  biết mặt sau là của ai (xem <hai_ben>). Không có mặt trước hoặc mặt trước không đọc rõ đủ số thì BỎ field,
+  không dùng MRZ để bù.
+- NGÀY CẤP: thẻ CĂN CƯỚC mới đọc dòng "Ngày, tháng, năm cấp / Date of issue"; thẻ CĂN CƯỚC CÔNG DÂN gắn chip đọc dòng
+  "Ngày, tháng, năm / Date, month, year" ở mặt sau (cạnh chữ ký, con dấu, vân tay). KHÔNG lấy "Có giá trị đến /
+  Date of expiry", "Ngày, tháng, năm hết hạn" hay ngày sinh làm ngày cấp. Không thấy dòng ngày cấp → bỏ field.
+- NƠI CẤP: BẮT BUỘC cố đọc BenNam_NoiCap/BenNu_NoiCap, trả ĐÚNG cơ quan in trên CHÍNH thẻ đó:
+  + Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC" / "IDENTITY CARD", cấp từ 01/7/2024), mặt sau ghi "BỘ CÔNG AN" /
+    "MINISTRY OF PUBLIC SECURITY" → "Bộ Công an".
+  + Thẻ CĂN CƯỚC CÔNG DÂN gắn chip (tiêu đề "CĂN CƯỚC CÔNG DÂN" / "Citizen Identity Card"), mặt sau có "CỤC TRƯỞNG
+    CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
+  + CMND cũ ghi "Công an tỉnh ..." → chép nguyên cơ quan đó.
+  + Mỗi thẻ đọc riêng: hai người có thể dùng HAI loại thẻ khác nhau. TUYỆT ĐỐI không mặc định "Cục Cảnh sát..." cho
+    thẻ Căn cước mới do Bộ Công an cấp, không lấy nơi cấp của thẻ người này cho người kia.
+- NƠI CƯ TRÚ (BenNam_NoiCuTru_TrongNuoc / BenNu_NoiCuTru_TrongNuoc): chỉ lấy "Nơi thường trú" / "Nơi cư trú" in
+  trên thẻ của CHÍNH người đó — thẻ CCCD gắn chip in ở cuối MẶT TRƯỚC, thẻ CĂN CƯỚC mới in ở đầu MẶT SAU. Toàn bộ
+  tinh + xa + diaChi phải từ ĐÚNG thẻ có cùng số định danh với nhóm đó; TUYỆT ĐỐI không lấy diaChi từ thẻ người này
+  gán cho người kia, không lấy từ tờ khai, bản án hay giấy khác (trừ GIẤY THAY THẺ ở <giay_to>). Tách theo
+  <dia_chi>.
+- QUỐC TỊCH (BenNam_QuocTich, BenNu_QuocTich): CHỈ trả khi giấy tờ KHÔNG phải của Việt Nam — suy từ quốc hiệu in
+  trên giấy ("CỘNG HOÀ NHÂN DÂN TRUNG HOA" → "Trung Quốc"; "CỘNG HOÀ DÂN CHỦ NHÂN DÂN LÀO" → "Lào"; "VƯƠNG QUỐC
+  CAMPUCHIA" → "Campuchia") hoặc nhãn "Quốc tịch:" ghi rõ. CCCD/Căn cước Việt Nam → BỎ QUA (Python tự mặc định
+  "Việt Nam").
+- LOẠI GIẤY TỜ (BenNam_LoaiGiayTo, BenNu_LoaiGiayTo): CHỈ khi là giấy tờ nước ngoài (hộ chiếu, chứng minh thư nước
+  ngoài); CCCD/Căn cước Việt Nam → bỏ.
+</the_can_cuoc>
+
+<to_khai>
+TỜ KHAI ĐĂNG KÝ KẾT HÔN là bảng hai cột Bên nam / Bên nữ, thường viết tay. Đọc TỪNG HÀNG, gán theo tiêu đề cột
+(<hai_ben>); hàng nào để trống ở cột nào thì bỏ field tương ứng:
+- "Họ, chữ đệm, tên" → ToKhaiNam_HoTen / ToKhaiNu_HoTen.
+- "Ngày, tháng, năm sinh" → ToKhaiNam_NgaySinh / ToKhaiNu_NgaySinh.
+- "Dân tộc" → ToKhaiNam_DanToc / ToKhaiNu_DanToc (xem <dan_toc>).
+- "Nơi cư trú" → ToKhaiNam_NoiCuTru_TrongNuoc / ToKhaiNu_NoiCuTru_TrongNuoc, tách theo <dia_chi>.
+- "Giấy tờ tùy thân" → ToKhai*_SoDinhDanh (dãy số), ToKhai*_NgayCap, ToKhai*_NoiCap — CHỈ phần nào chính dòng đó GHI
+  trên tờ khai. Ô chỉ ghi số thì chỉ trả số; KHÔNG chép ngày cấp / nơi cấp từ thẻ sang tờ khai. Nơi cấp viết tắt
+  ("CCS QLHC về TTXH", "Cục CS QLHC", "C06") chép nguyên văn như tờ khai.
+- "Kết hôn lần thứ mấy" → BenNam_SoLanKetHon / BenNu_SoLanKetHon là SỐ NGUYÊN theo đúng cột: "1", "01", "Lần
+  đầu", "Lần thứ nhất", "Một", "Thứ nhất" → "1"; "2", "02", "Lần thứ hai", "Hai" → "2". Hàng có ghi thì BẮT BUỘC trả
+  cho cả hai bên. Không ghi → bỏ.
+Có cả tờ khai và thẻ thì BẮT BUỘC trả CẢ HAI nhóm (ToKhai*_* và nhân thân BenNam_* / BenNu_*), kể cả khi giống nhau: mapper ưu tiên thẻ
+(bản in) cho nhân thân, mapper sẽ tự ưu tiên tờ khai cho nơi cư trú; tờ khai bù chỗ thẻ thiếu.
+LOẠI ĐĂNG KÝ (ToKhai_LoaiDangKy): CHỈ khi tờ khai có in chữ "Loại đăng ký" kèm các ô "Đăng ký lần đầu" / "Đăng ký
+lại" và một ô được tích → trả đúng nhãn của ô được tích. Mẫu tờ khai thông dụng KHÔNG có mục này: không thấy chữ
+"Loại đăng ký" trên giấy → TUYỆT ĐỐI không trả field. Hàng "Kết hôn lần thứ mấy" (01, 02, lần đầu, lần hai) là số lần
+kết hôn, KHÔNG phải loại đăng ký. TUYỆT ĐỐI không tự suy hoặc mặc định "Đăng ký lần đầu".
+CẤP BẢN SAO — CHỈ đọc từ dòng "Đề nghị cấp bản sao: Có ☐, Không ☐" và "Số lượng: ... bản" ở cuối tài liệu có đúng
+tiêu đề "TỜ KHAI ĐĂNG KÝ KẾT HÔN"; không lấy từ giấy khác:
+- Ô "Có" được tích → CopyRequest_WantsCopy = "Có"; ô "Không" được tích → "Không".
+- CopyRequest_Quantity = số lượng bản sao DƯƠNG ghi thật ở "Số lượng" (bỏ số 0 đứng đầu: "02 bản" → "2").
+  "Số lượng: ……bản" để chấm, "0", "00" → KHÔNG có số lượng.
+- Nếu có số lượng dương thì BẮT BUỘC trả CopyRequest_WantsCopy = "Có", kể cả không rõ ô nào được tích.
+- Cả hai ô TRỐNG và không có số lượng dương → BỎ CẢ HAI field. Đây là trường hợp phổ biến nhất; ô vuông in sẵn
+  ("☐", "□") không phải dấu tích. TUYỆT ĐỐI không mặc định "Có" hay "Không" và không mặc định số lượng.
+</to_khai>
+
+<dan_toc>
+CCCD/Căn cước gắn chip KHÔNG ghi dân tộc. Dân tộc CHỈ lấy khi giấy có NHÃN "Dân tộc" ghi giá trị trực tiếp cho đúng
+người:
+- Hàng "Dân tộc" trên TỜ KHAI → ToKhaiNam_DanToc / ToKhaiNu_DanToc theo đúng cột. Tờ khai thường ghi CẢ HAI cột
+  → BẮT BUỘC trả ĐỦ CẢ HAI, kể cả khi hai bên giống hệt nhau.
+- Nhãn "Dân tộc" trên giấy khác của đúng một người (giấy xác nhận tình trạng hôn nhân, xác nhận / phiếu thông tin
+  cư trú, kết quả tra cứu thông tin công dân, bản cam đoan) → BenNam_DanToc / BenNu_DanToc của người có họ tên /
+  số định danh trên giấy đó.
+- CHÉP NGUYÊN VĂN chữ trên giấy, giữ dấu nháy và chữ đứng trước: "K'Ho", "H'Mông", "Hmông", "M'Nông", "Cil",
+  "Chil", "Xrê", "Ra-glai", "Chu Ru" — Python tự chuẩn hóa về option của dropdown; không tự đổi sang tên khác, không
+  bỏ field chỉ vì tên lạ.
+- Nếu toàn bộ hồ sơ chỉ có CCCD/Căn cước hoặc không xuất hiện nhãn "Dân tộc" → BỎ CẢ HAI field dân tộc.
+- Họ tên, quê quán, nơi cư trú, địa danh, vùng miền KHÔNG phải chứng cứ dân tộc: TUYỆT ĐỐI không suy đoán dân tộc từ
+  các thông tin này. Chỉ một bên có nhãn thì chỉ trả bên đó; TUYỆT ĐỐI không chép dân tộc của bên này sang bên kia.
+</dan_toc>
 
 NGUỒN DỮ LIỆU:
 - Tự phân biệt hai CCCD bằng trường giới tính trên chính giấy tờ: Nam -> nhóm CccdNam_*, Nữ -> nhóm CccdNu_*.

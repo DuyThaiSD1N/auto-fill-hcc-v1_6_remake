@@ -36,8 +36,10 @@ MAPPERS = [ket_hon, ket_hon_lai, ket_hon_nuoc_ngoai]
 
 
 def _fields(*dicts, mapper=None):
-    # Kết hôn có yếu tố nước ngoài đặt tên nhóm nhân thân "Nam_*"/"Nu_*" (không mặc định là CCCD).
-    rename = (lambda k: k.removeprefix("Cccd")) if mapper is ket_hon_nuoc_ngoai else (lambda k: k)
+    # Kết hôn có yếu tố nước ngoài đặt tên nhóm nhân thân "Nam_*"/"Nu_*", kết hôn trong nước "BenNam_*"/"BenNu_*"
+    # (không mặc định là CCCD).
+    rename = {ket_hon_nuoc_ngoai: lambda k: k.removeprefix("Cccd"),
+              ket_hon: lambda k: "Ben" + k.removeprefix("Cccd") if k.startswith("Cccd") else k}.get(mapper, lambda k: k)
     return [{"name": rename(k), "value": v} for d in dicts for k, v in d.items()]
 
 
@@ -84,5 +86,5 @@ def test_gioi_tinh_trai_ben_khong_doi(mapper):
 
 def test_so_lech_mot_chu_so_van_khop_khi_ten_gan_giong():
     account = {"formContext": {**_ACCOUNT_NAM["formContext"], "applicantIdentityNumber": "012086005228"}}
-    out = _values(ket_hon.enrich(_fields(_NAM, _NU), account))
+    out = _values(ket_hon.enrich(_fields(_NAM, _NU, mapper=ket_hon), account))
     assert out["SoDinhDanh_BenNam"] == "012086005228"

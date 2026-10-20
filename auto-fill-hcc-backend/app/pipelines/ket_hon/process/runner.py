@@ -3,8 +3,9 @@
 import re
 import unicodedata
 
+from app.config import settings
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.ket_hon.process import mapper
+from app.pipelines.ket_hon.process import base_prompt, ket_hop, mapper
 from app.pipelines.ket_hon.process.prompt import EXTRA_RULES
 from app.pipelines.ket_hon.process.schema import (
     ALIASES,
@@ -14,7 +15,7 @@ from app.pipelines.ket_hon.process.schema import (
 )
 
 
-_ETHNICITY_FIELDS = {"CccdNam_DanToc", "CccdNu_DanToc"}
+_ETHNICITY_FIELDS = {"BenNam_DanToc", "BenNu_DanToc"}
 
 
 def _fold(value) -> str:
@@ -232,15 +233,23 @@ def _compact_field_fallback(raw_fields, documents: list[dict]):
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
-    res = await runner.run(
-        files_by_role,
-        fields=FIELDS,
-        allowed=ALLOWED,
-        comp_by_name=COMPACT_COMP_BY_NAME,
-        aliases=ALIASES,
-        extra_rules=EXTRA_RULES,
-        compact_field_fallback=_compact_field_fallback,
-    )
+    async def chay_vintern(ocr_fn=None) -> dict:
+        return await runner.run(
+            files_by_role,
+            fields=FIELDS,
+            allowed=ALLOWED,
+            comp_by_name=COMPACT_COMP_BY_NAME,
+            aliases=ALIASES,
+            extra_rules=EXTRA_RULES,
+            compact_field_fallback=_compact_field_fallback,
+            system_prompt_builder=base_prompt.build_system_prompt,
+            # Hồ sơ đủ thẻ + tờ khai + bản án trả tới ~50 field kèm dòng tách địa chỉ: trần chung 1800 token từng cắt
+            # mất nhóm field ở cuối. Trần chỉ là giới hạn trên, không làm lượt bình thường chậm hơn.
+            max_tokens=3000,
+            ocr_fn=ocr_fn,
+        )
+
+    res = await (ket_hop.run(files_by_role, chay_vintern) if settings.ket_hon_ket_hop else chay_vintern())
     res["fields"] = mapper.enrich(res["fields"], options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).

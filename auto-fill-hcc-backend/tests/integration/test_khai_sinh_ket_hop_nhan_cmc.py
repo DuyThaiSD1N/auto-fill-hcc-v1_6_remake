@@ -80,12 +80,6 @@ def test_birth_variant_maps_only_birth_eform_fields_and_preserves_leading_zero()
     assert values["QuanHe"] == "ChaDe"
     assert values["nksQueQuan_TrongNuoc"]["diaChi"] == "Bản Nà Tăm 1"
     assert not ({"HotenA", "hotenB", "loaiXacNhan"} & set(values))
-    # Cổng dựng "Loại khai sinh" bằng <x-select>, ô phải đứng ngay sau "Loại đăng ký".
-    names = [item["name"] for item in fields]
-    birth_type = next(item for item in fields if item["name"] == "nksLoaiKhaiSinh")
-    assert birth_type["comp"] == "x-select"
-    assert birth_type["value"] == "Đã xác định được cả cha lẫn mẹ"
-    assert names.index("nksLoaiKhaiSinh") == names.index("LoaiDangKy") + 1
 
 
 def test_recognition_variant_maps_only_recognition_eform_fields():

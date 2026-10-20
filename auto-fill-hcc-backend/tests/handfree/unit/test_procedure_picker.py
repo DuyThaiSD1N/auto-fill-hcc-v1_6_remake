@@ -76,9 +76,9 @@ def test_danh_sach_dua_llm_khong_co_key():
 async def test_goi_y_chi_giu_so_trong_danh_sach_toi_da_3_khong_trung(llm):
     _, replies = llm
     replies["picker"].append(_pick(result="unclear", candidates=[
-        "ho-tro-mai-tang", 999, "ho-tro-mai-tang", "khai-tu", "ket-hon", "trich-luc-ks"]))
+        "ho-tro-mai-tang-1116910", 999, "ho-tro-mai-tang-1116910", "khai-tu", "ket-hon", "trich-luc-ks"]))
     res = await agent.pick("làm thủ tục mai táng", _conv())
-    assert res.candidates == ["ho-tro-mai-tang", "khai-tu", "ket-hon"]
+    assert res.candidates == ["ho-tro-mai-tang-1116910", "khai-tu", "ket-hon"]
 
 
 async def test_doc_lich_su_va_goi_y_luot_truoc(llm):
@@ -88,7 +88,7 @@ async def test_doc_lich_su_va_goi_y_luot_truoc(llm):
                           ("user", "__action:rate_skip"),
                           ("bot", "Dạ em **chưa chắc** công dân cần thủ tục nào"),
                           ("user", "cái thứ hai")],
-                 candidates=["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"])
+                 candidates=["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"])
     await agent.pick("cái thứ hai", conv)
     msgs = calls["picker"][0]
     assert [(m["role"], m["content"]) for m in msgs[1:]] == [
@@ -96,7 +96,7 @@ async def test_doc_lich_su_va_goi_y_luot_truoc(llm):
         ("assistant", "Dạ em chưa chắc công dân cần thủ tục nào"),
         ("user", "cái thứ hai"),          # câu hiện tại chỉ một lần, lệnh máy bị bỏ
     ]
-    assert f'thứ nhất: [{_id("ho-tro-mai-tang")}]' in msgs[0]["content"]
+    assert f'thứ nhất: [{_id("ho-tro-mai-tang-1116910")}]' in msgs[0]["content"]
     assert f'thứ hai: [{_id("ho-tro-mai-tang-huu-tri-xa-hoi")}]' in msgs[0]["content"]
 
 
@@ -139,18 +139,18 @@ async def test_giua_luong_cau_thuong_khong_goi_agent_chon_thu_tuc(llm):
 async def test_giua_luong_nhac_thu_tuc_moi_goi_agent_chon_thu_tuc(llm):
     calls, replies = llm
     replies["classifier"].append('{"kind":"procedure","value":""}')
-    replies["picker"].append(_pick(result="unclear", candidates=["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]))
+    replies["picker"].append(_pick(result="unclear", candidates=["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"]))
     i = await intents.resolve("thôi làm mai táng", "collecting_docs", _conv())
     assert i.kind == "procedure_unclear"
-    assert i.payload["candidates"] == ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]
+    assert i.payload["candidates"] == ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"]
 
 
 async def test_vua_goi_y_thu_tuc_thi_agent_chon_thu_tuc_doc_truoc(llm):
     calls, replies = llm
-    replies["picker"].append(_pick("ho-tro-mai-tang"))
-    conv = _conv(candidates=["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"])
+    replies["picker"].append(_pick("ho-tro-mai-tang-1116910"))
+    conv = _conv(candidates=["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"])
     i = await intents.resolve("người khuyết tật", "confirm_procedure", conv)
-    assert (i.kind, i.value) == ("pick_procedure", "ho-tro-mai-tang")
+    assert (i.kind, i.value) == ("pick_procedure", "ho-tro-mai-tang-1116910")
     assert len(calls["classifier"]) == 0
 
 
@@ -168,15 +168,15 @@ def test_man_chao_khong_nhan_ra_thi_noi_chua_nhan_ra_khong_chao_lai():
 
 def test_mo_ho_thi_hoi_lai_kem_nut_goi_y_va_luu_goi_y():
     conv = _conv()
-    r = flow._procedure_unclear(conv, ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi", "cap-ban-sao-van-bang-so-goc"])
-    assert conv["procedure_candidates"] == ["ho-tro-mai-tang", "ho-tro-mai-tang-huu-tri-xa-hoi"]  # khóa tỉnh bị bỏ
+    r = flow._procedure_unclear(conv, ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "cap-ban-sao-van-bang-so-goc"])
+    assert conv["procedure_candidates"] == ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"]  # khóa tỉnh bị bỏ
     assert "thủ tục nào" in r.display_md and "mai táng" in r.display_md
     assert [c["send"] for c in r.chips] == [
-        '__action:pick_procedure:{"key": "ho-tro-mai-tang"}',
+        '__action:pick_procedure:{"key": "ho-tro-mai-tang-1116910"}',
         '__action:pick_procedure:{"key": "ho-tro-mai-tang-huu-tri-xa-hoi"}',
     ]
     # Bấm/chọn xong thì bỏ gợi ý — lượt sau không còn đọc agent chọn thủ tục trước.
-    flow._to_confirm_procedure(conv, "ho-tro-mai-tang")
+    flow._to_confirm_procedure(conv, "ho-tro-mai-tang-1116910")
     assert conv["procedure_candidates"] == []
 
 

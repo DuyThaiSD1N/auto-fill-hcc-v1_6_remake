@@ -13,6 +13,11 @@ Pillow==11.0.0
 # Ảnh HEIC (iPhone): cổng DVC không nhận → đổi sang JPG lúc nhận tệp. Bản 0.22 khớp Pillow 11.0.
 pillow-heif==0.22.0
 pytesseract==0.3.13
+# Đăng ký kết hôn — luồng kết hợp (app/services/tach_the.py, app/services/qwen_doc_giay): tách thẻ, tiền xử lý ảnh,
+# đọc PDF giữ đúng độ phân giải ảnh gốc. Bản đã chạy thử: numpy 2.5, opencv 5.0, pypdfium2 5.14.
+numpy>=2.0
+opencv-python-headless>=4.9
+pypdfium2>=4.30
 openpyxl==3.1.5
 # Giấy ủy quyền (Handfree): xuất .docx chuẩn để cán bộ mở bằng Word sửa tiếp.
 python-docx==1.1.2

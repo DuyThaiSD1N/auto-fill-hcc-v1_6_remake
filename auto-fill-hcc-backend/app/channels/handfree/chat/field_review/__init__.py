@@ -9,7 +9,12 @@ từng ô trống từ trên xuống (con trỏ tới ô, hỏi), công dân nó
         → hỏi → câu trả lời → field_review_next{apply} → __event:field_review_focus{applied, field} → …
 
 Bật khi thủ tục có app/pipelines/<tên>/handfree/field_review.py (xem registry.py) VÀ extension khai cờ
-supportsFieldReview.
+supportsFieldReview. Trang nộp một trang của Cổng DVC quốc gia (luồng "tu-phap-moi", form SurveyJS) cần thêm cờ
+supportsFieldReviewSurvey (content/field-review-surveyjs.js): ở đó điền xong là tự đính kèm, nên nút "Bổ sung…"
+chỉ mời sau khi đính xong và bước kế tiếp là chọn hình thức nhận kết quả (không có Xem trước / Xác nhận).
+Extension khai thêm supportsFlowV2 (luồng bản 2 của trang một trang): kết luận sau điền + đính chỉ cho nút đi
+tiếp khi tờ khai đủ ô bắt buộc; công dân tự gõ trên cổng thì extension đếm lại (__event:field_review_status) và
+trợ lý hiện nút khi ô bắt buộc về 0.
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -17,9 +22,11 @@ import re
 
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.field_review import agent, registry
-from app.channels.handfree.chat.intents import fold
+from app.channels.handfree.chat.intents import Intent, fold
 
 CAPABILITY = "supportsFieldReview"
+SURVEY_CAPABILITY = "supportsFieldReviewSurvey"
+FLOW_V2_CAPABILITY = "supportsFlowV2"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
              "field_review_answer", "field_review_pick", "field_review_reload", "field_review_owner_next",
              "field_review_preview", "field_review_preview_report", "field_review_preview_close",
@@ -31,6 +38,13 @@ _NEXT_STEP_INTENTS = {("action", "confirm_review"), ("action", "request_attach")
 # để báo cáo quay về đây, không lẫn với luồng dẫn từng bước (guided_steps) của thủ tục khác.
 OWNER_PHASE = "field_review_owner"
 _FEW_CHOICES = 6  # ô có tới chừng này lựa chọn thì đọc hết lựa chọn trong câu hỏi + hiện nút chọn
+# Có lựa chọn dài hơn chừng này ký tự (vd sáu trường hợp tình trạng hôn nhân) thì không liệt kê, không đọc, không
+# hiện nút chọn — hỏi như ô gõ tự do; LLM vẫn khớp câu trả lời vào đúng một dòng của danh sách.
+_LONG_CHOICE = 40
+
+
+def _few_short_choices(options: list[str]) -> bool:
+    return 0 < len(options) <= _FEW_CHOICES and all(len(o) <= _LONG_CHOICE for o in options)
 _MAX_OPTIONS = 400
 _MAX_TEXT = 160
 
@@ -39,12 +53,29 @@ def config(proc: dict | None) -> dict | None:
     return registry.get((proc or {}).get("key"))
 
 
+def single_page(proc: dict | None) -> bool:
+    return (proc or {}).get("flowProfile") == "tu-phap-moi"
+
+
 def active(conv: dict, proc: dict | None) -> bool:
+    caps = conv.get("client_capabilities") or {}
     return (
         config(proc) is not None
-        and (conv.get("client_capabilities") or {}).get(CAPABILITY) is True
+        and caps.get(CAPABILITY) is True
+        and (not single_page(proc) or caps.get(SURVEY_CAPABILITY) is True)
         and (conv.get("lang") or "vi") != "hmong"
     )
+
+
+def legacy_wizard(proc: dict | None) -> bool:
+    """Tư pháp form cũ: tờ khai eForm → Xem trước → Xác nhận → Thành phần hồ sơ (profile "tu-phap")."""
+    return (proc or {}).get("flowProfile") == "tu-phap"
+
+
+def flow_v2(conv: dict, proc: dict | None) -> bool:
+    caps = conv.get("client_capabilities") or {}
+    return ((single_page(proc) or legacy_wizard(proc)) and active(conv, proc)
+            and caps.get(FLOW_V2_CAPABILITY) is True)
 
 
 def asking(conv: dict) -> bool:
@@ -59,11 +90,28 @@ def _no_section(proc: dict | None) -> set[str]:
     return {str(name) for name in (config(proc) or {}).get("noSection") or []}
 
 
+def _copy_pair(proc: dict | None) -> tuple[str, ...]:
+    """(ô Đề nghị cấp bản sao, ô số lượng) — rỗng nếu thủ tục không khai."""
+    return tuple(str(name) for name in (config(proc) or {}).get("copyQuantity") or [])
+
+
+def _no_ask(proc: dict | None) -> list[str]:
+    return [str(name) for name in (config(proc) or {}).get("noAsk") or []]
+
+
+def _form_rules(proc: dict | None) -> dict:
+    """Danh sách ô theo thủ tục mà extension cần khi tô / tìm ô (chỉ gửi khoá có giá trị)."""
+    cfg = config(proc) or {}
+    rules = {"noAsk": _no_ask(proc),
+             **{key: [str(name) for name in cfg.get(key) or []] for key in ("zeroIsEmpty", "textDates", "lookup")}}
+    return {key: names for key, names in rules.items() if names}
+
+
 def fill_action_extra(conv: dict, proc: dict | None) -> dict | None:
     """Kèm vào action fill_fields: extension tô 3 màu và đếm ô sau khi điền."""
     if not active(conv, proc):
         return None
-    return {"required": _required(proc)}
+    return {"required": _required(proc), **_form_rules(proc)}
 
 
 def _say(tpl: dict, **kw) -> tuple[str, str]:
@@ -90,6 +138,92 @@ def _start_chip() -> dict:
 
 def _preview_chip() -> dict:
     return {"label": vi.FR_PREVIEW_CHIP, "send": "__action:field_review_preview", "solid": True}
+
+
+def begin(conv: dict, review) -> dict:
+    """Lượt điền mới = vòng bổ sung mới (luồng bản 2): ghi số ô extension vừa đếm sau khi điền."""
+    stats = _stats(review)
+    conv["field_review"] = {"stats": stats}
+    return stats
+
+
+def _small_chips(chips: list[dict]) -> list[dict]:
+    return [dict(c) for c in chips if not c.get("cta")]
+
+
+def next_chips(conv: dict, proc: dict | None, keep: list[dict]) -> list[dict]:
+    """Luồng bản 2: còn ô bắt buộc trống thì chưa có nút đi tiếp (chọn hình thức nhận kết quả, nộp), chỉ nút bổ sung
+    + các nút sửa nhỏ. Form cũ: nút đi tiếp là Xem trước tờ khai — nhỏ khi còn ô bắt buộc (cổng chặn Xem trước),
+    to khi đủ."""
+    stats = (conv.get("field_review") or {}).get("stats") or {}
+    if not flow_v2(conv, proc):
+        return [dict(c) for c in keep]
+    if legacy_wizard(proc):
+        if stats.get("required"):
+            return [_start_chip(), {**_preview_chip(), "solid": False}, *_small_chips(keep)]
+        optional = [{**_start_chip(), "solid": False}] if stats.get("optional") else []
+        return [{**_preview_chip(), "cta": True}, *optional, *_small_chips(keep)]
+    if stats.get("required"):
+        return [_start_chip(), *_small_chips(keep)]
+    return [dict(c) for c in keep]
+
+
+def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
+    from app.channels.handfree.chat import guided_steps
+
+    st["ready_said"] = True
+    if legacy_wizard(proc):
+        optional = (st.get("stats") or {}).get("optional") or 0
+        return _say(vi.FLOW2_PREVIEW_READY,
+                    optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "")
+    label = str((guided_steps.default_result_method(proc) or {}).get("label") or "")
+    done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
+    return _say(vi.FLOW2_READY if label else vi.FLOW2_READY_NO_DEFAULT, done=done, label=label)
+
+
+def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, str, list[dict]]:
+    """Khung kết luận sau điền + đính (luồng bản 2) → (md, tts, nút). `keep`: bộ nút của trang — nút sửa nhỏ + nút đi
+    tiếp (cờ `cta`), lưu lại để hỏi xong / công dân tự điền đủ thì hiện lại."""
+    st = conv.setdefault("field_review", {})
+    st["chips"] = [dict(c) for c in keep]
+    stats = st.get("stats") or _stats({})
+    if stats["required"]:
+        st["ready_said"] = False
+        md, tts = _say(vi.FLOW2_NEED_REQUIRED, **stats)
+        return md, tts, next_chips(conv, proc, keep)
+    if stats["optional"] and not legacy_wizard(proc):
+        st["ready_said"] = True
+        md, tts = _say(vi.FLOW2_OPTIONAL_ONLY, **stats)
+        return md, tts, [{**_start_chip(), "solid": False}, *keep]
+    md, tts = _ready(proc, st)
+    return md, tts, next_chips(conv, proc, keep)
+
+
+def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
+    """Đang ở đúng chỗ để báo "đủ ô" khi công dân tự gõ: trang một trang đã đính xong; form cũ còn ở Kê khai (chưa
+    mở Xem trước)."""
+    if "chips" not in st:
+        return False
+    if legacy_wizard(proc):
+        return (conv.get("state") in {"reviewing", "attaching"} and conv.get("docs_target") == "declaration"
+                and not st.get("preview_open"))
+    return conv.get("state") == "done"
+
+
+def _status_reply(conv: dict, proc: dict | None, st: dict, payload: dict):
+    """Công dân tự gõ trên cổng: extension đếm lại ô sau mỗi lần sửa. Ô bắt buộc vừa về 0 sau khi đã đính xong →
+    khung "Đã đủ" + nút đi tiếp, một lần mỗi lượt điền; còn lại im lặng (không rút nút đã hiện)."""
+    from app.channels.handfree.chat.flow import Reply
+
+    if not flow_v2(conv, proc) or st.get("running") or not isinstance(payload.get("stats"), dict):
+        return Reply()
+    st["stats"] = _stats(payload["stats"])
+    if st["stats"]["required"] or st.get("ready_said") or not _waiting_ready(conv, proc, st):
+        return Reply()
+    md, tts = _ready(proc, st)
+    r = Reply(md, tts.strip())
+    r.chips = next_chips(conv, proc, st["chips"])
+    return r
 
 
 def reviewing_fill(conv: dict, proc: dict | None, review) -> bool:
@@ -119,6 +253,49 @@ def decorate_fill_report(conv: dict, proc: dict | None, reply, review, tail: dic
     reply.chips = [*([_start_chip()] if stats["empty"] else []), _preview_chip(), *reply.chips]
 
 
+def decorate_single_page_fill(conv: dict, proc: dict | None, reply, review, *, offer: bool) -> None:
+    """Trang nộp một trang: báo số ô xanh/cam/đỏ ngay khi điền xong. Đang tự đính kèm (offer=False) thì chưa mời
+    bổ sung — con trỏ hỏi ô và lượt tải tệp cùng cuộn một trang — offer_after_attach mời khi đính xong."""
+    if not reviewing_fill(conv, proc, review):
+        return
+    stats = _stats(review)
+    conv["field_review"] = {"chips": [dict(c) for c in reply.chips], "stats": stats}
+    if not stats["empty"]:
+        return
+    md, tts = _say(vi.FR_FILL_STATS if offer else vi.FR_FILL_STATS_WAIT, **stats)
+    # Đứng TRƯỚC lệnh đính kèm: sidebar vẽ bong bóng phụ khi nhận reply, không chờ lệnh đính chạy xong.
+    reply.actions = [{"type": "trail_message", "md": md}, *reply.actions]
+    reply.tts_text += tts
+    if offer:
+        reply.chips = [_start_chip(), *reply.chips]
+
+
+def offer_after_attach(conv: dict, proc: dict | None, reply) -> None:
+    """Đính kèm xong trên trang một trang: còn ô trống thì mời bổ sung, nút đi tiếp giữ nguyên phía sau."""
+    st = conv.get("field_review") or {}
+    if not active(conv, proc) or st.get("running"):
+        return
+    st["chips"] = [dict(c) for c in reply.chips]
+    stats = st.get("stats") or {}
+    if not stats.get("empty"):
+        return
+    md, tts = _say(vi.FR_OFFER_AFTER_ATTACH, **stats)
+    reply.actions = [*reply.actions, {"type": "trail_message", "md": md}]
+    reply.tts_text += tts
+    reply.chips = [_start_chip(), *reply.chips]
+
+
+def start_chips(conv: dict, proc: dict | None, keep: list[dict]) -> list[dict]:
+    """Nút "Bổ sung…" khi cổng chặn nộp vì còn ô bắt buộc trống (danh sách ô do extension đọc lại trên trang).
+    `keep`: nút đi tiếp hiện lại khi hỏi xong, nếu lượt điền chưa lưu nút nào."""
+    if not active(conv, proc) or (conv.get("field_review") or {}).get("running"):
+        return []
+    st = conv.setdefault("field_review", {})
+    if not st.get("chips"):
+        st["chips"] = [dict(c) for c in keep]
+    return [_start_chip()]
+
+
 def _clean(text, limit: int = _MAX_TEXT) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()[:limit]
 
@@ -145,9 +322,13 @@ def _unit_suffix(label: str, options: list[str]) -> str:
     return ""
 
 
+# Gợi ý định dạng trong nhãn ("Ngày, tháng, năm chết (dd/mm/yyyy)") — đọc lên thành "đê đê mờ mờ".
+_FORMAT_HINT = re.compile(r"\s*\(\s*(?:dd|mm|yyyy|yy|hh)\b[^)]*\)", re.IGNORECASE)
+
+
 def _label(text) -> str:
     # Nhãn tờ khai có số thứ tự "(14)" và dấu ":" cuối — đọc lên chỉ gây rối.
-    text = re.sub(r"^\(\s*\d+\s*\)\s*", "", _clean(text))
+    text = _FORMAT_HINT.sub("", re.sub(r"^\(\s*\d+\s*\)\s*", "", _clean(text)))
     return text.rstrip(" :").strip()
 
 
@@ -157,7 +338,7 @@ def _section(text) -> str:
     return text[:1].upper() + text[1:] if text else ""
 
 
-def _field(raw, no_section: set[str] = frozenset()) -> dict | None:
+def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] = ()) -> dict | None:
     if not isinstance(raw, dict) or not _clean(raw.get("key")):
         return None
     options = [_clean(o, 120) for o in (raw.get("options") or []) if _clean(o, 120)][:_MAX_OPTIONS]
@@ -173,11 +354,16 @@ def _field(raw, no_section: set[str] = frozenset()) -> dict | None:
         where = where[:1].upper() + where[1:]
     return {
         "key": _clean(raw.get("key"), 200),
+        "name": _clean(raw.get("name"), 200),
+        # Ô Đề nghị cấp bản sao: câu trả lời có thể kèm số bản cho ô số lượng hiện ra sau khi chọn Có.
+        "copy_choice": bool(copy_pair) and raw.get("name") == copy_pair[0],
         "label": label,
         "where": "" if where is None else (where or _section(raw.get("section")) or "Tờ khai"),
         "kind": raw.get("kind") if raw.get("kind") in {"text", "date", "select", "radio"} else "text",
         "required": raw.get("required") is True,
-        "year_only": raw.get("kind") == "date" and raw.get("yearOnly") is True,
+        "year_only": raw.get("kind") == "date" and (raw.get("yearOnly") is True or raw.get("partialDate") is True),
+        # Ô ngày dạng chữ của cổng: nhận đủ ngày, tháng-năm hoặc chỉ năm.
+        "partial_date": raw.get("kind") == "date" and raw.get("partialDate") is True,
         "value": _clean(raw.get("value"), 200),
         "options": options,
         # Tỉnh đã có mà cổng không nạp danh sách xã → không hỏi gõ tự do (gõ cũng không chọn được).
@@ -186,7 +372,10 @@ def _field(raw, no_section: set[str] = frozenset()) -> dict | None:
 
 
 def _next_action(proc: dict | None, st: dict, apply: dict | None = None, focus: str = "") -> dict:
-    action = {"type": "field_review_next", "required": _required(proc), "skip": list(st.get("skip") or [])}
+    action = {"type": "field_review_next", "required": _required(proc), "skip": list(st.get("skip") or []),
+              **_form_rules(proc)}
+    if st.get("required_first"):
+        action["requiredFirst"] = True  # luồng bản 2: hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc
     if apply:
         action["apply"] = apply
     if focus:
@@ -212,7 +401,7 @@ def _chips(st: dict) -> list[dict]:
     options = field.get("options") or []
     chips = ([{"label": vi.FR_RELOAD_CHIP, "send": "__action:field_review_reload", "tone": "reload"}]
              if field.get("province") else [])
-    if 0 < len(options) <= _FEW_CHOICES:
+    if _few_short_choices(options):
         chips = [_choice_chip(o) for o in options]
     elif options and _country_field(field):
         chips = [_choice_chip(next(o for o in options if fold(o) == "viet nam"))]
@@ -220,7 +409,8 @@ def _chips(st: dict) -> list[dict]:
     if st.get("last"):
         chips.append({"label": vi.FR_BACK_CHIP, "send": "__action:field_review_back", "tone": "back"})
     chips.append({"label": vi.FR_STOP_CHIP, "send": "__action:field_review_stop", "tone": "stop"})
-    return chips
+    # Đã hết ô bắt buộc, đang hỏi ô không bắt buộc (luồng bản 2): nút đi tiếp luôn bên cạnh.
+    return [*chips, *(dict(c) for c in st.get("phase_chips") or [])]
 
 
 def _with_lead(r, *leads: tuple[str, str]):
@@ -240,7 +430,13 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
     word = vi.FR_LEAD_FIRST if first else vi.FR_LEAD_NEXT
     current = vi.FR_CURRENT_MD.format(value=field["value"]) if field.get("value") else ""
     options = field.get("options") or []
-    head = vi.FR_HEAD_BACK if back else (vi.FR_HEAD if field["where"] else vi.FR_HEAD_NO_PART)
+    # "Tiếp theo đến phần …" chỉ ở ô đầu của mỗi phần; các ô sau cùng phần chỉ "Tiếp theo đến ô …".
+    same_part = bool(field["where"]) and st.get("asked_where") == field["where"]
+    st["asked_where"] = field["where"]
+    if back:
+        head = vi.FR_HEAD_BACK
+    else:
+        head = vi.FR_HEAD if field["where"] and not same_part else vi.FR_HEAD_NO_PART
     head_md, head_tts = _say(head, lead=word, where=field["where"], where_tts=_tts(field["where"]),
                              label_tts=_tts(field["label"]))
     kw = dict(badge="🟥 " if field["required"] else "", label=field["label"], current_md=current,
@@ -251,9 +447,12 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
         _with_lead(r, lead, _say(vi.FR_START) if first else ("", ""))
         r.chips = _chips(st)
         return r
-    if 0 < len(options) <= _FEW_CHOICES:
+    if _few_short_choices(options):
         ask_md, ask_tts = _say(vi.FR_ASK_CHOICES, choices_md=" · ".join(f"**{o}**" for o in options),
                                choices_tts=" hoặc ".join(_tts(o) for o in options), **kw)
+        if field.get("copy_choice"):
+            hint_md, hint_tts = _say(vi.FR_COPY_COUNT_HINT)
+            ask_md, ask_tts = ask_md + hint_md, ask_tts + hint_tts
     elif options and _country_field(field):
         ask_md, ask_tts = _say(vi.FR_ASK_COUNTRY, **kw)
     else:
@@ -265,19 +464,37 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
     return r
 
 
-def _finish_reply(conv: dict, *, stopped: bool, lead: tuple[str, str] = ("", "")):
+def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[str, str] = ("", "")):
     from app.channels.handfree.chat.flow import Reply
 
     st = conv.setdefault("field_review", {})
     st.update(running=False, current=None)
     stats = st.get("stats") or _stats({})
+    if flow_v2(conv, proc):
+        keep = [dict(c) for c in st.get("chips") or []]
+        if stats["required"]:
+            lead_md, lead_tts = vi.FLOW2_REVIEW_STOP_LEAD if stopped else vi.FLOW2_REVIEW_DONE_LEAD
+            r = Reply(*_say(vi.FLOW2_REVIEW_MISSING, required=stats["required"], lead_md=lead_md, lead_tts=lead_tts))
+            r.chips = next_chips(conv, proc, keep)
+        else:
+            md, tts = _ready(proc, st)
+            r = Reply(md, tts.strip())
+            r.chips = next_chips(conv, proc, keep)
+        r.actions = [{"type": "field_review_stop"}]
+        return _with_lead(r, lead)
     missing = vi.FR_MISSING_NOTE.format(count=stats["required"]) if stats["required"] else ""
-    r = Reply(*_say(vi.FR_STOPPED if stopped else vi.FR_DONE, missing_note=missing))
+    if single_page(proc):
+        template = vi.FR_STOPPED_SINGLE_PAGE if stopped else vi.FR_DONE_SINGLE_PAGE
+    else:
+        template = vi.FR_STOPPED if stopped else vi.FR_DONE
+    r = Reply(*_say(template, missing_note=missing))
     r.actions = [{"type": "field_review_stop"}]
     _with_lead(r, lead)
     # Bỏ qua bớt ô → còn ô trống: cho bổ sung lại một vòng mới (danh sách bỏ qua làm lại từ đầu).
+    # Trang một trang không có Xem trước: nút đi tiếp (chọn cách nhận kết quả, nộp) nằm sẵn trong chips đã lưu.
     chips = [dict(c) for c in st.get("chips") or []]
-    r.chips = [*([_start_chip()] if stats["empty"] else []), _preview_chip(), *chips]
+    r.chips = [*([_start_chip()] if stats["empty"] else []), *([] if single_page(proc) else [_preview_chip()]),
+               *chips]
     return r
 
 
@@ -292,6 +509,10 @@ def _outcome_lead(st: dict, applied) -> tuple[str, str]:
             st["last"] = {"key": pending.get("key"), "label": label}
             return _say(vi.FR_APPLIED if where else vi.FR_APPLIED_NO_PART, label=label, where=where, value=pending.get("value") or "",
                         label_tts=_tts(label), where_tts=_tts(where))
+        if pending.get("copy_quantity"):
+            # Đã chọn Có, chỉ số lượng điền hỏng: không đưa ô số lượng vào danh sách bỏ qua để lượt sau hỏi lại ô đó.
+            return _say(vi.FR_COPY_COUNT_FAILED, label=label, choice=pending.get("choice") or "",
+                        label_tts=_tts(label))
         # Điền hỏng: extension đã tự bỏ ô này khỏi lượt tìm kế tiếp; ghi vào danh sách bỏ qua để các
         # lượt sau cũng không hỏi lại một ô điền không được.
         st.setdefault("skip", []).append(pending.get("key"))
@@ -355,7 +576,9 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     if answer.action == "skip":
         return _skip_current(proc, st)
     if answer.action == "stop":
-        return _finish_reply(conv, stopped=True)
+        return _finish_reply(conv, proc, stopped=True)
+    if answer.action == "proceed" and flow_v2(conv, proc):
+        return _proceed(conv, proc, st)
     if answer.action == "repeat":
         return _ask_reply(st)
     if answer.action == "back":
@@ -363,25 +586,82 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     if field.get("province"):
         return _ask_reply(st)  # chưa có danh sách xã thì giá trị nói ra cũng không chọn được trên cổng
     if answer.action != "value":
+        lengths = agent.id_lengths(field)
+        if lengths and answer.value:
+            need = "10" if lengths == agent.PHONE_LENGTHS else " hoặc ".join(str(n) for n in lengths)
+            r = Reply(*_say(vi.FR_DIGITS_SHORT, label=field["label"], label_tts=_tts(field["label"]),
+                            count=len(answer.value), heard=answer.value, need=need))
+            r.actions = [{"type": "listen_after_tts"}]
+            r.chips = _chips(st)
+            return r
         if field["kind"] == "date":
-            hint = vi.FR_YEAR_HINT if field.get("year_only") else vi.FR_DATE_HINT
+            hint = (vi.FR_PARTIAL_DATE_HINT if field.get("partial_date")
+                    else vi.FR_YEAR_HINT if field.get("year_only") else vi.FR_DATE_HINT)
         else:
             hint = vi.FR_OPTION_HINT if field["options"] else ""
         r = Reply(*_say(vi.FR_UNCLEAR, label=field["label"], hint=hint, label_tts=_tts(field["label"])))
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
-    return _apply(proc, st, field, answer.value)
+    return _apply(proc, st, field, answer.value, answer.quantity)
 
 
-def _apply(proc: dict | None, st: dict, field: dict, value: str):
+def _proceed(conv: dict, proc: dict | None, st: dict):
+    """Giữa vòng hỏi công dân đòi đi luôn bước sau ("xem trước", "sang bước tiếp"): còn ô bắt buộc trống thì cổng chặn
+    → báo số ô rồi hỏi tiếp ô đang dở; chỉ còn ô không bắt buộc → dừng hỏi và làm luôn bước sau (form cũ: bấm Xem
+    trước; trang một trang: kết luận "đủ" kèm nút chọn hình thức nhận kết quả / nộp)."""
+    from app.channels.handfree.chat.flow import Reply
+
+    required = (st.get("stats") or {}).get("required") or 0
+    if required:
+        field = st["current"]
+        r = Reply(*_say(vi.FR_PROCEED_BLOCKED, required=required,
+                        step_md=vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else vi.FR_PROCEED_STEP_SINGLE,
+                        label=field["label"], label_tts=_tts(field["label"])))
+        r.actions = [{"type": "listen_after_tts"}]
+        r.chips = _chips(st)
+        return r
+    if not legacy_wizard(proc):
+        return _finish_reply(conv, proc, stopped=True)
+    st.update(running=False, current=None)
+    r = _preview_step(proc, st, Intent("action", "field_review_preview", {}))
+    r.actions = [{"type": "field_review_stop"}, *r.actions]
+    return r
+
+
+def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str = ""):
     from app.channels.handfree.chat.flow import Reply
 
     st["pending"] = {"key": field["key"], "label": field["label"], "where": field["where"], "value": value}
     st.setdefault("history", []).append({"key": field["key"], "value": value})
     st["current"] = None
+    focus = ""
+    pair = _copy_pair(proc)
+    if quantity and field.get("copy_choice") and len(pair) == 2:
+        # Ô số lượng chỉ có trên trang sau khi chọn Có: nhờ extension điền Có rồi trả về đúng ô số lượng, BE điền tiếp.
+        st["copy_carry"] = {"name": pair[1], "quantity": quantity}
+        focus = pair[1]
     r = Reply()
-    r.actions = [_next_action(proc, st, {"key": field["key"], "value": value})]
+    r.actions = [_next_action(proc, st, {"key": field["key"], "value": value}, focus=focus)]
+    return r
+
+
+def _fill_copy_quantity(proc: dict | None, st: dict, field: dict, carry: dict, applied):
+    """Ô số lượng vừa hiện sau khi chọn Có → điền luôn số bản đã nghe, không hỏi; một dòng báo chung cho cả hai ô.
+    Ô không hiện / chọn Có hỏng → None, hỏi tiếp như thường."""
+    from app.channels.handfree.chat.flow import Reply
+
+    pending = st.get("pending") or {}
+    if not (isinstance(applied, dict) and applied.get("ok") is True and pending
+            and field.get("name") == carry.get("name")):
+        return None
+    choice, quantity = pending.get("value") or "", carry["quantity"]
+    st["pending"] = {**pending, "key": field["key"], "value": vi.FR_COPY_VALUE.format(choice=choice, count=quantity),
+                     "choice": choice, "copy_quantity": True}
+    st.setdefault("history", []).append({"key": field["key"], "value": quantity})
+    st["current"] = None
+    r = Reply()
+    r.actions = [_next_action(proc, st, {"key": field["key"], "value": quantity})]
     return r
 
 
@@ -390,21 +670,35 @@ async def handle(conv: dict, proc: dict | None, intent):
     from app.channels.handfree.chat.flow import Reply
 
     if not _ours(intent):
-        step = _next_step(conv, proc, intent)
-        if not step:
-            return None
-        intent = type(intent)("action", step, {})
+        if intent.kind == "confirm" and owner_cta_showing(conv, proc):
+            # Vừa mời "đọc, sửa nếu cần rồi bấm sang Kê khai": "đúng rồi / thông tin đã đúng / ok" = đi tiếp.
+            intent = type(intent)("action", "field_review_owner_next", {})
+            conv["voice_options"] = None  # nút đã dùng: nói "đúng rồi" lần nữa không bấm "Bước tiếp theo" lần hai
+        else:
+            step = _next_step(conv, proc, intent)
+            if not step:
+                return None
+            intent = type(intent)("action", step, {})
     if not active(conv, proc):
         conv.pop("field_review", None)
         return Reply()
     if intent.value in {"field_review_owner_next", "guided_step_report"}:
         return _owner_step(proc, intent)
     st = conv.setdefault("field_review", {})
+    if intent.value == "field_review_status":
+        return _status_reply(conv, proc, st, intent.payload or {})
+    if intent.value == "field_review_preview" and st.get("running"):
+        # Bấm "Xem trước tờ khai" giữa lúc hỏi ô không bắt buộc: dừng hỏi rồi mở bản xem trước.
+        st.update(running=False, current=None)
+        r = _preview_step(proc, st, intent)
+        r.actions = [{"type": "field_review_stop"}, *r.actions]
+        return r
     if intent.value.startswith(("field_review_preview", "field_review_confirm")):
         return _preview_step(proc, st, intent)
     if intent.value == "field_review_start":
-        st.update(running=True, current=None, skip=[], intro=True, visited=[])
-        for key in ("pending", "skipped_label", "back_label", "last"):
+        st.update(running=True, current=None, skip=[], intro=True, visited=[], single_page=single_page(proc),
+                  asked_where="", required_first=flow_v2(conv, proc), phase_chips=[])
+        for key in ("pending", "skipped_label", "back_label", "last", "optional_said"):
             st.pop(key, None)
         r = Reply()
         r.actions = [_next_action(proc, st)]
@@ -412,7 +706,7 @@ async def handle(conv: dict, proc: dict | None, intent):
     if not st.get("running"):
         return Reply()  # sự kiện về muộn của vòng đã dừng
     if intent.value == "field_review_stop":
-        return _finish_reply(conv, stopped=True)
+        return _finish_reply(conv, proc, stopped=True)
     if intent.value == "field_review_skip":
         return _skip_current(proc, st) if st.get("current") else Reply()
     if intent.value == "field_review_back":
@@ -434,19 +728,46 @@ async def handle(conv: dict, proc: dict | None, intent):
     if isinstance(payload.get("stats"), dict):
         st["stats"] = _stats(payload["stats"])
     back = bool(st.get("back_label"))
+    field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc))
+    carry = st.pop("copy_carry", None)
+    if carry and field is not None:
+        filled = _fill_copy_quantity(proc, st, field, carry, payload.get("applied"))
+        if filled is not None:
+            return filled
     lead = _outcome_lead(st, payload.get("applied"))
-    field = _field(payload.get("field"), _no_section(proc))
     if field is None:
-        return _finish_reply(conv, stopped=False, lead=lead)
+        return _finish_reply(conv, proc, stopped=False, lead=lead)
     st["current"] = field
     visited = [v for v in st.get("visited") or [] if v.get("key") != field["key"]]
     st["visited"] = [*visited, {"key": field["key"], "label": field["label"], "where": field["where"]}]
-    return _ask_reply(st, lead, back=back)
+    phase = _optional_phase(conv, proc, st, field)
+    r = _ask_reply(st, ("", ""), back=back)
+    return _with_lead(r, lead, phase)
+
+
+def _optional_phase(conv: dict, proc: dict | None, st: dict, field: dict) -> tuple[str, str]:
+    """Luồng bản 2 hỏi ô bắt buộc trước: tới ô không bắt buộc mà tờ khai đã hết ô bắt buộc trống → mỗi câu hỏi kèm nút
+    đi tiếp (form cũ: Xem trước tờ khai; trang một trang: chọn hình thức nhận kết quả / nộp), báo một lần."""
+    stats = st.get("stats") or {}
+    if not flow_v2(conv, proc) or field["required"] or stats.get("required"):
+        st["phase_chips"] = []
+        return "", ""
+    # Cỡ thường như các nút của câu hỏi (không cta): việc chính lúc này vẫn là trả lời ô đang hỏi.
+    if legacy_wizard(proc):
+        st["phase_chips"] = [_preview_chip()]
+    else:
+        st["phase_chips"] = [{k: v for k, v in c.items() if k != "cta"} for c in st.get("chips") or [] if c.get("cta")]
+    if st.get("optional_said"):
+        return "", ""
+    st["optional_said"] = True
+    return _say(vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE,
+                optional=stats.get("optional") or 0)
 
 
 def _next_step(conv: dict, proc: dict | None, intent) -> str:
-    """Câu "xong rồi / xem trước / đính kèm đi" ở Kê khai → bấm Xem trước (bản xem trước đang mở → Xác nhận)."""
-    if not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration":
+    """Câu "xong rồi / xem trước / đính kèm đi" ở Kê khai → bấm Xem trước (bản xem trước đang mở → Xác nhận).
+    Trang một trang không có Xem trước: luồng tu_phap_moi tự lo câu đi tiếp."""
+    if not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration" or single_page(proc):
         return ""
     if conv.get("state") not in {"reviewing", "attaching"}:
         return ""
@@ -465,6 +786,7 @@ def _preview_step(proc: dict | None, st: dict, intent):
     confirm_chips = [{"label": vi.FR_CONFIRM_CTA, "send": "__action:field_review_confirm", "solid": True, "cta": True},
                      {"label": vi.FR_PREVIEW_CLOSE_CHIP, "send": "__action:field_review_preview_close", "tone": "back"}]
     if intent.value == "field_review_preview":
+        st["preview_retried"] = False
         r = Reply(*_say(vi.FR_PREVIEW_OPENING))
         r.actions = [{"type": "declaration_preview", "required": _required(proc)}]
         return r
@@ -485,6 +807,12 @@ def _preview_step(proc: dict | None, st: dict, intent):
         if required:
             r = Reply(*_say(vi.FR_PREVIEW_MISSING, count=required))
             r.chips = [_start_chip(), _preview_chip()]
+            return r
+        if not st.get("preview_retried"):
+            # Nút "Xem trước" của cổng tư pháp nhiều lúc phải bấm lần hai mới mở → tự bấm lại một lần, im lặng.
+            st["preview_retried"] = True
+            r = Reply()
+            r.actions = [{"type": "declaration_preview", "required": _required(proc)}]
             return r
         message = _clean(payload.get("message"), 200)
         r = Reply(*_say(vi.FR_PREVIEW_FAILED, message=f": *{message}*" if message else ""))
@@ -522,7 +850,7 @@ def _ours(intent) -> bool:
     if intent.kind == "action" and intent.value == "guided_step_report":
         return (intent.payload or {}).get("phase") == OWNER_PHASE
     return (intent.kind == "action" and intent.value in _COMMANDS) or (
-        intent.kind == "event" and intent.value == "field_review_focus")
+        intent.kind == "event" and intent.value in {"field_review_focus", "field_review_status"})
 
 
 def owner_ready(conv: dict, proc: dict | None, page_context: dict | None) -> bool:
@@ -534,7 +862,17 @@ def owner_ready(conv: dict, proc: dict | None, page_context: dict | None) -> boo
     return _count(form.get("required")) > 0 and _count(form.get("missing")) == 0
 
 
-def _owner_cta() -> dict:
+def owner_cta_showing(conv: dict, proc: dict | None) -> bool:
+    """Nút "Xong, sang bước điền tờ khai" của bước chủ hồ sơ đủ ô đang là nút của lượt hiện tại."""
+    from app.channels.handfree.chat.intents import voice_buttons
+
+    if not active(conv, proc):
+        return False
+    send = owner_cta()["send"]
+    return any(item.get("send") == send for item in voice_buttons(conv, conv.get("state", "")))
+
+
+def owner_cta() -> dict:
     return {"label": vi.FR_OWNER_CTA, "send": "__action:field_review_owner_next", "solid": True, "cta": True}
 
 
@@ -542,7 +880,7 @@ def owner_ready_reply():
     from app.channels.handfree.chat.flow import Reply
 
     r = Reply(*_say(vi.FR_OWNER_READY))
-    r.chips = [_owner_cta()]
+    r.chips = [owner_cta()]
     return r
 
 
@@ -559,7 +897,7 @@ def _owner_step(proc: dict | None, intent):
         return Reply()  # sang Kê khai: page_status của trang mới đưa vào bước xin đồng ý + giấy tờ như cũ
     message = _clean(payload.get("message"), 200)
     r = Reply(*_say(vi.FR_OWNER_BLOCKED, message=f": *{message}*" if message else ""))
-    r.chips = [_owner_cta()]
+    r.chips = [owner_cta()]
     return r
 
 
@@ -569,8 +907,9 @@ def finalize(conv: dict, intent, reply) -> None:
     st = conv.get("field_review") or {}
     if not st.get("running") or _ours(intent):
         return
+    # Trang một trang không rời bước Kê khai: page_status chỉ là trang đổi DOM (ô mới hiện ra sau câu trả lời).
     leaving = intent.kind == "action" or (
-        intent.kind == "event" and intent.value == "page_status"
+        intent.kind == "event" and intent.value == "page_status" and not st.get("single_page")
         and conv.get("docs_target") not in (None, "", "declaration"))
     if leaving:
         st.update(running=False, current=None)

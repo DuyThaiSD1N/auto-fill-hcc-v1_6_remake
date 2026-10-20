@@ -259,7 +259,6 @@ from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_bac_ninh.process import run a
 from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_bac_ninh.attach import plan as dang_ky_bien_dong_chuyen_nhuong_bac_ninh_attach
 from app.pipelines.dang_ky_bien_dong_dat_dai_bac_ninh.process import run as dang_ky_bien_dong_dat_dai_bac_ninh_process
 from app.pipelines.dang_ky_bien_dong_dat_dai_bac_ninh.attach import plan as dang_ky_bien_dong_dat_dai_bac_ninh_attach
-from app.pipelines.dang_ky_bien_dong_dat_dai_bac_ninh.attach import plan_thoa_thuan as dang_ky_bien_dong_thoa_thuan_bac_ninh_attach
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.process import run as xoa_dk_bpbd_bac_ninh_process
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.attach import plan as xoa_dk_bpbd_bac_ninh_attach
 from app.pipelines.dien_thong_tin_tai_khoan_bac_ninh.process import run as dien_tk_bac_ninh_process
@@ -1097,6 +1096,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký kết hôn có yếu tố nước ngoài",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -1113,6 +1114,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký lại kết hôn",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -1436,6 +1439,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký lại khai tử",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -3785,57 +3790,6 @@ PROCEDURES: list[dict] = [
             "TP-H05.000079 (và 000070–000078, 000033, 000045 khi có); CCCD/hộ tịch/tờ khai thuế/biên bản bàn "
             "giao→ô 'File đính kèm khác'. Cơ quan tiếp nhận và tỉnh/phường người nhận là select theo địa bàn "
             "— chọn tay."
-        ),
-    },
-    {
-        "key": "dang-ky-bien-dong-thoa-thuan-bac-ninh",
-        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm) — engine fill-bacninh.js. Cùng đơn Mẫu 18 + khối
-        # người nhận với 1.115468 → chạy chung process của dang-ky-bien-dong-dat-dai-bac-ninh. Đính kèm
-        # cùng planner nhưng catalog/prompt riêng (attach.plan_thoa_thuan): 18 thành phần khác hẳn
-        # 1.115468, ủy quyền là TP-H05.000046 (không phải 000079), thỏa thuận 000085.
-        "detect": {
-            "urlScope": ["dichvucong.bacninh.gov.vn"],
-            "urlIncludes": ["maThuTucHanhChinh=1.115470"],
-        },
-        "label": (
-            "[Tỉnh Bắc Ninh] Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu "
-            "tài sản gắn liền với đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; "
-            "quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng "
-            "công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử "
-            "dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận "
-            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, "
-            "khiếu nại, tố cáo về đất đai hoặc bản án, quyết định của Tòa án, quyết định thi hành án của cơ "
-            "quan thi hành án đã được thi hành; quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam "
-            "về giải quyết tranh chấp giữa các bên phát sinh từ hoạt động thương mại liên quan đến đất đai; "
-            "nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là "
-            "quyền sử dụng đất, tài sản gắn liền với đất đã được đăng ký, bao gồm cả xử lý khoản nợ có nguồn "
-            "gốc từ khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài"
-        ),
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) người đứng tên sau biến động đã khai — dùng để điền "
-            "thân đơn.\n"
-            "2. Bản gốc Giấy chứng nhận QSDĐ đã cấp (sổ đỏ/sổ hồng).\n"
-            "3. Văn bản căn cứ biến động: văn bản thỏa thuận của các thành viên hộ gia đình hoặc của vợ và "
-            "chồng; quyết định/văn bản về tài sản công; bản án, quyết định của Tòa án, quyết định thi hành án, "
-            "phán quyết Trọng tài; hợp đồng/văn bản xử lý tài sản thế chấp.\n"
-            "4. Giấy ủy quyền/văn bản đại diện (nếu nộp qua người được ủy quyền — BẮT BUỘC).\n"
-            "5. CCCD/hộ tịch, tờ khai thuế/lệ phí, bản vẽ tách thửa/mảnh trích đo (nếu có).\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Lưu ý: mọi thông tin điền là của NGƯỜI ĐỨNG TÊN SAU BIẾN ĐỘNG; người được ủy quyền chỉ đi nộp thay.\n"
-            "Điền đơn: khớp ô theo class ổn định như thủ tục 1.115468 (Kính gửi, Tên, Giấy tờ nhân thân/pháp "
-            "nhân, Địa chỉ, Mã số thuế, Điện thoại, Hộp thư điện tử, Nội dung biến động, (3) giấy tờ kèm) + "
-            "khối người nhận kết quả.\n"
-            "Đính kèm (18 thành phần TP-H05): Đơn Mẫu 18→000026, GCN gốc→000040, Văn bản thỏa thuận hộ gia "
-            "đình/vợ chồng→000085, GCN kết hôn/ly hôn→000086, VB đại diện/ủy quyền→000046, bản vẽ tách thửa→"
-            "000033, mảnh trích đo→000045, công trình ngầm→000087, tài sản công→000088/000089, hòa giải→000090, "
-            "QĐ giải quyết tranh chấp→000091, bản án→000092, trọng tài→000093, HĐ chuyển nhượng→000094/000095, "
-            "đấu giá→000096, thế chấp→000097; CCCD/khai sinh/tờ khai thuế→ô 'File đính kèm khác'. Cơ quan tiếp "
-            "nhận và tỉnh/phường người nhận là select theo địa bàn — chọn tay."
         ),
     },
     {
@@ -8270,7 +8224,6 @@ _PIPELINE = {
     "thu-hoi-gcn-cap-sai-bac-ninh": thu_hoi_gcn_cap_sai_bac_ninh_process,
     "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": dang_ky_bien_dong_chuyen_nhuong_bac_ninh_process,
     "dang-ky-bien-dong-dat-dai-bac-ninh": dang_ky_bien_dong_dat_dai_bac_ninh_process,
-    "dang-ky-bien-dong-thoa-thuan-bac-ninh": dang_ky_bien_dong_dat_dai_bac_ninh_process,
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": xoa_dk_bpbd_bac_ninh_process,
     "dien-thong-tin-tai-khoan-bac-ninh": dien_tk_bac_ninh_process,
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_process,
@@ -8502,7 +8455,6 @@ _ATTACH_PIPELINE = {
     "thu-hoi-gcn-cap-sai-bac-ninh": thu_hoi_gcn_cap_sai_bac_ninh_attach,
     "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": dang_ky_bien_dong_chuyen_nhuong_bac_ninh_attach,
     "dang-ky-bien-dong-dat-dai-bac-ninh": dang_ky_bien_dong_dat_dai_bac_ninh_attach,
-    "dang-ky-bien-dong-thoa-thuan-bac-ninh": dang_ky_bien_dong_thoa_thuan_bac_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": xoa_dk_bpbd_bac_ninh_attach,
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_attach,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_attach,

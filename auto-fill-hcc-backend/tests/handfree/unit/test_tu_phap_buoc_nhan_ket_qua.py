@@ -50,14 +50,22 @@ async def test_dinh_kem_xong_co_nut_sang_buoc_nhan_ket_qua(key):
     assert r.chips[0]["send"] == "__action:add_documents", "vẫn còn nút Điều chỉnh giấy tờ"
 
 
-async def test_sang_buoc_4_hien_the_khong_tu_gat_va_co_nut_gui_ho_so():
+async def test_sang_buoc_4_tu_gat_san_ban_giay_co_dong_dau_va_co_nut_gui_ho_so():
     conv = _conv("ket-hon", state="done", attach_done=True)
     r = await flow.handle_turn(conv, Intent("action", "guided_step_report",
                                             {"phase": "attachment", "ok": True, "wizardStep": 4}))
-    # Trợ lý KHÔNG tự chọn cách nhận (công dân tự chọn trên thẻ hoặc trên trang).
-    assert r.cards[0]["kind"] == "result_methods" and r.cards[0]["selected"] == ""
-    assert not r.actions
+    # Tư pháp form cũ: chọn sẵn "Nhận kết quả bản giấy có đóng dấu" và gạt luôn công tắc trên cổng.
+    assert r.cards[0]["kind"] == "result_methods" and r.cards[0]["selected"] == "paper"
+    assert r.actions and r.actions[0]["type"] == "select_result_method"
+    assert "**Nhận kết quả bản giấy có đóng dấu**" in r.display_md and "Gửi hồ sơ" in r.display_md
     assert r.chips[0]["send"] == "__action:guided_submit"
+    # Cổng báo gạt xong đúng cách chọn sẵn: không nói lại "Đã chọn…".
+    done = await flow.handle_turn(conv, Intent("action", "result_method_report", {"method": "paper", "ok": True}))
+    assert done.display_md == ""
+    # Công dân đổi sang cách khác thì báo như thường.
+    await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "online"}))
+    other = await flow.handle_turn(conv, Intent("action", "result_method_report", {"method": "online", "ok": True}))
+    assert "Nhận kết quả trực tuyến" in other.display_md
 
 
 def test_dinh_kem_xong_noi_ro_sang_buoc_nhan_ket_qua():

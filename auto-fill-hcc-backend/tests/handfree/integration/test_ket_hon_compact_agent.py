@@ -1,7 +1,8 @@
-"""Compact agent đăng ký kết hôn: OCR text -> CccdNam/CccdNu -> legacy UI fields."""
+"""Compact agent đăng ký kết hôn: OCR text -> BenNam/BenNu -> legacy UI fields."""
 
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.ket_hon import process as agent
+from app.pipelines.ket_hon.process import base_prompt as ket_hon_base_prompt
 from app.pipelines.ket_hon.process.prompt import EXTRA_RULES
 from app.pipelines.ket_hon.process.schema import FIELDS
 from app.channels.handfree.procedure_registry import get_attach_pipeline, get_pipeline, get_procedure
@@ -10,12 +11,12 @@ from app.upload_session.store import progress
 
 
 def test_ket_hon_compact_prompt_instructs_gender_split():
-    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    system_prompt = ket_hon_base_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
-    assert "Nam -> nhóm CccdNam_*" in system_prompt
-    assert "Nữ -> nhóm CccdNu_*" in system_prompt
+    assert "Nam -> nhóm BenNam_*" in system_prompt
+    assert "Nữ -> nhóm BenNu_*" in system_prompt
     assert "Không phân biệt nam/nữ theo tên file" in system_prompt
-    assert "BẮT BUỘC cố đọc CccdNam_NoiCap/CccdNu_NoiCap" in system_prompt
+    assert "BẮT BUỘC cố đọc BenNam_NoiCap/BenNu_NoiCap" in system_prompt
     assert "Bộ Công an" in system_prompt
     assert "HoTenBenNam" in system_prompt
     assert "Không trả field UI/default" in system_prompt

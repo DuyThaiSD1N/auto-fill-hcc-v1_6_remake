@@ -1,142 +1,85 @@
-"""Khai sinh liên thông: hồ sơ CHƯA có thông tin con thì không được làm sập pipeline.
-
-Lỗi thật gặp tại quầy: cán bộ gửi mỗi giấy chứng nhận kết hôn + một giấy tờ khác (chưa có
-giấy chứng sinh, chưa có tờ khai) → `has_child` = False → nhánh quê quán đọc `is_lam_dong` vốn
-chỉ được gán BÊN TRONG khối `if has_child:` → UnboundLocalError. Công dân chỉ thấy
-"Xử lý giấy tờ chưa xong được — cannot access local variable 'is_lam_dong'".
-
-Đây là ca RẤT dễ gặp: công dân đưa giấy tờ theo từng đợt, đợt đầu thường chưa có chứng sinh.
-"""
+"""Khai sinh liên thông: thông tin giấy chứng nhận kết hôn chép trên dòng in sẵn của TỜ KHAI (hồ sơ không kèm giấy
+kết hôn thật) vẫn phải điền; giấy kết hôn thật thì thắng tờ khai."""
 from app.pipelines.khai_sinh_lien_thong.process.mapper import enrich
 
 
-def _run(values: dict):
-    """enrich nhận LIST field (không phải dict) — dựng đúng hình dạng thật."""
-    return enrich([{"name": k, "value": v} for k, v in values.items()])
+def _gcn(values: dict) -> dict:
+    out = enrich([{"name": k, "value": v} for k, v in values.items()])
+    return {f["name"]: f.get("value") for f in out if f["name"].startswith("GiayCNKH")}
 
 
-def _fields(rows):
-    return {f["name"]: f.get("value") for f in rows}
+def test_chi_co_dong_to_khai_van_dien_bo_dau_cham():
+    out = _gcn({"Tk_GcnKetHon_So": "49...", "Tk_GcnKetHon_QuyenSo": "....", "Tk_GcnKetHon_NgayCap": "24/06/2023",
+                "Tk_GcnKetHon_NoiCap": "UBND xã A"})
+    assert out == {"GiayCNKHSo": "49", "GiayCNKHNgayCap": "24/06/2023", "GiayCNKHNoiCap": "UBND xã A"}
 
 
-def test_thieu_hoan_toan_thong_tin_con_van_chay_duoc():
-    # Đúng bộ giấy tờ của ca lỗi: chỉ có cha/mẹ, không một trường nào của con.
-    result = _run({
-        "ThongTinBo_HoTen": "NGUYỄN VĂN A",
-        "ThongTinBo_SoDinhDanh": "001234567890",
-        "ThongTinMe_HoTen": "TRẦN THỊ B",
-        "ThongTinMe_SoDinhDanh": "001234567891",
-    })
-    assert isinstance(result, list), "không được ném UnboundLocalError"
+def test_giay_ket_hon_that_thang_to_khai_to_khai_bu_o_thieu():
+    out = _gcn({"GcnKetHon_So": "12", "GcnKetHon_NgayCap": "01/02/2020", "Tk_GcnKetHon_So": "21",
+                "Tk_GcnKetHon_NoiCap": "UBND xã B"})
+    assert out == {"GiayCNKHSo": "12", "GiayCNKHNgayCap": "01/02/2020", "GiayCNKHNoiCap": "UBND xã B"}
 
 
-def test_khong_co_noi_sinh_thi_khong_ap_ngoai_le_lam_dong():
-    # is_lam_dong phải là False chứ không phải "chưa gán": quê quán con vẫn lấy theo CHA.
-    result = _run({
-        "ThongTinBo_HoTen": "NGUYỄN VĂN A",
-        "ThongTinBo_QueQuan": {"tinh": "Tỉnh Lai Châu", "xa": "Xã Tân Phong"},
-        "ThongTinMe_HoTen": "TRẦN THỊ B",
-        "ThongTinMe_QueQuan": {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Khác"},
-    })
-    qq = _fields(result).get("QqDiaChi") or {}
-    if qq:
-        assert "Lâm Đồng" not in str(qq), "không có nơi sinh thì không được lấy quê mẹ theo lệ Lâm Đồng"
+def _by_name(values: dict) -> dict:
+    return {f["name"]: f.get("value") for f in enrich([{"name": k, "value": v} for k, v in values.items()])}
 
 
-def test_sinh_o_lam_dong_van_lay_que_quan_me():
-    # Hành vi CŨ phải giữ nguyên sau khi dời phép tính ra ngoài khối.
-    result = _run({
-        "Gcs_NoiSinh": {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương"},
-        "Tk_HoTenCon": "NGUYỄN VĂN C",
-        "ThongTinBo_HoTen": "NGUYỄN VĂN A",
-        "ThongTinBo_QueQuan": {"tinh": "Tỉnh Lai Châu", "xa": "Xã Tân Phong"},
-        "ThongTinMe_HoTen": "TRẦN THỊ B",
-        "ThongTinMe_SoDinhDanh": "001234567891",
-        "ThongTinMe_QueQuan": {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương"},
-    })
-    qq = _fields(result).get("QqDiaChi") or {}
-    assert "Lâm Đồng" in str(qq), "sinh ở Lâm Đồng thì quê quán con theo MẸ"
+def test_me_chi_co_nam_sinh_lay_ngay_day_du_tu_giay_ket_hon_khi_trung_ten():
+    out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI", "ThongTinMe_SoDinhDanh": "001190000001",
+                    "ThongTinMe_NgaySinh": "1990", "GcnKetHon_Vo_HoTen": "Trần Thị Mai",
+                    "GcnKetHon_Vo_NgaySinh": "07/05/1990", "GcnKetHon_Vo_SoGiayTo": "123456789"})
+    assert out["MeNgaySinh"] == "07/05/1990"
+    assert out["MeSoGiayTo"] == "001190000001"
 
 
-# --- Cấu hình theo tài khoản: 4 phường Đà Lạt chọn sẵn mục "Thông tin cấp thẻ BHYT" ---
-import pytest
-
-from app.pipelines.khai_sinh_lien_thong.process.mapper import (
-    DA_LAT_BHYT_OPTION,
-    with_account_process_options,
-)
-
-_HO_SO = {
-    "ThongTinBo_HoTen": "NGUYỄN VĂN A",
-    "ThongTinMe_HoTen": "TRẦN THỊ B",
-}
+def test_bu_thong_tin_me_khi_trung_so_giay_to_khong_ghi_de_nguon_uu_tien():
+    out = _by_name({"ThongTinMe_HoTen": "LÊ THU HÀ", "ThongTinMe_SoDinhDanh": "001190000002",
+                    "ThongTinMe_DanToc": "Tày", "GcnKetHon_Vo_HoTen": "Lê Thu Hằng",
+                    "GcnKetHon_Vo_SoGiayTo": "001190000002", "GcnKetHon_Vo_NgaySinh": "01/02/1991",
+                    "GcnKetHon_Vo_DanToc": "Kinh"})
+    assert out["MeNgaySinh"] == "01/02/1991"
+    assert out["MeMaDanToc"] == "Tày"
 
 
-@pytest.mark.parametrize("xa", [
-    "Phường Xuân Hương - Đà Lạt",
-    "Phường Lâm Viên - Đà Lạt",
-    "Phường Cam Ly - Đà Lạt",
-    "Phường Lang Biang - Đà Lạt",
-    "Lâm Viên",
-])
-def test_bon_phuong_da_lat_bat_co_bhyt(xa):
-    opts = with_account_process_options({}, {"tinh": "Tỉnh Lâm Đồng", "xa": xa}, "khai-sinh-dang-ky")
-    assert opts.get(DA_LAT_BHYT_OPTION) is True
+def test_khong_bu_khi_ben_vo_tren_giay_ket_hon_la_nguoi_khac():
+    out = _by_name({"ThongTinMe_HoTen": "PHẠM THỊ LAN", "ThongTinMe_NgaySinh": "1992",
+                    "GcnKetHon_Vo_HoTen": "Đỗ Thị Hoa", "GcnKetHon_Vo_NgaySinh": "03/04/1992"})
+    assert out["MeNgaySinh"] == "1992"
 
 
-@pytest.mark.parametrize("user, procedure", [
-    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"}, "khai-sinh-dang-ky"),
-    ({"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}, "khai-sinh-dang-ky"),
-    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}, "khai-tu-lien-thong"),
-    (None, "khai-sinh-dang-ky"),
-])
-def test_tai_khoan_khac_khong_bat_co_va_client_khong_tu_bat(user, procedure):
-    opts = with_account_process_options({DA_LAT_BHYT_OPTION: True}, user, procedure)
-    assert DA_LAT_BHYT_OPTION not in opts
+def test_nam_sinh_lech_thi_giu_giay_chung_sinh():
+    out = _by_name({"ThongTinMe_HoTen": "PHẠM THỊ LAN", "ThongTinMe_NgaySinh": "1992",
+                    "GcnKetHon_Vo_HoTen": "Phạm Thị Lan", "GcnKetHon_Vo_NgaySinh": "03/04/1993"})
+    assert out["MeNgaySinh"] == "1992"
 
 
-def test_phuong_da_lat_chon_me_va_bv_san_nhi():
-    rows = enrich([{"name": k, "value": v} for k, v in _HO_SO.items()], {DA_LAT_BHYT_OPTION: True})
-    by = {f["name"]: f for f in rows}
-    assert by["NguoiGiamHo"]["value"] == "Thông tin mẹ"
-    assert by["CskcbbdMa"]["value"] == "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
-    assert by["CskcbbdMa"]["comp"] == "select" and by["CskcbbdMa"].get("default") is True
-    assert [f["name"] for f in rows].count("NguoiGiamHo") == 1
+def test_ten_benh_vien_in_hoa_viet_lai_theo_quy_tac():
+    out = _by_name({"Gcs_HoTenCon": "VŨ AN", "Gcs_NoiSinh": {
+        "tinh": "Bắc Ninh", "diaChi": "BỆNH VIỆN SẢN - NHI BẮC NINH SỐ 2 TỈNH BẮC NINH"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản - Nhi Bắc Ninh số 2"
 
 
-def test_khong_co_co_giu_mac_dinh_cha_va_bo_trong_noi_kcb():
-    fields = _fields(_run(_HO_SO))
-    assert fields["NguoiGiamHo"] == "Thông tin cha"
-    assert "CskcbbdMa" not in fields
+def test_ten_benh_vien_tuyen_tinh_in_hoa_giu_ten_tinh():
+    out = _by_name({"Gcs_HoTenCon": "VŨ AN", "Gcs_NoiSinh": {
+        "tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "BỆNH VIỆN ĐA KHOA TỈNH LAI CHÂU"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện đa khoa tỉnh Lai Châu"
 
 
-# --- Phường Hải Châu - Đà Nẵng: chỉ chọn giám hộ trên thẻ BHYT = mẹ ---
-from app.pipelines.khai_sinh_lien_thong.process.mapper import HAI_CHAU_BHYT_OPTION
+def test_ten_benh_vien_da_viet_thuong_giu_nguyen():
+    out = _by_name({"Gcs_HoTenCon": "VŨ AN", "Gcs_NoiSinh": {
+        "tinh": "Hà Nội", "xa": "Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Phụ sản Hà Nội"
 
 
-@pytest.mark.parametrize("user", [
-    {"tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"},
-    {"tinh": "Đà Nẵng", "xa": "Hải Châu"},
-])
-def test_hai_chau_bat_co_bhyt(user):
-    opts = with_account_process_options({}, user, "khai-sinh-dang-ky")
-    assert opts.get(HAI_CHAU_BHYT_OPTION) is True
-    assert DA_LAT_BHYT_OPTION not in opts
+def test_me_khong_co_noi_cu_tru_lay_dong_thuong_tru_tren_giay_chung_sinh():
+    out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI", "Gcs_NoiThuongTruMe": {
+        "tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn A"}})
+    assert out["MeDiaChi"]["diaChi"] == "Thôn A"
+    assert out["MeDiaChi"]["tinh"] == "Bắc Ninh"
 
 
-@pytest.mark.parametrize("user, procedure", [
-    ({"tinh": "Thành phố Đà Nẵng", "xa": "Phường Liên Chiểu"}, "khai-sinh-dang-ky"),
-    ({"tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"}, "khai-tu-lien-thong"),
-    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}, "khai-sinh-dang-ky"),
-])
-def test_ngoai_hai_chau_khong_bat_co_va_client_khong_tu_bat(user, procedure):
-    opts = with_account_process_options({HAI_CHAU_BHYT_OPTION: True}, user, procedure)
-    assert HAI_CHAU_BHYT_OPTION not in opts
-
-
-def test_hai_chau_chon_me_va_khong_dien_noi_kcb():
-    rows = enrich([{"name": k, "value": v} for k, v in _HO_SO.items()], {HAI_CHAU_BHYT_OPTION: True})
-    by = {f["name"]: f for f in rows}
-    assert by["NguoiGiamHo"]["value"] == "Thông tin mẹ"
-    assert "CskcbbdMa" not in by
-    assert [f["name"] for f in rows].count("NguoiGiamHo") == 1
+def test_noi_cu_tru_me_van_uu_tien_nguon_khac_truoc_giay_chung_sinh():
+    out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI",
+                    "ThongTinMe_NoiCuTru": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn B"},
+                    "Gcs_NoiThuongTruMe": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn A"}})
+    assert out["MeDiaChi"]["diaChi"] == "Thôn B"

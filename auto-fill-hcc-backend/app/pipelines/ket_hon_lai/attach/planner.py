@@ -260,51 +260,20 @@ def _is_marriage_cert(doc_type: str, document_name: str, text: str) -> bool:
     return "giay chung nhan ket hon" in folded or "chung nhan ket hon" in folded or "trich luc ket hon" in folded
 
 
-async def plan_ket_hon_lai_attachments(
-    files: list[FileItem],
-    options: dict | None = None,
+def build_plan_items(
+    files: list[dict],
+    ocr_results: list[dict],
+    llm_types: dict[int, dict[str, str]],
     session: dict | None = None,
-) -> dict:
-    _ = options or {}
-    errors: list[str] = []
-    raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
-    ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
-
-    from app.services import ocr
-
-
-    t0 = time.monotonic()
-    ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
-    ocr_ms = int((time.monotonic() - t0) * 1000)
-    for r in ocr_results:
-        if r.get("error"):
-            errors.append(f"OCR {r.get('name')}: {r['error']}")
-
+) -> tuple[list[dict], list[dict]]:
+    """Xếp dòng cho từng tệp đã phân loại — dùng chung cho chế độ không tách và chế độ tách (mỗi giấy một tệp ảo)."""
     male_id, female_id = _identity_numbers_from_session(session)
     ocr_by_name = {r.get("name"): r for r in ocr_results}
-
-    llm_docs = [
-        {
-            "index": idx,
-            "fileName": file.get("name"),
-            "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or ""),
-        }
-        for idx, file in enumerate(raw_files)
-    ]
-    t1 = time.monotonic()
-    llm_types: dict[int, dict[str, str]] = {}
-    if llm_docs:
-        try:
-            llm_types = await _classify_doc_types_with_llm(llm_docs)
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"attachment_agent: {e}")
-    llm_ms = int((time.monotonic() - t1) * 1000)
-
     doc_types: list[str] = []
     sides: list[str] = []
     faces: list[str] = []
     is_cert: list[bool] = []
-    for idx, file in enumerate(raw_files):
+    for idx, file in enumerate(files):
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
         info = llm_types.get(idx) or {}
         doc_type = info.get("type") or _rule_doc_type(text)
@@ -331,7 +300,7 @@ async def plan_ket_hon_lai_attachments(
 
     # Dòng STT2 chỉ nhận 1 file: ưu tiên GCN kết hôn cũ; không có thì giấy tờ cá nhân liên quan
     # (other), rồi mới tới bản cam đoan — thường là bộ gộp "cam đoan + giấy khai sinh" nộp thay GCN.
-    row_2_idx = next((i for i in range(len(raw_files)) if is_cert[i]), None)
+    row_2_idx = next((i for i in range(len(files)) if is_cert[i]), None)
     for substitute_type in ("other", "commitment"):
         if row_2_idx is None:
             row_2_idx = next(
@@ -341,7 +310,7 @@ async def plan_ket_hon_lai_attachments(
 
     attachments: list[dict] = []
     used_labels: set[str] = set()
-    for idx, file in enumerate(raw_files):
+    for idx, file in enumerate(files):
         if idx == row_2_idx:
             attachments.append({
                 "fileIndex": idx,
@@ -369,11 +338,77 @@ async def plan_ket_hon_lai_attachments(
         attachments,
         {
             idx: str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-            for idx, file in enumerate(raw_files)
+            for idx, file in enumerate(files)
         },
         id_indexes,
     )
     attachments = _rename_merged_identity(attachments, sides)
+
+    matched = [
+        {
+            "fileName": files[i].get("name"),
+            "docType": "marriage_certificate" if is_cert[i] else doc_types[i],
+            "side": sides[i],
+        }
+        for i in range(len(files))
+    ]
+    return attachments, matched
+
+
+async def plan_ket_hon_lai_attachments(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    """Chỉ boolean ``True`` mới tách giấy theo trang; client cũ / mất option luôn giữ nguyên từng tệp."""
+    if (options or {}).get("splitDocuments") is True:
+        # Import muộn: nhánh tách import ngược hàm xếp dòng của file này.
+        from app.pipelines.ket_hon_lai.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_without_split(files, options, session)
+
+
+async def plan_without_split(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    _ = options or {}
+    errors: list[str] = []
+    raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
+    ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
+
+    from app.services import ocr
+
+
+    t0 = time.monotonic()
+    ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
+    ocr_ms = int((time.monotonic() - t0) * 1000)
+    for r in ocr_results:
+        if r.get("error"):
+            errors.append(f"OCR {r.get('name')}: {r['error']}")
+
+    ocr_by_name = {r.get("name"): r for r in ocr_results}
+
+    llm_docs = [
+        {
+            "index": idx,
+            "fileName": file.get("name"),
+            "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or ""),
+        }
+        for idx, file in enumerate(raw_files)
+    ]
+    t1 = time.monotonic()
+    llm_types: dict[int, dict[str, str]] = {}
+    if llm_docs:
+        try:
+            llm_types = await _classify_doc_types_with_llm(llm_docs)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"attachment_agent: {e}")
+    llm_ms = int((time.monotonic() - t1) * 1000)
+
+    attachments, matched = build_plan_items(raw_files, ocr_results, llm_types, session)
 
     return {
         "attachments": attachments,
@@ -381,14 +416,7 @@ async def plan_ket_hon_lai_attachments(
             "documents": [f["name"] for f in raw_files],
             "ocrDocuments": [r.get("name") for r in ocr_results if r.get("text")],
             "sessionId": (session or {}).get("request_id"),
-            "matched": [
-                {
-                    "fileName": raw_files[i].get("name"),
-                    "docType": "marriage_certificate" if is_cert[i] else doc_types[i],
-                    "side": sides[i],
-                }
-                for i in range(len(raw_files))
-            ],
+            "matched": matched,
         },
         "stats": {"ocr_latency_ms": ocr_ms, "llm_latency_ms": llm_ms, "total_latency_ms": ocr_ms + llm_ms},
         "errors": errors,

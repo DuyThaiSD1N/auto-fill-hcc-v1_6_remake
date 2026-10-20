@@ -7,3 +7,7 @@ Chấm đỏ "Trường này không được bỏ trống" của eForm chỉ hi�
 PROCEDURE_KEYS = ("khai-sinh-dang-ky-lai",)
 
 REQUIRED = ("LoaiDangKy",)
+
+# Ô "Đề nghị cấp bản sao" (Có/Không) và ô số lượng cổng chỉ dựng sau khi chọn Có: công dân nói "có, ba bản" hoặc chỉ
+# "ba bản" thì chọn Có rồi điền luôn số lượng, không hỏi lại.
+COPY_QUANTITY = ("CapBanSao", "ThongTin")

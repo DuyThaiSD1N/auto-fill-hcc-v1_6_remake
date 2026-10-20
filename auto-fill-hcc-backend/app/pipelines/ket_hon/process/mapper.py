@@ -338,7 +338,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Dân tộc không nằm trong nhóm ô theo thẻ: tờ khai trước, thẻ (đúng người) chỉ bù.
         dan_toc, dan_toc_khac = ethnicity_for_form(
             values.get(f"{declaration}_DanToc")
-            or (None if card_is_other else values.get(f"{src}_DanToc")))
+            or (None if card_is_other else values.get(f"{dst}_DanToc")))
         add(f"DanToc{dst}", _normalize_dan_toc(dan_toc))
         add(f"DanTocKhac{dst}", dan_toc_khac, otherOf=f"DanToc{dst}")
         add(f"QuocTich{dst}", nationality)
@@ -357,8 +357,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # thì giữ mặc định nghiệp vụ của form (lần 1, chưa đăng ký).
         # Nếu một trong hai có bằng chứng thì chỉ điền field có bằng chứng,
         # không suy diễn field còn thiếu.
-        so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
-        status_code = str(values.get(f"{src}_TinhTrangHonNhan") or "").strip()
+        so_lan = str(values.get(f"{dst}_SoLanKetHon") or "").strip()
+        status_code = str(values.get(f"{dst}_TinhTrangHonNhan") or "").strip()
         if not so_lan and not status_code:
             add(f"SoLanKetHon_{dst}", "1", default=True)
             add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"], default=True)
@@ -380,18 +380,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Chỉ điền khi văn bản ly hôn thật sự ghi tên người này là đương sự — chặn
                 # trường hợp LLM lấy quyết định của bên kia gán sang (số/ngày/cơ quan sai hết).
                 if _divorce_party_matches(ho_ten,
-                                          values.get(f"{src}_BanAnLyHon_DuongSu")):
+                                          values.get(f"{dst}_BanAnLyHon_DuongSu")):
                     decision = {
-                        "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
-                        "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
-                        "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
+                        "soBanAnQuyetDinhLyHon": values.get(f"{dst}_BanAnLyHon_So"),
+                        "ngayCapBanAnQuyetDinhLyHon": values.get(f"{dst}_BanAnLyHon_Ngay"),
+                        "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{dst}_BanAnLyHon_CoQuan"),
                     }
                     decision = {k: v for k, v in decision.items() if v}
                     if decision:
                         add(f"TTHN_LyHon{dst}", decision)
 
-    add_person("CccdNu", "BenNu", "ToKhaiNu")
-    add_person("CccdNam", "BenNam", "ToKhaiNam")
+    add_person("BenNu", "BenNu", "ToKhaiNu")
+    add_person("BenNam", "BenNam", "ToKhaiNam")
 
     # Chỉ tác động radio khi tờ khai ghi rõ loại đăng ký. Không có dữ liệu thì bỏ hẳn;
     # cổng tự giữ trạng thái của nó, mapper không mặc định "Đăng ký lần đầu".

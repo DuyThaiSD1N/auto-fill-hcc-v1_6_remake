@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # Máy riêng cho OCR Qwen (app/services/ocr_qwen.py) để không tranh lượt với LLM trích xuất; trống → dùng LLM_*.
     ocr_qwen_base_url: str = ""
     ocr_qwen_model: str = ""
+    # Đăng ký kết hôn: luồng kết hợp (tách thẻ → Vintern ‖ Qwen đọc ảnh ra JSON → ghép). False = chỉ Vintern như cũ.
+    ket_hon_ket_hop: bool = True
+    ket_hon_qwen_timeout_ms: int = 60000
 
     # LLM DỰ PHÒNG cấp 1 — mirror vLLM cùng contract (OpenAI-compatible), thử TRƯỚC khi rơi
     fallback_llm_base_url: str = ""

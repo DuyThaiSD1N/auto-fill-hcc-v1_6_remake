@@ -36,11 +36,6 @@ PROCEDURE_HMONG = {
     "dang-ky-lai-ket-hon": "Cuv npe yuav txiv yuav poj niam dua tshiab",
     "khai-tu-dang-ky-lai": "Cuv npe tuag dua tshiab",
     "dang-ky-nhan-cha-me-con": "Cuv npe lees txiv, niam, me nyuam",
-    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe yug me nyuam" (khai sinh) + "lees txiv, niam, me nyuam"
-    # (nhận cha, mẹ, con); "thiab" = và.
-    "khai-sinh-ket-hop-nhan-cha-me-con": "Cuv npe yug me nyuam thiab lees txiv, niam, me nyuam",
-    # BẢN NHÁP chờ anh Dư soát — "tu me nyuam" (nhận nuôi con) và "hauv teb chaws" (trong nước) là TỪ MỚI.
-    "dang-ky-nuoi-con-nuoi-trong-nuoc": "Cuv npe tu me nyuam (hauv teb chaws)",
     "chung-thuc-ban-sao": "Lees paub daim ntawv theej",
     "chung-thuc-chu-ky": "Lees paub kos npe",
     # BẢN NHÁP chờ anh Dư soát (thủ tục Bộ NN&MT — cấp/cấp lại giấy phép đánh bắt cá).
@@ -291,8 +286,6 @@ DOC_SLOT_HMONG = {
     "giay_de_nghi": "Ntawv thov",
     "chung_sinh": "Ntawv chứng sinh",
     "chung_minh_tthn": "Ntawv pov thawj hôn nhân",
-    # BẢN NHÁP chờ anh Dư soát — "kuaj mob" (khám bệnh) là TỪ MỚI.
-    "suc_khoe": "Ntawv kuaj mob (sức khỏe)",
     "bien_ban": "Biên bản",
 }
 
@@ -491,6 +484,18 @@ AGENCY_CARD_MISSING = {
 GUIDE_LOGIN_NO_URL = {
     "md": "Kuv tsis muaj txoj kev mus rau nplooj ntawv {procedure}. Pej xeem qhib nplooj ntawv ntawm cổng dịch vụ công; kuv pom lawm yuav pab ntxiv.",
     "tts": "Pej xeem qhib nplooj ntawv ntawm cổng dịch vụ công, kuv pom lawm yuav pab ntxiv.",
+}
+
+# NỢ DỊCH: ghép "Kuv" (em) + "hais dua" (nói lại) từ các câu đã dịch, chờ người soát.
+REPEAT_LAST = {
+    "md": "Kuv hais dua.",
+    "tts": "Kuv hais dua. ",
+}
+
+# NỢ DỊCH: cắt phần hỏi cách gửi của ASK_DOC_METHOD, chờ người soát.
+ASK_DOC_METHOD_AGAIN = {
+    "md": "Pej xeem xav muab ntaub ntawv li cas? Xaiv ib txoj hauv qab no:",
+    "tts": "Pej xeem xav muab li cas? Thaij duab ntawm xov tooj los yog scan ntawm chaw?",
 }
 
 ASK_DOC_METHOD = {

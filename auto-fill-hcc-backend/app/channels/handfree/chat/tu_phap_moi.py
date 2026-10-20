@@ -12,10 +12,16 @@ công dân bấm nút trong khung chat:
 Planner đính kèm chạy nền ngay khi điền xong, nên lúc công dân bấm "Đính kèm" thường đã có kế
 hoạch. flow.py chỉ gọi vào các hàm ở đây; phần chung (nhận giấy tờ, điền, đánh giá, đăng xuất)
 vẫn đi đường cũ.
+
+Luồng bản 2 (field_review.flow_v2 — extension khai thêm supportsFlowV2): mỗi khung một việc.
+    nhận tệp → thẻ tiến trình (bóc tách → điền → đính kèm, cập nhật tại chỗ theo mốc thật)
+    → kết quả điền → kết quả đính kèm → kết luận: còn ô bắt buộc thì chỉ mời bổ sung; đủ thì
+    hiện [Chọn hình thức nhận kết quả] [Lưu và nộp hồ sơ].
 """
 
 import re
 
+from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import Intent
@@ -27,6 +33,56 @@ CAPABILITY = "supportsTuPhapMoi"
 # nộp. Extension cũ không khai cờ này → đi nguyên luồng bấm-từng-chặng bên dưới.
 AUTO_CAPABILITY = "supportsTpmAutoFlow"
 ADJUST_BOTH_LABEL = "✅ Đủ giấy tờ — điền & đính kèm lại"
+
+
+def _v2(conv: dict, proc: dict | None) -> bool:
+    # field_review.flow_v2 gồm cả tư pháp form cũ (chat/tu_phap_v2.py) → ở đây chỉ nhận trang một trang.
+    return field_review.single_page(proc) and field_review.flow_v2(conv, proc)
+
+
+def _v2_say(tpl: dict, **kw) -> tuple[str, str]:
+    # Luồng bản 2 tắt ở chế độ Mông (field_review.active) → câu chỉ có bản tiếng Việt.
+    return tpl["md"].format(**kw), tpl["tts"].format(**kw)
+
+
+def steps_action(steps: tuple[str, ...] | None = None, *, active: int = 0, done: bool = False,
+                 failed: bool = False) -> dict:
+    """Thẻ tiến trình của luồng bản 2: có `steps` = dựng thẻ mới; không có = cập nhật thẻ đang hiện (bước `active`
+    đang chạy, các bước trước đã xong; `done` = xong hết; `failed` = bước `active` lỗi)."""
+    action = {"type": "pipeline_steps", "active": active}
+    if steps:
+        action["steps"] = list(steps)
+    if done:
+        action["done"] = True
+    if failed:
+        action["failed"] = True
+    return action
+
+
+def docs_received_reply(conv: dict, proc: dict | None, reply, files_count: int, *, all_received: bool):
+    """Nhận tệp xong, pipeline điền bắt đầu chạy (luồng bản 2): câu không hứa số giây, kèm thẻ tiến trình 3 bước."""
+    from app.channels.handfree.chat import flow
+
+    if not _v2(conv, proc):
+        return reply
+    if all_received:
+        reply = flow.Reply(*_v2_say(vi.FLOW2_DOCS_RECEIVED, files_count=files_count))
+    reply.actions = [*reply.actions, steps_action(vi.FLOW2_STEPS)]
+    return reply
+
+
+def fill_started_reply(conv: dict, proc: dict | None, reply):
+    """Dữ liệu điền về (luồng bản 2): không nói gì thêm — thẻ tiến trình sang bước "Điền tờ khai"; kết quả điền nói
+    ở khung riêng khi extension báo điền xong (chú giải màu cũ của extension tắt)."""
+    from app.channels.handfree.chat import flow
+
+    if not _v2(conv, proc):
+        return reply
+    actions = [dict(a) for a in reply.actions]
+    actions[0]["noLegend"] = True
+    r = flow.Reply()
+    r.actions = [steps_action(active=1), *actions]
+    return r
 
 
 def is_active(proc: dict | None) -> bool:
@@ -138,10 +194,13 @@ def on_fields_ready(conv: dict) -> None:
     _spawn_attach_planner(conv)
 
 
-async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict):
+async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict, review=None):
     from app.channels.handfree.chat import flow, tracing
 
     await tracing.set_report(conv.get("trace_request_id"), "autofill", rep)
+    if _v2(conv, proc) and isinstance(review, dict):
+        flow._clear_documents_adjustment(conv)
+        return await _v2_fill_report_reply(conv, rep, proc, review)
     missing = rep["notFound"]
     missing_note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
     flow._clear_documents_adjustment(conv)
@@ -152,6 +211,7 @@ async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict):
         r = flow.Reply(*flow._fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"],
                                   missing_note=missing_note, note=vi.TPM_SUBMIT_HINT))
         r.chips = _final_chips()
+        field_review.decorate_single_page_fill(conv, proc, r, review, offer=True)
         return r
     conv["state"] = "attaching"
     conv["attach_done"] = False
@@ -165,20 +225,64 @@ async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict):
         r = flow.Reply(f"{fill_md}\n\n{attach.display_md}".strip(),
                        f"{fill_tts} {attach.tts_text}".strip())
         r.actions = attach.actions
+        field_review.decorate_single_page_fill(conv, proc, r, review, offer=False)
         return r
     if not (conv.get("attachment_plan_started") and conv.get("pipeline_status") == "running"):
         _spawn_attach_planner(conv)  # chưa chạy (phiên cũ) hoặc lượt lập kế hoạch vừa lỗi
-    return flow.Reply(*flow._fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"],
-                                 missing_note=missing_note, note=vi.TPM_AUTO_ATTACH_WAIT))
+    r = flow.Reply(*flow._fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"],
+                              missing_note=missing_note, note=vi.TPM_AUTO_ATTACH_WAIT))
+    field_review.decorate_single_page_fill(conv, proc, r, review, offer=False)
+    return r
 
 
-async def fill_report_reply(conv: dict, rep: dict):
-    """Điền xong: lập kế hoạch đính kèm ở nền, chờ công dân rà form rồi bấm nút đính kèm."""
+def fill_result(conv: dict, rep: dict, stats: dict) -> tuple[str, str]:
+    """Khung kết quả điền (luồng bản 2, dùng cả ở tư pháp form cũ): số ô xanh cổng đang hiện (khớp đúng số ô công dân
+    thấy tô xanh — chưa có vòng bổ sung ô thì là số ô engine điền được), ô điền mặc định (viền vàng), ô engine không
+    khớp được trên trang."""
+    defaults = sum(1 for f in conv.get("fields") or [] if isinstance(f, dict) and f.get("default"))
+    default_md, default_tts = _v2_say(vi.FLOW2_FILL_DEFAULT, count=defaults) if defaults else ("", "")
+    missing = [str(m) for m in rep.get("notFound") or []]
+    not_found_md = (vi.FLOW2_FILL_NOT_FOUND.format(count=len(missing), labels=", ".join(missing[:8]))
+                    if missing else "")
+    return _v2_say(vi.FLOW2_FILL_RESULT, filled=stats["filled"], default_md=default_md, default_tts=default_tts,
+                   not_found_md=not_found_md)
+
+
+async def _v2_fill_report_reply(conv: dict, rep: dict, proc: dict, review: dict):
+    from app.channels.handfree.chat import flow
+
+    stats = field_review.begin(conv, review)
+    r = flow.Reply(*fill_result(conv, rep, stats))
+    if conv.get("tpm_auto_attach") is False:
+        # "Điền lại": giấy tờ trên trang giữ nguyên → thẻ 2 bước xong, kết luận ngay.
+        conv["tpm_auto_attach"] = True
+        conv["state"] = "done"
+        md, tts, chips = field_review.conclusion(conv, proc, _final_chips())
+        r.actions = [steps_action(active=2, done=True), {"type": "trail_message", "md": md}]
+        r.tts_text += tts
+        r.chips = chips
+        return r
+    conv["state"] = "attaching"
+    conv["attach_done"] = False
+    conv["tpm_attach_requested"] = True
+    r.actions = [steps_action(active=2)]
+    if conv.get("pipeline_status") == "attach_ready" and not conv.get("attach_action_in_progress"):
+        attach = await flow._handle_attaching(conv, Intent("event", "attach_ready"))
+        r.actions = [*r.actions, *attach.actions]
+        return r
+    if not (conv.get("attachment_plan_started") and conv.get("pipeline_status") == "running"):
+        _spawn_attach_planner(conv)
+    return r
+
+
+async def fill_report_reply(conv: dict, rep: dict, review=None):
+    """Điền xong: lập kế hoạch đính kèm ở nền, chờ công dân rà form rồi bấm nút đính kèm.
+    `review`: số ô xanh/cam/đỏ extension đếm sau khi điền (vòng bổ sung ô, chỉ ở luồng tự động)."""
     from app.channels.handfree.chat import flow, tracing
 
     if auto_flow(conv):
         proc = flow.get_procedure(conv.get("procedure_key") or "") or {}
-        return await _auto_fill_report_reply(conv, rep, proc)
+        return await _auto_fill_report_reply(conv, rep, proc, review)
 
     conv["state"] = "attaching"
     conv["attach_done"] = False
@@ -218,9 +322,31 @@ async def _request_attach(conv: dict):
     return flow.Reply(*flow._fmt(vi.ATTACH_PLANNING))
 
 
+def _v2_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int, errors: list[str]):
+    """Khung kết quả đính kèm + khung kết luận (bong bóng riêng); thẻ tiến trình chốt."""
+    from app.channels.handfree.chat import flow
+
+    conv.setdefault("field_review", {})["attach_failed"] = bool(errors)
+    if errors:
+        r = flow.Reply(*_v2_say(vi.FLOW2_ATTACH_ERRORS, attached=attached,
+                                error_list="\n".join(f"- {e}" for e in errors[:5])))
+    elif attached == 0 and skipped > 0:
+        r = flow.Reply(*_v2_say(vi.FLOW2_ATTACH_ALL_EXIST))
+    else:
+        plan_list = "\n".join(flow._attachment_plan_line(p) for p in (conv.get("attach_plan") or [])[:10])
+        r = flow.Reply(*_v2_say(vi.FLOW2_ATTACH_RESULT, attached=attached, plan_list=plan_list))
+    md, tts, chips = field_review.conclusion(conv, proc, _final_chips())
+    r.actions = [steps_action(active=2, done=not errors, failed=bool(errors)), {"type": "trail_message", "md": md}]
+    r.tts_text += tts
+    r.chips = chips
+    return r
+
+
 def _auto_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int, errors: list[str]):
     from app.channels.handfree.chat import flow
 
+    if _v2(conv, proc) and (conv.get("field_review") or {}).get("stats"):
+        return _v2_attach_done_reply(conv, proc, attached, skipped, errors)
     note, label = _default_result_note(proc)
     if errors:
         error_list = "\n".join(f"- {e}" for e in errors[:5])
@@ -230,6 +356,7 @@ def _auto_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int,
         template = vi.TPM_AUTO_ALL_EXIST if attached == 0 and skipped > 0 else vi.TPM_AUTO_ATTACH_DONE
         r = flow.Reply(*flow._fmt(template, attached=attached, note=note, label=label))
     r.chips = _final_chips()
+    field_review.offer_after_attach(conv, proc, r)
     return r
 
 
@@ -323,7 +450,7 @@ def _result_method_report_reply(conv: dict, proc: dict, payload: dict):
     return r
 
 
-def _submit_report_reply(payload: dict):
+def _submit_report_reply(conv: dict, proc: dict, payload: dict):
     """FE soát ô bắt buộc trước khi bấm; thiếu thì không bấm và trả danh sách ô thiếu."""
     from app.channels.handfree.chat import flow
 
@@ -335,7 +462,9 @@ def _submit_report_reply(payload: dict):
     if missing:
         text = flow._join_owner_labels(missing[:8])
         r = flow.Reply(*flow._fmt(vi.TPM_SUBMIT_MISSING, missing_note=text, missing_tts=text))
-    elif message:
+        r.chips = [*field_review.start_chips(conv, proc, _final_chips()), _submit_cta()]
+        return r
+    if message:
         r = flow.Reply(*flow._fmt(vi.TPM_SUBMIT_BLOCKED, portal_message=message))
     else:
         r = flow.Reply(*flow._fmt(vi.TPM_SUBMIT_STUCK))
@@ -356,12 +485,27 @@ async def handle(conv: dict, proc: dict, intent: Intent):
         if auto_reply is not None:
             return auto_reply
     if intent.kind == "action" and intent.value in {"tpm_attach", "request_attach"}:
-        return await _request_attach(conv)
+        r = await _request_attach(conv)
+        if _v2(conv, proc) and conv.get("state") == "attaching":
+            # "Đính kèm lại": thẻ một bước; tệp → dòng nói ở khung kết quả đính kèm.
+            actions = [steps_action(vi.FLOW2_STEPS[2:]), *r.actions]
+            if any(a.get("type") == "attach_plan" for a in r.actions):
+                r = flow.Reply()
+            r.actions = actions
+        return r
 
     if state == "attaching":
         if intent.kind == "event" and intent.value == "attach_ready":
             # Kế hoạch về sớm trong lúc công dân còn rà form: giữ đó, chờ nút đính kèm.
-            return None if conv.get("tpm_attach_requested") else flow.Reply()
+            if not conv.get("tpm_attach_requested"):
+                return flow.Reply()
+            if _v2(conv, proc):
+                # Thẻ tiến trình đang ở bước "Đính kèm": chỉ phát lệnh đính, tệp → dòng nói ở khung kết quả đính kèm.
+                planned = await flow._handle_attaching(conv, intent)
+                r = flow.Reply()
+                r.actions = planned.actions
+                return r
+            return None
         if intent.kind == "event" and intent.value == "page_status":
             # Một trang duy nhất — không có "sang bước đính kèm" để watcher tự kích hoạt.
             return flow.Reply()
@@ -382,6 +526,8 @@ async def handle(conv: dict, proc: dict, intent: Intent):
             r = flow.Reply(*flow._fmt(vi.TPM_ATTACH_NONE,
                                       error_note=f": *{errors[0]}*" if errors else ""))
             r.chips = [_retry_attach_chip(), flow._supplement_documents_chip()]
+            if _v2(conv, proc):
+                r.actions = [steps_action(active=2, failed=True)]
             return r
         return None
 
@@ -397,7 +543,7 @@ async def handle(conv: dict, proc: dict, intent: Intent):
             r.actions = [guided.submit_action(proc)]
             return r
         if intent.kind == "action" and intent.value == "guided_submit_report":
-            return _submit_report_reply(payload)
+            return _submit_report_reply(conv, proc, payload)
         if intent.kind not in {"event", "action"}:
             r = flow.Reply(*flow._fmt(vi.TPM_DONE_REMIND))
             r.chips = ([_submit_cta()] if conv.get("result_method")
@@ -422,7 +568,12 @@ async def _handle_auto(conv: dict, proc: dict, intent: Intent):
     if intent.kind == "action" and intent.value == "refill":
         conv["tpm_auto_attach"] = False
         conv["docs_target"] = "declaration"  # trang một trang: điền lại luôn đúng chỗ
-        return await flow._restart_declaration_pipeline(conv)
+        running = conv.get("pipeline_status") == "running"
+        r = await flow._restart_declaration_pipeline(conv)
+        if _v2(conv, proc) and not running and conv.get("pipeline_status") == "running":
+            r = flow.Reply(*_v2_say(vi.FLOW2_REFILL))
+            r.actions = [steps_action(vi.FLOW2_STEPS[:2])]
+        return r
     if intent.kind == "action" and intent.value == "add_documents":
         if conv.get("submitted_completed"):
             return flow.Reply(*flow._fmt(vi.ATTACH_SUPPLEMENT_AFTER_SUBMIT))
@@ -438,7 +589,7 @@ async def _handle_auto(conv: dict, proc: dict, intent: Intent):
         return r
     if state == "done" and intent.kind not in {"event", "action"}:
         r = flow.Reply(*flow._fmt(vi.TPM_DONE_REMIND))
-        r.chips = _final_chips()
+        r.chips = field_review.next_chips(conv, proc, _final_chips())
         return r
     return None
 

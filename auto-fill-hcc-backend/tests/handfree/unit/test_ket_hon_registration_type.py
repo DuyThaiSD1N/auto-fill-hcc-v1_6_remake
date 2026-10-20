@@ -11,14 +11,14 @@ def _mapped(*fields: tuple[str, object]) -> dict[str, dict]:
 
 
 def test_khong_mac_dinh_dang_ky_lan_dau():
-    out = _mapped(("CccdNam_HoTen", "NGƯỜI NAM"))
+    out = _mapped(("BenNam_HoTen", "NGƯỜI NAM"))
 
     assert "loaiDangKy" not in out
 
 
 def test_to_khai_ghi_ro_dang_ky_lan_dau_thi_van_dien_khong_default():
     out = _mapped(
-        ("CccdNam_HoTen", "NGƯỜI NAM"),
+        ("BenNam_HoTen", "NGƯỜI NAM"),
         ("ToKhai_LoaiDangKy", "Đăng ký lần đầu"),
     )
 

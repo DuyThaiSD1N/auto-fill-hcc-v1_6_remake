@@ -12,8 +12,8 @@ def _by_name(out):
 
 def test_chi_co_cccd_suy_luan_lan_dau_khong_bia_dan_toc():
     out = _by_name(enrich(_fields(
-        CccdNam_HoTen="Nguyễn Văn A", CccdNam_SoDinhDanh="012345678901",
-        CccdNu_HoTen="Trần Thị B", CccdNu_SoDinhDanh="098765432109",
+        BenNam_HoTen="Nguyễn Văn A", BenNam_SoDinhDanh="012345678901",
+        BenNu_HoTen="Trần Thị B", BenNu_SoDinhDanh="098765432109",
     )))
     for dst in ("BenNam", "BenNu"):
         # CCCD không ghi dân tộc → để trống, không mặc định "Kinh".
@@ -28,8 +28,8 @@ def test_chi_co_cccd_suy_luan_lan_dau_khong_bia_dan_toc():
 
 def test_giay_to_ghi_ro_thi_khong_gan_default():
     out = _by_name(enrich(_fields(
-        CccdNam_HoTen="Nguyễn Văn A", CccdNam_SoDinhDanh="012345678901",
-        CccdNam_DanToc="Tày", CccdNam_SoLanKetHon="2",
+        BenNam_HoTen="Nguyễn Văn A", BenNam_SoDinhDanh="012345678901",
+        BenNam_DanToc="Tày", BenNam_SoLanKetHon="2",
     )))
     assert out["DanTocBenNam"]["value"] == "Tày" and "default" not in out["DanTocBenNam"]
     assert out["SoLanKetHon_BenNam"]["value"] == "2" and "default" not in out["SoLanKetHon_BenNam"]
