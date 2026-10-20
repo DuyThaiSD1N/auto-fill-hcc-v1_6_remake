@@ -212,6 +212,44 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-cham-dut-giam-ho",
+        "detect": {"textIncludes": ["Thủ tục đăng ký chấm dứt giám hộ"], "headingDisabled": True},
+        "label": "Thủ tục đăng ký chấm dứt giám hộ",
+        "shortLabel": "Chấm dứt Giám hộ",
+        "subtitle": "Đăng ký chấm dứt việc giám hộ đã đăng ký",
+        "icon": "🤝",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6724-715f-822c-28e986912730",
+        # Checklist phiên QR/scan. Bảng thành phần chỉ có STT2 "Giấy tờ làm căn cứ chấm dứt giám
+        # hộ" + STT3 "Văn bản ủy quyền": attach planner gom mọi giấy căn cứ/CCCD/khai sinh vào STT2.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đăng ký chấm dứt giám hộ", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người yêu cầu và người giám hộ",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "ho_tich", "name": "Giấy khai sinh hoặc giấy tờ tùy thân của người được giám hộ",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Trích lục đăng ký giám hộ, giấy tờ làm căn cứ chấm dứt giám hộ "
+             "(nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,  # TẠM TẮT rà soát bbox như các thủ tục tư pháp khác; bật lại khi cần
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đăng ký chấm dứt giám hộ.\n"
+            "2. CCCD/CMND của người yêu cầu và người giám hộ.\n"
+            "3. Giấy khai sinh/giấy tờ định danh của người được giám hộ.\n"
+            "4. Trích lục đăng ký giám hộ và giấy tờ làm căn cứ chấm dứt giám hộ (nếu có)."
+            "\nBước 3: tờ khai bản giấy thêm thành phần hồ sơ mới; giấy tờ làm căn cứ chấm dứt, "
+            "giấy khai sinh và CCCD/căn cước vào STT 2; văn bản ủy quyền vào STT 3."
+        ),
+    },
+    {
         "key": "trich-luc-ks",
         "detect": {
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
@@ -1106,6 +1144,44 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chung-thuc-chu-ky-nguoi-dich-khong-ctv",
+        # Mã TTHC 2.001008. Anh em của bản CTV (2.000992), dùng chung planner
+        # chung_thuc_chu_ky_nguoi_dich_ctv: dòng 1 bản dịch, tệp sau thêm thành phần mới.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95d4-72d6-be00-ed0e9e5dd66a",
+                "maThuTuc=2.001008",
+            ],
+        },
+        "label": (
+            "Chứng thực chữ ký người dịch mà người dịch không phải là cộng tác viên dịch thuật của "
+            "Ủy ban nhân dân cấp xã"
+        ),
+        "shortLabel": "Chứng thực chữ ký người dịch (không CTV)",
+        "subtitle": "Chứng thực chữ ký người dịch tự do, không phải cộng tác viên dịch thuật",
+        "icon": "🌐",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d4-72d6-be00-ed0e9e5dd66a",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Planner không biết tệp thuộc ô nào (phiên không truyền doc_key xuống) mà xếp theo thứ
+        # tự: tệp ĐẦU vào dòng 1. Vì vậy chỉ mở một ô bản dịch; bằng cấp/chứng chỉ ngoại ngữ và
+        # giấy tùy thân của người dịch xuất trình tại quầy.
+        "requiredDocs": [
+            {"key": "khac", "name": "Bản dịch và giấy tờ, văn bản cần dịch", "icon": "📄",
+             "sides": 1, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản dịch và giấy tờ, văn bản cần dịch (không giới hạn số lượng tệp).\n"
+            "Người dịch mang bằng cấp/chứng chỉ ngoại ngữ và giấy tờ tùy thân để xuất trình tại quầy."
+        ),
+    },
+    {
         "key": "chung-thuc-chu-ky",
         "detect": {
             "urlIncludes": [
@@ -1295,6 +1371,75 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: Đơn yêu cầu trợ giúp pháp lý bản giấy (Mẫu 02-TP-TGPL), văn bản ủy quyền.\n"
             "Bước Thành phần hồ sơ: giấy chứng minh diện + căn cước gộp một tệp vào dòng 1; dòng 2 là "
             "Tờ khai cổng tự sinh; đơn bản giấy, ủy quyền thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su",
+        # Mã TTHC 1.000688 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Cùng luồng
+        # chọn cơ quan cấp Sở với "yeu-cau-tro-giup-phap-ly": chọn Tỉnh → gạt toggle "Sở" → Đồng ý
+        # → "Nộp trực tuyến" kết quả ĐẦU TIÊN (Sở Tư pháp). Wizard tư pháp 4 bước, bước Kê khai là
+        # eForm "VĂN BẢN ĐỀ NGHỊ CẤP/CẤP LẠI CHỨNG CHỈ HÀNH NGHỀ LUẬT SƯ" (legacy x-*). Cụm text đủ
+        # dài để không trùng thủ tục cấp CCHN luật sư thường (không miễn đào tạo).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-3faa-71b6-96ab-51618971aa7f",
+                "maThuTuc=1.000688",
+            ],
+            "textIncludes": ["cấp chứng chỉ hành nghề luật sư đối với người được miễn đào tạo nghề luật sư"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Cấp Chứng chỉ hành nghề luật sư đối với người được miễn đào tạo nghề luật sư, miễn tập sự "
+            "hành nghề luật sư"
+        ),
+        "shortLabel": "Chứng chỉ hành nghề luật sư (miễn tập sự)",
+        "subtitle": "Cựu thẩm phán, kiểm sát viên, điều tra viên… xin chứng chỉ luật sư (Sở Tư pháp)",
+        "icon": "👨‍⚖️",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faa-71b6-96ab-51618971aa7f",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        "infoModalFields": [
+            {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"},
+            {"label": "Thủ tục", "value": "miễn đào tạo nghề luật sư"},
+            {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
+        ],
+        # Planner (cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.attach) tự phân loại lại theo
+        # OCR, KHÔNG tách trang: bằng → dòng 1; giấy chứng minh miễn tập sự → dòng 2; sức khỏe → dòng
+        # 3; giải trình/cam kết + Phiếu LLTP → dòng 4; dòng 5 là Tờ khai cổng tự sinh; văn bản đề nghị
+        # bản giấy / CCCD / ủy quyền thêm thành phần hồ sơ mới.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "de_nghi", "name": "Văn bản đề nghị cấp Chứng chỉ hành nghề luật sư bản giấy đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "bang", "name": "Bằng cử nhân luật / thạc sỹ luật (bản sao chứng thực)", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "mien_tap_su", "name": "Giấy tờ chứng minh được miễn tập sự (quyết định bổ nhiệm "
+             "thẩm phán, kiểm sát viên, điều tra viên…, quyết định nghỉ hưu / xuất ngũ)", "icon": "📃",
+             "sides": 1, "repeatable": True},
+            {"key": "suc_khoe", "name": "Giấy chứng nhận sức khỏe", "icon": "🩺",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "lltp", "name": "Phiếu lý lịch tư pháp; văn bản giải trình, cam kết (nếu có)",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi giấy tờ một tệp, hệ thống KHÔNG tách trang):\n"
+            "1. Văn bản đề nghị cấp Chứng chỉ hành nghề luật sư bản giấy đã ký — nguồn chính của tờ khai.\n"
+            "2. Bằng cử nhân luật / thạc sỹ luật (bản sao chứng thực).\n"
+            "3. Quyết định bổ nhiệm chức danh tư pháp, quyết định nghỉ hưu / xuất ngũ — chứng minh được "
+            "miễn tập sự.\n"
+            "4. Giấy chứng nhận sức khỏe; Phiếu lý lịch tư pháp; văn bản giải trình, cam kết (nếu có).\n"
+            "5. Căn cước công dân (nếu có) để đối chiếu nhân thân.\n"
+            "Nên đăng nhập cổng bằng tài khoản VNeID của chính người đề nghị. Bước Thành phần hồ sơ: bằng "
+            "→ dòng 1; giấy miễn tập sự → dòng 2; sức khỏe → dòng 3; giải trình + Phiếu LLTP → dòng 4; "
+            "dòng 5 là Tờ khai cổng tự sinh; văn bản đề nghị bản giấy thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -1907,15 +2052,16 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
-        "key": "ho-tro-mai-tang",
-        # CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
+        "key": "ho-tro-mai-tang-1116910",
+        # Mã TTHC 1.116910, thay mã cũ 1.001731 (entry Auto Fill "ho-tro-mai-tang" vẫn giữ cho trang
+        # mã cũ; cả hai key dùng chung pipeline ho_tro_mai_tang). CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
         # (bảo trợ xã hội thay vì người hưởng trợ cấp hưu trí xã hội). Bảng thành phần hồ sơ cũng
         # chỉ một dòng Tờ khai → hideRepeatableHint.
         "detect": {
             "urlScope": ["dichvucongbyt.moh.gov.vn"],
             "urlIncludes": [
-                "maThuTuc=1.001731",
-                "019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+                "maThuTuc=1.116910",
+                "01a0f66e-63a3-749a-a9d8-2dcbeda6af79",
             ],
             # "mai táng" trơn trùng với thủ tục mai táng cho người hưởng trợ cấp hưu trí → phải kèm
             # vế nhóm đối tượng.
@@ -1927,7 +2073,7 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Hỗ trợ chi phí mai táng — đối tượng bảo trợ xã hội",
         "subtitle": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội đã mất",
         "icon": "🕯️",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
         "hasAttachmentStep": True,

@@ -218,6 +218,32 @@
     },
     {
         "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hải Châu I",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu",
+        "ghi_chu": "Hải Châu I + Hải Châu II gộp thành phường Hải Châu từ 01/2025; CCCD cấp trước đó còn ghi tên cũ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hải Châu II",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu",
+        "ghi_chu": "Hải Châu I + Hải Châu II gộp thành phường Hải Châu từ 01/2025; CCCD cấp trước đó còn ghi tên cũ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hải Châu 1",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hải Châu 2",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
         "xa_cu": "Hòa Hiệp Bắc",
         "tinh_moi": "Đà Nẵng",
         "xa_moi": "Phường Hải Vân"

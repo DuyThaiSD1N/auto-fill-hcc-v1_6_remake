@@ -353,3 +353,72 @@ def test_split_prompt_locks_boundaries_and_marital_status_rule():
     assert "không được đổi thành identity" in SPLIT_SYSTEM_PROMPT.lower()
     assert "marital_status_certificate" in SPLIT_SYSTEM_PROMPT
     assert "PDF 10 trang gồm 5 CCCD" in SPLIT_SYSTEM_PROMPT
+
+
+async def test_dang_ky_cham_dut_giam_ho_routes_basis_and_authorization_rows(monkeypatch):
+    texts = {
+        "to-khai.pdf": "TỜ KHAI ĐĂNG KÝ CHẤM DỨT GIÁM HỘ Kính gửi UBND phường An Bình",
+        "cccd.pdf": "CĂN CƯỚC CÔNG DÂN Số / No.: 001090000111",
+        "giay-khai-sinh.pdf": "GIẤY KHAI SINH Họ, chữ đệm, tên: LÊ THỊ HOA",
+        "quyet-dinh.pdf": "QUYẾT ĐỊNH của Tòa án nhân dân về việc chấm dứt giám hộ",
+        "uy-quyen.pdf": "VĂN BẢN ỦY QUYỀN Bên ủy quyền: ... Bên được ủy quyền: ...",
+    }
+
+    async def fake_ocr_per_file(files):
+        return [{"name": f["name"], "text": texts[f["name"]]} for f in files]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 3, "docType": "other", "documentName": "Quyết định chấm dứt giám hộ"},
+        ]})
+
+    monkeypatch.setattr(preserve_planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(preserve_planner.client, "chat", fake_chat)
+
+    plan_fn = get_attach_pipeline("dang-ky-cham-dut-giam-ho")
+    res = await plan_fn([_file(name) for name in texts], {}, {"request_id": "req_cham_dut"})
+    by_file = {}
+    for item in res["attachments"]:
+        for idx in item.get("sourceFileIndexes") or [item["fileIndex"]]:
+            by_file[list(texts)[idx]] = item
+
+    declaration = by_file["to-khai.pdf"]
+    assert declaration["target"] == "new"
+    assert declaration["documentName"] == "Tờ khai đăng ký chấm dứt giám hộ bản giấy"
+
+    # Bảng thành phần chấm dứt không có STT 3/4 của đăng ký giám hộ.
+    assert all(item["componentIndex"] in (None, 2, 3) for item in res["attachments"])
+    basis = [item for item in res["attachments"] if item["componentIndex"] == 2]
+    assert len(basis) == 1
+    assert basis[0]["componentName"] == "- Giấy tờ làm căn cứ chấm dứt giám hộ theo quy định của Bộ luật Dân sự"
+    assert by_file["cccd.pdf"] is basis[0]
+    for name in ("giay-khai-sinh.pdf", "quyet-dinh.pdf"):
+        assert by_file[name]["target"] == "new"
+        assert by_file[name]["needsAddComponent"] is True
+
+    auth = by_file["uy-quyen.pdf"]
+    assert auth["target"] == "existing"
+    assert auth["componentIndex"] == 3
+    assert auth["componentName"].startswith("- Văn bản ủy quyền")
+
+
+def test_dang_ky_cham_dut_giam_ho_split_routing_renames_group_labels():
+    result = {"attachments": [
+        {"fileIndex": 0, "documentName": "Giấy tờ chứng minh điều kiện giám hộ", "target": "existing",
+         "componentIndex": 3, "componentName": "- Giấy tờ chứng minh điều kiện giám hộ đương nhiên",
+         "needsAddComponent": False, "detectedType": "Giấy tờ chứng minh điều kiện giám hộ"},
+        {"fileIndex": 1, "documentName": "Tài liệu đăng ký giám hộ 2", "target": "new",
+         "componentIndex": None, "componentName": "Tài liệu đăng ký giám hộ 2",
+         "needsAddComponent": True, "detectedType": "Tài liệu đăng ký giám hộ 2"},
+        {"fileIndex": 2, "documentName": "Giấy xác nhận tình trạng hôn nhân", "target": "new",
+         "componentIndex": None, "componentName": "Giấy xác nhận tình trạng hôn nhân",
+         "needsAddComponent": True, "detectedType": "Giấy xác nhận tình trạng hôn nhân"},
+    ]}
+    items = planner.route_cham_dut_attachments(result)["attachments"]
+
+    assert items[0]["documentName"] == "Giấy tờ làm căn cứ chấm dứt giám hộ"
+    assert items[0]["componentIndex"] == 2
+    assert items[1]["documentName"] == "Tài liệu chấm dứt giám hộ 2"
+    assert items[1]["target"] == "new"
+    assert items[1]["componentName"] == "Tài liệu chấm dứt giám hộ 2"
+    assert items[2]["target"] == "new"

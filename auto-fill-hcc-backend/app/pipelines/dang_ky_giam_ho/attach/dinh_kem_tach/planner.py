@@ -151,7 +151,7 @@ def _rule_segment(text: str, proposed_subject: str = "") -> tuple[str, str] | No
     folded = fold(text)
     if not folded or folded in {"trang trang", "trang trong", "markdown"}:
         return "blank_page", _BLANK_LABEL
-    if "to khai dang ky giam ho" in folded:
+    if "to khai dang ky giam ho" in folded or "to khai dang ky cham dut giam ho" in folded:
         return "paper_declaration", _DECLARATION_LABEL
     if "giay xac nhan tinh trang hon nhan" in folded:
         return "marital_status_certificate", _MARITAL_STATUS_LABEL

@@ -123,7 +123,7 @@ def _rule_doc_type(text: str) -> str:
     if not haystack:
         return ""
 
-    if "to khai dang ky giam ho" in first_page:
+    if "to khai dang ky giam ho" in first_page or "to khai dang ky cham dut giam ho" in first_page:
         return _DOC_PAPER_DECLARATION
 
     # Các trang sau có thể là ảnh màn hình thủ tục giám hộ chứa nhiều số CCCD. Chúng không được

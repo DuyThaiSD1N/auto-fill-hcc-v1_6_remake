@@ -309,7 +309,9 @@ from app.pipelines.ket_hon_nuoc_ngoai.process import run as ket_hon_nuoc_ngoai_p
 from app.pipelines.ket_hon_lai.attach import plan as ket_hon_lai_attach
 from app.pipelines.ket_hon_lai.process import run as ket_hon_lai_process
 from app.pipelines.dang_ky_giam_ho.attach import plan as dang_ky_giam_ho_attach
+from app.pipelines.dang_ky_giam_ho.attach.planner import plan_cham_dut_giam_ho_attachments as dang_ky_cham_dut_giam_ho_attach
 from app.pipelines.dang_ky_giam_ho.process import run as dang_ky_giam_ho_process
+from app.pipelines.dang_ky_giam_ho.process import run_cham_dut as dang_ky_cham_dut_giam_ho_process
 from app.pipelines.nhan_cha_me_con.attach import plan as nhan_cha_me_con_attach
 from app.pipelines.nhan_cha_me_con.process import run as nhan_cha_me_con_process
 from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.attach import plan as dang_ky_nuoi_con_nuoi_trong_nuoc_attach
@@ -564,6 +566,25 @@ PROCEDURES: list[dict] = [
             "Giấy tờ cần tải lên:\n"
             "1. Bản dịch và giấy tờ, văn bản cần dịch.\n"
             "Mỗi file được đính vào một hồ sơ riêng trên một tab riêng."
+        ),
+    },
+    {
+        # Anh em của bản CTV (2.000992): cùng kiểu một dòng bản dịch, dùng chung planner
+        # chung_thuc_chu_ky_nguoi_dich_ctv — xem _ATTACH_PIPELINE bên dưới.
+        "key": "chung-thuc-chu-ky-nguoi-dich-khong-ctv",
+        "detect": {"urlIncludes": ["maThuTuc=2.001008"]},
+        "label": (
+            "Chứng thực chữ ký người dịch mà người dịch không phải là cộng tác viên dịch thuật của "
+            "Ủy ban nhân dân cấp xã"
+        ),
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "skipConsent": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản dịch và giấy tờ, văn bản cần dịch.\n"
+            "Tệp đầu vào dòng bản dịch có sẵn, các tệp sau thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -1119,6 +1140,26 @@ PROCEDURES: list[dict] = [
             "\nBước 3: tờ khai bản giấy thêm thành phần hồ sơ mới; văn bản cử người giám hộ vào STT 2; "
             "bản cam đoan, sổ đỏ/giấy tờ chỗ ở, giấy khai sinh và mọi CCCD/căn cước vào STT 3; "
             "văn bản ủy quyền vào STT 4."
+        ),
+    },
+    {
+        # Dùng chung pipeline dang_ky_giam_ho (run_cham_dut): cùng 3 vai trò, eForm 1912 khác tên ô
+        # và thêm cụm số/ngày/cơ quan đăng ký giám hộ trước đây + lý do chấm dứt.
+        "key": "dang-ky-cham-dut-giam-ho",
+        "detect": {"textIncludes": ["Thủ tục đăng ký chấm dứt giám hộ"], "headingDisabled": True},
+        "label": "Thủ tục đăng ký chấm dứt giám hộ",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đăng ký chấm dứt giám hộ.\n"
+            "2. CCCD/CMND của người yêu cầu và người giám hộ.\n"
+            "3. Giấy khai sinh/giấy tờ định danh của người được giám hộ.\n"
+            "4. Trích lục đăng ký giám hộ và giấy tờ làm căn cứ chấm dứt giám hộ (nếu có)."
+            "\nBước 3: tờ khai bản giấy thêm thành phần hồ sơ mới; giấy tờ làm căn cứ chấm dứt, "
+            "giấy khai sinh và CCCD/căn cước vào STT 2; văn bản ủy quyền vào STT 3."
         ),
     },
     {
@@ -8128,6 +8169,7 @@ _PIPELINE = {
     "ket-hon-nuoc-ngoai": ket_hon_nuoc_ngoai_process,
     "dang-ky-lai-ket-hon": ket_hon_lai_process,
     "dang-ky-giam-ho": dang_ky_giam_ho_process,
+    "dang-ky-cham-dut-giam-ho": dang_ky_cham_dut_giam_ho_process,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_process,
     "trich-luc-ks": trich_luc_dvc_moi_process,
@@ -8431,6 +8473,8 @@ _ATTACH_PIPELINE = {
     # Kênh popup KHÔNG dùng planner này (nó tự đính cục bộ theo clientAttachmentCase, rẽ nhánh
     # trước khi gọi backend); đăng ký ở đây để kênh Handfree có kế hoạch đính kèm.
     "chung-thuc-chu-ky-nguoi-dich-ctv": chung_thuc_chu_ky_nguoi_dich_ctv_attach,
+    # Bản KHÔNG phải CTV (2.001008): cùng một dòng bản dịch, dùng lại planner bản CTV.
+    "chung-thuc-chu-ky-nguoi-dich-khong-ctv": chung_thuc_chu_ky_nguoi_dich_ctv_attach,
     "chung-thuc-di-chuc": chung_thuc_di_chuc_attach,
     "bau-to-truong-to-hoa-giai": bau_to_truong_to_hoa_giai_attach,
     "chung-thuc-giao-dich-tai-san": chung_thuc_giao_dich_tai_san_attach,
@@ -8452,6 +8496,7 @@ _ATTACH_PIPELINE = {
     "ket-hon-nuoc-ngoai": ket_hon_nuoc_ngoai_attach,
     "dang-ky-lai-ket-hon": ket_hon_lai_attach,
     "dang-ky-giam-ho": dang_ky_giam_ho_attach,
+    "dang-ky-cham-dut-giam-ho": dang_ky_cham_dut_giam_ho_attach,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_attach,
     "trich-luc-ks": trich_luc_dvc_moi_attach,

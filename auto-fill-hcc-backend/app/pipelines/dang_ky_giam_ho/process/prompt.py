@@ -96,3 +96,68 @@ giấy khai sinh/người được giám hộ, và có thể có trích xuất C
 Chỉ trả JSON compact theo schema. Không trả field UI/default. Không bịa điện thoại/email/captcha vì eForm này không có nguồn giấy tờ rõ.
 </output_reminder>
 """
+
+
+def _section(tag: str) -> str:
+    start = EXTRA_RULES.index(f"<{tag}>")
+    end = EXTRA_RULES.index(f"</{tag}>") + len(f"</{tag}>")
+    return EXTRA_RULES[start:end]
+
+
+EXTRA_RULES_CHAM_DUT = f"""
+<procedure>
+Thủ tục: Đăng ký chấm dứt giám hộ.
+Đầu vào thường gồm tờ khai đăng ký chấm dứt giám hộ, CCCD người yêu cầu/người giám hộ,
+giấy khai sinh hoặc giấy tờ của người được giám hộ, trích lục đăng ký giám hộ trước đây và giấy tờ
+làm căn cứ chấm dứt giám hộ (quyết định của Tòa án, giấy chứng tử, văn bản đề nghị...).
+</procedure>
+
+<critical_rules>
+1. Trả ONLY các field compact trong schema. Không trả field UI như HoVaTenC, HoVaTenM, HoVaTenCha,
+   SoDKTai, LyDoChamDuQH, CapBanSao...
+2. Phân biệt đúng 3 vai trò theo tờ khai:
+   người yêu cầu đăng ký chấm dứt giám hộ -> Requester_*;
+   người giám hộ -> Guardian_*;
+   người được giám hộ -> Ward_*.
+3. Không dựa vào tên file để chia vai trò. Tờ khai là nguồn chính; trích lục đăng ký giám hộ trước đây
+   cũng ghi rõ ai là người giám hộ và ai là người được giám hộ.
+4. CCCD dùng để bổ sung số định danh, ngày cấp, nơi cấp, ngày sinh/giới tính/nơi cư trú nếu tờ khai thiếu.
+5. CSDL dân cư chỉ là nguồn fallback. Nếu CSDL dân cư ghi số CMND cũ nhưng CCCD/tờ khai có số CCCD 12 số,
+   ưu tiên số CCCD/tờ khai 12 số.
+</critical_rules>
+
+<role_split_rules>
+- Người yêu cầu nằm ở phần "I. Thông tin về người yêu cầu đăng ký chấm dứt giám hộ" hoặc nhãn
+  "Họ, chữ đệm, tên người yêu cầu".
+- Người giám hộ nằm ở phần "II. Thông tin về người giám hộ" hoặc nhãn "người giám hộ".
+- Người được giám hộ nằm ở phần "III. Thông tin về người được giám hộ" hoặc nhãn "người được giám hộ".
+- Người yêu cầu có thể chính là người giám hộ; khi đó vẫn trả đủ cả Requester_* và Guardian_*.
+</role_split_rules>
+
+<termination_rules>
+- PriorRegistration_Number / PriorRegistration_Date / PriorRegistration_Agency lấy từ dòng
+  "Đã đăng ký giám hộ tại ... số ... ngày ..." trên tờ khai, hoặc từ trích lục đăng ký giám hộ
+  (Số, ngày đăng ký, cơ quan đăng ký). Ví dụ "Đã đăng ký giám hộ tại UBND phường An Bình, số 12,
+  ngày 05/03/2020" -> number="12", date="05/03/2020", agency="UBND phường An Bình".
+- Termination_Reason lấy từ nhãn "Lý do chấm dứt giám hộ"; giữ nguyên nội dung chính, không tự viết lại.
+  Không thấy nhãn này thì bỏ qua, không suy ra từ giấy tờ khác.
+- CopyRequest_WantsCopy lấy từ mục "Đề nghị cấp bản sao": tích Có -> "Có", tích Không -> "Không".
+- CopyRequest_Quantity lấy số lượng bản nếu ghi rõ, ví dụ "02 bản" -> "2". Không thấy số lượng thì bỏ qua.
+</termination_rules>
+
+<ward_document_rules>
+- Với dòng "Giấy khai sinh/Giấy tờ tùy thân" của người được giám hộ: nếu ghi CCCD/Thẻ CC/Thẻ căn cước/CMND
+  kèm số/ngày cấp/nơi cấp thì trả Ward_IdNumber, Ward_IdIssueDate, Ward_IdIssuePlace theo giấy tờ đó.
+- Nếu ghi "Giấy khai sinh số ... do ... cấp ngày ..." thì trả Ward_BirthCertificateNumber,
+  Ward_BirthCertificateIssuePlace, Ward_BirthCertificateIssueDate.
+- Ward_ResidenceDomestic ưu tiên nơi cư trú ghi trên tờ khai.
+</ward_document_rules>
+
+{_section("cccd_rules")}
+
+{_section("address_split_rules")}
+
+<output_reminder>
+Chỉ trả JSON compact theo schema. Không trả field UI/default. Không bịa điện thoại/email/captcha.
+</output_reminder>
+"""

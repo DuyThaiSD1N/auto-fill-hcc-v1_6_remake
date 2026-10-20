@@ -4,7 +4,7 @@ import re
 import unicodedata
 from datetime import date
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import drop_fabricated_province, is_current_area, province_for_ward, remap_area
 from app.pipelines._shared.cccd import id_birth_year, id_gender
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
@@ -143,9 +143,12 @@ def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
     return id_doc_type(hint or "Căn cước", issuer)
 
 
-def _area(value):
+def _area(value, ocr_text: str = ""):
     if not isinstance(value, dict):
         return None
+    # Tờ khai hay chỉ ghi "xã X" không có tỉnh, LLM tự điền một tỉnh không hề có trên giấy
+    # → bỏ tỉnh bịa (giữ khi cặp tỉnh/xã có thật) rồi suy lại từ danh mục xã bên dưới.
+    value = drop_fabricated_province(value, ocr_text)
     province = str(value.get("tinh") or "").strip()
     if re.sub(r"[^a-z0-9]+", "", _fold(province)) in _HCM_PROVINCE_KEYS:
         province = "Thành phố Hồ Chí Minh"
@@ -167,6 +170,19 @@ def _area(value):
     detail = str(remapped.get("diaChi") or "").strip()
     if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
         remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
+    # Không có tỉnh → tỉnh DUY NHẤT có xã tên này; lấy đủ nhãn danh mục ("Xã ...") để khớp option.
+    if not remapped.get("tinh") and remapped.get("xa"):
+        found = province_for_ward(remapped["xa"])
+        if found:
+            remapped = {**remapped, "tinh": found[0], "xa": found[1]}
+    # Xã không chọn được trên cổng: extension sẽ vớ nhầm option gần giống hoặc để trống mà không báo.
+    # Bỏ trống xã, giữ tên đã đọc ở cuối địa chỉ chi tiết, đánh dấu để tô viền vàng.
+    ward = str(remapped.get("xa") or "")
+    if ward and not is_current_area(str(remapped.get("tinh") or ""), ward):
+        detail = str(remapped.get("diaChi") or "").strip()
+        if _fold(ward) not in _fold(detail):
+            detail = f"{detail}, {ward}" if detail else ward
+        remapped = {**remapped, "xa": "", "diaChi": detail, "_xaChuaChon": True}
     return remapped
 
 
@@ -315,7 +331,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
         # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
         add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
-        area = _area(values.get("NguoiDuocCap_NoiCuTru"))
+        area = _area(values.get("NguoiDuocCap_NoiCuTru"), str(options.get("_ocr_text") or ""))
         if area:
             add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
             # Radio "Trong nước" phải chọn trước: bốn ô địa chỉ chỉ hiện sau khi chọn.
@@ -323,7 +339,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             add("citizenField21", area.get("quocGia") or "Việt Nam")
             add("citizenNDK_TinhThanh", area.get("tinh"))
             add("citizenNDK_PhuongXa", area.get("xa"))
-            add("citizenField38", area.get("diaChi"))
+            add("citizenField38", area.get("diaChi"), default=bool(area.get("_xaChuaChon")))
+            if area.get("_xaChuaChon") or not area.get("tinh"):
+                warnings.append("Chưa chọn được tỉnh/phường, xã nơi cư trú của người được cấp theo danh mục hiện hành — "
+                                "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
 
     add("citizenLoaiViecYeuCau", _EVENT_TO_OPTION.get(event))
     add("citizenHoSo_CoQuanDangKy", values.get("GiayTo_CoQuanDangKy"))

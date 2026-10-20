@@ -219,6 +219,114 @@ def test_ket_hon_does_not_recheck_divorce_status_after_llm():
     assert ket_hon_runner._compact_field_fallback(extracted, documents) == extracted
 
 
+_HAI_THE_LIEN_NHAU = "\n".join([
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+    "CĂN CƯỚC CÔNG DÂN",
+    "Citizen Identity Card",
+    "Số / No.: 001190000111",
+    "Họ và tên / Full name:",
+    "TRẦN THỊ MẪU",
+    "Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam",
+    "Nơi thường trú / Place of residence: 12 Lê Lợi",
+    "Phường 3, Thành phố Đà Lạt, Lâm Đồng",
+    "Có giá trị đến: 01/01/2030",
+    "",
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+    "CĂN CƯỚC",
+    "IDENTITY CARD",
+    "Số định danh cá nhân / Personal identification number:",
+    "002095000222",
+    "LÊ VĂN THỬ",
+    "Giới tính / Sex:",
+    "Nam",
+    "───── Trang 2/2 ─────",
+    "Đặc điểm nhận dạng / Personal identification:",
+    "Ngày, tháng, năm / Date, month, year: 10/05/2021",
+    "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI",
+    "IDVNM1900001115001190000111<<0",
+    "9001011F3001010VNM<<<<<<<<<<<<8",
+    "TRAN<<THI<MAU<<<<<<<<<<<<<<<<<",
+    "Nơi cư trú / Place of residence: Thôn 7",
+    "Gia Hiệp, Di Linh, Lâm Đồng",
+    "Nơi đăng ký khai sinh / Place of birth:",
+    "Gia Hiệp, Di Linh, Lâm Đồng",
+    "Ngày, tháng, năm cấp / Date of issue:",
+    "05/08/2024",
+    "BỘ CÔNG AN/MINISTRY OF PUBLIC SECURITY",
+    "IDVNMO950002229002095000222<<<8",
+    "9501013M3501014VNM<<<<<<<<<<<<4",
+    "LE<<VAN<THU<<<<<<<<<<<<<<<<<<<",
+])
+_DIA_CHI_NU = {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Phường 3", "diaChi": "12 Lê Lợi"}
+_DIA_CHI_NAM = {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Gia Hiệp", "diaChi": "Thôn 7"}
+
+
+def test_ket_hon_dao_lai_noi_cu_tru_va_ngay_cap_lay_nham_mat_sau_the_nguoi_kia():
+    """Mặt sau thẻ Căn cước của nam đứng ngay sau MRZ của nữ → LLM gán nhầm nơi cư trú, ngày/nơi cấp cho nữ."""
+    docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
+    extracted = {
+        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
+        "CccdNu_NgayCap": "05/08/2024", "CccdNu_NoiCap": "Bộ Công an",
+        "CccdNam_NgayCap": "05/08/2024", "CccdNam_NoiCap": "Bộ Công an",
+        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+    }
+
+    fixed = ket_hon_runner._compact_field_fallback(extracted, docs)
+
+    assert fixed["CccdNu_NoiCuTru_TrongNuoc"] == _DIA_CHI_NU
+    assert fixed["CccdNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
+    assert fixed["CccdNu_NgayCap"] == "10/05/2021"
+    assert fixed["CccdNu_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert fixed["CccdNam_NgayCap"] == "05/08/2024"
+    assert fixed["CccdNam_NoiCap"] == "Bộ Công an"
+
+
+def test_ket_hon_bo_trong_dia_chi_nu_khi_ca_hai_ben_deu_lay_dia_chi_nam():
+    docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
+    extracted = {
+        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
+        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "CccdNam_NoiCuTru_TrongNuoc": {**_DIA_CHI_NAM, "diaChi": "Thôn Gia Hiệp 9", "xa": "Di Linh"},
+    }
+
+    fixed = ket_hon_runner._compact_field_fallback(extracted, docs)
+
+    assert fixed["CccdNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
+    assert "CccdNu_NoiCuTru_TrongNuoc" not in fixed
+
+
+def test_ket_hon_giu_nguyen_khi_gan_dung_hoac_hai_ben_chung_dia_chi():
+    docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
+    dung = {
+        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
+        "CccdNu_NgayCap": "10/05/2021", "CccdNam_NgayCap": "05/08/2024",
+        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+    }
+    assert ket_hon_runner._compact_field_fallback(dung, docs) == dung
+
+    chung = _HAI_THE_LIEN_NHAU.replace("Nơi cư trú / Place of residence: Thôn 7\nGia Hiệp, Di Linh",
+                                       "Nơi cư trú / Place of residence: 12 Lê Lợi\nPhường 3, Thành phố Đà Lạt")
+    cung_dia_chi = {**dung, "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU)}
+    assert ket_hon_runner._compact_field_fallback(cung_dia_chi, [{"name": "the.pdf", "text": chung}]) == cung_dia_chi
+
+
+def test_ket_hon_khong_gan_hang_noi_cu_tru_tren_to_khai_cho_the():
+    to_khai = "\n".join([
+        "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+        "TỜ KHAI ĐĂNG KÝ KẾT HÔN",
+        "Số định danh cá nhân: 001190000111 002095000222",
+        "Nơi cư trú: Thôn 7, Gia Hiệp, Di Linh, Lâm Đồng",
+    ])
+    extracted = {
+        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
+        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+    }
+    assert ket_hon_runner._compact_field_fallback(extracted, [{"name": "tk.pdf", "text": to_khai}]) == extracted
+
+
 def test_ket_hon_mapper_normalizes_ho_chi_minh_province_aliases():
     aliases = (
         "TP.Hồ Chí Minh",

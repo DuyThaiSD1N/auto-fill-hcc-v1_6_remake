@@ -5,7 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
-from app.pipelines.dang_ky_giam_ho.process.schema import UI_COMP_BY_NAME
+from app.pipelines.dang_ky_giam_ho.process.schema import UI_COMP_BY_NAME, UI_COMP_BY_NAME_CHAM_DUT
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -256,5 +256,101 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("CapBanSao", copy)
         if copy == "Có":
             add("soluong", values.get("CopyRequest_Quantity") or "1")
+
+    return out
+
+
+def enrich_cham_dut(fields: list[dict], options: dict | None = None) -> list[dict]:
+    """Đăng ký chấm dứt giám hộ: cùng facts compact nhưng tên ô theo eForm 1912.
+
+    eForm 1912 chỉ có MỘT ô số định danh cho mỗi người (dùng chung cho dòng "Giấy tờ tùy thân"),
+    nên người được giám hộ chưa có CCCD thì số giấy khai sinh không được ghi đè số định danh.
+    """
+    _ = options or {}
+    values = _by_name(fields)
+    out: list[dict] = []
+    seen: set[str] = set()
+
+    def add(name: str, value) -> None:
+        if name in seen or value in (None, "", {}, []):
+            return
+        comp = UI_COMP_BY_NAME_CHAM_DUT.get(name)
+        if not comp:
+            return
+        out.append({"name": name, "comp": comp, "value": value})
+        seen.add(name)
+
+    def add_area(residence: str, detail: str, province: str, commune: str, area_value) -> None:
+        area = _area(area_value)
+        if not area:
+            return
+        add(residence, "Thường trú")
+        add(detail, _detail(area.get("diaChi")))
+        add(province, _province_label(area.get("tinh")))
+        add(commune, _commune_label(area.get("xa")))
+
+    requester_issue_date = normalize_date(values.get("Requester_IdIssueDate"))
+    requester_id = values.get("Requester_IdNumber")
+    add("HoVaTenC", _upper_name(values.get("Requester_FullName")))
+    add("SoDinhDanhC", requester_id)
+    if requester_id:
+        add("LoaiGiayToDinhDanhC", _doc_type(values.get("Requester_IdIssuePlace"), requester_issue_date))
+    add("NgayCapDDC", requester_issue_date)
+    add("NoiCapDDC", _issuer(values.get("Requester_IdIssuePlace"), requester_issue_date))
+    add_area("cutru3", "TT_SoNhaToDanPhoC", "TT_TinhThanhC", "TT_PhuongXaC",
+             values.get("Requester_ResidenceDomestic"))
+
+    guardian_issue_date = normalize_date(values.get("Guardian_IdIssueDate"))
+    guardian_id = values.get("Guardian_IdNumber")
+    add("HoVaTenM", _upper_name(values.get("Guardian_FullName")))
+    add("NgaySinhM", normalize_date(values.get("Guardian_BirthDate")))
+    add("GioiTinhM", values.get("Guardian_Gender"))
+    add("DanTocM", values.get("Guardian_Ethnicity"))
+    if values.get("Guardian_FullName") or guardian_id:
+        add("QuocTichM", values.get("Guardian_Nationality") or "Việt Nam")
+    add("SoDinhDanhM", guardian_id)
+    if guardian_id:
+        add("LoaiGiayToDinhDanhM", _doc_type(values.get("Guardian_IdIssuePlace"), guardian_issue_date))
+    add("NgayCapDDM", guardian_issue_date)
+    add("NoiCapDDM", _issuer(values.get("Guardian_IdIssuePlace"), guardian_issue_date))
+    add_area("cutru1", "DiaChiM", "TT_TinhThanhM", "TT_PhuongXaM", values.get("Guardian_ResidenceDomestic"))
+
+    ward_issue_date = normalize_date(values.get("Ward_IdIssueDate"))
+    ward_issuer = _issuer(values.get("Ward_IdIssuePlace"), ward_issue_date)
+    ward_id = values.get("Ward_IdNumber")
+    add("HoVaTenCha", _upper_name(values.get("Ward_FullName")))
+    add("NgaySinhCha", normalize_date(values.get("Ward_BirthDate")))
+    add("GioiTinhCha", values.get("Ward_Gender"))
+    add("DanTocCha", values.get("Ward_Ethnicity"))
+    if values.get("Ward_FullName") or ward_id:
+        add("QuocTichCha", values.get("Ward_Nationality") or "Việt Nam")
+    birth_cert = {
+        "number": values.get("Ward_BirthCertificateNumber"),
+        "issue_date": normalize_date(values.get("Ward_BirthCertificateIssueDate")),
+        "issue_place": values.get("Ward_BirthCertificateIssuePlace"),
+    }
+    info_birth_cert = _birth_certificate_from_info(values.get("Ward_BirthCertificateInfo"))
+    birth_cert = {key: value or info_birth_cert.get(key) for key, value in birth_cert.items()}
+    add("SoDinhDanhCha", ward_id)
+    if ward_id and (ward_issue_date or ward_issuer):
+        add("LoaiGiayToDinhDanhCha", _doc_type(values.get("Ward_IdIssuePlace"), ward_issue_date))
+        add("NgayCapDDCha", ward_issue_date)
+        add("NoiCapDDCha", ward_issuer)
+    elif birth_cert.get("number") or birth_cert.get("issue_date") or birth_cert.get("issue_place"):
+        add("LoaiGiayToDinhDanhCha", "Giấy khai sinh")
+        add("SoDinhDanhCha", birth_cert.get("number"))
+        add("NgayCapDDCha", normalize_date(birth_cert.get("issue_date")))
+        add("NoiCapDDCha", birth_cert.get("issue_place"))
+    add_area("cutru2", "DiaChiCha", "TT_TinhThanhCha", "TT_PhuongXaCha", values.get("Ward_ResidenceDomestic"))
+
+    add("SoDKTai", _detail(values.get("PriorRegistration_Number")))
+    add("NgayDKTai", normalize_date(values.get("PriorRegistration_Date")))
+    add("CoQuanDk", _detail(values.get("PriorRegistration_Agency")))
+    add("LyDoChamDuQH", _detail(values.get("Termination_Reason")))
+    copy = _copy_value(values.get("CopyRequest_WantsCopy"))
+    if copy:
+        add("CapBanSao", copy)
+        if copy == "Có":
+            add("SoLuong", values.get("CopyRequest_Quantity") or "1")
 
     return out

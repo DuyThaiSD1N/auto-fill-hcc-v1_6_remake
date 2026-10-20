@@ -33,6 +33,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                 "nhận con ngoài giá thú", "nhận cha cho con chưa có tên bố trong giấy khai sinh"],
     "dang-ky-giam-ho": ["đăng ký giám hộ", "làm người giám hộ cho trẻ mồ côi",
                         "giám hộ cho người mất năng lực hành vi dân sự"],
+    # THÔI/KẾT THÚC việc giám hộ đã đăng ký — KHÁC đăng ký giám hộ (bắt đầu làm người giám hộ).
+    "dang-ky-cham-dut-giam-ho": ["chấm dứt giám hộ", "thôi làm người giám hộ",
+                                 "cháu đã đủ 18 tuổi, chấm dứt việc giám hộ",
+                                 "người được giám hộ đã có cha mẹ nhận lại / đã mất",
+                                 "người giám hộ mất, xin chấm dứt giám hộ"],
     "trich-luc-ks": ["cấp bản sao giấy khai sinh", "bản sao trích lục hộ tịch", "xin bản sao giấy khai sinh",
                      "trích lục khai sinh", "xin bản sao giấy chứng nhận kết hôn", "trích lục khai tử"],
     "xac-nhan-tinh-trang-hon-nhan": ["xác nhận độc thân", "xác nhận tình trạng hôn nhân",
@@ -66,6 +71,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "chung-thuc-chu-ky-nguoi-dich-ctv": ["chứng thực chữ ký người dịch", "chứng thực bản dịch",
                                          "công chứng bản dịch", "dịch thuật công chứng",
                                          "chứng thực giấy tờ đã dịch", "cộng tác viên dịch thuật"],
+    # Người dịch KHÔNG phải cộng tác viên (tự dịch / dịch tự do). Dân nói "chứng thực bản dịch" trơn
+    # thì vẫn là bản CTV ở trên; chỉ chọn bản này khi nghe rõ người dịch không phải CTV.
+    "chung-thuc-chu-ky-nguoi-dich-khong-ctv": ["người dịch không phải cộng tác viên",
+                                               "tự dịch rồi chứng thực chữ ký",
+                                               "chứng thực chữ ký người dịch tự do",
+                                               "chứng thực bản dịch do mình tự dịch"],
     "chung-thuc-giao-dich-tai-san": ["chứng thực hợp đồng", "chứng thực giao dịch",
                                      "công chứng hợp đồng mua bán", "công chứng hợp đồng tặng cho",
                                      "công chứng hợp đồng thế chấp", "chứng thực hợp đồng mua bán nhà đất",
@@ -109,6 +120,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                  "xin luật sư miễn phí", "nhờ luật sư bào chữa miễn phí",
                                  "hộ nghèo cần tư vấn pháp luật miễn phí",
                                  "xin trợ giúp viên pháp lý"],
+    # Người TỪNG là thẩm phán/kiểm sát viên/điều tra viên… xin CHỨNG CHỈ hành nghề luật sư — KHÁC
+    # trợ giúp pháp lý (người dân xin luật sư giúp mình).
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": [
+        "cấp chứng chỉ hành nghề luật sư", "xin chứng chỉ luật sư",
+        "miễn đào tạo nghề luật sư, miễn tập sự",
+        "nguyên thẩm phán, kiểm sát viên xin hành nghề luật sư",
+        "nghỉ hưu muốn làm luật sư"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -167,7 +185,7 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                              "cấp đổi giấy chứng nhận khuyết tật"],
     # Hai thủ tục mai táng chỉ khác NHÓM ĐỐI TƯỢNG → cụm "mai táng" trơn KHÔNG thuộc bên nào; để
     # LLM đọc cả câu rồi quyết, hoặc hỏi lại. Nhét vào một bên là bên kia không bao giờ được chọn.
-    "ho-tro-mai-tang": ["hỗ trợ mai táng cho đối tượng bảo trợ xã hội",
+    "ho-tro-mai-tang-1116910": ["hỗ trợ mai táng cho đối tượng bảo trợ xã hội",
                         "mai táng cho người hưởng trợ cấp bảo trợ xã hội",
                         "chi phí mai táng người khuyết tật",
                         "mai táng cho trẻ mồ côi đang hưởng trợ cấp"],

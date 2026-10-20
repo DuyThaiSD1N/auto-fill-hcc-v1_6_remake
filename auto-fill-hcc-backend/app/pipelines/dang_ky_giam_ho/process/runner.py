@@ -1,4 +1,4 @@
-"""Compact agent process pipeline for "Đăng ký giám hộ"."""
+"""Compact agent process pipeline for "Đăng ký giám hộ" và "Đăng ký chấm dứt giám hộ"."""
 
 import re
 
@@ -6,12 +6,21 @@ from app.pipelines._shared.formatting import normalize_date
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines.dang_ky_giam_ho.process import mapper
-from app.pipelines.dang_ky_giam_ho.process.prompt import EXTRA_RULES
+from app.pipelines.dang_ky_giam_ho.process.prompt import EXTRA_RULES, EXTRA_RULES_CHAM_DUT
 from app.pipelines.dang_ky_giam_ho.process.schema import (
     ALIASES,
     ALLOWED,
+    ALLOWED_CHAM_DUT,
     COMPACT_COMP_BY_NAME,
+    COMPACT_COMP_BY_NAME_CHAM_DUT,
     FIELDS,
+    FIELDS_CHAM_DUT,
+)
+
+# Tờ khai chấm dứt giám hộ: sau khối người được giám hộ là "Đã đăng ký giám hộ tại..." rồi
+# "Lý do chấm dứt giám hộ" — phải cắt khối ở đó như "Lý do đăng ký giám hộ" của tờ khai đăng ký.
+_AFTER_WARD = (
+    r"Lý\s+do\s+(?:đăng\s+ký|chấm\s+dứt)\s+giám\s+hộ|Đã\s+đăng\s+ký\s+giám\s+hộ"
 )
 
 
@@ -78,7 +87,7 @@ def _parse_area_text(value: str) -> dict | None:
 
 def _extract_ward_block(text: str) -> str:
     m = re.search(
-        r"Người\s+được\s+giám\s+hộ\s*:?(?P<block>.*?)(?=Lý\s+do\s+đăng\s+ký\s+giám\s+hộ|Tôi\s+cam\s+đoan|Người\s+yêu\s+cầu|Đề\s+nghị\s+cấp\s+bản\s+sao|$)",
+        r"Người\s+được\s+giám\s+hộ\s*:?(?P<block>.*?)(?=" + _AFTER_WARD + r"|Tôi\s+cam\s+đoan|Người\s+yêu\s+cầu|Đề\s+nghị\s+cấp\s+bản\s+sao|$)",
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -90,7 +99,7 @@ def _extract_ward_residence(text: str) -> dict | None:
     if not block:
         return None
     m = re.search(
-        r"Nơi\s+cư\s+trú\s*:\s*(?P<addr>.*?)(?=Giấy\s+khai\s+sinh|Giấy\s+tờ\s+tùy\s+thân|Lý\s+do|$)",
+        r"Nơi\s+cư\s+trú\s*:\s*(?P<addr>.*?)(?=Giấy\s+khai\s+sinh|Giấy\s+tờ\s+tùy\s+thân|Lý\s+do|Đã\s+đăng\s+ký|$)",
         block,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -116,7 +125,7 @@ def _extract_ward_identity_doc(text: str) -> dict:
 
     line = re.search(
         r"(?:Giấy\s+khai\s+sinh\s*/\s*)?Giấy\s+tờ\s+tùy\s+thân\s*:\s*"
-        r"(?P<body>.*?)(?=Lý\s+do\s+đăng\s+ký\s+giám\s+hộ|Nơi\s+cư\s+trú|Tôi\s+cam\s+đoan|Đề\s+nghị\s+cấp\s+bản\s+sao|$)",
+        r"(?P<body>.*?)(?=" + _AFTER_WARD + r"|Nơi\s+cư\s+trú|Tôi\s+cam\s+đoan|Đề\s+nghị\s+cấp\s+bản\s+sao|$)",
         block,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -227,4 +236,20 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
     )
     res["fields"] = mapper.enrich(res["fields"], options)
+    return res
+
+
+async def run_cham_dut(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    """Đăng ký chấm dứt giám hộ: cùng nguồn giấy tờ, map sang eForm 1912."""
+    res = await runner.run(
+        files_by_role,
+        fields=FIELDS_CHAM_DUT,
+        allowed=ALLOWED_CHAM_DUT,
+        comp_by_name=COMPACT_COMP_BY_NAME_CHAM_DUT,
+        aliases=ALIASES,
+        extra_rules=EXTRA_RULES_CHAM_DUT,
+        compact_field_fallback=_compact_field_fallback,
+        options=options,
+    )
+    res["fields"] = mapper.enrich_cham_dut(res["fields"], options)
     return res

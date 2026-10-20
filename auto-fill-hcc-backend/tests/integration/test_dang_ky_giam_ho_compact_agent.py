@@ -362,3 +362,166 @@ def test_dang_ky_giam_ho_registered_with_process_and_attachment_step():
     assert proc["hasAttachmentStep"] is True
     assert get_pipeline("dang-ky-giam-ho") is agent.run
     assert get_attach_pipeline("dang-ky-giam-ho") is not None
+
+
+@respx.mock
+async def test_dang_ky_cham_dut_giam_ho_maps_eform_1912_fields(monkeypatch):
+    monkeypatch.setattr(settings, "openai_api_key", "")
+
+    async def fake_ocr_per_file(files):
+        return [{"name": f["name"], "type": f["type"], "text": "OCR text", "provider": "tiengnoi"} for f in files]
+
+    monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
+    out = {
+        "fields": {
+            "Requester_FullName": "Trần Văn Bình",
+            "Requester_IdNumber": "001090000111",
+            "Requester_IdIssueDate": "01/02/2025",
+            "Requester_IdIssuePlace": "Bộ Công an",
+            "Requester_ResidenceDomestic": {"tinh": "Tỉnh Lai Châu", "xa": "Phường Tân Phong", "diaChi": "Tổ 3"},
+            "Guardian_FullName": "Trần Văn Bình",
+            "Guardian_BirthDate": "02/03/1990",
+            "Guardian_Gender": "Nam",
+            "Guardian_Ethnicity": "Kinh",
+            "Guardian_IdNumber": "001090000111",
+            "Guardian_IdIssueDate": "01/02/2025",
+            "Guardian_IdIssuePlace": "Bộ Công an",
+            "Guardian_ResidenceDomestic": {"tinh": "Lai Châu", "xa": "Phường Tân Phong", "diaChi": "Tổ 3"},
+            "Ward_FullName": "Lê Thị Hoa",
+            "Ward_BirthDate": "04/05/2008",
+            "Ward_Gender": "Nữ",
+            "Ward_Ethnicity": "Kinh",
+            "Ward_ResidenceDomestic": {"tinh": "Tỉnh Lai Châu", "xa": "Phường Tân Phong", "diaChi": "Tổ 3"},
+            "Ward_BirthCertificateNumber": "56",
+            "Ward_BirthCertificateIssueDate": "10/05/2008",
+            "Ward_BirthCertificateIssuePlace": "UBND phường Tân Phong",
+            "PriorRegistration_Number": "12",
+            "PriorRegistration_Date": "05/03/2020",
+            "PriorRegistration_Agency": "UBND phường Tân Phong",
+            "Termination_Reason": "Người được giám hộ đã đủ 18 tuổi",
+            "CopyRequest_WantsCopy": "Có",
+            "CopyRequest_Quantity": "2",
+        }
+    }
+    respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps(out, ensure_ascii=False)}}]},
+        )
+    )
+
+    res = await agent.run_cham_dut({"doc": [_file("tờ khai chấm dứt giám hộ.pdf")]}, {})
+    by_name = {f["name"]: f for f in res["fields"]}
+    d = {name: f["value"] for name, f in by_name.items()}
+
+    assert d["HoVaTenC"] == "TRẦN VĂN BÌNH"
+    assert d["SoDinhDanhC"] == "001090000111"
+    assert d["LoaiGiayToDinhDanhC"] == "Thẻ căn cước"
+    assert d["NoiCapDDC"] == "Bộ Công an"
+    assert d["cutru3"] == "Thường trú"
+    assert d["TT_TinhThanhC"] == "Tỉnh Lai Châu"
+    assert d["TT_PhuongXaC"] == "Phường Tân Phong"
+    assert d["TT_SoNhaToDanPhoC"] == "Tổ 3"
+
+    assert d["HoVaTenM"] == "TRẦN VĂN BÌNH"
+    assert d["NgaySinhM"] == "02/03/1990"
+    assert d["GioiTinhM"] == "Nam"
+    assert d["DanTocM"] == "Kinh"
+    assert d["QuocTichM"] == "Việt Nam"
+    assert d["SoDinhDanhM"] == "001090000111"
+    assert d["LoaiGiayToDinhDanhM"] == "Thẻ căn cước"
+    assert d["NgayCapDDM"] == "01/02/2025"
+    assert d["cutru1"] == "Thường trú"
+    assert d["DiaChiM"] == "Tổ 3"
+    assert d["TT_TinhThanhM"] == "Tỉnh Lai Châu"
+    assert d["TT_PhuongXaM"] == "Phường Tân Phong"
+
+    # Không có CCCD: dòng giấy tờ tùy thân của người được giám hộ là giấy khai sinh.
+    assert d["HoVaTenCha"] == "LÊ THỊ HOA"
+    assert d["NgaySinhCha"] == "04/05/2008"
+    assert d["GioiTinhCha"] == "Nữ"
+    assert d["QuocTichCha"] == "Việt Nam"
+    assert d["LoaiGiayToDinhDanhCha"] == "Giấy khai sinh"
+    assert d["SoDinhDanhCha"] == "56"
+    assert d["NgayCapDDCha"] == "10/05/2008"
+    assert d["NoiCapDDCha"] == "UBND phường Tân Phong"
+    assert d["cutru2"] == "Thường trú"
+    assert d["DiaChiCha"] == "Tổ 3"
+
+    assert d["SoDKTai"] == "12"
+    assert d["NgayDKTai"] == "05/03/2020"
+    assert by_name["NgayDKTai"]["comp"] == "x-date"
+    assert d["CoQuanDk"] == "UBND phường Tân Phong"
+    assert d["LyDoChamDuQH"] == "Người được giám hộ đã đủ 18 tuổi"
+    assert d["CapBanSao"] == "Có"
+    assert d["SoLuong"] == "2"
+    assert by_name["SoLuong"]["comp"] == "raw"
+    # Không lẫn tên ô của eForm đăng ký giám hộ 1927.
+    assert not {"hotenA", "hotenB", "lydo", "soluong", "sodinhdanhB1"} & set(d)
+    assert not res["errors"]
+
+
+def test_dang_ky_cham_dut_giam_ho_ward_identity_card_wins_over_birth_certificate():
+    from app.pipelines.dang_ky_giam_ho.process import mapper
+
+    fields = [
+        {"name": "Ward_FullName", "value": "Lê Văn Nam"},
+        {"name": "Ward_IdNumber", "value": "012208000999"},
+        {"name": "Ward_IdIssueDate", "value": "16/08/2024"},
+        {"name": "Ward_IdIssuePlace", "value": "Bộ Công an"},
+        {"name": "Ward_BirthCertificateNumber", "value": "77"},
+    ]
+    d = {f["name"]: f["value"] for f in mapper.enrich_cham_dut(fields)}
+
+    assert d["SoDinhDanhCha"] == "012208000999"
+    assert d["LoaiGiayToDinhDanhCha"] == "Thẻ căn cước"
+    assert d["NgayCapDDCha"] == "16/08/2024"
+    assert d["NoiCapDDCha"] == "Bộ Công an"
+
+
+def test_dang_ky_cham_dut_giam_ho_fallback_stops_ward_block_at_prior_registration():
+    from app.pipelines.dang_ky_giam_ho.process import runner as giam_ho_runner
+
+    text = (
+        "TỜ KHAI ĐĂNG KÝ CHẤM DỨT GIÁM HỘ\n"
+        "Người được giám hộ: Lê Thị Hoa\n"
+        "Nơi cư trú: Tổ 3, phường Tân Phong, tỉnh Lai Châu\n"
+        "Đã đăng ký giám hộ tại UBND phường Tân Phong số 12 ngày 05/03/2020\n"
+        "Lý do chấm dứt giám hộ: Người được giám hộ đã đủ 18 tuổi\n"
+    )
+    residence = giam_ho_runner._extract_ward_residence(text)
+
+    assert residence["xa"] == "Phường Tân Phong"
+    assert residence["diaChi"] == "Tổ 3"
+    assert "Đã đăng ký" not in giam_ho_runner._extract_ward_block(text)
+
+
+def test_dang_ky_cham_dut_giam_ho_prompt_and_registry():
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+    from app.pipelines.dang_ky_giam_ho.process.prompt import EXTRA_RULES_CHAM_DUT
+    from app.pipelines.dang_ky_giam_ho.process.schema import FIELDS_CHAM_DUT
+
+    system_prompt = compact_prompt.build_system_prompt(FIELDS_CHAM_DUT, EXTRA_RULES_CHAM_DUT)
+    assert "Đăng ký chấm dứt giám hộ" in system_prompt
+    assert "Termination_Reason" in system_prompt
+    assert "PriorRegistration_Number" in system_prompt
+    assert "Registration_Reason" not in system_prompt
+    assert "<cccd_rules>" in system_prompt and "<address_split_rules>" in system_prompt
+
+    proc = get_procedure("dang-ky-cham-dut-giam-ho")
+    assert proc["label"] == "Thủ tục đăng ký chấm dứt giám hộ"
+    assert proc["mode"] == "agent"
+    assert proc["hasAttachmentStep"] is True
+    assert get_pipeline("dang-ky-cham-dut-giam-ho") is agent.run_cham_dut
+    assert get_attach_pipeline("dang-ky-cham-dut-giam-ho") is not None
+    # Nhận diện theo tiêu đề không được lẫn với đăng ký giám hộ.
+    assert "Thủ tục đăng ký giám hộ" not in "Thủ tục đăng ký chấm dứt giám hộ"
+
+    entry = handfree.get_procedure("dang-ky-cham-dut-giam-ho")
+    assert entry["flowProfile"] == "tu-phap"
+    assert entry["keKhaiUrl"].endswith("019d2bfd-6724-715f-822c-28e986912730")
+    assert handfree.procedure_code(entry) == "1.004845"
+    assert PROCEDURE_HINTS["dang-ky-cham-dut-giam-ho"]
+    assert PROCEDURE_HMONG["dang-ky-cham-dut-giam-ho"]

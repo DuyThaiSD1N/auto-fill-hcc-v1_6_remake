@@ -114,3 +114,74 @@ UI_COMP_BY_NAME = {
     "CapBanSao": "x-radio",
     "soluong": "raw",
 }
+
+
+# ── Đăng ký chấm dứt giám hộ (1.004845) ──────────────────────────────────────────────────
+# Cùng 3 vai trò với đăng ký giám hộ nhưng eForm 1912 đặt tên ô khác hẳn (M = người giám hộ,
+# Cha = người được giám hộ), mỗi người chỉ có MỘT ô số định danh, và có thêm cụm "Đăng ký giám
+# hộ: số / ngày / cơ quan" + "Lý do chấm dứt giám hộ".
+_CHAM_DUT_DROP = {"Registration_Agency", "Registration_RelationshipType", "Registration_Reason"}
+FIELDS_CHAM_DUT: list[dict] = [f for f in FIELDS if f["name"] not in _CHAM_DUT_DROP] + [
+    {"name": "PriorRegistration_Number", "desc": "Số đăng ký giám hộ trước đây (số trích lục/số đăng ký) nếu tờ khai hoặc trích lục ghi rõ."},
+    {"name": "PriorRegistration_Date", "desc": "Ngày đăng ký giám hộ trước đây, dd/mm/yyyy."},
+    {"name": "PriorRegistration_Agency", "desc": "Cơ quan đã đăng ký giám hộ trước đây, ví dụ UBND phường/xã..."},
+    {"name": "Termination_Reason", "desc": "Lý do chấm dứt giám hộ."},
+]
+
+ALLOWED_CHAM_DUT = {f["name"] for f in FIELDS_CHAM_DUT}
+
+COMPACT_COMP_BY_NAME_CHAM_DUT = {
+    name: COMPACT_COMP_BY_NAME.get(name, "x-input") for name in ALLOWED_CHAM_DUT
+}
+COMPACT_COMP_BY_NAME_CHAM_DUT["PriorRegistration_Date"] = "x-date"
+
+UI_COMP_BY_NAME_CHAM_DUT = {
+    # I. Người yêu cầu.
+    "HoVaTenC": "x-input",
+    "SoDinhDanhC": "x-input",
+    "LoaiGiayToDinhDanhC": "x-select",
+    "NgayCapDDC": "x-date",
+    "NoiCapDDC": "x-input",
+    "cutru3": "x-select",
+    "TT_SoNhaToDanPhoC": "x-input",
+    "TT_TinhThanhC": "x-select",
+    "TT_PhuongXaC": "x-select",
+
+    # II. Người giám hộ.
+    "HoVaTenM": "x-input",
+    "NgaySinhM": "x-date",
+    "GioiTinhM": "x-select",
+    "DanTocM": "x-select",
+    "QuocTichM": "x-select",
+    "SoDinhDanhM": "x-input",
+    "LoaiGiayToDinhDanhM": "x-select",
+    "NgayCapDDM": "x-date",
+    "NoiCapDDM": "x-input",
+    "cutru1": "x-select",
+    "DiaChiM": "x-input",
+    "TT_TinhThanhM": "x-select",
+    "TT_PhuongXaM": "x-select",
+
+    # III. Người được giám hộ.
+    "HoVaTenCha": "x-input",
+    "NgaySinhCha": "x-date",
+    "GioiTinhCha": "x-select",
+    "DanTocCha": "x-select",
+    "QuocTichCha": "x-select",
+    "SoDinhDanhCha": "x-input",
+    "LoaiGiayToDinhDanhCha": "x-select",
+    "NgayCapDDCha": "x-date",
+    "NoiCapDDCha": "x-input",
+    "cutru2": "x-select",
+    "DiaChiCha": "x-input",
+    "TT_TinhThanhCha": "x-select",
+    "TT_PhuongXaCha": "x-select",
+
+    # IV. Đăng ký giám hộ trước đây + nội dung chấm dứt.
+    "SoDKTai": "x-input",
+    "NgayDKTai": "x-date",
+    "CoQuanDk": "x-input",
+    "LyDoChamDuQH": "x-input",
+    "CapBanSao": "x-radio",
+    "SoLuong": "raw",
+}

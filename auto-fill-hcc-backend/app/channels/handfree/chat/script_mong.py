@@ -29,6 +29,9 @@ PROCEDURE_HMONG = {
     "khai-tu-lien-thong": "Cuv npe tuag (txuas ntxiv)",
     "dang-ky-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
     "dang-ky-giam-ho": "Cuv npe saib xyuas tus neeg",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ "Cuv npe saib xyuas tus neeg" (đăng ký giám hộ); "xaus kev"
+    # (chấm dứt việc) là TỪ MỚI.
+    "dang-ky-cham-dut-giam-ho": "Cuv npe xaus kev saib xyuas tus neeg",
     "ket-hon-nuoc-ngoai": "Cuv npe yuav txiv/poj niam nrog neeg txawv teb chaws",
     "dang-ky-lai-ket-hon": "Cuv npe yuav txiv yuav poj niam dua tshiab",
     "khai-tu-dang-ky-lai": "Cuv npe tuag dua tshiab",
@@ -76,8 +79,13 @@ PROCEDURE_HMONG = {
     "bau-to-truong-to-hoa-giai": "Xaiv thawj coj pab neeg sib haum xeeb",
     # BẢN NHÁP chờ anh Dư soát — "kev pab txog kev cai lij choj" (trợ giúp pháp lý) là TỪ MỚI.
     "yeu-cau-tro-giup-phap-ly": "Thov kev pab txog kev cai lij choj",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("daim ntawv", "kev cai lij choj"); "kws lij
+    # choj" (luật sư) là TỪ MỚI.
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": "Daim ntawv tso cai ua kws lij choj",
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có; "tsis yog" (không phải) để tách khỏi bản CTV.
+    "chung-thuc-chu-ky-nguoi-dich-khong-ctv": "Lees paub kos npe tus neeg txhais lus (tsis yog CTV)",
     "xac-dinh-muc-do-khuyet-tat": "Txiav txim qib xiam oob qhab",
     # BẢN NHÁP chờ anh Dư soát — "pauv" (đổi) là TỪ MỚI.
     "doi-cap-lai-giay-xac-nhan-khuyet-tat": "Pauv, muab daim ntawv lees paub xiam oob qhab dua tshiab",
@@ -85,7 +93,7 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("nyiaj pab pej xeem", "saib xyuas", "txhua hli").
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang":
         "Nyiaj pab pej xeem thiab txais saib xyuas, yug txhua hli",
-    "ho-tro-mai-tang": "Nyiaj pab faus neeg tuag",
+    "ho-tro-mai-tang-1116910": "Nyiaj pab faus neeg tuag",
     "ho-tro-mai-tang-huu-tri-xa-hoi": "Nyiaj pab faus neeg tau nyiaj laus pab pej xeem",
     "dieu-chinh-huu-tri-xa-hoi": "Kho nyiaj laus pab pej xeem",
     "tro-cap-tho-cung-liet-si": "Nyiaj pab teev hawm neeg tuag rau lub teb chaws",

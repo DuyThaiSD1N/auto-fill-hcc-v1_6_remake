@@ -371,3 +371,28 @@ def test_to_khai_ghep_the_dung_nguoi_lech_nam_sinh_van_giu():
     assert by.get("citizenNDK_LoaiGiayToTuyThan")
     assert any("kiểm tra lại ngày sinh" in w for w in warnings)
     assert not any("không khớp người được cấp" in w for w in warnings)
+
+
+def _area_fields(out):
+    return {f["name"]: f for f in out if f["name"] in {"citizenNDK_TinhThanh", "citizenNDK_PhuongXa", "citizenField38"}}
+
+
+def test_noi_cu_tru_bo_tinh_bia_va_suy_tinh_tu_ten_xa():
+    # Tờ khai chỉ ghi "xã Bình Chương", LLM tự điền một tỉnh không có trên giấy.
+    values = {**SUBJECT, "NguoiDuocCap_NoiCuTru": {"tinh": "Tỉnh Thái Nguyên", "xa": "Bình Chương", "diaChi": "Thôn 1"}}
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(),
+                                    "_ocr_text": "Nơi cư trú: Thôn 1, xã Bình Chương"})
+    area = _area_fields(out)
+    assert area["citizenNDK_TinhThanh"]["value"] == "Quảng Ngãi"
+    assert area["citizenNDK_PhuongXa"]["value"] == "Xã Bình Chương"
+
+
+def test_noi_cu_tru_xa_khong_chon_duoc_thi_bo_trong_va_bao():
+    values = {**SUBJECT, "NguoiDuocCap_NoiCuTru": {"tinh": "Lâm Đồng", "xa": "Xã Khongcothat", "diaChi": "Số 1"}}
+    out, warnings = _enrich(values, _context())
+    area = _area_fields(out)
+    assert "citizenNDK_PhuongXa" not in area
+    assert area["citizenField38"]["value"] == "Số 1, Xã Khongcothat"
+    assert area["citizenField38"].get("default") is True
+    assert any("Phường/Xã" in w for w in warnings)

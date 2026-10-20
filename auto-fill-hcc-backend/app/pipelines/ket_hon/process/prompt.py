@@ -36,6 +36,11 @@ NGUỒN DỮ LIỆU:
     TOÀN BỘ thông tin (tinh + xa + diaChi) của CccdNam_NoiCuTru_TrongNuoc phải đọc từ ĐÚNG thẻ CCCD có
     cùng số định danh với CccdNam_SoDinhDanh; tương tự CccdNu_NoiCuTru_TrongNuoc phải từ thẻ có số định
     danh CccdNu_SoDinhDanh. TUYỆT ĐỐI không lấy diaChi từ thẻ người này gán cho người kia.
+  + HAI THẺ LIỀN NHAU TRONG MỘT FILE: thẻ CĂN CƯỚC mới in "Nơi cư trú", ngày cấp, "BỘ CÔNG AN" ở MẶT SAU,
+    và mặt sau KẾT THÚC bằng MRZ (dòng IDVNM...<12 số định danh><<, dòng giới tính M/F, dòng họ tên không dấu).
+    Mọi thông tin đứng SAU MRZ của người thứ nhất và TRƯỚC MRZ tiếp theo thuộc người có tên/số trong MRZ
+    tiếp theo đó, KHÔNG thuộc người có MRZ ngay phía trên. Thẻ CCCD cũ in "Nơi thường trú" ở MẶT TRƯỚC,
+    cùng mặt với "Số / No." của chính người đó.
   + Nếu có cả tờ khai và CCCD thì BẮT BUỘC trả CẢ HAI field nguồn tương ứng; mapper sẽ tự ưu tiên tờ khai.
   + Không lấy địa chỉ từ giấy xác nhận tình trạng hôn nhân, giấy phép lái xe, bản cam đoan hoặc giấy tờ phụ
     gán vào bất kỳ field nơi cư trú nào nêu trên.

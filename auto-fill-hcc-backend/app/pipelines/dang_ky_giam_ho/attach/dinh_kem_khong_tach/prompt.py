@@ -50,7 +50,7 @@ Nhiệm vụ là đọc OCR_TEXT của từng file vật lý và xếp nguyên f
 </type_definitions>
 
 <classification_hints>
-- OCR có "TỜ KHAI ĐĂNG KÝ GIÁM HỘ" thì chọn paper_declaration, không đưa vào STT 1.
+- OCR có "TỜ KHAI ĐĂNG KÝ GIÁM HỘ" hoặc "TỜ KHAI ĐĂNG KÝ CHẤM DỨT GIÁM HỘ" thì chọn paper_declaration, không đưa vào STT 1.
 - OCR có "VĂN BẢN THỎA THUẬN CỬ NGƯỜI GIÁM HỘ", "VĂN BẢN CỬ NGƯỜI GIÁM HỘ", "người cử giám hộ", "cử người có tên dưới đây" thì chọn guardian_appointment.
 - OCR có "BẢN CAM ĐOAN" và nội dung "năng lực hành vi dân sự", "không bị truy cứu trách nhiệm hình sự", "đủ điều kiện giám hộ" thì chọn guardian_condition.
 - OCR có "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT", "quyền sở hữu nhà ở", "chỗ ở", "nhà riêng" thì chọn guardian_condition.
