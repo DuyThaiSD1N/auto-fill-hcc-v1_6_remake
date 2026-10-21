@@ -84,6 +84,19 @@ _PAGE_HEADER_RE = re.compile(
 _ID_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
 # Ảnh trẻ gần như không có chữ; dưới ngưỡng này (ký tự chữ/số) coi là ảnh.
 _PHOTO_MAX_CHARS = 30
+# Tách trang trong file gộp: loại giấy chỉ xét phần tiêu đề đầu trang.
+_PAGE_HEAD_CHARS = 450
+# Chỉ dấu của chính THẺ căn cước/hộ chiếu (hai mặt), không phải chữ "hộ chiếu" trong ô số giấy tờ.
+_PAGE_IDENTITY_MARKERS = (
+    "citizen identity",
+    "identity card",
+    "idvnm",
+    "place of residence",
+    "date of expiry",
+    "ho chieu passport",
+)
+# Giấy tờ bệnh viện của cha mẹ nuôi/trẻ (giấy xác nhận, toa thuốc) đi cùng nhóm sức khỏe.
+_PAGE_MEDICAL_MARKERS = ("nguoi benh", "toa thuoc", "don thuoc")
 
 
 def _has_any(haystack: str, needles: tuple[str, ...]) -> bool:
@@ -153,6 +166,18 @@ def _rule_doc_type(text: str) -> str:
         "hoan canh gia dinh",
         "dieu kien kinh te",
         "hop dong thue nha",
+        "xac nhan dang lam viec",
+        "giay bao co",
+        "credit advice",
+        "so tiet kiem",
+        "the tiet kiem",
+        "tien gui",
+        "xac nhan so du",
+        "ngan hang tmcp",
+        "ho can ngheo",
+        "ho ngheo",
+        "tinh trang cho o",
+        "thong tin ve cu tru",
     )):
         return _FAMILY_CONDITION
     if _has_any(haystack, ("giay khai sinh", "trich luc khai sinh", "noi dang ky khai sinh")):
@@ -169,6 +194,44 @@ def _rule_doc_type(text: str) -> str:
     )):
         return _IDENTITY
     return ""
+
+
+def _page_head(text: str) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()[:_PAGE_HEAD_CHARS]
+
+
+def _page_doc_type(text: str) -> str:
+    """Loại giấy theo TIÊU ĐỀ trang (phần đầu trang); "" = trang tiếp theo của giấy trước.
+
+    Giữa trang các giấy hay nhắc tên giấy khác ("Nơi đăng ký khai sinh" trên mặt sau căn cước và mẫu
+    CT07, "giấy chứng nhận kết hôn" trong đơn xin xác nhận, "hộ chiếu" trong toa thuốc/sổ tiết kiệm)
+    nên không dò cả trang như khi phân loại cả file.
+    """
+    chars = _alnum_chars(text)
+    if not chars:
+        return ""  # trang trắng (mặt sau) đi theo giấy trước
+    if chars <= _PHOTO_MAX_CHARS:
+        return _CHILD_PHOTO
+    head = _page_head(text)
+    folded = fold(head)
+    if _has_any(folded, _PAGE_IDENTITY_MARKERS):
+        return _IDENTITY
+    raw = _rule_doc_type(head)
+    if raw in ("", _IDENTITY) and _has_any(folded, _PAGE_MEDICAL_MARKERS):
+        return _HEALTH
+    return "" if raw == _IDENTITY else raw
+
+
+def _application_text(pages: list[str]) -> str:
+    """Các trang của đơn trong file (file gộp: đơn + giấy tờ khác), từ trang đầu đơn tới giấy kế tiếp."""
+    picked: list[str] = []
+    for page in pages:
+        page_type = _page_doc_type(page)
+        if page_type == _APPLICATION or (picked and not page_type):
+            picked.append(page)
+        elif picked:
+            break
+    return "\n".join(picked)
 
 
 def _application_ids(text: str) -> tuple[set[str], set[str]]:
@@ -197,7 +260,8 @@ def _resolve_subject(raw_type: str, text: str, adopter_ids: set[str], child_ids:
             return _ADOPTER_HEALTH
         haystack = fold(text)
         if (child_ids and _mentions_any(text, child_ids)) or _has_any(
-            haystack, ("chua du 18 tuoi", "duoi 18 tuoi", "nguoi chua thanh nien")
+            # Mẫu giấy khám sức khỏe "dùng cho trẻ em dưới 6 tuổi".
+            haystack, ("chua du 18 tuoi", "duoi 18 tuoi", "nguoi chua thanh nien", "dung cho tre em")
         ):
             return _CHILD_HEALTH
         return _ADOPTER_HEALTH
@@ -292,14 +356,15 @@ def _split_pages(text: str) -> list[str]:
 def _page_start_type(text: str, adopter_ids: set[str], child_ids: set[str], has_marriage: bool) -> str:
     """Loại giấy tờ nếu trang này là trang ĐẦU của một giấy; "" nếu là trang tiếp theo của giấy trước.
 
-    Giấy khám sức khỏe: chỉ trang có tiêu đề "Giấy khám sức khỏe" mới mở giấy mới (các trang kết quả
-    khám phía sau có chữ "phân loại sức khỏe" nhưng thuộc giấy trước). CCCD: mặt trước có số định danh
-    mở thẻ mới, mặt sau (không có số đứng riêng) đi theo mặt trước.
+    Giấy khám sức khỏe: chỉ trang có tiêu đề "Giấy khám sức khỏe" (hoặc giấy tờ bệnh viện) mới mở giấy
+    mới (các trang kết quả khám phía sau có chữ "phân loại sức khỏe" nhưng thuộc giấy trước). CCCD: mặt
+    trước có số định danh mở thẻ mới, mặt sau (không có số đứng riêng) đi theo mặt trước.
     """
-    raw = _rule_doc_type(text)
+    raw = _page_doc_type(text)
     if not raw:
         return ""
-    if raw == _HEALTH and "giay kham suc khoe" not in fold(text):
+    folded = fold(_page_head(text))
+    if raw == _HEALTH and not _has_any(folded, ("giay kham suc khoe", *_PAGE_MEDICAL_MARKERS)):
         return ""
     if raw == _IDENTITY and not _ID_RE.search(text or ""):
         return ""
@@ -310,7 +375,9 @@ def _segments_of_file(entry: dict, adopter_ids: set[str], child_ids: set[str], h
     """Chia một file thành các đoạn trang liền nhau cùng loại: [{"type", "pages": [0-based]}]."""
     pages = entry["pages"]
     file_type = entry["type"]
-    if len(pages) <= 1 or file_type in (_APPLICATION, _SKIP, _CHILD_PHOTO):
+    # File nhận là đơn vẫn phải tách: quét gộp thì đơn chỉ là vài trang đầu, phía sau là cả bộ giấy tờ
+    # cần đính kèm (không tách thì cả file bị bỏ qua cùng đơn).
+    if len(pages) <= 1 or file_type in (_SKIP, _CHILD_PHOTO):
         return [{"type": file_type, "pages": list(range(len(pages)))}]
     segments: list[dict] = []
     for number, page in enumerate(pages):
@@ -382,10 +449,11 @@ def build_plan_items(
     child_ids: set[str] = set()
     for entry in entries:
         if entry["type"] == _APPLICATION:
-            adopters, children = _application_ids(entry["text"])
+            # Chỉ số trên các trang của đơn: file gộp còn CCCD/giấy tờ của mẹ đẻ phía sau.
+            adopters, children = _application_ids(_application_text(entry["pages"]) or entry["text"])
             adopter_ids |= adopters
             child_ids |= children
-    has_marriage = any(_rule_doc_type(page) == _MARRIAGE for entry in entries for page in entry["pages"])
+    has_marriage = any(_page_doc_type(page) == _MARRIAGE for entry in entries for page in entry["pages"])
 
     # Gom các đoạn trang theo loại; mỗi dòng có sẵn / mỗi loại thêm mới nhận MỘT file ghép.
     grouped: dict[str, list[dict]] = {}
@@ -415,7 +483,7 @@ def build_plan_items(
                 continue
             if doc_type in _EXISTING_ROWS or doc_type in _NEW_GROUP_LABELS:
                 grouped.setdefault(doc_type, []).append(source)
-                if doc_type == _MARRIAGE and any(_rule_doc_type(entry["pages"][n]) == _MARRIAGE for n in pages):
+                if doc_type == _MARRIAGE and any(_page_doc_type(entry["pages"][n]) == _MARRIAGE for n in pages):
                     has_marriage_cert = True
                 classified.append({**record, "group": doc_type})
                 continue

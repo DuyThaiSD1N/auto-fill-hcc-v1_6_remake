@@ -36,6 +36,11 @@ PROCEDURE_HMONG = {
     "dang-ky-lai-ket-hon": "Cuv npe yuav txiv yuav poj niam dua tshiab",
     "khai-tu-dang-ky-lai": "Cuv npe tuag dua tshiab",
     "dang-ky-nhan-cha-me-con": "Cuv npe lees txiv, niam, me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe yug me nyuam" (khai sinh) + "lees txiv, niam, me nyuam"
+    # (nhận cha, mẹ, con); "thiab" = và.
+    "khai-sinh-ket-hop-nhan-cha-me-con": "Cuv npe yug me nyuam thiab lees txiv, niam, me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — "tu me nyuam" (nhận nuôi con) và "hauv teb chaws" (trong nước) là TỪ MỚI.
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": "Cuv npe tu me nyuam (hauv teb chaws)",
     "chung-thuc-ban-sao": "Lees paub daim ntawv theej",
     "chung-thuc-chu-ky": "Lees paub kos npe",
     # BẢN NHÁP chờ anh Dư soát (thủ tục Bộ NN&MT — cấp/cấp lại giấy phép đánh bắt cá).
@@ -168,6 +173,9 @@ CHIP_HMONG = {
     "📮 Chọn hình thức nhận kết quả": "Xaiv txoj kev txais txiaj ntsig",
     "💾 Lưu và nộp hồ sơ": "Xa ntaub ntawv",
     "🗑️ Xóa dữ liệu": "Rho tawm",
+    # Tờ khai điện tử mở bằng nút "Khai tờ khai" (declarationEforms).
+    "✍️ Điền tờ khai": "Sau daim foos",
+    "🔁 Điền lại tờ khai đang mở": "Sau dua daim foos tab tom qhib",
     # Nhãn động (không nằm trong literal "label": ... của flow):
     "Kiểm tra lại trang hiện tại": "Xyuas dua nplooj no",
     # NỢ DỊCH: ghép "Ua dua" (thử lại) + "nplooj no" (trang này), chờ người soát.
@@ -286,6 +294,8 @@ DOC_SLOT_HMONG = {
     "giay_de_nghi": "Ntawv thov",
     "chung_sinh": "Ntawv chứng sinh",
     "chung_minh_tthn": "Ntawv pov thawj hôn nhân",
+    # BẢN NHÁP chờ anh Dư soát — "kuaj mob" (khám bệnh) là TỪ MỚI.
+    "suc_khoe": "Ntawv kuaj mob (sức khỏe)",
     "bien_ban": "Biên bản",
 }
 
@@ -719,6 +729,10 @@ BUSINESS_FAILED = {
     "tts": "Qhov sau kiag nres lawm. Pej xeem nias ua dua kom kuv ua ntxiv.",
 }
 
+EFORM_FILLING = {
+    "md": "Kuv tab tom sau daim foos. Pej xeem cia daim foos qhib li qub, tos ib pliag…",
+    "tts": "Kuv tab tom sau daim foos. Pej xeem cia daim foos qhib li qub, tos ib pliag.",
+}
 FILL_READY = {
     "md": (
         "Tiav lawm! Kuv nyeem tau {count} qhov thiab tab tom sau rau daim foos sab laug. "

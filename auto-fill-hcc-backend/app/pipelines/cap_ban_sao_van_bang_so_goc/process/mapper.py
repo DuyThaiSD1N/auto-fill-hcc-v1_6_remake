@@ -9,7 +9,8 @@ khỏi chủ hồ sơ). Nếu LLM gán nhầm, mapper HOÁN ĐỔI theo khớp t
 - Phần II data[ChuHS]: loại chủ hồ sơ.
 - Phần III-V data[owner...]: chủ văn bằng (nhân thân từ VĂN BẰNG, CCCD số/ngày cấp/nơi cấp/thường trú khớp tên).
 - Phần VIII: nội dung kê khai của CHỦ VĂN BẰNG theo Phiếu BM04.
-Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) KHÔNG đụng tới.
+Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) chỉ tick khi chủ tài khoản VNeID (formContext) cùng tên +
+số định danh (lệch ≤2 chữ số) với chủ văn bằng và không có người thứ 2 → Phần I giữ nguyên dữ liệu VNeID.
 """
 
 from __future__ import annotations
@@ -92,6 +93,11 @@ def _identity(value: Any) -> str | None:
         return None
     digits = re.sub(r"\D+", "", text)
     return digits or None
+
+
+def _near_id(a: str, b: str) -> bool:
+    """Cùng một số định danh, cho phép OCR đọc lệch tối đa 2 chữ số (cùng độ dài)."""
+    return len(a) == len(b) and sum(x != y for x, y in zip(a, b)) <= 2
 
 
 def _phone(value: Any) -> str | None:
@@ -497,7 +503,25 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     # LLM hay bỏ sót số trên phiếu (nhãn mới "Số định danh cá nhân") → đọc thẳng OCR phiếu làm dự phòng.
     chu_id = (_identity(values.get("VanBang_SoGiayTo")) or phieu.get("id")
               or (chu["id"] if chu_cccd_valid else None))
-    chu_ngaycap = (_date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
+
+    # CHỦ TÀI KHOẢN VNeID CHÍNH LÀ CHỦ VĂN BẰNG và hồ sơ không có người thứ 2 (không CCCD tên khác, không
+    # giấy ủy quyền) → Phần I cổng đã đổ đúng từ VNeID; KHÔNG ghi đè bằng số đọc từ giấy (OCR hay lệch 1-2
+    # chữ số, vd viết tay trên phiếu) mà tick "Người nộp là chủ hồ sơ". Khớp = cùng họ tên + số định danh
+    # trùng hoặc chỉ lệch ≤2 chữ số; số tài khoản là chuẩn cho mọi ô số định danh của chủ.
+    ctx = (options or {}).get("formContext") or {}
+    ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
+    ctx_name = _text(ctx.get("applicantFullname"))
+    account_is_owner = bool(
+        not is_org and not distinct_nop and not _has_authorization(ocr_text)
+        and ctx_id and len(ctx_id) in (9, 12) and _same_name(ctx_name, anchor or chu["name"])
+        and (not chu_id or _near_id(chu_id, ctx_id))
+    )
+    if account_is_owner:
+        if chu_id and chu_id != ctx_id:
+            warnings.append(f"Số định danh đọc trên giấy ({chu_id}) lệch với tài khoản VNeID ({ctx_id}) dù cùng "
+                            "người — đã dùng số của tài khoản, vui lòng soát lại giấy tờ.")
+        chu_id = ctx_id
+    chu_ngaycap =(_date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
                    or _ngay_cap_by_mrz(ocr_text, chu_id))
     chu_phone, chu_phone_ok = _phone_read(values.get("VanBang_DienThoai"))
     if not chu_phone and phieu.get("phone"):
@@ -537,9 +561,9 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     # 2) CCCD tải lên mang tên KHÁC chủ văn bằng (người nộp thay/cán bộ) → điền từ CCCD đó, kể cả họ tên.
     # 3) Chỉ có CCCD của chính chủ văn bằng (chủ tự nộp) → điền từ CCCD chủ, kể cả họ tên.
     # 4) Không có CCCD nào nhưng số định danh chủ (phiếu) TRÙNG tài khoản → điền nhân thân chủ trừ họ tên.
-    # Ô nào giấy không có mà người nộp KHÁC chủ tài khoản → XOÁ giá trị VNeID tự đổ, không để sót. =====
-    ctx = (options or {}).get("formContext") or {}
-    ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
+    # Ô nào giấy không có mà người nộp KHÁC chủ tài khoản → XOÁ giá trị VNeID tự đổ, không để sót.
+    # Trước tất cả: chủ tài khoản VNeID = chủ văn bằng, không người thứ 2 → giữ nguyên Phần I, tick
+    # "Người nộp là chủ hồ sơ" (cổng tự chép Phần I xuống chủ hồ sơ). =====
 
     def _fill_phan_i(name, pid, gender, dob, ngaycap, noicap, tt, phone, email,
                      phone_default: bool = False) -> None:
@@ -572,7 +596,9 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
                 and not (nop["id"] and chu_id and nop["id"] == chu_id))
     # CCCD của chính chủ văn bằng (khớp tên) — chủ tự đi nộp.
     chu_cccd = not is_org and chu_cccd_valid and bool(chu["id"])
-    if proxy:
+    if account_is_owner:
+        check("data[isOwnerDossier]", True)
+    elif proxy:
         add("data[fullname]", proxy["name"].upper())
         add("data[identityNumber]", proxy["id"])
         if not proxy["id"] or len(proxy["id"]) not in (9, 12):

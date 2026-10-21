@@ -147,3 +147,31 @@ def test_nhan_cha_me_con_prompt_locks_confirmation_options():
     assert "Con nhận cha" in system_prompt
     assert "Con nhận mẹ" in system_prompt
     assert "Không lấy các giá trị có sẵn trong HTML tĩnh" in system_prompt
+
+
+def test_nhan_cha_me_con_bac_ninh_la_thanh_pho_truc_thuoc_tw():
+    # eForm chỉ còn option "Thành phố Bắc Ninh": gửi "Tỉnh Bắc Ninh" thì ô tỉnh trượt, ô xã trống theo.
+    area = {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Phường Võ Cường", "diaChi": "Khu 3"}
+    fields = [
+        _field("Requester_FullName", "Nguyễn Văn An"),
+        _field("Requester_ResidenceDomestic", area),
+        _field("Parent_FullName", "Nguyễn Văn An"),
+        _field("Parent_ResidenceDomestic", {**area, "tinh": "Tỉnh Bắc Ninh"}),
+        _field("Child_FullName", "Nguyễn Văn Bình"),
+        _field("Child_ResidenceDomestic", {**area, "tinh": "Thành phố Bắc Ninh"}),
+    ]
+
+    d = _values(mapper.enrich(fields, {}))
+
+    assert d["TT_TinhThanhC"] == "Thành phố Bắc Ninh"
+    assert d["TT_PhuongXaC"] == "Phường Võ Cường"
+    assert d["noicutruA_TrongNuoc"]["tinh"] == "Thành phố Bắc Ninh"
+    assert d["noicutruB_TrongNuoc"]["tinh"] == "Thành phố Bắc Ninh"
+
+
+def test_nhan_cha_me_con_province_label_giu_dung_loai_don_vi():
+    assert mapper._province_label("Lai Châu") == "Tỉnh Lai Châu"
+    assert mapper._province_label("Tỉnh Lai Châu") == "Tỉnh Lai Châu"
+    assert mapper._province_label("TP. Hồ Chí Minh") == "Thành phố Hồ Chí Minh"
+    assert mapper._province_label("Hà Nội") == "Thành phố Hà Nội"
+    assert mapper._province_label("") == ""

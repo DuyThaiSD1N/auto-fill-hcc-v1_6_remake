@@ -65,7 +65,77 @@ CATALOG: list[tuple[str, str | None, str]] = [
     ("khac", None, "Giấy tờ khác hoặc không xác định được loại"),
 ]
 
-_BY_LABEL = {label: (code, desc) for label, code, desc in CATALOG}
+# 1.115470 — biến động theo thỏa thuận hộ gia đình/vợ chồng, công trình ngầm, tài sản công, giải quyết
+# tranh chấp/bản án, xử lý tài sản thế chấp. Cùng đơn Mẫu 18 nhưng 18 thành phần KHÁC 1.115468 (crawl
+# 20/10/2026): ủy quyền là 000046 (không phải 000079), không có 000069/000080 → dùng catalog riêng, đính
+# nhầm mã của 1.115468 là FE báo "Không khớp thành phần".
+CATALOG_THOA_THUAN: list[tuple[str, str | None, str]] = [
+    ("don_bien_dong", "TP-H05.000026",
+     "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — tiêu đề 'ĐƠN ĐĂNG KÝ BIẾN ĐỘNG "
+     "ĐẤT ĐAI…'"),
+    ("gcn", "TP-H05.000040",
+     "Bản gốc Giấy chứng nhận đã cấp (sổ đỏ/sổ hồng) — có 'số vào sổ cấp GCN', số thửa, tờ bản đồ, cơ quan cấp"),
+    ("vb_thoa_thuan", "TP-H05.000085",
+     "VĂN BẢN THỎA THUẬN của các thành viên hộ gia đình, của vợ và chồng, hoặc của những người cùng đứng tên "
+     "về việc thay đổi quyền sử dụng đất/quyền sở hữu tài sản (vd thỏa thuận về diện tích, phân chia, đứng tên)"),
+    ("giay_to_hon_nhan", "TP-H05.000086",
+     "Giấy chứng nhận kết hôn, quyết định/bản án ly hôn, giấy xác nhận tình trạng hôn nhân"),
+    ("vb_cong_trinh_ngam", "TP-H05.000087",
+     "Văn bản của cơ quan có thẩm quyền cho phép thay đổi quyền sử dụng đất xây dựng công trình trên mặt đất "
+     "phục vụ vận hành, khai thác công trình ngầm / quyền sở hữu công trình ngầm"),
+    ("vb_cho_phep_tai_san_cong", "TP-H05.000088",
+     "Quyết định/văn bản của cơ quan có thẩm quyền cho phép bán tài sản, ĐIỀU CHUYỂN, chuyển nhượng quyền "
+     "sử dụng đất là tài sản công"),
+    ("hd_mua_ban_tai_san_cong", "TP-H05.000089",
+     "Hợp đồng mua bán tài sản công là quyền sử dụng đất, tài sản gắn liền với đất"),
+    ("bien_ban_hoa_giai", "TP-H05.000090",
+     "Biên bản hòa giải thành hoặc văn bản công nhận kết quả hòa giải thành"),
+    ("qd_giai_quyet_tranh_chap", "TP-H05.000091",
+     "Quyết định của cơ quan hành chính có thẩm quyền giải quyết tranh chấp, khiếu nại, tố cáo về đất đai"),
+    ("ban_an_toa_an", "TP-H05.000092",
+     "Bản án/quyết định của Tòa án nhân dân, quyết định thi hành án của cơ quan thi hành án"),
+    ("phan_quyet_trong_tai", "TP-H05.000093",
+     "Quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam"),
+    ("hd_chuyen_nhuong", "TP-H05.000094",
+     "Hợp đồng chuyển nhượng quyền sử dụng đất, tài sản gắn liền với đất giữa người sử dụng đất với người "
+     "nhận chuyển nhượng"),
+    ("hd_chuyen_nhuong_tai_san_the_chap", "TP-H05.000095",
+     "Hợp đồng chuyển nhượng/chuyển giao QSDĐ do bên có quyền BÁN TÀI SẢN THẾ CHẤP ký với người nhận"),
+    ("hd_mua_ban_dau_gia", "TP-H05.000096",
+     "Hợp đồng mua bán tài sản ĐẤU GIÁ quyền sử dụng đất hoặc văn bản xác nhận kết quả thi hành án dân sự"),
+    ("hd_the_chap", "TP-H05.000097",
+     "Hợp đồng thế chấp QSDĐ hoặc văn bản thỏa thuận bên nhận thế chấp được nhận chính tài sản bảo đảm"),
+    ("ban_ve_tach_thua", "TP-H05.000033", "Mẫu số 22a. Bản vẽ tách thửa đất, hợp thửa đất"),
+    ("manh_trich_do", "TP-H05.000045",
+     "Mảnh trích đo bản đồ địa chính thửa đất (khi có nhu cầu đo đạc xác định lại kích thước/diện tích)"),
+    ("van_ban_dai_dien", "TP-H05.000046",
+     "Văn bản về việc đại diện theo quy định của pháp luật về dân sự (giấy ủy quyền/đại diện) khi thực "
+     "hiện thủ tục thông qua người đại diện"),
+    # --- không có ô riêng → ô "File đính kèm khác" (supplementary) ---
+    ("cccd", None, "Căn cước công dân/CMND/thẻ căn cước/hộ chiếu của các bên"),
+    ("ho_tich", None, "Giấy khai sinh/trích lục khai sinh và giấy tờ hộ tịch khác (không phải kết hôn/ly hôn)"),
+    ("to_khai_thue", None,
+     "Tờ khai thuế/lệ phí: Tờ khai thuế thu nhập cá nhân (Mẫu 03/BĐS-TNCN), Tờ khai lệ phí trước bạ "
+     "(Mẫu 01/LPTB), Tờ khai thuế sử dụng đất phi nông nghiệp (Mẫu 01/TK-SDDPNN)"),
+    ("khac", None, "Giấy tờ khác hoặc không xác định được loại"),
+]
+
+MA_CHUYEN_QUYEN = "1.115468"
+MA_THOA_THUAN = "1.115470"
+CATALOGS: dict[str, list[tuple[str, str | None, str]]] = {
+    MA_CHUYEN_QUYEN: CATALOG,
+    MA_THOA_THUAN: CATALOG_THOA_THUAN,
+}
+
+
+def _rows(ma: str) -> list[tuple[str, str | None, str]]:
+    return CATALOGS.get(ma, CATALOG)
+
+
+def _by_label(ma: str) -> dict[str, tuple[str | None, str]]:
+    return {label: (code, desc) for label, code, desc in _rows(ma)}
+
+
 LABELS = [label for label, _, _ in CATALOG]
 
 # Nhãn hiển thị mặc định (documentName) khi không có tên cụ thể.
@@ -91,16 +161,30 @@ _DISPLAY = {
     "to_khai_thue": "Tờ khai thuế",
     "bien_ban_ban_giao": "Biên bản bàn giao đất",
     "khac": "Tài liệu kèm theo",
+    # 1.115470
+    "vb_thoa_thuan": "Văn bản thỏa thuận thay đổi QSDĐ",
+    "giay_to_hon_nhan": "Giấy tờ về tình trạng hôn nhân",
+    "vb_cong_trinh_ngam": "Văn bản cho phép thay đổi QSDĐ công trình ngầm",
+    "vb_cho_phep_tai_san_cong": "Văn bản cho phép bán/điều chuyển tài sản công",
+    "hd_mua_ban_tai_san_cong": "Hợp đồng mua bán tài sản công",
+    "bien_ban_hoa_giai": "Biên bản hòa giải thành",
+    "qd_giai_quyet_tranh_chap": "Quyết định giải quyết tranh chấp đất đai",
+    "ban_an_toa_an": "Bản án/quyết định của Tòa án",
+    "phan_quyet_trong_tai": "Phán quyết Trọng tài thương mại",
+    "hd_chuyen_nhuong": "Hợp đồng chuyển nhượng QSDĐ",
+    "hd_chuyen_nhuong_tai_san_the_chap": "Hợp đồng chuyển nhượng tài sản thế chấp",
+    "hd_mua_ban_dau_gia": "Hợp đồng mua bán tài sản đấu giá",
+    "hd_the_chap": "Hợp đồng thế chấp QSDĐ",
 }
 
 
-def is_valid(label: str) -> bool:
-    return label in _BY_LABEL
+def is_valid(label: str, ma: str = MA_CHUYEN_QUYEN) -> bool:
+    return label in _by_label(ma)
 
 
-def resolve(label: str) -> tuple[str, str]:
+def resolve(label: str, ma: str = MA_CHUYEN_QUYEN) -> tuple[str, str]:
     """Nhãn rút gọn → (target, componentName). componentName = mã TP-H05 khi có ô riêng, "" nếu đính kèm khác."""
-    code, _ = _BY_LABEL.get(label, (None, ""))
+    code, _ = _by_label(ma).get(label, (None, ""))
     if code:
         return ("existing", code)
     return ("supplementary", "")
@@ -110,6 +194,6 @@ def display_name(label: str) -> str:
     return _DISPLAY.get(label, "Tài liệu kèm theo")
 
 
-def llm_options() -> str:
+def llm_options(ma: str = MA_CHUYEN_QUYEN) -> str:
     """Chuỗi liệt kê nhãn + mô tả để nhúng vào prompt phân loại."""
-    return "\n".join(f"- {label}: {desc}" for label, _, desc in CATALOG)
+    return "\n".join(f"- {label}: {desc}" for label, _, desc in _rows(ma))
