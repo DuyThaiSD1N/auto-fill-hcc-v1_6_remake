@@ -5,7 +5,13 @@ import unicodedata
 from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import (
+    ISSUER_BO_CONG_AN,
+    ISSUER_CUC,
+    default_issuer,
+    id_doc_type,
+    normalize_issuer,
+)
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.hospital_lookup import hospital_area
@@ -22,6 +28,11 @@ _DANG_KY_CO_HO_SO = "Đăng ký cho người đã có hồ sơ, giấy tờ cá 
 # Luật Hộ tịch: cha mẹ đăng ký khai sinh cho con trong 60 ngày kể từ ngày sinh.
 _HAN_DANG_KY_NGAY = 60
 _HCM_PROVINCE_KEYS = {"hochiminh", "tphochiminh", "thanhphohochiminh", "tphcm", "hcm"}
+# Dòng MRZ đầu mặt sau thẻ: "IDVNM" + 9 số + 1 số kiểm tra + 12 số định danh + "<"; OCR hay đọc số 0 thành chữ O.
+_MRZ_ID_RE = re.compile(r"IDVNM[0-9O]{10}([0-9O]{12})<")
+_DATE_RE = re.compile(r"(?<!\d)(\d{1,2}/\d{1,2}/\d{4})(?!\d)")
+# Nhãn ngày cấp: thẻ căn cước "Ngày, tháng, năm cấp / Date of issue"; CCCD gắn chip "Ngày, tháng, năm / Date, month, year".
+_ISSUE_LABELS = ("date of issue", "date, month, year", "nam cap")
 
 
 def _fold(value) -> str:
@@ -55,6 +66,44 @@ def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
     if len(_digits(number)) == 9 and "chieu" not in _fold(hint):
         return "Chứng minh nhân dân"
     return id_doc_type(hint or "Căn cước", issuer)
+
+
+def _issue_info(lines: list[str]) -> tuple[str, str]:
+    issuers = {normalize_issuer(line) for line in lines} & {ISSUER_BO_CONG_AN, ISSUER_CUC}
+    dates: set[str] = set()
+    for index, line in enumerate(lines):
+        folded = _fold(line)
+        label = next((label for label in _ISSUE_LABELS if label in folded), "")
+        if not label:
+            continue
+        found = _DATE_RE.findall(folded.split(label, 1)[1])
+        if not found:
+            # Nhãn một dòng, ngày ở dòng kế.
+            found = next((_DATE_RE.findall(rest) for rest in lines[index + 1:] if rest.strip()), [])
+        if found:
+            dates.add(found[0])
+    issue_date = next(iter(dates)) if len(dates) == 1 else ""
+    return _full_date(issue_date), next(iter(issuers)) if len(issuers) == 1 else ""
+
+
+def _card_back(ocr_text: str, personal_id: str) -> tuple[str, str]:
+    """(ngày cấp, cơ quan cấp) đọc trên MẶT SAU thẻ có dòng MRZ mang đúng số định danh này.
+
+    Ảnh chụp chung thẻ vợ chồng: OCR xếp hai mặt sau liền nhau, LLM hay lấy ngày cấp / nơi cấp của thẻ kia — mà
+    nơi cấp quyết định "Thẻ căn cước" hay "Căn cước công dân". Mặt sau = đoạn từ ranh giới trước (dòng MRZ, ngắt
+    trang, đầu file) tới dòng MRZ của nó. Đoạn có cả hai cơ quan / nhiều ngày cấp → không chắc, bỏ phần đó."""
+    if len(personal_id) != 12:
+        return "", ""
+    block: list[str] = []
+    for line in str(ocr_text or "").splitlines():
+        match = _MRZ_ID_RE.search(re.sub(r"\s+", "", line).upper())
+        if match and match.group(1).replace("O", "0") == personal_id:
+            return _issue_info(block)
+        if "<<" in line or line.strip().startswith(("=====", "─────", "---")):
+            block = []
+        else:
+            block.append(line)
+    return "", ""
 
 
 def _area(value):
@@ -174,6 +223,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
     context = str(options.get("_reasoning_context") or "")
+    ocr_text = str(options.get("_ocr_text") or "")
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
@@ -245,9 +295,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         hint = values.get(f"{prefix}_LoaiGiayTo")
         number = str(values.get(f"{prefix}_SoGiayTo") or "").strip() or personal_id
         if number:
-            issue_date = _full_date(values.get(f"{prefix}_NgayCap"))
+            # Mặt sau thẻ khớp MRZ là chứng cứ chắc hơn ngày cấp / nơi cấp LLM ghép.
+            card_date, card_issuer = _card_back(ocr_text, _digits(number))
+            issue_date = card_date or _full_date(values.get(f"{prefix}_NgayCap"))
             # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
-            issuer = normalize_issuer(values.get(f"{prefix}_NoiCap")) or (
+            issuer = card_issuer or normalize_issuer(values.get(f"{prefix}_NoiCap")) or (
                 default_issuer(issue_date) if len(_digits(number)) == 12 and issue_date else "")
             add(ui["doc"], _id_doc_type_with_number(number, hint, issuer))
             add(ui["number"], number)

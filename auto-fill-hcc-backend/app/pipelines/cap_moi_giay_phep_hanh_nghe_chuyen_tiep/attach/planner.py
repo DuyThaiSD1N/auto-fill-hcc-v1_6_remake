@@ -19,7 +19,9 @@ quả của tệp này không phụ thuộc thứ tự hay số lượng tệp k
 
 ⚑ KHÔNG BỎ SÓT TỆP: tệp LLM không xếp được (other) hoặc lượt gọi lỗi → đính vào dòng Đơn (tờ khai),
 giữ nguyên tên tệp gốc để cán bộ nhận ra. attp-row gộp nhiều tệp vào cùng một dòng theo componentName.
-CCCD (thẻ thật) KHÔNG có dòng riêng trên bảng → bỏ qua như trước.
+CCCD (thẻ thật) KHÔNG có dòng riêng trên bảng nhưng người dân vẫn nộp kèm (đơn Mẫu 08 liệt kê "Căn cước
+công dân công chứng") → cũng dồn vào dòng Đơn, đặt tên "Bản sao Căn cước công dân". Bản cũ bỏ qua CCCD
+nên hồ sơ trace req_8328e84774f7 chỉ đính 5/6 tệp.
 """
 
 import asyncio
@@ -80,9 +82,10 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "02 ảnh chân dung 4x6 nền trắng",
     },
 }
-# CCCD chỉ dùng ở bước thông tin, KHÔNG có dòng riêng trên bảng thành phần hồ sơ → bỏ qua.
-_SKIP_DOCS = {_CCCD}
-_ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
+# CCCD KHÔNG có dòng riêng trên bảng thành phần hồ sơ → dồn vào dòng Đơn với tên này (đã nhận đúng loại
+# nên không cần cảnh báo như tệp other).
+_CCCD_DOCUMENT_NAME = "Bản sao Căn cước công dân"
+_ALLOWED_DOC_TYPES = set(_ROWS) | {_CCCD, _OTHER}
 
 
 def _canon(value: Any) -> str:
@@ -140,7 +143,11 @@ def _build_row_item(file: dict, file_index: int, doc_type: str, *, detected_type
         "fileName": file_name,
         # Tệp dồn vào dòng Đơn giữ TÊN GỐC: engine attp-row đặt tên tệp theo documentName, đặt tên
         # "Đơn đề nghị…" cho một tệp lạ là cán bộ không phân biệt được hai tệp cùng dòng.
-        "documentName": file_name if detected_type == _OTHER else row["documentName"],
+        "documentName": (
+            file_name if detected_type == _OTHER
+            else _CCCD_DOCUMENT_NAME if detected_type == _CCCD
+            else row["documentName"]
+        ),
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -168,8 +175,9 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
+        if doc_type == _CCCD:
+            items.append(_build_row_item(file, idx, _DON, detected_type=_CCCD))
+            classified.append({"fileName": file_name, "docType": _CCCD, "source": source, "fallbackRow": _DON})
             continue
 
         # Không xếp được loại → dồn vào dòng Đơn chứ KHÔNG bỏ: bảng không có dòng "giấy tờ khác", mà

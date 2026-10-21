@@ -316,7 +316,10 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert len(business_two_page["pages"]) == 2
     # Cổng tỉnh Bắc Ninh (Liferay eForm 2 tab cùng trang): không profile tư pháp, không wizard;
     # tỉnh chọn cố định Bắc Ninh + toggle "Sở" (agencySoFirst), điền xong tự đính kèm ngay.
-    for bn_key in ("dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh"):
+    for bn_key in ("dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
+                   "dinh-chinh-gcn-da-cap-bac-ninh", "dang-ky-bien-dong-dat-dai-bac-ninh",
+                   "tach-hop-thua-dat-bac-ninh", "cap-doi-gcn-bac-ninh",
+                   "dang-ky-bien-dong-chuyen-nhuong-bac-ninh"):
         bn_secured = procedures.pop(bn_key)
         assert bn_secured.get("flowProfile") is None
         assert bn_secured["samePageAttach"] is True
@@ -324,6 +327,45 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bn_secured["agencyProvinceOnly"] is True
         assert bn_secured["agencySoFirst"] is True
         assert "wizard" not in bn_secured and "maePortal" not in bn_secured
+    # 1.115470: ke_khai_links chỉ provinceOnlyAgency (không selectSo) → không gạt toggle "Sở".
+    bn_thoa_thuan = procedures.pop("dang-ky-bien-dong-thoa-thuan-bac-ninh")
+    assert bn_thoa_thuan["samePageAttach"] is True
+    assert bn_thoa_thuan["agencyProvince"] == "Bắc Ninh"
+    assert bn_thoa_thuan["agencyProvinceOnly"] is True
+    assert not bn_thoa_thuan.get("agencySoFirst")
+    assert "wizard" not in bn_thoa_thuan and "maePortal" not in bn_thoa_thuan
+    # 1.115443: ke_khai_links không provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã.
+    bn_lan_dau = procedures.pop("dang-ky-dat-dai-lan-dau-bac-ninh")
+    assert bn_lan_dau["samePageAttach"] is True
+    assert bn_lan_dau["agencyProvince"] == "Bắc Ninh"
+    assert bn_lan_dau["needsAgencySelect"] is True
+    assert not bn_lan_dau.get("agencyProvinceOnly")
+    assert not bn_lan_dau.get("agencySoFirst")
+    assert "wizard" not in bn_lan_dau and "maePortal" not in bn_lan_dau
+    # 1.115447: ke_khai_links cũng không provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã.
+    bn_thu_hoi = procedures.pop("thu-hoi-gcn-cap-sai-bac-ninh")
+    assert bn_thu_hoi["samePageAttach"] is True
+    assert bn_thu_hoi["agencyProvince"] == "Bắc Ninh"
+    assert bn_thu_hoi["needsAgencySelect"] is True
+    assert not bn_thu_hoi.get("agencyProvinceOnly")
+    assert not bn_thu_hoi.get("agencySoFirst")
+    assert "wizard" not in bn_thu_hoi and "maePortal" not in bn_thu_hoi
+    # 1.115446: ke_khai_links cũng không provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã.
+    bn_sai_sot = procedures.pop("dinh-chinh-sai-sot-bac-ninh")
+    assert bn_sai_sot["samePageAttach"] is True
+    assert bn_sai_sot["agencyProvince"] == "Bắc Ninh"
+    assert bn_sai_sot["needsAgencySelect"] is True
+    assert not bn_sai_sot.get("agencyProvinceOnly")
+    assert not bn_sai_sot.get("agencySoFirst")
+    assert "wizard" not in bn_sai_sot and "maePortal" not in bn_sai_sot
+    # 1.115438: ke_khai_links cũng không provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã.
+    bn_giao_thue = procedures.pop("giao-thue-chuyen-muc-dich-dat-bac-ninh")
+    assert bn_giao_thue["samePageAttach"] is True
+    assert bn_giao_thue["agencyProvince"] == "Bắc Ninh"
+    assert bn_giao_thue["needsAgencySelect"] is True
+    assert not bn_giao_thue.get("agencyProvinceOnly")
+    assert not bn_giao_thue.get("agencySoFirst")
+    assert "wizard" not in bn_giao_thue and "maePortal" not in bn_giao_thue
 
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
@@ -391,7 +433,17 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +3 tư pháp: "dang-ky-cham-dut-giam-ho", "chung-thuc-chu-ky-nguoi-dich-khong-ctv" (attach-only),
     # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" (chọn Sở).
     # +2 hộ tịch "khai-sinh-ket-hop-nhan-cha-me-con", "dang-ky-nuoi-con-nuoi-trong-nuoc".
-    assert len(procedures) == 59
+    # +1 cổng Bắc Ninh "dinh-chinh-gcn-da-cap-bac-ninh".
+    # +1 cổng Bắc Ninh "dang-ky-bien-dong-thoa-thuan-bac-ninh" (1.115470).
+    # +1 cổng Bắc Ninh "dang-ky-bien-dong-dat-dai-bac-ninh" (1.115468).
+    # +1 cổng Bắc Ninh "tach-hop-thua-dat-bac-ninh" (1.115458).
+    # +1 cổng Bắc Ninh "cap-doi-gcn-bac-ninh" (1.115464).
+    # +1 cổng Bắc Ninh "dang-ky-dat-dai-lan-dau-bac-ninh" (1.115443).
+    # +1 cổng Bắc Ninh "thu-hoi-gcn-cap-sai-bac-ninh" (1.115447).
+    # +1 cổng Bắc Ninh "dinh-chinh-sai-sot-bac-ninh" (1.115446).
+    # +1 cổng Bắc Ninh "giao-thue-chuyen-muc-dich-dat-bac-ninh" (1.115438).
+    # +1 cổng Bắc Ninh "dang-ky-bien-dong-chuyen-nhuong-bac-ninh" (1.013831).
+    assert len(procedures) == 69
 
     for procedure in procedures:
         key = procedure["key"]
@@ -401,3 +453,15 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
             assert get_pipeline(key) is not None, key
         if procedure.get("hasAttachmentStep"):
             assert get_attach_pipeline(key) is not None, key
+
+
+def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
+    # label = tên hành chính thật (bỏ tiền tố "[Tỉnh Bắc Ninh] " của lõi); shortLabel chỉ cắt gọn tên
+    # đó, không diễn đạt lại ("Cấp đổi sổ đỏ") và không gắn "(Bắc Ninh)".
+    core_label = {procedure["key"]: procedure["label"] for procedure in core_registry.PROCEDURES}
+    bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
+    assert len(bac_ninh) == 12
+    for procedure in bac_ninh:
+        assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
+        short = procedure.get("shortLabel", "")
+        assert "Bắc Ninh" not in short and "sổ" not in short.lower(), procedure["key"]

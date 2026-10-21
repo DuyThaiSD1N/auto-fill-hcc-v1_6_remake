@@ -140,6 +140,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   + Ct01_ChuHoHoTen = mục 7 "Họ, chữ đệm và tên chủ hộ". TUYỆT ĐỐI KHÔNG lấy mục 1 "Họ, chữ đệm và tên" (đó là NGƯỜI ĐƯỢC KHAI SINH/người kê khai).
   + Ct01_ChuHoSoDinhDanh = mục 9 "Số định danh cá nhân của chủ hộ" (12 số). KHÔNG nhầm với mục 4 (số định danh người kê khai).
   + Ct01_QuanHeVoiChuHo = mục 8 "Mối quan hệ với chủ hộ" (vd "Con đẻ", "Cháu ngoại", "Cháu nội").
+  + Ct01_NoiDeNghiDktt = địa chỉ nơi đăng ký thường trú ghi trong mục "Nội dung đề nghị" (vd "Đăng ký thường trú tại 12 Đường A, phường B, tỉnh C" → {tinh:"C", xa:"B", diaChi:"12 Đường A"}). Tách theo mục F: diaChi CHỈ là phần đứng TRƯỚC phường/xã, không kèm chữ "tại"/"Đăng ký thường trú".
 
 # ═══ I. KHÔNG TRẢ (field cấm) ═══
 - Không trả field mặc định hoặc field UI như Ho, ChaHo, MeHo, MaQuocTich, LoaiCuTru, NycQuanHe,

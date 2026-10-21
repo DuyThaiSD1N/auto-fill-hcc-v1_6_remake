@@ -191,3 +191,74 @@ def test_so_cung_loai_khac_nhau_thi_van_la_nguoi_khac_du_trung_ten():
     out, _ = _enrich(values, _context(relation="Khác"),
                      {"applicantFullname": "TRẦN VĂN D", "applicantIdentityNumber": "001084000004"})
     assert next(f for f in out if f["name"] == "citizenQuanhevoinguoiduockhaisinh")["value"] == "Khác"
+
+
+# Một file chụp chung thẻ vợ chồng: OCR xếp hai mặt trước rồi hai mặt sau (vợ: thẻ căn cước mới; chồng: CCCD chip).
+_OCR_THE_VO_CHONG = """===== the vo chong.pdf (tiengnoi) =====
+───── Trang 1/2 ─────
+CĂN CƯỚC
+IDENTITY CARD
+Số định danh cá nhân / Personal identification number:
+001190000001
+Họ, chữ đệm và tên khai sinh / Full name:
+NGUYỄN THỊ A
+
+CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No.: 001088000002
+Họ và tên / Full name:
+TRẦN VĂN B
+Có giá trị đến 01/01/2048
+
+───── Trang 2/2 ─────
+Nơi cư trú / Place of residence: Số 1, Phường Xuân Hương - Đà Lạt, Lâm Đồng
+Ngày, tháng, năm cấp / Date of issue:
+15/08/2025
+Ngày, tháng, năm hết hạn /Date of expiry:
+01/01/2045
+BỘ CÔNG AN/MINISTRY OF PUBLIC SECURITY
+IDVNM1900000014001190000001<<4
+9001018F4501016VNM<<<<<<<<<<<<2
+NGUYEN<<THI<A<<<<<<<<<<<<<<<<<<
+
+Đặc điểm nhận dạng / Personal identification:
+Sẹo chấm cách 1cm trên đuôi mắt trái.
+Ngày, tháng, năm / Date, month, year: 10/05/2021
+CỤC TRƯỞNG CỤC CẢNH SÁT
+QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI
+IDVNMO880000027001088000002<<7
+8801018M4801016VNM<<<<<<<<<<<<8
+TRAN<<VAN<B<<<<<<<<<<<<<<<<<<<<
+"""
+
+
+def test_the_chup_chung_vo_chong_lay_ngay_cap_noi_cap_theo_mrz():
+    # LLM ghép chéo: mẹ nhận ngày cấp / nơi cấp của thẻ CCCD người cha, cha nhận ngày cấp thẻ của mẹ.
+    values = {
+        **BASE,
+        "Me_LoaiGiayTo": "Căn cước công dân", "Me_NgayCap": "10/05/2021",
+        "Me_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        "Cha_HoTen": "Trần Văn B", "Cha_QuocTich": "Việt Nam", "Cha_SoDinhDanh": "001088000002",
+        "Cha_LoaiGiayTo": "Căn cước công dân", "Cha_SoGiayTo": "001088000002", "Cha_NgayCap": "15/08/2025",
+        "Cha_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    }
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": MOTHER, "_reasoning_context": _context("Mẹ"),
+                                    "_ocr_text": _OCR_THE_VO_CHONG})
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenLoaiGiaytotuythan_me"] == "Thẻ căn cước"
+    assert by["citizenNgaythangnamcap__me"] == "15/08/2025"
+    assert by["citizenCoquancap_me"] == "Bộ Công an"
+    assert by["citizenField24"] == "Căn cước công dân"
+    assert by["citizenNgaythangnamcap__cha"] == "10/05/2021"
+    assert by["citizenCoquancap_cha"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+
+
+def test_khong_co_mat_sau_khop_mrz_thi_giu_ngay_cap_llm():
+    values = {**BASE, "Me_LoaiGiayTo": "Căn cước công dân"}
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": MOTHER, "_reasoning_context": _context("Mẹ"),
+                                    "_ocr_text": "CĂN CƯỚC CÔNG DÂN\nSố: 001190000001"})
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenNgaythangnamcap__me"] == "02/03/2021"
+    assert by["citizenLoaiGiaytotuythan_me"] == "Căn cước công dân"

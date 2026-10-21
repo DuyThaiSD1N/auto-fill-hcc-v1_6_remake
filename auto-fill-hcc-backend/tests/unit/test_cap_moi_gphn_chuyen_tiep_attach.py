@@ -63,11 +63,20 @@ def test_llm_loi_hoan_toan_van_dinh_du_moi_tep():
     assert warnings
 
 
-def test_cccd_van_bo_qua_vi_khong_co_dong():
-    items, _, classified = planner.build_plan_items(_files(["cccd.pdf"]), {0: "cccd"})
+def test_cccd_don_vao_dong_don_khong_bo():
+    """Trace req_8328e84774f7: bản sao CCCD công chứng bị bỏ → chỉ đính 5/6 tệp."""
+    items, warnings, classified = planner.build_plan_items(
+        _files(["don.pdf", "scan-cccd.pdf"]), {0: "don_de_nghi", 1: "cccd"},
+    )
 
-    assert items == []
-    assert classified[0]["skipped"] is True
+    assert len(items) == 2, "tuyệt đối không bỏ tệp nào"
+    cccd = items[1]
+    assert cccd["componentName"] == "Đơn theo Mẫu 08 Phụ lục I"
+    assert cccd["documentName"] == "Bản sao Căn cước công dân"
+    assert cccd["detectedType"] == "cccd"
+    assert classified[1]["fallbackRow"] == "don_de_nghi"
+    assert "skipped" not in classified[1]
+    assert not warnings, "CCCD đã nhận đúng loại, không cảnh báo như tệp other"
 
 
 def test_moi_tep_mot_luot_goi_va_tep_ocr_rong_van_duoc_gui(monkeypatch):

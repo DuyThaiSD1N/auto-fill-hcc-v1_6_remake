@@ -83,3 +83,34 @@ def test_noi_cu_tru_me_van_uu_tien_nguon_khac_truoc_giay_chung_sinh():
                     "ThongTinMe_NoiCuTru": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn B"},
                     "Gcs_NoiThuongTruMe": {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn A"}})
     assert out["MeDiaChi"]["diaChi"] == "Thôn B"
+
+
+def test_ten_phuong_ngan_ocr_sai_dau_van_sua_ve_danh_muc():
+    out = _by_name({"ThongTinBo_HoTen": "NGUYỄN VĂN AN", "Tk_NoiCuTruCha": {
+        "tinh": "Hồ Chí Minh", "xa": "Bản Cờ", "diaChi": "12 Đường A"}})
+    assert out["ChaDiaChi"]["xa"] == "Phường Bàn Cờ"
+
+
+def test_ten_phuong_ngan_lech_mot_chu_khong_doan():
+    out = _by_name({"ThongTinBo_HoTen": "NGUYỄN VĂN AN", "Tk_NoiCuTruCha": {
+        "tinh": "Hồ Chí Minh", "xa": "Bàn Lờ", "diaChi": "12 Đường A"}})
+    assert out["ChaDiaChi"]["xa"] == "Bàn Lờ"
+
+
+def test_noi_de_nghi_dktt_ct01_chi_dien_chi_tiet():
+    out = _by_name({"Ct01_ChuHoHoTen": "LÊ VĂN CHỦ", "Ct01_NoiDeNghiDktt": {
+        "tinh": "Tỉnh C", "xa": "Phường B", "diaChi": "12 Đường A"}})
+    assert out["DkttDiaChi"] == {"diaChi": "12 Đường A"}
+
+
+def test_noi_de_nghi_dktt_cat_phan_phuong_xa_bi_dinh_vao_chi_tiet():
+    out = _by_name({"Ct01_NoiDeNghiDktt": {
+        "xa": "Phường B", "diaChi": "Đăng ký thường trú tại 12 Đường A, phường B, tỉnh C"}})
+    assert out["DkttDiaChi"] == {"diaChi": "12 Đường A"}
+    out = _by_name({"Ct01_NoiDeNghiDktt": {"xa": "B", "diaChi": "12 Đường A phường B"}})
+    assert out["DkttDiaChi"] == {"diaChi": "12 Đường A"}
+
+
+def test_khong_co_noi_de_nghi_dktt_thi_khong_phat_o():
+    out = _by_name({"Ct01_ChuHoHoTen": "LÊ VĂN CHỦ", "Ct01_NoiDeNghiDktt": {"tinh": "Tỉnh C", "xa": "Phường B"}})
+    assert "DkttDiaChi" not in out

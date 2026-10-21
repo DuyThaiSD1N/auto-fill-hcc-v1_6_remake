@@ -312,6 +312,31 @@ def _area(value):
     return remap_area(out) if out else None
 
 
+_ADMIN_SEGMENT = re.compile(r"^(xã|phường|thị trấn|thị xã|quận|huyện|thành phố|tp\.?|tỉnh)\s", re.IGNORECASE)
+
+
+def _dktt_detail(value) -> str:
+    """Phần chi tiết (số nhà/đường/thôn) TRƯỚC phường/xã của nơi đề nghị đăng ký thường trú trên CT01.
+
+    LLM đôi khi để nguyên cả dòng trong diaChi → cắt từ đoạn (sau dấu phẩy) bắt đầu bằng cấp hành chính,
+    và bỏ đuôi "phường <xa>" khi không có dấu phẩy ngăn."""
+    if not isinstance(value, dict):
+        return ""
+    text = str(value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "").strip()
+    text = re.sub(r"^(đăng ký thường trú\s*)?(tại|ở)\s*:?\s*", "", text, flags=re.IGNORECASE)
+    parts = []
+    for part in text.split(","):
+        part = part.strip()
+        if _ADMIN_SEGMENT.match(part):
+            break
+        parts.append(part)
+    text = ", ".join(p for p in parts if p)
+    xa = _strip_admin_prefix(value.get("xa") or value.get("xã"))
+    if xa:
+        text = re.sub(rf"\s*-?\s*(xã|phường|thị trấn)?\s*{re.escape(xa)}\s*$", "", text, flags=re.IGNORECASE)
+    return text.strip(" ,-")
+
+
 def _digits(value) -> str:
     return re.sub(r"\D", "", str(value or ""))
 
@@ -636,6 +661,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("DkttChuhoSoGiayTo", ct01_sdd)
             add("DkttMaQuanHe", values.get("Ct01_QuanHeVoiChuHo"))
             seen.add("DkttMaQuanHe")  # quan hệ trống cũng KHÔNG để default "Con đẻ" (sai cho người khác)
+
+    # "Nơi đề nghị đăng ký thường trú": Tỉnh/Phường cổng tự đổ (readonly) → chỉ điền ô Chi tiết theo
+    # mục "Nội dung đề nghị" của CT01.
+    dktt_detail = _dktt_detail(values.get("Ct01_NoiDeNghiDktt"))
+    if dktt_detail:
+        add("DkttDiaChi", {"diaChi": dktt_detail})
 
     # Bản sao: chỉ khi tờ khai có số lượng thật mới điền số lượng.
     # CapBanSao="1" để Angular hiện ô BanSaoSoLuong trước khi extension điền số.

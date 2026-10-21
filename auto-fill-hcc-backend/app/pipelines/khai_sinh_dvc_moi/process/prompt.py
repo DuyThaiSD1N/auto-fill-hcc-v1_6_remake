@@ -36,8 +36,11 @@ khai sinh. Khối người nộp trên cổng khóa theo tài khoản → KHÔNG
    giấy tờ của người đi khai tử.
 9. *_NoiCap chép đúng cơ quan cấp ghi trên giấy; chỉ đổi cách viết của CÙNG cơ quan ("Cục CS QLHC về TTXH" →
    "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; mặt sau CCCD "CỤC TRƯỞNG CỤC CẢNH SÁT..." → cơ quan đó).
-   Không ghi → bỏ.
-10. *_NoiCuTru: dòng nơi cư trú của chính người đó; không mượn địa chỉ người khác. Dòng "Nơi cư trú" nằm trong
+   Không ghi → bỏ. Ảnh chụp chung thẻ của hai người: ghép mặt sau với chủ thẻ theo dòng MRZ "IDVNM..." (chứa số
+   định danh của chủ thẻ), KHÔNG theo thứ tự xuất hiện; *_NgayCap / *_NoiCap lấy trên chính mặt sau đó. Tiêu đề
+   "CĂN CƯỚC / IDENTITY CARD" → *_LoaiGiayTo "Căn cước" (mặt sau "BỘ CÔNG AN"); "CĂN CƯỚC CÔNG DÂN / Citizen
+   Identity Card" → "Căn cước công dân" (mặt sau "CỤC TRƯỞNG CỤC CẢNH SÁT...").
+10.*_NoiCuTru: dòng nơi cư trú của chính người đó; không mượn địa chỉ người khác. Dòng "Nơi cư trú" nằm trong
     khối người mẹ / người cha của tờ khai (hoặc trên giấy tờ của chính họ) BẮT BUỘC trả cho người đó, kể cả khi
     trùng từng chữ với địa chỉ người kia — vợ chồng ở chung một nơi là bình thường.
 </me_cha>

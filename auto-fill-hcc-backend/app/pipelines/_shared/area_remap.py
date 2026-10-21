@@ -801,7 +801,8 @@ def province_for_ward(xa: str) -> Optional[tuple[str, str]]:
 # remap_area co nhanh rieng. Ngan hon 8 ky tu chiu 1 loi, tu 8 ky tu chiu 2.
 _PROVINCE_FIX_MIN_LEN = 4
 _PROVINCE_FIX_LONG_LEN = 8
-# Xa: cung nguong toi thieu voi near_match_ward; tu 12 ky tu chiu 2 loi.
+# Xa: cung nguong toi thieu voi near_match_ward; tu 12 ky tu chiu 2 loi. Duoi nguong toi thieu
+# chi sua loi dau (khoa khong dau trung khit).
 _WARD_FIX_MIN_LEN = 6
 _WARD_FIX_LONG_LEN = 12
 
@@ -967,9 +968,14 @@ def _closest_ward(tinh: str, xa: str) -> Optional[str]:
     """
     key = _compact(xa)
     # "Thôn ...", "Tổ dân phố ..." khong phai ten xa -- do sat mot xa nao do cung khong duoc sua.
-    if len(key) < _WARD_FIX_MIN_LEN or _VILLAGE_PREFIX_RE.match(_fold(xa)):
+    if not key or _VILLAGE_PREFIX_RE.match(_fold(xa)):
         return None
-    limit = 1 if len(key) < _WARD_FIX_LONG_LEN else 2
+    # Ten ngan: lech mot chu la qua de trung ten khac -> chi sua loi DAU (khoa khong dau trung khit,
+    # vd OCR doc "Bàn Cờ" thanh "Bản Cờ").
+    if len(key) < _WARD_FIX_MIN_LEN:
+        limit = 0
+    else:
+        limit = 1 if len(key) < _WARD_FIX_LONG_LEN else 2
     digits = re.findall(r"\d+", key)
     variants = {key, _compact_labeled(xa)}
     matches: list[tuple[int, str, Optional[str]]] = []

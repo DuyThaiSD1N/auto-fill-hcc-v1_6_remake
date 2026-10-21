@@ -77,6 +77,7 @@ FIELDS: list[dict] = [
     {"name": "Ct01_ChuHoHoTen", "desc": "Họ tên CHỦ HỘ trên TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01), mục 7 'Họ, chữ đệm và tên chủ hộ'. KHÔNG lấy mục 1 (người kê khai/đứa trẻ). Chỉ trả khi có giấy CT01."},
     {"name": "Ct01_ChuHoSoDinhDanh", "desc": "Số định danh cá nhân của CHỦ HỘ trên CT01, mục 9, 12 số. KHÔNG nhầm với số định danh người kê khai (mục 4)."},
     {"name": "Ct01_QuanHeVoiChuHo", "desc": "Mối quan hệ của người được khai sinh với chủ hộ trên CT01, mục 8 (vd 'Con đẻ', 'Cháu ngoại', 'Cháu nội')."},
+    {"name": "Ct01_NoiDeNghiDktt", "desc": "Địa chỉ nơi đề nghị đăng ký thường trú ghi trong mục 'Nội dung đề nghị' của CT01, object {tinh,xa,diaChi} (tách theo mục F: diaChi = số nhà/đường/thôn/tổ ĐỨNG TRƯỚC phường/xã). Chỉ trả khi có giấy CT01."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -86,7 +87,7 @@ COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
 for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_GcnKetHon_NgayCap", "Tk_NgaySinhCon",
               "GcnKetHon_Vo_NgaySinh", "GcnKetHon_Chong_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe", "Ct01_NoiDeNghiDktt"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {
@@ -143,6 +144,8 @@ UI_COMP_BY_NAME = {
     "DkttChuHo": "text",
     "DkttChuhoSoGiayTo": "text",
     "DkttMaQuanHe": "select",
+    # Nơi đề nghị đăng ký thường trú: Tỉnh/Phường readonly (cổng tự đổ theo cơ quan) → chỉ gửi diaChi.
+    "DkttDiaChi": "diachi",
     # Người yêu cầu. SĐT chỉ điền khi người đăng nhập đúng là người ký tờ khai → comp riêng để
     # extension tự so tên với ô NycHoTen readonly mà cổng đổ sẵn.
     "NycSdt": "sdt-nguoiyeucau",

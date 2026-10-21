@@ -55,6 +55,35 @@ PROCEDURE_HMONG = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": "Cuv npe siv daim av ua puav pheej (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — xóa đăng ký biện pháp bảo đảm/giải chấp đất).
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "Rho npe siv daim av ua puav pheej (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đính chính GCN đã cấp); "kho" = sửa, đã có trong file.
+    "dinh-chinh-gcn-da-cap-bac-ninh": "Kho daim ntawv av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biến động theo thỏa thuận/bản án); ghép
+    # "cuv npe" + "hloov" + "daim av" đã có trong file.
+    "dang-ky-bien-dong-thoa-thuan-bac-ninh": "Cuv npe hloov daim av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biến động chuyển nhượng/thừa kế/tặng cho 1.115468);
+    # cùng ghép chữ như thủ tục thỏa thuận ở trên, thêm "muag" (bán/chuyển nhượng) để phân biệt.
+    "dang-ky-bien-dong-dat-dai-bac-ninh": "Cuv npe hloov daim av, muag daim av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — tách thửa/hợp thửa 1.115458); "faib" = chia, "muab ua ke"
+    # = gộp, ghép với "daim av" đã có trong file.
+    "tach-hop-thua-dat-bac-ninh": "Faib los yog muab daim av ua ke (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — cấp đổi GCN 1.115464); "pauv" (đổi) + "daim ntawv av"
+    # + "tshiab" (mới) đã có trong file.
+    "cap-doi-gcn-bac-ninh": "Pauv daim ntawv av tshiab (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký đất đai, cấp GCN lần đầu 1.115443); "cuv npe" +
+    # "daim ntawv av" đã có trong file, "thawj zaug" (lần đầu) là chữ MỚI.
+    "dang-ky-dat-dai-lan-dau-bac-ninh": "Cuv npe av, muab daim ntawv av thawj zaug (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — thu hồi GCN cấp sai & cấp lại 1.115447); "rho" (thu hồi/xóa)
+    # + "daim ntawv av" + "tshiab" (mới) đã có trong file.
+    "thu-hoi-gcn-cap-sai-bac-ninh": "Rho daim ntawv av, muab daim tshiab (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đính chính GCN cấp lần đầu có sai sót 1.115446); "kho" +
+    # "daim ntawv av" + "thawj zaug" (lần đầu) đã có trong file, khác thẻ đính chính GCN đã cấp.
+    "dinh-chinh-sai-sot-bac-ninh": "Kho daim ntawv av thawj zaug (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — giao/thuê/chuyển mục đích/gia hạn SDĐ 1.115438); "hloov"
+    # (đổi) + "daim av" đã có trong file.
+    "giao-thue-chuyen-muc-dich-dat-bac-ninh": "Hloov daim av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biến động chuyển nhượng/cho thuê 1.013831); ghép như
+    # 1.115468, thêm "los yog xauj" (hoặc thuê, đã có trong file) để khác thẻ kia.
+    "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": "Cuv npe hloov daim av, muag los yog xauj daim av (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
     # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
     "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",

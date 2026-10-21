@@ -2852,8 +2852,11 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "[Tỉnh Bắc Ninh] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
-        "shortLabel": "Đăng ký biện pháp bảo đảm đất đai (Bắc Ninh)",
+        "label": "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        # Thủ tục Bắc Ninh: label = label registry lõi bỏ tiền tố "[Tỉnh Bắc Ninh] "; shortLabel chỉ CẮT
+        # GỌN tên hành chính (giữ chữ gốc, không đổi sang "sổ đỏ", không thêm "(Bắc Ninh)"); tên đã
+        # ngắn thì không đặt shortLabel.
+        "shortLabel": "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
         "subtitle": "Đăng ký thế chấp quyền sử dụng đất, tài sản gắn liền với đất tại Bắc Ninh",
         "icon": "🏦",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
@@ -2907,8 +2910,8 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "[Tỉnh Bắc Ninh] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
-        "shortLabel": "Xóa đăng ký biện pháp bảo đảm đất đai (Bắc Ninh)",
+        "label": "Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "shortLabel": "Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
         "subtitle": "Xóa thế chấp quyền sử dụng đất, tài sản gắn liền với đất tại Bắc Ninh",
         "icon": "🏦",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
@@ -2945,6 +2948,575 @@ PROCEDURES: list[dict] = [
             "đổi sau khi cấp'.\n"
             "3. Căn cước công dân của người yêu cầu (bên bảo đảm); Hợp đồng thế chấp nếu có.\n"
             "4. Nếu nộp thay: Giấy giới thiệu / văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh + agencySoFirst.
+        # Key TRÙNG auto-fill → pipeline process/attach tự nối. Cổng BN đã chuyển thủ tục sang
+        # 1.115436 (cấp tỉnh, DVCQG "chọn Sở"); giữ 1.115476 cho link cũ. Detect y hệt lõi, KHÔNG
+        # thêm textIncludes: "đính chính giấy chứng nhận đã cấp" là tiền tố của "...đã cấp lần đầu
+        # có sai sót" (dinh-chinh-sai-sot-bac-ninh) → textPriority sẽ cướp trang của nhau.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115436", "maThuTucHanhChinh=1.115476"],
+            "headingDisabled": True,
+        },
+        "label": "Đính chính giấy chứng nhận đã cấp",
+        "subtitle": "Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f02e5-91cd-7697-8bb3-89bd36d1fa8a",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "sai_sot", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, căn cước, "
+             "quyết định...)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Giấy tờ chứng minh sai sót thông tin trên Giấy chứng nhận (giấy khai sinh, căn "
+            "cước, quyết định...).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-thoa-thuan-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process chung 1.115468, attach riêng (plan_thoa_thuan, 18 thành phần). ke_khai_links
+        # chỉ khai provinceOnlyAgency (KHÔNG selectSo) → không agencySoFirst. Detect y hệt lõi,
+        # KHÔNG thêm textIncludes: tên thủ tục dài, đầu tên trùng các thủ tục đăng ký biến động khác.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115470"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu "
+            "tài sản gắn liền với đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; "
+            "quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng "
+            "công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử "
+            "dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, "
+            "khiếu nại, tố cáo về đất đai hoặc bản án, quyết định của Tòa án, quyết định thi hành án của cơ "
+            "quan thi hành án đã được thi hành; quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam "
+            "về giải quyết tranh chấp giữa các bên phát sinh từ hoạt động thương mại liên quan đến đất đai; "
+            "nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là "
+            "quyền sử dụng đất, tài sản gắn liền với đất đã được đăng ký, bao gồm cả xử lý khoản nợ có nguồn "
+            "gốc từ khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động theo thỏa thuận của hộ gia đình hoặc của vợ và chồng, kết quả giải "
+            "quyết tranh chấp, xử lý tài sản thế chấp"
+        ),
+        "subtitle": "Sang tên sổ đỏ theo thỏa thuận vợ chồng/hộ gia đình, bản án, xử lý thế chấp tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1681-0ec2-72f9-a55f-b81cd1fb36fd",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "can_cu", "name": "Văn bản căn cứ biến động (thỏa thuận hộ gia đình/vợ chồng, "
+             "bản án, quyết định giải quyết tranh chấp, hợp đồng xử lý thế chấp...)", "icon": "📑",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng tên sau biến động",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, giấy kết hôn/ly hôn, bản vẽ tách thửa "
+             "hoặc giấy tờ khác", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) người đứng tên sau biến động đã kê khai, "
+            "ký — nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Văn bản căn cứ biến động: thỏa thuận của các thành viên hộ gia đình hoặc của vợ và "
+            "chồng; bản án, quyết định của Tòa án, quyết định thi hành án; quyết định giải quyết "
+            "tranh chấp; hợp đồng/văn bản xử lý tài sản thế chấp.\n"
+            "4. Căn cước công dân của người đứng tên sau biến động; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-dat-dai-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115468 (16 thành phần TP-H05) tự nối. ke_khai_links khai selectSo →
+        # agencySoFirst. Detect y hệt lõi, KHÔNG thêm textIncludes: đầu tên trùng 1.115470 và các
+        # thủ tục đăng ký biến động khác.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115468"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất "
+            "trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn "
+            "điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn "
+            "liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, "
+            "cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng "
+            "cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình "
+            "thức thuê đất trả tiền hàng năm; mua bán nhà ở có thời hạn"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động quyền sử dụng đất trong các trường hợp chuyển đổi, chuyển nhượng, "
+            "thừa kế, tặng cho, góp vốn"
+        ),
+        "subtitle": "Đăng ký biến động khi chuyển nhượng, thừa kế, tặng cho, góp vốn quyền sử dụng đất tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1670-20cd-712b-b05b-59235ae8a21b",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) bên nhận chuyển quyền "
+             "— đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng/văn bản chuyển quyền (chuyển nhượng, tặng cho, "
+             "thừa kế, góp vốn...) đã công chứng/chứng thực", "icon": "📑", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của bên nhận chuyển quyền",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, tờ khai thuế, giấy kết hôn/khai sinh hoặc "
+             "giấy tờ khác", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) bên NHẬN chuyển quyền đã kê khai, ký — "
+            "nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Hợp đồng/văn bản chuyển quyền (chuyển đổi, chuyển nhượng, tặng cho, thừa kế, góp vốn, "
+            "cho thuê, mua bán nhà ở có thời hạn) kèm lời chứng công chứng/chứng thực.\n"
+            "4. Căn cước công dân của bên nhận chuyển quyền; nếu nộp thay: văn bản ủy quyền (bắt buộc).\n"
+            "5. Tờ khai thuế, lệ phí trước bạ, giấy kết hôn/khai sinh, biên bản bàn giao đất (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "tach-hop-thua-dat-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 22) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115458 (4 thành phần TP-H05) tự nối. ke_khai_links khai selectSo →
+        # agencySoFirst. Detect y hệt lõi, KHÔNG thêm textIncludes.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115458"],
+            "headingDisabled": True,
+        },
+        "label": "Tách thửa đất hoặc hợp thửa đất",
+        "subtitle": "Chia một thửa đất thành nhiều thửa hoặc gộp nhiều thửa thành một tại Bắc Ninh",
+        "icon": "📐",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1258-75a5-72c7-916e-b0299f0b17c3",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 22) — đã kê "
+             "khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "ban_ve", "name": "Bản vẽ tách thửa đất, hợp thửa đất (Mẫu số 22a)",
+             "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản của cơ quan có thẩm quyền về tách/hợp thửa, văn bản ủy "
+             "quyền, giấy phép đo đạc hoặc giấy tờ khác", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 22) người sử dụng đất đã kê khai, ký — "
+            "nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Bản vẽ tách thửa đất, hợp thửa đất (Mẫu số 22a).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "5. Văn bản của cơ quan có thẩm quyền thể hiện nội dung tách/hợp thửa, giấy phép hoạt động "
+            "đo đạc và bản đồ của đơn vị lập bản vẽ (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-doi-gcn-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115464 (TP-H05.000026/000040/000057 + "File đính kèm khác") tự nối.
+        # ke_khai_links khai selectSo → agencySoFirst. Detect y hệt lõi, KHÔNG thêm textIncludes.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115464"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+        "shortLabel": "Cấp đổi Giấy chứng nhận quyền sử dụng đất",
+        "subtitle": "Đổi sổ đỏ/sổ hồng cũ, rách, hỏng hoặc đo đạc lại sang Giấy chứng nhận mới tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp cần cấp đổi "
+             "(sổ đỏ / sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo bản đồ địa chính thửa đất hoặc phiếu đề nghị "
+             "đo đạc (khi cấp đổi do đo đạc lại)", "icon": "📐", "sides": 1, "optional": True,
+             "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) người sử dụng đất đã kê khai, ký — nguồn "
+            "chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp cần cấp đổi (sổ đỏ/sổ hồng).\n"
+            "3. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "4. Mảnh trích đo bản đồ địa chính thửa đất hoặc phiếu đề nghị đo đạc (nếu cấp đổi do "
+            "đo đạc lại).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 15) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115443 (21 dòng TP-H05) tự nối. ke_khai_links (1.115443) KHÔNG khai
+        # provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã của tài khoản, không agencyProvinceOnly,
+        # không agencySoFirst. Detect y hệt lõi, KHÔNG thêm textIncludes: 1.115443 là mã quốc gia,
+        # urlScope khóa host để cổng iGate tỉnh khác không nhận nhầm.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115443"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử "
+            "dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp Giấy chứng nhận quyền sử dụng đất lần đầu",
+        "subtitle": "Kê khai đăng ký đất đai và xin cấp Giấy chứng nhận quyền sử dụng đất lần đầu tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0347-7cb9-732a-bce1-a787258e29e1",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) — đã "
+             "kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "nguon_goc", "name": "Giấy tờ về nguồn gốc sử dụng đất (giấy giao đất, giấy tờ mua "
+             "bán, chuyển nhượng, tặng cho, thừa kế...)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "trich_do", "name": "Trích lục/trích đo bản đồ địa chính thửa đất (nếu có)",
+             "icon": "📐", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Danh sách đồng sử dụng (Mẫu 15a), giấy chứng nhận kết hôn, tờ "
+             "khai/chứng từ nghĩa vụ tài chính, văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) người sử dụng đất đã kê khai, "
+            "ký — nguồn chính điền đơn.\n"
+            "2. Giấy tờ về nguồn gốc sử dụng đất (giấy giao đất, giấy tờ mua bán, chuyển nhượng, tặng "
+            "cho viết tay, giấy tờ thừa kế...).\n"
+            "3. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "4. Trích lục/trích đo bản đồ địa chính, Danh sách đồng sử dụng (Mẫu 15a), giấy chứng nhận "
+            "kết hôn, tờ khai/chứng từ nghĩa vụ tài chính (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "thu-hoi-gcn-cap-sai-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm 2896 — đơn đăng ký đất đai) — cùng nền 2 tab
+        # CÙNG TRANG với biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key
+        # TRÙNG auto-fill → process/attach 1.115447 (TP-H05.000177/000174) tự nối. ke_khai_links
+        # (1.115447) KHÔNG khai provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã của tài khoản,
+        # không agencyProvinceOnly, không agencySoFirst. Detect y hệt lõi, KHÔNG thêm textIncludes:
+        # 1.115447 là mã quốc gia, urlScope khóa host để cổng iGate tỉnh khác không nhận nhầm.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115447"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định do người sử dụng "
+            "đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau khi thu hồi"
+        ),
+        "shortLabel": (
+            "Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định và cấp lại Giấy chứng nhận"
+        ),
+        "subtitle": "Đề nghị thu hồi sổ đỏ cấp lần đầu không đúng quy định và cấp lại sổ mới tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1100-edad-7436-8505-177fbd9aa9e2",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "van_ban_kien_nghi", "name": "Văn bản kiến nghị việc cấp Giấy chứng nhận không đúng "
+             "quy định (thường là Biên bản họp gia đình)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đang xin thu hồi (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản kiến nghị việc cấp Giấy chứng nhận không đúng quy định (thường là Biên bản họp "
+            "gia đình) — nguồn chính thông tin thửa đất.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đang xin thu hồi (sổ đỏ/sổ hồng).\n"
+            "3. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dinh-chinh-sai-sot-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115446 (4 nhóm: Đơn Mẫu 18, bản gốc GCN, giấy tờ chứng minh sai sót,
+        # ủy quyền) tự nối. ke_khai_links (1.115446) KHÔNG khai provinceOnlyAgency / selectSo → chọn
+        # đủ Tỉnh + Phường/Xã của tài khoản, không agencyProvinceOnly, không agencySoFirst. Detect y
+        # hệt lõi, KHÔNG thêm textIncludes: tên trùng tiền tố với dinh-chinh-gcn-da-cap-bac-ninh.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115446"],
+            "headingDisabled": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "subtitle": "Sửa thông tin ghi sai trên Giấy chứng nhận cấp lần đầu tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f10fb-9fa4-7462-9c30-f264a10e839b",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp lần đầu (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "sai_sot", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, căn cước, "
+             "quyết định...)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp lần đầu (sổ đỏ/sổ hồng).\n"
+            "3. Giấy tờ chứng minh sai sót thông tin trên Giấy chứng nhận (giấy khai sinh, căn "
+            "cước, quyết định...).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 01/02) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.115438 (cấp xã; ô GCN KQ005881, CCCD/ủy quyền vào ô bổ sung) tự nối.
+        # ke_khai_links (1.115438) KHÔNG khai provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã
+        # của tài khoản, không agencyProvinceOnly, không agencySoFirst. Detect y hệt lõi, KHÔNG thêm
+        # textIncludes: tên thủ tục trùng bản Ninh Bình/Quảng Ngãi/Đà Nẵng, urlScope khóa host.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115438"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất; giao đất và giao rừng; "
+            "cho thuê đất và cho thuê rừng; gia hạn sử dụng đất"
+        ),
+        "shortLabel": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất",
+        "subtitle": "Xin giao đất, thuê đất, chuyển mục đích hoặc gia hạn sử dụng đất tại Bắc Ninh",
+        "icon": "🏞️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0304-d67f-75ee-8bab-4b9e18b0b9d0",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị giao đất, cho thuê đất, chuyển mục đích sử dụng đất "
+             "(Mẫu số 01/02) — đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (sổ đỏ / sổ hồng) hoặc quyết "
+             "định giao đất, cho thuê đất", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, Đơn Mẫu 01/04, phương án sử dụng tầng đất mặt "
+             "(Mẫu 26) hoặc giấy tờ khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị giao đất, cho thuê đất, chuyển mục đích sử dụng đất (Mẫu số 01/02) người "
+            "đề nghị đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Bản gốc/bản sao Giấy chứng nhận quyền sử dụng đất (sổ đỏ/sổ hồng) hoặc quyết định giao "
+            "đất, cho thuê đất.\n"
+            "3. Căn cước công dân của người đề nghị; nếu nộp thay: văn bản ủy quyền.\n"
+            "4. Đơn Mẫu 01/04, phương án sử dụng tầng đất mặt (Mẫu 26) khi chuyển mục đích đất "
+            "chuyên trồng lúa (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-chuyen-nhuong-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
+        # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh. Key TRÙNG auto-fill
+        # → process/attach 1.013831 (KQ005897 đơn, KQ0777 GCN, KQ005898 hợp đồng…) tự nối. Mã cũ chưa
+        # đổi sang 1.1154xx; phạm vi hẹp hơn 1.115468 (dang-ky-bien-dong-dat-dai-bac-ninh). Không có mục
+        # ke_khai_links riêng → keKhaiUrl là trang DVCQG 1.013831, chọn Sở như 1.115468. Lõi detect KHÔNG
+        # có urlScope; ở đây thêm để cổng iGate tỉnh khác (Lào Cai/Lâm Đồng/Đà Nẵng cùng mã) không nhận
+        # nhầm. KHÔNG thêm textIncludes: đầu tên trùng 1.115468 / 1.115470.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.013831"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất "
+            "trong các trường hợp chuyển nhượng, thừa kế, tặng cho, góp vốn bằng quyền sử dụng đất, quyền "
+            "sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động quyền sử dụng đất trong các trường hợp chuyển nhượng, thừa kế, tặng "
+            "cho, góp vốn; cho thuê, cho thuê lại"
+        ),
+        "subtitle": "Sang tên khi chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê quyền sử dụng đất tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) bên nhận chuyển quyền "
+             "— đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng/văn bản chuyển quyền (chuyển nhượng, tặng cho, "
+             "thừa kế, góp vốn, cho thuê...) đã công chứng/chứng thực", "icon": "📑", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của bên nhận chuyển quyền",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, bản vẽ tách thửa, mảnh trích đo hoặc giấy tờ "
+             "khác", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) bên NHẬN chuyển quyền đã kê khai, ký — "
+            "nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Hợp đồng/văn bản chuyển quyền (chuyển nhượng, tặng cho, thừa kế, góp vốn, cho thuê, "
+            "cho thuê lại) kèm lời chứng công chứng/chứng thực.\n"
+            "4. Căn cước công dân của bên nhận chuyển quyền; nếu nộp thay: văn bản ủy quyền.\n"
+            "5. Bản vẽ tách thửa, mảnh trích đo, văn bản đồng ý của bên nhận thế chấp (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
