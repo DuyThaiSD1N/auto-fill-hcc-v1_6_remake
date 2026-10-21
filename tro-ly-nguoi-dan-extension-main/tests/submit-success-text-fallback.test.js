@@ -64,7 +64,8 @@ assert.equal(run("", {}), false);
 // sidebar.js phát __event:submitted khi state="done" && ctx.submitted — hồ sơ Vũ Ninh đã ở
 // done (đính kèm xong) nên chỉ cần ctx.submitted bật lên là mốc nộp về tới BE.
 assert.match(src, /\|\| matchSuccessText\(body\),/);
-// Câu dò chung vẫn giữ nguyên cho mọi cổng khác.
-assert.match(src, /body\.includes\("nop ho so thanh cong"\) \|\| body\.includes\("gui ho so thanh cong"\)/);
+// Câu dò chung vẫn giữ cho mọi cổng khác — nhưng phải đang HIỆN trên màn (panel stepper ẩn không tính).
+assert.match(src, /const SUBMIT_SUCCESS_PHRASES = \["nop ho so thanh cong", "gui ho so thanh cong"\];/);
+assert.match(src, /SUBMIT_SUCCESS_PHRASES\.some\(\(p\) => body\.includes\(p\)\) && successPhraseShown\(document\.body\)/);
 
 console.log("submit success-text fallback: liên thông nhận được màn kết quả, khóa URL passed");

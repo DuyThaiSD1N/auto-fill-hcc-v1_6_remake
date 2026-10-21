@@ -283,13 +283,14 @@ async def test_handfree_bam_truoc_khi_dien_dinh_khong_ghi_bu_ve_sau(db):
     assert [e["id"] for e in _events(db, "conv-1")] == ["that"]
 
 
-def test_handfree_khong_hoi_danh_gia_khi_chua_dien_dinh():
+def test_handfree_bam_nop_khong_hoi_danh_gia():
+    # Phiếu chỉ hiện khi cổng báo nộp thành công (event submitted), kể cả khi đã điền/đính.
     conv = {"client_capabilities": {"supportsRating": True}}
     r = chat_router.flow._record_submit_click(conv, {"click_id": "c-1"})
     assert not r.cards and not conv.get("awaiting_rating"), "không có dòng hồ sơ để lưu phiếu"
     conv["attach_trace_request_id"] = "req-1"
     r = chat_router.flow._record_submit_click(conv, {"click_id": "c-2"})
-    assert r.cards and r.cards[0]["kind"] == "rating"
+    assert not r.cards and not conv.get("awaiting_rating")
 
 
 async def test_handfree_man_ket_thuc_khong_hoi_danh_gia_khi_chua_dien_dinh(monkeypatch):

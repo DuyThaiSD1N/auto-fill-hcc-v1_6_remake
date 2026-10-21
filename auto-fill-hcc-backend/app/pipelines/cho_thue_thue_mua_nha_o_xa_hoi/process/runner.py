@@ -23,7 +23,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
     )
-    mapped_fields, warnings = mapper.enrich(res["fields"], options)
+    mapped_fields, warnings = mapper.enrich(res["fields"], options, ocr_text=res.get("ocr_text"))
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)

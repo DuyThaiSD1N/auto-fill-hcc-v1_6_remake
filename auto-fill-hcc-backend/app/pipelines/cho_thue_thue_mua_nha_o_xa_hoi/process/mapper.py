@@ -177,6 +177,23 @@ def _phone(value: Any) -> str | None:
     return None
 
 
+# Dòng "(Số điện thoại liên hệ: …)" ở khối ký trang 2 bị OCR dồn vào ý kiến xác nhận của UBND → LLM hay
+# bỏ sót dù prompt đã dặn. Đọc thẳng từ OCR làm lưới đỡ; số có thể bị chấm/khoảng trắng chen ("0799.498.916").
+_PHONE_LABEL_RE = re.compile(r"(?:so\s*)?dien\s*thoai(?:\s*lien\s*he)?\s*[:.]?")
+_PHONE_NUMBER_RE = re.compile(r"(?<!\d)0\d(?:[ .]?\d){8,9}(?!\d)")
+
+
+def _phone_from_ocr(ocr_text: str | None) -> str | None:
+    folded = _fold(ocr_text)
+    for label in _PHONE_LABEL_RE.finditer(folded):
+        m = _PHONE_NUMBER_RE.search(folded, label.end(), label.end() + 30)
+        if m:
+            phone = _phone(m.group(0))
+            if phone:
+                return phone
+    return None
+
+
 def _date(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -251,7 +268,9 @@ def _thuc_trang(value: Any) -> str | None:
     return text
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+def enrich(
+    fields: list[dict], options: dict | None = None, *, ocr_text: str | None = None
+) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
@@ -290,7 +309,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     gender = _gender_from_cccd(identity) or _text(values.get("NguoiNop_GioiTinh"))
     issue_date = _date(values.get("NguoiNop_NgayCap"))
     issue_agency = _issuer(values.get("NguoiNop_NoiCap"))
-    phone = _phone(values.get("NguoiNop_DienThoai"))
+    phone = _phone(values.get("NguoiNop_DienThoai")) or _phone_from_ocr(ocr_text)
     thuong_tru = _area(values.get("NguoiNop_ThuongTru"))
     noi_o_hien_tai = _area(values.get("NguoiNop_NoiOHienTai"))
     # Đơn viết tay RẤT hay bỏ trống mục 6 (đăng ký thường trú) mà chỉ ghi mục 5 (nơi ở hiện tại), và hồ sơ

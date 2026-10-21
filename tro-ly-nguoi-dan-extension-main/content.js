@@ -1206,6 +1206,40 @@
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/\s+/g, " ").trim().toLowerCase();
 
+  // Câu báo nộp thành công phải đang HIỆN trên màn mới tính. Stepper Angular của cổng Form.io
+  // (dvc.moc…) dựng SẴN panel bước 4 "Nộp hồ sơ thành công" trong DOM từ đầu, chỉ ẩn bằng
+  // visibility / co height 0 + overflow hidden: textContent đọc được, innerText cũng lọt khi panel
+  // chỉ bị co → phiếu đánh giá bật ra ngay sau khi đính kèm (21/10/2026).
+  const SUBMIT_SUCCESS_PHRASES = ["nop ho so thanh cong", "gui ho so thanh cong"];
+  function isShownOnScreen(el) {
+    if (!el || el.nodeType !== 1) return false;
+    try {
+      if (getComputedStyle(el).visibility !== "visible") return false; // visibility kế thừa từ cha
+      const box = el.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return false;               // display:none cũng ra 0
+      for (let n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+        const st = getComputedStyle(n);
+        if (st.overflowX === "visible" && st.overflowY === "visible") continue;
+        const r = n.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) return false;                 // panel bị co, chữ bị cắt
+      }
+      return true;
+    } catch (_) { return false; }
+  }
+  function successPhraseShown(root) {
+    const base = root?.nodeType === 3 ? root.parentElement : root;
+    if (!base) return false;
+    const hit = (t) => { const f = foldLabel(t); return SUBMIT_SUCCESS_PHRASES.some((p) => f.includes(p)); };
+    if (root.nodeType === 3) return hit(root.nodeValue) && isShownOnScreen(base);
+    const walker = document.createTreeWalker(base, NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      const el = t.parentElement;
+      // Câu có thể bị tách nhiều node con ("<b>Nộp hồ sơ</b> thành công") → xét cả chữ của cha.
+      if (el && (hit(t.nodeValue) || hit(el.textContent.slice(0, 400))) && isShownOnScreen(el)) return true;
+    }
+    return false;
+  }
+
   function matchSubmitClick(el) {
     if (!submitRules) return null;
     const rule = submitRules[location.hostname];
@@ -1260,7 +1294,7 @@
   // DOM để bắt NGAY lúc toast hiện và GIỮ dấu tới khi sidebar báo đã nhận (ackSubmitToast). Chỉ là
   // lưới đỡ của cú bấm nộp; chỉ tính trên đúng trang nộp theo luật của BE.
   let submitToastAt = 0;
-  const SUBMIT_TOAST_PHRASES = ["gui ho so thanh cong", "nop ho so thanh cong"];
+  const SUBMIT_TOAST_PHRASES = SUBMIT_SUCCESS_PHRASES;
   function onSubmitRulePage() {
     const rule = submitRules?.[location.hostname];
     if (!rule?.urlPattern) return false;
@@ -1274,9 +1308,16 @@
       // Toast là khối chữ ngắn; khối lớn (cả form dựng lại) bỏ qua cho rẻ và khỏi khớp nhầm.
       if (!text || text.length > 400) continue;
       const folded = foldLabel(text);
-      if (SUBMIT_TOAST_PHRASES.some((p) => folded.includes(p))) {
-        submitToastAt = Date.now();
-        return;
+      if (!SUBMIT_TOAST_PHRASES.some((p) => folded.includes(p))) continue;
+      // Panel ẩn dựng sẵn (stepper) KHÔNG phải toast. Toast thật có thể đang mờ dần vào lúc chèn →
+      // xét lại sau chốc lát thay vì bỏ hẳn.
+      if (successPhraseShown(node)) { submitToastAt = Date.now(); return; }
+      for (const ms of [600, 1500]) {
+        setTimeout(() => {
+          if (!submitToastAt && node.isConnected && onSubmitRulePage() && successPhraseShown(node)) {
+            submitToastAt = Date.now();
+          }
+        }, ms);
       }
     }
   }
@@ -1766,7 +1807,8 @@
         // "thành công" + "mã hồ sơ" vì chúng có thể cùng xuất hiện ở màn tra cứu khác.
         // Cổng nào màn kết quả nói khác (liên thông khai sinh) thì BE khai câu riêng trong
         // successText — khóa cả URL, xem matchSuccessText.
-        submitted: body.includes("nop ho so thanh cong") || body.includes("gui ho so thanh cong")
+        // innerText vẫn lọt chữ của panel bị co height 0 → còn phải thấy câu đó HIỆN trên màn.
+        submitted: (SUBMIT_SUCCESS_PHRASES.some((p) => body.includes(p)) && successPhraseShown(document.body))
           || matchSuccessText(body),
         // Toast nộp thành công đã thấy (giữ dấu kể cả khi toast đã tắt) — xem scanSubmitToast.
         submittedToast: !!submitToastAt,

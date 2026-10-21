@@ -1766,20 +1766,9 @@ def _record_submit_click(conv: dict, payload: dict) -> Reply:
         # Background extension báo CÙNG cú bấm này qua đường riêng; hai đường mang chung mã
         # để sổ hồ sơ chỉ ghi một sự kiện. Extension cũ không gửi → rỗng, ghi như cũ.
         conv["submit_click_id"] = str(payload.get("click_id") or "")[:64]
-    # Bấm nộp = coi như đã nộp → hỏi đánh giá NGAY, giống hệt Auto Fill. Không chờ cổng báo
-    # "nộp hồ sơ thành công": câu chữ đó khác nhau theo cổng và chỉ thu thập được bằng cách nộp
-    # hồ sơ thật, nên chờ nó là phần lớn cổng không bao giờ hỏi được.
-    #
-    # CHỈ dựng card, KHÔNG kèm await_logout_choice: đồng hồ tự đăng xuất 2 phút phải đợi cổng
-    # xác nhận thật, nếu không cổng báo thiếu giấy tờ là công dân bị đăng xuất giữa lúc sửa.
-    # Chưa điền/đính gì thì cú bấm không được tính (router._sync_dossier) và không có dòng hồ sơ
-    # để lưu phiếu → không hỏi đánh giá.
-    if (_supports_rating(conv) and dossier_has_real_work(conv)
-            and not conv.get("rating") and not conv.get("awaiting_rating")):
-        conv["awaiting_rating"] = True
-        r = Reply("", "")
-        r.cards = [_rating_card()]
-        return r
+    # KHÔNG hỏi đánh giá ở cú bấm (yêu cầu 21/10/2026): phiếu chỉ hiện khi cổng đã báo nộp thành
+    # công (event `submitted` → _handle_done / tpm.on_submitted). Hỏi lúc bấm thì cổng còn có thể
+    # báo thiếu giấy tờ, và nút khớp nhầm ở bước giữa làm phiếu bật ra ngay sau khi đính kèm.
     return Reply()  # im lặng: không đẻ bubble, không đổi state
 
 
@@ -4419,9 +4408,9 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         # gì thì không có dòng hồ sơ để lưu phiếu → bỏ bước đánh giá.
         if _supports_rating(conv) and not conv.get("rating") and dossier_has_real_work(conv):
             if conv.get("awaiting_rating"):
-                # Card đã dựng từ lúc BẤM nút và công dân còn đang đánh giá dở. Dựng thêm card
-                # thứ hai là hai khối chồng nhau; chỉ khởi động đồng hồ tự đăng xuất (giờ mới
-                # đúng lúc, vì cổng đã xác nhận nộp xong).
+                # Card đã dựng (phiên cũ còn dựng từ lúc BẤM nút) và công dân còn đang đánh giá dở.
+                # Dựng thêm card thứ hai là hai khối chồng nhau; chỉ khởi động đồng hồ tự đăng xuất
+                # (giờ mới đúng lúc, vì cổng đã xác nhận nộp xong).
                 r = Reply()
                 r.actions = [{"type": "await_logout_choice", "delay_ms": 120_000}]
                 return r

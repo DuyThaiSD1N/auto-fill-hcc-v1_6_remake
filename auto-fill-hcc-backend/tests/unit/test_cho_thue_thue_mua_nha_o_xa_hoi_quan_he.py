@@ -77,6 +77,42 @@ def test_ngay_sinh_du_ngay_thang_thi_dien():
     assert d[("data[birthday]", None)] == "06/05/2004"
 
 
+# Khối ký trang 2: dòng số điện thoại bị OCR dồn giữa ý kiến xác nhận của UBND, LLM hay bỏ sót.
+_OCR_KHOI_KY = (
+    "Ý kiến của UBND phường, xã nơi quản lý đối tượng chính sách Ông/bà ....\n"
+    "Hiện được quản lý tại địa phương; chưa được hưởng chính sách hỗ trợ nhà ở.\n"
+    "(Số điện thoại liên hệ : .0912345678...)\n"
+    "(Xác nhận, ký tên, đóng dấu)\n"
+    "Đà Nẵng., ngày..01....tháng...02.năm.2020\n"
+)
+
+
+def _by_name_ocr(values, ocr_text):
+    fields, _ = mapper.enrich([{"name": k, "value": v} for k, v in values.items()], ocr_text=ocr_text)
+    return {(f["name"], f.get("occurrence")): f["value"] for f in fields}
+
+
+def test_llm_bo_sot_so_dien_thoai_thi_doc_tu_ocr():
+    d = _by_name_ocr({"NguoiNop_HoTen": "NGUYỄN THỊ A"}, _OCR_KHOI_KY)
+    assert d[("data[phoneNumber]", None)] == "0912345678"
+
+
+def test_so_dien_thoai_llm_doc_duoc_thi_uu_tien():
+    d = _by_name_ocr({"NguoiNop_HoTen": "NGUYỄN THỊ A", "NguoiNop_DienThoai": "0987654321"}, _OCR_KHOI_KY)
+    assert d[("data[phoneNumber]", None)] == "0987654321"
+
+
+def test_so_dien_thoai_ocr_co_cham_ngan_cach():
+    assert mapper._phone_from_ocr("Số điện thoại: 0912.345.678") == "0912345678"
+    assert mapper._phone_from_ocr("Điện thoại liên hệ 0912 345 678") == "0912345678"
+
+
+def test_don_de_trong_so_dien_thoai_thi_khong_bia():
+    assert mapper._phone_from_ocr("(Số điện thoại liên hệ : ..........)\nngày 01 tháng 02 năm 2020") is None
+    assert mapper._phone_from_ocr("Căn cước công dân số 001165000002") is None
+    assert mapper._phone_from_ocr(None) is None
+
+
 def test_prompt_cam_suy_quan_he_va_ghep_ngay_sinh():
     from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process.prompt import EXTRA_RULES
     from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process.schema import FIELDS

@@ -333,8 +333,9 @@ async def test_auto_bam_nop_tren_trang_luc_dang_dinh_thi_sang_phan_sau_nop(spawn
     conv = _auto("attaching", tpm_attach_requested=True, attach_plan=[{"fileName": "a.pdf"}],
                  attach_action_in_progress=True, fill_report={"filled": 3})
     reply = await _turn(conv, "event", "submit_clicked", {"host": "dichvucong.gov.vn"})
-    assert conv["state"] == "done" and reply.cards[0]["kind"] == "rating"
-    # Kết quả đính kèm về muộn sau khi đã nộp: không chen câu/nút sau phiếu đánh giá.
+    # Bấm nộp chỉ chấm mốc; phiếu đánh giá chờ toast "Gửi hồ sơ thành công" (event submitted).
+    assert conv["state"] == "done" and not reply.cards
+    # Kết quả đính kèm về muộn sau khi đã nộp: không chen câu/nút.
     reply = await _turn(conv, "action", "attach_report", {"attached": 1, "errors": []})
     assert not reply.display_md and not reply.chips
     reply = await _turn(conv, "event", "attach_ready")
@@ -351,12 +352,16 @@ async def test_auto_toast_la_luoi_do_khi_cu_bam_lot(spawned, monkeypatch):
     assert not any(a.get("type") == "await_logout_choice" for a in reply.actions)
 
 
-async def test_auto_toast_sau_cu_bam_thi_im(spawned, monkeypatch):
+async def test_auto_toast_sau_cu_bam_moi_hien_danh_gia(spawned, monkeypatch):
     monkeypatch.setattr(flow, "dossier_has_real_work", lambda conv: True)
     conv = _auto("attaching", fill_report={"filled": 3})
     await _turn(conv, "event", "submit_clicked", {"host": "dichvucong.gov.vn"})
     reply = await _turn(conv, "event", "submitted")
-    assert not reply.cards and not reply.actions and conv["submit_clicked_source"] == "click"
+    assert reply.cards[0]["kind"] == "rating" and conv["submit_clicked_source"] == "click"
+    assert not any(a.get("type") == "await_logout_choice" for a in reply.actions)
+    # Toast lặp lại (watcher đọc trang nhiều nhịp) không dựng phiếu thứ hai.
+    reply = await _turn(conv, "event", "submitted")
+    assert not reply.cards and not reply.actions
 
 
 async def test_auto_danh_gia_xong_thi_dong_ho_dang_xuat_chay_ngay(monkeypatch):

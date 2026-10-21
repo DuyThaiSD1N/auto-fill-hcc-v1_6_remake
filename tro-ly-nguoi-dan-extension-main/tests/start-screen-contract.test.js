@@ -27,7 +27,8 @@ test("ba bước mở đầu là nhãn hướng dẫn, không mang hình thức 
 });
 
 test("cổng báo nộp thành công hỏi giữ phiên và mặc định logout sau 2 phút", () => {
-  assert.match(content, /body\.includes\("nop ho so thanh cong"\) \|\| body\.includes\("gui ho so thanh cong"\)/);
+  assert.match(content, /const SUBMIT_SUCCESS_PHRASES = \["nop ho so thanh cong", "gui ho so thanh cong"\];/);
+  assert.match(content, /SUBMIT_SUCCESS_PHRASES\.some\(\(p\) => body\.includes\(p\)\) && successPhraseShown\(document\.body\)/);
   assert.doesNotMatch(content, /body\.includes\("thanh cong"\) && body\.includes\("ma ho so"\)/);
   assert.match(sidebar, /!submittedReported && \(\s*\(lastState === "done" && \(ctx\.submitted \|\| ctx\.submittedToast\)\)/);
   assert.match(sidebar, /submittedReported = true;\s*clearInterval\(watcherTimer\); watcherTimer = null;\s*(if \(ctx\.submittedToast\)[^\n]*\n\s*)?ask\("__event:submitted"/);

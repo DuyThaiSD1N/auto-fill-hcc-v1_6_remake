@@ -1,9 +1,10 @@
 """Bước đánh giá trải nghiệm trước đăng xuất (handfree) + lưu bền + backward-compat.
 
 - Client có supportsRating: nộp xong → card 'rating' TRƯỚC 2 nút đăng xuất.
-- Ba nhánh rate_level/rate/rate_skip nằm ở TẦNG TOÀN CỤC (không trong _handle_done) vì card
-  dựng được ngay từ cú BẤM nút nộp, lúc đó state có thể vẫn là "attaching" → phải gọi qua
-  handle_turn mới đúng đường chạy thật.
+- Cú BẤM nút nộp chỉ chấm mốc, KHÔNG hỏi đánh giá (21/10/2026): phiếu chỉ hiện khi cổng báo nộp
+  thành công (event `submitted`).
+- Ba nhánh rate_level/rate/rate_skip nằm ở TẦNG TOÀN CỤC (không trong _handle_done): phiên cũ có
+  card dựng từ cú bấm lúc state còn "attaching" → phải gọi qua handle_turn mới đúng đường chạy thật.
 - rate / rate_skip → lưu vào dossiers (save_rating) + hiện 2 nút đăng xuất.
 - Client CŨ (không supportsRating): giữ NGUYÊN luồng cũ (2 nút ngay, không card).
 """
@@ -128,9 +129,9 @@ async def test_submitted_reload_reshows_rating(mock_save):
     assert r.display_md == ""
 
 
-# ── Mốc thứ hai: CÚ BẤM nút nộp cũng mở màn đánh giá (thống nhất với Auto Fill) ─────────────
-# "Bấm nộp = coi như đã nộp". Chờ cổng báo "nộp hồ sơ thành công" thì phần lớn cổng không bao
-# giờ hỏi được — câu chữ khác nhau và chỉ thu thập được bằng cách nộp hồ sơ thật.
+# ── Cú BẤM nút nộp KHÔNG mở màn đánh giá (21/10/2026) ───────────────────────────────────────
+# Phiếu chỉ hiện khi cổng báo "nộp hồ sơ thành công". Hỏi lúc bấm thì cổng còn có thể báo thiếu
+# giấy tờ, và nút khớp nhầm ở bước giữa làm phiếu bật ra ngay sau khi đính kèm.
 
 def _mid_flow_conv():
     """Đang dở bước đính kèm — đúng tình huống lúc công dân bấm nút nộp trên cổng."""
@@ -138,35 +139,42 @@ def _mid_flow_conv():
             "attach_trace_request_id": "req-1"}
 
 
-async def test_bam_nut_nop_mo_ngay_man_danh_gia(mock_save):
+async def test_bam_nut_nop_chi_cham_moc_khong_hoi_danh_gia(mock_save):
     conv = _mid_flow_conv()
     r = await flow.handle_turn(conv, Intent("event", "submit_clicked", {"host": "x.gov.vn"}))
 
-    assert [c.get("kind") for c in r.cards] == ["rating"]
-    assert conv.get("awaiting_rating") is True
+    assert r.cards == [] and r.display_md == "" and r.actions == []
+    assert not conv.get("awaiting_rating")
     assert conv.get("submit_clicked_at"), "vẫn phải chấm mốc nộp như trước"
     assert conv["state"] == "attaching", "chấm mốc không được đổi bước đang làm"
-    # Cổng CHƯA xác nhận → tuyệt đối không khởi động đồng hồ tự đăng xuất 2 phút: cổng còn có
-    # thể báo thiếu giấy tờ và công dân phải sửa tiếp.
-    assert [a["type"] for a in r.actions] == []
 
 
-async def test_cham_muc_giua_chung_van_luu_va_van_khong_dem_gio(mock_save):
+async def test_bam_nut_roi_cong_bao_thanh_cong_moi_hien_danh_gia(mock_save):
     conv = _mid_flow_conv()
     await flow.handle_turn(conv, Intent("event", "submit_clicked", {}))
-    r = await flow.handle_turn(conv, Intent("action", "rate_level", {"level": 5}))
+    conv["state"] = "done"
+    r = await flow.handle_turn(conv, Intent("event", "submitted"))
 
-    assert conv["rating"]["level"] == 5, "mức chọn ở bước 1 phải lưu ngay, kể cả khi chưa 'done'"
-    assert mock_save.await_count == 1
-    assert [a["type"] for a in r.actions] == [], "chưa xác nhận nộp thì chưa hẹn đăng xuất"
+    assert [c.get("kind") for c in r.cards] == ["rating"]
+    assert conv.get("awaiting_rating") is True
+    assert conv["submit_clicked_source"] == "click", "mốc nộp vẫn lấy từ cú bấm"
 
 
-async def test_danh_gia_xong_hien_nut_nhung_chua_hen_gio_khi_cong_chua_xac_nhan(mock_save):
-    # Đánh giá xong = HIỆN 2 nút đăng xuất NGAY: event `submitted` phần lớn cổng không fire, chờ nó
-    # thì khối chọn đăng xuất "lúc có lúc không" (bug thật). NHƯNG chưa khởi động đồng hồ tự đăng
-    # xuất 2 phút vì cổng chưa xác nhận (còn có thể báo thiếu giấy tờ) — nút vẫn bấm tay được.
-    conv = _mid_flow_conv()
+async def test_phien_cu_card_tu_cu_bam_thi_cong_xac_nhan_khong_dung_card_thu_hai(mock_save):
+    # Phiên tạo trước bản này: card đã dựng từ cú bấm (awaiting_rating) → cổng xác nhận chỉ hẹn giờ.
+    conv = {**_mid_flow_conv(), "awaiting_rating": True}
     await flow.handle_turn(conv, Intent("event", "submit_clicked", {}))
+    conv["state"] = "done"
+    r = await flow.handle_turn(conv, Intent("event", "submitted"))
+
+    assert r.cards == [], "card đã có trên màn — không được chồng thêm cái nữa"
+    assert [a["type"] for a in r.actions] == ["await_logout_choice"], "giờ mới đúng lúc hẹn đăng xuất"
+
+
+async def test_phien_cu_danh_gia_truoc_khi_cong_xac_nhan_chua_hen_gio(mock_save):
+    # Phiên cũ có card từ cú bấm: đánh giá xong hiện 2 nút NGAY nhưng chưa khởi động đồng hồ tự
+    # đăng xuất (cổng chưa xác nhận, còn có thể báo thiếu giấy tờ).
+    conv = {**_mid_flow_conv(), "awaiting_rating": True}
     r = await flow.handle_turn(conv, Intent("action", "rate", {"level": 4, "reasons": [], "note": ""}))
 
     assert conv["rating"]["level"] == 4
@@ -174,18 +182,8 @@ async def test_danh_gia_xong_hien_nut_nhung_chua_hen_gio_khi_cong_chua_xac_nhan(
     assert [a["type"] for a in r.actions] == [], "chưa cổng xác nhận thì chưa hẹn tự đăng xuất"
 
 
-async def test_cong_xac_nhan_muon_khong_dung_card_thu_hai(mock_save):
-    conv = _mid_flow_conv()
-    await flow.handle_turn(conv, Intent("event", "submit_clicked", {}))
-    conv["state"] = "done"
-    r = await flow.handle_turn(conv, Intent("event", "submitted"))
-
-    assert r.cards == [], "card đã dựng từ lúc bấm nút — không được chồng thêm cái nữa"
-    assert [a["type"] for a in r.actions] == ["await_logout_choice"], "giờ mới đúng lúc hẹn đăng xuất"
-
-
 async def test_da_danh_gia_roi_thi_cong_xac_nhan_chi_hen_gio_khong_lap_nut(mock_save):
-    conv = _mid_flow_conv()
+    conv = {**_mid_flow_conv(), "awaiting_rating": True}
     await flow.handle_turn(conv, Intent("event", "submit_clicked", {}))
     r1 = await flow.handle_turn(conv, Intent("action", "rate_skip"))
     # Đánh giá xong: nút đăng xuất hiện NGAY (chưa kèm đồng hồ vì cổng chưa xác nhận).
