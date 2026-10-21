@@ -173,8 +173,44 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
+    def hon_nhan(src: str, dst: str) -> None:
+        # Tình trạng hôn nhân + số lần kết hôn (suy 2 chiều).
+        status_cat = _fold(values.get(f"{src}_TinhTrangHonNhan")).replace(" ", "_")
+        status_label = _MARITAL_STATUS.get(status_cat)
+        so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
+        # Chưa kết hôn (theo giấy xác nhận) → suy số lần kết hôn = 1 nếu tờ khai không ghi.
+        if not so_lan and status_cat == "chua_ket_hon":
+            so_lan = "1"
+        # Ngược lại: tờ khai ghi lần 1 mà chưa có tình trạng → suy "chưa đăng ký kết hôn với ai".
+        if not status_label and so_lan == "1":
+            status_label = _MARITAL_STATUS["chua_ket_hon"]
+        add(f"SoLanKetHon_{dst}", so_lan or None)
+        add(f"LoaiTinhTrangHonNhan_{dst}", status_label)
+
+        # Đã ly hôn → cổng hiện thêm khối "Số bản án/Quyết định ly hôn" (số, ngày cấp, cơ quan cấp).
+        # Add SAU dropdown tình trạng hôn nhân vì khối này chỉ được render khi dropdown vừa chọn xong.
+        if status_cat == "ly_hon":
+            decision = {
+                "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
+                "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
+                "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
+            }
+            decision = {k: v for k, v in decision.items() if v}
+            if decision:
+                add(f"TTHN_LyHon{dst}", decision)
+
     def add_person(src: str, dst: str) -> None:
         if not (values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")):
+            # LLM chỉ trả cột tờ khai (bỏ sót nhóm nhân thân khi hồ sơ không có giấy tờ tùy thân) → điền họ tên /
+            # số giấy tờ / ngày sinh theo tờ khai; không đoán loại giấy tờ, quốc tịch, nơi cư trú khi không có căn cứ.
+            ho_ten, so_giay_to = values.get(f"ToKhai{src}_HoTen"), values.get(f"ToKhai{src}_SoGiayTo")
+            if not (ho_ten or so_giay_to):
+                return
+            add(f"HoTen{dst}", upper_person_name(ho_ten))
+            add(f"SoDinhDanh_{dst}", so_giay_to)
+            add(f"SoGiayToDinhDanh_{dst}", so_giay_to)
+            add(f"NgaySinh{dst}", values.get(f"ToKhai{src}_NgaySinh"))
+            hon_nhan(src, dst)
             return
 
         # Giấy tờ / tờ khai ghi tên thường gọi ("Mỹ") còn danh mục quốc gia của cổng dùng tên chính thức
@@ -265,30 +301,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add(f"NoiCuTru_{dst}", "1")
                 add(f"NoiCuTru_{dst}_TrongNuoc", vn_area)
 
-        # Tình trạng hôn nhân + số lần kết hôn (suy 2 chiều).
-        status_cat = _fold(values.get(f"{src}_TinhTrangHonNhan")).replace(" ", "_")
-        status_label = _MARITAL_STATUS.get(status_cat)
-        so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
-        # Chưa kết hôn (theo giấy xác nhận) → suy số lần kết hôn = 1 nếu tờ khai không ghi.
-        if not so_lan and status_cat == "chua_ket_hon":
-            so_lan = "1"
-        # Ngược lại: tờ khai ghi lần 1 mà chưa có tình trạng → suy "chưa đăng ký kết hôn với ai".
-        if not status_label and so_lan == "1":
-            status_label = _MARITAL_STATUS["chua_ket_hon"]
-        add(f"SoLanKetHon_{dst}", so_lan or None)
-        add(f"LoaiTinhTrangHonNhan_{dst}", status_label)
-
-        # Đã ly hôn → cổng hiện thêm khối "Số bản án/Quyết định ly hôn" (số, ngày cấp, cơ quan cấp).
-        # Add SAU dropdown tình trạng hôn nhân vì khối này chỉ được render khi dropdown vừa chọn xong.
-        if status_cat == "ly_hon":
-            decision = {
-                "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
-                "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
-                "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
-            }
-            decision = {k: v for k, v in decision.items() if v}
-            if decision:
-                add(f"TTHN_LyHon{dst}", decision)
+        hon_nhan(src, dst)
 
     add_person("Nu", "BenNu")
     add_person("Nam", "BenNam")

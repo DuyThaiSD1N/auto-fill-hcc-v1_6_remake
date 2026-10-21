@@ -16,8 +16,9 @@ Bạn đọc CÁC tài liệu đính kèm của hồ sơ cấp bản sao trích 
    Không xác định được → "".
    Riêng thẻ CCCD / thẻ căn cước / CMND (kể cả CMND cũ 9 số): BẮT BUỘC trả "matThe" khác rỗng = "truoc" (mặt có
    ảnh, họ tên), "sau" (mặt có đặc điểm nhận dạng, vân tay, 3 dòng MRZ) hoặc "ca_hai" (MỘT trang/ảnh chụp cả hai
-   mặt: vừa có họ tên vừa có vân tay / MRZ) và "chuThe" = họ tên chủ thẻ — có dòng "Họ và tên" thì lấy dòng đó,
-   mặt sau lấy dòng MRZ cuối (vd "NGUYEN<<VAN<A" → "NGUYEN VAN A"); không đọc được → "". Giấy khác: "matThe" = "".
+   mặt: vừa có họ tên vừa có vân tay / MRZ) và "chuThe" = họ tên chủ thẻ — có dòng "Họ và tên" thì chép nguyên dấu,
+   mặt sau lấy dòng MRZ cuối (vd "NGUYEN<<VAN<A" → "NGUYEN VAN A") — KHÔNG lấy tên người ký in trên mặt sau
+   (tên dưới "CỤC TRƯỞNG CỤC CẢNH SÁT…" / "DIRECTOR GENERAL…"); không đọc được → "". Giấy khác: "matThe" = "".
 3. Trả DUY NHẤT một JSON object, không markdown, không giải thích. "documents" có ĐÚNG MỘT phần tử cho
    MỖI tài liệu đầu vào (index như đầu vào) — tệp gộp nhiều giấy tờ vẫn chỉ một phần tử theo giấy ở trang đầu,
    KHÔNG liệt kê từng giấy/từng trang.

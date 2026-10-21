@@ -55,6 +55,40 @@ def _cccd_number(text: str) -> str:
     return m.group(0) if m else ""
 
 
+# Dòng MRZ đầu mặt sau thẻ: "IDVNM" + 9 số cuối của số thẻ + 1 số kiểm tra + 12 số định danh + "<<".
+_MRZ_ID_RE = re.compile(r"IDVNM\d{9}\d(\d{12})<")
+
+
+def so_dinh_danh_the(text: str) -> str:
+    """Số định danh đọc được trên MỘT mặt thẻ CCCD/căn cước: mặt sau từ dòng MRZ, mặt trước là dãy 12 số đứng
+    riêng. Dùng làm khoá ghép hai mặt của cùng một thẻ — chắc hơn họ tên LLM đọc (mặt sau CCCD gắn chip in thêm tên
+    người ký). Không đọc được → ""."""
+    m = _MRZ_ID_RE.search(re.sub(r"\s+", "", text or "").upper())
+    return m.group(1) if m else _cccd_number(text)
+
+
+def mat_the(text: str) -> str:
+    """Mặt thẻ CCCD/căn cước theo OCR: "truoc" / "sau"; không phải thẻ hoặc một ảnh có cả hai mặt → "".
+    Lưới dự phòng khi LLM không cho biết mặt thẻ."""
+    if not _looks_like_cccd(text):
+        return ""
+    return {0: "truoc", 1: "sau"}.get(_face_rank(text), "")
+
+
+def ho_ten_co_dau(ten: str, text: str) -> str:
+    """Họ tên LLM trả KHÔNG DẤU mà chữ OCR của chính mặt thẻ có dòng họ tên đó CÓ DẤU → lấy nguyên văn bản có dấu
+    (đúng chữ in trên thẻ). Không tìm thấy → giữ nguyên ``ten``."""
+    want = " ".join(_fold(str(ten or "").replace("<", " ")).split())
+    if not want or any(ord(ch) > 127 for ch in str(ten)):
+        return ten
+    for line in str(text or "").splitlines():
+        for seg in (line, line.rsplit(":", 1)[-1]):
+            seg = " ".join(seg.split())
+            if seg and " ".join(_fold(seg).split()) == want and any(ord(ch) > 127 for ch in seg):
+                return seg
+    return ten
+
+
 def _id_in_digits(id_num: str, digits: str) -> bool:
     """Số định danh mặt trước có nằm trong dãy số của file (mặt sau MRZ nhúng cả số) — hoặc khớp 9 số cuối."""
     if not id_num or not digits:

@@ -13,6 +13,7 @@ import re
 import time
 
 from app.config import settings
+from app.pipelines._shared.identity_merge import ho_ten_co_dau, mat_the, so_dinh_danh_the
 from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_merged, shrink_oversized
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -155,6 +156,14 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     segments.sort(key=lambda s: (s["fileIndex"], (s["pages"] or [0])[0]))
     # Đoạn tờ khai đã bỏ vẫn tính là một phần của tệp → phần còn lại phải cắt trang, không đính nguyên tệp.
     parts_of_file = {i: sum(1 for s in segments if s["fileIndex"] == i) + omitted.get(i, 0) for i in range(len(names))}
+
+    # Số định danh đọc từ OCR của từng đoạn: khoá ghép hai mặt thẻ (họ tên LLM đọc có thể lệch giữa hai mặt).
+    for s in segments:
+        if s["doc"]:
+            pages = pages_by_file.get(s["fileIndex"], [])
+            text = "\n".join(pages if s["pages"] is None else [pages[i] for i in s["pages"] if i < len(pages)])
+            s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
+                        "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
 
     attachments: list[dict] = []
     seen: dict[str, int] = {}

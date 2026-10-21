@@ -79,12 +79,6 @@ def map_birth(fields: list[dict]) -> list[dict]:
         {"name": "TkKs_NamSinhMe", "value": values.get("ToKhai_Mother_BirthDate")},
     ]
     output = birth_mapper.enrich(compact)
-    # Mẫu khai sinh của thủ tục này dựng "Loại khai sinh" bằng <x-select name="nksLoaiKhaiSinh">, không
-    # phải x-select-default như mẫu khai sinh thường → giữ comp cũ thì extension không tìm thấy ô.
-    # Đổi tại chỗ (không _replace) để ô vẫn đứng ngay sau LoaiDangKy.
-    for item in output:
-        if item.get("name") == "nksLoaiKhaiSinh":
-            item["comp"] = "x-select"
 
     requester_id = values.get("Requester_IdNumber")
     requester_issue_date = values.get("Requester_IdIssueDate")

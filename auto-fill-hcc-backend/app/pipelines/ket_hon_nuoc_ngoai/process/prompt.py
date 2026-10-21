@@ -9,10 +9,12 @@ hợp pháp hoá lãnh sự), HOẶC giấy xác nhận/trình bày tình trạn
 NGUỒN của nhóm Nam_* / Nu_* (nhân thân bên nam / bên nữ), theo thứ tự:
 1. Giấy tờ tùy thân của CHÍNH người đó (CCCD, hộ chiếu, chứng minh thư nước ngoài, bản dịch). Có giấy tờ này thì
    họ tên, số giấy tờ, ngày sinh, ngày cấp, cơ quan cấp LẤY TỪ GIẤY TỜ, kể cả khi tờ khai ghi khác (tờ khai hay
-   viết sai số); bản khai trên tờ khai chỉ chép vào ToKhaiNam_*/ToKhaiNu_*.
-2. Hồ sơ KHÔNG có giấy tờ tùy thân của người đó → lấy từ CỘT của người đó trên TỜ KHAI đăng ký kết hôn:
-   họ tên, ngày sinh, dân tộc, quốc tịch, nơi cư trú; số / ngày cấp / cơ quan cấp / tên giấy tờ trên dòng
-   "Giấy tờ tùy thân"; số lần kết hôn. KHÔNG bỏ trống cả nhóm chỉ vì thiếu giấy tờ tùy thân.
+   viết sai số); KHI ĐÃ CÓ giấy tờ đó thì bản khai trên tờ khai chỉ chép vào ToKhaiNam_*/ToKhaiNu_*.
+2. Hồ sơ KHÔNG có giấy tờ tùy thân của người đó (vd hồ sơ chỉ có tờ khai) → nhóm Nam_* / Nu_* của người đó
+   BẮT BUỘC lấy từ CỘT của người đó trên TỜ KHAI đăng ký kết hôn: Nam_HoTen, Nam_NgaySinh, Nam_DanToc,
+   Nam_QuocTich, Nam_NoiCuTru; Nam_SoDinhDanh / Nam_NgayCap / Nam_NoiCap / Nam_TenGiayTo theo dòng "Giấy tờ tùy
+   thân"; Nam_SoLanKetHon (bên nữ tương tự với Nu_*). Vẫn trả thêm ToKhaiNam_* / ToKhaiNu_* như quy tắc cuối.
+   KHÔNG chỉ trả ToKhai* rồi bỏ trống Nam_* / Nu_*: biểu mẫu chỉ điền từ nhóm Nam_* / Nu_*.
 
 PHÂN BÊN NAM/NỮ:
 - Tự phân biệt theo GIỚI TÍNH trên chính giấy tờ: Nam → nhóm Nam_*, Nữ → nhóm Nu_*. Trên tờ khai theo cột

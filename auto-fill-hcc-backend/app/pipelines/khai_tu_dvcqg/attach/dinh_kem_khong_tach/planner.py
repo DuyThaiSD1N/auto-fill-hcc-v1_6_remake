@@ -15,6 +15,7 @@ import re
 import time
 
 from app.config import settings
+from app.pipelines._shared.identity_merge import ho_ten_co_dau, mat_the, so_dinh_danh_the
 from app.pipelines._shared.naming import fold, normalize_document_name
 from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_merged, shrink_oversized
 from app.process.schemas import FileItem
@@ -50,50 +51,67 @@ def _document_name(file_name: str, doc_name: str) -> str:
     # Tiêu đề giấy hay in HOA ("CĂN CƯỚC CÔNG DÂN", "Bản sao GIẤY KHAI SINH") → viết thường, hoa chữ đầu, để
     # tên các tệp đồng nhất và đánh số trùng khớp nhau.
     letters = [ch for ch in name if ch.isalpha()]
-    if letters and sum(ch.isupper() for ch in letters) * 2 > len(letters):
+    # Tên "CCCD <Họ Tên>" đã chuẩn hoa chữ đầu mỗi tiếng ở _llm_document_name → không hạ thường.
+    if letters and sum(ch.isupper() for ch in letters) * 2 > len(letters) and not name.startswith("CCCD "):
         name = name[:1].upper() + name[1:].lower()
     return name
 
 
+def _ten_chu_the(answer: dict) -> str:
+    """Họ tên chủ thẻ GIỮ DẤU, hoa chữ đầu mỗi tiếng; dòng MRZ ("NGUYEN<<VAN<A") đổi "<" thành khoảng trắng."""
+    words = re.sub(r"[^\w ]+", " ", str(answer.get("chuThe") or "").replace("<", " ")).split()
+    return " ".join(word.capitalize() for word in words if not word.isdigit())
+
+
 def _llm_document_name(answer: dict) -> str:
-    """Tên LLM đặt cho tệp. Thẻ CCCD/CMND → "CCCD <họ tên không dấu> [mặt trước|mặt sau]": mặt sau chỉ có tên
-    không dấu ở dòng MRZ, bỏ dấu cả hai mặt để hai mặt của cùng một người trùng tên, nhận ra cùng một thẻ."""
+    """Tên LLM đặt cho tệp. Thẻ CCCD/CMND → "CCCD <họ tên có dấu> [mặt trước|mặt sau]"; hai mặt đã gộp (hoặc một
+    ảnh chụp cả hai mặt) không ghi mặt."""
     side_key = str(answer.get("matThe") or "").strip().lower()
     if side_key not in ("truoc", "sau", "ca_hai"):
         return str(answer.get("documentName") or "").strip()
-    # Một trang chụp cả hai mặt thẻ → không ghi mặt.
     side = {"truoc": "mặt trước", "sau": "mặt sau"}.get(side_key, "")
-    holder = re.sub(r"[^a-z ]+", " ", fold(str(answer.get("chuThe") or "").replace("<", " ")))
-    words = [word.capitalize() for word in holder.split()]
+    words = _ten_chu_the(answer).split()
     while words and len(" ".join(words)) > 50 - len("CCCD  ") - len(side):  # tên tệp tối đa 50 ký tự
         words.pop()
-    holder = " ".join(words)
-    return " ".join(part for part in ("CCCD", holder, side) if part)
+    return " ".join(part for part in ("CCCD", " ".join(words), side) if part)
 
 
-def _card_side(doc: dict) -> tuple[str, str]:
-    """(mặt, chủ thẻ đã bỏ dấu) khi phần tử là MỘT mặt thẻ CCCD/CMND đọc ra chủ thẻ; ngược lại ("", "")."""
+def _card_side(doc: dict) -> tuple[str, str, str]:
+    """(mặt, số định danh đọc từ OCR, chủ thẻ đã bỏ dấu) khi phần tử là MỘT mặt thẻ CCCD/CMND; ngược lại rỗng.
+    LLM không cho biết mặt thẻ, hoặc nói "ca_hai" mà chữ OCR chỉ có dấu hiệu của MỘT mặt (không MRZ / vân tay ở ảnh
+    mặt trước) → dùng mặt đọc từ OCR (`_matTheOcr`)."""
     side = str(doc.get("matThe") or "").strip().lower()
+    ocr_side = str(doc.get("_matTheOcr") or "")
+    if not side or (side == "ca_hai" and ocr_side):
+        side = ocr_side
+    if side not in ("truoc", "sau"):
+        return "", "", ""
     holder = " ".join(re.sub(r"[^a-z ]+", " ", fold(str(doc.get("chuThe") or "").replace("<", " "))).split())
-    return (side, holder) if side in ("truoc", "sau") and holder else ("", "")
+    return side, str(doc.get("_soThe") or ""), holder
 
 
 def pair_card_sides(docs: list[dict]) -> list[list[int]]:
-    """Nhóm vị trí phần tử: mặt trước + mặt sau thẻ của CÙNG chủ thẻ → một nhóm [trước, sau]; còn lại đứng riêng.
+    """Nhóm vị trí phần tử: mặt trước + mặt sau thẻ của CÙNG một người → một nhóm [trước, sau]; còn lại đứng riêng.
 
-    Cán bộ cần MỘT tệp CCCD cho mỗi người, không tách hai mặt. Chỉ ghép từng cặp một trước – một sau, nên hai bản
-    trùng của cùng một mặt không bị dồn vào nhau; không đọc ra chủ thẻ thì không ghép (không chắc cùng người)."""
-    fronts: dict[str, list[int]] = {}
-    backs: dict[str, list[int]] = {}
-    for index, doc in enumerate(docs):
-        side, holder = _card_side(doc)
-        if side:
-            (fronts if side == "truoc" else backs).setdefault(holder, []).append(index)
+    Cán bộ cần MỘT tệp CCCD cho mỗi người, không tách hai mặt. Khoá ghép là SỐ ĐỊNH DANH đọc từ OCR (`_soThe`: mặt
+    trước dãy 12 số, mặt sau dòng MRZ) — họ tên LLM đọc ở mặt sau có thể lệch (mặt sau CCCD gắn chip in thêm tên
+    người ký). Mặt nào không đọc ra số mới ghép theo chủ thẻ đã bỏ dấu, và không ghép hai mặt mang hai số khác nhau.
+    Chỉ ghép từng cặp một trước – một sau, nên hai bản trùng của cùng một mặt không bị dồn vào nhau."""
+    info = {i: _card_side(doc) for i, doc in enumerate(docs)}
+    fronts = [i for i, (side, so, holder) in info.items() if side == "truoc" and (so or holder)]
+    backs = [i for i, (side, so, holder) in info.items() if side == "sau" and (so or holder)]
     paired: dict[int, list[int]] = {}
-    for holder, front_list in fronts.items():
-        for front, back in zip(front_list, backs.get(holder, [])):
-            paired[min(front, back)] = [front, back]
-            paired[max(front, back)] = []
+
+    def ghep(cung_nguoi) -> None:
+        for front in fronts:
+            back = next((b for b in backs if b not in paired and front not in paired and cung_nguoi(front, b)), None)
+            if back is not None:
+                paired[min(front, back)] = [front, back]
+                paired[max(front, back)] = []
+
+    ghep(lambda f, b: bool(info[f][1]) and info[f][1] == info[b][1])
+    ghep(lambda f, b: bool(info[f][2]) and info[f][2] == info[b][2]
+         and not (info[f][1] and info[b][1] and info[f][1] != info[b][1]))
     return [paired[i] if i in paired else [i] for i in range(len(docs)) if paired.get(i, [i])]
 
 
@@ -199,6 +217,11 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
     doc_types = {i: str(a.get("docType") or "").strip() for i, a in answers.items()}
+    # Số định danh đọc từ OCR của từng tệp: khoá ghép hai mặt thẻ (họ tên LLM đọc có thể lệch giữa hai mặt).
+    for i, a in answers.items():
+        a["_soThe"] = so_dinh_danh_the(texts.get(i, ""))
+        a["_matTheOcr"] = mat_the(texts.get(i, ""))
+        a["chuThe"] = ho_ten_co_dau(a.get("chuThe") or "", texts.get(i, ""))
     doc_names = {i: _llm_document_name(a) for i, a in answers.items()}
     # Hai TỆP là hai mặt thẻ của cùng một người → một mục gộp (extension ghép thành một PDF).
     groups = pair_card_sides([answers.get(i, {}) for i in range(len(raw_files))])

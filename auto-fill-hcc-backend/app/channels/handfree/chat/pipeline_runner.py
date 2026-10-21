@@ -250,11 +250,6 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options: dict = {}
             if conv and conv.get("form_context"):
                 options["formContext"] = dict(conv["form_context"])
-            eform = (conv or {}).get("eform_running")
-            if proc.get("declarationEforms") and isinstance(eform, dict):
-                # Mẫu điện tử chốt lúc công dân bấm "Điền tờ khai": lượt chat đến sau (tờ khai vừa
-                # đóng/đổi) có thể đã xoá formVariant khỏi form_context trước khi task này đọc.
-                options["formContext"] = {**options.get("formContext", {}), **eform}
             if proc.get("review"):
                 options["_review"] = True
             owner_user = await _load_owner_user(conv, sess)

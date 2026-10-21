@@ -21,8 +21,9 @@ DOCUMENT_NAME_RULE = """documentName: tên giấy tờ theo TIÊU ĐỀ in trên
    "Số: 12/2011/HNGĐ-ST" → "Bản án ly hôn"). Không xác định được → "".
    Riêng thẻ CCCD / thẻ căn cước / CMND (kể cả CMND cũ 9 số): BẮT BUỘC trả "matThe" khác rỗng = "truoc" (mặt có
    ảnh, họ tên), "sau" (mặt có đặc điểm nhận dạng, vân tay, 3 dòng MRZ) hoặc "ca_hai" (MỘT trang/ảnh chụp cả hai
-   mặt) và "chuThe" = họ tên chủ thẻ — có dòng "Họ và tên" thì lấy dòng đó, mặt sau lấy dòng MRZ cuối (vd
-   "NGUYEN<<VAN<A" → "NGUYEN VAN A"); không đọc được → "". Giấy khác: "matThe" = ""."""
+   mặt) và "chuThe" = họ tên chủ thẻ — có dòng "Họ và tên" thì chép nguyên dấu, mặt sau lấy dòng MRZ cuối (vd
+   "NGUYEN<<VAN<A" → "NGUYEN VAN A") — KHÔNG lấy tên người ký in trên mặt sau (tên dưới "CỤC TRƯỞNG CỤC CẢNH
+   SÁT…" / "DIRECTOR GENERAL…"); không đọc được → "". Giấy khác: "matThe" = ""."""
 
 SYSTEM_PROMPT = f"""
 <persona>

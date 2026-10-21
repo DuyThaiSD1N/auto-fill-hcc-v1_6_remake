@@ -48,7 +48,7 @@ def test_tach_dung_dong_va_khong_sot_trang(monkeypatch):
     got = [(i["documentName"], i["slotIndex"], i["sourceSegments"][0]["pageIndexes"]) for i in res["attachments"]]
     assert got == [
         ("Tờ khai thay đổi cải chính", 1, [0, 1]),
-        ("CCCD Nguyen Van An mặt trước", 1, [2]),
+        ("CCCD Nguyễn Văn An mặt trước", 1, [2]),
         ("Giấy ủy quyền", 0, [4, 5]),
     ]
     assert calls == [1200]  # MỘT lượt LLM cho cả hồ sơ
@@ -123,7 +123,7 @@ def test_tach_khong_bao_gio_tach_hai_mat_cccd(monkeypatch):
     res = asyncio.run(trich_luc_tach.plan(_files("cccd.pdf", "uq.pdf"), {"splitDocuments": True}))
     # Hai mặt trong cùng tệp → MỘT mục, đính nguyên tệp.
     assert [(i["documentName"], i.get("sourceSegments")) for i in res["attachments"]] == [
-        ("CCCD Chang Xa Thao", None), ("Giấy ủy quyền", None)]
+        ("CCCD Chang Xa Thảo", None), ("Giấy ủy quyền", None)]
 
 
 def test_hai_mat_o_hai_tep_gop_mot_muc(monkeypatch):
@@ -141,7 +141,7 @@ def test_hai_mat_o_hai_tep_gop_mot_muc(monkeypatch):
     res = asyncio.run(trich_luc_tach.plan(_files("truoc.jpg", "sau.jpg"), {"splitDocuments": True}))
     assert len(res["attachments"]) == 1
     item = res["attachments"][0]
-    assert item["documentName"] == "CCCD Nguyen Van An"
+    assert item["documentName"] == "CCCD Nguyễn Văn An"
     assert [s["fileIndex"] for s in item["sourceSegments"]] == [0, 1]
 
 
@@ -163,4 +163,4 @@ def test_khong_tach_hai_tep_hai_mat_gop_bang_source_file_indexes(monkeypatch):
     res = asyncio.run(cai_chinh.plan(_files("a.jpg", "b.pdf", "c.jpg"), {}))
     names = [(i["documentName"], i.get("sourceFileIndexes")) for i in res["attachments"]]
     # Mặt trước (tệp 2) đứng trước mặt sau (tệp 0) trong PDF gộp.
-    assert names == [("CCCD Nguyen Van An", [2, 0]), ("Tờ khai", None)]
+    assert names == [("CCCD Nguyễn Văn An", [2, 0]), ("Tờ khai", None)]

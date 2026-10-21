@@ -14,8 +14,8 @@ Mapper định tuyến TẤT ĐỊNH theo khớp tên (không tin LLM phân nhó
 sơ; CCCD còn lại → người nộp.
 
 Cấu trúc form:
-- Phần I   Người nộp — từ CCCD người nộp thay / giấy ủy quyền; không có thì CCCD chủ (chủ tự nộp). Chủ
-  tài khoản VNeID = chủ văn bằng, không người thứ 2 → giữ Phần I, tick data[isOwnerDossier].
+- Phần I   Người nộp — từ CCCD người nộp thay / giấy ủy quyền; không có thì CCCD chủ (chủ tự nộp); nút
+  data[isOwnerDossier] KHÔNG đụng tới.
 - Phần II  data[ChuHS] = loại chủ hồ sơ.
 - Phần III-V data[owner...] : chủ văn bằng (cá nhân owner*; tổ chức/DN ownerOrganizationFullname/ownerTaxCode).
 - Panel "Phieu" (data[Kinhgui]/[ToiTen]/[Sodinhdanh]/[Duoccap]/[do]/[Sohieu]/[requestQty]/[sogoc]/
@@ -164,7 +164,7 @@ COMPACT_COMP_BY_NAME["Phieu_NgayLap"] = "x-date"
 UI_COMP_BY_NAME = {
     # ----- Phần I: NGƯỜI NỘP HỒ SƠ -----
     "data[chonDoiTuong]": "dom-select",
-    "data[isOwnerDossier]": "dom-checkbox",  # "Người nộp là chủ hồ sơ" — tick khi tài khoản VNeID = chủ văn bằng.
+    "data[isOwnerDossier]": "dom-checkbox",  # "Người nộp là chủ hồ sơ" — KHÔNG đụng tới.
     "data[fullname]": "dom-input",
     "data[identityNumber]": "dom-input",
     "data[gender]": "dom-select",

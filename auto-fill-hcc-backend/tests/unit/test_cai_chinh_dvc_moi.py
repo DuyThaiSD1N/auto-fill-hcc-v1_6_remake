@@ -209,18 +209,19 @@ def test_attach_ten_tep_theo_ten_giay_to_llm_doc():
     assert [i["documentName"] for i in items] == ["Căn cước công dân", "Căn cước công dân 2", "Giấy khai sinh", "z123"]
 
 
-def test_attach_ten_cccd_theo_chu_the_khong_dau_va_mat_the():
+def test_attach_ten_cccd_theo_chu_the_giu_dau_va_mat_the():
     from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import _llm_document_name
     front = _llm_document_name({"documentName": "CĂN CƯỚC CÔNG DÂN", "matThe": "truoc", "chuThe": "NGUYỄN VĂN AN"})
     back = _llm_document_name({"documentName": "Căn cước công dân", "matThe": "sau", "chuThe": "NGUYEN<<VAN<AN"})
-    assert (front, back) == ("CCCD Nguyen Van An mặt trước", "CCCD Nguyen Van An mặt sau")
+    # Mặt sau chỉ có tên không dấu ở dòng MRZ; gộp hai mặt thì tên lấy theo mặt trước (có dấu).
+    assert (front, back) == ("CCCD Nguyễn Văn An mặt trước", "CCCD Nguyen Van An mặt sau")
     assert _llm_document_name({"documentName": "Giấy khai sinh", "matThe": ""}) == "Giấy khai sinh"
 
 
 def test_attach_ten_cccd_ca_hai_mat_tren_mot_trang_khong_ghi_mat():
     from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import _llm_document_name
     name = _llm_document_name({"documentName": "Căn cước công dân", "matThe": "ca_hai", "chuThe": "NGUYỄN VĂN AN"})
-    assert name == "CCCD Nguyen Van An"
+    assert name == "CCCD Nguyễn Văn An"
 
 
 def test_quan_he_cai_chinh_ten_theo_ket_luan_phan_vai_khi_thieu_so():
