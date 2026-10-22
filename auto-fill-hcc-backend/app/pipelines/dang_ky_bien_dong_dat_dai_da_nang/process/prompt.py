@@ -46,8 +46,8 @@ tài sản...":
 - ChuHoSo_DienThoai = mục 1d "Điện thoại liên hệ". Chỉ chữ số; không có thì bỏ.
 - NoiDungBienDong = mục "2. Nội dung biến động" — chép NGUYÊN VĂN (vd "Nhận chuyển nhượng"). ĐỪNG bịa.
 
-ĐỊA CHỈ (NguoiNop_DiaChi / ChuHoSo_DiaChi): tách object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …',
-xa=phường/xã, diaChi số nhà/đường/thôn/khu (KHÔNG kèm phường/xã/tỉnh). NguoiNop_DiaChi lấy ở CCCD (Nơi
+ĐỊA CHỈ (NguoiNop_DiaChi / ChuHoSo_DiaChi): tách object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …',
+xa=phường/xã, chiTietDuoiXa số nhà/đường/thôn/khu (KHÔNG kèm phường/xã/tỉnh). NguoiNop_DiaChi lấy ở CCCD (Nơi
 thường trú) hoặc Hợp đồng ủy quyền (địa chỉ Bên được ủy quyền).
 
 ⚠ NguoiNop_NoiCap: chỉ điền khi giấy tờ GHI RÕ nơi cấp. Giấy tờ (kể cả Hợp đồng ủy quyền chỉ ghi 'Căn cước

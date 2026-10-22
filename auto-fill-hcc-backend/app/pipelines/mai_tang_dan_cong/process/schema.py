@@ -23,8 +23,8 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD/CMND {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công '
         'an".'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. tinh='Tỉnh/Thành phố …', "
-        "xa=phường/xã/thị trấn, diaChi=số nhà/thôn/tổ (KHÔNG kèm xã/huyện/tỉnh). Không lấy quê quán."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. tinh='Tỉnh/Thành phố …', "
+        "xa=phường/xã/thị trấn, chiTietDuoiXa=số nhà/thôn/tổ (KHÔNG kèm xã/huyện/tỉnh). Không lấy quê quán."),
     ("QuocTich", 'Quốc tịch {who}; thường "Việt Nam".'),
 ]
 

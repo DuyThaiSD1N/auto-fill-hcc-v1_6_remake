@@ -20,7 +20,7 @@ FIELDS: list[dict] = [
              "QUYỀN'/'VĂN BẢN ỦY QUYỀN' (có dòng 'ủy quyền cho' + số CCCD của bên B). Chép người đứng NGAY "
              "SAU 'ủy quyền cho:' (bên B) vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" "
              "('Nam'/'Nữ'), \"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", "
-             "\"thuongTru\":{\"quocGia\",\"tinh\",\"xa\",\"diaChi\"}}. BỎ TRỐNG object này nếu: KHÔNG có file "
+             "\"thuongTru\":{\"quocGia\",\"tinh\",\"xa\",\"chiTietDuoiXa\"}}. BỎ TRỐNG object này nếu: KHÔNG có file "
              "ủy quyền (chữ 'Giấy ủy quyền' trong danh sách mục IV của Đơn Mẫu 18 KHÔNG tính); hoặc chỉ có "
              "CCCD rời; hoặc chỉ có người ĐỒNG KÝ Đơn / ĐỒNG SỞ HỮU (vd vợ/chồng) — họ KHÔNG phải người "
              "được ủy quyền. Đừng bịa."},
@@ -40,9 +40,9 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
              '"Bộ Công an". Chỉ có nếu upload CCCD.'},
     {"name": "Nguoi_ThuongTru",
-     "desc": "Nơi thường trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN tên phường/xã MỚI ghi "
+     "desc": "Nơi thường trú của chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN tên phường/xã MỚI ghi "
              "ở mục 1c 'Địa chỉ' của Đơn Mẫu 18; nếu CCCD ghi tên CŨ (vd 'Phường 9') mà Đơn ghi tên mới "
-             "('Phường Lâm Viên - Đà Lạt') thì lấy theo Đơn. diaChi = số nhà/đường."},
+             "('Phường Lâm Viên - Đà Lạt') thì lấy theo Đơn. chiTietDuoiXa = số nhà/đường."},
     {"name": "Nguoi_DienThoai", "desc": "Số điện thoại liên hệ của chủ hồ sơ — lấy ở mục 1d của Đơn Mẫu 18. Chỉ chữ số."},
     {"name": "Nguoi_Email", "desc": "Hộp thư điện tử ở mục 1d Đơn Mẫu 18 nếu có; đơn bỏ trống thì bỏ qua."},
 
@@ -58,7 +58,7 @@ FIELDS: list[dict] = [
         "'CCCD số … cấp ngày <ngày> tại <nơi>' trong Giấy ủy quyền. Đừng bỏ trống nếu ủy quyền có ghi."},
     {"name": "DaiDien_NoiCapCccd", "desc": "Nơi cấp CCCD người đại diện — dòng 'CCCD số … cấp ngày … tại "
         "<nơi cấp>' trong Giấy ủy quyền; chuẩn hóa như Nguoi_NoiCapCccd."},
-    {"name": "DaiDien_ThuongTru", "desc": "Nơi cư trú người đại diện, object {quocGia,tinh,xa,diaChi} nếu có."},
+    {"name": "DaiDien_ThuongTru", "desc": "Nơi cư trú người đại diện, object {quocGia,tinh,xa,chiTietDuoiXa} nếu có."},
     {"name": "DaiDien_DienThoai", "desc": "Số điện thoại người đại diện nếu ghi trong đơn/ủy quyền. Chỉ chữ số."},
     {"name": "DaiDien_Email", "desc": "Email người đại diện nếu có."},
 

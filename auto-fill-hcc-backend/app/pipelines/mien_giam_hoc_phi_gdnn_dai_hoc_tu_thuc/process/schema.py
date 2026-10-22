@@ -22,8 +22,8 @@ Cấu trúc form:
 OCR_MAX_PAGES = 4
 
 # Địa chỉ trên CCCD/Giấy khai sinh thường là địa danh CŨ 3 cấp → giữ cấp huyện ở khoá "huyen" để mapper quy đổi.
-_AREA_DESC = ("object {quocGia,tinh,huyen,xa,diaChi,fullText}. tinh=tỉnh/thành phố; huyen=quận/huyện/thị xã/thành "
-              "phố thuộc tỉnh NẾU giấy ghi (địa danh cũ — giữ nguyên để quy đổi); xa=phường/xã/thị trấn; diaChi=số "
+_AREA_DESC = ("object {quocGia,tinh,huyen,xa,chiTietDuoiXa,fullText}. tinh=tỉnh/thành phố; huyen=quận/huyện/thị xã/thành "
+              "phố thuộc tỉnh NẾU giấy ghi (địa danh cũ — giữ nguyên để quy đổi); xa=phường/xã/thị trấn; chiTietDuoiXa=số "
               "nhà/đường/thôn/tổ dân phố hoặc tên cơ sở (bệnh viện, trạm y tế); fullText=nguyên văn dòng địa chỉ. "
               "Chép đúng địa danh trên giấy, KHÔNG tự đổi sang tên sau sáp nhập.")
 
@@ -48,7 +48,7 @@ FIELDS: list[dict] = [
     {"name": "SinhVien_ThuongTruCCCD", "desc": "Nơi thường trú IN TRÊN CCCD của sinh viên ('Nơi thường trú / Place of "
         "residence'), " + _AREA_DESC},
     {"name": "SinhVien_NoiSinh", "desc": "NƠI SINH của sinh viên, " + _AREA_DESC + " ƯU TIÊN Giấy khai sinh 'Nơi "
-        "sinh' (vd 'Bệnh viện Đa khoa, tỉnh X' → diaChi='Bệnh viện Đa khoa', tinh='X'), rồi Bằng tốt nghiệp, rồi "
+        "sinh' (vd 'Bệnh viện Đa khoa, tỉnh X' → chiTietDuoiXa='Bệnh viện Đa khoa', tinh='X'), rồi Bằng tốt nghiệp, rồi "
         "Đơn PL IV. KHÔNG lấy 'Quê quán' của CCCD/Giấy khai sinh."},
 
     # B. Đơn đề nghị Phụ lục IV + Giấy xác nhận của trường.

@@ -28,11 +28,11 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD của CHỦ HỒ SƠ (mặt sau CCCD hoặc dòng 'Nơi cấp' ở mục 1 Đơn), viết đầy đủ: 'Cục CS QLHC về TTXH'/'Cục cảnh sát QLHC về TTXH' -> 'Cục Cảnh sát quản lý hành chính về trật tự xã hội'."},
     {
         "name": "ChuHoSo_DonDiaChi",
-        "desc": "ĐỊA CHỈ THƯỜNG TRÚ của CHỦ HỒ SƠ ghi trên ĐƠN đề nghị (mục 1, dòng 'Địa chỉ thường trú'); đơn không ghi thì lấy dòng 'Địa chỉ' trên Bản cam kết. Object {quocGia,tinh,xa,diaChi}. KHÔNG lấy 'Địa chỉ thửa đất'. Dòng viết liền dạng '<số nhà, đường>, P./X. <phường/xã>, T./TP. <tỉnh>': cụm CUỐI là tỉnh, cụm ngay TRƯỚC là xã/phường, phần còn lại vào diaChi; khai triển viết tắt 'P.'->'Phường', 'X.'->'Xã', 'T.'->'Tỉnh', 'TP.'->'Thành phố'.",
+        "desc": "ĐỊA CHỈ THƯỜNG TRÚ của CHỦ HỒ SƠ ghi trên ĐƠN đề nghị (mục 1, dòng 'Địa chỉ thường trú'); đơn không ghi thì lấy dòng 'Địa chỉ' trên Bản cam kết. Object {quocGia,tinh,xa,chiTietDuoiXa}. KHÔNG lấy 'Địa chỉ thửa đất'. Dòng viết liền dạng '<số nhà, đường>, P./X. <phường/xã>, T./TP. <tỉnh>': cụm CUỐI là tỉnh, cụm ngay TRƯỚC là xã/phường, phần còn lại vào chiTietDuoiXa; khai triển viết tắt 'P.'->'Phường', 'X.'->'Xã', 'T.'->'Tỉnh', 'TP.'->'Thành phố'.",
     },
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "NƠI THƯỜNG TRÚ của CHỦ HỒ SƠ trên CCCD, object {quocGia,tinh,xa,diaChi}. Chỉ dùng khi Đơn và Bản cam kết đều không ghi địa chỉ. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
+        "desc": "NƠI THƯỜNG TRÚ của CHỦ HỒ SƠ trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}. Chỉ dùng khi Đơn và Bản cam kết đều không ghi địa chỉ. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của CHỦ HỒ SƠ (dòng 'Số điện thoại liên hệ' trên Đơn hoặc Bản cam kết), chỉ chữ số, bỏ dấu chấm/cách."},
     {"name": "ChuHoSo_Email", "desc": "Email của CHỦ HỒ SƠ nếu giấy tờ có ghi; không có thì bỏ field."},
@@ -46,7 +46,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_SoTo", "desc": "Số tờ bản đồ của thửa đất ('Tờ bản đồ số' ở mục 2 Đơn; đối chiếu Giấy chứng nhận mục 2.a). Chỉ chữ số."},
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: mục '2.e Địa chỉ' (hoặc 'Địa chỉ thửa đất') trên Giấy chứng nhận -> dòng 'Địa chỉ thửa đất' ở mục 2 Đơn -> địa chỉ thửa đất trên Bản cam kết. diaChi chỉ giữ thôn/tổ/đường nếu nguồn có ghi; KHÔNG ghi số thửa/tờ bản đồ vào diaChi. TUYỆT ĐỐI không lấy địa chỉ thường trú của người sử dụng đất.",
+        "desc": "ĐỊA CHỈ THỬA ĐẤT (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: mục '2.e Địa chỉ' (hoặc 'Địa chỉ thửa đất') trên Giấy chứng nhận -> dòng 'Địa chỉ thửa đất' ở mục 2 Đơn -> địa chỉ thửa đất trên Bản cam kết. chiTietDuoiXa chỉ giữ thôn/tổ/đường nếu nguồn có ghi; KHÔNG ghi số thửa/tờ bản đồ vào chiTietDuoiXa. TUYỆT ĐỐI không lấy địa chỉ thường trú của người sử dụng đất.",
     },
 ]
 

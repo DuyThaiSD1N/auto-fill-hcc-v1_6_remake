@@ -21,8 +21,8 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp/cơ quan cấp giấy tờ {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ '
         'XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Tờ khai Mẫu 12 (mục Cơ quan cấp).'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi thường trú) / "
-        "Tờ khai Mẫu 12 (Địa chỉ thường trú). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/khóm/"
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi thường trú) / "
+        "Tờ khai Mẫu 12 (Địa chỉ thường trú). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/khóm/"
         "ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who}. Chỉ chữ số; KHÔNG lấy số bàn. Thường không có trên giấy tờ."),
     ("Email", "Email liên hệ {who} nếu giấy tờ có; thường không có → bỏ."),

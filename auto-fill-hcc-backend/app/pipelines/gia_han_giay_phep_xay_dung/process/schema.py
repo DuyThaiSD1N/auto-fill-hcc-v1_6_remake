@@ -33,7 +33,7 @@ FIELDS: list[dict] = [
     {"name": "Applicant_DienThoai", "desc": "Số điện thoại người nộp (dòng 'Số điện thoại' trên Đơn)."},
     {"name": "Applicant_Email", "desc": "Email người nộp nếu giấy tờ ghi rõ."},
     {"name": "Applicant_NoiCuTru", "desc": "Nơi THƯỜNG TRÚ của NGƯỜI NỘP theo CCCD (hoặc 'Địa chỉ' của người "
-        "đó trên GPXD), object {quocGia,tinh,xa,diaChi,fullText}. KHÔNG lấy địa chỉ lô đất xây dựng."},
+        "đó trên GPXD), object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. KHÔNG lấy địa chỉ lô đất xây dựng."},
 
     # B. Kính gửi + CHỦ ĐẦU TƯ/CHỦ HỘ.
     {"name": "Don_KinhGui", "desc": "Cơ quan 'Kính gửi' trên Đơn (thường là cơ quan đã cấp GPXD), vd "
@@ -53,12 +53,12 @@ FIELDS: list[dict] = [
     # C. Tổ chức NGƯỜI NỘP (chỉ khi chủ đầu tư là tổ chức tự đứng nộp).
     {"name": "ToChucNop_Ten", "desc": "Tên doanh nghiệp NGƯỜI NỘP (chỉ khi CHỦ ĐẦU TƯ là tổ chức tự đứng nộp)."},
     {"name": "ToChucNop_MaSoThue", "desc": "Mã số doanh nghiệp/Mã số thuế của tổ chức người nộp (10 chữ số)."},
-    {"name": "ToChucNop_DiaChi", "desc": "Địa chỉ trụ sở tổ chức người nộp, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "ToChucNop_DiaChi", "desc": "Địa chỉ trụ sở tổ chức người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "ToChucNop_DienThoai", "desc": "Số điện thoại của tổ chức người nộp."},
 
     # D. Địa điểm xây dựng (mục 2 của Đơn).
     {"name": "Dat_DiaDiemXayDung", "desc": "TỈNH và PHƯỜNG/XÃ của LÔ ĐẤT xây dựng (mục 2 Đơn: 'phường (xã)', "
-        "'tỉnh, thành phố'; hoặc vị trí xây dựng trên GPXD), object {quocGia,tinh,xa,diaChi,fullText}. Ưu tiên "
+        "'tỉnh, thành phố'; hoặc vị trí xây dựng trên GPXD), object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. Ưu tiên "
         "tên phường/xã HIỆN HÀNH (GPXD/Đơn mới) thay cho tên cũ trên GCN. KHÁC nơi cư trú người nộp."},
     {"name": "Dat_LoDatSo", "desc": "Giá trị dòng 'Lô đất số' trên Đơn (thường ghi số phát hành GCN QSDĐ, vd "
         "'AB 123456'). Đơn để trống thì lấy số phát hành GCN QSDĐ."},

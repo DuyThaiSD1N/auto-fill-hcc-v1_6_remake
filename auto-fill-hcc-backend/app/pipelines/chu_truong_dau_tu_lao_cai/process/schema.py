@@ -16,7 +16,7 @@ Lào Cai (`_shared/lao_cai_nguoi_nop`, xem mapper).
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn/lô."
 )
 _VB_DE_NGHI = (

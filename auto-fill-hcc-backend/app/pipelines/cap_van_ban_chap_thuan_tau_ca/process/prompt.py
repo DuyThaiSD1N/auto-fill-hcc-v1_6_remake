@@ -21,7 +21,7 @@ Sex"). Khi có CCCD người đề nghị → PHẢI điền NguoiDeNghi_NgaySin
 NGUỒN NHÂN THÂN (NguoiDeNghi_*): ưu tiên CCCD; bổ sung từ Tờ khai Mẫu 12 (Họ tên, Địa chỉ thường trú,
 Mã định danh, Loại giấy tờ, Cơ quan cấp, ngày cấp). Số định danh: ưu tiên 12 chữ số. Nơi cấp: CCCD gắn
 chip không in nhãn riêng → lấy 'Cơ quan cấp' ở Tờ khai. Chuẩn hóa tên cơ quan (Cục Cảnh sát QLHC về TTXH
-/ Bộ Công an). ThuongTru tách object {quocGia,tinh,xa,diaChi}, diaChi chỉ chi tiết (số nhà/khóm/ấp/thôn).
+/ Bộ Công an). ThuongTru tách object {quocGia,tinh,xa,chiTietDuoiXa}, chiTietDuoiXa chỉ chi tiết (số nhà/khóm/ấp/thôn).
 
 NỘI DUNG TỜ KHAI (ToKhai_*): KinhGui = mục 'Kính gửi'; DiaDanh = tên tỉnh/thành nơi lập tờ khai; LoaiGiayTo
 = mục 'Loại giấy tờ' (không ghi mà số định danh 12 số → 'Thẻ Căn cước công dân'); CoQuanCap = mục 'Cơ quan

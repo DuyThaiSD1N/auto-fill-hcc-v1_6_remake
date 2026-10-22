@@ -44,8 +44,8 @@ field là "VĂN BẢN ĐỀ NGHỊ …" (mục I "Nhà đầu tư" + "Thông tin
 9. Chỉ trả ngày khi có ĐỦ ngày-tháng-năm. Chỉ có năm thì bỏ field; TUYỆT ĐỐI không bịa 01/01.
 10. Giới tính chỉ từ dòng "Giới tính", danh xưng gắn trực tiếp với đúng người đó (Ông = Nam, Bà = Nữ) hoặc CCCD.
     KHÔNG suy từ tên đệm.
-11. Địa chỉ trả object {quocGia, tinh, xa, diaChi}. Chuỗi viết liền "<số nhà/lô/thôn>, <xã/phường>, <tỉnh>":
-    cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại là diaChi.
+11. Địa chỉ trả object {quocGia, tinh, xa, chiTietDuoiXa}. Chuỗi viết liền "<số nhà/lô/thôn>, <xã/phường>, <tỉnh>":
+    cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại là chiTietDuoiXa.
 12. Điện thoại ghi để chấm ("Điện thoại: ....") hoặc bỏ trống → BỎ field, không mượn số của chủ thể khác.
     ⚑ Số "Điện thoại" ở mục I (ngay dưới địa chỉ trụ sở) là của DOANH NGHIỆP → chỉ vào ChuHoSo_DienThoai.
     Email ở mục I cũng là của DOANH NGHIỆP → ChuHoSo_Email. DienThoai / Email của người đại diện theo pháp luật

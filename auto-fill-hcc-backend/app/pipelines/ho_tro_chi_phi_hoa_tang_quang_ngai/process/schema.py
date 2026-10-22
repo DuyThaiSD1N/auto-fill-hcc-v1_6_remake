@@ -43,10 +43,10 @@ FIELDS: list[dict] = [
     {
         "name": "ChuHoSo_NoiCuTru",
         "desc": (
-            "NƠI CƯ TRÚ (thường trú) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: "
+            "NƠI CƯ TRÚ (thường trú) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: "
             "mục 'Thường trú tại'/'Nơi cư trú' trên Tờ khai đề nghị -> địa chỉ đầy đủ trên CCCD đúng "
             "người -> địa chỉ ghi trong văn bản ủy quyền (thường bị rút gọn, chỉ dùng khi không có "
-            "nguồn nào khác). Giữ đủ tổ dân phố/thôn/xóm/số nhà trong diaChi. ĐÂY KHÔNG PHẢI địa chỉ "
+            "nguồn nào khác). Giữ đủ tổ dân phố/thôn/xóm/số nhà trong chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa chỉ "
             "cơ sở hỏa táng và KHÔNG PHẢI nơi thường trú của người chết."
         ),
     },
@@ -88,8 +88,8 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiNop_NoiCuTru",
         "desc": (
-            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao "
-            "chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả tổ dân phố/thôn/số nhà trong diaChi. Có ủy "
+            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao "
+            "chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả tổ dân phố/thôn/số nhà trong chiTietDuoiXa. Có ủy "
             "quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN."
         ),
     },
@@ -97,11 +97,11 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu hồ sơ ghi rõ; không tự tạo."},
     {
         "name": "ChuHoSo_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Tờ khai đề nghị hỗ trợ chi phí hỏa táng (Mẫu số 01/Mẫu số 02); nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào diaChi.",
+        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Tờ khai đề nghị hỗ trợ chi phí hỏa táng (Mẫu số 01/Mẫu số 02); nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào chiTietDuoiXa.",
     },
     {
         "name": "NguoiNop_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,diaChi}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
+        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,chiTietDuoiXa}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
     },
     {
         "name": "Don_NoiDungDeNghi",

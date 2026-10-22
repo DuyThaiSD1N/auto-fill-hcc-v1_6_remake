@@ -12,7 +12,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của CHỦ HỒ SƠ, lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Nơi cư trú của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Ưu tiên mục 'Địa chỉ' của người sử dụng đất trên Đơn Mẫu số 11/ĐK; nếu thiếu mới lấy CCCD đúng người, văn bản ủy quyền rồi các giấy tờ khác. Giữ đủ thôn/xóm/tổ/số nhà trong diaChi; không để giấy tờ rút gọn ghi đè địa chỉ đầy đủ.",
+        "desc": "Nơi cư trú của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên mục 'Địa chỉ' của người sử dụng đất trên Đơn Mẫu số 11/ĐK; nếu thiếu mới lấy CCCD đúng người, văn bản ủy quyền rồi các giấy tờ khác. Giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa; không để giấy tờ rút gọn ghi đè địa chỉ đầy đủ.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của CHỦ HỒ SƠ trên Đơn Mẫu số 11/ĐK, chỉ chữ số. Không dùng số của người khác."},
     {"name": "ChuHoSo_Email", "desc": "Email của CHỦ HỒ SƠ trên Đơn Mẫu số 11/ĐK nếu có."},
@@ -24,7 +24,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Nơi cư trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru. Có ủy quyền thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN, không lấy địa chỉ BÊN ỦY QUYỀN.",
+        "desc": "Nơi cư trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru. Có ủy quyền thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN, không lấy địa chỉ BÊN ỦY QUYỀN.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP, chỉ chữ số. Không lấy số của chủ hồ sơ khi hai người khác nhau."},
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có."},

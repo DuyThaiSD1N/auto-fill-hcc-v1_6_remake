@@ -18,7 +18,7 @@ tài khoản đăng nhập trước khi cho nộp → cả khối phải là M�
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn."
 )
 
@@ -80,7 +80,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của người sử dụng đất, lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ THƯỜNG TRÚ/liên hệ của người sử dụng đất, object {quocGia,tinh,xa,diaChi}. Nguồn: "
+        "desc": "Địa chỉ THƯỜNG TRÚ/liên hệ của người sử dụng đất, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: "
                 "mục 'Địa chỉ' của Đơn Mẫu 21 hoặc nơi cư trú trên CCCD. ĐÂY KHÔNG PHẢI địa chỉ thửa đất "
                 "— hai chỗ này thường khác nhau, tuyệt đối không lấy nhầm.",
     },
@@ -96,7 +96,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy của bên được ủy quyền."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp giấy tờ định danh của NGƯỜI NỘP, dd/mm/yyyy, đi cùng đúng số giấy tờ."},
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru."},
     {"name": "NguoiNop_DienThoai", "desc": "Điện thoại của NGƯỜI NỘP, chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có."},
     {"name": "NguoiNop_Fax", "desc": "Số fax của NGƯỜI NỘP nếu có."},
@@ -109,7 +109,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_NguonGoc", "desc": "Nguồn gốc sử dụng đất khai trong đơn (vd 'bố mẹ cho', 'nhận chuyển nhượng năm …'), chép nguyên văn. Không suy diễn."},
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn: mục 2 "
+        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: mục 2 "
                 "Đơn Mẫu 21 hoặc mảnh trích đo. Không có nguồn ghi rõ thì bỏ field.",
     },
 ]

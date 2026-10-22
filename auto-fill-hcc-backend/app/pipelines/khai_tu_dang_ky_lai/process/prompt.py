@@ -61,7 +61,7 @@ thể hiện việc đăng ký khai tử trước đây.
 - Requester_Relationship lấy từ nhãn "Quan hệ với người đã chết".
 - Requester_ResidenceDomestic lấy từ nhãn "Nơi cư trú" trong phần người yêu cầu trên tờ khai.
   Nếu tờ khai ghi "Nơi cư trú: Tổ dân phố Tân phú nhiều, phường Tân phong, tỉnh Lai Châu" thì trả
-  tinh="Lai Châu", xa="Tân Phong", diaChi="Tổ dân phố Tân phú nhiều". Không thay bằng nơi thường trú
+  tinh="Lai Châu", xa="Tân Phong", chiTietDuoiXa="Tổ dân phố Tân phú nhiều". Không thay bằng nơi thường trú
   trên CCCD.
 - Deceased_BirthDate lấy đủ dd/mm/yyyy nếu có đủ ngày/tháng/năm; nếu thật sự chỉ thấy năm thì trả yyyy.
 - Deceased_DeathDate và Deceased_DeathTime lấy từ nhãn "Đã chết vào lúc" hoặc "Tử vong lúc".
@@ -73,8 +73,8 @@ thể hiện việc đăng ký khai tử trước đây.
 - Deceased_DeathPlaceDomestic bắt buộc lấy từ nhãn "Nơi chết"/"Nơi tử vong" khi dòng này có nội dung.
   Không được bỏ qua chỉ vì không có giấy báo tử hoặc vì địa chỉ bị xuống dòng trong OCR.
 - Nếu "Nơi chết" ghi "Tổ dân phố 3, phường Tân Phong, tỉnh Lai Châu" thì trả
-  tinh="Lai Châu", xa="Tân Phong", diaChi="Tổ dân phố 3".
-- Nếu ghi "tại nhà" và cùng địa chỉ cư trú thì trả địa chỉ đó, diaChi có thể thêm "tại nhà" nếu OCR
+  tinh="Lai Châu", xa="Tân Phong", chiTietDuoiXa="Tổ dân phố 3".
+- Nếu ghi "tại nhà" và cùng địa chỉ cư trú thì trả địa chỉ đó, chiTietDuoiXa có thể thêm "tại nhà" nếu OCR
   thể hiện rõ.
 - Deceased_DeathCause lấy từ "Nguyên nhân chết".
 </paper_declaration_rules>
@@ -105,17 +105,17 @@ thể hiện việc đăng ký khai tử trước đây.
 </copy_request_rules>
 
 <address_split_rules>
-- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}.
+- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
 - xa = tên phường/xã/thị trấn, bỏ tiền tố "Xã/Phường/Thị trấn/TT".
-- diaChi = phần chi tiết trước xã/phường như tổ, bản, thôn, số nhà, đường. Không lặp huyện/tỉnh trong diaChi.
+- chiTietDuoiXa = phần chi tiết trước xã/phường như tổ, bản, thôn, số nhà, đường. Không lặp huyện/tỉnh trong chiTietDuoiXa.
 - Nếu địa chỉ dạng cũ 3 cấp "[chi tiết], xã, huyện, tỉnh", bỏ cấp huyện; lấy xã là phần trước huyện.
 - Nếu giấy ghi tỉnh Lai Châu và xã/phường Tân Phong, trả tinh="Lai Châu", xa="Tân Phong".
 - Nếu địa chỉ có 4 cấp "[chi tiết dòng 1], [xã/phường dòng 2 hoặc cụm kế tiếp], [huyện/thành phố],
-  [tỉnh]" thì phần ngay trước huyện/thành phố là xã/phường, phần trước đó mới là diaChi.
+  [tỉnh]" thì phần ngay trước huyện/thành phố là xã/phường, phần trước đó mới là chiTietDuoiXa.
   Ví dụ "Tẩn Phủ Nhiêu / Bản Giang, Tam Đường, Lai Châu" → tinh="Lai Châu", xa="Bản Giang",
-  diaChi="Tẩn Phủ Nhiêu"; không được trả xa="Tẩn Phủ Nhiêu", diaChi="Bản Giang".
+  chiTietDuoiXa="Tẩn Phủ Nhiêu"; không được trả xa="Tẩn Phủ Nhiêu", chiTietDuoiXa="Bản Giang".
 - Với địa chỉ từ tờ khai dạng "Tổ dân phố Tân phú nhiều, phường Tân phong, tỉnh Lai Châu" →
-  tinh="Lai Châu", xa="Tân Phong", diaChi="Tổ dân phố Tân phú nhiều".
+  tinh="Lai Châu", xa="Tân Phong", chiTietDuoiXa="Tổ dân phố Tân phú nhiều".
 - OCR có thể xuống dòng giữa tên phường/xã, ví dụ "phường Đoàn\nKết" phải ghép thành
   xa="Đoàn Kết".
 </address_split_rules>

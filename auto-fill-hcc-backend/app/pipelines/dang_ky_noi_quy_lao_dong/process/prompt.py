@@ -11,7 +11,7 @@ nghị (phần đầu: "Tên doanh nghiệp", "Mã số doanh nghiệp", "Địa
 Quyết định. Tiêu đề văn bản hay in 2 dòng: dòng trên là công ty mẹ / tổng công ty, dòng dưới là đơn vị ban hành →
 DoanhNghiep_Ten lấy DÒNG DƯỚI (đơn vị ban hành).
 Vd "Địa chỉ: Số 10 đường Mẫu, phường Hòa Bình, thành phố Bình An" → {"tinh":"Thành phố Bình An",
-"xa":"Phường Hòa Bình","diaChi":"Số 10 đường Mẫu"}.
+"xa":"Phường Hòa Bình","chiTietDuoiXa":"Số 10 đường Mẫu"}.
 
 NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT (DaiDien_*): người ký công văn / quyết định ("GIÁM ĐỐC", "TỔNG GIÁM ĐỐC") = "Bên ủy
 quyền (Bên A)" của Giấy ủy quyền. CCCD số, ngày cấp, nơi cấp của Bên A ghi ngay trong Giấy ủy quyền.

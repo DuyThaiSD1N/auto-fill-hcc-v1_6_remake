@@ -24,9 +24,9 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD/căn cước {who} — CCCD hoặc giấy xác nhận quá trình hành nghề "Nơi cấp". "CỤC '
         'TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật '
         'tự xã hội"; "BỘ CÔNG AN" → "Bộ Công an". KHÔNG lấy nơi cấp CMND cũ in trên chứng chỉ hành nghề.'),
-    ("ThuongTru", "NƠI CƯ TRÚ của CÁ NHÂN {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi cư trú) → "
+    ("ThuongTru", "NƠI CƯ TRÚ của CÁ NHÂN {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi cư trú) → "
         "GCN đăng ký hộ kinh doanh mục chủ hộ 'Nơi thường trú' → giấy xác nhận quá trình hành nghề 'Địa chỉ "
-        "cư trú'. tinh='Tỉnh/Thành phố …' (viết đầy đủ), xa='Phường/Xã/Đặc khu …', diaChi=số nhà/đường/tổ/thôn "
+        "cư trú'. tinh='Tỉnh/Thành phố …' (viết đầy đủ), xa='Phường/Xã/Đặc khu …', chiTietDuoiXa=số nhà/đường/tổ/thôn "
         "(KHÔNG kèm phường/xã/tỉnh). ⚠ KHÔNG lấy địa chỉ CƠ SỞ (Đơn 'Địa chỉ', GCN 'Trụ sở') và KHÔNG lấy "
         "địa chỉ trên chứng chỉ hành nghề / văn bằng (địa chỉ cũ)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Đơn đề nghị 'Điện thoại' / GCN đăng ký hộ kinh doanh 'Điện "

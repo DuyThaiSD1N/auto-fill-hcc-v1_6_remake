@@ -13,7 +13,7 @@ lại "Cá nhân". Trích nhân thân NGƯỜI NỘP từ CCCD + Giấy đề ng
 - ⚠ Giấy chứng nhận đăng ký xe ô tô KHÔNG phải giấy tờ nhân thân: 'Số (Number)' in dưới tiêu đề là số
   giấy đăng ký xe, KHÔNG phải số CCCD → không đưa vào NguoiNop_SoDinhDanh.
 - NguoiNop_ThuongTru: ưu tiên địa chỉ trong Giấy đề nghị mục 2 (địa danh MỚI sau sáp nhập); tách object
-  {tinh,xa,diaChi}; diaChi CHỈ chi tiết (số nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
+  {tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ chi tiết (số nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
 - NguoiNop_DienThoai: lấy ở Giấy đề nghị mục 3 (CCCD không có).
 
 THÔNG TIN ĐỀ NGHỊ (từ Giấy đề nghị Mẫu Mucb):

@@ -23,7 +23,7 @@ EXTRA_RULES = """<critical_rules>
    ToKhai_DienThoai từ Mục 3 bản khai + CCCD người khai.
 2. ToKhai_MoiQuanHeVoiTuTran là quan hệ của người khai với người có công từ trần (vd "Con đẻ").
 3. ToKhai_LoaiGiayTo mặc định "Căn cước công dân" nếu là CCCD.
-4. Quê quán/Nơi thường trú người khai là object {quocGia,tinh,xa,diaChi}.
+4. Quê quán/Nơi thường trú người khai là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </nguoi_khai>
 
 <nguoi_tu_tran>
@@ -33,7 +33,7 @@ EXTRA_RULES = """<critical_rules>
 3. TuTran_NgayTuTran, TuTran_SoGiayBaoTu, TuTran_NgayCapBaoTu, TuTran_NoiCapBaoTu ưu tiên lấy từ
    TRÍCH LỤC KHAI TỬ. TuTran_SoQDHuongTroCap/NgayQD/NoiCapQD/TiLeTonThuong thường trống trên tờ khai → bỏ.
 4. TuTran_MucTroCap là số tiền (vd "2.789.000"); TuTran_TroCapDaNhanDenHet là tháng (vd "Tháng 04/2026").
-5. Quê quán/Nơi thường trú người từ trần là object {quocGia,tinh,xa,diaChi}.
+5. Quê quán/Nơi thường trú người từ trần là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </nguoi_tu_tran>
 
 <mai_tang>
@@ -56,7 +56,7 @@ EXTRA_RULES = """<critical_rules>
 
 <cccd>
 1. Person1_* là của NGƯỜI KHAI (còn sống). Person1_NgayCap lấy ở mặt sau CCCD.
-2. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
+2. Person1_NoiCuTru là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </cccd>
 
 <output_examples>

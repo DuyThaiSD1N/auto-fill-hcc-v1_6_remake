@@ -27,7 +27,7 @@ FIELDS: list[dict] = [
     {"name": "HoKinhDoanh_TenVietTat", "desc": "Tên hộ kinh doanh viết tắt nếu có."},
     {
         "name": "TruSo_DiaChi",
-        "desc": "Địa chỉ trụ sở hộ kinh doanh, object {quocGia,tinh,xa,diaChi}.",
+        "desc": "Địa chỉ trụ sở hộ kinh doanh, object {quocGia,tinh,xa,chiTietDuoiXa}.",
     },
     {"name": "TruSo_DienThoai", "desc": "Số điện thoại trụ sở/hộ kinh doanh."},
     {"name": "TruSo_Email", "desc": "Email liên hệ của hộ kinh doanh."},
@@ -50,7 +50,7 @@ FIELDS: list[dict] = [
     {
         "name": "ChuHo_DiaChi",
         "desc": (
-            "Địa chỉ cá nhân của chủ hộ trên Giấy đề nghị đăng ký hộ kinh doanh, object {quocGia,tinh,xa,diaChi}; "
+            "Địa chỉ cá nhân của chủ hộ trên Giấy đề nghị đăng ký hộ kinh doanh, object {quocGia,tinh,xa,chiTietDuoiXa}; "
             "ưu tiên mục `Nơi ở hiện tại`, nếu không có thì `Nơi thường trú`; không lấy địa chỉ trụ sở."
         ),
     },
@@ -61,7 +61,7 @@ FIELDS: list[dict] = [
     {"name": "Von_SoTien", "desc": "Vốn kinh doanh, chỉ lấy số tiền, đơn vị đồng."},
     {
         "name": "Thue_DiaChiNhanThongBao",
-        "desc": "Địa chỉ nhận thông báo thuế nếu khác trụ sở, object {quocGia,tinh,xa,diaChi}.",
+        "desc": "Địa chỉ nhận thông báo thuế nếu khác trụ sở, object {quocGia,tinh,xa,chiTietDuoiXa}.",
     },
     {"name": "Thue_DienThoai", "desc": "Điện thoại người/địa chỉ nhận thông báo thuế."},
     {"name": "Thue_Fax", "desc": "Fax nhận thông báo thuế nếu có."},
@@ -82,7 +82,7 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiNop_DiaChi",
         "desc": (
-            "Địa chỉ người nộp hồ sơ ghi trên GIẤY ĐỀ NGHỊ ĐĂNG KÝ HỘ KINH DOANH, object {quocGia,tinh,xa,diaChi}; "
+            "Địa chỉ người nộp hồ sơ ghi trên GIẤY ĐỀ NGHỊ ĐĂNG KÝ HỘ KINH DOANH, object {quocGia,tinh,xa,chiTietDuoiXa}; "
             "CHỈ lấy khi người nộp là chủ hộ. Nếu người nộp là chủ hộ thì dùng địa chỉ cá nhân của chủ hộ trên Giấy đề nghị (ChuHo_DiaChi). "
             "CHỈ lấy từ giấy đề nghị — KHÔNG lấy từ giấy ủy quyền, KHÔNG lấy từ CCCD."
         ),
@@ -91,7 +91,7 @@ FIELDS: list[dict] = [
         "name": "Cccd_DanhSach",
         "desc": (
             "Danh sách MỌI thẻ căn cước/CCCD/CMND có trong hồ sơ, array object "
-            "{hoTen,gioiTinh,ngaySinh,soDinhDanh,diaChi}; diaChi là object {quocGia,tinh,xa,diaChi} đọc từ "
+            "{hoTen,gioiTinh,ngaySinh,soDinhDanh,chiTietDuoiXa}; chiTietDuoiXa là object {quocGia,tinh,xa,chiTietDuoiXa} đọc từ "
             "\"Nơi thường trú\". Mặt trước + mặt sau của cùng một thẻ chỉ là MỘT object. "
             "KHÔNG suy vai trò (chủ hộ hay người nộp) từ thứ tự file — cứ liệt kê đủ."
         ),
@@ -131,7 +131,7 @@ FIELDS: list[dict] = [
     {
         "name": "UyQuyen_NguoiDuocUyQuyen_DiaChi",
         "desc": (
-            "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,diaChi}; ưu tiên dòng Địa chỉ ghi "
+            "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên dòng Địa chỉ ghi "
             "trong GIẤY ỦY QUYỀN, giấy không ghi thì mới lấy 'Nơi thường trú' trên CCCD của người đó. "
             "BỎ cấp huyện."
         ),

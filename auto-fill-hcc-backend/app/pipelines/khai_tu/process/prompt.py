@@ -186,7 +186,7 @@ Ví dụ cho NguoiMat_NoiCuTruCuoiCung:
 - death_notice (Giấy báo tử) ghi "Thôn Đông, xã Phú Lộc, tỉnh An Phúc".
 - deceased_identity (CCCD) ghi "Số 88 đường Núi Trúc, phường Tân Lập, tỉnh An Phúc".
 → Chọn paper_declaration (Tờ khai) và trả {"quocGia":"Việt Nam","tinh":"Minh Sơn","xa":"Bình An",
-"diaChi":"Số 12 đường Hoa Mai"}; không ghép hoặc thay bằng địa chỉ từ hai nguồn sau.
+"chiTietDuoiXa":"Số 12 đường Hoa Mai"}; không ghép hoặc thay bằng địa chỉ từ hai nguồn sau.
 </source_priority_example>
 
 <identity_document_rules>
@@ -237,12 +237,12 @@ Ví dụ cho NguoiMat_NoiCuTruCuoiCung:
 Áp dụng cho NguoiYeuCau_NoiCuTru, Cccd_NoiCuTru, NguoiMat_NoiCuTruCuoiCung và NguoiMat_NoiChet:
 1. Chọn đúng nguồn theo SOURCE_AUTHORITY trước. Với người yêu cầu, tách địa chỉ tờ khai vào
    NguoiYeuCau_NoiCuTru và địa chỉ trên thẻ vào Cccd_NoiCuTru, không gộp hai địa chỉ làm một.
-2. Từ đúng nguồn đó, tách object {quocGia,tinh,xa,diaChi}.
+2. Từ đúng nguồn đó, tách object {quocGia,tinh,xa,chiTietDuoiXa}.
 3. Không ghép số nhà/đường của nguồn này với xã/tỉnh của nguồn khác.
 
 - xa chỉ giữ TÊN đơn vị, bỏ tiền tố Xã/Phường/Thị trấn/TT.
 - tinh là tỉnh/thành phố trực thuộc trung ương.
-- diaChi chỉ là phần chi tiết như số nhà, đường, tổ, tổ dân phố, khu, thôn, xóm, bản, ấp; không chứa
+- chiTietDuoiXa chỉ là phần chi tiết như số nhà, đường, tổ, tổ dân phố, khu, thôn, xóm, bản, ấp; không chứa
   xã/phường, huyện/quận hoặc tỉnh.
 - Nếu chuỗi dạng "[chi tiết], xã, huyện/quận/thành phố thuộc tỉnh, tỉnh": lấy xã, bỏ cấp huyện khỏi output.
 - Ưu tiên địa giới 2 cấp là bước CHUẨN HÓA SAU KHI CHỌN NGUỒN. Không được bỏ paper_declaration để chọn

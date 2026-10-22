@@ -22,7 +22,7 @@ hồ sơ không đúng với tài khoản đăng nhập!") → chế độ theo 
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn."
 )
 
@@ -100,9 +100,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của ĐÚNG người ở ChuHoSo_HoTen, lấy cùng giấy tờ với số và ngày cấp. Không có thì bỏ field."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Hồ sơ TỔ CHỨC thì đây là ĐỊA CHỈ "
+        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Hồ sơ TỔ CHỨC thì đây là ĐỊA CHỈ "
                 "TRỤ SỞ ghi trên đơn/ĐKKD; hồ sơ cá nhân thì là nơi thường trú trên CCCD hoặc mục 'Địa "
-                "chỉ' của đơn. Giữ đủ số nhà/đường/tổ/thôn trong diaChi. ĐÂY KHÔNG PHẢI địa điểm khu đất "
+                "chỉ' của đơn. Giữ đủ số nhà/đường/tổ/thôn trong chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa điểm khu đất "
                 "xin giao/thuê — tuyệt đối không lấy nhầm.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của chủ hồ sơ, chỉ chữ số. Chỉ lấy dãy số ghi sau nhãn điện thoại/ĐT/di động ở mục 'Địa chỉ liên hệ (điện thoại, fax, email)' của đơn hoặc trên ĐKKD. KHÔNG lấy mã số doanh nghiệp/mã số thuế (M.S.D.N, MST, kể cả in trong dấu mộc) hay số fax. Không có thì bỏ field."},
@@ -119,7 +119,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của ĐÚNG người ở NguoiNop_HoTen, đi cùng số và ngày cấp đó. Không có thì bỏ field."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép "
+        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép "
                 "NGUYÊN VẸN ChuHoSo_NoiCuTru; có ủy quyền thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN. KHÔNG lấy "
                 "nơi thường trú của người đại diện/người khác ghi trong quyết định.",
     },
@@ -156,7 +156,7 @@ FIELDS: list[dict] = [
     {
         "name": "ThuaDat_DiaChi",
         "desc": "ĐỊA ĐIỂM KHU ĐẤT được giao/thuê (KHÔNG phải trụ sở/nơi cư trú), object "
-                "{quocGia,tinh,xa,diaChi}. Nguồn: Đơn hoặc quyết định giao đất/chủ trương đầu tư. "
+                "{quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: Đơn hoặc quyết định giao đất/chủ trương đầu tư. "
                 "Không có nguồn ghi rõ thì bỏ field.",
     },
 ]

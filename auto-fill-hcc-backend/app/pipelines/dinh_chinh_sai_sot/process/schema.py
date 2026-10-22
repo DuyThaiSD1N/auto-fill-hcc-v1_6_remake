@@ -28,7 +28,7 @@ FIELDS: list[dict] = [
              'Đơn khi không có file căn cước. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "NguoiNop_NoiCuTru",
-     "desc": "Địa chỉ cư trú/thường trú người nộp, object {quocGia,tinh,xa,diaChi}; ưu tiên CCCD, "
+     "desc": "Địa chỉ cư trú/thường trú người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên CCCD, "
              "không có thì lấy địa chỉ của đúng người trong khối trên Đơn."},
     {"name": "NguoiNop_DienThoai",
      "desc": 'Số tại mục "Điện thoại liên hệ (nếu có)" trên Đơn đăng ký biến động đất đai; '

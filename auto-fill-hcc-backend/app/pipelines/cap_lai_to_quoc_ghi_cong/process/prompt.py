@@ -21,13 +21,13 @@ EXTRA_RULES = """<critical_rules>
 1. ToKhai_HoTen, ToKhai_NgaySinh, ToKhai_GioiTinh, ToKhai_SoDinhDanh, ToKhai_NgayCap, ToKhai_NoiCap,
    ToKhai_DienThoai, ToKhai_MoiQuanHeVoiLietSi, ToKhai_DeNghiCap, ToKhai_LyDoCap lấy từ mục 1.
 2. ToKhai_DeNghiCap chỉ trả "Cấp đổi" hoặc "Cấp lại" theo đúng chữ khoanh/ghi trong tờ khai.
-3. Quê quán và Nơi thường trú là object {quocGia,tinh,xa,diaChi}. quocGia mặc định "Việt Nam";
+3. Quê quán và Nơi thường trú là object {quocGia,tinh,xa,chiTietDuoiXa}. quocGia mặc định "Việt Nam";
    tinh giữ đủ "Tỉnh ..."/"Thành phố ..."; xa giữ đủ "Xã ..."/"Phường ..."/"Thị trấn ...";
-   diaChi chỉ giữ thôn/tổ dân phố/số nhà/đường, KHÔNG lặp lại xã/huyện/tỉnh.
+   chiTietDuoiXa chỉ giữ thôn/tổ dân phố/số nhà/đường, KHÔNG lặp lại xã/huyện/tỉnh.
 4. Với địa chỉ nhiều phần: tỉnh/thành phố là đơn vị hành chính cấp tỉnh ở CUỐI chuỗi; xã/phường/thị trấn
-   là cấp xã ngay trước tỉnh hoặc phần có tiền tố "xã/phường/thị trấn/TT"; phần còn lại mới vào diaChi.
+   là cấp xã ngay trước tỉnh hoặc phần có tiền tố "xã/phường/thị trấn/TT"; phần còn lại mới vào chiTietDuoiXa.
 5. Nếu địa chỉ chỉ có 2 phần và phần đầu là xã/phường/thị trấn, đặt phần đầu vào xa, phần sau vào tinh,
-   để diaChi rỗng.
+   để chiTietDuoiXa rỗng.
 </nguoi_de_nghi>
 
 <liet_si>
@@ -47,12 +47,12 @@ EXTRA_RULES = """<critical_rules>
 
 <cccd>
 1. Person1_NgayCap lấy ở mặt sau CCCD, KHÔNG lấy ngày sinh hay ngày hết hạn.
-2. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
+2. Person1_NoiCuTru là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </cccd>
 
 <output_examples>
 Đúng:
-{"fields":{"ToKhai_HoTen":"Trần Văn A","ToKhai_MoiQuanHeVoiLietSi":"em ruột","ToKhai_DeNghiCap":"Cấp lại","ToKhai_LyDoCap":"rách nát","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","diaChi":"TDP Đoàn Hạ"},"LietSi_HoTen":"Trần Văn B","LietSi_NgaySinh":"không nhớ","ToKhai_ThanNhan":[{"hoTen":"Trần Văn C","ngaySinh":"không nhớ","moiQuanHe":"Bố đẻ"}]}}
+{"fields":{"ToKhai_HoTen":"Trần Văn A","ToKhai_MoiQuanHeVoiLietSi":"em ruột","ToKhai_DeNghiCap":"Cấp lại","ToKhai_LyDoCap":"rách nát","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","chiTietDuoiXa":"TDP Đoàn Hạ"},"LietSi_HoTen":"Trần Văn B","LietSi_NgaySinh":"không nhớ","ToKhai_ThanNhan":[{"hoTen":"Trần Văn C","ngaySinh":"không nhớ","moiQuanHe":"Bố đẻ"}]}}
 
 Sai:
 {"fields":{"data[fullname]":"Trần Văn A","denghiCap":"Cấp lại"}}

@@ -10,7 +10,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
 
     # II. Người giám hộ.
     {"name": "Guardian_FullName", "desc": "Họ tên người giám hộ."},
@@ -21,7 +21,7 @@ FIELDS: list[dict] = [
     {"name": "Guardian_IdNumber", "desc": "Số định danh/CCCD/CMND người giám hộ."},
     {"name": "Guardian_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người giám hộ, dd/mm/yyyy."},
     {"name": "Guardian_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người giám hộ."},
-    {"name": "Guardian_ResidenceDomestic", "desc": "Nơi cư trú người giám hộ, object {quocGia,tinh,xa,diaChi}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
+    {"name": "Guardian_ResidenceDomestic", "desc": "Nơi cư trú người giám hộ, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
 
     # III. Người được giám hộ.
     {"name": "Ward_FullName", "desc": "Họ tên người được giám hộ."},
@@ -32,7 +32,7 @@ FIELDS: list[dict] = [
     {"name": "Ward_IdNumber", "desc": "Số định danh cá nhân/CCCD/CMND người được giám hộ nếu có."},
     {"name": "Ward_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người được giám hộ, dd/mm/yyyy; chỉ trả nếu có."},
     {"name": "Ward_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người được giám hộ; chỉ trả nếu có."},
-    {"name": "Ward_ResidenceDomestic", "desc": "Nơi cư trú người được giám hộ, object {quocGia,tinh,xa,diaChi}; ưu tiên tờ khai."},
+    {"name": "Ward_ResidenceDomestic", "desc": "Nơi cư trú người được giám hộ, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên tờ khai."},
     {"name": "Ward_BirthCertificateNumber", "desc": "Số giấy khai sinh/bản khai sinh của người được giám hộ, ví dụ 234."},
     {"name": "Ward_BirthCertificateIssueDate", "desc": "Ngày cấp/ngày đăng ký giấy khai sinh của người được giám hộ, dd/mm/yyyy."},
     {"name": "Ward_BirthCertificateIssuePlace", "desc": "Cơ quan cấp/nơi đăng ký giấy khai sinh của người được giám hộ."},

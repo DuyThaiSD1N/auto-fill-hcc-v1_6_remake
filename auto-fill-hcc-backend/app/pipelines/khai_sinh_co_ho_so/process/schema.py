@@ -28,7 +28,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD của chính người yêu cầu), chỉ trả khi có."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Requester_Relationship",
      "desc": "Chữ NGUYÊN VĂN ghi ở dòng quan hệ trên tờ khai khi không quy được về 4 giá trị chuẩn "
              "(vd 'Con', 'Anh', 'Em', 'Chị', 'Cháu nội'...). Dùng kèm Requester_RelationToSubject=\"Khác\"."},
@@ -48,12 +48,12 @@ FIELDS: list[dict] = [
     {"name": "Subject_Ethnicity", "desc": "Dân tộc người được đăng ký khai sinh."},
     {"name": "Subject_Nationality", "desc": "Quốc tịch người được đăng ký khai sinh nếu giấy tờ ghi rõ."},
     {"name": "Subject_BirthPlaceDomestic",
-     "desc": "Nơi sinh trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,diaChi}. "
+     "desc": "Nơi sinh trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa}. "
              "Ưu tiên NƠI SINH ghi trên TỜ KHAI; nếu tờ khai không ghi thì lấy nơi sinh trên hồ sơ, giấy tờ "
              "cá nhân (học bạ, hồ sơ học tập, giấy đề nghị xác nhận); vẫn không có thì lấy theo NƠI THƯỜNG TRÚ "
              "trên CCCD của chính người đó. KHÔNG dùng quê quán làm nơi sinh."},
     {"name": "Subject_HometownDomestic",
-     "desc": "Quê quán trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,diaChi}. "
+     "desc": "Quê quán trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa}. "
              "Lấy từ QUÊ QUÁN trên tờ khai/CCCD/hồ sơ cá nhân; KHÔNG dùng nơi sinh/nơi cư trú làm quê quán."},
     # Nhân thân trên CCCD/CMND CỦA CHÍNH người được khai sinh — nguồn fallback để điền khối
     # "Thông tin người yêu cầu" khi hồ sơ KHÔNG có tờ khai (chính chủ tự đi đăng ký cho mình).
@@ -65,7 +65,7 @@ FIELDS: list[dict] = [
      "desc": "Nơi cấp CCCD/CMND của chính người được đăng ký khai sinh — lấy từ mặt sau CCCD; RIÊNG "
              "Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND."},
     {"name": "Subject_ResidenceDomestic",
-     "desc": 'Nơi cư trú/thường trú của chính người được đăng ký khai sinh, object {quocGia,tinh,xa,diaChi}. '
+     "desc": 'Nơi cư trú/thường trú của chính người được đăng ký khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa}. '
              'Ưu tiên "Nơi thường trú" trên CCCD CỦA CHÍNH NGƯỜI ĐÓ; KHÔNG lấy nơi cư trú của cha/mẹ.'},
 
     # Cha của người được đăng ký khai sinh — rất hay ĐÃ MẤT và không có CCCD.
@@ -89,13 +89,13 @@ FIELDS: list[dict] = [
     {"name": "Father_Nationality",
      "desc": "Quốc tịch cha nếu tài liệu ghi rõ; nếu cha đã mất thì lấy từ dòng 'Quốc tịch' trên TRÍCH LỤC KHAI TỬ của cha."},
     {"name": "Father_ResidenceDomestic",
-     "desc": 'Nơi cư trú trong nước của cha, object {quocGia,tinh,xa,diaChi}. Ưu tiên "Nơi thường trú" '
+     "desc": 'Nơi cư trú trong nước của cha, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên "Nơi thường trú" '
              'trên CCCD của cha nếu có; không có CCCD thì lấy nơi cư trú ghi trên TỜ KHAI/GIẤY ĐỀ NGHỊ XÁC NHẬN. '
              'Nếu tài liệu ghi cha đã chết/mất hoặc OCR nhiễu như "Da Chet", "D.d. Chat", "L.D.d. Chat" thì '
-             'trả {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.'},
+             'trả {"quocGia":"","tinh":"","xa":"","chiTietDuoiXa":"Đã chết"}.'},
     {"name": "Father_HometownFromDeathCert",
      "desc": 'Nơi cư trú/thường trú cuối cùng của cha lấy từ TRÍCH LỤC KHAI TỬ hoặc GIẤY CHỨNG TỬ khi cha đã mất '
-             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,diaChi}. '
+             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. '
              'Ưu tiên dòng "Nơi thường trú" hoặc "Nơi cư trú" trên trích lục khai tử; '
              'nếu không có nơi cư trú thì lấy dòng "Quê quán". '
              'Chỉ trả khi cha đã mất VÀ có trích lục khai tử trong hồ sơ.'},
@@ -120,13 +120,13 @@ FIELDS: list[dict] = [
     {"name": "Mother_Nationality",
      "desc": "Quốc tịch mẹ nếu tài liệu ghi rõ; nếu mẹ đã mất thì lấy từ dòng 'Quốc tịch' trên TRÍCH LỤC KHAI TỬ của mẹ."},
     {"name": "Mother_ResidenceDomestic",
-     "desc": 'Nơi cư trú trong nước của mẹ, object {quocGia,tinh,xa,diaChi}. Ưu tiên "Nơi thường trú" '
+     "desc": 'Nơi cư trú trong nước của mẹ, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên "Nơi thường trú" '
              'trên CCCD của mẹ nếu có; không có CCCD thì lấy nơi cư trú ghi trên TỜ KHAI. '
              'Nếu tài liệu ghi mẹ đã chết/mất hoặc OCR nhiễu như "Da Chet", "D.d. Chat", "L.D.d. Chat" thì '
-             'trả {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.'},
+             'trả {"quocGia":"","tinh":"","xa":"","chiTietDuoiXa":"Đã chết"}.'},
     {"name": "Mother_HometownFromDeathCert",
      "desc": 'Nơi cư trú/thường trú cuối cùng của mẹ lấy từ TRÍCH LỤC KHAI TỬ hoặc GIẤY CHỨNG TỬ khi mẹ đã mất '
-             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,diaChi}. '
+             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. '
              'Ưu tiên dòng "Nơi thường trú" hoặc "Nơi cư trú" trên trích lục khai tử; '
              'nếu không có nơi cư trú thì lấy dòng "Quê quán". '
              'Chỉ trả khi mẹ đã mất VÀ có trích lục khai tử trong hồ sơ.'},

@@ -44,7 +44,7 @@ CHỈ nhận dòng có chữ 'dự thi'.
 
 ⚠ RIÊNG thủ tục này, field địa chỉ (…_ThuongTru) trả THÊM khoá "huyen" = quận/huyện/thị xã/thành phố thuộc
 tỉnh nếu giấy ghi (vd CCCD 'Thôn A, Tuy Lộc, Thành phố Yên Bái, Yên Bái' → tinh='Yên Bái', huyen='Thành
-phố Yên Bái', xa='Tuy Lộc', diaChi='Thôn A'). Giữ đúng địa danh cũ trên giấy; hệ thống tự quy đổi sang
+phố Yên Bái', xa='Tuy Lộc', chiTietDuoiXa='Thôn A'). Giữ đúng địa danh cũ trên giấy; hệ thống tự quy đổi sang
 tỉnh/xã sau sáp nhập.
 
 ⚠ VanBang_LoaiGiayTo: KHÔNG suy từ nhãn cố định "Số chứng minh nhân dân/Hộ chiếu" in sẵn trên BM04. Xét

@@ -10,7 +10,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}; xa bắt buộc nếu giấy có."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}; xa bắt buộc nếu giấy có."},
     {"name": "Requester_Relationship", "desc": "Quan hệ của người yêu cầu với người đã chết."},
 
     # Người được đăng ký lại khai tử.
@@ -22,10 +22,10 @@ FIELDS: list[dict] = [
     {"name": "Deceased_IdNumber", "desc": "Số định danh/CCCD/CMND người đã chết nếu có."},
     {"name": "Deceased_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người đã chết, dd/mm/yyyy."},
     {"name": "Deceased_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người đã chết."},
-    {"name": "Deceased_ResidenceDomestic", "desc": "Nơi cư trú cuối cùng của người đã chết, object {quocGia,tinh,xa,diaChi}; xa bắt buộc nếu giấy có."},
+    {"name": "Deceased_ResidenceDomestic", "desc": "Nơi cư trú cuối cùng của người đã chết, object {quocGia,tinh,xa,chiTietDuoiXa}; xa bắt buộc nếu giấy có."},
     {"name": "Deceased_DeathDate", "desc": 'Ngày chết, dd/mm/yyyy; lấy từ "Đã chết vào lúc"/"Tử vong lúc".'},
     {"name": "Deceased_DeathTime", "desc": 'Giờ chết dạng "HH:mm"; ví dụ "09 giờ 40 phút" -> "09:40".'},
-    {"name": "Deceased_DeathPlaceDomestic", "desc": "Nơi chết, object {quocGia,tinh,xa,diaChi}; xa bắt buộc nếu giấy có."},
+    {"name": "Deceased_DeathPlaceDomestic", "desc": "Nơi chết, object {quocGia,tinh,xa,chiTietDuoiXa}; xa bắt buộc nếu giấy có."},
     {"name": "Deceased_DeathCause", "desc": "Nguyên nhân chết."},
 
     # Nhân thân CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với CCCD: CCCD trùng số tờ

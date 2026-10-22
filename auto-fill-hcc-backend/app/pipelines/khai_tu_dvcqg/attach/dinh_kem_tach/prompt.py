@@ -13,8 +13,9 @@ Bạn đọc các tài liệu đính kèm của hồ sơ đăng ký khai tử th
 2. Mỗi giấy tờ = một nhóm trang LIÊN TIẾP của cùng một tệp. Trang chú thích / mặt sau in sẵn của tờ khai, giấy khai
    sinh, trích lục và trang tiếp theo của cùng văn bản thuộc giấy liền trước. Hai mặt của CÙNG một thẻ CCCD / thẻ
    căn cước / CMND là MỘT giấy, KHÔNG tách: hai mặt nằm liền nhau trong cùng tệp → một phần tử gồm cả hai trang,
-   matThe = "ca_hai". Trang trắng hoặc chỉ có ký tự
-   rác → docType "blank_page".
+   matThe = "ca_hai". Trang THỰC SỰ trắng (OCR rỗng, chỉ dấu chấm / gạch / số trang) → docType "blank_page".
+   Trang có chữ đọc được — dù ít, dù lộn xộn (vd ảnh chụp bia mộ chỉ đọc được "MỘ", tên người, năm) — KHÔNG phải
+   trang trắng; không chắc loại giấy thì dùng other để không mất tài liệu.
 3. MỌI trang của MỌI tệp nằm trong đúng MỘT phần tử, kể cả trang trắng. "pages" đánh số theo trang trong tệp (từ 1).
 4. docType:
    - death_notice: GIẤY BÁO TỬ hoặc giấy tờ THAY giấy báo tử do cơ quan có thẩm quyền cấp (trích lục khai tử,
@@ -22,10 +23,11 @@ Bạn đọc các tài liệu đính kèm của hồ sơ đăng ký khai tử th
    - authorization: giấy / hợp đồng / văn bản ỦY QUYỀN thực hiện việc đăng ký khai tử (có bên ủy quyền và bên được
      ủy quyền), kể cả khi kèm trang chứng thực chữ ký.
    - death_event_proof: giấy tờ, chứng cứ chứng minh sự kiện chết của NGƯỜI CHẾT ĐÃ LÂU khi không có giấy báo tử
-     (biên bản xác minh, bản cam đoan có người làm chứng, công văn xác minh mộ phần / cư trú).
+     (biên bản xác minh, bản cam đoan có người làm chứng, công văn xác minh mộ phần / cư trú, ẢNH CHỤP BIA MỘ /
+     mộ phần — OCR thường chỉ đọc được vài chữ khắc như "MỘ", họ tên, năm sinh – năm mất).
    - death_place_proof: giấy tờ chứng minh NƠI người đó chết hoặc nơi phát hiện thi thể.
    - other: mọi tài liệu khác — tờ khai đăng ký khai tử, CCCD/CMND/hộ chiếu, giấy khai sinh, sổ hộ khẩu...
-   - blank_page: trang trắng / ký tự rác.
+   - blank_page: CHỈ trang thực sự trắng, không có chữ đọc được.
 5. documentName: tên giấy tờ theo TIÊU ĐỀ in trên giấy (vd "Giấy báo tử", "Trích lục khai tử",
    "Căn cước công dân", "Tờ khai đăng ký khai tử"); giấy không có tiêu đề thì gọi đúng loại giấy. Tối đa 50 ký tự,
    không ngoặc, không dấu chấm, không đuôi tệp. KHÔNG dùng tên file, KHÔNG ghi chung chung "Tài liệu khác". Không

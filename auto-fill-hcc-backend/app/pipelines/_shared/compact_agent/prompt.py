@@ -33,14 +33,15 @@ NHIỆM VỤ: trả về object fields thật NGẮN. Chỉ dùng key trong danh
 2. CCCD có thể gồm 2 mặt: gộp thông tin. Số định danh ưu tiên mặt trước;
 3. Ngày tháng trả định dạng dd/mm/yyyy. Ví dụ "6/5/2025" -> "06/05/2025".
 4. Họ tên giữ nguyên hoa/dấu theo OCR đọc được, không tự sửa tên.
-5. Field địa chỉ trả object {{"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<phường/xã/thị trấn>","diaChi":"<chi tiết>"}}.
+5. Field địa chỉ trả object {{"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<phường/xã/thị trấn>","chiTietDuoiXa":"<chi tiết>"}}.
    - tinh: tách tỉnh thành ra, phải đúng tên tỉnh của quốc gia Việt Nam
    - xa: TÊN phường/xã/thị trấn — BẮT BUỘC tách riêng nếu địa chỉ có (vd "Phường Lâm Viên", "Xã Kỳ Khang"),
-     KHÔNG được gộp vào diaChi.
-   - diaChi: CHỈ cụm chi tiết nhỏ nhất (số nhà/đường/tổ dân phố/khu/xóm/thôn/bản/ấp), TUYỆT ĐỐI KHÔNG
-     chứa tên xã/phường/huyện/tỉnh.
-   - Nếu địa chỉ chỉ có "Xã X, Tỉnh Y" (không có phần chi tiết) → xa="Xã X", để diaChi trống; KHÔNG nhét
-     tên xã vào diaChi.
+     KHÔNG được gộp vào chiTietDuoiXa.
+   - chiTietDuoiXa: phần địa chỉ DƯỚI cấp xã (số nhà/đường/ngõ/tổ dân phố/khu/xóm/thôn/bản/ấp), TUYỆT ĐỐI KHÔNG
+     chứa tên xã/phường/thị trấn, huyện/quận/thị xã, tỉnh/thành phố.
+   - Nếu địa chỉ chỉ có "Xã X, Tỉnh Y" (không có phần chi tiết) → xa="Xã X", để chiTietDuoiXa trống; KHÔNG nhét
+     tên xã vào chiTietDuoiXa. Chỉ ghi tỉnh/thành phố (vd "TP Y", "Tỉnh Y") → chỉ trả tinh, xa và chiTietDuoiXa
+     để trống; KHÔNG chép lại tên tỉnh/thành phố vào chiTietDuoiXa.
    - Nếu nhiều giấy tờ ghi phường/xã KHÁC nhau do sáp nhập địa giới → ưu tiên tên MỚI/hiện hành.
 
 <QUY TẮC ĐỊA CHỈ Căn cước công dân>
@@ -50,21 +51,21 @@ NHIỆM VỤ: trả về object fields thật NGẮN. Chỉ dùng key trong danh
      ĐẾM TỪ PHẦN CUỐI về đầu:
        • Phần CUỐI CÙNG = tỉnh/thành phố trực thuộc trung ương → tinh.
        • Phần SÁT NGAY TRƯỚC tỉnh = HUYỆN/QUẬN/THỊ XÃ/THÀNH PHỐ thuộc tỉnh → ĐÂY LÀ CẤP HUYỆN: BỎ HẲN,
-         TUYỆT ĐỐI không đưa vào xa cũng không đưa vào diaChi (biểu mẫu KHÔNG có ô cấp huyện).
+         TUYỆT ĐỐI không đưa vào xa cũng không đưa vào chiTietDuoiXa (biểu mẫu KHÔNG có ô cấp huyện).
        • Phần LIỀN TRƯỚC huyện = phường/xã/thị trấn → xa.
-       • MỌI phần còn lại phía trước xã (số nhà/đường/xóm/thôn/tổ dân phố/khu phố/ấp/bản/khối...) → diaChi;
-         nếu không có thì diaChi để trống.
+       • MỌI phần còn lại phía trước xã (số nhà/đường/xóm/thôn/tổ dân phố/khu phố/ấp/bản/khối...) → chiTietDuoiXa;
+         nếu không có thì chiTietDuoiXa để trống.
      Ví dụ:
-       • "Xóm 3, Nghi Hoa, Nghi Lộc, Nghệ An"  →  tinh="Nghệ An", xa="Nghi Hoa", diaChi="Xóm 3"
+       • "Xóm 3, Nghi Hoa, Nghi Lộc, Nghệ An"  →  tinh="Nghệ An", xa="Nghi Hoa", chiTietDuoiXa="Xóm 3"
          (BỎ huyện "Nghi Lộc").
-       • "Vĩnh Thành, Chợ Lách, Bến Tre"        →  tinh="Bến Tre", xa="Vĩnh Thành", diaChi=""
+       • "Vĩnh Thành, Chợ Lách, Bến Tre"        →  tinh="Bến Tre", xa="Vĩnh Thành", chiTietDuoiXa=""
          (BỎ huyện "Chợ Lách"; không có phần chi tiết).
        • "Số 24 Trần Phú, Lộc Thọ, Nha Trang, Khánh Hòa" → tinh="Khánh Hòa", xa="Lộc Thọ",
-         diaChi="Số 24 Trần Phú" (BỎ cấp huyện "Nha Trang").
+         chiTietDuoiXa="Số 24 Trần Phú" (BỎ cấp huyện "Nha Trang").
      LƯU Ý: tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản", "Nậm", "Mường", "Pa"... (một xã có thể tên
      là "Bản ..."); TUYỆT ĐỐI KHÔNG coi phần đó là chi tiết chỉ vì bắt đầu bằng "Bản" — VỊ TRÍ trong chuỗi
      (áp chót, ngay trước cấp huyện/tỉnh) mới quyết định đó là xã. BẮT BUỘC điền xa khi chuỗi có phần cấp xã;
-     KHÔNG để xa trống rồi dồn cả xã + huyện vào diaChi.
+     KHÔNG để xa trống rồi dồn cả xã + huyện vào chiTietDuoiXa.
 </QUY TẮC ĐỊA CHỈ Căn cước công dân>
 
 6. Không trả các field mặc định hoặc field có thể suy ra máy móc nếu chúng không nằm trong danh sách.

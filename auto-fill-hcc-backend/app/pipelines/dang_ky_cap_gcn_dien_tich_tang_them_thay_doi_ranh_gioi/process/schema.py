@@ -26,7 +26,7 @@ mapping ghi rõ wizard chưa render bước 3 nên chưa bóc được DOM của
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa giới đã gộp còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa giới đã gộp còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "nguyên số nhà/đường/tổ dân phố/khu/thôn."
 )
 

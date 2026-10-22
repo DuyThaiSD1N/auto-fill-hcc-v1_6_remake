@@ -38,6 +38,37 @@ _PURPOSE_BY_MODULE = (
 )
 _PURPOSE_BY_KIND = {"autofill": "extract", "attach": "plan", "classify": "classify"}
 
+# Khóa phần chi tiết (số nhà/đường/thôn/xóm/tổ...) của object địa chỉ: model thấy tên "chiTietDuoiXa" — tên
+# "diaChi" bị hiểu là cả dòng địa chỉ nên hay bị nhét tên xã/tỉnh vào. Code và extension vẫn dùng "diaChi":
+# đổi tên ở chiều gửi (kể cả chỗ prompt còn sót / JSON ngữ cảnh dựng từ code) và đổi ngược ở chiều nhận.
+ADDRESS_DETAIL_KEY = "chiTietDuoiXa"
+_ADDRESS_DETAIL_OLD_RE = re.compile(r"(?<![\w\[.\-/])diaChi(?![\w\]])")
+
+
+def to_model_text(value):
+    """Chuỗi gửi model → khóa chi tiết địa chỉ theo tên model thấy."""
+    return _ADDRESS_DETAIL_OLD_RE.sub(ADDRESS_DETAIL_KEY, value) if isinstance(value, str) else value
+
+
+def to_model_keys(messages: list[dict]) -> list[dict]:
+    """Bản sao messages với khóa chi tiết địa chỉ theo tên model thấy."""
+    text = to_model_text
+    out = []
+    for message in messages:
+        content = message.get("content")
+        if isinstance(content, list):
+            content = [{**part, "text": text(part["text"])} if isinstance(part, dict) and "text" in part else part
+                       for part in content]
+        else:
+            content = text(content)
+        out.append({**message, "content": content})
+    return out
+
+
+def from_model_keys(text: str) -> str:
+    """Output model → khóa chi tiết địa chỉ theo tên code/extension dùng."""
+    return text.replace(ADDRESS_DETAIL_KEY, "diaChi") if isinstance(text, str) else text
+
 
 def _get_openai_client():
     global _openai_client
@@ -209,8 +240,8 @@ async def chat(
     *,
     purpose: str | None = None,
 ) -> str:
-    return await _monitored(_chat, "chat", _caller_module(), purpose,
-                            messages, temperature, max_tokens, enable_thinking)
+    return from_model_keys(await _monitored(_chat, "chat", _caller_module(), purpose,
+                                            to_model_keys(messages), temperature, max_tokens, enable_thinking))
 
 
 async def _chat(
@@ -251,8 +282,8 @@ async def chat_text(
     purpose: str | None = None,
 ) -> str:
     """Chat trả text; primary như cũ, fallback OpenAI không ép JSON object."""
-    return await _monitored(_chat_text, "chat_text", _caller_module(), purpose,
-                            messages, temperature, max_tokens, enable_thinking)
+    return from_model_keys(await _monitored(_chat_text, "chat_text", _caller_module(), purpose,
+                                            to_model_keys(messages), temperature, max_tokens, enable_thinking))
 
 
 async def _chat_text(
@@ -311,46 +342,10 @@ def _extract_json(text: str) -> tuple[dict, str]:
     text = _THINK_RE.sub("", text)
     m = _FENCE_RE.search(text)
     if m:
-        return _loads_or_close(m.group(1).strip())
+        src = m.group(1).strip()
+        return json.loads(src), src
     m = _BRACE_RE.search(text)
     if m:
-        return _loads_or_close(m.group(0))
-    raise ValueError("Không tìm thấy JSON trong response LLM:\n" + text[:300])
-
-
-def _loads_or_close(src: str) -> tuple[dict, str]:
-    """json.loads; hỏng thì thử đóng nốt ngoặc LLM bỏ sót ở cuối (vd thiếu một `}` → mất trắng mọi field)."""
-    try:
+        src = m.group(0)
         return json.loads(src), src
-    except json.JSONDecodeError as e:
-        closed = _close_brackets(src)
-        if closed is not None:
-            try:
-                return json.loads(closed), closed
-            except json.JSONDecodeError:
-                pass
-        raise e
-
-
-def _close_brackets(src: str) -> str | None:
-    """Thêm các ngoặc còn mở ở cuối chuỗi; None nếu ngoặc lệch nhau hoặc đứt giữa chuỗi."""
-    stack: list[str] = []
-    in_str = esc = False
-    for ch in src:
-        if in_str:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
-        elif ch == '"':
-            in_str = True
-        elif ch in "{[":
-            stack.append("}" if ch == "{" else "]")
-        elif ch in "}]":
-            if not stack or stack.pop() != ch:
-                return None
-    if in_str or not stack:
-        return None
-    return src + "".join(reversed(stack))
+    raise ValueError("Không tìm thấy JSON trong response LLM:\n" + text[:300])

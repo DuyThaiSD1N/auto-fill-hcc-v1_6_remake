@@ -56,13 +56,13 @@ hai eForm liên tiếp nhưng lần trích xuất này chỉ trả các SOURCE F
 </marriage_rules>
 
 <address_split_rules>
-- Địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}.
-- tinh là tỉnh/thành phố; xa là xã/phường/thị trấn; diaChi chỉ là số nhà, đường, tổ, thôn, bản, xóm.
-- Loại bỏ cấp huyện/quận/thành phố thuộc tỉnh khỏi object; không dồn cấp huyện vào diaChi.
+- Địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
+- tinh là tỉnh/thành phố; xa là xã/phường/thị trấn; chiTietDuoiXa chỉ là số nhà, đường, tổ, thôn, bản, xóm.
+- Loại bỏ cấp huyện/quận/thành phố thuộc tỉnh khỏi object; không dồn cấp huyện vào chiTietDuoiXa.
 - Tên đơn vị có thể bắt đầu bằng Nậm, Mường, Pa, Bản; xác định cấp xã theo vị trí và nhãn hành chính,
   không dùng một danh sách tên mẫu cố định.
-- Nếu địa chỉ chỉ ghi phường/xã và tỉnh thì diaChi để trống, không chép tên phường/xã vào diaChi.
-- Child_BirthPlaceDomestic khác địa chỉ cư trú: diaChi có thể là đầy đủ tên bệnh viện/cơ sở y tế.
+- Nếu địa chỉ chỉ ghi phường/xã và tỉnh thì chiTietDuoiXa để trống, không chép tên phường/xã vào chiTietDuoiXa.
+- Child_BirthPlaceDomestic khác địa chỉ cư trú: chiTietDuoiXa có thể là đầy đủ tên bệnh viện/cơ sở y tế.
 </address_split_rules>
 
 <output_contract>

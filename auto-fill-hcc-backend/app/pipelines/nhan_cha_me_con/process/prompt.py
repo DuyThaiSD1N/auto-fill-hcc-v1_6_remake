@@ -91,14 +91,14 @@ giấy khai sinh/giấy chứng sinh của con; kết quả xét nghiệm ADN ho
 </birth_document_rules>
 
 <address_split_rules>
-- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}.
+- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
 - tinh và xa nên GIỮ loại đơn vị nếu OCR đọc được: "Tỉnh Lai Châu", "Phường Đoàn Kết", "Xã Phong Thổ".
   Nếu giấy chỉ ghi "Lai Châu" thì trả "Lai Châu"; Python sẽ thêm tiền tố tỉnh khi cần.
-- diaChi chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
+- chiTietDuoiXa chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
 - Nếu địa chỉ dạng "Thôn Tây Sơn, Mường So, Phong Thổ, Lai Châu" thì:
-  tinh="Lai Châu", xa="Mường So", diaChi="Thôn Tây Sơn"; bỏ cấp huyện "Phong Thổ".
+  tinh="Lai Châu", xa="Mường So", chiTietDuoiXa="Thôn Tây Sơn"; bỏ cấp huyện "Phong Thổ".
 - Nếu địa chỉ dạng "TDP 4, phường Đoàn Kết, tỉnh Lai Châu" thì:
-  tinh="Tỉnh Lai Châu", xa="Phường Đoàn Kết", diaChi="TDP 4".
+  tinh="Tỉnh Lai Châu", xa="Phường Đoàn Kết", chiTietDuoiXa="TDP 4".
 </address_split_rules>
 
 <output_reminder>

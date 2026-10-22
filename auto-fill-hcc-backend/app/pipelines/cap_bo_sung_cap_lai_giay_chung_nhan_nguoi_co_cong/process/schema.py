@@ -15,8 +15,8 @@ FIELDS: list[dict] = [
     {"name": "Don_SoDinhDanh", "desc": "Số CCCD/CMND người làm đơn, dòng 'CCCD/CMND số'."},
     {"name": "Don_NgayCap", "desc": "Ngày cấp CCCD/CMND trên Đơn, dd/mm/yyyy."},
     {"name": "Don_NoiCap", "desc": "Nơi cấp CCCD/CMND trên Đơn (vd 'Bộ Công an')."},
-    {"name": "Don_QueQuan", "desc": "Quê quán người làm đơn, object {quocGia,tinh,xa,diaChi}, dòng 'Quê quán'."},
-    {"name": "Don_NoiThuongTru", "desc": "Nơi thường trú người làm đơn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Don_QueQuan", "desc": "Quê quán người làm đơn, object {quocGia,tinh,xa,chiTietDuoiXa}, dòng 'Quê quán'."},
+    {"name": "Don_NoiThuongTru", "desc": "Nơi thường trú người làm đơn, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Don_DienThoai", "desc": "Số điện thoại người làm đơn."},
     {
         "name": "Don_DienNguoiCoCong",
@@ -47,7 +47,7 @@ FIELDS: list[dict] = [
     # Giấy chứng nhận đã cấp (bản cũ bị mất/hư hỏng) — chỉ là nguồn dự phòng.
     {"name": "GCN_LoaiGiayChungNhan", "desc": "Tiêu đề giấy chứng nhận đã cấp, vd 'Giấy chứng nhận thân nhân liệt sĩ'."},
     {"name": "GCN_HoTen", "desc": "Họ và tên người được cấp ghi trên giấy chứng nhận đã cấp."},
-    {"name": "GCN_QueQuan", "desc": "Quê quán ghi trên giấy chứng nhận đã cấp, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "GCN_QueQuan", "desc": "Quê quán ghi trên giấy chứng nhận đã cấp, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "GCN_SoQuyetDinh", "desc": "Số quyết định ghi trên giấy chứng nhận đã cấp ('Được cấp theo Quyết định số')."},
     {"name": "GCN_NgayQuyetDinh", "desc": "Ngày quyết định ghi trên giấy chứng nhận đã cấp, dd/mm/yyyy."},
     {"name": "GCN_CoQuanQuyetDinh", "desc": "Cơ quan ra quyết định ghi trên giấy chứng nhận đã cấp."},
@@ -58,7 +58,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_GioiTinh", "desc": 'Giới tính trên CCCD: "Nam" hoặc "Nữ".'},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD, dd/mm/yyyy. Không lấy ngày sinh/ngày hết hạn."},
     {"name": "Person1_NoiCap", "desc": "Cơ quan cấp CCCD (thẻ mẫu 2024 in 'BỘ CÔNG AN')."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi cư trú/thường trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi cư trú/thường trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

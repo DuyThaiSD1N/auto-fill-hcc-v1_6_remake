@@ -32,7 +32,7 @@ NGUỒN DỮ LIỆU:
   sung. CCCD riêng chỉ được gán cho người khai thay khi họ tên hoặc số giấy tờ khớp block của người đó.
 - Nơi cấp: thẻ không in nhãn "Nơi cấp" → lấy ở tờ khai và chuẩn hóa tên cơ quan.
 - NguoiNop_SoDinhDanh chỉ trả khi sau chuẩn hóa còn đúng 9 hoặc 12 chữ số; không tự xóa/chèn chữ số.
-- Nơi cư trú: tách object {tinh,xa,diaChi}; ưu tiên tờ khai (địa giới MỚI sau sáp nhập); diaChi CHỈ phần
+- Nơi cư trú: tách object {tinh,xa,chiTietDuoiXa}; ưu tiên tờ khai (địa giới MỚI sau sáp nhập); chiTietDuoiXa CHỈ phần
   chi tiết (số nhà/đường/tổ dân phố/thôn), viết đầy đủ như trên tờ khai, KHÔNG kèm phường/xã/tỉnh.
 - DoiTuong_DienThoai: chỉ lấy mục I.1.4; mục này trống thì bỏ (KHÔNG chép số của người giám hộ — mapper xử lý).
 

@@ -12,7 +12,7 @@ LLM chỉ LIỆT KÊ ứng viên (NguoiDuocUyQuyen / DanhSachCccd / NguoiTrongGi
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn. Giấy ghi theo địa giới CŨ có huyện/quận/thị xã/thành phố thuộc tỉnh thì thêm "
     "khoá \"huyen\" = tên đơn vị cấp huyện đó (không gộp vào xa)."
 )

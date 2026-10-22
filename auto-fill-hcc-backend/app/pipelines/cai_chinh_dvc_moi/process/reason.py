@@ -10,7 +10,7 @@ import unicodedata
 from app.config import settings
 from app.services.llm import client
 
-_REASON_MAX_TOKENS = 1200
+_REASON_MAX_TOKENS = 1400
 
 _ROLE_PROMPT = """
 Bạn là agent PHÂN VAI hồ sơ THAY ĐỔI, CẢI CHÍNH, BỔ SUNG THÔNG TIN HỘ TỊCH, XÁC ĐỊNH LẠI DÂN TỘC.
@@ -65,6 +65,17 @@ QUAN HỆ:
   chính..." (vd "Chồng", "Mẹ đẻ"); "Người yêu cầu tờ khai" / "Số định danh người yêu cầu tờ khai" = họ tên / số
   định danh trên dòng "Họ, chữ đệm, tên người yêu cầu" và dòng giấy tờ tùy thân ngay dưới. Không có tờ khai hoặc
   dòng đó trống → "không có". Giấy ủy quyền, bản cam đoan, giấy hộ tịch KHÔNG dùng cho ba dòng này.
+- Ba dòng "... giấy ủy quyền" CHỈ đọc từ GIẤY ỦY QUYỀN mà BÊN ỦY QUYỀN là người có nội dung thay đổi; không có
+  giấy đó → "không có". "Người được ủy quyền" / "Số định danh người được ủy quyền" = họ tên / số giấy tờ của bên
+  ĐƯỢC ủy quyền (dòng "Ủy quyền cho" ghi nhầm tên bên ủy quyền thì lấy tên bên được ủy quyền ở phần nội dung).
+  "Quan hệ trên giấy ủy quyền" CHỈ khi giấy ủy quyền GHI RÕ chữ quan hệ giữa hai bên (vd dòng "Mối quan hệ giữa
+  người ủy quyền và người được ủy quyền: mẹ"): = NGƯỜI ĐƯỢC ỦY QUYỀN là gì CỦA người có nội dung thay đổi (vd "Mẹ",
+  "Chồng", "Anh trai"); chữ đó không rõ chiều thì xác định chiều theo ngày sinh hai bên (cha / mẹ sinh trước con).
+  Giấy KHÔNG ghi chữ quan hệ → "không có", TUYỆT ĐỐI không suy quan hệ từ tuổi, họ, địa chỉ. Họ tên / số chép ĐÚNG
+  chữ trên giấy ủy quyền, KHÔNG chép từ <requester_context>. "Người được ủy quyền là người nộp": "Có" khi số giấy
+  tờ của bên được ủy quyền trùng số định danh chủ tài khoản (OCR có thể thừa / thiếu / sai một chữ số) hoặc cùng
+  người theo họ tên chủ tài khoản (bỏ qua dấu, cách viết tên dân tộc); <requester_context> không có họ tên lẫn số
+  định danh hoặc không đủ căn cứ → "Không".
 
 THÔNG TIN CẦN SỬA — CHỈ khi KHÔNG có tờ khai mà có BẢN CAM ĐOAN: bản cam đoan thường viết "Trong <giấy hộ tịch
 cần sửa> của tôi thì <thông tin> là A, nhưng trong <giấy tờ khác: căn cước, giấy khai sinh / chứng tử của người
@@ -105,6 +116,10 @@ Căn cứ: ...
 Quan hệ trên tờ khai: ...
 Người yêu cầu tờ khai: ...
 Số định danh người yêu cầu tờ khai: ...
+Quan hệ trên giấy ủy quyền: ...
+Người được ủy quyền: ...
+Số định danh người được ủy quyền: ...
+Người được ủy quyền là người nộp: Có|Không
 </quan_he>
 """.strip()
 
@@ -128,19 +143,33 @@ def requester_context(options: dict | None) -> tuple[str, str]:
     )
 
 
+def _one_edit_apart(a: str, b: str) -> bool:
+    """Hai dãy số lệch đúng một chữ số (thừa / thiếu / sai một chữ số)."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
 def _document_hints(documents: list[dict], options: dict | None) -> str:
-    """Mỏ neo tất định: tài liệu nào chứa đúng số định danh của tài khoản."""
+    """Mỏ neo tất định: tài liệu nào chứa đúng (hoặc gần đúng, OCR lệch một chữ số) số định danh của tài khoản."""
     name, number = requester_context(options)
-    hits = [
-        str(index)
-        for index, document in enumerate(documents, start=1)
-        if number and number in _digits(document.get("text"))
-    ]
+    hits, near = [], []
+    for index, document in enumerate(documents, start=1):
+        text = str(document.get("text") or "")
+        if number and number in _digits(text):
+            hits.append(str(index))
+        elif len(number) == 12 and any(_one_edit_apart(number, run) for run in re.findall(r"\d{11,13}", text)):
+            near.append(str(index))
     return "\n".join([
         "<requester_context>",
         f'Họ tên chủ tài khoản (người nộp): "{name or "không có"}".',
         f'Số định danh chủ tài khoản: "{number or "không có"}".',
         "Tài liệu chứa đúng số định danh này: " + (", ".join(hits) if hits else "không có") + ".",
+        "Tài liệu chứa số GẦN trùng (OCR lệch một chữ số, vẫn là chủ tài khoản): "
+        + (", ".join(near) if near else "không có") + ".",
         "Tài khoản là MỐC để tính quan hệ, không phải dữ liệu của người có nội dung thay đổi.",
         "</requester_context>",
     ])
@@ -203,4 +232,15 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options)
+    return _render_context(_drop_unquoted_authorization_relation(raw, documents), options)
+
+
+def _drop_unquoted_authorization_relation(raw: str, documents: list[dict]) -> str:
+    """Quan hệ trên giấy ủy quyền chỉ giữ khi OCR có dòng ghi quan hệ chứa đúng chữ đó: giấy ủy quyền không ghi quan
+    hệ thì model hay tự suy (từ tuổi hai bên) ra quan hệ không có trên giấy."""
+    relation = _fold(labeled_value(section(raw, "quan_he"), "Quan hệ trên giấy ủy quyền"))
+    lines = [_fold(line) for d in documents for line in str(d.get("text") or "").splitlines()]
+    if relation and any("quan he" in line and re.search(rf"(?<!\w){re.escape(relation)}(?!\w)", line)
+                        for line in lines):
+        return raw
+    return re.sub(r"(?im)^([ \t]*Quan hệ trên giấy ủy quyền[ \t]*:).*$", r"\1 không có", raw)

@@ -18,7 +18,7 @@ NGUỒN VÀ ƯU TIÊN:
 - Họ tên, số CCCD, ngày cấp, nơi cấp, địa chỉ thường trú, điện thoại: Đơn đề nghị > CCCD > Biên bản mục I.3.
   Ngày sinh chỉ từ CCCD; Đơn/Biên bản không có ngày sinh thì bỏ ChuHo_NgaySinh, không suy từ số CCCD.
 - ChuHo_DanhXung chép đúng "Ông"/"Bà" trước tên chủ hộ ở mục I.3; không suy từ tên.
-- Địa chỉ dạng "Bản A, xã B, tỉnh C" → {quocGia:"Việt Nam", tinh:"Tỉnh C", xa:"Xã B", diaChi:"Bản A"}.
+- Địa chỉ dạng "Bản A, xã B, tỉnh C" → {quocGia:"Việt Nam", tinh:"Tỉnh C", xa:"Xã B", chiTietDuoiXa:"Bản A"}.
 - Họ tên chủ hộ viết hoa chữ cái đầu như trên giấy, giữ đúng dấu tiếng Việt.
 - BienBan_DanhSach: mỗi Biên bản là MỘT phần tử, kể cả khi Biên bản chỉ còn trang 1. Lấy số lượng/khối lượng
   đúng từng dòng "Đối tượng tiêu hủy N"; dòng "Tổng số lượng tiêu hủy" vào tongSoLuong/tongKhoiLuong. Chỉ ghi

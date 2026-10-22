@@ -20,7 +20,7 @@ trường hợp được ủy quyền". Đầu vào: CCCD, Hợp đồng chuyể
 
 CHỈ lấy 1 người = chủ hồ sơ chính (nếu 2 người đồng nhận thì lấy người đứng đầu). Lấy trọn nhân thân từ
 CHÍNH giấy tờ của người đó: họ tên, giới tính, số định danh, ngày sinh, ngày cấp, nơi cấp, SĐT, email.
-⚠ ChuHoSo_ThuongTru (object {{quocGia,tinh,xa,diaChi}}): ƯU TIÊN địa chỉ trên ĐƠN Mẫu 18/Tờ khai thuế,
+⚠ ChuHoSo_ThuongTru (object {{quocGia,tinh,xa,chiTietDuoiXa}}): ƯU TIÊN địa chỉ trên ĐƠN Mẫu 18/Tờ khai thuế,
 chỉ khi không có mới lấy Hợp đồng rồi CCCD (không mặc nhiên lấy Nơi cư trú trên CCCD — có thể nơi cũ).
 
 {_KHONG_BIA}

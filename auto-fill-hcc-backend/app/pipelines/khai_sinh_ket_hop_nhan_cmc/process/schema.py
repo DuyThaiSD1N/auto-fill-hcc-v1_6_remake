@@ -6,7 +6,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND người yêu cầu; giữ nguyên số 0 đầu."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Requester_PhoneNumber", "desc": "Số điện thoại CỦA CHÍNH người yêu cầu, chỉ lấy ở dòng điện thoại trong mục người yêu cầu của tờ khai (hoặc giấy tờ cá nhân của người đó). KHÔNG lấy hotline/số điện thoại của cơ quan, bệnh viện, công ty xét nghiệm in ở đầu/chân giấy. Tờ khai không ghi thì bỏ."},
     {"name": "Requester_Email", "desc": "Email người yêu cầu nếu có."},
     {"name": "Requester_RelationshipToChild", "desc": "Quan hệ của người yêu cầu với trẻ: Cha, Mẹ hoặc quan hệ khác."},
@@ -19,8 +19,8 @@ FIELDS: list[dict] = [
     {"name": "Father_IdNumber", "desc": "Số định danh/CCCD/CMND người cha; giữ nguyên số 0 đầu."},
     {"name": "Father_IdIssueDate", "desc": "Ngày cấp giấy tờ người cha, dd/mm/yyyy."},
     {"name": "Father_IdIssuePlace", "desc": "Nơi cấp giấy tờ người cha."},
-    {"name": "Father_ResidenceDomestic", "desc": "Nơi cư trú người cha, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Father_OriginDomestic", "desc": "Quê quán người cha, object {quocGia,tinh,xa,diaChi} nếu có."},
+    {"name": "Father_ResidenceDomestic", "desc": "Nơi cư trú người cha, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Father_OriginDomestic", "desc": "Quê quán người cha, object {quocGia,tinh,xa,chiTietDuoiXa} nếu có."},
 
     {"name": "Mother_FullName", "desc": "Họ tên người mẹ."},
     {"name": "Mother_BirthDate", "desc": "Ngày sinh người mẹ, dd/mm/yyyy."},
@@ -29,7 +29,7 @@ FIELDS: list[dict] = [
     {"name": "Mother_IdNumber", "desc": "Số định danh/CCCD/CMND người mẹ; giữ nguyên số 0 đầu."},
     {"name": "Mother_IdIssueDate", "desc": "Ngày cấp giấy tờ người mẹ, dd/mm/yyyy nếu có."},
     {"name": "Mother_IdIssuePlace", "desc": "Nơi cấp giấy tờ người mẹ nếu có."},
-    {"name": "Mother_ResidenceDomestic", "desc": "Nơi cư trú người mẹ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Mother_ResidenceDomestic", "desc": "Nơi cư trú người mẹ, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Nhân thân cha/mẹ CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với CCCD: CCCD trùng
     # số tờ khai → theo thẻ; CCCD lệch cả tên lẫn số → thẻ của người khác, theo tờ khai.
@@ -46,9 +46,9 @@ FIELDS: list[dict] = [
     {"name": "Child_Gender", "desc": "Giới tính trẻ: Nam hoặc Nữ."},
     {"name": "Child_Ethnicity", "desc": "Dân tộc trẻ theo tờ khai."},
     {"name": "Child_Nationality", "desc": "Quốc tịch trẻ theo tờ khai."},
-    {"name": "Child_BirthPlaceDomestic", "desc": "Nơi sinh, object {quocGia,tinh,xa,diaChi}; diaChi có thể là tên cơ sở y tế."},
-    {"name": "Child_OriginDomestic", "desc": "Quê quán trẻ, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Child_ResidenceDomestic", "desc": "Nơi cư trú của trẻ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Child_BirthPlaceDomestic", "desc": "Nơi sinh, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa có thể là tên cơ sở y tế."},
+    {"name": "Child_OriginDomestic", "desc": "Quê quán trẻ, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Child_ResidenceDomestic", "desc": "Nơi cư trú của trẻ, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Child_BirthDocumentNumber", "desc": "Mã/số giấy chứng sinh nếu có."},
     {"name": "Child_BirthDocumentIssueDate", "desc": "Ngày cấp giấy chứng sinh nếu có, dd/mm/yyyy."},
     {"name": "Child_BirthDocumentIssuePlace", "desc": "Cơ sở cấp giấy chứng sinh nếu có."},

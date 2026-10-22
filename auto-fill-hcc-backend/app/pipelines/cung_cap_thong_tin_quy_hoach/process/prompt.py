@@ -20,7 +20,7 @@ NGUỒN DỮ LIỆU NGƯỜI NỘP:
 - NguoiNop_DienThoai/NguoiNop_Email: lấy từ Đơn đề nghị (CCCD/GCN không có).
 
 ĐỊA CHỈ (NguoiNop_ThuongTru):
-- object {quocGia,tinh,xa,diaChi}: tinh = "Tỉnh/Thành phố …", xa = phường/xã, diaChi = tổ dân phố/thôn/
+- object {quocGia,tinh,xa,chiTietDuoiXa}: tinh = "Tỉnh/Thành phố …", xa = phường/xã, chiTietDuoiXa = tổ dân phố/thôn/
   số nhà/đường. Địa giới đã sáp nhập → ƯU TIÊN tên phường/xã MỚI (hiện hành). Nếu CCCD ghi tên CŨ
   (vd 'Xã Ngũ Thái') mà Đơn đề nghị ghi tên MỚI (vd 'Phường Song Liễu') → lấy theo ĐƠN (mới nhất).
 

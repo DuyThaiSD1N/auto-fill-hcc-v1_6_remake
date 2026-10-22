@@ -31,8 +31,8 @@ _NOP_FIELDS = [
     ("NgayCap", "Ngày cấp CCCD NGƯỜI NỘP, dd/mm/yyyy."),
     ("NoiCap", 'Nơi cấp CCCD NGƯỜI NỘP. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ căn cước mới → "Bộ Công an".'),
-    ("ThuongTru", "NƠI CƯ TRÚ NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …'; "
-        "xa=phường/xã; diaChi=số nhà/đường/thôn (KHÔNG kèm phường/xã/tỉnh)."),
+    ("ThuongTru", "NƠI CƯ TRÚ NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …'; "
+        "xa=phường/xã; chiTietDuoiXa=số nhà/đường/thôn (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên CCCD."),
     ("Email", "Email NGƯỜI NỘP nếu có; thường không có → bỏ."),
 ]

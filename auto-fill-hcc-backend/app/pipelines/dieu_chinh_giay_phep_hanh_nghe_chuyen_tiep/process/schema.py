@@ -21,9 +21,9 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD/căn cước {who} — CCCD hoặc Đơn Mẫu 08 "Nơi cấp". "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN '
         'LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; "BỘ CÔNG AN" '
         '→ "Bộ Công an". KHÔNG lấy nơi cấp CMND cũ in trên chứng chỉ hành nghề.'),
-    ("ThuongTru", "NƠI CƯ TRÚ HIỆN TẠI {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi cư trú/Nơi "
+    ("ThuongTru", "NƠI CƯ TRÚ HIỆN TẠI {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi cư trú/Nơi "
         "thường trú) hoặc Đơn Mẫu 08 (Địa chỉ cư trú). tinh='Tỉnh/Thành phố …' (viết đầy đủ, 't.p' → 'Thành "
-        "phố'), xa='Phường/Xã …', diaChi=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh; giấy tờ không ghi "
+        "phố'), xa='Phường/Xã …', chiTietDuoiXa=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh; giấy tờ không ghi "
         "thì để trống). KHÔNG lấy địa chỉ trên chứng chỉ hành nghề / văn bằng / chứng chỉ đào tạo (địa chỉ cũ)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Đơn Mẫu 08 'Điện thoại'. Chỉ chữ số; KHÔNG lấy số bàn."),
     ("Email", "Email {who} — Đơn Mẫu 08 'Email (nếu có)'. Không có thì bỏ."),

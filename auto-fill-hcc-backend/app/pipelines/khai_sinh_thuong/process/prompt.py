@@ -117,8 +117,8 @@ TkKs_* — Lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH bản giấy khi thiếu gi
   từ đúng dòng người yêu cầu trên tờ khai.
 
 CHA/MẸ ĐÃ CHẾT: khi tờ khai ghi "đã chết"/"đã mất"/"chết" ở CHỖ nơi cư trú của cha hoặc mẹ,
-  trả đúng cụm chữ đó vào diaChi và BỎ TRỐNG tinh/xa — vd TkKs_NoiCuTruCha =
-  {"quocGia":"Việt Nam","diaChi":"Đã chết"}. KHÔNG bịa tỉnh/xã, KHÔNG mượn địa chỉ của người khác,
+  trả đúng cụm chữ đó vào chiTietDuoiXa và BỎ TRỐNG tinh/xa — vd TkKs_NoiCuTruCha =
+  {"quocGia":"Việt Nam","chiTietDuoiXa":"Đã chết"}. KHÔNG bịa tỉnh/xã, KHÔNG mượn địa chỉ của người khác,
   KHÔNG bỏ trống cả object (cụm chữ này là dữ liệu cần giữ).
 
 Gckh_* — GIẤY CHỨNG NHẬN KẾT HÔN / TRÍCH LỤC GHI CHÚ KẾT HÔN / màn hình "Thông tin đăng ký kết hôn"
@@ -145,19 +145,19 @@ Không trả field mặc định hoặc field UI: HoVaTenC, SoDinhDanhC, HoTenKS
 LoaiDangKy, QuanHe...
 Không tự tạo field ngoài danh sách. Nếu không chắc giá trị thì bỏ field đó.
 
-TÁCH ĐỊA CHỈ (object {quocGia,tinh,xa,diaChi}):
+TÁCH ĐỊA CHỈ (object {quocGia,tinh,xa,chiTietDuoiXa}):
 - xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại (Xã/Phường/Thị trấn).
   tinh = tên tỉnh/thành phố.
-- diaChi = phần CHI TIẾT đứng TRƯỚC xã (tổ, tổ dân phố, bản, thôn, xóm, số nhà, đường).
-  KHÔNG đưa tên xã/huyện/tỉnh vào diaChi. Không có chi tiết → diaChi để trống.
+- chiTietDuoiXa = phần CHI TIẾT đứng TRƯỚC xã (tổ, tổ dân phố, bản, thôn, xóm, số nhà, đường).
+  KHÔNG đưa tên xã/huyện/tỉnh vào chiTietDuoiXa. Không có chi tiết → chiTietDuoiXa để trống.
 - ĐẾM TỪ CUỐI khi địa chỉ dạng cũ "[chi tiết], xã, HUYỆN, tỉnh": cuối = tỉnh; phần NGAY TRƯỚC
   tỉnh nếu là CẤP HUYỆN thì BỎ HẲN; phần trước đó = xã. Tên xã vùng cao có thể bắt đầu bằng
   "Bản"/"Nậm"/"Mường"/"Pa" — VỊ TRÍ mới quyết định là xã, không phải tiền tố.
 - XÃ BẮT BUỘC: không được bỏ trống xa khi giấy tờ có thông tin phường/xã.
-- Gcs_NoiSinh / TkKs_NoiSinh là CƠ SỞ Y TẾ hoặc địa danh: diaChi = tên đầy đủ cơ sở (nếu có)
+- Gcs_NoiSinh / TkKs_NoiSinh là CƠ SỞ Y TẾ hoặc địa danh: chiTietDuoiXa = tên đầy đủ cơ sở (nếu có)
   NỐI THÊM ", " + phần địa chỉ chi tiết của cơ sở đứng TRƯỚC phường/xã (số nhà, đường, đồi, tổ...),
   lấy HẾT cụm đó cho tới dấu "," ngay trước phường/xã; tinh = tỉnh của cơ sở, xa = phường/xã nếu
   xác định được. Ví dụ "Tại: Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt / Đồi Long Thọ, Phường Xuân Hương -
-  Đà Lạt, Lâm Đồng" -> diaChi="Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ", xa="Xuân Hương",
-  tinh="Lâm Đồng". Không có địa chỉ chi tiết thì diaChi chỉ là tên cơ sở."""
+  Đà Lạt, Lâm Đồng" -> chiTietDuoiXa="Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ", xa="Xuân Hương",
+  tinh="Lâm Đồng". Không có địa chỉ chi tiết thì chiTietDuoiXa chỉ là tên cơ sở."""
 

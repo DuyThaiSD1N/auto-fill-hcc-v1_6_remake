@@ -25,7 +25,7 @@ nhắc trong Đơn. Chỉ có một thẻ thì bỏ trống Cccd2_*.
 NGUỒN NHÂN THÂN (NguoiDeNghi_*): ưu tiên CCCD; bổ sung từ Đơn Mẫu 04/05.KT (Họ tên chủ tàu, Mã định
 danh/CCCD, Loại giấy tờ, Cơ quan cấp, ngày cấp, Nơi thường trú, Điện thoại). Số định danh ưu tiên 12 chữ
 số. Nơi cấp: CCCD gắn chip không in nhãn riêng → lấy 'Cơ quan cấp' ở Đơn. Chuẩn hóa tên cơ quan (Cục Cảnh
-sát QLHC về TTXH / Bộ Công an). ThuongTru tách object {quocGia,tinh,xa,diaChi}, diaChi chỉ chi tiết (số
+sát QLHC về TTXH / Bộ Công an). ThuongTru tách object {quocGia,tinh,xa,chiTietDuoiXa}, chiTietDuoiXa chỉ chi tiết (số
 nhà/khóm/ấp/thôn).
 
 ⚠ NGÀY CẤP CCCD (NguoiDeNghi_NgayCap): ưu tiên lấy 'Ngày cấp'/'Ngày cấp CCCD' ghi trên Đơn Mẫu 04/05.KT.

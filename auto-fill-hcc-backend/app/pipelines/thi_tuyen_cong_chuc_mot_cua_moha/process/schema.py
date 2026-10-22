@@ -19,9 +19,9 @@ FIELDS: list[dict] = [
     {"name": "Phieu_DanToc", "desc": "Dân tộc."},
     {"name": "Phieu_DienThoai", "desc": "Số điện thoại di động/liên hệ."},
     {"name": "Phieu_Email", "desc": "Email liên hệ."},
-    {"name": "Phieu_QueQuan", "desc": "Quê quán, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Phieu_NoiThuongTru", "desc": "Nơi thường trú, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Phieu_NoiOHienTai", "desc": "Nơi ở hiện tại, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Phieu_QueQuan", "desc": "Quê quán, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Phieu_NoiThuongTru", "desc": "Nơi thường trú, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Phieu_NoiOHienTai", "desc": "Nơi ở hiện tại, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Phieu_TinhTrangSucKhoe", "desc": "Tình trạng sức khỏe."},
     {"name": "Phieu_ChieuCao", "desc": "Chiều cao, đơn vị cm, chỉ trả số."},
     {"name": "Phieu_CanNang", "desc": "Cân nặng, đơn vị kg, chỉ trả số."},
@@ -61,7 +61,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_GioiTinh", "desc": 'Giới tính trên CCCD/CMND: "Nam" hoặc "Nữ".'},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND, dd/mm/yyyy."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD/CMND."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

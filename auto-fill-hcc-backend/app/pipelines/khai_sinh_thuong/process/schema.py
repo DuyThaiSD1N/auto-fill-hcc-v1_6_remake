@@ -19,7 +19,7 @@ FIELDS: list[dict] = [
     {"name": "Gcs_NgaySinhCon", "desc": "Ngày sinh con trên giấy chứng sinh, dd/mm/yyyy."},
     {"name": "Gcs_GioiTinhCon", "desc": 'Giới tính con: "Nam" hoặc "Nữ".'},
     {"name": "Gcs_DanTocCon", "desc": "Dân tộc con trên giấy chứng sinh."},
-    {"name": "Gcs_NoiSinh", "desc": "Nơi sinh con trên giấy chứng sinh, object {quocGia,tinh,xa,diaChi}; diaChi là cơ sở y tế."},
+    {"name": "Gcs_NoiSinh", "desc": "Nơi sinh con trên giấy chứng sinh, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa là cơ sở y tế."},
 
     # Thông tin người được đăng ký khai sinh khi HỌ CHÍNH LÀ NGƯỜI CÒN SỐNG CÓ CCCD
     # (đăng ký muộn / quá hạn). Nhóm này THAY THẾ Gcs_* khi không có giấy chứng sinh.
@@ -29,8 +29,8 @@ FIELDS: list[dict] = [
     {"name": "CccdChuThe_GioiTinh", "desc": 'Giới tính trên CCCD chủ thể: "Nam" hoặc "Nữ".'},
     {"name": "CccdChuThe_DanToc", "desc": "Dân tộc trên CCCD chủ thể, chỉ khi giấy tờ ghi rõ."},
     {"name": "CccdChuThe_QuocTich", "desc": "Quốc tịch trên CCCD chủ thể, chỉ trả nếu ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdChuThe_QueQuan", "desc": "Quê quán trên CCCD chủ thể, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "CccdChuThe_NoiCuTru", "desc": "Địa chỉ thường trú trên CCCD chủ thể, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CccdChuThe_QueQuan", "desc": "Quê quán trên CCCD chủ thể, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "CccdChuThe_NoiCuTru", "desc": "Địa chỉ thường trú trên CCCD chủ thể, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "CccdChuThe_NgayCap", "desc": "Ngày cấp CCCD chủ thể, dd/mm/yyyy."},
     {"name": "CccdChuThe_NoiCap", "desc": "Nơi cấp CCCD chủ thể."},
 
@@ -48,9 +48,9 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh trên CCCD Nam, dd/mm/yyyy."},
     {"name": "CccdNam_DanToc", "desc": "Dân tộc trên giấy tờ Nam chỉ khi chính giấy tờ Nam ghi rõ; CCCD gắn chip thường không có."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch trên CCCD Nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {quocGia,tinh,xa,diaChi} nếu có."},
-    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'/'Place of birth'), object {quocGia,tinh,xa,diaChi}. CHỈ khi thẻ là CĂN CƯỚC mới CÓ dòng này; thẻ CCCD cũ có 'Quê quán' thì không có field này."},
-    {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nam, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {quocGia,tinh,xa,chiTietDuoiXa} nếu có."},
+    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'/'Place of birth'), object {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ khi thẻ là CĂN CƯỚC mới CÓ dòng này; thẻ CCCD cũ có 'Quê quán' thì không có field này."},
+    {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nam, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Mother facts from CCCD/CMND Nu.
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND giới tính Nữ. Không lấy từ giấy chứng sinh."},
@@ -66,8 +66,8 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh trên CCCD Nữ, dd/mm/yyyy."},
     {"name": "CccdNu_DanToc", "desc": "Dân tộc trên giấy tờ Nữ chỉ khi chính giấy tờ Nữ ghi rõ; CCCD gắn chip thường không có."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch trên CCCD Nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nữ, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "CccdNu_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nữ, object {quocGia,tinh,xa,diaChi} nếu có."},
+    {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nữ, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "CccdNu_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nữ, object {quocGia,tinh,xa,chiTietDuoiXa} nếu có."},
 
     # Giấy chứng nhận kết hôn / trích lục ghi chú kết hôn / màn hình "Thông tin đăng ký kết hôn"
     # của cha mẹ. Chỉ dùng LẤP CHỖ TRỐNG cho cha hoặc mẹ không nộp CCCD và không có tờ khai.
@@ -76,21 +76,21 @@ FIELDS: list[dict] = [
     {"name": "Gckh_DanTocChong", "desc": "Dân tộc người chồng trên giấy kết hôn."},
     {"name": "Gckh_QuocTichChong", "desc": "Quốc tịch người chồng trên giấy kết hôn."},
     {"name": "Gckh_SoDinhDanhChong", "desc": "Số giấy tờ tùy thân của người chồng trên giấy kết hôn; chỉ trả đúng con số ghi trên giấy."},
-    {"name": "Gckh_NoiCuTruChong", "desc": "Nơi cư trú người chồng trên giấy kết hôn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Gckh_NoiCuTruChong", "desc": "Nơi cư trú người chồng trên giấy kết hôn, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Gckh_HoTenVo", "desc": "Họ tên NGƯỜI VỢ trên giấy/thông tin đăng ký kết hôn (dòng 'Họ, chữ đệm, tên người vợ')."},
     {"name": "Gckh_NamSinhVo", "desc": "Ngày hoặc năm sinh người vợ trên giấy kết hôn, dd/mm/yyyy hoặc yyyy."},
     {"name": "Gckh_DanTocVo", "desc": "Dân tộc người vợ trên giấy kết hôn."},
     {"name": "Gckh_QuocTichVo", "desc": "Quốc tịch người vợ trên giấy kết hôn."},
     {"name": "Gckh_SoDinhDanhVo", "desc": "Số giấy tờ tùy thân của người vợ trên giấy kết hôn; chỉ trả đúng con số ghi trên giấy."},
-    {"name": "Gckh_NoiCuTruVo", "desc": "Nơi cư trú người vợ trên giấy kết hôn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Gckh_NoiCuTruVo", "desc": "Nơi cư trú người vợ trên giấy kết hôn, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Tờ khai đăng ký khai sinh (bản giấy) — thông tin bổ sung khi không có giấy chứng sinh.
     {"name": "TkKs_HoTenCon", "desc": "Họ tên người được đăng ký khai sinh trên tờ khai, nếu không có giấy chứng sinh."},
     {"name": "TkKs_NgaySinhCon", "desc": "Ngày sinh người được đăng ký trên tờ khai, dd/mm/yyyy."},
     {"name": "TkKs_GioiTinhCon", "desc": 'Giới tính người được đăng ký trên tờ khai: "Nam" hoặc "Nữ".'},
     {"name": "TkKs_DanTocCon", "desc": "Dân tộc người được đăng ký trên tờ khai."},
-    {"name": "TkKs_NoiSinh", "desc": "Nơi sinh trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "TkKs_QueQuan", "desc": "Quê quán người được đăng ký trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "TkKs_NoiSinh", "desc": "Nơi sinh trên tờ khai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "TkKs_QueQuan", "desc": "Quê quán người được đăng ký trên tờ khai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "TkKs_HoTenCha", "desc": "Họ tên cha CHÉP NGUYÊN VĂN từ mục cha trên tờ khai; tờ khai có ghi thì LUÔN trả, kể cả khi hồ sơ có CCCD cha. Không lấy từ CCCD."},
     {"name": "TkKs_NamSinhCha", "desc": "Năm sinh cha trên tờ khai, yyyy."},
     {"name": "TkKs_DanTocCha", "desc": "Dân tộc cha trên tờ khai."},
@@ -99,8 +99,8 @@ FIELDS: list[dict] = [
         "name": "TkKs_NoiCuTruCha",
         "desc": (
             "Nơi cư trú của CHA lấy ở dòng 'Nơi cư trú' NẰM TRONG mục cha của tờ khai, "
-            "object {quocGia,tinh,xa,diaChi}. Nếu chỗ đó ghi 'Đã chết'/'Đã mất' thay cho địa chỉ "
-            "thì trả nguyên cụm chữ đó vào diaChi và bỏ trống tinh/xa."
+            "object {quocGia,tinh,xa,chiTietDuoiXa}. Nếu chỗ đó ghi 'Đã chết'/'Đã mất' thay cho địa chỉ "
+            "thì trả nguyên cụm chữ đó vào chiTietDuoiXa và bỏ trống tinh/xa."
         ),
     },
     {"name": "TkKs_HoTenMe", "desc": "Họ tên mẹ CHÉP NGUYÊN VĂN từ mục mẹ trên tờ khai; tờ khai có ghi thì LUÔN trả, kể cả khi hồ sơ có CCCD mẹ. Không lấy từ CCCD."},
@@ -111,8 +111,8 @@ FIELDS: list[dict] = [
         "name": "TkKs_NoiCuTruMe",
         "desc": (
             "Nơi cư trú của MẸ lấy ở dòng 'Nơi cư trú' NẰM TRONG mục mẹ của tờ khai, "
-            "object {quocGia,tinh,xa,diaChi}. Nếu chỗ đó ghi 'Đã chết'/'Đã mất' thay cho địa chỉ "
-            "thì trả nguyên cụm chữ đó vào diaChi và bỏ trống tinh/xa."
+            "object {quocGia,tinh,xa,chiTietDuoiXa}. Nếu chỗ đó ghi 'Đã chết'/'Đã mất' thay cho địa chỉ "
+            "thì trả nguyên cụm chữ đó vào chiTietDuoiXa và bỏ trống tinh/xa."
         ),
     },
     # Người yêu cầu từ tờ khai (khi không phải cha/mẹ — vd chị dâu, anh, em...).
@@ -120,7 +120,7 @@ FIELDS: list[dict] = [
     {"name": "TkKs_NycNgaySinh", "desc": "Ngày/năm sinh người yêu cầu trên tờ khai, dd/mm/yyyy hoặc yyyy."},
     {"name": "TkKs_NycSoDinhDanh", "desc": "Số CCCD/định danh người yêu cầu trên tờ khai."},
     {"name": "TkKs_NycNgayCapCccd", "desc": "Ngày cấp CCCD người yêu cầu trên tờ khai, dd/mm/yyyy."},
-    {"name": "TkKs_NycNoiCuTru", "desc": "Nơi cư trú người yêu cầu trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "TkKs_NycNoiCuTru", "desc": "Nơi cư trú người yêu cầu trên tờ khai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "TkKs_NycQuanHe", "desc": "Quan hệ người yêu cầu với người được khai sinh (vd 'Chị dâu', 'Anh', 'Em'...)."},
 ]
 

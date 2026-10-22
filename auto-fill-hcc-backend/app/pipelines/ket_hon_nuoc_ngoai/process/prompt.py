@@ -28,16 +28,16 @@ QUỐC TỊCH (QUAN TRỌNG — KHÔNG mặc định Việt Nam):
   nước ngoài, hoặc bản trình bày tình trạng hôn nhân do nước ngoài cấp) → quốc tịch nước đó, vd "Trung Quốc".
 - TUYỆT ĐỐI KHÔNG gán "Việt Nam" cho người có giấy tờ nước ngoài.
 
-NƠI CƯ TRÚ (Nam_NoiCuTru / Nu_NoiCuTru — object {quocGia,tinh,xa,diaChi}):
+NƠI CƯ TRÚ (Nam_NoiCuTru / Nu_NoiCuTru — object {quocGia,tinh,xa,chiTietDuoiXa}):
 - quocGia = QUỐC GIA nơi cư trú THẬT. Địa chỉ ở nước ngoài (vd "tỉnh Vân Nam, Trung Quốc") → quocGia = "Trung Quốc".
   Địa chỉ ở Việt Nam → quocGia = "Việt Nam".
 - quocGia là tên NƯỚC ghi ở cuối địa chỉ. Địa chỉ nước ngoài KHÔNG ghi tên nước → quocGia = quốc tịch của chính
   người đó. Tên đường, thành phố, thị trấn trùng hoặc gần giống tên một nước khác KHÔNG phải tên nước.
-- Với địa chỉ NƯỚC NGOÀI: đưa TOÀN BỘ địa chỉ (số nhà/thôn/xã/huyện/tỉnh nước ngoài) vào diaChi;
+- Với địa chỉ NƯỚC NGOÀI: đưa TOÀN BỘ địa chỉ (số nhà/thôn/xã/huyện/tỉnh nước ngoài) vào chiTietDuoiXa;
   để trống tinh/xa (đơn vị hành chính nước ngoài không map vào tỉnh/xã VN).
   Vd "Số 4, thôn Dao, ủy ban thôn Điện Đường, xã Đại Bình, huyện Nguyên Dương, ... tỉnh Vân Nam" →
-  quocGia="Trung Quốc", diaChi="Số 4, thôn Dao, ủy ban thôn Điện Đường, xã Đại Bình, huyện Nguyên Dương, tỉnh Vân Nam".
-- Với địa chỉ VIỆT NAM: xa=TÊN phường/xã (bỏ tiền tố), tinh=tỉnh/thành, diaChi=chi tiết trước xã. XÃ bắt buộc khi giấy có.
+  quocGia="Trung Quốc", chiTietDuoiXa="Số 4, thôn Dao, ủy ban thôn Điện Đường, xã Đại Bình, huyện Nguyên Dương, tỉnh Vân Nam".
+- Với địa chỉ VIỆT NAM: xa=TÊN phường/xã (bỏ tiền tố), tinh=tỉnh/thành, chiTietDuoiXa=chi tiết trước xã. XÃ bắt buộc khi giấy có.
 - Ưu tiên nơi cư trú trên TỜ KHAI đăng ký kết hôn nếu có (đối chiếu đúng người theo họ tên/số giấy tờ).
 
 GIẤY TỜ TÙY THÂN (số/ngày/nơi cấp/tên):

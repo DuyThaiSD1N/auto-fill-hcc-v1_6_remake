@@ -21,14 +21,14 @@ EXTRA_RULES = """<critical_rules>
    số ... ngày ... của ...". Don_SoQuyetDinh chỉ giữ số hiệu (vd "1256/QĐ-LĐTBXH").
 3. Don_LoaiGiayChungNhan là tên loại giấy ở chú thích (1)/(5), vd "Giấy chứng nhận thân nhân liệt sĩ".
 4. Don_LyDo chép nguyên văn mục Lý do.
-5. Quê quán, Nơi thường trú là object {quocGia,tinh,xa,diaChi}: tinh giữ "Tỉnh ..."/"Thành phố ...", xa giữ
-   "Xã ..."/"Phường ...", diaChi chỉ thôn/tổ/số nhà/đường, KHÔNG lặp xã/tỉnh. Địa chỉ chỉ có xã + tỉnh thì
-   diaChi rỗng.
+5. Quê quán, Nơi thường trú là object {quocGia,tinh,xa,chiTietDuoiXa}: tinh giữ "Tỉnh ..."/"Thành phố ...", xa giữ
+   "Xã ..."/"Phường ...", chiTietDuoiXa chỉ thôn/tổ/số nhà/đường, KHÔNG lặp xã/tỉnh. Địa chỉ chỉ có xã + tỉnh thì
+   chiTietDuoiXa rỗng.
 </don_mau_25>
 
 <output_examples>
 Đúng:
-{"fields":{"Don_HoTen":"TRẦN VĂN A","Don_DienNguoiCoCong":"Thân nhân liệt sĩ (con của liệt sĩ Trần Văn B)","Don_SoQuyetDinh":"123/QĐ-LĐTBXH","Don_NgayQuyetDinh":"01/02/2010","Don_CoQuanQuyetDinh":"Giám đốc Sở Lao động - Thương binh và Xã hội tỉnh X","Don_LoaiGiayChungNhan":"Giấy chứng nhận thân nhân liệt sĩ","Don_LoaiDeNghi":"Cấp lại","Don_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Mẫu","xa":"Xã Mẫu","diaChi":"Thôn 1"}}}
+{"fields":{"Don_HoTen":"TRẦN VĂN A","Don_DienNguoiCoCong":"Thân nhân liệt sĩ (con của liệt sĩ Trần Văn B)","Don_SoQuyetDinh":"123/QĐ-LĐTBXH","Don_NgayQuyetDinh":"01/02/2010","Don_CoQuanQuyetDinh":"Giám đốc Sở Lao động - Thương binh và Xã hội tỉnh X","Don_LoaiGiayChungNhan":"Giấy chứng nhận thân nhân liệt sĩ","Don_LoaiDeNghi":"Cấp lại","Don_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Mẫu","xa":"Xã Mẫu","chiTietDuoiXa":"Thôn 1"}}}
 
 Sai:
 {"fields":{"data[fullname]":"TRẦN VĂN A","Don_DienNguoiCoCong":"TRẦN VĂN A"}}

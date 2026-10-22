@@ -68,7 +68,7 @@ SỐ / NGÀY:
   ChuHoSo_DiaChiHopDong, ChuHoSo_DiaChiDkdn, NoiCuTru trên CCCD); hệ thống tự chuẩn hoá tên phường/xã
   cũ sang đơn vị hành chính hiện hành, không cần tự đoán tên mới.
 - Địa chỉ hiện hành chỉ còn 2 cấp: "Số 12 Đoàn Trần Nghiệp, phường Hai Bà Trưng, thành phố Hà Nội" →
-  diaChi="Số 12 Đoàn Trần Nghiệp", xa="Hai Bà Trưng", tinh="Hà Nội".
+  chiTietDuoiXa="Số 12 Đoàn Trần Nghiệp", xa="Hai Bà Trưng", tinh="Hà Nội".
 
 LIÊN HỆ:
 - Don_DienThoai/Don_Email là của CHỦ HỒ SƠ (mục 1 của Đơn), KHÔNG phải của người được ủy quyền. Số điện

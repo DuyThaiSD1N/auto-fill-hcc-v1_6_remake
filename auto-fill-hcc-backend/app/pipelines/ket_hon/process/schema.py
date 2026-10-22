@@ -28,7 +28,7 @@ def _the(side: str, ten: str) -> list[dict]:
                  "CCCD/Căn cước Việt Nam → bỏ."},
         {"name": f"{p}_NoiCuTru_TrongNuoc",
          "desc": f"Nơi thường trú/cư trú CHỈ lấy từ CCCD/CMND của bên {ten.lower()} (đúng thẻ có số định danh của "
-                 "người này), object {quocGia,tinh,xa,diaChi}; không có cả thẻ lẫn tờ khai → theo NGOẠI LỆ ở <giay_to>."},
+                 "người này), object {quocGia,tinh,xa,chiTietDuoiXa}; không có cả thẻ lẫn tờ khai → theo NGOẠI LỆ ở <giay_to>."},
     ]
 
 
@@ -66,7 +66,7 @@ def _to_khai(side: str, ten: str) -> list[dict]:
         {"name": f"{p}_NgaySinh", "desc": f"Ngày sinh ở {cot}, dd/mm/yyyy."},
         {"name": f"{p}_DanToc", "desc": f"Dân tộc ở {cot}, chép nguyên văn; tờ khai không ghi thì bỏ."},
         {"name": f"{p}_NoiCuTru_TrongNuoc",
-         "desc": f"Nơi cư trú ở {cot}, object {{quocGia,tinh,xa,diaChi}}. CHỈ lấy từ tờ khai; không lấy CCCD, giấy xác "
+         "desc": f"Nơi cư trú ở {cot}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. CHỈ lấy từ tờ khai; không lấy CCCD, giấy xác "
                  "nhận tình trạng hôn nhân hay giấy khác."},
         {"name": f"{p}_SoDinhDanh", "desc": f"Số giấy tờ tùy thân ghi ở {cot}."},
         {"name": f"{p}_NgayCap", "desc": f"Ngày cấp giấy tờ tùy thân CHỈ khi ghi ở {cot}, dd/mm/yyyy."},

@@ -42,7 +42,7 @@ FIELDS: list[dict] = [
 
     {"name": "NguoiYeuCau_NoiCuTru",
      "desc": "Nơi cư trú người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Nơi cư trú', object "
-             "{quocGia,tinh,xa,diaChi}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
+             "{quocGia,tinh,xa,chiTietDuoiXa}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
              "trên CCCD dù CCCD viết rõ hơn."},
 
     # ==================================================================================
@@ -76,7 +76,7 @@ FIELDS: list[dict] = [
              "nguồn ghi như vậy; bỏ chức danh như CỤC TRƯỞNG."},
     {"name": "Cccd_NoiCuTru",
      "desc": "Địa chỉ 'Nơi thường trú/Place of residence' in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU, "
-             "object {quocGia,tinh,xa,diaChi}; xa bắt buộc khi giấy có."},
+             "object {quocGia,tinh,xa,chiTietDuoiXa}; xa bắt buộc khi giấy có."},
     {"name": "ToKhai_QuanHeNguoiYeuCau",
      "desc": 'Quan hệ của người yêu cầu với người đã chết, chỉ lấy từ nhãn "Quan hệ với người đã chết" '
              "có giá trị thật; không lấy quan hệ của người khác được nhắc trong công văn."},
@@ -118,7 +118,7 @@ FIELDS: list[dict] = [
              "OCR có cơ quan cấp thì BẮT BUỘC trả tên cơ quan đó; bỏ chức danh như CỤC TRƯỞNG và không "
              "lấy cơ quan cấp giấy tờ của người yêu cầu/người khác."},
     {"name": "NguoiMat_NoiCuTruCuoiCung",
-     "desc": 'NƠI CƯ TRÚ CUỐI CÙNG của người chết, object {quocGia,tinh,xa,diaChi}. Thứ tự nguồn: '
+     "desc": 'NƠI CƯ TRÚ CUỐI CÙNG của người chết, object {quocGia,tinh,xa,chiTietDuoiXa}. Thứ tự nguồn: '
              '(1) mục "Nơi cư trú cuối cùng" trong Tờ khai đăng ký khai tử; '
              '(2) mục "Nơi cư trú trước khi chết/cuối cùng" trong giấy báo tử/giấy tờ thay thế; '
              "(3) với người chết lâu năm, địa chỉ gần thời điểm chết nhất mà văn bản có thẩm quyền xác "
@@ -130,7 +130,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiMat_GioMat", "desc": 'Giờ tử vong dạng "HH:mm"; ví dụ "06 giờ 38 phút" hoặc "giờ 6, phút 38" -> "06:38".'},
     {"name": "NguoiMat_NguyenNhanMat", "desc": "Nguyên nhân tử vong."},
     {"name": "NguoiMat_NoiChet",
-     "desc": 'Nơi chết/nơi tử vong từ nhãn rõ ràng, object {quocGia,tinh,xa,diaChi}. Ưu tiên '
+     "desc": 'Nơi chết/nơi tử vong từ nhãn rõ ràng, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên '
              "giấy báo tử/giấy tờ thay thế, rồi chứng cứ có thẩm quyền về nơi chết/nơi phát hiện thi thể, "
              "rồi tờ khai. Không dùng cơ quan cấp giấy báo tử làm nơi chết."},
     {"name": "Gbt_So",

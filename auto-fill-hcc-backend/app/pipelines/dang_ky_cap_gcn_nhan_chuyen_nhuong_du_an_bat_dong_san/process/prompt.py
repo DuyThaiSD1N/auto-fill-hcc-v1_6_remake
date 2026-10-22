@@ -38,8 +38,8 @@ bản sửa đổi bổ sung, Biên bản bàn giao, tờ khai thuế, tờ khai
   cấp" / [09] "Nơi cấp" của tờ khai thuế hay bị ghi ĐẢO (ô ngày cấp chứa số CCCD) → KHÔNG dùng phần I.
 - Giấy kết hôn cũ ghi số CMND 9 số và địa chỉ cũ → KHÔNG dùng cho số định danh / địa chỉ.
 
-ĐỊA CHỈ (ChuHoSo_DiaChi / NguoiNop_DiaChi): object {quocGia,tinh,xa,diaChi}; tinh='Tỉnh/Thành phố …', xa=
-phường/xã, diaChi số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh). Lấy NƠI THƯỜNG TRÚ HIỆN HÀNH (sau sắp xếp
+ĐỊA CHỈ (ChuHoSo_DiaChi / NguoiNop_DiaChi): object {quocGia,tinh,xa,chiTietDuoiXa}; tinh='Tỉnh/Thành phố …', xa=
+phường/xã, chiTietDuoiXa số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh). Lấy NƠI THƯỜNG TRÚ HIỆN HÀNH (sau sắp xếp
 đơn vị hành chính, không còn cấp quận/huyện) theo CCCD → CT07 → Đơn Mẫu 18 bản bên nhận mục 1c. Giấy tờ cũ
 (hợp đồng, biên bản, hóa đơn năm trước) ghi địa chỉ có quận/huyện cũ → KHÔNG dùng khi đã có địa chỉ mới.
 KHÔNG lấy "Nơi ở hiện tại", "Địa chỉ liên hệ", "Địa chỉ nhận thông báo thuế".

@@ -88,12 +88,12 @@ QUY TẮC TỪNG FIELD:
 - DienThoai: chỉ lấy số điện thoại nằm trong đúng mục của chủ thể; không dùng số người kia. Trả CHỈ chữ số,
   bỏ mọi dấu chấm/khoảng trắng/gạch ngăn cách nhóm số.
 - QuocTich: chỉ trả khi giấy tờ ghi rõ.
-- NoiCuTru trả object {quocGia,tinh,xa,diaChi}; xa chỉ là tên xã/phường/thị trấn, không chứa tiền tố;
-  diaChi chỉ là số nhà/khu/xóm/thôn/bản/tổ, không lặp xã/huyện/tỉnh.
+- NoiCuTru trả object {quocGia,tinh,xa,chiTietDuoiXa}; xa chỉ là tên xã/phường/thị trấn, không chứa tiền tố;
+  chiTietDuoiXa chỉ là số nhà/khu/xóm/thôn/bản/tổ, không lặp xã/huyện/tỉnh.
   Với câu theo dạng "chi tiết, xã/phường ..., tỉnh ...": phần sau nhãn xã/phường → xa; phần sau nhãn
-  tỉnh → tinh; phần đứng trước xã/phường → diaChi. Không thay xã/tỉnh này bằng nơi thường trú trên CCCD.
+  tỉnh → tinh; phần đứng trước xã/phường → chiTietDuoiXa. Không thay xã/tỉnh này bằng nơi thường trú trên CCCD.
   Khi địa chỉ có cấp huyện, bỏ cấp huyện: cuối là tỉnh; ngay trước tỉnh nếu là huyện/quận/thị xã/
-  thành phố thuộc tỉnh thì bỏ; phần trước nữa là xã; phần còn lại là diaChi.
+  thành phố thuộc tỉnh thì bỏ; phần trước nữa là xã; phần còn lại là chiTietDuoiXa.
 
 CẤM SUY ĐOÁN:
 - Không tạo field không có bằng chứng trong OCR.

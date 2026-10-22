@@ -22,9 +22,9 @@ EXTRA_RULES = """<critical_rules>
    ToKhai_DienThoai lấy ở phần thông tin người khai đầu đơn.
 2. ToKhai_QuanHeVoiLietSi lấy từ dòng "Thuộc diện người có công" (vd "Con đẻ liệt sĩ (Nguyễn Văn Giá)"
    → trả "Con đẻ").
-3. Quê quán và Nơi thường trú là object {quocGia,tinh,xa,diaChi}. quocGia mặc định "Việt Nam";
+3. Quê quán và Nơi thường trú là object {quocGia,tinh,xa,chiTietDuoiXa}. quocGia mặc định "Việt Nam";
    tinh giữ đủ "Tỉnh ..."/"Thành phố ..."; xa giữ đủ "Xã ..."/"Phường ..."/"Thị trấn ...";
-   diaChi chỉ giữ thôn/tổ dân phố/số nhà/đường, KHÔNG lặp xã/huyện/tỉnh.
+   chiTietDuoiXa chỉ giữ thôn/tổ dân phố/số nhà/đường, KHÔNG lặp xã/huyện/tỉnh.
 </nguoi_khai>
 
 <liet_si>
@@ -46,7 +46,7 @@ EXTRA_RULES = """<critical_rules>
 
 <cccd>
 1. Person1_NgayCap lấy ở mặt sau CCCD, KHÔNG lấy ngày sinh/ngày hết hạn.
-2. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
+2. Person1_NoiCuTru là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </cccd>
 
 <output_examples>

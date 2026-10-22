@@ -7,7 +7,7 @@ TIÊM CHỦNG; có thể có CCCD của người nộp và/hoặc người đứ
 
 CƠ SỞ (CoSo_*) — CHỈ đọc ở tờ Thông báo:
 - CoSo_Ten = "Tên cơ sở thông báo", chép nguyên văn.
-- CoSo_DiaChi = "Địa chỉ" của cơ sở, tách object {quocGia,tinh,xa,diaChi}. KHÔNG lấy nơi thường trú trên
+- CoSo_DiaChi = "Địa chỉ" của cơ sở, tách object {quocGia,tinh,xa,chiTietDuoiXa}. KHÔNG lấy nơi thường trú trên
   CCCD làm địa chỉ cơ sở.
 - CoSo_NguoiDungDau = "Người đứng đầu cơ sở" (bỏ học hàm/chức danh BS, BS CK1, ThS…).
 - CoSo_DienThoai / CoSo_Email = "Điện thoại liên hệ" / "Email (nếu có)".

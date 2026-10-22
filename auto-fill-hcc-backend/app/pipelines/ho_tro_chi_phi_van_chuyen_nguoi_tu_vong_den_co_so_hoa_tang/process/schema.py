@@ -47,11 +47,11 @@ FIELDS: list[dict] = [
     {
         "name": "ChuHoSo_NoiCuTru",
         "desc": (
-            "NƠI THƯỜNG TRÚ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: Đơn mục II.2.b 'Nơi "
+            "NƠI THƯỜNG TRÚ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: Đơn mục II.2.b 'Nơi "
             "thường trú' (cơ quan, tổ chức: mục II.1 'Địa chỉ') -> địa chỉ thường trú của bên ĐẠI DIỆN GIA ĐÌNH "
             "trên Hợp đồng hỏa táng -> CCCD đúng người. Dòng địa chỉ viết liền '<số nhà/kiệt/đường>, <phường/xã>, "
             "<tỉnh/thành phố>': cụm cuối là tinh, cụm trước nó là xa (thêm 'Phường'/'Xã' nếu đơn viết trống), "
-            "phần còn lại vào diaChi. KHÔNG lấy địa chỉ cơ sở hỏa táng, địa điểm hỏa táng, cơ quan nhận đơn; "
+            "phần còn lại vào chiTietDuoiXa. KHÔNG lấy địa chỉ cơ sở hỏa táng, địa điểm hỏa táng, cơ quan nhận đơn; "
             "nơi thường trú của NGƯỜI CHẾT (Mục I.2) chỉ dùng khi Đơn ghi đúng địa chỉ đó ở mục II.2.b."
         ),
     },
@@ -81,7 +81,7 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiNop_NoiCuTru",
         "desc": (
-            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì chép NGUYÊN VẸN "
+            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì chép NGUYÊN VẸN "
             "ChuHoSo_NoiCuTru. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN."
         ),
     },

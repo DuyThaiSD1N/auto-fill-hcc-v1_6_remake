@@ -29,9 +29,9 @@ EXTRA_RULES = """
 7. Số CCCD/CMND bỏ khoảng trắng, dấu chấm, dấu gạch, chỉ giữ chữ số. Số điện thoại chỉ trả khi tài
    liệu ghi cho đúng vai.
 8. Địa chỉ CHỦ HỒ SƠ ưu tiên: mục I.c) "Địa chỉ" trên Đơn Mẫu 18 -> CCCD đúng người -> địa chỉ BÊN
-   ỦY QUYỀN -> GCN. Giữ đủ thôn/xóm/tổ/số nhà trong diaChi; địa chỉ GCN rút gọn không được ghi đè.
+   ỦY QUYỀN -> GCN. Giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa; địa chỉ GCN rút gọn không được ghi đè.
    Có ủy quyền thì NguoiNop_NoiCuTru lấy của BÊN ĐƯỢC ỦY QUYỀN. Không có ủy quyền thì sao chép
-   nguyên vẹn ChuHoSo_NoiCuTru, kể cả diaChi.
+   nguyên vẹn ChuHoSo_NoiCuTru, kể cả chiTietDuoiXa.
 9. Don_NoiDungDeNghi lấy NGUYÊN VĂN phần người dân viết sau nhãn mục II/2 "Nội dung biến động" và
    DỪNG TRƯỚC mục III/3 "Giấy tờ liên quan" của Đơn Mẫu 18. Nếu chính nội dung viết tay có số
    CCCD/CMND để mô tả việc đính chính thì phải giữ số đó. Không lấy tiêu đề thủ tục thay nội dung đơn.

@@ -32,7 +32,7 @@ NGUỒN NHÂN THÂN (NguoiDeNghi_*): ưu tiên CCCD; bổ sung Tờ khai 02a.ĐK
 điện thoại) và Hợp đồng mua bán (Bên mua: họ tên, sinh ngày, CCCD, ngày cấp, nơi cư trú). Số định danh:
 ưu tiên 12 chữ số. Nơi cấp: CCCD gắn chip không in nhãn riêng → ghi "Cục Cảnh sát quản lý hành chính về
 trật tự xã hội" (hoặc "Bộ Công an" nếu là thẻ Căn cước mới). ThuongTru tách object {quocGia,tinh,xa,
-diaChi}, diaChi chỉ chi tiết (số nhà/khóm/ấp/thôn/tổ).
+chiTietDuoiXa}, chiTietDuoiXa chỉ chi tiết (số nhà/khóm/ấp/thôn/tổ).
 
 LOẠI CHỦ THỂ CHỦ TÀU (ChuTau_LoaiChuThe): mặc định "Cá nhân". Chỉ trả "Tổ chức" khi chủ tàu rõ ràng là
 công ty/hợp tác xã/doanh nghiệp (có tên tổ chức + mã số thuế/mã số DN). Khi đó điền ChuTau_TenToChuc +

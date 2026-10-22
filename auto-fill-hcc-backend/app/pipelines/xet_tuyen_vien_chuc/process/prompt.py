@@ -23,7 +23,7 @@ EXTRA_RULES = """<critical_rules>
 5. Phieu_DiaChiNhanThongBao lấy từ mục "địa chỉ nhận thông báo"/"địa chỉ liên hệ"; chỉ trích riêng,
    không tự quyết fallback trong LLM.
 6. Với địa chỉ object: quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước; tinh là tỉnh/thành phố;
-   xa là xã/phường/thị trấn nếu đọc được; diaChi chỉ giữ số nhà/tổ/thôn/bản/khu/xóm, không lặp xã/huyện/tỉnh.
+   xa là xã/phường/thị trấn nếu đọc được; chiTietDuoiXa chỉ giữ số nhà/tổ/thôn/bản/khu/xóm, không lặp xã/huyện/tỉnh.
 7. Nếu địa chỉ chỉ có một chuỗi dài, vẫn cố tách tỉnh và xã từ cuối chuỗi; bỏ cấp huyện cũ nếu xuất hiện giữa xã và tỉnh.
 </phieu_dang_ky_extraction>
 
@@ -34,7 +34,7 @@ EXTRA_RULES = """<critical_rules>
 4. Bắt buộc cố đọc Person*_NgayCap từ mặt sau nếu OCR có. Không lấy ngày sinh hay ngày hết hạn làm ngày cấp.
 5. Bắt buộc cố đọc Person*_NoiCap từ mặt sau nếu OCR có. Nếu thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." thì trả
    "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ căn cước mới ghi "BỘ CÔNG AN" thì trả "Bộ Công an".
-6. Person*_NoiCuTru là địa chỉ trên CCCD, object {quocGia,tinh,xa,diaChi}; diaChi không lặp xã/huyện/tỉnh.
+6. Person*_NoiCuTru là địa chỉ trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp xã/huyện/tỉnh.
 </cccd_extraction>
 
 <role_boundary>
@@ -44,7 +44,7 @@ EXTRA_RULES = """<critical_rules>
 
 <output_examples>
 Đúng:
-{"fields":{"Phieu_HoTen":"LÒ THỊ XUYÊN","Phieu_SoDinhDanh":"012345678901","Phieu_HoKhau":{"quocGia":"Việt Nam","tinh":"Lai Châu","xa":"Tân Phong","diaChi":"Tổ 9"},"Person1_HoTen":"VŨ ĐÌNH THIẾT","Person1_SoDinhDanh":"040203015844"}}
+{"fields":{"Phieu_HoTen":"LÒ THỊ XUYÊN","Phieu_SoDinhDanh":"012345678901","Phieu_HoKhau":{"quocGia":"Việt Nam","tinh":"Lai Châu","xa":"Tân Phong","chiTietDuoiXa":"Tổ 9"},"Person1_HoTen":"VŨ ĐÌNH THIẾT","Person1_SoDinhDanh":"040203015844"}}
 
 Sai:
 {"fields":{"data[ownerFullname]":"LÒ THỊ XUYÊN","Phieu_HoTen":"VŨ ĐÌNH THIẾT"}}

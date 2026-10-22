@@ -16,7 +16,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd_NoiCap",
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "Cccd_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+    {"name": "Cccd_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú, object {quocGia,tinh,xa,chiTietDuoiXa} nếu đọc chắc chắn."},
 
     # Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất.
     {"name": "Gcn_SoPhatHanh",

@@ -38,7 +38,7 @@ def _base_url() -> str:
 def _cau_hinh() -> dict:
     prompt = base_prompt.build_system_prompt(FIELDS, EXTRA_RULES, dau_vao=base_prompt.DAU_VAO_ANH)
     return tao_cau_hinh(base_url=_base_url(), model=settings.ocr_qwen_model or settings.llm_model,
-                        prompt_he_thong=prompt, max_tokens=_MAX_TOKENS)
+                        prompt_he_thong=client.to_model_text(prompt), max_tokens=_MAX_TOKENS)
 
 
 def _lap_json(text: str) -> bool:
@@ -97,6 +97,7 @@ def doc(files: list[dict], da_cat: list[list[tuple]]) -> dict:
             text += ev["text"]
         elif ev["type"] == "usage":
             usage = ev
+    text = client.from_model_keys(text)
     out = {"text": gq.clean_output(text), "usage": usage, "so_anh": req.image_count,
            "ms": int((time.monotonic() - t0) * 1000)}
     try:

@@ -49,9 +49,9 @@ chứng minh việc thay đổi (đổi tên ngân hàng, chuyển giao quyền 
    TUYỆT ĐỐI không bịa 01/01.
 9. Giới tính chỉ suy từ danh xưng gắn trực tiếp với đúng người ("Ông" = Nam, "Bà" = Nữ) hoặc chữ số thứ
    4 của CCCD 12 số (chẵn = Nam, lẻ = Nữ). KHÔNG suy từ tên đệm.
-10. Địa chỉ trả object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền "<số nhà/thôn/tổ>, <xã/
+10. Địa chỉ trả object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền "<số nhà/thôn/tổ>, <xã/
     phường>, <huyện/thị xã/thành phố thuộc tỉnh — nếu có>, <tỉnh>": cụm CUỐI là tinh, cụm xã/phường là
-    xa, cụm cấp huyện (địa giới cũ) vào khoá "huyen", phần còn lại vào diaChi.
+    xa, cụm cấp huyện (địa giới cũ) vào khoá "huyen", phần còn lại vào chiTietDuoiXa.
 11. Nơi cấp CCCD ghi tắt "Cục CSQLHC về TTXH" vẫn là "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
 12. Giấy tờ không ghi thì BỎ FIELD (kể cả khoá con trong object/danh sách — không trả chuỗi rỗng ""). Không
     suy diễn, không lấy giá trị của người khác thay thế. Không dùng dấu nháy kép " bên trong giá trị.
@@ -61,5 +61,5 @@ chứng minh việc thay đổi (đổi tên ngân hàng, chuyển giao quyền 
 </missing_and_normalization_rules>
 
 Ví dụ output ĐÚNG (dữ liệu minh họa):
-{"fields":{"ChuHoSo_LaToChuc":true,"ChuHoSo_TenToChuc":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU","ChuHoSo_MaSoThue":"0100000000-001","ChuHoSo_NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","diaChi":"Số 1 đường Mẫu"},"Don_TuCachNguoiYeuCau":"Bên nhận bảo đảm","Don_NoiDungThayDoi":"Bổ sung tài sản bảo đảm","BenNhanBaoDam_TenMoi":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU","NguoiDuocUyQuyen":{"hoTen":"TRẦN VĂN MẪU","soDinhDanh":"001090000001","ngayCapCccd":"10/05/2022","chucVu":"Chuyên viên","donVi":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU"},"NguoiNop_HoTen":"TRẦN VĂN MẪU","NguoiNop_SoDinhDanh":"001090000001","NguoiNop_NgayCap":"10/05/2022","NguoiTrongGiayTo":[{"HoTen":"TRẦN VĂN MẪU","SoDinhDanh":"001090000001","GioiTinh":"Nam","NgayCap":"10/05/2022"}]}}
+{"fields":{"ChuHoSo_LaToChuc":true,"ChuHoSo_TenToChuc":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU","ChuHoSo_MaSoThue":"0100000000-001","ChuHoSo_NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","chiTietDuoiXa":"Số 1 đường Mẫu"},"Don_TuCachNguoiYeuCau":"Bên nhận bảo đảm","Don_NoiDungThayDoi":"Bổ sung tài sản bảo đảm","BenNhanBaoDam_TenMoi":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU","NguoiDuocUyQuyen":{"hoTen":"TRẦN VĂN MẪU","soDinhDanh":"001090000001","ngayCapCccd":"10/05/2022","chucVu":"Chuyên viên","donVi":"NGÂN HÀNG TMCP MINH HỌA - CHI NHÁNH MẪU"},"NguoiNop_HoTen":"TRẦN VĂN MẪU","NguoiNop_SoDinhDanh":"001090000001","NguoiNop_NgayCap":"10/05/2022","NguoiTrongGiayTo":[{"HoTen":"TRẦN VĂN MẪU","SoDinhDanh":"001090000001","GioiTinh":"Nam","NgayCap":"10/05/2022"}]}}
 """.strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

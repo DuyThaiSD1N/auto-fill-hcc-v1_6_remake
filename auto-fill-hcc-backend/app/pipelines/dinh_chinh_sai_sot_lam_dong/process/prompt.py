@@ -37,7 +37,7 @@ NGUỒN DỮ LIỆU:
 ĐỊA CHỈ (địa giới đã sáp nhập — CCCD/GCN hay ghi tên CŨ):
 - Nguoi_ThuongTru và ThuaDat_DiaChi: ưu tiên tên phường/xã MỚI ghi trong Đơn Mẫu 18. Nếu CCCD/GCN ghi tên
   cũ ("Phường 9", "Phường 09", "Thành phố Đà Lạt") mà Đơn ghi tên mới ("Phường Lâm Viên - Đà Lạt") thì lấy
-  theo Đơn. Tách object {tinh,xa,diaChi}: tinh = "Tỉnh …", xa = phường/xã, diaChi = số nhà/đường.
+  theo Đơn. Tách object {tinh,xa,chiTietDuoiXa}: tinh = "Tỉnh …", xa = phường/xã, chiTietDuoiXa = số nhà/đường.
 - Nguoi_ThuongTru (nơi ở người) và ThuaDat_DiaChi (vị trí lô đất) là HAI địa chỉ khác nhau — đừng gán trùng.
 
 CHI TIẾT GIẤY CHỨNG NHẬN (Gcn_* CHỈ lấy từ Giấy chứng nhận):

@@ -25,7 +25,7 @@ EXTRA_RULES = """
     thẻ Căn cước mới do Bộ Công an cấp, không lấy nơi cấp của thẻ người này cho người kia.
 - NƠI CƯ TRÚ (BenNam_NoiCuTru_TrongNuoc / BenNu_NoiCuTru_TrongNuoc): chỉ lấy "Nơi thường trú" / "Nơi cư trú" in
   trên thẻ của CHÍNH người đó — thẻ CCCD gắn chip in ở cuối MẶT TRƯỚC, thẻ CĂN CƯỚC mới in ở đầu MẶT SAU. Toàn bộ
-  tinh + xa + diaChi phải từ ĐÚNG thẻ có cùng số định danh với nhóm đó; TUYỆT ĐỐI không lấy diaChi từ thẻ người này
+  tinh + xa + chiTietDuoiXa phải từ ĐÚNG thẻ có cùng số định danh với nhóm đó; TUYỆT ĐỐI không lấy chiTietDuoiXa từ thẻ người này
   gán cho người kia, không lấy từ tờ khai, bản án hay giấy khác (trừ GIẤY THAY THẺ ở <giay_to>). Tách theo
   <dia_chi>.
 - QUỐC TỊCH (BenNam_QuocTich, BenNu_QuocTich): CHỈ trả khi giấy tờ KHÔNG phải của Việt Nam — suy từ quốc hiệu in
@@ -110,9 +110,9 @@ NGUỒN DỮ LIỆU:
   + ToKhaiNam_NoiCuTru_TrongNuoc / ToKhaiNu_NoiCuTru_TrongNuoc CHỈ lấy từ hàng "Nơi cư trú" ở đúng
     cột Bên nam/Bên nữ của TỜ KHAI ĐĂNG KÝ KẾT HÔN. Đối chiếu đúng cột theo tiêu đề, họ tên và/hoặc số định danh.
   + CccdNam_NoiCuTru_TrongNuoc / CccdNu_NoiCuTru_TrongNuoc CHỈ lấy nơi cư trú in trên CCCD/CMND của chính người đó.
-    TOÀN BỘ thông tin (tinh + xa + diaChi) của CccdNam_NoiCuTru_TrongNuoc phải đọc từ ĐÚNG thẻ CCCD có
+    TOÀN BỘ thông tin (tinh + xa + chiTietDuoiXa) của CccdNam_NoiCuTru_TrongNuoc phải đọc từ ĐÚNG thẻ CCCD có
     cùng số định danh với CccdNam_SoDinhDanh; tương tự CccdNu_NoiCuTru_TrongNuoc phải từ thẻ có số định
-    danh CccdNu_SoDinhDanh. TUYỆT ĐỐI không lấy diaChi từ thẻ người này gán cho người kia.
+    danh CccdNu_SoDinhDanh. TUYỆT ĐỐI không lấy chiTietDuoiXa từ thẻ người này gán cho người kia.
   + HAI THẺ LIỀN NHAU TRONG MỘT FILE: thẻ CĂN CƯỚC mới in "Nơi cư trú", ngày cấp, "BỘ CÔNG AN" ở MẶT SAU,
     và mặt sau KẾT THÚC bằng MRZ (dòng IDVNM...<12 số định danh><<, dòng giới tính M/F, dòng họ tên không dấu).
     Mọi thông tin đứng SAU MRZ của người thứ nhất và TRƯỚC MRZ tiếp theo thuộc người có tên/số trong MRZ
@@ -121,17 +121,17 @@ NGUỒN DỮ LIỆU:
   + Nếu có cả tờ khai và CCCD thì BẮT BUỘC trả CẢ HAI field nguồn tương ứng; mapper sẽ tự ưu tiên tờ khai.
   + Không lấy địa chỉ từ giấy xác nhận tình trạng hôn nhân, giấy phép lái xe, bản cam đoan hoặc giấy tờ phụ
     gán vào bất kỳ field nơi cư trú nào nêu trên.
-- TÁCH ĐỊA CHỈ (mọi field *_NoiCuTru_TrongNuoc — object {quocGia,tinh,xa,diaChi}):
+- TÁCH ĐỊA CHỈ (mọi field *_NoiCuTru_TrongNuoc — object {quocGia,tinh,xa,chiTietDuoiXa}):
   + xa = tên đơn vị cấp xã KÈM tiền tố đầy đủ "Phường"/"Xã"/"Thị trấn"; tinh CHỈ chứa tên
     tỉnh/thành phố trực thuộc trung ương, không chứa quận/huyện/xã hay phần địa chỉ chi tiết;
-    diaChi = phần chi tiết đứng TRƯỚC xã (tổ/tổ dân phố/thôn/xóm/bản/số nhà/đường). KHÔNG đưa tên xã/huyện/tỉnh vào diaChi.
+    chiTietDuoiXa = phần chi tiết đứng TRƯỚC xã (tổ/tổ dân phố/thôn/xóm/bản/số nhà/đường). KHÔNG đưa tên xã/huyện/tỉnh vào chiTietDuoiXa.
   + BẮT BUỘC mở rộng viết tắt trong xa trước khi trả: P9/P.9/P 9 → "Phường 9";
     X5/X.5/X 5 → "Xã 5"; TT Tam Đường/TT. Tam Đường → "Thị trấn Tam Đường".
     Không trả "P9", "P.9", "X5", "X.5", "TT." hoặc tên trần khi nguồn xác định rõ loại đơn vị.
   + Cấp tỉnh Hồ Chí Minh luôn trả đúng "Thành phố Hồ Chí Minh". Mọi dạng "TP.HCM", "TP HCM", "TPHCM",
     "HCM", "TP.Hồ Chí Minh", "TP Hồ Chí Minh" hoặc "Hồ Chí Minh" đều phải chuẩn hóa thành tên đầy đủ này.
   + Khi địa chỉ trên tờ khai có nhãn rõ "Xã ..." hoặc "Phường ..." thì đơn vị mang nhãn đó BẮT BUỘC là xa;
-    các thành phần "Thôn ...", "Tổ ...", "Khu phố ..." đứng trước vẫn thuộc diaChi, không được chọn chúng làm xa.
+    các thành phần "Thôn ...", "Tổ ...", "Khu phố ..." đứng trước vẫn thuộc chiTietDuoiXa, không được chọn chúng làm xa.
   + XÃ BẮT BUỘC khi giấy có phường/xã. ĐẾM TỪ CUỐI khi liệt kê không nhãn ("[chi tiết], xã, HUYỆN, tỉnh"):
     cuối = tỉnh; phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN;
     phần trước đó = xã. Tên xã vùng cao có thể bắt đầu "Bản"/"Nậm"/"Mường"/"Pa" — vị trí (áp chót) mới quyết định là xã.
@@ -261,15 +261,15 @@ NGUỒN DỮ LIỆU:
   
 <dia_chi_cccd>
 Địa chỉ CCCD/CMND không tiền tố = dãy tên ngăn dấu phẩy, xếp NHỎ→LỚN. Cấp HUYỆN/QUẬN (tên thứ 2 TỪ CUỐI,
-sát tỉnh) LUÔN bị XÓA HẲN — không cho vào xa lẫn diaChi (biểu mẫu chỉ có 2 cấp xã-tỉnh). Xử lý theo ĐÚNG
+sát tỉnh) LUÔN bị XÓA HẲN — không cho vào xa lẫn chiTietDuoiXa (biểu mẫu chỉ có 2 cấp xã-tỉnh). Xử lý theo ĐÚNG
 SỐ TÊN, KHÔNG được đảo:
-• ĐÚNG 3 tên "A, B, C" (KHÔNG có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; diaChi = RỖNG.
-  ⚠ Đây là chỗ HAY SAI: TUYỆT ĐỐI KHÔNG lấy B (sát tỉnh) làm xa, KHÔNG đẩy A xuống diaChi.
+• ĐÚNG 3 tên "A, B, C" (KHÔNG có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; chiTietDuoiXa = RỖNG.
+  ⚠ Đây là chỗ HAY SAI: TUYỆT ĐỐI KHÔNG lấy B (sát tỉnh) làm xa, KHÔNG đẩy A xuống chiTietDuoiXa.
   VD1: "Nội Duệ, Tiên Du, Bắc Ninh" → xa="Nội Duệ", huyen="Tiên Du", tinh="Bắc Ninh",
-  diaChi="".
-• 4 tên "D, A, B, C" (D là chi tiết: thôn/xóm/tổ dân phố/số nhà): D = diaChi; A = xa; B = huyện → XÓA;
-  C = tinh. VD2: "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → diaChi="Thôn Đại Vi", xa="Đại Đồng", huyen="Tiên Du",
+  chiTietDuoiXa="".
+• 4 tên "D, A, B, C" (D là chi tiết: thôn/xóm/tổ dân phố/số nhà): D = chiTietDuoiXa; A = xa; B = huyện → XÓA;
+  C = tinh. VD2: "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → chiTietDuoiXa="Thôn Đại Vi", xa="Đại Đồng", huyen="Tiên Du",
   tinh="Bắc Ninh".
-• 2 tên "A, C": A = xa; C = tinh; diaChi rỗng (không có huyện để xóa).
+• 2 tên "A, C": A = xa; C = tinh; chiTietDuoiXa rỗng (không có huyện để xóa).
 </dia_chi_cccd>
   """

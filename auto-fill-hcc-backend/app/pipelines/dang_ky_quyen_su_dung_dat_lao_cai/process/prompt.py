@@ -24,7 +24,7 @@ SỐ / NGÀY:
 ĐỊA CHỈ:
 - Địa chỉ chủ hồ sơ là nơi cư trú/trụ sở, KHÔNG phải địa chỉ thửa đất.
 - Địa chỉ hiện hành chỉ còn 2 cấp: "Số 6A, hẻm 358/25/5A Bùi Xương Trạch, phường Khương Đình, thành phố Hà Nội"
-  → diaChi="Số 6A, hẻm 358/25/5A Bùi Xương Trạch", xa="Khương Đình", tinh="Hà Nội".
+  → chiTietDuoiXa="Số 6A, hẻm 358/25/5A Bùi Xương Trạch", xa="Khương Đình", tinh="Hà Nội".
 
 CCCD:
 - DanhSachCccd chỉ gồm ảnh thẻ thật đã upload, một object mỗi thẻ. Người chỉ được nhắc trong hợp đồng/giấy ủy

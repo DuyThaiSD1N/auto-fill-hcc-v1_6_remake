@@ -19,8 +19,8 @@ HAI vai — tách RIÊNG:
    phố ghi trong Đơn) — dùng cho nhóm địa chỉ liên hệ (tinh/xa/diaChi).
 3. Địa chỉ trên Giấy chứng nhận QSDĐ = địa chỉ thửa đất theo hồ sơ đất — KHÔNG điền vào 2 trường trên.
 
-ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): tách object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …',
-xa=phường/xã, diaChi số nhà/đường/tổ dân phố (KHÔNG kèm phường/xã/tỉnh).
+ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): tách object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …',
+xa=phường/xã, chiTietDuoiXa số nhà/đường/tổ dân phố (KHÔNG kèm phường/xã/tỉnh).
 
 GIỚI TÍNH: nếu không có nhãn "Giới tính", SUY từ danh xưng "Ông"/"Bà" trong Đơn đề nghị hoặc Giấy chứng
 nhận QSDĐ ("Bà"→Nữ, "Ông"→Nam). Không có căn cứ thì bỏ.

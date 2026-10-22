@@ -31,9 +31,9 @@ EXTRA_RULES = """
 7. Số CCCD/CMND bỏ khoảng trắng, dấu chấm, dấu gạch, chỉ giữ chữ số. Số điện thoại chỉ trả khi tài
    liệu ghi cho đúng vai.
 8. Địa chỉ CHỦ HỒ SƠ ưu tiên: mục 'Địa chỉ' của người sử dụng đất trên Đơn Mẫu số 15 -> CCCD đúng
-   người -> địa chỉ BÊN ỦY QUYỀN -> giấy tờ khác. Giữ đủ thôn/xóm/tổ/số nhà trong diaChi; địa chỉ rút
+   người -> địa chỉ BÊN ỦY QUYỀN -> giấy tờ khác. Giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa; địa chỉ rút
    gọn không được ghi đè. Có ủy quyền thì NguoiNop_NoiCuTru lấy của BÊN ĐƯỢC ỦY QUYỀN. Không có ủy
-   quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả diaChi.
+   quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả chiTietDuoiXa.
 9. Don_NoiDungDangKy lấy NGUYÊN VĂN phần người dân khai tại mục 'Đề nghị'/nội dung yêu cầu giải quyết
    của Đơn đăng ký đất đai Mẫu số 15 (đề nghị đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở
    hữu tài sản gắn liền với đất đối với thửa đất kê khai). Không lấy tiêu đề thủ tục thay nội dung đơn.

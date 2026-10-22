@@ -55,8 +55,8 @@ trích người nộp, trừ số điện thoại (ô cổng để trống, xem 
 </to_khai>
 
 <dia_chi>
-11. Địa chỉ tách {quocGia,tinh,xa,diaChi}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối
-    là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là diaChi. Chọn đúng
+11. Địa chỉ tách {quocGia,tinh,xa,chiTietDuoiXa}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối
+    là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là chiTietDuoiXa. Chọn đúng
     nguồn trước rồi mới tách; không ghép chi tiết nguồn này với xã/tỉnh nguồn khác.
 </dia_chi>
 

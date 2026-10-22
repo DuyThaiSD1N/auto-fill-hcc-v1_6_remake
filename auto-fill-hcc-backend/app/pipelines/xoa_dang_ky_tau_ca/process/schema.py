@@ -18,7 +18,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd1_NoiCap", "desc": "Cơ quan cấp ở mặt sau thẻ thứ nhất, thường là Cục Cảnh sát quản lý "
         "hành chính về trật tự xã hội hoặc Bộ Công an."},
     {"name": "Cccd1_ThuongTru", "desc": "Nơi thường trú/Place of residence trên thẻ thứ nhất, object "
-        "{quocGia,tinh,xa,diaChi}. Không lấy quê quán; xa phải gồm tiền tố Xã/Phường nếu OCR thể hiện."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Không lấy quê quán; xa phải gồm tiền tố Xã/Phường nếu OCR thể hiện."},
     {"name": "Cccd2_HoTen", "desc": "Họ tên trên thẻ CCCD/căn cước vật lý thứ hai nếu hồ sơ có hai người "
         "khác nhau. Không tự quyết định đây là người nộp hay chủ hồ sơ."},
     {"name": "Cccd2_SoDinhDanh", "desc": "Số định danh trên thẻ CCCD/căn cước vật lý thứ hai; chỉ chữ số, "
@@ -30,7 +30,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd2_NoiCap", "desc": "Cơ quan cấp ở mặt sau thẻ thứ hai, thường là Cục Cảnh sát quản lý "
         "hành chính về trật tự xã hội hoặc Bộ Công an."},
     {"name": "Cccd2_ThuongTru", "desc": "Nơi thường trú/Place of residence trên thẻ thứ hai, object "
-        "{quocGia,tinh,xa,diaChi}. Không lấy quê quán; xa phải gồm tiền tố Xã/Phường nếu OCR thể hiện."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Không lấy quê quán; xa phải gồm tiền tố Xã/Phường nếu OCR thể hiện."},
 
     # Chủ hồ sơ = người đề nghị xóa đăng ký = bên mua.
     {"name": "NguoiDeNghi_HoTen", "desc": "Họ tên NGƯỜI ĐỀ NGHỊ XÓA đăng ký, đồng thời là CHỦ HỒ SƠ. "
@@ -46,9 +46,9 @@ FIELDS: list[dict] = [
         "dòng 'cấp ngày' của BÊN MUA trong hợp đồng."},
     {"name": "NguoiDeNghi_NoiCap", "desc": "Cơ quan cấp CCCD người đề nghị — mặt sau CCCD. Chuẩn hóa Cục "
         "Cảnh sát QLHC về TTXH/Bộ Công an theo đúng loại thẻ; không lấy cơ quan công chứng."},
-    {"name": "NguoiDeNghi_ThuongTru", "desc": "Nơi thường trú người đề nghị, object {quocGia,tinh,xa,diaChi}. "
+    {"name": "NguoiDeNghi_ThuongTru", "desc": "Nơi thường trú người đề nghị, object {quocGia,tinh,xa,chiTietDuoiXa}. "
         "Ưu tiên địa chỉ hiện hành của BÊN MUA trong hợp đồng nếu mới hơn CCCD. tinh='Tỉnh/Thành phố …', "
-        "xa=phường/xã, diaChi=phần chi tiết số nhà/đường/tổ (không kèm xã/huyện/tỉnh)."},
+        "xa=phường/xã, chiTietDuoiXa=phần chi tiết số nhà/đường/tổ (không kèm xã/huyện/tỉnh)."},
     {"name": "NguoiDeNghi_QuocTich", "desc": 'Quốc tịch người đề nghị từ CCCD/hợp đồng; thường là "Việt Nam".'},
 
     # Tờ khai Mẫu 10.ĐKT.

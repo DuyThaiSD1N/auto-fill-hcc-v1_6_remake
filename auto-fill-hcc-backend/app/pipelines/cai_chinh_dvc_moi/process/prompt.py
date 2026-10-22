@@ -28,8 +28,8 @@ người nộp.
 5. NguoiThayDoi_NoiCuTru chỉ lấy dòng thuộc chính người đó (khối người có nội dung thay đổi trên tờ khai, CCCD
    của chính họ); dòng nơi cư trú của cha/mẹ trên giấy khai sinh không phải của con. Dòng nơi cư trú trong khối
    người có nội dung thay đổi của tờ khai BẮT BUỘC trả, kể cả khi trùng nơi cư trú người yêu cầu.
-   Tách {quocGia,tinh,xa,diaChi}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối là
-   cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là diaChi.
+   Tách {quocGia,tinh,xa,chiTietDuoiXa}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối là
+   cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là chiTietDuoiXa.
 6. Dân tộc giữ nguyên chữ trên giấy; "Mông" giữ "Mông", biến thể có "H" đứng đầu (Hmông) → "Mông (Hmông)".
 </nguoi_thay_doi>
 

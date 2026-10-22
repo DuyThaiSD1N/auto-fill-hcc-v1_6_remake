@@ -65,7 +65,7 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
 def test_registry_uses_regular_birth_pipeline():
     proc = get_procedure("khai-sinh-dang-ky-thuong")
 
-    assert proc["label"] == "Thủ tục đăng ký khai sinh (Cổng DVC quốc gia mới)"
+    assert proc["label"] == "Thủ tục đăng ký khai sinh"
     assert proc["hasAttachmentStep"] is True
     # Cổng đã thay eForm cũ bằng SurveyJS (DVC quốc gia mới) → key chạy package khai_sinh_dvc_moi.
     assert get_pipeline("khai-sinh-dang-ky-thuong") is khai_sinh_dvc_moi_process

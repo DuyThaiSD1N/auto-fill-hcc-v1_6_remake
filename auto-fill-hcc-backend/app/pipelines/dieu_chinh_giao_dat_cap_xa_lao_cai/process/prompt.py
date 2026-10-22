@@ -60,8 +60,8 @@ EXTRA_RULES = """
 10. Chỉ trả ngày khi có ĐỦ ngày-tháng-năm. Chỉ có năm thì bỏ field; TUYỆT ĐỐI không bịa 01/01.
 11. Giới tính chỉ suy từ danh xưng gắn trực tiếp với đúng người đó ("Ông" = Nam, "Bà" = Nữ) hoặc chữ số
     thứ 4 của CCCD 12 số (chẵn = Nam, lẻ = Nữ). KHÔNG suy từ tên đệm.
-12. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Chuỗi viết liền "<số nhà/thôn>, <xã/phường>,
-    <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào diaChi.
+12. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Chuỗi viết liền "<số nhà/thôn>, <xã/phường>,
+    <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào chiTietDuoiXa.
 13. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>
 """.strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

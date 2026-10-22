@@ -17,7 +17,7 @@ nghiệp — chọn nhầm "Doanh nghiệp" là cổng đòi mã số thuế mà
 LLM chỉ trích dữ kiện nguồn; Python chọn nguồn theo ma trận ưu tiên và sinh field UI.
 """
 
-_AREA_DESC = "object {quocGia,tinh,xa,diaChi}; địa chỉ 2 cấp (xã/phường → tỉnh), diaChi là số nhà/đường/tổ/thôn."
+_AREA_DESC = "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ 2 cấp (xã/phường → tỉnh), chiTietDuoiXa là số nhà/đường/tổ/thôn."
 _PERSON_DESC = (
     "[{HoTen,SoDinhDanh,NgaySinh,GioiTinh,NgayCap,NoiCap}]; SoDinhDanh liền chữ số; NgaySinh/NgayCap dd/mm/yyyy "
     "(chỉ có năm thì trả đúng năm); GioiTinh suy từ xưng hô Ông→Nam, Bà→Nữ."

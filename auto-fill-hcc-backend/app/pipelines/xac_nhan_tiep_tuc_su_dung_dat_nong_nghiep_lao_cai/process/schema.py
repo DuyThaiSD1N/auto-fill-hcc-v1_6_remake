@@ -24,8 +24,8 @@ from app.pipelines.xac_nhan_tiep_tuc_dat_nong_nghiep.process.schema import (
 )
 
 _AREA_CU_DESC = (
-    "object {quocGia,tinh,huyen,xa,diaChi}; chép đúng tên đơn vị hành chính ghi trên giấy (kể cả huyện "
-    "cũ trước sáp nhập vào khoá huyen), diaChi giữ số nhà/đường/tổ/thôn."
+    "object {quocGia,tinh,huyen,xa,chiTietDuoiXa}; chép đúng tên đơn vị hành chính ghi trên giấy (kể cả huyện "
+    "cũ trước sáp nhập vào khoá huyen), chiTietDuoiXa giữ số nhà/đường/tổ/thôn."
 )
 
 FIELDS: list[dict] = [

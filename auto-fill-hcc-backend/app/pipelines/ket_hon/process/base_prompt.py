@@ -96,7 +96,7 @@ Hồ sơ luôn có HAI người. Xác định bên nam / bên nữ cho TỪNG gi
 
 <dia_chi>
 Field *_NoiCuTru_TrongNuoc trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<phường/xã/thị trấn>",
-"diaChi":"<chi tiết>"}. Biểu mẫu chỉ có 2 ô hành chính: XÃ/PHƯỜNG/THỊ TRẤN và TỈNH/THÀNH PHỐ — KHÔNG có ô cấp huyện.
+"chiTietDuoiXa":"<chi tiết>"}. Biểu mẫu chỉ có 2 ô hành chính: XÃ/PHƯỜNG/THỊ TRẤN và TỈNH/THÀNH PHỐ — KHÔNG có ô cấp huyện.
 - tinh: tên tỉnh / thành phố TRỰC THUỘC TRUNG ƯƠNG. Hà Nội, Hồ Chí Minh, Hải Phòng, Đà Nẵng, Cần Thơ, Huế là cấp
   TỈNH (kể cả khi ghi "thành phố Hải Phòng", "TP Đà Nẵng", "TPĐN") — luôn vào tinh, không bao giờ là huyện.
   Cấp tỉnh Hồ Chí Minh luôn trả đúng "Thành phố Hồ Chí Minh" (mọi dạng "TP.HCM", "TP HCM", "HCM", "TP.Hồ Chí Minh"). Bung
@@ -106,32 +106,32 @@ Field *_NoiCuTru_TrongNuoc trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/
   P9/P.9/P 9 → "Phường 9"; X5/X.5 → "Xã 5"; TT Tam Đường/TT. Tam Đường → "Thị trấn Tam Đường"; "P. Xuân Hương" →
   "Phường Xuân Hương". Giữ đủ chữ của tên ("Phường Nam Nha Trang" không cắt còn "Phường Nam"); đuôi "- Đà Lạt" sau
   tên phường là tên thành phố, bỏ đi.
-- diaChi: CHỈ cụm chi tiết đứng TRƯỚC xã (số nhà, đường, ngõ, hẻm, kiệt, tổ, tổ dân phố, khu, khóm, xóm, thôn, bản,
-  ấp, làng); KHÔNG chứa tên xã/huyện/tỉnh. Không có phần chi tiết → diaChi để trống.
+- chiTietDuoiXa: CHỈ cụm chi tiết đứng TRƯỚC xã (số nhà, đường, ngõ, hẻm, kiệt, tổ, tổ dân phố, khu, khóm, xóm, thôn, bản,
+  ấp, làng); KHÔNG chứa tên xã/huyện/tỉnh. Không có phần chi tiết → chiTietDuoiXa để trống.
 - Có TIỀN TỐ thì theo tiền tố: "Phường / Xã / Thị trấn / P. / X. / TT." → xa (đơn vị mang
-  nhãn rõ "Xã ..." hoặc "Phường ..." BẮT BUỘC là xa; "Thôn ...", "Tổ ...", "Khu phố ..." đứng trước vẫn thuộc diaChi). "Huyện / Quận / Thị
+  nhãn rõ "Xã ..." hoặc "Phường ..." BẮT BUỘC là xa; "Thôn ...", "Tổ ...", "Khu phố ..." đứng trước vẫn thuộc chiTietDuoiXa). "Huyện / Quận / Thị
   xã / Thành phố / TP." thuộc tỉnh (vd "Thị xã Sa Pa", "TP. Quảng Ngãi", "TP Lai Châu") → cấp HUYỆN, bỏ hẳn, không
-  vào xa, không vào diaChi. Tờ khai mẫu chia dòng "Thôn/Bản ...", "xã ...", "tỉnh ..." thì điền theo đúng nhãn từng
+  vào xa, không vào chiTietDuoiXa. Tờ khai mẫu chia dòng "Thôn/Bản ...", "xã ...", "tỉnh ..." thì điền theo đúng nhãn từng
   dòng.
 - KHÔNG có tiền tố (thẻ CCCD/CMND, tờ khai ghi liệt kê): các tên ngăn bằng dấu phẩy / xuống dòng, xếp NHỎ → LỚN.
   Làm theo thứ tự:
   1. Tên CUỐI = tinh.
   2. Phần ĐẦU mang dấu hiệu chi tiết RÕ (có số nhà / số tổ, tên đường, "Tổ", "TDP", "Tổ dân phố", "Khu phố", "Ngõ",
-     "Hẻm", "Kiệt", "Thôn", "Xóm", "Ấp") = diaChi.
-  3. Đếm các tên CÒN LẠI giữa diaChi và tỉnh:
-     • còn 2 tên "A, B" → xa = A; B là huyện → bỏ. "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → diaChi "Thôn Đại
-       Vi", xa "Đại Đồng", tinh "Bắc Ninh". "Nội Duệ, Tiên Du, Bắc Ninh" → xa "Nội Duệ", diaChi rỗng.
-     • còn 1 tên "A" → địa chỉ 2 cấp hiện hành: xa = A. "16 Lý Thường Kiệt, Hải Châu, Đà Nẵng" → diaChi "16 Lý
+     "Hẻm", "Kiệt", "Thôn", "Xóm", "Ấp") = chiTietDuoiXa.
+  3. Đếm các tên CÒN LẠI giữa chiTietDuoiXa và tỉnh:
+     • còn 2 tên "A, B" → xa = A; B là huyện → bỏ. "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → chiTietDuoiXa "Thôn Đại
+       Vi", xa "Đại Đồng", tinh "Bắc Ninh". "Nội Duệ, Tiên Du, Bắc Ninh" → xa "Nội Duệ", chiTietDuoiXa rỗng.
+     • còn 1 tên "A" → địa chỉ 2 cấp hiện hành: xa = A. "16 Lý Thường Kiệt, Hải Châu, Đà Nẵng" → chiTietDuoiXa "16 Lý
        Thường Kiệt", xa "Hải Châu", tinh "Đà Nẵng". "Bắc Giang, Bắc Ninh" → xa "Bắc Giang".
      • tên bắt đầu "Bản", "Nậm", "Mường", "Pa" ĐỨNG NGAY TRƯỚC 2 tên cuối (huyện, tỉnh) là tên XÃ vùng cao, không phải
        chi tiết: "Bản Hon, Tam Đường, Lai Châu" → xa "Bản Hon", "Tam Đường" bỏ.
   Thẻ CĂN CƯỚC có ngày cấp TỪ 01/07/2025 (và giấy cấp từ ngày đó) in địa chỉ 2 cấp, KHÔNG có cấp huyện: tên sát
-  trước tỉnh LÀ XÃ, kể cả khi trùng tên một huyện / thành phố cũ ("Tổ 5, Khóm 9, Tân An, Tỉnh Y" → diaChi "Tổ 5,
+  trước tỉnh LÀ XÃ, kể cả khi trùng tên một huyện / thành phố cũ ("Tổ 5, Khóm 9, Tân An, Tỉnh Y" → chiTietDuoiXa "Tổ 5,
   Khóm 9", xa "Tân An").
   Mẫu HAY GẶP trên thẻ: dòng 1 sau nhãn "Nơi thường trú" / "Place of residence" là chi tiết, dòng 2 là "xã, huyện,
   tỉnh" → xa = tên ĐẦU của dòng 2, tên giữa dòng 2 bỏ. "Nơi thường trú: Thôn Đông / Hòa Sơn, Thị xã Bình Lâm, Tỉnh Y"
-  → diaChi "Thôn Đông", xa "Hòa Sơn", tinh "Tỉnh Y" (KHÔNG lấy "Thị xã Bình Lâm" làm xa).
-  BẮT BUỘC điền xa khi chuỗi có phần cấp xã; không để xa trống rồi dồn tên xã vào diaChi.
+  → chiTietDuoiXa "Thôn Đông", xa "Hòa Sơn", tinh "Tỉnh Y" (KHÔNG lấy "Thị xã Bình Lâm" làm xa).
+  BẮT BUỘC điền xa khi chuỗi có phần cấp xã; không để xa trống rồi dồn tên xã vào chiTietDuoiXa.
 - CHỈ lấy dòng "Nơi thường trú" / "Nơi cư trú" / "Place of residence"; "Quê quán", "Nơi đăng ký khai sinh" KHÔNG
   phải nơi cư trú.
 - Dòng địa chỉ bị CỤT (ảnh lẹm mép, OCR dừng giữa chừng): chỉ trả phần đọc được, phần thiếu để trống; TUYỆT ĐỐI không
@@ -153,14 +153,14 @@ Field *_NoiCuTru_TrongNuoc trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/
 - Không trả field ngoài danh sách <field>, không trả giá trị rỗng.
 - Mỗi object địa chỉ (*_NoiCuTru_TrongNuoc) BẮT ĐẦU bằng khoá "_tach": chép các phần của địa chỉ trên giấy theo
   thứ tự kèm vai trò, dạng "chi tiết: <...> | xã: <...> | huyện (bỏ): <...> | tỉnh: <...>" (phần không có ghi "—");
-  vai trò xác định theo <dia_chi>. Sau đó tinh, xa, diaChi lấy theo "_tach" nhưng ở dạng ĐÃ CHUẨN HOÁ (bung viết tắt,
+  vai trò xác định theo <dia_chi>. Sau đó tinh, xa, chiTietDuoiXa lấy theo "_tach" nhưng ở dạng ĐÃ CHUẨN HOÁ (bung viết tắt,
   tỉnh suy từ thành phố thuộc tỉnh khi giấy không ghi tỉnh).
 - ĐỦ ĐỊA CHỈ: mỗi thẻ có dòng nơi cư trú đọc được → BẮT BUỘC trả Ben*_NoiCuTru_TrongNuoc của người đó; có tờ khai →
   BẮT BUỘC trả ToKhaiNam_NoiCuTru_TrongNuoc và ToKhaiNu_NoiCuTru_TrongNuoc. Không bỏ object địa chỉ vì dài.
 - Trả nhóm BenNam_* / BenNu_* TRƯỚC, rồi ToKhai*, CopyRequest_*.
 Chỉ trả một JSON object trong code block, viết LIỀN (không xuống dòng, không thụt lề):
 ```json
-{"fields": {"<field hợp lệ>": <value>, "<field *_NoiCuTru_TrongNuoc>": {"_tach": "chi tiết: ... | xã: ... | huyện (bỏ): ... | tỉnh: ...", "quocGia": "Việt Nam", "tinh": "...", "xa": "...", "diaChi": "..."}}}
+{"fields": {"<field hợp lệ>": <value>, "<field *_NoiCuTru_TrongNuoc>": {"_tach": "chi tiết: ... | xã: ... | huyện (bỏ): ... | tỉnh: ...", "quocGia": "Việt Nam", "tinh": "...", "xa": "...", "chiTietDuoiXa": "..."}}}
 ```
 </output>"""
 

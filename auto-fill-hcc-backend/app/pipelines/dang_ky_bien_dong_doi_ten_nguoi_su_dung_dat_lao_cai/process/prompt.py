@@ -34,7 +34,7 @@ NGUỒN NHÂN THÂN:
 ĐỊA CHỈ:
 - Địa chỉ chủ hồ sơ là nơi thường trú, KHÔNG phải địa chỉ thửa đất (mục II Giấy chứng nhận), KHÔNG phải "Kính
   gửi: Chi nhánh Văn phòng đăng ký đất đai…", KHÔNG phải địa chỉ văn phòng công chứng.
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn Khe Lim, xã Bảo Hà, tỉnh Lào Cai" → diaChi="Thôn Khe Lim", xa="Bảo Hà",
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn Khe Lim, xã Bảo Hà, tỉnh Lào Cai" → chiTietDuoiXa="Thôn Khe Lim", xa="Bảo Hà",
   tinh="Lào Cai". Giấy cũ ghi "xã Bảo Hà, huyện Bảo Yên, tỉnh Lào Cai" → trả thêm huyen="Bảo Yên".
 
 ĐIỆN THOẠI:

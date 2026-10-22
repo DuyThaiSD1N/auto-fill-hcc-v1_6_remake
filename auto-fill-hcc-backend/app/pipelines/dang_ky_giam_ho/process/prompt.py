@@ -80,16 +80,16 @@ giấy khai sinh/người được giám hộ, và có thể có trích xuất C
 </paper_declaration_rules>
 
 <address_split_rules>
-- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}.
+- Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
 - Với thủ tục này, tinh và xa nên GIỮ loại đơn vị nếu OCR đọc được: "Tỉnh Lai Châu", "Phường Tân Phong",
   "Xã Đông Phong". Nếu giấy chỉ ghi "Lai Châu" thì trả "Lai Châu"; Python sẽ thêm tiền tố tỉnh khi cần.
-- diaChi chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
+- chiTietDuoiXa chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
 - Nếu địa chỉ dạng "[chi tiết], phường/xã, thành phố/huyện, tỉnh" thì bỏ cấp huyện/thành phố,
-  lấy xa là phần phường/xã và diaChi là phần trước đó.
+  lấy xa là phần phường/xã và chiTietDuoiXa là phần trước đó.
 - Ví dụ "Tổ 1, phường Tân Phong, tỉnh Lai Châu" ->
-  tinh="Tỉnh Lai Châu", xa="Phường Tân Phong", diaChi="Tổ 1".
+  tinh="Tỉnh Lai Châu", xa="Phường Tân Phong", chiTietDuoiXa="Tổ 1".
 - Ví dụ "Tổ 22, phường Đông Phong, tỉnh Lai Châu" ->
-  tinh="Tỉnh Lai Châu", xa="Phường Đông Phong", diaChi="Tổ 22".
+  tinh="Tỉnh Lai Châu", xa="Phường Đông Phong", chiTietDuoiXa="Tổ 22".
 </address_split_rules>
 
 <output_reminder>

@@ -22,7 +22,7 @@ TUYỆT ĐỐI KHÔNG dùng cho SoDinhDanh / NgayCap / NoiCap / ThuongTru.
 ⚠ ĐỊA CHỈ CƠ SỞ (Đơn "Địa chỉ", GCN "Trụ sở", Danh sách mục 2) ≠ nơi cư trú của chủ hồ sơ → chỉ vào
 CoSo_DiaChi, KHÔNG vào ChuHoSo_ThuongTru.
 - ThuongTru: viết đầy đủ đơn vị hành chính ("TP Đà Nẵng" → "Thành phố Đà Nẵng", "phường An Hải" → "Phường An
-  Hải"). diaChi chỉ là số nhà/đường/tổ/thôn, giữ nguyên cách ghi của nguồn.
+  Hải"). chiTietDuoiXa chỉ là số nhà/đường/tổ/thôn, giữ nguyên cách ghi của nguồn.
 - Chữ viết tay: đọc cẩn thận từng chữ số điện thoại, email viết thường.
 
 CoSo_* / HoSo_TruongHopDeNghi: đọc Đơn Mẫu 02 (có thể thiếu thì lấy Danh sách đăng ký hành nghề / GCN đăng ký).

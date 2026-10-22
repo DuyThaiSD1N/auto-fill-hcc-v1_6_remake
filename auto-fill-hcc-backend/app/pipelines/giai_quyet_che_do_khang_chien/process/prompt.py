@@ -40,7 +40,7 @@ EXTRA_RULES = """<critical_rules>
 </nguoi_nop>
 
 <dia_chi_va_giay_to>
-1. Mọi địa chỉ trả object {quocGia,tinh,xa,diaChi}; bỏ cấp huyện/quận; diaChi chỉ giữ số nhà/đường/thôn/tổ.
+1. Mọi địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; bỏ cấp huyện/quận; chiTietDuoiXa chỉ giữ số nhà/đường/thôn/tổ.
 2. Giữ nguyên địa danh đọc được trong output compact. Python mapper sẽ dùng bảng sáp nhập hành chính chung;
    không tự suy hoặc đổi tỉnh/xã bằng kiến thức phỏng đoán.
 3. "Cục CS/Cục CSQLHC về TTXH" chuẩn hóa thành "Cục Cảnh sát quản lý hành chính về trật tự xã hội".

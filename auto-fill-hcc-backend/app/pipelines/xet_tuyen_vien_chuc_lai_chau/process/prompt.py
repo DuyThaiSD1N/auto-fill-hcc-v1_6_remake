@@ -16,7 +16,7 @@ NGUỒN DỮ LIỆU:
 
 ĐỊA CHỈ (Nguoi_ThuongTru):
 - Lấy theo NƠI THƯỜNG TRÚ / hộ khẩu (CCCD hoặc Phiếu), KHÔNG lấy quê quán (quê quán có thể khác tỉnh).
-- object {tinh,xa,diaChi}: tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn/xóm.
+- object {tinh,xa,chiTietDuoiXa}: tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn/xóm.
   Địa giới đã sáp nhập → ưu tiên tên phường/xã MỚI (hiện hành) nếu giấy tờ có ghi.
 
 KHÔNG trả field UI dạng CongDan_.... KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

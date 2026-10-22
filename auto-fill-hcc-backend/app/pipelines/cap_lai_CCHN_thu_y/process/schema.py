@@ -38,8 +38,8 @@ FIELDS: list[dict] = [
         'chính về trật tự xã hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an"; CMND ~9 số lấy '
         '"Công an tỉnh/thành phố …" ghi trên giấy.'},
     {"name": "NguoiDeNghi_ThuongTru", "desc": "NƠI THƯỜNG TRÚ / nơi cư trú NGƯỜI ĐỀ NGHỊ, object "
-        "{quocGia,tinh,xa,diaChi}. Lấy ở CCCD (Nơi thường trú) / Đơn 03.HNTY (Địa chỉ thường trú). "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/khóm/ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở CCCD (Nơi thường trú) / Đơn 03.HNTY (Địa chỉ thường trú). "
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/khóm/ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "NguoiDeNghi_DienThoai", "desc": "Số điện thoại DI ĐỘNG NGƯỜI ĐỀ NGHỊ. Chỉ chữ số; KHÔNG "
         "lấy số bàn. Đơn 03.HNTY có mục 'Số điện thoại liên hệ'."},
     # Hai field dưới CHỈ để tách vai, mapper KHÔNG đổ ra form.

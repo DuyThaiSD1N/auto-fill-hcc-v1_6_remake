@@ -17,8 +17,8 @@ EXTRA_RULES = """Đầu vào thường gồm:
 - Cccd_HoTen, Cccd_SoDinhDanh, Cccd_NgaySinh, Cccd_GioiTinh lấy từ mặt trước CCCD/CMND.
 - Cccd_NgayCap/Cccd_NoiCap lấy từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" thì trả Cccd_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
 - Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả Cccd_NoiCap = "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
-- Cccd_QueQuan lấy từ "Quê quán / Place of origin", tách thành object {tinh, xa, diaChi}. Ví dụ OCR "Trung Lập, Vĩnh Bảo, Hải Phòng" -> {tinh:"Hải Phòng", xa:"Vĩnh Bảo", diaChi:"Trung Lập"}.
-- Cccd_ThuongTru lấy từ "Nơi thường trú / Place of residence", trả object có fullText và cố tách {tinh, xa, diaChi}. Nếu không tách chắc chắn thì vẫn trả fullText.
+- Cccd_QueQuan lấy từ "Quê quán / Place of origin", tách thành object {tinh, xa, chiTietDuoiXa}. Ví dụ OCR "Trung Lập, Vĩnh Bảo, Hải Phòng" -> {tinh:"Hải Phòng", xa:"Vĩnh Bảo", chiTietDuoiXa:"Trung Lập"}.
+- Cccd_ThuongTru lấy từ "Nơi thường trú / Place of residence", trả object có fullText và cố tách {tinh, xa, chiTietDuoiXa}. Nếu không tách chắc chắn thì vẫn trả fullText.
 </cccd_rules>
 
 <water_application_rules>

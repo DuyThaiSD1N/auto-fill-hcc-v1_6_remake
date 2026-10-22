@@ -29,9 +29,9 @@ EXTRA_RULES = """
    bịa 01/01.
 7. Giới tính chỉ suy từ danh xưng gắn trực tiếp với đúng người đó ("Ông" = Nam, "Bà" = Nữ) hoặc từ chữ
    số thứ 4 của CCCD 12 số (chẵn = Nam, lẻ = Nữ). KHÔNG suy từ tên đệm.
-8. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con dạng
+8. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con dạng
    "<số nhà/đường/tổ/thôn>, <xã/phường>, <tỉnh/thành phố>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm
-   xa, phần còn lại cho vào diaChi. Giữ nguyên số nhà/đường/tổ/thôn trong diaChi.
+   xa, phần còn lại cho vào chiTietDuoiXa. Giữ nguyên số nhà/đường/tổ/thôn trong chiTietDuoiXa.
 9. ĐỪNG lẫn ĐỊA ĐIỂM KHU ĐẤT xin giao/thuê (ThuaDat_DiaChi) với địa chỉ trụ sở/nơi cư trú
    (ChuHoSo_NoiCuTru). Khu đất nằm ở mục "Địa điểm khu đất"/"Vị trí khu đất" của đơn hoặc trong quyết
    định chấp thuận chủ trương đầu tư.

@@ -18,7 +18,7 @@ Vai:
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn."
 )
 
@@ -95,10 +95,10 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD của người yêu cầu đăng ký, đi cùng đúng số và ngày cấp. Ghi tắt 'Cục CS QLHC về TTXH' thì trả 'Cục Cảnh sát quản lý hành chính về trật tự xã hội'."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của người yêu cầu đăng ký, object {quocGia,tinh,xa,diaChi}: cá nhân = nơi cư trú, "
+        "desc": "Địa chỉ của người yêu cầu đăng ký, object {quocGia,tinh,xa,chiTietDuoiXa}: cá nhân = nơi cư trú, "
                 "tổ chức = địa chỉ trụ sở. ƯU TIÊN địa chỉ ở mục 1 / mục 3 Phiếu 01a (ghi theo đơn vị hành "
                 "chính MỚI, 2 cấp) hơn địa chỉ trên GCN (đơn vị cũ). Giữ đủ số nhà/đường/tổ dân phố/thôn "
-                "trong diaChi. ĐÂY KHÔNG PHẢI địa chỉ thửa đất (mục 5.1 Phiếu, mục thửa đất của GCN/hợp đồng).",
+                "trong chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa chỉ thửa đất (mục 5.1 Phiếu, mục thửa đất của GCN/hợp đồng).",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại của người yêu cầu đăng ký — ưu tiên dòng 'Số điện thoại' ở mục 1 Phiếu 01a, rồi đến mục của chính người đó trong hợp đồng/biên bản. Chỉ chữ số."},
     {"name": "ChuHoSo_Email", "desc": "Email ('Thư điện tử') của người yêu cầu đăng ký nếu phiếu ghi rõ."},
@@ -112,7 +112,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND của người ở NguoiNop_HoTen, chỉ chữ số."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp giấy tờ định danh của người ở NguoiNop_HoTen, dd/mm/yyyy, đi cùng đúng số giấy tờ."},
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của người ở NguoiNop_HoTen, đi cùng đúng số và ngày cấp."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của người ở NguoiNop_HoTen, object {quocGia,tinh,xa,diaChi}. Không ghi được nơi cư trú của CHÍNH người đó thì bỏ field (không lấy địa chỉ trụ sở tổ chức hay thửa đất)."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của người ở NguoiNop_HoTen, object {quocGia,tinh,xa,chiTietDuoiXa}. Không ghi được nơi cư trú của CHÍNH người đó thì bỏ field (không lấy địa chỉ trụ sở tổ chức hay thửa đất)."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của người ở NguoiNop_HoTen, chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": "Email của người ở NguoiNop_HoTen nếu có."},
     {"name": "NguoiNop_Fax", "desc": "Số fax của người ở NguoiNop_HoTen nếu có."},

@@ -38,9 +38,9 @@ EXTRA_RULES = """
    TUYỆT ĐỐI không bịa 01/01.
 9. Giới tính chỉ suy từ danh xưng gắn trực tiếp với đúng người đó ("Ông" = Nam, "Bà" = Nữ) hoặc từ chữ
    số thứ 4 của CCCD 12 số (chẵn = Nam, lẻ = Nữ). KHÔNG suy từ tên đệm.
-10. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con dạng
+10. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con dạng
     "<số nhà/đường/tổ/thôn>, <xã/phường>, <tỉnh/thành phố>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm
-    xa, phần còn lại cho vào diaChi. Giữ nguyên số nhà/đường/tổ/thôn trong diaChi.
+    xa, phần còn lại cho vào chiTietDuoiXa. Giữ nguyên số nhà/đường/tổ/thôn trong chiTietDuoiXa.
 11. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). CCCD cũ in 3 cấp ("Bảo Nhai, Bắc Hà, Lào
     Cai") thì bỏ cấp huyện: tinh = "Lào Cai", xa = "Bảo Nhai".
 12. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.

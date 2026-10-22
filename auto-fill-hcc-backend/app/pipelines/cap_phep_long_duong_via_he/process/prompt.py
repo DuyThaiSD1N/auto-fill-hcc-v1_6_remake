@@ -18,7 +18,7 @@ VAI:
 ĐT công ty (GCN ĐKDN mục trụ sở) — KHÁC nhau, đừng lẫn.
 
 ⚠ PHÂN BIỆT ĐỊA CHỈ: NguoiNop_DiaChi = thường trú người nộp; DoanhNghiep_DiaChi = trụ sở chính công ty;
-LienHe_DiaChi = địa chỉ liên hệ (thường là địa chỉ kinh doanh). Tách object {quocGia,tinh,xa,diaChi} cho
+LienHe_DiaChi = địa chỉ liên hệ (thường là địa chỉ kinh doanh). Tách object {quocGia,tinh,xa,chiTietDuoiXa} cho
 2 địa chỉ đầu; LienHe_DiaChi để dạng chuỗi đầy đủ.
 
 ⚠ NguoiNop_DiaChi — ƯU TIÊN "Thường trú tại" ghi trên ĐƠN ĐỀ NGHỊ / Giấy cam kết (tờ khai của chính hồ

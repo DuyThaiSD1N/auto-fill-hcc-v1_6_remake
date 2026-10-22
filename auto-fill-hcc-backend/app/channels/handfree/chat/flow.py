@@ -37,6 +37,7 @@ from app.channels.handfree.procedure_registry import (
     portal_submit_rules, procedure_code, public_list, public_list_for,
 )
 from app.channels.handfree.profiles import service as profile_service
+from app.procedures.portal_submit import needs_submit_click
 from app.channels.handfree.documents import service as upload_service
 from app.dossiers import rating_card
 from app.dossiers import repo as dossiers_repo
@@ -4510,6 +4511,14 @@ def _done_chips() -> list:
     ]
 
 
+def _portal_needs_submit_click(conv: dict) -> bool:
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    hosts = list((proc.get("detect") or {}).get("urlScope") or [])
+    if conv.get("submit_portal_host"):
+        hosts.append(conv["submit_portal_host"])
+    return needs_submit_click(hosts)
+
+
 def _supports_rating(conv: dict) -> bool:
     """Client bản mới hiểu card 'rating'. Client cũ không khai → giữ nguyên luồng cũ."""
     return bool((conv.get("client_capabilities") or {}).get("supportsRating"))
@@ -4578,6 +4587,11 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
                 r = Reply()
                 r.actions = [{"type": "await_logout_choice", "delay_ms": 120_000}]
                 return r
+            return Reply()
+        # Cổng Form.io: panel "Nộp hồ sơ thành công" nằm sẵn (ẩn) trong DOM từ bước đầu, bản 1.10.1+ dò
+        # nhầm nó thành toast → đăng xuất công dân khi CHƯA nộp. Client mới (supportsRating) luôn bắt được
+        # cú bấm nút nộp trước → chưa có cú bấm thì bỏ qua event. Client cũ giữ hành vi cũ.
+        if _supports_rating(conv) and not conv.get("submit_clicked_at") and _portal_needs_submit_click(conv):
             return Reply()
         conv["submitted_completed"] = True
         # TẠM THỜI (gỡ được sau khi bản extension có bắt click nút đã lên chợ): chấm luôn mốc

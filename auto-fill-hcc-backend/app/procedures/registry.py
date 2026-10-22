@@ -1173,6 +1173,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký nhận cha, mẹ, con",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -1243,7 +1245,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
             "headingDisabled": True,
         },
-        "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh (Cổng DVC quốc gia mới)",
+        "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
         "mode": "agent",
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
@@ -1275,7 +1277,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
             "headingDisabled": True,
         },
-        "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc (Cổng DVC quốc gia mới)",
+        "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
         "mode": "agent",
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
@@ -1305,7 +1307,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
             "headingDisabled": True,
         },
-        "label": "Thủ tục đăng ký khai sinh (Cổng DVC quốc gia mới)",
+        "label": "Thủ tục đăng ký khai sinh",
         "mode": "agent",
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
@@ -1414,7 +1416,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "Thủ tục đăng ký khai tử (Cổng DVC quốc gia bản mới)",
+        "label": "Thủ tục đăng ký khai tử",
         # Package riêng: phân vai → trích → mapper ra câu hỏi SurveyJS (engine chung các thủ tục cổng mới).
         # Khối người nộp do cổng đổ từ VNeID và khóa, không ghi đè.
         "mode": "agent",
@@ -1521,7 +1523,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân (Cổng DVC quốc gia bản mới)",
+        "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
         # Package riêng: phân vai + chuẩn hoá mục đích → trích → mapper ra câu hỏi SurveyJS (engine chung các thủ
         # tục cổng mới). Khối người nộp do cổng đổ từ VNeID và khóa, chỉ điền số điện thoại + quan hệ.
         "mode": "agent",

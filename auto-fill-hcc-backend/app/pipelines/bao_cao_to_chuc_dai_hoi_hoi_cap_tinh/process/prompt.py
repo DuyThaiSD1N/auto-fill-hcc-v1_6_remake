@@ -21,7 +21,7 @@ CHỦ HỒ SƠ (ChuHoSo_*) = nhân sự dự kiến làm Chủ tịch hội — 
 ⚠ Sơ yếu lý lịch: ngày xác nhận của cơ quan quản lý KHÔNG phải ngày cấp CCCD. Số điện thoại lấy dòng "Điện thoại".
 ⚠ Có CCCD riêng của chính người này thì ưu tiên CCCD.
 Vd địa chỉ "93 đường Lê Lợi, tổ 5, phường Minh An, thành phố Bình An" → {"tinh":"Thành phố Bình An",
-"xa":"Phường Minh An","diaChi":"93 đường Lê Lợi, tổ 5"}.
+"xa":"Phường Minh An","chiTietDuoiXa":"93 đường Lê Lợi, tổ 5"}.
 
 NGƯỜI NỘP (NguoiNop_*) = tài khoản đăng nhập cổng. CHỈ trích từ thẻ CCCD được chỉ ra trong nguoi_nop_context.
 Không có thẻ → BỎ TRỐNG NguoiNop_* (trừ NguoiNop_DienThoai nếu hồ sơ ghi số điện thoại cạnh đúng tên người nộp).

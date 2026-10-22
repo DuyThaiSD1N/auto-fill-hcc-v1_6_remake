@@ -28,9 +28,9 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
              '"Bộ Công an". Chỉ có nếu upload CCCD.'},
     {"name": "Nguoi_ThuongTru",
-     "desc": "Nơi thường trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN tên phường/xã MỚI ghi "
+     "desc": "Nơi thường trú của chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN tên phường/xã MỚI ghi "
              "trong Đơn đăng ký đất đai; nếu CCCD ghi tên CŨ (vd 'Phường 9') mà Đơn ghi tên mới thì lấy "
-             "theo Đơn. diaChi = số nhà/đường."},
+             "theo Đơn. chiTietDuoiXa = số nhà/đường."},
     {"name": "Nguoi_DienThoai", "desc": "Số điện thoại liên hệ của chủ hồ sơ — lấy trong Đơn đăng ký đất đai nếu có. Chỉ chữ số."},
     {"name": "Nguoi_Email", "desc": "Hộp thư điện tử ghi trong Đơn đăng ký đất đai nếu có; bỏ trống thì bỏ qua."},
 
@@ -46,7 +46,7 @@ FIELDS: list[dict] = [
         "'CCCD số … cấp ngày <ngày> tại <nơi>' trong Giấy ủy quyền. Đừng bỏ trống nếu ủy quyền có ghi."},
     {"name": "DaiDien_NoiCapCccd", "desc": "Nơi cấp CCCD người đại diện — dòng 'CCCD số … cấp ngày … tại "
         "<nơi cấp>' trong Giấy ủy quyền; chuẩn hóa như Nguoi_NoiCapCccd."},
-    {"name": "DaiDien_ThuongTru", "desc": "Nơi cư trú người đại diện, object {quocGia,tinh,xa,diaChi} nếu có."},
+    {"name": "DaiDien_ThuongTru", "desc": "Nơi cư trú người đại diện, object {quocGia,tinh,xa,chiTietDuoiXa} nếu có."},
     {"name": "DaiDien_DienThoai", "desc": "Số điện thoại người đại diện nếu ghi trong đơn/ủy quyền. Chỉ chữ số."},
     {"name": "DaiDien_Email", "desc": "Email người đại diện nếu có."},
 

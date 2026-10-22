@@ -29,9 +29,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_SoDinhDanh", "desc": "TỔ CHỨC: MÃ SỐ DOANH NGHIỆP / mã số thuế của CHÍNH tổ chức chủ hồ sơ "
         f"({_DKDN} 'Mã số doanh nghiệp', Phiếu 02a mục 1). CÁ NHÂN: số CCCD. CHỈ chữ số. ⚠ Mã số ghi trên GCN "
         "QSDĐ mục I (GCNĐKDN số …) là của người đứng tên GCN — chỉ dùng khi chủ hồ sơ CHÍNH là người đó."},
-    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ chủ hồ sơ, object {quocGia,tinh,xa,diaChi}. TỔ CHỨC: trụ sở chính "
+    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. TỔ CHỨC: trụ sở chính "
         f"({_PHIEU} mục 1 địa chỉ liên hệ → {_DKDN} mục 2 'Địa chỉ trụ sở chính'). CÁ NHÂN: nơi thường trú "
-        "trên CCCD / Phiếu mục 1. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/tầng/tòa/đường/khu (KHÔNG "
+        "trên CCCD / Phiếu mục 1. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/tầng/tòa/đường/khu (KHÔNG "
         "kèm phường/xã/tỉnh). ⚠ KHÔNG lấy địa chỉ THỬA ĐẤT, KHÔNG lấy 'Địa chỉ liên lạc' của người đại diện."},
     {"name": "ChuHoSo_DienThoai", "desc": f"Số điện thoại chủ hồ sơ: {_PHIEU} mục 1 'Số điện thoại' → {_DKDN} "
         "mục 2 'Điện thoại'. Chỉ chữ số. Không có thì bỏ."},
@@ -42,9 +42,9 @@ FIELDS: list[dict] = [
 # --- Nghiệp vụ: tài sản bảo đảm + nội dung thay đổi (ghép vào 'Nội dung yêu cầu giải quyết') ---
 FIELDS += [
     {"name": "TaiSan_DanhSach", "desc": "Mảng TÀI SẢN BẢO ĐẢM, MỖI Giấy chứng nhận QSDĐ một object {soThua, "
-        "toBanDo, diaChi, dienTich, soPhatHanh, soVaoSo}. Nguồn: từng Giấy chứng nhận (mục II.1 a) Thửa đất số, "
+        "toBanDo, chiTietDuoiXa, dienTich, soPhatHanh, soVaoSo}. Nguồn: từng Giấy chứng nhận (mục II.1 a) Thửa đất số, "
         "tờ bản đồ số; b) Địa chỉ; c) Diện tích — giữ đơn vị m²; số phát hành 2 chữ cái + 6 chữ số ở góc trang "
-        "bìa, vd 'AB 123456'; 'Số vào sổ cấp GCN' vd 'CT 01234') hoặc mục mô tả tài sản của Phiếu 02a. diaChi "
+        "bìa, vd 'AB 123456'; 'Số vào sổ cấp GCN' vd 'CT 01234') hoặc mục mô tả tài sản của Phiếu 02a. chiTietDuoiXa "
         "chép NGUYÊN VĂN như trên giấy (địa danh cũ giữ nguyên). Khoá nào không đọc được thì bỏ khoá đó. "
         "Không có GCN/mô tả tài sản thì bỏ field."},
     {"name": "Don_NoiDungThayDoi", "desc": f"{_PHIEU} mục 3 'Nội dung yêu cầu đăng ký thay đổi' (kèm mục 2 tên, "

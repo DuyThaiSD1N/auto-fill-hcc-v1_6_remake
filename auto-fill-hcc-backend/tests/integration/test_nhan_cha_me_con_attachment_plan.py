@@ -44,9 +44,10 @@ async def test_nhan_cha_me_con_attachment_routes_adn_and_new_components(monkeypa
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
             "documents": [
-                {"index": 0, "docType": "identity", "documentName": "Căn cước công dân"},
-                {"index": 1, "docType": "other", "documentName": "Tài liệu khác"},
-                {"index": 2, "docType": "other", "documentName": "Tài liệu khác"},
+                {"index": 0, "docType": "relationship_proof", "documentName": "Kết quả xét nghiệm ADN"},
+                {"index": 1, "docType": "paper_declaration",
+                 "documentName": "Tờ khai đăng ký nhận cha, mẹ, con bản giấy"},
+                {"index": 2, "docType": "identity", "documentName": "Căn cước công dân"},
                 {"index": 3, "docType": "witness_commitment", "documentName": "Văn bản cam đoan"},
             ]
         })
@@ -155,3 +156,19 @@ def test_nhan_cha_me_con_attachment_prompt_contract():
     assert "KẾT QUẢ XÉT NGHIỆM ADN" in user_prompt
     assert "fileName" not in user_prompt
     assert "adn.pdf" not in user_prompt
+
+
+async def test_nhan_cha_me_con_attachment_llm_first_rule_only_when_llm_silent(monkeypatch):
+    # Tệp gộp có cả chữ "GIẤY CHỨNG SINH": LLM nói giấy khai sinh/chứng sinh thì theo LLM, không để từ khoá đè.
+    async def fake_ocr_per_file(files):
+        return [{"name": f["name"], "text": "GIẤY CHỨNG SINH Mã số GCS: 01\nCĂN CƯỚC CÔNG DÂN"} for f in files]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "docType": "birth_document", "documentName": "Giấy chứng sinh"}]})
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    res = await planner.plan([_file("gcs.pdf"), _file("cccd.pdf")], {}, _session())
+    # Tệp 0: LLM trả loại → theo LLM. Tệp 1: LLM không trả phần tử nào → lưới từ khoá đỡ.
+    assert [(c["docType"], c["source"]) for c in res["extracted"]["classified"]] == [
+        ("birth_document", "llm"), ("birth_document", "rule")]

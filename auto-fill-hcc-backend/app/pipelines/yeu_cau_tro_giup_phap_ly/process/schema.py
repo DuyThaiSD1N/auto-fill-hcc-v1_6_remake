@@ -50,10 +50,10 @@ FIELDS: list[dict] = [
         "ngày hết hạn. Dùng để phân biệt CCCD cũ / thẻ Căn cước mới (eForm không có ô ngày cấp)."},
     {"name": "Ndd_NoiCap", "desc": "Nơi cấp giấy tờ tùy thân của người được trợ giúp, chép như giấy ghi."},
     {"name": "Ndd_DiaChiLienHe", "desc": "Địa chỉ LIÊN HỆ = nơi người được trợ giúp ĐANG Ở: Thông báo 'Nơi cư trú' "
-        "> Đơn 'Địa chỉ liên hệ'. Object {quocGia,tinh,xa,diaChi}; diaChi gồm số nhà/thôn/cơ sở giam giữ, giáo "
+        "> Đơn 'Địa chỉ liên hệ'. Object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa gồm số nhà/thôn/cơ sở giam giữ, giáo "
         "dưỡng."},
     {"name": "Ndd_ThuongTru", "desc": "Nơi thường trú của người được trợ giúp (Thông báo 'Nơi thường trú' > CCCD), "
-        "object {quocGia,tinh,xa,diaChi}. Không lấy quê quán."},
+        "object {quocGia,tinh,xa,chiTietDuoiXa}. Không lấy quê quán."},
     {"name": "Ndd_DienThoai", "desc": "Điện thoại của người được trợ giúp nếu giấy tờ ghi."},
     {"name": "Ndd_Dien", "desc": "Diện người được trợ giúp pháp lý: chọn ĐÚNG MỘT nhãn trong <dien_options> theo "
         "dòng 'Thuộc diện trợ giúp pháp lý' của Thông báo / ô diện được tích trên Đơn / giấy chứng nhận diện (vd "
@@ -65,7 +65,7 @@ FIELDS: list[dict] = [
     # II. Người yêu cầu — CHỈ khi có Đơn yêu cầu trợ giúp pháp lý bản giấy (Mẫu 02).
     {"name": "Nyc_HoTen", "desc": "Họ tên NGƯỜI YÊU CẦU ở mục II của Đơn yêu cầu bản giấy. Không có Đơn thì bỏ."},
     {"name": "Nyc_SoDinhDanh", "desc": "Số giấy tờ tùy thân của người yêu cầu trên Đơn, chỉ chữ số."},
-    {"name": "Nyc_DiaChi", "desc": "Địa chỉ liên hệ của người yêu cầu trên Đơn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Nyc_DiaChi", "desc": "Địa chỉ liên hệ của người yêu cầu trên Đơn, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Nyc_DienThoai", "desc": "Điện thoại của người yêu cầu trên Đơn."},
     {"name": "Nyc_QuanHe", "desc": "'Mối quan hệ với người được trợ giúp pháp lý' trên Đơn, chép nguyên văn "
         "(vd 'Bản thân', 'Mẹ', 'Người giám hộ')."},

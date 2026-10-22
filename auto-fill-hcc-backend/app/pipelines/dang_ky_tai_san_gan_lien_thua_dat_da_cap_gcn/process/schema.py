@@ -19,8 +19,8 @@ FIELDS: list[dict] = [
         "thân/pháp nhân', GCN mục IV 'MSDN số'). CÁ NHÂN: số CCCD. CHỈ chữ số. KHÔNG lấy mã số dự án, số giấy "
         "phép kinh doanh của CHỦ CŨ ở GCN mục I, số phát hành/số vào sổ GCN."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ CHỦ HỒ SƠ (tổ chức = địa chỉ TRỤ SỞ), object {quocGia,tinh,xa,"
-        "diaChi}. Nguồn: Đơn Mẫu 18 mục 1c 'Địa chỉ' (ưu tiên — đã theo đơn vị hành chính mới), GCN mục IV. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=lô/số nhà/đường/khu (KHÔNG kèm phường/xã/tỉnh). KHÔNG "
+        "chiTietDuoiXa}. Nguồn: Đơn Mẫu 18 mục 1c 'Địa chỉ' (ưu tiên — đã theo đơn vị hành chính mới), GCN mục IV. "
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=lô/số nhà/đường/khu (KHÔNG kèm phường/xã/tỉnh). KHÔNG "
         "lấy địa chỉ THỬA ĐẤT (GCN mục II) hay địa điểm xây dựng dự án."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại ở Đơn Mẫu 18 mục 1 'Điện thoại liên hệ'. Có nhiều số thì "
         "ghi TẤT CẢ, cách nhau bằng ' / ' theo thứ tự trên đơn. Không có thì bỏ."},

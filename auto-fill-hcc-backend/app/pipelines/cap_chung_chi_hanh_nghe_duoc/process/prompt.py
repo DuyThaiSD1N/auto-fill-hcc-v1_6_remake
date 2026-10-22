@@ -28,7 +28,7 @@ NGUỒN DỮ LIỆU (NguoiDeNghi_*):
   tên cơ quan cấp (Cục Cảnh sát QLHC về TTXH / Bộ Công an).
 - ThuongTru: ưu tiên tên địa giới MỚI (sau sáp nhập) ghi ở Đơn Mẫu 02 (CCCD cũ có thể ghi tên tỉnh/xã CŨ
   — vd CCCD ghi "tỉnh Quảng Nam" nhưng Đơn 2026 ghi "TP Đà Nẵng" thì lấy theo Đơn). tách object
-  {quocGia,tinh,xa,diaChi}; diaChi CHỈ chi tiết (số nhà/đường/thôn/tổ), KHÔNG kèm phường/xã/huyện/tỉnh.
+  {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ chi tiết (số nhà/đường/thôn/tổ), KHÔNG kèm phường/xã/huyện/tỉnh.
 - DienThoai: số DI ĐỘNG; KHÔNG lấy số bàn. Email: chỉ khi Đơn có.
 
 LƯU Ý: nội dung nghiệp vụ (văn bằng chuyên môn, phạm vi hoạt động chuyên môn, thời gian thực hành, kết

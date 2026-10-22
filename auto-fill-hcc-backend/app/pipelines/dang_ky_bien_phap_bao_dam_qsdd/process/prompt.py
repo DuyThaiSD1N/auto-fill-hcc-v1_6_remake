@@ -29,6 +29,6 @@ CÁ NHÂN hay TỔ CHỨC (chủ hồ sơ):
 
 NGÀY CẤP: ưu tiên 'ngày cấp' ghi ở Phiếu Mục 3.3/4.3, dòng "số CCCD … cấp ngày …", hoặc mặt sau CCCD.
 KHÔNG lấy 'Có giá trị đến'/'Date of expiry' hay ngày ký giấy giới thiệu. Nơi cấp: chuẩn hóa tên cơ quan
-(Cục Cảnh sát QLHC về TTXH / Bộ Công an). Địa chỉ: tách object {quocGia,tinh,xa,diaChi}, diaChi chỉ chi tiết.
+(Cục Cảnh sát QLHC về TTXH / Bộ Công an). Địa chỉ: tách object {quocGia,tinh,xa,chiTietDuoiXa}, chiTietDuoiXa chỉ chi tiết.
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

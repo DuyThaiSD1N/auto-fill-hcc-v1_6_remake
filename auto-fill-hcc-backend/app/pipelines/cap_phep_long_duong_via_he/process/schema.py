@@ -33,9 +33,9 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại CÁ NHÂN người nộp (Đơn đề nghị / Giấy cam kết: "
         "'Điện thoại số'). Chỉ chữ số. KHÁC điện thoại doanh nghiệp."},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú/liên hệ NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. ƯU TIÊN lấy ở ĐƠN ĐỀ NGHỊ / Giấy cam kết (dòng 'Thường trú tại') — đây là tờ khai của "
+        "chiTietDuoiXa}. ƯU TIÊN lấy ở ĐƠN ĐỀ NGHỊ / Giấy cam kết (dòng 'Thường trú tại') — đây là tờ khai của "
         "chính hồ sơ này; CHỈ dùng CCCD hoặc GCN ĐKDN (mục 5) khi Đơn KHÔNG ghi địa chỉ. Nếu Đơn và GCN "
-        "khác nhau, LẤY THEO ĐƠN. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường (KHÔNG kèm "
+        "khác nhau, LẤY THEO ĐƠN. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường (KHÔNG kèm "
         "phường/xã/tỉnh)."},
 ]
 
@@ -49,7 +49,7 @@ FIELDS += [
     {"name": "DoanhNghiep_DienThoai", "desc": "Số điện thoại DOANH NGHIỆP (GCN ĐKDN, mục Địa chỉ trụ sở "
         "chính). Chỉ chữ số. KHÁC điện thoại cá nhân người nộp."},
     {"name": "DoanhNghiep_DiaChi", "desc": "Địa chỉ TRỤ SỞ CHÍNH doanh nghiệp, object {quocGia,tinh,xa,"
-        "diaChi}. Lấy ở GCN ĐKDN (mục 2 - Địa chỉ trụ sở chính). Bỏ nếu cá nhân."},
+        "chiTietDuoiXa}. Lấy ở GCN ĐKDN (mục 2 - Địa chỉ trụ sở chính). Bỏ nếu cá nhân."},
 ]
 
 # --- Đơn đề nghị (header) ---

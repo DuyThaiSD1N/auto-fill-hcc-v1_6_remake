@@ -48,7 +48,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiDeNghi_Email", "desc": "Email ở Đơn, nguyên văn. Phần tên hộp thư bị che thì bỏ field."},
     {
         "name": "NguoiDeNghi_DiaChi",
-        "desc": "Nơi thường trú trên CCCD; không có CCCD thì 'Địa chỉ liên lạc' ở Đơn. Object {tinh,xa,diaChi}. "
+        "desc": "Nơi thường trú trên CCCD; không có CCCD thì 'Địa chỉ liên lạc' ở Đơn. Object {tinh,xa,chiTietDuoiXa}. "
                 "KHÔNG lấy nơi lập đơn ('Thành phố Đà Nẵng, ngày…'), nơi chứng thực hay địa chỉ trường học.",
     },
 

@@ -39,15 +39,15 @@ FIELDS += [
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD NGƯỜI NỘP, dd/mm/yyyy — mặt sau CCCD."},
     {"name": "NguoiNop_NoiCap", "desc": 'Cơ quan cấp CCCD NGƯỜI NỘP. CCCD gắn chip: "Cục Cảnh sát quản lý '
         'hành chính về trật tự xã hội"; thẻ căn cước mới: "Bộ Công an".'},
-    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Lấy "
-        "ở CCCD (Nơi thường trú). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường (KHÔNG kèm "
+    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy "
+        "ở CCCD (Nơi thường trú). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường (KHÔNG kèm "
         "phường/xã/tỉnh). KHÁC địa chỉ THỬA ĐẤT."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP (Đơn Mẫu 18 mục 1.d/1.h). Chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},
 
     # --- Phần II: thửa đất/công trình được đính chính (lấy ở GCN đã cấp) ---
     {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ thửa đất/địa chỉ xây dựng ghi trên GCN đã cấp (mục II — "
-        "Nhà ở/Đất ở), object {quocGia,tinh,xa,diaChi} hoặc chuỗi. ĐÂY LÀ ĐỊA CHỈ TÀI SẢN. Ưu tiên GCN "
+        "Nhà ở/Đất ở), object {quocGia,tinh,xa,chiTietDuoiXa} hoặc chuỗi. ĐÂY LÀ ĐỊA CHỈ TÀI SẢN. Ưu tiên GCN "
         "(giấy đang đề nghị đính chính)."},
     {"name": "ThuaDat_SoTo", "desc": "Số tờ bản đồ (GCN mục II — b/ Đất ở — Tờ bản đồ số). Chỉ số. Bỏ nếu không có."},
     {"name": "ThuaDat_SoThua", "desc": "Số thửa đất (GCN mục II — b/ Đất ở — Thửa đất số). Chỉ số. Bỏ nếu không có."},

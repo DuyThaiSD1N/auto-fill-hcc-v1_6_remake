@@ -13,8 +13,8 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_SoDinhDanh", "desc": "Số CCCD/CMND chủ hồ sơ; chỉ giữ chữ số. Ưu tiên CCCD đúng người hoặc giấy ủy quyền được chứng thực hơn số OCR mơ hồ trên Mẫu 18."},
     {"name": "ChuHoSo_NgayCap", "desc": "Ngày cấp CCCD/CMND chủ hồ sơ, dd/mm/yyyy, lấy từ đúng giấy tờ của chủ hồ sơ."},
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD/CMND chủ hồ sơ từ đúng giấy tờ; không lấy cơ quan chứng thực/người ký."},
-    {"name": "ChuHoSo_QueQuan", "desc": "Quê quán chủ hồ sơ, object {quocGia,tinh,xa,diaChi}, ưu tiên dòng Quê quán tại mục 1 Mẫu 18."},
-    {"name": "ChuHoSo_NoiCuTru", "desc": "Nơi thường trú chủ hồ sơ, object {quocGia,tinh,xa,diaChi}. Ưu tiên Mẫu 18; giấy ủy quyền đúng người được bổ sung tỉnh/xã còn thiếu."},
+    {"name": "ChuHoSo_QueQuan", "desc": "Quê quán chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}, ưu tiên dòng Quê quán tại mục 1 Mẫu 18."},
+    {"name": "ChuHoSo_NoiCuTru", "desc": "Nơi thường trú chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên Mẫu 18; giấy ủy quyền đúng người được bổ sung tỉnh/xã còn thiếu."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại chủ hồ sơ tại mục 1 Mẫu 18."},
     {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch chủ hồ sơ khi giấy tờ của đúng người ghi rõ."},
 
@@ -25,7 +25,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND người nộp; phải thuộc tài liệu đã khớp UI."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND người nộp, dd/mm/yyyy, từ đúng tài liệu đã khớp UI."},
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp giấy tờ người nộp từ đúng tài liệu đã khớp UI."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,diaChi}, từ đúng tài liệu đã khớp UI."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}, từ đúng tài liệu đã khớp UI."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp nếu tài liệu đúng người ghi rõ."},
     {"name": "NguoiNop_QuocTich", "desc": "Quốc tịch người nộp khi tài liệu đúng người ghi rõ."},
 

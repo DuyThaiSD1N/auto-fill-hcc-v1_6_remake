@@ -77,9 +77,9 @@ thông tin đó, đừng dừng ở trang đầu.
     ("H 01486"), số giấy ủy quyền ("0055"), số thửa ("55"), số tờ bản đồ ("24"), toạ độ đỉnh thửa.
 15. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → NoiCap = "Cục Cảnh sát quản lý
     hành chính về trật tự xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" → "Bộ Công an".
-16. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con dạng
+16. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con dạng
     "<khu/tổ/thôn>, <xã/phường>, <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại
-    cho vào diaChi. Giữ nguyên "Khu Niềm Xá", "Tổ dân phố 5" trong diaChi.
+    cho vào chiTietDuoiXa. Giữ nguyên "Khu Niềm Xá", "Tổ dân phố 5" trong chiTietDuoiXa.
 17. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). Giấy tờ cũ in 3 cấp thì bỏ cấp huyện:
     "phường Trung Tâm, thị xã Nghĩa Lộ, tỉnh Lào Cai" → tinh = "Lào Cai", xa = "Trung Tâm".
 18. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.

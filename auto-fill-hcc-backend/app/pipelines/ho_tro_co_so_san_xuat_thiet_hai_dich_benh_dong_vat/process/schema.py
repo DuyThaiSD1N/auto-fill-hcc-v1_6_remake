@@ -14,7 +14,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd1_GioiTinh", "desc": 'Giới tính trên thẻ thứ nhất: "Nam" hoặc "Nữ".'},
     {"name": "Cccd1_NgayCap", "desc": "Ngày cấp ở mặt sau thẻ thứ nhất, dd/mm/yyyy; không lấy ngày hết hạn."},
     {"name": "Cccd1_NoiCap", "desc": "Cơ quan cấp ở mặt sau thẻ thứ nhất."},
-    {"name": "Cccd1_ThuongTru", "desc": "Nơi thường trú trên thẻ thứ nhất, object {quocGia,tinh,xa,diaChi}. "
+    {"name": "Cccd1_ThuongTru", "desc": "Nơi thường trú trên thẻ thứ nhất, object {quocGia,tinh,xa,chiTietDuoiXa}. "
         "Không lấy quê quán."},
     {"name": "Cccd2_HoTen", "desc": "Họ tên trên thẻ CCCD/căn cước vật lý thứ hai nếu hồ sơ có hai người khác "
         "nhau. Không tự quyết định đây là người nộp hay chủ hộ."},
@@ -23,7 +23,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd2_GioiTinh", "desc": 'Giới tính trên thẻ thứ hai: "Nam" hoặc "Nữ".'},
     {"name": "Cccd2_NgayCap", "desc": "Ngày cấp ở mặt sau thẻ thứ hai, dd/mm/yyyy."},
     {"name": "Cccd2_NoiCap", "desc": "Cơ quan cấp ở mặt sau thẻ thứ hai."},
-    {"name": "Cccd2_ThuongTru", "desc": "Nơi thường trú trên thẻ thứ hai, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Cccd2_ThuongTru", "desc": "Nơi thường trú trên thẻ thứ hai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Chủ hồ sơ = chủ hộ chăn nuôi / cơ sở sản xuất bị thiệt hại.
     {"name": "ChuHo_HoTen", "desc": "Họ tên CHỦ HỘ CHĂN NUÔI đề nghị hỗ trợ: dòng 'Tôi tên là' của Đơn đề nghị; "
@@ -38,8 +38,8 @@ FIELDS: list[dict] = [
     {"name": "ChuHo_NgayCap", "desc": "Ngày cấp CCCD chủ hộ ghi trên Đơn ('Ngày cấp') hoặc mặt sau CCCD, "
         "dd/mm/yyyy."},
     {"name": "ChuHo_NoiCap", "desc": "Nơi cấp CCCD chủ hộ ghi trên Đơn ('Nơi cấp') hoặc mặt sau CCCD."},
-    {"name": "ChuHo_ThuongTru", "desc": "Địa chỉ thường trú chủ hộ, object {quocGia,tinh,xa,diaChi}: Đơn "
-        "'Địa chỉ thường trú' > Biên bản mục I.3 'Địa chỉ' > CCCD. diaChi chỉ gồm thôn/bản/xóm/số nhà."},
+    {"name": "ChuHo_ThuongTru", "desc": "Địa chỉ thường trú chủ hộ, object {quocGia,tinh,xa,chiTietDuoiXa}: Đơn "
+        "'Địa chỉ thường trú' > Biên bản mục I.3 'Địa chỉ' > CCCD. chiTietDuoiXa chỉ gồm thôn/bản/xóm/số nhà."},
     {"name": "ChuHo_DienThoai", "desc": "Số điện thoại trên Đơn đề nghị; dòng chấm/bỏ trống thì bỏ field."},
     {"name": "CoSo_Ten", "desc": "Tên cơ sở sản xuất ghi ở dòng 'Tên cơ sở sản xuất (nếu có)' của Đơn. Dòng "
         "chấm/bỏ trống thì bỏ field; không lấy tên chủ hộ thay thế."},

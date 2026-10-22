@@ -59,7 +59,7 @@ FIELDS: list[dict] = [
     {
         "name": "ChuHoSo_NoiCuTru",
         "desc": (
-            "NƠI CƯ TRÚ (thường trú/chỗ ở) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Nguồn ưu "
+            "NƠI CƯ TRÚ (thường trú/chỗ ở) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu "
             "tiên: mục 'Địa chỉ' của người sử dụng đất trên ĐƠN/TỜ KHAI do chính người dân lập "
             "(nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ: Mẫu số 18, Mẫu số 11/ĐK, đơn đề nghị... — "
             "không đòi đúng một số hiệu mẫu) -> giấy xác nhận thông tin về cư trú/xác nhận số định "
@@ -67,7 +67,7 @@ FIELDS: list[dict] = [
             "phí trước bạ -> CUỐI CÙNG mới đến CCCD. CCCD cấp trước sắp xếp đơn vị hành chính hay "
             "ghi TỈNH/HUYỆN CŨ đã sáp nhập; hễ đơn đã ghi địa chỉ thì phải theo đơn, kể cả khi tên "
             "phường/xã trên đơn nghe giống địa danh tỉnh cũ. Giữ đủ số nhà/đường/tổ/thôn trong "
-            "diaChi. ĐÂY KHÔNG PHẢI địa chỉ thửa đất ghi trên Giấy chứng nhận — tuyệt đối không lấy "
+            "chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa chỉ thửa đất ghi trên Giấy chứng nhận — tuyệt đối không lấy "
             "nhầm địa điểm thửa đất."
         ),
     },
@@ -91,8 +91,8 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiNop_NoiCuTru",
         "desc": (
-            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền/văn bản "
-            "đại diện thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả số nhà/thôn trong diaChi. Có "
+            "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền/văn bản "
+            "đại diện thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả số nhà/thôn trong chiTietDuoiXa. Có "
             "ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN. ĐÂY KHÔNG PHẢI địa chỉ thửa đất."
         ),
     },
@@ -100,11 +100,11 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có; không tự tạo."},
     {
         "name": "ChuHoSo_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ mục 'Địa chỉ' nằm trong khối 'Người sử dụng đất/chủ sở hữu tài sản'/'Người đề nghị' của ĐƠN hoặc TỜ KHAI do chính người dân lập (Đơn đăng ký biến động Mẫu số 18, Mẫu số 11/ĐK, đơn đề nghị...; nhận BẤT KỲ mẫu nào có trong hồ sơ). TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào diaChi.",
+        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ lấy từ mục 'Địa chỉ' nằm trong khối 'Người sử dụng đất/chủ sở hữu tài sản'/'Người đề nghị' của ĐƠN hoặc TỜ KHAI do chính người dân lập (Đơn đăng ký biến động Mẫu số 18, Mẫu số 11/ĐK, đơn đề nghị...; nhận BẤT KỲ mẫu nào có trong hồ sơ). TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào chiTietDuoiXa.",
     },
     {
         "name": "NguoiNop_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,diaChi}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì người nộp chính là chủ hồ sơ nên chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
+        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,chiTietDuoiXa}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì người nộp chính là chủ hồ sơ nên chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
     },
     {
         "name": "Don_NoiDungDeNghi",

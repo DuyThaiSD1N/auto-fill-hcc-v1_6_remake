@@ -27,7 +27,7 @@ SỐ GIẤY TỜ:
 - ChuHoSo_DiaChiDon lấy mục 1.c) Địa chỉ trên Đơn; ChuHoSo_DiaChiHopDong lấy nơi thường trú của bên B trên
   hợp đồng. Cả hai là NƠI CƯ TRÚ, KHÔNG phải địa chỉ thửa đất/căn nhà nhận chuyển nhượng.
 - Địa chỉ hiện hành chỉ còn 2 cấp. "Tổ dân phố số 21 Kim Tân, phường Lào Cai, tỉnh Lào Cai" →
-  diaChi="Tổ dân phố số 21 Kim Tân", xa="Lào Cai", tinh="Lào Cai".
+  chiTietDuoiXa="Tổ dân phố số 21 Kim Tân", xa="Lào Cai", tinh="Lào Cai".
 
 CCCD:
 - DanhSachCccd: một object cho mỗi thẻ, đọc riêng từng thẻ. Thẻ của người KHÔNG có tên trong HĐ/Đơn (thường là

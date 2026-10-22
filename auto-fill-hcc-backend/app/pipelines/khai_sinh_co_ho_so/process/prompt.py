@@ -95,7 +95,7 @@ Mỗi người lấy thông tin ĐỒNG BỘ từ giấy tờ của CHÍNH họ;
   chính nhãn quan hệ trên tờ khai: mục "người cha" → "Nam", mục "người mẹ" → "Nữ".
 - HỒ SƠ THIẾU MỘT BÊN: BỎ TRỐNG HOÀN TOÀN vai còn lại — không trả BẤT KỲ field nào của vai đó, kể cả
   Nationality/Ethnicity/ResidenceDomestic. Thà để cổng trống còn hơn điền dữ liệu của người khác sang.
-- ❌ CẤM tự thêm địa chỉ "Đã chết" khi không có căn cứ: chỉ trả *_ResidenceDomestic = {"diaChi":"Đã chết"}
+- ❌ CẤM tự thêm địa chỉ "Đã chết" khi không có căn cứ: chỉ trả *_ResidenceDomestic = {"chiTietDuoiXa":"Đã chết"}
   khi tờ khai/giấy tờ ghi rõ người đó đã mất.
 </mot_nguoi_mot_nguon>
 
@@ -133,11 +133,11 @@ D. 3 CCCD: TRẺ NHẤT → Subject_*; trong hai người còn lại, "Giới t�
    kể cả nhiễu "Da Chet"/"L.D. Chat"):
    - HỌ TÊN: Ưu tiên lấy từ CCCD nếu có trong hồ sơ; nếu không có CCCD thì lấy từ TỜ KHAI, GIẤY ĐỀ NGHỊ
      XÁC NHẬN, GIẤY CHỨNG NHẬN KẾT HÔN hoặc TRÍCH LỤC KHAI TỬ (dòng "Họ tên người chết"/"Họ và tên").
-   - ĐỊA CHỈ: Trả *_ResidenceDomestic = {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.
+   - ĐỊA CHỈ: Trả *_ResidenceDomestic = {"quocGia":"","tinh":"","xa":"","chiTietDuoiXa":"Đã chết"}.
    - THÔNG TIN KHÁC: Vẫn PHẢI trích *_BirthDateOrYear, *_Ethnicity, *_Nationality TỪ TỜ KHAI hoặc
      TRÍCH LỤC KHAI TỬ / GIẤY CHỨNG TỬ nếu có.
    - ĐỊA CHỈ TỪ GIẤY KHAI TỬ: Trích "Nơi thường trú"/"Nơi cư trú" (thiếu thì "Quê quán") trên trích lục
-     vào *_HometownFromDeathCert (object {quocGia,tinh,xa,diaChi}). Chỉ trả khi có trích lục.
+     vào *_HometownFromDeathCert (object {quocGia,tinh,xa,chiTietDuoiXa}). Chỉ trả khi có trích lục.
 5. Nơi cấp giấy tờ định danh:
    - CCCD gắn chip ghi "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát
      quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới (cấp từ 01/7/2024) ghi "BỘ CÔNG AN" → "Bộ Công an".
@@ -167,16 +167,16 @@ CopyRequest_* CHỈ lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH (tiêu đề có �
 
 <dia_chi_cccd>
 Địa chỉ CCCD/CMND không tiền tố = dãy tên ngăn dấu phẩy, xếp NHỎ→LỚN. Cấp HUYỆN/QUẬN (tên thứ 2 TỪ CUỐI,
-sát tỉnh) LUÔN bị XÓA HẲN — không cho vào xa lẫn diaChi (biểu mẫu chỉ có 2 cấp xã–tỉnh). Xử lý theo ĐÚNG
+sát tỉnh) LUÔN bị XÓA HẲN — không cho vào xa lẫn chiTietDuoiXa (biểu mẫu chỉ có 2 cấp xã–tỉnh). Xử lý theo ĐÚNG
 SỐ TÊN, KHÔNG được đảo:
-• ĐÚNG 3 tên "A, B, C" (KHÔNG có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; diaChi = RỖNG.
-  ⚠ Đây là chỗ HAY SAI: TUYỆT ĐỐI KHÔNG lấy B (sát tỉnh) làm xa, KHÔNG đẩy A xuống diaChi.
+• ĐÚNG 3 tên "A, B, C" (KHÔNG có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; chiTietDuoiXa = RỖNG.
+  ⚠ Đây là chỗ HAY SAI: TUYỆT ĐỐI KHÔNG lấy B (sát tỉnh) làm xa, KHÔNG đẩy A xuống chiTietDuoiXa.
   VD1: "Nùng Nàng, Tam Đường, Lai Châu" → xa="Nùng Nàng", tinh="Lai Châu",
-  diaChi="" (XÓA huyện Tam Đường). SAI nếu ra xa="Tam Đường" hoặc diaChi="Nùng Nàng".
-• 4 tên "D, A, B, C" (D là chi tiết: thôn/bản/xóm/tổ dân phố/số nhà): D = diaChi; A = xa; B = huyện → XÓA;
-  C = tinh. VD2: "Bản Chin Chu Chải, Nùng Nàng, Tam Đường, Lai Châu" → diaChi="Bản Chin Chu Chải",
+  chiTietDuoiXa="" (XÓA huyện Tam Đường). SAI nếu ra xa="Tam Đường" hoặc chiTietDuoiXa="Nùng Nàng".
+• 4 tên "D, A, B, C" (D là chi tiết: thôn/bản/xóm/tổ dân phố/số nhà): D = chiTietDuoiXa; A = xa; B = huyện → XÓA;
+  C = tinh. VD2: "Bản Chin Chu Chải, Nùng Nàng, Tam Đường, Lai Châu" → chiTietDuoiXa="Bản Chin Chu Chải",
   xa="Nùng Nàng", tinh="Lai Châu" (XÓA huyện Tam Đường).
-• 2 tên "A, C": A = xa; C = tinh; diaChi rỗng (không có huyện để xóa).
+• 2 tên "A, C": A = xa; C = tinh; chiTietDuoiXa rỗng (không có huyện để xóa).
 </dia_chi_cccd>
 
 <chuan_hoa_dac_thu>

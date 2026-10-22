@@ -22,8 +22,8 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD/căn cước {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới → "Bộ Công an". KHÔNG lấy '
         '"Nơi cấp: Sở Y tế ..." của Chứng chỉ hành nghề dược ghi trong Đơn.'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ / nơi cư trú CÁ NHÂN {who}, object {{quocGia,tinh,xa,diaChi}} — {src}. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh)."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ / nơi cư trú CÁ NHÂN {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}} — {src}. "
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh)."),
 ]
 
 _CHU_SRC = (

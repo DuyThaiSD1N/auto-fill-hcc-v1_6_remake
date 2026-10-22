@@ -34,9 +34,9 @@ EXTRA_RULES = """
 9. ⚠ SỐ CMND CŨ 9 SỐ in ở trang bìa Giấy chứng nhận ("số giấy CMND 063078311") chỉ để đối chiếu lịch
    sử. Số định danh phải là CCCD 12 số hiện hành, lấy ở Giấy uỷ quyền / Văn bản tặng cho, hoặc ở
    dòng chỉnh lý "thay đổi Chứng minh nhân dân từ … thành CCCD: …" của Giấy chứng nhận.
-10. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con
+10. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con
     dạng "<số nhà/đường/tổ/thôn>, <xã/phường>, <tỉnh/thành phố>": lấy cụm CUỐI làm tinh, cụm ngay
-    TRƯỚC làm xa, phần còn lại cho vào diaChi. Giữ nguyên số nhà/đường/tổ/thôn trong diaChi.
+    TRƯỚC làm xa, phần còn lại cho vào chiTietDuoiXa. Giữ nguyên số nhà/đường/tổ/thôn trong chiTietDuoiXa.
 11. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). Giấy tờ cũ in 3 cấp ("xã Cam Đường,
     thành phố Lào Cai, tỉnh Lào Cai") thì bỏ cấp huyện/thành phố trực thuộc tỉnh: tinh = "Lào Cai",
     xa = "Cam Đường".

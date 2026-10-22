@@ -54,16 +54,16 @@ EXTRA_RULES = """
      thửa đất. Hễ ĐƠN đã ghi địa chỉ thì PHẢI theo đơn, tuyệt đối không để địa chỉ trên thẻ ghi đè.
    - Giấy tờ tùy thân cấp trước sắp xếp đơn vị hành chính có thể còn ghi tỉnh/phường CŨ. Khi đơn hoặc
      giấy xác nhận MỚI HƠN ghi khác thì theo giấy tờ mới, không lấy giá trị cũ trên thẻ.
-   - Đơn có đủ số nhà/đường/tổ/thôn thì bắt buộc giữ trong diaChi; địa chỉ rút gọn ở giấy tờ khác
+   - Đơn có đủ số nhà/đường/tổ/thôn thì bắt buộc giữ trong chiTietDuoiXa; địa chỉ rút gọn ở giấy tờ khác
      không được ghi đè.
    - Không có văn bản ủy quyền/đại diện thì NguoiNop_NoiCuTru phải giống NGUYÊN VẸN ChuHoSo_NoiCuTru,
-     kể cả diaChi. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
-   - Địa chỉ trả object {quocGia,tinh,xa,diaChi}; không đưa huyện vào xa hoặc diaChi, không lặp
-     tỉnh/xã trong diaChi.
+     kể cả chiTietDuoiXa. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
+   - Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa huyện vào xa hoặc chiTietDuoiXa, không lặp
+     tỉnh/xã trong chiTietDuoiXa.
    - BẪY THƯỜNG GẶP: dòng địa chỉ trên ĐƠN hay viết LIỀN, KHÔNG có nhãn con, dạng
      "<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>"; trong khi CCCD có nhãn rõ nên DỄ đọc hơn.
      Đừng vì dễ mà quay sang CCCD. PHẢI tự tách chuỗi trên đơn: cụm CUỐI là tỉnh/thành phố, cụm ngay
-     TRƯỚC nó là xã/phường, phần còn lại cho vào diaChi (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
+     TRƯỚC nó là xã/phường, phần còn lại cho vào chiTietDuoiXa (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
    - Nếu TỈNH ghi trên ĐƠN khác TỈNH ghi trên CCCD thì LUÔN theo ĐƠN, không lấy tỉnh của thẻ.
 10. QUY TẮC ĐỊA CHỈ THỬA ĐẤT (ThuaDat_DiaChi) — TÁCH HẲN với nơi cư trú:
    - Đây là ĐỊA ĐIỂM THỬA ĐẤT/công trình đăng ký cấp Giấy chứng nhận lần đầu, KHÔNG phải chỗ ở của ai.

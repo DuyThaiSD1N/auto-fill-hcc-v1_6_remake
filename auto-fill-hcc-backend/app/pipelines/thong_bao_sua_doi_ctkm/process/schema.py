@@ -19,7 +19,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh in trên CÙNG thẻ căn cước đó, dd/mm/yyyy."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp in ở mặt sau CÙNG thẻ căn cước đó, dd/mm/yyyy."},
     {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú / nơi cư trú in trên CÙNG thẻ căn cước đó, object "
-        "{quocGia,tinh,xa,diaChi}; diaChi chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
 
     # --- Thương nhân thực hiện khuyến mại = CHỦ HỒ SƠ (đầu Thông báo) ---
     {"name": "ThuongNhan_Ten", "desc": f"Tên doanh nghiệp ở dòng 'Tên thương nhân:' trên {_TB}, chép đúng "
@@ -27,8 +27,8 @@ FIELDS: list[dict] = [
     {"name": "ThuongNhan_MaSoThue", "desc": f"'Mã số thuế' trên {_TB}. Chép NGUYÊN VĂN chữ số đọc được; "
         "KHÔNG tự bù chữ số bị thiếu/che."},
     {"name": "ThuongNhan_DiaChi", "desc": f"'Địa chỉ trụ sở chính' trên {_TB}, object {{quocGia,tinh,xa,"
-        "diaChi,fullText}}. fullText = nguyên dòng địa chỉ; tinh='Tỉnh/Thành phố …'; xa=phường/xã; "
-        "diaChi=số nhà/tòa nhà/đường (KHÔNG kèm phường/xã/tỉnh)."},
+        "chiTietDuoiXa,fullText}}. fullText = nguyên dòng địa chỉ; tinh='Tỉnh/Thành phố …'; xa=phường/xã; "
+        "chiTietDuoiXa=số nhà/tòa nhà/đường (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "ThuongNhan_DienThoai", "desc": f"'Điện thoại' ở dòng thông tin thương nhân trên {_TB} "
         "(KHÔNG phải điện thoại người liên hệ). Chỉ chữ số, không tự bù số."},
     {"name": "ThuongNhan_Fax", "desc": f"'Fax' trên {_TB}. Chỉ chữ số."},

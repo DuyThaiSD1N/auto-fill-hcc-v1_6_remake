@@ -69,24 +69,24 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - BẮT BUỘC cố đọc Nyc_NgayCap/Nyc_NoiCap từ mặt sau CCCD. Nơi cấp nằm ngay sau/gần dòng
   "Ngày, tháng, năm / Date, month, year"; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
   VỀ TRẬT TỰ XÃ HỘI" thì trả Nyc_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả Nyc_NoiCap = "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
-- Nyc_NoiCuTru và ChuThe_NoiCuTru tách thành object {quocGia,tinh,xa,diaChi}:
+- Nyc_NoiCuTru và ChuThe_NoiCuTru tách thành object {quocGia,tinh,xa,chiTietDuoiXa}:
   + xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN (bỏ tiền tố Xã/Phường/Thị trấn); tinh = tỉnh/thành phố;
-    diaChi = chi tiết đứng TRƯỚC xã (bản/tổ/tổ dân phố/thôn/xóm/số nhà/đường). KHÔNG đưa xã/huyện/tỉnh vào diaChi.
+    chiTietDuoiXa = chi tiết đứng TRƯỚC xã (bản/tổ/tổ dân phố/thôn/xóm/số nhà/đường). KHÔNG đưa xã/huyện/tỉnh vào chiTietDuoiXa.
   + Với MỌI object địa chỉ (Nyc_NoiCuTru, ChuThe_NoiCuTru và HoTich_NoiCuTru), cấp tỉnh Hồ Chí Minh luôn trả
     "Thành phố Hồ Chí Minh"; không trả "TP.HCM", "TP HCM", "TP. Hồ Chí Minh", "TP Hồ Chí Minh",
     "TPHCM", "HCM" hoặc chỉ "Hồ Chí Minh".
   + Ghép các dòng địa chỉ rồi ĐẾM TỪ CUỐI với chuỗi 3 cấp hành chính
     "[chi tiết], [xã], [huyện], [tỉnh]": cuối = tỉnh; áp cuối = huyện và PHẢI BỎ; cụm trước huyện = xã.
     Tên huyện thường không có chữ "huyện" trên CCCD, nhưng vị trí áp cuối vẫn là cấp huyện, KHÔNG được chọn làm xa.
-    Vd "Thôn Bình Minh / Tân Phú, Yên Lạc, Vĩnh Phúc" → diaChi="Thôn Bình Minh",
+    Vd "Thôn Bình Minh / Tân Phú, Yên Lạc, Vĩnh Phúc" → chiTietDuoiXa="Thôn Bình Minh",
     xa="Tân Phú", tinh="Vĩnh Phúc" (bỏ huyện Yên Lạc).
   + XUỐNG DÒNG trong địa chỉ là một DẤU PHÂN CÁCH như dấu phẩy. Cụm cuối dòng trên và cụm đầu dòng
-    dưới là HAI cấp khác nhau, KHÔNG được bỏ cụm nào: MỌI cụm đứng trước xã đều vào diaChi, giữ nguyên
-    thứ tự. Vd "Xóm 3, Thôn Đông\\nNghi Hoa, Nghi Lộc, Nghệ An" → diaChi="Xóm 3, Thôn Đông",
-    xa="Nghi Hoa", tinh="Nghệ An" (bỏ huyện Nghi Lộc); SAI nếu diaChi chỉ còn "Xóm 3".
+    dưới là HAI cấp khác nhau, KHÔNG được bỏ cụm nào: MỌI cụm đứng trước xã đều vào chiTietDuoiXa, giữ nguyên
+    thứ tự. Vd "Xóm 3, Thôn Đông\\nNghi Hoa, Nghi Lộc, Nghệ An" → chiTietDuoiXa="Xóm 3, Thôn Đông",
+    xa="Nghi Hoa", tinh="Nghệ An" (bỏ huyện Nghi Lộc); SAI nếu chiTietDuoiXa chỉ còn "Xóm 3".
   + Cấp huyện bỏ khỏi xa/diaChi nhưng VẪN trả riêng ở khóa "huyen" (đúng chữ in trên giấy) để quy đổi
     địa giới: nhiều tỉnh có phường trùng tên ở hai huyện cũ (vd "Phường 1" của TP Đông Hà và của TX
-    Quảng Trị). Vd "Khu Phố 7\\nPhường 1, Thành phố Đông Hà, Quảng Trị" → diaChi="Khu Phố 7",
+    Quảng Trị). Vd "Khu Phố 7\\nPhường 1, Thành phố Đông Hà, Quảng Trị" → chiTietDuoiXa="Khu Phố 7",
     xa="1", huyen="Thành phố Đông Hà", tinh="Quảng Trị". Giấy không có cấp huyện thì bỏ khóa này.
 - Tách NGUỒN, không gộp trực tiếp:
   + TỜ KHAI CẤP BẢN SAO chỉ sinh ToKhai_*. Mục (4) sinh ToKhai_LoaiSuKien/ToKhai_TenGiayTo;
@@ -240,9 +240,9 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - Với giấy kết hôn có hai giấy tờ tùy thân, KHÔNG lấy số/ngày cấp/cơ quan cấp của người còn lại —
   số của người còn lại chỉ đi vào soGiayTo trong HoTich_NguoiThan.
 - Với giấy kết hôn, cố tách HoTich_NoiCuTru của người đã chọn thành object:
-  {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<xã/phường/thị trấn>","diaChi":"<số nhà/tổ/thôn/xóm/bản/tổ dân phố>"}.
+  {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<xã/phường/thị trấn>","chiTietDuoiXa":"<số nhà/tổ/thôn/xóm/bản/tổ dân phố>"}.
   Ví dụ OCR "Tổ dân phố Cư Nhà La, phường Đoàn Kết, tỉnh Lai Châu" thì trả
-  tinh="Lai Châu", xa="Đoàn Kết", diaChi="Tổ dân phố Cư Nhà La".
+  tinh="Lai Châu", xa="Đoàn Kết", chiTietDuoiXa="Tổ dân phố Cư Nhà La".
   ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh;
   phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó
   = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì

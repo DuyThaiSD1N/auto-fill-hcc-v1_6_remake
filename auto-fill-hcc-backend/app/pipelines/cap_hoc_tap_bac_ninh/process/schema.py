@@ -55,9 +55,9 @@ FIELDS: list[dict] = [
     {
         "name": "HocSinh_ThuongTru",
         "desc": (
-            "Nơi thường trú HSSV dạng object {quocGia,tinh,xa,diaChi}. Ưu tiên địa chỉ trên Mẫu 01/Đơn ủy "
+            "Nơi thường trú HSSV dạng object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên địa chỉ trên Mẫu 01/Đơn ủy "
             "quyền (dùng ĐỊA GIỚI MỚI sau sáp nhập, ví dụ 'Phường Bắc Giang, tỉnh Bắc Ninh'); KHÔNG dùng "
-            "địa danh cũ trên CCCD (ví dụ 'Thọ Xương, TP. Bắc Giang, Bắc Giang'). diaChi là phần chi tiết "
+            "địa danh cũ trên CCCD (ví dụ 'Thọ Xương, TP. Bắc Giang, Bắc Giang'). chiTietDuoiXa là phần chi tiết "
             "nhất (số nhà, ngõ, tổ dân phố)."
         ),
     },

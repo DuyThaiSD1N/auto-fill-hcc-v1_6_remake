@@ -54,12 +54,12 @@ EXTRA_RULES = """
 10. ⚠ SỐ CĂN CƯỚC PHẢI LÀ SỐ HIỆN HÀNH. Quyết định chấp thuận chủ trương đầu tư cấp năm 2021 có thể
     ghi CMND 9 số của NGƯỜI ĐẠI DIỆN CŨ — đó là dữ liệu đã lỗi thời, KHÔNG dùng. Lấy theo Giấy chứng
     nhận đăng ký doanh nghiệp bản mới nhất (chú ý dòng "đăng ký thay đổi lần thứ …").
-11. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con
+11. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con
     dạng "<số nhà/đường/tổ/thôn>, <xã/phường>, <huyện/thành phố>, <tỉnh>": lấy cụm CUỐI làm tinh,
-    bỏ cấp huyện/thành phố trực thuộc tỉnh, cụm xã/phường làm xa, phần còn lại cho vào diaChi.
+    bỏ cấp huyện/thành phố trực thuộc tỉnh, cụm xã/phường làm xa, phần còn lại cho vào chiTietDuoiXa.
 12. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). Giấy tờ cũ in 3 cấp ("Thôn Nước Mát,
     Xã Âu Lâu, Thành phố Yên Bái, Tỉnh Yên Bái") thì trả tinh = "Yên Bái", xa = "Xã Âu Lâu",
-    diaChi = "Thôn Nước Mát" — CỨ TRẢ ĐÚNG NHƯ GIẤY GHI, hệ thống có bảng quy đổi sang đơn vị hành
+    chiTietDuoiXa = "Thôn Nước Mát" — CỨ TRẢ ĐÚNG NHƯ GIẤY GHI, hệ thống có bảng quy đổi sang đơn vị hành
     chính hiện hành. KHÔNG tự đoán tên tỉnh/phường mới.
 13. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>

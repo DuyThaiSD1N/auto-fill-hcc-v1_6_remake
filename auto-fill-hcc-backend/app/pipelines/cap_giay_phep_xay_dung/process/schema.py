@@ -26,7 +26,7 @@ FIELDS: list[dict] = [
     {"name": "Applicant_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP/ĐẠI DIỆN. Nếu có Giấy ủy quyền, ƯU TIÊN "
         "TUYỆT ĐỐI mục 'Nơi cư trú'/'Nơi thường trú' của BÊN ĐƯỢC ỦY QUYỀN trong giấy đó; KHÔNG lấy 'Địa chỉ "
         "liên hệ' trong Đơn thay thế. Chỉ khi Giấy ủy quyền không ghi hoặc không đọc được địa chỉ mới dùng địa "
-        "chỉ liên hệ của người đại diện trong Đơn. object {quocGia,tinh,xa,diaChi,fullText}. ĐÂY KHÔNG PHẢI địa "
+        "chỉ liên hệ của người đại diện trong Đơn. object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. ĐÂY KHÔNG PHẢI địa "
         "điểm xây dựng — TUYỆT ĐỐI KHÔNG lấy địa chỉ lô đất/thửa đất/công trình vào field này."},
 
     # B/C. Cơ quan tiếp nhận + CHỦ ĐẦU TƯ/CHỦ HỘ (người đứng tên công trình, KHÁC người nộp khi có ủy quyền).
@@ -36,6 +36,9 @@ FIELDS: list[dict] = [
         "đơn) — người ĐỨNG TÊN công trình. KHÁC người đại diện/được ủy quyền (đó là Applicant_HoTen)."},
     {"name": "ChuHo_SoDinhDanh", "desc": "Số định danh/CCCD của CHỦ ĐẦU TƯ/CHỦ HỘ (KHÁC người nộp/đại diện)."},
     {"name": "ChuHo_DienThoai", "desc": "Số điện thoại của CHỦ ĐẦU TƯ/CHỦ HỘ (ở mục thông tin chủ đầu tư)."},
+    {"name": "ChuDauTu_DanhSach", "desc": "Mảng MỌI cá nhân đứng tên chủ đầu tư/chủ hộ ở mục 1 Đơn — đơn ghi nhiều "
+        "người (vd 'Ông … và bà …') thì đủ từng người. Mỗi phần tử {hoTen, soDinhDanh} chép đúng đơn; thiếu số thì "
+        "bỏ khoá soDinhDanh. Chủ đầu tư là tổ chức → bỏ field."},
     {"name": "ChuDauTu_TenToChuc", "desc": "Tên tổ chức chủ đầu tư nếu hồ sơ là tổ chức/doanh nghiệp."},
     {"name": "ChuDauTu_NguoiDaiDien", "desc": "Người đại diện của tổ chức chủ đầu tư nếu có."},
     {"name": "ChuDauTu_ChucVu", "desc": "Chức vụ người đại diện tổ chức chủ đầu tư nếu có."},
@@ -44,7 +47,7 @@ FIELDS: list[dict] = [
     # D. Land/location.
     {"name": "Dat_DiaDiemXayDung", "desc": "ĐỊA ĐIỂM XÂY DỰNG/vị trí LÔ ĐẤT (nơi CÓ công trình) — lấy từ "
         "mục '3. Thông tin công trình / Địa điểm xây dựng / Tại địa chỉ …' của đơn, hoặc 'Địa chỉ' thửa đất "
-        "trên Giấy chứng nhận. object {quocGia,tinh,xa,diaChi,fullText}. ĐÂY KHÔNG PHẢI nơi ở của người nộp "
+        "trên Giấy chứng nhận. object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. ĐÂY KHÔNG PHẢI nơi ở của người nộp "
         "— KHÁC Applicant_NoiCuTru (2 địa chỉ này thường KHÁC NHAU hoàn toàn, đừng gán trùng)."},
     {"name": "Dat_ThuaDatSo", "desc": "Thửa đất số/lô đất số."},
     {"name": "Dat_ToBanDoSo", "desc": "Tờ bản đồ số nếu có."},

@@ -25,11 +25,11 @@ FIELDS: list[dict] = [
              '→ "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
              '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → ưu tiên lấy ở Đơn/Bản khai.'},
     {"name": "NguoiHuong_ThuongTru",
-     "desc": "NƠI THƯỜNG TRÚ HIỆN NAY (nơi chuyển đến) của người hưởng, object {quocGia,tinh,xa,diaChi}. Ưu "
+     "desc": "NƠI THƯỜNG TRÚ HIỆN NAY (nơi chuyển đến) của người hưởng, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu "
              "tiên Xác nhận cư trú CT07 / Đơn Mẫu 27 / CCCD (địa giới MỚI sau sáp nhập). tinh='Tỉnh/Thành phố …', "
-             "xa=phường/xã, diaChi=số nhà/đường/khu phố/tổ (KHÔNG kèm tên phường/xã/huyện/tỉnh)."},
+             "xa=phường/xã, chiTietDuoiXa=số nhà/đường/khu phố/tổ (KHÔNG kèm tên phường/xã/huyện/tỉnh)."},
     {"name": "NguoiHuong_QueQuan",
-     "desc": "QUÊ QUÁN người hưởng (KHÁC nơi thường trú), object {quocGia,tinh,xa,diaChi}. Lấy ở Đơn Mẫu 27 "
+     "desc": "QUÊ QUÁN người hưởng (KHÁC nơi thường trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở Đơn Mẫu 27 "
              "(Quê quán) / Giấy khai sinh (Nơi sinh). Giấy khai sinh có thể ghi địa danh CŨ trước sáp nhập; ưu "
              "tiên tên theo Đơn Mẫu 27 nếu có. tinh/xa/diaChi tách riêng."},
     {"name": "NguoiHuong_DienThoai", "desc": "Số điện thoại người hưởng — Đơn Mẫu 27 / Bản khai (CCCD không có). "
@@ -53,7 +53,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND NGƯỜI NỘP, dd/mm/yyyy."},
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND NGƯỜI NỘP. Chuẩn hóa như NguoiHuong_NoiCap."},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi} — CCCD người nộp. KHÁC người hưởng."},
+     "desc": "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa} — CCCD người nộp. KHÁC người hưởng."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP nếu giấy tờ có."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu có."},
 ]

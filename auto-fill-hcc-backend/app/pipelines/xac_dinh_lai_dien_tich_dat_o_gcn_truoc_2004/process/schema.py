@@ -23,9 +23,9 @@ FIELDS: list[dict] = [
         "ranh giới ('…tại thực địa của (ông, bà, đơn vị)'). ⚠ Giấy chứng nhận cấp trước 2004 có thể ghi tên "
         "chủ CŨ / 'Hộ ông …' — KHÔNG lấy theo GCN khi Đơn ghi khác. Nhiều người cùng sử dụng đất thì lấy "
         "người ĐỨNG ĐƠN, những người còn lại đưa vào NguoiCungSuDung."},
-    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục "
+    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN mục "
         "'c) Địa chỉ' của Đơn đăng ký biến động (người dân tự ghi, theo đơn vị hành chính hiện hành); thiếu "
-        "mới lấy 'Nơi thường trú' trên CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/tổ/thôn "
+        "mới lấy 'Nơi thường trú' trên CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/tổ/thôn "
         "(KHÔNG kèm phường/tỉnh). Viết tắt 'TP Đà Nẵng' → 'Thành phố Đà Nẵng'. KHÔNG lấy địa chỉ thửa đất."},
     {"name": "NguoiCungSuDung", "desc": "Danh sách họ tên NHỮNG NGƯỜI KHÁC cùng sử dụng thửa đất (ngoài chủ "
         "hồ sơ) nếu giấy tờ nêu rõ — vd công văn của cơ quan đăng ký đất đai kính gửi 'Ông A, bà B, ông "
@@ -52,10 +52,10 @@ FIELDS += [
 
 # --- Phần II: thửa đất đề nghị xác định lại diện tích đất ở ---
 FIELDS += [
-    {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ THỬA ĐẤT, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN văn bản "
+    {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ THỬA ĐẤT, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN văn bản "
         "của cơ quan đăng ký đất đai ('…đối với thửa đất tại địa chỉ…') và Đơn; Bản mô tả ranh giới ('đang "
         "sử dụng đất tại') dùng đối chiếu; GCN cũ ghi địa danh trước sáp nhập chỉ dùng khi không còn nguồn "
-        "nào. Hai nguồn lệch nhau (vd tổ dân phố khác số) → theo nguồn khớp với Đơn. diaChi=tổ/thôn/số nhà, "
+        "nào. Hai nguồn lệch nhau (vd tổ dân phố khác số) → theo nguồn khớp với Đơn. chiTietDuoiXa=tổ/thôn/số nhà, "
         "xa=phường/xã hiện hành, tinh='Tỉnh/Thành phố …'."},
     {"name": "ThuaDat_SoThua", "desc": "Số thửa đất. ƯU TIÊN số liệu ĐO ĐẠC MỚI (Phiếu đo đạc chỉnh lý, văn "
         "bản của cơ quan đăng ký đất đai 'hiện nay … đang sử dụng thửa đất số …'); thiếu mới lấy 'thửa đất "
@@ -82,7 +82,7 @@ FIELDS += [
         "không có ô này; không có CCCD thì bỏ."},
     {"name": "NguoiNop_NoiCap", "desc": 'Cơ quan cấp CCCD NGƯỜI NỘP, ghi ĐẦY ĐỦ: CCCD gắn chip → "Cục Cảnh '
         'sát quản lý hành chính về trật tự xã hội"; thẻ căn cước mới → "Bộ Công an". Không có CCCD thì bỏ.'},
-    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Tự nộp → GIỐNG "
+    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Tự nộp → GIỐNG "
         "ChuHoSo_DiaChi. Người được ủy quyền → địa chỉ của chính người đó trên văn bản ủy quyền/CCCD; không "
         "có thì bỏ. KHÔNG lấy địa chỉ thửa đất."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại — mục 'e) Điện thoại liên hệ' của Đơn, hoặc dòng "

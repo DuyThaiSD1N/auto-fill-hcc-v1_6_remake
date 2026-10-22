@@ -22,8 +22,8 @@ sinh, Địa chỉ thường trú, số điện thoại); (3) Giấy khám sức
 CMND/CCCD/định danh + Cấp ngày + Tại, Chỗ ở hiện tại); (4) Bằng tốt nghiệp (chỉ họ tên, ngày sinh).
 - Hồ sơ KHÔNG có CCCD → số định danh, ngày cấp, nơi cấp lấy từ dòng CCCD ghi tay trên Giấy khám sức khỏe.
 - Bằng tốt nghiệp hay in họ tên không dấu / sai dấu → ưu tiên họ tên của CCCD / Đơn / Giấy khám sức khỏe.
-- ThuongTru tách object {quocGia,tinh,xa,diaChi}; diaChi chỉ phần chi tiết (số nhà/đường/thôn/tổ). Địa
-  chỉ chỉ ghi 'Phường X - Tỉnh Y' thì xa='Phường X', tinh='Tỉnh Y', diaChi=''. ⛔ KHÔNG lấy dòng 'Tại' hay
+- ThuongTru tách object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần chi tiết (số nhà/đường/thôn/tổ). Địa
+  chỉ chỉ ghi 'Phường X - Tỉnh Y' thì xa='Phường X', tinh='Tỉnh Y', chiTietDuoiXa=''. ⛔ KHÔNG lấy dòng 'Tại' hay
   'Địa chỉ hành nghề' trong Đơn làm nơi cư trú.
 ⚠ Trong Đơn, dòng "Ngày cấp" nằm NGAY SAU "Bằng cấp chuyên môn" là ngày cấp BẰNG, KHÔNG phải ngày cấp
 CCCD.

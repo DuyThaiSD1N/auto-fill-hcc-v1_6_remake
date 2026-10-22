@@ -24,9 +24,9 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp/cơ quan cấp giấy tờ {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ '
         'XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Đơn Mẫu 04/05.KT (mục Cơ quan cấp).'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi thường trú) / "
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi thường trú) / "
         "Đơn Mẫu 04/05.KT (Nơi thường trú chủ tàu). tinh=CHỈ TÊN tỉnh/thành phố, KHÔNG kèm tiền tố "
-        "'Tỉnh'/'Thành phố'/'TP'/'T.P' (vd 'Đà Nẵng', 'Nghệ An' — KHÔNG phải 'T.P Đà Nẵng'). xa=phường/xã, diaChi=số nhà/"
+        "'Tỉnh'/'Thành phố'/'TP'/'T.P' (vd 'Đà Nẵng', 'Nghệ An' — KHÔNG phải 'T.P Đà Nẵng'). xa=phường/xã, chiTietDuoiXa=số nhà/"
         "khóm/ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Đơn Mẫu 04/05.KT mục 'Điện thoại' nếu có. Chỉ chữ số; "
         "KHÔNG lấy số bàn."),
@@ -57,8 +57,8 @@ _CCCD_FIELDS = [
     ("NgayCap", "Ngày cấp ở mặt sau thẻ thứ {n}, dd/mm/yyyy. KHÔNG lấy ngày hết hạn hoặc ngày sinh; mặt sau "
         "không có trong hồ sơ thì bỏ."),
     ("NoiCap", "Cơ quan cấp ở mặt sau thẻ thứ {n} (Cục Cảnh sát quản lý hành chính về trật tự xã hội / Bộ Công an)."),
-    ("ThuongTru", "Nơi thường trú/Place of residence trên thẻ thứ {n}, object {{quocGia,tinh,xa,diaChi}}. "
-        "KHÔNG lấy quê quán. tinh=CHỈ TÊN tỉnh/thành phố, xa=phường/xã, diaChi=số nhà/thôn/tổ dân phố."),
+    ("ThuongTru", "Nơi thường trú/Place of residence trên thẻ thứ {n}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. "
+        "KHÔNG lấy quê quán. tinh=CHỈ TÊN tỉnh/thành phố, xa=phường/xã, chiTietDuoiXa=số nhà/thôn/tổ dân phố."),
 ]
 for _n in (1, 2):
     for _name, _tmpl in _CCCD_FIELDS:

@@ -41,7 +41,7 @@ SỐ / NGÀY:
 - Các giấy tờ trong cùng một hồ sơ hay ghi LỆCH địa chỉ (Đơn: "Tổ 39, phường Cam Đường"; Giấy uỷ quyền: "Tổ
   dân phố số 9 Xuân Tăng, phường Cam Đường"; GCN 2018: "Tổ 24, phường Bình Minh, thành phố Lào Cai") → cứ
   trả đúng từng nguồn vào đúng field của nó, hệ thống tự chọn theo thứ tự ưu tiên.
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố số 39, phường Cam Đường, tỉnh Lào Cai" → diaChi="Tổ dân phố
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố số 39, phường Cam Đường, tỉnh Lào Cai" → chiTietDuoiXa="Tổ dân phố
   số 39", xa="Cam Đường", tinh="Lào Cai". Giấy tờ ghi địa danh CŨ (thành phố Lào Cai, phường Bình Minh) thì
   vẫn trả đúng như giấy ghi, giữ "huyen" nếu có — hệ thống tự đổi sang tên mới.
 

@@ -20,8 +20,8 @@ FIELDS: list[dict] = [
     {"name": "Applicant_NgayCap", "desc": "Ngày cấp CCCD người nộp, dd/mm/yyyy."},
     {"name": "Applicant_NoiCap", "desc": 'Nơi cấp CCCD người nộp. CCCD gắn chip: "Cục Cảnh sát quản lý hành '
         'chính về trật tự xã hội"; thẻ căn cước mới: "Bộ Công an".'},
-    {"name": "Applicant_NoiCuTru", "desc": "Nơi thường trú/cư trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi,"
-        "fullText}. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường (KHÔNG kèm phường/xã/tỉnh)."},
+    {"name": "Applicant_NoiCuTru", "desc": "Nơi thường trú/cư trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa,"
+        "fullText}. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "Applicant_DienThoai", "desc": "Số điện thoại người nộp. Chỉ chữ số."},
     {"name": "Applicant_Email", "desc": "Email người nộp nếu có; thường không có → bỏ."},
     {"name": "Applicant_MaSoThue", "desc": "Mã định danh tổ chức/MST của TÀI KHOẢN nộp (nếu đăng nhập bằng "
@@ -48,9 +48,9 @@ FIELDS: list[dict] = [
     {"name": "CoSo_SoDinhDanhChuCoSo", "desc": "Số định danh/CCCD của chủ cơ sở/chủ hộ — GCN ĐKKD mục 6. "
         "Chỉ chữ số."},
     {"name": "CoSo_DienThoai", "desc": "Điện thoại cơ sở — GCN ĐKKD / Đơn 01a / TM 02a. Chỉ chữ số."},
-    {"name": "CoSo_DiaChi", "desc": "ĐỊA CHỈ TRỤ SỞ/địa điểm CƠ SỞ SXKD, object {quocGia,tinh,xa,diaChi,"
+    {"name": "CoSo_DiaChi", "desc": "ĐỊA CHỈ TRỤ SỞ/địa điểm CƠ SỞ SXKD, object {quocGia,tinh,xa,chiTietDuoiXa,"
         "fullText}. GCN ĐKKD 'Trụ sở hộ kinh doanh' / Đơn 01a 'Địa điểm tại' / TM 02a 'Địa chỉ cơ sở sản "
-        "xuất'. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường. KHÁC nơi thường trú cá nhân."},
+        "xuất'. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường. KHÁC nơi thường trú cá nhân."},
     {"name": "CoSo_NganhNghe", "desc": "Ngành nghề/mặt hàng sản xuất, kinh doanh (TÊN SẢN PHẨM, không phải "
         "mã ngành) — Đơn 01a 'Ngành nghề (tên sản phẩm)' / GCN ĐKKD mục 3 tên ngành / TM 02a 'Mặt hàng sản "
         "xuất'. Vd 'Sản xuất các loại bánh mặn, ngọt'."},

@@ -17,7 +17,7 @@ EXTRA_RULES = """
   + Gcs_HoTenCon = tên ở "và dự định đặt tên là: <tên>".
   + Gcs_NgaySinhCon = NGÀY SINH CON ở cụm "Vào hồi ... giờ ... phút, ngày <D> tháng <M> năm <Y>" → dd/mm/yyyy. ĐÂY LÀ NGÀY SINH CON, TUYỆT ĐỐI KHÔNG lấy ngày làm giấy/ngày cam đoan (dòng "Hôm nay, ngày ...").
   + Gcs_GioiTinhCon = ô được ĐÁNH DẤU ở "có sinh ra 1 bé Trai [ ] Gái [ ]": Trai→"Nam", Gái→"Nữ" (ô có "[x]"/"[X]"/dấu tích).
-  + Gcs_NoiSinh = nơi ở "Tại bản: <chi tiết>, xã <X>, tỉnh <Y>" → object {tinh,xa,diaChi} (tách như địa chỉ, xem mục F).
+  + Gcs_NoiSinh = nơi ở "Tại bản: <chi tiết>, xã <X>, tỉnh <Y>" → object {tinh,xa,chiTietDuoiXa} (tách như địa chỉ, xem mục F).
 
 ## B2. Họ tên con (Gcs_HoTenCon) trên giấy chứng sinh
 - Gcs_HoTenCon = HỌ TÊN ĐẦY ĐỦ của ĐỨA TRẺ (người được khai sinh), lấy ở trường "Dự định đặt tên con là". Hiểu cấu trúc giấy chứng sinh để định vị đúng:
@@ -37,12 +37,12 @@ EXTRA_RULES = """
 
 ## B4. Nơi sinh (Gcs_NoiSinh)
 - Gcs_NoiSinh BẮT BUỘC khi có GIẤY CHỨNG SINH — TUYỆT ĐỐI KHÔNG bỏ trống. Lấy từ dòng "Tại:" trên giấy chứng sinh:
-  + diaChi = TÊN ĐẦY ĐỦ cơ sở y tế/bệnh viện (bệnh viện tuyến tỉnh thì KÈM tên tỉnh, vd "Bệnh viện đa khoa tỉnh Lai Châu"). KHÔNG kèm xã/huyện.
+  + chiTietDuoiXa = TÊN ĐẦY ĐỦ cơ sở y tế/bệnh viện (bệnh viện tuyến tỉnh thì KÈM tên tỉnh, vd "Bệnh viện đa khoa tỉnh Lai Châu"). KHÔNG kèm xã/huyện.
   + tinh = tỉnh của cơ sở: suy từ tên bệnh viện tuyến tỉnh, HOẶC lấy theo tỉnh ở "Nơi cư trú" của mẹ ghi TRÊN CHÍNH giấy chứng sinh.
   + xa = phường/xã nơi cơ sở đặt trụ sở nếu xác định được.
-  + Dù chỉ đọc được TÊN cơ sở (thiếu tỉnh/xã), VẪN phải trả Gcs_NoiSinh với ít nhất diaChi + tinh — không được để trống cả object.
-  + Gcs_NoiSinh KHÔNG áp dụng quy tắc tách địa chỉ ở mục F — diaChi là tên cơ sở y tế.
-  + Nếu hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH: trích THÊM field RIÊNG Tk_NoiSinh = dòng "Nơi sinh" trên tờ khai (object {tinh,xa,diaChi}), lấy NGUYÊN VĂN (kể cả số nhà/đường/phố). Nơi sinh điền vào form ƯU TIÊN Tk_NoiSinh (tờ khai); chỉ khi KHÔNG có tờ khai mới dùng Gcs_NoiSinh (giấy chứng sinh). Trích cả hai khi có, hệ thống tự chọn ưu tiên.
+  + Dù chỉ đọc được TÊN cơ sở (thiếu tỉnh/xã), VẪN phải trả Gcs_NoiSinh với ít nhất chiTietDuoiXa + tinh — không được để trống cả object.
+  + Gcs_NoiSinh KHÔNG áp dụng quy tắc tách địa chỉ ở mục F — chiTietDuoiXa là tên cơ sở y tế.
+  + Nếu hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH: trích THÊM field RIÊNG Tk_NoiSinh = dòng "Nơi sinh" trên tờ khai (object {tinh,xa,chiTietDuoiXa}), lấy NGUYÊN VĂN (kể cả số nhà/đường/phố). Nơi sinh điền vào form ƯU TIÊN Tk_NoiSinh (tờ khai); chỉ khi KHÔNG có tờ khai mới dùng Gcs_NoiSinh (giấy chứng sinh). Trích cả hai khi có, hệ thống tự chọn ưu tiên.
   + Dòng "Nơi sinh" trên tờ khai là chữ VIẾT TAY, OCR hay đọc lệch: chữ gần giống "Bệnh viện" ("Biên Viên", "Bệnh viên", "Bênh viện", "Bện viện"...) → viết đúng "Bệnh viện"; tương tự "Trung tâm y tế", "Trạm y tế". Tên cơ sở trùng cơ sở in trên giấy chứng sinh nhưng lệch vài chữ ("Hoàn mỉ" ↔ "Hoàn Mỹ") → chép đúng tên in trên giấy chứng sinh.
 - Xã/phường nơi sinh chỉ trả khi OCR/tờ khai xác định đúng địa bàn của cơ sở. Không dùng xã/phường
   đã biết của một bệnh viện thuộc tỉnh khác; nếu chỉ biết tên bệnh viện và tỉnh thì để xa trống.
@@ -101,18 +101,19 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh"; "Trung"/"Trung Hoa" → "Hoa"; "C ho"/"K ho"/"Kho" → "Cơ Ho".
 - **QUAN TRỌNG VỀ DÂN TỘC KHÔNG KHỚP**: Nếu dân tộc OCR đọc được KHÔNG KHỚP với bất kỳ tên chuẩn nào trong danh sách trên (ví dụ: "Cil", "Cill" và các tên dân tộc hiếm/không rõ), BẮT BUỘC phải TRẢ VỀ GIÁ TRỊ GỐC CHÍNH XÁC như OCR đọc được. TUYỆT ĐỐI KHÔNG tự ý suy luận hoặc đổi sang dân tộc khác (như "Kinh"). Ví dụ: OCR đọc "Cil" → trả "Cil" (KHÔNG đổi thành "Kinh" hay bất kỳ tên nào khác).
 
-# ═══ F. TÁCH ĐỊA CHỈ (ThongTinBo_NoiCuTru, ThongTinMe_NoiCuTru, ThongTinBo_QueQuan, ThongTinMe_QueQuan — object {tinh,xa,diaChi}) ═══
+# ═══ F. TÁCH ĐỊA CHỈ (Tk_QueQuanCon, ThongTinBo_NoiCuTru, ThongTinMe_NoiCuTru, ThongTinBo_QueQuan, ThongTinMe_QueQuan — object {tinh,xa,chiTietDuoiXa}) ═══
 Địa chỉ hành chính 2 cấp XÃ/PHƯỜNG/THỊ TRẤN → TỈNH/THÀNH PHỐ:
 - xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại đơn vị (Xã/Phường/Thị trấn). Vd: "Xã Tả Lèng" → xa="Tả Lèng". tinh = tên tỉnh/thành phố.
-- diaChi = phần CHI TIẾT đứng TRƯỚC xã/phường: tổ, tổ dân phố, bản, thôn, xóm, khu, số nhà, đường. TUYỆT ĐỐI KHÔNG đưa tên phường/xã/thị trấn (hay huyện/tỉnh) vào diaChi. Không có phần chi tiết → diaChi để TRỐNG.
+- chiTietDuoiXa = phần CHI TIẾT đứng TRƯỚC xã/phường: tổ, tổ dân phố, bản, thôn, xóm, khu, số nhà, đường. TUYỆT ĐỐI KHÔNG đưa tên phường/xã/thị trấn (hay huyện/tỉnh) vào chiTietDuoiXa. Không có phần chi tiết → chiTietDuoiXa để TRỐNG.
 - ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh; phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã.
-- XÃ LUÔN BẮT BUỘC: KHÔNG được bỏ trống xa khi giấy tờ CÓ thông tin phường/xã. Nếu chỉ đọc được "chi tiết" và "tỉnh" mà thiếu xã, phải soát lại — phần đứng NGAY TRƯỚC tỉnh (bỏ cấp huyện nếu có) chính là xã. KHÔNG dồn xã + huyện vào diaChi.
+- XÃ LUÔN BẮT BUỘC: KHÔNG được bỏ trống xa khi giấy tờ CÓ thông tin phường/xã. Nếu chỉ đọc được "chi tiết" và "tỉnh" mà thiếu xã, phải soát lại — phần đứng NGAY TRƯỚC tỉnh (bỏ cấp huyện nếu có) chính là xã. KHÔNG dồn xã + huyện vào chiTietDuoiXa.
 - ƯU TIÊN NGUỒN 2 CẤP: nếu cùng người mà một giấy ghi kiểu CŨ 3 cấp (xã, HUYỆN, tỉnh) còn giấy khác ghi 2 cấp (xã → tỉnh, KHÔNG huyện — đơn vị hành chính HIỆN HÀNH) thì DÙNG bản 2 cấp, kể cả khi tên xã hai bản khác nhau do sáp nhập. Vd generic: giấy kết hôn ghi "xã B, tỉnh C" (2 cấp), CCCD ghi "xã A, huyện Y, tỉnh C" (3 cấp) → chọn "xã B, tỉnh C".
+- Dòng chỉ ghi tỉnh/thành phố (vd quê quán "TP Y", "Tỉnh Y") → chỉ trả tinh; xa và chiTietDuoiXa để TRỐNG, KHÔNG chép lại tên tỉnh/thành phố vào chiTietDuoiXa.
 - RIÊNG Gcs_NoiSinh KHÔNG áp dụng mục F (xem B4).
 ## LƯU Ý QUAN TRỌNG
-- ĐỊA CHỈ MỘT NGƯỜI PHẢI LẤY TRỌN TỪ MỘT GIẤY: diaChi, xa, tinh của CÙNG một người phải CÙNG đến từ MỘT giấy. TUYỆT ĐỐI KHÔNG ghép diaChi (bản/tổ/thôn/số nhà) của giấy này với xa của giấy khác — nếu hai giấy ghi HAI ĐỊA CHỈ KHÁC NHAU (xã khác nhau) mà ghép như vậy sẽ tạo ra địa chỉ KHÔNG CÓ THẬT.
+- ĐỊA CHỈ MỘT NGƯỜI PHẢI LẤY TRỌN TỪ MỘT GIẤY: chiTietDuoiXa, xa, tinh của CÙNG một người phải CÙNG đến từ MỘT giấy. TUYỆT ĐỐI KHÔNG ghép chiTietDuoiXa (bản/tổ/thôn/số nhà) của giấy này với xa của giấy khác — nếu hai giấy ghi HAI ĐỊA CHỈ KHÁC NHAU (xã khác nhau) mà ghép như vậy sẽ tạo ra địa chỉ KHÔNG CÓ THẬT.
 - BÙ TRƯỜNG THIẾU (CHỈ khi CÙNG một địa chỉ): nếu một giấy THIẾU xã nhưng giấy khác của CHÍNH người đó ghi rõ xã của CÙNG nơi đó (cùng phần chi tiết/tỉnh) thì ĐƯỢC lấy xã bù vào. Chỉ bù khi chắc chắn là CÙNG một địa chỉ; KHÔNG bù khi hai giấy là hai nơi khác nhau.
-- KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — tờ khai tách riêng vào Tk_NoiCuTruCha/Tk_NoiCuTruMe; với ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru: CCCD đúng người > giấy chứng sinh > giấy kết hôn > giấy khai sinh (xem mục D). Lấy trọn diaChi+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
+- KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — tờ khai tách riêng vào Tk_NoiCuTruCha/Tk_NoiCuTruMe; với ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru: CCCD đúng người > giấy chứng sinh > giấy kết hôn > giấy khai sinh (xem mục D). Lấy trọn chiTietDuoiXa+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
 
 # ═══ G. GIẤY CHỨNG NHẬN KẾT HÔN (GcnKetHon_*, Tk_GcnKetHon_*) ═══
 - GcnKetHon_* CHỈ lấy từ tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.
@@ -142,7 +143,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   + Ct01_ChuHoHoTen = mục 7 "Họ, chữ đệm và tên chủ hộ". TUYỆT ĐỐI KHÔNG lấy mục 1 "Họ, chữ đệm và tên" (đó là NGƯỜI ĐƯỢC KHAI SINH/người kê khai).
   + Ct01_ChuHoSoDinhDanh = mục 9 "Số định danh cá nhân của chủ hộ" (12 số). KHÔNG nhầm với mục 4 (số định danh người kê khai).
   + Ct01_QuanHeVoiChuHo = mục 8 "Mối quan hệ với chủ hộ" (vd "Con đẻ", "Cháu ngoại", "Cháu nội").
-  + Ct01_NoiDeNghiDktt = địa chỉ nơi đăng ký thường trú ghi trong mục "Nội dung đề nghị" (vd "Đăng ký thường trú tại 12 Đường A, phường B, tỉnh C" → {tinh:"C", xa:"B", diaChi:"12 Đường A"}). Tách theo mục F: diaChi CHỈ là phần đứng TRƯỚC phường/xã, không kèm chữ "tại"/"Đăng ký thường trú".
+  + Ct01_NoiDeNghiDktt = địa chỉ nơi đăng ký thường trú ghi trong mục "Nội dung đề nghị" (vd "Đăng ký thường trú tại 12 Đường A, phường B, tỉnh C" → {tinh:"C", xa:"B", chiTietDuoiXa:"12 Đường A"}). Tách theo mục F: chiTietDuoiXa CHỈ là phần đứng TRƯỚC phường/xã, không kèm chữ "tại"/"Đăng ký thường trú".
 
 # ═══ I. KHÔNG TRẢ (field cấm) ═══
 - Không trả field mặc định hoặc field UI như Ho, ChaHo, MeHo, MaQuocTich, LoaiCuTru, NycQuanHe,

@@ -19,9 +19,9 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND. "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về '
              'trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công an". CCCD gắn chip do Bộ Công an cấp.'},
     {"name": "Nguoi_ThuongTru",
-     "desc": "Nơi thường trú / hộ khẩu người dự tuyển, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN theo NƠI "
+     "desc": "Nơi thường trú / hộ khẩu người dự tuyển, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN theo NƠI "
              "THƯỜNG TRÚ trên CCCD/Phiếu (KHÁC quê quán). tinh='Tỉnh/Thành phố …', xa=phường/xã (tên MỚI sau "
-             "sáp nhập), diaChi=số nhà/đường/tổ/thôn/xóm."},
+             "sáp nhập), chiTietDuoiXa=số nhà/đường/tổ/thôn/xóm."},
     {"name": "Nguoi_DiDong", "desc": "Số điện thoại di động người dự tuyển — Phiếu Mẫu 01. Chỉ chữ số."},
     {"name": "Nguoi_Email", "desc": "Email người dự tuyển — Phiếu Mẫu 01 nếu có."},
 ]

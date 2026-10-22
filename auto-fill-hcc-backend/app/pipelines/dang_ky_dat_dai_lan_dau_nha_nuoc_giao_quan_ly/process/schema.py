@@ -27,9 +27,9 @@ FIELDS: list[dict] = [
         "đăng ký doanh nghiệp, Đơn Mẫu 15 mục 1b, tờ khai thuế [06]). CÁ NHÂN: số CCCD. CHỈ chữ số. KHÔNG lấy số "
         "CCCD của người đại diện theo pháp luật, số quyết định, số hợp đồng."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ TRỤ SỞ hiện tại của chủ hồ sơ theo đơn vị hành chính MỚI (34 tỉnh, "
-        "không cấp huyện), object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: Đơn Mẫu 15 mục 1c 'Địa chỉ' → tờ khai "
+        "không cấp huyện), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: Đơn Mẫu 15 mục 1c 'Địa chỉ' → tờ khai "
         "lệ phí trước bạ [08]-[10] → Báo cáo rà soát → phiếu đo đạc → GCN đăng ký doanh nghiệp mục 2 (ghi đơn vị "
-        "CŨ). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=lô/số nhà/đường/khu, cụm công nghiệp (KHÔNG kèm "
+        "CŨ). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=lô/số nhà/đường/khu, cụm công nghiệp (KHÔNG kèm "
         "phường/xã/tỉnh). KHÔNG lấy địa chỉ thường trú của người đại diện."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ: Đơn Mẫu 15 mục 1d 'Điện thoại liên hệ' → tờ khai "
         "lệ phí trước bạ [11] → GCN đăng ký doanh nghiệp 'Điện thoại'. Có nhiều số thì ghi TẤT CẢ, cách nhau "
@@ -37,8 +37,8 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_Email", "desc": "Email: Đơn Mẫu 15 mục 1d 'Hộp thư điện tử' → tờ khai lệ phí trước bạ [13] → "
         "GCN đăng ký doanh nghiệp 'Thư điện tử'. CHỈ khi đúng dạng email (có '@'). Không có thì bỏ."},
     {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ THỬA ĐẤT / khu đất đăng ký theo đơn vị hành chính HIỆN HÀNH, object "
-        "{quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: Đơn Mẫu 15 mục 2b → phiếu đo đạc chỉnh lý mục 'Địa chỉ thửa đất' "
-        "→ Báo cáo rà soát mục I.2. xa=phường/xã, diaChi=lô/số nhà/đường/khu (KHÔNG kèm phường/tỉnh)."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: Đơn Mẫu 15 mục 2b → phiếu đo đạc chỉnh lý mục 'Địa chỉ thửa đất' "
+        "→ Báo cáo rà soát mục I.2. xa=phường/xã, chiTietDuoiXa=lô/số nhà/đường/khu (KHÔNG kèm phường/tỉnh)."},
     {"name": "Don_DeNghi", "desc": "Mảng các đề nghị ĐƯỢC ĐÁNH DẤU (☑, ☒, x) ở Đơn Mẫu 15 mục 4 'Đề nghị của người sử "
         "dụng đất, chủ sở hữu tài sản gắn liền với đất', chép nguyên văn mỗi mục một chuỗi, bỏ ký hiệu a) b) (vd "
         "['Đề nghị cấp Giấy chứng nhận']). Mục d 'Đề nghị khác' chỉ lấy khi có nội dung viết thêm. Ô KHÔNG đánh "

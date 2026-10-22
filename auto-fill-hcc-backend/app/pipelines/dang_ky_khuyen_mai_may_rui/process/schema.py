@@ -21,7 +21,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh in trên CÙNG thẻ căn cước đó, dd/mm/yyyy."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp in ở mặt sau CÙNG thẻ căn cước đó, dd/mm/yyyy."},
     {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú / nơi cư trú in trên CÙNG thẻ căn cước đó, object "
-        "{quocGia,tinh,xa,diaChi}; diaChi chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
 
     # --- Thương nhân thực hiện khuyến mại = CHỦ HỒ SƠ (phần đầu Mẫu 02) ---
     {"name": "ThuongNhan_Ten", "desc": f"Tên thương nhân ở dòng 'Tên thương nhân:' trên {_DK} (vd 'Hộ kinh doanh "
@@ -31,8 +31,8 @@ FIELDS: list[dict] = [
         "thì lấy 'MST' trên con dấu cạnh chữ ký. Chép NGUYÊN VĂN chữ số đọc được; KHÔNG tự bù chữ số thiếu."},
     {"name": "ThuongNhan_SoCanCuoc", "desc": f"'Số căn cước' / 'Số CCCD' in ở phần thông tin thương nhân trên {_DK} "
         "(hộ kinh doanh ghi số căn cước của chủ hộ). Không in thì BỎ. KHÔNG lấy từ phiếu bốc thăm."},
-    {"name": "ThuongNhan_DiaChi", "desc": f"'Địa chỉ trụ sở chính' trên {_DK}, object {{quocGia,tinh,xa,diaChi,"
-        "fullText}}. fullText = nguyên dòng địa chỉ; tinh='Tỉnh/Thành phố …'; xa=phường/xã; diaChi=số nhà/thôn/"
+    {"name": "ThuongNhan_DiaChi", "desc": f"'Địa chỉ trụ sở chính' trên {_DK}, object {{quocGia,tinh,xa,chiTietDuoiXa,"
+        "fullText}}. fullText = nguyên dòng địa chỉ; tinh='Tỉnh/Thành phố …'; xa=phường/xã; chiTietDuoiXa=số nhà/thôn/"
         "đường (KHÔNG kèm phường/xã/tỉnh). KHÔNG lấy địa chỉ khắc trên con dấu (thường là địa danh cũ)."},
     {"name": "ThuongNhan_DienThoai", "desc": f"'Điện thoại' ở dòng thông tin thương nhân trên {_DK} (KHÔNG phải "
         "điện thoại người liên hệ). Chép nguyên chữ số đọc được, không tự bù số."},

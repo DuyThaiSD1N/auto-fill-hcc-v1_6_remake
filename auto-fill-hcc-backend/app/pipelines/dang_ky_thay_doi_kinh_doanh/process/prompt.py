@@ -31,11 +31,11 @@ QUY TẮC BẮT BUỘC:
 5. Địa chỉ/vốn/thuế: chỉ trả DeNghi_* khi đúng mục thay đổi đó được kê khai. Việc GCN và Thông báo cùng in lại một giá trị không đủ để kết luận thay đổi.
 6. NguoiNop: lấy người ký/người nộp ghi trên Thông báo hoặc người được ủy quyền. Nếu không xác định chắc thì để trống; mapper/extension sẽ đối chiếu với thông tin tài khoản sau khi bấm Sao chép.
    - ĐỊA CHỈ NguoiNop: Sau khi xác định người nộp (qua họ tên hoặc số định danh), TÌM trong Cccd_DanhSach
-     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy diaChi từ "Nơi thường trú"
+     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy chiTietDuoiXa từ "Nơi thường trú"
      trên thẻ CCCD đó điền vào NguoiNop.diaChi.
    - Ví dụ: Thông báo ký bởi "NGUYỄN VĂN A" (khác chủ hộ); hồ sơ có CCCD của người này
      ghi "Nơi thường trú: Tổ 1, Phường X, Quận Y, Thành phố Z" → NguoiNop.diaChi =
-     {quocGia:"Việt Nam", tinh:"Thành phố Z", xa:"Phường X", diaChi:"Tổ 1"}.
+     {quocGia:"Việt Nam", tinh:"Thành phố Z", xa:"Phường X", chiTietDuoiXa:"Tổ 1"}.
    - KHÔNG lấy địa chỉ từ Quê quán, từ GCN hay từ phần chủ hộ cho NguoiNop khi đã có CCCD khớp.
 7. Cccd_DanhSach: liệt kê mọi thẻ căn cước vật lý, mỗi thẻ một object; không suy vai trò từ tên file hoặc thứ tự upload.
    
@@ -54,7 +54,7 @@ QUY TẮC BẮT BUỘC:
    {
      "tinh": "Thành phố G",  ← từ "Nơi thường trú"
      "xa": "Phường E",
-     "diaChi": "Tổ D"
+     "chiTietDuoiXa": "Tổ D"
    }
    
    → Output SAI (TUYỆT ĐỐI TRÁNH):
@@ -67,7 +67,7 @@ QUY TẮC BẮT BUỘC:
    - Trên CCCD tiếng Việt: Tìm dòng BẮT ĐẦU bằng "Nơi thường trú"
    - Trên CCCD song ngữ: Tìm dòng có "Place of residence" (không phải "Place of origin")
    - Dòng "Nơi thường trú" LUÔN Ở DƯỚI dòng "Quê quán"
-8. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Không bịa field bị trống.
+8. Địa chỉ object luôn là {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp tỉnh/xã. Không bịa field bị trống.
 
 ⚠️ PHÁT HIỆN NHIỀU CCCD/GIẤY TỜ TÙY THÂN TRONG HỒ SƠ:
 
@@ -90,8 +90,8 @@ Khi phát hiện HasMultipleCCCD = true, BẮT BUỘC phải:
     giấy ủy quyền chỉ bù các field thẻ không có (vd số điện thoại).
   + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
     căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
-  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
-    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,chiTietDuoiXa} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → chiTietDuoiXa="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
   + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
     đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
 
@@ -161,7 +161,7 @@ Khi phát hiện HasMultipleCCCD = true, BẮT BUỘC phải:
       "quocGia": "Việt Nam",
       "tinh": "Hà Nội",
       "xa": "Phường 2",
-      "diaChi": "456 Lê Lợi"
+      "chiTietDuoiXa": "456 Lê Lợi"
     }
   }
 

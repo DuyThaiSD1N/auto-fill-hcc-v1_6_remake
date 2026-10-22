@@ -26,9 +26,9 @@ FIELDS: list[dict] = [
     {"name": "ChuThe_NoiCap", "desc": 'Cơ quan cấp giấy tờ. Phiếu Mục 3.3/4.3 "Cơ quan cấp"; hoặc mặt sau '
         'CCCD. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành '
         'chính về trật tự xã hội"; thẻ CĂN CƯỚC mới → "Bộ Công an".'},
-    {"name": "ChuThe_DiaChi", "desc": "Địa chỉ NGƯỜI YÊU CẦU, object {quocGia,tinh,xa,diaChi}. Lấy ở CCCD "
+    {"name": "ChuThe_DiaChi", "desc": "Địa chỉ NGƯỜI YÊU CẦU, object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở CCCD "
         "(Nơi thường trú) / Phiếu Mục 3.2/4.2 (Địa chỉ) / Mục 1 (Địa chỉ liên hệ). tinh='Tỉnh/Thành phố …', "
-        "xa=phường/xã, diaChi=số nhà/đường/tổ (KHÔNG kèm phường/xã/tỉnh)."},
+        "xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "ChuThe_DienThoai", "desc": "Số điện thoại NGƯỜI YÊU CẦU — Phiếu Mục 1 'Số điện thoại' hoặc "
         "Mục 3.5/4.4. Chỉ chữ số; không lấy số bàn/fax."},
     {"name": "ChuThe_Email", "desc": "Thư điện tử NGƯỜI YÊU CẦU nếu Phiếu Mục 1/3.5/4.4 có ('Thư điện tử "

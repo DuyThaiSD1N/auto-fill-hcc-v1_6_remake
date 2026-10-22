@@ -33,9 +33,9 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới (cấp từ 01/07/2024) ghi '
              '"BỘ CÔNG AN" → "Bộ Công an". Thẻ không in nhãn "Nơi cấp" → lấy ở Tờ khai.'},
     {"name": "DoiTuong_NoiCuTru",
-     "desc": 'NƠI CƯ TRÚ đối tượng (Tờ khai mục I.1.2 "Nơi cư trú"), object {quocGia,tinh,xa,diaChi}. Ưu tiên '
+     "desc": 'NƠI CƯ TRÚ đối tượng (Tờ khai mục I.1.2 "Nơi cư trú"), object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên '
              "Tờ khai (ghi địa giới MỚI sau sáp nhập); CCCD cũ có thể ghi tên CŨ. tinh='Tỉnh/Thành phố …', "
-             "xa=phường/xã/đặc khu, diaChi=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
+             "xa=phường/xã/đặc khu, chiTietDuoiXa=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "DoiTuong_DienThoai", "desc": "Số điện thoại đối tượng (Tờ khai mục I.1.4). Chỉ chữ số; bỏ SĐT bàn."},
     {"name": "DoiTuong_Email", "desc": "Email đối tượng nếu giấy tờ có (thường không có → bỏ)."},
 
@@ -56,7 +56,7 @@ FIELDS: list[dict] = [
              "Hai mục của Tờ khai ghi khác nhau (I.2 vs III.1) thì lấy cơ quan cụ thể hơn (Cục Cảnh sát QLHC "
              "về TTXH). Chuẩn hóa như DoiTuong_NoiCap."},
     {"name": "NguoiNop_NoiCuTru",
-     "desc": "Nơi cư trú người khai thay (mục I.2.2 / III.1 / Mẫu 02 mục I), object {quocGia,tinh,xa,diaChi}."},
+     "desc": "Nơi cư trú người khai thay (mục I.2.2 / III.1 / Mẫu 02 mục I), object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người khai thay (mục I.2.4 / Mẫu 02 mục I.4)."},
     {"name": "NguoiNop_Email", "desc": "Email người khai thay nếu giấy tờ có."},
     {"name": "NguoiNop_QuanHe",

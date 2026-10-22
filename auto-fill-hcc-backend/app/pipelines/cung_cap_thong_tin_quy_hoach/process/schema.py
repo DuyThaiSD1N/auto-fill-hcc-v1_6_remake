@@ -25,9 +25,9 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND (mặt sau). "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính '
              'về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công an". Chỉ có nếu upload CCCD.'},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi thường trú của người nộp, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN tên phường/xã MỚI ghi "
+     "desc": "Nơi thường trú của người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN tên phường/xã MỚI ghi "
              "trong Đơn đề nghị (địa danh sau sáp nhập); nếu CCCD ghi tên CŨ mà Đơn ghi tên mới thì lấy theo "
-             "Đơn. tinh = 'Tỉnh/Thành phố …', xa = phường/xã, diaChi = tổ dân phố/thôn/số nhà."},
+             "Đơn. tinh = 'Tỉnh/Thành phố …', xa = phường/xã, chiTietDuoiXa = tổ dân phố/thôn/số nhà."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại liên hệ của người nộp — lấy trong Đơn đề nghị nếu "
         "có. Chỉ chữ số; không lấy số điện thoại bàn/cơ quan."},
     {"name": "NguoiNop_Email", "desc": "Hộp thư điện tử của người nộp ghi trong Đơn đề nghị nếu có; bỏ trống "

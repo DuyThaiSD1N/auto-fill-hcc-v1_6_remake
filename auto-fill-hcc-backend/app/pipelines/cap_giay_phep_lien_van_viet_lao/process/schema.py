@@ -29,9 +29,9 @@ FIELDS: list[dict] = [
              'CCCD gắn chip không in nhãn "Nơi cấp" riêng → có thể bỏ trống.'},
     {"name": "NguoiNop_QuocTich", "desc": 'Quốc tịch người nộp (CCCD: Quốc tịch). Mặc định "Việt Nam".'},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi thường trú người nộp, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN tên phường/xã MỚI trong Giấy "
+     "desc": "Nơi thường trú người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN tên phường/xã MỚI trong Giấy "
              "đề nghị mục 2 'Địa chỉ' (địa danh sau sáp nhập); CCCD cũ ghi tên CŨ. tinh='Tỉnh/Thành phố …', "
-             "xa=phường/xã, diaChi=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
+             "xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp — Giấy đề nghị mục 3 'Số điện thoại'. Chỉ chữ "
         "số; không lấy số điện thoại bàn."},
     {"name": "NguoiNop_Email", "desc": "Email người nộp — Giấy đề nghị mục 3 'Địa chỉ email' nếu có (thường bỏ "

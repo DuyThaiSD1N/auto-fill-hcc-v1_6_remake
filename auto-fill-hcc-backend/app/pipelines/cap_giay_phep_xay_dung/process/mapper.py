@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from typing import Any
@@ -387,6 +388,25 @@ def _cap(value: Any) -> str | None:
     return text.replace("Cấp", "").replace("cấp", "").strip() or text
 
 
+# Nhân thân riêng của NGƯỜI KÝ ĐƠN (Applicant_*) — không được gán cho chủ đầu tư khác khi đổi người nộp.
+_APPLICANT_PERSONAL = ("Applicant_NgaySinh", "Applicant_NamSinh", "Applicant_GioiTinh", "Applicant_Email",
+                       "Applicant_NgayCap", "Applicant_NoiCap")
+
+
+def _co_owners(values: dict) -> list[dict]:
+    raw = values.get("ChuDauTu_DanhSach")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            raw = []
+    out = []
+    for item in raw if isinstance(raw, list) else []:
+        if isinstance(item, dict) and _text(item.get("hoTen")):
+            out.append({"hoTen": _text(item.get("hoTen")), "soDinhDanh": _identity(item.get("soDinhDanh"))})
+    return out
+
+
 def _looks_individual_owner(values: dict) -> bool:
     kind = _fold(values.get("ChuDauTu_Loai"))
     if "chu ho" in kind or "ca nhan" in kind:
@@ -557,6 +577,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_name = _text(_pick(values.get("ChuHo_HoTen"), values.get("Applicant_HoTen")))
     owner_identity = _identity(_pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")))
     owner_phone = _phone(_pick(values.get("ChuHo_DienThoai"), values.get("Applicant_DienThoai")))
+
+    # Đơn đứng tên NHIỀU chủ đầu tư (vd vợ chồng): cổng gắn hồ sơ với tài khoản VNeID đang đăng nhập →
+    # người đó vừa là người nộp vừa là chủ hộ. Không khớp ai trong danh sách → giữ cách cũ.
+    if _has_context_anchor(context) and _looks_individual_owner(values):
+        account = next((p for p in _co_owners(values) if _same_person(
+            p["soDinhDanh"], p["hoTen"], context.get("applicant_identity"), context.get("applicant_name"))), None)
+        if account:
+            # Đơn không ghi số của người này → số định danh lấy từ chính tài khoản đăng nhập (cùng người).
+            owner_name = account["hoTen"]
+            owner_identity = account["soDinhDanh"] or _identity(context.get("applicant_identity"))
+            if not _same_person(values.get("Applicant_SoDinhDanh"), values.get("Applicant_HoTen"),
+                                account["soDinhDanh"], account["hoTen"]):
+                submitter_name, submitter_identity = owner_name, owner_identity
+                values = {k: v for k, v in values.items() if k not in _APPLICANT_PERSONAL}
 
     # Chỉ điền khối người nộp khi trùng tài khoản đăng nhập (tránh đè thông tin người đang đăng nhập).
     can_fill_applicant = (

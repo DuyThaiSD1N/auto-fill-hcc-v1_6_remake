@@ -21,7 +21,7 @@ FIELDS: list[dict] = [
     {"name": "Cccd_NgaySinh", "desc": "Ngày sinh in trên CÙNG thẻ đó, dd/mm/yyyy."},
     {"name": "Cccd_NgayCap", "desc": "Ngày cấp in ở mặt sau CÙNG thẻ đó, dd/mm/yyyy."},
     {"name": "Cccd_NoiCuTru", "desc": "Nơi thường trú / nơi cư trú in trên CÙNG thẻ đó, object "
-        "{quocGia,tinh,xa,diaChi}; diaChi chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần số nhà/thôn/đường, KHÔNG kèm phường/xã/tỉnh."},
 
     # --- Đầu văn bản Thông báo ---
     {"name": "TB_DiaDanh", "desc": f"Địa danh ở đầu dòng '<địa danh>, ngày … tháng … năm …' của {_TB}, chép phần "
@@ -36,8 +36,8 @@ FIELDS: list[dict] = [
         "tự bù số."},
     {"name": "TB_MaSoDoanhNghiep", "desc": "Dòng 'Mã số doanh nghiệp (đối với tổ chức):'. Bỏ trống trên giấy thì "
         "bỏ field."},
-    {"name": "TB_DiaChi", "desc": "Dòng 'c) Địa chỉ:' mục I.1, object {quocGia,tinh,xa,diaChi,fullText}. fullText "
-        "= nguyên dòng; tinh='Tỉnh/Thành phố …'; xa=phường/xã/đặc khu; diaChi=số nhà/đường/thôn (KHÔNG kèm "
+    {"name": "TB_DiaChi", "desc": "Dòng 'c) Địa chỉ:' mục I.1, object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. fullText "
+        "= nguyên dòng; tinh='Tỉnh/Thành phố …'; xa=phường/xã/đặc khu; chiTietDuoiXa=số nhà/đường/thôn (KHÔNG kèm "
         "phường/xã/tỉnh)."},
     {"name": "TB_DienThoai", "desc": "Dòng 'd) Số điện thoại:'. Chỉ chữ số."},
     {"name": "TB_Email", "desc": "Dòng 'đ) Email (nếu có):'. Bỏ trống thì bỏ field."},

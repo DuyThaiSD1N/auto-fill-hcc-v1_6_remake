@@ -20,11 +20,11 @@ FIELDS: list[dict] = [
     {"name": "Ndn_GioiTinh", "desc": '"Nam" hoặc "Nữ".'},
     {"name": "Ndn_QuocTich", "desc": "Quốc tịch, vd 'Việt Nam'."},
     {"name": "Ndn_ThuongTru", "desc": "Nơi THƯỜNG TRÚ: CCCD 'Nơi cư trú' > Phiếu LLTP mục 'Nơi thường trú' > Văn "
-        "bản đề nghị mục (3). Object {quocGia,tinh,xa,diaChi}; diaChi là số nhà/tổ/thôn chép đúng nguồn ưu tiên."},
+        "bản đề nghị mục (3). Object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa là số nhà/tổ/thôn chép đúng nguồn ưu tiên."},
     {"name": "Ndn_NoiOHienTai", "desc": "Nơi ở HIỆN TẠI theo VĂN BẢN ĐỀ NGHỊ mục (4) (đơn mới hơn Phiếu LLTP). "
-        "Object {quocGia,tinh,xa,diaChi}. Không có đơn thì lấy Phiếu LLTP 'Nơi ở hiện nay'."},
+        "Object {quocGia,tinh,xa,chiTietDuoiXa}. Không có đơn thì lấy Phiếu LLTP 'Nơi ở hiện nay'."},
     {"name": "LLTP_NoiOHienNay", "desc": "Nơi ở hiện nay ghi trên PHIẾU LÝ LỊCH TƯ PHÁP (để đối chiếu), object "
-        "{quocGia,tinh,xa,diaChi}. Không có Phiếu thì bỏ."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Không có Phiếu thì bỏ."},
     {"name": "Ndn_DienThoai", "desc": "Điện thoại trên Văn bản đề nghị."},
     {"name": "Ndn_Email", "desc": "Email trên Văn bản đề nghị; dòng chấm trống thì bỏ."},
     {"name": "Ndn_LoaiGiayTo", "desc": "Loại giấy tờ tùy thân đúng như giấy ghi: 'Thẻ căn cước', 'Căn cước công "

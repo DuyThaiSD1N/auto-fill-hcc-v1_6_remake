@@ -23,7 +23,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của CHỦ HỒ SƠ, lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "NƠI CƯ TRÚ (thường trú) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Trong Đơn đề nghị, dòng đánh số '2. Địa chỉ:' ngay sau thông tin người đề nghị CHÍNH LÀ nơi cư trú, không phải địa chỉ liên hệ; ưu tiên dòng này và giữ đủ thôn/xóm/tổ/số nhà trong diaChi. Thiếu thì lấy CCCD đúng người rồi mới đến Giấy chứng nhận. ĐÂY KHÔNG PHẢI địa chỉ thửa đất — tuyệt đối không lấy nhầm địa điểm thửa đất xin giao/thuê/chuyển mục đích.",
+        "desc": "NƠI CƯ TRÚ (thường trú) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Trong Đơn đề nghị, dòng đánh số '2. Địa chỉ:' ngay sau thông tin người đề nghị CHÍNH LÀ nơi cư trú, không phải địa chỉ liên hệ; ưu tiên dòng này và giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa. Thiếu thì lấy CCCD đúng người rồi mới đến Giấy chứng nhận. ĐÂY KHÔNG PHẢI địa chỉ thửa đất — tuyệt đối không lấy nhầm địa điểm thửa đất xin giao/thuê/chuyển mục đích.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của CHỦ HỒ SƠ (người sử dụng đất/người đề nghị), chỉ chữ số. PHẢI lấy khi hồ sơ có: mục 'Địa chỉ liên hệ (điện thoại, fax, email...)' của Đơn đề nghị giao đất/thuê đất/chuyển mục đích, mục 'Điện thoại liên hệ' của Đơn đăng ký biến động Mẫu số 18, hoặc ô 'Điện thoại' trên tờ khai thuế/lệ phí trước bạ. Số ghi trong đơn/tờ khai do chính người đó đứng tên mặc nhiên là số của người đó. Không dùng số của người khác."},
     {"name": "ChuHoSo_Email", "desc": "Email của CHỦ HỒ SƠ nếu có."},
@@ -38,17 +38,17 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả thôn/xóm/số nhà trong diaChi. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
+        "desc": "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả thôn/xóm/số nhà trong chiTietDuoiXa. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy số của BÊN ĐƯỢC ỦY QUYỀN ghi trên văn bản ủy quyền; không có ủy quyền thì người nộp chính là chủ hồ sơ nên dùng số liên hệ trên Đơn đề nghị/Đơn Mẫu số 18/tờ khai thuế. Không lấy số của chủ hồ sơ khi hai người thực sự khác nhau."},
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có."},
     {
         "name": "ChuHoSo_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Đơn đề nghị giao đất/thuê đất/chuyển mục đích sử dụng đất/gia hạn sử dụng đất; nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào diaChi.",
+        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Đơn đề nghị giao đất/thuê đất/chuyển mục đích sử dụng đất/gia hạn sử dụng đất; nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào chiTietDuoiXa.",
     },
     {
         "name": "NguoiNop_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,diaChi}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
+        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,chiTietDuoiXa}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
     },
     {
         "name": "Don_NoiDungDeNghi",
@@ -56,7 +56,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT xin giao/thuê/chuyển mục đích/gia hạn (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: mục 'Địa điểm thửa đất'/'Địa điểm khu đất'/'Vị trí khu đất' trên Đơn đề nghị giao đất/thuê đất/chuyển mục đích (hoặc Đơn đề nghị gia hạn); phụ trợ: mục 'Thửa đất' trên Giấy chứng nhận. Giữ số thửa/tờ bản đồ/đường/tổ/thôn trong diaChi nếu tài liệu ghi kèm địa chỉ. TUYỆT ĐỐI không lấy địa chỉ cư trú/thường trú của người nộp hoặc chủ hồ sơ làm địa chỉ thửa đất. Không có nguồn ghi rõ thì bỏ field.",
+        "desc": "ĐỊA CHỈ THỬA ĐẤT xin giao/thuê/chuyển mục đích/gia hạn (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: mục 'Địa điểm thửa đất'/'Địa điểm khu đất'/'Vị trí khu đất' trên Đơn đề nghị giao đất/thuê đất/chuyển mục đích (hoặc Đơn đề nghị gia hạn); phụ trợ: mục 'Thửa đất' trên Giấy chứng nhận. Giữ số thửa/tờ bản đồ/đường/tổ/thôn trong chiTietDuoiXa nếu tài liệu ghi kèm địa chỉ. TUYỆT ĐỐI không lấy địa chỉ cư trú/thường trú của người nộp hoặc chủ hồ sơ làm địa chỉ thửa đất. Không có nguồn ghi rõ thì bỏ field.",
     },
 ]
 

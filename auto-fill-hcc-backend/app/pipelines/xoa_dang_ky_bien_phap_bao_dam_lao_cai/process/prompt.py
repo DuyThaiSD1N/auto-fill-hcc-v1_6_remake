@@ -37,8 +37,8 @@ sổ hồng — bản scan thường là 2 trang mở đôi), có thể có CCCD
    người → dùng số 12 chữ số. Số 9 chữ số chỉ dùng khi hồ sơ không có số nào khác của người đó.
 10. Giới tính chỉ suy từ danh xưng gắn trực tiếp với đúng người ("Ông" = Nam, "Bà" = Nữ) hoặc từ chữ số
     thứ 4 của CCCD 12 số (chẵn = Nam, lẻ = Nữ). KHÔNG suy từ tên đệm.
-11. Địa chỉ trả về object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền "<tổ/thôn/số nhà>,
-    <xã/phường>, <tỉnh>": cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại vào diaChi. Phiếu 03a ghi
+11. Địa chỉ trả về object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền "<tổ/thôn/số nhà>,
+    <xã/phường>, <tỉnh>": cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại vào chiTietDuoiXa. Phiếu 03a ghi
     theo đơn vị hành chính MỚI (2 cấp) còn GCN cũ ghi theo đơn vị cũ (có thành phố/huyện) → ưu tiên
     Phiếu 03a; chỉ dùng địa chỉ GCN khi phiếu không ghi.
 12. ĐỪNG lẫn địa chỉ THỬA ĐẤT (mục II GCN, "b) Địa chỉ") với nơi cư trú của người yêu cầu.
@@ -56,5 +56,5 @@ sổ hồng — bản scan thường là 2 trang mở đôi), có thể có CCCD
 </ung_vien_nguoi_nop_rules>
 
 Ví dụ output ĐÚNG (dữ liệu minh họa):
-{"fields":{"ChuHoSo_HoTen":"TRẦN THỊ MẪU","ChuHoSo_LaToChuc":false,"ChuHoSo_GioiTinh":"Nữ","ChuHoSo_SoDinhDanh":"010180001234","ChuHoSo_NgayCap":"10/05/2022","ChuHoSo_NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","ChuHoSo_NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","diaChi":"Tổ dân phố số 2"},"ChuHoSo_DienThoai":"0912000111","Don_TuCachNguoiYeuCau":"Bên bảo đảm","Don_KinhGui":"Chi nhánh Văn phòng đăng ký đất đai khu vực Minh Họa","Gcn_SoPhatHanh":"AB 123456","Gcn_SoVaoSo":"CH00001","BenNhanBaoDam_Ten":"Ngân hàng TMCP Minh Họa","NguoiTrongGiayTo":[{"HoTen":"TRẦN THỊ MẪU","SoDinhDanh":"010180001234","GioiTinh":"Nữ","NgaySinh":"1980","NgayCap":"10/05/2022","NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","DienThoai":"0912000111","NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","diaChi":"Tổ dân phố số 2"}}]}}
+{"fields":{"ChuHoSo_HoTen":"TRẦN THỊ MẪU","ChuHoSo_LaToChuc":false,"ChuHoSo_GioiTinh":"Nữ","ChuHoSo_SoDinhDanh":"010180001234","ChuHoSo_NgayCap":"10/05/2022","ChuHoSo_NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","ChuHoSo_NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","chiTietDuoiXa":"Tổ dân phố số 2"},"ChuHoSo_DienThoai":"0912000111","Don_TuCachNguoiYeuCau":"Bên bảo đảm","Don_KinhGui":"Chi nhánh Văn phòng đăng ký đất đai khu vực Minh Họa","Gcn_SoPhatHanh":"AB 123456","Gcn_SoVaoSo":"CH00001","BenNhanBaoDam_Ten":"Ngân hàng TMCP Minh Họa","NguoiTrongGiayTo":[{"HoTen":"TRẦN THỊ MẪU","SoDinhDanh":"010180001234","GioiTinh":"Nữ","NgaySinh":"1980","NgayCap":"10/05/2022","NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","DienThoai":"0912000111","NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","chiTietDuoiXa":"Tổ dân phố số 2"}}]}}
 """.strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

@@ -23,9 +23,9 @@ FIELDS: list[dict] = [
         "vào một chuỗi, dạng 'NGUYỄN VĂN A và TRẦN THỊ B'. Nếu TỔ CHỨC: tên đầy đủ tổ chức. Lấy ở mục I "
         "'Người sử dụng đất' trên Giấy chứng nhận, Đơn đăng ký biến động Mẫu 18 (mục 1a Tên), hoặc GCN ĐKDN."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ/nơi ở của CHỦ HỒ SƠ, object {quocGia,tinh,xa,"
-        "diaChi}. Lấy ở Đơn Mẫu 18 (mục 1c 'Địa chỉ'), địa chỉ người sử dụng đất trên Giấy chứng nhận, hoặc "
+        "chiTietDuoiXa}. Lấy ở Đơn Mẫu 18 (mục 1c 'Địa chỉ'), địa chỉ người sử dụng đất trên Giấy chứng nhận, hoặc "
         "Nơi thường trú trên CCCD chủ hồ sơ. ⚠ KHÔNG lấy 'địa chỉ thửa đất' (vị trí lô đất) làm địa chỉ "
-        "người. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn."},
+        "người. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn."},
 ]
 
 # --- Nghiệp vụ cấp đổi: số GCN + nội dung/lý do biến động (ghép vào 'Nội dung yêu cầu giải quyết') ---
@@ -64,10 +64,10 @@ FIELDS += [
         'hay ghi tắt "CCSQLHC TTXH" / "CCS QLHC về TTXH" / "Cục CSQLHC" → PHẢI ghi thành "Cục Cảnh sát quản '
         'lý hành chính về trật tự xã hội". Thẻ căn cước mới ghi "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ của CHÍNH NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. Lấy ở CCCD người nộp (Nơi thường trú), Đơn Mẫu 18 (mục 1c) hoặc Giấy ủy quyền. Tự nộp và "
+        "chiTietDuoiXa}. Lấy ở CCCD người nộp (Nơi thường trú), Đơn Mẫu 18 (mục 1c) hoặc Giấy ủy quyền. Tự nộp và "
         "không có giấy tờ riêng → BỎ TRỐNG (mapper tự dùng ChuHoSo_DiaChi). ⚠ KHÔNG lấy địa chỉ thửa đất, "
         "trụ sở tổ chức, hay tỉnh của thửa đất làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/"
-        "xã, diaChi=số nhà/đường/tổ/thôn."},
+        "xã, chiTietDuoiXa=số nhà/đường/tổ/thôn."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP — Đơn Mẫu 18 mục 1d 'Điện thoại liên "
         "hệ' hoặc CCCD. Chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP — Đơn Mẫu 18 mục 1d 'Hộp thư điện tử' nếu có; "

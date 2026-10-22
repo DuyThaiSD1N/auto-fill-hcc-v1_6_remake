@@ -38,7 +38,7 @@ FIELDS: list[dict] = [
     # ===== TRANG "ĐỊA CHỈ" =====
     {
         "name": "TruSo_DiaChi",
-        "desc": ("Địa chỉ trụ sở chính, object {quocGia,tinh,xa,diaChi}. GĐN mục 3 / Điều lệ Điều 3 "
+        "desc": ("Địa chỉ trụ sở chính, object {quocGia,tinh,xa,chiTietDuoiXa}. GĐN mục 3 / Điều lệ Điều 3 "
                  "\"Trụ sở chính\". BỎ cấp huyện/quận (biểu mẫu chỉ có xã và tỉnh)."),
     },
     {
@@ -110,7 +110,7 @@ FIELDS: list[dict] = [
                  "chiếu Điều lệ Điều 8 và Danh sách chủ sở hữu hưởng lợi), array object: "
                  "{hoTen,gioiTinh,ngaySinh,soGiayToPhapLy,quocTich,danToc,diaChiLienLac,dienThoai,"
                  "fax,website,email,vonGop,tyLeSoHuu,soNgayGopVon,ngayGopVonCuThe,ghiChu}. "
-                 "diaChiLienLac là object {quocGia,tinh,xa,diaChi}. vonGop và tyLeSoHuu là SỐ "
+                 "diaChiLienLac là object {quocGia,tinh,xa,chiTietDuoiXa}. vonGop và tyLeSoHuu là SỐ "
                  "(VNĐ và %). soNgayGopVon là SỐ NGÀY khi hồ sơ ghi thời hạn dạng \"trong vòng 90 "
                  "ngày kể từ ngày cấp GCN ĐKDN\"; ngayGopVonCuThe dd/mm/yyyy chỉ khi hồ sơ ấn định "
                  "một NGÀY cụ thể. GIỮ ĐÚNG THỨ TỰ các dòng in trên Danh sách thành viên."),
@@ -123,7 +123,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiDaiDien_SoDinhDanh", "desc": "Số định danh cá nhân/số giấy tờ pháp lý của người đại diện theo pháp luật."},
     {
         "name": "NguoiDaiDien_DiaChi",
-        "desc": ("Địa chỉ liên lạc của người đại diện theo pháp luật, object {quocGia,tinh,xa,diaChi}; "
+        "desc": ("Địa chỉ liên lạc của người đại diện theo pháp luật, object {quocGia,tinh,xa,chiTietDuoiXa}; "
                  "ưu tiên \"Nơi thường trú\" trên CCCD, không có thì lấy địa chỉ liên lạc ở GĐN mục 8."),
     },
     {"name": "NguoiDaiDien_DienThoai", "desc": "Điện thoại người đại diện theo pháp luật (GĐN mục 9.1)."},
@@ -140,7 +140,7 @@ FIELDS: list[dict] = [
     # ===== TRANG "THÔNG TIN VỀ THUẾ" =====
     {
         "name": "Thue_DiaChiNhanThongBao",
-        "desc": ("Địa chỉ nhận thông báo thuế ở GĐN mục 9.3, object {quocGia,tinh,xa,diaChi}. "
+        "desc": ("Địa chỉ nhận thông báo thuế ở GĐN mục 9.3, object {quocGia,tinh,xa,chiTietDuoiXa}. "
                  "CHỈ trả khi mục này được kê khai KHÁC trụ sở chính; để trống nghĩa là giống trụ sở."),
     },
     {"name": "Thue_DienThoai", "desc": "Điện thoại nhận thông báo thuế (GĐN mục 9.3)."},
@@ -187,7 +187,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh cá nhân/CCCD của người nộp hồ sơ."},
     {
         "name": "NguoiNop_DiaChi",
-        "desc": ("Địa chỉ liên lạc của người nộp hồ sơ, object {quocGia,tinh,xa,diaChi}; ưu tiên "
+        "desc": ("Địa chỉ liên lạc của người nộp hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên "
                  "\"Nơi thường trú\" trên CCCD, không có thì lấy địa chỉ liên lạc ghi ở Giấy ủy quyền."),
     },
     {"name": "NguoiNop_DienThoai", "desc": "Điện thoại người nộp hồ sơ."},
@@ -202,7 +202,7 @@ FIELDS: list[dict] = [
     {
         "name": "Cccd_DanhSach",
         "desc": ("Danh sách MỌI thẻ căn cước/CCCD/CMND có trong hồ sơ, array object "
-                 "{hoTen,gioiTinh,ngaySinh,soDinhDanh,diaChi}; diaChi là object {quocGia,tinh,xa,diaChi} "
+                 "{hoTen,gioiTinh,ngaySinh,soDinhDanh,chiTietDuoiXa}; chiTietDuoiXa là object {quocGia,tinh,xa,chiTietDuoiXa} "
                  "đọc từ \"Nơi thường trú\". Mặt trước + mặt sau của cùng một thẻ chỉ là MỘT object. "
                  "KHÔNG suy vai trò từ thứ tự file — cứ liệt kê đủ để extension đối chiếu với tài khoản "
                  "đang đăng nhập."),

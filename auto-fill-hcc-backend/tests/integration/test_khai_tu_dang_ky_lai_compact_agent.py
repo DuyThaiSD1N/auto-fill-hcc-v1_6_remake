@@ -292,7 +292,7 @@ def test_khai_tu_dang_ky_lai_compact_prompt_instructs_role_split_and_no_guessing
     assert "trên CCCD" in system_prompt
     assert "ưu tiên địa chỉ ghi trên tờ khai" in system_prompt
     assert 'xa="Bản Giang"' in system_prompt
-    assert 'diaChi="Tẩn Phủ Nhiêu"' in system_prompt
+    assert 'chiTietDuoiXa="Tẩn Phủ Nhiêu"' in system_prompt
     assert 'Deceased_DeathPlaceDomestic bắt buộc lấy từ nhãn "Nơi chết"' in system_prompt
     assert "OCR có thể xuống dòng giữa tên phường/xã" in system_prompt
     assert "PreviousDeathRegistration_Number = số đăng ký khai tử trước đây" in system_prompt

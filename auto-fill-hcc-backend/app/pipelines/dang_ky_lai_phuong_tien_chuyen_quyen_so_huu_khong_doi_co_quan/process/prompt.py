@@ -22,8 +22,8 @@ người này; không có CCCD thì lấy số căn cước, ngày cấp, nơi c
 xưng "Bà" → NguoiNop_GioiTinh="Nữ", "Ông" → "Nam". KHÔNG lấy người đại diện của BÊN BÁN. Giấy nộp tiền NSNN ghi tên
 không dấu → chỉ dùng đối chiếu, chép tên CÓ DẤU từ hợp đồng / CCCD.
 
-ĐỊA CHỈ (object {quocGia,tinh,xa,diaChi}): dùng đơn vị hành chính MỚI (34 tỉnh, không cấp huyện). Hợp đồng ghi địa
-danh cũ kèm "(nay là phường X, thành phố Y)" → lấy phần "nay là". diaChi chỉ số nhà, đường, thôn/tổ (KHÔNG kèm
+ĐỊA CHỈ (object {quocGia,tinh,xa,chiTietDuoiXa}): dùng đơn vị hành chính MỚI (34 tỉnh, không cấp huyện). Hợp đồng ghi địa
+danh cũ kèm "(nay là phường X, thành phố Y)" → lấy phần "nay là". chiTietDuoiXa chỉ số nhà, đường, thôn/tổ (KHÔNG kèm
 phường/xã/tỉnh). Tên đường chữ viết tay trên Đơn 07 lệch với hợp đồng / hóa đơn (in máy) → theo bản in máy.
 
 PHƯƠNG TIỆN (PhuongTien_*): ưu tiên GCN đăng ký phương tiện → hợp đồng → Đơn 07. Tên phương tiện ghi đúng như GCN

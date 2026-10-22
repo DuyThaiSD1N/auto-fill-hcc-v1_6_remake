@@ -31,12 +31,12 @@ CCCD: NgayCap ở mặt sau gần nhãn "Ngày, tháng, năm / Date, month, year
 quản lý hành chính về trật tự xã hội" / "Bộ Công an".
 
 ĐỊA CHỈ (ThuongTru) object {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<xã/phường/thị trấn>",
-"diaChi":"<chi tiết trước xã>"}; bỏ cấp huyện/quận nếu có ở giữa.
+"chiTietDuoiXa":"<chi tiết trước xã>"}; bỏ cấp huyện/quận nếu có ở giữa.
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa; thiếu thì bỏ field.
 
 <output_contract>
 Ví dụ đúng (người đứng khai NGUYỄN VĂN A + thẻ CCCD người nộp thay TRẦN VĂN B):
-{"fields":{"ChuHoSo_HoTen":"NGUYỄN VĂN A","ChuHoSo_SoDinhDanh":"012345678901","ChuHoSo_NgaySinh":"01/01/1970","ChuHoSo_DienThoai":"0900000000","ChuHoSo_QuanHeNguoiTuTran":"Con đẻ","ChuHoSo_ThuongTru":{"quocGia":"Việt Nam","tinh":"Bắc Ninh","xa":"Hiệp Hòa","diaChi":"Thôn số 1"},"NguoiNop_HoTen":"TRẦN VĂN B","NguoiNop_SoDinhDanh":"098765432109","NguoiNop_GioiTinh":"Nam","NguoiNop_NgaySinh":"02/02/1990","NguoiNop_NgayCap":"02/07/2021","NguoiNop_ThuongTru":{"quocGia":"Việt Nam","tinh":"Nghệ An","xa":"Quỳ Hợp","diaChi":"Xóm Long Thành"}}}
+{"fields":{"ChuHoSo_HoTen":"NGUYỄN VĂN A","ChuHoSo_SoDinhDanh":"012345678901","ChuHoSo_NgaySinh":"01/01/1970","ChuHoSo_DienThoai":"0900000000","ChuHoSo_QuanHeNguoiTuTran":"Con đẻ","ChuHoSo_ThuongTru":{"quocGia":"Việt Nam","tinh":"Bắc Ninh","xa":"Hiệp Hòa","chiTietDuoiXa":"Thôn số 1"},"NguoiNop_HoTen":"TRẦN VĂN B","NguoiNop_SoDinhDanh":"098765432109","NguoiNop_GioiTinh":"Nam","NguoiNop_NgaySinh":"02/02/1990","NguoiNop_NgayCap":"02/07/2021","NguoiNop_ThuongTru":{"quocGia":"Việt Nam","tinh":"Nghệ An","xa":"Quỳ Hợp","chiTietDuoiXa":"Xóm Long Thành"}}}
 Ví dụ sai: {"fields":{"data[fullname]":"...","ChuHoSo_HoTen":"<tên người từ trần>"}} — sai vì trả field UI và lấy người từ trần.
 </output_contract>"""

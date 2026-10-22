@@ -11,7 +11,7 @@ khai maDoiTuongNop = TO_CHUC nhưng cá nhân vẫn nộp được).
 LLM chỉ trích dữ kiện nguồn; Python chọn nguồn theo ma trận ưu tiên và sinh field UI.
 """
 
-_AREA_DESC = "object {quocGia,tinh,xa,diaChi}; địa chỉ 2 cấp (xã/phường → tỉnh), diaChi là số nhà/đường/tổ/thôn."
+_AREA_DESC = "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ 2 cấp (xã/phường → tỉnh), chiTietDuoiXa là số nhà/đường/tổ/thôn."
 _PERSON_DESC = (
     "[{HoTen,SoDinhDanh,NgaySinh,GioiTinh,NgayCap,NoiCap}]; SoDinhDanh liền chữ số; NgaySinh/NgayCap dd/mm/yyyy "
     "(chỉ có năm thì trả đúng năm); GioiTinh suy từ xưng hô Ông→Nam, Bà→Nữ."
@@ -62,7 +62,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_DiaChi",
      "desc": "Vị trí KHU ĐẤT/thửa đất ghi trên Đơn, bản đồ/mảnh đo đạc hoặc GCN quyền sử dụng đất, " + _AREA_DESC
              + " Địa danh cũ trước sáp nhập (vd 'T. YÊN BÁI - HUYỆN YÊN BÌNH / XÃ PHÚ THỊNH', 'THÔN 3, KHU CÔNG NGHIỆP "
-             "PHÍA NAM') → tinh='Yên Bái', huyen='Yên Bình', xa='Phú Thịnh', diaChi='Thôn 3, Khu công nghiệp phía Nam'."},
+             "PHÍA NAM') → tinh='Yên Bái', huyen='Yên Bình', xa='Phú Thịnh', chiTietDuoiXa='Thôn 3, Khu công nghiệp phía Nam'."},
     {"name": "Don_DienThoai", "desc": "Số điện thoại liên hệ ghi trên Đơn; liền chữ số."},
     {"name": "Don_Email", "desc": "Thư điện tử ghi trên Đơn nếu có; bỏ trống/chấm chấm thì bỏ field."},
     {"name": "Dkdn_DienThoai", "desc": "Điện thoại trụ sở trên GCN đăng ký doanh nghiệp của người sử dụng đất."},

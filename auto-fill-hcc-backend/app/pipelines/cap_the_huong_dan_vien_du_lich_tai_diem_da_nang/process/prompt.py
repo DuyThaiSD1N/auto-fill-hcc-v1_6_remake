@@ -30,8 +30,8 @@ EXTRA_RULES = """
 </masked_and_missing_rules>
 
 <normalization_rules>
-9. Địa chỉ trả về object {quocGia, tinh, xa, diaChi}. Chuỗi viết liền '<số nhà, đường/thôn>, <xã/phường>,
-   <tỉnh/thành phố>': cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại cho vào diaChi.
+9. Địa chỉ trả về object {quocGia, tinh, xa, chiTietDuoiXa}. Chuỗi viết liền '<số nhà, đường/thôn>, <xã/phường>,
+   <tỉnh/thành phố>': cụm CUỐI là tinh, cụm ngay TRƯỚC là xa, phần còn lại cho vào chiTietDuoiXa.
 10. Số điện thoại/số định danh chỉ giữ chữ số. Không có trong giấy tờ thì BỎ FIELD.
 </normalization_rules>
 """.strip()

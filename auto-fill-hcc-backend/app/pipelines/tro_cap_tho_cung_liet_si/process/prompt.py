@@ -37,9 +37,9 @@ EXTRA_RULES = """<critical_rules>
 </nguoi_nop>
 
 <dia_chi_va_giay_to>
-1. Địa chỉ người trả object {quocGia,tinh,xa,diaChi}; bỏ cấp huyện/quận; diaChi chỉ giữ số nhà/đường/thôn/tổ.
+1. Địa chỉ người trả object {quocGia,tinh,xa,chiTietDuoiXa}; bỏ cấp huyện/quận; chiTietDuoiXa chỉ giữ số nhà/đường/thôn/tổ.
 2. Nếu Mẫu 18 thiếu tỉnh nhưng giấy ủy quyền của cùng người có địa chỉ đầy đủ thì dùng tỉnh từ giấy ủy quyền.
-   Không đưa huyện/quận/thành phố thuộc tỉnh vào key tinh; không lặp cấp hành chính vào diaChi.
+   Không đưa huyện/quận/thành phố thuộc tỉnh vào key tinh; không lặp cấp hành chính vào chiTietDuoiXa.
 3. Nơi cấp CCCD cũ có "Cục CS/Cục CSQLHC về TTXH" thì chuẩn hóa thành
    "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Không lấy cơ quan chứng thực làm nơi cấp.
 4. Số định danh chỉ giữ chữ số; ngày chuẩn hóa dd/mm/yyyy khi OCR có đủ ngày tháng năm.

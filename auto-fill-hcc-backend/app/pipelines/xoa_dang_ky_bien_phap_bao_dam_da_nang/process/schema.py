@@ -23,9 +23,9 @@ FIELDS: list[dict] = [
         "bên bảo đảm), Giấy chứng nhận (người sử dụng đất/chủ tài sản), hoặc Giấy ủy quyền (bên ủy quyền là "
         "chủ tài sản). KHÔNG lấy tên BÊN NHẬN BẢO ĐẢM (ngân hàng)."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ/trụ sở của CHỦ HỒ SƠ (bên bảo đảm), object "
-        "{quocGia,tinh,xa,diaChi}. Lấy ở Phiếu yêu cầu Mẫu 03a / Giấy ủy quyền (địa chỉ bên ủy quyền) / địa "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở Phiếu yêu cầu Mẫu 03a / Giấy ủy quyền (địa chỉ bên ủy quyền) / địa "
         "chỉ trên Giấy chứng nhận. ⚠ KHÔNG lấy 'địa chỉ thửa đất' (vị trí lô đất) làm địa chỉ người. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn."},
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn."},
 ]
 
 # --- Nghiệp vụ: số GCN + nội dung yêu cầu xóa (ghép vào 'Nội dung yêu cầu giải quyết') ---
@@ -62,10 +62,10 @@ FIELDS += [
         'hay ghi tắt "Cục CSQLHC" / "CCS QLHC về TTXH" → PHẢI ghi thành "Cục Cảnh sát quản lý hành chính về '
         'trật tự xã hội". Thẻ căn cước mới ghi "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ của CHÍNH NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. Lấy ở CCCD người nộp / Giấy ủy quyền (địa chỉ thường trú Bên được ủy quyền). Tự nộp và "
+        "chiTietDuoiXa}. Lấy ở CCCD người nộp / Giấy ủy quyền (địa chỉ thường trú Bên được ủy quyền). Tự nộp và "
         "không có giấy tờ riêng → BỎ TRỐNG (mapper tự dùng ChuHoSo_DiaChi). ⚠ KHÔNG lấy địa chỉ thửa đất, "
         "trụ sở tổ chức, hay tỉnh của thửa đất làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/"
-        "xã, diaChi=số nhà/đường/tổ/thôn."},
+        "xã, chiTietDuoiXa=số nhà/đường/tổ/thôn."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên giấy tờ."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},
 ]

@@ -16,7 +16,7 @@ PHÂN BIỆT NGƯỜI:
 - Cá nhân/hộ gia đình → ChuDauTu_Loai='Chủ hộ'. Tổ chức → 'Chủ đầu tư' + ChuDauTu_TenToChuc/NguoiDaiDien/
   ChucVu/MaSoDoanhNghiep. ToChucNop_* CHỈ khi chủ đầu tư là tổ chức tự đứng nộp; chủ hộ cá nhân → bỏ trống.
 
-ĐỊA CHỈ (object {quocGia,tinh,xa,diaChi}), hai loại KHÁC NHAU:
+ĐỊA CHỈ (object {quocGia,tinh,xa,chiTietDuoiXa}), hai loại KHÁC NHAU:
 - Applicant_NoiCuTru = nơi thường trú NGƯỜI NỘP theo CCCD (tên phường cũ thì giữ, hệ thống tự quy đổi).
 - Dat_DiaDiemXayDung = tỉnh + phường/xã của LÔ ĐẤT (mục 2 Đơn / vị trí xây dựng trên GPXD).
 

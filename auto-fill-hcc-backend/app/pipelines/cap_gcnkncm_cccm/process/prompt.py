@@ -28,5 +28,5 @@ KHÔNG bịa; thiếu thì bỏ field.
 
 Ví dụ output ĐÚNG (cá nhân, chưa có ảnh CCCD):
 ```json
-{"fields":{"NguoiNop_HoTen":"NGUYỄN VĂN A","NguoiNop_NgaySinh":"10/08/1986","NguoiNop_GioiTinh":"Nam","NguoiNop_SoDinhDanh":"049086009139","NguoiNop_QuocTich":"Việt Nam","NguoiNop_ThuongTru":{"tinh":"Thành phố Đà Nẵng","xa":"Xã Thu Bồn","diaChi":"Thôn ..."},"NguoiNop_DienThoai":"0786348870","DoiTuong":"Cá nhân","DoiTuong_Ten":"NGUYỄN VĂN A","DoiTuong_DiaChi":"Thôn ..., Xã Thu Bồn, Thành phố Đà Nẵng"}}
+{"fields":{"NguoiNop_HoTen":"NGUYỄN VĂN A","NguoiNop_NgaySinh":"10/08/1986","NguoiNop_GioiTinh":"Nam","NguoiNop_SoDinhDanh":"049086009139","NguoiNop_QuocTich":"Việt Nam","NguoiNop_ThuongTru":{"tinh":"Thành phố Đà Nẵng","xa":"Xã Thu Bồn","chiTietDuoiXa":"Thôn ..."},"NguoiNop_DienThoai":"0786348870","DoiTuong":"Cá nhân","DoiTuong_Ten":"NGUYỄN VĂN A","DoiTuong_DiaChi":"Thôn ..., Xã Thu Bồn, Thành phố Đà Nẵng"}}
 ```"""

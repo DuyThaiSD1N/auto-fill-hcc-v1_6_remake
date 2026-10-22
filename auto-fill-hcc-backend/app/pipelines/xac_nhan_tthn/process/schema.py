@@ -44,7 +44,7 @@ FIELDS: list[dict] = [
              'thì trả "Bộ Công an".'},
     {"name": "NguoiDuocCap_NoiCuTru",
      "desc": 'Nơi thường trú/cư trú của người được cấp in trên thẻ (không có thẻ thì giấy in khác đứng tên '
-             'họ), object {quocGia,tinh,xa,diaChi}. KHÔNG lấy từ tờ khai; KHÔNG lấy "nơi thường trú cuối '
+             'họ), object {quocGia,tinh,xa,chiTietDuoiXa}. KHÔNG lấy từ tờ khai; KHÔNG lấy "nơi thường trú cuối '
              'cùng" trên giấy khai tử (đó là của người đã mất).'},
     # --- NGƯỜI YÊU CẦU / NGƯỜI ĐI NỘP KHÁC người được cấp: thông tin IN trên thẻ của người đó ---
     # Người được ủy quyền đi nộp, hoặc người thân khai hộ có kèm thẻ. Chỉ một người thì nhóm này trống.
@@ -61,7 +61,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiYeuCau_NoiCap",
      "desc": 'Nơi cấp thẻ của người đi nộp; chuẩn hóa như NguoiDuocCap_NoiCap.'},
     {"name": "NguoiYeuCau_NoiCuTru",
-     "desc": "Nơi thường trú in trên thẻ của người đi nộp, object {quocGia,tinh,xa,diaChi}."},
+     "desc": "Nơi thường trú in trên thẻ của người đi nộp, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     # --- Fields từ TỜ KHAI (thông tin NGƯỜI YÊU CẦU - Section I, ghi ở ĐẦU tờ khai) ---
     # Tờ khai luôn có HAI khối riêng: "Họ, chữ đệm, tên người yêu cầu" (đầu tờ khai) và "Đề nghị cấp
     # Giấy xác nhận... cho người có tên dưới đây" (Section II, → ToKhai_*). Hai khối này CÓ THỂ khác
@@ -84,7 +84,7 @@ FIELDS: list[dict] = [
     {"name": "ToKhaiYeuCau_NoiCapGiayTo",
      "desc": 'Nơi cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU (khối đầu tờ khai).'},
     {"name": "ToKhaiYeuCau_NoiCuTru",
-     "desc": 'Nơi cư trú của NGƯỜI YÊU CẦU ghi ở khối đầu tờ khai, object {quocGia,tinh,xa,diaChi}.'},
+     "desc": 'Nơi cư trú của NGƯỜI YÊU CẦU ghi ở khối đầu tờ khai, object {quocGia,tinh,xa,chiTietDuoiXa}.'},
     {"name": "ToKhaiYeuCau_QuanHe",
      "desc": 'Quan hệ giữa NGƯỜI YÊU CẦU và người được cấp giấy, lấy NGUYÊN VĂN dòng "Quan hệ với '
              'người được cấp Giấy xác nhận tình trạng hôn nhân:" (hoặc biến thể gần đúng). Ví dụ: '
@@ -108,7 +108,7 @@ FIELDS: list[dict] = [
     {"name": "ToKhai_NoiCapGiayTo",
      "desc": 'Nơi cấp giấy tờ từ TỜ KHAI, lấy từ dòng "tại ..." sau "Cấp ngày" trong phần người được cấp.'},
     {"name": "ToKhai_NoiCuTru",
-     "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,diaChi}. '
+     "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,chiTietDuoiXa}. '
              'Lấy đúng dòng "Nơi cư trú" của người yêu cầu/người được cấp; bắt buộc trả khi tờ khai có.'},
     {"name": "ToKhai_LaBanThan",
      "desc": 'Trả true CHỈ khi TỜ KHAI ghi quan hệ "Tự khai"/"Bản thân" và họ tên người yêu cầu '
@@ -179,7 +179,7 @@ FIELDS: list[dict] = [
     {"name": "PoA_SubjectIssuer",
      "desc": "Nơi cấp CCCD/CMND của người ủy quyền (Section I giấy ủy quyền)."},
     {"name": "PoA_SubjectAddress",
-     "desc": "Nơi cư trú của người ủy quyền (Section I giấy ủy quyền), object {tinh, xa, diaChi}."},
+     "desc": "Nơi cư trú của người ủy quyền (Section I giấy ủy quyền), object {tinh, xa, chiTietDuoiXa}."},
     {"name": "PoA_SubjectDanToc",
      "desc": 'Dân tộc của người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh").'},
 ]

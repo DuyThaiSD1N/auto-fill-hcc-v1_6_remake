@@ -25,10 +25,10 @@ EXTRA_RULES = """
 9. ĐỊA CHỈ người sử dụng đất (ChuHoSo_DonDiaChi): theo dòng "Địa chỉ thường trú" của Đơn (hoặc "Địa chỉ" của
    Bản cam kết). Viết tắt phải khai triển: "P." -> "Phường", "X." -> "Xã", "T." -> "Tỉnh", "TP." ->
    "Thành phố". Ví dụ "12/3 Lê Lợi, P. An Hòa, T. Quảng Ngãi" -> {quocGia:"Việt Nam", tinh:"Tỉnh Quảng
-   Ngãi", xa:"Phường An Hòa", diaChi:"12/3 Lê Lợi"}. Không lặp tỉnh/xã trong diaChi, không đưa huyện vào.
+   Ngãi", xa:"Phường An Hòa", chiTietDuoiXa:"12/3 Lê Lợi"}. Không lặp tỉnh/xã trong chiTietDuoiXa, không đưa huyện vào.
    "Địa chỉ gửi thông báo thuế" chỉ dùng khi dòng thường trú bỏ trống.
 10. ĐỊA CHỈ THỬA ĐẤT (ThuaDat_DiaChi) tách hẳn với nơi cư trú: lấy mục "2.e Địa chỉ" của Giấy chứng nhận
-   hoặc "Địa chỉ thửa đất" của Đơn. Thường chỉ có phường/xã + tỉnh -> diaChi để trống. Không suy từ địa
+   hoặc "Địa chỉ thửa đất" của Đơn. Thường chỉ có phường/xã + tỉnh -> chiTietDuoiXa để trống. Không suy từ địa
    chỉ thường trú.
 11. Don_NoiDungDeNghi: chép NGUYÊN VĂN mục "3. Nội dung đề nghị" của Đơn — đoạn "Tôi nhận thấy ..." và
    đoạn "Do đó, tôi kính đề nghị ..." (nối bằng dấu cách); dừng trước đoạn "Tôi cam kết chọn thửa đất".

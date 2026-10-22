@@ -41,9 +41,9 @@ FIELDS: list[dict] = [
     {"name": "NguoiDeNghi_DiaChiThuongTru", "desc": "Nơi thường trú của người đề nghị, CHÉP NGUYÊN VĂN một chuỗi "
         "(CCCD 'Nơi thường trú / Place of residence' → Đơn 'Đăng ký thường trú tại' / 'Địa chỉ thường trú'). Gộp các "
         "dòng của thẻ thành một chuỗi, ngăn cách bằng dấu phẩy."},
-    {"name": "NguoiDeNghi_ThuongTru", "desc": "Nơi thường trú của người đề nghị dạng object {quocGia,tinh,xa,diaChi}"
+    {"name": "NguoiDeNghi_ThuongTru", "desc": "Nơi thường trú của người đề nghị dạng object {quocGia,tinh,xa,chiTietDuoiXa}"
         " để chọn trên form (chỉ có đơn vị hành chính MỚI, 34 tỉnh, không cấp huyện). Đơn ghi phường/xã MỚI thì "
-        "lấy tinh/xa theo Đơn, còn không theo CCCD. diaChi = số nhà, đường, tổ/thôn (KHÔNG kèm phường/xã/tỉnh)."},
+        "lấy tinh/xa theo Đơn, còn không theo CCCD. chiTietDuoiXa = số nhà, đường, tổ/thôn (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "NguoiDeNghi_DienThoai", "desc": "Số điện thoại của người đề nghị (Đơn mục 'Điện thoại' / 'Điện thoại "
         "liên hệ'). Chỉ chữ số."},
     {"name": "NguoiDeNghi_Email", "desc": "Email của người đề nghị nếu đơn ghi. Không có thì bỏ."},
@@ -78,7 +78,7 @@ FIELDS += [
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính trên thẻ CCCD người nộp: "Nam"/"Nữ".'},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CHÍNH thẻ CCCD người nộp, dd/mm/yyyy. KHÔNG lấy ngày hết hạn."},
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp thẻ CCCD người nộp, chép đúng như in trên thẻ."},
-    {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú trên thẻ CCCD người nộp, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú trên thẻ CCCD người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP nếu hồ sơ ghi cạnh đúng tên người đó (vd "
         "giấy giới thiệu 'Người liên hệ: ..., ĐT ...'). Không có thì bỏ."},
 ]
@@ -90,7 +90,7 @@ FIELDS += [
     {"name": "ToChuc_Ten", "desc": f"Tên doanh nghiệp / tổ chức nộp hồ sơ. {_TO_CHUC_SRC}."},
     {"name": "ToChuc_MaSoThue", "desc": f"Mã số doanh nghiệp / mã số thuế của tổ chức, chỉ chữ số. {_TO_CHUC_SRC}."},
     {"name": "ToChuc_DienThoai", "desc": f"Số điện thoại của tổ chức. {_TO_CHUC_SRC}."},
-    {"name": "ToChuc_DiaChi", "desc": "Địa chỉ trụ sở chính của tổ chức, object {quocGia,tinh,xa,diaChi}. "
+    {"name": "ToChuc_DiaChi", "desc": "Địa chỉ trụ sở chính của tổ chức, object {quocGia,tinh,xa,chiTietDuoiXa}. "
         f"{_TO_CHUC_SRC}."},
 ]
 

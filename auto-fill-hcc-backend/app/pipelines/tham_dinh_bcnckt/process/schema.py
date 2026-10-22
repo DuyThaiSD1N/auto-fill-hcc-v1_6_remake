@@ -30,8 +30,8 @@ _NOP = [
     ("NgayCap", "Ngày cấp CCCD người nộp, dd/mm/yyyy."),
     ("NoiCap", 'Nơi cấp CCCD người nộp. CCCD gắn chip: "Cục Cảnh sát quản lý hành chính về trật tự xã '
         'hội"; thẻ căn cước mới: "Bộ Công an".'),
-    ("NoiCuTru", "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …', "
-        "xa=phường/xã, diaChi=số nhà/đường (KHÔNG kèm phường/xã/tỉnh)."),
+    ("NoiCuTru", "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …', "
+        "xa=phường/xã, chiTietDuoiXa=số nhà/đường (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại người nộp. Chỉ chữ số. CCCD không in SĐT → thường bỏ."),
     ("Email", "Email người nộp nếu có; thường không có → bỏ."),
 ]
@@ -42,8 +42,8 @@ FIELDS += [
     {"name": "ChuDauTu_Ten", "desc": "Tên CHỦ ĐẦU TƯ (tổ chức) — Tờ trình mục I.5 'Chủ đầu tư'. Chép đầy đủ."},
     {"name": "ChuDauTu_MaSoThue", "desc": "Mã số thuế/mã doanh nghiệp CHỦ ĐẦU TƯ — Tờ trình I.5 'Mã số "
         "thuế'. Chỉ chữ số."},
-    {"name": "ChuDauTu_DiaChi", "desc": "Địa chỉ trụ sở CHỦ ĐẦU TƯ, object {quocGia,tinh,xa,diaChi} — Tờ "
-        "trình I.5 'Địa chỉ'. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/thôn/đường."},
+    {"name": "ChuDauTu_DiaChi", "desc": "Địa chỉ trụ sở CHỦ ĐẦU TƯ, object {quocGia,tinh,xa,chiTietDuoiXa} — Tờ "
+        "trình I.5 'Địa chỉ'. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/thôn/đường."},
     {"name": "ChuDauTu_DienThoai", "desc": "Điện thoại CHỦ ĐẦU TƯ — Tờ trình I.5 'Điện thoại'. Chỉ chữ số."},
     {"name": "ChuDauTu_NguoiQuyetDinhDauTu", "desc": "Người quyết định đầu tư — Tờ trình mục I.4 'Người "
         "quyết định đầu tư' (vd 'Chủ tịch HĐQT Công ty …'). Chép nguyên văn."},
@@ -52,8 +52,8 @@ FIELDS += [
 # --- Thông tin chung dự án (Tờ trình mục I) ---
 FIELDS += [
     {"name": "DuAn_Ten", "desc": "Tên dự án — Tờ trình mục I.1 'Tên dự án'."},
-    {"name": "DuAn_DiaDiem", "desc": "ĐỊA ĐIỂM XÂY DỰNG dự án, object {quocGia,tinh,xa,diaChi} — Tờ trình "
-        "(địa điểm/khu vực dự án). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=chi tiết. KHÁC địa chỉ "
+    {"name": "DuAn_DiaDiem", "desc": "ĐỊA ĐIỂM XÂY DỰNG dự án, object {quocGia,tinh,xa,chiTietDuoiXa} — Tờ trình "
+        "(địa điểm/khu vực dự án). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=chi tiết. KHÁC địa chỉ "
         "chủ đầu tư."},
     {"name": "DuAn_Nhom", "desc": 'Nhóm dự án — Tờ trình I.2 "Nhóm dự án" (vd "Nhóm A"/"Nhóm B"/"Nhóm C").'},
     {"name": "DuAn_LoaiCongTrinh", "desc": "Loại công trình chính — Tờ trình I.3 'Loại...công trình chính' "

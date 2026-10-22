@@ -23,9 +23,9 @@ FIELDS: list[dict] = [
              'thì lấy từ mặt sau CCCD ("CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về '
              'trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công an").'},
     {"name": "Nguoi_ThuongTru",
-     "desc": "Nơi thường trú/địa chỉ liên hệ của chủ điểm, object {tinh,xa,diaChi}. ƯU TIÊN tên phường/xã "
+     "desc": "Nơi thường trú/địa chỉ liên hệ của chủ điểm, object {tinh,xa,chiTietDuoiXa}. ƯU TIÊN tên phường/xã "
              "MỚI trong Đơn 51a / Giấy phép kinh doanh (sau sáp nhập); CCCD 2021 ghi tên CŨ (vd Xã Ngũ Thái) "
-             "thì bỏ, lấy tên mới. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=tổ dân phố/khu phố/số nhà."},
+             "thì bỏ, lấy tên mới. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=tổ dân phố/khu phố/số nhà."},
     {"name": "Nguoi_DienThoai", "desc": "Số điện thoại liên hệ — lấy từ Đơn 51a (mục Điện thoại) hoặc Giấy "
         "phép kinh doanh. Chỉ chữ số. Không có trên CCCD."},
 
@@ -40,8 +40,8 @@ FIELDS: list[dict] = [
     {"name": "HoKD_DienThoai", "desc": "Số điện thoại của hộ kinh doanh trên Giấy phép kinh doanh (nếu có). "
         "Chỉ chữ số. Nếu GPKD không ghi thì để trống (mapper dùng chung với điện thoại người nộp)."},
     {"name": "HoKD_TruSo",
-     "desc": "Địa chỉ TRỤ SỞ hộ kinh doanh trên Giấy phép kinh doanh, object {tinh,xa,diaChi}. tinh='Tỉnh …', "
-             "xa=phường/xã, diaChi=thôn/tổ/số nhà. Đây là địa điểm kinh doanh, có thể KHÁC nơi thường trú."},
+     "desc": "Địa chỉ TRỤ SỞ hộ kinh doanh trên Giấy phép kinh doanh, object {tinh,xa,chiTietDuoiXa}. tinh='Tỉnh …', "
+             "xa=phường/xã, chiTietDuoiXa=thôn/tổ/số nhà. Đây là địa điểm kinh doanh, có thể KHÁC nơi thường trú."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

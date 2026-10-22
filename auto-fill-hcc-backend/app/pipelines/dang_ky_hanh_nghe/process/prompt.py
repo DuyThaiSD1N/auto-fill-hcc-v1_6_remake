@@ -10,7 +10,7 @@ Form online có mục "Thông tin người nộp hồ sơ" (cổng tự đổ t�
 
 CƠ SỞ (CoSo_*) — chỉ đọc ở Danh sách đăng ký hành nghề:
 - CoSo_Ten = tên cơ sở ở mục 1 ("Tên cơ sở khám bệnh, chữa bệnh"), chép nguyên văn.
-- CoSo_DiaChi = địa chỉ cơ sở ở mục 2, tách object {quocGia,tinh,xa,diaChi}; diaChi chỉ phần chi tiết
+- CoSo_DiaChi = địa chỉ cơ sở ở mục 2, tách object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần chi tiết
   (số nhà/thôn/bản/tổ). KHÔNG lấy nơi thường trú trên CCCD làm địa chỉ cơ sở.
 - CoSo_NguoiChiuTrachNhiem = người ĐỨNG ĐẦU cơ sở, tức người KÝ ở cuối danh sách (dưới "GIÁM ĐỐC TRẠM Y
   TẾ", "TRƯỞNG TRẠM", "THỦ TRƯỞNG ĐƠN VỊ"…). Tên viết tay dưới chữ ký thì đọc tên đó. Cột "Vị trí chuyên

@@ -27,7 +27,7 @@ NGUỒN ChuHoSo_* (ưu tiên theo thứ tự): CCCD của chủ cơ sở → Đ�
   đó là của CHỨNG CHỈ HÀNH NGHỀ, TUYỆT ĐỐI KHÔNG dùng cho NgayCap/NoiCap. Hồ sơ không có CCCD → bỏ trống.
 - ThuongTru: nơi thường trú CÁ NHÂN của chủ hồ sơ (CCCD / GCN ĐKHKD mục 6 "Nơi thường trú"). KHÔNG lấy "Trụ
   sở", "Địa chỉ kinh doanh", "Địa điểm kinh doanh" của cơ sở. CCCD cũ ghi địa giới CŨ (quận/phường trước sáp
-  nhập) thì ưu tiên địa giới MỚI ghi ở GCN ĐKHKD. tách {quocGia,tinh,xa,diaChi}; diaChi CHỈ số nhà/đường/tổ.
+  nhập) thì ưu tiên địa giới MỚI ghi ở GCN ĐKHKD. tách {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ số nhà/đường/tổ.
 - DienThoai: Đơn "Số điện thoại liên hệ" hoặc GCN ĐKHKD "Điện thoại"; bỏ dấu chấm/khoảng trắng.
 
 NoiDungDeNghi: Đơn Mẫu 12 → chép NGUYÊN VĂN phần "Nội dung xin điều chỉnh" (giữ dấu "+" đầu dòng nếu có, nối

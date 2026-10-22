@@ -20,9 +20,9 @@ FIELDS: list[dict] = [
         "cơ sở là đơn vị công lập (trung tâm y tế, bệnh viện, trạm y tế… trực thuộc Sở Y tế / UBND / bộ ngành, "
         'giấy tờ có quyết định tổ chức lại của UBND/Sở); "Tổ chức/Doanh nghiệp" khi là cơ sở tư nhân (công '
         "ty, phòng khám tư, bệnh viện tư nhân…). Không đủ căn cứ thì bỏ field."},
-    {"name": "CoSo_DiaChi", "desc": "Địa chỉ HIỆN TẠI của cơ sở, object {quocGia,tinh,xa,diaChi}: dòng 'Địa "
+    {"name": "CoSo_DiaChi", "desc": "Địa chỉ HIỆN TẠI của cơ sở, object {quocGia,tinh,xa,chiTietDuoiXa}: dòng 'Địa "
         f"chỉ' / 'Địa điểm hoạt động đã được cấp' trên {_DON}, hoặc 'Địa chỉ hoạt động' trên giấy phép. KHÔNG "
-        "lấy 'Địa điểm đề nghị điều chỉnh'. diaChi CHỈ phần chi tiết (số nhà/đường/tổ dân phố/thôn), không "
+        "lấy 'Địa điểm đề nghị điều chỉnh'. chiTietDuoiXa CHỈ phần chi tiết (số nhà/đường/tổ dân phố/thôn), không "
         "kèm xã/tỉnh."},
     {"name": "CoSo_DienThoai", "desc": f"Số 'Điện thoại' của cơ sở trên {_DON}. Giữ nguyên chữ số (có thể là "
         "số máy bàn của cơ sở)."},

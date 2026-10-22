@@ -35,7 +35,7 @@ NGUỒN DỮ LIỆU (DoiTuong_*):
 - Họ tên/ngày sinh/giới tính/số định danh/ngày cấp: ưu tiên CCCD của đối tượng; Tờ khai / Giấy xác nhận
   khuyết tật / Biên bản giám định y khoa / Giấy khai sinh bổ sung.
 - Nơi cấp: CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Tờ khai. Chuẩn hóa tên cơ quan.
-- DoiTuong_ThuongTru (nơi thường trú/hộ khẩu): tách object {tinh,xa,diaChi}; ưu tiên Tờ khai (địa giới
-  MỚI sau sáp nhập); diaChi CHỈ chi tiết (số nhà/đường/tổ dân phố/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
+- DoiTuong_ThuongTru (nơi thường trú/hộ khẩu): tách object {tinh,xa,chiTietDuoiXa}; ưu tiên Tờ khai (địa giới
+  MỚI sau sáp nhập); chiTietDuoiXa CHỈ chi tiết (số nhà/đường/tổ dân phố/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

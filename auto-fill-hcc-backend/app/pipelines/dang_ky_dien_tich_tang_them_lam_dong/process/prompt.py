@@ -59,7 +59,7 @@ CƠ QUAN/TỔ CHỨC (ToChuc_Ten):
 ĐỊA CHỈ (địa giới đã sáp nhập — CCCD/GCN cũ hay ghi tên CŨ):
 - Nguoi_ThuongTru và ThuaDat_DiaChi: ưu tiên tên phường/xã theo địa giới HIỆN HÀNH ghi trong Đơn Mẫu
   18 / mảnh đo đạc chỉnh lý / công văn mới. GCN cấp từ lâu thường ghi tên phường CŨ — lấy theo giấy tờ
-  mới. Tách object {tinh,xa,diaChi}: tinh = "Tỉnh …"/"Thành phố …", xa = phường/xã, diaChi = số
+  mới. Tách object {tinh,xa,chiTietDuoiXa}: tinh = "Tỉnh …"/"Thành phố …", xa = phường/xã, chiTietDuoiXa = số
   nhà/đường/tổ dân phố.
 - Nguoi_ThuongTru (nơi ở người) và ThuaDat_DiaChi (vị trí lô đất) là HAI địa chỉ khác nhau — đừng gán
   trùng. DaiDien_ThuongTru lấy dòng "Nơi cư trú" của BÊN ĐƯỢC ỦY QUYỀN.

@@ -25,7 +25,7 @@ FIELDS: list[dict] = [
     {"name": "Applicant_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP/NGƯỜI ĐẠI DIỆN. KHÁC số của chủ hộ (ChuHo_DienThoai)."},
     {"name": "Applicant_Email", "desc": "Email người nộp/người đại diện nếu giấy tờ ghi rõ."},
     {"name": "Applicant_NoiCuTru", "desc": "Địa chỉ THƯỜNG TRÚ của NGƯỜI NỘP/ĐẠI DIỆN, object {quocGia,tinh,"
-        "xa,diaChi,fullText}. ĐÂY KHÔNG PHẢI địa điểm xây dựng — TUYỆT ĐỐI KHÔNG lấy địa chỉ lô đất/công trình."},
+        "xa,chiTietDuoiXa,fullText}. ĐÂY KHÔNG PHẢI địa điểm xây dựng — TUYỆT ĐỐI KHÔNG lấy địa chỉ lô đất/công trình."},
 
     # B. Cơ quan tiếp nhận + CHỦ ĐẦU TƯ/CHỦ HỘ (đứng tên công trình, KHÁC người nộp khi có ủy quyền).
     {"name": "Don_KinhGui", "desc": "Cơ quan kính gửi/tiếp nhận trong đơn, ưu tiên UBND cấp xã/phường."},
@@ -45,12 +45,12 @@ FIELDS: list[dict] = [
         "TỔ CHỨC) — lấy ở Giấy chứng nhận ĐKDN (Tên công ty) / Chứng chỉ năng lực HĐXD (Tên tổ chức)."},
     {"name": "ToChucNop_MaSoThue", "desc": "Mã số doanh nghiệp/Mã số thuế của tổ chức người nộp (10 chữ số)."},
     {"name": "ToChucNop_DiaChi", "desc": "Địa chỉ TRỤ SỞ CHÍNH của tổ chức người nộp, object {quocGia,tinh,"
-        "xa,diaChi}. Lấy ở GCN ĐKDN/Chứng chỉ năng lực (Địa chỉ trụ sở chính)."},
+        "xa,chiTietDuoiXa}. Lấy ở GCN ĐKDN/Chứng chỉ năng lực (Địa chỉ trụ sở chính)."},
     {"name": "ToChucNop_DienThoai", "desc": "Số điện thoại của tổ chức người nộp (Điện thoại trên GCN ĐKDN)."},
 
     # D. Địa điểm xây dựng.
     {"name": "Dat_DiaDiemXayDung", "desc": "ĐỊA ĐIỂM XÂY DỰNG/vị trí LÔ ĐẤT — mục 'Địa điểm xây dựng' của "
-        "Đơn hoặc 'Địa chỉ' thửa đất trên GCN/GPXD. object {quocGia,tinh,xa,diaChi,fullText}. KHÔNG PHẢI "
+        "Đơn hoặc 'Địa chỉ' thửa đất trên GCN/GPXD. object {quocGia,tinh,xa,chiTietDuoiXa,fullText}. KHÔNG PHẢI "
         "nơi ở người nộp — KHÁC Applicant_NoiCuTru."},
     {"name": "Dat_ThuaDatSo", "desc": "Thửa đất số/lô đất số."},
     {"name": "Dat_ToBanDoSo", "desc": "Tờ bản đồ số nếu có."},

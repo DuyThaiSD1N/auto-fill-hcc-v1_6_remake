@@ -33,7 +33,7 @@ SỐ / NGÀY:
 - Địa chỉ chủ hồ sơ là NƠI THƯỜNG TRÚ trên Đơn/Giấy ủy quyền, KHÔNG phải "Địa chỉ thửa đất" và KHÔNG phải địa
   chỉ thường trú in trên Giấy chứng nhận (in theo địa danh trước sáp nhập, vd "Tổ 07, thị trấn Yên Bình, huyện
   Yên Bình, tỉnh Yên Bái").
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn 4, xã Yên Bình, tỉnh Lào Cai" → diaChi="Thôn 4", xa="Yên Bình",
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn 4, xã Yên Bình, tỉnh Lào Cai" → chiTietDuoiXa="Thôn 4", xa="Yên Bình",
   tinh="Lào Cai". Đơn có thể viết cả hai thời kỳ ("nay là Thôn 4, xã Yên Bình, tỉnh Lào Cai") → lấy phần "nay là".
 
 CCCD:

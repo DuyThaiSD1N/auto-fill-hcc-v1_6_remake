@@ -47,6 +47,9 @@ from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
     with_account_process_options as with_khai_sinh_dang_ky_lai_account_process_options,
 )
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
+from app.pipelines.cap_giay_phep_xay_dung.attach.planner import (
+    with_account_attach_options as with_gpxd_attach_options,
+)
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
@@ -546,6 +549,7 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
             attach_options = with_account_attach_options(attach_options, owner_user, procedure_key)
             attach_options = with_nghia_lo_attach_options(attach_options, owner_user, procedure_key)
+            attach_options = with_gpxd_attach_options(attach_options, owner_user, procedure_key)
         # Bọc cả planner: OCR/LLM bên trong tự tách thành bước riêng; phần còn lại = luật planner.
         async with mon.span("post.plan", procedure=procedure_key):
             result = await attach_fn(files, attach_options, session=None)

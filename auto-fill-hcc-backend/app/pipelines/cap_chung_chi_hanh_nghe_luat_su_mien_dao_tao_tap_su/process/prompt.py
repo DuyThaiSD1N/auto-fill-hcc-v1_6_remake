@@ -20,7 +20,7 @@ NGUỒN VÀ ƯU TIÊN:
 - Nơi thường trú: CCCD > Phiếu LLTP > đơn (Phiếu ghi "Tổ 18hcb" còn đơn ghi "Tổ 18" thì lấy theo Phiếu).
 - Nơi ở hiện tại: Ndn_NoiOHienTai theo ĐƠN; đồng thời trả LLTP_NoiOHienNay theo Phiếu để hệ thống đối chiếu.
 - Địa chỉ "Số 5 đường A, phường B, thành phố C" → {quocGia:"Việt Nam", tinh:"Thành phố C", xa:"Phường B",
-  diaChi:"Số 5 đường A"}; "P." là "Phường", "TP." là "Thành phố". Không có cấp huyện.
+  chiTietDuoiXa:"Số 5 đường A"}; "P." là "Phường", "TP." là "Thành phố". Không có cấp huyện.
 - Lý do miễn tập sự, khen thưởng kỷ luật, truy cứu trách nhiệm hình sự: chép nguyên văn phần người làm đơn khai, KHÔNG
   chép phần hướng dẫn in nghiêng trong ngoặc của mẫu.
 - QuaTrinh: đủ mọi dòng bảng, đúng thứ tự, mỗi ô chép nguyên văn; ngày "5/9/1999" → "05/09/1999".

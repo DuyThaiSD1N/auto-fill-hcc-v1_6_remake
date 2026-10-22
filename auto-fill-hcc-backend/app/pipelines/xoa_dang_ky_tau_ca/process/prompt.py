@@ -35,7 +35,7 @@ NGUỒN VÀ ƯU TIÊN:
 - ToKhai_NguoiKy lấy đúng người ký ở cuối Tờ khai. Nhãn in sẵn 'CHỦ SỞ HỮU/Owner' không đủ để tự đổi sang
   chủ tàu cũ; trong hồ sơ mua bán, chữ ký có thể là người đề nghị/bên mua.
 - ToKhai_LoaiTau chỉ trả 'tau_ca' hoặc 'tau_cong_vu'.
-- Địa chỉ NguoiDeNghi_ThuongTru phải là object {quocGia,tinh,xa,diaChi}; diaChi chỉ chứa số nhà/đường/tổ,
+- Địa chỉ NguoiDeNghi_ThuongTru phải là object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ chứa số nhà/đường/tổ,
   không lặp phường/xã/tỉnh. NguoiDeNghi_DiaChiDayDu giữ chuỗi địa chỉ đầy đủ để điền trong Tờ khai.
 - Mọi ngày theo dd/mm/yyyy. Không bịa SĐT, email, tên tàu, hô hiệu, tỉ lệ sở hữu hoặc dữ liệu giấy tờ thiếu.
 

@@ -18,8 +18,8 @@ FIELDS: list[dict] = [
     {"name": "HoKinhDoanh_MaNoiBo", "desc": "Mã số nội bộ trong hệ thống nếu tài liệu có ghi."},
     {"name": "HienTai_Ten", "desc": "Tên hiện tại trên Giấy chứng nhận đăng ký hộ kinh doanh."},
     {"name": "DeNghi_Ten", "desc": "Tên mới CHỈ khi Thông báo ghi rõ đề nghị thay đổi tên hộ kinh doanh."},
-    {"name": "HienTai_TruSo", "desc": "Địa chỉ trụ sở hiện tại trên GCN, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "DeNghi_TruSo", "desc": "Địa chỉ trụ sở mới CHỈ khi Thông báo ghi thay đổi trụ sở, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "HienTai_TruSo", "desc": "Địa chỉ trụ sở hiện tại trên GCN, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "DeNghi_TruSo", "desc": "Địa chỉ trụ sở mới CHỈ khi Thông báo ghi thay đổi trụ sở, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "DeNghi_KhongKinhDoanhTaiTruSo", "desc": "Boolean, chỉ trả true khi ô Không kinh doanh tại trụ sở được đánh dấu trong mục thay đổi trụ sở."},
     {"name": "DeNghi_TruSo_DienThoai", "desc": "Điện thoại trụ sở mới nếu thuộc nội dung thay đổi."},
     {"name": "DeNghi_TruSo_Email", "desc": "Email trụ sở mới nếu thuộc nội dung thay đổi."},
@@ -28,7 +28,7 @@ FIELDS: list[dict] = [
     {"name": "HienTai_NganhNghe", "desc": "Mọi ngành hiện có trên GCN, array {ma,ten,chinh}."},
     {"name": "DeNghi_NganhNgheBoSung", "desc": "CHỈ các ngành đề nghị bổ sung, array {ma,ten,chinh}; giữ dòng có tên dù mã trống."},
     {"name": "DeNghi_NganhNgheBaiBo", "desc": "CHỈ các ngành đề nghị bỏ, array {ma,ten}; ưu tiên mã 4 chữ số ghi trên Thông báo."},
-    {"name": "HienTai_ChuHo", "desc": "Chủ hộ hiện tại trên GCN, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,diaChi,dienThoai,email,fax,website}."},
+    {"name": "HienTai_ChuHo", "desc": "Chủ hộ hiện tại trên GCN, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,chiTietDuoiXa,dienThoai,email,fax,website}."},
     {"name": "DeNghi_ChuHo", "desc": "Chủ hộ mới CHỈ khi mục thay đổi chủ hộ được kê khai, cùng cấu trúc HienTai_ChuHo."},
     {"name": "DeNghi_ChuHo_LoaiThayDoi", "desc": "Loại đăng ký thay đổi chủ hộ đúng theo nội dung Thông báo nếu đọc được."},
     {"name": "DeNghi_ChuHo_LyDo", "desc": "Lý do thay đổi chủ hộ nếu Thông báo có ghi rõ; không tự đoán."},
@@ -37,8 +37,8 @@ FIELDS: list[dict] = [
     {"name": "DeNghi_Von_HinhThuc", "desc": "Hình thức tăng hoặc giảm vốn đúng theo Thông báo."},
     {"name": "DeNghi_Von_ThoiDiem", "desc": "Thời điểm tăng/giảm vốn, dd/mm/yyyy nếu có."},
     {"name": "DeNghi_Thue", "desc": "Thông tin thuế mới CHỈ khi thuộc nội dung thay đổi, object {diaChiNhanThongBao,dienThoai,fax,email,ngayBatDau,soLaoDong,phuongPhapTinh}."},
-    {"name": "NguoiNop", "desc": "Người ký/nộp theo Thông báo hoặc ủy quyền, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,diaChi}."},
-    {"name": "Cccd_DanhSach", "desc": "Mọi CCCD/căn cước vật lý trong hồ sơ, array {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,diaChi}. Không tự gán vai trò."},
+    {"name": "NguoiNop", "desc": "Người ký/nộp theo Thông báo hoặc ủy quyền, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,chiTietDuoiXa}."},
+    {"name": "Cccd_DanhSach", "desc": "Mọi CCCD/căn cước vật lý trong hồ sơ, array {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,chiTietDuoiXa}. Không tự gán vai trò."},
     {
         "name": "HasMultipleCCCD",
         "desc": (
@@ -98,7 +98,7 @@ FIELDS: list[dict] = [
     {
         "name": "UyQuyen_NguoiDuocUyQuyen_DiaChi",
         "desc": (
-            "Địa chỉ người được ủy quyền, object {quocGia,tinh,xa,diaChi}. "
+            "Địa chỉ người được ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}. "
             "Đọc từ 'Nơi thường trú' trên CCCD của người nộp thay. "
             "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
         ),

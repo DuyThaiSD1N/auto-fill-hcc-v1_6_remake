@@ -18,7 +18,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh/CCCD của NGƯỜI NỘP, chỉ chữ số."},
     {"name": "NguoiNop_NgayCapCccd", "desc": "Ngày cấp CCCD của người nộp (mặt sau), dd/mm/yyyy."},
     {"name": "NguoiNop_NoiCapCccd", "desc": "Nơi cấp CCCD của người nộp: 'BỘ CÔNG AN' (thẻ căn cước 2024) hoặc 'CỤC TRƯỞNG CỤC CẢNH SÁT…' → 'Cục Cảnh sát quản lý hành chính về trật tự xã hội'."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi cư trú của NGƯỜI NỘP trên CCCD, object {tinh,xa,diaChi}."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi cư trú của NGƯỜI NỘP trên CCCD, object {tinh,xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Điện thoại của người nộp, chỉ chữ số. Không có trên CCCD — chỉ lấy khi giấy tờ ghi rõ là số của chính người nộp."},
     {"name": "NguoiNop_Email", "desc": "Email của người nộp nếu giấy tờ ghi rõ."},
 
@@ -30,7 +30,7 @@ FIELDS: list[dict] = [
                 "công ty in trong hồ sơ.",
     },
     {"name": "ToChucDeNghi_CoQuanChuQuan", "desc": "Tên CƠ QUAN CHỦ QUẢN của tổ chức đề nghị — dòng tiêu đề góc trái trên đầu Đơn Mẫu 04 (cấp trên của tổ chức đứng đơn). Không có thì bỏ field."},
-    {"name": "ToChucDeNghi_DiaChi", "desc": "Địa chỉ của tổ chức đề nghị — mục 2 Đơn Mẫu 04, object {tinh,xa,diaChi}. Không phải địa chỉ cơ sở in."},
+    {"name": "ToChucDeNghi_DiaChi", "desc": "Địa chỉ của tổ chức đề nghị — mục 2 Đơn Mẫu 04, object {tinh,xa,chiTietDuoiXa}. Không phải địa chỉ cơ sở in."},
     {"name": "ToChucDeNghi_DienThoai", "desc": "Số điện thoại ghi ở mục 2 Đơn Mẫu 04 (của tổ chức đề nghị), chỉ chữ số."},
     {"name": "ToChucDeNghi_Email", "desc": "Email của tổ chức đề nghị nếu đơn ghi rõ. Đơn Mẫu 04 thường không có mục này → bỏ field."},
     {
@@ -57,10 +57,10 @@ FIELDS: list[dict] = [
     {"name": "CoSoIn_Fax", "desc": "Số fax của cơ sở in nếu có."},
     {"name": "CoSoIn_Email", "desc": "Email của cơ sở in nếu có."},
     {"name": "CoSoIn_Website", "desc": "Website của cơ sở in nếu có."},
-    {"name": "CoSoIn_TruSo", "desc": "Địa chỉ trụ sở chính của CƠ SỞ IN, object {tinh,xa,diaChi}. Nguồn: GCN ĐKDN hoặc Giấy phép hoạt động in."},
+    {"name": "CoSoIn_TruSo", "desc": "Địa chỉ trụ sở chính của CƠ SỞ IN, object {tinh,xa,chiTietDuoiXa}. Nguồn: GCN ĐKDN hoặc Giấy phép hoạt động in."},
     {"name": "CoSoIn_NguoiDaiDien_HoTen", "desc": "Họ tên người đại diện theo pháp luật của cơ sở in (GCN ĐKDN: 'Người đại diện theo pháp luật'; Giấy phép hoạt động in: người đứng đầu cơ sở in)."},
     {"name": "CoSoIn_NguoiDaiDien_SoDinhDanh", "desc": "Số CCCD/CMND của người đại diện theo pháp luật của cơ sở in, chỉ chữ số."},
-    {"name": "CoSoIn_NguoiDaiDien_DiaChi", "desc": "Địa chỉ của người đại diện theo pháp luật của cơ sở in, object {tinh,xa,diaChi}. Không có thì bỏ field."},
+    {"name": "CoSoIn_NguoiDaiDien_DiaChi", "desc": "Địa chỉ của người đại diện theo pháp luật của cơ sở in, object {tinh,xa,chiTietDuoiXa}. Không có thì bỏ field."},
 
     # ---- NỘI DUNG ĐƠN ĐỀ NGHỊ (Đơn Mẫu 04, mục 3-13) ----
     {"name": "TaiLieu_Ten", "desc": "Tên tài liệu xin cấp phép xuất bản — mục 3 Đơn Mẫu 04, đối chiếu tiêu đề trang bìa bản thảo."},

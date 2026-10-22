@@ -31,24 +31,24 @@ DÂN TỘC (CccdNam_DanToc = bên nam, CccdNu_DanToc = bên nữ):
 
 QUỐC TỊCH: chỉ trả nếu ghi rõ hoặc khác Việt Nam; Python mặc định Việt Nam.
 
-NƠI CƯ TRÚ (CccdNam_NoiCuTru_TrongNuoc/CccdNu_NoiCuTru_TrongNuoc, object {quocGia,tinh,xa,diaChi}):
+NƠI CƯ TRÚ (CccdNam_NoiCuTru_TrongNuoc/CccdNu_NoiCuTru_TrongNuoc, object {quocGia,tinh,xa,chiTietDuoiXa}):
 - THỨ TỰ ƯU TIÊN NGUỒN cho CẢ HAI BÊN: (1) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN — mục "Nơi cư trú" trong khối
   "Họ, chữ đệm, tên của chồng" → CccdNam_*, khối "Họ, chữ đệm, tên của vợ" → CccdNu_*; (2) tờ khai KHÔNG ghi
   nơi cư trú của bên đó (hoặc ghi mà OCR không đọc được) → lấy "Nơi thường trú"/"Nơi cư trú" trên CCCD/CMND
   của chính người đó; (3) cuối cùng mới đến giấy CN kết hôn cũ.
 - Tờ khai và CCCD ghi KHÁC nhau thì DÙNG TỜ KHAI (địa chỉ người dân tự kê khai tại thời điểm nộp hồ sơ),
-  KHÔNG để CCCD đè lên và KHÔNG trộn hai nguồn (ví dụ KHÔNG lấy diaChi của CCCD ghép với xã/tỉnh của tờ khai).
+  KHÔNG để CCCD đè lên và KHÔNG trộn hai nguồn (ví dụ KHÔNG lấy chiTietDuoiXa của CCCD ghép với xã/tỉnh của tờ khai).
 - Chỉ khi tờ khai ghi THIẾU CẤP (ví dụ có chi tiết + xã nhưng không ghi tỉnh) mới bổ sung ĐÚNG PHẦN THIẾU
   từ CCCD, giữ nguyên các phần tờ khai đã ghi.
 - Khối "người yêu cầu" ở đầu tờ khai có thể trùng chồng hoặc vợ; đối chiếu HỌ TÊN trước khi dùng, không gán
   nơi cư trú của người yêu cầu cho bên còn lại.
 - Địa chỉ hành chính hiện hành CHỈ 2 cấp: XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn huyện/quận).
 - xa = tên xã/phường/thị trấn (BẮT BUỘC trích khi nguồn có ghi cấp xã). tinh = tỉnh/thành phố.
-- diaChi = phần CHI TIẾT đứng TRƯỚC xã (bản/tổ/tổ dân phố/xóm/khu/số nhà/đường); KHÔNG nhét tên xã/huyện/tỉnh vào diaChi.
+- chiTietDuoiXa = phần CHI TIẾT đứng TRƯỚC xã (bản/tổ/tổ dân phố/xóm/khu/số nhà/đường); KHÔNG nhét tên xã/huyện/tỉnh vào chiTietDuoiXa.
 - ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh;
   phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó
   = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì
-  bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. KHÔNG dồn xã + huyện vào diaChi.
+  bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. KHÔNG dồn xã + huyện vào chiTietDuoiXa.
 
 KẾT HÔN CŨ (lần đăng ký kết hôn TRƯỚC ĐÂY):
 - CHỈ hai loại tài liệu được phép cấp dữ liệu cho nhóm KetHonCu_*:

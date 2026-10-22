@@ -12,6 +12,7 @@ tách; extension cắt trang từ bản nén (giữ nguyên số trang).
 import asyncio
 import re
 import time
+import unicodedata
 
 from app.config import settings
 from app.pipelines._shared.identity_merge import ho_ten_co_dau, mat_the, so_dinh_danh_the
@@ -22,7 +23,7 @@ from app.services.llm import client
 from ..dinh_kem_khong_tach.planner import ROW_CAN_CU, ROW_UY_QUYEN, _document_name, _llm_document_name
 from ..dinh_kem_khong_tach.planner import both_sides, pair_card_sides
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
-from .prompt import SYSTEM_PROMPT, build_user_prompt
+from .prompt import CONFIRM_PROMPT, SYSTEM_PROMPT, build_confirm_prompt, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _PAGE_RE = re.compile(r"(?m)^\W*Trang\s+(\d+)\s*/\s*(\d+)\W*$")
@@ -42,7 +43,7 @@ def _pages(text: str) -> list[str]:
 
 def _max_tokens(pages_by_file: dict[int, list[str]]) -> int:
     """Trần token theo tổng số trang của hồ sơ, đúng công thức planner form cũ."""
-    return max(1200, min(4000, sum(len(p) for p in pages_by_file.values()) * 180))
+    return max(1200, min(6000, sum(len(p) for p in pages_by_file.values()) * 220))
 
 
 async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
@@ -52,9 +53,149 @@ async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": build_user_prompt(payload)},
     ]
-    raw = await client.chat(messages, max_tokens=_max_tokens(pages_by_file), enable_thinking=settings.agent_reasoning)
-    documents = client.extract_json_block(raw).get("documents", []) or []
-    return [d for d in documents if isinstance(d, dict)]
+    data: dict = {}
+    for attempt in range(2):  # JSON hỏng / rỗng (model thỉnh thoảng trả thiếu khóa) → hỏi lại một lần
+        raw = await client.chat(messages, max_tokens=_max_tokens(pages_by_file),
+                                enable_thinking=settings.agent_reasoning)
+        try:
+            data = client.extract_json_block(raw)
+        except Exception:  # noqa: BLE001
+            if attempt:
+                raise
+            continue
+        if any(isinstance(d, dict) and d.get("pages") for d in data.get("documents") or []):
+            break
+    documents = [d for d in data.get("documents") or [] if isinstance(d, dict)]
+    titles = _page_titles(pages_by_file, data.get("tep"))
+    disputed = _disputed_starts(documents, titles)
+    confirmed = await _confirm_starts(pages_by_file, disputed) if disputed else set()
+    return _by_page_titles(documents, titles, {(f, p) for f, p, _ in disputed} - confirmed)
+
+
+def _page_numbers(doc: dict) -> list[int]:
+    out = []
+    for page in doc.get("pages") or []:
+        try:
+            out.append(int(page))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _file_index(doc: dict) -> int | None:
+    try:
+        return int(doc.get("fileIndex"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _fold_title(value: str) -> str:
+    text = unicodedata.normalize("NFD", str(value or "")).replace("đ", "d").replace("Đ", "D")
+    return " ".join("".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower().split())
+
+
+def _page_titles(pages_by_file: dict[int, list[str]], files) -> dict[int, list[str]]:
+    """Tiêu đề từng trang LLM liệt kê ở "tep" (trang đầu giấy → tên loại giấy, trang khác → ""); bỏ tệp lệch số trang."""
+    titles: dict[int, list[str]] = {}
+    for item in files if isinstance(files, list) else []:
+        file_index = _file_index(item) if isinstance(item, dict) else None
+        page_titles = item.get("tieuDeTrang") if isinstance(item, dict) else None
+        if file_index in pages_by_file and isinstance(page_titles, list) \
+                and len(page_titles) == len(pages_by_file[file_index]):
+            titles[file_index] = [str(t or "").strip() for t in page_titles]
+    return titles
+
+
+def _owners(documents: list[dict], file_index: int) -> dict[int, dict]:
+    owner: dict[int, dict] = {}
+    for doc in documents:
+        if _file_index(doc) == file_index:
+            for page in _page_numbers(doc):
+                owner.setdefault(page, doc)
+    return owner
+
+
+def _title_starts(page_titles: list[str], owner: dict[int, dict]) -> list[int]:
+    """Trang mở giấy theo tiêu đề. Trang giữa một phần tử "documents" mang đúng tiêu đề trang đầu / tên của phần tử đó
+    là trang tiếp theo của cùng giấy (tiêu đề in lặp, hoặc model đặt tiêu đề lệch sang trang 2), không mở giấy mới."""
+    starts = []
+    for k, title in enumerate(page_titles):
+        doc = owner.get(k + 1)
+        first = min(_page_numbers(doc)) if doc else 0
+        repeated = 0 < first < k + 1 and _fold_title(title) in (
+            _fold_title(page_titles[first - 1]), _fold_title(doc.get("documentName")))
+        if k == 0 or (title and not repeated):
+            starts.append(k + 1)
+    return starts
+
+
+def _disputed_starts(documents: list[dict], titles: dict[int, list[str]]) -> list[tuple[int, int, int]]:
+    """(tệp, trang, trang đầu giấy liền trước theo tiêu đề) khi tiêu đề nói trang mở giấy mới mà "documents" để chung
+    với trang trước. So với trang đầu giấy theo TIÊU ĐỀ: phần tử "documents" có thể lệch trang (bắt đầu ở mặt sau giấy
+    trước)."""
+    out = []
+    for file_index, page_titles in titles.items():
+        owner = _owners(documents, file_index)
+        starts = _title_starts(page_titles, owner)
+        for previous, page in zip(starts, starts[1:]):
+            doc = owner.get(page)
+            if doc is not None and str(doc.get("docType") or "").strip() != _BLANK \
+                    and min(_page_numbers(doc)) < page:
+                out.append((file_index, page, previous))
+    return out
+
+
+async def _confirm_starts(pages_by_file: dict[int, list[str]], disputed: list[tuple[int, int, int]]) -> set:
+    """Hỏi LLM riêng từng trang mâu thuẫn: giấy độc lập (bản cam đoan sau giấy khai sinh) hay một phần của giấy trước
+    (trang ghi chú in kèm, phụ lục, trang ký). Lỗi → tin tiêu đề (tách), không mất trang nào."""
+    items = [{"id": n, "giayTruoc": pages_by_file[f][first - 1][:1200], "trangSau": pages_by_file[f][page - 1][:1500]}
+             for n, (f, page, first) in enumerate(disputed)]
+    messages = [
+        {"role": "system", "content": CONFIRM_PROMPT},
+        {"role": "user", "content": build_confirm_prompt(items)},
+    ]
+    try:
+        raw = await client.chat(messages, max_tokens=200 + 40 * len(items), enable_thinking=settings.agent_reasoning)
+        answers = client.extract_json_block(raw).get("answers") or []
+        yes = {int(a["id"]) for a in answers if isinstance(a, dict) and a.get("giayMoi") is True}
+    except Exception:  # noqa: BLE001
+        yes = set(range(len(disputed)))
+    return {(disputed[i][0], disputed[i][1]) for i in yes if 0 <= i < len(disputed)}
+
+
+def _by_page_titles(documents: list[dict], titles: dict[int, list[str]], rejected: set) -> list[dict]:
+    """Ranh giới giấy theo tiêu đề từng trang ("tep"): model đọc tiêu đề từng trang đúng nhưng khi chia "documents" hay
+    dồn giấy sau vào giấy trước (bản cam đoan sau trang ghi chú giấy khai sinh). Mỗi trang có tiêu đề mở một giấy, trừ
+    trang mâu thuẫn mà lượt xác nhận nói là một phần của giấy trước (`rejected`). Tên / loại / mặt thẻ lấy từ phần tử
+    "documents" bắt đầu đúng trang đó; phần bị tách ra mang tên theo tiêu đề. Tệp không có tiêu đề → giữ "documents"."""
+    out = [d for d in documents if _file_index(d) not in titles]
+    for file_index, page_titles in titles.items():
+        owner = _owners(documents, file_index)
+        blank = {p for p, d in owner.items() if str(d.get("docType") or "").strip() == _BLANK}
+        starts = [p for p in _title_starts(page_titles, owner) if (file_index, p) not in rejected]
+        for a, b in zip(starts, [*starts[1:], len(page_titles) + 1]):
+            # Trang LLM gọi là trắng giữ nguyên phần tử riêng: _segments quyết bỏ (trắng thật) hay gộp (có chữ).
+            out += [{**owner[p], "fileIndex": file_index, "pages": [p]} for p in range(a, b) if p in blank]
+            pages = [p for p in range(a, b) if p not in blank]
+            if not pages:
+                continue
+            doc = owner.get(pages[0])
+            if doc is not None and min(_page_numbers(doc)) == pages[0]:
+                meta = dict(doc)
+                if len({id(owner[p]) for p in pages if p in owner}) > 1 and meta.get("matThe") in ("truoc", "sau"):
+                    meta["matThe"] = "ca_hai"  # hai mặt thẻ LLM để hai phần tử nhưng cùng một giấy theo tiêu đề
+            else:
+                meta = {"docType": "", "documentName": page_titles[pages[0] - 1], "matThe": "", "chuThe": ""}
+            out.append({**meta, "fileIndex": file_index, "pages": pages})
+    return out
+
+
+_CHU_TOI_THIEU = 8   # số chữ cái tối thiểu để coi trang là có nội dung (số trang, dấu chấm, gạch không tính)
+
+
+def _co_chu(pages: list[str], indexes: list[int]) -> bool:
+    letters = sum(ch.isalpha() for i in indexes for ch in re.sub(r"(?i)trang\s*\d+", "", pages[i]))
+    return letters >= _CHU_TOI_THIEU
 
 
 def _segments(pages_by_file: dict[int, list[str]], documents: list[dict]) -> list[dict]:
@@ -79,9 +220,13 @@ def _segments(pages_by_file: dict[int, list[str]], documents: list[dict]) -> lis
                 pages.append(index)
         if not pages:
             continue
-        taken[file_index].update(pages)
         if str(doc.get("docType") or "").strip() == _BLANK:
+            # LLM gọi "trang trắng" mà OCR có chữ (mặt sau bản sao có dấu, trang ký...) → không bỏ trang: để vòng
+            # dưới gộp vào giấy liền trước như trang không ai nhận.
+            if not _co_chu(pages_by_file[file_index], pages):
+                taken[file_index].update(pages)
             continue
+        taken[file_index].update(pages)
         segments.append({"fileIndex": file_index, "pages": sorted(pages), "doc": doc})
     for file_index, pages in pages_by_file.items():
         for index in range(len(pages)):
@@ -151,12 +296,12 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     parts_of_file = {i: sum(1 for s in segments if s["fileIndex"] == i) for i in range(len(names))}
 
     # Số định danh đọc từ OCR của từng đoạn: khoá ghép hai mặt thẻ (họ tên LLM đọc có thể lệch giữa hai mặt).
+    # Cả đoạn LLM bỏ sót (vd tệp mặt sau thẻ chụp riêng) cũng đọc mặt thẻ từ OCR để còn ghép với mặt trước.
     for s in segments:
-        if s["doc"]:
-            pages = pages_by_file.get(s["fileIndex"], [])
-            text = "\n".join(pages if s["pages"] is None else [pages[i] for i in s["pages"] if i < len(pages)])
-            s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
-                        "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
+        pages = pages_by_file.get(s["fileIndex"], [])
+        text = "\n".join(pages if s["pages"] is None else [pages[i] for i in s["pages"] if i < len(pages)])
+        s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
+                    "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
 
     attachments: list[dict] = []
     seen: dict[str, int] = {}

@@ -23,8 +23,8 @@ FIELDS: list[dict] = [
         "18 mục 1b, tờ khai thuế [06]). CÁ NHÂN: số CCCD. CHỈ chữ số. KHÔNG lấy số phát hành/số vào sổ GCN, số "
         "CCCD người đại diện theo pháp luật."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ TRỤ SỞ CHÍNH hiện tại của chủ hồ sơ, object {quocGia,tinh,xa,"
-        "diaChi}. Nguồn: Đơn Mẫu 18 mục 1c 'Địa chỉ' (đã theo đơn vị hành chính mới) → GCN đăng ký doanh nghiệp "
-        "mục 2 'Địa chỉ trụ sở chính'. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/khu (KHÔNG "
+        "chiTietDuoiXa}. Nguồn: Đơn Mẫu 18 mục 1c 'Địa chỉ' (đã theo đơn vị hành chính mới) → GCN đăng ký doanh nghiệp "
+        "mục 2 'Địa chỉ trụ sở chính'. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/khu (KHÔNG "
         "kèm phường/xã/tỉnh). KHÔNG lấy địa chỉ CŨ ở GCN quyền sử dụng đất mục I, KHÔNG lấy địa chỉ THỬA ĐẤT, "
         "KHÔNG lấy địa chỉ liên lạc của người đại diện."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại ở Đơn Mẫu 18 mục 1 'Điện thoại liên hệ'. Có nhiều số thì "
@@ -32,9 +32,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_Email", "desc": "Hộp thư điện tử của chủ hồ sơ ở Đơn Mẫu 18 / GCN đăng ký doanh nghiệp "
         "'Thư điện tử' — CHỈ khi đúng dạng email (có '@'); địa chỉ website (www...) thì BỎ. Không có thì bỏ."},
     {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ THỬA ĐẤT / khu đất đăng ký biến động theo đơn vị hành chính HIỆN "
-        "HÀNH, object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: tờ khai lệ phí trước bạ mục 'Địa chỉ thửa đất' "
+        "HÀNH, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: tờ khai lệ phí trước bạ mục 'Địa chỉ thửa đất' "
         "(Số nhà, Đường/phố, Xã/phường, Tỉnh/thành phố) → trang bổ sung GCN ghi 'tên phường thay đổi ... thành "
-        "phường ...' (lấy tên MỚI) → GCN mục II 'Địa chỉ' của thửa đất. xa=phường/xã, diaChi=lô/số nhà/đường/khu "
+        "phường ...' (lấy tên MỚI) → GCN mục II 'Địa chỉ' của thửa đất. xa=phường/xã, chiTietDuoiXa=lô/số nhà/đường/khu "
         "(KHÔNG kèm phường/quận/tỉnh). KHÔNG lấy địa chỉ trụ sở của tổ chức."},
     {"name": "NoiDungBienDong", "desc": "Đơn Mẫu 18 mục '2. Nội dung biến động' — CHÉP NGUYÊN VĂN câu/đoạn "
         "đầu (vd 'Thay đổi tên người sử dụng đất trên Giấy chứng nhận ... số AB 123456 ... cấp ngày ...'); "

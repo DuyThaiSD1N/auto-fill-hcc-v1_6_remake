@@ -20,8 +20,8 @@ _PERSON: list[dict] = [
     {"name": "ChuHoSo_SoDinhDanh", "desc": "Số CCCD/định danh của chủ hồ sơ chính, chỉ chữ số (ưu tiên 12 số)."},
     {"name": "ChuHoSo_NgaySinh", "desc": "Ngày sinh chủ hồ sơ chính, dd/mm/yyyy (ưu tiên CCCD ghi đủ ngày)."},
     {"name": "ChuHoSo_ThuongTru",
-     "desc": "Nơi thường trú chủ hồ sơ chính, object {quocGia,tinh,xa,diaChi}. tinh=tên tỉnh/thành, "
-             "xa=phường/xã, diaChi=số nhà/khu/thôn. ⚠ ƯU TIÊN địa chỉ ghi trên ĐƠN Mẫu 18 (mục I '- Địa "
+     "desc": "Nơi thường trú chủ hồ sơ chính, object {quocGia,tinh,xa,chiTietDuoiXa}. tinh=tên tỉnh/thành, "
+             "xa=phường/xã, chiTietDuoiXa=số nhà/khu/thôn. ⚠ ƯU TIÊN địa chỉ ghi trên ĐƠN Mẫu 18 (mục I '- Địa "
              "chỉ') và các Tờ khai thuế; CHỈ khi đơn/tờ khai không có mới lấy Hợp đồng rồi CCCD. KHÔNG mặc "
              "nhiên lấy 'Nơi cư trú' trên CCCD (có thể là nơi cũ)."},
     {"name": "ChuHoSo_DienThoai", "desc": "SĐT liên hệ chủ hồ sơ (thường ghi tay ở Đơn Mẫu 18). Chỉ chữ số."},

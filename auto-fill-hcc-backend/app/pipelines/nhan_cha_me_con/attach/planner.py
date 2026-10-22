@@ -352,12 +352,13 @@ def build_plan_items(
         rule_type = _rule_doc_type(text)
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
-        doc_type = rule_type or llm_type or _DOC_OTHER
+        # LLM-first: lưới từ khoá chỉ đỡ khi LLM không trả loại cho tệp này (lỗi / thiếu phần tử).
+        doc_type = llm_type or rule_type or _DOC_OTHER
         if doc_type not in _ALLOWED_DOC_TYPES:
             doc_type = _DOC_OTHER
         if doc_type == _DOC_IDENTITY:
             identity_indexes.add(idx)
-        rule_name = _rule_document_name(doc_type, text) if rule_type else ""
+        rule_name = _rule_document_name(doc_type, text) if rule_type and not llm_type else ""
         name_source = {"documentName": rule_name} if rule_name else detected
         resolved.append({
             "idx": idx,
@@ -365,7 +366,7 @@ def build_plan_items(
             "file": file,
             "docType": doc_type,
             "nameSource": name_source,
-            "source": "rule" if rule_type else ("llm" if llm_type else "default"),
+            "source": "llm" if llm_type else ("rule" if rule_type else "default"),
         })
 
     has_relationship_proof = any(entry["docType"] == _DOC_RELATIONSHIP_PROOF for entry in resolved)
@@ -416,6 +417,20 @@ def build_plan_items(
 
 
 async def plan(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    """Chỉ boolean ``True`` mới tách giấy theo trang; client cũ / mất option luôn giữ nguyên từng tệp."""
+    if (options or {}).get("splitDocuments") is True:
+        # Import muộn: nhánh tách import ngược hàm xếp dòng của file này.
+        from app.pipelines.nhan_cha_me_con.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_without_split(files, options, session)
+
+
+async def plan_without_split(
     files: list[FileItem],
     options: dict | None = None,
     session: dict | None = None,

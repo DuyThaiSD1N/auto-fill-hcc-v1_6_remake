@@ -25,9 +25,9 @@ _PERSON_FIELDS = [
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công '
         'an". Lấy ở dòng chức danh người ký mặt sau CCCD, hoặc "Nơi cấp" đi cùng số định danh trên Đơn Mẫu '
         '08 / giấy phép hành nghề.'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Ưu tiên Đơn Mẫu 08 (Địa chỉ cư "
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Ưu tiên Đơn Mẫu 08 (Địa chỉ cư "
         "trú — thường ghi địa giới MỚI), rồi CCCD (Nơi thường trú); giấy phép hành nghề cũ chỉ bổ khuyết. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã (tên MỚI sau sáp nhập nếu giấy tờ ghi), diaChi=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã (tên MỚI sau sáp nhập nếu giấy tờ ghi), chiTietDuoiXa=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Đơn Mẫu 08 'Điện thoại'. Chỉ chữ số; "
         "KHÔNG lấy số điện thoại bàn/nhà riêng."),
     ("Email", "Email liên hệ {who} nếu Đơn Mẫu 08 có ('Email (nếu có)'). Giấy tờ khác không có email → bỏ."),

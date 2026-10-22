@@ -14,8 +14,8 @@ QUY TẮC BẮT BUỘC:
 3. DeNghi_LyDo giữ ngắn gọn, đúng nội dung người khai. Nếu ô lý do trống hoặc không đọc được thì để trống, tuyệt đối không suy đoán.
 4. HienTai_Ten giữ đầy đủ tên hiện tại; không tự thêm hoặc bỏ tiền tố "HỘ KINH DOANH".
 5. NguoiKy chỉ lấy người ký cuối Giấy đề nghị hoặc người được ủy quyền có căn cứ. Có thể bổ sung nhân thân còn thiếu từ ChuHo/CCCD khi khớp họ tên hoặc số định danh.
-6. Cccd_DanhSach là field BẮT BUỘC khi hồ sơ có thẻ căn cước vật lý. Với MỖI file/khối OCR có "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card" hoặc "THẺ CĂN CƯỚC", trả đúng một object gồm tối thiểu hoTen, soDinhDanh và diaChi đọc từ "Nơi thường trú/Place of residence". Không lấy số CCCD chỉ được nhắc trong Giấy đề nghị/GCN làm thẻ căn cước giả.
-7. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
+6. Cccd_DanhSach là field BẮT BUỘC khi hồ sơ có thẻ căn cước vật lý. Với MỖI file/khối OCR có "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card" hoặc "THẺ CĂN CƯỚC", trả đúng một object gồm tối thiểu hoTen, soDinhDanh và chiTietDuoiXa đọc từ "Nơi thường trú/Place of residence". Không lấy số CCCD chỉ được nhắc trong Giấy đề nghị/GCN làm thẻ căn cước giả.
+7. Địa chỉ object luôn là {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
 
 8. ỦY QUYỀN: áp dụng cùng logic thủ tục Đăng ký kinh doanh hộ kinh doanh.
 	 - Nhận diện giấy ủy quyền thật qua tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN" và các mục bên ủy quyền, bên được ủy quyền.

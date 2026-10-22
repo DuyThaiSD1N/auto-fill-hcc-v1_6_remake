@@ -57,6 +57,14 @@ async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
     return [d for d in documents if isinstance(d, dict)]
 
 
+_CHU_TOI_THIEU = 8   # số chữ cái tối thiểu để coi trang là có nội dung (số trang, dấu chấm, gạch không tính)
+
+
+def _co_chu(pages: list[str], indexes: list[int]) -> bool:
+    letters = sum(ch.isalpha() for i in indexes for ch in re.sub(r"(?i)trang\s*\d+", "", pages[i]))
+    return letters >= _CHU_TOI_THIEU
+
+
 def _segments(pages_by_file: dict[int, list[str]], documents: list[dict]) -> list[dict]:
     """Giấy LLM chia → đoạn trang (0-based) theo tệp; trang không ai nhận gộp vào giấy liền trước, không sót trang."""
     taken: dict[int, set[int]] = {i: set() for i in pages_by_file}
@@ -81,7 +89,11 @@ def _segments(pages_by_file: dict[int, list[str]], documents: list[dict]) -> lis
             continue
         taken[file_index].update(pages)
         if str(doc.get("docType") or "").strip() == _BLANK:
-            continue
+            if not _co_chu(pages_by_file[file_index], pages):
+                continue
+            # LLM gọi "trang trắng" mà OCR có chữ (vd ảnh bia mộ chỉ đọc được vài chữ khắc) → giữ trang, không để
+            # mất tài liệu; loại giấy chưa rõ → other.
+            doc = {**doc, "docType": "other"}
         segments.append({"fileIndex": file_index, "pages": sorted(pages), "doc": doc})
     for file_index, pages in pages_by_file.items():
         for index in range(len(pages)):

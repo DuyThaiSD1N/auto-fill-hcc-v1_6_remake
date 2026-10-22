@@ -14,8 +14,8 @@ FIELDS: list[dict] = [
     {"name": "ToKhai_SoDinhDanh", "desc": "Số CCCD/CMND người khai."},
     {"name": "ToKhai_NgayCap", "desc": "Ngày cấp CCCD/CMND người khai, dd/mm/yyyy."},
     {"name": "ToKhai_NoiCap", "desc": "Nơi cấp CCCD/CMND người khai."},
-    {"name": "ToKhai_QueQuan", "desc": "Quê quán người khai, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "ToKhai_NoiThuongTru", "desc": "Nơi thường trú người khai, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "ToKhai_QueQuan", "desc": "Quê quán người khai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "ToKhai_NoiThuongTru", "desc": "Nơi thường trú người khai, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "ToKhai_DienThoai", "desc": "Số điện thoại người khai."},
     {"name": "ToKhai_LoaiGiayTo", "desc": 'Loại giấy tờ định danh người khai: "Căn cước công dân"/"CMND"/"Hộ chiếu". Mặc định "Căn cước công dân".'},
     {"name": "ToKhai_MoiQuanHeVoiTuTran", "desc": "Quan hệ của người khai với người có công từ trần (vd 'Con đẻ')."},
@@ -24,8 +24,8 @@ FIELDS: list[dict] = [
     {"name": "TuTran_HoTen", "desc": "Họ tên người có công đã từ trần (Mục 1 bản khai)."},
     {"name": "TuTran_NgaySinh", "desc": "Ngày sinh người từ trần, dd/mm/yyyy. Bỏ nếu không có."},
     {"name": "TuTran_GioiTinh", "desc": 'Giới tính người từ trần: "Nam" hoặc "Nữ".'},
-    {"name": "TuTran_QueQuan", "desc": "Quê quán người từ trần, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "TuTran_NoiThuongTru", "desc": "Nơi thường trú người từ trần, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "TuTran_QueQuan", "desc": "Quê quán người từ trần, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "TuTran_NoiThuongTru", "desc": "Nơi thường trú người từ trần, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "TuTran_DoiTuong", "desc": "Thuộc đối tượng người có công (vd 'Vợ liệt sĩ (Nguyễn Văn Giá)'), Mục 1."},
     {"name": "TuTran_SoQDHuongTroCap", "desc": "Quyết định hưởng trợ cấp số, Mục 1. Bỏ nếu trống."},
     {"name": "TuTran_NgayQDHuongTroCap", "desc": "Ngày Quyết định hưởng trợ cấp, dd/mm/yyyy. Bỏ nếu trống."},
@@ -46,8 +46,8 @@ FIELDS: list[dict] = [
     {"name": "MaiTang_NgayCap", "desc": "Ngày cấp CCCD/CMND cá nhân nhận mai táng phí, dd/mm/yyyy, Mục 2a."},
     {"name": "MaiTang_NoiCap", "desc": "Nơi cấp CCCD/CMND cá nhân nhận mai táng phí, Mục 2a."},
     {"name": "MaiTang_LoaiGiayTo", "desc": 'Loại giấy tờ cá nhân nhận mai táng phí: "Căn cước công dân"/"CMND"/"Hộ chiếu".'},
-    {"name": "MaiTang_QueQuan", "desc": "Quê quán cá nhân nhận mai táng phí, object {quocGia,tinh,xa,diaChi}, Mục 2a."},
-    {"name": "MaiTang_NoiThuongTru", "desc": "Nơi thường trú cá nhân nhận mai táng phí, object {quocGia,tinh,xa,diaChi}, Mục 2a."},
+    {"name": "MaiTang_QueQuan", "desc": "Quê quán cá nhân nhận mai táng phí, object {quocGia,tinh,xa,chiTietDuoiXa}, Mục 2a."},
+    {"name": "MaiTang_NoiThuongTru", "desc": "Nơi thường trú cá nhân nhận mai táng phí, object {quocGia,tinh,xa,chiTietDuoiXa}, Mục 2a."},
     {"name": "MaiTang_DienThoai", "desc": "Số điện thoại cá nhân nhận mai táng phí, Mục 2a."},
     {"name": "MaiTang_MoiQuanHe", "desc": "Quan hệ của cá nhân nhận mai táng phí với người có công từ trần, Mục 2a."},
 
@@ -78,7 +78,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_GioiTinh", "desc": 'Giới tính trên CCCD: "Nam" hoặc "Nữ".'},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD (mặt sau), dd/mm/yyyy. Không lấy ngày sinh/ngày hết hạn."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD (cơ quan cấp mặt sau)."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

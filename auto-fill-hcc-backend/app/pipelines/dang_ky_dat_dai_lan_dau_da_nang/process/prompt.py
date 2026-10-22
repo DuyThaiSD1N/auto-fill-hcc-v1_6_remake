@@ -37,13 +37,13 @@ sơ đã có field riêng).
 ⚠ CHỦ HỒ SƠ TỔ CHỨC (công ty/HTX/đơn vị): ChuHoSo_LoaiChuThe='Tổ chức'; ChuHoSo_HoTen=tên đầy đủ tổ chức.
 Người nộp khi đó thường là cá nhân được ủy quyền.
 
-ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,diaChi}
-(tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn; chỉ tới cấp phường thì để diaChi trống):
+ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,chiTietDuoiXa}
+(tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn; chỉ tới cấp phường thì để chiTietDuoiXa trống):
 ⚠ ƯU TIÊN LẤY ĐỊA CHỈ NGƯỜI TỪ GIẤY TỜ HỒ SƠ (đơn/tờ khai), KHÔNG ưu tiên CCCD — vì địa chỉ trên CCCD hay
 bị đọc lệch hoặc còn ghi tên đơn vị hành chính CŨ; các tờ khai/đơn thường ghi địa chỉ ĐẦY ĐỦ và HIỆN HÀNH.
 - ChuHoSo_DiaChi = nơi ở của CHỦ HỒ SƠ. ƯU TIÊN: Tờ khai thuế ('Địa chỉ cư trú'/'Địa chỉ thường trú', có
   đủ số nhà/tổ/phường/tỉnh) → Đơn cam kết ('Địa chỉ thường trú') → Đơn đăng ký Mẫu 15 (mục 1c 'Địa chỉ').
-  CHỈ dùng 'Nơi thường trú' trên CCCD khi các giấy tờ trên không ghi. GOM đủ {tinh, xa, diaChi} từ nhiều
+  CHỈ dùng 'Nơi thường trú' trên CCCD khi các giấy tờ trên không ghi. GOM đủ {tinh, xa, chiTietDuoiXa} từ nhiều
   giấy tờ (Đơn M15 hay chỉ ghi số nhà → lấy phường/tỉnh từ Tờ khai/cam kết).
 - NguoiNop_DiaChi = địa chỉ NGƯỜI NỘP. Nếu tự nộp (người nộp = người kê khai trên đơn) → lấy GIỐNG
   ChuHoSo_DiaChi (ưu tiên tờ khai/đơn, KHÔNG ưu tiên CCCD). Nếu là người ĐƯỢC ỦY QUYỀN/đại diện KHÁC → lấy

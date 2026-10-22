@@ -20,7 +20,7 @@ Khối phẳng NguoiNop_* là một ứng viên (theo tài khoản) và là ngu�
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; giữ đúng địa danh giấy tờ ghi, diaChi giữ số nhà/đường/tổ/thôn."
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; giữ đúng địa danh giấy tờ ghi, chiTietDuoiXa giữ số nhà/đường/tổ/thôn."
 )
 
 FIELDS: list[dict] = [
@@ -92,9 +92,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của chủ hồ sơ, lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Hồ sơ TỔ CHỨC thì đây là ĐỊA CHỈ "
+        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Hồ sơ TỔ CHỨC thì đây là ĐỊA CHỈ "
                 "TRỤ SỞ ghi trên đơn/ĐKKD; hồ sơ cá nhân thì là nơi thường trú trên CCCD hoặc mục 'Địa "
-                "chỉ' của đơn. Giữ đủ số nhà/đường/tổ/thôn trong diaChi. ĐÂY KHÔNG PHẢI địa điểm khu đất "
+                "chỉ' của đơn. Giữ đủ số nhà/đường/tổ/thôn trong chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa điểm khu đất "
                 "xin giao/thuê — tuyệt đối không lấy nhầm.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của chủ hồ sơ, chỉ chữ số. Lấy ở mục 'Địa chỉ liên hệ (điện thoại, fax, email)' của đơn hoặc trên ĐKKD."},
@@ -111,7 +111,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép "
+        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép "
                 "NGUYÊN VẸN ChuHoSo_NoiCuTru; có ủy quyền thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy số của bên được ủy quyền; không có thì dùng số liên hệ trên đơn."},
@@ -140,7 +140,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_ToBanDo", "desc": "Số tờ bản đồ, chỉ chữ số. Lấy cùng nguồn với số thửa."},
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn: Giấy "
+        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: Giấy "
                 "chứng nhận hoặc Đơn Mẫu 24. Không có nguồn ghi rõ thì bỏ field.",
     },
     {

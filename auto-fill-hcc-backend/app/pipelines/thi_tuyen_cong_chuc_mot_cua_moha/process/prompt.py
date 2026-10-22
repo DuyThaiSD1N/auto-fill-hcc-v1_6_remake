@@ -24,13 +24,13 @@ EXTRA_RULES = """<critical_rules>
 3. Phieu_HoTen, Phieu_NgaySinh, Phieu_GioiTinh, Phieu_SoDinhDanh, Phieu_NgayCap,
    Phieu_NoiCap, Phieu_TonGiao, Phieu_DanToc, Phieu_DienThoai, Phieu_Email lấy từ Mục I.
 4. Địa chỉ Phieu_QueQuan, Phieu_NoiThuongTru, Phieu_NoiOHienTai phải là object
-   {quocGia,tinh,xa,diaChi}. quocGia mặc định "Việt Nam"; tinh giữ đủ "Tỉnh ..."/"Thành phố ...";
-   xa giữ đủ "Xã ..."/"Phường ..."; diaChi chỉ giữ thôn/bản/tổ/số nhà/đường, không lặp xã/huyện/tỉnh.
+   {quocGia,tinh,xa,chiTietDuoiXa}. quocGia mặc định "Việt Nam"; tinh giữ đủ "Tỉnh ..."/"Thành phố ...";
+   xa giữ đủ "Xã ..."/"Phường ..."; chiTietDuoiXa chỉ giữ thôn/bản/tổ/số nhà/đường, không lặp xã/huyện/tỉnh.
 5. Khi tách địa chỉ nhiều phần, phần tỉnh/thành phố là đơn vị hành chính cấp tỉnh ở cuối chuỗi;
    phần xã/phường/thị trấn là đơn vị hành chính cấp xã ngay trước tỉnh hoặc phần có tiền tố
-   "xã", "phường", "thị trấn", "TT". Chỉ các phần còn lại trước cấp xã mới được đưa vào diaChi.
+   "xã", "phường", "thị trấn", "TT". Chỉ các phần còn lại trước cấp xã mới được đưa vào chiTietDuoiXa.
 6. Nếu địa chỉ chỉ có 2 phần và phần đầu là xã/phường/thị trấn, đặt phần đầu vào xa,
-   phần sau vào tinh, và để diaChi rỗng; không đưa xã/phường/thị trấn vào diaChi.
+   phần sau vào tinh, và để chiTietDuoiXa rỗng; không đưa xã/phường/thị trấn vào chiTietDuoiXa.
 7. Phieu_NoiDungKhac chỉ lấy nội dung phát sinh riêng ở Mục VI nếu thí sinh có ghi thêm yêu cầu/nội dung khác.
    Không lấy đoạn cam đoan pháp lý mặc định bắt đầu bằng "Tôi xin cam đoan...", chữ ký, hướng dẫn hoặc chú thích cuối mẫu.
    Nếu Mục VI không có nội dung riêng ngoài cam đoan mặc định thì bỏ field này.
@@ -58,12 +58,12 @@ EXTRA_RULES = """<critical_rules>
 <cccd_extraction>
 1. Nếu OCR có CCCD/CMND độc lập, trả Person1_* theo đúng người trên giấy tờ.
 2. Person1_NgayCap không được lấy ngày sinh/ngày hết hạn. Nếu thấy "Công an tỉnh ..." thì giữ đúng.
-3. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
+3. Person1_NoiCuTru là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </cccd_extraction>
 
 <output_examples>
 Đúng:
-{"fields":{"Phieu_HoTen":"Vàng Thị Thu","Phieu_SoDinhDanh":"012194003716","Phieu_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Hưng Yên","xa":"Xã Hưng Hà","diaChi":"Thôn Đồng Hàn"},"Phieu_VanBangChungChi":[{"tenTruong":"ĐH Kinh tế Quốc dân","ngayCap":"29/03/2018","trinhDo":"Cử nhân","soHieu":"0700-MT56","chuyenNganh":"Kinh tế - Quản lý tài nguyên và môi trường","nganh":"Kinh tế","hinhThuc":"Chính quy","xepLoai":"Khá"}]}}
+{"fields":{"Phieu_HoTen":"Vàng Thị Thu","Phieu_SoDinhDanh":"012194003716","Phieu_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Hưng Yên","xa":"Xã Hưng Hà","chiTietDuoiXa":"Thôn Đồng Hàn"},"Phieu_VanBangChungChi":[{"tenTruong":"ĐH Kinh tế Quốc dân","ngayCap":"29/03/2018","trinhDo":"Cử nhân","soHieu":"0700-MT56","chuyenNganh":"Kinh tế - Quản lý tài nguyên và môi trường","nganh":"Kinh tế","hinhThuc":"Chính quy","xepLoai":"Khá"}]}}
 
 Sai:
 {"fields":{"data[fullname]":"Vàng Thị Thu","DataGrid[0].tenTruong":"ĐH Kinh tế Quốc dân"}}

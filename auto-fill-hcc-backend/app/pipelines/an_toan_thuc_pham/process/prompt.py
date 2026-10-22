@@ -40,7 +40,7 @@ EXTRA_RULES = """<critical_rules>
 4. Bắt buộc cố đọc Person*_NgayCap từ mặt sau nếu OCR có. Không lấy ngày sinh hay ngày hết hạn làm ngày cấp.
 5. Bắt buộc cố đọc Person*_NoiCap từ mặt sau nếu OCR có. Nếu thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." thì trả
    "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu thẻ căn cước mới ghi "BỘ CÔNG AN" thì trả "Bộ Công an".
-6. Person*_NoiCuTru là địa chỉ trên CCCD, object {quocGia,tinh,xa,diaChi}; diaChi không lặp xã/huyện/tỉnh.
+6. Person*_NoiCuTru là địa chỉ trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp xã/huyện/tỉnh.
 </person_extraction>
 
 <health_document_extraction>
@@ -52,7 +52,7 @@ EXTRA_RULES = """<critical_rules>
 
 <address_rules>
 1. Với địa chỉ object: quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước; tinh là tỉnh/thành phố; xa là xã/phường/thị trấn nếu đọc được.
-2. diaChi chỉ giữ số nhà/tổ/thôn/bản/khu/xóm/đường, không lặp xã/huyện/tỉnh.
+2. chiTietDuoiXa chỉ giữ số nhà/tổ/thôn/bản/khu/xóm/đường, không lặp xã/huyện/tỉnh.
 3. Nếu địa chỉ chỉ có một chuỗi dài, vẫn cố tách tỉnh và xã từ cuối chuỗi; bỏ cấp huyện cũ nếu xuất hiện giữa xã và tỉnh.
 </address_rules>
 

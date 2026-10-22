@@ -32,11 +32,11 @@ FIELDS: list[dict] = [
              '→ "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
              '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → ưu tiên lấy ở Đơn/Bản khai.'},
     {"name": "NguoiKhai_ThuongTru",
-     "desc": "NƠI THƯỜNG TRÚ người khai, object {quocGia,tinh,xa,diaChi}. Ưu tiên Đơn Mẫu 26/Bản khai (lập gần "
+     "desc": "NƠI THƯỜNG TRÚ người khai, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên Đơn Mẫu 26/Bản khai (lập gần "
              "đây, ghi địa giới MỚI sau sáp nhập); CCCD cũ có thể ghi tên CŨ. tinh='Tỉnh/Thành phố …', "
-             "xa=phường/xã (tên MỚI nếu biết), diaChi=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
+             "xa=phường/xã (tên MỚI nếu biết), chiTietDuoiXa=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "NguoiKhai_QueQuan",
-     "desc": "QUÊ QUÁN người khai (KHÁC nơi thường trú), object {quocGia,tinh,xa,diaChi}. Lấy ở CCCD (Quê quán/"
+     "desc": "QUÊ QUÁN người khai (KHÁC nơi thường trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở CCCD (Quê quán/"
              "Place of origin) / Đơn Mẫu 26 / Bản khai. Quê quán giữ tên địa danh gốc theo giấy tờ."},
     {"name": "NguoiKhai_DienThoai", "desc": "Số điện thoại người khai — Đơn Mẫu 26 / Bản khai (CCCD không có). "
         "Chỉ chữ số; không lấy số điện thoại bàn."},
@@ -69,7 +69,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND NGƯỜI NỘP, dd/mm/yyyy."},
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND NGƯỜI NỘP. Chuẩn hóa như NguoiKhai_NoiCap."},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi} — CCCD người nộp. KHÁC người khai."},
+     "desc": "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa} — CCCD người nộp. KHÁC người khai."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP nếu giấy tờ có."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu có."},
 ]

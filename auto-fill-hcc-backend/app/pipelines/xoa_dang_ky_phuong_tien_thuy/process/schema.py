@@ -29,8 +29,8 @@ FIELDS: list[dict] = [
     {"name": "ChuPhuongTien_NguoiDaiDien", "desc": "Người/đơn vị đại diện cho các đồng sở hữu (CHỈ khi "
         "phương tiện có nhiều đồng sở hữu). Đơn mục 'đại diện cho các đồng sở hữu'. Thường bỏ trống."},
     {"name": "ChuPhuongTien_TruSo", "desc": "TRỤ SỞ CHÍNH (tổ chức) hoặc NƠI THƯỜNG TRÚ (cá nhân) của chủ "
-        "phương tiện, object {quocGia,tinh,xa,diaChi}. Đọc Đơn mục 'Trụ sở chính (1)' / CCCD 'Nơi thường "
-        "trú'. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/thôn/xóm (KHÔNG kèm phường/xã/tỉnh)."},
+        "phương tiện, object {quocGia,tinh,xa,chiTietDuoiXa}. Đọc Đơn mục 'Trụ sở chính (1)' / CCCD 'Nơi thường "
+        "trú'. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/thôn/xóm (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "ChuPhuongTien_DienThoai", "desc": "Số điện thoại chủ phương tiện. Đơn mục 'Điện thoại'. Chỉ chữ số."},
     {"name": "ChuPhuongTien_Email", "desc": "Email chủ phương tiện. Đơn mục 'Email'. Chép nguyên văn."},
 ]

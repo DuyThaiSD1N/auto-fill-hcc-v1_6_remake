@@ -25,7 +25,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiThayDoi_NoiCap",
      "desc": "Cơ quan cấp giấy tờ tùy thân, CHÉP ĐÚNG chữ ghi trên giấy (kể cả viết tắt). Giấy không ghi → bỏ."},
     {"name": "NguoiThayDoi_NoiCuTru",
-     "desc": "Nơi cư trú của người có nội dung thay đổi, object {quocGia,tinh,xa,diaChi[,huyen]}."},
+     "desc": "Nơi cư trú của người có nội dung thay đổi, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}."},
 
     {"name": "ViecDangKy",
      "desc": 'Loại việc đăng ký: "Cải chính", "Thay đổi", "Bổ sung" hoặc "Xác định lại dân tộc".'},

@@ -27,9 +27,9 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD/CMND {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công '
         'an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Mẫu 08/09 nếu có.'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi thường trú) / "
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi thường trú) / "
         "Mẫu 08 (Địa chỉ cư trú) / Mẫu 09 (Nơi thường trú hiện nay). tinh='Tỉnh/Thành phố …', xa=phường/xã "
-        "(tên MỚI sau sáp nhập nếu giấy tờ ghi), diaChi=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
+        "(tên MỚI sau sáp nhập nếu giấy tờ ghi), chiTietDuoiXa=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Mẫu 08 'Điện thoại' / Mẫu 09 'Di động'. Chỉ chữ số; "
         "KHÔNG lấy số điện thoại bàn/nhà riêng."),
     ("Email", "Email liên hệ {who} nếu Mẫu 08 có ('Email (nếu có)'). CCCD và Mẫu 09 không có email → thường bỏ."),

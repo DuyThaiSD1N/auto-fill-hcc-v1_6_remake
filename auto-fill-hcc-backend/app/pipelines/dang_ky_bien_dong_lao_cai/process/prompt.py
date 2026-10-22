@@ -44,7 +44,7 @@ SỐ / NGÀY:
   chỉ thửa đất).
 - Hồ sơ đổi địa chỉ (mục 2 của Đơn "Thay đổi địa chỉ: A thành B") → lấy B (địa chỉ MỚI).
 - Địa chỉ hiện hành chỉ còn 2 cấp: "Đường Trần Huy Liệu, Tổ dân phố Đồng Tâm 2, P. Yên Bái, tỉnh Lào Cai"
-  → diaChi="Đường Trần Huy Liệu, Tổ dân phố Đồng Tâm 2", xa="Yên Bái", tinh="Lào Cai".
+  → chiTietDuoiXa="Đường Trần Huy Liệu, Tổ dân phố Đồng Tâm 2", xa="Yên Bái", tinh="Lào Cai".
 
 CCCD:
 - DanhSachCccd chỉ gồm ảnh thẻ thật đã upload, một object mỗi thẻ. Người chỉ được nhắc trong đơn/biên bản/hợp đồng

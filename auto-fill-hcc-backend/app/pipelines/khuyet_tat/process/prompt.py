@@ -42,13 +42,13 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 </role_rules>
 
 <address_rules>
-- Mọi địa chỉ trả object {quocGia,tinh,xa,diaChi}; quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước.
+- Mọi địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước.
 - Địa chỉ hành chính hiện hành chỉ dùng 2 cấp: xã/phường/thị trấn và tỉnh/thành phố.
 - Nếu OCR có dạng cũ "[chi tiết], xã/phường, huyện/quận/thị xã, tỉnh" thì bỏ cấp huyện/quận/thị xã.
-- diaChi chỉ giữ phần chi tiết đứng trước xã/phường: số nhà, đường/phố, tổ, tổ dân phố, bản, thôn, xóm, khu.
-  Không lặp xã/huyện/tỉnh vào diaChi.
+- chiTietDuoiXa chỉ giữ phần chi tiết đứng trước xã/phường: số nhà, đường/phố, tổ, tổ dân phố, bản, thôn, xóm, khu.
+  Không lặp xã/huyện/tỉnh vào chiTietDuoiXa.
 - Ví dụ: "Số nhà 003, phố Yết Kiêu, Tổ 16, phường Tân Phong, Lai Châu"
-  -> {"quocGia":"Việt Nam","tinh":"Lai Châu","xa":"Tân Phong","diaChi":"Số nhà 003, phố Yết Kiêu, Tổ 16"}.
+  -> {"quocGia":"Việt Nam","tinh":"Lai Châu","xa":"Tân Phong","chiTietDuoiXa":"Số nhà 003, phố Yết Kiêu, Tổ 16"}.
 </address_rules>
 
 <cccd_rules>

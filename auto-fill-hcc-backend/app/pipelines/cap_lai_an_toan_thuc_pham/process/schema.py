@@ -11,7 +11,7 @@ FIELDS: list[dict] = [
     {"name": "Applicant_NgaySinh", "desc": "Ngày sinh người nộp/đại diện, dd/mm/yyyy."},
     {"name": "Applicant_NgayCap", "desc": "Ngày cấp giấy tờ định danh người nộp/đại diện, dd/mm/yyyy."},
     {"name": "Applicant_NoiCap", "desc": "Nơi cấp giấy tờ định danh người nộp/đại diện."},
-    {"name": "Applicant_NoiCuTru", "desc": "Nơi thường trú/cư trú của người nộp/đại diện, object {quocGia,tinh,xa,diaChi,fullText}."},
+    {"name": "Applicant_NoiCuTru", "desc": "Nơi thường trú/cư trú của người nộp/đại diện, object {quocGia,tinh,xa,chiTietDuoiXa,fullText}."},
     {"name": "Applicant_DienThoai", "desc": "Số điện thoại người nộp/đại diện nếu giấy tờ ghi rõ."},
     {"name": "Applicant_Email", "desc": "Email người nộp/đại diện nếu giấy tờ ghi rõ."},
 

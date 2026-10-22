@@ -14,7 +14,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ nhất, dd/mm/yyyy."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ nhất."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa} nếu đọc chắc chắn."},
 
     {"name": "Person2_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ hai, nếu có."},
     {"name": "Person2_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ hai; có thể đọc từ MRZ mặt sau."},
@@ -23,7 +23,7 @@ FIELDS: list[dict] = [
     {"name": "Person2_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person2_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ hai, dd/mm/yyyy."},
     {"name": "Person2_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ hai."},
-    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa} nếu đọc chắc chắn."},
 
     # Phiếu đăng ký dự tuyển - source of truth for dossier owner/candidate.
     {"name": "Phieu_HoTen", "desc": "Họ tên người đăng ký dự tuyển/chủ hồ sơ trong Phiếu đăng ký dự tuyển."},
@@ -32,8 +32,8 @@ FIELDS: list[dict] = [
     {"name": "Phieu_SoDinhDanh", "desc": "Số CCCD/CMND/hộ chiếu của người đăng ký dự tuyển trên phiếu."},
     {"name": "Phieu_NgayCap", "desc": "Ngày cấp giấy tờ định danh của người đăng ký dự tuyển trên phiếu, dd/mm/yyyy."},
     {"name": "Phieu_NoiCap", "desc": "Nơi cấp giấy tờ định danh của người đăng ký dự tuyển trên phiếu."},
-    {"name": "Phieu_HoKhau", "desc": "Thông tin về hộ khẩu của người đăng ký dự tuyển, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Phieu_DiaChiNhanThongBao", "desc": "Địa chỉ nhận thông báo trong phiếu, object {quocGia,tinh,xa,diaChi}; chỉ dùng khi không có hộ khẩu."},
+    {"name": "Phieu_HoKhau", "desc": "Thông tin về hộ khẩu của người đăng ký dự tuyển, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Phieu_DiaChiNhanThongBao", "desc": "Địa chỉ nhận thông báo trong phiếu, object {quocGia,tinh,xa,chiTietDuoiXa}; chỉ dùng khi không có hộ khẩu."},
     {"name": "Phieu_DienThoai", "desc": "Số điện thoại liên hệ của người đăng ký dự tuyển nếu có."},
     {"name": "Phieu_Email", "desc": "Email của người đăng ký dự tuyển nếu có."},
 ]

@@ -49,7 +49,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NgayCap", "desc": "Ngày cấp thẻ CCCD người ký, dd/mm/yyyy. KHÔNG lấy ngày hết hạn."},
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp thẻ CCCD người ký, chép đúng như in trên thẻ."},
     {"name": "ChuHoSo_DiaChi", "desc": "Nơi thường trú / nơi cư trú trên thẻ CCCD người ký, object {quocGia,tinh,xa,"
-        "diaChi}. diaChi = số nhà, đường, tổ/thôn (KHÔNG kèm phường/tỉnh)."},
+        "chiTietDuoiXa}. chiTietDuoiXa = số nhà, đường, tổ/thôn (KHÔNG kèm phường/tỉnh)."},
     {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch trên thẻ CCCD người ký (vd 'Việt Nam')."},
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên in trên thẻ CCCD của NGƯỜI NỘP (xem nguoi_nop_context) — không có "
         "thẻ đó thì bỏ."},
@@ -59,7 +59,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp thẻ CCCD người nộp, chép đúng như in trên thẻ. Thẻ không in thì "
         "bỏ."},
     {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú / nơi cư trú trên thẻ CCCD người nộp, object {quocGia,tinh,"
-        "xa,diaChi}."},
+        "xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP nếu hồ sơ ghi cạnh đúng tên người đó (vd "
         "'Người liên hệ: ..., ĐT ...'). Không có thì bỏ."},
 ]

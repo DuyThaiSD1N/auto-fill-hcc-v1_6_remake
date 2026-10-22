@@ -27,11 +27,11 @@ FIELDS: list[dict] = [
      "desc": "Quê quán chủ tài khoản — CHUỖI một dòng đúng như mục 'Quê quán' trên CCCD (vd 'Xã …, huyện …, "
              "tỉnh …'). KHÔNG nhầm với nơi thường trú. Bỏ nếu không có."},
     {"name": "ThuongTru",
-     "desc": "Nơi thường trú chủ tài khoản — OBJECT {quocGia,tinh,xa,diaChi}. Lấy ở mục 'Nơi thường trú' của "
+     "desc": "Nơi thường trú chủ tài khoản — OBJECT {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở mục 'Nơi thường trú' của "
              "CCCD (mặt sau) hoặc dòng thường trú trong tờ khai. Giữ đủ số nhà/thôn/xóm + phường/xã + tỉnh. "
              "Dùng cho dropdown Tỉnh/Xã + ô địa chỉ chi tiết."},
     {"name": "DiaChiHienTai",
-     "desc": "Nơi ở HIỆN TẠI — OBJECT {quocGia,tinh,xa,diaChi}. CHỈ điền khi giấy tờ ghi RÕ mục 'Nơi ở hiện "
+     "desc": "Nơi ở HIỆN TẠI — OBJECT {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ điền khi giấy tờ ghi RÕ mục 'Nơi ở hiện "
              "tại' / 'Chỗ ở hiện nay' KHÁC nơi thường trú. TUYỆT ĐỐI KHÔNG copy từ thường trú. Bỏ nếu không có."},
     {"name": "SoDienThoai",
      "desc": "Số điện thoại chủ tài khoản NẾU giấy tờ (tờ khai) ghi rõ. Chỉ chữ số. CCCD không có → bỏ."},

@@ -24,8 +24,8 @@ bảo đảm/hợp đồng thế chấp cần xóa (số hợp đồng thế ch�
 ⚠ CHỦ HỒ SƠ TỔ CHỨC (công ty là bên bảo đảm): ChuHoSo_LoaiChuThe='Tổ chức'; ChuHoSo_HoTen=tên đầy đủ tổ
 chức. Người nộp khi đó là cá nhân được ủy quyền (Giấy ủy quyền).
 
-ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,diaChi}
-(tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn; chỉ tới cấp phường thì để diaChi trống):
+ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,chiTietDuoiXa}
+(tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn; chỉ tới cấp phường thì để chiTietDuoiXa trống):
 - ChuHoSo_DiaChi = nơi ở/trụ sở của CHỦ HỒ SƠ (Phiếu Mẫu 03a / Giấy ủy quyền / địa chỉ trên GCN).
 - NguoiNop_DiaChi = địa chỉ riêng của NGƯỜI NỘP (CCCD người nộp / Giấy ủy quyền: 'Địa chỉ thường trú' bên
   được ủy quyền). Tự nộp và không có giấy tờ riêng → BỎ TRỐNG (mapper tự dùng ChuHoSo_DiaChi).

@@ -38,10 +38,10 @@ FIELDS += [
         'hay ghi tắt "CCSQLHC TTXH" / "CCSVLHC TTXH" / "CCS QLHC về TTXH" / "Cục CSQLHC" → PHẢI ghi thành '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội". Thẻ căn cước mới ghi "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ của CHÍNH NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. CHỈ lấy ở CCCD người nộp (Nơi thường trú) hoặc Hợp đồng ủy quyền (địa chỉ Bên được ủy "
+        "chiTietDuoiXa}. CHỈ lấy ở CCCD người nộp (Nơi thường trú) hoặc Hợp đồng ủy quyền (địa chỉ Bên được ủy "
         "quyền). ⚠ Giấy giới thiệu THƯỜNG KHÔNG có địa chỉ thường trú → nếu không có, BỎ TRỐNG toàn bộ "
         "(đừng đoán). TUYỆT ĐỐI KHÔNG lấy địa chỉ thửa đất, trụ sở tổ chức/ngân hàng, hay tỉnh của thửa đất "
-        "làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn."},
+        "làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên giấy tờ."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},
 ]

@@ -30,7 +30,7 @@ TUYỆT ĐỐI không lấy nhân thân chủ hồ sơ (Phiếu LLTP) làm Nguoi
 
 TRỤ SỞ (TruSo_DiaChi): Đề án "Địa chỉ đặt trụ sở" / "Về trụ sở làm việc" → Điều lệ "Trụ sở của hội đặt tại".
 Vd "Nhà văn hóa Số 5, đường Lê Lợi, phường Minh An, Thành phố Hải Phòng" → {"tinh":"Thành phố Hải Phòng",
-"xa":"Phường Minh An","diaChi":"Nhà văn hóa Số 5, đường Lê Lợi"}.
+"xa":"Phường Minh An","chiTietDuoiXa":"Nhà văn hóa Số 5, đường Lê Lợi"}.
 
 LÝ DO (LyDo): chép nguyên văn đoạn "Cơ sở và lý do" của Đề án (bỏ tiêu đề mục), giữ xuống dòng giữa các đoạn.
 

@@ -33,7 +33,7 @@ xác nhận thu nhập); có thể kèm CCCD và giấy xác nhận tình trạn
 - Con nuôi: giấy khai sinh là nguồn chuẩn cho họ tên, ngày sinh, giới tính, dân tộc, quốc tịch, số
   định danh, nơi sinh; đơn bổ sung khi giấy khai sinh thiếu. Nơi cư trú con nuôi lấy theo đơn
   ("Nơi cư trú" ở phần người được nhận làm con nuôi); đơn chỉ ghi xã/tỉnh mà giấy khai sinh ghi nơi
-  cư trú của mẹ đẻ CÙNG xã thì được lấy thêm thôn/bản/tổ từ đó làm diaChi.
+  cư trú của mẹ đẻ CÙNG xã thì được lấy thêm thôn/bản/tổ từ đó làm chiTietDuoiXa.
 - Child_IdIssueDate/Child_IdIssuePlace: CHỈ khi trẻ có thẻ CCCD/căn cước riêng. Trẻ chỉ có giấy khai
   sinh thì bỏ qua hai field này (không lấy ngày/nơi đăng ký khai sinh).
 - Registration_Agency: chép nguyên văn cơ quan ở dòng "Kính gửi" của đơn.
@@ -63,14 +63,14 @@ xác nhận thu nhập); có thể kèm CCCD và giấy xác nhận tình trạn
 </identity_doc_rules>
 
 <address_split_rules>
-- Mọi địa chỉ trả object {quocGia,tinh,xa,diaChi}.
+- Mọi địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}.
 - tinh và xa GIỮ loại đơn vị nếu OCR đọc được: "Tỉnh Ninh Bình", "Phường Hoa Lư", "Xã Gia Viễn".
-- diaChi chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường hoặc tên bệnh viện, không lặp xã/tỉnh.
-- Ví dụ "Tổ 7, phường Hoa Lư, tỉnh Ninh Bình" -> tinh="Tỉnh Ninh Bình", xa="Phường Hoa Lư", diaChi="Tổ 7".
+- chiTietDuoiXa chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường hoặc tên bệnh viện, không lặp xã/tỉnh.
+- Ví dụ "Tổ 7, phường Hoa Lư, tỉnh Ninh Bình" -> tinh="Tỉnh Ninh Bình", xa="Phường Hoa Lư", chiTietDuoiXa="Tổ 7".
 - Ví dụ nơi sinh "Bệnh viện Đa khoa tỉnh Ninh Bình, phường Hoa Lư, tỉnh Ninh Bình" ->
-  tinh="Tỉnh Ninh Bình", xa="Phường Hoa Lư", diaChi="Bệnh viện Đa khoa tỉnh Ninh Bình".
+  tinh="Tỉnh Ninh Bình", xa="Phường Hoa Lư", chiTietDuoiXa="Bệnh viện Đa khoa tỉnh Ninh Bình".
 - Địa chỉ có cấp huyện cũ thì bỏ cấp huyện: "Thôn 3, Gia Lạc, Gia Viễn, Ninh Bình" ->
-  tinh="Ninh Bình", xa="Gia Lạc", diaChi="Thôn 3".
+  tinh="Ninh Bình", xa="Gia Lạc", chiTietDuoiXa="Thôn 3".
 </address_split_rules>
 
 <output_reminder>

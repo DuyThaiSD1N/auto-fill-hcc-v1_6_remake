@@ -14,7 +14,7 @@ VAI:
 - NguoiNop_NoiCuTru = nơi thường trú CÁ NHÂN người nộp (CCCD).
 - ChuDauTu_DiaChi = địa chỉ TRỤ SỞ chủ đầu tư (Tờ trình I.5).
 - DuAn_DiaDiem = ĐỊA ĐIỂM XÂY DỰNG dự án (khu vực/địa điểm dự án trong Tờ trình) — KHÁC trụ sở chủ đầu tư.
-Tách mỗi địa chỉ object {quocGia,tinh,xa,diaChi}: tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=chi tiết
+Tách mỗi địa chỉ object {quocGia,tinh,xa,chiTietDuoiXa}: tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=chi tiết
 (KHÔNG lặp phường/xã/tỉnh).
 
 THÔNG TIN DỰ ÁN (Tờ trình mục I):

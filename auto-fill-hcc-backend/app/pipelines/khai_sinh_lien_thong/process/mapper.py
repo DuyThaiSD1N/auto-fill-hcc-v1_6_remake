@@ -307,6 +307,12 @@ def _norm_tinh(value):
     return _TINH_RENAME.get(_fold(value), value)
 
 
+def _province_name_key(value) -> str:
+    """Tên tỉnh/thành đã bỏ dấu, bỏ tiền tố Tỉnh/Thành phố/TP/T.P và dấu câu."""
+    text = re.sub(r"[^a-z0-9]+", " ", _fold(value)).strip()
+    return re.sub(r"^(tinh|thanh pho|tp|t p)\s+", "", text).strip()
+
+
 def _area(value):
     if not isinstance(value, dict):
         return None
@@ -316,7 +322,11 @@ def _area(value):
     # (vd "Phường Tân Phong" trong khi xa="Tân Phong") → trùng lặp vô nghĩa, bỏ đi.
     if dia and _strip_admin_prefix(dia).strip().lower() == (xa or "").strip().lower():
         dia = None
-    out = {"tinh": _norm_tinh(value.get("tinh") or value.get("tỉnh")), "xa": xa, "diaChi": dia}
+    tinh = _norm_tinh(value.get("tinh") or value.get("tỉnh"))
+    # Dòng chỉ ghi tỉnh/thành ("T.P Hải Phòng") bị chép nguyên vào diaChi → trùng tỉnh, bỏ.
+    if dia and tinh and _province_name_key(dia) == _province_name_key(tinh):
+        dia = None
+    out = {"tinh": tinh, "xa": xa, "diaChi": dia}
     out = {k: v for k, v in out.items() if v not in (None, "", {}, [])}
     # Áp dụng remap địa chỉ để chuẩn hóa xã/phường theo sáp nhập đơn vị hành chính
     return city_province_area(remap_area(out)) if out else None

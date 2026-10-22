@@ -23,7 +23,7 @@ FIELDS: list[dict] = [
     {"name": "CoSo_Ten", "desc": f"Tên CƠ SỞ KHÁM BỆNH, CHỮA BỆNH — mục 1 của {_DS_SRC} (vd 'Trạm Y tế xã "
         "A', 'Trung tâm Y tế huyện B'). Chép nguyên văn, KHÔNG kèm số thứ tự/nhãn mục, bỏ dấu chấm cuối."},
     {"name": "CoSo_DiaChi", "desc": f"ĐỊA CHỈ cơ sở khám bệnh, chữa bệnh — mục 2 của {_DS_SRC}, object "
-        "{quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/thôn/bản/tổ (KHÔNG "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/thôn/bản/tổ (KHÔNG "
         "kèm phường/xã/tỉnh). Tên cơ sở dạng 'Trạm Y tế xã X' mà mục địa chỉ chỉ ghi tỉnh → xa='Xã X'."},
     {"name": "CoSo_NguoiChiuTrachNhiem", "desc": f"Họ tên NGƯỜI ĐỨNG ĐẦU cơ sở = người KÝ cuối {_DS_SRC} "
         "(dưới chức danh 'GIÁM ĐỐC'/'TRƯỞNG TRẠM'/'THỦ TRƯỞNG ĐƠN VỊ'…, chữ ký + dấu). Chỉ khi danh sách KHÔNG "

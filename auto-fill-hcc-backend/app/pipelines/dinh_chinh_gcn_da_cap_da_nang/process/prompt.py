@@ -19,7 +19,7 @@ NoiDungDinhChinh: CHÉP NGUYÊN VĂN mục '2. Nội dung biến động' của 
 SỐ GIẤY TỜ: ưu tiên số CCCD hiện tại (12 số) theo thẻ CCCD; số CMND cũ (9 số) trên hợp đồng/trích lục
 cũ chỉ để đối chiếu (cùng một người), KHÔNG điền vào ô số định danh.
 
-ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): thường trú theo CCCD, tách object {quocGia,tinh,xa,diaChi}.
+ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): thường trú theo CCCD, tách object {quocGia,tinh,xa,chiTietDuoiXa}.
 THỬA ĐẤT (ThuaDat_DiaChi/SoTo/SoThua): địa chỉ + tờ bản đồ + số thửa lấy ở GCN đã cấp (mục II — Đất ở).
 ⚠ Địa chỉ thửa đất KHÁC địa chỉ thường trú người nộp — đừng nhầm.
 

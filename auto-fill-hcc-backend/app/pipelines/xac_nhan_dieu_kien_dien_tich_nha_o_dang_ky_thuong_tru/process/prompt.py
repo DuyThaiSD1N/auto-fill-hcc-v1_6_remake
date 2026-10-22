@@ -24,8 +24,8 @@ EXTRA_RULES = """
 </identity_rules>
 
 <address_rules>
-10. Địa chỉ trả object {quocGia,tinh,xa,diaChi}; không đưa huyện vào xa hoặc diaChi, không lặp tỉnh/xã
-    trong diaChi; giữ đủ số nhà/ngõ/đường/tổ dân phố/thôn trong diaChi.
+10. Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa huyện vào xa hoặc chiTietDuoiXa, không lặp tỉnh/xã
+    trong chiTietDuoiXa; giữ đủ số nhà/ngõ/đường/tổ dân phố/thôn trong chiTietDuoiXa.
 11. Tờ khai Mẫu 02 hay chỉ ghi "<số nhà> <đường>, Tổ dân phố ..." ở mục I.4 và II.1 mà KHÔNG ghi phường/tỉnh.
     Khi đó xa lấy theo cơ quan tiếp nhận ở dòng "Kính gửi: UBND <phường/xã>" (hoặc tên UBND ở góc trái
     trên) của chính Tờ khai — đây là UBND nơi có chỗ ở; tinh để trống nếu không giấy tờ nào ghi.

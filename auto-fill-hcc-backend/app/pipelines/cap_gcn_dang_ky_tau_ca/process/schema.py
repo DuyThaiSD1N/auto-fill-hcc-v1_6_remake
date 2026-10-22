@@ -21,9 +21,9 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp/cơ quan cấp giấy tờ tùy thân {who}. CCCD gắn chip KHÔNG in nhãn "Nơi cấp" riêng → '
         'ghi "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an". Có thể lấy ở Quyết định chấp thuận (mục "Cơ quan cấp") nếu hồ sơ có.'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Ưu tiên CCCD (Nơi thường trú); "
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Ưu tiên CCCD (Nơi thường trú); "
         "bổ sung Tờ khai 02a.ĐKT (Thường trú tại) / Hợp đồng mua bán (Nơi cư trú). tinh='Tỉnh/Thành phố …', "
-        "xa=phường/xã, diaChi=số nhà/khóm/ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh). ⚠ Giấy chứng nhận đăng ký "
+        "xa=phường/xã, chiTietDuoiXa=số nhà/khóm/ấp/thôn/tổ (KHÔNG kèm phường/xã/tỉnh). ⚠ Giấy chứng nhận đăng ký "
         "tàu cá cũ có thể còn ghi địa danh CŨ trước sáp nhập → ưu tiên CCCD/Hợp đồng."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who}. Ưu tiên Tờ khai 02a.ĐKT (Số điện thoại) / Thông báo thuế "
         "(Điện thoại). Chỉ chữ số; KHÔNG có trên CCCD."),
@@ -94,7 +94,7 @@ FIELDS += [
         "bảng Máy chính của Tờ khai 02a.ĐKT; bảng trống thì lấy bảng máy của GCN an toàn kỹ thuật/Biên bản "
         "kiểm tra/GCN đăng ký cũ. Ô nào không có thì bỏ khóa đó. KHÔNG bịa."},
     {"name": "Tau_ChuSoHuu", "desc": "CHỈ khi tàu thuộc sở hữu NHIỀU chủ (mục 2 Tờ khai 02a.ĐKT có liệt kê): "
-        "mảng object {hoTen, diaChi, soGiayTo}. Tàu một chủ / mục 2 để trống → BỎ TRỐNG."},
+        "mảng object {hoTen, chiTietDuoiXa, soGiayTo}. Tàu một chủ / mục 2 để trống → BỎ TRỐNG."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

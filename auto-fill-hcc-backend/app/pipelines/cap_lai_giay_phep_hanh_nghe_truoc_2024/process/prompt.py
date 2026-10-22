@@ -26,7 +26,7 @@ NGUỒN DỮ LIỆU (NguoiHanhNghe_*):
   Ngày cấp và nơi cấp phải đi CÙNG số định danh đã chọn (cùng một giấy, cùng một dòng), không ghép ngày cấp
   của số này với nơi cấp của số khác.
 - ThuongTru: chứng chỉ hành nghề cũ và CCCD hay ghi địa giới CŨ (trước sáp nhập); Đơn Mẫu 08 làm gần đây
-  thường ghi địa giới MỚI → ưu tiên Đơn. Tách object {quocGia,tinh,xa,diaChi}; diaChi CHỈ chi tiết (số
+  thường ghi địa giới MỚI → ưu tiên Đơn. Tách object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ chi tiết (số
   nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
 - DienThoai: lấy số DI ĐỘNG trên Đơn; KHÔNG lấy số bàn. Email: chỉ Đơn có.
 - Chữ ký, tên người ký/đóng dấu trên chứng chỉ hành nghề (Giám đốc Sở Y tế…) và trên CCCD (Cục trưởng…)

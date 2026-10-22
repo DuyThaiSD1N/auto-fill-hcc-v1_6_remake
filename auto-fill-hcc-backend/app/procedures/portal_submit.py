@@ -162,3 +162,9 @@ PORTAL_SUBMIT: dict[str, dict] = {
 def portal_submit_rules() -> dict[str, dict]:
     """Bộ luật đẩy xuống content script qua action arm_submit_watch."""
     return PORTAL_SUBMIT
+
+
+def needs_submit_click(hosts) -> bool:
+    """Cổng Form.io dựng sẵn panel bước 4 ("Nộp hồ sơ thành công", đang ẩn) ngay từ bước đầu → chữ thành công
+    dò được trong DOM KHÔNG chứng minh đã nộp; chỉ tin khi đã bắt được cú bấm nút nộp."""
+    return any(PORTAL_SUBMIT.get(str(h or "").lower()) is _FORMIO for h in hosts or ())

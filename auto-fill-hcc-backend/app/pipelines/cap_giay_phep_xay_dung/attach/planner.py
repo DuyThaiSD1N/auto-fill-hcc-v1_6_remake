@@ -106,6 +106,9 @@ _LABEL_BANVE = "Hồ sơ thiết kế xây dựng"
 # slotIndex = STT − 1 (0-based, vị trí input[type=file] trong DOM) — thứ FE thực sự dùng.
 _NHANH_NHA_O_RIENG_LE = "nha_o_rieng_le"
 _NHANH_TIN_NGUONG_TON_GIAO = "tin_nguong_ton_giao"
+# Khối 1–5 (công trình không theo tuyến): LLM không chọn khối này; chỉ server bật theo tài khoản (xem
+# with_account_attach_options) cho đơn vị đính hồ sơ nhà ở riêng lẻ vào khối đầu bảng.
+_NHANH_KHONG_THEO_TUYEN = "khong_theo_tuyen"
 
 def _slot(key: str, stt: int, component: str, label: str) -> dict[str, Any]:
     return {
@@ -123,6 +126,11 @@ _SLOTS_BY_NHANH: dict[str, dict[str, dict[str, Any]]] = {
         "don": _slot("gpxd_nrl_don", 12, _C_DON, _LABEL_DON),
         "dat": _slot("gpxd_nrl_dat", 13, _C_DAT, _LABEL_DAT),
         "banve": _slot("gpxd_nrl_banve", 16, _C_BANVE_NRL, _LABEL_BANVE),
+    },
+    _NHANH_KHONG_THEO_TUYEN: {
+        "don": _slot("gpxd_ktt_don", 1, _C_DON, _LABEL_DON),
+        "dat": _slot("gpxd_ktt_dat", 2, _C_DAT, _LABEL_DAT),
+        "banve": _slot("gpxd_ktt_banve", 4, _C_BANVE_DUAN, _LABEL_BANVE),
     },
     _NHANH_TIN_NGUONG_TON_GIAO: {
         "don": _slot("gpxd_tg_don", 6, _C_DON, _LABEL_DON),
@@ -151,6 +159,8 @@ _TYPES_BY_GROUP = {
 # tôn giáo không có dòng nào nhắc bản cam kết → giữ ở nhóm Đơn.
 _GROUP_OVERRIDE_BY_NHANH: dict[str, dict[str, str]] = {
     _NHANH_NHA_O_RIENG_LE: {_DOC_SAFETY_COMMITMENT: _GROUP_BANVE},
+    # Khối 1–5 không có dòng cam kết; hồ sơ vẫn là nhà ở riêng lẻ nên cam kết đi cùng bản vẽ (STT 4).
+    _NHANH_KHONG_THEO_TUYEN: {_DOC_SAFETY_COMMITMENT: _GROUP_BANVE},
 }
 
 
@@ -230,7 +240,12 @@ def _normalize_doc_type(value: str) -> str:
     return _DOC_OTHER
 
 
-def _label_for_type(doc_type: str, title: str = "") -> str:
+def _label_for_type(doc_type: str, title: str = "", owner: str = "") -> str:
+    owner = normalize_document_name(owner, "") if owner else ""
+    if doc_type == _DOC_APPLICATION and owner:
+        # Cán bộ phân biệt Đơn của từng hồ sơ theo tên chủ đầu tư; tên dài vượt 50 ký tự → rút tiền tố.
+        label = f"{_LABELS[_DOC_APPLICATION]} {owner}"
+        return label if len(label) <= 50 else normalize_document_name(f"Đơn đề nghị cấp GPXD {owner}", label)
     title = normalize_document_name(title, "") if title else ""
     if title and doc_type not in {_DOC_IDENTITY, _DOC_LAND}:
         return title
@@ -267,6 +282,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> tuple[dict[int,
         return {
             "type": _normalize_doc_type(str(item.get("type") or item.get("docType") or "")),
             "title": str(item.get("title") or item.get("documentName") or "").strip(),
+            "chuDauTu": str(item.get("chuDauTu") or "").strip(),
         }
 
     out: dict[int, dict[str, str]] = {}
@@ -307,7 +323,7 @@ def _group_for_type(doc_type: str, nhanh: str = _DEFAULT_NHANH) -> str:
 
 def _build_fixed_item(files: list[dict], entry: dict, slot: dict[str, Any]) -> dict:
     idx = entry["idx"]
-    document_name = _label_for_type(entry["docType"], entry.get("title", ""))
+    document_name = _label_for_type(entry["docType"], entry.get("title", ""), entry.get("chuDauTu", ""))
     return {
         "fileIndex": idx,
         "fileName": str(files[idx].get("name") or f"file-{idx + 1}"),
@@ -346,6 +362,7 @@ def build_plan_items(
             "fileName": file_name,
             "docType": doc_type,
             "title": detected.get("title", ""),
+            "chuDauTu": detected.get("chuDauTu", ""),
             "source": "llm" if llm_type else "default",
         })
 
@@ -442,6 +459,8 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
+    if (options or {}).get(KHONG_THEO_TUYEN_OPTION) is True and nhanh == _NHANH_NHA_O_RIENG_LE:
+        nhanh = _NHANH_KHONG_THEO_TUYEN
     attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types, nhanh)
     errors.extend(warnings)
     skipped_ocr = [file["name"] for file in raw_files if file.get("type") not in _OCR_TYPES]
@@ -467,3 +486,17 @@ async def plan(
         "llm_output": {str(idx): val for idx, val in llm_types.items()},
         "errors": errors,
     }
+
+
+PROCEDURE_KEY = "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"
+KHONG_THEO_TUYEN_OPTION = "_gpxdKhoiKhongTheoTuyen"
+
+
+def with_account_attach_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Tài khoản tỉnh Lào Cai đính hồ sơ nhà ở riêng lẻ vào khối 1–5 (STT 1/2/4). Cờ do server đặt theo
+    tài khoản, client không tự bật được."""
+    result = dict(options or {})
+    result.pop(KHONG_THEO_TUYEN_OPTION, None)
+    if procedure == PROCEDURE_KEY and user and "lao cai" in fold(user.get("tinh") or ""):
+        result[KHONG_THEO_TUYEN_OPTION] = True
+    return result

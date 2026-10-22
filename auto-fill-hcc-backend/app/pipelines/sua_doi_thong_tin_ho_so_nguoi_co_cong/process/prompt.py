@@ -22,7 +22,7 @@ NGUỒN DỮ LIỆU (NguoiKhai_*):
 - Nơi cấp: CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Đơn/Bản khai. Chuẩn hóa tên cơ quan.
 - NguoiKhai_ThuongTru (nơi ở hiện tại) và NguoiKhai_QueQuan (nơi gốc) là HAI địa chỉ KHÁC nhau — đừng
   gán trùng. Nơi thường trú ưu tiên Đơn Mẫu 26/Bản khai (địa giới MỚI sau sáp nhập); quê quán giữ tên
-  địa danh gốc theo CCCD/giấy tờ. Tách object {tinh,xa,diaChi}; diaChi CHỈ chi tiết (số nhà/đường/tổ/
+  địa danh gốc theo CCCD/giấy tờ. Tách object {tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ chi tiết (số nhà/đường/tổ/
   thôn), KHÔNG kèm tên phường/xã/huyện/tỉnh.
 
 NỘI DUNG ĐƠN (về việc sửa hồ sơ người có công):

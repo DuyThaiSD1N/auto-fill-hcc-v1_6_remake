@@ -160,17 +160,21 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bo
 def _declared_relation(context: str, options: dict | None) -> str:
     """Quan hệ ghi trên tờ khai chỉ là của NGƯỜI YÊU CẦU tờ khai: dùng được khi người đó chính là chủ tài khoản
     (khác người → bên được ủy quyền nộp thay, quan hệ trên tờ khai không phải của họ). Số định danh OCR hay rớt
-    chữ số → chỉ so số khi cả hai đủ 12 chữ số, còn lại so họ tên."""
+    chữ số → chỉ so số khi cả hai đủ 12 chữ số, còn lại so họ tên. Tờ khai không ghi quan hệ → quan hệ của bên
+    được ủy quyền trên giấy ủy quyền khi bước phân vai kết luận bên đó là người nộp (giấy ủy quyền hay sai chính
+    tả tên, OCR số thừa / thiếu chữ số nên không so tất định được)."""
     block = section(context, "quan_he")
     declared = labeled_value(block, "Quan hệ trên tờ khai")
-    if not declared:
-        return ""
-    account_name, account_id = requester_context(options)
-    requester_id = _digits(labeled_value(block, "Số định danh người yêu cầu tờ khai"))
-    if len(account_id) == 12 and len(requester_id) == 12:
-        return declared if account_id == requester_id else ""
-    requester_name = labeled_value(block, "Người yêu cầu tờ khai")
-    return declared if account_name and requester_name and _fold(account_name) == _fold(requester_name) else ""
+    if declared:
+        account_name, account_id = requester_context(options)
+        requester_id = _digits(labeled_value(block, "Số định danh người yêu cầu tờ khai"))
+        if len(account_id) == 12 and len(requester_id) == 12:
+            return declared if account_id == requester_id else ""
+        requester_name = labeled_value(block, "Người yêu cầu tờ khai")
+        return declared if account_name and requester_name and _fold(account_name) == _fold(requester_name) else ""
+    if any(requester_context(options)) and _fold(labeled_value(block, "Người được ủy quyền là người nộp")) == "co":
+        return labeled_value(block, "Quan hệ trên giấy ủy quyền")
+    return ""
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:

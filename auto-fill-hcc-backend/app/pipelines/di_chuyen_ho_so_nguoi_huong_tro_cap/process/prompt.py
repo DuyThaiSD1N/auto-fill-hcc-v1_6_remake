@@ -20,7 +20,7 @@ NGUỒN DỮ LIỆU (NguoiHuong_*):
 - Nơi cấp: CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Đơn/Bản khai. Chuẩn hóa tên cơ quan.
 - NguoiHuong_ThuongTru (nơi ở hiện tại, nơi CHUYỂN ĐẾN) và NguoiHuong_QueQuan (nơi gốc) là HAI địa chỉ
   KHÁC nhau — đừng gán trùng. Nơi thường trú ưu tiên Xác nhận cư trú CT07 / Đơn Mẫu 27; quê quán lấy Đơn
-  Mẫu 27 / Giấy khai sinh. Tách object {tinh,xa,diaChi}; diaChi CHỈ chi tiết (số nhà/đường/khu phố/tổ),
+  Mẫu 27 / Giấy khai sinh. Tách object {tinh,xa,chiTietDuoiXa}; chiTietDuoiXa CHỈ chi tiết (số nhà/đường/khu phố/tổ),
   KHÔNG kèm tên phường/xã/huyện/tỉnh.
 
 NỘI DUNG ĐƠN (di chuyển hồ sơ người có công):

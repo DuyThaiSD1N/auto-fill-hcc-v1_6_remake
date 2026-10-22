@@ -52,9 +52,9 @@ FIELDS: list[dict] = [
         "CHÍNH VỀ TRẬT TỰ XÃ HỘI' hay viết tắt 'Cục CS QLHC về TTXH' → \"Cục Cảnh sát quản lý hành chính "
         'về trật tự xã hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an".'},
     {"name": "NguoiDeNghi_ThuongTru", "desc": "NƠI THƯỜNG TRÚ / nơi cư trú NGƯỜI ĐỀ NGHỊ, object "
-        "{quocGia,tinh,xa,diaChi}. Lấy ở CCCD (Nơi thường trú) / Đơn (Địa chỉ thường trú) / Giấy khám "
-        "sức khỏe (Chỗ ở hiện tại). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ "
-        "(KHÔNG kèm phường/xã/tỉnh; giấy tờ chỉ ghi tới phường/xã thì diaChi rỗng). ⛔ KHÔNG lấy dòng "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở CCCD (Nơi thường trú) / Đơn (Địa chỉ thường trú) / Giấy khám "
+        "sức khỏe (Chỗ ở hiện tại). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ "
+        "(KHÔNG kèm phường/xã/tỉnh; giấy tờ chỉ ghi tới phường/xã thì chiTietDuoiXa rỗng). ⛔ KHÔNG lấy dòng "
         "'Tại' hay 'Địa chỉ hành nghề' của Đơn — đó là nơi hành nghề, không phải nơi cư trú."},
     {"name": "NguoiDeNghi_DienThoai", "desc": "Số điện thoại DI ĐỘNG NGƯỜI ĐỀ NGHỊ. Chỉ chữ số; KHÔNG "
         "lấy số bàn. Đơn hay ghi 'ĐT …' ngay sau địa chỉ hành nghề, hoặc mục 'Số điện thoại liên hệ'."},
@@ -72,7 +72,7 @@ FIELDS: list[dict] = [
         "CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI' → \"Cục Cảnh sát quản lý hành chính về trật tự xã "
         'hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an". Không có mặt sau thì bỏ trống.'},
     {"name": "NguoiNop_ThuongTru", "desc": "NƠI THƯỜNG TRÚ / nơi cư trú NGƯỜI NỘP THAY trên CCCD của người "
-        "nộp, object {quocGia,tinh,xa,diaChi}; diaChi chỉ phần số nhà/đường/thôn/tổ."},
+        "nộp, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ phần số nhà/đường/thôn/tổ."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại DI ĐỘNG NGƯỜI NỘP THAY nếu giấy tờ có ghi riêng "
         "cho người nộp (KHÔNG lấy số của người đứng đơn). Thường không có → bỏ trống."},
 ]

@@ -26,8 +26,8 @@ NGUỒN DỮ LIỆU (NguoiHanhNghe_*):
 - SỐ ĐỊNH DANH: có cả số 12 chữ số (CCCD/căn cước) lẫn số 9 chữ số (CMND) → LUÔN chọn số 12 chữ số.
 - Nơi cấp: CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Mẫu 08/09. Chuẩn hóa tên cơ quan cấp
   (Cục Cảnh sát QLHC về TTXH / Bộ Công an).
-- ThuongTru: tách object {quocGia,tinh,xa,diaChi}; ưu tiên tên địa giới MỚI (sau sáp nhập) nếu giấy tờ
-  ghi; diaChi CHỈ chi tiết (số nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
+- ThuongTru: tách object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên tên địa giới MỚI (sau sáp nhập) nếu giấy tờ
+  ghi; chiTietDuoiXa CHỈ chi tiết (số nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
 - DienThoai: lấy số DI ĐỘNG; KHÔNG lấy số nhà riêng/bàn. Email: chỉ Mẫu 08 có.
 
 LƯU Ý: các nội dung nghiệp vụ của Mẫu 08 (văn bằng chuyên môn, chức danh đề nghị cấp, phạm vi hành nghề,

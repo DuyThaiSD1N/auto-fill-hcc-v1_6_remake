@@ -26,9 +26,9 @@ Cấu trúc form:
 
 # Địa chỉ trên CCCD/phiếu thường là địa danh CŨ 3 cấp (trước sáp nhập) → giữ cấp huyện ở khoá "huyen" để
 # mapper remap đúng xã mới (vd "Tuy Lộc, TP Yên Bái" → Phường Nam Cường, Lào Cai).
-_AREA_DESC = ("object {quocGia,tinh,huyen,xa,diaChi}. tinh=tỉnh/thành phố; huyen=quận/huyện/thị xã/thành phố "
+_AREA_DESC = ("object {quocGia,tinh,huyen,xa,chiTietDuoiXa}. tinh=tỉnh/thành phố; huyen=quận/huyện/thị xã/thành phố "
               "thuộc tỉnh NẾU giấy ghi (địa danh cũ — BẮT BUỘC giữ, mapper cần để quy đổi sang xã mới); "
-              "xa=phường/xã/thị trấn; diaChi=số nhà/đường/thôn/tổ. Chép đúng địa danh trên giấy, KHÔNG tự đổi "
+              "xa=phường/xã/thị trấn; chiTietDuoiXa=số nhà/đường/thôn/tổ. Chép đúng địa danh trên giấy, KHÔNG tự đổi "
               "sang tên sau sáp nhập.")
 
 # --- Nhân thân + học vấn CHỦ VĂN BẰNG (nguồn: VĂN BẰNG / Phiếu BM04) ---

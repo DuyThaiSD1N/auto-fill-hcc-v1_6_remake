@@ -14,7 +14,7 @@ Khối phẳng NguoiNop_* là một ứng viên (theo tài khoản) và là ngu�
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; giữ đúng địa danh giấy tờ ghi, diaChi giữ số nhà/đường/tổ/thôn."
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; giữ đúng địa danh giấy tờ ghi, chiTietDuoiXa giữ số nhà/đường/tổ/thôn."
 )
 
 FIELDS: list[dict] = [
@@ -79,7 +79,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của người sử dụng đất, lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ THƯỜNG TRÚ/liên hệ của người sử dụng đất, object {quocGia,tinh,xa,diaChi}. Nguồn: "
+        "desc": "Địa chỉ THƯỜNG TRÚ/liên hệ của người sử dụng đất, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: "
                 "mục 'Địa chỉ' của Đơn Mẫu 24 hoặc nơi cư trú trên CCCD. ĐÂY KHÔNG PHẢI địa chỉ thửa đất "
                 "— hai chỗ này thường khác nhau, tuyệt đối không lấy nhầm.",
     },
@@ -95,7 +95,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy của bên được ủy quyền."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp giấy tờ định danh của NGƯỜI NỘP, dd/mm/yyyy, đi cùng đúng số giấy tờ."},
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru."},
     {"name": "NguoiNop_DienThoai", "desc": "Điện thoại của NGƯỜI NỘP, chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có."},
     {"name": "NguoiNop_Fax", "desc": "Số fax của NGƯỜI NỘP nếu có."},
@@ -123,7 +123,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_DienTich", "desc": "Diện tích thửa đất kèm đơn vị như giấy tờ ghi (vd '120,0 m²'). Không quy đổi, không làm tròn."},
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn: Giấy "
+        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: Giấy "
                 "chứng nhận đã cấp. Không có nguồn ghi rõ thì bỏ field.",
     },
 ]

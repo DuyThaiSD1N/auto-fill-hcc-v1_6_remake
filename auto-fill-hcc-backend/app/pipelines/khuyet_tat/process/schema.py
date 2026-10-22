@@ -32,7 +32,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người nộp; phải khớp số định danh trong formContext UI."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND người nộp, dd/mm/yyyy; lấy từ mặt sau cùng thẻ đúng người."},
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND người nộp từ mặt sau cùng thẻ; không lấy cơ quan cấp của người khác."},
-    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú người nộp từ đúng giấy tờ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú người nộp từ đúng giấy tờ, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp nếu đúng tài liệu của người này ghi rõ."},
     {"name": "NguoiNop_QuocTich", "desc": "Quốc tịch người nộp khi đúng giấy tờ ghi rõ."},
 
@@ -48,7 +48,7 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND của chủ hồ sơ. Nếu đúng mặt sau thẻ có "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "ChuHoSo_NoiCuTru",
-     "desc": "Hộ khẩu thường trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}; ưu tiên mục I Mẫu số 01, CCCD đúng người chỉ bổ sung khi mục này thiếu."},
+     "desc": "Hộ khẩu thường trú của chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên mục I Mẫu số 01, CCCD đúng người chỉ bổ sung khi mục này thiếu."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại tại mục I Mẫu số 01 nếu có."},
     {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch chủ hồ sơ khi tài liệu đúng người ghi rõ."},
 
@@ -62,8 +62,8 @@ FIELDS: list[dict] = [
     {"name": "Nkt_NgaySinh", "desc": "Ngày sinh người khuyết tật, dd/mm/yyyy; bổ sung từ hồ sơ bệnh án/trích lục nếu đơn thiếu."},
     {"name": "Nkt_SoDinhDanh", "desc": "Số định danh/CCCD của người khuyết tật nếu có; bổ sung từ hồ sơ bệnh án/trích lục nếu đơn để trống."},
     {"name": "Nkt_GioiTinh", "desc": 'Giới tính người khuyết tật: "Nam" hoặc "Nữ".'},
-    {"name": "Nkt_ThuongTru", "desc": "Hộ khẩu thường trú người khuyết tật, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Nkt_NoiOHienNay", "desc": "Nơi ở hiện nay người khuyết tật, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Nkt_ThuongTru", "desc": "Hộ khẩu thường trú người khuyết tật, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "Nkt_NoiOHienNay", "desc": "Nơi ở hiện nay người khuyết tật, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Người đại diện hợp pháp.
     {"name": "Ndd_HoTen", "desc": "Họ tên người đại diện hợp pháp trên đơn đề nghị."},
@@ -74,7 +74,7 @@ FIELDS: list[dict] = [
     {"name": "Ndd_NoiCap", "desc": "Nơi cấp CMND/CCCD của người đại diện CHỈ khi mục II hoặc CCCD đúng người này ghi rõ; không có thì bỏ, không lấy nơi cấp của thẻ người khác."},
     {"name": "Ndd_QuanHe", "desc": 'Quan hệ với người khuyết tật, trả theo nhãn gốc nếu có: "bố đẻ", "mẹ đẻ", "cha", "mẹ"...'},
     {"name": "Ndd_SoDienThoai", "desc": "Số điện thoại người đại diện hợp pháp, số di động VN nếu có."},
-    {"name": "Ndd_NoiCuTru", "desc": "Địa chỉ thường trú/nơi ở người đại diện, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Ndd_NoiCuTru", "desc": "Địa chỉ thường trú/nơi ở người đại diện, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Bảng dạng khuyết tật.
     {"name": "KhuyetTat_DanhMuc",

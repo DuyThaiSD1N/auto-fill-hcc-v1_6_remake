@@ -33,7 +33,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Hộ khẩu thường trú/Nơi ở của chủ hồ sơ tại mục II.2, object {quocGia,tinh,xa,diaChi}. Ưu tiên tờ khai; giấy tờ khác chỉ bổ sung khi cả hai dòng địa chỉ mục II.2 trống.",
+        "desc": "Hộ khẩu thường trú/Nơi ở của chủ hồ sơ tại mục II.2, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên tờ khai; giấy tờ khác chỉ bổ sung khi cả hai dòng địa chỉ mục II.2 trống.",
     },
     {
         "name": "ChuHoSo_DienThoai",
@@ -69,7 +69,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,diaChi}, chỉ lấy từ tài liệu đúng người.",
+        "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}, chỉ lấy từ tài liệu đúng người.",
     },
     {
         "name": "NguoiNop_DienThoai",
@@ -110,7 +110,7 @@ DECEASED_FIELDS: list[dict] = [
     },
     {
         "name": "NguoiMat_NoiCuTru",
-        "desc": "Nơi cư trú của người chết trên tờ khai, object {quocGia,tinh,xa,diaChi}. Không lấy Nơi chết.",
+        "desc": "Nơi cư trú của người chết trên tờ khai, object {quocGia,tinh,xa,chiTietDuoiXa}. Không lấy Nơi chết.",
     },
     {
         "name": "NguoiMat_QuocTich",

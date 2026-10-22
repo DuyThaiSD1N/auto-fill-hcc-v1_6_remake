@@ -29,7 +29,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ tùy thân của CHỦ HỒ SƠ, lấy CÙNG giấy tờ với số và ngày cấp (mặt sau CCCD, cột 'Cơ quan cấp' của Mẫu số 15a, ô 'Nơi cấp' trên tờ khai thuế)."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "NƠI CƯ TRÚ (thường trú/chỗ ở) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: mục 'Địa chỉ' của người sử dụng đất trên ĐƠN/TỜ KHAI người dân lập (nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ: Mẫu số 15, Mẫu số 18, đơn đề nghị... — không đòi đúng một số hiệu mẫu) -> giấy xác nhận cư trú/xác nhận số định danh mới nhất -> ô 'Địa chỉ'/'Địa chỉ chỗ ở hiện tại' trên tờ khai thuế, lệ phí trước bạ -> CUỐI CÙNG mới đến CCCD. CCCD hay ghi nơi thường trú CŨ/khác tỉnh: hễ đơn đã ghi địa chỉ thì phải theo đơn, không để thẻ ghi đè. Giữ đủ số nhà/đường/tổ/thôn trong diaChi. Giấy tờ tùy thân cũ có thể còn ghi đơn vị hành chính TRƯỚC sắp xếp — nếu đơn/giấy xác nhận mới hơn ghi khác thì theo giấy tờ MỚI. ĐÂY KHÔNG PHẢI địa chỉ thửa đất — tuyệt đối không lấy nhầm địa điểm thửa đất đăng ký.",
+        "desc": "NƠI CƯ TRÚ (thường trú/chỗ ở) của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: mục 'Địa chỉ' của người sử dụng đất trên ĐƠN/TỜ KHAI người dân lập (nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ: Mẫu số 15, Mẫu số 18, đơn đề nghị... — không đòi đúng một số hiệu mẫu) -> giấy xác nhận cư trú/xác nhận số định danh mới nhất -> ô 'Địa chỉ'/'Địa chỉ chỗ ở hiện tại' trên tờ khai thuế, lệ phí trước bạ -> CUỐI CÙNG mới đến CCCD. CCCD hay ghi nơi thường trú CŨ/khác tỉnh: hễ đơn đã ghi địa chỉ thì phải theo đơn, không để thẻ ghi đè. Giữ đủ số nhà/đường/tổ/thôn trong chiTietDuoiXa. Giấy tờ tùy thân cũ có thể còn ghi đơn vị hành chính TRƯỚC sắp xếp — nếu đơn/giấy xác nhận mới hơn ghi khác thì theo giấy tờ MỚI. ĐÂY KHÔNG PHẢI địa chỉ thửa đất — tuyệt đối không lấy nhầm địa điểm thửa đất đăng ký.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của CHỦ HỒ SƠ (người sử dụng đất), chỉ chữ số. PHẢI lấy khi hồ sơ có: mục 'Điện thoại liên hệ' của Đơn đăng ký đất đai Mẫu số 15, ô 'Điện thoại' trên tờ khai thuế sử dụng đất nông nghiệp/phi nông nghiệp, tờ khai thuế thu nhập cá nhân, tờ khai lệ phí trước bạ. Số ghi trong đơn/tờ khai do chính người đó đứng tên mặc nhiên là số của người đó. Nếu một ô ghi NHIỀU số thì lấy số xuất hiện ở nhiều giấy tờ nhất làm số chính. Không dùng số của người khác."},
     {"name": "ChuHoSo_Email", "desc": "Email (hộp thư điện tử) của CHỦ HỒ SƠ nếu giấy tờ có ghi; đơn thường bỏ trống mục này -> không có thì bỏ field."},
@@ -44,17 +44,17 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ tùy thân của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền/văn bản đại diện thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả số nhà/thôn trong diaChi. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
+        "desc": "NƠI CƯ TRÚ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền/văn bản đại diện thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru, gồm cả số nhà/thôn trong chiTietDuoiXa. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN. ĐÂY KHÔNG PHẢI địa chỉ thửa đất.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy số của BÊN ĐƯỢC ỦY QUYỀN ghi trên văn bản ủy quyền/văn bản đại diện; không có ủy quyền thì người nộp chính là chủ hồ sơ nên dùng số liên hệ trên Đơn Mẫu số 15/tờ khai thuế. Không lấy số của chủ hồ sơ khi hai người thực sự khác nhau."},
     {"name": "NguoiNop_Email", "desc": "Email của NGƯỜI NỘP nếu có."},
     {
         "name": "ChuHoSo_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15, Mẫu số 18...); nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào diaChi.",
+        "desc": "ĐỊA CHỈ CỦA CHỦ HỒ SƠ GHI TRÊN ĐƠN/TỜ KHAI — object {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ lấy từ mục 'Địa chỉ' trong khối người đề nghị/người sử dụng đất của Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15, Mẫu số 18...); nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, công văn hay giấy tờ khác; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn thường viết LIỀN, không nhãn con, dạng '<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Phường'/'Xã' nếu đơn viết trống), phần còn lại cho vào chiTietDuoiXa.",
     },
     {
         "name": "NguoiNop_DonDiaChi",
-        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,diaChi}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
+        "desc": "ĐỊA CHỈ CỦA NGƯỜI NỘP GHI TRÊN GIẤY TỜ NGƯỜI DÂN LẬP — object {quocGia,tinh,xa,chiTietDuoiXa}. Có văn bản ủy quyền/đại diện thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN ghi trong chính văn bản đó; KHÔNG có ủy quyền thì chép nguyên vẹn ChuHoSo_DonDiaChi. TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND hay Giấy chứng nhận; không có nguồn thì BỎ FIELD. Cách tách chuỗi địa chỉ viết liền giống ChuHoSo_DonDiaChi.",
     },
     {
         "name": "Don_NoiDungDangKy",
@@ -62,7 +62,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT/địa chỉ xây dựng đăng ký (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn ưu tiên: mục 'Địa chỉ' của phần 'Thửa đất đăng ký' trên Đơn đăng ký đất đai Mẫu số 15 -> mục 'Địa chỉ thửa đất' trên Mảnh trích đo/Phiếu xác nhận kết quả đo đạc hiện trạng thửa đất -> ô 'Địa chỉ thửa đất' trên tờ khai thuế sử dụng đất phi nông nghiệp/thuế thu nhập cá nhân/lệ phí trước bạ. Giữ số thửa/tờ bản đồ/đường/tổ/thôn trong diaChi nếu tài liệu ghi kèm địa chỉ. TUYỆT ĐỐI không lấy địa chỉ cư trú/thường trú của chủ hồ sơ hoặc người nộp làm địa chỉ thửa đất. Không có nguồn ghi rõ thì bỏ field.",
+        "desc": "ĐỊA CHỈ THỬA ĐẤT/địa chỉ xây dựng đăng ký (địa điểm khu đất, KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn ưu tiên: mục 'Địa chỉ' của phần 'Thửa đất đăng ký' trên Đơn đăng ký đất đai Mẫu số 15 -> mục 'Địa chỉ thửa đất' trên Mảnh trích đo/Phiếu xác nhận kết quả đo đạc hiện trạng thửa đất -> ô 'Địa chỉ thửa đất' trên tờ khai thuế sử dụng đất phi nông nghiệp/thuế thu nhập cá nhân/lệ phí trước bạ. Giữ số thửa/tờ bản đồ/đường/tổ/thôn trong chiTietDuoiXa nếu tài liệu ghi kèm địa chỉ. TUYỆT ĐỐI không lấy địa chỉ cư trú/thường trú của chủ hồ sơ hoặc người nộp làm địa chỉ thửa đất. Không có nguồn ghi rõ thì bỏ field.",
     },
 ]
 

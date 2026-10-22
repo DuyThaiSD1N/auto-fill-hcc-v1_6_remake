@@ -16,13 +16,13 @@ FIELDS: list[dict] = [
     {
         "name": "ToKhai_QueQuan",
         "desc": (
-            "Quê quán người khai, object {quocGia,tinh,xa,diaChi}, lấy dòng 'Quê quán' Đơn Mẫu 26 "
+            "Quê quán người khai, object {quocGia,tinh,xa,chiTietDuoiXa}, lấy dòng 'Quê quán' Đơn Mẫu 26 "
             "(ưu tiên tờ khai; không lấy quê quán trên CCCD vì có thể ghi đơn vị hành chính cũ)."
         ),
     },
     {
         "name": "ToKhai_NoiThuongTru",
-        "desc": "Nơi thường trú người khai, object {quocGia,tinh,xa,diaChi}, dòng 'Nơi thường trú' Đơn Mẫu 26.",
+        "desc": "Nơi thường trú người khai, object {quocGia,tinh,xa,chiTietDuoiXa}, dòng 'Nơi thường trú' Đơn Mẫu 26.",
     },
     {"name": "ToKhai_DienThoai", "desc": "Số điện thoại người khai (số đầu tiên nếu có nhiều), Đơn Mẫu 26."},
     {
@@ -32,7 +32,7 @@ FIELDS: list[dict] = [
 
     # II. Liệt sĩ — Đơn Mẫu 26 + Hồ sơ liệt sĩ gốc + Bằng Tổ quốc ghi công.
     {"name": "LietSi_HoTen", "desc": "Họ tên liệt sĩ được đề nghị sửa đổi hồ sơ (vd trong 'hồ sơ liệt sĩ ...')."},
-    {"name": "LietSi_QueQuan", "desc": "Quê quán liệt sĩ, object {quocGia,tinh,xa,diaChi}, theo hồ sơ liệt sĩ. Bỏ nếu không có."},
+    {"name": "LietSi_QueQuan", "desc": "Quê quán liệt sĩ, object {quocGia,tinh,xa,chiTietDuoiXa}, theo hồ sơ liệt sĩ. Bỏ nếu không có."},
     {"name": "LietSi_NgayHySinh", "desc": "Ngày hy sinh, dd/mm/yyyy, theo hồ sơ liệt sĩ/Bằng TQGC. Bỏ nếu không có."},
     {"name": "LietSi_CoQuanDonVi", "desc": "Cơ quan, đơn vị khi hy sinh, theo hồ sơ liệt sĩ. Bỏ nếu không có."},
     {"name": "LietSi_CapBac", "desc": "Cấp bậc, chức vụ khi hy sinh, theo hồ sơ liệt sĩ. Bỏ nếu không có."},
@@ -59,7 +59,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_GioiTinh", "desc": 'Giới tính trên CCCD: "Nam" hoặc "Nữ".'},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD (mặt sau), dd/mm/yyyy. Không lấy ngày sinh/ngày hết hạn."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD (cơ quan cấp mặt sau)."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

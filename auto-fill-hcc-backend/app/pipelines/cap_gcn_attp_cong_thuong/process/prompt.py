@@ -19,11 +19,11 @@ EXTRA_RULES = """<critical_rules>
 </vai_tro>
 
 <dia_chi>
-1. Applicant_NoiCuTru = NƠI THƯỜNG TRÚ cá nhân người nộp (CCCD). object {quocGia,tinh,xa,diaChi}.
+1. Applicant_NoiCuTru = NƠI THƯỜNG TRÚ cá nhân người nộp (CCCD). object {quocGia,tinh,xa,chiTietDuoiXa}.
 2. CoSo_DiaChi = ĐỊA CHỈ TRỤ SỞ/địa điểm CƠ SỞ SXKD (GCN ĐKKD 'Trụ sở hộ kinh doanh' / Đơn 01a 'Địa điểm
-   tại'). object {quocGia,tinh,xa,diaChi}. THƯỜNG KHÁC nơi thường trú cá nhân — vd thường trú "Tổ 88, Hòa
+   tại'). object {quocGia,tinh,xa,chiTietDuoiXa}. THƯỜNG KHÁC nơi thường trú cá nhân — vd thường trú "Tổ 88, Hòa
    Xuân" nhưng trụ sở cơ sở "86 Lê Đình Dương, Hải Châu". ĐỪNG lẫn 2 địa chỉ.
-3. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường (KHÔNG lặp phường/xã/tỉnh). Nếu địa chỉ ghi
+3. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường (KHÔNG lặp phường/xã/tỉnh). Nếu địa chỉ ghi
    đơn vị hành chính CŨ (còn cấp huyện) thì vẫn tách tinh/xa như đọc được, không tự sáp nhập.
 </dia_chi>
 

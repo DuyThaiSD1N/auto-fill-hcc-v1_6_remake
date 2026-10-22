@@ -38,8 +38,8 @@ EXTRA_RULES = """
 
 <missing_and_normalization_rules>
 11. Chỉ trả ngày khi có ĐỦ ngày-tháng-năm. Chỉ có năm thì bỏ field; TUYỆT ĐỐI không bịa 01/01.
-12. Địa chỉ trả về object {quocGia, tinh, xa, diaChi}. Chuỗi viết liền "<số nhà, đường>, <phường>,
-    <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào diaChi.
+12. Địa chỉ trả về object {quocGia, tinh, xa, chiTietDuoiXa}. Chuỗi viết liền "<số nhà, đường>, <phường>,
+    <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào chiTietDuoiXa.
 13. Số điện thoại/mã số thuế/số định danh chỉ giữ chữ số (mã số thuế có thể có đuôi -001).
 14. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>

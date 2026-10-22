@@ -79,12 +79,12 @@ các trang, đừng kết luận "tệp rỗng" vì trang đầu trắng.
 14. "do cục CSQLHCTTXH cấp" / "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → NoiCap
     = "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" →
     "Bộ Công an".
-15. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con dạng
+15. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con dạng
     "<tổ/thôn>, <xã/phường>, <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho
-    vào diaChi. Giữ nguyên "Tổ dân phố Sa Pa 4", "Số nhà 547, đường Điện Biên Phủ" trong diaChi.
+    vào chiTietDuoiXa. Giữ nguyên "Tổ dân phố Sa Pa 4", "Số nhà 547, đường Điện Biên Phủ" trong chiTietDuoiXa.
 16. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). Giấy tờ cũ in 3 cấp thì bỏ cấp huyện:
     "tổ 4A, thị trấn Sa Pa, huyện Sa Pa, tỉnh Lào Cai" → tinh = "Lào Cai", xa = "Sa Pa",
-    diaChi = "Tổ 4A".
+    chiTietDuoiXa = "Tổ 4A".
 17. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>
 

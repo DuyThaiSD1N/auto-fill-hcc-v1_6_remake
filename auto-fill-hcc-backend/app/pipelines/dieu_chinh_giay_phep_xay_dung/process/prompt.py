@@ -21,7 +21,7 @@ nộp (ChuDauTu_Loai='Chủ đầu tư'). ⚠ BẪY: hồ sơ thiết kế LUÔN
 đưa công ty thiết kế này vào ToChucNop_*. Nếu chủ đầu tư là CÁ NHÂN/HỘ GIA ĐÌNH (đa số hồ sơ nhà ở riêng
 lẻ) → BỎ TRỐNG toàn bộ ToChucNop_*.
 
-ĐỊA CHỈ: tách RIÊNG hai loại, object {quocGia,tinh,xa,diaChi}:
+ĐỊA CHỈ: tách RIÊNG hai loại, object {quocGia,tinh,xa,chiTietDuoiXa}:
 - Applicant_NoiCuTru = NƠI Ở người nộp (CCCD/Giấy ủy quyền). ToChucNop_DiaChi = trụ sở tổ chức người nộp.
 - Dat_DiaDiemXayDung = ĐỊA ĐIỂM CÔNG TRÌNH (Đơn/GCN/GPXD). HAI địa chỉ này THƯỜNG KHÁC NHAU — đừng gán trùng.
 

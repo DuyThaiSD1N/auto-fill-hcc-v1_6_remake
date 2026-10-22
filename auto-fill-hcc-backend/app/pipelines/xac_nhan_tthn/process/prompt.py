@@ -18,7 +18,7 @@ cấp ở Section II hay không (Python mapper tự so sánh, KHÔNG phải LLM)
 - ToKhaiYeuCau_SoDinhDanh (từ "Giấy tờ tùy thân" NGAY SAU tên người yêu cầu, KHÔNG lấy nhầm số ở Section II)
 - ToKhaiYeuCau_NgayCapGiayTo (từ "cấp ngày..." của giấy tờ người yêu cầu, dd/mm/yyyy)
 - ToKhaiYeuCau_NoiCapGiayTo (từ "nơi cấp ..." của giấy tờ người yêu cầu)
-- ToKhaiYeuCau_NoiCuTru (từ "Nơi cư trú:" NGAY DƯỚI tên người yêu cầu, object {quocGia,tinh,xa,diaChi})
+- ToKhaiYeuCau_NoiCuTru (từ "Nơi cư trú:" NGAY DƯỚI tên người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa})
 - ToKhaiYeuCau_QuanHe (từ dòng "Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân:" —
   BẮT BUỘC trả NGUYÊN VĂN khi tờ khai có dòng này, dù ghi "Bản thân"/"Tự khai" hay bất kỳ quan hệ
   nào khác như "là con đẻ", "là bố đẻ". Python mapper sẽ tự quy đổi sang mã quan hệ trên cổng.)
@@ -36,7 +36,7 @@ người được cấp):
 - ToKhai_SoDinhDanh (từ "Giấy tờ tùy thân: ... số")
 - ToKhai_NgayCapGiayTo (từ "Cấp ngày...", dd/mm/yyyy)
 - ToKhai_NoiCapGiayTo (từ "tại ..." sau "Cấp ngày")
-- ToKhai_NoiCuTru (từ "Nơi cư trú:", object {quocGia,tinh,xa,diaChi})
+- ToKhai_NoiCuTru (từ "Nơi cư trú:", object {quocGia,tinh,xa,chiTietDuoiXa})
 TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ
 NguoiDuocCap_*) đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
 
@@ -175,13 +175,13 @@ Section I — NGƯỜI ỦY QUYỀN (người CẦN giấy XNTTHN) → các fiel
 - PoA_SubjectIssuer   = nơi cấp giấy tờ của người ủy quyền ("do ... cấp"), chuẩn hóa theo <dinh_dang>
   + Nếu OCR thấy "Cục Cảnh sát QLHC" / "quản lý hành chính về trật tự" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
   + Nếu thấy "Bộ Công an" → "Bộ Công an"
-- PoA_SubjectAddress  = nơi cư trú người ủy quyền ("Nơi cư trú / Địa chỉ: ..."), object {tinh, xa, diaChi}
+- PoA_SubjectAddress  = nơi cư trú người ủy quyền ("Nơi cư trú / Địa chỉ: ..."), object {tinh, xa, chiTietDuoiXa}
   (áp quy tắc địa chỉ ở <dinh_dang> để tách tinh/xa/diaChi)
 - PoA_SubjectDanToc = dân tộc người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh")
 
 THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm; số thẻ trùng hoặc gần trùng PoA_SubjectIdNumber,
 họ tên trùng người ủy quyền) → các field NguoiDuocCap_*, đọc từ BẢN IN trên thẻ (họ tên, số, ngày
-sinh, giới tính, ngày cấp, nơi cấp, "Nơi thường trú" object {quocGia, tinh, xa, diaChi}).
+sinh, giới tính, ngày cấp, nơi cấp, "Nơi thường trú" object {quocGia, tinh, xa, chiTietDuoiXa}).
 
 Section II — NGƯỜI ĐƯỢC ỦY QUYỀN (người ĐI NỘP hộ) → thẻ của người này thường được upload kèm
 → các field NguoiYeuCau_*, đọc từ BẢN IN trên thẻ. KHÔNG trích người được ủy quyền từ chữ trên

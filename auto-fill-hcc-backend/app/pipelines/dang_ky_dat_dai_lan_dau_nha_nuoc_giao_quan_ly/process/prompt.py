@@ -12,7 +12,7 @@ CHỦ HỒ SƠ (ChuHoSo_*) = tổ chức / người đứng tên Đơn Mẫu 15 
   gần đây ghi phường/xã MỚI; GCN đăng ký doanh nghiệp, quyết định, hợp đồng, thông báo thuế cũ ghi xã/huyện/tỉnh
   CŨ → ChuHoSo_DiaChi, ThuaDat_DiaChi ưu tiên giấy tờ ghi đơn vị MỚI. Vd Đơn "Lô C7, cụm công nghiệp Hòa Xuân,
   phường Hòa Xuân, thành phố Đà Nẵng" và GCN ĐKDN "Lô C7, Cụm CN Hòa Xuân, Phường Hòa Xuân, Quận Cẩm Lệ, Thành phố
-  Đà Nẵng" → ChuHoSo_DiaChi = {"tinh":"Thành phố Đà Nẵng","xa":"Phường Hòa Xuân","diaChi":"Lô C7, cụm công nghiệp
+  Đà Nẵng" → ChuHoSo_DiaChi = {"tinh":"Thành phố Đà Nẵng","xa":"Phường Hòa Xuân","chiTietDuoiXa":"Lô C7, cụm công nghiệp
   Hòa Xuân"}.
 ⚠ Điện thoại, email: ưu tiên Đơn / tờ khai hiện hành; số máy bàn trụ sở trên GCN đăng ký doanh nghiệp và số trên
   quyết định cũ xếp sau.

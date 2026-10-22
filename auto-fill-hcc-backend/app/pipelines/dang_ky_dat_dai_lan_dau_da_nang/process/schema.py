@@ -26,14 +26,14 @@ FIELDS: list[dict] = [
         "kế) → lấy NGƯỜI ĐƯỢC CỬ ĐẠI DIỆN đứng tên trong GCN. KHÔNG lấy người đã chết trong giấy chứng "
         "tử/trích lục khai tử."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ/nơi ở của CHỦ HỒ SƠ (người sử dụng đất/người "
-        "đại diện), object {quocGia,tinh,xa,diaChi}. ƯU TIÊN địa chỉ ghi trên GIẤY TỜ HỒ SƠ do người khai "
+        "đại diện), object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN địa chỉ ghi trên GIẤY TỜ HỒ SƠ do người khai "
         "lập: Tờ khai thuế ('Địa chỉ cư trú'/'Địa chỉ thường trú' — thường có đủ số nhà, tổ, phường/xã, "
         "tỉnh), Đơn cam kết ('Địa chỉ thường trú'), Đơn đăng ký Mẫu 15 (mục 1c 'Địa chỉ'). CHỈ dùng 'Nơi "
         "thường trú' trên CCCD/Căn cước khi các giấy tờ trên KHÔNG ghi địa chỉ — vì CCCD hay bị đọc lệch "
-        "hoặc còn ghi tên đơn vị hành chính CŨ. GOM đủ {tinh, xa, diaChi} từ nhiều giấy tờ: nếu Đơn M15 chỉ "
+        "hoặc còn ghi tên đơn vị hành chính CŨ. GOM đủ {tinh, xa, chiTietDuoiXa} từ nhiều giấy tờ: nếu Đơn M15 chỉ "
         "ghi số nhà thì lấy thêm phường/tỉnh từ Tờ khai thuế/Đơn cam kết. ⚠ TUYỆT ĐỐI KHÔNG lấy 'địa chỉ "
         "thửa đất/khu đất' (vị trí lô đất) làm địa chỉ người — dù trong hồ sơ chúng có thể trùng nhau. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ/thôn."},
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ/thôn."},
 ]
 
 # --- Nội dung nghiệp vụ: đề nghị đăng ký/cấp GCN (điền textarea "Nội dung yêu cầu giải quyết") ---
@@ -49,9 +49,9 @@ FIELDS += [
 # --- Thông tin thửa đất (nghiệp vụ — panel riêng của form) ---
 FIELDS += [
     {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ/vị trí THỬA ĐẤT (địa chỉ thửa đất/địa chỉ xây dựng), object "
-        "{quocGia,tinh,xa,diaChi}. Ưu tiên Đơn Mẫu 15 (Thửa đất đăng ký — Địa chỉ), rồi Hồ sơ đo đạc (Địa "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên Đơn Mẫu 15 (Thửa đất đăng ký — Địa chỉ), rồi Hồ sơ đo đạc (Địa "
         "chỉ thửa đất), giấy tờ nhà đất cũ (vị trí nhà đất). Đây là VỊ TRÍ LÔ ĐẤT — KHÔNG phải nơi thường "
-        "trú của người. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ."},
+        "trú của người. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ."},
     {"name": "ThuaDat_SoThua", "desc": "Số thửa đất (Thửa đất số). Ưu tiên Đơn Mẫu 15, rồi Hồ sơ đo đạc. "
         "Chỉ lấy số/ký hiệu thửa, KHÔNG kèm chữ 'thửa đất số'."},
     {"name": "ThuaDat_SoTo", "desc": "Số tờ bản đồ (Tờ bản đồ số). Ưu tiên Đơn Mẫu 15, rồi Hồ sơ đo đạc. "
@@ -77,13 +77,13 @@ FIELDS += [
         'hay ghi tắt "CCSQLHC TTXH" / "CCSVLHC TTXH" / "CCS QLHC về TTXH" / "Cục CSQLHC" → PHẢI ghi thành '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội". Thẻ căn cước mới ghi "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ của CHÍNH NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. Nếu người nộp CHÍNH LÀ người sử dụng đất/người kê khai trên hồ sơ (tự nộp) → lấy GIỐNG "
+        "chiTietDuoiXa}. Nếu người nộp CHÍNH LÀ người sử dụng đất/người kê khai trên hồ sơ (tự nộp) → lấy GIỐNG "
         "ChuHoSo_DiaChi: ƯU TIÊN Tờ khai thuế ('Địa chỉ cư trú'), Đơn cam kết ('Địa chỉ thường trú'), Đơn "
         "Mẫu 15; KHÔNG ưu tiên CCCD (CCCD hay đọc lệch/còn tên đơn vị hành chính cũ). Nếu là người ĐƯỢC ỦY "
         "QUYỀN/đại diện KHÁC → lấy địa chỉ Bên được ủy quyền/người đại diện trên Giấy ủy quyền/VB thỏa "
         "thuận (hoặc CCCD của chính người đó). ⚠ Giấy giới thiệu THƯỜNG KHÔNG có địa chỉ thường trú → nếu "
         "không có, BỎ TRỐNG toàn bộ (đừng đoán). TUYỆT ĐỐI KHÔNG lấy địa chỉ thửa đất, trụ sở tổ chức, hay "
-        "tỉnh của thửa đất làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/"
+        "tỉnh của thửa đất làm địa chỉ người nộp. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/"
         "đường/tổ/thôn."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên giấy tờ."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},

@@ -41,7 +41,7 @@ NGƯỜI NỘP THAY / ĐẠI DIỆN (DaiDien_*):
 ĐỊA CHỈ:
 - Nguoi_ThuongTru (nơi ở chủ hộ, từ CCCD/Đơn) và ThuaDat_DiaChi (vị trí THỬA ĐẤT đăng ký, từ Đơn đăng ký
   đất đai / Sơ đồ ranh giới / Trích lục bản đồ) là HAI địa chỉ KHÁC nhau — đừng gán trùng.
-- Tách object {tinh,xa,diaChi}: tinh = "Tỉnh …", xa = phường/xã, diaChi = số nhà/đường/thôn/xóm. Địa giới
+- Tách object {tinh,xa,chiTietDuoiXa}: tinh = "Tỉnh …", xa = phường/xã, chiTietDuoiXa = số nhà/đường/thôn/xóm. Địa giới
   đã sáp nhập → ưu tiên tên phường/xã MỚI (hiện hành) nếu giấy tờ có ghi.
 - ThuaDat_So / ThuaDat_ToBanDo: thửa đất số / tờ bản đồ số, từ Đơn/sơ đồ/trích lục.
 

@@ -88,6 +88,12 @@ khối là đính nhầm chỗ hết.
 Căn cứ vào TÊN CÔNG TRÌNH và CHỦ ĐẦU TƯ trong đơn/bản vẽ. Không chắc → trả "nha_o_rieng_le".
 </cong_trinh_nhanh>
 
+<chu_dau_tu>
+Với tài liệu building_permit_application, trả thêm khoá "chuDauTu": họ tên người đứng tên chủ đầu tư/chủ hộ
+ĐẦU TIÊN ở mục 1 của đơn, chép đúng chữ, viết hoa chữ cái đầu mỗi tiếng. Không đọc được tên → "".
+Tài liệu khác không có khoá này.
+</chu_dau_tu>
+
 <output_contract>
 Output đúng 1 JSON object, không bọc code fence.
 Sau JSON không output thêm ký tự nào.

@@ -52,7 +52,7 @@ EXTRA_RULES = """<critical_rules>
 
 <address_and_date_rules>
 1. Ngày tháng trả dd/mm/yyyy. "ngày 15 tháng 9 năm 2025" -> "15/09/2025".
-2. Địa chỉ object nếu dùng phải có dạng {quocGia,tinh,xa,diaChi}; diaChi không lặp xã/huyện/tỉnh.
+2. Địa chỉ object nếu dùng phải có dạng {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp xã/huyện/tỉnh.
 3. Với địa chỉ cơ sở/chủ hồ sơ dạng input text, có thể trả chuỗi đầy đủ để Python điền nguyên văn.
 </address_and_date_rules>
 

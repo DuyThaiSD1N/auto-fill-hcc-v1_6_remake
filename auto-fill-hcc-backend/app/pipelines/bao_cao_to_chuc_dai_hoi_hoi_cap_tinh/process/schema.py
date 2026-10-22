@@ -39,7 +39,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD của chủ hồ sơ, chép đúng (CCCD → Phiếu LLTP mục 8 'Nơi cấp'). "
         "KHÔNG lấy cơ quan cấp phiếu LLTP (Công an tỉnh/TP)."},
     {"name": "ChuHoSo_DiaChi", "desc": "Nơi thường trú của chủ hồ sơ (CCCD → Phiếu LLTP mục 9 → Sơ yếu lý lịch 'Nơi ở "
-        "hiện nay'), object {quocGia,tinh,xa,diaChi}. diaChi = số nhà, đường, tổ/thôn (KHÔNG kèm phường/tỉnh)."},
+        "hiện nay'), object {quocGia,tinh,xa,chiTietDuoiXa}. chiTietDuoiXa = số nhà, đường, tổ/thôn (KHÔNG kèm phường/tỉnh)."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại của chủ hồ sơ (Sơ yếu lý lịch 'Điện thoại' → cột SĐT của "
         "Danh sách dự kiến BCH ở dòng người này). Không có thì bỏ."},
     {"name": "ChuHoSo_Email", "desc": "Email của CHÍNH chủ hồ sơ nếu giấy tờ ghi. KHÔNG lấy email của cán bộ được cử "
@@ -53,7 +53,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp thẻ CCCD người nộp, chép đúng như in trên thẻ. Thẻ không in thì "
         "bỏ."},
     {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú / nơi cư trú trên thẻ CCCD người nộp, object {quocGia,tinh,"
-        "xa,diaChi}."},
+        "xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP nếu hồ sơ ghi cạnh đúng tên người đó (vd "
         "'Người liên hệ: ..., ĐT ...'). Không có thì bỏ."},
 ]

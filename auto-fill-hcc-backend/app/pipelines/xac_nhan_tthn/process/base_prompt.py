@@ -112,35 +112,35 @@ nộp trực tuyến). Khối này KHÔNG phải một giấy tờ trong hồ s�
    QLHC" / "quản lý hành chính về trật tự" thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ
    CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC
    SECURITY" thì trả "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
-6. Field địa chỉ trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<phường/xã/thị trấn>","diaChi":"<chi tiết>"}.
+6. Field địa chỉ trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<phường/xã/thị trấn>","chiTietDuoiXa":"<chi tiết>"}.
    Địa chỉ hành chính hiện hành CHỈ 2 cấp: XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn cấp huyện/quận).
    - tinh: tách tỉnh thành ra, phải đúng tên tỉnh của quốc gia Việt Nam.
    - xa: TÊN phường/xã/thị trấn — BẮT BUỘC tách riêng nếu địa chỉ có (vd "Phường Lâm Viên", "Xã Kỳ Khang"),
-     KHÔNG được gộp vào diaChi.
-   - diaChi: CHỈ cụm chi tiết nhỏ nhất đứng TRƯỚC xã/phường (số nhà/đường/tổ/tổ dân phố/khu/xóm/thôn/bản/ấp),
-     TUYỆT ĐỐI KHÔNG chứa tên xã/phường/huyện/tỉnh. Nếu không có phần chi tiết thì diaChi để TRỐNG.
-   - Nếu địa chỉ chỉ có "Xã X, Tỉnh Y" (không có phần chi tiết) → xa="Xã X", để diaChi trống; KHÔNG nhét tên xã
-     vào diaChi.
+     KHÔNG được gộp vào chiTietDuoiXa.
+   - chiTietDuoiXa: CHỈ cụm chi tiết nhỏ nhất đứng TRƯỚC xã/phường (số nhà/đường/tổ/tổ dân phố/khu/xóm/thôn/bản/ấp),
+     TUYỆT ĐỐI KHÔNG chứa tên xã/phường/huyện/tỉnh. Nếu không có phần chi tiết thì chiTietDuoiXa để TRỐNG.
+   - Nếu địa chỉ chỉ có "Xã X, Tỉnh Y" (không có phần chi tiết) → xa="Xã X", để chiTietDuoiXa trống; KHÔNG nhét tên xã
+     vào chiTietDuoiXa. Chỉ ghi tỉnh/thành phố (vd "TP Y", "Tỉnh Y") → chỉ trả tinh, xa và chiTietDuoiXa để trống.
    - Nếu nhiều giấy tờ ghi phường/xã KHÁC nhau do sáp nhập địa giới → ưu tiên tên MỚI/hiện hành.
    ĐỊA CHỈ CCCD/CMND KHÔNG CÓ TIỀN TỐ: CCCD/CMND thường ghi Nơi thường trú/Quê quán là một DÃY TÊN ngăn bằng dấu
    phẩy, KHÔNG có chữ "Xã/Phường/Thị trấn/Huyện/Quận/Tỉnh/Thành phố" đứng trước. Thứ tự luôn từ NHỎ đến LỚN:
    `[chi tiết], xã, huyện/quận, tỉnh/thành phố`. Phải PHÂN TÁCH bằng cách ĐẾM TỪ PHẦN CUỐI về đầu:
      • Phần CUỐI CÙNG = tỉnh/thành phố trực thuộc trung ương → tinh.
      • Phần SÁT NGAY TRƯỚC tỉnh = HUYỆN/QUẬN/THỊ XÃ/THÀNH PHỐ thuộc tỉnh → ĐÂY LÀ CẤP HUYỆN: BỎ HẲN, TUYỆT ĐỐI
-       không đưa vào xa cũng không đưa vào diaChi (biểu mẫu KHÔNG có ô cấp huyện).
+       không đưa vào xa cũng không đưa vào chiTietDuoiXa (biểu mẫu KHÔNG có ô cấp huyện).
      • Phần LIỀN TRƯỚC huyện = phường/xã/thị trấn → xa.
-     • MỌI phần còn lại phía trước xã (số nhà/đường/xóm/thôn/tổ dân phố/khu phố/ấp/bản/khối...) → diaChi; nếu
-       không có thì diaChi để trống.
+     • MỌI phần còn lại phía trước xã (số nhà/đường/xóm/thôn/tổ dân phố/khu phố/ấp/bản/khối...) → chiTietDuoiXa; nếu
+       không có thì chiTietDuoiXa để trống.
    Ví dụ:
-     • "Xóm 3, Nghi Hoa, Nghi Lộc, Nghệ An"  →  tinh="Nghệ An", xa="Nghi Hoa", diaChi="Xóm 3" (BỎ huyện "Nghi Lộc").
-     • "Vĩnh Thành, Chợ Lách, Bến Tre"        →  tinh="Bến Tre", xa="Vĩnh Thành", diaChi="" (BỎ huyện "Chợ Lách";
+     • "Xóm 3, Nghi Hoa, Nghi Lộc, Nghệ An"  →  tinh="Nghệ An", xa="Nghi Hoa", chiTietDuoiXa="Xóm 3" (BỎ huyện "Nghi Lộc").
+     • "Vĩnh Thành, Chợ Lách, Bến Tre"        →  tinh="Bến Tre", xa="Vĩnh Thành", chiTietDuoiXa="" (BỎ huyện "Chợ Lách";
        không có phần chi tiết).
-     • "Số 24 Trần Phú, Lộc Thọ, Nha Trang, Khánh Hòa" → tinh="Khánh Hòa", xa="Lộc Thọ", diaChi="Số 24 Trần Phú"
+     • "Số 24 Trần Phú, Lộc Thọ, Nha Trang, Khánh Hòa" → tinh="Khánh Hòa", xa="Lộc Thọ", chiTietDuoiXa="Số 24 Trần Phú"
        (BỎ cấp huyện "Nha Trang").
    LƯU Ý: tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản", "Nậm", "Mường", "Pa"... (một xã có thể tên là "Bản
    ..."); TUYỆT ĐỐI KHÔNG coi phần đó là chi tiết chỉ vì bắt đầu bằng "Bản" — VỊ TRÍ trong chuỗi (áp chót, ngay
    trước cấp huyện/tỉnh) mới quyết định đó là xã. BẮT BUỘC điền xa khi chuỗi có phần cấp xã; KHÔNG để xa trống rồi
-   dồn cả xã + huyện vào diaChi.
+   dồn cả xã + huyện vào chiTietDuoiXa.
 </dinh_dang>
 
 <quy_tac_theo_giay>

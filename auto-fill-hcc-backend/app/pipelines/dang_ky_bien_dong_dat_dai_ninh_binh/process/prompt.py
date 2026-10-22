@@ -35,9 +35,9 @@ EXTRA_RULES = """
 8. Số CCCD/CMND bỏ khoảng trắng, dấu chấm, dấu gạch, chỉ giữ chữ số. Số điện thoại chỉ trả khi tài
    liệu ghi cho đúng vai.
 9. Địa chỉ CHỦ HỒ SƠ ưu tiên: mục 'Địa chỉ' của người sử dụng đất trên Đơn Mẫu số 18 -> CCCD đúng
-   người -> địa chỉ BÊN ỦY QUYỀN -> Giấy chứng nhận. Giữ đủ thôn/xóm/tổ/số nhà trong diaChi; địa chỉ
+   người -> địa chỉ BÊN ỦY QUYỀN -> Giấy chứng nhận. Giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa; địa chỉ
    Giấy chứng nhận rút gọn không được ghi đè. Có ủy quyền thì NguoiNop_NoiCuTru lấy của BÊN ĐƯỢC ỦY
-   QUYỀN. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả diaChi.
+   QUYỀN. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả chiTietDuoiXa.
 10. Don_NoiDungDeNghi lấy NGUYÊN VĂN phần người dân khai tại mục 'Nội dung biến động'/'Đề nghị'/nội dung
    yêu cầu giải quyết của Đơn đăng ký biến động đất đai, tài sản gắn liền với đất Mẫu số 18 (đề nghị
    đăng ký biến động: chuyển đổi/chuyển nhượng/thừa kế/tặng cho/góp vốn/cho thuê quyền sử dụng đất,

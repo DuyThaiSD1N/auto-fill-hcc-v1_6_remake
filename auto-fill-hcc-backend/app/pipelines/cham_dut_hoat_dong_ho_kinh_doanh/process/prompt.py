@@ -26,15 +26,15 @@ QUY TẮC BẮT BUỘC:
 4. ChuHo lấy mục thông tin chủ hộ trên GCN. Với địa chỉ, form hỏi nơi ở hiện tại nên ưu tiên dòng "Nơi ở hiện tại", không lấy dòng "Nơi thường trú" nếu hai dòng khác nhau.
 5. NguoiNop chỉ lấy người ký ở cuối Thông báo hoặc người được ủy quyền có căn cứ. Có thể bổ sung nhân thân còn thiếu từ ChuHo/CCCD khi khớp đồng thời họ tên hoặc số định danh.
    - ĐỊA CHỈ NguoiNop: Sau khi xác định người nộp (qua họ tên hoặc số định danh), TÌM trong Cccd_DanhSach
-     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy diaChi từ "Nơi thường trú"
+     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy chiTietDuoiXa từ "Nơi thường trú"
      trên thẻ CCCD đó điền vào NguoiNop.diaChi.
    - Ví dụ: Thông báo ký bởi "NGUYỄN VĂN A" (khác chủ hộ); hồ sơ có CCCD của người này
      ghi "Nơi thường trú: Tổ 1, Phường X, Quận Y, Thành phố Z" → NguoiNop.diaChi =
-     {quocGia:"Việt Nam", tinh:"Thành phố Z", xa:"Phường X", diaChi:"Tổ 1"}.
+     {quocGia:"Việt Nam", tinh:"Thành phố Z", xa:"Phường X", chiTietDuoiXa:"Tổ 1"}.
    - KHÔNG lấy địa chỉ từ Quê quán, từ GCN hay từ phần chủ hộ cho NguoiNop khi đã có CCCD khớp.
 6. Cccd_DanhSach là field BẮT BUỘC khi hồ sơ có thẻ căn cước vật lý. Với MỖI file/khối OCR có
    "CĂN CƯỚC CÔNG DÂN" hoặc "Citizen Identity Card", phải trả đúng một object gồm tối thiểu
-   hoTen, soDinhDanh và diaChi đọc từ "Nơi thường trú/Place of residence". Không được bỏ qua
+   hoTen, soDinhDanh và chiTietDuoiXa đọc từ "Nơi thường trú/Place of residence". Không được bỏ qua
    thẻ chỉ vì người trên thẻ khác người ký Thông báo. Không lấy số CCCD chỉ được nhắc trong
    Thông báo/GCN làm một thẻ căn cước giả.
    ⚠️ ĐỊA CHỈ TỪ CCCD - QUY TẮC BẮT BUỘC:
@@ -52,11 +52,11 @@ QUY TẮC BẮT BUỘC:
     giấy ủy quyền chỉ bù các field thẻ không có (vd số điện thoại).
   + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
     căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
-  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
-    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,chiTietDuoiXa} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → chiTietDuoiXa="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
   + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
     đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
-8. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
+8. Địa chỉ object luôn là {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
 
 Không trả tên field UI ctl00$C$...; chỉ trả field compact trong schema.
 """

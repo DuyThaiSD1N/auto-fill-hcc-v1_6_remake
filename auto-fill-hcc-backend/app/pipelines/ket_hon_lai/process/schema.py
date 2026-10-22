@@ -16,7 +16,7 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người cha' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch bên nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNam_NoiCuTru_TrongNuoc",
-     "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối chồng/bên nam "
+     "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN mục 'Nơi cư trú' của khối chồng/bên nam "
              "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
              "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
 
@@ -31,7 +31,7 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người mẹ' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_NoiCuTru_TrongNuoc",
-     "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối vợ/bên nữ "
+     "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN mục 'Nơi cư trú' của khối vợ/bên nữ "
              "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
              "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
 

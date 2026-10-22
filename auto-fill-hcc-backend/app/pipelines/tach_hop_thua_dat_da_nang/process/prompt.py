@@ -35,8 +35,8 @@ KHÔNG PHẢI chủ hồ sơ và KHÔNG PHẢI người nộp — tuyệt đối
 ⚠ CHỦ HỒ SƠ TỔ CHỨC (công ty): ChuHoSo_LoaiChuThe='Tổ chức'; ChuHoSo_HoTen=tên đầy đủ công ty (lấy ở Giấy
 chứng nhận ĐKKD / Giấy chứng nhận QSDĐ / Đơn đề nghị). Người nộp khi đó thường là cá nhân được công ty ủy quyền.
 
-ĐỊA CHỈ — có HAI địa chỉ người, tách RIÊNG, object {quocGia,tinh,xa,diaChi} (tinh='Tỉnh/Thành phố …',
-xa=phường/xã, diaChi=số nhà/đường/thôn; nếu chỉ ghi tới cấp phường thì để diaChi trống):
+ĐỊA CHỈ — có HAI địa chỉ người, tách RIÊNG, object {quocGia,tinh,xa,chiTietDuoiXa} (tinh='Tỉnh/Thành phố …',
+xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn; nếu chỉ ghi tới cấp phường thì để chiTietDuoiXa trống):
 - ChuHoSo_DiaChi = địa chỉ nơi ở của CHỦ ĐẤT. Lấy ở mục 1c 'Địa chỉ' của người sử dụng đất trong Đơn đề
   nghị (Mẫu 21) và dòng 'địa chỉ' của người sử dụng đất trong Bản vẽ (Mẫu 22, mục II). BẮT BUỘC trích khi
   đơn có ghi.

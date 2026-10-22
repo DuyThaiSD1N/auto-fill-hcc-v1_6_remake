@@ -11,7 +11,7 @@ thửa đất, tài sản) và bước 4–5 chưa có DOM nên chưa map.
 LLM chỉ trích dữ kiện nguồn; Python chọn nguồn theo cột "Nguồn ưu tiên" và sinh field UI.
 """
 
-_AREA_DESC = "object {quocGia,tinh,xa,diaChi}; địa chỉ 2 cấp (xã/phường → tỉnh), diaChi là số nhà/tổ/thôn."
+_AREA_DESC = "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ 2 cấp (xã/phường → tỉnh), chiTietDuoiXa là số nhà/tổ/thôn."
 
 FIELDS: list[dict] = [
     {

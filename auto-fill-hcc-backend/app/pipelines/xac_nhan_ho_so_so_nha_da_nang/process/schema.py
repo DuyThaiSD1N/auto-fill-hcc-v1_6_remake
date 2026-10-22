@@ -42,8 +42,8 @@ FIELDS += [
     {"name": "NguoiNop_NoiCap", "desc": 'Cơ quan cấp CCCD NGƯỜI NỘP. CCCD gắn chip cấp từ 2021: "Cục Cảnh '
         'sát quản lý hành chính về trật tự xã hội"; thẻ căn cước mới: "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú/LIÊN HỆ hiện tại của NGƯỜI NỘP, object "
-        "{quocGia,tinh,xa,diaChi}. Lấy ở CCCD (Nơi thường trú) / Đơn đề nghị (địa chỉ hiện tại/tổ dân phố). "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ dân phố (KHÔNG kèm phường/xã/tỉnh). "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở CCCD (Nơi thường trú) / Đơn đề nghị (địa chỉ hiện tại/tổ dân phố). "
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ dân phố (KHÔNG kèm phường/xã/tỉnh). "
         "ĐÂY LÀ ĐỊA CHỈ LIÊN HỆ — KHÁC địa chỉ xin cấp số nhà (ChuHoSo_DiaChiXinCap)."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP (thường ghi tay dưới phần ký tên trên "
         "Đơn đề nghị). Chỉ chữ số."},

@@ -29,8 +29,8 @@ FIELDS: list[dict] = [
              'không có ảnh CCCD.'},
     {"name": "NguoiNop_QuocTich", "desc": 'Quốc tịch người nộp (CCCD: Quốc tịch). Mặc định "Việt Nam".'},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN địa danh MỚI ở Đơn đề nghị "
-             "(2026, sau sáp nhập) hơn GCNKNCM cũ (2021). tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số "
+     "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN địa danh MỚI ở Đơn đề nghị "
+             "(2026, sau sáp nhập) hơn GCNKNCM cũ (2021). tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số "
              "nhà/thôn/tổ (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp — Đơn đề nghị ('Điện thoại'). Chỉ chữ số."},
 

@@ -35,7 +35,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ chủ hồ sơ, object {quocGia,tinh,xa,diaChi}. Nếu mục I Mẫu số 01 có Nơi cư trú/Địa chỉ liên lạc thì BẮT BUỘC lấy trọn địa chỉ tại mục I, không lấy địa chỉ CCCD. Tách theo thứ tự chi tiết → xã/phường → tỉnh; CCCD chỉ bổ sung khi cả hai dòng địa chỉ mục I đều trống.",
+        "desc": "Địa chỉ chủ hồ sơ, object {quocGia,tinh,xa,chiTietDuoiXa}. Nếu mục I Mẫu số 01 có Nơi cư trú/Địa chỉ liên lạc thì BẮT BUỘC lấy trọn địa chỉ tại mục I, không lấy địa chỉ CCCD. Tách theo thứ tự chi tiết → xã/phường → tỉnh; CCCD chỉ bổ sung khi cả hai dòng địa chỉ mục I đều trống.",
     },
     {
         "name": "ChuHoSo_DienThoai",
@@ -71,7 +71,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ liên hệ người nộp, object {quocGia,tinh,xa,diaChi}. Ưu tiên mục II Mẫu số 01; CCCD chỉ bổ sung khi mục II thiếu.",
+        "desc": "Địa chỉ liên hệ người nộp, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên mục II Mẫu số 01; CCCD chỉ bổ sung khi mục II thiếu.",
     },
     {
         "name": "NguoiNop_DienThoai",

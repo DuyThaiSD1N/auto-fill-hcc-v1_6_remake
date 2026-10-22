@@ -18,15 +18,15 @@ _PERSON_FIELDS = [
     ("NoiCap", 'Nơi cấp CCCD {who}. Mặt sau CCCD ghi "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ '
         'HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an".'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who} trên {src}, object {{quocGia,tinh,xa,diaChi}}. tinh='Tỉnh/Thành phố "
-        "…', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/huyện/tỉnh)."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who} trên {src}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. tinh='Tỉnh/Thành phố "
+        "…', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/huyện/tỉnh)."),
 ]
 
 FIELDS: list[dict] = [
     {"name": "CoSo_Ten", "desc": f"Tên cơ sở thông báo — dòng 'Tên cơ sở thông báo' của {_TB_SRC} (vd 'Khoa "
         "Nhi, bệnh viện đa khoa Sìn Hồ'). Chép nguyên văn."},
     {"name": "CoSo_DiaChi", "desc": f"ĐỊA CHỈ cơ sở — dòng 'Địa chỉ' của {_TB_SRC}, object "
-        "{quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/bản/tổ "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/bản/tổ "
         "(KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "CoSo_NguoiDungDau", "desc": f"Họ tên NGƯỜI ĐỨNG ĐẦU CƠ SỞ — dòng 'Người đứng đầu cơ sở' của "
         f"{_TB_SRC}, hoặc người ký dưới chữ GIÁM ĐỐC. BỎ học hàm/chức danh đứng trước tên (BS, BS CK1, BSCKII, "

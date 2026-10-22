@@ -24,8 +24,8 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCapCccd", "desc": 'Nơi cấp CCCD/CMND: dòng chức danh người ký mặt sau thẻ ("CỤC TRƯỞNG '
         'CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã '
         'hội"; "BỘ CÔNG AN" → "Bộ Công an"). Không có thẻ → BỎ.'},
-    {"name": "NguoiNop_ThuongTru", "desc": f"Địa chỉ người xin gia hạn, object {{quocGia,tinh,xa,diaChi}} — "
-        f"{_MAU07} mục 2 'Địa chỉ' (địa danh mới), hoặc CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi="
+    {"name": "NguoiNop_ThuongTru", "desc": f"Địa chỉ người xin gia hạn, object {{quocGia,tinh,xa,chiTietDuoiXa}} — "
+        f"{_MAU07} mục 2 'Địa chỉ' (địa danh mới), hoặc CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa="
         "số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "NguoiNop_DienThoai", "desc": f"Số điện thoại người xin gia hạn — {_MAU07} mục 3. Chỉ chữ số."},
     {"name": "NguoiNop_Email", "desc": f"Email người xin gia hạn nếu {_MAU07} có ghi; trống thì BỎ."},

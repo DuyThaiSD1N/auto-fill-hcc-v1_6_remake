@@ -19,8 +19,8 @@ EXTRA_RULES = """<critical_rules>
 <nguoi_khai>
 1. ToKhai_HoTen lấy dòng "Ông (bà)"; ToKhai_QuanHeVoiLietSi lấy dòng "Mối quan hệ với liệt sĩ" (vd "Cháu ruột").
 2. ToKhai_SoDinhDanh, ToKhai_NgayCap, ToKhai_NoiCap lấy dòng "CCCD/CMND số ... Ngày cấp ... Nơi cấp ...".
-3. ToKhai_NoiThuongTru là object {quocGia,tinh,xa,diaChi} từ dòng "thường trú tại". quocGia mặc định "Việt Nam";
-   tinh giữ đủ "Tỉnh ..."/"Thành phố ..."; xa giữ đủ "Xã ..."/"Phường ..."; diaChi chỉ giữ thôn/tổ/số nhà/đường.
+3. ToKhai_NoiThuongTru là object {quocGia,tinh,xa,chiTietDuoiXa} từ dòng "thường trú tại". quocGia mặc định "Việt Nam";
+   tinh giữ đủ "Tỉnh ..."/"Thành phố ..."; xa giữ đủ "Xã ..."/"Phường ..."; chiTietDuoiXa chỉ giữ thôn/tổ/số nhà/đường.
 4. ToKhai_LoaiGiayTo mặc định "CCCD" nếu giấy tờ là căn cước công dân.
 </nguoi_khai>
 
@@ -39,12 +39,12 @@ EXTRA_RULES = """<critical_rules>
 
 <cccd>
 1. Person1_NgayCap lấy ở mặt sau CCCD, KHÔNG lấy ngày sinh/ngày hết hạn.
-2. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
+2. Person1_NoiCuTru là object {quocGia,tinh,xa,chiTietDuoiXa}.
 </cccd>
 
 <output_examples>
 Đúng:
-{"fields":{"ToKhai_HoTen":"Nguyễn Văn P","ToKhai_QuanHeVoiLietSi":"Cháu ruột","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","diaChi":""},"LietSi_HoTen":"Nguyễn Văn M","ToKhai_NguoiCungDi":[{"hoTen":"Nguyễn Văn B","ngaySinh":"03/02/1967","soGiayTo":"027067010265","ngayCap":"09/05/2021","moiQuanHe":"Em trai liệt sĩ"}]}}
+{"fields":{"ToKhai_HoTen":"Nguyễn Văn P","ToKhai_QuanHeVoiLietSi":"Cháu ruột","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","chiTietDuoiXa":""},"LietSi_HoTen":"Nguyễn Văn M","ToKhai_NguoiCungDi":[{"hoTen":"Nguyễn Văn B","ngaySinh":"03/02/1967","soGiayTo":"027067010265","ngayCap":"09/05/2021","moiQuanHe":"Em trai liệt sĩ"}]}}
 
 Sai:
 {"fields":{"data[fullname1]":"Nguyễn Văn M","qheLSi":"Cháu ruột"}}

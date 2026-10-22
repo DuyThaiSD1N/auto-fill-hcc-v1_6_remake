@@ -16,7 +16,7 @@ yêu cầu. Thứ tự ưu tiên theo file mapping: CCCD > Phiếu 03a > GCN.
 from app.pipelines.giao_thue_dat_lao_cai.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn."
 )
 
@@ -88,9 +88,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD của người yêu cầu xóa ('Nơi cấp' trên Phiếu 03a hoặc chức danh người ký mặt sau CCCD), đi cùng đúng số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của người yêu cầu xóa, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN dòng 'Địa chỉ' ở "
+        "desc": "Địa chỉ của người yêu cầu xóa, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN dòng 'Địa chỉ' ở "
                 "mục 1 Phiếu 03a (ghi theo đơn vị hành chính MỚI) hơn 'Địa chỉ thường trú' trên GCN (đơn vị "
-                "hành chính cũ, trước sắp xếp). Giữ đủ số nhà/đường/tổ dân phố/thôn trong diaChi. ĐÂY KHÔNG "
+                "hành chính cũ, trước sắp xếp). Giữ đủ số nhà/đường/tổ dân phố/thôn trong chiTietDuoiXa. ĐÂY KHÔNG "
                 "PHẢI địa chỉ thửa đất ghi ở mục II của GCN.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại của người yêu cầu xóa ở mục 1 Phiếu 03a, chỉ chữ số."},
@@ -107,7 +107,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Không có ủy quyền thì sao chép "
+        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Không có ủy quyền thì sao chép "
                 "NGUYÊN VẸN ChuHoSo_NoiCuTru; có ủy quyền thì lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Không có ủy quyền thì dùng số ở mục 1 Phiếu 03a."},

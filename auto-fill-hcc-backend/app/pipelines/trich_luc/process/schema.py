@@ -18,7 +18,7 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "Nyc_NoiCuTru",
      "desc": "Địa chỉ cư trú/thường trú trên CCCD của người yêu cầu, "
-             "object {quocGia,tinh,xa,diaChi}. Với chuỗi 3 cấp hành chính "
+             "object {quocGia,tinh,xa,chiTietDuoiXa}. Với chuỗi 3 cấp hành chính "
              "'[chi tiết], [xã], [huyện], [tỉnh]': xa là cụm [xã] ngay sau chi tiết; "
              "bỏ cụm [huyện] dù OCR không ghi chữ 'huyện'."},
 
@@ -29,7 +29,7 @@ FIELDS: list[dict] = [
              "ở phần đầu). KHÔNG lấy tên người được cấp bản sao ở block 'cho người có tên dưới đây'."},
     {"name": "TkNyc_NoiCuTru",
      "desc": "Nơi cư trú của NGƯỜI YÊU CẦU ghi trên TỜ KHAI (dòng 'Nơi cư trú' ở phần đầu, TRƯỚC "
-             "'cho người có tên dưới đây'), object {quocGia,tinh,xa,diaChi}; bỏ cấp huyện."},
+             "'cho người có tên dưới đây'), object {quocGia,tinh,xa,chiTietDuoiXa}; bỏ cấp huyện."},
     {"name": "TkNyc_LoaiGiayToTuyThan",
      "desc": "Loại giấy tờ tùy thân của NGƯỜI YÊU CẦU trên TỜ KHAI (Căn cước/Căn cước công dân/CMND/Hộ chiếu)."},
     {"name": "TkNyc_SoGiayToTuyThan",
@@ -77,7 +77,7 @@ FIELDS: list[dict] = [
     {"name": "ToKhai_NoiCapGiayToTuyThan",
      "desc": "Cơ quan cấp giấy tờ tùy thân trong block người được cấp trên TỜ KHAI."},
     {"name": "ToKhai_NoiCuTru",
-     "desc": "Nơi cư trú trong block người được cấp trên TỜ KHAI, object {quocGia,tinh,xa,diaChi}."},
+     "desc": "Nơi cư trú trong block người được cấp trên TỜ KHAI, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "ToKhai_CoQuanDangKy",
      "desc": "Cơ quan ở mục 'Đã đăng ký tại' trên TỜ KHAI CẤP BẢN SAO."},
     {"name": "ToKhai_So", "desc": "Số đăng ký ghi sau mục 'Đã đăng ký tại' trên TỜ KHAI."},
@@ -140,13 +140,13 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "ChuThe_NoiCuTru",
      "desc": "Địa chỉ cư trú/thường trú trên CCCD của chính người được đăng ký, "
-             "object {quocGia,tinh,xa,diaChi}. Với chuỗi 3 cấp hành chính "
+             "object {quocGia,tinh,xa,chiTietDuoiXa}. Với chuỗi 3 cấp hành chính "
              "'[chi tiết], [xã], [huyện], [tỉnh]': xa là cụm [xã] ngay sau chi tiết; "
              "bỏ cụm [huyện] dù OCR không ghi chữ 'huyện'."},
 
     {"name": "HoTich_NoiCuTru",
      "desc": "Nơi cư trú của người được đăng ký trên CHÍNH giấy hộ tịch đính kèm, "
-             "object {quocGia,tinh,xa,diaChi}; không lấy từ TỜ KHAI; "
+             "object {quocGia,tinh,xa,chiTietDuoiXa}; không lấy từ TỜ KHAI; "
              "riêng giấy kết hôn lấy nơi cư trú của người chồng/bên nam."},
     {"name": "HoTich_NguoiThan",
      "desc": "Những người thân của NGƯỜI ĐƯỢC ĐĂNG KÝ mà CHÍNH giấy hộ tịch đính kèm có ghi tên, "

@@ -46,7 +46,7 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiDeNghi_DiaChi",
         "desc": "Địa chỉ liên lạc ở Đơn 04; đơn để trống thì lấy nơi cư trú/nơi thường trú trên CCCD. "
-                "Object {tinh,xa,diaChi}. KHÔNG lấy nơi lập đơn ('Phong Nha, ngày…'), nơi chứng thực hay "
+                "Object {tinh,xa,chiTietDuoiXa}. KHÔNG lấy nơi lập đơn ('Phong Nha, ngày…'), nơi chứng thực hay "
                 "địa chỉ trường học thay cho địa chỉ liên lạc.",
     },
     {

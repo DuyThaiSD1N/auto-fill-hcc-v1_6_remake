@@ -17,8 +17,8 @@ viên gia đình, hình thức đăng ký.
   Trần Xuân Lê" nhưng nơi ở hiện tại "123/16 Trần Xuân Lê"). Nếu đơn KHÔNG tách riêng nơi ở hiện tại, để
   trống field này. Ngược lại, đơn để trống mục 6 và hồ sơ không có CCCD thì bỏ NguoiNop_ThuongTru — đừng
   copy nơi ở hiện tại sang, mapper tự suy.
-Tách mỗi địa chỉ thành object {quocGia,tinh,xa,diaChi}: tinh='Tỉnh/Thành phố …', xa=phường/xã,
-diaChi=số nhà/đường (KHÔNG kèm phường/xã/tỉnh).
+Tách mỗi địa chỉ thành object {quocGia,tinh,xa,chiTietDuoiXa}: tinh='Tỉnh/Thành phố …', xa=phường/xã,
+chiTietDuoiXa=số nhà/đường (KHÔNG kèm phường/xã/tỉnh).
 
 HÌNH THỨC (Don_HinhThuc): đọc TIÊU ĐỀ tờ đơn — "ĐƠN ĐĂNG KÝ THUÊ NHÀ Ở XÃ HỘI" → "Thuê"; "…THUÊ MUA…" →
 "Thuê mua"; "…MUA…" → "Mua". Chỉ MỘT hình thức.

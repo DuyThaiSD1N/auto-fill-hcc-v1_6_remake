@@ -23,7 +23,7 @@ _PERSON_SUB = {
     "SoGiayTo": "Số giấy tờ tùy thân nếu khác số định danh.",
     "NgayCapGiayTo": "Ngày cấp giấy tờ tùy thân, dd/mm/yyyy. CCCD khớp người này đã được upload thì BẮT BUỘC trả.",
     "NoiCapGiayTo": "Nơi cấp/cơ quan cấp giấy tờ tùy thân. CCCD khớp người này đã được upload thì BẮT BUỘC trả.",
-    "NoiCuTru": "Nơi cư trú, object {quocGia,tinh,xa,diaChi}. Nếu CCCD khớp người này đã được upload thì BẮT BUỘC lấy nơi thường trú trên CCCD, KHÔNG lấy địa chỉ cũ trên giấy hộ tịch.",
+    "NoiCuTru": "Nơi cư trú, object {quocGia,tinh,xa,chiTietDuoiXa}. Nếu CCCD khớp người này đã được upload thì BẮT BUỘC lấy nơi thường trú trên CCCD, KHÔNG lấy địa chỉ cũ trên giấy hộ tịch.",
 }
 
 
@@ -32,7 +32,7 @@ def _person_fields(prefix: str, who: str) -> list[dict]:
     for sub, desc in _PERSON_SUB.items():
         if prefix == "ChuThe" and sub == "NoiCuTru":
             desc = (
-                "Nơi cư trú, object {quocGia,tinh,xa,diaChi}. Thứ tự ưu tiên: "
+                "Nơi cư trú, object {quocGia,tinh,xa,chiTietDuoiXa}. Thứ tự ưu tiên: "
                 "khối người được thay đổi trên TỜ KHAI cải chính > CCCD khớp chủ thể "
                 "> giấy tờ hộ tịch gốc."
             )
@@ -47,7 +47,7 @@ FIELDS: list[dict] = [
             "BẮT BUỘC trả một phần tử cho MỖI CCCD/CMND đã upload; không bỏ qua thẻ nào. "
             "Giá trị là array object [{HoTen,SoDinhDanh,NgaySinh,GioiTinh,QuocTich,"
             "NgayCap,NoiCap,NoiCuTru}]. Mỗi object chỉ chứa dữ liệu của đúng một thẻ; "
-            "NoiCuTru={quocGia,tinh,xa,diaChi} lấy nơi thường trú trên thẻ."
+            "NoiCuTru={quocGia,tinh,xa,chiTietDuoiXa} lấy nơi thường trú trên thẻ."
         ),
     },
     
@@ -88,7 +88,7 @@ FIELDS: list[dict] = [
 
     {"name": "NguoiYeuCau_NoiCuTru",
      "desc": "Nơi cư trú người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Nơi cư trú' hoặc 'Nơi thường trú', "
-             "object {quocGia,tinh,xa,diaChi}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
+             "object {quocGia,tinh,xa,chiTietDuoiXa}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
              "trên CCCD dù CCCD viết rõ hơn."},
 
     {"name": "NguoiYeuCau_QuanHe",

@@ -36,8 +36,8 @@ FIELDS: list[dict] = [
     {"name": "DanhMucHoSo", "desc": "Mảng giấy tờ CÓ trong bộ hồ sơ tải lên, mỗi phần tử một chuỗi 'Tên giấy tờ – "
         "Số: ..., ngày ...' (bỏ phần số/ngày nếu giấy không ghi). Thứ tự: Đơn → Biên bản họp → Nghị quyết → Danh "
         "sách BCH → Đề án → Điều lệ → Sơ yếu lý lịch / Phiếu LLTP. KHÔNG liệt kê CCCD/căn cước."},
-    {"name": "TruSo_DiaChi", "desc": "Địa chỉ trụ sở của hội sau thay đổi, object {quocGia,tinh,xa,diaChi}. Nguồn: "
-        "Đề án mục 'Địa chỉ đặt trụ sở' → Dự thảo Điều lệ điều 'trụ sở'. diaChi = tên công trình/số nhà/đường "
+    {"name": "TruSo_DiaChi", "desc": "Địa chỉ trụ sở của hội sau thay đổi, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: "
+        "Đề án mục 'Địa chỉ đặt trụ sở' → Dự thảo Điều lệ điều 'trụ sở'. chiTietDuoiXa = tên công trình/số nhà/đường "
         "(KHÔNG kèm phường/tỉnh)."},
     {"name": "NguoiKy_TMBCH", "desc": "Họ tên người ký 'TM. BAN CHẤP HÀNH' trên Đơn đề nghị (Nghị quyết / Đề án nếu "
         "Đơn không có), viết hoa chữ cái đầu mỗi từ."},
@@ -57,7 +57,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Nơi cấp CCCD của chủ hồ sơ, chép đúng (vd 'Bộ Công an'). KHÔNG lấy cơ quan "
         "cấp phiếu LLTP (Công an tỉnh/TP)."},
     {"name": "ChuHoSo_DiaChi", "desc": "Nơi thường trú của chủ hồ sơ (CCCD → Phiếu LLTP mục 9), object {quocGia,"
-        "tinh,xa,diaChi}."},
+        "tinh,xa,chiTietDuoiXa}."},
     {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch của chủ hồ sơ (vd 'Việt Nam')."},
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên in trên thẻ CCCD của NGƯỜI NỘP (xem nguoi_nop_context) — không có "
         "thẻ đó thì bỏ."},
@@ -67,7 +67,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp thẻ CCCD người nộp, chép đúng như in trên thẻ. Thẻ không in thì "
         "bỏ."},
     {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú / nơi cư trú trên thẻ CCCD người nộp, object {quocGia,tinh,"
-        "xa,diaChi}."},
+        "xa,chiTietDuoiXa}."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

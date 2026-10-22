@@ -51,14 +51,14 @@ EXTRA_RULES = """
 9. QUY TẮC NƠI CƯ TRÚ:
    - Ưu tiên nguồn cho ChuHoSo_NoiCuTru: mục 'Thường trú tại'/'Nơi cư trú' trên Tờ khai đề nghị ->
      địa chỉ đầy đủ trên CCCD đúng người -> địa chỉ trong văn bản ủy quyền. Tờ khai/CCCD có đủ tổ
-     dân phố/thôn/xóm/số nhà thì bắt buộc giữ trong diaChi; địa chỉ rút gọn trong văn bản ủy quyền
+     dân phố/thôn/xóm/số nhà thì bắt buộc giữ trong chiTietDuoiXa; địa chỉ rút gọn trong văn bản ủy quyền
      không được ghi đè bản đầy đủ.
    - KHÔNG lấy địa chỉ cơ sở hỏa táng, địa chỉ cơ quan nhận tờ khai hay nơi thường trú của NGƯỜI
      CHẾT làm nơi cư trú của chủ hồ sơ/người nộp.
    - Không có văn bản ủy quyền thì NguoiNop_NoiCuTru phải giống NGUYÊN VẸN ChuHoSo_NoiCuTru, kể cả
-     diaChi. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
-   - Địa chỉ trả object {quocGia,tinh,xa,diaChi}; không đưa huyện vào xa hoặc diaChi, không lặp
-     tỉnh/xã trong diaChi.
+     chiTietDuoiXa. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
+   - Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa huyện vào xa hoặc chiTietDuoiXa, không lặp
+     tỉnh/xã trong chiTietDuoiXa.
    - CCCD/CMND là nguồn CUỐI CÙNG cho nơi cư trú: thẻ cấp trước sắp xếp đơn vị hành chính thường
      còn ghi TỈNH/HUYỆN CŨ (tỉnh cũ đã sáp nhập vào tỉnh khác). Hễ ĐƠN/TỜ KHAI người dân lập đã ghi
      địa chỉ thì PHẢI theo đơn, tuyệt đối không để địa chỉ trên thẻ ghi đè — kể cả khi tên phường/xã
@@ -66,7 +66,7 @@ EXTRA_RULES = """
    - BẪY THƯỜNG GẶP: dòng địa chỉ trên ĐƠN hay viết LIỀN, KHÔNG có nhãn con, dạng
      "<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>"; trong khi CCCD có nhãn rõ nên DỄ đọc hơn.
      Đừng vì dễ mà quay sang CCCD. PHẢI tự tách chuỗi trên đơn: cụm CUỐI là tỉnh/thành phố, cụm ngay
-     TRƯỚC nó là xã/phường, phần còn lại cho vào diaChi (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
+     TRƯỚC nó là xã/phường, phần còn lại cho vào chiTietDuoiXa (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
    - Nếu TỈNH ghi trên ĐƠN khác TỈNH ghi trên CCCD thì LUÔN theo ĐƠN, không lấy tỉnh của thẻ.
 10. Don_NoiDungDeNghi lấy NGUYÊN VĂN nội dung đề nghị người dân khai ở cuối Tờ khai (câu 'đề nghị
    ... xem xét, hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng ...'). KHÔNG lấy tiêu đề thủ

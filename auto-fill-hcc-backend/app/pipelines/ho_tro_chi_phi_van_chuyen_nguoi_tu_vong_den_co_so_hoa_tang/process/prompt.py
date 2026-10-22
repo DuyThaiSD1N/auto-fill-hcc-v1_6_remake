@@ -37,8 +37,8 @@ EXTRA_RULES = """
    - ChuHoSo_NoiCuTru ưu tiên Đơn mục II.2.b 'Nơi thường trú' (cơ quan, tổ chức: mục II.1 'Địa chỉ'), rồi
      địa chỉ thường trú của bên đại diện gia đình trên Hợp đồng, cuối cùng mới tới CCCD (thẻ cấp trước sắp
      xếp đơn vị hành chính hay còn ghi quận/huyện cũ).
-   - Địa chỉ trả object {quocGia,tinh,xa,diaChi}; không đưa quận/huyện vào xa hoặc diaChi, không lặp
-     tỉnh/xã trong diaChi. Đơn ghi tắt 'Hải Châu, Tp Đà Nẵng' thì xa='Phường Hải Châu', tinh='Đà Nẵng'.
+   - Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa quận/huyện vào xa hoặc chiTietDuoiXa, không lặp
+     tỉnh/xã trong chiTietDuoiXa. Đơn ghi tắt 'Hải Châu, Tp Đà Nẵng' thì xa='Phường Hải Châu', tinh='Đà Nẵng'.
    - KHÔNG lấy địa chỉ cơ sở hỏa táng, địa điểm hỏa táng (Mục I.5), địa chỉ cơ quan nhận đơn ('Kính gửi')
      làm nơi cư trú của chủ hồ sơ/người nộp.
 10. Chỉ trả các key trong schema, không trả tên control UI data[...]. Bỏ field không có chứng cứ. Tuyệt đối

@@ -19,10 +19,10 @@ FIELDS: list[dict] = [
         "KHÔNG lấy bên THUÊ (doanh nghiệp/người đại diện bên thuê) trừ khi chính Đơn đứng tên bên thuê."},
     {"name": "ChuHoSo_MaSoThue", "desc": "Mã số thuế/mã số doanh nghiệp của CHỦ HỒ SƠ — CHỈ khi chủ hồ sơ là "
         "tổ chức. Chỉ chữ số."},
-    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN số "
+    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN số "
         "nhà/đường ở mục 'Địa chỉ' của Đơn Mẫu 18; phường/xã theo địa danh MỚI ở 'Nơi cư trú' của hợp đồng/văn "
         "bản công chứng (giấy tờ ghi '… (nay là phường …)' thì lấy phường MỚI); thiếu mới lấy 'Nơi thường trú' "
-        "trên CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ (KHÔNG kèm phường/tỉnh). "
+        "trên CCCD. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/tổ (KHÔNG kèm phường/tỉnh). "
         "Viết tắt 'TP Đà Nẵng' → 'Thành phố Đà Nẵng'. KHÔNG lấy địa chỉ thửa đất hay địa chỉ trụ sở bên thuê."},
 ]
 
@@ -55,7 +55,7 @@ FIELDS += [
         "Đơn, hoặc '… cấp ngày …' sau số căn cước trong hợp đồng."},
     {"name": "NguoiNop_NoiCap", "desc": 'Cơ quan cấp CCCD NGƯỜI NỘP, CHỈ khi CCCD ghi rõ, viết ĐẦY ĐỦ: "Cục '
         'Cảnh sát quản lý hành chính về trật tự xã hội" hoặc "Bộ Công an". Hợp đồng không ghi nơi cấp → bỏ.'},
-    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Tự nộp → GIỐNG "
+    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Tự nộp → GIỐNG "
         "ChuHoSo_DiaChi. Người được ủy quyền → địa chỉ của chính người đó trên văn bản ủy quyền/CCCD; không "
         "có thì bỏ. KHÔNG lấy địa chỉ thửa đất."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại — mục 'Điện thoại liên hệ' của Đơn Mẫu 18. Chỉ chữ số."},

@@ -25,7 +25,7 @@ GIẤY CHỨNG NHẬN — DÒNG CHỈNH LÝ:
 ĐỊA CHỈ:
 - Địa chỉ chủ hồ sơ là nơi thường trú — KHÔNG phải địa chỉ thửa đất (mục II Giấy chứng nhận), KHÔNG phải "Kính
   gửi: Chi nhánh Văn phòng đăng ký đất đai…".
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn Mậu A 4, xã Mậu A, tỉnh Lào Cai" → diaChi="Thôn Mậu A 4", xa="Mậu A",
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Thôn Mậu A 4, xã Mậu A, tỉnh Lào Cai" → chiTietDuoiXa="Thôn Mậu A 4", xa="Mậu A",
   tinh="Lào Cai". Giấy cũ còn cấp huyện → trả thêm huyen.
 
 THỬA ĐẤT (chỉ để gợi ý cho cán bộ, không điền form):

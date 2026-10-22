@@ -12,7 +12,7 @@ CCCD GẮN CHIP: NoiCapCCCD mặc định "Cục Cảnh sát quản lý hành ch
 "Cục Cảnh sát QLHC về TTXH" (hoặc không ghi rõ); thẻ căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an".
 
 ĐỊA CHỈ (đừng nhầm 3 khối):
-- ThuongTru = mục "Nơi thường trú" trên CCCD (mặt sau) — OBJECT {tinh,xa,diaChi}, giữ đủ số nhà/thôn/xóm
+- ThuongTru = mục "Nơi thường trú" trên CCCD (mặt sau) — OBJECT {tinh,xa,chiTietDuoiXa}, giữ đủ số nhà/thôn/xóm
   + phường/xã + tỉnh.
 - QueQuan = mục "Quê quán" trên CCCD — CHUỖI, KHÁC nơi thường trú.
 - DiaChiHienTai = CHỈ điền khi giấy tờ ghi RÕ mục "Nơi ở hiện tại" / "Chỗ ở hiện nay" KHÁC thường trú.
@@ -24,5 +24,5 @@ NGÀY dd/mm/yyyy: NgaySinh, NgayCapCCCD. Đọc đúng, KHÔNG bịa.
 
 Ví dụ output ĐÚNG:
 ```json
-{"fields":{"HoTen":"NGUYỄN VĂN A","GioiTinh":"Nam","NgaySinh":"01/01/1990","SoCCCD":"012345678901","NgayCapCCCD":"05/03/2021","NoiCapCCCD":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","QueQuan":"Xã X, huyện Y, tỉnh Z","ThuongTru":{"tinh":"Tỉnh Z","xa":"Xã X","diaChi":"Thôn 1"}}}
+{"fields":{"HoTen":"NGUYỄN VĂN A","GioiTinh":"Nam","NgaySinh":"01/01/1990","SoCCCD":"012345678901","NgayCapCCCD":"05/03/2021","NoiCapCCCD":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","QueQuan":"Xã X, huyện Y, tỉnh Z","ThuongTru":{"tinh":"Tỉnh Z","xa":"Xã X","chiTietDuoiXa":"Thôn 1"}}}
 ```"""

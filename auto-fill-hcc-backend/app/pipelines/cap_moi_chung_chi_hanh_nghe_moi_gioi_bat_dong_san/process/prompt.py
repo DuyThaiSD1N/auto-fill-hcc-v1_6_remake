@@ -16,7 +16,7 @@ NGƯỜI ĐỀ NGHỊ (NguoiDeNghi_*) = người đứng tên đơn (người d�
   NguoiDeNghi_DiaChiThuongTru chép nguyên văn CCCD (không có CCCD thì theo đơn). NguoiDeNghi_ThuongTru lấy tinh/xa
   theo đơn khi đơn ghi phường/xã mới. Vd CCCD "Tổ 3 An Hòa, Cẩm Lệ, Đà Nẵng", đơn "Tổ 3 An Hòa, phường Cẩm Lệ" →
   NguoiDeNghi_DiaChiThuongTru = "Tổ 3 An Hòa, Cẩm Lệ, Đà Nẵng", NguoiDeNghi_ThuongTru = {"tinh":"Thành phố Đà Nẵng",
-  "xa":"Phường Cẩm Lệ","diaChi":"Tổ 3 An Hòa"}.
+  "xa":"Phường Cẩm Lệ","chiTietDuoiXa":"Tổ 3 An Hòa"}.
 ⚠ Mục "Nơi ở hiện nay" KHÔNG phải nơi thường trú.
 
 NGƯỜI NỘP (NguoiNop_*) = tài khoản đăng nhập cổng. CHỈ trích từ thẻ CCCD được chỉ ra trong nguoi_nop_context.

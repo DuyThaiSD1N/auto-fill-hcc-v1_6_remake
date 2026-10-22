@@ -21,11 +21,11 @@ FIELDS: list[dict] = [
     },
     {
         "name": "Cccd_QueQuan",
-        "desc": "Quê quán/place of origin, object {tinh, xa, diaChi}; ví dụ {tinh:Hải Phòng, xa:Vĩnh Bảo, diaChi:Trung Lập}.",
+        "desc": "Quê quán/place of origin, object {tinh, xa, chiTietDuoiXa}; ví dụ {tinh:Hải Phòng, xa:Vĩnh Bảo, chiTietDuoiXa:Trung Lập}.",
     },
     {
         "name": "Cccd_ThuongTru",
-        "desc": "Nơi thường trú/place of residence, object {tinh, xa, diaChi, fullText} nếu đọc chắc chắn.",
+        "desc": "Nơi thường trú/place of residence, object {tinh, xa, chiTietDuoiXa, fullText} nếu đọc chắc chắn.",
     },
 
     # Đơn đăng ký/đề nghị cấp nước sạch.

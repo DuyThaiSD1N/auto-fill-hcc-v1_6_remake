@@ -60,7 +60,7 @@ trích đo):
 - Cứ trả nguyên văn địa chỉ đọc được của TỪNG nguồn vào đúng field của nguồn đó (ChuHoSo_DiaChiDon,
   ChuHoSo_DiaChiToChuc, ThuaDat_DiaChi, NoiCuTru trên CCCD); hệ thống tự chuẩn hoá tên phường/xã cũ sang
   đơn vị hành chính hiện hành, không cần tự đoán tên mới.
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố số 9, phường Văn Phú, tỉnh Lào Cai" → diaChi="Tổ dân phố
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố số 9, phường Văn Phú, tỉnh Lào Cai" → chiTietDuoiXa="Tổ dân phố
   số 9", xa="Văn Phú", tinh="Lào Cai".
 
 LIÊN HỆ:

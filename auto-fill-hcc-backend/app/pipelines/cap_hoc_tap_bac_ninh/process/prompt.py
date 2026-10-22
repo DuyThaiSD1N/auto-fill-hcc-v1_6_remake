@@ -23,9 +23,9 @@ không ghép chéo với CCCD người nộp thay.
 - HocSinh_SoDinhDanh / HocSinh_NgaySinh / HocSinh_NgayCap / HocSinh_NoiCap: theo CCCD của HSSV.
 - HocSinh_SoDienThoai: lấy "Số điện thoại liên hệ" trong Mẫu 01 (các giấy tờ khác thường không có).
 - HocSinh_Email: đa số hồ sơ không có → bỏ trống, không bịa.
-- HocSinh_ThuongTru: object {quocGia,tinh,xa,diaChi}. Dùng địa chỉ theo ĐỊA GIỚI MỚI trên Mẫu 01/Đơn ủy
+- HocSinh_ThuongTru: object {quocGia,tinh,xa,chiTietDuoiXa}. Dùng địa chỉ theo ĐỊA GIỚI MỚI trên Mẫu 01/Đơn ủy
   quyền (ví dụ tinh='Bắc Ninh', xa='Phường Bắc Giang'); KHÔNG dùng địa danh cũ trước sáp nhập ghi trên
-  CCCD. diaChi là phần chi tiết nhất (số nhà, ngõ, tổ dân phố).
+  CCCD. chiTietDuoiXa là phần chi tiết nhất (số nhà, ngõ, tổ dân phố).
 
 Chỉ trả JSON fields theo schema; KHÔNG trả tên field giao diện (doiTuongKhac...) và không giải thích.
 """.strip()

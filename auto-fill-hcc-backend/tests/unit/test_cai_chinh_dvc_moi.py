@@ -272,3 +272,31 @@ def test_to_khai_ban_than_cua_chu_tai_khoan_chot_ban_than_khi_thieu_so():
     by = {f["name"]: f for f in out}
     assert by[RELATION]["value"] == "Bản thân" and by[RELATION]["default"] is True
     assert "citizenMqhkhac" not in by
+
+
+def _context_uy_quyen(relation: str, is_submitter: str, declared: str = "không có") -> str:
+    return _context("Khác").replace(
+        "</quan_he>",
+        f"Quan hệ trên tờ khai: {declared}\nQuan hệ trên giấy ủy quyền: {relation}\n"
+        f"Người được ủy quyền là người nộp: {is_submitter}\n</quan_he>")
+
+
+def test_quan_he_lay_tu_giay_uy_quyen_khi_khong_co_to_khai():
+    by = {f["name"]: f["value"] for f in _enrich(SUBJECT, _context_uy_quyen("Mẹ", "Có"))[0]}
+    assert by[RELATION] == "Khác" and by["citizenMqhkhac"] == "Mẹ"
+
+
+def test_quan_he_giay_uy_quyen_bo_qua_khi_nguoi_duoc_uy_quyen_khong_phai_nguoi_nop():
+    by = {f["name"]: f["value"] for f in _enrich(SUBJECT, _context_uy_quyen("Mẹ", "Không"))[0]}
+    assert "citizenMqhkhac" not in by
+    no_account = {f["name"]: f["value"] for f in _enrich(SUBJECT, _context_uy_quyen("Mẹ", "Có"), account={})[0]}
+    assert "citizenMqhkhac" not in no_account
+
+
+def test_giay_uy_quyen_khong_ghi_quan_he_thi_bo_quan_he_llm_tu_suy():
+    from app.pipelines.cai_chinh_dvc_moi.process import reason
+    raw = "<quan_he>\nKết luận: Khác\nQuan hệ trên giấy ủy quyền: Con\nNgười được ủy quyền là người nộp: Có\n</quan_he>"
+    docs = [{"text": "GIẤY ỦY QUYỀN\nBÊN ỦY QUYỀN: NGUYEN VAN A sinh 1983\nBÊN ĐƯỢC ỦY QUYỀN: TRAN VAN B sinh 1977"}]
+    assert "Quan hệ trên giấy ủy quyền: không có" in reason._drop_unquoted_authorization_relation(raw, docs)
+    docs = [{"text": "GIẤY ỦY QUYỀN\nMối quan hệ giữa người ủy quyền và người được ủy quyền: con"}]
+    assert reason._drop_unquoted_authorization_relation(raw, docs) == raw

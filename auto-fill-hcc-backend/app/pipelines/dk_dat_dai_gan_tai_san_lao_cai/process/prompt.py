@@ -37,7 +37,7 @@ SỐ / NGÀY:
 ĐỊA CHỈ:
 - Địa chỉ chủ hồ sơ là TRỤ SỞ (tổ chức) hoặc NƠI THƯỜNG TRÚ (cá nhân) ghi trên Đơn Mẫu 15, KHÔNG phải "Địa
   chỉ thửa đất" ở mục 2 và KHÔNG phải địa chỉ của người đi nộp thay.
-- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố Sa Pả 1, phường Sa Pa, tỉnh Lào Cai" → diaChi="Tổ dân phố Sa
+- Địa chỉ hiện hành chỉ còn 2 cấp: "Tổ dân phố Sa Pả 1, phường Sa Pa, tỉnh Lào Cai" → chiTietDuoiXa="Tổ dân phố Sa
   Pả 1", xa="Sa Pa", tinh="Lào Cai". Giấy tờ viết cả hai thời kỳ ("nay là …") → lấy phần "nay là".
 
 CCCD:

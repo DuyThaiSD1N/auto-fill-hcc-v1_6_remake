@@ -35,7 +35,7 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp CCCD/thẻ căn cước của CHỦ HỒ SƠ, lấy CÙNG thẻ với số và ngày cấp (thẻ mẫu mới in 'BỘ CÔNG AN'). KHÔNG lấy 'Nơi cấp' của CMND cũ trên Giấy chứng nhận."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "NƠI CƯ TRÚ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Ưu tiên: mục 'Nơi cư trú/Place of residence' trên CCCD/thẻ căn cước đúng người -> Tờ khai mục 'I.4. Nơi cư trú' -> 'Địa chỉ thường trú' trên Giấy chứng nhận. Tờ khai hay chỉ ghi số nhà/đường/tổ dân phố ở mục I.4 mà KHÔNG ghi phường/tỉnh: khi đó lấy xa theo cơ quan ở dòng 'Kính gửi: UBND <phường/xã>' (hoặc tên UBND ở góc trái trên) của chính Tờ khai. Giữ đủ số nhà/đường/tổ/thôn trong diaChi, không lặp xã/tỉnh trong diaChi.",
+        "desc": "NƠI CƯ TRÚ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên: mục 'Nơi cư trú/Place of residence' trên CCCD/thẻ căn cước đúng người -> Tờ khai mục 'I.4. Nơi cư trú' -> 'Địa chỉ thường trú' trên Giấy chứng nhận. Tờ khai hay chỉ ghi số nhà/đường/tổ dân phố ở mục I.4 mà KHÔNG ghi phường/tỉnh: khi đó lấy xa theo cơ quan ở dòng 'Kính gửi: UBND <phường/xã>' (hoặc tên UBND ở góc trái trên) của chính Tờ khai. Giữ đủ số nhà/đường/tổ/thôn trong chiTietDuoiXa, không lặp xã/tỉnh trong chiTietDuoiXa.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại của CHỦ HỒ SƠ nếu giấy tờ có ghi (chỉ chữ số). Tờ khai Mẫu 02 thường KHÔNG có mục này -> không có thì bỏ field."},
     {"name": "ChuHoSo_Email", "desc": "Email của CHỦ HỒ SƠ nếu giấy tờ có ghi; không có thì bỏ field."},
@@ -44,7 +44,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy số của BÊN ĐƯỢC ỦY QUYỀN ghi trên văn bản ủy quyền; không có thì bỏ field."},
     {
         "name": "ChoO_DiaChi",
-        "desc": "ĐỊA CHỈ CHỖ Ở HỢP PHÁP đề nghị xác nhận, object {quocGia,tinh,xa,diaChi}. Ưu tiên: Tờ khai mục 'II. THÔNG TIN VỀ CHỖ Ở HỢP PHÁP – 1. Địa chỉ chỗ ở hợp pháp' -> Giấy chứng nhận mục 'Địa chỉ thửa đất'/'Địa chỉ' của nhà ở -> nơi cư trú trên CCCD (chỉ khi người đề nghị cư trú ngay tại chỗ ở này). Tờ khai không ghi phường/tỉnh thì lấy xa theo dòng 'Kính gửi: UBND <phường/xã>' của Tờ khai. Giấy chứng nhận cũ có thể ghi đơn vị hành chính TRƯỚC sắp xếp: Tờ khai ghi khác thì theo Tờ khai. Không có nguồn ghi rõ thì bỏ field.",
+        "desc": "ĐỊA CHỈ CHỖ Ở HỢP PHÁP đề nghị xác nhận, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên: Tờ khai mục 'II. THÔNG TIN VỀ CHỖ Ở HỢP PHÁP – 1. Địa chỉ chỗ ở hợp pháp' -> Giấy chứng nhận mục 'Địa chỉ thửa đất'/'Địa chỉ' của nhà ở -> nơi cư trú trên CCCD (chỉ khi người đề nghị cư trú ngay tại chỗ ở này). Tờ khai không ghi phường/tỉnh thì lấy xa theo dòng 'Kính gửi: UBND <phường/xã>' của Tờ khai. Giấy chứng nhận cũ có thể ghi đơn vị hành chính TRƯỚC sắp xếp: Tờ khai ghi khác thì theo Tờ khai. Không có nguồn ghi rõ thì bỏ field.",
     },
     {"name": "ThuaDat_So", "desc": "Số thửa đất ('Thửa đất số') ghi trên Giấy chứng nhận của chỗ ở hợp pháp. Chỉ chữ số/ký hiệu, không kèm chữ 'Thửa'. Không có thì bỏ field."},
     {"name": "ThuaDat_ToBanDo", "desc": "Số tờ bản đồ ('Tờ bản đồ số') ghi trên Giấy chứng nhận của chỗ ở hợp pháp. Không có thì bỏ field."},

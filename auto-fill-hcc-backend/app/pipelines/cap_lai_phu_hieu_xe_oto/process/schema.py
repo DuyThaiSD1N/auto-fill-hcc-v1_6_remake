@@ -23,8 +23,8 @@ _NOP_FIELDS = [
         'TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ căn cước mới ghi "BỘ CÔNG AN" '
         '→ "Bộ Công an".'),
     ("QuocTich", 'Quốc tịch NGƯỜI NỘP (CCCD). Mặc định "Việt Nam".'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ/cư trú NGƯỜI NỘP trên CCCD, object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/"
-        "Thành phố …', xa='Phường/Xã …', diaChi=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ/cư trú NGƯỜI NỘP trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/"
+        "Thành phố …', xa='Phường/Xã …', chiTietDuoiXa=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG của NGƯỜI NỘP nếu giấy tờ ghi rõ là của người đó (vd Bên B của hợp "
         "đồng CÙNG họ tên người trên CCCD → số 'Điện thoại' của Bên B). KHÔNG lấy số của đơn vị KDVT/Bên A. "
         "Chép nguyên phần đọc được, bị che thì KHÔNG đoán thêm chữ số."),
@@ -47,9 +47,9 @@ FIELDS += [
         "Chữ số bị che/mờ → giữ phần đọc được, KHÔNG đoán thêm."},
     {"name": "DonVi_TenQuocTe", "desc": "Tên quốc tế/tên tiếng Anh của đơn vị nếu giấy tờ ghi (thường ở GCN "
         "đăng ký). Không có → bỏ."},
-    {"name": "DonVi_DiaChi", "desc": "Địa chỉ TRỤ SỞ đơn vị KDVT, object {quocGia,tinh,xa,diaChi}. Nguồn: Giấy "
+    {"name": "DonVi_DiaChi", "desc": "Địa chỉ TRỤ SỞ đơn vị KDVT, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: Giấy "
         "đề nghị '2. Địa chỉ' → HĐ 'Bên A - Địa chỉ' → GCN đăng ký. tinh='Tỉnh/Thành phố …', xa='Phường/Xã …' "
-        "(giữ tiền tố), diaChi=số nhà/thôn/tổ dân phố (KHÔNG kèm phường/xã/tỉnh)."},
+        "(giữ tiền tố), chiTietDuoiXa=số nhà/thôn/tổ dân phố (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "DonVi_DienThoai", "desc": "Số điện thoại của đơn vị KDVT — Giấy đề nghị '3. Số điện thoại' → HĐ "
         "'Bên A - Điện thoại'. Có nhiều số → lấy số ĐẦU TIÊN. Chép nguyên như giấy (kể cả dấu chấm)."},
     {"name": "DonVi_Email", "desc": "Email liên hệ của đơn vị KDVT nếu giấy tờ ghi rõ 'Email'/'Thư điện tử'. "
@@ -62,8 +62,8 @@ FIELDS += [
         "bên KHÔNG phải đơn vị KDVT (xã viên, bên cho thuê). Không kèm 'Ông/Bà'. Không có hợp đồng → bỏ."},
     {"name": "HopDong_BenB_DienThoai", "desc": "Số điện thoại của BÊN B trong hợp đồng (dòng 'Số điện thoại' "
         "dưới Bên B). Chép nguyên phần đọc được, bị che thì KHÔNG đoán thêm chữ số."},
-    {"name": "HopDong_BenB_DiaChi", "desc": "Địa chỉ của BÊN B trong hợp đồng, object {quocGia,tinh,xa,diaChi}. "
-        "tinh='Tỉnh/Thành phố …', xa='Phường/Xã …', diaChi=số nhà/thôn/tổ dân phố (KHÔNG kèm phường/xã/tỉnh)."},
+    {"name": "HopDong_BenB_DiaChi", "desc": "Địa chỉ của BÊN B trong hợp đồng, object {quocGia,tinh,xa,chiTietDuoiXa}. "
+        "tinh='Tỉnh/Thành phố …', xa='Phường/Xã …', chiTietDuoiXa=số nhà/thôn/tổ dân phố (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "HopDong_BenB_SoCCCD", "desc": "Số CCCD/CMND của BÊN B ghi trong hợp đồng. Chỉ chữ số, bị che thì "
         "giữ phần đọc được, KHÔNG đoán thêm."},
     {"name": "HopDong_BenB_NgayCapCCCD", "desc": "Ngày cấp CCCD của BÊN B ghi trong hợp đồng, dd/mm/yyyy. Bị "

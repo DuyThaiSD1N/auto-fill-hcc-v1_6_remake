@@ -19,7 +19,7 @@ TUYỆT ĐỐI KHÔNG lấy cha/mẹ trong Giấy khai sinh làm NguoiNop_* (ch�
   (địa danh HIỆN HÀNH). SinhVien_ThuongTruCCCD = 'Nơi thường trú' IN TRÊN CCCD (có thể là địa danh cũ). Trả CẢ HAI
   nếu có.
 - SinhVien_NoiSinh: ƯU TIÊN 'Nơi sinh' trên GIẤY KHAI SINH. Đơn PL IV hay ghi nhầm QUÊ QUÁN vào ô Nơi sinh → có Giấy
-  khai sinh thì KHÔNG lấy theo Đơn. Nơi sinh là bệnh viện/trạm y tế không ghi phường/xã → diaChi=tên cơ sở, xa rỗng.
+  khai sinh thì KHÔNG lấy theo Đơn. Nơi sinh là bệnh viện/trạm y tế không ghi phường/xã → chiTietDuoiXa=tên cơ sở, xa rỗng.
 
 ĐƠN PL IV (Don_*) — chép GẦN NGUYÊN VĂN, KHÔNG bịa: Don_KinhGui (cơ sở giáo dục sau 'Kính gửi'), Don_Lop,
 Don_NienKhoa ('Khóa', dạng năm '2024 - 2027'), Don_Khoa ('Khoa', tên khoa), Don_HoTenChaMe, Don_DoiTuong (nguyên

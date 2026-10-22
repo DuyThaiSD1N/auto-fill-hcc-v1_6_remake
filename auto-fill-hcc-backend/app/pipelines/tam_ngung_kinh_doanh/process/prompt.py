@@ -37,12 +37,12 @@ QUY TẮC BẮT BUỘC:
    có thể là "CHỦ HỘ KINH DOANH" tự ký hoặc người được ủy quyền có căn cứ). Có thể bổ sung
    nhân thân còn thiếu từ ChuHo/CCCD khi khớp đồng thời họ tên hoặc số định danh.
    - ĐỊA CHỈ NguoiNop: Sau khi xác định người nộp (qua họ tên hoặc số định danh), TÌM trong Cccd_DanhSach
-     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy diaChi từ "Nơi thường trú"
+     xem có thẻ CCCD nào khớp với người đó không. Nếu có → BẮT BUỘC lấy chiTietDuoiXa từ "Nơi thường trú"
      trên thẻ CCCD đó điền vào NguoiNop.diaChi.
    - KHÔNG lấy địa chỉ từ Quê quán, từ GCN hay từ phần chủ hộ cho NguoiNop khi đã có CCCD khớp.
 7. Cccd_DanhSach là field BẮT BUỘC khi hồ sơ có thẻ căn cước vật lý. Với MỖI file/khối OCR có
    "CĂN CƯỚC CÔNG DÂN" hoặc "Citizen Identity Card", phải trả đúng một object gồm tối thiểu
-   hoTen, soDinhDanh và diaChi đọc từ "Nơi thường trú/Place of residence". Không được bỏ qua
+   hoTen, soDinhDanh và chiTietDuoiXa đọc từ "Nơi thường trú/Place of residence". Không được bỏ qua
    thẻ chỉ vì người trên thẻ khác người ký Giấy đề nghị.
    ⚠️ ĐỊA CHỈ TỪ CCCD - QUY TẮC BẮT BUỘC:
    - PHẢI lấy từ "Nơi thường trú / Place of residence" trên CCCD
@@ -58,10 +58,10 @@ QUY TẮC BẮT BUỘC:
     giấy ủy quyền chỉ bù các field thẻ không có (vd số điện thoại).
   + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
     căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
-  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện.
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,chiTietDuoiXa} và BỎ cấp huyện.
   + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
     đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
-9. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
+9. Địa chỉ object luôn là {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
 
 Không trả tên field UI ctl00$C$...; chỉ trả field compact trong schema.
 """

@@ -30,9 +30,9 @@ FIELDS: list[dict] = [
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
              '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → ưu tiên lấy ở Tờ khai.'},
     {"name": "DoiTuong_ThuongTru",
-     "desc": "NƠI THƯỜNG TRÚ đối tượng, object {quocGia,tinh,xa,diaChi}. Ưu tiên Tờ khai (lập gần đây, ghi "
+     "desc": "NƠI THƯỜNG TRÚ đối tượng, object {quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên Tờ khai (lập gần đây, ghi "
              "địa giới MỚI sau sáp nhập); CCCD cũ có thể ghi tên CŨ. tinh='Tỉnh/Thành phố …', xa=phường/xã "
-             "(tên MỚI nếu biết), diaChi=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
+             "(tên MỚI nếu biết), chiTietDuoiXa=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "DoiTuong_DienThoai", "desc": "Số điện thoại đối tượng nếu Tờ khai có. Chỉ chữ số; không lấy SĐT bàn."},
     {"name": "DoiTuong_Email", "desc": "Email đối tượng nếu giấy tờ có (thường không có → bỏ)."},
 
@@ -57,7 +57,7 @@ FIELDS: list[dict] = [
              "người. Chuẩn hóa như DoiTuong_NoiCap."},
     {"name": "NguoiNop_ThuongTru",
      "desc": 'Địa chỉ người khai thay tại dòng "Địa chỉ" trong đúng block người khai thay, object '
-             "{quocGia,tinh,xa,diaChi}; CCCD riêng khớp đúng người chỉ dùng bổ sung khi block thiếu."},
+             "{quocGia,tinh,xa,chiTietDuoiXa}; CCCD riêng khớp đúng người chỉ dùng bổ sung khi block thiếu."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người khai thay nếu đúng block/giấy tờ có."},
     {"name": "NguoiNop_Email", "desc": "Email người khai thay nếu đúng block/giấy tờ có."},
 ]

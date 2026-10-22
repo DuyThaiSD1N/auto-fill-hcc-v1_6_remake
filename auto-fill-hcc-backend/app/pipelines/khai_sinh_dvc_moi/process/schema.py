@@ -21,7 +21,7 @@ def _person(prefix: str, label: str) -> list[dict]:
         {"name": f"{prefix}_NoiCap",
          "desc": f"Cơ quan cấp giấy tờ tùy thân của {label}, CHÉP ĐÚNG chữ trên giấy. Không ghi → bỏ."},
         {"name": f"{prefix}_NoiCuTru",
-         "desc": f"Nơi cư trú của {label}, object {{quocGia,tinh,xa,diaChi[,huyen]}}. BẮT BUỘC trả khi khối của "
+         "desc": f"Nơi cư trú của {label}, object {{quocGia,tinh,xa,chiTietDuoiXa[,huyen]}}. BẮT BUỘC trả khi khối của "
                  f"người đó trên tờ khai có dòng 'Nơi cư trú' — kể cả trùng địa chỉ người kia, kể cả người nước "
                  f"ngoài đang cư trú ở Việt Nam. Đã chết → bỏ."},
         {"name": f"{prefix}_DaChet",
@@ -36,9 +36,9 @@ FIELDS: list[dict] = [
     {"name": "Con_DanToc", "desc": "Dân tộc người được khai sinh nếu giấy tờ ghi."},
     {"name": "Con_QuocTich", "desc": "Quốc tịch người được khai sinh nếu giấy tờ ghi."},
     {"name": "Con_NoiSinh",
-     "desc": "Nơi sinh, object {quocGia,tinh,xa,diaChi[,huyen]}; sinh tại cơ sở y tế thì diaChi = tên cơ sở y tế "
+     "desc": "Nơi sinh, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}; sinh tại cơ sở y tế thì chiTietDuoiXa = tên cơ sở y tế "
              "nối phần địa chỉ chi tiết của cơ sở."},
-    {"name": "Con_QueQuan", "desc": "Quê quán người được khai sinh, object {quocGia,tinh,xa,diaChi[,huyen]}."},
+    {"name": "Con_QueQuan", "desc": "Quê quán người được khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}."},
     *_person("Me", "MẸ của người được khai sinh"),
     *_person("Cha", "CHA của người được khai sinh"),
     {"name": "NguoiYeuCau_HoTen",

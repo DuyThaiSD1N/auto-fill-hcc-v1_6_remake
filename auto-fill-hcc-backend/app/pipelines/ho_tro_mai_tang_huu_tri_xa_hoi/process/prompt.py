@@ -51,7 +51,7 @@ QUY TẮC FIELD:
 - Nơi cấp phải đọc từ đúng giấy tờ. CCCD cũ có dòng "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
   VỀ TRẬT TỰ XÃ HỘI" thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; không lấy chữ
   "BỘ CÔNG AN" trên logo/dấu. Chỉ thẻ CĂN CƯỚC mẫu mới ghi cơ quan Bộ Công an mới trả "Bộ Công an".
-- Địa chỉ trả object {quocGia,tinh,xa,diaChi}; bỏ cấp huyện/quận; diaChi chỉ giữ số nhà/tổ/thôn/xóm/bản,
+- Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; bỏ cấp huyện/quận; chiTietDuoiXa chỉ giữ số nhà/tổ/thôn/xóm/bản,
   không lặp xã/huyện/tỉnh.
 - Không trả field UI như data[fullname], data[ownerFullname], data[isOwnerDossierCheck], email, fax, ghi chú.
 - Không tạo field không có bằng chứng OCR."""

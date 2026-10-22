@@ -24,10 +24,10 @@ FIELDS: list[dict] = [
         "(người sử dụng đất đứng tên), Tờ khai thuế (người nộp thuế/người sử dụng đất), hoặc Giấy chứng "
         "nhận ĐKKD."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ/nơi ở của CHỦ HỒ SƠ (người đề nghị), object "
-        "{quocGia,tinh,xa,diaChi}. Lấy ở địa chỉ người đề nghị trong Đơn Mẫu 01 hoặc Nơi thường trú trên "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở địa chỉ người đề nghị trong Đơn Mẫu 01 hoặc Nơi thường trú trên "
         "CCCD của chủ hồ sơ. ⚠ TUYỆT ĐỐI KHÔNG lấy 'địa chỉ thửa đất/khu đất' (vị trí lô đất) làm địa chỉ "
         "người — dù trong hồ sơ chúng có thể trùng nhau. tinh='Tỉnh/Thành phố …', xa=phường/xã, "
-        "diaChi=số nhà/đường/thôn (nếu chỉ ghi cấp phường thì để diaChi trống)."},
+        "chiTietDuoiXa=số nhà/đường/thôn (nếu chỉ ghi cấp phường thì để chiTietDuoiXa trống)."},
 ]
 
 # --- Nội dung nghiệp vụ: mô tả việc giao/thuê đất, chuyển mục đích, gia hạn (điền textarea "Nội dung yêu
@@ -47,9 +47,9 @@ FIELDS += [
 # --- Thông tin thửa đất (nghiệp vụ — panel riêng của form giao/thuê/chuyển mục đích) ---
 FIELDS += [
     {"name": "ThuaDat_DiaChi", "desc": "Địa chỉ/vị trí THỬA ĐẤT (địa chỉ thửa đất/địa chỉ xây dựng), object "
-        "{quocGia,tinh,xa,diaChi}. Ưu tiên Giấy chứng nhận QSDĐ (địa chỉ/vị trí thửa), rồi Đơn Mẫu 01 "
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Ưu tiên Giấy chứng nhận QSDĐ (địa chỉ/vị trí thửa), rồi Đơn Mẫu 01 "
         "(Địa điểm thửa đất/khu đất), Tờ khai thuế (Địa chỉ thửa đất). Đây là VỊ TRÍ LÔ ĐẤT — KHÔNG phải "
-        "nơi thường trú của người. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ."},
+        "nơi thường trú của người. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ."},
     {"name": "ThuaDat_SoThua", "desc": "Số thửa đất (Thửa đất số / Số hiệu thửa đất). Ưu tiên Giấy chứng "
         "nhận QSDĐ, rồi Tờ khai thuế/Đơn Mẫu 01. Chỉ lấy số/ký hiệu thửa, KHÔNG kèm chữ 'thửa đất số'."},
     {"name": "ThuaDat_SoTo", "desc": "Số tờ bản đồ (Tờ bản đồ số). Ưu tiên Giấy chứng nhận QSDĐ, rồi Tờ "
@@ -75,10 +75,10 @@ FIELDS += [
         'hay ghi tắt "CCSQLHC TTXH" / "CCSVLHC TTXH" / "CCS QLHC về TTXH" / "Cục CSQLHC" → PHẢI ghi thành '
         '"Cục Cảnh sát quản lý hành chính về trật tự xã hội". Thẻ căn cước mới ghi "Bộ Công an".'},
     {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ của CHÍNH NGƯỜI NỘP, object {quocGia,tinh,xa,"
-        "diaChi}. CHỈ lấy ở CCCD người nộp (Nơi thường trú) hoặc Giấy ủy quyền (địa chỉ Bên được ủy quyền). "
+        "chiTietDuoiXa}. CHỈ lấy ở CCCD người nộp (Nơi thường trú) hoặc Giấy ủy quyền (địa chỉ Bên được ủy quyền). "
         "⚠ Giấy giới thiệu THƯỜNG KHÔNG có địa chỉ thường trú → nếu không có, BỎ TRỐNG toàn bộ (đừng đoán). "
         "TUYỆT ĐỐI KHÔNG lấy địa chỉ thửa đất, trụ sở tổ chức, hay tỉnh của thửa đất làm địa chỉ người nộp. "
-        "tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn."},
+        "tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên giấy tờ."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},
 ]

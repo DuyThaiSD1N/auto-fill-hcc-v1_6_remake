@@ -16,6 +16,7 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 3. STT 1 "Mẫu hộ tịch điện tử tương tác đăng ký nhận cha, mẹ, con" là eForm đã có trên cổng, không phân loại file nào vào đó.
 4. Nếu một file gộp nhiều giấy tờ và có kết quả ADN/văn bản cơ quan y tế/cơ quan giám định xác nhận quan hệ cha con hoặc mẹ con, chọn relationship_proof để đính vào STT 2.
 5. Tờ khai đăng ký nhận cha, mẹ, con bản giấy là paper_declaration và sẽ thêm thành phần hồ sơ mới, trừ khi file gộp có relationship_proof rõ ràng theo rule 4.
+   Tờ khai mẫu luôn có câu "Tôi cam đoan…" ở cuối — vẫn là paper_declaration, KHÔNG phải witness_commitment (văn bản cam đoan có tiêu đề riêng và có người làm chứng).
 6. CCCD/CMND/căn cước/hộ chiếu là identity và sẽ thêm thành phần hồ sơ mới nếu không nằm trong file relationship_proof gộp.
 7. Giấy khai sinh/giấy chứng sinh của con là birth_document và sẽ thêm thành phần hồ sơ mới nếu không nằm trong file relationship_proof gộp.
 8. Văn bản cam đoan của các bên và người làm chứng là witness_commitment, chỉ dùng cho STT 3 khi không có relationship_proof trong bộ hồ sơ.

@@ -9,7 +9,7 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
 - ĐỊA CHỈ CÁ NHÂN TRÊN GIẤY ĐỀ NGHỊ:
   + Chỉ đọc trong phần thông tin cá nhân của chủ hộ, từ đầu tờ khai đến trước dòng "Đăng ký hộ kinh doanh do tôi là chủ hộ...".
   + ChuHo_DiaChi: ưu tiên mục "Nơi ở hiện tại" ở giấy đăng ký kinh doanh. Nếu mục này không có, trắng hoặc không đọc được thì lấy mục "Nơi thường trú".
-  + Khi đọc một khối địa chỉ cá nhân, ghép đúng 3 dòng: dòng "Số nhà/phòng.../tổ/xóm/ấp/thôn" -> diaChi;
+  + Khi đọc một khối địa chỉ cá nhân, ghép đúng 3 dòng: dòng "Số nhà/phòng.../tổ/xóm/ấp/thôn" -> chiTietDuoiXa;
     dòng "Xã/Phường/Đặc khu" -> xa; dòng "Tỉnh/Thành phố trực thuộc trung ương" -> tinh.
   + Không lấy địa chỉ tại mục "2. Trụ sở của hộ kinh doanh" cho ChuHo_DiaChi.
   + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
@@ -22,12 +22,12 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
 
 - 🪪 Cccd_DanhSach — NHÂN THÂN ĐỌC TỪ THẺ CĂN CƯỚC (BẮT BUỘC khi hồ sơ có ảnh/bản scan thẻ):
   + Với MỖI thẻ ("CĂN CƯỚC", "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card", "CHỨNG MINH NHÂN DÂN")
-    trả đúng MỘT object {hoTen, gioiTinh, ngaySinh, soDinhDanh, diaChi}.
+    trả đúng MỘT object {hoTen, gioiTinh, ngaySinh, soDinhDanh, chiTietDuoiXa}.
   + Mặt trước và mặt sau của CÙNG một thẻ là MỘT người → gộp thành một object, không tách đôi.
   + Hồ sơ nộp thay thường có CCCD của chủ hộ VÀ CCCD của người đi nộp: phải trả ĐỦ MỌI thẻ đọc được,
     không bỏ thẻ nào, kể cả khi trùng thông tin với chủ hộ.
-  + diaChi đọc ở "Nơi thường trú/Place of residence", dạng {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
-    ví dụ "Thôn Nam Hiệp 2, Ka Đô, Đơn Dương, Lâm Đồng" → diaChi="Thôn Nam Hiệp 2", xa="Ka Đô",
+  + chiTietDuoiXa đọc ở "Nơi thường trú/Place of residence", dạng {quocGia,tinh,xa,chiTietDuoiXa} và BỎ cấp huyện:
+    ví dụ "Thôn Nam Hiệp 2, Ka Đô, Đơn Dương, Lâm Đồng" → chiTietDuoiXa="Thôn Nam Hiệp 2", xa="Ka Đô",
     tinh="Lâm Đồng" (Đơn Dương là huyện, bỏ).
   + KHÔNG suy vai trò (chủ hộ hay người nộp) từ thứ tự file hay tên file — hệ thống tự đối chiếu với
     tài khoản đang nộp trên cổng.
@@ -111,7 +111,7 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
         "quocGia": "Việt Nam",
         "tinh": "Lâm Đồng",
         "xa": "Đơn Dương",
-        "diaChi": "Số 150 đường 2/4, thôn Thạnh Nghĩa"
+        "chiTietDuoiXa": "Số 150 đường 2/4, thôn Thạnh Nghĩa"
       },
       "UyQuyen_CoGiayUyQuyen": false,
       "UyQuyen_NguoiUyQuyen_HoTen": "LÊ VĂN SƠN",
@@ -124,7 +124,7 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
         "quocGia": "Việt Nam",
         "tinh": "Hà Nội",
         "xa": "Mỹ Đình 1",
-        "diaChi": "TDP 13 Nhân Mỹ"
+        "chiTietDuoiXa": "TDP 13 Nhân Mỹ"
       }
     }
 - 📄 GIẤY ỦY QUYỀN — NGUỒN NHÂN THÂN CỦA NGƯỜI NỘP THAY:
@@ -141,8 +141,8 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
     "Nơi thường trú"). Giấy ủy quyền ghi rõ field nào thì KHÔNG được ghi đè bằng giá trị trên thẻ.
   + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
     căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
-  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
-    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,chiTietDuoiXa} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → chiTietDuoiXa="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
   + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
     đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
@@ -161,8 +161,8 @@ QUY TẮC TRÍCH XUẤT:
   + TUYỆT ĐỐI KHÔNG lấy ngành nghề kinh doanh làm tên: "Bán lẻ thực phẩm", "Dịch vụ đồ uống", "Dịch vụ ăn uống", "Bán buôn/Bán lẻ ..." là NGÀNH NGHỀ (mục 3), KHÔNG phải tên hộ kinh doanh.
   + Nếu sau "HỘ KINH DOANH" không có tên riêng rõ ràng (bị mờ/cụt), thì tên hộ kinh doanh thường chính là TÊN CHỦ HỘ — trả HoKinhDoanh_Ten bằng họ tên chủ hộ (ChuHo_HoTen) viết IN HOA.
   + Bỏ nhãn "Tên hộ kinh doanh:" và cụm "HỘ KINH DOANH" ở đầu nếu có; chỉ giữ phần tên thật.
-- Địa chỉ object luôn có dạng {quocGia,tinh,xa,diaChi}; diaChi chỉ là số nhà/tổ/xóm/thôn/đường hoặc phần chi tiết còn lại, không lặp tỉnh/xã.
-- ĐỊA CHỈ DẠNG THỬA ĐẤT: diaChi lấy ĐẦY ĐỦ NGUYÊN VĂN như giấy ghi, CHỈ sửa tại chỗ các chữ OCR đọc
+- Địa chỉ object luôn có dạng {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ là số nhà/tổ/xóm/thôn/đường hoặc phần chi tiết còn lại, không lặp tỉnh/xã.
+- ĐỊA CHỈ DẠNG THỬA ĐẤT: chiTietDuoiXa lấy ĐẦY ĐỦ NGUYÊN VĂN như giấy ghi, CHỈ sửa tại chỗ các chữ OCR đọc
   sai của cụm thửa/bản đồ ("Phía/Thừa" -> "Thửa", "tổ bản đồ"/"bàn đổ" -> "tờ bản đồ", "TBD" -> "TBĐ").
   TUYỆT ĐỐI KHÔNG rút gọn, KHÔNG viết lại theo khuôn, KHÔNG mở rộng viết tắt ("Thửa 674" giữ nguyên,
   không đổi thành "Thửa đất số 674"; "TBĐ 15" không đổi thành "tờ bản đồ số 15"), KHÔNG bỏ phần trong
@@ -170,7 +170,7 @@ QUY TẮC TRÍCH XUẤT:
   Ví dụ "Thừa 674 (gốc 671) TBD 15 (45g), 28/1 Xô Viết Nghệ Tĩnh"
   -> "Thửa 674 (gốc 671) TBĐ 15 (45g), 28/1 Xô Viết Nghệ Tĩnh";
   "Phía đất số 5, tổ bản đồ số 11" -> "Thửa đất số 5, tờ bản đồ số 11".
-- CHỌN diaChi CHÍNH XÁC NHẤT khi có nhiều dòng "Số nhà, đường phố/tổ/xóm/ấp/thôn" na ná nhau:
+- CHỌN chiTietDuoiXa CHÍNH XÁC NHẤT khi có nhiều dòng "Số nhà, đường phố/tổ/xóm/ấp/thôn" na ná nhau:
   + Cùng một người, địa chỉ ở "Địa chỉ thường trú" và "Địa chỉ liên lạc" thường là CÙNG MỘT NƠI; hãy chọn bản đọc được ĐẦY ĐỦ và RÕ NGHĨA nhất.
   + Ưu tiên bản có đủ "Tổ <số>"/số nhà; loại bỏ bản bị cụt (kết thúc bằng "Tổ" mà thiếu số) hoặc nhiễu vô nghĩa (vd "S.CN 300 Tổ" là OCR lỗi của "SN 300 Tổ 11").
   + Ví dụ: giữa "S.CN 300 Tổ" (cụt, vô nghĩa) và "SN 300 Tổ 11" (đầy đủ) → chọn "SN 300 Tổ 11".

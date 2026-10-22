@@ -26,7 +26,7 @@ FIELDS: list[dict] = [
         f"mục 1 trên {_TB}). Chỉ chữ số; KHÔNG lấy số điện thoại của người chịu trách nhiệm."},
     {"name": "DoanhNghiep_Email", "desc": f"Thư điện tử trụ sở chính trên {_GCN}, nếu có."},
     {"name": "DoanhNghiep_TruSo", "desc": f"Địa chỉ trụ sở chính trên {_GCN} (hoặc 'Địa chỉ' mục 1 trên {_TB}), "
-        "object {tinh,xa,diaChi}: tinh='Tỉnh/Thành phố …', xa='Xã/Phường …', diaChi=số nhà/thôn/đường "
+        "object {tinh,xa,chiTietDuoiXa}: tinh='Tỉnh/Thành phố …', xa='Xã/Phường …', chiTietDuoiXa=số nhà/thôn/đường "
         "(KHÔNG kèm xã/tỉnh). KHÔNG lấy địa chỉ thường trú của người chịu trách nhiệm."},
 
     # ---- Nội dung tờ khai Mẫu 01 ----

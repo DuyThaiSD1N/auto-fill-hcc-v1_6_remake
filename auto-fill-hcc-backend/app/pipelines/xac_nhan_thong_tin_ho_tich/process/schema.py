@@ -16,7 +16,7 @@ _TK = "TỜ KHAI đề nghị xác nhận thông tin hộ tịch"
 _TK_NYC = f"khối NGƯỜI YÊU CẦU ở đầu {_TK} (từ 'Họ, chữ đệm, tên người yêu cầu' tới trước khối người được xác nhận)"
 _TK_DT = f"khối NGƯỜI ĐƯỢC XÁC NHẬN thông tin hộ tịch trên {_TK}"
 _ADDR = (
-    "object {quocGia,tinh,xa,diaChi}: tinh = tỉnh/thành phố, xa = xã/phường, diaChi = chi tiết đứng TRƯỚC "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}: tinh = tỉnh/thành phố, xa = xã/phường, chiTietDuoiXa = chi tiết đứng TRƯỚC "
     "xã (tổ dân phố/thôn/bản/số nhà). Địa chỉ cũ 3 cấp '[chi tiết], [xã], [huyện], [tỉnh]' thì BỎ cấp huyện."
 )
 _NOI_CAP = (

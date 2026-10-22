@@ -41,13 +41,13 @@ EXTRA_RULES = """
    - Trong Đơn đề nghị, dòng đánh số "2. Địa chỉ:" ngay sau mục "1. Người đề nghị" là nơi cư trú/
      thường trú của CHỦ HỒ SƠ. KHÔNG coi dòng này là địa chỉ liên hệ.
    - Ưu tiên nguồn cho ChuHoSo_NoiCuTru: dòng "2. Địa chỉ:" trên Đơn -> địa chỉ đầy đủ trên giấy tờ
-     định danh -> Giấy chứng nhận. Đơn có đủ thôn/xóm/tổ/số nhà thì bắt buộc giữ trong diaChi; địa
+     định danh -> Giấy chứng nhận. Đơn có đủ thôn/xóm/tổ/số nhà thì bắt buộc giữ trong chiTietDuoiXa; địa
      chỉ Giấy chứng nhận rút gọn không được ghi đè.
    - Dòng "3. Địa chỉ liên hệ:" là thông tin liên hệ riêng, không thay thế dòng 2 khi dòng 2 đã có.
    - Không có văn bản ủy quyền thì NguoiNop_NoiCuTru phải giống NGUYÊN VẸN ChuHoSo_NoiCuTru, kể cả
-     diaChi. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
-   - Địa chỉ trả object {quocGia,tinh,xa,diaChi}; không đưa huyện vào xa hoặc diaChi, không lặp
-     tỉnh/xã trong diaChi.
+     chiTietDuoiXa. Có ủy quyền thì lấy nơi cư trú của BÊN ĐƯỢC ỦY QUYỀN.
+   - Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa huyện vào xa hoặc chiTietDuoiXa, không lặp
+     tỉnh/xã trong chiTietDuoiXa.
    - CCCD/CMND là nguồn CUỐI CÙNG cho nơi cư trú: thẻ cấp trước sắp xếp đơn vị hành chính thường
      còn ghi TỈNH/HUYỆN CŨ (tỉnh cũ đã sáp nhập vào tỉnh khác). Hễ ĐƠN/TỜ KHAI người dân lập đã ghi
      địa chỉ thì PHẢI theo đơn, tuyệt đối không để địa chỉ trên thẻ ghi đè — kể cả khi tên phường/xã
@@ -55,7 +55,7 @@ EXTRA_RULES = """
    - BẪY THƯỜNG GẶP: dòng địa chỉ trên ĐƠN hay viết LIỀN, KHÔNG có nhãn con, dạng
      "<số nhà/đường/tổ/thôn>, <xã/phường> <tỉnh/thành phố>"; trong khi CCCD có nhãn rõ nên DỄ đọc hơn.
      Đừng vì dễ mà quay sang CCCD. PHẢI tự tách chuỗi trên đơn: cụm CUỐI là tỉnh/thành phố, cụm ngay
-     TRƯỚC nó là xã/phường, phần còn lại cho vào diaChi (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
+     TRƯỚC nó là xã/phường, phần còn lại cho vào chiTietDuoiXa (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
    - Nếu TỈNH ghi trên ĐƠN khác TỈNH ghi trên CCCD thì LUÔN theo ĐƠN, không lấy tỉnh của thẻ.
 10. QUY TẮC ĐỊA CHỈ THỬA ĐẤT (ThuaDat_DiaChi) — TÁCH HẲN với nơi cư trú:
    - Đây là ĐỊA ĐIỂM KHU ĐẤT xin giao/thuê/chuyển mục đích/gia hạn, KHÔNG phải chỗ ở của ai.

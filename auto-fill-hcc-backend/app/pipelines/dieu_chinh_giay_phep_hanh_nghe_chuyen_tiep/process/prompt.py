@@ -22,8 +22,8 @@ ThuongTru. Văn bằng và chứng chỉ đào tạo cũng ghi địa chỉ/nơi
 - NgayCap / NoiCap: đi kèm số định danh đó (CCCD hoặc Đơn Mẫu 08 "Ngày cấp"/"Nơi cấp").
 - GioiTinh: CCCD; không có CCCD thì chứng chỉ đào tạo có ô "Giới tính". Không có nguồn thì bỏ.
 - ThuongTru: Đơn Mẫu 08 "Địa chỉ cư trú" hoặc CCCD. Viết đầy đủ đơn vị hành chính ("t.p Hải Phòng" →
-  "Thành phố Hải Phòng", "phường An Biên" → "Phường An Biên"). diaChi chỉ là số nhà/đường/tổ/thôn; đơn
-  chỉ ghi phường + tỉnh thì để diaChi trống.
+  "Thành phố Hải Phòng", "phường An Biên" → "Phường An Biên"). chiTietDuoiXa chỉ là số nhà/đường/tổ/thôn; đơn
+  chỉ ghi phường + tỉnh thì để chiTietDuoiXa trống.
 - DienThoai / Email: Đơn Mẫu 08. Chữ viết tay: đọc cẩn thận từng chữ số, email viết thường.
 
 HoSo_TruongHopDeNghi / HoSo_PhamViHanhNghe: đọc Đơn Mẫu 08 (thường VIẾT TAY) mục "Trường hợp đề nghị cấp"

@@ -17,7 +17,7 @@ mục "Thông tin chủ hồ sơ" — chủ hồ sơ mới là người đứng 
 NguoiDeNghi_SoDinhDanh, KHÔNG mượn số của ai khác.
 
 NGUỒN NHÂN THÂN (NguoiDeNghi_*): ưu tiên CCCD; bổ sung từ Đơn 03.HNTY (Tên tôi là, Ngày tháng năm sinh,
-Địa chỉ thường trú, Số điện thoại liên hệ). ThuongTru tách object {quocGia,tinh,xa,diaChi}, diaChi chỉ
+Địa chỉ thường trú, Số điện thoại liên hệ). ThuongTru tách object {quocGia,tinh,xa,chiTietDuoiXa}, chiTietDuoiXa chỉ
 phần chi tiết (số nhà/khóm/ấp/thôn/tổ).
 ⚠ Trong Đơn 03.HNTY, dòng "Ngày cấp" nằm NGAY SAU "Bằng cấp chuyên môn" là ngày cấp BẰNG, KHÔNG phải
 ngày cấp CCCD → chỉ điền NguoiDeNghi_NgayCapCCCD khi đọc được ngày cấp trên chính thẻ CCCD.

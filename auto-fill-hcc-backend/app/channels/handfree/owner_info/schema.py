@@ -18,7 +18,7 @@ FIELDS: list[dict] = [
     )},
     {"name": "Owner_PhoneNumber", "desc": "Số điện thoại chỉ khi tài liệu ghi rõ là của chủ hồ sơ."},
     {"name": "Owner_DetailedAddress", "desc": (
-        "Địa chỉ chủ hồ sơ có thể trả object địa chỉ chuẩn; backend chỉ lấy khóa diaChi "
+        "Địa chỉ chủ hồ sơ có thể trả object địa chỉ chuẩn; backend chỉ lấy khóa chiTietDuoiXa "
         "để điền trang chủ hồ sơ."
     )},
 ]

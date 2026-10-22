@@ -41,8 +41,8 @@ NGUỒN VÀ ƯU TIÊN:
 - Ngày cấp, nơi cấp: chép đúng giấy ghi ("cấp ngày 18 tháng 6 năm 2023" → "18/06/2023"); không suy nơi cấp.
 - Ndd_DiaChiLienHe là nơi ĐANG Ở (Thông báo "Nơi cư trú" — có thể là trại tạm giam, trường giáo dưỡng), KHÁC
   Ndd_ThuongTru (Thông báo "Nơi thường trú" / CCCD). Địa chỉ "Thôn A, xã B, tỉnh C" →
-  {{quocGia:"Việt Nam", tinh:"Tỉnh C", xa:"Xã B", diaChi:"Thôn A"}}; "TP." là "Thành phố"; tên cơ sở (trại
-  giam, trường giáo dưỡng) đi vào diaChi cùng thôn/xóm.
+  {{quocGia:"Việt Nam", tinh:"Tỉnh C", xa:"Xã B", chiTietDuoiXa:"Thôn A"}}; "TP." là "Thành phố"; tên cơ sở (trại
+  giam, trường giáo dưỡng) đi vào chiTietDuoiXa cùng thôn/xóm.
 - Ndd_Dien chọn đúng MỘT nhãn trong <dien_options>:
   + "Người bị buộc tội/bị can/bị cáo từ 16 tuổi đến dưới 18 tuổi" → "…là người bị buộc tội"; người bị hại,
     người làm chứng, người bị tố giác, bị kiến nghị khởi tố, bị giữ khẩn cấp, phạm nhân 16–18 tuổi chọn đúng

@@ -18,7 +18,7 @@ FIELDS: list[dict] = [
     {"name": "AdoptiveFather_IdNumber", "desc": "Số CCCD/căn cước/số định danh cha nuôi (12 chữ số)."},
     {"name": "AdoptiveFather_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân cha nuôi, dd/mm/yyyy."},
     {"name": "AdoptiveFather_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân cha nuôi."},
-    {"name": "AdoptiveFather_Residence", "desc": "Nơi cư trú cha nuôi, object {quocGia,tinh,xa,diaChi}; ưu tiên đơn."},
+    {"name": "AdoptiveFather_Residence", "desc": "Nơi cư trú cha nuôi, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên đơn."},
     {"name": "AdoptiveFather_Phone", "desc": "Số điện thoại cha nuôi nếu đơn ghi."},
     {"name": "AdoptiveFather_Relation", "desc": 'Cha nuôi là: "Chú, cậu, bác ruột", "Cha dượng" hoặc "Khác" — chỉ trả khi giấy tờ thể hiện.'},
 
@@ -29,7 +29,7 @@ FIELDS: list[dict] = [
     {"name": "AdoptiveMother_IdNumber", "desc": "Số CCCD/căn cước/số định danh mẹ nuôi (12 chữ số)."},
     {"name": "AdoptiveMother_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân mẹ nuôi, dd/mm/yyyy."},
     {"name": "AdoptiveMother_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân mẹ nuôi."},
-    {"name": "AdoptiveMother_Residence", "desc": "Nơi cư trú mẹ nuôi, object {quocGia,tinh,xa,diaChi}; ưu tiên đơn."},
+    {"name": "AdoptiveMother_Residence", "desc": "Nơi cư trú mẹ nuôi, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên đơn."},
     {"name": "AdoptiveMother_Phone", "desc": "Số điện thoại mẹ nuôi nếu đơn ghi."},
     {"name": "AdoptiveMother_Relation", "desc": 'Mẹ nuôi là: "Cô, dì, bác ruột", "Mẹ kế" hoặc "Khác" — chỉ trả khi giấy tờ thể hiện.'},
 
@@ -42,8 +42,8 @@ FIELDS: list[dict] = [
     {"name": "Child_IdNumber", "desc": "Số định danh cá nhân của con nuôi."},
     {"name": "Child_IdIssueDate", "desc": "Ngày cấp thẻ CCCD/căn cước của con nuôi, dd/mm/yyyy — CHỈ khi trẻ có thẻ."},
     {"name": "Child_IdIssuePlace", "desc": "Nơi cấp thẻ CCCD/căn cước của con nuôi — CHỈ khi trẻ có thẻ."},
-    {"name": "Child_BirthPlace", "desc": "Nơi sinh con nuôi, object {quocGia,tinh,xa,diaChi}; diaChi là tên cơ sở y tế/thôn."},
-    {"name": "Child_Residence", "desc": "Nơi cư trú con nuôi, object {quocGia,tinh,xa,diaChi}; ưu tiên đơn."},
+    {"name": "Child_BirthPlace", "desc": "Nơi sinh con nuôi, object {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa là tên cơ sở y tế/thôn."},
+    {"name": "Child_Residence", "desc": "Nơi cư trú con nuôi, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên đơn."},
     {"name": "Child_Category", "desc": "Mục 'Thuộc đối tượng' của con nuôi đúng như đơn ghi/tích."},
 
     # Nơi trẻ hiện đang sống.
@@ -52,7 +52,7 @@ FIELDS: list[dict] = [
     {"name": "LivingWith_Gender", "desc": 'Giới tính ông/bà nơi trẻ đang sống khi chỉ có MỘT người: "Nam" hoặc "Nữ".'},
     {"name": "LivingWith_Phone", "desc": "Điện thoại liên lạc của gia đình nơi trẻ đang sống."},
     {"name": "LivingWith_Email", "desc": "Email liên lạc của gia đình nơi trẻ đang sống nếu đơn ghi."},
-    {"name": "LivingWith_Residence", "desc": "Nơi cư trú gia đình nơi trẻ đang sống, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "LivingWith_Residence", "desc": "Nơi cư trú gia đình nơi trẻ đang sống, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "LivingWith_FacilityName", "desc": "Tên cơ sở nuôi dưỡng nếu trẻ đang sống tại cơ sở nuôi dưỡng."},
 
     # V. Nơi đăng ký việc nuôi con nuôi.

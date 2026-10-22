@@ -37,9 +37,9 @@ Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG tríc
    SINH nằm trong khối cha/mẹ → của cha/mẹ, KHÔNG lấy cho con. Không có dòng của chính họ → bỏ field.
    Dòng "Nơi cư trú" trong khối sau "cho người có tên dưới đây" của tờ khai LÀ của người được cấp: BẮT BUỘC
    trả, kể cả khi trùng từng chữ với nơi cư trú của người yêu cầu (cùng hộ là bình thường).
-   Nơi cư trú tách {quocGia,tinh,xa,diaChi}: chuỗi "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối —
+   Nơi cư trú tách {quocGia,tinh,xa,chiTietDuoiXa}: chuỗi "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối —
    cuối là tỉnh, áp cuối là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã,
-   còn lại là diaChi. Tỉnh Hồ Chí Minh luôn trả "Thành phố Hồ Chí Minh".
+   còn lại là chiTietDuoiXa. Tỉnh Hồ Chí Minh luôn trả "Thành phố Hồ Chí Minh".
 8. NguoiDuocCap_NoiCap chép đúng cơ quan cấp ghi trên giấy. Chỉ đổi cách viết của CÙNG một cơ quan:
    "Cục CS QLHC về trật tự xã hội" / "Cục CSQLHC về TTXH" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
    CMND 9 số do Công an tỉnh cấp ("CA <tỉnh>") → giữ nguyên, TUYỆT ĐỐI không đổi thành Cục Cảnh sát/Bộ Công an.

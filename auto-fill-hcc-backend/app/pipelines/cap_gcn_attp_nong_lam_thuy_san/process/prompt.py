@@ -21,7 +21,7 @@ EXTRA_RULES = """<critical_rules>
 1. Don_DiaDanh và Don_NgayDon lấy từ dòng địa danh/ngày tháng trên Đơn; ngày trả dd/mm/yyyy.
 2. Don_TenCoSo lấy nguyên mục 1. Don_DaiDienCoSo chỉ lấy họ tên ở phần "ĐẠI DIỆN CƠ SỞ" hoặc chữ ký cuối đơn.
    Hai field này là hai khái niệm khác nhau, không tự sao chép tên cơ sở sang tên đại diện.
-3. Don_DiaChiCoSo lấy mục 2 và tách {quocGia,tinh,xa,diaChi}; bỏ cấp huyện cũ khỏi diaChi nếu tách chắc chắn.
+3. Don_DiaChiCoSo lấy mục 2 và tách {quocGia,tinh,xa,chiTietDuoiXa}; bỏ cấp huyện cũ khỏi chiTietDuoiXa nếu tách chắc chắn.
 4. Don_DienThoai và Don_Email lấy mục 3; đây là liên hệ cơ sở, không phải mặc định liên hệ người nộp.
 5. Don_MaSoDKKD lấy mục 4. Don_SoDangKy, Don_NgayCapDKKD, Don_NoiCapDKKD lấy đúng ba phần của mục 5.
 6. Don_MatHang lấy mục 6. Don_LyDoCap chỉ trả nội dung được ghi sau nhãn "Lý do cấp".
@@ -37,7 +37,7 @@ EXTRA_RULES = """<critical_rules>
 <person_rules>
 1. Gộp mặt trước/mặt sau cùng CCCD theo số định danh/MRZ. Một người trả Person1_*, người khác trả Person2_*.
 2. Mỗi nhóm Person* chỉ chứa dữ liệu của một người; không trộn ngày cấp/nơi cấp giữa hai CCCD.
-3. Person*_NoiCuTru có dạng {quocGia,tinh,xa,diaChi}; diaChi chỉ giữ số nhà, đường, tổ/thôn/xóm.
+3. Person*_NoiCuTru có dạng {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ giữ số nhà, đường, tổ/thôn/xóm.
 4. LLM không quyết định ai là người nộp. Python sẽ đối chiếu cả họ tên và số định danh với formContext.
 </person_rules>
 
@@ -50,7 +50,7 @@ EXTRA_RULES = """<critical_rules>
 
 <output_examples>
 Đúng:
-{"fields":{"Don_TenCoSo":"Cơ sở chế biến thủy sản Minh Hải","Don_DiaChiCoSo":{"quocGia":"Việt Nam","tinh":"Đà Nẵng","xa":"Phường Hải Châu","diaChi":"Số 12 đường A"},"Don_DienThoai":"0901234567","Don_MatHang":"Thủy sản đông lạnh","Don_DaiDienCoSo":"NGUYỄN VĂN MINH","Person1_HoTen":"NGUYỄN VĂN MINH","Person1_SoDinhDanh":"048012345678"}}
+{"fields":{"Don_TenCoSo":"Cơ sở chế biến thủy sản Minh Hải","Don_DiaChiCoSo":{"quocGia":"Việt Nam","tinh":"Đà Nẵng","xa":"Phường Hải Châu","chiTietDuoiXa":"Số 12 đường A"},"Don_DienThoai":"0901234567","Don_MatHang":"Thủy sản đông lạnh","Don_DaiDienCoSo":"NGUYỄN VĂN MINH","Person1_HoTen":"NGUYỄN VĂN MINH","Person1_SoDinhDanh":"048012345678"}}
 
 Sai:
 {"fields":{"data[organization]":"Cơ sở Minh Hải","Don_DaiDienCoSo":"Cơ sở chế biến thủy sản Minh Hải"}}

@@ -20,7 +20,7 @@ tài khoản đăng nhập trước khi cho nộp → cả khối phải là M�
 """
 
 _AREA_DESC = (
-    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "object {quocGia,tinh,xa,chiTietDuoiXa}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), chiTietDuoiXa giữ "
     "số nhà/đường/tổ/thôn."
 )
 
@@ -96,8 +96,8 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của chủ hồ sơ cá nhân. Tổ chức thì bỏ field — KHÔNG lấy cơ quan ban hành quyết định thành lập thay vào đây."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Tổ chức thì đây là ĐỊA CHỈ TRỤ "
-                "SỞ ở mục 1.3 Đơn Mẫu 24 (giữ đủ thôn/tổ/số nhà trong diaChi); cá nhân thì là nơi thường "
+        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Tổ chức thì đây là ĐỊA CHỈ TRỤ "
+                "SỞ ở mục 1.3 Đơn Mẫu 24 (giữ đủ thôn/tổ/số nhà trong chiTietDuoiXa); cá nhân thì là nơi thường "
                 "trú. ĐÂY KHÔNG PHẢI địa chỉ thửa đất — tuyệt đối không lấy nhầm.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Điện thoại liên hệ của chủ hồ sơ, chỉ chữ số. Nguồn: mục 1.4 Đơn Mẫu 24."},
@@ -118,7 +118,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP, đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Nguồn: nơi thường trú trên CCCD "
+        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: nơi thường trú trên CCCD "
                 "của chính người đó; không có thì dùng địa chỉ trụ sở của tổ chức ở Đơn Mẫu 24.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Điện thoại của NGƯỜI NỘP, chỉ chữ số. Không có riêng thì dùng số liên hệ trên đơn."},
@@ -156,7 +156,7 @@ FIELDS: list[dict] = [
     {"name": "ThuaDat_ToBanDo", "desc": "Số tờ bản đồ, chỉ chữ số. Lấy cùng nguồn với số thửa."},
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải trụ sở/nơi cư trú), object {quocGia,tinh,xa,diaChi}. Nguồn: "
+        "desc": "ĐỊA CHỈ THỬA ĐẤT (KHÔNG phải trụ sở/nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. Nguồn: "
                 "Giấy chứng nhận hoặc Đơn Mẫu 24. Không có nguồn ghi rõ thì bỏ field.",
     },
 ]

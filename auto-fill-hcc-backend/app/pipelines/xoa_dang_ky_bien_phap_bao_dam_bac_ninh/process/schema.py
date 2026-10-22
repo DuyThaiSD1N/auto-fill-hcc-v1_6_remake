@@ -95,7 +95,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiDuocUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên được ủy quyền."},
     {"name": "NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy."},
     {"name": "NguoiDuocUyQuyen_ThuongTru", "desc": "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,"
-        "diaChi}; ưu tiên Văn bản ủy quyền rồi CCCD đúng người. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
+        "chiTietDuoiXa}; ưu tiên Văn bản ủy quyền rồi CCCD đúng người. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
     {"name": "NguoiDuocUyQuyen_Email", "desc": "Email bên được ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
     {"name": "NguoiDuocUyQuyen_SoDienThoai", "desc": "Số điện thoại bên được ủy quyền nếu hồ sơ ghi rõ."},
 ]

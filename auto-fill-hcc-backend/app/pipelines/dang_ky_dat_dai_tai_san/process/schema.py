@@ -26,7 +26,7 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "Cccd_NoiCuTru",
-     "desc": "Địa chỉ cư trú/thường trú ĐỌC TRÊN THẺ CCCD/CMND, object {quocGia,tinh,xa,diaChi} nếu "
+     "desc": "Địa chỉ cư trú/thường trú ĐỌC TRÊN THẺ CCCD/CMND, object {quocGia,tinh,xa,chiTietDuoiXa} nếu "
              "đọc chắc chắn. Đây là nguồn CUỐI CÙNG cho nơi cư trú: thẻ cấp trước sắp xếp đơn vị hành "
              "chính thường còn ghi tỉnh/huyện CŨ đã sáp nhập. Hễ ĐƠN/TỜ KHAI có ghi địa chỉ thì phải "
              "dùng Don_DiaChi, không dùng field này."},
@@ -34,14 +34,14 @@ FIELDS: list[dict] = [
     # Đơn/tờ khai do chính người dân lập — nguồn ƯU TIÊN cho địa chỉ và liên hệ.
     {"name": "Don_DiaChi",
      "desc": "ĐỊA CHỈ của người sử dụng đất/người đứng đơn GHI TRÊN ĐƠN hoặc TỜ KHAI do chính người "
-             "dân lập, object {quocGia,tinh,xa,diaChi}. Nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ "
+             "dân lập, object {quocGia,tinh,xa,chiTietDuoiXa}. Nhận BẤT KỲ mẫu nào thực tế có trong hồ sơ "
              "(Đơn đăng ký đất đai Mẫu số 13, Mẫu số 15, danh sách người sử dụng chung Mẫu số 13a, "
              "đơn đề nghị...). TUYỆT ĐỐI KHÔNG lấy từ CCCD/CMND, Giấy chứng nhận, mảnh trích đo hay "
              "công văn; đơn không ghi thì BỎ FIELD, không thay bằng nguồn khác. Dòng địa chỉ trên đơn "
              "thường viết LIỀN, không có nhãn con, dạng "
              "'<số nhà/đường/tổ/bản/thôn>, <xã/phường> <tỉnh/thành phố>': tách bằng cách lấy cụm CUỐI "
              "làm tinh, cụm ngay TRƯỚC nó làm xa (thêm tiền tố 'Xã'/'Phường' nếu đơn viết trống), "
-             "phần còn lại cho vào diaChi. ĐÂY KHÔNG PHẢI địa chỉ thửa đất xin cấp Giấy chứng nhận."},
+             "phần còn lại cho vào chiTietDuoiXa. ĐÂY KHÔNG PHẢI địa chỉ thửa đất xin cấp Giấy chứng nhận."},
     {"name": "Don_DienThoai",
      "desc": 'Số điện thoại liên hệ của người đứng đơn, lấy tại mục "Điện thoại"/"Điện thoại liên hệ '
              '(nếu có)" trên Đơn đăng ký đất đai hoặc tờ khai. Chỉ trả số điện thoại; KHÔNG lấy số '

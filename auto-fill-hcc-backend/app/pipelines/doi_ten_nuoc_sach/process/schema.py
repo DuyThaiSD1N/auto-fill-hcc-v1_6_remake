@@ -14,11 +14,11 @@ FIELDS: list[dict] = [
     },
     {
         "name": "Cccd_QueQuan",
-        "desc": "Quê quán/place of origin nếu có, object {tinh, xa, diaChi}.",
+        "desc": "Quê quán/place of origin nếu có, object {tinh, xa, chiTietDuoiXa}.",
     },
     {
         "name": "Cccd_NoiCuTru",
-        "desc": "Nơi cư trú/place of residence, object {tinh, xa, diaChi, fullText}; dùng khi không có quê quán.",
+        "desc": "Nơi cư trú/place of residence, object {tinh, xa, chiTietDuoiXa, fullText}; dùng khi không có quê quán.",
     },
 
     # Đơn xin đổi tên trong hợp đồng dịch vụ cấp nước.

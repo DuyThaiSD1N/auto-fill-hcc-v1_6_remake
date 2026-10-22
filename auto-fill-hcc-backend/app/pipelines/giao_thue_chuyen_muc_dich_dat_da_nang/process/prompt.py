@@ -36,8 +36,8 @@ dòng thật). Ví dụ KHUÔN (thay bằng số liệu THẬT): 'Chuyển [..] 
 ⚠ CHỦ HỒ SƠ TỔ CHỨC (công ty/HTX/đơn vị): ChuHoSo_LoaiChuThe='Tổ chức'; ChuHoSo_HoTen=tên đầy đủ tổ chức
 (Giấy chứng nhận ĐKKD / Giấy chứng nhận QSDĐ / Đơn Mẫu 01). Người nộp khi đó thường là cá nhân được ủy quyền.
 
-ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,diaChi}
-(tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn; chỉ tới cấp phường thì để diaChi trống):
+ĐỊA CHỈ NGƯỜI — có HAI địa chỉ người, tách RIÊNG với địa chỉ thửa đất, object {quocGia,tinh,xa,chiTietDuoiXa}
+(tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn; chỉ tới cấp phường thì để chiTietDuoiXa trống):
 - ChuHoSo_DiaChi = nơi ở của CHỦ HỒ SƠ (địa chỉ người đề nghị trong Đơn Mẫu 01 / Nơi thường trú CCCD chủ).
 - NguoiNop_DiaChi = địa chỉ riêng của NGƯỜI NỘP. CHỈ lấy ở CCCD người nộp (Nơi thường trú) hoặc Giấy ủy
   quyền (địa chỉ Bên được ủy quyền). Nếu tự nộp và không có giấy tờ riêng → BỎ TRỐNG (mapper tự dùng

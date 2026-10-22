@@ -19,8 +19,8 @@ bên). Chỉ MỘT chủ đất. Đừng bịa ra "bên A/bên B" chuyển như�
 chứng nhận ĐKKD / Giấy chứng nhận QSDĐ / Đơn đăng ký biến động). Người nộp khi đó thường là cá nhân được
 công ty ủy quyền.
 
-ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): tách object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …',
-xa=phường/xã, diaChi số nhà/đường/thôn (KHÔNG kèm phường/xã/tỉnh). CHỈ lấy ở CCCD người nộp (Nơi thường
+ĐỊA CHỈ NGƯỜI NỘP (NguoiNop_DiaChi): tách object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …',
+xa=phường/xã, chiTietDuoiXa số nhà/đường/thôn (KHÔNG kèm phường/xã/tỉnh). CHỈ lấy ở CCCD người nộp (Nơi thường
 trú) hoặc Hợp đồng ủy quyền (địa chỉ Bên được ủy quyền).
 ⚠ Nếu chỉ có GIẤY GIỚI THIỆU (thường KHÔNG in địa chỉ thường trú) và KHÔNG có CCCD/HĐ ủy quyền của người
 nộp → BỎ TRỐNG NguoiNop_DiaChi (đừng đoán). TUYỆT ĐỐI KHÔNG lấy địa chỉ thửa đất, trụ sở tổ chức/ngân

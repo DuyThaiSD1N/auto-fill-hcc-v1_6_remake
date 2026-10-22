@@ -14,8 +14,8 @@ CHỈ trích MỘT chủ thể = CHỦ PHƯƠNG TIỆN (ChuPhuongTien_*) = đố
   (số CCCD/định danh) và nếu có CCCD thì điền cả ChuPhuongTien_NgaySinh/GioiTinh/NgayCap; BỎ TRỐNG
   ChuPhuongTien_MaDinhDanhToChuc.
 
-ĐỊA CHỈ (ChuPhuongTien_TruSo): tách object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/Thành phố …', xa=phường/
-xã, diaChi chỉ số nhà/thôn/xóm/đường (KHÔNG kèm phường/xã/tỉnh). Lấy ở Đơn mục 'Trụ sở chính (1)' (tổ
+ĐỊA CHỈ (ChuPhuongTien_TruSo): tách object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/Thành phố …', xa=phường/
+xã, chiTietDuoiXa chỉ số nhà/thôn/xóm/đường (KHÔNG kèm phường/xã/tỉnh). Lấy ở Đơn mục 'Trụ sở chính (1)' (tổ
 chức) hoặc CCCD 'Nơi thường trú' (cá nhân).
 
 ĐẶC ĐIỂM PHƯƠNG TIỆN (PhuongTien_*): Ten, SoDangKy (giữ nguyên như giấy tờ, vd 'Qna-1403'),

@@ -69,11 +69,11 @@ bản đồ, mặt bằng, mặt đứng, chi tiết móng. Đọc hết các tr
     50/2014/QH13, 175/2024/NĐ-CP…) — những số đó KHÔNG phải dữ liệu hồ sơ, không trả vào field nào.
 12. "cơ quan cấp: Cục Cảnh sát QLHC về TTXH" → NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự
     xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" → "Bộ Công an".
-13. Địa chỉ trả về dạng object {quocGia, tinh, xa, diaChi}. Dòng địa chỉ viết liền không nhãn con
+13. Địa chỉ trả về dạng object {quocGia, tinh, xa, chiTietDuoiXa}. Dòng địa chỉ viết liền không nhãn con
     dạng "<tổ/thôn>, <xã/phường>, <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn
-    lại cho vào diaChi. Giữ nguyên "Tổ dân phố Cầu Mây 1", "Xóm Tiên Sơn" trong diaChi.
+    lại cho vào chiTietDuoiXa. Giữ nguyên "Tổ dân phố Cầu Mây 1", "Xóm Tiên Sơn" trong chiTietDuoiXa.
 14. Địa giới hành chính đã gộp còn 2 cấp (tỉnh / xã-phường). Giấy tờ cũ in 3-4 cấp thì bỏ cấp huyện:
-    "Tiên Sơn, Tây Thành, Yên Thành, Nghệ An" → tinh = "Nghệ An", xa = "Tây Thành", diaChi =
+    "Tiên Sơn, Tây Thành, Yên Thành, Nghệ An" → tinh = "Nghệ An", xa = "Tây Thành", chiTietDuoiXa =
     "Tiên Sơn". ⚠ Đơn và Thuyết minh của CÙNG một hồ sơ có thể ghi tên xã KHÁC nhau vì một bên dùng
     tên MỚI sau sáp nhập 2025 ("xã Vân Du") còn bên kia dùng tên CŨ ("Tây Thành, Yên Thành") — ưu
     tiên CCCD, rồi tới tên mới ghi trong Đơn.

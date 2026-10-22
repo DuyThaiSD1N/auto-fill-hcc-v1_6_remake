@@ -31,9 +31,9 @@ EXTRA_RULES = """
 7. Số CCCD/CMND bỏ khoảng trắng, dấu chấm, dấu gạch, chỉ giữ chữ số. Số điện thoại chỉ trả khi tài
    liệu ghi cho đúng vai.
 8. Địa chỉ CHỦ HỒ SƠ ưu tiên: mục 'Địa chỉ' của người sử dụng đất trên Đơn Mẫu số 11/ĐK -> CCCD đúng
-   người -> địa chỉ BÊN ỦY QUYỀN -> Giấy chứng nhận. Giữ đủ thôn/xóm/tổ/số nhà trong diaChi; địa chỉ
+   người -> địa chỉ BÊN ỦY QUYỀN -> Giấy chứng nhận. Giữ đủ thôn/xóm/tổ/số nhà trong chiTietDuoiXa; địa chỉ
    Giấy chứng nhận rút gọn không được ghi đè. Có ủy quyền thì NguoiNop_NoiCuTru lấy của BÊN ĐƯỢC ỦY
-   QUYỀN. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả diaChi.
+   QUYỀN. Không có ủy quyền thì sao chép nguyên vẹn ChuHoSo_NoiCuTru, kể cả chiTietDuoiXa.
 9. Don_NoiDungDeNghi lấy NGUYÊN VĂN phần người dân khai tại mục 'Nội dung biến động'/'Đề nghị'/nội dung
    yêu cầu giải quyết của Đơn đăng ký biến động đất đai, tài sản gắn liền với đất Mẫu số 11/ĐK (đề nghị
    ĐÍNH CHÍNH sai sót thông tin trên Giấy chứng nhận ĐÃ CẤP). Nếu chính nội dung viết tay có số

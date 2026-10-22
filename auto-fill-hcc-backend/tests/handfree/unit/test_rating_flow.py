@@ -236,3 +236,22 @@ def test_nhan_dien_giong_noi_dang_xuat_khi_dang_cho_chon():
     assert R("nộp thêm") == "continue_dossiers"
     # Câu KHÁC (không phải trả lời đăng xuất) → None, để không cướp intent khác.
     assert R("đính kèm giấy tờ") is None
+
+
+async def test_formio_chua_bam_nop_thi_bo_qua_submitted(mock_save):
+    """Cổng Form.io dựng sẵn panel "Nộp hồ sơ thành công" (ẩn) — chữ dò được khi chưa bấm nộp không phải nộp."""
+    conv = dict(_new_conv(), procedure_key="cap-giay-phep-xay-dung-moi-nha-o-rieng-le")
+    r = await flow._handle_done(conv, Intent("event", "submitted"))
+    assert r.cards == [] and r.actions == []
+    assert not conv.get("submitted_completed")
+    # Đã bắt được cú bấm nút nộp → chữ thành công là thật.
+    conv["submit_clicked_at"] = "2026-10-21T00:00:00Z"
+    r = await flow._handle_done(conv, Intent("event", "submitted"))
+    assert conv.get("submitted_completed") is True
+
+
+async def test_formio_client_cu_giu_hanh_vi_cu(mock_save):
+    conv = {"_id": "c-old-formio", "client_capabilities": {}, "state": "done",
+            "procedure_key": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"}
+    await flow._handle_done(conv, Intent("event", "submitted"))
+    assert conv.get("submitted_completed") is True

@@ -21,9 +21,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_SoDinhDanh", "desc": "Số định danh của CHỦ HỒ SƠ. Nếu TỔ CHỨC: MÃ SỐ DOANH NGHIỆP / "
         "mã số thuế (ở Giấy chứng nhận ĐKKD 'Mã số doanh nghiệp', hoặc Đơn Mẫu 18 mục 1b 'Giấy tờ nhân "
         "thân/pháp nhân'). Nếu CÁ NHÂN: số CCCD/CMND. CHỈ chữ số."},
-    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Lấy ở Đơn Mẫu "
+    {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở Đơn Mẫu "
         "18 mục 1c 'Địa chỉ', hoặc địa chỉ trụ sở chính (Giấy ĐKKD), hoặc bên NHẬN trên Hợp đồng. tinh='Tỉnh/"
-        "Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/khu (KHÔNG kèm phường/xã/tỉnh)."},
+        "Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/khu (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của CHỦ HỒ SƠ. Lấy ở Đơn Mẫu 18 mục 1d "
         "'Điện thoại liên hệ', hoặc Giấy ĐKKD. CHỈ chữ số. Không có thì bỏ."},
     {"name": "NoiDungBienDong", "desc": "Nội dung biến động ghi trong ĐƠN đăng ký biến động (Mẫu số 18), "
@@ -53,8 +53,8 @@ FIELDS += [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan/nơi cấp CCCD-CMND của NGƯỜI NỘP, chép ĐÚNG như GHI trên "
         "giấy tờ (mặt sau CCCD / Hợp đồng ủy quyền). Nếu giấy tờ KHÔNG ghi nơi cấp thì BỎ TRỐNG — tuyệt đối "
         "KHÔNG suy đoán, KHÔNG điền giá trị mặc định."},
-    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Lấy "
-        "ở CCCD (Nơi thường trú) / Hợp đồng ủy quyền. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/"
+    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Lấy "
+        "ở CCCD (Nơi thường trú) / Hợp đồng ủy quyền. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/"
         "đường/thôn (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP. Chỉ chữ số. Thường không có trên giấy tờ."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},

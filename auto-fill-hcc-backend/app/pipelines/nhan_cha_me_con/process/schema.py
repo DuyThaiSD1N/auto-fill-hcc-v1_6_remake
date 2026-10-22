@@ -11,7 +11,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND người yêu cầu."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}; ưu tiên tờ khai."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên tờ khai."},
     {"name": "Requester_PhoneNumber", "desc": "Số điện thoại người yêu cầu nếu giấy tờ ghi rõ."},
     {"name": "Requester_Email", "desc": "Email người yêu cầu nếu giấy tờ ghi rõ."},
     {"name": "Requester_RelationshipToRecognized", "desc": "Quan hệ với người được nhận cha/mẹ/con: Cha, Mẹ, Con hoặc Khác; có thể đọc là Bố."},
@@ -25,7 +25,7 @@ FIELDS: list[dict] = [
     {"name": "Parent_IdNumber", "desc": "Số định danh/CCCD/CMND cha/mẹ."},
     {"name": "Parent_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân cha/mẹ, dd/mm/yyyy."},
     {"name": "Parent_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân cha/mẹ."},
-    {"name": "Parent_ResidenceDomestic", "desc": "Nơi cư trú cha/mẹ, object {quocGia,tinh,xa,diaChi}; ưu tiên tờ khai."},
+    {"name": "Parent_ResidenceDomestic", "desc": "Nơi cư trú cha/mẹ, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên tờ khai."},
 
     # III. Người con.
     {"name": "Child_FullName", "desc": "Họ tên người con."},
@@ -36,7 +36,7 @@ FIELDS: list[dict] = [
     {"name": "Child_IdNumber", "desc": "Số định danh cá nhân/CCCD/CMND của người con nếu có."},
     {"name": "Child_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người con, dd/mm/yyyy nếu có."},
     {"name": "Child_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người con nếu có."},
-    {"name": "Child_ResidenceDomestic", "desc": "Nơi cư trú người con, object {quocGia,tinh,xa,diaChi}; ưu tiên tờ khai."},
+    {"name": "Child_ResidenceDomestic", "desc": "Nơi cư trú người con, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên tờ khai."},
     {"name": "Child_BirthDocumentType", "desc": "Loại giấy tờ khai sinh/sinh như Giấy khai sinh hoặc Giấy chứng sinh nếu có."},
     {"name": "Child_BirthDocumentNumber", "desc": "Số giấy khai sinh/giấy chứng sinh của người con nếu có."},
     {"name": "Child_BirthDocumentIssueDate", "desc": "Ngày cấp/ngày đăng ký giấy khai sinh/giấy chứng sinh, dd/mm/yyyy."},

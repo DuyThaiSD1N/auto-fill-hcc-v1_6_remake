@@ -18,8 +18,8 @@ EXTRA_RULES = """Đầu vào thường gồm:
 - Cccd_HoTen, Cccd_SoDinhDanh, Cccd_NgaySinh, Cccd_GioiTinh lấy từ mặt trước CCCD/CMND.
 - Cccd_NgayCap/Cccd_NoiCap lấy từ mặt sau CCCD. Nếu thẻ căn cước mới ghi "BỘ CÔNG AN/MINISTRY OF PUBLIC SECURITY" thì trả Cccd_NoiCap = "Bộ Công an".
 - Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" thì trả Cccd_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
-- Cccd_QueQuan lấy từ "Quê quán / Place of origin" nếu có, tách object {tinh, xa, diaChi}.
-- Cccd_NoiCuTru lấy từ "Nơi cư trú / Place of residence" hoặc "Nơi thường trú / Place of residence", trả object có fullText và cố tách {tinh, xa, diaChi}. Ví dụ "Bản Si Choang, Si Lở Lầu, Lai Châu" -> {tinh:"Lai Châu", xa:"Si Lở Lầu", diaChi:"Bản Si Choang", fullText:"Bản Si Choang, Si Lở Lầu, Lai Châu"}.
+- Cccd_QueQuan lấy từ "Quê quán / Place of origin" nếu có, tách object {tinh, xa, chiTietDuoiXa}.
+- Cccd_NoiCuTru lấy từ "Nơi cư trú / Place of residence" hoặc "Nơi thường trú / Place of residence", trả object có fullText và cố tách {tinh, xa, chiTietDuoiXa}. Ví dụ "Bản Si Choang, Si Lở Lầu, Lai Châu" -> {tinh:"Lai Châu", xa:"Si Lở Lầu", chiTietDuoiXa:"Bản Si Choang", fullText:"Bản Si Choang, Si Lở Lầu, Lai Châu"}.
 - Nếu CCCD không có Quê quán thì vẫn phải trả Cccd_NoiCuTru nếu OCR đọc được nơi cư trú.
 </cccd_rules>
 

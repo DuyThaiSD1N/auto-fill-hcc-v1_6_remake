@@ -29,10 +29,10 @@ _PERSON_FIELDS = [
         'HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → '
         '"Bộ Công an". CCCD gắn chip không in nhãn "Nơi cấp" riêng → ưu tiên lấy ở Đơn Mẫu 02 mục 5 / Phiếu '
         "lý lịch tư pháp."),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. Lấy ở CCCD (Nơi thường trú) / "
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,chiTietDuoiXa}}. Lấy ở CCCD (Nơi thường trú) / "
         "Đơn Mẫu 02 mục 3 (Nơi đăng ký hộ khẩu thường trú) — ưu tiên tên địa giới MỚI sau sáp nhập ghi ở "
         "Đơn (Đơn lập gần đây; CCCD cũ có thể ghi tên tỉnh/xã CŨ). tinh='Tỉnh/Thành phố …', xa=phường/xã, "
-        "diaChi=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
+        "chiTietDuoiXa=số nhà/đường/tổ/thôn (KHÔNG kèm phường/xã/huyện/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG {who} — Đơn Mẫu 02 mục 6 'Điện thoại'. Chỉ chữ số; KHÔNG lấy số "
         "điện thoại bàn."),
     ("Email", "Email liên hệ {who} nếu Đơn Mẫu 02 mục 6 có ('Email (nếu có)'). Không có thì bỏ."),

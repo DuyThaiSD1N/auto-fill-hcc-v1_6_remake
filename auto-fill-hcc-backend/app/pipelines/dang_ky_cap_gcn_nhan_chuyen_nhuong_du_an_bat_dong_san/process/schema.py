@@ -23,8 +23,8 @@ FIELDS: list[dict] = [
         "số CCCD (CCCD / Đơn Mẫu 18 mục 1b / Hợp đồng bên mua). TỔ CHỨC: mã số doanh nghiệp. CHỈ chữ số. "
         "KHÔNG lấy mã số doanh nghiệp của chủ đầu tư dự án."},
     {"name": "ChuHoSo_DiaChi", "desc": "Địa chỉ THƯỜNG TRÚ HIỆN HÀNH của CHỦ HỒ SƠ, object {quocGia,tinh,xa,"
-        "diaChi}. Ưu tiên CCCD 'Nơi thường trú' → Giấy xác nhận cư trú CT07 'Nơi thường trú' → Đơn Mẫu 18 mục "
-        "1c. tinh='Tỉnh/Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."},
+        "chiTietDuoiXa}. Ưu tiên CCCD 'Nơi thường trú' → Giấy xác nhận cư trú CT07 'Nơi thường trú' → Đơn Mẫu 18 mục "
+        "1c. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại CHỦ HỒ SƠ (Đơn Mẫu 18 mục 1d / Hợp đồng bên mua). "
         "Chép ĐÚNG như giấy tờ, kể cả đầu số quốc tế (00…, +…). Không có thì bỏ."},
     {"name": "ChuHoSo_Email", "desc": "Email CHỦ HỒ SƠ (Đơn Mẫu 18 mục 1d 'Hộp thư điện tử' / Hợp đồng bên "
@@ -55,8 +55,8 @@ FIELDS += [
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD của NGƯỜI NỘP, chép ĐÚNG như giấy tờ ghi (CCCD / Hợp "
         "đồng mua bán '… tại …' / tờ khai thuế SDĐPNN ô [32]). Giấy tờ không ghi nơi cấp → BỎ TRỐNG, không "
         "suy đoán."},
-    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi} — CCCD "
-        "/ CT07 / Hợp đồng ủy quyền. diaChi KHÔNG kèm phường/xã/tỉnh."},
+    {"name": "NguoiNop_DiaChi", "desc": "Địa chỉ thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa} — CCCD "
+        "/ CT07 / Hợp đồng ủy quyền. chiTietDuoiXa KHÔNG kèm phường/xã/tỉnh."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP, chép đúng như giấy tờ. Thường không có."},
     {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu giấy tờ có; thường không có → bỏ."},
 ]

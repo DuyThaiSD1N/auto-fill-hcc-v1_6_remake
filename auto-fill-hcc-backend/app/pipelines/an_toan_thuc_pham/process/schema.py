@@ -13,7 +13,7 @@ FIELDS: list[dict] = [
     {"name": "Person1_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ nhất, dd/mm/yyyy."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ nhất."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     {"name": "Person2_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ hai, nếu có."},
     {"name": "Person2_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ hai; có thể đọc từ MRZ mặt sau."},
@@ -22,15 +22,15 @@ FIELDS: list[dict] = [
     {"name": "Person2_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person2_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ hai, dd/mm/yyyy."},
     {"name": "Person2_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ hai."},
-    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 
     # Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện ATTP.
     {"name": "DonDeNghi_ChuCoSoHoTen", "desc": "Họ tên chủ cơ sở/chủ hồ sơ trong Đơn đề nghị cấp giấy chứng nhận ATTP."},
     {"name": "DonDeNghi_TenCoSo", "desc": "Tên cơ sở kinh doanh/sản xuất thực phẩm trong đơn."},
-    {"name": "DonDeNghi_DiaChiChuCoSo", "desc": "Địa chỉ cư trú của chủ cơ sở nếu đơn có ghi riêng, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "DonDeNghi_DiaChiCoSo", "desc": "Địa chỉ cơ sở CHỈ lấy đúng dòng 'Địa chỉ cơ sở…' trong ĐƠN ĐỀ NGHỊ, object {quocGia,tinh,xa,diaChi}. Đơn để trống dòng này thì bỏ field (không lấy từ thuyết minh/danh sách)."},
+    {"name": "DonDeNghi_DiaChiChuCoSo", "desc": "Địa chỉ cư trú của chủ cơ sở nếu đơn có ghi riêng, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+    {"name": "DonDeNghi_DiaChiCoSo", "desc": "Địa chỉ cơ sở CHỈ lấy đúng dòng 'Địa chỉ cơ sở…' trong ĐƠN ĐỀ NGHỊ, object {quocGia,tinh,xa,chiTietDuoiXa}. Đơn để trống dòng này thì bỏ field (không lấy từ thuyết minh/danh sách)."},
     {"name": "DonDeNghi_DienThoai", "desc": "Số điện thoại CHỈ lấy đúng dòng 'Điện thoại' trong ĐƠN ĐỀ NGHỊ, chỉ chữ số. Đơn để trống thì bỏ field (không lấy từ thuyết minh/danh sách)."},
-    {"name": "CoSoKhac_DiaChi", "desc": "Địa chỉ cơ sở ghi ở BẢN THUYẾT MINH cơ sở vật chất (ưu tiên) hoặc DANH SÁCH nhân viên tập huấn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CoSoKhac_DiaChi", "desc": "Địa chỉ cơ sở ghi ở BẢN THUYẾT MINH cơ sở vật chất (ưu tiên) hoặc DANH SÁCH nhân viên tập huấn, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "CoSoKhac_DienThoai", "desc": "Số điện thoại ghi ở BẢN THUYẾT MINH cơ sở vật chất (ưu tiên) hoặc DANH SÁCH nhân viên tập huấn, chỉ chữ số."},
     {"name": "DonDeNghi_NganhNghe", "desc": "Nội dung/ngành nghề đề nghị cấp giấy chứng nhận, ví dụ kinh doanh dịch vụ ăn uống."},
 
@@ -41,7 +41,7 @@ FIELDS: list[dict] = [
     {"name": "GiayKham_SoDinhDanh", "desc": "Số CCCD/CMND trên Giấy khám sức khỏe."},
     {"name": "GiayKham_NgayCap", "desc": "Ngày cấp CCCD/CMND ghi trên Giấy khám sức khỏe, dd/mm/yyyy."},
     {"name": "GiayKham_NoiCap", "desc": "Nơi cấp CCCD/CMND ghi trên Giấy khám sức khỏe."},
-    {"name": "GiayKham_NoiOHienTai", "desc": "Nơi ở hiện tại/nơi cư trú trên Giấy khám sức khỏe, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "GiayKham_NoiOHienTai", "desc": "Nơi ở hiện tại/nơi cư trú trên Giấy khám sức khỏe, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "GiayKham_KetLuan", "desc": "Kết luận sức khỏe nếu đọc chắc chắn, ví dụ sức khỏe loại II."},
 
     # Optional: if a true medical assessment record is uploaded in another case.
@@ -51,7 +51,7 @@ FIELDS: list[dict] = [
     {"name": "GiamDinh_SoDinhDanh", "desc": "Số CCCD/CMND trong Biên bản/Kết luận giám định y khoa nếu có."},
     {"name": "GiamDinh_NgayCap", "desc": "Ngày cấp giấy tờ định danh trong Biên bản/Kết luận giám định y khoa nếu có."},
     {"name": "GiamDinh_NoiCap", "desc": "Nơi cấp giấy tờ định danh trong Biên bản/Kết luận giám định y khoa nếu có."},
-    {"name": "GiamDinh_NoiCuTru", "desc": "Nơi thường trú/cư trú trong Biên bản/Kết luận giám định y khoa, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "GiamDinh_NoiCuTru", "desc": "Nơi thường trú/cư trú trong Biên bản/Kết luận giám định y khoa, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "GiamDinh_MucDo", "desc": "Mức độ khuyết tật/suy giảm nếu tài liệu giám định ghi rõ; không suy từ giấy khám sức khỏe."},
     {"name": "GiamDinh_KetLuan", "desc": "Kết luận chính của Biên bản/Kết luận giám định y khoa nếu có."},
 ]

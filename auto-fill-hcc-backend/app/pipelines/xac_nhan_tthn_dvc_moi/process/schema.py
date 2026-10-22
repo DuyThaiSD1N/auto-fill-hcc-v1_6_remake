@@ -33,7 +33,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiDuocCap_NoiCap",
      "desc": "Cơ quan cấp giấy tờ tùy thân của người được cấp, CHÉP ĐÚNG chữ trên giấy. Không ghi → bỏ."},
     {"name": "NguoiDuocCap_NoiCuTru",
-     "desc": "Nơi cư trú hiện tại của người được cấp, object {quocGia,tinh,xa,diaChi[,huyen]}."},
+     "desc": "Nơi cư trú hiện tại của người được cấp, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}."},
     {"name": "NguoiNop_SoDienThoai",
      "desc": "Số điện thoại của NGƯỜI NỘP (khối <nguoi_nop>) ghi trên giấy tờ, chỉ khi số ghi cạnh tên / chữ ký của "
              "CHÍNH người đó. Không lấy số của người khác, cơ quan, cán bộ xác nhận. Không có → bỏ."},

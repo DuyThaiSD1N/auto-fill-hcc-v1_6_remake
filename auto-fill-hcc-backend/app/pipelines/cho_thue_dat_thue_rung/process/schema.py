@@ -56,9 +56,9 @@ FIELDS: list[dict] = [
     {"name": "ChuHoSo_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của chủ hồ sơ (vd 'Cục Cảnh sát quản lý hành chính về trật tự xã hội'), lấy cùng giấy tờ với số và ngày cấp."},
     {
         "name": "ChuHoSo_NoiCuTru",
-        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,diaChi}. Cá nhân: nơi thường trú trên CCCD "
+        "desc": "Địa chỉ của CHỦ HỒ SƠ, object {quocGia,tinh,xa,chiTietDuoiXa}. Cá nhân: nơi thường trú trên CCCD "
                 "hoặc mục 2 'Địa chỉ' của Đơn. Tổ chức: địa chỉ TRỤ SỞ CHÍNH. Giữ đủ số nhà/đường/tổ/thôn "
-                "trong diaChi. ⚠ ĐÂY KHÔNG PHẢI địa điểm thửa đất được giao — tuyệt đối không lấy nhầm "
+                "trong chiTietDuoiXa. ⚠ ĐÂY KHÔNG PHẢI địa điểm thửa đất được giao — tuyệt đối không lấy nhầm "
                 "địa chỉ thửa đất ở mục 4 của Đơn hay ở thông báo thuế.",
     },
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại liên hệ của chủ hồ sơ, chỉ chữ số. Nguồn: mục 3 'Thông tin liên hệ' của Đơn, cột SĐT trong Danh sách người tham gia đấu giá, mục 'Số điện thoại' của Thông báo nộp tiền."},
@@ -80,7 +80,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiCap", "desc": "Cơ quan cấp giấy tờ định danh của NGƯỜI NỘP (vd 'Bộ Công an'), đi cùng đúng số và ngày cấp."},
     {
         "name": "NguoiNop_NoiCuTru",
-        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}. Có ủy quyền thì lấy 'Nơi thường "
+        "desc": "Địa chỉ của NGƯỜI NỘP, object {quocGia,tinh,xa,chiTietDuoiXa}. Có ủy quyền thì lấy 'Nơi thường "
                 "trú' của BÊN ĐƯỢC ỦY QUYỀN; không có ủy quyền thì sao chép NGUYÊN VẸN ChuHoSo_NoiCuTru.",
     },
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP, chỉ chữ số. Có ủy quyền thì lấy số của bên được ủy quyền; hồ sơ không ghi thì BỎ FIELD (không mượn số của chủ hồ sơ)."},
@@ -95,7 +95,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ThuaDat_DiaChi",
-        "desc": "ĐỊA ĐIỂM THỬA ĐẤT được giao/thuê (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,diaChi}. "
+        "desc": "ĐỊA ĐIỂM THỬA ĐẤT được giao/thuê (KHÔNG phải nơi cư trú), object {quocGia,tinh,xa,chiTietDuoiXa}. "
                 "Nguồn: mục 4 'Địa điểm thửa đất/khu đất/khu rừng' của Đơn, hoặc cột 'Vị trí thửa đất' "
                 "trong Danh sách người trúng đấu giá. Không có nguồn ghi rõ thì bỏ field.",
     },

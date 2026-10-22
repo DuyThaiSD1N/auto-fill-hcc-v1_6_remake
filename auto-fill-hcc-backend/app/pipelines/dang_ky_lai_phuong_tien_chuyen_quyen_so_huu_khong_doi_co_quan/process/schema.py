@@ -30,7 +30,7 @@ FIELDS: list[dict] = [
     {"name": "ChuPT_DaiDienDongSoHuu", "desc": "Đơn 07 mục 'đại diện cho các đồng sở hữu' — CHỈ khi phương tiện có "
         "nhiều đồng sở hữu và đơn ghi rõ. Đơn để trống thì bỏ."},
     {"name": "ChuPT_TruSo", "desc": "Trụ sở chính (tổ chức) / nơi thường trú (cá nhân) của CHỦ MỚI, object "
-        "{quocGia,tinh,xa,diaChi} theo đơn vị hành chính MỚI. Hợp đồng 'Địa chỉ trụ sở' Bên B (lấy phần 'nay là') → "
+        "{quocGia,tinh,xa,chiTietDuoiXa} theo đơn vị hành chính MỚI. Hợp đồng 'Địa chỉ trụ sở' Bên B (lấy phần 'nay là') → "
         "Đơn 07 'Trụ sở chính (1)' → hóa đơn địa chỉ người mua."},
     {"name": "ChuPT_DienThoai", "desc": "Số điện thoại CHỦ MỚI — Đơn 07 mục 'Điện thoại'. Chỉ chữ số."},
     {"name": "ChuPT_Email", "desc": "Email CHỦ MỚI — Đơn 07 mục 'Email'. Chép nguyên văn, chữ thường."},
@@ -50,7 +50,7 @@ FIELDS += [
         "ngày hết hạn."},
     {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD người nộp (CCCD → hợp đồng 'Nơi cấp'), vd 'Bộ Công an'."},
     {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú người nộp trên CCCD của chính họ, object "
-        "{quocGia,tinh,xa,diaChi}. Không có CCCD thì bỏ."},
+        "{quocGia,tinh,xa,chiTietDuoiXa}. Không có CCCD thì bỏ."},
 ]
 
 # --- Phương tiện ---

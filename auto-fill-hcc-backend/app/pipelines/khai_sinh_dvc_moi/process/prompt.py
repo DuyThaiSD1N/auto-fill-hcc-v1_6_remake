@@ -18,7 +18,7 @@ khai sinh. Khối người nộp trên cổng khóa theo tài khoản → KHÔNG
 1. Nguồn: tờ khai → giấy chứng sinh / giấy cam đoan về việc sinh → CCCD của chính người được khai sinh (người
    đã có hồ sơ, giấy tờ cá nhân). Tên trên giấy chứng sinh bị gạch sửa tay → lấy tên đã sửa khớp tờ khai.
    Ngày sinh: tờ khai và CCCD lệch nhau thì đối chiếu dòng MRZ của CCCD (6 số đầu dòng 2 = yymmdd).
-2. Con_NoiSinh: sinh tại cơ sở y tế → diaChi = tên đầy đủ cơ sở y tế nối ", " + phần địa chỉ chi tiết của cơ sở
+2. Con_NoiSinh: sinh tại cơ sở y tế → chiTietDuoiXa = tên đầy đủ cơ sở y tế nối ", " + phần địa chỉ chi tiết của cơ sở
    đứng trước phường/xã; tinh/xa của cơ sở. Sinh tại nhà/thôn → địa chỉ đó.
 3. Con_QueQuan theo dòng "Quê quán" của tờ khai / giấy tờ; không có thì bỏ, không tự suy.
 4. Dân tộc / quốc tịch chỉ khi giấy ghi rõ; "Mông" giữ "Mông", biến thể có "H" đứng đầu (Hmông) → "Mông (Hmông)".
@@ -46,8 +46,8 @@ khai sinh. Khối người nộp trên cổng khóa theo tài khoản → KHÔNG
 </me_cha>
 
 <dia_chi>
-11. Địa chỉ tách {quocGia,tinh,xa,diaChi}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối
-    là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là diaChi.
+11. Địa chỉ tách {quocGia,tinh,xa,chiTietDuoiXa}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối
+    là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là chiTietDuoiXa.
 </dia_chi>
 
 <nguoi_yeu_cau>

@@ -19,7 +19,7 @@ FIELDS: list[dict] = [
     {"name": "DoanhNghiep_MaSo", "desc": "Mã số doanh nghiệp / mã số thuế (10 hoặc 13 chữ số, có thể có '-'). Nguồn: "
         "công văn 'Mã số doanh nghiệp', Giấy chứng nhận ĐKDN, căn cứ Giấy ủy quyền."},
     {"name": "DoanhNghiep_DiaChi", "desc": "Địa chỉ TRỤ SỞ CHÍNH của doanh nghiệp (công văn 'Địa chỉ' / Giấy ủy quyền "
-        "'Trụ sở tại'), object {quocGia,tinh,xa,diaChi}. diaChi = số nhà, đường (KHÔNG kèm phường/tỉnh). KHÔNG lấy "
+        "'Trụ sở tại'), object {quocGia,tinh,xa,chiTietDuoiXa}. chiTietDuoiXa = số nhà, đường (KHÔNG kèm phường/tỉnh). KHÔNG lấy "
         "địa chỉ cư trú của cá nhân."},
     {"name": "DoanhNghiep_DienThoai", "desc": "Số điện thoại của DOANH NGHIỆP (công văn 'Điện thoại', 'ĐT'). Ghi "
         "nhiều số thì chép đủ, ngăn bằng ' / '."},
@@ -48,7 +48,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người nộp: "Nam"/"Nữ" (thẻ CCCD, hoặc danh xưng "Ông"/"Bà" trước '
         'tên Bên B).'},
     {"name": "NguoiNop_DiaChi", "desc": "Nơi thường trú / nơi cư trú của NGƯỜI NỘP (thẻ CCCD, hoặc 'Địa chỉ' của Bên B "
-        "trong Giấy ủy quyền), object {quocGia,tinh,xa,diaChi}. KHÔNG lấy địa chỉ trụ sở doanh nghiệp."},
+        "trong Giấy ủy quyền), object {quocGia,tinh,xa,chiTietDuoiXa}. KHÔNG lấy địa chỉ trụ sở doanh nghiệp."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của CHÍNH người nộp nếu giấy tờ ghi cạnh tên người đó (Bên B "
         "Giấy ủy quyền, 'Người liên hệ: ..., ĐT ...'). KHÔNG lấy số điện thoại của doanh nghiệp."},
     {"name": "QuyetDinh_So", "desc": "Số hiệu Quyết định ban hành Nội quy lao động (vd '12/QĐ-ABC')."},

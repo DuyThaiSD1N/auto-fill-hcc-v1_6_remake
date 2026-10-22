@@ -21,7 +21,7 @@ NGUỒN DỮ LIỆU:
 - THỨ TỰ ƯU TIÊN: Don_DiaChi (địa chỉ ghi trên ĐƠN/TỜ KHAI do chính người dân lập) ĐỨNG TRƯỚC; Cccd_NoiCuTru chỉ là nguồn CUỐI CÙNG khi hồ sơ hoàn toàn không có đơn/tờ khai ghi địa chỉ.
 - Nhận BẤT KỲ mẫu đơn nào thực tế có trong hồ sơ (Mẫu số 13, Mẫu số 15, Mẫu số 13a, đơn đề nghị viết tay...), không đòi đúng một số hiệu mẫu.
 - CCCD/CMND cấp trước sắp xếp đơn vị hành chính thường ghi TỈNH/HUYỆN CŨ đã sáp nhập. Hễ đơn đã ghi địa chỉ thì phải theo đơn, kể cả khi tên phường/xã trên đơn nghe giống địa danh tỉnh cũ.
-- Dòng địa chỉ trên đơn hay viết LIỀN, không nhãn con, dạng "<số nhà/đường/tổ/bản/thôn>, <xã/phường> <tỉnh/thành phố>". Tách: cụm CUỐI = tinh, cụm ngay TRƯỚC nó = xa (thêm tiền tố "Xã"/"Phường" nếu đơn viết trống), phần còn lại = diaChi. Giữ nguyên số nhà/đường/tổ/bản/thôn trong diaChi, không rút gọn.
+- Dòng địa chỉ trên đơn hay viết LIỀN, không nhãn con, dạng "<số nhà/đường/tổ/bản/thôn>, <xã/phường> <tỉnh/thành phố>". Tách: cụm CUỐI = tinh, cụm ngay TRƯỚC nó = xa (thêm tiền tố "Xã"/"Phường" nếu đơn viết trống), phần còn lại = chiTietDuoiXa. Giữ nguyên số nhà/đường/tổ/bản/thôn trong chiTietDuoiXa, không rút gọn.
 - Don_DiaChi và Cccd_NoiCuTru là NƠI CƯ TRÚ của người nộp hồ sơ. TUYỆT ĐỐI KHÔNG lấy nhầm địa chỉ THỬA ĐẤT xin cấp Giấy chứng nhận (ghi trên đơn ở mục "Thửa đất đăng ký", trên mảnh trích đo hoặc trên Giấy chứng nhận) — hai địa chỉ này thường khác nhau.
 - Đơn không ghi địa chỉ thì BỎ HẲN Don_DiaChi, không suy từ giấy tờ khác để lấp chỗ trống.
 

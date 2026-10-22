@@ -20,8 +20,8 @@ _NOP_FIELDS = [
         'TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ căn cước mới ghi "BỘ CÔNG AN" '
         '→ "Bộ Công an".'),
     ("QuocTich", 'Quốc tịch NGƯỜI NỘP (CCCD). Mặc định "Việt Nam".'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ/cư trú NGƯỜI NỘP trên CCCD, object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/"
-        "Thành phố …', xa=phường/xã, diaChi=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ/cư trú NGƯỜI NỘP trên CCCD, object {quocGia,tinh,xa,chiTietDuoiXa}. tinh='Tỉnh/"
+        "Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
     ("DienThoai", "Số điện thoại DI ĐỘNG của NGƯỜI NỘP nếu giấy tờ ghi rõ là của người đó. Chỉ chữ số. KHÔNG "
         "lấy số máy bàn/điện thoại của trường."),
     ("Email", "Email cá nhân NGƯỜI NỘP nếu có; thường không có → bỏ."),

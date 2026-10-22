@@ -169,11 +169,11 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
 <noi_cu_tru>
 - Địa chỉ hành chính hiện hành CHỈ có 2 cấp: XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ
   (KHÔNG còn cấp huyện/quận). Với MỌI trường NoiCuTru (ChuThe_NoiCuTru, Chong_NoiCuTru, Vo_NoiCuTru):
-  trả object {quocGia, tinh, xa, diaChi}.
+  trả object {quocGia, tinh, xa, chiTietDuoiXa}.
 - Khi chuỗi nơi cư trú có dạng "<chi tiết>, xã/phường/thị trấn <X>, tỉnh/thành phố <Y>":
   + xa = "<X>" (BẮT BUỘC trích khi nguồn có ghi xã/phường/thị trấn; có thể bỏ tiền tố loại đơn vị).
   + tinh = "<Y>".
-  + diaChi = phần CHI TIẾT còn lại (số nhà/thôn/bản/tổ dân phố), KHÔNG nhét tên xã hay tên tỉnh vào diaChi.
+  + chiTietDuoiXa = phần CHI TIẾT còn lại (số nhà/thôn/bản/tổ dân phố), KHÔNG nhét tên xã hay tên tỉnh vào chiTietDuoiXa.
 - ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh;
   phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó
   = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì
