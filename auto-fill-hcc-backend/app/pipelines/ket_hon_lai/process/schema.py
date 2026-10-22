@@ -13,7 +13,7 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_NoiCap",
      "desc": 'Nơi cấp giấy tờ tùy thân bên nam. Thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → trả "Bộ Công an"; '
              'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai, đối chiếu đúng người. Không có thì để trống."},
+    {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người cha' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch bên nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNam_NoiCuTru_TrongNuoc",
      "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối chồng/bên nam "
@@ -28,7 +28,7 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_NoiCap",
      "desc": 'Nơi cấp giấy tờ tùy thân bên nữ. Thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → trả "Bộ Công an"; '
              'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai, đối chiếu đúng người. Không có thì để trống."},
+    {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người mẹ' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_NoiCuTru_TrongNuoc",
      "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối vợ/bên nữ "
@@ -43,12 +43,18 @@ FIELDS: list[dict] = [
      "desc": "Số định danh/CCCD ghi ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
     {"name": "ToKhaiNam_NgaySinh",
      "desc": "Ngày sinh ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
+    {"name": "ToKhaiNam_DanToc",
+     "desc": "Dân tộc ở dòng 'Dân tộc' trong khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. "
+             "CHỈ lấy từ tờ khai; tờ khai ghi thì BẮT BUỘC trả, kể cả khi đã có CCCD."},
     {"name": "ToKhaiNu_HoTen",
      "desc": "Họ tên ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
     {"name": "ToKhaiNu_SoDinhDanh",
      "desc": "Số định danh/CCCD ghi ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
     {"name": "ToKhaiNu_NgaySinh",
      "desc": "Ngày sinh ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
+    {"name": "ToKhaiNu_DanToc",
+     "desc": "Dân tộc ở dòng 'Dân tộc' trong khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. "
+             "CHỈ lấy từ tờ khai; tờ khai ghi thì BẮT BUỘC trả, kể cả khi đã có CCCD."},
 
     # Lần đăng ký kết hôn TRƯỚC ĐÂY. Chỉ đọc từ tờ khai đăng ký lại hoặc giấy CN kết hôn cũ.
     {"name": "KetHonCu_So",

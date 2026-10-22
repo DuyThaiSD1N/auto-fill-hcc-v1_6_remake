@@ -66,6 +66,8 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - ThongTinBo_DanToc: áp dụng rule riêng tại mục E; hai nguồn chính bắt buộc soát là tờ khai đăng ký khai sinh (khối bố đẻ/cha) > giấy chứng nhận kết hôn (khối chồng/bên nam).
 - ThongTinBo_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
 - ThongTinBo_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
+- NHẬN DIỆN CCCD CỦA CHA: hồ sơ có CCCD/CMND của một người NAM trưởng thành, KHÔNG phải mẹ và KHÔNG phải người đã được giấy tờ khác gắn vai trò riêng (vd số định danh trùng chủ hộ CT01) → đó là CCCD của CHA, BẮT BUỘC trích ThongTinBo_* từ thẻ đó, KỂ CẢ khi hồ sơ không có giấy kết hôn và giấy chứng sinh không ghi cha. KHÔNG đòi họ trên CCCD trùng họ con mới nhận là cha.
+- OCR hay đọc LỆCH DẤU họ trên CCCD (vd "TỔNG" ↔ "TỐNG", dòng MRZ cùng là "TONG"). Họ cha chỉ khác họ con ở DẤU (bỏ dấu giống hệt) → vẫn là cha, và ThongTinBo_HoTen viết họ theo cách viết của họ con trên giấy chứng sinh/tờ khai (vd con "TỐNG GIA HÂN", CCCD đọc "TỔNG VĂN BÌNH" → "TỐNG VĂN BÌNH"); chữ đệm và tên giữ nguyên theo CCCD.
 - LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó theo thứ tự nguồn ở trên.
 
 # ═══ D. THÔNG TIN MẸ (ThongTinMe_*) — ƯU TIÊN GIẤY CHỨNG SINH ═══

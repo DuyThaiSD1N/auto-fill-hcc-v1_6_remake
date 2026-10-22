@@ -79,6 +79,16 @@ def _first_token(full_name) -> str:
     return parts[0] if parts else ""
 
 
+def _align_father_surname(father_name, child_name) -> str:
+    """OCR CCCD hay đọc lệch dấu họ cha ("TỔNG" thay "TỐNG", MRZ cùng "TONG"). Họ cha chỉ khác họ con
+    ở dấu → viết theo họ con trên giấy chứng sinh/tờ khai; chữ đệm và tên giữ nguyên."""
+    parts = str(father_name or "").split()
+    child_ho = _first_token(child_name)
+    if parts and child_ho and parts[0] != child_ho and _fold(parts[0]) == _fold(child_ho):
+        parts[0] = child_ho
+    return " ".join(parts)
+
+
 def _upper_name(value) -> str:
     """Tên chủ thể trên form hộ tịch phải viết IN HOA, đồng thời gom khoảng trắng OCR."""
     return " ".join(str(value or "").split()).upper()
@@ -398,6 +408,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     ):
         if name_field in values:
             values[name_field] = _upper_name(values[name_field])
+    if values.get("ThongTinBo_HoTen"):
+        values["ThongTinBo_HoTen"] = _align_father_surname(
+            values["ThongTinBo_HoTen"], values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon")
+        )
     _fill_from_marriage_cert(values, "ThongTinMe", "Vo")
     _fill_from_marriage_cert(values, "ThongTinBo", "Chong")
     out: list[dict] = []

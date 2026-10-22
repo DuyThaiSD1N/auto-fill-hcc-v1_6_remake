@@ -1662,8 +1662,11 @@
       // nhận theo form#ngSelectAgencyForm1 (id hardcode trong template Angular, ổn định).
       // Cổng bộ nền iGate: hộp thoại chọn cơ quan form#ngSelectAgencyForm(1) + wizard
       // mat-stepper. Bộ Nội vụ dùng CÙNG component (UBND tỉnh → Sở/Ban ngành → Sở Nội vụ).
+      // Bộ Y tế: thủ tục cấp Sở (vd cấp lại/điều chỉnh GCN kinh doanh dược) mở TRANG nps/apply
+      // "Chọn trường hợp giải quyết" = CÙNG form#ngSelectAgencyForm (agency + procedureProcess)
+      // với hộp thoại Bộ Xây dựng.
       const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
-        "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
+        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
       // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính

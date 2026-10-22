@@ -168,6 +168,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         noi_cap = None if card_is_other else values.get(f"{src}_NoiCap")
         issuer = normalize_issuer(noi_cap) or default_issuer(ngay_cap)
         area = _area(values.get(f"{src}_NoiCuTru_TrongNuoc"))
+        # Dân tộc: tờ khai trước (CCCD chip không in dân tộc nên LLM hay bỏ nhóm Cccd*).
+        dan_toc = values.get(f"{declaration}_DanToc") or (None if card_is_other else values.get(f"{src}_DanToc"))
 
         add(f"HoTen{dst}", upper_person_name(ho_ten), ho_ten_default)
         add(f"SoDinhDanh_{dst}", so_dinh_danh, so_default)
@@ -176,7 +178,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add(f"NgaySinh{dst}", ngay_sinh, ngay_sinh_default)
         add(f"NgayCapDD_{dst}", ngay_cap)
         add(f"NoiCapDD_{dst}", issuer)
-        add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
+        add(f"DanToc{dst}", _normalize_dan_toc(dan_toc))
         add(f"QuocTich{dst}", values.get(f"{src}_QuocTich") or "Việt Nam")
         add(f"LoaiCuTru_{dst}", "Thường trú")
         if area:

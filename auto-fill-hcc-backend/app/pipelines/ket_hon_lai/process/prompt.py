@@ -10,7 +10,7 @@ NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự ph
 - Ưu tiên lấy danh tính mỗi bên TỪ CCCD của chính người đó. Nếu THIẾU CCCD của một bên, lấy danh tính bên đó
   từ giấy CN kết hôn: khối "Chồng"/"Bên nam" → CccdNam_*, khối "Vợ"/"Bên nữ" → CccdNu_*
   (họ tên, ngày sinh, số thẻ căn cước công dân, ngày cấp, cơ quan cấp của đúng bên đó).
-- Có TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN thì BẮT BUỘC trả thêm ToKhaiNam_*/ToKhaiNu_* (họ tên, số định danh, ngày sinh)
+- Có TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN thì BẮT BUỘC trả thêm ToKhaiNam_*/ToKhaiNu_* (họ tên, số định danh, ngày sinh, dân tộc)
   chép NGUYÊN VĂN từ khối chồng/vợ trên tờ khai, KỂ CẢ khi đã có CCCD và KỂ CẢ khi tờ khai ghi khác CCCD;
   KHÔNG chép từ CCCD sang. Python tự đối chiếu hai nguồn.
 - NGOẠI LỆ: NƠI CƯ TRÚ có thứ tự ưu tiên RIÊNG (TỜ KHAI trước, CCCD sau) — xem mục NƠI CƯ TRÚ bên dưới.
@@ -21,7 +21,11 @@ NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự ph
   TUYỆT ĐỐI không mặc định "Cục Cảnh sát..." cho thẻ Căn cước mới do Bộ Công an cấp.
 
 DÂN TỘC (CccdNam_DanToc = bên nam, CccdNu_DanToc = bên nữ):
-- CCCD chip thường KHÔNG ghi dân tộc → tìm trong giấy CN kết hôn/tờ khai, ĐỐI CHIẾU ĐÚNG NGƯỜI theo họ tên/số định danh.
+- CCCD chip thường KHÔNG ghi dân tộc → tìm trong giấy CN kết hôn/tờ khai/văn bản cam đoan/giấy khai sinh của con
+  (khối "người cha" = bên nam, "người mẹ" = bên nữ), ĐỐI CHIẾU ĐÚNG NGƯỜI theo họ tên/số định danh.
+  CCCD không in dân tộc KHÔNG phải lý do bỏ field: giấy khác ghi thì BẮT BUỘC trả CccdNam_DanToc/CccdNu_DanToc.
+- Dòng "Dân tộc" trong khối "Họ, chữ đệm, tên của chồng" trên TỜ KHAI → ToKhaiNam_DanToc; khối "Họ, chữ đệm,
+  tên của vợ" → ToKhaiNu_DanToc. Tờ khai ghi thì BẮT BUỘC trả, chép nguyên văn, kể cả khi hai bên giống nhau.
 - Không giấy nào ghi → ĐỂ TRỐNG (không bịa, không mặc định). Không lấy dân tộc người này gán cho người kia.
 - "H'Mông"/"H Mông"/"Hmông" PHẢI trả "Mông (Hmông)"; còn "Mông" thì trả "Mông".
 

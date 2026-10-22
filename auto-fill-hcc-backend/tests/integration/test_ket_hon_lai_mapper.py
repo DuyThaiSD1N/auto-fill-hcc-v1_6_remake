@@ -101,6 +101,20 @@ def test_missing_wife_cccd_falls_back_to_marriage_cert():
     assert out["HoTenBenNam"]["value"] == "SÙNG A CỦ"
 
 
+def test_ethnicity_falls_back_to_declaration_when_card_has_none():
+    """CCCD chip không in dân tộc → LLM bỏ Cccd*_DanToc; dân tộc ghi trên tờ khai vẫn phải lên form."""
+    vo = {k: v for k, v in _VO.items() if k != "CccdNu_DanToc"}
+    chong = {k: v for k, v in _CHONG.items() if k != "CccdNam_DanToc"}
+    out = _by_name(mapper.enrich(_fields(vo, chong, _HOSO, {
+        "ToKhaiNu_HoTen": "MÁ THỊ SỐ", "ToKhaiNu_DanToc": "Kinh",
+        "ToKhaiNam_HoTen": "SÙNG A CỦ", "ToKhaiNam_DanToc": "H'Mông",
+    })))
+    assert out["DanTocBenNu"]["value"] == "Kinh"
+    assert out["DanTocBenNam"]["value"] == "Mông (Hmông)"
+    assert {"ToKhaiNam_DanToc", "ToKhaiNu_DanToc"} <= schema.ALLOWED
+    assert "ToKhaiNam_DanToc" in EXTRA_RULES and "ToKhaiNu_DanToc" in EXTRA_RULES
+
+
 def test_old_marriage_metadata_does_not_infer_number_or_book_from_birth_certificate():
     """Số/ngày giấy khai sinh không được lọt sang dữ liệu kết hôn cũ; quyển số không được tự tính."""
     out = _by_name(mapper.enrich(_fields(

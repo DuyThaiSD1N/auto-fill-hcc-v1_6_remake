@@ -24,3 +24,25 @@ def test_ten_con_bo_me_chu_ho_duoc_viet_in_hoa():
     assert values["NycQuanHe"]["chaTen"] == "PHẠM VĂN BỐ"
     assert values["NycQuanHe"]["meTen"] == "TRẦN THỊ MẸ"
 
+
+
+def test_ho_cha_lech_dau_do_ocr_viet_theo_ho_con():
+    values = _values(enrich([
+        {"name": "Gcs_HoTenCon", "value": "TỐNG GIA HÂN"},
+        {"name": "ThongTinBo_HoTen", "value": "TỔNG VĂN BÌNH"},
+        {"name": "ThongTinBo_SoDinhDanh", "value": "012345678901"},
+    ]))
+
+    assert values["ChaHoTen"] == "TỐNG VĂN BÌNH"
+    assert values["ChaHo"] == "TỐNG"
+    assert values["NycQuanHe"]["chaTen"] == "TỐNG VĂN BÌNH"
+
+
+def test_ho_cha_khac_ho_con_giu_nguyen():
+    values = _values(enrich([
+        {"name": "Gcs_HoTenCon", "value": "TRẦN GIA HÂN"},
+        {"name": "ThongTinBo_HoTen", "value": "PHẠM VĂN BÌNH"},
+        {"name": "ThongTinBo_SoDinhDanh", "value": "012345678901"},
+    ]))
+
+    assert values["ChaHoTen"] == "PHẠM VĂN BÌNH"
