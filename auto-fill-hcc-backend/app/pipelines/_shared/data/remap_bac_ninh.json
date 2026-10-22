@@ -79,6 +79,12 @@
     },
     {
         "tinh_cu": "Bắc Giang",
+        "xa_cu": "Chũ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Chũ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
         "xa_cu": "Cảnh Thụy",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Cảnh Thụy"
@@ -91,7 +97,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Tư Mai",
+        "xa_cu": "Tư Mại",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Cảnh Thụy"
     },
@@ -195,7 +201,8 @@
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Ninh Xá",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Ninh Xá"
+        "xa_moi": "Phường Ninh Xá",
+        "huyen_cu": "Thuận Thành"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -457,7 +464,7 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Đồng Ngàn",
+        "xa_cu": "Đông Ngàn",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Từ Sơn"
     },
@@ -537,7 +544,8 @@
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Quảng Minh",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Vân Hà"
+        "xa_moi": "Phường Vân Hà",
+        "huyen_cu": "Việt Yên"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -649,9 +657,10 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Phú Lương",
+        "xa_cu": "Phù Lương",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Đào Viên"
+        "xa_moi": "Phường Đào Viên",
+        "huyen_cu": "Quế Võ"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -667,7 +676,7 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Trang Ha",
+        "xa_cu": "Trang Hạ",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Đồng Nguyên"
     },
@@ -709,7 +718,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Trường bản TB1",
+        "xa_cu": "Trường bắn TB1",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Biên Sơn"
     },
@@ -746,7 +755,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Tam Di",
+        "xa_cu": "Tam Dị",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Bảo Đài"
     },
@@ -789,11 +798,10 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Đồng Sơn",
+        "xa_cu": "Đông Sơn",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Bố Hạ",
-        "ambiguous": true,
-        "ghi_chu": "Trùng tên Đồng Sơn ở Phường Tiền Phong"
+        "huyen_cu": "Yên Thế"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -910,7 +918,8 @@
         "xa_cu": "Đồng Tiến",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Hoàng Vân",
-        "ghi_chu": "Đồng Tiến huyện Hiệp Hòa"
+        "huyen_cu": "Hiệp Hòa",
+        "ghi_chu": "Lập 1/1/2025 từ xã Đồng Tân và xã Thanh Vân (NQ 1191)"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -993,7 +1002,7 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Hiền Vân",
+        "xa_cu": "Hiên Vân",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Liên Bão"
     },
@@ -1029,10 +1038,10 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Lương Tài",
+        "xa_cu": "Thứa",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Phường Lương Tài",
-        "ghi_chu": "Thị trấn Lương Tài"
+        "ghi_chu": "Thị trấn Thứa (huyện Lương Tài)"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -1105,7 +1114,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Phi Điền",
+        "xa_cu": "Phì Điền",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Lục Ngạn",
         "ghi_chu": "Thị trấn Phi Điền"
@@ -1354,7 +1363,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Hố Đáp",
+        "xa_cu": "Hộ Đáp",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Sơn Hải"
     },
@@ -1421,7 +1430,7 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Đồng Phong",
+        "xa_cu": "Đông Phong",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Tam Đa"
     },
@@ -1452,7 +1461,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Đảo Mỹ",
+        "xa_cu": "Đào Mỹ",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Tiên Lục"
     },
@@ -1481,23 +1490,21 @@
         "xa_moi": "Xã Tiên Lục"
     },
     {
-        "tinh_cu": "Bắc Giang",
+        "tinh_cu": "Bắc Ninh",
         "xa_cu": "Phú Lương",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Trung Chính",
-        "ambiguous": true,
-        "ghi_chu": "Trùng tên Phú Lương ở Phường Đào Viên"
+        "huyen_cu": "Lương Tài"
     },
     {
-        "tinh_cu": "Bắc Giang",
+        "tinh_cu": "Bắc Ninh",
         "xa_cu": "Quang Minh",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Trung Chính",
-        "ambiguous": true,
-        "ghi_chu": "Trùng tên Quang Minh ở Phường Vân Hà"
+        "ghi_chu": "Lập 1/12/2024 từ xã Trừng Xá và xã Minh Tân (NQ 1255)"
     },
     {
-        "tinh_cu": "Bắc Giang",
+        "tinh_cu": "Bắc Ninh",
         "xa_cu": "Trung Chính",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Trung Chính"
@@ -1564,7 +1571,7 @@
     },
     {
         "tinh_cu": "Bắc Giang",
-        "xa_cu": "Cẩm Sơn",
+        "xa_cu": "Cấm Sơn",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Tân Sơn"
     },
@@ -1626,13 +1633,13 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Yên Phu",
+        "xa_cu": "Yên Phụ",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Văn Môn"
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Đồng Thọ",
+        "xa_cu": "Đông Thọ",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Văn Môn"
     },
@@ -1678,8 +1685,7 @@
         "xa_cu": "Đồng Tiến",
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Xuân Lương",
-        "ghi_chu": "Đồng Tiến huyện Yên Thế",
-        "ambiguous": true
+        "huyen_cu": "Yên Thế"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -1714,11 +1720,9 @@
     },
     {
         "tinh_cu": "Bắc Ninh",
-        "xa_cu": "Đồng Tiền",
+        "xa_cu": "Đông Tiến",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Yên Phong",
-        "ambiguous": true,
-        "ghi_chu": "Trùng tên Đồng Tiến/Tiền ở nhiều huyện"
+        "xa_moi": "Phường Yên Phong"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -1839,7 +1843,8 @@
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Phúc Sơn",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đại Sơn"
+        "xa_moi": "Xã Đại Sơn",
+        "huyen_cu": "Sơn Động"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -1907,5 +1912,225 @@
         "tinh_moi": "Bắc Ninh",
         "xa_moi": "Xã Tuấn Đạo",
         "ghi_chu": "Không sắp xếp năm 2025, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tiền An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc",
+        "ghi_chu": "Nhập 1/12/2024 vào phường Tiền Ninh Vệ (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Vệ An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc",
+        "ghi_chu": "Nhập 1/12/2024 vào phường Tiền Ninh Vệ (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Ninh Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc",
+        "huyen_cu": "Bắc Ninh",
+        "ghi_chu": "Nhập 1/12/2024 vào phường Tiền Ninh Vệ (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lai Hạ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Kênh",
+        "ghi_chu": "Nhập 1/12/2024 vào xã An Tập (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Mỹ Hương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Kênh",
+        "ghi_chu": "Nhập 1/12/2024 vào xã An Tập (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trừng Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Chính",
+        "ghi_chu": "Nhập 1/12/2024 vào xã Quang Minh (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Minh Tân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Chính",
+        "ghi_chu": "Nhập 1/12/2024 vào xã Quang Minh (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hán Quảng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Chi Lăng",
+        "ghi_chu": "Nhập 1/12/2024 vào xã Chi Lăng (NQ 1255)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trần Nguyên Hãn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang",
+        "ghi_chu": "Nhập 1/1/2025 vào phường Ngô Quyền (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lê Lợi",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang",
+        "ghi_chu": "Nhập 1/1/2025 vào phường Trần Phú (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lão Hộ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân An",
+        "ghi_chu": "Nhập 1/1/2025 vào phường Tân An (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Minh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh",
+        "huyen_cu": "Hiệp Hòa",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Sơn Thịnh (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hòa Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Sơn Thịnh (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đại Thành",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Sơn Thịnh (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hùng Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Hùng Thái (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thái Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Hùng Thái (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hoàng Lương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Toàn Thắng (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hoàng Thanh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Toàn Thắng (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hoàng An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Hoàng Vân (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Tân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Đồng Tiến (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thanh Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Đồng Tiến (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mỹ Hà",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Tiên Lục (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Yên Mỹ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Lạng Giang",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Hương Lạc (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vũ Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Cẩm Lý",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Cẩm Lý (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đại Hóa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Quang Trung (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lan Giới",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Quang Trung (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Quang Trung (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phúc Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung",
+        "huyen_cu": "Tân Yên",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Lam Sơn (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lam Cốt",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Lam Sơn (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tam Hiệp",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Tân Hiệp (NQ 1191)"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hồng Kỳ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Kỳ",
+        "ghi_chu": "Nhập 1/1/2025 vào xã Đồng Kỳ (NQ 1191)"
     }
 ]

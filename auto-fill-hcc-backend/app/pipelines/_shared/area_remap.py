@@ -1309,11 +1309,14 @@ def _remap_area_cached(
     # Hung, truoc day lot nguyen "Phú La" ra ngoai va o Phuong/Xa bo trong. Ten tran trung ten hien
     # hanh ("Thanh Trì") hay ten co nhan khop nguyen van don vi hien hanh ("Phường Nam Cường" Lao Cai,
     # vua cu vua moi) thi de cac buoc duoi giu nguyen nhu cu.
+    # Tra ca khi _REMAP CO khoa: hai don vi khac dau chung khoa fold thi _REMAP chon don vi giu ten
+    # ("Phượng Sơn") va nuot luon don vi kia -- CCCD ghi "Thị trấn Phương Sơn, Lục Nam" ra "Phường
+    # Phượng Sơn" thay vi "Phường Lục Nam". Khoa fold duy nhat thi hai bang ra cung mot dich.
     if xa_has_admin_label:
         dang_hien_hanh = _exact_name(canonical_ward(tinh, xa_expanded) or "") == _exact_name(xa_expanded)
     else:
         dang_hien_hanh = is_current_area(tinh, xa_expanded)
-    if xa_expanded and (tinh_folded, _fold(xa_expanded)) not in _REMAP and not dang_hien_hanh:
+    if xa_expanded and not dang_hien_hanh:
         mapping_exact = _remap_exact(tinh_folded, xa_expanded)
         if not mapping_exact and tinh_goc_folded != tinh_folded:
             mapping_exact = _remap_exact(tinh_goc_folded, xa_expanded)
@@ -1450,6 +1453,75 @@ _VILLAGE_PREFIX_RE = re.compile(
 )
 
 
+# Thôn/tổ dân phố sáp nhập: giấy tờ cấp trước còn ghi tên thôn cũ, ô địa chỉ chi tiết phải ghi tên
+# mới. Khoá (tỉnh, xã) HIỆN HÀNH -- ra được xã mới rồi mới đổi, nên tên thôn chung chung ("Thanh
+# Bình") ở nơi khác không bị đụng. Chỉ đổi phần tên, giữ nguyên tiền tố "Thôn"/"Khu phố" như giấy tờ
+# ghi. Thôn giữ tên (Đồng Ngư, Liễu Khê) không cần ghi.
+_THON_MOI: dict[tuple[str, str], dict[str, str]] = {
+    # Phường Song Liễu (xã cũ Xuân Lâm, Hà Mãn, Ngũ Thái, Song Liễu -- Thuận Thành).
+    ("Bắc Ninh", "Phường Song Liễu"): {
+        "Cửu Yên": "Vũ Kiệt",
+        "Tứ Cờ": "Vũ Kiệt",
+        "Đức Hiệp": "Thanh Xuân",
+        "Xuân Lê": "Thanh Xuân",
+        "Thanh Bình": "Xuân Lâm",
+        "Doãn Hạ": "Xuân Lâm",
+        "Đa Tiện": "Thanh Lâm",
+        "Doãn Thượng": "Thanh Lâm",
+        "Công Hà": "Hà Mãn",
+        "Đông Cốc": "Hà Mãn",
+        "Liễu Ngạn": "Nguyễn Gia Thiều",
+        "Bùi Xá": "Nguyễn Gia Thiều",
+        "Bến Long": "Liễu Khê",
+        "Ngọc Tỉnh": "Liễu Khê",
+        "Ngọc Lâm": "Ngọc Liễu",
+        "Liễu Lâm": "Ngọc Liễu",
+        "Mãn Xá Đông": "Mãn Xá",
+        "Mãn Xá Tây": "Mãn Xá",
+    },
+}
+
+
+def _thon_key(text: str) -> str:
+    return unicodedata.normalize("NFC", text).casefold()
+
+
+# (fold_province(tinh), fold(xa)) -> (regex bắt tên thôn cũ, tên cũ đã _thon_key -> tên mới).
+_THON_MOI_INDEX: dict[tuple[str, str], tuple[re.Pattern, dict[str, str]]] = {}
+
+
+def _build_thon_index() -> None:
+    _THON_MOI_INDEX.clear()
+    for (tinh, xa), bang in _THON_MOI.items():
+        # Tên dài trước: "Mãn Xá Đông" phải khớp trọn, không để "Mãn Xá" ăn mất nửa.
+        cu = sorted(bang, key=len, reverse=True)
+        pattern = re.compile(
+            r"(?<!\w)(" + "|".join(re.escape(unicodedata.normalize("NFC", t)) for t in cu) + r")(?!\w)",
+            re.IGNORECASE,
+        )
+        _THON_MOI_INDEX[(_fold_province(tinh), _fold(xa))] = (
+            pattern,
+            {_thon_key(t): moi for t, moi in bang.items()},
+        )
+
+
+def _remap_thon(tinh: object, xa: object, dia_chi: object) -> object:
+    """Đổi tên thôn cũ trong địa chỉ chi tiết sang tên thôn sau sáp nhập (xem _THON_MOI)."""
+    if not isinstance(dia_chi, str) or not dia_chi or not tinh or not xa:
+        return dia_chi
+    entry = _THON_MOI_INDEX.get((_fold_province(str(tinh)), _fold(str(xa))))
+    if not entry:
+        return dia_chi
+    pattern, bang = entry
+    moi, so_lan = pattern.subn(
+        lambda m: bang.get(_thon_key(m.group(1)), m.group(1)), unicodedata.normalize("NFC", dia_chi)
+    )
+    return moi if so_lan else dia_chi
+
+
+_build_thon_index()  # chay 1 lan luc import
+
+
 def _canonical_tinh(value: object) -> str:
     """Chi sua cach viet ten tinh khi no KHONG phai mot cach viet hop le cua danh muc.
 
@@ -1546,6 +1618,8 @@ def remap_area(
     # option tren cong roi, noi them hau to se lam truot.
     if out.get("xa") and not _WARD_LABEL_RE.match(str(out["xa"])):
         out["xa"] = canonical_ward(out.get("tinh"), out["xa"]) or out["xa"]
+    if out.get("diaChi"):
+        out["diaChi"] = _remap_thon(out.get("tinh"), out.get("xa"), out["diaChi"])
     out.pop("huyen", None)
     out.pop("quanHuyen", None)
     return out
@@ -1719,6 +1793,7 @@ def reload() -> None:
     _REMAP_BY_NEW_PROVINCE.clear()
     _REMAP_BY_NEW_PROVINCE_AMBIGUOUS.clear()
     _build_new_province_index()
+    _build_thon_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()
     _ward_candidates.cache_clear()

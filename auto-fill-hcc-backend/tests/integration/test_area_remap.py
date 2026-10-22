@@ -101,3 +101,22 @@ def test_commune_name_starting_like_village_is_kept():
     assert _ha_noi("Sóc Sơn") == {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Xã Sóc Sơn", "diaChi": "Số 1 ngõ 2"}
     assert _ha_noi("Xã Tô Hiệu")["xa"] == "Xã Phú Xuyên"
     assert _ha_noi("Tổ 3", dia_chi="") == {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "", "diaChi": "Tổ 3"}
+
+
+def test_bac_ninh_old_village_renamed_in_detail():
+    def dia_chi(xa, chi_tiet):
+        return area_remap.remap_area({"tinh": "Bắc Ninh", "xa": xa, "diaChi": chi_tiet})
+
+    assert dia_chi("Ngũ Thái", "Thôn Cửu Yên")["diaChi"] == "Thôn Vũ Kiệt"
+    assert dia_chi("Xuân Lâm", "THÔN DOÃN THƯỢNG")["diaChi"] == "THÔN Thanh Lâm"
+    assert dia_chi("Phường Song Liễu", "Khu phố Ngọc Lâm")["diaChi"] == "Khu phố Ngọc Liễu"
+    # Tên dài khớp trọn, không bị "Mãn Xá" cắt đôi; đổi xong gọi lại vẫn y nguyên.
+    assert dia_chi("Hà Mãn", "Thôn Mãn Xá Đông")["diaChi"] == "Thôn Mãn Xá"
+    assert dia_chi("Song Liễu", "Thôn Mãn Xá")["diaChi"] == "Thôn Mãn Xá"
+    assert dia_chi("Song Liễu", "Thôn Đồng Ngư")["diaChi"] == "Thôn Đồng Ngư"
+
+
+def test_village_rename_only_inside_its_ward():
+    result = area_remap.remap_area({"tinh": "Bắc Ninh", "xa": "Trí Quả", "diaChi": "Thôn Thanh Bình"})
+    assert result["xa"] == "Phường Trí Quả"
+    assert result["diaChi"] == "Thôn Thanh Bình"

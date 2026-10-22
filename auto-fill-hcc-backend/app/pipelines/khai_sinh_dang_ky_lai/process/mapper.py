@@ -107,6 +107,27 @@ def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+# Cách viết quốc tịch Việt Nam hay gặp trên tờ khai/trích lục: "VN", "VNM" (mã ISO), "V.N", "Việt",
+# "Vietnamese", "Người Việt Nam", "CHXHCN Việt Nam", "Việt Nam (VN)"... So sau khi bỏ dấu, dấu câu,
+# khoảng trắng và số chú thích "(2)" của mẫu in.
+_VN_NATIONALITY_RE = re.compile(
+    r"(?:quoctich)?(?:nguoi|nuoc|chxhcn|conghoaxahoichunghia|cnxhcn)?"
+    r"(?:vietnamese|vietnamien|vietnam|vietnan|viet|vnm|vn)+"
+)
+
+
+def _nationality(value) -> str:
+    """Chuẩn hoá quốc tịch: mọi cách viết tắt của Việt Nam → "Việt Nam" (khớp option dropdown).
+
+    Rỗng → "Việt Nam" như trước; quốc tịch khác giữ nguyên chữ trên giấy.
+    """
+    raw = str(value or "").strip()
+    compact = re.sub(r"[^a-z]+", "", _fold(raw))
+    if not compact or _VN_NATIONALITY_RE.fullmatch(compact):
+        return "Việt Nam"
+    return raw
+
+
 def _is_deceased_marker(area) -> bool:
     """Kiem tra neu LLM danh dau cha/me da mat bang {"diaChi": "Da chet"} hoac tuong tu."""
     if not isinstance(area, dict):
@@ -1131,8 +1152,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("HoTenKS", upper_person_name(subject["HoTen"]), ks_default)
         add("NgaySinhChon", subject["NgaySinh"], ks_default)
         add("GioiTinhKS", subject["GioiTinh"], ks_default)
-        add("DanTocKS", normalize_ethnic(subject["DanToc"]))
-        add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
+        add("DanTocKS", normalize_ethnic(subject["DanToc"]),
+            "Subject_Ethnicity" in default_names and subject["DanToc"] == values.get("Subject_Ethnicity"))
+        add("QuocTichKS", _nationality(values.get("Subject_Nationality")))
         if values.get("Subject_BirthPlaceDomestic"):
             add("nksNoiSinh", "1")
             add("nksNoiSinh_TrongNuoc", _normalize_domestic_area(values.get("Subject_BirthPlaceDomestic")))
@@ -1166,8 +1188,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
         # Năm sinh tờ khai lệch thế hệ với con nhưng vẫn giữ vai theo tờ khai → tô vàng riêng ô này.
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default or "Mother_BirthDateOrYear" in default_names)
-        add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default)
-        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
+        add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default or "Mother_Ethnicity" in default_names)
+        add("QuocTichMeKS", _nationality(values.get("Mother_Nationality")), me_default)
         _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default, deceased_no_info)
 
     # IV. Cha. LUÔN ghi đè thông tin cha lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
@@ -1195,8 +1217,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
         add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default or "Father_BirthDateOrYear" in default_names)
-        add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default)
-        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
+        add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default or "Father_Ethnicity" in default_names)
+        add("QuocTichChaKS", _nationality(values.get("Father_Nationality")), cha_default)
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default, deceased_no_info)
     elif has_subject:
         # Hồ sơ đọc được nhưng KHÔNG có thông tin cha: xoá trắng khối cha để không sót dữ liệu cổng

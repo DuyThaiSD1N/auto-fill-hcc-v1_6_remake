@@ -1828,6 +1828,107 @@ def _declaration_source_names(documents: list[dict]) -> list[str]:
     return names
 
 
+_BIRTH_OWNER_PATTERNS = (r"^\s*Họ,\s*chữ\s*đệm,\s*tên\s*:\s*([^\n\r]+)",)
+
+
+def _subject_birth_source_names(documents: list[dict], subject_section: str) -> list[str]:
+    """Tài liệu khai sinh hợp lệ, trừ giấy khai sinh/trích lục mà mọi trang đều ghi tên NGƯỜI KHÁC.
+
+    Hồ sơ hay kèm giấy khai sinh của CON người được đăng ký lại (để chứng minh cha/mẹ): số, quyển,
+    ngày, nơi đăng ký trên đó là của đứa con, điền vào mục đăng ký trước đây là sai người.
+    """
+    subject = _role_name(subject_section)
+    names: list[str] = []
+    for document in documents:
+        if not _valid_birth_source_names([document]):
+            continue
+        if subject and not _declaration_source_names([document]):
+            owners = [
+                _first_match(page["text"], _BIRTH_OWNER_PATTERNS)
+                for page in _document_pages(document)
+                if _valid_birth_source_names([page])
+            ]
+            if owners and all(owner and not _names_align(owner, subject) for owner in owners):
+                continue
+        names.append(str(document.get("name") or "(không tên)"))
+    return names
+
+
+# Phiếu "KẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN" (khai thác CSDL quốc gia về dân cư) in dân tộc
+# theo số định danh — CCCD thì không in dân tộc.
+_POPULATION_ID_RE = re.compile(r"Số\s+định\s+danh\s+cá\s+nhân\s+của\s+công\s+dân\s*:\s*(\d{12})\b", re.IGNORECASE)
+_POPULATION_ETHNIC_RE = re.compile(r"Dân\s*tộc\s+của\s+công\s+dân\s*:\s*([^\n\r]+)", re.IGNORECASE)
+_POPULATION_ETHNIC_LABEL = "Nguồn dân tộc"
+
+
+def _apply_population_ethnicity(sections: dict[str, str], documents: list[dict]) -> dict[str, str]:
+    """Vai chưa rõ dân tộc mà hồ sơ có phiếu tra cứu dân cư của đúng số định danh vai đó → lấy theo phiếu."""
+    found: dict[str, tuple[str, str]] = {}
+    for unit in _identity_units(documents):
+        text = str(unit.get("text") or "")
+        ids = set(_POPULATION_ID_RE.findall(text))
+        ethnic = _POPULATION_ETHNIC_RE.search(text)
+        if len(ids) == 1 and ethnic and ethnic.group(1).strip():
+            found.setdefault(ids.pop(), (ethnic.group(1).strip(), str(unit.get("name") or "(không tên)")))
+    if not found:
+        return sections
+    result = dict(sections)
+    for tag in _FAMILY_TAGS:
+        section = result.get(tag) or ""
+        hit = found.get(_role_id(section)) if not _is_unknown(section) else None
+        current = _fold(_labeled_value(section, "Dân tộc"))
+        if not hit or (current and "khong xac dinh" not in current):
+            continue
+        if _labeled_value(section, "Dân tộc"):
+            section = _set_role_label(section, "Dân tộc", hit[0])
+        else:
+            section += f"\nDân tộc: {hit[0]}"
+        result[tag] = section + f"\n{_POPULATION_ETHNIC_LABEL}: {hit[1]}"
+    return result
+
+
+def _apply_population_ethnicity_fill(fields: list[dict], context: str) -> list[dict]:
+    """Agent bỏ sót *_Ethnicity mà khối vai đã chốt dân tộc theo phiếu tra cứu dân cư → điền bù."""
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    names = {str(field.get("name") or "") for field in fields}
+    result = list(fields)
+    for tag in _FAMILY_TAGS:
+        section = _section(context, tag)
+        prefix = _ROLE_PREFIX[tag]
+        value = _labeled_value(section, "Dân tộc")
+        if (
+            not _labeled_value(section, _POPULATION_ETHNIC_LABEL)
+            or prefix + "Ethnicity" in names
+            or prefix + "FullName" not in names
+            or not value
+        ):
+            continue
+        result.append({"name": prefix + "Ethnicity", "comp": COMPACT_COMP_BY_NAME[prefix + "Ethnicity"], "value": value})
+    return _infer_family_ethnicity(result)
+
+
+def _infer_family_ethnicity(fields: list[dict]) -> list[dict]:
+    """Vai còn trống dân tộc → suy trong gia đình, tô vàng: cha/mẹ theo con; con theo cha/mẹ khi cha mẹ cùng dân tộc."""
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    names = {str(field.get("name") or "") for field in fields}
+    known = {
+        str(field["name"]).split("_", 1)[0]: str(field.get("value") or "").strip()
+        for field in fields
+        if str(field.get("name") or "").endswith("_Ethnicity") and str(field.get("value") or "").strip()
+    }
+    parents = {known[p] for p in ("Father", "Mother") if p in known}
+    guesses = {"Father": known.get("Subject"), "Mother": known.get("Subject"),
+               "Subject": parents.pop() if len(parents) == 1 else None}
+    result = list(fields)
+    for prefix, value in guesses.items():
+        if value and prefix not in known and prefix + "_FullName" in names:
+            result.append({"name": prefix + "_Ethnicity", "comp": COMPACT_COMP_BY_NAME[prefix + "_Ethnicity"],
+                           "value": value, "default": True})
+    return result
+
+
 _RELATION_LABELS = ("bản thân", "cha", "mẹ", "khác")
 
 
@@ -3109,6 +3210,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
 
     # Tờ khai chốt AI là cha/mẹ; tấm CCCD của chính người đó chốt SỐ ĐỊNH DANH, NGÀY CẤP, NƠI CẤP.
     sections = _apply_identity_card_facts(sections, documents)
+    sections = _apply_population_ethnicity(sections, documents)
 
     # Tờ khai quyết định CẢ ô "Quan hệ với người được khai sinh" LẪN nhân thân người yêu cầu;
     # Python tự kiểm tra loại tài liệu, không tin LLM.
@@ -3134,7 +3236,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         requester = _applicant_card_section(applicant_card)
 
     # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
-    valid_sources = _valid_birth_source_names(documents)
+    valid_sources = _subject_birth_source_names(documents, sections.get("con") or "")
     registration_value = "Có" if valid_sources else "Không"
     source_value = ", ".join(valid_sources) if valid_sources else "Không có"
 
@@ -3628,7 +3730,10 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
             tag, label = evidence
             ctx_value = _fold(_labeled_value(_section(context, tag), label))
             if not ctx_value or "khong xac dinh" in ctx_value or ctx_value == "khong co":
-                continue
+                if not name.endswith("_Ethnicity"):
+                    continue
+                # Dân tộc hiếm khi có giấy ghi (CCCD không in): giữ giá trị agent, tô vàng cho cán bộ soát.
+                field = {**field, "default": True}
         if context and name.startswith("PreviousRegistration_") and not has_birth_source:
             continue
         if no_declaration and name.startswith("Requester_"):
@@ -3711,6 +3816,7 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     # "có mà không điền". Không đè giá trị đã chốt theo thẻ.
     if context:
         result = _apply_declaration_fill(result, context)
+        result = _apply_population_ethnicity_fill(result, context)
         result = _flag_generation_mismatch_births(result, context)
         # Cơ quan đăng ký khai sinh trước đây: câu tờ khai/cam đoan đọc tất định thắng agent.
         result = _apply_birth_agency_override(result, context)

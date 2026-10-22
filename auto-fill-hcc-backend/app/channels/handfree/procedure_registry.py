@@ -1832,6 +1832,127 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        # Mã TTHC 1.014104, cổng Bộ Y tế (CÙNG wizard iGate/Form.io với ATTP ngay trên) nhưng nộp tại
+        # SỞ Y tế: ke_khai_links đặt selectSo → DVCQG chọn Tỉnh → gạt toggle "Sở" (KHÔNG chọn sở cụ
+        # thể) → Đồng ý → "Nộp trực tuyến" kết quả ĐẦU TIÊN (agencyProvinceOnly + agencySoFirst).
+        # Sau đó cổng Bộ Y tế mở trang nps/apply "Chọn trường hợp giải quyết" (Đơn vị thực hiện +
+        # Trường hợp giải quyết + Đồng ý) Y HỆT hộp thoại Bộ Xây dựng → dùng luồng chung "xay-dung"
+        # (maePortal + maeDialogChoice: đọc lựa chọn từ cổng, nhiều lựa chọn thì hỏi công dân).
+        # Trang kê khai là apply-online/<ObjectId> không có mã → cần cụm tên; cụm có "cấp lại, điều
+        # chỉnh" nên không lẫn thủ tục cấp GCN dược lần đầu.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.014104",
+                "MaTTHC=1.014104",
+                "019d2bff-3cdc-755a-a2a6-714d0c0b1361",
+            ],
+            "textIncludes": ["cấp lại, điều chỉnh giấy chứng nhận đủ điều kiện kinh doanh dược"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại, điều chỉnh Giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở "
+                 "Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, "
+                 "quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ "
+                 "truyền)",
+        "shortLabel": "Cấp lại, điều chỉnh Giấy chứng nhận đủ điều kiện kinh doanh dược",
+        "subtitle": "Cho nhà thuốc, quầy thuốc, cơ sở bán buôn thuốc đổi tên, địa chỉ, người phụ trách (Sở Y tế)",
+        "icon": "💊",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3cdc-755a-a2a6-714d0c0b1361",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 6 dòng cố định (planner core): Đơn cấp lại Mẫu 11 / GCN bị ghi sai /
+        # Đơn điều chỉnh Mẫu 12 / CCHN dược / giấy tờ pháp lý thay đổi / thuyết minh an ninh → tắt
+        # hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị điều chỉnh (Mẫu số 12) hoặc cấp lại (Mẫu số 11) Giấy "
+             "chứng nhận đủ điều kiện kinh doanh dược — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "dkkd", "name": "Giấy chứng nhận đăng ký hộ kinh doanh / doanh nghiệp (bản mới nhất) "
+             "và Giấy chứng nhận đạt GPP nếu có", "icon": "🏪", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ cơ sở, thêm CCCD người nộp nếu nộp thay",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận đủ điều kiện kinh doanh dược đã cấp (nếu bị ghi "
+             "sai)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cchn", "name": "Chứng chỉ hành nghề dược (nếu thay đổi người phụ trách chuyên môn)",
+             "icon": "🎓", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác (tài liệu thuyết minh bảo đảm an ninh "
+             "Mẫu 11 PL II…)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị điều chỉnh Giấy chứng nhận đủ điều kiện kinh doanh dược (Mẫu số 12) HOẶC "
+            "Đơn đề nghị cấp lại (Mẫu số 11), đã ký — nguồn chính để điền form.\n"
+            "2. Giấy chứng nhận đăng ký hộ kinh doanh / doanh nghiệp (bản mới nhất, chứng minh tên/địa chỉ "
+            "đã thay đổi) và Giấy chứng nhận đạt GPP nếu có.\n"
+            "3. Căn cước công dân của chủ cơ sở; nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "4. Tùy trường hợp: Giấy chứng nhận bị ghi sai (cấp lại), Chứng chỉ hành nghề dược (thay đổi "
+            "người phụ trách chuyên môn), tài liệu thuyết minh bảo đảm an ninh (Mẫu 11 PL II).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là chủ cơ sở kinh doanh dược; ô Ghi chú điền nội dung xin điều chỉnh / lý do cấp lại.\n"
+            "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (Đơn Mẫu 12 → dòng 3, giấy đăng ký hộ kinh "
+            "doanh + GPP → dòng 5...); căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "dang-ky-hanh-nghe",
+        # Mã TTHC 1.012275 (khám bệnh, chữa bệnh — NĐ 96/2023), CÙNG khung entry dược ngay trên: cổng
+        # Bộ Y tế, nộp tại SỞ Y tế (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst,
+        # rồi trang nps/apply "Chọn trường hợp giải quyết" nếu cổng mở → luồng chung "xay-dung".
+        # Key TRÙNG lõi → pipeline process/attach tự nối. Phần I người nộp cổng tự đổ từ VNeID; mapper
+        # lõi bỏ tích isOwnerDossierCheck và điền Phần II = cơ sở khám bệnh, chữa bệnh.
+        # Cụm tên NGẮN, dễ lẫn ("đăng ký hành nghề công chứng", dòng "Danh sách đăng ký hành nghề" của
+        # thủ tục giấy phép hành nghề…) → như lõi: tắt heading, KHÔNG bật textPriority để URL có mã
+        # luôn thắng.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012275",
+                "MaTTHC=1.012275",
+                "019d2bff-1db1-707d-ab58-f95681fb13f2",
+            ],
+            "textIncludes": ["Đăng ký hành nghề"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hành nghề",
+        "shortLabel": "Đăng ký người hành nghề khám bệnh, chữa bệnh",
+        "subtitle": "Cho phòng khám, nha khoa, cơ sở khám chữa bệnh báo danh sách người hành nghề (Sở Y tế)",
+        "icon": "🩺",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db1-707d-ab58-f95681fb13f2",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 4 dòng cố định (planner lõi attp-row): danh sách lần đầu / đã thay đổi /
+        # Báo cáo / đã bổ sung → tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "danh_sach", "name": "Danh sách đăng ký người hành nghề (Mẫu 01 Phụ lục II Nghị định "
+             "96/2023/NĐ-CP) — đã ký, đóng dấu", "icon": "📋", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đầu cơ sở (người ký danh sách)",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "ds_thay_doi", "name": "Danh sách đăng ký hành nghề đã thay đổi hoặc đã bổ sung (nếu "
+             "có)", "icon": "📝", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "bao_cao", "name": "Báo cáo (nếu có)", "icon": "📄", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Danh sách đăng ký người hành nghề (Mẫu 01 Phụ lục II Nghị định 96/2023/NĐ-CP) của cơ sở "
+            "khám bệnh, chữa bệnh, có ký tên, đóng dấu — nguồn chính để điền form.\n"
+            "2. Căn cước công dân (mặt trước + mặt sau) của người đứng đầu cơ sở, người ký danh sách.\n"
+            "3. Nếu có: Báo cáo; danh sách ĐÃ THAY ĐỔI hoặc ĐÃ BỔ SUNG người hành nghề.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Phần người nộp cổng tự lấy từ tài khoản VNeID; chủ hồ sơ là cơ sở khám bệnh, chữa bệnh. Số "
+            "điện thoại, email của cơ sở phải tự nhập.\n"
+            "Bước Thành phần hồ sơ: danh sách → dòng 1, danh sách đã thay đổi → dòng 2, Báo cáo → dòng 3, "
+            "danh sách đã bổ sung → dòng 4; căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
         #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực

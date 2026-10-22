@@ -169,6 +169,20 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "xin giấy an toàn thực phẩm cho quán ăn", "mở nhà hàng cần giấy an toàn thực phẩm",
         "giấy phép vệ sinh thực phẩm cho bếp ăn", "cơ sở đủ điều kiện an toàn thực phẩm",
     ],
+    # Nhà thuốc / quầy thuốc đã có GCN đủ điều kiện kinh doanh dược, nay đổi tên, địa chỉ, người phụ
+    # trách hoặc GCN bị ghi sai. Xin cấp GCN dược LẦN ĐẦU không thuộc thủ tục này.
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": [
+        "điều chỉnh giấy chứng nhận đủ điều kiện kinh doanh dược", "cấp lại giấy chứng nhận kinh doanh dược",
+        "nhà thuốc đổi tên, đổi địa chỉ", "quầy thuốc thay đổi người phụ trách chuyên môn",
+        "giấy chứng nhận kinh doanh dược bị ghi sai", "điều chỉnh giấy phép nhà thuốc",
+    ],
+    # Cơ sở khám bệnh, chữa bệnh (phòng khám, nha khoa…) báo Sở Y tế danh sách người hành nghề. KHÁC
+    # xin giấy phép / chứng chỉ hành nghề cho MỘT cá nhân và khác hành nghề luật sư, công chứng.
+    "dang-ky-hanh-nghe": [
+        "đăng ký người hành nghề khám bệnh, chữa bệnh", "nộp danh sách người hành nghề cho Sở Y tế",
+        "phòng khám đăng ký danh sách bác sĩ", "nha khoa đăng ký người hành nghề",
+        "bổ sung bác sĩ vào danh sách hành nghề của phòng khám",
+    ],
     # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
     # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
     "tro-cap-tho-cung-liet-si": ["trợ cấp thờ cúng liệt sĩ", "chế độ thờ cúng liệt sĩ",

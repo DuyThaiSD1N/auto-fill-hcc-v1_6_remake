@@ -74,3 +74,15 @@ async def test_text_chat_fallback_does_not_require_json(monkeypatch):
     )
 
     assert out == "<nguoi_yeu_cau>...</nguoi_yeu_cau>"
+
+
+def test_extract_json_dong_not_ngoac_llm_bo_sot():
+    # Thiếu đúng một "}" cuối → trước đây JSONDecodeError, mất trắng mọi field.
+    out = '```json\n{"fields": {"A": "1", "B": {"tinh": "Hà Nội", "xa": ""}}\n```'
+    assert client.extract_json_block(out) == {"fields": {"A": "1", "B": {"tinh": "Hà Nội", "xa": ""}}}
+    try:
+        client.extract_json_block('```json\n{"fields": {"A": "1"]}\n```')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ngoặc lệch nhau thì vẫn phải báo lỗi")

@@ -134,6 +134,12 @@ PROCEDURE_HMONG = {
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
     "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",
+    # BẢN NHÁP chờ anh Dư soát — "khw muag tshuaj" = nhà thuốc, ghép với "kho ... dua tshiab" đã có.
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te":
+        "Kho, muab ntawv lees paub khw muag tshuaj dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" = đăng ký đã có; TỪ MỚI "ua haujlwm kho mob" = làm nghề
+    # khám chữa bệnh: soát kỹ hơn.
+    "dang-ky-hanh-nghe": "Cuv npe ua haujlwm kho mob",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — luồng chung "xay-dung"). Có TỪ MỚI (npaj = quy
     # hoạch, ntug kev = vỉa hè, ib ntus = tạm thời, Nyab Laj = Việt Nam, Nplog = Lào): soát kỹ hơn.
     "dieu-chinh-giay-phep-xay-dung": "Kho ntawv tso cai ua tsev",
