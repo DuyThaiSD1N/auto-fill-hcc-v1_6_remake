@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 from app.pipelines._shared.tai_khoan import apply_account_marriage
@@ -225,7 +225,7 @@ def _area(value, nationality: str = "Việt Nam"):
         return None
     # Chỉ remap địa chỉ Việt Nam (bảng remap_lam_dong không có địa danh nước ngoài)
     if not is_foreign(quoc_gia):
-        return remap_area(out)
+        return city_province_area(remap_area(out))
     return out
 
 

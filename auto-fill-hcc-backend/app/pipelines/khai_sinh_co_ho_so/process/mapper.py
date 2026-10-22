@@ -13,7 +13,7 @@ là ô hay dùng nhất; KHÔNG được quy nó về "Khác".
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
@@ -132,7 +132,7 @@ def _normalize_domestic_area(value):
                 break
 
     # remap_area mặc định TẮT fallback (chỉ đổi xã khi khớp trực tiếp; xã sai → giữ nguyên, không bịa).
-    return remap_area(normalized) or normalized
+    return city_province_area(remap_area(normalized) or normalized)
 
 
 _DECEASED_AREA = {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": "Đã chết"}

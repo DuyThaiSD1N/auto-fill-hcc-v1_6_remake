@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.tai_khoan import apply_account_marriage
 from app.pipelines.ket_hon_lai.process.schema import UI_COMP_BY_NAME
@@ -102,7 +102,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    return city_province_area(remap_area(out))
 
 
 def _previous_registration_area(values: dict) -> dict | None:
@@ -116,7 +116,7 @@ def _previous_registration_area(values: dict) -> dict | None:
     xa = str(values.get("KetHonCu_XaDangKy") or "").strip()
     if not tinh and not xa:
         return None
-    return remap_area({"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": ""})
+    return city_province_area(remap_area({"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": ""}))
 
 
 def _ui_field(name: str, value) -> dict | None:

@@ -8,7 +8,7 @@ import re
 import unicodedata
 from datetime import date
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
@@ -113,9 +113,9 @@ def _area(value):
     if _fold(area["quocGia"]) not in ("viet nam", "vn"):
         return area
     huyen = str(value.get("huyen") or "").strip()
-    remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
+    remapped = city_province_area(remap_area({**area, "huyen": huyen} if huyen else dict(area)))
     if not isinstance(remapped, dict):
-        return area
+        return city_province_area(area)
     # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
     old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
     new_ward = str(remapped.get("xa") or "")

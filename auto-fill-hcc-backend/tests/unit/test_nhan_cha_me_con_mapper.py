@@ -175,3 +175,7 @@ def test_nhan_cha_me_con_province_label_giu_dung_loai_don_vi():
     assert mapper._province_label("TP. Hồ Chí Minh") == "Thành phố Hồ Chí Minh"
     assert mapper._province_label("Hà Nội") == "Thành phố Hà Nội"
     assert mapper._province_label("") == ""
+    # Lên TP trực thuộc TW năm 2026: giấy tờ cũ ghi "Tỉnh X" vẫn phải ra option "Thành phố X".
+    assert mapper._province_label("Tỉnh Quảng Ninh") == "Thành phố Quảng Ninh"
+    assert mapper._province_label("Đồng Nai") == "Thành phố Đồng Nai"
+    assert mapper._province_label("Tỉnh Bắc Ninh") == "Thành phố Bắc Ninh"

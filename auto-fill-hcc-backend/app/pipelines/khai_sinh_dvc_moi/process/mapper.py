@@ -4,7 +4,7 @@ import re
 import unicodedata
 from datetime import date
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_BO_CONG_AN,
     ISSUER_CUC,
@@ -121,9 +121,9 @@ def _area(value):
     if not area["tinh"] and not area["xa"] and not area["diaChi"]:
         return None
     huyen = str(value.get("huyen") or "").strip()
-    remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
+    remapped = city_province_area(remap_area({**area, "huyen": huyen} if huyen else dict(area)))
     if not isinstance(remapped, dict):
-        return area
+        return city_province_area(area)
     # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
     old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
     new_ward = str(remapped.get("xa") or "")

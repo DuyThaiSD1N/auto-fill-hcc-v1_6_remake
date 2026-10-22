@@ -6,7 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.area_remap import province_label
+from app.pipelines._shared.area_remap import city_province, province_label
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.nhan_cha_me_con.process.schema import UI_COMP_BY_NAME
@@ -38,7 +38,7 @@ def _upper_name(value: Any) -> str:
 def _province_label(value: Any) -> str:
     # Dùng nhãn chung: Bắc Ninh đã là thành phố trực thuộc TW, eForm chỉ còn "Thành phố Bắc Ninh".
     # Giữ nguyên "Tỉnh ..." do LLM trả thì ô tỉnh trượt và ô xã không nạp được danh sách.
-    return province_label(_clean(value)) or ""
+    return city_province(province_label(_clean(value)) or "")
 
 
 def _commune_label(value: Any) -> str:

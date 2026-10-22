@@ -7,6 +7,7 @@ Bên nước ngoài → radio cư trú "2" (Khác) + ô NuocNgoai (quốc gia + 
 import re
 import unicodedata
 
+from app.pipelines._shared.area_remap import city_province_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.nationality import normalize_nationality
 from app.pipelines._shared.tai_khoan import apply_account_marriage
@@ -96,7 +97,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"] and not out["quocGia"]:
         return None
-    return out
+    return city_province_area(out)
 
 
 def _digits(value) -> str:

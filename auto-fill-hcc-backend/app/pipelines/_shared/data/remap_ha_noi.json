@@ -51,13 +51,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Cửa Đông",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ba Đình"
+        "xa_moi": "Phường Ba Đình",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Đồng Xuân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ba Đình"
+        "xa_moi": "Phường Ba Đình",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -81,7 +83,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Minh Khai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Bạch Mai"
+        "xa_moi": "Phường Bạch Mai",
+        "huyen_cu": "Hai Bà Trưng"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -111,7 +114,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thanh Nhàn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Bạch Mai"
+        "xa_moi": "Phường Bạch Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -147,7 +151,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Ngọc Thụy",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Bồ Đề"
+        "xa_moi": "Phường Bồ Đề",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -207,7 +212,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Đồng Mai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Chương Mỹ"
+        "xa_moi": "Phường Chương Mỹ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -285,19 +291,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hàng Bông",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Cửa Nam"
+        "xa_moi": "Phường Cửa Nam",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hàng Trống",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Cửa Nam"
+        "xa_moi": "Phường Cửa Nam",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Tràng Tiền",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Cửa Nam"
+        "xa_moi": "Phường Cửa Nam",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -333,7 +342,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường La Khê",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Dương Nội"
+        "xa_moi": "Phường Dương Nội",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -369,7 +379,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Cống Vị",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Giảng Võ"
+        "xa_moi": "Phường Giảng Võ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -417,7 +428,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phạm Đình Hổ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Hai Bà Trưng"
+        "xa_moi": "Phường Hai Bà Trưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -519,7 +531,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tam Hiệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Hoàng Liệt"
+        "xa_moi": "Phường Hoàng Liệt",
+        "huyen_cu": "Thanh Trì"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -609,7 +622,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Hà Đông"
+        "xa_moi": "Phường Hà Đông",
+        "huyen_cu": "Hà Đông"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -645,7 +659,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Mộ Lao",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Hà Đông"
+        "xa_moi": "Phường Hà Đông",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -717,7 +732,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Bạch Đằng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Hồng Hà"
+        "xa_moi": "Phường Hồng Hà",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -753,13 +769,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thanh Xuân Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Khương Đình"
+        "xa_moi": "Phường Khương Đình",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thượng Đình",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Khương Đình"
+        "xa_moi": "Phường Khương Đình",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -795,13 +813,16 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phương Mai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Kim Liên"
+        "xa_moi": "Phường Kim Liên",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Kim Liên"
+        "xa_moi": "Phường Kim Liên",
+        "huyen_cu": "Đống Đa",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -819,19 +840,23 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Kiến Hưng"
+        "xa_moi": "Phường Kiến Hưng",
+        "huyen_cu": "Hà Đông",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hà Cầu",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Kiến Hưng"
+        "xa_moi": "Phường Kiến Hưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phú La",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Kiến Hưng"
+        "xa_moi": "Phường Kiến Hưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -963,19 +988,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Dịch Vọng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Nghĩa Đô"
+        "xa_moi": "Phường Nghĩa Đô",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Dịch Vọng Hậu",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Nghĩa Đô"
+        "xa_moi": "Phường Nghĩa Đô",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quan Hoa",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Nghĩa Đô"
+        "xa_moi": "Phường Nghĩa Đô",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1017,7 +1045,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Đội Cấn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ngọc Hà"
+        "xa_moi": "Phường Ngọc Hà",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1125,7 +1154,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Giang Biên",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Phúc Lợi"
+        "xa_moi": "Phường Phúc Lợi",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1179,7 +1209,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Khương Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Phương Liệt"
+        "xa_moi": "Phường Phương Liệt",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1239,19 +1270,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thanh Xuân Bắc",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Thanh Liệt"
+        "xa_moi": "Phường Thanh Liệt",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hạ Đình",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Thanh Liệt"
+        "xa_moi": "Phường Thanh Liệt",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Văn Quán",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Thanh Liệt"
+        "xa_moi": "Phường Thanh Liệt",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1329,13 +1363,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Cổ Nhuế 2",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Thượng Cát"
+        "xa_moi": "Phường Thượng Cát",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thụy Phương",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Thượng Cát"
+        "xa_moi": "Phường Thượng Cát",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1359,25 +1395,29 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Nhật Tân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Hồ"
+        "xa_moi": "Phường Tây Hồ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quảng An",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Hồ"
+        "xa_moi": "Phường Tây Hồ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Tứ Liên",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Hồ"
+        "xa_moi": "Phường Tây Hồ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Yên Phụ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Hồ"
+        "xa_moi": "Phường Tây Hồ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1389,7 +1429,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thụy Khuê",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Hồ"
+        "xa_moi": "Phường Tây Hồ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1431,7 +1472,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Chung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tây Tựu"
+        "xa_moi": "Phường Tây Tựu",
+        "huyen_cu": "Hoài Đức"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1455,19 +1497,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Trung Hưng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tùng Thiện"
+        "xa_moi": "Phường Tùng Thiện",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Sơn Lộc",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tùng Thiện"
+        "xa_moi": "Phường Tùng Thiện",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thanh Mỹ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tùng Thiện"
+        "xa_moi": "Phường Tùng Thiện",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1485,37 +1530,44 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Mai Động",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Minh Khai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "huyen_cu": "Hai Bà Trưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Đồng Tâm",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Trương Định",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hoàng Văn Thụ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Tân Mai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Tương Mai"
+        "xa_moi": "Phường Tương Mai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1557,13 +1609,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Mỹ Đình 1",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Từ Liêm"
+        "xa_moi": "Phường Từ Liêm",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Mỹ Đình 2",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Từ Liêm"
+        "xa_moi": "Phường Từ Liêm",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1599,13 +1653,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Đức Giang",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Việt Hưng"
+        "xa_moi": "Phường Việt Hưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thượng Thanh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Việt Hưng"
+        "xa_moi": "Phường Việt Hưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1671,7 +1727,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phương Liên Trung Tự",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1689,7 +1746,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thanh Trì",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Vĩnh Hưng"
+        "xa_moi": "Phường Vĩnh Hưng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1761,7 +1819,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phúc Diễn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Xuân Phương"
+        "xa_moi": "Phường Xuân Phương",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1857,7 +1916,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Cát Linh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ô Chợ Dừa"
+        "xa_moi": "Phường Ô Chợ Dừa",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1869,7 +1929,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Thành Công",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ô Chợ Dừa"
+        "xa_moi": "Phường Ô Chợ Dừa",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1887,7 +1948,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Hàng Bột",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Ô Chợ Dừa"
+        "xa_moi": "Phường Ô Chợ Dừa",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -1971,13 +2033,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Phú Đô",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Đại Mỗ"
+        "xa_moi": "Phường Đại Mỗ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Trung Văn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Đại Mỗ"
+        "xa_moi": "Phường Đại Mỗ",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2031,7 +2095,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Phường Đống Đa"
+        "xa_moi": "Phường Đống Đa",
+        "huyen_cu": "Đống Đa"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2079,25 +2144,29 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã La Phù",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã An Khánh"
+        "xa_moi": "Xã An Khánh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Song Phương",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã An Khánh"
+        "xa_moi": "Xã An Khánh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Vân Côn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã An Khánh"
+        "xa_moi": "Xã An Khánh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã An Thượng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã An Khánh"
+        "xa_moi": "Xã An Khánh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2115,7 +2184,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Minh Quang",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Ba Vì"
+        "xa_moi": "Xã Ba Vì",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2127,7 +2197,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Phường Cự Khối",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Bát Tràng"
+        "xa_moi": "Xã Bát Tràng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2139,13 +2210,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Thị trấn Trâu Quỳ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Bát Tràng"
+        "xa_moi": "Xã Bát Tràng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đa Tốn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Bát Tràng"
+        "xa_moi": "Xã Bát Tràng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2187,7 +2260,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Cự Khê",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Bình Minh"
+        "xa_moi": "Xã Bình Minh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2229,7 +2303,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Dân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Chuyên Mỹ"
+        "xa_moi": "Xã Chuyên Mỹ",
+        "huyen_cu": "Phú Xuyên"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2295,7 +2370,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Cường",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Cổ Đô"
+        "xa_moi": "Xã Cổ Đô",
+        "huyen_cu": "Ba Vì"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2415,7 +2491,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Sơn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Gia Lâm"
+        "xa_moi": "Xã Gia Lâm",
+        "huyen_cu": "Gia Lâm"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2475,13 +2552,16 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Chung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hoài Đức"
+        "xa_moi": "Xã Hoài Đức",
+        "huyen_cu": "Hoài Đức",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tam Hiệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hát Môn"
+        "xa_moi": "Xã Hát Môn",
+        "huyen_cu": "Phúc Thọ"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2535,13 +2615,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Cổ Đông",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Lạc"
+        "xa_moi": "Xã Hòa Lạc",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Bình Yên",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Lạc"
+        "xa_moi": "Xã Hòa Lạc",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2553,13 +2635,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Xã",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Lạc"
+        "xa_moi": "Xã Hòa Lạc",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Hòa Phú",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Phú"
+        "xa_moi": "Xã Hòa Phú",
+        "huyen_cu": "Chương Mỹ"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2589,19 +2673,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Thư",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Phú"
+        "xa_moi": "Xã Hòa Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Hòa Phú",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Xá"
+        "xa_moi": "Xã Hòa Xá",
+        "huyen_cu": "Ứng Hòa"
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thái Hòa",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hòa Xá"
+        "xa_moi": "Xã Hòa Xá",
+        "huyen_cu": "Ứng Hòa"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2697,7 +2784,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phùng Xá",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hồng Sơn"
+        "xa_moi": "Xã Hồng Sơn",
+        "huyen_cu": "Mỹ Đức"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2763,19 +2851,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Ninh Sở",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hồng Vân"
+        "xa_moi": "Xã Hồng Vân",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đông Mỹ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Hồng Vân"
+        "xa_moi": "Xã Hồng Vân",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Dân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Kim Anh"
+        "xa_moi": "Xã Kim Anh",
+        "huyen_cu": "Sóc Sơn"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2811,19 +2902,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Ngọc Liệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Kiều Phú"
+        "xa_moi": "Xã Kiều Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Quang Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Kiều Phú"
+        "xa_moi": "Xã Kiều Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Ngọc Mỹ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Kiều Phú"
+        "xa_moi": "Xã Kiều Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -2919,25 +3013,30 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Mê Linh"
+        "xa_moi": "Xã Mê Linh",
+        "huyen_cu": "Đan Phượng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Hồng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Mê Linh"
+        "xa_moi": "Xã Mê Linh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Trung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Mê Linh"
+        "xa_moi": "Xã Mê Linh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đại Mạch",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Mê Linh"
+        "xa_moi": "Xã Mê Linh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3003,19 +3102,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Ngũ Hiệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nam Phù"
+        "xa_moi": "Xã Nam Phù",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Yên Mỹ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nam Phù"
+        "xa_moi": "Xã Nam Phù",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Duyên Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nam Phù"
+        "xa_moi": "Xã Nam Phù",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3045,13 +3147,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Ninh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Ngọc Hồi"
+        "xa_moi": "Xã Ngọc Hồi",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Cường",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nội Bài"
+        "xa_moi": "Xã Nội Bài",
+        "huyen_cu": "Sóc Sơn"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3069,19 +3173,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Mai Đình",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nội Bài"
+        "xa_moi": "Xã Nội Bài",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Minh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nội Bài"
+        "xa_moi": "Xã Nội Bài",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Quang Tiến",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Nội Bài"
+        "xa_moi": "Xã Nội Bài",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3129,7 +3236,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đặng Xá",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phù Đổng"
+        "xa_moi": "Xã Phù Đổng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3243,13 +3351,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tô Hiệu",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phú Xuyên"
+        "xa_moi": "Xã Phú Xuyên",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Vạn Nhất",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phú Xuyên"
+        "xa_moi": "Xã Phú Xuyên",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3339,19 +3449,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Nguyên Khê",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phúc Thịnh"
+        "xa_moi": "Xã Phúc Thịnh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Xuân Nộn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phúc Thịnh"
+        "xa_moi": "Xã Phúc Thịnh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tiên Dương",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Phúc Thịnh"
+        "xa_moi": "Xã Phúc Thịnh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3459,13 +3572,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Hoa",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quang Minh"
+        "xa_moi": "Xã Quang Minh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thanh Lâm",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quang Minh"
+        "xa_moi": "Xã Quang Minh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3495,7 +3610,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Lam Điền",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quảng Bị"
+        "xa_moi": "Xã Quảng Bị",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3525,13 +3641,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Thị trấn Tây Đằng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quảng Oai"
+        "xa_moi": "Xã Quảng Oai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Chu Minh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quảng Oai"
+        "xa_moi": "Xã Quảng Oai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3561,7 +3679,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phượng Sơn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Quốc Oai"
+        "xa_moi": "Xã Quốc Oai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3579,13 +3698,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thụy An",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Suối Hai"
+        "xa_moi": "Xã Suối Hai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Cẩm Lĩnh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Suối Hai"
+        "xa_moi": "Xã Suối Hai",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3597,13 +3718,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Minh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Sóc Sơn"
+        "xa_moi": "Xã Sóc Sơn",
+        "huyen_cu": "Sóc Sơn"
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đông Xuân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Sóc Sơn"
+        "xa_moi": "Xã Sóc Sơn",
+        "huyen_cu": "Sóc Sơn"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3687,7 +3810,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Vân Canh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Sơn Đồng"
+        "xa_moi": "Xã Sơn Đồng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3783,7 +3907,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tứ Hiệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thanh Trì"
+        "xa_moi": "Xã Thanh Trì",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3801,7 +3926,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Chung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thiên Lộc"
+        "xa_moi": "Xã Thiên Lộc",
+        "huyen_cu": "Đông Anh"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3849,7 +3975,9 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Sơn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thuận An"
+        "xa_moi": "Xã Thuận An",
+        "huyen_cu": "Gia Lâm",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3879,7 +4007,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thư Lâm"
+        "xa_moi": "Xã Thư Lâm",
+        "huyen_cu": "Đông Anh"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3915,7 +4044,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tiền Phong",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thường Tín"
+        "xa_moi": "Xã Thường Tín",
+        "huyen_cu": "Thường Tín"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -3951,19 +4081,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đại Áng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thường Tín"
+        "xa_moi": "Xã Thường Tín",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Khánh Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thường Tín"
+        "xa_moi": "Xã Thường Tín",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Minh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Thượng Phúc"
+        "xa_moi": "Xã Thượng Phúc",
+        "huyen_cu": "Thường Tín"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4071,7 +4204,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thạch Đà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Tiến Thắng"
+        "xa_moi": "Xã Tiến Thắng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4125,19 +4259,22 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đồng Tâm",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Trần Phú"
+        "xa_moi": "Xã Trần Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Tiến",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Trần Phú"
+        "xa_moi": "Xã Trần Phú",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phùng Xá",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Tây Phương"
+        "xa_moi": "Xã Tây Phương",
+        "huyen_cu": "Thạch Thất"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4209,13 +4346,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tàm Xá",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vĩnh Thanh"
+        "xa_moi": "Xã Vĩnh Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Xuân Canh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vĩnh Thanh"
+        "xa_moi": "Xã Vĩnh Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4227,31 +4366,37 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Chung",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vĩnh Thanh"
+        "xa_moi": "Xã Vĩnh Thanh",
+        "huyen_cu": "Đông Anh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Hải Bối",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vĩnh Thanh"
+        "xa_moi": "Xã Vĩnh Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Kim Nỗ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vĩnh Thanh"
+        "xa_moi": "Xã Vĩnh Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thái Hòa",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vật Lại"
+        "xa_moi": "Xã Vật Lại",
+        "huyen_cu": "Ba Vì"
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Phú Sơn",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Vật Lại"
+        "xa_moi": "Xã Vật Lại",
+        "huyen_cu": "Ba Vì"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4347,25 +4492,29 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tiến Thịnh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Lãng"
+        "xa_moi": "Xã Yên Lãng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Trung Châu",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Lãng"
+        "xa_moi": "Xã Yên Lãng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thọ Xuân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Lãng"
+        "xa_moi": "Xã Yên Lãng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Thọ An",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Lãng"
+        "xa_moi": "Xã Yên Lãng",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4377,7 +4526,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Đông Xuân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Xuân"
+        "xa_moi": "Xã Yên Xuân",
+        "huyen_cu": "Quốc Oai"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4395,7 +4545,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tiến Xuân",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Yên Xuân"
+        "xa_moi": "Xã Yên Xuân",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4419,7 +4570,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Ô Diên"
+        "xa_moi": "Xã Ô Diên",
+        "huyen_cu": "Đan Phượng"
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4449,7 +4601,8 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tân Lập",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Ô Diên"
+        "xa_moi": "Xã Ô Diên",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4593,37 +4746,45 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Liên Hà",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đông Anh"
+        "xa_moi": "Xã Đông Anh",
+        "huyen_cu": "Đông Anh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Dục Tú",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đông Anh"
+        "xa_moi": "Xã Đông Anh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Uy Nỗ",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đông Anh"
+        "xa_moi": "Xã Đông Anh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Việt Hùng",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đông Anh"
+        "xa_moi": "Xã Đông Anh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tam Hiệp",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đại Thanh"
+        "xa_moi": "Xã Đại Thanh",
+        "huyen_cu": "Thanh Trì",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Hữu Hòa",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đại Thanh"
+        "xa_moi": "Xã Đại Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
@@ -4641,13 +4802,15 @@
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Tả Thanh Oai",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đại Thanh"
+        "xa_moi": "Xã Đại Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",
         "xa_cu": "Xã Vĩnh Quỳnh",
         "tinh_moi": "Hà Nội",
-        "xa_moi": "Xã Đại Thanh"
+        "xa_moi": "Xã Đại Thanh",
+        "chinh": true
     },
     {
         "tinh_cu": "Hà Nội",

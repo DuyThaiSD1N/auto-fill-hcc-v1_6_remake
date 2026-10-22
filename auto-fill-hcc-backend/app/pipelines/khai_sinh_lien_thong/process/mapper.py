@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
 from app.pipelines._shared.hospital_lookup import hospital_area, lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
@@ -319,7 +319,7 @@ def _area(value):
     out = {"tinh": _norm_tinh(value.get("tinh") or value.get("tỉnh")), "xa": xa, "diaChi": dia}
     out = {k: v for k, v in out.items() if v not in (None, "", {}, [])}
     # Áp dụng remap địa chỉ để chuẩn hóa xã/phường theo sáp nhập đơn vị hành chính
-    return remap_area(out) if out else None
+    return city_province_area(remap_area(out)) if out else None
 
 
 _ADMIN_SEGMENT = re.compile(r"^(xã|phường|thị trấn|thị xã|quận|huyện|thành phố|tp\.?|tỉnh)\s", re.IGNORECASE)

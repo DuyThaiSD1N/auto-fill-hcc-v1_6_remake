@@ -5,7 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.formatting import normalize_date, parse_death_time, upper_person_name
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province, city_province_area, remap_area
 from app.pipelines.khai_tu_dang_ky_lai.process.schema import UI_COMP_BY_NAME
 
 
@@ -99,7 +99,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    return city_province_area(remap_area(out))
 
 
 def _date_or_year(value) -> str:
@@ -183,7 +183,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("QuanHe", values.get("Requester_Relationship"))
 
     # II. Thông tin đăng ký khai tử trước đây.
-    add("coQuanDKTruocDay_filter", values.get("PreviousDeathRegistration_AgencyProvince"))
+    add("coQuanDKTruocDay_filter", city_province(values.get("PreviousDeathRegistration_AgencyProvince")))
     add("coQuanDKTruocDay", values.get("PreviousDeathRegistration_AgencyCommune"))
     add("soDKTruocDay", values.get("PreviousDeathRegistration_Number"))
     add("quyenSoDKTruocDay", values.get("PreviousDeathRegistration_BookNumber"))

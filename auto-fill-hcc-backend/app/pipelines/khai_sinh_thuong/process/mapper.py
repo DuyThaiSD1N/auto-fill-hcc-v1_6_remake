@@ -4,7 +4,7 @@ import re
 
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_COMP_BY_NAME
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.hospital_lookup import hospital_area
 
@@ -227,7 +227,7 @@ def _area(value):
     # Dia chi cha/me tren the can cuoc cu van ghi don vi TRUOC sap nhap ("Phuong 8, Da Lat")
     # -- khong remap thi dropdown Phuong/Xa khong co option nao khop, o do bo trong. Cac
     # cho goi khac da tu remap chong len; remap_area() la no-op voi ten da chuan.
-    return remap_area(out) if out else out
+    return city_province_area(remap_area(out)) if out else out
 
 
 def _birth_place(values: dict, primary: str, secondary: str):
@@ -481,7 +481,7 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
             or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))  
             or _area(values.get("CccdNam_NoiCuTru_TrongNuoc"))
         )
-        que_quan = remap_area(que_quan_raw) if que_quan_raw else None
+        que_quan = city_province_area(remap_area(que_quan_raw)) if que_quan_raw else None
         
         # Nơi sinh: áp dụng lookup_hospital để bổ sung xã/phường cho bệnh viện
         noi_sinh_raw = _area(values.get("Gcs_NoiSinh"))
@@ -755,7 +755,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         or (None if father_deceased else father_residence)
     )
     # Áp dụng remap để chuẩn hóa xã/phường
-    father_origin = remap_area(father_origin_raw) if father_origin_raw else None
+    father_origin = city_province_area(remap_area(father_origin_raw)) if father_origin_raw else None
 
     father_issuer = values.get("CccdNam_NoiCap") or default_issuer(values.get("CccdNam_NgayCap"))
     mother_issuer = values.get("CccdNu_NoiCap") or default_issuer(values.get("CccdNu_NgayCap"))

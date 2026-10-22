@@ -156,3 +156,18 @@ def test_old_marriage_schema_uses_specific_fields_and_restricts_sources():
     assert "Ưu tiên theo TỪNG FIELD: giá trị ghi rõ trên GIẤY CHỨNG NHẬN KẾT HÔN cũ" in EXTRA_RULES
     assert "TUYỆT ĐỐI không lấy" in EXTRA_RULES
     assert "KHÔNG tự tính từ số" in EXTRA_RULES
+
+
+def test_province_upgraded_to_city_uses_city_label():
+    """Quảng Ninh, Đồng Nai lên TP trực thuộc TW (2026): giấy tờ cũ ghi "Tỉnh X" phải ra "Thành phố X"
+    vì ô tỉnh eForm hộ tịch không còn option "Tỉnh X"; tên trần vẫn để nguyên (khớp được option)."""
+    vo = {**_VO, "CccdNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Quảng Ninh",
+                                               "xa": "Phường Bãi Cháy", "diaChi": "Tổ 1"}}
+    chong = {**_CHONG, "CccdNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Đồng Nai",
+                                                      "xa": "Phường Trấn Biên", "diaChi": "Tổ 2"}}
+    out = _by_name(mapper.enrich(_fields(vo, chong, {**_HOSO, "KetHonCu_TinhDangKy": "Tỉnh Quảng Ninh",
+                                                     "KetHonCu_XaDangKy": "Phường Bãi Cháy"})))
+    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["tinh"] == "Thành phố Quảng Ninh"
+    assert out["NoiCuTru_BenNam_TrongNuoc"]["value"]["tinh"] in {"Đồng Nai", "Thành phố Đồng Nai"}
+    assert out["noiDangKyTruocDay_filter"]["value"] == "Thành phố Quảng Ninh"
+    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["xa"] == "Phường Bãi Cháy"

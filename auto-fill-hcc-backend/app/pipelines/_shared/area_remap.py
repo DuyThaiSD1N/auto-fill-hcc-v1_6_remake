@@ -24,6 +24,12 @@ Luu y ambiguous:
     Mot so don vi cung ten ton tai o nhieu huyen trong cung tinh cu.
     Nhung entry nay duoc danh dau "ambiguous": true trong JSON --
     module se BO QUA chung khi tra cuu, tranh mapping sai.
+
+Khoa tuy chon:
+    "huyen_cu": cap huyen cu, go nhap nhang ten xa trung o nhieu huyen (xem _REMAP_BY_DISTRICT).
+    "chinh": true -- xa cu bi chia cho nhieu don vi moi, day la don vi duoc chon khi giay to
+        chi ghi ten xa cu. Chi dat khi van ban sap nhap cho can cu ro (vd Ha Noi theo NQ 1656:
+        xa cu chia DUNG 2 noi, mot noi "mot phan", noi kia "phan con lai").
 """
 
 from __future__ import annotations
@@ -98,6 +104,19 @@ _REMAP_BY_DISTRICT: dict[tuple[str, str, str], dict[str, str]] = {}
 # {fold_district(huyen_cu): mapping}. Biet mot ten xa cu la TRUNG o nhieu huyen de khong tra nguyen
 # ten cu ra ngoai khi thieu goi y huyen (xem _remap_area_cached, buoc 1c).
 _DISTRICTS_BY_WARD: dict[tuple[str, str], dict[str, dict[str, str]]] = {}
+
+# Lookup theo DUNG DON VI CU: (fold(tinh_cu), nhan loai, fold_accent(ten xa cu)) -> mapping. Nhan
+# loai la "xa"/"phuong"/"thi tran", "" cho khoa khong nhan (gom moi nhan cung ten).
+#
+# _REMAP khoa theo _fold() -- mat ca nhan lan dau -- nen nhieu don vi KHAC NHAU dung chung mot khoa:
+# Ha Noi co "Phường Vạn Phúc" (Ha Dong), "Xã Vạn Phúc" (Thanh Tri), "Xã Vân Phúc" (Phuc Tho) cung
+# khoa "van phuc", ra ba xa moi khac nhau -> vong loc ambiguous bo ca ba, ten cu lot ra ngoai va o
+# Phuong/Xa bo trong. Bang nay giu rieng tung don vi, va moi don vi tu chon dich theo thu tu: mot
+# dich duy nhat, dich giu ten cu, dich danh dau "chinh". Chi tra khi _REMAP truot.
+_REMAP_EXACT: dict[tuple[str, str, str], dict[str, str]] = {}
+# Khoa (tinh, nhan, ten) co don vi cu ton tai, KE CA khi khong chon duoc dich -- de khong lui ve
+# khoa khong nhan cho mot ten co nhan da biet la mo ho.
+_REMAP_EXACT_SEEN: set[tuple[str, str, str]] = set()
 
 
 _UNIT_PREFIX_RE = re.compile(
@@ -244,6 +263,29 @@ def _split_xa_cu_district(xa_cu: str) -> tuple[str, str]:
     return m.group(1), inner
 
 
+def _unit_label(text: str) -> str:
+    """Nhan loai don vi o dau ten xa da fold: "phuong", "xa", "thi tran"; khong co nhan -> ""."""
+    m = _UNIT_PREFIX_RE.match(str(text or ""))
+    if not m:
+        return ""
+    label = _fold(m.group(1))
+    return "thi tran" if label == "tt" else label
+
+
+def _resolve_unit(items: list[tuple[dict[str, str], bool]], ten_cu: str) -> Optional[dict[str, str]]:
+    """Dich cua MOT don vi cu: dich duy nhat, roi dich giu ten cu, roi dich "chinh". Khong chac -> None."""
+    dests = {(m["tinh"], m["xa"]): m for m, _ in items}
+    if len(dests) == 1:
+        return next(iter(dests.values()))
+    keepers = {k: m for k, m in dests.items() if _fold_accent(m["xa"]) == _fold_accent(ten_cu)}
+    if len(keepers) == 1:
+        return next(iter(keepers.values()))
+    chinh = {(m["tinh"], m["xa"]): m for m, is_chinh in items if is_chinh}
+    if len(chinh) == 1:
+        return next(iter(chinh.values()))
+    return None
+
+
 def _load_remap_files() -> None:
     """Load tat ca remap_*.json va build lookup dict."""
     if not _DATA_DIR.exists():
@@ -252,7 +294,9 @@ def _load_remap_files() -> None:
     # Track duplicate keys to mark as ambiguous
     _duplicate_tracker: dict[tuple[str, str], list[dict]] = {}
     _source_xa_cu: dict[tuple[str, str], list[str]] = {}
-    
+    # (tinh, nhan, ten co dau) -> fold_district(huyen_cu) -> ([(mapping, chinh)], ten xa cu)
+    _units: dict[tuple[str, str, str], dict[str, tuple[list, str]]] = {}
+
     for json_file in sorted(_DATA_DIR.glob("remap_*.json")):
         try:
             with open(json_file, encoding="utf-8-sig") as f:
@@ -295,14 +339,25 @@ def _load_remap_files() -> None:
             xa_cu_district = xa_cu
             if not huyen_cu:
                 xa_cu_district, huyen_cu = _split_xa_cu_district(xa_cu)
+            is_chinh = bool(entry.get("chinh"))
             if huyen_cu:
-                _REMAP_BY_DISTRICT.setdefault(
-                    (key[0], _fold(xa_cu_district), _fold_district(huyen_cu)), mapping
+                # Xa cu bi chia NGAY TRONG mot huyen: entry "chinh" thang, khong de entry dau tien.
+                district_key = (key[0], _fold(xa_cu_district), _fold_district(huyen_cu))
+                by_district = _DISTRICTS_BY_WARD.setdefault((key[0], _fold(xa_cu_district)), {})
+                if is_chinh:
+                    _REMAP_BY_DISTRICT[district_key] = mapping
+                    by_district[_fold_district(huyen_cu)] = mapping
+                else:
+                    _REMAP_BY_DISTRICT.setdefault(district_key, mapping)
+                    by_district.setdefault(_fold_district(huyen_cu), mapping)
+            # Huyen trong ngoac chi co nghia khi giay to ghi huyen (bang 3 khoa) -- giu dung nhu bang 2 khoa.
+            if xa_cu_district == xa_cu:
+                unit_key = (key[0], _unit_label(xa_cu), _fold_accent(xa_cu))
+                unit_items, _ = _units.setdefault(unit_key, {}).setdefault(
+                    _fold_district(huyen_cu) if huyen_cu else "", ([], xa_cu)
                 )
-                _DISTRICTS_BY_WARD.setdefault((key[0], _fold(xa_cu_district)), {}).setdefault(
-                    _fold_district(huyen_cu), mapping
-                )
-            
+                unit_items.append((mapping, is_chinh))
+
             # Track all entries for this key to detect duplicates
             if key not in _duplicate_tracker:
                 _duplicate_tracker[key] = []
@@ -355,6 +410,23 @@ def _load_remap_files() -> None:
 
         if xa_cu_goc:
             _REMAP_SOURCE_ENTRIES.append((mapping["tinh"], xa_cu_goc, mapping["xa"]))
+
+    # Moi don vi cu (tinh, nhan, ten) chon dich rieng; ten trung o nhieu huyen thi moi huyen phai ra
+    # CUNG mot dich, khong thi de 1c xu ly theo huyen. Khoa khong nhan chi nhan khi moi nhan cung ten
+    # ra cung mot dich ("Yên Viên" thi tran lan xa deu ve "Xã Phù Đổng").
+    by_name: dict[tuple[str, str], list[Optional[dict[str, str]]]] = {}
+    for (tinh_key, label, ten), districts in _units.items():
+        resolved = [_resolve_unit(items, ten_cu) for items, ten_cu in districts.values()]
+        dests = {(m["tinh"], m["xa"]) for m in resolved if m}
+        unit = resolved[0] if len(dests) == 1 and all(resolved) else None
+        _REMAP_EXACT_SEEN.add((tinh_key, label, ten))
+        if unit and label:
+            _REMAP_EXACT[(tinh_key, label, ten)] = unit
+        by_name.setdefault((tinh_key, ten), []).append(unit)
+    for (tinh_key, ten), units in by_name.items():
+        dests = {(m["tinh"], m["xa"]) for m in units if m}
+        if len(dests) == 1 and all(units):
+            _REMAP_EXACT[(tinh_key, "", ten)] = units[0]
 
 
 _load_remap_files()  # chay 1 lan luc import
@@ -491,6 +563,36 @@ def province_label(value: object) -> Optional[str]:
     if not bare:
         return None
     return f"{'Thành phố' if _fold(bare) in _CENTRAL_CITIES else 'Tỉnh'} {bare}"
+
+
+# 9 TP trực thuộc TW từ 20/9/2026: thêm Đồng Nai (30/4/2026), Quảng Ninh + Bắc Ninh (NQ 24/8/2026).
+# Tạm chỉ dùng cho hộ tịch (kết hôn, khai sinh, khai tử) qua city_province*; _CENTRAL_CITIES ở trên
+# chưa đổi vì province_label() đang phục vụ mọi thủ tục khác.
+_CITY_PROVINCES_2026 = _CENTRAL_CITIES | {"dong nai", "quang ninh"}
+
+
+def city_province(value: object) -> object:
+    """'Tỉnh X' → 'Thành phố X' khi X đã lên thành phố trực thuộc TW; giá trị khác trả nguyên.
+
+    Giấy tờ cấp trước khi lên thành phố ghi "Tỉnh Quảng Ninh"; remap_area giữ nguyên chuỗi đó vì
+    Quảng Ninh không sáp nhập. Ô tỉnh eForm hộ tịch chỉ còn "Thành phố Quảng Ninh" nên "Tỉnh X"
+    trượt option (tên trần "Quảng Ninh" thì vẫn khớp, không cần đụng).
+    """
+    if not isinstance(value, str):
+        return value
+    match = re.match(r"^\s*tỉnh\s+(.+?)\s*$", value, flags=re.IGNORECASE)
+    if match and _fold(match.group(1)) in _CITY_PROVINCES_2026:
+        return f"Thành phố {match.group(1)}"
+    return value
+
+
+def city_province_area(area):
+    """city_province() cho khóa 'tinh' của object địa chỉ {quocGia, tinh, xa, diaChi}."""
+    if isinstance(area, dict) and isinstance(area.get("tinh"), str):
+        tinh = city_province(area["tinh"])
+        if tinh != area["tinh"]:
+            return {**area, "tinh": tinh}
+    return area
 
 
 def _ward_keys(ward_full_name: str) -> set[str]:
@@ -1132,6 +1234,17 @@ def _scan_for_xa(text: str, tinh_folded: str) -> Optional[dict]:
     return (best_original, best_mapping) if best_mapping else None
 
 
+def _remap_exact(tinh_folded: str, xa: str) -> Optional[dict[str, str]]:
+    """Tra _REMAP_EXACT: ten co nhan so dung nhan, ten tran (hoac nhan khong co don vi nao) so moi nhan."""
+    ten = _fold_accent(xa)
+    if not ten:
+        return None
+    label = _unit_label(xa)
+    if label and (tinh_folded, label, ten) in _REMAP_EXACT_SEEN:
+        return _REMAP_EXACT.get((tinh_folded, label, ten))
+    return _REMAP_EXACT.get((tinh_folded, "", ten))
+
+
 @lru_cache(maxsize=1024)
 def _remap_area_cached(
     tinh: str,
@@ -1190,6 +1303,22 @@ def _remap_area_cached(
         )
         if mapping_huyen:
             return (mapping_huyen["tinh"], mapping_huyen["xa"], dia_chi)
+
+    # Buoc 1b2: bang 2 khoa bo qua ten nay (nhieu don vi cu chung khoa fold, hoac xa cu bi chia) ->
+    # tra theo DUNG don vi cu. CCCD Ha Noi ghi "Phú La, Hà Đông": xa cu chia cho Duong Noi va Kien
+    # Hung, truoc day lot nguyen "Phú La" ra ngoai va o Phuong/Xa bo trong. Ten tran trung ten hien
+    # hanh ("Thanh Trì") hay ten co nhan khop nguyen van don vi hien hanh ("Phường Nam Cường" Lao Cai,
+    # vua cu vua moi) thi de cac buoc duoi giu nguyen nhu cu.
+    if xa_has_admin_label:
+        dang_hien_hanh = _exact_name(canonical_ward(tinh, xa_expanded) or "") == _exact_name(xa_expanded)
+    else:
+        dang_hien_hanh = is_current_area(tinh, xa_expanded)
+    if xa_expanded and (tinh_folded, _fold(xa_expanded)) not in _REMAP and not dang_hien_hanh:
+        mapping_exact = _remap_exact(tinh_folded, xa_expanded)
+        if not mapping_exact and tinh_goc_folded != tinh_folded:
+            mapping_exact = _remap_exact(tinh_goc_folded, xa_expanded)
+        if mapping_exact:
+            return (mapping_exact["tinh"], mapping_exact["xa"], dia_chi)
 
     # Buoc 1c: ten xa cu TRUNG o nhieu huyen (bang 2 khoa da bo qua) ma khong co goi y huyen dung.
     # Tra nguyen ten cu ("Phường 1") ra ngoai thi extension snap sang don vi moi CUNG TEN ("Phường 1
@@ -1378,7 +1507,14 @@ def remap_area(
     # huyen="Đơn Dương"). Ô xã khi đó không khớp option nào → cổng bỏ trống cả xã lẫn địa chỉ chi
     # tiết. Trả thôn/tổ về diaChi; nếu gợi ý cấp huyện LÀ một xã/phường hiện hành của tỉnh thì dùng
     # nó làm xã (sau sáp nhập nhiều xã mang tên huyện cũ). Không khớp danh mục thì để trống xã.
-    if xa_raw and _VILLAGE_PREFIX_RE.match(_fold(xa_raw)):
+    # Tên xã thật cũng có thể bắt đầu bằng "Sóc"/"Tô"/"Buôn" ("Xã Sóc Sơn", "Xã Tô Hiệu", "Phường
+    # Buôn Hồ") -- xã hiện hành hoặc xã cũ trong bảng sáp nhập thì không phải thôn/tổ.
+    if (
+        xa_raw
+        and _VILLAGE_PREFIX_RE.match(_fold(xa_raw))
+        and not (tinh_raw and is_current_area(tinh_raw, xa_raw))
+        and (_fold(tinh_raw), _fold(xa_raw)) not in _OLD_WARD_NAMES
+    ):
         if _fold(xa_raw) not in _fold(dia_raw):
             dia_raw = f"{dia_raw}, {xa_raw}" if dia_raw else xa_raw
         xa_raw = ""
@@ -1562,6 +1698,9 @@ def reload() -> None:
     _OLD_WARD_NAMES.clear()
     _OLD_WARD_SPELLINGS.clear()
     _REMAP_BY_DISTRICT.clear()
+    _DISTRICTS_BY_WARD.clear()
+    _REMAP_EXACT.clear()
+    _REMAP_EXACT_SEEN.clear()
     _REMAP_SOURCE_ENTRIES.clear()
     _load_remap_files()
     _CURRENT_WARD_NOSPACE.clear()

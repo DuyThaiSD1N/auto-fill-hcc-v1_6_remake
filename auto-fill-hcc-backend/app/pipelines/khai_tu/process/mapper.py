@@ -12,7 +12,7 @@ from app.pipelines._shared.compact_agent.issuer import (
     id_doc_type,
     normalize_issuer,
 )
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import city_province_area, remap_area
 
 
 def _digits(value) -> str:
@@ -220,7 +220,7 @@ def _area(value):
     # Nếu có ít nhất 1 trong 3 field (tinh, xa, diaChi) thì vẫn return, không bắt buộc phải có đủ cả 3
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    return city_province_area(remap_area(out))
 
 
 
