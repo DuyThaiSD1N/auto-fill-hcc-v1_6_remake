@@ -311,10 +311,46 @@ def _extract_json(text: str) -> tuple[dict, str]:
     text = _THINK_RE.sub("", text)
     m = _FENCE_RE.search(text)
     if m:
-        src = m.group(1).strip()
-        return json.loads(src), src
+        return _loads_or_close(m.group(1).strip())
     m = _BRACE_RE.search(text)
     if m:
-        src = m.group(0)
-        return json.loads(src), src
+        return _loads_or_close(m.group(0))
     raise ValueError("Không tìm thấy JSON trong response LLM:\n" + text[:300])
+
+
+def _loads_or_close(src: str) -> tuple[dict, str]:
+    """json.loads; hỏng thì thử đóng nốt ngoặc LLM bỏ sót ở cuối (vd thiếu một `}` → mất trắng mọi field)."""
+    try:
+        return json.loads(src), src
+    except json.JSONDecodeError as e:
+        closed = _close_brackets(src)
+        if closed is not None:
+            try:
+                return json.loads(closed), closed
+            except json.JSONDecodeError:
+                pass
+        raise e
+
+
+def _close_brackets(src: str) -> str | None:
+    """Thêm các ngoặc còn mở ở cuối chuỗi; None nếu ngoặc lệch nhau hoặc đứt giữa chuỗi."""
+    stack: list[str] = []
+    in_str = esc = False
+    for ch in src:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]":
+            if not stack or stack.pop() != ch:
+                return None
+    if in_str or not stack:
+        return None
+    return src + "".join(reversed(stack))

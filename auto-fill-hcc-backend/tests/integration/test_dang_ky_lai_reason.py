@@ -188,10 +188,11 @@ def test_sanitizer_does_not_borrow_ethnicity_between_people():
 
     result = reason.sanitize_extracted_fields(fields, context)
     names = {field["name"] for field in result}
+    defaults = {field["name"] for field in result if field.get("default")}
 
-    assert "Subject_Ethnicity" not in names
-    assert "Mother_Ethnicity" not in names
-    assert "Father_Ethnicity" in names
+    # Không giấy nào ghi dân tộc vai đó: vẫn giữ giá trị agent nhưng tô vàng cho cán bộ soát.
+    assert {"Subject_Ethnicity", "Mother_Ethnicity"} <= defaults
+    assert "Father_Ethnicity" in names and "Father_Ethnicity" not in defaults
     assert "Subject_Nationality" in names
     assert "Mother_Nationality" in names
     assert "Father_Nationality" in names

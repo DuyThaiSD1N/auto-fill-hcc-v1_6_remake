@@ -121,6 +121,8 @@ SoLuongBanSao: số bản sao giấy XNTTHN tờ khai đề nghị (số nguyên
 <dia_chi>
 Địa chỉ tách {quocGia,tinh,xa,diaChi}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối là cấp
 huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là diaChi.
+Thẻ CCCD hay in nơi thường trú HAI dòng: "Nơi thường trú: Khu A" / "B, Thành phố C, D" → đọc liền thành "Khu A, B,
+Thành phố C, D": xa = B, huyen = Thành phố C, diaChi = Khu A. Cụm cạnh nhãn ở dòng đầu là thôn/khu/tổ, không phải xã.
 </dia_chi>
 
 <khong_bia>

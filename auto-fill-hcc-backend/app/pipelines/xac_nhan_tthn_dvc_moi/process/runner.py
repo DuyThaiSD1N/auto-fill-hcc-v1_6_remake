@@ -18,7 +18,8 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         context_builder=reason.build_context,
     )
-    enrich_options = {**(options or {}), "_reasoning_context": result.get("reasoning_context") or ""}
+    enrich_options = {**(options or {}), "_reasoning_context": result.get("reasoning_context") or "",
+                      "_ocr_text": result.get("ocr_text") or ""}
     result["fields"], warnings = mapper.enrich(result["fields"], enrich_options)
     if warnings:
         result.setdefault("errors", []).extend(warnings)

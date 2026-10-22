@@ -277,3 +277,36 @@ def test_co_to_khai_thi_khong_can_thiep_nguoi_duoc_cap():
     assert not reason._is_death_doc(to_khai)
     out = reason._render_context(_role("TRẦN THỊ D", "001150000004"), {}, [to_khai, CCCD_SONG, KHAI_TU])
     assert "001150000004" in reason.section(out, "nguoi_duoc_cap")
+
+
+CCCD_HAI_DONG = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001090000002\nHọ và tên / Full name:\nNGUYỄN VĂN B\n"
+                 "Nơi thường trú / Place of residence: Xóm Mới\nKim Chân, Thành phố Bắc Ninh, Bắc Ninh\n")
+
+
+def _enrich_ocr(residence: dict, ocr_text: str):
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in {**BASE, "NguoiDuocCap_NoiCuTru": residence}.items()]
+    out, warnings = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(),
+                                           "_ocr_text": ocr_text})
+    return {f["name"]: f for f in out}, warnings
+
+
+def test_cccd_noi_thuong_tru_hai_dong_lay_xa_dong_sau():
+    for read in ("Xóm Mới", "Mới"):
+        v, warnings = _enrich_ocr({"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": read, "diaChi": ""}, CCCD_HAI_DONG)
+        assert v["citizenNDKXa_ThTru"]["value"] == "Phường Vũ Ninh"
+        assert v["citizenNDKDiaChi_ThTru"]["value"] == read and not v["citizenNDKDiaChi_ThTru"].get("default")
+        assert warnings == []
+
+
+def test_xa_khong_co_trong_danh_muc_thi_bo_trong_va_bao():
+    v, warnings = _enrich_ocr({"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Xóm Mới", "diaChi": "Số 2"}, "")
+    assert "citizenNDKXa_ThTru" not in v
+    assert v["citizenNDKDiaChi_ThTru"]["value"] == "Số 2, Xóm Mới" and v["citizenNDKDiaChi_ThTru"]["default"] is True
+    assert any("phường/xã" in w for w in warnings)
+
+
+def test_xa_cu_doc_dung_van_remap_nhu_cu():
+    v, _ = _enrich_ocr({"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Kim Chân", "diaChi": "Xóm Mới"},
+                       CCCD_HAI_DONG)
+    assert v["citizenNDKXa_ThTru"]["value"] == "Phường Vũ Ninh"
+    assert v["citizenNDKDiaChi_ThTru"]["value"] == "Xóm Mới, Kim Chân"

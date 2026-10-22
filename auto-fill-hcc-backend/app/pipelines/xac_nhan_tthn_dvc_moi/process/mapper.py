@@ -7,7 +7,7 @@ lỗi validate.
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import is_current_area, remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
@@ -19,6 +19,7 @@ from .schema import GIOI_TINH, LOAI_CU_TRU, LOAI_GIAY_TO, MUC_DICH, NOI_CU_TRU, 
 
 _DATE_RE = re.compile(r"\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b")
 _HCM_PROVINCE_KEYS = {"hochiminh", "tphochiminh", "thanhphohochiminh", "tphcm", "hcm"}
+_ADDRESS_PART_RE = re.compile(r"[,;\n]|\s[-–]\s")
 
 # Mã option tình trạng hôn nhân của cổng mới (khác eForm cũ: 1 = chưa đăng ký, 2 = đang có vợ/chồng).
 _NEVER_MARRIED, _MARRIED, _DIVORCED, _WIDOWED, _PERIOD_MARRIED, _OTHER = "1", "2", "3", "4", "5", "6"
@@ -80,7 +81,41 @@ def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
     return id_doc_type(hint or "Căn cước", issuer)
 
 
-def _area(value):
+def _selectable(area: dict) -> bool:
+    ward = str(area.get("xa") or "")
+    return bool(ward) and is_current_area(str(area.get("tinh") or ""), ward)
+
+
+def _ward_after_read_name(area: dict, remapped: dict, ocr_text: str) -> dict | None:
+    """LLM lấy thôn/khu làm xã: thẻ CCCD in nơi thường trú hai dòng ("...: Khu A" / "Xã B, Huyện C, Tỉnh D") nên
+    dòng đầu bị đọc thành xã. Tìm tên đã đọc trên giấy, cụm ĐẦU TIÊN ngay sau nó remap ra xã hiện hành cùng tỉnh
+    là xã thật; tên đã đọc lùi về địa chỉ chi tiết."""
+    name = _fold(area.get("xa"))
+    if not name or not ocr_text:
+        return None
+    word = re.compile(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])")
+    lines = ocr_text.splitlines()
+    for i, line in enumerate(lines):
+        if not word.search(_fold(line)):
+            continue
+        parts = [p.strip() for p in _ADDRESS_PART_RE.split("\n".join(lines[i:i + 2]))]
+        start = next((j for j, part in enumerate(parts) if word.search(_fold(part))), None)
+        if start is None:
+            continue
+        for part in parts[start + 1:start + 4]:
+            if not part:
+                continue
+            found = remap_area({**area, "xa": part, "diaChi": ""})
+            if not isinstance(found, dict) or not _selectable(found):
+                continue
+            if remapped.get("tinh") and _fold(found.get("tinh")) != _fold(remapped.get("tinh")):
+                continue
+            detail = str(area.get("diaChi") or "").strip()
+            return {**found, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
+    return None
+
+
+def _area(value, ocr_text: str = ""):
     if not isinstance(value, dict):
         return None
     province = str(value.get("tinh") or "").strip()
@@ -100,12 +135,24 @@ def _area(value):
     remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
     if not isinstance(remapped, dict):
         return area
+    if area["xa"] and not _selectable(remapped):
+        recovered = _ward_after_read_name(area, remapped, ocr_text)
+        if recovered:
+            return recovered
     # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
     old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
     new_ward = str(remapped.get("xa") or "")
     detail = str(remapped.get("diaChi") or "").strip()
     if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
         remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
+    # Xã không chọn được trên cổng (kể cả thôn/xóm remap đã đẩy về địa chỉ chi tiết): extension để trống mà không báo.
+    # Bỏ trống xã, giữ tên đã đọc ở cuối địa chỉ chi tiết, đánh dấu để tô viền vàng.
+    ward = str(remapped.get("xa") or "")
+    if area["xa"] and not _selectable(remapped):
+        detail = str(remapped.get("diaChi") or "").strip()
+        if ward and _fold(ward) not in _fold(detail):
+            detail = f"{detail}, {ward}" if detail else ward
+        remapped = {**remapped, "xa": "", "diaChi": detail, "_xaChuaChon": True}
     return remapped
 
 
@@ -282,14 +329,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # Loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra nên đi trước. Loại cư trú không in trên giấy tờ nào →
     # mặc định Thường trú, tô vàng.
-    residence = _area(values.get("NguoiDuocCap_NoiCuTru"))
+    residence = _area(values.get("NguoiDuocCap_NoiCuTru"), str(options.get("_ocr_text") or ""))
     if residence:
         add_choice("citizenNDKLoaicutru", LOAI_CU_TRU, "1", default=True)
         if _fold(residence.get("quocGia")) in ("viet nam", "vn"):
             add_choice("citizenNDKnoicutru", NOI_CU_TRU, "1")
             add("citizenNDKTinh_ThTru", residence.get("tinh"))
             add("citizenNDKXa_ThTru", residence.get("xa"))
-            add("citizenNDKDiaChi_ThTru", residence.get("diaChi"))
+            add("citizenNDKDiaChi_ThTru", residence.get("diaChi"), default=bool(residence.get("_xaChuaChon")))
+            if residence.get("_xaChuaChon"):
+                warnings.append("Chưa chọn được phường/xã nơi cư trú của người được cấp theo danh mục hiện hành — "
+                                "cán bộ chọn lại ô Phường/Xã.")
         else:
             add_choice("citizenNDKnoicutru", NOI_CU_TRU, "2")
             add("citizenNDKQG_Khac", residence.get("quocGia"))
