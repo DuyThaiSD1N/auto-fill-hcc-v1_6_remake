@@ -3,6 +3,7 @@
 ## 1. Hiện trạng
 
 - Trợ lý nhân dân (kênh handfree) đang có **44 thủ tục**, nên cần thêm **56**.
+  _Cập nhật 22/10 15:00: **71 thủ tục**, còn thiếu 29. Danh sách ở mục 7._
 - Thời gian từ T2 19/10 tới T6 30/10 là **10 ngày làm việc**, tức trung bình 5–6 thủ tục mỗi ngày.
 - Registry lõi của Auto Fill (`app/procedures/registry.py`) có **219 thủ tục**. Có **175** đã có pipeline nhưng trợ lý chưa mở.
 - Thêm một thủ tục **không cần viết pipeline mới**. Chỉ cần một entry trong `app/channels/handfree/procedure_registry.py`:
@@ -164,3 +165,121 @@ Lấy thay khi một thủ tục trong lộ trình bị kẹt.
 - Kế hoạch được phân loại từ code: engine nào có, cổng nào đã có thủ tục chạy, pipeline đòi gì. **Chưa chạy thử thủ tục nào trên cổng thật.** Cổng Đà Nẵng và nhóm Y tế hành nghề có thể còn bất ngờ.
 - Chạy thử trên cổng DVCQG cần tài khoản VNeID đăng nhập được. Đây là điểm nghẽn lớn nhất nếu chỉ một người có tài khoản.
 - Đợt 3 dày nhất (21 thủ tục). Theo dõi mốc 26/10 để kịp đổi sang danh sách dự bị.
+
+## 7. Thủ tục đã lên trợ lý — 71 (cập nhật T5 22/10, commit `bb277b9`)
+
+Lấy từ `app/channels/handfree/procedure_registry.py`, theo thứ tự trong file. Container `app` 12005 (build 15:09 22/10)
+đã có đủ 71 thủ tục. "Có entry" chưa có nghĩa là đã chạy thử trên cổng: xem phần nợ chạy thử trong checklist từng ngày.
+
+**Hộ tịch (19)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 1 | `khai-sinh-dang-ky` | Liên thông đăng ký khai sinh |
+| 2 | `khai-sinh-dang-ky-thuong` | Đăng ký Khai sinh |
+| 3 | `ket-hon` | Đăng ký Kết hôn |
+| 4 | `dang-ky-giam-ho` | Đăng ký Giám hộ |
+| 5 | `dang-ky-cham-dut-giam-ho` | Chấm dứt Giám hộ |
+| 6 | `trich-luc-ks` | Bản sao Trích lục hộ tịch |
+| 7 | `ket-hon-nuoc-ngoai` | Kết hôn có yếu tố nước ngoài |
+| 8 | `dang-ky-lai-ket-hon` | Đăng ký lại Kết hôn |
+| 9 | `khai-sinh-dang-ky-lai` | Đăng ký lại Khai sinh |
+| 10 | `khai-sinh-da-co-ho-so` | Khai sinh (đã có giấy tờ cá nhân) |
+| 11 | `khai-tu` | Đăng ký Khai tử |
+| 12 | `khai-tu-lien-thong` | Liên thông đăng ký khai tử |
+| 13 | `khai-tu-dang-ky-lai` | Đăng ký lại Khai tử |
+| 14 | `dang-ky-nhan-cha-me-con` | Nhận Cha, Mẹ, Con |
+| 15 | `khai-sinh-ket-hop-nhan-cha-me-con` | Khai sinh kết hợp nhận Cha, Mẹ, Con |
+| 16 | `dang-ky-nuoi-con-nuoi-trong-nuoc` | Nuôi con nuôi trong nước |
+| 17 | `thay-doi-cai-chinh-ho-tich` | Cải chính hộ tịch |
+| 18 | `xac-nhan-tinh-trang-hon-nhan` | Xác nhận tình trạng hôn nhân |
+| 19 | `xac-nhan-thong-tin-ho-tich` | Xác nhận thông tin hộ tịch |
+
+**Chứng thực và tư pháp khác (13)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 20 | `chung-thuc-ban-sao` | Chứng thực bản sao |
+| 21 | `chung-thuc-giao-dich-tai-san` | Chứng thực giao dịch tài sản |
+| 22 | `chung-thuc-phan-chia-di-san` | Chứng thực văn bản phân chia di sản |
+| 23 | `chung-thuc-tu-choi-nhan-di-san` | Chứng thực văn bản từ chối nhận di sản |
+| 24 | `chung-thuc-di-chuc` | Chứng thực di chúc |
+| 25 | `chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich` | Chứng thực sửa đổi, bổ sung, hủy bỏ giao dịch |
+| 26 | `chung-thuc-chu-ky-nguoi-dich-ctv` | Chứng thực chữ ký người dịch (CTV) |
+| 27 | `chung-thuc-chu-ky-nguoi-dich-khong-ctv` | Chứng thực chữ ký người dịch (không CTV) |
+| 28 | `chung-thuc-chu-ky` | Chứng thực chữ ký |
+| 29 | `cap-ban-sao-so-goc` | Cấp bản sao từ sổ gốc |
+| 30 | `bau-to-truong-to-hoa-giai` | Bầu tổ trưởng tổ hòa giải |
+| 31 | `yeu-cau-tro-giup-phap-ly` | Yêu cầu trợ giúp pháp lý |
+| 32 | `cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su` | Chứng chỉ hành nghề luật sư (miễn tập sự) |
+
+**Hộ kinh doanh (5)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 33 | `dang-ky-kinh-doanh` | Đăng ký thành lập hộ kinh doanh |
+| 34 | `dang-ky-thay-doi-noi-dung-ho-kinh-doanh` | Thay đổi nội dung hộ kinh doanh |
+| 35 | `cham-dut-hoat-dong-ho-kinh-doanh` | Chấm dứt hộ kinh doanh |
+| 36 | `tam-ngung-kinh-doanh` | Tạm ngừng hộ kinh doanh |
+| 37 | `cap-lai-cap-doi-gcn-ho-kinh-doanh` | Cấp lại GCN hộ kinh doanh |
+
+**Bảo trợ xã hội / người có công (10)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 38 | `dieu-chinh-huu-tri-xa-hoi` | Trợ cấp hưu trí xã hội — thực hiện |
+| 39 | `di-chuyen-ho-so-nguoi-huong-tro-cap` | Di chuyển hồ sơ người hưởng trợ cấp ưu đãi |
+| 40 | `tro-cap-tho-cung-liet-si` | Trợ cấp thờ cúng liệt sĩ |
+| 41 | `uu-dai-ncc-tu-tran` | Trợ cấp khi người có công từ trần |
+| 42 | `xac-dinh-muc-do-khuyet-tat` | Xác định mức độ khuyết tật |
+| 43 | `doi-cap-lai-giay-xac-nhan-khuyet-tat` | Đổi, cấp lại Giấy xác nhận khuyết tật |
+| 44 | `ho-tro-mai-tang-1116910` | Mai táng — đối tượng bảo trợ xã hội |
+| 45 | `ho-tro-mai-tang-huu-tri-xa-hoi` | Mai táng — người hưởng hưu trí xã hội |
+| 46 | `tro-cap-xa-hoi-hang-thang` | Trợ cấp xã hội hàng tháng |
+| 47 | `thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang` | Trợ cấp XH và nhận chăm sóc, nuôi dưỡng (NĐ 335) |
+
+**Xây dựng (7)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 48 | `cho-thue-thue-mua-nha-o-xa-hoi` | Thuê / thuê mua nhà ở xã hội |
+| 49 | `cap-giay-phep-xay-dung-moi-nha-o-rieng-le` | Cấp phép xây dựng mới |
+| 50 | `dieu-chinh-giay-phep-xay-dung` | Điều chỉnh giấy phép xây dựng |
+| 51 | `sua-chua-cai-tao-gpxd-nha-o-rieng-le` | Cấp phép sửa chữa, cải tạo |
+| 52 | `cung-cap-thong-tin-quy-hoach` | Cung cấp thông tin quy hoạch |
+| 53 | `cap-phep-long-duong-via-he` | Sử dụng tạm thời lòng đường, vỉa hè |
+| 54 | `cap-giay-phep-lien-van-viet-lao` | Giấy phép liên vận Việt Nam - Lào |
+
+**Y tế (3)**
+
+| # | Key | Tên (rút gọn từ shortLabel) | Ghi chú |
+|---|---|---|---|
+| 55 | `cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham` | GCN cơ sở đủ điều kiện ATTP (dịch vụ ăn uống) | |
+| 56 | `cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te` | Cấp lại, điều chỉnh GCN đủ điều kiện kinh doanh dược | Mới 22/10 |
+| 57 | `dang-ky-hanh-nghe` | Đăng ký người hành nghề khám bệnh, chữa bệnh | Mới 22/10 |
+
+**Đất đai Bắc Ninh (12)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 58 | `dang-ky-bien-phap-bao-dam-bac-ninh` | Đăng ký biện pháp bảo đảm bằng QSDĐ |
+| 59 | `xoa-dang-ky-bien-phap-bao-dam-bac-ninh` | Xóa đăng ký biện pháp bảo đảm bằng QSDĐ |
+| 60 | `dinh-chinh-gcn-da-cap-bac-ninh` | Đính chính giấy chứng nhận đã cấp |
+| 61 | `dang-ky-bien-dong-thoa-thuan-bac-ninh` | Đăng ký biến động theo thỏa thuận (hộ gia đình, vợ chồng, tranh chấp, thế chấp) |
+| 62 | `dang-ky-bien-dong-dat-dai-bac-ninh` | Đăng ký biến động (chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn) |
+| 63 | `tach-hop-thua-dat-bac-ninh` | Tách thửa đất hoặc hợp thửa đất |
+| 64 | `cap-doi-gcn-bac-ninh` | Cấp đổi GCN quyền sử dụng đất |
+| 65 | `dang-ky-dat-dai-lan-dau-bac-ninh` | Đăng ký đất đai, cấp GCN lần đầu |
+| 66 | `thu-hoi-gcn-cap-sai-bac-ninh` | Thu hồi GCN cấp lần đầu sai quy định và cấp lại |
+| 67 | `dinh-chinh-sai-sot-bac-ninh` | Đính chính GCN cấp lần đầu có sai sót |
+| 68 | `giao-thue-chuyen-muc-dich-dat-bac-ninh` | Giao đất, cho thuê đất, chuyển mục đích |
+| 69 | `dang-ky-bien-dong-chuyen-nhuong-bac-ninh` | Đăng ký biến động (chuyển nhượng, thừa kế, tặng cho, góp vốn; cho thuê, cho thuê lại) |
+
+**Khác (2)**
+
+| # | Key | Tên (rút gọn từ shortLabel) |
+|---|---|---|
+| 70 | `cap-giay-phep-khai-thac-thuy-san` | Giấy phép khai thác thủy sản |
+| 71 | `cap-ban-sao-van-bang-so-goc` | Cấp bản sao văn bằng, chứng chỉ từ sổ gốc |
+
+3 entry Bắc Ninh (#60, #63, #67) không có `shortLabel`, card hiện `label` (đều đã ngắn).

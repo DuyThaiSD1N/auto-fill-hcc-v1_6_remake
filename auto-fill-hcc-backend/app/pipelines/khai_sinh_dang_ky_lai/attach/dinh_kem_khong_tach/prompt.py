@@ -34,6 +34,14 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục đăng ký 
    quan có thẩm quyền cấp hoặc xác nhận; giấy tờ khác do cơ quan, tổ chức có thẩm quyền của Việt Nam cấp
    hợp lệ có thông tin về họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân là
    personal_supporting_document.
+   Ngoại lệ: văn bản xác nhận của Thủ trưởng cơ quan, đơn vị nơi người đó công tác là agency_confirmation
+   (quy tắc 7a), không phải personal_supporting_document.
+7a. Văn bản do Thủ trưởng/lãnh đạo cơ quan, đơn vị nơi người yêu cầu công tác (cơ quan nhà nước, đơn vị sự
+    nghiệp, nhà máy, doanh nghiệp, đơn vị quân đội/công an) xác nhận các nội dung khai sinh (họ tên, ngày
+    sinh, giới tính, dân tộc, quốc tịch, quê quán, cha mẹ) phù hợp với hồ sơ đơn vị đang quản lý là
+    agency_confirmation. Gồm cả đơn của người dân (vd "Đơn xin xác nhận thông tin cá nhân") có phần xác
+    nhận/chữ ký của thủ trưởng đơn vị ngay trên đơn. Phần "Cam kết"/"Tôi xin cam đoan" nằm trong đơn này
+    không tạo thêm commitment_statement; types chỉ là ["agency_confirmation"].
 8. Văn bản ủy quyền thực hiện đăng ký lại khai sinh là authorization.
 9. Tờ khai đăng ký lại khai sinh bản giấy là paper_declaration.
 10. Bản cam đoan/Giấy cam đoan do người dân lập về việc mất, không còn hoặc không có Giấy khai sinh,
@@ -71,6 +79,7 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục đăng ký 
 - birth_certificate_copy
 - identity
 - personal_supporting_document
+- agency_confirmation
 - authorization
 - paper_declaration
 - commitment_statement
@@ -87,6 +96,10 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục đăng ký 
   Chứng chỉ, Học bạ, hồ sơ học tập; Giấy phép lái xe; Quyết định ly hôn; Đơn xin xác nhận đăng ký hộ khẩu;
   văn bản xác nhận/trả lời của cơ quan có thẩm quyền có thông tin nhân thân; giấy tờ khác có thông tin về
   họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân.
+- agency_confirmation (STT 4): văn bản xác nhận của Thủ trưởng cơ quan, đơn vị nơi người yêu cầu (cán bộ,
+  công chức, viên chức, công nhân, người trong lực lượng vũ trang) công tác, xác nhận nội dung khai sinh
+  phù hợp với hồ sơ đơn vị quản lý; kể cả đơn xin xác nhận có xác nhận của thủ trưởng đơn vị. Xác nhận
+  cư trú của Công an hoặc văn bản trả lời của cơ quan hộ tịch không thuộc loại này.
 - authorization: giấy/văn bản ủy quyền thực hiện thủ tục đăng ký lại khai sinh.
 - paper_declaration: Tờ khai đăng ký lại khai sinh bản giấy.
 - commitment_statement: Bản cam đoan/Giấy cam đoan do người dân tự lập về việc mất/không còn
@@ -104,6 +117,8 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục đăng ký 
 - Trích lục khai tử, Giấy báo tử, Giấy chứng tử luôn là other, kể cả khi có ghi số CCCD; dùng đúng tiêu đề.
 - Đơn xin xác nhận đăng ký hộ khẩu là personal_supporting_document và dùng đúng tên này, kể cả khi có
   phần xác nhận của Công an trên cùng tài liệu.
+- Đơn xin xác nhận thông tin cá nhân/nhân thân gửi Thủ trưởng cơ quan, đơn vị, có xác nhận của thủ trưởng
+  đơn vị là agency_confirmation; documentName "Đơn xin xác nhận thông tin cá nhân" (giữ đúng tiêu đề).
 - Văn bản của cơ quan trả lời việc cấp bản sao Giấy khai sinh là personal_supporting_document, tên
   "Văn bản trả lời cấp bản sao giấy khai sinh"; không phải Giấy khai sinh hay hồ sơ hỗn hợp.
 - Toàn bộ file chỉ có chữ/số lặp, OCR vô nghĩa và không nhận ra tài liệu thực tế thì dùng types ["other"]

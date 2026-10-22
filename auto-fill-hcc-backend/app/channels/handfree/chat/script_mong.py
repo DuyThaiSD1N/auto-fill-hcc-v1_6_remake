@@ -140,6 +140,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" = đăng ký đã có; TỪ MỚI "ua haujlwm kho mob" = làm nghề
     # khám chữa bệnh: soát kỹ hơn.
     "dang-ky-hanh-nghe": "Cuv npe ua haujlwm kho mob",
+    # BẢN NHÁP chờ anh Dư soát — ghép "kho" (điều chỉnh) + "ntawv tso cai" (giấy phép) + "ua haujlwm
+    # kho mob" (hành nghề khám chữa bệnh, từ mới của dang-ky-hanh-nghe).
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": "Kho ntawv tso cai ua haujlwm kho mob",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — luồng chung "xay-dung"). Có TỪ MỚI (npaj = quy
     # hoạch, ntug kev = vỉa hè, ib ntus = tạm thời, Nyab Laj = Việt Nam, Nplog = Lào): soát kỹ hơn.
     "dieu-chinh-giay-phep-xay-dung": "Kho ntawv tso cai ua tsev",

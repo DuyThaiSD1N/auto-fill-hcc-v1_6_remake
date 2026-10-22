@@ -30,6 +30,12 @@ nhận biết ranh giới tài liệu logic và trả các khoảng trang cần 
    nhận, Chứng chỉ, Học bạ, hồ sơ học tập do cơ quan có thẩm quyền cấp hoặc xác nhận; giấy tờ khác do cơ
    quan, tổ chức có thẩm quyền của Việt Nam cấp hợp lệ có thông tin về
    họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân. Giấy tờ về sự kiện chết vẫn là death_document.
+8a. agency_confirmation (STT 4 của cổng): văn bản do Thủ trưởng/lãnh đạo cơ quan, đơn vị nơi người yêu cầu
+    công tác (cơ quan nhà nước, đơn vị sự nghiệp, nhà máy, doanh nghiệp, đơn vị quân đội/công an) xác nhận
+    nội dung khai sinh (họ tên, ngày sinh, giới tính, dân tộc, quốc tịch, quê quán, cha mẹ) phù hợp với hồ
+    sơ đơn vị đang quản lý; gồm cả đơn của người dân (vd "Đơn xin xác nhận thông tin cá nhân") có phần xác
+    nhận của thủ trưởng đơn vị ngay trên đơn. Phần cam kết nằm trong đơn này không phải commitment_statement.
+    Xác nhận cư trú của Công an hoặc văn bản trả lời của cơ quan hộ tịch vẫn là personal_supporting_document.
 9. Văn bản ủy quyền là authorization; tờ khai đăng ký lại khai sinh là paper_declaration; bản cam đoan do
    người dân lập là commitment_statement.
 10. Trang thực sự trắng, OCR rỗng, chỉ có nhiễu quét, hoặc OCR sinh ra một câu/đoạn rời rạc không có
@@ -54,7 +60,8 @@ nhận biết ranh giới tài liệu logic và trả các khoảng trang cần 
    hiện cam đoan là commitment_statement; kê khai đăng ký lại khai sinh là paper_declaration; ủy quyền là
    authorization; sự kiện chết là death_document; giấy tờ định danh cá nhân là identity. Giấy tờ do cơ
    quan có thẩm quyền cấp/xác nhận thông tin nhân thân nhưng không phải giấy tờ định danh là
-   personal_supporting_document. Không xác định được nhóm thì dùng other nhưng vẫn giữ tiêu đề thực tế.
+   personal_supporting_document; riêng xác nhận của Thủ trưởng cơ quan, đơn vị nơi người đó công tác là
+   agency_confirmation. Không xác định được nhóm thì dùng other nhưng vẫn giữ tiêu đề thực tế.
 </title_priority_rules>
 
 <mentioned_document_rules>
@@ -91,6 +98,7 @@ Tiêu đề thực tế > cấu trúc đặc trưng của giấy tờ > nội du
 - birth_certificate_copy
 - identity
 - personal_supporting_document
+- agency_confirmation
 - authorization
 - paper_declaration
 - commitment_statement

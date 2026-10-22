@@ -1,117 +1,94 @@
-# Checklist sáng T5 22/10/2026 — Đợt 1 ngày cuối / mở Đợt 2
+# Checklist T5 22/10/2026 — chiều: 3 thủ tục (71 → 74)
 
-Mục tiêu sáng nay: **69 → 78 thủ tục** trên trợ lý (+9). Mốc Đợt 1 (64) đã vượt từ chiều 21/10; sáng nay
-gần chạm mốc Đợt 2 (79, hạn T2 26/10) trong [ke-hoach-100-thu-tuc-tro-ly.md](ke-hoach-100-thu-tuc-tro-ly.md).
+Danh sách đầy đủ thủ tục đã lên trợ lý: mục 7 của [ke-hoach-100-thu-tuc-tro-ly.md](ke-hoach-100-thu-tuc-tro-ly.md).
 
-## Hiện trạng đầu giờ
+## Kết quả buổi sáng
 
-- Chiều 21/10 (commit `5cb6871`) đã thêm **10 thủ tục đất đai Bắc Ninh**: đính chính GCN, cấp đổi GCN, tách hợp thửa,
-  đăng ký lần đầu, thu hồi GCN cấp sai, đính chính sai sót, giao/thuê/chuyển mục đích, biến động (chung, thỏa thuận,
-  chuyển nhượng). Trợ lý **69**, lõi **222**, còn **153**.
-- 3 thủ tục còn lại của checklist sáng 21/10 **chưa vào trợ lý**: chặt hạ cây xanh, dược Sở Y tế, đăng ký hành nghề.
-- Container `app` 12005 build lúc 17:09 21/10: **đã có** 10 thủ tục Bắc Ninh, **chưa có** commit `19dbfd4`
-  (`ke_khai_links.py`, `router.py`, 17:25). `/healthz` ok.
+Sáng nay đặt mục tiêu 69 → 78 (+9), thực tế chỉ thêm được **2** (69 → 71).
+
+| Bộ | Thủ tục | Entry | Gợi ý + tiếng Mông | Ghi chú |
+|---|---|---|---|---|
+| Y tế | `cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te` | ☑ | ☑ | Mã 1.014104, `flowProfile: "xay-dung"` + `agencySoFirst` |
+| Y tế | `dang-ky-hanh-nghe` | ☑ | ☑ | Mã 1.012275, cùng khung với dược |
+| Y tế | `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` | ☐ | ☐ | → chiều nay |
+| Y tế | `cap-moi-giay-phep-hanh-nghe-chuyen-tiep` | ☐ | ☐ | → chiều nay |
+| Xây dựng | `cap-giay-phep-chat-ha-cay-xanh` | ☐ | ☐ | → chiều nay |
+| Xây dựng | `chap-thuan-dau-noi-tam`, `cap-gcnkncm-cccm` | ☐ | ☐ | → T6 23/10 |
+| Nội vụ | `cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong`, `giai-quyet-che-do-khang-chien` | ☐ | ☐ | → T6 23/10 |
+
+- Commit `9534218` ("update BE mới", 11:47) dán đè BE và **xoá mất** 2 entry Y tế. Commit `bb277b9` (14:55) thêm lại.
+  Sau mỗi lần dán BE, đếm lại registry trợ lý xem còn đủ 71 không.
+- Container `app` 12005 build lúc 15:09, sau `bb277b9`, nên **đã có** cả 2 thủ tục. `/healthz` ok.
+- Chưa chạy thử trên cổng 2 thủ tục này.
 - Stack toàn trình 12015 vẫn chạy image `:dev-toan-trinh` từ 17/10.
-- Bảng kết quả cuối buổi 21/10 chưa điền: 10 thủ tục Bắc Ninh mới có entry, **chưa chạy thử trên cổng**.
+- Đang có thay đổi chưa commit trong `ke_khai_links.json`: thêm 2 link Lào Cai (`dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai`,
+  `dinh-chinh-gcn-da-cap-lao-cai`). Lần build tới sẽ đưa luôn thay đổi này lên.
 
-## Kế hoạch sáng nay
-
-Ưu tiên như hôm qua: (1) cổng trợ lý đã chạy được, (2) nhiều lượt / tài khoản. Lượt / TK lấy từ `process_requests`
-Mongo local sáng 22/10.
+## Chiều nay: 3 thủ tục
 
 Mỗi thủ tục cần: entry trong `app/channels/handfree/procedure_registry.py`, gợi ý chọn thủ tục
 (`procedure_picker/prompt.py`), tên tiếng Mông (`script_mong.py`). Không tạo file mới.
 
-### 09:30–10:30 · Y tế: cổng `dichvucongbyt.moh.gov.vn` (69 → 73)
+| # | Bộ | Key | Mã TTHC | Lượt / TK |
+|---|---|---|---|---|
+| 1 | Y tế | `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` | 1.012292 | 9 / 1 |
+| 2 | Y tế | `cap-moi-giay-phep-hanh-nghe-chuyen-tiep` | 1.012289 | 7 / 2 |
+| 3 | Xây dựng | `cap-giay-phep-chat-ha-cay-xanh` | 1.002693 | 6 / 2 |
 
-Chép khung từ `cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham` (cùng cổng, Form.io, chọn Sở Y tế).
-`detect` gồm `urlScope` + `maThuTuc=` + id form.
+### 16:00–16:50 · Y tế: giấy phép hành nghề chuyển tiếp (71 → 73)
 
-| # | Key | Lượt / TK | Nhận trang |
-|---|---|---|---|
-| 1 | `cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te` | 13 / 2 | cụm tên "cấp lại, điều chỉnh giấy chứng nhận đủ điều kiện kinh doanh dược" |
-| 2 | `dang-ky-hanh-nghe` | 10 / 2 | `maThuTuc=1.012275` |
-| 3 | `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` | 9 / 1 | cụm tên "điều chỉnh giấy phép hành nghề" |
-| 4 | `cap-moi-giay-phep-hanh-nghe-chuyen-tiep` | 7 / 2 | cụm tên "cấp mới giấy phép hành nghề" |
+Chép khung từ `dang-ky-hanh-nghe` vừa làm sáng nay (cổng `dichvucongbyt.moh.gov.vn`, `flowProfile: "xay-dung"`).
 
-- [ ] Entry, `requiredDocs` + `uploadHint` lấy từ entry lõi.
-- [ ] #3 và #4 cùng chữ "giấy phép hành nghề … chuyển tiếp": kiểm `detect` không nhận nhầm nhau.
-- [ ] Gợi ý chọn thủ tục + tên tiếng Mông. Card hiện, nhận đúng trang.
+- [ ] `detect`: `urlScope` + `maThuTuc=` / `MaTTHC=` + uuid DVCQG trong `ke_khai_links.json`
+      (`019d2bff-1db3-774c-81c5-200c7dcc25a1` cho #1, `019d2bff-1db7-73d4-8e28-7b1fd65945b7` cho #2).
+- [ ] Hai thủ tục cùng cụm "kiểm tra đánh giá năng lực hành nghề". Bên Auto Fill, `textIncludes` đòi đủ **mọi** cụm
+      (`popup.js:1469`), nên cụm đầu ("điều chỉnh…" / "cấp mới…") đã đủ phân biệt. Thử chéo trên trợ lý: mở trang #1
+      thì không được nhận thành #2, và ngược lại.
+- [ ] Chọn cơ quan: `ke_khai_links` của #1 có `selectSo`, còn #2 **không có**. Mở link DVCQG của #2 xem có phải chọn
+      Sở Y tế không, rồi mới đặt `agencyProvinceOnly` / `agencySoFirst`.
+- [ ] `requiredDocs` + `uploadHint` lấy từ entry lõi. Gợi ý chọn thủ tục phải tách được "cấp mới" với "điều chỉnh",
+      và cả hai phải khác `cap-lai-giay-phep-hanh-nghe-truoc-2024`.
+- [ ] Tên tiếng Mông (ghi BẢN NHÁP chờ anh Dư soát).
+- [ ] Test lõi: `test_cap_moi_gphn_chuyen_tiep_attach.py`, `test_dang_ky_hanh_nghe.py`.
 
-Test lõi: `test_cap_moi_gphn_chuyen_tiep_attach.py` (vừa sửa planner chiều 21/10).
+### 16:50–17:20 · Xây dựng: chặt hạ, dịch chuyển cây xanh (73 → 74)
 
-### 10:30–11:10 · Xây dựng: cổng `dvc.moc.gov.vn` (73 → 76)
+Chép khung từ `cap-phep-long-duong-via-he` (`flowProfile: "xay-dung"`, key trùng lõi nên `detect` lấy từ lõi:
+`urlScope dvc.moc.gov.vn` + cụm "cấp giấy phép chặt hạ, dịch chuyển cây xanh").
 
-Chép khung từ `cap-giay-phep-lien-van-viet-lao` (`flowProfile: "xay-dung"`).
-
-| # | Key | Lượt / TK | Nhận trang |
-|---|---|---|---|
-| 5 | `cap-giay-phep-chat-ha-cay-xanh` | 6 / 2 | "cấp giấy phép chặt hạ, dịch chuyển cây xanh" |
-| 6 | `chap-thuan-dau-noi-tam` | 0 | "chấp thuận vị trí đấu nối tạm" |
-| 7 | `cap-gcnkncm-cccm` | 0 | "cấp, cấp lại, chuyển đổi giấy chứng nhận khả năng chuyên môn" |
-
+- [ ] `ke_khai_links` chỉ đặt `selectSoProvinces: ["danang"]` và `autoConfirm: false`. Kiểm chọn cơ quan ở một tỉnh
+      khác (vd Bắc Ninh, tài khoản `hiephoabn`) có ra đúng cấp xã không.
 - [ ] Entry + gợi ý chọn thủ tục + tên tiếng Mông. Card hiện, nhận đúng trang.
 
-### 11:10–11:40 · Nội vụ – người có công: cổng `dichvucongbnv.moha.gov.vn` (76 → 78)
+### 17:20–17:45 · Test + deploy một lần cho cả 3
 
-Chép khung từ `uu-dai-ncc-tu-tran` / `tro-cap-tho-cung-liet-si` (`urlScope` + `MaTTHC=`).
-
-| # | Key | Lượt / TK | Ghi chú |
-|---|---|---|---|
-| 8 | `cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong` | 5 / 1 | Có lượt mới nhất 17/10 |
-| 9 | `giai-quyet-che-do-khang-chien` | 2 / 1 | `detect` lõi theo `apply-online/…`: kiểm URL thật trên cổng Bộ Nội vụ trước khi viết |
-
-- [ ] Entry + gợi ý chọn thủ tục + tên tiếng Mông. Card hiện, nhận đúng trang.
-
-### 11:40–12:00 · Test + deploy một lần cho cả 9
-
-- [ ] Import registry không lỗi, đủ 78 thủ tục (`_validate_profile_dispatch()` báo ngay nếu thiếu pipeline).
+- [ ] Import registry không lỗi, đủ **74** thủ tục.
 - [ ] Test toàn bộ `tests/unit` + `tests/integration` (plugin `win_socketpair` + `PYTHONUTF8=1`):
       không vượt baseline `11 failed, 3 errors`.
-- [ ] `docker compose -f compose.prod.yml up -d --build --remove-orphans app` (lên luôn cả `19dbfd4` đang nợ).
+- [ ] `docker compose -f compose.prod.yml up -d --build --remove-orphans app`.
 - [ ] Container `Up`, `curl.exe -s http://localhost:12005/healthz` trả `{"ok":true}`.
 - [ ] Stack toàn trình (12015) lên bản mới nếu trợ lý đang trỏ vào đó.
 
-### Dự phòng nếu xong sớm (theo thứ tự)
+## Dồn sang T6 23/10
 
-| Bộ | Thủ tục | Lượt / TK | Ghi chú |
-|---|---|---|---|
-| Xây dựng | `gia-han-luu-hanh-phuong-tien-lao` | 0 | Cùng nhóm liên vận Việt – Lào |
-| Y tế | `ho-tro-chi-phi-hoa-tang-bac-ninh` | 0 | Cổng Bắc Ninh, test bằng `hiephoabn` |
-| Y tế | `ho-tro-nguoi-cao-tuoi-bac-ninh` | 0 | Bắc Ninh, chế độ attach |
-| Nội vụ | `bo-sung-than-nhan-liet-si` (`maThuTuc=1.010825`) | 0 | Cùng nhóm người có công |
-
-## Không đưa vào sáng nay (lượt cao nhưng kẹt engine / cổng)
-
-| Thủ tục | Lượt / TK | Lý do |
-|---|---|---|
-| Phù hiệu xe | 59 / 3 | Cần `dom-editgrid` |
-| Công ty TNHH 2 TV, cổ phần | 56 / 4, 19 / 3 | Cổng ĐKKD chưa mở với trợ lý |
-| Tính tiền SDĐ Quảng Ngãi | 30 / 1 | Cần `add-document-dialog` |
-| CCHN thú y cấp lại / gia hạn | 23 / 1, 12 / 2 | Gia hạn cần `add-document-dialog` |
-| Băng-rôn, HDV nội địa | 22 / 1, 17 / 3 | Cần `fill-liz.js` |
-| Điện mặt trời mái nhà | 10 / 2 | Cần `add-document-dialog` |
-
-## Dồn sang chiều
-
-- Chạy thử trên cổng (dừng trước nút Nộp, dữ liệu bịa) cho 9 thủ tục sáng nay.
-- Chạy thử còn nợ: 10 thủ tục đất đai Bắc Ninh (21/10), `ho-tro-mai-tang-1116910`, 10 thủ tục có entry từ 19/10.
+- 4 thủ tục còn lại của sáng nay: `chap-thuan-dau-noi-tam`, `cap-gcnkncm-cccm`,
+  `cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong`, `giai-quyet-che-do-khang-chien` (kiểm URL thật trên cổng
+  Bộ Nội vụ trước khi viết `detect`).
+- Mốc Đợt 2 là **79 vào T2 26/10**. Chiều nay xong thì còn 74, cần thêm 5: 4 thủ tục trên + 1 trong dự phòng
+  (`gia-han-luu-hanh-phuong-tien-lao`, `ho-tro-chi-phi-hoa-tang-bac-ninh`, `ho-tro-nguoi-cao-tuoi-bac-ninh`,
+  `bo-sung-than-nhan-liet-si`).
+- Nợ chạy thử trên cổng (dừng trước nút Nộp, dữ liệu bịa): 2 thủ tục Y tế sáng nay, 3 thủ tục chiều nay,
+  10 thủ tục đất đai Bắc Ninh (21/10), `ho-tro-mai-tang-1116910`, 10 thủ tục có entry từ 19/10.
 - Mở đường cổng Đà Nẵng bằng `cap-doi-gcn-da-nang` trước Đợt 3 (27/10).
 
-## Kết quả cuối buổi
+## Kết quả cuối buổi chiều
 
 | Bộ | Thủ tục | Entry | Nhận trang | Chạy thử | Ghi chú |
 |---|---|---|---|---|---|
-| Y tế | cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te | ☐ | ☐ | ☐ | |
-| Y tế | dang-ky-hanh-nghe | ☐ | ☐ | ☐ | |
 | Y tế | dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep | ☐ | ☐ | ☐ | |
 | Y tế | cap-moi-giay-phep-hanh-nghe-chuyen-tiep | ☐ | ☐ | ☐ | |
 | Xây dựng | cap-giay-phep-chat-ha-cay-xanh | ☐ | ☐ | ☐ | |
-| Xây dựng | chap-thuan-dau-noi-tam | ☐ | ☐ | ☐ | |
-| Xây dựng | cap-gcnkncm-cccm | ☐ | ☐ | ☐ | |
-| Nội vụ | cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong | ☐ | ☐ | ☐ | |
-| Nội vụ | giai-quyet-che-do-khang-chien | ☐ | ☐ | ☐ | |
 
-**Tổng sáng nay: ___ / 9 → lũy kế ___ / 100**
+**Tổng chiều nay: ___ / 3 → lũy kế ___ / 100**
 
 > Dùng dữ liệu bịa khi chạy thử. Không nộp hồ sơ thật.

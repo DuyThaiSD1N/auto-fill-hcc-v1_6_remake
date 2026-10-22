@@ -183,6 +183,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "phòng khám đăng ký danh sách bác sĩ", "nha khoa đăng ký người hành nghề",
         "bổ sung bác sĩ vào danh sách hành nghề của phòng khám",
     ],
+    # MỘT người hành nghề (bác sĩ, y sĩ, điều dưỡng…) đã có giấy phép hành nghề, nay đổi / bổ sung
+    # phạm vi hành nghề. KHÁC xin giấy phép hành nghề LẦN ĐẦU và khác cơ sở đăng ký danh sách người
+    # hành nghề ("dang-ky-hanh-nghe").
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": [
+        "điều chỉnh giấy phép hành nghề khám bệnh, chữa bệnh", "bổ sung phạm vi hành nghề",
+        "bác sĩ thay đổi phạm vi hành nghề", "điều chỉnh chứng chỉ hành nghề y",
+        "điều dưỡng điều chỉnh giấy phép hành nghề", "thêm chuyên khoa vào giấy phép hành nghề",
+    ],
     # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
     # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
     "tro-cap-tho-cung-liet-si": ["trợ cấp thờ cúng liệt sĩ", "chế độ thờ cúng liệt sĩ",

@@ -22,6 +22,7 @@ _ALLOWED_LLM_TYPES = {
     "birth_certificate_copy",
     "identity",
     "personal_supporting_document",
+    "agency_confirmation",
     "authorization",
     "paper_declaration",
     "commitment_statement",
@@ -31,6 +32,7 @@ _ALLOWED_LLM_TYPES = {
 _BIRTH_CERT_COPY_LABEL = "Giấy khai sinh bản sao"
 _IDENTITY_LABEL = "Căn cước công dân"
 _PERSONAL_SUPPORTING_LABEL = "Giấy tờ cá nhân"
+_AGENCY_CONFIRMATION_LABEL = "Văn bản xác nhận của thủ trưởng cơ quan"
 _AUTHORIZATION_LABEL = "Văn bản ủy quyền"
 _PAPER_DECLARATION_LABEL = "Tờ khai bản giấy"
 _COMMITMENT_STATEMENT_LABEL = "Bản cam đoan"
@@ -58,6 +60,14 @@ _ROW_3_COMPONENT = (
     "Thẻ căn cước công dân hoặc Hộ chiếu; giấy tờ chứng minh về nơi cư trú; Bằng tốt nghiệp, "
     "Giấy chứng nhận, Chứng chỉ, Học bạ, hồ sơ học tập do cơ quan có thẩm quyền cấp hoặc xác nhận; "
     "giấy tờ khác có thông tin về họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân."
+)
+# STT 4: người yêu cầu là cán bộ, công chức, viên chức, lực lượng vũ trang nộp văn bản xác nhận của Thủ
+# trưởng cơ quan, đơn vị (vd "Đơn xin xác nhận thông tin cá nhân" có xác nhận của thủ trưởng đơn vị).
+_ROW_4_COMPONENT = (
+    "- Trường hợp người yêu cầu đăng ký lại khai sinh là cán bộ, công chức, viên chức, người đang công tác "
+    "trong lực lượng vũ trang thì phải có văn bản xác nhận của Thủ trưởng cơ quan, đơn vị về việc những "
+    "nội dung khai sinh của người đó gồm họ, chữ đệm, tên; giới tính; ngày, tháng, năm sinh; dân tộc; "
+    "quốc tịch; quê quán; quan hệ cha - con, mẹ - con phù hợp với hồ sơ do cơ quan, đơn vị đang quản lý."
 )
 _ROW_5_COMPONENT = (
     "- Văn bản ủy quyền theo quy định của pháp luật trong trường hợp ủy quyền thực hiện "
@@ -135,6 +145,7 @@ def _label_for_type(doc_type: str) -> str:
         "birth_certificate_copy": _BIRTH_CERT_COPY_LABEL,
         "identity": _IDENTITY_LABEL,
         "personal_supporting_document": _PERSONAL_SUPPORTING_LABEL,
+        "agency_confirmation": _AGENCY_CONFIRMATION_LABEL,
         "authorization": _AUTHORIZATION_LABEL,
         "paper_declaration": _PAPER_DECLARATION_LABEL,
         "commitment_statement": _COMMITMENT_STATEMENT_LABEL,
@@ -334,7 +345,7 @@ def _aggregate_document_name(
     return document_name
 
 
-_ROW_COMPONENTS = {2: _ROW_2_COMPONENT, 3: _ROW_3_COMPONENT, 5: _ROW_5_COMPONENT}
+_ROW_COMPONENTS = {2: _ROW_2_COMPONENT, 3: _ROW_3_COMPONENT, 4: _ROW_4_COMPONENT, 5: _ROW_5_COMPONENT}
 
 
 def _route_for_types(types: list[str]) -> tuple[str, int | None, str]:
@@ -343,6 +354,8 @@ def _route_for_types(types: list[str]) -> tuple[str, int | None, str]:
         categories.add(2)
     if any(doc_type in {"identity", "personal_supporting_document"} for doc_type in types):
         categories.add(3)
+    if "agency_confirmation" in types:
+        categories.add(4)
     if "authorization" in types:
         categories.add(5)
     if any(doc_type in {"paper_declaration", "commitment_statement", "other"} for doc_type in types):
@@ -351,6 +364,8 @@ def _route_for_types(types: list[str]) -> tuple[str, int | None, str]:
         return "existing", 2, _ROW_2_COMPONENT
     if categories == {3}:
         return "existing", 3, _ROW_3_COMPONENT
+    if categories == {4}:
+        return "existing", 4, _ROW_4_COMPONENT
     if categories == {5}:
         return "existing", 5, _ROW_5_COMPONENT
     return "new", None, ""
@@ -499,7 +514,7 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
 
     # Mỗi ô có sẵn chỉ nhận một file. Riêng STT 3 ưu tiên CCCD trước giấy tờ hỗ trợ khác.
     winners: dict[int, int] = {}
-    for slot in (2, 3, 5):
+    for slot in (2, 3, 4, 5):
         candidates = [info for info in group_infos if info["componentIndex"] == slot]
         if not candidates:
             continue

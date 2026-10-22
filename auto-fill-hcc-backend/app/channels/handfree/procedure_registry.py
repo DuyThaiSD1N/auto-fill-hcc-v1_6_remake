@@ -1953,6 +1953,76 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
+        # Mã TTHC 1.012292, CÙNG khung entry "dang-ky-hanh-nghe" ngay trên: cổng Bộ Y tế, nộp tại SỞ Y
+        # tế (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst, rồi trang nps/apply "Chọn
+        # trường hợp giải quyết" nếu cổng mở → luồng chung "xay-dung". Key TRÙNG lõi → pipeline
+        # process/attach tự nối (lõi tự quyết tự nộp / nộp thay theo tài khoản, điền ô Ghi chú).
+        # Trang kê khai là apply-online/<ObjectId> không có mã → cụm tên như lõi: cụm đầu "điều chỉnh…"
+        # đủ tách khỏi "cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp" (cùng cụm thứ hai).
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012292",
+                "MaTTHC=1.012292",
+                "019d2bff-1db3-774c-81c5-200c7dcc25a1",
+            ],
+            "textIncludes": [
+                "điều chỉnh giấy phép hành nghề trong giai đoạn chuyển tiếp",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Điều chỉnh giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 "
+                 "tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức "
+                 "danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên "
+                 "ngoại viện, tâm lý lâm sàng",
+        "shortLabel": "Điều chỉnh giấy phép hành nghề khám bệnh, chữa bệnh (giai đoạn chuyển tiếp)",
+        "subtitle": "Cho bác sĩ, y sĩ, điều dưỡng, hộ sinh… thay đổi phạm vi hành nghề (Sở Y tế)",
+        "icon": "🩺",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db3-774c-81c5-200c7dcc25a1",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 10 dòng cố định (planner lõi attp-row, mỗi tệp đúng một dòng) → tắt
+        # hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị điều chỉnh giấy phép hành nghề (Mẫu 08 Phụ lục I Nghị định "
+             "96/2023/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gphn", "name": "Giấy phép hành nghề / chứng chỉ hành nghề đã cấp", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Văn bằng đào tạo (bằng chuyên khoa, bằng tốt nghiệp…) liên quan "
+             "đến phạm vi đề nghị", "icon": "🎓", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hành nghề, thêm CCCD người nộp nếu nộp "
+             "thay", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "chung_chi", "name": "Chứng chỉ đào tạo liên quan đến phạm vi đề nghị bổ sung (nếu có)",
+             "icon": "📝", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "thuc_hanh", "name": "Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 Phụ lục I, "
+             "nếu có)", "icon": "🏥", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác (giấy chứng nhận bài thuốc gia truyền…)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (đều là của NGƯỜI HÀNH NGHỀ đề nghị điều chỉnh):\n"
+            "1. Đơn đề nghị (Mẫu 08 Phụ lục I Nghị định 96/2023/NĐ-CP), đã ký, ghi rõ trường hợp và phạm "
+            "vi hành nghề đề nghị — nguồn chính để điền form.\n"
+            "2. Giấy phép hành nghề / chứng chỉ hành nghề đã cấp.\n"
+            "3. Văn bằng đào tạo (bằng chuyên khoa, bằng tốt nghiệp…) liên quan đến phạm vi đề nghị.\n"
+            "4. Căn cước công dân (2 mặt) của người hành nghề; nếu người khác nộp thay: thêm căn cước của "
+            "người nộp.\n"
+            "5. Nếu có: chứng chỉ đào tạo liên quan, Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07), "
+            "giấy chứng nhận bài thuốc gia truyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người hành nghề; ô Ghi chú lấy trường hợp + phạm vi hành nghề trên Đơn.\n"
+            "Bước Thành phần hồ sơ: mỗi tệp vào đúng một dòng (Đơn → dòng Đơn Mẫu 08 đầu tiên, giấy phép "
+            "đã cấp → dòng 'b) giấy phép hành nghề đã cấp', văn bằng → dòng 'c) văn bằng đào tạo'...); "
+            "căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
         #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực

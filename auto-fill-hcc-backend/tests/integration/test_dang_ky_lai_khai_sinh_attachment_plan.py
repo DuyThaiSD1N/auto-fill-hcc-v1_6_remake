@@ -248,6 +248,7 @@ def test_dang_ky_lai_khai_sinh_attachment_prompt_requires_llm_enum():
     assert "Trang tiếp theo của Quyết định ly hôn" in SYSTEM_PROMPT
     assert "Đơn xin xác nhận đăng ký hộ khẩu" in SYSTEM_PROMPT
     assert "Văn bản trả lời cấp bản sao giấy khai sinh" in SYSTEM_PROMPT
+    assert "agency_confirmation (STT 4)" in SYSTEM_PROMPT
 
 
 async def test_dang_ky_lai_khai_sinh_death_extract_never_uses_birth_component(monkeypatch):
@@ -471,6 +472,51 @@ PHẦN GHI CHÚ NHỮNG THÔNG TIN THAY ĐỔI SAU NÀY
     assert "sourceSegments" not in item
     assert "sourceFileIndexes" not in item
     assert [(item["pageFrom"], item["pageTo"]) for item in result["extracted"]["classified"]] == [(1, 3)]
+
+
+async def test_dang_ky_lai_khai_sinh_agency_confirmation_uses_row_4_and_frees_row_3(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "giay-to.pdf", "text": "CĂN CƯỚC Số 012345678901\nGIẤY CHỨNG NHẬN KẾT HÔN"},
+            {
+                "name": "don-xac-nhan.pdf",
+                "text": "ĐƠN XIN XÁC NHẬN THÔNG TIN CÁ NHÂN\nKính gửi: Thủ trưởng đơn vị\n"
+                "XÁC NHẬN CỦA ĐƠN VỊ CHỦ QUẢN — THỦ TRƯỞNG ĐƠN VỊ",
+            },
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0,
+                    "types": ["identity", "personal_supporting_document", "commitment_statement"],
+                    "documentName": "Giấy tờ đăng ký lại khai sinh",
+                },
+                {
+                    "fileIndex": 1,
+                    "types": ["agency_confirmation"],
+                    "documentName": "Đơn xin xác nhận thông tin cá nhân",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("giay-to.pdf"), _file("don-xac-nhan.pdf")], {}, _session()
+    )
+    bundle, confirmation = result["attachments"]
+    # Văn bản xác nhận của thủ trưởng đơn vị vào STT 4, không chiếm STT 3 của file giấy tờ gộp.
+    assert confirmation["target"] == "existing"
+    assert confirmation["componentIndex"] == 4
+    assert confirmation["componentName"] == dang_ky_lai_khai_sinh._ROW_4_COMPONENT
+    assert confirmation["documentName"] == "Đơn xin xác nhận thông tin cá nhân"
+    assert bundle["target"] == "existing"
+    assert bundle["componentIndex"] == 3
+    assert bundle["componentName"] == dang_ky_lai_khai_sinh._ROW_3_COMPONENT
+    assert bundle["needsAddComponent"] is False
 
 
 async def test_dang_ky_lai_khai_sinh_mixed_dossier_rejects_child_document_name(monkeypatch):
@@ -982,6 +1028,37 @@ async def test_dang_ky_lai_khai_sinh_split_death_document_never_uses_birth_row(m
     assert item["target"] == "new"
     assert item["componentIndex"] is None
     assert result["extracted"]["classified"][0]["type"] == "death_document"
+
+
+async def test_dang_ky_lai_khai_sinh_split_agency_confirmation_uses_row_4(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "don-xac-nhan.pdf",
+            "text": "───── Trang 1/1 ─────\nĐƠN XIN XÁC NHẬN THÔNG TIN CÁ NHÂN\nKính gửi: Thủ trưởng đơn vị",
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [{
+                "fileIndex": 0,
+                "pageFrom": 1,
+                "pageTo": 1,
+                "type": "agency_confirmation",
+                "documentName": "Đơn xin xác nhận thông tin cá nhân",
+                "subjectName": "",
+            }]
+        })
+
+    monkeypatch.setattr(split_planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(split_planner.client, "chat", fake_chat)
+
+    result = await split_planner.plan([_file("don-xac-nhan.pdf")], {}, _session())
+    item = result["attachments"][0]
+
+    assert item["target"] == "existing"
+    assert item["componentIndex"] == 4
+    assert item["componentName"] == split_planner._ROW_4_COMPONENT
+    assert item["documentName"] == "Đơn xin xác nhận thông tin cá nhân"
 
 
 async def test_dang_ky_lai_khai_sinh_split_title_overrides_mentioned_document_and_false_identity(

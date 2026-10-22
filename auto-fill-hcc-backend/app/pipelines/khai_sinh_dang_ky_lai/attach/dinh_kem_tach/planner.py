@@ -23,6 +23,7 @@ _ALLOWED_TYPES = {
     "birth_certificate_copy",
     "identity",
     "personal_supporting_document",
+    "agency_confirmation",
     "authorization",
     "paper_declaration",
     "commitment_statement",
@@ -34,6 +35,7 @@ _ALLOWED_TYPES = {
 _BIRTH_LABEL = "Giấy khai sinh bản sao"
 _IDENTITY_LABEL = "Căn cước công dân"
 _SUPPORTING_LABEL = "Giấy tờ cá nhân"
+_AGENCY_CONFIRMATION_LABEL = "Văn bản xác nhận của thủ trưởng cơ quan"
 _AUTHORIZATION_LABEL = "Văn bản ủy quyền"
 _DECLARATION_LABEL = "Tờ khai bản giấy"
 _COMMITMENT_LABEL = "Bản cam đoan"
@@ -54,6 +56,14 @@ _ROW_3_COMPONENT = (
     "Thẻ căn cước công dân hoặc Hộ chiếu; giấy tờ chứng minh về nơi cư trú; Bằng tốt nghiệp, "
     "Giấy chứng nhận, Chứng chỉ, Học bạ, hồ sơ học tập do cơ quan có thẩm quyền cấp hoặc xác nhận; "
     "giấy tờ khác có thông tin về họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân."
+)
+# STT 4: người yêu cầu là cán bộ, công chức, viên chức, lực lượng vũ trang nộp văn bản xác nhận của Thủ
+# trưởng cơ quan, đơn vị (vd "Đơn xin xác nhận thông tin cá nhân" có xác nhận của thủ trưởng đơn vị).
+_ROW_4_COMPONENT = (
+    "- Trường hợp người yêu cầu đăng ký lại khai sinh là cán bộ, công chức, viên chức, người đang công tác "
+    "trong lực lượng vũ trang thì phải có văn bản xác nhận của Thủ trưởng cơ quan, đơn vị về việc những "
+    "nội dung khai sinh của người đó gồm họ, chữ đệm, tên; giới tính; ngày, tháng, năm sinh; dân tộc; "
+    "quốc tịch; quê quán; quan hệ cha - con, mẹ - con phù hợp với hồ sơ do cơ quan, đơn vị đang quản lý."
 )
 _ROW_5_COMPONENT = (
     "- Văn bản ủy quyền theo quy định của pháp luật trong trường hợp ủy quyền thực hiện "
@@ -119,6 +129,7 @@ def _label_for_type(doc_type: str) -> str:
         "birth_certificate_copy": _BIRTH_LABEL,
         "identity": _IDENTITY_LABEL,
         "personal_supporting_document": _SUPPORTING_LABEL,
+        "agency_confirmation": _AGENCY_CONFIRMATION_LABEL,
         "authorization": _AUTHORIZATION_LABEL,
         "paper_declaration": _DECLARATION_LABEL,
         "commitment_statement": _COMMITMENT_LABEL,
@@ -417,6 +428,8 @@ def _desired_route(doc_type: str) -> tuple[int | None, str]:
         return 2, _ROW_2_COMPONENT
     if doc_type in {"identity", "personal_supporting_document"}:
         return 3, _ROW_3_COMPONENT
+    if doc_type == "agency_confirmation":
+        return 4, _ROW_4_COMPONENT
     if doc_type == "authorization":
         return 5, _ROW_5_COMPONENT
     return None, ""
@@ -611,7 +624,7 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
 
     # Chọn đúng một người thắng cho mỗi dòng có sẵn. STT 3 luôn ưu tiên CCCD hơn giấy tờ hỗ trợ.
     winners: dict[int, int] = {}
-    for slot in (2, 3, 5):
+    for slot in (2, 3, 4, 5):
         candidates = [
             item for item in records if _desired_route(item["_docType"])[0] == slot
         ]

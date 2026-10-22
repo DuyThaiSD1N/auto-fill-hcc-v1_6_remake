@@ -1800,6 +1800,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai",
+      "code": "1.115689",
+      "label": "(Lào Cai - Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b09-5dea-76cd-a43a-944634e35d62",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh",
       "code": "1.003868",
       "label": "Thủ tục cấp giấy phép xuất bản tài liệu không kinh doanh",
@@ -1853,6 +1861,14 @@
       "code": "1.115685",
       "label": "(Lào Cai - Cấp phường/xã) Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4af5-a58c-74dc-b628-2eefd768b912",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-lao-cai",
+      "code": "1.115686",
+      "label": "(Lào Cai - Cấp phường/xã) Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4af8-9962-7382-8299-fb31f268bf57",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
