@@ -339,7 +339,7 @@
         if (!chrome.runtime.lastError) {
           const position = stored?.[LAUNCHER_POSITION_KEY];
           if ((Number.isFinite(position?.xRatio) && Number.isFinite(position?.yRatio))
-              || (Number.isFinite(position?.left) && Number.isFinite(position?.top))) {
+            || (Number.isFinite(position?.left) && Number.isFinite(position?.top))) {
             applyLauncherPosition(button, position);
           }
         }
@@ -356,7 +356,7 @@
     const position = applyLauncherPosition(button, { left: rect.left, top: rect.top });
     try {
       chrome.storage.local.set({ [LAUNCHER_POSITION_KEY]: position }, () => void chrome.runtime.lastError);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function reflowLauncherPosition(button) {
@@ -388,7 +388,7 @@
       button.dataset.dragging = "1";
       button.style.transition = "none";
       button.style.transform = "scale(1)";
-      try { button.setPointerCapture(event.pointerId); } catch (_) {}
+      try { button.setPointerCapture(event.pointerId); } catch (_) { }
     });
     button.addEventListener("pointermove", (event) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
@@ -403,7 +403,7 @@
       if (!drag || event.pointerId !== drag.pointerId) return;
       suppressClick = drag.moved;
       if (drag.moved) persistLauncherPosition(button);
-      try { button.releasePointerCapture(event.pointerId); } catch (_) {}
+      try { button.releasePointerCapture(event.pointerId); } catch (_) { }
       drag = null;
       delete button.dataset.dragging;
       button.style.transition = "transform .15s ease";
@@ -945,13 +945,13 @@
     // Giữ đủ ba trạng thái: "1" = đang mở, "0" = công dân chủ động thu gọn,
     // null = trang/context mới chưa biết trạng thái. Nếu xóa key khi thu gọn thì trang kế
     // tiếp không phân biệt được "đã thu" với "journey chưa kịp phục hồi".
-    try { sessionStorage.setItem(SS_OPEN_KEY, open ? "1" : "0"); } catch (_) {}
+    try { sessionStorage.setItem(SS_OPEN_KEY, open ? "1" : "0"); } catch (_) { }
   }
   function clearLegacyDismissedState() {
     // Bản cũ có thể để lại cờ ẩn toàn cục. Nếu không dọn, người đã từng bấm ✕
     // sẽ không nhìn thấy launcher dù bản mới không còn khái niệm "tắt hẳn".
-    try { sessionStorage.removeItem(LEGACY_SS_DISMISS_KEY); } catch (_) {}
-    try { chrome.storage.local.remove(LEGACY_LS_DISMISS_KEY, () => void chrome.runtime.lastError); } catch (_) {}
+    try { sessionStorage.removeItem(LEGACY_SS_DISMISS_KEY); } catch (_) { }
+    try { chrome.storage.local.remove(LEGACY_LS_DISMISS_KEY, () => void chrome.runtime.lastError); } catch (_) { }
   }
   // Trang đăng nhập SSO/VNeID: khi ĐANG trong luồng (journey keep_open) → MỞ panel để bot đọc
   // kịch bản đăng nhập (mở VNeID → Quét QR); đọc xong sidebar tự thu gọn (collapse_after_tts) để
@@ -981,7 +981,7 @@
       // Bấm "Nộp hồ sơ" làm cổng nạp lại trang. Công dân đã thu gọn khung thì đừng bật lại —
       // họ thu gọn chính vì đang muốn nhìn trang.
       let daThuGon = false;
-      try { daThuGon = sessionStorage.getItem(SS_OPEN_KEY) === "0"; } catch (_) {}
+      try { daThuGon = sessionStorage.getItem(SS_OPEN_KEY) === "0"; } catch (_) { }
       if (daThuGon) showLauncher(); else ensurePanelOpen();
       return;
     }
@@ -1026,7 +1026,7 @@
   }
   function showDvcChildInitial() {
     let state = null;
-    try { state = sessionStorage.getItem(SS_OPEN_KEY); } catch (_) {}
+    try { state = sessionStorage.getItem(SS_OPEN_KEY); } catch (_) { }
     if (state === "1") { ensurePanelOpen(); return; }
     if (state === "0") { showLauncher(); return; }
     // Lần điều hướng đầu tiên có thể sang context chưa có session key. Khi đó phải đọc
@@ -1059,7 +1059,7 @@
       return;
     }
     let wasOpen = false;
-    try { wasOpen = sessionStorage.getItem(SS_OPEN_KEY) === "1"; } catch (_) {}
+    try { wasOpen = sessionStorage.getItem(SS_OPEN_KEY) === "1"; } catch (_) { }
     chrome.runtime.sendMessage({ action: "getTabId" }, (res) => {
       if (chrome.runtime.lastError) { if (wasOpen) createPanel(""); else showLauncher(); return; }
       const tabId = res?.tabId ?? "";
@@ -1265,7 +1265,7 @@
     // Nền tảng Form.io: nút cuối không có id và nhãn đổi theo thủ tục ("Nộp hồ sơ" vs
     // "Thanh toán") → chỉ còn thuộc tính là mỏ neo ổn định.
     if (rule.buttonSelector) {
-      try { if (el.matches(rule.buttonSelector)) return { ref }; } catch (_) {}
+      try { if (el.matches(rule.buttonSelector)) return { ref }; } catch (_) { }
     }
     return null;
   }
@@ -1358,7 +1358,7 @@
   const SS_PENDING_SUBMIT_KEY = "__tlnd_pending_submit";
   const PENDING_SUBMIT_TTL_MS = 10 * 60 * 1000;
   function sendSubmitClick(click) {
-    try { chrome.runtime.sendMessage(click, () => void chrome.runtime.lastError); } catch (_) {}
+    try { chrome.runtime.sendMessage(click, () => void chrome.runtime.lastError); } catch (_) { }
   }
   function readPendingSubmits() {
     try {
@@ -1383,10 +1383,10 @@
       pending.forEach(sendSubmitClick);
       setTimeout(() => {
         pending.forEach(sendSubmitClick);
-        try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) {}
+        try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) { }
       }, 4000);
     } else {
-      try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) {}
+      try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) { }
     }
   }
 
@@ -1528,7 +1528,7 @@
       // Kết thúc hồ sơ mới được gọi action này. Xóa phiên web của cổng nhưng giữ trạng thái
       // mở/thu panel để reload xong Trợ lý không biến mất hoặc tự đổi trải nghiệm.
       let panelState = null;
-      try { panelState = sessionStorage.getItem(SS_OPEN_KEY); } catch (_) {}
+      try { panelState = sessionStorage.getItem(SS_OPEN_KEY); } catch (_) { }
       try {
         sessionStorage.clear();
         if (panelState === "1" || panelState === "0") sessionStorage.setItem(SS_OPEN_KEY, panelState);
@@ -1555,8 +1555,10 @@
           const value = u.searchParams.get(key);
           if (value) keep.set(key, value);
         }
-        sendResponse({ ok: true,
-          url: u.origin + u.pathname + (keep.toString() ? `?${keep.toString()}` : "") });
+        sendResponse({
+          ok: true,
+          url: u.origin + u.pathname + (keep.toString() ? `?${keep.toString()}` : "")
+        });
       } catch (e) {
         sendResponse({ error: "Không đọc được địa chỉ hồ sơ trên trang." });
       }
@@ -1662,8 +1664,11 @@
       // nhận theo form#ngSelectAgencyForm1 (id hardcode trong template Angular, ổn định).
       // Cổng bộ nền iGate: hộp thoại chọn cơ quan form#ngSelectAgencyForm(1) + wizard
       // mat-stepper. Bộ Nội vụ dùng CÙNG component (UBND tỉnh → Sở/Ban ngành → Sở Nội vụ).
+      // Bộ Y tế: thủ tục cấp Sở (vd cấp lại/điều chỉnh GCN kinh doanh dược) mở TRANG nps/apply
+      // "Chọn trường hợp giải quyết" = CÙNG form#ngSelectAgencyForm (agency + procedureProcess)
+      // với hộp thoại Bộ Xây dựng.
       const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
-        "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
+        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
       // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
@@ -1723,13 +1728,16 @@
       // Wizard MAE (mat-horizontal-stepper, nhãn KHÁC cổng tư pháp): 1 Thông tin hồ sơ →
       // 2 Thành phần hồ sơ → 3 Thông tin phí → 4 Nộp hồ sơ. Cả 4 step CÙNG tồn tại trong
       // DOM (chỉ đổi visibility) → tin header aria-selected, không quét nội dung panel.
+      // Cổng Bộ Y tế đặt tên bước 3 là "Hình thức nhận kết quả" (crawl 23/10/2026) → mỗi bước khai các tên.
       if (maeHost && !maeAgencyBlock && !wizardStep) {
-        const maeLabels = ["thong tin ho so", "thanh phan ho so", "thong tin phi", "nop ho so"];
+        const maeLabels = [["thong tin ho so"], ["thanh phan ho so"],
+        ["thong tin phi", "hinh thuc nhan ket qua"], ["nop ho so"]];
+        const stepOf = (h) => maeLabels.findIndex((names) => names.some((l) => foldTxt(h?.textContent || "").includes(l)));
         const headers = Array.from(document.querySelectorAll("mat-step-header"));
-        const matched = headers.filter((h) => maeLabels.some((l) => foldTxt(h.textContent).includes(l)));
+        const matched = headers.filter((h) => stepOf(h) >= 0);
         if (matched.length >= 2) {
           const selected = matched.find((h) => h.getAttribute("aria-selected") === "true");
-          const idx = maeLabels.findIndex((l) => foldTxt(selected?.textContent || "").includes(l));
+          const idx = selected ? stepOf(selected) : -1;
           if (idx >= 0) wizardStep = idx + 1;
         }
       }
@@ -1754,8 +1762,8 @@
         && typeof window.__TLND__.detectBusinessAnyStage === "function"
         ? window.__TLND__.detectBusinessAnyStage().stage
         : (businessHost && window.__TLND__
-           && typeof window.__TLND__.detectBusinessCreateStage === "function"
-           ? window.__TLND__.detectBusinessCreateStage().stage : "");
+          && typeof window.__TLND__.detectBusinessCreateStage === "function"
+          ? window.__TLND__.detectBusinessCreateStage().stage : "");
       const businessProcedureHint = businessHost && window.__TLND__
         && typeof window.__TLND__.detectBusinessProcedureHint === "function"
         ? window.__TLND__.detectBusinessProcedureHint() : "";
@@ -1774,7 +1782,7 @@
         // Trang chọn cơ quan MAE có 3 input radio mang name → detectFormKind dương tính giả
         // "standard"; maeAgencyBlock null formKind để BE không tưởng đã vào kê khai.
         formKind: (loginPage || infoModal || maeAgencyBlock || (wizardStep && wizardStep !== 2)
-                   || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
+          || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
         agencyBlock,
         maeAgencyBlock,
         loginPage,
