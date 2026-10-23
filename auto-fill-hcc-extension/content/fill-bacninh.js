@@ -472,24 +472,6 @@
     return container.querySelectorAll('input[type="hidden"][name^="' + PFX + '"]').length;
   }
 
-  // Ô "Số lượng" của dòng Bản chính/Bản sao (`thanhPhanHoSo<id><slot>soBo`, class tphsSoLuongBan):
-  // cổng để mặc định 1 dù đính nhiều tệp → ghi đúng SỐ TỆP đã lên ở ô đó.
-  function setSlotQuantity(id, slotKey, count) {
-    const n = Number(count) || 0;
-    if (n <= 0) return false;
-    const slot = slotKey === "banSao" ? "banSao" : "banChinh";
-    const el = document.getElementById(`${PFX}thanhPhanHoSo${id}${slot}soBo`);
-    if (!el) return false;
-    if (String(el.value) === String(n)) return true;
-    try {
-      H.setNativeValue(el, String(n), { typing: true, commit: true });
-      H.markFilled && H.markFilled(el);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   // Ô "File đính kèm khác": handler gọi uploadMulti('filethanhPhanHoSofileDinhKem', …) rồi
   // callBackUploadMulti append vào <ul id="<PFX>filethanhPhanHoSofileDinhKem"> một
   // <li class="list-group-item"> KÈM <input type="hidden" name="<PFX>filethanhPhanHoSofileDinhKem">.
@@ -665,8 +647,6 @@
         const probe = fileInputForSlot(comp.id, g.slot);
         if (probe && slotHasFile(probe)) {
           skippedNames.push(...g.entries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
-          // Lượt trước đã đính nhưng ô Số lượng vẫn để mặc định 1 → sửa theo số tệp đang có.
-          setSlotQuantity(comp.id, g.slot, landedCount(landedContainer(comp.id, g.slot)));
           continue;
         }
         const files = [];
@@ -684,7 +664,6 @@
 
         const landed = await uploadAndConfirm(comp.id, g.slot, files, label, errors);
         attachedNames.push(...files.slice(0, landed).map((f) => f.name));
-        setSlotQuantity(comp.id, g.slot, Math.max(landedCount(landedContainer(comp.id, g.slot)), landed));
         if (landed < files.length) {
           errors.push(`Chỉ lên được ${landed}/${files.length} tệp ở thành phần "${g.componentName}".`);
         }

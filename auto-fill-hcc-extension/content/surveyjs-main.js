@@ -26,7 +26,6 @@
   const stripAdmin = (s) => fold(s).replace(/^(tinh|thanh pho|tp|xa|phuong|thi tran|dac khu)\s+/, "");
 
   // ---- Tìm model survey qua fiber React ----
-  let cachedSurvey = null;
   const isSurvey = (o) => !!o && typeof o.getQuestionByName === "function" && typeof o.getAllQuestions === "function";
 
   function fiberOf(el) {
@@ -46,13 +45,28 @@
     return null;
   }
 
+  // Model gắn với các ô ĐANG HIỂN THỊ, tìm lại ở mỗi lệnh — không giữ model qua các lệnh: cổng là ứng dụng một
+  // trang, chuyển hồ sơ / dựng lại biểu mẫu thì tạo model mới mà trang không tải lại; model cũ vẫn nhận giá trị và
+  // báo đã điền nhưng không còn trên màn hình (ô viền xanh mà trống). Trang có nhiều model (bản ẩn cùng câu hỏi)
+  // → lấy model gắn với nhiều ô đang hiện nhất.
   function findSurvey() {
-    if (cachedSurvey && document.querySelector("[data-name]")) return cachedSurvey;
-    const nodes = Array.from(document.querySelectorAll(".sd-root-modern, .sv-root-modern, [data-name]")).slice(0, 40);
-    for (const node of nodes) {
+    const nodes = Array.from(document.querySelectorAll("[data-name]"));
+    const shown = nodes.filter((n) => n.offsetParent !== null);
+    const counts = new Map();
+    for (const node of (shown.length ? shown : nodes).slice(0, 40)) {
       const fiber = fiberOf(node);
       const survey = fiber && surveyFromFiber(fiber);
-      if (survey) { cachedSurvey = survey; return survey; }
+      if (survey && survey.getQuestionByName(node.getAttribute("data-name"))) {
+        counts.set(survey, (counts.get(survey) || 0) + 1);
+      }
+    }
+    let best = null;
+    for (const [survey, n] of counts) if (!best || n > counts.get(best)) best = survey;
+    if (best) return best;
+    for (const node of document.querySelectorAll(".sd-root-modern, .sv-root-modern")) {
+      const fiber = fiberOf(node);
+      const survey = fiber && surveyFromFiber(fiber);
+      if (survey) return survey;
     }
     return null;
   }
@@ -224,8 +238,21 @@
   const LOOKUP_WAIT_MS = 2500;
 
   async function setValues(fields) {
-    const survey = findSurvey();
+    let survey = findSurvey();
     if (!survey) return { ok: false, error: "no-survey" };
+    let res;
+    // Cổng dựng lại biểu mẫu GIỮA lượt điền (máy chậm, danh mục tải xong muộn) → giá trị nằm ở model đã bị thay:
+    // điền lại một lần trên model mới.
+    for (let lan = 0; lan < 2; lan++) {
+      res = await setValuesOn(survey, fields);
+      const now = findSurvey();
+      if (!now || now === survey) return res;
+      survey = now;
+    }
+    return res;
+  }
+
+  async function setValuesOn(survey, fields) {
     installRelationGuards(survey);
     const resumeAnimations = pauseAnimations(survey);
     // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.

@@ -3,21 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
-    version: "1.24.2",
+    version: "1.24",
     date: "21/10/2026",
     items: [
-      "Ô \"Đi đến thủ tục\" chỉ hiện thủ tục riêng của đúng tỉnh tài khoản; đổi tài khoản ngay trong panel thì danh sách tự nạp lại.",
-      "Bắc Ninh: thêm thủ tục đăng ký biến động theo thỏa thuận (1.115470), đọc thông tin người được ủy quyền như đăng ký biến động đất đai.",
-    ],
-  },
-  {
-    version: "1.24",
-    date: "19/10/2026",
-    items: [
       "Gộp các bản sửa 1.23.1 – 1.23.10 thành bản ổn định.",
-      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): nút \"Điền biểu mẫu và đính kèm hồ sơ\" một lần; điền xong tự kiểm tra lại, ô bị cổng xoá thì tô đỏ.",
-      "Trang nộp hồ sơ cũ: Tỉnh đúng mà Xã chưa vào thì chỉ chọn lại Xã, giữ nguyên Tỉnh và Địa chỉ.",
-      "Hỗ trợ thêm thủ tục form của Quảng Ngãi; Lào Cai đối chiếu đúng người nộp cho các thủ tục đất đai.",
+      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): điền biểu mẫu và đính kèm một lần; hết lỗi đổi hồ sơ khác thì ô báo xanh mà trống; ô bị cổng xoá tô đỏ.",
+      "Trang nộp hồ sơ cũ: Xã chưa vào thì chỉ chọn lại Xã, giữ nguyên Tỉnh và Địa chỉ.",
+      "Thêm thủ tục form Quảng Ngãi; Lào Cai đối chiếu đúng người nộp thủ tục đất đai.",
       "Chạy nhẹ hơn trên máy cấu hình thấp.",
     ],
   },

@@ -4346,6 +4346,10 @@
       if (!bySlot.has(key)) bySlot.set(key, { item, indices: [] });
       bySlot.get(key).indices.push(i);
     });
+    // Cổng tick sẵn mọi dòng (bảng 29 dòng GPXD, dvc.moc Bộ Xây dựng): dòng tick mà trống chặn chuyển bước → bỏ tích
+    // hết trước khi đính, dòng nào đính được thì tích lại.
+    const untick = attachments.some((item) => item.untickUnplannedRows);
+    if (untick) await uncheckAllAttpRows();
 
     for (const { item, indices } of bySlot.values()) {
       const slotLabel = item.slotName || item.componentName || "";
@@ -4384,6 +4388,7 @@
         await sleep(600);
         const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
         markAttachmentResult(markTarget, ok);
+        if (ok && untick && slotRow) await tickAttpRowCheckbox(slotRow);
         if (ok && item.soBan) setFixedSlotRowCopies(slotRow, item.soBan);
         if (ok) attachedNames.push(...fileNames);
         else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
@@ -4412,6 +4417,7 @@
         await sleep(600);
         await closeOpenMenu();
         const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
+        if (ok && untick && trigger.closest("tr")) await tickAttpRowCheckbox(trigger.closest("tr"));
         markAttachmentResult(markTarget, ok);
         if (ok) attachedNames.push(...fileNames);
         else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
