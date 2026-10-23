@@ -2042,6 +2042,27 @@ def _clean_mae_dialog_options(raw: object) -> dict:
     return out
 
 
+def _narrow_mae_process(options: dict, proc: dict) -> dict:
+    """Thủ tục tách theo nhánh (vd sửa chữa, cải tạo: nhà ở riêng lẻ / công trình) dùng CHUNG hộp
+    thoại cổng → chỉ giữ các trường hợp của nhánh card đã chọn (`maeDialogChoice.processMatch` /
+    `processAvoid`, cụm đã fold dấu). Còn đúng một trường hợp thì tự chọn, khỏi hỏi lại. Lọc ra rỗng
+    (cổng đổi nhãn) → giữ nguyên danh sách, hỏi công dân như cũ."""
+    choice = proc.get("maeDialogChoice") or {}
+    match, avoid = fold(choice.get("processMatch") or ""), fold(choice.get("processAvoid") or "")
+    group = options.get("process") or {}
+    if not group or not (match or avoid):
+        return options
+    kept = [label for label in group["options"]
+            if (not match or match in fold(label)) and (not avoid or avoid not in fold(label))]
+    if not kept:
+        return options
+    # Lựa chọn cổng để sẵn thuộc nhánh kia thì không được coi là trường hợp đang áp (case_pipeline_options đọc nó).
+    current = group.get("current") or ""
+    if fold(current) not in {fold(label) for label in kept}:
+        current = kept[0]
+    return {**options, "process": {"options": kept, "current": current}}
+
+
 def _mae_dialog_pending(options: dict) -> list[str]:
     """Các ô cần hỏi công dân: chỉ ô có từ 2 lựa chọn."""
     return [key for key, _t, _a in _MAE_DIALOG_GROUPS
@@ -2171,9 +2192,9 @@ def _mae_dialog_fill_reply(conv: dict) -> Reply:
     return r
 
 
-def _mae_dialog_on_page(conv: dict, ctx: dict) -> Reply | None:
+def _mae_dialog_on_page(conv: dict, ctx: dict, proc: dict | None = None) -> Reply | None:
     """Hộp thoại đang mở và FE đã đọc được lựa chọn → hỏi hoặc tự chọn. None = để đường cũ lo."""
-    options = _clean_mae_dialog_options(ctx.get("maeDialogOptions"))
+    options = _narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc or {})
     if not options:
         return None
     if "mae_agency_fill" in (conv.get("milestones") or []):
@@ -2208,7 +2229,7 @@ def _mae_dialog_reappeared(conv: dict, proc: dict, ctx: dict) -> Reply | None:
     if not _say_once(conv, "mae_agency_fill"):
         return Reply()
     if _mae_dialog_choice_on(conv, proc):
-        options = _clean_mae_dialog_options(ctx.get("maeDialogOptions"))
+        options = _narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc)
         if options:
             conv["mae_dialog_options"] = options
             if _mae_dialog_pending(options) and not conv.get("mae_dialog_choice"):
@@ -2507,8 +2528,12 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             if selected:
                 action["executionSubject"] = selected
         # Thủ tục cấp Sở: modal còn ô Cấp thực hiện / Thủ tục / Cơ quan thực hiện phải chọn trước.
-        if proc.get("infoModalFields"):
-            action["infoFields"] = proc["infoModalFields"]
+        # infoModalFieldsByProvince: tỉnh có cổng xếp khác (vd Bắc Ninh "Đơn vị khác") đè cấu hình chung.
+        slug = str(loc.get("province_slug") or _account_province_slug(conv))
+        info_fields = (proc.get("infoModalFieldsByProvince") or {}).get(slug) \
+            or proc.get("infoModalFields")
+        if info_fields:
+            action["infoFields"] = info_fields
         r.actions = [action]
         return r
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):
@@ -2548,14 +2573,15 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # Luồng chung Bộ Xây dựng: lựa chọn ĐỌC TỪ CỔNG (nơi xử lý + trường hợp/thời gian) — ưu
         # tiên hơn variants khai sẵn; FE chưa đọc được thì rơi xuống đường variants cũ.
         if _mae_dialog_choice_on(conv, proc):
-            dialog_reply = _mae_dialog_on_page(conv, ctx)
+            dialog_reply = _mae_dialog_on_page(conv, ctx, proc)
             if dialog_reply is not None:
                 return dialog_reply
             if "mae_agency_fill" in (conv.get("milestones") or []):
                 # Đã gửi lệnh chọn + bấm Đồng ý: lúc FE đang mở ô chọn, page_status không đọc được lựa chọn của hộp
                 # thoại → chờ hộp thoại đóng, không rơi xuống hỏi lại trường hợp khai sẵn (FE chọn lần hai đè lần một).
                 return Reply()
-        if _variant_options(proc) and not conv.get("procedure_variant"):
+        # Một trường hợp duy nhất (card đã gắn sẵn nhánh) → khỏi hỏi, chọn luôn trường hợp đó.
+        if len(_variant_options(proc)) > 1 and not conv.get("procedure_variant"):
             return _to_choose_variant(conv)
         if _say_once(conv, "mae_agency_fill"):
             return _variant_fill_agency_reply(conv, proc, loc)

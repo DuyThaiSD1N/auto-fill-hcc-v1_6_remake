@@ -152,7 +152,8 @@ async def test_buoc_chu_ho_so_chung_thuc_khac_khong_doi():
 BYT = [
     "dieu-chinh-huu-tri-xa-hoi", "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
-    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep", "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
+    "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
     "ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "tro-cap-xa-hoi-hang-thang",
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
 ]

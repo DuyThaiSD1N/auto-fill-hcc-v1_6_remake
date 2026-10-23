@@ -961,6 +961,14 @@ _GRANTOR_BLOCK_END_RE = re.compile(
     r"^(?:ben\s+b\b|(?:ben|nguoi)\s+(?:duoc|nhan)\s+uy\s+quyen|noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket)\b|"
     r"^[─━\-]{3,}\s*trang\b"
 )
+# Giấy ủy quyền viết ngôi thứ nhất, không có mục "Bên ủy quyền": "Tôi tên là: ... Bằng giấy này, tôi ủy
+# quyền cho mẹ tôi: Họ và tên: ...". Nhân thân bên ủy quyền nằm từ dòng "Tôi tên là" tới dòng "ủy quyền cho".
+_FIRST_PERSON_GRANTOR_RE = re.compile(r"^toi\s+(?:ten\s+)?la\s*:?\s*(.*)$")
+_FIRST_PERSON_GRANTOR_END_RE = re.compile(
+    r"^.*\buy\s+quyen\s+cho\b|^(?:noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket)\b|^[─━\-]{3,}\s*trang\b"
+)
+# Dòng ngay dưới chữ "Người ủy quyền" ở cuối giấy là chỗ ký/điểm chỉ, không phải họ tên.
+_SIGNATURE_NOISE_RE = re.compile(r"\b(?:ngon\s+(?:tro|cai)|van\s+tay|diem\s+chi|ky\s*,?\s*(?:ghi\s+ro|ten))\b")
 
 
 def grantor_as_requester(options: dict | None) -> bool:
@@ -973,10 +981,15 @@ def _grantor_person(documents: list[dict]) -> dict | None:
         text = str(document.get("text") or "")
         if "uy quyen" not in _fold(text):
             continue
-        block = _authorized_block_lines(text, _GRANTOR_HEADER_RE, _GRANTOR_BLOCK_END_RE)
-        person = _authorized_person_from_lines(block)
-        if person["name"] or person["id"]:
-            return {**person, "source": document.get("name") or "(không tên)"}
+        for header_re, end_re in (
+            (_GRANTOR_HEADER_RE, _GRANTOR_BLOCK_END_RE),
+            (_FIRST_PERSON_GRANTOR_RE, _FIRST_PERSON_GRANTOR_END_RE),
+        ):
+            person = _authorized_person_from_lines(_authorized_block_lines(text, header_re, end_re))
+            if _SIGNATURE_NOISE_RE.search(_fold(person["name"])):
+                person["name"] = ""
+            if person["name"] or person["id"]:
+                return {**person, "source": document.get("name") or "(không tên)"}
     return None
 
 
@@ -2587,6 +2600,31 @@ def _assign_cards_by_generation(sections: dict[str, str], cards: list[dict]) -> 
     return result
 
 
+def _assign_child_card_when_parent_name_copied(sections: dict[str, str], cards: list[dict]) -> dict[str, str]:
+    """Tờ khai chép họ tên cha/mẹ xuống dòng người được đăng ký lại → họ tên con theo CCCD đúng ngày sinh.
+
+    Dòng con ghi y hệt họ tên cha/mẹ trên cùng tờ khai, còn ngày sinh viết đúng của con: thẻ cha/mẹ
+    khớp tên nên _assign_cards_by_generation không coi vai con là đang mở. Đúng MỘT thẻ mang trọn ngày
+    sinh tờ khai ghi cho con mà tên khác cha/mẹ → thẻ đó của con, chốt như theo thế hệ (tô vàng).
+    """
+    child = sections.get("con") or ""
+    if not child or _is_unknown(child) or not _from_declaration_label(child):
+        return sections
+    child_name = _fold(_role_name(child))
+    parent_names = {_fold(_role_name(sections.get(tag) or "")) for tag in ("cha", "me")}
+    birth = _declared_date(_labeled_value(child, "Ngày sinh"))
+    if not child_name or child_name not in parent_names or len(birth) != 10:
+        return sections
+    fits = [
+        card for card in cards
+        if _declared_date(_labeled_value(card.get("section") or "", "Ngày sinh")) == birth
+        and _fold(card.get("name")) not in parent_names
+    ]
+    if len(fits) != 1:
+        return sections
+    return {**sections, "con": _stamp_generation_card(child, fits[0])}
+
+
 def _apply_identity_card_facts(
     sections: dict[str, str],
     documents: list[dict],
@@ -2655,6 +2693,7 @@ def _apply_identity_card_facts(
                 # Khớp tên nhưng số tờ khai lệch/hỏng: vẫn là thẻ của người đó → nhân thân theo thẻ.
                 section = _stamp_own_card(section, own_cards[0])
         result[tag] = section
+    result = _assign_child_card_when_parent_name_copied(result, cards)
     return _assign_cards_by_generation(result, cards)
 
 

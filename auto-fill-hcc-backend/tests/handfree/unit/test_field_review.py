@@ -663,6 +663,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
                                      "khai-sinh-dang-ky", "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
                                      "dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
+                                     "sua-chua-cai-tao-gpxd-cong-trinh",
                                      "dang-ky-cham-dut-giam-ho"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.

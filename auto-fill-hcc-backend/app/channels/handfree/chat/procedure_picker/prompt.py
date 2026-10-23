@@ -142,6 +142,10 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
+    # ĐĂNG KÝ tàu (giấy chứng nhận đăng ký, sang tên chủ tàu) — KHÁC giấy phép khai thác ngay trên.
+    "cap-gcn-dang-ky-tau-ca": ["đăng ký tàu cá", "giấy chứng nhận đăng ký tàu cá",
+                               "đăng ký tàu cá mới đóng", "mua tàu cá đăng ký sang tên",
+                               "đăng ký tàu phục vụ nuôi trồng thủy sản", "đăng ký thuyền đánh cá"],
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": ["cấp phép xây dựng", "xin giấy phép xây dựng",
                                                   "xin phép xây nhà", "giấy phép xây nhà ở riêng lẻ",
                                                   "xin phép xây dựng công trình cấp 3 cấp 4",
@@ -168,6 +172,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "giấy chứng nhận an toàn thực phẩm", "giấy chứng nhận vệ sinh an toàn thực phẩm",
         "xin giấy an toàn thực phẩm cho quán ăn", "mở nhà hàng cần giấy an toàn thực phẩm",
         "giấy phép vệ sinh thực phẩm cho bếp ăn", "cơ sở đủ điều kiện an toàn thực phẩm",
+    ],
+    # CÙNG tên giấy ATTP nhưng cho cơ sở sản xuất, kinh doanh NÔNG, LÂM, THỦY SẢN (Bộ NN&MT, cấp xã):
+    # rau, thịt, cá, giết mổ, sơ chế, chế biến nông thủy sản. Quán ăn / nhà hàng / bếp ăn vẫn là Bộ Y tế
+    # ở trên — chỉ nhận cụm có dấu hiệu nông, lâm, thủy sản.
+    "cap-gcn-attp-nong-lam-thuy-san": [
+        "giấy chứng nhận an toàn thực phẩm nông lâm thủy sản", "an toàn thực phẩm cho cơ sở sản xuất nông sản",
+        "xin giấy an toàn thực phẩm cho cơ sở chế biến thủy sản", "cơ sở giết mổ gia súc gia cầm xin giấy ATTP",
+        "kinh doanh rau, thịt, cá cần giấy an toàn thực phẩm", "sơ chế nông sản xin giấy an toàn thực phẩm",
     ],
     # Nhà thuốc / quầy thuốc đã có GCN đủ điều kiện kinh doanh dược, nay đổi tên, địa chỉ, người phụ
     # trách hoặc GCN bị ghi sai. Xin cấp GCN dược LẦN ĐẦU không thuộc thủ tục này.
@@ -197,6 +209,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "xin cấp giấy phép hành nghề lần đầu", "cấp mới giấy phép hành nghề khám bệnh, chữa bệnh",
         "bác sĩ mới ra trường xin giấy phép hành nghề", "điều dưỡng mới ra trường xin giấy phép hành nghề",
         "xin chứng chỉ hành nghề y lần đầu", "hộ sinh, kỹ thuật y xin giấy phép hành nghề",
+    ],
+    # CƠ SỞ (phòng khám, nha khoa…) xin giấy phép HOẠT ĐỘNG lần đầu. KHÁC giấy phép HÀNH NGHỀ của một
+    # người (hai entry ngay trên) và khác cơ sở báo danh sách người hành nghề ("dang-ky-hanh-nghe").
+    "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": [
+        "xin giấy phép hoạt động phòng khám", "mở phòng khám tư xin giấy phép",
+        "cấp mới giấy phép hoạt động khám bệnh, chữa bệnh", "mở nha khoa cần giấy phép hoạt động",
+        "giấy phép hoạt động cơ sở khám chữa bệnh", "xin phép mở phòng khám đa khoa",
     ],
     # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
     # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
@@ -351,9 +370,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "dieu-chinh-giay-phep-xay-dung": ["điều chỉnh giấy phép xây dựng", "sửa giấy phép xây dựng",
                                       "thay đổi thiết kế đã được cấp phép",
                                       "xin điều chỉnh giấy phép xây nhà"],
-    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": ["xin phép sửa nhà", "giấy phép sửa chữa cải tạo",
-                                             "cải tạo nhà ở", "xin phép cơi nới nhà",
-                                             "giấy phép sửa chữa công trình"],
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": ["xin phép sửa nhà", "giấy phép sửa chữa cải tạo nhà ở",
+                                             "cải tạo nhà ở", "xin phép cơi nới nhà"],
+    # Cùng thủ tục 1.013229, nhánh công trình cấp III, cấp IV (không phải nhà ở riêng lẻ).
+    "sua-chua-cai-tao-gpxd-cong-trinh": ["giấy phép sửa chữa công trình", "cải tạo công trình cấp III, cấp IV",
+                                         "xin phép sửa chữa nhà xưởng, cửa hàng, trụ sở",
+                                         "cải tạo công trình tín ngưỡng, tôn giáo, tượng đài"],
     "cung-cap-thong-tin-quy-hoach": ["cung cấp thông tin quy hoạch", "xem quy hoạch đất",
                                      "tra cứu quy hoạch thửa đất", "đất có dính quy hoạch không",
                                      "xin thông tin quy hoạch"],
@@ -363,6 +385,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-giay-phep-lien-van-viet-lao": ["giấy phép liên vận Lào", "xin giấy phép cho xe đi Lào",
                                         "cấp lại giấy phép liên vận Việt Lào",
                                         "xe ô tô sang Lào"],
+    # Cây xanh đô thị (chặt hạ / di dời). KHÁC cấp phép xây dựng và khác dùng tạm lòng đường, vỉa hè:
+    # chỉ nhận cụm có "cây".
+    "cap-giay-phep-chat-ha-cay-xanh": ["xin phép chặt cây xanh", "chặt hạ cây trước nhà",
+                                       "di dời cây xanh", "dịch chuyển cây xanh",
+                                       "cây trên vỉa hè sắp đổ muốn chặt",
+                                       "giấy phép chặt hạ cây xanh đô thị"],
 }
 
 

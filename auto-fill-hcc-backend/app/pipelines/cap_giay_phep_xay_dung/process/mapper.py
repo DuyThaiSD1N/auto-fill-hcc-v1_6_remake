@@ -265,6 +265,64 @@ def _chung_chi_cua_chu_nhiem(chu_nhiem_name: Any, design_leads: list[dict]) -> s
     return None
 
 
+def _chu_nhiem_duy_nhat_tu_don(ocr_text: Any, design_leads: list[dict]) -> dict | None:
+    """Chủ nhiệm thiết kế khi đơn chỉ kê MỘT người dưới dòng "các chủ nhiệm, chủ trì thiết kế: <tên>".
+
+    Dòng không ghi vai trò riêng cho người đó, nên LLM lúc nhận lúc bỏ trống chủ nhiệm (cùng hồ sơ ra
+    hai kết quả). Một người duy nhất đứng tên thiết kế thì vừa là chủ nhiệm vừa là chủ trì → lấy từ
+    danh sách chủ trì (để có đúng mã chứng chỉ). Dòng có ghi vai trò ("Chủ trì: Kết cấu"…) thì để quy
+    tắc vai trò cuối dòng của prompt quyết, không suy ở đây.
+    """
+    if len(design_leads) != 1 or not _text(design_leads[0].get("hoTen")):
+        return None
+    def words(text: str) -> str:
+        return " ".join(re.sub(r"[^a-z0-9]+", " ", text).split())
+
+    want = words(_fold(design_leads[0]["hoTen"]))
+    for line in str(ocr_text or "").splitlines():
+        m = re.search(r"cac chu nhiem\s*,\s*chu tri thiet ke\s*:(.*)$", _fold(line))
+        if not m:
+            continue
+        rest = m.group(1)
+        if "chu tri" in rest or "chu nhiem" in rest:
+            return None
+        if want and f" {want} " in f" {words(rest)} ":
+            return design_leads[0]
+    return None
+
+
+_CHI_MOT_TANG_RE = re.compile(r"0*1(?: tang)?")
+
+
+def _mot_tang_khong_tum(values: dict) -> bool:
+    """Nhà đúng MỘT tầng, không tum/lửng/hầm/mái: số tầng = 1 và cách ghi số tầng (nếu có) chỉ là "01"/"1 tầng"."""
+    if _number(values.get("CongTrinh_SoTang")) != "1":
+        return False
+    detail = _fold(_text(values.get("CongTrinh_ChiTietSoTang")) or "").strip(" .")
+    return not detail or bool(_CHI_MOT_TANG_RE.fullmatch(detail))
+
+
+def _thong_so_san_va_chieu_cao(values: dict) -> tuple[str | None, str | None, str | None]:
+    """(tổng diện tích sàn, chi tiết diện tích sàn, chi tiết chiều cao) cho 2 ô "Trong đó" + ô tổng sàn.
+
+    Đơn nhà 1 tầng thường chỉ ghi diện tích tầng 1 + chiều cao, không có dòng tổng sàn/"Trong đó"; LLM
+    lúc tự suy (tổng sàn = diện tích tầng 1) lúc bỏ trống → cùng hồ sơ lúc thiếu lúc đủ. Nhà đúng một
+    tầng thì phép suy là tất định nên chốt bằng code; giá trị LLM đọc được từ giấy tờ luôn được ưu tiên.
+    """
+    total = _number(values.get("CongTrinh_TongDienTichSan"))
+    area_detail = _text(values.get("CongTrinh_ChiTietDienTichSan"))
+    height_detail = _text(values.get("CongTrinh_ChiTietChieuCao"))
+    if _mot_tang_khong_tum(values):
+        area = _number(values.get("CongTrinh_DienTichXayDung"))
+        height = _number(values.get("CongTrinh_ChieuCao"))
+        total = total or area
+        if not area_detail and total:
+            area_detail = f"Tầng 1: {total.replace('.', ',')} m²"
+        if not height_detail and height:
+            height_detail = f"Tầng 1: {height.replace('.', ',')} m"
+    return total, area_detail, height_detail
+
+
 def _number(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -825,6 +883,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[maSoDoanhNghiepLapThietKe]", _ma_so_doanh_nghiep(values.get("ThietKe_ToChuc_MaSo")))
         design_leads = _design_leads(values)
         chu_nhiem_name = _text(values.get("ThietKe_ChuNhiem_HoTen"))
+        if not chu_nhiem_name and not values.get("ThietKe_ChuNhiem_ChungChi"):
+            only_designer = _chu_nhiem_duy_nhat_tu_don((options or {}).get("_ocr_text"), design_leads)
+            chu_nhiem_name = only_designer["hoTen"] if only_designer else None
         add("data[tenChuNhiemThietKe]", chu_nhiem_name)
         # Chứng chỉ chủ nhiệm phải là chứng chỉ CỦA CHÍNH NGƯỜI ĐÓ. Trong đơn, mỗi người một dòng
         # "<tên>, Mã số: <mã> — <vai trò>" nên LLM dễ ghép chéo tên dòng này với mã dòng kia. Chủ nhiệm
@@ -867,6 +928,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Top-level "Loại hình công trình" không còn được mặc định. Hai panel có bộ
     # field khác nhau nên phải xác định nhánh trước khi phát mapping.
     construction_branch = _construction_branch(values, options)
+    floor_area_total, floor_area_detail, height_detail = _thong_so_san_va_chieu_cao(values)
     if construction_branch == "nha_o_rieng_le":
         # Select Choices.js LỌC option theo NHÃN (không theo value): FE gõ vào ô search rồi chọn option
         # hiện ra. Phát MÃ số ("7") → search "7" không khớp nhãn nào → "No results found". Phải phát ĐÚNG
@@ -877,10 +939,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[khoangLuiNhaO]", _number(values.get("CongTrinh_KhoangLui")))
         add("data[cotXayDungNhaO]", _number(values.get("CongTrinh_CotXayDung")))
         add("data[dienTichXayDungTang1NhaO]", _number(values.get("CongTrinh_DienTichXayDung")))
-        add("data[tongDienTichSanNhaO]", _number(values.get("CongTrinh_TongDienTichSan")))
-        add("data[chiTietDienTichSanNhaO]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
+        add("data[tongDienTichSanNhaO]", floor_area_total)
+        add("data[chiTietDienTichSanNhaO]", floor_area_detail)
         add("data[chieuCaoCongTrinhNhaO]", _number(values.get("CongTrinh_ChieuCao")))
-        add("data[chiTietChieuCaoNhaO]", _text(values.get("CongTrinh_ChiTietChieuCao")))
+        add("data[chiTietChieuCaoNhaO]", height_detail)
         add("data[soTangNhaO]", _text(values.get("CongTrinh_SoTang")))
         add("data[chiTietSoTangNhaO]", _text(values.get("CongTrinh_ChiTietSoTang")))
     elif construction_branch == "khong_theo_tuyen":
@@ -892,10 +954,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[dienTichXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_DienTichXayDung")))
         add("data[cotXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_CotXayDung")))
         add("data[khoangLuiKhongTheoTuyen]", _number(values.get("CongTrinh_KhoangLui")))
-        add("data[tongDienTichSanKhongTheoTuyen]", _number(values.get("CongTrinh_TongDienTichSan")))
-        add("data[chiTietDienTichSanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
+        add("data[tongDienTichSanKhongTheoTuyen]", floor_area_total)
+        add("data[chiTietDienTichSanKhongTheoTuyen]", floor_area_detail)
         add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
-        add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietChieuCao")))
+        add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", height_detail)
         add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
         add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
     elif construction_branch in _BRANCH_LABELS:

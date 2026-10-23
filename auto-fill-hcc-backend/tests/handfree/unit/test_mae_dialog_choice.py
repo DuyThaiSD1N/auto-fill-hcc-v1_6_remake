@@ -6,6 +6,7 @@ import pytest
 
 from app.channels.handfree.chat import flow, store
 from app.channels.handfree.chat.intents import Intent
+from app.channels.handfree.procedure_registry import case_pipeline_options
 
 KEY = "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"
 CONG_TRINH = ("(10 ngày làm việc) Cấp giấy phép xây dựng mới đối với công trình cấp III, cấp IV (Công trình không "
@@ -79,3 +80,43 @@ async def test_dang_bam_dong_y_ma_trang_chua_doc_duoc_lua_chon_thi_khong_hoi_lai
     reply = await flow.handle_turn(conv, Intent("event", "page_status", {"maeAgencyBlock": True}))
     assert conv["state"] != "choose_variant"
     assert not reply.chips and not reply.actions and not reply.display_md
+
+
+SC_CONG_TRINH = ("(10 ngày làm việc) Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV")
+SC_NHA_O = "(15 ngày làm việc) Cấp giấy phép xây dựng sửa chữa, cải tạo đối với nhà ở riêng lẻ"
+
+
+def _sua_chua_conv(key):
+    conv = store.new_conversation()
+    conv.update({"procedure_key": key, "state": "guide_login", "client_capabilities": {"supportsMaeDialogChoice": True},
+                 "auth_user": {"id": "u1"}})
+    return conv
+
+
+def _dialog_ctx(*process):
+    return {"maeDialogOptions": {"agency": {"options": ["UBND Phường A"], "current": "UBND Phường A"},
+                                 "process": {"options": list(process), "current": process[0]}}}
+
+
+@pytest.mark.parametrize("key, label, variant", [
+    ("sua-chua-cai-tao-gpxd-cong-trinh", SC_CONG_TRINH, "cong_trinh"),
+    ("sua-chua-cai-tao-gpxd-nha-o-rieng-le", SC_NHA_O, "nha_o_rieng_le"),
+])
+def test_sua_chua_card_nhanh_nao_thi_hop_thoai_tu_chon_truong_hop_nhanh_do(key, label, variant):
+    conv = _sua_chua_conv(key)
+    proc = flow.get_procedure(key)
+    reply = flow._mae_dialog_on_page(conv, _dialog_ctx(SC_NHA_O, SC_CONG_TRINH), proc)
+    # Chỉ còn một trường hợp → không hỏi công dân, chọn luôn đúng nhãn nguyên văn.
+    assert conv["state"] != "choose_mae_dialog"
+    action = next(a for a in reply.actions if a["type"] == "fill_mae_agency")
+    assert action["processExact"] == label
+    assert case_pipeline_options(proc, conv) == {"constructionVariant": variant}
+
+
+def test_sua_chua_cong_trinh_cong_doi_nhan_khong_loc_duoc_thi_van_hoi():
+    key = "sua-chua-cai-tao-gpxd-cong-trinh"
+    conv = _sua_chua_conv(key)
+    odd = ["Quy trình A đối với nhà ở riêng lẻ", "Quy trình B đối với nhà ở riêng lẻ"]
+    reply = flow._mae_dialog_on_page(conv, _dialog_ctx(*odd), flow.get_procedure(key))
+    assert conv["state"] == "choose_mae_dialog"
+    assert [o["label"] for o in reply.cards[0]["groups"][0]["options"]] == odd

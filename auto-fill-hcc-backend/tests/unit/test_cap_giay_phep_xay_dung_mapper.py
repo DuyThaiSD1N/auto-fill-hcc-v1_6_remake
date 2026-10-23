@@ -408,6 +408,81 @@ def test_desc_chi_tiet_nhan_ca_3_kieu_trinh_bay_va_bat_buoc_tra():
     assert "chỉ áp cho field SỐ" in EXTRA_RULES
 
 
+def _nha_mot_tang(**extra):
+    fields = {
+        "Applicant_HoTen": "Nguyễn Thị A",
+        "CongTrinh_Nhanh": "nha_o_rieng_le",
+        "CongTrinh_DienTichXayDung": "96,5",
+        "CongTrinh_ChieuCao": "4,2",
+        "CongTrinh_SoTang": "01",
+        "CongTrinh_ChiTietSoTang": "01",
+    }
+    fields.update(extra)
+    return [_field(k, v) for k, v in fields.items() if v is not None]
+
+
+def test_nha_mot_tang_don_khong_ghi_tong_san_van_dien_du_3_o():
+    """Đơn nhà 1 tầng chỉ ghi diện tích tầng 1 + chiều cao + số tầng 01. LLM lúc tự suy tổng sàn và 2 ô
+    'Trong đó', lúc bỏ trống (cùng hồ sơ lúc thiếu lúc đủ) → mapper phải tự suy, tất định."""
+    values = _values(mapper.enrich(_nha_mot_tang(), {})[0])
+
+    assert values["data[tongDienTichSanNhaO]"] == "96.5"
+    assert values["data[chiTietDienTichSanNhaO]"] == "Tầng 1: 96,5 m²"
+    assert values["data[chiTietChieuCaoNhaO]"] == "Tầng 1: 4,2 m"
+
+
+def test_nha_mot_tang_uu_tien_gia_tri_llm_doc_duoc():
+    values = _values(mapper.enrich(_nha_mot_tang(
+        CongTrinh_TongDienTichSan="100",
+        CongTrinh_ChiTietDienTichSan="tầng 1: 100m²",
+        CongTrinh_ChiTietChieuCao="tầng 1: 4,2m",
+    ), {})[0])
+
+    assert values["data[tongDienTichSanNhaO]"] == "100"
+    assert values["data[chiTietDienTichSanNhaO]"] == "tầng 1: 100m²"
+    assert values["data[chiTietChieuCaoNhaO]"] == "tầng 1: 4,2m"
+
+
+def test_nha_nhieu_tang_hoac_co_tum_khong_tu_suy():
+    for extra in ({"CongTrinh_SoTang": "2", "CongTrinh_ChiTietSoTang": "02 tầng"},
+                  {"CongTrinh_ChiTietSoTang": "01 tầng + tum"}):
+        values = _values(mapper.enrich(_nha_mot_tang(**extra), {})[0])
+        assert "data[tongDienTichSanNhaO]" not in values, extra
+        assert "data[chiTietDienTichSanNhaO]" not in values, extra
+        assert "data[chiTietChieuCaoNhaO]" not in values, extra
+
+
+_DON_MOT_NGUOI_THIET_KE = (
+    "- Tên và mã số chứng chỉ hành nghề của các chủ nhiệm, chủ trì thiết kế: Lê Văn Cường\n"
+    "- Tên và mã số chứng chỉ hành nghề của các chủ trì thẩm tra thiết kế:....\n"
+)
+
+
+def _mot_nguoi_thiet_ke():
+    return [
+        _field("Applicant_HoTen", "Nguyễn Thị A"),
+        _field("LapThietKe_Loai", "Tổ chức"),
+        _field("ThietKe_ToChuc_Ten", "Công ty TNHH Kiến trúc M"),
+        _field("ThietKe_ChuTri_DanhSach", [{"boMon": "Kiến trúc", "hoTen": "Lê Văn Cường", "chungChi": "KS-001-00001"}]),
+    ]
+
+
+def test_don_chi_ke_mot_nguoi_thiet_ke_thi_nguoi_do_la_chu_nhiem():
+    """Đơn kê đúng một người dưới 'các chủ nhiệm, chủ trì thiết kế' và không ghi vai trò riêng: LLM lúc
+    nhận chủ nhiệm lúc bỏ trống → mapper lấy người duy nhất đó, mã chứng chỉ theo danh sách chủ trì."""
+    values = _values(mapper.enrich(_mot_nguoi_thiet_ke(), {"_ocr_text": _DON_MOT_NGUOI_THIET_KE})[0])
+
+    assert values["data[tenChuNhiemThietKe]"] == "Lê Văn Cường"
+    assert values["data[maSoChungChiChuNhiemThietKe]"] == "KS-001-00001"
+
+
+def test_dong_ghi_vai_tro_chu_tri_thi_khong_suy_chu_nhiem():
+    ocr = "- Tên và mã số chứng chỉ hành nghề của các chủ nhiệm, chủ trì thiết kế: KS. Lê Văn Cường, Mã số: KS-001-00001 — Chủ trì: Kiến trúc\n"
+    for options in ({"_ocr_text": ocr}, {}):
+        values = _values(mapper.enrich(_mot_nguoi_thiet_ke(), options)[0])
+        assert "data[tenChuNhiemThietKe]" not in values, options
+
+
 # ── Các trường hợp người nộp: tự làm cho bản thân / được ủy quyền / tổ chức (dữ liệu bịa) ──
 
 _CHU_HO = {"ten": "TRẦN VĂN AN", "id": "001090000001", "sdt": "0901000001",
