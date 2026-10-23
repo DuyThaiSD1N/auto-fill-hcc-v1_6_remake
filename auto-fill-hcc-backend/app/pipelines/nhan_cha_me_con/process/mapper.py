@@ -38,15 +38,25 @@ def _upper_name(value: Any) -> str:
 def _province_label(value: Any) -> str:
     # Dùng nhãn chung: Bắc Ninh đã là thành phố trực thuộc TW, eForm chỉ còn "Thành phố Bắc Ninh".
     # Giữ nguyên "Tỉnh ..." do LLM trả thì ô tỉnh trượt và ô xã không nạp được danh sách.
-    return city_province(province_label(_clean(value)) or "")
+    # Viết tắt "T.P X" / "Tp.X" province_label không nhận ra (thành "Tỉnh T.P X") → đổi về "Thành phố X" trước.
+    text = re.sub(r"^t\.?\s?p\b\.?\s*", "Thành phố ", _clean(value), flags=re.IGNORECASE)
+    return city_province(province_label(text) or "")
+
+
+# Danh mục xã của cổng chỉ có tên đầy đủ: "P. Hải Châu" / "X.Tân Phong" / "TT Tam Đường" trượt option.
+_COMMUNE_ABBREVIATIONS = ((r"^p(?:\.\s*|\s+)", "Phường "), (r"^x(?:\.\s*|\s+)", "Xã "),
+                          (r"^tt(?:\.\s*|\s+)", "Thị trấn "))
 
 
 def _commune_label(value: Any) -> str:
     text = _clean(value)
     if not text:
         return ""
-    if _fold(text).startswith(("xa ", "phuong ", "thi tran ", "tt ")):
+    if _fold(text).startswith(("xa ", "phuong ", "thi tran ")):
         return text
+    for pattern, full in _COMMUNE_ABBREVIATIONS:
+        if re.match(pattern, text, flags=re.IGNORECASE):
+            return re.sub(pattern, full, text, count=1, flags=re.IGNORECASE).strip()
     return text
 
 

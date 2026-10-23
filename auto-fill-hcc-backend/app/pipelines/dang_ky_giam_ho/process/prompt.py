@@ -81,8 +81,17 @@ giấy khai sinh/người được giám hộ, và có thể có trích xuất C
 
 <address_split_rules>
 - Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
-- Với thủ tục này, tinh và xa nên GIỮ loại đơn vị nếu OCR đọc được: "Tỉnh Lai Châu", "Phường Tân Phong",
-  "Xã Đông Phong". Nếu giấy chỉ ghi "Lai Châu" thì trả "Lai Châu"; Python sẽ thêm tiền tố tỉnh khi cần.
+- Với thủ tục này, tinh và xa GIỮ loại đơn vị ĐẦY ĐỦ nếu giấy ghi: "Tỉnh Lai Châu", "Thành phố Đà Nẵng",
+  "Phường Tân Phong", "Xã Đông Phong", "Thị trấn Tam Đường". Nếu giấy chỉ ghi tên trần "Lai Châu" thì trả
+  "Lai Châu"; Python sẽ thêm tiền tố tỉnh khi cần.
+- tinh là "Thành phố X" CHỈ khi X là thành phố trực thuộc trung ương (Hà Nội, Hải Phòng, Huế, Đà Nẵng,
+  Hồ Chí Minh, Cần Thơ). "Thành phố X" thuộc một tỉnh (vd "Thành phố Lai Châu", "Thành phố Bắc Giang") là CẤP
+  HUYỆN → bỏ, tinh = "Tỉnh <tỉnh>" (địa chỉ không ghi tỉnh thì tỉnh cùng tên: "Thành phố Lai Châu" → "Tỉnh Lai
+  Châu").
+- CHUẨN HOÁ chữ viết tắt, KHÔNG trả nguyên dạng viết tắt (danh mục của cổng chỉ có tên đầy đủ):
+  "TP" / "TP." / "T.P" / "Tp" trước tên thành phố trực thuộc trung ương → "Thành phố"; "T." → "Tỉnh";
+  "P." / "P" → "Phường"; "X." → "Xã"; "TT" / "TT." → "Thị trấn". Phường đánh số "P9" / "P.9" → "Phường 9". Viết hoa chữ đầu mỗi
+  tiếng của tên ("tp đà nẵng" → "Thành phố Đà Nẵng"), giữ nguyên chữ của tên, không cắt bớt.
 - chiTietDuoiXa chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
 - Nếu địa chỉ dạng "[chi tiết], phường/xã, thành phố/huyện, tỉnh" thì bỏ cấp huyện/thành phố,
   lấy xa là phần phường/xã và chiTietDuoiXa là phần trước đó.
@@ -90,6 +99,8 @@ giấy khai sinh/người được giám hộ, và có thể có trích xuất C
   tinh="Tỉnh Lai Châu", xa="Phường Tân Phong", chiTietDuoiXa="Tổ 1".
 - Ví dụ "Tổ 22, phường Đông Phong, tỉnh Lai Châu" ->
   tinh="Tỉnh Lai Châu", xa="Phường Đông Phong", chiTietDuoiXa="Tổ 22".
+- Ví dụ "Số 12 đường B, P. Hòa Cường, TP Đà Nẵng" ->
+  tinh="Thành phố Đà Nẵng", xa="Phường Hòa Cường", chiTietDuoiXa="Số 12 đường B".
 </address_split_rules>
 
 <output_reminder>

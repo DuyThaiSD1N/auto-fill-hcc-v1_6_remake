@@ -15,6 +15,8 @@ chỉ mời sau khi đính xong và bước kế tiếp là chọn hình thức 
 Extension khai thêm supportsFlowV2 (luồng bản 2 của trang một trang): kết luận sau điền + đính chỉ cho nút đi
 tiếp khi tờ khai đủ ô bắt buộc; công dân tự gõ trên cổng thì extension đếm lại (__event:field_review_status) và
 trợ lý hiện nút khi ô bắt buộc về 0.
+Cổng liên thông (form Angular, chat/lien_thong.py) cần thêm cờ supportsLienThongFlow
+(content/field-review-angular.js): đủ ô bắt buộc thì bước kế tiếp là "Xem lại các tờ khai chi tiết".
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -27,6 +29,7 @@ from app.channels.handfree.chat.intents import Intent, fold
 CAPABILITY = "supportsFieldReview"
 SURVEY_CAPABILITY = "supportsFieldReviewSurvey"
 FLOW_V2_CAPABILITY = "supportsFlowV2"
+LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
              "field_review_answer", "field_review_pick", "field_review_reload", "field_review_owner_next",
              "field_review_preview", "field_review_preview_report", "field_review_preview_close",
@@ -57,12 +60,19 @@ def single_page(proc: dict | None) -> bool:
     return (proc or {}).get("flowProfile") == "tu-phap-moi"
 
 
+def lien_thong(proc: dict | None) -> bool:
+    """Cổng liên thông (form Angular, 6 bước): đủ ô bắt buộc → "Xem lại các tờ khai chi tiết"."""
+    return bool((proc or {}).get("lienThongFlow"))
+
+
 def active(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
     return (
         config(proc) is not None
         and caps.get(CAPABILITY) is True
         and (not single_page(proc) or caps.get(SURVEY_CAPABILITY) is True)
+        # Extension chỉ có bộ đọc eForm / SurveyJS không đọc được form Angular của cổng liên thông.
+        and (not lien_thong(proc) or caps.get(LIEN_THONG_CAPABILITY) is True)
         and (conv.get("lang") or "vi") != "hmong"
     )
 
@@ -74,8 +84,15 @@ def legacy_wizard(proc: dict | None) -> bool:
 
 def flow_v2(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
+    if lien_thong(proc):
+        return active(conv, proc)
     return ((single_page(proc) or legacy_wizard(proc)) and active(conv, proc)
             and caps.get(FLOW_V2_CAPABILITY) is True)
+
+
+def _wizard_form(proc: dict | None) -> bool:
+    """Bước kế tiếp sau tờ khai là một nút trên cổng (form cũ: Xem trước; liên thông: Xem lại tờ khai)."""
+    return legacy_wizard(proc) or lien_thong(proc)
 
 
 def asking(conv: dict) -> bool:
@@ -140,11 +157,26 @@ def _preview_chip() -> dict:
     return {"label": vi.FR_PREVIEW_CHIP, "send": "__action:field_review_preview", "solid": True}
 
 
+def _go_chip(proc: dict | None) -> dict:
+    """Nút sang bước sau tờ khai: form cũ mở Xem trước; liên thông sang "Xem lại các tờ khai chi tiết"."""
+    if lien_thong(proc):
+        return {"label": vi.LT_REVIEW_CHIP, "send": "__action:lt_next", "solid": True}
+    return _preview_chip()
+
+
 def begin(conv: dict, review) -> dict:
     """Lượt điền mới = vòng bổ sung mới (luồng bản 2): ghi số ô extension vừa đếm sau khi điền."""
     stats = _stats(review)
     conv["field_review"] = {"stats": stats}
     return stats
+
+
+def update_stats(conv: dict, raw) -> dict:
+    """Số ô vừa đếm lại trên trang (cổng chặn chuyển bước, ô bắt buộc trống hiện ra) — giữ nút đã lưu của lượt điền."""
+    st = conv.setdefault("field_review", {})
+    st["stats"] = _stats(raw)
+    st["ready_said"] = not st["stats"]["required"] and bool(st.get("ready_said"))
+    return st["stats"]
 
 
 def _small_chips(chips: list[dict]) -> list[dict]:
@@ -158,11 +190,11 @@ def next_chips(conv: dict, proc: dict | None, keep: list[dict]) -> list[dict]:
     stats = (conv.get("field_review") or {}).get("stats") or {}
     if not flow_v2(conv, proc):
         return [dict(c) for c in keep]
-    if legacy_wizard(proc):
+    if _wizard_form(proc):
         if stats.get("required"):
-            return [_start_chip(), {**_preview_chip(), "solid": False}, *_small_chips(keep)]
+            return [_start_chip(), {**_go_chip(proc), "solid": False}, *_small_chips(keep)]
         optional = [{**_start_chip(), "solid": False}] if stats.get("optional") else []
-        return [{**_preview_chip(), "cta": True}, *optional, *_small_chips(keep)]
+        return [{**_go_chip(proc), "cta": True}, *optional, *_small_chips(keep)]
     if stats.get("required"):
         return [_start_chip(), *_small_chips(keep)]
     return [dict(c) for c in keep]
@@ -172,10 +204,13 @@ def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
     from app.channels.handfree.chat import guided_steps
 
     st["ready_said"] = True
-    if legacy_wizard(proc):
+    if _wizard_form(proc):
         optional = (st.get("stats") or {}).get("optional") or 0
-        return _say(vi.FLOW2_PREVIEW_READY,
-                    optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "")
+        return _say(vi.LT_FILL_READY if lien_thong(proc) else vi.FLOW2_PREVIEW_READY,
+                    optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "",
+                    optional_tts=vi.FLOW2_OPTIONAL_LEFT_TTS.format(optional=optional) if optional else "",
+                    optional_hint_md=vi.FLOW2_OPTIONAL_HINT["md"] if optional else "",
+                    optional_hint_tts=vi.FLOW2_OPTIONAL_HINT["tts"] if optional else "")
     label = str((guided_steps.default_result_method(proc) or {}).get("label") or "")
     done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
     return _say(vi.FLOW2_READY if label else vi.FLOW2_READY_NO_DEFAULT, done=done, label=label)
@@ -191,7 +226,7 @@ def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, st
         st["ready_said"] = False
         md, tts = _say(vi.FLOW2_NEED_REQUIRED, **stats)
         return md, tts, next_chips(conv, proc, keep)
-    if stats["optional"] and not legacy_wizard(proc):
+    if stats["optional"] and not _wizard_form(proc):
         st["ready_said"] = True
         md, tts = _say(vi.FLOW2_OPTIONAL_ONLY, **stats)
         return md, tts, [{**_start_chip(), "solid": False}, *keep]
@@ -204,6 +239,9 @@ def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
     mở Xem trước)."""
     if "chips" not in st:
         return False
+    if lien_thong(proc):
+        return (conv.get("state") in {"reviewing", "attaching"}
+                and int((conv.get("lien_thong") or {}).get("at") or 2) == 2)
     if legacy_wizard(proc):
         return (conv.get("state") in {"reviewing", "attaching"} and conv.get("docs_target") == "declaration"
                 and not st.get("preview_open"))
@@ -615,11 +653,19 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
     required = (st.get("stats") or {}).get("required") or 0
     if required:
         field = st["current"]
-        r = Reply(*_say(vi.FR_PROCEED_BLOCKED, required=required,
-                        step_md=vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else vi.FR_PROCEED_STEP_SINGLE,
+        step_md = (vi.LT_PROCEED_STEP if lien_thong(proc) else
+                   vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else vi.FR_PROCEED_STEP_SINGLE)
+        r = Reply(*_say(vi.FR_PROCEED_BLOCKED, required=required, step_md=step_md,
                         label=field["label"], label_tts=_tts(field["label"])))
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
+        return r
+    if lien_thong(proc):
+        from app.channels.handfree.chat import lien_thong as lt
+
+        st.update(running=False, current=None)
+        r = lt.next_reply(conv, proc)
+        r.actions = [{"type": "field_review_stop"}, *r.actions]
         return r
     if not legacy_wizard(proc):
         return _finish_reply(conv, proc, stopped=True)
@@ -753,21 +799,23 @@ def _optional_phase(conv: dict, proc: dict | None, st: dict, field: dict) -> tup
         st["phase_chips"] = []
         return "", ""
     # Cỡ thường như các nút của câu hỏi (không cta): việc chính lúc này vẫn là trả lời ô đang hỏi.
-    if legacy_wizard(proc):
-        st["phase_chips"] = [_preview_chip()]
+    if _wizard_form(proc):
+        st["phase_chips"] = [_go_chip(proc)]
     else:
         st["phase_chips"] = [{k: v for k, v in c.items() if k != "cta"} for c in st.get("chips") or [] if c.get("cta")]
     if st.get("optional_said"):
         return "", ""
     st["optional_said"] = True
-    return _say(vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE,
-                optional=stats.get("optional") or 0)
+    template = (vi.LT_OPTIONAL_PHASE if lien_thong(proc) else
+                vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE)
+    return _say(template, optional=stats.get("optional") or 0)
 
 
 def _next_step(conv: dict, proc: dict | None, intent) -> str:
     """Câu "xong rồi / xem trước / đính kèm đi" ở Kê khai → bấm Xem trước (bản xem trước đang mở → Xác nhận).
-    Trang một trang không có Xem trước: luồng tu_phap_moi tự lo câu đi tiếp."""
-    if not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration" or single_page(proc):
+    Trang một trang không có Xem trước: luồng tu_phap_moi tự lo câu đi tiếp; liên thông: chat/lien_thong.py."""
+    if (not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration" or single_page(proc)
+            or lien_thong(proc)):
         return ""
     if conv.get("state") not in {"reviewing", "attaching"}:
         return ""

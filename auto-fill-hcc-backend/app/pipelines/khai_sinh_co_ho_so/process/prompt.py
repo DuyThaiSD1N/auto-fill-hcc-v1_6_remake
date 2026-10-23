@@ -183,6 +183,9 @@ SỐ TÊN, KHÔNG được đảo:
 - Tách từ dính liền: cụm (địa chỉ chi tiết / tên xã / họ tên) bị viết DÍNH không dấu cách nhưng có chữ HOA
   đứng giữa (hoa ngay sau thường) → tách thành từ riêng bằng dấu cách.
 - Ngày tháng, họ tên, tách địa chỉ: theo QUY TẮC CHUNG ở trên (không lặp lại ở đây).
+- Tên tỉnh / xã trong mọi object địa chỉ: bung chữ viết tắt thành tên đầy đủ, KHÔNG trả nguyên dạng viết tắt
+  (danh mục của cổng chỉ có tên đầy đủ): "TP" / "TP." / "T.P" → "Thành phố"; "P." → "Phường"; "X." → "Xã";
+  "TT" / "TT." → "Thị trấn"; "P9" / "P.9" → "Phường 9". Giữ nguyên chữ của tên, không cắt bớt.
 </chuan_hoa_dac_thu>
 
 <output>

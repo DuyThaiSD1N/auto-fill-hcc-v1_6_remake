@@ -94,11 +94,21 @@ giấy khai sinh/giấy chứng sinh của con; kết quả xét nghiệm ADN ho
 - Mọi địa chỉ trong nước trả object {quocGia,tinh,xa,chiTietDuoiXa}.
 - tinh và xa nên GIỮ loại đơn vị nếu OCR đọc được: "Tỉnh Lai Châu", "Phường Đoàn Kết", "Xã Phong Thổ".
   Nếu giấy chỉ ghi "Lai Châu" thì trả "Lai Châu"; Python sẽ thêm tiền tố tỉnh khi cần.
+- tinh là "Thành phố X" CHỈ khi X là thành phố trực thuộc trung ương (Hà Nội, Hải Phòng, Huế, Đà Nẵng,
+  Hồ Chí Minh, Cần Thơ). "Thành phố X" thuộc một tỉnh (vd "Thành phố Lai Châu", "Thành phố Bắc Giang") là CẤP
+  HUYỆN → bỏ, tinh = "Tỉnh <tỉnh>" (địa chỉ không ghi tỉnh thì tỉnh cùng tên: "Thành phố Lai Châu" → "Tỉnh Lai
+  Châu").
+- CHUẨN HOÁ chữ viết tắt, KHÔNG trả nguyên dạng viết tắt (danh mục của cổng chỉ có tên đầy đủ):
+  "TP" / "TP." / "T.P" / "Tp" trước tên thành phố trực thuộc trung ương → "Thành phố"; "T." → "Tỉnh";
+  "P." / "P" → "Phường"; "X." → "Xã"; "TT" / "TT." → "Thị trấn". Phường đánh số "P9" / "P.9" → "Phường 9". Viết
+  hoa chữ đầu mỗi tiếng của tên ("tp đà nẵng" → "Thành phố Đà Nẵng"), giữ nguyên chữ của tên, không cắt bớt.
 - chiTietDuoiXa chỉ là phần chi tiết như tổ/bản/thôn/số nhà/đường, không lặp phường/xã/huyện/tỉnh.
 - Nếu địa chỉ dạng "Thôn Tây Sơn, Mường So, Phong Thổ, Lai Châu" thì:
   tinh="Lai Châu", xa="Mường So", chiTietDuoiXa="Thôn Tây Sơn"; bỏ cấp huyện "Phong Thổ".
 - Nếu địa chỉ dạng "TDP 4, phường Đoàn Kết, tỉnh Lai Châu" thì:
   tinh="Tỉnh Lai Châu", xa="Phường Đoàn Kết", chiTietDuoiXa="TDP 4".
+- Nếu địa chỉ dạng "Số 12 đường B, P. Hòa Cường, TP Đà Nẵng" thì:
+  tinh="Thành phố Đà Nẵng", xa="Phường Hòa Cường", chiTietDuoiXa="Số 12 đường B".
 </address_split_rules>
 
 <output_reminder>

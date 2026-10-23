@@ -79,8 +79,8 @@ async def test_khong_co_co_thi_bao_cao_dien_khong_co_nut_bo_sung():
 
 
 def test_thu_tuc_chua_khai_bien_danh_dau_thi_khong_bat():
-    conv = _conv(procedure_key="dang-ky-giam-ho")
-    assert field_review.fill_action_extra(conv, {"key": "dang-ky-giam-ho"}) is None
+    conv = _conv(procedure_key="dang-ky-cham-dut-giam-ho")
+    assert field_review.fill_action_extra(conv, {"key": "dang-ky-cham-dut-giam-ho"}) is None
 
 
 def test_tieng_mong_giu_luong_cu():
@@ -659,7 +659,9 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
     assert set(registry._CONFIGS) == {"khai-sinh-dang-ky-lai", "ket-hon", "xac-nhan-tinh-trang-hon-nhan", "khai-tu",
                                      "khai-sinh-dang-ky-thuong", "thay-doi-cai-chinh-ho-tich",
                                      "trich-luc-ks", "dang-ky-lai-ket-hon", "ket-hon-nuoc-ngoai",
-                                     "khai-tu-dang-ky-lai"}
+                                     "khai-tu-dang-ky-lai", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
+                                     "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
+                                     "khai-sinh-dang-ky"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

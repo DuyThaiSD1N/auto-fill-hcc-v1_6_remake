@@ -10,7 +10,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người yêu cầu."},
-    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị đầy đủ nếu giấy ghi, bung viết tắt (TP → Thành phố, P. → Phường)."},
 
     # II. Người giám hộ.
     {"name": "Guardian_FullName", "desc": "Họ tên người giám hộ."},
@@ -21,7 +21,7 @@ FIELDS: list[dict] = [
     {"name": "Guardian_IdNumber", "desc": "Số định danh/CCCD/CMND người giám hộ."},
     {"name": "Guardian_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân người giám hộ, dd/mm/yyyy."},
     {"name": "Guardian_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân người giám hộ."},
-    {"name": "Guardian_ResidenceDomestic", "desc": "Nơi cư trú người giám hộ, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị nếu giấy ghi."},
+    {"name": "Guardian_ResidenceDomestic", "desc": "Nơi cư trú người giám hộ, object {quocGia,tinh,xa,chiTietDuoiXa}; tinh/xa giữ loại đơn vị đầy đủ nếu giấy ghi, bung viết tắt (TP → Thành phố, P. → Phường)."},
 
     # III. Người được giám hộ.
     {"name": "Ward_FullName", "desc": "Họ tên người được giám hộ."},

@@ -179,3 +179,14 @@ def test_nhan_cha_me_con_province_label_giu_dung_loai_don_vi():
     assert mapper._province_label("Tỉnh Quảng Ninh") == "Thành phố Quảng Ninh"
     assert mapper._province_label("Đồng Nai") == "Thành phố Đồng Nai"
     assert mapper._province_label("Tỉnh Bắc Ninh") == "Thành phố Bắc Ninh"
+
+
+def test_tinh_xa_viet_tat_ra_nhan_danh_muc():
+    from app.pipelines.nhan_cha_me_con.process.mapper import _commune_label, _province_label
+
+    # Danh mục cổng chỉ có tên đầy đủ: viết tắt trượt option, ô xã phía dưới trống theo.
+    for raw in ("TP Đà Nẵng", "TP. Đà Nẵng", "T.P Đà Nẵng", "Đà Nẵng"):
+        assert _province_label(raw) == "Thành phố Đà Nẵng", raw
+    assert _province_label("Lai Châu") == "Tỉnh Lai Châu"
+    assert [_commune_label(x) for x in ("P. Hòa Cường", "X.Tân Phong", "TT Tam Đường", "Pa Tần")] == [
+        "Phường Hòa Cường", "Xã Tân Phong", "Thị trấn Tam Đường", "Pa Tần"]

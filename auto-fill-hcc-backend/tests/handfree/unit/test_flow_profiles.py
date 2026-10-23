@@ -194,6 +194,21 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert byt_food_safety["agencyCardIncludes"] == "Cơ quan thực hiện: UBND"
     assert byt_food_safety["hideRepeatableHint"] is True
     assert len(byt_food_safety["shortLabel"]) >= 30
+    # Cổng Bộ Y tế nộp tại SỞ Y tế (dược 1.014104, đăng ký hành nghề 1.012275, điều chỉnh GPHN chuyển
+    # tiếp 1.012292): DVCQG chọn Tỉnh rồi
+    # gạt toggle "Sở", sau đó cổng mở hộp thoại "Chọn trường hợp giải quyết" như Bộ Xây dựng →
+    # dùng luồng chung "xay-dung".
+    for key in ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
+                "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep"):
+        byt_so = procedures.pop(key)
+        assert byt_so["flowProfile"] == "xay-dung", key
+        assert byt_so["agencyProvinceOnly"] is True, key
+        assert byt_so["agencySoFirst"] is True, key
+        assert byt_so["agencyDeptLabel"] == "Sở Y tế", key
+        assert byt_so["maePortal"] is True, key
+        assert byt_so["maeDialogChoice"]["enabled"] is True, key
+        assert byt_so["wizard"]["declarationStep"] == 1, key
+        assert byt_so["wizard"]["attachmentStep"] == 2, key
     # Trợ cấp xã hội hàng tháng: cùng cổng Bộ Y tế, cùng cách chọn cơ quan với hưu trí, nhưng bảng
     # thành phần hồ sơ là bảng NHIỀU DÒNG tích chọn → không được dồn hết tệp vào một dòng.
     byt_allowance = procedures.pop("tro-cap-xa-hoi-hang-thang")
@@ -443,7 +458,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bắc Ninh "dinh-chinh-sai-sot-bac-ninh" (1.115446).
     # +1 cổng Bắc Ninh "giao-thue-chuyen-muc-dich-dat-bac-ninh" (1.115438).
     # +1 cổng Bắc Ninh "dang-ky-bien-dong-chuyen-nhuong-bac-ninh" (1.013831).
-    assert len(procedures) == 69
+    # +2 cổng Bộ Y tế cấp Sở (luồng "xay-dung"): "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te"
+    # (1.014104), "dang-ky-hanh-nghe" (1.012275).
+    # +1 cổng Bộ Y tế cấp Sở "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" (1.012292).
+    assert len(procedures) == 72
 
     for procedure in procedures:
         key = procedure["key"]

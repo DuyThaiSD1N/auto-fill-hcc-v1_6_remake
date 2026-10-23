@@ -71,8 +71,11 @@ def _province_label(value) -> str:
     if not text:
         return ""
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ", "tp ")):
+    if folded.startswith(("tinh ", "thanh pho ")):
         return text
+    # Viết tắt "TP X" / "TP. X" / "T.P X" không có trong danh mục cổng (chỉ "Thành phố X") → bỏ để gắn lại.
+    text = re.sub(r"^t\.?\s?p\b\.?\s*", "", text, flags=re.IGNORECASE).strip() or text
+    folded = _fold(text)
     if folded in {
         "ha noi",
         "hai phong",

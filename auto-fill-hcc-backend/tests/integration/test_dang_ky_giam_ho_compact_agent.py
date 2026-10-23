@@ -525,3 +525,13 @@ def test_dang_ky_cham_dut_giam_ho_prompt_and_registry():
     assert handfree.procedure_code(entry) == "1.004845"
     assert PROCEDURE_HINTS["dang-ky-cham-dut-giam-ho"]
     assert PROCEDURE_HMONG["dang-ky-cham-dut-giam-ho"]
+
+
+def test_dang_ky_giam_ho_tinh_viet_tat_tp_ra_nhan_danh_muc():
+    from app.pipelines.dang_ky_giam_ho.process.mapper import _province_label
+
+    # Danh mục tỉnh của cổng chỉ có "Thành phố X" — viết tắt "TP X" trượt option, ô xã phía dưới cũng trống theo.
+    for raw in ("TP Đà Nẵng", "TP. Đà Nẵng", "T.P Đà Nẵng", "Đà Nẵng", "Thành phố Đà Nẵng"):
+        assert _province_label(raw) == "Thành phố Đà Nẵng", raw
+    assert _province_label("Quảng Ngãi") == "Tỉnh Quảng Ngãi"
+    assert _province_label("Tây Ninh") == "Tỉnh Tây Ninh"

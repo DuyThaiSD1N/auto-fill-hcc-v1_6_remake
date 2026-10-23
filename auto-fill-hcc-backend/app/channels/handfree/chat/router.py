@@ -190,6 +190,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsFieldReviewSurvey": raw.get("supportsFieldReviewSurvey") is True,
         # Luồng bản 2 của trang một trang (thẻ tiến trình 3 bước, chỉ hiện nút đi tiếp khi đủ ô bắt buộc).
         "supportsFlowV2": raw.get("supportsFlowV2") is True,
+        # Dẫn đủ 6 bước cổng liên thông (chat/lien_thong.py): báo bước đang mở (lienThongStep), bổ sung ô
+        # trên form Angular, bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành.
+        "supportsLienThongFlow": raw.get("supportsLienThongFlow") is True,
     }
 
 
@@ -234,6 +237,9 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
             flow.tpm.is_active(get_procedure(conv.get("procedure_key") or ""))
             and flow.tpm.auto_flow(conv)
         ),
+        # Cổng liên thông: sidebar báo bước đang mở (lienThongStep) ở mọi state để trợ lý dẫn tiếp cả khi
+        # công dân tự bấm chuyển bước trên trang.
+        "lien_thong": flow.lien_thong.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
     }
 
 

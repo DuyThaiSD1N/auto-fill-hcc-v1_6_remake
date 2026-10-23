@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from app.channels.handfree.chat import consent as consent_log
 from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import guided_steps as guided
+from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
@@ -905,7 +906,7 @@ _VOICE_BLOCKED_SENDS = {
 # Nộp hồ sơ không rút lại được: chọn bằng lời thì hỏi xác nhận một lần (tạp âm / nói nhầm không nộp luôn). Nút xác
 # nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
 # nhận chưa có bản dịch).
-_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit"}
+_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
@@ -945,6 +946,11 @@ def _card_voice_items(card: dict) -> list[dict]:
         return [{"label": str(o.get("label") or ""), "desc": str(o.get("desc") or ""),
                  "send": str(o.get("send") or "")}
                 for o in card.get("options") or [] if isinstance(o, dict) and o.get("send")]
+    if kind == "lt_result_groups":
+        # Thẻ cách nhận kết quả liên thông: mỗi lựa chọn nói được kèm tên giấy ("thẻ BHYT qua bưu điện").
+        return [{"label": f"{row.get('label') or ''}: {o.get('label') or ''}", "send": str(o.get("send") or "")}
+                for row in card.get("rows") or [] if isinstance(row, dict)
+                for o in row.get("options") or [] if isinstance(o, dict) and o.get("send")]
     if kind == "rating":
         return [{"label": str(item.get("label") or ""),
                  "send": "__action:rate:" + json.dumps({"level": item.get("value")})}
@@ -1101,6 +1107,9 @@ async def _handle_turn_inner(
     review_reply = await field_review.handle(conv, current_proc, intent)
     if review_reply is not None:
         return review_reply
+    lien_thong_reply = lien_thong.handle(conv, current_proc, intent)
+    if lien_thong_reply is not None:
+        return lien_thong_reply
     if intent.kind == "event" and intent.value == "page_status":
         principal = intent.payload.get("principal") or {}
         if principal:
@@ -2522,7 +2531,7 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
                 r = Reply(*_fmt(vi.AGENCY_AUTOFILL_GUIDE,
                                 ward=loc.get("ward") or "", province=loc.get("province") or ""))
                 r.actions = [{"type": "fill_agency_plan", "plan": plan}]
-                return r
+                return lien_thong.agency_reply(conv, proc, r)
             return Reply()
         # Không có cấu hình → dặn người dân tự chọn tỉnh/xã + bấm tiếp (nói 1 lần).
         if _say_once(conv, "agency_manual"):
@@ -3414,6 +3423,9 @@ def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> I
     """
     from app.channels.handfree.chat.intents import asks_next_step, asks_submit
 
+    lien_thong_intent = lien_thong.voice_intent(conv, message, page_context)
+    if lien_thong_intent is not None:
+        return lien_thong_intent
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if not proc.get("wizard") or not guided.result_flow_enabled(conv, proc):
         return None
@@ -4020,7 +4032,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
         )
-        v2 = tu_phap_v2.fill_report_reply(conv, proc, rep, intent.payload.get("review"), tail, auto_wait_attachment)
+        v2 = (lien_thong.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
+              or tu_phap_v2.fill_report_reply(conv, proc, rep, intent.payload.get("review"), tail,
+                                              auto_wait_attachment))
         if v2 is not None:
             _clear_documents_adjustment(conv)
             return v2
@@ -4475,8 +4489,12 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         r.chips = [_supplement_documents_chip()]
         if guided_step:
             r.chips.append(guided.attach_cta_chip())
-        r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
-                                         guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
+        if lien_thong.enabled(conv, proc_done):
+            r = lien_thong.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
+                                             split=conv.get("attach_mode") == "split")
+        else:
+            r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
+                                             guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
         # Không bắt công dân bấm thêm nút hoàn thành. state=done bật watcher; khi cổng báo
         # nộp thành công, event submitted sẽ hiển thị lời chốt rồi tự về màn bắt đầu.
         return r

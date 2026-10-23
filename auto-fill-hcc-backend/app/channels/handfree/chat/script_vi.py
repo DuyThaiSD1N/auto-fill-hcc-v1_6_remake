@@ -1744,12 +1744,141 @@ FLOW2_DOCS_RECEIVED_FILL = {
 }
 # Tờ khai đủ ô bắt buộc → bước kế tiếp là Xem trước (cổng chặn Xem trước khi còn ô bắt buộc trống).
 FLOW2_PREVIEW_READY = {
-    "md": ("✓ Tờ khai đã đủ các ô bắt buộc{optional_md}.\n\nCông dân rà lại rồi bấm **Xem trước tờ khai** để em mở bản "
-           "xem trước và xác nhận ạ."),
-    "tts": (" Tờ khai đã đủ các ô bắt buộc. Công dân rà lại rồi bấm Xem trước tờ khai để em mở bản xem trước và xác "
-            "nhận ạ."),
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc{optional_md}.\n\n{optional_hint_md}Công dân rà lại rồi bấm **Xem trước tờ "
+           "khai** để em mở bản xem trước và xác nhận ạ."),
+    "tts": (" Tờ khai đã đủ các ô bắt buộc{optional_tts}. {optional_hint_tts}Công dân rà lại rồi bấm Xem trước tờ khai "
+            "để em mở bản xem trước và xác nhận ạ."),
 }
 FLOW2_OPTIONAL_LEFT = ", còn **{optional} ô không bắt buộc** để trống"
+FLOW2_OPTIONAL_LEFT_TTS = ", còn {optional} ô không bắt buộc để trống"
+FLOW2_OPTIONAL_HINT = {
+    "md": "Công dân cần bổ sung thông tin còn thiếu thì bấm **Bổ sung các thông tin còn thiếu** để em hỏi từng ô. ",
+    "tts": "Công dân cần bổ sung thông tin còn thiếu thì bấm Bổ sung các thông tin còn thiếu để em hỏi từng ô. ",
+}
+# ── Cổng liên thông (form Angular, chat/lien_thong.py): 6 bước, mỗi bước có nút + lệnh nói "bước tiếp theo".
+# Chỉ bản tiếng Việt: luồng tắt ở chế độ Mông. ──
+LT_STEP_NAMES = {2: "Kê khai", 3: "Xem lại các tờ khai chi tiết", 4: "Đính kèm thành phần hồ sơ",
+                 5: "Lựa chọn hình thức nhận kết quả"}
+LT_AGENCY_CHIP = "▶ Sang bước Kê khai"
+LT_REVIEW_CHIP = "📄 Xem lại tờ khai ▶"
+LT_ATTACH_CHIP = "📎 Sang bước đính kèm ▶"
+LT_RESULT_CHIP = "📬 Chọn cách nhận kết quả ▶"
+LT_BACK_CHIP = "✏️ Quay lại sửa tờ khai"
+LT_RETRY_CHIP = "🔁 Thử chuyển bước lại"
+LT_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+LT_AGENCY_FILLING = {
+    "md": ("Em đang chọn **cơ quan thực hiện** theo nơi ở **{ward}, {province}**. Công dân rà lại rồi bấm "
+           "**Sang bước Kê khai** hoặc nói **“bước tiếp theo”** ạ."),
+    "tts": ("Em đang chọn cơ quan thực hiện cho công dân. Công dân rà lại rồi bấm Sang bước Kê khai, hoặc nói bước "
+            "tiếp theo ạ."),
+}
+LT_MOVING = {
+    "md": "Dạ em chuyển sang bước **{step}** ạ.",
+    "tts": "Dạ em chuyển sang bước {step} ạ.",
+}
+LT_MOVING_BACK = {
+    "md": "Dạ em quay lại bước **Kê khai** để công dân sửa tờ khai ạ.",
+    "tts": "Dạ em quay lại bước Kê khai để công dân sửa tờ khai ạ.",
+}
+# Đủ ô bắt buộc ở Kê khai (cùng khoá với FLOW2_PREVIEW_READY: field_review._ready dùng chung bộ tham số).
+LT_FILL_READY = {
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc{optional_md}.\n\n{optional_hint_md}Công dân rà lại rồi bấm **Xem lại tờ "
+           "khai** hoặc nói **“bước tiếp theo”** để sang bước xem lại các tờ khai chi tiết ạ."),
+    "tts": (" Tờ khai đã đủ các ô bắt buộc{optional_tts}. {optional_hint_tts}Công dân rà lại rồi bấm Xem lại tờ khai, "
+            "hoặc nói bước tiếp theo để sang bước xem lại các tờ khai chi tiết ạ."),
+}
+# Thủ tục liên thông chưa có vòng bổ sung ô (hoặc báo cáo điền không kèm số ô).
+LT_FILL_NEXT = {
+    "md": ("Công dân rà lại tờ khai, ô nào sai thì sửa thẳng trên trang, xong bấm **Xem lại tờ khai** hoặc nói "
+           "**“bước tiếp theo”** ạ."),
+    "tts": "Công dân rà lại tờ khai, xong bấm Xem lại tờ khai, hoặc nói bước tiếp theo ạ.",
+}
+LT_OPTIONAL_PHASE = {
+    "md": ("✓ Đã đủ các ô bắt buộc. Em hỏi tiếp **{optional} ô không bắt buộc**; công dân muốn đi tiếp luôn thì bấm "
+           "**Xem lại tờ khai** ạ."),
+    "tts": ("Dạ đã đủ các ô bắt buộc. Em hỏi tiếp các ô không bắt buộc, công dân muốn đi tiếp luôn thì bấm Xem lại tờ "
+            "khai ạ. "),
+}
+LT_PROCEED_STEP = "cổng chưa cho sang bước xem lại tờ khai"
+LT_BLOCKED = {
+    "md": "⚠️ Cổng chưa cho sang bước **{step}**{message}. Công dân xem lại trang rồi thử lại ạ.",
+    "tts": "Dạ cổng chưa cho sang bước {step}. Công dân xem lại trang rồi thử lại ạ.",
+}
+LT_BLOCKED_FORM = {
+    "md": ("⚠️ Cổng chưa cho sang bước xem lại{message}: tờ khai còn **{required} ô bắt buộc** trống (ô tô đỏ trên "
+           "trang).\n\nCông dân bấm **Bổ sung các thông tin còn thiếu** để em hỏi từng ô, hoặc tự điền rồi bấm **Xem "
+           "lại tờ khai** ạ."),
+    "tts": ("Dạ cổng chưa cho sang bước xem lại, tờ khai còn {required} ô bắt buộc trống. Công dân bấm Bổ sung các "
+            "thông tin còn thiếu để em hỏi từng ô, hoặc tự điền rồi bấm Xem lại tờ khai ạ."),
+}
+LT_REVIEW_STEP = {
+    "md": ("📄 Đây là bước **Xem lại các tờ khai chi tiết**: cổng đã tạo các tờ khai ở các thẻ phía trên trang (khai "
+           "sinh, thay đổi thông tin cư trú, BHYT…).\n\nCông dân bấm từng thẻ để rà lại; thấy sai thì bấm **Quay lại "
+           "sửa tờ khai**, đúng hết thì bấm **Sang bước đính kèm** hoặc nói **“bước tiếp theo”** ạ."),
+    "tts": ("Đây là bước xem lại các tờ khai chi tiết. Công dân bấm từng thẻ phía trên trang để rà lại, thấy sai thì "
+            "bấm Quay lại sửa tờ khai, đúng hết thì bấm Sang bước đính kèm, hoặc nói bước tiếp theo ạ."),
+}
+LT_BACK_TO_FORM = {
+    "md": ("✏️ Đã quay lại bước **Kê khai**. Công dân sửa xong thì bấm **Xem lại tờ khai** hoặc nói **“bước tiếp "
+           "theo”** ạ."),
+    "tts": "Đã quay lại bước Kê khai. Công dân sửa xong thì bấm Xem lại tờ khai, hoặc nói bước tiếp theo ạ.",
+}
+LT_ATTACH_NEXT = {
+    "md": ("Tiếp theo là **Lựa chọn hình thức nhận kết quả**, công dân bấm nút dưới hoặc nói **“bước tiếp "
+           "theo”** ạ."),
+    "tts": " Tiếp theo là bước lựa chọn hình thức nhận kết quả, công dân bấm nút bên dưới hoặc nói bước tiếp theo ạ.",
+}
+LT_RESULT_READING = {
+    "md": "📬 Đây là bước **Lựa chọn hình thức nhận kết quả**. Em đang đọc cách nhận của từng giấy tờ ạ…",
+    "tts": "Đây là bước lựa chọn hình thức nhận kết quả. Em đang đọc cách nhận của từng giấy tờ ạ.",
+}
+LT_RESULT_SUMMARY = {
+    "md": ("📬 **Cách nhận kết quả** đang chọn:\n\n{lines_md}\n\nMuốn đổi giấy nào thì bấm lựa chọn ở dòng của giấy "
+           "đó bên dưới ạ."),
+    "tts": "Cách nhận kết quả đang chọn: {lines_tts}. Muốn đổi giấy nào thì bấm lựa chọn ở dòng của giấy đó ạ.",
+}
+LT_RESULT_LINE = "- **{label}**: {value}{place}"
+LT_RESULT_PLACE = " — tại {place}"
+LT_RESULT_FIXED = " _(cổng đặt sẵn)_"
+LT_RESULT_EMPTY = "chưa chọn"
+LT_RESULT_CHANGED = {
+    "md": "✓ Đã đổi **{label}** sang **{value}**.",
+    "tts": "Dạ em đã đổi {label} sang {value}.",
+}
+LT_RESULT_FILL_HINT = {
+    "md": "\n\n✍️ Công dân tự điền thêm ở mục **{label}** trên trang: **{fields}** ạ.",
+    "tts": " Công dân tự điền thêm ở mục {label} trên trang các ô {fields} ạ.",
+}
+LT_RESULT_FAILED = {
+    "md": "⚠️ Em chưa đổi được **{label}** sang **{value}**, công dân chọn tay ở ô đó trên trang giúp em ạ.",
+    "tts": "Dạ em chưa đổi được {label}, công dân chọn tay ở ô đó trên trang giúp em ạ.",
+}
+LT_RESULT_UNREAD = {
+    "md": "⚠️ Em chưa đọc được các ô cách nhận kết quả trên trang, công dân chọn tay giúp em ạ.",
+    "tts": "Dạ em chưa đọc được các ô cách nhận kết quả, công dân chọn tay giúp em ạ.",
+}
+LT_SUBMIT_GUIDE = {
+    "md": ("Cuối cùng công dân tích ô **Tôi cam đoan…**, nhập **mã kiểm tra** (chữ trong ảnh) rồi bấm **Hoàn thành** "
+           "trên trang, hoặc bấm nút **Nộp hồ sơ** bên dưới để em bấm giúp ạ."),
+    "tts": (" Cuối cùng công dân tích ô Tôi cam đoan, nhập mã kiểm tra trong ảnh, rồi bấm Hoàn thành trên trang, hoặc "
+            "bấm nút Nộp hồ sơ để em bấm giúp ạ."),
+}
+LT_SUBMIT_MISSING = {
+    "md": "Công dân còn thiếu: **{missing}**. Làm xong rồi bấm **Nộp hồ sơ** lại ạ.",
+    "tts": "Công dân còn thiếu {missing}. Làm xong rồi bấm Nộp hồ sơ lại ạ.",
+}
+LT_MISSING_CAM_DOAN = "tích ô Tôi cam đoan"
+LT_MISSING_CAPTCHA = "nhập mã kiểm tra"
+LT_SUBMITTING = {
+    "md": "Dạ em bấm **Hoàn thành** để nộp hồ sơ ạ.",
+    "tts": "Dạ em bấm Hoàn thành để nộp hồ sơ ạ.",
+}
+LT_SUBMIT_FAILED = {
+    "md": ("⚠️ Hồ sơ **chưa nộp được**{message}.\n\nCông dân kiểm tra lại (mã kiểm tra hay bị sai, bấm biểu tượng "
+           "làm mới cạnh ảnh để lấy mã khác) rồi bấm **Nộp hồ sơ** lại ạ."),
+    "tts": ("Dạ hồ sơ chưa nộp được. Công dân kiểm tra lại mã kiểm tra, nếu cần bấm làm mới để lấy mã khác, rồi bấm "
+            "Nộp hồ sơ lại ạ."),
+}
 FLOW2_NEXT_RESULT_STEP = {
     "md": "Tiếp theo là **{result_step}**, công dân bấm nút dưới hoặc nói **“bước tiếp theo”** ạ.",
     "tts": " Tiếp theo là bước {result_step}, công dân bấm nút bên dưới hoặc nói bước tiếp theo ạ.",

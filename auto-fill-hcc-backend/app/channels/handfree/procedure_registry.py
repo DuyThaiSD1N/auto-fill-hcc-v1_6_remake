@@ -72,6 +72,17 @@ PROCEDURES: list[dict] = [
         # Chỉ điền khối khai sinh + 2 select "trường hợp" + giữ tick "Cùng địa bàn" (khối thường
         # trú tự mirror + khoá theo khối khai sinh). Ô "Cơ quan thực hiện" readonly tự suy — bỏ.
         "agencyFillPlan": agency_plans.LIEN_THONG_KHAI_SINH,
+        # Dẫn đủ 6 bước của cổng liên thông (chat/lien_thong.py), chỉ bật cho extension khai
+        # supportsLienThongFlow. resultGroups: các ô "hình thức nhận kết quả" ở bước 5, mỗi giấy tờ
+        # một ô; `place` = ô chữ "nơi nhận" đi kèm để đọc cho công dân nghe.
+        "lienThongFlow": {
+            "resultGroups": [
+                {"name": "DkksNkqHinhThuc", "label": "Giấy khai sinh", "place": "DkksNoiTra"},
+                {"name": "DkttNkqHinhThuc", "label": "Đăng ký thường trú"},
+                {"name": "BhytNkqHinhThuc", "label": "Thẻ BHYT", "place": "BhytNkqTaiCoQuan"},
+                {"name": "CapTheCCNkqHinhThuc", "label": "Thẻ căn cước", "place": "CapTheCCNkqTaiCoQuan"},
+            ],
+        },
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Căn cước công dân cha.\n"

@@ -107,6 +107,7 @@ async def test_du_o_bat_buoc_thi_xem_truoc_to_noi_bat():
     (trail,) = _trails(reply)
     assert trail.startswith("✓ Tờ khai đã đủ các ô bắt buộc.")
     assert "bấm **Xem trước tờ khai**" in trail
+    assert "Bổ sung các thông tin còn thiếu" not in trail
     assert _sends(reply) == ["__action:field_review_preview", *SMALL]
     assert _preview(reply)["cta"] is True
 
@@ -117,12 +118,15 @@ async def test_du_o_bat_buoc_con_o_khong_bat_buoc_thi_bo_sung_la_nut_phu():
                         {"filled": 27, "notFound": [], "review": {"filled": 34, "optional": 2, "required": 0}})
     (trail,) = _trails(reply)
     assert "còn **2 ô không bắt buộc** để trống" in trail
+    assert "Công dân cần bổ sung thông tin còn thiếu thì bấm **Bổ sung các thông tin còn thiếu**" in trail
+    assert "còn 2 ô không bắt buộc để trống" in reply.tts_text
+    assert "bấm Bổ sung các thông tin còn thiếu" in reply.tts_text
     assert _sends(reply) == ["__action:field_review_preview", "__action:field_review_start", *SMALL]
     assert reply.chips[1]["solid"] is False
 
 
 async def test_thu_tuc_chua_co_vong_bo_sung_o_van_co_khung_moi_buoc_tiep_nhu_cu():
-    conv = _conv("filling", key="dang-ky-giam-ho")
+    conv = _conv("filling", key="dang-ky-cham-dut-giam-ho")
     reply = await _turn(conv, "action", "fill_report", {"filled": 12, "notFound": [], "review": None})
     assert reply.display_md.startswith("🟩 Em đã điền **12 ô** vào tờ khai.")
     assert "🟨 **1 ô** em điền mặc định" in reply.display_md
@@ -243,6 +247,31 @@ async def test_dang_ky_lai_khai_tu_co_vong_bo_sung_o_trong():
     assert fill.actions[1]["fieldReview"]["required"] == ["loaiDangKy"]
     reply = await _turn(conv, "action", "fill_report", {"filled": 27, "notFound": [], "review": MISSING})
     assert _sends(reply)[0] == "__action:field_review_start"
+
+
+@pytest.mark.parametrize("key, first", [
+    ("dang-ky-giam-ho", "hotenA"), ("khai-sinh-da-co-ho-so", "nycNoiCuTru"), ("dang-ky-nhan-cha-me-con", "LoaiDangKy"),
+    ("yeu-cau-tro-giup-phap-ly", "NguoiDuocTGPL_HoVaTen"),
+])
+async def test_giam_ho_khai_sinh_co_ho_so_nhan_cha_me_con_tro_giup_phap_ly_co_vong_bo_sung_o_trong(key, first):
+    conv = _conv("filling", key=key)
+    fill = flow._fill_fields_reply(conv)
+    assert fill.actions[1]["fieldReview"]["required"][0] == first
+    reply = await _turn(conv, "action", "fill_report", {"filled": 27, "notFound": [], "review": MISSING})
+    assert _sends(reply)[0] == "__action:field_review_start"
+
+
+def test_cap_ban_sao_noi_kem_so_ban_o_giam_ho_va_nhan_cha_me_con_khai_sinh_co_ho_so_chi_co_o_so_luong():
+    from app.channels.handfree.chat.field_review import registry
+
+    for key in ("dang-ky-giam-ho", "dang-ky-nhan-cha-me-con"):
+        assert registry.get(key)["copyQuantity"] == ("CapBanSao", "ThongTin")
+    # Tờ khai khai sinh cho người đã có hồ sơ chỉ có ô nhập số bản "(27) Đề nghị cấp bản sao" ngay sau khối người cha.
+    assert "copyQuantity" not in registry.get("khai-sinh-da-co-ho-so")
+    assert registry.get("khai-sinh-da-co-ho-so")["noSection"] == ("SoLuong",)
+    # Đơn trợ giúp pháp lý không có ô đề nghị cấp bản sao; phần đầu/cuối đơn hỏi không kèm tên mục III.
+    assert "copyQuantity" not in registry.get("yeu-cau-tro-giup-phap-ly")
+    assert {"KinhGui", "ToChucTGPL_ToChucTiepNhan", "KyTen"} <= set(registry.get("yeu-cau-tro-giup-phap-ly")["noSection"])
 
 
 # ── Giữa vòng hỏi đòi xem trước ──
