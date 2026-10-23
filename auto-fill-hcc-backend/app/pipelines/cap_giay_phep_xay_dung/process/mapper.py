@@ -10,7 +10,7 @@ from typing import Any
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
-from app.pipelines.cap_giay_phep_xay_dung.process.schema import UI_COMP_BY_NAME
+from app.pipelines.cap_giay_phep_xay_dung.process.schema import GRID_COMP_BY_COLUMN, UI_COMP_BY_NAME
 
 # Ô person mà extension CHỊU TRÁCH NHIỆM điền từ CCCD/đơn của người nộp. Nếu không có dữ liệu để điền
 # → phát comp "dom-expect" để FE TÔ ĐỎ (không điền), dù form không đánh dấu ô đó bắt buộc.
@@ -448,6 +448,38 @@ def _construction_subtype_value(values: dict) -> str | None:
     return _text(values.get("CongTrinh_Loai"))
 
 
+# Loại hình công trình (ô data[loaiCongTrinh] của tờ khai GPXD cấp mới) → nhãn lựa chọn NGUYÊN VĂN của cổng (Choices.js
+# lọc theo nhãn; "công trinh" thiếu dấu là chữ của cổng).
+_BRANCH_LABELS = {
+    "nha_o_rieng_le": "Nhà ở riêng lẻ",
+    "khong_theo_tuyen": "Công trình không theo tuyến, tín ngưỡng, tôn giáo",
+    "theo_tuyen": "Công trình theo tuyến trong đô thị",
+    "tuong_dai": "Công trình tượng đài, tranh hoành tráng",
+    "giai_doan_khong_theo_tuyen": "Theo giai đoạn cho công trình không theo tuyến",
+    "giai_doan_theo_tuyen": "Theo giai đoạn cho công trinh theo tuyến trong đô thị",
+    "du_an": "Cấp cho dự án",
+}
+_CONSTRUCTION_BRANCHES = set(_BRANCH_LABELS)
+
+
+def _route_areas(values: dict) -> list[dict[str, str | None]]:
+    """Các đoạn/khu vực của công trình theo tuyến (thứ tự như đơn); dòng không có tên khu vực thì bỏ."""
+    raw = values.get("CongTrinh_KhuVuc")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            raw = []
+    rows = []
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict) or not _text(item.get("khuVuc")):
+            continue
+        rows.append({"khuVuc": _text(item.get("khuVuc")), "chieuDai": _number(item.get("chieuDai")),
+                     "cotXayDung": _number(item.get("cotXayDung")),
+                     "chieuCaoTinhKhong": _number(item.get("chieuCaoTinhKhong")), "doSau": _number(item.get("doSau"))})
+    return rows
+
+
 def _construction_branch(values: dict, options: dict | None = None) -> str | None:
     """Xác định panel Form.io từ bằng chứng cụ thể, không dùng default cứng.
 
@@ -464,10 +496,19 @@ def _construction_branch(values: dict, options: dict | None = None) -> str | Non
         return "khong_theo_tuyen"
 
     explicit = _fold(values.get("CongTrinh_Nhanh"))
-    if explicit in {"nha_o_rieng_le", "nha o rieng le", "nha o"}:
-        return "nha_o_rieng_le"
-    if explicit in {"khong_theo_tuyen", "khong theo tuyen", "khong theo tuyen tin nguong ton giao"}:
-        return "khong_theo_tuyen"
+    if explicit in {"nha o rieng le", "nha o"}:
+        explicit = "nha_o_rieng_le"
+    if explicit in {"khong theo tuyen", "khong theo tuyen tin nguong ton giao"}:
+        explicit = "khong_theo_tuyen"
+    # Quy trình "công trình" của GPXD cấp mới: tờ khai có ô Loại hình công trình 7 lựa chọn → theo đúng mục đơn kê
+    # khai; LLM không xác định được thì giữ nhánh không theo tuyến như trước khi tờ khai có đủ loại hình.
+    # constructionBranches: loại hình tờ khai của thủ tục thật sự có (sửa chữa, cải tạo chỉ có 4) — loại không có trên
+    # tờ khai thì không có ô để điền.
+    if forced in {"cong_trinh", "cong trinh"}:
+        allowed = set((options or {}).get("constructionBranches") or _CONSTRUCTION_BRANCHES)
+        return explicit if explicit in allowed else "khong_theo_tuyen"
+    if explicit in _CONSTRUCTION_BRANCHES:
+        return explicit
 
     kind = _fold(values.get("CongTrinh_Loai"))
     if "nha o rieng le" in kind or "nha o" in kind:
@@ -492,10 +533,16 @@ _DESIGN_LEAD_UI_RE = re.compile(
 )
 
 
+_GRID_CELL_RE = re.compile(r"^data(?:\[[A-Za-z0-9]+\]\[\d+\])+\[([A-Za-z0-9]+)\]$")
+
+
 def _ui_comp(name: str) -> str | None:
-    """Nhận diện field DataGrid động vì số dòng chủ trì không cố định."""
+    """Nhận diện field DataGrid động vì số dòng chủ trì / khu vực tuyến không cố định."""
     if _DESIGN_LEAD_UI_RE.fullmatch(name):
         return "dom-input"
+    cell = _GRID_CELL_RE.fullmatch(name)
+    if cell and cell.group(1) in GRID_COMP_BY_COLUMN:
+        return GRID_COMP_BY_COLUMN[cell.group(1)]
     return UI_COMP_BY_NAME.get(name)
 
 
@@ -539,6 +586,76 @@ def _design_leads(values: dict) -> list[dict[str, str | None]]:
             "chungChi": legacy_certificate,
         }]
     return []
+
+
+def _add_other_branch(add, branch: str, values: dict) -> None:
+    """Khối ô của 5 loại hình còn lại (theo tuyến, tượng đài, theo giai đoạn ×2, dự án). Bảng Giai đoạn / Danh sách
+    công trình: điền dòng đầu theo thông số chung của đơn, dòng khác để vòng bổ sung ô hỏi."""
+    name = _text(values.get("CongTrinh_Ten"))
+    subtype = _construction_subtype_value(values)
+    cap = _cap(values.get("CongTrinh_Cap"))
+    area = _number(values.get("CongTrinh_DienTichXayDung"))
+    cot = _number(values.get("CongTrinh_CotXayDung"))
+    lui = _number(values.get("CongTrinh_KhoangLui"))
+    length = _number(values.get("CongTrinh_TongChieuDai"))
+    areas = _route_areas(values)
+
+    def add_areas(prefix: str, cols: tuple[str, str, str, str, str]) -> None:
+        for index, row in enumerate(areas):
+            for col, key in zip(cols, ("khuVuc", "chieuDai", "cotXayDung", "chieuCaoTinhKhong", "doSau")):
+                add(f"{prefix}[{index}][{col}]", row[key])
+
+    if branch == "theo_tuyen":
+        add("data[tenCongTrinhTheoTuyen]", name)
+        add("data[loaiCongTrinhTheoTuyen]", subtype)
+        add("data[capCongTrinhTheoTuyen]", cap)
+        add("data[tongChieuDaiCongTrinhTheoTuyen]", length)
+        add_areas("data[khuVucTheoTuyen]", ("khuVucTheoTuyen1", "chieuDaiTheoTuyen", "cotXayDungTheoTuyen",
+                                            "chieuCaoTinhKhongTheoTuyen", "doSauTheoTuyen"))
+    elif branch == "tuong_dai":
+        add("data[tenCongTrinhTuongDai]", name)
+        add("data[loaiCongTrinhTuongDai]", subtype)
+        add("data[dienTichXayDungTuongDai]", area)
+        add("data[khoangLuiTuongDai]", lui)
+        add("data[capCongTrinhTuongDai]", cap)
+        add("data[cotXayDungTuongDai]", cot)
+        add("data[chieuCaoCongTrinhTuongDai]", _number(values.get("CongTrinh_ChieuCao")))
+    elif branch == "giai_doan_khong_theo_tuyen":
+        add("data[tenCongTrinhGiaiDoanKhongTheoTuyen]", name)
+        row = "data[giaiDoanKhongTheoTuyen][0]"
+        add(f"{row}[loaiCongTrinhGiaiDoanKhongTheoTuyen]", subtype)
+        add(f"{row}[dienTichXayDungGiaiDoanKhongTheoTuyen]", area)
+        add(f"{row}[capCongTrinhGiaiDoanKhongTheoTuyen]", cap)
+        add(f"{row}[cotXayDungGiaiDoanKhongTheoTuyen]", cot)
+        add(f"{row}[khoangLuiGiaiDoanKhongTheoTuyen]", lui)
+        add(f"{row}[tongDienTichSanGiaiDoanKhongTheoTuyen]", _number(values.get("CongTrinh_TongDienTichSan")))
+        add(f"{row}[chiTietDienTichSanGiaiDoanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
+        add(f"{row}[chieuCaoCongTrinhGiaiDoanKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
+        add(f"{row}[chiTietChieuCaoCongTrinhGiaiDoanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietChieuCao")))
+        add(f"{row}[soTangCongTrinhGiaiDoanKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
+        add(f"{row}[chiTietSoTangGiaiDoanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    elif branch == "giai_doan_theo_tuyen":
+        add("data[tenCongTrinhGiaiDoanTheoTuyen]", name)
+        row = "data[giaiDoanTheoTuyen][0]"
+        add(f"{row}[loaiCongTrinhGiaiDoanTheoTuyen]", subtype)
+        add(f"{row}[capCongTrinhGiaiDoanTheoTuyen]", cap)
+        add(f"{row}[tongChieuDaiCongTrinhGiaiDoanTheoTuyen]", length)
+        add_areas(f"{row}[khuVucTheoTuyen]", ("khuVucGiaiDoanTheoTuyen", "chieuDaiGiaiDoanTheoTuyen",
+                                              "cotXayDungGiaiDoanTheoTuyen", "chieuCaoTinhKhongGiaiDoanTheoTuyen",
+                                              "doSauGiaiDoanTheoTuyen"))
+    elif branch == "du_an":
+        add("data[tenDuAn]", _text(values.get("DuAn_Ten")))
+        add("data[maSoThongTinDuAn]", _text(values.get("DuAn_MaSo")))
+        add("data[soQuyetDinhPheDuyet]", _text(values.get("DuAn_SoQuyetDinh")))
+        add("data[coQuanPheDuyet]", _text(values.get("DuAn_CoQuanPheDuyet")))
+        add("data[ngayPheDuyet]", _date(values.get("DuAn_NgayPheDuyet")))
+        row = "data[danhSachCongTrinh][0]"
+        add(f"{row}[tenCongTrinhDuAn]", name)
+        add(f"{row}[loaiCongTrinhDuAn]", subtype)
+        add(f"{row}[cotXayDungDuAn]", cot)
+        add(f"{row}[capCongTrinhDuAn]", cap)
+        add(f"{row}[khoangLuiDuAn]", lui)
+        add(f"{row}[thongTinChuYeuDuAn]", _text(values.get("CongTrinh_ThongTinChuYeu")))
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -781,6 +898,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietChieuCao")))
         add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
         add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    elif construction_branch in _BRANCH_LABELS:
+        add("data[loaiCongTrinh]", _BRANCH_LABELS[construction_branch])
+        _add_other_branch(add, construction_branch, values)
     else:
         warnings.append("Chưa xác định được nhánh loại hình công trình; không tự chọn mặc định.")
 

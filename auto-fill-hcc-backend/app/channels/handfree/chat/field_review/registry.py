@@ -1,6 +1,7 @@
 """Tự khám phá cấu hình bổ sung ô theo thủ tục.
 
-Mỗi ``app/pipelines/<tên>/handfree/field_review.py`` khai ``PROCEDURE_KEYS``, ``REQUIRED`` (tên ô bắt buộc trên
+Mỗi ``app/pipelines/<tên>/handfree/field_review.py`` (thủ tục dùng chung pipeline mà tờ khai khác tên ô thì thêm
+``field_review_<biến thể>.py`` cùng thư mục) khai ``PROCEDURE_KEYS``, ``REQUIRED`` (tên ô bắt buộc trên
 tờ khai), tuỳ chọn ``NO_SECTION`` (ô không thuộc phần nào — hỏi không kèm tên phần), ``NO_ASK`` (ô không hỏi,
 không tô, không đếm), ``ZERO_IS_EMPTY`` (ô cổng để sẵn 0: còn 0 mà công dân chưa trả lời thì coi là trống),
 ``TEXT_DATES`` (ô chữ nhận ngày dd/mm/yyyy | mm/yyyy | yyyy: hỏi như ô ngày, ghi dạng chữ) và ``LOOKUP`` (ô kích
@@ -21,8 +22,8 @@ def _names(module_name: str, value, attr: str) -> tuple[str, ...]:
 def _discover() -> dict[str, dict]:
     configs: dict[str, dict] = {}
     pipelines_dir = Path(__file__).resolve().parents[4] / "pipelines"
-    for config_path in sorted(pipelines_dir.glob("*/handfree/field_review.py")):
-        module_name = f"app.pipelines.{config_path.parent.parent.name}.handfree.field_review"
+    for config_path in sorted(pipelines_dir.glob("*/handfree/field_review*.py")):
+        module_name = f"app.pipelines.{config_path.parent.parent.name}.handfree.{config_path.stem}"
         module = import_module(module_name)
         procedure_keys = getattr(module, "PROCEDURE_KEYS", None)
         if not procedure_keys:

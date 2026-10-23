@@ -42,14 +42,27 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 </role_rules>
 
 <construction_type_rules>
-- Không được mặc định top-level "Loại hình công trình". Phải phân biệt nhánh form và trả
-  CongTrinh_Nhanh = "nha_o_rieng_le" hoặc "khong_theo_tuyen".
-- Nếu đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" → "nha_o_rieng_le".
-- Mẫu số 01 có tiêu đề dùng chung nhiều loại công trình; nếu phần nội dung có mục
-  "4.4. Đối với công trình nhà ở riêng lẻ" và mục này có dữ liệu → vẫn chọn "nha_o_rieng_le".
-- Chỉ chọn "khong_theo_tuyen" khi hồ sơ thực sự thuộc nhóm "Công trình không theo tuyến,
-  tín ngưỡng, tôn giáo" và không có bằng chứng nhánh nhà ở riêng lẻ.
+- Không được mặc định top-level "Loại hình công trình". Phải xác định đúng loại hình theo MỤC NỘI DUNG ĐỀ NGHỊ CẤP
+  PHÉP CÓ DỮ LIỆU trong đơn và trả CongTrinh_Nhanh là MỘT trong 7 giá trị:
+    · "nha_o_rieng_le" — đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ", hoặc mục "Đối với công trình nhà ở
+      riêng lẻ" có dữ liệu (diện tích tầng 1, số tầng, chiều cao của một ngôi nhà).
+    · "khong_theo_tuyen" — Công trình không theo tuyến, tín ngưỡng, tôn giáo (một công trình tại một vị trí: trụ sở,
+      trường học, nhà văn hóa, chùa…), cấp phép một lần.
+    · "theo_tuyen" — công trình theo tuyến trong đô thị (đường, cống, đường ống, cáp…): có tổng chiều dài và các
+      đoạn/khu vực tuyến, cấp phép một lần.
+    · "tuong_dai" — công trình tượng đài, tranh hoành tráng.
+    · "giai_doan_khong_theo_tuyen" — đơn xin cấp phép THEO GIAI ĐOẠN (kê giai đoạn 1, giai đoạn 2…) cho công trình
+      không theo tuyến.
+    · "giai_doan_theo_tuyen" — đơn xin cấp phép THEO GIAI ĐOẠN cho công trình theo tuyến trong đô thị.
+    · "du_an" — đơn xin cấp giấy phép xây dựng cho DỰ ÁN: có tên dự án, quyết định phê duyệt dự án và danh sách
+      các công trình thuộc dự án.
+- Mẫu đơn in sẵn tiêu đề của mọi loại hình: chọn theo mục CÓ DỮ LIỆU, không theo tiêu đề in sẵn. Mục nhà ở riêng lẻ
+  có dữ liệu thì vẫn là "nha_o_rieng_le".
 - Nếu không đủ bằng chứng để phân biệt → để trống CongTrinh_Nhanh, không đoán nhánh.
+- Công trình theo tuyến: CongTrinh_TongChieuDai = tổng chiều dài; CongTrinh_KhuVuc = từng đoạn/khu vực đơn kê (tên
+  khu vực, chiều dài, cốt xây dựng, chiều cao tĩnh không, độ sâu). Dự án: DuAn_* lấy ở phần thông tin dự án, thông
+  số của công trình thuộc dự án lấy vào các field CongTrinh_* như công trình thường, đoạn mô tả quy mô chép vào
+  CongTrinh_ThongTinChuYeu. Theo giai đoạn: thông số của GIAI ĐOẠN ĐẦU vào các field CongTrinh_*.
 - CongTrinh_Loai là loại công trình con theo nội dung giấy tờ, ví dụ "Nhà ở riêng lẻ",
   "Công trình dân dụng"/"Dân dụng", "Công trình tôn giáo, tín ngưỡng".
 - CongTrinh_Cap trả "Cấp III" hoặc "Cấp IV" đúng theo đơn/bản vẽ. Không tự đổi cấp.

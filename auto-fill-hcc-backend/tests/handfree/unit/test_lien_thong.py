@@ -320,7 +320,7 @@ async def test_extension_cu_khong_co_co_thi_giu_luong_cu():
 
 
 def test_the_cach_nhan_noi_duoc_tung_lua_chon_kem_ten_giay():
-    card = lien_thong._result_card(lien_thong._rows(_proc(), GROUPS))
+    card = lien_thong.result_card(lien_thong.result_rows(lien_thong._result_groups(_proc()), GROUPS))
     items = flow._card_voice_items(card)
     assert {"label": "Thẻ BHYT: Dịch vụ bưu chính công ích",
             "send": "__action:lt_result_pick:" + json.dumps({"name": "BhytNkqHinhThuc",

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.channels.handfree.chat import consent as consent_log
 from app.channels.handfree.chat import field_review
+from app.channels.handfree.chat import bxd
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import script_mong as mong
@@ -906,7 +907,7 @@ _VOICE_BLOCKED_SENDS = {
 # Nộp hồ sơ không rút lại được: chọn bằng lời thì hỏi xác nhận một lần (tạp âm / nói nhầm không nộp luôn). Nút xác
 # nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
 # nhận chưa có bản dịch).
-_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND}
+_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
@@ -946,6 +947,16 @@ def _card_voice_items(card: dict) -> list[dict]:
         return [{"label": str(o.get("label") or ""), "desc": str(o.get("desc") or ""),
                  "send": str(o.get("send") or "")}
                 for o in card.get("options") or [] if isinstance(o, dict) and o.get("send")]
+    if kind == "mae_dialog_choice":
+        # Hộp thoại "Chọn trường hợp giải quyết": đang hỏi đúng MỘT ô thì nói TÊN lựa chọn ("nhà ở riêng lẻ") là chọn
+        # luôn như bấm thẻ + Xác nhận. Hỏi hai ô cùng lúc thì vẫn chọn trên thẻ.
+        groups = [g for g in card.get("groups") or [] if isinstance(g, dict) and g.get("options")]
+        if len(groups) != 1:
+            return []
+        labels = [str(o.get("label") or "") for o in groups[0]["options"] if isinstance(o, dict)]
+        return [{"label": short, "desc": full,
+                 "send": "__action:set_mae_dialog:" + json.dumps({groups[0]["key"]: index})}
+                for index, (short, full) in enumerate(zip(_mae_dialog_short_labels(labels), labels))]
     if kind == "lt_result_groups":
         # Thẻ cách nhận kết quả liên thông: mỗi lựa chọn nói được kèm tên giấy ("thẻ BHYT qua bưu điện").
         return [{"label": f"{row.get('label') or ''}: {o.get('label') or ''}", "send": str(o.get("send") or "")}
@@ -1110,6 +1121,9 @@ async def _handle_turn_inner(
     lien_thong_reply = lien_thong.handle(conv, current_proc, intent)
     if lien_thong_reply is not None:
         return lien_thong_reply
+    bxd_reply = bxd.handle(conv, current_proc, intent)
+    if bxd_reply is not None:
+        return bxd_reply
     if intent.kind == "event" and intent.value == "page_status":
         principal = intent.payload.get("principal") or {}
         if principal:
@@ -2085,20 +2099,36 @@ def _mae_dialog_card(conv: dict) -> dict:
     return {"kind": "mae_dialog_choice", "groups": groups, "submitLabel": "Xác nhận"}
 
 
+_MAE_SHORT_MAX_WORDS = 12
+
+
+def _mae_dialog_short_labels(labels: list[str]) -> list[str]:
+    """Tên gọn của từng lựa chọn để nói / liệt kê (thẻ vẫn hiện nguyên văn): bỏ phần trong ngoặc (thời gian, danh
+    sách loại công trình…), phần mở đầu và phần đuôi giống hệt nhau của mọi lựa chọn ("Cấp giấy phép xây dựng mới đối
+    với" ở đầu; "- Cấp điều chỉnh giấy phép xây dựng đối với công trình cấp III, cấp IV" ở đuôi)."""
+    bare = [re.sub(r"\s+", " ", re.sub(r"\([^)]*\)", " ", label)).strip(" ,.;-–") for label in labels]
+    words = [b.split() for b in bare]
+    common = tail = 0
+    if len(words) > 1:
+        while all(len(w) > common + 1 and w[common].lower() == words[0][common].lower() for w in words):
+            common += 1
+        while all(len(w) > common + tail + 1 and w[-1 - tail].lower() == words[0][-1 - tail].lower() for w in words):
+            tail += 1
+    short = [" ".join(w[common:len(w) - tail][:_MAE_SHORT_MAX_WORDS]).strip(" ,.;-–") for w in words]
+    return [s or b or label for s, b, label in zip(short, bare, labels)]
+
+
 def _mae_dialog_lists(conv: dict) -> tuple[str, str]:
+    """Một dòng ngắn mỗi ô: tên gọn các lựa chọn; nguyên văn dài (kèm thời gian) nằm trên thẻ bên dưới."""
     options = conv.get("mae_dialog_options") or {}
-    md_blocks, tts_parts = [], []
+    md_lines, tts_parts = [], []
     for key, title, ask in _MAE_DIALOG_GROUPS:
         if key not in _mae_dialog_pending(options):
             continue
-        lines, spoken = [f"**{title}:**"], []
-        for index, label in enumerate(options[key]["options"], start=1):
-            duration = _mae_dialog_duration(label) if key == "process" else ""
-            lines.append(f"{index}. {label}" + (f" — *{duration}*" if duration else ""))
-            spoken.append(f"{index}, {label}")
-        md_blocks.append("\n".join(lines))
-        tts_parts.append(f"{ask} có {len(spoken)} lựa chọn: " + "; ".join(spoken))
-    return "\n\n".join(md_blocks), ". ".join(tts_parts)
+        short = _mae_dialog_short_labels(options[key]["options"])
+        md_lines.append(f"**{title}:** " + " · ".join(f"**{label}**" for label in short))
+        tts_parts.append(f"{ask} có {len(short)} lựa chọn: " + ", hoặc ".join(short))
+    return "\n\n".join(md_lines), ". ".join(tts_parts)
 
 
 def _to_choose_mae_dialog(conv: dict) -> Reply:
@@ -2117,13 +2147,16 @@ def _mae_dialog_fill_reply(conv: dict) -> Reply:
     """Lệnh FE chọn ĐÚNG nhãn đã chốt ở hai ô rồi bấm Đồng ý."""
     agency = _mae_dialog_label(conv, "agency")
     process = _mae_dialog_label(conv, "process")
+    labels = ((conv.get("mae_dialog_options") or {}).get("process") or {}).get("options") or []
+    # Câu nói tên gọn của trường hợp (nhãn cổng rất dài); FE vẫn chọn đúng NHÃN NGUYÊN VĂN (processExact).
+    process_short = dict(zip(labels, _mae_dialog_short_labels(labels))).get(process, process)
     parts_md, parts_tts = [], []
     if agency:
         parts_md.append(f"nơi xử lý **{agency}**")
         parts_tts.append(f"nơi xử lý {agency}")
     if process:
-        parts_md.append(f"trường hợp **{process}**")
-        parts_tts.append(f"trường hợp {process}")
+        parts_md.append(f"trường hợp **{process_short}**")
+        parts_tts.append(f"trường hợp {process_short}")
     r = Reply(*_fmt(vi.MAE_DIALOG_AUTOFILL_GUIDE,
                     choice_md=", ".join(parts_md) or "lựa chọn cổng đã điền sẵn",
                     choice_tts=", ".join(parts_tts) or "lựa chọn cổng đã điền sẵn"))
@@ -2474,12 +2507,8 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             if selected:
                 action["executionSubject"] = selected
         # Thủ tục cấp Sở: modal còn ô Cấp thực hiện / Thủ tục / Cơ quan thực hiện phải chọn trước.
-        # infoModalFieldsByProvince: tỉnh có cổng xếp khác (vd Bắc Ninh "Đơn vị khác") đè cấu hình chung.
-        slug = str(loc.get("province_slug") or _account_province_slug(conv))
-        info_fields = (proc.get("infoModalFieldsByProvince") or {}).get(slug) \
-            or proc.get("infoModalFields")
-        if info_fields:
-            action["infoFields"] = info_fields
+        if proc.get("infoModalFields"):
+            action["infoFields"] = proc["infoModalFields"]
         r.actions = [action]
         return r
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):
@@ -2522,6 +2551,10 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             dialog_reply = _mae_dialog_on_page(conv, ctx)
             if dialog_reply is not None:
                 return dialog_reply
+            if "mae_agency_fill" in (conv.get("milestones") or []):
+                # Đã gửi lệnh chọn + bấm Đồng ý: lúc FE đang mở ô chọn, page_status không đọc được lựa chọn của hộp
+                # thoại → chờ hộp thoại đóng, không rơi xuống hỏi lại trường hợp khai sẵn (FE chọn lần hai đè lần một).
+                return Reply()
         if _variant_options(proc) and not conv.get("procedure_variant"):
             return _to_choose_variant(conv)
         if _say_once(conv, "mae_agency_fill"):
@@ -3255,6 +3288,24 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
     return r
 
 
+_SKIPPED_NOTE_ITEMS = 4
+_SKIPPED_NOTE_ITEM_CHARS = 240
+
+
+def attach_skipped_note(conv: dict) -> str:
+    """Lý do planner bỏ tệp / dòng còn thiếu tệp: mỗi ý một dòng (ATTACH_PLAN_SKIPPED_NOTE thêm ⚠️ đầu dòng), bỏ ý
+    trùng, ý quá dài thì cắt ở ranh giới từ — cắt cả chuỗi theo số ký tự từng làm câu đứt giữa chữ."""
+    items: list[str] = []
+    for raw in conv.get("attach_errors") or []:
+        text = " ".join(str(raw or "").split())
+        if not text or text in items:
+            continue
+        if len(text) > _SKIPPED_NOTE_ITEM_CHARS:
+            text = text[:_SKIPPED_NOTE_ITEM_CHARS].rsplit(" ", 1)[0].rstrip(",;:—-") + "…"
+        items.append(text)
+    return "\n\n⚠️ ".join(items[:_SKIPPED_NOTE_ITEMS])
+
+
 def _fill_fields_reply(conv: dict) -> Reply:
     fields = conv.get("fields") or []
     conv["fields_dispatched"] = True  # lượt đồng bộ sau khi nối lại không phát lệnh điền lần hai
@@ -3437,9 +3488,10 @@ def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> I
     """
     from app.channels.handfree.chat.intents import asks_next_step, asks_submit
 
-    lien_thong_intent = lien_thong.voice_intent(conv, message, page_context)
-    if lien_thong_intent is not None:
-        return lien_thong_intent
+    family_intent = (lien_thong.voice_intent(conv, message, page_context)
+                     or bxd.voice_intent(conv, message, page_context))
+    if family_intent is not None:
+        return family_intent
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if not proc.get("wizard") or not guided.result_flow_enabled(conv, proc):
         return None
@@ -4048,6 +4100,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
         )
         v2 = (lien_thong.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
+              or bxd.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
               or tu_phap_v2.fill_report_reply(conv, proc, rep, intent.payload.get("review"), tail,
                                               auto_wait_attachment))
         if v2 is not None:
@@ -4361,7 +4414,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             template = vi.ATTACH_PLAN_READY
         # Planner ghi lý do bỏ tệp vào attach_errors; nói TRƯỚC khi đính để cán bộ không phải
         # đoán vì sao thiếu tệp (trước đây lý do này không bao giờ ra tới màn hình).
-        skipped_note = "; ".join(str(e) for e in (conv.get("attach_errors") or []) if e)[:300]
+        skipped_note = attach_skipped_note(conv)
         r = Reply(*_fmt(
             template, count=dossier_count, plan_list=plan_list,
             skipped_note=skipped_note,
@@ -4507,6 +4560,9 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         if lien_thong.enabled(conv, proc_done):
             r = lien_thong.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              split=conv.get("attach_mode") == "split")
+        elif bxd.enabled(conv, proc_done):
+            r = bxd.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
+                                      split=conv.get("attach_mode") == "split")
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")

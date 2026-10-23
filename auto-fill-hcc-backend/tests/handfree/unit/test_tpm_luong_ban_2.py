@@ -92,8 +92,8 @@ def test_thieu_co_hoac_tieng_mong_thi_giu_luong_cu():
     assert not field_review.flow_v2(_conv("done", lang="hmong"), proc)
     # Tư pháp form cũ có vòng bổ sung ô (kết hôn) cũng vào luồng bản 2; thủ tục chưa có vòng bổ sung ô thì không.
     assert field_review.flow_v2(_conv("done", procedure_key="ket-hon"), flow.get_procedure("ket-hon"))
-    assert not field_review.flow_v2(_conv("done", procedure_key="dang-ky-cham-dut-giam-ho"),
-                                    flow.get_procedure("dang-ky-cham-dut-giam-ho"))
+    assert not field_review.flow_v2(_conv("done", procedure_key="xac-nhan-thong-tin-ho-tich"),
+                                    flow.get_procedure("xac-nhan-thong-tin-ho-tich"))
 
 
 # ── Khung 1 + thẻ tiến trình ──

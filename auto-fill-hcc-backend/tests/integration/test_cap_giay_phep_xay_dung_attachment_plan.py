@@ -280,18 +280,17 @@ def test_cau_truc_bang_29_dong_va_slot_index_khop_snapshot_cong():
         assert _ROW_KINDS[expected[2] - 1].startswith("ban_ve"), nhanh
 
 
-def test_tep_quet_gop_uu_tien_don_va_canh_bao_dong_con_lai_trong():
-    """Chốt user 2026-09-14: tệp gộp nhiều giấy tờ mà CÓ TỜ KHAI/ĐƠN thì ưu tiên Đơn. Hệ quả là dòng
-    đất/thiết kế có thể trống dù bắt buộc → phải cảnh báo, không im lặng nộp thiếu."""
+def test_chi_co_don_thi_dinh_don_va_khong_canh_bao_dong_trong():
+    """Tệp gộp nhiều giấy tờ mà CÓ TỜ KHAI/ĐƠN thì ưu tiên Đơn. Dòng đất/thiết kế trống không phải lỗi: hồ sơ chỉ
+    có Đơn vẫn hợp lệ, dòng trống được bỏ tích nên không có cảnh báo nào."""
     files = [{"name": "don-kem-so-do.pdf", "type": "application/pdf"}]
     llm = {0: {"type": "building_permit_application", "title": "Đơn đề nghị cấp GPXD"}}
 
     items, warnings, _ = planner.build_plan_items(files, None, llm, "nha_o_rieng_le")
 
     assert [item["componentIndex"] for item in items] == [12]
-    assert any("STT 13" in w for w in warnings)
-    assert any("STT 16" in w for w in warnings)
-    assert all("tách tệp" in w for w in warnings)
+    assert items[0]["untickUnplannedRows"] is True
+    assert warnings == []
 
 
 def test_du_ca_ba_nhom_thi_khong_canh_bao_thua():

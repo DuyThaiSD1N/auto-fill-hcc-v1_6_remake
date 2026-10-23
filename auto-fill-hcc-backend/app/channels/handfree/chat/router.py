@@ -199,6 +199,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cổng Bắc Ninh: biết tick ô bổ sung + chọn loại đối tượng rồi điền khối "Thông tin trong trường
         # hợp được ủy quyền" (doiTuongKhac*). Client cũ không khai → BE không chạy lượt người ủy quyền.
         "supportsBacNinhAuthorizedPerson": raw.get("supportsBacNinhAuthorizedPerson") is True,
+        # Cổng Bộ Xây dựng (chat/bxd): nút / lệnh nói chuyển bước của wizard 4 bước, bổ sung ô trên tờ khai Form.io,
+        # chọn hình thức nhận kết quả, bấm Nộp hồ sơ sau khi soát cam đoan + mã xác nhận.
+        "supportsBxdFlow": raw.get("supportsBxdFlow") is True,
     }
 
 
@@ -249,6 +252,8 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         # Luồng đính kèm → bước nhận kết quả: sidebar báo page_status cả ở state done khi công dân TỰ đổi bước
         # trên cổng, để trợ lý vẫn dẫn bước nhận kết quả.
         "result_step_watch": flow.guided.result_flow_enabled(conv, get_procedure(conv.get("procedure_key") or "")),
+        # Cổng Bộ Xây dựng: sidebar báo bước wizard (wizardStep) ở mọi state, kể cả sau đính kèm.
+        "bxd": flow.bxd.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
     }
 
 

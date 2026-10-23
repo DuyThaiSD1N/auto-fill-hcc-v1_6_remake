@@ -233,15 +233,17 @@ def attach_done_reply(conv: dict, proc: dict | None, reply, *, attached: int, sk
 
 # ── Bước 5: cách nhận kết quả từng giấy tờ ──
 
-def _pick_send(name: str, value: str) -> str:
-    return "__action:lt_result_pick:" + json.dumps({"name": name, "value": value}, ensure_ascii=False)
+# Thẻ "cách nhận kết quả" (card lt_result_groups) dùng chung với luồng Bộ Xây dựng (chat/bxd): mỗi ô chọn một dòng.
+
+def _pick_send(action: str, name: str, value: str) -> str:
+    return f"__action:{action}:" + json.dumps({"name": name, "value": value}, ensure_ascii=False)
 
 
-def _rows(proc: dict | None, groups) -> list[dict]:
+def result_rows(configs: list[dict], groups) -> list[dict]:
     """Dòng của thẻ chọn cách nhận: theo thứ tự registry, chỉ ô có trên trang; ô khoá / không có lựa chọn = cố định."""
     read = {str(g.get("name")): g for g in groups or [] if isinstance(g, dict)}
     rows = []
-    for cfg in _result_groups(proc):
+    for cfg in configs:
         got = read.get(cfg["name"])
         if not got or got.get("present") is False:
             continue
@@ -253,14 +255,14 @@ def _rows(proc: dict | None, groups) -> list[dict]:
     return rows
 
 
-def _result_card(rows: list[dict]) -> dict:
+def result_card(rows: list[dict], action: str = "lt_result_pick") -> dict:
     return {"kind": "lt_result_groups", "rows": [
-        {**row, "options": [{"label": o, "send": _pick_send(row["name"], o), "selected": o == row["value"]}
+        {**row, "options": [{"label": o, "send": _pick_send(action, row["name"], o), "selected": o == row["value"]}
                             for o in row["options"]]}
         for row in rows]}
 
 
-def _summary(rows: list[dict]) -> tuple[str, str]:
+def result_summary(rows: list[dict]) -> tuple[str, str]:
     lines_md, lines_tts = [], []
     for row in rows:
         value = row["value"] or vi.LT_RESULT_EMPTY
@@ -272,7 +274,7 @@ def _summary(rows: list[dict]) -> tuple[str, str]:
 
 
 def _result_report(conv: dict, proc: dict | None, payload: dict):
-    rows = _rows(proc, payload.get("groups"))
+    rows = result_rows(_result_groups(proc), payload.get("groups"))
     _st(conv)["result_rows"] = rows
     if not rows:
         r = _reply(_say(vi.LT_RESULT_UNREAD))
@@ -291,12 +293,12 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         else:
             md, tts = _say(vi.LT_RESULT_FAILED, label=label, value=value)
         r = _reply((md, tts))
-        r.cards = [_result_card(rows)]
+        r.cards = [result_card(rows)]
         r.chips = [_submit_chip()]
         return r
-    r = _reply(_summary(rows))
+    r = _reply(result_summary(rows))
     guide_md, guide_tts = _say(vi.LT_SUBMIT_GUIDE)
-    r.cards = [_result_card(rows)]
+    r.cards = [result_card(rows)]
     r.actions = [{"type": "trail_message", "md": guide_md}]
     r.tts_text += guide_tts
     r.chips = [_submit_chip()]

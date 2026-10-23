@@ -6,8 +6,9 @@ nhận trên cổng:
     … Xác nhận → [Xếp giấy tờ → Đính kèm] → kết quả đính kèm → bước tiếp theo.
 Áp cho mọi thủ tục tư pháp form cũ; phần ô đỏ / Bổ sung / Xem trước to chỉ có ở thủ tục đã có vòng bổ sung ô
 (field_review.flow_v2). flow.py chỉ gọi các hàm ở đây; mỗi hàm tự trả lại reply cũ khi luồng bản 2 không bật.
-Cổng liên thông (chat/lien_thong.py, cờ supportsLienThongFlow) dùng chung hai thẻ này; kết quả điền và kết quả đính
-kèm của liên thông do lien_thong.py nói (bước sau là Xem lại tờ khai / Nhận kết quả chứ không phải Xem trước / nộp).
+Cổng liên thông (chat/lien_thong.py, cờ supportsLienThongFlow) và cổng Bộ Xây dựng (chat/bxd, cờ supportsBxdFlow) dùng
+chung hai thẻ này; kết quả điền và kết quả đính kèm của hai cổng đó do module riêng nói (bước sau là bước kế tiếp
+của chính cổng đó, không phải Xem trước / nộp).
 Chế độ Mông giữ luồng cũ (câu chỉ có bản tiếng Việt).
 """
 
@@ -20,7 +21,8 @@ from app.channels.handfree.chat.tu_phap_moi import fill_result, steps_action
 def enabled(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
     supported = ((field_review.legacy_wizard(proc) and caps.get(field_review.FLOW_V2_CAPABILITY) is True)
-                 or (field_review.lien_thong(proc) and caps.get(field_review.LIEN_THONG_CAPABILITY) is True))
+                 or (field_review.lien_thong(proc) and caps.get(field_review.LIEN_THONG_CAPABILITY) is True)
+                 or (field_review.bxd(proc) and caps.get(field_review.BXD_CAPABILITY) is True))
     return supported and (conv.get("lang") or "vi") != "hmong"
 
 
@@ -132,7 +134,9 @@ def attach_plan_reply(conv: dict, proc: dict | None, reply):
     planner bỏ tệp (nếu có) vẫn hiện ngay để cán bộ biết vì sao thiếu tệp."""
     if not enabled(conv, proc):
         return reply
-    skipped = "; ".join(str(e) for e in (conv.get("attach_errors") or []) if e)[:300]
+    from app.channels.handfree.chat.flow import attach_skipped_note
+
+    skipped = attach_skipped_note(conv)
     r = _silent([_card(conv, "attach", vi.FLOW2_ATTACH_STEPS, active=1), *reply.actions])
     if skipped:
         r.display_md, r.tts_text = _say(vi.ATTACH_PLAN_SKIPPED_NOTE, skipped_note=skipped)

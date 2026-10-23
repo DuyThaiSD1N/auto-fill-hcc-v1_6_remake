@@ -18,18 +18,14 @@ dụng đất/gia hạn" trên cổng dịch vụ công tỉnh Bắc Ninh. Đọ
 <critical_rules>
 1. Chỉ phân loại theo OCR_TEXT (nội dung đọc được). KHÔNG dùng tên file, thứ tự file.
 2. Trả về ĐÚNG một nhãn rút gọn trong danh mục cho mỗi tài liệu (trường "label").
-3. Giấy chứng nhận QSDĐ/sổ đỏ/sổ hồng của người dân → "gcn".
-4. ĐƠN ĐỀ NGHỊ chọn theo TIÊU ĐỀ đơn: "... CHUYỂN MỤC ĐÍCH SỬ DỤNG ĐẤT" → "don_chuyen_muc_dich";
-   "... GIA HẠN SỬ DỤNG ĐẤT" → "don_gia_han"; "... GIAO ĐẤT / CHO THUÊ ĐẤT ..." → "don_giao_thue".
-   KHÔNG nhầm đơn là "gcn" CHỈ vì trong đơn có nhắc tới Giấy chứng nhận.
+3. Giấy chứng nhận QSDĐ/sổ đỏ/sổ hồng của người dân → "gcn" (KHÔNG chọn "gcn_dieu137" trừ khi tài
+   liệu nêu rõ Điều 137 Luật Đất đai).
+4. Bản kê khai "ĐƠN ĐỀ NGHỊ ... giao/thuê/chuyển mục đích ..." → "don_de_nghi" (KHÔNG nhầm là "gcn"
+   CHỈ vì trong đơn có nhắc tới Giấy chứng nhận).
 5. ƯU TIÊN: nếu MỘT file chứa CẢ đơn đề nghị LẪN bản Giấy chứng nhận QSDĐ thật (có số vào sổ, số
-   thửa, tờ bản đồ, cơ quan cấp...) → chọn "gcn" (không chọn nhãn đơn).
-6. Phiếu xác nhận kết quả đo đạc hiện trạng thửa đất / trích lục / trích đo (có sơ đồ, tọa độ đỉnh
-   thửa) → "trich_luc", KHÔNG phải "gcn" dù phiếu có ghi thông tin Giấy chứng nhận.
-7. Tờ khai thuế (sử dụng đất phi nông nghiệp, lệ phí trước bạ...) → "to_khai_thue", KHÔNG phải
-   "uy_quyen" hay "mien_giam" dù tờ khai có ô người được ủy quyền / miễn giảm.
-8. Không nhận biết được thì "khac".
-9. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+   thửa, tờ bản đồ, cơ quan cấp...) → chọn "gcn" (không phải "don_de_nghi"). "gcn" ưu tiên hơn "don_de_nghi".
+6. Không nhận biết được thì "khac".
+7. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <document_name_rules>

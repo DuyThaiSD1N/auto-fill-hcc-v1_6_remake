@@ -16,7 +16,9 @@ Extension khai thêm supportsFlowV2 (luồng bản 2 của trang một trang): k
 tiếp khi tờ khai đủ ô bắt buộc; công dân tự gõ trên cổng thì extension đếm lại (__event:field_review_status) và
 trợ lý hiện nút khi ô bắt buộc về 0.
 Cổng liên thông (form Angular, chat/lien_thong.py) cần thêm cờ supportsLienThongFlow
-(content/field-review-angular.js): đủ ô bắt buộc thì bước kế tiếp là "Xem lại các tờ khai chi tiết".
+(content/field-review-angular.js): đủ ô bắt buộc thì bước kế tiếp là "Xem lại các tờ khai chi tiết". Cổng Bộ Xây dựng
+(tờ khai Form.io, chat/bxd) cần cờ supportsBxdFlow (content/bxd/field-review-formio.js): bước kế tiếp là "Thành phần
+hồ sơ".
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -30,6 +32,7 @@ CAPABILITY = "supportsFieldReview"
 SURVEY_CAPABILITY = "supportsFieldReviewSurvey"
 FLOW_V2_CAPABILITY = "supportsFlowV2"
 LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
+BXD_CAPABILITY = "supportsBxdFlow"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
              "field_review_answer", "field_review_pick", "field_review_reload", "field_review_owner_next",
              "field_review_preview", "field_review_preview_report", "field_review_preview_close",
@@ -65,6 +68,11 @@ def lien_thong(proc: dict | None) -> bool:
     return bool((proc or {}).get("lienThongFlow"))
 
 
+def bxd(proc: dict | None) -> bool:
+    """Cổng Bộ Xây dựng (tờ khai Form.io, wizard 4 bước): đủ ô bắt buộc → "Thành phần hồ sơ"."""
+    return bool((proc or {}).get("bxdFlow"))
+
+
 def active(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
     return (
@@ -73,6 +81,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         and (not single_page(proc) or caps.get(SURVEY_CAPABILITY) is True)
         # Extension chỉ có bộ đọc eForm / SurveyJS không đọc được form Angular của cổng liên thông.
         and (not lien_thong(proc) or caps.get(LIEN_THONG_CAPABILITY) is True)
+        # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
+        and (not bxd(proc) or caps.get(BXD_CAPABILITY) is True)
         and (conv.get("lang") or "vi") != "hmong"
     )
 
@@ -84,15 +94,16 @@ def legacy_wizard(proc: dict | None) -> bool:
 
 def flow_v2(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    if lien_thong(proc):
+    if lien_thong(proc) or bxd(proc):
         return active(conv, proc)
     return ((single_page(proc) or legacy_wizard(proc)) and active(conv, proc)
             and caps.get(FLOW_V2_CAPABILITY) is True)
 
 
 def _wizard_form(proc: dict | None) -> bool:
-    """Bước kế tiếp sau tờ khai là một nút trên cổng (form cũ: Xem trước; liên thông: Xem lại tờ khai)."""
-    return legacy_wizard(proc) or lien_thong(proc)
+    """Bước kế tiếp sau tờ khai là một nút trên cổng (form cũ: Xem trước; liên thông: Xem lại tờ khai; Bộ Xây dựng:
+    Tiếp tục sang Thành phần hồ sơ)."""
+    return legacy_wizard(proc) or lien_thong(proc) or bxd(proc)
 
 
 def asking(conv: dict) -> bool:
@@ -161,6 +172,8 @@ def _go_chip(proc: dict | None) -> dict:
     """Nút sang bước sau tờ khai: form cũ mở Xem trước; liên thông sang "Xem lại các tờ khai chi tiết"."""
     if lien_thong(proc):
         return {"label": vi.LT_REVIEW_CHIP, "send": "__action:lt_next", "solid": True}
+    if bxd(proc):
+        return {"label": vi.BXD_ATTACH_CHIP, "send": "__action:bxd_next", "solid": True}
     return _preview_chip()
 
 
@@ -206,7 +219,9 @@ def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
     st["ready_said"] = True
     if _wizard_form(proc):
         optional = (st.get("stats") or {}).get("optional") or 0
-        return _say(vi.LT_FILL_READY if lien_thong(proc) else vi.FLOW2_PREVIEW_READY,
+        template = (vi.LT_FILL_READY if lien_thong(proc) else vi.BXD_FILL_READY if bxd(proc)
+                    else vi.FLOW2_PREVIEW_READY)
+        return _say(template,
                     optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "",
                     optional_tts=vi.FLOW2_OPTIONAL_LEFT_TTS.format(optional=optional) if optional else "",
                     optional_hint_md=vi.FLOW2_OPTIONAL_HINT["md"] if optional else "",
@@ -242,6 +257,8 @@ def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
     if lien_thong(proc):
         return (conv.get("state") in {"reviewing", "attaching"}
                 and int((conv.get("lien_thong") or {}).get("at") or 2) == 2)
+    if bxd(proc):
+        return conv.get("state") in {"reviewing", "attaching"} and int((conv.get("bxd") or {}).get("at") or 1) == 1
     if legacy_wizard(proc):
         return (conv.get("state") in {"reviewing", "attaching"} and conv.get("docs_target") == "declaration"
                 and not st.get("preview_open"))
@@ -653,18 +670,19 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
     required = (st.get("stats") or {}).get("required") or 0
     if required:
         field = st["current"]
-        step_md = (vi.LT_PROCEED_STEP if lien_thong(proc) else
+        step_md = (vi.LT_PROCEED_STEP if lien_thong(proc) else vi.BXD_PROCEED_STEP if bxd(proc) else
                    vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else vi.FR_PROCEED_STEP_SINGLE)
         r = Reply(*_say(vi.FR_PROCEED_BLOCKED, required=required, step_md=step_md,
                         label=field["label"], label_tts=_tts(field["label"])))
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
-    if lien_thong(proc):
+    if lien_thong(proc) or bxd(proc):
+        from app.channels.handfree.chat import bxd as bxd_flow
         from app.channels.handfree.chat import lien_thong as lt
 
         st.update(running=False, current=None)
-        r = lt.next_reply(conv, proc)
+        r = (lt if lien_thong(proc) else bxd_flow).next_reply(conv, proc)
         r.actions = [{"type": "field_review_stop"}, *r.actions]
         return r
     if not legacy_wizard(proc):
@@ -806,7 +824,7 @@ def _optional_phase(conv: dict, proc: dict | None, st: dict, field: dict) -> tup
     if st.get("optional_said"):
         return "", ""
     st["optional_said"] = True
-    template = (vi.LT_OPTIONAL_PHASE if lien_thong(proc) else
+    template = (vi.LT_OPTIONAL_PHASE if lien_thong(proc) else vi.BXD_OPTIONAL_PHASE if bxd(proc) else
                 vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE)
     return _say(template, optional=stats.get("optional") or 0)
 
@@ -815,7 +833,7 @@ def _next_step(conv: dict, proc: dict | None, intent) -> str:
     """Câu "xong rồi / xem trước / đính kèm đi" ở Kê khai → bấm Xem trước (bản xem trước đang mở → Xác nhận).
     Trang một trang không có Xem trước: luồng tu_phap_moi tự lo câu đi tiếp; liên thông: chat/lien_thong.py."""
     if (not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration" or single_page(proc)
-            or lien_thong(proc)):
+            or lien_thong(proc) or bxd(proc)):
         return ""
     if conv.get("state") not in {"reviewing", "attaching"}:
         return ""

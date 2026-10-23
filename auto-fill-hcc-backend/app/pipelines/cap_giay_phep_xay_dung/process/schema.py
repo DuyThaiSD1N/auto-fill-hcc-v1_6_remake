@@ -93,7 +93,15 @@ FIELDS: list[dict] = [
     # G. Permit content.
     {"name": "CongTrinh_Ten", "desc": "Tên công trình trong đơn/bản vẽ, ví dụ Nhà ở gia đình/Nhà ở riêng lẻ."},
     {"name": "CongTrinh_Loai", "desc": "Loại công trình chi tiết trong đơn, ví dụ Nhà ở riêng lẻ hoặc Dân dụng."},
-    {"name": "CongTrinh_Nhanh", "desc": 'Nhánh form của đơn, chỉ trả đúng một giá trị: "nha_o_rieng_le" nếu đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" hoặc nội dung có mục "Đối với công trình nhà ở riêng lẻ" được kê khai; "khong_theo_tuyen" nếu đơn thuộc nhóm "Công trình không theo tuyến, tín ngưỡng, tôn giáo". Mẫu đơn dùng chung nhiều loại nhưng có dữ liệu tại mục 4.4 thì vẫn là "nha_o_rieng_le". Nếu không đủ bằng chứng thì để trống.'},
+    {"name": "CongTrinh_Nhanh", "desc": 'Loại hình công trình của đơn = mục nội dung đề nghị cấp phép ĐƯỢC KÊ KHAI '
+        'DỮ LIỆU, chỉ trả đúng một giá trị: "nha_o_rieng_le" (đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" '
+        'hoặc mục "Đối với công trình nhà ở riêng lẻ" có dữ liệu); "khong_theo_tuyen" (công trình không theo '
+        'tuyến, tín ngưỡng, tôn giáo); "theo_tuyen" (công trình theo tuyến trong đô thị — có tổng chiều dài, các '
+        'đoạn/khu vực tuyến); "tuong_dai" (công trình tượng đài, tranh hoành tráng); "giai_doan_khong_theo_tuyen" '
+        '(cấp phép THEO GIAI ĐOẠN cho công trình không theo tuyến); "giai_doan_theo_tuyen" (cấp phép THEO GIAI '
+        'ĐOẠN cho công trình theo tuyến trong đô thị); "du_an" (cấp giấy phép cho DỰ ÁN — có tên dự án, quyết định '
+        'phê duyệt dự án, danh sách công trình thuộc dự án). Mẫu đơn in sẵn tiêu đề mọi loại; chọn theo mục CÓ DỮ '
+        'LIỆU, không theo tiêu đề in sẵn. Không đủ bằng chứng thì để trống.'},
     {"name": "CongTrinh_Cap", "desc": "Cấp công trình, ví dụ Cấp III hoặc Cấp IV."},
     {"name": "CongTrinh_DienTichXayDung",
      "desc": "Diện tích xây dựng TẦNG 1 (diện tích chiếm đất của công trình), m2, chỉ trả số. Lấy ở "
@@ -123,6 +131,18 @@ FIELDS: list[dict] = [
              "'3 tầng', '2 tầng + 1 tum'. Đọc được thì BẮT BUỘC trả, kể cả khi đã trả CongTrinh_SoTang "
              "và kể cả khi nội dung gần như trùng."},
     {"name": "CongTrinh_ThoiGianDuKienHoanThanh", "desc": "Thời gian dự kiến hoàn thành nếu hồ sơ ghi rõ."},
+    {"name": "CongTrinh_TongChieuDai", "desc": "Tổng chiều dài công trình THEO TUYẾN, m, chỉ trả số (chỉ có ở "
+        "công trình theo tuyến / theo giai đoạn cho công trình theo tuyến)."},
+    {"name": "CongTrinh_KhuVuc", "desc": "Mảng các đoạn/khu vực của công trình THEO TUYẾN kê trong đơn, giữ đúng thứ "
+        "tự; mỗi phần tử {khuVuc, chieuDai, cotXayDung, chieuCaoTinhKhong, doSau} (số đo chỉ trả số, m). Thiếu cột "
+        "nào thì bỏ khoá đó. Công trình không theo tuyến → bỏ field."},
+    {"name": "CongTrinh_ThongTinChuYeu", "desc": "Thông tin chủ yếu của công trình thuộc DỰ ÁN (quy mô, diện tích, "
+        "số tầng, chiều cao…) chép nguyên văn đoạn kê trong đơn. Chỉ có ở loại cấp cho dự án."},
+    {"name": "DuAn_Ten", "desc": "Tên dự án (chỉ ở loại cấp giấy phép cho dự án)."},
+    {"name": "DuAn_MaSo", "desc": "Mã số thông tin dự án nếu đơn ghi."},
+    {"name": "DuAn_SoQuyetDinh", "desc": "Số quyết định phê duyệt dự án."},
+    {"name": "DuAn_CoQuanPheDuyet", "desc": "Cơ quan ban hành quyết định phê duyệt dự án."},
+    {"name": "DuAn_NgayPheDuyet", "desc": "Ngày phê duyệt dự án, dd/mm/yyyy."},
     {"name": "Don_NgayLamDon", "desc": "Ngày lập đơn/cam kết nếu cần tham chiếu, dd/mm/yyyy."},
 ]
 
@@ -134,6 +154,7 @@ for _name in (
     "Applicant_NgaySinh",
     "Applicant_NgayCap",
     "Don_NgayLamDon",
+    "DuAn_NgayPheDuyet",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("Applicant_NoiCuTru", "Dat_DiaDiemXayDung"):
@@ -222,4 +243,46 @@ UI_COMP_BY_NAME = {
     "data[chiTietChieuCaoCongTrinhKhongTheoTuyen]": "dom-input",
     "data[soTangCongTrinhKhongTheoTuyen]": "dom-input",
     "data[chiTietSoTangKhongTheoTuyen]": "dom-input",
+    # Công trình theo tuyến trong đô thị (các dòng khu vực data[khuVucTheoTuyen][N][...] nhận diện động).
+    "data[tenCongTrinhTheoTuyen]": "dom-input",
+    "data[loaiCongTrinhTheoTuyen]": "dom-select",
+    "data[capCongTrinhTheoTuyen]": "dom-select",
+    "data[tongChieuDaiCongTrinhTheoTuyen]": "dom-input",
+    # Công trình tượng đài, tranh hoành tráng.
+    "data[tenCongTrinhTuongDai]": "dom-input",
+    "data[loaiCongTrinhTuongDai]": "dom-select",
+    "data[dienTichXayDungTuongDai]": "dom-input",
+    "data[khoangLuiTuongDai]": "dom-input",
+    "data[capCongTrinhTuongDai]": "dom-select",
+    "data[cotXayDungTuongDai]": "dom-input",
+    "data[chieuCaoCongTrinhTuongDai]": "dom-input",
+    # Theo giai đoạn (giai đoạn đầu = dòng 0 của bảng Giai đoạn, nhận diện động).
+    "data[tenCongTrinhGiaiDoanKhongTheoTuyen]": "dom-input",
+    "data[tenCongTrinhGiaiDoanTheoTuyen]": "dom-input",
+    # Cấp cho dự án (công trình đầu = dòng 0 của bảng Danh sách công trình, nhận diện động).
+    "data[tenDuAn]": "dom-input",
+    "data[maSoThongTinDuAn]": "dom-input",
+    "data[soQuyetDinhPheDuyet]": "dom-input",
+    "data[coQuanPheDuyet]": "dom-input",
+    "data[ngayPheDuyet]": "dom-date",
+}
+
+# Ô trong bảng Form.io (data[grid][N][col] — số dòng theo giấy tờ): cột → loại ô. Bảng lồng (khu vực trong một giai
+# đoạn) cũng khớp theo cột lá.
+GRID_COMP_BY_COLUMN = {
+    "khuVucTheoTuyen1": "dom-input", "chieuDaiTheoTuyen": "dom-input", "cotXayDungTheoTuyen": "dom-input",
+    "chieuCaoTinhKhongTheoTuyen": "dom-input", "doSauTheoTuyen": "dom-input",
+    "loaiCongTrinhGiaiDoanKhongTheoTuyen": "dom-select", "dienTichXayDungGiaiDoanKhongTheoTuyen": "dom-input",
+    "capCongTrinhGiaiDoanKhongTheoTuyen": "dom-select", "cotXayDungGiaiDoanKhongTheoTuyen": "dom-input",
+    "khoangLuiGiaiDoanKhongTheoTuyen": "dom-input", "tongDienTichSanGiaiDoanKhongTheoTuyen": "dom-input",
+    "chiTietDienTichSanGiaiDoanKhongTheoTuyen": "dom-input", "chieuCaoCongTrinhGiaiDoanKhongTheoTuyen": "dom-input",
+    "chiTietChieuCaoCongTrinhGiaiDoanKhongTheoTuyen": "dom-input",
+    "soTangCongTrinhGiaiDoanKhongTheoTuyen": "dom-input", "chiTietSoTangGiaiDoanKhongTheoTuyen": "dom-input",
+    "loaiCongTrinhGiaiDoanTheoTuyen": "dom-select", "capCongTrinhGiaiDoanTheoTuyen": "dom-select",
+    "tongChieuDaiCongTrinhGiaiDoanTheoTuyen": "dom-input",
+    "khuVucGiaiDoanTheoTuyen": "dom-input", "chieuDaiGiaiDoanTheoTuyen": "dom-input",
+    "cotXayDungGiaiDoanTheoTuyen": "dom-input", "chieuCaoTinhKhongGiaiDoanTheoTuyen": "dom-input",
+    "doSauGiaiDoanTheoTuyen": "dom-input",
+    "tenCongTrinhDuAn": "dom-input", "loaiCongTrinhDuAn": "dom-select", "cotXayDungDuAn": "dom-input",
+    "capCongTrinhDuAn": "dom-select", "khoangLuiDuAn": "dom-input", "thongTinChuYeuDuAn": "dom-input",
 }

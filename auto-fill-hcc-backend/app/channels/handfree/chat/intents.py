@@ -86,11 +86,12 @@ _STATE_INTENTS: dict[str, list[dict]] = {
                  "hiện (làm cho bản thân, cho người khác, được người khác ủy quyền, doanh nghiệp ủy "
                  "quyền, đại diện cơ quan) — kể cả câu mở đầu bằng \"không phải\" rồi nêu nơi/người khác"},
     ],
-    # Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): lựa chọn đọc từ cổng nên chỉ
-    # nhận SỐ THỨ TỰ; flow chỉ áp khi đang hỏi đúng một ô (nơi xử lý HOẶC trường hợp).
+    # Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): nói SỐ THỨ TỰ → mae_pick_N; nói TÊN lựa chọn → nút
+    # của thẻ (flow._card_voice_items). Flow chỉ áp khi đang hỏi đúng một ô (nơi xử lý HOẶC trường hợp).
     "choose_mae_dialog": [
         {"kind": "action", "value": f"mae_pick_{n}",
-         "desc": f"chọn lựa chọn số {n} (thứ {word}) trong danh sách đang hỏi"}
+         "desc": f"nói SỐ THỨ TỰ của lựa chọn (số {n}, cái thứ {word}) trong danh sách đang hỏi; nói TÊN lựa chọn "
+                 f"thì chọn NÚT có tên đó, không dùng hành động này"}
         for n, word in ((1, "nhất"), (2, "hai"), (3, "ba"), (4, "tư"), (5, "năm"), (6, "sáu"))
     ],
     # Màn chào: câu chỉ xin bắt đầu (nói ở màn bắt đầu rồi chuyển vào chat) → mời chọn / nói tên thủ tục,

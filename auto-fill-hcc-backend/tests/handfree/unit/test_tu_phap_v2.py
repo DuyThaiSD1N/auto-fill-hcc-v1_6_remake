@@ -251,7 +251,7 @@ async def test_dang_ky_lai_khai_tu_co_vong_bo_sung_o_trong():
 
 @pytest.mark.parametrize("key, first", [
     ("dang-ky-giam-ho", "hotenA"), ("khai-sinh-da-co-ho-so", "nycNoiCuTru"), ("dang-ky-nhan-cha-me-con", "LoaiDangKy"),
-    ("yeu-cau-tro-giup-phap-ly", "NguoiDuocTGPL_HoVaTen"),
+    ("yeu-cau-tro-giup-phap-ly", "NguoiDuocTGPL_HoVaTen"), ("dang-ky-cham-dut-giam-ho", "HoVaTenM"),
 ])
 async def test_giam_ho_khai_sinh_co_ho_so_nhan_cha_me_con_tro_giup_phap_ly_co_vong_bo_sung_o_trong(key, first):
     conv = _conv("filling", key=key)
@@ -264,8 +264,11 @@ async def test_giam_ho_khai_sinh_co_ho_so_nhan_cha_me_con_tro_giup_phap_ly_co_vo
 def test_cap_ban_sao_noi_kem_so_ban_o_giam_ho_va_nhan_cha_me_con_khai_sinh_co_ho_so_chi_co_o_so_luong():
     from app.channels.handfree.chat.field_review import registry
 
-    for key in ("dang-ky-giam-ho", "dang-ky-nhan-cha-me-con"):
+    for key in ("dang-ky-giam-ho", "dang-ky-nhan-cha-me-con", "dang-ky-cham-dut-giam-ho"):
         assert registry.get(key)["copyQuantity"] == ("CapBanSao", "ThongTin")
+    # Chấm dứt giám hộ dùng chung pipeline với đăng ký giám hộ nhưng eForm 1912 khác tên ô → cấu hình riêng.
+    assert registry.get("dang-ky-cham-dut-giam-ho")["required"] != registry.get("dang-ky-giam-ho")["required"]
+    assert {"SoDKTai", "LyDoChamDuQH"} <= set(registry.get("dang-ky-cham-dut-giam-ho")["noSection"])
     # Tờ khai khai sinh cho người đã có hồ sơ chỉ có ô nhập số bản "(27) Đề nghị cấp bản sao" ngay sau khối người cha.
     assert "copyQuantity" not in registry.get("khai-sinh-da-co-ho-so")
     assert registry.get("khai-sinh-da-co-ho-so")["noSection"] == ("SoLuong",)

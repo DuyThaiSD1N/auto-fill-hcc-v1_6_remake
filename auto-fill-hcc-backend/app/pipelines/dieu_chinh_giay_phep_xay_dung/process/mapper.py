@@ -350,7 +350,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         or _same_person(submitter_identity, submitter_name, context.get("applicant_identity"), context.get("applicant_name"))
     )
 
-    area_occ = 0
+    # Form LUÔN render 2 cặp data[province]/data[district]: cặp 0 = khối người nộp, cặp 1 = địa điểm xây
+    # dựng — kể cả khi bỏ qua khối người nộp (người nộp ≠ tài khoản). Khối tổ chức dùng key riêng
+    # province1/district1 (một cặp). FE chọn ô theo thứ tự DOM nên occurrence phải cố định theo vị trí.
     if can_fill_applicant:
         add("data[chonDoiTuong]", "Tổ chức" if is_org_submitter else "Cá nhân")
         add("data[fullname]", submitter_name)
@@ -372,10 +374,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[phoneNumber]", submitter_phone)
         add("data[nation]", "Việt Nam" if submitter_name or submitter_identity else None)
         if submitter_residence:
-            add("data[province]", _province_label(submitter_residence.get("tinh")), occurrence=area_occ)
-            add("data[district]", _commune_label(submitter_residence.get("xa")), occurrence=area_occ)
+            add("data[province]", _province_label(submitter_residence.get("tinh")), occurrence=0)
+            add("data[district]", _commune_label(submitter_residence.get("xa")), occurrence=0)
             add("data[address]", _text(submitter_residence.get("diaChi")))
-            area_occ += 1
         # Ô nhân thân người nộp không bóc tách được → phát dom-expect (FE tô đỏ ô trống, nhắc điền tay).
         for _name in _EXPECT_PERSON_FIELDS:
             if (_name, None) not in seen:
@@ -390,10 +391,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         org_area = _area(values.get("ToChucNop_DiaChi"))
         if org_area:
             add("data[nation1]", "Việt Nam")
-            add("data[province1]", _province_label(org_area.get("tinh")), occurrence=area_occ)
-            add("data[district1]", _commune_label(org_area.get("xa")), occurrence=area_occ)
+            add("data[province1]", _province_label(org_area.get("tinh")))
+            add("data[district1]", _commune_label(org_area.get("xa")))
             add("data[address1]", _text(org_area.get("diaChi")))
-            area_occ += 1
 
     # Khối CHỦ HỘ / CHỦ ĐẦU TƯ.
     if owner_is_individual:
@@ -415,9 +415,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[dienTichLoDat]", _number(values.get("Dat_DienTich")))
     land_area = _area(values.get("Dat_DiaDiemXayDung"))
     if land_area:
-        add("data[province]", _province_label(land_area.get("tinh")), occurrence=area_occ)
-        add("data[district]", _commune_label(land_area.get("xa")), occurrence=area_occ)
-        area_occ += 1
+        add("data[province]", _province_label(land_area.get("tinh")), occurrence=1)
+        add("data[district]", _commune_label(land_area.get("xa")), occurrence=1)
     add("data[soNha]", _text(values.get("Dat_SoNha")))
     add("data[duongPho]", _text(_pick(values.get("Dat_DuongPho"), land_area.get("diaChi") if land_area else None)))
 

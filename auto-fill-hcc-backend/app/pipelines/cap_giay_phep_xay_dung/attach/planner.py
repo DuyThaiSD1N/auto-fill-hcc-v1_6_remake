@@ -336,6 +336,8 @@ def _build_fixed_item(files: list[dict], entry: dict, slot: dict[str, Any]) -> d
         "slotKey": slot["slotKey"],
         "slotIndex": slot["slotIndex"],
         "slotName": slot["slotName"],
+        # Cổng tick sẵn cả 29 dòng; dòng tick mà không có tệp chặn "Tiếp tục" → bỏ tích dòng không đính.
+        "untickUnplannedRows": True,
     }
 
 
@@ -409,17 +411,8 @@ def build_plan_items(
             "source": entry["source"],
         })
 
-    # Cả 3 dòng đều là "1 Bản chính" BẮT BUỘC. Một tệp quét gộp (vd Đơn + Sổ đỏ chung một file) chỉ
-    # được xếp vào MỘT nhóm — theo thứ tự ưu tiên ở prompt thì Đơn thắng — nên nhóm còn lại sẽ trống.
-    # Cảnh báo để cán bộ tự bù hoặc đề nghị người dân tách tệp, thay vì im lặng nộp thiếu thành phần.
-    for group, label in ((_GROUP_DON, _LABEL_DON), (_GROUP_DAT, _LABEL_DAT), (_GROUP_BANVE, _LABEL_BANVE)):
-        if not routed[group]:
-            warnings.append(
-                f"Chưa có tệp nào cho dòng '{label}' (STT {slots[group]['componentIndex']}). Mỗi tệp chỉ "
-                "xếp được vào một dòng — nếu tệp đã nộp quét gộp cả giấy tờ của dòng này thì cán bộ đính "
-                "thêm thủ công, hoặc đề nghị người dân tách tệp."
-            )
-
+    # Dòng không có tệp KHÔNG phải thiếu thành phần: hồ sơ chỉ có Đơn vẫn hợp lệ, dòng trống được bỏ tích
+    # (untickUnplannedRows) nên không chặn chuyển bước → không cảnh báo dòng trống.
     return attachments, warnings, classified
 
 

@@ -32,3 +32,11 @@ def test_co_di_qua_response_model_cua_auto_fill():
 
     dumped = AttachmentPlanResp.model_validate({"attachments": attachments}).model_dump(mode="json")
     assert dumped["attachments"][0]["untickUnplannedRows"] is True
+
+
+def test_sua_chua_cai_tao_gpxd_cung_gui_co_bo_tick():
+    # Registry lõi của thủ tục này không khai urlScope (nhận diện theo chữ trên trang) nên lọt khỏi phép quét trên.
+    from app.pipelines.sua_chua_cai_tao_gpxd.attach import planner
+
+    item = planner._build_row_item({"name": "don.pdf"}, 0, next(iter(planner._ROWS)))
+    assert item["target"] == "attp-row" and item["untickUnplannedRows"] is True

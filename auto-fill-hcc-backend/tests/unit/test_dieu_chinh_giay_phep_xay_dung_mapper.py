@@ -170,3 +170,21 @@ def test_mapper_khong_con_ghep_01_01_trong_code():
     src = inspect.getsource(mapper._birthday_from_year)
     body = src.split('"""')[-1]  # phần sau docstring
     assert "01/01/" not in body
+
+
+def _areas(vals, options=None):
+    fields, _ = mapper.enrich(_flds(vals), options or {})
+    return {(f["name"], f.get("occurrence")): f["value"] for f in fields if "province" in f["name"] or "district" in f["name"]}
+
+
+def test_nguoi_nop_khac_tai_khoan_dia_diem_xay_dung_van_o_cap_thu_hai():
+    """Bỏ qua khối người nộp → cặp Tỉnh/Phường của khối đó vẫn có trên trang; địa điểm không được rơi vào đó."""
+    ctx = {"formContext": {"applicantFullname": "Cán Bộ Một Cửa", "applicantIdentityNumber": "001099000009"}}
+    areas = _areas(_CA_NHAN, ctx)
+    assert ("data[province]", 0) not in areas and ("data[district]", 0) not in areas
+    assert areas[("data[province]", 1)] and areas[("data[district]", 1)]
+
+
+def test_nguoi_nop_dung_tai_khoan_hai_cap_dung_vi_tri():
+    areas = _areas(_CA_NHAN)
+    assert ("data[province]", 0) in areas and ("data[province]", 1) in areas

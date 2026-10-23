@@ -1,7 +1,6 @@
 """Hộp thoại chọn cơ quan của cổng bộ khi thủ tục giải quyết ở CẤP XÃ.
 
-Hai thủ tục Bộ Nội vụ ("người có công từ trần", "trợ cấp thờ cúng liệt sĩ") và ATTP nông, lâm,
-thủy sản của Bộ NN&MT dùng chung
+Hai thủ tục Bộ Nội vụ ("người có công từ trần", "trợ cấp thờ cúng liệt sĩ") dùng chung
 component `form#ngSelectAgencyForm1` với các cổng iGate khác, nhưng chọn Tỉnh + **Phường/Xã**
 chứ không phải Sở/Ban ngành. Bản extension trên chợ chỉ biết gạt radio "Sở/Ban ngành" → BE
 phải gác bằng `supportsMaeWardAgency`, thiếu cờ thì dặn chọn tay thay vì bắn lệnh gạt nhầm cấp.
@@ -19,18 +18,12 @@ LOC = {"province": "Tỉnh Quảng Ngãi", "ward": "Phường Nghĩa Lộ"}
 
 # Mọi thủ tục chọn cơ quan cấp xã phải cư xử giống hệt nhau — thêm thủ tục mới thì thêm key vào
 # đây, không chép cả bộ test.
-WARD_KEYS = ["uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san"]
-# Host cổng bộ + mã nhận diện trên cổng bộ + uuid DVCQG của từng thủ tục: uuid CHỈ có trên
-# dichvucong.gov.vn, mã/id SPA chỉ có trên cổng bộ → urlScope thiếu một host là nửa số urlIncludes
-# thành vô dụng (urlScope gate theo OR). ATTP nông lâm thủy sản (Bộ NN&MT) không có mã trên URL
-# cổng bộ nên neo bằng id SPA apply-online như registry lõi.
+WARD_KEYS = ["uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si"]
+# Mã TTHC + uuid DVCQG của từng thủ tục: uuid CHỈ có trên dichvucong.gov.vn, mã TTHC chỉ có trên
+# cổng bộ → urlScope thiếu một host là nửa số urlIncludes thành vô dụng (urlScope gate theo OR).
 WARD_URL_IDS = {
-    "uu-dai-ncc-tu-tran": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010824",
-                           "019d2bfa-fc36-7611-9219-adb6dee5774f"),
-    "tro-cap-tho-cung-liet-si": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010803",
-                                 "019d2bfa-fc0c-7046-b5dc-04303a18608d"),
-    "cap-gcn-attp-nong-lam-thuy-san": ("dichvucongnnmt.mae.gov.vn", "apply-online/693a99efda87c4718ece1bc7",
-                                       "019d2bfa-b57f-73cc-856f-0255333fcb48"),
+    "uu-dai-ncc-tu-tran": ("MaTTHC=1.010824", "019d2bfa-fc36-7611-9219-adb6dee5774f"),
+    "tro-cap-tho-cung-liet-si": ("MaTTHC=1.010803", "019d2bfa-fc0c-7046-b5dc-04303a18608d"),
 }
 
 
@@ -61,8 +54,8 @@ def test_dvcqg_van_chon_du_tinh_va_xa(key):
 @pytest.mark.parametrize("key", WARD_KEYS)
 def test_detect_bat_duoc_ca_trang_dvcqg_lan_cong_bo(key):
     detect = _proc(key)["detect"]
-    host, ma_tthc, uuid = WARD_URL_IDS[key]
-    assert set(detect["urlScope"]) == {host, "dichvucong.gov.vn"}
+    ma_tthc, uuid = WARD_URL_IDS[key]
+    assert set(detect["urlScope"]) == {"dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"}
     assert ma_tthc in detect["urlIncludes"]
     assert uuid in detect["urlIncludes"]
     assert _proc(key)["keKhaiUrl"].endswith(uuid)

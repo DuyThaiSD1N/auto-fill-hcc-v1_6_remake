@@ -4445,12 +4445,12 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "sua-chua-cai-tao-gpxd-cong-trinh",
-        # Như trên nhưng nhánh CÔNG TRÌNH (element ...KhongTheoTuyen + data[loaiCongTrinh]). Quy trình 10 ngày.
+        # Như trên nhưng quy trình CÔNG TRÌNH (data[loaiCongTrinh] 4 loại hình, khoá ô trùng GPXD cấp mới). Quy trình 10 ngày.
         # Đây là entry mang MÃ QG 1.013229 (xem ke_khai_links.json) → nhận diện CHUNG cho cả thủ tục:
         # process= đổi theo từng phường/xã nên KHÔNG bám vào nó; bám vào (1) apply-online id = id THỦ TỤC,
         # dùng chung mọi đơn vị, (2) H2 TÊN THỦ TỤC in trên trang. Trang nào ghi rõ "Quy trình: … đối với
         # nhà ở riêng lẻ" thì entry nhà ở riêng lẻ ở trên đã chặn trước bằng textPriority, nên rơi xuống
-        # đây nghĩa là quy trình công trình → ép ...KhongTheoTuyen là đúng.
+        # đây nghĩa là quy trình công trình → ép nhánh công trình (loại hình theo đơn kê khai) là đúng.
         # KHÔNG khai urlScope: địa phương vào hệ thống Bộ Xây dựng bằng host khác nhau, mà urlScope chặn
         # CẢ rule text lẫn URL kê khai DVCQG mà with_ke_khai_detect_urls() ghép thêm vào urlIncludes.
         # heading: h2 trang cổng là tên thủ tục ĐẦY ĐỦ (có thêm "và nhà ở riêng lẻ" + dấu ":"), label của

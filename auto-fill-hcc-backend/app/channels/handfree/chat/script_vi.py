@@ -143,11 +143,11 @@ VARIANT_DIALOG_AUTOFILL_GUIDE = {
 CHOOSE_MAE_DIALOG = {
     "md": (
         "Dạ, thủ tục **{procedure}** cần chọn **{questions}** ạ.\n\n{options_md}\n\n"
-        "Công dân chọn ở thẻ bên dưới rồi bấm **Xác nhận** giúp em nhé ạ."
+        "Công dân chọn ở thẻ bên dưới rồi bấm **Xác nhận**, hoặc nói tên lựa chọn giúp em nhé ạ."
     ),
     "tts": (
-        "Dạ, thủ tục này cần chọn {questions}. {options_tts}. Công dân chọn ở thẻ bên dưới "
-        "rồi bấm xác nhận giúp em nhé ạ."
+        "Dạ, thủ tục này cần chọn {questions}. {options_tts}. Công dân chọn ở thẻ bên dưới, "
+        "hoặc nói tên lựa chọn giúp em nhé ạ."
     ),
 }
 
@@ -1901,6 +1901,82 @@ LT_SUBMIT_FAILED = {
     "md": ("⚠️ Hồ sơ **chưa nộp được**{message}.\n\nCông dân kiểm tra lại (mã kiểm tra hay bị sai, bấm biểu tượng "
            "làm mới cạnh ảnh để lấy mã khác) rồi bấm **Nộp hồ sơ** lại ạ."),
     "tts": ("Dạ hồ sơ chưa nộp được. Công dân kiểm tra lại mã kiểm tra, nếu cần bấm làm mới để lấy mã khác, rồi bấm "
+            "Nộp hồ sơ lại ạ."),
+}
+# ── Cổng Bộ Xây dựng (dvc.moc.gov.vn, wizard 4 bước, chat/bxd): mỗi bước có nút + lệnh nói "bước tiếp theo".
+# Chỉ bản tiếng Việt: luồng tắt ở chế độ Mông. Thẻ cách nhận kết quả dùng chung câu LT_RESULT_*. ──
+BXD_STEP_NAMES = {2: "Thành phần hồ sơ", 3: "Hình thức nhận kết quả"}
+BXD_ATTACH_CHIP = "📎 Sang Thành phần hồ sơ ▶"
+BXD_RESULT_CHIP = "📬 Sang hình thức nhận kết quả ▶"
+BXD_RETRY_CHIP = "🔁 Thử chuyển bước lại"
+BXD_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+BXD_MOVING = {
+    "md": "Dạ em bấm **Tiếp tục** để sang **{step}** ạ.",
+    "tts": "Dạ em bấm Tiếp tục để sang bước {step} ạ.",
+}
+# Đủ ô bắt buộc ở Thông tin hồ sơ (cùng khoá với FLOW2_PREVIEW_READY: field_review._ready dùng chung bộ tham số).
+BXD_FILL_READY = {
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc{optional_md}.\n\n{optional_hint_md}Công dân rà lại rồi bấm **Sang Thành "
+           "phần hồ sơ** hoặc nói **“bước tiếp theo”** để em bấm Tiếp tục ạ."),
+    "tts": (" Tờ khai đã đủ các ô bắt buộc{optional_tts}. {optional_hint_tts}Công dân rà lại rồi bấm Sang Thành phần "
+            "hồ sơ, hoặc nói bước tiếp theo để em bấm Tiếp tục ạ."),
+}
+BXD_FILL_NEXT = {
+    "md": ("Công dân rà lại tờ khai, ô nào sai thì sửa thẳng trên trang, xong bấm **Sang Thành phần hồ sơ** hoặc nói "
+           "**“bước tiếp theo”** ạ."),
+    "tts": "Công dân rà lại tờ khai, xong bấm Sang Thành phần hồ sơ, hoặc nói bước tiếp theo ạ.",
+}
+BXD_OPTIONAL_PHASE = {
+    "md": ("✓ Đã đủ các ô bắt buộc. Em hỏi tiếp **{optional} ô không bắt buộc**; công dân muốn đi tiếp luôn thì bấm "
+           "**Sang Thành phần hồ sơ** ạ."),
+    "tts": ("Dạ đã đủ các ô bắt buộc. Em hỏi tiếp các ô không bắt buộc, công dân muốn đi tiếp luôn thì bấm Sang Thành "
+            "phần hồ sơ ạ. "),
+}
+BXD_PROCEED_STEP = "cổng chưa cho sang Thành phần hồ sơ"
+BXD_BLOCKED = {
+    "md": "⚠️ Cổng chưa cho sang **{step}**{message}. Công dân xem lại trang rồi thử lại ạ.",
+    "tts": "Dạ cổng chưa cho sang bước {step}. Công dân xem lại trang rồi thử lại ạ.",
+}
+BXD_BLOCKED_FORM = {
+    "md": ("⚠️ Cổng chưa cho sang Thành phần hồ sơ{message}: tờ khai còn **{required} ô bắt buộc** trống (ô tô đỏ trên "
+           "trang).\n\nCông dân bấm **Bổ sung các thông tin còn thiếu** để em hỏi từng ô, hoặc tự điền rồi bấm **Sang "
+           "Thành phần hồ sơ** ạ."),
+    "tts": ("Dạ cổng chưa cho sang Thành phần hồ sơ, tờ khai còn {required} ô bắt buộc trống. Công dân bấm Bổ sung các "
+            "thông tin còn thiếu để em hỏi từng ô, hoặc tự điền rồi bấm Sang Thành phần hồ sơ ạ."),
+}
+BXD_BACK_TO_FORM = {
+    "md": ("✏️ Đã quay lại **Thông tin hồ sơ**. Công dân sửa xong thì bấm **Sang Thành phần hồ sơ** hoặc nói **“bước "
+           "tiếp theo”** ạ."),
+    "tts": "Đã quay lại bước Thông tin hồ sơ. Công dân sửa xong thì bấm Sang Thành phần hồ sơ, hoặc nói bước tiếp theo ạ.",
+}
+BXD_ATTACH_NEXT = {
+    "md": "Tiếp theo là **Hình thức nhận kết quả**, công dân bấm nút dưới hoặc nói **“bước tiếp theo”** ạ.",
+    "tts": " Tiếp theo là bước hình thức nhận kết quả, công dân bấm nút bên dưới hoặc nói bước tiếp theo ạ.",
+}
+BXD_RESULT_READING = {
+    "md": "📬 Đây là bước **Hình thức nhận kết quả**. Em đang đọc các cách nhận trên trang ạ…",
+    "tts": "Đây là bước hình thức nhận kết quả. Em đang đọc các cách nhận trên trang ạ.",
+}
+BXD_SUBMIT_GUIDE = {
+    "md": ("Cuối cùng công dân tích ô **Tôi chắc chắn…**, nhập **mã xác nhận** (chữ trong ảnh) rồi bấm **Nộp hồ sơ** "
+           "trên trang, hoặc bấm nút **Nộp hồ sơ** bên dưới để em bấm giúp ạ."),
+    "tts": (" Cuối cùng công dân tích ô Tôi chắc chắn, nhập mã xác nhận trong ảnh, rồi bấm Nộp hồ sơ trên trang, hoặc "
+            "bấm nút Nộp hồ sơ để em bấm giúp ạ."),
+}
+BXD_MISSING_CAM_DOAN = "tích ô Tôi chắc chắn…"
+BXD_MISSING_CAPTCHA = "nhập mã xác nhận"
+BXD_SUBMIT_MISSING = {
+    "md": "Công dân còn thiếu: **{missing}**. Làm xong rồi bấm **Nộp hồ sơ** lại ạ.",
+    "tts": "Công dân còn thiếu {missing}. Làm xong rồi bấm Nộp hồ sơ lại ạ.",
+}
+BXD_SUBMITTING = {
+    "md": "Dạ em bấm **Nộp hồ sơ** trên trang ạ.",
+    "tts": "Dạ em bấm Nộp hồ sơ trên trang ạ.",
+}
+BXD_SUBMIT_FAILED = {
+    "md": ("⚠️ Hồ sơ **chưa nộp được**{message}.\n\nCông dân kiểm tra lại (mã xác nhận hay bị sai, bấm nút làm mới "
+           "cạnh ảnh để lấy mã khác) rồi bấm **Nộp hồ sơ** lại ạ."),
+    "tts": ("Dạ hồ sơ chưa nộp được. Công dân kiểm tra lại mã xác nhận, nếu cần bấm làm mới để lấy mã khác, rồi bấm "
             "Nộp hồ sơ lại ạ."),
 }
 FLOW2_NEXT_RESULT_STEP = {
