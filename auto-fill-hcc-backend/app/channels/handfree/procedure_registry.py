@@ -1490,6 +1490,16 @@ PROCEDURES: list[dict] = [
             {"label": "Thủ tục", "value": "trợ giúp pháp lý"},
             {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
         ],
+        # Bắc Ninh: cổng xếp thủ tục vào Cấp thực hiện "Đơn vị khác" (không phải Cấp Tỉnh), cơ quan
+        # là Trung tâm Trợ giúp pháp lý nhà nước chứ không phải Sở Tư pháp. Khóa = province_slug.
+        "infoModalFieldsByProvince": {
+            "bacninh": [
+                {"label": "Cấp thực hiện", "value": "Đơn vị khác"},
+                {"label": "Tỉnh thành", "value": "Bắc Ninh"},
+                {"label": "Thủ tục", "value": "trợ giúp pháp lý"},
+                {"label": "Cơ quan thực hiện", "value": "Trung tâm Trợ giúp pháp lý"},
+            ],
+        },
         # Planner (yeu_cau_tro_giup_phap_ly.attach) tự phân loại lại theo OCR lúc đính: giấy chứng
         # minh diện + CCCD gộp một PDF vào dòng 1; dòng 2 là Tờ khai cổng tự sinh, không đính đè;
         # đơn bản giấy / ủy quyền / giấy khác thêm thành phần hồ sơ mới.
@@ -1883,6 +1893,73 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-gcn-attp-nong-lam-thuy-san",
+        # Mã TTHC 2.001827, cổng Bộ NN&MT dichvucongnnmt.mae.gov.vn — KHÁC thủ tục ATTP Bộ Y tế ngay
+        # trên (quán ăn, bếp ăn): đây là cơ sở sản xuất, kinh doanh thực phẩm nông, lâm, thủy sản.
+        # Key TRÙNG lõi → pipeline process/attach tự nối. Thủ tục cấp huyện cũ, nay giải quyết ở CẤP
+        # XÃ: ke_khai_links chọn đủ Tỉnh + Xã (không provinceOnlyAgency/selectSo) → DVCQG KHÔNG
+        # agencyProvinceOnly/agencySoFirst; trang MAE "chọn nơi và loại" (form#ngSelectAgencyForm1)
+        # gạt radio "Phường/Xã" + chọn xã = maePortal + maeAgencyLevel "ward" như hai thủ tục cấp xã
+        # Bộ Nội vụ. Trang kê khai apply-online/<id> không có mã → thêm cụm tên (hai cụm AND, cụm sau
+        # chặn nhầm với ATTP Bộ Y tế).
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "019d2bfa-b57f-73cc-856f-0255333fcb48",
+                "apply-online/693a99efda87c4718ece1bc7",
+                "process=695dbb6de184634c1f3648af",
+            ],
+            "textIncludes": ["cơ sở đủ điều kiện an toàn thực phẩm", "nông, lâm, thủy sản"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, "
+            "kinh doanh thực phẩm nông, lâm, thủy sản"
+        ),
+        "shortLabel": "Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm (nông, lâm, thủy sản)",
+        "subtitle": "Cho cơ sở sản xuất, kinh doanh nông sản, lâm sản, thủy sản làm thực phẩm",
+        "icon": "🌾",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-b57f-73cc-856f-0255333fcb48",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        # Wizard MAE: 1 Thông tin hồ sơ (kê khai Form.io) → 2 Thành phần hồ sơ → 3 → 4 Nộp hồ sơ.
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Planner lõi: Đơn Phụ lục I và Thuyết minh Phụ lục II vào hai dòng attp-row cố định, CCCD
+        # (gộp 2 mặt) đi "Thêm giấy tờ", giấy ĐKKD chỉ để điền form, giấy lạ dồn vào dòng Đơn (ô
+        # "khac" cuối bảng để tệp lạ không bị báo "chưa nhận ra loại").
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm "
+             "(Phụ lục I) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "thuyet_minh", "name": "Bản thuyết minh về cơ sở vật chất, trang thiết bị, dụng cụ bảo "
+             "đảm điều kiện an toàn thực phẩm (Phụ lục II)", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp hồ sơ, thêm CCCD chủ / đại diện cơ "
+             "sở nếu nộp thay", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "dkkd", "name": "Giấy chứng nhận đăng ký kinh doanh / doanh nghiệp / hộ kinh doanh "
+             "(nếu có, để đối chiếu)", "icon": "🏪", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm theo Phụ lục I, đã "
+            "ký — nguồn chính để điền form.\n"
+            "2. Bản thuyết minh điều kiện bảo đảm an toàn thực phẩm theo Phụ lục II.\n"
+            "3. Căn cước công dân của người nộp hồ sơ; nếu người nộp khác chủ / đại diện cơ sở thì thêm "
+            "căn cước của chủ / đại diện cơ sở.\n"
+            "4. Nếu có: Giấy chứng nhận đăng ký kinh doanh / doanh nghiệp / hộ kinh doanh để đối chiếu.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: Đơn vào dòng Phụ lục I, bản thuyết minh vào dòng Phụ lục II; căn cước "
+            "(gộp 2 mặt) xếp vào mục 'Thêm giấy tờ'; giấy đăng ký kinh doanh chỉ dùng để điền form."
+        ),
+    },
+    {
         "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
         # Mã TTHC 1.014104, cổng Bộ Y tế (CÙNG wizard iGate/Form.io với ATTP ngay trên) nhưng nộp tại
         # SỞ Y tế: ke_khai_links đặt selectSo → DVCQG chọn Tỉnh → gạt toggle "Sở" (KHÔNG chọn sở cụ
@@ -2142,6 +2219,77 @@ PROCEDURES: list[dict] = [
             "sang phần chủ hồ sơ; nộp thay thì bỏ tích và điền riêng hai phần.\n"
             "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (a Đơn Mẫu 08, b văn bằng, d sức khỏe, e sơ "
             "yếu lý lịch, g xác nhận thực hành, h ảnh chân dung); căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh",
+        # Mã TTHC 1.012278, CÙNG khung Form.io với 2 entry giấy phép hành nghề chuyển tiếp ngay trên: cổng
+        # Bộ Y tế, nộp tại SỞ Y tế (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst, luồng
+        # chung "xay-dung". Key TRÙNG lõi → pipeline process/attach tự nối. KHÁC ở chỗ chủ hồ sơ là CƠ SỞ
+        # khám bệnh, chữa bệnh (người đại diện ký Đơn Mẫu 02); tên, địa chỉ, giờ làm việc của cơ sở lõi
+        # tóm vào ô Ghi chú. Trang kê khai là ObjectId không có mã → cụm TÊN thủ tục như lõi (bảng Bước 2
+        # bị ẩn khi đang ở Bước 1 nên không dùng tên dòng đính kèm).
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012278",
+                "MaTTHC=1.012278",
+                "019d2bff-1dae-71ac-95d8-374403c4ee5e",
+            ],
+            "textIncludes": ["cấp mới giấy phép hoạt động khám bệnh, chữa bệnh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp mới giấy phép hoạt động khám bệnh, chữa bệnh",
+        "shortLabel": "Cấp mới giấy phép hoạt động cơ sở khám bệnh, chữa bệnh",
+        "subtitle": "Cho phòng khám, nha khoa, cơ sở khám chữa bệnh xin giấy phép hoạt động (Sở Y tế)",
+        "icon": "🏥",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1dae-71ac-95d8-374403c4ee5e",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 11 dòng cố định (planner lõi attp-row, mỗi tệp đúng một dòng) → tắt
+        # hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp mới giấy phép hoạt động (Mẫu 02 Phụ lục II Nghị định "
+             "96/2023/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "dang_ky", "name": "Giấy chứng nhận đăng ký hộ kinh doanh / doanh nghiệp (hoặc quyết "
+             "định thành lập cơ sở)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "gphn", "name": "Chứng chỉ / giấy phép hành nghề và giấy xác nhận quá trình hành nghề "
+             "(Mẫu 11) của người chịu trách nhiệm chuyên môn", "icon": "🩺", "sides": 1, "repeatable": True},
+            {"key": "ke_khai", "name": "Bản kê khai cơ sở vật chất, thiết bị y tế, nhân sự (Mẫu 08) kèm giấy "
+             "tờ chứng minh (văn bằng, chứng chỉ đào tạo, hợp đồng…)", "icon": "📋", "sides": 1,
+             "repeatable": True},
+            {"key": "danh_sach", "name": "Danh sách đăng ký người hành nghề (Mẫu 01 Phụ lục II)", "icon": "📝",
+             "sides": 1, "repeatable": True},
+            {"key": "danh_muc", "name": "Danh mục chuyên môn kỹ thuật đề xuất", "icon": "📑", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đại diện cơ sở, thêm CCCD người nộp nếu nộp "
+             "thay", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Điều lệ bệnh viện (Mẫu 03) / tài liệu nguồn tài chính cơ sở nhân đạo "
+             "(nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của CƠ SỞ khám bệnh, chữa bệnh đề nghị cấp giấy phép hoạt động):\n"
+            "1. Đơn đề nghị cấp mới giấy phép hoạt động (Mẫu 02 Phụ lục II Nghị định 96/2023/NĐ-CP), đã ký "
+            "— nguồn chính để điền form.\n"
+            "2. Giấy chứng nhận đăng ký hộ kinh doanh / doanh nghiệp (hoặc quyết định thành lập).\n"
+            "3. Chứng chỉ hành nghề + giấy xác nhận quá trình hành nghề (Mẫu 11) của người chịu trách nhiệm "
+            "chuyên môn.\n"
+            "4. Bản kê khai cơ sở vật chất, thiết bị y tế, nhân sự (Mẫu 08) và giấy tờ chứng minh: văn bằng, "
+            "chứng chỉ đào tạo, quyết định, hợp đồng…\n"
+            "5. Danh sách đăng ký hành nghề (Mẫu 01) và Danh mục chuyên môn kỹ thuật.\n"
+            "6. Nếu có: căn cước người đại diện cơ sở; căn cước người nộp thay; điều lệ bệnh viện (Mẫu 03); "
+            "tài liệu nguồn tài chính cơ sở nhân đạo.\n"
+            "Nên để MỖI giấy tờ một tệp riêng — tệp scan gộp quá dài chỉ đọc được mấy trang đầu.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người đại diện cơ sở; tên, địa chỉ, giờ làm việc của cơ sở ghi vào ô Ghi chú.\n"
+            "Bước Thành phần hồ sơ: Đơn → dòng 1, giấy đăng ký → dòng 2, chứng chỉ hành nghề + giấy xác nhận "
+            "→ dòng 3, bản kê khai + giấy tờ chứng minh → dòng 5, danh sách hành nghề → dòng 6, danh mục kỹ "
+            "thuật → dòng 8; dòng bệnh viện / nhân đạo chỉ đính khi có giấy tờ; căn cước chỉ dùng ở bước "
+            "thông tin."
         ),
     },
     {
@@ -2934,6 +3082,62 @@ PROCEDURES: list[dict] = [
             "công vụ); hợp đồng thuê phương tiện (xe không chính chủ).\n"
             "Danh sách phương tiện trên đơn: bạn tự bấm 'Thêm xe' và chọn biển số đã đăng ký.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-chat-ha-cay-xanh",
+        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.002693, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 2 dòng: Đơn
+        # Mẫu 01 / Ảnh hiện trạng cây). Key TRÙNG lõi → process/attach tự nối. Bảng kê cây là datagrid
+        # data[panel][tbantest][i][...], fill-core.js đã có nhánh datagrid (bấm "Thêm dòng").
+        # ke_khai_links khai selectSoProvinces ["danang"] (tỉnh khác chọn cấp xã) + autoConfirm false.
+        # Registry trợ lý chưa có cờ chọn Sở theo tỉnh → chỉ mở cho Đà Nẵng, chọn Sở như NOXH Bộ Xây dựng.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.002693",
+                "019d2bfe-230c-75d8-8979-11b8bdc68e6c",
+            ],
+            "textIncludes": [
+                "cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+        "shortLabel": "Giấy phép chặt hạ, dịch chuyển cây xanh",
+        "subtitle": "Xin phép chặt hạ hoặc di dời cây xanh đô thị (Sở Xây dựng)",
+        "icon": "🌳",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp giấy phép chặt hạ, dịch chuyển cây xanh (Mẫu số 01) "
+             "có bảng kê cây xanh — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hồ sơ", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "anh_hien_trang", "name": "Ảnh chụp hiện trạng cây xanh cần chặt hạ, dịch chuyển",
+             "icon": "🌳", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd_nguoi_nop", "name": "Căn cước công dân của người nộp thay (nếu có)",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của CHỦ HỒ SƠ — người/tổ chức đề nghị cấp phép):\n"
+            "1. Đơn đề nghị cấp giấy phép chặt hạ, dịch chuyển cây xanh (Mẫu số 01) có bảng kê cây "
+            "xanh, đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của chủ hồ sơ.\n"
+            "3. Ảnh chụp hiện trạng cây xanh cần chặt hạ, dịch chuyển.\n"
+            "4. Nếu có: giấy chứng nhận quyền sử dụng đất.\n"
+            "5. Nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Trợ lý điền Phần I (người nộp), Phần II (chủ hồ sơ + nội dung đơn), bảng kê cây xanh (nhiều "
+            "dòng), lý do và thông tin ký.\n"
+            "Bước đính kèm: Đơn Mẫu 01 vào dòng 'Đơn đề nghị' (Bản chính), ảnh hiện trạng vào dòng 'Ảnh "
+            "chụp hiện trạng cây xanh'."
         ),
     },
     {

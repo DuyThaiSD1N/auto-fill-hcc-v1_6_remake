@@ -132,6 +132,56 @@ test("khối ủy quyền: trang không có khối → đơn vẫn điền, ô �
   assert.match(res.errors[0], /Không thấy khối Thông tin trong trường hợp được ủy quyền/);
 });
 
+// ── Đính kèm: ô "Số lượng" Bản chính (`thanhPhanHoSo<id>banChinhsoBo`) = số tệp đã đính ──
+function loadBacNinhAttach({ landedBefore = 0 } = {}) {
+  const ID = "50511";
+  const qty = { value: "1", getAttribute: () => "number" };
+  const fileInput = { files: [], multiple: true, hasAttribute: () => true, closest: () => null };
+  const landed = { querySelectorAll: () => Array.from({ length: landedBefore }, () => ({})) };
+  const row = { textContent: "TP-H05.000026 Mẫu số 18. Đơn đăng ký biến động đất đai" };
+  const checkbox = {
+    checked: true, getAttribute: (a) => (a === "name" ? `${PFX}thanhPhanHoSo${ID}` : null),
+    closest: (s) => (s === "tr" ? row : null),
+  };
+  const ids = { [`${PFX}thanhPhanHoSo${ID}banChinhsoBo`]: qty, [`${PFX}thanhPhanHoSobanChinh${ID}`]: landed };
+  const document = {
+    querySelectorAll: (sel) => (sel.includes("thanhPhanHoSo") && sel.includes("checkbox") ? [checkbox] : []),
+    querySelector: (sel) => (sel.includes(`filethanhPhanHoSobanChinh${ID}`) ? fileInput : null),
+    getElementById: (id) => ids[id] || null,
+  };
+  const H = {
+    setNativeValue(el, value) { el.value = value; },
+    setFilesOnInput: () => true,
+    dataUrlToFile: (p, name) => ({ name }),
+    sleep: () => Promise.resolve(),
+  };
+  // slotHasFile: lượt trước đã lên tệp → input.files giữ tệp (giả lập ô đã có file).
+  if (landedBefore) fileInput.files = [{}];
+  const ctx = { document, console, setTimeout, __TLND__: H, CSS: { escape: (s) => s }, Event: class {} };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(engine, ctx);
+  return { H, qty };
+}
+
+const ATTACH_PLAN = ["Đơn 18.pdf", "Phiếu đo đạc.pdf", "Hồ sơ kỹ thuật.pdf", "Căn cước.pdf"].map((n, i) => ({
+  fileIndex: i, componentName: "Mẫu số 18. Đơn đăng ký biến động", slotKey: "banChinh", documentName: n,
+}));
+
+test("đính 4 tệp vào Bản chính → ô Số lượng ghi 4 thay mặc định 1", async () => {
+  const { H, qty } = loadBacNinhAttach();
+  const res = await H.attachBacNinhByPlan(["a", "b", "c", "d"], ATTACH_PLAN);
+  assert.equal(res.attached, 4);
+  assert.equal(qty.value, "4");
+});
+
+test("ô đã có tệp từ lượt trước → bỏ qua đính lại nhưng vẫn sửa Số lượng theo số tệp đang có", async () => {
+  const { H, qty } = loadBacNinhAttach({ landedBefore: 4 });
+  const res = await H.attachBacNinhByPlan(["a", "b", "c", "d"], ATTACH_PLAN);
+  assert.equal(res.skipped, 4);
+  assert.equal(qty.value, "4");
+});
+
 test("sidebar khai cờ supportsBacNinhAuthorizedPerson để BE chạy lượt người ủy quyền", () => {
   assert.match(read("sidebar.js"), /supportsBacNinhAuthorizedPerson: true,/);
 });

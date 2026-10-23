@@ -172,7 +172,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Các thủ tục khác của cổng Bộ Xây dựng: cùng luồng chung "xay-dung", cùng hộp thoại.
     for key in ("dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
                 "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
-                "cap-giay-phep-lien-van-viet-lao"):
+                "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh"):
         moc_other = procedures.pop(key)
         assert moc_other["flowProfile"] == "xay-dung", key
         assert moc_other["maePortal"] is True, key
@@ -199,7 +199,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # gạt toggle "Sở", sau đó cổng mở hộp thoại "Chọn trường hợp giải quyết" như Bộ Xây dựng →
     # dùng luồng chung "xay-dung".
     for key in ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
-                "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep"):
+                "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
+                "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh"):
         byt_so = procedures.pop(key)
         assert byt_so["flowProfile"] == "xay-dung", key
         assert byt_so["agencyProvinceOnly"] is True, key
@@ -298,7 +299,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # CÙNG cổng Bộ Nội vụ nhưng giải quyết ở CẤP XÃ: DVCQG chọn đủ Tỉnh + Xã (không
     # agencyProvinceOnly/agencySoFirst), hộp thoại cổng bộ gạt radio "Phường/Xã".
     # Chi tiết hành vi cấp xã nằm ở test_mae_agency_cap_xa.py; ở đây chỉ chốt hình dạng entry.
-    for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si"):
+    # ATTP nông, lâm, thủy sản (Bộ NN&MT, 2.001827) cùng khuôn cấp xã trên trang MAE.
+    for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -493,7 +495,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bắc Ninh "ho-tro-chi-phi-hoa-tang-bac-ninh" (1.014582): điền đơn + đính kèm.
     # +1 cổng Bắc Ninh "dang-ky-nha-o-xa-hoi-bac-ninh" (1.014632): điền đơn Mẫu 02 + đính kèm.
     # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" (1.012289).
-    assert len(procedures) == 76
+    # +1 cổng Bộ Xây dựng chọn Sở "cap-giay-phep-chat-ha-cay-xanh" (1.002693), chỉ Đà Nẵng.
+    # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh" (1.012278).
+    # +1 cổng Bộ NN&MT cấp xã "cap-gcn-attp-nong-lam-thuy-san" (2.001827).
+    assert len(procedures) == 79
 
     for procedure in procedures:
         key = procedure["key"]

@@ -2474,8 +2474,12 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             if selected:
                 action["executionSubject"] = selected
         # Thủ tục cấp Sở: modal còn ô Cấp thực hiện / Thủ tục / Cơ quan thực hiện phải chọn trước.
-        if proc.get("infoModalFields"):
-            action["infoFields"] = proc["infoModalFields"]
+        # infoModalFieldsByProvince: tỉnh có cổng xếp khác (vd Bắc Ninh "Đơn vị khác") đè cấu hình chung.
+        slug = str(loc.get("province_slug") or _account_province_slug(conv))
+        info_fields = (proc.get("infoModalFieldsByProvince") or {}).get(slug) \
+            or proc.get("infoModalFields")
+        if info_fields:
+            action["infoFields"] = info_fields
         r.actions = [action]
         return r
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):

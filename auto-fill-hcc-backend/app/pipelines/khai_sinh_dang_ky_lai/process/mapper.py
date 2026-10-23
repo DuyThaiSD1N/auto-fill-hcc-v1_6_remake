@@ -41,6 +41,10 @@ _STRUCTURAL_DEFAULTS = [
     {"name": "LoaiDangKy", "comp": "x-radio", "value": "2"},
     {"name": "nksLoaiKhaiSinh", "comp": "x-select-default", "value": "Đã xác định được cả cha lẫn mẹ"},
 ]
+# Hai lựa chọn còn lại của nksLoaiKhaiSinh; giá trị vẫn nằm ở vị trí mặc định trong `out` vì ô
+# này phải chọn trước để cổng hiện/ẩn đúng mục cha, mẹ.
+_BIRTH_TYPE_NO_FATHER = "Chưa xác định được cha"
+_BIRTH_TYPE_NO_MOTHER = "Chưa xác định được mẹ"
 
 # Ô mục IV (cha) mà extension xoá được: ô chữ, ô ngày, dropdown.
 _FATHER_CLEARABLE_FIELDS = (
@@ -1225,6 +1229,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # đã điền sẵn. Radio/ô địa chỉ extension không xoá được nên không gửi.
         for _name in _FATHER_CLEARABLE_FIELDS:
             clear(_name)
+
+    # Loại khai sinh theo cha/mẹ đã xác định. Chỉ dựa vào tên/số định danh: field lẻ như quốc tịch
+    # không đủ để coi là có người đó. Thiếu cả hai thì nhiều khả năng là OCR hỏng → giữ mặc định.
+    has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
+    has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
+    birth_type = None
+    if has_mother and not has_father:
+        birth_type = _BIRTH_TYPE_NO_FATHER
+    elif has_father and not has_mother:
+        birth_type = _BIRTH_TYPE_NO_MOTHER
+    if birth_type:
+        for field in out:
+            if field["name"] == "nksLoaiKhaiSinh":
+                field["value"] = birth_type
 
     # Thong tin dang ky truoc day.
     agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)

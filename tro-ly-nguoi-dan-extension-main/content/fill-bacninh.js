@@ -485,6 +485,32 @@
     );
   }
 
+  // Số tệp đã lên của 1 ô: callback upload của cổng append <div class="tphsItem"> vào
+  // container `#<PFX>thanhPhanHoSo<slot><id>` (cùng cơ chế bản auto-fill đếm landedCount).
+  function slotFileCount(id, slotKey) {
+    const slot = slotKey === "banSao" ? "banSao" : "banChinh";
+    const box = document.getElementById(`${PFX}thanhPhanHoSo${slot}${id}`);
+    return box ? box.querySelectorAll(".tphsItem").length : 0;
+  }
+
+  // Ô "Số lượng" của dòng Bản chính/Bản sao (`thanhPhanHoSo<id><slot>soBo`, class tphsSoLuongBan):
+  // cổng để mặc định 1 dù đính nhiều tệp → ghi đúng SỐ TỆP đã đính vào ô đó.
+  function setSlotQuantity(id, slotKey, count) {
+    const n = Number(count) || 0;
+    if (n <= 0) return false;
+    const slot = slotKey === "banSao" ? "banSao" : "banChinh";
+    const el = document.getElementById(`${PFX}thanhPhanHoSo${id}${slot}soBo`);
+    if (!el) return false;
+    if (String(el.value) === String(n)) return true;
+    try {
+      H.setNativeValue(el, String(n), { typing: true, commit: true });
+      H.markFilled && H.markFilled(el);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Tên file đã tải (vd "Giấy chứng nhận QSDĐ.pdf"); loại trừ dòng gợi ý "cho phép .pdf,.docx…".
   const FILENAME_RE = /[^\s,\/\\]{2,}\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|gif)\b/i;
 
@@ -572,6 +598,8 @@
         // Đã có file ở ô này rồi → BỎ QUA, không đính lại (tránh trùng khi chạy lại).
         if (slotHasFile(input)) {
           skippedNames.push(...g.entries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
+          // Lượt trước đã đính nhưng ô Số lượng vẫn để mặc định 1 → sửa theo số tệp đang có.
+          setSlotQuantity(comp.id, g.slot, slotFileCount(comp.id, g.slot));
           continue;
         }
         ensureChecked(comp.checkbox);
@@ -588,8 +616,11 @@
           allowMultiple: multiple,
           assumeConsumed: true,
         });
-        if (ok) attachedNames.push(...files.map((f) => f.name));
-        else errors.push(`Gán file thất bại cho "${g.componentName}".`);
+        if (ok) {
+          attachedNames.push(...files.map((f) => f.name));
+          // Upload chạy bất đồng bộ → container có thể chưa kịp có .tphsItem, lấy max với số tệp vừa gán.
+          setSlotQuantity(comp.id, g.slot, Math.max(slotFileCount(comp.id, g.slot), files.length));
+        } else errors.push(`Gán file thất bại cho "${g.componentName}".`);
         await H.sleep(150);
       }
 

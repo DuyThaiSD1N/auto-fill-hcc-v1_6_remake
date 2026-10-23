@@ -5867,6 +5867,14 @@ function renderKeKhaiOptions() {
     if (item.code) option.dataset.code = item.code;
     keKhaiSelect.appendChild(option);
   }
+  // Nhãn số cạnh chữ "Thủ tục" (giống "Xem tất cả N thủ tục" bên trợ lý).
+  const countEl = document.getElementById("keKhaiCount");
+  if (countEl) {
+    const n = keKhaiLinks().length;
+    countEl.hidden = !n;
+    countEl.textContent = `${n} thủ tục`;
+    countEl.title = `Danh mục có ${n} thủ tục`;
+  }
 }
 
 /** Đổi tài khoản ngay trong panel -> nạp lại danh mục theo tỉnh của tài khoản mới. */
@@ -6046,7 +6054,8 @@ if (keKhaiSection) {
 // <select> gốc VẪN là nguồn dữ liệu và nơi phát sự kiện `change` — mọi code sẵn có (loadWards,
 // persistLocation, onKeKhaiProcedureChosen…) không phải sửa gì. Widget này chỉ là lớp nhìn:
 // đọc <option> mỗi lần mở, lọc theo từ khoá, chọn xong thì set .value rồi dispatch change.
-function enhanceSelectWithSearch(select, { searchPlaceholder }) {
+// countNoun: có thì hiện dòng đếm dưới ô tìm ("Có N thủ tục" / "Tìm thấy X / N thủ tục").
+function enhanceSelectWithSearch(select, { searchPlaceholder, countNoun = "" }) {
   if (!select || select.dataset.enhanced === "1") return null;
   select.dataset.enhanced = "1";
 
@@ -6076,7 +6085,10 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
   const list = document.createElement("div");
   list.className = "combo-list";
   list.setAttribute("role", "listbox");
-  dropdown.append(search, list);
+  const meta = document.createElement("div");
+  meta.className = "combo-meta";
+  meta.setAttribute("aria-live", "polite");
+  dropdown.append(search, ...(countNoun ? [meta] : []), list);
   combo.append(trigger, dropdown);
   select.after(combo);
 
@@ -6106,6 +6118,7 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
       if (normalizeProcedureSearch(opt.textContent).includes(needle)) return true;
       return !!codeNeedle && (opt.dataset.code || "").replace(/\D+/g, "").includes(codeNeedle);
     });
+    if (countNoun) renderMeta(needle, matched.length);
     if (!matched.length) {
       const empty = document.createElement("div");
       empty.className = "combo-empty";
@@ -6130,6 +6143,19 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
       });
       list.appendChild(item);
     }
+  }
+
+  function renderMeta(needle, matchedCount) {
+    const total = options().length;
+    meta.textContent = "";
+    if (!total) return;
+    const num = (n) => {
+      const b = document.createElement("b");
+      b.textContent = String(n);
+      return b;
+    };
+    if (!needle) meta.append("Có ", num(total), ` ${countNoun} · gõ tên hoặc mã để tìm`);
+    else if (matchedCount) meta.append("Tìm thấy ", num(matchedCount), ` / ${total} ${countNoun}`);
   }
 
   function open() {
@@ -6328,7 +6354,9 @@ async function initDestSection() {
   if (!destSection || !destGoBtn) return;
   destCombos.province = enhanceSelectWithSearch(provinceSelect, { searchPlaceholder: "Tìm tỉnh/thành phố..." });
   destCombos.ward = enhanceSelectWithSearch(wardSelect, { searchPlaceholder: "Tìm phường/xã..." });
-  destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm theo tên hoặc mã (vd 2.000815)..." });
+  destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, {
+    searchPlaceholder: "Tìm theo tên hoặc mã (vd 2.000815)...", countNoun: "thủ tục",
+  });
 
   destGoBtn.addEventListener("click", () => void onDestGoClick());
   destBackBtn?.addEventListener("click", onDestBackClick);

@@ -40,6 +40,29 @@ body.embedded h1 { display: none; }
   margin-bottom: 6px;
 }
 
+/* Nhãn "Thủ tục" có nhãn số thủ tục nằm bên phải. */
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.proc-count {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border: 1px solid #bbdefb;
+  border-radius: 999px;
+  background: #e3f2fd;
+  color: #0d47a1;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.proc-count[hidden] { display: none; }
+
 label {
   display: block;
   font-size: 12px;
@@ -1139,6 +1162,16 @@ input, select, textarea { font-family: inherit; }
 }
 .combo-dropdown[hidden] { display: none; }
 .combo-search { margin: 0; font-size: 13px; }
+/* Dòng đếm dưới ô tìm thủ tục: "Có N thủ tục" / "Tìm thấy X / N thủ tục". */
+.combo-meta {
+  padding: 0 2px;
+  color: #555;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+.combo-meta b { color: #0d47a1; font-weight: 700; }
+.combo-meta:empty { display: none; }
 
 /* Thanh kéo: danh sách dài mấy cũng chỉ cao chừng này. */
 .combo-list { display: grid; gap: 3px; max-height: 210px; overflow-y: auto; }

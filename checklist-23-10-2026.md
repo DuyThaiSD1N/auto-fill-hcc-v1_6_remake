@@ -133,9 +133,9 @@ Chép entry `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` (`procedure_registry.py
 **`cap-giay-phep-chat-ha-cay-xanh`** (1.002693). Cổng Bộ Xây dựng `dvc.moc.gov.vn`, lõi có process + attach, key trùng.
 Chép khung `cho-thue-thue-mua-nha-o-xa-hoi` (cùng cổng, `flowProfile: "xay-dung"`).
 
-- [ ] `detect`: `urlScope: ["dvc.moc.gov.vn"]`; `urlIncludes` `maThuTuc=1.002693`, `019d2bfe-230c-75d8-8979-11b8bdc68e6c`;
+- [x] `detect`: `urlScope: ["dvc.moc.gov.vn"]`; `urlIncludes` `maThuTuc=1.002693`, `019d2bfe-230c-75d8-8979-11b8bdc68e6c`;
       `textIncludes: ["cấp giấy phép chặt hạ, dịch chuyển cây xanh"]` như lõi. `keKhaiUrl` = link DVCQG uuid trên.
-- [ ] **Chọn cơ quan, cần anh quyết.** `ke_khai_links` ghi `selectSoProvinces: ["danang"]` (chỉ Đà Nẵng chọn Sở, tỉnh
+- [x] **Chọn cơ quan:** làm theo đề xuất (chỉ Đà Nẵng, chọn Sở Xây dựng). `autoConfirm` chưa kiểm trên trang. `ke_khai_links` ghi `selectSoProvinces: ["danang"]` (chỉ Đà Nẵng chọn Sở, tỉnh
       khác chọn cấp xã) và `autoConfirm: false`. Registry trợ lý chưa có cờ chọn Sở theo từng tỉnh: `agencySoFirst`
       áp cho mọi tỉnh.
   - Đề xuất: `provinceOnly: ["danang"]` + `agencyProvinceOnly` + `agencySoFirst` + `agencyDeptLabel: "Sở Xây dựng"`.
@@ -147,12 +147,12 @@ Chép khung `cho-thue-thue-mua-nha-o-xa-hoi` (cùng cổng, `flowProfile: "xay-d
 - [ ] Bảng kê cây: mapper phát `data[panel][tbantest][i][...]`. `fill-core.js` của trợ lý đã có nhánh datagrid
       (khoảng dòng 1307–1374, ví dụ trong comment chính là bảng này), nên không phải sửa extension. Chạy thử với đơn có
       **≥ 2 cây** để kiểm nút "Thêm dòng".
-- [ ] `requiredDocs`: Đơn Mẫu 01 có bảng kê cây xanh (bắt buộc), CCCD chủ hồ sơ, ảnh hiện trạng cây, GCN QSDĐ (nếu có),
+- [x] `requiredDocs`: Đơn Mẫu 01 có bảng kê cây xanh (bắt buộc), CCCD chủ hồ sơ, ảnh hiện trạng cây, GCN QSDĐ (nếu có),
       CCCD người nộp thay (nếu có). `uploadHint` chép từ lõi, bỏ chữ "extension".
-- [ ] Gợi ý chọn thủ tục: "xin phép chặt cây xanh", "chặt hạ cây trước nhà", "di dời / dịch chuyển cây xanh". Phải
+- [x] Gợi ý chọn thủ tục: "xin phép chặt cây xanh", "chặt hạ cây trước nhà", "di dời / dịch chuyển cây xanh". Phải
       tách với cấp phép xây dựng và `cap-phep-long-duong-via-he`.
-- [ ] Tên tiếng Mông (BẢN NHÁP).
-- [ ] Lõi không có file test riêng. Chạy `tests/handfree/unit/test_flow_profiles.py` (số đếm 77) và test toàn bộ.
+- [x] Tên tiếng Mông (BẢN NHÁP): "Ntawv tso cai txiav los yog tsiv ntoo".
+- [x] Lõi không có file test riêng. Chạy `tests/handfree/unit/test_flow_profiles.py` (số đếm 77) và test toàn bộ.
 
 ## 14:45–15:45 · Nợ chạy thử (dữ liệu bịa, dừng trước nút Nộp)
 
@@ -186,8 +186,8 @@ Chép khung `cho-thue-thue-mua-nha-o-xa-hoi` (cùng cổng, `flowProfile: "xay-d
 | Bắc Ninh | dang-ky-nha-o-xa-hoi-bac-ninh | ☑ | ☐ | ☐ | agent: điền đơn Mẫu 02 + đính kèm KQ005445 + khối ủy quyền (đã nối); cơ quan cấp xã, chưa mở trang kiểm |
 | Bắc Ninh | ~~cap-hoc-tap-bac-ninh~~ | — | — | — | bỏ qua |
 | Y tế | cap-moi-giay-phep-hanh-nghe-chuyen-tiep | ☑ | ☐ | ☐ | cơ quan theo nhánh Sở Y tế, chưa mở trang kiểm; ke_khai_links chưa có selectSo |
-| Xây dựng | cap-giay-phep-chat-ha-cay-xanh | ☐ | ☐ | ☐ | |
+| Xây dựng | cap-giay-phep-chat-ha-cay-xanh | ☑ | ☐ | ☐ | chỉ Đà Nẵng, chọn Sở Xây dựng; bảng kê ≥ 2 cây chưa chạy thử |
 
-**Tổng hôm nay: 4 / 5 → lũy kế 76 / 100** (đích cuối ngày 77)
+**Tổng hôm nay: 5 / 5 → lũy kế 77 / 100** (đích cuối ngày 77)
 
 > Dùng dữ liệu bịa khi chạy thử. Không nộp hồ sơ thật.

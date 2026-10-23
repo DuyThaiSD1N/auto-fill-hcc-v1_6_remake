@@ -797,12 +797,29 @@ async def test_wizard_ket_hon_modal_chu_ho_so_ke_khai():
     r = await _turn(conv, '__event:page_status:{"infoModal": true, "loggedIn": true}')
     assert r.display_md == "" and r.actions[0]["type"] == "confirm_info_modal"
 
-    owner = {"fullName":"VŨ ĐÌNH THIẾT","identityNumber":"040203015844"}
+    owner ={"fullName":"VŨ ĐÌNH THIẾT","identityNumber":"040203015844"}
     r = await _turn(conv, f'__event:page_status:{{"wizardStep":1,"loggedIn":true,"ownerContext":{__import__("json").dumps(owner)}}}')
     assert conv["state"] == "consent"
     assert conv["owner_context"] == owner
     assert "Thông tin chủ hồ sơ" in r.display_md
     assert any(c["kind"] == "consent_form" for c in r.cards)
+
+
+def test_modal_thong_tin_chung_tro_giup_phap_ly_bac_ninh_chon_don_vi_khac():
+    """Trợ giúp pháp lý: Bắc Ninh xếp ở Cấp thực hiện "Đơn vị khác", tỉnh khác vẫn "Cấp Tỉnh"."""
+    proc = flow.get_procedure("yeu-cau-tro-giup-phap-ly")
+    ctx = {"infoModal": True, "loggedIn": True}
+
+    conv = _conv()
+    r = flow._guide_login_on_page(conv, proc, conv["location"], ctx)  # noqa: SLF001
+    fields = {f["label"]: f["value"] for f in r.actions[0]["infoFields"]}
+    assert fields["Cấp thực hiện"] == "Đơn vị khác"
+    assert fields["Cơ quan thực hiện"] == "Trung tâm Trợ giúp pháp lý"
+
+    loc = {"province": "Thành phố Đà Nẵng", "province_slug": "danang", "ward": "Phường Hải Châu"}
+    conv = store.new_conversation(location=loc)
+    r = flow._guide_login_on_page(conv, proc, loc, ctx)  # noqa: SLF001
+    assert r.actions[0]["infoFields"][0] == {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"}
 
 
 @pytest.mark.asyncio
