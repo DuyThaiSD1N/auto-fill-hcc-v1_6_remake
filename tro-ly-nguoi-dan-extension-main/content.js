@@ -1662,11 +1662,8 @@
       // nhận theo form#ngSelectAgencyForm1 (id hardcode trong template Angular, ổn định).
       // Cổng bộ nền iGate: hộp thoại chọn cơ quan form#ngSelectAgencyForm(1) + wizard
       // mat-stepper. Bộ Nội vụ dùng CÙNG component (UBND tỉnh → Sở/Ban ngành → Sở Nội vụ).
-      // Bộ Y tế: thủ tục cấp Sở (vd cấp lại/điều chỉnh GCN kinh doanh dược) mở TRANG nps/apply
-      // "Chọn trường hợp giải quyết" = CÙNG form#ngSelectAgencyForm (agency + procedureProcess)
-      // với hộp thoại Bộ Xây dựng.
       const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
-        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn"].includes(location.hostname);
+        "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
       // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
@@ -1726,16 +1723,13 @@
       // Wizard MAE (mat-horizontal-stepper, nhãn KHÁC cổng tư pháp): 1 Thông tin hồ sơ →
       // 2 Thành phần hồ sơ → 3 Thông tin phí → 4 Nộp hồ sơ. Cả 4 step CÙNG tồn tại trong
       // DOM (chỉ đổi visibility) → tin header aria-selected, không quét nội dung panel.
-      // Cổng Bộ Y tế đặt tên bước 3 là "Hình thức nhận kết quả" (crawl 23/10/2026) → mỗi bước khai các tên.
       if (maeHost && !maeAgencyBlock && !wizardStep) {
-        const maeLabels = [["thong tin ho so"], ["thanh phan ho so"],
-          ["thong tin phi", "hinh thuc nhan ket qua"], ["nop ho so"]];
-        const stepOf = (h) => maeLabels.findIndex((names) => names.some((l) => foldTxt(h?.textContent || "").includes(l)));
+        const maeLabels = ["thong tin ho so", "thanh phan ho so", "thong tin phi", "nop ho so"];
         const headers = Array.from(document.querySelectorAll("mat-step-header"));
-        const matched = headers.filter((h) => stepOf(h) >= 0);
+        const matched = headers.filter((h) => maeLabels.some((l) => foldTxt(h.textContent).includes(l)));
         if (matched.length >= 2) {
           const selected = matched.find((h) => h.getAttribute("aria-selected") === "true");
-          const idx = selected ? stepOf(selected) : -1;
+          const idx = maeLabels.findIndex((l) => foldTxt(selected?.textContent || "").includes(l));
           if (idx >= 0) wizardStep = idx + 1;
         }
       }
@@ -1790,6 +1784,10 @@
         loginQrMissing,
         infoModal,
         wizardStep,
+        // Cổng liên thông (6 bước): bước đang mở trên thanh bước — trường RIÊNG, không đụng wizardStep 4 bước của
+        // cổng tư pháp (BE hiểu wizardStep 3 là bước đính kèm).
+        lienThongStep: (window.__TLND__ && typeof window.__TLND__.lienThongStep === "function")
+          ? window.__TLND__.lienThongStep() : 0,
         // Thông tin định danh của đúng người đang đứng tên chủ hồ sơ. Backend dùng làm
         // context nghiệp vụ; extension không tự quyết người hay nguồn dữ liệu.
         ownerContext,

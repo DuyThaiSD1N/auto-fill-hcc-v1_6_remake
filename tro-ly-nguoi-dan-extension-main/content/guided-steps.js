@@ -33,15 +33,6 @@
                             'button[type="submit"]'];
   const SUBMIT_TEXTS = ["gui ho so", "nop ho so"];
 
-  // Stepper iGate (cổng Bộ Y tế…): 4 panel cùng nằm trong DOM, panel ẩn chỉ đổi visibility nên
-  // offsetParent vẫn có → CHỈ tìm trong panel đang mở. Nút sang bước của các bước giữa ghi "Tiếp tục".
-  function stepperNextButton() {
-    const panel = document.querySelector('.mat-horizontal-stepper-content[aria-expanded="true"]');
-    if (!panel) return null;
-    return Array.from(panel.querySelectorAll("button"))
-      .find((el) => isVisible(el) && fold(el.textContent) === "tiep tuc") || null;
-  }
-
   function findButton(selectors, texts) {
     const matchesText = (el) => {
       const text = fold(el.textContent);
@@ -190,7 +181,7 @@
     if (window.__TLND__?.isSurveyDossierPage?.()) return;
     const button = submit
       ? findButton(SUBMIT_SELECTORS, SUBMIT_TEXTS)
-      : stepperNextButton() || findButton(NEXT_SELECTORS, NEXT_TEXTS);
+      : findButton(NEXT_SELECTORS, NEXT_TEXTS);
     // Frame không có nút thì IM để frame đúng trả lời (content script chạy ở mọi frame).
     if (!button) return;
     if (button.disabled) {

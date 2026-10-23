@@ -92,6 +92,8 @@
         "content/fill-surveyjs.js",
         "content/tu-phap-moi.js",
         "content/field-review-surveyjs.js",
+        "content/field-review-angular.js",
+        "content/lien-thong.js",
         "content/business-registration-adapter.js",
         "content/procedures/business-registration.js",
         "content/portal-dvc.js",

@@ -17,15 +17,6 @@ test("cổng Bộ Nội vụ được nhận là cổng bộ iGate", () => {
   assert.match(list[1], /"dichvucongbnv\.moha\.gov\.vn"/);
 });
 
-test("trang Chọn trường hợp giải quyết của Bộ Y tế đi đường hộp thoại Bộ Xây dựng", () => {
-  const list = content.match(/const maeHost = \[([\s\S]*?)\]\.includes\(location\.hostname\)/);
-  assert.match(list[1], /"dichvucongbyt\.moh\.gov\.vn"/);
-  // Trang nps/apply của Bộ Y tế là form#ngSelectAgencyForm (agency + procedureProcess).
-  assert.match(portalMae, /if \(form\.id === "ngSelectAgencyForm"\) \{/);
-  const block = manifest.content_scripts.find((c) => c.js.includes("content/portal-mae.js"));
-  assert.ok(block.matches.includes("https://dichvucongbyt.moh.gov.vn/*"));
-});
-
 test("engine hộp thoại không khoá theo tên miền và được nạp trên cổng Bộ Nội vụ", () => {
   assert.doesNotMatch(portalMae, /location\.hostname/, "portal-mae.js không được lọc theo host");
   const block = manifest.content_scripts.find((c) => c.js.includes("content/portal-mae.js"));

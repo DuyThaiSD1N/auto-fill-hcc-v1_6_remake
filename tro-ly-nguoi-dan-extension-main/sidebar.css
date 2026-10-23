@@ -863,6 +863,25 @@ body.settings-mode .bot-f { display: none; }
   content: "✓"; margin-left: auto; align-self: center;
   color: var(--teal-d); font-size: 17px; font-weight: 800;
 }
+/* Cổng liên thông, cách nhận kết quả từng giấy tờ: tên giấy trên, lựa chọn dưới; lựa chọn đang dùng có ✓. */
+.lt-result-groups {
+  align-self: stretch; display: flex; flex-direction: column; gap: 8px;
+  background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 11px 13px;
+  box-shadow: var(--card-shadow);
+}
+.ltr-row + .ltr-row { border-top: 1px solid var(--line); padding-top: 8px; }
+.ltr-name { font-size: 13px; font-weight: 800; color: var(--navy); margin-bottom: 5px; }
+.ltr-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ltr-fixed { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.ltr-opt {
+  border: 1.5px solid var(--line); background: #fff; color: var(--ink); border-radius: 10px;
+  padding: 6px 10px; font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+.ltr-opt:hover:not(:disabled) { border-color: var(--teal); }
+.ltr-opt:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.ltr-opt.picked { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-d); font-weight: 700; cursor: default; }
+.ltr-opt.picked::before { content: "✓ "; }
+.ltr-opt:disabled:not(.picked) { opacity: .55; cursor: default; }
 /* Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): nhóm Nơi xử lý / Trường hợp. */
 .mae-dialog-choice .mdc-title {
   color: var(--teal-d); font-weight: 800; font-size: 11px;

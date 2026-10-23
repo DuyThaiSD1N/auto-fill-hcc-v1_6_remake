@@ -29,9 +29,8 @@ test("content.js phát tín hiệu maeAgencyBlock và null formKind trên trang 
   assert.ok(content.includes("maeAgencyBlock,"), "getPageContext phải trả maeAgencyBlock");
   assert.ok(/formKind:\s*\(loginPage \|\| infoModal \|\| maeAgencyBlock/.test(content),
     "maeAgencyBlock phải null formKind (3 radio của form MAE gây dương tính giả standard)");
-  assert.ok(content.includes('[["thong tin ho so"], ["thanh phan ho so"],'), "wizard MAE 4 nhãn riêng");
-  assert.ok(content.includes('["thong tin phi", "hinh thuc nhan ket qua"], ["nop ho so"]]'),
-    "bước 3: MAE ghi Thông tin phí, cổng Bộ Y tế ghi Hình thức nhận kết quả");
+  assert.ok(content.includes('"thong tin ho so", "thanh phan ho so", "thong tin phi", "nop ho so"'),
+    "wizard MAE 4 nhãn riêng");
 });
 
 test("sidebar chuyển maeAgencyBlock lên BE: pageSignal + payload page_status + watcher sig", () => {

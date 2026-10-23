@@ -94,9 +94,6 @@
     // Có engine gạt công tắc "cách nhận kết quả" (portal-dvc.js::selectResultMethod). BE chỉ
     // chọn sẵn hộ khi thấy cờ này; thiếu cờ → giữ câu hướng dẫn ba cách để công dân tự gạt.
     supportsResultMethod: true,
-    // Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước "Hình thức nhận kết quả" (guided-steps.js) và chọn ô
-    // receivingKind (portal-mae.js::selectReceivingKind). Thiếu cờ → BE giữ câu "tự bấm Nộp hồ sơ".
-    supportsIgateResultStep: true,
     // Hộp thoại cổng bộ chọn cơ quan ở CẤP XÃ (radio "Phường/Xã"). Thiếu cờ → BE dặn công dân
     // chọn tay thay vì bắn lệnh cho engine cũ gạt nhầm sang "Sở/Ban ngành".
     supportsMaeWardAgency: true,
@@ -129,9 +126,10 @@
     // Trang nộp một trang, luồng bản 2: thẻ tiến trình nhiều bước (action pipeline_steps), tắt chú giải màu cũ
     // (noLegend), báo BE mỗi khi số ô trống đổi lúc công dân tự gõ trên cổng (__event:field_review_status).
     supportsFlowV2: true,
-    // Cổng Bắc Ninh: biết mở khối "Thông tin trong trường hợp được ủy quyền" (tick ô bổ sung + chọn loại
-    // đối tượng theo ô đánh dấu bn-doi-tuong-khac) rồi điền doiTuongKhac*. Thiếu cờ → BE không gửi khối này.
-    supportsBacNinhAuthorizedPerson: true,
+    // Cổng liên thông: dẫn đủ 6 bước (báo lienThongStep, bổ sung ô trên form Angular — content/field-review-angular.js,
+    // bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành — content/lien-thong.js).
+    // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Chuyển bước tiếp theo").
+    supportsLienThongFlow: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -1457,9 +1455,57 @@
     })}`, "system");
   }
 
+  // ── Cổng liên thông (6 bước): bấm chuyển bước / quay lại, đọc + đổi cách nhận kết quả, bấm Hoàn thành ──
+  // Chạy NGOÀI lượt ask() (runActions gọi qua setTimeout 0) như runGuidedNext.
+  let lastLtStep = 0;
+  async function runLienThongMove(a) {
+    const expect = Number(a.expect) || 0;
+    setStatus(a.back ? "Đang quay lại bước trước…" : "Đang chuyển bước trên trang…");
+    const press = sendToContent({ action: "lienThongMove", back: !!a.back });
+    let step = 0;
+    let moved = false;
+    for (let i = 0; i < 16 && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      step = Number(ctx?.lienThongStep) || 0;
+      moved = !!expect && step === expect;
+    }
+    const res = moved ? null : await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
+    // Cổng chặn ở Kê khai thì tô vàng ô bắt buộc còn trống → tô lại theo 3 màu, đếm cho BE mời bổ sung.
+    let stats = null;
+    if (!moved && a.fieldReview) {
+      const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+      stats = marked?.stats || null;
+    }
+    if (moved) lastLtStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
+    setStatus("");
+    await ask(`__action:lt_step_report:${JSON.stringify({
+      ok: moved, expect, step, back: !!a.back, message: res?.message || "", stats,
+    })}`, "system");
+  }
+
+  async function runLienThongResult(a) {
+    const set = a.type === "lien_thong_result_set";
+    setStatus(set ? "Đang đổi cách nhận kết quả…" : "Đang đọc cách nhận kết quả…");
+    const res = await sendToContent(set
+      ? { action: "lienThongResultSet", name: a.name, value: a.value, groups: a.groups || [] }
+      : { action: "lienThongResultScan", groups: a.groups || [] });
+    setStatus("");
+    const report = { groups: res?.groups || [], missing: res?.missing || [] };
+    if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
+    await ask(`__action:lt_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runLienThongSubmit() {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ action: "lienThongSubmit" });
+    setStatus("");
+    await ask(`__action:lt_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, missing: res?.missing || [], message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
   let lastPageSig = "";
-  // Bước wizard đã báo BE lúc state done (result_step_watch) — chỉ báo lại khi số bước đổi.
-  let doneWizardStep = 0;
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
     "owner_waiting_next", "attaching", "done", "filling",
@@ -1484,21 +1530,32 @@
       if (!isWatchedState()) {
         clearInterval(watcherTimer); watcherTimer = null; return;
       }
-      if (lastState !== "done") doneWizardStep = 0;
       const ctx = await readPageContext();
       if (!ctx?.ok) return;
       // Trang SPA đổi bước không reload → theo dõi CHỮ KÝ tín hiệu, đổi mới báo BE
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
       const attachRecoveryProbe = lastState === "attaching"
         && (ctx.wizardStep === 3 || ctx.attachmentTarget)
         && watcherTicks % 5 === 0;
-      if ((lastState === "guide_login" || watchesDocsTarget
+      // Cổng liên thông: đổi bước (công dân tự bấm trên trang) thì báo ở MỌI state đang theo dõi — trợ lý dẫn tiếp từ
+      // bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
+      const ltMoved = !!lastReplyData?.lien_thong && !!ctx.lienThongStep && ctx.lienThongStep !== lastLtStep;
+      if (ltMoved && !watcherPageStatusInFlight) {
+        lastLtStep = ctx.lienThongStep;
+        lastPageSig = sig;
+        watcherPageStatusInFlight = true;
+        try {
+          await sendPageStatus(ctx);
+        } finally {
+          watcherPageStatusInFlight = false;
+        }
+      } else if ((lastState === "guide_login" || watchesDocsTarget
           || lastState === "owner_waiting_next" || lastState === "attaching"
           || (lastState === "filling" && ctx.businessHost))
           && pageSignal(ctx) && (sig !== lastPageSig || attachRecoveryProbe)
@@ -1533,17 +1590,6 @@
         clearInterval(watcherTimer); watcherTimer = null;
         if (ctx.submittedToast) void sendToContent({ action: "ackSubmitToast" });
         ask("__event:submitted", "system");
-      } else if (lastState === "done" && lastReplyData?.result_step_watch && ctx.wizardStep
-          && ctx.wizardStep !== doneWizardStep && !watcherPageStatusInFlight) {
-        // Đính kèm xong (state done) mà công dân TỰ bấm chuyển bước trên cổng (không qua nút của trợ lý)
-        // → báo BE để vẫn dẫn bước nhận kết quả. Xét SAU nhánh nộp thành công: màn đã nộp cũng đổi bước.
-        doneWizardStep = ctx.wizardStep;
-        watcherPageStatusInFlight = true;
-        try {
-          await sendPageStatus(ctx);
-        } finally {
-          watcherPageStatusInFlight = false;
-        }
       }
     }, 3500);
   }
@@ -1554,6 +1600,7 @@
     if (card.kind === "location_picker") return renderLocationPicker(card);
     if (card.kind === "doc_options") return renderDocOptions(card);
     if (card.kind === "result_methods") return renderResultMethods(card);
+    if (card.kind === "lt_result_groups") return renderLtResultGroups(card);
     if (card.kind === "mae_dialog_choice") return renderMaeDialogChoice(card);
     // Contract cũ từng xin SĐT sau khi nộp hồ sơ. Đã ngừng hoàn toàn; bỏ qua cả card
     // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
@@ -2238,6 +2285,50 @@
         ask(String(opt.send || ""), "chip", opt.label || "");
       });
       wrap.appendChild(el);
+    });
+    addNode(wrap);
+  }
+
+  // Cổng liên thông, bước nhận kết quả: mỗi giấy tờ một dòng (tên + các lựa chọn bấm qua lại); dòng cổng đặt sẵn chỉ
+  // hiện giá trị. Bấm một lựa chọn → BE nhờ engine đổi đúng ô đó rồi vẽ lại thẻ theo trang.
+  function renderLtResultGroups(card) {
+    document.querySelectorAll(".lt-result-groups").forEach((el) => el.remove());
+    const rows = (card.rows || []).filter((row) => row && row.name);
+    if (!rows.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "lt-result-groups";
+    rows.forEach((row) => {
+      const line = document.createElement("div");
+      line.className = "ltr-row";
+      const name = document.createElement("div");
+      name.className = "ltr-name";
+      name.textContent = row.label || "";
+      line.appendChild(name);
+      const opts = document.createElement("div");
+      opts.className = "ltr-opts";
+      if (row.fixed || !(row.options || []).length) {
+        const fixed = document.createElement("div");
+        fixed.className = "ltr-fixed";
+        fixed.textContent = [row.value, row.place].filter(Boolean).join(" — ");
+        opts.appendChild(fixed);
+      } else {
+        (row.options || []).forEach((opt) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ltr-opt" + (opt.selected ? " picked" : "");
+          btn.textContent = opt.label || "";
+          btn.setAttribute("aria-pressed", opt.selected ? "true" : "false");
+          btn.addEventListener("click", () => {
+            if (opt.selected) return;
+            opts.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+            addUserText(`${row.label || ""}: ${opt.label || ""}`);
+            ask(String(opt.send || ""), "chip", opt.label || "");
+          });
+          opts.appendChild(btn);
+        });
+      }
+      line.appendChild(opts);
+      wrap.appendChild(line);
     });
     addNode(wrap);
   }
@@ -4763,6 +4854,12 @@
         markConsentVerbal(!!a.accepted);
       } else if (a.type === "select_result_method") {
         setTimeout(() => { void runSelectResultMethod(a); }, 0);
+      } else if (a.type === "lien_thong_next") {
+        setTimeout(() => { void runLienThongMove(a); }, 0);
+      } else if (a.type === "lien_thong_result_scan" || a.type === "lien_thong_result_set") {
+        setTimeout(() => { void runLienThongResult(a); }, 0);
+      } else if (a.type === "lien_thong_submit") {
+        setTimeout(() => { void runLienThongSubmit(); }, 0);
       } else if (a.type === "attach_authorization_doc") {
         setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
