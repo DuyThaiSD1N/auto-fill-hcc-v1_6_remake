@@ -34,11 +34,21 @@ def result_flow_enabled(conv: dict, proc: dict | None) -> bool:
     Bật theo cả luồng dẫn từng bước (`enabled`), HOẶC riêng cờ `attachToResult` cho thủ tục đã có
     luồng bước chủ hồ sơ của mình (kê khai tư pháp: xin đồng ý + điền chủ hồ sơ) — cờ này không đụng
     bước 1, chỉ mở đoạn từ Thành phần hồ sơ trở đi."""
+    caps = conv.get("client_capabilities") or {}
+    # Cổng cần engine riêng (vd bấm "Tiếp tục" + chọn mat-select của cổng iGate Bộ Y tế) khai thêm
+    # `capability`: extension chưa có engine đó thì giữ nguyên câu "tự bấm nộp" cũ.
+    need = str(config(proc).get("capability") or "")
+    if need and caps.get(need) is not True:
+        return False
+    # Câu Mông của đoạn này viết cho cổng tư pháp (tên bước, "bản giấy có đóng dấu", nút Gửi hồ sơ) → cổng tự nộp
+    # có mã xác nhận chưa có bản Mông đúng nghĩa; chế độ Mông giữ câu "tự bấm nộp" cũ.
+    if self_submit(proc) and (conv.get("lang") or "vi") == "hmong":
+        return False
     if enabled(conv, proc):
         return True
     if not config(proc).get("attachToResult"):
         return False
-    return (conv.get("client_capabilities") or {}).get("supportsGuidedSteps") is True
+    return caps.get("supportsGuidedSteps") is True
 
 
 def owner_scan_enabled(conv: dict, proc: dict | None) -> bool:
@@ -130,6 +140,7 @@ def step_labels(proc: dict | None) -> dict[str, str]:
         "attachment_step": cfg.get("attachmentStepLabel") or "Thành phần hồ sơ",
         "result_step": cfg.get("resultStepLabel") or "Thông tin nhận kết quả",
         "submit_label": cfg.get("submitLabel") or "Gửi hồ sơ",
+        "next_label": cfg.get("nextLabel") or "Bước tiếp theo",
     }
 
 
@@ -212,6 +223,21 @@ def attach_cta_chip() -> dict:
 
 def submit_cta_chip() -> dict:
     return {**_cta(vi.GUIDED_SUBMIT_CTA, "__action:guided_submit"), "phase": RESULT}
+
+
+def self_submit(proc: dict | None) -> bool:
+    """Bước nhận kết quả còn ô cam đoan + Mã xác nhận (captcha): CHÍNH công dân tích, gõ mã rồi bấm nộp.
+    Trợ lý chỉ chọn cách nhận kết quả, không có nút Gửi hồ sơ trong khung chat."""
+    return bool(config(proc).get("selfSubmit"))
+
+
+def result_hint(proc: dict | None) -> dict:
+    """Câu chốt nối sau mọi lượt chọn cách nhận kết quả."""
+    return vi.GUIDED_RESULT_CAPTCHA_HINT if self_submit(proc) else vi.GUIDED_RESULT_SUBMIT_HINT
+
+
+def result_chips(proc: dict | None) -> list[dict]:
+    return [] if self_submit(proc) else [submit_cta_chip()]
 
 
 def certify_identity_chips() -> list[dict]:

@@ -84,6 +84,15 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biến động chuyển nhượng/cho thuê 1.013831); ghép như
     # 1.115468, thêm "los yog xauj" (hoặc thuê, đã có trong file) để khác thẻ kia.
     "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": "Cuv npe hloov daim av, muag los yog xauj daim av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — hỗ trợ người cao tuổi 70–dưới 75 / đảng viên 40 năm tuổi
+    # đảng 1.014589); "nyiaj pab" đã có trong file, "neeg laus" (người già) là TỪ MỚI.
+    "ho-tro-nguoi-cao-tuoi-bac-ninh": "Nyiaj pab neeg laus (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — hỗ trợ chi phí hỏa táng 1.014582); "nyiaj pab", "neeg
+    # tuag" đã có trong file (mai táng 1116910), "hlawv" (đốt/hỏa táng) là TỪ MỚI.
+    "ho-tro-chi-phi-hoa-tang-bac-ninh": "Nyiaj pab hlawv neeg tuag (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký mua/thuê/thuê mua nhà ở xã hội 1.014632); ghép từ
+    # "cho-thue-thue-mua-nha-o-xa-hoi" đã có trong file, thêm "yuav" (mua) đứng trước.
+    "dang-ky-nha-o-xa-hoi-bac-ninh": "Cuv npe yuav / xauj tsev nyob pab pej xeem (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
     # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
     "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",
@@ -143,6 +152,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép "kho" (điều chỉnh) + "ntawv tso cai" (giấy phép) + "ua haujlwm
     # kho mob" (hành nghề khám chữa bệnh, từ mới của dang-ky-hanh-nghe).
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": "Kho ntawv tso cai ua haujlwm kho mob",
+    # BẢN NHÁP chờ anh Dư soát — ghép "muab … thawj zaug" (cấp lần đầu, như dang-ky-dat-dai-lan-dau-bac-ninh)
+    # + "ntawv tso cai ua haujlwm kho mob" của bản điều chỉnh ngay trên.
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": "Muab ntawv tso cai ua haujlwm kho mob thawj zaug",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — luồng chung "xay-dung"). Có TỪ MỚI (npaj = quy
     # hoạch, ntug kev = vỉa hè, ib ntus = tạm thời, Nyab Laj = Việt Nam, Nplog = Lào): soát kỹ hơn.
     "dieu-chinh-giay-phep-xay-dung": "Kho ntawv tso cai ua tsev",
@@ -1271,6 +1283,13 @@ VOICE_NEXT_STEP = {
 VOICE_SUBMIT_SELF = {
     "md": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
     "tts": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
+}
+
+# Cổng Bộ Y tế (ô chọn thả xuống). Ghép từ GUIDED_RESULT_FAILED / GUIDED_RESULT_PICK ở dưới, bỏ vế "Gửi hồ sơ".
+# Luồng này đang tắt ở chế độ Mông (guided.result_flow_enabled), bản này chỉ để _fmt không rơi về tiếng Việt.
+GUIDED_RESULT_SELECT_FAILED = {
+    "md": "Kuv tsis tau xaiv tau txoj kev txais txiaj ntsig. Pej xeem xaiv pab kuv ntawm nplooj ntawv.",
+    "tts": "Kuv tsis tau xaiv tau txoj kev txais txiaj ntsig. Pej xeem xaiv pab kuv ntawm nplooj ntawv.",
 }
 
 GUIDED_RESULT_PICKED = {

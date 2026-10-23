@@ -114,6 +114,37 @@ def _owner_field_config(proc: dict, execution_subject: str) -> dict:
     return config
 
 
+def _bac_ninh_authorized_block(proc: dict, conv: dict | None) -> dict | None:
+    """Khối "Thông tin trong trường hợp được ủy quyền" của cổng Bắc Ninh cần điền ở lượt này không.
+
+    Chỉ khi công dân chọn đối tượng thực hiện có ủy quyền VÀ extension biết tick ô bổ sung + chọn loại
+    đối tượng trước khi điền — bản cũ điền trơn thì mọi ô doiTuongKhac* rơi vào unmatched.
+    """
+    config = proc.get("bacNinhAuthorizedPerson") or {}
+    caps = (conv or {}).get("client_capabilities") or {}
+    if not config or caps.get("supportsBacNinhAuthorizedPerson") is not True:
+        return None
+    subject = str((conv or {}).get("execution_subject") or "self")
+    return config if subject in (config.get("executionSubjects") or []) else None
+
+
+async def _run_bac_ninh_authorized(pipeline, files_by_role: dict, options: dict, config: dict) -> dict:
+    """Lượt purpose="authorized_person" (logic điền của auto-fill) → ô đánh dấu loại đối tượng + doiTuongKhac*.
+
+    Lỗi ở lượt này không được làm hỏng lệnh điền đơn: trả về lỗi để ghi trace, đơn vẫn điền.
+    """
+    try:
+        res = await pipeline(files_by_role, {**options, "purpose": "authorized_person"})
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[pipeline] lượt người ủy quyền Bắc Ninh lỗi: %s", e)
+        return {"fields": [], "errors": [f"Không đọc được thông tin người ủy quyền: {str(e)[:200]}"]}
+    fields = list(res.get("fields") or [])
+    if fields:
+        fields.insert(0, {"name": "loaiDoiTuongKhac", "comp": "bn-doi-tuong-khac",
+                          "value": config["subjectOption"]})
+    return {"fields": fields, "errors": list(res.get("errors") or [])}
+
+
 def _start_recorder(kind: str, conv_id: str, sid: str, procedure_key: str):
     """Recorder cho một lượt chạy nền; mốc 0 = lúc pipeline bắt đầu (không phải request chat).
 
@@ -275,10 +306,20 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
             # form cho mapper thay vì để nó tự đoán từ giấy tờ.
             options.update(case_pipeline_options(proc, conv))
+            authorized = _bac_ninh_authorized_block(proc, conv)
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):
-            result = await pipeline(files_by_role, options)
+            if authorized:
+                # Hai lượt OCR/LLM độc lập trên cùng bộ giấy tờ → chạy song song cho đỡ chờ.
+                result, extra = await asyncio.gather(
+                    pipeline(files_by_role, options),
+                    _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized),
+                )
+                result["fields"] = [*(result.get("fields") or []), *extra["fields"]]
+                result["errors"] = [*(result.get("errors") or []), *extra["errors"]]
+            else:
+                result = await pipeline(files_by_role, options)
             if rec is not None:
                 rec.close_gap("agent_end", "post.mapper")
         pipe_ms = int((time.monotonic() - t_pipe) * 1000)

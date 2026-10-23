@@ -164,12 +164,41 @@
     return value;
   }
 
+  // Khối "Thông tin trong trường hợp được ủy quyền": BE gửi kèm MỘT ô đánh dấu comp "bn-doi-tuong-khac"
+  // (value = loại đối tượng cần chọn) cùng các ô doiTuongKhac*. Các ô đó chỉ mọc ra sau khi tick ô bổ
+  // sung + chọn loại đối tượng (AJAX) → điền đơn trước, rồi mở khối và điền phần ủy quyền.
+  const BN_AUTHORIZED_MARK = "bn-doi-tuong-khac";
+  const isAuthorizedBlockField = (f) => String((f && f.name) || "").startsWith("doiTuongKhac");
+
+  async function fillFormWithAuthorizedBacNinh(list, mark) {
+    const authFields = list.filter(isAuthorizedBlockField);
+    const rest = list.filter((f) => f !== mark && !isAuthorizedBlockField(f));
+    const main = rest.length
+      ? await fillFormBacNinh(rest)
+      : { ok: true, method: "bacninh", filled: 0, unmatched: [] };
+    const auth = await fillAuthorizedPersonBacNinh(authFields, mark.value);
+    const unmatched = [...(main.unmatched || [])];
+    const errors = main.error ? [main.error] : [];
+    let filled = main.filled || 0;
+    if (auth && auth.ok) {
+      filled += (auth.filled || 0) + 1; // +1: đã chọn loại đối tượng
+      unmatched.push(...(auth.unmatched || []));
+    } else {
+      unmatched.push(mark.name, ...authFields.map((f) => f.name));
+      errors.push((auth && auth.error) || "Không điền được khối thông tin người được ủy quyền.");
+    }
+    console.log("[AutoFill-BN] điền đơn + khối ủy quyền:", { filled, unmatched, errors });
+    return { ok: true, method: "bacninh", filled, unmatched, errors, total: list.length };
+  }
+
   // ---- Điền đơn ----
   async function fillFormBacNinh(fields) {
     // Trang hoàn thiện tài khoản VNeID (/vneidsso) dùng portlet khác → engine khớp NAME suffix riêng.
     if (isBacNinhAccountForm()) return fillAccountBacNinh(fields);
     const list = Array.isArray(fields) ? fields : [];
     if (!list.length) return { error: "Không có trường nào để điền." };
+    const mark = list.find((f) => String((f && f.comp) || "") === BN_AUTHORIZED_MARK);
+    if (mark) return fillFormWithAuthorizedBacNinh(list, mark);
     // Nạp CSS đánh dấu (xanh = đã điền) — engine bacninh cũng cần, nếu không markFilled vô hình.
     H.injectAutofillStyles && H.injectAutofillStyles();
     const elements = collectFormElements();

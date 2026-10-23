@@ -146,3 +146,76 @@ async def test_buoc_chu_ho_so_chung_thuc_khac_khong_doi():
     r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "wizardStep": 1}))
     assert r.display_md == vi.OWNER_INFO_ATTACH_GUIDE["md"]
     assert not r.chips
+
+
+# ── Cổng Bộ Y tế (stepper iGate): bước 3 "Hình thức nhận kết quả" là ô chọn, cam đoan + mã xác nhận công dân tự làm ──
+BYT = [
+    "dieu-chinh-huu-tri-xa-hoi", "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep", "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+    "ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "tro-cap-xa-hoi-hang-thang",
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+]
+BYT_CLIENT = {**CLIENT, "supportsIgateResultStep": True}
+
+
+@pytest.mark.parametrize("key", BYT)
+def test_bo_y_te_bat_buoc_3_nhan_ket_qua_theo_nhan_cong(key):
+    proc = get_procedure(key)
+    assert guided.result_flow_enabled({"client_capabilities": BYT_CLIENT}, proc)
+    assert proc["wizard"]["resultStep"] == 3 and proc["wizard"]["attachmentStep"] == 2
+    assert [m["label"] for m in guided.result_methods(proc)] == [
+        "Nhận trực tuyến", "Nhận trực tiếp", "Nhận trực tiếp tại nhà qua bưu điện"]
+    assert guided.default_result_method(proc)["label"] == "Nhận trực tuyến"
+    assert guided.self_submit(proc)
+
+
+@pytest.mark.parametrize("caps,lang", [(CLIENT, "vi"), (BYT_CLIENT, "hmong")])
+def test_bo_y_te_extension_cu_hoac_tieng_mong_giu_luong_cu(caps, lang):
+    conv = {"client_capabilities": caps, "lang": lang}
+    assert not guided.result_flow_enabled(conv, get_procedure("xac-dinh-muc-do-khuyet-tat"))
+
+
+async def test_bo_y_te_dinh_kem_xong_bam_tiep_tuc_sang_buoc_3():
+    conv = _conv("xac-dinh-muc-do-khuyet-tat", caps=BYT_CLIENT)
+    r = await flow.handle_turn(conv, Intent("action", "attach_report", {"attached": 4, "errors": []}))
+    assert "Hình thức nhận kết quả" in r.display_md
+    assert r.chips[-1]["send"] == "__action:guided_next"
+    nxt = await flow.handle_turn(conv, Intent("action", "guided_next", {"phase": "attachment"}))
+    assert nxt.actions == [{"type": "guided_click_next", "phase": "attachment", "expectStep": 3}]
+
+
+async def test_bo_y_te_buoc_3_chon_san_truc_tuyen_va_nhac_cam_doan_ma_xac_nhan():
+    conv = _conv("xac-dinh-muc-do-khuyet-tat", caps=BYT_CLIENT, state="done", attach_done=True)
+    r = await flow.handle_turn(conv, Intent("action", "guided_step_report",
+                                            {"phase": "attachment", "ok": True, "wizardStep": 3}))
+    assert r.cards[0]["kind"] == "result_methods" and r.cards[0]["selected"] == "online"
+    assert r.actions[0]["type"] == "select_result_method" and r.actions[0]["label"] == "Nhận trực tuyến"
+    assert "Tôi chắc chắn rằng" in r.display_md and "**Mã xác nhận**" in r.display_md
+    assert "rồi bấm **Tiếp tục** để nộp hồ sơ ạ." in r.display_md
+    assert not r.chips, "không có nút Gửi hồ sơ: công dân tự tích cam đoan, gõ mã rồi bấm nộp"
+    done = await flow.handle_turn(conv, Intent("action", "result_method_report", {"method": "online", "ok": True}))
+    assert done.display_md == ""
+    # Đổi sang bưu điện: nhắc tích "Đăng ký nhận kết quả tại nhà" (trợ lý không tích hộ).
+    await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "postal"}))
+    postal = await flow.handle_turn(conv, Intent("action", "result_method_report",
+                                                 {"method": "postal", "ok": True, "missing": []}))
+    assert "Đăng ký nhận kết quả tại nhà" in postal.display_md and "Mã xác nhận" in postal.display_md
+    assert not postal.chips
+    failed = await flow.handle_turn(conv, Intent("action", "result_method_report", {"method": "direct", "ok": False}))
+    assert "Em chưa chọn được **Nhận trực tiếp**" in failed.display_md and "gạt" not in failed.display_md
+
+
+async def test_bo_y_te_cong_dan_tu_bam_tiep_tuc_cung_duoc_dan_buoc_3():
+    conv = _conv("tro-cap-xa-hoi-hang-thang", caps=BYT_CLIENT, state="done", attach_done=True)
+    quiet = await flow.handle_turn(conv, Intent("event", "page_status", {"wizardStep": 2}))
+    assert not quiet.display_md and not quiet.actions
+    r = await flow.handle_turn(conv, Intent("event", "page_status", {"wizardStep": 3}))
+    assert r.cards[0]["selected"] == "online" and "Mã xác nhận" in r.display_md
+
+
+async def test_bo_y_te_noi_nop_ho_so_chi_nhac_tu_lam():
+    conv = _conv("xac-dinh-muc-do-khuyet-tat", caps=BYT_CLIENT, state="done")
+    assert flow.next_step_by_voice(conv, "nộp hồ sơ đi", {"wizardStep": 3}).value == "voice_submit_hint"
+    r = await flow.handle_turn(conv, Intent("action", "voice_submit_hint"))
+    assert "Mã xác nhận" in r.display_md and not r.chips

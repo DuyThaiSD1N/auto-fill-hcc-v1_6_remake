@@ -1346,7 +1346,7 @@ GUIDED_RESULT_CHOOSE = {
 # Công dân NÓI "sang bước tiếp theo / bước nhận kết quả" ở trang Thành phần hồ sơ → trợ lý bấm hộ
 # "Bước tiếp theo" (báo cáo cú bấm đi đường guided_step_report như nút).
 VOICE_NEXT_STEP = {
-    "md": "Em bấm **Bước tiếp theo** sang **{result_step}** ạ…",
+    "md": "Em bấm **{next_label}** sang **{result_step}** ạ…",
     "tts": "Dạ, em chuyển sang bước {result_step} ạ.",
 }
 # Công dân NÓI "gửi hồ sơ" ở bước Thông tin nhận kết quả: nộp hồ sơ không chạy bằng lời → nhắc tự bấm.
@@ -1470,6 +1470,15 @@ GUIDED_RESULT_SUBMIT_HINT = {
     "tts": " Kiểm tra xong, công dân bấm {submit_label} ạ.",
 }
 
+# Cổng Bộ Y tế (guidedSteps.selfSubmit): dưới ô nhận kết quả còn ô cam đoan + Mã xác nhận — lời cam đoan
+# và mã kiểm tra là việc của CHÍNH công dân, trợ lý chỉ nhắc, không tích/gõ hộ.
+GUIDED_RESULT_CAPTCHA_HINT = {
+    "md": ("\n\nCông dân tích ô **“Tôi chắc chắn rằng các thông tin khai báo trên là đúng sự thật…”**, "
+           "nhập **Mã xác nhận** theo chữ trong ảnh bên cạnh (khó đọc thì bấm nút làm mới), "
+           "rồi bấm **{submit_label}** để nộp hồ sơ ạ."),
+    "tts": " Công dân tích ô cam đoan, nhập mã xác nhận theo chữ trong ảnh, rồi bấm {submit_label} để nộp hồ sơ ạ.",
+}
+
 # Nói "lưu và nộp hồ sơ / gửi hồ sơ": nộp không rút lại được → hỏi lại một lần. {label} = tên nút nộp (bỏ biểu tượng).
 VOICE_SUBMIT_CONFIRM = {
     "md": "Công dân chắc chắn **nộp hồ sơ** chứ ạ? Nói **Có** hoặc bấm **{label}** để em nộp ạ.",
@@ -1500,6 +1509,21 @@ GUIDED_RESULT_MISSING = {
 GUIDED_RESULT_FAILED = {
     "md": "⚠️ Em chưa gạt được **{label}**. Công dân gạt trên trang → bấm **{submit_label}** ạ.",
     "tts": "Dạ, em chưa chọn được {label}. Công dân gạt trên trang, rồi bấm {submit_label} ạ.",
+}
+
+# Cổng Bộ Y tế: cách nhận kết quả là ô chọn thả xuống, không phải công tắc. Câu chốt cam đoan/mã đi qua note=.
+GUIDED_RESULT_SELECT_FAILED = {
+    "md": "⚠️ Em chưa chọn được **{label}**. Công dân chọn ở ô **{result_step}** trên trang ạ.",
+    "tts": "Dạ, em chưa chọn được {label}. Công dân chọn ở ô {result_step} trên trang ạ.",
+}
+
+# Cổng Bộ Y tế, "Nhận trực tiếp tại nhà qua bưu điện": cổng mọc hai ô tích (không bắt buộc) — trợ lý không tích
+# hộ vì đó là đăng ký dịch vụ bưu chính có phí của công dân.
+GUIDED_RESULT_HOME_POSTAL = {
+    "md": ("✓ Đã chọn **{label}**.\n\nCông dân tích **Đăng ký nhận kết quả tại nhà** (muốn bưu điện đến lấy hồ "
+           "sơ thì tích thêm **Đăng ký nộp hồ sơ tại nhà**). Phí bưu chính trả trực tiếp cho nhân viên bưu điện ạ."),
+    "tts": ("Dạ, em đã chọn {label}. Công dân tích ô đăng ký nhận kết quả tại nhà. Phí bưu chính trả trực tiếp "
+            "cho nhân viên bưu điện ạ."),
 }
 
 GUIDED_ATTACH_SPLIT_DONE = {

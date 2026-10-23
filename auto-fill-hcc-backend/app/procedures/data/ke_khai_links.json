@@ -313,7 +313,7 @@
       "autoConfirm": true
     },
     {
-      "key": "ho-tro-nguoi-cao-tuoi-dang-vien-40-nam-tuoi-dang",
+      "key": "ho-tro-nguoi-cao-tuoi-bac-ninh",
       "code": "1.014589",
       "label": "[Bắc Ninh] Thủ tục Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi dưới 75 tuổi thường trú trên địa bàn tỉnh, là Đảng viên được tặng huy hiệu 40 năm tuổi đảng trở lên, không có lương hưu, trợ cấp bảo hiểm xã hội, trợ cấp xã hội hàng tháng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c4f-0f4f-756f-a7db-e8f96edb8171",
@@ -1609,6 +1609,14 @@
       "key": "dang-ky-dat-dai-lan-dau-cap-xa",
       "code": "1.013978",
       "label": "(Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-lan-dau-ninh-binh",
+      "code": "1.013978",
+      "label": "[Tỉnh Ninh Bình] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
       "needsAgencySelect": true,
       "autoConfirm": true

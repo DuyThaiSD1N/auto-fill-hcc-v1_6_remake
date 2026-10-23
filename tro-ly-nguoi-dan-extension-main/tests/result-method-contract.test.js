@@ -73,3 +73,21 @@ test("card phản chiếu lựa chọn và không để hai bộ thẻ chồng n
   assert.match(sidebar, /if \(opt\.key === card\.selected\) return;/);
   assert.match(css, /\.result-methods \.opt\.picked/);
 });
+
+// Cổng iGate Bộ Y tế: bước 3 "Hình thức nhận kết quả" là ô chọn mat-select, không phải công tắc; ô cam đoan
+// và Mã xác nhận công dân tự làm.
+test("cổng Bộ Y tế: khai capability, chọn ô receivingKind khớp trọn nhãn, không đụng cam đoan/mã xác nhận", () => {
+  const mae = stripComments(read("content/portal-mae.js"));
+  assert.match(sidebar, /supportsIgateResultStep: true/);
+  assert.match(mae, /mat-select\[formcontrolname="receivingKind"\]/);
+  // "nhận trực tiếp" là phần đầu của "nhận trực tiếp tại nhà qua bưu điện" → khớp trọn, không includes.
+  assert.match(mae, /pickMatOption\(sel, \(text\) => text === want, label/);
+  assert.doesNotMatch(mae, /captcha|mat-checkbox/, "engine không tích cam đoan / gõ mã hộ công dân");
+});
+
+test("cổng Bộ Y tế: bấm Tiếp tục trong panel stepper đang mở, báo đổi bước ở state done khi BE bật", () => {
+  const guided = stripComments(read("content/guided-steps.js"));
+  assert.match(guided, /\.mat-horizontal-stepper-content\[aria-expanded="true"\]/);
+  assert.match(guided, /stepperNextButton\(\) \|\| findButton\(NEXT_SELECTORS, NEXT_TEXTS\)/);
+  assert.match(sidebar, /lastState === "done" && lastReplyData\?\.result_step_watch && ctx\.wizardStep/);
+});

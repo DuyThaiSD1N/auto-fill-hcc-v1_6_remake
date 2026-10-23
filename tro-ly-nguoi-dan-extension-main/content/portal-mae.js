@@ -397,6 +397,40 @@
     return true; // async
   });
 
+  // ── Bước "Hình thức nhận kết quả" (cổng Bộ Y tế, bước 3 stepper iGate) ──
+  // mat-select[formcontrolname="receivingKind"]: "Nhận trực tuyến" (cổng chọn sẵn) / "Nhận trực tiếp" /
+  // "Nhận trực tiếp tại nhà qua bưu điện". Khớp TRỌN nhãn: "nhận trực tiếp" là phần đầu của nhãn bưu điện.
+  // Chọn bưu điện thì Angular dựng lại cả khối (mat-select cũ bị thay) → đọc lại ô sau khi chọn.
+  // Ô cam đoan + Mã xác nhận ngay dưới là việc của CHÍNH công dân, engine không đụng.
+  const receivingKind = () =>
+    Array.from(document.querySelectorAll('mat-select[formcontrolname="receivingKind"]')).find(isVisible) || null;
+
+  async function selectReceivingKind(label) {
+    const want = fold(label);
+    const sel = receivingKind();
+    if (!sel) return { ok: false, error: "Không thấy ô Hình thức nhận kết quả trên trang." };
+    if (matSelectValue(sel) !== want) {
+      if (overlayOptions().length) await closeMatPanel("");
+      const res = await pickMatOption(sel, (text) => text === want, label, { timeout: 4000 });
+      if (res.error) return { ok: false, error: res.error };
+    }
+    const now = await waitFor(() => {
+      const el = receivingKind();
+      return el && matSelectValue(el) === want ? el : null;
+    }, 2500);
+    return now ? { ok: true, missing: [] } : { ok: false, error: "Chọn xong mà ô Hình thức nhận kết quả không đổi." };
+  }
+
+  // Frame/trang không có ô này IM để engine cổng khác (portal-dvc, tu-phap-moi) trả lời.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "selectResultMethod") return;
+    if (!receivingKind()) return;
+    selectReceivingKind(msg.label || "")
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true; // async
+  });
+
   // Đọc danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (gọi lúc gửi page_status).
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "readMaeDialogOptions") return;

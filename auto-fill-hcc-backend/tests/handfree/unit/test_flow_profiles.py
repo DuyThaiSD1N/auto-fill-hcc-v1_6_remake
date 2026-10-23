@@ -195,11 +195,11 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert byt_food_safety["hideRepeatableHint"] is True
     assert len(byt_food_safety["shortLabel"]) >= 30
     # Cổng Bộ Y tế nộp tại SỞ Y tế (dược 1.014104, đăng ký hành nghề 1.012275, điều chỉnh GPHN chuyển
-    # tiếp 1.012292): DVCQG chọn Tỉnh rồi
+    # tiếp 1.012292, cấp mới GPHN chuyển tiếp 1.012289): DVCQG chọn Tỉnh rồi
     # gạt toggle "Sở", sau đó cổng mở hộp thoại "Chọn trường hợp giải quyết" như Bộ Xây dựng →
     # dùng luồng chung "xay-dung".
     for key in ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
-                "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep"):
+                "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep"):
         byt_so = procedures.pop(key)
         assert byt_so["flowProfile"] == "xay-dung", key
         assert byt_so["agencyProvinceOnly"] is True, key
@@ -381,6 +381,34 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert not bn_giao_thue.get("agencyProvinceOnly")
     assert not bn_giao_thue.get("agencySoFirst")
     assert "wizard" not in bn_giao_thue and "maePortal" not in bn_giao_thue
+    # 1.014589: attach-only (cổng tự điền nhân thân từ VNeID), chọn đủ Tỉnh + Phường/Xã.
+    bn_cao_tuoi = procedures.pop("ho-tro-nguoi-cao-tuoi-bac-ninh")
+    assert bn_cao_tuoi["mode"] == "attach"
+    assert bn_cao_tuoi["samePageAttach"] is True
+    assert bn_cao_tuoi["agencyProvince"] == "Bắc Ninh"
+    assert bn_cao_tuoi["needsAgencySelect"] is True
+    assert not bn_cao_tuoi.get("agencyProvinceOnly")
+    assert not bn_cao_tuoi.get("agencySoFirst")
+    assert "wizard" not in bn_cao_tuoi and "maePortal" not in bn_cao_tuoi
+    # 1.014582: điền đơn (bn-input theo NAME element_757xx) + đính kèm, chọn đủ Tỉnh + Phường/Xã.
+    bn_hoa_tang = procedures.pop("ho-tro-chi-phi-hoa-tang-bac-ninh")
+    assert bn_hoa_tang["mode"] == "agent"
+    assert bn_hoa_tang["samePageAttach"] is True
+    assert bn_hoa_tang["agencyProvince"] == "Bắc Ninh"
+    assert bn_hoa_tang["needsAgencySelect"] is True
+    assert not bn_hoa_tang.get("agencyProvinceOnly")
+    assert not bn_hoa_tang.get("agencySoFirst")
+    assert "wizard" not in bn_hoa_tang and "maePortal" not in bn_hoa_tang
+    # 1.014632: điền đơn Mẫu 02 (bn-input theo NAME element_762xx) + đính kèm, chọn đủ Tỉnh + Phường/Xã.
+    bn_noxh = procedures.pop("dang-ky-nha-o-xa-hoi-bac-ninh")
+    assert bn_noxh["mode"] == "agent"
+    assert bn_noxh["samePageAttach"] is True
+    assert bn_noxh["agencyProvince"] == "Bắc Ninh"
+    assert bn_noxh["needsAgencySelect"] is True
+    assert bn_noxh["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
+    assert not bn_noxh.get("agencyProvinceOnly")
+    assert not bn_noxh.get("agencySoFirst")
+    assert "wizard" not in bn_noxh and "maePortal" not in bn_noxh
 
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
@@ -461,7 +489,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +2 cổng Bộ Y tế cấp Sở (luồng "xay-dung"): "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te"
     # (1.014104), "dang-ky-hanh-nghe" (1.012275).
     # +1 cổng Bộ Y tế cấp Sở "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" (1.012292).
-    assert len(procedures) == 72
+    # +1 cổng Bắc Ninh attach-only "ho-tro-nguoi-cao-tuoi-bac-ninh" (1.014589).
+    # +1 cổng Bắc Ninh "ho-tro-chi-phi-hoa-tang-bac-ninh" (1.014582): điền đơn + đính kèm.
+    # +1 cổng Bắc Ninh "dang-ky-nha-o-xa-hoi-bac-ninh" (1.014632): điền đơn Mẫu 02 + đính kèm.
+    # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" (1.012289).
+    assert len(procedures) == 76
 
     for procedure in procedures:
         key = procedure["key"]
@@ -478,7 +510,7 @@ def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
     # đó, không diễn đạt lại ("Cấp đổi sổ đỏ") và không gắn "(Bắc Ninh)".
     core_label = {procedure["key"]: procedure["label"] for procedure in core_registry.PROCEDURES}
     bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
-    assert len(bac_ninh) == 12
+    assert len(bac_ninh) == 15
     for procedure in bac_ninh:
         assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
         short = procedure.get("shortLabel", "")

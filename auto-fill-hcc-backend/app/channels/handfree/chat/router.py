@@ -157,6 +157,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # supportsGuidedSteps: bản khai guided steps mà chưa có engine sẽ nhận action lạ rồi
         # im lặng, công dân ngồi chờ một cú bấm không bao giờ xảy ra.
         "supportsResultMethod": raw.get("supportsResultMethod") is True,
+        # Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước Hình thức nhận kết quả + chọn ô receivingKind
+        # (guidedSteps.capability). Extension cũ không khai → giữ câu "tự bấm Nộp hồ sơ".
+        "supportsIgateResultStep": raw.get("supportsIgateResultStep") is True,
         # Biết chọn cơ quan CẤP XÃ trong hộp thoại cổng bộ (radio "Phường/Xã"). Extension cũ chỉ
         # biết gạt radio "Sở/Ban ngành" → không khai cờ thì BE dặn công dân chọn tay, chứ không
         # bắn lệnh để nó gạt nhầm sang cấp Sở.
@@ -193,6 +196,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Dẫn đủ 6 bước cổng liên thông (chat/lien_thong.py): báo bước đang mở (lienThongStep), bổ sung ô
         # trên form Angular, bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành.
         "supportsLienThongFlow": raw.get("supportsLienThongFlow") is True,
+        # Cổng Bắc Ninh: biết tick ô bổ sung + chọn loại đối tượng rồi điền khối "Thông tin trong trường
+        # hợp được ủy quyền" (doiTuongKhac*). Client cũ không khai → BE không chạy lượt người ủy quyền.
+        "supportsBacNinhAuthorizedPerson": raw.get("supportsBacNinhAuthorizedPerson") is True,
     }
 
 
@@ -240,6 +246,9 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         # Cổng liên thông: sidebar báo bước đang mở (lienThongStep) ở mọi state để trợ lý dẫn tiếp cả khi
         # công dân tự bấm chuyển bước trên trang.
         "lien_thong": flow.lien_thong.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
+        # Luồng đính kèm → bước nhận kết quả: sidebar báo page_status cả ở state done khi công dân TỰ đổi bước
+        # trên cổng, để trợ lý vẫn dẫn bước nhận kết quả.
+        "result_step_watch": flow.guided.result_flow_enabled(conv, get_procedure(conv.get("procedure_key") or "")),
     }
 
 

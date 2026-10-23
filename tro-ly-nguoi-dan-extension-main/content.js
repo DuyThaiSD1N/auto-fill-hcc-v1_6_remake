@@ -1726,13 +1726,16 @@
       // Wizard MAE (mat-horizontal-stepper, nhãn KHÁC cổng tư pháp): 1 Thông tin hồ sơ →
       // 2 Thành phần hồ sơ → 3 Thông tin phí → 4 Nộp hồ sơ. Cả 4 step CÙNG tồn tại trong
       // DOM (chỉ đổi visibility) → tin header aria-selected, không quét nội dung panel.
+      // Cổng Bộ Y tế đặt tên bước 3 là "Hình thức nhận kết quả" (crawl 23/10/2026) → mỗi bước khai các tên.
       if (maeHost && !maeAgencyBlock && !wizardStep) {
-        const maeLabels = ["thong tin ho so", "thanh phan ho so", "thong tin phi", "nop ho so"];
+        const maeLabels = [["thong tin ho so"], ["thanh phan ho so"],
+          ["thong tin phi", "hinh thuc nhan ket qua"], ["nop ho so"]];
+        const stepOf = (h) => maeLabels.findIndex((names) => names.some((l) => foldTxt(h?.textContent || "").includes(l)));
         const headers = Array.from(document.querySelectorAll("mat-step-header"));
-        const matched = headers.filter((h) => maeLabels.some((l) => foldTxt(h.textContent).includes(l)));
+        const matched = headers.filter((h) => stepOf(h) >= 0);
         if (matched.length >= 2) {
           const selected = matched.find((h) => h.getAttribute("aria-selected") === "true");
-          const idx = maeLabels.findIndex((l) => foldTxt(selected?.textContent || "").includes(l));
+          const idx = selected ? stepOf(selected) : -1;
           if (idx >= 0) wizardStep = idx + 1;
         }
       }

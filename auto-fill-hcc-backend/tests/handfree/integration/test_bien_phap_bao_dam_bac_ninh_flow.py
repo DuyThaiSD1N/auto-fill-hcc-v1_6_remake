@@ -114,6 +114,76 @@ async def test_attach_report_tom_tat_ket_qua_hai_buoc():
     assert "điền đơn và đính kèm xong" in r.tts_text
 
 
+_BN_AUTHORIZED_KEYS = (
+    KEY, "xoa-dang-ky-bien-phap-bao-dam-bac-ninh", "dang-ky-bien-dong-dat-dai-bac-ninh",
+    "dang-ky-bien-dong-thoa-thuan-bac-ninh", "ho-tro-chi-phi-hoa-tang-bac-ninh",
+    "dang-ky-nha-o-xa-hoi-bac-ninh",
+)
+
+
+def test_khoi_uy_quyen_bac_ninh_chi_bat_khi_chon_doi_tuong_uy_quyen_va_client_moi():
+    from app.channels.handfree.chat import pipeline_runner
+
+    caps = {"supportsBacNinhAuthorizedPerson": True}
+    for key in _BN_AUTHORIZED_KEYS:
+        proc = get_procedure(key)
+        for subject in ("authorized_person", "enterprise_authorized"):
+            block = pipeline_runner._bac_ninh_authorized_block(
+                proc, {"execution_subject": subject, "client_capabilities": caps})
+            assert block and block["subjectOption"] == "Cá nhân khác là Công dân Việt Nam", key
+        for subject in ("self", "other_person", "organization_representative", None):
+            assert pipeline_runner._bac_ninh_authorized_block(
+                proc, {"execution_subject": subject, "client_capabilities": caps}) is None, key
+        # Extension cũ không biết mở khối → không chạy lượt người ủy quyền.
+        assert pipeline_runner._bac_ninh_authorized_block(
+            proc, {"execution_subject": "authorized_person", "client_capabilities": {}}) is None
+    # Thủ tục Bắc Ninh không có logic điền khối ủy quyền thì không bật.
+    assert pipeline_runner._bac_ninh_authorized_block(
+        get_procedure("cap-doi-gcn-bac-ninh"),
+        {"execution_subject": "authorized_person", "client_capabilities": caps}) is None
+
+
+def test_capability_khoi_uy_quyen_bac_ninh_qua_whitelist():
+    from app.channels.handfree.chat.router import _clean_client_capabilities
+
+    assert _clean_client_capabilities(
+        {"supportsBacNinhAuthorizedPerson": True})["supportsBacNinhAuthorizedPerson"] is True
+    assert _clean_client_capabilities({})["supportsBacNinhAuthorizedPerson"] is False
+
+
+async def test_luot_nguoi_uy_quyen_goi_purpose_authorized_person_va_gan_o_danh_dau():
+    from app.channels.handfree.chat import pipeline_runner
+
+    calls = []
+
+    async def fake_pipeline(files_by_role, options):
+        calls.append(options)
+        return {"fields": [{"name": "doiTuongKhachoTen", "comp": "bn-input", "value": "Nguyễn Văn A"}],
+                "errors": []}
+
+    config = get_procedure(KEY)["bacNinhAuthorizedPerson"]
+    out = await pipeline_runner._run_bac_ninh_authorized(
+        fake_pipeline, {"": []}, {"formContext": {"x": 1}}, config)
+    assert calls == [{"formContext": {"x": 1}, "purpose": "authorized_person"}]
+    assert out["fields"][0] == {"name": "loaiDoiTuongKhac", "comp": "bn-doi-tuong-khac",
+                                "value": "Cá nhân khác là Công dân Việt Nam"}
+    assert [f["name"] for f in out["fields"]] == ["loaiDoiTuongKhac", "doiTuongKhachoTen"]
+
+    # Không có văn bản ủy quyền → không ô nào, kể cả ô đánh dấu; lỗi giữ lại cho trace.
+    async def empty_pipeline(files_by_role, options):
+        return {"fields": [], "errors": ["Không tìm thấy Văn bản ủy quyền trong hồ sơ."]}
+
+    out = await pipeline_runner._run_bac_ninh_authorized(empty_pipeline, {"": []}, {}, config)
+    assert out == {"fields": [], "errors": ["Không tìm thấy Văn bản ủy quyền trong hồ sơ."]}
+
+    # Lượt ủy quyền nổ không được làm hỏng lệnh điền đơn.
+    async def broken_pipeline(files_by_role, options):
+        raise RuntimeError("LLM timeout")
+
+    out = await pipeline_runner._run_bac_ninh_authorized(broken_pipeline, {"": []}, {}, config)
+    assert out["fields"] == [] and "LLM timeout" in out["errors"][0]
+
+
 def test_upload_classifier_fallback_dung_o():
     from app.upload_session.classifier_registry import _CLASSIFIERS
 

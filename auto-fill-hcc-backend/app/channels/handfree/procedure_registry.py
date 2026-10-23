@@ -5,6 +5,7 @@ registry Handfree cũ để giữ nguyên card, flow profile và checklist, như
 sở hữu bản sao pipeline nghiệp vụ.
 """
 import re
+from copy import deepcopy
 
 from app.channels.handfree.owner_info import run as tu_phap_owner_info
 from app.channels.handfree.flow_profiles import resolve_flow_profile
@@ -21,6 +22,45 @@ _GPXD_CASE_OPTIONS = [
     {"match": "nha o rieng le", "options": {"constructionVariant": "nha_o_rieng_le"}},
     {"match": "", "options": {"constructionVariant": "khong_theo_tuyen"}},
 ]
+
+# Cổng Bắc Ninh (Liferay): khối "Thông tin trong trường hợp được ủy quyền" (doiTuongKhac*). Công dân chọn
+# đối tượng thực hiện có ủy quyền → run_process chạy thêm pipeline purpose="authorized_person" (cùng logic
+# nút "Điền thông tin người ủy quyền" của auto-fill) và ghép vào lệnh điền; extension tick ô bổ sung, chọn
+# loại đối tượng (subjectOption) rồi mới điền khối đó.
+_BN_AUTHORIZED_PERSON = {
+    "executionSubjects": ["authorized_person", "enterprise_authorized"],
+    "subjectOption": "Cá nhân khác là Công dân Việt Nam",
+}
+
+# Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (stepper iGate 1 Thông tin hồ sơ → 2 Thành phần hồ sơ →
+# 3 Hình thức nhận kết quả → 4 Nộp hồ sơ = màn đã nộp). Đính kèm xong: nút sang bước 3 (trợ lý bấm
+# "Tiếp tục"), chọn ô mat-select[formcontrolname="receivingKind"] theo thẻ, rồi NHẮC công dân tự tích ô
+# cam đoan + nhập Mã xác nhận (captcha) và bấm nộp — hai việc đó trợ lý không làm hộ (selfSubmit).
+# Nhãn option đúng nguyên văn trên cổng (crawl 23/10/2026); cổng chọn sẵn "Nhận trực tuyến". Chọn bưu
+# điện thì cổng mọc 2 ô tích không bắt buộc "Đăng ký nộp hồ sơ tại nhà" / "Đăng ký nhận kết quả tại nhà".
+# Gán cho MỌI thủ tục có urlScope cổng này ở cuối danh sách; thủ tục tự khai guidedSteps thì giữ nguyên.
+_BYT_HOST = "dichvucongbyt.moh.gov.vn"
+_BYT_RESULT_STEP = 3
+_BYT_GUIDED_STEPS = {
+    "attachToResult": True,
+    # Extension cũ không có engine bấm "Tiếp tục"/chọn mat-select → giữ câu "tự bấm Nộp hồ sơ" cũ.
+    "capability": "supportsIgateResultStep",
+    "selfSubmit": True,
+    "attachmentStepLabel": "Thành phần hồ sơ",
+    "resultStepLabel": "Hình thức nhận kết quả",
+    "nextLabel": "Tiếp tục",
+    # Nút nộp ở bước 3 ghi "Tiếp tục" (cùng nhãn nút chuyển bước), không phải "Nộp hồ sơ".
+    "submitLabel": "Tiếp tục",
+    "resultMethods": [
+        {"key": "online", "label": "Nhận trực tuyến", "icon": "🌐",
+         "desc": "Nhận bản điện tử ngay trên hệ thống.", "default": True},
+        {"key": "direct", "label": "Nhận trực tiếp", "icon": "🏛️",
+         "desc": "Đến cơ quan tiếp nhận để nhận kết quả."},
+        {"key": "postal", "label": "Nhận trực tiếp tại nhà qua bưu điện", "icon": "📮",
+         "desc": "Bưu điện trả kết quả tại nhà, phí bưu chính trả trực tiếp cho nhân viên bưu điện.",
+         "needsInput": True},
+    ],
+}
 
 PROCEDURES: list[dict] = [
     {
@@ -2034,6 +2074,77 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
+        # Mã TTHC 1.012289, CÙNG cổng + CÙNG form với entry "điều chỉnh" ngay trên (bản đó thêm ô Ghi
+        # chú) → chép khung: nộp tại SỞ Y tế → agencyProvinceOnly + agencySoFirst, luồng chung
+        # "xay-dung". ke_khai_links của mã này CHƯA có selectSo (bản điều chỉnh có) — mở trang DVCQG
+        # kiểm hộp chọn cơ quan rồi thêm cho khớp. Key TRÙNG lõi → pipeline process/attach tự nối (lõi
+        # tự quyết tự nộp / nộp thay theo tài khoản). Trang kê khai không có mã → cụm tên như lõi: cụm
+        # đầu "cấp mới…" đủ tách khỏi bản "điều chỉnh" (cùng cụm thứ hai).
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012289",
+                "MaTTHC=1.012289",
+                "019d2bff-1db7-73d4-8e28-7b1fd65945b7",
+            ],
+            "textIncludes": [
+                "cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 "
+                 "tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức "
+                 "danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên "
+                 "ngoại viện, tâm lý lâm sàng",
+        "shortLabel": "Cấp mới giấy phép hành nghề khám bệnh, chữa bệnh (giai đoạn chuyển tiếp)",
+        "subtitle": "Cho bác sĩ, y sĩ, điều dưỡng, hộ sinh… xin giấy phép hành nghề lần đầu (Sở Y tế)",
+        "icon": "🩺",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db7-73d4-8e28-7b1fd65945b7",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ dòng cố định a–h (planner lõi attp-row, mỗi loại giấy tờ một dòng) →
+        # tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp giấy phép hành nghề (Mẫu 08 Phụ lục I Nghị định "
+             "96/2023/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Văn bằng chuyên môn (bằng tốt nghiệp / cử nhân)", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "suc_khoe", "name": "Giấy khám sức khỏe do cơ sở khám bệnh, chữa bệnh đủ điều kiện cấp",
+             "icon": "🏥", "sides": 1, "repeatable": True},
+            {"key": "so_yeu_ly_lich", "name": "Sơ yếu lý lịch tự thuật của người hành nghề (Mẫu 09 Phụ lục I)",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "thuc_hanh", "name": "Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 Phụ lục I)",
+             "icon": "📋", "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "02 ảnh chân dung 4x6 nền trắng (chụp trong 6 tháng)", "icon": "🖼️",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hành nghề, thêm CCCD người nộp nếu nộp "
+             "thay", "icon": "🪪", "sides": 2, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (đều là của NGƯỜI HÀNH NGHỀ đề nghị cấp phép):\n"
+            "1. Đơn đề nghị cấp giấy phép hành nghề khám bệnh, chữa bệnh (Mẫu 08 Phụ lục I Nghị định "
+            "96/2023/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Văn bằng chuyên môn (bằng tốt nghiệp / cử nhân).\n"
+            "3. Giấy khám sức khỏe do cơ sở khám bệnh, chữa bệnh đủ điều kiện cấp.\n"
+            "4. Sơ yếu lý lịch tự thuật của người hành nghề (Mẫu 09 Phụ lục I).\n"
+            "5. Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 Phụ lục I).\n"
+            "6. 02 ảnh chân dung 4x6 nền trắng, chụp trong 6 tháng.\n"
+            "7. Căn cước công dân (2 mặt) của người hành nghề; nếu người khác nộp thay: thêm căn cước của "
+            "người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người hành nghề. Tự nộp thì giữ tích 'Người nộp là chủ hồ sơ', cổng tự chép "
+            "sang phần chủ hồ sơ; nộp thay thì bỏ tích và điền riêng hai phần.\n"
+            "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (a Đơn Mẫu 08, b văn bằng, d sức khỏe, e sơ "
+            "yếu lý lịch, g xác nhận thực hành, h ảnh chân dung); căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
         #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực
@@ -3087,6 +3198,7 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Phiếu yêu cầu đăng ký biện pháp bảo đảm (Mẫu số 01a) đã kê khai, ký — nguồn "
@@ -3143,6 +3255,7 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu số 03a) đã ký, có chữ ký & con "
@@ -3264,6 +3377,7 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đăng ký biến động đất đai (Mẫu số 18) người đứng tên sau biến động đã kê khai, "
@@ -3330,6 +3444,7 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đăng ký biến động đất đai (Mẫu số 18) bên NHẬN chuyển quyền đã kê khai, ký — "
@@ -3723,7 +3838,179 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        "key": "ho-tro-nguoi-cao-tuoi-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm) — ATTACH-ONLY: cổng tự điền nhân thân từ
+        # VNeID, trợ lý chỉ đính kèm (1 thành phần bắt buộc: Tờ khai Mẫu 01 → KQ001012). Key TRÙNG
+        # auto-fill → attach planner tự nối. mode "attach" + samePageAttach: flow coi ô đính kèm trên
+        # trang là bước đính kèm luôn, chạy planner ngay khi đủ giấy tờ; FE tự bấm tab "Tải thành phần
+        # hồ sơ". ke_khai_links (1.014589) KHÔNG khai provinceOnlyAgency / selectSo → chọn đủ Tỉnh +
+        # Phường/Xã của tài khoản (UBND xã tiếp nhận), không agencyProvinceOnly, không agencySoFirst.
+        # Detect y hệt lõi; urlScope khóa host để cổng tỉnh khác không nhận nhầm.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.014589"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi dưới "
+            "75 tuổi thường trú trên địa bàn tỉnh, là Đảng viên được tặng huy hiệu 40 năm tuổi đảng trở "
+            "lên, không có lương hưu, trợ cấp bảo hiểm xã hội, trợ cấp xã hội hàng tháng"
+        ),
+        "shortLabel": (
+            "Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi là Đảng viên "
+            "được tặng huy hiệu 40 năm tuổi đảng"
+        ),
+        "subtitle": (
+            "Hỗ trợ hằng tháng cho người cao tuổi 70–dưới 75 tuổi hoặc đảng viên có huy hiệu 40 năm "
+            "tuổi đảng, không có lương hưu, trợ cấp tại Bắc Ninh"
+        ),
+        "icon": "👴",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c4f-0f4f-756f-a7db-e8f96edb8171",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị hưởng trợ cấp xã hội (Mẫu số 01) — đã kê "
+             "khai, có xác nhận của UBND xã", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người cao tuổi (nếu có)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Kết quả tra cứu thông tin dân cư hoặc giấy tờ khác (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị hưởng trợ cấp xã hội (Mẫu số 01) đã kê khai, có xác nhận của UBND xã.\n"
+            "2. Nếu có: căn cước công dân của người cao tuổi; kết quả tra cứu thông tin dân cư.\n"
+            "Cổng tự điền thông tin nhân thân từ tài khoản VNeID — thủ tục này chỉ đính kèm. "
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "ho-tro-chi-phi-hoa-tang-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm 1.014582) — key TRÙNG auto-fill → process/attach
+        # tự nối. Process mặc định purpose "registration_form" → mapper phát bn-input theo NAME
+        # element_757xx (người chết mục I / người đứng ra hỏa táng mục II), fillFormBacNinh khớp theo
+        # NAME. Đính 2 thành phần bắt buộc: Đơn Mẫu 01 → KQ001004, Hợp đồng hỏa táng → KQ001005; giấy tờ
+        # khác vào ô đính kèm bổ sung. Khối "người được ủy quyền" (doiTuongKhac*) chỉ điền khi công dân
+        # chọn đối tượng có ủy quyền (bacNinhAuthorizedPerson). ke_khai_links (1.014582) KHÔNG khai
+        # provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã (UBND xã tiếp nhận), không
+        # agencyProvinceOnly, không agencySoFirst. Detect y hệt lõi; urlScope khóa host.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.014582"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục hỗ trợ chi phí hỏa táng (bao gồm cả điện táng) trên địa bàn tỉnh Bắc Ninh",
+        "shortLabel": "Thủ tục hỗ trợ chi phí hỏa táng (bao gồm cả điện táng)",
+        "subtitle": "Xin hỗ trợ chi phí hỏa táng, điện táng cho người mất tại Bắc Ninh",
+        "icon": "⚱️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7cdb-1107-74c7-8cd2-ccc4e24b47d1",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị hỗ trợ kinh phí hỏa táng (Mẫu số 01) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng dịch vụ hỏa táng / điện táng với cơ sở hỏa táng",
+             "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "khai_tu", "name": "Trích lục khai tử / Giấy báo tử (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng ra hỏa táng (nếu có)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, hóa đơn dịch vụ hoặc giấy tờ khác (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị hỗ trợ kinh phí hỏa táng (Mẫu số 01) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Hợp đồng dịch vụ hỏa táng/điện táng với cơ sở hỏa táng.\n"
+            "3. Nếu có: trích lục khai tử/giấy báo tử; hóa đơn dịch vụ; căn cước công dân của người "
+            "đứng ra hỏa táng; văn bản ủy quyền.\n"
+            "Nếu nộp thay theo ủy quyền, chọn đối tượng \"Người khác ủy quyền\" để trợ lý điền phần "
+            "thông tin người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-nha-o-xa-hoi-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm 2836, 1.014632) — khung giống hỏa táng. Key TRÙNG
+        # auto-fill → process/attach tự nối. Process mặc định purpose "registration_form" → mapper phát
+        # bn-input theo NAME element_762xx (Mẫu 02: người kê khai, vợ/chồng, đối tượng, tỉnh dự án),
+        # fillFormBacNinh khớp theo NAME. Đính 1 thành phần bắt buộc KQ005445: Mẫu 02 → Bản chính,
+        # CCCD + Giấy kết hôn → Bản sao; giấy tờ đối tượng vào ô đính kèm bổ sung. Khối "người được ủy
+        # quyền" (doiTuongKhac*) chỉ điền khi công dân chọn đối tượng có ủy quyền (bacNinhAuthorizedPerson).
+        # ke_khai_links (1.014632) KHÔNG khai provinceOnlyAgency / selectSo → chọn đủ Tỉnh + Phường/Xã,
+        # không agencyProvinceOnly, không agencySoFirst. urlScope khóa host: thủ tục nhà ở xã hội của Bộ
+        # Xây dựng ("cho-thue-thue-mua-nha-o-xa-hoi") nằm ở dvc.moc.gov.vn và chỉ mở cho Đà Nẵng.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.014632"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân tự xây dựng "
+            "hoặc cải tạo, sửa chữa nhà ở"
+        ),
+        "shortLabel": "Đăng ký mua, thuê mua, thuê nhà ở xã hội",
+        "subtitle": "Xác nhận điều kiện nhà ở để mua, thuê, thuê mua nhà ở xã hội hoặc vay vốn tại Bắc Ninh",
+        "icon": "🏘️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
+        "needsAgencySelect": True,
+        "agencyProvince": "Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "mau_02", "name": "Giấy xác nhận về điều kiện nhà ở (Mẫu số 02) — đã kê khai, ký "
+             "(hộ gia đình thường 2 bản: vợ và chồng)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người kê khai và vợ/chồng", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "ket_hon", "name": "Giấy chứng nhận kết hôn (nếu đã kết hôn)", "icon": "💍",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, giấy xác nhận nơi làm việc hoặc giấy tờ chứng minh "
+             "đối tượng (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy xác nhận về điều kiện nhà ở (Mẫu số 02) đã kê khai, ký — nguồn chính điền đơn. Hồ sơ "
+            "hộ gia đình thường có 2 bản (vợ và chồng).\n"
+            "2. Căn cước công dân của người kê khai và vợ/chồng.\n"
+            "3. Giấy chứng nhận kết hôn (nếu đã kết hôn).\n"
+            "4. Nếu có: văn bản ủy quyền; giấy xác nhận của doanh nghiệp/nơi làm việc; giấy tờ chứng minh "
+            "đối tượng.\n"
+            "Nếu nộp thay theo ủy quyền, chọn đối tượng \"Người khác ủy quyền\" để trợ lý điền phần "
+            "thông tin người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
 ]
+
+for _procedure in PROCEDURES:
+    if (_BYT_HOST in ((_procedure.get("detect") or {}).get("urlScope") or [])
+            and "guidedSteps" not in _procedure):
+        _procedure["guidedSteps"] = deepcopy(_BYT_GUIDED_STEPS)
+        _procedure["wizard"] = {**(_procedure.get("wizard") or {}), "resultStep": _BYT_RESULT_STEP}
 
 # Materialize reusable flow capabilities once. Runtime and extension continue consuming
 # the same resolved procedure contract; they never need procedure-specific profile logic.

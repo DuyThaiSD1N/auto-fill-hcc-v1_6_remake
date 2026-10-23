@@ -191,6 +191,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "bác sĩ thay đổi phạm vi hành nghề", "điều chỉnh chứng chỉ hành nghề y",
         "điều dưỡng điều chỉnh giấy phép hành nghề", "thêm chuyên khoa vào giấy phép hành nghề",
     ],
+    # MỘT người hành nghề xin giấy phép hành nghề LẦN ĐẦU (chưa có GPHN). KHÁC điều chỉnh phạm vi
+    # giấy phép đã có ("dieu-chinh-…") và khác cơ sở đăng ký danh sách người hành nghề.
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": [
+        "xin cấp giấy phép hành nghề lần đầu", "cấp mới giấy phép hành nghề khám bệnh, chữa bệnh",
+        "bác sĩ mới ra trường xin giấy phép hành nghề", "điều dưỡng mới ra trường xin giấy phép hành nghề",
+        "xin chứng chỉ hành nghề y lần đầu", "hộ sinh, kỹ thuật y xin giấy phép hành nghề",
+    ],
     # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
     # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
     "tro-cap-tho-cung-liet-si": ["trợ cấp thờ cúng liệt sĩ", "chế độ thờ cúng liệt sĩ",
@@ -310,6 +317,26 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                  "đăng ký biến động chuyển nhượng mã 1.013831",
                                                  "đăng ký biến động thừa kế, tặng cho, góp vốn theo thủ tục cũ",
                                                  "đăng ký cho thuê đất ở bắc ninh"],
+    # Chế độ RIÊNG của Bắc Ninh (NQ 103/2025/NQ-HĐND) cho người 70–dưới 75 tuổi hoặc đảng viên huy hiệu
+    # 40 năm tuổi đảng. Chỉ nhận cụm có mốc tuổi 70–75, huy hiệu đảng hoặc Bắc Ninh; "trợ cấp người
+    # cao tuổi" trơn vẫn để LLM đọc cả câu (hưu trí xã hội / trợ cấp xã hội hàng tháng cũng nhận).
+    "ho-tro-nguoi-cao-tuoi-bac-ninh": ["hỗ trợ người cao tuổi từ 70 đến dưới 75 tuổi",
+                                       "người già 70 tuổi chưa có lương hưu xin hỗ trợ",
+                                       "đảng viên huy hiệu 40 năm tuổi đảng xin hỗ trợ",
+                                       "hỗ trợ đảng viên cao tuổi không có lương hưu",
+                                       "hỗ trợ người cao tuổi ở bắc ninh"],
+    # Chế độ RIÊNG của Bắc Ninh cho người mất được HỎA TÁNG / ĐIỆN TÁNG. Chỉ nhận cụm có "hỏa táng" /
+    # "điện táng"; "mai táng" / "chôn cất" trơn vẫn thuộc hai thủ tục mai táng (theo nhóm đối tượng).
+    "ho-tro-chi-phi-hoa-tang-bac-ninh": ["hỗ trợ chi phí hỏa táng",
+                                         "xin tiền hỗ trợ hỏa táng cho người nhà mới mất",
+                                         "hỗ trợ chi phí điện táng",
+                                         "hỗ trợ hỏa táng ở bắc ninh"],
+    # Bản Bắc Ninh (1.014632, Mẫu 02 xác nhận điều kiện nhà ở). Bản Bộ Xây dựng
+    # "cho-thue-thue-mua-nha-o-xa-hoi" chỉ mở cho Đà Nẵng nên account Bắc Ninh không thấy cả hai cùng lúc.
+    "dang-ky-nha-o-xa-hoi-bac-ninh": ["đăng ký mua nhà ở xã hội", "đăng ký thuê nhà ở xã hội ở bắc ninh",
+                                      "xin giấy xác nhận điều kiện nhà ở để mua nhà xã hội",
+                                      "vay vốn tự xây hoặc sửa chữa nhà ở theo chính sách nhà ở xã hội",
+                                      "đăng ký nhà ở xã hội ở bắc ninh"],
     # "Đăng ký lại" = sổ hộ tịch GỐC ở cơ quan đã mất/hư hỏng; sổ còn mà chỉ cần bản sao là trích lục.
     "khai-sinh-dang-ky-lai": ["đăng ký lại khai sinh", "khai sinh lại vì sổ hộ tịch gốc bị mất",
                               "đã đăng ký khai sinh trước đây nhưng cơ quan không còn lưu sổ",

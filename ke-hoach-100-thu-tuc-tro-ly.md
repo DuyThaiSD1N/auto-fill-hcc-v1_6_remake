@@ -3,7 +3,8 @@
 ## 1. Hiện trạng
 
 - Trợ lý nhân dân (kênh handfree) đang có **44 thủ tục**, nên cần thêm **56**.
-  _Cập nhật 22/10 15:00: **71 thủ tục**, còn thiếu 29. Danh sách ở mục 7._
+  _Cập nhật 22/10 15:00: **71 thủ tục**, còn thiếu 29._
+  _Cập nhật 23/10 11:00: **75 thủ tục**, còn thiếu 25. Danh sách ở mục 7._
 - Thời gian từ T2 19/10 tới T6 30/10 là **10 ngày làm việc**, tức trung bình 5–6 thủ tục mỗi ngày.
 - Registry lõi của Auto Fill (`app/procedures/registry.py`) có **219 thủ tục**. Có **175** đã có pipeline nhưng trợ lý chưa mở.
 - Thêm một thủ tục **không cần viết pipeline mới**. Chỉ cần một entry trong `app/channels/handfree/procedure_registry.py`:
@@ -166,10 +167,14 @@ Lấy thay khi một thủ tục trong lộ trình bị kẹt.
 - Chạy thử trên cổng DVCQG cần tài khoản VNeID đăng nhập được. Đây là điểm nghẽn lớn nhất nếu chỉ một người có tài khoản.
 - Đợt 3 dày nhất (21 thủ tục). Theo dõi mốc 26/10 để kịp đổi sang danh sách dự bị.
 
-## 7. Thủ tục đã lên trợ lý — 71 (cập nhật T5 22/10, commit `bb277b9`)
+## 7. Thủ tục đã lên trợ lý — 75 (cập nhật T6 23/10 11:00, chưa commit, trên `aedb955`)
 
-Lấy từ `app/channels/handfree/procedure_registry.py`, theo thứ tự trong file. Container `app` 12005 (build 15:09 22/10)
-đã có đủ 71 thủ tục. "Có entry" chưa có nghĩa là đã chạy thử trên cổng: xem phần nợ chạy thử trong checklist từng ngày.
+Lấy từ `app/channels/handfree/procedure_registry.py` và xếp theo nhóm. Trong file, thứ tự không theo nhóm: 4 thủ tục hộ
+kinh doanh nằm sau nhóm Xây dựng. Container `app` 12005 (build 10:23 23/10) đếm đủ 75. "Có entry" chưa có nghĩa là
+đã chạy thử trên cổng: xem phần nợ chạy thử trong checklist từng ngày.
+
+So với bản 22/10 (71) thêm 4 thủ tục: `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` (commit `53ea8cd`, 22/10) và 3 thủ
+tục Bắc Ninh (23/10, chưa commit). `cap-hoc-tap-bac-ninh` (1.014581) bỏ qua.
 
 **Hộ tịch (19)**
 
@@ -250,36 +255,56 @@ Lấy từ `app/channels/handfree/procedure_registry.py`, theo thứ tự trong 
 | 53 | `cap-phep-long-duong-via-he` | Sử dụng tạm thời lòng đường, vỉa hè |
 | 54 | `cap-giay-phep-lien-van-viet-lao` | Giấy phép liên vận Việt Nam - Lào |
 
-**Y tế (3)**
+**Y tế (4)**
 
 | # | Key | Tên (rút gọn từ shortLabel) | Ghi chú |
 |---|---|---|---|
 | 55 | `cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham` | GCN cơ sở đủ điều kiện ATTP (dịch vụ ăn uống) | |
 | 56 | `cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te` | Cấp lại, điều chỉnh GCN đủ điều kiện kinh doanh dược | Mới 22/10 |
 | 57 | `dang-ky-hanh-nghe` | Đăng ký người hành nghề khám bệnh, chữa bệnh | Mới 22/10 |
+| 58 | `dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep` | Điều chỉnh GPHN khám bệnh, chữa bệnh (giai đoạn chuyển tiếp) | Mới 22/10, Sở Y tế |
 
 **Đất đai Bắc Ninh (12)**
 
 | # | Key | Tên (rút gọn từ shortLabel) |
 |---|---|---|
-| 58 | `dang-ky-bien-phap-bao-dam-bac-ninh` | Đăng ký biện pháp bảo đảm bằng QSDĐ |
-| 59 | `xoa-dang-ky-bien-phap-bao-dam-bac-ninh` | Xóa đăng ký biện pháp bảo đảm bằng QSDĐ |
-| 60 | `dinh-chinh-gcn-da-cap-bac-ninh` | Đính chính giấy chứng nhận đã cấp |
-| 61 | `dang-ky-bien-dong-thoa-thuan-bac-ninh` | Đăng ký biến động theo thỏa thuận (hộ gia đình, vợ chồng, tranh chấp, thế chấp) |
-| 62 | `dang-ky-bien-dong-dat-dai-bac-ninh` | Đăng ký biến động (chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn) |
-| 63 | `tach-hop-thua-dat-bac-ninh` | Tách thửa đất hoặc hợp thửa đất |
-| 64 | `cap-doi-gcn-bac-ninh` | Cấp đổi GCN quyền sử dụng đất |
-| 65 | `dang-ky-dat-dai-lan-dau-bac-ninh` | Đăng ký đất đai, cấp GCN lần đầu |
-| 66 | `thu-hoi-gcn-cap-sai-bac-ninh` | Thu hồi GCN cấp lần đầu sai quy định và cấp lại |
-| 67 | `dinh-chinh-sai-sot-bac-ninh` | Đính chính GCN cấp lần đầu có sai sót |
-| 68 | `giao-thue-chuyen-muc-dich-dat-bac-ninh` | Giao đất, cho thuê đất, chuyển mục đích |
-| 69 | `dang-ky-bien-dong-chuyen-nhuong-bac-ninh` | Đăng ký biến động (chuyển nhượng, thừa kế, tặng cho, góp vốn; cho thuê, cho thuê lại) |
+| 59 | `dang-ky-bien-phap-bao-dam-bac-ninh` | Đăng ký biện pháp bảo đảm bằng QSDĐ |
+| 60 | `xoa-dang-ky-bien-phap-bao-dam-bac-ninh` | Xóa đăng ký biện pháp bảo đảm bằng QSDĐ |
+| 61 | `dinh-chinh-gcn-da-cap-bac-ninh` | Đính chính giấy chứng nhận đã cấp |
+| 62 | `dang-ky-bien-dong-thoa-thuan-bac-ninh` | Đăng ký biến động theo thỏa thuận (hộ gia đình, vợ chồng, tranh chấp, thế chấp) |
+| 63 | `dang-ky-bien-dong-dat-dai-bac-ninh` | Đăng ký biến động (chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn) |
+| 64 | `tach-hop-thua-dat-bac-ninh` | Tách thửa đất hoặc hợp thửa đất |
+| 65 | `cap-doi-gcn-bac-ninh` | Cấp đổi GCN quyền sử dụng đất |
+| 66 | `dang-ky-dat-dai-lan-dau-bac-ninh` | Đăng ký đất đai, cấp GCN lần đầu |
+| 67 | `thu-hoi-gcn-cap-sai-bac-ninh` | Thu hồi GCN cấp lần đầu sai quy định và cấp lại |
+| 68 | `dinh-chinh-sai-sot-bac-ninh` | Đính chính GCN cấp lần đầu có sai sót |
+| 69 | `giao-thue-chuyen-muc-dich-dat-bac-ninh` | Giao đất, cho thuê đất, chuyển mục đích |
+| 70 | `dang-ky-bien-dong-chuyen-nhuong-bac-ninh` | Đăng ký biến động (chuyển nhượng, thừa kế, tặng cho, góp vốn; cho thuê, cho thuê lại) |
+
+**Bắc Ninh — xã hội, nhà ở (3)**
+
+| # | Key | Mã | Tên (rút gọn từ shortLabel) | Ghi chú |
+|---|---|---|---|---|
+| 71 | `ho-tro-nguoi-cao-tuoi-bac-ninh` | 1.014589 | Hỗ trợ người cao tuổi 70–dưới 75 tuổi; đảng viên huy hiệu 40 năm tuổi đảng | Mới 23/10, chỉ đính kèm |
+| 72 | `ho-tro-chi-phi-hoa-tang-bac-ninh` | 1.014582 | Hỗ trợ chi phí hỏa táng (cả điện táng) | Mới 23/10, điền đơn + đính kèm |
+| 73 | `dang-ky-nha-o-xa-hoi-bac-ninh` | 1.014632 | Đăng ký mua, thuê mua, thuê nhà ở xã hội | Mới 23/10, điền Mẫu 02 + đính kèm |
 
 **Khác (2)**
 
 | # | Key | Tên (rút gọn từ shortLabel) |
 |---|---|---|
-| 70 | `cap-giay-phep-khai-thac-thuy-san` | Giấy phép khai thác thủy sản |
-| 71 | `cap-ban-sao-van-bang-so-goc` | Cấp bản sao văn bằng, chứng chỉ từ sổ gốc |
+| 74 | `cap-giay-phep-khai-thac-thuy-san` | Giấy phép khai thác thủy sản |
+| 75 | `cap-ban-sao-van-bang-so-goc` | Cấp bản sao văn bằng, chứng chỉ từ sổ gốc |
 
-3 entry Bắc Ninh (#60, #63, #67) không có `shortLabel`, card hiện `label` (đều đã ngắn).
+3 entry Bắc Ninh (#61, #64, #68) không có `shortLabel`, card hiện `label` (đều đã ngắn).
+
+Hai tính năng mới 23/10 áp cho nhiều thủ tục. Cả hai chỉ chạy khi extension trợ lý khai cờ, từ bản 1.13.3:
+
+- **Khối "người được ủy quyền" cổng Bắc Ninh** (`bacNinhAuthorizedPerson`, cờ `supportsBacNinhAuthorizedPerson`):
+  #59, #60, #62, #63, #72, #73. Chỉ điền khi công dân chọn đối tượng có ủy quyền.
+- **Bước "Hình thức nhận kết quả" cổng Bộ Y tế** (cờ `supportsIgateResultStep`): gắn tự động cho 11 thủ tục có `urlScope`
+  `dichvucongbyt.moh.gov.vn`, gồm #38, #42–#47 và #55–#58. Trợ lý chọn cách nhận kết quả. Ô cam đoan và Mã xác nhận do
+  công dân tự làm.
+
+Kế hoạch 23/10 chiều (75 → 77): `cap-moi-giay-phep-hanh-nghe-chuyen-tiep`, `cap-giay-phep-chat-ha-cay-xanh`. Chi tiết
+ở [checklist-23-10-2026.md](checklist-23-10-2026.md).

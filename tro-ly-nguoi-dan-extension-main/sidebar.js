@@ -94,6 +94,9 @@
     // Có engine gạt công tắc "cách nhận kết quả" (portal-dvc.js::selectResultMethod). BE chỉ
     // chọn sẵn hộ khi thấy cờ này; thiếu cờ → giữ câu hướng dẫn ba cách để công dân tự gạt.
     supportsResultMethod: true,
+    // Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước "Hình thức nhận kết quả" (guided-steps.js) và chọn ô
+    // receivingKind (portal-mae.js::selectReceivingKind). Thiếu cờ → BE giữ câu "tự bấm Nộp hồ sơ".
+    supportsIgateResultStep: true,
     // Hộp thoại cổng bộ chọn cơ quan ở CẤP XÃ (radio "Phường/Xã"). Thiếu cờ → BE dặn công dân
     // chọn tay thay vì bắn lệnh cho engine cũ gạt nhầm sang "Sở/Ban ngành".
     supportsMaeWardAgency: true,
@@ -126,6 +129,9 @@
     // Trang nộp một trang, luồng bản 2: thẻ tiến trình nhiều bước (action pipeline_steps), tắt chú giải màu cũ
     // (noLegend), báo BE mỗi khi số ô trống đổi lúc công dân tự gõ trên cổng (__event:field_review_status).
     supportsFlowV2: true,
+    // Cổng Bắc Ninh: biết mở khối "Thông tin trong trường hợp được ủy quyền" (tick ô bổ sung + chọn loại
+    // đối tượng theo ô đánh dấu bn-doi-tuong-khac) rồi điền doiTuongKhac*. Thiếu cờ → BE không gửi khối này.
+    supportsBacNinhAuthorizedPerson: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -1452,6 +1458,8 @@
   }
 
   let lastPageSig = "";
+  // Bước wizard đã báo BE lúc state done (result_step_watch) — chỉ báo lại khi số bước đổi.
+  let doneWizardStep = 0;
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
     "owner_waiting_next", "attaching", "done", "filling",
@@ -1476,6 +1484,7 @@
       if (!isWatchedState()) {
         clearInterval(watcherTimer); watcherTimer = null; return;
       }
+      if (lastState !== "done") doneWizardStep = 0;
       const ctx = await readPageContext();
       if (!ctx?.ok) return;
       // Trang SPA đổi bước không reload → theo dõi CHỮ KÝ tín hiệu, đổi mới báo BE
@@ -1524,6 +1533,17 @@
         clearInterval(watcherTimer); watcherTimer = null;
         if (ctx.submittedToast) void sendToContent({ action: "ackSubmitToast" });
         ask("__event:submitted", "system");
+      } else if (lastState === "done" && lastReplyData?.result_step_watch && ctx.wizardStep
+          && ctx.wizardStep !== doneWizardStep && !watcherPageStatusInFlight) {
+        // Đính kèm xong (state done) mà công dân TỰ bấm chuyển bước trên cổng (không qua nút của trợ lý)
+        // → báo BE để vẫn dẫn bước nhận kết quả. Xét SAU nhánh nộp thành công: màn đã nộp cũng đổi bước.
+        doneWizardStep = ctx.wizardStep;
+        watcherPageStatusInFlight = true;
+        try {
+          await sendPageStatus(ctx);
+        } finally {
+          watcherPageStatusInFlight = false;
+        }
       }
     }, 3500);
   }

@@ -1204,6 +1204,10 @@ async def _handle_turn_inner(
         guided_reply = await _handle_guided_action(conv, current_proc, intent)
         if guided_reply is not None:
             return guided_reply
+        # Sidebar báo page_status ở state done mỗi lần công dân tự đổi bước trên cổng; chỉ bước nhận kết quả
+        # (ở trên) mới có lời, bước khác im — không để rơi xuống state machine của done.
+        if guided_page_status and intent.kind == "event" and intent.value == "page_status":
+            return Reply()
     if intent.kind == "action" and intent.value == "set_lang":
         return _apply_lang(conv, intent.payload)
     if intent.kind == "action" and intent.value == "set_location":
@@ -3333,16 +3337,17 @@ def _guided_result_step_reply(conv: dict, proc: dict) -> Reply:
         r.chips = [guided.submit_cta_chip()]
         return r
     default = guided.default_result_method(proc) or {}
-    if field_review.legacy_wizard(proc) and default.get("key"):
+    # Cổng Bộ Y tế (selfSubmit) cũng chọn sẵn: chính cổng đã để sẵn cách mặc định, trợ lý chỉ chốt lại cho thẻ khớp trang.
+    if (field_review.legacy_wizard(proc) or guided.self_submit(proc)) and default.get("key"):
         key = str(default["key"])
         conv["result_method"] = key
         conv["result_method_autopick"] = key  # báo cáo gạt xong của lượt chọn sẵn này không nói lại "Đã chọn…"
-        r = Reply(*_fmt(vi.GUIDED_RESULT_PICK, note=vi.GUIDED_RESULT_SUBMIT_HINT, label=str(default.get("label") or ""),
+        r = Reply(*_fmt(vi.GUIDED_RESULT_PICK, note=guided.result_hint(proc), label=str(default.get("label") or ""),
                         **guided.step_labels(proc)))
         r.cards = [guided.result_methods_card(proc, key)]
         action = guided.select_result_method_action(proc, key)
         r.actions = [action] if action else []
-        r.chips = [guided.submit_cta_chip()]
+        r.chips = guided.result_chips(proc)
         return r
     conv["result_method"] = ""
     r = Reply(*_fmt(vi.GUIDED_RESULT_CHOOSE, **guided.step_labels(proc)))
@@ -3365,7 +3370,7 @@ def _pick_result_method_reply(conv: dict, proc: dict, intent: Intent) -> Reply:
     r.cards = [guided.result_methods_card(proc, key)]
     action = guided.select_result_method_action(proc, key)
     r.actions = [action] if action else []
-    r.chips = [guided.submit_cta_chip()]
+    r.chips = guided.result_chips(proc)
     return r
 
 
@@ -3380,14 +3385,18 @@ def _result_method_report_reply(conv: dict, proc: dict, intent: Intent) -> Reply
     method = guided.result_method(proc, key) or {}
     label = str(method.get("label") or "")
     labels = guided.step_labels(proc)
-    hint = vi.GUIDED_RESULT_SUBMIT_HINT
+    hint = guided.result_hint(proc)
+    self_submit = guided.self_submit(proc)
     autopick = conv.pop("result_method_autopick", "")
     if (intent.payload.get("ok") and key == autopick and not method.get("needsInput")
             and not intent.payload.get("missing")):
         return Reply()  # câu chọn sẵn đã nói "đang chọn … Kiểm tra xong → bấm Gửi hồ sơ"
     if not intent.payload.get("ok"):
-        # Câu này đã tự chỉ sang nút Gửi hồ sơ, không nối thêm câu chốt nữa cho khỏi lặp.
-        r = Reply(*_fmt(vi.GUIDED_RESULT_FAILED, label=label, **labels))
+        if self_submit:
+            r = Reply(*_fmt(vi.GUIDED_RESULT_SELECT_FAILED, note=hint, label=label, **labels))
+        else:
+            # Câu này đã tự chỉ sang nút Gửi hồ sơ, không nối thêm câu chốt nữa cho khỏi lặp.
+            r = Reply(*_fmt(vi.GUIDED_RESULT_FAILED, label=label, **labels))
     else:
         # Ô bắt buộc còn trống do FE đọc THẲNG trên trang (dấu * của chính cổng), không khai
         # cứng ở đây: cổng còn đổi, và chỉ cách đòi thêm thông tin mới được FE soi.
@@ -3397,13 +3406,14 @@ def _result_method_report_reply(conv: dict, proc: dict, intent: Intent) -> Reply
             r = Reply(*_fmt(vi.GUIDED_RESULT_MISSING, note=hint, label=label,
                             missing_note=text, missing_tts=text, **labels))
         elif method.get("needsInput"):
-            r = Reply(*_fmt(vi.GUIDED_RESULT_NEEDS_INPUT, note=hint, label=label, **labels))
+            tpl = vi.GUIDED_RESULT_HOME_POSTAL if self_submit else vi.GUIDED_RESULT_NEEDS_INPUT
+            r = Reply(*_fmt(tpl, note=hint, label=label, **labels))
         else:
             r = Reply(*_fmt(vi.GUIDED_RESULT_PICKED, note=hint, label=label, **labels))
     # Gắn lại thẻ ở lượt CÓ CHỮ này: lượt bấm chọn là Reply rỗng nên router không lưu nó vào
     # last_reply — dựng lại sidebar sau điều hướng mà chỉ có lượt rỗng thì mất đường đổi cách.
     r.cards = [guided.result_methods_card(proc, key)]
-    r.chips = [guided.submit_cta_chip()]
+    r.chips = guided.result_chips(proc)
     return r
 
 
@@ -3450,8 +3460,9 @@ def _voice_step_reply(conv: dict, proc: dict, intent: Intent) -> Reply | None:
         r.actions = [guided.click_next_action(proc, guided.ATTACHMENT)]
         return r
     if intent.value == "voice_submit_hint":
-        r = Reply(*_fmt(vi.VOICE_SUBMIT_SELF, **labels))
-        r.chips = [guided.submit_cta_chip()]
+        r = Reply(*_fmt(vi.VOICE_SUBMIT_SELF, note=guided.result_hint(proc) if guided.self_submit(proc) else None,
+                        **labels))
+        r.chips = guided.result_chips(proc)
         return r
     return None
 
