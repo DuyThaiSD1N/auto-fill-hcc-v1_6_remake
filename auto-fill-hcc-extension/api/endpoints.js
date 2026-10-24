@@ -186,10 +186,10 @@ const api = {
     return res.json(); // { provinces: [{text, slug, name, label}], wardsBySlug: {slug: {slug, province, communes}} }
   },
 
-  async keKhaiLinks() {
-    const res = await backendFetch("/api/v1/procedures/ke-khai-links");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json(); // { links: [{key, label, url, needsAgencySelect, provinceOnlyAgency, selectSo, selectSoProvinces, submitCardIncludes, provincePortalFlow, autoConfirm}] }
+  // Kèm token khi đã đăng nhập: BE bỏ thủ tục riêng của tỉnh khác (provinceOnly) theo tỉnh tài
+  // khoản. Chưa đăng nhập thì gọi trơn, BE trả đủ danh mục.
+  keKhaiLinks() {
+    return apiJson("/api/v1/procedures/ke-khai-links"); // { links: [{key, label, url, needsAgencySelect, provinceOnlyAgency, selectSo, selectSoProvinces, submitCardIncludes, provincePortalFlow, autoConfirm, provinceOnly}] }
   },
 
   // Rà soát bbox: đọc lại sources (field → vùng ảnh) đã chụp lúc process. null nếu chưa có / hết hạn.

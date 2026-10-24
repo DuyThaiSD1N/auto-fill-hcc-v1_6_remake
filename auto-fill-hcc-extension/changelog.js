@@ -3,6 +3,23 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.24.3",
+    date: "23/10/2026",
+    items: [
+      "Trang nộp hồ sơ mới (Cổng DVC quốc gia): chuyển sang hồ sơ khác trong cùng tab vẫn điền đúng biểu mẫu đang hiện, không còn ô báo xanh mà trống.",
+      "Cấp giấy phép xây dựng (Bộ Xây dựng): bỏ tích các dòng giấy tờ không đính, chỉ tích lại dòng đã đính được; người đăng nhập VNeID là người nộp kiêm chủ hộ.",
+      "Bắc Ninh: ô Số lượng của dòng Bản chính/Bản sao ghi đúng số tệp đã đính.",
+    ],
+  },
+  {
+    version: "1.24.2",
+    date: "21/10/2026",
+    items: [
+      "Ô \"Đi đến thủ tục\" chỉ hiện thủ tục riêng của đúng tỉnh tài khoản; đổi tài khoản ngay trong panel thì danh sách tự nạp lại.",
+      "Bắc Ninh: thêm thủ tục đăng ký biến động theo thỏa thuận (1.115470), đọc thông tin người được ủy quyền như đăng ký biến động đất đai.",
+    ],
+  },
+  {
     version: "1.24",
     date: "21/10/2026",
     items: [

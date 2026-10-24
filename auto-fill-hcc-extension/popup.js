@@ -109,10 +109,17 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     sourceLabel: "người được ủy quyền",
     missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
   }],
+  // 1.115470 — cùng đơn Mẫu 18 và pipeline với 1.115468, chỉ khác tên thủ tục.
+  ["dang-ky-bien-dong-thoa-thuan-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người được ủy quyền",
+    missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
+  }],
 ]);
 const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
   "ho-tro-chi-phi-hoa-tang-bac-ninh",
   "dang-ky-bien-dong-dat-dai-bac-ninh",
+  "dang-ky-bien-dong-thoa-thuan-bac-ninh",
 ]);
 const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;
@@ -568,6 +575,8 @@ function showMain(user) {
   void AccountSettings.refresh().catch((e) => console.warn("[Popup] Không tải được cài đặt tài khoản:", e));
   // /auth/me về sau khi khối địa chỉ đã dựng -> áp lại để lấy tỉnh/xã gắn trong tài khoản.
   void applyStoredLocation();
+  // Danh mục "Đi đến thủ tục" lọc theo tỉnh tài khoản -> đăng nhập tài khoản khác thì nạp lại.
+  void reloadKeKhaiLinksForUser().catch((e) => console.warn("[Popup] Không nạp lại được danh mục thủ tục:", e));
 }
 
 async function bootstrap() {
@@ -5818,9 +5827,60 @@ const KE_KHAI_STORAGE_KEY = "autofill_last_ke_khai_key";
 // Danh mục link kê khai do BACKEND giữ (/api/v1/procedures/ke-khai-links) — extension không đóng gói
 // data/procedure-links.js nữa. initKeKhaiPicker() nạp một lần rồi mọi chỗ đọc qua hàm này.
 let keKhaiLinkList = [];
+// Tài khoản mà danh mục đang nạp thuộc về: BE chỉ trả thủ tục riêng của tỉnh cho tài khoản đúng
+// tỉnh, nên đăng nhập tài khoản khác ngay trong panel phải nạp lại. null = chưa nạp lần nào.
+let keKhaiLinksUser = null;
+let keKhaiLoadRun = 0;
 
 function keKhaiLinks() {
   return keKhaiLinkList;
+}
+
+/** Nạp danh mục link kê khai theo tài khoản đang đăng nhập. false = có lượt nạp mới hơn chen ngang. */
+async function fetchKeKhaiLinks() {
+  const run = ++keKhaiLoadRun;
+  keKhaiLinksUser = currentUser?.username || "";
+  let list;
+  try {
+    const res = await api.keKhaiLinks();
+    const tuBackend = Array.isArray(res?.links) ? res.links : [];
+    // Thủ tục cổng tỉnh chưa liên thông DVC quốc gia đi vòng qua thủ tục cầu — cấu hình ở
+    // popup-ke-khai-di-vong.js, không phụ thuộc backend.
+    list = window.KeKhaiDiVong ? window.KeKhaiDiVong.apDungDiVong(tuBackend) : tuBackend;
+  } catch (error) {
+    list = [];
+    console.error('[Popup] Không lấy được danh mục link kê khai từ backend:', error);
+  }
+  if (run !== keKhaiLoadRun) return false;
+  keKhaiLinkList = list;
+  return true;
+}
+
+function renderKeKhaiOptions() {
+  for (const option of Array.from(keKhaiSelect.options)) {
+    if (option.value !== '') option.remove();
+  }
+  for (const item of keKhaiLinks()) {
+    const option = document.createElement('option');
+    option.value = item.key;
+    option.textContent = item.label;
+    // Mã TTHC (backend khai ở data/ke_khai_links.json) để cán bộ tra bằng mã in trên giấy.
+    // Để ở data-* chứ KHÔNG ghép vào textContent — ghép vào thì gõ "2" trong tên khớp mọi mã.
+    if (item.code) option.dataset.code = item.code;
+    keKhaiSelect.appendChild(option);
+  }
+}
+
+/** Đổi tài khoản ngay trong panel -> nạp lại danh mục theo tỉnh của tài khoản mới. */
+async function reloadKeKhaiLinksForUser() {
+  if (keKhaiLinksUser === null || !keKhaiSection || keKhaiSection.dataset.unavailable === "1") return;
+  if (keKhaiLinksUser === (currentUser?.username || "")) return;
+  const current = keKhaiSelect.value;
+  if (!(await fetchKeKhaiLinks())) return;
+  renderKeKhaiOptions();
+  keKhaiSelect.value = keKhaiLinks().some((item) => item.key === current) ? current : '';
+  syncDestCombos();
+  updateKeKhaiUI();
 }
 
 function selectedKeKhaiLink() {
@@ -5864,16 +5924,8 @@ async function initKeKhaiPicker() {
   } catch (error) {
     console.warn("[Popup] Khởi tạo chính chưa hoàn tất trước ô Đi đến thủ tục:", error);
   }
-  try {
-    const res = await api.keKhaiLinks();
-    const tuBackend = Array.isArray(res?.links) ? res.links : [];
-    // Thủ tục cổng tỉnh chưa liên thông DVC quốc gia đi vòng qua thủ tục cầu — cấu hình ở
-    // popup-ke-khai-di-vong.js, không phụ thuộc backend.
-    keKhaiLinkList = window.KeKhaiDiVong ? window.KeKhaiDiVong.apDungDiVong(tuBackend) : tuBackend;
-  } catch (error) {
-    keKhaiLinkList = [];
-    console.error('[Popup] Không lấy được danh mục link kê khai từ backend:', error);
-  }
+  // Lượt nạp lại theo tài khoản (reloadKeKhaiLinksForUser) chen ngang thì dùng luôn kết quả của nó.
+  await fetchKeKhaiLinks();
 
   const links = keKhaiLinks();
   if (!links.length) {
@@ -5885,15 +5937,7 @@ async function initKeKhaiPicker() {
     return;
   }
 
-  for (const item of links) {
-    const option = document.createElement('option');
-    option.value = item.key;
-    option.textContent = item.label;
-    // Mã TTHC (backend khai ở data/ke_khai_links.json) để cán bộ tra bằng mã in trên giấy.
-    // Để ở data-* chứ KHÔNG ghép vào textContent — ghép vào thì gõ "2" trong tên khớp mọi mã.
-    if (item.code) option.dataset.code = item.code;
-    keKhaiSelect.appendChild(option);
-  }
+  renderKeKhaiOptions();
 
   const saved = await chrome.storage.local.get(KE_KHAI_STORAGE_KEY);
   const savedKey = saved[KE_KHAI_STORAGE_KEY];
