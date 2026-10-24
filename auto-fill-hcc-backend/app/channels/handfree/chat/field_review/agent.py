@@ -200,7 +200,12 @@ def _check(data: dict, field: dict, text: str = "", visited: list | None = None)
             return _copy_answer(data, field, picked, text)
         return Answer("value", picked) if picked else Answer("unclear")
     value = str(data.get("value") or "").strip()[:_MAX_VALUE]
-    if field.get("kind") == "date":
+    if field.get("kind") == "number":
+        # Ô số của cổng (input type number) không nhận chữ: LLM còn để đơn vị / chữ thì hỏi lại, không điền hụt.
+        value = value.replace(",", ".")
+        if not re.fullmatch(r"\d+(?:\.\d+)?", value):
+            return Answer("unclear")
+    elif field.get("kind") == "date":
         value = _valid_date(value, bool(field.get("year_only")), bool(field.get("partial_date")))
     elif lengths:
         # Số định danh 12 chữ số, số giấy tờ 9 hoặc 12 chữ số, số điện thoại 10 / 11 số — sai độ dài thì hỏi lại,

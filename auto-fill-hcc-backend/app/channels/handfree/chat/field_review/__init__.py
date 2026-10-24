@@ -414,7 +414,7 @@ def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] =
         "copy_choice": bool(copy_pair) and raw.get("name") == copy_pair[0],
         "label": label,
         "where": "" if where is None else (where or _section(raw.get("section")) or "Tờ khai"),
-        "kind": raw.get("kind") if raw.get("kind") in {"text", "date", "select", "radio"} else "text",
+        "kind": raw.get("kind") if raw.get("kind") in {"text", "number", "date", "select", "radio"} else "text",
         "required": raw.get("required") is True,
         "year_only": raw.get("kind") == "date" and (raw.get("yearOnly") is True or raw.get("partialDate") is True),
         # Ô ngày dạng chữ của cổng: nhận đủ ngày, tháng-năm hoặc chỉ năm.

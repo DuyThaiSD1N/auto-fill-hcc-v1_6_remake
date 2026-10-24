@@ -864,12 +864,12 @@ async def plan(
     # Cần OCR đầy đủ để tách PDF hỗn hợp. Vẫn chỉ gọi một batch OCR cho toàn bộ file hỗ trợ.
     ocr_results = await ocr.ocr_per_file([file for _, file in ocr_pairs]) if ocr_pairs else []
     ocr_ms = int((time.monotonic() - t0) * 1000)
-    for r in ocr_results:
+    for idx, r in enumerate(ocr_results):
         if r.get("error"):
             # OCR lỗi thường do dịch vụ OCR chập chờn (502/timeout) — KHÔNG phải lỗi hồ sơ.
             # File vẫn được đính kèm (tên fallback qua build_plan_items), nên KHÔNG đẩy vào
             # `errors` để tránh hiện "Cảnh báo xử lý" gây hoang mang cho cán bộ; chỉ log để debug.
-            logger.warning("OCR phân loại lỗi (%s): %s", r.get("name"), r["error"])
+            logger.warning("OCR phân loại lỗi (tệp #%d): %s", idx + 1, r["error"])
 
     # Kết quả OCR khớp thứ tự input. Không map theo tên vì hai file "image.pdf" là hai nguồn khác nhau.
     ocr_by_index = {

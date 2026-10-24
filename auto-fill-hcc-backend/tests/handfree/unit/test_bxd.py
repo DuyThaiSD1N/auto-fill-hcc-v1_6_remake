@@ -75,8 +75,18 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     assert cfg["required"] == () and cfg["noAsk"] == ("tenHoSo",)
 
 
-@pytest.mark.parametrize("key", ["dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le"])
-def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key):
+@pytest.mark.parametrize("key, no_ask", [
+    ("dieu-chinh-giay-phep-xay-dung", ("tenHoSo",)), ("sua-chua-cai-tao-gpxd-nha-o-rieng-le", ("tenHoSo",)),
+    # Cổng Bộ Y tế cùng nền iGate (stepper 4 bước, tờ khai Form.io) → cùng luồng.
+    ("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham", ("ghiChu",)),
+    ("dieu-chinh-huu-tri-xa-hoi", ("ghiChu",)),
+    ("thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang", ("ghiChu",)),
+    ("ho-tro-mai-tang-huu-tri-xa-hoi", ("ghiChu",)), ("ho-tro-mai-tang-1116910", ("ghiChu",)),
+    # Cổng Bộ Nội vụ (bước 3 tên "Thông tin bổ sung").
+    ("di-chuyen-ho-so-nguoi-huong-tro-cap", ("ghiChu",)), ("tro-cap-tho-cung-liet-si", ("ghiChu",)),
+    ("uu-dai-ncc-tu-tran", ("ghiChu",)),
+])
+def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_ask):
     from app.channels.handfree.chat.field_review import registry
 
     proc = flow.get_procedure(key)
@@ -84,7 +94,7 @@ def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key):
     conv = _conv("filling", procedure_key=key)
     assert bxd.enabled(conv, proc) and field_review.active(conv, proc)
     assert not bxd.enabled(_conv("filling", caps={"supportsFieldReview": True}, procedure_key=key), proc)
-    assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == ("tenHoSo",)
+    assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == no_ask
 
 
 # ── Bước 1: thông tin hồ sơ ──

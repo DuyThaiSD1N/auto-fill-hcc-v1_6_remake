@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from app.channels.handfree.chat import access, field_review, flow, intents, store
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
+from app.archive.config import archive_settings
 from app.config import settings
 from app.core.deps import require_auth
 from app.dossiers import repo as dossiers_repo
@@ -419,7 +420,7 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
     await store.save(conv)
     await _sync_dossier(conv)
 
-    if settings.llm_debug:
+    if (settings.llm_debug and not archive_settings.enabled):
         logger.info("[assistant] %s src=%s state=%s msg=%r", conv["_id"], req.source, conv["state"], message[:120])
     return payload
 

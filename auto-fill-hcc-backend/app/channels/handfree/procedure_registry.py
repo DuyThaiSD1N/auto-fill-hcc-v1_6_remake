@@ -1859,6 +1859,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Bảng thành phần hồ sơ của cổng CHỈ CÒN ĐÚNG MỘT DÒNG (Nghị định 176/2025/NĐ-CP) và đã
         # bỏ nút "Thêm giấy tờ" → planner dồn MỌI tệp vào dòng đó; các ô dưới đây chỉ để công dân
@@ -1918,6 +1922,11 @@ PROCEDURES: list[dict] = [
         "needsAgencySelect": True,
         "agencyCardIncludes": "Cơ quan thực hiện: UBND",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng (stepper 4 bước, tờ khai Form.io, bước 3 receivingKind +
+        # cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Bảng thành phần hồ sơ chỉ có MỘT dòng "A. Thành phần hồ sơ: a)…e)" gom cả năm loại giấy →
         # planner core dồn mọi tệp vào dòng đó (fixed-slot attp_dossier, upload lặp). Các ô dưới đây
@@ -2390,6 +2399,11 @@ PROCEDURES: list[dict] = [
         # Wizard cổng Bộ Nội vụ: 1 Thông tin hồ sơ → 2 Thành phần hồ sơ → 3 Thông tin bổ sung →
         # 4 Nộp hồ sơ (cùng cách đánh số với các cổng bộ khác).
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Bước đính kèm là HAI Ô CỐ ĐỊNH (planner core trả fixed-slot): ô 1 Đơn Mẫu 27, ô 2 căn cước
         # hoặc xác nhận cư trú CT07 → không bật hideRepeatableHint.
@@ -2448,6 +2462,11 @@ PROCEDURES: list[dict] = [
         "maePortal": True,
         "maeAgencyLevel": "ward",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Bước "Thành phần hồ sơ" có BA ô cố định (planner core trả fixed-slot 0/1/2) theo đúng
         # thứ tự dưới đây, phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
@@ -2524,6 +2543,11 @@ PROCEDURES: list[dict] = [
         "maePortal": True,
         "maeAgencyLevel": "ward",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Bước "Thành phần hồ sơ" có ô CỐ ĐỊNH cho Bản khai Mẫu 12 (planner core trả fixed-slot
         # slotIndex 0), phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
@@ -2698,6 +2722,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -2749,6 +2777,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3508-7268-b54b-6ce79a8cbf0e",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -2865,6 +2897,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f668-d09b-7368-9850-3c8288daf506",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai đề nghị trợ cấp xã hội (Mẫu số 01) hoặc Tờ khai "

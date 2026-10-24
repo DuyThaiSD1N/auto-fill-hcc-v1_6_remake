@@ -70,7 +70,7 @@ export default function RunsPage() {
         </label>
         <Segmented label="Sắp xếp" value={f.sort} onChange={(v) => set({ sort: v })}
           options={[{ value: "new", label: "Mới nhất" }, { value: "slow", label: f.metric === "wait" ? "Chậm nhất" : `${f.metric === "ocr" ? "OCR" : "LLM"} lâu nhất` }]} />
-        <SearchInput value={f.q} onChange={(v) => set({ q: v })} placeholder="Mã hỗ trợ, mã hồ sơ, người làm thủ tục, đơn vị…" />
+        <SearchInput value={f.q} onChange={(v) => set({ q: v })} placeholder="Mã hỗ trợ, mã hồ sơ, đơn vị, thủ tục…" />
         <ResetButton onClick={reset} />
       </div>
 
@@ -81,7 +81,7 @@ export default function RunsPage() {
           <thead>
             <tr>
               <th>Thời gian</th><th>Kết quả</th><th>Bước</th><th>Kênh</th><th>Đơn vị</th>
-              <th>Thủ tục</th><th>Người làm thủ tục</th><th>Mã hỗ trợ</th><th className="right">Người dùng chờ</th>
+              <th>Thủ tục</th><th>Mã hỗ trợ</th><th className="right">Người dùng chờ</th>
             </tr>
           </thead>
           <tbody>
@@ -110,7 +110,6 @@ function RunTableRow({ row, scale, unit, proc }: { row: RunRow; scale: number; u
       <td><SourceTag source={row.experience} /></td>
       <td><span className="cell-main" title={unit}>{unit}</span></td>
       <td><span className="cell-main" title={proc}>{proc}</span>{row.error ? <span className="cell-sub" title={row.error}>{row.error}</span> : null}</td>
-      <td><span className="cell-main">{row.applicant_name || "—"}</span></td>
       <td><a className="mono" href={href} onClick={(e) => e.stopPropagation()}>{row.request_id}</a></td>
       <td>
         <div className="wait-cell">

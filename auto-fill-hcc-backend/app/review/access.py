@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import time
 
+from app.archive.config import archive_settings
 from app.config import settings
 
 
@@ -20,7 +21,7 @@ def _secret() -> bytes:
 
 
 def create_review_capability(request_id: str) -> str:
-    expires_at = int(time.time()) + settings.review_capability_ttl_seconds
+    expires_at = int(time.time()) + archive_settings.cap_ttl(settings.review_capability_ttl_seconds)
     message = f"tlnd-review:v1:{request_id}:{expires_at}".encode("utf-8")
     signature = hmac.new(_secret(), message, hashlib.sha256).hexdigest()
     return f"{expires_at}.{signature}"

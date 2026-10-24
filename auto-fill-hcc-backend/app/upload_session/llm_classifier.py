@@ -48,7 +48,7 @@ async def _classify_one(file: dict, ocr_result: dict, spec: ClassificationSpec,
         doc_key = str(parsed.get("doc_key") or "").strip().lower()
         return doc_key if doc_key in spec.allowed_keys else None
     except Exception as exc:  # noqa: BLE001 — fallback riêng cho đúng tệp bị lỗi
-        logger.warning("Phân loại LLM tệp %s lỗi: %s", file.get("name"), exc)
+        logger.warning("Phân loại LLM tệp %s lỗi: %s", file.get("fid") or "?", exc)
         return None
 
 

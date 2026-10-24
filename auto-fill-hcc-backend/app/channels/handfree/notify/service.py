@@ -43,4 +43,4 @@ async def subscribe(conv: dict, phone: str) -> bool:
 
 def send(phone: str, message: str) -> None:
     """LogNotifier — thay bằng SMS/ZNS provider khi có (giữ nguyên chữ ký)."""
-    logger.info("[notify→%s] %s", phone, message)
+    logger.info("[notify→***%s] %s", str(phone)[-3:], message)

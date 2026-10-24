@@ -797,7 +797,7 @@ async def test_wizard_ket_hon_modal_chu_ho_so_ke_khai():
     r = await _turn(conv, '__event:page_status:{"infoModal": true, "loggedIn": true}')
     assert r.display_md == "" and r.actions[0]["type"] == "confirm_info_modal"
 
-    owner ={"fullName":"VŨ ĐÌNH THIẾT","identityNumber":"040203015844"}
+    owner = {"fullName":"VŨ ĐÌNH THIẾT","identityNumber":"040203015844"}
     r = await _turn(conv, f'__event:page_status:{{"wizardStep":1,"loggedIn":true,"ownerContext":{__import__("json").dumps(owner)}}}')
     assert conv["state"] == "consent"
     assert conv["owner_context"] == owner

@@ -79,3 +79,20 @@ def test_prompt_chan_bay_nhac_so_can_cuoc_trong_trich_luc():
 
     assert "Mẫu số 02" in SYSTEM_PROMPT
     assert "CHỈ LÀ MỘT DÒNG THÔNG TIN" in SYSTEM_PROMPT
+
+
+async def test_ma_loai_llm_tra_ve_noi_gach_duoi_van_nhan_dung(monkeypatch):
+    from app.services.llm import client
+
+    async def fake_chat(messages, **kwargs):
+        return ('{"documents":[{"index":0,"type":"to_khai_mai_tang","title":"Tờ khai"},'
+                '{"index":1,"type":"giay_chung_tu","title":"Trích lục khai tử"},'
+                '{"index":2,"type":"quyet_dinh_thoi_huong","title":"Quyết định"},{"index":3,"type":"other"}]}')
+
+    monkeypatch.setattr(client, "chat", fake_chat)
+    docs = [{"index": i, "fileName": f"f{i}.pdf", "text": "x"} for i in range(4)]
+    slots = await planner._classify_documents_with_llm(docs)
+    assert slots == {0: "to_khai_mai_tang", 1: "giay_chung_tu", 2: "quyet_dinh_thoi_huong", 3: ""}
+    # Tệp là Tờ khai thì không cảnh báo "chưa nhận diện chắc".
+    _items, warnings = planner.build_plan_items([{"name": "to-khai.pdf"}], [], {0: slots[0]})
+    assert warnings == []

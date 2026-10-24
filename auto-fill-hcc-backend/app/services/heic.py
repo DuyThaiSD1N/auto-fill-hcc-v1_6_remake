@@ -60,9 +60,9 @@ def convert_file_if_heic(path, name: str, content_type: str, size: int) -> tuple
         with open(path, "rb") as fh:
             jpeg = to_jpeg(fh.read())
     except Exception:  # noqa: BLE001
-        logger.warning("Không đổi được HEIC sang JPG: %s", name, exc_info=True)
+        logger.warning("Không đổi được HEIC sang JPG (%d byte)", size, exc_info=True)
         return name, content_type, size
     with open(path, "wb") as fh:
         fh.write(jpeg)
-    logger.info("Đổi HEIC → JPG: %s (%d → %d byte)", name, size, len(jpeg))
+    logger.info("Đổi HEIC → JPG (%d → %d byte)", size, len(jpeg))
     return jpeg_name(name), "image/jpeg", len(jpeg)

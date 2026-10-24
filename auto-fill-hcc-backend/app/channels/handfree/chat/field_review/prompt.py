@@ -74,6 +74,14 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
 - Năm chỉ có 2 chữ số mà công dân không nói rõ thế kỷ ("năm 78") → "unclear", không tự thêm 19/20.
 - {date_rule}
 
+Ô số ("Loại ô" là ô số — ô chỉ nhận con số, đơn vị nếu có ghi trong ngoặc ở cuối nhãn):
+- "value" chỉ là con số viết bằng chữ số, bỏ đơn vị và từ đệm công dân nói kèm (đơn vị đã có sẵn cạnh ô trên tờ khai).
+- Đổi số đọc bằng chữ sang chữ số theo GIÁ TRỊ ("mười hai" → "12", "một trăm hai mươi" → "120"); số thập phân dùng
+  dấu chấm ("tám mươi lăm phẩy tám" → "85.8").
+- Công dân nói theo đơn vị KHÁC đơn vị của ô: đổi sang đơn vị của ô khi đổi chắc chắn (ô tính theo tháng mà nói
+  "một năm" → "12", "một năm rưỡi" → "18"); không đổi chắc chắn được → "unclear".
+- Câu không có con số cho ô này → "unclear".
+
 Ô chữ:
 - Viết đúng chính tả tiếng Việt có dấu; viết hoa chữ cái đầu tên riêng (tên người, địa danh, tên cơ sở y tế).
 - Nhãn là họ tên ("Họ, chữ đệm, tên"): viết HOA toàn bộ, giữ dấu (vd "nguyễn văn an" → "NGUYỄN VĂN AN").
@@ -178,6 +186,7 @@ Công dân hay nói luôn số bản trong cùng câu:
 
 KIND_LABELS = {
     "text": "ô chữ",
+    "number": "ô số",
     "date": "ô ngày",
     "select": "ô chọn một dòng trong danh sách",
     "radio": "ô tích chọn một lựa chọn",

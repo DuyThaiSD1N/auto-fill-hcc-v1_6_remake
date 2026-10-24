@@ -174,7 +174,6 @@ export default function Dossiers({
               <th>Thời gian làm</th>
               <th>Phường</th>
               <th>Thủ tục</th>
-              <th>Người làm thủ tục</th>
               <th>Loại</th>
               <th className="num">Lần nộp</th>
               <th>Đánh giá</th>
@@ -190,7 +189,6 @@ export default function Dossiers({
                 <td>{fmtDuration(d.durationMs)}</td>
                 <td>{d.name || "—"}</td>
                 <td>{d.procedureLabel || d.procedure || "—"}</td>
-                <td>{d.applicantName || "—"}</td>
                 <td>
                   <span className={`badge source-${d.experience || "autofill"}`}>
                     {d.experience === "handfree" ? "Handfree" : "No handfree"}
@@ -204,7 +202,7 @@ export default function Dossiers({
             ))}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={9} className="muted center">
+                <td colSpan={8} className="muted center">
                   Không có dữ liệu
                 </td>
               </tr>

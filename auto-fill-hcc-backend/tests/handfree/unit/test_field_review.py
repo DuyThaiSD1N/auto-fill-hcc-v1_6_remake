@@ -290,6 +290,15 @@ def test_o_ngay_phai_du_ngay_thang_nam():
     assert agent._check({"action": "value", "value": "31/02/1978"}, field).action == "unclear"
 
 
+def test_o_so_chi_nhan_con_so_bo_don_vi():
+    field = {"label": "Thời gian dự kiến hoàn thành công trình (tháng)", "kind": "number", "options": []}
+    assert agent._check({"action": "value", "value": "12"}, field) == agent.Answer("value", "12")
+    assert agent._check({"action": "value", "value": "85,8"}, field) == agent.Answer("value", "85.8")
+    # LLM còn để đơn vị / chữ → hỏi lại, không điền chữ vào ô số của cổng.
+    assert agent._check({"action": "value", "value": "12 tháng"}, field).action == "unclear"
+    assert field_review._field({"key": "k", "name": "n", "kind": "number", "label": "Số tầng"})["kind"] == "number"
+
+
 def test_hanh_dong_la_coi_nhu_khong_ro():
     assert agent._check({"action": "nonsense"}, FIELD).action == "unclear"
     assert agent._check({"action": "skip"}, FIELD).action == "skip"
@@ -664,7 +673,11 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "khai-sinh-dang-ky", "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
                                      "dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
                                      "sua-chua-cai-tao-gpxd-cong-trinh",
-                                     "dang-ky-cham-dut-giam-ho"}
+                                     "dang-ky-cham-dut-giam-ho", "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
+                                     "dieu-chinh-huu-tri-xa-hoi", "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+                                     "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang-1116910",
+                                     "di-chuyen-ho-so-nguoi-huong-tro-cap", "tro-cap-tho-cung-liet-si",
+                                     "uu-dai-ncc-tu-tran"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

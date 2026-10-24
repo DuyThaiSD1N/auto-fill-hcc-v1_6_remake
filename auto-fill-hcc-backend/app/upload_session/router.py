@@ -139,8 +139,7 @@ async def get_file(sid: str, fid: str):
     got = store.delivered_count(updated or sess)
     total = len(sess.get("files", []))
     logger.info("[phien-tai-anh] %s ← máy tính lấy %s (%s, %.2fMB) — đã lấy %d/%d",
-                sid, meta.get("name") or fid, meta.get("type") or "?",
-                len(raw) / 1e6, got, total)
+                sid, fid, meta.get("type") or "?", len(raw) / 1e6, got, total)
     await audit.log_delivered(sid, name=str(meta.get("name") or fid),
                               nbytes=len(raw), delivered=got, received=total)
     return Response(content=raw, media_type=meta.get("type") or "image/jpeg")
@@ -262,9 +261,8 @@ async def upload_files(
                 store.delete_file_bytes(sid, fid)
 
     received = len(updated.get("files", []))
-    logger.info("[phien-tai-anh] %s → điện thoại gửi %d tệp (%.2fMB): %s — trên máy chủ: %d",
-                sid, len(accepted), incoming_bytes / 1e6,
-                ", ".join(str(a["name"]) for a in accepted), received)
+    logger.info("[phien-tai-anh] %s → điện thoại gửi %d tệp (%.2fMB) — trên máy chủ: %d",
+                sid, len(accepted), incoming_bytes / 1e6, received)
     await audit.log_uploaded(sid, names=[str(a["name"]) for a in accepted],
                              nbytes=incoming_bytes, received=received)
     await store.extend_autofill_expiry(sid)  # điện thoại vừa gửi ảnh = phiên còn dùng

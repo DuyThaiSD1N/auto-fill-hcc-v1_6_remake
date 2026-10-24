@@ -1,5 +1,6 @@
 from pymongo.errors import CollectionInvalid, OperationFailure
 
+from app.archive.config import archive_settings
 from app.config import settings
 from app.db.mongo import get_db
 
@@ -135,14 +136,17 @@ async def ensure_indexes() -> None:
     await db.trace_steps.create_index("meta.dossier_id")
     await db.ocr_texts.create_index([("created_at", -1)])
     # Cache OCR (_id = hash nội dung, tra bằng index primary). TTL tự dọn text OCR cũ.
-    await db.ocr_cache.create_index(
-        "created_at", expireAfterSeconds=settings.ocr_cache_ttl_hours * 3600
-    )
+    await _ensure_ttl(db, "ocr_cache", "created_at",
+                      archive_settings.cap_ttl(settings.ocr_cache_ttl_hours * 3600))
     # Mỗi channel có vòng đời khác nhau nên document tự mang expires_at; TTL index dùng 0.
     await _migrate_legacy_upload_ttl(db)
-    await _ensure_ttl(db, "upload_sessions", "expires_at", 0)
+    archive_grace = 15 * 60
+    await _ensure_ttl(db, "upload_sessions", "expires_at",
+                      archive_grace if archive_settings.enabled else 0)
     # Hội thoại Handfree gia hạn theo mỗi lượt chat.
-    await _ensure_ttl(db, "conversations", "updated_at", 24 * 3600)
+    await _ensure_ttl(db, "conversations", "updated_at",
+                      archive_settings.archive_after_minutes * 60 + archive_grace
+                      if archive_settings.enabled else 24 * 3600)
     # Nhịp tim tác vụ nền handfree: tác vụ chết giữa chừng (BE khởi động lại) để lại bản ghi → tự dọn sau 1 ngày.
     await _ensure_ttl(db, "pipeline_heartbeats", "at", 24 * 3600)
     # Nhật ký đăng nhập / làm mới token (app/auth/audit.py) — tra "vì sao bị đá ra", giữ 30 ngày.
@@ -165,6 +169,14 @@ async def ensure_indexes() -> None:
     # Lọc nhanh phiên có gửi lên mà máy tính chưa lấy hết.
     await db.upload_session_logs.create_index([("delivered", 1), ("received", 1)])
     # Bằng chứng chấp thuận PDPL — KHÔNG TTL (phải giữ lâu dài để đối soát).
+    pending = {"archive_pending": True}
+    for coll in ("traces", "trace_steps", "process_requests"):
+        await db[coll].create_index([("created_at", 1)], partialFilterExpression=pending,
+                                    name="archive_pending_created_at")
+    for coll in ("dossiers", "upload_session_logs"):
+        await db[coll].create_index([("updated_at", 1)], partialFilterExpression=pending,
+                                    name="archive_pending_updated_at")
+    await db.trace_steps.create_index("ocr.sha256")
     await db.consent_logs.create_index("log_id")
     await db.consent_logs.create_index([("user_id", 1), ("created_at", -1)])
     await db.consent_logs.create_index([("experience", 1), ("created_at", -1)])

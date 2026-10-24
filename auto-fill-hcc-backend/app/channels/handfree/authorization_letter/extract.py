@@ -95,8 +95,8 @@ async def extract_people(files: list[dict]) -> dict:
             data = client.extract_json_block(raw)
             break
         except ValueError:
-            logger.warning("[giay-uy-quyen] LLM không trả JSON (lượt %s, %s tệp): %r",
-                           attempt, len(files), (raw or "")[:200])
+            logger.warning("[giay-uy-quyen] LLM không trả JSON (lượt %s, %s tệp, %s ký tự)",
+                           attempt, len(files), len(raw or ""))
     out = normalize_result(data if isinstance(data, dict) else {}, len(files))
     out["ocrFailed"] = failed
     return out

@@ -20,7 +20,7 @@ cd "$(dirname "$(readlink -f "$0")")"
 REGISTRY="${DEPLOY_REGISTRY:-ghcr.io/dev-f19}"
 COMPOSE=(docker compose -f compose.prod.yml)
 IMAGES=(autofill-hcc-be autofill-hcc-fe autofill-hcc-monitor-fe)
-SERVICES=(app fe monitor-fe)
+SERVICES=(app archiver fe monitor-fe)
 # vNăm.Tháng.Ngày[.lần]: v2026.10.12, v2026.10.12.1 — năm trước để tên tag tự xếp đúng thứ tự thời
 # gian. Khớp đúng mẫu mới chạy, chặn mọi chuỗi lạ lọt qua SSH (tag còn được ghép vào tên image).
 TAG_RE='^v20[0-9]{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])(\.[1-9][0-9]{0,2})?$'

@@ -2,6 +2,7 @@
 
 Collection: traces. Ghi best-effort (lỗi không được làm hỏng request /process).
 """
+import asyncio
 import copy
 import re
 import uuid
@@ -10,6 +11,9 @@ from typing import Literal
 
 from bson import ObjectId
 
+from app.archive.keys import KEY_PREFIX, with_keys
+from app.archive.spec import public_trace
+from app.archive.config import archive_settings
 from app.db.mongo import get_db
 from app.traces.date_range import VIETNAM_TZ
 from app.traces.metadata import count_distinct_attachment_sets
@@ -168,7 +172,7 @@ async def create_trace(
         "username": username,
         "name": name,  # tên hiển thị theo phường (vd "Phường Tân Phong")
         "applicant_name": applicant_name,  # người làm thủ tục (UI/VNeID hoặc parse)
-        "attachments": attachments or [],  # [{name, role}] file đã đính kèm
+        "attachments": with_keys(attachments),
         "kind": kind,  # phân biệt bước điền (autofill) vs bước đính kèm (attach)
         "split": split,  # true/false = người dùng chọn tách/gộp hồ sơ; None = không rõ
         # v2 giữ dossier_id để một lượt tách tab tạo đúng nhiều hồ sơ; lượt thường trên dashboard
@@ -199,6 +203,8 @@ async def create_trace(
         doc["outcome"] = outcome
     if errors:
         doc["errors"] = [str(e)[:500] for e in errors[:20]]
+    if archive_settings.enabled:
+        doc["archive_pending"] = True
     try:
         res = await get_db().traces.insert_one(doc)
         return str(res.inserted_id)
@@ -210,7 +216,7 @@ async def set_report(request_id: str, kind: str, report: dict) -> None:
     """Handfree báo kết quả thao tác DOM thật để gắn vào đúng trace process/attach."""
     await get_db().traces.update_one(
         {"request_id": request_id, "kind": kind, "experience": "handfree"},
-        {"$set": {"report": report}},
+        {"$set": {"report": report, **({"archive_pending": True} if archive_settings.enabled else {})}},
     )
 
 
@@ -384,7 +390,7 @@ def _stats_pipeline(query: dict) -> list[dict]:
                                 {"$ne": ["$procedure", "chung-thuc-chu-ky"]},
                                 {
                                     "$not": [
-                                        {
+                                        {"$ifNull": ["$$attachment.idd", {
                                             "$regexMatch": {
                                                 "input": identity_text,
                                                 "regex": (
@@ -394,7 +400,7 @@ def _stats_pipeline(query: dict) -> list[dict]:
                                                 ),
                                                 "options": "i",
                                             }
-                                        }
+                                        }]}
                                     ]
                                 },
                             ]
@@ -460,7 +466,12 @@ def _stats_pipeline(query: dict) -> list[dict]:
             }
         }
 
-    attachment_name_set = attachment_set(normalized_attachment_name)
+    attachment_name_set = attachment_set(
+        {"$ifNull": ["$$attachment.nk", normalized_attachment_name]}
+    )
+    attachment_stem_set = attachment_set(
+        {"$ifNull": ["$$attachment.sk", normalized_attachment_name]}
+    )
 
     def empty_id(file_set_field: str) -> dict:
         return {
@@ -593,6 +604,7 @@ def _stats_pipeline(query: dict) -> list[dict]:
                                 "fileSet": "$_stats_file_set",
                                 "emptyId": "$_stats_empty_id",
                             },
+                            "stemSet": {"$first": attachment_stem_set},
                             "name": {"$first": "$_stats_name"},
                             "label": {"$first": "$_stats_label"},
                             "requests": {"$sum": 1},
@@ -667,6 +679,32 @@ def _stats_pipeline(query: dict) -> list[dict]:
     ]
 
 
+async def _facet_rows(coll, pipeline: list[dict]) -> dict:
+    """Chạy từng nhánh $facet thành một aggregate riêng: kết quả trả theo cursor nhiều document,
+    không bị gộp thành một document duy nhất (vượt 16MB khi xem toàn bộ thời gian)."""
+    *prefix, facet_stage = pipeline
+    facets = facet_stage["$facet"]
+    rows = await asyncio.gather(*(
+        coll.aggregate([*prefix, *stages], allowDiskUse=True).to_list(length=None)
+        for stages in facets.values()
+    ))
+    return dict(zip(facets, rows))
+
+
+def _file_set_names(item: dict, *, strip_suffix: bool) -> list[str]:
+    values = item.get("stemSet") if strip_suffix and item.get("stemSet") is not None else None
+    if values is None:
+        values = (item.get("_id") or {}).get("fileSet") or []
+    names: list[str] = []
+    for value in values:
+        name = str(value or "")
+        if strip_suffix and not name.startswith(KEY_PREFIX):
+            name = _FILE_SUFFIX_RE.sub("", name)
+        if name:
+            names.append(name)
+    return names
+
+
 def _format_stats_facets(facets: dict) -> dict:
     request_by_bucket = {
         (item["_id"]["userId"], item["_id"]["procedure"]): item
@@ -684,13 +722,7 @@ def _format_stats_facets(facets: dict) -> dict:
             uid = item["_id"]["userId"]
             procedure = item["_id"]["procedure"]
             key = (uid, procedure)
-            normalized_names: list[str] = []
-            for value in item["_id"].get("fileSet") or []:
-                name = str(value or "")
-                if strip_suffix:
-                    name = _FILE_SUFFIX_RE.sub("", name)
-                if name:
-                    normalized_names.append(name)
+            normalized_names = _file_set_names(item, strip_suffix=strip_suffix)
             file_set = frozenset(normalized_names)
             file_sets_by_bucket.setdefault(key, []).append(file_set)
             bucket_map.setdefault(key, {
@@ -825,8 +857,7 @@ async def stats(
     if date_to:
         query.setdefault("created_at", {})["$lt"] = date_to
     query = with_experience(query, experience)
-    rows = await db.traces.aggregate(_stats_pipeline(query), allowDiskUse=True).to_list(length=1)
-    result = _format_stats_facets(rows[0] if rows else {})
+    result = _format_stats_facets(await _facet_rows(db.traces, _stats_pipeline(query)))
     for ward in result["wards"]:
         ward["role"] = roles_by_user.get(ward["userId"])
     included_roles = list(
@@ -861,10 +892,7 @@ async def stats_by_user_ids(
         "created_at": {"$gte": date_from, "$lt": date_to},
     }
     query = with_experience(query, experience)
-    rows = await get_db().traces.aggregate(
-        _stats_pipeline(query), allowDiskUse=True
-    ).to_list(length=1)
-    return _format_stats_facets(rows[0] if rows else {})
+    return _format_stats_facets(await _facet_rows(get_db().traces, _stats_pipeline(query)))
 
 
 def _daily_stats_pipeline(query: dict) -> list[dict]:
@@ -912,13 +940,7 @@ def _format_daily_dossier_counts(facets: dict) -> list[dict]:
         by_bucket: dict[tuple[str, str, str], list[frozenset[str]]] = {}
         for item in rows:
             item_id = item.get("_id") or {}
-            names: list[str] = []
-            for value in item_id.get("fileSet") or []:
-                name = str(value or "")
-                if strip_suffix:
-                    name = _FILE_SUFFIX_RE.sub("", name)
-                if name:
-                    names.append(name)
+            names = _file_set_names(item, strip_suffix=strip_suffix)
             by_bucket.setdefault(
                 (
                     str(item_id.get("userId") or "—"),
@@ -984,10 +1006,7 @@ async def daily_dossier_counts_by_user_ids(
         "created_at": {"$gte": date_from, "$lt": date_to},
     }
     query = with_experience(query, experience)
-    rows = await get_db().traces.aggregate(
-        _daily_stats_pipeline(query), allowDiskUse=True
-    ).to_list(length=1)
-    return _format_daily_dossier_counts(rows[0] if rows else {})
+    return _format_daily_dossier_counts(await _facet_rows(get_db().traces, _daily_stats_pipeline(query)))
 
 
 async def list_dossier_log(
@@ -1083,16 +1102,16 @@ async def daily_counts_by_user_ids(
 
 
 # Nội dung giấy tờ trong trace: text OCR, JSON LLM đọc được, kết quả điền thật trên form (giá trị
-# từng ô). Web quản lý chỉ xem thông tin lượt + thời gian; nội dung này chỉ web Monitor (super_admin).
+# từng ô).
 DOCUMENT_CONTENT_FIELDS = ("ocr_text", "llm_output", "report")
 
 
 def without_document_content(doc: dict) -> dict:
-    return {k: v for k, v in doc.items() if k not in DOCUMENT_CONTENT_FIELDS}
+    return public_trace({k: v for k, v in doc.items() if k not in DOCUMENT_CONTENT_FIELDS})
 
 
 def _serialize(doc: dict) -> dict:
-    doc = dict(doc)
+    doc = public_trace(dict(doc))
     doc["id"] = str(doc.pop("_id"))
     created = doc.get("created_at")
     if isinstance(created, datetime):

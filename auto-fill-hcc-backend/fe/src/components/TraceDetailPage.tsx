@@ -59,9 +59,6 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
                 {trace.status}
               </span>
             </div>
-            {trace.applicant_name && (
-              <p className="muted detail-sub">Người làm thủ tục: {trace.applicant_name}</p>
-            )}
           </div>
 
           <section className="panel detail-section">

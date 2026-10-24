@@ -66,9 +66,9 @@ def runs_base_pipeline(
         "name": "$name",
         "procedure": "$procedure",
         "procedure_label": "$procedure_label",
-        "applicant_name": "$applicant_name",
+        "applicant_name": {"$literal": None},
         "dossier_id": "$dossier_id",
-        "error": "$error_code",
+        "error": {"$arrayElemAt": [{"$split": [{"$ifNull": ["$error_code", ""]}, ":"]}, 0]},
         "timing": _timing_projection("timing"),
         # Lượt trước khi có timing chỉ còn tổng OCR+LLM → vẫn sắp/lọc được theo thời gian.
         "wait_ms": {"$ifNull": ["$timing.wait", "$stats.total_latency_ms"]},
@@ -94,7 +94,7 @@ def runs_base_pipeline(
         "procedure_label": "$meta.procedure_label",
         "applicant_name": {"$literal": None},
         "dossier_id": "$meta.dossier_id",
-        "error": {"$arrayElemAt": ["$errors", 0]},
+        "error": {"$arrayElemAt": [{"$split": [{"$ifNull": [{"$arrayElemAt": ["$errors", 0]}, ""]}, ":"]}, 0]},
         "timing": _timing_projection("timing"),
         "wait_ms": "$timing.wait",
         "legacy": {"$literal": False},
@@ -151,7 +151,7 @@ def runs_filter_stage(
         pattern = {"$regex": re.escape(text), "$options": "i"}
         cond["$or"] = [
             {field: pattern}
-            for field in ("request_id", "dossier_id", "applicant_name", "name", "username",
+            for field in ("request_id", "dossier_id", "name", "username",
                           "procedure_label", "procedure")
         ]
     return {"$match": cond}

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from bson import ObjectId
 
+from app.archive.config import archive_settings
 from app.db.mongo import get_db
 
 
@@ -29,6 +30,8 @@ async def create_request(
         "experience": experience,
         "created_at": created_at,
     }
+    if archive_settings.enabled:
+        doc["archive_pending"] = True
     res = await get_db().process_requests.insert_one(doc)
     return str(res.inserted_id)
 
@@ -55,6 +58,7 @@ async def finish_request(
             "extracted": extracted,
             "error_code": error_code,
             "finished_at": datetime.now(timezone.utc),
+            **({"archive_pending": True} if archive_settings.enabled else {}),
         }},
     )
 

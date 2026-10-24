@@ -91,10 +91,6 @@ export default function DossierDetailPanel({ id, onClose }: { id: string; onClos
                 <dd>{dossier.procedureLabel || dossier.procedure || "—"}</dd>
               </div>
               <div>
-                <dt>Người làm thủ tục</dt>
-                <dd>{dossier.applicantName || "—"}</dd>
-              </div>
-              <div>
                 <dt>Đơn vị</dt>
                 <dd>{dossier.name || "—"}</dd>
               </div>

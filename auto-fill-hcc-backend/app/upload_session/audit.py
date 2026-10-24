@@ -17,6 +17,7 @@ Mọi hàm best-effort: ghi nhật ký hỏng KHÔNG được làm hỏng việc
 """
 from datetime import datetime, timezone
 
+from app.archive.config import archive_settings
 from app.db.mongo import get_db
 
 # Trần số sự kiện giữ lại mỗi phiên. Một phiên bình thường có dưới 20 sự kiện; đặt trần để
@@ -43,7 +44,8 @@ async def _push(
         return
     update: dict = {
         "$setOnInsert": {"created_at": _now(), **(init or {})},
-        "$set": {"updated_at": _now(), **(fields or {})},
+        "$set": {"updated_at": _now(), **(fields or {}),
+                 **({"archive_pending": True} if archive_settings.enabled else {})},
         "$push": {"events": {"$each": [{"at": _now(), **event}], "$slice": -_MAX_EVENTS}},
     }
     if inc:

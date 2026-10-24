@@ -180,7 +180,6 @@ export default function Traces({
               <th>Thủ tục</th>
               <th>Loại</th>
               <th>Thao tác</th>
-              <th>Người làm thủ tục</th>
               <th className="num">Số file</th>
             </tr>
           </thead>
@@ -201,13 +200,12 @@ export default function Traces({
                     {t.kind === "attach" ? "Đính kèm" : "Auto-fill"}
                   </span>
                 </td>
-                <td>{t.applicant_name || "—"}</td>
                 <td className="num">{t.attachments?.length ?? 0}</td>
               </tr>
             ))}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={8} className="muted center">
+                <td colSpan={7} className="muted center">
                   Không có dữ liệu
                 </td>
               </tr>

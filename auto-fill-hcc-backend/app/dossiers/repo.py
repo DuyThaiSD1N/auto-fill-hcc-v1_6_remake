@@ -19,6 +19,7 @@ lệch với hai mốc gốc.
 """
 from datetime import datetime, timedelta, timezone
 
+from app.archive.config import archive_settings
 from app.db.mongo import get_db
 
 
@@ -64,6 +65,8 @@ async def upsert_started(
     # vô điều kiện sẽ XOÁ mất tên mà lượt quét trước đã lấy đúng.
     if (applicant_name or "").strip():
         changes["applicant_name"] = applicant_name.strip()[:200]
+        if archive_settings.enabled:
+            changes["archive_pending"] = True
     try:
         await get_db().dossiers.update_one(
             {"_id": dossier_id},
@@ -143,6 +146,8 @@ async def add_submit_event(
         update["portal_host"] = portal_host
     if portal_dossier_ref:
         update["portal_dossier_ref"] = portal_dossier_ref
+        if archive_settings.enabled:
+            update["archive_pending"] = True
     # Khóa do client sinh nên phải chốt CHỦ SỞ HỮU: không cho tài khoản này chấm mốc nộp lên
     # hồ sơ của tài khoản khác (dù chỉ là đoán trúng UUID). Không khớp → update_one không
     # chạm document nào, im lặng bỏ qua.
@@ -289,7 +294,7 @@ def _serialize(doc: dict) -> dict:
         "userId": doc.get("user_id"),
         "username": doc.get("username"),
         "name": doc.get("name"),
-        "applicantName": doc.get("applicant_name"),
+        "applicantName": None,
         "procedure": doc.get("procedure"),
         "procedureLabel": _procedure_label(doc),
         "province": doc.get("province"),
@@ -300,7 +305,7 @@ def _serialize(doc: dict) -> dict:
         # nhiều lần, mỗi lần là một hồ sơ trên cổng.
         "submitCount": int(doc.get("submit_count") or 0),
         "submitEvents": [
-            {"at": _iso(e.get("at")), "host": e.get("host"), "ref": e.get("ref")} for e in events
+            {"at": _iso(e.get("at")), "host": e.get("host"), "ref": None} for e in events
         ],
         "closedAt": _iso(doc.get("closed_at")),
         "closeReason": doc.get("close_reason") or "",
@@ -308,7 +313,7 @@ def _serialize(doc: dict) -> dict:
         # "Đánh giá" và trong bảng chi tiết. Dashboard công báo chưa tổng hợp mức hài lòng.
         "rating": _serialize_rating(doc.get("rating")),
         "portalHost": doc.get("portal_host"),
-        "portalDossierRef": doc.get("portal_dossier_ref"),
+        "portalDossierRef": None,
         # Tính lúc đọc, KHÔNG lưu — để không bao giờ lệch với hai mốc gốc.
         "durationMs": (
             int((submitted - started).total_seconds() * 1000)
@@ -471,7 +476,7 @@ async def search_dossiers(
         pattern = {"$regex": re.escape(text), "$options": "i"}
         match_text = {"$or": [
             {field: pattern}
-            for field in ("_id", "applicant_name", "name", "username", "procedure_label", "procedure")
+            for field in ("_id", "name", "username", "procedure_label", "procedure")
         ]}
         query = {"$and": [query, match_text]} if query else match_text
     db = get_db()

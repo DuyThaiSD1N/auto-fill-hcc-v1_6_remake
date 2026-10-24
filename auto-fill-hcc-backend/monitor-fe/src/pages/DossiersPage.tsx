@@ -40,7 +40,7 @@ export default function DossiersPage() {
           options={[{ value: "all", label: "Tất cả" }, { value: "autofill", label: "Auto Fill" }, { value: "handfree", label: "Handfree" }]} />
         <Segmented label="Trạng thái" value={f.status} onChange={(v) => set({ status: v })}
           options={[{ value: "all", label: "Tất cả" }, { value: "submitted", label: "Đã nộp" }, { value: "unsubmitted", label: "Chưa nộp" }]} />
-        <SearchInput value={f.q} onChange={(v) => set({ q: v })} placeholder="Mã hồ sơ, người làm thủ tục, đơn vị, thủ tục…" />
+        <SearchInput value={f.q} onChange={(v) => set({ q: v })} placeholder="Mã hồ sơ, đơn vị, thủ tục…" />
         <ResetButton onClick={reset} />
       </div>
 
@@ -51,7 +51,7 @@ export default function DossiersPage() {
           <thead>
             <tr>
               <th>Bắt đầu</th><th>Trạng thái</th><th>Kênh</th><th>Đơn vị</th><th>Thủ tục</th>
-              <th>Người làm thủ tục</th><th className="right">Lượt</th><th className="right">Tới lúc nộp</th><th>Đánh giá</th>
+              <th>Mã hồ sơ</th><th className="right">Lượt</th><th className="right">Tới lúc nộp</th><th>Đánh giá</th>
             </tr>
           </thead>
           <tbody>
@@ -85,7 +85,7 @@ function DossierRow({ d, unit, proc }: { d: Dossier; unit: string; proc: string 
       <td><SourceTag source={d.experience} /></td>
       <td><span className="cell-main" title={unit}>{unit}</span></td>
       <td><span className="cell-main" title={proc}>{proc}</span></td>
-      <td><a className="cell-main" href={href} onClick={(e) => e.stopPropagation()}>{d.applicantName || <span className="faint mono">{d.id}</span>}</a></td>
+      <td><a className="cell-main" href={href} onClick={(e) => e.stopPropagation()}><span className="mono">{d.id}</span></a></td>
       <td className="right num">{d.runs ?? "—"}</td>
       <td className="right mono">{formatMs(d.durationMs)}</td>
       <td>{d.rating?.label ? <span className="tag">{d.rating.label}</span> : <span className="faint">—</span>}</td>

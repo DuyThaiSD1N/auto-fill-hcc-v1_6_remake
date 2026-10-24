@@ -16,6 +16,7 @@ from app.core.deps import require_super_admin
 from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.dossiers import repo as dossiers_repo
+from app.archive.spec import public_trace_steps
 from app.monitor import queries
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
@@ -107,15 +108,7 @@ async def get_run(
     steps = await get_db().trace_steps.find_one(steps_query)
     if not trace and not steps:
         raise AppError("RUN_NOT_FOUND", "Không tìm thấy lượt xử lý", 404)
-    return {"trace": _clean(trace), "steps": _clean(steps)}
-
-
-@router.get("/ocr/{sha}")
-async def get_ocr_text(sha: str, _: dict = Depends(require_super_admin)):
-    doc = await get_db().ocr_texts.find_one({"_id": sha})
-    if not doc:
-        raise AppError("OCR_TEXT_NOT_FOUND", "Không còn text OCR của tệp này", 404)
-    return _clean(doc)
+    return {"trace": _clean(trace), "steps": _clean(public_trace_steps(steps) if steps else None)}
 
 
 @router.get("/dossiers")
@@ -174,7 +167,7 @@ async def get_dossier(dossier_id: str, _: dict = Depends(require_super_admin)):
     steps_only = await get_db().trace_steps.find(
         {"meta.dossier_id": dossier_id, "steps_only": True},
         {"request_id": 1, "kind": 1, "experience": 1, "outcome": 1, "created_at": 1,
-         "timing": 1, "errors": 1, "meta": 1},
+         "timing": 1, "meta": 1},
     ).sort("created_at", 1).to_list(length=200)
     return {"dossier": dossier, "traces": _clean(traces), "stepsOnly": _clean(steps_only)}
 

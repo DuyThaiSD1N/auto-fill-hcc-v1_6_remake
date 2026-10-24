@@ -21,6 +21,7 @@ from typing import Any
 
 from pymongo import UpdateOne
 
+from app.archive.config import archive_settings
 from app.config import settings
 from app.db.mongo import get_db
 from app.monitor.recorder import TraceRecorder
@@ -175,6 +176,8 @@ def build_documents(rec: TraceRecorder, request_id: str) -> tuple[dict, list[Upd
         "errors": list(rec.errors),
         "truncated": truncated,
     }
+    if archive_settings.enabled:
+        doc["archive_pending"] = True
     _fit(doc)
     return doc, ocr_ops
 

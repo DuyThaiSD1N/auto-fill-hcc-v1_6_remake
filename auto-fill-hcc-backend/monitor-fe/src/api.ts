@@ -169,10 +169,6 @@ export function getRun(requestId: string, kind?: string | null): Promise<RunDeta
   return request<RunDetail>(`/api/v1/monitor/runs/${encodeURIComponent(requestId)}${q}`);
 }
 
-export function getOcrText(sha: string): Promise<{ id: string; text: string; chars?: number; truncated?: boolean }> {
-  return request(`/api/v1/monitor/ocr/${encodeURIComponent(sha)}`);
-}
-
 export function listDossiers(query: string): Promise<Page<Dossier>> {
   return request<Page<Dossier>>(`/api/v1/monitor/dossiers${query}`);
 }
@@ -185,35 +181,3 @@ export function getLatency(query: string): Promise<LatencyResponse> {
   return request<LatencyResponse>(`/api/v1/monitor/stats/latency${query}`);
 }
 
-/** Tải mọi tệp của một trace thành 1 file ZIP (BE nén sẵn). */
-export async function downloadTraceZip(traceId: string): Promise<{ blob: Blob; filename: string }> {
-  const path = `/api/v1/traces/${encodeURIComponent(traceId)}/download`;
-  async function go(retry: boolean): Promise<Response> {
-    const headers = new Headers();
-    if (monitorSession.access) headers.set("Authorization", `Bearer ${monitorSession.access}`);
-    const response = await fetch(`${BASE}${path}`, { headers });
-    if (response.status === 401 && retry && (await refreshTokens())) return go(false);
-    if (response.status === 401) expireSession();
-    if (!response.ok) throw await parseError(response);
-    return response;
-  }
-  const response = await go(true);
-  const match = /filename="?([^";]+)"?/i.exec(response.headers.get("Content-Disposition") || "");
-  return { blob: await response.blob(), filename: match?.[1] || `${traceId}.zip` };
-}
-
-export async function fetchTraceFile(traceId: string, index: number): Promise<Blob> {
-  const path = `/api/v1/traces/${encodeURIComponent(traceId)}/files/${index}`;
-
-  async function fetchBlob(retry: boolean): Promise<Blob> {
-    const headers = new Headers();
-    if (monitorSession.access) headers.set("Authorization", `Bearer ${monitorSession.access}`);
-    const response = await fetch(`${BASE}${path}`, { headers });
-    if (response.status === 401 && retry && (await refreshTokens())) return fetchBlob(false);
-    if (response.status === 401) expireSession();
-    if (!response.ok) throw await parseError(response);
-    return response.blob();
-  }
-
-  return fetchBlob(true);
-}

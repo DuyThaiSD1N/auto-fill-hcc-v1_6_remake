@@ -12,6 +12,7 @@ from contextvars import ContextVar
 
 import httpx
 
+from app.archive.config import archive_settings
 from app.config import settings
 from app.monitor import recorder as mon
 
@@ -255,7 +256,7 @@ async def _chat(
 
     try:
         out = await _chat_primary(messages, temperature, max_tokens, enable_thinking)
-        if settings.llm_debug:
+        if (settings.llm_debug and not archive_settings.enabled):
             logger.info("[LLM primary OK] model=%s len=%d content=%r", settings.llm_model, len(out), out[:1500])
         return out
     except Exception as e:  # noqa: BLE001
@@ -267,7 +268,7 @@ async def _chat(
         t0 = time.perf_counter()
         out = await _chat_openai(messages, temperature)
         _note_try(_call.get(), "openai", t0, None)
-        if settings.llm_debug:
+        if (settings.llm_debug and not archive_settings.enabled):
             logger.info("[LLM fallback OpenAI OK] model=%s len=%d content=%r",
                         settings.openai_model, len(out), out[:1500])
         return out

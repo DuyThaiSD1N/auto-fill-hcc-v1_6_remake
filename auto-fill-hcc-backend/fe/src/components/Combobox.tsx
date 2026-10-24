@@ -15,6 +15,31 @@ function fold(s: string): string {
     .toLowerCase();
 }
 
+// Chiều cao danh sách mở ra (ô tìm + list max-height 260px + lề).
+const PANEL_HEIGHT = 320;
+
+// Đo khoảng trống dưới ô so với khung cuộn gần nhất (hộp thoại có overflow) hoặc màn hình:
+// thiếu chỗ bên dưới mà bên trên rộng hơn → mở lên trên. Danh sách bị khung cuộn cắt thì
+// cán bộ phải cuộn trong hộp thoại mới thấy, tưởng ô không bấm được.
+function shouldOpenUp(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  let bottom = window.innerHeight;
+  let top = 0;
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const overflowY = getComputedStyle(p).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "hidden") {
+      const rect = p.getBoundingClientRect();
+      bottom = Math.min(bottom, rect.bottom);
+      top = Math.max(top, rect.top);
+      break;
+    }
+  }
+  const rect = el.getBoundingClientRect();
+  const below = bottom - rect.bottom;
+  const above = rect.top - top;
+  return below < PANEL_HEIGHT && above > below;
+}
+
 // Combobox lọc-khi-gõ dùng cho filter nhiều lựa chọn tên dài (thủ tục/phường). Bề rộng CỐ ĐỊNH
 // nên không phình theo option như <select> gốc. Vanilla, không thêm thư viện.
 export default function Combobox({
@@ -37,6 +62,7 @@ export default function Combobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [openUp, setOpenUp] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -98,7 +124,10 @@ export default function Combobox({
       <button
         type="button"
         className={`combobox-control${value ? "" : " placeholder"}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) setOpenUp(shouldOpenUp(rootRef.current));
+          setOpen((o) => !o);
+        }}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -110,7 +139,7 @@ export default function Combobox({
       </button>
 
       {open && (
-        <div className="combobox-panel">
+        <div className={`combobox-panel${openUp ? " up" : ""}`}>
           <input
             ref={inputRef}
             className="combobox-search"

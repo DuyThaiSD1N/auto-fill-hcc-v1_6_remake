@@ -12,7 +12,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from app.core.deps import is_super_admin, require_auth, require_trace_reader
+from app.core.deps import require_auth, require_trace_reader
 from app.core.errors import AppError
 from app.dossiers import repo as dossiers_repo
 from app.dossiers.rating_card import level_label
@@ -130,6 +130,5 @@ async def get_dossier(dossier_id: str, user: dict = Depends(require_trace_reader
     if not doc:
         raise AppError("DOSSIER_NOT_FOUND", "Không tìm thấy hồ sơ", 404)
     traces = await traces_repo.list_by_dossier(dossier_id)
-    if not is_super_admin(user):
-        traces = [traces_repo.without_document_content(t) for t in traces]
+    traces = [traces_repo.without_document_content(t) for t in traces]
     return {**doc, "traces": traces}

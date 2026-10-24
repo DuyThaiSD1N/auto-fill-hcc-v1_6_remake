@@ -102,7 +102,8 @@ def detect_slot_key(text: str, file_name: str = "") -> str:
 
 
 def _slot_from_llm_type(value: str) -> str:
-    text = _fold(value or "")
+    # LLM trả mã loại nối gạch dưới ("to_khai_mai_tang"); fold dùng chung không đổi "_" thành khoảng trắng.
+    text = _fold(value or "").replace("_", " ")
     if not text or text == "other":
         return ""
     if "chung tu" in text or "bao tu" in text or "khai tu" in text:

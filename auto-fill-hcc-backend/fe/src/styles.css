@@ -228,6 +228,11 @@ select:focus {
   z-index: 40;
   padding: 8px;
 }
+/* Gần đáy khung cuộn (đáy hộp thoại) → mở danh sách LÊN TRÊN, khỏi phải cuộn mới thấy. */
+.combobox-panel.up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
 .combobox-search {
   width: 100%;
   margin-bottom: 6px;
@@ -1297,6 +1302,11 @@ tbody tr:last-child td {
   font-size: 12px;
   line-height: 1.45;
 }
+/* Trong hộp thoại các ô đã cách nhau bằng gap của .modal-card — thêm lề dưới ở đây là ô kế
+   tiếp (hàng Tỉnh/Xã) bị đẩy lệch xuống so với nhịp chung. */
+.modal-card .form-hint {
+  margin: -7px 2px 0;
+}
 .accounts-role-filter {
   display: flex;
   flex-direction: column;
@@ -1753,6 +1763,7 @@ tbody tr:last-child td {
   max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 13px;
@@ -1819,6 +1830,12 @@ tbody tr:last-child td {
 .form-row .combobox-panel {
   width: 100%;
   min-width: 260px;
+}
+/* Ô bên phải (Xã/Phường): danh sách rộng hơn ô → bám mép PHẢI, nếu không nó tràn khỏi hộp thoại
+   và trình duyệt cuộn ngang cả form sang trái khi focus ô tìm. */
+.form-row .combobox:last-child:not(:first-child) .combobox-panel {
+  left: auto;
+  right: 0;
 }
 .location-status {
   margin-top: -4px;

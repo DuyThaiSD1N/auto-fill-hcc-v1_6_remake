@@ -15,7 +15,7 @@ import { fmtDateTime } from "../format";
 import Combobox from "../components/Combobox";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 import ImportAccountsModal from "../components/ImportAccountsModal";
-import { StoredPassword } from "../components/PasswordFields";
+import { PasswordInput, StoredPassword } from "../components/PasswordFields";
 import PasswordImportModal from "../components/PasswordImportModal";
 import TopBar, { type View } from "../components/TopBar";
 
@@ -175,6 +175,8 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [passwordVersion, setPasswordVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  // Đã bấm Lưu/Tạo ít nhất một lần → mới hiện lỗi thiếu/sai ở từng ô (mở form chưa gõ gì không phải lỗi).
+  const [triedSubmit, setTriedSubmit] = useState(false);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<string[]>([]);
   const [provincesLoading, setProvincesLoading] = useState(true);
@@ -329,12 +331,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
 
   function openCreate() {
     setFormError("");
+    setTriedSubmit(false);
     setLocationError("");
     setForm({ ...EMPTY_FORM });
   }
 
   function openEdit(u: ManagedUser) {
     setFormError("");
+    setTriedSubmit(false);
     setLocationError("");
     setForm({
       id: u.id,
@@ -358,6 +362,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     e.preventDefault();
     if (!form) return;
     setFormError("");
+    // Nút luôn bấm được; thiếu/sai thì dừng ở đây và báo ngay dưới từng ô.
+    setTriedSubmit(true);
+    if (!canSubmit) return;
     const changesOfficialScope =
       form.id !== null &&
       form.originalRole !== null &&
@@ -500,11 +507,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       : !isCreate ||
         ((rule.tinh !== "required" || Boolean(form.tinh.trim())) &&
           (rule.xa !== "required" || Boolean(form.xa.trim()))));
+  const usernameShort = Boolean(isCreate && form && form.username.trim().length < 3);
+  const passwordShort = Boolean(isCreate && form && form.password.length < 8);
   const canSubmit =
     form &&
     locationValid &&
     roleLocationOk &&
-    (!isCreate || (form.username.trim().length >= 3 && form.password.length >= 8));
+    !usernameShort &&
+    !passwordShort;
   const editingUser = form && form.id !== null ? items.find((u) => u.id === form.id) : undefined;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -786,19 +796,27 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 placeholder="vd: hcctanphong"
               />
+              {triedSubmit && usernameShort && (
+                <span className="field-error">Tên đăng nhập cần ít nhất 3 ký tự.</span>
+              )}
             </label>
 
             {isCreate ? (
-              <label>
-                Mật khẩu
-                <input
-                  type="password"
+              <>
+                <PasswordInput
+                  label="Mật khẩu"
                   value={form.password}
-                  autoComplete="new-password"
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="≥ 8 ký tự"
+                  onChange={(password) => setForm({ ...form, password })}
+                  error={
+                    triedSubmit && passwordShort
+                      ? form.password
+                        ? `Mật khẩu cần ít nhất 8 ký tự (đang có ${form.password.length}).`
+                        : "Chưa nhập mật khẩu (ít nhất 8 ký tự)."
+                      : undefined
+                  }
                 />
-              </label>
+                {!(triedSubmit && passwordShort) && <p className="form-hint">Ít nhất 8 ký tự.</p>}
+              </>
             ) : (
               editingUser && (
                 <StoredPassword
@@ -979,7 +997,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               </div>
             )}
 
-            {!roleLocationOk && (
+            {triedSubmit && !roleLocationOk && (
               <div className="error">
                 {isTdp ? (
                   "Tổ dân phố cần chọn HCC xã/phường mà nó trực thuộc."
@@ -998,7 +1016,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               <button type="button" className="ghost" onClick={() => setForm(null)} disabled={saving}>
                 Hủy
               </button>
-              <button type="submit" className="btn-primary" disabled={saving || !canSubmit}>
+              <button type="submit" className="btn-primary" disabled={saving}>
                 {saving ? "Đang lưu…" : isCreate ? "Tạo tài khoản" : "Lưu thay đổi"}
               </button>
             </div>

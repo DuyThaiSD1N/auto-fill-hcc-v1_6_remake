@@ -141,10 +141,6 @@ export default function TraceInfo({ trace, wide = false }: { trace: TraceDetail;
           <dd>{trace.procedure_label || trace.procedure}</dd>
         </div>
         <div>
-          <dt>Người làm thủ tục</dt>
-          <dd>{trace.applicant_name || "—"}</dd>
-        </div>
-        <div>
           <dt>Model OCR</dt>
           <dd>{trace.ocr_label || "—"}</dd>
         </div>
@@ -202,11 +198,6 @@ export default function TraceInfo({ trace, wide = false }: { trace: TraceDetail;
 
       <section className="trace-files-names">
         <h3>File đính kèm ({files.length})</h3>
-        {files.length ? (
-          <ul>
-            {files.map((f, i) => <li key={`${i}-${f.name}`}>{f.name || "(không tên)"}</li>)}
-          </ul>
-        ) : <p className="muted">Không có tệp.</p>}
       </section>
     </>
   );
