@@ -47,6 +47,17 @@ PROCEDURE_HMONG = {
     "cap-giay-phep-khai-thac-thuy-san": "Ntawv tso cai nuv ntses (muab tshiab / muab dua)",
     # BẢN NHÁP chờ anh Dư soát — ghép "ntawv lees paub" + "cuv npe" + "nuv ntses" đã có; TỪ MỚI "nkoj" (tàu).
     "cap-gcn-dang-ky-tau-ca": "Ntawv lees paub cuv npe nkoj nuv ntses",
+    # BẢN NHÁP chờ anh Dư soát — "nkoj nuv ntses" (tàu cá), "tso cai" (cho phép), "ua" (làm = đóng mới), "kho"
+    # (sửa = cải hoán), "yuav" (mua) đã có; TỪ MỚI "xauj" (thuê).
+    "cap-van-ban-chap-thuan-tau-ca": "Ntawv tso cai ua, kho, xauj los yog yuav nkoj nuv ntses",
+    # BẢN NHÁP chờ anh Dư soát — 4 thẻ đợt 4 (25/10). Chữ đã có: "muab … dua tshiab" (cấp lại), "ntawv tso cai"
+    # (giấy phép), "kawm ntawv" (học), "txo" (giảm), "av tsev" (nhà đất), "muag" (bán), "pab" (hỗ trợ).
+    # TỪ MỚI: "tsiaj" (vật nuôi), "kab mob" (dịch bệnh), "kho tsiaj" (thú y), "nyiaj kawm ntawv" (học phí),
+    # "zam" (miễn), "neeg nruab nrab" (người môi giới).
+    "cap-lai-chung-chi-hanh-nghe-thu-y": "Muab ntawv tso cai ua haujlwm kho tsiaj dua tshiab",
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": "Nyiaj pab tsev neeg yug tsiaj raug kab mob",
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": "Zam los yog txo nyiaj kawm ntawv",
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": "Ntawv tso cai ua neeg nruab nrab muag av tsev",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
@@ -142,6 +153,19 @@ PROCEDURE_HMONG = {
     "ho-tro-mai-tang-huu-tri-xa-hoi": "Nyiaj pab faus neeg tau nyiaj laus pab pej xeem",
     "dieu-chinh-huu-tri-xa-hoi": "Kho nyiaj laus pab pej xeem",
     "tro-cap-tho-cung-liet-si": "Nyiaj pab teev hawm neeg tuag rau lub teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("daim ntawv", "dua tshiab" = lại,
+    # "neeg tuag rau lub teb chaws" = liệt sĩ ở thẻ thờ cúng ngay trên).
+    "cap-lai-to-quoc-ghi-cong": "Muab daim ntawv neeg tuag rau lub teb chaws dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — 6 thẻ Sở Nội vụ dưới đây ghép từ chữ đã có ("neeg muaj nuj nqi rau teb
+    # chaws" = người có công, "neeg tuag rau lub teb chaws" = liệt sĩ, "ntxiv" = bổ sung, "kho" = sửa,
+    # "faus neeg tuag" = mai táng). TỪ MỚI: "ntxa" (mộ), "tsov rog" (chiến tranh), "tub rog" (bộ đội).
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong":
+        "Muab daim ntawv lees paub neeg muaj nuj nqi rau teb chaws dua tshiab",
+    "bo-sung-than-nhan-liet-si": "Ntxiv tsev neeg rau ntaub ntawv neeg tuag rau lub teb chaws",
+    "tham-vieng-mo-liet-si": "Mus xyuas ntxa neeg tuag rau lub teb chaws",
+    "giai-quyet-che-do-khang-chien": "Nyiaj pab neeg tau koom tsov rog tiv thaiv teb chaws",
+    "sua-doi-thong-tin-ho-so-nguoi-co-cong": "Kho ntaub ntawv tus neeg muaj nuj nqi rau teb chaws",
+    "mai-tang-dan-cong-hoa-tuyen": "Nyiaj pab faus neeg tau pab tub rog thaum tsov rog",
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
     "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",
@@ -164,6 +188,13 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "muab ntawv tso cai … thawj zaug" như bản ngay trên + "rau chaw kho mob"
     # (cho cơ sở khám chữa bệnh: "chaw" = cơ sở như cap-giay-chung-nhan-co-so-…, ghép "kho mob").
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": "Muab ntawv tso cai rau chaw kho mob thawj zaug",
+    # BẢN NHÁP chờ anh Dư soát — 4 thẻ Y tế ghép từ chữ đã có ("ntawv tso cai ua haujlwm kho mob" = giấy phép
+    # hành nghề, "chaw kho mob" = cơ sở khám chữa bệnh, "dua tshiab" = lại, "kho" = điều chỉnh, "tshuaj" =
+    # thuốc). TỪ MỚI: "txhaj tshuaj" (tiêm), "tshaj tawm" (công bố).
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": "Muab ntawv tso cai ua haujlwm kho mob dua tshiab",
+    "dieu-chinh-giay-phep-hoat-dong-kcb": "Kho ntawv tso cai rau chaw kho mob",
+    "cap-chung-chi-hanh-nghe-duoc": "Muab ntawv tso cai ua haujlwm tshuaj",
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": "Tshaj tawm chaw txhaj tshuaj",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — luồng chung "xay-dung"). Có TỪ MỚI (npaj = quy
     # hoạch, ntug kev = vỉa hè, ib ntus = tạm thời, Nyab Laj = Việt Nam, Nplog = Lào): soát kỹ hơn.
     "dieu-chinh-giay-phep-xay-dung": "Kho ntawv tso cai ua tsev",
@@ -176,6 +207,12 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — chặt hạ, dịch chuyển cây xanh 1.002693); "ntawv tso cai",
     # "los yog", "tsiv" đã có trong file, TỪ MỚI "txiav" (chặt) + "ntoo" (cây).
     "cap-giay-phep-chat-ha-cay-xanh": "Ntawv tso cai txiav los yog tsiv ntoo",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng) — ghép từ chữ đã có ("txuas" = nối, "ib ntus" = tạm, "Nplog" =
+    # Lào, "Nyab Laj" = Việt Nam, "sij hawm" = thời gian, "nkoj" = tàu, "muag" = bán, "tswv" = chủ).
+    "chap-thuan-dau-noi-tam": "Ntawv tso cai txuas kev ib ntus",
+    "gia-han-luu-hanh-phuong-tien-lao": "Ntxiv sij hawm rau tsheb Nplog nyob Nyab Laj",
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan":
+        "Cuv npe nkoj dua tshiab thaum muag rau tus tswv tshiab",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

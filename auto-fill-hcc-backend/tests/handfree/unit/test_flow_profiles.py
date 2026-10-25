@@ -133,6 +133,13 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert mae_fishing["maePortal"] is True
     assert mae_fishing["wizard"]["declarationStep"] == 1
     assert mae_fishing["wizard"]["attachmentStep"] == 2
+    # Đăng ký tàu cá / chấp thuận đóng mới, cải hoán tàu cá: cùng khung chọn cơ quan với giấy phép khai thác.
+    for key in ("cap-gcn-dang-ky-tau-ca", "cap-van-ban-chap-thuan-tau-ca", "cap-lai-chung-chi-hanh-nghe-thu-y"):
+        mae_vessel = procedures.pop(key)
+        assert mae_vessel.get("flowProfile") is None, key
+        assert mae_vessel["agencyProvinceOnly"] is True and mae_vessel["maePortal"] is True, key
+        assert mae_vessel["agencyDeptLabel"] == "Sở Nông nghiệp và Môi trường", key
+        assert mae_vessel["wizard"] == mae_fishing["wizard"], key
     # Bộ GD&ĐT: cùng nền iGate (wizard 1/2) nhưng KHÔNG có trang chọn nơi/loại;
     # DVCQG chọn Tỉnh + toggle "Sở" rồi lấy Sở đầu tiên (agencySoFirst).
     moet_diploma = procedures.pop("cap-ban-sao-van-bang-so-goc")
@@ -142,6 +149,14 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in moet_diploma
     assert moet_diploma["wizard"]["declarationStep"] == 1
     assert moet_diploma["wizard"]["attachmentStep"] == 2
+    # Miễn, giảm học phí (1.014335): cùng cổng GD&ĐT, cùng wizard với văn bằng nhưng giải quyết ở UBND CẤP XÃ
+    # nơi sinh viên thường trú → DVCQG chọn đủ Tỉnh + Xã, không gạt toggle "Sở", không có trang chọn nơi/loại.
+    moet_fee = procedures.pop("mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc")
+    assert moet_fee.get("flowProfile") is None
+    assert moet_fee["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in moet_fee and "agencySoFirst" not in moet_fee
+    assert "maePortal" not in moet_fee
+    assert moet_fee["wizard"] == moet_diploma["wizard"]
     # Bộ Xây dựng (NOXH): cùng khuôn agencySoFirst + wizard iGate như văn bằng, nay đi luồng chung
     # "xay-dung" (hộp thoại "Chọn trường hợp giải quyết" đọc từ cổng).
     moc_housing = procedures.pop("cho-thue-thue-mua-nha-o-xa-hoi")
@@ -170,14 +185,27 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert all(o.get("label") and o.get("portalMatch") for o in variant_options)
 
     # Các thủ tục khác của cổng Bộ Xây dựng: cùng luồng chung "xay-dung", cùng hộp thoại.
+    moc_by_key = {}
     for key in ("dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
                 "sua-chua-cai-tao-gpxd-cong-trinh",
                 "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
-                "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh"):
-        moc_other = procedures.pop(key)
+                "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh",
+                "chap-thuan-dau-noi-tam", "gia-han-luu-hanh-phuong-tien-lao",
+                "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san"):
+        moc_other = moc_by_key[key] = procedures.pop(key)
         assert moc_other["flowProfile"] == "xay-dung", key
         assert moc_other["maePortal"] is True, key
         assert moc_other["maeDialogChoice"]["enabled"] is True, key
+    # ke_khai_links khai selectSo cho gia hạn xe Lào / đăng ký lại phương tiện thủy → chọn Sở Xây dựng; đấu nối
+    # tạm thì không → chọn đủ Tỉnh + Xã như lòng đường, vỉa hè.
+    for key in ("gia-han-luu-hanh-phuong-tien-lao", "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san"):
+        moc_so = moc_by_key[key]
+        assert moc_so["agencyProvinceOnly"] is True and moc_so["agencySoFirst"] is True, key
+        assert moc_so["agencyDeptLabel"] == "Sở Xây dựng", key
+    moc_ward = moc_by_key["chap-thuan-dau-noi-tam"]
+    assert "agencyProvinceOnly" not in moc_ward and "agencySoFirst" not in moc_ward
 
     byt_pension = procedures.pop("dieu-chinh-huu-tri-xa-hoi")
     assert byt_pension.get("flowProfile") is None
@@ -201,7 +229,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     # dùng luồng chung "xay-dung".
     for key in ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
                 "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
-                "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh"):
+                "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", "cap-lai-giay-phep-hanh-nghe-truoc-2024",
+                "dieu-chinh-giay-phep-hoat-dong-kcb", "cap-chung-chi-hanh-nghe-duoc",
+                "cong-bo-co-so-du-dieu-kien-tiem-chung"):
         byt_so = procedures.pop(key)
         assert byt_so["flowProfile"] == "xay-dung", key
         assert byt_so["agencyProvinceOnly"] is True, key
@@ -301,7 +331,16 @@ def test_registered_procedures_use_their_declared_flow_family():
     # agencyProvinceOnly/agencySoFirst), hộp thoại cổng bộ gạt radio "Phường/Xã".
     # Chi tiết hành vi cấp xã nằm ở test_mae_agency_cap_xa.py; ở đây chỉ chốt hình dạng entry.
     # ATTP nông, lâm, thủy sản (Bộ NN&MT, 2.001827) cùng khuôn cấp xã trên trang MAE.
-    for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san"):
+    # Sửa đổi thông tin hồ sơ người có công: cùng khuôn cấp Sở với di chuyển hồ sơ.
+    moha_edit = procedures.pop("sua-doi-thong-tin-ho-so-nguoi-co-cong")
+    for field in ("needsAgencySelect", "agencyProvinceOnly", "agencySoFirst", "maePortal", "agencyDeptLabel",
+                  "wizard"):
+        assert moha_edit[field] == moha_move[field], field
+    assert moha_edit.get("flowProfile") is None and "maeAgencyLevel" not in moha_edit
+    for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san",
+                          "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
+                          "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
+                          "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -500,7 +539,23 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh" (1.012278).
     # +1 cổng Bộ NN&MT cấp xã "cap-gcn-attp-nong-lam-thuy-san" (2.001827).
     # +1 cổng Bộ Xây dựng "sua-chua-cai-tao-gpxd-cong-trinh" (1.013229, nhánh công trình).
-    assert len(procedures) == 80
+    # +1 cổng Bộ NN&MT "cap-gcn-dang-ky-tau-ca" (số cũ 80 chưa cộng thủ tục này).
+    # +1 cổng Bộ Nội vụ cấp xã "cap-lai-to-quoc-ghi-cong" (1.010778).
+    # +6 cổng Bộ Nội vụ: cấp xã "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong" (1.010814),
+    # "bo-sung-than-nhan-liet-si" (1.010825), "tham-vieng-mo-liet-si" (1.013750),
+    # "giai-quyet-che-do-khang-chien" (1.010819), "mai-tang-dan-cong-hoa-tuyen" (1.014359);
+    # cấp Sở "sua-doi-thong-tin-ho-so-nguoi-co-cong" (1.010826).
+    # +3 cổng Bộ Xây dựng (luồng chung "xay-dung"): "chap-thuan-dau-noi-tam" (1.000314),
+    # "gia-han-luu-hanh-phuong-tien-lao" (1.002063), "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan"
+    # (1.004002).
+    # +4 cổng Bộ Y tế cấp Sở (luồng "xay-dung"): "cap-lai-giay-phep-hanh-nghe-truoc-2024" (1.012290),
+    # "dieu-chinh-giay-phep-hoat-dong-kcb" (1.012280), "cap-chung-chi-hanh-nghe-duoc" (1.014092),
+    # "cong-bo-co-so-du-dieu-kien-tiem-chung" (2.000655); +1 cổng Bộ NN&MT "cap-van-ban-chap-thuan-tau-ca" (1.004344).
+    # +4 đợt 4 (25/10): "cap-lai-chung-chi-hanh-nghe-thu-y" (1.005319, NN&MT cấp Sở),
+    # "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" (1.013997, NN&MT cấp xã),
+    # "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc" (1.014335, GD&ĐT cấp xã),
+    # "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san" (1.012906, Sở Xây dựng).
+    assert len(procedures) == 100
 
     for procedure in procedures:
         key = procedure["key"]

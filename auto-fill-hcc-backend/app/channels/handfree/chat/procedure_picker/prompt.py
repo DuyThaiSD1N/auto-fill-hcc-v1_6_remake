@@ -146,6 +146,20 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-gcn-dang-ky-tau-ca": ["đăng ký tàu cá", "giấy chứng nhận đăng ký tàu cá",
                                "đăng ký tàu cá mới đóng", "mua tàu cá đăng ký sang tên",
                                "đăng ký tàu phục vụ nuôi trồng thủy sản", "đăng ký thuyền đánh cá"],
+    # Xin phép TRƯỚC khi đóng mới / cải hoán / thuê / mua tàu cá — KHÁC đăng ký tàu ngay trên (đăng ký sau khi
+    # đã có tàu) và khác giấy phép khai thác.
+    "cap-van-ban-chap-thuan-tau-ca": ["xin phép đóng mới tàu cá", "chấp thuận đóng tàu cá",
+                                      "cải hoán tàu cá cần xin phép", "xin chấp thuận mua tàu cá",
+                                      "thuê tàu cá cần văn bản chấp thuận"],
+    # Bác sĩ thú y đã có chứng chỉ, nay mất / hỏng / sai thông tin → cấp LẠI. KHÁC gia hạn chứng chỉ (hết hạn).
+    "cap-lai-chung-chi-hanh-nghe-thu-y": ["cấp lại chứng chỉ hành nghề thú y", "mất chứng chỉ hành nghề thú y",
+                                          "chứng chỉ thú y bị hỏng xin cấp lại", "bác sĩ thú y xin cấp lại chứng chỉ"],
+    # Chủ hộ chăn nuôi có vật nuôi bị TIÊU HỦY do dịch bệnh xin tiền hỗ trợ. Cụm "dịch bệnh" + vật nuôi là dấu hiệu riêng.
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": [
+        "hỗ trợ thiệt hại dịch tả lợn châu Phi", "lợn bị tiêu hủy do dịch xin hỗ trợ",
+        "gà vịt chết vì cúm gia cầm xin tiền hỗ trợ", "hỗ trợ chăn nuôi bị thiệt hại do dịch bệnh",
+        "xin hỗ trợ khi vật nuôi bị tiêu hủy",
+    ],
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": ["cấp phép xây dựng", "xin giấy phép xây dựng",
                                                   "xin phép xây nhà", "giấy phép xây nhà ở riêng lẻ",
                                                   "xin phép xây dựng công trình cấp 3 cấp 4",
@@ -217,12 +231,74 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "cấp mới giấy phép hoạt động khám bệnh, chữa bệnh", "mở nha khoa cần giấy phép hoạt động",
         "giấy phép hoạt động cơ sở khám chữa bệnh", "xin phép mở phòng khám đa khoa",
     ],
+    # MỘT người hành nghề có giấy phép cấp TRƯỚC 01/01/2024, nay mất / hỏng / sai thông tin → xin cấp LẠI.
+    # KHÁC cấp mới (chưa từng có) và điều chỉnh phạm vi ("…-chuyen-tiep" ở trên).
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": [
+        "cấp lại giấy phép hành nghề", "mất chứng chỉ hành nghề y xin cấp lại",
+        "chứng chỉ hành nghề bị hỏng, rách", "cấp lại chứng chỉ hành nghề bác sĩ cấp trước 2024",
+        "giấy phép hành nghề ghi sai thông tin xin cấp lại",
+    ],
+    # CƠ SỞ đã có giấy phép HOẠT ĐỘNG, nay đổi tên, quy mô, phạm vi, danh mục kỹ thuật. KHÁC xin giấy phép
+    # hoạt động lần đầu ngay trên.
+    "dieu-chinh-giay-phep-hoat-dong-kcb": [
+        "điều chỉnh giấy phép hoạt động phòng khám", "phòng khám đổi tên xin điều chỉnh giấy phép",
+        "bổ sung danh mục kỹ thuật cho phòng khám", "thay đổi quy mô cơ sở khám chữa bệnh",
+        "điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh",
+    ],
+    # DƯỢC SĨ xin chứng chỉ hành nghề dược. KHÁC giấy chứng nhận đủ điều kiện kinh doanh dược của nhà thuốc
+    # ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te").
+    "cap-chung-chi-hanh-nghe-duoc": ["cấp chứng chỉ hành nghề dược", "dược sĩ xin chứng chỉ hành nghề",
+                                     "xin chứng chỉ hành nghề dược để mở nhà thuốc",
+                                     "làm chứng chỉ hành nghề dược", "bị thu hồi chứng chỉ dược xin cấp lại"],
+    # CƠ SỞ y tế công bố đủ điều kiện TIÊM CHỦNG. Cụm "tiêm chủng" là dấu hiệu riêng.
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": ["công bố cơ sở đủ điều kiện tiêm chủng",
+                                              "phòng khám muốn được tiêm chủng vắc xin",
+                                              "đăng ký điểm tiêm chủng dịch vụ", "mở điểm tiêm vắc xin"],
     # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
     # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
     "tro-cap-tho-cung-liet-si": ["trợ cấp thờ cúng liệt sĩ", "chế độ thờ cúng liệt sĩ",
                                  "tôi đang thờ cúng liệt sĩ muốn hưởng trợ cấp",
                                  "xin tiền thờ cúng liệt sĩ hằng năm",
                                  "người thờ cúng liệt sĩ"],
+    # Xin LẠI tấm Bằng "Tổ quốc ghi công" (mất, rách, hư hỏng). KHÁC thờ cúng liệt sĩ ngay trên
+    # (tiền trợ cấp) và khác cấp lại GIẤY CHỨNG NHẬN người có công / thân nhân liệt sĩ.
+    "cap-lai-to-quoc-ghi-cong": ["cấp lại bằng tổ quốc ghi công", "mất bằng tổ quốc ghi công",
+                                 "bằng tổ quốc ghi công bị rách, hư hỏng",
+                                 "xin lại bằng liệt sĩ", "đổi bằng tổ quốc ghi công mới"],
+    # GIẤY CHỨNG NHẬN người có công / thân nhân liệt sĩ bị mất, hư hỏng, cần thêm thông tin. KHÁC Bằng
+    # "Tổ quốc ghi công" ngay trên (tấm bằng, không phải giấy chứng nhận).
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": [
+        "cấp lại giấy chứng nhận người có công", "mất giấy chứng nhận thân nhân liệt sĩ",
+        "cấp bổ sung giấy chứng nhận người có công", "giấy chứng nhận thương binh bị rách, hư hỏng",
+        "làm lại thẻ thương binh, bệnh binh",
+    ],
+    # Thêm / cập nhật THÂN NHÂN vào hồ sơ LIỆT SĨ. KHÁC sửa thông tin cá nhân của người có công ngay dưới
+    # (dù cùng đơn Mẫu 26): ở đây là danh sách thân nhân của liệt sĩ.
+    "bo-sung-than-nhan-liet-si": ["bổ sung thân nhân liệt sĩ", "thêm thân nhân vào hồ sơ liệt sĩ",
+                                  "bổ sung tình hình thân nhân trong hồ sơ liệt sĩ",
+                                  "hồ sơ liệt sĩ còn thiếu tên vợ, con", "khai thêm bố mẹ, vợ con của liệt sĩ"],
+    # Sửa SAI SÓT thông tin CÁ NHÂN (họ tên, ngày sinh, quê quán) trong hồ sơ người có công đã có.
+    "sua-doi-thong-tin-ho-so-nguoi-co-cong": [
+        "sửa thông tin trong hồ sơ người có công", "hồ sơ người có công ghi sai họ tên",
+        "đính chính ngày sinh trong hồ sơ thương binh", "sửa quê quán trong hồ sơ liệt sĩ",
+        "sửa đổi, bổ sung thông tin cá nhân người có công",
+    ],
+    # Đi THĂM VIẾNG MỘ liệt sĩ (giấy giới thiệu, hỗ trợ tiền đi lại). Cụm "thăm viếng mộ" là dấu hiệu riêng.
+    "tham-vieng-mo-liet-si": ["thăm viếng mộ liệt sĩ", "đi thăm mộ liệt sĩ", "xin giấy giới thiệu thăm mộ liệt sĩ",
+                              "hỗ trợ tiền đi thăm mộ liệt sĩ", "viếng mộ liệt sĩ ở tỉnh khác"],
+    # Người TỪNG THAM GIA kháng chiến (còn sống, hoặc thân nhân khai thay) xin hưởng chế độ, có Huân/Huy
+    # chương kháng chiến. KHÁC mai táng phí dân công hỏa tuyến ngay dưới.
+    "giai-quyet-che-do-khang-chien": [
+        "chế độ người hoạt động kháng chiến", "tham gia kháng chiến có huân chương xin hưởng chế độ",
+        "người có huy chương kháng chiến xin trợ cấp", "chế độ cho người tham gia bảo vệ Tổ quốc",
+        "làm nghĩa vụ quốc tế xin hưởng chế độ",
+    ],
+    # DÂN CÔNG HỎA TUYẾN đã mất, thân nhân xin tiền MAI TÁNG. KHÁC các thủ tục mai táng của Bộ Y tế
+    # ("ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"): chỉ khi người mất là dân công hỏa tuyến.
+    "mai-tang-dan-cong-hoa-tuyen": [
+        "mai táng phí dân công hỏa tuyến", "bố tôi là dân công hỏa tuyến vừa mất",
+        "dân công hỏa tuyến qua đời xin tiền mai táng", "chế độ mai táng cho dân công hỏa tuyến",
+    ],
     # CÙNG cụm "trợ cấp ưu đãi" với thủ tục di chuyển hồ sơ người có công, chỉ khác ở chỗ NGƯỜI CÓ
     # CÔNG ĐÃ MẤT và thân nhân đứng ra hưởng chế độ → hint chỉ nhận cụm có người có công qua
     # đời; cụm "trợ cấp ưu đãi" trơn không thuộc bên nào.
@@ -269,6 +345,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "nhận nuôi dưỡng trẻ mồ côi tại nhà, xin hỗ trợ kinh phí",
         "hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng hằng tháng",
         "tờ khai trợ cấp xã hội mẫu số 01 mới"],
+    # Sinh viên trường NGHỀ / ĐẠI HỌC TƯ THỤC thuộc diện chính sách xin miễn, giảm học phí. Cụm "học phí" là dấu
+    # hiệu riêng, không đụng bản sao văn bằng ngay dưới.
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": ["miễn giảm học phí đại học tư thục", "xin miễn học phí cho con học cao đẳng",
+                                               "con thương binh học trường tư xin giảm học phí",
+                                               "sinh viên hộ nghèo xin miễn học phí", "cấp bù tiền miễn giảm học phí"],
     "cap-ban-sao-van-bang-so-goc": ["bản sao văn bằng", "bản sao chứng chỉ", "bản sao bằng tốt nghiệp",
                                     "mất bằng tốt nghiệp", "xin lại bằng cấp ba", "trích lục văn bằng"],
     "cho-thue-thue-mua-nha-o-xa-hoi": ["thuê nhà ở xã hội", "thuê mua nhà ở xã hội",
@@ -391,6 +472,29 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                        "di dời cây xanh", "dịch chuyển cây xanh",
                                        "cây trên vỉa hè sắp đổ muốn chặt",
                                        "giấy phép chặt hạ cây xanh đô thị"],
+    # Mở lối ra vào TẠM từ công trường/dự án vào đường đang khai thác. KHÁC dùng tạm lòng đường, vỉa hè
+    # ("cap-phep-long-duong-via-he"): ở đây là nút giao đấu nối vào đường, không phải chiếm lòng đường.
+    "chap-thuan-dau-noi-tam": ["chấp thuận đấu nối tạm", "xin đấu nối tạm vào quốc lộ",
+                               "mở đường tạm từ công trường ra đường chính",
+                               "đấu nối tạm vào đường bộ đang khai thác",
+                               "xin vị trí đấu nối tạm cho xe công trình"],
+    # Xe LÀO đã vào Việt Nam, xin ở thêm. KHÁC "cap-giay-phep-lien-van-viet-lao" (xin giấy phép liên vận để
+    # đi lại hai nước) — chỉ nhận cụm có "gia hạn" / "ở lại".
+    "gia-han-luu-hanh-phuong-tien-lao": ["gia hạn lưu hành xe Lào", "xe Lào hết hạn ở Việt Nam",
+                                         "xin gia hạn cho xe Lào ở lại Việt Nam",
+                                         "xe biển Lào bị hỏng cần ở lại sửa"],
+    # Phương tiện THỦY nội địa (tàu, thuyền, sà lan) đổi CHỦ, cùng cơ quan đăng ký. KHÁC đăng ký tàu cá
+    # ("cap-gcn-dang-ky-tau-ca", Bộ NN&MT) và không phải xe ô tô, xe máy.
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": [
+        "sang tên tàu thuyền", "mua lại sà lan cần đăng ký lại",
+        "đăng ký lại phương tiện thủy nội địa", "chuyển quyền sở hữu phương tiện thủy",
+        "đổi chủ tàu chở hàng đường sông",
+    ],
+    # Xin chứng chỉ hành nghề MÔI GIỚI bất động sản (đăng ký thi sát hạch). Cụm "môi giới" là dấu hiệu riêng.
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": [
+        "xin chứng chỉ môi giới bất động sản", "đăng ký thi chứng chỉ môi giới nhà đất",
+        "làm môi giới bất động sản cần chứng chỉ gì", "cấp chứng chỉ hành nghề môi giới bất động sản",
+    ],
 }
 
 

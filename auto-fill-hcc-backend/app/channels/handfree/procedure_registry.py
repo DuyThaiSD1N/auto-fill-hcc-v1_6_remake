@@ -1732,6 +1732,173 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-van-ban-chap-thuan-tau-ca",
+        # Mã TTHC 1.004344, CÙNG cổng NN&MT và cùng khung chọn cơ quan với "cap-gcn-dang-ky-tau-ca" ngay trên: DVCQG
+        # chỉ chọn Tỉnh → trang MAE "chọn nơi và loại" chọn Sở NN&MT (maePortal). ke_khai_links chưa khai
+        # provinceOnlyAgency như bản đăng ký tàu; thẩm quyền chấp thuận đóng mới, cải hoán tàu cá là cơ quan thủy
+        # sản cấp tỉnh. Key TRÙNG lõi và ke_khai_links → process/attach (attp-row 1 dòng Tờ khai 12.TC) tự nối.
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.004344",
+                "019d2bfa-3821-734d-a521-ed615d1b1a97",
+            ],
+            # KHÁC đăng ký tàu cá ngay trên ("cấp giấy chứng nhận đăng ký tàu cá"): đây là xin phép TRƯỚC khi
+            # đóng mới, cải hoán, thuê, mua tàu.
+            "textIncludes": ["cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá Việt Nam",
+        "shortLabel": "Chấp thuận đóng mới, cải hoán, thuê, mua tàu cá",
+        "subtitle": "Xin phép trước khi đóng mới, cải hoán, thuê hoặc mua tàu cá",
+        "icon": "🚢",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3821-734d-a521-ed615d1b1a97",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bảng thành phần hồ sơ 1 dòng cố định (Tờ khai Mẫu 12.TC) nhận nhiều tệp: planner lõi đính MỌI tệp vào
+        # dòng này (căn cước đặt tên "Căn cước công dân").
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai chấp thuận đóng mới / cải hoán / thuê / mua tàu cá (Mẫu số "
+             "12.TC) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị, thêm CCCD người nộp nếu nộp thay",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của NGƯỜI ĐỀ NGHỊ — chủ tàu, cá nhân hoặc tổ chức đề nghị):\n"
+            "1. Tờ khai chấp thuận đóng mới / cải hoán / thuê / mua tàu cá (Mẫu số 12.TC), đã ký — nguồn chính "
+            "để điền form.\n"
+            "2. Căn cước công dân (2 mặt) của người đề nghị; nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tự nộp thì giữ tích 'Người nộp là chủ hồ sơ'; nộp thay thì bỏ tích và điền riêng hai phần. Trợ lý "
+            "điền cả nội dung tờ khai (kính gửi, địa danh, mã định danh, địa chỉ) và thông số tàu.\n"
+            "Bước Thành phần hồ sơ: bảng chỉ có một dòng 'Tờ khai theo Mẫu số 12.TC' (bản Scan tệp tin) nhận nhiều "
+            "tệp — Tờ khai, căn cước và giấy tờ khác đều đính vào dòng này, mỗi tệp một tên riêng."
+        ),
+    },
+    {
+        "key": "cap-lai-chung-chi-hanh-nghe-thu-y",
+        # Mã TTHC 1.005319, cổng NN&MT, CÙNG khung chọn cơ quan với "cap-gcn-dang-ky-tau-ca": ke_khai_links khai
+        # provinceOnlyAgency + selectSo → DVCQG chỉ chọn Tỉnh, trang MAE "chọn nơi và loại" chọn Sở NN&MT (maePortal).
+        # Key TRÙNG lõi và ke_khai_links → process/attach tự nối. Planner lõi (attp-row 1 dòng "Đơn đăng ký cấp
+        # lại") đính Đơn + chứng chỉ cũ + ảnh vào dòng đó, BỎ căn cước (đã chạy thử hồ sơ bịa 25/10).
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.005319",
+                "019d2bfa-47c1-71d9-a6f9-c0f5829bb34e",
+            ],
+            # KHÁC gia hạn CCHN thú y (2.001064, chưa lên vì cần add-document-dialog): "cấp lại" ≠ "gia hạn".
+            "textIncludes": ["cấp lại chứng chỉ hành nghề thú y"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại Chứng chỉ hành nghề thú y",
+        "shortLabel": "Cấp lại chứng chỉ hành nghề thú y",
+        "subtitle": "Xin lại chứng chỉ hành nghề thú y bị mất, hư hỏng hoặc sai thông tin",
+        "icon": "🐄",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-47c1-71d9-a6f9-c0f5829bb34e",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bảng thành phần hồ sơ 1 dòng nhận nhiều tệp (Đơn + chứng chỉ cũ + ảnh dồn chung).
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký cấp lại chứng chỉ hành nghề thú y (Mẫu 03.HNTY) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn (chỉ để điền, không đính kèm)",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "cchn_cu", "name": "Chứng chỉ hành nghề thú y đã cấp (bản cũ, nếu còn)", "icon": "🐄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "anh", "name": "Ảnh 4x6 nền xanh", "icon": "🖼️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của NGƯỜI ĐỨNG ĐƠN — người được cấp lại chứng chỉ):\n"
+            "1. Đơn đăng ký cấp lại chứng chỉ hành nghề thú y (Mẫu 03.HNTY), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân (2 mặt) của người đứng đơn — để điền số căn cước, ngày cấp (đơn thường không ghi).\n"
+            "3. Chứng chỉ hành nghề thú y đã cấp (bản cũ) — để lấy số đăng ký và ngày hết hiệu lực.\n"
+            "4. Ảnh 4x6 nền xanh.\n"
+            "5. Nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối 'Thông tin chung' trên form là người ĐỨNG ĐƠN: trợ lý ghi đè thông tin tài khoản bằng thông tin "
+            "trên đơn. Phạm vi hành nghề trợ lý tự tích theo đơn; dòng nào không khớp sẽ báo để tích tay.\n"
+            "Bước Thành phần hồ sơ: Đơn 03.HNTY, chứng chỉ cũ và ảnh đều đính vào dòng 'Đơn đăng ký cấp lại' (Bản "
+            "chính); căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+        # Mã TTHC 1.013997, giải quyết ở UBND CẤP XÃ (lõi ghi): DVCQG chọn đủ Tỉnh + Phường/Xã rồi sang cổng ngành
+        # NN&MT — cùng khuôn cấp xã với "cap-gcn-attp-nong-lam-thuy-san" (maePortal + maeAgencyLevel "ward").
+        # Key TRÙNG lõi và ke_khai_links → process/attach tự nối. Planner lõi (attp-row 1 dòng, tách/gộp trang
+        # sourceSegments) gộp Đơn 2a/2b + mọi biên bản tiêu hủy vào dòng Đơn, BỎ căn cước (chạy thử 25/10).
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.013997",
+                "019d2bfa-8686-732b-b2d5-e6a422f1b242",
+            ],
+            "textIncludes": ["hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật (cơ sở sản xuất không thuộc lực lượng vũ trang "
+            "nhân dân)"
+        ),
+        "shortLabel": "Hỗ trợ thiệt hại do dịch bệnh động vật (dịch tả lợn, cúm gia cầm…)",
+        "subtitle": "Chủ hộ chăn nuôi xin hỗ trợ khi vật nuôi bị tiêu hủy do dịch bệnh",
+        "icon": "🐖",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8686-732b-b2d5-e6a422f1b242",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "requiredDocs": [
+            {"key": "don_de_nghi", "name": "Đơn đề nghị hỗ trợ thiệt hại do dịch bệnh động vật (Mẫu số 2a/2b, "
+             "Nghị định 116/2025/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "bien_ban_tieu_huy", "name": "Biên bản tiêu hủy động vật, sản phẩm động vật (đủ các trang "
+             "chữ ký)", "icon": "📋", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hộ (chỉ để điền, không đính kèm)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF — hệ thống tự tách theo trang):\n"
+            "1. Đơn đề nghị hỗ trợ thiệt hại do dịch bệnh động vật (Mẫu số 2a/2b, Nghị định 116/2025/NĐ-CP), đã ký "
+            "— nguồn chính về chủ hộ, số căn cước, địa chỉ thường trú.\n"
+            "2. Biên bản tiêu hủy động vật, sản phẩm động vật (một hoặc nhiều biên bản, đủ trang chữ ký).\n"
+            "3. Nếu có: căn cước công dân của chủ hộ — để điền ngày sinh, ngày cấp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Ô Ghi chú được điền tóm tắt "
+            "dịch bệnh + số con, khối lượng của từng biên bản.\n"
+            "Bước Thành phần hồ sơ: Đơn đề nghị + các biên bản tiêu hủy gộp thành một tệp ở dòng 'Đơn đề nghị' "
+            "(Bản chính), Đơn đứng trước; căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "cap-ban-sao-van-bang-so-goc",
         "provinceOnly": ["danang", "bacninh"],  # chỉ account Đà Nẵng, Bắc Ninh thấy + gọi được
         # Cổng Bộ GD&ĐT dvc.moet.gov.vn — CÙNG nền iGate với cổng NN&MT (wizard 4 bước:
@@ -1781,6 +1948,67 @@ PROCEDURES: list[dict] = [
             "3. Bản photo văn bằng / chứng chỉ cần cấp bản sao.\n"
             "4. Nếu người khác yêu cầu thay: giấy ủy quyền hoặc giấy tờ chứng minh quan hệ.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
+        # Mã TTHC 1.014335, cổng Bộ GD&ĐT dvc.moet.gov.vn (Form.io dom-* + dom-expect, attach attp-row 2 dòng gộp PDF).
+        # CÙNG nền iGate, cùng wizard với "cap-ban-sao-van-bang-so-goc" ngay trên và cũng KHÔNG có trang "chọn nơi
+        # và loại", nhưng KHÁC ở cấp cơ quan: mapper lõi ghi UBND CẤP XÃ nơi sinh viên thường trú giải quyết và
+        # ke_khai_links không khai selectSo → DVCQG chọn đủ Tỉnh + Phường/Xã (không agencyProvinceOnly/SoFirst).
+        # Key TRÙNG lõi và ke_khai_links → process/attach tự nối.
+        "detect": {
+            "urlScope": ["dvc.moet.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.014335",
+                "019d2bf8-c7e3-746e-8437-305980ee5536",
+            ],
+            # Tiêu đề panel Đơn Phụ lục IV — chỉ thủ tục GDNN / đại học tư thục dùng Phụ lục IV NĐ 238 (như lõi).
+            "textIncludes": ["đơn đề nghị chi trả tiền miễn giảm học phí theo mẫu tại phụ lục iv"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đề nghị miễn, giảm học phí trong cơ sở giáo dục nghề nghiệp, cơ sở giáo dục đại học tư thục và cơ sở "
+            "giáo dục nghề nghiệp, cơ sở giáo dục đại học thuộc tổ chức kinh tế, doanh nghiệp nhà nước"
+        ),
+        "shortLabel": "Miễn, giảm học phí (trường nghề, đại học tư thục)",
+        "subtitle": "Sinh viên trường tư thục thuộc diện chính sách xin miễn, giảm học phí",
+        "icon": "🎓",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-c7e3-746e-8437-305980ee5536",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Hai dòng cố định, mỗi dòng MỘT PDF gộp (planner lõi sourceFileIndexes): dòng giấy tờ chứng minh nhận cả
+        # căn cước, giấy khai sinh, bằng tốt nghiệp (chạy thử 25/10).
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don_pl4", "name": "Đơn đề nghị chi trả tiền miễn, giảm học phí (Phụ lục IV Nghị định "
+             "238/2025/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "xac_nhan_truong", "name": "Giấy xác nhận của trường (Phụ lục V hoặc mẫu của trường) hoặc giấy "
+             "tờ chứng minh thuộc diện miễn, giảm (người có công, khuyết tật, hộ nghèo…)", "icon": "🏫",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của sinh viên; thêm CCCD cha/mẹ nếu nộp thay", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: giấy khai sinh, bằng tốt nghiệp, dự toán kinh phí cấp bù "
+             "(Phụ lục VI)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của HỌC SINH, SINH VIÊN được miễn, giảm học phí):\n"
+            "1. Đơn đề nghị chi trả tiền miễn, giảm học phí (Phụ lục IV Nghị định 238/2025/NĐ-CP), đã ký — nguồn "
+            "chính để điền form.\n"
+            "2. Giấy xác nhận của trường (Phụ lục V hoặc mẫu của trường) hoặc giấy tờ chứng minh thuộc diện miễn, "
+            "giảm (người có công, khuyết tật, hộ nghèo…).\n"
+            "3. Căn cước công dân của sinh viên; nếu cha/mẹ nộp thay: thêm căn cước của người nộp.\n"
+            "4. Nếu có: giấy khai sinh, bằng tốt nghiệp, dự toán kinh phí cấp bù (Phụ lục VI).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là sinh viên. Ô bắt buộc thiếu dữ liệu được tô đỏ để bổ sung tay.\n"
+            "Bước Thành phần hồ sơ: dòng 1 gộp một PDF (giấy xác nhận của trường → giấy tờ chứng minh đối tượng → "
+            "căn cước → giấy khai sinh → bằng tốt nghiệp); dòng 2 gộp một PDF (Đơn Phụ lục IV → dự toán Phụ lục VI)."
         ),
     },
     {
@@ -2366,6 +2594,244 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-giay-phep-hanh-nghe-truoc-2024",
+        # Mã TTHC 1.012290, CÙNG cổng + CÙNG form (field-key trùng khít) với "cap-moi-giay-phep-hanh-nghe-chuyen-tiep":
+        # nộp tại SỞ Y tế → agencyProvinceOnly + agencySoFirst, luồng chung "xay-dung" (ke_khai_links chưa có
+        # selectSo, như bản cấp mới). Key TRÙNG lõi → process/attach tự nối. ke_khai_links ghi key khác
+        # ("cap-lai-giay-phep-hanh-nghe-cap-truoc-2024") nên uuid + mã phải khai tay ở đây. Cụm đầu "cấp lại …
+        # trước ngày 01 tháng 01 năm 2024" tách khỏi bản cấp mới / điều chỉnh (chung cụm thứ hai).
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012290",
+                "MaTTHC=1.012290",
+                "019d2bff-1dcc-7496-8805-1623df922b71",
+            ],
+            "textIncludes": [
+                "cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024 "
+                 "đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực "
+                 "hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng "
+                 "lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
+        "shortLabel": "Cấp lại giấy phép hành nghề khám bệnh, chữa bệnh (cấp trước 01/01/2024)",
+        "subtitle": "Cho bác sĩ, y sĩ, điều dưỡng… xin lại giấy phép hành nghề đã cấp trước 2024 (Sở Y tế)",
+        "icon": "🩺",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1dcc-7496-8805-1623df922b71",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ ~34 dòng cố định (planner lõi attp-row khớp dòng theo tên) → tắt hideRepeatableHint
+        # mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don_de_nghi", "name": "Đơn đề nghị cấp lại giấy phép hành nghề (Mẫu 08 Phụ lục I Nghị định "
+             "96/2023/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_phep_cu", "name": "Chứng chỉ / giấy phép hành nghề đã được cấp", "icon": "🩺",
+             "sides": 1, "repeatable": True},
+            {"key": "anh_chan_dung", "name": "02 ảnh chân dung 4x6 nền trắng", "icon": "🖼️", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hành nghề, thêm CCCD người nộp nếu nộp thay",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: giấy khám sức khỏe, tài liệu chứng minh thông tin thay "
+             "đổi, quyết định thu hồi giấy phép", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (đều là của NGƯỜI HÀNH NGHỀ đề nghị cấp lại):\n"
+            "1. Đơn đề nghị cấp lại giấy phép hành nghề (Mẫu 08 Phụ lục I Nghị định 96/2023/NĐ-CP), đã ký — "
+            "nguồn chính để điền form.\n"
+            "2. Chứng chỉ / giấy phép hành nghề đã được cấp.\n"
+            "3. 02 ảnh chân dung 4x6 nền trắng.\n"
+            "4. Căn cước công dân (2 mặt) của người hành nghề; nếu người khác nộp thay: thêm căn cước của "
+            "người nộp.\n"
+            "5. Nếu có: giấy khám sức khỏe, tài liệu chứng minh thông tin thay đổi, quyết định thu hồi giấy phép.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người hành nghề. Tự nộp thì giữ tích 'Người nộp là chủ hồ sơ'; nộp thay thì bỏ tích "
+            "và điền riêng hai phần.\n"
+            "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (Đơn Mẫu 08, giấy phép đã cấp, ảnh chân dung…); "
+            "căn cước và giấy tờ chưa nhận ra được đính chung dòng Đơn."
+        ),
+    },
+    {
+        "key": "dieu-chinh-giay-phep-hoat-dong-kcb",
+        # Mã TTHC 1.012280, CÙNG cổng + khung Form.io với "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh" ngay
+        # trên: nộp tại SỞ Y tế → agencyProvinceOnly + agencySoFirst, luồng chung "xay-dung". Key TRÙNG lõi →
+        # process/attach tự nối. ke_khai_links ghi key khác ("dieu-chinh-giay-phep-hoat-dong-kham-benh-chua-benh")
+        # nên uuid + mã khai tay. Chủ hồ sơ là CƠ SỞ (mapper lõi chọn đối tượng tổ chức).
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012280",
+                "MaTTHC=1.012280",
+                "019d2bff-1d9a-76c9-8537-4e29900dec8a",
+            ],
+            # KHÁC bản cấp mới ngay trên ("cấp mới giấy phép hoạt động …"): cụm "điều chỉnh" không có ở đó.
+            "textIncludes": ["điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh",
+        "shortLabel": "Điều chỉnh giấy phép hoạt động cơ sở khám bệnh, chữa bệnh",
+        "subtitle": "Cho phòng khám, nha khoa đổi tên, quy mô, phạm vi hoạt động (Sở Y tế)",
+        "icon": "🏥",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1d9a-76c9-8537-4e29900dec8a",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 5 dòng cố định (planner lõi attp-row) → tắt hideRepeatableHint mà profile
+        # "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don_de_nghi", "name": "Đơn đề nghị điều chỉnh giấy phép hoạt động (Mẫu 02 Phụ lục II Nghị "
+             "định 96/2023/NĐ-CP) — đã ký, đóng dấu", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_phep_hoat_dong", "name": "Giấy phép hoạt động đã được cấp (kèm quyết định của Sở Y tế "
+             "nếu có)", "icon": "🏥", "sides": 1, "repeatable": True},
+            {"key": "quyet_dinh_to_chuc_lai", "name": "Quyết định tổ chức lại, đổi tên hoặc giấy tờ chứng minh "
+             "việc thay đổi", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "ke_khai", "name": "Bản kê khai cơ sở vật chất, thiết bị, nhân sự (khi thay đổi quy mô, phạm "
+             "vi, danh mục kỹ thuật)", "icon": "📋", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người ký Đơn, thêm CCCD người nộp nếu nộp thay",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của CƠ SỞ khám bệnh, chữa bệnh đề nghị điều chỉnh):\n"
+            "1. Đơn đề nghị điều chỉnh giấy phép hoạt động (Mẫu 02 Phụ lục II Nghị định 96/2023/NĐ-CP), đã ký, "
+            "đóng dấu — nguồn chính để điền form.\n"
+            "2. Giấy phép hoạt động khám bệnh, chữa bệnh đã được cấp (và quyết định của Sở Y tế kèm theo nếu có).\n"
+            "3. Quyết định tổ chức lại / đổi tên hoặc giấy tờ chứng minh việc thay đổi.\n"
+            "4. Nếu thay đổi quy mô, phạm vi, danh mục kỹ thuật: bản kê khai cơ sở vật chất, thiết bị, nhân sự.\n"
+            "5. Căn cước công dân của người ký Đơn; nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là cơ sở khám bệnh, chữa bệnh (người đại diện ký Đơn).\n"
+            "Bước Thành phần hồ sơ: Đơn → dòng Đơn Mẫu 02; giấy phép + quyết định của Sở → dòng 'Bản gốc giấy "
+            "phép hoạt động'; bản kê khai → dòng 'Bản kê khai cơ sở vật chất'; quyết định tổ chức lại, căn cước "
+            "và giấy tờ khác → dòng 'điểm b khoản 3 Điều 54'."
+        ),
+    },
+    {
+        "key": "cap-chung-chi-hanh-nghe-duoc",
+        # Mã TTHC 1.014092, cổng Bộ Y tế (Form.io, field-key trùng khít các thủ tục BYT): nộp tại SỞ Y tế
+        # (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst, luồng chung "xay-dung". Key TRÙNG lõi
+        # và ke_khai_links → process/attach + URL tự nối.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.014092",
+                "MaTTHC=1.014092",
+                "019d2bff-3538-71fe-8b3b-2fe11f5d68a0",
+            ],
+            # Hai cụm đi cùng nhau (AND) như lõi: trang cấp lại / điều chỉnh GCN kinh doanh dược cũng có chữ
+            # "chứng chỉ hành nghề dược" (dòng giấy tờ) nhưng không có "điều 28 của luật dược".
+            "textIncludes": ["cấp chứng chỉ hành nghề dược", "điều 28 của luật dược"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp Chứng chỉ hành nghề dược (bao gồm cả trường hợp cấp Chứng chỉ hành nghề dược cho "
+                 "người bị thu hồi Chứng chỉ hành nghề dược theo quy định tại các khoản 1, 2, 4, 5, 6, 7, "
+                 "8, 9, 10, 11 Điều 28 của Luật Dược) theo hình thức xét hồ sơ",
+        "shortLabel": "Cấp chứng chỉ hành nghề dược",
+        "subtitle": "Cho dược sĩ xin chứng chỉ hành nghề dược theo hình thức xét hồ sơ (Sở Y tế)",
+        "icon": "💊",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3538-71fe-8b3b-2fe11f5d68a0",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 8 dòng cố định (planner lõi attp-row; ảnh chân dung, căn cước đính chung dòng
+        # Đơn) → tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don_de_nghi", "name": "Đơn đề nghị cấp chứng chỉ hành nghề dược (Mẫu số 02) kèm ảnh chân "
+             "dung 4x6 chụp trong 6 tháng — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Văn bằng chuyên môn (bằng tốt nghiệp dược)", "icon": "🎓", "sides": 1,
+             "repeatable": True},
+            {"key": "ly_lich_tu_phap", "name": "Phiếu lý lịch tư pháp", "icon": "📝", "sides": 1,
+             "repeatable": True},
+            {"key": "suc_khoe", "name": "Giấy chứng nhận đủ sức khỏe để hành nghề dược", "icon": "🏥",
+             "sides": 1, "repeatable": True},
+            {"key": "thoi_gian_thuc_hanh", "name": "Giấy xác nhận thời gian thực hành (Mẫu số 03)", "icon": "📋",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị, thêm CCCD người nộp nếu nộp thay",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: giấy xác nhận cập nhật kiến thức dược (Mẫu số 08, khi "
+             "bị thu hồi chứng chỉ), giấy công nhận tương đương văn bằng nước ngoài", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (đều là của NGƯỜI ĐỀ NGHỊ cấp chứng chỉ hành nghề dược):\n"
+            "1. Đơn đề nghị cấp chứng chỉ hành nghề dược (Mẫu số 02), đã ký, kèm ảnh chân dung 4x6 chụp trong 6 "
+            "tháng — nguồn chính để điền form.\n"
+            "2. Căn cước công dân (2 mặt) của người đề nghị.\n"
+            "3. Văn bằng chuyên môn (bằng tốt nghiệp dược).\n"
+            "4. Phiếu lý lịch tư pháp.\n"
+            "5. Giấy chứng nhận đủ sức khỏe để hành nghề dược.\n"
+            "6. Giấy xác nhận thời gian thực hành (Mẫu số 03). Nếu bị THU HỒI chứng chỉ thì thay bằng giấy xác "
+            "nhận hoàn thành đào tạo, cập nhật kiến thức chuyên môn về dược (Mẫu số 08).\n"
+            "7. Nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người đề nghị. Tự nộp thì giữ tích 'Người nộp là chủ hồ sơ'; nộp thay thì bỏ tích và "
+            "điền riêng hai phần.\n"
+            "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (bản Scan tệp tin); ảnh chân dung và căn cước "
+            "(không có dòng riêng) đính cùng dòng Đơn."
+        ),
+    },
+    {
+        "key": "cong-bo-co-so-du-dieu-kien-tiem-chung",
+        # Mã TTHC 2.000655, hệ thống TTHC Bộ Y tế (Form.io dom-* + attach attp-row 1 dòng Văn bản thông báo): nộp
+        # tại SỞ Y tế (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst, luồng chung "xay-dung".
+        # Key TRÙNG lõi và ke_khai_links → process/attach + URL tự nối. Chủ hồ sơ là CƠ SỞ tiêm chủng (người đứng
+        # đầu ký Thông báo); mapper lõi bỏ tích "Người nộp là chủ hồ sơ".
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=2.000655",
+                "MaTTHC=2.000655",
+                "019d2bff-44df-7439-be21-a60e2bb7c9b8",
+            ],
+            "textIncludes": ["công bố cơ sở đủ điều kiện tiêm chủng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Công bố cơ sở đủ điều kiện tiêm chủng",
+        "shortLabel": "Công bố cơ sở đủ điều kiện tiêm chủng",
+        "subtitle": "Cho phòng khám, cơ sở y tế công bố đủ điều kiện tiêm chủng (Sở Y tế)",
+        "icon": "💉",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-44df-7439-be21-a60e2bb7c9b8",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 1 dòng cố định (Thông báo, gom cả Tờ trình + Danh sách) → tắt hideRepeatableHint
+        # mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Văn bản thông báo cơ sở đủ điều kiện tiêm chủng (mẫu Phụ lục Nghị định "
+             "104/2016/NĐ-CP) kèm tờ trình, danh sách cơ sở — đã ký, đóng dấu", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp và của người đứng đầu cơ sở (chỉ để điền)",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản thông báo cơ sở đủ điều kiện tiêm chủng (mẫu Phụ lục Nghị định 104/2016/NĐ-CP), đã ký, "
+            "đóng dấu — nguồn chính để điền form. Có thể tải cả file gộp Tờ trình + Danh sách cơ sở + Thông báo.\n"
+            "2. Căn cước công dân của người nộp (tài khoản đang đăng nhập) — để bổ sung ngày sinh, giới tính, "
+            "ngày cấp ở mục người nộp.\n"
+            "3. Căn cước công dân của người đứng đầu cơ sở ghi trên Thông báo (bỏ qua nếu trùng người nộp).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là cơ sở tiêm chủng: trợ lý bỏ tích 'Người nộp là chủ hồ sơ' và điền chủ hồ sơ theo "
+            "Thông báo (người đứng đầu, địa chỉ, điện thoại, email của cơ sở).\n"
+            "Bước Thành phần hồ sơ: Thông báo (kèm Tờ trình, Danh sách) → dòng 'Văn bản thông báo đủ điều kiện "
+            "tiêm chủng'; căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
         #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực
@@ -2504,6 +2970,453 @@ PROCEDURES: list[dict] = [
             "không lấy thông tin trên Bằng Tổ quốc ghi công điền cho người đề nghị.\n"
             "Bước Thành phần hồ sơ: văn bản ủy quyền vào ô 1, Đơn Mẫu 18 vào ô 2, Bằng Tổ quốc "
             "ghi công vào ô 3; căn cước và trích lục khai tử xếp vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "cap-lai-to-quoc-ghi-cong",
+        # Cổng Bộ Nội vụ, CÙNG cách chọn cơ quan CẤP XÃ với "tro-cap-tho-cung-liet-si" ngay trên
+        # (ke_khai_links không có selectSo; đơn nộp qua UBND cấp xã rồi xã gửi công văn lên Sở).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            # Chưa có snapshot trang kê khai nên chưa biết id SPA (apply-online/<id>, process=<id>)
+            # → trang kê khai nhận bằng cụm tên. Hai cụm đi cùng nhau (AND): "tổ quốc ghi công" một
+            # mình còn có trên trang thờ cúng liệt sĩ / di chuyển hồ sơ (mục giấy tờ Bằng TQGC).
+            "urlIncludes": [
+                "MaTTHC=1.010778",
+                "019d2bfa-fbf8-727d-a4be-847d1f9944ce",
+            ],
+            "textIncludes": ["cấp lại bằng", "tổ quốc ghi công"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": 'Cấp lại Bằng "Tổ quốc ghi công"',
+        "shortLabel": 'Cấp lại Bằng "Tổ quốc ghi công" cho gia đình liệt sĩ',
+        "subtitle": "Xin lại Bằng Tổ quốc ghi công bị mất, hư hỏng",
+        "icon": "🎖️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fbf8-727d-a4be-847d1f9944ce",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có HAI ô cố định (planner core trả fixed-slot 0/1) theo đúng thứ tự
+        # dưới đây, phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "don_de_nghi_mau16", "name": "Đơn đề nghị cấp lại Bằng \"Tổ quốc ghi công\" "
+             "(Mẫu số 16, Nghị định 131/2021/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "bang_tqgc_cu", "name": "Bằng \"Tổ quốc ghi công\" cũ (nếu còn, kể cả bản "
+             "bị hư hỏng)", "icon": "🎖️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "cong_van_ubnd", "name": "Công văn đề nghị của UBND cấp xã, danh sách đề nghị "
+             "cấp lại (nếu đã có)", "icon": "🏛️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp đổi/cấp lại Bằng \"Tổ quốc ghi công\" (Mẫu số 16, Phụ lục I Nghị định "
+            "131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người đề nghị — bổ sung số định danh, ngày/nơi cấp, nơi cư trú.\n"
+            "3. Nếu có: Bằng \"Tổ quốc ghi công\" cũ, công văn của UBND cấp xã, danh sách đề nghị cấp lại.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người đề nghị (còn sống, là chủ hồ sơ) và liệt sĩ là HAI người khác nhau — "
+            "không lấy thông tin liệt sĩ trên đơn hay trên Bằng cũ điền cho người đề nghị.\n"
+            "Bước Thành phần hồ sơ: Đơn Mẫu 16 vào ô 1, Bằng cũ vào ô 2; căn cước, công văn, danh "
+            "sách xếp vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP XÃ như "tro-cap-tho-cung-liet-si": registry lõi ghi cổng chạy
+        # "Quy trình liên thông Xã - Sở Nội vụ" (xã nhận hồ sơ rồi chuyển Sở).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            # Trang kê khai không còn mã thủ tục trên URL → nhận bằng cụm tên (không đụng thủ tục nào khác;
+            # cấp lại Bằng TQGC dùng "cấp lại bằng", không có "giấy chứng nhận người có công").
+            "urlIncludes": [
+                "MaTTHC=1.010814",
+                "019d2bfa-fc21-710a-9e17-59cdb35c723b",
+            ],
+            "textIncludes": ["cấp bổ sung hoặc cấp lại giấy chứng nhận người có công"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp bổ sung hoặc cấp lại giấy chứng nhận người có công do ngành Lao động - Thương binh và Xã hội "
+            "quản lý và giấy chứng nhận thân nhân liệt sĩ"
+        ),
+        "shortLabel": "Cấp bổ sung, cấp lại giấy chứng nhận người có công, thân nhân liệt sĩ",
+        "subtitle": "Xin lại giấy chứng nhận bị mất, hư hỏng hoặc cần bổ sung thông tin",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc21-710a-9e17-59cdb35c723b",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có MỘT ô cố định (planner core trả fixed-slot 0: Đơn Mẫu 25), phần còn lại
+        # đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "don_de_nghi_mau25", "name": "Đơn đề nghị cấp bổ sung hoặc cấp lại giấy chứng nhận "
+             "(Mẫu số 25, Nghị định 131/2021/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người làm đơn", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "giay_chung_nhan_cu", "name": "Giấy chứng nhận đã cấp (bản bị hư hỏng hoặc cần bổ "
+             "sung thông tin, nếu còn)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp bổ sung hoặc cấp lại giấy chứng nhận (Mẫu số 25, Phụ lục I Nghị định "
+            "131/2021/NĐ-CP), đã ký — nguồn chính: diện người có công, quyết định hưởng trợ cấp, loại giấy "
+            "chứng nhận, lý do.\n"
+            "2. Căn cước công dân của người làm đơn — bổ sung số định danh, ngày/nơi cấp, nơi thường trú.\n"
+            "3. Nếu có: giấy chứng nhận đã cấp (bản bị hư hỏng hoặc cần bổ sung thông tin).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: Đơn Mẫu 25 vào ô 1; giấy chứng nhận cũ, căn cước và giấy tờ khác xếp "
+            "vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "bo-sung-than-nhan-liet-si",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP XÃ như "tro-cap-tho-cung-liet-si": hồ sơ kèm công văn đề nghị
+        # của UBND cấp xã (xã nhận đơn rồi chuyển Sở).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.010825",
+                "maThuTuc=1.010825",
+                "019d2bfa-fc36-74e9-9909-551c04aa6c27",
+            ],
+            # Cùng đơn Mẫu 26/06 với "sua-doi-thong-tin-ho-so-nguoi-co-cong" nhưng tên thủ tục khác hẳn
+            # ("tình hình thân nhân" + "hồ sơ liệt sĩ") → cụm tên đủ tách.
+            "textIncludes": ["bổ sung tình hình thân nhân trong hồ sơ liệt sĩ"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Bổ sung tình hình thân nhân trong hồ sơ liệt sĩ",
+        "shortLabel": "Bổ sung tình hình thân nhân trong hồ sơ liệt sĩ",
+        "subtitle": "Thêm, sửa thông tin thân nhân trong hồ sơ liệt sĩ",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc36-74e9-9909-551c04aa6c27",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có HAI ô cố định (planner core trả fixed-slot 0/1) theo đúng thứ tự dưới
+        # đây, phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "giay_to_chung_minh_quan_he", "name": "Bản sao chứng thực giấy tờ chứng minh quan hệ "
+             "với liệt sĩ (căn cước, giấy khai sinh, trích lục khai sinh, đăng ký kết hôn, lý lịch)",
+             "icon": "👪", "sides": 1, "repeatable": True},
+            {"key": "don_sua_doi_bo_sung", "name": "Đơn đề nghị sửa đổi, bổ sung thông tin trong hồ sơ "
+             "liệt sĩ (Mẫu số 26, Nghị định 131/2021/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người khai", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: hồ sơ liệt sĩ, Bằng Tổ quốc ghi công, công văn "
+             "của UBND cấp xã", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị sửa đổi, bổ sung thông tin trong hồ sơ liệt sĩ (Mẫu số 26/06, Phụ lục I Nghị "
+            "định 131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người khai — bổ sung số định danh, ngày/nơi cấp, nơi cư trú.\n"
+            "3. Bản sao chứng thực giấy tờ chứng minh quan hệ với liệt sĩ của các thân nhân (căn cước, giấy "
+            "khai sinh, trích lục khai sinh, đăng ký kết hôn, lý lịch).\n"
+            "4. Nếu có: hồ sơ liệt sĩ, Bằng \"Tổ quốc ghi công\", công văn của UBND cấp xã.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người khai (thân nhân còn sống) và liệt sĩ là HAI người khác nhau.\n"
+            "Bước Thành phần hồ sơ: giấy tờ chứng minh quan hệ vào ô 1, Đơn Mẫu 26 vào ô 2; hồ sơ liệt "
+            "sĩ, Bằng TQGC, công văn xếp vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "tham-vieng-mo-liet-si",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP XÃ như "tro-cap-tho-cung-liet-si": thân nhân đề nghị UBND cấp xã
+        # nơi cư trú cấp giấy giới thiệu đi thăm viếng.
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.013750",
+                "019d2bfb-2324-7555-8e56-024dcdb30038",
+            ],
+            "textIncludes": ["thăm viếng mộ liệt sĩ"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thăm viếng mộ liệt sĩ",
+        "shortLabel": "Thăm viếng mộ liệt sĩ (giấy giới thiệu, hỗ trợ chi phí)",
+        "subtitle": "Xin giấy giới thiệu, hỗ trợ đi thăm viếng mộ liệt sĩ",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2324-7555-8e56-024dcdb30038",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có BA ô cố định (planner core trả fixed-slot 0/1/2) theo đúng thứ tự dưới
+        # đây, phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "ho_so_liet_si", "name": "Giấy báo tin mộ liệt sĩ, giấy xác nhận nơi liệt sĩ hy sinh "
+             "(Mẫu 44) hoặc trích lục hồ sơ liệt sĩ", "icon": "🕯️", "sides": 1, "repeatable": True},
+            {"key": "giay_chung_nhan_than_nhan", "name": "Giấy chứng nhận gia đình/thân nhân liệt sĩ hoặc "
+             "quyết định trợ cấp thờ cúng liệt sĩ", "icon": "👪", "sides": 1, "repeatable": True},
+            {"key": "don_gioi_thieu", "name": "Đơn đề nghị thăm viếng mộ liệt sĩ (Mẫu số 31, Nghị định "
+             "131/2021/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: Bằng Tổ quốc ghi công", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị / giấy giới thiệu thăm viếng mộ liệt sĩ (Mẫu số 31/42, Phụ lục I Nghị định "
+            "131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người đề nghị — bổ sung số định danh, ngày/nơi cấp, nơi cư trú.\n"
+            "3. Giấy báo tin mộ liệt sĩ, giấy xác nhận nơi hy sinh (Mẫu 44) hoặc trích lục hồ sơ liệt sĩ.\n"
+            "4. Giấy chứng nhận gia đình/thân nhân liệt sĩ hoặc quyết định trợ cấp thờ cúng.\n"
+            "5. Nếu có: Bằng \"Tổ quốc ghi công\".\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người đề nghị (thân nhân còn sống) và liệt sĩ là HAI người khác nhau.\n"
+            "Bước Thành phần hồ sơ: hồ sơ/trích lục liệt sĩ vào ô 1, giấy chứng nhận thân nhân vào ô 2, "
+            "Đơn vào ô 3; căn cước, Bằng TQGC xếp vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "giai-quyet-che-do-khang-chien",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP XÃ như "tro-cap-tho-cung-liet-si": Bản khai Mẫu 11 nộp ở UBND cấp
+        # xã nơi thường trú (xã xác nhận rồi chuyển Sở).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            # id SPA lấy từ registry lõi (cổng thật).
+            "urlIncludes": [
+                "MaTTHC=1.010819",
+                "019d2bfa-fc33-7068-b98d-1b1eba21519f",
+                "apply-online/6960726b36973e2430327813",
+                "process=69706a4ce528a8797931839f",
+            ],
+            # Hai cụm đi cùng nhau (AND). Mai táng dân công hỏa tuyến cũng có "kháng chiến … nhiệm vụ quốc
+            # tế" nhưng ghi "chống Pháp, chống Mỹ" và "nhiệm vụ", không có hai cụm này.
+            "textIncludes": ["hoạt động kháng chiến giải phóng dân tộc", "làm nghĩa vụ quốc tế"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Giải quyết chế độ người hoạt động kháng chiến giải phóng dân tộc, bảo vệ Tổ quốc "
+            "và làm nghĩa vụ quốc tế"
+        ),
+        "shortLabel": "Giải quyết chế độ người hoạt động kháng chiến, bảo vệ Tổ quốc",
+        "subtitle": "Hưởng chế độ cho người tham gia kháng chiến",
+        "icon": "🎖️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc33-7068-b98d-1b1eba21519f",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có BA ô cố định (planner core trả fixed-slot 0/1/2) và KHÔNG có nút "Thêm
+        # giấy tờ": căn cước, sổ BHXH chỉ là nguồn đọc để điền, planner không đính lên cổng.
+        "requiredDocs": [
+            {"key": "ban_khai", "name": "Bản khai cá nhân (Mẫu số 11, Nghị định 131/2021/NĐ-CP, có xác "
+             "nhận UBND cấp xã) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_bao_tu", "name": "Giấy báo tử hoặc trích lục khai tử (khi người hoạt động kháng "
+             "chiến đã mất)", "icon": "🕯️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "huy_chuong", "name": "Bản sao chứng thực Huân chương, Huy chương Kháng chiến, Chiến "
+             "thắng hoặc quyết định tặng thưởng", "icon": "🎖️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hoạt động kháng chiến", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: sổ bảo hiểm xã hội", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản khai cá nhân theo Mẫu số 11 (Phụ lục I Nghị định 131/2021/NĐ-CP, có xác nhận UBND cấp "
+            "xã), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người hoạt động kháng chiến.\n"
+            "3. Giấy chứng nhận Huân/Huy chương Kháng chiến, Chiến thắng (hoặc quyết định tặng thưởng).\n"
+            "4. Nếu có: giấy báo tử/trích lục khai tử (người hoạt động kháng chiến đã mất), sổ bảo hiểm "
+            "xã hội.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Người hoạt động kháng chiến còn sống là chủ hồ sơ; đã mất thì thân nhân đứng đại diện.\n"
+            "Bước Thành phần hồ sơ: Bản khai Mẫu 11 vào ô 1, giấy báo tử vào ô 2 (nếu có), Huân/Huy "
+            "chương vào ô 3. Cổng không có mục 'Thêm giấy tờ' nên căn cước, sổ BHXH chỉ dùng để điền."
+        ),
+    },
+    {
+        "key": "sua-doi-thong-tin-ho-so-nguoi-co-cong",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP SỞ như "di-chuyen-ho-so-nguoi-huong-tro-cap": đơn Mẫu 26 gửi Sở nơi
+        # quản lý hồ sơ gốc người có công (Điều 174 NĐ 131/2021) → agencyProvinceOnly + agencySoFirst.
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.010826",
+                "019d2bfb-03d5-777b-bdc9-f3ccadbd96f8",
+            ],
+            # Cùng đơn Mẫu 26 với "bo-sung-than-nhan-liet-si"; thủ tục đó không có hai cụm này.
+            "textIncludes": ["bổ sung thông tin cá nhân", "hồ sơ người có công"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Sửa đổi, bổ sung thông tin cá nhân trong hồ sơ người có công",
+        "shortLabel": "Sửa đổi, bổ sung thông tin cá nhân trong hồ sơ người có công",
+        "subtitle": "Sửa họ tên, ngày sinh, quê quán… trong hồ sơ người có công",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d5-777b-bdc9-f3ccadbd96f8",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có HAI ô cố định (planner core trả fixed-slot 0/1) và KHÔNG có nút "Thêm
+        # giấy tờ": giấy tờ khác chỉ là nguồn đọc để điền, planner bỏ qua khi đính.
+        "requiredDocs": [
+            {"key": "cccd", "name": "Bản sao chứng thực căn cước công dân của người có công hoặc thân nhân",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "don_mau_26", "name": "Đơn đề nghị sửa đổi, bổ sung thông tin cá nhân (Mẫu số 26, Nghị "
+             "định 131/2021/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: bản khai thân nhân, giấy khai sinh, trích lục "
+             "khai tử, Bằng Tổ quốc ghi công", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị sửa đổi, bổ sung thông tin cá nhân theo Mẫu số 26 (Phụ lục I Nghị định "
+            "131/2021/NĐ-CP), đã ký — nguồn chính về nội dung sửa đổi.\n"
+            "2. Căn cước công dân của người khai đơn — nguồn nhân thân người nộp.\n"
+            "3. Nếu có: bản khai thân nhân, giấy khai sinh, trích lục khai tử, Bằng \"Tổ quốc ghi công\" "
+            "để bổ sung nội dung đơn.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Người khai đơn là người nộp và là chủ hồ sơ; người có công chỉ xuất hiện trong nội dung đề nghị "
+            "sửa.\n"
+            "Bước Thành phần hồ sơ: căn cước vào ô 1, Đơn Mẫu 26 vào ô 2. Cổng không có mục 'Thêm giấy tờ' "
+            "nên giấy tờ khác chỉ dùng để điền."
+        ),
+    },
+    {
+        "key": "mai-tang-dan-cong-hoa-tuyen",
+        # Cổng Bộ Nội vụ, chọn cơ quan CẤP XÃ như "tro-cap-tho-cung-liet-si": thân nhân lập bản khai Mẫu
+        # 02-MTP có xác nhận UBND cấp xã (QĐ 49/2015/QĐ-TTg). ke_khai_links ghi key khác
+        # ("giai-quyet-che-do-mai-tang-dan-cong-hoa-tuyen", mã 1.014359) nên uuid + mã phải khai tay ở đây.
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.014359",
+                "019d2bfb-2b25-777d-a825-2823012ce7ec",
+            ],
+            # Hai cụm đi cùng nhau (AND): "mai táng phí" một mình còn có ở các thủ tục mai táng khác.
+            "textIncludes": ["mai táng phí", "dân công hỏa tuyến"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Giải quyết chế độ mai táng phí đối với dân công hỏa tuyến tham gia kháng chiến chống Pháp, "
+            "chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế"
+        ),
+        "shortLabel": "Mai táng phí cho dân công hỏa tuyến tham gia kháng chiến",
+        "subtitle": "Thân nhân nhận tiền mai táng khi dân công hỏa tuyến qua đời",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b25-777d-a825-2823012ce7ec",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin bổ sung" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" chỉ có HAI ô cố định, KHÔNG có nút "Thêm giấy tờ": planner core dồn mọi tệp
+        # vào ô 1 (ô nhận nhiều tệp), riêng trích lục khai tử vào ô 2.
+        "requiredDocs": [
+            {"key": "qd_tro_cap", "name": "Bản trích sao quyết định hưởng trợ cấp một lần của người đã "
+             "mất", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "giay_chung_tu", "name": "Trích lục khai tử hoặc giấy chứng tử của người đã mất",
+             "icon": "🕯️", "sides": 1, "repeatable": True},
+            {"key": "ban_khai_02mtp", "name": "Bản khai của thân nhân đề nghị hưởng mai táng phí (Mẫu "
+             "02-MTP, có xác nhận UBND cấp xã) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của thân nhân đứng khai", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: biên bản họp đồng thuận của những người cùng hàng "
+             "thừa kế (Mẫu 80A)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản khai của thân nhân đề nghị hưởng chế độ mai táng phí (Mẫu 02-MTP, có xác nhận UBND "
+            "cấp xã) theo Quyết định số 49/2015/QĐ-TTg — nguồn chính để điền form.\n"
+            "2. Bản trích sao quyết định hưởng chế độ trợ cấp một lần của người đã mất.\n"
+            "3. Trích lục khai tử hoặc giấy chứng tử của người đã mất.\n"
+            "4. Căn cước công dân của thân nhân đứng khai.\n"
+            "5. Nếu có nhiều thân nhân: biên bản họp đồng thuận của những người cùng hàng thừa kế (Mẫu 80A).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: thân nhân đứng khai (còn sống, là chủ hồ sơ) và người đã mất là HAI người khác nhau.\n"
+            "Bước Thành phần hồ sơ: trích lục khai tử vào ô 2; mọi giấy tờ còn lại gom vào ô 1."
         ),
     },
     {
@@ -3304,6 +4217,220 @@ PROCEDURES: list[dict] = [
             "dòng), lý do và thông tin ký.\n"
             "Bước đính kèm: Đơn Mẫu 01 vào dòng 'Đơn đề nghị' (Bản chính), ảnh hiện trạng vào dòng 'Ảnh "
             "chụp hiện trạng cây xanh'."
+        ),
+    },
+    {
+        "key": "chap-thuan-dau-noi-tam",
+        # Mã TTHC 1.000314, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 3 dòng). Key TRÙNG
+        # lõi → process/attach tự nối. ke_khai_links không khai selectSo/provinceOnlyAgency → DVCQG chọn đủ
+        # Tỉnh + Phường/Xã như "cap-phep-long-duong-via-he"; hộp thoại "Chọn trường hợp giải quyết" của cổng vẫn
+        # đọc lựa chọn thật (maeDialogChoice) rồi hỏi người dân.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.000314",
+                "019d2bfe-0b6a-755c-859a-4ec09fbd16c7",
+            ],
+            "textIncludes": ["chấp thuận vị trí đấu nối tạm vào đường bộ đang khai thác"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Chấp thuận vị trí đấu nối tạm vào đường bộ đang khai thác",
+        "shortLabel": "Chấp thuận vị trí đấu nối tạm vào đường bộ",
+        "subtitle": "Xin mở lối ra vào tạm từ công trường, dự án vào đường đang khai thác",
+        "icon": "🛣️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-0b6a-755c-859a-4ec09fbd16c7",
+        # Bảng thành phần hồ sơ 3 dòng cố định (planner core attp-row: HĐ thi công / chủ trương → dòng 1, Đơn →
+        # dòng 2, bản vẽ → dòng 3) → tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "hd_chu_truong", "name": "Hợp đồng thi công xây dựng hoặc văn bản chấp thuận chủ trương "
+             "đầu tư (kèm công văn, hồ sơ pháp lý dự án)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "don_de_nghi", "name": "Văn bản đề nghị chấp thuận vị trí đấu nối tạm — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "ho_so_ban_ve", "name": "Hồ sơ thiết kế bản vẽ thi công nút giao đấu nối tạm, phương án tổ "
+             "chức giao thông", "icon": "🗺️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp (chỉ để điền, không đính kèm)",
+             "icon": "🪪", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị chấp thuận vị trí đấu nối tạm, đã ký — nguồn chính để điền form.\n"
+            "2. Hợp đồng thi công xây dựng hoặc văn bản chấp thuận chủ trương đầu tư (kèm công văn, nghị "
+            "quyết, hồ sơ pháp lý dự án).\n"
+            "3. Hồ sơ thiết kế bản vẽ thi công nút giao đấu nối tạm, phương án tổ chức giao thông.\n"
+            "4. Căn cước công dân của người nộp — chỉ để điền thông tin, không đính kèm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Trợ lý điền Phần I (người nộp) và Phần II (đơn vị đề nghị, vị trí đấu nối, trường hợp, cam kết, "
+            "người ký).\n"
+            "Bước đính kèm: hợp đồng / chủ trương → dòng 1; Văn bản đề nghị → dòng 2; bản vẽ → dòng 3."
+        ),
+    },
+    {
+        "key": "gia-han-luu-hanh-phuong-tien-lao",
+        # Mã TTHC 1.002063, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io key PHẲNG + attach attp-row 2 dòng, engine tách
+        # trang sourceSegments). Key TRÙNG lõi → process/attach tự nối. ke_khai_links ghi key khác
+        # ("gia-han-luu-hanh-phuong-tien-lao-tai-viet-nam") nên uuid + mã phải khai tay ở đây; ke_khai khai
+        # selectSo → agencyProvinceOnly + agencySoFirst như liên vận Việt – Lào.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.002063",
+                "019d2bfe-134f-7491-9d27-d7049d4567a6",
+            ],
+            # KHÁC "cap-giay-phep-lien-van-viet-lao" (cấp giấy phép): ở đây xe Lào đã vào Việt Nam, xin ở thêm.
+            "textIncludes": ["gia hạn thời gian lưu hành tại việt nam cho phương tiện của lào"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Gia hạn thời gian lưu hành tại Việt Nam cho phương tiện của Lào",
+        "shortLabel": "Gia hạn thời gian lưu hành tại Việt Nam cho xe Lào",
+        "subtitle": "Xin ở lại thêm cho xe Lào đang lưu hành tại Việt Nam",
+        "icon": "🚚",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-134f-7491-9d27-d7049d4567a6",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        # Bảng thành phần hồ sơ 2 dòng cố định (Giấy đề nghị / Giấy phép liên vận); giấy tờ khác planner đính
+        # chung dòng 1 → tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Giấy đề nghị gia hạn thời gian lưu hành tại Việt Nam (Mẫu số 07) "
+             "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_phep_lien_van", "name": "Giấy phép liên vận Việt Nam – Lào (bìa, trang thông tin xe, "
+             "các trang có dấu nhập cảnh)", "icon": "🚚", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người xin gia hạn", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ chứng minh lý do gia hạn, ví dụ báo giá sửa chữa xe (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (một file có thể gộp nhiều giấy — hệ thống tự tách theo trang):\n"
+            "1. Giấy đề nghị gia hạn thời gian lưu hành của phương tiện tại Việt Nam (Mẫu số 07), đã ký — "
+            "nguồn chính để điền form.\n"
+            "2. Giấy phép liên vận Việt Nam – Lào (bìa, trang thông tin xe, các trang có dấu nhập cảnh).\n"
+            "3. Căn cước công dân của người xin gia hạn — để điền ngày sinh, số căn cước, ngày cấp.\n"
+            "4. Nếu có: giấy tờ chứng minh lý do gia hạn (ví dụ báo giá sửa chữa xe).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Giấy đề nghị → dòng 1; Giấy phép liên vận → dòng 2; giấy tờ khác đính chung dòng 1."
+        ),
+    },
+    {
+        "key": "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+        # Mã TTHC 1.004002, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 4 dòng, engine tách/gộp
+        # trang sourceSegments). Key TRÙNG lõi và ke_khai_links → process/attach + URL kê khai tự nối. ke_khai khai
+        # selectSo → agencyProvinceOnly + agencySoFirst + "Sở Xây dựng".
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.004002",
+                "019d2bfe-3a7b-7789-9f25-1ec7a3f64d81",
+            ],
+            "textIncludes": ["chuyển quyền sở hữu phương tiện nhưng không thay đổi cơ quan đăng ký"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký lại phương tiện trong trường hợp chuyển quyền sở hữu phương tiện nhưng không thay đổi cơ quan "
+            "đăng ký phương tiện"
+        ),
+        "shortLabel": "Đăng ký lại phương tiện thủy khi mua bán, cho tặng",
+        "subtitle": "Sang tên tàu, thuyền, phương tiện thủy nội địa cho chủ mới",
+        "icon": "⛴️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-3a7b-7789-9f25-1ec7a3f64d81",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        # Bảng thành phần hồ sơ 4 dòng cố định (planner core gom nhiều giấy vào một dòng) → tắt hideRepeatableHint
+        # mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "bien_lai_truoc_ba", "name": "Giấy nộp tiền / biên lai lệ phí trước bạ", "icon": "🧾",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn_an_toan_ky_thuat", "name": "Giấy chứng nhận an toàn kỹ thuật và bảo vệ môi trường của "
+             "phương tiện (còn hiệu lực)", "icon": "🛟", "sides": 1, "repeatable": True},
+            {"key": "hop_dong_mua_ban", "name": "Hợp đồng mua bán (bản sao chứng thực) hoặc giấy tờ cho, tặng, "
+             "thừa kế; hóa đơn; giấy chứng nhận đăng ký phương tiện cũ", "icon": "📑",
+             "sides": 1, "repeatable": True},
+            {"key": "don_de_nghi", "name": "Đơn đề nghị đăng ký lại phương tiện (Mẫu số 07) của chủ mới và đơn "
+             "đề nghị xóa đăng ký (Mẫu số 10) của bên bán — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đại diện chủ mới (chỉ để điền)", "icon": "🪪",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF — hệ thống tự tách theo trang):\n"
+            "1. Đơn đề nghị đăng ký lại phương tiện thủy nội địa (Mẫu số 07) của chủ MỚI, đã ký — nguồn chính "
+            "để điền form.\n"
+            "2. Hợp đồng mua bán phương tiện (bản sao chứng thực) hoặc quyết định điều chuyển / giấy tờ cho, "
+            "tặng, thừa kế.\n"
+            "3. Giấy chứng nhận đăng ký phương tiện cũ; hóa đơn; đơn đề nghị xóa đăng ký (Mẫu số 10) của bên bán.\n"
+            "4. Giấy nộp tiền / biên lai lệ phí trước bạ; giấy chứng nhận an toàn kỹ thuật và bảo vệ môi trường.\n"
+            "5. Nếu có: căn cước công dân của người đại diện chủ mới — chỉ để điền thông tin người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: biên lai trước bạ → dòng 1; giấy an toàn kỹ thuật → dòng 2; hợp đồng + hóa đơn + "
+            "giấy đăng ký cũ → dòng 3; Đơn 07 + Đơn xóa 10 → dòng 4."
+        ),
+    },
+    {
+        "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+        # Mã TTHC 1.012906, Sở Xây dựng (Form.io dom-* + attach attp-row 6 dòng, engine tách trang sourceSegments).
+        # Key TRÙNG lõi và ke_khai_links → process/attach + URL tự nối. ke_khai khai selectSo → agencyProvinceOnly +
+        # agencySoFirst + "Sở Xây dựng", luồng chung "xay-dung". Lõi không khai urlScope; đặt dvc.moc.gov.vn như các
+        # thủ tục Sở Xây dựng khác — khi chạy thử phải xác nhận host trang kê khai.
+        "flowProfile": "xay-dung",
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.012906",
+                "019d2bfe-88c8-7158-8063-6f38da02b999",
+            ],
+            "textIncludes": ["cấp mới chứng chỉ hành nghề môi giới bất động sản"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp mới chứng chỉ hành nghề môi giới bất động sản",
+        "shortLabel": "Cấp mới chứng chỉ hành nghề môi giới bất động sản",
+        "subtitle": "Đăng ký dự thi sát hạch, xin chứng chỉ môi giới nhà đất (Sở Xây dựng)",
+        "icon": "🏘️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88c8-7158-8063-6f38da02b999",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        # Bảng thành phần hồ sơ 6 dòng cố định (planner lõi attp-row; Đơn trang 1 + CCCD trang 2 của cùng một PDF về
+        # hai dòng) → tắt hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don_du_thi", "name": "Đơn đăng ký dự thi sát hạch có dán ảnh 4x6 (Phụ lục XXI Nghị định "
+             "96/2024/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân 2 mặt của người đề nghị (bản sao chứng thực)", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "bang_tot_nghiep", "name": "Bằng tốt nghiệp trung học phổ thông trở lên (bản sao chứng thực)",
+             "icon": "🎓", "sides": 1, "repeatable": True},
+            {"key": "gcn_khoa_hoc", "name": "Giấy chứng nhận hoàn thành khóa đào tạo, bồi dưỡng kiến thức hành nghề "
+             "môi giới bất động sản (bản sao chứng thực)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "02 ảnh 4x6 (và 02 phong bì dán tem nộp trực tiếp)", "icon": "🖼️", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Chứng chỉ do nước ngoài cấp kèm bản dịch (nếu có)", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF — hệ thống tự tách theo trang):\n"
+            "1. Đơn đăng ký dự thi sát hạch có dán ảnh 4x6 (Phụ lục XXI Nghị định 96/2024/NĐ-CP), đã ký — nguồn chính "
+            "để điền form.\n"
+            "2. Căn cước công dân 2 mặt của người đề nghị (bản sao chứng thực).\n"
+            "3. Bằng tốt nghiệp trung học phổ thông trở lên (bản sao chứng thực).\n"
+            "4. Giấy chứng nhận hoàn thành khóa đào tạo, bồi dưỡng kiến thức hành nghề môi giới bất động sản (bản "
+            "sao chứng thực).\n"
+            "5. Nếu có: ảnh 4x6 rời; chứng chỉ do nước ngoài cấp kèm bản dịch.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Phần người nộp cổng lấy theo tài khoản đăng nhập; trợ lý điền phần còn lại và Đơn đăng ký dự thi.\n"
+            "Bước Thành phần hồ sơ: bằng tốt nghiệp → dòng 1; căn cước → dòng 2; Đơn → dòng 3; chứng chỉ nước ngoài "
+            "→ dòng 4 (không có thì bỏ tích); giấy chứng nhận khóa học → dòng 5; ảnh → dòng 6 (không có ảnh rời thì "
+            "đính chung trang Đơn)."
         ),
     },
     {

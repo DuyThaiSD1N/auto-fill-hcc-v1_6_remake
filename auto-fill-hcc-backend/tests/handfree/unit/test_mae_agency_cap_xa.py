@@ -19,7 +19,10 @@ LOC = {"province": "Tỉnh Quảng Ngãi", "ward": "Phường Nghĩa Lộ"}
 
 # Mọi thủ tục chọn cơ quan cấp xã phải cư xử giống hệt nhau — thêm thủ tục mới thì thêm key vào
 # đây, không chép cả bộ test.
-WARD_KEYS = ["uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san"]
+WARD_KEYS = ["uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san",
+             "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
+             "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
+             "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat"]
 # Host cổng bộ + mã nhận diện trên cổng bộ + uuid DVCQG của từng thủ tục: uuid CHỈ có trên
 # dichvucong.gov.vn, mã/id SPA chỉ có trên cổng bộ → urlScope thiếu một host là nửa số urlIncludes
 # thành vô dụng (urlScope gate theo OR). ATTP nông lâm thủy sản (Bộ NN&MT) không có mã trên URL
@@ -31,6 +34,21 @@ WARD_URL_IDS = {
                                  "019d2bfa-fc0c-7046-b5dc-04303a18608d"),
     "cap-gcn-attp-nong-lam-thuy-san": ("dichvucongnnmt.mae.gov.vn", "apply-online/693a99efda87c4718ece1bc7",
                                        "019d2bfa-b57f-73cc-856f-0255333fcb48"),
+    "cap-lai-to-quoc-ghi-cong": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010778",
+                                 "019d2bfa-fbf8-727d-a4be-847d1f9944ce"),
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010814",
+                                                          "019d2bfa-fc21-710a-9e17-59cdb35c723b"),
+    "bo-sung-than-nhan-liet-si": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010825",
+                                  "019d2bfa-fc36-74e9-9909-551c04aa6c27"),
+    "tham-vieng-mo-liet-si": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.013750",
+                              "019d2bfb-2324-7555-8e56-024dcdb30038"),
+    "giai-quyet-che-do-khang-chien": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.010819",
+                                      "019d2bfa-fc33-7068-b98d-1b1eba21519f"),
+    # ke_khai_links ghi key khác ("giai-quyet-che-do-mai-tang-dan-cong-hoa-tuyen") → uuid + mã khai tay.
+    "mai-tang-dan-cong-hoa-tuyen": ("dichvucongbnv.moha.gov.vn", "MaTTHC=1.014359",
+                                    "019d2bfb-2b25-777d-a825-2823012ce7ec"),
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ("dichvucongnnmt.mae.gov.vn", "MaTTHC=1.013997",
+                                                           "019d2bfa-8686-732b-b2d5-e6a422f1b242"),
 }
 
 
@@ -124,10 +142,46 @@ def test_tho_cung_liet_si_theo_dung_ba_o_co_dinh_cua_planner():
     assert "optional" not in docs[1] and "optional" not in docs[2]
 
 
-def test_thu_tuc_di_chuyen_ho_so_giu_nguyen_nhanh_so():
+def test_cap_lai_bang_tqgc_theo_dung_hai_o_co_dinh_cua_planner():
+    from app.pipelines.cap_lai_to_quoc_ghi_cong.attach.planner import SLOTS
+
+    docs = _proc("cap-lai-to-quoc-ghi-cong")["requiredDocs"]
+    assert [s["slotKey"] for s in SLOTS] == ["don_de_nghi_mau16", "bang_tqgc_cu"]
+    assert [d["key"] for d in docs[:2]] == [s["slotKey"] for s in SLOTS]
+    # Bằng cũ chỉ "nếu còn" (mất bằng là lý do cấp lại) → không bắt buộc, dù nằm ô 2.
+    assert "optional" not in docs[0] and docs[1]["optional"] is True
+
+
+@pytest.mark.parametrize("key, pipeline", [
+    ("cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong", "cap_bo_sung_cap_lai_giay_chung_nhan_nguoi_co_cong"),
+    ("bo-sung-than-nhan-liet-si", "bo_sung_than_nhan_liet_si"),
+    ("tham-vieng-mo-liet-si", "tham_vieng_mo_liet_si"),
+    ("giai-quyet-che-do-khang-chien", "giai_quyet_che_do_khang_chien"),
+    ("sua-doi-thong-tin-ho-so-nguoi-co-cong", "sua_doi_thong_tin_ho_so_nguoi_co_cong"),
+])
+def test_giay_to_nguoi_co_cong_dung_thu_tu_o_co_dinh_cua_planner(key, pipeline):
+    from importlib import import_module
+
+    slots = import_module(f"app.pipelines.{pipeline}.attach.planner").SLOTS
+    docs = _proc(key)["requiredDocs"]
+    assert [d["key"] for d in docs[:len(slots)]] == [s["slotKey"] for s in slots]
+    assert docs[-1]["key"] == "khac"
+
+
+def test_mai_tang_dan_cong_tach_rieng_o_giay_chung_tu():
+    """Planner dồn mọi tệp vào ô 1, riêng trích lục khai tử vào ô 2 (cổng không có "Thêm giấy tờ")."""
+    from app.pipelines.mai_tang_dan_cong.attach.planner import SLOTS
+
+    docs = _proc("mai-tang-dan-cong-hoa-tuyen")["requiredDocs"]
+    assert [s["slotIndex"] for s in SLOTS] == [0, 1]
+    assert [d["key"] for d in docs[:2]] == ["qd_tro_cap", "giay_chung_tu"]
+
+
+@pytest.mark.parametrize("key", ["di-chuyen-ho-so-nguoi-huong-tro-cap", "sua-doi-thong-tin-ho-so-nguoi-co-cong"])
+def test_thu_tuc_di_chuyen_ho_so_giu_nguyen_nhanh_so(key):
     """Thủ tục cùng cổng nhưng ở cấp Sở không được lây nhánh cấp xã."""
-    move = get_procedure("di-chuyen-ho-so-nguoi-huong-tro-cap") or {}
-    conv = _conv(WARD_CLIENT, "di-chuyen-ho-so-nguoi-huong-tro-cap")
+    move = get_procedure(key) or {}
+    conv = _conv(WARD_CLIENT, key)
     r = flow._variant_fill_agency_reply(conv, move, LOC)
     action = r.actions[0]
     assert action["agency"] == "Sở Nội vụ"
