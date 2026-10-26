@@ -20,7 +20,7 @@ FIELDS: list[dict] = [
         '(tên có "Công ty", "Doanh nghiệp", "HTX", "Hợp tác xã"); "Cá nhân" nếu là một người (kể cả hộ gia '
         'đình, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài). Chủ hồ sơ là người sử dụng đất/'
         'người ĐỀ NGHỊ đăng ký, cấp GCN lần đầu (đứng tên Đơn đăng ký Mẫu số 15).'},
-    {"name": "ChuHoSo_HoTen", "desc": "Tên CHỦ HỒ SƠ — nếu CÁ NHÂN: họ và tên (IN HOA); nếu TỔ CHỨC: tên "
+    {"name": "ChuHoSo_HoTen", "desc": "Tên CHỦ HỒ SƠ — nếu CÁ NHÂN: họ và tên chép đúng chữ, GIỮ NGUYÊN DẤU tiếng Việt (hệ thống tự viết hoa); nếu TỔ CHỨC: tên "
         "đầy đủ tổ chức. Lấy ở Đơn đăng ký đất đai Mẫu số 15 (Người sử dụng đất, chủ sở hữu tài sản gắn "
         "liền với đất). ⚠ Nếu có Văn bản thỏa thuận cử người đại diện (hộ gia đình/nhiều người chung/thừa "
         "kế) → lấy NGƯỜI ĐƯỢC CỬ ĐẠI DIỆN đứng tên trong GCN. KHÔNG lấy người đã chết trong giấy chứng "
@@ -64,7 +64,8 @@ FIELDS += [
         'người. Đa số người nộp là CÁ NHÂN (kể cả khi được tổ chức/hộ gia đình ủy quyền).'},
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP HỒ SƠ. Nếu có Hợp đồng/Giấy ủy quyền hoặc Văn "
         "bản thỏa thuận cử người đại diện: lấy BÊN ĐƯỢC ỦY QUYỀN/người được cử đại diện. Nếu KHÔNG có (tự "
-        "nộp): người nộp CHÍNH LÀ chủ hồ sơ. IN HOA như CCCD."},
+        "nộp): người nộp CHÍNH LÀ chủ hồ sơ → chép Y HỆT ChuHoSo_HoTen, KHÔNG lấy tên ở dòng ký tên cuối đơn (chữ "
+        "viết tay OCR hay đọc sai). Chép đúng chữ, GIỮ NGUYÊN DẤU (hệ thống tự viết hoa)."},
     {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh NGƯỜI NỘP (cá nhân), dd/mm/yyyy — CCCD / Giấy ủy quyền / VB thỏa thuận."},
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính NGƯỜI NỘP: "Nam"/"Nữ" — CCCD, hoặc suy từ danh xưng '
         'Ông/Bà trong Giấy ủy quyền/VB thỏa thuận.'},

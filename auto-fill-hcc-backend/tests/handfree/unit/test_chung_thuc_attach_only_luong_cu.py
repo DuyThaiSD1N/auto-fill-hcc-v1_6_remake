@@ -1,12 +1,12 @@
-"""Nhóm chứng thực attach-only tư pháp chạy LUỒNG CŨ như chứng thực chữ ký.
+"""Nhóm chứng thực attach-only tư pháp: toàn trình như chứng thực chữ ký khi extension khai cờ, luồng cũ khi không.
 
 - Chứng thực văn bản phân chia di sản (2.001406)
 - Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch (2.000913)
 - Chứng thực văn bản từ chối nhận di sản (2.001016)
 - Chứng thực di chúc (2.001019)
 
-Luồng cũ nghĩa là: không consent, không bước chủ hồ sơ, không guidedSteps, không hỏi gộp/tách
-nhiều hồ sơ, planner core chạy mặc định — đúng như bản extension trên chợ đang nhận.
+Chung cho mọi bản extension: không consent, không hỏi gộp/tách nhiều hồ sơ, planner core chạy mặc định. Luồng cũ (bản
+chưa khai supportsGuidedSteps/supportsOwnerScan): không bước chủ hồ sơ, không dẫn từng bước.
 
 Mỗi thủ tục phải có BỘ PHÂN LOẠI lúc tải lên: thiếu nó thì bộ phân loại chung (chỉ biết giấy
 hộ tịch) dồn mọi tệp vào "Giấy tờ khác", các ô chính mãi "Đã nhận 0 tệp".
@@ -55,12 +55,15 @@ def test_khung_attach_only_nhu_chung_thuc_chu_ky(key):
     assert proc["requiresConsent"] is False
     assert proc["ownerInfo"]["enabled"] is False
     assert proc["wizard"] == signature["wizard"]
-    # Profile tu-phap gắn guidedSteps cho mọi thủ tục nhưng TẮT; chỉ chứng thực bản sao bật.
-    # Client mới khai supportsGuidedSteps/supportsOwnerScan cũng không được đổi luồng.
+    # Toàn trình y như chứng thực chữ ký: dẫn 4 bước + quét sớm ở bước chủ hồ sơ, không ô "căn cước chủ hồ sơ" riêng.
     assert proc["guidedSteps"] == signature["guidedSteps"]
+    assert not proc["guidedSteps"].get("ownerStepDocs")
     conv = _conv(key, client_capabilities={"supportsGuidedSteps": True, "supportsOwnerScan": True})
-    assert guided.enabled(conv, proc) is False, "luồng cũ: không dẫn từng bước"
-    assert guided.owner_scan_enabled(conv, proc) is False
+    assert guided.enabled(conv, proc) is True
+    assert guided.owner_scan_enabled(conv, proc) is True
+    # Bản extension chưa khai cờ → giữ luồng cũ.
+    old = _conv(key, client_capabilities={"supportsSourceSegments": True})
+    assert guided.enabled(old, proc) is False and guided.owner_scan_enabled(old, proc) is False
     assert proc["keKhaiUrl"].endswith(uuid)
     assert f"maThuTuc={code}" in proc["detect"]["urlIncludes"]
 
@@ -135,6 +138,7 @@ def test_cap_ban_sao_so_goc_khung_attach_only():
     assert proc["mode"] == "attach" and proc["flowProfile"] == "tu-phap"
     assert proc["requiresConsent"] is False and proc["ownerInfo"]["enabled"] is False
     assert proc["wizard"] == signature["wizard"]
+    # Toàn trình y như chứng thực chữ ký (cùng cổng React Bộ Tư pháp, có ô CCCD riêng).
     assert proc["guidedSteps"] == signature["guidedSteps"]
     assert proc["keKhaiUrl"].endswith("019d2bfd-8e5d-72f9-8cf2-c71780251483")
     assert "maThuTuc=2.000908" in proc["detect"]["urlIncludes"]
@@ -177,6 +181,7 @@ def test_bau_to_truong_to_hoa_giai_khung_attach_only():
     assert proc["mode"] == "attach" and proc["flowProfile"] == "tu-phap"
     assert proc["requiresConsent"] is False and proc["ownerInfo"]["enabled"] is False
     assert proc["wizard"] == signature["wizard"]
+    # Toàn trình y như chứng thực chữ ký.
     assert proc["guidedSteps"] == signature["guidedSteps"]
     assert proc["keKhaiUrl"].endswith("019d2bfd-95cf-74f7-8f8e-81c925ae839a")
     assert "maThuTuc=2.000950" in proc["detect"]["urlIncludes"]

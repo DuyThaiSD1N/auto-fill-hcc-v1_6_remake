@@ -10,13 +10,19 @@ ISSUE_PLACE_OPTIONS: tuple[str, ...] = (
 FIELDS: list[dict] = [
     {"name": "Owner_FullName", "desc": "Họ tên của đúng người chủ hồ sơ được chọn từ tài liệu."},
     {"name": "Owner_IdentityNumber", "desc": "Số CCCD/định danh của đúng người chủ hồ sơ."},
-    {"name": "Owner_IssueDate", "desc": "Ngày cấp CCCD của chủ hồ sơ, dd/mm/yyyy."},
+    {"name": "Owner_IssueDate", "desc": (
+        "Ngày cấp CCCD của chủ hồ sơ, dd/mm/yyyy — từ thẻ, hoặc từ khối thông tin của chủ hồ sơ trong văn bản "
+        "khi đi kèm số giấy tờ của người đó."
+    )},
     {"name": "Owner_IssuePlace", "desc": (
         "Nơi cấp giấy tờ của chủ hồ sơ. Chỉ được trả đúng một trong bốn giá trị: "
         + " | ".join(ISSUE_PLACE_OPTIONS)
         + ". Không khớp rõ ràng thì không trả field này."
     )},
-    {"name": "Owner_PhoneNumber", "desc": "Số điện thoại chỉ khi tài liệu ghi rõ là của chủ hồ sơ."},
+    {"name": "Owner_PhoneNumber", "desc": (
+        "Số điện thoại ghi trong khối thông tin của chủ hồ sơ (cùng mục với họ tên/số giấy tờ đã khớp); "
+        "không lấy số của người khác hay của cơ quan."
+    )},
     {"name": "Owner_DetailedAddress", "desc": (
         "Địa chỉ chủ hồ sơ có thể trả object địa chỉ chuẩn; backend chỉ lấy khóa chiTietDuoiXa "
         "để điền trang chủ hồ sơ."

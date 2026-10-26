@@ -58,7 +58,7 @@ def test_khong_co_to_khai_thi_nguoi_yeu_cau_la_ben_duoc_uy_quyen():
 # Tờ khai viết tay: người yêu cầu đọc từ tờ khai, so với tài khoản đăng nhập theo "1 trong 3" (tên/số/ngày sinh).
 _TAI_KHOAN = {"applicantFullname": "TRẦN VĂN HĨ", "applicantIdentityNumber": "001071000001",
               "applicantBirthday": "05/06/1971", "applicantIdDate": "03/04/2022", "applicantGender": "Nam"}
-_GIAY_TO = ("SoDinhDanhC", "SoGiayToDinhDanhC")
+_GIAY_TO = ("SoDinhDanhC", "SoGiayToDinhDanhC", "LoaiGiayToDinhDanhC")
 
 
 def _run_tai_khoan(ten="Trần Văn Hũ", so="00207100001", ngay_sinh="05 / 6 / 1971", quan_he="Khác",
@@ -106,9 +106,6 @@ def test_khac_ho_thi_khac_nguoi_du_trung_ngay_sinh():
     v = _run_tai_khoan(ten="Lê Văn Hĩ")
     assert v["HoVaTenC"]["value"] == "LÊ VĂN HĨ"
     assert all(v[name].get("clear") for name in (*_GIAY_TO, "NgayCapDDC", "NoiCapDDC"))
-    # Ô loại giấy tờ không được để trống trên cổng → chọn sẵn CCCD, tô vàng.
-    assert v["LoaiGiayToDinhDanhC"] == {"name": "LoaiGiayToDinhDanhC", "comp": "x-select",
-                                        "value": "Căn cước công dân", "default": True}
 
 
 def test_hai_so_du_12_chu_so_lech_nhieu_thi_khac_nguoi_du_trung_ten():
@@ -405,21 +402,3 @@ def test_giay_uy_quyen_ngoi_thu_nhat_doc_ben_uy_quyen_bo_dong_diem_chi():
     # Chỉ có dòng ký/điểm chỉ dưới chữ "Người ủy quyền" thì không đọc ra ai.
     chi_ky = "GIẤY ỦY QUYỀN\nNgười ủy quyền\nngón trỏ phải của ông\n"
     assert reason._grantor_person([{"name": "uy_quyen.pdf", "text": chi_ky}]) is None
-
-
-def test_cha_me_khong_co_so_thi_xoa_o_so_va_chon_san_cccd():
-    v = _loai_khai_sinh({"Subject_FullName": "Trần Văn An", "Mother_FullName": "Trần Thị Hoa",
-                         "Father_FullName": "Trần Văn Cường"})
-    for role in ("Me", "Cha"):
-        assert all(v[f"{name}{role}"].get("clear") for name in ("SoDinhDanh", "SoGiayToDinhDanh"))
-        loai = v[f"LoaiGiayToDinhDanh{role}"]
-        assert (loai["value"], loai.get("default"), loai.get("clear")) == ("Căn cước công dân", True, None)
-
-
-def test_cha_me_co_so_thi_loai_giay_to_theo_so_khong_to_vang():
-    v = _loai_khai_sinh({"Subject_FullName": "Trần Văn An", "Mother_FullName": "Trần Thị Hoa",
-                         "Mother_IdNumber": "001160000003", "Father_FullName": "Trần Văn Cường",
-                         "Father_IdNumber": "001056000002"})
-    for role in ("Me", "Cha"):
-        assert v[f"SoDinhDanh{role}"]["value"]
-        assert not v[f"LoaiGiayToDinhDanh{role}"].get("default")

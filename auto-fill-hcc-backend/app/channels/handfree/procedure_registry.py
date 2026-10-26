@@ -62,6 +62,26 @@ _BYT_GUIDED_STEPS = {
     ],
 }
 
+# Chứng thực attach-only cổng React Bộ Tư pháp chạy toàn trình như chứng thực bản sao: dẫn đủ 4 bước, quét sớm ở bước
+# chủ hồ sơ (một lần quét cả căn cước lẫn giấy cần chứng thực, điền chủ hồ sơ từ mọi giấy, ô còn trống thì hỏi bổ
+# sung — chat/owner_review.py) rồi đính vào đúng các ô ở bước sau. Không khai ownerStepDocs: không thêm ô "căn cước
+# chủ hồ sơ" riêng, không hỏi "chứng thực luôn thẻ này không" (chỉ bản sao có). Bản extension chưa khai
+# supportsGuidedSteps/supportsOwnerScan giữ luồng cũ.
+_TU_PHAP_ATTACH_GUIDED_STEPS = {
+    "enabled": True,
+    "ownerScan": True,
+    # `label` đúng NGUYÊN VĂN chữ trên cổng (FE khớp công tắc theo nhãn); cùng bộ với chứng thực bản sao.
+    "resultMethods": [
+        {"key": "paper", "label": "Nhận kết quả bản giấy có đóng dấu", "icon": "📄",
+         "desc": "Nhận bản giấy có đóng dấu của cơ quan.", "default": True},
+        {"key": "online", "label": "Nhận kết quả trực tuyến", "icon": "🌐",
+         "desc": "Nhận bản điện tử ngay trên hệ thống."},
+        {"key": "postal", "label": "Dịch vụ bưu chính công ích", "icon": "📮",
+         "desc": "Nhân viên bưu điện sẽ đến địa chỉ trả kết quả để trả hồ sơ.",
+         "needsInput": True},
+    ],
+}
+
 PROCEDURES: list[dict] = [
     {
         "key": "khai-sinh-dang-ky",
@@ -661,6 +681,8 @@ PROCEDURES: list[dict] = [
         "subtitle": "Khai sinh cho con đồng thời nhận cha, mẹ, con",
         "icon": "👶",
         "flowProfile": "tu-phap",
+        # Planner có chế độ tách giấy theo trang (attach/dinh_kem_tach); chỉ boolean True mới tách.
+        "supportsSplitDocuments": True,
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faf-768a-9224-9cb889436133",
         # Bước Kê khai thông tin KHÔNG có tờ khai: hai mẫu điện tử nằm ở dòng 1, 2 của bảng Thành
         # phần hồ sơ, chỉ hiện ra khi công dân tự bấm nút "Khai tờ khai" của dòng đó. Trợ lý nhận
@@ -1040,6 +1062,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) giấy chứng nhận sở hữu/sử dụng → STT1, (2) dự thảo giao
         # dịch (bắt buộc) → STT2. Planner attach (core) tự phân loại lại theo OCR; CCCD/ủy quyền/
         # giấy khác thêm thành phần hồ sơ mới. Slot so_huu/du_thao khớp qua chụp-theo-dòng; chụp
@@ -1069,8 +1093,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "chung-thuc-phan-chia-di-san",
         # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với chứng thực chữ ký / giao dịch tài
-        # sản ngay trên: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG
-        # guidedSteps (luồng cũ).
+        # sản ngay trên: không consent.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-9daf-70da-8f48-223498332346",
@@ -1086,6 +1109,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) giấy chứng nhận sở hữu/sử dụng, (2) dự thảo văn bản phân chia
         # di sản. Planner core mặc định GỘP: dự thảo → dòng 2, MỌI giấy khác gộp một PDF → dòng 1.
         # KHÔNG bật supportsSplitDocuments: giữ đúng mặc định gộp như bản đang chạy.
@@ -1116,8 +1141,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chung-thuc-tu-choi-nhan-di-san",
-        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản ngay trên: đi
-        # thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps (luồng cũ).
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản ngay trên: không consent.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-95e6-7578-ba2d-d1b4373cd174",
@@ -1133,6 +1157,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) dự thảo văn bản từ chối nhận di sản, (2) GCN sở hữu/sử dụng +
         # CCCD + giấy chứng tử (planner gộp một PDF). Ủy quyền/giấy khác thêm thành phần mới.
         # KHÔNG bật supportsSplitDocuments: giữ mặc định gộp của planner core. Bộ phân loại lúc tải
@@ -1162,8 +1188,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chung-thuc-di-chuc",
-        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với từ chối nhận di sản ngay trên: đi
-        # thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps (luồng cũ).
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với từ chối nhận di sản ngay trên: không consent.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-95f0-7610-845f-c097f144bd55",
@@ -1179,6 +1204,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) dự thảo di chúc (planner gộp CCCD các bên vào cùng PDF),
         # (2) GCN sở hữu/sử dụng tài sản. Không có dự thảo thì CCCD thêm thành phần mới.
         # KHÔNG bật supportsSplitDocuments: giữ mặc định gộp của planner core. Bộ phân loại lúc tải
@@ -1209,8 +1236,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
         # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản / giao dịch tài
-        # sản: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps
-        # (luồng cũ), không hỏi gộp/tách nhiều hồ sơ.
+        # sản: không consent, không hỏi gộp/tách nhiều hồ sơ.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-8e59-72ab-ae1a-a2985865d253",
@@ -1226,6 +1252,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) dự thảo sửa đổi/bổ sung/hủy bỏ + giấy tờ tài sản liên quan
         # (planner gộp một PDF), (2) giao dịch/hợp đồng cũ đã chứng thực. CCCD/ủy quyền/giấy khác
         # thêm thành phần mới. Bộ phân loại lúc tải lên (pipelines/chung_thuc_sua_doi_giao_dich/
@@ -1275,6 +1303,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng chỉ có MỘT dòng cố định "Bản dịch và giấy tờ, văn bản cần dịch." → một loại giấy
         # duy nhất, không phân loại. Gộp: tệp đầu vào dòng đó, tệp sau thêm thành phần mới (tên
         # do planner đánh số sẵn). Tách: mỗi bản dịch thành một hồ sơ riêng trên một tab riêng.
@@ -1313,6 +1343,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Planner không biết tệp thuộc ô nào (phiên không truyền doc_key xuống) mà xếp theo thứ
         # tự: tệp ĐẦU vào dòng 1. Vì vậy chỉ mở một ô bản dịch; bằng cấp/chứng chỉ ngoại ngữ và
         # giấy tùy thân của người dịch xuất trình tại quầy.
@@ -1349,6 +1381,9 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực bản sao (xem _TU_PHAP_ATTACH_GUIDED_STEPS); thẻ căn cước đã có ô riêng trong
+        # thành phần hồ sơ nên checklist bước 1 chính là requiredDocs.
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Form 2 ô cố định: giấy tờ cần chứng thực (STT1) + giấy tùy thân/CCCD (STT2). classify: CCCD
         # → ô cccd; mọi văn bản khác → ô "khac" (catch-all, repeatable giữ phiên mở). Planner attach
         # tự tách STT1/STT2 lại theo nội dung (không phụ thuộc slot).
@@ -1387,6 +1422,9 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS); thẻ căn cước đã có ô riêng trong
+        # thành phần hồ sơ nên checklist bước 1 chính là requiredDocs.
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) giấy tờ chứng minh quan hệ với người được cấp bản chính,
         # (2) giấy tờ tùy thân người yêu cầu. Khóa ô trùng loại của bộ phân loại chung lúc tải lên
         # (ho_tich: khai sinh/kết hôn/trích lục; cccd) nên không cần bộ phân loại riêng; giấy khác
@@ -1415,8 +1453,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "bau-to-truong-to-hoa-giai",
         # Cổng React mới (Bộ Tư pháp — hòa giải ở cơ sở), cùng khung attach-only với nhóm chứng thực
-        # ngay trên: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG
-        # guidedSteps. Cổng hiển thị tên "Thủ tục công nhận tổ trưởng tổ hòa giải (cấp xã)".
+        # ngay trên: không consent. Cổng hiển thị tên "Thủ tục công nhận tổ trưởng tổ hòa giải (cấp xã)".
         "detect": {
             "urlIncludes": [
                 "019d2bfd-95cf-74f7-8f8e-81c925ae839a",
@@ -1432,6 +1469,8 @@ PROCEDURES: list[dict] = [
         # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Cổng có 2 dòng cố định: (1) biên bản bầu (Mẫu 04, kèm Mẫu 01), (2) văn bản đề nghị công
         # nhận (Mẫu 07, kèm Mẫu 06/10). Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc
         # tải lên; planner (bau_to_truong_to_hoa_giai.attach) tự phân loại lại theo OCR lúc đính,
@@ -1900,7 +1939,6 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-ban-sao-van-bang-so-goc",
-        "provinceOnly": ["danang", "bacninh"],  # chỉ account Đà Nẵng, Bắc Ninh thấy + gọi được
         # Cổng Bộ GD&ĐT dvc.moet.gov.vn — CÙNG nền iGate với cổng NN&MT (wizard 4 bước:
         # 1 Thông tin hồ sơ = kê khai Form.io, 2 Thành phần hồ sơ = attp-row) nhưng KHÔNG có
         # trang "chọn nơi và loại": Nộp trực tuyến trên DVCQG → thẳng trang kê khai.
@@ -1923,6 +1961,11 @@ PROCEDURES: list[dict] = [
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Giáo dục và Đào tạo",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ GD&ĐT cùng nền iGate với cổng Bộ Xây dựng (stepper 4 bước, tờ khai Form.io, bước 3 receivingKind +
+        # cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -2271,6 +2314,10 @@ PROCEDURES: list[dict] = [
         # Trang kê khai là apply-online/<ObjectId> không có mã → cần cụm tên; cụm có "cấp lại, điều
         # chỉnh" nên không lẫn thủ tục cấp GCN dược lần đầu.
         "flowProfile": "xay-dung",
+        # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "detect": {
             "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
             "urlIncludes": [
@@ -2337,6 +2384,10 @@ PROCEDURES: list[dict] = [
         # thủ tục giấy phép hành nghề…) → như lõi: tắt heading, KHÔNG bật textPriority để URL có mã
         # luôn thắng.
         "flowProfile": "xay-dung",
+        # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "detect": {
             "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
             "urlIncludes": [
@@ -3524,6 +3575,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7cd-76e9-b909-bcf437629cb8",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         # Tên các mục dưới đây bám đúng ba ô upload của cổng (SLOTS trong pipelines/khuyet_tat) để
         # công dân mang giấy theo đúng ô, không phải gom một đống.
@@ -3580,6 +3635,10 @@ PROCEDURES: list[dict] = [
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7ab-731d-844a-5e232b77afef",
         "needsAgencySelect": True,
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [

@@ -21,6 +21,11 @@ CONV = {
 PROC = {"label": "Đăng ký khai sinh", "requiredDocs": [{"name": "CCCD"}, {"name": "Giấy chứng sinh"}]}
 
 
+def _text(doc) -> str:
+    # Biên bản nhiều trang; Times New Roman trả gạch mềm cho dấu "-" khi trích chữ (app/consent/pdf.py).
+    return re.sub(r"\s+", " ", "".join(page.get_text() for page in doc).replace("\xad", "-"))
+
+
 def test_entry_tu_du_nghia():
     e = consent.build_entry(CONV, PROC, accepted=True, checks=[True, True])
     # Đóng dấu ĐÚNG phiên bản đang hiệu lực. Không ghim số cụ thể: nội dung xin phép còn sửa
@@ -58,7 +63,8 @@ def test_pdf_hien_chu_the_vneid(tmp_path, monkeypatch):
 
     conv = dict(CONV, portal_principal={"cccd": "012345678901", "name": "Nguyễn Văn A"})
     e = consent.build_entry(conv, PROC, accepted=True, checks=[True, True])
-    text = fitz.open(stream=build_consent_pdf(e), filetype="pdf")[0].get_text()
+    pdf, _ = build_consent_pdf(e)
+    text = _text(fitz.open(stream=pdf, filetype="pdf"))
     assert "Chủ thể dữ liệu (VNeID)" in text and "012345678901" in text and "Nguyễn Văn A" in text
 
 
@@ -78,7 +84,7 @@ async def test_persist_dong_y_sinh_pdf(tmp_path, monkeypatch):
     assert doc["pdf_path"] == f"consent/{entry['_id']}.pdf"
     pdf_file = tmp_path / "consent" / f"{entry['_id']}.pdf"
     assert pdf_file.is_file()
-    text = fitz.open(pdf_file)[0].get_text()
+    text = _text(fitz.open(pdf_file))
     assert entry["_id"] in text and "ĐỒNG Ý" in text and "Phường Tân Phong" in text
     assert "91/2025/QH15" in text
     # Không nhận ra VNeID → biên bản ghi trung thực là gắn theo mã phiên.

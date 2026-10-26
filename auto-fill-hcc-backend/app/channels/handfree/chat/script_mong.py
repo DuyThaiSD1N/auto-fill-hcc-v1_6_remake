@@ -427,8 +427,8 @@ GREET_RETURNING = {
 }
 
 CONFIRM_PROCEDURE = {
-    "md": "Pej xeem xav ua {procedure} ntawm {ward}, {province}, puas yog?",
-    "tts": "Pej xeem xav ua {procedure} ntawm {ward} {province}, puas yog?",
+    "md": "Pej xeem xav ua {procedure} ntawm {place}, puas yog?",
+    "tts": "Pej xeem xav ua {procedure} ntawm {place}, puas yog?",
 }
 
 # NỢ DỊCH: cắt từ GREET_PROCEDURE_FIRST, chờ người soát.
@@ -450,13 +450,10 @@ GREET_PROCEDURE_FIRST = {
 
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
+        "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias "
         "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
     ),
-    "tts": (
-        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
-        "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
-    ),
+    "tts": "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias Đồng ý.",
 }
 
 PROCEDURE_NOT_RECOGNIZED = {

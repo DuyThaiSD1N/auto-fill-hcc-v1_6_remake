@@ -560,8 +560,10 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   y tế. Chọn thẳng ĐƠN LẺ khi câu nói rõ chỉ làm giấy khai sinh (không kèm gì), khai sinh quá hạn,
   hoặc người được khai sinh đã từ 6 tuổi trở lên/người lớn. Câu chung chung "đăng ký khai sinh",
   "làm giấy khai sinh cho con/cho bé" (kể cả viết không dấu, nghe nhầm) không có các dấu hiệu trên →
-  unclear với HAI thủ tục, đơn lẻ đứng trước. Nhắc tới "con", "bé", "trẻ sơ sinh" KHÔNG phải dấu
-  hiệu — khai sinh nào cũng cho trẻ.
+  unclear với BA thủ tục theo thứ tự: đơn lẻ, liên thông, khai sinh cho người ĐÃ CÓ hồ sơ, giấy tờ cá nhân.
+  Nhắc tới "con", "bé", "trẻ sơ sinh" KHÔNG phải dấu hiệu — khai sinh nào cũng cho trẻ. Nói rõ người chưa
+  từng đăng ký khai sinh nhưng đã có căn cước / học bạ / giấy tờ cá nhân → chọn thẳng khai sinh cho người
+  đã có hồ sơ, giấy tờ.
 - Đăng ký khai tử (đơn lẻ) vs khai tử LIÊN THÔNG (kèm xóa đăng ký thường trú + trợ cấp mai táng phí).
   Chọn LIÊN THÔNG khi câu nói rõ liên thông, hoặc nói khai tử KÈM xóa hộ khẩu/xóa thường trú hay
   KÈM mai táng phí. Câu chỉ nói khai tử/chứng tử/báo tử, không kèm gì → đăng ký khai tử đơn lẻ.

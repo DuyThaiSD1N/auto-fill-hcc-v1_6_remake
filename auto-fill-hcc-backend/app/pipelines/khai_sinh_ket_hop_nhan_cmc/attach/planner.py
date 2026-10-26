@@ -1,4 +1,9 @@
-"""Rule-first, LLM-fallback attachment routing for the combined procedure."""
+"""Đính kèm đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con.
+
+LLM phân loại MỌI tệp; luật dò chữ (`_doc_type`) chỉ dự phòng cho tệp LLM không trả lời, không bao giờ đè LLM (tờ khai
+nhắc "giấy chứng sinh số…" từng bị luật đẩy nhầm vào dòng giấy chứng sinh). Cài đặt "không gộp giấy tờ"
+(`options.splitDocuments`) → chế độ tách theo trang ở `dinh_kem_tach/`.
+"""
 
 import re
 import time
@@ -176,14 +181,16 @@ def build_plan_items(
         text = str(by_name.get(name, {}).get("text") or "")
         ocr_text_by_index[index] = text
         classification_text = f"{name}\n{text}"
-        rule_type = _doc_type(classification_text)
         llm_result = llm_types.get(index) or {}
         llm_type = _normalize_llm_type(llm_result.get("type")) if llm_result else ""
-        doc_type = rule_type if rule_type != "other" else (llm_type or "other")
+        # Luật dò chữ chỉ chạy khi LLM không trả lời cho tệp này.
+        rule_type = "" if llm_type else _doc_type(classification_text)
+        doc_type = llm_type or rule_type or "other"
         if doc_type == "identity":
             identity_indexes.add(index)
         label = _label(doc_type, classification_text)
-        if rule_type == "other":
+        if llm_result and doc_type in {"other", "marital_status_evidence"}:
+            # Giấy thêm thành phần mới: tên theo tiêu đề LLM đọc được (bản án / quyết định ly hôn, giấy chứng tử…).
             label = _specific_llm_name(llm_result.get("documentName")) or label
         if not label:
             # LLM lỗi/không trả tên: giữ tên file, tuyệt đối không sinh nhãn tài liệu chung.
@@ -223,7 +230,7 @@ def build_plan_items(
             "documentName": label,
             "target": target,
             "componentIndex": component_index,
-            "source": "rule" if rule_type != "other" else ("llm" if llm_result else "filename_fallback"),
+            "source": "llm" if llm_type else ("rule" if rule_type != "other" else "filename_fallback"),
         })
     # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau); nhiều người → khóa số định danh gộp đúng từng người.
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
@@ -231,6 +238,14 @@ def build_plan_items(
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    if (options or {}).get("splitDocuments") is True:
+        from app.pipelines.khai_sinh_ket_hop_nhan_cmc.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_without_split(files, options, session)
+
+
+async def plan_without_split(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     _ = options or {}
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
     ocr_files = [item for item in raw_files if item.get("type") in _OCR_TYPES]
@@ -244,21 +259,20 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"OCR {item.get('name')}: {item['error']}")
 
     by_name = {item.get("name"): item for item in ocr_results}
-    fallback_docs = []
+    llm_docs = []
     for index, file in enumerate(raw_files):
         name = str(file.get("name") or f"file-{index + 1}")
         text = str(by_name.get(name, {}).get("text") or "")
-        if _doc_type(f"{name}\n{text}") == "other":
-            fallback_docs.append({"index": index, "fileName": name, "text": text})
+        llm_docs.append({"index": index, "fileName": name, "text": text})
 
     llm_started = time.monotonic()
     llm_types: dict[int, dict[str, str]] = {}
-    if fallback_docs:
+    if llm_docs:
         try:
-            llm_types = await _classify_with_llm(fallback_docs)
+            llm_types = await _classify_with_llm(llm_docs)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"attachment_agent: {exc}")
-        for item in fallback_docs:
+        for item in llm_docs:
             detected = llm_types.get(item["index"]) or {}
             if not detected or (
                 _normalize_llm_type(detected.get("type")) == "other"
@@ -273,7 +287,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "extracted": {
             "documents": [item["name"] for item in raw_files],
             "ocrDocuments": [item.get("name") for item in ocr_results if item.get("text")],
-            "llmDocuments": [raw_files[item["index"]]["name"] for item in fallback_docs],
+            "llmDocuments": [raw_files[item["index"]]["name"] for item in llm_docs],
             "sessionId": (session or {}).get("request_id"),
             "classified": classified,
             "skippedOcr": [item["name"] for item in raw_files if item.get("type") not in _OCR_TYPES],

@@ -233,11 +233,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # --- CHỦ HỒ SƠ (subject) ---
     owner_name = _text(values.get("ChuHoSo_HoTen"))
     owner_is_tc = _is_to_chuc(values.get("ChuHoSo_LoaiChuThe"), owner_name)
+    # Tên cá nhân viết hoa ở đây (giữ dấu) — để LLM tự viết hoa thì hay rơi dấu ("Dũng" → "DUNG").
+    if owner_name and not owner_is_tc:
+        owner_name = owner_name.upper()
     owner_area = _area(values.get("ChuHoSo_DiaChi"))
 
     # --- NGƯỜI NỘP ---
     nop_name = _text(values.get("NguoiNop_HoTen"))
     nop_is_tc = _is_to_chuc(values.get("NguoiNop_LoaiDoiTuong"), nop_name)
+    if nop_name and not nop_is_tc:
+        nop_name = nop_name.upper()
     nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
     nop_mst = _identity(values.get("NguoiNop_MaSoThue"))
     nop_area = _area(values.get("NguoiNop_DiaChi"))

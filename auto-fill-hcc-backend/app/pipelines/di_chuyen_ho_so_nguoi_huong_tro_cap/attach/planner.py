@@ -2,13 +2,13 @@
 đổi nơi thường trú" (cổng MOHA).
 
 2 thành phần cố định (nút "Chọn tệp" — engine attach MOHA fixed-slot):
-  slot 0  Đơn đề nghị theo Mẫu số 27 Phụ lục I NĐ 131/2021/NĐ-CP (1 Bản chính)          ← don_mau_27
-  slot 1  Bản sao chứng thực CCCD/CMND HOẶC giấy xác nhận của cơ quan đăng ký cư trú     ← cccd / xac_nhan_cu_tru
+  slot 0  Bản sao chứng thực CCCD/CMND HOẶC giấy xác nhận của cơ quan đăng ký cư trú     ← cccd / xac_nhan_cu_tru
           (1 Bản sao — ưu tiên CCCD; dùng CT07 nếu cần xác nhận thêm; có thể đính cả 2)
+  slot 1  Đơn đề nghị theo Mẫu số 27 Phụ lục I NĐ 131/2021/NĐ-CP (1 Bản chính)          ← don_mau_27
 
 Giấy tờ nguồn khác (Bản khai thân nhân Mẫu 05, Giấy chứng nhận GĐ liệt sĩ, Giấy khai sinh, Bằng Tổ quốc
 ghi công, Phiếu báo di chuyển hồ sơ...) KHÔNG có ô cố định riêng → BỎ QUA (skipped), KHÔNG route "new".
-Route TẤT ĐỊNH theo rule OCR; LLM dự phòng khi rule không chắc.
+LLM phân loại MỌI tệp; luật dò chữ (`_rule_doc_type`) chỉ dự phòng cho tệp LLM không trả lời, không bao giờ đè LLM.
 """
 
 import time
@@ -32,25 +32,27 @@ _TQGC = "to_quoc_ghi_cong"
 _PHIEU_BAO = "phieu_bao_di_chuyen"
 _OTHER = "other"
 
+# Thứ tự dòng ĐÚNG như bảng Thành phần hồ sơ đang hiện trên cổng: dòng 1 bản sao CCCD / xác nhận cư trú, dòng 2 đơn Mẫu
+# số 27 (cổng đã đổi thứ tự — trước đơn đứng trên). Extension không có từ khóa cho hai dòng này nên tìm ô theo slotIndex.
 SLOTS: list[dict[str, Any]] = [
     {
-        "slotKey": _DON,
-        "slotIndex": 0,
-        "slotName": "Đơn đề nghị theo Mẫu số 27 Phụ lục I Nghị định số 131/2021/NĐ-CP",
-        "detectedType": "Đơn đề nghị Mẫu số 27",
-        "documentName": "Đơn đề nghị di chuyển hồ sơ (Mẫu số 27)",
-    },
-    {
         "slotKey": _CCCD,
-        "slotIndex": 1,
+        "slotIndex": 0,
         "slotName": "Bản sao được chứng thực từ căn cước công dân hoặc giấy xác nhận của cơ quan đăng ký cư trú",
         "detectedType": "CCCD/CMND hoặc Xác nhận cư trú",
         "documentName": "Bản sao chứng thực CCCD/CMND hoặc Xác nhận cư trú",
     },
+    {
+        "slotKey": _DON,
+        "slotIndex": 1,
+        "slotName": "Đơn đề nghị theo Mẫu số 27 Phụ lục I Nghị định số 131/2021/NĐ-CP",
+        "detectedType": "Đơn đề nghị Mẫu số 27",
+        "documentName": "Đơn đề nghị di chuyển hồ sơ (Mẫu số 27)",
+    },
 ]
 _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
-# CCCD và Xác nhận cư trú CT07 cùng vào slot 1 ("chọn 1 hoặc đính kèm cả 2", ưu tiên CCCD).
+# CCCD và Xác nhận cư trú CT07 cùng vào dòng CCCD ("chọn 1 hoặc đính kèm cả 2", ưu tiên CCCD).
 _ROUTE_TO_SLOT = {_DON: _DON, _CCCD: _CCCD, _CU_TRU: _CCCD}
 # Giấy tờ nguồn KHÁC không có ô cố định → bỏ qua.
 _SKIP_DOCS = {_BAN_KHAI, _KHAI_SINH, _GCN_GD_LS, _TQGC, _PHIEU_BAO}
@@ -66,7 +68,7 @@ def _is_identity_text(text: str) -> bool:
 
 
 def _rule_doc_type(text: str) -> str:
-    """Route TẤT ĐỊNH theo OCR. Nhận Đơn Mẫu 27 và giấy tờ đặc trưng TRƯỚC, CCCD sau cùng."""
+    """Dự phòng khi LLM không trả lời cho tệp này. Nhận Đơn Mẫu 27 và giấy tờ đặc trưng TRƯỚC, CCCD sau cùng."""
     h = _fold(text)
     if not h:
         return ""
@@ -170,21 +172,25 @@ def build_plan_items(
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
-        rule_type = _rule_doc_type(text)
-        llm_type = llm_types.get(idx, "")
-        doc_type = rule_type or (llm_type if llm_type in _ALLOWED_DOC_TYPES else _OTHER)
+        if idx in llm_types:
+            llm_type = llm_types[idx]
+            doc_type, source = (llm_type if llm_type in _ALLOWED_DOC_TYPES else _OTHER), "llm"
+        else:
+            # LLM không trả lời cho tệp này (lỗi / thiếu) → mới dùng luật dò chữ.
+            rule_type = _rule_doc_type(text)
+            doc_type, source = (rule_type or _OTHER), ("rule" if rule_type else "unknown")
 
         slot_key = _ROUTE_TO_SLOT.get(doc_type)
         if slot_key:
             items.append(_build_fixed_item(file, idx, slot_key))
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
         if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm", "skipped": True})
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
             continue
 
         warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
 
     return items, warnings, classified
 
@@ -209,7 +215,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_docs: list[dict[str, Any]] = []
     for idx, file in enumerate(raw_files):
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if text.strip() and not _rule_doc_type(text):
+        if text.strip():
             llm_docs.append({"index": idx, "text": text})
 
     t1 = time.monotonic()

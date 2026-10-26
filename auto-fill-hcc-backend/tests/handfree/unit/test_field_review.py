@@ -79,8 +79,8 @@ async def test_khong_co_co_thi_bao_cao_dien_khong_co_nut_bo_sung():
 
 
 def test_thu_tuc_chua_khai_bien_danh_dau_thi_khong_bat():
-    conv = _conv(procedure_key="xac-nhan-thong-tin-ho-tich")
-    assert field_review.fill_action_extra(conv, {"key": "xac-nhan-thong-tin-ho-tich"}) is None
+    conv = _conv(procedure_key="dang-ky-nuoi-con-nuoi-trong-nuoc")
+    assert field_review.fill_action_extra(conv, {"key": "dang-ky-nuoi-con-nuoi-trong-nuoc"}) is None
 
 
 def test_tieng_mong_giu_luong_cu():
@@ -289,6 +289,19 @@ def test_o_ngay_phai_du_ngay_thang_nam():
     assert agent._check({"action": "value", "value": "1978"}, field).action == "unclear"
     assert agent._check({"action": "value", "value": "31/02/1978"}, field).action == "unclear"
 
+
+
+def test_nhan_viet_tat_sdt_cung_kiem_do_dai_so_dien_thoai():
+    field = {"label": "SĐT (Không sử dụng SĐT bàn)", "kind": "text", "options": []}
+    # Công dân đọc thiếu số 0 đầu (9 số) → hỏi lại, mang theo dãy đã nghe để câu hỏi nói rõ mới nghe được mấy số.
+    short = agent._check({"action": "value", "value": "963765189"}, field, "chín sáu ba bảy sáu năm một tám chín")
+    assert short.action == "unclear" and short.value == "963765189"
+    assert agent._check({"action": "value", "value": "0963765189"}, field) == agent.Answer("value", "0963765189")
+    # Thủ tục chạy luồng 4 bước iGate: chỉ số di động 10 số; nơi khác vẫn nhận máy bàn 11 số (02x…).
+    landline = {"action": "value", "value": "02433334444"}
+    assert agent._check(landline, field) == agent.Answer("value", "02433334444")
+    assert agent._check(landline, {**field, "mobile_only": True}).action == "unclear"
+    assert agent._check({"action": "value", "value": "0963765189"}, {**field, "mobile_only": True}).value == "0963765189"
 
 def test_o_so_chi_nhan_con_so_bo_don_vi():
     field = {"label": "Thời gian dự kiến hoàn thành công trình (tháng)", "kind": "number", "options": []}
@@ -677,7 +690,9 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "dieu-chinh-huu-tri-xa-hoi", "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
                                      "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang-1116910",
                                      "di-chuyen-ho-so-nguoi-huong-tro-cap", "tro-cap-tho-cung-liet-si",
-                                     "uu-dai-ncc-tu-tran"}
+                                     "uu-dai-ncc-tu-tran", "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+                                     "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+                                     "cap-ban-sao-van-bang-so-goc", "dang-ky-hanh-nghe", "xac-nhan-thong-tin-ho-tich"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")
@@ -953,3 +968,25 @@ def test_router_nhan_co_supports_field_review_cua_extension():
                                               "supportsGuidedSteps": True})
     assert caps["supportsFieldReview"] is True
     assert caps["supportsPageReload"] is True
+
+
+async def test_sua_lai_to_khai_sau_xem_truoc_van_quay_lai_vong_hoi_khi_con_o_trong():
+    """Đóng bản xem trước để sửa: tờ khai còn ô trống thì còn nút Bổ sung (và nút sửa nhỏ của lượt điền), không chỉ
+    mỗi nút Xem trước."""
+    conv = _conv(state="attaching", docs_target="declaration")
+    conv["field_review"] = {"stats": {"filled": 30, "optional": 2, "required": 0, "empty": 2},
+                            "chips": [{"label": "Điền lại", "send": "__action:retry_fill"},
+                                      {"label": "Xem trước", "send": "__action:field_review_preview", "cta": True}]}
+    await _turn(conv, "action", "field_review_preview_report", {"opened": True})
+    reply = await _turn(conv, "action", "field_review_preview_close")
+    assert _sends(reply) == ["__action:field_review_start", "__action:field_review_preview", "__action:retry_fill"]
+    assert "Bổ sung các thông tin còn thiếu" in reply.display_md
+    assert reply.actions == [{"type": "declaration_preview_close"}]
+
+
+async def test_sua_lai_to_khai_khi_da_du_o_chi_con_nut_xem_truoc():
+    conv = _conv(state="attaching", docs_target="declaration")
+    conv["field_review"] = {"stats": {"filled": 30, "optional": 0, "required": 0, "empty": 0}}
+    reply = await _turn(conv, "action", "field_review_preview_close")
+    assert _sends(reply) == ["__action:field_review_preview"]
+    assert "Bổ sung" not in reply.display_md

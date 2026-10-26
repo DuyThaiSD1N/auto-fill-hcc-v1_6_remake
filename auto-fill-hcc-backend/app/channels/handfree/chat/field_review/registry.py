@@ -6,7 +6,9 @@ tờ khai), tuỳ chọn ``NO_SECTION`` (ô không thuộc phần nào — hỏi
 không tô, không đếm), ``ZERO_IS_EMPTY`` (ô cổng để sẵn 0: còn 0 mà công dân chưa trả lời thì coi là trống),
 ``TEXT_DATES`` (ô chữ nhận ngày dd/mm/yyyy | mm/yyyy | yyyy: hỏi như ô ngày, ghi dạng chữ) và ``LOOKUP`` (ô kích
 hoạt tra cứu CSDL của cổng: điền xong chờ cổng đổ dữ liệu rồi mới tìm ô kế tiếp), ``COPY_QUANTITY`` (cặp ô
-"Đề nghị cấp bản sao" Có/Không + ô số lượng cổng chỉ dựng sau khi chọn Có: nói "có, ba bản" là điền cả hai).
+"Đề nghị cấp bản sao" Có/Không + ô số lượng cổng chỉ dựng sau khi chọn Có: nói "có, ba bản" là điền cả hai),
+``OTHER_TEXT`` ({ô tích: (lựa chọn "Khác", tên ô ghi chữ đi kèm)} — ô ghi chữ cổng chỉ dựng sau khi tích "Khác" và không
+nằm trong danh sách hỏi: công dân nói một giá trị ngoài các lựa chọn thì tích "Khác" rồi ghi đúng lời đó vào ô đi kèm).
 Thủ tục không có file này thì không bật vòng bổ sung. Lỗi cấu hình hoặc trùng key được phát hiện ngay lúc khởi động.
 """
 from importlib import import_module
@@ -41,6 +43,14 @@ def _discover() -> dict[str, dict]:
             if len(copy_quantity) != 2:
                 raise RuntimeError(f"{module_name}.COPY_QUANTITY phải là cặp (ô Có/Không, ô số lượng)")
             config["copyQuantity"] = copy_quantity
+        other_text = getattr(module, "OTHER_TEXT", {})
+        if not isinstance(other_text, dict) or not all(
+            isinstance(k, str) and k.strip() and isinstance(v, (list, tuple)) and len(v) == 2
+            and all(isinstance(x, str) and x.strip() for x in v) for k, v in other_text.items()
+        ):
+            raise RuntimeError(f"{module_name}.OTHER_TEXT phải là {{ô tích: (lựa chọn Khác, ô ghi chữ)}}")
+        if other_text:
+            config["otherText"] = {k: tuple(v) for k, v in other_text.items()}
         for raw_key in procedure_keys:
             procedure_key = str(raw_key or "").strip()
             if not procedure_key:

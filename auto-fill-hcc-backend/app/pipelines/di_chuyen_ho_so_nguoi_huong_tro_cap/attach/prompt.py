@@ -15,7 +15,14 @@ thay đổi nơi thường trú". Đọc OCR_TEXT của từng file và xếp v�
 1. Chỉ dựa vào OCR_TEXT. Không dùng tên file, thứ tự file, hoặc giả định bên ngoài.
 2. Mỗi tài liệu trả đúng một docType trong allowed_types.
 3. OCR_TEXT rỗng hoặc không đủ bằng chứng → trả other.
-4. Trả JSON object duy nhất, không markdown, không giải thích.
+4. Phân loại theo CHÍNH giấy đó là gì (tiêu đề, hình thức), không theo giấy được NHẮC tới trong nội dung: đơn / bản khai
+   / phiếu báo có ghi "CCCD số…", "theo giấy khai sinh…" vẫn là đơn / bản khai / phiếu báo; chỉ trả cccd khi chính tài
+   liệu là thẻ căn cước / CMND / hộ chiếu (kể cả mặt sau thẻ: đặc điểm nhận dạng, vân tay, dòng MRZ "IDVNM…").
+5. TỆP GỘP NHIỀU GIẤY (nhiều trang, mỗi phần một tiêu đề: phiếu báo, giấy giới thiệu, đơn, phiếu thông tin dân cư, CCCD,
+   bản khai…) chỉ đính được vào MỘT dòng → xét CẢ TỆP, không chỉ trang đầu: trong tệp có Đơn đề nghị Mẫu số 27 →
+   don_mau_27; không có đơn mà có CCCD / CMND / hộ chiếu → cccd; không có cả hai mà có Xác nhận thông tin cư trú (CT07)
+   → xac_nhan_cu_tru. Chỉ khi tệp KHÔNG chứa giấy nào trong ba loại đó mới xếp theo giấy chính của tệp.
+6. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>

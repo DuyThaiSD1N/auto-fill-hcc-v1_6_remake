@@ -29,6 +29,8 @@ _DIGIT_WORDS = {"khong": "0", "linh": "0", "le": "0", "mot": "1", "hai": "2", "b
 _NUMBER_WORDS = {"muoi", "tram", "nghin", "ngan"}
 # Số điện thoại: di động 10 số (0xx…), máy bàn 11 số (02x…).
 PHONE_LENGTHS = (10, 11)
+# Cổng iGate các bộ (ô "SĐT (Không sử dụng SĐT bàn)") chỉ nhận số di động: đúng 10 số, bắt đầu bằng 0.
+MOBILE_LENGTHS = (10,)
 
 
 @dataclass
@@ -37,6 +39,7 @@ class Answer:
     value: str = ""
     target: int = 0  # action "back": số thứ tự ô muốn quay lại trong danh sách ô đã qua (0 = ô vừa điền)
     quantity: str = ""  # ô đề nghị cấp bản sao: số bản nói kèm, điền vào ô số lượng ngay sau khi chọn "Có"
+    other: str = ""  # ô tích có lựa chọn "Khác" kèm ô ghi chữ: chữ ghi vào ô đi kèm sau khi tích "Khác"
 
 
 def _valid_date(text: str, year_only: bool = False, month_year: bool = False) -> str:
@@ -89,8 +92,9 @@ def _spoken_year(text: str, data: dict) -> str | None:
 
 def id_lengths(field: dict) -> tuple[int, ...]:
     label = fold(field.get("label") or "")
-    if "dien thoai" in label:
-        return PHONE_LENGTHS
+    # Cổng iGate viết tắt nhãn ô số điện thoại là "SĐT" ("SĐT (Không sử dụng SĐT bàn)").
+    if "dien thoai" in label or re.search(r"\bsdt\b", label):
+        return MOBILE_LENGTHS if field.get("mobile_only") else PHONE_LENGTHS
     if "so dinh danh" in label:
         return (12,)
     if "giay to" in label and re.search(r"\bso\b", label):
@@ -101,6 +105,8 @@ def id_lengths(field: dict) -> tuple[int, ...]:
 def _digits_ok(digits: str, lengths: tuple[int, ...]) -> bool:
     if lengths == PHONE_LENGTHS:
         return (len(digits) == 10 and digits.startswith("0")) or (len(digits) == 11 and digits.startswith("02"))
+    if lengths == MOBILE_LENGTHS:
+        return len(digits) == 10 and digits.startswith("0")
     return len(digits) in lengths
 
 
@@ -165,6 +171,18 @@ def _copy_answer(data: dict, field: dict, picked: str, text: str = "") -> Answer
     return Answer("value", yes, quantity=quantity)
 
 
+def _other_answer(data: dict, field: dict, picked: str) -> Answer:
+    """Ô tích có lựa chọn "Khác" kèm ô ghi chữ: LLM chọn "Khác" (hoặc chỉ trả phần chữ) → tích "Khác" kèm chữ; tích
+    "Khác" mà không có chữ thì hỏi lại vì ô đi kèm không được để trống."""
+    option = field["other"]["option"]
+    other = re.sub(r"\s+", " ", str(data.get("other_text") or "")).strip()[:_MAX_VALUE]
+    if picked and picked != option:
+        return Answer("value", picked)
+    if other and fold(other) != fold(option):
+        return Answer("value", option, other=other)
+    return Answer("unclear")
+
+
 def _check(data: dict, field: dict, text: str = "", visited: list | None = None) -> Answer:
     action = str(data.get("action") or "").strip()
     if action not in ACTIONS:
@@ -198,6 +216,8 @@ def _check(data: dict, field: dict, text: str = "", visited: list | None = None)
         picked = _pick_option(data, options)
         if _yes_option(field):
             return _copy_answer(data, field, picked, text)
+        if (field.get("other") or {}).get("option") in options:
+            return _other_answer(data, field, picked)
         return Answer("value", picked) if picked else Answer("unclear")
     value = str(data.get("value") or "").strip()[:_MAX_VALUE]
     if field.get("kind") == "number":
@@ -233,6 +253,8 @@ async def interpret(text: str, field: dict, visited: list | None = None) -> Answ
                    else prompt.DATE_YEAR if field.get("year_only") else prompt.DATE_FULL),
         copy_rule=(prompt.COPY_RULE.format(yes=list(field.get("options") or []).index(_yes_option(field)) + 1)
                    if _yes_option(field) else ""),
+        other_rule=(prompt.OTHER_RULE.format(other=list(field.get("options") or []).index(field["other"]["option"]) + 1)
+                    if (field.get("other") or {}).get("option") in (field.get("options") or []) else ""),
     )
     try:
         raw = await llm_chat(

@@ -55,15 +55,15 @@ async def test_danh_sach_loc_theo_tinh_thu_tuc_tinh_khac_coi_nhu_khong_nhan_ra(l
     calls, replies = llm
     n_laichau = len(public_list_for("laichau"))
     replies["picker"].append(json.dumps({"result": "pick", "id": n_laichau + 1, "candidates": []}))
-    res = await agent.pick("cấp bản sao văn bằng", _conv("laichau"))
+    res = await agent.pick("thuê nhà ở xã hội", _conv("laichau"))
     assert (res.result, res.key) == ("unclear", "")          # số ngoài danh sách → không chọn
     system = calls["picker"][0][0]["content"]
-    assert "văn bằng, chứng chỉ từ sổ gốc" not in system   # Lai Châu không thấy thủ tục Đà Nẵng/Bắc Ninh
+    assert "cho thuê mua nhà ở xã hội" not in system.lower()   # Lai Châu không thấy thủ tục riêng Đà Nẵng
     assert f"[{n_laichau}]" in system and f"[{n_laichau + 1}]" not in system
 
-    replies["picker"].append(_pick("cap-ban-sao-van-bang-so-goc", slug="bacninh"))
-    res = await agent.pick("cấp bản sao văn bằng", _conv("bacninh"))
-    assert (res.result, res.key) == ("pick", "cap-ban-sao-van-bang-so-goc")
+    replies["picker"].append(_pick("cho-thue-thue-mua-nha-o-xa-hoi", slug="danang"))
+    res = await agent.pick("thuê nhà ở xã hội", _conv("danang"))
+    assert (res.result, res.key) == ("pick", "cho-thue-thue-mua-nha-o-xa-hoi")
 
 
 def test_danh_sach_dua_llm_khong_co_key():
@@ -168,7 +168,7 @@ def test_man_chao_khong_nhan_ra_thi_noi_chua_nhan_ra_khong_chao_lai():
 
 def test_mo_ho_thi_hoi_lai_kem_nut_goi_y_va_luu_goi_y():
     conv = _conv()
-    r = flow._procedure_unclear(conv, ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "cap-ban-sao-van-bang-so-goc"])
+    r = flow._procedure_unclear(conv, ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "cho-thue-thue-mua-nha-o-xa-hoi"])
     assert conv["procedure_candidates"] == ["ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"]  # khóa tỉnh bị bỏ
     assert "thủ tục nào" in r.display_md and "mai táng" in r.display_md
     assert [c["send"] for c in r.chips] == [

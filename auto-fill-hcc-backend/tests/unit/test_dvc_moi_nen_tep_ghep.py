@@ -19,7 +19,7 @@ def test_tep_ghep_qua_co_duoc_nen_tung_tep_nguon(monkeypatch):
     def fake_decode(data_url: str) -> bytes:
         return base64.b64decode(data_url.split(",", 1)[1])
 
-    def fake_entry(file, raw, limit, start=0):
+    def fake_entry(file, raw, limit):
         return {"name": file["name"].rsplit(".", 1)[0] + ".pdf", "type": "application/pdf", "dataUrl": "data:,",
                 "originalBytes": len(raw), "bytes": limit - 1, "level": "test"}
 
@@ -47,20 +47,3 @@ def test_mot_tep_nguon_khong_ghep_thi_khong_dung_toi(monkeypatch):
                     "sourceSegments": [{"fileIndex": 0, "pageIndexes": [0]}, {"fileIndex": 0, "pageIndexes": [1]}]}]
     asyncio.run(shrink_merged([_file("a.pdf", b"")], attachments, {}, []))
     assert not called
-
-
-def test_nen_lai_tep_ghep_di_tiep_tu_nac_sau_nac_da_dung(monkeypatch):
-    monkeypatch.setattr(planner, "_decode", lambda d: b"x" * 1_200_000)
-    starts = []
-
-    def fake_entry(file, raw, limit, start=0):
-        starts.append((file["name"], start))
-        return {"name": file["name"], "type": "application/pdf", "dataUrl": "data:,",
-                "originalBytes": len(raw), "bytes": limit - 1, "level": "test"}
-
-    monkeypatch.setattr(planner, "_shrunk_entry", fake_entry)
-    raw_files = [_file("a.pdf", b""), _file("b.pdf", b"")]
-    replaced = {"0": {"name": "a.pdf", "bytes": 1_800_000, "level": planner._LADDER_LABELS[1]},
-                "1": {"name": "b.pdf", "bytes": 1_800_000, "level": planner._LADDER_LABELS[-1]}}
-    asyncio.run(shrink_merged(raw_files, [_pair(0, 1)], replaced, []))
-    assert starts == [("a.pdf", 2)]  # b đã ở nấc sàn → không vẽ lại

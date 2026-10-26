@@ -326,3 +326,21 @@ def test_the_cach_nhan_noi_duoc_tung_lua_chon_kem_ten_giay():
             "send": "__action:lt_result_pick:" + json.dumps({"name": "BhytNkqHinhThuc",
                                                             "value": "Dịch vụ bưu chính công ích"},
                                                            ensure_ascii=False)} in items
+
+
+async def test_dang_nhap_xong_bi_dua_ve_trang_chu_thi_mo_lai_link_ke_khai():
+    """Đăng nhập VNeID xong cổng liên thông đưa về trang chủ chứ không quay lại link kê khai → BE mở lại đúng link kê
+    khai của thủ tục, im lặng; giới hạn số lần để không lặp mãi khi chưa đăng nhập."""
+    conv = _conv("guide_login")
+    url = flow.get_procedure(KEY)["keKhaiUrl"]
+    for _ in range(flow._LIEN_THONG_HOME_REOPEN_MAX):
+        r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "lienThongHome": True}))
+        assert r.actions == [{"type": "navigate", "url": url}] and not r.display_md
+    r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "lienThongHome": True}))
+    assert not r.actions and not r.display_md
+
+
+async def test_trang_chu_lien_thong_khong_mo_link_cho_thu_tuc_cong_khac():
+    conv = _conv("guide_login", procedure_key="chung-thuc-ban-sao")
+    r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "lienThongHome": True}))
+    assert not r.actions

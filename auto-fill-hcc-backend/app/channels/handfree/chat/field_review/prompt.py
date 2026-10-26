@@ -121,7 +121,7 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
   có dấu (vd "thụy điển" → "Thụy Điển"). Hệ thống sẽ tự đối chiếu với danh sách.
 </value_rules>
 
-{copy_rule}<traps>
+{copy_rule}{other_rule}<traps>
 - Công dân đọc cả nhãn lẫn giá trị ("dân tộc của mẹ là Kinh", "số định danh là 0..."): chỉ lấy phần giá trị.
 - Công dân trả lời bằng thông tin ô khác ("mẹ tôi sinh năm 1960" khi đang hỏi dân tộc của mẹ) → "unclear".
 - Công dân nói "giống ở trên", "như người yêu cầu", "như cũ": bạn không có giá trị đó → "unclear".
@@ -181,6 +181,19 @@ Công dân hay nói luôn số bản trong cùng câu:
 - Chọn dòng "Không" → "quantity": "".
 Ô này luôn trả thêm khoá "quantity" (chữ số hoặc rỗng), vd {{"action": "value", "value": "", "option": {yes}, "quantity": "3"}}.
 </so_ban_sao>
+
+"""
+
+# Ô tích có lựa chọn "Khác" kèm ô ghi chữ (vd quan hệ với người được xác nhận): ô ghi chữ chỉ hiện SAU khi tích "Khác",
+# nên phần chữ phải tách ra ngay lượt này.
+OTHER_RULE = """<lua_chon_khac>
+Dòng [{other}] trong <danh_sach_lua_chon> đi kèm một ô ghi rõ; ô ghi rõ chỉ hiện ra trên tờ khai SAU KHI tích dòng đó.
+- Công dân nói đúng ý một dòng KHÁC dòng [{other}] → chọn dòng đó như thường, "other_text": "".
+- Công dân nói một giá trị cụ thể không trùng ý dòng nào khác → "action": "value", "option": {other}, và "other_text"
+  = đúng giá trị công dân nói, chỉ bỏ từ đệm / rào đón, viết hoa chữ đầu, không chép nhãn ô vào.
+- Công dân chỉ nói tên dòng [{other}] mà không nói giá trị cụ thể → "unclear" (cần biết giá trị để ghi vào ô đi kèm).
+Ô này luôn trả thêm khoá "other_text" (chuỗi hoặc rỗng), vd {{"action": "value", "value": "", "option": {other}, "other_text": "..."}}.
+</lua_chon_khac>
 
 """
 

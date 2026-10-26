@@ -14,11 +14,7 @@
    "group": "ten_chuan",
    "text": "tôi muốn đăng ký khai sinh cho con",
    "expect": {
-    "unclear": [
-     "khai-sinh-dang-ky-thuong",
-     "khai-sinh-dang-ky"
-    ],
-    "all": true
+    "unclear": ["khai-sinh-dang-ky-thuong", "khai-sinh-dang-ky", "khai-sinh-da-co-ho-so"], "all": true
    }
   },
   {
@@ -90,11 +86,7 @@
    "group": "ten_chuan",
    "text": "đăng ký khai sinh",
    "expect": {
-    "unclear": [
-     "khai-sinh-dang-ky-thuong",
-     "khai-sinh-dang-ky"
-    ],
-    "all": true
+    "unclear": ["khai-sinh-dang-ky-thuong", "khai-sinh-dang-ky", "khai-sinh-da-co-ho-so"], "all": true
    }
   },
   {
@@ -238,11 +230,7 @@
    "group": "khong_dau_sai_asr",
    "text": "lam giay khai sinh cho con",
    "expect": {
-    "unclear": [
-     "khai-sinh-dang-ky-thuong",
-     "khai-sinh-dang-ky"
-    ],
-    "all": true
+    "unclear": ["khai-sinh-dang-ky-thuong", "khai-sinh-dang-ky", "khai-sinh-da-co-ho-so"], "all": true
    }
   },
   {
@@ -282,11 +270,7 @@
    "group": "khong_dau_sai_asr",
    "text": "đăng ký khai xinh cho bé",
    "expect": {
-    "unclear": [
-     "khai-sinh-dang-ky-thuong",
-     "khai-sinh-dang-ky"
-    ],
-    "all": true
+    "unclear": ["khai-sinh-dang-ky-thuong", "khai-sinh-dang-ky", "khai-sinh-da-co-ho-so"], "all": true
    }
   },
   {
@@ -768,6 +752,22 @@
    "text": "làm giám hộ cho em trai bị tâm thần",
    "expect": {
     "pick": "dang-ky-giam-ho"
+   }
+  },
+  {
+   "id": "C11",
+   "group": "khong_dau_sai_asr",
+   "text": "đăng ký loại khai sinh",
+   "expect": {
+    "pick": "khai-sinh-dang-ky-lai"
+   }
+  },
+  {
+   "id": "A30",
+   "group": "ten_chuan",
+   "text": "làm khai sinh cho người lớn đã có căn cước mà chưa có giấy khai sinh",
+   "expect": {
+    "pick": "khai-sinh-da-co-ho-so"
    }
   }
  ]

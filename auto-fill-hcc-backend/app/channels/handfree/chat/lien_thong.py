@@ -263,6 +263,11 @@ def result_card(rows: list[dict], action: str = "lt_result_pick") -> dict:
 
 
 def result_summary(rows: list[dict]) -> tuple[str, str]:
+    if len(rows) == 1:
+        row = rows[0]
+        place = vi.LT_RESULT_PLACE.format(place=row["place"]) if row["place"] else ""
+        return _say(vi.LT_RESULT_SUMMARY_ONE, value=row["value"] or vi.LT_RESULT_EMPTY,
+                    place=place + (vi.LT_RESULT_FIXED if row["fixed"] else ""))
     lines_md, lines_tts = [], []
     for row in rows:
         value = row["value"] or vi.LT_RESULT_EMPTY

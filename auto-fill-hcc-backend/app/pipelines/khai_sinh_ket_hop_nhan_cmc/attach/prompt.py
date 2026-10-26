@@ -1,4 +1,4 @@
-"""LLM fallback prompt for combined birth/parent-recognition attachments."""
+"""Prompt phân loại tệp đính kèm cho đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con."""
 
 import json
 from typing import Any
@@ -7,7 +7,6 @@ from typing import Any
 SYSTEM_PROMPT = """
 <role>
 Bạn phân loại giấy tờ đính kèm cho thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con.
-Các file gửi tới đây là những file rule xác định chưa đủ chắc chắn.
 </role>
 
 <task>
@@ -38,7 +37,8 @@ Với từng file, đọc tên file và OCR để xác định:
 
 <routing_rules>
 1. File gộp có kết quả ADN hoặc kết luận của cơ quan có thẩm quyền về quan hệ huyết thống thì chọn relationship_proof, kể cả file còn chứa CCCD.
-2. Tờ khai giấy vẫn là birth_declaration hoặc recognition_declaration; không coi là eForm online.
+2. Tờ khai giấy vẫn là birth_declaration hoặc recognition_declaration; không coi là eForm online. Tờ khai NHẮC tới giấy
+   chứng sinh, kết quả ADN hay CCCD (vd "kèm theo giấy chứng sinh số…") vẫn là tờ khai, không phải giấy được nhắc.
 3. Mỗi file chỉ trả một kết quả, giữ nguyên index đầu vào.
 </routing_rules>
 
@@ -58,4 +58,4 @@ def build_user_prompt(documents: list[dict[str, Any]]) -> str:
         }
         for item in documents
     ]
-    return "PHÂN LOẠI CÁC FILE FALLBACK SAU:\n" + json.dumps(payload, ensure_ascii=False)
+    return "PHÂN LOẠI CÁC FILE SAU:\n" + json.dumps(payload, ensure_ascii=False)

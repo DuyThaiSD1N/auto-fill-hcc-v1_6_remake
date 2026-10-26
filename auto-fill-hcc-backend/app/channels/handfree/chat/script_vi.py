@@ -36,14 +36,14 @@ GREET_PROCEDURE_FIRST = {
 # dưới": người lớn tuổi đọc câu hỏi có/không nhanh hơn là tự đối chiếu ba dòng trong card.
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Dạ, công dân làm **{procedure}** · **{ward}, {province}** · **{subject}** — đúng không ạ?\n\n"
+        "Dạ, công dân làm **{procedure}** · tại **{place}** · **{subject}** — đúng không ạ?\n\n"
         "Đúng → bấm **Đồng ý**. Chưa đúng → chọn lại bên dưới → bấm **Đồng ý**."
     ),
     "tts": (
-        # Đọc dòng hướng dẫn trên màn hình: mũi tên đầu câu đọc "thì", mũi tên sau đọc "rồi". Thêm "Nếu":
-        # "…đúng không ạ? Đúng thì…" hai chữ "đúng" sát nhau làm giọng đọc nghe như bị lắp.
-        "Dạ, công dân làm thủ tục {procedure}, tại {ward}, {province}, {subject}, đúng không ạ? "
-        "Nếu đúng thì bấm Đồng ý. Nếu chưa đúng thì chọn lại bên dưới rồi bấm Đồng ý."
+        # Chỉ đọc vế "đúng thì bấm Đồng ý"; vế chọn lại khi chưa đúng đã có trên màn hình, đọc thêm thì dài.
+        # Thêm "Nếu": "…đúng không ạ? Đúng thì…" hai chữ "đúng" sát nhau làm giọng đọc nghe như bị lắp.
+        "Dạ, công dân làm thủ tục {procedure}, tại {place}, {subject}, đúng không ạ? "
+        "Nếu đúng thì bấm Đồng ý."
     ),
 }
 
@@ -56,8 +56,8 @@ GREET_RETURNING = {
 }
 
 CONFIRM_PROCEDURE = {
-    "md": "Dạ, công dân làm **{procedure}** tại **{ward}, {province}**, đúng không ạ?",
-    "tts": "Dạ, công dân làm thủ tục {procedure}, tại {ward}, {province}, đúng không ạ?",
+    "md": "Dạ, công dân làm **{procedure}** tại **{place}**, đúng không ạ?",
+    "tts": "Dạ, công dân làm thủ tục {procedure}, tại {place}, đúng không ạ?",
 }
 
 PROCEDURE_NOT_RECOGNIZED = {
@@ -1861,6 +1861,11 @@ LT_RESULT_SUMMARY = {
            "đó bên dưới ạ."),
     "tts": "Cách nhận kết quả đang chọn: {lines_tts}. Muốn đổi giấy nào thì bấm lựa chọn ở dòng của giấy đó ạ.",
 }
+# Cổng chỉ có MỘT ô cách nhận kết quả (luồng 4 bước iGate các bộ): không nói "giấy nào", không lặp tên ô.
+LT_RESULT_SUMMARY_ONE = {
+    "md": "📬 **Cách nhận kết quả** đang chọn: **{value}**{place}.\n\nMuốn đổi thì bấm lựa chọn khác bên dưới ạ.",
+    "tts": "Cách nhận kết quả đang chọn: {value}. Muốn đổi thì bấm lựa chọn khác bên dưới ạ.",
+}
 LT_RESULT_LINE = "- **{label}**: {value}{place}"
 LT_RESULT_PLACE = " — tại {place}"
 LT_RESULT_FIXED = " _(cổng đặt sẵn)_"
@@ -2116,8 +2121,13 @@ FR_CONFIRM_FAILED = {
     "tts": "Trang chưa chuyển sang thành phần hồ sơ. Công dân bấm thử lại giúp em ạ.",
 }
 FR_PREVIEW_CLOSED = {
-    "md": "Dạ em đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai, xong bấm **Xem trước tờ khai** ạ.",
-    "tts": "Dạ em đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai rồi bấm xem trước tờ khai ạ.",
+    "md": "Dạ em đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai{review_md}, xong bấm **Xem trước tờ khai** ạ.",
+    "tts": "Dạ em đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai{review_tts}, rồi bấm xem trước tờ khai ạ.",
+}
+# Tờ khai còn ô trống: sửa xong bản xem trước vẫn quay lại được vòng hỏi từng ô.
+FR_PREVIEW_CLOSED_REVIEW = {
+    "md": " hoặc bấm **Bổ sung các thông tin còn thiếu** để em hỏi từng ô",
+    "tts": " hoặc bấm bổ sung các thông tin còn thiếu để em hỏi từng ô",
 }
 FR_OWNER_READY = {
     "md": ("✓ **Thông tin chủ hồ sơ** đã đủ.\n\nCông dân đọc và sửa lại nếu cần, sau đó bấm **\"Bước tiếp theo\"** "
@@ -2208,6 +2218,12 @@ FR_COPY_COUNT_HINT = {
     "tts": " Cần bản sao thì công dân nói luôn số bản, ví dụ có, hai bản ạ.",
 }
 FR_COPY_VALUE = "{choice}, {count} bản"
+# Ô tích có lựa chọn "Khác" kèm ô ghi chữ: ô ghi chữ chỉ hiện sau khi tích nên phải nghe luôn phần cụ thể.
+FR_OTHER_TEXT_HINT = {
+    "md": "\n\nNếu là **{option}** thì công dân nói rõ luôn cụ thể là gì giúp em ạ.",
+    "tts": " Nếu là {option_tts} thì công dân nói rõ luôn cụ thể là gì giúp em ạ.",
+}
+FR_OTHER_VALUE = "{choice}: {text}"
 FR_COPY_COUNT_FAILED = {
     "md": "✓ Đã điền **{label}**: {choice} · ⚠️ chưa điền được số lượng bản sao, em sẽ hỏi lại ô số lượng ạ.",
     "tts": "Dạ em đã chọn {choice} nhưng chưa điền được số lượng bản sao, em sẽ hỏi lại ô số lượng ạ. ",
@@ -2268,3 +2284,52 @@ FR_STOPPED_SINGLE_PAGE = {
             "rồi Lưu và nộp hồ sơ ạ."),
 }
 FR_MISSING_NOTE = " Còn **{count} ô bắt buộc** chưa có thông tin."
+
+# ── Hỏi bổ sung ô còn trống ở bước Thông tin chủ hồ sơ (chat/owner_review.py) ──────────────────────────────
+# Chỉ bật ở tiếng Việt (chế độ Mông giữ câu "công dân tự điền" cũ) nên chưa có twin bên script_mong.
+OR_FILLED = {"md": "✓ Đã điền **{completed}** từ giấy tờ.", "tts": "Dạ, em đã điền {completed}. "}
+OR_START = {
+    "md": "Còn **{count} thông tin** giấy tờ không ghi, em hỏi nhanh ạ. Không có thì công dân nói **bỏ qua**.",
+    "tts": "Còn {count} thông tin giấy tờ không ghi, em hỏi nhanh ạ. ",
+}
+OR_QUESTIONS = {
+    "issueDate": {"md": "**Ngày cấp** căn cước là ngày nào ạ?", "tts": "Ngày cấp căn cước là ngày nào ạ?"},
+    "issuePlace": {"md": "**Nơi cấp** căn cước là cơ quan nào ạ?", "tts": "Nơi cấp căn cước là cơ quan nào ạ?"},
+    "phoneNumber": {"md": "**Số điện thoại** của công dân là số nào ạ?",
+                    "tts": "Số điện thoại của công dân là số nào ạ?"},
+    "detailedAddress": {"md": "**Địa chỉ chi tiết** (số nhà, đường, thôn/tổ…) của công dân là gì ạ?",
+                        "tts": "Địa chỉ chi tiết của công dân là gì ạ?"},
+}
+OR_ASK = {"md": "📝 {question_md}\n\nCông dân nói hoặc gõ giúp em ạ.", "tts": "{question_tts} Công dân nói hoặc gõ giúp em."}
+# Nhãn ngắn trên nút, cùng thứ tự với ISSUE_PLACE_OPTIONS (owner_info/schema.py) — nút gửi số thứ tự, không gửi chữ.
+OR_ISSUE_PLACE_CHIPS = (
+    "Cục CS ĐKQL cư trú và DLQG về dân cư",
+    "Cục CS QLHC về TTXH",
+    "Bộ Công an",
+    "Cục Quản lý xuất nhập cảnh",
+)
+OR_STOP_CHIP = "⏹️ Để công dân tự điền trên trang"
+OR_APPLYING = {"md": "✓ **{label}**: {value}", "tts": "Dạ, em điền {label}. "}
+OR_ISSUE_PLACE_DERIVED = {
+    "md": "\n\n✓ **Nơi cấp** theo ngày cấp: {place} — sai thì công dân sửa trên trang giúp em.",
+    "tts": "Nơi cấp em điền theo ngày cấp, sai thì công dân sửa trên trang giúp em. ",
+}
+OR_COMPLETE = {"md": "✓ **Thông tin chủ hồ sơ** đã đủ.", "tts": "Dạ, thông tin chủ hồ sơ đã đủ."}
+OR_LEFT = {
+    "md": "Còn thiếu **{missing}**, công dân tự điền trên trang giúp em.",
+    "tts": "Dạ, còn thiếu {missing}, công dân tự điền trên trang giúp em.",
+}
+OR_NEXT_HINT = {
+    "md": "\n\nCông dân đọc lại, còn sửa gì cứ sửa trên trang → bấm nút dưới để sang **{attachment_step}** ạ.",
+    "tts": " Công dân đọc lại, còn sửa gì cứ sửa, rồi bấm nút bên dưới ạ.",
+}
+OR_SAVE_CHIP = "💾 Lưu vào Thông tin định danh của công dân"
+OR_SAVED = {
+    "md": "✓ Đã lưu vào **Thông tin định danh** của công dân — lần sau cổng tự điền sẵn.\n\nBấm nút dưới để sang bước tiếp ạ.",
+    "tts": "Dạ, em đã lưu vào thông tin định danh của công dân. Bấm nút bên dưới để sang bước tiếp ạ.",
+}
+OR_SAVE_FAILED = {
+    "md": ("⚠️ Em chưa lưu được ({error}). Công dân tick ô **Lưu thông tin mới sửa đổi…** trên trang rồi bấm "
+           "**Xác nhận** giúp em, hoặc bỏ qua và bấm nút dưới ạ."),
+    "tts": "Dạ, em chưa lưu được. Công dân tự tick ô lưu thông tin trên trang rồi bấm xác nhận, hoặc bấm nút bên dưới ạ.",
+}

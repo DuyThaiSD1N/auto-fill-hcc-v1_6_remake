@@ -336,7 +336,14 @@ DUY NHẤT một JSON:
 - unknown: không xếp được → value = "".
 
 Câu có thể đến từ NHẬN GIỌNG NÓI: có thể không dấu, sai chính tả, nghe nhầm âm gần giống — hiểu
-theo nghĩa gần nhất.
+theo nghĩa gần nhất KHI câu còn đọc ra được ý (từ ba tiếng trở lên, hoặc có từ khớp rõ một nút / một việc).
+Câu chỉ MỘT HAI tiếng thì KHÔNG suy âm gần giống: phải là ĐÚNG NGUYÊN một lời đáp quen dùng mới tính; một tiếng
+chỉ na ná lời đáp (khác dấu, khác vần) là tiếng ồn → unknown.
+CÂU CỤT / KHÔNG RÕ NGHĨA: nhận giọng nói hay bắt nhầm tiếng ồn, tiếng nói chuyện xung quanh thành một vài âm
+rời không thành ý (một hai tiếng lẻ không phải lời đáp, không gắn được với nút hay bước nào). Câu như vậy → unknown,
+TUYỆT ĐỐI không đoán thành button / confirm / state_action — nút và lệnh sẽ bấm thật trên cổng (mở xem trước,
+điền lại, sang bước, nộp) hoặc xoá việc đã làm. Chỉ những lời đáp ngắn quen dùng mới là confirm / deny: "ừ", "ờ",
+"vâng", "dạ", "ok", "được", "đúng", "có" / "không", "chưa".
 
 LƯU Ý: câu có "chưa"/"không"/"chưa được" là PHỦ ĐỊNH — KHÔNG coi là hành động đã-xong
 (vd "chưa đăng nhập được" KHÔNG phải sso_success). Chỉ trả JSON, không giải thích.

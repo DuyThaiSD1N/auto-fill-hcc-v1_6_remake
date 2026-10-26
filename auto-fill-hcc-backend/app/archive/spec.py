@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
+
+from bson import ObjectId
 
 from app.archive.keys import has_key, with_keys
 
@@ -16,6 +19,27 @@ _PREQ_FIELDS = ("options", "fields", "extracted")
 _PREQ_FILE_KEEP = ("type", "role", "size", "sha256")
 
 _DOSSIER_FIELDS = ("applicant_name", "portal_dossier_ref")
+
+
+_ARCHIVE_FLAGS = ("archive_pending", "archived_at", "archive_failed", "archive_meta_sent")
+
+
+def jsonable(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(k): jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(v) for v in value]
+    return value
+
+
+def public_doc(doc: dict, set_: dict, unset: list[str] | tuple[str, ...]) -> dict:
+    out = {k: v for k, v in doc.items() if k not in unset and k not in _ARCHIVE_FLAGS}
+    out.update(set_)
+    return jsonable(out)
 
 
 def _pick(item: Any, keys: tuple[str, ...]) -> Any:

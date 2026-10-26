@@ -345,10 +345,10 @@ async def test_gui_thanh_cong_thi_im_de_luong_nop_cu_lo_tiep():
     assert not r.display_md and not r.chips, "card đánh giá của luồng cũ mới là lời chốt"
 
 
-# ── Thủ tục chưa bật ──────────────────────────────────────────────────────────────────────
+# ── Bản trên chợ chưa có cờ dẫn bước ─────────────────────────────────────────────────────
 
-async def test_thu_tuc_khac_du_client_moi_van_chay_luong_cu():
-    conv = _conv(NEW_CLIENT, procedure_key="chung-thuc-giao-dich-tai-san")
+async def test_thu_tuc_chung_thuc_khac_client_cu_chay_luong_cu():
+    conv = _conv(OLD_CLIENT, procedure_key="chung-thuc-chu-ky-nguoi-dich-khong-ctv")
     r = await _owner_page(conv)
     assert r.display_md == vi.OWNER_INFO_ATTACH_GUIDE["md"]
     assert not r.chips

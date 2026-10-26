@@ -1,11 +1,14 @@
-"""Lấy trace từ backend PROD về máy để chẩn đoán — chạy ở MÁY DEV, không chạy trong container.
+"""Lấy trace PROD về máy để chẩn đoán — chạy ở MÁY DEV (trong tailnet), không chạy trong container.
+
+Nội dung lượt (OCR, kết quả LLM, giá trị trường, tệp gốc) không còn trên máy chủ prod sau 30 phút mà
+nằm ở kho trên Spark → script đọc qua web quản lý nội bộ của kho (repo hcc-vault, chỉ mở trong tailnet).
 
 Chỉ dùng thư viện chuẩn (không import app) để chạy được bằng bất kỳ python3 nào.
 
 Cấu hình (biến môi trường; thiếu thì đọc ./.env của repo — file này đã nằm trong .gitignore và
 .dockerignore):
-    PROD_TRACE_API    URL gốc backend prod, vd https://api.example.vn (không có "/" cuối)
-    PROD_TRACE_USER   tài khoản super_admin (cùng tài khoản đăng nhập web Monitor)
+    PROD_TRACE_API    URL web quản lý nội bộ của kho, vd https://<máy>.<tailnet>.ts.net:12110 (không "/" cuối)
+    PROD_TRACE_USER   tài khoản web quản lý nội bộ (tạo bằng app.cli create-user)
     PROD_TRACE_PASS   mật khẩu
     PROD_TRACE_OUT    thư mục lưu JSON (mặc định <thư mục hcc>/traces-prod — ngoài mọi repo git)
 
@@ -25,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.cookiejar
 import io
 import json
 import os
@@ -72,35 +76,36 @@ def _load_config() -> dict:
 
 
 class Client:
+    """Đăng nhập web kho (cookie phiên HttpOnly) rồi gọi API JSON của nó."""
+
     def __init__(self, base: str, username: str, password: str):
         self.base = base
-        login = self._call("POST", "/auth/login", body={
-            "username": username, "password": password, "superAdminOnly": True,
-        })
-        self.token = login["accessToken"]
+        self._opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
+            urllib.request.HTTPSHandler(context=_ssl_context()),
+        )
+        self._call("POST", "/api/auth/login", body={"username": username, "password": password})
 
     def _call(self, method: str, path: str, *, params: dict | None = None, body: dict | None = None,
               raw: bool = False):
-        query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v not in (None, "")})
+        query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v not in (None, "", "all")})
         url = f"{self.base}{path}" + (f"?{query}" if query else "")
-        # Cloudflare chặn (lỗi 1010) User-Agent mặc định "Python-urllib" → tự khai tên công cụ.
-        headers = {"Accept": "application/json", "User-Agent": "hcc-prod-trace/1.0"}
+        # Web kho chỉ nhận yêu cầu ghi có header này (chặn CSRF); gửi luôn cho mọi yêu cầu cho gọn.
+        headers = {"Accept": "application/json", "User-Agent": "hcc-prod-trace/2.0", "X-Vault-Client": "1"}
         data = None
         if body is not None:
             data = json.dumps(body).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        if getattr(self, "token", None):
-            headers["Authorization"] = f"Bearer {self.token}"
         req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=_TIMEOUT_S, context=_ssl_context()) as resp:
+            with self._opener.open(req, timeout=_TIMEOUT_S) as resp:
                 content = resp.read()
                 return content if raw else json.loads(content.decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", "replace")[:500]
             raise ApiError(exc.code, detail) from None
         except urllib.error.URLError as exc:
-            sys.exit(f"Không kết nối được {self.base}: {exc.reason}")
+            sys.exit(f"Không kết nối được {self.base}: {exc.reason} (máy này đã vào tailnet chưa?)")
 
     def get(self, path: str, **params):
         return self._call("GET", path, params=params)
@@ -150,19 +155,44 @@ def _fold(text: str) -> str:
 
 # ---------------------------------------------------------------- get
 
-def _resolve_request_ids(client: Client, code: str) -> list[dict]:
-    """Mã hỗ trợ cán bộ gửi hay thiếu/dư ký tự → dùng tìm gần đúng của /api/v1/traces."""
-    res = client.get("/api/v1/traces", requestId=code, pageSize=20)
-    return res.get("items") or []
+_KIND_ORDER = ("autofill", "attach", "classify", "owner_info")
 
 
-def _fetch_run(client: Client, request_id: str, kind: str | None) -> dict | None:
+def _resolve_request_ids(client: Client, code: str) -> list[str]:
+    """Mã hỗ trợ cán bộ gửi hay thiếu/dư ký tự → tìm theo tiền tố mã lượt trong kho."""
+    res = client.get("/api/records", type="request", q=code, pageSize=20)
+    return sorted({r.get("requestId") for r in res.get("items") or [] if r.get("requestId")})
+
+
+def _fetch_bundle(client: Client, request_id: str) -> dict | None:
     try:
-        return client.get(f"/api/v1/monitor/runs/{urllib.parse.quote(request_id)}", kind=kind)
+        return client.get(f"/api/runs/{urllib.parse.quote(request_id)}")
     except ApiError as exc:
         if exc.status == 404:
             return None
         raise
+
+
+def _pick_run(bundle: dict, kind: str | None) -> tuple[str | None, dict | None]:
+    runs = bundle.get("runs") or {}
+    if kind:
+        return kind, runs.get(kind)
+    for k in (*_KIND_ORDER, *runs):
+        if k in runs:
+            return k, runs[k]
+    return None, None
+
+
+def _fetch_run(client: Client, request_id: str, kind: str | None) -> dict | None:
+    """Một bước của lượt, cùng hình dạng API Monitor cũ ({trace, steps}) + tệp của gói để tải."""
+    bundle = _fetch_bundle(client, request_id)
+    if bundle is None:
+        return None
+    _kind, run = _pick_run(bundle, kind)
+    if run is None:
+        return None
+    return {**run, "processRequests": bundle.get("processRequests") or [],
+            "_bundleId": bundle.get("bundleId"), "_partial": bundle.get("partial")}
 
 
 def _save(out_dir: Path, request_id: str, kind: str | None, data: dict) -> Path:
@@ -252,8 +282,7 @@ def cmd_get(client: Client, args, out_dir: Path) -> None:
         data = _fetch_run(client, code, args.kind)
         request_id = code
         if data is None:
-            matches = _resolve_request_ids(client, code)
-            ids = sorted({m.get("request_id") for m in matches if m.get("request_id")})
+            ids = _resolve_request_ids(client, code)
             if not ids:
                 print(f"✗ Không tìm thấy lượt nào có mã chứa '{code}'")
                 continue
@@ -279,13 +308,13 @@ def cmd_get(client: Client, args, out_dir: Path) -> None:
 def _download_files(client: Client, data: dict, out_dir: Path, request_id: str,
                     quiet: bool = False) -> list[Path]:
     """Tệp gốc của lượt (ảnh/PDF người dùng upload) → <out>/<request_id>/, để chạy lại OCR so sánh."""
-    trace_id = (data.get("trace") or {}).get("id")
-    if not trace_id:
+    bundle_id = data.get("_bundleId")
+    if not bundle_id:
         if not quiet:
-            print("   (lượt này không có trace nên không tải được tệp gốc)")
+            print("   (kho chưa có gói tệp của lượt này)")
         return []
     try:
-        blob = client.get_bytes(f"/api/v1/traces/{urllib.parse.quote(trace_id)}/download")
+        blob = client.get_bytes(f"/api/records/{bundle_id}/files.zip")
     except ApiError as exc:
         if not quiet:
             print(f"   ✗ Không tải được tệp gốc: {exc}")
@@ -295,9 +324,10 @@ def _download_files(client: Client, data: dict, out_dir: Path, request_id: str,
     paths = []
     with zipfile.ZipFile(io.BytesIO(blob)) as zf:
         for member in zf.infolist():
-            if member.is_dir():
+            # Ảnh rà soát (ra-soat/) là ảnh dựng lại từ tệp gốc — chỉ lấy tệp người dùng upload.
+            if member.is_dir() or member.filename.startswith("ra-soat/"):
                 continue
-            # Chỉ lấy tên file: tên trong zip do BE đặt theo tên người dùng upload, không tin đường dẫn.
+            # Chỉ lấy tên file: tên trong zip theo tên người dùng upload, không tin đường dẫn.
             path = target / Path(member.filename).name
             path.write_bytes(zf.read(member))
             paths.append(path)
@@ -308,42 +338,71 @@ def _download_files(client: Client, data: dict, out_dir: Path, request_id: str,
 
 # ---------------------------------------------------------------- list
 
+def _outcome(data: dict) -> str:
+    trace, steps = data.get("trace") or {}, data.get("steps") or {}
+    return steps.get("outcome") or trace.get("outcome") or ("error" if trace.get("status") == "error" else "ok")
+
+
+def _iter_rows(client: Client, *, max_rows: int, **filters):
+    """Lượt trong kho (mới nhất trước); nguồn autofill/handfree lọc ở đây vì API kho chưa có tham số này."""
+    source = filters.pop("source", "all")
+    page, seen = 1, 0
+    while seen < max_rows:
+        res = client.get("/api/records", type="request", pageSize=100, page=page, **filters)
+        items = res.get("items") or []
+        if not items:
+            return
+        for row in items:
+            seen += 1
+            if source in ("all", None) or row.get("experience") == source:
+                yield row
+        page += 1
+
+
 def cmd_list(client: Client, args, out_dir: Path) -> None:
-    res = client.get(
-        "/api/v1/monitor/runs",
-        procedure=args.procedure, source=args.source, kind=args.kind, outcome=args.outcome,
-        dateFrom=args.date_from, dateTo=args.date_to, q=args.q, pageSize=args.limit, page=1,
-    )
-    items = res.get("items") or []
-    print(f"{len(items)}/{res.get('total')} lượt"
-          + (f" — {args.procedure}" if args.procedure else ""))
-    print(f"{'Lúc (VN)':19}  {'Mã':38}  {'kind':8}  {'nguồn':8}  {'kết quả':8}  {'chờ(s)':>6}  {'tệp':>3}  {'then chốt':>9}  Đơn vị")
-    for it in items:
-        wait = it.get("wait_ms")
-        key = f"{it.get('key_fields_filled')}/{it.get('key_fields_total')}" if it.get("key_fields_total") else "-"
-        print(f"{_vn_time(it.get('created_at')):19}  {str(it.get('request_id')):38}  {str(it.get('kind')):8}  "
-              f"{str(it.get('experience')):8}  {str(it.get('outcome')):8}  "
-              f"{(wait / 1000 if wait else 0):6.1f}  {str(it.get('files') or 0):>3}  {key:>9}  {it.get('name') or it.get('username') or ''}")
+    rows, details = [], {}
+    for row in _iter_rows(client, max_rows=max(args.limit * 20, 200), procedure=args.procedure,
+                          source=args.source, kind=args.kind, dateFrom=args.date_from, dateTo=args.date_to,
+                          q=args.q):
+        kind = args.kind if args.kind != "all" else None
+        if args.outcome != "all" or args.download:
+            data = _fetch_run(client, row["requestId"], kind)
+            if data is None:
+                continue
+            outcome = _outcome(data)
+            if args.outcome == "issues" and outcome == "ok" or args.outcome not in ("all", "issues", outcome):
+                continue
+            details[row["requestId"]] = data
+        rows.append(row)
+        if len(rows) >= args.limit:
+            break
+    print(f"{len(rows)} lượt" + (f" — {args.procedure}" if args.procedure else ""))
+    print(f"{'Lúc (VN)':19}  {'Mã':38}  {'bước':16}  {'nguồn':8}  {'kết quả':8}  {'tệp':>3}  Đơn vị")
+    for row in rows:
+        data = details.get(row["requestId"])
+        print(f"{_vn_time(row.get('createdAt')):19}  {str(row.get('requestId')):38}  "
+              f"{','.join(row.get('kinds') or []) or '-':16}  {str(row.get('experience') or '-'):8}  "
+              f"{(_outcome(data) if data else '-'):8}  {str(row.get('files') or 0):>3}  "
+              f"{row.get('unitName') or row.get('username') or ''}")
     if args.download:
         print()
-        for it in items:
-            rid, kind = it.get("request_id"), it.get("kind")
-            if not rid:
+        for row in rows:
+            rid, data = row["requestId"], details.get(row["requestId"])
+            if data is None:
                 continue
-            data = _fetch_run(client, rid, kind)
-            if data is not None:
-                print(f"💾 {_save(out_dir, rid, kind, data)}")
-                if args.files:
-                    _download_files(client, data, out_dir, rid)
+            kind = (data.get("trace") or {}).get("kind") or (data.get("steps") or {}).get("kind")
+            print(f"💾 {_save(out_dir, rid, kind, data)}")
+            if args.files:
+                _download_files(client, data, out_dir, rid)
 
 
 # ---------------------------------------------------------------- collect
 
 def _user_id(client: Client, username: str) -> str:
-    for user in client.get("/api/v1/monitor/facets").get("users") or []:
-        if (user.get("username") or "").lower() == username.lower():
-            return user["userId"]
-    sys.exit(f"✗ Không có tài khoản '{username}' trong dữ liệu trace")
+    for unit in client.get("/api/facets").get("units") or []:
+        if (unit.get("username") or "").lower() == username.lower():
+            return unit["userId"]
+    sys.exit(f"✗ Không có tài khoản '{username}' trong kho")
 
 
 def _llm_fields(trace: dict) -> dict:
@@ -383,57 +442,48 @@ def cmd_collect(client: Client, args, out_dir: Path) -> None:
     user_id = _user_id(client, args.user) if args.user else None
     seen: set[str] = set()
     picked, skipped = [], []
-    page = 1
-    while len(picked) < args.count:
-        res = client.get(
-            "/api/v1/monitor/runs", userId=user_id, procedure=args.procedure, kind="autofill",
-            source=args.source, dateFrom=args.date_from, dateTo=args.date_to, pageSize=100, page=page,
-        )
-        items = res.get("items") or []
-        if not items:
+    for item in _iter_rows(client, max_rows=100_000, userId=user_id, procedure=args.procedure, kind="autofill",
+                           source=args.source, dateFrom=args.date_from, dateTo=args.date_to):
+        if len(picked) >= args.count:
             break
-        for item in items:
-            if len(picked) >= args.count:
-                break
-            rid = item.get("request_id")
-            account = _fold(f"{item.get('username') or ''} {item.get('name') or ''}").lower()
-            if any(_fold(word).lower() in account for word in args.skip_account):
-                continue
-            data = _fetch_run(client, rid, "autofill") or {}
-            trace = data.get("trace") or {}
-            if not trace or not _llm_fields(trace):
-                skipped.append({"request_id": rid, "ly_do": "không có kết quả trích xuất"})
-                continue
-            keys = _person_keys(trace)
-            hashes = [a.get("sha256") for a in trace.get("attachments") or []]
-            if hashes and all(hashes):
-                keys.add("files:" + ",".join(sorted(hashes)))
-            duplicate = keys & seen
-            if duplicate:
-                seen |= keys
-                skipped.append({"request_id": rid, "ly_do": "trùng hồ sơ đã chọn", "khoa": sorted(duplicate)[:3]})
-                continue
-            paths = _download_files(client, data, out_dir, rid, quiet=True)
-            if not paths:
-                # Không đánh dấu đã thấy: lượt cũ hơn của cùng hồ sơ có thể còn tệp gốc.
-                skipped.append({"request_id": rid, "ly_do": "không tải được tệp gốc"})
-                continue
-            # Lượt handfree/scan có thể không ghi sha256 và trích xuất trống tên/số → so thêm theo
-            # từng tệp đã tải; chung dù một tệp cũng là cùng hồ sơ (chạy lại với bớt/thêm tệp).
-            file_keys = {"file:" + hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
-            if file_keys & seen:
-                seen |= keys | file_keys
-                skipped.append({"request_id": rid, "ly_do": "trùng hồ sơ đã chọn", "khoa": ["tệp giống"]})
-                continue
+        rid = item.get("requestId")
+        account = _fold(f"{item.get('username') or ''} {item.get('unitName') or ''}").lower()
+        if any(_fold(word).lower() in account for word in args.skip_account):
+            continue
+        data = _fetch_run(client, rid, "autofill") or {}
+        trace = data.get("trace") or {}
+        if not trace or not _llm_fields(trace):
+            skipped.append({"request_id": rid, "ly_do": "không có kết quả trích xuất"})
+            continue
+        keys = _person_keys(trace)
+        hashes = [a.get("sha256") for a in trace.get("attachments") or []]
+        if hashes and all(hashes):
+            keys.add("files:" + ",".join(sorted(hashes)))
+        duplicate = keys & seen
+        if duplicate:
+            seen |= keys
+            skipped.append({"request_id": rid, "ly_do": "trùng hồ sơ đã chọn", "khoa": sorted(duplicate)[:3]})
+            continue
+        paths = _download_files(client, data, out_dir, rid, quiet=True)
+        if not paths:
+            # Không đánh dấu đã thấy: lượt cũ hơn của cùng hồ sơ có thể còn tệp gốc.
+            skipped.append({"request_id": rid, "ly_do": "không tải được tệp gốc"})
+            continue
+        # Lượt handfree/scan có thể không ghi sha256 và trích xuất trống tên/số → so thêm theo
+        # từng tệp đã tải; chung dù một tệp cũng là cùng hồ sơ (chạy lại với bớt/thêm tệp).
+        file_keys = {"file:" + hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+        if file_keys & seen:
             seen |= keys | file_keys
-            _save(out_dir, rid, "autofill", data)
-            picked.append({
-                "request_id": rid, "created_at": trace.get("created_at"),
-                "experience": trace.get("experience"), "files": [p.name for p in paths],
-            })
-            print(f"[{len(picked):>2}/{args.count}] {_vn_time(trace.get('created_at'))}  {rid}  "
-                  f"{trace.get('experience') or '':8} tệp={len(paths)}")
-        page += 1
+            skipped.append({"request_id": rid, "ly_do": "trùng hồ sơ đã chọn", "khoa": ["tệp giống"]})
+            continue
+        seen |= keys | file_keys
+        _save(out_dir, rid, "autofill", data)
+        picked.append({
+            "request_id": rid, "created_at": trace.get("created_at"),
+            "experience": trace.get("experience"), "files": [p.name for p in paths],
+        })
+        print(f"[{len(picked):>2}/{args.count}] {_vn_time(trace.get('created_at'))}  {rid}  "
+              f"{trace.get('experience') or '':8} tệp={len(paths)}")
 
     batch_dir = out_dir / f"_batch_{args.user or 'all'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     batch_dir.mkdir(parents=True, exist_ok=True)
@@ -450,7 +500,7 @@ def cmd_collect(client: Client, args, out_dir: Path) -> None:
 
 
 def cmd_procedures(client: Client, args, _out_dir: Path) -> None:
-    procedures = client.get("/api/v1/monitor/facets").get("procedures") or []
+    procedures = client.get("/api/facets").get("procedures") or []
     want = _fold(args.grep) if args.grep else ""
     for p in procedures:
         if want and want not in _fold(f"{p.get('key')} {p.get('label')}"):
@@ -459,7 +509,7 @@ def cmd_procedures(client: Client, args, _out_dir: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Lấy trace từ backend PROD (web Monitor API).")
+    parser = argparse.ArgumentParser(description="Lấy trace PROD từ kho trên Spark (web quản lý nội bộ).")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_get = sub.add_parser("get", help="Chi tiết một hoặc nhiều lượt theo mã hỗ trợ (request_id)")
@@ -477,7 +527,7 @@ def main() -> None:
     p_list.add_argument("--source", choices=["all", "autofill", "handfree"], default="all")
     p_list.add_argument("--kind", choices=["all", "autofill", "attach", "classify", "owner_info"], default="all")
     p_list.add_argument("--outcome", choices=["all", "ok", "partial", "error", "issues"], default="all")
-    p_list.add_argument("--q", help="Tìm theo mã / tên đơn vị / người làm thủ tục")
+    p_list.add_argument("--q", help="Tìm theo mã lượt / mã hồ sơ / tên đơn vị")
     p_list.add_argument("--limit", type=int, default=20, help="Số lượt (tối đa 200)")
     p_list.add_argument("--download", action="store_true", help="Tải chi tiết từng lượt về thư mục output")
     p_list.add_argument("--files", action="store_true", help="Cùng --download: tải kèm tệp gốc từng lượt")

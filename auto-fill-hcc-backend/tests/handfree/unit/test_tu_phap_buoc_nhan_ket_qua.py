@@ -141,8 +141,8 @@ async def test_extension_khong_khai_dan_buoc_thi_giu_luong_cu():
     assert not any(c.get("send") == "__action:guided_next" for c in r.chips)
 
 
-async def test_buoc_chu_ho_so_chung_thuc_khac_khong_doi():
-    conv = _conv("chung-thuc-giao-dich-tai-san", state="guide_login")
+async def test_buoc_chu_ho_so_client_cu_khong_doi():
+    conv = _conv("chung-thuc-chu-ky-nguoi-dich-khong-ctv", caps={"supportsRating": True}, state="guide_login")
     r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "wizardStep": 1}))
     assert r.display_md == vi.OWNER_INFO_ATTACH_GUIDE["md"]
     assert not r.chips
