@@ -1069,9 +1069,14 @@ def not_understood_reply(conv: dict) -> Reply:
     if not items:
         return Reply(*_fmt(vi.VOICE_NOT_UNDERSTOOD))
     labels = [i["label"] for i in items if i.get("label")]
+
+    def _or_list(xs: list[str]) -> str:
+        # "A hoặc B", "A, B hoặc C"
+        return "".join(xs) if len(xs) < 2 else ", ".join(xs[:-1]) + " hoặc " + xs[-1]
+
     r = Reply(*_fmt(vi.VOICE_NOT_UNDERSTOOD_OPTIONS,
-                    options_md=" · ".join(f"**{x}**" for x in labels),
-                    options_tts=", ".join(labels)))
+                    options_md=_or_list([f"**{x}**" for x in labels]),
+                    options_tts=_or_list(labels)))
     # Chỉ dựng lại nút gốc (chip); nút trên card thì card vẫn còn trên màn hình.
     r.chips = [dict(i["chip"]) for i in items if isinstance(i.get("chip"), dict)]
     return r

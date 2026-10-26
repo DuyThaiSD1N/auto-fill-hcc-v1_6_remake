@@ -266,51 +266,71 @@ def test_ket_hon_dao_lai_noi_cu_tru_va_ngay_cap_lay_nham_mat_sau_the_nguoi_kia()
     """Mặt sau thẻ Căn cước của nam đứng ngay sau MRZ của nữ → LLM gán nhầm nơi cư trú, ngày/nơi cấp cho nữ."""
     docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
     extracted = {
-        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
-        "CccdNu_NgayCap": "05/08/2024", "CccdNu_NoiCap": "Bộ Công an",
-        "CccdNam_NgayCap": "05/08/2024", "CccdNam_NoiCap": "Bộ Công an",
-        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
-        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+        "BenNu_SoDinhDanh": "001190000111", "BenNam_SoDinhDanh": "002095000222",
+        "BenNu_NgayCap": "05/08/2024", "BenNu_NoiCap": "Bộ Công an",
+        "BenNam_NgayCap": "05/08/2024", "BenNam_NoiCap": "Bộ Công an",
+        "BenNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "BenNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
     }
 
     fixed = ket_hon_runner._compact_field_fallback(extracted, docs)
 
-    assert fixed["CccdNu_NoiCuTru_TrongNuoc"] == _DIA_CHI_NU
-    assert fixed["CccdNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
-    assert fixed["CccdNu_NgayCap"] == "10/05/2021"
-    assert fixed["CccdNu_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert fixed["CccdNam_NgayCap"] == "05/08/2024"
-    assert fixed["CccdNam_NoiCap"] == "Bộ Công an"
+    assert fixed["BenNu_NoiCuTru_TrongNuoc"] == _DIA_CHI_NU
+    assert fixed["BenNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
+    assert fixed["BenNu_NgayCap"] == "10/05/2021"
+    assert fixed["BenNu_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert fixed["BenNam_NgayCap"] == "05/08/2024"
+    assert fixed["BenNam_NoiCap"] == "Bộ Công an"
 
 
 def test_ket_hon_bo_trong_dia_chi_nu_khi_ca_hai_ben_deu_lay_dia_chi_nam():
     docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
     extracted = {
-        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
-        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
-        "CccdNam_NoiCuTru_TrongNuoc": {**_DIA_CHI_NAM, "diaChi": "Thôn Gia Hiệp 9", "xa": "Di Linh"},
+        "BenNu_SoDinhDanh": "001190000111", "BenNam_SoDinhDanh": "002095000222",
+        "BenNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "BenNam_NoiCuTru_TrongNuoc": {**_DIA_CHI_NAM, "diaChi": "Thôn Gia Hiệp 9", "xa": "Di Linh"},
     }
 
     fixed = ket_hon_runner._compact_field_fallback(extracted, docs)
 
-    assert fixed["CccdNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
-    assert "CccdNu_NoiCuTru_TrongNuoc" not in fixed
+    assert fixed["BenNam_NoiCuTru_TrongNuoc"] == _DIA_CHI_NAM
+    assert "BenNu_NoiCuTru_TrongNuoc" not in fixed
 
 
 def test_ket_hon_giu_nguyen_khi_gan_dung_hoac_hai_ben_chung_dia_chi():
     docs = [{"name": "the.pdf", "text": _HAI_THE_LIEN_NHAU}]
     dung = {
-        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
-        "CccdNu_NgayCap": "10/05/2021", "CccdNam_NgayCap": "05/08/2024",
-        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
-        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "BenNu_SoDinhDanh": "001190000111", "BenNam_SoDinhDanh": "002095000222",
+        "BenNu_NgayCap": "10/05/2021", "BenNam_NgayCap": "05/08/2024",
+        "BenNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+        "BenNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
     }
     assert ket_hon_runner._compact_field_fallback(dung, docs) == dung
 
     chung = _HAI_THE_LIEN_NHAU.replace("Nơi cư trú / Place of residence: Thôn 7\nGia Hiệp, Di Linh",
                                        "Nơi cư trú / Place of residence: 12 Lê Lợi\nPhường 3, Thành phố Đà Lạt")
-    cung_dia_chi = {**dung, "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU)}
+    cung_dia_chi = {**dung, "BenNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU)}
     assert ket_hon_runner._compact_field_fallback(cung_dia_chi, [{"name": "the.pdf", "text": chung}]) == cung_dia_chi
+
+
+def test_ket_hon_bo_xa_tinh_nu_muon_tu_the_nam_khi_ocr_mat_dong_sau_dia_chi():
+    """Thẻ cũ của nữ chỉ đọc được dòng đầu nơi thường trú → LLM vá xã/tỉnh bằng nơi cư trú trên thẻ nam."""
+    cut = _HAI_THE_LIEN_NHAU.replace("Nơi thường trú / Place of residence: 12 Lê Lợi\nPhường 3, Thành phố Đà Lạt, Lâm Đồng",
+                                     "Nơi thường trú / Place of residence: 12 Lê Lợi")
+    extracted = {
+        "BenNu_SoDinhDanh": "001190000111", "BenNam_SoDinhDanh": "002095000222",
+        "BenNu_NgayCap": "05/08/2024", "BenNu_NoiCap": "Bộ Công an",
+        "BenNam_NgayCap": "10/05/2021", "BenNam_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        "BenNu_NoiCuTru_TrongNuoc": {**_DIA_CHI_NAM, "diaChi": "12 Lê Lợi"},
+        "BenNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": ""},
+    }
+
+    fixed = ket_hon_runner._compact_field_fallback(extracted, [{"name": "the.pdf", "text": cut}])
+
+    assert fixed["BenNu_NoiCuTru_TrongNuoc"] == {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": "12 Lê Lợi"}
+    assert fixed["BenNu_NgayCap"] == "10/05/2021" and fixed["BenNam_NgayCap"] == "05/08/2024"
+    assert fixed["BenNu_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert fixed["BenNam_NoiCap"] == "Bộ Công an"
 
 
 def test_ket_hon_khong_gan_hang_noi_cu_tru_tren_to_khai_cho_the():
@@ -321,9 +341,9 @@ def test_ket_hon_khong_gan_hang_noi_cu_tru_tren_to_khai_cho_the():
         "Nơi cư trú: Thôn 7, Gia Hiệp, Di Linh, Lâm Đồng",
     ])
     extracted = {
-        "CccdNu_SoDinhDanh": "001190000111", "CccdNam_SoDinhDanh": "002095000222",
-        "CccdNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
-        "CccdNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
+        "BenNu_SoDinhDanh": "001190000111", "BenNam_SoDinhDanh": "002095000222",
+        "BenNu_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NU),
+        "BenNam_NoiCuTru_TrongNuoc": dict(_DIA_CHI_NAM),
     }
     assert ket_hon_runner._compact_field_fallback(extracted, [{"name": "tk.pdf", "text": to_khai}]) == extracted
 
