@@ -495,6 +495,31 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "xin chứng chỉ môi giới bất động sản", "đăng ký thi chứng chỉ môi giới nhà đất",
         "làm môi giới bất động sản cần chứng chỉ gì", "cấp chứng chỉ hành nghề môi giới bất động sản",
     ],
+    # ── Đợt 26/10 ──
+    # DOANH NGHIỆP đăng ký nội quy lao động với Sở Nội vụ. Cụm "nội quy lao động" là dấu hiệu riêng.
+    "dang-ky-noi-quy-lao-dong": ["đăng ký nội quy lao động", "công ty nộp nội quy lao động lên sở",
+                                 "doanh nghiệp đăng ký nội quy lao động với sở nội vụ",
+                                 "nộp hồ sơ đăng ký nội quy lao động"],
+    # Mở QUÁN GAME / điểm internet chơi game công cộng (cổng Bộ VHTTDL). KHÁC đăng ký hộ kinh doanh
+    # ("dang-ky-kinh-doanh"): ở đây đã có giấy phép kinh doanh, xin giấy chứng nhận đủ điều kiện điểm trò chơi.
+    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": [
+        "mở quán game cần giấy chứng nhận gì", "xin giấy chứng nhận điểm trò chơi điện tử công cộng",
+        "cấp phép phòng game", "mở quán net chơi game", "giấy chứng nhận đủ điều kiện điểm cung cấp trò chơi điện tử",
+    ],
+    # Chế độ RIÊNG của Đà Nẵng (Nghị quyết 75/2026) trả tiền VẬN CHUYỂN người mất tới cơ sở hỏa táng. Bản
+    # Bắc Ninh "ho-tro-chi-phi-hoa-tang-bac-ninh" chỉ mở cho Bắc Ninh nên một tài khoản không thấy cả hai.
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": [
+        "hỗ trợ chi phí vận chuyển người mất đi hỏa táng", "xin tiền xe chở người mất đến lò hỏa táng",
+        "hỗ trợ chi phí hỏa táng ở đà nẵng", "hỗ trợ vận chuyển thi hài đến cơ sở hỏa táng",
+    ],
+    # Nước sạch (Lai Châu, mã địa phương): lắp đồng hồ nước MỚI. KHÁC đổi tên trong hợp đồng ngay dưới.
+    "dang-ky-lap-dat-su-dung-nuoc-sach": ["đăng ký lắp đặt nước sạch", "xin lắp đồng hồ nước",
+                                          "đăng ký đấu nối nước sạch cho nhà mới",
+                                          "làm hợp đồng cấp nước sạch", "lắp nước máy về nhà"],
+    # Đã có hợp đồng nước, nay ĐỔI TÊN chủ hợp đồng (mua nhà, sang tên, người đứng tên mất).
+    "chuyen-doi-ten-hop-dong-nuoc-sach": ["đổi tên hợp đồng nước sạch", "sang tên đồng hồ nước",
+                                          "mua nhà muốn đổi tên hợp đồng cấp nước",
+                                          "chuyển tên chủ hợp đồng dịch vụ cấp nước"],
 }
 
 

@@ -66,6 +66,25 @@ FIELDS: list[dict] = [
 
     # Người ký TỜ KHAI ĐĂNG KÝ KHAI SINH — dùng để xác định số điện thoại trên giấy là của ai.
     {"name": "Tk_NguoiYeuCau_HoTen", "desc": "Họ tên NGƯỜI YÊU CẦU ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Họ, chữ đệm, tên người yêu cầu' (người ký cuối tờ khai). KHÔNG lấy tên con/cha/mẹ ở các khối bên dưới, cũng KHÔNG lấy người kê khai trên CT01. Chỉ trả khi có tờ khai đăng ký khai sinh ghi rõ."},
+    {"name": "Tk_NguoiYeuCau_SoGiayTo", "desc": "Số giấy tờ tùy thân (CCCD/số định danh/CMND) của NGƯỜI YÊU CẦU ở dòng 'Giấy tờ tùy thân' ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH. Chỉ trả khi tờ khai ghi rõ."},
+    {"name": "Tk_NguoiYeuCau_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU ghi trên dòng 'Giấy tờ tùy thân' của TỜ KHAI ĐĂNG KÝ KHAI SINH, dd/mm/yyyy. Chỉ trả khi tờ khai ghi rõ."},
+    {"name": "Tk_NguoiYeuCau_NoiCap", "desc": "Nơi cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU ghi trên dòng 'Giấy tờ tùy thân' của TỜ KHAI ĐĂNG KÝ KHAI SINH (tên cơ quan). Chỉ trả khi tờ khai ghi rõ."},
+    {"name": "Tk_NguoiYeuCau_NoiCuTru", "desc": "Dòng 'Nơi cư trú' của NGƯỜI YÊU CẦU ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH (ngay dưới họ tên người yêu cầu), object {tinh,xa,chiTietDuoiXa} (tách theo mục F). KHÔNG lấy nơi cư trú trong khối cha/mẹ/con. Chỉ trả khi tờ khai ghi rõ."},
+
+    # Ngày cấp / nơi cấp in trên CCCD/Căn cước của cha, mẹ — bù khối "Thông tin người yêu cầu" khi người
+    # đăng nhập là cha/mẹ mà cổng không đổ sẵn.
+    {"name": "ThongTinBo_NgayCapCccd", "desc": "Ngày cấp CCCD/Căn cước của đúng người CHA: dòng 'Ngày, tháng, năm / Date, month, year' (mặt sau CCCD gắn chip, cạnh chữ ký Cục trưởng) hoặc 'Ngày cấp' của thẻ Căn cước, dd/mm/yyyy. TUYỆT ĐỐI KHÔNG lấy 'Có giá trị đến' (ngày hết hạn) hay ngày sinh."},
+    {"name": "ThongTinBo_NoiCapCccd", "desc": "Cơ quan cấp in trên CCCD/Căn cước của đúng người CHA (vd 'Cục Cảnh sát quản lý hành chính về trật tự xã hội', 'Bộ Công an'). Chỉ trả khi thẻ in rõ."},
+    {"name": "ThongTinMe_NgayCapCccd", "desc": "Ngày cấp CCCD/Căn cước của đúng người MẸ: dòng 'Ngày, tháng, năm / Date, month, year' (mặt sau CCCD gắn chip) hoặc 'Ngày cấp' của thẻ Căn cước, dd/mm/yyyy. TUYỆT ĐỐI KHÔNG lấy 'Có giá trị đến' hay ngày sinh."},
+    {"name": "ThongTinMe_NoiCapCccd", "desc": "Cơ quan cấp in trên CCCD/Căn cước của đúng người MẸ. Chỉ trả khi thẻ in rõ."},
+
+    # CCCD/Căn cước của một người lớn KHÔNG phải cha/mẹ (ông bà, người giám hộ, người đi nộp hồ sơ...).
+    {"name": "NguoiKhac_HoTen", "desc": "Họ tên trên CCCD/CMND/Căn cước của một người lớn KHÔNG phải cha, KHÔNG phải mẹ của trẻ (thường là người đi làm thủ tục: ông/bà, người giám hộ...). Chỉ trả khi hồ sơ có thẻ của người thứ ba như vậy."},
+    {"name": "NguoiKhac_SoDinhDanh", "desc": "Số định danh (12 số) trên thẻ của người thứ ba nói ở NguoiKhac_HoTen; có thể đọc từ MRZ."},
+    {"name": "NguoiKhac_GioiTinh", "desc": 'Giới tính trên thẻ của người thứ ba: "Nam" hoặc "Nữ".'},
+    {"name": "NguoiKhac_NgayCapCccd", "desc": "Ngày cấp thẻ của người thứ ba (dòng 'Ngày, tháng, năm / Date, month, year' mặt sau CCCD gắn chip hoặc 'Ngày cấp'), dd/mm/yyyy. KHÔNG lấy 'Có giá trị đến'."},
+    {"name": "NguoiKhac_NoiCapCccd", "desc": "Cơ quan cấp in trên thẻ của người thứ ba. Chỉ trả khi thẻ in rõ."},
+    {"name": "NguoiKhac_NoiCuTru", "desc": "Nơi thường trú/nơi cư trú trên thẻ của người thứ ba, object {tinh,xa,chiTietDuoiXa} (tách theo mục F)."},
 
     # Số lượng bản sao trên tờ khai đăng ký khai sinh; không có số lượng thật thì không trả.
     {"name": "CopyRequest_Quantity",
@@ -85,9 +104,11 @@ ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
 for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_GcnKetHon_NgayCap", "Tk_NgaySinhCon",
-              "GcnKetHon_Vo_NgaySinh", "GcnKetHon_Chong_NgaySinh"):
+              "GcnKetHon_Vo_NgaySinh", "GcnKetHon_Chong_NgaySinh", "Tk_NguoiYeuCau_NgayCap",
+              "ThongTinBo_NgayCapCccd", "ThongTinMe_NgayCapCccd", "NguoiKhac_NgayCapCccd"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe", "Ct01_NoiDeNghiDktt"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe", "Ct01_NoiDeNghiDktt",
+              "Tk_NguoiYeuCau_NoiCuTru", "NguoiKhac_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {
@@ -155,6 +176,10 @@ UI_COMP_BY_NAME = {
     # Quan hệ người yêu cầu với trẻ: extension tự so khớp CCCD/tên người đăng nhập (cổng điền
     # sẵn trên form) với cha/mẹ để chọn Cha/Mẹ; khác cả hai → "Người giám hộ/đại diện hợp pháp".
     "NycQuanHe": "quanhe-auto",
+    # Bù ô còn TRỐNG của khối người yêu cầu (giới tính, ngày/nơi cấp, nơi cư trú). Value là danh sách
+    # người có trong giấy tờ; extension chọn người trùng CCCD/tên với ô readonly cổng đổ sẵn, ô cổng đã
+    # có giá trị thì giữ nguyên.
+    "NycBuThieu": "nyc-bu-thieu",
     # Thông tin cấp thẻ BHYT. CskcbbdMa là ng-select (danh sách theo tỉnh tài khoản) — chỉ mapper
     # điền theo cấu hình tài khoản (4 phường Đà Lạt).
     "NguoiGiamHo": "select",

@@ -4,6 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import city_province_area, remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
 from app.pipelines._shared.hospital_lookup import hospital_area, lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
@@ -365,6 +366,172 @@ def _is_year_only(value) -> bool:
     return bool(re.fullmatch(r"\d{4}", str(value or "").strip()))
 
 
+def _dmy(value) -> str:
+    """'5/4/2021' → '05/04/2021'; không đúng dạng ngày đầy đủ → rỗng (ô Ngày cấp không nhận năm trần)."""
+    m = re.fullmatch(r"\s*(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})\s*", str(value or ""))
+    return f"{int(m.group(1)):02d}/{int(m.group(2)):02d}/{m.group(3)}" if m else ""
+
+
+def _gender(value) -> str:
+    folded = _fold(value)
+    if folded.startswith("nam") or folded == "male":
+        return "Nam"
+    if folded.startswith("nu") or folded == "female":
+        return "Nữ"
+    return ""
+
+
+def _nyc_person(vai_tro: str, ten, cccd, gioi_tinh, ngay_cap, noi_cap, noi_cu_tru) -> dict:
+    """Một ứng viên người yêu cầu. Nơi cấp không đọc được thì suy theo ngày cấp — CHỈ cho số định danh
+    12 số (CCCD/Căn cước); CMND 9 số do công an tỉnh cấp, không suy được."""
+    so = _digits(cccd)
+    ngay = _dmy(ngay_cap)
+    noi = normalize_issuer(noi_cap) or (default_issuer(ngay) if ngay and len(so) == 12 else "")
+    person = {
+        "vaiTro": vai_tro,
+        "ten": _upper_name(ten),
+        "cccd": so,
+        "gioiTinh": _gender(gioi_tinh),
+        "ngayCap": ngay,
+        "noiCap": noi,
+        "noiCuTru": noi_cu_tru or None,
+    }
+    return {k: v for k, v in person.items() if v not in (None, "", {}, [])}
+
+
+def _same_person(a: dict, b: dict) -> bool:
+    """Trùng số định danh; một bên thiếu số thì so họ tên bỏ dấu. Hai số khác nhau là hai người."""
+    if a.get("cccd") and b.get("cccd"):
+        return a["cccd"] == b["cccd"]
+    return bool(a.get("ten")) and " ".join(_fold(a["ten"]).split()) == " ".join(_fold(b.get("ten")).split())
+
+
+# ── Đọc thẳng thẻ CCCD/Căn cước trong văn bản OCR ──
+# LLM hay bỏ sót thẻ của người thứ ba (người đi nộp không phải cha/mẹ) vì nó chỉ chú ý giấy tờ cha/mẹ/con.
+# Mặt trước thẻ in nhãn song ngữ cố định nên đọc bằng regex chắc hơn; chỉ dùng để BÙ ứng viên người yêu cầu.
+_CARD_NO = re.compile(r"(?:Số\s*/\s*No\.?|Số định danh cá nhân\s*/\s*Personal identification number)[ \t]*:?[ \t]*(\d{12})\b",
+                      re.IGNORECASE)
+_CARD_NAME = re.compile(r"Họ và tên\s*/\s*Full name\s*:?[ \t]*(?:\n\s*)?([^\n]+)", re.IGNORECASE)
+_CARD_SEX = re.compile(r"Giới tính\s*/\s*Sex\s*:?\s*(Nam|Nữ)", re.IGNORECASE)
+_CARD_RESIDENCE = re.compile(
+    r"(?:Nơi thường trú|Nơi cư trú)\s*/\s*Place of residence\s*:?\s*(.+?)\s*(?:\n\s*(?:Có giá trị|Date of expiry|Ngày, tháng, năm)|\n\s*\n|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+# Mặt sau: ngày cấp đứng TRƯỚC dòng MRZ "IDVNM<9 số giấy><1 số kiểm><12 số định danh>" của cùng thẻ.
+_CARD_ISSUE = re.compile(
+    r"(?:Date,\s*month,\s*year|Date of issue)\s*:?\s*(\d{1,2}/\d{1,2}/\d{4})(.{0,1500}?)IDVNM\d{10}(\d{12})",
+    re.IGNORECASE | re.DOTALL,
+)
+_WARD_PREFIX = re.compile(r"^(xã|phường|thị trấn|đặc khu)\s", re.IGNORECASE)
+
+
+def _card_residence(text: str):
+    """'TDP 13 Nhân Mỹ\\nMỹ Đình 1, Nam Từ Liêm, Hà Nội' → {tinh, xa, diaChi} đã quy đổi sáp nhập.
+
+    Thẻ CCCD in dòng chi tiết riêng, dòng dưới là 'xã, huyện, tỉnh' (cũ) hoặc 'xã, tỉnh' (mới)."""
+    lines = [" ".join(l.split()) for l in str(text or "").splitlines() if l.strip()]
+    if not lines:
+        return None
+    detail, admin = (" ".join(lines[:-1]), lines[-1]) if len(lines) > 1 else ("", lines[0])
+    parts = [p.strip() for p in admin.split(",") if p.strip()]
+    if not parts:
+        return None
+    tinh, huyen, extra = parts[-1], "", []
+    if len(parts) >= 3 and not _WARD_PREFIX.match(parts[-2]):
+        xa, huyen, extra = parts[-3], parts[-2], parts[:-3]
+    elif len(parts) >= 2:
+        xa, extra = parts[-2], parts[:-2]
+    else:
+        xa = ""
+    dia = ", ".join(p for p in [detail, *extra] if p)
+    out = {k: v for k, v in {"tinh": _norm_tinh(tinh), "xa": _strip_admin_prefix(xa), "diaChi": dia}.items() if v}
+    return city_province_area(remap_area(out, huyen_hint=huyen or None)) if out.get("tinh") else None
+
+
+def _cards_from_ocr(ocr_text: str) -> list[dict]:
+    """Mọi thẻ CCCD/Căn cước đọc được trong OCR: {cccd, ten, gioiTinh, ngayCap, noiCuTru}."""
+    text = str(ocr_text or "")
+    issue = {m.group(3): m.group(1) for m in _CARD_ISSUE.finditer(text)}
+    starts = [m for m in _CARD_NO.finditer(text)]
+    cards = []
+    for i, m in enumerate(starts):
+        end = starts[i + 1].start() if i + 1 < len(starts) else len(text)
+        chunk = text[m.end():min(end, m.end() + 1200)]
+        name = _CARD_NAME.search(chunk)
+        if not name:  # mặt trước thẻ luôn in họ tên; không có là số định danh nằm ở giấy khác
+            continue
+        sex = _CARD_SEX.search(chunk)
+        residence = _CARD_RESIDENCE.search(chunk)
+        cards.append({
+            "cccd": m.group(1),
+            "ten": name.group(1).strip(),
+            "gioiTinh": sex.group(1) if sex else "",
+            "ngayCap": issue.get(m.group(1), ""),
+            "noiCuTru": _card_residence(residence.group(1)) if residence else None,
+        })
+    return cards
+
+
+def _nyc_candidates(values: dict, cha_noi_cu_tru, me_noi_cu_tru, ocr_text: str = "") -> list[dict]:
+    """Danh sách người có thể là người đang đăng nhập (cha, mẹ, người thứ ba trên CCCD), kèm các ô của
+    khối "Thông tin người yêu cầu". Dòng người yêu cầu trên TỜ KHAI gộp vào người trùng, không trùng ai
+    thì thành một ứng viên riêng."""
+    people = []
+    if values.get("ThongTinBo_SoDinhDanh") or values.get("ThongTinBo_HoTen"):
+        people.append(_nyc_person(
+            "cha", values.get("ThongTinBo_HoTen"), values.get("ThongTinBo_SoDinhDanh"), "Nam",
+            values.get("ThongTinBo_NgayCapCccd"), values.get("ThongTinBo_NoiCapCccd"), cha_noi_cu_tru,
+        ))
+    if values.get("ThongTinMe_SoDinhDanh") or values.get("ThongTinMe_HoTen"):
+        people.append(_nyc_person(
+            "me", values.get("ThongTinMe_HoTen"), values.get("ThongTinMe_SoDinhDanh"), "Nữ",
+            values.get("ThongTinMe_NgayCapCccd"), values.get("ThongTinMe_NoiCapCccd"), me_noi_cu_tru,
+        ))
+    if values.get("NguoiKhac_SoDinhDanh") or values.get("NguoiKhac_HoTen"):
+        people.append(_nyc_person(
+            "khac", values.get("NguoiKhac_HoTen"), values.get("NguoiKhac_SoDinhDanh"),
+            values.get("NguoiKhac_GioiTinh"), values.get("NguoiKhac_NgayCapCccd"),
+            values.get("NguoiKhac_NoiCapCccd"), _area(values.get("NguoiKhac_NoiCuTru")),
+        ))
+    # Thẻ đọc thẳng từ OCR: trùng số người đã có → chỉ bù ô LLM bỏ sót; số mới → người thứ ba.
+    for card in _cards_from_ocr(ocr_text):
+        found = _nyc_person("khac", card["ten"], card["cccd"], card["gioiTinh"], card["ngayCap"], "",
+                            card["noiCuTru"])
+        match = next((p for p in people if p.get("cccd") == found.get("cccd")), None)
+        if match is None:
+            people.append(found)
+        else:
+            for key in ("ngayCap", "noiCap", "noiCuTru"):
+                if found.get(key) and not match.get(key):
+                    match[key] = found[key]
+    if values.get("Tk_NguoiYeuCau_HoTen") or values.get("Tk_NguoiYeuCau_SoGiayTo"):
+        tk = _nyc_person(
+            "toKhai", values.get("Tk_NguoiYeuCau_HoTen"), values.get("Tk_NguoiYeuCau_SoGiayTo"), "",
+            values.get("Tk_NguoiYeuCau_NgayCap"), values.get("Tk_NguoiYeuCau_NoiCap"),
+            _area(values.get("Tk_NguoiYeuCau_NoiCuTru")),
+        )
+        match = next((p for p in people if _same_person(p, tk)), None)
+        if match is None:
+            people.append(tk)
+        else:
+            # Ngày/nơi cấp in trên thẻ đáng tin hơn chữ viết tay → tờ khai chỉ bù ô thẻ không có.
+            # Nơi cư trú thì lời khai trên tờ khai thắng (thẻ có thể còn ghi địa chỉ cũ). vaiTro giữ theo thẻ.
+            for key, value in tk.items():
+                if key == "noiCuTru" or not match.get(key):
+                    match[key] = value
+    fillable = ("gioiTinh", "ngayCap", "noiCap", "noiCuTru")
+    out = []
+    for person in people:
+        if not (person.get("cccd") or person.get("ten")) or not any(person.get(k) for k in fillable):
+            continue
+        if person.get("noiCuTru"):
+            # Cổng đòi cả Loại cư trú + Quốc gia trước khi chọn tỉnh/xã; giấy tờ không ghi → mặc định.
+            person["loaiCuTru"] = "Thường trú"
+            person["quocGia"] = "Việt Nam"
+        out.append(person)
+    return out
+
+
 def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
     """Bù thông tin cha/mẹ từ bên tương ứng trên GIẤY KẾT HÔN khi đúng là một người.
 
@@ -403,8 +570,10 @@ def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
         values[f"{role}_DanToc"] = gcn["DanToc"]
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
-    """Derive deterministic Angular form fields from compact source facts."""
+def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "") -> list[dict]:
+    """Derive deterministic Angular form fields from compact source facts.
+
+    ocr_text: văn bản OCR gộp mọi file — chỉ dùng để đọc thẳng thẻ CCCD bù ứng viên người yêu cầu."""
     options = options or {}
     values = _by_name(fields)
     for name_field in (
@@ -470,6 +639,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         or _area(values.get("ThongTinMe_NoiCuTru"))
         or _area(values.get("Gcs_NoiThuongTruMe"))
     )
+    cha_noi_cu_tru = _area(values.get("Tk_NoiCuTruCha")) or _area(values.get("ThongTinBo_NoiCuTru"))
 
     # Ngoại lệ Lâm Đồng dùng ở HAI nơi: dân tộc con (trong khối has_child) và quê quán con
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
@@ -569,7 +739,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("ChaLoaiCuTru", "Thường trú")
         add("ChaMaQuocGia", "Việt Nam")
         # Nơi cư trú cha: TỜ KHAI trước, rồi mới tới nguồn khác (ThongTinBo_NoiCuTru — CCCD đứng đầu).
-        add("ChaDiaChi", _area(values.get("Tk_NoiCuTruCha")) or _area(values.get("ThongTinBo_NoiCuTru")))
+        add("ChaDiaChi", cha_noi_cu_tru)
 
     # Quê quán CON (QqDiaChi) — lấy theo thứ tự ưu tiên:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
@@ -631,6 +801,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             "meCccd": values.get("ThongTinMe_SoDinhDanh"),
             "meTen": values.get("ThongTinMe_HoTen"),
         })
+
+    # Khối "Thông tin người yêu cầu" cổng đổ từ tài khoản đăng nhập, có người thiếu ngày/nơi cấp, nơi cư
+    # trú. Gửi mọi người có trong giấy tờ (cha, mẹ, người thứ ba, người ký tờ khai); extension đọc CCCD/tên
+    # readonly trên form để chọn ĐÚNG người, rồi chỉ điền ô còn trống — khối đã đủ thì không đụng.
+    nyc_candidates = _nyc_candidates(values, cha_noi_cu_tru, me_noi_cu_tru, ocr_text)
+    if nyc_candidates:
+        add("NycBuThieu", {"nguoi": nyc_candidates})
 
     # Số điện thoại: SĐT ghi trên giấy tờ là của NGƯỜI KÝ TỜ KHAI. Khối "Thông tin người yêu cầu"
     # trên cổng lại là người ĐANG ĐĂNG NHẬP (readonly, chỉ extension đọc được) → gửi kèm tên người

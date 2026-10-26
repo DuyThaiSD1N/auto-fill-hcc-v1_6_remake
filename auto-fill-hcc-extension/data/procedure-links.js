@@ -142,7 +142,7 @@ window.PROCEDURE_KE_KHAI_LINKS = [
   {
     key: "ho-tro-mai-tang",
     label: "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
-    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79",
     needsAgencySelect: true,
     autoConfirm: true,
   },

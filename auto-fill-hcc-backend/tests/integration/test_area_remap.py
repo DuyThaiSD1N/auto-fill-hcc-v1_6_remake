@@ -103,17 +103,21 @@ def test_commune_name_starting_like_village_is_kept():
     assert _ha_noi("Tổ 3", dia_chi="") == {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "", "diaChi": "Tổ 3"}
 
 
-def test_bac_ninh_old_village_renamed_in_detail():
+def test_bac_ninh_old_village_renamed_to_to_dan_pho_in_detail():
     def dia_chi(xa, chi_tiet):
-        return area_remap.remap_area({"tinh": "Bắc Ninh", "xa": xa, "diaChi": chi_tiet})
+        return area_remap.remap_area({"tinh": "Bắc Ninh", "xa": xa, "diaChi": chi_tiet})["diaChi"]
 
-    assert dia_chi("Ngũ Thái", "Thôn Cửu Yên")["diaChi"] == "Thôn Vũ Kiệt"
-    assert dia_chi("Xuân Lâm", "THÔN DOÃN THƯỢNG")["diaChi"] == "THÔN Thanh Lâm"
-    assert dia_chi("Phường Song Liễu", "Khu phố Ngọc Lâm")["diaChi"] == "Khu phố Ngọc Liễu"
+    assert dia_chi("Ngũ Thái", "Thôn Cửu Yên") == "Tổ dân phố Vũ Kiệt"
+    assert dia_chi("Xuân Lâm", "THÔN DOÃN THƯỢNG") == "Tổ dân phố Thanh Lâm"
+    assert dia_chi("Phường Song Liễu", "Khu phố Ngọc Lâm") == "Tổ dân phố Ngọc Liễu"
+    assert dia_chi("Song Liễu", "Xóm.Ngọc Tỉnh") == "Tổ dân phố Liễu Khê"
+    assert dia_chi("Song Liễu", "TDP Ngọc Tỉnh") == "TDP Liễu Khê"
+    assert dia_chi("Song Liễu", "Số 5 Ngọc Tỉnh") == "Số 5 Liễu Khê"
     # Tên dài khớp trọn, không bị "Mãn Xá" cắt đôi; đổi xong gọi lại vẫn y nguyên.
-    assert dia_chi("Hà Mãn", "Thôn Mãn Xá Đông")["diaChi"] == "Thôn Mãn Xá"
-    assert dia_chi("Song Liễu", "Thôn Mãn Xá")["diaChi"] == "Thôn Mãn Xá"
-    assert dia_chi("Song Liễu", "Thôn Đồng Ngư")["diaChi"] == "Thôn Đồng Ngư"
+    assert dia_chi("Hà Mãn", "Thôn Mãn Xá Đông") == "Tổ dân phố Mãn Xá"
+    assert dia_chi("Song Liễu", "Thôn Mãn Xá") == "Tổ dân phố Mãn Xá"
+    assert dia_chi("Song Liễu", "Tổ dân phố Mãn Xá") == "Tổ dân phố Mãn Xá"
+    assert dia_chi("Song Liễu", "Thôn Đồng Ngư") == "Tổ dân phố Đồng Ngư"
 
 
 def test_village_rename_only_inside_its_ward():

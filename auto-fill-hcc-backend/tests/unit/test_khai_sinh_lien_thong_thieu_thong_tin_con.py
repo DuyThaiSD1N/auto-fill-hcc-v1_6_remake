@@ -114,3 +114,127 @@ def test_noi_de_nghi_dktt_cat_phan_phuong_xa_bi_dinh_vao_chi_tiet():
 def test_khong_co_noi_de_nghi_dktt_thi_khong_phat_o():
     out = _by_name({"Ct01_ChuHoHoTen": "LÊ VĂN CHỦ", "Ct01_NoiDeNghiDktt": {"tinh": "Tỉnh C", "xa": "Phường B"}})
     assert "DkttDiaChi" not in out
+
+
+# ── Khối "Thông tin người yêu cầu": BE gửi mọi người trong giấy tờ, extension chọn theo CCCD/tên ──
+def _nyc(values: dict) -> list[dict]:
+    return (_by_name(values).get("NycBuThieu") or {}).get("nguoi") or []
+
+
+_CHA_ME = {
+    "ThongTinBo_HoTen": "Trần Văn Bố", "ThongTinBo_SoDinhDanh": "001090000011",
+    "ThongTinBo_NgayCapCccd": "5/4/2021", "ThongTinBo_NoiCuTru": {"tinh": "Tỉnh C", "xa": "Xã B", "diaChi": "Thôn A"},
+    "ThongTinMe_HoTen": "Lê Thị Mẹ", "ThongTinMe_SoDinhDanh": "001190000022",
+    "ThongTinMe_NgayCapCccd": "02/08/2024", "ThongTinMe_NoiCapCccd": "BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY",
+}
+
+
+def test_cha_va_me_deu_la_ung_vien_nguoi_yeu_cau():
+    people = {p["vaiTro"]: p for p in _nyc(_CHA_ME)}
+    assert people["cha"]["cccd"] == "001090000011"
+    assert people["cha"]["ten"] == "TRẦN VĂN BỐ"
+    assert people["cha"]["gioiTinh"] == "Nam"
+    assert people["cha"]["ngayCap"] == "05/04/2021"
+    # Không in nơi cấp: CCCD 12 số cấp trước 01/7/2024 → Cục Cảnh sát.
+    assert people["cha"]["noiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert people["cha"]["noiCuTru"]["diaChi"] == "Thôn A"
+    assert people["cha"]["loaiCuTru"] == "Thường trú" and people["cha"]["quocGia"] == "Việt Nam"
+    assert people["me"]["gioiTinh"] == "Nữ"
+    assert people["me"]["noiCap"] == "Bộ Công an"
+    assert "noiCuTru" not in people["me"] and "loaiCuTru" not in people["me"]
+
+
+def test_nguoi_thu_ba_tren_cccd_la_ung_vien_rieng():
+    people = _nyc({**_CHA_ME, "NguoiKhac_HoTen": "Phạm Văn Ông", "NguoiKhac_SoDinhDanh": "001060000033",
+                   "NguoiKhac_GioiTinh": "Nam", "NguoiKhac_NoiCuTru": {"tinh": "Tỉnh C", "xa": "Xã D"}})
+    khac = next(p for p in people if p["vaiTro"] == "khac")
+    assert khac["cccd"] == "001060000033" and khac["gioiTinh"] == "Nam"
+    assert khac["noiCuTru"]["tinh"] == "Tỉnh C"
+    assert "ngayCap" not in khac and "noiCap" not in khac  # chỉ có mặt trước: không suy nơi cấp
+
+
+def test_to_khai_gop_vao_cha_khi_trung_so_dinh_danh_noi_cu_tru_to_khai_thang():
+    people = _nyc({**_CHA_ME, "Tk_NguoiYeuCau_HoTen": "Trần Văn Bố", "Tk_NguoiYeuCau_SoGiayTo": "001090000011",
+                   "Tk_NguoiYeuCau_NgayCap": "01/01/2020",
+                   "Tk_NguoiYeuCau_NoiCuTru": {"tinh": "Tỉnh C", "xa": "Xã E", "diaChi": "Xóm 2"}})
+    assert [p["vaiTro"] for p in people] == ["cha", "me"]
+    cha = people[0]
+    assert cha["ngayCap"] == "05/04/2021"  # ngày in trên thẻ thắng chữ viết tay
+    assert cha["noiCuTru"]["diaChi"] == "Xóm 2"
+
+
+def test_to_khai_gop_vao_me_theo_ten_khi_khong_ghi_so():
+    people = _nyc({**_CHA_ME, "Tk_NguoiYeuCau_HoTen": "LE THI ME",
+                   "Tk_NguoiYeuCau_NoiCuTru": {"tinh": "Tỉnh C", "xa": "Xã B", "diaChi": "Thôn A"}})
+    me = next(p for p in people if p["vaiTro"] == "me")
+    assert me["noiCuTru"]["diaChi"] == "Thôn A"
+    assert len(people) == 2
+
+
+def test_to_khai_cung_ten_khac_so_la_nguoi_khac():
+    people = _nyc({**_CHA_ME, "Tk_NguoiYeuCau_HoTen": "Trần Văn Bố", "Tk_NguoiYeuCau_SoGiayTo": "001090000099",
+                   "Tk_NguoiYeuCau_NoiCuTru": {"tinh": "Tỉnh C", "xa": "Xã F"}})
+    assert [p["vaiTro"] for p in people] == ["cha", "me", "toKhai"]
+
+
+def test_cmnd_9_so_khong_suy_noi_cap():
+    people = _nyc({"NguoiKhac_HoTen": "Đỗ Văn Ông", "NguoiKhac_SoDinhDanh": "123456789",
+                   "NguoiKhac_NgayCapCccd": "01/01/2015"})
+    assert people[0]["ngayCap"] == "01/01/2015" and "noiCap" not in people[0]
+
+
+def test_khong_co_gi_de_bu_thi_khong_phat_o():
+    assert _nyc({"ThongTinBo_HoTen": "Trần Văn Bố"}) == [
+        {"vaiTro": "cha", "ten": "TRẦN VĂN BỐ", "gioiTinh": "Nam"}
+    ]
+    assert "NycBuThieu" not in _by_name({"Gcs_HoTenCon": "TRẦN AN"})
+
+
+# LLM hay bỏ sót thẻ người thứ ba → mapper đọc thẳng mặt trước/mặt sau thẻ trong văn bản OCR.
+_OCR_THE = """===== CCCD cha.pdf =====
+CĂN CƯỚC CÔNG DÂN
+Số / No.: 001090000011
+Họ và tên / Full name:
+TRẦN VĂN BỐ
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+Nơi thường trú / Place of residence: Thôn A
+Xã B, Huyện K, Tỉnh C
+Có giá trị đến: 01/01/2040
+───── Trang 2/2 ─────
+Ngày, tháng, năm / Date, month, year: 3/2/2022
+CỤC TRƯỞNG CỤC CẢNH SÁT
+IDVNM0900000111001090000011<<4
+
+===== anh_nguoi_nop.jpg =====
+CĂN CƯỚC CÔNG DÂN
+Số / No: 001204000044
+Họ và tên / Full name:
+PHẠM VĂN ÔNG
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+Nơi thường trú / Place of residence: Tổ 5
+Phường D, Quận E, Tỉnh C
+Có giá trị đến: 01/01/2045
+
+===== CT01.pdf =====
+9. Số định danh cá nhân của chủ hộ: 001090000011
+"""
+
+
+def test_doc_the_nguoi_thu_ba_tu_ocr_khi_llm_bo_sot():
+    out = enrich([{"name": "ThongTinBo_HoTen", "value": "Trần Văn Bố"},
+                  {"name": "ThongTinBo_SoDinhDanh", "value": "001090000011"}], ocr_text=_OCR_THE)
+    people = {p["vaiTro"]: p for p in next(f for f in out if f["name"] == "NycBuThieu")["value"]["nguoi"]}
+    assert set(people) == {"cha", "khac"}
+    # Cha: LLM không trả ngày cấp → bù từ mặt sau thẻ (ghép theo số định danh trong dòng MRZ).
+    assert people["cha"]["ngayCap"] == "03/02/2022"
+    assert people["cha"]["noiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    khac = people["khac"]
+    assert khac["cccd"] == "001204000044" and khac["ten"] == "PHẠM VĂN ÔNG" and khac["gioiTinh"] == "Nam"
+    assert khac["noiCuTru"]["tinh"] == "Tỉnh C"
+    assert khac["noiCuTru"]["diaChi"] == "Tổ 5"
+    assert "ngayCap" not in khac  # chỉ có mặt trước
+
+
+def test_so_dinh_danh_tren_giay_khac_khong_thanh_the():
+    from app.pipelines.khai_sinh_lien_thong.process.mapper import _cards_from_ocr
+    assert [c["cccd"] for c in _cards_from_ocr(_OCR_THE)] == ["001090000011", "001204000044"]

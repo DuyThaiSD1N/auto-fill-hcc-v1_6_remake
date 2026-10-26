@@ -58,6 +58,15 @@ PROCEDURE_HMONG = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": "Nyiaj pab tsev neeg yug tsiaj raug kab mob",
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": "Zam los yog txo nyiaj kawm ntawv",
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": "Ntawv tso cai ua neeg nruab nrab muag av tsev",
+    # BẢN NHÁP chờ anh Dư soát — 5 thẻ đợt 26/10. Chữ đã có: "cuv npe" (đăng ký), "ntawv lees paub" (giấy chứng
+    # nhận), "hlawv neeg tuag" (hỏa táng), "tsheb" (xe), "hloov" (đổi), "npe" (tên), "lag luam" (kinh doanh).
+    # TỪ MỚI: "kev cai ua haujlwm" (nội quy lao động), "tuam txhab" (doanh nghiệp), "ua si hauv computer"
+    # (trò chơi điện tử), "dej huv" (nước sạch), "ntsuas dej" (đồng hồ nước), "daim ntawv cog lus" (hợp đồng).
+    "dang-ky-noi-quy-lao-dong": "Cuv npe kev cai ua haujlwm ntawm tuam txhab",
+    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": "Ntawv lees paub chaw ua si hauv computer",
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": "Nyiaj pab tsheb thauj neeg tuag mus hlawv (Đà Nẵng)",
+    "dang-ky-lap-dat-su-dung-nuoc-sach": "Cuv npe txuas dej huv thiab ntsuas dej (Lai Châu)",
+    "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).

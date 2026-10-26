@@ -5558,25 +5558,26 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang",
-        # Cùng tên thủ tục có HAI mã TTHC (1.001731 và 1.116910 của Ninh Bình, xem entry ngay dưới) →
-        # label kèm mã trong ngoặc để cán bộ phân biệt; textIncludes giữ tên trơn để vẫn nhận trên trang nộp.
+        # Dùng mã TTHC 1.116910 (DVCQG /thu-tuc-hanh-chinh/01a0f66e-…), bỏ mã cũ 1.001731. Entry
+        # "ho-tro-mai-tang-1116910" ngay dưới cùng mã, cùng pipeline ho_tro_mai_tang (giữ cho key trợ lý).
+        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT (mọi tài khoản); người đứng ra mai táng là người nộp.
         "detect": {
-            "urlIncludes": ["maThuTuc=1.001731"],
+            "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],
             "headingDisabled": True,
         },
-        "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội (1.001731)",
+        "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Nếu người nộp hồ sơ là chủ hồ sơ: tải CCCD của người đó.\n"
-            "2. Nếu người nộp và chủ hồ sơ khác nhau: tải CCCD của cả hai người; "
-            "hệ thống sẽ so với thông tin người nộp đang có trên form để xác định chủ hồ sơ.\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02/03/04): chủ hồ sơ = NGƯỜI CHẾT "
+            "được tổ chức mai táng, người nộp = người đứng ra mai táng.\n"
+            "2. Nếu có: CCCD của người đứng ra mai táng, trích lục khai tử/giấy báo tử của người chết.\n"
             "Bước 3 (đính kèm) — chuẩn bị các giấy tờ sau, hệ thống tự xếp vào đúng ô:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04).\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng.\n"
             "2. Bản sao giấy chứng tử/giấy báo tử (hoặc trích lục khai tử) của đối tượng.\n"
             "3. Nếu có: bản sao quyết định/danh sách thôi hưởng trợ cấp BHXH.\n"
             "Bước thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng (Tờ khai Mẫu số 02 - NĐ 176/2025) nên "
@@ -5585,10 +5586,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang-1116910",
-        # Mã TTHC thứ hai (Ninh Bình) của "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội" (DVCQG
-        # /thu-tuc-hanh-chinh/01a0f66e-…) — label mang tiền tố tỉnh. Cùng Tờ khai Mẫu số 04 nên dùng CHUNG pipeline
-        # ho_tro_mai_tang. Tên trùng nguyên văn với 1.001731 → textIncludes phải kèm MÃ, tổng cụm dài
-        # hơn nên thắng entry 1.001731 khi trang có in mã.
+        # Key trợ lý (Handfree) của cùng mã 1.116910 — báo cáo/dashboard tra nhãn và mã TTHC qua entry
+        # lõi này. Label tiền tố tỉnh nên Auto Fill chỉ hiện ở Ninh Bình; textIncludes kèm MÃ, tổng cụm
+        # dài hơn nên thắng "ho-tro-mai-tang" khi trang có in mã. Cùng pipeline nên điền y hệt.
         "detect": {
             "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội", "1.116910"],
@@ -5601,11 +5601,11 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Nếu người nộp hồ sơ là chủ hồ sơ: tải CCCD của người đó.\n"
-            "2. Nếu người nộp và chủ hồ sơ khác nhau: tải CCCD của cả hai người; "
-            "hệ thống sẽ so với thông tin người nộp đang có trên form để xác định chủ hồ sơ.\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02/03/04): chủ hồ sơ = NGƯỜI CHẾT "
+            "được tổ chức mai táng, người nộp = người đứng ra mai táng.\n"
+            "2. Nếu có: CCCD của người đứng ra mai táng, trích lục khai tử/giấy báo tử của người chết.\n"
             "Bước 3 (đính kèm) — chuẩn bị các giấy tờ sau, hệ thống tự xếp vào đúng ô:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04).\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng.\n"
             "2. Bản sao giấy chứng tử/giấy báo tử (hoặc trích lục khai tử) của đối tượng.\n"
             "3. Nếu có: bản sao quyết định/danh sách thôi hưởng trợ cấp BHXH.\n"
             "Bước thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng (Tờ khai Mẫu số 02 - NĐ 176/2025) nên "

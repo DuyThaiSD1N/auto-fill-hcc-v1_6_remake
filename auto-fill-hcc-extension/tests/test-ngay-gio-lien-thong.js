@@ -51,3 +51,29 @@ test("dạng lạ thì trả null để engine giữ nếp cũ, không đoán đ
     assert.strictEqual(phanTichNgayGio(xau), null, `phải trả null với ${JSON.stringify(xau)}`);
   }
 });
+
+// ── Khối "Thông tin người yêu cầu": chọn đúng người trong giấy tờ trùng người đăng nhập ──
+const { chonNguoiYeuCau } = napEngine();
+const NGUOI = [
+  { vaiTro: "cha", ten: "TRẦN VĂN BỐ", cccd: "001090000011" },
+  { vaiTro: "me", ten: "LÊ THỊ MẸ", cccd: "001190000022" },
+  { vaiTro: "khac", ten: "PHẠM VĂN ÔNG", cccd: "001060000033" },
+];
+
+test("người yêu cầu là cha / mẹ / người thứ ba → chọn theo số định danh", () => {
+  assert.strictEqual(chonNguoiYeuCau(NGUOI, { cccd: "001090000011", ten: "Trần Văn Bố" }).vaiTro, "cha");
+  assert.strictEqual(chonNguoiYeuCau(NGUOI, { cccd: "001190000022", ten: "LÊ THỊ MẸ" }).vaiTro, "me");
+  assert.strictEqual(chonNguoiYeuCau(NGUOI, { cccd: "001060000033", ten: "" }).vaiTro, "khac");
+});
+
+test("cùng tên mà khác số định danh là hai người → không chọn", () => {
+  assert.strictEqual(chonNguoiYeuCau(NGUOI, { cccd: "001090000099", ten: "TRẦN VĂN BỐ" }), null);
+});
+
+test("giấy tờ không ghi số → so họ tên bỏ dấu; trùng tên 2 người thì không đoán", () => {
+  const list = [{ vaiTro: "toKhai", ten: "ĐỖ THỊ BÀ" }];
+  assert.strictEqual(chonNguoiYeuCau(list, { cccd: "001150000044", ten: "Do Thi Ba" }).vaiTro, "toKhai");
+  const trung = [{ vaiTro: "toKhai", ten: "ĐỖ THỊ BÀ" }, { vaiTro: "khac", ten: "Đỗ Thị Bà" }];
+  assert.strictEqual(chonNguoiYeuCau(trung, { cccd: "001150000044", ten: "ĐỖ THỊ BÀ" }), null);
+  assert.strictEqual(chonNguoiYeuCau(NGUOI, { cccd: "", ten: "" }), null);
+});

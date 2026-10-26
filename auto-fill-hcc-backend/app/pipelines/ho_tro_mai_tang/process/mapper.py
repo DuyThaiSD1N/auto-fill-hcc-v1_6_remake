@@ -1,4 +1,4 @@
-"""Đổi hai chủ thể nghiệp vụ sang field Form.io của thủ tục hỗ trợ mai táng."""
+"""Đổi người chết (chủ hồ sơ) và người nộp sang field Form.io của thủ tục hỗ trợ mai táng."""
 
 import re
 import unicodedata
@@ -177,9 +177,14 @@ def enrich(
     fields: list[dict],
     options: dict | None = None,
 ) -> tuple[list[dict], list[str]]:
-    """Xác thực người nộp rồi phát hai khối UI theo đúng vai trò."""
+    """Khối chủ hồ sơ = người chết (mọi tài khoản), không bao giờ tick "Người nộp là chủ hồ sơ".
+
+    Người đứng ra mai táng (ChuHoSo_*) hoặc NguoiNop_* chỉ vào khối người nộp khi khớp mỏ neo UI;
+    toggle owner_as_submitter thì lấy thẳng người đứng ra mai táng làm người nộp.
+    """
     values = _by_name(fields)
-    owner = _person(values, "ChuHoSo")
+    deceased = _person(values, "NguoiMat")
+    organizer = _person(values, "ChuHoSo")
     requester = _person(values, "NguoiNop")
     context = _form_context(options)
 
@@ -196,68 +201,37 @@ def enrich(
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    if not owner and not requester:
-        return out, ["Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."]
+    if not deceased and not organizer and not requester:
+        return out, ["Không bóc tách được người chết hoặc người nộp từ tài liệu hợp lệ."]
 
-    # === MODE "owner_as_submitter" (toggle extension): KHÔNG dùng mỏ neo UI. LUÔN lấy CHỦ HỒ SƠ làm người
-    # nộp (tự nộp, tick checkbox) — thủ tục này thực tế không có giấy ủy quyền. Nghĩa Hưng: người nộp lấy
-    # theo thông tin người đề nghị trong Tờ khai (Mẫu số 04), không so khớp tài khoản đăng nhập. ===
+    add("data[isOwnerDossierCheck]", False)
+
+    # Toggle owner_as_submitter: KHÔNG dùng mỏ neo UI, người nộp lấy theo người đứng ra mai táng trên
+    # Tờ khai (Nghĩa Hưng), không so khớp tài khoản đăng nhập.
+    submitter: Person | None = None
     if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
-        person = owner or requester
-        if person is owner:
-            add("data[isOwnerDossierCheck]", True)
-            _add_requester(add, person)      # người nộp = chủ hồ sơ
-            add("data[ownerBirthday]", person.birthday)  # portal bỏ sót khi tick
-        else:
-            add("data[isOwnerDossierCheck]", False)
-            _add_requester(add, person)
-        return out, warnings
+        submitter = organizer or requester
+    elif organizer and _matches_applicant(organizer, context):
+        submitter = organizer
+    elif requester and _matches_applicant(requester, context):
+        submitter = requester
+    elif _has_applicant_anchor(context):
+        anchor = context.get("applicant_identity") or context.get("applicant_name")
+        warnings.append(
+            "Không xác định được người nộp khớp thông tin trên form "
+            f"({anchor}); không điền phần người nộp."
+        )
+    # Người chết không thể là người nộp, kể cả khi LLM lỡ trộn vai.
+    if submitter and deceased and _same_person(submitter, deceased):
+        submitter = None
+    if submitter:
+        _add_requester(add, submitter)
 
-    # Người đứng ra mai táng trùng mỏ neo UI: tự nộp, tích checkbox và dùng
-    # chính chủ hồ sơ cho khối người nộp. Ngày sinh UI cũ không tham gia khớp.
-    if owner and _matches_applicant(owner, context):
-        add("data[isOwnerDossierCheck]", True)
-        _add_requester(add, owner)
-        # Portal tự sao chép hầu hết field khi tick nhưng bỏ sót ngày sinh chủ
-        # hồ sơ, nên phải phát riêng đúng field này sau khối người nộp.
-        add("data[ownerBirthday]", owner.birthday)
-        return out, warnings
-
-    # Nộp thay: chỉ dùng NguoiNop sau khi khớp lại toàn bộ mỏ neo UI hiện có.
-    if owner and requester and _matches_applicant(requester, context):
-        if _same_person(owner, requester):
-            add("data[isOwnerDossierCheck]", True)
-            _add_requester(add, owner)
-            add("data[ownerBirthday]", owner.birthday)
-        else:
-            add("data[isOwnerDossierCheck]", False)
-            _add_requester(add, requester)
-            _add_owner(add, owner)
-        return out, warnings
-
-    # Không có/không xác định được người nộp vẫn trả chủ hồ sơ bình thường.
-    if owner:
-        add("data[isOwnerDossierCheck]", False)
-        _add_owner(add, owner)
-        if _has_applicant_anchor(context):
-            anchor = context.get("applicant_identity") or context.get("applicant_name")
-            warnings.append(
-                "Không xác định được người nộp khớp thông tin trên form "
-                f"({anchor}); không điền phần người nộp."
-            )
-        return out, warnings
-
-    if requester and _matches_applicant(requester, context):
-        add("data[isOwnerDossierCheck]", False)
-        _add_requester(add, requester)
-        warnings.append("Đã xác định người nộp nhưng chưa đọc được chủ hồ sơ từ Mẫu số 04.")
-        return out, warnings
-
-    anchor = context.get("applicant_identity") or context.get("applicant_name") or "(trống)"
-    return out, [
-        "Người nộp trích xuất không khớp thông tin trên form "
-        f"({anchor}); không điền để tránh nhầm người."
-    ]
+    if deceased:
+        _add_owner(add, deceased)
+    else:
+        warnings.append("Không đọc được thông tin người chết để điền chủ hồ sơ.")
+    return out, warnings
 
 
 def _add_requester(add, person: Person) -> None:

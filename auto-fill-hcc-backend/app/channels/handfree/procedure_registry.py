@@ -3612,8 +3612,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang-1116910",
-        # Mã TTHC 1.116910, thay mã cũ 1.001731 (entry Auto Fill "ho-tro-mai-tang" vẫn giữ cho trang
-        # mã cũ; cả hai key dùng chung pipeline ho_tro_mai_tang). CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
+        # Mã TTHC 1.116910, thay mã cũ 1.001731 (entry Auto Fill "ho-tro-mai-tang" cũng đã sang mã này;
+        # cả hai key dùng chung pipeline ho_tro_mai_tang: chủ hồ sơ = người chết). CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
         # (bảo trợ xã hội thay vì người hưởng trợ cấp hưu trí xã hội). Bảng thành phần hồ sơ cũng
         # chỉ một dòng Tờ khai → hideRepeatableHint.
         "detect": {
@@ -5498,6 +5498,260 @@ PROCEDURES: list[dict] = [
             "đối tượng.\n"
             "Nếu nộp thay theo ủy quyền, chọn đối tượng \"Người khác ủy quyền\" để trợ lý điền phần "
             "thông tin người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    # ── Đợt 26/10: 5 thủ tục, CHƯA chạy thử trên cổng thật. Cổng / cấp cơ quan suy từ code lõi; kiểm khi chạy. ──
+    {
+        "key": "dang-ky-noi-quy-lao-dong",
+        # Mã TTHC 2.001955, cổng Bộ Nội vụ (Form.io + bảng attp-row 4 dòng cố định + dòng "Giấy ủy quyền" tạo qua
+        # modal "+ Thêm giấy tờ" — target add-document-dialog, extension trợ lý có engine từ 1.13.6). Key TRÙNG lõi →
+        # process/attach tự nối. Văn bản đề nghị gửi Sở Nội vụ → chọn cơ quan cấp Sở như "sua-doi-thong-tin-ho-so-
+        # nguoi-co-cong" (ke_khai_links không khai selectSo, cấp Sở là suy từ nội dung hồ sơ — kiểm khi chạy thử).
+        # Thủ tục của DOANH NGHIỆP: chủ hồ sơ là doanh nghiệp, người nộp là người đại diện hoặc người được ủy quyền.
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=2.001955",
+                "019d2bfb-42a2-76ce-9565-812f8b562c71",
+            ],
+            "textIncludes": ["đăng ký nội quy lao động"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký nội quy lao động của doanh nghiệp",
+        "shortLabel": "Đăng ký nội quy lao động",
+        "subtitle": "Doanh nghiệp đăng ký nội quy lao động với Sở Nội vụ",
+        "icon": "📘",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-42a2-76ce-9565-812f8b562c71",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        # Planner lõi tách / gộp theo trang (sourceSegments): có thể scan cả bộ hồ sơ vào MỘT PDF.
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Văn bản đề nghị đăng ký nội quy lao động gửi Sở Nội vụ",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "noi_quy", "name": "Quyết định ban hành và toàn văn Nội quy lao động", "icon": "📘",
+             "sides": 1, "repeatable": True},
+            {"key": "bien_ban", "name": "Biên bản đối thoại / văn bản góp ý của tổ chức đại diện người lao động "
+             "tại cơ sở", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "ky_luat", "name": "Văn bản quy định về kỷ luật lao động, trách nhiệm vật chất (nếu có)",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền (khi người nộp không phải người đại diện theo pháp luật)",
+             "icon": "✍️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy chứng nhận đăng ký doanh nghiệp, căn cước người nộp (nếu có) — chỉ dùng "
+             "để điền", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF scan):\n"
+            "1. Văn bản (công văn) đề nghị đăng ký nội quy lao động gửi Sở Nội vụ — nguồn chính cho thông tin "
+            "doanh nghiệp.\n"
+            "2. Quyết định ban hành Nội quy lao động và toàn văn Nội quy lao động.\n"
+            "3. Biên bản hội nghị đối thoại / văn bản góp ý của tổ chức đại diện người lao động tại cơ sở.\n"
+            "4. Văn bản quy định về kỷ luật lao động, trách nhiệm vật chất (nếu có).\n"
+            "5. Giấy ủy quyền (khi người nộp không phải người đại diện theo pháp luật); căn cước nếu có.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
+            "Bước Thành phần hồ sơ: Quyết định + Nội quy ghép một tệp vào dòng 1; biên bản góp ý dòng 2; văn bản "
+            "kỷ luật dòng 3 (không có thì để trống); văn bản đề nghị dòng 4; Giấy ủy quyền thành dòng mới qua "
+            "'+ Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "cap-gcn-diem-tro-choi-dien-tu-cong-cong",
+        # Mã TTHC 1.013792, cổng Bộ VHTTDL dichvucong.bvhttdl.gov.vn — Angular Material bọc custom element liz-* (DOM
+        # bỏ formcontrolname) → engine content/fill-liz.js của extension trợ lý (từ 1.13.6) khớp ô theo (.group-header,
+        # mat-label). Đính kèm 3 ô cố định (fixed-slot: Đơn 51a / CCCD chủ điểm / GCN hộ kinh doanh) trong
+        # <app-upload-flie-multi>. Phần I "Thông tin chung" cổng tự điền. ke_khai_links không khai selectSo → DVCQG
+        # chọn đủ Tỉnh + Phường/Xã (UBND cấp xã cấp giấy chứng nhận) — kiểm khi chạy thử.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.013792",
+                "019d2bfd-ec30-74cf-b2d7-89358371679b",
+            ],
+            "headingDisabled": True,
+        },
+        "label": "Cấp giấy chứng nhận đủ điều kiện hoạt động điểm cung cấp dịch vụ trò chơi điện tử công cộng",
+        "shortLabel": "Giấy chứng nhận điểm trò chơi điện tử công cộng",
+        "subtitle": "Chủ quán game xin giấy chứng nhận đủ điều kiện hoạt động",
+        "icon": "🎮",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-ec30-74cf-b2d7-89358371679b",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Đơn đề nghị cấp giấy chứng nhận (Mẫu số 51a) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ điểm", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "gpkd", "name": "Giấy chứng nhận đăng ký hộ kinh doanh", "icon": "🏪", "sides": 1,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp giấy chứng nhận đủ điều kiện hoạt động điểm cung cấp dịch vụ trò chơi điện tử công "
+            "cộng (Mẫu số 51a), đã ký.\n"
+            "2. Căn cước công dân của chủ điểm.\n"
+            "3. Giấy chứng nhận đăng ký hộ kinh doanh.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ điểm là cá nhân nên người nộp, người được giải quyết và chủ hộ kinh doanh là cùng một người.\n"
+            "Bước đính kèm: Đơn 51a, căn cước, giấy chứng nhận hộ kinh doanh vào đúng 3 ô cố định."
+        ),
+    },
+    {
+        "key": "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang",
+        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng (Nghị quyết 75/2026/NQ-HĐND): chỉ account tỉnh này thấy + gọi được
+        # Mã địa phương 3.000721, cổng DVC Đà Nẵng (Form.io + bảng attp-row 3 dòng: Đơn → dòng 1 Bản chính; Hợp đồng
+        # hỏa táng + Biên bản giao nhận tro cốt → dòng 3 Bản sao; dòng 2 Quyết định hỗ trợ là KẾT QUẢ, planner gửi
+        # untickRows để bỏ tick). Key TRÙNG lõi. Đây là thủ tục đầu tiên của trợ lý trên cổng Đà Nẵng: host, wizard
+        # iGate 1/2 và chọn cơ quan Tỉnh + Phường/Xã đều là suy luận — kiểm khi chạy thử.
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["01a01d63-1115-70ae-b9e7-80298abb5b0c"],
+            "textIncludes": ["Hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng",
+        "shortLabel": "Hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng",
+        "subtitle": "Gia đình nhận tiền hỗ trợ chở người mất đến cơ sở hỏa táng",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a01d63-1115-70ae-b9e7-80298abb5b0c",
+        "needsAgencySelect": True,
+        "agencyProvince": "Đà Nẵng",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Đơn đề nghị hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng "
+             "(mẫu Nghị quyết 75/2026/NQ-HĐND) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "hop_dong_hoa_tang", "name": "Hợp đồng dịch vụ hỏa táng và Biên bản giao nhận hũ đựng tro cốt",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng ra hỏa táng", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền / giấy giới thiệu (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị hỗ trợ chi phí vận chuyển người tử vong đến cơ sở hỏa táng (Mẫu ban hành kèm Nghị "
+            "quyết 75/2026/NQ-HĐND) đã kê khai, ký tên — nguồn chính: người đứng ra hỏa táng.\n"
+            "2. Hợp đồng dịch vụ hỏa táng và Biên bản giao nhận hũ đựng tro cốt.\n"
+            "3. Căn cước công dân của người đứng ra hỏa táng (và của người nộp thay nếu có).\n"
+            "4. Nếu nộp thay: văn bản ủy quyền / giấy giới thiệu.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Có thể scan gộp nhiều "
+            "giấy tờ trong một PDF.\n"
+            "Bước đính kèm: Đơn vào dòng 1 (Bản chính); Hợp đồng + Biên bản giao nhận vào dòng 3 (Bản sao). Dòng 2 "
+            "(Quyết định hỗ trợ của UBND) là kết quả giải quyết, không đính."
+        ),
+    },
+    {
+        "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
+        "provinceOnly": ["laichau"],  # mã địa phương Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã địa phương 3.000598. Lõi phát field eForm iGate VNPT (CongDan_* dom-input / dom-select, CongDan_maPhuongXa
+        # là ô Phường/Xã của eForm Lai Châu) và mọi ví dụ trong prompt là Lai Châu → suy ra cổng dichvucong.laichau.gov.vn
+        # (CHƯA mở link kiểm). Đính kèm fixed-slot theo tên dòng (đơn hộ gia đình / tổ chức, giấy tờ nhà đất…) + căn
+        # cước vào dòng thêm mới. Key TRÙNG lõi.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019ef895-259b-72b1-ba55-179108f16bb1"],
+            "textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
+        "shortLabel": "Đăng ký lắp đặt sử dụng nước sạch",
+        "subtitle": "Đăng ký đấu nối, lắp đồng hồ và ký hợp đồng cấp nước sạch",
+        "icon": "🚰",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ef895-259b-72b1-ba55-179108f16bb1",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "cccd", "name": "Căn cước công dân của người nộp hồ sơ", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "giay_de_nghi", "name": "Đơn đề nghị đấu nối nước sạch và hợp đồng dịch vụ cấp nước (theo mẫu)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "nha_dat", "name": "Giấy chứng nhận quyền sử dụng đất / giấy tờ nhà đất hợp pháp",
+             "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy đăng ký kinh doanh, quyết định thành lập, hợp đồng thuê nhà (nếu là "
+             "doanh nghiệp, tổ chức)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước công dân của người nộp hồ sơ.\n"
+            "2. Đơn đăng ký / đơn đề nghị đấu nối nước sạch và hợp đồng dịch vụ cấp nước.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu tài sản gắn liền với đất nếu là hộ gia đình, "
+            "cá nhân.\n"
+            "4. Giấy đăng ký kinh doanh / giấy tờ tổ chức nếu là doanh nghiệp, cơ quan, tổ chức.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "chuyen-doi-ten-hop-dong-nuoc-sach",
+        "provinceOnly": ["laichau"],  # mã địa phương Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã địa phương 3.000600, cùng cổng và cùng khung eForm với "dang-ky-lap-dat-su-dung-nuoc-sach" ngay trên
+        # (cổng suy từ code lõi, CHƯA mở link kiểm). Đính kèm fixed-slot 7 dòng theo tên + dòng thêm mới. Key TRÙNG lõi.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019ef89f-fba4-7698-9dbb-f18e145be976"],
+            "textIncludes": ["chuyển đổi tên trong hợp đồng dịch vụ sử dụng nước sạch"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục chuyển đổi tên trong Hợp đồng dịch vụ sử dụng nước sạch",
+        "shortLabel": "Chuyển đổi tên trong hợp đồng sử dụng nước sạch",
+        "subtitle": "Đổi tên người đứng tên hợp đồng cấp nước sạch",
+        "icon": "🚰",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ef89f-fba4-7698-9dbb-f18e145be976",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "cccd", "name": "Căn cước công dân của người nộp hồ sơ", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "giay_de_nghi", "name": "Đơn xin đổi tên trong hợp đồng dịch vụ cấp nước", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "nha_dat", "name": "Giấy chứng nhận quyền sử dụng đất / hợp đồng chuyển nhượng nhà đất",
+             "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy đăng ký kinh doanh, quyết định thành lập, giấy đồng thuận của chủ nhà "
+             "(nếu là doanh nghiệp, tổ chức)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước công dân của người nộp hồ sơ.\n"
+            "2. Đơn xin đổi tên trong hợp đồng dịch vụ cấp nước.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu tài sản gắn liền với đất (hoặc hợp đồng chuyển "
+            "nhượng nhà đất).\n"
+            "4. Nếu là doanh nghiệp, cơ quan, tổ chức: giấy đăng ký kinh doanh, quyết định thành lập hoặc giấy tờ "
+            "thuê / ủy quyền liên quan.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },

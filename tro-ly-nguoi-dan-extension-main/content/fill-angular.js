@@ -71,6 +71,18 @@ async function fillFormAngular(fields) {
       continue;
     }
 
+    // nyc-bu-thieu: bù ô còn TRỐNG của khối "Thông tin người yêu cầu" theo đúng người trong giấy tờ.
+    // Không ai trùng người đăng nhập, hoặc khối đã đủ → không điền gì, cũng không tính là thiếu.
+    if (f.comp === "nyc-bu-thieu") {
+      try {
+        result.filled += await fillNycBuThieu(f.value);
+      } catch (e) {
+        result.errors.push(f.name);
+        console.warn("[AutoFill-NG] Lỗi bù khối người yêu cầu:", e);
+      }
+      continue;
+    }
+
     // raw: input trần (vd Số lượng bản sao) — không có type đặc thù, tìm theo formcontrolname
     // hoặc fallback theo placeholder; set value + dispatch input.
     if (f.comp === "raw") {
@@ -434,6 +446,160 @@ async function resolveAndFillNycQuanHe(info) {
   return ok;
 }
 
+// ── Bù khối "Thông tin người yêu cầu" (comp nyc-bu-thieu) ──
+// Cổng đổ khối này từ tài khoản đăng nhập nhưng có người thiếu giới tính / ngày cấp / nơi cấp / nơi cư trú.
+// BE gửi MỌI người có trong giấy tờ — cha, mẹ, người thứ ba trên CCCD, người ký tờ khai:
+//   { nguoi: [{ vaiTro, ten, cccd, gioiTinh, ngayCap, noiCap, noiCuTru, loaiCuTru, quocGia }] }
+// Chọn người trùng người đăng nhập rồi chỉ điền ô TRỐNG; ô cổng đã có giá trị giữ nguyên.
+const NYC_O = {
+  gioiTinh: "NycGioiTinh", ngayCap: "NycGiaytoNgaycap", noiCap: "NycGiaytoNoicap",
+  loaiCuTru: "NycLoaiCutru", quocGia: "NycMaQuocGia", diaChi: "NycDiaChi",
+};
+
+const foldNyc = (value) => String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/đ/gi, "d").toLowerCase().replace(/\s+/g, " ").trim();
+// "Thành phố Hà Nội" ~ "Hà Nội", "Phường Từ Liêm" ~ "Từ Liêm".
+const tranDiaBanNyc = (value) => foldNyc(value).replace(/^(xa|phuong|thi tran|dac khu|tinh|thanh pho|tp\.?)\s+/, "");
+
+// Người trong giấy tờ trùng người đăng nhập (2 ô readonly NycSoGiayto / NycHoTen):
+//  - Cả hai bên có số định danh → phải TRÙNG SỐ; cùng tên mà khác số là hai người khác nhau.
+//  - Một bên không có số → so họ tên bỏ dấu.
+// Không ai trùng, hoặc trùng từ 2 người trở lên → không chọn, không đoán.
+function chonNguoiYeuCau(list, req) {
+  const so = (s) => String(s || "").replace(/\D/g, "");
+  const reqSo = so(req && req.cccd), reqTen = foldNyc(req && req.ten);
+  const nguoi = Array.isArray(list) ? list : [];
+  const theoSo = reqSo ? nguoi.filter((p) => so(p.cccd) === reqSo) : [];
+  if (theoSo.length) return theoSo.length === 1 ? theoSo[0] : null;
+  const theoTen = reqTen ? nguoi.filter((p) => !(reqSo && so(p.cccd)) && foldNyc(p.ten) === reqTen) : [];
+  return theoTen.length === 1 ? theoTen[0] : null;
+}
+
+// Ô ngày có input datepicker ẩn đi kèm → xét mọi input không ẩn, không chỉ input đầu tiên.
+function coGiaTriNyc(el) {
+  return ngFieldHasValue(el) || Array.from(el.querySelectorAll("input"))
+    .some((i) => i.type !== "hidden" && String(i.value || "").trim());
+}
+
+// Ô cổng để TRỐNG mà vẫn khoá readonly → mở khoá để điền. Ô đã có giá trị không bao giờ tới đây.
+function moKhoaOTrongNyc(el) {
+  el.querySelectorAll("input").forEach((i) => {
+    if (i.readOnly && !String(i.value || "").trim()) i.readOnly = false;
+  });
+}
+
+// Ô Tỉnh / Phường-Xã trong khối địa chỉ người yêu cầu. Khác khối cha/mẹ (input mat-autocomplete có
+// placeholder), ô ở đây có thể là ng-select/mat-select có mũi tên, nhãn nằm ở mat-label / .ng-placeholder
+// → tìm theo NHÃN của ô, nhận cả ba loại control.
+function oDiaBanNyc(el, keys) {
+  const box = Array.from(el.querySelectorAll("mat-form-field, ng-select")).find((b) => {
+    const nhan = b.querySelector("mat-label, .mat-form-field-label, label, .ng-placeholder");
+    const ph = Array.from(b.querySelectorAll("input"))
+      .map((i) => `${i.getAttribute("data-placeholder") || ""} ${i.getAttribute("placeholder") || ""}`).join(" ");
+    const text = foldNyc(`${(nhan && nhan.textContent) || ""} ${ph}`);
+    return keys.some((k) => text.includes(k));
+  });
+  if (!box) return null;
+  const select = box.matches("ng-select") ? box : box.querySelector("ng-select, mat-select");
+  return { box, select, input: select ? null : box.querySelector("input") };
+}
+
+function giaTriDiaBanNyc(o) {
+  if (!o) return "";
+  if (o.select) {
+    const t = o.select.querySelector(".ng-value-label, .ng-value, .mat-select-value-text");
+    return String((t && t.textContent) || "").trim();
+  }
+  return String((o.input && o.input.value) || "").trim();
+}
+
+async function chonDiaBanNyc(o, value, cap) {
+  if (!o || !value) {
+    console.warn(`[AutoFill-NG] NycBuThieu: không thấy ô ${cap} trong khối nơi cư trú người yêu cầu`);
+    return false;
+  }
+  moKhoaOTrongNyc(o.box);
+  let ok = false;
+  if (o.select) {
+    if (o.select.matches(".ng-select-disabled, .mat-select-disabled")) {
+      console.warn(`[AutoFill-NG] NycBuThieu: ô ${cap} bị cổng khoá (disabled), không chọn được`);
+      return false;
+    }
+    ok = await fillNgSelect(o.box, value);
+  } else if (o.input) {
+    ok = await ngPickAutocomplete(o.input, value);
+  }
+  // In HTML của ô để biết cổng dùng control gì khi vẫn trượt.
+  if (!ok) console.warn(`[AutoFill-NG] NycBuThieu: không chọn được ${cap} "${value}". Ô:`, o.box.outerHTML.slice(0, 1500));
+  return ok;
+}
+
+// Nơi cư trú: cổng trống tỉnh → chọn tỉnh, rồi xã, rồi chi tiết theo giấy. Cổng đã có tỉnh/xã thì chỉ bù cấp
+// còn trống khi phần đã có TRÙNG giấy tờ — khác thì là hai địa chỉ khác nhau, ghép vào thành địa chỉ không có thật.
+async function buDiaChiNyc(el, data) {
+  if (!el || !data) return 0;
+  let n = 0;
+  const tinh = oDiaBanNyc(el, ["tinh", "thanh pho"]);
+  const tinhCo = giaTriDiaBanNyc(tinh);
+  if (tinhCo && tranDiaBanNyc(tinhCo) !== tranDiaBanNyc(data.tinh)) return 0;
+  if (!tinhCo) {
+    if (!(await chonDiaBanNyc(tinh, data.tinh, "Tỉnh/Thành phố"))) return 0;
+    n++;
+  }
+  // Danh sách xã chỉ nạp sau khi đã chọn tỉnh.
+  const timXa = () => oDiaBanNyc(el, ["phuong", "xa"]);
+  await waitFor(timXa, 1500);
+  const xa = timXa();
+  const xaCo = giaTriDiaBanNyc(xa);
+  if (xaCo && tranDiaBanNyc(xaCo) !== tranDiaBanNyc(data.xa)) return n;
+  if (!xaCo && data.xa) {
+    if (!(await chonDiaBanNyc(xa, data.xa, "Phường/Xã"))) return n;
+    n++;
+  }
+  const chiTiet = ngFindInput(el, ["chi tiết", "địa chỉ", "số nhà"]);
+  if (chiTiet && !String(chiTiet.value || "").trim() && data.diaChi) {
+    moKhoaOTrongNyc(el);
+    setNativeValue(chiTiet, String(data.diaChi));
+    chiTiet.dispatchEvent(new Event("blur", { bubbles: true }));
+    n++;
+  }
+  if (n) markFilled(el);
+  return n;
+}
+
+async function fillNycBuThieu(info) {
+  const req = readRequesterIdentity();
+  const p = chonNguoiYeuCau((info || {}).nguoi, req);
+  if (!p) {
+    console.log(`[AutoFill-NG] NycBuThieu: không ai trong giấy tờ trùng người yêu cầu trên form `
+      + `(cccd=${req.cccd || "∅"}, ten="${req.ten}") — bỏ qua`);
+    return 0;
+  }
+  if (p.ten && req.ten && foldNyc(p.ten) !== foldNyc(req.ten)) {
+    console.warn(`[AutoFill-NG] NycBuThieu: trùng số định danh nhưng tên lệch — form "${req.ten}", giấy "${p.ten}"`);
+  }
+  console.log(`[AutoFill-NG] NycBuThieu: người yêu cầu là ${p.vaiTro} "${p.ten || p.cccd}"`);
+  let n = 0;
+  const dien = async (fcn, value, fill, macDinh = false) => {
+    const el = document.querySelector(`[formcontrolname="${fcn}"]`);
+    if (!el || !value || coGiaTriNyc(el)) return;
+    moKhoaOTrongNyc(el);
+    if (!(await fill(el, value))) return;
+    n++;
+    // Loại cư trú / quốc gia giấy tờ không ghi → giá trị mặc định, tô vàng để cán bộ rà.
+    if (macDinh) _convertGreenToYellow(el.querySelector("mat-form-field, ng-select, mat-select") || el);
+  };
+  await dien(NYC_O.gioiTinh, p.gioiTinh, fillNgSelect);
+  await dien(NYC_O.ngayCap, p.ngayCap, fillNgDate);
+  await dien(NYC_O.noiCap, p.noiCap, fillNgText);
+  if (p.noiCuTru) {
+    await dien(NYC_O.loaiCuTru, p.loaiCuTru, fillNgSelect, true);
+    await dien(NYC_O.quocGia, p.quocGia, fillNgSelect, true);
+    n += await buDiaChiNyc(document.querySelector(`[formcontrolname="${NYC_O.diaChi}"]`), p.noiCuTru);
+  }
+  return n;
+}
+
 // mat-select (Angular Material) — dùng cho danh mục ngắn (Giới tính, Loại cư trú...).
 async function fillMatSelect(ms, value, wrapper) {
   const want = norm(value);
@@ -653,6 +819,7 @@ function fillNgRadio(el, value) {
 
   H.fillFormAngular = fillFormAngular;
   H.resolveAltNameGroups = resolveAltNameGroups; // dùng chung: legacy engine (content.js) cũng gọi
+  H.chonNguoiYeuCau = chonNguoiYeuCau; // test dùng (tests/lien-thong-flow.test.js)
 
   // Điền hộ bước "Chọn cơ quan thực hiện" (liên thông khai sinh, Angular Material). Dùng LẠI
   // engine fillFormAngular với plan là hợp đồng fields {name,comp,value} do BE (registry

@@ -5,6 +5,7 @@ from app.channels.handfree.procedure_registry import (
     get_attach_pipeline,
     get_owner_info_pipeline,
     get_pipeline,
+    is_allowed_in_province,
     public_list,
 )
 from app.procedures import registry as core_registry
@@ -452,6 +453,30 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert not bn_noxh.get("agencySoFirst")
     assert "wizard" not in bn_noxh and "maePortal" not in bn_noxh
 
+    # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
+    moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
+    for field in ("needsAgencySelect", "agencyProvinceOnly", "agencySoFirst", "maePortal", "agencyDeptLabel",
+                  "wizard", "bxdFlow"):
+        assert moha_labor[field] == moha_edit[field], field
+    assert moha_labor.get("flowProfile") is None and "provinceOnly" not in moha_labor
+    # Trò chơi điện tử (Bộ VHTTDL, engine liz): DVCQG chọn đủ Tỉnh + Xã, không khóa tỉnh.
+    game = procedures.pop("cap-gcn-diem-tro-choi-dien-tu-cong-cong")
+    assert game.get("flowProfile") is None and game["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in game and "agencySoFirst" not in game and "provinceOnly" not in game
+    assert "dichvucong.bvhttdl.gov.vn" in game["detect"]["urlScope"]
+    # Mã địa phương: khóa đúng tỉnh tài khoản, chọn đủ Tỉnh + Xã của tỉnh đó.
+    for key, slug, host in (
+        ("ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang", "danang", "dichvucong.danang.gov.vn"),
+        ("dang-ky-lap-dat-su-dung-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
+        ("chuyen-doi-ten-hop-dong-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
+    ):
+        local = procedures.pop(key)
+        assert local["provinceOnly"] == [slug], key
+        assert local.get("flowProfile") is None and local["needsAgencySelect"] is True, key
+        assert "agencyProvinceOnly" not in local and "agencySoFirst" not in local, key
+        assert host in local["detect"]["urlScope"], key
+        assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
+
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
@@ -555,7 +580,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" (1.013997, NN&MT cấp xã),
     # "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc" (1.014335, GD&ĐT cấp xã),
     # "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san" (1.012906, Sở Xây dựng).
-    assert len(procedures) == 100
+    # +5 đợt 26/10: "dang-ky-noi-quy-lao-dong" (2.001955, Sở Nội vụ), "cap-gcn-diem-tro-choi-dien-tu-cong-cong"
+    # (1.013792, Bộ VHTTDL), "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang" (3.000721, Đà Nẵng),
+    # "dang-ky-lap-dat-su-dung-nuoc-sach" (3.000598) + "chuyen-doi-ten-hop-dong-nuoc-sach" (3.000600, Lai Châu).
+    assert len(procedures) == 105
 
     for procedure in procedures:
         key = procedure["key"]
