@@ -8,6 +8,7 @@ tờ làm căn cứ) → dòng 2. LLM lỗi / OCR hụt → dòng 2, không tệ
 Cổng chỉ nhận tệp dưới 2 MB: tệp trên `SHRINK_ABOVE_BYTES` được vẽ lại từng trang thành JPEG theo thang
 `_SHRINK_LADDER` cho tới khi lọt `MAX_FILE_BYTES` (giữ màu lâu nhất, nấc cuối là mức sàn còn đọc được), trả về ở
 `replaceFiles` để extension đính bản nén thay bản gốc. Tệp nhỏ hơn để nguyên. OCR vẫn đọc bản gốc.
+Trang to hơn A4 (ảnh chụp điện thoại) được vẽ như trang A4 → dpi của thang là độ nét khi in ra A4.
 """
 
 import asyncio
@@ -31,6 +32,7 @@ _SHRINK_LADDER = [  # (dpi, chất lượng JPEG, ảnh xám)
     (150, 75, False), (150, 60, False), (120, 75, False), (120, 60, False),
     (120, 70, True), (100, 60, True), (100, 50, True),
 ]
+_A4_LONG_SIDE_PT = 842  # cạnh dài trang A4 (điểm, 1/72 inch)
 _UY_QUYEN = "uy_quyen"
 
 ROW_UY_QUYEN = {"slotKey": "cai_chinh_uy_quyen", "slotIndex": 0, "slotName": "Văn bản ủy quyền"}
@@ -164,6 +166,13 @@ def _decode(data_url: str) -> bytes:
     return base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
 
 
+def _level_label(dpi: int, quality: int, gray: bool) -> str:
+    return f"{'xám' if gray else 'màu'} {dpi}dpi q{quality}"
+
+
+_LADDER_LABELS = [_level_label(*step) for step in _SHRINK_LADDER]
+
+
 def _render_pdf(raw: bytes, dpi: int, quality: int, gray: bool) -> bytes:
     import pymupdf
 
@@ -171,7 +180,12 @@ def _render_pdf(raw: bytes, dpi: int, quality: int, gray: bool) -> bytes:
     out = pymupdf.open()
     colorspace = pymupdf.csGRAY if gray else pymupdf.csRGB
     for page in src:
-        jpg = page.get_pixmap(dpi=dpi, colorspace=colorspace).tobytes("jpeg", jpg_quality=quality)
+        # Ảnh chụp điện thoại mở ra trang 4032 pt (khai 72 DPI; extension bọc ảnh vào PDF cũng lấy pixel làm điểm):
+        # vẽ thẳng 150 DPI là phóng ảnh 12 MP lên 53 MP, mỗi nấc mất vài giây mà vẫn không lọt 2 MB, cặp CCCD hết
+        # thang mất gần 50 s. Trang to hơn A4 được vẽ như trang A4.
+        zoom = dpi / 72 * _A4_LONG_SIDE_PT / max(page.rect.width, page.rect.height, _A4_LONG_SIDE_PT)
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), colorspace=colorspace)
+        jpg = pix.tobytes("jpeg", jpg_quality=quality)
         target = out.new_page(width=page.rect.width, height=page.rect.height)
         target.insert_image(target.rect, stream=jpg)
     # no_new_id: PyMuPDF mặc định gắn /ID NGẪU NHIÊN → mỗi lần nén lại ra byte khác, extension tưởng là tệp
@@ -179,13 +193,13 @@ def _render_pdf(raw: bytes, dpi: int, quality: int, gray: bool) -> bytes:
     return out.tobytes(garbage=4, deflate=True, no_new_id=True)
 
 
-def shrink_file(raw: bytes, limit: int = MAX_FILE_BYTES) -> tuple[bytes, str]:
-    """Nấc đầu tiên lọt `limit`; hết thang vẫn vượt thì trả bản nhỏ nhất kèm nhãn nấc sàn."""
+def shrink_file(raw: bytes, limit: int = MAX_FILE_BYTES, start: int = 0) -> tuple[bytes, str]:
+    """Nấc đầu tiên (từ nấc `start`) lọt `limit`; hết thang vẫn vượt thì trả bản nhỏ nhất kèm nhãn nấc sàn."""
     best, label = raw, ""
-    for dpi, quality, gray in _SHRINK_LADDER:
+    for dpi, quality, gray in _SHRINK_LADDER[start:]:
         out = _render_pdf(raw, dpi, quality, gray)
         if len(out) < len(best):
-            best, label = out, f"{'xám' if gray else 'màu'} {dpi}dpi q{quality}"
+            best, label = out, _level_label(dpi, quality, gray)
         if len(out) <= limit:
             break
     return best, label
@@ -198,8 +212,8 @@ def _shrink_one(file: dict) -> dict | None:
     return _shrunk_entry(file, raw, MAX_FILE_BYTES)
 
 
-def _shrunk_entry(file: dict, raw: bytes, limit: int) -> dict:
-    out, label = shrink_file(raw, limit)
+def _shrunk_entry(file: dict, raw: bytes, limit: int, start: int = 0) -> dict:
+    out, label = shrink_file(raw, limit, start)
     stem = os.path.splitext(file["name"])[0] or "tai-lieu"
     return {
         "name": f"{stem}.pdf",
@@ -251,9 +265,15 @@ async def shrink_merged(raw_files: list[dict], attachments: list[dict], replaced
         for i in indexes:
             if size(i) <= budget:
                 continue
+            # Lần nén đầu đã thử và loại mọi nấc trước nấc nó dừng (đều trên `MAX_FILE_BYTES` > budget), nấc dừng
+            # cũng vẫn trên budget → đi tiếp từ nấc sau, không vẽ lại từ đầu thang.
+            level = (replaced.get(str(i)) or {}).get("level")
+            start = _LADDER_LABELS.index(level) + 1 if level in _LADDER_LABELS else 0
+            if start >= len(_SHRINK_LADDER):
+                continue
             try:
                 replaced[str(i)] = await asyncio.to_thread(
-                    _shrunk_entry, raw_files[i], _decode(raw_files[i]["dataUrl"]), budget)
+                    _shrunk_entry, raw_files[i], _decode(raw_files[i]["dataUrl"]), budget, start)
             except Exception as e:  # noqa: BLE001 — nén hỏng thì để nguyên, extension báo khi cổng từ chối
                 errors.append(f"Không nén được {raw_files[i].get('name')}: {e}")
         total = sum(size(i) for i in indexes)

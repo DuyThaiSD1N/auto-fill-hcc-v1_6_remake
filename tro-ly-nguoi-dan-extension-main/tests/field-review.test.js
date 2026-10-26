@@ -68,6 +68,15 @@ test("sidebar: câu hỏi ô đọc xong tự mở mic một lượt", () => {
   assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);/);
 });
 
+test("nhãn ô: ô bọc trong <span>/<div> thì đọc chữ trước thẻ bọc, không mượn nhãn ô trước", () => {
+  // Tờ khai đăng ký lại khai sinh bản mới: "Số đăng ký khai sinh trước đây: <span><x-input>" từng bị hỏi thành
+  // "Cơ quan đăng ký hộ tịch trước đây", "(15) Số định danh cá nhân" thành "Ngày, tháng, năm sinh".
+  assert.match(review, /if \(\/\^X-\/\.test\(n\.tagName\) \|\| n\.querySelector\?\.\("\[name\]"\)\) \{ stopped = true; break; \}/);
+  assert.match(review, /if \(text \|\| stopped\) return text;/);
+  assert.match(review, /if \(!up \|\| !\/\^\(SPAN\|DIV\|LABEL\)\$\/\.test\(up\.tagName\)\) break;/);
+  assert.match(review, /\.some\(\(el\) => el !== node && !node\.contains\(el\)\)\) break;\s*node = up;/);
+});
+
 test("ô năm sinh (x-date-text): chỉ có năm là đã điền; danh sách lựa chọn không cắt ở 200", () => {
   assert.match(review, /const yearOnly = tag === "x-date-text";/);
   assert.match(review, /return yearOnly \? read\(parts\[2\]\) : "";/);

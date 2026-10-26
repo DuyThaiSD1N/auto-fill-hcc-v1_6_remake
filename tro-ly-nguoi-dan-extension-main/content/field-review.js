@@ -59,16 +59,28 @@
 
   // Nhãn đứng ngay trước một ô trong cùng đoạn: gom chữ của các nút anh em phía trước, dừng ở ô x-*
   // trước đó (nhiều ô chung một <p>: "(8) Giới tính: <x-select> (9) Dân tộc: <x-select>").
+  // Tờ khai bản mới (vd đăng ký lại khai sinh) bọc ô x-input trong <span>/<div>: chữ nhãn đứng trước thẻ bọc,
+  // không trước chính ô → ô là con đầu của thẻ bọc thì leo lên thẻ bọc rồi đọc tiếp. Không leo khi đã gặp ô
+  // khác đứng sát trước ("Giấy tờ tùy thân: <x-select><x-select-area>") — nhãn rỗng để slots() ghép nhãn ô trước.
   function labelBefore(node) {
-    let text = "";
-    for (let n = node.previousSibling; n; n = n.previousSibling) {
-      if (n.nodeType === Node.ELEMENT_NODE) {
-        if (/^X-/.test(n.tagName) || n.querySelector?.("[name]")) break;
-        if (n.classList?.contains("input-hidden") || n.classList?.contains("hidden")) continue;
+    for (let depth = 0; node && depth < 3; depth++) {
+      let text = "";
+      let stopped = false;
+      for (let n = node.previousSibling; n; n = n.previousSibling) {
+        if (n.nodeType === Node.ELEMENT_NODE) {
+          if (/^X-/.test(n.tagName) || n.querySelector?.("[name]")) { stopped = true; break; }
+          if (n.classList?.contains("input-hidden") || n.classList?.contains("hidden")) continue;
+        }
+        text = `${n.textContent || ""} ${text}`;
       }
-      text = `${n.textContent || ""} ${text}`;
+      text = text.replace(/\s+/g, " ").trim();
+      if (text || stopped) return text;
+      const up = node.parentElement;
+      if (!up || !/^(SPAN|DIV|LABEL)$/.test(up.tagName)) break;
+      if ([...up.querySelectorAll("[name]")].some((el) => el !== node && !node.contains(el))) break;
+      node = up;
     }
-    return text.replace(/\s+/g, " ").trim();
+    return "";
   }
 
   // Nhãn của ô con trong khối địa chỉ: <label>/<span> chữ gần nhất phía trước (bỏ span giá trị ẩn).
