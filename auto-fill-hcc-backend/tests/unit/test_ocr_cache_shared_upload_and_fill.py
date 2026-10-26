@@ -104,3 +104,47 @@ async def test_cache_written_at_low_token_cap_is_not_reused(tmp_path, monkeypatc
     assert len(ocr_calls) == 1, "text cắt ở trần thấp không được dùng cho trích xuất"
     assert out[0].get("_cached") is not True
     assert store[key]["max_tokens"] == settings.ocr_tiengnoi_fill_max_tokens, "ghi đè bằng bản đầy đủ"
+
+
+@pytest.mark.asyncio
+async def test_fresh_ocr_skips_cache_read_but_still_writes(monkeypatch):
+    """Web Kiểm thử gửi freshOcr: lần chạy nào cũng OCR mới; cache vẫn được ghi cho bước đính kèm."""
+    store, ocr_calls = _fake_store(monkeypatch)
+    data_url = f"data:application/pdf;base64,{base64.b64encode(b'giay chung sinh').decode()}"
+    item = {"name": "gcs.pdf", "type": "application/pdf", "dataUrl": data_url}
+
+    await ocr.ocr_per_file([item])
+    assert len(ocr_calls) == 1 and store
+
+    token = ocr.fresh_ocr.set(True)
+    try:
+        again = await ocr.ocr_per_file([item])
+    finally:
+        ocr.fresh_ocr.reset(token)
+    assert len(ocr_calls) == 2, "freshOcr phải OCR lại dù đã có cache"
+    assert not again[0].get("_cached")
+
+    third = await ocr.ocr_per_file([item])
+    assert third[0]["_cached"] is True, "ngoài lượt freshOcr vẫn dùng cache như cũ"
+    assert len(ocr_calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_execute_process_turns_on_fresh_ocr_only_for_true(monkeypatch):
+    from app.process.service import PreparedProcess, execute_process
+
+    seen: list[bool] = []
+
+    async def pipeline(files_by_role, options):
+        seen.append(ocr.fresh_ocr.get())
+        return {"fields": []}
+
+    def prepared(options):
+        return PreparedProcess(procedure="khai-tu", proc={}, pipeline=pipeline, files_by_role={},
+                               pipeline_options=options, total_bytes=0, ocr_provider="tiengnoi")
+
+    await execute_process(prepared({"freshOcr": True}))
+    await execute_process(prepared({"freshOcr": "true"}))
+    await execute_process(prepared({}))
+    assert seen == [True, False, False]
+    assert ocr.fresh_ocr.get() is False, "cờ phải được trả lại sau lượt"

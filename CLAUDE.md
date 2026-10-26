@@ -71,7 +71,7 @@ Chọn service để build theo chỗ đã sửa:
 | --- | --- |
 | `app/`, `scripts/`, `requirements.txt`, `Dockerfile` | `up -d --build --remove-orphans app` |
 | `fe/` | `up -d --build fe` |
-| `monitor-fe/` | `up -d --build monitor-fe` |
+| `monitor-fe/` | `up -d --build monitor-fe test-fe` (web Kiểm thử build từ cùng thư mục) |
 
 Sửa file trong hai thư mục extension thì KHÔNG cần đụng Docker.
 
@@ -88,6 +88,7 @@ web trace trả 502. Phần hướng dẫn Docker trong `auto-fill-hcc-backend/R
 | Backend API | 12005 |
 | Web quản lý (fe) | 12006 |
 | Web Monitor (monitor-fe) | 12007 |
+| Web Kiểm thử (test-fe) | 12008 |
 | Mongo | 12004 |
 
 ## Deploy sang server khác
@@ -101,11 +102,24 @@ TARGET=user@server-dich ./scripts/deploy_to_server.sh
 Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào server đích chạy
 `cd /opt/autofill-hcc && ./server_up.sh` thì mới thực sự lên.
 
+## Web Kiểm thử (test-fe, cổng 12008)
+
+Một thủ tục × tối đa 5 bộ tài liệu × tối đa 5 lần chạy, gọi `/api/v2/process` y như extension rồi chấm bằng engine
+mô phỏng form của Monitor và so field giữa các lần. Mã nằm trong `monitor-fe` (`lab.html`, `src/lab/`), danh sách thủ
+tục ở `src/lab/procedures.ts`. Service gọi backend local theo `TEST_BACKEND_URL` (mặc định `http://app:12005`),
+KHÔNG theo `BACKEND_URL` của `.env`. Đăng nhập bằng tài khoản nào thì điền theo xã/tỉnh tài khoản đó; các lượt chạy
+ghi trace như lượt thật của tài khoản ấy. Bước điền luôn gửi `options.freshOcr=true` → BE bỏ đọc cache OCR (vẫn ghi),
+lần nào cũng OCR mới; bước đính kèm vẫn dùng cache như extension.
+
 ## Test
 
 Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree` lỗi collect sẵn, bỏ qua.
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
+
+Baseline ngày 2026-10-25, sau commit "thêm thủ tục" 467a57f (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`11 failed, 3013 passed, 39 skipped, 4 errors` (3013 gồm 2 test freshOcr thêm cùng ngày). Vẫn 11 đỏ môi trường như bản 2026-10-21; lỗi collect thứ 4 là
+`tests/unit/test_archive_worker.py` (thêm ở commit 2676438) cũng thiếu `mongomock`.
 
 Baseline ngày 2026-10-21, sau commit "update lại bE" 5792794 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `11 failed, 2914 passed, 39 skipped, 3 errors`. Đúng 15 đỏ môi trường của bản 2026-10-12 trừ 4 `test_mobile_send_queue`
