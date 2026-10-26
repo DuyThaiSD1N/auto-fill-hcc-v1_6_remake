@@ -971,6 +971,54 @@
     sendResponse({ ok: true, values });
   });
 
+  // Ô "Lưu thông tin mới sửa đổi vào "Thông tin định danh" của tôi." cuối bước chủ hồ sơ: checkbox Radix
+  // (button role=checkbox) cạnh nhãn; tick thì cổng mở hộp thoại "Ghi đè thông tin mới sửa đổi vào hồ sơ cá nhân?"
+  // (role=alertdialog) — phải bấm "Xác nhận" thì ô mới giữ dấu tick.
+  function ownerProfileSaveCheckbox() {
+    const label = Array.from(document.querySelectorAll("label"))
+      .find((el) => isVisible(el) && fold(el.textContent).startsWith("luu thong tin moi sua doi vao"));
+    let scope = label?.parentElement;
+    for (let i = 0; i < 4 && scope; i++, scope = scope.parentElement) {
+      const box = scope.querySelector('button[role="checkbox"]');
+      if (box) return box;
+    }
+    return null;
+  }
+
+  async function saveOwnerProfile() {
+    const box = ownerProfileSaveCheckbox();
+    if (!box) return { ok: false, error: "không thấy ô Lưu thông tin trên trang" };
+    if (box.getAttribute("aria-checked") === "true") return { ok: true, already: true };
+    box.click();
+    const dialog = await waitFor(() => Array.from(document.querySelectorAll('[role="alertdialog"]'))
+      .find((el) => isVisible(el) && fold(el.textContent).includes("ghi de thong tin")), 3000);
+    if (dialog) {
+      const confirm = Array.from(dialog.querySelectorAll("button"))
+        .find((btn) => fold(btn.textContent) === "xac nhan");
+      if (!confirm) return { ok: false, error: "hộp thoại không có nút Xác nhận" };
+      confirm.click();
+    }
+    // Cổng lưu NGAY khi bấm Xác nhận: hiện toast "Cập nhật thông tin người dùng thành công" và có thể bỏ dấu tick
+    // → toast là tín hiệu chính; ô còn giữ dấu tick (cổng lưu lúc bấm Bước tiếp theo) cũng tính là xong.
+    // React có thể dựng lại ô sau khi đóng hộp thoại → dò lại ô mỗi nhịp, không giữ tham chiếu cũ.
+    const done = await waitFor(() => {
+      if (fold(document.body?.innerText || "").includes("cap nhat thong tin nguoi dung thanh cong")) return "toast";
+      const dialogOpen = Array.from(document.querySelectorAll('[role="alertdialog"]')).some(isVisible);
+      return !dialogOpen && ownerProfileSaveCheckbox()?.getAttribute("aria-checked") === "true" ? "checked" : null;
+    }, 5000);
+    return done ? { ok: true, via: done } : { ok: false, error: "cổng chưa báo cập nhật thành công" };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "saveOwnerProfile") return;
+    // Content script chạy ở mọi frame: chỉ frame có ô này trả lời.
+    if (!ownerProfileSaveCheckbox()) return;
+    saveOwnerProfile()
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  });
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "fillOwnerFields") return;
     const fields = Array.isArray(msg.fields) ? msg.fields : [];

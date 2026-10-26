@@ -145,6 +145,61 @@ function legacyRadioOptionLabel(container, box) {
   return legacyRadioOptionWrap(container, box)?.textContent || "";
 }
 
+// Ô nhập free-text đi kèm option "Khác" của một ô tích. Cổng đổi tên ô này giữa các phiên bản
+// eForm (BE đã gửi kèm alias), nên khi không tên nào khớp thì tìm theo CẤU TRÚC: ô nhập nằm trong
+// hoặc ngay cạnh option đang được tích của ô tích tương ứng.
+const LEGACY_OTHER_TEXT_DRIVERS = {
+  quanhekhac: "quanhevoinguoiduocxacminh",
+  // Xác nhận thông tin hộ tịch: ô ghi quan hệ ("Con đẻ") cạnh option "Khác" dùng chung name nycQuanHe.
+  nycquanhekhac: "nycQuanHe",
+};
+
+function isLegacyTextInput(el) {
+  if (!el || el.tagName !== "INPUT") return false;
+  // Thuộc tính .type của input DOM đã chuẩn hóa sẵn ("text" khi thẻ không ghi type).
+  const type = String(el.type || el.getAttribute("type") || "text").toLowerCase();
+  return !["checkbox", "radio", "hidden", "button", "submit"].includes(type);
+}
+
+function hasLegacyOtherTextDriver(field) {
+  return !!LEGACY_OTHER_TEXT_DRIVERS[String(field?.name || "").toLowerCase()];
+}
+
+function findLegacyOtherTextInput(field) {
+  const driverName = LEGACY_OTHER_TEXT_DRIVERS[String(field?.name || "").toLowerCase()];
+  if (!driverName) return null;
+  const container = findNamedElement("x-radio", [driverName]).el
+    || document.querySelector(`x-radio[name="${CSS.escape(driverName)}" i]`)
+    || document.querySelector(`[name="${CSS.escape(driverName)}"]`)?.closest?.("x-radio");
+  if (!container) return null;
+
+  // 1) eForm đặt ô nhập của option "Khác" ngay trong khối x-radio, DÙNG CHUNG name với ô tích và
+  //    chỉ khác ở class input-field-radio (không có thuộc tính type).
+  const byClass = Array.from(container.querySelectorAll("input.input-field-radio")).find(isLegacyTextInput);
+  if (byClass) return byClass;
+  // 2) Ô nhập nằm trong chính ô bọc của option đang tích ("Khác").
+  const checked = Array.from(container.querySelectorAll('input[type="checkbox"]')).find((box) => box.checked);
+  const wrap = checked ? legacyRadioOptionWrap(container, checked) : null;
+  const inWrap = wrap ? Array.from(wrap.querySelectorAll("input")).find(isLegacyTextInput) : null;
+  if (inWrap) return inWrap;
+  // 3) Ô nhập nằm trong khối ô tích nhưng ngoài các option.
+  const inContainer = Array.from(container.querySelectorAll("input")).find(isLegacyTextInput);
+  if (inContainer) return inContainer;
+  // 4) Ô nhập render thành phần tử anh em ngay sau khối ô tích.
+  let node = container.nextElementSibling;
+  for (let step = 0; node && step < 3; step++, node = node.nextElementSibling) {
+    if (isLegacyTextInput(node)) return node;
+    const el = Array.from(node.querySelectorAll?.("input") || []).find(isLegacyTextInput);
+    if (el) return el;
+  }
+  return null;
+}
+
+// "raw" = input trần theo name; fallback theo cấu trúc cho ô "Khác" render động.
+function findLegacyRawInput(field) {
+  return findNamedElement("input", fieldCandidates(field)).el || findLegacyOtherTextInput(field);
+}
+
 // Trạng thái THẬT của một x-select-area sau khi điền. eForm hộ tịch có lúc dựng lại cả khối một nhịp
 // SAU khi dropdown đi trước đổi giá trị: Tỉnh/Phường vừa điền bị xóa trắng. Phải đọc lại được để pass
 // sửa lỗi điền bù. Chỉ xét hai dạng đã biết cấu trúc: chuỗi ghi tay và địa chỉ {tinh, xa, diaChi};
@@ -171,7 +226,7 @@ function legacyFieldState(field) {
   if (!field || !LEGACY_REPAIRABLE_COMPS.has(field.comp)) return { supported: false, filled: true };
   const names = fieldCandidates(field);
   if (field.comp === "raw") {
-    const input = findNamedElement("input", names).el;
+    const input = findLegacyRawInput(field);
     return { supported: true, filled: !!input && legacyScalarMatches(input.value, field.value), target: input?.parentElement || input };
   }
 
@@ -259,7 +314,7 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
   for (const field of lost) {
     const names = fieldCandidates(field);
     if (field.comp === "raw") {
-      const input = findNamedElement("input", names).el;
+      const input = findLegacyRawInput(field);
       if (!input) continue;
       setNativeValue(input, field.value, { typing: true, commit: true });
       markFilled(input.parentElement || input);
@@ -547,7 +602,15 @@ async function fillForm(fields) {
 
     // "raw": input trần theo name (vd SoLuong nằm trong x-select-area, không có x-input bọc)
     if (f.comp === "raw") {
-      const el = findNamedElement("input", candidates).el;
+      let el = findLegacyRawInput(f);
+      // Ô nhập của option "Khác" chỉ được cổng dựng SAU khi ô tích vừa đổi sang "Khác" → chờ thêm
+      // thay vì bỏ cuộc ngay, vì pass sửa lỗi chỉ retry field đã từng điền được.
+      if (!el && hasLegacyOtherTextDriver(f)) {
+        await waitFor(() => {
+          el = findLegacyRawInput(f);
+          return !!el;
+        }, 3000, 100);
+      }
       if (el) {
         setNativeValue(el, f.value, { typing: true, commit: true });
         markFilled(el.parentElement || el);
@@ -672,7 +735,7 @@ function markLegacyDefaultsYellow(fields) {
     if (!f || !f.default) continue;
     // "raw": input trần theo name → đổi vàng ở parent (đúng phần tử nhánh fill đã tô xanh).
     if (f.comp === "raw") {
-      const el = findNamedElement("input", fieldCandidates(f)).el;
+      const el = findLegacyRawInput(f);
       if (el) _convertGreenToYellow(el.parentElement || el);
       continue;
     }
@@ -1552,5 +1615,10 @@ async function fillSelectDefault(container, f) {
   return true;
 }
 
+  // Ảnh chụp form (content/form-snapshot): đọc lại ô theo đúng cách tìm ô lúc điền.
+  H.readLegacyField = (f) => {
+    const { el } = findNamedElement(f.comp, fieldCandidates(f));
+    return el ? readLegacyComponent(el) : null;
+  };
   H.fillForm = fillForm;
 })();

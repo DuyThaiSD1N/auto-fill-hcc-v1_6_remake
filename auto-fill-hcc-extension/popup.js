@@ -136,6 +136,8 @@ const isBacNinhThreeStepProcedure = (config = currentConfig()) =>
 
 let PROCEDURES = [];
 let lastProcessSession = null; // { procedure, sessionId }
+// Luật nút rời bước kê khai (BE: app/form_snapshots/step_rules.py); BE bản cũ không trả → không chụp form.
+let PORTAL_STEP_RULES = null;
 // Khóa MỘT HỒ SƠ (gửi BE qua options.dossierId → traces.dossier_id + collection dossiers).
 // KHÁC lastProcessSession.sessionId: cái đó là request_id của LƯỢT QUÉT, cố ý đổi mỗi lần quét
 // lại để planner đính kèm bám đúng lượt mới nhất — không phải danh tính hồ sơ.
@@ -274,7 +276,7 @@ async function sendToContent(payload) {
         // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
         // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
         // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.
-        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/fill-surveyjs.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
+        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/fill-surveyjs.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js", "content/form-snapshot/read.js", "content/form-snapshot/labels.js", "content/form-snapshot/rules.js", "content/form-snapshot/tracker.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -1722,6 +1724,7 @@ async function loadProcedures() {
     // Không chép cứng nhãn nào vào extension: sửa câu chữ hay đổi danh sách lý do chỉ cần
     // deploy BE. BE bản cũ không trả → màn đánh giá tắt lặng lẽ, không vỡ gì.
     if (res.ratingCard && Array.isArray(res.ratingCard.scale)) RATING_CARD = res.ratingCard;
+    if (res.portalStep && typeof res.portalStep === "object") PORTAL_STEP_RULES = res.portalStep;
   } catch (e) {
     if (e.unauthorized) {
       await AuthStore.clearTokens();
@@ -4967,7 +4970,7 @@ ocrBtn.addEventListener("click", async () => {
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
     showSupportCode(res.requestId || res.sessionId);
 
-    const fillOutcome = await dispatchFill(res.fields || [], res.errors || [], page);
+    const fillOutcome = await dispatchFill(res.fields || [], res.errors || [], page, res.requestId);
 
     // Rà soát bbox: thủ tục bật review → nạp sources + đẩy xuống content + hiện card "Xem trên ảnh".
     try { await maybeShowReview(res.requestId || res.sessionId, res.reviewToken); }
@@ -5243,7 +5246,7 @@ async function attachAfterFill(fillOutcome, sessionId) {
   setStatus(`${fillOutcome.message} ${res.message || ""}`.trim(), type, details);
 }
 
-async function dispatchFill(allFields, errors, page = null) {
+async function dispatchFill(allFields, errors, page = null, requestId = "") {
   // errors[] từ BE có thể chứa chi tiết OCR/LLM kỹ thuật → chỉ log, KHÔNG hiện thô lên UI.
   if (errors && errors.length) console.warn("[AutoFill] Cảnh báo trích xuất:", errors);
   if (!hasUsableProcessData(allFields)) {
@@ -5293,6 +5296,8 @@ async function dispatchFill(allFields, errors, page = null) {
       businessDefaults: page?.key ? buildBusinessDefaults(currentUser) : null,
       // Biểu mẫu Cổng DVC quốc gia mới: "Kính gửi" / "Tại" lấy theo địa bàn của tài khoản trợ lý.
       toolAccount: { tinh: currentUser?.tinh || "", xa: currentUser?.xa || "" },
+      // Ảnh chụp form sau khi điền (content/form-snapshot) — gắn với lượt /process vừa xong.
+      formSnapshot: requestId && PORTAL_STEP_RULES && !page ? { requestId, stepRules: PORTAL_STEP_RULES } : null,
     });
     const filled = Math.max(0, Number(fillRes?.filled || 0));
     const details = buildFillDetails(fillRes, errors, allFields.length);

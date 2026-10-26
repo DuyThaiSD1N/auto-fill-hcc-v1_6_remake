@@ -147,5 +147,5 @@
     if (area === "local" && changes[AUTH_KEY]?.newValue?.access) void flush();
   });
 
-  globalThis.__TLND_SUBMIT__ = { reportClick, flush };
+  globalThis.__TLND_SUBMIT__ = { reportClick, flush, refreshAuth };
 })();

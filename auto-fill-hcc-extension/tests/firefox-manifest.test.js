@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "u
 assert.equal(manifest.manifest_version, 3);
 assert.deepEqual(
   manifest.background?.scripts,
-  ["background.js"],
+  ["background/form-snapshot.js", "background.js"],
   "Firefox MV3 cần background.scripts vì chưa chạy background.service_worker",
 );
 assert.equal(

@@ -1686,6 +1686,10 @@
       // ĐỀU Angular + đều nhắc "chọn cơ quan thực hiện" (agencyBlock) — trang CHỌN CƠ QUAN
       // KHÔNG có marker này, trang KÊ KHAI thì có → dùng để phân biệt (chống kích hoạt sớm).
       const keKhaiForm = body.includes("ke khai thong tin");
+      // Trang CHỦ cổng liên thông (thẻ thủ tục có id mã TTHC, vd "2_000987"): đăng nhập VNeID xong cổng đưa về đây
+      // chứ không quay lại link kê khai đang mở dở → báo BE để BE mở lại đúng link kê khai của thủ tục.
+      const lienThongHome = location.hostname === "lienthong.dichvucong.gov.vn" && !keKhaiForm
+        && Array.from(document.querySelectorAll(".teca-card-container-new[id]")).some(isPageVisible);
       // Trang đăng nhập SSO/VNeID — host xác thực hoặc màn QR THỰC SỰ đang hiển thị.
       // Nếu #account_name đã hiện thì ưu tiên trạng thái đăng nhập, dù DOM còn sót chữ QR.
       let loginPage = !loggedIn && (/xacthuc|vneid|sso/.test(location.hostname)
@@ -1728,10 +1732,11 @@
       // Wizard MAE (mat-horizontal-stepper, nhãn KHÁC cổng tư pháp): 1 Thông tin hồ sơ →
       // 2 Thành phần hồ sơ → 3 Thông tin phí → 4 Nộp hồ sơ. Cả 4 step CÙNG tồn tại trong
       // DOM (chỉ đổi visibility) → tin header aria-selected, không quét nội dung panel.
-      // Cổng Bộ Y tế đặt tên bước 3 là "Hình thức nhận kết quả" (crawl 23/10/2026) → mỗi bước khai các tên.
+      // Cổng Bộ Y tế, Bộ Xây dựng (dvc.moc) đặt tên bước 3 là "Hình thức nhận kết quả", cổng Bộ Nội vụ là "Thông tin bổ
+      // sung" (cùng nội dung: hình thức nhận kết quả + cam đoan + mã xác nhận) → mỗi bước khai các tên.
       if (maeHost && !maeAgencyBlock && !wizardStep) {
         const maeLabels = [["thong tin ho so"], ["thanh phan ho so"],
-        ["thong tin phi", "hinh thuc nhan ket qua"], ["nop ho so"]];
+        ["thong tin phi", "hinh thuc nhan ket qua", "thong tin bo sung"], ["nop ho so"]];
         const stepOf = (h) => maeLabels.findIndex((names) => names.some((l) => foldTxt(h?.textContent || "").includes(l)));
         const headers = Array.from(document.querySelectorAll("mat-step-header"));
         const matched = headers.filter((h) => stepOf(h) >= 0);
@@ -1796,6 +1801,7 @@
         // cổng tư pháp (BE hiểu wizardStep 3 là bước đính kèm).
         lienThongStep: (window.__TLND__ && typeof window.__TLND__.lienThongStep === "function")
           ? window.__TLND__.lienThongStep() : 0,
+        lienThongHome,
         // Thông tin định danh của đúng người đang đứng tên chủ hồ sơ. Backend dùng làm
         // context nghiệp vụ; extension không tự quyết người hay nguồn dữ liệu.
         ownerContext,

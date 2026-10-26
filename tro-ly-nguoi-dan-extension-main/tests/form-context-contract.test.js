@@ -26,16 +26,3 @@ test("formContext báo đơn xin nhận con nuôi đang mở (eForm trong Thành
   assert.match(fillCore, /formVariant = "adoption_application";/);
   assert.match(fillCore, /\.\.\.\(combinedVariant \|\| \{\}\),/);
 });
-
-test("cổng Bộ VHTTDL (liz): nạp fill-liz.js sau fill-core, dispatcher gọi fillFormLiz, đọc người nộp theo nhãn", () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
-  const scripts = manifest.content_scripts[0].js;
-  assert.ok(scripts.indexOf("content/fill-liz.js") > scripts.indexOf("content/fill-core.js"));
-  assert.ok(scripts.indexOf("content/fill-liz.js") < scripts.indexOf("content.js"));
-  const fillLiz = fs.readFileSync(path.join(root, "content/fill-liz.js"), "utf8");
-  assert.match(fillLiz, /const H = window\.__TLND__ \|\| \(window\.__TLND__ = \{\}\);/);
-  assert.match(fillLiz, /H\.fillFormLiz = fillFormLiz;/);
-  assert.match(fillCore, /formKind === "liz" \? H\.fillFormLiz/);
-  assert.match(fillCore, /readBacNinhAccountValue\("hoTen"\) \|\|\s*readLizAccountValue\(\["ten nguoi"\]\)/);
-  assert.match(fillCore, /readBacNinhAccountValue\("soDinhDanh"\) \|\|\s*readLizAccountValue\(\["cmnd", "so dinh danh"\]\)/);
-});

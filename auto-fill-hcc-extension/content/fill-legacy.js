@@ -1709,5 +1709,10 @@ async function fillSelectDefault(container, f) {
   return true;
 }
 
+  // Ảnh chụp form (content/form-snapshot): đọc lại ô theo đúng cách tìm ô lúc điền.
+  H.readLegacyField = (f) => {
+    const { el } = findNamedElement(f.comp, fieldCandidates(f));
+    return el ? readLegacyComponent(el) : null;
+  };
   H.fillForm = fillForm;
 })();

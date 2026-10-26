@@ -1,4 +1,6 @@
 // Background runtime xử lý click extension icon (Chrome service worker / Firefox event page).
+// Firefox nạp các file này qua background.scripts (event page không có importScripts).
+if (typeof importScripts === "function") importScripts("background/form-snapshot.js");
 // Bấm icon → gửi message content script (top frame) tab hiện tại để toggle panel nổi.
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab?.id) return;

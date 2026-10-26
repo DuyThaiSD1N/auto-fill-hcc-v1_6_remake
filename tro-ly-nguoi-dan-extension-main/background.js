@@ -10,6 +10,8 @@
 importScripts("lib/panelMode.js");
 // config.js: base BE + failover (dùng chung với sidebar). submitClickReporter: gửi mốc nộp hồ sơ.
 importScripts("api/config.js", "lib/submitClickReporter.js");
+// Ảnh chụp form (content/form-snapshot); dùng refreshAuth của submitClickReporter.
+importScripts("lib/formSnapshotOutbox.js");
 const PM = globalThis.__TLND_PANEL_MODE__;
 
 // Bấm icon. Content script còn sống thì chỉ bật/tắt panel như trước.

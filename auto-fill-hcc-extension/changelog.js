@@ -3,12 +3,21 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25",
+    date: "26/10/2026",
+    items: [
+      "Ghi lại các ô cán bộ sửa hoặc tự điền thêm sau khi trợ lý điền (lúc sửa và lúc sang bước đính kèm), để cải thiện độ chính xác đọc giấy tờ.",
+      "Cổng Bộ Giáo dục và Đào tạo: bỏ tích đúng các dòng giấy tờ không đính kèm.",
+    ],
+  },
+  {
     version: "1.24.3",
     date: "23/10/2026",
     items: [
       "Trang nộp hồ sơ mới (Cổng DVC quốc gia): chuyển sang hồ sơ khác trong cùng tab vẫn điền đúng biểu mẫu đang hiện, không còn ô báo xanh mà trống.",
       "Cấp giấy phép xây dựng (Bộ Xây dựng): bỏ tích các dòng giấy tờ không đính, chỉ tích lại dòng đã đính được; người đăng nhập VNeID là người nộp kiêm chủ hộ.",
       "Bắc Ninh: ô Số lượng của dòng Bản chính/Bản sao ghi đúng số tệp đã đính.",
+      "Ô \"Thủ tục\" hiện số thủ tục trong danh mục và số kết quả khi tìm.",
     ],
   },
   {

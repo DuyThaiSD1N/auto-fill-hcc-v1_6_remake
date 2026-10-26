@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.24.3",
+  "version": "1.25.2",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -33,6 +33,7 @@
   },
   "background": {
     "scripts": [
+      "background/form-snapshot.js",
       "background.js"
     ],
     "service_worker": "background.js"
@@ -83,7 +84,11 @@
         "content/agency-select.js",
         "content/portal-quangninh.js",
         "content/portal-doi-ma-tthc.js",
-        "content/review.js"
+        "content/review.js",
+        "content/form-snapshot/read.js",
+        "content/form-snapshot/labels.js",
+        "content/form-snapshot/rules.js",
+        "content/form-snapshot/tracker.js"
       ],
       "css": [
         "content/bbox-overlay.css"

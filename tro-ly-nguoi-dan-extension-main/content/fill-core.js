@@ -417,15 +417,13 @@ function collectFormContext() {
       readNgReflectValue("ng-reflect-fullname") ||
       // Form eform (vd Xác nhận TTHN, Khai tử): người yêu cầu cổng điền sẵn ở HoVaTenC.
       readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]) ||
-      readBacNinhAccountValue("hoTen") ||
-      readLizAccountValue(["ten nguoi"]),
+      readBacNinhAccountValue("hoTen"),
     applicantIdentityNumber:
       readSurveyJsAccountValue("citizenIdentity") ||
       readInputLikeValue("data[identityNumber]") ||
       readNgReflectValue("ng-reflect-identity-number") ||
       readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
-      readBacNinhAccountValue("soDinhDanh") ||
-      readLizAccountValue(["cmnd", "so dinh danh"]),
+      readBacNinhAccountValue("soDinhDanh"),
     ownerFullname: readInputLikeValue("data[ownerFullname]"),
     ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),
     ownerDossierChecked: !!checkbox?.checked,
@@ -2227,22 +2225,6 @@ function readBacNinhAccountValue(key) {
   return "";
 }
 
-// [Bộ VHTTDL — liz] Họ tên + số định danh của khối "Thông tin người nộp hồ sơ" là input disabled KHÔNG
-// có name/formcontrolname (cổng đổ từ tài khoản định danh) → đọc theo (.group-header, <mat-label>).
-function readLizAccountValue(labelPrefixes) {
-  if (!document.querySelector("liz-input, liz-form-component")) return "";
-  const wanted = labelPrefixes.map(foldChoiceText);
-  for (const mf of document.querySelectorAll("mat-form-field")) {
-    const header = mf.closest(".group")?.querySelector(".group-header");
-    if (!foldChoiceText(nodeText(header)).includes("nguoi nop")) continue;
-    const label = foldChoiceText(nodeText(mf.querySelector("mat-label")));
-    if (!wanted.some((w) => label.startsWith(w))) continue;
-    const value = String(mf.querySelector("input")?.value || "").trim();
-    if (value && !isPlaceholderText(value)) return value;
-  }
-  return "";
-}
-
 
 function clickLikeUser(el) {
   if (!el) return;
@@ -2349,6 +2331,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
     return true;
   }
   if (msg.action !== "fillFields") return;
+  H.formSnapshot?.arm?.(msg.formSnapshot);
   const formKind = detectFormKind();
   if (!formKind) return; // frame không chứa form thật
   let fields = Array.isArray(msg.fields) ? msg.fields : [];
@@ -2367,6 +2350,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
     if (!fields.length) return;
   }
   const forceStandard = fields.some(isStandardField);
+  const trackSnapshot = (res) => { if (!res?.error) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind); };
   // Bắc Ninh engine riêng (khớp theo NHÃN) — ưu tiên trước mọi nhánh khác.
   if (formKind === "surveyjs") {
     if (typeof H.fillFormSurveyJs !== "function") {
@@ -2375,7 +2359,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
     }
     // toolAccount: tỉnh/xã tài khoản quầy để điền "Kính gửi"/"Tại" (BE gửi kèm lệnh fill_fields).
     H.fillFormSurveyJs(fields, msg.toolAccount || null)
-      .then(sendResponse)
+      .then((res) => { trackSnapshot(res); sendResponse(res); })
       .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
     return true;
   }
@@ -2383,8 +2367,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
     ? H.fillFormBacNinh
     : (forceStandard
       ? fillFormStandard
-      : (formKind === "liz" ? H.fillFormLiz
-        : (formKind === "angular" ? H.fillFormAngular : (formKind === "legacy" ? H.fillForm : fillFormStandard))));
+      : (formKind === "angular" ? H.fillFormAngular : (formKind === "legacy" ? H.fillForm : fillFormStandard)));
   if (typeof filler !== "function") {
     sendResponse({ error: `Engine điền chưa nạp (formKind=${formKind}).` });
     return;
@@ -2397,7 +2380,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
     : Promise.resolve(null);
   // LUÔN trả response (kể cả engine ném lỗi) → tránh sidebar retry gây điền lặp.
   prepare.then(() => filler(fields))
-    .then(sendResponse)
+    .then((res) => { trackSnapshot(res); sendResponse(res); })
     .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
   return true; // giữ kênh phản hồi bất đồng bộ (cascade địa danh cần chờ)
 }

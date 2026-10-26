@@ -28,3 +28,9 @@ test("attachFilesByAttpRow chỉ bỏ chọn tất cả khi BE gửi cờ, trư�
   assert.ok(gate > 0);
   assert.ok(gate < fn.indexOf("await tickAttpRowCheckbox(row)"));
 });
+
+test("cổng không có ô Chọn/Bỏ chọn tất cả (dvc.moet Bộ GD&ĐT) thì bỏ tick từng dòng đang tick", () => {
+  const fn = body("uncheckAllAttpRows");
+  assert.match(fn, /if \(header\) \{/);
+  assert.match(fn, /for \(const row of findAttachmentRows\(\)\) \{\s*const cb = rowBox\(row\);\s*if \(!cb\?\.checked\) continue;/);
+});

@@ -42,6 +42,7 @@
       #tlnd-fr-cursor { position: fixed; left: 0; top: 0; z-index: 2147483646; pointer-events: none;
         width: 26px; height: 26px; opacity: 0; transition: transform .6s ease, opacity .2s; }
       #tlnd-fr-cursor.show { opacity: 1; }
+      #tlnd-fr-cursor.follow { transition: opacity .2s; }
       #tlnd-fr-cursor::after { content: ""; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px;
         border-radius: 50%; border: 2px solid #1e66f5; opacity: 0; }
       #tlnd-fr-cursor.click::after { animation: tlnd-fr-ripple .5s ease-out; }
@@ -269,9 +270,17 @@
   // ── Con trỏ + ô đang hỏi ──
 
   let hintTarget = null;
+  function pointAt(cur, box) {
+    const r = box.getBoundingClientRect();
+    cur.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 120))}px, `
+      + `${Math.round(r.top + r.height * 0.55)}px)`;
+  }
   function placeHint() {
     const hint = document.getElementById("tlnd-fr-hint");
     if (!hint || !hintTarget) return;
+    // Con trỏ bám theo ô khi trang cuộn tiếp (khung cuộn riêng của cổng), như khung gợi ý.
+    const cur = document.getElementById("tlnd-fr-cursor");
+    if (cur?.classList.contains("follow")) pointAt(cur, hintTarget);
     const r = hintTarget.getBoundingClientRect();
     hint.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 370))}px`;
     hint.style.top = `${Math.min(r.bottom + 8, innerHeight - 40)}px`;
@@ -295,7 +304,7 @@
   function unfocus() {
     document.querySelectorAll(`.${ASKING}`).forEach((el) => el.classList.remove(ASKING));
     document.getElementById("tlnd-fr-hint")?.remove();
-    document.getElementById("tlnd-fr-cursor")?.classList.remove("show", "click");
+    document.getElementById("tlnd-fr-cursor")?.classList.remove("show", "click", "follow");
     hintTarget = null;
   }
 
@@ -309,13 +318,21 @@
     injectStyles();
     unfocus();
     box.scrollIntoView({ block: "center", behavior: "smooth" });
-    await sleep(450);
+    // Chờ cuộn mượt dừng hẳn (vị trí ô đứng yên hai nhịp) rồi mới chỉ — cổng có khung cuộn riêng cuộn lâu hơn
+    // một nhịp cố định, chỉ sớm là con trỏ dừng ở chỗ ô đã trôi qua.
+    let lastTop = null;
+    for (let i = 0; i < 15; i++) {
+      await sleep(100);
+      const top = Math.round(box.getBoundingClientRect().top);
+      if (top === lastTop) break;
+      lastTop = top;
+    }
     const cur = cursorEl();
-    const r = box.getBoundingClientRect();
+    cur.classList.remove("follow");
     cur.classList.add("show");
-    cur.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 120))}px, `
-      + `${Math.round(r.top + r.height * 0.55)}px)`;
+    pointAt(cur, box);
     await sleep(650);
+    cur.classList.add("follow");
     cur.classList.remove("click");
     void cur.offsetWidth;
     cur.classList.add("click");
@@ -457,6 +474,20 @@
     return !!fresh?.value();
   }
 
+  // Ô đi kèm lựa chọn vừa tích (ô ghi quan hệ cạnh "Khác"): cổng chỉ dựng sau khi tích và ô không có tên riêng nên
+  // không nằm trong danh sách hỏi → engine điền thẳng ngay sau ô chính (fill-legacy tìm theo cấu trúc).
+  async function applyExtra(fields) {
+    if (!Array.isArray(fields) || !fields.length) return true;
+    if (typeof H.fillForm !== "function") return false;
+    try {
+      const result = await H.fillForm(fields);
+      return !(result?.notFound || []).length;
+    } catch (e) {
+      console.warn("[TLND] bổ sung ô đi kèm lỗi:", e);
+      return false;
+    }
+  }
+
   function publicField(slot, options, section, province = "") {
     return {
       key: slot.key, name: slot.name, role: slot.role || "", kind: slot.kind, yearOnly: !!slot.yearOnly,
@@ -472,7 +503,9 @@
     let applied = null;
     if (msg.apply && msg.apply.key) {
       const target = slots().find((s) => s.key === msg.apply.key);
-      const ok = target ? await applyValue(target, slots(), String(msg.apply.value ?? "")) : false;
+      const ok = target
+        ? (await applyValue(target, slots(), String(msg.apply.value ?? ""))) && (await applyExtra(msg.apply.extra))
+        : false;
       applied = { key: msg.apply.key, ok };
       // Điền không được thì không hỏi lại ô đó ngay ở lượt này (BE cũng ghi vào danh sách bỏ qua).
       if (!ok) skip.add(msg.apply.key);

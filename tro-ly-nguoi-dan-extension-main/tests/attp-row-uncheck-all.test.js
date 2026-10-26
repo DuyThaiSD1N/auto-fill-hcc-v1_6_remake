@@ -29,23 +29,8 @@ test("attachFilesByAttpRow chỉ bỏ chọn tất cả khi BE gửi cờ, trư�
   assert.ok(gate < fn.indexOf("await tickAttpRowCheckbox(row)"));
 });
 
-test("attachFilesByAttpRow bỏ tick các dòng untickRows không nằm trong kế hoạch, trước vòng tick dòng", () => {
-  const fn = body("attachFilesByAttpRow");
-  const gate = fn.indexOf("item.untickRows || []");
-  assert.ok(gate > 0);
-  assert.match(fn, /if \(row && !planned\) await untickAttpRowCheckbox\(row\);/);
-  assert.ok(gate < fn.indexOf("await tickAttpRowCheckbox(row)"));
-  assert.match(body("untickAttpRowCheckbox"), /!cb\.checked \|\| attpRowAttachedFingerprints\(row\)\.length\) return false/);
-});
-
-test("target add-document-dialog đi engine modal Thêm giấy tờ, có dòng dự phòng fallbackComponentName", () => {
-  const dispatch = body("attachFilesByPlan");
-  assert.match(dispatch, /item\.target === "add-document-dialog"\)\) \{/);
-  assert.match(dispatch, /return await attachFilesWithAddDocumentDialog\(payloadFiles, allAttachments\);/);
-  const mixed = body("attachFilesWithAddDocumentDialog");
-  assert.ok(mixed.indexOf("attachFilesByFixedSlot") < mixed.indexOf("ensureAddDocumentRows(addDocumentItems)"));
-  assert.ok(mixed.indexOf("attachFilesByAttpRow(payloadFiles, attpItems)") < mixed.indexOf("ensureAddDocumentRows("));
-  assert.match(mixed, /componentName: item\.fallbackComponentName/);
-  assert.match(code, /const ensureAddDocumentRows = \(\(\) => \{/);
-  assert.match(code, /fold\(textOf\(node\)\)\.endsWith\("them giay to"\)/);
+test("cổng không có ô Chọn/Bỏ chọn tất cả (dvc.moet Bộ GD&ĐT) thì bỏ tick từng dòng đang tick", () => {
+  const fn = body("uncheckAllAttpRows");
+  assert.match(fn, /if \(header\) \{/);
+  assert.match(fn, /for \(const row of findAttachmentRows\(\)\) \{\s*const cb = rowBox\(row\);\s*if \(!cb\?\.checked\) continue;/);
 });

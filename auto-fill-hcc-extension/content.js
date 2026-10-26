@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "23/10";
+  const APP_RELEASE_DATE = "26/10";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1743,6 +1743,7 @@
       return true;
     }
     if (msg.action !== "fillFields") return;
+    H.formSnapshot?.arm?.(msg.formSnapshot);
     // Content script chạy trên mọi frame; chỉ frame thật sự chứa form mới xử lý.
     // Phát hiện loại form: Angular mới ([formcontrolname]), web-component cũ (x-*),
     // hoặc form HTML thường (input/select[name]) của các thủ tục đất đai.
@@ -1789,6 +1790,7 @@
         if (msg.businessPage === "nganh-nghe-kinh-doanh" && typeof H.fillBusinessActDefault === "function") {
           try { H.fillBusinessActDefault(msg.businessDefaults); } catch (e) { /* không chặn response điền chính */ }
         }
+        if (!res?.error) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind);
         sendResponse(res);
       })
       .catch((e) => {
@@ -4538,16 +4540,25 @@
   async function uncheckAllAttpRows() {
     const rows = findAttachmentRows();
     if (!rows.length || rows.some((row) => attpRowAttachedFingerprints(row).length)) return false;
-    const header = document.querySelector(".check-all-checkbox mat-checkbox, .check-all-checkbox input[type='checkbox']");
-    if (!header) return false;
-    const anyRowChecked = () => findAttachmentRows().some((row) => {
+    const rowBox = (row) => {
       const cell = row.cells?.[1] || row.cells?.[0] || row;
-      const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
-      return !!cb?.checked;
-    });
-    for (let i = 0; i < 2 && anyRowChecked(); i++) {
-      (header.querySelector("label") || header).click();
-      await sleep(300);
+      return cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+    };
+    const anyRowChecked = () => findAttachmentRows().some((row) => !!rowBox(row)?.checked);
+    const header = document.querySelector(".check-all-checkbox mat-checkbox, .check-all-checkbox input[type='checkbox']");
+    if (header) {
+      for (let i = 0; i < 2 && anyRowChecked(); i++) {
+        (header.querySelector("label") || header).click();
+        await sleep(300);
+      }
+    } else {
+      // Cổng không có ô "Chọn/Bỏ chọn tất cả" (dvc.moet Bộ GD&ĐT) → bỏ tick từng dòng đang tick.
+      for (const row of findAttachmentRows()) {
+        const cb = rowBox(row);
+        if (!cb?.checked) continue;
+        (cb.closest("mat-checkbox") || cb.closest("label") || cb).click();
+        await sleep(150);
+      }
     }
     return !anyRowChecked();
   }

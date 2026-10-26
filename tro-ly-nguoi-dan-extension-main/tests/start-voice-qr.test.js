@@ -21,7 +21,7 @@ test("VNeID không có ảnh mã QR sau ~6s → loginQrMissing, sidebar mở pan
   assert.match(content, /document\.querySelector\('img\[alt="qr_images"\]'\)/);
   assert.match(content, /performance\.now\(\) > 6000/);
   assert.match(sidebar, /\|\| ctx\.loginQrMissing\s*\)\) restorePanel\(\);/);
-  assert.match(sidebar, /\|\$\{ctx\.loginQrMissing \? 1 : 0\}`;/);
+  assert.match(sidebar, /\|\$\{ctx\.loginQrMissing \? 1 : 0\}[^`]*`;/);
   assert.match(sidebar, /loginQrMissing: !!c\.loginQrMissing,/);
 });
 
