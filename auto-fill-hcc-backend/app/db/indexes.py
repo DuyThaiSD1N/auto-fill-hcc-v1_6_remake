@@ -147,8 +147,11 @@ async def ensure_indexes() -> None:
     await _ensure_ttl(db, "conversations", "updated_at",
                       archive_settings.archive_after_minutes * 60 + archive_grace
                       if archive_settings.enabled else 24 * 3600)
+    # Ảnh chụp form: có kho thì chỉ giữ tạm chờ gửi lại; không kho (local) giữ 7 ngày cho Monitor xem.
     await _ensure_ttl(db, "form_snapshots", "created_at",
-                      archive_settings.archive_after_minutes * 60 + archive_grace)
+                      archive_settings.archive_after_minutes * 60 + archive_grace
+                      if archive_settings.enabled else 7 * 24 * 3600)
+    await db.form_snapshots.create_index("bundle.request_id")
     # Nhịp tim tác vụ nền handfree: tác vụ chết giữa chừng (BE khởi động lại) để lại bản ghi → tự dọn sau 1 ngày.
     await _ensure_ttl(db, "pipeline_heartbeats", "at", 24 * 3600)
     # Nhật ký đăng nhập / làm mới token (app/auth/audit.py) — tra "vì sao bị đá ra", giữ 30 ngày.

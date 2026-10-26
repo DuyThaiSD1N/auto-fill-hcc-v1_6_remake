@@ -47,14 +47,15 @@ def build_bundle(body: FormSnapshotReq, user: dict, preq: dict) -> dict:
 
 
 async def relay(bundle: dict) -> None:
-    if not archive_settings.enabled:
-        return
-    try:
-        await _vault().send(bundle, {})
-        return
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("[form_snapshot] gửi kho %s lỗi, chờ gửi lại: %s %s",
-                       bundle.get("id"), type(exc).__name__, exc)
+    if archive_settings.enabled:
+        try:
+            await _vault().send(bundle, {})
+            return
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[form_snapshot] gửi kho %s lỗi, chờ gửi lại: %s %s",
+                           bundle.get("id"), type(exc).__name__, exc)
+    # Kho lỗi → giữ tạm cho archiver gửi lại. Không bật kho (máy local) → dữ liệu nằm lại server như
+    # các collection khác, web Monitor đọc để so ô BE trả với ô trên form; TTL dọn (xem db/indexes.py).
     try:
         await get_db().form_snapshots.insert_one(
             {"_id": bundle["id"], "bundle": bundle, "created_at": datetime.now(timezone.utc)})

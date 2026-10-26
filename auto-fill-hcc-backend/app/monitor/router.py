@@ -16,6 +16,7 @@ from app.core.deps import require_super_admin
 from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.dossiers import repo as dossiers_repo
+from app.archive.config import archive_settings
 from app.archive.spec import public_trace_steps
 from app.monitor import queries
 from app.traces import repo as traces_repo
@@ -101,14 +102,23 @@ async def get_run(
     _: dict = Depends(require_super_admin),
     kind: str | None = Query(None),
 ):
-    """Một lượt: trace (nếu có) + chi tiết công đoạn/output (nếu lượt được ghi sau khi bật bộ ghi)."""
+    """Một lượt: trace (nếu có) + chi tiết công đoạn/output (nếu lượt được ghi sau khi bật bộ ghi)
+    + ảnh chụp form extension gửi về (chỉ còn khi chưa sang kho, xem app/form_snapshots)."""
     trace = await traces_repo.get_trace_by_request(request_id, kind)
     step_kind = kind or (trace or {}).get("kind")
     steps_query: dict = {"_id": f"{request_id}:{step_kind}"} if step_kind else {"request_id": request_id}
-    steps = await get_db().trace_steps.find_one(steps_query)
+    db = get_db()
+    steps = await db.trace_steps.find_one(steps_query)
     if not trace and not steps:
         raise AppError("RUN_NOT_FOUND", "Không tìm thấy lượt xử lý", 404)
-    return {"trace": _clean(trace), "steps": _clean(public_trace_steps(steps) if steps else None)}
+    snap_docs = await db.form_snapshots.find(
+        {"bundle.request_id": request_id}, {"bundle.snapshot": 1}).sort("bundle.snapshot.at", 1).to_list(50)
+    public = public_trace_steps(steps) if steps else None
+    # Không bật kho (máy local): outputs vẫn nằm trên server → trả kèm cho tab Mô phỏng form / Ô trên form.
+    if public is not None and not archive_settings.enabled and steps.get("outputs") is not None:
+        public["outputs"] = steps["outputs"]
+    return {"trace": _clean(trace), "steps": _clean(public),
+            "snapshots": _clean([d["bundle"]["snapshot"] for d in snap_docs])}
 
 
 @router.get("/dossiers")

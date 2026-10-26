@@ -129,12 +129,42 @@ def test_run_khong_co_trace_van_mo_duoc_tu_trace_steps(monkeypatch):
     async def no_trace(request_id, kind=None):
         return None
 
-    db = _DB(trace_steps=_Coll(one={"_id": "req_9:classify", "kind": "classify", "spans": []}))
+    db = _DB(trace_steps=_Coll(one={"_id": "req_9:classify", "kind": "classify", "spans": []}),
+             form_snapshots=_Coll())
     monkeypatch.setattr(monitor_router, "get_db", lambda: db)
     monkeypatch.setattr(monitor_router.traces_repo, "get_trace_by_request", no_trace)
     r = _client("super_admin").get("/api/v1/monitor/runs/req_9?kind=classify")
     assert r.status_code == 200
     assert r.json()["trace"] is None and r.json()["steps"]["id"] == "req_9:classify"
+    assert r.json()["snapshots"] == []
+
+
+def test_run_tra_kem_anh_chup_form(monkeypatch):
+    async def no_trace(request_id, kind=None):
+        return None
+
+    snap = {"kind": "fill", "at": 1_761_450_000_000, "fields": [{"name": "HoTen", "comp": "x-input", "value": "A"}]}
+    db = _DB(trace_steps=_Coll(one={"_id": "req_9:autofill", "kind": "autofill", "spans": []}),
+             form_snapshots=_Coll(many=[{"_id": "snap-1", "bundle": {"snapshot": snap}}]))
+    monkeypatch.setattr(monitor_router, "get_db", lambda: db)
+    monkeypatch.setattr(monitor_router.traces_repo, "get_trace_by_request", no_trace)
+    r = _client("super_admin").get("/api/v1/monitor/runs/req_9")
+    assert r.status_code == 200 and r.json()["snapshots"] == [snap]
+
+
+@pytest.mark.parametrize("vault_url, has_outputs", [("", True), ("http://vault.test", False)])
+def test_run_chi_tra_outputs_khi_khong_bat_kho(monkeypatch, vault_url, has_outputs):
+    async def no_trace(request_id, kind=None):
+        return None
+
+    outputs = {"response": {"fields": [{"name": "HoTen", "comp": "x-input", "value": "A"}]}}
+    db = _DB(trace_steps=_Coll(one={"_id": "req_9:autofill", "kind": "autofill", "spans": [], "outputs": outputs}),
+             form_snapshots=_Coll())
+    monkeypatch.setattr(monitor_router, "get_db", lambda: db)
+    monkeypatch.setattr(monitor_router.traces_repo, "get_trace_by_request", no_trace)
+    monkeypatch.setattr(monitor_router.archive_settings, "vault_url", vault_url)
+    steps = _client("super_admin").get("/api/v1/monitor/runs/req_9").json()["steps"]
+    assert (steps.get("outputs") == outputs) is has_outputs
 
 
 def test_run_khong_ton_tai_404(monkeypatch):

@@ -170,9 +170,33 @@ export interface StepsDoc {
   truncated: { path: string; len?: number; dropped?: boolean }[];
 }
 
+/** Ảnh chụp form extension gửi về (app/form_snapshots): giá trị ĐANG HIỆN trên cổng, không phải giá trị BE trả. */
+export interface FormSnapshotField {
+  name: string;
+  comp?: string;
+  occurrence?: number | null;
+  section?: string | null;
+  label?: string | null;
+  pos?: number | null;
+  /** null = không còn thấy ô trên trang. */
+  value: unknown;
+}
+
+export interface FormSnapshot {
+  kind: "fill" | "edit" | "step";
+  trigger?: string;
+  host?: string;
+  path?: string;
+  at: number;
+  extVersion?: string;
+  fields: FormSnapshotField[];
+}
+
 export interface RunDetail {
   trace: TraceDoc | null;
   steps: StepsDoc | null;
+  /** Chỉ có khi BE chưa chuyển sang kho (máy local không bật kho). BE cũ không trả khoá này. */
+  snapshots?: FormSnapshot[];
 }
 
 export interface Dossier {

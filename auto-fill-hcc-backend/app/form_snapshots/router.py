@@ -1,7 +1,8 @@
 """Ảnh chụp giá trị form sau khi điền (fill), khi cán bộ sửa (edit) và lúc rời bước kê khai (step).
 
 Không lưu ở server chính: chuyển thẳng sang kho Spark, kho không nhận thì giữ tạm trong
-`form_snapshots` cho archiver gửi lại và xoá trong `archive_after_minutes`.
+`form_snapshots` cho archiver gửi lại và xoá trong `archive_after_minutes`. Không bật kho (VAULT_URL
+trống, máy local) thì ghi vào `form_snapshots` cho web Monitor xem, TTL 7 ngày.
 """
 from fastapi import APIRouter, BackgroundTasks, Depends
 

@@ -117,12 +117,12 @@ async def test_kho_nhan_thi_khong_luu_gi(db, monkeypatch):
     assert len(vault.bundles) == 1 and db.raw.form_snapshots.count_documents({}) == 0
 
 
-async def test_khong_bat_kho_thi_bo_qua(db, monkeypatch):
+async def test_khong_bat_kho_thi_luu_cho_monitor(db, monkeypatch):
     monkeypatch.setattr(archive_settings, "vault_url", "")
     vault = _Vault(fail=False)
     monkeypatch.setattr(relay, "_client", vault)
     await relay.relay({"id": "snap-1", "type": "form_snapshot"})
-    assert vault.bundles == [] and db.raw.form_snapshots.count_documents({}) == 0
+    assert vault.bundles == [] and db.raw.form_snapshots.count_documents({}) == 1
 
 
 def test_luat_buoc_hop_le():
