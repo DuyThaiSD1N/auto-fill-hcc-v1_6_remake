@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25.3",
+    date: "26/10/2026",
+    items: [
+      "Liên thông khai sinh: bù các ô còn trống của khối \"Thông tin người yêu cầu\" (giới tính, ngày cấp, nơi cấp, nơi cư trú) theo đúng người trong giấy tờ trùng người đăng nhập.",
+    ],
+  },
+  {
     version: "1.25",
     date: "26/10/2026",
     items: [

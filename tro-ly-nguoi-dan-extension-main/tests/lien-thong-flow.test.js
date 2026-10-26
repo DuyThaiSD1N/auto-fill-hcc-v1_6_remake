@@ -83,3 +83,27 @@ test("đổi cách nhận kết quả: chỉ nhắc các ô vừa mọc ra (đ�
   assert.match(portal, /\.filter\(\(\[key\]\) => !before\.has\(key\)\)/);
   assert.match(portal, /const boxes = Array\.from\(host\.querySelectorAll\("mat-form-field"\)\);/);
 });
+
+// ── Khối "Thông tin người yêu cầu": chọn đúng người trong giấy tờ trùng người đăng nhập ──
+// fill-angular.js là IIFE gắn hàm vào window.__TLND__; nạp với window giả, chỉ cần hàm thuần.
+function napEngine() {
+  const src = fs.readFileSync(path.join(root, "content", "fill-angular.js"), "utf8");
+  const window = { __TLND__: {} };
+  const chrome = { runtime: { onMessage: { addListener() {} } } };
+  new Function("window", "document", "chrome", src)(window, { querySelectorAll: () => [] }, chrome);
+  return window.__TLND__;
+}
+
+test("người yêu cầu là cha / mẹ / người thứ ba → chọn theo số định danh; cùng tên khác số thì không chọn", () => {
+  const { chonNguoiYeuCau } = napEngine();
+  const nguoi = [
+    { vaiTro: "cha", ten: "TRẦN VĂN BỐ", cccd: "001090000011" },
+    { vaiTro: "me", ten: "LÊ THỊ MẸ", cccd: "001190000022" },
+    { vaiTro: "khac", ten: "PHẠM VĂN ÔNG", cccd: "001060000033" },
+  ];
+  assert.equal(chonNguoiYeuCau(nguoi, { cccd: "001090000011", ten: "Trần Văn Bố" }).vaiTro, "cha");
+  assert.equal(chonNguoiYeuCau(nguoi, { cccd: "001190000022", ten: "LÊ THỊ MẸ" }).vaiTro, "me");
+  assert.equal(chonNguoiYeuCau(nguoi, { cccd: "001060000033", ten: "" }).vaiTro, "khac");
+  assert.equal(chonNguoiYeuCau(nguoi, { cccd: "001090000099", ten: "TRẦN VĂN BỐ" }), null);
+  assert.equal(chonNguoiYeuCau([{ vaiTro: "toKhai", ten: "ĐỖ THỊ BÀ" }], { cccd: "001150000044", ten: "Do Thi Ba" }).vaiTro, "toKhai");
+});

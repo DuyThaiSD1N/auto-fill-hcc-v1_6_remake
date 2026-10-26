@@ -1333,6 +1333,23 @@ async function tickAttpRowCheckbox(row) {
   }
 }
 
+// Ngược với tickAttpRowCheckbox: dòng cổng tick SẴN nhưng hồ sơ không có giấy tờ đó (BE gửi
+// untickRows, vd "Quyết định hỗ trợ" của hỗ trợ vận chuyển hỏa táng) → bỏ tick. KHÔNG đụng dòng đã có tệp.
+async function untickAttpRowCheckbox(row) {
+  const cell = row.cells?.[1] || row.cells?.[0] || row;
+  const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+  if (!cb || !cb.checked || attpRowAttachedFingerprints(row).length) return false;
+  const clickable = cb.closest("mat-checkbox") || cb.closest("label") || cb;
+  clickable.click();
+  await sleep(200);
+  if (cb.checked) {
+    cb.checked = false;
+    cb.dispatchEvent(new Event("input", { bubbles: true }));
+    cb.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  return true;
+}
+
 // Cổng tick sẵn MỌI dòng (dvc.moc Bộ Xây dựng) → dòng không đính bị coi là bắt buộc khi chuyển bước. BE gửi
 // untickUnplannedRows → bấm "Chọn/Bỏ chọn tất cả" tới khi không còn dòng tick (ô đang lửng thì lần 1 tick hết,
 // lần 2 bỏ hết). Đã có dòng mang tệp (bấm Đính kèm lần 2) thì KHÔNG bấm: bỏ chọn tất cả bỏ tick cả dòng đó.
@@ -1425,6 +1442,13 @@ async function attachFilesByAttpRow(payloadFiles, attachments) {
     groups.get(key).push(item);
   }
   if (attachments.some((item) => item.untickUnplannedRows)) await uncheckAllAttpRows();
+  // Dòng cổng tick sẵn mà hồ sơ không có (untickRows) → bỏ tick, trừ dòng chính kế hoạch sắp đính tệp.
+  const untickNames = [...new Set(attachments.flatMap((item) => item.untickRows || []))];
+  for (const name of untickNames) {
+    const row = findAttachmentRowByComponent(name);
+    const planned = attachments.some((item) => componentTextMatches(row, item.componentName || ""));
+    if (row && !planned) await untickAttpRowCheckbox(row);
+  }
   for (const items of groups.values()) {
     const first = items[0];
     const row = await waitFor(
@@ -1474,6 +1498,354 @@ async function attachFilesByAttpRow(payloadFiles, attachments) {
     skippedNames,
     errors,
     error: errors.length ? errors.join("; ") : undefined,
+  };
+}
+
+// ===== Engine modal "Thêm giấy tờ" (target "add-document-dialog") — port từ auto-fill-hcc-extension/content/attach-mae.js =====
+// Cổng iGate/Angular Material có nút "+ Thêm giấy tờ" mở modal app-add-form: input/mat-select[formcontrolname="form"]
+// (Giấy tờ) → mat-select[formcontrolname="type"] (Loại giấy tờ) → input[formcontrolname="quantity"] (Số bản) →
+// button[type="submit"] (Đồng ý). Modal tạo một dòng mới trong bảng, rồi engine attp-row đính tệp vào dòng đó.
+// Chỉ chép nhánh chạy thẳng trong isolated world (cổng Bộ Nội vụ, Bộ Y tế…). Auto Fill có thêm cầu nối MAIN world
+// riêng cho cổng NN&MT (attach-mae-main.js) — trợ lý chưa có thủ tục nào dùng modal này trên cổng NN&MT.
+const ensureAddDocumentRows = (() => {
+  const textOf = (node) => String(node?.textContent || "").replace(/\s+/g, " ").trim();
+  const fold = (value) => String(value || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  function clickControl(node) {
+    node.scrollIntoView?.({ block: "center", inline: "center" });
+    node.focus?.();
+    node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    node.click();
+  }
+
+  function setInput(input, value) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (setter) setter.call(input, String(value));
+    else input.value = String(value);
+    input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: String(value) }));
+    input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: String(value).slice(-1) }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function documentRows() {
+    return Array.from(document.querySelectorAll("tr")).filter((row) => !!row.querySelector('input[type="file"]'));
+  }
+
+  function documentRowName(row) {
+    const cells = Array.from(row?.cells || []);
+    const cell = cells[1] || cells[0] || row;
+    const clone = cell.cloneNode(true);
+    clone.querySelectorAll("button, svg, input, textarea, select").forEach((node) => node.remove());
+    return textOf(clone)
+      .replace(/\bBắt buộc\b/gi, "")
+      .replace(/^Tên Hồ Sơ:\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim() || textOf(row);
+  }
+
+  function findDocumentRow(componentName) {
+    const want = fold(componentName);
+    if (!want) return null;
+    return documentRows().find((row) => {
+      const actual = fold(documentRowName(row));
+      return actual === want || actual.includes(want) || want.includes(actual);
+    }) || null;
+  }
+
+  function visibleOptions() {
+    return Array.from(document.querySelectorAll(".cdk-overlay-container mat-option")).filter(isVisible);
+  }
+
+  function matchingOption(value) {
+    const want = fold(value);
+    const options = visibleOptions();
+    return options.find((option) => fold(textOf(option)) === want) ||
+      options.find((option) => fold(textOf(option)).includes(want)) ||
+      options.find((option) => want.includes(fold(textOf(option)))) || null;
+  }
+
+  function visibleNotices() {
+    const selector = [
+      "snack-bar-container", ".mat-snack-bar-container", "simple-snack-bar",
+      ".swal2-container", ".toast", ".toastr", "[role='alert']",
+    ].join(",");
+    return Array.from(document.querySelectorAll(selector)).filter(isVisible).map(textOf).filter(Boolean);
+  }
+
+  function documentHints(item) {
+    const hints = Array.isArray(item?.formOptionHints) ? item.formOptionHints : [];
+    return [...hints, String(item?.componentName || "")].map((hint) => String(hint || "").trim()).filter(Boolean);
+  }
+
+  // Chọn mục "Giấy tờ" trong các option đang hiện, theo thứ tự ưu tiên:
+  //   1. formOptionHints của plan (BE khai, cụ thể → chung) rồi componentName — mục nào CHỨA chuỗi đó;
+  //   2. (allowLoose) mục trùng ≥ 60% số từ của componentName, rồi mục chung "… khác".
+  // Không đạt thì trả null — KHÔNG chọn bừa.
+  function chooseDocumentOption(item, { allowLoose = false } = {}) {
+    const entries = visibleOptions().map((option) => ({ option, text: textOf(option), key: fold(textOf(option)) }))
+      .filter((entry) => entry.key);
+    if (!entries.length) return null;
+    for (const hint of documentHints(item).map(fold)) {
+      const hit = entries.find((entry) => entry.key === hint) || entries.find((entry) => entry.key.includes(hint));
+      if (hit) return hit;
+    }
+    if (!allowLoose) return null;
+    const want = new Set(fold(item?.componentName).split(" ").filter((word) => word.length > 1));
+    let best = null;
+    let bestScore = 0;
+    for (const entry of entries) {
+      const words = new Set(entry.key.split(" "));
+      const score = want.size ? [...want].filter((word) => words.has(word)).length / want.size : 0;
+      if (score > bestScore) { bestScore = score; best = entry; }
+    }
+    if (best && bestScore >= 0.6) return best;
+    return entries.find((entry) => /\bkhac\b/.test(entry.key)) || null;
+  }
+
+  function logDocumentCatalog() {
+    const texts = visibleOptions().map(textOf).filter(Boolean);
+    if (texts.length) console.info("[TLND-AddDoc] Danh mục Giấy tờ đang hiện:", texts);
+    return texts;
+  }
+
+  // Ô "Giấy tờ" dạng DANH SÁCH CHỌN (mat-select).
+  async function pickDocumentFromSelect(select, item) {
+    clickControl(select.querySelector(".mat-select-trigger") || select);
+    if (!(await waitFor(() => visibleOptions().length, 5000, 120))) {
+      throw new Error("Không mở được danh sách Giấy tờ trong modal.");
+    }
+    const texts = logDocumentCatalog();
+    const picked = chooseDocumentOption(item, { allowLoose: true });
+    if (!picked) {
+      throw new Error(`Danh mục Giấy tờ của cổng không có mục khớp "${item?.componentName}". `
+        + `Một số mục: ${texts.slice(0, 8).join(" | ")}`);
+    }
+    clickControl(picked.option);
+    const selected = await waitFor(() => fold(textOf(select.querySelector(".mat-select-value") || select))
+      .includes(picked.key), 3000, 100);
+    if (!selected) throw new Error(`Danh sách Giấy tờ chưa nhận mục "${picked.text}".`);
+    return picked.text;
+  }
+
+  // Ô "Giấy tờ" dạng GÕ + GỢI Ý (input + mat-autocomplete). Nút Đồng ý chỉ mở khi đã CHỌN một gợi ý, nên lần
+  // lượt: gõ từng hint → chọn mục chứa hint; hết hint thì xoá ô, mở toàn bộ danh mục bằng mũi tên ▾ và chọn
+  // lỏng. Trả null khi không chọn được (bên gọi để tên tự gõ).
+  async function pickDocumentFromAutocomplete(input, item) {
+    const select = async (entry) => {
+      clickControl(entry.option);
+      const ok = await waitFor(() => fold(input.value) === entry.key, 3000, 100);
+      if (!ok) throw new Error(`Ô Giấy tờ chưa nhận mục "${entry.text}".`);
+      return entry.text;
+    };
+    for (const hint of documentHints(item)) {
+      input.focus();
+      setInput(input, hint);
+      // Gợi ý có thể gọi API → chờ option chứa đúng hint (hoặc tới hạn).
+      await waitFor(() => chooseDocumentOption(item), 2500, 150);
+      logDocumentCatalog();
+      const picked = chooseDocumentOption(item);
+      if (picked) return await select(picked);
+    }
+    setInput(input, "");
+    input.focus();
+    input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    clickControl(input);
+    const arrow = input.closest("mat-form-field")?.querySelector(".mat-form-field-suffix mat-icon");
+    if (arrow && !visibleOptions().length) clickControl(arrow);
+    await waitFor(() => visibleOptions().length, 4000, 150);
+    logDocumentCatalog();
+    const picked = chooseDocumentOption(item, { allowLoose: true });
+    return picked ? await select(picked) : null;
+  }
+
+  // Tạo MỘT hàng giấy tờ qua modal. Trả về tên hàng thực tế được render để engine upload khớp đúng.
+  async function ensureOneDocumentRow(item) {
+    const componentName = String(item?.componentName || "").trim();
+    if (!componentName) throw new Error("Plan Thêm giấy tờ thiếu componentName.");
+
+    const existing = findDocumentRow(componentName);
+    if (existing) return documentRowName(existing) || componentName;
+
+    const beforeCount = documentRows().length;
+    const addButton = Array.from(document.querySelectorAll("a, button")).find((node) =>
+      isVisible(node) && fold(textOf(node)).endsWith("them giay to"));
+    if (!addButton) throw new Error("Không tìm thấy nút Thêm giấy tờ trên cổng.");
+
+    clickControl(addButton);
+    const dialog = await waitFor(() =>
+      Array.from(document.querySelectorAll("[role='dialog'], mat-dialog-container"))
+        .filter(isVisible)
+        .find((node) => fold(textOf(node)).includes("them giay to")), 5000, 100);
+    if (!dialog) throw new Error("Không mở được modal Thêm giấy tờ.");
+
+    let optionText = componentName;
+    const formSelect = dialog.querySelector('mat-select[formcontrolname="form"]');
+    if (formSelect) {
+      // Cổng iGate tỉnh: ô "Giấy tờ" là DANH SÁCH CHỌN cố định, không gõ được tên.
+      optionText = await pickDocumentFromSelect(formSelect, item);
+    } else {
+      const formInput = dialog.querySelector('input[formcontrolname="form"]');
+      if (!formInput) throw new Error("Modal Thêm giấy tờ không có ô Giấy tờ.");
+      if (Array.isArray(item?.formOptionHints) && item.formOptionHints.length) {
+        // Plan có gợi ý danh mục: chọn mục cổng theo gợi ý.
+        const chosen = await pickDocumentFromAutocomplete(formInput, item);
+        if (chosen) optionText = chosen;
+        else {
+          // Không chọn được: thử tên tự gõ; cổng bắt chọn gợi ý thì Đồng ý vẫn khóa → báo lỗi bên dưới.
+          setInput(formInput, componentName);
+          formInput.dispatchEvent(new Event("blur", { bubbles: true }));
+        }
+      } else {
+        formInput.focus();
+        setInput(formInput, componentName);
+
+        const documentOption = await waitFor(() => matchingOption(componentName), 6000, 150);
+        if (documentOption) {
+          optionText = textOf(documentOption);
+          clickControl(documentOption);
+          const documentSelected = await waitFor(() => fold(formInput.value) === fold(optionText), 3000, 100);
+          if (!documentSelected) throw new Error("Autocomplete chưa nhận option Giấy tờ đã chọn.");
+        } else {
+          // Ô Giấy tờ nhận TÊN TỰ GÕ: giữ chữ đã gõ; form không hợp lệ thì nút Đồng ý vẫn disabled và báo lỗi bên dưới.
+          formInput.dispatchEvent(new Event("blur", { bubbles: true }));
+          if (fold(formInput.value) !== fold(componentName)) setInput(formInput, componentName);
+        }
+      }
+    }
+    await sleep(500);
+
+    const typeSelect = dialog.querySelector('mat-select[formcontrolname="type"]');
+    if (!typeSelect) throw new Error("Modal Thêm giấy tờ không có ô Loại giấy tờ.");
+    clickControl(typeSelect.querySelector(".mat-select-trigger") || typeSelect);
+    const typeName = item?.loaiBan || "Bản chính";
+    const typeOption = await waitFor(() => matchingOption(typeName), 4000, 100);
+    if (!typeOption) throw new Error(`Không tìm thấy Loại giấy tờ "${typeName}".`);
+    clickControl(typeOption);
+    await sleep(300);
+
+    const quantityInput = dialog.querySelector('input[formcontrolname="quantity"]');
+    if (!quantityInput) throw new Error("Modal Thêm giấy tờ không có ô Số bản.");
+    quantityInput.focus();
+    setInput(quantityInput, String(item?.quantity || 1));
+    quantityInput.dispatchEvent(new Event("blur", { bubbles: true }));
+
+    const submit = await waitFor(() => {
+      const btn = dialog.querySelector('button[type="submit"]');
+      return btn && !btn.disabled ? btn : null;
+    }, 4000, 120);
+    if (!submit) throw new Error("Nút Đồng ý chưa sẵn sàng (form chưa hợp lệ).");
+    clickControl(submit);
+    const closed = await waitFor(() => !document.documentElement.contains(dialog) || !isVisible(dialog), 6000, 120);
+    if (!closed) throw new Error("Modal không đóng sau khi bấm Đồng ý.");
+
+    const row = await waitFor(() => {
+      const matched = findDocumentRow(optionText) || findDocumentRow(componentName);
+      if (matched) return matched;
+      const rows = documentRows();
+      // 8s như mốc "dòng nhận file" của máy đính kèm (Auto Fill chờ 15s; trợ lý cấm mốc chờ dài).
+      return rows.length > beforeCount ? rows[beforeCount] || rows[rows.length - 1] : null;
+    }, 8000, 120);
+    if (!row) {
+      const notices = visibleNotices();
+      throw new Error(
+        `Cổng đóng modal nhưng số hàng không tăng (${beforeCount} → ${documentRows().length})` +
+        `${notices.length ? `. Thông báo cổng: ${notices.join(" | ")}` : "."}`);
+    }
+    return documentRowName(row) || optionText || componentName;
+  }
+
+  return async function ensureAddDocumentRows(items) {
+    try {
+      // Nhiều tệp cùng một dòng: chỉ tạo dòng MỘT lần. Tên dòng thật là tên mục danh mục cổng (có thể khác
+      // componentName) nên phải nhớ theo componentName gốc.
+      const created = new Map();
+      for (const item of items || []) {
+        const key = fold(item?.componentName);
+        const componentName = created.get(key) || await ensureOneDocumentRow(item);
+        created.set(key, componentName);
+        // Engine upload phải khớp theo NHÃN thực tế Angular render (có thể khác chuỗi gửi lên).
+        if (componentName) item.componentName = componentName;
+      }
+      return { ok: true };
+    } catch (error) {
+      console.warn("[TLND-AddDoc] Không tạo được hàng giấy tờ:", error);
+      return { error: error?.message || String(error) };
+    }
+  };
+})();
+
+// Bảng attp-row trộn với dòng phải tạo qua modal "Thêm giấy tờ" (vd Đăng ký nội quy lao động, Bộ Nội vụ: 4 dòng cố
+// định + dòng Giấy ủy quyền). Chạy fixed-slot + attp-row trước, rồi tạo dòng động và đính bằng chính engine attp-row.
+// Modal không tạo được dòng mà BE có dòng dự phòng (fallbackComponentName) → đính chung vào dòng đó.
+async function attachFilesWithAddDocumentDialog(payloadFiles, allAttachments) {
+  const attachedNames = [];
+  const skippedNames = [];
+  const partial = (error) => ({
+    error, attached: attachedNames.length, skipped: skippedNames.length, fileNames: attachedNames, skippedNames,
+  });
+  const collect = (result) => {
+    attachedNames.push(...(result.fileNames || []));
+    skippedNames.push(...(result.skippedNames || []));
+    return result.error;
+  };
+  const addDocumentItems = allAttachments.filter((item) => item.target === "add-document-dialog");
+  const fixedSlotItems = allAttachments.filter((item) => item.target === "fixed-slot");
+  const attpItems = allAttachments.filter((item) => item.target === "attp-row");
+
+  if (fixedSlotItems.length) {
+    const error = collect(await attachFilesByFixedSlot(payloadFiles, fixedSlotItems));
+    if (error) return partial(error);
+  }
+  if (attpItems.length) {
+    const error = collect(await attachFilesByAttpRow(payloadFiles, attpItems));
+    if (error) return partial(error);
+  }
+
+  const ensureResult = await ensureAddDocumentRows(addDocumentItems);
+  if (ensureResult?.error && addDocumentItems.every((item) => item.fallbackComponentName)) {
+    const fallbackItems = addDocumentItems.map((item) => ({
+      ...item,
+      target: "attp-row",
+      needsAddComponent: false,
+      componentName: item.fallbackComponentName,
+      loaiBan: "", // giữ loại bản của dòng dự phòng, không đổi sang loại của giấy tờ gốc
+    }));
+    const fallbackError = collect(await attachFilesByAttpRow(payloadFiles, fallbackItems));
+    const rowNames = [...new Set(addDocumentItems.map((item) => item.componentName))].join("; ");
+    const fallbackNames = [...new Set(addDocumentItems.map((item) => item.fallbackComponentName))].join("; ");
+    const note = `Không thêm được dòng "${rowNames}" qua nút Thêm giấy tờ (${ensureResult.error}) — `
+      + `đã đính kèm chung vào dòng "${fallbackNames}". Vui lòng ghi rõ ở phần Ghi chú hồ sơ.`;
+    if (fallbackError) return partial(`${note} ${fallbackError}`);
+    return {
+      ok: true,
+      method: "attp-row+add-document-dialog-fallback",
+      attached: attachedNames.length,
+      skipped: skippedNames.length,
+      fileNames: attachedNames,
+      skippedNames,
+      notes: [note],
+    };
+  }
+  if (ensureResult?.error) return partial(ensureResult.error);
+
+  const dynamicRowItems = addDocumentItems.map((item) => ({ ...item, target: "attp-row", needsAddComponent: false }));
+  const dynamicError = collect(await attachFilesByAttpRow(payloadFiles, dynamicRowItems));
+  if (dynamicError) return partial(dynamicError);
+  return {
+    ok: true,
+    method: "attp-row+add-document-dialog",
+    attached: attachedNames.length,
+    skipped: skippedNames.length,
+    fileNames: attachedNames,
+    skippedNames,
   };
 }
 
@@ -1557,6 +1929,10 @@ const FIXED_SLOT_KEYWORDS = {
   household_application: ["don de nghi dau noi nuoc sach va hop dong dich vu cap nuoc (theo mau", "don de nghi dau noi nuoc sach"],
   organization_application: ["don de nghi dau noi nuoc sach va hop dong dich vu cap nuoc (to chuc", "cap nuoc (to chuc"],
   business_registration_or_establishment: ["quyet dinh thanh lap", "dang ky kinh doanh", "dang ky doanh nghiep"],
+  // Điểm trò chơi điện tử công cộng (Bộ VHTTDL) — khớp dòng theo text, dự phòng slotIndex 0/1/2.
+  tro_choi_don_de_nghi: ["de nghi cap giay chung nhan du dieu kien hoat dong diem cung cap dich vu tro choi dien tu", "mau so 51a"],
+  tro_choi_giay_tuy_than: ["chung minh nhan dan/can cuoc/can cuoc cong dan cua chu diem", "can cuoc cong dan cua chu diem"],
+  tro_choi_gpkd: ["giay chung nhan dang ky kinh doanh/giay chung nhan dang ky doanh nghiep", "dang ky kinh doanh/giay chung nhan"],
   legal_land_house_document: ["giay to chung minh nha dat hop phap"],
   land_house_transfer_contract: ["hop dong chuyen nhuong quyen su dung dat quyen so huu nha o", "hop dong mua ban nha dat co xac nhan"],
   organization_property_or_lease_authorization: ["co quan to chuc doanh nghiep tai dia chi de nghi cap nuoc", "thue tru so", "van ban cua chu so huu nha dat uy quyen"],
@@ -1576,6 +1952,9 @@ const FIXED_SLOT_KEYWORDS = {
 
 // input[type=file] thuộc bảng thành phần hồ sơ (có nút "Chọn tệp tin"/btn_upload gần đó).
 function isUploadSlotInput(input) {
+  // Cổng Bộ VHTTDL (liz): input file nằm trong <app-upload-flie-multi>, nút upload là icon fa-upload
+  // (không có text "Chọn tệp") → nhận diện thẳng theo custom element bọc input.
+  if (input.closest && input.closest("app-upload-flie-multi")) return true;
   let node = input;
   for (let i = 0; i < 5 && node; i++) {
     if (node.querySelector && node.querySelector(".btn_upload")) return true;
@@ -2105,6 +2484,18 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     const attpItems = allAttachments.filter((item) => item.target === "attp-row");
     if (attpItems.length && attpItems.length === allAttachments.length) {
       return await attachFilesByAttpRow(payloadFiles, attpItems);
+    }
+
+    // Có dòng phải tạo qua modal "Thêm giấy tờ": chính target từ BE là contract bật engine, không khóa theo
+    // procedure key. Luồng hỗn hợp chỉ nhận thêm dòng cố định (attp-row / fixed-slot).
+    if (allAttachments.some((item) => item.target === "add-document-dialog")) {
+      const unsupported = allAttachments.filter((item) =>
+        item.target !== "attp-row" && item.target !== "add-document-dialog" && item.target !== "fixed-slot"
+      );
+      if (unsupported.length) {
+        return { error: "Kế hoạch đính kèm chứa target chưa hỗ trợ trong luồng hỗn hợp Thêm giấy tờ." };
+      }
+      return await attachFilesWithAddDocumentDialog(payloadFiles, allAttachments);
     }
 
     if (opts.clearExisting) {
