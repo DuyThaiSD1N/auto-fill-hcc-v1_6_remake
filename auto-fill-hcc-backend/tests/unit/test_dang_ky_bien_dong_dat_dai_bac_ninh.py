@@ -233,16 +233,34 @@ async def test_plan_thoa_thuan_dung_prompt_va_ma_rieng(monkeypatch):
 
 
 def test_dinh_chinh_gcn_da_cap_nhan_ma_moi_1_115436():
-    # Cổng Bắc Ninh chuyển "Đính chính GCN đã cấp" sang 1.115436; link cũ 1.115476 vẫn phải nhận.
-    proc = get_procedure("dinh-chinh-gcn-da-cap-bac-ninh")
-    inc = proc["detect"]["urlIncludes"]
-    assert "maThuTucHanhChinh=1.115436" in inc and "maThuTucHanhChinh=1.115476" in inc
-    assert proc["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
-    # Không pipeline Bắc Ninh nào khác được khớp mã mới.
-    from app.procedures.registry import PROCEDURES
-    trung = [p["key"] for p in PROCEDURES
-             if "maThuTucHanhChinh=1.115436" in ((p.get("detect") or {}).get("urlIncludes") or [])]
-    assert trung == ["dinh-chinh-gcn-da-cap-bac-ninh"]
+    # Cổng Bắc Ninh chuyển "Đính chính GCN đã cấp" sang 1.115436; mã 1.115476 vẫn dùng được nên có
+    # entry riêng (trợ lý có thẻ tìm theo mã), cùng pipeline. Mỗi mã chỉ đúng một entry nhận.
+    from app.procedures.registry import PROCEDURES, get_attach_pipeline, get_pipeline
+
+    for key, code in (("dinh-chinh-gcn-da-cap-bac-ninh", "1.115436"),
+                      ("dinh-chinh-gcn-da-cap-1115476-bac-ninh", "1.115476")):
+        proc = get_procedure(key)
+        assert proc["detect"]["urlIncludes"] == [f"maThuTucHanhChinh={code}"]
+        assert proc["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
+        trung = [p["key"] for p in PROCEDURES
+                 if f"maThuTucHanhChinh={code}" in ((p.get("detect") or {}).get("urlIncludes") or [])]
+        assert trung == [key]
+    assert get_pipeline("dinh-chinh-gcn-da-cap-1115476-bac-ninh") is get_pipeline("dinh-chinh-gcn-da-cap-bac-ninh")
+    assert (get_attach_pipeline("dinh-chinh-gcn-da-cap-1115476-bac-ninh")
+            is get_attach_pipeline("dinh-chinh-gcn-da-cap-bac-ninh"))
+
+
+def test_tro_ly_co_the_rieng_ma_1_115476():
+    # Ô tìm "Tất cả thủ tục" của trợ lý lọc theo mã: thẻ 1.115476 phải mang đúng mã đó, mở link DVCQG
+    # 1.115476 (chỉ chọn Tỉnh, không "chọn Sở"); thẻ cũ vẫn là 1.115436.
+    from app.channels.handfree.procedure_registry import get_procedure as get_tl, procedure_code
+
+    moi = get_tl("dinh-chinh-gcn-da-cap-1115476-bac-ninh")
+    cu = get_tl("dinh-chinh-gcn-da-cap-bac-ninh")
+    assert procedure_code(moi) == "1.115476" and procedure_code(cu) == "1.115436"
+    assert moi["keKhaiUrl"].endswith("019f169e-c716-76a7-b47e-269721b1d9c2")
+    assert moi["provinceOnly"] == ["bacninh"] and not moi.get("agencySoFirst")
+    assert moi["label"] == cu["label"] == "Đính chính giấy chứng nhận đã cấp"
 
 
 def test_dinh_chinh_gcn_da_cap_dinh_kem_theo_form_moi():
@@ -271,6 +289,19 @@ def test_dinh_chinh_gcn_da_cap_dinh_kem_theo_form_moi():
     ]
     for comp, _label in dc_planner._ROUTE.values():
         assert sum(comp in r for r in rows) == 1, comp
+
+    # Link cũ 1.115476 (crawl 27/10/2026) vẫn mở eform cũ: nhóm GCN mang mã TP-H05.000040 → item GCN
+    # gửi kèm mã cũ làm fallbackComponentName; nhóm khác không cần.
+    assert gcn_item["fallbackComponentName"] == "TP-H05.000040"
+    rows_cu = [
+        "TP-H05.000026 Mẫu số 18. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất",
+        "TP-H05.000040 Giấy chứng nhận đã cấp, trừ trường hợp thực hiện quyết định hoặc bản án",
+        "TP-H05.000116.S Giấy tờ chứng minh sai sót thông tin ... so với thông tin trên Giấy chứng nhận đã cấp.",
+        "TP-H05.000115.S Văn bản về việc ủy quyền theo quy định của pháp luật về dân sự",
+    ]
+    assert sum(gcn_item["fallbackComponentName"] in r for r in rows_cu) == 1
+    don_item = dc_planner._build_item({"name": "don.pdf"}, 0, "application", "Đơn Mẫu 18")
+    assert "fallbackComponentName" not in don_item
 
 
 def test_dinh_chinh_gcn_da_cap_kinh_gui_va_hien_trang():

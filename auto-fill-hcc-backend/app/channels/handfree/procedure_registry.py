@@ -4887,12 +4887,12 @@ PROCEDURES: list[dict] = [
         # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
         # biện pháp bảo đảm → samePageAttach + agencyProvince cố định Bắc Ninh + agencySoFirst.
         # Key TRÙNG auto-fill → pipeline process/attach tự nối. Cổng BN đã chuyển thủ tục sang
-        # 1.115436 (cấp tỉnh, DVCQG "chọn Sở"); giữ 1.115476 cho link cũ. Detect y hệt lõi, KHÔNG
+        # 1.115436 (cấp tỉnh, DVCQG "chọn Sở"); mã 1.115476 có thẻ riêng ngay dưới. Detect y hệt lõi, KHÔNG
         # thêm textIncludes: "đính chính giấy chứng nhận đã cấp" là tiền tố của "...đã cấp lần đầu
         # có sai sót" (dinh-chinh-sai-sot-bac-ninh) → textPriority sẽ cướp trang của nhau.
         "detect": {
             "urlScope": ["dichvucong.bacninh.gov.vn"],
-            "urlIncludes": ["maThuTucHanhChinh=1.115436", "maThuTucHanhChinh=1.115476"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115436"],
             "headingDisabled": True,
         },
         "label": "Đính chính giấy chứng nhận đã cấp",
@@ -4902,6 +4902,57 @@ PROCEDURES: list[dict] = [
         "needsAgencySelect": True,
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ / "
+             "sổ hồng)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "sai_sot", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, căn cước, "
+             "quyết định...)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Bản gốc Giấy chứng nhận quyền sử dụng đất đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Giấy tờ chứng minh sai sót thông tin trên Giấy chứng nhận (giấy khai sinh, căn "
+            "cước, quyết định...).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-1115476-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cùng thủ tục với thẻ 1.115436 ngay trên nhưng theo mã 1.115476: DVCQG chỉ chọn Tỉnh
+        # (ke_khai_links provinceOnlyAgency, KHÔNG selectSo) → không agencySoFirst, như thẻ thỏa thuận
+        # 1.115470. Cổng BN mở eform cũ (nhóm GCN mã TP-H05.000040). Key TRÙNG lõi → process/attach dùng
+        # chung pipeline đính chính Bắc Ninh. Khai "code" thẳng: ke_khai_links ghi mã này dưới key khác.
+        # Detect y hệt lõi, KHÔNG textIncludes (lý do như thẻ trên).
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115476"],
+            "headingDisabled": True,
+        },
+        "code": "1.115476",
+        "label": "Đính chính giấy chứng nhận đã cấp",
+        "subtitle": "Mã 1.115476 · Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f169e-c716-76a7-b47e-269721b1d9c2",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
         "agencyProvince": "Bắc Ninh",
         "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
         "samePageAttach": True,

@@ -423,3 +423,21 @@ def test_cha_me_co_so_thi_loai_giay_to_theo_so_khong_to_vang():
     for role in ("Me", "Cha"):
         assert v[f"SoDinhDanh{role}"]["value"]
         assert not v[f"LoaiGiayToDinhDanh{role}"].get("default")
+
+
+def test_noi_sinh_benh_vien_ghi_tat_lay_phuong_theo_dia_chi_benh_vien():
+    # Tờ khai ghi "Bệnh viện Hoàn Mỹ" kèm phường người dân tự ghi; Hoàn Mỹ Đà Lạt nằm ở Xuân Hương.
+    fields = {"Subject_FullName": "Trần Văn An", "Subject_BirthPlaceDomestic": {
+        "quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "phường Xuân Trường", "diaChi": "Bệnh Viện Hoàn Mỹ"}}
+    noi_sinh = _loai_khai_sinh(fields)["nksNoiSinh_TrongNuoc"]["value"]
+    assert (noi_sinh["xa"], noi_sinh["diaChi"]) == ("Phường Xuân Hương - Đà Lạt", "Bệnh Viện Hoàn Mỹ")
+
+
+def test_benh_vien_ghi_tat_chi_khop_khi_cung_tinh_va_duy_nhat():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    assert lookup_hospital("BỆNH VIỆN HOÀN MỸ – TP ĐÀ LẠT")["xa"] == "Phường Xuân Hương - Đà Lạt"
+    assert lookup_hospital("Bệnh viện Hoàn Mỹ", "Tỉnh Lâm Đồng")["xa"] == "Phường Xuân Hương - Đà Lạt"
+    # Hoàn Mỹ có ở nhiều tỉnh: tỉnh khác không được mượn bệnh viện Đà Lạt.
+    assert lookup_hospital("Bệnh viện Hoàn Mỹ", "Thành phố Đà Nẵng") is None
+    # Từ riêng khớp nhiều bệnh viện ("Đà Lạt") → không đoán.
+    assert lookup_hospital("Bệnh viện Đà Lạt") is None

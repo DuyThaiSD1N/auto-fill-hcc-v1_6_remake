@@ -600,7 +600,7 @@ def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
     # đó, không diễn đạt lại ("Cấp đổi sổ đỏ") và không gắn "(Bắc Ninh)".
     core_label = {procedure["key"]: procedure["label"] for procedure in core_registry.PROCEDURES}
     bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
-    assert len(bac_ninh) == 15
+    assert len(bac_ninh) == 16  # +1 "dinh-chinh-gcn-da-cap-1115476-bac-ninh" (cùng tên, khác mã)
     for procedure in bac_ninh:
         assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
         short = procedure.get("shortLabel", "")

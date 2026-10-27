@@ -241,7 +241,8 @@ def _marital_status(values: dict) -> str | None:
         return _WIDOWED
     if has_divorce:
         return _DIVORCED
-    if marriage[1] and marriage[2]:
+    # Hồ sơ không có tờ khai (chỉ CCCD + phiếu tra CSDL dân cư) vẫn đọc được tên vợ/chồng hiện tại.
+    if marriage[0] or (marriage[1] and marriage[2]):
         return _MARRIED
     return None
 

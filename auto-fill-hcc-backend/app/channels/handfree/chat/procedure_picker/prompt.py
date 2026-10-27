@@ -381,6 +381,9 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "dinh-chinh-gcn-da-cap-bac-ninh": ["đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ",
                                        "sổ đỏ ghi sai tên", "sổ đỏ ghi sai ngày sinh, số căn cước",
                                        "đính chính sổ hồng", "sổ đỏ in sai thông tin ở bắc ninh"],
+    # Cùng tên với thẻ trên, chỉ khác mã → chỉ gọi theo mã; nói tên trơn thì vẫn về thẻ 1.115436.
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": ["đính chính giấy chứng nhận mã 1.115476", "thủ tục 1.115476",
+                                               "mã 1115476"],
     "dang-ky-bien-dong-thoa-thuan-bac-ninh": ["sang tên sổ đỏ theo thỏa thuận vợ chồng",
                                               "chia đất theo thỏa thuận hộ gia đình",
                                               "nhận đất theo bản án của tòa án",

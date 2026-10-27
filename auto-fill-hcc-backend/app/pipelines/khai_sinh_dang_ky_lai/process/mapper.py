@@ -6,6 +6,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import city_province_area, is_current_area, near_match_ward, remap_area
 from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
+from app.pipelines._shared.hospital_lookup import hospital_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 from app.pipelines._shared.tai_khoan import account_context, matches_account
@@ -1168,7 +1169,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("QuocTichKS", _nationality(values.get("Subject_Nationality")))
         if values.get("Subject_BirthPlaceDomestic"):
             add("nksNoiSinh", "1")
-            add("nksNoiSinh_TrongNuoc", _normalize_domestic_area(values.get("Subject_BirthPlaceDomestic")))
+            # Sinh ở bệnh viện có trong bảng → phường/xã theo địa chỉ bệnh viện, không theo xã người dân
+            # ghi kèm ("Bệnh viện Hoàn Mỹ phường Xuân Trường" — Hoàn Mỹ Đà Lạt ở Xuân Hương).
+            add("nksNoiSinh_TrongNuoc", _normalize_domestic_area(hospital_area(values.get("Subject_BirthPlaceDomestic"))))
         if values.get("Subject_HometownDomestic"):
             add("nksQueQuan", "1")
             add("nksQueQuan_TrongNuoc", _normalize_domestic_area(values.get("Subject_HometownDomestic")))

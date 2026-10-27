@@ -117,6 +117,11 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-10-27, sau commit "update code" 60b7f96 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`12 failed, 3082 passed, 40 skipped, 5 errors`. Thêm 1 đỏ so với 2026-10-25:
+`test_registry_uses_ho_tro_mai_tang_process_pipeline` (BE 3e6e220 thêm mã "(1.001731)" vào label mai táng, test còn tên cũ);
+lỗi collect thứ 5 là `tests/unit/test_form_snapshots.py`, cũng thiếu `mongomock`.
+
 Baseline ngày 2026-10-25, sau commit "thêm thủ tục" 467a57f (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `11 failed, 3013 passed, 39 skipped, 4 errors` (3013 gồm 2 test freshOcr thêm cùng ngày). Vẫn 11 đỏ môi trường như bản 2026-10-21; lỗi collect thứ 4 là
 `tests/unit/test_archive_worker.py` (thêm ở commit 2676438) cũng thiếu `mongomock`.

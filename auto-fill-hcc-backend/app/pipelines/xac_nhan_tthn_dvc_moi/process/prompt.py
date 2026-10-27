@@ -37,7 +37,9 @@ khoản → KHÔNG trích người nộp, trừ số điện thoại (xem <nguoi
 
 <tinh_trang_hon_nhan>
 - TinhTrangHonNhan = MỘT mã chữ dưới đây, đọc theo NỘI DUNG CẢ dòng "Tình trạng hôn nhân" trên TỜ KHAI (không có tờ
-  khai thì theo dòng tình trạng trên giấy XNTTHN cũ; không có cả hai → bỏ). Số chú thích in sẵn trên mẫu như "(4)"
+  khai thì theo dòng tình trạng trên giấy XNTTHN cũ; không có cả hai thì theo dòng "Tình trạng hôn nhân của công dân"
+  trên phiếu "KẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN" (tra CSDL dân cư) có số định danh của CHÍNH người được cấp — phiếu
+  của vợ/chồng không dùng; "Chưa có thông tin" hoặc không có nguồn nào → bỏ). Số chú thích in sẵn trên mẫu như "(4)"
   KHÔNG phải mã.
   "co_vo_chong" = HIỆN TẠI đang có vợ/chồng — kể cả đã ly hôn/góa rồi kết hôn lại ("hiện tại đã kết hôn với ...").
   "chua_ket_hon" = chưa từng kết hôn: dòng KHÔNG nhắc ly hôn hay vợ/chồng chết.
@@ -94,7 +96,8 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
 
 <giay_ket_hon>
 - Nguồn Marriage_*: (1) GIẤY CHỨNG NHẬN KẾT HÔN thật; (2) dòng tình trạng hôn nhân trên tờ khai khi ghi rõ hiện tại
-  đang có vợ/chồng.
+  đang có vợ/chồng; (3) chỉ Marriage_SpouseName: dòng "Vợ hoặc chồng của công dân" trên phiếu tra CSDL dân cư của
+  người được cấp, khi phiếu ghi "Đang có vợ/chồng".
 - Marriage_SpouseName = họ tên vợ/chồng HIỆN TẠI (sau "đang có chồng là", "đang có vợ là", "hiện tại đã kết hôn với",
   "đã kết hôn với ông/bà"), KỂ CẢ khi phía trước còn khai ly hôn/góa. Chỉ họ tên.
 - Giấy chứng nhận kết hôn in HAI CỘT (trái VỢ, phải CHỒNG): người vợ/chồng là người KHÔNG phải người được cấp.

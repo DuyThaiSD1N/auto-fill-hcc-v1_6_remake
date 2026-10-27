@@ -8,7 +8,8 @@ gán file vào ô Bản chính.
 Gom file theo CHÚ GIẢI hồ sơ mẫu:
 - Đơn Mẫu 18 (hoặc Đơn đăng ký đất đai Mẫu 13 người dân hay nộp thay) + CCCD người yêu cầu
   → nhóm "Mẫu số 18. Đơn đăng ký biến động đất đai..." (TP-H05.000026).
-- Bản gốc GCN → nhóm "Giấy chứng nhận đã cấp" (mã TP-H05.000165.S, crawl 13/10/2026 eformId 2892).
+- Bản gốc GCN → nhóm "Giấy chứng nhận đã cấp" (mã TP-H05.000165.S, crawl 13/10/2026 eformId 2892;
+  link cũ 1.115476 vẫn là TP-H05.000040 → gửi làm fallbackComponentName).
 - Giấy tờ chứng minh sai sót → nhóm "Giấy tờ chứng minh sai sót".
 - Văn bản ủy quyền → nhóm "Văn bản về việc ủy quyền".
 
@@ -38,6 +39,9 @@ _COMP_APPLICATION = "Đơn đăng ký biến động đất đai"
 # minh sai sót" cũng chứa cụm đó ở cuối câu. Cổng đổi mã TP-H05.000040 → TP-H05.000165.S (crawl
 # 13/10/2026): giữ mã cũ thì FE không thấy dòng nào, file GCN rơi khỏi hồ sơ.
 _COMP_LAND_CERT = "TP-H05.000165"
+# Link cũ 1.115476 vẫn mở eform cũ, nhóm GCN còn mã TP-H05.000040 (crawl 27/10/2026) → gửi kèm làm
+# fallbackComponentName, FE thử khi không thấy mã mới trên trang.
+_COMP_LAND_CERT_OLD = "TP-H05.000040"
 _COMP_ERROR_PROOF = "Giấy tờ chứng minh sai sót"
 _COMP_AUTHORIZATION = "Văn bản về việc ủy quyền"
 
@@ -170,7 +174,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
 
 def _build_item(file: dict, idx: int, doc_type: str, document_name: str) -> dict:
     component_name, _ = _ROUTE.get(doc_type, _ROUTE["error_proof"])
-    return {
+    item = {
         "fileIndex": idx,
         "fileName": str(file.get("name") or f"file-{idx + 1}"),
         "documentName": document_name,
@@ -180,6 +184,9 @@ def _build_item(file: dict, idx: int, doc_type: str, document_name: str) -> dict
         "needsAddComponent": False,
         "detectedType": document_name,
     }
+    if component_name == _COMP_LAND_CERT:
+        item["fallbackComponentName"] = _COMP_LAND_CERT_OLD
+    return item
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:

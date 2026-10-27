@@ -42,8 +42,9 @@ FIELDS: list[dict] = [
     {"name": "NguoiYeuCau_QuanHe",
      "desc": "Dòng 'Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân' trên tờ khai, chép đúng chữ."},
     {"name": "TinhTrangHonNhan",
-     "desc": 'MÃ tình trạng hôn nhân theo dòng "Tình trạng hôn nhân" trên TỜ KHAI: co_vo_chong | chua_ket_hon | '
-             'ly_hon | goa | khoang_thoi_gian | khac — xem <tinh_trang_hon_nhan>.'},
+     "desc": 'MÃ tình trạng hôn nhân theo dòng "Tình trạng hôn nhân" trên TỜ KHAI (không có thì giấy XNTTHN cũ, rồi '
+             'phiếu tra CSDL dân cư của người được cấp): co_vo_chong | chua_ket_hon | ly_hon | goa | '
+             'khoang_thoi_gian | khac — xem <tinh_trang_hon_nhan>.'},
     {"name": "TinhTrangHonNhan_NoiDung",
      "desc": 'Chỉ khi TinhTrangHonNhan = "khac": nội dung dòng tình trạng hôn nhân trên tờ khai, chép đúng chữ.'},
     {"name": "Marriage_SpouseName", "desc": "Họ tên vợ/chồng HIỆN TẠI của người được cấp."},

@@ -70,8 +70,13 @@ _ABBREVIATIONS: list[tuple[re.Pattern, str]] = [
 # de nhan ra benh vien nao.
 _GENERIC_WORDS = re.compile(
     r"\b(benh vien|da khoa|trung tam y te|tram y te|phong kham|nha ho sinh|khu vuc|tinh|thanh pho|"
-    r"huyen|quan|thi xa|phuong|xa|so|co so)\b"
+    r"huyen|quan|thi xa|phuong|xa|so|co so|tp)\b"
 )
+
+
+def _province_key(tinh: Optional[str]) -> str:
+    """"Tỉnh Lâm Đồng" / "Lâm Đồng" -> "lam dong"."""
+    return re.sub(r"^(tinh|thanh pho|tp)\s+", "", re.sub(r"[^a-z0-9]+", " ", _fold(tinh)).strip())
 
 
 def _normalize(text: str) -> str:
@@ -117,7 +122,7 @@ _load_hospital_files()  # chay 1 lan luc import
 # Public API
 # ---------------------------------------------------------------------------
 
-def lookup_hospital(name: Optional[str]) -> Optional[dict]:
+def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional[dict]:
     """Tra cuu xa + tinh tu ten co so y te.
 
     Tra ve {"xa": ..., "tinh": ...} neu tim thay, None neu khong.
@@ -126,6 +131,7 @@ def lookup_hospital(name: Optional[str]) -> Optional[dict]:
       1. Khop chinh xac (fold bang nhau).
       2. Khop mo rong: ten lookup nam trong ten bang HOAC ten bang nam trong ten lookup
          (xu ly truong hop OCR thieu/thua chu). Lay entry khop ngan nhat (it nham nhat).
+      3. Khop theo tu rieng cua ten (giay ghi tat). `tinh` (neu co) phai trung tinh cua benh vien.
     """
     if not name:
         return None
@@ -153,10 +159,23 @@ def lookup_hospital(name: Optional[str]) -> Optional[dict]:
     if not _GENERIC_WORDS.sub(" ", needle).strip():
         return None
     candidates = [h for h in _HOSPITALS if f" {needle} " in f" {h['ten_folded']} "]
-    if not candidates:
+    if candidates:
+        best = min(candidates, key=lambda h: len(h["ten_folded"]))
+        return {"xa": best["xa"], "tinh": best["tinh"]}
+
+    # Buoc 4: giay ghi tat ten benh vien ("Benh vien Hoan My", "BV Hoan My - TP Da Lat" cho "Benh vien
+    # Da khoa Hoan My Da Lat"): moi tu rieng cua needle deu co trong ten bang. Ten tat de trung chuoi
+    # benh vien cung ten o tinh khac (Hoan My co o nhieu tinh) → biet tinh thi phai cung tinh, va chi
+    # nhan khi khop DUNG MOT benh vien.
+    words = set(_GENERIC_WORDS.sub(" ", needle).split())
+    province = _province_key(tinh)
+    matches = [
+        h for h in _HOSPITALS
+        if words <= set(h["ten_folded"].split()) and (not province or _province_key(h["tinh"]) == province)
+    ]
+    if len(matches) != 1:
         return None
-    best = min(candidates, key=lambda h: len(h["ten_folded"]))
-    return {"xa": best["xa"], "tinh": best["tinh"]}
+    return {"xa": matches[0]["xa"], "tinh": matches[0]["tinh"]}
 
 
 def hospital_area(area: Optional[dict]) -> Optional[dict]:
@@ -167,7 +186,10 @@ def hospital_area(area: Optional[dict]) -> Optional[dict]:
     """
     if not isinstance(area, dict):
         return area
-    hospital = lookup_hospital(area.get("diaChi") or area.get("dia_chi") or area.get("diachi"))
+    hospital = lookup_hospital(
+        area.get("diaChi") or area.get("dia_chi") or area.get("diachi"),
+        area.get("tinh"),
+    )
     if not hospital:
         return area
     return {**area, "xa": hospital["xa"], "tinh": area.get("tinh") or hospital["tinh"]}

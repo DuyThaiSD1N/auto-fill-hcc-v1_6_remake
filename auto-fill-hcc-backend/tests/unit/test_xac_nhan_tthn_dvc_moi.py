@@ -72,6 +72,13 @@ def test_ma_tinh_trang_theo_cong_moi():
     assert (v["citizenField40"]["value"], v["citizenField41"]["code"]) == ("12", "2020-02-01")
 
 
+def test_khong_co_to_khai_chi_doc_duoc_ten_vo_chong_thi_dang_co_vo_chong():
+    # Hồ sơ chỉ CCCD + phiếu tra CSDL dân cư: không có mã tình trạng, chỉ có tên vợ/chồng hiện tại.
+    v, _ = _enrich({**BASE, "Marriage_SpouseName": "Trần Thị C"}, _context())
+    assert v["citizenTinhtranghonnhan"]["code"] == "2"
+    assert v["citizenHovatencuavochongnguoicoyeucauxacnhantinhtranghonnhan"]["value"] == "TRẦN THỊ C"
+
+
 def test_chua_ket_hon_nhung_co_ban_an_thi_ly_hon_theo_van_ban():
     values = {**BASE, "TinhTrangHonNhan": "chua_ket_hon", "DivorceDecision_Number": "5/2011/HNGĐ-ST",
               "DivorceDecision_Date": "15/07/2021", "BanAn_Date": "15/07/2011", "BanAn_Agency": "Tòa án nhân dân A"}

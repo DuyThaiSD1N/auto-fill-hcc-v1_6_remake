@@ -4144,14 +4144,47 @@ PROCEDURES: list[dict] = [
         # Cấu trúc = đơn Mẫu 18 + người nhận (giống cấp đổi) + đính kèm 4 nhóm (giống đính chính sai sót).
         # Mã thủ tục đã đổi 1.012790 -> 1.115476 theo danh mục đất đai của Sở Nông nghiệp và
         # Môi trường (thông báo 1283/TB-SNNMT ngày 04/8/2026). Từ 10/2026 cổng Bắc Ninh lại chuyển
-        # thủ tục này sang mã 1.115436 (bản cấp tỉnh, maDonViHanhChinh=H05.34); giữ 1.115476 để link
-        # cũ còn lưu trong trình duyệt cán bộ vẫn nhận ra.
+        # thủ tục này sang mã 1.115436 (bản cấp tỉnh, maDonViHanhChinh=H05.34). Mã 1.115476 vẫn mở được
+        # (eform cũ, nhóm GCN mã TP-H05.000040) → tách sang entry "dinh-chinh-gcn-da-cap-1115476-bac-ninh"
+        # ngay dưới để trợ lý có thẻ riêng tìm được theo mã; hai entry dùng CHUNG pipeline.
         # urlScope khoá host: các mã trên là mã QUỐC GIA, cổng iGate tỉnh khác cũng dùng đúng mã đó —
         # không khoá thì mở trang ở tỉnh khác sẽ bị nhận nhầm rồi chạy engine fill-bacninh.js
         # trên DOM không phải của Bắc Ninh.
         "detect": {
             "urlScope": ["dichvucong.bacninh.gov.vn"],
-            "urlIncludes": ["maThuTucHanhChinh=1.115436", "maThuTucHanhChinh=1.115476"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115436"],
+        },
+        "label": "[Tỉnh Bắc Ninh] Đính chính giấy chứng nhận đã cấp",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) người yêu cầu đã khai — dùng để điền thân đơn.\n"
+            "2. Bản gốc Giấy chứng nhận QSDĐ đã cấp (sổ đỏ/sổ hồng).\n"
+            "3. Giấy tờ chứng minh sai sót thông tin trên GCN (giấy khai sinh, CCCD, quyết định...).\n"
+            "4. CCCD/giấy tờ tùy thân của người sử dụng đất; nếu có: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Điền đơn: khớp ô theo class eform (Kính gửi, Tên, Giấy tờ nhân thân, Địa chỉ, Mã số thuế, Điện "
+            "thoại, Email, II. Nội dung biến động [đính chính], III. miễn giảm, (2)(3) giấy tờ nộp kèm, thông "
+            "tin khác) + khối người nhận kết quả (họ tên, CCCD, SĐT, địa chỉ).\n"
+            "Đính kèm: Đơn Mẫu 18 + CCCD → nhóm 'Đơn đăng ký biến động đất đai... Mẫu số 18'; Bản gốc GCN → "
+            "nhóm 'Giấy chứng nhận đã cấp' (TP-H05.000040); giấy chứng minh sai sót → nhóm 'Giấy tờ chứng minh sai "
+            "sót'; văn bản ủy quyền → nhóm 'Văn bản về việc ủy quyền'.\n"
+            "Để user tự làm: cơ quan tiếp nhận, hình thức/nơi nhận kết quả, tỉnh/phường người nhận (select "
+            "theo địa bàn)."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-1115476-bac-ninh",
+        # Cùng thủ tục với "dinh-chinh-gcn-da-cap-bac-ninh" nhưng theo mã 1.115476 (DVCQG chỉ chọn Tỉnh, cổng
+        # Bắc Ninh mở eform cũ: nhóm GCN mã TP-H05.000040 — planner gửi mã này làm fallbackComponentName).
+        # Tách key để trợ lý có thẻ riêng tìm được theo mã 1.115476; process/attach dùng CHUNG pipeline.
+        # urlScope khoá host như entry 1.115436 (mã quốc gia, cổng tỉnh khác cũng dùng).
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115476"],
         },
         "label": "[Tỉnh Bắc Ninh] Đính chính giấy chứng nhận đã cấp",
         "mode": "agent",
@@ -8318,6 +8351,7 @@ _PIPELINE = {
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_process,
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_process,
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_process,
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_process,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_process,
     "dang-ky-tam-tru": dang_ky_tam_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
@@ -8550,6 +8584,7 @@ _ATTACH_PIPELINE = {
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_attach,
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_attach,
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_attach,
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_attach,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_attach,
     "thanh-lap-cong-ty-co-phan": thanh_lap_ctcp_attach,
     "thanh-lap-cong-ty-tnhh-hai-thanh-vien": thanh_lap_tnhh2_attach,

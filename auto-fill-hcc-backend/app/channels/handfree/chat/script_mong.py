@@ -79,6 +79,7 @@ PROCEDURE_HMONG = {
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "Rho npe siv daim av ua puav pheej (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đính chính GCN đã cấp); "kho" = sửa, đã có trong file.
     "dinh-chinh-gcn-da-cap-bac-ninh": "Kho daim ntawv av (Bắc Ninh)",
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": "Kho daim ntawv av (Bắc Ninh, 1.115476)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biến động theo thỏa thuận/bản án); ghép
     # "cuv npe" + "hloov" + "daim av" đã có trong file.
     "dang-ky-bien-dong-thoa-thuan-bac-ninh": "Cuv npe hloov daim av (Bắc Ninh)",
