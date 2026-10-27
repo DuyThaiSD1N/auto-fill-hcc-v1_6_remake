@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import Icon from "../components/Icon";
 import { PageLoading, Spinner } from "../components/Status";
 import { LAB_AUTH_EXPIRED_EVENT, labSession, listProcedures, loginLab, validateLabSession, type BeProcedure, type LabUser } from "./api";
-import { createBatch, importBatch, MAX_SETS, runKey, startBatch, type Batch, type DocSet, type LabRun, type RunnerHandle } from "./engine";
+import {
+  createBatch, deleteHistory, importBatch, listHistory, loadHistory, MAX_SETS, runKey, saveHistory, startBatch,
+  type Batch, type DocSet, type HistoryEntry, type LabRun, type RunnerHandle,
+} from "./engine";
 import { findLabProcedure, LAB_PROCEDURES } from "./procedures";
 import Results from "./Results";
-import Setup, { type SetupState } from "./Setup";
+import Setup, { History, type SetupState } from "./Setup";
 
 const THEME_KEY = "hcc_monitor_theme";
 const PREFS_KEY = "hcc_lab_prefs";
@@ -137,8 +140,30 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
   const [beProcedures, setBeProcedures] = useState<Map<string, BeProcedure>>(new Map());
   const [batch, setBatch] = useState<Batch | null>(null);
   const [running, setRunning] = useState(false);
+  // Bấm Chạy / mở kết quả đã xuất → sang màn kết quả; "Trở lại" về thiết lập, kết quả vẫn giữ.
+  const [view, setView] = useState<"setup" | "results">("setup");
   const [importError, setImportError] = useState("");
+  const [history, setHistory] = useState<HistoryEntry[] | null>(null);
+  const [historyError, setHistoryError] = useState("");
   const runner = useRef<RunnerHandle | null>(null);
+
+  const refreshHistory = useCallback(() => {
+    listHistory().then(setHistory).catch((e) => {
+      setHistory([]);
+      setHistoryError(e instanceof Error ? e.message : String(e));
+    });
+  }, []);
+
+  useEffect(refreshHistory, [refreshHistory]);
+
+  // Mỗi lần đợt đổi (lượt xong, mở từ file) thì ghi lại vào lịch sử — gom 1 giây để không ghi cả MB liên tục.
+  useEffect(() => {
+    if (!batch || batch.runs.every((r) => r.status === "queued")) return;
+    const timer = window.setTimeout(() => {
+      saveHistory(batch).then(refreshHistory).catch((e) => setHistoryError(e instanceof Error ? e.message : String(e)));
+    }, running ? 1000 : 0);
+    return () => window.clearTimeout(timer);
+  }, [batch, running, refreshHistory]);
 
   useEffect(() => {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(setup)); } catch { /* bỏ qua */ }
@@ -158,13 +183,13 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
     document.title = running ? `Đang chạy · ${label} — Kiểm thử` : "Kiểm thử — Trợ lý nhân dân";
   }, [running, label]);
 
-  const updateRun = useCallback((run: LabRun) => {
-    setBatch((b) => (b ? { ...b, runs: b.runs.map((r) => (runKey(r) === runKey(run) ? run : r)) } : b));
+  const updateRun = useCallback((id: string, run: LabRun) => {
+    setBatch((b) => (b?.id === id ? { ...b, runs: b.runs.map((r) => (runKey(r) === runKey(run) ? run : r)) } : b));
   }, []);
 
   function start() {
     if (running) return;
-    if (batch && batch.runs.some((r) => r.status === "done") && !window.confirm("Chạy đợt mới sẽ thay kết quả đang xem. Muốn giữ thì bấm Huỷ rồi “Xuất JSON” trước.")) return;
+    // Đợt đang xem đã nằm trong lịch sử → chạy đợt mới không mất gì, khỏi hỏi.
     const active = sets.slice(0, setup.setCount);
     const next = createBatch(proc.key, label, user.name || user.username, {
       fill: true,
@@ -174,7 +199,9 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
     }, active, setup.runCount);
     setBatch(next);
     setRunning(true);
-    const handle = startBatch(next, active, variant, updateRun);
+    setView("results");
+    window.scrollTo(0, 0);
+    const handle = startBatch(next, active, variant, (run) => updateRun(next.id, run));
     runner.current = handle;
     handle.done.finally(() => {
       if (runner.current === handle) runner.current = null;
@@ -186,12 +213,43 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
     setImportError("");
     try {
       setBatch(await importBatch(file));
+      setView("results");
+      window.scrollTo(0, 0);
     } catch (reason) {
       setImportError(reason instanceof Error ? reason.message : String(reason));
     }
   }
 
+  async function openHistory(id: string) {
+    if (running) return;
+    setHistoryError("");
+    try {
+      setBatch(await loadHistory(id));
+      go("results");
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : String(reason));
+      refreshHistory();
+    }
+  }
+
+  async function removeHistory(id: string) {
+    if (!window.confirm("Xoá đợt này khỏi lịch sử?")) return;
+    try {
+      await deleteHistory(id);
+      if (batch?.id === id && !running) setBatch(null);
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : String(reason));
+    }
+    refreshHistory();
+  }
+
   const ready = useMemo(() => sets.slice(0, setup.setCount).every((s) => s.files.length > 0), [sets, setup.setCount]);
+  const showResults = view === "results" && !!batch;
+
+  function go(next: "setup" | "results") {
+    setView(next);
+    window.scrollTo(0, 0);
+  }
 
   return (
     <div className="lab-shell">
@@ -212,7 +270,10 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
       </header>
 
       <main id="main-content" className="lab-main" tabIndex={-1}>
+        {/* Giữ cả hai màn trong DOM (ẩn bằng hidden) để quay lại không mất lượt đang chọn / tab đang xem. */}
         <Setup
+          hidden={showResults}
+          onShowResults={batch ? () => go("results") : undefined}
           state={setup}
           onState={(patch) => setSetup((s) => ({ ...s, ...patch }))}
           sets={sets}
@@ -227,7 +288,17 @@ function Workbench({ user, onLogout }: { user: LabUser; onLogout: () => void }) 
           onImport={onImport}
           importError={importError}
         />
-        {batch ? <Results key={batch.id} batch={batch} running={running} /> : null}
+        {showResults ? null : (
+          <History
+            entries={history}
+            error={historyError}
+            current={batch?.id}
+            running={running}
+            onOpen={openHistory}
+            onDelete={removeHistory}
+          />
+        )}
+        {batch ? <Results key={batch.id} hidden={!showResults} batch={batch} running={running} onBack={() => go("setup")} /> : null}
       </main>
     </div>
   );

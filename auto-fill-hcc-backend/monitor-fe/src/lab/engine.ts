@@ -45,6 +45,9 @@ export interface LabRun {
   set: number;
   run: number;
   status: RunStatus;
+  /** ISO — lúc lượt bắt đầu gọi máy chủ / lúc xong hoặc bị dừng. */
+  startedAt?: string;
+  finishedAt?: string;
   fill?: StepResult;
   attach?: StepResult;
 }
@@ -141,7 +144,7 @@ export function startBatch(
     const set = sets[run.set];
     const ctx = formContext(set.applicant, variant);
     const tag = `${batch.id}:${run.set + 1}-${run.run + 1}`;
-    let current: LabRun = { ...run, status: "running" };
+    let current: LabRun = { ...run, status: "running", startedAt: new Date().toISOString() };
     onRun(current);
     try {
       if (settings.fill) {
@@ -160,9 +163,9 @@ export function startBatch(
         };
         current = { ...current, attach: await step("attach", batch.procedure, options, set.files, controller.signal) };
       }
-      onRun({ ...current, status: "done" });
+      onRun({ ...current, status: "done", finishedAt: new Date().toISOString() });
     } catch {
-      onRun({ ...current, status: "cancelled" });
+      onRun({ ...current, status: "cancelled", finishedAt: new Date().toISOString() });
     }
   }
 
@@ -335,6 +338,114 @@ export async function importBatch(file: File): Promise<Batch> {
   if (data?.version !== 1 || !data.procedure || !Array.isArray(data.runs) || !Array.isArray(data.sets)) {
     throw new Error("Tệp không phải kết quả xuất từ web Kiểm thử.");
   }
-  // Lượt đang chạy dở lúc xuất → coi như đã dừng.
-  return { ...(data as Batch), runs: data.runs.map((r) => (r.status === "queued" || r.status === "running" ? { ...r, status: "cancelled" } : r)) };
+  return settle(data as Batch);
+}
+
+/** Lượt đang chạy dở lúc xuất / lúc lưu lịch sử (tab bị đóng giữa chừng) → coi như đã dừng. */
+function settle(batch: Batch): Batch {
+  return { ...batch, runs: batch.runs.map((r) => (r.status === "queued" || r.status === "running" ? { ...r, status: "cancelled" } : r)) };
+}
+
+// ---- lịch sử các đợt (IndexedDB của trình duyệt) ---------------------------------------------------------------
+
+/** Giữ tối đa chừng này đợt gần nhất; cũ hơn tự xoá. */
+const HISTORY_LIMIT = 50;
+const DB_NAME = "hcc_lab_history";
+// "summary" nhẹ để liệt kê; "batch" chứa đủ output máy chủ (có thể vài MB/đợt), chỉ đọc khi mở xem.
+const SUMMARY = "summary";
+const FULL = "batch";
+
+export interface HistoryEntry {
+  id: string;
+  procedure: string;
+  label: string;
+  account: string;
+  createdAt: string;
+  finishedAt?: string;
+  sets: number;
+  runs: number;
+  done: number;
+  cancelled: number;
+  errors: number;
+}
+
+function summarize(batch: Batch): HistoryEntry {
+  const finished = batch.runs.map((r) => r.finishedAt).filter((t): t is string => !!t).sort();
+  return {
+    id: batch.id,
+    procedure: batch.procedure,
+    label: batch.label,
+    account: batch.account,
+    createdAt: batch.createdAt,
+    finishedAt: finished[finished.length - 1],
+    sets: batch.sets.length,
+    runs: batch.runs.length,
+    done: batch.runs.filter((r) => r.status === "done").length,
+    cancelled: batch.runs.filter((r) => r.status === "cancelled").length,
+    errors: batch.runs.filter((r) => r.fill?.status === "error" || r.attach?.status === "error").length,
+  };
+}
+
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function openDb(): Promise<IDBDatabase> {
+  dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(SUMMARY, { keyPath: "id" });
+      req.result.createObjectStore(FULL, { keyPath: "id" });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  dbPromise.catch(() => { dbPromise = null; });
+  return dbPromise;
+}
+
+function txDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Không ghi được lịch sử."));
+  });
+}
+
+function request<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Mới nhất trước. */
+export async function listHistory(): Promise<HistoryEntry[]> {
+  const db = await openDb();
+  const all = await request(db.transaction(SUMMARY).objectStore(SUMMARY).getAll() as IDBRequest<HistoryEntry[]>);
+  return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function saveHistory(batch: Batch): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction([SUMMARY, FULL], "readwrite");
+  tx.objectStore(SUMMARY).put(summarize(batch));
+  tx.objectStore(FULL).put(batch);
+  await txDone(tx);
+  const list = await listHistory();
+  if (list.length > HISTORY_LIMIT) await deleteHistory(...list.slice(HISTORY_LIMIT).map((e) => e.id));
+}
+
+export async function loadHistory(id: string): Promise<Batch> {
+  const db = await openDb();
+  const batch = await request(db.transaction(FULL).objectStore(FULL).get(id) as IDBRequest<Batch | undefined>);
+  if (!batch) throw new Error("Đợt này không còn trong lịch sử.");
+  return settle(batch);
+}
+
+export async function deleteHistory(...ids: string[]): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction([SUMMARY, FULL], "readwrite");
+  for (const id of ids) {
+    tx.objectStore(SUMMARY).delete(id);
+    tx.objectStore(FULL).delete(id);
+  }
+  await txDone(tx);
 }

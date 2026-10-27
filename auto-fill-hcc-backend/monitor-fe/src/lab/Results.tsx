@@ -5,7 +5,7 @@ import AttachSimulation from "../components/run/AttachSimulation";
 import FormSimulation from "../components/run/FormSimulation";
 import Json from "../components/run/Json";
 import { Spinner } from "../components/Status";
-import { formatDateTime, formatMs } from "../format";
+import { formatClock, formatDateTime, formatMs } from "../format";
 import type { SimStats } from "../simulations/eform";
 import {
   asRunDetail, consistency, exportBatch, loadScorer, runFields, runKey, scoreAttach,
@@ -72,6 +72,11 @@ function RunCell({ run, score, selected, onSelect }: { run: LabRun; score?: RunS
       {attach?.status === "error" ? <span className="lab-cell__line lab-cell__sub ef-red" title={attach.error}>{attach.error}</span> : null}
       {run.status === "running" ? <span className="lab-cell__line lab-cell__sub"><Spinner label={fill ? "Đang đính kèm" : "Đang điền"} /></span> : null}
       {run.status === "cancelled" ? <span className="lab-cell__line lab-cell__sub faint">Đã dừng giữa chừng</span> : null}
+      {run.startedAt ? (
+        <span className="lab-cell__line lab-cell__sub faint num" title={`Bắt đầu ${formatDateTime(run.startedAt)}`}>
+          {formatClock(run.startedAt)}{run.finishedAt ? ` → ${formatClock(run.finishedAt)}` : ""}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -171,6 +176,12 @@ function RunDetailView({ batch, run, cons, tab, setTab }: { batch: Batch; run: L
         <h2>{batch.sets[run.set]?.name} · Lần {run.run + 1}</h2>
         <span className="faint">{(batch.sets[run.set]?.files ?? []).join(" · ")}</span>
       </div>
+      {run.startedAt ? (
+        <p className="muted num lab-detail__time">
+          Bắt đầu {formatDateTime(run.startedAt)}
+          {run.finishedAt ? <> · kết thúc {formatDateTime(run.finishedAt)} ({formatMs(new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime())})</> : null}
+        </p>
+      ) : null}
       <StepHead title="Điền" step={run.fill} kind="autofill" />
       <StepHead title="Đính kèm" step={run.attach} kind="attach" />
       <div className="tabs" role="tablist" aria-label="Chi tiết lượt">
@@ -195,7 +206,7 @@ function RunDetailView({ batch, run, cons, tab, setTab }: { batch: Batch; run: L
   );
 }
 
-export default function Results({ batch, running }: { batch: Batch; running: boolean }) {
+export default function Results({ hidden, batch, running, onBack }: { hidden: boolean; batch: Batch; running: boolean; onBack: () => void }) {
   const [scorer, setScorer] = useState<Scorer | null>(null);
   const [scorerError, setScorerError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -242,12 +253,19 @@ export default function Results({ batch, running }: { batch: Batch; running: boo
   const failed = fills.filter((f) => f.status === "error").length + attaches.filter((a) => a.status === "error").length;
   const avgRed = avg(reds);
   const current = batch.runs.find((r) => runKey(r) === selected);
+  const finishedAt = running ? undefined : batch.runs.map((r) => r.finishedAt).filter(Boolean).sort().pop();
 
   return (
-    <section className="lab-results" aria-label="Kết quả kiểm thử">
+    <section className="lab-results" aria-label="Kết quả kiểm thử" hidden={hidden}>
       <div className="page-head">
+        <button className="btn btn--sm" type="button" onClick={onBack}>
+          <Icon name="arrow-left" size={14} /> Trở lại
+        </button>
         <h1>{batch.label}</h1>
-        <span className="faint">{batch.account} · {formatDateTime(batch.createdAt)}</span>
+        <span className="faint">
+          {batch.account} · bắt đầu {formatDateTime(batch.createdAt)}
+          {finishedAt ? ` · xong ${formatDateTime(finishedAt)}` : ""}
+        </span>
         {running ? <Spinner label={`Đang chạy ${done.length}/${batch.runs.length} lượt`} /> : null}
         <div className="page-head__actions">
           <button className="btn btn--sm" type="button" disabled={running} onClick={() => exportBatch(batch)}>

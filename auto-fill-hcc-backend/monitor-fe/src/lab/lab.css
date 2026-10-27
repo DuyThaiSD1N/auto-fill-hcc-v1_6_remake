@@ -47,6 +47,11 @@
   outline: none;
 }
 
+/* .lab-setup / .lab-results đặt display: flex → phải ép lại để thuộc tính hidden có tác dụng. */
+.lab-main > [hidden] {
+  display: none;
+}
+
 .lab-login-hint {
   font-size: 12.5px;
 }
@@ -517,6 +522,60 @@ button.lab-cell:hover {
   overflow-wrap: anywhere;
 }
 
+.lab-detail__time {
+  margin: 0;
+  font-size: 12px;
+}
+
+.lab-history {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lab-history__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.lab-history__head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.lab-history__head .faint,
+.lab-history > p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.lab-history__table td {
+  vertical-align: top;
+}
+
+.lab-history__table td.num {
+  white-space: nowrap;
+}
+
+.lab-history__label {
+  display: block;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lab-history__table tr.is-current td {
+  background: var(--accent-soft);
+}
+
+.lab-history__actions {
+  white-space: nowrap;
+  text-align: right;
+}
 .lab-step {
   display: flex;
   flex-wrap: wrap;

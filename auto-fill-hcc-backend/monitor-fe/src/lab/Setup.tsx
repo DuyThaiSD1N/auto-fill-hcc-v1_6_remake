@@ -1,7 +1,7 @@
 import { useRef, useState, type DragEvent } from "react";
 import Icon from "../components/Icon";
-import { formatBytes } from "../format";
-import { MAX_RUNS, MAX_SETS, type DocSet } from "./engine";
+import { formatBytes, formatDateTime, formatMs } from "../format";
+import { MAX_RUNS, MAX_SETS, type DocSet, type HistoryEntry } from "./engine";
 import { GROUPS, LAB_PROCEDURES, type LabProcedure } from "./procedures";
 
 export interface SetupState {
@@ -102,7 +102,9 @@ function SetCard({ index, set, onChange, disabled }: {
   );
 }
 
-export default function Setup({ state, onState, sets, onSet, procedure, hint, beLabel, running, ready, onStart, onStop, onImport, importError }: {
+export default function Setup({ hidden, onShowResults, state, onState, sets, onSet, procedure, hint, beLabel, running, ready, onStart, onStop, onImport, importError }: {
+  hidden: boolean;
+  onShowResults?: () => void;
   state: SetupState;
   onState: (patch: Partial<SetupState>) => void;
   sets: DocSet[];
@@ -122,7 +124,7 @@ export default function Setup({ state, onState, sets, onSet, procedure, hint, be
   const group = GROUPS.find((g) => g.key === procedure.group);
 
   return (
-    <section className="panel lab-setup" aria-label="Thiết lập đợt kiểm thử">
+    <section className="panel lab-setup" aria-label="Thiết lập đợt kiểm thử" hidden={hidden}>
       <div className="lab-setup__grid">
         <label className="field lab-proc">
           <span className="lab-label">Thủ tục</span>
@@ -191,6 +193,11 @@ export default function Setup({ state, onState, sets, onSet, procedure, hint, be
             Chạy {state.setCount * state.runCount} lượt
           </button>
         )}
+        {onShowResults ? (
+          <button className="btn" type="button" onClick={onShowResults}>
+            {running ? "Xem tiến độ" : "Xem kết quả đợt trước"} <Icon name="chevron-right" size={14} />
+          </button>
+        ) : null}
         <span className="muted">
           {state.setCount} bộ × {state.runCount} lần{attach ? " × (điền + đính kèm)" : ""} = <b className="num">{calls}</b> lần gọi máy chủ
           {!ready && !running ? <span className="ef-red"> · bộ nào cũng cần ít nhất một tệp</span> : null}
@@ -202,6 +209,75 @@ export default function Setup({ state, onState, sets, onSet, procedure, hint, be
         </label>
         {importError ? <span className="ef-red">{importError}</span> : null}
       </div>
+    </section>
+  );
+}
+
+/** Các đợt đã chạy, lưu trong trình duyệt này (IndexedDB) — mới nhất trên cùng. */
+export function History({ entries, error, current, running, onOpen, onDelete }: {
+  entries: HistoryEntry[] | null;
+  error: string;
+  current?: string;
+  running: boolean;
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <section className="panel lab-history" aria-label="Lịch sử chạy">
+      <div className="lab-history__head">
+        <h2>Lịch sử chạy</h2>
+        <span className="faint">{entries?.length ? `${entries.length} đợt gần nhất · lưu trong trình duyệt này` : "Lưu trong trình duyệt này"}</span>
+      </div>
+      {error ? <p className="ef-red">{error}</p> : null}
+      {entries === null ? <p className="faint">Đang nạp…</p> : !entries.length ? (
+        <p className="faint">Chưa có đợt nào. Bấm Chạy, đợt sẽ tự lưu vào đây.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="mini-table lab-history__table">
+            <thead>
+              <tr>
+                <th>Bắt đầu</th>
+                <th>Thời gian chạy</th>
+                <th>Thủ tục</th>
+                <th>Tài khoản</th>
+                <th>Bộ × lần</th>
+                <th>Kết quả</th>
+                <th><span className="sr-only">Thao tác</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => {
+                const live = running && e.id === current;
+                const ms = e.finishedAt ? new Date(e.finishedAt).getTime() - new Date(e.createdAt).getTime() : null;
+                return (
+                  <tr key={e.id} className={e.id === current ? "is-current" : undefined}>
+                    <td className="num">{formatDateTime(e.createdAt)}</td>
+                    <td className="num">{live ? "đang chạy…" : formatMs(ms)}</td>
+                    <td>
+                      <span className="lab-history__label" title={e.label}>{e.label}</span>
+                      <small className="mono faint">{e.procedure}</small>
+                    </td>
+                    <td>{e.account}</td>
+                    <td className="num">{e.sets} × {Math.round(e.runs / Math.max(1, e.sets))}</td>
+                    <td>
+                      <span className="num">{e.done}/{e.runs} xong</span>
+                      {e.errors ? <span className="ef-red num"> · {e.errors} lỗi</span> : null}
+                      {e.cancelled ? <span className="faint num"> · {e.cancelled} dừng</span> : null}
+                    </td>
+                    <td className="lab-history__actions">
+                      <button className="btn btn--sm" type="button" disabled={running} onClick={() => onOpen(e.id)}>Xem</button>
+                      <button className="btn btn--icon btn--ghost btn--sm" type="button" disabled={live} aria-label={`Xoá đợt ${formatDateTime(e.createdAt)}`}
+                              onClick={() => onDelete(e.id)}>
+                        <Icon name="x" size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
