@@ -46,7 +46,7 @@ test("nhớ rảnh tay theo tab qua các lần cổng tải lại trang", () => 
 });
 
 test("tự mở mic không bao giờ cắt câu bot đang đọc (mở mic = tạo lại offscreen đang phát loa)", () => {
-  assert.match(sidebar, /function listenWhenQuiet\(\) \{\s*if \(window\.__hccTTS\?\.isSpeaking\?\.\(\) \|\| busy \|\| botWorking\(\)\) \{[\s\S]*?return;\s*\}\s*startVoice\(\);/);
+  assert.match(sidebar, /function listenWhenQuiet\(\) \{\s*if \(window\.__hccTTS\?\.isSpeaking\?\.\(\) \|\| busy \|\| botWorking\(\)(?: \|\| micHeld\(\))?\) \{[\s\S]*?return;\s*\}\s*startVoice\(\);/);
   // Lượt không có lời đọc (lượt hệ thống im lặng) KHÔNG gọi thẳng startVoice nữa.
   assert.match(sidebar, /\} else if \(handsfree \|\| listenAfter\) \{\s*listenWhenQuiet\(\);\s*\}/);
   assert.match(sidebar, /replyTtsInFlight === 0\) listenWhenQuiet\(\);/);

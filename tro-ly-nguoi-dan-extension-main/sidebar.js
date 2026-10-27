@@ -355,7 +355,7 @@
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate",
     "prepareBusinessRegistration", "startBusinessRegistration",
   ]);
   let pageWorkInFlight = 0;
@@ -1157,7 +1157,7 @@
     c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
-      || c.maeAgencyBlock || c.lienThongHome || c.bcaAgencyBlock
+      || c.maeAgencyBlock || c.lienThongHome
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -1279,9 +1279,6 @@
       maeAgencyBlock: !!c.maeAgencyBlock,
       // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
       lienThongHome: !!c.lienThongHome,
-      // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
-      bcaAgencyBlock: !!c.bcaAgencyBlock,
-      bcaAgencyDone: !!c.bcaAgencyDone,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -1342,6 +1339,8 @@
   // ── Luồng dẫn từng bước: bấm hộ nút của cổng ──
   // Hai hàm này CHẠY NGOÀI lượt ask() (runActions gọi qua setTimeout 0). Gọi ask() từ trong
   // runActions là tự khoá: cờ busy của lượt ngoài chưa tắt nên lượt mới chỉ xếp hàng chờ.
+  const GUIDED_NEXT_BLOCKED_MS = 3600;
+  const GUIDED_NEXT_WAIT_MS = 15000;
   async function runGuidedNext(phase, expect) {
     setStatus("Đang chuyển bước trên trang…");
     // Bấm và dò song song: engine content còn rình toast vài giây, chờ nó xong mới dò thì
@@ -1351,13 +1350,21 @@
     // trên thanh bước, dùng chính bộ đọc mà watcher trang đang dùng.
     let wizardStep = 0;
     let moved = !expect;
-    for (let i = 0; i < 12 && !moved; i++) {
+    let res = null;
+    press.then((r) => { res = r || {}; }, () => { res = {}; });
+    // Cổng nháy lời chặn / nút bị khoá → thôi chờ sau nhịp cũ (~3,6 giây). Không có lời chặn mà trang còn
+    // quay tải (máy chủ cổng chậm) thì chờ tiếp tới GUIDED_NEXT_WAIT_MS mới kết luận chưa qua bước.
+    const started = Date.now();
+    while (!moved) {
       await new Promise((r) => setTimeout(r, 300));
       const ctx = await sendToContent({ action: "getPageContext" });
       wizardStep = Number(ctx?.wizardStep) || 0;
-      if (wizardStep === expect) moved = true;
+      if (wizardStep === expect) { moved = true; break; }
+      const elapsed = Date.now() - started;
+      const blocked = !!res && (!!res.message || res.clicked === false);
+      if ((blocked && elapsed >= GUIDED_NEXT_BLOCKED_MS) || elapsed >= GUIDED_NEXT_WAIT_MS) break;
     }
-    const res = moved ? null : await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
+    if (!moved && !res) res = await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
     setStatus("");
     await ask(`__action:guided_step_report:${JSON.stringify({
       phase, ok: moved, message: res?.message || "", wizardStep,
@@ -1631,11 +1638,12 @@
       if (lastState !== "done") doneWizardStep = 0;
       const ctx = await readPageContext();
       if (!ctx?.ok) return;
+      loginPageNow = !!ctx.loginPage;
       // Trang SPA đổi bước không reload → theo dõi CHỮ KÝ tín hiệu, đổi mới báo BE
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -2674,6 +2682,15 @@
   let uploadSid = null; // phiên đang mở — dùng cho nhánh "Scan tại quầy" (upload từ máy tính)
   // Cổng cho nút "Đã đưa đủ giấy tờ, xử lý đi": chỉ mở khi phiên đã nhận ≥1 tệp.
   let docsReceived = false;
+  // Mic tạm nghỉ ở bước gửi giấy tờ (xem micHeld): số tệp phiên đã nhận, lúc số đó đổi lần cuối, số đợt đang tải.
+  let docsCount = 0;
+  let docsChangedAt = 0;
+  let uploadsInFlight = 0;
+  // Trang đăng nhập SSO/VNeID đang hiện (watcher đọc ctx.loginPage); null = chưa đọc được trang lần nào.
+  let loginPageNow = null;
+  const DOCS_SETTLE_MS = 5000;
+  // Công dân tự bấm nút mic → phiên nghe đó không bị micHeld tắt ngang.
+  let micByHand = false;
   // Phiên scan tại quầy được BE cho phép TỰ CHỐT sau mỗi đợt chọn tệp (pick_files.auto_run):
   // đợt tệp đã phân loại xong ngay trong request /files → gửi docs_complete như bấm nút
   // "Đã đưa đủ", khỏi bắt công dân bấm tay. QR / lượt Điều chỉnh giấy tờ: rỗng = chốt tay.
@@ -3369,6 +3386,7 @@
     const totalBytes = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
     const uploadStartedAt = performance.now();
     setStatus(`⏳ Đang tải ${files.length} tệp lên hệ thống…`);
+    uploadsInFlight += 1;
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f, f.name));
@@ -3410,6 +3428,8 @@
       setStatus(`⚠️ Tải tệp lỗi: ${err?.message || err}`, true);
       setTimeout(() => setStatus(""), 5000);
       return null;
+    } finally {
+      uploadsInFlight = Math.max(0, uploadsInFlight - 1);
     }
   }
   $fileInput?.addEventListener("change", async (e) => {
@@ -3845,8 +3865,10 @@
     // Nhận được tệp ĐẦU TIÊN (kể cả tệp chưa nhận ra loại / slot tuỳ chọn) → mở khoá nút
     // "Đã đưa đủ giấy tờ, xử lý đi". BE dặn cứ bấm nút này để xử lý cả phần chưa nhận ra
     // loại, nên chỉ cần có bất kỳ tệp nào là cho chốt — không đợi đủ giấy bắt buộc.
-    const gotAny = ((p.docs || []).reduce((n, d) => n + (d.received || 0), 0) + (p.unknown || 0)) > 0;
+    const received = (p.docs || []).reduce((n, d) => n + (d.received || 0), 0) + (p.unknown || 0);
+    const gotAny = received > 0;
     docsReceived = gotAny;
+    if (received !== docsCount) { docsCount = received; docsChangedAt = Date.now(); }
     if ($docsDoneChip) {
       $docsDoneChip.disabled = !gotAny;
       if (gotAny) $docsDoneChip.removeAttribute("title");
@@ -5060,13 +5082,6 @@
         // "chọn tay tỉnh/xã" như lỗi chọn cơ quan thường.
         else if (res?.code === "card_not_found") ask(`__event:agency_card_missing:${res.error || ""}`, "system");
         else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
-      } else if (a.type === "fill_bca_agency") {
-        // Cổng DVC Bộ Công an: content.js chọn Tỉnh → Xã ở khối "Cơ quan thực hiện". Báo lại cả khi lỗi
-        // (BE mời chọn lại hoặc tự chọn trên trang).
-        setStatus("Đang chọn cơ quan thực hiện…");
-        const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
-        setStatus("");
-        ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
         // (loại khai sinh, tỉnh/xã, trường hợp, tick "Cùng địa bàn") theo plan từ BE. KHÁC
@@ -5662,7 +5677,7 @@
   // Trợ lý TỰ mở mic (không do người dùng bấm): không chen ngang câu bot đang đọc — mở mic là tạo lại offscreen,
   // nơi đang phát loa → câu đang đọc bị cắt. Đang đọc thì để onDone của câu đó / ensureMic mở sau.
   function listenWhenQuiet() {
-    if (window.__hccTTS?.isSpeaking?.() || busy || botWorking()) {
+    if (window.__hccTTS?.isSpeaking?.() || busy || botWorking() || micHeld()) {
       // Không rảnh tay (câu hỏi cần trả lời ngay): nhớ lại để ensureMic mở MỘT lượt khi bot xong việc.
       if (!handsfree) pendingListen = true;
       return;
@@ -5672,6 +5687,18 @@
   // Bot đang thao tác trên trang (và ~2 giây sau lệnh cuối, trang còn đang đổi) hoặc đang đọc giấy tờ.
   function botWorking() {
     return pageWorkInFlight > 0 || Date.now() - pageWorkEndedAt < 2000 || (!!$pipe && !pipeFinished);
+  }
+  // Bước công dân bận tay với máy (đăng nhập VNeID, scan / chụp giấy tờ bằng điện thoại): quầy đông, mic mở là
+  // thu tiếng xung quanh thành câu nói, bot đọc lại hướng dẫn liên tục hoặc bấm nhầm nút thật ("đủ rồi" →
+  // chốt giấy tờ khi mới scan một nửa) → mic tạm nghỉ, rảnh tay vẫn bật. Đăng nhập: nghỉ tới khi rời trang
+  // đăng nhập. Gửi giấy tờ: nghỉ tới khi đã có tệp, không còn đợt đang tải và ~5 giây không có tệp mới (máy quét
+  // trả từng tờ, điện thoại gửi từng ảnh) — rồi mở để công dân nói "đính kèm đi / đủ rồi". Bấm nút mic vẫn nói được.
+  function micHeld() {
+    if (lastState === "guide_login") return loginPageNow !== false;
+    if (lastState === "qr_waiting" || lastState === "collecting_docs") {
+      return !docsReceived || uploadsInFlight > 0 || Date.now() - docsChangedAt < DOCS_SETTLE_MS;
+    }
+    return false;
   }
   // Trợ lý tự tắt mic (bot sắp đọc → không để mic nghe tiếng loa; phiên nghe treo → làm mới).
   function pauseMic() {
@@ -5683,6 +5710,7 @@
   function micWanted() {
     // Màn bắt đầu: mic chỉ mở khi bấm nút mic của màn đó (mở ngầm thì cú bấm nút thành TẮT mic).
     return (handsfree || pendingListen) && voiceCfg.asr && !voiceListening && !busy && !botWorking() && !ratingNoteSink
+      && !micHeld()
       && !completionReturnTimer && !document.body.classList.contains("settings-mode")
       && !document.body.classList.contains("start-mode")
       && !window.__hccTTS?.isSpeaking?.() && Date.now() >= micRetryAt;
@@ -5690,6 +5718,10 @@
   function ensureMic() {
     if (voiceListening && !startByVoice && document.body.classList.contains("start-mode")) {
       pauseMic(); // phiên nghe của rảnh tay còn sót khi về màn bắt đầu
+      return;
+    }
+    if (voiceListening && !micByHand && micHeld()) {
+      pauseMic(); // vào bước đăng nhập / gửi giấy tờ lúc mic đang mở → nghỉ, hết bước ensureMic mở lại
       return;
     }
     if (handsfree && voiceListening && (botWorking() || window.__hccTTS?.isSpeaking?.())) {
@@ -5806,6 +5838,7 @@
           showStartHeard("Em chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp em ạ.", "miss");
         }
         startByVoice = false;
+        micByHand = false;
         // Hết lượt mà không nghe thấy gì, hoặc trợ lý tự tắt → mic nghỉ; rảnh tay thì ensureMic mở lại
         // ngay khi bot đang chờ công dân nói (không tự tắt chế độ rảnh tay).
         setMicUI(false);
@@ -5858,7 +5891,7 @@
 
   $micBtn?.addEventListener("click", () => {
     if (!voiceCfg.asr) { soon("🎤 Máy chủ chưa bật giọng nói.")(); return; }
-    if (voiceListening) stopVoice(); else startVoice();
+    if (voiceListening) stopVoice(); else { micByHand = true; startVoice(); }
   });
   // Màn bắt đầu: bấm rồi nói — câu nào cũng mở phiên; có tên thủ tục thì BE chọn luôn.
   $startMic?.addEventListener("click", () => {

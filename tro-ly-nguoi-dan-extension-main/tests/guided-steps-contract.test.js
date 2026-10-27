@@ -128,3 +128,12 @@ test("giảm chuyển động tắt được cả ba nút, kể cả vệt sáng
     assert.ok(block[1].includes(sel), `giảm chuyển động chưa tắt ${sel}`);
   }
 });
+
+test("bấm Bước tiếp theo: cổng quay tải lâu mà không báo chặn thì chờ tiếp, không báo 'chưa chuyển bước' sau 3,6 giây", () => {
+  const fn = sidebar.match(/async function runGuidedNext\(phase, expect\) \{([\s\S]*?)\n  \}/);
+  assert.ok(fn, "thiếu runGuidedNext");
+  assert.match(sidebar, /const GUIDED_NEXT_WAIT_MS = (\d+);/);
+  assert.ok(Number(sidebar.match(/const GUIDED_NEXT_WAIT_MS = (\d+);/)[1]) >= 10000);
+  assert.match(fn[1], /blocked && elapsed >= GUIDED_NEXT_BLOCKED_MS/, "có lời chặn của cổng thì thôi chờ sớm như cũ");
+  assert.match(fn[1], /elapsed >= GUIDED_NEXT_WAIT_MS/);
+});

@@ -1428,64 +1428,6 @@
     setInterval(baoTrangThaiChoSidebar, 3000);
   }
 
-  // ── Cổng DVC Bộ Công an: chọn hộ khối "Cơ quan thực hiện" ──
-  // Hai select2 Tỉnh (#cboRECEIVE_ADDR_CITY_CODE) → Xã (#cboRECEIVE_ADDR_VILLAGE_CODE); đổi Tỉnh thì cổng nạp
-  // lại danh sách Xã. Đặt value trên <select> gốc rồi phát change — select2 và cascade của cổng nghe sự kiện
-  // này (cùng cách fill-bacninh.js lái select2). Khớp tên theo thứ tự: trọn tên (bỏ dấu) → tên bỏ tiền tố
-  // nếu chỉ một dòng khớp. Danh mục BE có thể ghi "Tỉnh Bắc Ninh" khi cổng ghi "Thành phố Bắc Ninh", hay
-  // "Xã" khi cổng đã là "Phường" — nên không đòi khớp cả tiền tố, nhưng cũng không khớp một phần tên.
-  const BCA_CITY_ID = "cboRECEIVE_ADDR_CITY_CODE";
-  const BCA_WARD_ID = "cboRECEIVE_ADDR_VILLAGE_CODE";
-  const bcaFold = (s) => String(s || "")
-    .replace(/Đ/g, "D").replace(/đ/g, "d")
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/\s*[-–—‐‑]+\s*/g, " ")
-    .replace(/\s+/g, " ").trim().toLowerCase();
-  const bcaBare = (s) => bcaFold(s).replace(/^(tinh|thanh pho|tp\.?|phuong|xa|dac khu|thi tran)\s+/, "");
-  function bcaPickOption(select, name) {
-    const options = Array.from(select?.options || []).filter((o) => o.value && o.value !== "-1");
-    const full = options.filter((o) => bcaFold(o.text) === bcaFold(name));
-    if (full.length === 1) return full[0];
-    const bare = options.filter((o) => bcaBare(o.text) === bcaBare(name));
-    return bare.length === 1 ? bare[0] : null;
-  }
-  function bcaSetSelect(select, option) {
-    if (select.value === option.value) return false;
-    select.value = option.value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-  async function fillBcaAgency(province, ward) {
-    const city = document.getElementById(BCA_CITY_ID);
-    const village = document.getElementById(BCA_WARD_ID);
-    if (!city || !village) return { ok: false, error: "no_block" };
-    const cityOpt = bcaPickOption(city, province);
-    if (!cityOpt) return { ok: false, error: "province_not_found" };
-    // Đổi Tỉnh: danh sách Xã cũ còn nằm đó tới khi cổng nạp xong — chờ danh sách ĐỔI rồi mới khớp,
-    // kẻo chọn trúng xã trùng tên của tỉnh cũ.
-    const before = Array.from(village.options).map((o) => o.value).join("|");
-    const changed = bcaSetSelect(city, cityOpt);
-    let wardOpt = null;
-    for (let waited = 0; waited <= 8000; waited += 250) {
-      const now = Array.from(village.options).map((o) => o.value).join("|");
-      if (!changed || now !== before) {
-        wardOpt = bcaPickOption(village, ward);
-        if (wardOpt) break;
-      }
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    if (!wardOpt) return { ok: false, error: "ward_not_found", province: cityOpt.text.trim() };
-    bcaSetSelect(village, wardOpt);
-    return { ok: true, province: cityOpt.text.trim(), ward: wardOpt.text.trim() };
-  }
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.action !== "fillBcaAgency" || !IS_TOP_FRAME) return;
-    fillBcaAgency(String(msg.province || ""), String(msg.ward || ""))
-      .then(sendResponse)
-      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
-    return true; // async
-  });
-
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action === "setSubmitRules") {
       submitRules = msg.rules && typeof msg.rules === "object" ? msg.rules : null;
@@ -1740,15 +1682,6 @@
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.
       const agencyBlock = !maeHost && body.includes("chon co quan thuc hien");
-      // Cổng DVC Bộ Công an: khối "Cơ quan thực hiện" là 2 select (select2) Tỉnh + Xã/Phường/Đặc khu, chọn
-      // đủ thì cổng mới hiện các mục sau. Id lấy theo crawl trang đăng ký tạm trú 27/10/2026.
-      const bcaCity = location.hostname === "dichvucong.dancuquocgia.gov.vn"
-        ? document.getElementById("cboRECEIVE_ADDR_CITY_CODE") : null;
-      const bcaWard = bcaCity ? document.getElementById("cboRECEIVE_ADDR_VILLAGE_CODE") : null;
-      const bcaPicked = (sel) => !!sel && !!sel.value && sel.value !== "-1"
-        && !["", "chon"].includes(foldTxt(sel.options[sel.selectedIndex]?.text));
-      const bcaAgencyBlock = !!bcaCity;
-      const bcaAgencyDone = bcaPicked(bcaCity) && bcaPicked(bcaWard);
       // Marker ĐÃ VÀO form kê khai thật: section "Kê khai thông tin". Liên thông có 2 trang
       // ĐỀU Angular + đều nhắc "chọn cơ quan thực hiện" (agencyBlock) — trang CHỌN CƠ QUAN
       // KHÔNG có marker này, trang KÊ KHAI thì có → dùng để phân biệt (chống kích hoạt sớm).
@@ -1857,8 +1790,6 @@
           || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
         agencyBlock,
         maeAgencyBlock,
-        bcaAgencyBlock,
-        bcaAgencyDone,
         loginPage,
         vneidLoginCodePrompt,
         vneidDataSharingPrompt,
