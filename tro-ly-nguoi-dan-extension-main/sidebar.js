@@ -91,6 +91,9 @@
     // Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại ghi đè
     // (portal-dvc.js::saveOwnerProfile). BE chỉ hiện nút lưu khi thấy cờ này.
     supportsSaveOwnerProfile: true,
+    // Biết tích ô cam kết cuối trang theo id (lệnh tick_commit → content.js::tickCommitBox, cổng DVC Bộ Công an).
+    // BE chỉ hiện nút cam "Tôi xin chịu trách nhiệm…" khi thấy cờ này.
+    supportsTickCommit: true,
     // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
     // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
     supportsProcedureFirst: true,
@@ -355,7 +358,7 @@
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
     "prepareBusinessRegistration", "startBusinessRegistration",
   ]);
   let pageWorkInFlight = 0;
@@ -5092,6 +5095,10 @@
         const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
         setStatus("");
         ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
+      } else if (a.type === "tick_commit" && a.id) {
+        // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id, báo lại để BE nhắc bấm Nộp hồ sơ.
+        const res = await sendToContent({ action: "tickCommitBox", id: a.id });
+        ask(`__event:commit_result:${JSON.stringify({ ok: res?.ok === true, error: res?.error || "" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
         // (loại khai sinh, tỉnh/xã, trường hợp, tick "Cùng địa bàn") theo plan từ BE. KHÁC

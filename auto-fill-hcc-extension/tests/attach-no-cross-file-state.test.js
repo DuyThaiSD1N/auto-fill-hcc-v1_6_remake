@@ -1,84 +1,30 @@
-// NGUYÊN TẮC: bằng chứng cho tệp X phải là thứ XUẤT HIỆN SAU KHI bắt đầu làm tệp X.
+// NGUYÊN LÝ: bằng chứng cho tệp X phải là thứ XUẤT HIỆN SAU KHI bắt đầu làm tệp X.
 //
-// Bốn lỗi thật liên tiếp của cùng một hồ sơ chứng thực đều là MỘT bệnh — lấy trạng thái chung
-// của cả trang làm bằng chứng cho một tệp cụ thể, trong khi trang còn tàn dư của tệp trước:
+// Bản Handfree đã vấp bốn lần liên tiếp vì cùng một bệnh — lấy trạng thái chung của cả trang
+// làm bằng chứng cho một tệp cụ thể, trong khi trang còn tàn dư của tệp trước. File này khoá
+// cùng nguyên lý cho bản no-handfree, để hai bên không trôi ra khỏi nhau.
 //
-//   1. tên tệp   — so kiểu chứa nhau  → "…Duy Tân 2" nuốt "…Duy Tân"
-//   2. toast lỗi — đọc lời than của tệp trước
-//   3. toast lỗi — so theo node, mà thư viện toast dựng lại node
-//   4. modal ví  — dùng lại modal của tệp trước còn treo
-//
-// File này KHÔNG chặn từng ca. Nó chặn CÁCH VIẾT sinh ra ca mới: mọi hàm đọc trạng thái chung
-// chỉ được tiêu thụ qua đúng cặp "chụp mốc trước / so cái mới sau". Thêm tín hiệu mới mà quên
-// mốc so sánh là test này đỏ ngay.
+// Toast của cổng: readPortalUploadError (lỏng) CHỈ để giải thích khi đã kết luận hỏng. Handfree
+// từng nâng toast chung lên vai phán quyết và hỏng ba lần. NGOẠI LỆ HẸP (19/09/2026, đồng bộ
+// Handfree theo yêu cầu): đúng câu "…thất bại" của cổng, MỚI so với mốc trước tệp, được HOÃN tệp
+// sớm + đóng toast đó trước khi sang tệp kế. Không nới ra "lỗi"/mã HTTP chung.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const attach = fs.readFileSync(path.join(root, "content", "attach-core.js"), "utf8");
+const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 
-/** Cắt thân một hàm để soi riêng. */
-function bodyOf(name) {
-  const start = attach.indexOf(`function ${name}(`);
-  assert.ok(start > 0, `không tìm thấy hàm ${name}`);
-  const end = attach.indexOf("\nfunction ", start + 10);
-  const endAsync = attach.indexOf("\nasync function ", start + 10);
-  const stop = Math.min(...[end, endAsync].filter((value) => value > 0));
-  return attach.slice(start, stop > 0 ? stop : undefined);
-}
+// ── Modal ví tài liệu: phải là modal MỚI ─────────────────────────────────────────────────
+// "Có modal mang tiêu đề đó" KHÔNG chứng minh cú click của ta đã mở được nó. Cổng vừa lỗi thì
+// modal của tệp trước chưa kịp đóng → tệp này thao tác trên đúng cái modal hỏng đó: nút "Thêm
+// vào ví" còn disabled, ô Tên tài liệu còn tên cũ → chờ hết hạn rồi báo hỏng oan.
+assert.match(content, /function visibleWalletDialogs\(\)/);
+assert.match(content, /function findNewWalletDialog\(before\)/);
+assert.match(content, /if \(!before\.has\(dialogs\[index\]\)\) return dialogs\[index\];/);
 
-/** Đếm số lần gọi `fn(` ngoài phần khai báo chính nó. */
-function callSites(fn) {
-  return (attach.match(new RegExp(`(?<!function )\\b${fn}\\(`, "g")) || []).length;
-}
-
-// ── Danh mục các hàm ĐỌC TRẠNG THÁI CHUNG và nơi DUY NHẤT được phép tiêu thụ chúng ───────
-// Thêm một hàm đọc trạng thái chung mới → phải khai vào đây kèm cặp mốc của nó.
-const GUARDED = [
-  {
-    reader: "portalUploadErrorNodes",
-    consumers: ["snapshotPortalUploadErrors", "newPortalUploadError", "newPortalUploadFailure",
-      // Không đọc làm bằng chứng — chỉ ĐÓNG toast upload-thất-bại để tệp kế không bị đọc nhầm.
-      "dismissUploadFailureToasts"],
-    why: "toast lỗi của cổng sống rất lâu — đọc trần là câu báo lỗi của tệp này thành lời than của tệp trước",
-  },
-  {
-    reader: "sizeLimitToastNodes",
-    consumers: ["snapshotSizeLimitToasts", "newSizeLimitError"],
-    why: "toast quá dung lượng cũng còn trên màn khi sang ô kế tiếp",
-  },
-  {
-    reader: "visibleWalletDialogs",
-    consumers: ["openDocumentWalletForRow", "findNewWalletDialog"],
-    why: "modal ví của tệp trước chưa đóng thì cú click của tệp này thành vô nghĩa",
-  },
-];
-
-for (const { reader, consumers, why } of GUARDED) {
-  const allowed = consumers.map((name) => bodyOf(name)).join("\n");
-  const allowedCalls = (allowed.match(new RegExp(`\\b${reader}\\(`, "g")) || []).length;
-  assert.equal(
-    callSites(reader), allowedCalls,
-    `${reader}() bị gọi ngoài ${consumers.join(" / ")} — ${why}`,
-  );
-}
-
-// ── Mỗi tín hiệu phải có đủ cặp "mốc trước / cái mới sau" ────────────────────────────────
-// Toast: chụp mốc theo NỘI DUNG → câu báo lỗi chỉ lấy lời than chưa từng thấy.
-// (Toast KHÔNG còn quyền phán quyết — xem tests/attach-fast-fail-contract.test.js.)
-assert.match(attach, /return portalUploadErrorNodes\(\)\.map\(\(hit\) => foldChoiceText\(hit\.text\)\);/);
-// Cả HAI đường toast (lỗi tải tệp và quá dung lượng) phải dùng chung một cách so.
-assert.equal(
-  (attach.match(/if \(!seen\.has\(foldChoiceText\(hit\.text\)\)\) return hit\.text;/g) || []).length, 2,
-  "cả newPortalUploadError lẫn newSizeLimitError đều phải so theo NỘI DUNG",
-);
-assert.ok(!/prev\.text !== hit\.text/.test(attach), "không còn chỗ nào so toast theo node");
-
-// Modal: chụp mốc các modal ĐANG HIỆN → chỉ nhận modal không nằm trong mốc đó.
-assert.match(attach, /function findNewWalletDialog\(before\)/);
-assert.match(attach, /if \(!before\.has\(dialogs\[index\]\)\) return dialogs\[index\];/);
-const openWallet = bodyOf("openDocumentWalletForRow");
+const openStart = content.indexOf("async function openDocumentWalletForRow");
+const openWallet = content.slice(openStart, content.indexOf("\n  function findRemoveAttachmentButton", openStart));
 assert.match(openWallet, /if \(visibleWalletDialogs\(\)\.length\) await closeDocumentWalletDialogs\(\);/,
   "phải dọn modal cũ TRƯỚC khi chụp mốc");
 assert.match(openWallet, /const dialogsBefore = new Set\(visibleWalletDialogs\(\)\);/);
@@ -89,21 +35,49 @@ assert.ok(!/findLatestDialogByText\("Danh sách tài liệu điện tử"\)/.tes
 // Thứ tự bắt buộc: dọn → chụp mốc → click.
 const closeAt = openWallet.indexOf("await closeDocumentWalletDialogs();");
 const snapAt = openWallet.indexOf("const dialogsBefore =");
-const clickAt = openWallet.indexOf("clickLikeUser(button)");
+const clickAt = openWallet.indexOf("button.click();");
 assert.ok(closeAt > 0 && closeAt < snapAt && snapAt < clickAt, "dọn → chụp mốc → click");
 
-// Tên tệp: so BẰNG NHAU, không chứa nhau.
-assert.ok(!attach.includes("attachmentKeyMatches"), "so kiểu chứa nhau đã bị gỡ, đừng đưa lại");
-
-// ── Hai ca modal hỏng phải phân biệt được ────────────────────────────────────────────────
-// Modal cũ treo → tải lại trang mới gỡ (mã nằm trong nhóm reloadable). Màn sạch mà click
-// không ra modal → reload vô ích. Gộp một mã là hoặc bỏ lỡ cách chữa, hoặc reload vô ích.
+// Hai ca modal hỏng phải phân biệt được: modal cũ treo thì reload chữa được, màn sạch thì không.
 assert.match(openWallet, /code: stuckDialog \? "wallet-stale-modal" : "wallet-modal-not-opened"/);
-const splitAttach = fs.readFileSync(path.join(root, "content", "split-attach.js"), "utf8");
-assert.ok(splitAttach.includes('"wallet-stale-modal"'), "wallet-stale-modal phải reload được");
+const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+assert.ok(popup.includes("wallet-stale-modal") || content.includes("SPLIT_RELOADABLE_WALLET_CODES"),
+  "wallet-stale-modal phải nằm trong nhóm reload chữa được");
 
-// ── Lớp đỡ cuối: đã đính được thì không được báo lỗi ─────────────────────────────────────
-// Dù mọi lớp trên trượt, bước soi lại bảng vẫn phải cứu.
-assert.match(attach, /const landedRow = payloadFile \? findExistingAttachedRowForPlanItem\(item, payloadFile\) : null;/);
+// ── Tên tệp: so BẰNG NHAU, không chứa nhau ───────────────────────────────────────────────
+// "Bảng điểm Đại học Duy Tân 2" không được nuốt "Bảng điểm Đại học Duy Tân".
+assert.ok(!content.includes("attachmentKeyMatches"), "so kiểu chứa nhau đã bị gỡ, đừng đưa lại");
+assert.match(content, /return labels\.some\(\(label\) => attachmentKeyEquals\(attachedName, label\)\);/);
 
-console.log("Handfree attach: không tín hiệu nào của tệp trước rơi sang tệp sau passed");
+// ── Đã đính được thì KHÔNG báo lỗi ───────────────────────────────────────────────────────
+// Cổng ghi nhận chậm: tệp ta đã bỏ cuộc vẫn có thể nằm sẵn trên dòng vài giây sau.
+// Càng cần từ khi các mốc chờ rút ngắn.
+const loop = content.slice(content.indexOf("const MAX_ROUNDS = 5"));
+const loopBody = loop.slice(0, loop.indexOf("// Lượt chốt: đánh số các dòng"));
+assert.match(loopBody, /await sleep\(1500\); \/\/ ân hạn/);
+assert.match(loopBody, /const landedRow = payloadFile \? findExistingAttachedRowForPlanItem\(item, payloadFile\) : null;/);
+assert.match(loopBody, /markAttachmentResult\(landedRow, true\);[\s\S]{0,220}?lastErrorByIndex\.delete\(index\);/);
+assert.match(loopBody, /queue = stillMissing;/);
+assert.match(content, /lastErrorByIndex\.delete\(i\);\s*\n\s*markAttachmentResult\(existingRow, true\);/);
+
+// ── Mốc chờ đã rút ngắn ──────────────────────────────────────────────────────────────────
+// Bỏ cuộc sớm là RẺ (round-robin còn lượt sau); chờ lâu thì tệp hỏng bắt tệp lành xếp hàng.
+for (const tooLong of ["12000", "15000", "20000", "25000"]) {
+  assert.ok(!content.includes(tooLong), `không còn mốc chờ ${tooLong}ms nào`);
+}
+assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 8000,\n\s*uploadFailed = null\)/);
+
+// ── Toast giữ ĐÚNG VAI: chỉ giải thích ───────────────────────────────────────────────────
+assert.ok(!content.includes("waitUnlessPortalError"),
+  "toast không được quyền quyết định thành/bại — Handfree đã hỏng ba lần vì điều này");
+assert.ok(!content.includes("dismissPortalUploadErrors"),
+  "không xoá/bấm mọi thông báo của cổng — chỉ đóng đúng toast upload-thất-bại");
+// Bộ dò hoãn-sớm KHÔNG được dùng readPortalUploadError (lỏng: khớp cả "lỗi", "500").
+const failFn = content.slice(content.indexOf("function newPortalUploadFailure"));
+assert.ok(!/readPortalUploadError/.test(failFn.slice(0, failFn.indexOf("\n  }\n"))));
+// Mốc chụp TRƯỚC khi đưa tệp vào ô tải, so theo nội dung.
+assert.match(content, /const failuresBefore = snapshotUploadFailures\(\);\n[\s\S]{0,700}?setFilesOnInput\(uploadInput/);
+assert.match(content, /portalError \? ` — cổng báo: \$\{portalError\}` : "\."/,
+  "toast chỉ để làm rõ câu báo lỗi");
+
+console.log("no-handfree attach: modal phải mới, đã đính thì không báo lỗi, chờ đã rút passed");

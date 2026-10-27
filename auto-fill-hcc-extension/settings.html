@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt extension</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+
+<body>
+  <main class="settings-shell">
+    <header class="settings-header">
+      <img src="assets/icons/hcc-48.png" width="42" height="42" alt="">
+      <div>
+        <h1>Cài đặt extension</h1>
+        <p>Trợ lý nhân dân</p>
+      </div>
+    </header>
+
+    <section class="settings-card" aria-labelledby="attachmentSettingsTitle">
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="attachmentSettingsTitle">Đính kèm hồ sơ</h2>
+          <p>Thiết lập cách xử lý file có nhiều giấy tờ trước khi đính kèm.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="splitDocumentsSetting">
+        <span class="setting-copy">
+          <strong>Có tách hồ sơ khi đính kèm</strong>
+          <span>
+            Khi bật, file chứa nhiều giấy tờ sẽ được tách thành từng tài liệu độc lập và bỏ trang trắng.
+            Hai mặt CCCD cùng chủ thể vẫn được gộp thành một tài liệu.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="splitDocumentsSetting" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <label class="setting-row" for="submitterOwnerModeSetting">
+        <span class="setting-copy">
+          <strong>Lấy người nộp theo tờ khai</strong>
+          <span>
+            TẮT (mặc định): lấy người nộp theo tài khoản đăng nhập trên cổng, chỉ điền khi giấy tờ khớp đúng người.
+            BẬT: bỏ so khớp tài khoản, lấy người nộp theo tờ khai trong hồ sơ (người đứng đơn hoặc chủ hồ sơ, tùy
+            thủ tục). (Chỉ thủ tục đã hỗ trợ.)
+          </span>
+        </span>
+        <span class="switch">
+          <input id="submitterOwnerModeSetting" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <label class="setting-row" for="estateSplitAttachmentsSetting">
+        <span class="setting-copy">
+          <strong>Không gộp giấy tờ — Chứng thực phân chia di sản</strong>
+          <span>
+            Chỉ áp dụng thủ tục Chứng thực phân chia di sản. TẮT (mặc định): gộp mọi giấy tờ vào 1 dòng.
+            BẬT: mỗi giấy tờ 1 dòng riêng (dự thảo luôn tách riêng).
+          </span>
+        </span>
+        <span class="switch">
+          <input id="estateSplitAttachmentsSetting" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- CHỈ hiện cho tài khoản xã Bát Xát (settings.js đọc tài khoản đăng nhập gần nhất popup ghi lại). -->
+    <section id="scanRecentSection" class="settings-card" aria-labelledby="scanRecentSettingsTitle" hidden>
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="scanRecentSettingsTitle">Máy quét tại quầy</h2>
+          <p>Áp dụng trên máy này.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="scanRecentSuggestSetting">
+        <span class="setting-copy">
+          <strong>Gợi ý tệp đã quét gần đây</strong>
+          <span>
+            BẬT (mặc định): khi chọn thủ tục, trợ lý liệt kê các tệp máy quét đã tạo trong 2 giờ gần nhất (chưa
+            có trong hồ sơ) để cán bộ bấm chọn đính kèm — dùng khi quét giấy tờ trước rồi mới mở trợ lý. Trợ lý
+            không tự thêm tệp nào. TẮT: không hiện danh sách gợi ý.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="scanRecentSuggestSetting" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="scanRecentSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Lưu THEO TÀI KHOẢN trên máy chủ (đi theo cán bộ sang máy khác) — cần đăng nhập trên trợ lý. -->
+    <section class="settings-card" aria-labelledby="fileNameSettingsTitle">
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="fileNameSettingsTitle">Tên tệp đính kèm</h2>
+          <p>Áp dụng cho tài khoản <strong id="renameAccountName">đang đăng nhập</strong>, lưu trên máy chủ.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="renameAttachmentFilesSetting">
+        <span class="setting-copy">
+          <strong>Đổi tên tệp theo loại giấy tờ khi đính kèm</strong>
+          <span>
+            BẬT (mặc định): tệp tải lên cổng (và ô "Tên tài liệu" của ví tài liệu) đặt theo loại giấy tờ. TẮT: giữ
+            tên tệp gốc, chỉ bỏ ký tự cổng không nhận. Tệp được gộp/tách vẫn theo loại giấy tờ; tên thành phần hồ
+            sơ không đổi.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="renameAttachmentFilesSetting" type="checkbox" checked disabled>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="renameSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Lưu THEO TÀI KHOẢN đang đăng nhập trên máy này (một máy quầy nhiều cán bộ dùng chung). -->
+    <section class="settings-card" aria-labelledby="ratingSettingsTitle">
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="ratingSettingsTitle">Đánh giá trải nghiệm</h2>
+          <p>Áp dụng cho tài khoản <strong id="ratingAccountName">đang đăng nhập</strong> trên máy này.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="ratingCardSetting">
+        <span class="setting-copy">
+          <strong>Hỏi đánh giá sau khi gửi hồ sơ</strong>
+          <span>
+            BẬT (mặc định): gửi hồ sơ xong, trợ lý hiện phiếu đánh giá trải nghiệm. TẮT: không hiện phiếu nữa.
+            Việc ghi nhận hồ sơ đã nộp vẫn giữ nguyên, báo cáo không bị thiếu.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="ratingCardSetting" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="ratingSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/client.js"></script>
+  <script src="api/account-settings.js"></script>
+  <script src="settings.js"></script>
+</body>
+
+</html>

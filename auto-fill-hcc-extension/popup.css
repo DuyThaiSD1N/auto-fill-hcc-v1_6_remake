@@ -1,0 +1,1257 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  padding: 10px;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  box-sizing: border-box;
+}
+
+/* Khi chạy trong floating panel (iframe): full width, cao theo nội dung (để auto-fit). */
+body.embedded {
+  width: 100%;
+  min-height: 0;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+
+/* Embedded panel có header riêng → ẩn h1 trong body */
+body.embedded h1 { display: none; }
+
+.block {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.block-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1565c0;
+  margin-bottom: 6px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+select,
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.procedure-select-hidden {
+  display: none;
+}
+
+.procedure-picker {
+  position: relative;  /* mốc cho dropdown absolute */
+}
+
+/* Trigger nhìn như 1 ô select: đóng thì gọn 1 dòng. */
+.procedure-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  color: #1a1a1a;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.procedure-trigger:hover:not(:disabled) {
+  background: #f4f8fe;
+  border-color: #1565c0;
+}
+.procedure-trigger[aria-expanded="true"] {
+  background: #eef6ff;
+  border-color: #1565c0;
+  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.16);
+}
+.procedure-trigger:focus-visible {
+  outline: 3px solid rgba(21, 101, 192, 0.24);
+  outline-offset: 2px;
+  border-color: #1565c0;
+}
+.procedure-trigger:active:not(:disabled) {
+  background: #e3f2fd;
+}
+.procedure-trigger:disabled {
+  cursor: default;
+  background: #f5f6f7;
+}
+.procedure-trigger-caret {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: #666;
+  transition: transform 120ms ease;
+}
+.procedure-trigger[aria-expanded="true"] .procedure-trigger-caret {
+  transform: rotate(180deg);
+  color: #1565c0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .procedure-trigger,
+  .procedure-trigger-caret {
+    transition: none;
+  }
+}
+
+/* Dropdown NỔI đè lên nội dung dưới (không đẩy layout). */
+.procedure-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.procedure-dropdown[hidden] {
+  display: none;
+}
+.procedure-dropdown input[type="text"] {
+  margin-bottom: 0;
+}
+
+.selected-procedure {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #555;
+}
+
+/* Label trong trigger: cho xuống tối đa 2 dòng, font nhỏ để đọc rõ tên thủ tục dài;
+   phần vượt quá cắt "..." — tên đầy đủ xem qua tooltip (title) khi rê chuột. */
+.procedure-trigger-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.selected-procedure strong {
+  color: #1565c0;
+  font-weight: 600;
+}
+
+.procedure-none {
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+.procedure-results {
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.procedure-option {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.procedure-option:hover {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.procedure-option.active {
+  border-color: #1565c0;
+  background: #e3f2fd;
+  color: #0d47a1;
+  font-weight: 600;
+}
+
+.procedure-option-label {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.procedure-empty {
+  padding: 7px 8px;
+  border: 1px dashed #d0d0d0;
+  border-radius: 4px;
+  color: #757575;
+  font-size: 12px;
+  text-align: center;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.user-email {
+  flex: 1;
+  min-width: 0; /* QUAN TRỌNG: cho phép co trong flex → ellipsis mới hoạt động, email dài không đẩy vỡ nút */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #37424e;
+}
+
+/* Nút phụ trên user bar: kiểu ghost/outline nhẹ, không tranh màu với nút chính (xanh). */
+.user-action {
+  flex: 0 0 auto; /* cố định, không bao giờ bị email đẩy vỡ */
+  width: auto;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #4a5560;
+  background: transparent;
+  border: 1px solid #cfd6de;
+  border-radius: 5px;
+}
+.user-action:hover {
+  background: #eef2f6;
+  border-color: #b6c0cb;
+  color: #243447;
+}
+
+/* Đăng xuất = hành động rời phiên → sắc đỏ nhạt để phân biệt với "Tạo phiên mới". */
+.user-action.danger { color: #c0392b; border-color: #e6b3b3; }
+.user-action.danger:hover { background: #fdecec; border-color: #d98c8c; color: #a5281b; }
+
+.guide-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: #1565c0;
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.guide-btn:hover { background: #0d47a1; }
+
+/* Dùng lại .guide-btn (thẻ <a>) để KHỎI dính rule button{width:100%} bên dưới làm vỡ hàng footer. */
+.report-btn { background: #2e7d32; }
+.report-btn:hover { background: #1b5e20; }
+.report-btn[aria-busy="true"] { opacity: .6; pointer-events: none; }
+
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #c7d2df;
+  border-radius: 4px;
+  background: #fff;
+  color: #35516f;
+  font-size: 17px;
+  line-height: 1;
+}
+.settings-btn:hover {
+  background: #edf4fb;
+  border-color: #8faccc;
+  color: #0d47a1;
+}
+
+button {
+  width: 100%;
+  padding: 7px;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  /* <button> KHÔNG tự kế thừa font-family (mặc định form control) → phải ép inherit, nếu không nút
+     rơi về font hệ thống, lệch hẳn với chữ panel (system-ui). Đồng bộ font mọi nút. */
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover { background: #0d47a1; }
+button:disabled { background: #9e9e9e; cursor: not-allowed; }
+/* Đồng bộ font TOÀN panel: input/select/textarea cũng không tự kế thừa font-family (như button). */
+input, select, textarea { font-family: inherit; }
+
+/* Ghi nhớ đăng nhập: hàng gọn, không để nút xóa thừa hưởng width:100% của button chung. */
+.login-remember-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 1px;
+}
+.login-remember-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 3px 0 2px;
+  font-size: 12px;
+}
+.login-remember-row:has(input:disabled) {
+  color: #8a8a8a;
+  cursor: not-allowed;
+}
+.login-forget-btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #b3261e;
+  font-size: 11.5px;
+  text-decoration: underline;
+}
+.login-forget-btn:hover {
+  background: transparent;
+  color: #7f1d1d;
+}
+.secondary-btn {
+  margin-top: 6px;
+  background: #2e7d32;
+}
+
+.secondary-btn:hover { background: #1b5e20; }
+
+/* "Điền biểu mẫu và đính kèm hồ sơ" (trang nộp hồ sơ mới): nút gộp, đặt cuối nhóm — to và khác màu
+   hai nút làm từng việc phía trên để cán bộ nhận ra đây là lối nhanh. */
+.fill-attach-btn {
+  margin-top: 10px;
+  padding: 11px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #e8590c;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(232, 89, 12, .35);
+}
+.fill-attach-btn:hover { background: #c2410c; }
+.fill-attach-btn:disabled { box-shadow: none; }
+
+/* Trong luồng ba bước Bắc Ninh, nút chính nằm ngay sau nút ủy quyền nên không nhận
+   margin-top của .secondary-btn. Tạo khoảng cách dưới để ba hành động không dính nhau. */
+#proxyFillBtn:not([hidden]) { margin-bottom: 6px; }
+
+/* "Chọn cơ quan thực hiện" (bước 01) nằm ngay trên "Quét và nhập dữ liệu" — mà nút chính không
+   có margin-top nên hai nút dính sát nhau, dễ bấm nhầm. Tách rộng hơn 6px của hai nút cùng
+   nhóm: đây là hai việc KHÁC bước, không phải hai lựa chọn song song. */
+#agencyFillBtn:not([hidden]) { margin-bottom: 5px; }
+
+/* Trigger thu gọn: 1 dòng, dạng link — mặc định giấy tờ KHÔNG hiện, bấm mới mở. */
+.hint-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  background: #f4f8fe;
+  border: 1px solid #dbeafe;
+  border-radius: 4px;
+  color: #1565c0;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.hint-toggle:hover { background: #e3f2fd; }
+.hint-toggle .hint-toggle-text { flex: 1; }
+.hint-toggle .hint-toggle-icon { font-size: 13px; }
+.hint-toggle .hint-toggle-caret { transition: transform 120ms ease; }
+.hint-toggle[aria-expanded="true"] .hint-toggle-caret { transform: rotate(180deg); }
+
+/* Khối chi tiết: hiện khi mở, có nút × để ẩn. */
+.hint-box {
+  position: relative;
+  margin: 0 0 6px;
+  padding: 8px 26px 8px 10px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+.hint-box .hint-text {
+  margin: 0;
+  font-size: 12px;
+  color: #0d47a1;
+  white-space: pre-line;
+  line-height: 1.4;
+}
+.hint-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  color: #1565c0;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+.hint-close:hover { background: #cfe4fb; color: #0d47a1; }
+
+.business-page-panel {
+  margin: 0 0 8px;
+  padding: 7px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  background: #f8fbff;
+}
+
+.business-page-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0d47a1;
+}
+
+.business-page-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.business-page-btn {
+  min-height: 44px;
+  padding: 6px 7px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: #fff;
+  color: #243447;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.business-page-btn:hover {
+  background: #eef6ff;
+  color: #0d47a1;
+}
+
+.business-page-btn.active {
+  border-color: #1565c0;
+  background: #1565c0;
+  color: #fff;
+  font-weight: 600;
+}
+
+.upload-label {
+  display: block;
+  padding: 7px;
+  border: 1px dashed #1565c0;
+  border-radius: 4px;
+  color: #1565c0;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.upload-label:hover { background: #e3f2fd; }
+
+/* Biến thể nút "Thêm ảnh từ điện thoại" (là <button> nên cần reset font/width) — tông xanh lá. */
+.upload-label-alt {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;   /* nhỏ hơn nút "+ Thêm file" (14px) — đây là cách phụ, đỡ tranh chú ý */
+  border-color: #12a06a;
+  color: #0d7d52;
+  background: none;
+}
+.upload-label-alt:hover { background: #eafaf1; }
+
+/* Card mã QR tải ảnh từ điện thoại — bố cục NGANG: QR trái + hướng dẫn/trạng thái phải. */
+.qr-card {
+  position: relative;
+  border: 1px solid #c9ead9;
+  background: #f5fbf7;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.qr-card .qr-close {
+  position: absolute; top: 3px; right: 4px; z-index: 2;
+  width: 20px; height: 20px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: #8a94a6;
+  font-size: 16px; line-height: 20px; text-align: center; cursor: pointer;
+}
+.qr-card .qr-close:hover { background: #e1efe8; color: #0d7d52; }
+.qr-card .qr-body { display: flex; align-items: center; gap: 12px; }
+.qr-card .qr-img {
+  flex: 0 0 auto;
+  width: 112px; height: 112px; image-rendering: pixelated;
+  background: #fff; border: 1px solid #e3e8f0; border-radius: 6px;
+}
+/* padding-right chừa chỗ cho nút × ở góc → dòng chữ đầu KHÔNG chạy lấn dưới nút. */
+.qr-card .qr-info { flex: 1 1 auto; min-width: 0; padding-right: 18px; }
+.qr-card .qr-cap { font-size: 11.5px; color: #5b7089; line-height: 1.45; }
+.qr-card .qr-stat { font-size: 11.5px; font-weight: 600; color: #0d7d52; margin-top: 8px; }
+
+/* Nhãn 📱 cho ảnh tải từ điện thoại trong danh sách file */
+.file-list .from-phone { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
+
+/* Trạng thái kết nối máy quét (scan-bridge agent) — chỉ hiện khi có gì để nói,
+   xem setScanAgentStatus trong popup.js. */
+.scan-agent-status { font-size: 11.5px; color: #0d7d52; margin: 8px 0; }
+/* Danh sách gợi ý tệp đã quét gần đây (CHỈ xã Bát Xát — xem attemptScanRecentSuggest trong popup.js):
+   cán bộ tự chọn, hệ thống không tự thêm. */
+.scan-recent-list {
+  border: 1px solid #f0c36d;
+  background: #fff8e6;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.scan-recent-hint { color: #8a5a00; margin-bottom: 4px; }
+.scan-recent-add-all {
+  width: auto;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  background: #8a5a00;
+}
+.scan-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 0;
+}
+.scan-recent-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-recent-row button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  font-size: 13px;
+  background: #0d7d52;
+}
+
+/* Nhãn 🖨️ cho file tự về từ máy quét trong danh sách file */
+.file-list .from-scan { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
+
+/* Mask phủ TOÀN BỘ nội dung popup (kể cả ngoài #fileList — nhãn, nút, khối
+   khác trong "Giấy tờ") lúc đang kéo file qua — vẫn CHỈ nằm trong document
+   của popup.html (extension), không đụng gì tới trang gốc. Ẩn mặc định,
+   không chặn click khi ẩn (pointer-events none).
+
+   PHẢI GIỐNG HỆT mask trong content.js (hàm createPanel, #autofill-hcc-drop-mask)
+   — từng thuộc tính một, kể cả blur: ở panel nổi, kéo file vào từ header thì
+   content.js vẽ, kéo thẳng vào giữa iframe thì khối này vẽ (sự kiện kéo-thả
+   không qua được biên iframe nên mỗi document phải tự lo phần của mình), mà
+   cán bộ chỉ thấy MỘT panel. Hai bên lệch nhau là hiện ra hai overlay trông
+   khác hẳn tuỳ đường con trỏ đi vào — đúng lỗi đã sửa 2026-09-09. Khung cũng
+   phải khớp: content.js đặt top của mask theo mép trên iframe để cùng lùi 6px
+   như `inset: 6px` ở đây. Sửa một bên thì sửa luôn bên kia. */
+.drop-overlay {
+  position: fixed;
+  inset: 6px;
+  z-index: 999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, .92);
+  border: 2px dashed #1565c0;
+  border-radius: 5px;
+  color: #1565c0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  padding: 12px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.drop-overlay .drop-overlay-icon { font-size: 28px; line-height: 1; }
+
+/* File vừa được thêm bằng kéo-thả — flash ngắn để cán bộ thấy rõ đã "vào
+   khung" đúng, không phải thả hụt ra ngoài. Tự hết sau ~1.5s (setTimeout gỡ
+   class trong renderFiles). */
+.file-list .fname.fname-just-added {
+  animation: fname-just-added-flash 1.5s ease-out;
+}
+@keyframes fname-just-added-flash {
+  0% { background: #baf1d3; }
+  100% { background: transparent; }
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+.checkbox-row input { width: auto; margin: 0; }
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Gợi ý TĨNH khi danh sách file đang rỗng — thuần hiển thị, không còn liên
+   quan gì tới việc bắt sự kiện kéo-thả (nghe trên document của popup.js,
+   không phải trên #fileList — xem #dropOverlay bên dưới). */
+.file-list:empty {
+  border: 1px dashed #b7c8de;
+  text-align: center;
+  border-radius: 4px;
+  padding: 7px;
+}
+.file-list:empty::before {
+  content: "📎  Kéo-thả file vào đây để đính kèm";
+  font-size: 12px;
+  color: #6d7f98;
+  transition: color 120ms ease;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+/* File kéo từ máy quét mà đối soát thấy NỘI DUNG trên đĩa đã đổi (xem
+   reconcileScanAgentFiles trong popup.js) — cùng tông xanh với .status.ok.
+   Không còn .fname-xoa: nhãn "Đã xoá" đã bỏ, file biến mất khỏi thư mục quét
+   là chuyện bình thường sau khi nộp xong, cảnh báo chỉ gây nhiễu. */
+.file-list .fname.fname-capnhat { color: #2e7d32; }
+
+.file-list .fname {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list select {
+  width: auto;
+  margin: 0;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Rê chuột lên dòng file: phản hồi nhẹ để biết dòng có tương tác được.
+   `.dang-xem` mới là dấu THẬT — đánh đúng file đang hiện trên khung xem trước (mục 4.14),
+   và giữ nguyên cả khi con trỏ đã rời dòng để rê sang khung cuộn xem. */
+.file-list li {
+  border-radius: 4px;
+  /* 9px = vạch đánh dấu 3px (li.dang-xem) + 6px thở. Đặt cho MỌI dòng chứ không riêng dòng đang
+     xem: để riêng thì chữ nhảy ngang mỗi lần đổi dòng preview. */
+  padding-left: 9px;
+  padding-right: 4px;
+  transition: background-color 120ms ease;
+}
+.file-list li:hover { background: #f2f7fd; }
+.file-list li.dang-xem {
+  background: #e3f0ff;
+  box-shadow: inset 3px 0 0 #1565c0;  /* vach xanh ben trai: nhin la biet ngay dong nao */
+}
+.file-list li.dang-xem .fname { font-weight: 600; color: #0d47a1; }
+/* Nhấn vào dòng = GHIM khung xem trước (không tự tắt khi rời chuột). Vạch đậm + ghim nhỏ để
+   phân biệt với "đang xem tạm lúc rê chuột". */
+.file-list li { cursor: pointer; }
+.file-list li.dang-ghim {
+  background: #d4e6ff;
+  box-shadow: inset 4px 0 0 #0d47a1;
+}
+.file-list li.dang-ghim .fname::before { content: "📌 "; }
+
+/* Nút sửa tên + ô nhập tại chỗ (xem batDauSuaTen/ketThucSuaTen trong popup.js).
+   Với file máy quét, nút này chỉ hiện khi agent khai caps "rename". */
+.file-list .rename {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #35516f;
+  background: transparent;
+  border: 1px solid #c7d2df;
+}
+.file-list .rename:hover { background: #edf4fb; border-color: #8faccc; color: #0d47a1; }
+.file-list .rename-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 2px 5px;
+  font-size: 12px;
+  border: 1px solid #1565c0;
+  border-radius: 3px;
+}
+
+.file-list .rm {
+  width: auto;
+  padding: 2px 6px;
+  background: #c62828;
+  font-size: 12px;
+}
+
+.status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  min-height: 16px;
+  white-space: pre-line;
+}
+
+.status.ok { color: #2e7d32; }
+.status.err { color: #c62828; }
+.status.warn { color: #b26a00; }
+.status.info { color: #1565c0; }
+
+/* Trạng thái chính luôn ngắn; thông tin hỗ trợ chỉ mở khi người dùng chủ động xem. */
+.status-details-toggle {
+  width: auto;
+  min-height: 32px;
+  margin: 2px 0 0;
+  padding: 4px 8px;
+  border: 1px solid #b8c9dc;
+  border-radius: 5px;
+  background: #f4f8fe;
+  color: #0d4f91;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.status-details-toggle:hover {
+  border-color: #6f97c4;
+  background: #e8f2fd;
+  color: #0b467f;
+}
+.status-details-toggle:focus-visible {
+  outline: 3px solid rgba(21, 101, 192, 0.24);
+  outline-offset: 2px;
+}
+.status-details {
+  margin-top: 4px;
+  padding: 7px 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #3f4b59;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.status-details[hidden],
+.status-details-toggle[hidden] {
+  display: none;
+}
+.status-details ul {
+  margin: 0;
+  padding-left: 17px;
+}
+.status-details li + li {
+  margin-top: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-details-toggle { transition: none; }
+}
+
+/* ===== Mã hỗ trợ: chip copy request_id để cán bộ gửi hỗ trợ khi báo lỗi ===== */
+.support-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 4px 8px;
+  border: 1px dashed #c8ccd2;
+  border-radius: 6px;
+  background: #f7f8fa;
+  color: #5a6270;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.support-code:hover { background: #eef1f5; border-color: #9aa2ad; }
+.support-code-label { color: #838a95; }
+.support-code-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: #33383f;
+  letter-spacing: .2px;
+  user-select: text;   /* cho bôi đen chọn tay khi copy tự động thất bại */
+  -webkit-user-select: text;
+}
+.support-code-action { color: #1565c0; margin-left: 2px; }
+.support-code.copied {
+  border-style: solid;
+  border-color: #2e7d32;
+  background: #eef7ef;
+  color: #2e7d32;
+}
+.support-code.copied .support-code-action,
+.support-code.copied .support-code-label { color: #2e7d32; }
+
+/* ===== Card rà soát bbox (hiện sau khi điền xong, thủ tục bật review) ===== */
+.review-card {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #e6b3b3;
+  border-radius: 6px;
+  background: #fff7f7;
+}
+/* Nút tiêu đề — thu gọn/xổ danh sách rà soát. */
+.review-card__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0;
+  background: transparent;
+  border: 0;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+}
+.review-card__toggle:hover { background: transparent; color: #7f1d1d; }
+.review-card__toggle > span:first-child { flex: 1; }
+.review-card__caret { transition: transform 120ms ease; }
+.review-card__toggle[aria-expanded="true"] .review-card__caret { transform: rotate(180deg); }
+.review-card__body { margin-top: 6px; }
+.review-card__all {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 6px;
+  background: #dc2626;
+  font-size: 12.5px;
+}
+.review-card__all:hover { background: #b91c1c; }
+.review-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 130px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+}
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid #f0d3d3;
+  border-radius: 4px;
+}
+.review-item__text { flex: 1; min-width: 0; }
+.review-item__label { font-size: 11px; color: #7a7a7a; }
+.review-item__value {
+  font-size: 12px;
+  color: #1a1a1a;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-item__btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #e6b3b3;
+  border-radius: 4px;
+}
+.review-item__btn:hover { background: #fdecec; }
+.review-item__btn.no-bbox { color: #92400e; border-color: #fcd34d; }
+
+.app-footer {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== Lịch sử cập nhật (changelog) ===== */
+/* Popover mở từ nút "★ Lịch sử" trên header panel (content.js) → overlay CỐ ĐỊNH góc trên iframe. */
+.release-popover {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 60;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  background: #fff;
+  border: 1px solid #c9d3df;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(26, 48, 79, .26);
+  overflow: hidden;
+}
+.release-popover[hidden] { display: none; }
+.release-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  border-bottom: 1px solid #dce6f2;
+}
+.release-pop-title { font-size: 14px; font-weight: 700; color: #164f90; white-space: nowrap; }
+/* flex:0 0 auto + kích thước cố định để HỦY "width:100%" thừa hưởng từ rule button{} — nếu không nút X
+   chiếm hết chiều ngang, đẩy tiêu đề co xuống 2 dòng và nút to bất thường. */
+.release-close {
+  flex: 0 0 auto; width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border: 0; background: transparent; color: #667587;
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0; border-radius: 6px;
+}
+.release-close:hover { background: rgba(20, 48, 79, .08); color: #33445a; }
+.release-list { max-height: 340px; overflow-y: auto; padding: 6px 12px 12px; }
+.release {
+  position: relative;
+  padding: 11px 0 11px 22px;
+  border-bottom: 1px solid #edf0f4;
+}
+.release:last-child { border-bottom: 0; }
+.release::before {
+  content: "";
+  position: absolute; left: 2px; top: 15px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #a9b4c1; box-shadow: 0 0 0 3px #edf1f5;
+}
+.release.current::before { background: #159455; box-shadow: 0 0 0 3px #dff4e9; }
+.release-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.release-version { font-size: 13px; font-weight: 800; color: #173d69; }
+.release-date { font-size: 11px; color: #697586; }
+.badge-current {
+  font-size: 9px; font-weight: 800; color: #fff; background: #159455;
+  padding: 2px 6px; border-radius: 999px;
+}
+.release ul { margin: 0; padding-left: 16px; color: #46566a; font-size: 12.5px; line-height: 1.5; }
+.release li + li { margin-top: 3px; }
+.release li::marker { color: #1565c0; }
+
+/* ================= BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (consent) ================= */
+:root{ --cs-blue:#2f5ecb; --cs-blue-dark:#244fb0; --cs-blue-soft:#e9f1fc; --cs-blue-soft-border:#c8dcf6; }
+.cs-view{ display:flex; flex-direction:column; }
+/* QUAN TRỌNG: display:flex ở trên đè lên [hidden] mặc định → phải cho [hidden] thắng lại,
+   nếu không cả 3 view consent/result/legal cùng hiện lúc mở (tuồn hết ra). */
+.cs-view[hidden]{ display:none !important; }
+.cs-scroll{ overflow:auto; max-height:340px; padding:4px 2px 2px; }
+.cs-badge{ display:inline-block; padding:3px 9px; border-radius:999px; background:var(--cs-blue); color:#fff; font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; margin-bottom:8px; }
+.cs-title{ margin:0 0 8px; font-size:15px; color:#193a72; line-height:1.32; font-weight:800; }
+.cs-lead{ margin:0 0 10px; font-size:12px; line-height:1.5; color:#33445a; }
+.cs-lead b{ color:var(--cs-blue-dark); }
+.cs-list-title{ margin:0 0 5px; font-size:11.5px; font-weight:800; color:#2a3a4b; }
+.cs-doc-read{ list-style:none; margin:0 0 10px; padding:0; display:grid; gap:5px; }
+.cs-doc-read li{ position:relative; padding-left:21px; font-size:11.5px; line-height:1.4; color:#3b4d60; }
+.cs-doc-read li::before{ content:"✓"; position:absolute; left:0; top:1px; width:14px; height:14px; display:grid; place-items:center; background:var(--cs-blue); color:#fff; border-radius:999px; font-size:8px; font-weight:900; }
+.cs-note{ padding:8px 10px; border-radius:8px; font-size:11px; line-height:1.45; margin:0 0 8px; }
+.cs-note.cs-scope{ background:#f2f6fb; color:#3d5266; }
+.cs-note.cs-purpose{ background:#eaf4ee; color:#245c3f; }
+.cs-note.cs-purpose b{ color:#12603f; }
+.cs-legal-link{ width:100%; padding:8px; border:1px solid var(--cs-blue-soft-border); border-radius:8px; background:#fff; color:var(--cs-blue); font-weight:700; font-size:12px; cursor:pointer; }
+.cs-legal-link:hover{ background:var(--cs-blue-soft); }
+
+.cs-actions{ border-top:1px solid #dbe3ec; background:#fbfdff; padding:9px 2px 4px; margin-top:8px; }
+.cs-select-all{ display:flex; justify-content:flex-end; margin-bottom:6px; }
+.cs-select-all button{ padding:4px 10px; border:1px solid var(--cs-blue-soft-border); border-radius:7px; background:#fff; color:var(--cs-blue); font-size:11.5px; font-weight:700; cursor:pointer; }
+.cs-select-all button:disabled{ opacity:.55; cursor:default; }
+.cs-check{ display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:start; padding:8px 9px; border:1px solid #dbe3ec; border-radius:9px; margin-bottom:7px; font-size:11px; line-height:1.4; color:#2f4152; cursor:pointer; background:#fff; }
+.cs-check:has(input:checked){ background:#eef5fd; border-color:#9cc2f0; }
+.cs-check input{ width:17px; height:17px; margin:0; accent-color:var(--cs-blue); }
+.cs-check-opt{ background:#fbfcfe; }
+.cs-opt-tag{ display:inline-block; margin-left:2px; padding:1px 6px; border-radius:999px; background:#eef1f6; color:#6b7684; font-size:9.5px; font-style:normal; font-weight:700; vertical-align:middle; }
+.cs-btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:3px; }
+.cs-btns button{ padding:11px 8px; border-radius:9px; font-weight:800; font-size:12.5px; border:1px solid transparent; cursor:pointer; }
+.cs-btn-blue{ background:var(--cs-blue); color:#fff; }
+.cs-btn-blue:hover:not(:disabled){ background:var(--cs-blue-dark); }
+.cs-btn-blue:disabled{ opacity:.5; cursor:default; }
+/* Dùng ".cs-btns .cs-btn-outline" (2 class) để THẮNG ".cs-btns button" (1 class + 1 element) — nếu để
+   ".cs-btn-outline" trần thì viền bị ".cs-btns button{border:transparent}" đè, nút mất khung → trông trơn.
+   Kiểu: nền xám nhạt + viền rõ (nút phụ chắc chắn, không chìm, không lệch tông xanh của panel). */
+.cs-btns .cs-btn-outline{ background:#f4f6f9; border:1px solid #cbd5e1; color:#3a4a5c; }
+.cs-btns .cs-btn-outline:hover{ background:#e9edf3; border-color:#b6c2d2; }
+.cs-audit{ margin-top:8px; color:#7c8b99; font-size:10.5px; line-height:1.4; text-align:center; }
+
+/* kết quả + footer nút về */
+.cs-view-foot{ border-top:1px solid #dbe3ec; padding-top:9px; margin-top:8px; }
+.cs-view-foot .cs-btn-blue{ width:100%; padding:12px; border:0; }
+.cs-msg{ padding:12px; border-radius:10px; font-size:13px; line-height:1.55; margin-bottom:11px; }
+.cs-msg.ok{ background:#eaf7ef; border:1px solid #b7e2c8; color:#1a6b43; }
+.cs-msg.info{ background:var(--cs-blue-soft); border:1px solid var(--cs-blue-soft-border); color:#234a86; }
+.cs-msg.warn{ background:#fff7e6; border:1px solid #f0dca6; color:#7a5600; }
+.cs-msg b{ font-weight:800; }
+
+/* view pháp luật (full-panel) */
+.cs-legal .cs-tool-badge{ display:inline-block; padding:4px 9px; border-radius:999px; background:var(--cs-blue); color:#fff; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+.cs-legal-h2{ margin:8px 0 6px; font-size:16px; color:#123d49; }
+.cs-legal-source{ margin:0 0 12px; padding:9px 11px; background:#f3f7f8; border-left:4px solid var(--cs-blue); border-radius:8px; color:#45616d; font-size:12px; line-height:1.45; }
+.cs-legal-h3{ margin:0 0 10px; color:#123d49; font-size:14px; line-height:1.4; }
+.cs-legal-clause{ margin:12px 0 6px; color:#193f49; font-weight:800; font-size:12.5px; }
+.cs-legal-point{ margin:5px 0; padding-left:16px; text-indent:-16px; font-size:12px; line-height:1.55; color:#33454f; }
+
+/* ===== Đi đến thủ tục: khối tự hiện/ẩn theo trang + mở tay bằng "Chuyển thủ tục khác" ===== */
+#destPickers { margin-bottom: 8px; }
+.dest-actions { display: flex; flex-direction: column; }
+.dest-actions .secondary-btn { margin-top: 0; }
+
+/* Khối "Tìm kiếm và chuyển thủ tục": tách riêng dưới "Loại thủ tục", tô nền + chữ nghiêng cho nổi. */
+.switch-proc-section {
+  background: #fff8e1;
+  border-color: #ffca28;
+  border-left: 4px solid #f9a825;
+}
+.switch-proc-title {
+  font-style: italic;
+  color: #e65100;
+}
+.switch-proc-btn {
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px dashed #f9a825;
+  border-radius: 4px;
+  color: #e65100;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 600;
+  cursor: pointer;
+}
+.switch-proc-btn:hover { background: #ffecb3; border-color: #e65100; }
+.switch-proc-picker { position: relative; }  /* mốc cho dropdown chọn thủ tục */
+
+/* Quay lại màn Giấy tờ: nút phụ, để nhạt hơn "Mở trang thủ tục" cho khỏi bấm nhầm. */
+.dest-actions .dest-back-btn {
+  margin-top: 6px;
+  padding: 6px 7px;
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #444;
+  font-size: 13px;
+}
+.dest-actions .dest-back-btn:hover { background: #f2f4f7; border-color: #999; color: #1a1a1a; }
+
+/* ===== Combobox có ô tìm kiếm (tỉnh/xã/thủ tục) — dùng lại đúng bộ nhìn của .procedure-* ===== */
+.combo-select-hidden { display: none; }
+
+.combo { position: relative; margin-bottom: 6px; }
+
+.combo-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #1a1a1a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.combo-trigger:hover:not(:disabled) { background: #f4f8fe; border-color: #1565c0; }
+.combo-trigger[aria-expanded="true"] { background: #eef6ff; border-color: #1565c0; }
+.combo-trigger:disabled { cursor: default; background: #f5f6f7; color: #9e9e9e; }
+.combo-trigger:focus-visible { outline: 2px solid #1565c0; outline-offset: 1px; }
+
+.combo-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-label.placeholder { color: #9e9e9e; }
+.combo-caret { flex: 0 0 auto; font-size: 12px; color: #666; }
+.combo-trigger[aria-expanded="true"] .combo-caret { color: #1565c0; transform: rotate(180deg); }
+
+/* Dropdown nổi đè lên nội dung dưới, không đẩy layout panel. */
+.combo-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.combo-dropdown[hidden] { display: none; }
+.combo-search { margin: 0; font-size: 13px; }
+
+/* Thanh kéo: danh sách dài mấy cũng chỉ cao chừng này. */
+.combo-list { display: grid; gap: 3px; max-height: 210px; overflow-y: auto; }
+
+.combo-option {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.combo-option:hover { background: #e3f2fd; color: #0d47a1; }
+.combo-option.active { border-color: #1565c0; background: #e3f2fd; color: #0d47a1; font-weight: 600; }
+
+.combo-empty {
+  padding: 7px 8px;
+  border: 1px dashed #d0d0d0;
+  border-radius: 4px;
+  color: #757575;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ═══ Đánh giá trải nghiệm sau khi bấm nộp hồ sơ ═══
+   Panel chỉ rộng 360px nên 5 mức xếp DỌC (như Handfree) chứ không dàn ngang: vùng chạm rộng
+   hết bề ngang, người lớn tuổi bấm không trượt, và thứ tự cao→thấp giống hệt bên Handfree để
+   cán bộ quen một lần dùng được cả hai. */
+/* KHÔNG kế thừa max-height:340px của .cs-scroll. Khung panel tự cao theo nội dung
+   (ResizeObserver → postPanelHeight → content.js nới iframe), nên cắt ở 340px chỉ đẻ ra một
+   thanh cuộn thừa và đẩy hai nút "Bỏ qua / Gửi đánh giá" xuống dưới tầm nhìn — cán bộ không
+   thấy nút mà bấm. Màn hình quá thấp thì content.js vẫn kẹp iframe ở innerHeight-120 và iframe
+   tự cuộn, cộng thêm .rt-actions dính đáy bên dưới nên nút luôn với tới được. */
+.rt-scroll{ padding:6px 2px 2px; max-height:none; overflow:visible; }
+.rt-title{ font-size:14.5px; font-weight:800; color:#193a72; line-height:1.34; }
+.rt-sub{ margin-top:3px; font-size:11.5px; color:#5d6b7d; line-height:1.4; }
+.rt-scale{ display:grid; gap:6px; margin:11px 0 10px; }
+.rt-opt{
+  display:flex; align-items:center; gap:10px; width:100%; padding:9px 11px; cursor:pointer;
+  border:1.5px solid #dbe3ec; border-radius:11px; background:#fff; text-align:left;
+  font:inherit; color:#2a3a4b; transition:border-color .12s, background .12s, transform .08s;
+}
+.rt-opt:hover{ border-color:var(--rc); background:#fbfdff; }
+.rt-opt:active{ transform:scale(.985); }
+.rt-opt:focus-visible{ outline:2px solid var(--rc); outline-offset:1px; }
+.rt-face{ flex:0 0 auto; width:26px; height:26px; color:var(--rc); }
+.rt-face svg{ width:100%; height:100%; display:block; }
+.rt-nm{ font-size:12.5px; font-weight:700; }
+.rt-privacy{ font-size:10.5px; color:#7b8796; line-height:1.45; }
+/* Dính đáy: bình thường không có gì để cuộn nên nằm yên như thường; chỉ khi cửa sổ trình duyệt
+   quá thấp làm nội dung tràn thì hai nút mới bám lại đáy thay vì trôi khỏi màn hình. */
+.rt-actions{
+  display:flex; gap:8px; align-items:center; margin-top:10px;
+  position:sticky; bottom:0; background:#fff; padding-bottom:2px;
+}
+.rt-skip{
+  flex:1; padding:9px; border:0; background:none; cursor:pointer; font:inherit;
+  font-size:11.5px; color:#6b7787; text-decoration:underline; text-underline-offset:2px;
+}
+.rt-skip:hover{ background:none; color:#12356f; }
+.rt-send{
+  flex:1.4; padding:11px; border:0; border-radius:10px; cursor:pointer; font:inherit;
+  font-size:12.5px; font-weight:800; color:#fff; background:var(--cs-blue);
+}
+.rt-send:hover{ background:var(--cs-blue-dark); }
+
+/* Bước 2 */
+.rt-picked{
+  display:flex; align-items:center; gap:9px; padding:7px 11px; margin-bottom:8px;
+  border:1.5px solid var(--rc); border-radius:11px; background:#fbfdff;
+}
+.rt-picked-nm{ flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:800; color:var(--rc); }
+.rt-change{
+  /* width:auto + flex-shrink:0 ĐÈ button{width:100%}: để mặc, nút này nuốt hết hàng và ép
+     nhãn mức ("Rất hài lòng") xuống 3 dòng. */
+  border:0; background:none; cursor:pointer; font:inherit; font-size:11px; color:#6b7787;
+  text-decoration:underline; text-underline-offset:2px; padding:2px 0;
+  width:auto; flex:0 0 auto; white-space:nowrap;
+}
+.rt-change:hover{ background:none; color:#12356f; }
+.rt-reason-h{ font-size:12.5px; font-weight:800; color:#2a3a4b; }
+.rt-chips{ display:flex; flex-wrap:wrap; gap:5px; margin:7px 0 8px; }
+.rt-chip{
+  /* width:auto ĐÈ button{width:100%} của panel — không có dòng này mỗi chip thành một thanh
+     dài hết bề ngang thay vì viên thuốc xếp cạnh nhau. */
+  display:inline-flex; align-items:center; gap:6px; width:auto; padding:6px 10px; cursor:pointer;
+  border:1.5px solid #dbe3ec; border-radius:999px; background:#fff; font:inherit;
+  font-size:11.5px; color:#3b4d60; line-height:1.25;
+  transition:background .12s, border-color .12s, color .12s;
+}
+/* PHẢI đặt background: button:hover{background:#0d47a1} của panel làm nền xanh ĐẬM, cộng với
+   chữ xám đậm ở trên là không đọc được chữ gì. Hover phải SÁNG và chữ nổi hẳn lên. */
+.rt-chip:hover{ background:#eaf3ff; border-color:#7ea6d8; color:#12356f; }
+/* ĐÃ TICK phải NỔI HƠN chưa tick — nền tint dễ làm chữ chìm, nên chữ phải đậm và tối hơn. */
+.rt-chip.sel{ border-color:var(--cs-blue); background:#dce9fa; color:#12356f; font-weight:800; }
+.rt-chip.sel:hover{ background:#cbdff7; border-color:var(--cs-blue-dark); color:#0c2856; }
+.rt-bx{
+  display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px;
+  border:1.5px solid #c2cede; border-radius:4px; font-size:9px; color:#fff; line-height:1;
+}
+.rt-chip.sel .rt-bx{ border-color:var(--cs-blue); background:var(--cs-blue); }
+.rt-note{
+  width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #dbe3ec;
+  border-radius:9px; font:inherit; font-size:12px; color:#2a3a4b; resize:vertical;
+}
+.rt-note:focus{ outline:none; border-color:var(--cs-blue); }
+
+/* Cảm ơn — hiện ngay trong khung rồi tự về màn chính, không bắt bấm thêm nút nào */
+.rt-thanks{ text-align:center; padding:26px 10px; }
+.rt-thanks-face{ display:block; width:44px; height:44px; margin:0 auto 10px; color:#12a06a; }
+.rt-thanks-face svg{ width:100%; height:100%; display:block; }
+.rt-thanks-tt{ font-size:14px; font-weight:800; color:#193a72; }
+.rt-thanks-sub{ margin-top:4px; font-size:11.5px; color:#5d6b7d; }

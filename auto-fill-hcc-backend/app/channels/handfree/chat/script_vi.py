@@ -400,6 +400,18 @@ BCA_AGENCY_ASK = {
     ),
 }
 
+BCA_AGENCY_ASK_PREFILLED = {
+    "md": (
+        "Dạ, công dân đăng ký tạm trú ở **{ward}, {province}** phải không ạ?\n\n"
+        "Nếu đúng, công dân bấm **Điền cơ quan thực hiện** là em chọn giúp trên trang. "
+        "Nếu ở nơi khác, công dân chọn lại ở thẻ bên dưới nhé."
+    ),
+    "tts": (
+        "Dạ, công dân đăng ký tạm trú ở {ward}, {province} phải không ạ? Nếu đúng, công dân bấm "
+        "Điền cơ quan thực hiện là em chọn giúp trên trang."
+    ),
+}
+
 BCA_AGENCY_READY = {
     "md": "Đã chọn **{ward}, {province}**. Bấm **Điền cơ quan thực hiện** để em chọn trên trang ạ.",
     "tts": "Dạ, công dân bấm Điền cơ quan thực hiện để em chọn trên trang ạ.",
@@ -1108,10 +1120,20 @@ ATTACH_DONE = {
 # Cổng bắt tích ô cam kết trước khi nộp (registry submitCommitLabel = nhãn ô trên trang, vd Cổng DVC Bộ Công an).
 ATTACH_DONE_COMMIT = {
     "md": (
-        "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại lần cuối, tích ô **\"{commit}\"** ở cuối trang, "
+        "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại lần cuối, rồi bấm ô **\"{commit}\"**, "
         "rồi bấm **Nộp hồ sơ** ạ."
     ),
-    "tts": "Dạ, em đính kèm xong. Công dân xem lại, tích ô {commit} ở cuối trang, rồi bấm Nộp hồ sơ ạ.",
+    "tts": "Dạ, em đính kèm xong. Công dân rà lại lần cuối, rồi bấm ô {commit}, rồi bấm Nộp hồ sơ ạ.",
+}
+
+COMMIT_TICKED = {
+    "md": "✓ Đã tích ô **\"{commit}\"**. Công dân bấm **Nộp hồ sơ** ạ.",
+    "tts": "Dạ, em tích xong rồi. Công dân bấm Nộp hồ sơ ạ.",
+}
+
+COMMIT_TICK_FAILED = {
+    "md": "Em chưa tích được ô **\"{commit}\"**. Công dân tích giúp em ô này ở cuối trang, rồi bấm **Nộp hồ sơ** ạ.",
+    "tts": "Dạ, em chưa tích được. Công dân tích giúp em ô cam kết ở cuối trang, rồi bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_DONE_WITH_ERRORS = {

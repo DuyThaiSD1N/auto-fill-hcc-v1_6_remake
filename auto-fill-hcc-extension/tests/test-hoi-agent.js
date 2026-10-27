@@ -30,7 +30,7 @@ function ok(ten, dk) { so++; if (!dk) { hong++; console.error("  FAIL:", ten); }
 async function chay(traLoi) {
   const daGoi = [];
   const sandbox = {
-    chrome: { runtime: { id: "klkgpeagdccbcomfnaaghjngohfomphl", getManifest: () => ({ version: "1.3.1" }) } },
+    chrome: { runtime: { id: "jggkfcelfkeljnfnelmfmglcjanhmiem", getManifest: () => ({ version: "1.18.1" }) } },
     AbortController, setTimeout, clearTimeout,
     fetch: async (url) => { daGoi.push(url); return traLoi(url); },
   };
@@ -43,8 +43,8 @@ async function chay(traLoi) {
   const r1 = await chay(() => ({ ok: true, json: async () => ({ app: "scan-bridge-agent", version: "x" }) }));
   const u = new URL(r1.daGoi[0]);
   ok("goi dung cong dau tien", u.origin === "http://127.0.0.1:28147" && u.pathname === "/v1/ping");
-  ok("kem ext_id", u.searchParams.get("ext_id") === "klkgpeagdccbcomfnaaghjngohfomphl");
-  ok("kem ext_ver", u.searchParams.get("ext_ver") === "1.3.1");
+  ok("kem ext_id", u.searchParams.get("ext_id") === "jggkfcelfkeljnfnelmfmglcjanhmiem");
+  ok("kem ext_ver", u.searchParams.get("ext_ver") === "1.18.1");
   ok("chi hai tham so", [...u.searchParams.keys()].join(",") === "ext_id,ext_ver");
   ok("tra ping cua agent", r1.d && r1.d.version === "x");
 

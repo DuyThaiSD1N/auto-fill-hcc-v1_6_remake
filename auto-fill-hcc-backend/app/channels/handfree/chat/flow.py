@@ -2806,9 +2806,18 @@ def _bca_location_card(conv: dict) -> dict:
 
 
 def _bca_agency_ask(conv: dict) -> Reply:
-    """Hỏi nơi đăng ký tạm trú: chọn Tỉnh → Xã trên thẻ, rồi bấm nút "Điền cơ quan thực hiện" (_bca_agency_ready)."""
+    """Hỏi nơi đăng ký tạm trú: chọn Tỉnh → Xã trên thẻ, rồi bấm nút "Điền cơ quan thực hiện" (_bca_agency_ready).
+
+    Thẻ đã có sẵn Tỉnh + Xã (nơi theo tài khoản) → đưa luôn nút điền: công dân thường làm ngay ở xã/phường đó,
+    không phải chọn lại mới thấy nút. Muốn nơi khác thì đổi trên thẻ như cũ.
+    """
     conv["bca_agency_pending"] = True
-    r = Reply(*_fmt(vi.BCA_AGENCY_ASK))
+    loc = conv.get("location") or {}
+    if loc.get("province") and loc.get("ward"):
+        r = Reply(*_fmt(vi.BCA_AGENCY_ASK_PREFILLED, ward=loc["ward"], province=loc["province"]))
+        r.chips = [dict(_BCA_FILL_AGENCY_CHIP)]
+    else:
+        r = Reply(*_fmt(vi.BCA_AGENCY_ASK))
     r.cards = [_bca_location_card(conv)]
     return r
 
@@ -4759,6 +4768,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         r.chips = [_supplement_documents_chip()]
         if guided_step:
             r.chips.append(guided.attach_cta_chip())
+        elif not errors and not (attached == 0 and skipped > 0):
+            r.chips += _commit_chip(conv, proc_done)
         if lien_thong.enabled(conv, proc_done):
             r = lien_thong.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              split=conv.get("attach_mode") == "split")
@@ -4863,6 +4874,11 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         # Mở lại CHÍNH phiên cũ: modal vẫn thấy đủ file; planner đọc toàn bộ danh sách
         # còn lại và extension tự bỏ qua file trùng đã có trên cổng.
         return await _start_documents_adjustment(conv, "attachment")
+
+    if intent.kind == "action" and intent.value == "tick_commit":
+        return _tick_commit(conv)
+    if intent.kind == "event" and intent.value == "commit_result":
+        return _commit_result(conv, intent.payload or {})
 
     if intent.kind == "event" and intent.value == "submitted":
         # Trang thành công có thể reload/dựng lại sidebar và phát trùng event. Sau lượt đầu,
@@ -4976,7 +4992,7 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         return Reply()
     done_tpl, commit = _attach_done_template(get_procedure(conv.get("procedure_key") or "") or {})
     r = Reply(*_fmt(done_tpl, commit=commit, attached=len(conv.get("attach_plan") or [])))
-    r.chips = [_supplement_documents_chip()]
+    r.chips = [_supplement_documents_chip(), *_commit_chip(conv, get_procedure(conv.get("procedure_key") or "") or {})]
     return r
 
 
@@ -4985,6 +5001,40 @@ def _attach_done_template(proc: dict) -> tuple[dict, str]:
     thì nhắc đúng nhãn ô đó trước nút Nộp hồ sơ."""
     commit = str((proc or {}).get("submitCommitLabel") or "")
     return (vi.ATTACH_DONE_COMMIT if commit else vi.ATTACH_DONE), commit
+
+
+_TICK_COMMIT_SEND = "__action:tick_commit"
+
+
+def _commit_chip(conv: dict, proc: dict) -> list[dict]:
+    """Nút cam (cta) mang đúng nhãn ô cam kết: bấm là trợ lý tích ô đó trên trang (lệnh tick_commit)."""
+    if not (proc.get("submitCommitLabel") and proc.get("submitCommitCheckbox")):
+        return []
+    if not (conv.get("client_capabilities") or {}).get("supportsTickCommit"):
+        return []
+    return [{"label": str(proc["submitCommitLabel"]), "send": _TICK_COMMIT_SEND, "solid": True, "cta": True}]
+
+
+def _tick_commit(conv: dict) -> Reply:
+    box = str((get_procedure(conv.get("procedure_key") or "") or {}).get("submitCommitCheckbox") or "")
+    r = Reply()
+    if box:
+        r.actions = [{"type": "tick_commit", "id": box}]
+    return r
+
+
+def _commit_result(conv: dict, payload: dict) -> Reply:
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    commit = str(proc.get("submitCommitLabel") or "")
+    if not commit:
+        return Reply()
+    if payload.get("ok") is True:
+        r = Reply(*_fmt(vi.COMMIT_TICKED, commit=commit))
+        r.actions = [{"type": "chip_used", "send": _TICK_COMMIT_SEND}]
+        return r
+    r = Reply(*_fmt(vi.COMMIT_TICK_FAILED, commit=commit))
+    r.chips = _commit_chip(conv, proc)
+    return r
 
 
 _HANDLERS = {

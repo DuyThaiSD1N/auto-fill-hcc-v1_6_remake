@@ -154,6 +154,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại
         # ghi đè. Thiếu cờ → không hiện nút lưu, công dân tự tick như cũ.
         "supportsSaveOwnerProfile": raw.get("supportsSaveOwnerProfile") is True,
+        # Biết tích ô cam kết cuối trang theo id (lệnh tick_commit, cổng DVC Bộ Công an). Thiếu cờ → không hiện nút
+        # cam, công dân tự tích như cũ.
+        "supportsTickCommit": raw.get("supportsTickCommit") is True,
         # Màn chào thứ tự mới: chọn thủ tục trước, card chọn nơi xuống lượt xác nhận.
         # Extension cũ không khai → giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
         "supportsProcedureFirst": raw.get("supportsProcedureFirst") is True,

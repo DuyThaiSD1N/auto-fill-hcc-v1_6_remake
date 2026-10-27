@@ -17,7 +17,7 @@ function load(store = {}) {
   };
   const ns = {};
   // top khác window → bỏ qua phần theo dõi DOM, chỉ nạp hàm.
-  const window = { __TLND__: ns, top: {} };
+  const window = { __HCC__: ns, top: {} };
   vm.runInNewContext(source, { window, chrome: { storage: { local } }, URL, Date });
   return { api: ns.chosenAgency, store };
 }

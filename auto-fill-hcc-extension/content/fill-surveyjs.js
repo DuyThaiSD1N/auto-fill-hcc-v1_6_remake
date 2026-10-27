@@ -1,19 +1,17 @@
 // Engine Cổng DVC quốc gia mới (dichvucong.gov.vn/nop-ho-so) — biểu mẫu SurveyJS trong React.
-// Port từ auto-fill-hcc-extension/content/fill-surveyjs.js (namespace window.__TLND__, sự kiện
-// __TLND_SJS_*). Giá trị ghi qua MODEL survey ở MAIN world (content/surveyjs-main.js) vì dropdown/
-// ngày không nhận gõ DOM; DOM chỉ dùng để tô kết quả và làm dự phòng khi model không đọc được.
-// Đính kèm: bảng thành phần có nút "Tải lên file" theo dòng + MỘT input file dùng chung (không
-// multiple) → bấm nút của dòng (hộp thoại OS bị chặn ở MAIN world) rồi nạp từng tệp.
+// Giá trị ghi qua MODEL survey ở MAIN world (content/surveyjs-main.js) vì dropdown/ngày không nhận gõ DOM;
+// DOM chỉ dùng để tô kết quả và làm dự phòng khi model không đọc được.
+// Đính kèm: bảng thành phần có nút "Tải lên file" theo dòng + MỘT input file dùng chung (không multiple)
+// → bấm nút của dòng (hộp thoại OS bị chặn ở MAIN world) rồi nạp từng tệp.
+// Tách khỏi content.js — dùng namespace window.__HCC__.
 (() => {
-  if (window.__TLND_FILL_SURVEYJS__) return;
-  window.__TLND_FILL_SURVEYJS__ = true;
+  const H = window.__HCC__ || (window.__HCC__ = {});
+  const {
+    sleep, isVisible, dataUrlFilesForBatch, payloadForPlanItem, setFilesOnInput,
+  } = H;
 
-  const H = (window.__TLND__ = window.__TLND__ || {});
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const isVisible = (el) => (typeof H.isVisible === "function" ? H.isVisible(el) : !!el?.offsetParent);
-
-  const REQUEST_EVENT = "__TLND_SJS_REQUEST__";
-  const RESULT_EVENT = "__TLND_SJS_RESULT__";
+  const REQUEST_EVENT = "__HCC_SJS_REQUEST__";
+  const RESULT_EVENT = "__HCC_SJS_RESULT__";
   const UPLOAD_BUTTON = 'button[title="Tải lên file"]';
 
   const fold = (s) => String(s ?? "")
@@ -21,12 +19,6 @@
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const stripAdmin = (s) => fold(s).replace(/^(tinh|thanh pho|tp|xa|phuong|thi tran|dac khu)\s+/, "");
-
-  // Trang nộp một trang: có form SurveyJS VÀ bảng thành phần hồ sơ với nút "Tải lên file".
-  function isSurveyDossierPage() {
-    return document.querySelectorAll(".sd-question[data-name]").length >= 3
-      && !!document.querySelector(UPLOAD_BUTTON);
-  }
 
   function callMain(payload, timeout = 60000) {
     return new Promise((resolve) => {
@@ -105,16 +97,15 @@
     return true;
   }
 
-  // React vẽ lại là ghi đè `class` → class tô màu thường mất ngay. Đánh dấu bằng thuộc tính
-  // data-tlnd-mark (React không quản) + CSS riêng; màu giống autofill-filled / -default / -not-filled.
-  const MARK_ATTR = "data-tlnd-mark";
+  // React vẽ lại là ghi đè `class` → class tô màu của content.js mất ngay. Đánh dấu bằng thuộc tính
+  // data-hcc-mark (React không quản) + CSS riêng; màu giống autofill-filled / -default / -not-filled.
+  const MARK_ATTR = "data-hcc-mark";
   function injectMarkStyles() {
-    if (document.getElementById("tlnd-sjs-mark-style")) return;
+    if (document.getElementById("hcc-sjs-mark-style")) return;
     const style = document.createElement("style");
-    style.id = "tlnd-sjs-mark-style";
+    style.id = "hcc-sjs-mark-style";
     const rule = (kind, bg, color) =>
-      `[${MARK_ATTR}="${kind}"] .sd-input, [${MARK_ATTR}="${kind}"] fieldset, tr[${MARK_ATTR}="${kind}"],` +
-      ` [${MARK_ATTR}="${kind}"] > input, [${MARK_ATTR}="${kind}"] > button, [${MARK_ATTR}="${kind}"] .cc-select {` +
+      `[${MARK_ATTR}="${kind}"] .sd-input, [${MARK_ATTR}="${kind}"] fieldset, tr[${MARK_ATTR}="${kind}"] {` +
       ` background-color: ${bg} !important; outline: 2px solid ${color} !important;` +
       " outline-offset: 1px !important; border-radius: 3px !important; }";
     style.textContent = [
@@ -129,24 +120,37 @@
     if (el) el.setAttribute(MARK_ATTR, kind);
   }
 
-  // CUỘN THEO việc đang làm: model survey nhận cả loạt giá trị trong MỘT lệnh nên trang đứng im —
-  // người ngồi trước màn hình không thấy trợ lý điền/đính tới đâu. Điền: lướt lần lượt qua từng ô
-  // vừa điền (cả lượt tối đa ~3 giây để không làm chậm). Đính: cuộn tới đúng dòng đang tải lên.
-  // Đính xong cả lượt: về đầu trang.
-  const FOLLOW_TOTAL_MS = 3000;
-  const followDelay = (count) => Math.max(40, Math.min(150, Math.floor(FOLLOW_TOTAL_MS / Math.max(1, count))));
+  // ENGINE NHẸ (chạy được trên máy quầy cấu hình thấp): biểu mẫu SurveyJS lớn vừa vẽ lại vừa cuộn mượt theo từng
+  // ô làm máy yếu đơ → không lướt theo từng ô; điền xong nhảy thẳng tới ô đỏ đầu tiên. Đính: nhảy tới đúng dòng
+  // đang tải lên, xong cả lượt về đầu trang. Không cuộn mượt (behavior "auto").
   function followTo(el) {
-    try { el?.scrollIntoView?.({ block: "center", behavior: "smooth" }); } catch (_) { /* trang đổi DOM — bỏ qua */ }
+    try { el?.scrollIntoView?.({ block: "center", behavior: "auto" }); } catch (_) { /* trang đổi DOM — bỏ qua */ }
   }
   function backToTop() {
-    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (_) { /* bỏ qua */ }
+    try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (_) { /* bỏ qua */ }
   }
 
-  function markField(field, ok) {
-    setMark(questionEl(field.name), ok ? (field.default ? "default" : "filled") : "not-filled");
+  // Dò [data-name] MỘT lần cho cả lượt thay vì quét cả trang + getComputedStyle cho từng ô; trượt thì dò như thường.
+  function questionIndex() {
+    const index = new Map();
+    for (const node of document.querySelectorAll("[data-name]")) {
+      const dn = node.getAttribute("data-name") || "";
+      for (const key of new Set([dn, dn.replace(/__\d+$/, "")])) {
+        const cur = index.get(key);
+        if (!cur || (cur.offsetParent === null && node.offsetParent !== null)) index.set(key, node);
+      }
+    }
+    return (name) => {
+      const el = index.get(name);
+      return el?.isConnected ? el : questionEl(name);
+    };
   }
 
-  // "UBND xã X" từ tên xã của tài khoản quầy ("Xã X" / "Phường X" / "X").
+  function markField(field, ok, find = questionEl) {
+    setMark(find(field.name), ok ? (field.default ? "default" : "filled") : "not-filled");
+  }
+
+  // "UBND xã X" từ tên xã của tài khoản trợ lý ("Xã X" / "Phường X" / "X").
   function kinhGuiFromWard(ward) {
     const text = String(ward || "").replace(/\s+/g, " ").trim();
     if (!text) return "";
@@ -154,36 +158,19 @@
     return m ? `UBND ${m[1].toLowerCase()} ${m[2]}` : `UBND ${text}`;
   }
 
-  // Ô bắt buộc còn trống trên form → tô đỏ; trả nhãn để trợ lý đọc cho công dân. Lúc điền chỉ tô ô
-  // chưa có dấu; lúc soát trước khi nộp (force) tô cả ô đã điền rồi bị công dân xoá trắng.
-  async function markEmptyRequired({ force = false } = {}) {
-    injectMarkStyles();
-    const empty = await callMain({ op: "emptyRequired" }, 10000);
-    const names = empty.names || [];
-    for (const name of names) {
-      const el = questionEl(name);
-      if (el && (force || !el.getAttribute(MARK_ATTR))) setMark(el, "not-filled");
-    }
-    return {
-      ok: !!empty.ok,
-      names,
-      labels: names.map((name, i) => empty.labels?.[i] || name),
-      firstEl: questionEl(names[0] || ""),
-    };
-  }
-
   async function fillFormSurveyJs(fields, toolAccount) {
     injectMarkStyles();
     document.querySelectorAll(`[${MARK_ATTR}]`).forEach((el) => el.removeAttribute(MARK_ATTR));
     const result = { filled: 0, notFound: [], errors: [], skipped: [] };
-    const res = await callMain({ op: "setValues", fields });
+    const res = await callMain({ op: "setValues", fields }, 120000);
     const byName = new Map((res.ok ? res.results || [] : []).map((r) => [r.name, r]));
-    if (!res.ok) console.warn("[TLND-SurveyJS] không đọc được model survey:", res.error);
+    if (!res.ok) console.warn("[AutoFill-SurveyJS] không đọc được model survey:", res.error);
 
-    const delay = followDelay(fields.length);
+    const find = questionIndex();
     for (const field of fields) {
       let r = byName.get(field.name) || { ok: false, reason: res.error || "not-found" };
-      const domRetry = !r.ok && r.reason !== "readonly" &&
+      // Cổng chủ động xoá lại sau khi điền ("cleared-after-set") → không gõ đè qua DOM, tô đỏ cho cán bộ xem.
+      const domRetry = !r.ok && r.reason !== "readonly" && r.reason !== "cleared-after-set" &&
         (field.comp === "sjs-dropdown" || (!res.ok && field.comp === "sjs-text"));
       if (domRetry) {
         const ok = field.comp === "sjs-dropdown"
@@ -195,26 +182,30 @@
       else if (r.reason === "readonly") result.skipped.push(field.name);
       else {
         result.notFound.push(field.name);
-        console.warn("[TLND-SurveyJS] chưa điền", field.name, r.reason);
+        console.warn("[AutoFill-SurveyJS] chưa điền", field.name, r.reason);
       }
-      if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok));
-      else markField(field, r.ok);
-      followTo(questionEl(field.name));
-      await sleep(delay);
+      if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok, find));
+      else markField(field, r.ok, find);
     }
 
     // Nơi chọn ở thẻ "Chọn cơ quan thực hiện" thắng tài khoản (nộp hộ về xã khác); không qua bước chọn → tài khoản.
     const where = H.chosenAgency ? await H.chosenAgency.placeForPage(location.href, toolAccount) : toolAccount;
     const place = { kinhGui: kinhGuiFromWard(where?.xa), tai: String(where?.tinh || "").trim() };
     if (place.kinhGui || place.tai) {
-      const placeRes = await callMain({ op: "fillPlace", place }, 20000);
+      const placeRes = await callMain({ op: "fillPlace", place }, 40000);
       for (const r of placeRes.results || []) {
         if (r.ok) result.filled++;
-        markField({ name: r.name, default: true }, r.ok);
+        markField({ name: r.name, default: true }, r.ok, find);
       }
     }
 
-    await markEmptyRequired();
+    const empty = await callMain({ op: "emptyRequired" }, 20000);
+    for (const name of empty.names || []) {
+      const el = find(name);
+      if (el && !el.getAttribute(MARK_ATTR)) setMark(el, "not-filled");
+    }
+    // Không lướt theo từng ô → điền xong nhảy thẳng tới ô cần cán bộ xem đầu tiên.
+    followTo(document.querySelector(`[${MARK_ATTR}="not-filled"]`));
     return result;
   }
 
@@ -262,6 +253,9 @@
     } catch { return ""; }
   }
 
+  // Nhịp dò tên tệp / trạng thái tải: mỗi lượt dò quét mọi dòng bảng + đọc props React → thưa (400 ms) cho máy yếu.
+  const UPLOAD_TICK_MS = 400;
+
   // Trạng thái tải của tệp mới nhất mang tên `name` (MAIN world đọc props React của dòng tệp), chờ hết
   // pending/uploading. Không đọc được (cổng đổi cấu trúc / bản MAIN cũ) → "unknown": giữ kết quả theo tên tệp.
   async function uploadOutcome(name, ticks) {
@@ -271,9 +265,9 @@
       last = Array.isArray(res?.statuses) ? res.statuses[res.statuses.length - 1] || "" : "";
       if (!last) return "unknown";
       if (last !== "pending" && last !== "uploading") return last;
-      await sleep(200);
+      await sleep(UPLOAD_TICK_MS);
     }
-    console.warn("[TLND-SurveyJS] hết hạn chờ trạng thái tải", { file: name, status: last });
+    console.warn("[AutoFill-SurveyJS] hết hạn chờ trạng thái tải", { file: name, status: last });
     return "timeout";
   }
 
@@ -282,14 +276,6 @@
     const attachedNames = [];
     const skippedNames = [];
     const errors = [];
-    // Đặt tên cả lượt một lần: hai tệp cùng tên tài liệu mang hậu tố " 2" — kiểm trùng theo tên
-    // trên dòng mới không nhầm tệp thứ hai là tệp đã có.
-    const payloads = attachments.map((item, i) => H.payloadForPlanItem(payloadFiles, item, i));
-    const named = payloads.map((payload, i) => (payload ? { payload, documentName: attachments[i].documentName } : null));
-    const builtFiles = H.dataUrlFilesForBatch(named.filter(Boolean));
-    const filesByIndex = [];
-    let cursor = 0;
-    named.forEach((entry, i) => { filesByIndex[i] = entry ? builtFiles[cursor++] : null; });
     const runStartedAt = Date.now();
     await callMain({ op: "suppressPicker", on: true }, 5000);
     // Dòng tệp tải hỏng (đỏ) hoặc kẹt "đang tải" (không fileId — nộp sẽ thiếu tệp) còn từ lượt trước: tên vẫn hiện
@@ -298,24 +284,24 @@
     try {
       for (let i = 0; i < attachments.length; i++) {
         const item = attachments[i];
-        const file = filesByIndex[i];
-        if (!file) { errors.push(`Không tìm thấy file "${item.fileName}".`); continue; }
+        const payload = payloadForPlanItem(payloadFiles, item, i);
+        if (!payload) { errors.push(`Không tìm thấy file "${item.fileName}".`); continue; }
+        const [file] = dataUrlFilesForBatch([{ payload, documentName: item.documentName }]);
         const row = findUploadRow(item);
         const button = row?.querySelector(UPLOAD_BUTTON);
         if (!button) {
           errors.push(`Không tìm thấy dòng đính kèm "${item.slotName || ""}" trên trang.`);
           continue;
         }
-        // Bằng chứng thành công = TÊN TỆP hiện thêm trên dòng (cổng tải xong mới hiện); chờ xong mới nạp tệp
-        // kế tiếp vào cùng input. React có thể vẽ lại dòng → mỗi lượt dò lại dòng. Cổng có thể rút gọn tên dài
-        // → nhận cả phần đầu tên khi nội dung dòng đã đổi.
+        // Bằng chứng thành công = TÊN TỆP hiện thêm trên dòng (cổng tải xong mới hiện); chờ xong mới nạp tệp kế
+        // tiếp vào cùng input. React có thể vẽ lại dòng → mỗi lượt dò lại dòng. Cổng có thể rút gọn tên dài →
+        // nhận cả phần đầu tên khi nội dung dòng đã đổi.
         const wanted = fold(file.name);
         const head = fold(file.name.replace(/\.[^.]+$/, "")).slice(0, 12);
         const rowText = () => fold((findUploadRow(item) || row).textContent);
         const count = (text, part) => (part ? text.split(part).length - 1 : 0);
         const beforeText = rowText();
-        // Đính lại cả lượt sau khi điều chỉnh giấy tờ: tệp cùng tên, hoặc cùng NỘI DUNG với tệp đã đính mà tên
-        // còn trên dòng, thì bỏ qua.
+        // Đính lại cả lượt: tệp cùng tên, hoặc cùng NỘI DUNG với tệp đã đính mà tên còn trên dòng, thì bỏ qua.
         const hash = await contentHash(file);
         const rowKey = fold(item.slotName || item.componentName || String(item.slotIndex || 0)).slice(0, 40);
         const sameContent = hash && readAttached()
@@ -335,22 +321,22 @@
         await sleep(250); // cho trang cuộn tới dòng trước khi bấm "Tải lên file"
         let portalError = "";
         let toastsBefore = new Set();
-        // Một lượt: bấm "Tải lên file" của dòng → chờ cổng THẬT SỰ mở input (MAIN world bắt lệnh mở hộp chọn
-        // tệp và gắn data-tlnd-picker) → nạp MỘT tệp vào input dùng chung (không multiple) → chờ tên tệp hiện
-        // trên dòng. Cổng còn bận lượt trước thì bỏ qua cú bấm (không có dấu) → bấm lại ngay.
+        // Một lượt: bấm "Tải lên file" của dòng → chờ cổng THẬT SỰ mở input (MAIN world bắt lệnh mở hộp chọn tệp
+        // và gắn data-hcc-picker) → nạp MỘT tệp vào input dùng chung (không multiple) → chờ tên tệp hiện trên dòng.
+        // Cổng còn bận lượt trước thì bỏ qua cú bấm (không có dấu) → bấm lại ngay, không chờ hết hạn.
         const openPicker = async () => {
           for (let click = 0; click < 2; click++) {
-            document.querySelectorAll("input[data-tlnd-picker]").forEach((el) => el.removeAttribute("data-tlnd-picker"));
-            const rowButton = (findUploadRow(item) || row).querySelector(UPLOAD_BUTTON);
-            if (!rowButton) return null;
-            rowButton.click();
+            document.querySelectorAll("input[data-hcc-picker]").forEach((el) => el.removeAttribute("data-hcc-picker"));
+            const button = (findUploadRow(item) || row).querySelector(UPLOAD_BUTTON);
+            if (!button) return null;
+            button.click();
             for (let w = 0; w < 10; w++) {
               await sleep(100);
-              const input = document.querySelector('input[type="file"][data-tlnd-picker]');
+              const input = document.querySelector('input[type="file"][data-hcc-picker]');
               if (input?.isConnected) return input;
             }
           }
-          // Cổng không mở input qua lệnh bắt được → dùng input dùng chung.
+          // Cổng không mở input qua lệnh bắt được → dùng input dùng chung như trước.
           return document.querySelector('input[type="file"][accept*=".zip"]') ||
             document.querySelector('input[type="file"]');
         };
@@ -358,9 +344,9 @@
           const input = await openPicker();
           if (!input) return false;
           toastsBefore = new Set(portalToasts());
-          if (!H.setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) return false;
+          if (!setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) return false;
           for (let t = 0; t < ticks && !portalError; t++) {
-            await sleep(200);
+            await sleep(UPLOAD_TICK_MS);
             if (shown()) return true;
             // Lời từ chối dung lượng/định dạng ("Vui lòng chọn tệp nhỏ hơn 2MB!", "…tệp đúng định dạng!") không
             // chứa chữ lỗi nào → phải khớp riêng, không thì chờ hết hạn rồi nạp lại lần hai trong khi cổng đã từ
@@ -371,10 +357,10 @@
           }
           return false;
         };
-        // Tệp đã nạp mà hết hạn vẫn chưa hiện → nạp lại MỘT lần (kiểm lại trước để không đính trùng tệp lên
-        // muộn). Hạn = 10s + 5s mỗi MB: tệp nặng đang tải dở mà nạp lại là đính trùng.
+        // Tệp đã nạp mà hết hạn vẫn chưa hiện → nạp lại MỘT lần (kiểm lại trước để không đính trùng tệp lên muộn).
+        // Hạn = 10s + 5s mỗi MB: tệp nặng đang tải dở mà nạp lại là đính trùng.
         const sizeMb = Math.ceil((file.size || 0) / (1024 * 1024));
-        const firstTicks = Math.min(300, 50 + sizeMb * 25);
+        const firstTicks = Math.round(Math.min(60000, 10000 + sizeMb * 5000) / UPLOAD_TICK_MS);
         const startedAt = Date.now();
         let attempts = 1;
         let ok = await attempt(firstTicks);
@@ -411,7 +397,7 @@
           }
           await callMain({ op: "removeUploads", name: file.name, statuses: ["error", "pending", "uploading"] }, 15000);
         }
-        console.info("[TLND-SurveyJS] đính kèm", {
+        console.info("[AutoFill-SurveyJS] đính kèm", {
           file: file.name, sizeKB: Math.round((file.size || 0) / 1024), ms: Date.now() - startedAt, attempts, ok, outcome,
         });
         if (ok) {
@@ -419,24 +405,32 @@
           if (hash) rememberAttached({ hash, name: file.name, row: rowKey });
         } else {
           errors.push(`Không đính kèm được "${file.name}"${portalError ? ` (cổng báo: ${portalError})` : ""}.`);
-          console.warn("[TLND-SurveyJS] đính kèm hụt", { file: file.name, portalError, rowText: rowText().slice(0, 300) });
+          console.warn("[AutoFill-SurveyJS] đính kèm hụt", { file: file.name, portalError, rowText: rowText().slice(0, 300) });
         }
         const markRow = findUploadRow(item) || row;
         if (markRow.isConnected) setMark(markRow, ok ? "filled" : "not-filled");
       }
-      console.info("[TLND-SurveyJS] xong lượt đính", { totalMs: Date.now() - runStartedAt, errors: errors.length });
+      console.info("[AutoFill-SurveyJS] xong lượt đính", { totalMs: Date.now() - runStartedAt, errors: errors.length });
     } finally {
       await callMain({ op: "suppressPicker", on: false }, 5000);
       backToTop();
     }
+    if (errors.length) {
+      return {
+        error: errors.join("; "),
+        attached: attachedNames.length,
+        skipped: skippedNames.length,
+        fileNames: attachedNames,
+        skippedNames,
+      };
+    }
     return {
-      ok: !errors.length,
+      ok: true,
       method: "surveyjs",
       attached: attachedNames.length,
       skipped: skippedNames.length,
       fileNames: attachedNames,
       skippedNames,
-      errors,
     };
   }
 
@@ -450,12 +444,7 @@
     return String(input?.value || "").trim();
   }
 
-  // {name, phone, tinh, xa, diaChi} của người yêu cầu trên tờ khai — đọc qua model (dropdown lấy nhãn).
-  const readSurveyJsRequester = () => callMain({ op: "requesterInfo" }, 5000);
-
-  Object.assign(H, {
-    isSurveyDossierPage, fillFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue, readSurveyJsRequester,
-    markEmptyRequired, injectSurveyJsMarkStyles: injectMarkStyles, setSurveyJsMark: setMark,
-    callSurveyJs: callMain, surveyJsQuestionEl: questionEl,
-  });
+  H.fillFormSurveyJs = fillFormSurveyJs;
+  H.attachSurveyJsByPlan = attachSurveyJsByPlan;
+  H.readSurveyJsValue = readSurveyJsValue;
 })();

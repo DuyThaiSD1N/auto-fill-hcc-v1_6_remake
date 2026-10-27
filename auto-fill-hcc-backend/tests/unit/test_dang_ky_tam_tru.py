@@ -114,13 +114,20 @@ def _conv_on_agency_block():
     return conv
 
 
-def test_hoi_co_quan_khong_con_nut_chon_nhanh():
+def test_hoi_co_quan_the_co_san_noi_theo_tai_khoan_thi_hien_luon_nut_dien():
     conv = {"state": "greet", "procedure_key": None,
             "location": {"province": "Thành phố Hà Nội", "province_slug": "ha_noi", "ward": "Phường Ba Đình"}}
     flow._to_confirm_procedure(conv, KEY)
     r = flow._handle_guide_login(conv, Intent("event", "page_status", {"bcaAgencyBlock": True}))
-    assert conv["bca_agency_pending"] and r.chips == []
+    assert conv["bca_agency_pending"] and [c["send"] for c in r.chips] == ["__action:bca_fill_agency"]
+    assert "Phường Ba Đình, Thành phố Hà Nội" in r.display_md and not r.actions
     assert [c["kind"] for c in r.cards] == ["location_picker"]
+
+
+def test_hoi_co_quan_the_chua_co_xa_thi_chua_co_nut_dien():
+    conv = _conv_on_agency_block()
+    r = flow._bca_agency_ask({**conv, "location": {"province": "Thành phố Hà Nội", "province_slug": "ha_noi"}})
+    assert r.chips == [] and [c["kind"] for c in r.cards] == ["location_picker"]
 
 
 def test_chon_xong_tinh_xa_tren_the_hien_nut_dien_bam_moi_chon_tren_trang():
@@ -265,9 +272,49 @@ def test_dinh_xong_nhac_tich_o_cam_ket_roi_bam_nop_ho_so():
     tpl, commit = flow._attach_done_template(get_procedure(KEY))
     md, tts = flow._fmt(tpl, attached=3, commit=commit)
     assert "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên" in md and "Nộp hồ sơ" in md
-    assert "tích ô" in tts
+    assert "rà lại lần cuối, rồi bấm ô" in md and "bấm ô" in tts
     # Thủ tục khác giữ câu cũ.
     assert flow._attach_done_template({})[0] is flow.vi.ATTACH_DONE
+
+
+def _conv_attaching(caps):
+    return {"_id": "c1", "state": "attaching", "procedure_key": KEY, "location": {}, "attach_plan": [{}, {}, {}],
+            "client_capabilities": caps}
+
+
+def _attach_report(conv):
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import tracing
+
+    with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+        return asyncio.run(flow._handle_attaching(conv, Intent("action", "attach_report", {"attached": 3})))
+
+
+def test_dinh_xong_hien_nut_cam_tich_o_cam_ket():
+    conv = _conv_attaching({"supportsTickCommit": True})
+    r = _attach_report(conv)
+    chip = r.chips[-1]
+    assert conv["state"] == "done"
+    assert chip["label"] == "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên"
+    assert chip["send"] == "__action:tick_commit" and chip["cta"]
+    # Extension cũ không biết tích ô → không có nút cam.
+    r_old = _attach_report(_conv_attaching({}))
+    assert all(c["send"] != "__action:tick_commit" for c in r_old.chips)
+
+
+def test_bam_nut_cam_thi_tich_o_tren_trang_roi_nhac_nop_ho_so():
+    import asyncio
+
+    conv = _conv_attaching({"supportsTickCommit": True})
+    _attach_report(conv)
+    r = asyncio.run(flow._handle_done(conv, Intent("action", "tick_commit")))
+    assert r.actions == [{"type": "tick_commit", "id": "chkCHECK_LIABILITY"}] and not r.display_md
+    r = asyncio.run(flow._handle_done(conv, Intent("event", "commit_result", {"ok": True})))
+    assert "Nộp hồ sơ" in r.display_md and r.actions == [{"type": "chip_used", "send": "__action:tick_commit"}]
+    r = asyncio.run(flow._handle_done(conv, Intent("event", "commit_result", {"ok": False})))
+    assert "chưa tích được" in r.display_md and r.chips[0]["send"] == "__action:tick_commit"
 
 
 def test_luat_bat_nut_nop_ho_so_cong_bo_cong_an():

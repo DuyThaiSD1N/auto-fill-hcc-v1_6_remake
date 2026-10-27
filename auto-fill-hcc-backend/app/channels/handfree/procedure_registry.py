@@ -5642,6 +5642,8 @@ PROCEDURES: list[dict] = [
         "askBeforeAttach": True,
         # Đính xong nhắc tích ô cam kết cuối trang rồi mới bấm "Nộp hồ sơ" (flow._attach_done_template).
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        # id ô tích cam kết trên trang → nút cam cùng nhãn để trợ lý tích hộ (flow._commit_chip).
+        "submitCommitCheckbox": "chkCHECK_LIABILITY",
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getRun } from "../api";
 import CopyButton from "../components/CopyButton";
 import Icon from "../components/Icon";
+import FormSimulation from "../components/run/FormSimulation";
 import Inspector from "../components/run/Inspector";
 import Json from "../components/run/Json";
 import { defaultSpan, flattenSpans } from "../components/run/model";
@@ -15,7 +16,7 @@ import { navigate, onLinkClick, useLocation } from "../router";
 import type { RunDetail } from "../types";
 import { dossierHref } from "./DossiersPage";
 
-type Tab = "stages" | "raw";
+type Tab = "stages" | "form" | "raw";
 
 const FLAG_LABELS: Record<string, string> = {
   llm_fallback: "LLM rơi sang dự phòng",
@@ -56,7 +57,7 @@ function RunView({ run, requestId }: { run: RunDetail; requestId: string }) {
   // Tab nằm trên URL (?tab=) → gửi link mở đúng tab.
   const loc = useLocation();
   const asked = loc.query.get("tab");
-  const tab: Tab = asked === "raw" || !steps ? "raw" : "stages";
+  const tab: Tab = asked === "form" && kind === "autofill" ? "form" : asked === "raw" || !steps ? "raw" : "stages";
   const setTab = (next: Tab) => {
     const q = new URLSearchParams(loc.query);
     q.set("tab", next);
@@ -80,6 +81,7 @@ function RunView({ run, requestId }: { run: RunDetail; requestId: string }) {
 
   const tabs: { key: Tab; label: string; show: boolean }[] = [
     { key: "stages", label: "Công đoạn", show: !!steps },
+    { key: "form", label: "Mô phỏng form", show: kind === "autofill" },
     { key: "raw", label: "Dữ liệu thô", show: true },
   ];
 
@@ -141,6 +143,7 @@ function RunView({ run, requestId }: { run: RunDetail; requestId: string }) {
           <Inspector span={flat.find((s) => s.i === selected) ?? null} steps={steps} />
         </div>
       ) : null}
+      {tab === "form" ? <FormSimulation run={run} /> : null}
       {tab === "raw" ? (
         <div className="layers">
           <div className="panel panel__body"><div className="section-title">traces</div><Json value={trace} tall empty="Lượt này không có bản ghi traces" /></div>
