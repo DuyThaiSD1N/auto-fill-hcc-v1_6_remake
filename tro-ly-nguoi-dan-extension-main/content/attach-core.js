@@ -83,6 +83,9 @@ function hasAuthorizationAttachmentBlock() {
 
 function hasAttachmentTarget() {
   if (document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]')) return true; // Bắc Ninh
+  // Cổng Bộ Công an: bảng giấy tờ chưa nạp tới khi bấm nhóm → nhận theo khung nhóm #tphs_new_<i>.
+  if (globalThis.location?.hostname === "dichvucong.dancuquocgia.gov.vn"
+    && document.querySelector('[id^="tphs_new_"]')) return true;
   if (findCopyCertificationAttachmentRow()) return true;
   // Xét MỌI nút chọn tệp, không chỉ nút đầu: nút đầu rơi vào dòng bị loại (bảng ủy quyền) không
   // có nghĩa trang không còn dòng đính kèm hợp lệ nào. Trả false ở đây là listener im lặng và
@@ -2456,8 +2459,220 @@ async function clearPreviousAttachments() {
   return { removedRows, removedFiles };
 }
 
+// ===== Cổng DVC Bộ Công an (đăng ký tạm trú): mục "HỒ SƠ ĐÍNH KÈM" ngay trên trang kê khai =====
+// Mục chia 5 nhóm theo trường hợp chỗ ở; bảng giấy tờ của nhóm (#tphs_new_<i>) CHỈ nạp khi bấm vào nhóm
+// (onclick load_table_tphs_new(i)). BE (pipelines/dang_ky_tam_tru/attach) chọn MỘT nhóm, mỗi item target
+// "bca-row": dòng sẵn có chứa chữ `rowKey`, hoặc `newRow` → bấm "+ Thêm mới" của nhóm rồi ghi tên giấy tờ.
+function isBcaPortal() {
+  return location.hostname === "dichvucong.dancuquocgia.gov.vn";
+}
+
+function bcaText(value) {
+  return foldChoiceText(String(value || "")).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function bcaGroupRows(container) {
+  return Array.from(container?.querySelectorAll("tr") || []).filter((tr) => tr.querySelector('input[type="file"]'));
+}
+
+// Nút mở nhóm là <a href="javascript:load_table_tphs_new(i);"><p>- Đăng ký tạm trú …</p></a> (crawl 27/10/2026):
+// handler nằm ở HREF. Dò theo chữ thì phải leo lên <a> — bấm div.row bọc ngoài (cũng chứa đúng chữ nhóm) không làm gì.
+function bcaGroupToggle(index, label) {
+  const call = `load_table_tphs_new(${index})`;
+  const byHandler = Array.from(document.querySelectorAll("a[href], [onclick]")).find((el) =>
+    `${el.getAttribute("href") || ""} ${el.getAttribute("onclick") || ""}`.replace(/\s+/g, "").includes(call));
+  if (byHandler) return byHandler;
+  const want = bcaText(label);
+  const hit = Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
+    const text = bcaText(el.textContent);
+    return text.includes(want) && text.length <= want.length + 20;
+  });
+  return hit?.closest("a") || null;
+}
+
+// Bảng của nhóm: trong #tphs_new_<i>, hoặc (cổng vẽ ra chỗ khác) bảng có ô chọn tệp MỚI xuất hiện sau cú bấm.
+function bcaLoadedContainer(index, before) {
+  const box = document.getElementById(`tphs_new_${index}`);
+  if (bcaGroupRows(box).length) return box;
+  const fresh = Array.from(document.querySelectorAll('input[type="file"]'))
+    .find((input) => !before.has(input) && input.closest("tr"));
+  return fresh ? (fresh.closest("table")?.parentElement || fresh.closest("tr").parentElement) : null;
+}
+
+// Đổi sang nhóm khác khi bảng của một nhóm đang hiện (mặc định cổng nạp sẵn nhóm 0), load_table_tphs_new hỏi
+// DlgUtil.showConfirm "Các giấy tờ công dân nộp sẽ mất nếu chọn trường hợp … khác. Công dân có đồng ý chuyển?"
+// — phải bấm đồng ý thì bảng mới chuyển sang #tphs_new_<i>. Dò hộp theo câu hỏi rồi lấy nút đồng ý gần nhất.
+const BCA_CONFIRM_LABELS = ["dong y", "co", "ok", "xac nhan", "yes", "chap nhan", "dong y chuyen"];
+
+function bcaSwitchConfirmButton() {
+  const message = Array.from(document.querySelectorAll("div, p, span, td")).find((el) =>
+    isVisible(el) && String(el.textContent || "").length < 400
+    && bcaText(el.textContent).includes("giay to cong dan nop se mat"));
+  for (let scope = message?.parentElement, hops = 0; scope && hops < 8; scope = scope.parentElement, hops++) {
+    const button = Array.from(scope.querySelectorAll('button, a.btn, input[type="button"]')).filter(isVisible)
+      .find((el) => BCA_CONFIRM_LABELS.includes(bcaText(el.textContent || el.value)));
+    if (button) return button;
+  }
+  return null;
+}
+
+function bcaLoadGroupInMainWorld(index) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ action: "bcaLoadGroup", index }, (r) => {
+        void chrome.runtime.lastError;
+        resolve(r || null);
+      });
+    } catch (_) { resolve(null); }
+  });
+}
+
+async function bcaOpenGroup(index, label) {
+  const current = document.getElementById(`tphs_new_${index}`);
+  if (bcaGroupRows(current).length && isVisible(current)) return current; // đang mở — bấm nữa là đóng lại
+  const before = new Set(document.querySelectorAll('input[type="file"]'));
+  const loaded = () => bcaLoadedContainer(index, before);
+  const toggle = bcaGroupToggle(index, label);
+  if (toggle) {
+    toggle.scrollIntoView?.({ block: "center" });
+    toggle.click(); // MỘT lần: bấm lại là hỏi/chuyển lần nữa
+  }
+  let triggered = !!toggle;
+  let confirmed = false;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 9000) {
+    const box = loaded();
+    if (box) return box;
+    const confirm = confirmed ? null : bcaSwitchConfirmButton();
+    if (confirm) {
+      confirm.click();
+      confirmed = true;
+      console.log("[TLND-Attach] BCA đồng ý chuyển nhóm giấy tờ", { index });
+    } else if (!confirmed && (!triggered || Date.now() - startedAt > 2500)
+        && !document.getElementById(`tphs_new_${index}`)?.innerHTML.trim() && !bcaSwitchConfirmButton()) {
+      // Bấm link "javascript:" từ content script có thể bị CSP của extension chặn (không hộp hỏi, khung vẫn trống)
+      // → nhờ background gọi thẳng load_table_tphs_new(i) trong MAIN world của trang. Chỉ một lần.
+      if (triggered !== "main") {
+        console.log("[TLND-Attach] BCA mở nhóm qua MAIN world", { index, res: await bcaLoadGroupInMainWorld(index) });
+        triggered = "main";
+      }
+    }
+    await sleep(200);
+  }
+  return null;
+}
+
+function bcaAddRowButton(container) {
+  // Nút "+ Thêm mới" của cổng là #btnDocument (load_table_tphs_new ẩn/hiện nó theo bảng giấy tờ của nhóm).
+  const byId = document.getElementById("btnDocument");
+  if (byId && isVisible(byId)) return byId;
+  for (let scope = container, hops = 0; scope && hops < 4; scope = scope.parentElement, hops++) {
+    const button = Array.from(scope.querySelectorAll('button, a, input[type="button"]'))
+      .find((el) => bcaText(el.textContent || el.value).includes("them moi"));
+    if (button) return button;
+  }
+  return null;
+}
+
+async function bcaAddRow(container, name) {
+  const button = bcaAddRowButton(container);
+  if (!button) return null;
+  const before = bcaGroupRows(container).length;
+  button.click(); // MỘT lần, bấm 2 lần là thêm 2 dòng
+  const row = await waitFor(() => {
+    const rows = bcaGroupRows(container);
+    return rows.length > before ? rows[rows.length - 1] : null;
+  }, 4000, 150);
+  if (!row) return null;
+  const nameInput = bcaRowNameInput(row);
+  if (nameInput) setNativeValue(nameInput, name, { typing: false, commit: true });
+  return row;
+}
+
+// Ô "Tên giấy tờ" của dòng thêm mới = ô nhập gần nhất TRƯỚC ô chọn "Hình thức giấy tờ" (cboFILE_TYPE<i>). Dòng có
+// ô ẩn + cột STT ở đầu và ô tên không khai type="text" → đừng đoán theo số cột hay theo [type=text] (trượt sang Ghi chú).
+function bcaRowNameInput(row) {
+  const cells = Array.from(row.cells || []);
+  const selectAt = cells.findIndex((td) => td.querySelector("select"));
+  const before = selectAt > 0 ? cells.slice(0, selectAt) : [];
+  for (const td of before.reverse()) {
+    const input = td.querySelector(
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]), textarea');
+    if (input) return input;
+  }
+  return null;
+}
+
+// Cổng từ chối tên tệp có . , ~ " # % & * : < > ? / { | } ("Vui lòng chọn tệp không có ký tự đặc biệt…") → thay bằng
+// dấu cách. Nhiều tệp cùng một dòng thì đánh số "Tên 1", "Tên 2" — chỉ thêm số, không thêm dấu.
+const BCA_FILENAME_FORBIDDEN = /[.,~"#%&*:<>?/\\{|}]+/g;
+
+function bcaFilesForRow(entries) {
+  const withPayload = entries.filter((e) => e.payload);
+  return withPayload.map((e, i) => {
+    const file = dataUrlToFile(e.payload, e.item.documentName || "");
+    const ext = (file.name.match(/\.[a-z0-9]{2,5}$/i) || [""])[0];
+    let base = file.name.slice(0, file.name.length - ext.length).normalize("NFC")
+      .replace(BCA_FILENAME_FORBIDDEN, " ").replace(/\s+/g, " ").trim() || "Tai lieu";
+    if (withPayload.length > 1) base = `${base} ${i + 1}`;
+    return new File([file], base + ext, { type: file.type, lastModified: Date.now() });
+  });
+}
+
+async function attachFilesByBcaPlan(payloadFiles, attachments) {
+  if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
+    return { error: "Đang có lượt đính kèm khác đang chạy, vui lòng đợi hoàn tất." };
+  }
+  window.__AUTOFILL_HCC_ATTACH_BUSY__ = true;
+  try {
+    const items = attachments.filter((item) => item?.target === "bca-row");
+    const { groupIndex, groupLabel } = items[0] || {};
+    const container = await bcaOpenGroup(groupIndex, groupLabel || "");
+    if (!container) return { error: `Không mở được nhóm giấy tờ "${groupLabel || groupIndex}" ở mục Hồ sơ đính kèm.` };
+    // Gom tệp theo dòng: nhiều tệp cùng một giấy (vd tờ khai chụp từng trang) vào chung một ô chọn tệp.
+    const rows = new Map();
+    items.forEach((item, i) => {
+      const key = item.newRow ? `new:${item.componentName}` : `row:${item.rowKey}`;
+      if (!rows.has(key)) rows.set(key, { item, entries: [] });
+      rows.get(key).entries.push({ item, payload: payloadForPlanItem(payloadFiles, item, i) });
+    });
+    const attachedNames = [];
+    const errors = [];
+    for (const { item, entries } of rows.values()) {
+      const row = item.newRow
+        ? await bcaAddRow(container, item.componentName)
+        : bcaGroupRows(container).find((tr) => bcaText(tr.textContent).includes(item.rowKey));
+      if (!row) {
+        const seen = bcaGroupRows(container).map((tr) => nodeText(tr).slice(0, 60)).join(" | ");
+        errors.push(item.newRow ? `Không thêm được dòng "${item.componentName}".`
+          : `Không thấy dòng "${item.componentName}" trong nhóm giấy tờ (đang có: ${seen || "không dòng nào"}).`);
+        continue;
+      }
+      const files = bcaFilesForRow(entries);
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.checked) checkbox.click(); // MỘT lần, bấm 2 lần là bỏ tick
+      const ok = setFilesOnInput(row.querySelector('input[type="file"]'), files, {
+        allowMultiple: true, assumeConsumed: true,
+      });
+      markAttachmentResult(row, ok);
+      if (ok) attachedNames.push(...files.map((f) => f.name));
+      else errors.push(`Gán tệp thất bại cho dòng "${item.componentName}".`);
+      await sleep(400); // cổng tải tệp lên ngay khi chọn — giãn nhịp giữa các dòng
+    }
+    if (!attachedNames.length) return { error: errors.join("; ") || "Không đính được tệp nào." };
+    return { ok: true, method: "bca", attached: attachedNames.length, fileNames: attachedNames, errors };
+  } catch (e) {
+    return { error: `Lỗi đính kèm Cổng Bộ Công an: ${e?.message || e}` };
+  } finally {
+    window.__AUTOFILL_HCC_ATTACH_BUSY__ = false;
+  }
+}
+
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
   await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
+  if (isBcaPortal() && Array.isArray(attachments) && attachments.some((item) => item?.target === "bca-row")) {
+    return attachFilesByBcaPlan(payloadFiles, attachments);
+  }
   // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
   // Ô đính kèm nằm ở tab "Tải thành phần hồ sơ" CÙNG TRANG với đơn (Liferay Tabs) — mở đúng
   // tab trước để công dân nhìn thấy bot thao tác và trạng thái file hiển thị đúng pane.

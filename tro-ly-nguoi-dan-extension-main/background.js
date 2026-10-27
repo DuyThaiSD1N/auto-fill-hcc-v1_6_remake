@@ -437,6 +437,55 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ tabId: sender?.tab?.id ?? null });
     return true;
   }
+  // Cổng DVC Bộ Công an: ô ngày là bootstrap-datepicker — gán ngày qua API của picker (MAIN world) rồi ĐÓNG lịch.
+  // Gõ chữ từ content script thì lịch bật lên và treo, giá trị không vào model của picker (mất khi đóng).
+  if (msg?.action === "bcaSetDatepickers" && sender?.tab?.id != null && Array.isArray(msg.dates)) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id, frameIds: [sender.frameId ?? 0] },
+      world: "MAIN",
+      func: (dates) => {
+        const $ = window.jQuery;
+        return dates.map(({ id, value }) => {
+          const el = document.getElementById(id);
+          if (!el) return { id, ok: false };
+          // Chỉ ô ĐÚNG là datepicker mới gọi API lịch — gọi lên ô chữ thường (vd txtDOB0) là vô tình dựng lịch mới.
+          const isPicker = !!($ && $(el).data("datepicker")) || el.getAttribute("data-provide") === "datepicker";
+          if (isPicker && $ && $.fn && $.fn.datepicker) {
+            const $el = $(el);
+            $el.datepicker("update", value);
+            $el.trigger("change");
+            $el.datepicker("hide");
+          } else {
+            el.value = value;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+          el.blur();
+          return { id, ok: el.value === value, value: el.value };
+        });
+      },
+      args: [msg.dates],
+    })
+      .then((results) => sendResponse({ ok: true, results: results?.[0]?.result || [] }))
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  }
+  // Cổng DVC Bộ Công an: mở nhóm giấy tờ ở mục Hồ sơ đính kèm bằng chính hàm của trang (MAIN world).
+  // Dự phòng khi bấm <a href="javascript:load_table_tphs_new(i)"> từ content script bị CSP chặn.
+  if (msg?.action === "bcaLoadGroup" && sender?.tab?.id != null && Number.isInteger(msg.index)) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id, frameIds: [sender.frameId ?? 0] },
+      world: "MAIN",
+      func: (index) => {
+        if (typeof window.load_table_tphs_new !== "function") return false;
+        window.load_table_tphs_new(index);
+        return true;
+      },
+      args: [msg.index],
+    })
+      .then((results) => sendResponse({ ok: results?.[0]?.result === true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  }
   if (msg?.action === "clearCitizenDvcCookies") {
     clearCitizenDvcCookies(sender?.tab?.id)
       .then(sendResponse)

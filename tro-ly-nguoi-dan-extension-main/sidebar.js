@@ -355,7 +355,7 @@
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency",
     "prepareBusinessRegistration", "startBusinessRegistration",
   ]);
   let pageWorkInFlight = 0;
@@ -1157,7 +1157,7 @@
     c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
-      || c.maeAgencyBlock || c.lienThongHome
+      || c.maeAgencyBlock || c.lienThongHome || c.bcaAgencyBlock
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -1279,6 +1279,9 @@
       maeAgencyBlock: !!c.maeAgencyBlock,
       // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
       lienThongHome: !!c.lienThongHome,
+      // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
+      bcaAgencyBlock: !!c.bcaAgencyBlock,
+      bcaAgencyDone: !!c.bcaAgencyDone,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -1643,7 +1646,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -5082,6 +5085,13 @@
         // "chọn tay tỉnh/xã" như lỗi chọn cơ quan thường.
         else if (res?.code === "card_not_found") ask(`__event:agency_card_missing:${res.error || ""}`, "system");
         else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+      } else if (a.type === "fill_bca_agency") {
+        // Cổng DVC Bộ Công an: content.js chọn Tỉnh → Xã ở khối "Cơ quan thực hiện". Báo lại cả khi lỗi
+        // (BE mời chọn lại hoặc tự chọn trên trang).
+        setStatus("Đang chọn cơ quan thực hiện…");
+        const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
+        setStatus("");
+        ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
         // (loại khai sinh, tỉnh/xã, trường hợp, tick "Cùng địa bàn") theo plan từ BE. KHÁC
