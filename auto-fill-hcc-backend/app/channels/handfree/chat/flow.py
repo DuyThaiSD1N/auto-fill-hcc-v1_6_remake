@@ -19,6 +19,7 @@ from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import bxd
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import lien_thong
+from app.channels.handfree.chat import owner_review
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
@@ -40,6 +41,7 @@ from app.channels.handfree.procedure_registry import (
 )
 from app.channels.handfree.profiles import service as profile_service
 from app.procedures.portal_submit import needs_submit_click
+from app.form_snapshots.step_rules import form_snapshot_config
 from app.channels.handfree.documents import service as upload_service
 from app.dossiers import rating_card
 from app.dossiers import repo as dossiers_repo
@@ -56,6 +58,8 @@ _ATTACH_MODE_PROCEDURES = {
     "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-chu-ky-nguoi-dich-ctv",
 }
 _ATTACH_ACTION_LEASE_SECONDS = 30
+# Số lần tự mở lại link kê khai khi cổng liên thông đưa về trang chủ (sau đăng nhập).
+_LIEN_THONG_HOME_REOPEN_MAX = 3
 
 
 def _is_business_create(proc: dict | None) -> bool:
@@ -884,6 +888,7 @@ async def handle_turn(
         return r
     reply = await _handle_turn_inner(conv, intent, client_page_context)
     field_review.finalize(conv, intent, reply)
+    owner_review.finalize(conv, intent)
     _lock_docs_chips(conv, intent, reply)
     if free_text and not (reply.display_md or reply.chips or reply.cards or reply.actions):
         # Công dân đã gõ/nói mà bước hiện tại không có phản hồi → nói rõ là chưa hiểu.
@@ -1124,6 +1129,10 @@ async def _handle_turn_inner(
     bxd_reply = bxd.handle(conv, current_proc, intent)
     if bxd_reply is not None:
         return bxd_reply
+    # Vòng hỏi bổ sung ô còn trống ở bước Thông tin chủ hồ sơ (quét sớm).
+    owner_review_reply = await owner_review.handle(conv, current_proc, intent)
+    if owner_review_reply is not None:
+        return owner_review_reply
     if intent.kind == "event" and intent.value == "page_status":
         principal = intent.payload.get("principal") or {}
         if principal:
@@ -1568,20 +1577,14 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
         r = Reply(*_fmt(
             vi.CONFIRM_PROCEDURE_WITH_LOCATION,
             procedure=label,
-            ward=loc.get("ward") or "(chưa chọn xã)",
-            province=loc.get("province") or "(chưa chọn tỉnh)",
+            place=_confirm_place(loc),
             # Dạng ngắn để ghép vào câu; thủ tục không bật chọn đối tượng thì nói "cho bản
             # thân" — đó cũng là mặc định của cổng.
             subject=subject.get("shortLabel") or subject.get("label") or "cho bản thân",
         ))
         r.cards = [_location_card(conv)]
     else:
-        r = Reply(*_fmt(
-            vi.CONFIRM_PROCEDURE,
-            procedure=label,
-            ward=loc.get("ward") or "(chưa chọn xã)",
-            province=loc.get("province") or "(chưa chọn tỉnh)",
-        ))
+        r = Reply(*_fmt(vi.CONFIRM_PROCEDURE, procedure=label, place=_confirm_place(loc)))
     r.chips = [
         # Đây là nút chốt của cả màn chọn thủ tục + nơi làm → to, tràn ngang như các nút
         # chuyển bước khác, đừng để lẫn với chip phụ bên cạnh.
@@ -1589,6 +1592,13 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
         {"label": "Chọn thủ tục khác", "send": "__action:new_procedure"},
     ]
     return r
+
+
+def _confirm_place(loc: dict) -> str:
+    """Nơi làm trong câu xác nhận thủ tục: "Xã, Tỉnh"; chưa chọn xã thì chỉ đọc tỉnh (không chen chữ "chưa chọn xã" vào
+    giữa câu hỏi — card bên dưới vẫn để trống ô xã cho công dân chọn)."""
+    place = ", ".join(part for part in (loc.get("ward"), loc.get("province")) if part)
+    return place or "(chưa chọn tỉnh)"
 
 
 def _repeat_last_reply(conv: dict) -> Reply:
@@ -2530,6 +2540,20 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
 
     if proc.get("bcaPortal"):
         return _bca_portal_on_page(conv, ctx)
+    if ctx.get("lienThongHome"):
+        # Đăng nhập VNeID xong cổng liên thông đưa về TRANG CHỦ chứ không quay lại link kê khai đang mở dở → mở lại
+        # đúng link kê khai của thủ tục (im lặng: trang kê khai mở ra thì watcher báo, luồng nói tiếp như thường).
+        # Giới hạn số lần: chưa đăng nhập thì cổng lại đẩy sang đăng nhập rồi về trang chủ, không được lặp mãi.
+        url = str(proc.get("keKhaiUrl") or "")
+        reopen = conv.get("lien_thong_home_reopen") or {}
+        count = int(reopen.get("count") or 0) if reopen.get("key") == proc.get("key") else 0
+        if "lienthong.dichvucong.gov.vn" in url and count < _LIEN_THONG_HOME_REOPEN_MAX:
+            conv["lien_thong_home_reopen"] = {"key": proc.get("key"), "count": count + 1}
+            r = Reply()
+            r.actions = [{"type": "navigate", "url": url}]
+            return r
+        return Reply()
+
     if ctx.get("infoModal"):
         # Modal "Thông tin chung": backend gửi đúng đối tượng thực hiện theo flow profile;
         # extension phải chọn thành công rồi mới bấm Xác nhận. Đã BỎ câu "Em xác nhận Thông
@@ -3406,7 +3430,10 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
         return await _apply_doc_method(conv, method, reuse_session=True)
     if intent.kind == "event" and intent.value == "docs_complete":
         return await _docs_complete(conv, intent.payload)
-    if intent.kind == "action" and intent.value == "docs_done":
+    # Giấy tờ đang gom để ĐÍNH KÈM: "đính kèm đi" = đúng việc của nút "Đã đưa đủ giấy tờ, đính kèm đi" (nhãn
+    # theo docs_target "attachment") → chốt như bấm nút; phiên 0 tệp thì _docs_complete tự từ chối.
+    if intent.kind == "action" and (intent.value == "docs_done" or (
+            intent.value == "request_attach" and conv.get("docs_target") == "attachment")):
         # Người dân chốt "đã đủ" (nhánh scan / checklist chưa đếm đủ vì PDF gộp trang).
         await upload_service.complete_session(conv.get("upload_session_id") or "")
         return await _docs_complete(conv, intent.payload)
@@ -3436,7 +3463,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     template = vi.MOBILE_CONNECTED_ATTACH if proc.get("mode") == "attach" else vi.MOBILE_CONNECTED
     r = Reply(*_fmt(template))
-    r.chips = [_reshow_qr_chip(), _switch_to_scan_chip()]
+    r.chips = [_reshow_qr_chip(), _switch_to_scan_chip(), _docs_done_chip(conv)]
     return r
 
 
@@ -3463,6 +3490,8 @@ def _fill_fields_reply(conv: dict) -> Reply:
     conv["fields_dispatched"] = True  # lượt đồng bộ sau khi nối lại không phát lệnh điền lần hai
     r = Reply(*_fmt(vi.FILL_READY, count=len(fields)))
     r.actions = [{"type": "fill_fields", "fields": fields}]  # hợp đồng CŨ nguyên xi (docs/00 §4)
+    if conv.get("trace_request_id"):
+        r.actions[0]["formSnapshot"] = form_snapshot_config(conv["trace_request_id"])
     proc = get_procedure(conv.get("procedure_key") or "")
     if tpm.is_active(proc):
         r.actions[0]["toolAccount"] = tpm.tool_account(conv)
@@ -3487,7 +3516,10 @@ def _owner_fields_reply(conv: dict) -> Reply:
     matched = bool((conv.get("owner_match") or {}).get("matched"))
     # Khi đã đối chiếu đúng người, điền lặng lẽ rồi chỉ báo một lần theo kết quả thật từ FE.
     # Tránh hai bubble liên tiếp kiểu "tìm thấy 3 thông tin" rồi "đã điền 2 mục".
-    r = Reply() if matched else Reply(*_fmt(vi.OWNER_FIELDS_UNMATCHED))
+    # Có vòng hỏi bổ sung thì báo cáo điền sẽ mở vòng hỏi ngay → câu "công dân điền giúp em" là thừa.
+    proc = get_procedure(conv.get("procedure_key") or "")
+    quiet = matched or owner_review.enabled(conv, proc)
+    r = Reply() if quiet else Reply(*_fmt(vi.OWNER_FIELDS_UNMATCHED))
     r.actions = [{"type": "fill_owner_fields", "fields": fields}]
     return r
 
@@ -3522,7 +3554,7 @@ def _guided_blocked_reply(conv: dict, proc: dict, payload: dict, phase: str) -> 
     if message:
         r = Reply(*_fmt(vi.GUIDED_STEP_BLOCKED, portal_message=message))
     else:
-        r = Reply(*_fmt(vi.GUIDED_STEP_STUCK))
+        r = Reply(*_fmt(vi.GUIDED_ATTACH_STEP_STUCK if phase == guided.ATTACHMENT else vi.GUIDED_STEP_STUCK))
     chip = guided.cta_chip_for(proc, phase)
     if chip:
         r.chips = [chip]
@@ -3851,7 +3883,8 @@ def _owner_step_follow_up(conv: dict, proc: dict) -> tuple[dict | None, list]:
         return None, []
     # Chỉ hỏi khi pipeline THẬT SỰ đọc được giấy tờ tùy thân của chủ hồ sơ; không có bằng
     # chứng đã quét căn cước thì hỏi là hỏi vu vơ.
-    if (conv.get("owner_fields") and conv.get("certify_identity") is None
+    # Thủ tục đã có ô CCCD riêng trong thành phần hồ sơ (chứng thực chữ ký) không có câu hỏi này: thẻ luôn đính vào ô đó.
+    if (conv.get("owner_fields") and conv.get("certify_identity") is None and guided.certified_slot_moves(proc)
             and _say_once(conv, "certify_identity_ask")):
         return vi.GUIDED_CERTIFY_ASK, guided.certify_identity_chips()
     return None, [guided.owner_cta_chip(proc)]
@@ -3917,6 +3950,16 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
         conv["owner_fill_report"] = rep
         conv["owner_info_done"] = True
         conv["state"] = "owner_waiting_next"
+        proc_owner = get_procedure(conv.get("procedure_key") or "") or {}
+        completed, missing = _owner_report_names(conv, rep)
+        # Ô còn trống mà hỏi được → hỏi từng ô thay vì bảo công dân tự điền. Đứng TRƯỚC nhánh "trang chưa nhận
+        # lệnh": giấy tờ không có thông tin chủ hồ sơ thì engine tìm thấy đủ ô mà không điền ô nào (0 điền, 0
+        # giữ, không lỗi) — trang vẫn nhận lệnh, chỉ là chưa có giá trị.
+        review = owner_review.start(conv, proc_owner, completed, missing) if not rep["errors"] else None
+        if review is not None:
+            attach_action = await _authorization_attach_action(conv, proc_owner)
+            review.actions = [*([attach_action] if attach_action else []), *review.actions]
+            return review
         if rep["filled"] == 0 and rep["kept"] == 0:
             r = Reply(*_fmt(vi.OWNER_FILL_NOT_APPLIED, error=(rep["errors"] or [
                 "trang chưa nhận lệnh điền"
@@ -3924,7 +3967,7 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
             r.chips = [{"label": "🔁 Điền lại thông tin chủ hồ sơ",
                         "send": "__action:retry_owner_fill", "solid": True}]
             return r
-        completed, missing = _owner_report_names(conv, rep)
+        attach_action = await _authorization_attach_action(conv, proc_owner)
         missing_text = _join_owner_labels(missing)
         missing_note = (
             f"\n\nCòn thiếu **{missing_text}**, công dân vui lòng tự điền giúp em."
@@ -3934,8 +3977,8 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
             f" Còn thiếu {missing_text}, công dân vui lòng tự điền giúp em."
             if missing else ""
         )
-        proc_owner = get_procedure(conv.get("procedure_key") or "") or {}
         note, chips = _owner_step_follow_up(conv, proc_owner)
+        chips = owner_review.with_save_chip(conv, proc_owner, chips, missing)
         r = Reply(*_fmt(
             vi.OWNER_FILL_DONE,
             note=note,
@@ -3944,7 +3987,6 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
             missing_tts=missing_tts,
         ))
         r.chips = chips
-        attach_action = await _authorization_attach_action(conv, proc_owner)
         if attach_action:
             r.actions = [attach_action]
         return r

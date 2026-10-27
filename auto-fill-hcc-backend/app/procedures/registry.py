@@ -977,6 +977,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

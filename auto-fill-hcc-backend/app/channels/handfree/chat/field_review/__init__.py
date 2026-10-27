@@ -33,6 +33,8 @@ SURVEY_CAPABILITY = "supportsFieldReviewSurvey"
 FLOW_V2_CAPABILITY = "supportsFlowV2"
 LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
 BXD_CAPABILITY = "supportsBxdFlow"
+OTHER_TEXT_CAPABILITY = "supportsFieldReviewOtherText"
+NESTED_CAPABILITY = "supportsFieldReviewNested"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
              "field_review_answer", "field_review_pick", "field_review_reload", "field_review_owner_next",
              "field_review_preview", "field_review_preview_report", "field_review_preview_close",
@@ -83,6 +85,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         and (not lien_thong(proc) or caps.get(LIEN_THONG_CAPABILITY) is True)
         # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
         and (not bxd(proc) or caps.get(BXD_CAPABILITY) is True)
+        # Tờ khai có khối lồng (khối mẹ / cha nuôi): bản đọc eForm cũ tách khối như khối địa chỉ → hỏi sai ô.
+        and (not (config(proc) or {}).get("nested") or caps.get(NESTED_CAPABILITY) is True)
         and (conv.get("lang") or "vi") != "hmong"
     )
 
@@ -123,6 +127,13 @@ def _copy_pair(proc: dict | None) -> tuple[str, ...]:
     return tuple(str(name) for name in (config(proc) or {}).get("copyQuantity") or [])
 
 
+def _other_text(conv: dict, proc: dict | None) -> dict:
+    """{ô tích: (lựa chọn "Khác", ô ghi chữ đi kèm)} — chỉ khi extension điền được ô đi kèm (apply.extra)."""
+    if (conv.get("client_capabilities") or {}).get(OTHER_TEXT_CAPABILITY) is not True:
+        return {}
+    return dict((config(proc) or {}).get("otherText") or {})
+
+
 def _no_ask(proc: dict | None) -> list[str]:
     return [str(name) for name in (config(proc) or {}).get("noAsk") or []]
 
@@ -131,7 +142,8 @@ def _form_rules(proc: dict | None) -> dict:
     """Danh sách ô theo thủ tục mà extension cần khi tô / tìm ô (chỉ gửi khoá có giá trị)."""
     cfg = config(proc) or {}
     rules = {"noAsk": _no_ask(proc),
-             **{key: [str(name) for name in cfg.get(key) or []] for key in ("zeroIsEmpty", "textDates", "lookup")}}
+             **{key: [str(name) for name in cfg.get(key) or []]
+                for key in ("zeroIsEmpty", "textDates", "lookup", "nested")}}
     return {key: names for key, names in rules.items() if names}
 
 
@@ -457,7 +469,9 @@ def _chips(st: dict) -> list[dict]:
     chips = ([{"label": vi.FR_RELOAD_CHIP, "send": "__action:field_review_reload", "tone": "reload"}]
              if field.get("province") else [])
     if _few_short_choices(options):
-        chips = [_choice_chip(o) for o in options]
+        # Bấm thẳng "Khác" thì ô ghi chữ đi kèm bị bỏ trống → lựa chọn đó chỉ nhận bằng lời / gõ kèm phần cụ thể.
+        other = (field.get("other") or {}).get("option")
+        chips = [_choice_chip(o) for o in options if o != other]
     elif options and _country_field(field):
         chips = [_choice_chip(next(o for o in options if fold(o) == "viet nam"))]
     chips.append({"label": vi.FR_SKIP_CHIP, "send": "__action:field_review_skip", "tone": "skip"})
@@ -507,6 +521,10 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
                                choices_tts=" hoặc ".join(_tts(o) for o in options), **kw)
         if field.get("copy_choice"):
             hint_md, hint_tts = _say(vi.FR_COPY_COUNT_HINT)
+            ask_md, ask_tts = ask_md + hint_md, ask_tts + hint_tts
+        if field.get("other"):
+            option = field["other"]["option"]
+            hint_md, hint_tts = _say(vi.FR_OTHER_TEXT_HINT, option=option, option_tts=_tts(option))
             ask_md, ask_tts = ask_md + hint_md, ask_tts + hint_tts
     elif options and _country_field(field):
         ask_md, ask_tts = _say(vi.FR_ASK_COUNTRY, **kw)
@@ -658,7 +676,7 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
-    return _apply(proc, st, field, answer.value, answer.quantity)
+    return _apply(proc, st, field, answer.value, answer.quantity, answer.other)
 
 
 def _proceed(conv: dict, proc: dict | None, st: dict):
@@ -693,10 +711,16 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
     return r
 
 
-def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str = ""):
+def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str = "", other: str = ""):
     from app.channels.handfree.chat.flow import Reply
 
-    st["pending"] = {"key": field["key"], "label": field["label"], "where": field["where"], "value": value}
+    apply = {"key": field["key"], "value": value}
+    shown = value
+    if other and field.get("other"):
+        # Ô ghi chữ cạnh "Khác" chỉ hiện sau khi tích và không có tên riêng: extension tích xong rồi điền luôn bằng engine.
+        apply["extra"] = [{"name": field["other"]["name"], "comp": "raw", "value": other}]
+        shown = vi.FR_OTHER_VALUE.format(choice=value, text=other)
+    st["pending"] = {"key": field["key"], "label": field["label"], "where": field["where"], "value": shown}
     st.setdefault("history", []).append({"key": field["key"], "value": value})
     st["current"] = None
     focus = ""
@@ -706,7 +730,7 @@ def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str =
         st["copy_carry"] = {"name": pair[1], "quantity": quantity}
         focus = pair[1]
     r = Reply()
-    r.actions = [_next_action(proc, st, {"key": field["key"], "value": value}, focus=focus)]
+    r.actions = [_next_action(proc, st, apply, focus=focus)]
     return r
 
 
@@ -793,6 +817,11 @@ async def handle(conv: dict, proc: dict | None, intent):
         st["stats"] = _stats(payload["stats"])
     back = bool(st.get("back_label"))
     field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc))
+    if field is not None and bxd(proc):
+        field["mobile_only"] = True  # cổng iGate các bộ không nhận số máy bàn
+    other = _other_text(conv, proc).get(field["name"]) if field is not None else None
+    if other and other[0] in field["options"]:
+        field["other"] = {"option": other[0], "name": other[1]}
     carry = st.pop("copy_carry", None)
     if carry and field is not None:
         filled = _fill_copy_quantity(proc, st, field, carry, payload.get("applied"))
@@ -886,9 +915,8 @@ def _preview_step(proc: dict | None, st: dict, intent):
         return r
     if intent.value == "field_review_preview_close":
         st["preview_open"] = False
-        r = Reply(*_say(vi.FR_PREVIEW_CLOSED))
+        r = _edit_reply(st)
         r.actions = [{"type": "declaration_preview_close"}]
-        r.chips = [_preview_chip()]
         return r
     if intent.value == "field_review_confirm":
         if not st.get("preview_open"):
@@ -903,12 +931,22 @@ def _preview_step(proc: dict | None, st: dict, intent):
         return Reply()  # trang đã sang Thành phần hồ sơ: page_status đưa vào bước đính kèm như cũ
     if payload.get("noPreview"):
         st["preview_open"] = False
-        r = Reply(*_say(vi.FR_PREVIEW_CLOSED))
-        r.chips = [_preview_chip()]
-        return r
+        return _edit_reply(st)
     message = _clean(payload.get("message"), 200)
     r = Reply(*_say(vi.FR_CONFIRM_FAILED, message=f": *{message}*" if message else ""))
     r.chips = confirm_chips
+    return r
+
+
+def _edit_reply(st: dict):
+    """Đóng bản xem trước để sửa tờ khai: tờ khai còn ô trống thì vẫn cho quay lại vòng hỏi từng ô (cùng các nút sửa nhỏ
+    của lượt điền), không chỉ để mỗi nút Xem trước."""
+    from app.channels.handfree.chat.flow import Reply
+
+    empty = ((st.get("stats") or {}).get("empty") or 0) > 0
+    r = Reply(*_say(vi.FR_PREVIEW_CLOSED, review_md=vi.FR_PREVIEW_CLOSED_REVIEW["md"] if empty else "",
+                    review_tts=vi.FR_PREVIEW_CLOSED_REVIEW["tts"] if empty else ""))
+    r.chips = [*([_start_chip()] if empty else []), _preview_chip(), *_small_chips(st.get("chips") or [])]
     return r
 
 

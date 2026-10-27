@@ -231,7 +231,7 @@ def test_attachment_llm_fallback_uses_specific_name_for_unlisted_document():
     assert "Tài liệu bổ sung" not in attachments[0]["componentName"]
 
 
-async def test_attachment_plan_calls_llm_only_for_rule_other(monkeypatch):
+async def test_attachment_plan_calls_llm_for_every_file(monkeypatch):
     seen = []
 
     async def fake_ocr(_files):
@@ -242,17 +242,38 @@ async def test_attachment_plan_calls_llm_only_for_rule_other(monkeypatch):
 
     async def fake_llm(documents):
         seen.extend(documents)
-        return {1: {"type": "other", "documentName": "Giấy xác nhận tình trạng hôn nhân"}}
+        return {0: {"type": "birth_proof", "documentName": "Giấy chứng sinh"},
+                1: {"type": "other", "documentName": "Giấy xác nhận tình trạng hôn nhân"}}
 
     monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr)
     monkeypatch.setattr(planner, "_classify_with_llm", fake_llm)
 
     result = await planner.plan([_file("Giấy chứng sinh.pdf"), _file("scan-03.pdf")])
 
-    assert [item["fileName"] for item in seen] == ["scan-03.pdf"]
-    assert result["extracted"]["llmDocuments"] == ["scan-03.pdf"]
+    assert [item["fileName"] for item in seen] == ["Giấy chứng sinh.pdf", "scan-03.pdf"]
+    assert result["extracted"]["llmDocuments"] == ["Giấy chứng sinh.pdf", "scan-03.pdf"]
     assert result["attachments"][0]["componentIndex"] == 3
     assert result["attachments"][1]["componentName"] == "Giấy xác nhận tình trạng hôn nhân"
+
+
+def test_llm_thang_luat_do_chu_to_khai_nhac_giay_chung_sinh_khong_vao_dong_3():
+    files = [{"name": "scan.pdf"}]
+    ocr_results = [{"name": "scan.pdf", "text": "TỜ KHAI ĐĂNG KÝ KHAI SINH ... kèm theo Giấy chứng sinh số 001"}]
+
+    attachments, classified = planner.build_plan_items(files, ocr_results, {0: {"type": "birth_declaration"}})
+
+    assert attachments[0]["target"] == "new"
+    assert attachments[0]["componentName"] == "Tờ khai đăng ký khai sinh bản giấy"
+    assert classified[0]["source"] == "llm"
+
+
+def test_llm_khong_tra_loi_thi_moi_dung_luat_du_phong():
+    files = [{"name": "scan.pdf"}]
+    ocr_results = [{"name": "scan.pdf", "text": "GIẤY CHỨNG SINH Mã số GCS 001"}]
+
+    attachments, classified = planner.build_plan_items(files, ocr_results, {})
+
+    assert attachments[0]["componentIndex"] == 3 and classified[0]["source"] == "rule"
 
 
 def test_identity_number_inside_another_document_does_not_bypass_llm_fallback():

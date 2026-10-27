@@ -1,7 +1,7 @@
 // Thủ tục ĐĂNG KÝ KINH DOANH (đăng ký hộ KD 8 trang: fill-all, ngành nghề, copy-person, cascade địa chỉ).
-// Procedure-specific — tách khỏi content.js. Namespace window.__HCC__.
+// Procedure-specific — tách khỏi content.js. Namespace window.__TLND__.
 (() => {
-  const H = window.__HCC__ || (window.__HCC__ = {});
+  const H = window.__TLND__ || (window.__TLND__ = {});
   const { sleep, norm, fieldCandidates, setNativeValue, waitFor, readAcctContact,
     fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField } = H;
 
@@ -26,6 +26,7 @@
     "thong-tin-de-nghi-cap-lai": "Thông tin đề nghị cấp lại GCN/GXNTĐ",
     "nguoi-nop-ho-so": "Người nộp hồ sơ",
   };
+  const BUSINESS_CREATE_STEP_DELAY_MS = 2500;
 
   function currentBusinessPageLabel() {
     const sitemap = document.querySelector("#ctl00_LV4_SiteMapPath1")
@@ -57,11 +58,8 @@
     if (wanted.includes("thong bao quyet dinh giai the") || wanted.includes("cham dut hoat dong")) {
       return { pageKey: "cham-dut-hoat-dong", label };
     }
-    // Trang chính của nhánh "Tạm ngừng kinh doanh" (SUSPEN) — nhãn menu trái ĐÃ XÁC NHẬN qua ảnh
-    // chụp cổng thật là "Tạm ngừng kinh doanh" (không phải "Tạm ngừng hoạt động" như suy đoán ban
-    // đầu). Breadcrumb khi mở trang con vẫn CHƯA có ảnh xác nhận nên vẫn khớp thêm hai cụm khả dĩ
-    // ("tam ngung hoat dong"/"thong bao tam ngung"); token-overlap phía dưới là lưới đỡ chung nếu
-    // breadcrumb thật khác các cụm này.
+    // Trang chính nhánh SUSPEN (DW_SUSPENSIONEdit.aspx): menu trái là "Tạm ngừng kinh doanh" (đã
+    // xác nhận trên cổng thật); breadcrumb chưa có ảnh xác nhận nên khớp thêm hai cụm khả dĩ.
     if (wanted.includes("tam ngung kinh doanh") || wanted.includes("tam ngung hoat dong")
       || wanted.includes("thong bao tam ngung")) {
       return { pageKey: "tam-ngung-hoat-dong", label };
@@ -107,9 +105,27 @@
       && !!leftMenu;
   }
 
+  function isBusinessCreateMainRoot(registrationType, page) {
+    if (!registrationType.includes("thanh lap moi") || page.pageKey) return false;
+    const currentLabel = foldBusinessPageText(currentBusinessPageLabel());
+    const dataBlock = document.getElementById("ctl00_C_BLCtl_LblFilterExpand_DB");
+    const leftMenu = document.getElementById("ctl00_C_BLCtl_CtlList");
+    return currentLabel === "khoi du lieu"
+      && !!dataBlock && foldBusinessPageText(dataBlock.textContent).includes("khoi du lieu")
+      && !!leftMenu;
+  }
+
   // Wizard thay đổi dùng chung Registration.aspx nhưng mỗi bước có một marker riêng. Không dựa URL
   // vì URL không đổi qua bốn postback và các trang nội dung lại dùng chung với luồng thành lập mới.
   function detectBusinessChangeStage() {
+    // Handfree điều hướng từ DVCQG → đáp xuống TRANG CHỦ HkdOnline (khác auto-fill popup
+    // vốn bắt cán bộ tự đứng ở Registration.aspx) → luồng thay đổi cũng phải nhận stage home.
+    const pathname = String(window.location?.pathname || "");
+    if (/\/HkdOnline\/?$/i.test(pathname) || /\/HkdOnline\/Default\.aspx$/i.test(pathname)) {
+      const homeLink = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (homeLink) return { stage: "home", pageKey: null };
+    }
     const markers = [
       ["select-registration", "ctl00_C_myWizard_LblQuestion1", "chon loai dang ky truc tuyen"],
       ["search-business", "ctl00_C_myWizard_Label2", "tim kiem ho kinh doanh de tien hanh dang ky thay doi"],
@@ -164,18 +180,48 @@
     if (isBusinessChangeMainRoot(registrationType, page)) {
       return { stage: "main-root", pageKey: null, label: page.label };
     }
-    // Cảnh báo này chỉ có nghĩa TRÊN CỔNG HKD. Content script chạy ở mọi cổng nên ở cổng ĐKKD qua
-    // mạng (dangkyquamang) nó bắn liên tục "không nhận diện được bước" — đúng về mặt kỹ thuật nhưng
-    // là NHIỄU, và dễ bị đọc nhầm thành lỗi của luồng doanh nghiệp.
-    if (!String(window.location?.hostname || "").includes("hokinhdoanh.dkkd.gov.vn")) {
-      return { stage: "unknown", pageKey: null };
-    }
     console.warn("[ChangeHKD] không nhận diện được bước", {
       pathname: String(window.location?.pathname || ""),
       breadcrumb: currentBusinessPageLabel(),
       registrationType,
       hasWizard: !!document.querySelector('[id^="ctl00_C_myWizard_"]'),
     });
+    return { stage: "unknown", pageKey: null };
+  }
+
+  // Thành lập mới có ba màn bootstrap trước 8 khối dữ liệu. Nhận diện bằng control/metadata
+  // nghiệp vụ thật của WebForms; URL Registration.aspx không đổi qua các full postback.
+  function detectBusinessCreateStage() {
+    const host = String(window.location?.hostname || "").toLowerCase();
+    if (host !== "hokinhdoanh.dkkd.gov.vn") return { stage: "unknown", pageKey: null };
+
+    const pathname = String(window.location?.pathname || "");
+    if (/\/HkdOnline\/?$/i.test(pathname) || /\/HkdOnline\/Default\.aspx$/i.test(pathname)) {
+      const link = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (link) return { stage: "home", pageKey: null };
+    }
+
+    const typeTable = document.getElementById("ctl00_C_myWizard_CtlType");
+    const newRadio = document.querySelector('input[name="ctl00$C$myWizard$CtlType"][value="NEW"]');
+    if (typeTable || newRadio) return { stage: "select-registration", pageKey: null };
+
+    const finish = document.getElementById("ctl00_C_myWizard_FinishNavigationTemplateContainerID_FinishButton");
+    const confirmedType = foldBusinessPageText(
+      document.getElementById("ctl00_C_myWizard_InfoChnType")?.textContent || ""
+    );
+    if (finish) return { stage: "confirm", pageKey: null, confirmedType };
+
+    const page = detectBusinessPageKey();
+    const registrationType = foldBusinessPageText(
+      document.getElementById("ctl00_C_INFOCtl_DOCUMENT_TYPE_IDFld")?.textContent || ""
+    );
+    if (page.pageKey && registrationType.includes("thanh lap moi")) {
+      return { stage: "main", pageKey: page.pageKey, label: page.label };
+    }
+    if (isBusinessCreateMainRoot(registrationType, page)) {
+      return { stage: "main-root", pageKey: null, label: page.label };
+    }
     return { stage: "unknown", pageKey: null };
   }
 
@@ -264,9 +310,9 @@
   }
 
   const FILLALL_KEY = "autofill_fillall_state";
-  // sessionStorage thuộc trang nên extension Handfree (cùng engine, cùng FILLALL_KEY) đọc chung được;
-  // khóa mirror phải riêng, nếu không bên kia sẽ nhặt state của bên này sau postback rồi tự chạy tiếp.
-  const FILLALL_SESSION_MIRROR_KEY = "__af_fillall_state_mirror";
+  // sessionStorage thuộc trang nên extension Auto-fill (cùng engine, cùng FILLALL_KEY) đọc chung được;
+  // khóa mirror phải riêng, nếu không bên này sẽ nhặt state của bên kia sau postback rồi tự chạy tiếp.
+  const FILLALL_SESSION_MIRROR_KEY = "__tlnd_fillall_state_mirror";
 
   function readFillAllSessionMirror() {
     try {
@@ -384,6 +430,7 @@
   }
 
   function doAspPostback(target, arg) {
+    if (H.isBusinessRunCancelled?.()) return false;
     const et = document.getElementById("__EVENTTARGET");
     const ea = document.getElementById("__EVENTARGUMENT");
     const form = (et && et.form) || document.forms.namedItem("aspnetForm") || document.querySelector("form");
@@ -397,6 +444,7 @@
   }
 
   function goToBusinessPageByKey(pageKey) {
+    if (H.isBusinessRunCancelled?.()) return false;
     const label = BUSINESS_PAGE_LABELS[pageKey] || "";
     const link = findBusinessPageLink(label);
     if (!link) {
@@ -411,6 +459,7 @@
 
   function clickSaveDetectReload(btn) {
     return new Promise((resolve) => {
+      if (H.isBusinessRunCancelled?.()) { resolve(false); return; }
       let done = false;
       const onLeave = () => { if (!done) { done = true; resolve(true); } };
       window.addEventListener("beforeunload", onLeave, { once: true });
@@ -427,7 +476,7 @@
   }
 
   function selectNativeRadio(node) {
-    if (!node) return false;
+    if (!node || H.isBusinessRunCancelled?.()) return false;
     node.checked = true;
     node.dispatchEvent(new Event("input", { bubbles: true }));
     node.dispatchEvent(new Event("click", { bubbles: true }));
@@ -436,8 +485,9 @@
   }
 
   function clickBusinessWizardButton(node) {
-    if (!node || node.disabled) return false;
-    try { node.scrollIntoView?.({ block: "center" }); } catch (e) { /* ignore */ }
+    if (!node || node.disabled || H.isBusinessRunCancelled?.()) return false;
+    // click() không yêu cầu control nằm trong viewport. Không scroll trước khi click để màn hình
+    // công dân không nhảy xuống giữa trang ngay trước full postback.
     node.click();
     return true;
   }
@@ -481,26 +531,177 @@
     H.endFillAllUI("⚠ " + message);
   }
 
-  async function stepChangeBootstrap(st) {
-    const detected = detectBusinessChangeStage();
-    const flow = st.businessFlow || {};
-    const search = st.businessSearch || flow.search || {};
-    const effectiveFlow = { ...flow, search };
-    console.log("[ChangeHKD] bootstrap", detected.stage, search);
-    const workflowLabel = flow.wizardType === "reissue" ? "Cấp lại/cấp đổi GCN HKD" : "Đăng ký thay đổi HKD";
-    H.setRunProgressText(`${workflowLabel} — ${detected.stage}\n(đừng thao tác tới khi xong)`);
+  async function failCreateWorkflow(message) {
+    console.error("[CreateHKD] dừng có kiểm soát:", message);
+    await clearFillAllState();
+    H.endFillAllUI("⚠ " + message);
+  }
+
+  async function waitCreateBootstrapStep(expectedStage) {
+    await sleep(BUSINESS_CREATE_STEP_DELAY_MS);
+    const active = await getFillAllState();
+    if (!active || active.workflow !== "create") return false;
+    const currentStage = detectBusinessCreateStage().stage;
+    if (currentStage !== expectedStage) {
+      // Trang đã đổi trong lúc chờ (người dùng/cổng thao tác trước) → nhận diện lại ngay,
+      // không thực hiện click dành cho DOM của bước cũ.
+      setTimeout(stepFillAll, 0);
+      return false;
+    }
+    return true;
+  }
+
+  async function stepCreateBootstrap(st) {
+    const detected = detectBusinessCreateStage();
+    H.setRunProgressText(`Thành lập mới hộ kinh doanh — ${detected.stage}\n(đừng thao tác tới khi xong)`);
+    console.log("[CreateHKD] bootstrap", detected.stage);
 
     if (detected.stage === "unknown") {
-      return void failChangeWorkflow(`Trang hiện tại không thuộc luồng ${workflowLabel}. Hãy mở đúng hồ sơ rồi chạy lại.`);
+      st.bootstrapTries = Number(st.bootstrapTries || 0) + 1;
+      await setFillAllState(st);
+      if (st.bootstrapTries <= 6) return void setTimeout(stepFillAll, 700);
+      return void failCreateWorkflow("Không nhận diện được màn Thành lập mới hộ kinh doanh hiện tại.");
     }
+    st.bootstrapTries = 0;
+    ensureConfirmOverride();
+
     if (detected.stage === "main" || detected.stage === "main-root") {
+      if (st.bootstrapOnly) {
+        await clearFillAllState();
+        H.businessDraftReady?.();
+        return;
+      }
       st.bootstrapDone = true;
       st.phase = "fill";
       await setFillAllState(st);
       return void stepFillAll();
     }
 
+    if (detected.stage === "home") {
+      const link = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (!link) return void failCreateWorkflow("Không tìm thấy menu Đăng ký Hộ kinh doanh.");
+
+      st.homeTries = Number(st.homeTries || 0) + 1;
+      if (st.homeTries > 3) {
+        return void failCreateWorkflow(
+          "Đã chọn Đăng ký Hộ kinh doanh nhưng cổng vẫn chưa mở trang chọn loại đăng ký."
+        );
+      }
+      await setFillAllState(st);
+      if (!await waitCreateBootstrapStep("home")) return;
+
+      // Menu này là javascript:__doPostBack của ASP.NET, không phải link điều hướng thường.
+      // Bóc đúng target/argument rồi submit form để không phụ thuộc javascript URL chạy từ
+      // isolated world của content script.
+      const href = link.getAttribute("href") || "";
+      const postback = href.match(
+        /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/
+      );
+      const submitted = postback
+        ? doAspPostback(postback[1], postback[2])
+        : doAspPostback("ctl00$LV3$mCon", "bĐăng ký Hộ kinh doanh");
+      if (!submitted) return void failCreateWorkflow("Không gửi được lệnh mở Đăng ký Hộ kinh doanh.");
+
+      // Postback thành công sẽ hủy timer khi reload. Nếu trang không đổi, detector chạy lại
+      // có giới hạn và báo lỗi thay vì im lặng đứng ở trạng thái `home`.
+      setTimeout(stepFillAll, 1600);
+      return;
+    }
+
+    if (detected.stage === "select-registration") {
+      const radio = document.querySelector('input[name="ctl00$C$myWizard$CtlType"][value="NEW"]');
+      const next = document.getElementById("ctl00_C_myWizard_StepNavigationTemplateContainerID_StepNextButton");
+      if (!radio || !next) {
+        return void failCreateWorkflow("Không tìm thấy lựa chọn Thành lập mới hoặc nút Tiếp theo.");
+      }
+      await setFillAllState(st);
+      if (!await waitCreateBootstrapStep("select-registration")) return;
+      selectNativeRadio(radio);
+      await setFillAllState(st);
+      clickBusinessWizardButton(next);
+      return;
+    }
+
+    if (detected.stage === "confirm") {
+      if (!String(detected.confirmedType || "").includes("thanh lap moi")) {
+        return void failCreateWorkflow(
+          "Bước xác nhận không hiển thị Thành lập mới hộ kinh doanh nên em không bấm Bắt đầu."
+        );
+      }
+      const begin = document.getElementById("ctl00_C_myWizard_FinishNavigationTemplateContainerID_FinishButton");
+      if (!begin) return void failCreateWorkflow("Không tìm thấy nút Bắt đầu ở bước xác nhận.");
+      await setFillAllState(st);
+      if (!await waitCreateBootstrapStep("confirm")) return;
+      clickBusinessWizardButton(begin);
+    }
+  }
+
+  async function stepChangeBootstrap(st) {
+    const detected = detectBusinessChangeStage();
+    // Pha 1 trợ lý (prepare) chưa có businessFlow từ pipeline: luồng cấp lại vẫn phải chọn REI
+    // ở màn chọn loại đăng ký, không rơi về CHN như chấm dứt/tạm ngừng.
+    const flow = st.businessFlow
+      || (st.workflow === "reissue" ? { wizardType: "reissue", registrationOption: "REI" } : {});
+    const search = st.businessSearch || flow.search || {};
+    const effectiveFlow = { ...flow, search };
+    console.log("[ChangeHKD] bootstrap", detected.stage, search);
+    const workflowLabel = flow.wizardType === "reissue" ? "Cấp lại/cấp đổi GCN HKD" : "Đăng ký thay đổi HKD";
+    H.setRunProgressText(`${workflowLabel} — ${detected.stage}\n(đừng thao tác tới khi xong)`);
+
+    // Handfree pha 1 (prepare): chỉ lái tới màn chỉ định (thường "search-business" — bước
+    // Tìm kiếm hộ KD) rồi DỪNG nhận giấy tờ; mã số tra cứu nằm trong Thông báo/GCN nên
+    // phải có pipeline xong mới điền tiếp được.
+    if (st.stopAtStage && detected.stage === st.stopAtStage) {
+      await clearFillAllState();
+      H.businessDraftReady?.();
+      return;
+    }
+
+    if (detected.stage === "unknown") {
+      // Vừa postback từ home/DVCQG: DOM có thể chưa dựng xong marker — thử lại có giới hạn
+      // như luồng thành lập mới thay vì fail ngay.
+      st.bootstrapTries = Number(st.bootstrapTries || 0) + 1;
+      await setFillAllState(st);
+      if (st.bootstrapTries <= 6) return void setTimeout(stepFillAll, 700);
+      return void failChangeWorkflow(`Trang hiện tại không thuộc luồng ${workflowLabel}. Hãy mở đúng hồ sơ rồi chạy lại.`);
+    }
+    st.bootstrapTries = 0;
+    if (detected.stage === "main" || detected.stage === "main-root") {
+      st.bootstrapDone = true;
+      st.phase = "fill";
+      await setFillAllState(st);
+      // Vừa qua trọn wizard vào "Khối dữ liệu": báo rồi NGHỈ ~5 giây cho trang ổn định
+      // (và người dân kịp nghe) trước khi bắt đầu điền các khối cần sửa.
+      H.setRunProgressText("Đã vào Khối dữ liệu ✓ Em bắt đầu điền các khối cần sửa sau ít giây…");
+      await sleep(5000);
+      return void stepFillAll();
+    }
+
     ensureConfirmOverride();
+
+    if (detected.stage === "home") {
+      const link = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (!link) return void failChangeWorkflow("Không tìm thấy menu Đăng ký Hộ kinh doanh.");
+      st.homeTries = Number(st.homeTries || 0) + 1;
+      if (st.homeTries > 3) {
+        return void failChangeWorkflow(
+          "Đã chọn Đăng ký Hộ kinh doanh nhưng cổng vẫn chưa mở trang chọn loại đăng ký."
+        );
+      }
+      await setFillAllState(st);
+      const href = link.getAttribute("href") || "";
+      const postback = href.match(
+        /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/
+      );
+      const submitted = postback
+        ? doAspPostback(postback[1], postback[2])
+        : doAspPostback("ctl00$LV3$mCon", "bĐăng ký Hộ kinh doanh");
+      if (!submitted) return void failChangeWorkflow("Không gửi được lệnh mở Đăng ký Hộ kinh doanh.");
+      setTimeout(stepFillAll, 1600);
+      return;
+    }
     if (detected.stage === "select-registration") {
       const registrationOption = flow.registrationOption || (flow.wizardType === "reissue" ? "REI" : "CHN");
       const radio = document.querySelector(
@@ -550,12 +751,13 @@
       // DISSOLU và SUSPEN (Tạm ngừng kinh doanh) đều có AutoPostBack ngay khi chọn. Persist trước
       // rồi chờ reload; nếu cổng không reload thì nhịp hẹn giờ kế tiếp sẽ thấy radio đã checked và
       // bấm Tiếp theo.
-      if ((amendmentValue === "DISSOLU" || amendmentValue === "SUSPEN") && !amendment.checked) {
+      const autoPostback = amendmentValue === "DISSOLU" || amendmentValue === "SUSPEN";
+      if (autoPostback && !amendment.checked) {
         await setFillAllState(st);
         selectNativeRadio(amendment);
         return void setTimeout(stepFillAll, 1200);
       }
-      if (amendmentValue !== "DISSOLU" && amendmentValue !== "SUSPEN") selectNativeRadio(amendment);
+      if (!autoPostback) selectNativeRadio(amendment);
       if (amendmentValue === "CHAPAR") {
         const nameValue = flow.nameChange ? "Y" : "N";
         const nameRadio = document.querySelector(`input[name="ctl00$C$myWizard$NAME_CHANGE_YN_IDFld"][value="${nameValue}"]`);
@@ -582,69 +784,6 @@
       await setFillAllState(st);
       clickBusinessWizardButton(begin);
     }
-  }
-
-  // Thành lập mới HKD: cán bộ bấm quét khi còn đứng ở wizard Registration.aspx → trợ lý tự tích
-  // "Thành lập mới hộ kinh doanh" → Tiếp theo → (xác nhận) Bắt đầu, rồi điền 8 trang như thường.
-  // State fill-all đã persist nên sống qua từng postback; mỗi lượt tải trang chỉ làm đúng một bước.
-  const CREATE_BOOTSTRAP_MAX_TRIES = 6;
-
-  async function stepCreateBootstrap(st) {
-    const detected = detectBusinessChangeStage();
-    H.setRunProgressText(`Đăng ký thành lập HKD — đang mở hồ sơ\n(đừng thao tác tới khi xong)`);
-
-    // Wizard phải xét TRƯỚC: breadcrumb "Đăng ký Hộ kinh doanh" của Registration.aspx trùng từ với
-    // nhãn trang "Tên hộ kinh doanh" nên detectBusinessPageKey() có thể nhận nhầm là đã vào hồ sơ.
-    const onWizard = ["select-registration", "search-business", "select-change", "confirm"].includes(detected.stage);
-    if (!onWizard) {
-      const inDossier = /\/DW_DOCUMENTEdit\.aspx$/i.test(String(location.pathname || ""))
-        || !!detectBusinessPageKey().pageKey;
-      if (!inDossier) {
-        return void failChangeWorkflow("Trang hiện tại không thuộc luồng Đăng ký thành lập HKD. Hãy mở trang Đăng ký hộ kinh doanh rồi chạy lại.");
-      }
-      st.bootstrapDone = true;
-      await setFillAllState(st);
-      return void stepFillAll();
-    }
-
-    st.bootstrapTries = (st.bootstrapTries || 0) + 1;
-    if (st.bootstrapTries > CREATE_BOOTSTRAP_MAX_TRIES) {
-      return void failChangeWorkflow("Đã thử mở hồ sơ thành lập mới nhiều lần nhưng cổng chưa chuyển bước — mời thao tác tay.");
-    }
-    ensureConfirmOverride();
-
-    if (detected.stage === "select-registration") {
-      const radio = document.querySelector('input[name="ctl00$C$myWizard$CtlType"][value="NEW"]')
-        || document.getElementById("ctl00_C_myWizard_CtlType_0");
-      const next = document.getElementById("ctl00_C_myWizard_StepNavigationTemplateContainerID_StepNextButton");
-      if (!radio || !next) {
-        return void failChangeWorkflow("Không tìm thấy lựa chọn Thành lập mới hộ kinh doanh hoặc nút Tiếp theo.");
-      }
-      selectNativeRadio(radio);
-      await setFillAllState(st);
-      clickBusinessWizardButton(next);
-      return;
-    }
-
-    if (detected.stage === "confirm") {
-      const begin = document.getElementById("ctl00_C_myWizard_FinishNavigationTemplateContainerID_FinishButton");
-      if (!begin) return void failChangeWorkflow("Không tìm thấy nút Bắt đầu ở bước xác nhận.");
-      // Chỉ bấm Bắt đầu khi màn xác nhận đúng là THÀNH LẬP MỚI — bấm nhầm là tạo hồ sơ thay đổi/cấp lại.
-      const confirmedType = foldBusinessPageText(
-        document.getElementById("ctl00_C_myWizard_InfoChnType")?.textContent
-        || begin.closest("table")?.closest("td")?.textContent
-        || document.body?.innerText || ""
-      );
-      if (!confirmedType.includes("thanh lap moi")) {
-        return void failChangeWorkflow("Bước xác nhận không phải Thành lập mới hộ kinh doanh; không bấm Bắt đầu để tránh mở nhầm hồ sơ.");
-      }
-      await setFillAllState(st);
-      clickBusinessWizardButton(begin);
-      return;
-    }
-
-    // search-business / select-change = cán bộ đang ở nhánh thay đổi/cấp lại.
-    return void failChangeWorkflow("Cổng đang ở nhánh Đăng ký thay đổi/Cấp lại, không phải Thành lập mới. Hãy quay lại màn Chọn loại đăng ký.");
   }
 
   function reissueCheckboxLabel(node) {
@@ -712,9 +851,8 @@
       .replace(/\b\d{3,6}\b/g, " "));
   }
 
-  // Viết hoa chữ cái đầu tên ngành nghề NGAY TẠI ĐIỂM GHI VÀO FORM — độc lập với backend, để không
-  // phụ thuộc dữ liệu backend gửi lên đã chuẩn hóa hay chưa (cache cũ, lệch bản...). Bỏ qua ký tự
-  // đầu không phải chữ cái (số, dấu ngoặc...).
+  // Chuẩn hóa ngay tại điểm ghi vào form để không phụ thuộc dữ liệu backend/cache cũ đã viết hoa
+  // hay chưa. Chỉ viết hoa chữ cái đầu tiên, vẫn giữ nguyên phần còn lại của tên ngành nghề.
   function capitalizeBusinessLineName(value) {
     const text = String(value || "").trim().replace(/\s+/g, " ");
     const match = text.match(/[^\W\d_]/);
@@ -728,43 +866,17 @@
     const rows = Array.isArray(nn && nn.items) ? nn.items : [];
     for (const row of rows) {
       const code = String(row && (row.code || row.ma || "") || "").trim();
-      // GIỮ NGUYÊN hoa/thường: norm() hạ toàn bộ chữ thường CHỈ hợp để so sánh (foldBusinessLineName
-      // lo phần đó ở businessDescriptionText/currentFold bên dưới). Ghi vào ô mô tả phải viết
-      // hoa chữ cái đầu — không dựa vào backend đã chuẩn hóa hay chưa, tự làm luôn tại đây.
+      // norm() chỉ dùng để so sánh vì nó hạ toàn bộ chữ thường; không được dùng giá trị norm để ghi
+      // vào textarea mô tả ngành nghề.
       const name = capitalizeBusinessLineName(row && (row.name || row.ten || "") || "");
       if (code && name && !byCode[code]) byCode[code] = name;
     }
     return byCode;
   }
 
-  // Bảng ngành nghề của HkdOnline có id "ctl00_C_CtlList"; cổng ĐKKD qua mạng render CÙNG component
-  // nhưng ClientID ngắn ("C_CtlList") — cùng lối như attachElById/uploadedRows ở khối đính kèm.
-  const BUSINESS_LINE_ROWS = "#ctl00_C_CtlList tr, #C_CtlList tr";
-  // Bảng kết quả của cổng doanh nghiệp nằm trong panel riêng (DOM thật: <div id="C_PnlListResult">),
-  // KHÔNG mang id CtlList. Đọc hụt bảng này là hỏng cả vòng lặp chứ không chỉ hỏng một lần đọc:
-  // getAddedBusinessCodes() trả rỗng ⇒ mã vừa thêm vẫn bị coi là "chưa có" ⇒ engine thêm đi thêm lại
-  // ĐÚNG MỘT mã cho tới khi hết lượt, các mã sau không bao giờ tới lượt. Đúng triệu chứng "chỉ điền
-  // được 1 ngành nghề" trên cổng thật.
-  const BUSINESS_LINE_RESULT_PANELS = "#C_PnlListResult, #ctl00_C_PnlListResult";
-
-  /** Mọi dòng của bảng ngành nghề, không phụ thuộc cổng đặt id gì cho bảng. */
-  function businessLineRows() {
-    const byId = Array.from(document.querySelectorAll(BUSINESS_LINE_ROWS));
-    if (byId.length) return byId;
-    const panels = Array.from(document.querySelectorAll(BUSINESS_LINE_RESULT_PANELS));
-    for (const panel of panels) {
-      const rows = Array.from(panel.querySelectorAll("tr"));
-      if (rows.length) return rows;
-    }
-    // Lưới đỡ cuối, KHÔNG bám id nào: dòng ngành nghề là dòng duy nhất mang radio "ngành chính".
-    const marked = Array.from(document.querySelectorAll('input[name="ismain"]'))
-      .map((radio) => radio.closest("tr")).filter(Boolean);
-    return Array.from(new Set(marked));
-  }
-
   function getAddedBusinessCodes() {
     const codes = [];
-    const rows = businessLineRows();
+    const rows = Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"));
     for (const r of rows) {
       for (const td of r.querySelectorAll("td")) {
         const t = (td.textContent || "").trim();
@@ -776,7 +888,7 @@
 
   function findBusinessRowByCode(code) {
     const wanted = String(code).trim();
-    const rows = businessLineRows();
+    const rows = Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"));
     return rows.find((r) => Array.from(r.querySelectorAll("td")).some((td) => (td.textContent || "").trim() === wanted)) || null;
   }
 
@@ -810,40 +922,22 @@
     return candidates.find((text) => foldBusinessLineName(text)) || "";
   }
 
-  /**
-   * Nội dung ghi vào ô mô tả chi tiết của một dòng ngành nghề.
-   *
-   * LUÔN điền (cán bộ cần ô chi tiết có nội dung rõ ràng, kể cả khi hồ sơ ghi đúng tên theo mã).
-   * Tên hồ sơ trùng tên chính thức sau khi bỏ dấu/ngoặc thì ghi TÊN CHÍNH THỨC của cổng: OCR hay đọc
-   * sai dấu ("In ăn" thay vì "In ấn"), còn tên cổng thì chuẩn. Khác hẳn thì ghi tên hồ sơ (chi tiết hơn).
-   */
-  function businessDescriptionText(officialName, extractedName) {
+  function shouldFillBusinessDescription(officialName, extractedName) {
     const official = foldBusinessLineName(officialName);
     const extracted = foldBusinessLineName(extractedName);
-    if (!extracted) return "";
-    if (official && official === extracted) return capitalizeBusinessLineName(officialName);
-    return extractedName;
+    return !!official && !!extracted && official !== extracted;
   }
 
-  // Ô mô tả từng dòng ngành nghề điền cho mọi địa bàn, TRỪ địa bàn popup.js bật cờ
-  // skipBusinessLineDescription (tài khoản phường Yên Bái — Lào Cai): để trống ô, chỉ giữ tên ngành
-  // chính thức cổng tự hiện theo mã VSIC. popup.js quyết định tài khoản nào bật cờ; ở đây chỉ tuân theo.
-  function fillBusinessLineDescriptions(nn, defaults) {
-    if (defaults && defaults.skipBusinessLineDescription) {
-      console.log("[FillAll] ngành nghề: địa bàn không dùng ô mô tả từng dòng — bỏ trống.");
-      return 0;
-    }
+  function fillBusinessLineDescriptions(nn) {
     const nameByCode = getBusinessLineNameByCode(nn);
     let changed = 0;
     for (const code of Object.keys(nameByCode)) {
+      const extractedName = nameByCode[code];
       const row = findBusinessRowByCode(code);
       const desc = getBusinessRowDescription(row);
       const officialName = getBusinessRowOfficialName(row, code);
-      const extractedName = businessDescriptionText(officialName, nameByCode[code]);
-      if (!row || !desc || !extractedName) continue;
+      if (!row || !desc || !shouldFillBusinessDescription(officialName, extractedName)) continue;
 
-      // GIỮ NGUYÊN hoa/thường của nội dung đã có trong ô (vd tên chính thức cổng tự điền theo mã) —
-      // chỉ dùng bản fold (bỏ dấu + hạ thường) để SO SÁNH, không dùng để GHI LẠI.
       const current = String(desc.value || "").trim();
       const currentFold = foldBusinessLineName(current);
       const extractedFold = foldBusinessLineName(extractedName);
@@ -931,28 +1025,10 @@
     return !!(radio && radio.checked);
   }
 
-  /** Nút bấm khớp ĐÚNG HỆT một trong các nhãn (đã fold) — không dùng "chứa" để khỏi vơ nhầm nút
-   *  "Thêm/xóa ngành nghề trong danh sách" khi đang tìm nút "Thêm". */
-  function findBusinessButtonByExactLabel(labels) {
-    const wanted = labels.map(foldBusinessPageText);
-    return Array.from(document.querySelectorAll('input[type="submit"], input[type="button"], button'))
-      .filter((node) => !node.disabled)
-      .find((node) => wanted.includes(foldBusinessPageText(node.value || node.textContent || ""))) || null;
-  }
-
-  function findBusinessAddLineButton() {
-    // NAME là UniqueID nên giống nhau ở cả hai cổng; id thì mỗi cổng một kiểu. Nhãn là lưới đỡ cuối
-    // cho trường hợp cổng doanh nghiệp đặt tên control khác ("Thêm ngành nghề bằng mã số").
-    return document.querySelector(
-      'input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl, #C_BtnAddBl,'
-      + ' input[name$="$BtnAddBl"], input[id$="_BtnAddBl"]'
-    ) || findBusinessButtonByExactLabel(["Thêm ngành nghề bằng mã số", "Thêm"]);
-  }
-
   function addOneBusinessCode(code) {
     const input = findStandardInput(["ctl00$C$newBusinessLineCode"]);
     const hidden = findStandardInput(["ctl00$C$newBusinessLineCodeVal"]);
-    const addBtn = findBusinessAddLineButton();
+    const addBtn = document.querySelector('input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl');
     if (!input || !addBtn) {
       console.warn("[FillAll] Ngành nghề: không thấy ô mã / nút Thêm");
       return Promise.resolve(false);
@@ -966,10 +1042,7 @@
   function setBusinessMainAndUpdate(code) {
     const row = findBusinessRowByCode(code);
     const radio = row && row.querySelector('input[name="ismain"]');
-    const upd = document.querySelector(
-      'input[name="ctl00$C$btnUpdateMain"], #ctl00_C_btnUpdateMain, #C_btnUpdateMain,'
-      + ' input[name$="$btnUpdateMain"], input[id$="_btnUpdateMain"]'
-    ) || findBusinessButtonByExactLabel(["Cập nhật chính"]);
+    const upd = document.querySelector('input[name="ctl00$C$btnUpdateMain"], #ctl00_C_btnUpdateMain');
     if (!radio || !upd) {
       console.warn("[FillAll] Ngành nghề: không thấy radio chính / nút Cập nhật chính cho mã", code);
       return Promise.resolve(false);
@@ -1029,7 +1102,7 @@
     // Đã thêm hết mã → nếu tên OCR cụ thể hơn/khác tên chính thức portal thì ghi vào ô mô tả của dòng đó.
     if (!st.nnDescriptionsDone) {
       st.nnDescriptionsDone = true;
-      const changed = fillBusinessLineDescriptions(nn, st.businessDefaults);
+      const changed = fillBusinessLineDescriptions(nn);
       await setFillAllState(st);
       if (changed) {
         const upd = findBusinessLineUpdateButton();
@@ -1289,19 +1362,14 @@
     return void advanceFillAll(st);
   }
 
-  // Ô do NGHIỆP VỤ ĐỊA BÀN chốt, không lấy theo dữ liệu đọc từ hồ sơ. popup.js quyết định tài khoản
-  // nào có default nào (businessDefaults) — ở đây chỉ biết "khóa default nào đổ vào ô nào, trang nào".
-  // Giá trị đã có sẵn từ backend bị GHI ĐÈ; ô backend không trả thì TỰ THÊM (đều là ô bắt buộc).
+  // Ô mặc định theo địa bàn do backend dùng chung trả trong businessDefaults. Extension chỉ ánh xạ
+  // khóa nghiệp vụ vào control HkdOnline, đồng thời ghi đè field cũ nếu backend đã trả cùng control.
   const LOCAL_DEFAULT_FIELDS = {
-    "cham-dut-hoat-dong": [
-      { key: "dissolutionReason", name: "ctl00$C$UC_DW_DISSOLUTIONCtl$REASON_DESCFld", comp: "dom-input" },
-    ],
     "nguoi-nop-ho-so": [
       { key: "postalServiceAddress", name: "ctl00$C$POSTAL_SERVICEFld", comp: "dom-input" },
     ],
   };
 
-  /** Chèn/ghi đè các ô mặc định theo địa bàn vào danh sách field của một trang. */
   function applyBusinessLocalDefaults(fields, defaults, pageKey) {
     const out = Array.isArray(fields) ? fields.slice() : [];
     const specs = LOCAL_DEFAULT_FIELDS[pageKey] || [];
@@ -1316,7 +1384,6 @@
     return out;
   }
 
-  /** Các ô default của trang này, dạng field sẵn sàng điền (dùng để ghi lại sau postback). */
   function localDefaultFieldsFor(defaults, pageKey) {
     return applyBusinessLocalDefaults([], defaults, pageKey);
   }
@@ -1593,6 +1660,22 @@
     return void advanceFillAll(st);
   }
 
+  // Trang "Thông tin về chủ hộ kinh doanh" của luồng thay đổi LUÔN phải có "Loại đăng ký thay đổi" =
+  // "Cập nhật thông tin chủ hộ kinh doanh" và "Lý do" = "Khác" — CỐ ĐỊNH cho MỌI hồ sơ thay đổi, dù
+  // có đổi chủ hộ hay không, và không phụ thuộc dữ liệu LLM/backend gửi sang. Cổng mặc định để "Thay
+  // đổi chủ hộ kinh doanh" + lý do TRỐNG nên trang nào cũng phải sửa lại.
+  // "Lý do" là select con phụ thuộc "Loại": chỉ khi "Loại" là "Cập nhật thông tin chủ hộ kinh doanh"
+  // thì option "Khác" mới có trong danh sách để chọn được.
+  // Dùng ở CẢ hai đường vào trang này: handleChangeOwnerPage (hồ sơ CÓ đổi chủ hộ, trang nằm trong
+  // order) và handleOwnerProbe (hồ sơ KHÔNG đổi chủ hộ, extension tự ghé qua).
+  const OWNER_CHANGE_TYPE_FIELDS = [
+    {
+      name: "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", comp: "dom-select",
+      value: "Cập nhật thông tin chủ hộ kinh doanh",
+    },
+    { name: "ctl00$C$CHANGE_OWNER_TYPE_IDFld", comp: "dom-select", value: "Khác" },
+  ];
+
   async function handleChangeOwnerPage(st, fields, cfg) {
     // Chủ hộ mới là dữ liệu của hồ sơ, không mặc định là tài khoản đang nộp. Bật Sửa đổi dữ liệu
     // trước (AutoPostBack), sau đó mới điền nhân thân/địa chỉ và lưu.
@@ -1836,11 +1919,10 @@
     return out.some((field) => !/COUNTRY_IDFld$/.test(field.name)) ? out : [];
   }
 
-  // Chỉ "Đăng ký hộ kinh doanh" (luồng 8 trang, state không gắn workflow) còn áp ngoại lệ Đà Nẵng.
-  // CHẤM DỨT hoạt động ĐÃ BỎ khỏi danh sách: hồ sơ chấm dứt thường chỉ nộp giấy tờ kinh doanh của
-  // chủ hộ, người mang hồ sơ đi nộp không phải chủ hộ ⇒ phải tick "Người được ủy quyền" như thủ tục
-  // thay đổi nội dung / cấp lại GCN, tức là tự chốt bằng cách đối chiếu tài khoản với chủ hộ.
-  const FORCE_SELF_SUBMITTER_WORKFLOWS = new Set(["create"]);
+  // Hai thủ tục áp ngoại lệ Đà Nẵng: "Đăng ký hộ kinh doanh" (luồng 8 trang, state không gắn
+  // workflow) và "Chấm dứt hoạt động hộ kinh doanh" (workflow "dissolution"). Thay đổi nội dung /
+  // cấp lại GCN vẫn tự chốt vai trò bằng cách đối chiếu tài khoản với chủ hộ.
+  const FORCE_SELF_SUBMITTER_WORKFLOWS = new Set(["create", "dissolution"]);
 
   /**
    * Tài khoản đăng nhập gắn tỉnh Đà Nẵng (popup đọc `tinh` từ /auth/me rồi gắn cờ vào
@@ -1863,203 +1945,6 @@
    * KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ — so với
    * tên tài khoản thì luôn lệch.
    */
-  /**
-   * Radio "vai trò người nộp hồ sơ" — tên/giá trị control (ctl00$C$PERS_SUBGroup / IS_*_BUTTON) suy
-   * từ trang đăng ký MỚI; trang "thay đổi nội dung" có thể dùng ID/tên khác dù nhãn hiển thị giống
-   * hệt. Dò theo tên/giá trị trước, KHÔNG thấy thì dò theo NHÃN để không giữ nhầm vai trò mặc định
-   * của cổng khi giả định ở trên sai.
-   */
-  function findSubmitterRoleRadio(authorized) {
-    const value = authorized ? "IS_AUTHORIZED_BUTTON" : "IS_SIGNER_BUTTON";
-    const byName = document.querySelector(`input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="${value}"]`);
-    if (byName) return byName;
-    const folded = authorized ? "nguoi duoc uy quyen" : "nguoi co tham quyen ky";
-    return Array.from(document.querySelectorAll('input[type="radio"]')).find((r) => {
-      const label = (r.id && document.querySelector(`label[for="${r.id}"]`)) || r.closest("label") || r.parentElement;
-      return foldBusinessPageText(label ? label.textContent : "").includes(folded);
-    }) || null;
-  }
-
-  /**
-   * Hồ sơ "thay đổi nội dung hộ kinh doanh" CHỈ có tờ đơn xin thay đổi — không kèm CCCD rời, cũng
-   * không có Giấy ủy quyền (backend gắn cờ `formOnly` khi dựng flow). Nhân thân duy nhất trong hồ sơ
-   * là CHỦ HỘ ghi trong đơn ⇒ căn cứ duy nhất để biết người đang đăng nhập có phải chủ hộ không là
-   * HỌ TÊN chủ hộ.
-   */
-  function isChangeFormOnlyDossier(st) {
-    if (!st || st.businessFlow?.formOnly !== true) return false;
-    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
-  }
-
-  /** Mọi nhân thân chủ hộ biết được của hồ sơ này, đã chuẩn hoá {id, name} để đối chiếu. */
-  function collectOwnerIdentities(st) {
-    const ownerIdentities = [];
-    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
-    // đọc từ giấy tờ trong hồ sơ.
-    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
-      const id = String(soDinhDanh || "").replace(/\D/g, "");
-      const name = foldBusinessPageText(hoTen || "");
-      if (id || name) ownerIdentities.push({ id, name, trusted });
-    };
-
-    const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
-    if (ownerFields.length) {
-      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
-      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
-      addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
-        (ownerIdField && ownerIdField.value) || "");
-    }
-    const flowOwner = st.businessFlow?.owner || {};
-    addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
-    if (st.businessFlow?.search?.method === "identityNumber") {
-      addOwnerIdentity("", st.businessFlow.search.value);
-    }
-    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
-    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
-    const portalOwner = st.portalOwner || {};
-    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
-    return ownerIdentities;
-  }
-
-  /** Ô nhân thân CHỦ HỘ trên trang "Thông tin về chủ hộ kinh doanh" (ô khoá → cổng render span _Vw). */
-  function readOwnerPageValue(suffix) {
-    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
-    if (direct) return direct;
-    const node = document.querySelector(
-      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
-    );
-    if (!node) return "";
-    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
-  }
-
-  function readPortalOwner() {
-    return {
-      hoTen: readOwnerPageValue("FULL_NAMEFld"),
-      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
-    };
-  }
-
-  // Trang "Thông tin về chủ hộ kinh doanh" của luồng thay đổi LUÔN phải có "Loại đăng ký thay đổi" =
-  // "Cập nhật thông tin chủ hộ kinh doanh" và "Lý do" = "Khác" — CỐ ĐỊNH cho MỌI hồ sơ thay đổi, dù
-  // có đổi chủ hộ hay không, và không phụ thuộc dữ liệu LLM/backend gửi sang. Cổng mặc định để "Thay
-  // đổi chủ hộ kinh doanh" + lý do TRỐNG nên trang nào cũng phải sửa lại.
-  // "Lý do" là select con phụ thuộc "Loại": chỉ khi "Loại" là "Cập nhật thông tin chủ hộ kinh doanh"
-  // thì option "Khác" mới có trong danh sách để chọn được.
-  // Dùng ở CẢ hai đường vào trang này: handleChangeOwnerPage (hồ sơ CÓ đổi chủ hộ, trang nằm trong
-  // order) và handleOwnerProbe (hồ sơ KHÔNG đổi chủ hộ, extension tự ghé qua).
-  const OWNER_CHANGE_TYPE_FIELDS = [
-    {
-      name: "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", comp: "dom-select",
-      value: "Cập nhật thông tin chủ hộ kinh doanh",
-    },
-    { name: "ctl00$C$CHANGE_OWNER_TYPE_IDFld", comp: "dom-select", value: "Khác" },
-  ];
-
-  function ownerChangeTypeOk() {
-    return OWNER_CHANGE_TYPE_FIELDS.every((field) => {
-      const el = findStandardSelect(fieldCandidates(field));
-      return el && norm(el.options[el.selectedIndex]?.textContent || "") === norm(field.value);
-    });
-  }
-
-  async function applyOwnerChangeTypeDefaults() {
-    const [typeField, reasonField] = OWNER_CHANGE_TYPE_FIELDS;
-    const sel = findStandardSelect(fieldCandidates(typeField));
-    if (sel && norm(sel.options[sel.selectedIndex]?.textContent || "") !== norm(typeField.value)) {
-      try { await fillFormStandard([typeField]); } catch (e) { /* ignore */ }
-      // Đổi "Loại" là AutoPostBack: phải CHỜ cổng render lại select "Lý do" mới chọn được "Khác".
-      await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
-    }
-    try { await fillFormStandard([reasonField]); } catch (e) { /* ignore */ }
-  }
-
-  /**
-   * Hồ sơ thay đổi KHÔNG đổi chủ hộ thì backend không xếp "chu-ho-kinh-doanh" vào order, nên trang
-   * này chưa ai đụng tới. Extension vẫn phải ghé qua một lượt vì hai việc:
-   *  1. Chốt "Loại đăng ký thay đổi"/"Lý do" mặc định (xem OWNER_CHANGE_TYPE_FIELDS) — cổng để trống
-   *     lý do thì hồ sơ thiếu dữ liệu bắt buộc.
-   *  2. Đọc HỌ TÊN chủ hộ THẬT trên cổng. Đơn xin thay đổi thường chỉ ghi TÊN HỘ KINH DOANH + mã số,
-   *     không kê khai chủ hộ — mà tên hộ kinh doanh KHÔNG phải tên chủ hộ, nên nếu không đọc ở đây
-   *     thì không có gì để đối chiếu với tài khoản đang đăng nhập ở trang người nộp hồ sơ.
-   * Chỉ ĐỌC nhân thân, KHÔNG bật "Sửa đổi dữ liệu" — hồ sơ này không đổi chủ hộ.
-   * Hồ sơ CÓ đổi chủ hộ đã có trang đó trong order và handleChangeOwnerPage lo cả 2 việc trên.
-   */
-  function needsOwnerProbe(st) {
-    if (!st || st.workflow !== "change") return false;
-    if (st.ownerPageVisited) return false;
-    return !(st.order || []).includes("chu-ho-kinh-doanh");
-  }
-
-  async function startOwnerProbe(st) {
-    st.phase = "probing-owner";
-    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
-    await setFillAllState(st);
-    console.log("[FillAll] ghé trang chủ hộ kinh doanh: chốt Loại/Lý do thay đổi + đọc họ tên chủ hộ");
-    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
-    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
-    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
-    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
-  }
-
-  /** Đóng nhịp ghé trang chủ hộ rồi quay lại trang người nộp hồ sơ. */
-  async function finishOwnerProbe(st) {
-    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc/điền hụt
-    st.portalOwner = st.portalOwner || {};
-    st.phase = "fill";
-    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
-    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
-    await setFillAllState(st);
-    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
-    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
-    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
-  }
-
-  async function handleOwnerProbe(st) {
-    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
-      // Lưu xong cổng có thể tự nhảy về khối dữ liệu → xong việc rồi, về thẳng trang người nộp.
-      if (st.ownerDefaultsSaved) return void finishOwnerProbe(st);
-      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
-      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
-      return void startOwnerProbe(st);
-    }
-
-    // 1. Đọc chủ hộ TRƯỚC khi đụng vào 2 select (đổi "Loại" là postback, cổng render lại cả trang).
-    if (!st.portalOwner) {
-      const owner = readPortalOwner();
-      if (owner.hoTen || owner.soDinhDanh) {
-        st.portalOwner = owner;
-        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
-      } else {
-        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
-      }
-    }
-
-    // 2. Chốt Loại/Lý do mặc định rồi Lưu. Mỗi lượt chỉ làm một nhịp (2 select cascade AutoPostBack),
-    //    trang không tự reload nên phải tự hẹn giờ gọi lại.
-    if (!st.ownerDefaultsSaved) {
-      if (!ownerChangeTypeOk()) {
-        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
-        if (st.ownerTypeVerifyTries <= 6) {
-          await setFillAllState(st);
-          await applyOwnerChangeTypeDefaults();
-          return void setTimeout(stepFillAll, 500);
-        }
-        console.warn("[FillAll] không chốt được Loại/Lý do thay đổi chủ hộ — bỏ qua để không kẹt luồng.");
-      }
-      const save = findBusinessSaveButton();
-      if (save) {
-        // Chỉ đổi 2 select nên cổng có thể chưa bật nút Lưu; giá trị trên DOM đã đúng → cứ bật rồi Lưu.
-        if (save.disabled) { try { save.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
-        st.ownerDefaultsSaved = true;
-        await setFillAllState(st);
-        const reloaded = await clickSaveDetectReload(save);
-        if (reloaded) return; // reload xong quay lại đây, lần đó bỏ qua khối này rồi về trang người nộp
-      }
-    }
-
-    return void finishOwnerProbe(st);
-  }
-
   function matchAccountWithOwner(st, { nameOnly = false } = {}) {
     const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
     const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
@@ -2078,6 +1963,20 @@
       (o) => (!!copiedName && !!o.name) || (!!copiedId && !!o.id && idUsable(o))
     );
     return { isOwner: idMatches || nameMatches, ownerUnknown: !hasBasis, idMatches, nameMatches };
+  }
+
+  // Tên/value chính xác dùng được trên trang đăng ký mới; một số biến thể của trang thay đổi dùng
+  // control khác nhưng giữ nguyên nhãn. Ưu tiên hợp đồng chính xác, rồi mới fallback theo nhãn hiện.
+  function findSubmitterRoleRadio(authorized) {
+    const value = authorized ? "IS_AUTHORIZED_BUTTON" : "IS_SIGNER_BUTTON";
+    const byName = document.querySelector(`input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="${value}"]`);
+    if (byName) return byName;
+    const folded = authorized ? "nguoi duoc uy quyen" : "nguoi co tham quyen ky";
+    return Array.from(document.querySelectorAll('input[type="radio"]')).find((radio) => {
+      const label = (radio.id && document.querySelector(`label[for="${radio.id}"]`))
+        || radio.closest("label") || radio.parentElement;
+      return foldBusinessPageText(label ? label.textContent : "").includes(folded);
+    }) || null;
   }
 
   /** Tick "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" (radio AutoPostBack → phải chờ). */
@@ -2265,26 +2164,8 @@
       || (t.length > 2 ? opts.find((o) => areaFold(o.textContent).includes(t)) : null);
   }
 
-  /**
-   * Ô địa bàn ĐANG ĐỨNG ở đúng option mà ta sẽ chọn cho `target` hay chưa.
-   *
-   * Phải nới theo CÙNG luật với areaFindOption (khớp lỏng "chứa"): danh sách của cổng ghi
-   * "Huyện Hòa Vang" trong khi hồ sơ ghi "Hòa Vang" — so khớp tuyệt đối thì option ta vừa chọn
-   * đúng lại bị đọc là "chưa chọn được", rồi cấp Phường/Xã bị bỏ oan vì tưởng Tỉnh chưa vào.
-   *
-   * Nhưng danh sách CÓ option khớp tuyệt đối thì chỉ nhận đúng option đó: hồ sơ thay đổi hộ kinh
-   * doanh mở ra với địa chỉ cũ, ô Tỉnh có thể đang đứng ở một option khác mà tên vẫn CHỨA tên tỉnh
-   * (vd tỉnh trước sáp nhập). Nhận lỏng ở đây là bỏ qua bước chọn Tỉnh → danh sách Phường/Xã vẫn
-   * của tỉnh cũ, không có xã mới → hụt Phường/Xã.
-   */
-  function areaAccepts(sel, target) {
-    const t = areaFold(target);
-    if (!t) return false;
-    const cur = areaFold(areaSelectedText(sel));
-    if (!cur) return false;
-    if (cur === t) return true;
-    const exact = Array.from(sel.options || []).some((o) => o.value && areaFold(o.textContent) === t);
-    return !exact && t.length > 2 && cur.includes(t);
+  function areaIsAt(sel, target) {
+    return !!target && areaFold(areaSelectedText(sel)) === areaFold(target);
   }
 
   function areaChoose(sel, target) {
@@ -2296,209 +2177,44 @@
     return true;
   }
 
-  // ----- Cascade địa chỉ: Quốc gia → Tỉnh/Thành → Phường/Xã → Số nhà -----------------------
-  //
-  // Mỗi cấp là <select> AutoPostBack: đổi giá trị là cổng chạy MỘT AJAX partial postback rồi dựng
-  // LẠI node <select> của cấp dưới. Điền nhanh hơn postback chính là lỗi "hay hụt Phường/Xã":
-  //   1. Chọn Tỉnh xong đọc NGAY ô Phường/Xã thì đọc phải node CŨ — danh sách còn là của tỉnh
-  //      trước (hoặc rỗng). Không thấy option đích là bỏ luôn cấp xã; thấy (tên xã trùng bên tỉnh
-  //      cũ) thì chọn vào node sắp bị thay, postback về là ô xã trắng.
-  //   2. Chọn xã xong đợi cứng 900ms rồi bấm Lưu: postback của chính ô xã chưa về thì cổng lưu hồ
-  //      sơ với xã rỗng, và ô "Số nhà" vừa gõ cũng bị khối dựng lại xoá.
-  // Nên mỗi cấp đi đủ ba nhịp: CHỜ postback của cấp đó về → XÁC MINH ô còn nguyên giá trị vừa
-  // chọn → bị xóa thì chọn LẠI trên node MỚI. Cách chờ khác nhau theo cấp, xem từng hàm dưới.
-
-  const AREA_OPTION_TIMEOUT = 9000;  // chờ danh sách option của cấp dưới được nạp
-  const AREA_OPTION_QUIET_MS = 1200; // ...nhưng danh sách đã nạp & đứng yên thì chốt luôn là không có
-  const AREA_CHILD_TIMEOUT = 5000;   // một postback cascade trên cổng thật ~1-4s
-  const AREA_SELF_TIMEOUT = 3000;    // cấp cuối: chờ chính nó lắng
-  const AREA_SELF_MIN_MS = 1200;     // ...nhưng không dưới một nhịp postback
-  const AREA_LEVEL_TRIES = 3;
-  const AREA_SETTLE_STEP = 200;
-
-  // Dấu vết một <select>: đủ để biết cổng đã nạp lại danh sách option hay chưa.
-  function areaSelectFingerprint(sel) {
-    if (!sel) return "(khong-co)";
-    const opts = Array.from(sel.options || []);
-    return `${opts.length}:${opts.map((o) => o.value).join(",")}=${sel.value || ""}`;
-  }
-
-  // Chụp cả NODE và danh sách option: postback có thể thay node mà giữ nguyên danh sách (khi đó
-  // fingerprint không đổi) và ngược lại — bỏ một trong hai là có lúc không nhận ra postback.
-  function areaWatchSnapshot(field) {
-    const el = findStandardSelect(fieldCandidates(field));
-    return { el, fp: areaSelectFingerprint(el) };
-  }
-
-  function areaWatchSame(a, b) {
-    return a.el === b.el && a.fp === b.fp;
-  }
-
-  // Ô canh đã ĐỨNG YÊN: hai nhịp liền không đổi node lẫn danh sách option.
-  async function waitAreaQuiet(watchField, from, timeout) {
-    const deadline = Date.now() + timeout;
-    let prev = from;
-    while (Date.now() < deadline) {
-      await sleep(AREA_SETTLE_STEP);
-      const now = areaWatchSnapshot(watchField);
-      if (areaWatchSame(now, prev)) return true;
-      prev = now;
-    }
-    return false;
-  }
-
-  /**
-   * Cấp có cấp DƯỚI (Quốc gia, Tỉnh): chờ danh sách cấp dưới thật sự được nạp lại — khác dấu vết
-   * chụp TRƯỚC khi ta đổi cấp này — rồi đứng yên.
-   *
-   * Chụp TRƯỚC khi chọn là điểm mấu chốt: chụp sau thì không phân biệt được "ô Phường/Xã còn danh
-   * sách của tỉnh cũ" với "đã nạp lại theo tỉnh mới". Mà lẫn hai cái đó chính là lỗi hay gặp: tên
-   * xã cần điền tình cờ có trong danh sách tỉnh cũ → chọn vào node sắp bị thay → postback về là ô
-   * xã trắng, hồ sơ đi thiếu phường/xã.
-   */
-  async function waitAreaChildReload(watchField, beforeChoose) {
-    let last = beforeChoose;
-    await waitFor(() => {
-      const now = areaWatchSnapshot(watchField);
-      if (areaWatchSame(now, beforeChoose)) return false;
-      last = now;
-      return true;
-    }, AREA_CHILD_TIMEOUT, 150);
-    return waitAreaQuiet(watchField, last, AREA_CHILD_TIMEOUT);
-  }
-
-  /**
-   * Cấp CUỐI (Phường/Xã): không có cấp dưới để canh nên canh chính nó, và phải chờ TỐI THIỂU một
-   * nhịp postback — lúc postback đang bay thì DOM chưa đổi gì cả, "đứng yên" ở nhịp đầu không phân
-   * biệt được với "đã xong". Về sớm ở đây là lượt sau bấm Lưu giữa lúc cổng đang dựng lại khối.
-   */
-  async function waitAreaSelfSettle(watchField) {
-    const minUntil = Date.now() + AREA_SELF_MIN_MS;
-    const deadline = Date.now() + AREA_SELF_TIMEOUT;
-    let prev = areaWatchSnapshot(watchField);
-    while (Date.now() < deadline) {
-      await sleep(AREA_SETTLE_STEP);
-      const now = areaWatchSnapshot(watchField);
-      const quiet = areaWatchSame(now, prev);
-      prev = now;
-      if (quiet && Date.now() >= minUntil) return true;
-    }
-    return false;
-  }
-
-  /**
-   * Chờ option đích xuất hiện trong danh sách của một cấp (danh sách này do postback cấp TRÊN nạp).
-   *
-   * Thoát sớm khi danh sách ĐÃ CÓ option và ĐỨNG YÊN một lúc: lúc đó cổng đã nạp xong và đơn giản
-   * là không có địa bàn hồ sơ ghi (tên cũ trước sáp nhập, sai chính tả...). Treo thêm 9 giây rồi
-   * cũng vậy, mà cán bộ phải ngồi đợi hai lần (vòng 1 + vòng 2).
-   */
-  async function waitAreaOption(info) {
-    const deadline = Date.now() + AREA_OPTION_TIMEOUT;
-    let prev = areaWatchSnapshot(info.f);
-    let quietFor = 0;
-    while (Date.now() < deadline) {
-      await sleep(AREA_SETTLE_STEP);
-      const live = findStandardSelect(fieldCandidates(info.f));
-      if (live && areaFindOption(live, info.target)) return live;
-      const now = areaWatchSnapshot(info.f);
-      quietFor = areaWatchSame(now, prev) ? quietFor + AREA_SETTLE_STEP : 0;
-      prev = now;
-      const loaded = !!live && Array.from(live.options || []).some((o) => o.value);
-      if (loaded && quietFor >= AREA_OPTION_QUIET_MS) return null;
-    }
-    return null;
-  }
-
-  /**
-   * Chọn MỘT cấp địa bàn và chỉ trả true khi ô ĐÃ ĐỨNG ở giá trị hồ sơ sau khi postback về.
-   * `childInfo` là cấp dưới (nếu hồ sơ có) - dùng để canh đúng postback của cấp này.
-   */
-  async function chooseAreaLevel(info, childInfo) {
-    if (!info) return true; // hồ sơ không có dữ liệu cấp này -> không tính là trượt
-    const label = info.f.name || "";
-    for (let attempt = 1; attempt <= AREA_LEVEL_TRIES; attempt += 1) {
-      // Khối địa chỉ có thể đang được postback của cấp TRÊN dựng lại -> chờ node xuất hiện.
-      let el = findStandardSelect(fieldCandidates(info.f))
-        || await waitFor(() => findStandardSelect(fieldCandidates(info.f)), 3000, 150);
-      if (!el) {
-        console.warn(`[FillAll] địa chỉ: không thấy ô ${label}`);
-        return false;
-      }
-      if (areaAccepts(el, info.target)) return true;
-
-      // Danh sách option của cấp này do postback cấp TRÊN nạp: chưa có option đích thì CHỜ, tuyệt
-      // đối không bỏ cấp ngay - bỏ ngay chính là lỗi "extension nhập nhanh nên hụt phường/xã".
-      if (!areaFindOption(el, info.target)) {
-        const ready = await waitAreaOption(info);
-        if (!ready) {
-          console.warn(`[FillAll] địa chỉ: danh sách ${label} không có option "${info.target}"`);
-          return false;
-        }
-        el = ready;
-      }
-
-      const watchField = (childInfo && childInfo.f) || info.f;
-      const beforeChoose = areaWatchSnapshot(watchField);
-      if (!areaChoose(el, info.target)) return false;
-      console.log(`[FillAll] địa chỉ chọn: ${info.target} (${label}, lần ${attempt})`);
-      if (childInfo) await waitAreaChildReload(watchField, beforeChoose);
-      else await waitAreaSelfSettle(watchField);
-
-      const live = findStandardSelect(fieldCandidates(info.f));
-      if (live && areaAccepts(live, info.target)) return true;
-      console.warn(`[FillAll] địa chỉ: postback xoá mất "${info.target}" ở ${label} -> chọn lại (${attempt}/${AREA_LEVEL_TRIES})`);
-    }
-    return false;
-  }
-
-  // Số nhà điền SAU CÙNG: mọi postback cascade ở trên đều dựng lại khối và xoá ô này.
-  // Set value KHÔNG kích onchange (tránh thêm 1 postback thừa); nút Lưu sẽ submit giá trị này.
-  function fillAreaStreetNumber(fields) {
-    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
-    if (!sf || !sf.value) return;
-    const el = findStandardInput(fieldCandidates(sf));
-    if (!el || norm(el.value) === norm(String(sf.value))) return;
-    setNativeValue(el, sf.value, { typing: false, change: false, commit: false });
-    console.log("[FillAll] địa chỉ số nhà:", sf.value);
-  }
-
   async function fillAddressCascade(fields) {
     const selInfo = (key) => {
       const f = fields.find((x) => new RegExp(key).test(x.name || ""));
       return f && f.value ? { f, target: String(f.value) } : null;
     };
+    const chooseAndWait = async (info, waitReady) => {
+      if (!info) return;
+      const el = findStandardSelect(fieldCandidates(info.f));
+      if (!el || areaIsAt(el, info.target)) return;
+      if (!areaFindOption(el, info.target)) { console.warn("[FillAll] địa chỉ: chưa có option", info.target); return; }
+      areaChoose(el, info.target); // dispatch change → onchange __doPostBack (AJAX partial)
+      console.log("[FillAll] địa chỉ chọn:", info.target);
+      if (waitReady) await waitFor(waitReady, 8000, 250);
+      else await sleep(900);
+    };
+
     const country = selInfo("COUNTRY_IDFld");
     const city = selInfo("CITY_IDFld");
     const ward = selInfo("WARD_IDFld");
-    const atTarget = (info) => {
-      if (!info) return true;
-      const el = findStandardSelect(fieldCandidates(info.f));
-      return !!el && areaAccepts(el, info.target);
-    };
 
-    // Tối đa HAI vòng: vòng 2 chỉ chạy khi còn cấp chưa vào (thường là xã bị postback của cấp trên
-    // xoá đúng lúc). Cấp nào đã đúng thì vòng 2 nhận ra ngay và bỏ qua, không chọn lại.
-    for (let round = 1; round <= 2; round += 1) {
-      const okCountry = await chooseAreaLevel(country, city || ward);
-      const okCity = okCountry && await chooseAreaLevel(city, ward);
-      if (okCity) {
-        await chooseAreaLevel(ward, null);
-      } else if (ward) {
-        // Chưa chốt được Tỉnh thì danh sách xã không bao giờ là của tỉnh đúng -> chọn được cũng là
-        // xã của tỉnh khác. Thà để trống cho cán bộ chọn tay còn hơn ghi sai địa bàn vào hồ sơ.
-        console.warn(`[FillAll] địa chỉ: chưa chọn được Tỉnh${city ? ` "${city.target}"` : ""} -> BỎ Phường/Xã "${ward.target}", cán bộ chọn tay`);
-      }
-      if (atTarget(country) && atTarget(city) && atTarget(ward)) break;
-      if (round === 2) {
-        console.warn("[FillAll] địa chỉ: hết 2 vòng vẫn chưa đủ -", {
-          tinh: city ? `${city.target}: ${atTarget(city) ? "OK" : "THIẾU"}` : "(hồ sơ không có)",
-          phuongXa: ward ? `${ward.target}: ${atTarget(ward) ? "OK" : "THIẾU"}` : "(hồ sơ không có)",
-        });
+    await chooseAndWait(country);
+    // Chọn tỉnh xong → CHỜ danh sách xã nạp lại đến khi có option đích.
+    await chooseAndWait(city, () => {
+      if (!ward) return true;
+      const w = findStandardSelect(fieldCandidates(ward.f));
+      return w && !!areaFindOption(w, ward.target);
+    });
+    await chooseAndWait(ward);
+
+    // Số nhà: set value KHÔNG kích onchange (tránh thêm 1 postback thừa); nút Lưu sẽ submit giá trị này.
+    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
+    if (sf && sf.value) {
+      const el = findStandardInput(fieldCandidates(sf));
+      if (el && norm(el.value) !== norm(String(sf.value))) {
+        setNativeValue(el, sf.value, { typing: false, change: false, commit: false });
+        console.log("[FillAll] địa chỉ số nhà:", sf.value);
       }
     }
-
-    fillAreaStreetNumber(fields);
   }
 
   async function handleAddressCascadePage(st, targetKey) {
@@ -2518,19 +2234,7 @@
 
     // 3. Lưu.
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
-    // Nút Lưu chỉ bật khi cổng thấy form "dirty" qua sự kiện input/change THẬT. Trang địa chỉ gần
-    // như KHÔNG BAO GIỜ bật được cờ đó ở lượt chạy sau cascade: ô "Số nhà" cố ý set value không kèm
-    // sự kiện (tránh postback thừa — xem fillAreaStreetNumber), còn các select địa danh sau postback
-    // đã đúng đích nên chooseAreaLevel không chạm vào nữa; các ô không postback (điện thoại/email)
-    // thì chỉ điền ở lượt ĐẦU (filledStep) nên lượt resume cũng không sinh sự kiện nào.
-    // ⇒ disabled ở đây KHÔNG có nghĩa "không có gì để lưu". Bỏ qua Lưu chính là lỗi "hồ sơ thay đổi
-    // hộ kinh doanh không đổi được địa chỉ trụ sở": địa chỉ mới nằm đúng trên DOM rồi bị postback
-    // của trang kế xoá đi, im lặng, không báo gì. Cùng cách chữa đã dùng ở trang thuế và nhánh chung.
-    if (saveBtn.disabled) {
-      if (!fields.length) return void advanceFillAll(st); // thật sự không có gì để lưu
-      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
-    }
+    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
     st.phase = "saving";
     await setFillAllState(st);
     const reloaded = await clickSaveDetectReload(saveBtn);
@@ -2540,94 +2244,6 @@
 
   function isTaxAddressModeField(f) {
     return /REP_RECV_ADDR_TYPEFld/.test(f?.name || "");
-  }
-
-  // Radio "Địa chỉ nhận thông báo thuế" — đúng giá trị backend gửi ở pipeline dang_ky_kinh_doanh:
-  // "1" = Giống địa chỉ trụ sở chính, "0" = Địa chỉ khác.
-  const TAX_ADDR_SAME = "1";
-  const TAX_ADDR_OTHER = "0";
-  const TAX_ADDR_WARD_FIELD = "ctl00$C$UC_DW_TAXEditCtl$ADDRCtl$WARD_IDFld";
-
-  function taxWantsSameAsHeadOffice(fields) {
-    return (fields || []).some((f) => isTaxAddressModeField(f)
-      && String(f?.value ?? "").trim() === TAX_ADDR_SAME);
-  }
-
-  /**
-   * Lượt CHỐT địa chỉ thuế: "thong-tin-ve-thue" được xếp thêm một lần nữa ở CUỐI order (sau trang
-   * người nộp hồ sơ, trước đính kèm) cho hồ sơ chọn "Giống địa chỉ trụ sở chính".
-   */
-  function isFinalTaxPass(st) {
-    const order = Array.isArray(st?.order) ? st.order : [];
-    return order.lastIndexOf("thong-tin-ve-thue") === st.step
-      && order.indexOf("thong-tin-ve-thue") !== st.step;
-  }
-
-  /**
-   * Bấm một trong hai radio "Địa chỉ nhận thông báo thuế" rồi chờ cổng dựng lại khối địa chỉ.
-   * Dùng lại fillFormStandard vì nó đã lo tìm radio theo name/nhãn và click THẬT (radio là
-   * AutoPostBack: chỉ set .checked thì __doPostBack không chạy).
-   */
-  async function clickTaxAddressMode(modeFields, value) {
-    const template = modeFields[0];
-    if (!template) return false;
-    const label = value === TAX_ADDR_SAME ? "Giống địa chỉ trụ sở chính" : "Địa chỉ khác";
-    try {
-      const res = await fillFormStandard([{ ...template, value }]);
-      console.log("[FillAll] địa chỉ thuế: tick", label, "->", res && res.filled ? "OK" : "KHÔNG tick được");
-    } catch (e) {
-      console.warn("[FillAll] địa chỉ thuế: lỗi khi tick", label, e?.message || e);
-      return false;
-    }
-    await waitForPanelSettle(TAX_ADDR_WARD_FIELD.replace(/\$/g, "_"), 2500);
-    return true;
-  }
-
-  /**
-   * Chốt lại khối "Địa chỉ nhận thông báo thuế" ở lượt CUỐI cùng.
-   *
-   * Cổng chỉ ghi địa chỉ trụ sở vào khối thuế khi radio "Giống địa chỉ trụ sở chính" được tick LẠI
-   * trên trang đã lưu; tick ngay ở lượt điền rồi Lưu là hồ sơ đi với khối thuế rỗng. Đảo radio
-   * ngay trong lượt điền cũng không cứu được: tick "Địa chỉ khác" là cổng reset khối địa chỉ về
-   * mặc định (Quốc gia/Tỉnh mặc định, Phường/Xã + Số nhà TRỐNG), nên phải để nguyên — KHÔNG điền
-   * gì vào khối đó — rồi tick lại "Giống địa chỉ trụ sở chính" mới ra địa chỉ thật.
-   */
-  async function handleTaxAddressRetoggle(st, modeFields) {
-    console.log("[FillAll] lượt CHỐT địa chỉ thuế, taxPhase =", st.taxPhase || "(mới)");
-    if (!modeFields.length) {
-      console.warn("[FillAll] hồ sơ không có radio địa chỉ thuế — bỏ lượt chốt");
-      return void advanceFillAll(st);
-    }
-
-    // Persist TRƯỚC mỗi click: radio là AutoPostBack, cổng có thể reload cả trang giữa chừng thì
-    // lần load kế còn biết đang dở ở nhịp nào.
-    if (!st.taxPhase) {
-      st.taxPhase = "retoggle_other";
-      await setFillAllState(st);
-    }
-
-    if (st.taxPhase === "retoggle_other") {
-      await clickTaxAddressMode(modeFields, TAX_ADDR_OTHER);
-      st.taxPhase = "retoggle_same";
-      await setFillAllState(st);
-    }
-
-    if (st.taxPhase === "retoggle_same") {
-      await clickTaxAddressMode(modeFields, TAX_ADDR_SAME);
-      st.taxPhase = "retoggled";
-      await setFillAllState(st);
-    }
-
-    const saveBtn = findBusinessSaveButton();
-    if (!saveBtn) return void advanceFillAll(st);
-    // Lượt này không điền field nào nên cổng có thể chưa coi form là "dirty" → tự bật nút Lưu.
-    // Bỏ qua Lưu ở đây là công đảo radio thành vô nghĩa, khối thuế vẫn rỗng như trước.
-    if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
-    st.phase = "saving";
-    await setFillAllState(st);
-    const reloaded = await clickSaveDetectReload(saveBtn);
-    if (reloaded) return;
-    return void advanceFillAll(st);
   }
 
   async function handleTaxPage(st) {
@@ -2688,11 +2304,6 @@
 
   // Điền xong 8 trang → nếu popup gửi kèm kế hoạch đính kèm (nút "Quét nhập thông tin và đính kèm")
   // thì TỰ CHẠY TIẾP state machine đính kèm; không thì kết thúc.
-  // order có thể chứa 2 BƯỚC cùng một trang (lượt chốt địa chỉ thuế) — báo cho cán bộ số TRANG.
-  function businessPageCount(st) {
-    return new Set(Array.isArray(st?.order) ? st.order : []).size;
-  }
-
   async function finishFillAllThenAttach(st) {
     const payload = st && st.attachPayload;
     await clearFillAllState();
@@ -2700,9 +2311,7 @@
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
       H.setRunProgressText(`✓ Đã điền xong ${businessPageCount(st)} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
-      // Ngoại lệ địa bàn ở bước đính kèm chỉ áp cho "Đăng ký hộ kinh doanh" (workflow create).
-      const attachDefaults = (st.workflow || "create") === "create" ? st.businessDefaults : null;
-      await H.startAttachAllBusiness(payload.files, payload.attachments, attachDefaults);
+      await H.startAttachAllBusiness(payload.files, payload.attachments);
       setTimeout(H.stepAttachAll, 400);
       return;
     }
@@ -2710,6 +2319,7 @@
   }
 
   async function advanceFillAll(st) {
+    if (H.isBusinessRunCancelled?.()) return;
     st.step += 1;
     st.retries = 0; st.phase = "fill"; st.filledStep = -1; st.navCount = 0;
     st.nnAdds = 0; st.nnAddTries = {}; st.nnSkippedAddCodes = []; st.nnSkip = [];
@@ -2734,11 +2344,12 @@
   async function stepFillAll() {
     const st = await getFillAllState();
     if (!st || !Array.isArray(st.order)) return;
+    if (H.isBusinessRunCancelled?.()) return;
+    if (st.workflow === "create" && !st.bootstrapDone) {
+      return void stepCreateBootstrap(st);
+    }
     if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution", "suspension"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
-    }
-    if (st.createBootstrap && !st.bootstrapDone) {
-      return void stepCreateBootstrap(st);
     }
     // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
     // đang đứng cố tình KHÁC trang mục tiêu nên nhánh điều hướng chung ở dưới sẽ kéo đi ngay.
@@ -2864,15 +2475,6 @@
   // State resume qua chrome.storage (autofill_attachall_state), giữ dataUrl file để nhét ở pha upload.
   const ATTACH_KEY = "autofill_attachall_state";
 
-  /**
-   * Tra control của khối đính kèm theo CẢ HAI kiểu ClientID.
-   * HkdOnline sinh "ctl00_C_X", cổng ĐKKD qua mạng (dangkyquamang) sinh "C_X" — cùng một component
-   * đính kèm nên engine này dùng chung được, chỉ khác tiền tố id.
-   */
-  function attachElById(suffix) {
-    return document.getElementById(`ctl00_C_${suffix}`) || document.getElementById(`C_${suffix}`);
-  }
-
   // category cổng → giá trị option ở modal (#attId) và ở "Loại đính kèm" (droptypleAttach) + nhãn hiển thị.
   const ATTACH_TYPE = {
     BUSREGFRM: { attId: "1_BUSREGFRM", droptyple: "BUSREGFRM", label: "Giấy đề nghị đăng ký hộ kinh doanh" },
@@ -2882,10 +2484,7 @@
     DISSOLUTION_FAMILY_MINUTES: { attId: "", droptyple: "", label: "Bản sao biên bản họp thành viên hộ gia đình" },
     TAX_TERMINATION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hiệu lực mã số thuế của Cơ quan thuế" },
     DISSOLUTION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hoạt động hộ kinh doanh" },
-    // Nhãn CATEGORY thật trên cổng (khác tên PHÁP LÝ của văn bản, vốn là "Giấy đề nghị đăng ký tạm
-    // ngừng/tiếp tục kinh doanh trước thời hạn đã đăng ký của hộ kinh doanh" — Mẫu số 3) — đã xác
-    // nhận qua ảnh chụp modal "Văn bản đính kèm" thật, cùng khuôn "Thông báo về việc..." như
-    // DISSOLUTION_NOTICE ở trên.
+    // Nhãn CATEGORY trên cổng (khác tên pháp lý "Giấy đề nghị đăng ký tạm ngừng..." — Mẫu số 3).
     SUSPENSION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc tạm ngừng kinh doanh" },
     BUSINESS_REG_CERT_ORIGINAL: { attId: "", droptyple: "", label: "Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh" },
     CPID: { attId: "2_CPID", droptyple: "CPID", label: "Bản sao giấy tờ pháp lý của cá nhân" },
@@ -2893,14 +2492,11 @@
     FAMILYMINUTES: { attId: "", droptyple: "", label: "Bản sao biên bản họp thành viên hộ gia đình" },
     FAMILYAUTH: { attId: "", droptyple: "", label: "Bản sao văn bản ủy quyền của thành viên hộ gia đình cho một thành viên làm chủ hộ kinh doanh" },
     OTHERS: { attId: "20_OTHERS", droptyple: "OTHERS", label: "Khác" },
-    // ----- Hồ sơ THÀNH LẬP DOANH NGHIỆP (cổng dangkyquamang, dùng chung engine đính kèm này).
-    // Không khai mã option: chooseOption() khớp theo nhãn, và nhãn là hợp đồng với backend
-    // (app/pipelines/thanh_lap_ctcp/attach/planner.py — _LABEL_BY_CAT).
-    ENTREGFRM: { attId: "", droptyple: "", label: "Giấy đề nghị đăng ký doanh nghiệp" },
-    CHARTER: { attId: "", droptyple: "", label: "Điều lệ công ty" },
-    FOUNDERLIST: { attId: "", droptyple: "", label: "Danh sách cổ đông sáng lập" },
-    AUTHORIZATION: { attId: "", droptyple: "", label: "Văn bản ủy quyền cho người đi nộp hồ sơ" },
   };
+  // Cổng chỉ dựng lại danh sách loại ở sidebar sau một full postback. Giới hạn cả reload lẫn
+  // vòng khai lại để lỗi phía cổng không biến thành vòng lặp vô hạn.
+  const ATTACH_LIST_RELOAD_LIMIT = 2;
+  const ATTACH_DECLARE_RECOVERY_LIMIT = 2;
 
   function getAttachAllState() {
     return new Promise((resolve) => {
@@ -2939,19 +2535,8 @@
     return `Đang đính kèm hồ sơ — ${label}\n(đừng thao tác tới khi xong)`;
   }
 
-  // Bỏ dấu tiếng Việt khỏi tên tệp (giữ đuôi): "Giấy đề nghị.pdf" → "Giay de nghi.pdf".
-  function asciiFileName(name) {
-    return String(name || "")
-      .replace(/Đ/g, "D")
-      .replace(/đ/g, "d")
-      .normalize("NFD")
-      .replace(/\p{Mn}/gu, "");
-  }
-
   // Khởi tạo phiên (gọi từ content handler). plan[i] khớp files[i] theo attachment.fileIndex.
-  // defaults = businessDefaults của popup; asciiAttachmentFileNames (tài khoản Phường Hải Châu, Đà Nẵng)
-  // → tên tệp tải lên cổng không dấu.
-  async function startAttachAllBusiness(files, attachments, defaults) {
+  async function startAttachAllBusiness(files, attachments) {
     const plan = files.map((f, i) => {
       const a = (attachments || []).find((x) => x && x.fileIndex === i) || {};
       const category = ATTACH_TYPE[a.category] ? a.category : "OTHERS"; // BUSREGFRM | CPID | OTHERS
@@ -2964,17 +2549,14 @@
       if (!declareTypes.includes(p.category)) declareTypes.push(p.category);
       declareCounts[p.category] = (declareCounts[p.category] || 0) + 1;
     }
-    const st = {
-      files, plan, declareTypes, declareCounts, declared: [], phase: "declare", uploadTries: 0,
-      asciiFileNames: !!(defaults && defaults.asciiAttachmentFileNames),
-    };
+    const st = { files, plan, declareTypes, declareCounts, declared: [], phase: "declare", uploadTries: 0 };
     await setAttachAllState(st);
     return { ok: true, started: true };
   }
 
   // ---- helpers DOM ----
   function onUploadPage() {
-    return !!attachElById("FileUploadCtl");
+    return !!document.getElementById("ctl00_C_FileUploadCtl");
   }
   // Danh sách LOẠI đã khai, hiện dưới "Văn bản đính kèm" trong container #ctl00_C_BLCtl_CtlAttList
   // (KHÁC #ctl00_C_BLCtl_CtlList = menu 8 trang). Bấm 1 item bất kỳ → điều hướng tới trang tải file.
@@ -2983,23 +2565,21 @@
       '#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"], #C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
       .filter((a) => /__doPostBack/.test(a.getAttribute("href") || ""));
     if (scoped.length) return scoped;
-    // #ctl00_C_BLCtl_CtlAttList/"LnkEdit" là ID suy đoán, CHƯA xác nhận đúng trên mọi bản giao diện.
-    // Rỗng không có nghĩa là chưa có mục nào để bấm — sidebar "VĂN BẢN ĐÍNH KÈM" trông giống hệt cấu
-    // trúc "KHỐI DỮ LIỆU" (menu .left-menu dùng chung ở findBusinessPageLink), nên quét toàn bộ
-    // .left-menu rồi khớp THEO CHỮ với đúng nhãn loại đã khai (tránh bấm nhầm mục điều hướng khác
-    // như "Tạm ngừng kinh doanh"/"Người nộp hồ sơ" — những mục đó không trùng nhãn ATTACH_TYPE nào).
-    const labels = Object.values(ATTACH_TYPE).map((t) => foldBusinessPageText(t.label));
+    // ID container thay đổi giữa các giao diện; fallback theo đúng nhãn loại tài liệu để tránh bấm
+    // nhầm các mục điều hướng HkdOnline khác cùng nằm trong sidebar.
+    const labels = Object.values(ATTACH_TYPE).map((type) => foldBusinessPageText(type.label));
     return Array.from(document.querySelectorAll(".left-menu a"))
-      .filter((a) => labels.includes(foldBusinessPageText(a.textContent)));
+      .filter((link) => labels.includes(foldBusinessPageText(link.textContent)));
   }
   function clickAttachTypeLink(link) {
+    if (H.isBusinessRunCancelled?.()) return false;
     const href = link.getAttribute("href") || "";
     const m = href.match(/__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/);
     if (m) return doAspPostback(m[1], m[2]);
     try { link.click(); return true; } catch (e) { return false; }
   }
   function uploadedRows() {
-    return Array.from(document.querySelectorAll("#ctl00_C_CtlList tr, #C_CtlList tr"))
+    return Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"))
       .filter((tr) => tr.querySelector('select[id*="droptypleAttach"]'));
   }
   function declaredLabelsFold() {
@@ -3020,6 +2600,30 @@
   function hasDeclared(labelFold) {
     return declaredLabelsFold().some((x) => x.includes(labelFold));
   }
+  function findAttachTypeOption(sel, type) {
+    if (!sel || !type) return null;
+    const labelFold = foldBusinessPageText(type.label);
+    const opts = Array.from(sel.options || []);
+    return (type.attId ? opts.find((o) => o.value === type.attId) : null)
+      || opts.find((o) => foldBusinessPageText(o.textContent) === labelFold)
+      || opts.find((o) => foldBusinessPageText(o.textContent).includes(labelFold))
+      || null;
+  }
+  function attachmentModalHasCategory(sel, cat) {
+    const type = ATTACH_TYPE[cat];
+    return !!type && (hasDeclared(foldBusinessPageText(type.label)) || !!findAttachTypeOption(sel, type));
+  }
+  async function waitForAttachModalData(sel, st) {
+    // Modal hiện trước, sau đó GetAttachment mới nạp option + bảng loại bằng AJAX. Chờ đủ dữ liệu
+    // của mọi loại cần khai để không bỏ qua loại chỉ vì thao tác sớm hơn phản hồi AJAX.
+    return waitFor(() => (st.declareTypes || []).every((cat) => attachmentModalHasCategory(sel, cat)), 7000, 250);
+  }
+  function syncDeclaredFromModal(st) {
+    st.declared = (st.declareTypes || []).filter((cat) => {
+      const type = ATTACH_TYPE[cat];
+      return type && hasDeclared(foldBusinessPageText(type.label));
+    });
+  }
   function chooseOption(sel, value, labelFold) {
     const opts = Array.from(sel.options);
     const opt = (value ? opts.find((o) => o.value === value) : null)
@@ -3031,37 +2635,39 @@
     sel.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
   }
-  // Danh mục "Loại tài liệu đính kèm" (options thật của #attId) nạp bằng AJAX SAU khi modal mở —
-  // lúc mới mount, select chỉ có đúng 1 option placeholder "-". Nếu chooseOption() chạy trước khi
-  // AJAX đổ options thật xong thì MỌI lần chọn đều thất bại (không phải do nhãn sai — options chưa
-  // kịp có), rồi cứ thế rơi vào fallback/bỏ qua mãi. Phải chờ options.length > 1 mới coi là sẵn sàng.
-  function attachTypeSelectReady(sel) {
-    return !!sel && H.isVisible(sel) && sel.options.length > 1;
-  }
   async function ensureAttachModalOpen() {
     let sel = document.getElementById("attId");
-    if (attachTypeSelectReady(sel)) return sel;
+    if (sel && H.isVisible(sel)) return sel;
     // Icon ⚙ mở modal qua handler jQuery của cổng. click() của content-script LÀ event DOM thật nên
     // handler jQuery vẫn nhận (CSP chỉ chặn INLINE script — không chặn dispatch event; KHÔNG inject nữa).
-    const icon = attachElById("BLCtl_ImgAttachmentSettings")
+    const icon = document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings")
       || document.querySelector("img.settings, .right.settings, .settings");
     if (icon) { try { icon.click(); } catch (e) { /* ignore */ } }
-    const ok = await waitFor(() => attachTypeSelectReady(document.getElementById("attId")), 8000, 250);
-    return ok ? document.getElementById("attId") : null; // null = không mở được / options chưa nạp xong
+    const ok = await waitFor(() => { const s = document.getElementById("attId"); return s && H.isVisible(s); }, 6000, 250);
+    return ok ? document.getElementById("attId") : null; // null = không mở được (để caller xử lý)
   }
-  function closeAttachModal() {
-    // Không giả định modal bọc trong #attachment — vài trang (vd ContactPerson.aspx) mở cùng modal
-    // "Văn bản đính kèm" nhưng khung ngoài có thể mang id khác. Tìm dialog THẬT SỰ đang chứa #attId
-    // (control đã xác nhận là modal đang mở) rồi mới suy ra khung .ui-dialog quanh nó.
-    const sel = document.getElementById("attId");
-    const dlg = sel?.closest(".ui-dialog") || document.getElementById("attachment")?.closest(".ui-dialog");
+  function closeAttachModal({ refreshList = false } = {}) {
+    if (refreshList) {
+      // Handler close của chính cổng chỉ submit form khi cờ này = 1. Chủ động đặt lại cờ cả ở
+      // nhánh recovery để sidebar CtlAttList được dựng từ dữ liệu đã lưu trên server.
+      const refresh = document.getElementById("ctl00_C_BLCtl_RefreshAttachment");
+      if (refresh) refresh.value = "1";
+    }
+    const dlg = document.getElementById("attachment")?.closest(".ui-dialog");
     const x = dlg?.querySelector(".ui-dialog-titlebar-close");
-    if (x) { try { x.click(); return; } catch (e) { /* fallthrough */ } }
-    // Vài biến thể modal chỉ có nút "Đóng" ở footer, không có nút x góc trên.
-    const closeBtn = dlg && Array.from(dlg.querySelectorAll('button, input[type="button"], input[type="submit"], a'))
-      .find((b) => norm(b.textContent || b.value || "") === "đóng");
-    if (closeBtn) { try { closeBtn.click(); return; } catch (e) { /* fallthrough */ } }
-    injectMainWorld("try{(window.jQuery||window.$)('#attachment').dialog('close');}catch(e){}");
+    if (x) { try { x.click(); return true; } catch (e) { /* fallthrough */ } }
+    const closeButton = Array.from(dlg?.querySelectorAll(".ui-dialog-buttonpane button") || [])
+      .find((button) => foldBusinessPageText(button.textContent).includes("dong"));
+    if (closeButton) { try { closeButton.click(); return true; } catch (e) { /* fallthrough */ } }
+    // Không phụ thuộc inject inline (CSP của HkdOnline chặn). Nếu cần refresh mà nút đóng không
+    // tồn tại, submit form thật là fallback tương đương handler close của cổng.
+    if (refreshList) {
+      const form = document.forms?.namedItem?.("aspnetForm") || document.forms?.[0];
+      if (form && typeof form.submit === "function") {
+        try { form.submit(); return true; } catch (e) { /* fallthrough */ }
+      }
+    }
+    return false;
   }
 
   // ---- các pha ----
@@ -3070,10 +2676,10 @@
   }
 
   async function handleDeclarePhase(st) {
+    if (H.isBusinessRunCancelled?.()) return;
     st.declared = st.declared || [];
-    const missing = st.declareTypes.filter((c) => !isTypeDeclared(st, c));
-    console.log("[Attach] declare — declareTypes", st.declareTypes, "| missing", missing);
-    if (missing.length) {
+    const missingFromState = st.declareTypes.filter((c) => !isTypeDeclared(st, c));
+    if (missingFromState.length || st.forceDeclareRecovery) {
       const sel = await ensureAttachModalOpen();
       if (!sel) {
         st.declareTries = (st.declareTries || 0) + 1;
@@ -3083,67 +2689,73 @@
         }
         return void setTimeout(stepAttachAll, 800);
       }
-      st.addClicked = st.addClicked || {};
-      st.addClickedFallback = st.addClickedFallback || {};
-      st.declareAttempts = st.declareAttempts || {};
-      for (const cat of missing) {
-        const t = ATTACH_TYPE[cat];
-        // đếm SỐ LƯỢT xử lý loại này TRƯỚC MỌI early-exit — bug cũ: khi cả nhãn riêng LẪN "Khác"
-        // đều không chọn được option nào (vd "Khác" đã bị loại khác trong CÙNG lượt chiếm mất khỏi
-        // dropdown), code "continue" thẳng mà KHÔNG đếm lượt, nên "giveUp" phía dưới không bao giờ
-        // tới lượt chạy → cat đó kẹt vĩnh viễn trong "missing", declaredAll không bao giờ true,
-        // handleDeclarePhase cứ gọi lại chính nó vô hạn (đúng log "phase upload" lặp mãi + declaredAll
-        // luôn false dù declared đã có đủ các loại chọn được).
-        st.declareAttempts[cat] = (st.declareAttempts[cat] || 0) + 1;
-        const attempt = st.declareAttempts[cat];
-        if (!st.addClicked[cat]) {
-          // Nhãn/attId của vài loại (vd SUSPENSION_NOTICE, BUSINESS_REG_CERT_ORIGINAL) là suy đoán —
-          // cổng thật có thể đặt tên option khác. Khớp thất bại KHÔNG được bỏ qua loại đó hoàn toàn
-          // (bug cũ: "continue" thẳng khiến modal/select bị treo ở "-", không khai được gì và tiến
-          // trình coi như kẹt) — fallback khai tạm vào "Khác" (attId cố định, luôn khớp) để tài liệu
-          // vẫn được đính kèm; người dùng có thể tự sửa lại đúng loại sau qua nút "Sửa đổi".
-          const usedFallback = !chooseOption(sel, t.attId, foldBusinessPageText(t.label));
-          const canSelectFallback = !usedFallback
-            || chooseOption(sel, ATTACH_TYPE.OTHERS.attId, foldBusinessPageText(ATTACH_TYPE.OTHERS.label));
-          if (!canSelectFallback) {
-            console.warn("[Attach] không chọn được option nào (kể cả Khác) cho", cat, "— lượt", attempt);
-            if (attempt < 3) { await sleep(300); continue; }
-            // Hết lượt thử mà dropdown vẫn không còn option nào chọn được cho loại này (rất có thể
-            // "Khác" đã bị một loại khác trong cùng đợt khai chiếm mất) — đành coi là xong để thoát
-            // vòng lặp; tài liệu loại này sẽ KHÔNG được tự đính kèm, cần người dùng tự thêm thủ công.
-            if (!st.declared.includes(cat)) st.declared.push(cat);
-            await sleep(300);
-            continue;
-          }
-          // "Số tài liệu" phải là số ≥ 1 (validateItemCount của cổng) → set = số file thuộc loại này.
-          setAttachItemCount((st.declareCounts && st.declareCounts[cat]) || 1);
-          await waitFor(() => { const b = document.getElementById("AddAtt"); return b && !b.disabled; }, 5000, 200);
-          const addBtn = document.getElementById("AddAtt");
-          if (addBtn) {
-            if (addBtn.disabled) { try { addBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
-            try { addBtn.click(); } catch (e) { /* ignore */ }
-            st.addClicked[cat] = true;
-            if (usedFallback) st.addClickedFallback[cat] = true;
-            await setAttachAllState(st);
-          }
+      const modalReady = await waitForAttachModalData(sel, st);
+      if (!modalReady) {
+        st.declareTries = (st.declareTries || 0) + 1;
+        await setAttachAllState(st);
+        closeAttachModal();
+        if (st.declareTries > 3) {
+          return void failAttachAll("Cổng không tải được danh sách loại tài liệu trong cửa sổ Văn bản đính kèm.");
         }
-        const effectiveLabel = st.addClickedFallback[cat] ? ATTACH_TYPE.OTHERS.label : t.label;
+        return void setTimeout(stepAttachAll, 800);
+      }
+
+      // Trong recovery, state local có thể nói "đã khai" nhưng sidebar lại rỗng. Lấy bảng #tblAtt
+      // vừa tải từ server làm nguồn sự thật; loại đã có thì không AddAtt lần nữa để tránh trùng.
+      syncDeclaredFromModal(st);
+      let savedAny = false;
+      const missing = st.declareTypes.filter((cat) => !isTypeDeclared(st, cat));
+      for (const cat of missing) {
+        if (H.isBusinessRunCancelled?.()) return;
+        const t = ATTACH_TYPE[cat];
+        // AJAX có thể cập nhật bảng trong lúc vòng lặp đang chạy.
+        if (hasDeclared(foldBusinessPageText(t.label))) {
+          if (!st.declared.includes(cat)) st.declared.push(cat);
+          continue;
+        }
+        const optionReady = await waitFor(() => !!findAttachTypeOption(sel, t), 3000, 200);
+        if (!optionReady) continue;
+        if (!chooseOption(sel, t.attId, foldBusinessPageText(t.label))) continue;
+        // "Số tài liệu" phải là số ≥ 1 (validateItemCount của cổng) → set = số file thuộc loại này.
+        setAttachItemCount((st.declareCounts && st.declareCounts[cat]) || 1);
+        await waitFor(() => { const b = document.getElementById("AddAtt"); return b && !b.disabled; }, 5000, 200);
+        const addBtn = document.getElementById("AddAtt");
+        if (!addBtn) continue;
+        if (addBtn.disabled) { try { addBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+        try { addBtn.click(); } catch (e) { /* ignore */ }
         // Khai báo lưu SERVER (AJAX SaveAttachment) → nhớ vào state (không đọc DOM #tblAtt sau khi
         // đóng modal / đổi trang được nữa).
-        const ok = st.addClicked[cat] && await waitFor(() => hasDeclared(foldBusinessPageText(effectiveLabel)), 6000, 300);
-        // "ok" chỉ xác nhận qua DOM trong 6s — AJAX lưu server đôi khi chậm hơn. Đã bấm AddAtt (ở
-        // trên, CHỈ một lần) mà vẫn không thấy dòng sau NHIỀU lượt handleDeclarePhase khác nhau thì
-        // cứ coi là đã khai để không kẹt vĩnh viễn ở gate "!declaredAll" của stepAttachAll.
-        const giveUp = !ok && attempt >= 3;
-        if (ok || giveUp) {
+        const ok = await waitFor(() => hasDeclared(foldBusinessPageText(t.label)), 6000, 300);
+        if (ok) {
+          savedAny = true;
           if (!st.declared.includes(cat)) st.declared.push(cat);
-          if (st.addClickedFallback[cat]) st.fallbackDeclared = { ...(st.fallbackDeclared || {}), [cat]: true };
-          if (giveUp) console.warn("[Attach] không xác nhận được khai loại qua DOM, vẫn coi là xong sau", attempt, "lần:", cat);
         }
         await sleep(300);
       }
-      closeAttachModal();
+
+      syncDeclaredFromModal(st);
+      const unresolved = st.declareTypes.filter((cat) => !st.declared.includes(cat));
+      if (unresolved.length) {
+        st.phase = "declare";
+        st.forceDeclareRecovery = true;
+        st.declareTries = (st.declareTries || 0) + 1;
+        if (st.declareTries > 3) {
+          closeAttachModal();
+          return void failAttachAll("Không khai đủ loại tài liệu đính kèm sau nhiều lần thử.");
+        }
+        await setAttachAllState(st);
+        closeAttachModal({ refreshList: savedAny });
+        H.setRunProgressText("Chưa khai đủ loại tài liệu, em đang thử lại…\n(đừng thao tác tới khi xong)");
+        return void setTimeout(stepAttachAll, 1000);
+      }
+
+      st.phase = "upload";
+      st.forceDeclareRecovery = false;
+      st.declareTries = 0;
       await setAttachAllState(st);
+      // Luôn yêu cầu full postback sau khi đối chiếu/lưu modal. Đây là bước khiến danh sách loại
+      // xuất hiện ở sidebar; chỉ location.reload() không bảo đảm cổng nhận cờ RefreshAttachment.
+      closeAttachModal({ refreshList: true });
       await sleep(600);
       // Sau khi khai, danh sách loại (CtlAttList) hiện dưới "Văn bản đính kèm" → chờ render để điều hướng.
       await waitFor(() => attachTypeLinks().length > 0 || onUploadPage(), 5000, 300);
@@ -3157,25 +2769,22 @@
   }
 
   async function handleUploadPhase(st) {
+    if (H.isBusinessRunCancelled?.()) return;
     // Đã có dòng file (postback "Tải lên" xong) → chuyển sang gán loại.
     const existing = uploadedRows();
     if (existing.length) return void handleClassifyPhase(st, existing);
 
-    const input = attachElById("FileUploadCtl");
-    const btn = attachElById("BtnSaveNoTyple");
+    const input = document.getElementById("ctl00_C_FileUploadCtl");
+    const btn = document.getElementById("ctl00_C_BtnSaveNoTyple");
     if (!input || !btn) return; // trang chưa sẵn
     st.uploadTries = (st.uploadTries || 0) + 1;
     if (st.uploadTries > 3) return void failAttachAll("Tải file lên thất bại (thử lại quá số lần).");
     // Tên tệp theo cài đặt tài khoản (đổi tên theo loại giấy / giữ tên gốc). Ghi lại tên đã tải lên để
     // pha classify còn khớp theo tên khi số dòng lệch số tệp.
-    let files = H.dataUrlFilesForBatch((st.files || []).map((f, i) => ({
+    const files = H.dataUrlFilesForBatch((st.files || []).map((f, i) => ({
       payload: f,
       documentName: st.plan?.[i]?.documentName || "",
     })));
-    // Bỏ dấu SAU khi đặt tên để áp cho cả hai chế độ (đổi tên theo loại giấy / giữ tên gốc).
-    if (st.asciiFileNames) {
-      files = files.map((f) => new File([f], asciiFileName(f.name), { type: f.type, lastModified: f.lastModified }));
-    }
     (st.plan || []).forEach((p, i) => { if (files[i]) p.uploadName = files[i].name; });
     st.uploaded = true; // sau postback "Tải lên" → dòng file hiện ra → pha classify
     await setAttachAllState(st);
@@ -3196,6 +2805,7 @@
   }
 
   async function handleClassifyPhase(st, rows) {
+    if (H.isBusinessRunCancelled?.()) return;
     if (st.phase !== "classify") { st.phase = "classify"; await setAttachAllState(st); H.setRunProgressText(attachProgressText(st)); }
     const plan = st.plan || [];
     const sameCount = rows.length === plan.length; // dòng cùng thứ tự file đã tải
@@ -3207,17 +2817,12 @@
       const nameEl = row.querySelector('span[id*="Label22"]') || row.querySelector("td:nth-child(2)");
       const byName = categoryForFileName(st, foldName(nameEl?.textContent || ""));
       const category = sameCount ? (plan[i] && plan[i].category) || byName : byName;
-      // Loại này đã phải khai báo vào "Khác" ở pha declare (nhãn suy đoán không khớp option thật)
-      // → dropdown "Loại đính kèm" của dòng cũng chỉ có "Khác" cho nó, không còn option gốc để chọn.
-      const usedFallback = !!(st.fallbackDeclared && st.fallbackDeclared[category]);
-      const t = (!usedFallback && ATTACH_TYPE[category]) || ATTACH_TYPE.OTHERS;
+      const t = ATTACH_TYPE[category] || ATTACH_TYPE.OTHERS;
       console.log("[Attach] classify row", i, nameEl?.textContent?.trim(), "→", t.droptyple);
-      if (!chooseOption(sel, t.droptyple, foldBusinessPageText(t.label))) {
-        chooseOption(sel, ATTACH_TYPE.OTHERS.droptyple, foldBusinessPageText(ATTACH_TYPE.OTHERS.label));
-      }
+      chooseOption(sel, t.droptyple, foldBusinessPageText(t.label));
     });
     await sleep(400);
-    const saveBtn = attachElById("BtnSave");
+    const saveBtn = document.getElementById("ctl00_C_BtnSave");
     if (!saveBtn) return void finishAttachAll();
     // Nút "Lưu" mặc định disabled → bật lại sau khi đã gán loại (đổi droptyple làm form "dirty").
     if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
@@ -3229,15 +2834,18 @@
   }
 
   async function finishAttachAll() {
+    if (H.isBusinessRunCancelled?.()) return;
     await clearAttachAllState();
     H.endFillAllUI("✓ Đã đính kèm xong hồ sơ. Vui lòng rà soát rồi bấm Nộp.");
   }
   async function failAttachAll(msg) {
+    if (H.isBusinessRunCancelled?.()) return;
     await clearAttachAllState();
     H.endFillAllUI("⚠ " + msg);
   }
 
   async function stepAttachAll() {
+    if (H.isBusinessRunCancelled?.()) return;
     const st = await getAttachAllState();
     if (!st) return;
     H.setRunProgressText(attachProgressText(st));
@@ -3248,12 +2856,12 @@
     st.declared = st.declared || [];
     const declaredAll = st.declareTypes.every((c) => isTypeDeclared(st, c));
     console.log("[Attach] phase", st.phase, "| declared", st.declared, "declaredAll", declaredAll,
-      "| hasGear", !!attachElById("BLCtl_ImgAttachmentSettings"),
+      "| hasGear", !!document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings"),
       "| onUploadPage", onUploadPage(), "| rows", uploadedRows().length);
 
     // B1 — KHAI LOẠI (modal ⚙): icon `.settings` là sidebar, có ở MỌI trang → khai được ở bất cứ đâu.
     // Chưa khai đủ + trang có icon ⚙ → mở modal khai luôn (KHÔNG cần ở trang có ô tải file).
-    if (!declaredAll && (attachElById("BLCtl_ImgAttachmentSettings")
+    if ((st.forceDeclareRecovery || !declaredAll) && (document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings")
       || document.querySelector(".settings"))) {
       return void handleDeclarePhase(st);
     }
@@ -3263,6 +2871,9 @@
     if (!onUploadPage()) {
       const links = attachTypeLinks();
       if (links.length) {
+        st.attListReloads = 0;
+        st.declareRecoveryRounds = 0;
+        st.forceDeclareRecovery = false;
         st.navTries = (st.navTries || 0) + 1;
         await setAttachAllState(st);
         if (st.navTries > 5) {
@@ -3276,9 +2887,24 @@
       if (declaredAll) {
         st.attListReloads = (st.attListReloads || 0) + 1;
         await setAttachAllState(st);
-        if (st.attListReloads <= 2) { location.reload(); return; }
-        H.setRunProgressText("✓ Đã khai loại. Hãy bấm 1 mục trong danh sách 'Văn bản đính kèm' để mở trang tải file.");
-        return;
+        if (st.attListReloads <= ATTACH_LIST_RELOAD_LIMIT) { location.reload(); return; }
+
+        const recoveryRound = (st.declareRecoveryRounds || 0) + 1;
+        if (recoveryRound > ATTACH_DECLARE_RECOVERY_LIMIT) {
+          return void failAttachAll("Cổng chưa hiển thị danh sách loại tài liệu sau khi đã tự khai lại 2 lần.");
+        }
+        // State local không còn được tin ở đây: mở lại modal, lấy dữ liệu server, thêm loại thật sự
+        // còn thiếu và submit lại cờ RefreshAttachment để cổng dựng CtlAttList.
+        st.declareRecoveryRounds = recoveryRound;
+        st.attListReloads = 0;
+        st.navTries = 0;
+        st.declared = [];
+        st.phase = "declare";
+        st.forceDeclareRecovery = true;
+        st.declareTries = 0;
+        await setAttachAllState(st);
+        H.setRunProgressText(`Sidebar chưa hiển thị loại tài liệu. Em đang kiểm tra và khai lại (lần ${recoveryRound}/${ATTACH_DECLARE_RECOVERY_LIMIT})…\n(đừng thao tác tới khi xong)`);
+        return void setTimeout(stepAttachAll, 700);
       }
       await setAttachAllState(st);
       H.setRunProgressText("Đang khai loại tài liệu…");
@@ -3297,25 +2923,283 @@
     return void handleUploadPhase(st);
   }
 
+  // Const đi kèm các hàm đồng bộ từ auto-fill (thiếu là ReferenceError lúc GỌI hàm —
+  // bài học fill-core: máy quét lời-gọi không bắt được tham chiếu const trần).
+  const BUSINESS_LINE_ROWS = "#ctl00_C_CtlList tr, #C_CtlList tr";
+  const BUSINESS_LINE_RESULT_PANELS = "#C_PnlListResult, #ctl00_C_PnlListResult";
+  const TAX_ADDR_SAME = "1";
+  const TAX_ADDR_OTHER = "0";
+  const TAX_ADDR_WARD_FIELD = "ctl00$C$UC_DW_TAXEditCtl$ADDRCtl$WARD_IDFld";
+
+  // ── Đồng bộ từ auto-fill business-registration.js: owner-probe (chốt Loại/Lý do thay
+  // đổi + đọc tên chủ hộ thật), chốt lại địa chỉ thuế "giống trụ sở", helper ngành nghề. ──
+  function businessLineRows() {
+    const byId = Array.from(document.querySelectorAll(BUSINESS_LINE_ROWS));
+    if (byId.length) return byId;
+    const panels = Array.from(document.querySelectorAll(BUSINESS_LINE_RESULT_PANELS));
+    for (const panel of panels) {
+      const rows = Array.from(panel.querySelectorAll("tr"));
+      if (rows.length) return rows;
+    }
+    // Lưới đỡ cuối, KHÔNG bám id nào: dòng ngành nghề là dòng duy nhất mang radio "ngành chính".
+    const marked = Array.from(document.querySelectorAll('input[name="ismain"]'))
+      .map((radio) => radio.closest("tr")).filter(Boolean);
+    return Array.from(new Set(marked));
+  }
+
+  function findBusinessButtonByExactLabel(labels) {
+    const wanted = labels.map(foldBusinessPageText);
+    return Array.from(document.querySelectorAll('input[type="submit"], input[type="button"], button'))
+      .filter((node) => !node.disabled)
+      .find((node) => wanted.includes(foldBusinessPageText(node.value || node.textContent || ""))) || null;
+  }
+
+  function findBusinessAddLineButton() {
+    // NAME là UniqueID nên giống nhau ở cả hai cổng; id thì mỗi cổng một kiểu. Nhãn là lưới đỡ cuối
+    // cho trường hợp cổng doanh nghiệp đặt tên control khác ("Thêm ngành nghề bằng mã số").
+    return document.querySelector(
+      'input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl, #C_BtnAddBl,'
+      + ' input[name$="$BtnAddBl"], input[id$="_BtnAddBl"]'
+    ) || findBusinessButtonByExactLabel(["Thêm ngành nghề bằng mã số", "Thêm"]);
+  }
+
+  function isChangeFormOnlyDossier(st) {
+    if (!st || st.businessFlow?.formOnly !== true) return false;
+    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
+  }
+
+  function collectOwnerIdentities(st) {
+    const ownerIdentities = [];
+    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
+    // đọc từ giấy tờ trong hồ sơ.
+    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
+      const id = String(soDinhDanh || "").replace(/\D/g, "");
+      const name = foldBusinessPageText(hoTen || "");
+      if (id || name) ownerIdentities.push({ id, name, trusted });
+    };
+
+    const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
+    if (ownerFields.length) {
+      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
+      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
+      addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
+        (ownerIdField && ownerIdField.value) || "");
+    }
+    const flowOwner = st.businessFlow?.owner || {};
+    addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
+    if (st.businessFlow?.search?.method === "identityNumber") {
+      addOwnerIdentity("", st.businessFlow.search.value);
+    }
+    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
+    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
+    const portalOwner = st.portalOwner || {};
+    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
+    return ownerIdentities;
+  }
+
+  function readOwnerPageValue(suffix) {
+    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
+    if (direct) return direct;
+    const node = document.querySelector(
+      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
+    );
+    if (!node) return "";
+    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function readPortalOwner() {
+    return {
+      hoTen: readOwnerPageValue("FULL_NAMEFld"),
+      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
+    };
+  }
+
+  function ownerChangeTypeOk() {
+    return OWNER_CHANGE_TYPE_FIELDS.every((field) => {
+      const el = findStandardSelect(fieldCandidates(field));
+      return el && norm(el.options[el.selectedIndex]?.textContent || "") === norm(field.value);
+    });
+  }
+
+  async function applyOwnerChangeTypeDefaults() {
+    const [typeField, reasonField] = OWNER_CHANGE_TYPE_FIELDS;
+    const sel = findStandardSelect(fieldCandidates(typeField));
+    if (sel && norm(sel.options[sel.selectedIndex]?.textContent || "") !== norm(typeField.value)) {
+      try { await fillFormStandard([typeField]); } catch (e) { /* ignore */ }
+      // Đổi "Loại" là AutoPostBack: phải CHỜ cổng render lại select "Lý do" mới chọn được "Khác".
+      await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
+    }
+    try { await fillFormStandard([reasonField]); } catch (e) { /* ignore */ }
+  }
+
+  function needsOwnerProbe(st) {
+    if (!st || st.workflow !== "change") return false;
+    if (st.ownerPageVisited) return false;
+    return !(st.order || []).includes("chu-ho-kinh-doanh");
+  }
+
+  async function startOwnerProbe(st) {
+    st.phase = "probing-owner";
+    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
+    await setFillAllState(st);
+    console.log("[FillAll] ghé trang chủ hộ kinh doanh: chốt Loại/Lý do thay đổi + đọc họ tên chủ hộ");
+    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
+    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
+    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
+    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
+  }
+
+  async function finishOwnerProbe(st) {
+    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc/điền hụt
+    st.portalOwner = st.portalOwner || {};
+    st.phase = "fill";
+    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
+    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
+    await setFillAllState(st);
+    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
+    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
+    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
+  }
+
+  async function handleOwnerProbe(st) {
+    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
+      // Lưu xong cổng có thể tự nhảy về khối dữ liệu → xong việc rồi, về thẳng trang người nộp.
+      if (st.ownerDefaultsSaved) return void finishOwnerProbe(st);
+      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
+      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
+      return void startOwnerProbe(st);
+    }
+
+    // 1. Đọc chủ hộ TRƯỚC khi đụng vào 2 select (đổi "Loại" là postback, cổng render lại cả trang).
+    if (!st.portalOwner) {
+      const owner = readPortalOwner();
+      if (owner.hoTen || owner.soDinhDanh) {
+        st.portalOwner = owner;
+        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
+      } else {
+        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
+      }
+    }
+
+    // 2. Chốt Loại/Lý do mặc định rồi Lưu. Mỗi lượt chỉ làm một nhịp (2 select cascade AutoPostBack),
+    //    trang không tự reload nên phải tự hẹn giờ gọi lại.
+    if (!st.ownerDefaultsSaved) {
+      if (!ownerChangeTypeOk()) {
+        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+        if (st.ownerTypeVerifyTries <= 6) {
+          await setFillAllState(st);
+          await applyOwnerChangeTypeDefaults();
+          return void setTimeout(stepFillAll, 500);
+        }
+        console.warn("[FillAll] không chốt được Loại/Lý do thay đổi chủ hộ — bỏ qua để không kẹt luồng.");
+      }
+      const save = findBusinessSaveButton();
+      if (save) {
+        // Chỉ đổi 2 select nên cổng có thể chưa bật nút Lưu; giá trị trên DOM đã đúng → cứ bật rồi Lưu.
+        if (save.disabled) { try { save.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+        st.ownerDefaultsSaved = true;
+        await setFillAllState(st);
+        const reloaded = await clickSaveDetectReload(save);
+        if (reloaded) return; // reload xong quay lại đây, lần đó bỏ qua khối này rồi về trang người nộp
+      }
+    }
+
+    return void finishOwnerProbe(st);
+  }
+
+  function taxWantsSameAsHeadOffice(fields) {
+    return (fields || []).some((f) => isTaxAddressModeField(f)
+      && String(f?.value ?? "").trim() === TAX_ADDR_SAME);
+  }
+
+  function isFinalTaxPass(st) {
+    const order = Array.isArray(st?.order) ? st.order : [];
+    return order.lastIndexOf("thong-tin-ve-thue") === st.step
+      && order.indexOf("thong-tin-ve-thue") !== st.step;
+  }
+
+  async function clickTaxAddressMode(modeFields, value) {
+    const template = modeFields[0];
+    if (!template) return false;
+    const label = value === TAX_ADDR_SAME ? "Giống địa chỉ trụ sở chính" : "Địa chỉ khác";
+    try {
+      const res = await fillFormStandard([{ ...template, value }]);
+      console.log("[FillAll] địa chỉ thuế: tick", label, "->", res && res.filled ? "OK" : "KHÔNG tick được");
+    } catch (e) {
+      console.warn("[FillAll] địa chỉ thuế: lỗi khi tick", label, e?.message || e);
+      return false;
+    }
+    await waitForPanelSettle(TAX_ADDR_WARD_FIELD.replace(/\$/g, "_"), 2500);
+    return true;
+  }
+
+  async function handleTaxAddressRetoggle(st, modeFields) {
+    console.log("[FillAll] lượt CHỐT địa chỉ thuế, taxPhase =", st.taxPhase || "(mới)");
+    if (!modeFields.length) {
+      console.warn("[FillAll] hồ sơ không có radio địa chỉ thuế — bỏ lượt chốt");
+      return void advanceFillAll(st);
+    }
+
+    // Persist TRƯỚC mỗi click: radio là AutoPostBack, cổng có thể reload cả trang giữa chừng thì
+    // lần load kế còn biết đang dở ở nhịp nào.
+    if (!st.taxPhase) {
+      st.taxPhase = "retoggle_other";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_other") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_OTHER);
+      st.taxPhase = "retoggle_same";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_same") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_SAME);
+      st.taxPhase = "retoggled";
+      await setFillAllState(st);
+    }
+
+    const saveBtn = findBusinessSaveButton();
+    if (!saveBtn) return void advanceFillAll(st);
+    // Lượt này không điền field nào nên cổng có thể chưa coi form là "dirty" → tự bật nút Lưu.
+    // Bỏ qua Lưu ở đây là công đảo radio thành vô nghĩa, khối thuế vẫn rỗng như trước.
+    if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+    st.phase = "saving";
+    await setFillAllState(st);
+    const reloaded = await clickSaveDetectReload(saveBtn);
+    if (reloaded) return;
+    return void advanceFillAll(st);
+  }
+
+  function businessPageCount(st) {
+    return new Set(Array.isArray(st?.order) ? st.order : []).size;
+  }
+
+  function attachElById(suffix) {
+    return document.getElementById(`ctl00_C_${suffix}`) || document.getElementById(`C_${suffix}`);
+  }
+
+  function attachTypeSelectReady(sel) {
+    return !!sel && H.isVisible(sel) && sel.options.length > 1;
+  }
+
   H.detectBusinessPageKey = detectBusinessPageKey;
   H.detectBusinessChangeStage = detectBusinessChangeStage;
+  H.detectBusinessCreateStage = detectBusinessCreateStage;
+  // Cho adapter chèn "lượt chốt địa chỉ thuế" cuối order (hồ sơ kê "giống trụ sở chính").
+  H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
+  H.TAX_PAGE_KEY = "thong-tin-ve-thue";
+  // Stage GỘP cho page_status: thử luồng thành lập mới trước (home/select-registration/confirm
+  // trùng marker), không ra thì thử luồng thay đổi (search-business/select-change/main thay đổi).
+  H.detectBusinessAnyStage = function detectBusinessAnyStage() {
+    const create = detectBusinessCreateStage();
+    if (create.stage !== "unknown") return create;
+    return detectBusinessChangeStage();
+  };
   H.detectBusinessProcedureHint = detectBusinessProcedureHint;
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
-  // Cổng ĐKKD qua mạng dùng CHUNG component ngành nghề với HkdOnline: cùng ô
-  // ctl00$C$newBusinessLineCode, cùng nút thêm mã, cùng bảng danh sách, cùng radio ismain —
-  // chỉ khác tiền tố ClientID (đã xử lý ở BUSINESS_LINE_ROWS/findBusinessAddLineButton).
-  // Xuất nguyên bộ thao tác để engine doanh nghiệp lặp thêm mã mà không chép lại logic này.
-  H.businessLineOps = {
-    getAddedCodes: getAddedBusinessCodes,
-    findRowByCode: findBusinessRowByCode,
-    addOneCode: addOneBusinessCode,
-    isMainSet: isBusinessMainSet,
-    setMainAndUpdate: setBusinessMainAndUpdate,
-    fillDescriptions: fillBusinessLineDescriptions,
-    findUpdateButton: findBusinessLineUpdateButton,
-  };
   H.applyBusinessLocalDefaults = applyBusinessLocalDefaults;
   // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
   H.applySubmitterOverride = applySubmitterOverride;
@@ -3324,25 +3208,15 @@
   H.matchSubmitterIdentityCandidate = matchSubmitterIdentityCandidate;
   H.forceSelfSubmitter = forceSelfSubmitter;
   H.matchAccountWithOwner = matchAccountWithOwner;
-  H.isChangeFormOnlyDossier = isChangeFormOnlyDossier;
-  H.collectOwnerIdentities = collectOwnerIdentities;
-  H.needsOwnerProbe = needsOwnerProbe;
-  H.OWNER_CHANGE_TYPE_FIELDS = OWNER_CHANGE_TYPE_FIELDS;
-  H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
-  // Trang thuế: export để test được nhịp Lưu → đảo radio → Lưu mà không cần cả state machine.
-  H.fillAddressCascade = fillAddressCascade;   // test cascade Tinh/Phuong-Xa
-  H.handleTaxPage = handleTaxPage;
-  // Trang địa chỉ: export để test được nhịp "cổng để nút Lưu disabled nhưng vẫn phải lưu".
-  H.handleAddressCascadePage = handleAddressCascadePage;
-  H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
-  H.TAX_PAGE_KEY = "thong-tin-ve-thue";
   H.getFillAllState = getFillAllState;
+  H.clearFillAllState = clearFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;
   H.setFillAllState = setFillAllState;
   H.stepFillAll = stepFillAll;
   H.startAttachAllBusiness = startAttachAllBusiness;
   H.stepAttachAll = stepAttachAll;
   H.getAttachAllState = getAttachAllState;
+  H.clearAttachAllState = clearAttachAllState;
 })();
  

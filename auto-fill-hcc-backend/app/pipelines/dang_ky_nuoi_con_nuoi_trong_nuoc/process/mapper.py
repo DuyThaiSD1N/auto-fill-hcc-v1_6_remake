@@ -21,6 +21,9 @@ _LIVING_FAMILY = "Gia đình của Ông/Bà"
 _LIVING_FACILITY = "Tại Cơ sở nuôi dưỡng"
 _PERMANENT_RESIDENCE = "Thường trú"
 _RELATION_OTHER = "Khác"
+# Khối chứa thông tin mẹ / cha nuôi: vợ chồng cùng nhận → VoChongNhanNuoi_*, người đơn thân → MeNuoi / ChaNuoi. Chỉ
+# khối của trường hợp đang chọn hiện trên trang, extension lấy khối đang hiện.
+_ADOPTER_BLOCKS = {"M": ("VoChongNhanNuoi_Me", "MeNuoi"), "Cha": ("VoChongNhanNuoi_Cha", "ChaNuoi")}
 _ISSUER_CUC_TITLE = "Cục trưởng Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
 _CHILD_CATEGORIES = (
@@ -196,7 +199,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, value: Any, *, default: bool = False) -> None:
+    def add(name: str, value: Any, *, default: bool = False, nested: tuple | None = None) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
@@ -205,6 +208,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         field = {"name": name, "comp": comp, "value": value}
         if default:
             field["default"] = True
+        if nested:
+            # Dropdown trong khối mẹ/cha nuôi không có thẻ x-select / name riêng → extension tìm theo khối + nhãn.
+            field["containers"], field["label"] = list(nested[0]), nested[1]
         out.append(field)
         seen.add(name)
 
@@ -284,26 +290,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("ChonNguoiDonThanNhanNuoi", _SINGLE_FATHER if has_father else _SINGLE_MOTHER)
 
     def add_adopter(person: dict, suffix: str, relation_name: str, relations: tuple) -> None:
+        blocks = _ADOPTER_BLOCKS[suffix]
         add(f"HoVaTen{suffix}", _upper_name(person["name"]))
         add(f"NgaySinh{suffix}", person["birth"])
-        add(f"DanToc{suffix}", person["ethnicity"])
-        add(f"QuocTich{suffix}", person["nationality"] or "Việt Nam")
+        add(f"DanToc{suffix}", person["ethnicity"], nested=(blocks, "Dân tộc"))
+        add(f"QuocTich{suffix}", person["nationality"] or "Việt Nam", nested=(blocks, "Quốc tịch"))
         add(f"SoDinhDanh{suffix}", person["id"])
         if person["id"]:
-            add(f"LoaiGiayToDinhDanh{suffix}", person["doc_type"])
+            add(f"LoaiGiayToDinhDanh{suffix}", person["doc_type"], nested=(blocks, "Giấy tờ tùy thân"))
             add(f"SoGiayToDinhDanh{suffix}", person["id"])
         add(f"NgayCapDD{suffix}", person["issue_date"])
         add(f"NoiCapDD{suffix}", person["issuer"])
         relation = _relation(person["relation"], relations)
         # Không có giấy tờ nói quan hệ họ hàng → "Khác", tô vàng cho cán bộ xem lại.
-        add(relation_name, relation or _RELATION_OTHER, default=not relation)
+        add(relation_name, relation or _RELATION_OTHER, default=not relation,
+            nested=(blocks, "Mẹ nuôi là" if suffix == "M" else "Cha nuôi là"))
         add(f"SoDienThoai{suffix}", person["phone"])
         area = person["area"]
         if not area:
             return
-        add(f"LoaiCuTru{suffix}", _PERMANENT_RESIDENCE)
+        add(f"LoaiCuTru{suffix}", _PERMANENT_RESIDENCE, nested=(blocks, "Loại cư trú"))
         if couple:
-            add(f"NoiCuTru{suffix}_QuocGia", area["quocGia"])
+            add(f"NoiCuTru{suffix}_QuocGia", area["quocGia"], nested=(blocks, "Quốc gia nơi cư trú"))
             add(f"DiaChi{suffix}", _area_text(area))
         else:
             add(f"NoiCuTru{suffix}", _IN_COUNTRY)

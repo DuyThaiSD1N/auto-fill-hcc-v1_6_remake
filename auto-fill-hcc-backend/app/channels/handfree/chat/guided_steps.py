@@ -34,6 +34,12 @@ def result_flow_enabled(conv: dict, proc: dict | None) -> bool:
     Bật theo cả luồng dẫn từng bước (`enabled`), HOẶC riêng cờ `attachToResult` cho thủ tục đã có
     luồng bước chủ hồ sơ của mình (kê khai tư pháp: xin đồng ý + điền chủ hồ sơ) — cờ này không đụng
     bước 1, chỉ mở đoạn từ Thành phần hồ sơ trở đi."""
+    from app.channels.handfree.chat import bxd
+
+    # Luồng 4 bước iGate (chat/bxd) đã dẫn bước nhận kết quả + nộp hồ sơ: bật thêm đoạn này là HAI lời cùng trả lời
+    # một bước (hai thẻ cách nhận, chọn ở thẻ cũ thì mất nút Nộp hồ sơ).
+    if bxd.enabled(conv, proc):
+        return False
     caps = conv.get("client_capabilities") or {}
     # Cổng cần engine riêng (vd bấm "Tiếp tục" + chọn mat-select của cổng iGate Bộ Y tế) khai thêm
     # `capability`: extension chưa có engine đó thì giữ nguyên câu "tự bấm nộp" cũ.

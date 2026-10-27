@@ -15,7 +15,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, field_review, flow, intents, store
+from app.channels.handfree.chat import access, field_review, flow, intents, owner_review, store
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.archive.config import archive_settings
@@ -151,6 +151,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # với bảng thành phần hồ sơ. Extension cũ không khai → BE giữ nguyên thứ tự bước cũ
         # (xin giấy tờ ở bước Thành phần hồ sơ).
         "supportsOwnerScan": raw.get("supportsOwnerScan") is True,
+        # Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại
+        # ghi đè. Thiếu cờ → không hiện nút lưu, công dân tự tick như cũ.
+        "supportsSaveOwnerProfile": raw.get("supportsSaveOwnerProfile") is True,
         # Màn chào thứ tự mới: chọn thủ tục trước, card chọn nơi xuống lượt xác nhận.
         # Extension cũ không khai → giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
         "supportsProcedureFirst": raw.get("supportsProcedureFirst") is True,
@@ -192,6 +195,11 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cùng vòng bổ sung ô trên form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
         # Bản chỉ có supportsFieldReview không đọc được form này → BE giữ báo cáo điền như trước.
         "supportsFieldReviewSurvey": raw.get("supportsFieldReviewSurvey") is True,
+        # Vòng bổ sung ô eForm điền được ô ghi chữ đi kèm lựa chọn "Khác" (apply.extra). Thiếu cờ → hỏi như ô chọn thường.
+        "supportsFieldReviewOtherText": raw.get("supportsFieldReviewOtherText") is True,
+        # Vòng bổ sung ô eForm tách được khối chứa thông tin một người (khối mẹ / cha nuôi). Thiếu cờ → thủ tục có khối
+        # này không bật vòng bổ sung.
+        "supportsFieldReviewNested": raw.get("supportsFieldReviewNested") is True,
         # Luồng bản 2 của trang một trang (thẻ tiến trình 3 bước, chỉ hiện nút đi tiếp khi đủ ô bắt buộc).
         "supportsFlowV2": raw.get("supportsFlowV2") is True,
         # Dẫn đủ 6 bước cổng liên thông (chat/lien_thong.py): báo bước đang mở (lienThongStep), bổ sung ô
@@ -384,6 +392,9 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         # LLM riêng (biết nhãn ô, danh sách lựa chọn), không qua bộ phân loại ý định chung.
         if intent is None and field_review.asking(conv) and message and not message.startswith("__"):
             intent = intents.Intent("action", "field_review_answer", {"text": message})
+        # Cùng lối với vòng bổ sung tờ khai, cho các ô còn trống ở bước Thông tin chủ hồ sơ.
+        if intent is None and owner_review.asking(conv) and message and not message.startswith("__"):
+            intent = intents.Intent("action", "owner_review_answer", {"text": message})
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
         # Câu nói về chuyển bước trên wizard ("bước tiếp theo" ở Thành phần hồ sơ, "gửi hồ sơ" ở bước nhận

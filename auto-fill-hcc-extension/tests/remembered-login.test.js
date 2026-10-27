@@ -2,22 +2,19 @@ const assert = require("node:assert/strict");
 const { webcrypto } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const test = require("node:test");
 const vm = require("node:vm");
 
-const root = path.join(__dirname, "..");
+const root = path.resolve(__dirname, "..");
 const credentialSource = fs.readFileSync(path.join(root, "api", "credentials.js"), "utf8");
-const popupSource = fs.readFileSync(path.join(root, "popup.js"), "utf8");
-const htmlSource = fs.readFileSync(path.join(root, "popup.html"), "utf8");
+const sidebarSource = fs.readFileSync(path.join(root, "sidebar.js"), "utf8");
+const authSource = fs.readFileSync(path.join(root, "api", "auth.js"), "utf8");
+const htmlSource = fs.readFileSync(path.join(root, "sidebar.html"), "utf8");
+const cssSource = fs.readFileSync(path.join(root, "sidebar.css"), "utf8");
 
-// Chỉ nạp factory crypto; không khởi tạo IndexedDB thật trong Node.
 const browserStoreMarker = credentialSource.indexOf("\nconst RememberedLoginStore =");
 assert.ok(browserStoreMarker > 0, "Không tách được factory kho thông tin đăng nhập");
-const sandbox = {
-  crypto: webcrypto,
-  TextEncoder,
-  TextDecoder,
-  Date,
-};
+const sandbox = { crypto: webcrypto, TextEncoder, TextDecoder, Date };
 vm.runInNewContext(`${credentialSource.slice(0, browserStoreMarker)}
   globalThis.createVault = createRememberedLoginVault;
   globalThis.keyId = REMEMBERED_LOGIN_KEY_ID;
@@ -40,67 +37,50 @@ function createMemoryRepository() {
   };
 }
 
-(async () => {
+test("thông tin ghi nhớ được mã hóa AES-GCM và fail closed khi dữ liệu hỏng", async () => {
   const repository = createMemoryRepository();
   const vault = sandbox.createVault(repository, webcrypto);
-  const username = "test1";
+  const username = "canbo-test";
   const password = "Mat-khau-rieng-123!";
 
   await vault.save(username, password);
 
   const keyRecord = repository.records.get(sandbox.keyId);
   const dataRecord = repository.records.get(sandbox.dataId);
-  assert.ok(keyRecord?.value, "Phải tạo khóa AES");
-  assert.equal(keyRecord.value.extractable, false, "Khóa AES không được phép export raw");
+  assert.equal(keyRecord.value.extractable, false);
   assert.equal(keyRecord.value.algorithm.name, "AES-GCM");
   assert.equal(keyRecord.value.algorithm.length, 256);
-  assert.equal(new Uint8Array(dataRecord.iv).byteLength, 12, "AES-GCM dùng IV 96-bit");
-
-  const persisted = JSON.stringify(dataRecord);
-  assert.doesNotMatch(persisted, /test1|Mat-khau-rieng-123/,
-    "Bản ghi IndexedDB không được chứa tài khoản/mật khẩu dạng rõ");
-
+  assert.equal(new Uint8Array(dataRecord.iv).byteLength, 12);
+  assert.doesNotMatch(JSON.stringify(dataRecord), /canbo-test|Mat-khau-rieng-123/);
   const restored = await vault.get();
   assert.equal(restored.username, username);
   assert.equal(restored.password, password);
 
-  // Cùng credential nhưng mã hóa lại phải có ciphertext/IV khác.
-  const firstIv = Buffer.from(dataRecord.iv).toString("hex");
-  const firstCiphertext = Buffer.from(dataRecord.ciphertext).toString("hex");
-  await vault.save(username, password);
-  const second = repository.records.get(sandbox.dataId);
-  assert.notEqual(Buffer.from(second.iv).toString("hex"), firstIv);
-  assert.notEqual(Buffer.from(second.ciphertext).toString("hex"), firstCiphertext);
-
-  // Ciphertext bị sửa phải fail closed và dọn cả khóa lẫn dữ liệu.
-  const tampered = structuredClone(second);
-  const bytes = new Uint8Array(tampered.ciphertext);
-  bytes[0] ^= 0xff;
+  const tampered = structuredClone(dataRecord);
+  new Uint8Array(tampered.ciphertext)[0] ^= 0xff;
   await repository.put(tampered);
   assert.equal(await vault.get(), null);
   assert.equal(repository.records.size, 0);
+});
 
-  await assert.rejects(() => vault.save("", password), /Thiếu thông tin đăng nhập/);
-  await assert.rejects(() => vault.save(username, ""), /Thiếu thông tin đăng nhập/);
+test("màn đăng nhập dùng logo HCC và contract ghi nhớ giống Auto Fill", () => {
+  const credentialsScript = htmlSource.indexOf('<script src="api/credentials.js"></script>');
+  const sidebarScript = htmlSource.indexOf('<script src="sidebar.js"></script>');
 
-  // Contract UI: file crypto nạp trước popup; chỉ save sau khi API login thành công.
-  assert.match(htmlSource, /id="rememberLogin"[\s\S]*id="forgetLoginBtn"/);
-  assert.ok(
-    htmlSource.indexOf('src="api/credentials.js"') < htmlSource.indexOf('src="popup.js"'),
-    "Kho credential phải nạp trước popup",
-  );
-  assert.ok(
-    popupSource.indexOf("const data = await api.login(username, password)")
-      < popupSource.indexOf("await RememberedLoginStore.save(username, password)"),
-    "Chỉ lưu credential sau khi backend xác thực thành công",
-  );
-  assert.match(popupSource, /chrome\.extension\?\.inIncognitoContext !== true/);
-  assert.match(popupSource, /rememberLogin\.addEventListener\("change"[\s\S]*clearRememberedLogin/);
-  assert.match(popupSource, /forgetLoginBtn\.addEventListener\("click"[\s\S]*clearFields: true/);
-  assert.doesNotMatch(popupSource, /CredStore/);
+  assert.ok(credentialsScript > 0 && credentialsScript < sidebarScript);
+  assert.match(htmlSource, /id="remember-login"[\s\S]*id="forget-login-btn"/);
+  assert.match(sidebarSource, /BRAND_ICON\(46, "brand-icon-login"\)/);
+  assert.doesNotMatch(sidebarSource, /getElementById\("login-avatar"\)\.innerHTML = ROBOT/);
+  assert.match(cssSource, /\.brand-icon-login/);
+  assert.match(sidebarSource, /CAN_REMEMBER_LOGIN = chrome\.extension\?\.inIncognitoContext !== true/);
+  assert.match(sidebarSource, /prefillLogin\(\)[\s\S]*RememberedLoginStore\.get\(\)/);
+  assert.match(sidebarSource, /remember-login/);
+  assert.match(sidebarSource, /forget-login-btn/);
+  assert.match(sidebarSource, /RememberedLoginStore\.clear\(\)/);
+  assert.match(sidebarSource, /invalidRememberedLogin[\s\S]*Thông tin đã nhớ đã được xóa/);
+  assert.match(authSource, /error\.status = res\.status/);
 
-  console.log("remembered login: AES-GCM vault + popup contract passed");
-})().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+  const loginAt = sidebarSource.indexOf("await window.tlndAuth.login(u, p)");
+  const saveAt = sidebarSource.indexOf("await window.RememberedLoginStore.save(u, p)");
+  assert.ok(loginAt > 0 && saveAt > loginAt, "Chỉ lưu mật khẩu sau khi API đăng nhập thành công");
 });

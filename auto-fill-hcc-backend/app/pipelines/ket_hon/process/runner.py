@@ -30,7 +30,8 @@ _MRZ_ID = re.compile(r"^\s*i[do]\s*vnm\S*?(\d{12})<")
 _ID_TOKEN = re.compile(r"(?<!\d)\d{12}(?!\d)")
 _RESIDENCE_LABELS = ("noi thuong tru", "noi cu tru", "noi dkhk thuong tru")
 _ISSUE_DATE = re.compile(r"(?:date of issue|date, month, year|nam cap|ngay cap)[^0-9]{0,30}(\d{1,2}/\d{1,2}/\d{4})")
-_CARD_SIDES = ("CccdNam", "CccdNu")
+# Tên nhóm field thẻ theo schema hiện tại (BE 20/10 đổi CccdNam/CccdNu → BenNam/BenNu).
+_CARD_SIDES = ("BenNam", "BenNu")
 _ISSUER_LABELS = {
     "bo cong an": "Bộ Công an",
     "cuc canh sat": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
@@ -133,6 +134,18 @@ def _area_matches(area, residences: list[str]) -> bool:
     return False
 
 
+def _xa_from_other(area, own: list[str], others: list[str]) -> bool:
+    """Xã LLM trả chỉ có trong nơi cư trú in trên thẻ người kia, không có trên thẻ người này.
+
+    Thẻ CCCD cũ in nơi thường trú hai dòng, OCR hay mất dòng sau (xã, tỉnh) → LLM vá bằng dòng nơi cư trú
+    của người kia, ra địa chỉ trộn: chi tiết đúng của người này, xã/tỉnh của người kia.
+    """
+    if not isinstance(area, dict) or not own or not others or not _tokens(area.get("xa")):
+        return False
+    xa_only = {"xa": area.get("xa")}
+    return _area_matches(xa_only, others) and not _area_matches(xa_only, own)
+
+
 def _same_date(a, b) -> bool:
     def parts(value):
         return tuple(int(p) for p in re.findall(r"\d+", str(value or ""))[:3])
@@ -162,13 +175,13 @@ def _fix_swapped_card_facts(raw_fields, documents: list[dict]):
         values = {f.get("name"): f.get("value") for f in raw_fields if isinstance(f, dict)}
 
     ids = {side: re.sub(r"\D+", "", str(values.get(f"{side}_SoDinhDanh") or "")) for side in _CARD_SIDES}
-    if not all(ids.values()) or ids["CccdNam"] == ids["CccdNu"]:
+    if not all(ids.values()) or ids[_CARD_SIDES[0]] == ids[_CARD_SIDES[1]]:
         return raw_fields
     facts = _card_facts_by_id(documents)
     if not any(ids[side] in facts for side in _CARD_SIDES):
         return raw_fields
     own = {side: facts.get(ids[side], {}) for side in _CARD_SIDES}
-    other = {"CccdNam": "CccdNu", "CccdNu": "CccdNam"}
+    other = {_CARD_SIDES[0]: _CARD_SIDES[1], _CARD_SIDES[1]: _CARD_SIDES[0]}
     changes: dict[str, object] = {}
 
     def swap(suffix: str, belongs, printed=lambda side: None) -> None:
@@ -193,6 +206,12 @@ def _fix_swapped_card_facts(raw_fields, documents: list[dict]):
          lambda side: own[side].get("issue_date"))
     swap("NoiCap", lambda issuer, side: bool(_issuer_key(issuer)) and _issuer_key(issuer) == own[side].get("issuer"),
          lambda side: _ISSUER_LABELS.get(own[side].get("issuer")))
+    # Địa chỉ trộn (xem _xa_from_other): bỏ xã/tỉnh mượn của người kia, giữ chi tiết; không đoán xã thật.
+    for side in _CARD_SIDES:
+        name = f"{side}_NoiCuTru_TrongNuoc"
+        area = changes.get(name, values.get(name))
+        if _xa_from_other(area, own[side].get("residences", []), own[other[side]].get("residences", [])):
+            changes[name] = {**area, "tinh": "", "xa": ""} if _tokens(area.get("diaChi")) else None
     if not changes:
         return raw_fields
 

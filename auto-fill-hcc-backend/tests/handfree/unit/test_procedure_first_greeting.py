@@ -65,7 +65,16 @@ def test_chua_chon_noi_van_hoi_duoc_khong_vo_cau():
     conv = _conv(NEW_CLIENT)
     conv["location"] = {}
     r = flow._to_confirm_procedure(conv, "chung-thuc-ban-sao")
-    assert "(chưa chọn xã)" in r.display_md and "(chưa chọn tỉnh)" in r.display_md
+    assert "(chưa chọn xã)" not in r.display_md and "(chưa chọn tỉnh)" in r.display_md
+
+
+def test_chua_chon_xa_thi_chi_noi_tai_tinh():
+    conv = _conv(NEW_CLIENT)
+    conv["location"] = {"province": "Thành phố Bắc Ninh", "ward": ""}
+    r = flow._to_confirm_procedure(conv, "chung-thuc-ban-sao")
+    assert "tại **Thành phố Bắc Ninh** · " in r.display_md
+    assert "chưa chọn xã" not in r.display_md and "chưa chọn xã" not in r.tts_text
+    assert "tại Thành phố Bắc Ninh, cho bản thân" in r.tts_text
 
 
 def test_chon_thu_tuc_xong_moi_hien_noi_de_chinh():
@@ -85,8 +94,7 @@ def test_client_cu_khong_nhan_card_chon_noi_o_buoc_xac_nhan():
     assert not r.cards
     assert r.display_md == vi.CONFIRM_PROCEDURE["md"].format(
         procedure="Chứng thực bản sao",
-        ward="Phường Hải Châu",
-        province="Thành phố Đà Nẵng",
+        place="Phường Hải Châu, Thành phố Đà Nẵng",
     )
 
 

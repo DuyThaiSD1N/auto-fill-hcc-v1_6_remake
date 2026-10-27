@@ -431,8 +431,8 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                          "xin tiền hỗ trợ hỏa táng cho người nhà mới mất",
                                          "hỗ trợ chi phí điện táng",
                                          "hỗ trợ hỏa táng ở bắc ninh"],
-    # Bản Bắc Ninh (1.014632, Mẫu 02 xác nhận điều kiện nhà ở). Bản Bộ Xây dựng
-    # "cho-thue-thue-mua-nha-o-xa-hoi" chỉ mở cho Đà Nẵng nên account Bắc Ninh không thấy cả hai cùng lúc.
+    # Bản Bắc Ninh (1.014632, Mẫu 02 xác nhận điều kiện nhà ở). Account Bắc Ninh thấy cả bản Bộ Xây dựng
+    # "cho-thue-thue-mua-nha-o-xa-hoi" → SYSTEM có quy tắc phân biệt hai thủ tục nhà ở xã hội.
     "dang-ky-nha-o-xa-hoi-bac-ninh": ["đăng ký mua nhà ở xã hội", "đăng ký thuê nhà ở xã hội ở bắc ninh",
                                       "xin giấy xác nhận điều kiện nhà ở để mua nhà xã hội",
                                       "vay vốn tự xây hoặc sửa chữa nhà ở theo chính sách nhà ở xã hội",
@@ -495,6 +495,31 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "xin chứng chỉ môi giới bất động sản", "đăng ký thi chứng chỉ môi giới nhà đất",
         "làm môi giới bất động sản cần chứng chỉ gì", "cấp chứng chỉ hành nghề môi giới bất động sản",
     ],
+    # ── Đợt 26/10 ──
+    # DOANH NGHIỆP đăng ký nội quy lao động với Sở Nội vụ. Cụm "nội quy lao động" là dấu hiệu riêng.
+    "dang-ky-noi-quy-lao-dong": ["đăng ký nội quy lao động", "công ty nộp nội quy lao động lên sở",
+                                 "doanh nghiệp đăng ký nội quy lao động với sở nội vụ",
+                                 "nộp hồ sơ đăng ký nội quy lao động"],
+    # Mở QUÁN GAME / điểm internet chơi game công cộng (cổng Bộ VHTTDL). KHÁC đăng ký hộ kinh doanh
+    # ("dang-ky-kinh-doanh"): ở đây đã có giấy phép kinh doanh, xin giấy chứng nhận đủ điều kiện điểm trò chơi.
+    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": [
+        "mở quán game cần giấy chứng nhận gì", "xin giấy chứng nhận điểm trò chơi điện tử công cộng",
+        "cấp phép phòng game", "mở quán net chơi game", "giấy chứng nhận đủ điều kiện điểm cung cấp trò chơi điện tử",
+    ],
+    # Chế độ RIÊNG của Đà Nẵng (Nghị quyết 75/2026) trả tiền VẬN CHUYỂN người mất tới cơ sở hỏa táng. Bản
+    # Bắc Ninh "ho-tro-chi-phi-hoa-tang-bac-ninh" chỉ mở cho Bắc Ninh nên một tài khoản không thấy cả hai.
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": [
+        "hỗ trợ chi phí vận chuyển người mất đi hỏa táng", "xin tiền xe chở người mất đến lò hỏa táng",
+        "hỗ trợ chi phí hỏa táng ở đà nẵng", "hỗ trợ vận chuyển thi hài đến cơ sở hỏa táng",
+    ],
+    # Nước sạch (Lai Châu, mã địa phương): lắp đồng hồ nước MỚI. KHÁC đổi tên trong hợp đồng ngay dưới.
+    "dang-ky-lap-dat-su-dung-nuoc-sach": ["đăng ký lắp đặt nước sạch", "xin lắp đồng hồ nước",
+                                          "đăng ký đấu nối nước sạch cho nhà mới",
+                                          "làm hợp đồng cấp nước sạch", "lắp nước máy về nhà"],
+    # Đã có hợp đồng nước, nay ĐỔI TÊN chủ hợp đồng (mua nhà, sang tên, người đứng tên mất).
+    "chuyen-doi-ten-hop-dong-nuoc-sach": ["đổi tên hợp đồng nước sạch", "sang tên đồng hồ nước",
+                                          "mua nhà muốn đổi tên hợp đồng cấp nước",
+                                          "chuyển tên chủ hợp đồng dịch vụ cấp nước"],
 }
 
 
@@ -535,8 +560,10 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   y tế. Chọn thẳng ĐƠN LẺ khi câu nói rõ chỉ làm giấy khai sinh (không kèm gì), khai sinh quá hạn,
   hoặc người được khai sinh đã từ 6 tuổi trở lên/người lớn. Câu chung chung "đăng ký khai sinh",
   "làm giấy khai sinh cho con/cho bé" (kể cả viết không dấu, nghe nhầm) không có các dấu hiệu trên →
-  unclear với HAI thủ tục, đơn lẻ đứng trước. Nhắc tới "con", "bé", "trẻ sơ sinh" KHÔNG phải dấu
-  hiệu — khai sinh nào cũng cho trẻ.
+  unclear với BA thủ tục theo thứ tự: đơn lẻ, liên thông, khai sinh cho người ĐÃ CÓ hồ sơ, giấy tờ cá nhân.
+  Nhắc tới "con", "bé", "trẻ sơ sinh" KHÔNG phải dấu hiệu — khai sinh nào cũng cho trẻ. Nói rõ người chưa
+  từng đăng ký khai sinh nhưng đã có căn cước / học bạ / giấy tờ cá nhân → chọn thẳng khai sinh cho người
+  đã có hồ sơ, giấy tờ.
 - Đăng ký khai tử (đơn lẻ) vs khai tử LIÊN THÔNG (kèm xóa đăng ký thường trú + trợ cấp mai táng phí).
   Chọn LIÊN THÔNG khi câu nói rõ liên thông, hoặc nói khai tử KÈM xóa hộ khẩu/xóa thường trú hay
   KÈM mai táng phí. Câu chỉ nói khai tử/chứng tử/báo tử, không kèm gì → đăng ký khai tử đơn lẻ.
@@ -571,6 +598,12 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   SẢN (KHÁC hẳn chứng thực bản sao một tờ giấy); "công chứng BẢN DỊCH", "chứng thực chữ ký NGƯỜI
   DỊCH", "dịch thuật công chứng" = chứng thực chữ ký NGƯỜI DỊCH (KHÁC chứng thực chữ ký thường — cái
   đó là chữ ký của chính người yêu cầu).
+- HAI thủ tục NHÀ Ở XÃ HỘI (khi danh sách có cả hai): "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước
+  đầu tư" = THUÊ hoặc THUÊ MUA căn nhà ở xã hội do NHÀ NƯỚC xây bằng vốn đầu tư công; bản Bắc Ninh "Đăng
+  ký mua, thuê mua, thuê nhà ở xã hội, vay vốn…" = xin XÁC NHẬN ĐIỀU KIỆN nhà ở để MUA / thuê mua / thuê
+  nhà ở xã hội (thường của dự án), hoặc VAY VỐN tự xây, sửa nhà. Nói rõ nhà của Nhà nước / vốn đầu tư
+  công → bản Bộ Xây dựng; nói mua nhà xã hội của dự án, xin giấy xác nhận điều kiện nhà ở hoặc vay vốn
+  → bản Bắc Ninh; chỉ nói chung "đăng ký / thuê nhà ở xã hội" → unclear với cả hai.
 - "CẤP BẢN SAO TỪ SỔ GỐC" = cơ quan đang giữ sổ gốc cấp lại bản sao (người dân không còn bản chính),
   KHÁC chứng thực bản sao (đem BẢN CHÍNH tới để sao y). Bản sao giấy khai sinh/kết hôn/khai tử là
   trích lục hộ tịch; bản sao văn bằng, chứng chỉ là thủ tục văn bằng — chỉ chọn "cấp bản sao từ sổ

@@ -67,6 +67,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - ThongTinBo_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
 - ThongTinBo_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
 - NHẬN DIỆN CCCD CỦA CHA: hồ sơ có CCCD/CMND của một người NAM trưởng thành, KHÔNG phải mẹ và KHÔNG phải người đã được giấy tờ khác gắn vai trò riêng (vd số định danh trùng chủ hộ CT01) → đó là CCCD của CHA, BẮT BUỘC trích ThongTinBo_* từ thẻ đó, KỂ CẢ khi hồ sơ không có giấy kết hôn và giấy chứng sinh không ghi cha. KHÔNG đòi họ trên CCCD trùng họ con mới nhận là cha.
+- NGOẠI LỆ: giấy chứng sinh/giấy kết hôn/tờ khai ĐÃ ghi tên cha mà thẻ nam này mang tên/số KHÁC, hoặc hồ sơ có HAI thẻ nam và thẻ kia mới trùng người cha → thẻ này là của NGƯỜI THỨ BA (ông, người giám hộ, người đi nộp...): trích vào NguoiKhac_*, TUYỆT ĐỐI không đưa vào ThongTinBo_*. Thẻ nữ không phải mẹ cũng vậy.
 - OCR hay đọc LỆCH DẤU họ trên CCCD (vd "TỔNG" ↔ "TỐNG", dòng MRZ cùng là "TONG"). Họ cha chỉ khác họ con ở DẤU (bỏ dấu giống hệt) → vẫn là cha, và ThongTinBo_HoTen viết họ theo cách viết của họ con trên giấy chứng sinh/tờ khai (vd con "TỐNG GIA HÂN", CCCD đọc "TỔNG VĂN BÌNH" → "TỐNG VĂN BÌNH"); chữ đệm và tên giữ nguyên theo CCCD.
 - LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó theo thứ tự nguồn ở trên.
 
@@ -129,6 +130,21 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - LienHe_SoDienThoai: CỐ GẮNG đọc số điện thoại liên hệ trong giấy tờ (vd dòng "Số điện thoại:..." trong văn bản/đơn). Trả số di động VN 10 số bắt đầu bằng "0"; sửa lỗi OCR phổ biến (S→5, O→0); nếu thiếu số 0 đứng đầu thì thêm vào. Không bịa nếu không đọc được.
 - Tk_NguoiYeuCau_HoTen: họ tên ở dòng "Họ, chữ đệm, tên người yêu cầu" NGAY ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH (cũng là người ký tên cuối tờ khai). TUYỆT ĐỐI KHÔNG lấy tên con/cha/mẹ ở các khối phía dưới, KHÔNG lấy người kê khai/chủ hộ trên CT01. Không có tờ khai đăng ký khai sinh → bỏ field.
 
+# ═══ H1. NGƯỜI YÊU CẦU & NGÀY CẤP / NƠI CẤP THẺ ═══
+Dùng để bù khối "Thông tin người yêu cầu" khi cổng không đổ đủ. Chỉ trích, không suy diễn người yêu cầu là ai.
+- Tk_NguoiYeuCau_SoGiayTo / _NgayCap / _NoiCap: tách từ dòng "Giấy tờ tùy thân" ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH
+  (vd "CCCD số X, cấp ngày D, nơi cấp N"). Tk_NguoiYeuCau_NoiCuTru = dòng "Nơi cư trú" ngay dưới họ tên người yêu
+  cầu, tách theo mục F. Không có tờ khai đăng ký khai sinh → bỏ cả nhóm.
+- ThongTinBo_NgayCapCccd / ThongTinMe_NgayCapCccd / NguoiKhac_NgayCapCccd: ngày cấp in trên thẻ của ĐÚNG người đó.
+  CCCD gắn chip in ở MẶT SAU, dòng "Ngày, tháng, năm / Date, month, year: dd/mm/yyyy" ngay trên chữ ký "CỤC TRƯỞNG
+  CỤC CẢNH SÁT..."; thẻ Căn cước mới ghi "Ngày cấp". Mặt sau đứng NGAY SAU mặt trước của cùng người trong file —
+  ghép theo thứ tự trang và dòng MRZ (chứa số định danh). Chỉ có mặt trước → bỏ field. TUYỆT ĐỐI không lấy
+  "Có giá trị đến"/"Date of expiry".
+- *_NoiCapCccd: chép cơ quan in trên thẻ ("CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" →
+  "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; "BỘ CÔNG AN" → "Bộ Công an"). Không in → bỏ.
+- NguoiKhac_*: CHỈ cho thẻ của người lớn KHÔNG phải cha/mẹ (xem ngoại lệ ở mục C). Trích họ tên, số định danh,
+  giới tính, ngày cấp, nơi cấp, nơi thường trú (tách theo mục F).
+
 # ═══ H2. ĐỀ NGHỊ CẤP BẢN SAO ═══
 - CopyRequest_Quantity CHỈ lấy từ mục "Đề nghị cấp bản sao"/"Số lượng ... bản" trên tài liệu có đúng
   tiêu đề "TỜ KHAI ĐĂNG KÝ KHAI SINH".
@@ -147,5 +163,5 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 
 # ═══ I. KHÔNG TRẢ (field cấm) ═══
 - Không trả field mặc định hoặc field UI như Ho, ChaHo, MeHo, MaQuocTich, LoaiCuTru, NycQuanHe,
-  CapBanSao, BanSaoSoLuong.
+  NycBuThieu, CapBanSao, BanSaoSoLuong.
 """

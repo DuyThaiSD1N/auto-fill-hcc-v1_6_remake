@@ -1,0 +1,6676 @@
+// sidebar.js — UI chat "Trợ lý nhân dân" (Bước 3: hội thoại server-driven thật).
+// Vòng lặp: ask(message, source) → BE trả {display_md, tts_text, chips, cards, actions, progress}
+// → render + THI HÀNH actions. FE không quyết flow — chips[0] luôn là bước tốt nhất do BE chọn.
+(() => {
+  "use strict";
+
+  // ── Ngữ cảnh nhúng: content.js nạp sidebar.html?embedded=1&tabId=<id> ──
+  const params = new URLSearchParams(location.search);
+  const TAB_ID = params.get("tabId") || "";
+  // embedded=0 → đang chạy trong KHUNG BÊN của trình duyệt, không có iframe cha.
+  // Ba nút thu gọn/đóng gửi lệnh lên window.parent nên vô nghĩa ở đó (xem panelMode).
+  const EMBEDDED = params.get("embedded") !== "0";
+  const START_FRESH_ON_DVC_HOME = params.get("fresh") === "dvc-home";
+  const DVC_HOME_URL = "https://dichvucong.gov.vn/";
+
+  const $messages = document.getElementById("messages");
+  // Nhãn phiên bản đọc từ manifest (bản cũ ghi cứng "v1.2 · 01/09/2026").
+  try {
+    const v = chrome.runtime.getManifest().version;
+    const $rm = document.getElementById("release-meta");
+    if ($rm && v) {
+      const ngay = $rm.dataset.ngay || ""; // dd/mm/yyyy, ghi tay trong sidebar.html
+      const [d, m, y] = ngay.split("/");
+      $rm.textContent = ngay ? `v${v} · ${ngay}` : `v${v}`;
+      $rm.setAttribute("aria-label", ngay
+        ? `Phiên bản ${v}, phát hành ngày ${Number(d)} tháng ${Number(m)} năm ${y}`
+        : `Phiên bản ${v}`);
+    }
+  } catch (_) { /* context mất — để trống còn hơn ghi sai */ }
+  const $status = document.getElementById("status");
+  const $form = document.getElementById("chat-form");
+  const $input = document.getElementById("chat-input");
+  const $subtitle = document.querySelector(".bot-h .s");
+  const $startScreen = document.getElementById("start-screen");
+  const $startBtn = document.getElementById("start-btn");
+
+  const api = new window.TlndApiClient();
+  // Upload session chứa giấy tờ công dân nên mọi request từ extension phải mang Bearer.
+  // Trang mobile dùng capability riêng nhúng trong QR, không đi qua helper này.
+  const uploadSessionFetch = (url, init) => window.tlndAuth.authFetch(url, init);
+  const JOURNEY_KEY = "tlnd_journey"; // { [tabId]: {conversation_id, ts} } — sống qua đổi origin
+  const COMPLETION_LOGOUT_KEY_PREFIX = "tlnd_completion_logout:";
+  const COMPLETION_LOGOUT_STORAGE_KEY = TAB_ID ? `${COMPLETION_LOGOUT_KEY_PREFIX}${TAB_ID}` : "";
+  const ACTIVE_SPLIT_KEY = "tlnd_active_split_by_tab";
+  const SPLIT_STAGE_KEY = "tro_ly_split_attach_queue_stage";
+  // phiên tự kết thúc giữa chừng là mất cả hồ sơ đang làm dở.
+  const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+  const IDLE_WARNING_MS = 30 * 1000;
+  const IDLE_WARNING_TEXT = "⏳ Phiên sẽ tự kết thúc sau 30 giây nếu công dân không thao tác.";
+  const ATTACH_SPLIT_DOCUMENTS_KEY = "tlnd_attach_split_documents";
+  let attachSplitDocuments = false;
+  // Cách đính kèm chứng thực (merge = 1 hồ sơ, split = mỗi tài liệu 1 hồ sơ) — chọn sẵn ở
+  // màn Cài đặt thay cho câu hỏi giữa luồng; BE cũ không đọc key này thì vẫn hỏi chip như cũ.
+  const ATTACH_MODE_KEY = "tlnd_attach_mode";
+  let attachMode = "merge";
+  // Ưu tiên Scan tại quầy: bật → bước tải giấy tự vào Scan (bỏ hỏi QR/Scan). Mặc định tắt.
+  const PREFER_SCAN_KEY = "tlnd_prefer_scan";
+  let preferScan = false;
+  // Cài đặt THEO TÀI KHOẢN lưu ở BE; bản sao ở storage cho content/attach-core.js đọc lúc đính kèm
+  // (khoá phải trùng chữ với ACCOUNT_SETTINGS_KEY bên đó). Thiếu bản sao = đổi tên (hành vi cũ).
+  const ACCOUNT_SETTINGS_KEY = "tlnd_account_settings";
+  let renameAttachmentFiles = true;
+  // "Lấy người nộp theo tờ khai" — chỉ BE dùng (đọc từ tài khoản khi chạy pipeline), extension chỉ bật/tắt.
+  let submitterFromDeclaration = false;
+  let accountSettingsLoaded = false;
+  // Reply đang render có phải LIVE (không phải khôi phục phiên noTts) — để renderDocOptions chỉ
+  // TỰ chọn Scan khi là lượt thật, khôi phục phiên thì không tự bấm lại.
+  let renderingLiveReply = true;
+  const CLIENT_CAPABILITIES = Object.freeze({
+    attachmentEngineVersion: 2,
+    supportsSourceSegments: true,
+    supportsAttachmentContext: true,
+    supportsPageBoundDocsComplete: true,
+    supportsAttachActionLease: true,
+    // Scan tại quầy tự chốt sau đợt chọn tệp — BE chỉ bật pick_files.auto_run (+ câu "em tự
+    // xử lý luôn") khi client khai cờ này; extension cũ không khai → BE giữ luồng bấm tay.
+    supportsScanAutoRun: true,
+    // Biết tải lại trang cổng theo lệnh reload_page (VNeID lỗi không hiện mã QR).
+    supportsPageReload: true,
+    // Hiểu card "rating" (đánh giá trải nghiệm trước đăng xuất). BE chỉ chèn bước đánh giá khi
+    // client khai cờ này; extension cũ không khai → BE ra thẳng 2 nút đăng xuất như trước.
+    supportsRating: true,
+    // Hiểu nút chuyển bước / gửi hồ sơ do BE điều phối (guided_click_next, guided_submit) và
+    // biết đọc giá trị ô chủ hồ sơ trước khi chuyển bước. BE chỉ bật luồng dẫn từng bước cho
+    // client khai cờ này; bản trên chợ không khai → giữ nguyên câu "công dân tự bấm nút trang".
+    supportsGuidedSteps: true,
+    // Biết quét giấy tờ NGAY ở bước chủ hồ sơ để tự điền (và phân biệt được bảng đính kèm
+    // văn bản ủy quyền với bảng thành phần hồ sơ). BE chỉ bật luồng quét sớm cho client khai
+    // cờ này; bản trên chợ không khai → giữ nguyên thứ tự bước cũ.
+    supportsOwnerScan: true,
+    // Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại ghi đè
+    // (portal-dvc.js::saveOwnerProfile). BE chỉ hiện nút lưu khi thấy cờ này.
+    supportsSaveOwnerProfile: true,
+    // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
+    // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
+    supportsProcedureFirst: true,
+    // Có engine gạt công tắc "cách nhận kết quả" (portal-dvc.js::selectResultMethod). BE chỉ
+    // chọn sẵn hộ khi thấy cờ này; thiếu cờ → giữ câu hướng dẫn ba cách để công dân tự gạt.
+    supportsResultMethod: true,
+    // Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước "Hình thức nhận kết quả" (guided-steps.js) và chọn ô
+    // receivingKind (portal-mae.js::selectReceivingKind). Thiếu cờ → BE giữ câu "tự bấm Nộp hồ sơ".
+    supportsIgateResultStep: true,
+    // Hộp thoại cổng bộ chọn cơ quan ở CẤP XÃ (radio "Phường/Xã"). Thiếu cờ → BE dặn công dân
+    // chọn tay thay vì bắn lệnh cho engine cũ gạt nhầm sang "Sở/Ban ngành".
+    supportsMaeWardAgency: true,
+    // Bấm "Nộp trực tuyến" ở đúng thẻ theo chữ BE gửi (portal-dvc.js::clickNopTrucTuyenByCard).
+    // Thiếu cờ → BE dặn công dân chọn tay thay vì để engine cũ bấm thẻ đầu (cấp Sở).
+    supportsAgencyCard: true,
+    // Biết sửa TẠI CHỖ bong bóng bot gần nhất (d.replace_last) — chỉnh nơi làm/đối tượng trên card
+    // xác nhận thủ tục thì câu hỏi đổi theo ngay trong bong bóng cũ, không đẻ bong bóng mới.
+    supportsReplaceLast: true,
+    // Biết mở tab "Tạo giấy ủy quyền" (authorization-letter.html) từ mục Giấy tờ soạn tại quầy.
+    // Thiếu cờ → BE không gửi mục này trên màn chọn thủ tục.
+    supportsAuthorizationLetter: true,
+    // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
+    // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
+    supportsTuPhapMoi: true,
+    // Trang hộ tịch mới: điền xong tự đính kèm, nộp ở bước nào cũng sang phần sau nộp.
+    supportsTpmAutoFlow: true,
+    // Công dân chọn một nút bằng lời → BE nhờ bấm hộ đúng nút đó (press_chip) hoặc báo nhóm nút đã
+    // dùng (chip_used). Thiếu cờ → BE chạy thẳng lệnh của nút như trước.
+    supportsVoiceChips: true,
+    // Đọc được danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng,
+    // content/portal-mae.js), vẽ thẻ mae_dialog_choice và chọn đúng nhãn công dân đã chốt
+    // (agencyExact/processExact). Thiếu cờ → BE giữ đường variants khai sẵn.
+    supportsMaeDialogChoice: true,
+    // Tô ô tờ khai eForm theo 3 màu và dẫn công dân bổ sung từng ô trống (content/field-review.js,
+    // action field_review_*). Thiếu cờ → BE giữ nguyên báo cáo điền như trước.
+    supportsFieldReview: true,
+    // Cùng vòng bổ sung ô trên form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
+    supportsFieldReviewSurvey: true,
+    // Vòng bổ sung ô eForm điền được ô ghi chữ đi kèm lựa chọn "Khác" (apply.extra, content/field-review.js) — vd quan
+    // hệ với người được xác nhận. Thiếu cờ → BE hỏi ô đó như ô chọn thường.
+    supportsFieldReviewOtherText: true,
+    // Vòng bổ sung ô eForm đi vào từng ô con của khối chứa thông tin một người (BE khai `nested`, vd khối mẹ nuôi / cha
+    // nuôi), dropdown không tên điền theo khối + nhãn. Thiếu cờ → BE không bật vòng bổ sung cho thủ tục có khối này.
+    supportsFieldReviewNested: true,
+    // Trang nộp một trang, luồng bản 2: thẻ tiến trình nhiều bước (action pipeline_steps), tắt chú giải màu cũ
+    // (noLegend), báo BE mỗi khi số ô trống đổi lúc công dân tự gõ trên cổng (__event:field_review_status).
+    supportsFlowV2: true,
+    // Cổng liên thông: dẫn đủ 6 bước (báo lienThongStep, bổ sung ô trên form Angular — content/field-review-angular.js,
+    // bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành — content/lien-thong.js).
+    // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Chuyển bước tiếp theo").
+    supportsLienThongFlow: true,
+    // Cổng Bắc Ninh: biết mở khối "Thông tin trong trường hợp được ủy quyền" (tick ô bổ sung + chọn loại
+    // đối tượng theo ô đánh dấu bn-doi-tuong-khac) rồi điền doiTuongKhac*. Thiếu cờ → BE không gửi khối này.
+    supportsBacNinhAuthorizedPerson: true,
+    // Cổng Bộ Xây dựng (dvc.moc.gov.vn): nút / lệnh nói chuyển bước của wizard 4 bước, bổ sung ô trên tờ khai Form.io
+    // (content/bxd/field-review-formio.js), chọn hình thức nhận kết quả, bấm Nộp hồ sơ (content/bxd/portal.js).
+    // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Tiếp tục" / "Nộp hồ sơ").
+    supportsBxdFlow: true,
+  });
+
+  const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
+  const BRAND_ICON = (size, className) => `<img class="${className}" src="${BRAND_ICON_URL}"
+    width="${size}" height="${size}" alt="" aria-hidden="true" draggable="false">`;
+  document.getElementById("bot-avatar").innerHTML = BRAND_ICON(30, "brand-icon-header");
+  document.getElementById("start-avatar").innerHTML = BRAND_ICON(68, "brand-icon-start");
+
+  // ── Render cơ bản ──
+  function addBubble(role, html) {
+    const el = document.createElement("div");
+    el.className = `msg ${role}`;
+    el.innerHTML = html;
+    $messages.appendChild(el);
+    $messages.scrollTop = $messages.scrollHeight;
+    return el;
+  }
+  // voice=true: câu nhận từ giọng nói → 🎙 + chữ nghiêng, cán bộ thấy máy nghe ra chữ gì.
+  const addUserText = (t, hm, voice = false) => {
+    const el = addBubble("user", window.escapeHtml(t)
+      + (hm ? `<span class="u-hm">${window.escapeHtml(hm)}</span>` : ""));
+    if (voice) el.classList.add("voice");
+    return el;
+  };
+  // Tông màu card suy từ emoji mở đầu (✅ mốc xong / ⚠️ cảnh báo / ℹ️ giải thích) —
+  // tất định theo text nên khôi phục phiên render y hệt, BE không cần đổi hợp đồng.
+  function botTone(md) {
+    const s = String(md || "").replace(/^[\s*_#>]+/, "");
+    if (/^(✅|🎉)/.test(s)) return " ok";
+    if (/^(⚠️|⚠|❗|🚫)/.test(s)) return " warn";
+    if (/^(ℹ️|ℹ|💡|📌)/.test(s)) return " info";
+    return "";
+  }
+  const addBotMd = (md) => addBubble("bot" + botTone(md), window.renderMarkdown(md));
+  function addNode(el) {
+    $messages.appendChild(el);
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+  function showProcedurePicker() {
+    // Màn chọn thủ tục: cuộn XUỐNG ĐÁY để người dân thấy đủ lưới ô + nút "NÓI" + thanh
+    // "Xem tất cả" (các nút hành động nằm dưới cùng khối, cuộn lên đầu sẽ bị khuất).
+    requestAnimationFrame(() => { $messages.scrollTop = $messages.scrollHeight; });
+  }
+  function setStatus(msg, isErr) {
+    if (!msg) { $status.hidden = true; return; }
+    $status.hidden = false;
+    $status.textContent = msg;
+    $status.classList.toggle("err", !!isErr);
+  }
+  let $typing = null;
+  function showTyping() {
+    hideTyping();
+    $typing = document.createElement("div");
+    $typing.className = "msg bot typing";
+    $typing.innerHTML = "<i></i><i></i><i></i>";
+    addNode($typing);
+  }
+  function hideTyping() { $typing?.remove(); $typing = null; }
+
+  // ── Journey: con trỏ phiên sống qua đổi trang/origin (docs/03a §1) ──
+  // Mọi lượt ghi journey trong CÙNG sidebar phải nối đuôi nhau. Nếu saveJourney chạy nền
+  // đồng thời với clearJourney, callback get cũ có thể ghi ngược phiên vừa xóa trở lại.
+  let journeyWriteChain = Promise.resolve();
+  function mutateJourney(mutator) {
+    if (!TAB_ID) return Promise.resolve();
+    const run = () => new Promise((resolve) => {
+      chrome.storage.local.get([JOURNEY_KEY], (res) => {
+        const j = res?.[JOURNEY_KEY] || {};
+        mutator(j);
+        chrome.storage.local.set({ [JOURNEY_KEY]: j }, () => {
+          void chrome.runtime.lastError;
+          resolve();
+        });
+      });
+    });
+    journeyWriteChain = journeyWriteChain.then(run, run);
+    return journeyWriteChain;
+  }
+
+  function saveJourney({ touch = false } = {}) {
+    const conversationId = api.conversationId;
+    if (!TAB_ID || !conversationId) return Promise.resolve();
+    return mutateJourney((j) => {
+      const now = Date.now();
+      // keep_open: sang origin khác content.js tự dựng lại sidebar (docs/07 §2.1).
+      j[TAB_ID] = {
+        ...(j[TAB_ID] || {}),
+        conversation_id: conversationId,
+        ts: now,
+        keep_open: true,
+        last_activity_at: touch ? now : (j[TAB_ID]?.last_activity_at || lastActivityAt || now),
+      };
+    });
+  }
+  async function loadJourney() {
+    await journeyWriteChain.catch(() => {});
+    return new Promise((resolve) => {
+      if (!TAB_ID) return resolve(null);
+      chrome.storage.local.get([JOURNEY_KEY], (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res?.[JOURNEY_KEY]?.[TAB_ID] || null);
+      });
+    });
+  }
+
+  function clearJourney() {
+    return mutateJourney((j) => { delete j[TAB_ID]; });
+  }
+
+  function readCompletionLogoutState() {
+    return new Promise((resolve) => {
+      if (!COMPLETION_LOGOUT_STORAGE_KEY) return resolve(null);
+      chrome.storage.local.get([COMPLETION_LOGOUT_STORAGE_KEY], (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res?.[COMPLETION_LOGOUT_STORAGE_KEY] || null);
+      });
+    });
+  }
+
+  async function writeCompletionLogoutState(value) {
+    await new Promise((resolve) => {
+      if (!COMPLETION_LOGOUT_STORAGE_KEY) return resolve();
+      const done = () => { void chrome.runtime.lastError; resolve(); };
+      if (value) chrome.storage.local.set({ [COMPLETION_LOGOUT_STORAGE_KEY]: value }, done);
+      else chrome.storage.local.remove([COMPLETION_LOGOUT_STORAGE_KEY], done);
+    });
+    if (!value) {
+      // Dọn khóa lồng của bản extension cũ để reload giữa lúc chuyển phiên không thể
+      // khôi phục nhầm bộ đếm đã được hủy.
+      await mutateJourney((journeys) => {
+        const current = journeys[TAB_ID];
+        if (!current?.completion_logout) return;
+        const next = { ...current };
+        delete next.completion_logout;
+        journeys[TAB_ID] = next;
+      });
+    }
+  }
+
+  // ── Hết phiên sau 20 phút không có hoạt động thật ──
+  // Activity từ trang cổng được content.js ghi cùng last_activity_at; sidebar đọc lại mỗi nhịp.
+  let sessionActive = false;
+  let lastActivityAt = 0;
+  let lastActivityWriteAt = 0;
+  let idleTimer = null;
+  let idleWarningShown = false;
+  let endingSession = false;
+
+  function persistActivity(now) {
+    if (!TAB_ID || !api.conversationId || now - lastActivityWriteAt < 3000) return;
+    lastActivityWriteAt = now;
+    saveJourney({ touch: true });
+  }
+
+  function markActivity() {
+    if (!sessionActive) return;
+    const now = Date.now();
+    lastActivityAt = now;
+    persistActivity(now);
+    if (idleWarningShown) {
+      idleWarningShown = false;
+      if ($status.textContent === IDLE_WARNING_TEXT) setStatus("");
+    }
+  }
+
+  function stopIdleTracking() {
+    sessionActive = false;
+    if (idleTimer) { clearInterval(idleTimer); idleTimer = null; }
+    idleWarningShown = false;
+    if ($status.textContent === IDLE_WARNING_TEXT) setStatus("");
+  }
+
+  function startIdleTracking(at = Date.now()) {
+    sessionActive = true;
+    lastActivityAt = Number(at) || Date.now();
+    if (idleTimer) clearInterval(idleTimer);
+    idleTimer = setInterval(async () => {
+      if (!sessionActive || endingSession || busy) return;
+      const journey = await loadJourney();
+      const storedAt = Number(journey?.last_activity_at || 0);
+      if (storedAt > lastActivityAt) lastActivityAt = storedAt;
+      const idleFor = Date.now() - lastActivityAt;
+      if (idleFor >= IDLE_TIMEOUT_MS) {
+        await returnToStart("idle");
+      } else if (idleFor >= IDLE_TIMEOUT_MS - IDLE_WARNING_MS && !idleWarningShown) {
+        idleWarningShown = true;
+        setStatus(IDLE_WARNING_TEXT);
+      } else if (idleFor < IDLE_TIMEOUT_MS - IDLE_WARNING_MS && idleWarningShown) {
+        idleWarningShown = false;
+        if ($status.textContent === IDLE_WARNING_TEXT) setStatus("");
+      }
+    }, 5000);
+  }
+
+  for (const eventName of ["pointerdown", "keydown", "input", "change"]) {
+    document.addEventListener(eventName, (event) => {
+      if (event.isTrusted) markActivity();
+    }, { passive: true });
+  }
+
+  // ── Gửi lệnh xuống content script của tab chứa sidebar ──
+  // Lệnh THAO TÁC trên trang (điền, chọn, bấm, đính, chuyển trang). Rảnh tay tắt mic trong lúc trợ lý đang
+  // thao tác — công dân nói đè giữa lúc trang đổi thì câu nói lạc lượt. Lệnh chỉ đọc trang không tính.
+  const PAGE_WORK_ACTIONS = new Set([
+    "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
+    "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency",
+    "prepareBusinessRegistration", "startBusinessRegistration",
+  ]);
+  let pageWorkInFlight = 0;
+  let pageWorkEndedAt = 0;
+  function sendToContent(payload) {
+    const work = PAGE_WORK_ACTIONS.has(payload?.action);
+    if (work) {
+      pageWorkInFlight += 1;
+      pauseMic();
+    }
+    return new Promise((resolve) => {
+      const id = Number(TAB_ID);
+      if (!id) return resolve(null);
+      try {
+        chrome.tabs.sendMessage(id, payload, (res) => {
+          void chrome.runtime.lastError;
+          resolve(res ?? null);
+        });
+      } catch (_) { resolve(null); }
+    }).finally(() => {
+      if (!work) return;
+      pageWorkInFlight = Math.max(0, pageWorkInFlight - 1);
+      pageWorkEndedAt = Date.now();
+    });
+  }
+
+  // ── Mốc "công dân bấm Gửi hồ sơ" ──
+  // Luật nhận diện nút do BE gửi (action arm_submit_watch, nguồn registry.PORTAL_SUBMIT).
+  // Cache lại vì chuyển trang sẽ dựng lại content script và mất luật; boot sau đó nạp lại
+  // ngay, không phải chờ hết một hồ sơ mới có.
+  const SUBMIT_RULES_KEY = "tlnd_submit_rules";
+
+  async function armSubmitWatch(rules) {
+    if (!rules || typeof rules !== "object") return;
+    try { await chrome.storage.local.set({ [SUBMIT_RULES_KEY]: rules }); } catch (_) {}
+    await sendToContent({ action: "setSubmitRules", rules });
+  }
+
+  async function restoreSubmitWatch() {
+    try {
+      const res = await chrome.storage.local.get([SUBMIT_RULES_KEY]);
+      const rules = res?.[SUBMIT_RULES_KEY];
+      if (rules) await sendToContent({ action: "setSubmitRules", rules });
+    } catch (_) {}
+  }
+
+  // Content script bắn cú bấm về ĐÂY. Dùng chrome.runtime (không phải postMessage): trang web
+  // không gửi được runtime message vào extension nên số liệu không bị trang giả mạo.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    let fromThisDossier = false;
+    if (msg?.__tlnd === "submitClicked") {
+      // Cú bấm ngay trên tab của sidebar này.
+      fromThisDossier = String(sender?.tab?.id || "") === String(TAB_ID);
+    } else if (msg?.__tlnd === "submitClickedRelay") {
+      // Cú bấm ở tab TÁCH (chứng thực nhiều hồ sơ) — background chuyển tiếp về đây vì tab tách
+      // không có sidebar mang phiên trò chuyện. Mỗi lần là MỘT hồ sơ riêng trên cổng; BE ghi
+      // thành sự kiện nộp riêng nên đếm đủ số hồ sơ thay vì chỉ tab đầu.
+      fromThisDossier = String(msg.originTabId || "") === String(TAB_ID);
+    }
+    if (!fromThisDossier) return;                                 // tab khác → kệ
+    if (!api.conversationId) return;                              // chưa có hồ sơ nào để chấm
+    void ask(`__event:submit_clicked:${JSON.stringify({
+      host: String(msg.host || ""), ref: String(msg.ref || ""),
+      // Cùng cú bấm background đã gửi thẳng lên BE — mã này để BE không ghi hai lần.
+      click_id: String(msg.clickId || ""),
+      // Giờ bấm thật: BE phân biệt cú bấm của tab tách với mốc dò chữ của tab gốc.
+      clicked_at: Number(msg.clickedAt) || undefined,
+    })}`, "system");
+  });
+
+  // Cổng trả lỗi khi đính kèm, engine đang hoãn tệp để thử lại → nói cho công dân biết đang chờ gì,
+  // không thì họ tưởng máy treo. Câu cục bộ (không qua BE) vì phải báo NGAY giữa lượt đính kèm.
+  // Chặn lặp 30s: chứng thực tách N tab mỗi tab tự báo một lần, không được đọc N lần liền.
+  const ATTACH_RETRY_TEXT = "Dạ dịch vụ công đang lỗi, công dân chờ chút em đính kèm lại ạ.";
+  let attachRetrySaidAt = 0;
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    let mine = false;
+    if (msg?.__tlnd === "attachRetrying") mine = String(sender?.tab?.id || "") === String(TAB_ID);
+    else if (msg?.__tlnd === "attachRetryingRelay") mine = String(msg.originTabId || "") === String(TAB_ID);
+    if (!mine || Date.now() - attachRetrySaidAt < 30000) return;
+    attachRetrySaidAt = Date.now();
+    addBotMd(`⚠️ ${ATTACH_RETRY_TEXT}`);
+    setStatus("📎 Dịch vụ công đang lỗi — đang đính kèm lại…");
+    if (voiceCfg.tts && !ttsMuted) window.__hccTTS?.speak?.(ATTACH_RETRY_TEXT, "vi", () => {});
+  });
+
+  // Công dân tự gõ trên form SurveyJS: content/field-review-surveyjs.js đếm lại ô (đã tô lại màu) và báo số mới.
+  // BE chỉ lên tiếng khi ô bắt buộc vừa về 0 (hiện nút đi tiếp), còn lại im lặng.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "fieldReviewStats" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    if (!msg.stats || typeof msg.stats !== "object") return;
+    ask(`__event:field_review_status:${JSON.stringify({ stats: msg.stats })}`, "system");
+  });
+
+  function sendToBackground(payload) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage(payload, (response) => {
+          void chrome.runtime.lastError;
+          resolve(response ?? null);
+        });
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.action !== "citizenManualLogoutDetected") return;
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return;
+    void resolveCompletionLogout("manual_logout_click", { notify: true });
+  });
+
+  function readActiveSplit() {
+    return new Promise((resolve) => {
+      if (!TAB_ID) return resolve(null);
+      chrome.storage.local.get([ACTIVE_SPLIT_KEY], (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res?.[ACTIVE_SPLIT_KEY]?.[TAB_ID] || null);
+      });
+    });
+  }
+
+  function writeActiveSplit(value) {
+    return new Promise((resolve) => {
+      if (!TAB_ID) return resolve();
+      chrome.storage.local.get([ACTIVE_SPLIT_KEY], (res) => {
+        const map = res?.[ACTIVE_SPLIT_KEY] || {};
+        if (value) map[TAB_ID] = value;
+        else delete map[TAB_ID];
+        chrome.storage.local.set({ [ACTIVE_SPLIT_KEY]: map }, () => resolve());
+      });
+    });
+  }
+
+  // ── Vòng hội thoại trung tâm ──
+  // busy: chống double-submit khi GÕ; chip/card VÀ sự kiện hệ thống đến giữa lượt thì
+  // XẾP HÀNG chạy sau — nuốt im lặng là mất thao tác của người dùng.
+  let busy = false;
+  let pendingReturnReason = "";
+  let pendingReturnProcedure = "";
+  const pendingQueue = [];
+  // BE khởi động lại (deploy, vài giây tới vài chục giây): lệnh hệ thống / cú bấm nút gửi đúng lúc đó mà bỏ luôn
+  // là hội thoại đứng im (BE không biết đã điền / đã đính xong). Thử lại tới khi BE lên lại, tối đa 90 giây. Câu
+  // gõ / nói tự do không thử lại — công dân nói lại được. Hết hạn mà chưa vào được: nút "Thử lại".
+  const ASK_RETRY_MAX_MS = 90000;
+  const isTransientAskError = (e) => [502, 503, 504].includes(e?.status) || (!e?.status && e?.name !== "AbortError");
+  async function apiAskRetrying(message, opts, source) {
+    const retry = source === "system" || source === "chip";
+    const deadline = Date.now() + ASK_RETRY_MAX_MS;
+    let attempt = 0;
+    for (;;) {
+      try {
+        const data = await api.ask(message, opts);
+        if (attempt) setStatus("");
+        return data;
+      } catch (e) {
+        if (!retry || !isTransientAskError(e) || Date.now() >= deadline) throw e;
+        attempt += 1;
+        setStatus("⚠️ Máy chủ đang khởi động lại, em đang thử lại…", true);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** (attempt - 1), 5000)));
+      }
+    }
+  }
+
+  async function ask(message, source = "text", displayText = "", uiOptions = {}) {
+    const userInitiated = source === "text" || source === "voice" || source === "chip";
+    if (userInitiated) markActivity();
+    // Cán bộ chốt sang đính kèm từ sidebar thay vì nút trên cổng → chụp form lúc này (content/form-snapshot).
+    if (message === "__action:confirm_review") void sendToContent({ action: "formSnapshotCapture", trigger: "chip:confirm_review" });
+    if (busy) {
+      if (source === "system" || source === "chip") {
+        // Trả Promise chỉ resolve sau khi lượt xếp hàng THỰC SỰ gọi xong backend. Queue tách hồ sơ
+        // dựa vào đây để chưa xóa recovery marker trước khi attach_report được ghi nhận.
+        return await new Promise((resolve) => pendingQueue.push([
+          message, source, displayText, uiOptions, resolve,
+        ]));
+      }
+      return;
+    }
+    // Chọn nơi làm thủ tục/đối tượng chỉ cập nhật cấu hình tại chỗ. Nếu dùng render chung,
+    // bubble "đang trả lời" sẽ ép danh sách thủ tục dài cuộn xuống cuối dù backend trả im lặng.
+    const preserveScroll = uiOptions?.preserveScroll === true;
+    const preservedScrollTop = preserveScroll ? $messages.scrollTop : null;
+    const restorePreservedScroll = () => {
+      if (preservedScrollTop === null) return;
+      $messages.scrollTop = preservedScrollTop;
+    };
+    busy = true;
+    if (!preserveScroll) showTyping();
+    try {
+      // Form context và cấu trúc bảng đính kèm là hai hợp đồng độc lập. Luôn gửi capability
+      // để backend không phát sourceSegments cho extension cũ chưa có engine tách trang.
+      const [formResult, attachmentResult, pageResult, declarationResult] = await Promise.all([
+        sendToContent({ action: "collectFormContext" }),
+        sendToContent({ action: "collectAttachmentContext" }),
+        sendToContent({ action: "getPageContext" }),
+        sendToContent({ action: "getDeclarationContext" }),
+      ]);
+      const effectivePageResult = {
+        ...(pageResult || {}),
+        ...(declarationResult?.ok ? declarationResult : {}),
+      };
+      const clientContext = {
+        url: attachmentResult?.url || effectivePageResult?.url || "",
+        detected_procedure: lastReplyData?.procedure_key || undefined,
+        // Gửi cùng chính câu lệnh của công dân để backend không dùng docs_target cũ trong
+        // khoảng giữa hai nhịp watcher khi SPA vừa chuyển Kê khai → Thành phần hồ sơ.
+        page_context: {
+          ...docsCompletePagePayload(effectivePageResult),
+          // attachmentTarget một mình có thể chỉ là nút "Chọn tệp" ngoài bảng hồ sơ.
+          // Số dòng lấy từ collectAttachmentContext là bằng chứng cấu trúc mạnh hơn.
+          attachmentComponentCount: Array.isArray(
+            attachmentResult?.attachmentContext?.components
+          ) ? attachmentResult.attachmentContext.components.length : 0,
+        },
+        form_context: formResult?.formContext || {},
+        attachment_context: attachmentResult?.attachmentContext || {},
+        // Đây là tùy chọn tách giấy tờ BÊN TRONG một file, độc lập với splitMode của
+        // hai thủ tục chứng thực (splitMode mở nhiều hồ sơ/tab).
+        attachment_preferences: { splitDocuments: attachSplitDocuments, attachMode },
+        capabilities: CLIENT_CAPABILITIES,
+      };
+      if (clientContext.page_context.attachmentTarget
+          || clientContext.page_context.attachmentComponentCount > 0) {
+        // Các chip sửa Kê khai thuộc bubble cũ nhưng chat là append-only. Khi DOM xác nhận
+        // đã sang Thành phần hồ sơ, gỡ chúng để không chạy nhầm pipeline kê khai.
+        hideStaleDeclarationActions();
+      }
+      // Phiên MỚI (Bắt đầu / Trò chuyện mới / về trang chủ) sinh ra với đúng ngôn ngữ đang
+      // chọn → câu chào đầu tiên đã là tiếng Mông, không phải chào tiếng Việt rồi mới đổi.
+      const preferredLang = (voiceLang === "hmong" && _hmongAllowed()) ? "hmong" : "";
+      const data = await apiAskRetrying(message, { source, displayText, clientContext, preferredLang }, source);
+      hideTyping();
+      await saveJourney({ touch: userInitiated });
+      renderReply(data);
+      restorePreservedScroll();
+      await runActions(data.actions || []);
+      return data;
+    } catch (e) {
+      hideTyping();
+      setStatus(`Không gọi được trợ lý: ${e?.message || e}. Kiểm tra backend đang chạy?`, true);
+      setTimeout(() => setStatus(""), 5000);
+      if ((source === "system" || source === "chip") && isTransientAskError(e)) {
+        addBotMd("⚠️ Máy chủ chưa phản hồi, em chưa làm tiếp được. Bấm **Thử lại** khi máy chủ đã chạy lại ạ.");
+        renderChips([{ label: "🔁 Thử lại", send: message, solid: true }]);
+      }
+    } finally {
+      restorePreservedScroll();
+      if (preserveScroll) requestAnimationFrame(restorePreservedScroll);
+      busy = false;
+      if (pendingReturnReason) {
+        const reason = pendingReturnReason;
+        const procedureKey = pendingReturnProcedure;
+        pendingReturnReason = "";
+        pendingReturnProcedure = "";
+        returnToStart(reason, { procedureKey });
+        return;
+      }
+      if (pendingQueue.length) {
+        const [m, s, dt, queuedUiOptions, resolve] = pendingQueue.shift();
+        ask(m, s, dt, queuedUiOptions).then(resolve);
+      }
+    }
+  }
+
+  let lastState = "";
+  let lastReplyData = null; // reply gần nhất — dùng để đọc lại câu chào khi bật rảnh tay ở màn chào
+  let replyTtsInFlight = 0;
+  let completionReturnTimer = null;
+  let completionLogoutMonitor = null;
+  let completionLogoutState = null;
+  let completionLogoutGeneration = 0;
+  let chatBootStarted = false;
+  let chatBootFinished = false;
+
+  function completionChoiceButtons() {
+    return Array.from(document.querySelectorAll(".chips.logout-choice .chip"));
+  }
+
+  function setCompletionChoiceDisabled(disabled) {
+    completionChoiceButtons().forEach((button) => { button.disabled = !!disabled; });
+  }
+
+  async function completionPrincipalFingerprint(principal) {
+    const raw = String(principal?.cccd || principal?.name || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/Đ/g, "D").replace(/đ/g, "d").replace(/\s+/g, " ").trim().toUpperCase();
+    if (!raw || !globalThis.crypto?.subtle) return "";
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  function stopCompletionLogoutRuntime() {
+    completionLogoutGeneration += 1;
+    if (completionReturnTimer) { clearTimeout(completionReturnTimer); completionReturnTimer = null; }
+    if (completionLogoutMonitor) { clearInterval(completionLogoutMonitor); completionLogoutMonitor = null; }
+  }
+
+  async function resolveCompletionLogout(reason, { notify = false } = {}) {
+    if (!completionLogoutState) return;
+    stopCompletionLogoutRuntime();
+    completionLogoutState = null;
+    await writeCompletionLogoutState(null);
+    if (notify) {
+      setCompletionChoiceDisabled(true);
+      setStatus("Đã phát hiện công dân đăng xuất thủ công — em đã hủy bộ đếm tự động đăng xuất.");
+      setTimeout(() => setStatus(""), 5000);
+    }
+    console.info("[TLND] kết thúc chờ đăng xuất", { reason });
+  }
+
+  async function completionContextChanged(ctx, state, { countLoggedOut = false } = {}) {
+    if (!ctx?.ok) return false; // Mất kết nối DOM không được tự suy ra đã logout.
+    if (ctx.loginPage) return true;
+    const currentPrincipal = await completionPrincipalFingerprint(ctx.principal);
+    if (state.principal && currentPrincipal && state.principal !== currentPrincipal) return true;
+    if (state.startedLoggedIn && !ctx.loggedIn && !ctx.submitted) {
+      state.loggedOutChecks = countLoggedOut ? Number(state.loggedOutChecks || 0) + 1 : 2;
+      return state.loggedOutChecks >= 2;
+    }
+    state.loggedOutChecks = 0;
+    return false;
+  }
+
+  function armCompletionLogout(state) {
+    stopCompletionLogoutRuntime();
+    completionLogoutState = { ...state, phase: "pending", loggedOutChecks: 0 };
+    const generation = completionLogoutGeneration;
+    const remainingMs = Math.max(0, Number(completionLogoutState.deadline) - Date.now());
+    completionReturnTimer = setTimeout(async () => {
+      completionReturnTimer = null;
+      if (generation !== completionLogoutGeneration || completionLogoutState?.phase !== "pending") return;
+      const ctx = await readPageContext();
+      if (generation !== completionLogoutGeneration || completionLogoutState?.phase !== "pending") return;
+      if (await completionContextChanged(ctx, completionLogoutState)) {
+        await resolveCompletionLogout("portal_session_changed", { notify: true });
+        return;
+      }
+      // Deadline chỉ được phép xóa đúng phiên vẫn còn hiệu lực tại thời điểm kiểm tra cuối.
+      await resolveCompletionLogout("timeout");
+      await returnToStart("completed");
+    }, remainingMs);
+
+    completionLogoutMonitor = setInterval(async () => {
+      if (generation !== completionLogoutGeneration || completionLogoutState?.phase !== "pending") return;
+      const ctx = await readPageContext();
+      if (generation !== completionLogoutGeneration || completionLogoutState?.phase !== "pending") return;
+      if (await completionContextChanged(ctx, completionLogoutState, { countLoggedOut: true })) {
+        await resolveCompletionLogout("manual_logout", { notify: true });
+      }
+    }, 2500);
+  }
+
+  async function beginCompletionLogoutWait(delayMs, restored = null) {
+    const ctx = restored ? null : await readPageContext();
+    const deadline = Number(restored?.deadline) || (Date.now() + delayMs);
+    const state = {
+      deadline,
+      conversationId: restored?.conversationId || api.conversationId || "",
+      principal: restored?.principal || await completionPrincipalFingerprint(ctx?.principal),
+      startedLoggedIn: restored ? restored.startedLoggedIn === true : ctx?.loggedIn === true,
+      phase: "pending",
+    };
+    submittedReported = true;
+    if (watcherTimer) { clearInterval(watcherTimer); watcherTimer = null; }
+    stopIdleTracking();
+    handsfree = false;
+    rememberHandsfree(false);
+    $hfBtn?.classList.remove("active");
+    stopVoice?.();
+    await writeCompletionLogoutState(state);
+    armCompletionLogout(state);
+  }
+
+  async function claimCompletionChoice() {
+    if (completionLogoutState?.phase !== "pending") return false;
+    const state = { ...completionLogoutState, phase: "deciding" };
+    stopCompletionLogoutRuntime();
+    completionLogoutState = state;
+    await writeCompletionLogoutState(state);
+    return true;
+  }
+
+  async function resumeCompletionChoice() {
+    if (!completionLogoutState || completionLogoutState.phase !== "deciding") return;
+    const state = { ...completionLogoutState, phase: "pending" };
+    await writeCompletionLogoutState(state);
+    armCompletionLogout(state);
+    setCompletionChoiceDisabled(false);
+  }
+  async function waitForChatBoot(timeoutMs = 10000) {
+    const deadline = Date.now() + timeoutMs;
+    while (!chatBootFinished && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return chatBootFinished && !!api.conversationId;
+  }
+  function stopReplyTts() {
+    replyTtsInFlight = 0;
+    window.__hccTTS?.stop?.();
+  }
+  const $meterBar = document.getElementById("step-meter-bar");
+  function setProgress(p) {
+    if (!p?.label) return;
+    // Chế độ tiếng Mông: nối nhãn bước tiếng Mông sau nhãn Việt (BE gắn labelHmong).
+    const hm = p.labelHmong ? ` · ${p.labelHmong}` : "";
+    $subtitle.textContent = `Bước ${p.step}/${p.total} · ${p.label}${hm}`;
+    if ($meterBar && p.total) {
+      $meterBar.style.width = `${Math.min(100, Math.round((p.step / p.total) * 100))}%`;
+    }
+  }
+  // Hướng dẫn bằng video/tài liệu trước câu xác nhận thủ tục: hiện QR + link ngay dưới tin công
+  // dân (lời giới thiệu chỉ hiển thị, không đọc), câu "Dạ, công dân làm…" + card nơi làm vẽ và đọc
+  // ngay bên dưới. QR vẽ sẵn thành path SVG (lưới 45×45, viền 2 ô) — extension không có thư viện QR.
+  const HUONG_DAN_THU_TUC = {
+    "khai-sinh-dang-ky-lai": {
+      url: "https://drive.google.com/file/d/1ObePKXQq2rS62F72ipMMmXVVS399rMs4/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h1v1h-1zM20 2h1v1h-1zM23 2h1v1h-1zM28 2h1v1h-1zM31 2h3v1h-3zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM15 3h2v1h-2zM18 3h2v1h-2zM21 3h2v1h-2zM32 3h3v1h-3zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h3v1h-3zM17 4h1v1h-1zM19 4h2v1h-2zM23 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM12 5h4v1h-4zM17 5h2v1h-2zM24 5h1v1h-1zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM16 6h2v1h-2zM20 6h2v1h-2zM24 6h1v1h-1zM26 6h3v1h-3zM30 6h2v1h-2zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM15 7h2v1h-2zM18 7h2v1h-2zM22 7h1v1h-1zM25 7h4v1h-4zM31 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM12 9h5v1h-5zM21 9h2v1h-2zM25 9h1v1h-1zM27 9h2v1h-2zM32 9h1v1h-1zM34 9h1v1h-1zM2 10h1v1h-1zM5 10h6v1h-6zM12 10h2v1h-2zM19 10h2v1h-2zM26 10h1v1h-1zM28 10h4v1h-4zM33 10h1v1h-1zM35 10h1v1h-1zM38 10h1v1h-1zM40 10h3v1h-3zM4 11h1v1h-1zM7 11h1v1h-1zM13 11h3v1h-3zM17 11h1v1h-1zM20 11h2v1h-2zM24 11h2v1h-2zM28 11h3v1h-3zM33 11h1v1h-1zM35 11h1v1h-1zM38 11h1v1h-1zM2 12h5v1h-5zM8 12h1v1h-1zM10 12h1v1h-1zM13 12h2v1h-2zM16 12h5v1h-5zM25 12h1v1h-1zM28 12h4v1h-4zM35 12h2v1h-2zM40 12h1v1h-1zM3 13h2v1h-2zM9 13h3v1h-3zM13 13h2v1h-2zM16 13h1v1h-1zM19 13h4v1h-4zM24 13h1v1h-1zM28 13h1v1h-1zM31 13h1v1h-1zM33 13h3v1h-3zM37 13h3v1h-3zM41 13h1v1h-1zM2 14h3v1h-3zM6 14h1v1h-1zM8 14h1v1h-1zM12 14h2v1h-2zM18 14h2v1h-2zM23 14h1v1h-1zM25 14h2v1h-2zM28 14h2v1h-2zM31 14h1v1h-1zM34 14h4v1h-4zM3 15h2v1h-2zM6 15h2v1h-2zM11 15h2v1h-2zM14 15h1v1h-1zM19 15h4v1h-4zM31 15h1v1h-1zM33 15h1v1h-1zM38 15h1v1h-1zM41 15h1v1h-1zM3 16h1v1h-1zM5 16h4v1h-4zM10 16h1v1h-1zM13 16h3v1h-3zM18 16h1v1h-1zM20 16h3v1h-3zM24 16h4v1h-4zM29 16h1v1h-1zM35 16h2v1h-2zM38 16h2v1h-2zM42 16h1v1h-1zM2 17h1v1h-1zM4 17h1v1h-1zM10 17h1v1h-1zM12 17h2v1h-2zM15 17h1v1h-1zM17 17h1v1h-1zM22 17h1v1h-1zM25 17h1v1h-1zM30 17h1v1h-1zM33 17h1v1h-1zM35 17h1v1h-1zM37 17h6v1h-6zM3 18h3v1h-3zM7 18h4v1h-4zM13 18h1v1h-1zM16 18h1v1h-1zM24 18h1v1h-1zM27 18h1v1h-1zM29 18h2v1h-2zM33 18h1v1h-1zM35 18h1v1h-1zM42 18h1v1h-1zM3 19h3v1h-3zM7 19h1v1h-1zM9 19h1v1h-1zM12 19h2v1h-2zM18 19h2v1h-2zM21 19h3v1h-3zM29 19h1v1h-1zM33 19h3v1h-3zM38 19h1v1h-1zM40 19h1v1h-1zM2 20h1v1h-1zM4 20h2v1h-2zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM15 20h2v1h-2zM19 20h4v1h-4zM25 20h1v1h-1zM27 20h3v1h-3zM33 20h1v1h-1zM37 20h4v1h-4zM42 20h1v1h-1zM2 21h6v1h-6zM11 21h2v1h-2zM14 21h1v1h-1zM17 21h2v1h-2zM21 21h1v1h-1zM23 21h1v1h-1zM25 21h1v1h-1zM27 21h1v1h-1zM29 21h8v1h-8zM38 21h1v1h-1zM40 21h2v1h-2zM3 22h3v1h-3zM7 22h5v1h-5zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM20 22h2v1h-2zM23 22h1v1h-1zM25 22h1v1h-1zM27 22h1v1h-1zM35 22h2v1h-2zM41 22h1v1h-1zM2 23h4v1h-4zM7 23h1v1h-1zM11 23h1v1h-1zM13 23h1v1h-1zM15 23h3v1h-3zM19 23h1v1h-1zM21 23h1v1h-1zM24 23h3v1h-3zM32 23h2v1h-2zM35 23h1v1h-1zM37 23h3v1h-3zM2 24h2v1h-2zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h2v1h-2zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM22 24h4v1h-4zM27 24h1v1h-1zM29 24h1v1h-1zM32 24h1v1h-1zM35 24h1v1h-1zM37 24h1v1h-1zM40 24h1v1h-1zM3 25h2v1h-2zM11 25h1v1h-1zM13 25h1v1h-1zM15 25h1v1h-1zM17 25h3v1h-3zM21 25h1v1h-1zM26 25h1v1h-1zM28 25h1v1h-1zM30 25h6v1h-6zM39 25h1v1h-1zM41 25h2v1h-2zM2 26h2v1h-2zM6 26h3v1h-3zM11 26h1v1h-1zM13 26h1v1h-1zM15 26h2v1h-2zM18 26h1v1h-1zM21 26h2v1h-2zM24 26h3v1h-3zM30 26h1v1h-1zM34 26h3v1h-3zM38 26h2v1h-2zM42 26h1v1h-1zM2 27h3v1h-3zM6 27h2v1h-2zM12 27h1v1h-1zM15 27h1v1h-1zM18 27h3v1h-3zM25 27h1v1h-1zM27 27h4v1h-4zM32 27h1v1h-1zM34 27h5v1h-5zM40 27h2v1h-2zM6 28h1v1h-1zM8 28h2v1h-2zM11 28h1v1h-1zM14 28h1v1h-1zM16 28h2v1h-2zM21 28h2v1h-2zM29 28h2v1h-2zM32 28h3v1h-3zM39 28h1v1h-1zM42 28h1v1h-1zM3 29h1v1h-1zM5 29h1v1h-1zM7 29h1v1h-1zM10 29h3v1h-3zM17 29h1v1h-1zM21 29h2v1h-2zM24 29h2v1h-2zM28 29h2v1h-2zM32 29h2v1h-2zM37 29h6v1h-6zM2 30h1v1h-1zM5 30h1v1h-1zM8 30h2v1h-2zM17 30h1v1h-1zM19 30h1v1h-1zM22 30h1v1h-1zM27 30h1v1h-1zM29 30h1v1h-1zM31 30h1v1h-1zM33 30h1v1h-1zM36 30h2v1h-2zM39 30h1v1h-1zM2 31h1v1h-1zM4 31h3v1h-3zM10 31h1v1h-1zM12 31h1v1h-1zM14 31h2v1h-2zM17 31h1v1h-1zM19 31h2v1h-2zM22 31h1v1h-1zM25 31h2v1h-2zM28 31h1v1h-1zM31 31h2v1h-2zM36 31h1v1h-1zM38 31h2v1h-2zM2 32h2v1h-2zM5 32h6v1h-6zM13 32h1v1h-1zM15 32h2v1h-2zM22 32h4v1h-4zM27 32h1v1h-1zM30 32h1v1h-1zM32 32h2v1h-2zM35 32h1v1h-1zM40 32h1v1h-1zM42 32h1v1h-1zM2 33h4v1h-4zM7 33h1v1h-1zM10 33h2v1h-2zM20 33h1v1h-1zM26 33h2v1h-2zM29 33h2v1h-2zM33 33h2v1h-2zM36 33h2v1h-2zM39 33h3v1h-3zM2 34h3v1h-3zM6 34h4v1h-4zM13 34h2v1h-2zM16 34h1v1h-1zM19 34h1v1h-1zM24 34h1v1h-1zM28 34h1v1h-1zM30 34h11v1h-11zM10 35h2v1h-2zM15 35h1v1h-1zM18 35h4v1h-4zM25 35h3v1h-3zM29 35h2v1h-2zM33 35h2v1h-2zM38 35h3v1h-3zM2 36h7v1h-7zM10 36h1v1h-1zM13 36h2v1h-2zM16 36h2v1h-2zM23 36h1v1h-1zM25 36h1v1h-1zM27 36h1v1h-1zM29 36h1v1h-1zM31 36h4v1h-4zM36 36h1v1h-1zM38 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h1v1h-1zM16 37h2v1h-2zM20 37h1v1h-1zM22 37h1v1h-1zM27 37h1v1h-1zM31 37h1v1h-1zM34 37h1v1h-1zM38 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h2v1h-2zM14 38h1v1h-1zM16 38h4v1h-4zM23 38h3v1h-3zM27 38h1v1h-1zM29 38h1v1h-1zM31 38h8v1h-8zM40 38h1v1h-1zM42 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h4v1h-4zM15 39h2v1h-2zM18 39h1v1h-1zM20 39h1v1h-1zM22 39h3v1h-3zM28 39h1v1h-1zM30 39h2v1h-2zM34 39h1v1h-1zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM17 40h3v1h-3zM21 40h2v1h-2zM26 40h1v1h-1zM28 40h2v1h-2zM32 40h4v1h-4zM37 40h2v1h-2zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM11 41h2v1h-2zM16 41h1v1h-1zM19 41h3v1h-3zM24 41h3v1h-3zM29 41h2v1h-2zM34 41h1v1h-1zM36 41h1v1h-1zM38 41h3v1h-3zM42 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM14 42h1v1h-1zM16 42h3v1h-3zM20 42h1v1h-1zM22 42h1v1h-1zM24 42h4v1h-4zM30 42h1v1h-1zM33 42h2v1h-2zM38 42h1v1h-1z",
+    },
+    "xac-nhan-tinh-trang-hon-nhan": {
+      url: "https://drive.google.com/file/d/1K72MmetiOzQuVywsyest5ZP-GpZGJS6G/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h1v1h-1zM14 2h3v1h-3zM19 2h7v1h-7zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h3v1h-3zM14 3h1v1h-1zM16 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM18 4h2v1h-2zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h1v1h-1zM15 5h2v1h-2zM23 5h1v1h-1zM28 5h2v1h-2zM32 5h3v1h-3zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM13 6h2v1h-2zM16 6h2v1h-2zM21 6h1v1h-1zM23 6h12v1h-12zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM16 7h1v1h-1zM18 7h1v1h-1zM20 7h3v1h-3zM26 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h3v1h-3zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h1v1h-1zM14 9h1v1h-1zM16 9h2v1h-2zM19 9h2v1h-2zM22 9h1v1h-1zM25 9h2v1h-2zM28 9h1v1h-1zM30 9h2v1h-2zM33 9h1v1h-1zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h4v1h-4zM17 10h1v1h-1zM19 10h1v1h-1zM23 10h1v1h-1zM28 10h1v1h-1zM30 10h4v1h-4zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM6 11h1v1h-1zM11 11h6v1h-6zM18 11h1v1h-1zM20 11h4v1h-4zM25 11h1v1h-1zM27 11h1v1h-1zM33 11h2v1h-2zM36 11h3v1h-3zM40 11h3v1h-3zM3 12h4v1h-4zM8 12h4v1h-4zM13 12h1v1h-1zM16 12h1v1h-1zM18 12h3v1h-3zM23 12h4v1h-4zM28 12h1v1h-1zM30 12h1v1h-1zM36 12h1v1h-1zM38 12h1v1h-1zM40 12h2v1h-2zM2 13h1v1h-1zM4 13h2v1h-2zM7 13h1v1h-1zM11 13h2v1h-2zM20 13h1v1h-1zM22 13h1v1h-1zM24 13h5v1h-5zM34 13h2v1h-2zM37 13h1v1h-1zM41 13h1v1h-1zM2 14h1v1h-1zM5 14h1v1h-1zM7 14h2v1h-2zM10 14h1v1h-1zM12 14h1v1h-1zM16 14h1v1h-1zM19 14h1v1h-1zM21 14h2v1h-2zM24 14h1v1h-1zM26 14h1v1h-1zM28 14h3v1h-3zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM4 15h1v1h-1zM6 15h1v1h-1zM9 15h5v1h-5zM15 15h2v1h-2zM20 15h1v1h-1zM22 15h1v1h-1zM24 15h5v1h-5zM31 15h1v1h-1zM37 15h1v1h-1zM39 15h1v1h-1zM41 15h1v1h-1zM2 16h2v1h-2zM6 16h3v1h-3zM10 16h4v1h-4zM17 16h2v1h-2zM21 16h5v1h-5zM27 16h1v1h-1zM31 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM41 16h2v1h-2zM2 17h1v1h-1zM6 17h1v1h-1zM11 17h1v1h-1zM13 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM2 18h2v1h-2zM7 18h2v1h-2zM10 18h2v1h-2zM13 18h1v1h-1zM16 18h2v1h-2zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h1v1h-1zM33 18h2v1h-2zM38 18h1v1h-1zM41 18h1v1h-1zM2 19h1v1h-1zM4 19h3v1h-3zM13 19h5v1h-5zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h5v1h-5zM37 19h1v1h-1zM39 19h2v1h-2zM5 20h1v1h-1zM8 20h2v1h-2zM13 20h2v1h-2zM17 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h1v1h-1zM40 20h1v1h-1zM2 21h1v1h-1zM4 21h2v1h-2zM9 21h1v1h-1zM11 21h2v1h-2zM14 21h2v1h-2zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM33 21h1v1h-1zM35 21h3v1h-3zM39 21h3v1h-3zM2 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h3v1h-3zM13 22h3v1h-3zM21 22h2v1h-2zM25 22h3v1h-3zM29 22h1v1h-1zM32 22h3v1h-3zM36 22h1v1h-1zM38 22h1v1h-1zM2 23h1v1h-1zM10 23h1v1h-1zM12 23h1v1h-1zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM21 23h3v1h-3zM25 23h1v1h-1zM28 23h1v1h-1zM30 23h1v1h-1zM32 23h2v1h-2zM36 23h7v1h-7zM3 24h1v1h-1zM5 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM15 24h1v1h-1zM20 24h1v1h-1zM24 24h4v1h-4zM30 24h1v1h-1zM37 24h2v1h-2zM40 24h2v1h-2zM2 25h3v1h-3zM7 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM13 25h2v1h-2zM18 25h1v1h-1zM20 25h1v1h-1zM27 25h2v1h-2zM36 25h3v1h-3zM41 25h2v1h-2zM4 26h1v1h-1zM8 26h2v1h-2zM11 26h2v1h-2zM19 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM33 26h1v1h-1zM38 26h1v1h-1zM40 26h1v1h-1zM4 27h4v1h-4zM11 27h4v1h-4zM18 27h2v1h-2zM21 27h1v1h-1zM23 27h1v1h-1zM26 27h5v1h-5zM33 27h3v1h-3zM39 27h3v1h-3zM2 28h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM8 28h2v1h-2zM11 28h1v1h-1zM19 28h1v1h-1zM21 28h2v1h-2zM24 28h1v1h-1zM26 28h1v1h-1zM28 28h1v1h-1zM30 28h1v1h-1zM32 28h4v1h-4zM37 28h1v1h-1zM39 28h1v1h-1zM41 28h2v1h-2zM3 29h2v1h-2zM6 29h2v1h-2zM11 29h1v1h-1zM16 29h1v1h-1zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h3v1h-3zM28 29h1v1h-1zM30 29h1v1h-1zM33 29h5v1h-5zM39 29h1v1h-1zM5 30h1v1h-1zM8 30h5v1h-5zM14 30h1v1h-1zM16 30h1v1h-1zM20 30h1v1h-1zM22 30h3v1h-3zM26 30h2v1h-2zM32 30h2v1h-2zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h2v1h-2zM6 31h2v1h-2zM11 31h3v1h-3zM16 31h2v1h-2zM20 31h3v1h-3zM27 31h2v1h-2zM33 31h1v1h-1zM36 31h2v1h-2zM41 31h1v1h-1zM2 32h1v1h-1zM8 32h1v1h-1zM11 32h2v1h-2zM15 32h2v1h-2zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM31 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM41 32h1v1h-1zM5 33h1v1h-1zM10 33h2v1h-2zM13 33h3v1h-3zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h3v1h-3zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h1v1h-1zM3 34h6v1h-6zM13 34h2v1h-2zM17 34h4v1h-4zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h3v1h-3zM32 34h11v1h-11zM10 35h1v1h-1zM15 35h1v1h-1zM19 35h10v1h-10zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM13 36h1v1h-1zM16 36h1v1h-1zM20 36h1v1h-1zM25 36h3v1h-3zM30 36h2v1h-2zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h2v1h-2zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h6v1h-6zM19 37h1v1h-1zM21 37h2v1h-2zM25 37h2v1h-2zM29 37h1v1h-1zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h3v1h-3zM15 38h1v1h-1zM21 38h3v1h-3zM28 38h2v1h-2zM32 38h1v1h-1zM34 38h5v1h-5zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h3v1h-3zM14 39h1v1h-1zM16 39h1v1h-1zM18 39h2v1h-2zM21 39h1v1h-1zM23 39h8v1h-8zM32 39h1v1h-1zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM14 40h1v1h-1zM17 40h1v1h-1zM19 40h5v1h-5zM28 40h1v1h-1zM33 40h2v1h-2zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM17 41h1v1h-1zM19 41h5v1h-5zM25 41h2v1h-2zM28 41h3v1h-3zM35 41h1v1h-1zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM16 42h1v1h-1zM18 42h1v1h-1zM22 42h3v1h-3zM27 42h1v1h-1zM29 42h2v1h-2zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "khai-sinh-dang-ky": {
+      url: "https://drive.google.com/file/d/1GrI9R8FRMUpphFxsIH2QdGR3h1wojwlk/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h14v1h-14zM27 2h1v1h-1zM30 2h1v1h-1zM33 2h2v1h-2zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h5v1h-5zM16 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM17 4h3v1h-3zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h1v1h-1zM15 5h3v1h-3zM23 5h1v1h-1zM26 5h1v1h-1zM28 5h3v1h-3zM32 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM16 6h3v1h-3zM23 6h2v1h-2zM26 6h3v1h-3zM30 6h3v1h-3zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM16 7h3v1h-3zM20 7h3v1h-3zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h2v1h-2zM16 9h1v1h-1zM19 9h2v1h-2zM22 9h1v1h-1zM25 9h1v1h-1zM28 9h4v1h-4zM33 9h2v1h-2zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h2v1h-2zM14 10h1v1h-1zM19 10h1v1h-1zM23 10h1v1h-1zM28 10h1v1h-1zM30 10h4v1h-4zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM3 11h4v1h-4zM11 11h6v1h-6zM18 11h5v1h-5zM25 11h1v1h-1zM31 11h1v1h-1zM33 11h2v1h-2zM36 11h1v1h-1zM38 11h1v1h-1zM40 11h3v1h-3zM3 12h4v1h-4zM8 12h2v1h-2zM13 12h1v1h-1zM15 12h1v1h-1zM18 12h2v1h-2zM25 12h4v1h-4zM30 12h2v1h-2zM36 12h2v1h-2zM40 12h2v1h-2zM2 13h1v1h-1zM4 13h2v1h-2zM7 13h1v1h-1zM9 13h1v1h-1zM12 13h1v1h-1zM15 13h1v1h-1zM22 13h1v1h-1zM24 13h4v1h-4zM32 13h1v1h-1zM34 13h2v1h-2zM38 13h1v1h-1zM41 13h1v1h-1zM2 14h1v1h-1zM5 14h1v1h-1zM7 14h4v1h-4zM15 14h2v1h-2zM19 14h6v1h-6zM26 14h1v1h-1zM28 14h6v1h-6zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM6 15h1v1h-1zM11 15h1v1h-1zM13 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM25 15h4v1h-4zM31 15h2v1h-2zM37 15h1v1h-1zM39 15h1v1h-1zM2 16h2v1h-2zM6 16h5v1h-5zM12 16h2v1h-2zM15 16h1v1h-1zM17 16h2v1h-2zM21 16h5v1h-5zM27 16h1v1h-1zM31 16h2v1h-2zM36 16h1v1h-1zM39 16h1v1h-1zM41 16h2v1h-2zM2 17h1v1h-1zM6 17h1v1h-1zM9 17h5v1h-5zM15 17h2v1h-2zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM41 17h1v1h-1zM2 18h2v1h-2zM7 18h5v1h-5zM13 18h2v1h-2zM17 18h2v1h-2zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h1v1h-1zM32 18h3v1h-3zM38 18h1v1h-1zM41 18h1v1h-1zM2 19h1v1h-1zM4 19h2v1h-2zM12 19h1v1h-1zM15 19h1v1h-1zM17 19h2v1h-2zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h1v1h-1zM34 19h2v1h-2zM37 19h1v1h-1zM2 20h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM14 20h1v1h-1zM17 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h3v1h-3zM4 21h2v1h-2zM9 21h1v1h-1zM11 21h2v1h-2zM15 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM33 21h1v1h-1zM35 21h3v1h-3zM39 21h3v1h-3zM2 22h3v1h-3zM6 22h5v1h-5zM13 22h3v1h-3zM17 22h1v1h-1zM21 22h1v1h-1zM25 22h3v1h-3zM29 22h2v1h-2zM32 22h1v1h-1zM34 22h1v1h-1zM36 22h1v1h-1zM38 22h1v1h-1zM2 23h1v1h-1zM7 23h1v1h-1zM10 23h1v1h-1zM12 23h4v1h-4zM18 23h2v1h-2zM22 23h2v1h-2zM25 23h1v1h-1zM28 23h3v1h-3zM32 23h3v1h-3zM36 23h7v1h-7zM2 24h2v1h-2zM5 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM14 24h2v1h-2zM17 24h2v1h-2zM20 24h1v1h-1zM24 24h2v1h-2zM27 24h1v1h-1zM37 24h2v1h-2zM40 24h2v1h-2zM4 25h1v1h-1zM6 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM14 25h1v1h-1zM18 25h1v1h-1zM20 25h1v1h-1zM27 25h2v1h-2zM30 25h1v1h-1zM34 25h5v1h-5zM41 25h2v1h-2zM2 26h1v1h-1zM4 26h2v1h-2zM8 26h5v1h-5zM17 26h1v1h-1zM19 26h1v1h-1zM26 26h3v1h-3zM31 26h1v1h-1zM40 26h1v1h-1zM3 27h4v1h-4zM9 27h1v1h-1zM12 27h3v1h-3zM18 27h2v1h-2zM21 27h1v1h-1zM26 27h5v1h-5zM33 27h4v1h-4zM39 27h3v1h-3zM2 28h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM8 28h1v1h-1zM10 28h1v1h-1zM15 28h2v1h-2zM19 28h1v1h-1zM21 28h3v1h-3zM26 28h3v1h-3zM30 28h1v1h-1zM33 28h3v1h-3zM37 28h3v1h-3zM41 28h2v1h-2zM3 29h1v1h-1zM6 29h2v1h-2zM10 29h1v1h-1zM12 29h1v1h-1zM16 29h1v1h-1zM18 29h1v1h-1zM20 29h2v1h-2zM23 29h1v1h-1zM25 29h1v1h-1zM28 29h1v1h-1zM30 29h1v1h-1zM33 29h4v1h-4zM38 29h2v1h-2zM4 30h2v1h-2zM8 30h2v1h-2zM14 30h3v1h-3zM19 30h2v1h-2zM22 30h3v1h-3zM26 30h1v1h-1zM31 30h3v1h-3zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h2v1h-2zM6 31h2v1h-2zM13 31h1v1h-1zM17 31h1v1h-1zM20 31h3v1h-3zM27 31h2v1h-2zM31 31h3v1h-3zM36 31h2v1h-2zM2 32h1v1h-1zM4 32h2v1h-2zM8 32h2v1h-2zM12 32h1v1h-1zM16 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM4 33h2v1h-2zM12 33h3v1h-3zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h3v1h-3zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h6v1h-6zM11 34h3v1h-3zM17 34h1v1h-1zM19 34h2v1h-2zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h13v1h-13zM42 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM15 35h1v1h-1zM17 35h12v1h-12zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM16 36h2v1h-2zM20 36h1v1h-1zM25 36h3v1h-3zM30 36h2v1h-2zM33 36h2v1h-2zM36 36h1v1h-1zM38 36h1v1h-1zM41 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM15 37h3v1h-3zM19 37h1v1h-1zM21 37h2v1h-2zM25 37h2v1h-2zM29 37h2v1h-2zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h3v1h-3zM15 38h1v1h-1zM17 38h2v1h-2zM21 38h3v1h-3zM28 38h1v1h-1zM30 38h1v1h-1zM32 38h1v1h-1zM34 38h7v1h-7zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h3v1h-3zM14 39h1v1h-1zM16 39h4v1h-4zM21 39h1v1h-1zM23 39h2v1h-2zM26 39h4v1h-4zM32 39h2v1h-2zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM13 40h1v1h-1zM17 40h5v1h-5zM23 40h1v1h-1zM26 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM17 41h1v1h-1zM19 41h2v1h-2zM23 41h1v1h-1zM28 41h1v1h-1zM35 41h1v1h-1zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM16 42h1v1h-1zM18 42h1v1h-1zM21 42h5v1h-5zM27 42h1v1h-1zM30 42h1v1h-1zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "ket-hon": {
+      url: "https://drive.google.com/file/d/1yM72x0kkgS0ouLuCjejiTLGYJ0cEyFGR/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h2v1h-2zM13 2h2v1h-2zM16 2h1v1h-1zM19 2h2v1h-2zM24 2h2v1h-2zM28 2h3v1h-3zM32 2h2v1h-2zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h2v1h-2zM15 3h3v1h-3zM19 3h1v1h-1zM21 3h2v1h-2zM32 3h2v1h-2zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM15 4h1v1h-1zM17 4h2v1h-2zM21 4h1v1h-1zM23 4h1v1h-1zM25 4h3v1h-3zM31 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h3v1h-3zM14 5h7v1h-7zM23 5h4v1h-4zM28 5h4v1h-4zM33 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h8v1h-8zM23 6h3v1h-3zM28 6h3v1h-3zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM13 7h1v1h-1zM18 7h1v1h-1zM21 7h2v1h-2zM24 7h1v1h-1zM30 7h1v1h-1zM33 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h2v1h-2zM13 9h1v1h-1zM18 9h4v1h-4zM23 9h2v1h-2zM26 9h1v1h-1zM30 9h2v1h-2zM34 9h1v1h-1zM2 10h1v1h-1zM6 10h1v1h-1zM8 10h4v1h-4zM13 10h1v1h-1zM16 10h5v1h-5zM22 10h5v1h-5zM29 10h1v1h-1zM31 10h1v1h-1zM34 10h6v1h-6zM42 10h1v1h-1zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM11 11h5v1h-5zM17 11h2v1h-2zM20 11h1v1h-1zM25 11h1v1h-1zM28 11h2v1h-2zM35 11h2v1h-2zM38 11h2v1h-2zM42 11h1v1h-1zM3 12h3v1h-3zM8 12h1v1h-1zM10 12h2v1h-2zM13 12h1v1h-1zM17 12h1v1h-1zM19 12h2v1h-2zM22 12h2v1h-2zM25 12h3v1h-3zM29 12h1v1h-1zM32 12h1v1h-1zM34 12h2v1h-2zM37 12h2v1h-2zM42 12h1v1h-1zM2 13h3v1h-3zM10 13h1v1h-1zM13 13h1v1h-1zM16 13h2v1h-2zM19 13h5v1h-5zM26 13h1v1h-1zM28 13h2v1h-2zM31 13h4v1h-4zM37 13h3v1h-3zM2 14h3v1h-3zM7 14h5v1h-5zM15 14h3v1h-3zM19 14h1v1h-1zM24 14h1v1h-1zM26 14h1v1h-1zM30 14h3v1h-3zM34 14h1v1h-1zM41 14h2v1h-2zM3 15h1v1h-1zM6 15h2v1h-2zM12 15h1v1h-1zM14 15h1v1h-1zM16 15h1v1h-1zM19 15h4v1h-4zM28 15h1v1h-1zM33 15h1v1h-1zM38 15h1v1h-1zM2 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM8 16h2v1h-2zM16 16h1v1h-1zM18 16h2v1h-2zM22 16h1v1h-1zM24 16h1v1h-1zM29 16h1v1h-1zM32 16h2v1h-2zM35 16h3v1h-3zM42 16h1v1h-1zM4 17h2v1h-2zM7 17h1v1h-1zM10 17h1v1h-1zM12 17h1v1h-1zM14 17h2v1h-2zM19 17h2v1h-2zM23 17h1v1h-1zM26 17h1v1h-1zM28 17h4v1h-4zM33 17h2v1h-2zM39 17h1v1h-1zM41 17h2v1h-2zM4 18h1v1h-1zM8 18h4v1h-4zM14 18h2v1h-2zM17 18h3v1h-3zM21 18h1v1h-1zM23 18h3v1h-3zM30 18h1v1h-1zM37 18h1v1h-1zM39 18h1v1h-1zM41 18h1v1h-1zM2 19h1v1h-1zM5 19h1v1h-1zM10 19h1v1h-1zM12 19h2v1h-2zM15 19h2v1h-2zM23 19h3v1h-3zM27 19h6v1h-6zM35 19h4v1h-4zM42 19h1v1h-1zM5 20h5v1h-5zM12 20h3v1h-3zM19 20h1v1h-1zM25 20h2v1h-2zM29 20h1v1h-1zM32 20h1v1h-1zM34 20h1v1h-1zM37 20h1v1h-1zM42 20h1v1h-1zM2 21h1v1h-1zM7 21h1v1h-1zM9 21h2v1h-2zM13 21h1v1h-1zM15 21h2v1h-2zM19 21h2v1h-2zM22 21h1v1h-1zM24 21h1v1h-1zM26 21h1v1h-1zM28 21h1v1h-1zM34 21h1v1h-1zM37 21h1v1h-1zM39 21h1v1h-1zM42 21h1v1h-1zM2 22h2v1h-2zM8 22h2v1h-2zM12 22h2v1h-2zM15 22h2v1h-2zM18 22h1v1h-1zM20 22h3v1h-3zM24 22h6v1h-6zM33 22h2v1h-2zM39 22h2v1h-2zM42 22h1v1h-1zM2 23h1v1h-1zM4 23h3v1h-3zM9 23h1v1h-1zM11 23h3v1h-3zM16 23h1v1h-1zM18 23h2v1h-2zM25 23h1v1h-1zM27 23h1v1h-1zM29 23h2v1h-2zM32 23h2v1h-2zM35 23h4v1h-4zM42 23h1v1h-1zM4 24h1v1h-1zM7 24h2v1h-2zM11 24h7v1h-7zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM27 24h4v1h-4zM34 24h5v1h-5zM42 24h1v1h-1zM4 25h4v1h-4zM15 25h1v1h-1zM17 25h1v1h-1zM19 25h3v1h-3zM23 25h1v1h-1zM25 25h1v1h-1zM28 25h4v1h-4zM35 25h2v1h-2zM38 25h2v1h-2zM42 25h1v1h-1zM2 26h2v1h-2zM8 26h1v1h-1zM10 26h1v1h-1zM12 26h2v1h-2zM15 26h2v1h-2zM19 26h1v1h-1zM21 26h3v1h-3zM26 26h1v1h-1zM31 26h1v1h-1zM34 26h2v1h-2zM38 26h2v1h-2zM41 26h1v1h-1zM2 27h1v1h-1zM5 27h3v1h-3zM9 27h1v1h-1zM11 27h2v1h-2zM15 27h1v1h-1zM18 27h3v1h-3zM23 27h1v1h-1zM25 27h1v1h-1zM27 27h4v1h-4zM32 27h1v1h-1zM34 27h1v1h-1zM36 27h3v1h-3zM40 27h2v1h-2zM2 28h2v1h-2zM6 28h4v1h-4zM11 28h3v1h-3zM15 28h3v1h-3zM22 28h2v1h-2zM25 28h6v1h-6zM34 28h1v1h-1zM42 28h1v1h-1zM2 29h2v1h-2zM11 29h4v1h-4zM16 29h1v1h-1zM19 29h1v1h-1zM21 29h1v1h-1zM23 29h2v1h-2zM26 29h1v1h-1zM28 29h1v1h-1zM31 29h1v1h-1zM33 29h3v1h-3zM37 29h3v1h-3zM42 29h1v1h-1zM2 30h4v1h-4zM7 30h4v1h-4zM13 30h1v1h-1zM15 30h1v1h-1zM19 30h1v1h-1zM21 30h5v1h-5zM27 30h1v1h-1zM31 30h1v1h-1zM35 30h2v1h-2zM41 30h1v1h-1zM2 31h3v1h-3zM7 31h1v1h-1zM9 31h1v1h-1zM13 31h2v1h-2zM17 31h2v1h-2zM20 31h2v1h-2zM24 31h1v1h-1zM26 31h2v1h-2zM30 31h1v1h-1zM33 31h2v1h-2zM37 31h2v1h-2zM40 31h2v1h-2zM6 32h3v1h-3zM10 32h2v1h-2zM13 32h3v1h-3zM20 32h2v1h-2zM23 32h4v1h-4zM28 32h1v1h-1zM30 32h1v1h-1zM32 32h1v1h-1zM34 32h2v1h-2zM38 32h2v1h-2zM42 32h1v1h-1zM5 33h2v1h-2zM12 33h3v1h-3zM16 33h4v1h-4zM21 33h5v1h-5zM28 33h1v1h-1zM31 33h2v1h-2zM35 33h1v1h-1zM38 33h1v1h-1zM42 33h1v1h-1zM2 34h2v1h-2zM5 34h1v1h-1zM7 34h2v1h-2zM10 34h1v1h-1zM13 34h1v1h-1zM17 34h3v1h-3zM22 34h2v1h-2zM29 34h1v1h-1zM33 34h7v1h-7zM42 34h1v1h-1zM10 35h3v1h-3zM17 35h1v1h-1zM19 35h2v1h-2zM24 35h3v1h-3zM29 35h1v1h-1zM33 35h2v1h-2zM38 35h1v1h-1zM40 35h1v1h-1zM42 35h1v1h-1zM2 36h7v1h-7zM10 36h1v1h-1zM12 36h3v1h-3zM20 36h1v1h-1zM22 36h10v1h-10zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h3v1h-3zM42 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM11 37h2v1h-2zM16 37h3v1h-3zM22 37h2v1h-2zM26 37h2v1h-2zM30 37h5v1h-5zM38 37h2v1h-2zM41 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h1v1h-1zM12 38h2v1h-2zM16 38h1v1h-1zM22 38h1v1h-1zM27 38h1v1h-1zM30 38h1v1h-1zM32 38h7v1h-7zM40 38h2v1h-2zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM11 39h3v1h-3zM15 39h2v1h-2zM18 39h1v1h-1zM20 39h2v1h-2zM23 39h4v1h-4zM28 39h2v1h-2zM31 39h1v1h-1zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM15 40h1v1h-1zM20 40h1v1h-1zM22 40h1v1h-1zM25 40h7v1h-7zM35 40h1v1h-1zM39 40h1v1h-1zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM12 41h1v1h-1zM14 41h1v1h-1zM17 41h1v1h-1zM22 41h3v1h-3zM28 41h10v1h-10zM39 41h1v1h-1zM41 41h2v1h-2zM2 42h7v1h-7zM10 42h1v1h-1zM13 42h12v1h-12zM26 42h1v1h-1zM29 42h3v1h-3zM34 42h2v1h-2zM37 42h3v1h-3zM41 42h1v1h-1z",
+    },
+    "khai-sinh-dang-ky-thuong": {
+      url: "https://drive.google.com/file/d/1_c-8Xx4O9KqTH9KbCG0uqQlPNRH3-2du/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM12 2h1v1h-1zM14 2h3v1h-3zM19 2h7v1h-7zM27 2h1v1h-1zM30 2h1v1h-1zM33 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h3v1h-3zM19 3h1v1h-1zM23 3h1v1h-1zM27 3h3v1h-3zM32 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM15 4h1v1h-1zM17 4h5v1h-5zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM34 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM15 5h2v1h-2zM23 5h1v1h-1zM26 5h1v1h-1zM28 5h2v1h-2zM32 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h2v1h-2zM18 6h3v1h-3zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM29 6h2v1h-2zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM13 7h5v1h-5zM22 7h3v1h-3zM26 7h4v1h-4zM34 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h5v1h-5zM18 9h1v1h-1zM21 9h1v1h-1zM23 9h1v1h-1zM29 9h2v1h-2zM32 9h2v1h-2zM2 10h1v1h-1zM4 10h5v1h-5zM15 10h1v1h-1zM18 10h3v1h-3zM24 10h1v1h-1zM26 10h4v1h-4zM31 10h1v1h-1zM36 10h5v1h-5zM3 11h2v1h-2zM6 11h1v1h-1zM10 11h5v1h-5zM16 11h1v1h-1zM18 11h1v1h-1zM20 11h3v1h-3zM25 11h1v1h-1zM27 11h1v1h-1zM31 11h1v1h-1zM33 11h2v1h-2zM37 11h2v1h-2zM40 11h3v1h-3zM2 12h3v1h-3zM6 12h3v1h-3zM10 12h1v1h-1zM14 12h1v1h-1zM16 12h4v1h-4zM22 12h2v1h-2zM27 12h4v1h-4zM34 12h3v1h-3zM3 13h1v1h-1zM6 13h2v1h-2zM9 13h4v1h-4zM14 13h2v1h-2zM17 13h2v1h-2zM21 13h3v1h-3zM25 13h1v1h-1zM28 13h3v1h-3zM33 13h2v1h-2zM36 13h2v1h-2zM39 13h1v1h-1zM42 13h1v1h-1zM2 14h1v1h-1zM7 14h6v1h-6zM19 14h4v1h-4zM26 14h2v1h-2zM29 14h5v1h-5zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM5 15h3v1h-3zM14 15h1v1h-1zM17 15h1v1h-1zM19 15h1v1h-1zM23 15h2v1h-2zM27 15h3v1h-3zM34 15h2v1h-2zM38 15h3v1h-3zM4 16h1v1h-1zM7 16h4v1h-4zM13 16h3v1h-3zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h5v1h-5zM35 16h1v1h-1zM38 16h1v1h-1zM2 17h1v1h-1zM5 17h2v1h-2zM11 17h1v1h-1zM13 17h1v1h-1zM16 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM32 17h3v1h-3zM36 17h4v1h-4zM3 18h3v1h-3zM8 18h1v1h-1zM14 18h3v1h-3zM19 18h1v1h-1zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h5v1h-5zM33 18h1v1h-1zM35 18h1v1h-1zM37 18h1v1h-1zM40 18h2v1h-2zM2 19h3v1h-3zM6 19h1v1h-1zM9 19h1v1h-1zM11 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM21 19h2v1h-2zM24 19h2v1h-2zM30 19h4v1h-4zM36 19h3v1h-3zM41 19h2v1h-2zM3 20h1v1h-1zM5 20h1v1h-1zM8 20h2v1h-2zM13 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h2v1h-2zM3 21h1v1h-1zM6 21h2v1h-2zM9 21h2v1h-2zM12 21h6v1h-6zM22 21h1v1h-1zM25 21h1v1h-1zM28 21h1v1h-1zM30 21h4v1h-4zM36 21h1v1h-1zM38 21h2v1h-2zM2 22h4v1h-4zM8 22h1v1h-1zM10 22h3v1h-3zM17 22h1v1h-1zM20 22h1v1h-1zM23 22h3v1h-3zM30 22h1v1h-1zM35 22h1v1h-1zM40 22h3v1h-3zM2 23h1v1h-1zM10 23h1v1h-1zM12 23h2v1h-2zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM22 23h2v1h-2zM28 23h1v1h-1zM32 23h3v1h-3zM36 23h7v1h-7zM4 24h1v1h-1zM7 24h2v1h-2zM11 24h1v1h-1zM14 24h3v1h-3zM18 24h2v1h-2zM23 24h2v1h-2zM27 24h3v1h-3zM31 24h2v1h-2zM34 24h2v1h-2zM4 25h2v1h-2zM7 25h1v1h-1zM12 25h1v1h-1zM15 25h1v1h-1zM18 25h1v1h-1zM21 25h1v1h-1zM23 25h2v1h-2zM26 25h1v1h-1zM28 25h2v1h-2zM32 25h6v1h-6zM39 25h1v1h-1zM2 26h3v1h-3zM8 26h6v1h-6zM19 26h1v1h-1zM26 26h3v1h-3zM31 26h1v1h-1zM33 26h1v1h-1zM38 26h1v1h-1zM40 26h1v1h-1zM2 27h2v1h-2zM6 27h1v1h-1zM12 27h1v1h-1zM15 27h4v1h-4zM20 27h3v1h-3zM25 27h1v1h-1zM27 27h1v1h-1zM30 27h4v1h-4zM35 27h1v1h-1zM37 27h3v1h-3zM3 28h1v1h-1zM8 28h4v1h-4zM14 28h1v1h-1zM16 28h3v1h-3zM20 28h1v1h-1zM22 28h2v1h-2zM29 28h1v1h-1zM32 28h1v1h-1zM34 28h1v1h-1zM36 28h1v1h-1zM38 28h1v1h-1zM3 29h1v1h-1zM6 29h2v1h-2zM9 29h1v1h-1zM11 29h1v1h-1zM16 29h1v1h-1zM18 29h1v1h-1zM20 29h2v1h-2zM23 29h3v1h-3zM28 29h1v1h-1zM30 29h1v1h-1zM32 29h5v1h-5zM38 29h2v1h-2zM2 30h1v1h-1zM7 30h2v1h-2zM12 30h2v1h-2zM17 30h1v1h-1zM19 30h1v1h-1zM23 30h3v1h-3zM28 30h2v1h-2zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h2v1h-2zM7 31h1v1h-1zM9 31h3v1h-3zM13 31h4v1h-4zM18 31h1v1h-1zM22 31h2v1h-2zM26 31h1v1h-1zM29 31h2v1h-2zM35 31h1v1h-1zM37 31h3v1h-3zM42 31h1v1h-1zM2 32h1v1h-1zM4 32h1v1h-1zM8 32h1v1h-1zM12 32h1v1h-1zM16 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM2 33h1v1h-1zM4 33h2v1h-2zM7 33h1v1h-1zM9 33h1v1h-1zM11 33h2v1h-2zM15 33h1v1h-1zM17 33h1v1h-1zM20 33h4v1h-4zM26 33h1v1h-1zM28 33h1v1h-1zM30 33h1v1h-1zM32 33h1v1h-1zM35 33h3v1h-3zM2 34h1v1h-1zM7 34h3v1h-3zM11 34h1v1h-1zM13 34h2v1h-2zM19 34h1v1h-1zM21 34h1v1h-1zM27 34h2v1h-2zM31 34h1v1h-1zM34 34h5v1h-5zM40 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM15 35h1v1h-1zM17 35h1v1h-1zM19 35h10v1h-10zM33 35h2v1h-2zM38 35h5v1h-5zM2 36h7v1h-7zM13 36h2v1h-2zM19 36h1v1h-1zM22 36h2v1h-2zM27 36h4v1h-4zM32 36h3v1h-3zM36 36h1v1h-1zM38 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h2v1h-2zM16 37h2v1h-2zM19 37h2v1h-2zM22 37h4v1h-4zM27 37h1v1h-1zM29 37h2v1h-2zM34 37h1v1h-1zM38 37h2v1h-2zM41 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h3v1h-3zM15 38h1v1h-1zM18 38h1v1h-1zM21 38h1v1h-1zM23 38h1v1h-1zM28 38h3v1h-3zM32 38h1v1h-1zM34 38h6v1h-6zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h1v1h-1zM12 39h1v1h-1zM14 39h1v1h-1zM17 39h1v1h-1zM20 39h3v1h-3zM24 39h2v1h-2zM27 39h1v1h-1zM30 39h2v1h-2zM35 39h1v1h-1zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h1v1h-1zM12 40h1v1h-1zM15 40h1v1h-1zM17 40h3v1h-3zM22 40h1v1h-1zM24 40h1v1h-1zM27 40h3v1h-3zM32 40h1v1h-1zM34 40h6v1h-6zM2 41h1v1h-1zM8 41h1v1h-1zM13 41h1v1h-1zM18 41h4v1h-4zM23 41h1v1h-1zM25 41h2v1h-2zM28 41h2v1h-2zM33 41h1v1h-1zM35 41h1v1h-1zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM13 42h2v1h-2zM17 42h5v1h-5zM24 42h5v1h-5zM30 42h2v1h-2zM33 42h1v1h-1zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+    "chung-thuc-ban-sao": {
+      url: "https://drive.google.com/file/d/1rv3_eC98iTnAZX0Bc9cKnWQLsGCPq9Bi/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h2v1h-2zM13 2h1v1h-1zM19 2h2v1h-2zM24 2h2v1h-2zM28 2h3v1h-3zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h3v1h-3zM15 3h5v1h-5zM21 3h2v1h-2zM32 3h2v1h-2zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h3v1h-3zM15 4h1v1h-1zM17 4h1v1h-1zM21 4h1v1h-1zM23 4h1v1h-1zM25 4h3v1h-3zM31 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h4v1h-4zM15 5h3v1h-3zM19 5h2v1h-2zM22 5h5v1h-5zM28 5h2v1h-2zM31 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM15 6h2v1h-2zM19 6h2v1h-2zM22 6h3v1h-3zM28 6h2v1h-2zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM13 7h1v1h-1zM17 7h1v1h-1zM21 7h1v1h-1zM24 7h1v1h-1zM30 7h1v1h-1zM33 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h2v1h-2zM13 9h1v1h-1zM17 9h1v1h-1zM19 9h3v1h-3zM23 9h3v1h-3zM29 9h3v1h-3zM33 9h2v1h-2zM2 10h1v1h-1zM6 10h1v1h-1zM8 10h4v1h-4zM13 10h1v1h-1zM16 10h1v1h-1zM18 10h7v1h-7zM26 10h1v1h-1zM29 10h1v1h-1zM31 10h1v1h-1zM33 10h7v1h-7zM42 10h1v1h-1zM4 11h3v1h-3zM12 11h3v1h-3zM17 11h4v1h-4zM23 11h1v1h-1zM25 11h1v1h-1zM28 11h2v1h-2zM37 11h3v1h-3zM42 11h1v1h-1zM3 12h1v1h-1zM8 12h2v1h-2zM12 12h2v1h-2zM15 12h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM22 12h1v1h-1zM24 12h3v1h-3zM29 12h1v1h-1zM34 12h2v1h-2zM38 12h1v1h-1zM42 12h1v1h-1zM2 13h4v1h-4zM9 13h1v1h-1zM13 13h1v1h-1zM17 13h1v1h-1zM19 13h6v1h-6zM26 13h1v1h-1zM29 13h1v1h-1zM31 13h4v1h-4zM37 13h1v1h-1zM39 13h1v1h-1zM2 14h2v1h-2zM7 14h2v1h-2zM10 14h1v1h-1zM15 14h3v1h-3zM19 14h1v1h-1zM24 14h1v1h-1zM26 14h1v1h-1zM30 14h1v1h-1zM34 14h1v1h-1zM41 14h2v1h-2zM3 15h5v1h-5zM9 15h1v1h-1zM11 15h2v1h-2zM14 15h2v1h-2zM19 15h4v1h-4zM24 15h1v1h-1zM28 15h1v1h-1zM31 15h1v1h-1zM33 15h1v1h-1zM38 15h1v1h-1zM41 15h1v1h-1zM2 16h1v1h-1zM6 16h1v1h-1zM8 16h1v1h-1zM10 16h3v1h-3zM15 16h2v1h-2zM18 16h2v1h-2zM22 16h1v1h-1zM24 16h1v1h-1zM29 16h1v1h-1zM31 16h1v1h-1zM33 16h1v1h-1zM35 16h3v1h-3zM42 16h1v1h-1zM4 17h2v1h-2zM7 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM14 17h1v1h-1zM19 17h2v1h-2zM23 17h1v1h-1zM26 17h1v1h-1zM28 17h7v1h-7zM39 17h1v1h-1zM41 17h1v1h-1zM8 18h4v1h-4zM17 18h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM23 18h3v1h-3zM30 18h1v1h-1zM37 18h1v1h-1zM39 18h1v1h-1zM41 18h2v1h-2zM5 19h1v1h-1zM10 19h1v1h-1zM13 19h3v1h-3zM18 19h1v1h-1zM23 19h3v1h-3zM27 19h6v1h-6zM35 19h4v1h-4zM40 19h1v1h-1zM42 19h1v1h-1zM3 20h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM12 20h3v1h-3zM17 20h3v1h-3zM25 20h2v1h-2zM29 20h1v1h-1zM32 20h1v1h-1zM37 20h1v1h-1zM39 20h2v1h-2zM42 20h1v1h-1zM3 21h1v1h-1zM7 21h1v1h-1zM9 21h2v1h-2zM14 21h3v1h-3zM19 21h2v1h-2zM22 21h1v1h-1zM24 21h1v1h-1zM26 21h1v1h-1zM28 21h1v1h-1zM37 21h1v1h-1zM39 21h1v1h-1zM42 21h1v1h-1zM3 22h1v1h-1zM6 22h1v1h-1zM8 22h2v1h-2zM12 22h5v1h-5zM20 22h3v1h-3zM24 22h7v1h-7zM33 22h1v1h-1zM40 22h1v1h-1zM42 22h1v1h-1zM2 23h4v1h-4zM7 23h1v1h-1zM9 23h1v1h-1zM11 23h2v1h-2zM16 23h2v1h-2zM19 23h1v1h-1zM27 23h1v1h-1zM29 23h1v1h-1zM32 23h1v1h-1zM35 23h4v1h-4zM42 23h1v1h-1zM2 24h3v1h-3zM6 24h3v1h-3zM11 24h3v1h-3zM15 24h3v1h-3zM20 24h1v1h-1zM23 24h1v1h-1zM25 24h1v1h-1zM27 24h3v1h-3zM36 24h3v1h-3zM42 24h1v1h-1zM3 25h3v1h-3zM7 25h1v1h-1zM15 25h1v1h-1zM18 25h4v1h-4zM23 25h1v1h-1zM26 25h1v1h-1zM28 25h1v1h-1zM30 25h2v1h-2zM33 25h1v1h-1zM38 25h2v1h-2zM42 25h1v1h-1zM3 26h1v1h-1zM5 26h1v1h-1zM7 26h2v1h-2zM12 26h2v1h-2zM15 26h2v1h-2zM19 26h1v1h-1zM21 26h3v1h-3zM25 26h2v1h-2zM31 26h1v1h-1zM33 26h3v1h-3zM37 26h1v1h-1zM39 26h1v1h-1zM41 26h1v1h-1zM2 27h5v1h-5zM9 27h2v1h-2zM12 27h1v1h-1zM15 27h1v1h-1zM18 27h1v1h-1zM20 27h1v1h-1zM23 27h1v1h-1zM25 27h1v1h-1zM28 27h5v1h-5zM34 27h1v1h-1zM37 27h2v1h-2zM40 27h2v1h-2zM2 28h8v1h-8zM11 28h3v1h-3zM15 28h3v1h-3zM22 28h5v1h-5zM29 28h2v1h-2zM32 28h1v1h-1zM34 28h1v1h-1zM37 28h1v1h-1zM42 28h1v1h-1zM2 29h4v1h-4zM9 29h1v1h-1zM11 29h4v1h-4zM19 29h3v1h-3zM23 29h2v1h-2zM26 29h1v1h-1zM28 29h1v1h-1zM31 29h5v1h-5zM38 29h2v1h-2zM42 29h1v1h-1zM2 30h4v1h-4zM7 30h2v1h-2zM12 30h2v1h-2zM21 30h3v1h-3zM25 30h1v1h-1zM27 30h1v1h-1zM31 30h1v1h-1zM35 30h2v1h-2zM41 30h1v1h-1zM2 31h2v1h-2zM5 31h1v1h-1zM7 31h1v1h-1zM9 31h1v1h-1zM12 31h3v1h-3zM16 31h3v1h-3zM20 31h2v1h-2zM24 31h1v1h-1zM26 31h2v1h-2zM30 31h1v1h-1zM32 31h3v1h-3zM37 31h2v1h-2zM40 31h1v1h-1zM42 31h1v1h-1zM6 32h5v1h-5zM12 32h3v1h-3zM20 32h2v1h-2zM23 32h4v1h-4zM28 32h1v1h-1zM30 32h1v1h-1zM34 32h2v1h-2zM38 32h2v1h-2zM42 32h1v1h-1zM5 33h2v1h-2zM9 33h1v1h-1zM13 33h3v1h-3zM17 33h3v1h-3zM21 33h5v1h-5zM28 33h1v1h-1zM31 33h1v1h-1zM35 33h1v1h-1zM38 33h1v1h-1zM2 34h4v1h-4zM7 34h5v1h-5zM13 34h2v1h-2zM16 34h4v1h-4zM22 34h2v1h-2zM29 34h1v1h-1zM31 34h1v1h-1zM33 34h7v1h-7zM42 34h1v1h-1zM10 35h2v1h-2zM13 35h2v1h-2zM16 35h2v1h-2zM19 35h2v1h-2zM24 35h3v1h-3zM29 35h1v1h-1zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h3v1h-3zM42 35h1v1h-1zM2 36h7v1h-7zM10 36h1v1h-1zM12 36h2v1h-2zM17 36h1v1h-1zM20 36h1v1h-1zM22 36h8v1h-8zM31 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h2v1h-2zM42 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM11 37h2v1h-2zM16 37h3v1h-3zM22 37h2v1h-2zM26 37h2v1h-2zM29 37h6v1h-6zM38 37h2v1h-2zM41 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM14 38h1v1h-1zM16 38h1v1h-1zM18 38h1v1h-1zM22 38h1v1h-1zM26 38h2v1h-2zM29 38h1v1h-1zM32 38h10v1h-10zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM11 39h2v1h-2zM14 39h3v1h-3zM18 39h1v1h-1zM20 39h2v1h-2zM23 39h3v1h-3zM28 39h1v1h-1zM30 39h2v1h-2zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM13 40h3v1h-3zM18 40h1v1h-1zM20 40h1v1h-1zM25 40h1v1h-1zM27 40h3v1h-3zM31 40h1v1h-1zM35 40h1v1h-1zM39 40h1v1h-1zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM12 41h1v1h-1zM17 41h1v1h-1zM23 41h4v1h-4zM28 41h2v1h-2zM31 41h7v1h-7zM39 41h1v1h-1zM41 41h2v1h-2zM2 42h7v1h-7zM10 42h1v1h-1zM13 42h4v1h-4zM18 42h7v1h-7zM26 42h1v1h-1zM30 42h2v1h-2zM34 42h2v1h-2zM37 42h3v1h-3zM41 42h1v1h-1z",
+    },
+    "thay-doi-cai-chinh-ho-tich": {
+      url: "https://drive.google.com/file/d/1_pns6gVNa2gP0aIWI3FfcyVk1A05FCAB/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h2v1h-2zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM23 2h1v1h-1zM28 2h1v1h-1zM31 2h3v1h-3zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h3v1h-3zM14 3h3v1h-3zM19 3h1v1h-1zM21 3h2v1h-2zM32 3h3v1h-3zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h3v1h-3zM14 4h1v1h-1zM17 4h1v1h-1zM19 4h2v1h-2zM23 4h1v1h-1zM34 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM12 5h1v1h-1zM15 5h1v1h-1zM17 5h1v1h-1zM24 5h1v1h-1zM30 5h1v1h-1zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM16 6h2v1h-2zM20 6h3v1h-3zM24 6h1v1h-1zM26 6h6v1h-6zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM14 7h3v1h-3zM19 7h1v1h-1zM22 7h1v1h-1zM25 7h4v1h-4zM30 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM12 9h7v1h-7zM21 9h2v1h-2zM26 9h5v1h-5zM32 9h3v1h-3zM2 10h1v1h-1zM5 10h6v1h-6zM12 10h1v1h-1zM17 10h1v1h-1zM19 10h2v1h-2zM26 10h1v1h-1zM28 10h4v1h-4zM33 10h1v1h-1zM35 10h1v1h-1zM38 10h1v1h-1zM40 10h3v1h-3zM3 11h3v1h-3zM7 11h1v1h-1zM9 11h2v1h-2zM13 11h3v1h-3zM17 11h1v1h-1zM20 11h2v1h-2zM24 11h2v1h-2zM27 11h5v1h-5zM33 11h1v1h-1zM36 11h3v1h-3zM2 12h2v1h-2zM6 12h1v1h-1zM8 12h2v1h-2zM12 12h3v1h-3zM16 12h3v1h-3zM20 12h1v1h-1zM23 12h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM29 12h2v1h-2zM35 12h2v1h-2zM38 12h1v1h-1zM40 12h1v1h-1zM3 13h1v1h-1zM10 13h1v1h-1zM13 13h2v1h-2zM19 13h1v1h-1zM21 13h2v1h-2zM24 13h1v1h-1zM31 13h5v1h-5zM37 13h3v1h-3zM41 13h1v1h-1zM2 14h2v1h-2zM6 14h1v1h-1zM8 14h1v1h-1zM10 14h4v1h-4zM16 14h1v1h-1zM18 14h2v1h-2zM25 14h2v1h-2zM29 14h1v1h-1zM34 14h4v1h-4zM3 15h2v1h-2zM6 15h2v1h-2zM9 15h4v1h-4zM14 15h3v1h-3zM19 15h4v1h-4zM28 15h1v1h-1zM33 15h1v1h-1zM38 15h1v1h-1zM41 15h2v1h-2zM3 16h1v1h-1zM6 16h3v1h-3zM11 16h1v1h-1zM13 16h3v1h-3zM18 16h1v1h-1zM20 16h3v1h-3zM24 16h4v1h-4zM29 16h1v1h-1zM31 16h2v1h-2zM35 16h2v1h-2zM38 16h2v1h-2zM42 16h1v1h-1zM2 17h1v1h-1zM4 17h1v1h-1zM13 17h1v1h-1zM16 17h2v1h-2zM22 17h1v1h-1zM25 17h1v1h-1zM30 17h1v1h-1zM33 17h1v1h-1zM35 17h1v1h-1zM37 17h5v1h-5zM3 18h1v1h-1zM5 18h1v1h-1zM7 18h4v1h-4zM13 18h3v1h-3zM18 18h1v1h-1zM24 18h1v1h-1zM27 18h1v1h-1zM29 18h3v1h-3zM33 18h3v1h-3zM41 18h1v1h-1zM2 19h4v1h-4zM7 19h1v1h-1zM9 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM19 19h1v1h-1zM21 19h3v1h-3zM29 19h1v1h-1zM32 19h1v1h-1zM34 19h2v1h-2zM38 19h1v1h-1zM40 19h1v1h-1zM3 20h3v1h-3zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h6v1h-6zM19 20h4v1h-4zM25 20h1v1h-1zM27 20h3v1h-3zM33 20h1v1h-1zM37 20h2v1h-2zM40 20h1v1h-1zM42 20h1v1h-1zM2 21h1v1h-1zM4 21h3v1h-3zM11 21h4v1h-4zM18 21h1v1h-1zM21 21h1v1h-1zM23 21h1v1h-1zM25 21h1v1h-1zM27 21h1v1h-1zM29 21h5v1h-5zM35 21h2v1h-2zM38 21h1v1h-1zM40 21h2v1h-2zM4 22h3v1h-3zM8 22h4v1h-4zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM20 22h2v1h-2zM23 22h1v1h-1zM25 22h1v1h-1zM27 22h1v1h-1zM33 22h4v1h-4zM41 22h1v1h-1zM3 23h4v1h-4zM11 23h1v1h-1zM15 23h5v1h-5zM24 23h1v1h-1zM32 23h2v1h-2zM35 23h1v1h-1zM37 23h3v1h-3zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h2v1h-2zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h2v1h-2zM23 24h3v1h-3zM27 24h1v1h-1zM29 24h2v1h-2zM32 24h1v1h-1zM35 24h1v1h-1zM37 24h1v1h-1zM40 24h1v1h-1zM3 25h2v1h-2zM6 25h2v1h-2zM11 25h1v1h-1zM13 25h3v1h-3zM18 25h2v1h-2zM21 25h2v1h-2zM28 25h2v1h-2zM31 25h6v1h-6zM39 25h1v1h-1zM41 25h2v1h-2zM2 26h1v1h-1zM5 26h2v1h-2zM8 26h1v1h-1zM10 26h2v1h-2zM13 26h1v1h-1zM15 26h4v1h-4zM21 26h2v1h-2zM24 26h3v1h-3zM29 26h2v1h-2zM34 26h3v1h-3zM39 26h1v1h-1zM42 26h1v1h-1zM2 27h2v1h-2zM5 27h3v1h-3zM9 27h2v1h-2zM12 27h1v1h-1zM15 27h1v1h-1zM18 27h1v1h-1zM20 27h1v1h-1zM25 27h1v1h-1zM27 27h4v1h-4zM32 27h1v1h-1zM34 27h3v1h-3zM38 27h1v1h-1zM40 27h2v1h-2zM6 28h1v1h-1zM8 28h1v1h-1zM10 28h3v1h-3zM14 28h4v1h-4zM19 28h1v1h-1zM21 28h4v1h-4zM27 28h1v1h-1zM29 28h6v1h-6zM37 28h1v1h-1zM39 28h1v1h-1zM42 28h1v1h-1zM3 29h2v1h-2zM7 29h1v1h-1zM11 29h2v1h-2zM16 29h2v1h-2zM20 29h3v1h-3zM25 29h1v1h-1zM29 29h1v1h-1zM33 29h1v1h-1zM39 29h4v1h-4zM2 30h1v1h-1zM8 30h1v1h-1zM10 30h1v1h-1zM15 30h1v1h-1zM17 30h1v1h-1zM22 30h3v1h-3zM27 30h3v1h-3zM32 30h2v1h-2zM36 30h2v1h-2zM39 30h1v1h-1zM2 31h1v1h-1zM6 31h1v1h-1zM12 31h1v1h-1zM14 31h1v1h-1zM16 31h2v1h-2zM19 31h2v1h-2zM22 31h1v1h-1zM24 31h3v1h-3zM28 31h1v1h-1zM31 31h1v1h-1zM36 31h1v1h-1zM38 31h2v1h-2zM2 32h2v1h-2zM6 32h4v1h-4zM12 32h2v1h-2zM22 32h4v1h-4zM27 32h1v1h-1zM30 32h4v1h-4zM35 32h1v1h-1zM40 32h1v1h-1zM42 32h1v1h-1zM2 33h3v1h-3zM7 33h1v1h-1zM10 33h1v1h-1zM15 33h2v1h-2zM20 33h1v1h-1zM26 33h2v1h-2zM29 33h2v1h-2zM33 33h2v1h-2zM36 33h2v1h-2zM39 33h2v1h-2zM42 33h1v1h-1zM2 34h2v1h-2zM6 34h4v1h-4zM11 34h1v1h-1zM13 34h1v1h-1zM16 34h1v1h-1zM18 34h2v1h-2zM24 34h1v1h-1zM28 34h1v1h-1zM30 34h1v1h-1zM33 34h8v1h-8zM42 34h1v1h-1zM10 35h3v1h-3zM14 35h2v1h-2zM18 35h4v1h-4zM25 35h3v1h-3zM29 35h2v1h-2zM32 35h3v1h-3zM38 35h3v1h-3zM2 36h7v1h-7zM10 36h1v1h-1zM13 36h1v1h-1zM16 36h3v1h-3zM23 36h1v1h-1zM25 36h1v1h-1zM27 36h1v1h-1zM29 36h1v1h-1zM31 36h4v1h-4zM36 36h1v1h-1zM38 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM16 37h2v1h-2zM20 37h1v1h-1zM22 37h1v1h-1zM27 37h1v1h-1zM29 37h3v1h-3zM34 37h1v1h-1zM38 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h2v1h-2zM16 38h1v1h-1zM19 38h1v1h-1zM23 38h5v1h-5zM29 38h11v1h-11zM42 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h3v1h-3zM14 39h3v1h-3zM20 39h2v1h-2zM23 39h3v1h-3zM28 39h4v1h-4zM33 39h2v1h-2zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM13 40h1v1h-1zM17 40h3v1h-3zM21 40h2v1h-2zM26 40h1v1h-1zM28 40h3v1h-3zM32 40h2v1h-2zM35 40h1v1h-1zM37 40h2v1h-2zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM11 41h4v1h-4zM16 41h1v1h-1zM18 41h3v1h-3zM22 41h1v1h-1zM24 41h3v1h-3zM29 41h1v1h-1zM33 41h2v1h-2zM36 41h1v1h-1zM38 41h3v1h-3zM42 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM13 42h2v1h-2zM16 42h1v1h-1zM18 42h1v1h-1zM20 42h3v1h-3zM24 42h4v1h-4zM29 42h2v1h-2zM33 42h2v1h-2zM38 42h1v1h-1z",
+    },
+    "trich-luc-ks": {
+      url: "https://drive.google.com/file/d/1obk7WGRKMMecQXT2sx0APLpfhYUH9Ywm/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h4v1h-4zM17 2h9v1h-9zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM16 3h3v1h-3zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM17 4h1v1h-1zM19 4h1v1h-1zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM15 5h2v1h-2zM18 5h1v1h-1zM22 5h2v1h-2zM28 5h2v1h-2zM32 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM21 6h1v1h-1zM23 6h6v1h-6zM30 6h4v1h-4zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM16 7h3v1h-3zM20 7h3v1h-3zM26 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h1v1h-1zM14 9h1v1h-1zM16 9h2v1h-2zM19 9h4v1h-4zM28 9h2v1h-2zM31 9h1v1h-1zM33 9h2v1h-2zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h2v1h-2zM14 10h1v1h-1zM17 10h1v1h-1zM19 10h1v1h-1zM21 10h1v1h-1zM23 10h1v1h-1zM28 10h1v1h-1zM30 10h4v1h-4zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM3 11h2v1h-2zM6 11h1v1h-1zM10 11h1v1h-1zM12 11h5v1h-5zM18 11h6v1h-6zM25 11h1v1h-1zM27 11h1v1h-1zM31 11h1v1h-1zM33 11h2v1h-2zM37 11h2v1h-2zM40 11h3v1h-3zM3 12h1v1h-1zM6 12h1v1h-1zM8 12h3v1h-3zM13 12h1v1h-1zM15 12h2v1h-2zM18 12h2v1h-2zM25 12h4v1h-4zM30 12h1v1h-1zM36 12h2v1h-2zM40 12h2v1h-2zM2 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM10 13h1v1h-1zM15 13h2v1h-2zM22 13h1v1h-1zM25 13h4v1h-4zM32 13h1v1h-1zM34 13h2v1h-2zM38 13h1v1h-1zM41 13h1v1h-1zM2 14h1v1h-1zM5 14h1v1h-1zM7 14h3v1h-3zM19 14h6v1h-6zM26 14h1v1h-1zM28 14h6v1h-6zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM5 15h2v1h-2zM9 15h1v1h-1zM12 15h2v1h-2zM15 15h2v1h-2zM20 15h1v1h-1zM22 15h1v1h-1zM24 15h5v1h-5zM32 15h1v1h-1zM37 15h1v1h-1zM39 15h1v1h-1zM2 16h3v1h-3zM6 16h3v1h-3zM10 16h4v1h-4zM15 16h4v1h-4zM21 16h5v1h-5zM27 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM41 16h2v1h-2zM2 17h1v1h-1zM5 17h2v1h-2zM9 17h1v1h-1zM11 17h3v1h-3zM15 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM41 17h1v1h-1zM2 18h2v1h-2zM7 18h2v1h-2zM10 18h2v1h-2zM13 18h1v1h-1zM16 18h2v1h-2zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h1v1h-1zM32 18h2v1h-2zM38 18h1v1h-1zM2 19h1v1h-1zM4 19h2v1h-2zM13 19h6v1h-6zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h2v1h-2zM35 19h1v1h-1zM37 19h1v1h-1zM40 19h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM13 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM36 20h1v1h-1zM38 20h1v1h-1zM2 21h1v1h-1zM4 21h4v1h-4zM9 21h1v1h-1zM11 21h2v1h-2zM15 21h1v1h-1zM17 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM34 21h4v1h-4zM39 21h3v1h-3zM3 22h2v1h-2zM8 22h3v1h-3zM14 22h2v1h-2zM18 22h1v1h-1zM21 22h2v1h-2zM25 22h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM32 22h1v1h-1zM36 22h1v1h-1zM38 22h1v1h-1zM40 22h1v1h-1zM10 23h1v1h-1zM12 23h1v1h-1zM14 23h2v1h-2zM19 23h1v1h-1zM21 23h3v1h-3zM25 23h1v1h-1zM28 23h3v1h-3zM32 23h3v1h-3zM36 23h7v1h-7zM2 24h2v1h-2zM5 24h2v1h-2zM8 24h1v1h-1zM10 24h1v1h-1zM14 24h2v1h-2zM20 24h1v1h-1zM22 24h1v1h-1zM24 24h4v1h-4zM30 24h1v1h-1zM36 24h3v1h-3zM40 24h2v1h-2zM2 25h1v1h-1zM4 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM13 25h1v1h-1zM17 25h1v1h-1zM20 25h1v1h-1zM26 25h4v1h-4zM34 25h5v1h-5zM41 25h2v1h-2zM4 26h9v1h-9zM19 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM33 26h1v1h-1zM40 26h1v1h-1zM5 27h3v1h-3zM10 27h6v1h-6zM18 27h2v1h-2zM21 27h1v1h-1zM23 27h1v1h-1zM26 27h6v1h-6zM33 27h3v1h-3zM39 27h3v1h-3zM2 28h1v1h-1zM5 28h2v1h-2zM8 28h3v1h-3zM21 28h2v1h-2zM24 28h1v1h-1zM26 28h3v1h-3zM30 28h6v1h-6zM38 28h2v1h-2zM41 28h2v1h-2zM3 29h1v1h-1zM6 29h2v1h-2zM9 29h1v1h-1zM11 29h2v1h-2zM18 29h1v1h-1zM20 29h2v1h-2zM23 29h1v1h-1zM25 29h1v1h-1zM28 29h1v1h-1zM30 29h1v1h-1zM33 29h7v1h-7zM8 30h1v1h-1zM12 30h1v1h-1zM14 30h1v1h-1zM19 30h2v1h-2zM22 30h1v1h-1zM24 30h1v1h-1zM26 30h1v1h-1zM31 30h3v1h-3zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h5v1h-5zM9 31h5v1h-5zM15 31h3v1h-3zM21 31h2v1h-2zM27 31h1v1h-1zM32 31h2v1h-2zM36 31h2v1h-2zM41 31h2v1h-2zM2 32h1v1h-1zM4 32h2v1h-2zM8 32h2v1h-2zM12 32h1v1h-1zM16 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM31 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM4 33h1v1h-1zM10 33h1v1h-1zM12 33h4v1h-4zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h4v1h-4zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h6v1h-6zM12 34h2v1h-2zM15 34h6v1h-6zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h13v1h-13zM42 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM14 35h2v1h-2zM19 35h10v1h-10zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM13 36h2v1h-2zM16 36h2v1h-2zM20 36h1v1h-1zM25 36h3v1h-3zM30 36h2v1h-2zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h2v1h-2zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM15 37h2v1h-2zM19 37h1v1h-1zM21 37h2v1h-2zM25 37h2v1h-2zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h5v1h-5zM18 38h1v1h-1zM21 38h3v1h-3zM26 38h1v1h-1zM28 38h1v1h-1zM32 38h1v1h-1zM34 38h5v1h-5zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h3v1h-3zM16 39h2v1h-2zM19 39h1v1h-1zM21 39h4v1h-4zM26 39h3v1h-3zM30 39h1v1h-1zM32 39h3v1h-3zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM18 40h4v1h-4zM23 40h1v1h-1zM26 40h1v1h-1zM28 40h1v1h-1zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM13 41h2v1h-2zM17 41h4v1h-4zM22 41h2v1h-2zM28 41h1v1h-1zM30 41h1v1h-1zM34 41h2v1h-2zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM16 42h3v1h-3zM22 42h3v1h-3zM27 42h1v1h-1zM30 42h1v1h-1zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "khai-tu": {
+      url: "https://drive.google.com/file/d/1uhQSm10k6DsJOvL96YoM-YURMnF2jABU/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM13 2h1v1h-1zM15 2h1v1h-1zM19 2h7v1h-7zM27 2h1v1h-1zM30 2h1v1h-1zM32 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM16 3h3v1h-3zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM17 4h1v1h-1zM19 4h1v1h-1zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM14 5h3v1h-3zM18 5h1v1h-1zM22 5h2v1h-2zM26 5h1v1h-1zM28 5h2v1h-2zM32 5h3v1h-3zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM14 6h1v1h-1zM16 6h3v1h-3zM23 6h10v1h-10zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h4v1h-4zM16 7h3v1h-3zM20 7h2v1h-2zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h3v1h-3zM16 9h1v1h-1zM19 9h3v1h-3zM28 9h1v1h-1zM31 9h1v1h-1zM34 9h1v1h-1zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h4v1h-4zM19 10h1v1h-1zM21 10h1v1h-1zM23 10h1v1h-1zM25 10h1v1h-1zM28 10h1v1h-1zM30 10h3v1h-3zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM3 11h2v1h-2zM6 11h2v1h-2zM12 11h5v1h-5zM18 11h5v1h-5zM25 11h1v1h-1zM27 11h1v1h-1zM33 11h6v1h-6zM40 11h3v1h-3zM3 12h1v1h-1zM5 12h2v1h-2zM8 12h1v1h-1zM10 12h1v1h-1zM13 12h1v1h-1zM16 12h1v1h-1zM18 12h2v1h-2zM23 12h6v1h-6zM30 12h2v1h-2zM36 12h1v1h-1zM40 12h2v1h-2zM2 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM11 13h2v1h-2zM20 13h1v1h-1zM22 13h1v1h-1zM25 13h4v1h-4zM32 13h1v1h-1zM34 13h2v1h-2zM37 13h2v1h-2zM41 13h1v1h-1zM2 14h1v1h-1zM7 14h6v1h-6zM15 14h2v1h-2zM19 14h1v1h-1zM21 14h2v1h-2zM24 14h1v1h-1zM26 14h2v1h-2zM29 14h2v1h-2zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM6 15h1v1h-1zM13 15h1v1h-1zM15 15h2v1h-2zM22 15h1v1h-1zM24 15h4v1h-4zM31 15h2v1h-2zM37 15h1v1h-1zM39 15h1v1h-1zM41 15h1v1h-1zM2 16h3v1h-3zM6 16h4v1h-4zM12 16h2v1h-2zM15 16h1v1h-1zM17 16h2v1h-2zM21 16h5v1h-5zM27 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM41 16h2v1h-2zM2 17h1v1h-1zM5 17h2v1h-2zM13 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM2 18h2v1h-2zM7 18h5v1h-5zM13 18h2v1h-2zM17 18h2v1h-2zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h5v1h-5zM38 18h1v1h-1zM41 18h2v1h-2zM2 19h1v1h-1zM4 19h2v1h-2zM13 19h1v1h-1zM15 19h1v1h-1zM17 19h2v1h-2zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h1v1h-1zM34 19h2v1h-2zM37 19h1v1h-1zM39 19h2v1h-2zM3 20h1v1h-1zM5 20h1v1h-1zM8 20h2v1h-2zM18 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM36 20h1v1h-1zM38 20h2v1h-2zM2 21h1v1h-1zM4 21h3v1h-3zM9 21h1v1h-1zM11 21h2v1h-2zM15 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM33 21h5v1h-5zM39 21h3v1h-3zM4 22h1v1h-1zM6 22h5v1h-5zM13 22h3v1h-3zM17 22h2v1h-2zM21 22h2v1h-2zM25 22h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM32 22h2v1h-2zM36 22h1v1h-1zM38 22h1v1h-1zM6 23h2v1h-2zM10 23h1v1h-1zM12 23h4v1h-4zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM28 23h1v1h-1zM32 23h3v1h-3zM36 23h7v1h-7zM5 24h4v1h-4zM10 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM24 24h4v1h-4zM30 24h1v1h-1zM35 24h4v1h-4zM40 24h2v1h-2zM2 25h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM13 25h1v1h-1zM20 25h2v1h-2zM25 25h1v1h-1zM27 25h2v1h-2zM30 25h1v1h-1zM33 25h2v1h-2zM37 25h2v1h-2zM41 25h2v1h-2zM4 26h1v1h-1zM7 26h7v1h-7zM19 26h1v1h-1zM21 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM38 26h1v1h-1zM40 26h1v1h-1zM5 27h2v1h-2zM10 27h5v1h-5zM18 27h1v1h-1zM21 27h1v1h-1zM26 27h1v1h-1zM28 27h4v1h-4zM33 27h2v1h-2zM39 27h3v1h-3zM2 28h1v1h-1zM5 28h2v1h-2zM8 28h1v1h-1zM10 28h1v1h-1zM12 28h1v1h-1zM19 28h5v1h-5zM26 28h1v1h-1zM28 28h1v1h-1zM30 28h2v1h-2zM33 28h3v1h-3zM38 28h2v1h-2zM41 28h2v1h-2zM3 29h1v1h-1zM6 29h2v1h-2zM9 29h1v1h-1zM15 29h1v1h-1zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h1v1h-1zM25 29h1v1h-1zM30 29h1v1h-1zM33 29h4v1h-4zM38 29h2v1h-2zM4 30h2v1h-2zM8 30h2v1h-2zM14 30h2v1h-2zM19 30h2v1h-2zM22 30h1v1h-1zM24 30h1v1h-1zM26 30h1v1h-1zM32 30h2v1h-2zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h2v1h-2zM6 31h2v1h-2zM10 31h4v1h-4zM16 31h2v1h-2zM21 31h2v1h-2zM24 31h1v1h-1zM27 31h1v1h-1zM33 31h1v1h-1zM36 31h2v1h-2zM2 32h1v1h-1zM4 32h1v1h-1zM8 32h2v1h-2zM15 32h2v1h-2zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM31 32h2v1h-2zM34 32h4v1h-4zM39 32h1v1h-1zM41 32h1v1h-1zM10 33h1v1h-1zM12 33h5v1h-5zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h3v1h-3zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h7v1h-7zM13 34h5v1h-5zM19 34h2v1h-2zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h3v1h-3zM32 34h10v1h-10zM10 35h1v1h-1zM13 35h3v1h-3zM17 35h12v1h-12zM33 35h2v1h-2zM38 35h2v1h-2zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM13 36h2v1h-2zM16 36h3v1h-3zM20 36h1v1h-1zM25 36h3v1h-3zM30 36h2v1h-2zM33 36h2v1h-2zM36 36h1v1h-1zM38 36h4v1h-4zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM15 37h2v1h-2zM19 37h1v1h-1zM21 37h2v1h-2zM25 37h2v1h-2zM32 37h3v1h-3zM38 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h2v1h-2zM15 38h1v1h-1zM18 38h1v1h-1zM21 38h3v1h-3zM28 38h3v1h-3zM32 38h1v1h-1zM34 38h6v1h-6zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h5v1h-5zM16 39h1v1h-1zM18 39h2v1h-2zM21 39h4v1h-4zM26 39h4v1h-4zM32 39h1v1h-1zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM13 40h1v1h-1zM19 40h3v1h-3zM23 40h1v1h-1zM28 40h1v1h-1zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM13 41h1v1h-1zM18 41h3v1h-3zM22 41h2v1h-2zM28 41h3v1h-3zM33 41h3v1h-3zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM16 42h3v1h-3zM21 42h5v1h-5zM27 42h1v1h-1zM29 42h2v1h-2zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": {
+      url: "https://drive.google.com/file/d/1Z8ScsMCKgN4AfKQAG33yFknek5id9w4N/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h2v1h-2zM14 2h1v1h-1zM19 2h2v1h-2zM24 2h2v1h-2zM28 2h3v1h-3zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h2v1h-2zM15 3h5v1h-5zM21 3h2v1h-2zM32 3h2v1h-2zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM14 4h2v1h-2zM21 4h1v1h-1zM23 4h1v1h-1zM25 4h3v1h-3zM31 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h3v1h-3zM15 5h6v1h-6zM22 5h4v1h-4zM28 5h4v1h-4zM33 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h1v1h-1zM15 6h6v1h-6zM22 6h4v1h-4zM28 6h1v1h-1zM30 6h1v1h-1zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM13 7h2v1h-2zM21 7h1v1h-1zM24 7h1v1h-1zM30 7h1v1h-1zM33 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h2v1h-2zM13 9h1v1h-1zM18 9h8v1h-8zM30 9h2v1h-2zM2 10h1v1h-1zM6 10h1v1h-1zM8 10h4v1h-4zM16 10h9v1h-9zM26 10h1v1h-1zM31 10h1v1h-1zM34 10h6v1h-6zM42 10h1v1h-1zM4 11h1v1h-1zM6 11h1v1h-1zM9 11h1v1h-1zM11 11h4v1h-4zM17 11h2v1h-2zM20 11h1v1h-1zM25 11h1v1h-1zM28 11h2v1h-2zM35 11h2v1h-2zM38 11h2v1h-2zM42 11h1v1h-1zM3 12h1v1h-1zM5 12h1v1h-1zM8 12h4v1h-4zM13 12h1v1h-1zM15 12h1v1h-1zM17 12h1v1h-1zM22 12h1v1h-1zM25 12h3v1h-3zM29 12h1v1h-1zM34 12h2v1h-2zM38 12h1v1h-1zM42 12h1v1h-1zM2 13h2v1h-2zM5 13h1v1h-1zM9 13h1v1h-1zM12 13h2v1h-2zM17 13h1v1h-1zM19 13h6v1h-6zM26 13h1v1h-1zM28 13h2v1h-2zM31 13h4v1h-4zM37 13h3v1h-3zM2 14h4v1h-4zM7 14h5v1h-5zM17 14h1v1h-1zM19 14h2v1h-2zM24 14h1v1h-1zM26 14h1v1h-1zM30 14h2v1h-2zM34 14h1v1h-1zM41 14h2v1h-2zM3 15h2v1h-2zM6 15h2v1h-2zM9 15h1v1h-1zM11 15h2v1h-2zM14 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM28 15h1v1h-1zM32 15h2v1h-2zM38 15h1v1h-1zM42 15h1v1h-1zM2 16h1v1h-1zM6 16h1v1h-1zM8 16h1v1h-1zM11 16h2v1h-2zM18 16h2v1h-2zM22 16h1v1h-1zM24 16h1v1h-1zM29 16h1v1h-1zM32 16h2v1h-2zM35 16h3v1h-3zM42 16h1v1h-1zM5 17h1v1h-1zM7 17h1v1h-1zM12 17h1v1h-1zM14 17h2v1h-2zM19 17h2v1h-2zM23 17h1v1h-1zM26 17h1v1h-1zM28 17h7v1h-7zM39 17h1v1h-1zM41 17h1v1h-1zM4 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM17 18h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM23 18h3v1h-3zM30 18h3v1h-3zM37 18h1v1h-1zM39 18h1v1h-1zM41 18h1v1h-1zM5 19h1v1h-1zM10 19h1v1h-1zM15 19h4v1h-4zM23 19h3v1h-3zM27 19h5v1h-5zM34 19h6v1h-6zM42 19h1v1h-1zM3 20h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM12 20h2v1h-2zM18 20h2v1h-2zM25 20h2v1h-2zM29 20h1v1h-1zM32 20h1v1h-1zM37 20h1v1h-1zM39 20h2v1h-2zM42 20h1v1h-1zM3 21h1v1h-1zM9 21h2v1h-2zM13 21h1v1h-1zM15 21h2v1h-2zM19 21h2v1h-2zM22 21h1v1h-1zM24 21h1v1h-1zM26 21h1v1h-1zM28 21h1v1h-1zM34 21h1v1h-1zM37 21h1v1h-1zM39 21h1v1h-1zM42 21h1v1h-1zM3 22h1v1h-1zM7 22h3v1h-3zM12 22h1v1h-1zM14 22h4v1h-4zM20 22h3v1h-3zM24 22h6v1h-6zM33 22h1v1h-1zM39 22h1v1h-1zM42 22h1v1h-1zM2 23h1v1h-1zM4 23h3v1h-3zM9 23h1v1h-1zM11 23h3v1h-3zM16 23h1v1h-1zM18 23h2v1h-2zM21 23h1v1h-1zM27 23h1v1h-1zM30 23h1v1h-1zM32 23h1v1h-1zM34 23h5v1h-5zM42 23h1v1h-1zM2 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM11 24h7v1h-7zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM27 24h3v1h-3zM36 24h3v1h-3zM42 24h1v1h-1zM4 25h2v1h-2zM7 25h1v1h-1zM15 25h1v1h-1zM18 25h3v1h-3zM23 25h1v1h-1zM25 25h2v1h-2zM28 25h2v1h-2zM31 25h1v1h-1zM33 25h1v1h-1zM36 25h1v1h-1zM38 25h2v1h-2zM42 25h1v1h-1zM3 26h1v1h-1zM6 26h3v1h-3zM10 26h1v1h-1zM12 26h2v1h-2zM15 26h3v1h-3zM19 26h1v1h-1zM21 26h3v1h-3zM26 26h1v1h-1zM29 26h1v1h-1zM31 26h1v1h-1zM34 26h2v1h-2zM39 26h1v1h-1zM41 26h1v1h-1zM2 27h3v1h-3zM6 27h2v1h-2zM9 27h4v1h-4zM18 27h1v1h-1zM20 27h1v1h-1zM23 27h1v1h-1zM25 27h1v1h-1zM27 27h4v1h-4zM32 27h1v1h-1zM34 27h1v1h-1zM36 27h3v1h-3zM40 27h2v1h-2zM2 28h7v1h-7zM10 28h1v1h-1zM13 28h1v1h-1zM15 28h3v1h-3zM22 28h1v1h-1zM24 28h7v1h-7zM34 28h1v1h-1zM42 28h1v1h-1zM2 29h3v1h-3zM12 29h4v1h-4zM19 29h3v1h-3zM23 29h1v1h-1zM26 29h1v1h-1zM28 29h1v1h-1zM31 29h5v1h-5zM39 29h1v1h-1zM42 29h1v1h-1zM2 30h3v1h-3zM7 30h2v1h-2zM12 30h2v1h-2zM15 30h2v1h-2zM19 30h1v1h-1zM21 30h2v1h-2zM24 30h2v1h-2zM27 30h1v1h-1zM31 30h1v1h-1zM35 30h2v1h-2zM41 30h1v1h-1zM2 31h2v1h-2zM7 31h1v1h-1zM9 31h1v1h-1zM11 31h4v1h-4zM17 31h2v1h-2zM21 31h1v1h-1zM24 31h1v1h-1zM26 31h3v1h-3zM30 31h1v1h-1zM33 31h2v1h-2zM37 31h2v1h-2zM40 31h1v1h-1zM5 32h6v1h-6zM12 32h3v1h-3zM16 32h1v1h-1zM20 32h2v1h-2zM23 32h4v1h-4zM28 32h1v1h-1zM30 32h3v1h-3zM34 32h2v1h-2zM38 32h2v1h-2zM42 32h1v1h-1zM5 33h2v1h-2zM10 33h10v1h-10zM21 33h5v1h-5zM28 33h1v1h-1zM31 33h1v1h-1zM35 33h1v1h-1zM38 33h1v1h-1zM42 33h1v1h-1zM2 34h2v1h-2zM5 34h1v1h-1zM7 34h7v1h-7zM16 34h2v1h-2zM19 34h1v1h-1zM22 34h2v1h-2zM29 34h1v1h-1zM33 34h7v1h-7zM42 34h1v1h-1zM10 35h2v1h-2zM14 35h1v1h-1zM16 35h2v1h-2zM19 35h2v1h-2zM24 35h3v1h-3zM29 35h1v1h-1zM32 35h3v1h-3zM38 35h1v1h-1zM42 35h1v1h-1zM2 36h7v1h-7zM10 36h1v1h-1zM12 36h1v1h-1zM14 36h1v1h-1zM20 36h1v1h-1zM22 36h10v1h-10zM33 36h2v1h-2zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h1v1h-1zM42 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM11 37h2v1h-2zM14 37h1v1h-1zM16 37h1v1h-1zM18 37h1v1h-1zM22 37h2v1h-2zM26 37h2v1h-2zM31 37h4v1h-4zM38 37h2v1h-2zM41 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM14 38h1v1h-1zM16 38h1v1h-1zM18 38h1v1h-1zM22 38h1v1h-1zM27 38h1v1h-1zM29 38h1v1h-1zM32 38h8v1h-8zM41 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM11 39h2v1h-2zM14 39h5v1h-5zM20 39h2v1h-2zM23 39h4v1h-4zM28 39h1v1h-1zM30 39h2v1h-2zM34 39h1v1h-1zM37 39h1v1h-1zM39 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM14 40h2v1h-2zM18 40h1v1h-1zM20 40h1v1h-1zM22 40h1v1h-1zM25 40h1v1h-1zM27 40h3v1h-3zM31 40h1v1h-1zM34 40h2v1h-2zM39 40h1v1h-1zM42 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM12 41h1v1h-1zM14 41h1v1h-1zM23 41h2v1h-2zM26 41h1v1h-1zM28 41h1v1h-1zM30 41h4v1h-4zM35 41h3v1h-3zM39 41h1v1h-1zM41 41h2v1h-2zM2 42h7v1h-7zM10 42h1v1h-1zM14 42h3v1h-3zM18 42h9v1h-9zM30 42h2v1h-2zM34 42h2v1h-2zM37 42h3v1h-3zM41 42h1v1h-1z",
+    },
+    "tro-cap-tho-cung-liet-si": {
+      url: "https://drive.google.com/file/d/1u9hAr0bbvbiKH_JY9rE1B98lRUYHxU-B/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM14 2h2v1h-2zM17 2h9v1h-9zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM16 3h2v1h-2zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM17 4h3v1h-3zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h4v1h-4zM18 5h1v1h-1zM22 5h2v1h-2zM26 5h1v1h-1zM28 5h2v1h-2zM32 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM21 6h1v1h-1zM23 6h11v1h-11zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h4v1h-4zM16 7h1v1h-1zM20 7h3v1h-3zM26 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h3v1h-3zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h3v1h-3zM16 9h1v1h-1zM18 9h3v1h-3zM22 9h1v1h-1zM28 9h2v1h-2zM31 9h1v1h-1zM34 9h1v1h-1zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h2v1h-2zM14 10h1v1h-1zM19 10h1v1h-1zM23 10h1v1h-1zM25 10h1v1h-1zM28 10h1v1h-1zM30 10h3v1h-3zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM3 11h5v1h-5zM11 11h6v1h-6zM18 11h1v1h-1zM20 11h3v1h-3zM25 11h1v1h-1zM31 11h1v1h-1zM33 11h2v1h-2zM37 11h2v1h-2zM40 11h3v1h-3zM3 12h1v1h-1zM5 12h2v1h-2zM8 12h1v1h-1zM12 12h2v1h-2zM15 12h1v1h-1zM18 12h1v1h-1zM25 12h4v1h-4zM30 12h2v1h-2zM36 12h3v1h-3zM40 12h2v1h-2zM2 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM10 13h1v1h-1zM15 13h2v1h-2zM22 13h1v1h-1zM24 13h4v1h-4zM34 13h2v1h-2zM41 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM10 14h2v1h-2zM21 14h4v1h-4zM26 14h5v1h-5zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM5 15h2v1h-2zM9 15h3v1h-3zM13 15h1v1h-1zM15 15h1v1h-1zM22 15h1v1h-1zM24 15h4v1h-4zM31 15h1v1h-1zM37 15h1v1h-1zM39 15h1v1h-1zM41 15h2v1h-2zM2 16h2v1h-2zM5 16h5v1h-5zM13 16h1v1h-1zM15 16h4v1h-4zM21 16h5v1h-5zM27 16h1v1h-1zM32 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM42 16h1v1h-1zM2 17h1v1h-1zM4 17h3v1h-3zM9 17h3v1h-3zM13 17h1v1h-1zM16 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM41 17h2v1h-2zM2 18h3v1h-3zM7 18h2v1h-2zM10 18h2v1h-2zM13 18h1v1h-1zM15 18h1v1h-1zM17 18h2v1h-2zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h1v1h-1zM33 18h1v1h-1zM38 18h1v1h-1zM2 19h1v1h-1zM4 19h3v1h-3zM12 19h1v1h-1zM15 19h1v1h-1zM17 19h1v1h-1zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h1v1h-1zM34 19h2v1h-2zM37 19h1v1h-1zM39 19h2v1h-2zM2 20h1v1h-1zM5 20h1v1h-1zM7 20h3v1h-3zM14 20h1v1h-1zM17 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM36 20h1v1h-1zM38 20h2v1h-2zM2 21h6v1h-6zM9 21h1v1h-1zM11 21h2v1h-2zM15 21h1v1h-1zM17 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM34 21h4v1h-4zM40 21h2v1h-2zM3 22h2v1h-2zM6 22h1v1h-1zM8 22h3v1h-3zM15 22h1v1h-1zM21 22h2v1h-2zM25 22h1v1h-1zM27 22h1v1h-1zM29 22h2v1h-2zM32 22h1v1h-1zM34 22h1v1h-1zM36 22h1v1h-1zM38 22h1v1h-1zM40 22h1v1h-1zM3 23h1v1h-1zM6 23h2v1h-2zM10 23h1v1h-1zM12 23h4v1h-4zM17 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM28 23h1v1h-1zM30 23h1v1h-1zM32 23h2v1h-2zM36 23h7v1h-7zM3 24h1v1h-1zM5 24h2v1h-2zM8 24h1v1h-1zM10 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM20 24h1v1h-1zM24 24h4v1h-4zM35 24h1v1h-1zM37 24h2v1h-2zM40 24h2v1h-2zM2 25h3v1h-3zM9 25h1v1h-1zM11 25h1v1h-1zM13 25h2v1h-2zM17 25h2v1h-2zM20 25h2v1h-2zM27 25h2v1h-2zM30 25h1v1h-1zM33 25h6v1h-6zM41 25h2v1h-2zM3 26h11v1h-11zM19 26h1v1h-1zM21 26h1v1h-1zM25 26h5v1h-5zM31 26h1v1h-1zM37 26h2v1h-2zM40 26h1v1h-1zM3 27h1v1h-1zM5 27h2v1h-2zM12 27h4v1h-4zM18 27h2v1h-2zM21 27h1v1h-1zM23 27h1v1h-1zM26 27h1v1h-1zM28 27h4v1h-4zM33 27h3v1h-3zM39 27h3v1h-3zM2 28h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM8 28h1v1h-1zM15 28h2v1h-2zM20 28h4v1h-4zM26 28h1v1h-1zM28 28h1v1h-1zM30 28h1v1h-1zM33 28h3v1h-3zM39 28h1v1h-1zM41 28h2v1h-2zM3 29h1v1h-1zM6 29h2v1h-2zM11 29h2v1h-2zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h3v1h-3zM30 29h1v1h-1zM33 29h5v1h-5zM39 29h1v1h-1zM4 30h2v1h-2zM8 30h2v1h-2zM11 30h2v1h-2zM14 30h1v1h-1zM22 30h1v1h-1zM24 30h1v1h-1zM26 30h2v1h-2zM32 30h2v1h-2zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h2v1h-2zM6 31h2v1h-2zM9 31h3v1h-3zM13 31h1v1h-1zM16 31h2v1h-2zM20 31h3v1h-3zM24 31h1v1h-1zM27 31h1v1h-1zM31 31h3v1h-3zM36 31h2v1h-2zM42 31h1v1h-1zM2 32h1v1h-1zM8 32h2v1h-2zM11 32h2v1h-2zM15 32h2v1h-2zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM4 33h2v1h-2zM11 33h5v1h-5zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h4v1h-4zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h7v1h-7zM11 34h3v1h-3zM17 34h4v1h-4zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h3v1h-3zM32 34h9v1h-9zM42 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM14 35h3v1h-3zM19 35h10v1h-10zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM40 35h3v1h-3zM2 36h7v1h-7zM10 36h2v1h-2zM13 36h2v1h-2zM16 36h1v1h-1zM20 36h1v1h-1zM25 36h3v1h-3zM31 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h2v1h-2zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM15 37h2v1h-2zM18 37h2v1h-2zM21 37h2v1h-2zM25 37h2v1h-2zM29 37h2v1h-2zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h3v1h-3zM15 38h1v1h-1zM21 38h3v1h-3zM26 38h1v1h-1zM28 38h3v1h-3zM32 38h1v1h-1zM34 38h5v1h-5zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h3v1h-3zM16 39h2v1h-2zM19 39h1v1h-1zM23 39h2v1h-2zM26 39h4v1h-4zM32 39h3v1h-3zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM13 40h2v1h-2zM17 40h1v1h-1zM19 40h3v1h-3zM23 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM33 40h2v1h-2zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM14 41h1v1h-1zM18 41h4v1h-4zM23 41h1v1h-1zM25 41h2v1h-2zM28 41h1v1h-1zM33 41h3v1h-3zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM13 42h1v1h-1zM16 42h3v1h-3zM21 42h5v1h-5zM27 42h1v1h-1zM30 42h1v1h-1zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "dieu-chinh-giay-phep-xay-dung": {
+      url: "https://drive.google.com/file/d/1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM13 2h4v1h-4zM18 2h8v1h-8zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h3v1h-3zM14 3h1v1h-1zM16 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM17 4h3v1h-3zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h1v1h-1zM15 5h2v1h-2zM18 5h1v1h-1zM23 5h1v1h-1zM28 5h3v1h-3zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM14 6h1v1h-1zM16 6h3v1h-3zM21 6h1v1h-1zM23 6h2v1h-2zM26 6h7v1h-7zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h2v1h-2zM16 7h3v1h-3zM20 7h3v1h-3zM26 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h2v1h-2zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h1v1h-1zM16 9h1v1h-1zM18 9h4v1h-4zM28 9h2v1h-2zM31 9h1v1h-1zM33 9h2v1h-2zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h2v1h-2zM14 10h1v1h-1zM17 10h1v1h-1zM19 10h1v1h-1zM23 10h1v1h-1zM28 10h1v1h-1zM30 10h4v1h-4zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM3 11h2v1h-2zM6 11h2v1h-2zM10 11h7v1h-7zM18 11h1v1h-1zM20 11h3v1h-3zM25 11h1v1h-1zM31 11h1v1h-1zM33 11h3v1h-3zM37 11h2v1h-2zM40 11h3v1h-3zM3 12h1v1h-1zM6 12h1v1h-1zM8 12h2v1h-2zM11 12h3v1h-3zM15 12h1v1h-1zM18 12h1v1h-1zM20 12h1v1h-1zM25 12h4v1h-4zM30 12h1v1h-1zM36 12h3v1h-3zM40 12h2v1h-2zM2 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM9 13h2v1h-2zM12 13h1v1h-1zM15 13h2v1h-2zM20 13h1v1h-1zM22 13h1v1h-1zM24 13h4v1h-4zM34 13h2v1h-2zM37 13h1v1h-1zM41 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM7 14h2v1h-2zM16 14h1v1h-1zM19 14h1v1h-1zM21 14h2v1h-2zM26 14h5v1h-5zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM6 15h1v1h-1zM11 15h3v1h-3zM16 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM25 15h4v1h-4zM31 15h2v1h-2zM37 15h1v1h-1zM39 15h1v1h-1zM2 16h7v1h-7zM13 16h1v1h-1zM15 16h1v1h-1zM17 16h2v1h-2zM21 16h5v1h-5zM27 16h1v1h-1zM31 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM41 16h2v1h-2zM2 17h1v1h-1zM4 17h1v1h-1zM6 17h1v1h-1zM12 17h2v1h-2zM15 17h2v1h-2zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM2 18h2v1h-2zM7 18h2v1h-2zM10 18h5v1h-5zM17 18h1v1h-1zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h4v1h-4zM38 18h1v1h-1zM41 18h2v1h-2zM4 19h2v1h-2zM13 19h6v1h-6zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h2v1h-2zM34 19h2v1h-2zM37 19h1v1h-1zM39 19h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM36 20h1v1h-1zM38 20h2v1h-2zM3 21h5v1h-5zM9 21h1v1h-1zM11 21h3v1h-3zM15 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM34 21h4v1h-4zM39 21h3v1h-3zM2 22h1v1h-1zM4 22h1v1h-1zM7 22h4v1h-4zM15 22h1v1h-1zM18 22h1v1h-1zM21 22h1v1h-1zM25 22h3v1h-3zM29 22h2v1h-2zM32 22h1v1h-1zM36 22h1v1h-1zM38 22h3v1h-3zM10 23h1v1h-1zM12 23h4v1h-4zM19 23h1v1h-1zM22 23h2v1h-2zM25 23h1v1h-1zM28 23h1v1h-1zM30 23h1v1h-1zM32 23h3v1h-3zM36 23h7v1h-7zM2 24h1v1h-1zM5 24h4v1h-4zM10 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM24 24h2v1h-2zM27 24h1v1h-1zM37 24h2v1h-2zM40 24h2v1h-2zM4 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM17 25h2v1h-2zM20 25h3v1h-3zM25 25h6v1h-6zM33 25h2v1h-2zM37 25h2v1h-2zM41 25h2v1h-2zM4 26h10v1h-10zM19 26h1v1h-1zM25 26h5v1h-5zM31 26h1v1h-1zM33 26h1v1h-1zM37 26h1v1h-1zM40 26h1v1h-1zM3 27h1v1h-1zM6 27h1v1h-1zM9 27h7v1h-7zM18 27h2v1h-2zM21 27h1v1h-1zM23 27h1v1h-1zM26 27h1v1h-1zM28 27h3v1h-3zM33 27h2v1h-2zM37 27h1v1h-1zM39 27h3v1h-3zM2 28h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM8 28h3v1h-3zM15 28h2v1h-2zM19 28h1v1h-1zM21 28h2v1h-2zM26 28h1v1h-1zM28 28h1v1h-1zM30 28h1v1h-1zM33 28h3v1h-3zM39 28h1v1h-1zM41 28h2v1h-2zM3 29h5v1h-5zM9 29h2v1h-2zM12 29h1v1h-1zM15 29h1v1h-1zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h3v1h-3zM30 29h1v1h-1zM33 29h7v1h-7zM8 30h1v1h-1zM11 30h2v1h-2zM14 30h3v1h-3zM20 30h1v1h-1zM22 30h3v1h-3zM26 30h1v1h-1zM32 30h2v1h-2zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h1v1h-1zM6 31h2v1h-2zM9 31h1v1h-1zM11 31h1v1h-1zM13 31h1v1h-1zM15 31h1v1h-1zM17 31h1v1h-1zM21 31h2v1h-2zM24 31h1v1h-1zM27 31h1v1h-1zM33 31h1v1h-1zM36 31h2v1h-2zM2 32h1v1h-1zM4 32h1v1h-1zM8 32h2v1h-2zM16 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM41 32h1v1h-1zM4 33h1v1h-1zM13 33h2v1h-2zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h4v1h-4zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h6v1h-6zM12 34h2v1h-2zM17 34h1v1h-1zM19 34h2v1h-2zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h3v1h-3zM32 34h9v1h-9zM10 35h1v1h-1zM13 35h1v1h-1zM15 35h1v1h-1zM17 35h1v1h-1zM19 35h10v1h-10zM34 35h1v1h-1zM38 35h2v1h-2zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM13 36h1v1h-1zM16 36h1v1h-1zM20 36h1v1h-1zM25 36h3v1h-3zM31 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h2v1h-2zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h2v1h-2zM15 37h5v1h-5zM21 37h2v1h-2zM25 37h2v1h-2zM29 37h1v1h-1zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h2v1h-2zM15 38h1v1h-1zM18 38h1v1h-1zM21 38h1v1h-1zM23 38h1v1h-1zM26 38h1v1h-1zM28 38h3v1h-3zM32 38h1v1h-1zM34 38h5v1h-5zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h4v1h-4zM16 39h2v1h-2zM19 39h1v1h-1zM21 39h1v1h-1zM23 39h8v1h-8zM32 39h1v1h-1zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM13 40h2v1h-2zM18 40h6v1h-6zM26 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM14 41h1v1h-1zM19 41h2v1h-2zM22 41h2v1h-2zM28 41h2v1h-2zM35 41h1v1h-1zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM13 42h1v1h-1zM16 42h3v1h-3zM22 42h3v1h-3zM27 42h1v1h-1zM29 42h2v1h-2zM32 42h4v1h-4zM41 42h1v1h-1z",
+    },
+    "ho-tro-mai-tang-1116910": {
+      url: "https://drive.google.com/file/d/1-K38biVwl2zRrbR3M__Qy0pSDYOgc1Cq/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM10 2h1v1h-1zM12 2h2v1h-2zM15 2h1v1h-1zM17 2h9v1h-9zM27 2h1v1h-1zM30 2h1v1h-1zM33 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h3v1h-3zM16 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h3v1h-3zM31 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM18 4h2v1h-2zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM15 5h3v1h-3zM22 5h2v1h-2zM28 5h3v1h-3zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM23 6h2v1h-2zM26 6h9v1h-9zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h4v1h-4zM16 7h2v1h-2zM20 7h3v1h-3zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h3v1h-3zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h2v1h-2zM16 9h1v1h-1zM19 9h2v1h-2zM28 9h4v1h-4zM33 9h2v1h-2zM2 10h1v1h-1zM4 10h2v1h-2zM7 10h3v1h-3zM11 10h2v1h-2zM14 10h1v1h-1zM19 10h1v1h-1zM23 10h1v1h-1zM28 10h1v1h-1zM30 10h3v1h-3zM36 10h1v1h-1zM39 10h1v1h-1zM41 10h2v1h-2zM5 11h2v1h-2zM11 11h6v1h-6zM18 11h6v1h-6zM25 11h1v1h-1zM33 11h2v1h-2zM37 11h2v1h-2zM40 11h3v1h-3zM3 12h2v1h-2zM6 12h1v1h-1zM8 12h1v1h-1zM10 12h1v1h-1zM12 12h2v1h-2zM16 12h1v1h-1zM18 12h1v1h-1zM20 12h1v1h-1zM23 12h1v1h-1zM25 12h3v1h-3zM30 12h1v1h-1zM36 12h2v1h-2zM40 12h2v1h-2zM2 13h1v1h-1zM7 13h1v1h-1zM20 13h1v1h-1zM22 13h1v1h-1zM24 13h5v1h-5zM32 13h1v1h-1zM34 13h2v1h-2zM37 13h1v1h-1zM41 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM11 14h1v1h-1zM16 14h1v1h-1zM21 14h2v1h-2zM24 14h1v1h-1zM26 14h8v1h-8zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM2 15h1v1h-1zM4 15h3v1h-3zM10 15h1v1h-1zM12 15h2v1h-2zM20 15h1v1h-1zM22 15h1v1h-1zM25 15h4v1h-4zM31 15h2v1h-2zM37 15h1v1h-1zM39 15h1v1h-1zM41 15h2v1h-2zM2 16h2v1h-2zM6 16h8v1h-8zM17 16h2v1h-2zM21 16h5v1h-5zM27 16h1v1h-1zM36 16h1v1h-1zM39 16h1v1h-1zM42 16h1v1h-1zM2 17h1v1h-1zM5 17h2v1h-2zM10 17h1v1h-1zM13 17h1v1h-1zM15 17h2v1h-2zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM2 18h2v1h-2zM7 18h11v1h-11zM20 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM30 18h5v1h-5zM38 18h1v1h-1zM42 18h1v1h-1zM2 19h1v1h-1zM4 19h3v1h-3zM15 19h3v1h-3zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h3v1h-3zM29 19h1v1h-1zM31 19h1v1h-1zM34 19h2v1h-2zM37 19h1v1h-1zM39 19h1v1h-1zM3 20h1v1h-1zM5 20h1v1h-1zM7 20h3v1h-3zM13 20h2v1h-2zM17 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h1v1h-1zM2 21h1v1h-1zM4 21h3v1h-3zM9 21h1v1h-1zM11 21h3v1h-3zM15 21h1v1h-1zM19 21h2v1h-2zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h2v1h-2zM33 21h1v1h-1zM35 21h3v1h-3zM39 21h3v1h-3zM2 22h3v1h-3zM8 22h3v1h-3zM13 22h3v1h-3zM18 22h1v1h-1zM21 22h1v1h-1zM25 22h3v1h-3zM29 22h1v1h-1zM32 22h2v1h-2zM36 22h1v1h-1zM38 22h1v1h-1zM40 22h1v1h-1zM2 23h1v1h-1zM7 23h1v1h-1zM10 23h1v1h-1zM12 23h4v1h-4zM18 23h2v1h-2zM22 23h2v1h-2zM28 23h3v1h-3zM32 23h1v1h-1zM34 23h1v1h-1zM36 23h7v1h-7zM3 24h1v1h-1zM5 24h4v1h-4zM10 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM24 24h2v1h-2zM27 24h1v1h-1zM30 24h1v1h-1zM36 24h3v1h-3zM40 24h2v1h-2zM2 25h3v1h-3zM9 25h1v1h-1zM11 25h1v1h-1zM18 25h1v1h-1zM20 25h1v1h-1zM25 25h1v1h-1zM27 25h2v1h-2zM30 25h1v1h-1zM33 25h6v1h-6zM41 25h2v1h-2zM4 26h2v1h-2zM7 26h3v1h-3zM11 26h2v1h-2zM17 26h1v1h-1zM19 26h1v1h-1zM25 26h4v1h-4zM31 26h1v1h-1zM33 26h1v1h-1zM38 26h1v1h-1zM40 26h1v1h-1zM4 27h1v1h-1zM6 27h1v1h-1zM12 27h3v1h-3zM18 27h1v1h-1zM21 27h1v1h-1zM26 27h5v1h-5zM33 27h2v1h-2zM39 27h3v1h-3zM2 28h1v1h-1zM4 28h3v1h-3zM8 28h2v1h-2zM16 28h1v1h-1zM19 28h6v1h-6zM26 28h3v1h-3zM30 28h1v1h-1zM33 28h3v1h-3zM37 28h3v1h-3zM41 28h2v1h-2zM3 29h1v1h-1zM5 29h3v1h-3zM9 29h1v1h-1zM12 29h1v1h-1zM15 29h1v1h-1zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h1v1h-1zM25 29h1v1h-1zM30 29h1v1h-1zM32 29h5v1h-5zM38 29h2v1h-2zM8 30h2v1h-2zM14 30h1v1h-1zM16 30h1v1h-1zM19 30h2v1h-2zM22 30h1v1h-1zM24 30h1v1h-1zM26 30h3v1h-3zM32 30h2v1h-2zM35 30h5v1h-5zM41 30h1v1h-1zM3 31h2v1h-2zM6 31h2v1h-2zM9 31h1v1h-1zM11 31h1v1h-1zM13 31h1v1h-1zM15 31h3v1h-3zM20 31h3v1h-3zM27 31h2v1h-2zM33 31h1v1h-1zM36 31h2v1h-2zM41 31h1v1h-1zM2 32h1v1h-1zM4 32h1v1h-1zM8 32h3v1h-3zM15 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM31 32h2v1h-2zM34 32h4v1h-4zM39 32h1v1h-1zM5 33h1v1h-1zM9 33h1v1h-1zM13 33h4v1h-4zM19 33h1v1h-1zM21 33h1v1h-1zM25 33h1v1h-1zM29 33h4v1h-4zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h2v1h-2zM3 34h1v1h-1zM5 34h5v1h-5zM11 34h3v1h-3zM15 34h1v1h-1zM17 34h1v1h-1zM19 34h2v1h-2zM23 34h2v1h-2zM26 34h1v1h-1zM28 34h13v1h-13zM42 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM15 35h14v1h-14zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM10 36h2v1h-2zM16 36h3v1h-3zM20 36h1v1h-1zM25 36h3v1h-3zM30 36h2v1h-2zM33 36h2v1h-2zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h2v1h-2zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM12 37h5v1h-5zM19 37h1v1h-1zM21 37h2v1h-2zM25 37h2v1h-2zM30 37h1v1h-1zM32 37h1v1h-1zM34 37h1v1h-1zM38 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h2v1h-2zM14 38h2v1h-2zM21 38h3v1h-3zM28 38h2v1h-2zM32 38h1v1h-1zM34 38h6v1h-6zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h4v1h-4zM16 39h4v1h-4zM21 39h4v1h-4zM26 39h5v1h-5zM32 39h2v1h-2zM38 39h1v1h-1zM41 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h2v1h-2zM13 40h1v1h-1zM17 40h5v1h-5zM23 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM34 40h1v1h-1zM37 40h1v1h-1zM41 40h2v1h-2zM2 41h1v1h-1zM8 41h1v1h-1zM14 41h1v1h-1zM18 41h4v1h-4zM23 41h1v1h-1zM25 41h2v1h-2zM28 41h1v1h-1zM34 41h2v1h-2zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h1v1h-1zM13 42h1v1h-1zM16 42h3v1h-3zM22 42h4v1h-4zM27 42h1v1h-1zM30 42h1v1h-1zM32 42h1v1h-1zM34 42h2v1h-2zM41 42h1v1h-1z",
+    },
+    "dieu-chinh-huu-tri-xa-hoi": {
+      url: "https://drive.google.com/file/d/1-KXJ_zW4hn6cFoo2jHj4gASsfPqGZQl3/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM13 2h3v1h-3zM17 2h9v1h-9zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h3v1h-3zM17 3h3v1h-3zM23 3h1v1h-1zM27 3h3v1h-3zM32 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM13 4h1v1h-1zM15 4h1v1h-1zM17 4h5v1h-5zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM33 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h5v1h-5zM23 5h1v1h-1zM26 5h1v1h-1zM28 5h3v1h-3zM32 5h3v1h-3zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h2v1h-2zM17 6h1v1h-1zM19 6h2v1h-2zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM15 7h2v1h-2zM18 7h1v1h-1zM23 7h2v1h-2zM27 7h4v1h-4zM34 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h3v1h-3zM21 9h1v1h-1zM23 9h1v1h-1zM25 9h2v1h-2zM30 9h1v1h-1zM32 9h2v1h-2zM2 10h1v1h-1zM4 10h5v1h-5zM15 10h1v1h-1zM17 10h5v1h-5zM24 10h1v1h-1zM26 10h4v1h-4zM31 10h1v1h-1zM33 10h1v1h-1zM36 10h5v1h-5zM4 11h4v1h-4zM10 11h1v1h-1zM12 11h3v1h-3zM16 11h1v1h-1zM18 11h6v1h-6zM25 11h1v1h-1zM31 11h1v1h-1zM33 11h2v1h-2zM37 11h2v1h-2zM40 11h3v1h-3zM2 12h7v1h-7zM14 12h1v1h-1zM17 12h2v1h-2zM20 12h1v1h-1zM22 12h1v1h-1zM24 12h1v1h-1zM28 12h3v1h-3zM32 12h1v1h-1zM34 12h3v1h-3zM3 13h2v1h-2zM6 13h2v1h-2zM12 13h1v1h-1zM14 13h1v1h-1zM16 13h3v1h-3zM20 13h4v1h-4zM25 13h1v1h-1zM29 13h2v1h-2zM32 13h3v1h-3zM36 13h4v1h-4zM42 13h1v1h-1zM2 14h1v1h-1zM7 14h2v1h-2zM10 14h2v1h-2zM15 14h2v1h-2zM19 14h1v1h-1zM21 14h2v1h-2zM24 14h1v1h-1zM26 14h5v1h-5zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM5 15h3v1h-3zM10 15h3v1h-3zM14 15h4v1h-4zM19 15h2v1h-2zM23 15h1v1h-1zM27 15h1v1h-1zM29 15h1v1h-1zM32 15h1v1h-1zM34 15h2v1h-2zM38 15h4v1h-4zM4 16h1v1h-1zM7 16h2v1h-2zM10 16h1v1h-1zM12 16h5v1h-5zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h2v1h-2zM32 16h2v1h-2zM35 16h1v1h-1zM38 16h1v1h-1zM2 17h1v1h-1zM4 17h3v1h-3zM11 17h3v1h-3zM16 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM42 17h1v1h-1zM3 18h1v1h-1zM5 18h1v1h-1zM8 18h2v1h-2zM11 18h2v1h-2zM14 18h1v1h-1zM16 18h1v1h-1zM19 18h1v1h-1zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h5v1h-5zM33 18h3v1h-3zM37 18h1v1h-1zM40 18h1v1h-1zM3 19h2v1h-2zM6 19h1v1h-1zM9 19h1v1h-1zM11 19h2v1h-2zM16 19h3v1h-3zM21 19h2v1h-2zM24 19h2v1h-2zM30 19h3v1h-3zM34 19h1v1h-1zM36 19h3v1h-3zM41 19h2v1h-2zM2 20h2v1h-2zM5 20h1v1h-1zM7 20h3v1h-3zM14 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h2v1h-2zM6 21h2v1h-2zM9 21h2v1h-2zM12 21h2v1h-2zM15 21h2v1h-2zM22 21h1v1h-1zM25 21h1v1h-1zM28 21h1v1h-1zM30 21h5v1h-5zM36 21h1v1h-1zM38 21h2v1h-2zM2 22h1v1h-1zM4 22h5v1h-5zM10 22h5v1h-5zM17 22h2v1h-2zM20 22h1v1h-1zM23 22h4v1h-4zM30 22h1v1h-1zM35 22h1v1h-1zM39 22h1v1h-1zM41 22h2v1h-2zM7 23h1v1h-1zM10 23h1v1h-1zM12 23h4v1h-4zM17 23h1v1h-1zM19 23h1v1h-1zM21 23h3v1h-3zM25 23h1v1h-1zM28 23h3v1h-3zM32 23h1v1h-1zM34 23h1v1h-1zM36 23h7v1h-7zM2 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM11 24h1v1h-1zM15 24h2v1h-2zM18 24h2v1h-2zM23 24h2v1h-2zM26 24h4v1h-4zM31 24h2v1h-2zM34 24h2v1h-2zM2 25h1v1h-1zM4 25h3v1h-3zM12 25h2v1h-2zM15 25h1v1h-1zM17 25h2v1h-2zM21 25h1v1h-1zM23 25h3v1h-3zM28 25h1v1h-1zM32 25h1v1h-1zM34 25h2v1h-2zM37 25h1v1h-1zM39 25h1v1h-1zM2 26h4v1h-4zM8 26h5v1h-5zM17 26h1v1h-1zM19 26h1v1h-1zM26 26h3v1h-3zM31 26h1v1h-1zM33 26h1v1h-1zM40 26h1v1h-1zM2 27h1v1h-1zM5 27h2v1h-2zM9 27h1v1h-1zM11 27h2v1h-2zM16 27h7v1h-7zM25 27h1v1h-1zM27 27h1v1h-1zM30 27h4v1h-4zM36 27h4v1h-4zM3 28h3v1h-3zM8 28h2v1h-2zM11 28h2v1h-2zM14 28h2v1h-2zM17 28h4v1h-4zM22 28h1v1h-1zM24 28h1v1h-1zM29 28h1v1h-1zM31 28h2v1h-2zM34 28h1v1h-1zM36 28h2v1h-2zM3 29h1v1h-1zM6 29h2v1h-2zM9 29h4v1h-4zM16 29h1v1h-1zM18 29h1v1h-1zM20 29h2v1h-2zM23 29h3v1h-3zM30 29h1v1h-1zM32 29h5v1h-5zM38 29h2v1h-2zM2 30h1v1h-1zM4 30h1v1h-1zM7 30h3v1h-3zM12 30h2v1h-2zM15 30h3v1h-3zM19 30h2v1h-2zM24 30h2v1h-2zM27 30h3v1h-3zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h2v1h-2zM7 31h1v1h-1zM11 31h5v1h-5zM18 31h1v1h-1zM22 31h2v1h-2zM26 31h1v1h-1zM29 31h3v1h-3zM35 31h1v1h-1zM37 31h3v1h-3zM41 31h2v1h-2zM2 32h1v1h-1zM4 32h1v1h-1zM8 32h2v1h-2zM11 32h1v1h-1zM15 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM2 33h1v1h-1zM4 33h1v1h-1zM7 33h1v1h-1zM12 33h1v1h-1zM15 33h1v1h-1zM17 33h1v1h-1zM20 33h4v1h-4zM26 33h1v1h-1zM28 33h1v1h-1zM30 33h1v1h-1zM32 33h1v1h-1zM35 33h3v1h-3zM41 33h1v1h-1zM2 34h1v1h-1zM7 34h3v1h-3zM11 34h4v1h-4zM18 34h2v1h-2zM21 34h1v1h-1zM27 34h2v1h-2zM31 34h2v1h-2zM34 34h5v1h-5zM40 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM14 35h2v1h-2zM17 35h12v1h-12zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM14 36h1v1h-1zM17 36h1v1h-1zM19 36h1v1h-1zM22 36h2v1h-2zM27 36h4v1h-4zM32 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h3v1h-3zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h2v1h-2zM13 37h1v1h-1zM16 37h5v1h-5zM22 37h4v1h-4zM27 37h1v1h-1zM33 37h2v1h-2zM38 37h2v1h-2zM41 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h4v1h-4zM15 38h1v1h-1zM21 38h3v1h-3zM28 38h3v1h-3zM32 38h1v1h-1zM34 38h7v1h-7zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h1v1h-1zM12 39h3v1h-3zM17 39h1v1h-1zM20 39h2v1h-2zM24 39h4v1h-4zM30 39h2v1h-2zM33 39h1v1h-1zM35 39h1v1h-1zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h1v1h-1zM12 40h1v1h-1zM15 40h1v1h-1zM17 40h3v1h-3zM22 40h1v1h-1zM24 40h1v1h-1zM26 40h5v1h-5zM32 40h1v1h-1zM35 40h5v1h-5zM2 41h1v1h-1zM8 41h1v1h-1zM14 41h1v1h-1zM19 41h5v1h-5zM25 41h1v1h-1zM28 41h1v1h-1zM30 41h1v1h-1zM34 41h2v1h-2zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM13 42h2v1h-2zM18 42h4v1h-4zM24 42h5v1h-5zM30 42h2v1h-2zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+    "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": {
+      url: "https://drive.google.com/file/d/1ORJtRrL3ty313uHRQbGAeZJBDJliGhjl/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM12 2h2v1h-2zM15 2h2v1h-2zM19 2h7v1h-7zM27 2h1v1h-1zM30 2h1v1h-1zM32 2h3v1h-3zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h1v1h-1zM18 3h2v1h-2zM23 3h1v1h-1zM27 3h3v1h-3zM32 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM13 4h1v1h-1zM15 4h1v1h-1zM17 4h5v1h-5zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM33 4h2v1h-2zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h1v1h-1zM15 5h4v1h-4zM23 5h1v1h-1zM28 5h3v1h-3zM32 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM14 6h1v1h-1zM18 6h5v1h-5zM24 6h4v1h-4zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM15 7h4v1h-4zM22 7h3v1h-3zM27 7h3v1h-3zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h4v1h-4zM18 9h1v1h-1zM23 9h1v1h-1zM26 9h1v1h-1zM29 9h2v1h-2zM32 9h2v1h-2zM2 10h1v1h-1zM4 10h5v1h-5zM13 10h1v1h-1zM15 10h1v1h-1zM17 10h4v1h-4zM24 10h1v1h-1zM26 10h3v1h-3zM31 10h1v1h-1zM36 10h5v1h-5zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM11 11h6v1h-6zM18 11h1v1h-1zM20 11h4v1h-4zM25 11h1v1h-1zM31 11h1v1h-1zM33 11h3v1h-3zM37 11h2v1h-2zM40 11h3v1h-3zM2 12h2v1h-2zM5 12h5v1h-5zM11 12h2v1h-2zM14 12h2v1h-2zM17 12h4v1h-4zM22 12h1v1h-1zM27 12h1v1h-1zM29 12h4v1h-4zM34 12h3v1h-3zM38 12h1v1h-1zM3 13h5v1h-5zM10 13h3v1h-3zM14 13h1v1h-1zM17 13h2v1h-2zM20 13h6v1h-6zM28 13h3v1h-3zM32 13h3v1h-3zM36 13h4v1h-4zM42 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM10 14h2v1h-2zM21 14h2v1h-2zM24 14h1v1h-1zM26 14h6v1h-6zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM4 15h1v1h-1zM6 15h2v1h-2zM11 15h1v1h-1zM14 15h1v1h-1zM17 15h1v1h-1zM19 15h2v1h-2zM23 15h2v1h-2zM27 15h3v1h-3zM31 15h1v1h-1zM34 15h2v1h-2zM38 15h3v1h-3zM4 16h1v1h-1zM7 16h2v1h-2zM10 16h1v1h-1zM13 16h3v1h-3zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h2v1h-2zM32 16h2v1h-2zM35 16h1v1h-1zM38 16h1v1h-1zM2 17h1v1h-1zM4 17h1v1h-1zM6 17h1v1h-1zM10 17h1v1h-1zM13 17h1v1h-1zM16 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM32 17h3v1h-3zM36 17h4v1h-4zM3 18h3v1h-3zM8 18h1v1h-1zM11 18h2v1h-2zM14 18h2v1h-2zM18 18h2v1h-2zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h5v1h-5zM33 18h1v1h-1zM35 18h1v1h-1zM37 18h1v1h-1zM40 18h1v1h-1zM2 19h3v1h-3zM6 19h1v1h-1zM9 19h1v1h-1zM11 19h1v1h-1zM13 19h2v1h-2zM17 19h2v1h-2zM21 19h2v1h-2zM24 19h2v1h-2zM30 19h3v1h-3zM34 19h1v1h-1zM36 19h3v1h-3zM40 19h3v1h-3zM2 20h2v1h-2zM5 20h1v1h-1zM8 20h2v1h-2zM13 20h1v1h-1zM17 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h1v1h-1zM40 20h1v1h-1zM2 21h1v1h-1zM9 21h2v1h-2zM12 21h1v1h-1zM15 21h4v1h-4zM22 21h1v1h-1zM25 21h1v1h-1zM28 21h1v1h-1zM30 21h3v1h-3zM36 21h1v1h-1zM38 21h2v1h-2zM2 22h7v1h-7zM10 22h3v1h-3zM14 22h1v1h-1zM17 22h1v1h-1zM20 22h1v1h-1zM22 22h4v1h-4zM33 22h3v1h-3zM41 22h2v1h-2zM2 23h2v1h-2zM10 23h1v1h-1zM12 23h4v1h-4zM18 23h2v1h-2zM22 23h2v1h-2zM25 23h2v1h-2zM28 23h3v1h-3zM32 23h1v1h-1zM34 23h1v1h-1zM36 23h7v1h-7zM4 24h1v1h-1zM8 24h1v1h-1zM11 24h1v1h-1zM13 24h1v1h-1zM15 24h2v1h-2zM18 24h2v1h-2zM23 24h2v1h-2zM27 24h3v1h-3zM31 24h2v1h-2zM34 24h3v1h-3zM4 25h2v1h-2zM7 25h1v1h-1zM12 25h1v1h-1zM15 25h1v1h-1zM17 25h1v1h-1zM21 25h1v1h-1zM23 25h4v1h-4zM28 25h1v1h-1zM32 25h6v1h-6zM39 25h1v1h-1zM2 26h1v1h-1zM4 26h6v1h-6zM11 26h3v1h-3zM19 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM33 26h1v1h-1zM38 26h1v1h-1zM40 26h1v1h-1zM2 27h1v1h-1zM5 27h3v1h-3zM10 27h1v1h-1zM12 27h1v1h-1zM15 27h4v1h-4zM20 27h4v1h-4zM25 27h1v1h-1zM30 27h1v1h-1zM32 27h2v1h-2zM35 27h5v1h-5zM3 28h1v1h-1zM5 28h1v1h-1zM8 28h3v1h-3zM14 28h1v1h-1zM16 28h4v1h-4zM22 28h3v1h-3zM28 28h2v1h-2zM34 28h1v1h-1zM36 28h1v1h-1zM3 29h1v1h-1zM6 29h2v1h-2zM11 29h1v1h-1zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h3v1h-3zM30 29h1v1h-1zM32 29h5v1h-5zM38 29h2v1h-2zM2 30h1v1h-1zM4 30h1v1h-1zM7 30h3v1h-3zM11 30h1v1h-1zM13 30h1v1h-1zM17 30h1v1h-1zM23 30h3v1h-3zM27 30h3v1h-3zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h1v1h-1zM7 31h1v1h-1zM11 31h1v1h-1zM13 31h4v1h-4zM18 31h1v1h-1zM20 31h1v1h-1zM22 31h2v1h-2zM26 31h1v1h-1zM28 31h4v1h-4zM35 31h1v1h-1zM37 31h3v1h-3zM41 31h2v1h-2zM2 32h1v1h-1zM5 32h1v1h-1zM8 32h1v1h-1zM11 32h1v1h-1zM15 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM31 32h2v1h-2zM34 32h4v1h-4zM39 32h1v1h-1zM2 33h1v1h-1zM4 33h1v1h-1zM7 33h1v1h-1zM16 33h2v1h-2zM20 33h4v1h-4zM26 33h1v1h-1zM28 33h1v1h-1zM30 33h1v1h-1zM32 33h1v1h-1zM35 33h3v1h-3zM2 34h1v1h-1zM7 34h3v1h-3zM12 34h2v1h-2zM18 34h2v1h-2zM21 34h1v1h-1zM27 34h2v1h-2zM31 34h1v1h-1zM34 34h5v1h-5zM40 34h2v1h-2zM10 35h1v1h-1zM13 35h16v1h-16zM32 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM40 35h3v1h-3zM2 36h7v1h-7zM14 36h1v1h-1zM18 36h2v1h-2zM22 36h2v1h-2zM27 36h3v1h-3zM32 36h3v1h-3zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h2v1h-2zM13 37h1v1h-1zM16 37h5v1h-5zM22 37h4v1h-4zM27 37h1v1h-1zM29 37h2v1h-2zM33 37h2v1h-2zM38 37h2v1h-2zM41 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h4v1h-4zM15 38h1v1h-1zM18 38h1v1h-1zM21 38h3v1h-3zM28 38h1v1h-1zM30 38h1v1h-1zM32 38h1v1h-1zM34 38h5v1h-5zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h1v1h-1zM12 39h3v1h-3zM17 39h1v1h-1zM20 39h1v1h-1zM22 39h1v1h-1zM24 39h4v1h-4zM30 39h2v1h-2zM35 39h1v1h-1zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h1v1h-1zM12 40h1v1h-1zM15 40h1v1h-1zM19 40h1v1h-1zM24 40h1v1h-1zM27 40h3v1h-3zM32 40h8v1h-8zM2 41h1v1h-1zM8 41h1v1h-1zM13 41h2v1h-2zM18 41h3v1h-3zM23 41h1v1h-1zM26 41h1v1h-1zM28 41h1v1h-1zM35 41h1v1h-1zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM13 42h2v1h-2zM18 42h4v1h-4zM24 42h8v1h-8zM33 42h1v1h-1zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+    "ket-hon-nuoc-ngoai": {
+      url: "https://drive.google.com/file/d/1eYQXb3VsN20bOYFFkKPWR3Kaqcvy5ViK/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM15 2h2v1h-2zM18 2h8v1h-8zM27 2h1v1h-1zM30 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h2v1h-2zM17 3h1v1h-1zM19 3h1v1h-1zM23 3h1v1h-1zM27 3h3v1h-3zM32 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM13 4h3v1h-3zM17 4h5v1h-5zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM34 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h1v1h-1zM15 5h4v1h-4zM23 5h1v1h-1zM26 5h1v1h-1zM28 5h3v1h-3zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM14 6h1v1h-1zM17 6h1v1h-1zM19 6h2v1h-2zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM30 6h1v1h-1zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM14 7h4v1h-4zM22 7h3v1h-3zM26 7h4v1h-4zM34 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h4v1h-4zM17 9h1v1h-1zM21 9h1v1h-1zM23 9h1v1h-1zM25 9h2v1h-2zM30 9h1v1h-1zM32 9h1v1h-1zM2 10h1v1h-1zM4 10h5v1h-5zM13 10h1v1h-1zM15 10h1v1h-1zM17 10h5v1h-5zM24 10h1v1h-1zM26 10h4v1h-4zM31 10h1v1h-1zM33 10h1v1h-1zM36 10h5v1h-5zM6 11h1v1h-1zM9 11h6v1h-6zM16 11h1v1h-1zM18 11h5v1h-5zM25 11h1v1h-1zM33 11h6v1h-6zM40 11h3v1h-3zM2 12h2v1h-2zM5 12h5v1h-5zM14 12h2v1h-2zM17 12h4v1h-4zM22 12h1v1h-1zM24 12h1v1h-1zM27 12h1v1h-1zM29 12h2v1h-2zM32 12h1v1h-1zM34 12h5v1h-5zM3 13h1v1h-1zM6 13h2v1h-2zM11 13h1v1h-1zM14 13h1v1h-1zM17 13h2v1h-2zM21 13h5v1h-5zM28 13h3v1h-3zM33 13h2v1h-2zM36 13h1v1h-1zM38 13h2v1h-2zM42 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM7 14h3v1h-3zM12 14h1v1h-1zM21 14h4v1h-4zM26 14h1v1h-1zM28 14h3v1h-3zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM4 15h1v1h-1zM6 15h2v1h-2zM14 15h1v1h-1zM17 15h1v1h-1zM19 15h1v1h-1zM23 15h2v1h-2zM27 15h1v1h-1zM29 15h1v1h-1zM34 15h2v1h-2zM38 15h3v1h-3zM42 15h1v1h-1zM4 16h1v1h-1zM7 16h3v1h-3zM11 16h4v1h-4zM16 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h3v1h-3zM33 16h1v1h-1zM35 16h1v1h-1zM38 16h1v1h-1zM41 16h1v1h-1zM2 17h1v1h-1zM4 17h1v1h-1zM6 17h1v1h-1zM10 17h1v1h-1zM12 17h2v1h-2zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM32 17h3v1h-3zM36 17h4v1h-4zM41 17h2v1h-2zM3 18h1v1h-1zM5 18h1v1h-1zM8 18h2v1h-2zM11 18h1v1h-1zM14 18h1v1h-1zM18 18h2v1h-2zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h5v1h-5zM33 18h3v1h-3zM37 18h1v1h-1zM40 18h2v1h-2zM3 19h2v1h-2zM9 19h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM21 19h2v1h-2zM24 19h2v1h-2zM30 19h4v1h-4zM36 19h3v1h-3zM41 19h2v1h-2zM2 20h1v1h-1zM5 20h5v1h-5zM13 20h2v1h-2zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h3v1h-3zM2 21h2v1h-2zM7 21h1v1h-1zM9 21h2v1h-2zM12 21h2v1h-2zM15 21h2v1h-2zM22 21h1v1h-1zM25 21h1v1h-1zM28 21h1v1h-1zM30 21h3v1h-3zM36 21h1v1h-1zM38 21h2v1h-2zM4 22h2v1h-2zM7 22h2v1h-2zM10 22h3v1h-3zM20 22h1v1h-1zM23 22h4v1h-4zM30 22h1v1h-1zM33 22h3v1h-3zM41 22h2v1h-2zM3 23h1v1h-1zM6 23h1v1h-1zM10 23h1v1h-1zM12 23h4v1h-4zM17 23h3v1h-3zM21 23h3v1h-3zM25 23h1v1h-1zM28 23h3v1h-3zM32 23h1v1h-1zM34 23h1v1h-1zM36 23h7v1h-7zM2 24h1v1h-1zM4 24h1v1h-1zM6 24h3v1h-3zM11 24h1v1h-1zM15 24h2v1h-2zM18 24h2v1h-2zM23 24h2v1h-2zM26 24h7v1h-7zM34 24h2v1h-2zM3 25h3v1h-3zM7 25h1v1h-1zM12 25h1v1h-1zM14 25h2v1h-2zM21 25h4v1h-4zM26 25h1v1h-1zM28 25h1v1h-1zM32 25h1v1h-1zM34 25h1v1h-1zM36 25h2v1h-2zM39 25h1v1h-1zM3 26h2v1h-2zM6 26h1v1h-1zM8 26h2v1h-2zM11 26h2v1h-2zM19 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM37 26h1v1h-1zM40 26h1v1h-1zM2 27h1v1h-1zM5 27h3v1h-3zM11 27h2v1h-2zM16 27h3v1h-3zM20 27h3v1h-3zM25 27h1v1h-1zM27 27h1v1h-1zM30 27h4v1h-4zM36 27h4v1h-4zM3 28h2v1h-2zM8 28h1v1h-1zM10 28h3v1h-3zM14 28h1v1h-1zM16 28h3v1h-3zM20 28h1v1h-1zM22 28h2v1h-2zM27 28h3v1h-3zM32 28h1v1h-1zM34 28h1v1h-1zM36 28h3v1h-3zM3 29h1v1h-1zM6 29h2v1h-2zM9 29h4v1h-4zM18 29h1v1h-1zM20 29h2v1h-2zM23 29h3v1h-3zM30 29h1v1h-1zM32 29h5v1h-5zM38 29h2v1h-2zM2 30h1v1h-1zM5 30h1v1h-1zM7 30h2v1h-2zM10 30h1v1h-1zM13 30h1v1h-1zM16 30h2v1h-2zM23 30h3v1h-3zM27 30h1v1h-1zM29 30h1v1h-1zM31 30h1v1h-1zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h1v1h-1zM7 31h1v1h-1zM9 31h2v1h-2zM12 31h4v1h-4zM18 31h1v1h-1zM22 31h2v1h-2zM26 31h1v1h-1zM28 31h5v1h-5zM35 31h1v1h-1zM37 31h3v1h-3zM2 32h1v1h-1zM5 32h1v1h-1zM8 32h2v1h-2zM16 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM32 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM2 33h1v1h-1zM4 33h2v1h-2zM7 33h1v1h-1zM9 33h1v1h-1zM11 33h1v1h-1zM15 33h3v1h-3zM20 33h4v1h-4zM26 33h1v1h-1zM28 33h1v1h-1zM30 33h1v1h-1zM35 33h3v1h-3zM42 33h1v1h-1zM2 34h1v1h-1zM4 34h1v1h-1zM7 34h3v1h-3zM11 34h1v1h-1zM13 34h2v1h-2zM18 34h2v1h-2zM21 34h1v1h-1zM27 34h2v1h-2zM34 34h5v1h-5zM40 34h1v1h-1zM10 35h1v1h-1zM12 35h2v1h-2zM15 35h1v1h-1zM19 35h10v1h-10zM32 35h3v1h-3zM38 35h1v1h-1zM40 35h3v1h-3zM2 36h7v1h-7zM13 36h1v1h-1zM18 36h2v1h-2zM22 36h2v1h-2zM27 36h4v1h-4zM32 36h3v1h-3zM36 36h1v1h-1zM38 36h3v1h-3zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h2v1h-2zM14 37h1v1h-1zM16 37h1v1h-1zM19 37h2v1h-2zM22 37h4v1h-4zM27 37h1v1h-1zM33 37h2v1h-2zM38 37h2v1h-2zM41 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h4v1h-4zM15 38h1v1h-1zM21 38h1v1h-1zM23 38h1v1h-1zM28 38h1v1h-1zM30 38h1v1h-1zM32 38h1v1h-1zM34 38h5v1h-5zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h1v1h-1zM12 39h3v1h-3zM20 39h1v1h-1zM22 39h1v1h-1zM24 39h4v1h-4zM31 39h1v1h-1zM34 39h2v1h-2zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h1v1h-1zM12 40h1v1h-1zM14 40h2v1h-2zM17 40h1v1h-1zM19 40h1v1h-1zM24 40h1v1h-1zM26 40h4v1h-4zM32 40h2v1h-2zM35 40h5v1h-5zM2 41h1v1h-1zM8 41h1v1h-1zM18 41h6v1h-6zM25 41h2v1h-2zM28 41h1v1h-1zM34 41h2v1h-2zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM14 42h1v1h-1zM18 42h3v1h-3zM24 42h1v1h-1zM26 42h6v1h-6zM33 42h1v1h-1zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+    "dang-ky-kinh-doanh": {
+      url: "https://drive.google.com/file/d/1nkFVTbD-aPwaKLMK4_qoTf080CvgYEXq/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM12 2h1v1h-1zM14 2h3v1h-3zM18 2h8v1h-8zM27 2h1v1h-1zM30 2h1v1h-1zM32 2h1v1h-1zM34 2h1v1h-1zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h2v1h-2zM17 3h3v1h-3zM23 3h1v1h-1zM27 3h3v1h-3zM32 3h1v1h-1zM34 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM14 4h2v1h-2zM17 4h1v1h-1zM19 4h3v1h-3zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM13 5h5v1h-5zM22 5h2v1h-2zM26 5h1v1h-1zM28 5h2v1h-2zM32 5h2v1h-2zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM17 6h1v1h-1zM19 6h2v1h-2zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h4v1h-4zM23 7h2v1h-2zM27 7h3v1h-3zM34 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h4v1h-4zM18 9h1v1h-1zM22 9h2v1h-2zM26 9h1v1h-1zM29 9h2v1h-2zM32 9h2v1h-2zM2 10h1v1h-1zM4 10h5v1h-5zM15 10h1v1h-1zM17 10h4v1h-4zM24 10h1v1h-1zM26 10h4v1h-4zM31 10h1v1h-1zM33 10h1v1h-1zM36 10h5v1h-5zM3 11h1v1h-1zM6 11h2v1h-2zM9 11h6v1h-6zM16 11h1v1h-1zM18 11h5v1h-5zM25 11h1v1h-1zM27 11h1v1h-1zM33 11h3v1h-3zM37 11h2v1h-2zM40 11h3v1h-3zM2 12h7v1h-7zM10 12h2v1h-2zM14 12h1v1h-1zM17 12h3v1h-3zM22 12h1v1h-1zM28 12h4v1h-4zM34 12h3v1h-3zM38 12h1v1h-1zM3 13h1v1h-1zM6 13h2v1h-2zM12 13h1v1h-1zM14 13h2v1h-2zM17 13h2v1h-2zM21 13h5v1h-5zM28 13h3v1h-3zM32 13h3v1h-3zM36 13h1v1h-1zM38 13h2v1h-2zM42 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM10 14h3v1h-3zM19 14h1v1h-1zM21 14h4v1h-4zM26 14h5v1h-5zM33 14h1v1h-1zM35 14h1v1h-1zM39 14h2v1h-2zM42 14h1v1h-1zM4 15h1v1h-1zM6 15h2v1h-2zM9 15h3v1h-3zM14 15h1v1h-1zM16 15h2v1h-2zM19 15h1v1h-1zM23 15h1v1h-1zM27 15h1v1h-1zM29 15h1v1h-1zM34 15h2v1h-2zM38 15h5v1h-5zM4 16h2v1h-2zM7 16h2v1h-2zM13 16h4v1h-4zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h2v1h-2zM33 16h1v1h-1zM35 16h1v1h-1zM38 16h1v1h-1zM2 17h1v1h-1zM5 17h2v1h-2zM10 17h2v1h-2zM13 17h1v1h-1zM15 17h1v1h-1zM18 17h1v1h-1zM23 17h3v1h-3zM28 17h2v1h-2zM33 17h2v1h-2zM36 17h4v1h-4zM41 17h1v1h-1zM3 18h3v1h-3zM8 18h2v1h-2zM12 18h1v1h-1zM14 18h2v1h-2zM18 18h2v1h-2zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h4v1h-4zM33 18h3v1h-3zM37 18h1v1h-1zM40 18h1v1h-1zM3 19h2v1h-2zM9 19h1v1h-1zM11 19h3v1h-3zM17 19h2v1h-2zM21 19h2v1h-2zM24 19h2v1h-2zM30 19h2v1h-2zM34 19h1v1h-1zM36 19h4v1h-4zM41 19h2v1h-2zM2 20h1v1h-1zM5 20h2v1h-2zM8 20h2v1h-2zM18 20h1v1h-1zM20 20h1v1h-1zM24 20h1v1h-1zM29 20h3v1h-3zM34 20h1v1h-1zM36 20h1v1h-1zM38 20h1v1h-1zM40 20h1v1h-1zM9 21h2v1h-2zM12 21h1v1h-1zM15 21h2v1h-2zM18 21h1v1h-1zM22 21h1v1h-1zM25 21h1v1h-1zM28 21h1v1h-1zM30 21h5v1h-5zM36 21h1v1h-1zM38 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h3v1h-3zM17 22h2v1h-2zM20 22h1v1h-1zM22 22h5v1h-5zM35 22h1v1h-1zM39 22h4v1h-4zM2 23h2v1h-2zM7 23h1v1h-1zM10 23h1v1h-1zM12 23h2v1h-2zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM25 23h1v1h-1zM28 23h3v1h-3zM32 23h3v1h-3zM36 23h7v1h-7zM2 24h3v1h-3zM6 24h1v1h-1zM8 24h1v1h-1zM11 24h1v1h-1zM13 24h4v1h-4zM18 24h2v1h-2zM22 24h3v1h-3zM27 24h3v1h-3zM31 24h2v1h-2zM35 24h1v1h-1zM2 25h1v1h-1zM4 25h4v1h-4zM12 25h1v1h-1zM14 25h2v1h-2zM21 25h1v1h-1zM23 25h3v1h-3zM28 25h1v1h-1zM32 25h3v1h-3zM36 25h2v1h-2zM39 25h1v1h-1zM4 26h1v1h-1zM8 26h2v1h-2zM11 26h3v1h-3zM19 26h1v1h-1zM21 26h1v1h-1zM26 26h4v1h-4zM31 26h1v1h-1zM33 26h1v1h-1zM37 26h1v1h-1zM40 26h1v1h-1zM2 27h2v1h-2zM5 27h2v1h-2zM12 27h1v1h-1zM15 27h4v1h-4zM20 27h3v1h-3zM25 27h1v1h-1zM30 27h1v1h-1zM32 27h2v1h-2zM36 27h1v1h-1zM38 27h2v1h-2zM3 28h1v1h-1zM5 28h1v1h-1zM8 28h1v1h-1zM10 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM17 28h2v1h-2zM20 28h1v1h-1zM22 28h3v1h-3zM29 28h1v1h-1zM31 28h1v1h-1zM34 28h1v1h-1zM36 28h1v1h-1zM38 28h1v1h-1zM3 29h5v1h-5zM12 29h1v1h-1zM15 29h2v1h-2zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h1v1h-1zM25 29h1v1h-1zM28 29h1v1h-1zM30 29h1v1h-1zM32 29h5v1h-5zM39 29h1v1h-1zM2 30h1v1h-1zM4 30h2v1h-2zM7 30h2v1h-2zM10 30h2v1h-2zM13 30h1v1h-1zM16 30h2v1h-2zM19 30h1v1h-1zM23 30h3v1h-3zM28 30h2v1h-2zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h2v1h-2zM7 31h1v1h-1zM10 31h5v1h-5zM18 31h1v1h-1zM20 31h1v1h-1zM22 31h2v1h-2zM26 31h1v1h-1zM28 31h4v1h-4zM35 31h1v1h-1zM37 31h3v1h-3zM2 32h1v1h-1zM8 32h5v1h-5zM15 32h1v1h-1zM18 32h2v1h-2zM21 32h1v1h-1zM23 32h1v1h-1zM28 32h1v1h-1zM32 32h1v1h-1zM34 32h4v1h-4zM39 32h1v1h-1zM2 33h1v1h-1zM7 33h1v1h-1zM9 33h1v1h-1zM11 33h2v1h-2zM16 33h2v1h-2zM20 33h4v1h-4zM26 33h1v1h-1zM28 33h1v1h-1zM30 33h1v1h-1zM32 33h1v1h-1zM35 33h3v1h-3zM42 33h1v1h-1zM2 34h1v1h-1zM4 34h1v1h-1zM7 34h2v1h-2zM12 34h2v1h-2zM16 34h1v1h-1zM19 34h1v1h-1zM21 34h1v1h-1zM27 34h2v1h-2zM31 34h1v1h-1zM34 34h5v1h-5zM40 34h1v1h-1zM42 34h1v1h-1zM10 35h1v1h-1zM12 35h2v1h-2zM15 35h3v1h-3zM19 35h10v1h-10zM34 35h1v1h-1zM38 35h1v1h-1zM41 35h2v1h-2zM2 36h7v1h-7zM13 36h1v1h-1zM17 36h3v1h-3zM22 36h2v1h-2zM27 36h4v1h-4zM32 36h3v1h-3zM36 36h1v1h-1zM38 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h2v1h-2zM13 37h1v1h-1zM16 37h1v1h-1zM19 37h2v1h-2zM22 37h4v1h-4zM27 37h1v1h-1zM29 37h1v1h-1zM33 37h2v1h-2zM38 37h1v1h-1zM41 37h2v1h-2zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM10 38h6v1h-6zM21 38h1v1h-1zM23 38h1v1h-1zM28 38h2v1h-2zM32 38h1v1h-1zM34 38h7v1h-7zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM10 39h1v1h-1zM12 39h1v1h-1zM14 39h1v1h-1zM18 39h1v1h-1zM20 39h1v1h-1zM22 39h1v1h-1zM24 39h2v1h-2zM27 39h1v1h-1zM30 39h2v1h-2zM34 39h2v1h-2zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM10 40h1v1h-1zM12 40h4v1h-4zM18 40h2v1h-2zM22 40h1v1h-1zM24 40h1v1h-1zM26 40h4v1h-4zM32 40h2v1h-2zM35 40h5v1h-5zM2 41h1v1h-1zM8 41h1v1h-1zM13 41h2v1h-2zM19 41h2v1h-2zM22 41h2v1h-2zM26 41h1v1h-1zM28 41h3v1h-3zM34 41h2v1h-2zM38 41h2v1h-2zM41 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM14 42h1v1h-1zM17 42h5v1h-5zM24 42h1v1h-1zM26 42h6v1h-6zM33 42h1v1h-1zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+    "chung-thuc-chu-ky": {
+      url: "https://drive.google.com/file/d/11KgBXkRJBDUJBC8EJJJZrONv0zZm2jH4/view?usp=drive_link",
+      qrSize: 45,
+      qrPath: "M2 2h7v1h-7zM13 2h2v1h-2zM20 2h1v1h-1zM23 2h1v1h-1zM28 2h1v1h-1zM31 2h2v1h-2zM36 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h4v1h-4zM18 3h2v1h-2zM27 3h2v1h-2zM32 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h2v1h-2zM14 4h2v1h-2zM17 4h1v1h-1zM19 4h3v1h-3zM23 4h2v1h-2zM27 4h1v1h-1zM30 4h1v1h-1zM33 4h1v1h-1zM36 4h1v1h-1zM38 4h3v1h-3zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM22 5h1v1h-1zM24 5h1v1h-1zM26 5h1v1h-1zM30 5h1v1h-1zM32 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h3v1h-3zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM14 6h1v1h-1zM19 6h2v1h-2zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM29 6h2v1h-2zM33 6h2v1h-2zM36 6h1v1h-1zM38 6h3v1h-3zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM15 7h2v1h-2zM24 7h1v1h-1zM26 7h3v1h-3zM34 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h7v1h-7zM10 9h1v1h-1zM12 9h3v1h-3zM18 9h1v1h-1zM21 9h1v1h-1zM25 9h2v1h-2zM29 9h1v1h-1zM32 9h2v1h-2zM2 10h1v1h-1zM8 10h1v1h-1zM10 10h1v1h-1zM13 10h1v1h-1zM15 10h1v1h-1zM17 10h5v1h-5zM24 10h6v1h-6zM31 10h1v1h-1zM33 10h1v1h-1zM35 10h2v1h-2zM39 10h3v1h-3zM3 11h1v1h-1zM5 11h1v1h-1zM9 11h1v1h-1zM13 11h3v1h-3zM17 11h1v1h-1zM19 11h3v1h-3zM24 11h2v1h-2zM27 11h4v1h-4zM33 11h1v1h-1zM35 11h1v1h-1zM37 11h2v1h-2zM2 12h3v1h-3zM6 12h5v1h-5zM12 12h1v1h-1zM14 12h2v1h-2zM17 12h4v1h-4zM22 12h1v1h-1zM27 12h1v1h-1zM29 12h3v1h-3zM34 12h3v1h-3zM38 12h1v1h-1zM3 13h2v1h-2zM6 13h2v1h-2zM9 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM18 13h1v1h-1zM20 13h3v1h-3zM25 13h1v1h-1zM30 13h1v1h-1zM33 13h4v1h-4zM38 13h2v1h-2zM41 13h2v1h-2zM2 14h2v1h-2zM5 14h2v1h-2zM8 14h1v1h-1zM13 14h1v1h-1zM15 14h2v1h-2zM18 14h2v1h-2zM23 14h1v1h-1zM25 14h3v1h-3zM29 14h1v1h-1zM31 14h1v1h-1zM34 14h4v1h-4zM4 15h1v1h-1zM6 15h2v1h-2zM10 15h1v1h-1zM14 15h1v1h-1zM19 15h2v1h-2zM27 15h1v1h-1zM31 15h2v1h-2zM34 15h1v1h-1zM38 15h3v1h-3zM7 16h4v1h-4zM13 16h3v1h-3zM20 16h1v1h-1zM22 16h1v1h-1zM25 16h2v1h-2zM29 16h5v1h-5zM35 16h1v1h-1zM38 16h1v1h-1zM2 17h1v1h-1zM12 17h2v1h-2zM16 17h2v1h-2zM22 17h1v1h-1zM25 17h1v1h-1zM30 17h1v1h-1zM32 17h2v1h-2zM35 17h1v1h-1zM37 17h4v1h-4zM3 18h1v1h-1zM5 18h1v1h-1zM8 18h2v1h-2zM11 18h2v1h-2zM15 18h2v1h-2zM18 18h2v1h-2zM22 18h1v1h-1zM24 18h2v1h-2zM27 18h4v1h-4zM33 18h3v1h-3zM37 18h1v1h-1zM40 18h2v1h-2zM2 19h4v1h-4zM9 19h1v1h-1zM12 19h3v1h-3zM16 19h1v1h-1zM18 19h1v1h-1zM21 19h5v1h-5zM29 19h5v1h-5zM35 19h6v1h-6zM42 19h1v1h-1zM3 20h4v1h-4zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h11v1h-11zM25 20h1v1h-1zM27 20h3v1h-3zM33 20h1v1h-1zM37 20h2v1h-2zM42 20h1v1h-1zM3 21h1v1h-1zM5 21h1v1h-1zM9 21h4v1h-4zM14 21h3v1h-3zM18 21h1v1h-1zM22 21h2v1h-2zM25 21h1v1h-1zM28 21h5v1h-5zM34 21h3v1h-3zM38 21h2v1h-2zM41 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h5v1h-5zM17 22h2v1h-2zM20 22h1v1h-1zM23 22h4v1h-4zM30 22h1v1h-1zM33 22h1v1h-1zM35 22h1v1h-1zM41 22h2v1h-2zM3 23h5v1h-5zM11 23h1v1h-1zM13 23h1v1h-1zM15 23h2v1h-2zM19 23h1v1h-1zM24 23h1v1h-1zM32 23h1v1h-1zM35 23h1v1h-1zM37 23h3v1h-3zM2 24h1v1h-1zM4 24h1v1h-1zM6 24h3v1h-3zM11 24h1v1h-1zM14 24h4v1h-4zM19 24h1v1h-1zM22 24h3v1h-3zM27 24h6v1h-6zM34 24h3v1h-3zM2 25h3v1h-3zM6 25h1v1h-1zM11 25h2v1h-2zM15 25h1v1h-1zM17 25h1v1h-1zM22 25h1v1h-1zM24 25h1v1h-1zM28 25h2v1h-2zM32 25h1v1h-1zM36 25h2v1h-2zM39 25h1v1h-1zM41 25h1v1h-1zM2 26h1v1h-1zM5 26h4v1h-4zM11 26h1v1h-1zM13 26h1v1h-1zM15 26h4v1h-4zM21 26h2v1h-2zM24 26h3v1h-3zM30 26h1v1h-1zM33 26h2v1h-2zM36 26h1v1h-1zM39 26h1v1h-1zM42 26h1v1h-1zM2 27h1v1h-1zM6 27h1v1h-1zM9 27h1v1h-1zM11 27h2v1h-2zM15 27h2v1h-2zM18 27h5v1h-5zM25 27h1v1h-1zM29 27h2v1h-2zM32 27h2v1h-2zM35 27h1v1h-1zM38 27h2v1h-2zM41 27h1v1h-1zM3 28h2v1h-2zM8 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM16 28h5v1h-5zM22 28h1v1h-1zM27 28h1v1h-1zM29 28h1v1h-1zM31 28h2v1h-2zM34 28h1v1h-1zM36 28h1v1h-1zM3 29h1v1h-1zM7 29h1v1h-1zM10 29h2v1h-2zM15 29h3v1h-3zM20 29h3v1h-3zM25 29h1v1h-1zM28 29h2v1h-2zM32 29h2v1h-2zM37 29h6v1h-6zM2 30h1v1h-1zM5 30h1v1h-1zM7 30h2v1h-2zM11 30h1v1h-1zM13 30h1v1h-1zM16 30h2v1h-2zM25 30h1v1h-1zM28 30h2v1h-2zM33 30h2v1h-2zM36 30h1v1h-1zM39 30h2v1h-2zM2 31h1v1h-1zM4 31h2v1h-2zM7 31h1v1h-1zM13 31h3v1h-3zM17 31h2v1h-2zM22 31h1v1h-1zM24 31h1v1h-1zM26 31h1v1h-1zM30 31h2v1h-2zM37 31h3v1h-3zM41 31h2v1h-2zM2 32h2v1h-2zM5 32h4v1h-4zM13 32h1v1h-1zM15 32h1v1h-1zM22 32h4v1h-4zM27 32h1v1h-1zM30 32h4v1h-4zM35 32h1v1h-1zM40 32h1v1h-1zM42 32h1v1h-1zM2 33h1v1h-1zM4 33h1v1h-1zM7 33h1v1h-1zM12 33h1v1h-1zM16 33h1v1h-1zM20 33h3v1h-3zM26 33h1v1h-1zM28 33h3v1h-3zM32 33h1v1h-1zM36 33h2v1h-2zM42 33h1v1h-1zM2 34h1v1h-1zM7 34h2v1h-2zM13 34h1v1h-1zM16 34h1v1h-1zM19 34h1v1h-1zM21 34h1v1h-1zM27 34h2v1h-2zM31 34h2v1h-2zM34 34h5v1h-5zM40 34h3v1h-3zM10 35h3v1h-3zM14 35h2v1h-2zM19 35h3v1h-3zM25 35h3v1h-3zM29 35h2v1h-2zM34 35h1v1h-1zM38 35h2v1h-2zM2 36h7v1h-7zM19 36h1v1h-1zM22 36h2v1h-2zM27 36h3v1h-3zM32 36h3v1h-3zM36 36h1v1h-1zM38 36h1v1h-1zM40 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM13 37h2v1h-2zM16 37h1v1h-1zM19 37h2v1h-2zM22 37h1v1h-1zM24 37h2v1h-2zM27 37h1v1h-1zM30 37h1v1h-1zM33 37h2v1h-2zM38 37h2v1h-2zM42 37h1v1h-1zM2 38h1v1h-1zM4 38h3v1h-3zM8 38h1v1h-1zM11 38h1v1h-1zM16 38h1v1h-1zM18 38h2v1h-2zM22 38h4v1h-4zM27 38h1v1h-1zM29 38h10v1h-10zM42 38h1v1h-1zM2 39h1v1h-1zM4 39h3v1h-3zM8 39h1v1h-1zM11 39h2v1h-2zM17 39h2v1h-2zM20 39h1v1h-1zM22 39h3v1h-3zM27 39h1v1h-1zM29 39h3v1h-3zM34 39h1v1h-1zM37 39h1v1h-1zM40 39h2v1h-2zM2 40h1v1h-1zM4 40h3v1h-3zM8 40h1v1h-1zM12 40h2v1h-2zM15 40h1v1h-1zM18 40h2v1h-2zM24 40h1v1h-1zM26 40h4v1h-4zM32 40h1v1h-1zM34 40h6v1h-6zM2 41h1v1h-1zM8 41h1v1h-1zM11 41h2v1h-2zM16 41h1v1h-1zM18 41h3v1h-3zM22 41h1v1h-1zM24 41h1v1h-1zM30 41h1v1h-1zM33 41h1v1h-1zM36 41h1v1h-1zM38 41h3v1h-3zM42 41h1v1h-1zM2 42h7v1h-7zM10 42h2v1h-2zM14 42h1v1h-1zM17 42h5v1h-5zM24 42h1v1h-1zM26 42h3v1h-3zM30 42h2v1h-2zM37 42h2v1h-2zM40 42h1v1h-1z",
+    },
+  };
+  const HUONG_DAN_LOI = "Để xem video hướng dẫn làm thủ tục, công dân bấm nút “Mở hướng dẫn”. "
+    + "Công dân cũng có thể dùng camera điện thoại quét mã QR bên dưới, rồi bấm vào đường link hiện "
+    + "trên điện thoại để xem.";
+  // Thủ tục đã hiện QR ở lượt xác nhận này: công dân nói gì đó thì BE hỏi lại câu xác nhận — không có
+  // cờ này QR sẽ hiện lặp. Rời bước xác nhận / về đầu thì xoá.
+  let huongDanDaHien = "";
+  function canHuongDanQr(d) {
+    return !d.replace_last && d.state === "confirm_procedure"
+      && !!HUONG_DAN_THU_TUC[d.procedure_key] && huongDanDaHien !== d.procedure_key
+      && (d.cards || []).some((c) => c.kind === "location_picker");
+  }
+  function hienHuongDanQr(d) {
+    huongDanDaHien = d.procedure_key;
+    const hd = HUONG_DAN_THU_TUC[d.procedure_key];
+    const el = document.createElement("div");
+    el.className = "qr-card guide-qr";
+    const n = hd.qrSize;
+    el.innerHTML = `
+      <div class="guide-qr-t">${window.escapeHtml(HUONG_DAN_LOI)
+    .replace("“Mở hướng dẫn”", "<mark>“Mở hướng dẫn”</mark>")}</div>
+      <svg class="qr-img" viewBox="0 0 ${n} ${n}" role="img" aria-label="Mã QR xem hướng dẫn"
+        shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/>
+        <path d="${hd.qrPath}" fill="#000"/></svg>
+      <div class="guide-qr-actions">
+        <a class="guide-qr-link" href="${window.escapeHtml(hd.url)}" target="_blank"
+          rel="noopener noreferrer">Mở hướng dẫn</a>
+      </div>`;
+    addNode(el);
+    // Bấm "Mở hướng dẫn" = công dân xem video ở tab khác → cắt câu đang đọc, kẻo đè tiếng video.
+    el.querySelector(".guide-qr-link")?.addEventListener("click", () => {
+      markActivity();
+      stopReplyTts();
+    });
+    renderReply(d, { sauHuongDan: true });
+  }
+
+  function renderReply(d, opts) {
+    // Lượt LIVE vừa chốt thủ tục có hướng dẫn → QR trước, câu xác nhận vẽ sau (hienHuongDanQr).
+    if (!opts?.noTts && !opts?.sauHuongDan && canHuongDanQr(d)) {
+      lastReplyData = d;
+      hienHuongDanQr(d);
+      return;
+    }
+    if (d.state && d.state !== "confirm_procedure") huongDanDaHien = "";
+    lastReplyData = d;
+    renderingLiveReply = !opts?.noTts; // khôi phục phiên (noTts) → renderDocOptions không tự chọn Scan
+    if (d.lang) syncLangUI(d.lang); // BE là nguồn sự thật về chế độ tiếng Mông
+    maybeRestoreHmongLang(d); // phiên MỚI (lang=vi) + máy đã lưu tiếng Mông → khôi phục im lặng
+    const prevState = lastState;
+    if (d.state) { lastState = d.state; schedulePageWatcher(); }
+    // Đã vào chặng làm việc (đã chốt thủ tục) → nối máy quét ở quầy để sẵn sàng bắt tệp. Gọi
+    // lại nhiều lần không mở kết nối trùng (connectScanAgent tự canh). Bước chọn/đăng nhập/kết
+    // thúc thì không cần theo dõi máy quét.
+    if (["guide_login", "ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState)) {
+      connectScanAgent();
+    }
+    const hasLogoutChoice = (d.chips || []).some((chip) => [
+      "__action:logout_citizen", "__action:continue_dossiers",
+    ].includes(chip.send));
+    const duplicateLogoutChoice = hasLogoutChoice && !!document.querySelector(".chips.logout-choice");
+    // Đọc action NGAY ở đây (không chờ runActions chạy sau renderReply) — gỡ sau khi đã dựng
+    // lời hỏi mới thì xoá luôn cả cái vừa dựng. Cùng chỗ với collapse_after_tts bên dưới.
+    if ((d.actions || []).some((a) => a.type === "drop_stale_ask" && a.tag === "doc_method")) {
+      dropStaleDocMethodAsk();
+    }
+    // Sửa tại chỗ câu xác nhận thủ tục: card nơi làm đã hiện đúng lựa chọn công dân vừa bấm, chỉ
+    // còn câu hỏi phải đổi theo. Không vẽ thêm bong bóng/card/chip, không đọc lại. Không tìm thấy
+    // bong bóng cũ (vd vừa dựng lại phiên) thì rơi xuống vẽ bình thường.
+    if (d.replace_last && d.display_md) {
+      const cu = [...$messages.querySelectorAll('.msg.bot[data-ask="confirm-procedure"]')].pop();
+      if (cu) {
+        cu.className = "msg bot" + botTone(d.display_md);
+        cu.innerHTML = window.renderMarkdown(d.display_md);
+        return;
+      }
+    }
+    // Bong bóng phụ đứng TRƯỚC câu chính (vd "✓ Đã điền…" rồi mới tới câu hỏi ô kế tiếp) — hai việc khác nhau
+    // nên tách hai bong bóng; lời đọc vẫn nằm chung trong d.tts_text.
+    if (!duplicateLogoutChoice) {
+      (d.actions || []).filter((a) => a.type === "lead_message" && a.md).forEach((a) => addBotMd(String(a.md)));
+    }
+    const $botBubble = (d.display_md && !duplicateLogoutChoice) ? addBotMd(d.display_md) : null;
+    // Bong bóng phụ đứng SAU câu chính, trước nút (vd báo điền xong → số ô trống → bước tiếp theo).
+    if (!duplicateLogoutChoice) {
+      (d.actions || []).filter((a) => a.type === "trail_message" && a.md).forEach((a) => addBotMd(String(a.md)));
+    }
+    // Đánh dấu câu xác nhận thủ tục (đi liền card chọn nơi) để lượt chỉnh nơi làm sửa đúng nó.
+    if ($botBubble && d.state === "confirm_procedure"
+        && (d.cards || []).some((c) => c.kind === "location_picker")) {
+      $botBubble.dataset.ask = "confirm-procedure";
+    }
+    // Bong bóng mở đầu lời hỏi cách cung cấp giấy tờ đi liền với thẻ QR/Scan → gỡ thì gỡ cả cặp.
+    if ($botBubble && (d.cards || []).some((c) => c.kind === "doc_options")) {
+      $botBubble.dataset.ask = "doc-method";
+    }
+    // ĐỌC XONG câu này thì THU GỌN panel (kịch bản đăng nhập trên trang SSO → lộ mã QR để quét).
+    // Chỉ áp cho reply LIVE (không phải khôi phục phiên noTts, kẻo mở lại tay bị auto-thu-gọn).
+    const collapseAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "collapse_after_tts");
+    // Câu hỏi cần công dân trả lời ngay (vd hỏi từng ô còn trống): đọc xong tự mở mic MỘT lượt,
+    // kể cả khi không bật Rảnh tay. Riêng màn chọn thủ tục (câu chào): chỉ mở mic khi đang Rảnh tay — bấm
+    // "Bắt đầu làm thủ tục" là chọn bằng tay; bắt đầu bằng giọng nói thì Rảnh tay đã bật nên mic vẫn mở.
+    const listenAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "listen_after_tts")
+      && !(d.state === "greet" && !handsfree);
+    const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted;
+    // noTts: render lại reply CŨ khi khôi phục phiên — không đọc lại câu đã đọc rồi.
+    if (opts?.noTts) { /* bỏ đọc */ }
+    else if (!duplicateLogoutChoice && d.tts_text && voiceCfg.tts) {
+      // Mặc định chuyển bước là CẮT câu cũ, để bot không đọc hướng dẫn đã hết hiệu lực.
+      // Hai trường hợp xếp hàng thay vì cắt:
+      //   1. fill_report đến ngay sau action điền form — nó là phần tiếp nối của fields_ready,
+      //      cắt là mất vế "Xong rồi ạ...".
+      //   2. Quầy mà BE bật finishSentenceBeforeNext (Lai Châu): công dân nghe qua lời dịch
+      //      tiếng Mông, mất nửa câu là mất hẳn ý.
+      // Ngắt lời bằng micro (barge-in) thì VẪN cắt ở cả hai — người nói được ưu tiên.
+      // Báo điền xong có bong bóng phụ (vòng bổ sung ô trống) cũng là phần nối tiếp của câu "đang điền".
+      const fillTail = (d.actions || []).some((a) => a.type === "trail_message");
+      // Thẻ tiến trình nhiều bước: các khung (kết quả điền → kết quả đính kèm → kết luận) nối tiếp nhau trong
+      // cùng một lượt xử lý, khung sau tới khi câu trước còn đang đọc.
+      const stepsTail = (d.actions || []).some((a) => a.type === "pipeline_steps");
+      const queueThisReply = replyTtsInFlight > 0
+        && ((prevState === "filling" && (d.state === "reviewing" || fillTail))
+          || stepsTail
+          || voiceCfg?.finishSentenceBeforeNext === true);
+      if (!queueThisReply) stopReplyTts();
+      else console.debug("[TLND] xếp TTS sau câu đang đọc, không cắt ngang");
+      // Mic đang mở (rảnh tay) mà bot sắp đọc → tắt mic trước, không thì mic thu luôn tiếng loa của bot.
+      // Đọc xong onDone / ensureMic mở lại.
+      if (handsfree || listenAfter) pauseMic();
+      replyTtsInFlight += 1;
+      // Rảnh tay: đọc xong tự mở mic nghe lượt kế (docs/03a §5). onDone KHÔNG bắn khi bị ngắt lời.
+      window.__hccTTS?.speak?.(d.tts_text, d.tts_lang || "vi", () => {
+        replyTtsInFlight = Math.max(0, replyTtsInFlight - 1);
+        if (collapseAfter && willSpeak) minimizePanel(); // đọc THẬT xong → thu gọn (mute thì onDone bắn ngay, bỏ qua)
+        // Nếu còn câu nối tiếp trong hàng đợi thì chưa mở mic, tránh ASR barge-in cắt câu sau.
+        if ((handsfree || listenAfter) && !completionReturnTimer && replyTtsInFlight === 0) listenWhenQuiet();
+      });
+    } else if (handsfree || listenAfter) {
+      // Lượt không có lời đọc (tts tắt, hoặc lượt hệ thống im lặng giữa lúc câu trước còn đang đọc).
+      listenWhenQuiet();
+    }
+    // Không đọc (tts tắt/mute) mà vẫn cần thu gọn → cho ~7s đọc chữ rồi thu gọn.
+    if (collapseAfter && !willSpeak) setTimeout(minimizePanel, 7000);
+    if (!duplicateLogoutChoice) (d.cards || []).forEach(renderCard);
+    if (!duplicateLogoutChoice && d.chips?.length) renderChips(d.chips);
+    setProgress(d.progress);
+    // Khôi phục phiên (noTts) không dựng card tiến trình — không có WS để chốt nó.
+    if (!opts?.noTts) updatePipeFromState(prevState, d);
+  }
+
+  // Đang "bấm hộ" một nút theo lời nói (press_chip): câu nói đã hiện thành bong bóng → cú bấm này
+  // không thêm bong bóng nhãn nút nữa.
+  let chipPressByVoice = false;
+
+  // Màu nút theo nghĩa do BE gắn (chip.tone); tên lạ thì bỏ qua, nút giữ màu thường.
+  const CHIP_TONES = new Set(["skip", "back", "stop", "reload"]);
+  function renderChips(chips) {
+    // Ẩn nút hoàn thành thủ công còn sót trong last_reply của phiên cũ. Luồng mới chỉ
+    // kết thúc khi watcher đọc được xác nhận nộp thành công từ chính cổng dịch vụ công.
+    chips = chips.filter((c) => c.send !== "__action:finish_procedure");
+    // Nút "Kiểm tra lại trang hiện tại" đã bỏ khỏi UI (yêu cầu 22/09/2026). Lọc ở FE chứ
+    // không gỡ ở backend: backend còn phải phục vụ bản extension cũ trên chợ đang dùng nút
+    // này. Cơ chế verify_portal_state vẫn sống, chỉ không còn nút cho công dân bấm.
+    chips = chips.filter((c) => c.send !== "__event:sso_success");
+    if (!chips.length) return;
+    // Chỉ được có MỘT nút chuyển bước sống trên màn hình. Nút cũ có thể còn sót do khôi phục
+    // phiên dựng lại last_reply, hoặc do hai tab cùng phiên cùng báo trạng thái trang — bấm
+    // nhầm nút của bước trước là đẩy cổng đi sai bước.
+    if (chips.some((c) => c.cta)) {
+      document.querySelectorAll(".chip.cta").forEach((el) => el.remove());
+    }
+    const wrap = document.createElement("div");
+    const isLogoutChoice = chips.some((c) => [
+      "__action:logout_citizen", "__action:continue_dossiers",
+    ].includes(c.send));
+    wrap.className = "chips" + (isLogoutChoice ? " logout-choice" : "");
+    chips.forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      // cta: nút chuyển bước/gửi hồ sơ — to tràn ngang, nổi bật vì đây là việc DUY NHẤT
+      // công dân cần làm ở bước đó.
+      b.className = "chip" + (c.solid ? " solid" : "") + (c.cta ? " cta" : "")
+        + (CHIP_TONES.has(c.tone) ? ` tone-${c.tone}` : "");
+      b.dataset.send = c.send || "";
+      b.dataset.renderState = lastState || "";
+      b.textContent = c.label;
+      if (c.labelHmong) { // chế độ tiếng Mông: dòng nghiêng nhỏ dưới nhãn Việt
+        const hm = document.createElement("span");
+        hm.className = "chip-hm";
+        hm.textContent = c.labelHmong;
+        b.appendChild(hm);
+      }
+      // "Đã đưa đủ giấy tờ, xử lý đi": khoá đến khi nhận ≥1 tệp (renderDocProgress mở khoá).
+      // Tránh bấm chốt xử lý lúc chưa tải gì lên (nút hiện sẵn ngay khi vừa chọn cách tải).
+      if (c.send === "__action:docs_done") {
+        $docsDoneChip = b;
+        if (!docsReceived) {
+          b.disabled = true;
+          b.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+        }
+      }
+      b.addEventListener("click", () => {
+        // "Chọn thêm tệp từ máy": mở hộp chọn tệp NGAY trong cú bấm (Chrome chỉ cho mở hộp chọn tệp
+        // khi còn trong thao tác người dùng — đợi BE trả lời rồi mới mở là hay bị chặn). Không qua BE:
+        // lệnh pick_files của BE bỏ qua hộp chọn khi đã nối máy quét, nên trước đây bấm nút này
+        // không có tác dụng gì. Nút dùng lại được nhiều lần → không khoá nhóm chip.
+        if (c.send === "__action:pick_files_again" && uploadSid && $fileInput) {
+          $fileInput.click();
+          return;
+        }
+        const byVoice = chipPressByVoice;
+        chipPressByVoice = false;
+        // 1 nhóm chip chỉ bấm 1 lần — disable cả nhóm rồi gửi.
+        wrap.querySelectorAll("button").forEach((x) => (x.disabled = true));
+        // Nút chốt giấy tờ được chuyển sang holder riêng dưới checklist; vẫn khoá cả
+        // chính nó lẫn nhóm nút phụ ban đầu để không bấm đổi cách gửi khi đang xử lý.
+        b.closest(".chips")?.querySelectorAll("button").forEach((x) => (x.disabled = true));
+        // Chọn/Làm thủ tục khác → xóa phiên thật rồi mở ngay danh sách thủ tục.
+        if (c.send === "__action:new_procedure") { changeProcedure(); return; }
+        if (!byVoice) addUserText(c.label, c.labelHmong);
+        if (["__action:logout_citizen", "__action:continue_dossiers"].includes(c.send)) {
+          void (async () => {
+            await claimCompletionChoice();
+            const data = await ask(c.send, "chip", c.label);
+            const expectedAction = c.send === "__action:logout_citizen"
+              ? "logout_citizen" : "continue_dossiers";
+            if (!(data?.actions || []).some((action) => action.type === expectedAction)) {
+              await resumeCompletionChoice();
+            }
+          })();
+          return;
+        }
+        if (c.send === "__action:docs_done" || c.send === "__event:docs_complete") {
+          void submitDocsComplete(c.send, "chip", c.label);
+          return;
+        }
+        // Nút chuyển bước: đọc giá trị các ô bắt buộc NGAY trên trang rồi mới gửi, để backend
+        // chặn trước và gọi đúng tên ô còn thiếu thay vì để cổng nháy toast rồi thôi.
+        if (c.send === "__action:guided_next") {
+          void (async () => {
+            const payload = { phase: c.phase || "" };
+            if (c.collect === "ownerFields") {
+              const res = await sendToContent({
+                action: "readOwnerFields", fields: c.fields || [],
+              });
+              payload.ownerFields = res?.values || {};
+            }
+            await ask(`__action:guided_next:${JSON.stringify(payload)}`, "chip", c.label);
+          })();
+          return;
+        }
+        ask(c.send, "chip", c.label);
+      });
+      wrap.appendChild(b);
+    });
+    addNode(wrap);
+    placeDocsDoneAfterProgress();
+  }
+
+  // Trang nhảy sang bước khác trong lúc trợ lý còn chờ giấy tờ → BE hỏi lại với checklist của
+  // bước mới. Lời hỏi cũ phải BIẾN MẤT chứ không chỉ nằm lại phía trên: checklist của nó sai
+  // bước (còn ô căn cước chủ hồ sơ) và hai thẻ QR/Scan giống hệt nhau đều bấm được.
+  // BE xoá bong bóng đó khỏi lịch sử ở cùng lượt, nên khôi phục phiên cũng không thấy lại.
+  function dropStaleDocMethodAsk() {
+    document.querySelectorAll('[data-ask="doc-method"]').forEach((el) => el.remove());
+  }
+
+  function hideStaleDeclarationActions() {
+    document.querySelectorAll([
+      '.chip[data-send="__action:refill"]',
+      '.chip[data-send="__action:add_documents"]',
+    ].join(",")).forEach((button) => {
+      // Nút Điều chỉnh được render sau khi đính xong là action hợp lệ của state done,
+      // không phải chip Kê khai bị lưu lại trong lịch sử chat.
+      if (button.dataset.send === "__action:add_documents"
+          && button.dataset.renderState === "done") return;
+      const wrap = button.closest(".chips");
+      button.remove();
+      if (wrap && !wrap.querySelector("button")) wrap.remove();
+    });
+  }
+
+  // ── Page watcher (docs/07 §2.2): tự nhận đăng-nhập-xong / nộp-thành-công — bỏ chip tay ──
+  let watcherTimer = null;
+  let watcherTicks = 0;
+  let watcherPageStatusInFlight = false;
+  let fallbackChipShown = false;
+  let infoModalTries = 0;
+  let submittedReported = false;
+
+  // Báo BE trạng thái trang (__event:page_status) — BE nhìn tín hiệu THẬT để quyết bước
+  // tiếp (chọn cơ quan / xác nhận modal / nhắc điền chủ hồ sơ / vào kê khai), sidebar
+  // không tự suy diễn. Trang React render dần → chờ đến khi có tín hiệu có nghĩa mới gửi.
+  const pageSignal = (c) => !!(c && (
+    c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
+      || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
+      || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
+      || c.maeAgencyBlock || c.lienThongHome || c.bcaAgencyBlock
+  ));
+  let lastVneidSidebarDebugSignature = "";
+  async function readPageContext() {
+    const [page, modal, business, declaration] = await Promise.all([
+      sendToContent({ action: "getPageContext" }),
+      sendToContent({ action: "getVneidModalContext" }),
+      sendToContent({ action: "getBusinessRuntimeContext" }),
+      sendToContent({ action: "getDeclarationContext" }),
+    ]);
+    const merged = {
+      ...(page || {}),
+      ...(business?.ok ? business : {}),
+      ...(declaration?.ok ? declaration : {}),
+    };
+    if (modal?.ok) {
+      const signature = modal.vneidLoginCodePrompt ? "login-code"
+        : modal.vneidDataSharingPrompt ? "data-sharing"
+          : modal.vneidPasscodePrompt ? "passcode" : "";
+      if (signature && signature !== lastVneidSidebarDebugSignature) {
+        console.info("[TLND-VNeID][sidebar] received-modal-context", {
+          modal: signature,
+          state: lastState,
+          conversationId: api.conversationId || null,
+        });
+        lastVneidSidebarDebugSignature = signature;
+      }
+      return { ...merged, ...modal, ok: true };
+    }
+    if (lastVneidSidebarDebugSignature) {
+      console.info("[TLND-VNeID][sidebar] modal-closed", {
+        previous: lastVneidSidebarDebugSignature,
+        state: lastState,
+      });
+      lastVneidSidebarDebugSignature = "";
+    }
+    return business?.ok ? { ...merged, ok: true } : page;
+  }
+
+  function docsCompletePagePayload(ctx) {
+    return {
+      // Backend phân biệt context vừa đọc thất bại với lệnh giọng nói dùng target đã lưu.
+      pageContextCaptured: !!ctx?.ok,
+      wizardStep: Number(ctx?.wizardStep) || 0,
+      formKind: String(ctx?.formKind || ""),
+      declarationTarget: !!ctx?.declarationTarget,
+      attachmentTarget: !!ctx?.attachmentTarget,
+      businessHost: !!ctx?.businessHost,
+      businessStage: String(ctx?.businessStage || ""),
+    };
+  }
+
+  async function submitDocsComplete(command, source = "system", displayText = "") {
+    const ctx = await readPageContext();
+    const payload = docsCompletePagePayload(ctx);
+    return ask(`${command}:${JSON.stringify(payload)}`, source, displayText);
+  }
+  // Mở từng ô của hộp thoại để đọc lựa chọn là thao tác CÓ HIỆN trên màn hình → nhớ kết quả theo
+  // URL một lúc, các lần gửi page_status kế tiếp (thử lại, kiểm tra tay) không mở ô lần nữa.
+  let maeDialogRead = { url: "", at: 0, data: null };
+  async function readMaeDialogOptions(url) {
+    if (maeDialogRead.data && maeDialogRead.url === url && Date.now() - maeDialogRead.at < 15000) {
+      return maeDialogRead.data;
+    }
+    const res = await sendToContent({ action: "readMaeDialogOptions" });
+    const data = res?.ok && (res.agency || res.process)
+      ? { agency: res.agency || null, process: res.process || null } : null;
+    maeDialogRead = { url, at: Date.now(), data };
+    return data;
+  }
+
+  // Bước chủ hồ sơ: cổng đổ dữ liệu tài khoản (ngày cấp, nơi cấp, SĐT, địa chỉ) vào ô SAU khi trang hiện — đọc
+  // ngay lúc trang vừa mở thấy ô trống / chưa có ô nào, BE tưởng còn thiếu và xin giấy tờ luôn. Còn thiếu thì
+  // đọc lại tới khi số ô đứng yên hai nhịp liền (tối đa ~6 giây) rồi mới báo.
+  async function settleOwnerForm(c) {
+    const ready = (form) => Number(form?.required) > 0 && Number(form?.missing) === 0;
+    let prev = JSON.stringify(c.ownerForm);
+    let still = 0;
+    for (let i = 0; i < 8 && !ready(c.ownerForm); i++) {
+      await new Promise((r) => setTimeout(r, 700));
+      const next = await readPageContext();
+      if (!next?.ok || next.wizardStep !== 1 || !next.ownerForm) break;
+      const sig = JSON.stringify(next.ownerForm);
+      c = { ...c, ownerForm: next.ownerForm };
+      still = sig === prev && Number(next.ownerForm.required) > 0 ? still + 1 : 0;
+      prev = sig;
+      if (still >= 2) break;
+    }
+    return c;
+  }
+
+  async function sendPageStatus(pre) {
+    let c = pre || null;
+    for (let i = 0; !c && i < 12; i++) {
+      const got = await readPageContext();
+      if (got?.ok && pageSignal(got)) { c = got; break; }
+      c = null;
+      await new Promise((r) => setTimeout(r, 900));
+      if (i === 11) c = got; // hết kiên nhẫn → gửi trạng thái cuối (BE im lặng nếu không có gì)
+    }
+    if (!c?.ok) return;
+    // Stepper có thể ở top-frame nhưng khối "Thông tin định danh" nằm trong frame con.
+    // Hỏi riêng toàn tab; portal-dvc chỉ trả lời từ frame thật sự chứa khối này.
+    if (c.wizardStep === 1 && !c.ownerContext) {
+      const owner = await sendToContent({ action: "getOwnerContext" });
+      if (owner?.ok && owner.ownerContext) c.ownerContext = owner.ownerContext;
+    }
+    if (c.wizardStep === 1 && c.ownerForm) c = await settleOwnerForm(c);
+    const pageStatus = {
+      loggedIn: !!c.loggedIn, formKind: c.formKind || "",
+      declarationTarget: !!c.declarationTarget,
+      agencyBlock: !!c.agencyBlock, loginPage: !!c.loginPage,
+      vneidLoginCodePrompt: !!c.vneidLoginCodePrompt,
+      vneidDataSharingPrompt: !!c.vneidDataSharingPrompt,
+      vneidPasscodePrompt: !!c.vneidPasscodePrompt,
+      loginQrMissing: !!c.loginQrMissing,
+      infoModal: !!c.infoModal, wizardStep: c.wizardStep || 0,
+      attachmentTarget: !!c.attachmentTarget,
+      // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
+      maeAgencyBlock: !!c.maeAgencyBlock,
+      // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
+      lienThongHome: !!c.lienThongHome,
+      // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
+      bcaAgencyBlock: !!c.bcaAgencyBlock,
+      bcaAgencyDone: !!c.bcaAgencyDone,
+      businessHost: !!c.businessHost,
+      businessStage: c.businessStage || "",
+      businessProcedureHint: c.businessProcedureHint || "",
+      businessActive: !!c.businessActive,
+      businessResult: c.businessResult || null,
+      // Chủ thể dữ liệu VNeID content đọc từ cổng — BE lưu vào conv, ghi biên bản consent.
+      principal: c.principal || null,
+      // Định danh ở chính khối "Thông tin chủ hồ sơ" — backend dùng để chọn đúng người.
+      ownerContext: c.ownerContext || null,
+      // Số ô bắt buộc / số ô còn trống ở bước chủ hồ sơ — backend quyết định có xin giấy tờ
+      // ngay tại bước này không. Nhánh ủy quyền luôn còn trống 4 ô nên tự rơi vào vế "cần quét".
+      ownerForm: c.ownerForm || null,
+      // Bảng đính kèm văn bản ủy quyền NGAY ở bước chủ hồ sơ — không phải thành phần hồ sơ.
+      authorizationBlock: !!c.authorizationBlock,
+      // Chỉ có khi công dân chủ động bấm kiểm tra lại. Backend dùng cờ này để trả lời
+      // rõ đang còn ở đăng nhập hay chưa tới hồ sơ, thay vì im lặng như watcher nền.
+      manualCheck: !!c.manualCheck,
+    };
+    // Hộp thoại "Chọn trường hợp giải quyết": gửi kèm danh sách nơi xử lý + trường hợp đọc từ
+    // cổng để BE hỏi công dân. KHÔNG nằm trong chữ ký trang của watcher (tránh gửi lặp).
+    if (c.maeAgencyBlock && CLIENT_CAPABILITIES.supportsMaeDialogChoice) {
+      const dialogOptions = await readMaeDialogOptions(c.url || "");
+      if (dialogOptions) pageStatus.maeDialogOptions = dialogOptions;
+    }
+    const hasVneidModal = pageStatus.vneidLoginCodePrompt
+      || pageStatus.vneidDataSharingPrompt || pageStatus.vneidPasscodePrompt;
+    if (hasVneidModal) {
+      console.info("[TLND-VNeID][sidebar] send-page-status", {
+        state: lastState,
+        loginCode: pageStatus.vneidLoginCodePrompt,
+        dataSharing: pageStatus.vneidDataSharingPrompt,
+        passcode: pageStatus.vneidPasscodePrompt,
+      });
+    }
+    const reply = await ask(`__event:page_status:${JSON.stringify(pageStatus)}`, "system");
+    if (hasVneidModal) {
+      console.info("[TLND-VNeID][sidebar] backend-reply", JSON.stringify({
+        received: !!reply,
+        state: reply?.state || lastState,
+        hasGuide: !!reply?.display_md,
+        actions: (reply?.actions || []).map((action) => action.type),
+      }));
+    }
+  }
+
+  async function verifyPortalState() {
+    let ctx = null;
+    try {
+      ctx = await readPageContext();
+    } catch (error) {
+      console.warn("[TLND] Không đọc được trạng thái trang khi công dân yêu cầu kiểm tra", error);
+    }
+    // Không đọc được content script cũng là "chưa xác minh được", tuyệt đối không được
+    // suy ra đã đăng nhập. Gửi context rỗng để backend trả lời rõ thay vì nút bấm im lặng.
+    await sendPageStatus({ ...(ctx?.ok ? ctx : { ok: true }), manualCheck: true });
+  }
+
+  // ── Luồng dẫn từng bước: bấm hộ nút của cổng ──
+  // Hai hàm này CHẠY NGOÀI lượt ask() (runActions gọi qua setTimeout 0). Gọi ask() từ trong
+  // runActions là tự khoá: cờ busy của lượt ngoài chưa tắt nên lượt mới chỉ xếp hàng chờ.
+  const GUIDED_NEXT_BLOCKED_MS = 3600;
+  const GUIDED_NEXT_WAIT_MS = 15000;
+  async function runGuidedNext(phase, expect) {
+    setStatus("Đang chuyển bước trên trang…");
+    // Bấm và dò song song: engine content còn rình toast vài giây, chờ nó xong mới dò thì
+    // trường hợp THÀNH CÔNG (đa số) cũng phải chờ đủ chừng ấy.
+    const press = sendToContent({ action: "guidedClickNext" });
+    // Bấm xong chưa chắc đã qua bước (cổng có thể chặn im lặng) → đối chiếu số bước thật
+    // trên thanh bước, dùng chính bộ đọc mà watcher trang đang dùng.
+    let wizardStep = 0;
+    let moved = !expect;
+    let res = null;
+    press.then((r) => { res = r || {}; }, () => { res = {}; });
+    // Cổng nháy lời chặn / nút bị khoá → thôi chờ sau nhịp cũ (~3,6 giây). Không có lời chặn mà trang còn
+    // quay tải (máy chủ cổng chậm) thì chờ tiếp tới GUIDED_NEXT_WAIT_MS mới kết luận chưa qua bước.
+    const started = Date.now();
+    while (!moved) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      wizardStep = Number(ctx?.wizardStep) || 0;
+      if (wizardStep === expect) { moved = true; break; }
+      const elapsed = Date.now() - started;
+      const blocked = !!res && (!!res.message || res.clicked === false);
+      if ((blocked && elapsed >= GUIDED_NEXT_BLOCKED_MS) || elapsed >= GUIDED_NEXT_WAIT_MS) break;
+    }
+    if (!moved && !res) res = await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
+    setStatus("");
+    await ask(`__action:guided_step_report:${JSON.stringify({
+      phase, ok: moved, message: res?.message || "", wizardStep,
+    })}`, "system");
+    // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
+    // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
+    if (moved && (phase === "owner" || phase === "field_review_owner")) await verifyPortalState();
+  }
+
+  // Giấy ủy quyền đính vào ô RIÊNG ở bước chủ hồ sơ, ngay sau khi điền xong hai khối.
+  // Chạy ngoài lượt ask() như hai hàm dưới — xem chú thích ở trên.
+  async function runAttachAuthorizationDoc(a) {
+    setStatus("📎 Đang đính kèm giấy ủy quyền…");
+    let res = null;
+    let error = "";
+    try {
+      const raw = await fetchSessionFilesAsPayload(a.session_id || uploadSid);
+      const file = (raw || []).find((f) => f.name === String(a.fileName || ""));
+      // Không lấy đại tệp khác khi không khớp tên: đính nhầm giấy vào ô ủy quyền còn tệ hơn
+      // để trống, vì cán bộ nhìn thấy ô đã có tệp thì không kiểm lại nữa.
+      if (!file) error = "không thấy tệp giấy ủy quyền trong phiên";
+      else res = await sendToContent({ action: "attachAuthorizationFile", file });
+    } catch (e) {
+      error = String(e?.message || e);
+    }
+    setStatus("");
+    await ask(`__action:authorization_attach_report:${JSON.stringify({
+      ok: !!res?.ok,
+      error: error || res?.error || (res ? "" : "trang chưa có dòng giấy ủy quyền"),
+    })}`, "system");
+  }
+
+  // Bước chủ hồ sơ: tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" + Xác nhận hộp thoại ghi đè, rồi báo BE.
+  async function runSaveOwnerProfile() {
+    setStatus("💾 Đang lưu vào Thông tin định danh…");
+    let res = null;
+    try {
+      res = await sendToContent({ action: "saveOwnerProfile" });
+    } catch (e) {
+      res = { ok: false, error: String(e?.message || e) };
+    }
+    setStatus("");
+    await ask(`__action:save_owner_profile_report:${JSON.stringify({
+      ok: !!res?.ok,
+      error: res?.error || (res ? "" : "không thấy ô Lưu thông tin trên trang"),
+    })}`, "system");
+  }
+
+  // Kê khai eForm tư pháp (vòng bổ sung ô): bấm "Xem trước" rồi báo BE. Cổng không mở bản xem trước khi còn ô
+  // bắt buộc trống — lúc đó chấm đỏ hiện trong tờ khai, tô lại để BE biết còn mấy ô đỏ.
+  // Trợ lý đang tự bấm Xem trước → tín hiệu "bản xem trước vừa mở" của trang là của cú bấm này, không báo trùng.
+  let previewByAssistant = false;
+  let previewSeenWhileAssistant = false;
+  async function runDeclarationPreview(required) {
+    previewByAssistant = true;
+    previewSeenWhileAssistant = false;
+    try {
+      setStatus("Đang mở xem trước tờ khai…");
+      const res = await sendToContent({ action: "declarationPreview" });
+      let stats = null;
+      if (!res?.opened) {
+        await new Promise((r) => setTimeout(r, 400)); // chấm đỏ của cổng hiện sau cú bấm một nhịp
+        const marked = await sendToContent({ action: "fieldReviewMark", required });
+        stats = marked?.stats || null;
+      }
+      setStatus("");
+      await ask(`__action:field_review_preview_report:${JSON.stringify({
+        opened: !!res?.opened, message: res?.message || "", stats,
+      })}`, "system");
+      // Cổng mở bản xem trước MUỘN, sau lúc trợ lý đã báo chưa mở được → báo lại là đã mở.
+      if (!res?.opened && previewSeenWhileAssistant) reportPreviewSeen();
+    } finally {
+      previewByAssistant = false;
+    }
+  }
+  function reportPreviewSeen() {
+    void ask(`__action:field_review_preview_report:${JSON.stringify({ opened: true, source: "page" })}`, "system");
+  }
+  // Công dân TỰ bấm "Xem trước" trên trang (hoặc bản xem trước mở muộn) → trợ lý cũng nhận ra và sang bước
+  // Xác nhận. Chỉ ở bước tờ khai; BE tự im nếu đã ở bước xem trước/xác nhận hoặc không có vòng bổ sung ô.
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.action !== "declarationPreviewSeen") return;
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return;
+    if (previewByAssistant) { previewSeenWhileAssistant = true; return; }
+    if (!["reviewing", "attaching"].includes(lastState)) return;
+    markActivity();
+    reportPreviewSeen();
+  });
+
+  // Bấm "Xác nhận" trong bản xem trước rồi đối chiếu thanh bước: sang Thành phần hồ sơ thật mới báo được.
+  async function runDeclarationConfirm(expect) {
+    setStatus("Đang xác nhận tờ khai…");
+    const res = await sendToContent({ action: "declarationConfirm" });
+    let moved = false;
+    for (let i = 0; i < 20 && res?.clicked && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      moved = !expect || Number(ctx?.wizardStep) === expect;
+    }
+    setStatus("");
+    await ask(`__action:field_review_confirm_report:${JSON.stringify({
+      ok: moved, noPreview: !!res?.noPreview, message: res?.message || "",
+    })}`, "system");
+    if (moved) await verifyPortalState(); // đẩy trạng thái trang lên ngay để bước đính kèm chạy liền
+  }
+
+  async function runGuidedSubmit() {
+    setStatus("Đang gửi hồ sơ…");
+    const res = await sendToContent({ action: "guidedSubmit" });
+    setStatus("");
+    // Nộp được hay không do chính cổng trả lời (màn xác nhận / event submitted). Ở đây chỉ
+    // báo cú bấm có ăn không: không bấm được, hoặc cổng nháy toast báo thiếu.
+    await ask(`__action:guided_submit_report:${JSON.stringify({
+      ok: !!res?.clicked && !res?.message, message: res?.message || "",
+      // Trang nộp một trang soát ô bắt buộc trước khi bấm: thiếu thì không bấm, trả danh sách ô.
+      missing: Array.isArray(res?.missing) ? res.missing : [],
+    })}`, "system");
+  }
+
+  // Gạt công tắc "cách nhận kết quả" trên trang rồi báo BE. Ô phụ mọc ra sau khi bật (địa chỉ,
+  // người nhận…) thì engine đọc dấu * của chính cổng và trả về đây. Riêng trang nộp một trang của cổng
+  // DVC mới, engine điền khối người nhận theo người yêu cầu trên tờ khai trước khi soi ô trống.
+  async function runSelectResultMethod(a) {
+    setStatus("Đang chọn cách nhận kết quả…");
+    const res = await sendToContent({
+      action: "selectResultMethod", label: a.label || "", allLabels: a.allLabels || [],
+      needsInput: !!a.needsInput,
+    });
+    setStatus("");
+    await ask(`__action:result_method_report:${JSON.stringify({
+      method: a.method || "",
+      ok: !!res?.ok,
+      // Trang nộp một trang của cổng DVC mới: ô người nhận đã điền theo người yêu cầu trên tờ khai.
+      filled: Array.isArray(res?.filled) ? res.filled : [],
+      missing: Array.isArray(res?.missing) ? res.missing : [],
+      error: res?.error || "",
+    })}`, "system");
+  }
+
+  // ── Cổng liên thông (6 bước): bấm chuyển bước / quay lại, đọc + đổi cách nhận kết quả, bấm Hoàn thành ──
+  // Chạy NGOÀI lượt ask() (runActions gọi qua setTimeout 0) như runGuidedNext.
+  // Bước đã báo BE gần nhất của cổng dẫn từng bước (liên thông: lienThongStep; Bộ Xây dựng: wizardStep).
+  let lastFamilyStep = 0;
+  async function runLienThongMove(a) {
+    const expect = Number(a.expect) || 0;
+    setStatus(a.back ? "Đang quay lại bước trước…" : "Đang chuyển bước trên trang…");
+    const press = sendToContent({ action: "lienThongMove", back: !!a.back });
+    let step = 0;
+    let moved = false;
+    for (let i = 0; i < 16 && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      step = Number(ctx?.lienThongStep) || 0;
+      moved = !!expect && step === expect;
+    }
+    const res = moved ? null : await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
+    // Cổng chặn ở Kê khai thì tô vàng ô bắt buộc còn trống → tô lại theo 3 màu, đếm cho BE mời bổ sung.
+    let stats = null;
+    if (!moved && a.fieldReview) {
+      const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+      stats = marked?.stats || null;
+    }
+    if (moved) lastFamilyStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
+    setStatus("");
+    await ask(`__action:lt_step_report:${JSON.stringify({
+      ok: moved, expect, step, back: !!a.back, message: res?.message || "", stats,
+    })}`, "system");
+  }
+
+  async function runLienThongResult(a) {
+    const set = a.type === "lien_thong_result_set";
+    setStatus(set ? "Đang đổi cách nhận kết quả…" : "Đang đọc cách nhận kết quả…");
+    const res = await sendToContent(set
+      ? { action: "lienThongResultSet", name: a.name, value: a.value, groups: a.groups || [] }
+      : { action: "lienThongResultScan", groups: a.groups || [] });
+    setStatus("");
+    const report = { groups: res?.groups || [], missing: res?.missing || [] };
+    if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
+    await ask(`__action:lt_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runLienThongSubmit() {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ action: "lienThongSubmit" });
+    setStatus("");
+    await ask(`__action:lt_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, missing: res?.missing || [], message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
+  // ── Cổng Bộ Xây dựng (wizard 4 bước): bấm Tiếp tục, đọc + đổi hình thức nhận kết quả, bấm Nộp hồ sơ ──
+  // Chạy NGOÀI lượt ask() như runGuidedNext. Bước đang mở = wizardStep (content.js đọc mat-step-header).
+  async function runBxdMove(a) {
+    const expect = Number(a.expect) || 0;
+    setStatus("Đang chuyển bước trên trang…");
+    const press = sendToContent({ action: "bxdMove" });
+    let step = 0;
+    let moved = false;
+    for (let i = 0; i < 16 && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      step = Number(ctx?.wizardStep) || 0;
+      moved = !!expect && step === expect;
+    }
+    const res = moved ? null : await press;
+    // Form.io chặn ở Thông tin hồ sơ thì báo lỗi dưới từng ô → tô lại theo 3 màu, đếm cho BE mời bổ sung.
+    let stats = null;
+    if (!moved && a.fieldReview) {
+      const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+      stats = marked?.stats || null;
+    }
+    if (moved) lastFamilyStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
+    setStatus("");
+    await ask(`__action:bxd_step_report:${JSON.stringify({
+      ok: moved, expect, step, message: res?.message || "", stats,
+    })}`, "system");
+  }
+
+  async function runBxdResult(a) {
+    const set = a.type === "bxd_result_set";
+    setStatus(set ? "Đang đổi hình thức nhận kết quả…" : "Đang đọc hình thức nhận kết quả…");
+    const res = await sendToContent(set
+      ? { action: "bxdResultSet", name: a.name, value: a.value, groups: a.groups || [] }
+      : { action: "bxdResultScan", groups: a.groups || [] });
+    setStatus("");
+    const report = { groups: res?.groups || [], missing: res?.missing || [] };
+    if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
+    await ask(`__action:bxd_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runBxdSubmit() {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ action: "bxdSubmit" });
+    setStatus("");
+    await ask(`__action:bxd_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, missing: res?.missing || [], message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
+  let lastPageSig = "";
+  // Bước wizard đã báo BE lúc state done (result_step_watch) — chỉ báo lại khi số bước đổi.
+  let doneWizardStep = 0;
+  const WATCH_STATES = [
+    "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
+    "owner_waiting_next", "attaching", "done", "filling",
+    // Đang hỏi nơi xử lý / trường hợp: công dân tự bấm Đồng ý trên cổng thì BE phải biết.
+    "choose_mae_dialog",
+  ];
+  // Sau khi trợ lý điền chủ hồ sơ, công dân có thể tự gõ nốt ô còn trống trên trang thay vì trả lời: số ô còn trống
+  // đổi thì báo BE để BE tự thấy đủ và đưa nút sang bước tiếp. Chỉ ở owner_waiting_next — các state khác giữ chữ ký cũ.
+  const ownerFormSig = (ctx) => (lastState === "owner_waiting_next" && ctx.wizardStep === 1 && ctx.ownerForm
+    ? `${Number(ctx.ownerForm.required) || 0}/${Number(ctx.ownerForm.missing) || 0}` : "");
+  const isWatchedState = () => WATCH_STATES.includes(lastState)
+    && (lastState !== "filling" || lastReplyData?.procedure_key === "dang-ky-kinh-doanh");
+  function schedulePageWatcher() {
+    if (!isWatchedState()) {
+      if (watcherTimer) { clearInterval(watcherTimer); watcherTimer = null; }
+      return;
+    }
+    if (watcherTimer) return; // đang chạy
+    watcherTicks = 0;
+    watcherTimer = setInterval(async () => {
+      watcherTicks += 1;
+      // Không tự hết hạn watcher theo từng chặng. Công dân có thể cần nhiều phút để đăng
+      // nhập, chụp giấy tờ, rà soát chủ hồ sơ/kê khai hoặc nộp hồ sơ; nếu dừng sau 60 nhịp
+      // thì lần chuyển trang sau đó sẽ bị bỏ lỡ. Vòng đời chung đã được chặn bởi idle timeout,
+      // đổi phiên và returnToStart nên không cần thêm một timeout cục bộ dễ làm đứt luồng.
+      if (!isWatchedState()) {
+        clearInterval(watcherTimer); watcherTimer = null; return;
+      }
+      if (lastState !== "done") doneWizardStep = 0;
+      const ctx = await readPageContext();
+      if (!ctx?.ok) return;
+      loginPageNow = !!ctx.loginPage;
+      // Trang SPA đổi bước không reload → theo dõi CHỮ KÝ tín hiệu, đổi mới báo BE
+      // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
+      const businessResultSig = ctx.businessResult
+        ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
+      const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
+      // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
+      // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
+      const attachRecoveryProbe = lastState === "attaching"
+        && (ctx.wizardStep === 3 || ctx.attachmentTarget)
+        && watcherTicks % 5 === 0;
+      // Cổng liên thông / Bộ Xây dựng: đổi bước (công dân tự bấm trên trang) thì báo ở MỌI state đang theo dõi — trợ lý
+      // dẫn tiếp từ bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
+      const familyStep = lastReplyData?.lien_thong ? Number(ctx.lienThongStep) || 0
+        : lastReplyData?.bxd ? Number(ctx.wizardStep) || 0 : 0;
+      const stepMoved = !!familyStep && familyStep !== lastFamilyStep;
+      if (stepMoved && !watcherPageStatusInFlight) {
+        lastFamilyStep = familyStep;
+        lastPageSig = sig;
+        watcherPageStatusInFlight = true;
+        try {
+          await sendPageStatus(ctx);
+        } finally {
+          watcherPageStatusInFlight = false;
+        }
+      } else if ((lastState === "guide_login" || watchesDocsTarget
+          || lastState === "owner_waiting_next" || lastState === "attaching"
+          || (lastState === "filling" && ctx.businessHost))
+          && pageSignal(ctx) && (sig !== lastPageSig || attachRecoveryProbe)
+          && !watcherPageStatusInFlight) {
+        lastPageSig = sig;
+        watcherPageStatusInFlight = true;
+        // QR guide đã thu gọn panel nhưng giữ iframe sống. Khi một trong ba modal xác thực
+        // xuất hiện, đánh thức đúng iframe/conversation cũ trước khi phát câu hướng dẫn.
+        if (lastState === "guide_login" && (
+          ctx.vneidLoginCodePrompt || ctx.vneidDataSharingPrompt || ctx.vneidPasscodePrompt
+          || ctx.loginQrMissing
+        )) restorePanel();
+        try {
+          await sendPageStatus(ctx);
+        } finally {
+          watcherPageStatusInFlight = false;
+        }
+      } else if (lastState === "guide_login" && watcherTicks >= 17 && !fallbackChipShown) {
+        // ~60s chưa tự nhận ra → tự đọc lại DOM một lần thay vì hiện nút cho công dân bấm
+        // (nút "Kiểm tra lại trang hiện tại" đã bỏ khỏi UI, yêu cầu 22/09/2026).
+        fallbackChipShown = true;
+        void verifyPortalState();
+      } else if (!submittedReported && (
+        (lastState === "done" && (ctx.submitted || ctx.submittedToast))
+        // Toast "Gửi hồ sơ thành công" là lưới đỡ khi cú bấm nộp lọt: BE báo được nhận ở mọi bước
+        // (submit_anywhere) thì báo luôn, không chờ tới bước cuối. Cổng khác vẫn như cũ.
+        || (ctx.submittedToast && lastReplyData?.submit_anywhere)
+      )) {
+        // Chốt TRƯỚC khi gọi BE: trang thành công giữ nguyên text rất lâu; nếu để reply
+        // state=done khởi động watcher lại thì cùng hồ sơ sẽ sinh nhiều card hoàn tất.
+        submittedReported = true;
+        clearInterval(watcherTimer); watcherTimer = null;
+        if (ctx.submittedToast) void sendToContent({ action: "ackSubmitToast" });
+        ask("__event:submitted", "system");
+      } else if (lastState === "done" && lastReplyData?.result_step_watch && ctx.wizardStep
+          && ctx.wizardStep !== doneWizardStep && !watcherPageStatusInFlight) {
+        // Đính kèm xong (state done) mà công dân TỰ bấm chuyển bước trên cổng (không qua nút của trợ lý)
+        // → báo BE để vẫn dẫn bước nhận kết quả. Xét SAU nhánh nộp thành công: màn đã nộp cũng đổi bước.
+        doneWizardStep = ctx.wizardStep;
+        watcherPageStatusInFlight = true;
+        try {
+          await sendPageStatus(ctx);
+        } finally {
+          watcherPageStatusInFlight = false;
+        }
+      }
+    }, 3500);
+  }
+
+  // ── Cards (docs/03 §2.1) ──
+  function renderCard(card) {
+    if (card.kind === "service_list") return renderServiceList(card);
+    if (card.kind === "location_picker") return renderLocationPicker(card);
+    if (card.kind === "doc_options") return renderDocOptions(card);
+    if (card.kind === "result_methods") return renderResultMethods(card);
+    if (card.kind === "lt_result_groups") return renderLtResultGroups(card);
+    if (card.kind === "mae_dialog_choice") return renderMaeDialogChoice(card);
+    // Contract cũ từng xin SĐT sau khi nộp hồ sơ. Đã ngừng hoàn toàn; bỏ qua cả card
+    // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
+    if (card.kind === "phone_form") return;
+    if (card.kind === "consent_form") return renderConsentForm(card);
+    if (card.kind === "rating") return renderRatingCard(card);
+    console.warn("[TLND] card chưa hỗ trợ:", card.kind);
+  }
+
+  // Card đánh giá trải nghiệm (mockup 5) — hiện sau khi nộp thành công, TRƯỚC 2 nút đăng xuất.
+  // 2 bước làm TRỌN trong card: chọn 1/5 mức → hiện chip lý do (nhánh theo mức) + ô ý kiến +
+  // nút NÓI (ASR). Gửi/Bỏ qua → 1 action về BE. Ẩn danh, không bắt buộc.
+  const RATING_FACE_COLOR = { 5: "#12a06a", 4: "#5da76a", 3: "#c2941f", 2: "#c4702f", 1: "#bd3b2e" };
+  function ratingFaceSvg(v) {
+    const c = RATING_FACE_COLOR[v] || "#12a06a";
+    const mouth = v === 5
+      ? `<path d="M17 37 Q32 59 47 37 Z" fill="${c}"/>`
+      : `<path d="${{ 4: "M21 41 Q32 51 43 41", 3: "M22 44 L42 44", 2: "M22 48 Q32 41 42 48", 1: "M19 51 Q32 37 45 51" }[v]}" stroke="${c}" stroke-width="3.8" stroke-linecap="round" fill="none"/>`;
+    const eye = v === 5
+      ? `<path d="M17 29 Q22.5 23 28 29 M36 29 Q41.5 23 47 29" stroke="${c}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`
+      : v <= 2
+        ? `<path d="M18 26 L27 30 M46 26 L37 30" stroke="${c}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`
+        : `<circle cx="22.5" cy="28" r="3.6" fill="${c}"/><circle cx="41.5" cy="28" r="3.6" fill="${c}"/>`;
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">${eye}${mouth}</svg>`;
+  }
+  function renderRatingCard(card) {
+    const scale = card.scale || [];
+    const goodThreshold = card.goodThreshold || 4;
+    const esc = window.escapeHtml;
+    let level = null;
+    const reasons = new Set();
+    let note = "";
+    let capturing = false;
+    let thanked = false;
+    let curReasons = [];
+
+    const el = document.createElement("div");
+    el.className = "rating-card";
+    addNode(el);
+
+    const syncNote = () => { const ta = el.querySelector(".rating-note"); if (ta) note = ta.value; };
+    const stopCapture = () => {
+      if (!capturing) return;
+      capturing = false; ratingNoteSink = null;
+      try { stopVoice(); } catch (_) { /* bỏ qua */ }
+    };
+    const finish = (action, label) => {
+      stopCapture();
+      // Đổi NGAY TRONG card sang trạng thái "cảm ơn" (không đẻ bong bóng echo/cảm ơn) rồi mới
+      // gửi action. Card vẫn là 1 khối tự morph.
+      thanked = true;
+      draw();
+      ask(action, "chip", label);
+    };
+
+    // Sau mỗi lần card ĐỔI nội dung, đưa phần mới vào tầm nhìn (cuộn xuống đáy khung chat) —
+    // card nằm cuối trong lúc đánh giá nên cuộn đáy là thấy đúng nút vừa hiện.
+    const scrollDown = () => requestAnimationFrame(() => {
+      $messages.scrollTop = $messages.scrollHeight;
+    });
+
+    function draw() {
+      // Trạng thái cuối: cảm ơn — thay TOÀN BỘ nội dung (thang mức đã biến mất).
+      if (thanked) {
+        el.innerHTML = `<div class="rating-thanks">
+          <span class="rating-thanks-face">${ratingFaceSvg(level || 5)}</span>
+          <div class="rating-thanks-tt">${esc(card.thanks || "Cảm ơn công dân đã đánh giá!")}</div>
+          <div class="rating-thanks-sub">${esc(card.thanksSub || "")}</div></div>`;
+        scrollDown();
+        return;
+      }
+      // BƯỚC 1 — chọn mức (thái độ). Chưa chọn thì CHỈ hiện thang mức.
+      if (level == null) {
+        el.innerHTML = `
+          <div class="rating-title">${esc(card.title || "")}</div>
+          <div class="rating-sub">${esc(card.subtitle || "")}</div>
+          <div class="rating-scale">
+            ${scale.map((m) => `
+              <button type="button" class="rating-opt" data-lv="${m.value}" style="--rc:${RATING_FACE_COLOR[m.value] || "#12a06a"}">
+                <span class="rating-face">${ratingFaceSvg(m.value)}</span>
+                <span class="rating-nm">${esc(m.label)}</span>
+                <span class="rating-chk">✓</span></button>`).join("")}
+          </div>
+          <div class="rating-privacy">🔒 ${esc(card.privacy || "")}</div>
+          <div class="rating-actions">
+            <button type="button" class="rating-skip" data-skip="1">${esc(card.skipLabel || "Bỏ qua")}</button>
+          </div>`;
+        scrollDown();
+        return;
+      }
+      // BƯỚC 2 — lý do. Thang mức BIẾN MẤT, chỉ còn tóm tắt mức đã chọn (+ Chọn lại) và phần lý do.
+      const good = level >= goodThreshold;
+      curReasons = good ? (card.reasonsGood || []) : (card.reasonsBad || []);
+      const showMic = !!(voiceCfg && voiceCfg.asr);
+      const picked = scale.find((s) => s.value === level);
+      el.innerHTML = `
+        <div class="rating-picked" style="--rc:${RATING_FACE_COLOR[level] || "#12a06a"}">
+          <span class="rating-face">${ratingFaceSvg(level)}</span>
+          <span class="rating-picked-nm">${esc(picked ? picked.label : "")}</span>
+          <button type="button" class="rating-change" data-change="1">Chọn lại</button>
+        </div>
+        <div class="rating-reason-h">${esc(good ? (card.reasonPromptGood || "") : (card.reasonPromptBad || ""))}</div>
+        <div class="rating-sub">${esc(card.reasonHint || "")}</div>
+        <div class="rating-chips">
+          ${curReasons.map((t, k) => `<button type="button" class="rating-chip${reasons.has(t) ? " sel" : ""}" data-rs="${k}">
+            <span class="rating-bx">${reasons.has(t) ? "✓" : ""}</span><span>${esc(t)}</span></button>`).join("")}
+        </div>
+        <textarea class="rating-note" rows="2" placeholder="${esc(card.notePlaceholder || "")}">${esc(note)}</textarea>
+        ${showMic ? `<button type="button" class="rating-mic${capturing ? " on" : ""}" data-mic="1">🎤 ${esc(capturing ? "Đang nghe… bấm để dừng" : (card.voiceHint || "Nói ý kiến"))}</button>` : ""}
+        <div class="rating-privacy">🔒 ${esc(card.privacy || "")}</div>
+        <div class="rating-actions">
+          <button type="button" class="rating-skip" data-skip="1">${esc(card.skipLabel || "Bỏ qua")}</button>
+          <button type="button" class="rating-submit" data-submit="1">${esc(card.submitLabel || "Gửi")} ➤</button>
+        </div>`;
+      scrollDown();
+    }
+
+    function toggleMic() {
+      if (!voiceCfg || !voiceCfg.asr) return;
+      if (capturing) { stopCapture(); draw(); return; }
+      syncNote();
+      capturing = true;
+      ratingNoteSink = (text, isFinal) => {
+        const ta = el.querySelector(".rating-note");
+        if (!ta) return;
+        if (isFinal) {
+          note = (note ? `${note} ` : "") + text;
+          ta.value = note;
+          capturing = false; ratingNoteSink = null; draw();
+        } else {
+          ta.value = (note ? `${note} ` : "") + text; // xem trước phần đang nghe
+        }
+      };
+      draw();
+      startVoice();
+    }
+
+    // Chốt đánh giá đầy đủ (mức + lý do + ý kiến) — dùng cho cả nút Gửi và Bỏ-qua-ở-bước-2.
+    const submitRating = () => {
+      syncNote();
+      const label = scale.find((s) => s.value === level)?.label || "Đã đánh giá";
+      finish(`__action:rate:${JSON.stringify({ level, reasons: [...reasons], note: note.trim() })}`, `Đánh giá: ${label}`);
+    };
+
+    el.addEventListener("click", (e) => {
+      const opt = e.target.closest("[data-lv]");
+      if (opt) {
+        level = Number(opt.getAttribute("data-lv")); reasons.clear(); draw();
+        // LOG mức NGAY (bước 1), chạy nền — dù công dân bỏ dở bước 2 thì mức vẫn được ghi.
+        // Gọi thẳng api.ask (không qua ask() UI) để không nháy typing / không kéo cuộn.
+        void api.ask(`__action:rate_level:${JSON.stringify({ level })}`, {
+          source: "chip", clientContext: { capabilities: CLIENT_CAPABILITIES },
+        }).catch(() => {});
+        return;
+      }
+      if (e.target.closest("[data-change]")) { // Chọn lại → về BƯỚC 1 (thang mức)
+        stopCapture(); syncNote(); level = null; reasons.clear(); draw(); return;
+      }
+      const chip = e.target.closest("[data-rs]");
+      if (chip) { const t = curReasons[Number(chip.getAttribute("data-rs"))]; if (t) { reasons.has(t) ? reasons.delete(t) : reasons.add(t); draw(); } return; }
+      if (e.target.closest("[data-mic]")) { toggleMic(); return; }
+      if (e.target.closest("[data-skip]")) {
+        // Bước 2 (đã chọn mức) → Bỏ qua = chốt GIỮ mức, không lý do. Bước 1 → bỏ qua hẳn.
+        if (level == null) finish("__action:rate_skip", "Bỏ qua đánh giá");
+        else submitRating();
+        return;
+      }
+      if (e.target.closest("[data-submit]")) submitRating();
+    });
+    el.addEventListener("input", (e) => { if (e.target.classList.contains("rating-note")) note = e.target.value; });
+
+    draw();
+  }
+
+  // Card xin phép xử lý dữ liệu cá nhân (Luật 91/2025) — chữ nghĩa 100% server-driven,
+  // FE chỉ dựng checkbox + nút. Tích đủ 2 ô mới mở nút Đồng ý; toàn văn luật nằm trong
+  // khối mở rộng (sidebar 400px không dùng modal).
+  function renderConsentForm(card) {
+    const el = document.createElement("div");
+    el.className = "consent-card";
+    // Chế độ tiếng Mông: BE gắn card.hmong (bản HỖ TRỢ HIỂU — tiếng Việt vẫn là bản pháp lý
+    // chính, toàn văn Điều 4 giữ tiếng Việt). Dòng Mông nghiêng dưới từng phần.
+    const hm = card.hmong || null;
+    const hmDiv = (text, cls = "c-hm") => (hm && text
+      ? `<div class="${cls}">${window.escapeHtml(text)}</div>` : "");
+    const docs = (card.documents || []).map((d) => `
+      <div class="cdoc"><span class="ci">${window.escapeHtml(d.icon || "📄")}</span>
+        <span class="cn">${window.escapeHtml(d.name)}${hm && d.nameHmong
+          ? `<i class="cn-hm">${window.escapeHtml(d.nameHmong)}</i>` : ""}</span>${d.sides === 2 ? '<span class="ctag">2 mặt</span>' : ""}</div>`).join("");
+    const checks = (card.checks || []).map((t, i) => `
+      <label class="ccheck"><input type="checkbox" data-i="${i}" checked>
+        <span>${window.escapeHtml(t)}${hm?.checks?.[i]
+          ? `<i class="cn-hm">${window.escapeHtml(hm.checks[i])}</i>` : ""}</span></label>`).join("");
+    el.innerHTML = `
+      <span class="cbadge">🔒 Xác nhận trên Trợ lý nhân dân</span>
+      <div class="ctitle">Cho phép em đọc giấy tờ và tự động điền biểu mẫu</div>
+      ${hmDiv(hm?.title, "ctitle-hm")}
+      <div class="ctext">${window.renderMarkdown(card.intro_md || "")}${hmDiv(hm?.intro_md)}</div>
+      <div class="cdocs-box">
+        <div class="clist-t">📋 Giấy tờ em sẽ đọc — ${window.escapeHtml(card.procedure || "thủ tục này")}${hm?.docs_title
+          ? ` <i class="cn-hm">${window.escapeHtml(hm.docs_title)}</i>` : ""}</div>
+        <div class="cdocs">${docs}</div>
+      </div>
+      <!-- Phạm vi + mục đích: nội dung giữ nguyên (ô tích 1 dẫn chiếu "phạm vi, mục đích nêu trên"), chỉ thu gọn
+           như khối Điều 4 cho thẻ đỡ dài; công dân bấm là mở ra đọc đủ. -->
+      <details class="clegal cinfo"><summary>Phạm vi, mục đích xử lý dữ liệu</summary>
+        <div class="clegal-b">
+          <div class="cscope">${window.renderMarkdown(card.scope_md || "")}${hmDiv(hm?.scope_md)}</div>
+          <div class="cpurpose">${window.renderMarkdown(card.purpose_md || "")}${hmDiv(hm?.purpose_md)}</div>
+        </div></details>
+      <details class="clegal"><summary>Quyền, nghĩa vụ của chủ thể dữ liệu (Điều 4, Luật 91/2025/QH15)${hm?.legal_title
+        ? ` <i class="cn-hm">${window.escapeHtml(hm.legal_title)}</i>` : ""}</summary>
+        <div class="clegal-b">${window.renderMarkdown(card.legal_md || "")}</div></details>
+      <button type="button" class="chip callall">✓ Chọn tất cả${hm?.select_all
+        ? ` · ${window.escapeHtml(hm.select_all)}` : ""}</button>
+      ${checks}
+      <div class="cactions">
+        <button type="button" class="chip cdecline">${window.escapeHtml(card.decline_label || "Không đồng ý · Tự nhập")}${hm?.decline_label
+          ? `<span class="chip-hm">${window.escapeHtml(hm.decline_label)}</span>` : ""}</button>
+        <button type="button" class="chip solid caccept" disabled>${window.escapeHtml(card.accept_label || "Đồng ý và tự động điền")}${hm?.accept_label
+          ? `<span class="chip-hm">${window.escapeHtml(hm.accept_label)}</span>` : ""}</button>
+      </div>
+      <div class="cver">Sự đồng ý được ghi nhật ký, công dân rút lại được bất cứ lúc nào.${hmDiv(hm?.ver_note)}</div>`;
+    const boxes = [...el.querySelectorAll('input[type="checkbox"]')];
+    const $accept = el.querySelector(".caccept");
+    const sync = () => { $accept.disabled = !boxes.every((b) => b.checked); };
+    boxes.forEach((b) => b.addEventListener("change", sync));
+    // Hai ô cam kết tích sẵn để công dân chỉ cần bấm "Đồng ý"; vẫn bỏ tích được (nút Đồng ý khoá lại).
+    // Báo `prechecked` để biên bản ghi đúng là ô được tích sẵn, không phải công dân tự tích.
+    sync();
+    el.querySelector(".callall").addEventListener("click", () => {
+      boxes.forEach((b) => { b.checked = true; });
+      sync();
+    });
+    const finish = (accepted, label, labelHmong) => {
+      el.querySelectorAll("button, input").forEach((x) => { x.disabled = true; });
+      addUserText(label, labelHmong);
+      ask(`__action:consent:${JSON.stringify({
+        accepted, checks: boxes.map((b) => b.checked), prechecked: true,
+      })}`, "chip", label);
+    };
+    const viLabel = (btn, fallback) => btn.childNodes[0]?.textContent?.trim() || fallback;
+    $accept.addEventListener("click", () => finish(true, viLabel($accept, "Đồng ý và tự động điền"),
+      card.hmong?.accept_label));
+    const $decline = el.querySelector(".cdecline");
+    $decline.addEventListener("click", () => finish(false, viLabel($decline, "Không đồng ý · Tự nhập"),
+      card.hmong?.decline_label));
+    addNode(el);
+  }
+
+  // Công dân trả lời thẻ xin phép BẰNG LỜI: thẻ đổi theo (đồng ý → tích đủ ô) và khoá lại, kèm dòng
+  // ghi nhận, để không còn nút bấm được ở một câu hỏi đã trả lời xong.
+  function markConsentVerbal(accepted) {
+    const el = [...document.querySelectorAll(".consent-card")].pop();
+    if (!el || el.dataset.answered) return;
+    el.dataset.answered = "1";
+    if (accepted) el.querySelectorAll('input[type="checkbox"]').forEach((b) => { b.checked = true; });
+    el.querySelectorAll("button, input").forEach((x) => { x.disabled = true; });
+    const note = document.createElement("div");
+    note.className = "cverbal";
+    note.textContent = accepted ? "🎙 Công dân đã đồng ý bằng lời nói" : "🎙 Công dân đã từ chối bằng lời nói";
+    el.querySelector(".cactions")?.after(note);
+  }
+
+  // Bỏ dấu để lọc tìm kiếm (khớp cả khi gõ không dấu). Dùng chung cho sheet "tất cả thủ tục".
+  function foldVi(s) {
+    return String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+
+  // Chọn 1 thủ tục — dùng chung cho ô (tile) và dòng trong sheet.
+  function pickProcedure(it) {
+    addUserText(it.title, it.titleHmong);
+    ask(`__action:pick_procedure:${JSON.stringify({ key: it.key })}`, "chip", it.title);
+  }
+
+  // Màn chọn thủ tục kiểu mockup: 8 ô "hay dùng" (grid) + thanh "Xem tất cả" mở sheet có ô
+  // tìm kiếm. BE gắn frequent/frequentOrder; phần cấu hình (8 ô, khóa tỉnh) nằm ở registry BE
+  // nên đổi về sau KHÔNG phải phát hành lại extension.
+  function renderServiceList(card) {
+    const all = card.items || [];
+    if (!all.length) return;
+    // Ô hay dùng: theo frequentOrder BE trả; nếu BE cũ chưa gắn frequent → lấy tối đa 8 đầu.
+    let tiles = all.filter((it) => it.frequent)
+      .sort((a, b) => (a.frequentOrder ?? 99) - (b.frequentOrder ?? 99));
+    if (!tiles.length) tiles = all.slice(0, 8);
+
+    const el = document.createElement("div");
+    el.className = "svc-block";
+
+    const grid = document.createElement("div");
+    grid.className = "svc-grid";
+    tiles.forEach((it) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tl";
+      // Chế độ tiếng Mông: BE gắn titleHmong → dòng nghiêng dưới tên tiếng Việt (mockup).
+      const hmongLine = it.titleHmong
+        ? `<span class="tl-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
+      b.innerHTML = `<span class="tl-ic">${window.escapeHtml(it.icon || "📄")}</span>
+        <span class="tl-tn">${window.escapeHtml(it.title)}</span>${hmongLine}`;
+      b.addEventListener("click", () => pickProcedure(it));
+      grid.appendChild(b);
+    });
+    el.appendChild(grid);
+
+    // Nút NÓI to, hiện ngay bước chọn thủ tục cho người dân dễ thấy (mockup). Dùng chung
+    // hành vi với nút mic ở footer: bấm là bật/tắt nghe; server tắt ASR thì tự báo toast.
+    const voiceBtn = document.createElement("button");
+    voiceBtn.type = "button";
+    voiceBtn.className = "svc-voice";
+    voiceBtn.innerHTML = `<span class="svc-voice-ic">🎤</span>
+      <span class="svc-voice-tx">Hoặc bấm vào đây rồi <b>NÓI</b> tên thủ tục</span>`;
+    voiceBtn.addEventListener("click", () => { $micBtn?.click(); });
+    el.appendChild(voiceBtn);
+
+    // Thanh mở danh sách đầy đủ (có ô tìm kiếm) — chỉ hiện khi còn thủ tục ngoài các ô.
+    if (all.length > tiles.length) {
+      const bar = document.createElement("button");
+      bar.type = "button";
+      bar.className = "allbar";
+      bar.innerHTML = `<span class="allbar-ic">📋</span>
+        <span class="allbar-tx"><span class="allbar-tn">Xem tất cả ${all.length} thủ tục</span>
+          <span class="allbar-ss">Có ô tìm kiếm · chạm vào tên để chọn</span></span>
+        <span class="allbar-ch">›</span>`;
+      bar.addEventListener("click", () => openServiceSheet(all));
+      el.appendChild(bar);
+    }
+    const tools = renderCounterTools(card.counterTools);
+    if (tools) el.appendChild(tools);
+    addNode(el);
+  }
+
+  // Giấy tờ soạn tại quầy (không phải thủ tục DVC) — BE chỉ gửi khi extension khai
+  // supportsAuthorizationLetter. Bấm là mở TAB RIÊNG: form + bản xem trước A4 không vừa khung 400px.
+  const COUNTER_TOOL_PAGES = { "giay-uy-quyen": "authorization-letter.html" };
+  function renderCounterTools(section) {
+    const items = (section?.items || []).filter((it) => COUNTER_TOOL_PAGES[it.key]);
+    if (!items.length) return null;
+    const box = document.createElement("div");
+    box.className = "ctools";
+    box.innerHTML = `<div class="ctools-hd"><span class="ctools-tt">${window.escapeHtml(section.title || "")}</span>
+      <span class="ctools-note">${window.escapeHtml(section.note || "")}</span></div>`;
+    items.forEach((it) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ctool";
+      const badge = it.badge ? `<span class="ctool-badge">${window.escapeHtml(it.badge)}</span>` : "";
+      b.innerHTML = `<span class="ctool-ic">${window.escapeHtml(it.icon || "📝")}</span>
+        <span class="ctool-tx"><span class="ctool-tn">${window.escapeHtml(it.title)}${badge}</span>
+          <span class="ctool-ss">${window.escapeHtml(it.subtitle || "")}</span></span>
+        <span class="ctool-ch">›</span>`;
+      b.addEventListener("click", () => openCounterTool(it.key));
+      box.appendChild(b);
+    });
+    return box;
+  }
+  function openCounterTool(key) {
+    const url = chrome.runtime.getURL(COUNTER_TOOL_PAGES[key]);
+    try {
+      chrome.tabs.create({ url }, () => { if (chrome.runtime.lastError) window.open(url, "_blank"); });
+    } catch (_) { window.open(url, "_blank"); }
+  }
+
+  // ── Sheet "Tất cả thủ tục" (singleton trong sidebar.html) ──
+  let serviceSheetItems = [];
+  let serviceSheetWired = false;
+  function ensureServiceSheetWired() {
+    if (serviceSheetWired) return;
+    serviceSheetWired = true;
+    const scrim = document.getElementById("svc-sheet-scrim");
+    const closeBtn = document.getElementById("svc-sheet-close");
+    const input = document.getElementById("svc-search-input");
+    if (!scrim) return;
+    closeBtn?.addEventListener("click", closeServiceSheet);
+    scrim.addEventListener("click", (e) => { if (e.target === scrim) closeServiceSheet(); });
+    input?.addEventListener("input", () => renderServiceSheetList(input.value));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !scrim.hidden) closeServiceSheet();
+    });
+  }
+  function openServiceSheet(items) {
+    ensureServiceSheetWired();
+    const scrim = document.getElementById("svc-sheet-scrim");
+    const input = document.getElementById("svc-search-input");
+    if (!scrim) return;
+    serviceSheetItems = items || [];
+    if (input) input.value = "";
+    renderServiceSheetList("");
+    scrim.hidden = false;
+    requestAnimationFrame(() => input?.focus());
+  }
+  function closeServiceSheet() {
+    const scrim = document.getElementById("svc-sheet-scrim");
+    if (scrim) scrim.hidden = true;
+  }
+  function renderServiceSheetList(query) {
+    const list = document.getElementById("svc-slist");
+    if (!list) return;
+    const ql = foldVi(query).trim();
+    const subset = serviceSheetItems.filter((it) => !ql || foldVi(it.title).includes(ql)
+      || foldVi(it.subtitle).includes(ql) || foldVi(it.label).includes(ql)
+      || codeMatches(it.code, query));
+    list.innerHTML = "";
+    if (!subset.length) {
+      const none = document.createElement("div");
+      none.className = "snone";
+      none.textContent = "Không tìm thấy thủ tục phù hợp. Công dân thử từ khoá khác nhé.";
+      list.appendChild(none);
+      return;
+    }
+    subset.forEach((it) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "srow";
+      const hmongLine = it.titleHmong
+        ? `<span class="srow-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
+      const sub = it.subtitle
+        ? `<span class="srow-sd">${window.escapeHtml(it.subtitle)}</span>` : "";
+      const code = it.code
+        ? `<span class="srow-cd">Mã ${codeMatches(it.code, query)
+          ? `<mark>${window.escapeHtml(it.code)}</mark>` : window.escapeHtml(it.code)}</span>` : "";
+      row.innerHTML = `<span class="srow-ic">${window.escapeHtml(it.icon || "📄")}</span>
+        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}${code}</span>
+        <span class="srow-ch">›</span>`;
+      row.addEventListener("click", () => { closeServiceSheet(); pickProcedure(it); });
+      list.appendChild(row);
+    });
+  }
+  // Tìm theo MÃ TTHC (vd "1.013225"): chỉ xét khi ô tìm kiếm toàn chữ số/dấu chấm và có từ 3 chữ
+  // số — gõ đủ mã, bỏ "1.", hay chỉ vài số cuối ("13225") đều ra. Gõ chữ thì không đụng tới mã.
+  function codeMatches(code, query) {
+    const q = String(query || "").trim();
+    if (!code || !/^[\d.\s]+$/.test(q)) return false;
+    const digits = q.replace(/\D/g, "");
+    if (digits.length < 3) return false;
+    return String(code).includes(q.replace(/\s/g, "")) || String(code).replace(/\D/g, "").includes(digits);
+  }
+
+  // Tô vàng đoạn khớp khi gõ CÓ dấu (khớp trực tiếp); gõ không dấu vẫn lọc ra nhưng không tô
+  // (map vị trí qua bỏ dấu dễ lệch) — an toàn hơn là tô sai.
+  function highlightMatch(title, query) {
+    const q = String(query || "").trim();
+    const esc = window.escapeHtml(title);
+    if (!q) return esc;
+    const i = title.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return esc;
+    const a = window.escapeHtml(title.slice(0, i));
+    const b = window.escapeHtml(title.slice(i, i + q.length));
+    const c = window.escapeHtml(title.slice(i + q.length));
+    return `${a}<mark>${b}</mark>${c}`;
+  }
+
+  // Combobox tìm kiếm cho danh sách dài (34 tỉnh / cả trăm xã): gõ để lọc (không dấu vẫn
+  // khớp), danh sách cao ~6 dòng cuộn được — select trần sổ full rất dài và vướng mắt.
+  function makeSearchSelect({ placeholder, onPick }) {
+    const wrap = document.createElement("div");
+    wrap.className = "ssel";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = placeholder;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    const list = document.createElement("div");
+    list.className = "ssel-list";
+    list.hidden = true;
+    let options = [];
+    let value = "";
+    const fold = (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    function render(q) {
+      const ql = fold(q).trim();
+      list.innerHTML = "";
+      const subset = options.filter((o) => !ql || fold(o.label).includes(ql));
+      if (!subset.length) {
+        const d = document.createElement("div");
+        d.className = "ssel-empty";
+        d.textContent = "Không tìm thấy";
+        list.appendChild(d);
+        return;
+      }
+      subset.forEach((o) => {
+        const it = document.createElement("div");
+        it.className = "ssel-item" + (o.label === value ? " on" : "");
+        it.textContent = o.label;
+        if (o.sub) { // dòng phụ tiếng Mông (chế độ song ngữ) — chỉ hiển thị, không tham gia lọc
+          const sub = document.createElement("div");
+          sub.className = "ssel-sub";
+          sub.textContent = o.sub;
+          it.appendChild(sub);
+        }
+        it.__opt = o;
+        // mousedown + preventDefault: chọn TRƯỚC khi input blur kịp đóng danh sách.
+        it.addEventListener("mousedown", (e) => { e.preventDefault(); pick(o); });
+        list.appendChild(it);
+      });
+    }
+    function pick(o) {
+      value = o.label;
+      input.value = o.label;
+      list.hidden = true;
+      input.blur();
+      onPick(o);
+    }
+    // Ô cuối card (Đối tượng thực hiện) nằm sát đáy khung chat → danh sách mở xuống bị cắt
+    // mất, công dân không thấy lựa chọn nào. Đo chỗ trống thật rồi mới quyết mở lên hay xuống.
+    function placeList() {
+      const room = window.innerHeight - input.getBoundingClientRect().bottom;
+      list.classList.toggle("up", room < 240);
+    }
+    const open = () => { list.hidden = false; placeList(); };
+    input.addEventListener("focus", () => { input.select(); render(""); open(); });
+    input.addEventListener("input", () => { render(input.value); open(); });
+    // Blur không chọn gì → trả lại giá trị đang chọn (chữ đang gõ chỉ là bộ lọc).
+    input.addEventListener("blur", () => { list.hidden = true; input.value = value; });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const first = list.querySelector(".ssel-item");
+        if (first && !list.hidden) pick(first.__opt);
+      } else if (e.key === "Escape") input.blur();
+    });
+    wrap.append(input, list);
+    return {
+      el: wrap,
+      setOptions(next) { options = next || []; },
+      setValue(v) { value = v || ""; input.value = value; },
+      setDisabled(d) { input.disabled = !!d; },
+      get value() { return value; },
+    };
+  }
+
+  function renderLocationPicker(card) {
+    const el = document.createElement("div");
+    el.className = "loc";
+    const cur = card.current || {};
+    // Chế độ tiếng Mông: BE gắn card.hmong (nhãn + subject_options) → nhãn song ngữ.
+    const hm = card.hmong || null;
+    const label = (viText, hmText) => `${window.escapeHtml(viText)}${
+      hm && hmText ? ` <i class="lb-hm">· ${window.escapeHtml(hmText)}</i>` : ""}`;
+    el.innerHTML = `<div class="loc-t">📍 ${label("Nơi làm thủ tục", hm?.title)}</div>`;
+    const provinces = card.provinces || [];
+    const subjectConfig = card.executionSubject || {};
+    const subjectOptions = Array.isArray(subjectConfig.options) ? subjectConfig.options : [];
+    let provSlug = "";
+
+    const provRow = document.createElement("div");
+    provRow.className = "sel";
+    provRow.innerHTML = `<span>${label("Tỉnh/Thành phố", hm?.province)}</span>`;
+    const wardRow = document.createElement("div");
+    wardRow.className = "sel";
+    wardRow.innerHTML = `<span>${label("Phường/Xã", hm?.ward)}</span>`;
+    const subjectRow = document.createElement("div");
+    subjectRow.className = "sel";
+    subjectRow.innerHTML = `<span>${label("Đối tượng thực hiện", hm?.subject)}</span>`;
+
+    const wardBox = makeSearchSelect({
+      placeholder: "Gõ để tìm xã/phường…",
+      onPick: (o) => {
+        if (!provSlug) return;
+        ask(`__action:set_location:${JSON.stringify({ province_slug: provSlug, ward: o.label })}`,
+          "chip", `Chọn nơi làm thủ tục: ${o.label}, ${provBox.value}`, { preserveScroll: true });
+      },
+    });
+    const provBox = makeSearchSelect({
+      placeholder: "Gõ để tìm tỉnh/thành…",
+      onPick: (o) => { provSlug = o.slug; wardBox.setValue(""); loadWards(); },
+    });
+    const subjectBox = makeSearchSelect({
+      placeholder: "Chọn đối tượng thực hiện…",
+      onPick: (o) => {
+        ask(`__action:set_execution_subject:${JSON.stringify({ key: o.key })}`,
+          "chip", `Đối tượng thực hiện: ${o.label}`, { preserveScroll: true });
+      },
+    });
+    provBox.setOptions(provinces.map((p) => ({ label: p.text, slug: p.slug })));
+    subjectBox.setOptions(subjectOptions.map((option) => ({
+      key: option.key,
+      label: option.label,
+      // Dòng phụ tiếng Mông trong dropdown (input vẫn giữ nhãn tiếng Việt khi chọn).
+      sub: hm?.subject_options?.[option.key] || "",
+    })));
+    provRow.appendChild(provBox.el);
+    wardRow.appendChild(wardBox.el);
+    subjectRow.appendChild(subjectBox.el);
+    el.append(provRow, wardRow);
+    if (subjectOptions.length) el.append(subjectRow);
+    addNode(el);
+
+    async function loadWards() {
+      wardBox.setOptions([]);
+      wardBox.setDisabled(true);
+      const data = await api.getWards(provSlug);
+      const names = (data?.communes || [])
+        .map((w) => (typeof w === "string" ? w : (w?.text || w?.name || "")))
+        .filter(Boolean);
+      wardBox.setOptions(names.map((n) => ({ label: n })));
+      wardBox.setDisabled(false);
+    }
+
+    // Nơi hiện tại của phiên (acc gắn tỉnh/xã hoặc đã chọn trước đó) → hiện sẵn, vẫn đổi được.
+    const curProv = provinces.find((p) => p.text === cur.province);
+    if (curProv) {
+      provSlug = curProv.slug;
+      provBox.setValue(curProv.text);
+      wardBox.setValue(cur.ward || "");
+      loadWards();
+    } else {
+      wardBox.setDisabled(true); // chọn tỉnh trước rồi mới có danh sách xã
+    }
+    const currentSubject = subjectOptions.find((option) => option.key === subjectConfig.current)
+      || subjectOptions[0];
+    subjectBox.setValue(currentSubject?.label || "");
+  }
+
+  const DOC_OPTIONS = {
+    qr: { icon: "📱", title: "Chụp bằng điện thoại (quét QR)", desc: "Quét mã QR, chụp hoặc chọn ảnh giấy tờ ngay trên điện thoại — nhanh nhất." },
+    scan: { icon: "🖨️", title: "Scan tại quầy", desc: "Đặt giấy tờ bản cứng lên máy quét tại quầy." },
+    profile: { icon: "📁", title: "Lấy dữ liệu đã lưu", desc: "Đã từng làm và lưu hồ sơ → không cần cung cấp lại." },
+  };
+  function renderDocOptions(card) {
+    const options = card.options || [];
+    // Cài đặt "Ưu tiên Scan tại quầy": lượt LIVE + có option scan → TỰ chọn Scan, bỏ câu hỏi.
+    // Khôi phục phiên (noTts) thì KHÔNG tự bấm (tránh lặp lệnh).
+    if (preferScan && renderingLiveReply && options.includes("scan")) {
+      const el = document.createElement("div");
+      el.className = "doc-auto-scan";
+      const hasQr = options.includes("qr");
+      el.innerHTML = `<span>⚙️ Theo cài đặt, em dùng <b>Scan tại quầy</b> ạ.</span>${
+        hasQr ? '<button type="button" class="doc-auto-qr" data-qr="1">📱 Đổi sang chụp điện thoại (QR)</button>' : ""}`;
+      if (hasQr) el.querySelector("[data-qr]")?.addEventListener("click", () => {
+        addUserText("Đổi sang chụp điện thoại (QR)");
+        ask(`__action:doc_method:${JSON.stringify({ value: "qr" })}`, "chip", "Chụp bằng điện thoại (quét QR)");
+      });
+      el.dataset.ask = "doc-method";
+      addNode(el);
+      renderScanGuideCard();
+      ask(`__action:doc_method:${JSON.stringify({ value: "scan" })}`, "chip", "Scan tại quầy");
+      return;
+    }
+    options.forEach((key) => {
+      const meta = DOC_OPTIONS[key];
+      if (!meta) return;
+      // Chế độ tiếng Mông: BE gắn card.hmong[key] → dòng nghiêng dưới tên lựa chọn.
+      const hmTitle = card.hmong?.[key]?.title || "";
+      const hmLine = hmTitle ? `<div class="ot-hm">${window.escapeHtml(hmTitle)}</div>` : "";
+      const el = document.createElement("div");
+      el.className = "opt";
+      // Mốc để gỡ khi trang sang bước khác mà trợ lý hỏi lại (xem dropStaleDocMethodAsk).
+      el.dataset.ask = "doc-method";
+      el.innerHTML = `<div class="oi">${meta.icon}</div><div>
+        <div class="ot">${window.escapeHtml(meta.title)}</div>${hmLine}
+        <div class="od">${window.escapeHtml(meta.desc)}</div></div>`;
+      el.addEventListener("click", () => {
+        addUserText(meta.title, hmTitle);
+        // Chọn Scan tại quầy → dựng thẻ hướng dẫn (ảnh + lời) NGAY, TRƯỚC khi BE trả checklist/nút
+        // → thẻ nằm TRÊN, danh sách giấy tờ + nút "Đã đưa đủ" nằm DƯỚI CÙNG.
+        if (key === "scan") renderScanGuideCard();
+        ask(`__action:doc_method:${JSON.stringify({ value: key })}`, "chip", meta.title);
+      });
+      addNode(el);
+    });
+  }
+
+  // ── Card "cách nhận kết quả" (bước 4) ──
+  // Trợ lý đã gạt sẵn một công tắc trên trang; thẻ ở đây chỉ phản chiếu lựa chọn đó và cho đổi.
+  // Mỗi lượt BE trả lại card với `selected` mới → gỡ card cũ, không để hai bộ thẻ chồng nhau
+  // rồi công dân bấm nhầm cái đã cũ.
+  function renderResultMethods(card) {
+    document.querySelectorAll(".result-methods").forEach((el) => el.remove());
+    const wrap = document.createElement("div");
+    wrap.className = "result-methods";
+    (card.options || []).forEach((opt) => {
+      const el = document.createElement("div");
+      el.className = "opt" + (opt.key === card.selected ? " picked" : "");
+      el.innerHTML = `<div class="oi">${window.escapeHtml(opt.icon || "")}</div><div>
+        <div class="ot">${window.escapeHtml(opt.label || "")}</div>
+        <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
+      el.addEventListener("click", () => {
+        if (opt.key === card.selected) return; // đang chọn rồi, bấm lại không gạt lại cho rối
+        addUserText(opt.label || "");
+        ask(String(opt.send || ""), "chip", opt.label || "");
+      });
+      wrap.appendChild(el);
+    });
+    addNode(wrap);
+  }
+
+  // Cổng liên thông, bước nhận kết quả: mỗi giấy tờ một dòng (tên + các lựa chọn bấm qua lại); dòng cổng đặt sẵn chỉ
+  // hiện giá trị. Bấm một lựa chọn → BE nhờ engine đổi đúng ô đó rồi vẽ lại thẻ theo trang.
+  function renderLtResultGroups(card) {
+    document.querySelectorAll(".lt-result-groups").forEach((el) => el.remove());
+    const rows = (card.rows || []).filter((row) => row && row.name);
+    if (!rows.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "lt-result-groups";
+    rows.forEach((row) => {
+      const line = document.createElement("div");
+      line.className = "ltr-row";
+      const name = document.createElement("div");
+      name.className = "ltr-name";
+      name.textContent = row.label || "";
+      line.appendChild(name);
+      const opts = document.createElement("div");
+      opts.className = "ltr-opts";
+      if (row.fixed || !(row.options || []).length) {
+        const fixed = document.createElement("div");
+        fixed.className = "ltr-fixed";
+        fixed.textContent = [row.value, row.place].filter(Boolean).join(" — ");
+        opts.appendChild(fixed);
+      } else {
+        (row.options || []).forEach((opt) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ltr-opt" + (opt.selected ? " picked" : "");
+          btn.textContent = opt.label || "";
+          btn.setAttribute("aria-pressed", opt.selected ? "true" : "false");
+          btn.addEventListener("click", () => {
+            if (opt.selected) return;
+            opts.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+            addUserText(`${row.label || ""}: ${opt.label || ""}`);
+            ask(String(opt.send || ""), "chip", opt.label || "");
+          });
+          opts.appendChild(btn);
+        });
+      }
+      line.appendChild(opts);
+      wrap.appendChild(line);
+    });
+    addNode(wrap);
+  }
+
+  // Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): mỗi nhóm (Nơi xử lý / Trường hợp
+  // – thời gian) là một danh sách chọn một; nhãn đúng chữ đọc từ cổng. Chọn xong bấm "Xác nhận"
+  // → gửi chỉ số đã chọn của từng nhóm, BE gửi lại nhãn nguyên văn để engine chọn trên cổng.
+  function renderMaeDialogChoice(card) {
+    document.querySelectorAll(".mae-dialog-choice").forEach((el) => el.remove());
+    const groups = (card.groups || []).filter((g) => Array.isArray(g.options) && g.options.length);
+    if (!groups.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "result-methods mae-dialog-choice";
+    const picks = {};
+    groups.forEach((group) => {
+      picks[group.key] = Number.isInteger(group.selected) ? group.selected : 0;
+      const title = document.createElement("div");
+      title.className = "mdc-title";
+      title.textContent = group.label || "";
+      wrap.appendChild(title);
+      const rows = group.options.map((opt, index) => {
+        const el = document.createElement("div");
+        el.className = "opt" + (index === picks[group.key] ? " picked" : "");
+        el.innerHTML = `<div>
+          <div class="ot">${window.escapeHtml(opt.label || "")}</div>
+          <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
+        el.addEventListener("click", () => {
+          picks[group.key] = index;
+          rows.forEach((row, i) => row.classList.toggle("picked", i === index));
+        });
+        wrap.appendChild(el);
+        return el;
+      });
+    });
+    const submit = document.createElement("button");
+    submit.className = "chip solid";
+    submit.textContent = card.submitLabel || "Xác nhận";
+    submit.addEventListener("click", () => {
+      wrap.querySelectorAll(".opt, button").forEach((el) => {
+        el.style.pointerEvents = "none";
+        if (el.tagName === "BUTTON") el.disabled = true;
+      });
+      const summary = groups.map((g) => g.options[picks[g.key]]?.label || "").filter(Boolean).join(" · ");
+      addUserText(summary);
+      ask(`__action:set_mae_dialog:${JSON.stringify(picks)}`, "chip", summary);
+    });
+    wrap.appendChild(submit);
+    addNode(wrap);
+  }
+
+  // ── Card tiến trình xử lý giấy tờ (thường 30–90s) ──
+  // Chặng chủ hồ sơ vẫn diễn giải 4 bước; chặng điền tờ khai chỉ hiện một dòng gọn.
+  const PIPE_STAGES = [
+    { from: 0, label: "Kiểm tra ảnh đã nhận", hm: "Xyuas cov duab" },
+    { from: 3, label: "Đọc chữ trên giấy tờ (OCR)", hm: "Nyeem ntawv (OCR)" },
+    { from: 22, label: "Bóc tách và đối chiếu thông tin", hm: "Muab thiab piv cov ntaub ntawv" },
+    { from: 45, label: "Chuẩn bị điền biểu mẫu", hm: "Npaj sau daim foos" },
+  ];
+  let $pipe = null;
+  let pipeTimer = null;
+  let pipeT0 = 0;
+  let pipeFinished = false;
+
+  function renderPipeSteps(elapsed, doneAll) {
+    $pipe?.querySelectorAll(".pipe-step").forEach((row, i) => {
+      const started = elapsed >= PIPE_STAGES[i].from;
+      const ended = doneAll || (i + 1 < PIPE_STAGES.length && elapsed >= PIPE_STAGES[i + 1].from);
+      row.className = "pipe-step" + (ended ? " done" : started ? " active" : "");
+      row.querySelector(".pic").textContent = ended ? "✓" : String(i + 1);
+      row.querySelector(".ps").innerHTML = !ended && started ? '<span class="pipe-spin"></span>' : "";
+    });
+  }
+
+  function showPipelineCard(label, detailed = false) {
+    if ($pipe && !pipeFinished) return; // đang chạy rồi — không dựng card thứ 2
+    pipeFinished = false;
+    pipeT0 = Date.now();
+    $pipe = document.createElement("div");
+    $pipe.className = "pipe-card";
+    $pipe.dataset.label = label;
+    $pipe.dataset.detailed = detailed ? "1" : "0";
+    $pipe.innerHTML = `
+      <div class="pipe-h">🤖 ${window.escapeHtml(label)}</div>
+      <div class="prog"><i style="width:4%"></i></div>
+      ${detailed ? PIPE_STAGES.map((stage, i) => `
+        <div class="pipe-step"><span class="pic">${i + 1}</span>
+          <span class="pl">${stage.label}${voiceLang === "hmong" && stage.hm
+            ? `<i class="pl-hm">${stage.hm}</i>` : ""}</span><span class="ps"></span></div>`).join("") : ""}`;
+    addNode($pipe);
+    if (detailed) renderPipeSteps(0, false);
+    clearInterval(pipeTimer);
+    pipeTimer = setInterval(() => {
+      const t = (Date.now() - pipeT0) / 1000;
+      const bar = $pipe?.querySelector(".prog i");
+      // Tiệm cận 94% — không bao giờ "đầy" trước khi có mốc thật.
+      if (bar) bar.style.width = `${Math.min(94, Math.round(100 * (1 - Math.exp(-t / 30))))}%`;
+      if (detailed) renderPipeSteps(t, false);
+    }, 1000);
+  }
+
+  function pipeStop() { clearInterval(pipeTimer); pipeTimer = null; pipeFinished = true; }
+  function pipeDone() {
+    if (!$pipe || pipeFinished) return;
+    pipeStop();
+    const detailed = $pipe.dataset.detailed === "1";
+    if (detailed) renderPipeSteps(Infinity, true);
+    const bar = $pipe.querySelector(".prog i");
+    if (bar) bar.style.width = "100%";
+    $pipe.classList.add("done");
+    $pipe.querySelector(".pipe-h").textContent = detailed
+      ? "✅ Đã đọc xong giấy tờ"
+      : `✅ ${$pipe.dataset.label || "Đã xử lý xong"}`;
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+  function pipeFail() {
+    if (!$pipe || pipeFinished) return;
+    pipeStop();
+    $pipe.classList.add("err");
+    $pipe.querySelector(".pipe-h").textContent = "⚠️ Xử lý giấy tờ chưa xong được";
+  }
+
+  // ── Thẻ tiến trình nhiều bước do BE điều khiển (trang nộp một trang, luồng bản 2) ──
+  // Action pipeline_steps: có `steps` = dựng thẻ mới; không có = cập nhật thẻ đang hiện (bước `active` đang chạy,
+  // các bước trước đã xong; `done` = xong hết; `failed` = bước đang chạy lỗi). Bước đổi theo mốc thật (dữ liệu về,
+  // điền xong, đính xong); giữa hai mốc thanh chỉ nhích dần về gần mốc kế, không tự đầy.
+  let $steps = null;
+  let stepsTimer = null;
+  let stepsWidth = 0;
+
+  function stepsBarTo(width) {
+    stepsWidth = Math.max(stepsWidth, width);
+    const bar = $steps?.querySelector(".steps-bar > i");
+    if (bar) bar.style.width = `${stepsWidth.toFixed(1)}%`;
+  }
+
+  function renderStepsCard(a) {
+    if (Array.isArray(a.steps) && a.steps.length) {
+      clearInterval(stepsTimer);
+      stepsWidth = 0;
+      $steps = document.createElement("div");
+      $steps.className = "steps-card";
+      $steps.innerHTML = `
+        <div class="steps-h"><span class="steps-orb" aria-hidden="true"></span>
+          <span class="steps-title"></span><span class="steps-count"></span></div>
+        <div class="steps-bar" aria-hidden="true"><i></i></div>
+        <ol class="steps-list">${a.steps.map((label) => `
+          <li class="steps-item"><span class="steps-ic"></span>
+            <span class="steps-label">${window.escapeHtml(String(label))}</span></li>`).join("")}</ol>`;
+      addNode($steps);
+    }
+    if (!$steps) return;
+    const items = [...$steps.querySelectorAll(".steps-item")];
+    const total = items.length;
+    const done = a.done === true;
+    const failed = !done && a.failed === true;
+    const active = Math.min(Math.max(0, Number(a.active) || 0), total - 1);
+    items.forEach((li, i) => {
+      const state = done || i < active ? "done" : i === active ? (failed ? "failed" : "active") : "todo";
+      if (li.dataset.state === state) return;
+      li.dataset.state = state;
+      li.querySelector(".steps-ic").textContent = state === "done" ? "✓" : state === "failed" ? "!" : String(i + 1);
+    });
+    $steps.dataset.state = done ? "done" : failed ? "failed" : "running";
+    $steps.querySelector(".steps-orb").hidden = done || failed;
+    $steps.querySelector(".steps-title").textContent = done ? `✅ Đã hoàn thành ${total} bước`
+      : failed ? "⚠️ Còn bước chưa xong" : "Đang xử lý hồ sơ";
+    $steps.querySelector(".steps-count").textContent = done || failed ? "" : `Bước ${active + 1}/${total}`;
+    clearInterval(stepsTimer);
+    if (done) {
+      stepsBarTo(100);
+    } else {
+      stepsBarTo((100 * active) / total + 3);
+      if (!failed) {
+        const ceiling = (100 * (active + 1)) / total - 4;
+        stepsTimer = setInterval(() => stepsBarTo(stepsWidth + Math.max(0.05, (ceiling - stepsWidth) * 0.04)), 500);
+      }
+    }
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+
+  function failStepsCard() {
+    if (!$steps || $steps.dataset.state !== "running") return;
+    const items = [...$steps.querySelectorAll(".steps-item")];
+    const active = Math.max(0, items.findIndex((li) => li.dataset.state === "active"));
+    renderStepsCard({ active, failed: true });
+  }
+
+  // BE vào owner_filling/filling = pipeline bắt đầu chạy. Chỉ dựng card chờ khi phản hồi
+  // chưa có action điền tức thời; áp dụng cả lần xử lý đầu và lần điền lại thông tin.
+  function updatePipeFromState(prev, d) {
+    const st = d.state || prev;
+    if (st === "collecting_docs" || st === "qr_waiting") failStepsCard();
+    // Luồng có thẻ nhiều bước (BE gửi pipeline_steps): không dựng thêm card một dòng.
+    if ((d.actions || []).some((a) => a.type === "pipeline_steps")) return;
+    const willFill = (d.actions || []).some((a) =>
+      a.type === "fill_fields" || a.type === "fill_owner_fields");
+    if ((st === "owner_filling" || st === "filling") && prev !== st && !willFill) {
+      if (st === "owner_filling") {
+        showPipelineCard("Em đang đọc và bóc tách giấy tờ — công dân chờ em chút ạ…", true);
+      } else {
+        showPipelineCard("Bóc tách thông tin và điền biểu mẫu", false);
+      }
+    }
+    else if ($pipe && !pipeFinished) {
+      if (willFill || st === "owner_waiting_next" || st === "reviewing" || st === "attaching" || st === "done") pipeDone();
+      else if (st === "collecting_docs" || st === "qr_waiting") pipeFail();
+    }
+  }
+
+  // Chú giải màu ô sau khi điền: xanh = đọc từ giấy tờ, vàng = giá trị mặc định
+  // (khớp viền vàng trên form), đỏ = chưa tìm thấy ô. Đếm từ chính payload fill.
+  function renderFillLegend(fields, res) {
+    const filled = res?.filled || 0;
+    if (!filled) return;
+    const yellow = Math.min((fields || []).filter((f) => f && f.default).length, filled);
+    const red = (res?.notFound || []).length;
+    const el = document.createElement("div");
+    el.className = "legend";
+    el.innerHTML = `
+      <span><i class="dot g"></i>${filled - yellow} ô đọc từ giấy tờ</span>
+      <span><i class="dot y"></i>${yellow} ô mặc định — kiểm tra lại</span>
+      ${red ? `<span><i class="dot r"></i>${red} ô chưa điền được</span>` : ""}`;
+    addNode(el);
+  }
+
+  // ── Phiên tải giấy tờ qua QR (Bước 5 — docs/05) ──
+  let uploadWs = null;
+  let uploadWsGeneration = 0;
+  let uploadWsReconnectTimer = null;
+  let $docProgress = null;
+  let uploadSid = null; // phiên đang mở — dùng cho nhánh "Scan tại quầy" (upload từ máy tính)
+  // Cổng cho nút "Đã đưa đủ giấy tờ, xử lý đi": chỉ mở khi phiên đã nhận ≥1 tệp.
+  let docsReceived = false;
+  // Mic tạm nghỉ ở bước gửi giấy tờ (xem micHeld): số tệp phiên đã nhận, lúc số đó đổi lần cuối, số đợt đang tải.
+  let docsCount = 0;
+  let docsChangedAt = 0;
+  let uploadsInFlight = 0;
+  // Trang đăng nhập SSO/VNeID đang hiện (watcher đọc ctx.loginPage); null = chưa đọc được trang lần nào.
+  let loginPageNow = null;
+  const DOCS_SETTLE_MS = 5000;
+  // Công dân tự bấm nút mic → phiên nghe đó không bị micHeld tắt ngang.
+  let micByHand = false;
+  // Phiên scan tại quầy được BE cho phép TỰ CHỐT sau mỗi đợt chọn tệp (pick_files.auto_run):
+  // đợt tệp đã phân loại xong ngay trong request /files → gửi docs_complete như bấm nút
+  // "Đã đưa đủ", khỏi bắt công dân bấm tay. QR / lượt Điều chỉnh giấy tờ: rỗng = chốt tay.
+  let uploadAutoRunSid = "";
+  let $docsDoneChip = null;
+  const $fileListScrim = document.getElementById("file-list-scrim");
+  const $fileListDialog = document.getElementById("file-list-dialog");
+  const $fileListTitle = document.getElementById("file-list-title");
+  const $fileListSummary = document.getElementById("file-list-summary");
+  const $fileListIcon = document.getElementById("file-list-icon");
+  const $fileListBody = document.getElementById("file-list-body");
+  const $fileListError = document.getElementById("file-list-error");
+  const $fileListClose = document.getElementById("file-list-close");
+  let uploadSessionFiles = [];
+  let uploadSessionProgress = null;
+  let activeFileGroup = null; // {docKey, name, icon, unknown}
+  let fileListReturnFocus = null;
+  let fileListLoadSeq = 0;
+  const deletingFileIds = new Set();
+  // rel trên đĩa ↔ fid trên phiên cho tệp từ máy quét. Xem lib/scanDongBo.js: chuyển file vào thư
+  // mục con bắn CẶP removed+added; bản cũ xoá theo TÊN nên để lại hai bản hoặc xoá nhầm tệp trùng
+  // tên của công dân.
+  const scanDongBo = window.TLNDScanDongBo ? window.TLNDScanDongBo.tao() : null;
+  // Xem trước: nội dung lấy từ BE, chỉ tệp ĐANG XEM (xem preview.js). fid -> Promise<{mime,dataUrl}>.
+  const previewDuLieu = new Map();
+  let previewDangMo = false;
+  let previewGhim = false;          // khung đang GHIM (mở bằng nhấn) hay chỉ xem tạm lúc rê chuột
+  let previewHenHien = null;
+  const PREVIEW_TRE_MS = 350;        // rê lướt qua danh sách thì không nháy khung liên tục
+
+  // Rê chuột lên dòng tệp trong sheet → xem tạm (giống autofill). Đang ghim thì không đổi khung.
+  function batDauRePreview(nhom, chiSo) {
+    if (previewGhim) return;
+    if (previewHenHien) clearTimeout(previewHenHien);
+    previewHenHien = setTimeout(() => {
+      previewHenHien = null;
+      void moPreviewNhom(nhom, chiSo, { ghim: false });
+    }, PREVIEW_TRE_MS);
+  }
+  function ketThucRePreview() {
+    if (previewHenHien) { clearTimeout(previewHenHien); previewHenHien = null; }
+    // Chỉ XIN ẩn: content.js biết con trỏ có đang ở trên khung không (rê sang để cuộn thì giữ).
+    if (previewDangMo && !previewGhim) void sendToContent({ action: "tlndPreviewHide" });
+  }
+
+  // ── Tên tệp đã sửa (theo phiên) ──
+  // BE không có API đổi tên tệp trong phiên → giữ tên mới ở đây và áp vào MỌI chỗ tên đó đi ra:
+  // danh sách, khung xem trước, và payload đính kèm lên cổng (fetchSessionFilesAsPayload).
+  const KHOA_TEN_SUA = "tlnd_ten_tep_sua"; // { [sid]: { luc, ten: { [fid]: name } } }
+  let tenSuaTheoFid = new Map();
+  function tenHienThi(file) {
+    return tenSuaTheoFid.get(file?.fid) || file?.name || "";
+  }
+  async function napTenSua(sid) {
+    try {
+      const res = await chrome.storage.local.get(KHOA_TEN_SUA);
+      if (sid !== uploadSid) return;
+      const m = res?.[KHOA_TEN_SUA]?.[sid]?.ten;
+      if (!m || typeof m !== "object") return;
+      for (const [fid, ten] of Object.entries(m)) {
+        if (typeof ten === "string" && ten && !tenSuaTheoFid.has(fid)) tenSuaTheoFid.set(fid, ten);
+      }
+      if (activeFileGroup) renderUploadFileList();
+    } catch (_) { /* mất tên đã sửa chỉ làm hiện lại tên gốc */ }
+  }
+  async function luuTenSua() {
+    const sid = uploadSid;
+    if (!sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_TEN_SUA);
+      const m = res?.[KHOA_TEN_SUA] || {};
+      const gio = Date.now();
+      for (const k of Object.keys(m)) if (gio - Number(m[k]?.luc || 0) > 24 * 60 * 60 * 1000) delete m[k];
+      m[sid] = { luc: gio, ten: Object.fromEntries(tenSuaTheoFid) };
+      await chrome.storage.local.set({ [KHOA_TEN_SUA]: m });
+    } catch (_) { /* ignore */ }
+  }
+
+  // ── Sổ sách tệp quét: sống qua lần dựng lại iframe ──
+  // Ở chế độ đẩy trang, iframe sidebar bị dựng lại MỖI LẦN chuyển trang. Sổ rel→fid chỉ nằm trong bộ
+  // nhớ thì sau một lần điều hướng, file.removed không tìm được fid để gỡ → trùng bản quay lại. Cùng
+  // lý do, watermark và bộ nhớ "đã gỡ tay" cũng phải xuống storage (autofill cũng làm vậy).
+  const KHOA_SO_SACH_SCAN = "tlnd_scan_so_sach";                     // { [sid]: { luc, tep } }
+  const KHOA_WATERMARK_SCAN = `tlnd_scan_watermark_${TAB_ID || "khong-tab"}`;
+  const KHOA_DA_GO_SCAN = "tlnd_scan_da_go";                         // [{ hash, rel, luc }]
+  const SCAN_DA_GO_MAX = 200;
+  const SCAN_TTL_MS = 24 * 60 * 60 * 1000;
+  let scanDaGo = new Map();            // hash -> { rel, luc }: nội dung đã bị GỠ TAY
+  let scanAgentHelpers = null;         // { listFiles, fetchBlob, renameFile, caps } từ onConnected
+  let scanAgentCaps = [];
+  let scanDoiSoatSid = "";             // mỗi phiên chỉ đối soát một lần
+  const scanDangDoiTen = new Set();    // rel cũ/mới của lần đổi tên do CHÍNH mình — bỏ qua cặp event
+
+  async function napSoSachScan(sid) {
+    if (!scanDongBo || !sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_SO_SACH_SCAN);
+      if (sid !== uploadSid) return;
+      scanDongBo.nap(res?.[KHOA_SO_SACH_SCAN]?.[sid]?.tep);
+    } catch (_) { /* mất sổ chỉ làm mất khả năng gỡ tệp đã chuyển đi */ }
+  }
+  async function luuSoSachScan() {
+    const sid = uploadSid;
+    if (!scanDongBo || !sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_SO_SACH_SCAN);
+      const m = res?.[KHOA_SO_SACH_SCAN] || {};
+      const gio = Date.now();
+      for (const k of Object.keys(m)) if (gio - Number(m[k]?.luc || 0) > SCAN_TTL_MS) delete m[k];
+      m[sid] = { luc: gio, tep: scanDongBo.xuat() };
+      await chrome.storage.local.set({ [KHOA_SO_SACH_SCAN]: m });
+    } catch (_) { /* ignore */ }
+  }
+  async function napWatermarkScan() {
+    try {
+      const res = await chrome.storage.local.get(KHOA_WATERMARK_SCAN);
+      const ms = Number(res?.[KHOA_WATERMARK_SCAN] || 0);
+      if (Number.isFinite(ms) && ms > scanWatermarkMs) scanWatermarkMs = ms;
+    } catch (_) { /* ignore */ }
+  }
+  async function napDaGoScan() {
+    try {
+      const res = await chrome.storage.local.get(KHOA_DA_GO_SCAN);
+      const ds = Array.isArray(res?.[KHOA_DA_GO_SCAN]) ? res[KHOA_DA_GO_SCAN] : [];
+      const gio = Date.now();
+      for (const e of ds) {
+        if (e && typeof e.hash === "string" && gio - Number(e.luc || 0) < SCAN_TTL_MS && !scanDaGo.has(e.hash)) {
+          scanDaGo.set(e.hash, { rel: e.rel || null, luc: Number(e.luc) || gio });
+        }
+      }
+    } catch (_) { /* mất bộ nhớ này chỉ làm mất phép chặn, không làm hỏng gì */ }
+  }
+  function luuDaGoScan() {
+    try {
+      const ds = [...scanDaGo.entries()]
+        .map(([hash, v]) => ({ hash, rel: v.rel, luc: v.luc }))
+        .sort((a, b) => b.luc - a.luc)
+        .slice(0, SCAN_DA_GO_MAX);
+      scanDaGo = new Map(ds.map((e) => [e.hash, { rel: e.rel, luc: e.luc }]));
+      void chrome.storage.local.set({ [KHOA_DA_GO_SCAN]: ds });
+    } catch (_) { /* ignore */ }
+  }
+  // Gỡ tay là một QUYẾT ĐỊNH: nhớ theo NỘI DUNG để lô gom / đối soát sau không tự đưa lại.
+  function ghiNhanDaGo(hash, rel) {
+    if (!hash) return;
+    scanDaGo.set(hash, { rel: rel || null, luc: Date.now() });
+    luuDaGoScan();
+  }
+
+  async function sha256Hex(blob) {
+    const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Tính năng "gom lô tệp quét có sẵn trong thư mục" ĐÃ GỠ (chốt nghiệp vụ 23/09/2026).
+  // Nó đọc /v1/files rồi ĐOÁN tệp nào thuộc công dân đang ngồi đây theo khoảng cách thời gian;
+  // đoán không chắc thì hiện danh sách cho cán bộ chọn tay. Nay chỉ nhận tệp máy quét bắn ra
+  // trong lúc phiên đang mở (event file.added) — quét ra tệp nào nhận tệp đó, không đoán.
+
+  // Đối soát MỘT LẦN mỗi phiên: tệp đã tải lên (sổ rel→fid) với trạng thái THẬT trên đĩa — bắt đúng ca
+  // "bị xoá/ghi đè trong lúc Trợ lý đóng", thứ SSE sống không thấy được.
+  async function doiSoatTepQuet() {
+    const sid = uploadSid;
+    if (!sid || !scanAgentHelpers || !scanDongBo || scanDoiSoatSid === sid) return;
+    const ds = scanDongBo.danhSach();
+    if (!ds.length) return;
+    scanDoiSoatSid = sid;
+    let trenDia;
+    try {
+      trenDia = await scanAgentHelpers.listFiles();
+    } catch (_) {
+      scanDoiSoatSid = "";
+      return;
+    }
+    // Chốt chặn XOÁ OAN: listFiles() trả {files: []} KHÔNG kèm folder khi request hỏng (chưa chọn
+    // thư mục, ổ mạng rớt…). Tin danh sách rỗng đó là gỡ sạch giấy tờ của công dân.
+    if (typeof trenDia?.folder !== "string" || sid !== uploadSid) { scanDoiSoatSid = ""; return; }
+    const con = new Set((trenDia.files || []).map((f) => f?.rel).filter(Boolean));
+    for (const muc of ds) {
+      if (sid !== uploadSid || uploadSessionProgress?.complete) return;
+      if (!con.has(muc.rel)) {
+        const fid = scanDongBo.daXoa(muc.rel);
+        if (fid) await deleteUploadSessionFile({ fid, name: scanBaseName(muc.rel) });
+        continue;
+      }
+      // Còn trên đĩa: onScanFile tự so hash — trùng thì bỏ qua, khác thì tải bản mới rồi gỡ bản cũ.
+      await onScanFile({ rel: muc.rel }, () => scanAgentHelpers.fetchBlob(muc.rel));
+    }
+    void luuSoSachScan();
+  }
+
+  // Tính năng "dùng lại hồ sơ trước" ĐÃ GỠ (chốt nghiệp vụ 23/09/2026). Nó cất tham chiếu giấy tờ
+  // của công dân vừa xong (tlnd_ho_so_truoc_<tab>) để mời dùng lại. Gỡ code thôi thì các khoá đó
+  // nằm lại trên máy quầy mãi, vì TTL 30 phút chỉ chạy khi còn code đọc nó — dọn một lần lúc dựng.
+  void (async () => {
+    try {
+      const all = await chrome.storage.local.get(null);
+      const keys = Object.keys(all || {}).filter((k) => k.startsWith("tlnd_ho_so_truoc_"));
+      if (keys.length) await chrome.storage.local.remove(keys);
+    } catch (_) { /* không chặn khởi động */ }
+  })();
+
+  // ── Sửa tên tệp ngay trong danh sách ──
+  // Tệp từ máy quét: đổi luôn tên trên đĩa qua agent (caps "rename") — giống autofill mục 4.13.
+  function batDauSuaTen(file, nameEl) {
+    if (nameEl.parentElement?.querySelector(".file-list-rename-input")) return;
+    const o = document.createElement("input");
+    o.type = "text";
+    o.className = "file-list-rename-input";
+    o.value = tenHienThi(file);
+    o.setAttribute("aria-label", "Tên tệp mới");
+    let xong = false;
+    const huy = () => { if (!xong) { xong = true; renderUploadFileList(); } };
+    o.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!xong) { xong = true; void ketThucSuaTen(file, o.value); }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation(); // Esc chỉ huỷ sửa tên, không đóng luôn danh sách
+        huy();
+      }
+    });
+    o.addEventListener("blur", huy); // bấm ra ngoài = huỷ, không tự lưu (tránh sửa nhầm mà không hay)
+    nameEl.replaceWith(o);
+    o.focus();
+    const cham = o.value.lastIndexOf(".");
+    o.setSelectionRange(0, cham > 0 ? cham : o.value.length);
+  }
+
+  async function ketThucSuaTen(file, tenNhap) {
+    const ten = String(tenNhap || "").trim();
+    if (!ten || ten === tenHienThi(file)) { renderUploadFileList(); return; }
+    const goc = scanDongBo?.timTheoFid(file.fid);
+    if (goc) {
+      if (!scanAgentHelpers?.renameFile) {
+        setStatus("⚠️ Chưa kết nối được máy quét nên chưa đổi tên tệp trên đĩa được.", true);
+        renderUploadFileList();
+        return;
+      }
+      const relCu = goc.rel;
+      let relMoi = relCu;
+      scanDangDoiTen.add(relCu);
+      try {
+        const res = await scanAgentHelpers.renameFile(relCu, ten);
+        relMoi = res?.rel || relCu.replace(/[^/]*$/, ten);
+        scanDangDoiTen.add(relMoi); // chặn luôn cặp removed+added do chính lần đổi tên này sinh ra
+        scanDongBo.doiRel(relCu, relMoi);
+        void luuSoSachScan();
+      } catch (e) {
+        const msg = e?.code === "NAME_EXISTS"
+          ? `Trong thư mục quét đã có tệp tên "${ten}" rồi — đặt tên khác ạ.`
+          : e?.code === "BAD_NAME"
+            ? "Tên không hợp lệ: phải là tên tệp trần và giữ đuôi .pdf."
+            : `Không đổi tên được trên đĩa: ${e?.message || e}`;
+        console.warn("[TLND] Đổi tên tệp máy quét lỗi:", relCu, e);
+        setStatus(`⚠️ ${msg}`, true);
+        renderUploadFileList();
+        return;
+      } finally {
+        // Nới sau một nhịp để cặp event do chính lần đổi tên này sinh ra kịp đi qua.
+        setTimeout(() => { scanDangDoiTen.delete(relCu); scanDangDoiTen.delete(relMoi); }, 5000);
+      }
+    }
+    tenSuaTheoFid.set(file.fid, ten);
+    void luuTenSua();
+    renderUploadFileList();
+    showToast(goc ? `✎ Đã đổi tên thành "${ten}" (cả trên đĩa).` : `✎ Đã đổi tên thành "${ten}".`);
+  }
+
+  // ── Kéo-thả tệp vào Trợ lý ──
+  // Lối vào thủ công SONG SONG với nút 📷 chọn tệp — đi đúng một đường tải lên (uploadFilesToSession).
+  // Nghe trên document CỦA CHÍNH sidebar (iframe đẩy trang hoặc khung bên), không nghe trên trang
+  // cổng: nghe ở trang là preventDefault luôn ô tải tệp của chính cổng dịch vụ công.
+  // Khác autofill: không cần tầng content.js — khung đẩy trang của handfree là iframe phủ kín, không
+  // có tiêu đề/viền thuộc trang gốc mà con trỏ phải đi qua.
+  const $dropOverlay = document.getElementById("drop-overlay");
+  if ($dropOverlay) {
+    let doSau = 0; // dragenter/dragleave lồng nhau khi rê qua phần tử con — đếm thay vì bật/tắt
+    const laKeoTep = (e) => Array.from(e.dataTransfer?.types || []).includes("Files");
+    const hienLop = () => {
+      $dropOverlay.hidden = false;
+      requestAnimationFrame(() => $dropOverlay.classList.add("hien"));
+    };
+    const anLop = () => {
+      doSau = 0;
+      $dropOverlay.classList.remove("hien");
+      setTimeout(() => { if (!$dropOverlay.classList.contains("hien")) $dropOverlay.hidden = true; }, 150);
+    };
+    document.addEventListener("dragenter", (e) => {
+      if (!laKeoTep(e)) return;
+      e.preventDefault();
+      doSau += 1;
+      hienLop();
+    });
+    document.addEventListener("dragover", (e) => { if (laKeoTep(e)) e.preventDefault(); });
+    document.addEventListener("dragleave", (e) => {
+      if (!laKeoTep(e)) return;
+      doSau = Math.max(0, doSau - 1);
+      if (!doSau) anLop();
+    });
+    document.addEventListener("drop", (e) => {
+      if (!laKeoTep(e)) return;
+      e.preventDefault();
+      anLop();
+      const ds = [...(e.dataTransfer?.files || [])];
+      if (!ds.length) return;
+      markActivity();
+      if (!uploadSid || uploadSessionProgress?.complete) {
+        setStatus("⚠️ Chưa tới bước tải giấy tờ — chọn thủ tục và cách nộp giấy tờ trước rồi kéo tệp vào ạ.", true);
+        setTimeout(() => setStatus(""), 5000);
+        return;
+      }
+      void uploadFilesToSession(ds, { source: "drop" });
+    });
+  }
+
+  function updateDocsDoneChipLabel(label, labelHmong) {
+    if (!$docsDoneChip || !label) return;
+    $docsDoneChip.textContent = label;
+    if (labelHmong) { // giữ dòng Mông khi BE đổi nhãn nút chốt giấy tờ theo bước
+      const hm = document.createElement("span");
+      hm.className = "chip-hm";
+      hm.textContent = labelHmong;
+      $docsDoneChip.appendChild(hm);
+    }
+    $docsDoneChip.setAttribute("aria-label", label);
+  }
+
+  function uploadFileIcon(name) {
+    const ext = String(name || "").split(".").pop().toLowerCase();
+    if (["jpg", "jpeg", "png", "webp", "heic", "gif"].includes(ext)) return "🖼️";
+    if (ext === "pdf") return "📄";
+    if (["doc", "docx"].includes(ext)) return "📝";
+    if (["xls", "xlsx"].includes(ext)) return "📊";
+    return "📎";
+  }
+
+  function filesInGroup(group) {
+    if (!group) return [];
+    return uploadSessionFiles.filter((file) => group.unknown
+      ? !file.doc_key
+      : file.doc_key === group.docKey);
+  }
+
+  function filesInActiveGroup() {
+    return filesInGroup(activeFileGroup);
+  }
+
+  // ── Xem trước giấy tờ: khung nổi TRÊN TRANG do content.js dựng ──
+  async function moPreviewNhom(group, chiSo = 0, { ghim = true } = {}) {
+    if (!uploadSid || !group) return;
+    markActivity();
+    let tep = filesInGroup(group);
+    // Doc-row dựng từ progress (WS) có thể tới trước danh sách tệp (REST) → nạp rồi thử lại.
+    if (!tep.length) {
+      try { await loadUploadSessionFiles(); } catch (_) { /* báo ngay dưới */ }
+      tep = filesInGroup(group);
+    }
+    if (!tep.length) {
+      setStatus("⚠️ Chưa tải được danh sách tệp để xem trước.", true);
+      return;
+    }
+    previewDangMo = true;
+    previewGhim = ghim;
+    await sendToContent({
+      action: "tlndPreviewOpen",
+      ghim,
+      tieuDe: group.name || "Giấy tờ",
+      bieuTuong: group.icon || "📄",
+      tep: tep.map((f) => ({ fid: f.fid, name: tenHienThi(f) })),
+      chiSo: Math.max(0, Math.min(Number(chiSo) || 0, tep.length - 1)),
+    });
+  }
+
+  function taiDuLieuPreview(fid) {
+    if (!previewDuLieu.has(fid)) {
+      const sid = uploadSid;
+      const p = (async () => {
+        const res = await uploadSessionFetch(
+          `${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`);
+        if (!res.ok) throw new Error(`Không tải được tệp (HTTP ${res.status}).`);
+        const blob = await res.blob();
+        return { mime: blob.type || "", dataUrl: await blobToDataUrl(blob) };
+      })();
+      // Lỗi thì không giữ trong bộ nhớ — lần xem sau thử lại, không kẹt lỗi cũ.
+      p.catch(() => previewDuLieu.delete(fid));
+      previewDuLieu.set(fid, p);
+    }
+    return previewDuLieu.get(fid);
+  }
+
+  function dongPreviewTuSidebar() {
+    if (previewHenHien) { clearTimeout(previewHenHien); previewHenHien = null; }
+    if (!previewDangMo) return;
+    previewDangMo = false;
+    previewGhim = false;
+    void sendToContent({ action: "tlndPreviewClose" });
+  }
+
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return; // tab khác → kệ
+    if (msg?.action === "tlndPreviewCan") {
+      const fid = String(msg.fid || "");
+      if (!fid || !uploadSid) return;
+      taiDuLieuPreview(fid)
+        .then((d) => sendToContent({ action: "tlndPreviewData", fid, ...d }))
+        .catch((e) => sendToContent({ action: "tlndPreviewData", fid, loi: e?.message || "Không tải được tệp." }));
+    } else if (msg?.action === "tlndPreviewDaDong") {
+      previewDangMo = false;
+      previewGhim = false;
+    }
+  });
+
+  // Bấm ra ngoài khung xem trước — kể cả chỗ khác TRONG Trợ lý — là đóng. Trừ bấm vào doc-row /
+  // dòng tệp: đó là mở hoặc chuyển xem trước. Capture để nút nào tự chặn lan truyền cũng không nuốt.
+  document.addEventListener("pointerdown", (e) => {
+    if (!previewDangMo || e.target.closest?.(".doc-row.co-xem, .file-list-name.co-xem")) return;
+    dongPreviewTuSidebar();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") dongPreviewTuSidebar();
+  });
+  // Con trỏ TRONG Trợ lý nhưng ngoài dòng tệp → bằng chứng đã rời khung xem tạm (khi con trỏ nằm trên
+  // khung, sidebar không nhận được mousemove nào). Xem choChuotRoiDi trong content.js.
+  let lucBaoChuotORaNgoai = 0;
+  document.addEventListener("mousemove", (e) => {
+    if (!previewDangMo || previewGhim || e.target.closest?.(".file-list-row")) return;
+    const gio = Date.now();
+    if (gio - lucBaoChuotORaNgoai < 150) return; // mousemove bắn liên tục — gom bớt
+    lucBaoChuotORaNgoai = gio;
+    void sendToContent({ action: "tlndPreviewChuotOSidebar" });
+  }, { capture: true, passive: true });
+
+  function setFileListError(message = "") {
+    if (!$fileListError) return;
+    $fileListError.hidden = !message;
+    $fileListError.textContent = message;
+  }
+
+  function renderUploadFileList({ loading = false } = {}) {
+    if (!$fileListBody || !activeFileGroup) return;
+    const files = filesInActiveGroup();
+    const locked = !!uploadSessionProgress?.complete;
+    $fileListTitle.textContent = activeFileGroup.name;
+    $fileListIcon.textContent = activeFileGroup.icon || (activeFileGroup.unknown ? "⚠️" : "📄");
+    $fileListSummary.textContent = loading
+      ? "Đang tải danh sách…"
+      : locked
+        ? `${files.length} tệp đã nhận · Hồ sơ đang được xử lý`
+        : `${files.length} tệp đã nhận`;
+    $fileListBody.replaceChildren();
+    if (loading) {
+      const state = document.createElement("div");
+      state.className = "file-list-loading";
+      state.textContent = "Đang tải danh sách tệp…";
+      $fileListBody.appendChild(state);
+      return;
+    }
+    if (!files.length) {
+      const state = document.createElement("div");
+      state.className = "file-list-empty";
+      state.textContent = "Chưa có tệp nào trong mục này.";
+      $fileListBody.appendChild(state);
+      return;
+    }
+    files.forEach((file) => {
+      const row = document.createElement("div");
+      row.className = `file-list-row${deletingFileIds.has(file.fid) ? " deleting" : ""}`;
+
+      const icon = document.createElement("span");
+      icon.className = "file-kind";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = uploadFileIcon(file.name);
+
+      const name = document.createElement("span");
+      name.className = "file-list-name";
+      name.textContent = tenHienThi(file) || "Tệp không có tên";
+      name.title = `Xem trước ${tenHienThi(file) || "tệp không có tên"}`;
+      name.classList.add("co-xem");
+      name.setAttribute("role", "button");
+      name.tabIndex = 0;
+      const nhom = activeFileGroup;
+      const chiSo = files.indexOf(file);
+      const moXem = () => void moPreviewNhom(nhom, chiSo);
+      row.addEventListener("mouseenter", () => batDauRePreview(nhom, chiSo));
+      row.addEventListener("mouseleave", ketThucRePreview);
+      name.addEventListener("click", moXem);
+      name.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        moXem();
+      });
+
+      row.append(icon, name);
+      if (locked) {
+        const lock = document.createElement("span");
+        lock.className = "file-list-lock";
+        lock.textContent = "Đã chốt";
+        row.appendChild(lock);
+      } else {
+        const goc = scanDongBo?.timTheoFid(file.fid);
+        // Tệp máy quét: chỉ sửa được khi agent khai caps "rename" (agent bản cũ trả 404 cho route đó).
+        if (!goc || scanAgentCaps.includes("rename")) {
+          const sua = document.createElement("button");
+          sua.className = "file-list-rename";
+          sua.type = "button";
+          sua.textContent = "✎";
+          sua.title = goc ? "Sửa tên tệp (đổi luôn tên trên đĩa trong thư mục quét)" : "Sửa tên tệp";
+          sua.setAttribute("aria-label", `Sửa tên tệp ${tenHienThi(file) || ""}`);
+          sua.addEventListener("click", () => batDauSuaTen(file, name));
+          row.appendChild(sua);
+        }
+        const remove = document.createElement("button");
+        remove.className = "file-list-delete";
+        remove.type = "button";
+        remove.textContent = "✕";
+        remove.title = `Xóa ${file.name || "tệp"}`;
+        remove.setAttribute("aria-label", `Xóa tệp ${file.name || "không có tên"}`);
+        remove.disabled = deletingFileIds.has(file.fid);
+        remove.addEventListener("click", () => void deleteUploadSessionFile(file, { thuCong: true }));
+        row.appendChild(remove);
+      }
+      $fileListBody.appendChild(row);
+    });
+  }
+
+  function closeUploadFileList({ restoreFocus = true } = {}) {
+    if (!$fileListScrim || $fileListScrim.hidden) return;
+    $fileListScrim.hidden = true;
+    activeFileGroup = null;
+    setFileListError();
+    if (restoreFocus && fileListReturnFocus?.isConnected) fileListReturnFocus.focus();
+    fileListReturnFocus = null;
+  }
+
+  async function loadUploadSessionFiles({ showLoading = false } = {}) {
+    const sid = uploadSid;
+    if (!sid) return null;
+    const seq = ++fileListLoadSeq;
+    if (showLoading && activeFileGroup) renderUploadFileList({ loading: true });
+    const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.detail || `Không đọc được danh sách tệp (HTTP ${res.status}).`);
+    if (sid !== uploadSid || seq !== fileListLoadSeq) return null;
+    uploadSessionFiles = Array.isArray(data?.files) ? data.files : [];
+    uploadSessionProgress = data?.progress || uploadSessionProgress;
+    if (data?.progress) renderDocProgress(data.progress, { preserveScroll: true });
+    if (activeFileGroup) renderUploadFileList();
+    return data;
+  }
+
+  async function openUploadFileList(group, trigger) {
+    if (!$fileListScrim || !uploadSid) return;
+    activeFileGroup = group;
+    fileListReturnFocus = trigger || document.activeElement;
+    setFileListError();
+    $fileListScrim.hidden = false;
+    renderUploadFileList({ loading: true });
+    $fileListDialog?.focus();
+    try {
+      await loadUploadSessionFiles();
+    } catch (error) {
+      if (activeFileGroup) {
+        renderUploadFileList();
+        setFileListError(error?.message || "Không tải được danh sách tệp.");
+      }
+    }
+  }
+
+  async function deleteUploadSessionFile(file, { thuCong = false } = {}) {
+    const sid = uploadSid;
+    if (!sid || !file?.fid || uploadSessionProgress?.complete || deletingFileIds.has(file.fid)) return;
+    deletingFileIds.add(file.fid);
+    setFileListError();
+    renderUploadFileList();
+    try {
+      const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(file.fid)}`,
+        { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail || `Không xóa được tệp (HTTP ${res.status}).`);
+      if (sid !== uploadSid) return;
+      uploadSessionFiles = uploadSessionFiles.filter((item) => item.fid !== file.fid);
+      if (thuCong) {
+        // Gỡ TAY tệp từ máy quét → nhớ nội dung, lô gom / đối soát sau không tự đưa lại.
+        const goc = scanDongBo?.timTheoFid(file.fid);
+        if (goc?.hash) ghiNhanDaGo(goc.hash, goc.rel);
+      }
+      scanDongBo?.quenFid(file.fid);
+      void luuSoSachScan();
+      previewDuLieu.delete(file.fid);
+      renderUploadFileList();
+      await loadUploadSessionFiles();
+    } catch (error) {
+      if (sid === uploadSid && activeFileGroup) {
+        setFileListError(error?.message || "Không xóa được tệp. Công dân thử lại giúp em ạ.");
+      }
+    } finally {
+      deletingFileIds.delete(file.fid);
+      if (sid === uploadSid && activeFileGroup) renderUploadFileList();
+    }
+  }
+
+  function resetUploadFileListState() {
+    fileListLoadSeq += 1;
+    closeUploadFileList({ restoreFocus: false });
+    uploadSessionFiles = [];
+    uploadSessionProgress = null;
+    deletingFileIds.clear();
+    scanDongBo?.datLai();
+    previewDuLieu.clear();
+    dongPreviewTuSidebar(); // không để giấy của công dân trước treo trên màn hình
+    tenSuaTheoFid = new Map();
+    scanDoiSoatSid = "";
+  }
+
+  function setUploadSession(sid) {
+    if (uploadSid !== sid) resetUploadFileListState();
+    uploadSid = sid;
+    // Sổ rel→fid + tên đã sửa của phiên này sống qua lần dựng lại iframe. Nạp xong MỚI đối soát,
+    // để lượt đối soát nhìn đúng những tệp đã có.
+    void napTenSua(sid);
+    void napSoSachScan(sid).then(() => doiSoatTepQuet());
+    // Khi sidebar được dựng lại giữa phiên, WS không phát lại tiến trình cũ. Đọc snapshot
+    // ngay để checklist và nút xem file vẫn khôi phục đủ, không chờ công dân tải thêm tệp.
+    return loadUploadSessionFiles().catch((error) => {
+      console.warn("[TLND] Không khôi phục được danh sách tệp upload session", error?.message || error);
+      return null;
+    });
+  }
+
+  $fileListClose?.addEventListener("click", () => closeUploadFileList());
+  $fileListScrim?.addEventListener("click", (event) => {
+    if (event.target === $fileListScrim) closeUploadFileList();
+  });
+  document.addEventListener("keydown", (event) => {
+    if ($fileListScrim?.hidden) return;
+    if (event.key === "Escape") {
+      closeUploadFileList();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...$fileListDialog.querySelectorAll("button:not(:disabled)")];
+    if (!focusable.length) {
+      event.preventDefault();
+      $fileListDialog.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  function placeDocsDoneAfterProgress() {
+    const progress = document.getElementById("doc-progress-card");
+    if (!progress || !$docsDoneChip) return;
+
+    let holder = document.getElementById("docs-done-actions");
+    if (!holder) {
+      holder = document.createElement("div");
+      holder.id = "docs-done-actions";
+      holder.className = "chips docs-done-actions";
+    }
+    const oldWrap = $docsDoneChip.parentElement;
+    // Progress WS có thể tới trước hoặc sau reply chứa chips. Khi nút còn nằm trong
+    // nhóm gốc, neo checklist ngay sau nhóm nút phụ để thứ tự luôn là: phụ → giấy tờ → chốt.
+    if (oldWrap && oldWrap !== holder && oldWrap.classList.contains("chips")) {
+      oldWrap.insertAdjacentElement("afterend", progress);
+    }
+    // replaceChildren bảo đảm chỉ còn một CTA mới nhất khi QR/Scan render reply lại.
+    if (holder.firstElementChild !== $docsDoneChip) holder.replaceChildren($docsDoneChip);
+    progress.insertAdjacentElement("afterend", holder);
+    if (oldWrap && oldWrap !== holder && oldWrap.classList.contains("chips") && !oldWrap.children.length) {
+      oldWrap.remove();
+    }
+  }
+
+  // Nhánh SCAN: chọn tệp từ máy tính → upload thẳng vào phiên (cùng endpoint với mobile).
+  const $fileInput = document.getElementById("file-input");
+  // Tải MỘT đợt tệp lên upload session — DÙNG CHUNG cho: chọn tệp tay (#file-input) và máy quét
+  // tự động (scan-bridge, source="scan"). Chỉ chặng truyền/lưu; phân loại OCR/LLM chạy ở chặng
+  // xử lý sau khi bấm "Đã đưa đủ".
+  async function uploadFilesToSession(files, { source = "picker" } = {}) {
+    files = [...(files || [])];
+    if (!files.length || !uploadSid) return null;
+    markActivity();
+    const totalBytes = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
+    const uploadStartedAt = performance.now();
+    setStatus(`⏳ Đang tải ${files.length} tệp lên hệ thống…`);
+    uploadsInFlight += 1;
+    try {
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files", f, f.name));
+      const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${uploadSid}/files`,
+        { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      console.log("[TLND] upload session files", {
+        source,
+        fileCount: files.length,
+        totalBytes,
+        elapsedMs: Math.round(performance.now() - uploadStartedAt),
+        accepted: (data?.accepted || []).map((item) => item.doc_key || null),
+      });
+      setStatus("");
+      // Bytes vừa upload VẪN ĐANG trong tay → giữ lại, lúc đính khỏi tải ngược từ máy chủ.
+      // CHỜ xong ở đây (không bắn-rồi-quên): giữ Blob là thao tác tức thời, mà nếu để chạy
+      // nền thì cán bộ bấm "Đã đưa đủ" ngay là cache chưa kịp ghi → vẫn phải tải.
+      await cacheUploadedBlobs(uploadSid, files, data?.accepted);
+      if (data?.progress) renderDocProgress(data.progress, { preserveScroll: !$fileListScrim?.hidden });
+      if (data?.progress && source === "picker") announceFilesReceived(data.progress);
+      if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
+      const unknown = (data?.accepted || []).filter((a) => !a.doc_key).length;
+      if (unknown) addBotMd(`⚠️ **${unknown} tệp** em chưa nhận ra loại — công dân scan lại rõ hơn hoặc cứ bấm "Đã đưa đủ" để em xử lý phần nhận được ạ.`);
+      // Scan tại quầy (BE bật auto_run): đợt tệp đã tải + PHÂN LOẠI xong ngay trong request
+      // này → tự chốt như bấm "Đã đưa đủ" (submitDocsComplete kèm page context để BE chọn
+      // đúng bước: điền chủ hồ sơ / điền tờ khai / đính kèm). Guard theo state nên đợt tệp
+      // sau đó (pipeline đang chạy, state đã rời collecting_docs) không bắn trùng.
+      // MÁY QUÉT (source="scan") tệp về LẺ TẺ → KHÔNG tự chốt, để công dân bấm "Đã đưa đủ".
+      const sessionFiles = Number(data?.progress?.files_count) || 0;
+      if (source !== "scan" && source !== "reuse" && uploadSid && uploadSid === uploadAutoRunSid
+          && lastState === "collecting_docs" && sessionFiles > 0) {
+        setStatus("⏳ Đã nhận đợt tệp — em xử lý luôn ạ…");
+        // __action:docs_done = đúng lệnh của nút "Đã đưa đủ" (BE chốt phiên rồi chạy pipeline).
+        void submitDocsComplete("__action:docs_done", "system");
+      }
+      return data;
+    } catch (err) {
+      setStatus(`⚠️ Tải tệp lỗi: ${err?.message || err}`, true);
+      setTimeout(() => setStatus(""), 5000);
+      return null;
+    } finally {
+      uploadsInFlight = Math.max(0, uploadsInFlight - 1);
+    }
+  }
+  $fileInput?.addEventListener("change", async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    await uploadFilesToSession(files, { source: "picker" });
+  });
+
+  // ── Máy quét tại quầy (scan-bridge agent) ──
+  // Agent Go chạy nền trên máy cán bộ, theo dõi thư mục máy quét, bắn SSE khi có tệp mới. Ta nối
+  // agent → tải tệp về → đổ vào CÙNG upload session (như chọn tệp tay) mà không cần bấm chọn.
+  const $scanStatus = document.getElementById("scan-agent-status");
+  let scanConn = null;               // { stop() } — 1 kết nối/sidebar
+  let scanAgentConnected = false;    // đã handshake SSE + đã chọn thư mục
+  let scanPickerTimer = null;        // hẹn bật hộp chọn tệp NẾU không có agent
+  let scanWatermarkMs = 0;           // mốc chặn: chỉ nhận tệp MỚI HƠN (không kéo giấy người trước)
+  let scanNewestMs = 0;              // mtime mới nhất phiên này đã nhận
+  const scanUploadingRel = new Set(); // chặn tải trùng cùng rel đang bay
+  let scanGuideShown = false;        // thẻ hướng dẫn đặt giấy (ảnh + lời) đã dựng chưa
+  let scanReceivedCount = 0;         // số tệp máy quét đã nhận phiên này (để báo "đã nhận N tệp")
+  void napWatermarkScan();
+  void napDaGoScan();
+
+  // ── Trạng thái panel (lib/trangThai.js — dùng chung với autofill) ──
+  // "Đang làm việc" = request đang chạy + thao tác trên panel/trang gốc + con trỏ trong ô nhập + cờ bận
+  // nghiệp vụ. Background không hỏi thẳng được iframe/khung bên, nên panel tự ghi nhịp theo TAB vào
+  // storage — kiemBanMoi đọc để không nạp lại giữa lúc đang tải tệp quét lên.
+  if (window.HccTrangThai && TAB_ID) {
+    window.HccTrangThai.batDau({
+      layCoBanNgoai: () => busy || scanUploadingRel.size > 0 || deletingFileIds.size > 0,
+    });
+    const khoTrangThai = chrome.storage?.session || chrome.storage?.local;
+    const khoaTrangThai = `tlnd_trang_thai_panel:${TAB_ID}`;
+    const ghiNhip = () => {
+      try {
+        khoTrangThai?.set({ [khoaTrangThai]: { tt: window.HccTrangThai.hienTai(), luc: Date.now() } },
+          () => void chrome.runtime.lastError);
+      } catch (_) { /* context mất — background coi nhịp cũ là hết hạn */ }
+    };
+    window.HccTrangThai.theoDoi(ghiNhip);
+    setInterval(ghiNhip, 3000);
+    ghiNhip();
+  }
+
+  // ── Nút "Cập nhật" chủ động ──
+  // background (kiemBanMoi) ghi "bản mới đang chờ" vào storage mỗi nhịp kiểm; ở đây chỉ vẽ nút và hỏi xác
+  // nhận. Cập nhật = nạp lại extension, mà content script bản mới chỉ được tiêm khi trang tải lại →
+  // background tải lại đúng tab này sau khi nạp. Vì thế PHẢI hỏi: nội dung chưa lưu trên trang có thể mất.
+  // Mặc định vẫn là tự nạp lại khi máy rảnh 60 giây — nút chỉ dành cho lúc cán bộ đang làm liên tục.
+  const KHOA_BAN_CHO = "hcc_ban_moi_cho";
+  const $capNhatBtn = document.getElementById("cap-nhat-btn");
+  const $capNhatXn = document.getElementById("cap-nhat-xac-nhan");
+  const $capNhatTieuDe = document.getElementById("cap-nhat-tieu-de");
+  const $capNhatCanhBao = document.getElementById("cap-nhat-canh-bao");
+  const $capNhatNgay = document.getElementById("cap-nhat-ngay");
+  let banMoiCho = "";
+
+  function veNutCapNhat() {
+    let dangChay = "";
+    try { dangChay = chrome.runtime.getManifest().version; } catch (_) { return; } // context đã mất
+    chrome.storage.local.get(KHOA_BAN_CHO, (res) => {
+      if (chrome.runtime.lastError) return;
+      const v = res?.[KHOA_BAN_CHO]?.version;
+      banMoiCho = typeof v === "string" && v && v !== dangChay ? v : "";
+      if ($capNhatBtn) {
+        $capNhatBtn.hidden = !banMoiCho;
+        $capNhatBtn.title = banMoiCho ? `Đã có bản ${banMoiCho} (đang dùng ${dangChay}) — bấm để cập nhật ngay` : "";
+      }
+      if (!banMoiCho && $capNhatXn) $capNhatXn.hidden = true;
+    });
+  }
+
+  function dangXuLyDo() {
+    return busy || scanUploadingRel.size > 0 || deletingFileIds.size > 0
+      || (window.HccTrangThai?.soRequestDangChay?.() || 0) > 0;
+  }
+
+  $capNhatBtn?.addEventListener("click", () => {
+    if (!banMoiCho || !$capNhatXn) return;
+    markActivity();
+    $capNhatTieuDe.textContent = `Cập nhật Trợ lý lên bản ${banMoiCho}?`;
+    $capNhatCanhBao.hidden = !dangXuLyDo();
+    $capNhatNgay.disabled = false;
+    $capNhatNgay.textContent = "Cập nhật ngay";
+    $capNhatXn.hidden = false;
+  });
+  document.getElementById("cap-nhat-de-sau")?.addEventListener("click", () => {
+    if ($capNhatXn) $capNhatXn.hidden = true;
+  });
+  $capNhatNgay?.addEventListener("click", () => {
+    $capNhatNgay.disabled = true;
+    $capNhatNgay.textContent = "Đang cập nhật…";
+    const loi = (chu) => {
+      $capNhatXn.hidden = true;
+      setStatus(chu, true);
+      setTimeout(() => setStatus(""), 5000);
+      veNutCapNhat();
+    };
+    try {
+      chrome.runtime.sendMessage({ action: "hccCapNhatNgay", tabId: Number(TAB_ID) || 0 }, (res) => {
+        if (chrome.runtime.lastError) { loi("⚠️ Không gửi được lệnh cập nhật — thử lại sau."); return; }
+        if (res?.ok) return; // extension sắp nạp lại: panel bị gỡ rồi trang tự tải lại
+        if (res?.lyDo === "da-moi-nhat") {
+          $capNhatXn.hidden = true;
+          showToast("Trợ lý đã ở bản mới nhất.");
+          veNutCapNhat();
+          return;
+        }
+        loi("⚠️ Chưa kết nối được agent — thử lại sau.");
+      });
+    } catch (_) {
+      loi("⚠️ Không gửi được lệnh cập nhật — thử lại sau.");
+    }
+  });
+  chrome.storage.onChanged.addListener((thayDoi, vung) => {
+    if (vung === "local" && KHOA_BAN_CHO in thayDoi) veNutCapNhat();
+  });
+  veNutCapNhat();
+
+  // Thẻ hướng dẫn đặt giấy lên máy quét (ảnh + lời) — dựng MỘT lần khi máy quét sẵn sàng, đúng
+  // như mockup panelScan. Ảnh là asset của chính extension (assets/scan-guide.jpg).
+  // Dự phòng khi gặp server cũ chưa cấp scanGuide — CHỈ tiếng Việt, cùng lý do với
+  // SCAN_FEEDBACK_FALLBACK: bản Mông chỉ có một nguồn là script_mong.py.
+  const SCAN_GUIDE_FALLBACK = {
+    heading: "🖨️ Đặt giấy tờ lên máy quét ở quầy",
+    body: "Công dân đặt giấy lên máy scan **theo hướng dẫn trong hình** rồi ấn nút **Scan** ạ.",
+    alt: "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan",
+    zoom: "🔍 Bấm để xem hình to",
+    note: "Chỉ đặt **từng tờ một** — máy tự kéo giấy vào. Xong hết thì bấm **\"Đã đưa đủ\"** giúp em.",
+  };
+
+  // Escape TRƯỚC rồi mới đổi **…** thành <b> — chữ do BE cấp không chèn được thẻ vào panel.
+  function inlineBold(s) {
+    return window.escapeHtml(String(s || "")).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  }
+
+  function renderScanGuideCard() {
+    if (scanGuideShown) return;
+    scanGuideShown = true;
+    const pack = voiceCfg?.scanGuide || {};
+    const viG = pack.vi || SCAN_GUIDE_FALLBACK;
+    // Chỉ chú thích Mông khi ĐANG bật tiếng Mông VÀ BE có gửi bản đó xuống.
+    const hmG = (voiceLang === "hmong" && _hmongAllowed()) ? pack.hmong : null;
+    // Chú thích Mông đi NGAY DƯỚI dòng Việt tương ứng — thẻ này là các dòng rời, không
+    // gộp được thành một khối cuối như câu chat.
+    const hm = (key) => (hmG?.[key] ? `<div class="scan-guide-hm">${inlineBold(hmG[key])}</div>` : "");
+    const el = document.createElement("div");
+    el.className = "scan-guide";
+    const img = chrome.runtime.getURL("assets/scan-guide.jpg");
+    // alt của ảnh dùng bản Mông khi có: trình đọc màn hình đang ở tiếng Mông.
+    const alt = window.escapeHtml(hmG?.alt || viG.alt || "");
+    el.innerHTML = `
+      <div class="scan-guide-h">${inlineBold(viG.heading)}</div>${hm("heading")}
+      <div class="scan-guide-p">${inlineBold(viG.body)}</div>${hm("body")}
+      <div class="scan-guide-pic" data-zoom="1" title="${window.escapeHtml(viG.zoom || "")}">
+        <img class="scan-guide-img" src="${img}" alt="${alt}">
+        <span class="scan-guide-zoom">${inlineBold(hmG?.zoom || viG.zoom)}</span>
+      </div>
+      <div class="scan-guide-note">${inlineBold(viG.note)}</div>${hm("note")}`;
+    el.querySelector("[data-zoom]")?.addEventListener("click", () => openImageZoom(img, alt));
+    addNode(el);
+  }
+
+  // Toast thoáng qua (tự biến mất) — mount 1 container vào body của sidebar.
+  let $toastWrap = null;
+  function showToast(text, { ms = 2600 } = {}) {
+    if (!$toastWrap) {
+      $toastWrap = document.createElement("div");
+      $toastWrap.className = "tlnd-toasts";
+      $toastWrap.setAttribute("aria-live", "polite");
+      document.body.appendChild($toastWrap);
+    }
+    const t = document.createElement("div");
+    t.className = "tlnd-toast";
+    t.textContent = text;
+    $toastWrap.appendChild(t);
+    requestAnimationFrame(() => t.classList.add("show"));
+    setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 250); }, ms);
+  }
+
+  // Thông báo mỗi lần máy quét trả tệp: TEXT (chèn NGAY TRÊN danh sách giấy tờ, luôn thấy gần
+  // nút "Đã đưa đủ") + VOICE (đọc hướng dẫn). Một node duy nhất, cập nhật tại chỗ theo tổng số tệp.
+  // BE chưa cấp scanFeedback (server cũ) thì vẫn phải có chữ. Bản dự phòng CHỈ tiếng Việt:
+  // không nhúng bản Mông ở đây để lời thoại Mông chỉ có một nguồn duy nhất (script_mong.py).
+  const SCAN_FEEDBACK_FALLBACK = {
+    md: "🖨️ Em đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
+      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
+      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.",
+    tts: "Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan,"
+      + " em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ.",
+    ttsMore: "Em đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp"
+      + " vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ.",
+  };
+
+  function renderScanFeedback() {
+    const n = scanReceivedCount;
+    const pack = voiceCfg?.scanFeedback || {};
+    const viPack = pack.vi || SCAN_FEEDBACK_FALLBACK;
+    // Chỉ dùng bản Mông khi ĐANG bật tiếng Mông VÀ BE thực sự gửi bản đó xuống. Thiếu bản
+    // dịch thì nói tiếng Việt bằng giọng Việt — KHÔNG đọc chữ Việt bằng giọng Mông.
+    const hmPack = (voiceLang === "hmong" && _hmongAllowed()) ? pack.hmong : null;
+    const fill = (s) => String(s || "").replace(/\{count\}/g, String(n));
+    let md = fill(viPack.md);
+    // Khối Mông in nghiêng ở CUỐI, đúng bố cục câu chat do BE dựng.
+    if (hmPack?.md) md += `\n\n*${fill(hmPack.md)}*`;
+    let el = document.getElementById("scan-feedback-card");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "scan-feedback-card";
+      el.className = "scan-feedback";
+      const anchor = document.getElementById("doc-progress-card"); // chèn NGAY TRÊN danh sách
+      if (anchor?.parentNode) anchor.parentNode.insertBefore(el, anchor);
+      else addNode(el);
+    }
+    el.innerHTML = window.renderMarkdown ? window.renderMarkdown(md) : md;
+    $messages.scrollTop = $messages.scrollHeight;
+    // Đọc thành tiếng (rảnh tay). Tệp đầu đọc đủ hướng dẫn; các tệp sau đọc gọn để đỡ rườm.
+    const spoken = hmPack || viPack;
+    const tts = fill(n <= 1 ? spoken.tts : (spoken.ttsMore || spoken.tts));
+    if (voiceCfg?.tts && !ttsMuted && tts) {
+      try { stopReplyTts(); } catch (_) { /* ignore */ }
+      window.__hccTTS?.speak?.(tts, hmPack ? "hmong" : "vi");
+    }
+  }
+
+  // Tệp về từ ĐIỆN THOẠI (WS progress) hoặc CHỌN TỆP: CHỈ NÓI "em đã nhận N tệp mà công dân gửi lên nhé", không chèn
+  // chữ vào chat (danh sách giấy tờ đã hiện số tệp). Chỉ nói khi số tệp TĂNG (WS bắn progress cả lúc
+  // phân loại xong, không được đọc lặp). Máy quét đã có thẻ + lời riêng (renderScanFeedback).
+  let filesAnnouncedSid = "";
+  let filesAnnouncedCount = 0;
+  let filesAnnounceTtsTimer = null;
+  function announceFilesReceived(p) {
+    if (!p || !uploadSid) return;
+    if (filesAnnouncedSid !== uploadSid) { filesAnnouncedSid = uploadSid; filesAnnouncedCount = 0; }
+    const n = Number(p.files_count ?? p.received) || 0;
+    if (n <= filesAnnouncedCount) { filesAnnouncedCount = n; return; } // xoá bớt tệp → hạ mốc, không báo
+    filesAnnouncedCount = n;
+    if (document.getElementById("scan-feedback-card")) return;
+    // Điện thoại gửi nhiều ảnh liền nhau → gom, chỉ đọc con số cuối.
+    if (filesAnnounceTtsTimer) clearTimeout(filesAnnounceTtsTimer);
+    filesAnnounceTtsTimer = setTimeout(() => {
+      filesAnnounceTtsTimer = null;
+      if (!voiceCfg?.tts || ttsMuted) return;
+      try { stopReplyTts(); } catch (_) { /* ignore */ }
+      // Câu chỉ có tiếng Việt → đọc giọng Việt (giọng đi theo ngôn ngữ của chữ, không theo chế độ).
+      const lang = "vi";
+      window.__hccTTS?.speak?.(`Em đã nhận ${filesAnnouncedCount} tệp mà công dân gửi lên nhé.`, lang);
+    }, 800);
+  }
+
+  // Lightbox phóng to ảnh — click nền hoặc Esc để đóng.
+  function openImageZoom(src, alt) {
+    const scrim = document.createElement("div");
+    scrim.className = "img-zoom-scrim";
+    scrim.innerHTML = `<img class="img-zoom-img" src="${src}" alt="${window.escapeHtml(alt || "")}">
+      <button class="img-zoom-close" type="button" aria-label="Đóng">✕</button>`;
+    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    scrim.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(scrim);
+  }
+
+  function setScanAgentStatus(state) {
+    if (!$scanStatus) return;
+    // da_ket_noi: KHÔNG hiện dòng "đang theo dõi" (thẻ hướng dẫn + thông báo mỗi tệp đã lo).
+    // Chỉ hiện khi cần cán bộ thao tác: chưa chọn thư mục quét.
+    const text = state === "chua_chon_thu_muc"
+      ? "🖨️ Máy quét chưa chọn thư mục lưu ảnh — mở agent ở khay hệ thống chọn giúp em ạ."
+      : "";
+    $scanStatus.textContent = text;
+    $scanStatus.hidden = !text;
+  }
+  const scanFileMtimeMs = (evt) => Number(evt?.mtimeMs) || Date.parse(evt?.at || "") || 0;
+  const scanBaseName = (rel) => String(rel || "").split(/[\\/]/).pop() || "tep-quet";
+
+  // MỘT chỗ duy nhất cho hai đường đưa tệp quét lên phiên: event file.added và lượt đối soát.
+  // Chốt chặn đặt ở đây để đường thêm về sau không quên — cùng lý do với importOneScanFile bên
+  // autofill. Trả true khi phiên thật sự có thêm/đổi tệp.
+  async function onScanFile(evt, fetchBlob) {
+    const rel = evt?.rel;
+    if (!rel || !uploadSid || scanUploadingRel.has(rel) || scanDangDoiTen.has(rel)) return false;
+    const mtime = scanFileMtimeMs(evt);
+    // Watermark: bỏ tệp cũ hơn mốc (giấy của công dân TRƯỚC).
+    if (scanWatermarkMs && mtime && mtime <= scanWatermarkMs) return false;
+    scanUploadingRel.add(rel);
+    const sid = uploadSid;
+    const ve = scanDongBo?.batDauTai(rel); // chốt TRƯỚC await đầu tiên — xem scanDongBo.taiXong
+    try {
+      if (uploadSessionProgress?.complete) return false;   // phiên đã chốt → không nhận thêm
+      const blob = await fetchBlob();
+      if (!blob || !blob.size) return false;               // bỏ tệp 0 byte (máy đang ghi dở)
+      const hash = await sha256Hex(blob);
+      // Nội dung này đã bị GỠ TAY → không đưa lại (gỡ là một quyết định, không phải thao tác tạm).
+      if (scanDaGo.has(hash)) {
+        console.info("[TLND] scan: bỏ qua tệp đã bị gỡ tay", rel);
+        return false;
+      }
+      // Cùng rel, cùng nội dung đã nằm trên phiên (agent bắn lại added khi mtime đổi mà nội dung y
+      // nguyên, hoặc đối soát) → không tải lại.
+      if (scanDongBo?.hashCua(rel) === hash) return false;
+      const file = new File([blob], scanBaseName(rel), { type: blob.type || "application/octet-stream" });
+      const data = await uploadFilesToSession([file], { source: "scan" });
+      if (mtime > scanNewestMs) scanNewestMs = mtime;
+      // BE trả `accepted` theo đúng thứ tự tệp gửi lên (router.upload_files) → gửi 1 tệp là accepted[0].
+      const fid = data?.accepted?.[0]?.fid;
+      let biGoNgay = false;
+      let laCapNhat = false;
+      if (scanDongBo && fid && sid === uploadSid) {
+        for (const phaiXoa of scanDongBo.taiXong(ve, fid, hash)) {
+          if (phaiXoa === fid) biGoNgay = true;      // tệp đã bị xoá khỏi đĩa trong lúc đang tải
+          else laCapNhat = true;                     // máy quét ghi đè cùng tên → gỡ bản cũ
+          await deleteUploadSessionFile({ fid: phaiXoa, name: scanBaseName(rel) });
+        }
+        void luuSoSachScan();
+      }
+      if (!data || biGoNgay) return false;
+      if (laCapNhat) {
+        showToast(`🖨️ Đã cập nhật bản mới: ${scanBaseName(rel)}`);
+      } else {
+        scanReceivedCount += 1;
+        showToast(`🖨️ Đã nhận: ${scanBaseName(rel)}`);
+        renderScanFeedback(); // text (trên danh sách) + voice hướng dẫn, cập nhật tổng số tệp
+      }
+      return true;
+    } catch (err) {
+      console.warn("[TLND] scan: không tải được tệp từ máy quét", rel, err?.message || err);
+      return false;
+    } finally {
+      scanUploadingRel.delete(rel);
+    }
+  }
+  async function onScanFileRemoved(evt) {
+    const rel = evt?.rel;
+    if (!rel) return;
+    // Cặp event do CHÍNH mình đổi tên — tệp vẫn là tệp đó, sổ đã dời sang rel mới (ketThucSuaTen).
+    if (scanDangDoiTen.has(rel)) return;
+    if (!uploadSid || uploadSessionProgress?.complete) return;
+    // Gỡ ĐÚNG tệp mình đã tải lên cho rel này. Không đoán theo tên như bản cũ: tệp trùng tên có thể là
+    // giấy công dân tự tải từ điện thoại. rel không do mình tải lên → daXoa trả null → không gỡ.
+    const fid = scanDongBo?.daXoa(rel);
+    void luuSoSachScan();
+    if (fid) await deleteUploadSessionFile({ fid, name: scanBaseName(rel) });
+  }
+  function connectScanAgent() {
+    if (scanConn || !window.ScanAgent) return;
+    scanConn = window.ScanAgent.connect({
+      onStatus: (state) => {
+        scanAgentConnected = state === "da_ket_noi";
+        if (scanAgentConnected && scanPickerTimer) { clearTimeout(scanPickerTimer); scanPickerTimer = null; }
+        setScanAgentStatus(state);
+      },
+      onFile: (evt, fetchBlob) => { void onScanFile(evt, fetchBlob); },
+      onFileRemoved: (evt) => { void onScanFileRemoved(evt); },
+      // Agent báo bản extension trên đĩa ≠ bản đang chạy → nhờ background kiểm NGAY. Background giữ
+      // mọi luật "chỉ nạp lại khi rảnh" và gỡ panel trước khi nạp; thiếu đường này thì chờ nhịp 1 phút.
+      onExtensionVersion: (v) => {
+        try {
+          if (v && v !== chrome.runtime.getManifest().version) {
+            const p = chrome.runtime.sendMessage({ action: "hccKiemBanMoiNgay" }, () => void chrome.runtime.lastError);
+            if (p && typeof p.catch === "function") p.catch(() => {}); // trình duyệt trả Promise dù có callback
+          }
+        } catch (_) { /* context mất — background tự lo theo nhịp */ }
+      },
+      onConnected: (helpers) => {
+        scanAgentHelpers = helpers;
+        // Agent bản cũ không khai caps → mảng rỗng → nút sửa tên tệp quét bị ẩn (khỏi bấm rồi ăn 404).
+        const caps = Array.isArray(helpers?.caps) ? helpers.caps : [];
+        const doiCaps = caps.join() !== scanAgentCaps.join();
+        scanAgentCaps = caps;
+        if (doiCaps && activeFileGroup) renderUploadFileList();
+        void doiSoatTepQuet();
+      },
+    });
+  }
+  function disconnectScanAgent() {
+    if (scanPickerTimer) { clearTimeout(scanPickerTimer); scanPickerTimer = null; }
+    try { scanConn?.stop(); } catch (_) { /* ignore */ }
+    scanConn = null;
+    scanAgentConnected = false;
+    scanUploadingRel.clear();
+    scanAgentHelpers = null;
+    scanAgentCaps = [];
+    scanDoiSoatSid = "";
+    scanGuideShown = false;
+    scanReceivedCount = 0;
+    setScanAgentStatus("");
+  }
+  // Nâng mốc khi bắt đầu phục vụ CÔNG DÂN MỚI (trò chuyện mới / thủ tục khác / logout) → không
+  // tự kéo lại giấy tờ đã quét của người trước.
+  function bumpScanWatermark() {
+    if (scanNewestMs > scanWatermarkMs) scanWatermarkMs = scanNewestMs;
+    scanNewestMs = 0;
+    scanUploadingRel.clear();
+    scanDongBo?.datLai();
+    // Lưu mốc: iframe dựng lại sau điều hướng mà mất mốc là quay lại đúng lỗi "kéo giấy người trước".
+    try { void chrome.storage.local.set({ [KHOA_WATERMARK_SCAN]: scanWatermarkMs }); } catch (_) { /* ignore */ }
+  }
+
+  function renderQrCard(a) {
+    const el = document.createElement("div");
+    el.className = "qr-card";
+    el.innerHTML = `
+      <img class="qr-img" alt="Mã QR tải giấy tờ" src="data:image/png;base64,${a.qr_png_base64}">
+      <div class="qr-cap">Quét bằng camera điện thoại → mở trang tải ảnh<br>
+        <span>Phiên ${window.escapeHtml(a.session_id)}</span></div>
+      <div class="prog"><i style="width:0"></i></div>
+      <div class="qr-stat">Đang chờ công dân quét mã…</div>`;
+    addNode(el);
+    $docProgress = el; // progress bar + status cập nhật qua WS
+  }
+
+  // Doc-row có tệp: nhấn CẢ DÒNG để xem trước (nút "Đã nhận N tệp ›" vẫn mở danh sách như cũ).
+  function batXemTruocChoDong(row, group) {
+    row.classList.add("co-xem");
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.title = "Nhấn để xem trước các tệp đã nhận";
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      void moPreviewNhom(group, 0);
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.target !== row || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      void moPreviewNhom(group, 0);
+    });
+  }
+
+  function renderDocProgress(p, { preserveScroll = false } = {}) {
+    const preservedScrollTop = preserveScroll ? $messages.scrollTop : null;
+    uploadSessionProgress = p || uploadSessionProgress;
+    // Nhận được tệp ĐẦU TIÊN (kể cả tệp chưa nhận ra loại / slot tuỳ chọn) → mở khoá nút
+    // "Đã đưa đủ giấy tờ, xử lý đi". BE dặn cứ bấm nút này để xử lý cả phần chưa nhận ra
+    // loại, nên chỉ cần có bất kỳ tệp nào là cho chốt — không đợi đủ giấy bắt buộc.
+    const received = (p.docs || []).reduce((n, d) => n + (d.received || 0), 0) + (p.unknown || 0);
+    const gotAny = received > 0;
+    docsReceived = gotAny;
+    if (received !== docsCount) { docsCount = received; docsChangedAt = Date.now(); }
+    if ($docsDoneChip) {
+      $docsDoneChip.disabled = !gotAny;
+      if (gotAny) $docsDoneChip.removeAttribute("title");
+      else $docsDoneChip.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+    }
+    // Card danh sách giấy tờ (thay/đặt dưới card QR) — kiểu .doc-row prototype.
+    let wrap = document.getElementById("doc-progress-card");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "doc-progress-card";
+      wrap.style.cssText = "align-self:stretch;display:flex;flex-direction:column;gap:7px;";
+      addNode(wrap);
+    }
+    const rows = (p.docs || []).map((d) => {
+      const repeatable = !!d.repeatable;
+      const done = !repeatable && d.received >= d.sides;
+      const count = Number(d.receivedCount ?? d.received) || 0;
+      const row = document.createElement("div");
+      row.className = `doc-row ${done ? "done-row" : ""}`;
+
+      const icon = document.createElement("div");
+      icon.className = "ic";
+      icon.textContent = d.icon || "📄";
+      const name = document.createElement("div");
+      name.className = "nm";
+      name.textContent = d.name || "Giấy tờ";
+      if (voiceLang === "hmong" && d.nameHmong) { // chế độ tiếng Mông: dòng nghiêng dưới tên
+        const hm = document.createElement("div");
+        hm.className = "nm-hm";
+        hm.textContent = d.nameHmong;
+        name.appendChild(hm);
+      }
+      row.append(icon, name);
+
+      if (count > 0) {
+        batXemTruocChoDong(row, {
+          docKey: d.key, name: d.name || "Giấy tờ đã nhận", icon: d.icon || "📄", unknown: false,
+        });
+        const view = document.createElement("button");
+        view.type = "button";
+        view.className = "doc-files-btn";
+        view.textContent = voiceLang === "hmong"
+          ? `Đã nhận ${count} tệp · Txais tau ${count} daim ›`
+          : `Đã nhận ${count} tệp ›`;
+        view.setAttribute("aria-label", `Xem ${count} tệp ${d.name || "giấy tờ"}`);
+        view.addEventListener("click", () => void openUploadFileList({
+          docKey: d.key, name: d.name || "Giấy tờ đã nhận", icon: d.icon || "📄", unknown: false,
+        }, view));
+        row.appendChild(view);
+      } else {
+        const status = document.createElement("span");
+        status.className = "st";
+        status.textContent = repeatable
+          ? (voiceLang === "hmong" ? "Đã nhận 0 tệp · Tsis tau txais" : "Đã nhận 0 tệp")
+          : `${d.received}/${d.sides}${d.sides > 1 ? " mặt" : ""}`;
+        row.appendChild(status);
+      }
+      return row;
+    });
+    if ((p.unknown || 0) > 0) {
+      const row = document.createElement("div");
+      row.className = "doc-row unknown-row";
+      const icon = document.createElement("div");
+      icon.className = "ic";
+      icon.textContent = "⚠️";
+      const name = document.createElement("div");
+      name.className = "nm";
+      name.textContent = voiceLang === "hmong"
+        ? "Tệp chưa nhận ra loại · Tsis paub yam twg" : "Tệp chưa nhận ra loại";
+      const view = document.createElement("button");
+      view.type = "button";
+      view.className = "doc-files-btn";
+      view.textContent = `Đã nhận ${p.unknown} tệp ›`;
+      view.setAttribute("aria-label", `Xem ${p.unknown} tệp chưa nhận ra loại`);
+      view.addEventListener("click", () => void openUploadFileList({
+        docKey: null, name: "Tệp chưa nhận ra loại", icon: "⚠️", unknown: true,
+      }, view));
+      row.append(icon, name, view);
+      batXemTruocChoDong(row, {
+        docKey: null, name: "Tệp chưa nhận ra loại", icon: "⚠️", unknown: true,
+      });
+      rows.push(row);
+    }
+    wrap.replaceChildren(...rows);
+    if (!$fileListScrim?.hidden) renderUploadFileList();
+    placeDocsDoneAfterProgress();
+    if ($docProgress) {
+      const bar = $docProgress.querySelector(".prog i");
+      const stat = $docProgress.querySelector(".qr-stat");
+      if (bar && p.total) bar.style.width = `${(p.received / p.total) * 100}%`;
+      // Chỉ hiện số đã nhận (không "/tổng" — tổng gồm slot tuỳ chọn dễ gây hiểu lầm còn thiếu).
+      // TỔNG tệp (cả tuỳ chọn/chưa nhận ra loại), không chỉ giấy bắt buộc.
+      const gotFiles = p.files_count ?? p.received ?? 0;
+      if (stat) stat.textContent = p.complete
+        ? `✅ Đã nhận ${gotFiles} tệp`
+        : `Đã nhận ${gotFiles} tệp`;
+    }
+    $messages.scrollTop = preservedScrollTop ?? $messages.scrollHeight;
+  }
+
+  function stopUploadSubscription() {
+    uploadWsGeneration += 1;
+    if (uploadWsReconnectTimer) {
+      clearTimeout(uploadWsReconnectTimer);
+      uploadWsReconnectTimer = null;
+    }
+    if (uploadWs) {
+      // Chủ động đóng khi đổi/xóa phiên: gỡ onclose trước để socket cũ không tự nối lại.
+      uploadWs.onclose = null;
+      uploadWs.onerror = null;
+      try { uploadWs.close(); } catch (_) { /* đã đóng */ }
+      uploadWs = null;
+    }
+  }
+
+  function subscribeUploadSession(sid) {
+    // Phiên upload mới: chưa nhận tệp nào → khoá lại nút "đủ giấy tờ" (renderChips vừa render
+    // nó ở lượt này nên $docsDoneChip trỏ đúng nút hiện tại; khoá kể cả khi phiên trước đã mở).
+    docsReceived = false;
+    if ($docsDoneChip) {
+      $docsDoneChip.disabled = true;
+      $docsDoneChip.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+    }
+    stopUploadSubscription();
+    const generation = uploadWsGeneration;
+    const wsUrl = `${window.tlndWsBase(BASE_URL)}/ws/upload-sessions/${sid}`;
+    let mobileConnectedSent = false;
+    let completeSent = false;
+    let reconnectAttempt = 0;
+    let reconnectStatusShown = false;
+    let everOpened = false;
+
+    async function resyncAfterReconnect() {
+      if (generation !== uploadWsGeneration || sid !== uploadSid) return;
+      let data = null;
+      try { data = await loadUploadSessionFiles(); } catch (e) {
+        console.warn("[TLND] Đọc lại tiến độ phiên sau khi nối lại lỗi:", e?.message || e);
+        return;
+      }
+      if (!data?.progress) return;
+      void prefetchSessionFiles(uploadSid);
+      const p = data.progress;
+      const got = (p.docs || []).reduce((n, x) => n + (x.received || 0), 0) + (p.unknown || 0);
+      // Điện thoại bấm "Dừng & gửi tất cả" đúng lúc WS đứt → lỡ sự kiện `complete` → hội thoại treo
+      // ở bước nhận giấy. Chỉ bù khi hội thoại VẪN đang chờ giấy tờ.
+      if (p.complete && got > 0 && !completeSent
+          && ["qr_waiting", "collecting_docs"].includes(lastState)) {
+        completeSent = true;
+        void submitDocsComplete("__event:docs_complete", "system");
+      }
+    }
+
+    function scheduleReconnect() {
+      if (generation !== uploadWsGeneration || sid !== uploadSid || !api.conversationId) return;
+      const delay = Math.min(1000 * (2 ** reconnectAttempt), 10000);
+      reconnectAttempt += 1;
+      if (uploadWsReconnectTimer) clearTimeout(uploadWsReconnectTimer);
+      uploadWsReconnectTimer = setTimeout(connect, delay);
+      console.warn(`[TLND] WS phiên ${sid} bị ngắt, thử nối lại sau ${delay}ms`);
+    }
+
+    function connect() {
+      if (generation !== uploadWsGeneration || sid !== uploadSid) return;
+      uploadWsReconnectTimer = null;
+      let ws;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (_) {
+        scheduleReconnect();
+        return;
+      }
+      uploadWs = ws;
+      ws.onopen = () => {
+        if (reconnectStatusShown) setStatus("");
+        reconnectStatusShown = false;
+        reconnectAttempt = 0;
+        // Sự kiện phát lúc WS đang đứt KHÔNG được gửi lại → nối lại là đọc lại tiến độ phiên, nếu
+        // không danh sách giấy tờ đứng yên và nút "Đã đưa đủ giấy tờ" vẫn khoá dù máy chủ đã có tệp.
+        if (everOpened) {
+          void resyncAfterReconnect();
+          // Nối lại giữa lúc xử lý (thường do BE khởi động lại): sự kiện "xong" phát lúc đứt bị lỡ, tác vụ nền có
+          // thể đã chết theo BE → nhờ BE bù sự kiện / chạy lại tác vụ.
+          if (["filling", "owner_filling", "attaching"].includes(lastState)) ask("__event:pipeline_resync", "system");
+        }
+        everOpened = true;
+      };
+      ws.onmessage = (ev) => {
+        let d;
+        try { d = JSON.parse(ev.data); } catch (_) { return; }
+        // Ảnh từ điện thoại và tiến trình OCR/điền là hoạt động của phiên, không được timeout giữa chừng.
+        if (["session_opened", "progress", "complete", "owner_fields_ready", "fields_ready", "attach_ready", "business_ready"].includes(d.type)) {
+          markActivity();
+        }
+        if (d.type === "session_opened" && !mobileConnectedSent) {
+          mobileConnectedSent = true;
+          ask("__event:mobile_connected", "system");
+        } else if (d.type === "progress") {
+          renderDocProgress(d, { preserveScroll: !$fileListScrim?.hidden });
+          if (scanUploadingRel.size === 0) announceFilesReceived(d); // tệp máy quét đã có thẻ riêng
+          if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
+          // Kéo ngầm NGAY khi tệp về, trong lúc công dân còn đang chụp tệp sau → tới bước đính
+          // thì phần lớn đã nằm sẵn trên máy, không phải ngồi chờ tải.
+          void prefetchSessionFiles(uploadSid);
+        } else if (d.type === "complete" && !completeSent) {
+          // Lưới chắn đua /complete vs /files: nếu BE lỡ phát complete lúc phiên CHƯA có file
+          // nào (upload còn đang bay), KHÔNG bắn docs_complete — tránh xử lý phiên rỗng "0 file,
+          // thử lại lần 2 mới được". Chờ tới khi progress có file thật rồi complete lại.
+          const got = (d.docs || []).reduce((n, x) => n + (x.received || 0), 0) + (d.unknown || 0);
+          if (got <= 0) { renderDocProgress(d); return; }
+          completeSent = true;
+          renderDocProgress(d);
+          void submitDocsComplete("__event:docs_complete", "system");
+        } else if (d.type === "owner_fields_ready") {
+          pipeDone();
+          ask("__event:owner_fields_ready", "system");
+        } else if (d.type === "fields_ready") {
+          pipeDone(); // mốc thật: dữ liệu đã bóc xong
+          ask("__event:fields_ready", "system");   // BE trả action fill_fields (docs/06)
+        } else if (d.type === "attach_ready") {
+          pipeDone();
+          ask("__event:attach_ready", "system");   // BE trả action attach_plan
+        } else if (d.type === "business_ready") {
+          pipeDone();
+          ask("__event:business_ready", "system"); // BE trả một action chạy 8 trang + đính kèm
+        } else if (d.type === "pipeline_error") {
+          pipeFail();
+          ask("__event:pipeline_error", "system");
+        }
+      };
+      ws.onerror = () => {
+        reconnectStatusShown = true;
+        setStatus("⚠️ Mất kết nối tiến trình giấy tờ, em đang tự nối lại…", true);
+      };
+      ws.onclose = () => {
+        if (uploadWs === ws) uploadWs = null;
+        scheduleReconnect();
+      };
+    }
+
+    connect();
+  }
+
+  // ── Đính kèm tự động (Bước 6b — docs/06 §3.3) ──
+  // Lấy file từ PHIÊN upload (đúng THỨ TỰ như pipeline đã thấy — fileIndex khớp),
+  // chuyển thành dataUrl rồi giao engine attach-core thao tác DOM.
+  // ===== Kho bytes tại chỗ =====
+  // Đính kèm từng phải TẢI LẠI toàn bộ giấy tờ từ máy chủ, trong khi:
+  //   - Scan/chọn tệp: bytes VỐN nằm trong sidebar trước khi upload → tải lại là phí 100%.
+  //   - QR: tệp về từ lúc công dân còn đang chụp → kéo sẵn thì tới lúc đính đã có ở máy.
+  //
+  // Cache giữ BLOB chứ không giữ dataUrl: Blob là tham chiếu, trình duyệt tự đẩy xuống đĩa khi
+  // cần → không phình heap, nhờ vậy KHÔNG cần trần dung lượng và đường scan mới dám nói là
+  // không tải lại lần nào. Base64 để tới lúc đính mới làm (≈50-150ms cho 9MB, chạy song song).
+  let fileCache = new Map();        // fid -> { name, type, blob }
+  let fileCacheSid = "";
+  const fileInFlight = new Map();   // fid -> Promise — gộp prefetch với lần tải lúc đính
+
+  function resetFileCache(sid) {
+    if (fileCacheSid === sid) return;
+    fileCacheSid = sid || "";
+    fileCache = new Map();
+    fileInFlight.clear();
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      // FileReader.error là DOMException (NotReadableError / NotFoundError…). PHẢI reject NÓ, KHÔNG
+      // reject cái ProgressEvent (onerror nhận event) — String(event) = "[object ProgressEvent]"
+      // nuốt mất lý do thật, khiến trợ lý báo "[object ProgressEvent]" vô nghĩa.
+      r.onerror = () => reject(r.error || new Error("Không đọc được nội dung tệp."));
+      try { r.readAsDataURL(blob); }
+      catch (e) { reject(e instanceof Error ? e : new Error("Không đọc được nội dung tệp.")); }
+    });
+  }
+
+  /** Tải 1 tệp, thử lại khi chớp mạng. Không có retry thì một cú 502 giết cả lượt đính kèm. */
+  async function downloadSessionFile(sid, fid, name) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const fr = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}/files/${fid}`);
+        if (fr.ok) {
+          const blob = await fr.blob();
+          return { name, type: blob.type || "image/jpeg", blob };
+        }
+        // 4xx = tệp không còn/không có quyền → thử lại vô ích.
+        if (fr.status >= 400 && fr.status < 500) throw new Error(`HTTP ${fr.status}`);
+        lastError = new Error(`HTTP ${fr.status}`);
+      } catch (e) {
+        lastError = e;
+        if (String(e?.message || "").startsWith("HTTP 4")) break;
+      }
+      if (attempt < 3) await new Promise((ok) => setTimeout(ok, 800 * attempt));
+    }
+    throw new Error(`Không tải được tệp ${name}${lastError ? ` (${lastError.message})` : ""}.`);
+  }
+
+  /** Một fid chỉ tải ĐÚNG MỘT LẦN dù prefetch và bước đính cùng hỏi. */
+  function ensureFileBytes(sid, fid, name) {
+    resetFileCache(sid);
+    const hit = fileCache.get(fid);
+    if (hit) return Promise.resolve(hit);
+    const flying = fileInFlight.get(fid);
+    if (flying) return flying;
+    const job = downloadSessionFile(sid, fid, name)
+      .then((entry) => { fileCache.set(fid, entry); return entry; })
+      .finally(() => fileInFlight.delete(fid));
+    fileInFlight.set(fid, job);
+    return job;
+  }
+
+  /** Giữ lại bytes ĐANG cầm trên tay (scan/chọn tệp) — đường này không tải về lần nào. */
+  async function cacheUploadedBlobs(sid, files, accepted) {
+    resetFileCache(sid);
+    // Ghép fid với tệp theo THỨ TỰ; lệch độ dài thì BỎ cache hẳn. Ghép nhầm sẽ đính NHẦM
+    // giấy tờ — hậu quả nặng hơn nhiều so với việc phải tải lại.
+    if (!Array.isArray(accepted) || accepted.length !== files.length) {
+      console.warn("[TLND] accepted lệch số tệp, bỏ cache bytes", {
+        accepted: accepted?.length, files: files.length,
+      });
+      return;
+    }
+    for (let i = 0; i < accepted.length; i++) {
+      const fid = accepted[i]?.fid;
+      if (!fid || fileCache.has(fid)) continue;
+      // BE trả kèm `name` → đối chiếu được, không tin mù vào thứ tự.
+      const serverName = accepted[i]?.name;
+      if (serverName && files[i]?.name && serverName !== files[i].name) {
+        console.warn("[TLND] tên tệp lệch, bỏ cache bytes", { serverName, local: files[i].name });
+        return;
+      }
+      fileCache.set(fid, {
+        name: files[i].name,
+        type: files[i].type || "application/octet-stream",
+        blob: files[i],
+      });
+    }
+  }
+
+  /** Kéo ngầm tệp vừa về (QR) để lúc đính đã có sẵn. Lỗi thì im lặng — lúc đính tải lại. */
+  async function prefetchSessionFiles(sid) {
+    if (!sid) return;
+    try {
+      const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}`);
+      if (!res.ok) return;
+      const sess = await res.json();
+      resetFileCache(sid);
+      await Promise.all((sess.files || [])
+        .filter((f) => f?.fid && !fileCache.has(f.fid))
+        .map((f) => ensureFileBytes(sid, f.fid, f.name).catch(() => null)));
+    } catch (_) { /* prefetch hỏng không ảnh hưởng luồng chính */ }
+  }
+
+  /** Đọc MỘT tệp thành dataUrl BỀN BỈ. Blob đang cầm (cache cục bộ/scan) có thể không đọc được
+   *  (tệp trên đĩa đã đổi/mất, blob rỗng/hỏng, hoặc RAM dồn). Server LUÔN giữ bản đã nhận hợp lệ
+   *  → hỏng thì tải lại từ phiên rồi đọc lại, thử vài vòng. Chỉ khi cạn mọi cách mới ném lỗi
+   *  TIẾNG VIỆT nêu rõ tệp nào để cán bộ quét/chọn lại. Nhờ vậy hầu như không bao giờ đính hụt. */
+  async function readEntryToDataUrl(sid, f, entry) {
+    if (entry?.blob && entry.blob.size) {
+      try { return { entry, dataUrl: await blobToDataUrl(entry.blob) }; }
+      catch (e) { console.warn("[TLND] đọc blob cục bộ lỗi, sẽ tải lại từ phiên:", f?.name, e?.name || e?.message || e); }
+    }
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        fileCache.delete(f.fid);
+        const fresh = await downloadSessionFile(sid, f.fid, f.name);   // đã tự retry mạng 3 lần
+        if (!fresh?.blob || !fresh.blob.size) throw new Error("tệp rỗng từ hệ thống");
+        const dataUrl = await blobToDataUrl(fresh.blob);
+        fileCache.set(f.fid, fresh);
+        return { entry: fresh, dataUrl };
+      } catch (e) {
+        console.warn(`[TLND] tải lại+đọc tệp lỗi (vòng ${attempt}):`, f?.name, e?.name || e?.message || e);
+        await new Promise((ok) => setTimeout(ok, 600 * attempt));
+      }
+    }
+    throw new Error(
+      `Không đọc được tệp "${f?.name || "giấy tờ"}" (đã thử lấy lại từ hệ thống nhiều lần). `
+      + `Công dân vui lòng quét hoặc chọn lại tệp này rồi bấm đính kèm lại giúp em ạ.`
+    );
+  }
+
+  async function fetchSessionFilesAsPayload(sid) {
+    const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}`);
+    if (!res.ok) throw new Error(`Không lấy được danh sách giấy tờ của phiên (mã ${res.status}). Vui lòng thử lại.`);
+    const sess = await res.json();
+    resetFileCache(sid);
+    const list = sess.files || [];
+    // ĐỌC TUẦN TỰ (KHÔNG Promise.all): đọc nhiều tệp lớn thành base64 CÙNG LÚC làm dồn RAM →
+    // FileReader lỗi. Tuần tự chậm hơn chút nhưng không bao giờ vỡ vì bộ nhớ.
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      setStatus(`📥 Đang chuẩn bị giấy tờ ${i + 1}/${list.length}…`);
+      const entry = await ensureFileBytes(sid, f.fid, f.name);
+      const { entry: readEntry, dataUrl } = await readEntryToDataUrl(sid, f, entry);
+      // Tên cán bộ đã sửa (tenHienThi) phải đi vào payload đính kèm, không chỉ hiện trên danh sách.
+      out.push({ name: tenHienThi(f) || readEntry.name, type: readEntry.type, dataUrl, fid: f.fid });
+    }
+    setStatus("");
+    return out;
+  }
+
+  /** Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): BE đã nén tệp vượt mức và để bản nén trong
+   *  phiên. `replaceFiles` = {fid gốc: {fid, name, type}} → tải bản nén thay vào đúng vị trí tệp gốc. */
+  async function applyShrunkFiles(sid, files, replaceFiles) {
+    if (!replaceFiles || typeof replaceFiles !== "object") return files;
+    const out = [];
+    for (const file of files) {
+      const r = replaceFiles[file.fid];
+      if (!r?.fid) { out.push(file); continue; }
+      const { dataUrl } = await readEntryToDataUrl(sid, { fid: r.fid, name: r.name }, null);
+      out.push({ ...file, name: r.name || file.name, type: r.type || "application/pdf", dataUrl });
+    }
+    return out;
+  }
+
+  /** Đổi MỌI lỗi (kể cả DOMException tiếng Anh của trình duyệt) thành câu TIẾNG VIỆT người dân
+   *  hiểu được, đúng tình huống. Câu ta tự ném (đã có dấu tiếng Việt) thì giữ nguyên. */
+  function viAttachError(e) {
+    const raw = String(e?.message ?? e ?? "").trim();
+    if (!raw) return "Chưa chuẩn bị được giấy tờ để đính kèm. Công dân vui lòng thử đính kèm lại ạ.";
+    if (/[^\x00-\x7F]/.test(raw)) return raw; // có ký tự tiếng Việt = câu của mình → giữ nguyên
+    const low = raw.toLowerCase();
+    if (/notreadable|could not be read|not be read/.test(low))
+      return "Không đọc được nội dung một tệp giấy tờ (tệp có thể đã bị di chuyển hoặc thay đổi trên máy). Công dân vui lòng quét/chọn lại tệp rồi đính kèm lại ạ.";
+    if (/notfound|no such file|not found/.test(low))
+      return "Một tệp giấy tờ không còn tìm thấy trên máy. Công dân vui lòng quét/chọn lại tệp rồi đính kèm lại ạ.";
+    if (/network|failed to fetch|load failed|http [45]\d\d|timeout|timed out/.test(low))
+      return "Mất kết nối khi lấy giấy tờ từ hệ thống. Công dân kiểm tra mạng rồi bấm đính kèm lại giúp em ạ.";
+    if (/quota|memory|allocation/.test(low))
+      return "Giấy tờ quá lớn nên máy xử lý chưa xong. Công dân thử đính lại từng tệp giúp em ạ.";
+    return "Chưa đính được giấy tờ do sự cố kỹ thuật. Công dân vui lòng bấm đính kèm lại giúp em ạ.";
+  }
+
+  // Dựng payload theo hợp đồng BE: sourceSegments trích đúng trang; sourceFileIndexes là
+  // contract legacy gộp nguyên file. Tách trang lỗi phải dừng, không đính cả PDF hỗn hợp.
+  async function preparePdfPayload(files, attachments) {
+    if (!window.PdfConvert || !window.PDFLib) {
+      const requiresPageSplit = (attachments || []).some((item) =>
+        Array.isArray(item?.sourceSegments) && item.sourceSegments.length
+      );
+      if (requiresPageSplit) {
+        throw new Error("Thiếu bộ xử lý PDF để tách đúng các giấy tờ trong file.");
+      }
+      return { files, attachments };
+    }
+    const outFiles = [];
+    const outAtts = [];
+    for (const item of attachments || []) {
+      const segments = Array.isArray(item.sourceSegments) && item.sourceSegments.length
+        ? item.sourceSegments
+        : null;
+      const src = Array.isArray(item.sourceFileIndexes) && item.sourceFileIndexes.length
+        ? item.sourceFileIndexes : [item.fileIndex];
+      const sources = src.map((i) => files[i]).filter(Boolean);
+      if (!segments && !sources.length) continue;
+      let file = segments ? files[Number(segments[0]?.fileIndex)] : sources[0];
+      if (segments) {
+        const composed = await PdfConvert.composeSegmentsToPdf(
+          files,
+          segments,
+          item.documentName || file?.name || "tai-lieu"
+        );
+        file = { ...(file || {}), ...composed };
+      } else {
+        try {
+          if (sources.length > 1) {
+            const merged = await PdfConvert.mergeToPdf(sources, item.documentName || sources[0].name);
+            file = { ...sources[0], ...merged };
+          } else if (file.dataUrl && PdfConvert.isImage(file.type, file.name)) {
+            const pdf = await PdfConvert.imageToPdf(file.dataUrl, file.name, file.type);
+            file = { ...file, ...pdf };
+          }
+        } catch (e) {
+          console.warn("[TLND] Chuyển/gộp PDF legacy thất bại, giữ file gốc:", file.name, e);
+        }
+      }
+      const newIndex = outFiles.length;
+      outFiles.push(file);
+      const rewritten = { ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex] };
+      delete rewritten.sourceSegments;
+      outAtts.push(rewritten);
+    }
+    return { files: outFiles, attachments: outAtts };
+  }
+
+  const SPLIT_ATTACH_PROCEDURES = new Set(["chung-thuc-ban-sao", "chung-thuc-chu-ky"]);
+
+  function supportsSplitAttach(procedure) {
+    return SPLIT_ATTACH_PROCEDURES.has(String(procedure || ""));
+  }
+
+  function planItemForSplitFile(attachments, originalIndex, file, bundleIndex = 0) {
+    const item = (attachments || []).find((entry) => entry?.fileIndex === originalIndex)
+      || (attachments || []).find((entry) =>
+        Array.isArray(entry?.sourceFileIndexes) && entry.sourceFileIndexes.includes(originalIndex))
+      || {};
+    return {
+      ...item,
+      fileIndex: bundleIndex,
+      sourceFileIndexes: [bundleIndex],
+      fileName: file?.name || item.fileName,
+      documentName: item.documentName || file?.name,
+      detectedType: item.detectedType || item.documentName || file?.name,
+    };
+  }
+
+  // giấy tờ thật xuống dòng "Thêm thành phần". Ô cố định STT1 nhận 1 file ẢO = COPY (đổi tên) của 1
+  // file thật (DÙNG LẠI fileIndex → không tốn payload). No-op (null) cho account/thủ tục khác.
+  function buildStt1VirtualItem(directive, source, files) {
+    if (!directive || !source) return null;
+    const idx = Number.isInteger(source.fileIndex) ? source.fileIndex : -1;
+    if (idx < 0 || !Array.isArray(files) || !files[idx]) return null;
+    const srcName = files[idx]?.name || source.documentName || "tai-lieu";
+    return {
+      ...source,
+      virtualCopy: true,
+      target: "existing",
+      componentIndex: directive.componentIndex || 1,
+      componentName: directive.componentName || source.componentName || "",
+      needsAddComponent: false,
+      appendOnOccupied: false,
+      documentName: directive.documentName || srcName,
+      fileIndex: idx,
+      sourceFileIndexes: [idx],
+      fileName: srcName,
+    };
+  }
+
+  function buildCopyCertificationSplitBundles(files, attachments, stt1Virtual = null) {
+    const bundles = [];
+    for (let index = 0; index < (attachments || []).length; index++) {
+      const item = attachments[index] || {};
+      const file = Number.isInteger(item.fileIndex) ? files[item.fileIndex] : files[index];
+      if (!file) continue;
+      const real = {
+        ...item,
+        fileIndex: 0,
+        sourceFileIndexes: [0],
+        fileName: file.name || item.fileName,
+        documentName: item.documentName || file.name,
+      };
+      const bundleAttachments = [real];
+      // Hải Châu: mỗi tab thêm 1 file ẢO vào STT1 = copy chính file của tab (fileIndex 0 trong bundle).
+      if (stt1Virtual) {
+        const virtual = buildStt1VirtualItem(stt1Virtual, real, [file]);
+        if (virtual) bundleAttachments.push(virtual);
+      }
+      bundles.push({ files: [file], attachments: bundleAttachments });
+    }
+    return bundles;
+  }
+
+  function isSignatureIdentityPlanItem(item) {
+    if (item?.bundleRole === "identity") return true;
+    if (item?.bundleRole === "signature_document") return false;
+    const normalize = (value) => String(value || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const values = [normalize(item?.detectedType), normalize(item?.documentName)];
+    const exact = new Set([
+      "can cuoc", "can cuoc cong dan", "the can cuoc", "cccd", "chung minh nhan dan", "cmnd",
+      "ho chieu", "passport", "giay chung nhan can cuoc", "giay to tuy than",
+    ]);
+    const component = normalize(item?.componentName);
+    return Number(item?.componentIndex) === 2 ||
+      values.some((value) => exact.has(value) || value.startsWith("ho chieu ") || value.startsWith("passport ")) ||
+      ["giay to tuy than", "can cuoc dien tu", "the can cuoc", "ho chieu"]
+        .some((marker) => component.includes(marker));
+  }
+
+  // Chứng thực chữ ký: mỗi hồ sơ có đúng một văn bản STT1. Plan mới dùng bundleId để identity
+  // matched đi đúng người ký và identity shared chỉ xuất hiện ở bundle đầu. Contract cũ chỉ được
+  // fallback khi có tối đa một identity dùng chung.
+  async function buildSignatureSplitBundles(files, attachments) {
+    const entries = files.map((file, index) => ({
+      file,
+      planItem: planItemForSplitFile(attachments, index, file),
+    }));
+    const identityEntries = entries.filter((entry) => isSignatureIdentityPlanItem(entry.planItem));
+    const documentEntries = entries.filter((entry) => !isSignatureIdentityPlanItem(entry.planItem));
+    if (!documentEntries.length) {
+      return { error: "Không tìm thấy giấy tờ, văn bản cần chứng thực chữ ký để đính vào STT1." };
+    }
+
+    const hasBundleContract = entries.some((entry) =>
+      entry.planItem?.bundleId || entry.planItem?.bundleRole || entry.planItem?.identityScope);
+    if (hasBundleContract) {
+      // Tệp không có quan hệ hồ sơ (vd giấy tùy thân không khớp người ký nào) thì BỎ RIÊNG tệp đó
+      // rồi đính tiếp phần còn lại. Trước đây hủy cả lượt: hỏng 1 tệp là mất cả 4, mà kế hoạch được
+      // phát lại y nguyên nên bấm "Đính kèm lại" hỏng mãi (sự cố Nghĩa Hưng 21/09/2026).
+      const usable = entries.filter((entry) => entry.planItem?.bundleId
+        && ["signature_document", "identity"].includes(entry.planItem?.bundleRole));
+      const skippedNames = entries.filter((entry) => !usable.includes(entry))
+        .map((entry) => entry.file?.name || entry.planItem?.fileName || "một tệp");
+      if (!usable.some((entry) => entry.planItem.bundleRole === "signature_document")) {
+        return { error: "Kế hoạch nhiều hồ sơ không có giấy tờ, văn bản cần chứng thực chữ ký." };
+      }
+      if (skippedNames.length) {
+        console.warn("[TLND-Split] bỏ tệp không có quan hệ hồ sơ:", skippedNames);
+      }
+
+      const bundleOrder = [];
+      const grouped = new Map();
+      for (const entry of usable) {
+        const bundleId = String(entry.planItem.bundleId);
+        if (!grouped.has(bundleId)) grouped.set(bundleId, []);
+        grouped.get(bundleId).push(entry);
+        if (entry.planItem.bundleRole === "signature_document" && !bundleOrder.includes(bundleId)) {
+          bundleOrder.push(bundleId);
+        }
+      }
+      if (bundleOrder.length !== grouped.size) {
+        return { error: "Có bundle giấy tờ tùy thân nhưng thiếu văn bản cần chứng thực chữ ký." };
+      }
+
+      const bundles = [];
+      for (const bundleId of bundleOrder) {
+        const group = grouped.get(bundleId) || [];
+        const documents = group.filter((entry) => entry.planItem.bundleRole === "signature_document");
+        const identities = group.filter((entry) => entry.planItem.bundleRole === "identity");
+        if (documents.length !== 1) {
+          return { error: `Bundle ${bundleId} phải có đúng một văn bản cần chứng thực chữ ký.` };
+        }
+        if (identities.length > 1) {
+          return { error: `Bundle ${bundleId} có nhiều nhóm giấy tờ tùy thân chưa được backend gộp.` };
+        }
+
+        const ordered = [...documents, ...identities];
+        const bundleFiles = ordered.map((entry) => entry.file);
+        const bundleAttachments = ordered.map((entry, bundleIndex) => ({
+          ...entry.planItem,
+          fileIndex: bundleIndex,
+          sourceFileIndexes: [bundleIndex],
+          fileName: entry.file?.name || entry.planItem.fileName,
+          documentName: entry.planItem.documentName || entry.file?.name,
+          target: "existing",
+          componentIndex: entry.planItem.bundleRole === "identity" ? 2 : 1,
+          needsAddComponent: false,
+          appendOnOccupied: false,
+        }));
+        bundles.push({ files: bundleFiles, attachments: bundleAttachments });
+      }
+      return { bundles, skippedNames };
+    }
+
+    if (identityEntries.length > 1) {
+      return { error: "Backend chưa trả quan hệ ghép hồ sơ cho nhiều giấy tờ tùy thân." };
+    }
+
+    let sharedIdentityFile = null;
+    let sharedIdentityPlan = null;
+    if (identityEntries.length) {
+      sharedIdentityFile = identityEntries[0].file;
+      sharedIdentityPlan = identityEntries[0].planItem;
+    }
+
+    return {
+      bundles: documentEntries.map((entry, bundleIndex) => {
+        const bundleFiles = [entry.file];
+        const bundleAttachments = [{
+          ...entry.planItem,
+          fileIndex: 0,
+          sourceFileIndexes: [0],
+          fileName: entry.file?.name || entry.planItem.fileName,
+          documentName: entry.planItem.documentName || entry.file?.name,
+        }];
+        if (bundleIndex === 0 && sharedIdentityFile && sharedIdentityPlan) {
+          bundleFiles.push(sharedIdentityFile);
+          bundleAttachments.push({
+            ...sharedIdentityPlan,
+            fileIndex: 1,
+            sourceFileIndexes: [1],
+            fileName: sharedIdentityFile.name || sharedIdentityPlan.fileName,
+            target: "existing",
+            componentIndex: 2,
+            needsAddComponent: false,
+            appendOnOccupied: false,
+          });
+        }
+        return { files: bundleFiles, attachments: bundleAttachments };
+      }),
+    };
+  }
+
+  function splitQueueReport(status, dispatchId = "") {
+    const errors = (status?.results || [])
+      .filter((item) => !item?.ok)
+      .map((item) => `Hồ sơ ${item.ordinal || "?"}: ${item.error || item.code || "đính kèm thất bại"}`);
+    return {
+      attached: Number(status?.succeeded) || 0,
+      errors,
+      mode: "split",
+      queueId: status?.queueId || "",
+      dossiersTotal: Number(status?.total) || 0,
+      dossiersSucceeded: Number(status?.succeeded) || 0,
+      dossiersFailed: Number(status?.failed) || 0,
+      ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+    };
+  }
+
+  async function sendAttachLeaseSignal(eventName, dispatchId) {
+    if (!dispatchId || !api.conversationId) return false;
+    try {
+      // Gọi thẳng API vì ask() đang busy trong lúc thi hành action. Reply của ACK/heartbeat
+      // luôn rỗng; không render và không chen vào lịch sử hội thoại.
+      await api.ask(`__event:${eventName}:${JSON.stringify({ dispatch_id: dispatchId })}`, {
+        source: "system",
+      });
+      return true;
+    } catch (error) {
+      console.warn(`[TLND-AttachLease] ${eventName} thất bại`, error);
+      return false;
+    }
+  }
+
+  let activeSplitMonitor = null;
+  async function monitorSplitQueue(queueId, totalHint = 0, dispatchId = "") {
+    if (!queueId) return;
+    if (activeSplitMonitor?.queueId === queueId) {
+      // Plan được phát lại sau reload/mất ACK: tiếp quản lease mới nhưng không tạo vòng poll thứ hai.
+      if (dispatchId) activeSplitMonitor.dispatchId = dispatchId;
+      return;
+    }
+    const monitor = { queueId, dispatchId };
+    activeSplitMonitor = monitor;
+    const deadline = Date.now() + 30 * 60 * 1000;
+    let missingCount = 0;
+    let nextHeartbeatAt = 0;
+    try {
+      for (;;) {
+        if (monitor.dispatchId && Date.now() >= nextHeartbeatAt) {
+          await sendAttachLeaseSignal("attach_heartbeat", monitor.dispatchId);
+          nextHeartbeatAt = Date.now() + 10000;
+        }
+        const status = await sendToBackground({ action: "getSplitAttachQueueStatus", queueId });
+        if (status?.status === "done") {
+          markActivity();
+          setStatus("");
+          // Chỉ báo backend sau khi TOÀN BỘ tab terminal; đây là điểm khác với popup auto-fill.
+          const acknowledged = await ask(
+            `__action:attach_report:${JSON.stringify(splitQueueReport(status, monitor.dispatchId))}`, "system"
+          );
+          if (!acknowledged) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue; // mạng lỗi: giữ marker + retry, không làm mất báo cáo terminal
+          }
+          await writeActiveSplit(null);
+          return;
+        }
+        if (status?.status === "running") {
+          markActivity(); // hàng đợi đang làm việc thật → không timeout giữa nhiều hồ sơ
+          missingCount = 0;
+          const ordinal = status.activeOrdinal || Math.min((status.completed || 0) + 1, status.total || 1);
+          setStatus(`📎 Đang đính kèm hồ sơ ${ordinal}/${status.total || "?"}…`);
+        } else if (!status?.status) {
+          missingCount += 1;
+        }
+        if (Date.now() > deadline || missingCount >= 10) {
+          setStatus("");
+          await sendToBackground({ action: "abandonSplitAttachQueue", queueId });
+          const acknowledged = await ask(`__action:attach_report:${JSON.stringify({
+            attached: 0,
+            errors: ["Không còn đọc được trạng thái hàng đợi tách hồ sơ."],
+            mode: "split",
+            queueId,
+            dossiersTotal: totalHint,
+            dossiersSucceeded: 0,
+            dossiersFailed: totalHint,
+            ...(monitor.dispatchId ? { dispatch_id: monitor.dispatchId } : {}),
+          })}`, "system");
+          if (!acknowledged) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          }
+          await writeActiveSplit(null);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      }
+    } finally {
+      if (activeSplitMonitor === monitor) activeSplitMonitor = null;
+    }
+  }
+
+  async function runSplitAttachPlan(a, files, attachments) {
+    const built = a.procedure === "chung-thuc-chu-ky"
+      ? await buildSignatureSplitBundles(files, attachments)
+      : { bundles: buildCopyCertificationSplitBundles(files, attachments, a.stt1VirtualCopy) };
+    if (built.error) return { report: { attached: 0, errors: [built.error], mode: "split" } };
+    // Nói rõ tệp bị bỏ ngay tại chỗ: BE chỉ biết những tệp CHÍNH NÓ loại, còn tệp rơi ở đây là
+    // phần BE bản cũ vẫn gửi sang. Không đọc thành tiếng — không phải việc công dân phải xử lý.
+    if (built.skippedNames?.length) {
+      addBotMd(`⚠️ Em bỏ qua ${built.skippedNames.length} tệp chưa xếp được vào hồ sơ nào: `
+        + built.skippedNames.join(", ") + ". Các hồ sơ còn lại em đính bình thường ạ.");
+    }
+    const bundles = built.bundles || [];
+    if (!bundles.length) return { report: { attached: 0, errors: ["Không có tài liệu để tách hồ sơ."], mode: "split" } };
+
+    const prepared = await sendToBackground({ action: "prepareSplitAttachQueue" });
+    if (prepared?.error) return { report: { attached: 0, errors: [prepared.error], mode: "split" } };
+    const urlRes = await sendToContent({ action: "getDossierUrl" });
+    if (!urlRes?.url) {
+      return { report: { attached: 0,
+        errors: [urlRes?.error || "Không lấy được URL để mở hồ sơ mới."], mode: "split" } };
+    }
+
+    const queueId = `split-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    const first = bundles[0];
+    const rest = bundles.slice(1);
+    setStatus(`📎 Đang đính kèm hồ sơ 1/${bundles.length}…`);
+    const firstRes = await sendToContent({
+      action: "attachFilesByPlan",
+      files: first.files,
+      attachments: first.attachments,
+      procedure: a.procedure || "",
+      mode: "split",
+      // Hồ sơ 1 là CHÍNH hồ sơ đang mở: đính kèm lại thì gỡ tệp lượt trước. Các tab tách là hồ sơ mới.
+      clearExisting: a.clearExisting === true,
+    });
+
+    const reloadable = new Set([
+      "wallet-stale-modal", "wallet-modal-not-opened", "wallet-device-upload-not-opened",
+    ]);
+    const needsRecovery = !!firstRes?.error && reloadable.has(String(firstRes?.code || ""));
+    let waitForTabId = null;
+    const initialResults = [];
+    if (needsRecovery) {
+      waitForTabId = Number(TAB_ID) || null;
+      const staged = await sendToBackground({
+        action: "stageDossierTabAttach",
+        queueId,
+        tabId: waitForTabId,
+        files: first.files,
+        attachments: first.attachments,
+        procedure: a.procedure || "",
+        recoveryCode: firstRes.code,
+      });
+      if (staged?.error) {
+        return { report: { attached: 0, errors: [staged.error], mode: "split",
+          dossiersTotal: bundles.length, dossiersSucceeded: 0, dossiersFailed: bundles.length } };
+      }
+    } else {
+      initialResults.push({
+        ok: !!firstRes?.ok && !firstRes?.error,
+        ordinal: 1,
+        code: firstRes?.code || null,
+        error: firstRes?.error || null,
+      });
+    }
+
+    // Một tài liệu, thao tác trực tiếp đã terminal → không cần dựng queue.
+    if (!rest.length && !needsRecovery) {
+      const ok = initialResults[0]?.ok;
+      return { report: {
+        attached: ok ? 1 : 0,
+        errors: ok ? [] : [initialResults[0]?.error || "Đính kèm thất bại."],
+        mode: "split",
+        dossiersTotal: 1,
+        dossiersSucceeded: ok ? 1 : 0,
+        dossiersFailed: ok ? 0 : 1,
+      } };
+    }
+
+    const items = rest.map((bundle, index) => ({
+      ordinal: index + 2,
+      url: urlRes.url,
+      files: bundle.files,
+      attachments: bundle.attachments,
+      procedure: a.procedure || "",
+    }));
+    await chrome.storage.local.set({ [SPLIT_STAGE_KEY]: { items, stagedAt: Date.now() } });
+    const started = await sendToBackground({
+      action: "startSplitAttachQueue",
+      queueId,
+      total: bundles.length,
+      waitForTabId,
+      // Tab của sidebar này — background chuyển tiếp mốc "Nộp" của các tab tách về đây.
+      originTabId: Number(TAB_ID) || null,
+      // Lệnh gạt "cách nhận kết quả" mặc định (BE gửi khi tách hồ sơ) — khung hồ sơ phụ ở tab
+      // tách tự gạt theo lệnh này, vì nó không nhận lệnh nào từ BE.
+      resultMethod: a.resultMethod || null,
+      initialResults,
+      itemsStorageKey: SPLIT_STAGE_KEY,
+    });
+    try { await chrome.storage.local.remove(SPLIT_STAGE_KEY); } catch (_) { /* background cũng dọn */ }
+    if (started?.error) return { report: { attached: 0, errors: [started.error], mode: "split" } };
+
+    await writeActiveSplit({
+      queueId, total: bundles.length, ts: Date.now(), dispatch_id: a.dispatch_id || "",
+    });
+    monitorSplitQueue(queueId, bundles.length, a.dispatch_id || ""); // chạy nền, giữ lease qua nhiều tab
+    if (needsRecovery) {
+      const reload = await sendToBackground({ action: "reloadDossierTabAttach", tabId: waitForTabId });
+      if (reload?.error) console.warn("[TLND-Split] Không reload được tab đầu:", reload.error);
+    }
+    return { queued: true, queueId };
+  }
+
+  async function runAttachPlan(a) {
+    const dispatchId = String(a.dispatch_id || "");
+    let heartbeatTimer = null;
+    let heartbeatPromise = Promise.resolve();
+    try {
+      await sendAttachLeaseSignal("attach_started", dispatchId);
+      // Wizard hồ sơ: trang còn ở bước kê khai (chưa sang "Thành phần hồ sơ") mà chạy
+      // engine sẽ ra "0 tệp" vô nghĩa → báo BE dặn người dân chuyển bước, watcher thấy
+      // đúng bước sẽ tự đính lại. Trang không phải wizard (wizardStep=0) chạy như thường.
+      // Bước "Thành phần hồ sơ" KHÁC nhau theo cổng (tư pháp = 3, MAE = 2) → BE gửi kèm
+      // attach_step theo wizard của thủ tục; thiếu thì giữ mặc định 3 như trước.
+      const attachStep = Number(a.attach_step) || 3;
+      const pre = await sendToContent({ action: "getPageContext" });
+      if (pre?.ok && pre.wizardStep && pre.wizardStep !== attachStep) {
+        ask(`__event:attach_blocked:${JSON.stringify({
+          wizardStep: pre.wizardStep, ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+        })}`, "system");
+        return;
+      }
+      // Đóng dấu chữ ký trang hiện tại — watcher không bắn lại page_status cho đúng
+      // trang này nữa (tránh BE phát lệnh đính kèm lần 2 khi engine đang chạy).
+      if (pre?.ok) {
+        lastPageSig = `${pre.formKind}|${pre.wizardStep || 0}|${pre.declarationTarget ? 1 : 0}|${pre.infoModal ? 1 : 0}|${pre.agencyBlock ? 1 : 0}|${pre.attachmentTarget ? 1 : 0}`;
+      }
+      if (a.mode === "split" && supportsSplitAttach(a.procedure)) {
+        const active = await readActiveSplit();
+        if (active?.queueId) {
+          // Reload/panel dựng lại có thể làm watcher phát lại attach_plan. Queue cũ vẫn là nguồn
+          // chân lý; tuyệt đối không khởi động lượt thứ hai hoặc báo attached=0 đè kết quả đang chạy.
+          setStatus(`📎 Đang tiếp tục hàng đợi ${active.total || "?"} hồ sơ…`);
+          await writeActiveSplit({ ...active, dispatch_id: dispatchId || active.dispatch_id || "" });
+          monitorSplitQueue(active.queueId, active.total || 0, dispatchId || active.dispatch_id || "");
+          return;
+        }
+      }
+      if (dispatchId) {
+        heartbeatTimer = setInterval(() => {
+          // Nối đuôi để heartbeat cuối không ghi Mongo muộn hơn attach_report.
+          heartbeatPromise = heartbeatPromise.then(
+            () => sendAttachLeaseSignal("attach_heartbeat", dispatchId),
+          );
+        }, 10000);
+      }
+      setStatus("📎 Đang đính kèm giấy tờ vào hồ sơ…");
+      const attachSid = a.session_id || uploadSid;
+      const raw = await applyShrunkFiles(attachSid, await fetchSessionFilesAsPayload(attachSid), a.replaceFiles);
+      const { files, attachments } = await preparePdfPayload(raw, a.attachments);
+      if (a.mode === "split" && supportsSplitAttach(a.procedure)) {
+        const split = await runSplitAttachPlan(a, files, attachments);
+        if (split?.queued) return;
+        setStatus("");
+        await heartbeatPromise;
+        const splitReport = split?.report || {
+          attached: 0, errors: ["Không khởi động được chế độ nhiều hồ sơ."], mode: "split",
+        };
+        ask(`__action:attach_report:${JSON.stringify({
+          ...splitReport, ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+        })}`, "system");
+        return;
+      }
+      // Hải Châu merge 1 tab: chèn 1 file ẢO vào STT1 (BE đã đẩy giấy tờ thật xuống dòng "Thêm
+      // thành phần"). Directive chỉ có với account đó → account khác giữ nguyên `attachments`.
+      let sendAttachments = attachments;
+      if (a.stt1VirtualCopy) {
+        const src = attachments.find((x) => x && Number.isInteger(x.fileIndex) && files[x.fileIndex])
+          || attachments[0];
+        const virtual = buildStt1VirtualItem(a.stt1VirtualCopy, src, files);
+        if (virtual) sendAttachments = [virtual, ...attachments];
+      }
+      const res = await sendToContent({
+        action: "attachFilesByPlan",
+        files,
+        attachments: sendAttachments,
+        procedure: a.procedure || "",
+        mode: a.mode || "merge",
+        // BE đánh dấu lượt đính kèm LẠI trên cùng hồ sơ → gỡ tệp lượt trước rồi mới đính.
+        clearExisting: a.clearExisting === true,
+      });
+      setStatus("");
+      const report = {
+        attached: res?.attached ?? res?.results?.filter?.((x) => x?.ok)?.length ?? 0,
+        // Lượt bổ sung gửi lại toàn bộ danh sách còn lại. attach-core tự bỏ qua những
+        // file đã có trên cổng; báo số skip để backend không hiểu nhầm "0 file mới" là lỗi.
+        skipped: Number(res?.skipped) || 0,
+        // res null = KHÔNG frame nào trả lời (listener tự im khi không thấy bảng thành phần hồ sơ,
+        // hoặc trang vừa tải lại). Phải nói ra, nếu không backend chỉ thấy "0 tệp, 0 lỗi" và câu
+        // báo cho công dân không có lý do nào để lần theo.
+        errors: !res
+          ? ["Trang không nhận lệnh đính kèm — chưa thấy bảng Thành phần hồ sơ hoặc trang vừa tải lại"]
+          : res.error ? [res.error] : (res.errors || []),
+      };
+      await heartbeatPromise;
+      ask(`__action:attach_report:${JSON.stringify({
+        ...report, mode: a.mode || "merge", ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+      })}`, "system");
+    } catch (e) {
+      setStatus("");
+      await heartbeatPromise;
+      // Lỗi ra cho người dân PHẢI là tiếng Việt, đúng tình huống — không để lọt "[object …]" hay
+      // câu lỗi tiếng Anh của trình duyệt.
+      ask(`__action:attach_report:${JSON.stringify({
+        attached: 0,
+        errors: [viAttachError(e)],
+        ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+      })}`, "system");
+    } finally {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+    }
+  }
+
+  // ── Thi hành actions từ BE (tuần tự) ──
+  async function runActions(actions) {
+    for (const a of actions) {
+      if (a.type === "arm_submit_watch") {
+        await armSubmitWatch(a.rules);
+      } else if (a.type === "new_conversation") {
+        // Công dân NÓI "làm thủ tục khác" (chip đã tự xử ở renderChips). Một conversation =
+        // một hồ sơ, nên đi đúng luồng của chip: xoá phiên rồi mở phiên mới.
+        await returnToStart("new_procedure", { procedureKey: String(a.procedure_key || "") });
+        return;
+      } else if (a.type === "navigate" && a.url) {
+        // Phải chờ storage ghi xong trước khi điều hướng; nếu iframe bị hủy sớm ở lượt đầu,
+        // trang đích không thấy journey và sẽ chỉ hiện launcher.
+        await saveJourney();
+        setStatus("Đang chuyển trang…");
+        await sendToContent({ action: "navigate", url: a.url });
+      } else if (a.type === "verify_portal_state") {
+        // ask() còn busy tới khi runActions kết thúc. Chạy ở lượt event-loop kế tiếp để
+        // page_status không bị xếp hàng rồi chờ ngược chính request hiện tại.
+        setTimeout(() => { void verifyPortalState(); }, 0);
+      } else if (a.type === "prepare_business_registration") {
+        setStatus(a.workflow === "reissue"
+          ? "Đang mở luồng Cấp lại Giấy chứng nhận hộ kinh doanh…"
+          : a.workflow && a.workflow !== "create"
+            ? "Đang mở luồng Đăng ký thay đổi hộ kinh doanh…"
+            : "Đang mở trang kê khai Thành lập mới hộ kinh doanh…");
+        const res = await sendToContent({
+          action: "prepareBusinessRegistration",
+          workflow: a.workflow || "",
+          stop_at: a.stop_at || "",
+        });
+        if (res?.error) {
+          setStatus("", false);
+          addBotMd(`⚠️ ${res.error}`);
+        }
+      } else if (a.type === "start_business_registration" && a.pages) {
+        pipeDone();
+        setStatus("Đang chuẩn bị các khối dữ liệu và giấy tờ đính kèm…");
+        try {
+          const rawFiles = a.session_id
+            ? await fetchSessionFilesAsPayload(a.session_id || uploadSid) : [];
+          const prepared = Array.isArray(a.attachments) && a.attachments.length
+            ? await preparePdfPayload(rawFiles, a.attachments)
+            : { files: [], attachments: [] };
+          const res = await sendToContent({
+            action: "startBusinessRegistration",
+            pages: a.pages,
+            files: prepared.files,
+            attachments: prepared.attachments,
+            businessDefaults: a.businessDefaults || null,
+            // Luồng thay đổi HKD: adapter cần workflow + businessFlow (khóa tra cứu hộ KD,
+            // pageOrder động) — thiếu là nó bootstrap nhầm CREATE rồi đứng im ở màn tra cứu.
+            workflow: a.workflow || "",
+            businessFlow: a.businessFlow || null,
+          });
+          if (res?.error || !res?.ok) {
+            setStatus("");
+            const message = res?.error || "Trang HkdOnline chưa nhận lệnh tự điền.";
+            ask(`__action:business_report:${JSON.stringify({
+              ok: false, filledPages: 0, attached: 0, phase: "start", errors: [message],
+            })}`, "system");
+          }
+        } catch (e) {
+          setStatus("");
+          ask(`__action:business_report:${JSON.stringify({
+            ok: false, filledPages: 0, attached: 0, phase: "start",
+            errors: [viAttachError(e)],
+          })}`, "system");
+        }
+      } else if (a.type === "guided_click_next") {
+        // Hoãn khỏi lượt hiện tại: runActions chạy BÊN TRONG ask() lúc cờ busy còn bật, nên
+        // ask() lồng bên trong chỉ nằm lại pendingQueue và chờ ask() ngoài xong — mà ask()
+        // ngoài lại đang chờ chính runActions → khoá cứng, bot im luôn sau khi bấm nút.
+        const phase = a.phase || "";
+        const expect = Number(a.expectStep) || 0;
+        setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
+      } else if (a.type === "guided_submit") {
+        setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "declaration_preview") {
+        const required = a.required || [];
+        setTimeout(() => { void runDeclarationPreview(required); }, 0);
+      } else if (a.type === "declaration_confirm") {
+        const expect = Number(a.expectStep) || 0;
+        setTimeout(() => { void runDeclarationConfirm(expect); }, 0);
+      } else if (a.type === "reload_page") {
+        window.parent.postMessage({ __tlnd: "reloadPage" }, "*");
+      } else if (a.type === "declaration_preview_close") {
+        void sendToContent({ action: "declarationPreviewClose" });
+      } else if (a.type === "press_chip" && a.send) {
+        // Công dân chọn nút bằng lời → bấm đúng nút đó (nút còn sống gần nhất) để đi cùng đường
+        // với bấm tay (đọc ô trên trang, ngữ cảnh trang…). setTimeout: không chạy lượt hỏi mới
+        // ngay trong runActions.
+        setTimeout(() => {
+          const btn = [...document.querySelectorAll(".chip")]
+            .filter((b) => b.dataset.send === a.send && !b.disabled).pop();
+          if (!btn) return;
+          chipPressByVoice = true;
+          btn.click();
+        }, 0);
+      } else if (a.type === "chip_used" && a.send) {
+        document.querySelectorAll(".chip").forEach((b) => {
+          if (b.dataset.send !== a.send) return;
+          (b.closest(".chips") || b.parentElement)?.querySelectorAll("button")
+            .forEach((x) => { x.disabled = true; });
+        });
+      } else if (a.type === "consent_verbal") {
+        markConsentVerbal(!!a.accepted);
+      } else if (a.type === "select_result_method") {
+        setTimeout(() => { void runSelectResultMethod(a); }, 0);
+      } else if (a.type === "lien_thong_next") {
+        setTimeout(() => { void runLienThongMove(a); }, 0);
+      } else if (a.type === "lien_thong_result_scan" || a.type === "lien_thong_result_set") {
+        setTimeout(() => { void runLienThongResult(a); }, 0);
+      } else if (a.type === "lien_thong_submit") {
+        setTimeout(() => { void runLienThongSubmit(); }, 0);
+      } else if (a.type === "bxd_next") {
+        setTimeout(() => { void runBxdMove(a); }, 0);
+      } else if (a.type === "bxd_result_scan" || a.type === "bxd_result_set") {
+        setTimeout(() => { void runBxdResult(a); }, 0);
+      } else if (a.type === "bxd_submit") {
+        setTimeout(() => { void runBxdSubmit(); }, 0);
+      } else if (a.type === "attach_authorization_doc") {
+        setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
+      } else if (a.type === "save_owner_profile") {
+        setTimeout(() => { void runSaveOwnerProfile(); }, 0);
+      } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
+        pipeDone();
+        setStatus("Đang điền thông tin chủ hồ sơ…");
+        const traceId = `owner-${Date.now().toString(36)}`;
+        console.log("[TLND-OwnerFill][sidebar] send", {
+          traceId,
+          fields: a.fields.map((field) => ({
+            key: field.key || field.name || field.label || "?",
+            comp: field.comp || "",
+            hasValue: field.value !== null && field.value !== undefined && field.value !== "",
+          })),
+        });
+        const res = await sendToContent({
+          action: "fillOwnerFields", fields: a.fields, traceId,
+        });
+        console.log("[TLND-OwnerFill][sidebar] response", { traceId, res });
+        setStatus("");
+        if (res?.error) addBotMd(`⚠️ ${res.error}`);
+        const noFrameError = !res ? "Không tìm thấy frame chứa các ô Thông tin chủ hồ sơ." : "";
+        const report = {
+          filled: res?.filled || 0,
+          kept: res?.kept || 0,
+          filledLabels: res?.filledLabels || [],
+          keptLabels: res?.keptLabels || [],
+          notFound: res?.notFound || [],
+          errors: res?.errors || (res?.error ? [res.error] : (noFrameError ? [noFrameError] : [])),
+        };
+        ask(`__action:owner_fill_report:${JSON.stringify(report)}`, "system");
+      } else if (a.type === "fill_fields" && Array.isArray(a.fields)) {
+        pipeDone(); // dữ liệu về tới nơi — card tiến trình chốt ✓ dù WS có rớt
+        setStatus("Đang điền form…");
+        const res = await sendToContent({
+          action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
+          formSnapshot: a.formSnapshot || null,
+        });
+        setStatus("");
+        if (res?.error) addBotMd(`⚠️ ${res.error}`);
+        // Luồng bản 2: BE nói kết quả điền ở khung riêng theo số ô cổng đang hiện → không vẽ chú giải đếm từ payload.
+        if (!a.noLegend) renderFillLegend(a.fields, res);
+        // Báo BE kết quả điền THẬT (engine trả {filled, notFound, errors}) → bot sang rà soát.
+        const report = { filled: res?.filled || 0, notFound: res?.notFound || [], errors: res?.errors || [] };
+        if (a.fieldReview) {
+          // Tô lại từng ô theo 3 màu (xanh / cam / đỏ) và đếm, để BE mời bổ sung ô còn trống.
+          // Gửi nguyên bộ quy tắc ô của thủ tục (required, noAsk, zeroIsEmpty…) để thêm quy tắc không phải sửa sidebar.
+          const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+          if (marked?.stats) report.review = marked.stats;
+        }
+        ask(`__action:fill_report:${JSON.stringify(report)}`, "system");
+      } else if (a.type === "pipeline_steps") {
+        renderStepsCard(a);
+      } else if (a.type === "field_review_next") {
+        // Điền ô vừa trả lời (nếu có), tìm ô trống kế tiếp, đưa con trỏ tới đó rồi báo BE hỏi ô đó.
+        setStatus("Đang tìm ô còn trống…");
+        const res = await sendToContent({ ...a, action: "fieldReviewNext" });
+        setStatus("");
+        ask(`__event:field_review_focus:${JSON.stringify(res?.ok ? res : { field: null })}`, "system");
+      } else if (a.type === "field_review_stop") {
+        void sendToContent({ action: "fieldReviewStop" });
+      } else if (a.type === "select_agency") {
+        // Cổng React mới: engine content/portal-dvc.js chọn Tỉnh/Xã + bấm "Đồng ý".
+        // Không chụp trạng thái đăng nhập trước khi bấm: phiên trên DVCQG không chứng minh
+        // cổng đích sẽ bỏ qua SSO. Watcher sẽ đọc chính trang đích để quyết định tiếp.
+        setStatus("Đang chọn cơ quan thực hiện…");
+        const res = await sendToContent({
+          action: "selectAgency",
+          province: a.province,
+          ward: a.ward,
+          // Cổng bộ ngành (GD&ĐT...): chuyển toggle "Sở" (không chọn sở cụ thể) rồi Đồng ý.
+          soMode: a.soMode === true,
+          // Trang kết quả nhiều thẻ mà thẻ đầu là cấp Sở: bấm "Nộp trực tuyến" ở thẻ có chữ này.
+          cardIncludes: a.cardIncludes || "",
+        });
+        setStatus("");
+        if (res?.ok) ask("__event:agency_selected", "system");
+        // Tỉnh/xã đã chọn xong, chỉ thiếu thẻ đúng → câu riêng (bấm đúng thẻ), không phải
+        // "chọn tay tỉnh/xã" như lỗi chọn cơ quan thường.
+        else if (res?.code === "card_not_found") ask(`__event:agency_card_missing:${res.error || ""}`, "system");
+        else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+      } else if (a.type === "fill_bca_agency") {
+        // Cổng DVC Bộ Công an: content.js chọn Tỉnh → Xã ở khối "Cơ quan thực hiện". Báo lại cả khi lỗi
+        // (BE mời chọn lại hoặc tự chọn trên trang).
+        setStatus("Đang chọn cơ quan thực hiện…");
+        const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
+        setStatus("");
+        ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
+      } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
+        // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
+        // (loại khai sinh, tỉnh/xã, trường hợp, tick "Cùng địa bàn") theo plan từ BE. KHÁC
+        // select_agency (cổng React) — đây là Angular Material, KHÔNG tự bấm "Chuyển bước tiếp
+        // theo" (để người dân rà lại). Chỉ báo BE khi LỖI (BE dặn chọn tay); thành công thì im.
+        setStatus("Đang chọn cơ quan thực hiện…");
+        const res = await sendToContent({ action: "fillAgencyByPlan", fields: a.plan });
+        if (res?.ok) {
+          setStatus("Đã chọn cơ quan xong ✓");
+          setTimeout(() => setStatus(""), 4000);
+        } else {
+          setStatus("");
+          ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+        }
+      } else if (a.type === "confirm_info_modal") {
+        // Modal "Thông tin chung": chọn đúng Đối tượng thực hiện do backend cấp rồi mới
+        // bấm Xác nhận. Quá 3 lần vẫn lỗi → nhờ công dân chọn tay, không submit sai lựa chọn.
+        setStatus("Đang xác nhận thông tin chung của hồ sơ…");
+        infoModalTries += 1;
+        const res = await sendToContent({
+          action: "confirmInfoModal",
+          executionSubject: a.executionSubject || null,
+          infoFields: a.infoFields || null,
+        });
+        // Trang báo modal ĐÃ ĐÓNG (content chờ cổng nhận Xác nhận) → báo trạng thái trang ngay, không đợi nhịp
+        // watcher; mở lại hạn mức cho lần modal sau. Chưa đóng (bản content cũ / lỗi) thì chờ một nhịp như trước.
+        if (res?.closed) infoModalTries = 0;
+        else await new Promise((r) => setTimeout(r, 1200));
+        setStatus("");
+        if (!res?.ok) {
+          console.warn("[TLND-InfoModal][sidebar]", {
+            attempt: infoModalTries,
+            executionSubject: a.executionSubject || null,
+            error: res?.error || "Không nhận được phản hồi từ trang",
+          });
+          if (infoModalTries <= 3) sendPageStatus();
+          else {
+            setStatus(a.infoFields
+              ? "⚠️ Công dân chọn nốt các ô trong Thông tin chung rồi bấm Xác nhận giúp em ạ."
+              : "⚠️ Công dân chọn Đối tượng thực hiện rồi bấm Xác nhận giúp em ạ.", true);
+            setTimeout(() => setStatus(""), 5000);
+          }
+        } else if (infoModalTries <= 3) {
+          sendPageStatus();
+        } else {
+          setStatus("⚠️ Công dân bấm nút Xác nhận trên trang giúp em ạ.", true);
+          setTimeout(() => setStatus(""), 4000);
+        }
+      } else if (a.type === "attach_plan" && Array.isArray(a.attachments)) {
+        await runAttachPlan(a);
+      } else if (a.type === "show_qr") {
+        uploadAutoRunSid = ""; // QR: ảnh về lần lượt từ điện thoại — không tự chốt theo đợt
+        setUploadSession(a.session_id);
+        renderQrCard(a);
+        subscribeUploadSession(a.session_id);
+      } else if (a.type === "resume_upload_session" && a.session_id) {
+        // Điều chỉnh giấy tờ: dựng ngay checklist của CHÍNH phiên cũ. QR/Scan chỉ là
+        // lựa chọn thêm tệp; công dân có thể chỉ xóa rồi bấm hoàn tất điều chỉnh.
+        uploadAutoRunSid = "";
+        const snapshotPromise = setUploadSession(a.session_id);
+        subscribeUploadSession(a.session_id);
+        await snapshotPromise;
+      } else if (a.type === "pick_files" && a.session_id) {
+        // Scan tại quầy: ưu tiên MÁY QUÉT (scan-bridge) — file quét ra tự vào cùng phiên upload,
+        // không cần bấm. Nếu máy CHƯA cài agent (không kết nối trong ~1.5s) thì mở hộp chọn tệp
+        // như cũ để vẫn dùng được. Agent đã kết nối sẵn (nối từ chặng trước) → bỏ qua hộp chọn.
+        uploadAutoRunSid = a.auto_run === true ? a.session_id : "";
+        setUploadSession(a.session_id);
+        subscribeUploadSession(a.session_id);
+        connectScanAgent();
+        // Thẻ hướng dẫn đã dựng lúc chọn "Scan tại quầy" (renderDocOptions) — ở trên checklist.
+        renderScanGuideCard(); // guard scanGuideShown → no-op nếu đã dựng; cứu ca khôi phục phiên
+        if (scanPickerTimer) clearTimeout(scanPickerTimer);
+        if (scanAgentConnected) { /* đang theo dõi máy quét → không bật hộp chọn tệp */ }
+        else scanPickerTimer = setTimeout(() => {
+          scanPickerTimer = null;
+          if (!scanAgentConnected) $fileInput?.click();
+        }, 1500);
+      } else if (a.type === "update_docs_done_chip" && a.label) {
+        updateDocsDoneChipLabel(a.label, a.labelHmong);
+      } else if (a.type === "collapse_after_tts") {
+        /* Thu gọn panel sau khi đọc xong — đã xử lý trong renderReply (onDone của TTS). */
+      } else if (a.type === "await_logout_choice") {
+        // Cổng đã xác nhận nộp thành công: giữ trang nguyên trạng để cán bộ chọn giữ phiên
+        // hay logout. Deadline được lưu theo tab để reload sidebar không làm mất bộ đếm.
+        const delayMs = Math.max(0, Math.min(Number(a.delay_ms) || 120000, 10 * 60 * 1000));
+        submittedReported = true;
+        if (watcherTimer) { clearInterval(watcherTimer); watcherTimer = null; }
+        // Event submitted trùng chỉ dùng để nối lại runtime đã mất; không được cộng lại
+        // hai phút hoặc ghi đè fingerprint của đúng công dân đang chờ lựa chọn.
+        if (["pending", "deciding"].includes(completionLogoutState?.phase)) continue;
+        await beginCompletionLogoutWait(delayMs);
+      } else if (a.type === "logout_citizen") {
+        await resolveCompletionLogout("chosen_logout");
+        returnToStart("completed");
+      } else if (a.type === "continue_dossiers") {
+        await resolveCompletionLogout("chosen_continue");
+        returnToStart("continue");
+      } else if (a.type === "fill_mae_agency") {
+        // Cổng Bộ NN&MT: engine content/portal-mae.js điền Tỉnh + Sở + Trường hợp giải quyết
+        // rồi bấm "Đồng ý và tiếp tục". Thành công thì SPA tự chuyển trang kê khai — im lặng
+        // để watcher đọc page_status; chỉ báo BE khi LỖI (BE dặn chọn tay).
+        setStatus("Đang chọn cơ quan và trường hợp giải quyết…");
+        const res = await sendToContent({
+          action: "fillMaeAgency",
+          province: a.province || "",
+          agency: a.agency || "",
+          // agencyLevel "ward": hộp thoại chọn Tỉnh + Phường/Xã (thủ tục giải quyết ở cấp xã)
+          // thay vì radio "Sở/Ban ngành".
+          ward: a.ward || "",
+          agencyLevel: a.agencyLevel || "",
+          variant: a.variant || "",
+          variantMatch: a.variantMatch || "",
+          variantAvoid: a.variantAvoid || "",
+          // Hộp thoại Bộ Xây dựng: nhãn NGUYÊN VĂN công dân đã chọn trên thẻ mae_dialog_choice.
+          agencyExact: a.agencyExact || "",
+          processExact: a.processExact || "",
+        });
+        if (res?.ok) {
+          setStatus("Đã chọn cơ quan và trường hợp xong ✓");
+          setTimeout(() => setStatus(""), 4000);
+        } else {
+          setStatus("");
+          ask(`__event:mae_agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+        }
+      } else {
+        console.warn("[TLND] action chưa hỗ trợ:", a.type);
+      }
+    }
+  }
+
+  // ── Header: thu gọn / đóng / TTS mute / cuộc trò chuyện mới ──
+  // Màn login che header nên có cặp nút riêng — chung một hành vi thu gọn/đóng.
+  const minimizePanel = () => window.parent.postMessage({ __tlnd: "minimizePanel" }, "*");
+  const restorePanel = () => window.parent.postMessage({ __tlnd: "restorePanel" }, "*");
+  const closePanel = () => window.parent.postMessage({ __tlnd: "closePanel" }, "*");
+  if (EMBEDDED) {
+    document.getElementById("min-btn")?.addEventListener("click", minimizePanel);
+    document.getElementById("close-btn")?.addEventListener("click", closePanel);
+    document.getElementById("login-min-btn")?.addEventListener("click", minimizePanel);
+    document.getElementById("login-close-btn")?.addEventListener("click", closePanel);
+  } else {
+    // Khung bên do trình duyệt sở hữu: đóng/thu gọn là việc của nó. Để nút ở đó mà
+    // bấm không ăn gì còn tệ hơn không có nút.
+    for (const id of ["min-btn", "close-btn", "login-min-btn", "login-close-btn"]) {
+      const b = document.getElementById(id);
+      if (b) b.hidden = true;
+    }
+    // Giữ một port tới background suốt đời khung bên: port đứt = khung đã đóng → background báo
+    // content.js hiện lại nút tròn. Chrome dọn service worker cũng làm đứt port trong khi khung vẫn
+    // mở → tự nối lại để background dựng lại trạng thái "đang mở".
+    const noiKhungBen = () => {
+      if (!TAB_ID || !chrome.runtime?.id) return; // extension vừa được nạp lại — dừng hẳn
+      try {
+        const port = chrome.runtime.connect({ name: `tlnd-khung-ben:${TAB_ID}` });
+        port.onDisconnect.addListener(() => {
+          void chrome.runtime.lastError;
+          setTimeout(noiKhungBen, 1000);
+        });
+      } catch (_) { setTimeout(noiKhungBen, 3000); }
+    };
+    noiKhungBen();
+  }
+
+  function showStartScreen() {
+    stopIdleTracking();
+    document.body.classList.add("start-mode");
+    // Màn bắt đầu = lượt công dân mới: không thừa hưởng Rảnh tay của lượt trước (nói để bắt đầu thì tự bật lại).
+    if (handsfree) setHandsfree(false);
+    $startScreen.hidden = false;
+    $startBtn.disabled = false;
+    $subtitle.textContent = "Sẵn sàng hỗ trợ công dân";
+    if ($meterBar) $meterBar.style.width = "0";
+  }
+
+  function showChatScreen(activityAt = Date.now()) {
+    document.body.classList.remove("start-mode");
+    $startScreen.hidden = true;
+    $subtitle.textContent = "Hỗ trợ thủ tục hành chính công";
+    startIdleTracking(activityAt);
+  }
+
+  // Xóa phiên đăng nhập của công dân rồi đưa trang về DVCQG cho lượt tiếp theo.
+  // Tách khỏi returnToStart và gọi trong finally: đây là việc KHÔNG được phép lỡ — lỡ một lần
+  // là công dân sau ngồi vào máy còn nguyên đăng nhập của người trước. Trước đây khối này nằm
+  // CUỐI một try…finally không có catch, nên bất kỳ bước dọn nào ở trên ném lỗi là nó bị bỏ
+  // qua hoàn toàn, không một dòng cảnh báo.
+  async function clearCitizenSessionAndGoHome() {
+    const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies" });
+    if (!cookieCleanup?.ok) {
+      console.warn("[TLND] Chưa xóa hết phiên công dân", {
+        found: Number(cookieCleanup?.found) || 0,
+        removed: Number(cookieCleanup?.removed) || 0,
+        failed: Number(cookieCleanup?.failed) || 0,
+        failedQueries: Number(cookieCleanup?.failedQueries) || 0,
+        storageCleared: cookieCleanup?.storageCleared === true,
+        storageError: cookieCleanup?.storageError || "",
+        failedTabs: Number(cookieCleanup?.failedTabs) || 0,
+      });
+      setStatus("⚠️ Chưa xóa hết phiên đăng nhập DVC/VNeID/Bộ Tư pháp. Cán bộ vui lòng kiểm tra trước khi tiếp nhận công dân tiếp theo.", true);
+    } else {
+      console.log(
+        `[TLND] Đã xóa ${Number(cookieCleanup.removed) || 0} cookie và dữ liệu phiên web trên `
+        + `${Number(cookieCleanup.clearedTabs) || 0} tab công dân.`,
+      );
+    }
+    // Dọn xong phiên công dân rồi mới điều hướng CHÍNH tab đang làm thủ tục. Action
+    // navigate đã phản hồi trước khi location.assign nên không làm đóng message channel.
+    const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
+    if (!navigation?.ok) {
+      console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
+      setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+    }
+  }
+
+  // Một đường dọn phiên dùng chung cho: hoàn thành, timeout và nút Trò chuyện mới.
+  // procedureKey: công dân NÓI tên thủ tục khác giữa chừng → phiên mới tự chọn luôn thủ tục đó.
+  async function returnToStart(reason = "manual", { procedureKey = "" } = {}) {
+    if (endingSession) return;
+    if (busy) { pendingReturnReason = reason; pendingReturnProcedure = procedureKey; return; }
+    endingSession = true;
+    try {
+      // "new_procedure" (Chọn/Làm thủ tục khác): công dân vẫn ở quầy, chỉ đổi thủ tục → mở thẳng
+      // danh sách thủ tục, không về màn giới thiệu, không đưa trang cổng về trang chủ.
+      const shouldOpenProcedurePicker = reason === "continue" || reason === "new_procedure";
+      stopCompletionLogoutRuntime();
+      completionLogoutState = null;
+      await writeCompletionLogoutState(null);
+      stopIdleTracking();
+      huongDanDaHien = "";
+      stopVoice?.();
+      stopReplyTts();
+      setHandsfree?.(false);
+      if (completionReturnTimer) { clearTimeout(completionReturnTimer); completionReturnTimer = null; }
+      if (watcherTimer) { clearInterval(watcherTimer); watcherTimer = null; }
+      stopUploadSubscription();
+      // HkdOnline là WebForms full-postback và có state machine sống qua reload. Dọn nó
+      // trước khi xóa conversation để phiên cũ không tự điền tiếp sau "Trò chuyện mới".
+      await sendToContent({ action: "clearBusinessRegistrationState" });
+      resetUploadFileListState();
+      // Công dân MỚI: nâng mốc watermark (chặn kéo lại giấy người trước) + ngắt máy quét để
+      // chặng sau nối lại sạch.
+      bumpScanWatermark();
+      disconnectScanAgent();
+      // Lý do kết thúc đi kèm để BE đóng sổ hồ sơ dở dang đúng nguyên nhân.
+      await api.deleteConversation(reason || "manual");
+      await clearJourney();
+      await writeActiveSplit(null);
+      $messages.innerHTML = "";
+      pipeStop();
+      $pipe = null; // node đã bị xoá cùng $messages — bỏ tham chiếu để card mới dựng lại được
+      uploadSid = null;
+      $docProgress = null;
+      $docsDoneChip = null;
+      docsReceived = false;
+      lastState = "";
+      lastReplyData = null;
+      lastPageSig = "";
+      fallbackChipShown = false;
+      submittedReported = false;
+      infoModalTries = 0; // hạn mức 3 lần xác nhận modal tính theo từng hồ sơ, không theo cả phiên sidebar
+      pendingReturnReason = "";
+      pendingReturnProcedure = "";
+      if (shouldOpenProcedurePicker) {
+        // “Không, nộp thêm hồ sơ” và “Trò chuyện mới” trong lúc chờ logout đều giữ
+        // nguyên VNeID/trang thành công, nhưng phải mở ngay một conversation sạch để
+        // cán bộ chọn thủ tục tiếp theo — không bắt quay qua màn giới thiệu.
+        showChatScreen(Date.now());
+        await ask("", "system");
+        if (procedureKey) await ask(`__action:pick_procedure:${JSON.stringify({ key: procedureKey })}`, "system");
+        else showProcedurePicker();
+      } else {
+        showStartScreen();
+      }
+      // "Trò chuyện mới" THỦ CÔNG: đưa CẢ trang web về trang chủ DVCQG cho lượt công dân mới
+      // (không chỉ màn bắt đầu của sidebar). Đang ở trang chủ rồi thì thôi (navigate = reload
+      // thừa); hết 20 phút (idle) giữ nguyên trang; "completed" điều hướng ở finally bên dưới.
+      const alreadyOnDvcHome = START_FRESH_ON_DVC_HOME;
+      if (reason === "manual" && !alreadyOnDvcHome) {
+        const homeNav = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
+        if (!homeNav?.ok) {
+          console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", homeNav);
+          setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+        }
+      }
+    } catch (error) {
+      // Không nuốt im: returnToStart được gọi không await ở nhiều nơi nên lỗi ở đây từng biến
+      // thành unhandled rejection lẫn trong console của trang, rất khó lần ra.
+      console.error(`[TLND] Lỗi khi kết thúc phiên (reason=${reason})`, error);
+    } finally {
+      // finally chứ không phải cuối thân try: một bước dọn ở trên ném lỗi cũng KHÔNG được
+      // phép làm lỡ việc xóa phiên công dân. Vẫn giữ đúng thứ tự "dọn phiên rồi mới điều
+      // hướng" vì cả hai nằm trong clearCitizenSessionAndGoHome.
+      if (reason === "completed") {
+        try {
+          await clearCitizenSessionAndGoHome();
+        } catch (error) {
+          console.error("[TLND] Lỗi khi xóa phiên công dân", error);
+          setStatus("⚠️ Chưa xóa được phiên đăng nhập của công dân. Cán bộ vui lòng đăng xuất thủ công trên cổng trước khi tiếp nhận người tiếp theo.", true);
+        }
+      }
+      endingSession = false;
+    }
+  }
+
+  // 🔄 Trò chuyện mới: kết thúc phiên hiện tại và quay về màn hình bắt đầu.
+  async function resetConversation() {
+    if (busy) return;
+    // Trong hai phút chờ logout, "Trò chuyện mới" đồng nghĩa giữ phiên VNeID để nộp tiếp.
+    await returnToStart(completionLogoutState ? "continue" : "manual");
+  }
+  document.getElementById("reset-btn")?.addEventListener("click", resetConversation);
+
+  async function changeProcedure() {
+    if (busy) return;
+    await returnToStart("new_procedure");
+  }
+
+  // spoken: câu công dân nói ở màn bắt đầu → gửi luôn làm câu đầu của phiên (BE hiểu "bắt đầu" hay tên thủ
+  // tục, kèm thẻ chọn thủ tục) thay vì chào rồi mới xử lý câu nói — tránh hai lời chào chồng nhau.
+  async function beginConversation(spoken = "") {
+    if (busy || endingSession) return;
+    $startBtn.disabled = true;
+    showChatScreen(Date.now());
+    showStartHeard(""); // lần về màn bắt đầu sau (phiên mới) không còn lời cũ
+    markActivity();
+    if (spoken) {
+      addUserText(spoken, "", true);
+      await ask(spoken, "voice");
+    } else {
+      await ask("", "system"); // chỉ lúc này mới tạo conversation và phát câu chào hiện tại
+    }
+    showProcedurePicker();
+    $startBtn.disabled = false;
+  }
+  $startBtn?.addEventListener("click", () => { void beginConversation(); });
+
+  const TTS_MUTED_KEY = "tlnd_tts_muted";
+  const $ttsBtn = document.getElementById("tts-btn");
+  let ttsMuted = false;
+  function renderTtsBtn() {
+    // Nút giờ có icon + nhãn (span) → chỉ đổi từng phần, không xoá cả textContent (mất nhãn).
+    const ic = $ttsBtn.querySelector(".tbi");
+    const lb = $ttsBtn.querySelector(".tbl");
+    if (ic) ic.textContent = ttsMuted ? "🔇" : "🔊";
+    if (lb) lb.textContent = ttsMuted ? "Bật tiếng" : "Âm thanh";
+    const hm = $ttsBtn.querySelector(".tbl-hm");
+    if (hm) hm.textContent = ttsMuted ? "Qhib suab" : "Lub suab";
+    $ttsBtn.title = ttsMuted ? "Đang tắt đọc — bấm để bật" : "Đang bật đọc — bấm để tắt";
+  }
+  chrome.storage?.local.get([TTS_MUTED_KEY], (res) => { ttsMuted = !!res?.[TTS_MUTED_KEY]; renderTtsBtn(); });
+  $ttsBtn?.addEventListener("click", () => {
+    ttsMuted = !ttsMuted;
+    renderTtsBtn();
+    chrome.storage?.local.set({ [TTS_MUTED_KEY]: ttsMuted }, () => void chrome.runtime.lastError);
+    if (ttsMuted) replyTtsInFlight = 0;
+    window.__hccTTS?.setMuted?.(ttsMuted);
+  });
+
+  const soon = (msg) => () => { setStatus(msg); setTimeout(() => setStatus(""), 2500); };
+  // Nút 📷: đang có phiên upload → mở lại hộp chọn tệp; chưa có → nhắc chọn cách gửi trong chat.
+  document.getElementById("doc-btn")?.addEventListener("click", () => {
+    if (uploadSid) $fileInput?.click();
+    else soon("📷 Công dân chọn cách cung cấp giấy tờ trong hội thoại trước ạ.")();
+  });
+
+  // ══════════════ VOICE (Bước 4 — docs/04) ══════════════
+  // Mic chạy trong OFFSCREEN document (iframe bị chặn getUserMedia) — sidebar chỉ gửi lệnh
+  // asr-start/asr-stop qua background và nghe asr-event. Cơ chế port từ bản A Bảo (production).
+  // tts mặc định TRUE: tin nhắn đầu (khôi phục phiên trên trang mới) thường đến TRƯỚC khi
+  // fetch /voice/config xong — nuốt mất câu đọc. Server tắt TTS thì lệnh speak fail êm.
+  let voiceCfg = { asr: false, tts: true };
+  let voiceListening = false;
+  let handsfree = false;
+  // Khi card đánh giá bật ghi âm ý kiến: ASR đổ transcript vào ĐÂY (ô ý kiến) thay vì gửi chat.
+  // (text, isFinal) => void; null = ASR chạy như bình thường (câu hỏi hội thoại).
+  let ratingNoteSink = null;
+  // Rảnh tay: CHỈ người dùng mới tắt (nút Rảnh tay, ✕, Cài đặt, nộp xong). Không nghe thấy gì / lỗi mạng chỉ
+  // làm mic nghỉ một nhịp, vòng canh ensureMic tự mở lại khi bot đang chờ công dân nói.
+  let micErrors = 0;       // lỗi kết nối liên tiếp → chờ lâu dần trước khi mở lại
+  let pendingListen = false; // câu hỏi cần nghe ngay (listen_after_tts) mà bot còn đang nói / thao tác
+  let micHuyCau = false; // bấm ✕ khung nghe → bỏ câu đang nói dở: partial/final về muộn không đổ vào ô nhập
+  let micRetryAt = 0;
+  let micStartedAt = 0;
+  let micLastEventAt = 0;
+  const HANDSFREE_KEY = TAB_ID ? `tlnd_handsfree:${TAB_ID}` : "";
+  let BASE_URL = "";
+  const $micBtn = document.getElementById("mic-btn");
+  const $startMic = document.getElementById("start-mic-btn");
+  const START_MIC_LABEL = $startMic?.querySelector(".start-mic-l")?.textContent || "";
+  const $startHeard = document.getElementById("start-heard");
+  // Màn bắt đầu: hiện lời công dân đang nói (partial nhạt, final đậm); "miss" = mic đóng mà chưa nghe được gì.
+  function showStartHeard(text, kind = "final") {
+    if (!$startHeard) return;
+    $startHeard.hidden = !text;
+    $startHeard.textContent = text ? (kind === "miss" ? text : `🎙 ${text}${kind === "partial" ? "…" : ""}`) : "";
+    $startHeard.classList.toggle("partial", kind === "partial");
+    $startHeard.classList.toggle("miss", kind === "miss");
+  }
+  let startByVoice = false; // đang nghe ở màn bắt đầu → câu nói đầu tiên mở phiên
+  const $hfBtn = document.getElementById("handsfree-btn");
+
+  // ── Chế độ tiếng Mông (Hmong) — BE quyết định qua conv.lang; sidebar chỉ mirror ──
+  // Switch CHỈ hiện khi: BE bật hmong (/voice/config.langs) VÀ tài khoản thuộc tỉnh Lai Châu.
+  // Lựa chọn LƯU THEO MÁY QUẦY (chrome.storage tlnd_lang): phiên chat bị tạo mới (reload
+  // trang chủ DVC, hết 20 phút, "Trò chuyện mới") thì tự khôi phục lặng lẽ — trước đây
+  // trạng thái chỉ sống trong conversation nên reload là switch tắt.
+  let voiceLang = "vi"; // "vi" | "hmong" — dùng cho ASR (asr-start) + fallback giọng đọc
+  let voiceCfgLoaded = false; // chưa fetch xong /voice/config thì KHÔNG được reset switch
+  let hmongRestoredConv = ""; // đã tự khôi phục cho conversation nào (chống gửi lặp)
+  const LANG_KEY = "tlnd_lang";
+  // Giọng đọc máy quầy đã chọn, THEO TỪNG NGÔN NGỮ: { vi: "...", hmong: "..." }. Lưu theo máy
+  // (không theo phiên) giống tlnd_lang — phiên mới/reload vẫn giữ đúng giọng cán bộ quen nghe.
+  const VOICE_KEY = "tlnd_voice";
+  let voiceChoice = {};
+  const $voiceCard = document.getElementById("voice-card");
+  const $voiceGroup = document.getElementById("voice-group");
+  const $langBar = document.getElementById("lang-bar");
+  const $langSwitch = document.getElementById("lang-switch");
+  const $langState = document.getElementById("lang-state");
+
+  function _foldVi(s) {
+    return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/Đ/g, "D").replace(/đ/g, "d").toLowerCase().trim();
+  }
+
+  function syncLangUI(lang) {
+    voiceLang = lang === "hmong" ? "hmong" : "vi";
+    const on = voiceLang === "hmong";
+    $langSwitch?.classList.toggle("on", on);
+    $langSwitch?.setAttribute("aria-checked", on ? "true" : "false");
+    if ($langState) $langState.textContent = on ? "Bật (Qhib)" : "Tắt (Tshum)";
+  }
+
+  function _hmongAllowed() {
+    const tinh = _foldVi(window.tlndAuth?.user?.tinh);
+    return (voiceCfg.langs || []).includes("hmong") && tinh.includes("lai chau");
+  }
+
+  // ── Giọng đọc ──
+  // Danh mục do BE cấp (/voice/config → voices) nên thêm giọng KHÔNG phải phát hành lại
+  // extension. Ẩn cả thẻ khi ngôn ngữ chỉ có MỘT giọng: bày một ô chọn duy nhất bấm vào
+  // không đổi gì là làm cán bộ tưởng hỏng.
+  function renderVoiceSettings() {
+    if (!$voiceCard || !$voiceGroup) return;
+    const list = (voiceCfg?.voices || {})[voiceLang] || [];
+    $voiceCard.hidden = list.length < 2;
+    if ($voiceCard.hidden) { $voiceGroup.replaceChildren(); return; }
+    const current = voiceChoice[voiceLang] || (voiceCfg?.defaultVoice || {})[voiceLang] || "";
+    $voiceGroup.replaceChildren(...list.map((v) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "radio");
+      btn.setAttribute("aria-checked", String(v.id === current));
+      // aria-checked chỉ trình đọc màn hình nghe được. Ô đang chọn phải TÔ bằng .on như mọi
+      // .settings-seg khác, nếu không cán bộ nhìn hai ô giống hệt nhau, bấm rồi cũng không
+      // biết đã đổi chưa.
+      btn.classList.toggle("on", v.id === current);
+      const name = document.createElement("b");
+      name.textContent = v.label;
+      btn.append(name);
+      btn.addEventListener("click", () => saveVoice(v.id));
+      return btn;
+    }));
+  }
+
+  function saveVoice(id) {
+    voiceChoice = { ...voiceChoice, [voiceLang]: id };
+    renderVoiceSettings();
+    window.__hccTTS?.setVoice?.(voiceChoice);
+    chrome.storage?.local.set({ [VOICE_KEY]: voiceChoice }, () => {
+      if (chrome.runtime.lastError) {
+        announceSettingFailed("voice-status", () => saveVoice(id));
+        return;
+      }
+      announceSettingSaved("voice-status");
+    });
+  }
+
+  chrome.storage?.local.get([VOICE_KEY], (res) => {
+    if (chrome.runtime.lastError) return;
+    const saved = res?.[VOICE_KEY];
+    if (saved && typeof saved === "object") voiceChoice = saved;
+    window.__hccTTS?.setVoice?.(voiceChoice);
+    renderVoiceSettings();
+  });
+
+  function updateLangBar() {
+    if (!$langBar) return;
+    const allowed = _hmongAllowed();
+    $langBar.hidden = !allowed;
+    // Khung tĩnh (toolbar, placeholder, màn bắt đầu) song ngữ NGAY khi là quầy Lai Châu —
+    // không đợi bật switch (mockup hiện song ngữ cả ở trạng thái "Tắt (Tshum)").
+    document.body.classList.toggle("hmong-region", allowed);
+    // Chỉ reset khi ĐÃ có config thật (đổi acc / server tắt hmong). renderAccount chạy
+    // TRƯỚC khi fetch /voice/config xong — lúc đó langs còn rỗng, reset ở đây là tắt oan.
+    if (voiceCfgLoaded && !allowed && voiceLang === "hmong") syncLangUI("vi");
+    // Mỗi ngôn ngữ một danh mục giọng riêng → đổi ngôn ngữ phải vẽ lại ô chọn.
+    renderVoiceSettings();
+  }
+
+  $langSwitch?.addEventListener("click", () => {
+    const next = voiceLang === "hmong" ? "vi" : "hmong";
+    syncLangUI(next); // đổi UI ngay; BE xác nhận bằng reply (d.lang) ngay sau
+    // Nhớ lựa chọn theo MÁY (không theo phiên) — reload/phiên mới vẫn giữ tiếng Mông.
+    chrome.storage?.local.set({ [LANG_KEY]: next }, () => void chrome.runtime.lastError);
+    hmongRestoredConv = api.conversationId || ""; // người dùng tự chọn → đừng auto-đổi lại
+    ask(`__action:set_lang:${JSON.stringify({ lang: next })}`, "chip",
+      next === "hmong" ? "Bật tiếng Mông (Lus Hmoob)" : "Tắt tiếng Mông", { preserveScroll: true });
+  });
+
+  // Mở sidebar: hiện đúng trạng thái đã lưu NGAY (không đợi reply đầu) — switch "Bật" liền
+  // tay nếu máy đang ở chế độ tiếng Mông; conversation sẽ xác nhận/đồng bộ ngay sau đó.
+  chrome.storage?.local.get([LANG_KEY], (res) => {
+    if (!chrome.runtime.lastError && res?.[LANG_KEY] === "hmong") syncLangUI("hmong");
+  });
+
+  // Phiên mới sinh ra lang="vi" nhưng máy quầy đã lưu tiếng Mông → gửi set_lang IM LẶNG
+  // (BE trả reply rỗng, không bubble/không đọc) để phiên khớp lại. Mỗi conversation thử 1 lần.
+  function maybeRestoreHmongLang(d) {
+    if (d?.lang !== "vi" || !_hmongAllowed()) return;
+    const convId = api.conversationId || "";
+    if (!convId || hmongRestoredConv === convId) return;
+    chrome.storage?.local.get([LANG_KEY], (res) => {
+      if (chrome.runtime.lastError) return;
+      if (res?.[LANG_KEY] !== "hmong" || hmongRestoredConv === convId) return;
+      hmongRestoredConv = convId;
+      syncLangUI("hmong");
+      ask(`__action:set_lang:${JSON.stringify({ lang: "hmong", silent: true })}`,
+        "system", "", { preserveScroll: true });
+    });
+  }
+
+  const $voicePanel = document.getElementById("voice-panel");
+  const $vpStatus = document.getElementById("vp-status");
+  const $vpInterim = document.getElementById("vp-interim");
+  function setMicUI(listening, label, connecting = false) {
+    voiceListening = listening;
+    $micBtn?.classList.toggle("listening", listening);
+    if ($startMic) {
+      $startMic.classList.toggle("listening", listening && startByVoice);
+      const $l = $startMic.querySelector(".start-mic-l");
+      if ($l) $l.textContent = listening && startByVoice ? "Đang nghe… công dân nói đi ạ" : START_MIC_LABEL;
+    }
+    if (listening && $voicePanel) {
+      // Micro đang mở → khung nghe (mic nhịp + sóng) thay cho dòng trạng thái nhỏ: công dân
+      // nhìn là biết máy đang nghe, và có nút ✕ để tắt ngay tại đó.
+      $voicePanel.hidden = false;
+      $voicePanel.classList.toggle("connecting", connecting);
+      $vpStatus.textContent = label || "Đang nghe… công dân hãy nói";
+      $vpInterim.textContent = "";
+      setStatus("");
+      return;
+    }
+    if ($voicePanel) { $voicePanel.hidden = true; $vpInterim.textContent = ""; }
+    if (label) setStatus(label); else setStatus("");
+  }
+  document.getElementById("vp-close")?.addEventListener("click", () => {
+    micHuyCau = true;
+    $input.value = "";
+    if (handsfree) setHandsfree(false); else stopVoice();
+  });
+
+  async function startVoice() {
+    // asr-stop phát event "stopped" bất đồng bộ; nếu đang ở Cài đặt, vòng rảnh tay
+    // không được tự nối lại micro cho tới khi người dùng quay về hội thoại.
+    if (document.body.classList.contains("settings-mode") || !voiceCfg.asr || voiceListening) return;
+    stopReplyTts(); // đang đọc mà mở mic = ngắt lời (barge-in)
+    pendingListen = false;
+    micHuyCau = false;
+    micStartedAt = micLastEventAt = Date.now();
+    setMicUI(true, "Đang kết nối micro…", true);
+    const accessToken = await window.tlndAuth?.getAccessToken?.();
+    // Trong lúc refresh, người dùng có thể dừng mic hoặc mở Cài đặt.
+    if (!voiceListening || document.body.classList.contains("settings-mode")) return;
+    if (!accessToken) {
+      setMicUI(false, "⚠️ Phiên đăng nhập đã hết hạn.");
+      return;
+    }
+    // voiceLang="hmong" → BE nối server ASR tiếng Mông (ws_asr đọc lang từ frame start).
+    chrome.runtime.sendMessage({
+      type: "asr-start",
+      lang: voiceLang,
+      baseUrl: BASE_URL,
+      accessToken,
+    },
+      () => void chrome.runtime.lastError);
+  }
+  function stopVoice() {
+    chrome.runtime.sendMessage({ type: "asr-stop" }, () => void chrome.runtime.lastError);
+    setMicUI(false);
+  }
+  // Trợ lý TỰ mở mic (không do người dùng bấm): không chen ngang câu bot đang đọc — mở mic là tạo lại offscreen,
+  // nơi đang phát loa → câu đang đọc bị cắt. Đang đọc thì để onDone của câu đó / ensureMic mở sau.
+  function listenWhenQuiet() {
+    if (window.__hccTTS?.isSpeaking?.() || busy || botWorking() || micHeld()) {
+      // Không rảnh tay (câu hỏi cần trả lời ngay): nhớ lại để ensureMic mở MỘT lượt khi bot xong việc.
+      if (!handsfree) pendingListen = true;
+      return;
+    }
+    startVoice();
+  }
+  // Bot đang thao tác trên trang (và ~2 giây sau lệnh cuối, trang còn đang đổi) hoặc đang đọc giấy tờ.
+  function botWorking() {
+    return pageWorkInFlight > 0 || Date.now() - pageWorkEndedAt < 2000 || (!!$pipe && !pipeFinished);
+  }
+  // Bước công dân bận tay với máy (đăng nhập VNeID, scan / chụp giấy tờ bằng điện thoại): quầy đông, mic mở là
+  // thu tiếng xung quanh thành câu nói, bot đọc lại hướng dẫn liên tục hoặc bấm nhầm nút thật ("đủ rồi" →
+  // chốt giấy tờ khi mới scan một nửa) → mic tạm nghỉ, rảnh tay vẫn bật. Đăng nhập: nghỉ tới khi rời trang
+  // đăng nhập. Gửi giấy tờ: nghỉ tới khi đã có tệp, không còn đợt đang tải và ~5 giây không có tệp mới (máy quét
+  // trả từng tờ, điện thoại gửi từng ảnh) — rồi mở để công dân nói "đính kèm đi / đủ rồi". Bấm nút mic vẫn nói được.
+  function micHeld() {
+    if (lastState === "guide_login") return loginPageNow !== false;
+    if (lastState === "qr_waiting" || lastState === "collecting_docs") {
+      return !docsReceived || uploadsInFlight > 0 || Date.now() - docsChangedAt < DOCS_SETTLE_MS;
+    }
+    return false;
+  }
+  // Trợ lý tự tắt mic (bot sắp đọc → không để mic nghe tiếng loa; phiên nghe treo → làm mới).
+  function pauseMic() {
+    if (voiceListening) stopVoice();
+  }
+
+  // Rảnh tay: lúc nào bot đang CHỜ công dân nói thì mic PHẢI đang nghe. Chờ = không đọc câu nào, không
+  // đang gọi trợ lý, không ở Cài đặt / ghi ý kiến đánh giá / chờ đăng xuất sau khi nộp.
+  function micWanted() {
+    // Màn bắt đầu: mic chỉ mở khi bấm nút mic của màn đó (mở ngầm thì cú bấm nút thành TẮT mic).
+    return (handsfree || pendingListen) && voiceCfg.asr && !voiceListening && !busy && !botWorking() && !ratingNoteSink
+      && !micHeld()
+      && !completionReturnTimer && !document.body.classList.contains("settings-mode")
+      && !document.body.classList.contains("start-mode")
+      && !window.__hccTTS?.isSpeaking?.() && Date.now() >= micRetryAt;
+  }
+  function ensureMic() {
+    if (voiceListening && !startByVoice && document.body.classList.contains("start-mode")) {
+      pauseMic(); // phiên nghe của rảnh tay còn sót khi về màn bắt đầu
+      return;
+    }
+    if (voiceListening && !micByHand && micHeld()) {
+      pauseMic(); // vào bước đăng nhập / gửi giấy tờ lúc mic đang mở → nghỉ, hết bước ensureMic mở lại
+      return;
+    }
+    if (handsfree && voiceListening && (botWorking() || window.__hccTTS?.isSpeaking?.())) {
+      pauseMic(); // bot bắt đầu nói / thao tác giữa lúc mic đang mở → tắt, xong việc mở lại
+      return;
+    }
+    if (handsfree && voiceListening) {
+      // Phiên nghe treo (kết nối mãi chưa xong, hoặc lâu không có tín hiệu nào) → làm mới.
+      const now = Date.now();
+      const stuckConnecting = $voicePanel?.classList.contains("connecting") && now - micStartedAt > 10000;
+      if (stuckConnecting || now - micLastEventAt > 45000) pauseMic();
+      return;
+    }
+    if (micWanted()) startVoice();
+  }
+  setInterval(ensureMic, 1500);
+
+  function rememberHandsfree(on) {
+    if (!HANDSFREE_KEY) return;
+    const store = chrome.storage?.session || chrome.storage?.local;
+    if (on) store?.set({ [HANDSFREE_KEY]: true }, () => void chrome.runtime.lastError);
+    else store?.remove(HANDSFREE_KEY, () => void chrome.runtime.lastError);
+  }
+  // Sidebar là iframe trong trang cổng: mỗi lần cổng tải trang mới (đăng nhập xong, sang bước…) sidebar dựng
+  // lại từ đầu → khôi phục rảnh tay của TAB này; ensureMic mở mic khi bot đọc xong câu của trang mới.
+  if (HANDSFREE_KEY) {
+    (chrome.storage?.session || chrome.storage?.local)?.get([HANDSFREE_KEY], (res) => {
+      if (chrome.runtime.lastError || !res?.[HANDSFREE_KEY]) return;
+      // Khởi động đã xong và đang ở màn bắt đầu (lượt mới) → không khôi phục rảnh tay của lượt trước.
+      if (chatBootFinished && document.body.classList.contains("start-mode")) { rememberHandsfree(false); return; }
+      handsfree = true;
+      $hfBtn?.classList.add("active");
+    });
+  }
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === "businessProgress") {
+      markActivity();
+      setStatus(String(msg.text || "Đang xử lý hồ sơ hộ kinh doanh…"));
+      return;
+    }
+    if (msg?.type === "businessDraftReady") {
+      markActivity();
+      setStatus("Đã tạo hồ sơ nháp hộ kinh doanh ✓");
+      setTimeout(() => {
+        setStatus("");
+        sendPageStatus();
+      }, 500);
+      return;
+    }
+    if (msg?.type === "businessFlowCancelled") {
+      markActivity();
+      setStatus("Đã dừng tiến trình tự động kê khai.");
+      setTimeout(() => setStatus(""), 3500);
+      return;
+    }
+    if (msg?.type === "businessFlowFinished" && msg.report) {
+      const report = msg.report;
+      setStatus(
+        report.ok
+          ? "Đã tự điền và đính kèm xong ✓"
+          : (report.cancelled ? "Đã dừng tiến trình tự động kê khai." : "⚠️ Luồng hộ kinh doanh đang dừng"),
+        !report.ok && !report.cancelled
+      );
+      void (async () => {
+        // iframe vừa được dựng lại sau postback có thể nhận runtime message trước khi bootChat
+        // lấy conversation_id từ journey. Gửi sớm với conversationId=null sẽ tạo cuộc trò chuyện
+        // mới và chèn màn chào/chọn thủ tục vào cuối phiên cũ.
+        const restored = await waitForChatBoot();
+        if (!restored) {
+          setStatus("⚠️ Chưa khôi phục được cuộc trò chuyện để ghi nhận kết quả hồ sơ.", true);
+          return;
+        }
+        markActivity();
+        // Không dựa vào lastState: mode/phase từ RUN_KEY là dấu hiệu chắc chắn đây là kết quả
+        // của lượt điền 8 khối cần đưa thành một tin nhắn trong chat.
+        const isFullRun = report.mode === "full" || ["fill", "attach"].includes(report.phase);
+        if (isFullRun) {
+          const reply = await ask(`__action:business_report:${JSON.stringify(report)}`, "system");
+          if (reply) sendToContent({ action: "ackBusinessResult" });
+          else setTimeout(() => sendPageStatus(), 500);
+        } else {
+          // Lỗi ở chặng bootstrap (state guide_login): page_status mang result về backend
+          // để hiện đúng hướng dẫn/thử lại, không biến thành kết quả điền hồ sơ.
+          sendPageStatus();
+        }
+      })();
+      return;
+    }
+    if (msg?.type !== "asr-event") return;
+    // Card đánh giá đang ghi âm ý kiến → đổ transcript vào ô ý kiến, KHÔNG gửi thành câu hội
+    // thoại (tách hẳn khỏi vòng rảnh tay để không kích hoạt gửi chat / auto-nghe lại).
+    if (ratingNoteSink) {
+      if (msg.event === "partial") ratingNoteSink(msg.text || "", false);
+      else if (msg.event === "final") { setMicUI(false); ratingNoteSink((msg.text || "").trim(), true); }
+      else if (msg.event === "state") {
+        if (msg.state === "listening") setMicUI(true, "Đang nghe ý kiến…");
+        else if (msg.state === "stopped") setMicUI(false);
+      } else if (msg.event === "error") {
+        setMicUI(false);
+        setStatus("⚠️ Không ghi được ý kiến — công dân gõ giúp em nhé.", true);
+        setTimeout(() => setStatus(""), 3000);
+      }
+      return;
+    }
+    micLastEventAt = Date.now();
+    if (msg.event === "state") {
+      if (msg.state === "listening") {
+        micErrors = 0;
+        setMicUI(true, "Đang nghe… công dân hãy nói");
+      } else if (msg.state === "stopped") {
+        // Mic màn bắt đầu đóng mà chưa có câu nào → nhắc nói lại (câu đã nghe được thì nhánh final đã xử lý).
+        if (startByVoice && $startHeard && ($startHeard.hidden || $startHeard.classList.contains("partial"))) {
+          showStartHeard("Em chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp em ạ.", "miss");
+        }
+        startByVoice = false;
+        micByHand = false;
+        // Hết lượt mà không nghe thấy gì, hoặc trợ lý tự tắt → mic nghỉ; rảnh tay thì ensureMic mở lại
+        // ngay khi bot đang chờ công dân nói (không tự tắt chế độ rảnh tay).
+        setMicUI(false);
+        if (handsfree) ensureMic();
+      }
+    } else if (msg.event === "partial") {
+      if (micHuyCau) return;
+      if (startByVoice) showStartHeard(msg.text || "", "partial");
+      $input.value = msg.text || "";
+      if ($vpInterim) $vpInterim.textContent = msg.text ? `“${msg.text}…”` : "";
+    } else if (msg.event === "final") {
+      setMicUI(false);
+      $input.value = "";
+      if (micHuyCau) return;
+      const text = (msg.text || "").trim();
+      if (startByVoice) {
+        startByVoice = false;
+        setMicUI(false);
+        showStartHeard(text || "Em chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp em ạ.", text ? "final" : "miss");
+        if (text) {
+          // Chọn nói ở màn bắt đầu = chọn chế độ rảnh tay: bật sẵn, chỉ tắt khi công dân tự tắt. Chưa mở mic
+          // ngay — trợ lý đọc xong câu trả lời đầu thì listenWhenQuiet / ensureMic tự mở.
+          setHandsfree(true, { listen: false });
+          void beginConversation(text);
+        }
+        return;
+      }
+      if (text) {
+        addUserText(text, "", true);
+        ask(text, "voice");
+      } else if (handsfree) {
+        ensureMic();
+      }
+    } else if (msg.event === "error") {
+      setMicUI(false);
+      if (msg.name === "NotAllowedError" || msg.error === "not-allowed") {
+        setStatus("⚠️ Chưa có quyền micro — đang mở trang cấp quyền…", true);
+        window.open(chrome.runtime.getURL("permission.html"), "_blank");
+        // Chưa cấp quyền thì mở lại bao nhiêu lần cũng lỗi → tắt rảnh tay, chờ cấp quyền xong bật lại.
+        if (handsfree) setHandsfree(false);
+      } else {
+        setStatus(`⚠️ Lỗi giọng nói: ${msg.error || "không rõ"}`, true);
+        setTimeout(() => setStatus(""), 4000);
+        // Rớt mạng / dịch vụ chập chờn: rảnh tay vẫn bật, mở lại mic sau 1s, 2s, 4s… (tối đa 30s).
+        micErrors += 1;
+        micRetryAt = Date.now() + Math.min(30000, 1000 * 2 ** (micErrors - 1));
+      }
+    }
+  });
+
+  $micBtn?.addEventListener("click", () => {
+    if (!voiceCfg.asr) { soon("🎤 Máy chủ chưa bật giọng nói.")(); return; }
+    if (voiceListening) stopVoice(); else { micByHand = true; startVoice(); }
+  });
+  // Màn bắt đầu: bấm rồi nói — câu nào cũng mở phiên; có tên thủ tục thì BE chọn luôn.
+  $startMic?.addEventListener("click", () => {
+    if (!voiceCfg.asr) { soon("🎤 Máy chủ chưa bật giọng nói.")(); return; }
+    // Chỉ TẮT khi chính nút này đang nghe; mic đang mở vì việc khác thì nhận luôn làm "nói để bắt đầu".
+    if (voiceListening && startByVoice) { startByVoice = false; showStartHeard(""); stopVoice(); return; }
+    showStartHeard("");
+    startByVoice = true;
+    if (voiceListening) setMicUI(true, "Đang nghe… công dân hãy nói");
+    else void startVoice();
+  });
+
+  function setHandsfree(on, { listen = true } = {}) {
+    handsfree = on;
+    pendingListen = false;
+    micErrors = 0;
+    micRetryAt = 0;
+    rememberHandsfree(on);
+    $hfBtn?.classList.toggle("active", on);
+    if (on && !listen) return;
+    if (on) {
+      // Bật rảnh tay ngay ở màn chào → đọc lại câu chào (công dân nghe + thấy) rồi tự mở mic nghe.
+      if (lastState === "greet" && lastReplyData?.tts_text && voiceCfg.tts && !ttsMuted) {
+        stopReplyTts();
+        window.__hccTTS?.speak?.(lastReplyData.tts_text, lastReplyData.tts_lang || "vi", () => listenWhenQuiet());
+        return;
+      }
+      startVoice();
+    } else { stopVoice(); stopReplyTts(); }
+  }
+  $hfBtn?.addEventListener("click", () => {
+    if (!voiceCfg.asr) { soon("🎙️ Máy chủ chưa bật giọng nói.")(); return; }
+    setHandsfree(!handsfree);
+  });
+
+  // Hỏi BE bật kênh voice nào + có tiếng Mông không. /voice/config YÊU CẦU đăng nhập
+  // (backend gộp), nên chỉ gọi khi ĐÃ có token: gọi lúc chưa login → 401 → tưởng server tắt
+  // voice → ẩn mic/Rảnh tay, không có langs → switch tiếng Mông ẩn, và không fetch lại sau
+  // login → cài lần đầu phải reload trang mới hiện. Gọi lại sau MỖI lần đăng nhập thành công.
+  let voiceCfgLoading = null;
+  function loadVoiceConfig() {
+    if (voiceCfgLoading) return voiceCfgLoading;
+    voiceCfgLoading = (async () => {
+      try {
+        const res = await window.tlndAuth.authFetch(`${BASE_URL}/api/v1/voice/config`);
+        if (res.ok) voiceCfg = await res.json();
+      } catch (_) { /* BE chưa chạy → giữ tắt */ }
+      voiceCfgLoaded = true; // từ giờ updateLangBar mới được phép reset switch tiếng Mông
+      // Hiện/ẩn 2 CHIỀU: lần trước ẩn (server tắt/chưa login) mà giờ bật thì phải hiện lại.
+      const asrOn = !!voiceCfg.asr;
+      if ($micBtn) $micBtn.hidden = !asrOn;
+      if ($hfBtn) $hfBtn.hidden = !asrOn;
+      updateLangBar(); // config về xong mới biết server có tiếng Mông không
+      renderVoiceSettings(); // danh mục giọng cũng nằm trong config này
+      window.__hccTTS?.setMuted?.(ttsMuted);
+    })().finally(() => { voiceCfgLoading = null; });
+    return voiceCfgLoading;
+  }
+
+  // Init voice: lấy base URL cho tts.js/asr; đã có token thì hỏi config ngay, chưa thì chờ login.
+  (async () => {
+    BASE_URL = await window.tlndBaseUrl();
+    window.HCC_BASE_URL = BASE_URL; // services/tts.js đọc biến này để dựng URL /ws/tts
+    const st = await window.tlndAuth.load();
+    if (st?.access) await loadVoiceConfig();
+    else window.__hccTTS?.setMuted?.(ttsMuted);
+  })();
+
+  // ── Nhập tay ──
+  function submitText() {
+    const text = ($input.value || "").trim();
+    if (!text || busy) return;
+    $input.value = "";
+    addUserText(text);
+    ask(text, "text");
+  }
+  $form?.addEventListener("submit", (e) => { e.preventDefault(); submitText(); });
+  document.getElementById("send-btn")?.addEventListener("click", submitText);
+
+  // ── Khởi động: journey còn hoạt động → khôi phục; không có/hết 20 phút → màn bắt đầu ──
+  // Chỉ chạy SAU khi đã đăng nhập; token chết giữa chừng đăng nhập lại thì
+  // KHÔNG boot lại (khung chat + phiên đang dở giữ nguyên phía sau màn login).
+  // Quay về đúng trang chủ DVC = bắt đầu lượt công dân mới. Xóa cả conversation BE và
+  // con trỏ journey của tab; KHÔNG xóa cookie DVC vì đây không phải tín hiệu nộp thành công.
+  async function lamMoiVeTrangChuDVC(j) {
+    if (j?.conversation_id) {
+      api.conversationId = j.conversation_id;
+      await api.deleteConversation("dvc-home");
+    }
+    await clearJourney();
+    await writeCompletionLogoutState(null);
+    await writeActiveSplit(null);
+    showStartScreen();
+    console.log("[TLND] về trang chủ DVC → làm mới cuộc trò chuyện");
+  }
+
+  // Khung ĐẨY TRANG bị dựng lại ở mỗi lần điều hướng nên đọc được ?fresh=dvc-home.
+  // Khung BÊN thì sống xuyên điều hướng — không có lần dựng lại nào để đọc tham số
+  // đó, nên content.js báo bằng message. Thiếu đường này, công dân về trang chủ DVC
+  // ở chế độ khung bên vẫn dính nguyên hồ sơ của người trước.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (EMBEDDED || msg?.action !== "dvcHomeReached") return;
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return;
+    void (async () => {
+      const j = await loadJourney();
+      if (!j?.conversation_id) return;   // chưa có hồ sơ nào để làm mới
+      await lamMoiVeTrangChuDVC(j);
+    })();
+  });
+
+  async function bootChat() {
+    if (chatBootStarted) return;
+    chatBootStarted = true;
+    // Chuyển trang dựng lại content script → nạp lại luật nhận nút nộp NGAY, không chờ hồ sơ mới.
+    void restoreSubmitWatch();
+    try {
+      const j = await loadJourney();
+      let storedCompletionLogout = await readCompletionLogoutState();
+      if (START_FRESH_ON_DVC_HOME) { await lamMoiVeTrangChuDVC(j); return; }
+      if (j?.conversation_id) {
+        const activityAt = Number(j.last_activity_at || j.ts || 0);
+        if (!activityAt || Date.now() - activityAt >= IDLE_TIMEOUT_MS) {
+          api.conversationId = j.conversation_id;
+          await api.deleteConversation("idle");
+          await clearJourney();
+          await writeCompletionLogoutState(null);
+          showStartScreen();
+          console.log(`[TLND] phiên ${j.conversation_id} đã quá 20 phút → màn bắt đầu`);
+          return;
+        }
+        const conv = await api.getConversation(j.conversation_id).catch(() => null);
+        if (conv) {
+          showChatScreen(activityAt);
+          if (conv.lang) syncLangUI(conv.lang); // khôi phục chế độ tiếng Mông của phiên
+          maybeRestoreHmongLang({ lang: conv.lang }); // phiên đang "vi" + máy lưu hmong → bật lại ngay
+          const activeSplit = await readActiveSplit();
+          if (activeSplit?.queueId) {
+            // Tab đầu có thể vừa reload để phục hồi ví tài liệu; nối lại poll queue thay vì báo mất lượt.
+            monitorSplitQueue(
+              activeSplit.queueId, activeSplit.total || 0, activeSplit.dispatch_id || "",
+            );
+          }
+          // Mở lại khi CÒN Ở MÀN CHÀO (chưa làm gì) → chào lại + ĐỌC (handsfree nghe được câu chào),
+          // không khôi phục im lặng như các bước giữa chừng. last_reply màn chào đã gồm card nơi/thủ tục.
+          if (conv.state === "greet") {
+            lastState = "greet";
+            if (conv.last_reply) renderReply(conv.last_reply, {});
+            showProcedurePicker();
+            setProgress(conv.progress);
+            console.log(`[TLND] mở lại ở màn chào ${conv.conversation_id} → chào lại`);
+            return;
+          }
+          // Bản cũ từng ghi lặp cùng lời hỏi đăng xuất vào history. Khi last_reply đang
+          // là lựa chọn logout, bỏ toàn bộ bản sao trong history rồi dựng đúng một lần
+          // từ last_reply để cả lời nhắn lẫn hai nút luôn đi cùng nhau.
+          const restoresLogoutChoice = (conv.last_reply?.chips || []).some((chip) => [
+            "__action:logout_citizen", "__action:continue_dossiers",
+          ].includes(chip.send));
+          const isLegacyLogoutPrompt = (text) => {
+            const folded = String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+              .replace(/Đ/g, "D").replace(/đ/g, "d").toLowerCase();
+            return folded.includes("hoan thanh viec nop ho so")
+              && folded.includes("dang xuat tai khoan");
+          };
+          // Render lại đuôi hội thoại + reply cuối (chips/cards còn bấm được).
+          (conv.history || []).slice(0, -1).forEach((h) => {
+            if (restoresLogoutChoice && h.role === "bot" && isLegacyLogoutPrompt(h.text)) return;
+            if (h.role === "user") addUserText(h.text);
+            else addBotMd(h.text);
+          });
+          if (conv.last_reply) renderReply(conv.last_reply, { noTts: true });
+          lastState = conv.state || lastState;
+          if (conv.upload_session_id) {
+            // Full navigation/F5 dựng lại sidebar và làm mất WebSocket cũ. Nối lại đúng
+            // phiên để nhận tín hiệu mới; watcher attaching bên dưới sẽ lấy lại plan đã
+            // hoàn tất trước khi kết nối lại.
+            setUploadSession(conv.upload_session_id);
+            subscribeUploadSession(conv.upload_session_id);
+          }
+          if (storedCompletionLogout?.conversationId
+              && storedCompletionLogout.conversationId !== j.conversation_id) {
+            await writeCompletionLogoutState(null);
+            storedCompletionLogout = null;
+          }
+          const restoredCompletionLogout = storedCompletionLogout || j.completion_logout;
+          if (restoredCompletionLogout) {
+            // Sidebar có thể reload trong hai phút chờ lựa chọn. Nối lại đúng deadline cũ,
+            // không cộng thêm hai phút và không phát lại event submitted.
+            submittedReported = true;
+            await beginCompletionLogoutWait(
+              Math.max(0, Number(restoredCompletionLogout.deadline) - Date.now()),
+              { ...restoredCompletionLogout, phase: "pending" },
+            );
+          } else {
+            schedulePageWatcher();
+          }
+          setProgress(conv.progress);
+          console.log(`[TLND] khôi phục phiên ${conv.conversation_id} state=${conv.state}`);
+          // Đang ở chặng mở trang/đăng nhập → báo trạng thái trang cho BE quyết bước tiếp
+          // (chọn cơ quan / nhắc QR / vào thẳng kê khai) — không bắt người dân bấm gì thêm.
+          if (conv.state === "guide_login") {
+            setTimeout(sendPageStatus, 500);
+          }
+          return;
+        }
+        await clearJourney();
+      }
+      await writeCompletionLogoutState(null);
+      showStartScreen();
+    } finally {
+      // Runtime message kết quả HkdOnline chỉ được phép gọi backend sau mốc này; khi đó
+      // api.conversationId đã được khôi phục hoặc boot đã kết luận không còn phiên hợp lệ.
+      chatBootFinished = true;
+    }
+  }
+
+  // ── Đăng nhập quầy (bắt buộc, mọi role) — api/auth.js giữ token, ở đây chỉ UI ──
+  const $scrim = document.getElementById("login-scrim");
+  const $loginForm = document.getElementById("login-form");
+  const $loginUser = document.getElementById("login-user");
+  const $loginPass = document.getElementById("login-pass");
+  const $loginErr = document.getElementById("login-err");
+  const $loginBtn = document.getElementById("login-btn");
+  const $rememberLogin = document.getElementById("remember-login");
+  const $forgetLoginBtn = document.getElementById("forget-login-btn");
+  const $settingsBtn = document.getElementById("settings-btn");
+  const $settingsScreen = document.getElementById("settings-screen");
+  const $settingsBackBtn = document.getElementById("settings-back-btn");
+  const $attachSplitSwitch = document.getElementById("attach-split-switch");
+  const $preferScanSwitch = document.getElementById("prefer-scan-switch");
+  const $renameFilesSwitch = document.getElementById("rename-files-switch");
+  const $submitterDeclarationSwitch = document.getElementById("submitter-declaration-switch");
+  const $attachModeMerge = document.getElementById("attach-mode-merge");
+  const $attachModeSplit = document.getElementById("attach-mode-split");
+  const $panelModePush = document.getElementById("panel-mode-push");
+  const $panelModeSide = document.getElementById("panel-mode-side");
+  const $panelModeNote = document.getElementById("panel-mode-note");
+  const $accBtn = document.getElementById("acc-btn");
+  const $accPop = document.getElementById("acc-pop");
+  let settingsReturnScrollTop = 0;
+  let settingsPreviousSubtitle = "";
+  let settingsResumeHandsfree = false;
+  const settingsStatusTimers = new Map();
+  const CAN_REMEMBER_LOGIN = chrome.extension?.inIncognitoContext !== true;
+  let rememberedLoginLoaded = false;
+  let loginPrefillRun = 0;
+  document.getElementById("login-avatar").innerHTML = BRAND_ICON(46, "brand-icon-login");
+
+  function setLoginNotice(message, kind = "error") {
+    if (!$loginErr) return;
+    $loginErr.textContent = message || "";
+    $loginErr.hidden = !message;
+    $loginErr.classList.toggle("ok", kind === "ok");
+  }
+
+  function renderRememberedLoginState(hasSaved) {
+    rememberedLoginLoaded = Boolean(hasSaved);
+    $rememberLogin.checked = Boolean(hasSaved) && CAN_REMEMBER_LOGIN;
+    $rememberLogin.disabled = !CAN_REMEMBER_LOGIN;
+    $forgetLoginBtn.hidden = !hasSaved || !CAN_REMEMBER_LOGIN;
+    if (!CAN_REMEMBER_LOGIN) {
+      $rememberLogin.title = "Không thể ghi nhớ đăng nhập trong cửa sổ ẩn danh.";
+    }
+  }
+
+  async function prefillLogin() {
+    const run = ++loginPrefillRun;
+    try {
+      await window.RememberedLoginStore.clearLegacyPrefill();
+      if (!CAN_REMEMBER_LOGIN) {
+        if (run === loginPrefillRun) renderRememberedLoginState(false);
+        return false;
+      }
+      const saved = await window.RememberedLoginStore.get();
+      if (run !== loginPrefillRun) return false;
+      renderRememberedLoginState(Boolean(saved));
+      if (!saved) return false;
+      if (!$loginUser.value) $loginUser.value = saved.username;
+      if (!$loginPass.value) $loginPass.value = saved.password;
+      return true;
+    } catch (_) {
+      if (run === loginPrefillRun) renderRememberedLoginState(false);
+      return false;
+    }
+  }
+
+  async function clearRememberedLogin({ clearFields = false, announce = false } = {}) {
+    ++loginPrefillRun;
+    try {
+      await window.RememberedLoginStore.clear();
+      renderRememberedLoginState(false);
+      if (clearFields) {
+        $loginUser.value = "";
+        $loginPass.value = "";
+        $loginUser.focus();
+      }
+      if (announce) setLoginNotice("Đã xóa thông tin đăng nhập được ghi nhớ.", "ok");
+    } catch (error) {
+      console.warn("[TLND-Login] Không xóa được thông tin đăng nhập đã nhớ:", error);
+      if (announce) setLoginNotice("Chưa xóa được thông tin đã nhớ. Công dân thử lại giúp em ạ.");
+    }
+  }
+
+  function renderAttachmentSettings() {
+    $attachSplitSwitch?.classList.toggle("on", attachSplitDocuments);
+    $attachSplitSwitch?.setAttribute("aria-checked", attachSplitDocuments ? "true" : "false");
+    $preferScanSwitch?.classList.toggle("on", preferScan);
+    $preferScanSwitch?.setAttribute("aria-checked", preferScan ? "true" : "false");
+    const split = attachMode === "split";
+    $attachModeMerge?.classList.toggle("on", !split);
+    $attachModeMerge?.setAttribute("aria-checked", split ? "false" : "true");
+    $attachModeSplit?.classList.toggle("on", split);
+    $attachModeSplit?.setAttribute("aria-checked", split ? "true" : "false");
+  }
+
+  function restoreAttachmentSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([ATTACH_SPLIT_DOCUMENTS_KEY, ATTACH_MODE_KEY, PREFER_SCAN_KEY], (res) => {
+        if (!chrome.runtime.lastError) {
+          attachSplitDocuments = res?.[ATTACH_SPLIT_DOCUMENTS_KEY] === true;
+          attachMode = res?.[ATTACH_MODE_KEY] === "split" ? "split" : "merge";
+          preferScan = res?.[PREFER_SCAN_KEY] === true;
+        }
+        renderAttachmentSettings();
+        resolve();
+      });
+    });
+  }
+
+  // Báo ngay dưới dòng vừa bấm: "✓ Đã lưu" tự tắt; lỗi giữ lại kèm nút Thử lại tới khi bấm.
+  function setSettingStatus(id, text, { error = false, pending = false, retry = null } = {}) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    clearTimeout(settingsStatusTimers.get(id));
+    el.classList.toggle("error", error);
+    el.classList.toggle("pending", pending);
+    el.textContent = text;
+    if (retry) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Thử lại";
+      btn.addEventListener("click", () => {
+        markActivity();
+        setSettingStatus(id, "");
+        retry();
+      });
+      el.append(btn);
+    }
+  }
+  function announceSettingSaved(id) {
+    setSettingStatus(id, "✓ Đã lưu");
+    settingsStatusTimers.set(id, setTimeout(() => setSettingStatus(id, ""), 1800));
+  }
+  function announceSettingFailed(id, retry = null) {
+    setSettingStatus(id, "Chưa lưu được.", { error: true, retry });
+  }
+
+  function saveAttachmentSettings(value) {
+    attachSplitDocuments = value === true;
+    renderAttachmentSettings();
+    chrome.storage.local.set(
+      { [ATTACH_SPLIT_DOCUMENTS_KEY]: attachSplitDocuments },
+      () => {
+        if (chrome.runtime.lastError) {
+          announceSettingFailed("attach-split-status", () => saveAttachmentSettings(value));
+          return;
+        }
+        announceSettingSaved("attach-split-status");
+      },
+    );
+  }
+
+  function renderRenameFilesSetting() {
+    if (!$renameFilesSwitch) return;
+    $renameFilesSwitch.classList.toggle("on", renameAttachmentFiles);
+    $renameFilesSwitch.setAttribute("aria-checked", renameAttachmentFiles ? "true" : "false");
+    // Khoá tới khi đọc được giá trị thật từ BE: lưu lúc chưa biết giá trị là ghi đè mù.
+    $renameFilesSwitch.disabled = !accountSettingsLoaded;
+  }
+
+  function renderSubmitterDeclarationSetting() {
+    if (!$submitterDeclarationSwitch) return;
+    $submitterDeclarationSwitch.classList.toggle("on", submitterFromDeclaration);
+    $submitterDeclarationSwitch.setAttribute("aria-checked", submitterFromDeclaration ? "true" : "false");
+    $submitterDeclarationSwitch.disabled = !accountSettingsLoaded;
+  }
+
+  function renderAccountSettings() {
+    renderRenameFilesSetting();
+    renderSubmitterDeclarationSetting();
+  }
+
+  function storeAccountSettings(settings) {
+    renameAttachmentFiles = settings?.renameAttachmentFiles !== false;
+    // BE cũ chưa có khoá này → coi như tắt (người nộp theo tài khoản, hành vi cũ).
+    submitterFromDeclaration = settings?.submitterFromDeclaration === true;
+    accountSettingsLoaded = true;
+    renderAccountSettings();
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ [ACCOUNT_SETTINGS_KEY]: settings || {} }, () => {
+        void chrome.runtime.lastError;
+        resolve();
+      });
+    });
+  }
+
+  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status"];
+
+  // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc và nói rõ lý do kèm
+  // Thử lại — công tắc mờ không chữ thì cán bộ tưởng hỏng.
+  async function refreshAccountSettings() {
+    if (!accountSettingsLoaded) {
+      for (const id of ACCOUNT_STATUS_IDS) setSettingStatus(id, "Đang tải cài đặt tài khoản…", { pending: true });
+    }
+    try {
+      await storeAccountSettings(await api.getAccountSettings());
+      for (const id of ACCOUNT_STATUS_IDS) setSettingStatus(id, "");
+    } catch (e) {
+      console.warn("[TLND] Không tải được cài đặt tài khoản:", e);
+      accountSettingsLoaded = false;
+      renderAccountSettings();
+      for (const id of ACCOUNT_STATUS_IDS) {
+        setSettingStatus(id, "Chưa tải được cài đặt tài khoản.", { error: true, retry: refreshAccountSettings });
+      }
+    }
+  }
+
+  // Đăng xuất: bỏ bản sao để cài đặt của cán bộ trước không áp sang người đăng nhập sau.
+  function forgetAccountSettings() {
+    renameAttachmentFiles = true;
+    submitterFromDeclaration = false;
+    accountSettingsLoaded = false;
+    renderAccountSettings();
+    chrome.storage.local.remove([ACCOUNT_SETTINGS_KEY], () => { void chrome.runtime.lastError; });
+  }
+
+  async function saveAccountSetting(changes, statusId) {
+    if (!accountSettingsLoaded) return;
+    accountSettingsLoaded = false; // khoá trong lúc lưu, chống bấm dồn
+    renderAccountSettings();
+    try {
+      await storeAccountSettings(await api.updateAccountSettings(changes));
+      announceSettingSaved(statusId);
+    } catch (e) {
+      console.warn("[TLND] Không lưu được cài đặt tài khoản:", e);
+      accountSettingsLoaded = true;
+      renderAccountSettings();
+      announceSettingFailed(statusId, () => saveAccountSetting(changes, statusId));
+    }
+  }
+
+  function saveRenameAttachmentFiles(value) {
+    return saveAccountSetting({ renameAttachmentFiles: value === true }, "rename-files-status");
+  }
+
+  function savePreferScan(value) {
+    preferScan = value === true;
+    renderAttachmentSettings();
+    chrome.storage.local.set(
+      { [PREFER_SCAN_KEY]: preferScan },
+      () => {
+        if (chrome.runtime.lastError) {
+          announceSettingFailed("prefer-scan-status", () => savePreferScan(value));
+          return;
+        }
+        announceSettingSaved("prefer-scan-status");
+      },
+    );
+  }
+
+  function saveAttachMode(value) {
+    attachMode = value === "split" ? "split" : "merge";
+    renderAttachmentSettings();
+    chrome.storage.local.set(
+      { [ATTACH_MODE_KEY]: attachMode },
+      () => {
+        if (chrome.runtime.lastError) {
+          announceSettingFailed("attach-mode-status", () => saveAttachMode(value));
+          return;
+        }
+        announceSettingSaved("attach-mode-status");
+      },
+    );
+  }
+
+  // ── Vị trí khung: đẩy trang ↔ khung bên trình duyệt ──
+  // Nguồn sự thật là lib/panelMode.js (nạp trước file này). Ở đây chỉ vẽ và lưu.
+  const PM = globalThis.__TLND_PANEL_MODE__ || null;
+  let panelMode = "push";
+
+  function renderPanelMode() {
+    if (!$panelModePush || !$panelModeSide) return;
+    const hoTro = !!PM && PM.hoTroKhungBen();
+    const ben = panelMode === "sidepanel";
+    $panelModePush.classList.toggle("on", !ben);
+    $panelModePush.setAttribute("aria-checked", ben ? "false" : "true");
+    $panelModeSide.classList.toggle("on", ben);
+    $panelModeSide.setAttribute("aria-checked", ben ? "true" : "false");
+    $panelModeSide.disabled = !hoTro;
+    if ($panelModeNote) {
+      $panelModeNote.hidden = hoTro;
+      if (!hoTro) {
+        $panelModeNote.textContent =
+          "Trình duyệt này chưa có khung bên (cần Chrome/Edge 114 trở lên). "
+          + "Trợ lý sẽ luôn dùng chế độ đẩy trang.";
+      }
+    }
+  }
+
+  async function restorePanelMode() {
+    if (!PM) return;
+    panelMode = await PM.cheDoHieuLuc();
+    renderPanelMode();
+  }
+
+  async function chuyenCheDo(value, daMoKhungBen) {
+    if (!PM) return;
+    const truoc = panelMode;
+    if (value === truoc) return;
+    panelMode = value;
+    renderPanelMode();
+    try {
+      await PM.ghiCheDo(value);
+    } catch (_) {
+      panelMode = truoc;
+      renderPanelMode();
+      // Không kèm Thử lại: chuyển sang khung bên phải mở trong chính cú bấm của cán bộ.
+      announceSettingFailed("panel-mode-status");
+      return;
+    }
+    announceSettingSaved("panel-mode-status");
+    // background nghe storage.onChanged rồi đặt openPanelOnActionClick, đường sidebar
+    // cho từng tab, VÀ báo panelModeChanged cho mọi tab. Đường riêng dưới đây chỉ thêm
+    // moKhung cho đúng tab công dân vừa bấm — tab đó phải thấy khung mở ra ngay.
+    await sendToContent({ action: "panelModeChanged", mode: value, moKhung: value === "push" });
+    if (value === "sidepanel") {
+      // Khung đẩy trang (chính là cái đang chạy đoạn code này) sắp bị content.js gỡ.
+      if (EMBEDDED && !daMoKhungBen) {
+        setStatus("Đã chuyển sang khung bên. Bấm biểu tượng Trợ lý trên thanh công cụ để mở.", true);
+      }
+      return;
+    }
+    if (!EMBEDDED) {
+      // Đang Ở TRONG khung bên mà chọn đẩy trang: content.js vừa dựng khung trên
+      // trang, đóng khung bên này lại — để cả hai cùng sống là hai bản sidebar
+      // cùng thao tác trên một hồ sơ.
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 150);
+    }
+  }
+
+  $panelModePush?.addEventListener("click", () => {
+    markActivity();
+    void chuyenCheDo("push", false);
+  });
+
+  $panelModeSide?.addEventListener("click", () => {
+    markActivity();
+    if (!PM || panelMode === "sidepanel" || $panelModeSide.disabled) return;
+    // sidePanel.open() phải nằm TRONG cú bấm: mọi await phía trước đều làm mất user
+    // gesture và Chrome từ chối thẳng. Vì thế mở trước, ghi cài đặt sau — ngược lại
+    // thứ tự thông thường, nhưng đây là ràng buộc của trình duyệt chứ không phải
+    // lựa chọn. Chrome < 116 không có open() → daMo=false và báo cách mở bằng tay.
+    let daMo = false;
+    const tab = Number(TAB_ID);
+    if (EMBEDDED && PM.hoTroMoNgay() && tab) {
+      try {
+        chrome.sidePanel
+          .setOptions({ tabId: tab, path: PM.duongSidebar(tab), enabled: true })
+          .catch(() => {});
+        chrome.sidePanel.open({ tabId: tab }).catch(() => {});
+        daMo = true;
+      } catch (_) { daMo = false; }
+    }
+    void chuyenCheDo("sidepanel", daMo);
+  });
+
+  function openSettingsScreen() {
+    if (!$settingsScreen || !$scrim?.hidden) return;
+    settingsReturnScrollTop = $messages.scrollTop;
+    settingsPreviousSubtitle = $subtitle.textContent;
+    settingsResumeHandsfree = handsfree;
+    stopVoice();
+    stopReplyTts();
+    $accPop.hidden = true;
+    $accBtn.classList.remove("active");
+    $settingsScreen.hidden = false;
+    document.body.classList.add("settings-mode");
+    $settingsBtn.classList.add("active");
+    $settingsBtn.setAttribute("aria-label", "Đóng cài đặt");
+    $subtitle.textContent = "Cài đặt";
+    void refreshAccountSettings(); // có thể vừa đổi ở máy khác
+    markActivity();
+    requestAnimationFrame(() => $settingsBackBtn?.focus());
+  }
+
+  function closeSettingsScreen({ resumeVoice = true, restoreFocus = true } = {}) {
+    if (!$settingsScreen || $settingsScreen.hidden) return;
+    $settingsScreen.hidden = true;
+    document.body.classList.remove("settings-mode");
+    $settingsBtn.classList.remove("active");
+    $settingsBtn.setAttribute("aria-label", "Mở cài đặt");
+    $subtitle.textContent = settingsPreviousSubtitle
+      || (document.body.classList.contains("start-mode")
+        ? "Sẵn sàng hỗ trợ công dân" : "Hỗ trợ thủ tục hành chính công");
+    requestAnimationFrame(() => {
+      $messages.scrollTop = settingsReturnScrollTop;
+      if (restoreFocus) $settingsBtn?.focus();
+    });
+    if (resumeVoice && settingsResumeHandsfree && handsfree && voiceCfg.asr) startVoice();
+    settingsResumeHandsfree = false;
+  }
+
+  $settingsBtn?.addEventListener("click", () => {
+    if ($settingsScreen?.hidden) openSettingsScreen();
+    else closeSettingsScreen();
+  });
+  $settingsBackBtn?.addEventListener("click", () => closeSettingsScreen());
+  $preferScanSwitch?.addEventListener("click", () => {
+    savePreferScan(!preferScan);
+  });
+  $renameFilesSwitch?.addEventListener("click", () => {
+    markActivity();
+    void saveRenameAttachmentFiles(!renameAttachmentFiles);
+  });
+  $submitterDeclarationSwitch?.addEventListener("click", () => {
+    markActivity();
+    void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration }, "submitter-declaration-status");
+  });
+  $attachSplitSwitch?.addEventListener("click", () => {
+    markActivity();
+    saveAttachmentSettings(!attachSplitDocuments);
+  });
+  $attachModeMerge?.addEventListener("click", () => {
+    markActivity();
+    saveAttachMode("merge");
+  });
+  $attachModeSplit?.addEventListener("click", () => {
+    markActivity();
+    saveAttachMode("split");
+  });
+  chrome.storage?.onChanged?.addListener((changes, areaName) => {
+    if (areaName !== "local") return;
+    let dirty = false;
+    if (changes[ATTACH_SPLIT_DOCUMENTS_KEY]) {
+      attachSplitDocuments = changes[ATTACH_SPLIT_DOCUMENTS_KEY].newValue === true;
+      dirty = true;
+    }
+    if (changes[ATTACH_MODE_KEY]) {
+      attachMode = changes[ATTACH_MODE_KEY].newValue === "split" ? "split" : "merge";
+      dirty = true;
+    }
+    if (dirty) renderAttachmentSettings();
+  });
+
+  function showLogin() {
+    closeSettingsScreen({ resumeVoice: false, restoreFocus: false });
+    forgetAccountSettings();
+    $scrim.hidden = false;
+    $settingsBtn.hidden = true;
+    $accBtn.hidden = true;
+    $accBtn.classList.remove("active");
+    $accPop.hidden = true;
+    stopVoice();
+    stopReplyTts();
+    setHandsfree(false);
+    void prefillLogin().then((hasSaved) => {
+      setTimeout(() => {
+        if ($scrim.hidden) return;
+        if (hasSaved && $loginUser.value && $loginPass.value) $loginBtn?.focus();
+        else $loginUser?.focus();
+      }, 60);
+    });
+  }
+
+  function renderAccount() {
+    const u = window.tlndAuth.user;
+    updateLangBar(); // switch tiếng Mông gate theo tỉnh của tài khoản (Lai Châu)
+    if (!u) { $settingsBtn.hidden = true; $accBtn.hidden = true; return; }
+    $settingsBtn.hidden = false;
+    $accBtn.hidden = false;
+    document.getElementById("acc-name").textContent = u.name || u.username;
+    const place = [u.xa, u.tinh].filter(Boolean).join(", ");
+    document.getElementById("acc-sub").textContent = place || u.username;
+  }
+
+  $accBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = $accPop.hidden;
+    $accPop.hidden = !willOpen;
+    $accBtn.classList.toggle("active", willOpen);
+  });
+  document.addEventListener("click", (e) => {
+    if (!$accPop.hidden && !$accPop.contains(e.target)) {
+      $accPop.hidden = true;
+      $accBtn.classList.remove("active");
+    }
+  });
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    // Rời phiên → ngừng theo dõi máy quét + nâng mốc (không kéo lại giấy đã quét sau khi
+    // đăng nhập lại).
+    bumpScanWatermark();
+    disconnectScanAgent();
+    await window.tlndAuth.logout();
+    showLogin();
+  });
+
+  $loginForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const u = ($loginUser.value || "").trim();
+    const p = $loginPass.value || "";
+    if (!u || !p || $loginBtn.disabled) return;
+    $loginBtn.disabled = true;
+    setLoginNotice("");
+    try {
+      await window.tlndAuth.login(u, p);
+      if (CAN_REMEMBER_LOGIN && $rememberLogin.checked) {
+        try {
+          await window.RememberedLoginStore.save(u, p);
+          renderRememberedLoginState(true);
+        } catch (error) {
+          console.warn("[TLND-Login] Đăng nhập thành công nhưng không lưu được thông tin ghi nhớ:", error);
+          renderRememberedLoginState(false);
+        }
+      } else {
+        await clearRememberedLogin();
+      }
+      $loginPass.value = "";
+      $scrim.hidden = true;
+      renderAccount();
+      void refreshAccountSettings();
+      // BASE_URL có thể chưa sẵn nếu người dùng đăng nhập cực nhanh — chờ init voice xong.
+      if (!BASE_URL) BASE_URL = await window.tlndBaseUrl();
+      window.HCC_BASE_URL = BASE_URL;
+      void loadVoiceConfig(); // /voice/config cần token → mới gọi được từ lúc này
+      bootChat();
+    } catch (err) {
+      const invalidRememberedLogin = rememberedLoginLoaded
+        && (err?.status === 401 || err?.data?.error === "INVALID_CREDENTIALS");
+      if (invalidRememberedLogin) {
+        await clearRememberedLogin();
+        $loginPass.value = "";
+      }
+      const message = err?.message || "Đăng nhập thất bại";
+      setLoginNotice(invalidRememberedLogin
+        ? `${message} Thông tin đã nhớ đã được xóa.`
+        : message);
+    } finally {
+      $loginBtn.disabled = false;
+    }
+  });
+
+  $rememberLogin?.addEventListener("change", async () => {
+    if (!$rememberLogin.checked) await clearRememberedLogin();
+  });
+
+  $forgetLoginBtn?.addEventListener("click", async () => {
+    await clearRememberedLogin({ clearFields: true, announce: true });
+  });
+
+  // authFetch hết đường refresh (401 lần 2) → bật lại màn đăng nhập, chat giữ nguyên.
+  window.addEventListener("tlnd-auth-required", showLogin);
+
+  (async () => {
+    await restoreAttachmentSettings();
+    await restorePanelMode();
+    const st = await window.tlndAuth.load();
+    if (st?.access) { renderAccount(); void refreshAccountSettings(); bootChat(); }
+    else showLogin();
+  })();
+
+  console.log(`[TLND] sidebar sẵn sàng — tabId=${TAB_ID}`);
+})();

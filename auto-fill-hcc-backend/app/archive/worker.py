@@ -246,6 +246,7 @@ class Archiver:
             "last_activity_at": _iso(anchor),
             "experience": first.get("experience"),
             "procedure": first.get("procedure") or meta.get("procedure"),
+            "procedure_label": first.get("procedure_label") or meta.get("procedure_label"),
             "dossier_id": first.get("dossier_id") or meta.get("dossier_id"),
             "conversation_id": options.get("conversation_id") or meta.get("conversation_id"),
             "unit": {"user_id": first.get("user_id") or meta.get("user_id"),
@@ -253,6 +254,7 @@ class Archiver:
                      "name": first.get("name") or meta.get("name")},
             **{coll: [{"_id": str(d["_id"]), "kind": d.get("kind"), **pl}
                       for d, pl, _s, _u in parts[coll]] for coll in parts},
+            "public": {coll: [spec.public_doc(d, s, u) for d, _pl, s, u in parts[coll]] for coll in parts},
             "ocr_texts": ocr_texts,
             "review_sources": sources,
             "files": self._file_entries(files, "original", names) + self._file_entries(rfiles, "review"),
@@ -271,7 +273,7 @@ class Archiver:
         for coll, items in parts.items():
             for d, _pl, set_, unset in items:
                 update = {"$set": {**set_, "archive_pending": False, "archived_at": self.now,
-                                   **({} if sent else {"archive_failed": True})}}
+                                   **({"archive_meta_sent": True} if sent else {"archive_failed": True})}}
                 if unset:
                     update["$unset"] = {k: "" for k in unset}
                 await self.db[coll].update_one({"_id": d["_id"]}, update)
@@ -283,6 +285,55 @@ class Archiver:
         self._count("requests_scrubbed")
         if not sent:
             logger.warning("[archive] XOÁ KHÔNG LƯU được lượt %s (vault không nhận)", rid)
+
+    async def send_meta(self) -> dict[str, int]:
+        query = {"archived_at": {"$exists": True}, "archive_meta_sent": {"$ne": True},
+                 "request_id": {"$type": "string"}}
+        total: dict[str, int] = {"sent": 0, "failed": 0}
+        while True:
+            rids: list[str] = []
+            for coll in ("traces", "trace_steps", "process_requests"):
+                for doc in await self.db[coll].find(query, {"request_id": 1}).limit(
+                        archive_settings.archive_batch).to_list(None):
+                    if doc["request_id"] not in rids:
+                        rids.append(doc["request_id"])
+            if not rids:
+                return total
+            before = dict(total)
+            await self._each(rids, lambda rid: self._send_meta_one(rid, total))
+            logger.info("[archive] gửi bù phần không nhạy cảm: %s", total)
+            if total["sent"] == before["sent"]:
+                return total
+
+    async def _send_meta_one(self, rid: str, total: dict[str, int]) -> None:
+        docs = {coll: await self.db[coll].find({"request_id": rid}).to_list(None)
+                for coll in ("traces", "trace_steps", "process_requests")}
+        everything = [d for ds in docs.values() for d in ds]
+        if any(d.get("archive_pending") for d in everything):
+            return
+        first = (docs["traces"] or docs["process_requests"] or docs["trace_steps"])[0]
+        meta = first.get("meta") or {}
+        bundle = {
+            "v": 1, "type": "request_meta", "request_id": rid,
+            "created_at": _iso(min((_utc(d.get("created_at")) for d in everything if d.get("created_at")),
+                                   default=None)),
+            "experience": first.get("experience"),
+            "procedure": first.get("procedure") or meta.get("procedure"),
+            "procedure_label": first.get("procedure_label") or meta.get("procedure_label"),
+            "unit": {"user_id": first.get("user_id") or meta.get("user_id"),
+                     "username": first.get("username") or meta.get("username"),
+                     "name": first.get("name") or meta.get("name")},
+            "public": {coll: [spec.public_doc(d, {}, ()) for d in ds] for coll, ds in docs.items()},
+            "files": [],
+        }
+        if not await self._deliver(bundle, {}):
+            total["failed"] += 1
+            return
+        for coll, ds in docs.items():
+            if ds:
+                await self.db[coll].update_many({"_id": {"$in": [d["_id"] for d in ds]}},
+                                                {"$set": {"archive_meta_sent": True}})
+        total["sent"] += 1
 
     async def _archive_and_delete(self, *, coll: str, doc: dict, bundle_type: str, anchor: datetime,
                                   dirs: list[Path]) -> None:
@@ -346,6 +397,16 @@ class Archiver:
         async for doc in self.db.notify_subscriptions.find(query).limit(archive_settings.archive_batch):
             await self._archive_and_delete(coll="notify_subscriptions", doc=doc, bundle_type="notify",
                                            anchor=_utc(doc.get("updated_at")), dirs=[])
+
+    async def form_snapshots(self) -> None:
+        cur = self.db.form_snapshots.find({}).sort("created_at", 1)
+        async for doc in cur.limit(archive_settings.archive_batch):
+            if not await self._deliver(doc["bundle"], {}):
+                if self.dry_run or _utc(doc.get("created_at")) >= self.scrub_cutoff:
+                    continue
+                logger.warning("[archive] XOÁ KHÔNG LƯU được form_snapshot %s (vault không nhận)", doc["_id"])
+            await self.db.form_snapshots.delete_one({"_id": doc["_id"]})
+            self._count("form_snapshot_deleted")
 
     async def _archive_fields(self, *, coll: str, doc: dict, bundle_type: str, anchor: datetime,
                               split) -> None:
@@ -461,7 +522,8 @@ class Archiver:
 
     async def run_once(self, part: str | None = None) -> dict[str, int]:
         self.counts = {}
-        live = (self.conversations, self.upload_sessions, self.profiles, self.notify_subscriptions)
+        live = (self.conversations, self.upload_sessions, self.profiles, self.notify_subscriptions,
+                self.form_snapshots)
         steps = [self.requests, self.dossiers, self.upload_logs]
         if part != "backlog":
             steps[1:1] = live
@@ -527,6 +589,7 @@ async def _main() -> int:
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--mark-backlog", action="store_true")
+    ap.add_argument("--send-meta", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if archive_settings.archive_hmac_key and not args.mark_backlog:
@@ -540,7 +603,7 @@ async def _main() -> int:
                if not archive_settings.archive_hmac_key else "")
     if problem:
         logger.error("[archive] %s.", problem)
-        if args.once or args.mark_backlog:
+        if args.once or args.mark_backlog or args.send_meta:
             return 2
         while True:
             await asyncio.sleep(3600)
@@ -551,6 +614,9 @@ async def _main() -> int:
             logger.info("[archive] đánh dấu dữ liệu cũ: %s", await mark_backlog(get_db()))
             return 0
         live = Archiver(dry_run=args.dry_run)
+        if args.send_meta:
+            logger.info("[archive] gửi bù xong: %s", await live.send_meta())
+            return 0
         if args.once:
             logger.info("[archive] %s", await live.run_once())
             return 0

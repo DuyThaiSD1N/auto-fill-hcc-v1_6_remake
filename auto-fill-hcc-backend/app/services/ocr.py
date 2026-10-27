@@ -4,15 +4,10 @@ Mọi pipeline gọi module này để dùng chung cache theo nội dung file v�
 provider/fallback khác. Tiếng Nói tự tách trang PDF, xoay ảnh và OCR nhiều tệp multipart.
 """
 import re
-from contextvars import ContextVar
 
 from app.config import settings
 from app.monitor import recorder as mon
 from app.services import ocr_tiengnoi
-
-# Web Kiểm thử (options.freshOcr): lượt điền BỎ QUA bước đọc cache để lần chạy nào cũng OCR mới — so độ ổn định
-# giữa các lần mới công bằng. Vẫn ghi cache như thường (bước đính kèm, lượt thật sau đó dùng lại).
-fresh_ocr: ContextVar[bool] = ContextVar("fresh_ocr", default=False)
 
 _PAGE_SEPARATOR_RE = re.compile(
     r"(?im)^[\s\u2500-\u257f-]*(?:trang|page)\s+\d+\s*/\s*\d+[\s\u2500-\u257f-]*$"
@@ -120,17 +115,14 @@ async def _ocr_per_file(files: list[dict], *, classify: bool) -> list[dict]:
     # Băm = giải mã base64 + sha256 từng file (CPU) → nhóm tiền xử lý, không tính vào OCR.
     with mon.span("pre.hash", files=len(files)):
         keys = [_cache_key(item) for item in files]
-    skip_read = fresh_ocr.get()
     async with mon.span("ocr.cache", files=len(files)) as cache_span:
-        raw_cached = {} if skip_read else await ocr_cache.get_many([key for key in keys if key])
+        raw_cached = await ocr_cache.get_many([key for key in keys if key])
     cached: dict = {}
     states: list[tuple[str, str | None]] = []
     for key in keys:
         value = raw_cached.get(key) if key else None
         if not key:
             states.append(("miss", "no_key"))
-        elif skip_read:
-            states.append(("miss", "fresh"))
         elif value is None:
             states.append(("miss", "not_found"))
         elif value.get("provider") != "tiengnoi":

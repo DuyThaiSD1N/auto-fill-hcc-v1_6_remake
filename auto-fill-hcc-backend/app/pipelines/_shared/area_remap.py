@@ -1453,13 +1453,14 @@ _VILLAGE_PREFIX_RE = re.compile(
 )
 
 
-# Thôn/tổ dân phố sáp nhập: giấy tờ cấp trước còn ghi tên thôn cũ, ô địa chỉ chi tiết phải ghi tên
-# mới. Khoá (tỉnh, xã) HIỆN HÀNH -- ra được xã mới rồi mới đổi, nên tên thôn chung chung ("Thanh
-# Bình") ở nơi khác không bị đụng. Chỉ đổi phần tên, giữ nguyên tiền tố "Thôn"/"Khu phố" như giấy tờ
-# ghi. Thôn giữ tên (Đồng Ngư, Liễu Khê) không cần ghi.
-_THON_MOI: dict[tuple[str, str], dict[str, str]] = {
+# Tổ dân phố sáp nhập: giấy tờ cấp trước còn ghi tên thôn/tổ dân phố cũ, ô địa chỉ chi tiết phải
+# ghi tên tổ dân phố mới. Khoá (tỉnh, xã) HIỆN HÀNH -- ra được xã mới rồi mới đổi, nên tên chung
+# chung ("Thanh Bình") ở nơi khác không bị đụng. Mỗi xã kèm tiền tố đơn vị hiện hành: tiền tố cũ
+# đứng trước tên ("Thôn", "Khu phố", "TDP"...) đổi theo, tên trần thì chỉ đổi tên. Tên mới và tên
+# giữ nguyên (Đồng Ngư) tự khớp chính nó để "Thôn Đồng Ngư" vẫn thành "Tổ dân phố Đồng Ngư".
+_TO_DAN_PHO_MOI: dict[tuple[str, str], tuple[str, dict[str, str]]] = {
     # Phường Song Liễu (xã cũ Xuân Lâm, Hà Mãn, Ngũ Thái, Song Liễu -- Thuận Thành).
-    ("Bắc Ninh", "Phường Song Liễu"): {
+    ("Bắc Ninh", "Phường Song Liễu"): ("Tổ dân phố", {
         "Cửu Yên": "Vũ Kiệt",
         "Tứ Cờ": "Vũ Kiệt",
         "Đức Hiệp": "Thanh Xuân",
@@ -1478,45 +1479,64 @@ _THON_MOI: dict[tuple[str, str], dict[str, str]] = {
         "Liễu Lâm": "Ngọc Liễu",
         "Mãn Xá Đông": "Mãn Xá",
         "Mãn Xá Tây": "Mãn Xá",
-    },
+        "Đồng Ngư": "Đồng Ngư",
+    }),
 }
+
+# Tiền tố đơn vị dưới xã đứng ngay trước tên ("TDP.Ngọc Tỉnh", "Khu phố Ngọc Lâm").
+_TO_DAN_PHO_PREFIX = r"thôn|xóm|làng|tổ\s+dân\s+phố|tdp|khu\s+phố|kp|khu\s+dân\s+cư|kdc"
+# Cách viết đã đúng loại đơn vị -> giữ nguyên ("TDP Ngọc Tỉnh" ra "TDP Liễu Khê").
+_TIEN_TO_CUNG_LOAI: dict[str, set[str]] = {"Tổ dân phố": {"tổ dân phố", "tdp"}}
 
 
 def _thon_key(text: str) -> str:
     return unicodedata.normalize("NFC", text).casefold()
 
 
-# (fold_province(tinh), fold(xa)) -> (regex bắt tên thôn cũ, tên cũ đã _thon_key -> tên mới).
-_THON_MOI_INDEX: dict[tuple[str, str], tuple[re.Pattern, dict[str, str]]] = {}
+# (fold_province(tinh), fold(xa)) -> (regex bắt [tiền tố] + tên cũ, tiền tố mới,
+# tên cũ đã _thon_key -> tên mới).
+_TO_DAN_PHO_INDEX: dict[tuple[str, str], tuple[re.Pattern, str, dict[str, str]]] = {}
 
 
 def _build_thon_index() -> None:
-    _THON_MOI_INDEX.clear()
-    for (tinh, xa), bang in _THON_MOI.items():
+    _TO_DAN_PHO_INDEX.clear()
+    for (tinh, xa), (tien_to, bang) in _TO_DAN_PHO_MOI.items():
+        bang = {**{moi: moi for moi in bang.values()}, **bang}
         # Tên dài trước: "Mãn Xá Đông" phải khớp trọn, không để "Mãn Xá" ăn mất nửa.
         cu = sorted(bang, key=len, reverse=True)
         pattern = re.compile(
-            r"(?<!\w)(" + "|".join(re.escape(unicodedata.normalize("NFC", t)) for t in cu) + r")(?!\w)",
+            r"(?<!\w)((" + _TO_DAN_PHO_PREFIX + r")(?:\s*\.\s*|\s+))?("
+            + "|".join(re.escape(unicodedata.normalize("NFC", t)) for t in cu)
+            + r")(?!\w)",
             re.IGNORECASE,
         )
-        _THON_MOI_INDEX[(_fold_province(tinh), _fold(xa))] = (
+        _TO_DAN_PHO_INDEX[(_fold_province(tinh), _fold(xa))] = (
             pattern,
+            tien_to,
             {_thon_key(t): moi for t, moi in bang.items()},
         )
 
 
 def _remap_thon(tinh: object, xa: object, dia_chi: object) -> object:
-    """Đổi tên thôn cũ trong địa chỉ chi tiết sang tên thôn sau sáp nhập (xem _THON_MOI)."""
+    """Đổi thôn/tổ dân phố cũ trong địa chỉ chi tiết sang tổ dân phố sau sáp nhập (xem _TO_DAN_PHO_MOI)."""
     if not isinstance(dia_chi, str) or not dia_chi or not tinh or not xa:
         return dia_chi
-    entry = _THON_MOI_INDEX.get((_fold_province(str(tinh)), _fold(str(xa))))
+    entry = _TO_DAN_PHO_INDEX.get((_fold_province(str(tinh)), _fold(str(xa))))
     if not entry:
         return dia_chi
-    pattern, bang = entry
-    moi, so_lan = pattern.subn(
-        lambda m: bang.get(_thon_key(m.group(1)), m.group(1)), unicodedata.normalize("NFC", dia_chi)
-    )
-    return moi if so_lan else dia_chi
+    pattern, tien_to, bang = entry
+
+    def _doi(m: re.Match) -> str:
+        ten = bang.get(_thon_key(m.group(3)), m.group(3))
+        if not m.group(1):
+            return ten
+        # Đã ghi đúng loại đơn vị ("TDP", "Tổ dân phố") thì giữ cách viết của giấy tờ.
+        if re.sub(r"\s+", " ", _thon_key(m.group(2))) in _TIEN_TO_CUNG_LOAI.get(tien_to, ()):
+            return m.group(1) + ten
+        return f"{tien_to} {ten}"
+
+    moi = pattern.sub(_doi, unicodedata.normalize("NFC", dia_chi))
+    return moi if moi != unicodedata.normalize("NFC", dia_chi) else dia_chi
 
 
 _build_thon_index()  # chay 1 lan luc import

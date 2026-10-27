@@ -285,6 +285,11 @@ def _id_doc_type(number, issuer: str = "") -> str:
     return id_doc_type("Căn cước", issuer)
 
 
+# Biểu mẫu không cho để trống ô "Giấy tờ tùy thân" của người yêu cầu/mẹ/cha. Hồ sơ không có số
+# (cha mẹ đã chết, người thứ ba không kèm thẻ…) vẫn phải chọn một loại → để mặc định CCCD, tô vàng.
+_NO_ID_DOC_TYPE = "Căn cước công dân"
+
+
 def _copy_value(value) -> str:
     folded = _fold(str(value or ""))
     if folded in {"yes", "true", "1", "co"}:
@@ -1094,6 +1099,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     _id_doc_type(req_id, requester.get("noi_cap")),
                     default=bool(requester.get("loai_giay_to_default")),
                 )
+            elif not account_person:
+                add("LoaiGiayToDinhDanhC", _NO_ID_DOC_TYPE, default=True)
             # Người khác mà không có số dùng được thì ngày cấp, nơi cấp cũng bỏ (bị xóa bên dưới):
             # cụm giấy tờ không số chỉ là nửa tấm thẻ.
             if req_id or account_person:
@@ -1183,10 +1190,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("SoGiayToDinhDanhMe", mother_id, id_default)
             add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id, _issuer_or_default(values, "Mother")), id_default)
         else:
-            # Không có số CCCD mẹ -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
+            # Không có số CCCD mẹ -> clear ô số để xóa dữ liệu cổng điền sẵn; loại giấy tờ bắt buộc chọn.
             clear("SoDinhDanhMe")
             clear("SoGiayToDinhDanhMe")
-            clear("LoaiGiayToDinhDanhMe")
+            add("LoaiGiayToDinhDanhMe", _NO_ID_DOC_TYPE, default=True)
         # Các thông tin khác của mẹ
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"), me_default)
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
@@ -1213,10 +1220,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("SoGiayToDinhDanhCha", father_id, id_default)
             add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id, _issuer_or_default(values, "Father")), id_default)
         else:
-            # Không có số CCCD cha -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
+            # Không có số CCCD cha -> clear ô số để xóa dữ liệu cổng điền sẵn; loại giấy tờ bắt buộc chọn.
             clear("SoDinhDanhCha")
             clear("SoGiayToDinhDanhCha")
-            clear("LoaiGiayToDinhDanhCha")
+            add("LoaiGiayToDinhDanhCha", _NO_ID_DOC_TYPE, default=True)
         # Các thông tin khác của cha
         add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
         add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)

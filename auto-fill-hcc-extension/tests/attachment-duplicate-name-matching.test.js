@@ -4,9 +4,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
-const helpersStart = content.indexOf("function attachmentTextKey");
-const helpersEnd = content.indexOf("\n  function attachmentPlanLabels", helpersStart);
+const attachCore = fs.readFileSync(path.join(root, "content", "attach-core.js"), "utf8");
+const helpersStart = attachCore.indexOf("function attachmentTextKey");
+const helpersEnd = attachCore.indexOf("\nfunction attachmentPlanLabels", helpersStart);
 
 assert.ok(helpersStart >= 0 && helpersEnd > helpersStart, "Không tìm thấy helper so tên file đính kèm");
 
@@ -14,7 +14,7 @@ const context = {
   foldChoiceText(value) {
     return String(value || "")
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[̀-ͯ]/g, "")
       .replace(/đ/g, "d")
       .replace(/Đ/g, "D")
       .toLowerCase();
@@ -22,7 +22,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(
-  content.slice(helpersStart, helpersEnd) +
+  attachCore.slice(helpersStart, helpersEnd) +
     "\nthis.attachmentKeyEquals = attachmentKeyEquals;",
   context,
 );
@@ -37,29 +37,54 @@ assert.equal(
   false,
   "HOÀN và HÒA là hai chủ thể khác nhau, không được bỏ qua",
 );
+
+// LỖI THẬT (chứng thực bản sao, 9 tài liệu): lượt đính đầu của dòng 1 hỏng vì cổng trả 502.
+// Lượt round-robin thứ hai bị coi là TRÙNG với "Bảng điểm Đại học Duy Tân 2" — bản tự đánh số
+// của một tài liệu KHÁC — nên bỏ retry và tô xanh, trong khi dòng bắt buộc số 1 vẫn trống.
+// Thủ phạm là so khớp kiểu CHỨA NHAU: "…duy tan 2".includes("…duy tan").
 assert.equal(
-  context.attachmentKeyEquals("Giấy khai sinh.pdf", "Giấy khai sinh 2"),
+  context.attachmentKeyEquals("Bảng điểm Đại học Duy Tân 2.pdf", "Bảng điểm Đại học Duy Tân"),
   false,
-  "Giấy khai sinh và Giấy khai sinh 2 là hai tài liệu khác nhau",
+  "Hậu tố đánh số là tài liệu KHÁC, không được nuốt bản gốc",
+);
+assert.equal(
+  context.attachmentKeyEquals("Bảng điểm Đại học Duy Tân.pdf", "Bảng điểm Đại học Duy Tân"),
+  true,
+  "Đúng tài liệu đó thì vẫn phải nhận ra là đã đính",
 );
 
-const existingRowStart = content.indexOf("function findExistingAttachedRowForPlanItem");
-const existingRowEnd = content.indexOf("\n  function findEmptyAttachmentRowByComponent", existingRowStart);
-const existingRowSource = content.slice(existingRowStart, existingRowEnd);
+// Hàm so kiểu chứa nhau phải BIẾN MẤT hẳn, không chỉ thôi được gọi — còn trong file là còn
+// nguy cơ ai đó dùng lại.
+assert.equal(
+  attachCore.includes("attachmentKeyMatches"),
+  false,
+  "attachmentKeyMatches (so kiểu chứa nhau) phải được gỡ khỏi attach-core.js",
+);
+
+const existingRowStart = attachCore.indexOf("function findExistingAttachedRowForPlanItem");
+const existingRowEnd = attachCore.indexOf("\nfunction findEmptyAttachmentRowByComponent", existingRowStart);
+const existingRowSource = attachCore.slice(existingRowStart, existingRowEnd);
 assert.match(
   existingRowSource,
   /if \(wantsNewComponent\)[\s\S]*?attachmentKeyEquals\(componentName, expectedNewComponent\)[\s\S]*?attachmentKeyEquals\(attachedName, label\)/,
   "Thành phần động phải dùng so khớp chính xác cho cả tên dòng và tên file",
 );
+// Dòng CỐ ĐỊNH cũng phải so chính xác — đây chính là nhánh đã gây ra lỗi trên.
 assert.match(
   existingRowSource,
-  /return labels\.some\(\(label\) => attachmentKeyEquals\(attachedName, label\)\)/,
-  "Dòng cố định cũng phải so tên file chính xác, không dùng phép chứa nhau",
-);
-assert.doesNotMatch(
-  existingRowSource,
-  /attachmentKeyMatches\(attachedName, label\)/,
-  "Không được dùng substring để bỏ qua file ở dòng cố định",
+  /return labels\.some\(\(label\) => attachmentKeyEquals\(attachedName, label\)\);/,
+  "Dòng cố định phải so khớp chính xác, không được dùng lại kiểu chứa nhau",
 );
 
-console.log("attachment duplicate names: exact dynamic matching passed");
+// Hai extension dùng chung một tiêu chí: no-handfree đã sửa trước, handfree không được tụt lại.
+// Chỉ so được khi có repo Auto Fill nằm cạnh (máy dev); CI chỉ checkout một repo.
+const noHandfreePath = path.join(root, "..", "auto-fill-hcc-extension", "content.js");
+if (fs.existsSync(noHandfreePath)) {
+  assert.equal(
+    fs.readFileSync(noHandfreePath, "utf8").includes("attachmentKeyMatches"),
+    false,
+    "no-handfree cũng không được có hàm so kiểu chứa nhau",
+  );
+}
+
+console.log("Handfree attachment duplicate names: exact matching on both fixed and dynamic rows passed");

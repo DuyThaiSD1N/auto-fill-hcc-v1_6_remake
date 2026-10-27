@@ -39,15 +39,19 @@ def _matches_anchor(text: str, name: str, identity: str) -> bool:
 
 
 def _owner_section(text: str) -> str:
-    """Khoanh đúng mục II.2; người chết ở mục I không được tham gia đối chiếu."""
+    """Khoanh khối người đứng ra mai táng: mục II.2 Mẫu số 04 hoặc mục 3.1 Mẫu số 02/03.
+
+    Người chết (mục I Mẫu 04, mục 2 Mẫu 02/03) không được tham gia đối chiếu người nộp.
+    """
     start = re.search(
-        r"(?mi)^\s*2\s*[.)]?\s*Trường hợp hộ gia đình,\s*cá nhân đứng ra mai táng",
+        r"(?mi)^\s*(?:2\s*[.)]?\s*Trường hợp hộ gia đình,\s*cá nhân đứng ra mai táng"
+        r"|3\s*\.\s*1\s*[.)]?\s*Trường hợp cá nhân,\s*thân nhân đứng ra tổ chức mai táng)",
         str(text or ""),
     )
     if not start:
         return ""
     tail = str(text)[start.start():]
-    end = re.search(r"(?mi)^\s*Tôi xin cam đoan", tail)
+    end = re.search(r"(?mi)^\s*(?:Tôi (?:xin )?cam đoan|3\s*\.\s*2\s*[.)]?\s*Trường hợp cơ quan)", tail)
     return (tail[:end.start()] if end else tail).strip()
 
 
@@ -80,7 +84,7 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
             owner_scopes.append((index, owner))
             if (name or identity) and _matches_anchor(owner, name, identity):
                 owner_matches = True
-            # Không quét toàn bộ Mẫu 04 làm người nộp: phần I chứa người chết và
+            # Không quét toàn bộ tờ khai làm người nộp: phần người chết và
             # cuối trang còn có cán bộ/chữ ký, rất dễ gán sai vai trò.
             continue
         if (name or identity) and _matches_anchor(text, name, identity):
@@ -91,7 +95,7 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
         owner_context = "\n".join(
             (
                 f'<owner_ocr document="{index}">\n'
-                "Đây là mục II.2 Mẫu số 04, nguồn bắt buộc cho ChuHoSo_*.\n"
+                "Đây là khối người đứng ra mai táng, nguồn bắt buộc cho ChuHoSo_*.\n"
                 f"{scope}\n"
                 "</owner_ocr>"
             )
@@ -101,13 +105,13 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     if not name and not identity:
         requester_context = (
             '<requester_context result="missing_ui_anchor">\n'
-            "UI không có mỏ neo người nộp. Không trả NguoiNop_*; vẫn trích ChuHoSo_*.\n"
+            "UI không có mỏ neo người nộp. Không trả NguoiNop_*; vẫn trích NguoiMat_* và ChuHoSo_*.\n"
             "</requester_context>"
         )
     elif owner_matches:
         requester_context = (
             '<requester_context result="owner_match">\n'
-            "Người nộp khớp chính mục II.2. Đây là tự nộp: chỉ trả ChuHoSo_*, "
+            "Người nộp khớp chính người đứng ra mai táng: chỉ trả ChuHoSo_*, "
             "không lặp NguoiNop_*.\n"
             "</requester_context>"
         )
@@ -131,7 +135,7 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
         requester_context = (
             '<requester_context result="no_document_match">\n'
             "Không tài liệu nào khớp toàn bộ mỏ neo UI. Không trả NguoiNop_*; "
-            "vẫn trích ChuHoSo_*.\n"
+            "vẫn trích NguoiMat_* và ChuHoSo_*.\n"
             "</requester_context>"
         )
 
@@ -140,8 +144,8 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
 
 async def _owner_only_context(documents: list[dict], options: dict) -> str:
     """Mode owner_as_submitter (Nghĩa Hưng): KHÔNG đưa mỏ neo UI vào prompt. Gắn result="missing_ui_anchor"
-    để prompt sẵn có tự bỏ NguoiNop_* (mapper luôn lấy chủ hồ sơ làm người nộp); chỉ khoanh mục II.2 cho
-    ChuHoSo_*."""
+    để prompt sẵn có tự bỏ NguoiNop_* (mapper lấy người đứng ra mai táng làm người nộp); chỉ khoanh khối
+    người đứng ra mai táng cho ChuHoSo_*."""
     _ = options
     owner_scopes = [
         (index, scope)
@@ -150,7 +154,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
     ]
     requester_context = (
         '<requester_context result="missing_ui_anchor">\n'
-        "Chế độ điền người nộp = chủ hồ sơ: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích ChuHoSo_*.\n"
+        "Chế độ điền người nộp = người đứng ra mai táng: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích NguoiMat_* và ChuHoSo_*.\n"
         "</requester_context>"
     )
     parts = [requester_context]
@@ -158,7 +162,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
         parts.append("\n".join(
             (
                 f'<owner_ocr document="{index}">\n'
-                "Đây là mục II.2 Mẫu số 04, nguồn bắt buộc cho ChuHoSo_*.\n"
+                "Đây là khối người đứng ra mai táng, nguồn bắt buộc cho ChuHoSo_*.\n"
                 f"{scope}\n"
                 "</owner_ocr>"
             )
@@ -168,7 +172,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
-    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
+    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper lấy người đứng ra mai táng làm người nộp.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     res = await runner.run(
         files_by_role,

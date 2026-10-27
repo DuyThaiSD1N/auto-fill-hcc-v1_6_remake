@@ -95,25 +95,6 @@ services:
     networks:
       - autofill
 
-  # Web Kiểm thử: một thủ tục × tối đa 5 bộ tài liệu × tối đa 5 lần chạy, so kết quả điền/đính kèm giữa các lần.
-  # Cùng mã nguồn monitor-fe (dùng lại engine mô phỏng form), chỉ khác trang vào lab.html + cổng.
-  # Mặc định gọi backend của chính stack này (thử code vừa sửa); KHÔNG theo BACKEND_URL của .env (trỏ server khác).
-  test-fe:
-    build:
-      context: ./monitor-fe
-      args:
-        NGINX_TEMPLATE: nginx.lab.conf.template
-    image: autofill-hcc-test-fe:latest
-    environment:
-      - BACKEND_URL=${TEST_BACKEND_URL:-http://app:12005}
-    ports:
-      - "12008:12008"
-    depends_on:
-      - app
-    restart: unless-stopped
-    networks:
-      - autofill
-
 networks:
   autofill:
     name: autofill_hcc_net

@@ -447,6 +447,50 @@ async def test_mot_luot_khong_xu_ly_dong_thoi_hai_lan(env):
         worker_mod._BUSY.discard("dang-chay")
 
 
+@pytest.mark.asyncio
+async def test_goi_kem_phan_khong_nhay_cam_de_dung_lai_luot(env):
+    db, vault, clock, archiver, root = env
+    _seed_request(db, root)
+    db.traces._c.update_one({}, {"$set": {"procedure_label": "Đăng ký khai sinh"}})
+    clock.now = T0 + timedelta(minutes=31)
+    await archiver.run_once()
+    bundle = vault.bundles[-1]
+    assert bundle["procedure_label"] == "Đăng ký khai sinh"
+    pub_trace = bundle["public"]["traces"][0]
+    assert "applicant_name" not in pub_trace and pub_trace["timing"] == {"wall": 1200}
+    assert pub_trace["created_at"].endswith("+00:00") and "archive_pending" not in pub_trace
+    assert "name" not in pub_trace["attachments"][0]
+    pub_steps = bundle["public"]["trace_steps"][0]
+    assert pub_steps["spans"][0]["a"] == {"files": 1} and "outputs" not in pub_steps
+    assert "raw" not in pub_steps["llm"][0] and "text" not in pub_steps["ocr"][0]
+    assert db.traces._c.find_one()["archive_meta_sent"] is True
+
+
+@pytest.mark.asyncio
+async def test_gui_bu_phan_khong_nhay_cam_cho_luot_cu(env):
+    db, vault, clock, archiver, _ = env
+    for rid, pending in (("cu-1", False), ("cu-2", False), ("dang-cho", True)):
+        db.traces._c.insert_one({"request_id": rid, "created_at": T0, "procedure": "khai-sinh",
+                                 "procedure_label": "Khai sinh", "timing": {"wall": 1},
+                                 "archived_at": T0, "archive_pending": pending})
+        db.trace_steps._c.insert_one({"_id": f"{rid}:autofill", "request_id": rid, "created_at": T0,
+                                      "spans": [{"i": 0, "a": {"files": 1}}], "archived_at": T0,
+                                      "archive_pending": pending})
+    db.traces._c.update_one({"request_id": "cu-2"}, {"$set": {"archive_meta_sent": True}})
+    db.trace_steps._c.update_one({"request_id": "cu-2"}, {"$set": {"archive_meta_sent": True}})
+
+    result = await archiver.send_meta()
+    assert result == {"sent": 1, "failed": 0}
+    (bundle,) = vault.bundles
+    assert bundle["type"] == "request_meta" and bundle["request_id"] == "cu-1"
+    assert bundle["procedure_label"] == "Khai sinh" and bundle["files"] == []
+    assert bundle["public"]["traces"][0]["timing"] == {"wall": 1}
+    assert "archived_at" not in bundle["public"]["trace_steps"][0]
+    assert db.traces._c.find_one({"request_id": "cu-1"})["archive_meta_sent"] is True
+    assert "archive_meta_sent" not in db.traces._c.find_one({"request_id": "dang-cho"})
+    assert await archiver.send_meta() == {"sent": 0, "failed": 0}
+
+
 def test_khong_bat_khi_thieu_vault(monkeypatch):
     monkeypatch.setattr(archive_settings, "vault_url", "")
     assert archive_settings.enabled is False
@@ -455,3 +499,18 @@ def test_khong_bat_khi_thieu_vault(monkeypatch):
     monkeypatch.setattr(archive_settings, "archive_after_minutes", 30)
     assert archive_settings.cap_ttl(12 * 3600) == 1800
     assert worker_mod._SESSION_GRACE == timedelta(minutes=5)
+
+
+async def test_form_snapshot_cho_gui_lai_va_xoa_sau_han(env):
+    db, vault, clock, archiver, _ = env
+    db.form_snapshots._c.insert_many([
+        {"_id": "s1", "bundle": {"type": "form_snapshot", "id": "s1"}, "created_at": T0},
+        {"_id": "s2", "bundle": {"type": "form_snapshot", "id": "s2"}, "created_at": T0 - timedelta(hours=1)},
+    ])
+    vault.fail = True
+    await archiver.run_once("recent")
+    assert [d["_id"] for d in db.form_snapshots._c.find()] == ["s1"]
+    vault.fail = False
+    await archiver.run_once("recent")
+    assert db.form_snapshots._c.count_documents({}) == 0
+    assert [b["id"] for b in vault.bundles] == ["s1"]

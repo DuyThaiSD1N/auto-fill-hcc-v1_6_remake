@@ -192,3 +192,11 @@ def test_thu_tuc_di_chuyen_ho_so_giu_nguyen_nhanh_so(key):
 
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])
+
+
+def test_di_chuyen_ho_so_dinh_dung_dong_theo_thu_tu_cong_moi():
+    """Cổng đã đổi thứ tự bảng Thành phần hồ sơ: dòng 1 bản sao CCCD / xác nhận cư trú, dòng 2 đơn Mẫu số 27.
+    Extension tìm ô theo slotIndex nên số dòng phải đúng thứ tự trên cổng."""
+    from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.attach.planner import SLOTS
+
+    assert [(s["slotIndex"], s["slotKey"]) for s in SLOTS] == [(0, "cccd"), (1, "don_mau_27")]

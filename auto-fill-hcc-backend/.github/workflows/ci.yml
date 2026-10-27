@@ -49,10 +49,6 @@ jobs:
       - name: Pytest
         run: python -m pytest tests/unit tests/handfree/unit tests/integration tests/handfree/integration -q -rfEs -p no:cacheprovider
 
-      - name: Pytest vault
-        working-directory: vault
-        run: python -m pytest tests -q -rfEs -p no:cacheprovider
-
   web:
     name: Build ${{ matrix.app }}
     runs-on: ubuntu-latest

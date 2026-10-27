@@ -4,6 +4,10 @@ Khác với chứng thực (ví giấy tờ + thêm thành phần mới), thủ 
 HỒ SƠ CỐ ĐỊNH sẵn trên form, mỗi thành phần 1 ô upload riêng. Nhiệm vụ ở đây là OCR +
 phân loại mỗi file vào ĐÚNG 1 trong 3 ô (hoặc bỏ qua nếu không khớp) rồi trả "fixed-slot"
 plan để extension bơm file vào input của đúng hàng.
+
+LLM quyết định loại giấy tờ. Luật dò chữ (`detect_slot_key`) CHỈ dự phòng cho file LLM không trả lời (lỗi/thiếu),
+không bao giờ đè kết quả LLM: giấy chỉ NHẮC số căn cước (quyết định thôi hưởng, trích lục khai tử) hay có chữ
+"Mẫu số 04" từng bị luật dò chữ bỏ nhầm / xếp nhầm dòng dù LLM nhận đúng.
 """
 import time
 from typing import Any
@@ -40,26 +44,8 @@ SLOTS: list[dict] = [
 _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 
-def is_excluded_document(text: str, file_name: str = "") -> bool:
-    """CCCD/CMND/hộ chiếu — KHÔNG nằm trong 3 thành phần hồ sơ, không đính kèm ở bước này.
-
-    Chỉ tính khi chính tài liệu LÀ giấy tùy thân (tiêu đề), không tính các giấy tờ chỉ
-    *nhắc tới* số căn cước (vd trích lục khai tử có dòng "Thẻ căn cước công dân số...").
-    """
-    haystack = _fold((text or "") + "\n" + (file_name or ""))
-    if not haystack:
-        return False
-    return (
-        "can cuoc cong dan" in haystack
-        or "cccd" in haystack
-        or "chung minh nhan dan" in haystack
-        or "the can cuoc" in haystack
-        or "citizen identity card" in haystack
-    )
-
-
 def detect_slot_key(text: str, file_name: str = "") -> str:
-    """Phân loại nhanh bằng rule trên OCR text; trả slotKey hoặc "" nếu không chắc.
+    """Dự phòng khi LLM không trả lời cho file này: phân loại bằng rule trên OCR text; trả slotKey hoặc "".
 
     Thứ tự ưu tiên QUAN TRỌNG: tờ khai Mẫu 04 thường liệt kê "giấy chứng tử" trong phần
     hồ sơ kèm theo, nên phải nhận diện tờ khai (theo tiêu đề riêng) TRƯỚC giấy chứng tử,
@@ -68,13 +54,12 @@ def detect_slot_key(text: str, file_name: str = "") -> str:
     haystack = _fold((text or "") + "\n" + (file_name or ""))
     if not haystack:
         return ""
-    # 1. Tờ khai/đơn đề nghị hỗ trợ chi phí mai táng (Mẫu 04) — tín hiệu tiêu đề riêng,
-    #    trích lục khai tử độc lập KHÔNG bao giờ chứa cụm "đề nghị hỗ trợ chi phí mai táng".
+    # 1. Tờ khai/đơn đề nghị hỗ trợ chi phí mai táng — tín hiệu tiêu đề riêng, trích lục khai tử độc lập KHÔNG bao
+    #    giờ chứa cụm "đề nghị hỗ trợ chi phí mai táng" (còn "Mẫu số 04" thì trích lục khai tử cũng có).
     if (
         "de nghi ho tro chi phi mai tang" in haystack
         or "ho tro chi phi mai tang" in haystack
         or "to khai de nghi ho tro" in haystack
-        or "mau so 04" in haystack
     ):
         return "to_khai_mai_tang"
     # 2. Quyết định/danh sách thôi hưởng trợ cấp.
@@ -104,6 +89,7 @@ def _slot_from_llm_type(value: str) -> str:
 
 
 async def _classify_documents_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
+    """index → slotKey; "" = LLM trả lời là giấy khác (other). File LLM không trả lời thì vắng mặt."""
     if not documents:
         return {}
     messages = [
@@ -136,15 +122,17 @@ def build_plan_items(
         file_name = str(file.get("name") or f"file-{idx + 1}")
         ocr_item = by_name.get(file_name, {})
         text = str(ocr_item.get("text") or "")
-        rule_slot = detect_slot_key(text, file_name)
-        if rule_slot:
-            slot_key = rule_slot
-        elif is_excluded_document(text, file_name):
-            # CCCD/giấy tùy thân không thuộc 3 thành phần hồ sơ — bỏ qua, KHÔNG hỏi LLM.
-            warnings.append(f"File '{file_name}' là giấy tùy thân (CCCD) — không cần đính kèm ở bước này, đã bỏ qua.")
-            continue
+        if idx in llm_slots:
+            slot_key = llm_slots[idx]
+            if not slot_key:
+                # LLM nhận là giấy khác (CCCD, sổ hộ khẩu…): không thuộc 3 thành phần hồ sơ.
+                warnings.append(
+                    f"File '{file_name}' không thuộc 3 thành phần hồ sơ của thủ tục — không đính kèm; "
+                    "cán bộ kiểm tra lại."
+                )
+                continue
         else:
-            slot_key = llm_slots.get(idx, "")
+            slot_key = detect_slot_key(text, file_name)
         slot = _SLOT_BY_KEY.get(slot_key)
         if not slot:
             warnings.append(

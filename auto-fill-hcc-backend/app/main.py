@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.account_settings.router import router as account_settings_router
 from app.attachments.router import router as attachments_router
 from app.dossiers.router import router as dossiers_router
+from app.form_snapshots.router import router as form_snapshots_router
 from app.auth.router import router as auth_router
 from app.config import settings
 from app.consent.router import router as consent_router
@@ -104,6 +105,7 @@ app.include_router(review_router)
 app.include_router(attachments_router)
 app.include_router(monitor_router)  # web Monitor (super_admin)
 app.include_router(dossiers_router)  # mốc bấm nộp của Auto Fill (Handfree đi qua chat)
+app.include_router(form_snapshots_router)
 app.include_router(traces_router)
 app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)
 app.include_router(reports_router)

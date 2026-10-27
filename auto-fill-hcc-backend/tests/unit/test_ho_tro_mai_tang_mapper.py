@@ -1,4 +1,4 @@
-"""Unit tests cho mapper hai vai trò của thủ tục hỗ trợ mai táng."""
+"""Unit tests cho mapper thủ tục hỗ trợ mai táng: người chết là chủ hồ sơ trên cổng (mọi tài khoản)."""
 
 from app.pipelines.ho_tro_mai_tang.process import mapper
 from app.pipelines.ho_tro_mai_tang.process.runner import _owner_section, _requester_context
@@ -13,7 +13,14 @@ def _run(values: dict, form_context: dict | None = None):
     return {field["name"]: field["value"] for field in fields}, warnings
 
 
-_KA_TUI = {
+def _run_mode(values: dict, mode: str = "owner_as_submitter", form_context: dict | None = None):
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    fields, warnings = mapper.enrich(compact, {"submitterMode": mode, "formContext": form_context or {}})
+    return {field["name"]: field["value"] for field in fields}, warnings
+
+
+# Người đứng ra mai táng (ChuHoSo_*) và người chết (NguoiMat_*) — dữ liệu bịa.
+_NGUOI_MAI_TANG = {
     "ChuHoSo_HoTen": "KA TUI",
     "ChuHoSo_NgaySinh": "01/01/1975",
     "ChuHoSo_SoDinhDanh": "068175007976",
@@ -27,172 +34,126 @@ _KA_TUI = {
     },
     "ChuHoSo_DienThoai": "0378877127",
 }
+_NGUOI_MAT = {
+    "NguoiMat_HoTen": "KA NANG",
+    "NguoiMat_NgaySinh": "02/02/1945",
+    "NguoiMat_GioiTinh": "Nam",
+    "NguoiMat_SoDinhDanh": "068145000123",
+    "NguoiMat_NgayCap": "01/09/2021",
+    "NguoiMat_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "NguoiMat_NoiCuTru": {"tinh": "Lâm Đồng", "xa": "Đơn Dương", "diaChi": "Kambutte"},
+}
+_KA_TUI_UI = {"applicantFullname": "KA TUI", "applicantIdentityNumber": "068175007976"}
 
 
-def _run_mode(values: dict, mode: str = "owner_as_submitter"):
-    compact = [{"name": name, "value": value} for name, value in values.items()]
-    fields, warnings = mapper.enrich(compact, {"submitterMode": mode})
-    return {field["name"]: field["value"] for field in fields}, warnings
+def test_nguoi_chet_la_chu_ho_so_nguoi_mai_tang_khop_ui_la_nguoi_nop():
+    got, warnings = _run({**_NGUOI_MAI_TANG, **_NGUOI_MAT}, _KA_TUI_UI)
 
-
-def test_owner_mode_no_uyquyen_self_submit():
-    """Toggle owner_as_submitter (Nghĩa Hưng): người nộp = chủ hồ sơ theo Tờ khai, bỏ so khớp mỏ neo UI."""
-    got, warnings = _run_mode(_KA_TUI)
-    assert got["data[isOwnerDossierCheck]"] is True
-    assert got["data[fullname]"] == "KA TUI"                 # người nộp = chủ hồ sơ (tờ khai)
+    assert got["data[isOwnerDossierCheck]"] is False          # không bao giờ tick tự nộp
+    assert got["data[fullname]"] == "KA TUI"
+    assert got["data[birthday]"] == "01/01/1975"
     assert got["data[identityNumber]"] == "068175007976"
-    assert got["data[ownerBirthday]"] == "01/01/1975"        # portal bỏ sót khi tick
-    assert "data[ownerFullname]" not in got                  # tự nộp: không lặp khối chủ hồ sơ
+    assert got["data[identityDate]"] == "27/12/2002"
+    assert got["data[province]"] == "Lâm Đồng"
+    assert got["data[district]"] == "Đơn Dương"
+    assert got["data[address]"] == "Kambutte"
+    assert got["data[phoneNumber]"] == "0378877127"
+
+    assert got["data[ownerFullname]"] == "KA NANG"
+    assert got["data[ownerBirthday]"] == "02/02/1945"
+    assert got["data[ownerGender]"] == "Nam"
+    assert got["data[ownerIdentityNumber]"] == "068145000123"
+    assert got["data[ownerIdentityDate]"] == "01/09/2021"
+    assert got["data[ownerProvince]"] == "Lâm Đồng"
+    assert got["data[ownerDistrict]"] == "Đơn Dương"
+    assert got["data[ownerAddress]"] == "Kambutte"
+    assert got["data[ownerNation]"] == "Việt Nam"
     assert not warnings
 
 
-def test_owner_mode_ignores_ui_anchor():
-    """Owner mode KHÔNG so khớp mỏ neo UI: dù formContext có người khác, người nộp vẫn = chủ hồ sơ."""
-    compact = [{"name": k, "value": v} for k, v in _KA_TUI.items()]
-    fields, _ = mapper.enrich(compact, {
-        "submitterMode": "owner_as_submitter",
-        "formContext": {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
-    })
-    got = {f["name"]: f["value"] for f in fields}
-    assert got["data[isOwnerDossierCheck]"] is True
+def test_owner_mode_nguoi_nop_la_nguoi_mai_tang_bo_moc_ui():
+    """Toggle owner_as_submitter (Nghĩa Hưng): người nộp = người đứng ra mai táng theo Tờ khai, không so UI."""
+    got, warnings = _run_mode(
+        {**_NGUOI_MAI_TANG, **_NGUOI_MAT},
+        form_context={"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
+    )
+    assert got["data[isOwnerDossierCheck]"] is False
     assert got["data[fullname]"] == "KA TUI"
+    assert got["data[ownerFullname]"] == "KA NANG"
+    assert not warnings
 
 
-def test_owner_mode_always_owner_even_with_extra_person():
-    """LUÔN chủ hồ sơ làm người nộp, kể cả khi OCR lỡ trích NguoiNop (thủ tục này không có ủy quyền)."""
-    values = dict(_KA_TUI)
-    values.update({"NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"})
+def test_owner_mode_khong_lay_nguoi_nop_ocr_khi_co_nguoi_mai_tang():
+    values = {**_NGUOI_MAI_TANG, **_NGUOI_MAT, "NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"}
     got, _ = _run_mode(values)
-    assert got["data[isOwnerDossierCheck]"] is True
     assert got["data[fullname]"] == "KA TUI"
     assert "Phan Mỹ Dung" not in str(list(got.values()))
 
 
-def test_default_without_toggle_still_matches_ui_anchor():
-    """KHÔNG bật toggle: hành vi CŨ y nguyên (chỉ điền người nộp khi khớp mỏ neo UI)."""
-    got, warnings = _run(_KA_TUI, {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"})
-    assert got["data[isOwnerDossierCheck]"] is False        # không khớp UI -> không tự nộp
-    assert "data[ownerFullname]" in got                     # trả khối chủ hồ sơ
-    assert warnings                                          # có cảnh báo không khớp người nộp
+def test_khong_khop_ui_van_dien_nguoi_chet_va_canh_bao():
+    got, warnings = _run({**_NGUOI_MAI_TANG, **_NGUOI_MAT}, {"applicantFullname": "HA YONG", "applicantIdentityNumber": "012345678901"})
 
-
-def test_owner_matching_ui_is_requester_and_ticks_checkbox():
-    fields, warnings = _run(
-        _KA_TUI,
-        {
-            "applicantFullname": "KA TUI",
-            "applicantIdentityNumber": "068175007976",
-        },
-    )
-
-    assert fields["data[isOwnerDossierCheck]"] is True
-    assert fields["data[fullname]"] == "KA TUI"
-    assert fields["data[birthday]"] == "01/01/1975"
-    assert fields["data[identityNumber]"] == "068175007976"
-    assert fields["data[identityDate]"] == "27/12/2002"
-    assert fields["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert fields["data[province]"] == "Lâm Đồng"
-    assert fields["data[district]"] == "Đơn Dương"
-    assert fields["data[address]"] == "Kambutte"
-    assert fields["data[phoneNumber]"] == "0378877127"
-    assert fields["data[ownerBirthday]"] == "01/01/1975"
-    assert "data[ownerFullname]" not in fields
-    assert not warnings
-
-
-def test_missing_requester_context_still_returns_owner_normally():
-    fields, warnings = _run(_KA_TUI)
-
-    assert fields["data[isOwnerDossierCheck]"] is False
-    assert "data[fullname]" not in fields
-    assert fields["data[ownerFullname]"] == "KA TUI"
-    assert fields["data[ownerBirthday]"] == "01/01/1975"
-    assert fields["data[ownerIdentityNumber]"] == "068175007976"
-    assert fields["data[ownerPhoneNumber]"] == "0378877127"
-    assert fields["data[ownerNation]"] == "Việt Nam"
-    assert not warnings
-
-
-def test_mismatching_ui_keeps_owner_and_does_not_fill_requester():
-    fields, warnings = _run(
-        _KA_TUI,
-        {
-            "applicantFullname": "HA YONG",
-            "applicantIdentityNumber": "012345678901",
-        },
-    )
-
-    assert fields["data[isOwnerDossierCheck]"] is False
-    assert "data[fullname]" not in fields
-    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in got
+    assert got["data[ownerFullname]"] == "KA NANG"
     assert "không điền phần người nộp" in warnings[0]
 
 
-def test_both_ui_anchors_must_match_owner():
-    fields, warnings = _run(
-        _KA_TUI,
-        {
-            "applicantFullname": "KA TUI",
-            "applicantIdentityNumber": "999999999999",
-        },
-    )
+def test_ui_phai_khop_ca_ten_va_so_dinh_danh():
+    got, warnings = _run({**_NGUOI_MAI_TANG, **_NGUOI_MAT}, {"applicantFullname": "KA TUI", "applicantIdentityNumber": "999999999999"})
 
-    assert fields["data[isOwnerDossierCheck]"] is False
-    assert "data[fullname]" not in fields
-    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert "data[fullname]" not in got
+    assert got["data[ownerFullname]"] == "KA NANG"
     assert warnings
 
 
-def test_distinct_verified_requester_fills_both_roles():
+def test_khong_co_moc_ui_chi_dien_nguoi_chet():
+    got, warnings = _run({**_NGUOI_MAI_TANG, **_NGUOI_MAT})
+
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in got
+    assert got["data[ownerFullname]"] == "KA NANG"
+    assert not warnings
+
+
+def test_nguoi_nop_khac_khop_ui_vao_khoi_nguoi_nop():
     values = {
-        **_KA_TUI,
+        **_NGUOI_MAI_TANG,
+        **_NGUOI_MAT,
         "NguoiNop_HoTen": "TRẦN THỊ THANH THẢO",
-        "NguoiNop_NgaySinh": "17/06/1992",
-        "NguoiNop_GioiTinh": "Nữ",
         "NguoiNop_SoDinhDanh": "036192014693",
-        "NguoiNop_NgayCap": "17/06/2023",
-        "NguoiNop_NoiCap": "Bộ Công an",
-        "NguoiNop_NoiCuTru": {
-            "tinh": "Ninh Bình",
-            "xa": "Gia Thắng",
-            "diaChi": "Xóm 2",
-        },
+        "NguoiNop_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
     }
-    fields, warnings = _run(
-        values,
-        {
-            "applicantFullname": "TRẦN THỊ THANH THẢO",
-            "applicantIdentityNumber": "036192014693",
-        },
-    )
+    got, warnings = _run(values, {"applicantFullname": "TRẦN THỊ THANH THẢO", "applicantIdentityNumber": "036192014693"})
 
-    assert fields["data[isOwnerDossierCheck]"] is False
-    assert fields["data[fullname]"] == "TRẦN THỊ THANH THẢO"
-    assert fields["data[identityNumber]"] == "036192014693"
-    assert fields["data[ownerFullname]"] == "KA TUI"
-    assert fields["data[ownerIdentityNumber]"] == "068175007976"
+    assert got["data[fullname]"] == "TRẦN THỊ THANH THẢO"
+    assert got["data[province]"] == "Ninh Bình"
+    assert got["data[ownerFullname]"] == "KA NANG"
+    assert "KA TUI" not in str(list(got.values()))
     assert not warnings
 
 
-def test_same_person_returned_in_both_groups_is_not_duplicated():
-    values = {
-        **_KA_TUI,
-        "NguoiNop_HoTen": "KA TUI",
-        "NguoiNop_SoDinhDanh": "068175007976",
-    }
-    fields, warnings = _run(
-        values,
-        {
-            "applicantFullname": "KA TUI",
-            "applicantIdentityNumber": "068175007976",
-        },
-    )
+def test_nguoi_chet_khong_bao_gio_la_nguoi_nop():
+    """LLM lỡ trộn vai (ChuHoSo = người chết) thì không điền người chết vào khối người nộp."""
+    values = {**_NGUOI_MAT, "ChuHoSo_HoTen": "KA NANG", "ChuHoSo_SoDinhDanh": "068145000123"}
+    got, _ = _run_mode(values)
 
-    assert fields["data[isOwnerDossierCheck]"] is True
-    assert fields["data[fullname]"] == "KA TUI"
-    assert fields["data[ownerBirthday]"] == "01/01/1975"
-    assert "data[ownerFullname]" not in fields
-    assert not warnings
+    assert "data[fullname]" not in got
+    assert got["data[ownerFullname]"] == "KA NANG"
+
+
+def test_thieu_nguoi_chet_canh_bao_nhung_van_dien_nguoi_nop():
+    got, warnings = _run(_NGUOI_MAI_TANG, _KA_TUI_UI)
+
+    assert got["data[fullname]"] == "KA TUI"
+    assert "data[ownerFullname]" not in got
+    assert "Không đọc được thông tin người chết" in warnings[0]
+
+
+def test_khong_doc_duoc_ai():
+    got, warnings = _run({})
+    assert got == {}
+    assert warnings
 
 
 async def test_current_form_04_owner_block_matches_ui_requester_context():
@@ -212,11 +173,25 @@ Tôi xin cam đoan những lời khai trên là đúng.
 
     context = await _requester_context(
         [{"name": "image.jpg", "text": ocr}],
-        {"formContext": {
-            "applicantFullname": "KA TUI",
-            "applicantIdentityNumber": "068175007976",
-        }},
+        {"formContext": _KA_TUI_UI},
     )
 
     assert 'result="owner_match"' in context
-    assert "Đây là tự nộp" in context
+    assert "người đứng ra mai táng" in context
+
+
+def test_owner_section_mau_03_lay_muc_3_1():
+    """Mẫu số 03 (NĐ 176/2025): khối người đứng ra mai táng là mục 3.1, dừng trước mục 3.2 tổ chức."""
+    ocr = """2. Thông tin người chết được tổ chức mai táng
+Họ và tên: KA NANG
+3. Người, tổ chức nhận hỗ trợ chi phí mai táng
+3.1. Trường hợp cá nhân, thân nhân đứng ra tổ chức mai táng:
+Họ và tên: KA TUI
+Số căn cước hoặc số định danh cá nhân: 068175007976
+3.2. Trường hợp cơ quan, tổ chức đứng ra tổ chức mai táng:
+Tên tổ chức: UBND XÃ MẪU
+"""
+    section = _owner_section(ocr)
+    assert "KA TUI" in section
+    assert "KA NANG" not in section
+    assert "UBND XÃ MẪU" not in section

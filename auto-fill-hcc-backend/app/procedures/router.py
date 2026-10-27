@@ -12,6 +12,7 @@ from app.procedures.ke_khai_links import (
     with_ke_khai_detect_urls,
     with_province_only,
 )
+from app.form_snapshots.step_rules import portal_step_rules
 from app.procedures.portal_submit import portal_submit_rules
 from app.procedures.registry import public_list
 
@@ -45,6 +46,7 @@ async def procedures(user: dict = Depends(require_auth)):
             visible_in_province(listed, account_province_slug(user))
         ),
         "portalSubmit": portal_submit_rules(),
+        "portalStep": portal_step_rules(),
         "ratingCard": RATING_CARD,
     }
 

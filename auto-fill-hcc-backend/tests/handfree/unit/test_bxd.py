@@ -77,6 +77,13 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
 
 @pytest.mark.parametrize("key, no_ask", [
     ("dieu-chinh-giay-phep-xay-dung", ("tenHoSo",)), ("sua-chua-cai-tao-gpxd-nha-o-rieng-le", ("tenHoSo",)),
+    ("cung-cap-thong-tin-quy-hoach", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", ("tenHoSo",)),
+    ("cap-phep-long-duong-via-he", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cho-thue-thue-mua-nha-o-xa-hoi", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cap-giay-phep-chat-ha-cay-xanh", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("chap-thuan-dau-noi-tam", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     # Cổng Bộ Y tế cùng nền iGate (stepper 4 bước, tờ khai Form.io) → cùng luồng.
     ("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham", ("ghiChu",)),
     ("dieu-chinh-huu-tri-xa-hoi", ("ghiChu",)),
@@ -85,6 +92,18 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     # Cổng Bộ Nội vụ (bước 3 tên "Thông tin bổ sung").
     ("di-chuyen-ho-so-nguoi-huong-tro-cap", ("ghiChu",)), ("tro-cap-tho-cung-liet-si", ("ghiChu",)),
     ("uu-dai-ncc-tu-tran", ("ghiChu",)),
+    ("cap-lai-to-quoc-ghi-cong", ("ghiChu",)), ("cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong", ("ghiChu",)),
+    ("bo-sung-than-nhan-liet-si", ("ghiChu",)), ("tham-vieng-mo-liet-si", ("ghiChu",)),
+    ("giai-quyet-che-do-khang-chien", ("ghiChu",)), ("sua-doi-thong-tin-ho-so-nguoi-co-cong", ("ghiChu",)),
+    ("mai-tang-dan-cong-hoa-tuyen", ("ghiChu",)), ("dang-ky-noi-quy-lao-dong", ("ghiChu",)),
+    # Cổng Bộ Y tế nộp tại Sở, có hộp thoại "Chọn trường hợp giải quyết" như GPXD.
+    ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", ("ghiChu",)), ("dang-ky-hanh-nghe", ("ghiChu",)),
+    ("cap-moi-giay-phep-hanh-nghe-chuyen-tiep", ("ghiChu",)), ("dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", ("ghiChu",)),
+    ("cap-lai-giay-phep-hanh-nghe-truoc-2024", ("ghiChu",)),
+    ("cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", ("ghiChu",)), ("dieu-chinh-giay-phep-hoat-dong-kcb", ("ghiChu",)),
+    ("cap-chung-chi-hanh-nghe-duoc", ("ghiChu",)), ("cong-bo-co-so-du-dieu-kien-tiem-chung", ("ghiChu",)),
+    # Cổng Bộ GD&ĐT (dvc.moet.gov.vn), cùng nền iGate.
+    ("cap-ban-sao-van-bang-so-goc", ("tenHoSo",)), ("mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc", ("tenHoSo",)),
 ])
 def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_ask):
     from app.channels.handfree.chat.field_review import registry
@@ -95,6 +114,19 @@ def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_a
     assert bxd.enabled(conv, proc) and field_review.active(conv, proc)
     assert not bxd.enabled(_conv("filling", caps={"supportsFieldReview": True}, procedure_key=key), proc)
     assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == no_ask
+
+
+@pytest.mark.parametrize("key", ["xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat"])
+def test_khuyet_tat_cung_luong_4_buoc_khong_hoi_bang_dang_va_muc_do_khuyet_tat(key):
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"] == _proc()["bxdFlow"]
+    assert bxd.enabled(_conv("filling", procedure_key=key), proc)
+    no_ask = set(registry.get(key)["noAsk"])
+    assert {"ghiChu", "khuyetTatRadio", "khuyetTatRadio7", "mucDoRadio1", "mucDoRadio10"} <= no_ask
+    # Ô thông tin người khuyết tật vẫn được hỏi.
+    assert "NktHoTen" not in no_ask and "LydoCapdoiCaplaiMa" not in no_ask
 
 
 # ── Bước 1: thông tin hồ sơ ──
@@ -187,7 +219,8 @@ async def test_sang_buoc_nhan_ket_qua_thi_doc_lua_chon_tren_trang_va_hien_the():
     again = await _page(conv, 3)
     assert again.display_md == ""
     report = await _turn(conv, "action", "bxd_result_report", {"groups": RECEIVING})
-    assert "- **Hình thức nhận kết quả**: Nhận trực tiếp" in report.display_md
+    assert "đang chọn: **Nhận trực tiếp**" in report.display_md
+    assert "giấy nào" not in report.display_md, "chỉ một ô cách nhận: không nói đổi giấy nào"
     (card,) = report.cards
     assert [o["selected"] for o in card["rows"][0]["options"]] == [True, False]
     assert card["rows"][0]["options"][1]["send"].startswith("__action:bxd_result_pick:")
@@ -250,3 +283,25 @@ def test_canh_bao_thieu_tep_moi_y_mot_dong_khong_trung_khong_cat_giua_chu():
     assert len(lines) == 2
     assert lines[1].endswith("…") and len(lines[1]) <= 241 and not lines[1][:-1].endswith(" ")
     assert "này…" in lines[1] or lines[1][:-1].split()[-1] in long.split()
+
+
+async def test_o_sdt_cua_luong_4_buoc_chi_nhan_so_di_dong_10_so():
+    conv = _conv("filling", flow2_card="fill")
+    await _turn(conv, "action", "fill_report", {"filled": 30, "notFound": [], "review": MISSING})
+    await _turn(conv, "action", "field_review_start")
+    field = {"key": "data[phoneNumber]", "name": "phoneNumber", "kind": "text", "label": "SĐT (Không sử dụng SĐT bàn)",
+             "section": "THÔNG TIN NGƯỜI NỘP HỒ SƠ", "required": True, "options": [], "value": ""}
+    await _turn(conv, "event", "field_review_focus", {"field": field, "stats": MISSING})
+    assert conv["field_review"]["current"]["mobile_only"] is True
+
+
+def test_luong_4_buoc_bat_thi_tat_doan_nhan_ket_qua_cua_guided_steps_cu():
+    # Thủ tục Bộ Y tế khai cả guidedSteps (resultMethods) lẫn bxdFlow: hai luồng cùng dẫn bước nhận kết quả → hai thẻ,
+    # chọn ở thẻ cũ thì mất nút Nộp hồ sơ. Extension cũ (không cờ supportsBxdFlow) vẫn giữ đoạn guided cũ.
+    from app.channels.handfree.chat import guided_steps
+
+    key = "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham"
+    proc = flow.get_procedure(key)
+    old_caps = {"supportsGuidedSteps": True, "supportsResultMethod": True, "supportsIgateResultStep": True}
+    assert guided_steps.result_flow_enabled(_conv("done", caps=old_caps, procedure_key=key), proc)
+    assert not guided_steps.result_flow_enabled(_conv("done", caps={**old_caps, **CAPS}, procedure_key=key), proc)

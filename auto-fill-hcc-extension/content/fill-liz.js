@@ -2,9 +2,9 @@
 // DOM đã strip formcontrolname → KHÔNG khớp được như fill-angular.js. Khớp ô theo
 // (section = .group-header, nhãn = <mat-label>) vì nhãn LẶP giữa các phần (Ngày sinh/Số điện thoại/
 // Ngày cấp/Nơi cấp/Địa chỉ...). BE gửi mỗi field kèm {name=<mat-label>, section=<group-header>, comp}.
-// Tách từ content.js — dùng namespace window.__HCC__.
+// Copy từ auto-fill-hcc-extension/content/fill-liz.js — dùng namespace window.__TLND__.
 (() => {
-  const H = window.__HCC__ || (window.__HCC__ = {});
+  const H = window.__TLND__ || (window.__TLND__ = {});
   const {
     sleep, norm, setNativeValue, isVisible, waitFor, markFilled, markUnfilled,
     clearAutofillMarks, injectAutofillStyles,

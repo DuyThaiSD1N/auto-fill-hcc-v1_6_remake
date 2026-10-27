@@ -61,6 +61,23 @@ def _owner_issue_place(value) -> str:
     return ""
 
 
+def issue_place_for_date(issue_date, identity_number) -> str:
+    """Nơi cấp suy từ ngày cấp khi giấy tờ không ghi: thẻ Căn cước (từ 01/7/2024) do Bộ Công an cấp,
+    CCCD gắn chip (2021 – 30/6/2024) do Cục Cảnh sát QLHC về TTXH cấp. Chỉ áp cho số định danh 12 số;
+    CCCD mã vạch cấp trước 2021 do một cục khác cấp nên để trống, không đoán."""
+    if len(_digits(identity_number)) != 12:
+        return ""
+    m = re.match(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$", str(issue_date or ""))
+    if not m:
+        return ""
+    day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if (year, month, day) >= (2024, 7, 1):
+        return ISSUE_PLACE_OPTIONS[2]
+    if year >= 2021:
+        return ISSUE_PLACE_OPTIONS[1]
+    return ""
+
+
 def owner_matches(owner_context: dict, extracted: dict) -> bool:
     """A matching full name or identity number is sufficient for the approved owner gate."""
     expected_name = _fold(owner_context.get("fullName"))
@@ -188,4 +205,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         elif field.get("name") == "Authorization_GrantorIdentityNumber":
             field["value"] = _document_number(field.get("value"))
     res["fields"] = [field for field in output if field.get("value") not in (None, "", [], {})]
+    values = _field_map(res["fields"])
+    if values.get("Owner_IssueDate") and not values.get("Owner_IssuePlace"):
+        place = issue_place_for_date(values["Owner_IssueDate"], owner_context.get("identityNumber"))
+        if place:
+            res["fields"].append({"name": "Owner_IssuePlace", "value": place})
     return res

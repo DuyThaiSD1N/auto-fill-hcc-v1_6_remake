@@ -186,3 +186,28 @@ async def test_luot_dinh_hong_khong_danh_dau_go_tep(monkeypatch):
                                              {"attached": 0, "errors": ["sai trang"]}))
     r = await flow.handle_turn(conv, flow.Intent("event", "attach_ready"))
     assert "clearExisting" not in r.actions[0]
+
+
+async def test_noi_dinh_kem_di_khi_dang_gom_giay_to_dinh_kem_thi_chot_nhu_bam_nut(monkeypatch):
+    """Chứng thực bản sao, điện thoại đã gửi tệp: câu "đính kèm đi" (request_attach) phải chốt giấy tờ như nút
+    "Đã đưa đủ giấy tờ, đính kèm đi", không nhắc lại "Điện thoại đã kết nối"."""
+    done = {}
+
+    async def fake_complete(sid):
+        done["sid"] = sid
+
+    async def fake_docs_complete(conv, payload):
+        done["docs_complete"] = True
+        return flow.Reply("ok", "ok")
+
+    monkeypatch.setattr(flow.upload_service, "complete_session", fake_complete)
+    monkeypatch.setattr(flow, "_docs_complete", fake_docs_complete)
+    conv = _conv(doc_method="qr", upload_session_id="sid-1")
+    await flow._handle_collecting_docs(conv, flow.Intent("action", "request_attach"))
+    assert done == {"sid": "sid-1", "docs_complete": True}
+
+
+async def test_cau_khong_ro_o_buoc_gom_giay_to_van_giu_nut_chot():
+    conv = _conv(doc_method="qr", upload_session_id="sid-1")
+    r = await flow._handle_collecting_docs(conv, flow.Intent("unknown"))
+    assert "__action:docs_done" in [c["send"] for c in r.chips]

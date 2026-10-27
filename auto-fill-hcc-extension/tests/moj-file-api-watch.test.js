@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
 const watchSource = fs.readFileSync(path.join(root, "content/moj-upload-watch-main.js"), "utf8");
-const contentSource = fs.readFileSync(path.join(root, "content.js"), "utf8");
+const contentSource = fs.readFileSync(path.join(root, "content/attach-core.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 
 const EVENT = "__HCC_MOJ_FILE_API__";
@@ -108,12 +108,12 @@ test("ngoài cổng moj thì không bọc XHR/fetch", () => {
   assert.equal(events.length, 0);
 });
 
-// Khối nhận sự kiện trong content.js: chạy thật trong vm để kiểm mốc + chỉ xét mã HTTP.
+// Khối nhận sự kiện trong attach-core.js: chạy thật trong vm để kiểm mốc + chỉ xét mã HTTP.
 function loadEngineBlock() {
   const start = contentSource.indexOf("const MOJ_FILE_API_EVENT");
   const endMarker = "function newMojFileApiFailure";
   const fnStart = contentSource.indexOf(endMarker, start);
-  const fnEnd = contentSource.indexOf("\n  }\n", fnStart) + 4;
+  const fnEnd = contentSource.indexOf("\n}\n", fnStart) + 3;
   assert.ok(start > 0 && fnStart > start && fnEnd > fnStart);
   const listeners = [];
   const context = {
@@ -149,6 +149,10 @@ test("engine chỉ nhận lỗi HTTP xảy ra SAU mốc của tệp đang đính
 });
 
 test("vòng đính qua ví dùng lỗi API làm lưới thứ hai cạnh toast", () => {
-  assert.match(contentSource, /const apiMark = mojFileApiMark\(\);\n\s*const uploadFailed = \(\) => newPortalUploadFailure\(failuresBefore\) \|\| newMojFileApiFailure\(apiMark\);/);
-  assert.match(contentSource, /const portalError = readPortalUploadError\(\) \|\| newMojFileApiFailure\(apiMark\);/);
+  assert.match(contentSource, /const apiMark = mojFileApiMark\(\);/);
+  assert.match(contentSource, /const uploadFailed = \(\) => newPortalUploadFailure\(errorsBefore\) \|\| newMojFileApiFailure\(apiMark\);/);
+  assert.equal(
+    contentSource.match(/const portalError = newPortalUploadError\(errorsBefore\) \|\| newMojFileApiFailure\(apiMark\);/g)?.length,
+    2,
+  );
 });

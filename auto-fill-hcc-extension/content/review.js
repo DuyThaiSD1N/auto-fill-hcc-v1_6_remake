@@ -3,14 +3,14 @@
 // khoanh đúng vùng AI đã đọc. Tách RIÊNG khỏi content.js (không đụng file lớn); dùng listener riêng.
 // Port cơ chế từ tro-ly-ho-so-extension, đổi srcHostFor cho comp x-* của mình + endpoint /review.
 (function () {
-  if (window.__HCC_REVIEW_BOUND__) return; // chống double-inject (mỗi frame 1 lần)
-  window.__HCC_REVIEW_BOUND__ = true;
+  if (window.__TLND_REVIEW_BOUND__) return; // chống double-inject (mỗi frame 1 lần)
+  window.__TLND_REVIEW_BOUND__ = true;
 
   // SRC_BY_NAME: DOM name → { value, label, bbox?, imageIndex, comp, score? }
   let SRC_BY_NAME = null;
   let SRC_BASE = "";
   let SRC_CONV = ""; // = requestId của phiên process
-  let SRC_TOKEN = ""; // capability ngắn hạn, chỉ đọc ảnh của đúng requestId
+  let SRC_TOKEN = ""; // capability riêng của request; không dùng requestId trần để mở ảnh
   let SRC_ORDER = []; // [name,...] theo thứ tự layout — cho nút Trước/Sau
   let SRC_IDX = -1;
   let HANDLERS_BOUND = false;

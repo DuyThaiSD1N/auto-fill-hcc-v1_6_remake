@@ -40,3 +40,11 @@ def test_sua_chua_cai_tao_gpxd_cung_gui_co_bo_tick():
 
     item = planner._build_row_item({"name": "don.pdf"}, 0, next(iter(planner._ROWS)))
     assert item["target"] == "attp-row" and item["untickUnplannedRows"] is True
+
+
+def test_ban_sao_van_bang_so_goc_cong_bo_gddt_cung_gui_co_bo_tick():
+    # Cổng Bộ GD&ĐT dvc.moet.gov.vn cùng nền iGate, bảng thành phần cũng tick sẵn mọi dòng.
+    from app.pipelines.cap_ban_sao_van_bang_so_goc.attach import planner
+
+    item = planner._build_row_item({"name": "don.pdf"}, 0, next(iter(planner._ROWS)))
+    assert item["target"] == "attp-row" and item["untickUnplannedRows"] is True

@@ -32,11 +32,11 @@ async def save_consent(*, log_id: str, user: dict, procedure: str | None,
                        principal_cccd: str | None = None,
                        principal_name: str | None = None) -> dict:
     created_at = _now()
-    server_time = created_at.astimezone().strftime("%H:%M:%S %d/%m/%Y")
-    pdf_bytes = build_consent_pdf(
+    pdf_bytes, evidence = build_consent_pdf(
         log_id=log_id, username=user.get("username"), name=user.get("name"),
+        place=user.get("xa") or user.get("tinh") or "",
         procedure_label=procedure_label, version=version, statements=statements,
-        optimize=optimize, client_time=at, server_time=server_time,
+        optimize=optimize, client_time=at, created_at=created_at,
         principal_cccd=principal_cccd, principal_name=principal_name,
     )
     fname = f"{_safe(log_id)}.pdf"
@@ -54,6 +54,9 @@ async def save_consent(*, log_id: str, user: dict, procedure: str | None,
         "principal_cccd": principal_cccd,  # CCCD chủ thể dữ liệu (VNeID trên cổng); None nếu cổng không lộ
         "principal_name": principal_name,  # tên chủ thể dữ liệu (đối chiếu, không dùng làm khóa)
         "pdf_path": str(Path("consent") / fname),
+        "notice": evidence["notice"],      # nguyên văn thẻ xác nhận đã hiển thị (None: phiên bản không có bản lưu)
+        "content_sha256": evidence["content_sha256"],  # mã băm nội dung, in cuối biên bản
+        "pdf_sha256": evidence["pdf_sha256"],          # mã băm tệp PDF, đối chiếu tệp không bị sửa
         "client_time": at,                 # thời điểm hiển thị phía client (chuỗi)
         "experience": "autofill",
         "created_at": created_at,

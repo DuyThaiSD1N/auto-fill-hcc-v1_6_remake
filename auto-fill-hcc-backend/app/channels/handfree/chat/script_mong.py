@@ -58,6 +58,15 @@ PROCEDURE_HMONG = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": "Nyiaj pab tsev neeg yug tsiaj raug kab mob",
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": "Zam los yog txo nyiaj kawm ntawv",
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": "Ntawv tso cai ua neeg nruab nrab muag av tsev",
+    # BẢN NHÁP chờ anh Dư soát — 5 thẻ đợt 26/10. Chữ đã có: "cuv npe" (đăng ký), "ntawv lees paub" (giấy chứng
+    # nhận), "hlawv neeg tuag" (hỏa táng), "tsheb" (xe), "hloov" (đổi), "npe" (tên), "lag luam" (kinh doanh).
+    # TỪ MỚI: "kev cai ua haujlwm" (nội quy lao động), "tuam txhab" (doanh nghiệp), "ua si hauv computer"
+    # (trò chơi điện tử), "dej huv" (nước sạch), "ntsuas dej" (đồng hồ nước), "daim ntawv cog lus" (hợp đồng).
+    "dang-ky-noi-quy-lao-dong": "Cuv npe kev cai ua haujlwm ntawm tuam txhab",
+    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": "Ntawv lees paub chaw ua si hauv computer",
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": "Nyiaj pab tsheb thauj neeg tuag mus hlawv (Đà Nẵng)",
+    "dang-ky-lap-dat-su-dung-nuoc-sach": "Cuv npe txuas dej huv thiab ntsuas dej (Lai Châu)",
+    "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
@@ -418,8 +427,8 @@ GREET_RETURNING = {
 }
 
 CONFIRM_PROCEDURE = {
-    "md": "Pej xeem xav ua {procedure} ntawm {ward}, {province}, puas yog?",
-    "tts": "Pej xeem xav ua {procedure} ntawm {ward} {province}, puas yog?",
+    "md": "Pej xeem xav ua {procedure} ntawm {place}, puas yog?",
+    "tts": "Pej xeem xav ua {procedure} ntawm {place}, puas yog?",
 }
 
 # NỢ DỊCH: cắt từ GREET_PROCEDURE_FIRST, chờ người soát.
@@ -441,13 +450,10 @@ GREET_PROCEDURE_FIRST = {
 
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
+        "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias "
         "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
     ),
-    "tts": (
-        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
-        "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
-    ),
+    "tts": "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias Đồng ý.",
 }
 
 PROCEDURE_NOT_RECOGNIZED = {
@@ -1417,6 +1423,9 @@ GUIDED_STEP_STUCK = {
         "xyuas nplooj ntawv, kho tiav ces nias dua lub pob hauv qab no."
     ),
 }
+
+# Nợ dịch ý "còn giấy tờ bắt buộc chưa đính kèm" → tạm dùng câu chung (xem lại trang rồi bấm lại), vẫn đúng nghĩa.
+GUIDED_ATTACH_STEP_STUCK = GUIDED_STEP_STUCK
 
 GUIDED_RESULT_STEP = {
     "md": (
