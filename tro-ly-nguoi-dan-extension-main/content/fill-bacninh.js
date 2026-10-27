@@ -580,12 +580,22 @@
         }
         const slot = item.slotKey === "banSao" ? "banSao" : "banChinh";
         const key = `${fold(item.componentName)}||${slot}`;
-        if (!groups.has(key)) groups.set(key, { componentName: item.componentName, slot, entries: [] });
+        if (!groups.has(key)) {
+          groups.set(key, {
+            componentName: item.componentName,
+            fallbackComponentName: item.fallbackComponentName || "",
+            slot,
+            entries: [],
+          });
+        }
         groups.get(key).entries.push({ item, payload });
       }
 
       for (const g of groups.values()) {
-        const comp = findComponentId(index, g.componentName);
+        // Cùng thủ tục có thể còn eform cũ (link mã cũ) mang mã thành phần cũ → BE gửi kèm
+        // fallbackComponentName, thử khi mã chính không có trên trang.
+        const comp = findComponentId(index, g.componentName)
+          || (g.fallbackComponentName ? findComponentId(index, g.fallbackComponentName) : null);
         if (!comp) {
           errors.push(`Không khớp thành phần "${g.componentName}".`);
           continue;

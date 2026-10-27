@@ -91,6 +91,9 @@
     // Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại ghi đè
     // (portal-dvc.js::saveOwnerProfile). BE chỉ hiện nút lưu khi thấy cờ này.
     supportsSaveOwnerProfile: true,
+    // Biết tích ô cam kết cuối trang theo id (lệnh tick_commit → content.js::tickCommitBox, cổng DVC Bộ Công an).
+    // BE chỉ hiện nút cam "Tôi xin chịu trách nhiệm…" khi thấy cờ này.
+    supportsTickCommit: true,
     // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
     // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
     supportsProcedureFirst: true,
@@ -355,7 +358,7 @@
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
     "prepareBusinessRegistration", "startBusinessRegistration",
   ]);
   let pageWorkInFlight = 0;
@@ -1246,6 +1249,18 @@
       if (still >= 2) break;
     }
     return c;
+  }
+
+  // selectAgency tự bấm "Nộp trực tuyến" → cổng điều hướng hẳn sang trang kê khai / đăng nhập, content
+  // script của trang chọn cơ quan bị huỷ trước khi kịp trả lời → sidebar nhận null dù đã chọn xong.
+  // Đọc lại trang: còn khối cơ quan (hoặc mãi không thấy gì) = lỗi thật; đã sang bước khác = xong.
+  async function agencyPageMovedOn() {
+    for (let i = 0; i < 10; i++) {
+      const c = await readPageContext();
+      if (c?.ok && pageSignal(c)) return !c.agencyBlock;
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    return false;
   }
 
   async function sendPageStatus(pre) {
@@ -5079,12 +5094,15 @@
           // Trang kết quả nhiều thẻ mà thẻ đầu là cấp Sở: bấm "Nộp trực tuyến" ở thẻ có chữ này.
           cardIncludes: a.cardIncludes || "",
         });
+        const movedOn = !res?.ok && res?.code !== "card_not_found" && await agencyPageMovedOn();
         setStatus("");
         if (res?.ok) ask("__event:agency_selected", "system");
         // Tỉnh/xã đã chọn xong, chỉ thiếu thẻ đúng → câu riêng (bấm đúng thẻ), không phải
         // "chọn tay tỉnh/xã" như lỗi chọn cơ quan thường.
         else if (res?.code === "card_not_found") ask(`__event:agency_card_missing:${res.error || ""}`, "system");
-        else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+        // Cổng đã sang trang kê khai / đăng nhập dù content không kịp trả lời → im lặng, watcher
+        // gửi page_status của trang mới. Báo agency_failed ở đây là nhắc chọn tay trong khi đã vào form.
+        else if (!movedOn) ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
       } else if (a.type === "fill_bca_agency") {
         // Cổng DVC Bộ Công an: content.js chọn Tỉnh → Xã ở khối "Cơ quan thực hiện". Báo lại cả khi lỗi
         // (BE mời chọn lại hoặc tự chọn trên trang).
@@ -5092,6 +5110,10 @@
         const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
         setStatus("");
         ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
+      } else if (a.type === "tick_commit" && a.id) {
+        // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id, báo lại để BE nhắc bấm Nộp hồ sơ.
+        const res = await sendToContent({ action: "tickCommitBox", id: a.id });
+        ask(`__event:commit_result:${JSON.stringify({ ok: res?.ok === true, error: res?.error || "" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
         // (loại khai sinh, tỉnh/xã, trường hợp, tick "Cùng địa bàn") theo plan từ BE. KHÁC
