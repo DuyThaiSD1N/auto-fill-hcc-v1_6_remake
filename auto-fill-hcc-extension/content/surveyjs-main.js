@@ -1,23 +1,17 @@
 // Chạy trong MAIN world: biểu mẫu Cổng DVC quốc gia mới (/nop-ho-so) là SurveyJS trong React. Ô
 // dropdown/ngày (flatpickr) chỉ nhận giá trị qua MODEL survey — gõ vào DOM không cập nhật model. Isolated
-// content script không đọc được fiber React của trang → cầu nối CustomEvent như fill-lamdong-main.js.
+// content script không đọc được fiber React của trang → cầu nối CustomEvent. Bản chép từ
+// auto-fill-hcc-extension/content/surveyjs-main.js, đổi tên sự kiện/thuộc tính để hai extension cài
+// cùng máy không trả lời chồng lên nhau.
 // Ngoài ra chặn hộp thoại chọn tệp của OS khi extension bấm nút "Tải lên file" để nạp tệp thẳng vào input.
 (() => {
   if (!/(^|\.)dichvucong\.gov\.vn$/.test(location.hostname)) return;
 
-  const REQUEST_EVENT = "__HCC_SJS_REQUEST__";
-  const RESULT_EVENT = "__HCC_SJS_RESULT__";
-  if (window.__HCC_SJS_HANDLER__) document.removeEventListener(REQUEST_EVENT, window.__HCC_SJS_HANDLER__);
+  const REQUEST_EVENT = "__TLND_SJS_REQUEST__";
+  const RESULT_EVENT = "__TLND_SJS_RESULT__";
+  if (window.__TLND_SJS_HANDLER__) document.removeEventListener(REQUEST_EVENT, window.__TLND_SJS_HANDLER__);
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  // Engine nhẹ (máy yếu): chờ trang vẽ xong theo khung hình thay vì mốc giờ cố định — máy yếu vẽ chậm thì khung
-  // hình tới chậm theo. Tab ẩn không có khung hình → chặn trần 1 giây.
-  const nextFrame = () => Promise.race([new Promise((r) => requestAnimationFrame(() => r())), sleep(1000)]);
-  async function settle(ms) {
-    await nextFrame();
-    await nextFrame();
-    await sleep(ms);
-  }
   const fold = (s) => String(s ?? "")
     .replace(/Đ/g, "D").replace(/đ/g, "d")
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -112,7 +106,7 @@
     const t0 = Date.now();
     while (Date.now() - t0 < timeout) {
       if (choicesOf(q).length) return true;
-      await sleep(300);
+      await sleep(200);
     }
     return false;
   }
@@ -124,7 +118,7 @@
 
   // Dropdown nạp danh mục lười qua API của cổng (tỉnh, xã theo tỉnh): mở dropdown một lần như cán bộ bấm để
   // cổng tự nạp, chờ danh sách về rồi đóng lại.
-  async function openToLoad(q, timeout = 10000) {
+  async function openToLoad(q, timeout = 6000) {
     const root = document.querySelector(`[data-name="${CSS.escape(q.name)}"]`);
     const opener = root?.querySelector(".sd-dropdown, [role='combobox']");
     if (!opener) return false;
@@ -132,7 +126,7 @@
     opener.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     opener.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     const t0 = Date.now();
-    while (Date.now() - t0 < timeout && choicesOf(q).length <= before) await sleep(300);
+    while (Date.now() - t0 < timeout && choicesOf(q).length <= before) await sleep(150);
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     document.activeElement?.blur?.();
     return choicesOf(q).length > before;
@@ -147,8 +141,8 @@
       }
       return bestChoice(q, value);
     };
-    // Cascade tỉnh→xã: danh mục có thể đang tải sau khi ô cha vừa đổi → chờ ngắn trước (máy yếu chờ lâu hơn).
-    await waitChoices(q, 4000);
+    // Cascade tỉnh→xã: danh mục có thể đang tải sau khi ô cha vừa đổi → chờ ngắn trước.
+    await waitChoices(q, 2000);
     let choice = pick();
     if (!choice && await openToLoad(q)) choice = pick();
     if (!choice) return { ok: false, reason: choicesOf(q).length ? "no-match" : "no-choices" };
@@ -182,34 +176,21 @@
     const radio = field.radio ? findQuestion(survey, field.radio) : null;
     const radioEl = radio && document.querySelector(`[data-name="${CSS.escape(radio.name)}"]`);
     const scope = radioEl?.closest(".sd-panel") || document;
-    const collect = () => {
-      const found = [];
-      // Một khối có thể chứa nhiều cụm địa chỉ (khai sinh: Nơi sinh + Quê quán) → chỉ lấy các ô nằm SAU radio
-      // này và TRƯỚC radio kế tiếp theo thứ tự DOM.
-      let afterRadio = !radioEl;
-      for (const node of scope.querySelectorAll("[data-name]")) {
-        if (node === radioEl) { afterRadio = true; continue; }
-        if (!afterRadio) continue;
-        const q = survey.getQuestionByName(node.getAttribute("data-name"));
-        if (radioEl && q?.getType?.() === "radiogroup") break;
-        if (!q || q === radio || q.isReadOnly || !q.isVisible) continue;
-        const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
-          .map((l) => l.textContent).join(" ") || q.title);
-        found.push({ q, label, type: q.getType?.() });
-      }
-      return found;
-    };
-    // Khối địa chỉ chỉ hiện sau khi chọn radio, máy yếu vẽ chậm → chờ tới khi ô cần điền đã có (trần 3 giây)
-    // thay vì đoán một mốc giờ.
-    const ready = (list) => (value.tinh
-      ? list.some((c) => c.type === "dropdown" && /tinh thanh pho/.test(c.label))
-      : list.length > 0);
-    const t0 = Date.now();
-    let candidates;
-    do {
-      await settle(100);
-      candidates = collect();
-    } while (!ready(candidates) && Date.now() - t0 < 3000);
+    await sleep(400);
+    const candidates = [];
+    // Một khối có thể chứa nhiều cụm địa chỉ (khai sinh: Nơi sinh + Quê quán) → chỉ lấy các ô nằm SAU radio
+    // này và TRƯỚC radio kế tiếp theo thứ tự DOM.
+    let afterRadio = !radioEl;
+    for (const node of scope.querySelectorAll("[data-name]")) {
+      if (node === radioEl) { afterRadio = true; continue; }
+      if (!afterRadio) continue;
+      const q = survey.getQuestionByName(node.getAttribute("data-name"));
+      if (radioEl && q?.getType?.() === "radiogroup") break;
+      if (!q || q === radio || q.isReadOnly || !q.isVisible) continue;
+      const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
+        .map((l) => l.textContent).join(" ") || q.title);
+      candidates.push({ q, label, type: q.getType?.() });
+    }
     const pick = (re, type) => candidates.find((c) => c.type === type && re.test(c.label))?.q || null;
     const steps = [
       [pick(/quoc gia/, "dropdown"), value.quocGia || "Việt Nam"],
@@ -254,32 +235,13 @@
 
   async function setValuesOn(survey, fields) {
     installRelationGuards(survey);
-    const resumeAnimations = pauseAnimations(survey);
     // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.
     toolWriting = true;
     try {
       return await setValuesCore(survey, fields);
     } finally {
       toolWriting = false;
-      resumeAnimations?.();
     }
-  }
-
-  // Engine nhẹ: tắt hiệu ứng mở/đóng khối, hiện/ẩn ô của SurveyJS trong lúc điền — mỗi radio đổi làm hiện ra
-  // cả khối, máy yếu phải dựng từng khung chuyển động. Bản survey-core của cổng không có API này thì bỏ qua.
-  function pauseAnimations(survey) {
-    try {
-      if (typeof survey.blockAnimations === "function" && typeof survey.releaseAnimations === "function") {
-        survey.blockAnimations();
-        return () => { try { survey.releaseAnimations(); } catch { /* survey đã huỷ */ } };
-      }
-      if (typeof survey.animationEnabled === "boolean") {
-        const before = survey.animationEnabled;
-        survey.animationEnabled = false;
-        return () => { survey.animationEnabled = before; };
-      }
-    } catch { /* bỏ qua: điền như thường */ }
-    return null;
   }
 
   async function setValuesCore(survey, fields) {
@@ -302,36 +264,13 @@
         const r = field.comp === "sjs-area" ? await setArea(survey, field) : await setOne(survey, field);
         if (field.lookup) r.lookup = true;
         results.push({ name: field.name, ...r });
-        // Đổi quan hệ / radio làm cổng dựng lại hoặc hiện thêm ô phía sau → chờ render (máy yếu: chờ khung hình).
-        if (r.ok && (field.comp === "sjs-dropdown" || field.comp === "sjs-radio")) await settle(150);
+        // Đổi quan hệ / radio làm cổng dựng lại hoặc hiện thêm ô phía sau → chờ render.
+        if (r.ok && (field.comp === "sjs-dropdown" || field.comp === "sjs-radio")) await sleep(250);
       } catch (e) {
         results.push({ name: field.name, ok: false, reason: String(e?.message || e) });
       }
     }
-    // Gán được chưa chắc còn giữ: cổng có thể xoá lại sau đó (resetValueIf của ô quan hệ chạy trễ trên máy yếu)
-    // → chờ trang yên rồi đọc lại model, ô đang hiện mà trống thì báo đỏ thay vì xanh.
-    await settle(300);
-    for (const r of results) verifyKept(survey, r);
     return { ok: true, results };
-  }
-
-  const CLEARED = "cleared-after-set";
-  // Chỉ xét ô còn hiện: ô bị lựa chọn sau làm ẩn đi thì SurveyJS xoá giá trị là đúng. Không tìm thấy ô
-  // (cổng dựng lại khối) → không đủ căn cứ, giữ kết quả cũ. Ô cổng tự đổ (kept) không phải giá trị của engine.
-  function clearedAfterSet(q) {
-    return !!q && q.isVisible && typeof q.isEmpty === "function" && q.isEmpty();
-  }
-
-  function verifyKept(survey, r) {
-    if (!r.ok || r.kept) return;
-    if (Array.isArray(r.parts)) {
-      for (const part of r.parts) {
-        if (part.ok && clearedAfterSet(survey.getQuestionByName(part.name))) part.ok = false;
-      }
-      if (r.parts.some((part) => !part.ok)) Object.assign(r, { ok: false, reason: CLEARED });
-      return;
-    }
-    if (clearedAfterSet(findQuestion(survey, r.name))) Object.assign(r, { ok: false, reason: CLEARED });
   }
 
   // ---- Giữ khối thông tin người được cấp khi đổi ô "Quan hệ…" ----
@@ -421,12 +360,12 @@
   const nativeShowPicker = HTMLInputElement.prototype.showPicker;
   function interceptFileInput(input) {
     if (!suppressPicker || input?.type !== "file") return false;
-    document.querySelectorAll("input[data-hcc-picker]").forEach((el) => el.removeAttribute("data-hcc-picker"));
-    input.setAttribute("data-hcc-picker", "1");
+    document.querySelectorAll("input[data-tlnd-picker]").forEach((el) => el.removeAttribute("data-tlnd-picker"));
+    input.setAttribute("data-tlnd-picker", "1");
     return true;
   }
-  if (!window.__HCC_SJS_PICKER_PATCHED__) {
-    window.__HCC_SJS_PICKER_PATCHED__ = true;
+  if (!window.__TLND_SJS_PICKER_PATCHED__) {
+    window.__TLND_SJS_PICKER_PATCHED__ = true;
     HTMLInputElement.prototype.click = function (...args) {
       if (interceptFileInput(this)) return undefined;
       return nativeClick.apply(this, args);
@@ -474,6 +413,45 @@
     return { ok: true, results };
   }
 
+  // Khối người nộp/người yêu cầu của tờ khai (họ tên cổng đổ từ tài khoản; SĐT, nơi cư trú do trợ lý/công dân
+  // điền) → làm thông tin người nhận kết quả qua bưu điện. Tên ô địa chỉ khác nhau giữa biểu mẫu → dò theo nhãn
+  // trong CÙNG khối với ô họ tên, dừng ở ô đầu tiên của người khác (NDK/Ngdc = người được đăng ký/được cấp…).
+  const OTHER_PERSON = /NDK|Ngdc/i;
+  function shownText(q) {
+    if (!q || q.isEmpty?.()) return "";
+    const item = q.selectedItem;
+    return String(item?.text ?? item?.calculatedText ?? q.displayValue ?? q.value ?? "").trim();
+  }
+
+  function requesterInfo() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    const nameQ = findQuestion(survey, "citizenName");
+    const info = { name: shownText(nameQ), phone: shownText(findQuestion(survey, "citizenPhone")),
+      tinh: "", xa: "", diaChi: "" };
+    const anchor = nameQ && document.querySelector(`[data-name="${CSS.escape(nameQ.name)}"]`);
+    const scope = anchor?.closest(".sd-panel") || anchor?.closest(".sd-page");
+    let started = false;
+    for (const node of scope ? scope.querySelectorAll("[data-name]") : []) {
+      const dn = node.getAttribute("data-name") || "";
+      if (node === anchor) { started = true; continue; }
+      if (!started) continue;
+      if (OTHER_PERSON.test(dn)) break;
+      const q = survey.getQuestionByName(dn);
+      if (!q || !q.isVisible) continue;
+      const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]
+        .map((l) => l.textContent).join(" ") || q.title);
+      const type = q.getType?.();
+      if (type === "dropdown" && !info.tinh && /tinh thanh pho/.test(label)) info.tinh = shownText(q);
+      else if (type === "dropdown" && !info.xa && /xa phuong|phuong xa/.test(label)) info.xa = shownText(q);
+      else if (type === "text" && !info.phone && /dien thoai/.test(label)) info.phone = shownText(q);
+      else if (type === "text" && !info.diaChi && /chi tiet|dia chi/.test(label) && !/email|thu dien tu/.test(label)) {
+        info.diaChi = shownText(q);
+      }
+    }
+    return { ok: true, ...info };
+  }
+
   // Ô bắt buộc còn trống sau khi điền (kể cả ô BE không gửi, vd quan hệ chưa xác định) → tô đỏ.
   // Cổng có ô bắt buộc chỉ đánh dấu bằng "*" trong nhãn (isRequired = false, kiểm tra ở validator riêng của
   // cổng), vd "Quan hệ với người được khai tử *" → xét cả nhãn hiển thị.
@@ -485,13 +463,130 @@
       .some((label) => /\*\s*$/.test(String(label.textContent || "").trim()));
   }
 
+  // Nhãn hiển thị (bỏ dấu "*") để trợ lý đọc cho công dân biết ô nào còn thiếu trước khi nộp.
+  function questionLabel(q) {
+    const node = document.querySelector(`[data-name="${CSS.escape(q.name)}"]`);
+    const shown = node && [...node.querySelectorAll(".sd-title, label.floating-label")]
+      .map((label) => String(label.textContent || "").replace(/\s+/g, " ").trim()).find(Boolean);
+    return String(shown || q.title || q.name).replace(/\s*\*\s*$/, "").trim();
+  }
+
   function emptyRequired() {
     const survey = findSurvey();
     if (!survey) return { ok: false, error: "no-survey" };
-    const names = (survey.getAllQuestions(true) || [])
-      .filter((q) => !q.isReadOnly && q.isEmpty?.() && (q.isRequired || labelMarksRequired(q)))
-      .map((q) => q.name);
-    return { ok: true, names };
+    const questions = (survey.getAllQuestions(true) || [])
+      .filter((q) => !q.isReadOnly && q.isEmpty?.() && (q.isRequired || labelMarksRequired(q)));
+    return {
+      ok: true,
+      names: questions.map((q) => q.name),
+      labels: questions.map((q) => questionLabel(q)),
+    };
+  }
+
+  // ---- Bổ sung ô còn trống sau khi điền (content/field-review-surveyjs.js) ----
+  // Chỉ các câu ĐANG HIỆN trên trang, theo thứ tự DOM: model khai cả câu ẩn (visible:false, có câu vẫn isRequired
+  // như citizenTinhtranghonnhanmap*), và tiêu đề trong model thường chỉ là tên câu — nhãn thật nằm trên trang.
+  const REVIEW_KINDS = { dropdown: "select", radiogroup: "radio", text: "text", comment: "text" };
+  const shownQuestionEl = (q) => Array.from(document.querySelectorAll(`[data-name="${CSS.escape(q.name)}"]`))
+    .find((el) => el.getClientRects().length > 0) || null;
+
+  function reviewKind(q) {
+    const type = q.getType?.() || "";
+    if (type === "text" && q.inputType === "date") return "date";
+    return REVIEW_KINDS[type] || "";
+  }
+
+  function reviewValue(q, kind) {
+    if (q.isEmpty?.()) return "";
+    if (kind === "select" || kind === "radio") return shownText(q);
+    if (kind === "date") {
+      const m = String(q.value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(q.value || "");
+    }
+    return String(q.value ?? "").trim();
+  }
+
+  // Tiêu đề khối gần nhất có chữ — khối điều kiện (vd "đã ly hôn") không có tiêu đề → lấy khối bọc ngoài.
+  function sectionTitle(node) {
+    for (let panel = node.closest(".sd-panel"); panel; panel = panel.parentElement?.closest(".sd-panel")) {
+      const title = Array.from(panel.querySelectorAll(".sd-panel__title")).find((t) => t.closest(".sd-panel") === panel);
+      const text = String(title?.textContent || "").replace(/\s+/g, " ").trim();
+      if (text) return text;
+    }
+    return "";
+  }
+
+  function reviewList() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    const questions = [];
+    const seen = new Set();
+    for (const node of document.querySelectorAll(".sd-question[data-name]")) {
+      if (!node.getClientRects().length) continue;
+      const q = survey.getQuestionByName(node.getAttribute("data-name"));
+      if (!q || seen.has(q.name) || !q.isVisible || q.isReadOnly) continue;
+      const kind = reviewKind(q);
+      if (!kind) continue;
+      seen.add(q.name);
+      questions.push({
+        name: q.name, kind,
+        // "Số lượng bản sao * (điền 0 nếu không cần)": dấu "*" có thể nằm giữa nhãn.
+        label: questionLabel(q).replace(/\s*\*\s*/g, " ").trim(),
+        required: !!q.isRequired || labelMarksRequired(q),
+        value: reviewValue(q, kind),
+        section: sectionTitle(node),
+        options: kind === "radio" ? choicesOf(q).map((c) => c.text.trim()) : [],
+      });
+    }
+    return { ok: true, questions };
+  }
+
+  // Ô Xã/Phường: ô Tỉnh/Thành phố đứng trước nó trong cùng khối.
+  function provinceBefore(survey, q) {
+    const node = shownQuestionEl(q);
+    if (!node || !/xa phuong|phuong xa/.test(fold(questionLabel(q)))) return null;
+    let found = null;
+    for (const el of (node.closest(".sd-panel") || document).querySelectorAll(".sd-question[data-name]")) {
+      if (el === node) break;
+      const p = survey.getQuestionByName(el.getAttribute("data-name"));
+      if (p?.getType?.() === "dropdown" && p.isVisible && /tinh thanh pho/.test(fold(questionLabel(p)))) found = p;
+    }
+    return found;
+  }
+
+  // Cổng hay hỏng nạp danh sách Xã sau khi chọn Tỉnh: bấm "Làm mới" cạnh ô; vẫn rỗng thì chọn lại tỉnh cho cổng
+  // nạp lại danh sách (gán lại đúng giá trị cũ thì model không đổi nên phải xoá rồi gán).
+  async function reloadChoices(survey, q) {
+    const refresh = shownQuestionEl(q)?.querySelector('button[title="Làm mới"]');
+    if (refresh) {
+      refresh.click();
+      if (await waitChoices(q, 3000)) return;
+    }
+    const province = provinceBefore(survey, q);
+    if (!province || province.isEmpty?.()) return;
+    const value = province.value;
+    province.value = undefined;
+    await sleep(300);
+    province.value = value;
+    if (!(await waitChoices(q, 3000))) await openToLoad(q);
+  }
+
+  async function reviewChoices(name) {
+    const survey = findSurvey();
+    const q = survey?.getQuestionByName(name);
+    if (!q) return { ok: false, error: "not-found" };
+    const texts = () => [...new Set(choicesOf(q).map((c) => c.text.trim()).filter(Boolean))].slice(0, 400);
+    if (!(await waitChoices(q, 1500))) await openToLoad(q);
+    if (!texts().length) await reloadChoices(survey, q);
+    const options = texts();
+    const province = options.length ? null : provinceBefore(survey, q);
+    return { ok: true, options, province: province ? shownText(province) : "" };
+  }
+
+  async function reviewSet(name, kind, value) {
+    const comp = { select: "sjs-dropdown", radio: "sjs-radio", date: "sjs-date" }[kind] || "sjs-text";
+    const res = await setValues([{ name, comp, value }]);
+    return res.ok ? (res.results?.[0] || { ok: false, reason: "not-found" }) : res;
   }
 
   // ---- Trạng thái tải lên của tệp đính kèm ----
@@ -559,6 +654,21 @@
     return { ok: true, removed };
   }
 
+  // Vòng bổ sung ô (luồng bản 2): mỗi lần một giá trị của form đổi (công dân gõ thẳng, trợ lý điền) báo cho
+  // content/field-review-surveyjs.js đếm lại ô và tô lại màu. Model có thể dựng lại khi React vẽ lại → gắn theo
+  // từng model.
+  const CHANGED_EVENT = "__TLND_SJS_CHANGED__";
+  const watchedSurveys = new WeakSet();
+  function reviewWatch() {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    if (!watchedSurveys.has(survey)) {
+      watchedSurveys.add(survey);
+      survey.onValueChanged.add(() => document.dispatchEvent(new CustomEvent(CHANGED_EVENT)));
+    }
+    return { ok: true };
+  }
+
   async function handleRequest(event) {
     let requestId = "";
     let result;
@@ -568,6 +678,13 @@
       if (payload.op === "setValues") result = await setValues(Array.isArray(payload.fields) ? payload.fields : []);
       else if (payload.op === "fillPlace") result = await fillPlace(payload.place || {});
       else if (payload.op === "emptyRequired") result = emptyRequired();
+      else if (payload.op === "requesterInfo") result = requesterInfo();
+      else if (payload.op === "reviewList") result = reviewList();
+      else if (payload.op === "reviewChoices") result = await reviewChoices(String(payload.name || ""));
+      else if (payload.op === "reviewWatch") result = reviewWatch();
+      else if (payload.op === "reviewSet") {
+        result = await reviewSet(String(payload.name || ""), String(payload.kind || ""), String(payload.value ?? ""));
+      }
       else if (payload.op === "uploadStatus") {
         result = { ok: true, statuses: uploadEntries(String(payload.name || "")).map((e) => e.status) };
       } else if (payload.op === "removeUploads") {
@@ -583,6 +700,6 @@
     document.dispatchEvent(new CustomEvent(RESULT_EVENT, { detail: JSON.stringify({ requestId, ...result }) }));
   }
 
-  window.__HCC_SJS_HANDLER__ = handleRequest;
+  window.__TLND_SJS_HANDLER__ = handleRequest;
   document.addEventListener(REQUEST_EVENT, handleRequest);
 })();

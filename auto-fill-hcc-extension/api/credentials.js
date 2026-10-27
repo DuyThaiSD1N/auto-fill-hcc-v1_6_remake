@@ -1,14 +1,11 @@
-// Kho thông tin đăng nhập được người dùng chủ động chọn ghi nhớ.
+// Kho thông tin đăng nhập được cán bộ chủ động chọn ghi nhớ.
 //
-// TẠI SAO không dùng chrome.storage.local:
-// - content script có thể đọc storage.local theo mặc định;
-// - mật khẩu là bí mật dài hạn, không được để dạng rõ hoặc đồng bộ qua Chrome Sync.
-//
-// Username + mật khẩu được mã hóa chung bằng AES-GCM 256-bit. Khóa CryptoKey đặt
-// extractable=false và cả khóa/ciphertext chỉ được lưu trong IndexedDB thuộc origin
-// chrome-extension://...; trang DVC và content script không dùng chung origin này.
+// Không lưu mật khẩu dạng rõ trong chrome.storage.local: content script có thể đọc
+// vùng lưu trữ đó theo mặc định. Username + mật khẩu được mã hóa chung bằng
+// AES-GCM 256-bit; khóa không thể export và chỉ khóa/ciphertext được lưu trong
+// IndexedDB thuộc origin chrome-extension:// của sidebar.
 
-const REMEMBERED_LOGIN_DB = "autofill_hcc_credentials";
+const REMEMBERED_LOGIN_DB = "tlnd_hcc_credentials";
 const REMEMBERED_LOGIN_DB_VERSION = 1;
 const REMEMBERED_LOGIN_STORE = "secrets";
 const REMEMBERED_LOGIN_KEY_ID = "aes-key";
@@ -125,7 +122,7 @@ function createRememberedLoginVault(repository, cryptoApi) {
       });
     } finally {
       // Giảm thời gian byte plaintext còn nằm trong vùng nhớ mutable. Chuỗi JS gốc do
-      // runtime quản lý nên không thể xóa tuyệt đối; popup vẫn xóa ô mật khẩu sau login.
+      // runtime quản lý nên không thể xóa tuyệt đối; ô mật khẩu vẫn được xóa sau login.
       plaintext.fill(0);
     }
   }
@@ -165,8 +162,8 @@ const RememberedLoginStore = createRememberedLoginVault(
   crypto,
 );
 
-// Bản cũ chỉ lưu username trong storage.local. Xóa dấu vết này để từ phiên bản
-// mới chỉ lưu khi người dùng chủ động chọn "Ghi nhớ đăng nhập".
+// Bản cũ từng có thể lưu username trong storage.local. Dọn khóa đó để từ bản này
+// chỉ ghi nhớ khi cán bộ chủ động tích lựa chọn trên màn đăng nhập.
 RememberedLoginStore.clearLegacyPrefill = async function clearLegacyPrefill() {
   try {
     await chrome.storage.local.remove(LEGACY_LOGIN_PREFILL_KEY);

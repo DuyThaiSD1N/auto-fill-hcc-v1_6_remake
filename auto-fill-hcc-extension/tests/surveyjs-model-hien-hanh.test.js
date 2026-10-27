@@ -40,8 +40,8 @@ function loadEngine() {
   ctx.HTMLInputElement.prototype = { click() {}, showPicker() {} };
   vm.runInNewContext(src, ctx);
   const call = (payload) => new Promise((resolve) => {
-    listeners.__HCC_SJS_RESULT__ = (ev) => resolve(JSON.parse(ev.detail));
-    listeners.__HCC_SJS_REQUEST__({ detail: JSON.stringify({ ...payload, requestId: "1" }) });
+    listeners.__TLND_SJS_RESULT__ = (ev) => resolve(JSON.parse(ev.detail));
+    listeners.__TLND_SJS_REQUEST__({ detail: JSON.stringify({ ...payload, requestId: "1" }) });
   });
   return { bind, call };
 }

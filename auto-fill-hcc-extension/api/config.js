@@ -1,47 +1,118 @@
-const BACKEND_URL = "http://localhost:12005";     // Backend CHÍNH (LOCAL — docker app cổng 12005; production: https://trolyhoso-hcc-admin.tiengnoi.vn)
+// Gọi THẲNG domain API của backend (cùng domain Auto Fill dùng). Domain FE trang quản lý
+// (trolyhoso-hcc.*) chỉ chuyển tiếp /api,/auth,/ws qua nginx của FE — sẽ bàn giao cho web thống kê.
+const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc-admin.tiengnoi.vn";  // Backend CHÍNH
+
+const TLND_BASE_URL_KEY = "tlnd_base_url";
+// Giá trị cũ còn lưu trong storage của máy đã cài → tự chuyển sang backend chính hiện tại.
+// Domain FE trolyhoso-hcc.* từng được GHI CỨNG vào storage khi migrate từ trolynguoidan-admin.
+const TLND_LEGACY_BASE_URLS = new Set([
+  "https://trolynguoidan-admin.vnekyc.vn",
+  "https://trolyhoso-hcc.tiengnoi.vn",
+  "https://trolyhoso-hcc.vnekyc.vn",
+]);
+
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
-// ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản,
-// nếu không khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
-
+// ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản, nếu không
+// khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
 // TẮT: server phụ hiện KHÁC database với server chính — chuyển sang đó thì refresh token không tồn
-// tại (cán bộ bị đá ra màn đăng nhập) và hồ sơ/mốc nộp ghi lệch sang database kia. Chỉ bật lại khi
-// server phụ dùng CHUNG database + JWT secret với server chính.
-const BACKEND_URL_FALLBACK = "";
-// Timeout mỗi request. PHẢI đủ dài cho request nặng (OCR+LLM có thể ~25s+, nhiều file lâu hơn) —
-// đặt ngắn sẽ abort NHẦM khi server vẫn đang xử lý → báo "không kết nối" oan. Chỉ dùng để cắt
-// server TREO thật (không phản hồi trong 100s) rồi mới chuyển sang phụ.
-const BACKEND_TIMEOUT_MS = 100000;
-// Sau khi backend chính lỗi, trong khoảng này ưu tiên gọi PHỤ trước (khỏi chờ chết lại mỗi lần);
-// quá hạn thì thử lại CHÍNH → tự phục hồi khi chính sống lại.
-const BACKEND_FAILOVER_COOLDOWN_MS = 30000;
+// tại (cán bộ bị đá ra màn đăng nhập) và hồ sơ ghi lệch sang database kia. Chỉ bật lại khi server
+// phụ dùng CHUNG database + JWT secret với server chính. Quyền host trong manifest giữ nguyên.
+const TLND_FALLBACK_BASE_URL = "";
+const TLND_API_TIMEOUT_MS = 100000;        // đủ dài cho chat/OCR+LLM; chỉ cắt server TREO thật rồi mới failover
+const TLND_FAILOVER_COOLDOWN_MS = 30000;   // chính vừa lỗi thì ưu tiên phụ trong khoảng này rồi thử lại chính
 
-// WS cho phiên tải ảnh QR: https→wss (http→ws). WebSocket chạy THẲNG từ popup iframe
-// (không proxy qua background — SW MV3 bị kill sẽ rớt kết nối).
-// LƯU Ý: phiên QR có TRẠNG THÁI (session + file nằm ở 1 server) nên GHIM vào backend chính,
-// KHÔNG auto-failover giữa chừng — chính chết thì làm lại phiên trên phụ.
-const WS_BASE = BACKEND_URL.replace(/^http/, "ws");
-const WS_BASE_FALLBACK = BACKEND_URL_FALLBACK ? BACKEND_URL_FALLBACK.replace(/^http/, "ws") : "";
-
-// Trang báo cáo (nút "Xem báo cáo" ở footer). Mỗi backend có FE riêng và SỐ LIỆU RIÊNG, nên phải
-// mở đúng trang của backend đang chạy — mở nhầm là cán bộ xem nhầm số liệu server kia.
-// URL phải KHÔNG có dấu "/" cuối: nginx khai báo `location = /thong-ke/dashboard` (exact match),
-// thêm dấu "/" sẽ rơi về SPA quản trị.
-const REPORT_URL_BY_BACKEND = {
-  "https://trolyhoso-hcc-admin.tiengnoi.vn": "https://trolyhoso-hcc.tiengnoi.vn/thong-ke/dashboard",
-  "http://localhost:12005": "http://localhost:12006/thong-ke/dashboard",
-};
-
-// chrome.storage.local: { rules, base } — luật nhận nút "Gửi hồ sơ" do BE cấp + base đang chạy.
-// popup ghi (sau khi nạp /procedures), content script và background đọc; ba nơi không thấy biến
-// của nhau nên phải đi qua storage. background.js khai lại chuỗi này (service worker không nạp
-// được file cấu hình) — sửa ở đây thì sửa cả bên đó.
-const SUBMIT_WATCH_KEY = "autofill_submit_watch";
-
-if (typeof window !== "undefined") {
-  window.SUBMIT_WATCH_KEY = SUBMIT_WATCH_KEY;
-  window.BACKEND_URL = BACKEND_URL;
-  window.BACKEND_URL_FALLBACK = BACKEND_URL_FALLBACK;
-  window.WS_BASE = WS_BASE;
-  window.WS_BASE_FALLBACK = WS_BASE_FALLBACK;
-  window.REPORT_URL_BY_BACKEND = REPORT_URL_BY_BACKEND;
+// Đọc base URL (ưu tiên override trong storage). Dùng: const base = await tlndBaseUrl();
+function tlndBaseUrl() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get([TLND_BASE_URL_KEY], (res) => {
+        if (chrome.runtime.lastError) return resolve(TLND_DEFAULT_BASE_URL);
+        const v = String(res?.[TLND_BASE_URL_KEY] || "").trim().replace(/\/+$/, "");
+        if (!v || TLND_LEGACY_BASE_URLS.has(v)) {
+          // Bản đã cài có thể còn lưu domain Handfree cũ trong storage. Chỉ migrate
+          // đúng giá trị legacy; URL dev/tùy chỉnh khác của đội triển khai vẫn giữ nguyên.
+          if (v) {
+            chrome.storage.local.set({ [TLND_BASE_URL_KEY]: TLND_DEFAULT_BASE_URL });
+          }
+          return resolve(TLND_DEFAULT_BASE_URL);
+        }
+        resolve(v);
+      });
+    } catch (_) {
+      resolve(TLND_DEFAULT_BASE_URL);
+    }
+  });
 }
+
+//   https://host → wss://host   ·   http://host:8010 → ws://host:8010
+function tlndWsBase(httpBase) {
+  const base = String(httpBase || "").replace(/\/+$/, "");
+  if (base.startsWith("https://")) return "wss://" + base.slice("https://".length);
+  if (base.startsWith("http://")) return "ws://" + base.slice("http://".length);
+  return base;
+}
+
+// ===== Failover backend CHÍNH ↔ PHỤ =====
+// Chỉ chuyển backend khi lỗi HẠ TẦNG (mạng/timeout/502/503/504). 401/4xx giữ nguyên (authFetch lo refresh).
+const _TLND_INFRA_STATUS = new Set([502, 503, 504]);
+const _tlndDownAt = Object.create(null); // base → timestamp lần lỗi gần nhất (cho cooldown)
+
+// Danh sách base theo thứ tự thử: CHÍNH (đã tính override storage) trước, PHỤ sau; nếu chính vừa lỗi
+// trong cooldown thì đảo PHỤ lên trước (vẫn giữ chính làm chốt cuối để tự phục hồi).
+async function tlndBases() {
+  const primary = await tlndBaseUrl();
+  const fb = (typeof TLND_FALLBACK_BASE_URL === "string" ? TLND_FALLBACK_BASE_URL : "")
+    .trim().replace(/\/+$/, "");
+  if (!fb || fb === primary) return [primary];
+  const downTs = _tlndDownAt[primary];
+  if (downTs && Date.now() - downTs < TLND_FAILOVER_COOLDOWN_MS) return [fb, primary];
+  return [primary, fb];
+}
+
+// fetch có timeout — cắt request treo để failover kịp.
+function tlndFetch(url, init = {}) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TLND_API_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+// Chạy 1 request qua nhiều base. doReq(base) tự dựng URL = base + path rồi fetch (kèm Bearer/refresh
+// nếu gọi qua authFetch). Lỗi hạ tầng → thử base kế; app-level status trả về ngay.
+async function tlndOverBases(doReq) {
+  const bases = await tlndBases();
+  let lastErr;
+  for (let i = 0; i < bases.length; i++) {
+    const base = bases[i];
+    const isLast = i === bases.length - 1;
+    try {
+      const res = await doReq(base);
+      if (!isLast && res && _TLND_INFRA_STATUS.has(res.status)) {
+        _tlndDownAt[base] = Date.now();
+        console.warn(`[TLND] Backend lỗi HTTP ${res.status} tại ${base} → chuyển sang backend phụ`);
+        continue;
+      }
+      delete _tlndDownAt[base];
+      if (i > 0) console.warn(`[TLND] Đang chạy trên BACKEND PHỤ: ${base} (backend chính đang lỗi)`);
+      return res;
+    } catch (e) {
+      lastErr = e;
+      _tlndDownAt[base] = Date.now();
+      if (!isLast) {
+        console.warn(`[TLND] Không gọi được backend ${base} (mạng/timeout) → chuyển sang backend phụ`);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr || new Error("Không có backend nào khả dụng");
+}
+
+// globalThis: service worker (background.js nạp file này qua importScripts để gửi mốc nộp hồ sơ)
+// không có `window`. Ở trang sidebar/companion globalThis CHÍNH LÀ window — không đổi gì.
+globalThis.tlndBaseUrl = tlndBaseUrl;
+globalThis.tlndWsBase = tlndWsBase;
+globalThis.tlndBases = tlndBases;
+globalThis.tlndFetch = tlndFetch;
+globalThis.tlndOverBases = tlndOverBases;
+globalThis.TLND_DEFAULT_BASE_URL = TLND_DEFAULT_BASE_URL;
+globalThis.TLND_FALLBACK_BASE_URL = TLND_FALLBACK_BASE_URL;

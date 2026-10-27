@@ -1,62 +1,75 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.25.4",
-  "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
-  "incognito": "spanning",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "unlimitedStorage",
-    "scripting",
-    "alarms",
-    "idle"
-  ],
+  "version": "1.14.11",
+  "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData", "alarms", "idle", "sidePanel", "scripting"],
   "host_permissions": [
     "http://localhost:12005/*",
     "ws://localhost:12005/*",
+    "http://127.0.0.1:12005/*",
+    "ws://127.0.0.1:12005/*",
+    "https://*.gov.vn/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
-    "https://trolyhoso-hcc-admin.vnekyc.vn/*"
+    "wss://trolyhoso-hcc-admin.tiengnoi.vn/*",
+    "https://trolyhoso-hcc-admin.vnekyc.vn/*",
+    "wss://trolyhoso-hcc-admin.vnekyc.vn/*",
+    "https://trolyhoso-hcc.tiengnoi.vn/*",
+    "wss://trolyhoso-hcc.tiengnoi.vn/*",
+    "https://trolyhoso-hcc.vnekyc.vn/*",
+    "wss://trolyhoso-hcc.vnekyc.vn/*",
+    "https://trolynguoidan-admin.vnekyc.vn/*",
+    "wss://trolynguoidan-admin.vnekyc.vn/*",
+    "https://trolyao.tiengnoi.vn/*",
+    "wss://trolyao.tiengnoi.vn/*",
+    "https://trolynguoidan-dev.tiengnoi.vn/*",
+    "wss://trolynguoidan-dev.tiengnoi.vn/*",
+    "https://dichvucong.gov.vn/*",
+    "https://*.dichvucong.gov.vn/*",
+    "https://sso.dancuquocgia.gov.vn/*",
+    "https://dichvucongnganhtuphap.moj.gov.vn/*",
+    "https://tokhaidientu.moj.gov.vn/*",
+    "https://hokinhdoanh.dkkd.gov.vn/*",
+    "https://dichvucongnnmt.mae.gov.vn/*",
+    "https://dvc.moet.gov.vn/*",
+    "https://dvc.moc.gov.vn/*",
+    "https://dichvucong.bacninh.gov.vn/*"
   ],
-  "icons": {
-    "16": "assets/icons/hcc-16.png",
-    "32": "assets/icons/hcc-32.png",
-    "48": "assets/icons/hcc-48.png",
-    "128": "assets/icons/hcc-128.png"
-  },
   "action": {
     "default_title": "Trợ lý nhân dân — bấm để mở trợ lý trên trang",
     "default_icon": {
-      "16": "assets/icons/hcc-16.png",
-      "32": "assets/icons/hcc-32.png",
-      "48": "assets/icons/hcc-48.png",
-      "128": "assets/icons/hcc-128.png"
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
     }
   },
   "background": {
-    "scripts": [
-      "background/form-snapshot.js",
-      "background.js"
-    ],
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": [
         "https://*.gov.vn/*",
+        "https://sso.dancuquocgia.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
         "https://hokinhdoanh.dkkd.gov.vn/*",
-        "https://dangkyquamang.dkkd.gov.vn/*",
         "https://lienthong.dichvucong.gov.vn/*",
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",
         "https://dichvucongbnv.moha.gov.vn/*",
-        "https://motcua.moha.gov.vn/*",
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*",
         "https://dichvucong.quangngai.gov.vn/*",
         "https://dichvucong.khanhhoa.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
@@ -64,148 +77,80 @@
         "https://dichvucongnnmt.mae.gov.vn/*",
         "https://dichvucong.danang.gov.vn/*",
         "https://dvc.moet.gov.vn/*",
-        "https://dichvucong.quangninh.gov.vn/*",
-        "https://dichvucong.ninhbinh.gov.vn/*"
+        "https://dichvucong.quangninh.gov.vn/*"
       ],
       "all_frames": true,
       "js": [
-        "api/config.js",
-        "content/locations.js",
         "content/bbox-overlay.js",
-        "content.js",
-        "content/attach-mae.js",
+        "content/fill-core.js",
+        "content/fill-legacy.js",
+        "content/field-review.js",
         "content/fill-angular.js",
         "content/fill-liz.js",
-        "content/fill-legacy.js",
         "content/fill-bacninh.js",
+        "content/attach-core.js",
         "content/chosen-agency.js",
         "content/fill-surveyjs.js",
+        "content/tu-phap-moi.js",
+        "content/field-review-surveyjs.js",
+        "content/field-review-angular.js",
+        "content/lien-thong.js",
+        "content/bxd/portal.js",
+        "content/bxd/field-review-formio.js",
+        "content/business-registration-adapter.js",
         "content/procedures/business-registration.js",
-        "content/procedures/enterprise-registration.js",
-        "content/portal-login.js",
-        "content/agency-select.js",
-        "content/portal-quangninh.js",
-        "content/portal-doi-ma-tthc.js",
+        "content/portal-dvc.js",
+        "content/portal-mae.js",
+        "content/guided-steps.js",
         "content/review.js",
+        "content/vneid-sso.js",
+        "content.js",
+        "content/split-attach.js",
         "content/form-snapshot/read.js",
         "content/form-snapshot/labels.js",
         "content/form-snapshot/rules.js",
         "content/form-snapshot/tracker.js"
       ],
-      "css": [
-        "content/bbox-overlay.css"
-      ],
+      "css": ["content/bbox-overlay.css"]
+    },
+    {
+      "matches": ["https://dichvucongnganhtuphap.moj.gov.vn/*"],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": ["content/moj-upload-watch-main.js"],
       "run_at": "document_start"
     },
     {
-      "matches": [
-        "https://dichvucongnnmt.mae.gov.vn/*"
-      ],
+      "matches": ["https://dichvucong.gov.vn/*"],
       "all_frames": true,
       "world": "MAIN",
-      "js": [
-        "content/attach-mae-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://dichvucong.gov.vn/*"
-      ],
-      "all_frames": true,
-      "world": "MAIN",
-      "js": [
-        "content/surveyjs-main.js",
-        "content/attach-preview-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://dichvucong.lamdong.gov.vn/*"
-      ],
-      "all_frames": true,
-      "world": "MAIN",
-      "js": [
-        "content/fill-lamdong-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://*.gov.vn/*",
-        "https://dichvucongnganhtuphap.moj.gov.vn/*",
-        "https://tokhaidientu.moj.gov.vn/*",
-        "https://dichvucongbyt.moh.gov.vn/*",
-        "https://hokinhdoanh.dkkd.gov.vn/*",
-        "https://dangkyquamang.dkkd.gov.vn/*",
-        "https://lienthong.dichvucong.gov.vn/*",
-        "https://dichvucong.gov.vn/*",
-        "https://*.laichau.gov.vn/*",
-        "https://dichvucongbnv.moha.gov.vn/*",
-        "https://motcua.moha.gov.vn/*",
-        "https://dichvucong-tthc.moit.gov.vn/*",
-        "https://dvc.moc.gov.vn/*",
-        "https://dichvucong.bacninh.gov.vn/*",
-        "https://dichvucong.quangngai.gov.vn/*",
-        "https://dichvucong.khanhhoa.gov.vn/*",
-        "https://dichvucong.lamdong.gov.vn/*",
-        "https://dichvucong.bvhttdl.gov.vn/*",
-        "https://dichvucongnnmt.mae.gov.vn/*",
-        "https://dichvucong.danang.gov.vn/*",
-        "https://dvc.moet.gov.vn/*",
-        "https://dichvucong.quangninh.gov.vn/*",
-        "https://dichvucong.ninhbinh.gov.vn/*"
-      ],
-      "all_frames": true,
-      "world": "MAIN",
-      "js": [
-        "content/formio-select-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://dichvucongnganhtuphap.moj.gov.vn/*"
-      ],
-      "all_frames": true,
-      "world": "MAIN",
-      "js": [
-        "content/moj-upload-watch-main.js"
-      ],
+      "js": ["content/surveyjs-main.js", "content/attach-preview-main.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "popup.html",
-        "popup.css",
-        "popup.js",
-        "preview.html",
-        "preview.js",
-        "popup-locations.js",
-        "changelog.js",
-        "api/*",
-        "lib/*",
-        "vendor/*",
-        "assets/icons/*"
+        "sidebar.html", "sidebar.css", "sidebar.js", "preview.html", "preview.js",
+        "companion.html", "companion.js",
+        "services/*", "api/*", "lib/*", "vendor/*", "assets/*",
+        "permission.html", "permission.js"
       ],
       "matches": [
         "https://*.gov.vn/*",
+        "https://sso.dancuquocgia.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
         "https://hokinhdoanh.dkkd.gov.vn/*",
-        "https://dangkyquamang.dkkd.gov.vn/*",
         "https://lienthong.dichvucong.gov.vn/*",
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",
         "https://dichvucongbnv.moha.gov.vn/*",
-        "https://motcua.moha.gov.vn/*",
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*",
         "https://dichvucong.quangngai.gov.vn/*",
         "https://dichvucong.khanhhoa.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
@@ -213,8 +158,7 @@
         "https://dichvucongnnmt.mae.gov.vn/*",
         "https://dichvucong.danang.gov.vn/*",
         "https://dvc.moet.gov.vn/*",
-        "https://dichvucong.quangninh.gov.vn/*",
-        "https://dichvucong.ninhbinh.gov.vn/*"
+        "https://dichvucong.quangninh.gov.vn/*"
       ]
     }
   ]

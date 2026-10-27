@@ -92,8 +92,7 @@ const PdfConvert = {
   _hasDifferentPageSizes(pages) {
     if (!Array.isArray(pages) || pages.length < 2) return false;
     const first = pages[0];
-    // Máy scan thường lệch 1-2 pt giữa hai mặt cùng một giấy tờ. Sai số đó không đáng để
-    // đổi cấu trúc PDF; chỉ chuẩn hóa khi kích thước thực sự khác nhau.
+    // Sai số 1-2pt từ máy scan không đáng để thay cấu trúc PDF.
     return pages.some((page) =>
       Math.abs(Number(page.width) - Number(first.width)) > 2 ||
       Math.abs(Number(page.height) - Number(first.height)) > 2
@@ -105,8 +104,7 @@ const PdfConvert = {
     const MARGIN = 24;
     const width = Number(embedded.width);
     const height = Number(embedded.height);
-    // Không phóng trang scan nhỏ: phóng CCCD cỡ thật lên kín A4 làm ảnh mờ. Trang lớn
-    // chỉ được thu nhỏ vừa khung, luôn giữ đúng tỷ lệ và nguyên stream ảnh/PDF nguồn.
+    // Không phóng CCCD nhỏ lên kín A4; chỉ thu nhỏ trang lớn để tránh ảnh mờ/phóng nền.
     const scale = Math.min(
       1,
       (A4_WIDTH - MARGIN * 2) / width,
@@ -134,14 +132,13 @@ const PdfConvert = {
   },
 
   // Gộp nhiều file ({name,type,dataUrl}) theo THỨ TỰ → 1 PDF, LOSSLESS.
-  // Engine tự chuẩn hóa khung A4 khi các trang nguồn khác kích thước; nội dung gốc không bị rasterize.
+  // Engine tự chuẩn hóa A4 khi trang nguồn thật sự khác kích thước; không rasterize PDF nguồn.
   async mergeToPdf(sources, name) {
     const segments = (sources || []).map((_, fileIndex) => ({ fileIndex, pageIndexes: null }));
     return this.composeSegmentsToPdf(sources, segments, name || "cccd");
   },
 
-  // Dựng 1 PDF từ các đoạn trang BE chỉ định. segments giữ đúng thứ tự cần đính:
-  // [{fileIndex, pageIndexes:[0,1]}]. pageIndexes=null nghĩa là lấy toàn bộ file nguồn.
+  // Dựng PDF từ các đoạn trang BE chỉ định. pageIndexes=null nghĩa là lấy toàn bộ file.
   async composeSegmentsToPdf(sourceFiles, segments, name) {
     if (!window.PDFLib) throw new Error("Thiếu thư viện PDF (pdf-lib).");
     const { PDFDocument } = window.PDFLib;
@@ -170,7 +167,9 @@ const PdfConvert = {
       const indexes = Array.isArray(segment?.pageIndexes)
         ? segment.pageIndexes.map(Number)
         : src.getPageIndices();
-      if (!indexes.length || indexes.some((index) => !Number.isInteger(index) || index < 0 || index >= src.getPageCount())) {
+      if (!indexes.length || indexes.some((index) =>
+        !Number.isInteger(index) || index < 0 || index >= src.getPageCount()
+      )) {
         throw new Error(`Khoảng trang của ${source.name || sourceIndex} không hợp lệ.`);
       }
       for (const index of indexes) {

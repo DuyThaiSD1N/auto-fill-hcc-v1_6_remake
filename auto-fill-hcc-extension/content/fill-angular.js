@@ -1,6 +1,6 @@
-// Engine fill form Angular (formControlName + Angular Material). Tách từ content.js — dùng namespace window.__HCC__.
+// Engine fill form Angular (formControlName + Angular Material). Tách từ content.js — dùng namespace window.__TLND__.
 (() => {
-  const H = window.__HCC__ || (window.__HCC__ = {});
+  const H = window.__TLND__ || (window.__TLND__ = {});
   const {
     sleep, norm, setNativeValue, isVisible, waitFor, fieldCandidates, findFormControl,
     markFilled, markUnfilled, markDefaultsYellow, clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles,
@@ -42,10 +42,28 @@ async function fillFormAngular(fields) {
     // sdt-nguoiyeucau: SĐT đọc trên giấy là số của NGƯỜI KÝ TỜ KHAI. Ô "Số điện thoại" lại nằm
     // trong khối Thông tin người yêu cầu (cổng đổ theo tài khoản đăng nhập) → chỉ điền khi hai
     // người là MỘT; khác người thì bỏ qua, không điền số của người khác.
+    // Value là OBJECT {sdt, ten} — thiếu nhánh này thì nó rơi xuống fillNgText ở dưới và ghi
+    // thẳng "[object Object]" vào ô số điện thoại.
     if (f.comp === "sdt-nguoiyeucau") {
       try {
-        const ok = await fillNycSdtIfSameRequester(f);
-        if (ok) result.filled++;
+        const info = f.value || {};
+        const req = readRequesterIdentity();
+        const tenForm = norm(req.ten);
+        const tenGiay = norm(info.ten);
+        if (!tenForm || !tenGiay || tenForm !== tenGiay) {
+          console.log(`[AutoFill-NG] NycSdt: bỏ qua — người yêu cầu trên form "${req.ten}" ≠ tờ khai "${info.ten || ""}"`);
+        } else {
+          const el = findFormControl(fieldCandidates({ name: f.name }));
+          if (!el) {
+            result.notFound.push(f.name);
+            console.warn("[AutoFill-NG] NycSdt: không tìm thấy ô số điện thoại");
+          } else if (fillNgText(el, info.sdt)) {
+            result.filled++;
+          } else {
+            result.notFound.push(f.name);
+            markUnfilled(el);
+          }
+        }
       } catch (e) {
         result.errors.push(f.name);
         console.warn("[AutoFill-NG] Lỗi điền NycSdt:", e);
@@ -109,6 +127,8 @@ async function fillFormAngular(fields) {
       let ok = false;
       if (el.tagName.toLowerCase() === "mat-radio-group" || type === "radio") ok = fillNgRadio(el, f.value);
       else if (type === "checkbox") ok = await fillNgCheckbox(el, f.value);
+      // Value của "sao-tu-o" là OBJECT {tu}; thiếu nhánh này thì rơi xuống fillNgText và ghi
+      // "[object Object]" vào ô chủ hộ (khai tử liên thông).
       else if (type === "sao-tu-o") ok = await fillNgSaoTuO(el, f.value);
       else if (type === "ngaysinh") ok = await fillNgNgaySinh(el, f.value);
       else if (type === "date") ok = fillNgDate(el, f.value);
@@ -202,9 +222,7 @@ function ngVisibleInputs(el) {
 }
 
 function fillNgText(el, value) {
-  const inp = el.matches?.("input, textarea")
-    ? el
-    : el.querySelector("input.mat-input-element, textarea.mat-input-element") || ngVisibleInputs(el)[0] || el.querySelector("input, textarea");
+  const inp = el.querySelector("input.mat-input-element") || ngVisibleInputs(el)[0] || el.querySelector("input");
   if (!inp) return false;
   setNativeValue(inp, String(value));
   inp.dispatchEvent(new Event("blur", { bubbles: true }));
@@ -302,58 +320,13 @@ async function fillNgNgaySinh(el, value) {
 }
 
 // ng-select: nếu đã đúng giá trị → ok; nếu chưa → mở → (gõ search) → chờ option → chọn.
-const activeNgPanel = () => {
-  const panels = Array.from(document.querySelectorAll("ng-dropdown-panel"));
-  return panels.find((panel) => isVisible(panel)) || panels[panels.length - 1] || null;
-};
-
-const panelOptions = () => {
-  const panel = activeNgPanel();
-  return panel ? Array.from(panel.querySelectorAll(".ng-option")) : [];
-};
+const panelOptions = () =>
+  Array.from(document.querySelectorAll("ng-dropdown-panel .ng-option, .ng-dropdown-panel .ng-option"));
 
 // Khớp 2 chiều: option == want, hoặc chứa nhau (vd "Việt Nam" vs "Cộng hòa ... Việt Nam").
 function ngOptMatch(text, want) {
   const t = norm(text);
   return !!t && (t === want || t.includes(want) || want.includes(t));
-}
-
-// Hai kiểu đặt dấu cùng tồn tại: backend gửi kiểu mới ("Hòa", "Thúy"), cổng có nơi còn kiểu cũ
-// ("Hoà", "Thuý"). Hai chuỗi khác mã ký tự nên so thẳng là trượt. Chỉ đổi ở CUỐI âm tiết (giống
-// _modern_tone của backend app/locations/catalog.py) để không đụng tên đúng như "Hoàng", "Quỳnh".
-const DAU_CU_SANG_MOI = {
-  "oà": "òa", "oá": "óa", "oả": "ỏa", "oã": "õa", "oạ": "ọa",
-  "oè": "òe", "oé": "óe", "oẻ": "ỏe", "oẽ": "õe", "oẹ": "ọe",
-  "uỳ": "ùy", "uý": "úy", "uỷ": "ủy", "uỹ": "ũy", "uỵ": "ụy",
-};
-const DAU_MOI_SANG_CU = Object.fromEntries(Object.entries(DAU_CU_SANG_MOI).map(([cu, moi]) => [moi, cu]));
-const RE_DAU_CU = new RegExp(`(?<!q)(${Object.keys(DAU_CU_SANG_MOI).join("|")})(?![\\p{L}])`, "gu");
-const RE_DAU_MOI = new RegExp(`(?<!q)(${Object.keys(DAU_MOI_SANG_CU).join("|")})(?![\\p{L}])`, "gu");
-const doiDauMoi = (s) => String(s || "").normalize("NFC").replace(RE_DAU_CU, (m) => DAU_CU_SANG_MOI[m]);
-const doiDauCu = (s) => String(s || "").normalize("NFC").replace(RE_DAU_MOI, (m) => DAU_MOI_SANG_CU[m]);
-
-// Tên Phường/Xã bỏ tiền tố loại đơn vị + quy về dấu kiểu mới: "Phường Hiệp Hoà" → "hiệp hòa".
-// Tự chuẩn hoá (không dùng H.norm) để test nạp được hàm thuần khi không có content.js.
-function tenXaTran(value) {
-  return doiDauMoi(String(value || "").normalize("NFC").trim().toLowerCase().replace(/\s+/g, " "))
-    .replace(/^(xã|phường|thị trấn|đặc khu)\s+/, "");
-}
-
-// Cổng liên thông có danh mục CHẬM hơn danh mục hiện hành: đơn vị đã lên phường vẫn liệt kê "Xã …"
-// (gặp ở Hiệp Hòa, Bắc Ninh — backend gửi "Phường Hiệp Hòa", cổng chỉ có "Xã Hiệp Hòa"). Trả vị trí
-// option trùng TÊN TRẦN với tên cần chọn. Chỉ nhận khi đúng MỘT option trùng: tỉnh có cả "Phường X"
-// lẫn "Xã X" là hai đơn vị khác nhau, không được đoán. Không trùng/trùng nhiều → -1.
-function chonXaLechTienTo(texts, wanted) {
-  const tran = tenXaTran(wanted);
-  if (!tran) return -1;
-  const khop = [];
-  (texts || []).forEach((text, i) => { if (tenXaTran(text) === tran) khop.push(i); });
-  return khop.length === 1 ? khop[0] : -1;
-}
-
-function ngSelectedMatches(ng, want) {
-  const selected = (ng.querySelector(".ng-value-label, .ng-value") || {}).textContent || "";
-  return !!selected && ngOptMatch(selected, want);
 }
 
 const NG_SELECT_LABELS = {
@@ -627,37 +600,6 @@ async function fillNycBuThieu(info) {
   return n;
 }
 
-// Bỏ dấu + gộp khoảng trắng để so tên bất chấp OCR viết hoa/thiếu dấu ("ĐĂNG VINH" ~ "Dang Vinh").
-function foldVnName(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Điền SĐT vào ô Người yêu cầu CHỈ KHI tên người yêu cầu trên tờ khai trùng tên người yêu cầu
-// cổng đã đổ sẵn trên form. Khác tên → số điện thoại đó không phải của người nộp → KHÔNG điền.
-async function fillNycSdtIfSameRequester(f) {
-  const info = f.value || {};
-  const req = readRequesterIdentity();
-  const tenForm = foldVnName(req.ten);
-  const tenGiay = foldVnName(info.ten);
-  if (!tenForm || !tenGiay || tenForm !== tenGiay) {
-    console.log(`[AutoFill-NG] NycSdt: bỏ qua — người yêu cầu trên form "${req.ten}" ≠ tờ khai "${info.ten || ""}"`);
-    return false;
-  }
-  const el = findFormControl(fieldCandidates({ name: f.name }));
-  if (!el) {
-    console.warn("[AutoFill-NG] NycSdt: không tìm thấy ô số điện thoại");
-    return false;
-  }
-  return fillNgText(el, info.sdt);
-}
-
 // mat-select (Angular Material) — dùng cho danh mục ngắn (Giới tính, Loại cư trú...).
 async function fillMatSelect(ms, value, wrapper) {
   const want = norm(value);
@@ -677,7 +619,8 @@ async function fillMatSelect(ms, value, wrapper) {
   if (!target) {
     console.warn(`[AutoFill-NG] mat-select [${fcn}] không khớp "${value}". Option:`,
       list.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 25));
-    await ngAbortCombobox(null);
+    const bd = document.querySelector(".cdk-overlay-backdrop");
+    if (bd) bd.click();
     return false;
   }
   target.click();
@@ -686,10 +629,7 @@ async function fillMatSelect(ms, value, wrapper) {
   return true;
 }
 
-// lechTienTo: tên Phường/Xã đầy đủ mà lượt trước không khớp — `value` lúc đó là tên trần để gõ lọc,
-// và option chỉ được chọn qua chonXaLechTienTo (không dùng khớp "chứa nhau", vì "Hiệp Hòa" nằm
-// trong cả "Xã Hiệp Hòa Đông").
-async function fillNgSelect(el, value, { lechTienTo = "" } = {}) {
+async function fillNgSelect(el, value) {
   const ng = el.querySelector("ng-select") || (el.tagName.toLowerCase() === "ng-select" ? el : null);
   if (!ng) {
     // Một số field (Giới tính, Loại cư trú) dùng mat-select thay vì ng-select.
@@ -701,69 +641,43 @@ async function fillNgSelect(el, value, { lechTienTo = "" } = {}) {
   const fcn = el.getAttribute("formcontrolname") || "";
 
   // (1) Đã chọn sẵn đúng giá trị (vd mặc định "Việt Nam"/"Thường trú") → coi như thành công.
-  if (ngSelectedMatches(ng, want)) { markFilled(ng); return true; }
+  const cur = norm((ng.querySelector(".ng-value-label, .ng-value") || {}).textContent || "");
+  if (cur && ngOptMatch(cur, want)) { markFilled(ng); return true; }
 
   const ctrl = ng.querySelector(".ng-select-container") || ng;
-  let lastOptions = [];
+  // (2) Mở panel — CHỈ mousedown (tránh mousedown+click làm toggle đóng lại).
+  ctrl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  const ready = await waitFor(() => panelOptions().length > 0 || ng.querySelector("input[type=text]"), 1500);
+  if (!panelOptions().length && !ready) { ctrl.click(); await sleep(200); }
 
-  // Click option của ng-select đôi khi chỉ đổi phần hiển thị tạm thời hoặc bị Angular reset về
-  // giá trị cũ. Phải VERIFY nhãn đã chọn rồi mới cho field kế tiếp chạy (đặc biệt "Khác" mới
-  // làm Angular render input *DantocKhac).
-  for (let attempt = 0; attempt < 3; attempt++) {
-    let panel = activeNgPanel();
-    if (!panel) {
-      // Mở panel bằng mousedown trước; chỉ click fallback nếu panel thực sự chưa xuất hiện.
-      ctrl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      panel = await waitFor(() => activeNgPanel(), 1500, 50);
-      if (!panel) {
-        ctrl.click();
-        panel = await waitFor(() => activeNgPanel(), 1500, 50);
-      }
-    }
-
-    const search = ng.querySelector("input[type=text]");
-    if (search) {
-      search.focus();
-      setNativeValue(search, String(value));
-      search.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-
-    // Chờ option thật sau khi search (bỏ "không có"/"đang tải").
-    await waitFor(() => {
-      const options = panelOptions();
-      return options.length && options.some((option) => {
-        const text = norm(option.textContent);
-        return text && !text.includes("không có") && !text.includes("đang tải");
-      });
-    }, 3000, 50);
-
-    const options = panelOptions();
-    lastOptions = options;
-    const target = lechTienTo
-      ? options[chonXaLechTienTo(options.map((option) => option.textContent), lechTienTo)]
-      : options.find((option) => norm(option.textContent) === want)
-        || options.find((option) => ngOptMatch(option.textContent, want));
-    if (!target) break;
-
-    target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    target.click();
-
-    const committed = await waitFor(() => ngSelectedMatches(ng, want), 1500, 50);
-    if (committed) {
-      markFilled(ng);
-      return true;
-    }
-
-    // Angular chưa commit: chờ panel đóng/reset rồi thử lại, không báo thành công giả.
-    await sleep(150);
+  // (3) Gõ tìm kiếm nếu ng-select có ô search (danh mục dài như dân tộc/quốc tịch).
+  const search = ng.querySelector("input[type=text]");
+  if (search) {
+    search.focus();
+    setNativeValue(search, String(value));
+    search.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  const current = (ng.querySelector(".ng-value-label, .ng-value") || {}).textContent || "";
-  console.warn(`[AutoFill-NG] ng-select [${fcn}] không commit "${value}" (đang là "${current.trim()}"). Option: `
-    + lastOptions.map((option) => option.textContent.trim()).filter(Boolean).slice(0, 30).join(" | "));
-  // Bỏ dở: phải xoá chữ đã gõ + đóng panel, nếu không ô này chặn luôn thao tác tay của cán bộ.
-  await ngAbortCombobox(ng.querySelector("input[type=text]"));
-  return false;
+  // (4) Chờ option thật (bỏ "không có"/"đang tải").
+  await waitFor(() => {
+    const o = panelOptions();
+    return o.length && o.some((x) => { const t = norm(x.textContent); return t && !t.includes("không có") && !t.includes("đang tải"); });
+  }, 3000);
+
+  const opts = panelOptions();
+  let target = opts.find((o) => norm(o.textContent) === want) || opts.find((o) => ngOptMatch(o.textContent, want));
+  if (!target) {
+    console.warn(`[AutoFill-NG] ng-select [${fcn}] không khớp "${value}". Option:`,
+      opts.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 25));
+    if (search) setNativeValue(search, "");
+    ng.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); // đóng
+    return false;
+  }
+  target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  target.click();
+  await sleep(200);
+  markFilled(ng);
+  return true;
 }
 
 // Tìm input trong khối theo từ khóa placeholder/aria-label.
@@ -775,111 +689,36 @@ function ngFindInput(el, keywords) {
   });
 }
 
-// Trả ô combobox về trạng thái CÁN BỘ BẤM ĐƯỢC sau khi bỏ dở: xoá chữ đã gõ + đóng dropdown.
-//
-// Phải làm, vì bỏ dở mà để nguyên thì cán bộ không chọn tay được nữa (gặp thật ở khối địa chỉ
-// liên thông khai sinh — "treo, không bấm vào chọn hẳn tỉnh và phường/xã"):
-//   1. Panel mat-autocomplete/ng-select đang mở là một lớp overlay phủ lên form — bấm vào ô
-//      Tỉnh/Phường-Xã chỉ trúng lớp overlay đó;
-//   2. Chữ ta gõ còn nằm trong ô lọc nên danh sách mở ra rỗng ("không có dữ liệu"), trông như
-//      dropdown chết.
-async function ngAbortCombobox(input, restore = "") {
-  if (input) {
-    try {
-      // Trả về ĐÚNG chữ của cổng TRƯỚC khi ta gõ vào (thường là rỗng, nhưng có hồ sơ cổng đã
-      // đổ sẵn tỉnh/xã từ VNeID) — xoá trắng vô điều kiện là tự tay phá dữ liệu đúng của cổng.
-      setNativeValue(input, restore); // đã tự bắn input/change → Angular cập nhật lại chữ lọc
-      for (const type of ["keydown", "keyup"]) {
-        input.dispatchEvent(new KeyboardEvent(type, {
-          key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true, cancelable: true,
-        }));
-      }
-      if (typeof input.blur === "function") input.blur();
-    } catch (e) { /* ô có thể đã bị Angular thay */ }
-  }
-  // mat-* đóng theo backdrop; ng-select không có backdrop nên phải "bấm ra ngoài".
-  document.querySelectorAll(".cdk-overlay-backdrop").forEach((bd) => {
-    try { bd.click(); } catch (e) { /* ignore */ }
-  });
-  if (document.querySelector("ng-dropdown-panel")) {
-    for (const type of ["mousedown", "click"]) {
-      document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }));
-    }
-  }
-  await sleep(120);
-}
-
 // Chọn 1 option mat-autocomplete (overlay) sau khi gõ vào input.
-// Ô Tỉnh/Phường-Xã trên các form Angular có nơi là mat-autocomplete, nơi là ng-select, nên quét
-// option ở CẢ HAI loại panel thay vì chỉ .mat-autocomplete-panel (chỉ quét một loại thì bên kia
-// luôn trượt: hết 2,5 giây không thấy option nào rồi bỏ dở với dropdown còn mở).
-async function ngPickAutocomplete(input, value, { lechTienTo = "" } = {}) {
+async function ngPickAutocomplete(input, value) {
   if (!input || !value) return false;
-  const before = String(input.value || "");
-  input.focus();
-  setNativeValue(input, String(value));
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  const panelOpt = () => [
-    ...document.querySelectorAll(".mat-autocomplete-panel mat-option, .cdk-overlay-pane mat-option"),
-    ...panelOptions(),
-  ];
-  const realOpt = () => panelOpt().filter((o) => {
-    const text = norm(o.textContent);
-    return text && !text.includes("không có") && !text.includes("đang tải");
-  });
-  const want = doiDauMoi(norm(value));
-  const pick = () => {
-    const opts = realOpt();
-    if (lechTienTo) return opts[chonXaLechTienTo(opts.map((o) => o.textContent), lechTienTo)];
-    const text = (o) => doiDauMoi(norm(o.textContent));
-    return opts.find((o) => text(o) === want) || opts.find((o) => text(o).includes(want));
+  // Chuẩn hoá gạch nối (en/em-dash "–—" → hyphen "-") — tên xã sáp nhập hay lệch dấu gạch giữa
+  // danh mục BE và option cổng (memory select-endash-vs-hyphen-diaban).
+  const nd = (s) => norm(s).replace(/[‐-―]/g, "-");
+  // Bỏ tiền tố hành chính để khớp cả khi option hiện tên trần ("Lâm Đồng" vs "Tỉnh Lâm Đồng").
+  const bare = (s) => String(s).replace(/^\s*(tỉnh|thành phố|tp\.?|quận|huyện|phường|xã|thị trấn|thị xã)\s+/i, "").trim();
+  const panelOpt = () => Array.from(document.querySelectorAll(".mat-autocomplete-panel mat-option, .cdk-overlay-pane mat-option"));
+  const type = async (text) => {
+    input.focus();
+    setNativeValue(input, String(text));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return await waitFor(() => panelOpt().length > 0, 2500);
   };
-  // Chờ tới khi có option KHỚP chứ không chỉ "có option": panel hiện danh sách cũ ngay lúc gõ, cổng
-  // lọc xong mới thay — chọn sớm là so với danh sách chưa lọc rồi kết luận không khớp.
-  await waitFor(() => pick(), 2500);
-  const t = pick();
+  await type(value);
+  // Gõ nguyên value không ra option (cổng lọc theo tên trần) → thử lại bằng tên đã bỏ tiền tố.
+  if (!panelOpt().length && bare(value) !== String(value)) await type(bare(value));
+  const want = nd(value), wantBare = nd(bare(value));
+  const opts = panelOpt();
+  const t = opts.find((o) => nd(o.textContent) === want)
+         || opts.find((o) => nd(o.textContent) === wantBare)
+         || opts.find((o) => nd(o.textContent).includes(wantBare));
   if (!t) {
-    const opts = realOpt();
-    // In thành chuỗi: mảng bị Console thu gọn thành "Array(15)", báo lỗi không đọc được.
-    console.warn(`[AutoFill-NG] autocomplete không khớp "${value}". Có ${opts.length} option: `
-      + opts.map((o) => o.textContent.trim()).slice(0, 30).join(" | "));
-    await ngAbortCombobox(input, before);
+    console.warn(`[AutoFill-NG] autocomplete không khớp "${value}". Có:`, opts.map((o) => o.textContent.trim()).slice(0, 15));
     return false;
   }
-  t.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   t.click();
   await sleep(600); // chờ cấp dưới (xã) render
   return true;
-}
-
-// Chọn một cấp địa bàn (Tỉnh hoặc Phường/Xã) trong khối địa chỉ.
-// Ô đó là ng-select thì đi đường fillNgSelect (có VERIFY nhãn đã commit + tự dọn dẹp), còn lại
-// mới coi là mat-autocomplete. Trượt cấp nào thì ô cấp đó phải sạch chữ + đóng dropdown để cán
-// bộ chọn tay được, và tô đỏ cho thấy chỗ còn thiếu.
-// laXa: cấp Phường/Xã — không có đúng tên thì thử lại theo tên trần (xem chonXaLechTienTo).
-async function fillNgAreaLevel(el, input, wanted, { laXa = false } = {}) {
-  if (!input || !wanted) return false;
-  const host = input.closest("ng-select");
-  const chon = (value, opts) => (host ? fillNgSelect(host, value, opts) : ngPickAutocomplete(input, value, opts));
-  let ok = await chon(wanted);
-  const tran = laXa ? tenXaTran(wanted) : "";
-  if (!ok && tran) {
-    // Gõ tên trần để ô lọc của cổng trả về cả "Xã X" lẫn "Phường X"; ô lọc của cổng so theo mã ký
-    // tự nên gõ thêm một lượt dấu kiểu cũ ("hiệp hoà") cho cổng còn ghi kiểu cũ.
-    for (const term of [...new Set([tran, doiDauCu(tran)])]) {
-      ok = await chon(term, { lechTienTo: wanted });
-      if (ok) {
-        console.info(`[AutoFill-NG] Phường/Xã "${wanted}" không có đúng tên trên cổng — đã chọn theo "${term}".`);
-        break;
-      }
-    }
-  }
-  if (!ok) {
-    // Hai nhánh trên đã tự trả ô về chữ cũ; đây chỉ là lượt chốt đóng dropdown còn sót.
-    await ngAbortCombobox(null);
-    markUnfilled(input.closest("mat-form-field") || host || input);
-  }
-  return ok;
 }
 
 // diachi: value { tinh, xa, diaChi }. Cascade Tỉnh → Xã → ô địa chỉ.
@@ -888,15 +727,14 @@ async function fillNgDiaChi(el, value) {
   let any = false;
 
   const tinhInput = ngFindInput(el, ["tỉnh", "thành phố"]);
-  const tinhOk = await fillNgAreaLevel(el, tinhInput, data.tinh);
-  if (tinhOk) any = true;
-  // Xã/phường xuất hiện sau khi chọn tỉnh — chưa chọn được tỉnh thì danh sách xã không bao giờ
-  // nạp, gõ vào chỉ để lại chữ lọc rác trong ô. Bỏ hẳn cấp xã, để cán bộ chọn tay cả hai cấp.
-  if (data.xa && (tinhOk || !data.tinh)) {
-    await waitFor(() => ngFindInput(el, ["xã", "phường"]), 1500);
-    if (await fillNgAreaLevel(el, ngFindInput(el, ["xã", "phường"]), data.xa, { laXa: true })) any = true;
-  } else if (data.xa) {
-    console.warn(`[AutoFill-NG] Bỏ qua Phường/Xã "${data.xa}": chưa chọn được Tỉnh "${data.tinh}".`);
+  if (tinhInput && data.tinh) {
+    if (await ngPickAutocomplete(tinhInput, data.tinh)) any = true;
+  }
+  // Xã/phường xuất hiện sau khi chọn tỉnh.
+  await waitFor(() => ngFindInput(el, ["xã", "phường"]), 1500);
+  const xaInput = ngFindInput(el, ["xã", "phường"]);
+  if (xaInput && data.xa) {
+    if (await ngPickAutocomplete(xaInput, data.xa)) any = true;
   }
   // Ô địa chỉ chi tiết (không phải combobox).
   const addrInput = ngFindInput(el, ["địa chỉ", "số nhà", "chi tiết", "thôn"]);
@@ -964,8 +802,14 @@ function fillNgRadio(el, value) {
   const btns = Array.from(el.querySelectorAll("mat-radio-button"));
   if (!btns.length) return false;
   const want = norm(value);
+  // Angular Material có phiên bản đặt value trên mat-radio-button, nhưng form liên thông
+  // hiện tại đặt value trên input[type=radio] bên trong button. Đọc cả hai để không phụ thuộc
+  // vào vị trí attribute của component render ra.
+  const radioValue = (button) =>
+    button.getAttribute("value") || button.querySelector('input[type="radio"]')?.value || "";
   let target =
-    btns.find((b) => b.getAttribute("value") === String(value)) ||
+    btns.find((b) => radioValue(b) === String(value)) ||
+    btns.find((b) => norm(radioValue(b)) === want) ||
     btns.find((b) => norm(b.textContent) === want) ||
     btns.find((b) => norm(b.textContent).includes(want));
   if (!target) return false;
@@ -994,39 +838,26 @@ function readAngularField(f) {
 
   H.readAngularField = readAngularField;
   H.fillFormAngular = fillFormAngular;
-  H.phanTichNgayGio = phanTichNgayGio; // test dùng (tests/test-ngay-gio-lien-thong.js)
-  H.chonXaLechTienTo = chonXaLechTienTo; // test dùng (tests/test-ngay-gio-lien-thong.js)
-  H.chonNguoiYeuCau = chonNguoiYeuCau; // test dùng (tests/test-ngay-gio-lien-thong.js)
   H.resolveAltNameGroups = resolveAltNameGroups; // dùng chung: legacy engine (content.js) cũng gọi
+  H.chonNguoiYeuCau = chonNguoiYeuCau; // test dùng (tests/lien-thong-flow.test.js)
 
-  // ── Điền hộ khối "Chọn cơ quan thực hiện" (bước 01 liên thông khai sinh) ────────────────
-  // Popup gửi plan lấy từ registry (procedures[].agencyFillPlan) đã thay {province}/{ward}.
-  // Dùng ĐÚNG engine fillFormAngular như mọi ô khác — không có logic điền riêng ở đây.
-  //
-  // Guard IsNuocNgoai là bắt buộc: bước kê khai (bước 02) cũng là Angular và cũng có ô select,
-  // bấm nhầm nút ở đó mà không chặn là điền bậy vào biểu mẫu. Không thấy ô này thì im lặng
-  // trả lời "sai trang" chứ không đụng gì.
-  //
-  // KHÔNG tự bấm "Chuyển bước tiếp theo": cán bộ phải rà lại cơ quan trước khi sang bước sau.
+  // Điền hộ bước "Chọn cơ quan thực hiện" (liên thông khai sinh, Angular Material). Dùng LẠI
+  // engine fillFormAngular với plan là hợp đồng fields {name,comp,value} do BE (registry
+  // agencyFillPlan) gửi — KHÔNG đi qua luồng fillFields nên không round-trip fill_report / đổi
+  // state review. Chỉ frame CÓ form chọn cơ quan mới trả lời (self-guard theo formcontrolname đặc
+  // trưng); frame khác im lặng để không cướp sendResponse.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.action !== "fillAgencyByPlan") return;
-    if (!document.querySelector('[formcontrolname="IsNuocNgoai"]')) {
-      sendResponse({ ok: false, error: "Trang hiện tại không phải bước Chọn cơ quan thực hiện." });
-      return;
-    }
+    if (!document.querySelector('[formcontrolname="IsNuocNgoai"]')) return; // không phải frame chọn cơ quan
     (async () => {
       try {
         const r = await fillFormAngular(msg.fields || []);
-        sendResponse({
-          ok: (r.filled || 0) > 0,
-          filled: r.filled || 0,
-          notFound: r.notFound || [],
-          errors: r.errors || [],
-        });
+        sendResponse({ ok: (r.filled || 0) > 0, filled: r.filled || 0,
+                       notFound: r.notFound || [], errors: r.errors || [] });
       } catch (e) {
         sendResponse({ ok: false, error: String((e && e.message) || e) });
       }
     })();
-    return true; // giữ kênh cho sendResponse bất đồng bộ
+    return true; // async sendResponse
   });
 })();
