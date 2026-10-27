@@ -971,6 +971,54 @@
     sendResponse({ ok: true, values });
   });
 
+  // Ô "Lưu thông tin mới sửa đổi vào "Thông tin định danh" của tôi." cuối bước chủ hồ sơ: checkbox Radix
+  // (button role=checkbox) cạnh nhãn; tick thì cổng mở hộp thoại "Ghi đè thông tin mới sửa đổi vào hồ sơ cá nhân?"
+  // (role=alertdialog) — phải bấm "Xác nhận" thì ô mới giữ dấu tick.
+  function ownerProfileSaveCheckbox() {
+    const label = Array.from(document.querySelectorAll("label"))
+      .find((el) => isVisible(el) && fold(el.textContent).startsWith("luu thong tin moi sua doi vao"));
+    let scope = label?.parentElement;
+    for (let i = 0; i < 4 && scope; i++, scope = scope.parentElement) {
+      const box = scope.querySelector('button[role="checkbox"]');
+      if (box) return box;
+    }
+    return null;
+  }
+
+  async function saveOwnerProfile() {
+    const box = ownerProfileSaveCheckbox();
+    if (!box) return { ok: false, error: "không thấy ô Lưu thông tin trên trang" };
+    if (box.getAttribute("aria-checked") === "true") return { ok: true, already: true };
+    box.click();
+    const dialog = await waitFor(() => Array.from(document.querySelectorAll('[role="alertdialog"]'))
+      .find((el) => isVisible(el) && fold(el.textContent).includes("ghi de thong tin")), 3000);
+    if (dialog) {
+      const confirm = Array.from(dialog.querySelectorAll("button"))
+        .find((btn) => fold(btn.textContent) === "xac nhan");
+      if (!confirm) return { ok: false, error: "hộp thoại không có nút Xác nhận" };
+      confirm.click();
+    }
+    // Cổng lưu NGAY khi bấm Xác nhận: hiện toast "Cập nhật thông tin người dùng thành công" và có thể bỏ dấu tick
+    // → toast là tín hiệu chính; ô còn giữ dấu tick (cổng lưu lúc bấm Bước tiếp theo) cũng tính là xong.
+    // React có thể dựng lại ô sau khi đóng hộp thoại → dò lại ô mỗi nhịp, không giữ tham chiếu cũ.
+    const done = await waitFor(() => {
+      if (fold(document.body?.innerText || "").includes("cap nhat thong tin nguoi dung thanh cong")) return "toast";
+      const dialogOpen = Array.from(document.querySelectorAll('[role="alertdialog"]')).some(isVisible);
+      return !dialogOpen && ownerProfileSaveCheckbox()?.getAttribute("aria-checked") === "true" ? "checked" : null;
+    }, 5000);
+    return done ? { ok: true, via: done } : { ok: false, error: "cổng chưa báo cập nhật thành công" };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "saveOwnerProfile") return;
+    // Content script chạy ở mọi frame: chỉ frame có ô này trả lời.
+    if (!ownerProfileSaveCheckbox()) return;
+    saveOwnerProfile()
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  });
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "fillOwnerFields") return;
     const fields = Array.isArray(msg.fields) ? msg.fields : [];
@@ -1183,6 +1231,57 @@
     return chosen;
   }
 
+  // Cổng Bộ Tư pháp có lúc nạp các ô của modal rất chậm: ô hiện chữ nhưng form chưa ghi nhận giá trị, bấm Xác nhận
+  // lúc đó cổng báo "Vui lòng chọn …" và modal đứng nguyên. Chờ các ô có giá trị và đứng yên hai nhịp liền rồi mới bấm.
+  const INFO_SETTLE_MS = 8000;
+  // Sau khi bấm: chờ modal đóng; cổng còn báo lỗi chọn ô thì chờ thêm rồi bấm lại ngay trong trang (không vòng qua BE).
+  const INFO_CLOSE_MS = 15000;
+  const infoDialogOpen = (dialog, btn) => dialog.isConnected && isVisible(dialog) && btn.isConnected && isVisible(btn);
+  // Dòng lỗi cổng chèn dưới ô ("Vui lòng chọn đơn vị tiếp nhận") — lấy đúng nút chữ lá, không lẫn chữ ô bên cạnh.
+  const infoDialogError = (dialog) => {
+    const leaf = Array.from(dialog.querySelectorAll("p,span,div,small"))
+      .find((el) => !el.children.length && fold(el.textContent).startsWith("vui long") && isVisible(el));
+    return leaf ? nodeText(leaf).slice(0, 120) : "";
+  };
+
+  async function settleInfoCombos(dialog) {
+    const snapshot = () => infoCombos(dialog).map((c) => fold(infoComboValue(c))).join("|");
+    const deadline = Date.now() + INFO_SETTLE_MS;
+    let prev = null;
+    let stableSince = 0;
+    while (Date.now() < deadline && dialog.isConnected) {
+      const sig = snapshot();
+      if (sig !== prev) { prev = sig; stableSince = Date.now(); }
+      const stableMs = Date.now() - stableSince;
+      const combos = infoCombos(dialog);
+      // Đủ ô có giá trị + đứng yên ~0,8 giây → bấm. Còn ô trống (ô không áp dụng) mà mọi ô đã đứng yên ~2 giây thì
+      // cũng bấm: chờ tiếp không làm ô đó có giá trị, chỉ làm công dân đợi.
+      if (combos.length && !infoDialogError(dialog)
+          && (stableMs >= 800 && !combos.some(infoComboEmpty) || stableMs >= 2000)) return true;
+      await sleep(200);
+    }
+    return false;
+  }
+
+  async function clickUntilClosed(dialog, btn) {
+    const deadline = Date.now() + INFO_CLOSE_MS;
+    let clicks = 0;
+    while (Date.now() < deadline) {
+      if (!infoDialogOpen(dialog, btn)) return { closed: true, clicks };
+      const before = infoDialogError(dialog);
+      clickLikeUser(btn);
+      clicks += 1;
+      // Chờ modal đóng; cổng hiện dòng lỗi MỚI (bấm lúc chưa nạp xong) thì thôi chờ, sang nhịp bấm lại luôn.
+      await waitFor(() => !infoDialogOpen(dialog, btn) || (infoDialogError(dialog) && infoDialogError(dialog) !== before),
+        2500, 150);
+      if (!infoDialogOpen(dialog, btn)) return { closed: true, clicks };
+      infoLog("confirm:retry", { clicks, error: infoDialogError(dialog) });
+      // Dòng lỗi của cổng ở nguyên tới lần bấm sau → không chờ nó tắt, nghỉ một nhịp cho cổng nạp xong rồi bấm lại.
+      await sleep(1500);
+    }
+    return { closed: !infoDialogOpen(dialog, btn), clicks, error: infoDialogError(dialog) };
+  }
+
   async function confirmInfoModal(executionSubject, infoFields) {
     const btn = Array.from(document.querySelectorAll(
       'button[data-e2e="confirm-button-information"]'
@@ -1193,9 +1292,13 @@
     const fields = Array.isArray(infoFields) ? infoFields.filter((f) => f?.label && f?.value) : [];
     const chosen = fields.length ? await fillInfoFields(dialog, fields) : [];
     const subjectResult = await selectInfoSubject(dialog, executionSubject);
-    infoLog("confirm:click", { executionSubject: executionSubject || null, subjectResult, chosen });
-    clickLikeUser(btn);
-    return { ok: true, ...subjectResult, chosen };
+    const settled = await settleInfoCombos(dialog);
+    infoLog("confirm:click", { executionSubject: executionSubject || null, subjectResult, chosen, settled });
+    const result = await clickUntilClosed(dialog, btn);
+    if (!result.closed) {
+      throw new Error(`Cổng chưa nhận Xác nhận${result.error ? `: ${result.error}` : ""}`);
+    }
+    return { ok: true, closed: true, clicks: result.clicks, ...subjectResult, chosen };
   }
 
   // Modal "Thông tin chung" của wizard hồ sơ: chọn Đối tượng thực hiện theo contract

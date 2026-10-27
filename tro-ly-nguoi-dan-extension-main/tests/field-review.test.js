@@ -156,3 +156,26 @@ test("bản xem trước mở (công dân tự bấm Xem trước, hoặc mở m
   assert.match(sidebar, /__action:field_review_preview_report:\$\{JSON\.stringify\(\{ opened: true, source: "page" \}\)\}/);
   assert.match(sidebar, /if \(!res\?\.opened && previewSeenWhileAssistant\) reportPreviewSeen\(\);/);
 });
+
+test("ô ghi chữ cạnh lựa chọn Khác: tích xong điền luôn apply.extra bằng engine, khai cờ cho BE", () => {
+  assert.match(review, /async function applyExtra\(fields\) \{[\s\S]*?await H\.fillForm\(fields\);[\s\S]*?notFound/);
+  assert.match(review, /await applyValue\(target, slots\(\), String\(msg\.apply\.value \?\? ""\)\)\) && \(await applyExtra\(msg\.apply\.extra\)\)/);
+  assert.match(sidebar, /supportsFieldReviewOtherText: true/);
+});
+
+test("engine fill-legacy tìm ô ghi chữ của Khác theo cấu trúc (quan hệ xác nhận thông tin hộ tịch)", () => {
+  const legacy = strip(fs.readFileSync(path.join(root, "content", "fill-legacy.js"), "utf8"));
+  assert.match(legacy, /nycquanhekhac: "nycQuanHe"/);
+  assert.match(legacy, /function findLegacyRawInput\(field\) \{\s*return findNamedElement\("input", fieldCandidates\(field\)\)\.el \|\| findLegacyOtherTextInput\(field\);/);
+  assert.match(legacy, /let el = findLegacyRawInput\(f\);\s*if \(!el && hasLegacyOtherTextDriver\(f\)\)/);
+});
+
+test("khối lồng (mẹ / cha nuôi): tách từng ô con, dropdown không tên điền theo khối + nhãn, ô năm sinh hỏi như ô ngày", () => {
+  assert.match(review, /function nestedSlots\(area, areaName\)/);
+  assert.match(review, /nestedAreas\.has\(name\) \? nestedSlots\(c, name\) : areaSlots\(c, name\)/);
+  assert.match(review, /fill: \{ containers: \[areaName\], label: cleanLabel\(label\) \}/);
+  assert.match(review, /\{ name: slot\.name, comp: slot\.comp, value, \.\.\.\(slot\.fill \|\| \{\}\) \}/);
+  assert.match(review, /if \(Array\.isArray\(msg\?\.nested\)\) nestedAreas = new Set\(msg\.nested\);/);
+  assert.match(review, /textDateNames\.has\(slot\.name\)\) \{ slot\.kind = "date"; slot\.partialDate = true; \}/);
+  assert.match(sidebar, /supportsFieldReviewNested: true/);
+});

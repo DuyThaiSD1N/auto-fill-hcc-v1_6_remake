@@ -74,6 +74,38 @@
 
   const overlayOptions = () => Array.from(document.querySelectorAll(".cdk-overlay-container mat-option"));
 
+  // Chọn đúng một lựa chọn của mat-select theo NGUYÊN VĂN. Không dùng engine điền chung: engine coi ô đã đúng khi chữ
+  // đang chọn CHỨA / NẰM TRONG chữ cần chọn ("Nhận trực tiếp" ⊂ "Nhận trực tiếp tại nhà qua bưu điện") nên không đổi.
+  const sameText = (a, b) => fold(a).replace(/[.\s]+$/, "") === fold(b).replace(/[.\s]+$/, "");
+
+  // Đổi lựa chọn là cổng VẼ LẠI ô chọn (phần tử cũ bị gỡ khỏi trang, vẫn mang giá trị cũ) → bấm xong tìm lại ô theo
+  // tên rồi mới kiểm.
+  const selectOf = (name) => {
+    const host = byName(name);
+    return host && (host.matches("mat-select") ? host : host.querySelector("mat-select"));
+  };
+
+  async function pickMatOption(name, value) {
+    const select = selectOf(name);
+    if (!select) return false;
+    if (sameText(valueOf(select), value)) return true;
+    const trigger = select.querySelector(".mat-select-trigger") || select;
+    trigger.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    trigger.click();
+    for (let waited = 0; waited < 2500 && !overlayOptions().length; waited += 100) await sleep(100);
+    const hit = overlayOptions().find((o) => sameText(textOf(o), value));
+    if (!hit) {
+      document.querySelector(".cdk-overlay-backdrop")?.click();
+      return false;
+    }
+    hit.click();
+    for (let waited = 0; waited < 1500; waited += 150) {
+      await sleep(150);
+      if (!overlayOptions().length && sameText(valueOf(selectOf(name)), value)) return true;
+    }
+    return sameText(valueOf(selectOf(name)), value);
+  }
+
   async function closeOverlay() {
     document.querySelector(".cdk-overlay-backdrop")?.click();
     for (let waited = 0; waited < 1200 && overlayOptions().length; waited += 100) await sleep(100);
@@ -135,15 +167,11 @@
   async function setGroup(msg) {
     let ok = false;
     const before = missingFields(msg.groups);
-    if (typeof H.fillFormAngular === "function") {
-      try {
-        await H.fillFormAngular([{ name: msg.name, comp: "select", value: msg.value }]);
-        await sleep(900); // ô bưu điện / nơi nhận hiện ra sau khi đổi
-        const now = fold(valueOf(byName(msg.name)));
-        ok = !!now && (now === fold(msg.value) || now.includes(fold(msg.value)));
-      } catch (e) {
-        console.warn("[TLND] đổi cách nhận kết quả lỗi:", e);
-      }
+    try {
+      ok = await pickMatOption(msg.name, msg.value);
+      await sleep(900); // ô bưu điện / nơi nhận hiện ra sau khi đổi
+    } catch (e) {
+      console.warn("[TLND] đổi cách nhận kết quả lỗi:", e);
     }
     // Chỉ nêu ô VỪA mọc ra do lần đổi này (vd địa chỉ nhận bưu điện của đúng giấy đó).
     const fresh = [...missingFields(msg.groups)].filter(([key]) => !before.has(key)).map(([, label]) => label);

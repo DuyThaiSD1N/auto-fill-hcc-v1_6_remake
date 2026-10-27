@@ -88,6 +88,9 @@
     // văn bản ủy quyền với bảng thành phần hồ sơ). BE chỉ bật luồng quét sớm cho client khai
     // cờ này; bản trên chợ không khai → giữ nguyên thứ tự bước cũ.
     supportsOwnerScan: true,
+    // Biết tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" ở bước chủ hồ sơ rồi bấm Xác nhận hộp thoại ghi đè
+    // (portal-dvc.js::saveOwnerProfile). BE chỉ hiện nút lưu khi thấy cờ này.
+    supportsSaveOwnerProfile: true,
     // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
     // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
     supportsProcedureFirst: true,
@@ -126,6 +129,12 @@
     supportsFieldReview: true,
     // Cùng vòng bổ sung ô trên form SurveyJS của trang nộp một trang (content/field-review-surveyjs.js).
     supportsFieldReviewSurvey: true,
+    // Vòng bổ sung ô eForm điền được ô ghi chữ đi kèm lựa chọn "Khác" (apply.extra, content/field-review.js) — vd quan
+    // hệ với người được xác nhận. Thiếu cờ → BE hỏi ô đó như ô chọn thường.
+    supportsFieldReviewOtherText: true,
+    // Vòng bổ sung ô eForm đi vào từng ô con của khối chứa thông tin một người (BE khai `nested`, vd khối mẹ nuôi / cha
+    // nuôi), dropdown không tên điền theo khối + nhãn. Thiếu cờ → BE không bật vòng bổ sung cho thủ tục có khối này.
+    supportsFieldReviewNested: true,
     // Trang nộp một trang, luồng bản 2: thẻ tiến trình nhiều bước (action pipeline_steps), tắt chú giải màu cũ
     // (noLegend), báo BE mỗi khi số ô trống đổi lúc công dân tự gõ trên cổng (__event:field_review_status).
     supportsFlowV2: true,
@@ -136,6 +145,10 @@
     // Cổng Bắc Ninh: biết mở khối "Thông tin trong trường hợp được ủy quyền" (tick ô bổ sung + chọn loại
     // đối tượng theo ô đánh dấu bn-doi-tuong-khac) rồi điền doiTuongKhac*. Thiếu cờ → BE không gửi khối này.
     supportsBacNinhAuthorizedPerson: true,
+    // Cổng Bộ Xây dựng (dvc.moc.gov.vn): nút / lệnh nói chuyển bước của wizard 4 bước, bổ sung ô trên tờ khai Form.io
+    // (content/bxd/field-review-formio.js), chọn hình thức nhận kết quả, bấm Nộp hồ sơ (content/bxd/portal.js).
+    // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Tiếp tục" / "Nộp hồ sơ").
+    supportsBxdFlow: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -509,6 +522,8 @@
   async function ask(message, source = "text", displayText = "", uiOptions = {}) {
     const userInitiated = source === "text" || source === "voice" || source === "chip";
     if (userInitiated) markActivity();
+    // Cán bộ chốt sang đính kèm từ sidebar thay vì nút trên cổng → chụp form lúc này (content/form-snapshot).
+    if (message === "__action:confirm_review") void sendToContent({ action: "formSnapshotCapture", trigger: "chip:confirm_review" });
     if (busy) {
       if (source === "system" || source === "chip") {
         // Trả Promise chỉ resolve sau khi lượt xếp hàng THỰC SỰ gọi xong backend. Queue tách hồ sơ
@@ -1142,7 +1157,7 @@
     c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
-      || c.maeAgencyBlock || c.bcaAgencyBlock
+      || c.maeAgencyBlock || c.lienThongHome
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -1262,9 +1277,8 @@
       attachmentTarget: !!c.attachmentTarget,
       // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
       maeAgencyBlock: !!c.maeAgencyBlock,
-      // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
-      bcaAgencyBlock: !!c.bcaAgencyBlock,
-      bcaAgencyDone: !!c.bcaAgencyDone,
+      // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
+      lienThongHome: !!c.lienThongHome,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -1373,6 +1387,22 @@
     })}`, "system");
   }
 
+  // Bước chủ hồ sơ: tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" + Xác nhận hộp thoại ghi đè, rồi báo BE.
+  async function runSaveOwnerProfile() {
+    setStatus("💾 Đang lưu vào Thông tin định danh…");
+    let res = null;
+    try {
+      res = await sendToContent({ action: "saveOwnerProfile" });
+    } catch (e) {
+      res = { ok: false, error: String(e?.message || e) };
+    }
+    setStatus("");
+    await ask(`__action:save_owner_profile_report:${JSON.stringify({
+      ok: !!res?.ok,
+      error: res?.error || (res ? "" : "không thấy ô Lưu thông tin trên trang"),
+    })}`, "system");
+  }
+
   // Kê khai eForm tư pháp (vòng bổ sung ô): bấm "Xem trước" rồi báo BE. Cổng không mở bản xem trước khi còn ô
   // bắt buộc trống — lúc đó chấm đỏ hiện trong tờ khai, tô lại để BE biết còn mấy ô đỏ.
   // Trợ lý đang tự bấm Xem trước → tín hiệu "bản xem trước vừa mở" của trang là của cú bấm này, không báo trùng.
@@ -1466,7 +1496,8 @@
 
   // ── Cổng liên thông (6 bước): bấm chuyển bước / quay lại, đọc + đổi cách nhận kết quả, bấm Hoàn thành ──
   // Chạy NGOÀI lượt ask() (runActions gọi qua setTimeout 0) như runGuidedNext.
-  let lastLtStep = 0;
+  // Bước đã báo BE gần nhất của cổng dẫn từng bước (liên thông: lienThongStep; Bộ Xây dựng: wizardStep).
+  let lastFamilyStep = 0;
   async function runLienThongMove(a) {
     const expect = Number(a.expect) || 0;
     setStatus(a.back ? "Đang quay lại bước trước…" : "Đang chuyển bước trên trang…");
@@ -1486,7 +1517,7 @@
       const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
       stats = marked?.stats || null;
     }
-    if (moved) lastLtStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
+    if (moved) lastFamilyStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
     setStatus("");
     await ask(`__action:lt_step_report:${JSON.stringify({
       ok: moved, expect, step, back: !!a.back, message: res?.message || "", stats,
@@ -1514,6 +1545,55 @@
     })}`, "system");
   }
 
+  // ── Cổng Bộ Xây dựng (wizard 4 bước): bấm Tiếp tục, đọc + đổi hình thức nhận kết quả, bấm Nộp hồ sơ ──
+  // Chạy NGOÀI lượt ask() như runGuidedNext. Bước đang mở = wizardStep (content.js đọc mat-step-header).
+  async function runBxdMove(a) {
+    const expect = Number(a.expect) || 0;
+    setStatus("Đang chuyển bước trên trang…");
+    const press = sendToContent({ action: "bxdMove" });
+    let step = 0;
+    let moved = false;
+    for (let i = 0; i < 16 && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      step = Number(ctx?.wizardStep) || 0;
+      moved = !!expect && step === expect;
+    }
+    const res = moved ? null : await press;
+    // Form.io chặn ở Thông tin hồ sơ thì báo lỗi dưới từng ô → tô lại theo 3 màu, đếm cho BE mời bổ sung.
+    let stats = null;
+    if (!moved && a.fieldReview) {
+      const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+      stats = marked?.stats || null;
+    }
+    if (moved) lastFamilyStep = step; // trợ lý đã nói câu của bước mới → watcher không báo lại
+    setStatus("");
+    await ask(`__action:bxd_step_report:${JSON.stringify({
+      ok: moved, expect, step, message: res?.message || "", stats,
+    })}`, "system");
+  }
+
+  async function runBxdResult(a) {
+    const set = a.type === "bxd_result_set";
+    setStatus(set ? "Đang đổi hình thức nhận kết quả…" : "Đang đọc hình thức nhận kết quả…");
+    const res = await sendToContent(set
+      ? { action: "bxdResultSet", name: a.name, value: a.value, groups: a.groups || [] }
+      : { action: "bxdResultScan", groups: a.groups || [] });
+    setStatus("");
+    const report = { groups: res?.groups || [], missing: res?.missing || [] };
+    if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
+    await ask(`__action:bxd_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runBxdSubmit() {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ action: "bxdSubmit" });
+    setStatus("");
+    await ask(`__action:bxd_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, missing: res?.missing || [], message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
   let lastPageSig = "";
   // Bước wizard đã báo BE lúc state done (result_step_watch) — chỉ báo lại khi số bước đổi.
   let doneWizardStep = 0;
@@ -1523,6 +1603,10 @@
     // Đang hỏi nơi xử lý / trường hợp: công dân tự bấm Đồng ý trên cổng thì BE phải biết.
     "choose_mae_dialog",
   ];
+  // Sau khi trợ lý điền chủ hồ sơ, công dân có thể tự gõ nốt ô còn trống trên trang thay vì trả lời: số ô còn trống
+  // đổi thì báo BE để BE tự thấy đủ và đưa nút sang bước tiếp. Chỉ ở owner_waiting_next — các state khác giữ chữ ký cũ.
+  const ownerFormSig = (ctx) => (lastState === "owner_waiting_next" && ctx.wizardStep === 1 && ctx.ownerForm
+    ? `${Number(ctx.ownerForm.required) || 0}/${Number(ctx.ownerForm.missing) || 0}` : "");
   const isWatchedState = () => WATCH_STATES.includes(lastState)
     && (lastState !== "filling" || lastReplyData?.procedure_key === "dang-ky-kinh-doanh");
   function schedulePageWatcher() {
@@ -1548,18 +1632,20 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
       const attachRecoveryProbe = lastState === "attaching"
         && (ctx.wizardStep === 3 || ctx.attachmentTarget)
         && watcherTicks % 5 === 0;
-      // Cổng liên thông: đổi bước (công dân tự bấm trên trang) thì báo ở MỌI state đang theo dõi — trợ lý dẫn tiếp từ
-      // bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
-      const ltMoved = !!lastReplyData?.lien_thong && !!ctx.lienThongStep && ctx.lienThongStep !== lastLtStep;
-      if (ltMoved && !watcherPageStatusInFlight) {
-        lastLtStep = ctx.lienThongStep;
+      // Cổng liên thông / Bộ Xây dựng: đổi bước (công dân tự bấm trên trang) thì báo ở MỌI state đang theo dõi — trợ lý
+      // dẫn tiếp từ bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
+      const familyStep = lastReplyData?.lien_thong ? Number(ctx.lienThongStep) || 0
+        : lastReplyData?.bxd ? Number(ctx.wizardStep) || 0 : 0;
+      const stepMoved = !!familyStep && familyStep !== lastFamilyStep;
+      if (stepMoved && !watcherPageStatusInFlight) {
+        lastFamilyStep = familyStep;
         lastPageSig = sig;
         watcherPageStatusInFlight = true;
         try {
@@ -4883,8 +4969,16 @@
         setTimeout(() => { void runLienThongResult(a); }, 0);
       } else if (a.type === "lien_thong_submit") {
         setTimeout(() => { void runLienThongSubmit(); }, 0);
+      } else if (a.type === "bxd_next") {
+        setTimeout(() => { void runBxdMove(a); }, 0);
+      } else if (a.type === "bxd_result_scan" || a.type === "bxd_result_set") {
+        setTimeout(() => { void runBxdResult(a); }, 0);
+      } else if (a.type === "bxd_submit") {
+        setTimeout(() => { void runBxdSubmit(); }, 0);
       } else if (a.type === "attach_authorization_doc") {
         setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
+      } else if (a.type === "save_owner_profile") {
+        setTimeout(() => { void runSaveOwnerProfile(); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
         pipeDone();
         setStatus("Đang điền thông tin chủ hồ sơ…");
@@ -4918,6 +5012,7 @@
         setStatus("Đang điền form…");
         const res = await sendToContent({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
+          formSnapshot: a.formSnapshot || null,
         });
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
@@ -4986,7 +5081,10 @@
           executionSubject: a.executionSubject || null,
           infoFields: a.infoFields || null,
         });
-        await new Promise((r) => setTimeout(r, 1200));
+        // Trang báo modal ĐÃ ĐÓNG (content chờ cổng nhận Xác nhận) → báo trạng thái trang ngay, không đợi nhịp
+        // watcher; mở lại hạn mức cho lần modal sau. Chưa đóng (bản content cũ / lỗi) thì chờ một nhịp như trước.
+        if (res?.closed) infoModalTries = 0;
+        else await new Promise((r) => setTimeout(r, 1200));
         setStatus("");
         if (!res?.ok) {
           console.warn("[TLND-InfoModal][sidebar]", {
@@ -5219,6 +5317,7 @@
       lastPageSig = "";
       fallbackChipShown = false;
       submittedReported = false;
+      infoModalTries = 0; // hạn mức 3 lần xác nhận modal tính theo từng hồ sơ, không theo cả phiên sidebar
       pendingReturnReason = "";
       pendingReturnProcedure = "";
       if (shouldOpenProcedurePicker) {

@@ -666,7 +666,32 @@
     }
   }
 
+  // Ảnh chụp form (content/form-snapshot): đọc lại ô theo đúng thứ tự khớp lúc điền.
+  function readBacNinhField(f) {
+    const name = f && f.name;
+    const comp = String((f && f.comp) || "");
+    if (comp === "bn-select") {
+      const select = findSelectForField(name);
+      return select ? String(select.selectedOptions[0]?.textContent || "").trim() : null;
+    }
+    if (comp === "bn-radio") {
+      const wants = (Array.isArray(f.value) ? f.value : [f.value]).map(fold).filter(Boolean);
+      const inputs = Array.from(document.querySelectorAll(
+        `input[type="radio"][name^="${PFX}"], input[type="checkbox"][name^="${PFX}element_"]`,
+      ));
+      const groups = new Set(inputs.filter((el) => {
+        const lbl = fold(radioLabelText(el));
+        return lbl && wants.some((w) => lbl.includes(w));
+      }).map((el) => el.name));
+      return inputs.filter((el) => groups.has(el.name) && el.checked)
+        .map((el) => radioLabelText(el).replace(/\s+/g, " ").trim());
+    }
+    const el = findElementByClass(name) || findElementByName(name) || findElementByLabel(collectFormElements(), name);
+    return el ? String(el.value || "").trim() : null;
+  }
+
   Object.assign(H, {
+    readBacNinhField,
     isBacNinhForm,
     isBacNinhAccountForm,
     fillFormBacNinh,

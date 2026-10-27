@@ -42,6 +42,7 @@
       #tlnd-fr-cursor { position: fixed; left: 0; top: 0; z-index: 2147483646; pointer-events: none;
         width: 26px; height: 26px; opacity: 0; transition: transform .6s ease, opacity .2s; }
       #tlnd-fr-cursor.show { opacity: 1; }
+      #tlnd-fr-cursor.follow { transition: opacity .2s; }
       #tlnd-fr-cursor::after { content: ""; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px;
         border-radius: 50%; border: 2px solid #1e66f5; opacity: 0; }
       #tlnd-fr-cursor.click::after { animation: tlnd-fr-ripple .5s ease-out; }
@@ -143,6 +144,70 @@
     return out;
   }
 
+  // Khối x-select-area CHỨA thông tin một người (BE khai trong `nested`, vd khối mẹ nuôi / cha nuôi): ô con không có thẻ
+  // x-* riêng — ô chữ / ô ngày / ô tích có name, dropdown thì không có name. Tách từng ô con thành một ô hỏi; dropdown
+  // không tên mang khối + nhãn để engine điền (fill-legacy findNestedLegacyControl) tìm đúng chỗ.
+  let nestedAreas = new Set();
+  // Ô chữ cổng nhận ngày (năm sinh mẹ / cha nuôi "Điền năm"): hỏi như ô ngày, nhận đủ ngày, tháng-năm hoặc chỉ năm.
+  let textDateNames = new Set();
+  const cleanLabel = (t) => String(t || "").replace(/^\(\s*\d+\s*\)\s*/, "").replace(/[:\s]+$/, "").trim();
+
+  function nestedLabel(el, area) {
+    for (let node = el; node && node !== area; node = node.parentElement) {
+      for (let n = node.previousElementSibling; n; n = n.previousElementSibling) {
+        if (n.classList.contains("input-hidden") || n.classList.contains("hidden") || n.tagName === "STYLE") continue;
+        const t = textOf(n);
+        if (t) return t;
+      }
+    }
+    return "";
+  }
+
+  function nestedSlots(area, areaName) {
+    const out = [];
+    const seenRadio = new Set();
+    for (const el of area.querySelectorAll('input[name], [id^="custom-select-"]')) {
+      // Ô con của một thẻ x-* lồng bên trong (ô tích nơi cư trú, khối Tỉnh/Xã) do chính thẻ đó thành ô riêng.
+      if (el.parentElement?.closest(`${SLOT_SELECTOR.replace(/\[name\]/g, "")}`) !== area) continue;
+      if (el.tagName === "INPUT") {
+        const name = el.getAttribute("name");
+        if (/-(month|year|name-date-input)$/.test(name)) continue;
+        const label = nestedLabel(el, area);
+        if (el.type === "checkbox") {
+          if (seenRadio.has(name)) continue;
+          seenRadio.add(name);
+          const boxes = [...area.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(name)}"]`)];
+          const labelOf = (box) => textOf(area.querySelector(`label[for="${CSS.escape(box.id)}"]`)) || box.value || "";
+          out.push({ key: name, name, comp: "x-radio", kind: "radio", label, box: el.parentElement || el,
+            options: boxes.map(labelOf).filter(Boolean), value: () => labelOf(boxes.find((b) => b.checked) || {}) || "",
+            marker: false });
+          continue;
+        }
+        if (/-day$/.test(name)) {
+          const base = name.replace(/-day$/, "");
+          const parts = ["day", "month", "year"].map((p) => area.querySelector(`input[name="${CSS.escape(`${base}-${p}`)}"]`));
+          const read = (p) => String(p?.value || "").trim();
+          out.push({ key: base, name: base, comp: "x-date", kind: "date", label, box: el.parentElement || el,
+            value: () => (parts.every((p) => p && read(p)) ? parts.map(read).join("/") : ""), marker: false });
+          continue;
+        }
+        if (el.disabled || el.readOnly) continue;
+        out.push({ key: name, name, comp: "raw", kind: "text", label, box: visible(el) ? el : (el.parentElement || el),
+          value: () => String(el.value || "").trim(), marker: markerAfter(el) });
+        continue;
+      }
+      const isDefault = el.id.startsWith("custom-select-default-");
+      const header = isDefault ? el.querySelector("div[tabindex]") : selectHeader(el);
+      if (!header) continue;
+      const label = nestedLabel(el, area);
+      const key = `${areaName}#${cleanLabel(label)}`;
+      out.push({ key, name: key, comp: isDefault ? "x-select-default" : "x-select", kind: "select", label,
+        box: header, widget: el, header, fill: { containers: [areaName], label: cleanLabel(label) },
+        value: () => selectValue(header), marker: markerAfter(el) });
+    }
+    return out;
+  }
+
   function simpleSlot(c, name, tag) {
     const base = { key: name, name, comp: tag, label: labelBefore(c),
       marker: !!c.querySelector(".validate-hiden") };
@@ -206,10 +271,14 @@
     for (const c of document.querySelectorAll(SLOT_SELECTOR)) {
       const name = c.getAttribute("name");
       const tag = c.tagName.toLowerCase();
-      if (tag !== "x-select-area" && c.parentElement?.closest("x-select-area")) continue;
-      const found = tag === "x-select-area" ? areaSlots(c, name) : [simpleSlot(c, name, tag)];
+      // Ô x-* nằm trong khối địa chỉ do khối đó lo; nằm trong khối người (nested) thì vẫn là một ô riêng.
+      const parentArea = c.parentElement?.closest("x-select-area");
+      if (tag !== "x-select-area" && parentArea && !nestedAreas.has(parentArea.getAttribute("name"))) continue;
+      const found = tag !== "x-select-area" ? [simpleSlot(c, name, tag)]
+        : nestedAreas.has(name) ? nestedSlots(c, name) : areaSlots(c, name);
       for (const slot of found) {
         if (!slot || !visible(slot.box)) continue;
+        if (slot.kind === "text" && textDateNames.has(slot.name)) { slot.kind = "date"; slot.partialDate = true; }
         // Nhãn cụt ("số:", ": số", rỗng) đi sau một ô khác cùng dòng → ghép nhãn ô trước cho rõ nghĩa.
         const clean = slot.label.replace(/^\(\s*\d+\s*\)\s*/, "").replace(/^[:\s–-]+|[:\s–-]+$/g, "");
         if (clean.length < 5 && lastLabel) slot.label = clean ? `${lastLabel} – ${clean}` : lastLabel;
@@ -269,9 +338,17 @@
   // ── Con trỏ + ô đang hỏi ──
 
   let hintTarget = null;
+  function pointAt(cur, box) {
+    const r = box.getBoundingClientRect();
+    cur.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 120))}px, `
+      + `${Math.round(r.top + r.height * 0.55)}px)`;
+  }
   function placeHint() {
     const hint = document.getElementById("tlnd-fr-hint");
     if (!hint || !hintTarget) return;
+    // Con trỏ bám theo ô khi trang cuộn tiếp (khung cuộn riêng của cổng), như khung gợi ý.
+    const cur = document.getElementById("tlnd-fr-cursor");
+    if (cur?.classList.contains("follow")) pointAt(cur, hintTarget);
     const r = hintTarget.getBoundingClientRect();
     hint.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 370))}px`;
     hint.style.top = `${Math.min(r.bottom + 8, innerHeight - 40)}px`;
@@ -295,7 +372,7 @@
   function unfocus() {
     document.querySelectorAll(`.${ASKING}`).forEach((el) => el.classList.remove(ASKING));
     document.getElementById("tlnd-fr-hint")?.remove();
-    document.getElementById("tlnd-fr-cursor")?.classList.remove("show", "click");
+    document.getElementById("tlnd-fr-cursor")?.classList.remove("show", "click", "follow");
     hintTarget = null;
   }
 
@@ -309,13 +386,21 @@
     injectStyles();
     unfocus();
     box.scrollIntoView({ block: "center", behavior: "smooth" });
-    await sleep(450);
+    // Chờ cuộn mượt dừng hẳn (vị trí ô đứng yên hai nhịp) rồi mới chỉ — cổng có khung cuộn riêng cuộn lâu hơn
+    // một nhịp cố định, chỉ sớm là con trỏ dừng ở chỗ ô đã trôi qua.
+    let lastTop = null;
+    for (let i = 0; i < 15; i++) {
+      await sleep(100);
+      const top = Math.round(box.getBoundingClientRect().top);
+      if (top === lastTop) break;
+      lastTop = top;
+    }
     const cur = cursorEl();
-    const r = box.getBoundingClientRect();
+    cur.classList.remove("follow");
     cur.classList.add("show");
-    cur.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 120))}px, `
-      + `${Math.round(r.top + r.height * 0.55)}px)`;
+    pointAt(cur, box);
     await sleep(650);
+    cur.classList.add("follow");
     cur.classList.remove("click");
     void cur.offsetWidth;
     cur.classList.add("click");
@@ -445,7 +530,7 @@
     if (typeof H.fillForm !== "function") return false;
     const field = slot.comp === "x-select-area"
       ? { name: slot.name, comp: "x-select-area", value: slot.plain ? value : areaValue(slot, list, value) }
-      : { name: slot.name, comp: slot.comp, value };
+      : { name: slot.name, comp: slot.comp, value, ...(slot.fill || {}) };
     try {
       await H.fillForm([field]);
     } catch (e) {
@@ -457,9 +542,24 @@
     return !!fresh?.value();
   }
 
+  // Ô đi kèm lựa chọn vừa tích (ô ghi quan hệ cạnh "Khác"): cổng chỉ dựng sau khi tích và ô không có tên riêng nên
+  // không nằm trong danh sách hỏi → engine điền thẳng ngay sau ô chính (fill-legacy tìm theo cấu trúc).
+  async function applyExtra(fields) {
+    if (!Array.isArray(fields) || !fields.length) return true;
+    if (typeof H.fillForm !== "function") return false;
+    try {
+      const result = await H.fillForm(fields);
+      return !(result?.notFound || []).length;
+    } catch (e) {
+      console.warn("[TLND] bổ sung ô đi kèm lỗi:", e);
+      return false;
+    }
+  }
+
   function publicField(slot, options, section, province = "") {
     return {
       key: slot.key, name: slot.name, role: slot.role || "", kind: slot.kind, yearOnly: !!slot.yearOnly,
+      ...(slot.partialDate ? { partialDate: true } : {}),
       label: slot.label, group: slot.group || "", section, required: !!slot.required, options,
       value: slot.value(),
       // Ô Xã mà Tỉnh đã có nhưng chữa xong cổng vẫn không nạp danh sách xã → BE mời tải lại / bỏ qua.
@@ -467,12 +567,21 @@
     };
   }
 
+  function rememberNested(msg) {
+    // Lệnh nào mang danh sách khối lồng thì cập nhật; lệnh chỉ có `required` (tô lại khi gõ tay) giữ danh sách cũ.
+    if (Array.isArray(msg?.nested)) nestedAreas = new Set(msg.nested);
+    if (Array.isArray(msg?.textDates)) textDateNames = new Set(msg.textDates);
+  }
+
   async function next(msg) {
+    rememberNested(msg);
     const skip = new Set(Array.isArray(msg.skip) ? msg.skip : []);
     let applied = null;
     if (msg.apply && msg.apply.key) {
       const target = slots().find((s) => s.key === msg.apply.key);
-      const ok = target ? await applyValue(target, slots(), String(msg.apply.value ?? "")) : false;
+      const ok = target
+        ? (await applyValue(target, slots(), String(msg.apply.value ?? ""))) && (await applyExtra(msg.apply.extra))
+        : false;
       applied = { key: msg.apply.key, ok };
       // Điền không được thì không hỏi lại ô đó ngay ở lượt này (BE cũng ghi vào danh sách bỏ qua).
       if (!ok) skip.add(msg.apply.key);
@@ -505,6 +614,7 @@
     // all_frames: chỉ frame chứa tờ khai eForm trả lời, frame khác im lặng.
     if (H.detectFormKind?.() !== "legacy" || !document.querySelector(SLOT_SELECTOR)) return;
     if (action === "fieldReviewMark") {
+      rememberNested(msg);
       watchRequired = msg.required || [];
       sendResponse({ ok: true, stats: markAll(msg.required).stats });
       return;

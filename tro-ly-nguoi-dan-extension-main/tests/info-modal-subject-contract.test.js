@@ -43,12 +43,25 @@ test("portal selects the exact subject inside the visible modal before confirmin
   assert.match(portal, /fold\(value\) === fold\(target\)/);
   assert.match(
     portal,
-    /await selectInfoSubject\(dialog, executionSubject\)[\s\S]*clickLikeUser\(btn\)/,
+    /await selectInfoSubject\(dialog, executionSubject\)[\s\S]*await clickUntilClosed\(dialog, btn\)/,
   );
+  assert.match(portal, /async function clickUntilClosed\(dialog, btn\) \{[\s\S]*?clickLikeUser\(btn\);/);
   assert.match(portal, /\[TLND-InfoModal\]/);
 });
 
 test("portal engine stays generic: backend owns business keys and option values", () => {
   assert.doesNotMatch(portal, /authorized_person/);
   assert.doesNotMatch(portal, /canhan/);
+});
+
+test("modal Thông tin chung: chờ cổng nạp xong mới bấm, bấm lại tới khi modal đóng, chỉ báo ok khi đã đóng", () => {
+  assert.match(portal, /const settled = await settleInfoCombos\(dialog\);/);
+  assert.match(portal, /const result = await clickUntilClosed\(dialog, btn\);\s*if \(!result\.closed\) \{\s*throw new Error/);
+  assert.match(portal, /return \{ ok: true, closed: true, clicks: result\.clicks/);
+  assert.match(portal, /const INFO_CLOSE_MS = \d+;/);
+});
+
+test("sidebar: modal đã đóng thì báo trang ngay và mở lại hạn mức; hồ sơ mới đặt lại hạn mức", () => {
+  assert.match(sidebar, /if \(res\?\.closed\) infoModalTries = 0;\s*else await new Promise\(\(r\) => setTimeout\(r, 1200\)\);/);
+  assert.match(sidebar, /submittedReported = false;\s*infoModalTries = 0;/);
 });
