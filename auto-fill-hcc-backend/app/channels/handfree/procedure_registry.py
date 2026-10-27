@@ -5501,6 +5501,22 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an (bcaPortal — flow._bca_portal_on_page): chọn thẻ là mở thẳng trang kê khai,
+        # không hỏi xác nhận nơi làm. Trên trang, công dân phải chọn Tỉnh + Xã/Phường/Đặc khu ở khối
+        # "Cơ quan thực hiện" thì các mục sau mới hiện → trợ lý nhắc bước đó trước. Chưa có pipeline điền.
+        # URL giống hệt ke_khai_links.json (mã TTHC 1.004194) — sửa một bên phải sửa cả bên kia.
+        "key": "dang-ky-tam-tru",
+        "label": "Đăng ký tạm trú",
+        "shortLabel": "Đăng ký tạm trú",
+        "subtitle": "Kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🏠",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194"
+            "&TT=TAMTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA"
+        ),
+        "bcaPortal": True,
+    },
 ]
 
 for _procedure in PROCEDURES:

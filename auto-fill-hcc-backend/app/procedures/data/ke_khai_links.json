@@ -2203,6 +2203,14 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-tam-tru",
+      "code": "1.004194",
+      "label": "Đăng ký tạm trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194&TT=TAMTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA",
+      "needsAgencySelect": false,
+      "autoConfirm": false
     }
   ]
 }

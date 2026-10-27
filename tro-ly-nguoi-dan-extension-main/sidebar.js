@@ -1142,7 +1142,7 @@
     c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
-      || c.maeAgencyBlock
+      || c.maeAgencyBlock || c.bcaAgencyBlock
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -1262,6 +1262,9 @@
       attachmentTarget: !!c.attachmentTarget,
       // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
       maeAgencyBlock: !!c.maeAgencyBlock,
+      // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
+      bcaAgencyBlock: !!c.bcaAgencyBlock,
+      bcaAgencyDone: !!c.bcaAgencyDone,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -1545,7 +1548,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.

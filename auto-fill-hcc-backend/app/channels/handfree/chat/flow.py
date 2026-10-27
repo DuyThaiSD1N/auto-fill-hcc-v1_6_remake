@@ -1550,6 +1550,10 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
         conv["auto_attach_after_fill"] = False
         _clear_documents_adjustment(conv)
     conv["procedure_key"] = key
+    if proc.get("bcaPortal"):
+        # Cổng Bộ Công an: cơ quan thực hiện do công dân chọn ngay trên trang → khỏi xác nhận nơi làm,
+        # mở thẳng trang kê khai.
+        return _start_guide_login(conv)
     conv["state"] = "confirm_procedure"
     loc = conv.get("location") or {}
     label = proc.get("shortLabel") or proc["label"]
@@ -1723,7 +1727,11 @@ def _start_guide_login(conv: dict) -> Reply:
     proc = get_procedure(conv["procedure_key"]) or {}
     url = proc.get("keKhaiUrl", "")
     loc = conv.get("location") or {}
-    if url and proc.get("needsAgencySelect") and proc.get("agencyProvinceOnly"):
+    if url and proc.get("bcaPortal"):
+        # Hướng dẫn chọn cơ quan nói lúc trang đã hiện khối đó (_bca_portal_on_page), không nói trước ở đây.
+        r = Reply(*_fmt(vi.BCA_PORTAL_OPEN, procedure=_proc_label(conv)))
+        r.actions = [{"type": "navigate", "url": url}]
+    elif url and proc.get("needsAgencySelect") and proc.get("agencyProvinceOnly"):
         # Cổng bộ ngành (MAE): DVCQG chỉ cần chọn TỈNH rồi Đồng ý; kết quả đầu tiên
         # "Nộp trực tuyến" là Sở chuyên ngành.
         r = Reply(*_fmt(vi.GUIDE_AGENCY_SELECT_PROVINCE, procedure=_proc_label(conv),
@@ -2516,6 +2524,8 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
     if modal_just_closed:
         return Reply()
 
+    if proc.get("bcaPortal"):
+        return _bca_portal_on_page(conv, ctx)
     if ctx.get("infoModal"):
         # Modal "Thông tin chung": backend gửi đúng đối tượng thực hiện theo flow profile;
         # extension phải chọn thành công rồi mới bấm Xác nhận. Đã BỎ câu "Em xác nhận Thông
@@ -2729,6 +2739,36 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
     return Reply()
 
 
+def _bca_portal_on_page(conv: dict, ctx: dict) -> Reply:
+    """Cổng DVC Bộ Công an (registry `bcaPortal`), dẫn theo cái trang đang hiện.
+
+    Khối "Cơ quan thực hiện" (Tỉnh/Thành phố + Xã/Phường/Đặc khu) phải chọn xong thì cổng mới hiện các mục
+    sau, nên đó là việc đầu tiên công dân làm. content.js báo `bcaAgencyBlock` (có khối) và
+    `bcaAgencyDone` (đã chọn đủ hai ô). Không đi các nhánh chung bên dưới: trang này có ô nhập nên
+    formKind dương tính, rơi xuống là bị xin giấy tờ khi chưa có pipeline điền.
+    """
+    manual_check = ctx.get("manualCheck") is True
+    if ctx.get("loginPage") and not ctx.get("loggedIn"):
+        conv["needed_login"] = True
+        if manual_check:
+            return Reply(*_fmt(vi.LOGIN_STILL_REQUIRED))
+        if _say_once(conv, "qr_guide"):
+            r = Reply(*_fmt(vi.BCA_QR_LOGIN_GUIDE))
+            r.actions = [{"type": "collapse_after_tts"}]
+            return r
+        return Reply()
+    if not ctx.get("bcaAgencyBlock"):
+        return Reply(*_fmt(vi.PORTAL_NOT_READY)) if manual_check else Reply()
+    conv["needed_login"] = False  # đã thấy trang kê khai = qua đăng nhập; câu nhắc khi chat theo bước này
+    if ctx.get("bcaAgencyDone"):
+        conv["agency_done"] = True
+        return Reply()
+    conv["agency_done"] = False
+    if _say_once(conv, "bca_agency") or manual_check:
+        return Reply(*_fmt(vi.BCA_AGENCY_GUIDE))
+    return Reply()
+
+
 def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     loc = conv.get("location") or {}
     proc = get_procedure(conv.get("procedure_key") or "") or {}
@@ -2805,6 +2845,8 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     # (chip chỉ xuất hiện ở đây, không phải bước bắt buộc của flow).
     if conv.get("needed_login"):
         template = vi.WAIT_LOGIN_REMIND
+    elif proc.get("bcaPortal") and not conv.get("agency_done"):
+        template = vi.BCA_AGENCY_GUIDE
     else:
         template = vi.WAIT_ATTACH_PORTAL_REMIND if proc.get("mode") == "attach" else vi.WAIT_PORTAL_REMIND
     r = Reply(*_fmt(template))

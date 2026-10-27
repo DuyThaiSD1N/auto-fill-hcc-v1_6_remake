@@ -1682,6 +1682,15 @@
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.
       const agencyBlock = !maeHost && body.includes("chon co quan thuc hien");
+      // Cổng DVC Bộ Công an: khối "Cơ quan thực hiện" là 2 select (select2) Tỉnh + Xã/Phường/Đặc khu, chọn
+      // đủ thì cổng mới hiện các mục sau. Id lấy theo crawl trang đăng ký tạm trú 27/10/2026.
+      const bcaCity = location.hostname === "dichvucong.dancuquocgia.gov.vn"
+        ? document.getElementById("cboRECEIVE_ADDR_CITY_CODE") : null;
+      const bcaWard = bcaCity ? document.getElementById("cboRECEIVE_ADDR_VILLAGE_CODE") : null;
+      const bcaPicked = (sel) => !!sel && !!sel.value && sel.value !== "-1"
+        && !["", "chon"].includes(foldTxt(sel.options[sel.selectedIndex]?.text));
+      const bcaAgencyBlock = !!bcaCity;
+      const bcaAgencyDone = bcaPicked(bcaCity) && bcaPicked(bcaWard);
       // Marker ĐÃ VÀO form kê khai thật: section "Kê khai thông tin". Liên thông có 2 trang
       // ĐỀU Angular + đều nhắc "chọn cơ quan thực hiện" (agencyBlock) — trang CHỌN CƠ QUAN
       // KHÔNG có marker này, trang KÊ KHAI thì có → dùng để phân biệt (chống kích hoạt sớm).
@@ -1785,6 +1794,8 @@
           || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
         agencyBlock,
         maeAgencyBlock,
+        bcaAgencyBlock,
+        bcaAgencyDone,
         loginPage,
         vneidLoginCodePrompt,
         vneidDataSharingPrompt,

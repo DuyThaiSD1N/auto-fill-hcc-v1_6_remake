@@ -380,6 +380,30 @@ AGENCY_CARD_MISSING = {
     ),
 }
 
+# Cổng DVC Bộ Công an (registry `bcaPortal`). Câu mở trang chỉ báo đang chuyển; hướng dẫn chọn cơ
+# quan nói khi trang đã hiện khối "Cơ quan thực hiện".
+BCA_PORTAL_OPEN = {
+    "md": "Dạ, em đang mở trang **{procedure}** trên Cổng dịch vụ công Bộ Công an ạ.",
+    "tts": "Dạ, em đang mở trang {procedure} ạ.",
+}
+
+BCA_AGENCY_GUIDE = {
+    "md": (
+        "Ở mục **Cơ quan thực hiện**, công dân chọn **Tỉnh/Thành phố** rồi **Xã/Phường/Đặc khu** "
+        "nơi đăng ký tạm trú ạ.\n\n"
+        "Chọn xong thì trang mới hiện các mục tiếp theo."
+    ),
+    "tts": (
+        "Dạ, ở mục Cơ quan thực hiện, công dân chọn tỉnh, thành phố rồi chọn xã, phường nơi đăng ký "
+        "tạm trú ạ. Chọn xong trang mới hiện các mục tiếp theo."
+    ),
+}
+
+BCA_QR_LOGIN_GUIDE = {
+    "md": "Công dân mở app **VNeID** → **Quét QR** → quét mã trên màn hình để đăng nhập ạ.",
+    "tts": "Dạ, công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã trên màn hình ạ.",
+}
+
 GUIDE_LOGIN_NO_URL = {
     "md": (
         "Dạ, em chưa có đường dẫn **{procedure}**. "
