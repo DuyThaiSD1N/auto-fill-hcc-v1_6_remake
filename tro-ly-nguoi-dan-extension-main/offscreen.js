@@ -20,10 +20,54 @@ function emit(event, payload) {
   }
 }
 
+// Giữ sẵn phiên (AsrWarmSession, services/asr.js): một phiên dùng cho mọi lượt nói của mọi tab. Sự kiện mang cờ
+// warm để service worker KHÔNG đóng offscreen sau final như lượt cũ (đóng là mất mic + WS giữ sẵn).
+let warm = null;
+let warmLease = null;
+// Sidebar báo sống ~20 giây/lần (asr-warm). Im quá lâu = đã đóng tab / rảnh lâu → nhả mic + WS (hết biểu tượng micro).
+const WARM_LEASE_MS = 60000;
+
+function emitWarm(event, payload) {
+  emit(event, Object.assign({ warm: true }, payload || {}));
+}
+
+function warmSession(msg) {
+  if (!warm) {
+    warm = new window.AsrWarmSession({
+      baseUrl: msg.baseUrl,
+      lang: msg.lang || "vi",
+      accessToken: msg.accessToken || "",
+      onState: (s) => emitWarm("state", { state: s }),
+      onPartial: (t) => emitWarm("partial", { text: t }),
+      onFinal: (t) => emitWarm("final", { text: t }),
+      onError: (e) => emitWarm("error", { error: e && e.message, name: e && e.name }),
+    });
+  }
+  warm.update({ baseUrl: msg.baseUrl, accessToken: msg.accessToken, lang: msg.lang });
+  clearTimeout(warmLease);
+  warmLease = setTimeout(() => {
+    if (warm) warm.cool();
+    warm = null;
+  }, WARM_LEASE_MS);
+  return warm;
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (!msg || msg.target !== "offscreen") return;
 
-  if (msg.cmd === "start") {
+  if (msg.cmd === "warm") {
+    void warmSession(msg).warm();
+  } else if (msg.cmd === "arm") {
+    if (session) {
+      session.stop();
+      session = null;
+    }
+    void warmSession(msg).arm(msg.lang || "vi");
+  } else if (msg.cmd === "cool") {
+    clearTimeout(warmLease);
+    if (warm) warm.cool();
+    warm = null;
+  } else if (msg.cmd === "start") {
     if (session) session.stop();
     session = new window.AsrSession({
       baseUrl: msg.baseUrl,
@@ -40,6 +84,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       session.stop();
       session = null;
     }
+    if (warm) warm.disarm();
   } else if (msg.cmd === "tts-speak") {
     ttsEnqueue({ url: msg.url, protocols: msg.protocols || [], text: msg.text, id: msg.id });
   } else if (msg.cmd === "tts-stop") {

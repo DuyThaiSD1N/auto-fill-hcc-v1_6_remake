@@ -5,9 +5,9 @@
 //   - Dropdown dùng select2 (cần set option + trigger change; cascade tự nạp con).
 //   - Đính kèm: mỗi thành phần hồ sơ có checkbox `thanhPhanHoSo<id>` + input file
 //     `filethanhPhanHoSobanChinh<id>KhongKySo` (bản chính, không ký số).
-// Tách riêng theo yêu cầu: mọi thứ Bắc Ninh gói gọn ở file này, giao tiếp qua window.__TLND__.
+// Tách riêng theo yêu cầu: mọi thứ Bắc Ninh gói gọn ở file này, giao tiếp qua window.__HCC__.
 (() => {
-  const H = window.__TLND__ || (window.__TLND__ = {});
+  const H = window.__HCC__ || (window.__HCC__ = {});
 
   const PFX = "_org_bn_hoso_noptructuyen_";
   // Portlet KHÁC: trang hoàn thiện tài khoản VNeID SSO (/vneidsso) — ô là input/select portlet THƯỜNG
@@ -64,18 +64,28 @@
   // Khớp ô eForm theo CLASS NGỮ NGHĨA ỔN ĐỊNH `eform-element-<Key>` (vd KinhGui, 211ThuaDatSo,
   // CoQuanCapNYC). Bền hơn khớp NHÃN vì nhiều ô trùng title ("Cơ quan cấp"/"cấp ngày"/"Số"). Dùng
   // attribute selector [class~="..."] để né vấn đề escape với key bắt đầu bằng số (211…, 11…).
+  // Dạng "Neo>Key": lấy ô Key ĐẦU TIÊN đứng SAU ô Neo trong DOM — cho class trùng nhiều chỗ (vd LoaiDat
+  // của thửa gốc/thửa mới/hợp thửa) mà vẫn neo theo class ổn định, không đếm thứ tự.
   function findElementByClass(name) {
-    const key = String(name || "").trim();
+    const raw = String(name || "").trim();
+    if (!raw) return null;
+    const sep = raw.indexOf(">");
+    const anchorKey = sep > 0 ? raw.slice(0, sep).trim() : "";
+    const key = sep > 0 ? raw.slice(sep + 1).trim() : raw;
     if (!key) return null;
-    let el = null;
+    const anchor = anchorKey ? findElementByClass(anchorKey) : null;
+    if (anchorKey && !anchor) return null;
+    let nodes;
     try {
-      el = document.querySelector(
+      nodes = document.querySelectorAll(
         `input[class~="eform-element-${key}"], textarea[class~="eform-element-${key}"]`,
       );
-    } catch { el = null; }
-    if (el && /^(input|textarea)$/i.test(el.tagName)) {
+    } catch { return null; }
+    for (const el of nodes) {
       const type = (el.getAttribute("type") || "text").toLowerCase();
-      if (!["file", "checkbox", "radio", "hidden"].includes(type)) return el;
+      if (["file", "checkbox", "radio", "hidden"].includes(type)) continue;
+      if (anchor && !(anchor.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+      return el;
     }
     return null;
   }
@@ -118,6 +128,11 @@
     return chosen ? chosen.el : null;
   }
 
+  // Lõi tên đơn vị hành chính (bỏ tiền tố cấp): select Tỉnh người nhận KQ ghi "Thành phố Bắc Ninh"
+  // trong khi địa chỉ OCR ghi "tỉnh Bắc Ninh"; select Xã có nơi ghi "P. Kinh Bắc" thay "Phường Kinh Bắc".
+  const ADMIN_PREFIX_RE = /^(tinh|thanh pho|tp\.?|thi tran|tt\.|phuong|p\.|xa|x\.|dac khu)\s+/;
+  const adminCore = (s) => fold(s).replace(ADMIN_PREFIX_RE, "").trim();
+
   // ---- select2 (chỉ dùng nếu BE phát field bn-select; hiện đơn đính chính không cần) ----
   // Set option theo TEXT (fold) trên <select> gốc rồi báo select2/jQuery cập nhật + nạp cascade.
   function fillSelect2ByText(selectEl, value) {
@@ -132,6 +147,12 @@
         picked = opt;
         if (t === want) break;
       }
+    }
+    if (!picked) {
+      // Không khớp chuỗi → so LÕI tên, chỉ nhận khi đúng MỘT option (tránh chọn nhầm Phường/Xã trùng lõi).
+      const core = adminCore(value);
+      const hits = core ? [...selectEl.options].filter((o) => adminCore(o.textContent) === core) : [];
+      if (hits.length === 1) picked = hits[0];
     }
     if (!picked) return false;
     selectEl.value = picked.value;
@@ -164,41 +185,12 @@
     return value;
   }
 
-  // Khối "Thông tin trong trường hợp được ủy quyền": BE gửi kèm MỘT ô đánh dấu comp "bn-doi-tuong-khac"
-  // (value = loại đối tượng cần chọn) cùng các ô doiTuongKhac*. Các ô đó chỉ mọc ra sau khi tick ô bổ
-  // sung + chọn loại đối tượng (AJAX) → điền đơn trước, rồi mở khối và điền phần ủy quyền.
-  const BN_AUTHORIZED_MARK = "bn-doi-tuong-khac";
-  const isAuthorizedBlockField = (f) => String((f && f.name) || "").startsWith("doiTuongKhac");
-
-  async function fillFormWithAuthorizedBacNinh(list, mark) {
-    const authFields = list.filter(isAuthorizedBlockField);
-    const rest = list.filter((f) => f !== mark && !isAuthorizedBlockField(f));
-    const main = rest.length
-      ? await fillFormBacNinh(rest)
-      : { ok: true, method: "bacninh", filled: 0, unmatched: [] };
-    const auth = await fillAuthorizedPersonBacNinh(authFields, mark.value);
-    const unmatched = [...(main.unmatched || [])];
-    const errors = main.error ? [main.error] : [];
-    let filled = main.filled || 0;
-    if (auth && auth.ok) {
-      filled += (auth.filled || 0) + 1; // +1: đã chọn loại đối tượng
-      unmatched.push(...(auth.unmatched || []));
-    } else {
-      unmatched.push(mark.name, ...authFields.map((f) => f.name));
-      errors.push((auth && auth.error) || "Không điền được khối thông tin người được ủy quyền.");
-    }
-    console.log("[AutoFill-BN] điền đơn + khối ủy quyền:", { filled, unmatched, errors });
-    return { ok: true, method: "bacninh", filled, unmatched, errors, total: list.length };
-  }
-
   // ---- Điền đơn ----
   async function fillFormBacNinh(fields) {
     // Trang hoàn thiện tài khoản VNeID (/vneidsso) dùng portlet khác → engine khớp NAME suffix riêng.
     if (isBacNinhAccountForm()) return fillAccountBacNinh(fields);
     const list = Array.isArray(fields) ? fields : [];
     if (!list.length) return { error: "Không có trường nào để điền." };
-    const mark = list.find((f) => String((f && f.comp) || "") === BN_AUTHORIZED_MARK);
-    if (mark) return fillFormWithAuthorizedBacNinh(list, mark);
     // Nạp CSS đánh dấu (xanh = đã điền) — engine bacninh cũng cần, nếu không markFilled vô hình.
     H.injectAutofillStyles && H.injectAutofillStyles();
     const elements = collectFormElements();
@@ -308,46 +300,17 @@
     return { ok: true, method: "bacninh-account", filled: filled.length, unmatched, total: list.length };
   }
 
-  // Pane của 1 tab: <li id="..._nhapTab<code>TabsId"> ↔ <div id="..._nhapTab<code>TabsSection">.
-  // Liferay ẩn pane bằng class "hide" (pane hiện class rỗng), nút <a> active bằng class "active".
-  function bacNinhTabSection(li) {
-    const id = li && li.id ? String(li.id) : "";
-    if (!id.endsWith("TabsId")) return null;
-    return document.getElementById(id.slice(0, -"TabsId".length) + "TabsSection");
-  }
-
   async function activateBacNinhTab(tabName) {
     const name = String(tabName || "").trim();
     if (!name) return { error: "Thiếu tên phần biểu mẫu Bắc Ninh." };
     const tab = document.querySelector(`li[data-tab-name="${CSS.escape(name)}"]`);
     const link = tab && tab.querySelector("a");
     if (!tab || !link) return { error: `Không thấy phần "${name}" trên biểu mẫu Bắc Ninh.` };
-
-    const targetSection = bacNinhTabSection(tab);
-    const isShown = () =>
-      link.classList.contains("active") && (!targetSection || !targetSection.classList.contains("hide"));
-
-    if (!isShown()) {
-      // Ưu tiên hàm thật của cổng: <a href="javascript:Liferay.Portal.Tabs.show(...)"> chạy trong
-      // main-world (nơi có Liferay). click() đủ khi cổng KHÔNG chặn điều hướng javascript:.
-      try { link.click(); } catch { /* href hỏng → dùng fallback bên dưới */ }
+    if (!link.classList.contains("active")) {
+      link.click();
       await sleep(250);
     }
-    if (!isShown()) {
-      // CSP cổng chặn điều hướng javascript: → click "im lặng", tab không đổi. Tự bật/tắt
-      // class "hide"/"active" đúng như Liferay.Portal.Tabs.show làm — mọi pane đã render sẵn
-      // trong DOM nên toggle class là đủ để chuyển hiển thị.
-      const group = tab.closest("ul") || document;
-      for (const li of group.querySelectorAll("li[data-tab-name]")) {
-        const a = li.querySelector("a");
-        const sec = bacNinhTabSection(li);
-        const isTarget = li === tab;
-        if (a) a.classList.toggle("active", isTarget);
-        if (sec) sec.classList.toggle("hide", !isTarget);
-      }
-      await sleep(150);
-    }
-    return { ok: true, tabName: name, shown: isShown() };
+    return { ok: true, tabName: name };
   }
 
   async function fillAuthorizedPersonBacNinh(fields, subjectOption) {
@@ -485,16 +448,32 @@
     );
   }
 
-  // Số tệp đã lên của 1 ô: callback upload của cổng append <div class="tphsItem"> vào
-  // container `#<PFX>thanhPhanHoSo<slot><id>` (cùng cơ chế bản auto-fill đếm landedCount).
-  function slotFileCount(id, slotKey) {
+  function componentCheckbox(id) {
+    return document.querySelector(`input[type="checkbox"][name="${PFX}thanhPhanHoSo${id}"]`);
+  }
+
+  // Ô upload của cổng KHÔNG giữ file trong form: handler `change` gọi vgcaCommand.uploadMulti() đẩy
+  // file LÊN SERVER, rồi callback _callBackUploadTPHSMulti xoá sạch input.files và append vào container
+  // `#<PFX><inputFileId>` một <div class="tphsItem"> chứa link tên file + <input hidden ...fileId>.
+  // ⇒ input.files rỗng KHÔNG có nghĩa là hỏng, và gán xong KHÔNG có nghĩa là đã lên. Đếm .tphsItem
+  // trong container mới là bằng chứng file thực sự nằm trên hồ sơ.
+  function landedContainer(id, slotKey) {
     const slot = slotKey === "banSao" ? "banSao" : "banChinh";
-    const box = document.getElementById(`${PFX}thanhPhanHoSo${slot}${id}`);
-    return box ? box.querySelectorAll(".tphsItem").length : 0;
+    // getElementById: id có dấu gạch dưới + số, không cần escape như selector CSS.
+    return document.getElementById(`${PFX}thanhPhanHoSo${slot}${id}`);
+  }
+
+  // Dòng thành phần: callback append <div class="tphsItem">. Ô đính kèm bổ sung là <ul> và callback
+  // append <li class="list-group-item">. Cả hai đều kèm <input type=hidden> giữ fileId.
+  function landedCount(container) {
+    if (!container) return 0;
+    const items = container.querySelectorAll(".tphsItem, li.list-group-item");
+    if (items.length) return items.length;
+    return container.querySelectorAll('input[type="hidden"][name^="' + PFX + '"]').length;
   }
 
   // Ô "Số lượng" của dòng Bản chính/Bản sao (`thanhPhanHoSo<id><slot>soBo`, class tphsSoLuongBan):
-  // cổng để mặc định 1 dù đính nhiều tệp → ghi đúng SỐ TỆP đã đính vào ô đó.
+  // cổng để mặc định 1 dù đính nhiều tệp → ghi đúng SỐ TỆP đã lên ở ô đó.
   function setSlotQuantity(id, slotKey, count) {
     const n = Number(count) || 0;
     if (n <= 0) return false;
@@ -509,6 +488,24 @@
     } catch {
       return false;
     }
+  }
+
+  // Ô "File đính kèm khác": handler gọi uploadMulti('filethanhPhanHoSofileDinhKem', …) rồi
+  // callBackUploadMulti append vào <ul id="<PFX>filethanhPhanHoSofileDinhKem"> một
+  // <li class="list-group-item"> KÈM <input type="hidden" name="<PFX>filethanhPhanHoSofileDinhKem">.
+  // Đếm INPUT HIDDEN trên TOÀN TRANG: tên này do chính cổng đặt nên chắc chắn, không phụ thuộc việc
+  // mình đoán đúng id/kiểu phần tử của danh sách (id danh sách có thể khác giữa các thủ tục).
+  const SUPP_FILE_KEY = "filethanhPhanHoSofileDinhKem";
+
+  function suppLandedCount() {
+    const byHidden = document.querySelectorAll(
+      `input[type="hidden"][name="${PFX}${SUPP_FILE_KEY}"]`
+    ).length;
+    if (byHidden) return byHidden;
+    const list = document.getElementById(`${PFX}${SUPP_FILE_KEY}`)
+      || document.querySelector(`[id*="${SUPP_FILE_KEY}"]:not(input)`);
+    if (!list) return 0;
+    return list.querySelectorAll("li, .tphsItem").length;
   }
 
   // Tên file đã tải (vd "Giấy chứng nhận QSDĐ.pdf"); loại trừ dòng gợi ý "cho phép .pdf,.docx…".
@@ -545,6 +542,79 @@
 
   function ensureChecked(cb) {
     setChecked(cb);
+  }
+
+  const UPLOAD_POLL_MS = 250;
+  const UPLOAD_MAX_TRIES = 2;
+
+  // Upload lên server nên thời gian phụ thuộc dung lượng. Hào phóng để KHÔNG thử lại nhầm khi cổng chỉ
+  // chậm — thử lại nhầm là đính TRÙNG, tệ hơn là chờ lâu.
+  function uploadTimeoutMs(files) {
+    const mb = files.reduce((sum, f) => sum + (f.size || 0), 0) / (1024 * 1024);
+    return Math.min(90000, 15000 + Math.round(mb * 4000));
+  }
+
+  // Gán file rồi CHỜ cổng xác nhận đã lên (đếm .tphsItem trong container), chưa lên thì thử lại.
+  // Trả về SỐ TỆP thực sự lên — không đếm theo số tệp đã gán.
+  async function uploadAndConfirm(id, slot, files, label, errors) {
+    const timeout = uploadTimeoutMs(files);
+    const container = landedContainer(id, slot);
+
+    // Không xác định được container thì KHÔNG có bằng chứng để phán → gán một lượt, chờ rồi soi tên
+    // file trên dòng. Tuyệt đối không thử lại mù, vì mỗi lần thử lại là một lần upload trùng.
+    if (!container) {
+      ensureChecked(componentCheckbox(id));
+      const input = fileInputForSlot(id, slot);
+      if (!input) {
+        errors.push(`Không thấy ô ${slot} của thành phần "${label}".`);
+        return 0;
+      }
+      const multiple = !!(input.multiple || input.hasAttribute("multiple"));
+      if (!H.setFilesOnInput(input, files, { allowMultiple: multiple, assumeConsumed: true })) {
+        errors.push(`Gán file thất bại cho "${label}".`);
+        return 0;
+      }
+      await H.waitFor(() => slotHasFile(input), timeout, UPLOAD_POLL_MS);
+      return files.length;
+    }
+
+    const before = landedCount(container);
+    for (let attempt = 1; attempt <= UPLOAD_MAX_TRIES; attempt++) {
+      // Tick checkbox TRƯỚC rồi mới lấy ô upload, và lấy node SỐNG mỗi lượt: cổng re-render bảng sau
+      // mỗi lần tick/upload nên node cache từ đầu lượt có thể đã bị gỡ khỏi DOM.
+      ensureChecked(componentCheckbox(id));
+      const input = fileInputForSlot(id, slot);
+      if (!input) {
+        errors.push(`Không thấy ô ${slot} của thành phần "${label}".`);
+        return 0;
+      }
+      const multiple = !!(input.multiple || input.hasAttribute("multiple"));
+      const assigned = H.setFilesOnInput(input, files, { allowMultiple: multiple, assumeConsumed: true });
+      if (!assigned) {
+        if (attempt === UPLOAD_MAX_TRIES) {
+          errors.push(`Gán file thất bại cho "${label}".`);
+          return 0;
+        }
+        await H.sleep(500 * attempt);
+        continue;
+      }
+
+      // Upload là request bất đồng bộ lên server → đợi callback render xong, không đoán bằng sleep.
+      const live = landedContainer(id, slot) || container;
+      const done = await H.waitFor(
+        () => landedCount(live) >= before + files.length,
+        timeout,
+        UPLOAD_POLL_MS
+      );
+      if (done) return files.length;
+
+      // Lên được một phần → DỪNG, phần đã lên mà thử lại sẽ thành bản trùng.
+      const got = Math.max(0, landedCount(live) - before);
+      if (got > 0) return got;
+      console.warn("[AutoFill-BacNinh] Chưa lên, thử lại", { label, attempt, timeout });
+      await H.sleep(500 * attempt);
+    }
+    return Math.max(0, landedCount(landedContainer(id, slot) || container) - before);
   }
 
   async function attachBacNinhByPlan(payloadFiles, attachments, opts = {}) {
@@ -590,59 +660,83 @@
           errors.push(`Không khớp thành phần "${g.componentName}".`);
           continue;
         }
-        const input = fileInputForSlot(comp.id, g.slot);
-        if (!input) {
-          errors.push(`Không thấy ô ${g.slot} của thành phần "${g.componentName}".`);
-          continue;
-        }
+        const label = g.entries[0]?.item?.documentName || g.componentName;
         // Đã có file ở ô này rồi → BỎ QUA, không đính lại (tránh trùng khi chạy lại).
-        if (slotHasFile(input)) {
+        const probe = fileInputForSlot(comp.id, g.slot);
+        if (probe && slotHasFile(probe)) {
           skippedNames.push(...g.entries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
           // Lượt trước đã đính nhưng ô Số lượng vẫn để mặc định 1 → sửa theo số tệp đang có.
-          setSlotQuantity(comp.id, g.slot, slotFileCount(comp.id, g.slot));
+          setSlotQuantity(comp.id, g.slot, landedCount(landedContainer(comp.id, g.slot)));
           continue;
         }
-        ensureChecked(comp.checkbox);
         const files = [];
         for (const e of g.entries) {
-          const file = H.dataUrlToFile
-            ? H.dataUrlToFile(e.payload, e.item.documentName || "")
-            : e.payload;
-          if (file) files.push(file);
+          try {
+            const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
+            if (file) files.push(file);
+          } catch (err) {
+            // Một tệp hỏng KHÔNG được làm sập cả lượt đính kèm (các nhóm sau vẫn phải chạy).
+            console.warn("[AutoFill-BacNinh] Đọc file lỗi:", e.item.fileName, err);
+            errors.push(`Không đọc được tệp "${e.item.fileName}".`);
+          }
         }
         if (!files.length) continue;
-        const multiple = !!(input.multiple || input.hasAttribute("multiple"));
-        const ok = H.setFilesOnInput(input, files, {
-          allowMultiple: multiple,
-          assumeConsumed: true,
-        });
-        if (ok) {
-          attachedNames.push(...files.map((f) => f.name));
-          // Upload chạy bất đồng bộ → container có thể chưa kịp có .tphsItem, lấy max với số tệp vừa gán.
-          setSlotQuantity(comp.id, g.slot, Math.max(slotFileCount(comp.id, g.slot), files.length));
-        } else errors.push(`Gán file thất bại cho "${g.componentName}".`);
-        await H.sleep(150);
+
+        const landed = await uploadAndConfirm(comp.id, g.slot, files, label, errors);
+        attachedNames.push(...files.slice(0, landed).map((f) => f.name));
+        setSlotQuantity(comp.id, g.slot, Math.max(landedCount(landedContainer(comp.id, g.slot)), landed));
+        if (landed < files.length) {
+          errors.push(`Chỉ lên được ${landed}/${files.length} tệp ở thành phần "${g.componentName}".`);
+        }
       }
 
       // Ô ĐÍNH KÈM BỔ SUNG (ngoài danh mục) — CCCD/ủy quyền/đơn... vào input fsfile...fileDinhKem.
       if (suppEntries.length) {
         const suppInput = document.querySelector(`input[type="file"][name*="fsfilethanhPhanHoSofileDinhKem"]`)
           || document.querySelector(`input[type="file"][name*="fileDinhKem"]`);
+        // Ô bổ sung nằm ngoài bảng thành phần → không dùng slotHasFile (nó quét theo <tr>).
+        const suppBefore = suppLandedCount();
         if (!suppInput) {
           errors.push("Không thấy ô đính kèm bổ sung (fileDinhKem).");
-        } else if (slotHasFile(suppInput)) {
+        } else if (suppBefore > 0) {
           skippedNames.push(...suppEntries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
         } else {
           const files = [];
           for (const e of suppEntries) {
-            const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
-            if (file) files.push(file);
+            try {
+              const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
+              if (file) files.push(file);
+            } catch (err) {
+              console.warn("[AutoFill-BacNinh] Đọc file lỗi:", e.item.fileName, err);
+              errors.push(`Không đọc được tệp "${e.item.fileName}".`);
+            }
           }
           if (files.length) {
-            const ok = H.setFilesOnInput(suppInput, files, { allowMultiple: true, assumeConsumed: true });
-            if (ok) attachedNames.push(...files.map((f) => f.name));
-            else errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
-            await H.sleep(150);
+            // Ô bổ sung cũng upload bất đồng bộ như các dòng thành phần → cũng phải chờ xác nhận,
+            // và cũng phải THỬ LẠI nếu lượt đầu rơi (plugin VGCA dùng chung cho mọi ô).
+            const timeout = uploadTimeoutMs(files);
+            let landed = 0;
+            for (let attempt = 1; attempt <= UPLOAD_MAX_TRIES; attempt++) {
+              if (!H.setFilesOnInput(suppInput, files, { allowMultiple: true, assumeConsumed: true })) {
+                if (attempt === UPLOAD_MAX_TRIES) errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
+                await H.sleep(500 * attempt);
+                continue;
+              }
+              await H.waitFor(() => suppLandedCount() >= files.length, timeout, UPLOAD_POLL_MS);
+              landed = Math.max(0, suppLandedCount());
+              if (landed > 0) break;
+              console.warn("[AutoFill-BacNinh] Ô bổ sung chưa lên, thử lại", { attempt, can: files.length });
+              await H.sleep(500 * attempt);
+            }
+            attachedNames.push(...files.slice(0, landed).map((f) => f.name));
+            if (landed < files.length) {
+              errors.push(`Chỉ lên được ${landed}/${files.length} tệp ở ô "File đính kèm khác".`);
+              console.warn("[AutoFill-BacNinh] Ô bổ sung:", {
+                inputName: suppInput.name,
+                danhSachTimThay: !!document.getElementById(`${PFX}${SUPP_FILE_KEY}`),
+                soHiddenDemDuoc: document.querySelectorAll(`input[type="hidden"][name="${PFX}${SUPP_FILE_KEY}"]`).length,
+              });
+            }
           }
         }
       }

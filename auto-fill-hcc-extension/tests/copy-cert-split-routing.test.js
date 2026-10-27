@@ -4,9 +4,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const content = fs.readFileSync(path.join(root, "content/attach-core.js"), "utf8");
+const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 const start = content.indexOf("function forceRow1PlanItem");
-const end = content.indexOf("\nasync function attachFilesByPlan", start);
+const end = content.indexOf("\n  // ===== Engine đính kèm bảng-checkbox", start);
 assert.ok(start >= 0 && end > start, "Không tìm thấy helper định tuyến split");
 
 const row1 = { slot: 1 };
@@ -37,11 +37,10 @@ assert.equal(signatureIdentity.componentName, "Giấy tùy thân");
 const copyDocument = context.forceRow1PlanItem(document, "chung-thuc-ban-sao");
 assert.equal(copyDocument.componentIndex, 1);
 
-const forcedDocument = context.forceRow1PlanItem(
+const forcedTranslation = context.forceRow1PlanItem(
   { ...identity, forceFirstRow: true },
   "chung-thuc-chu-ky"
 );
-assert.equal(forcedDocument.componentIndex, 1,
-  "Tài liệu forceFirstRow không bị heuristic CCCD đẩy xuống STT2");
+assert.equal(forcedTranslation.componentIndex, 1, "Tài liệu forceFirstRow không bị heuristic CCCD đẩy xuống STT2");
 
-console.log("TLND copy/signature split routing passed");
+console.log("copy certification split routing: procedure-aware STT1/STT2 passed");

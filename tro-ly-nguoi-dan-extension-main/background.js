@@ -1013,6 +1013,15 @@ async function ensureFreshOffscreen() {
   }
 }
 
+// Giữ sẵn phiên nhận giọng nói (voice/config.asrWarm): DÙNG LẠI offscreen đang có, không tạo mới mỗi lượt — mic +
+// WS giữ sẵn sống trong document đó (services/asr.js AsrWarmSession tự resume AudioContext thay cho việc tạo lại).
+async function ensureOffscreen() {
+  if (await chrome.offscreen.hasDocument()) return;
+  await chrome.offscreen.createDocument(OFFSCREEN_OPTS).catch((e) => {
+    if (!/single offscreen/i.test(e?.message || "")) throw e;
+  });
+}
+
 async function closeOffscreen() {
   try {
     if (await chrome.offscreen.hasDocument()) await chrome.offscreen.closeDocument();
@@ -1022,6 +1031,37 @@ async function closeOffscreen() {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "asr-warm" || (msg?.type === "asr-start" && msg.warm === true)) {
+    // asr-warm: sidebar báo sống, mở sẵn mic + WS. asr-start warm: bấm mic → chỉ mở lượt nói trên phiên giữ sẵn.
+    (async () => {
+      try {
+        await ensureOffscreen();
+        chrome.runtime.sendMessage(
+          {
+            target: "offscreen",
+            cmd: msg.type === "asr-warm" ? "warm" : "arm",
+            lang: msg.lang || "vi",
+            baseUrl: msg.baseUrl,
+            accessToken: msg.accessToken || "",
+          },
+          () => void chrome.runtime.lastError,
+        );
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg?.type === "asr-cool") {
+    (async () => {
+      if (await chrome.offscreen.hasDocument()) {
+        chrome.runtime.sendMessage({ target: "offscreen", cmd: "cool" }, () => void chrome.runtime.lastError);
+      }
+      sendResponse?.({ ok: true });
+    })();
+    return true;
+  }
   if (msg?.type === "asr-start") {
     (async () => {
       try {
@@ -1066,7 +1106,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   // là lệnh dừng micro chủ động; giữ offscreen vì cùng document có thể đang phát TTS.
   // CHỈ đóng sau khi popup đã nhận event (event được broadcast tới cả popup lẫn SW cùng lúc).
   if (msg?.type === "asr-event") {
-    if (msg.event === "final" || msg.event === "error") {
+    // Phiên giữ sẵn (msg.warm) sống qua nhiều lượt — đóng offscreen là mất mic + WS vừa giữ.
+    if ((msg.event === "final" || msg.event === "error") && !msg.warm) {
       closeOffscreen();
     }
     return false;

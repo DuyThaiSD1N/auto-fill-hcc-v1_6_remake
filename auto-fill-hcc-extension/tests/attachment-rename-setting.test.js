@@ -7,7 +7,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const core = fs.readFileSync(path.join(root, "content/attach-core.js"), "utf8");
+const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 const stripComments = (src) => src.replace(/\/\/[^\n]*/g, "");
 
 function slice(src, startMarker, endMarker) {
@@ -23,7 +23,7 @@ function loadNaming(stored) {
     chrome: {
       runtime: { lastError: null },
       storage: {
-        local: { get: (_keys, cb) => cb(stored === undefined ? {} : { tlnd_account_settings: stored }) },
+        local: { get: (_keys, cb) => cb(stored === undefined ? {} : { autofill_account_settings: stored }) },
         onChanged: { addListener: (fn) => { changeListener = fn; } },
       },
     },
@@ -34,13 +34,13 @@ function loadNaming(stored) {
   context.dataUrlToFile = (payload, documentName) => ({ name: context.safeAttachmentFileName(payload, documentName) });
   vm.createContext(context);
   vm.runInContext(
-    slice(core, "function fileExtension", "\nfunction dataUrlToFile") +
-      slice(core, "function attachmentDocumentName(file)", "\nfunction setFilesOnInput") +
+    slice(content, "function fileExtension", "\n  function dataUrlToFile") +
+      slice(content, "function attachmentDocumentName(file)", "\n  function setFilesOnInput") +
       "\nthis.safeAttachmentFileName = safeAttachmentFileName; this.ready = accountSettingsReady;" +
       " this.dataUrlFilesForBatch = dataUrlFilesForBatch; this.walletSafeDocumentName = walletSafeDocumentName;",
     context,
   );
-  context.change = (value) => changeListener({ tlnd_account_settings: { newValue: value } }, "local");
+  context.change = (value) => changeListener({ autofill_account_settings: { newValue: value } }, "local");
   return context;
 }
 
@@ -97,15 +97,15 @@ const photo = (tail) => ({ name: "image.jpg", dataUrl: `data:image/jpeg;base64,$
     ["image.jpg"],
   );
 
-  // 6. Hợp đồng nối dây — các chỗ dễ bị merge nuốt / chép đè từ bản no handfree.
-  const code = stripComments(core);
+  // 6. Hợp đồng nối dây — các chỗ dễ bị merge nuốt.
+  const code = stripComments(content);
   assert.match(code, /async function attachFilesByPlan\([^)]*\) \{\s*await accountSettingsReady;/,
-    "attachFilesByPlan (cả luồng split-attach gọi thẳng) phải chờ đọc xong cài đặt");
+    "attachFilesByPlan phải chờ đọc xong cài đặt trước khi dựng File");
   assert.match(code, /dataUrlToFile\(payloadFile, intendedDocumentName, \{ forceRename: planItem\.virtualCopy === true \}\)/,
     "ví tài liệu phải giữ tên riêng cho tệp ảo");
   assert.match(code, /attpRowHasDoc\(row, item, payloadForPlanItem\(payloadFiles, item\)\)/,
     "chống trùng attp phải biết tên sẽ tải lên");
-  assert.match(slice(code, "function attachmentPlanLabels", "\nfunction findExistingAttachedRowForPlanItem"),
+  assert.match(slice(code, "function attachmentPlanLabels", "\n  function findExistingAttachedRowForPlanItem"),
     /renameAttachmentFiles[\s\S]*safeAttachmentFileName\(payloadFile, planItem\.documentName\)/,
     "nhãn 'đã có trong hồ sơ' phải dùng tên sẽ tải lên khi tắt đổi tên");
 
@@ -118,17 +118,22 @@ const photo = (tail) => ({ name: "image.jpg", dataUrl: `data:image/jpeg;base64,$
   assert.match(br, /p\.uploadName = files\[i\]\.name/, "HkdOnline phải nhớ tên đã tải lên cho pha gán loại");
   assert.match(br, /\[x\.fileName, x\.uploadName\]/, "gán loại theo tên phải khớp cả tên đã tải lên");
 
-  const sidebar = stripComments(fs.readFileSync(path.join(root, "sidebar.js"), "utf8"));
-  assert.match(sidebar, /ACCOUNT_SETTINGS_KEY = "tlnd_account_settings"/, "khoá storage phải trùng với attach-core.js");
-  assert.match(slice(sidebar, "function showLogin()", "\n  function renderAccount"), /forgetAccountSettings\(\)/,
-    "đăng xuất / hết phiên phải bỏ bản sao cài đặt của tài khoản trước");
-  assert.match(sidebar, /await window\.tlndAuth\.login\(u, p\);[\s\S]*?refreshAccountSettings\(\)[\s\S]*?bootChat\(\)/,
-    "đăng nhập phải nạp cài đặt của tài khoản");
-  assert.match(sidebar, /if \(st\?\.access\) \{[^}]*refreshAccountSettings\(\)/, "mở lại sidebar còn phiên cũng phải nạp");
-  const client = fs.readFileSync(path.join(root, "api/client.js"), "utf8");
-  assert.match(client, /\/api\/v1\/account\/settings/);
-  const html = fs.readFileSync(path.join(root, "sidebar.html"), "utf8");
-  assert.match(html, /id="rename-files-switch"[^>]*disabled/, "công tắc khoá tới khi đọc được giá trị từ BE");
+  const shared = fs.readFileSync(path.join(root, "api/account-settings.js"), "utf8");
+  assert.match(shared, /ACCOUNT_SETTINGS_KEY = "autofill_account_settings"/, "khoá storage phải trùng với content.js");
+  assert.match(shared, /\/api\/v1\/account\/settings/);
+  const popupHtml = fs.readFileSync(path.join(root, "popup.html"), "utf8");
+  const settingsHtml = fs.readFileSync(path.join(root, "settings.html"), "utf8");
+  assert.match(popupHtml, /api\/account-settings\.js/);
+  for (const src of ["api/config.js", "api/auth.js", "api/client.js", "api/account-settings.js"]) {
+    assert.ok(settingsHtml.indexOf(src) >= 0 && settingsHtml.indexOf(src) < settingsHtml.indexOf("settings.js\""),
+      `settings.html phải nạp ${src} trước settings.js`);
+  }
+  assert.match(settingsHtml, /id="renameAttachmentFilesSetting"/);
+  const popup = stripComments(fs.readFileSync(path.join(root, "popup.js"), "utf8"));
+  assert.match(slice(popup, "function showLogin()", "\nasync function prefillLogin"), /AccountSettings\.forget\(\)/,
+    "đăng xuất phải bỏ bản sao cài đặt của tài khoản trước");
+  assert.match(slice(popup, "function showMain(user)", "\nasync function bootstrap"), /AccountSettings\.refresh\(\)/,
+    "đăng nhập/mở lại phải nạp cài đặt của tài khoản");
 
-  console.log("attachment rename setting (handfree) passed");
+  console.log("attachment rename setting passed");
 })().catch((e) => { console.error(e); process.exit(1); });

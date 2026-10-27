@@ -1,6 +1,6 @@
-// Engine fill form LEGACY (web-component x-*). Tách từ content.js — dùng namespace window.__TLND__.
+// Engine fill form LEGACY (web-component x-*). Tách từ content.js — dùng namespace window.__HCC__.
 (() => {
-  const H = window.__TLND__ || (window.__TLND__ = {});
+  const H = window.__HCC__ || (window.__HCC__ = {});
   const { sleep, norm, setNativeValue, isVisible, waitFor, fieldCandidates, findFormControl, markFilled, markUnfilled, clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles, markAllEmptyFieldsRed, FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS } = H;
 
 function findNamedElement(tag, names) {
@@ -33,7 +33,7 @@ function removeResultName(list, name) {
 
 const LEGACY_REPAIRABLE_COMPS = new Set([
   "raw",
-  // Địa chỉ Tỉnh/Phường: eForm có thể dựng lại khối và xóa sau khi đã điền.
+  // Ô ghi tay "Khác" và địa chỉ Tỉnh/Phường: eForm có thể dựng lại khối và xóa sau khi đã điền.
   "x-select-area",
   "x-input",
   "x-input-number",
@@ -46,6 +46,11 @@ const LEGACY_REPAIRABLE_COMPS = new Set([
 const LEGACY_DRIVER_COMPS = new Set(["x-radio", "x-select", "x-select-default"]);
 
 const LEGACY_BIRTH_RELATION_NAME = "quanhe";
+// Mọi ô tích "quan hệ với người được ..." đều là driver: eForm dựng lại khối nhân thân sau mỗi lần
+// đổi, nên phải chờ form ổn định trước khi điền tiếp. Trích lục dùng tên NYC_QuanHe. Xác nhận tình
+// trạng hôn nhân dùng tên quanhevoinguoiduocxacminh — backend đã phát field này TRƯỚC khối nhân
+// thân Mục I (HoVaTenC...) nên chỉ cần thêm nhịp chờ ở đây, không cần logic reorder riêng.
+const LEGACY_RELATION_NAMES = [LEGACY_BIRTH_RELATION_NAME, "nyc_quanhe", "nycquanhe", "quanhevoinguoiduocxacminh"];
 const LEGACY_BIRTH_DEPENDENT_NAMES = new Set([
   "hotenks",
   "ngaysinhchon",
@@ -65,6 +70,10 @@ function legacyFieldHasName(field, expectedName) {
   return fieldCandidates(field).some((name) => String(name || "").toLowerCase() === wanted);
 }
 
+function isLegacyRelationDriver(field) {
+  return LEGACY_RELATION_NAMES.some((name) => legacyFieldHasName(field, name));
+}
+
 function isLegacyBirthDependentField(field) {
   return fieldCandidates(field).some((name) => {
     const normalized = String(name || "").toLowerCase();
@@ -73,12 +82,6 @@ function isLegacyBirthDependentField(field) {
     return /^(hoten|sodinhdanh|sogiaytodinhdanh|loaigiaytodinhdanh|ngaycapdd|noicapdd|namsinh|dantoc|quoctich)(cha|me)(ks)?$/.test(normalized)
       || /^(cha|me)(loaicutru|noicutru(?:_trongnuoc|_nuocngoai)?)$/.test(normalized);
   });
-}
-
-function isLegacyBirthRelationshipForm(fields) {
-  return Array.isArray(fields)
-    && fields.some((field) => legacyFieldHasName(field, LEGACY_BIRTH_RELATION_NAME))
-    && fields.some(isLegacyBirthDependentField);
 }
 
 function orderLegacyFields(fields) {
@@ -113,20 +116,9 @@ function legacyChoiceMatches(actual, expected) {
   return left === right || left.includes(right) || right.includes(left);
 }
 
-function findLegacyRadioTarget(container, value) {
-  const wanted = foldLegacyChoice(value);
-  return Array.from(container?.querySelectorAll('input[type="checkbox"]') || []).find((box) => {
-    if (String(box.id || "").toLowerCase().endsWith("-" + String(value).toLowerCase())) return true;
-    const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
-    // BE trả mã option KHÔNG dấu ("Khac") còn nhãn hiển thị CÓ dấu ("Khác") → so sánh bỏ dấu,
-    // nếu không ô "Khác" của mục quan hệ chỉ tick được khi id đúng hậu tố "-khac".
-    return label && foldLegacyChoice(label.textContent) === wanted;
-  }) || null;
-}
-
-// Ô bọc riêng của MỘT option. Có mẫu dựng option bằng <p class="p_checkbox_custom radio-custom">
-// chứa input ẩn + text nhãn, KHÔNG có <label for>, nên phải lần ngược lên phần tử cha gần nhất
-// mà chỉ chứa đúng checkbox này.
+// Ô bọc riêng của MỘT option. Mẫu trích lục dựng option bằng
+// <p class="p_checkbox_custom radio-custom"> chứa input ẩn + text nhãn, KHÔNG có <label for>,
+// nên phải lần ngược lên phần tử cha gần nhất mà chỉ chứa đúng checkbox này.
 function legacyRadioOptionWrap(container, box) {
   let wrap = null;
   let node = box?.parentElement || null;
@@ -143,6 +135,13 @@ function legacyRadioOptionLabel(container, box) {
   const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
   if (label) return label.textContent;
   return legacyRadioOptionWrap(container, box)?.textContent || "";
+}
+
+// Phần tử để tô màu: input của mẫu trích lục là display:none nên đánh dấu lên nó sẽ không thấy gì.
+function legacyRadioMarkTarget(container, box) {
+  return container.querySelector(`label[for="${CSS.escape(box.id)}"]`)
+    || legacyRadioOptionWrap(container, box)
+    || box;
 }
 
 // Ô nhập free-text đi kèm option "Khác" của một ô tích. Cổng đổi tên ô này giữa các phiên bản
@@ -200,10 +199,21 @@ function findLegacyRawInput(field) {
   return findNamedElement("input", fieldCandidates(field)).el || findLegacyOtherTextInput(field);
 }
 
+function findLegacyRadioTarget(container, value) {
+  const wanted = foldLegacyChoice(value);
+  return Array.from(container?.querySelectorAll('input[type="checkbox"]') || []).find((box) => {
+    if (String(box.id || "").toLowerCase().endsWith("-" + String(value).toLowerCase())) return true;
+    // BE trả mã option KHÔNG dấu ("Khac") còn nhãn hiển thị CÓ dấu ("Khác") → so sánh bỏ dấu,
+    // nếu không ô "Khác" của mục quan hệ chỉ tick được khi id đúng hậu tố "-khac".
+    return !!wanted && foldLegacyChoice(legacyRadioOptionLabel(container, box)) === wanted;
+  }) || null;
+}
+
 // Trạng thái THẬT của một x-select-area sau khi điền. eForm hộ tịch có lúc dựng lại cả khối một nhịp
-// SAU khi dropdown đi trước đổi giá trị: Tỉnh/Phường vừa điền bị xóa trắng. Phải đọc lại được để pass
-// sửa lỗi điền bù. Chỉ xét hai dạng đã biết cấu trúc: chuỗi ghi tay và địa chỉ {tinh, xa, diaChi};
-// dạng khác (bản án ly hôn, khoảng thời gian...) coi như đã đạt để không điền lại lung tung.
+// SAU khi dropdown đi trước đổi giá trị (vd Dân tộc → "Khác" dựng lại khối bên nữ): ô ghi tay "Khác"
+// và Tỉnh/Phường vừa điền bị xóa trắng (req_8b71d6a7265b). Phải đọc lại được để pass sửa lỗi điền bù.
+// Chỉ xét hai dạng đã biết cấu trúc: chuỗi ghi tay và địa chỉ {tinh, xa, diaChi}; dạng khác (bản án ly
+// hôn, khoảng thời gian...) coi như đã đạt để không điền lại lung tung.
 function legacySelectAreaState(container, usedName, field) {
   if (isPlainSelectAreaValue(field.value)) {
     const input = selectAreaPlainTextInput(container, usedName);
@@ -218,7 +228,17 @@ function legacySelectAreaState(container, usedName, field) {
   if (!data || typeof data !== "object" || hasDivorceDecisionAreaValue(data) || (!data.tinh && !data.xa)) {
     return { supported: false, filled: true };
   }
-  const filled = legacyAreaRolesFilled(container, data) && legacyAreaDetailFilled(container, data);
+  const byRole = {};
+  for (const widget of container.querySelectorAll('[id^="custom-select-"]')) {
+    const role = areaRoleOf(widget);
+    if (role && !byRole[role]) byRole[role] = widget;
+  }
+  const picked = (role) => byRole[role]?.querySelector(".input-field-select")?.textContent || "";
+  let filled = true;
+  if (data.tinh && byRole.tinh) filled = filled && legacyChoiceMatches(picked("tinh"), data.tinh);
+  if (data.xa && byRole.xa) filled = filled && legacyChoiceMatches(picked("xa"), data.xa);
+  const addr = container.querySelector("input.input-field");
+  if (data.diaChi && addr) filled = filled && legacyScalarMatches(addr.value, data.diaChi);
   return { supported: true, filled, container, target: container };
 }
 
@@ -227,7 +247,10 @@ function legacyFieldState(field) {
   const names = fieldCandidates(field);
   if (field.comp === "raw") {
     const input = findLegacyRawInput(field);
-    return { supported: true, filled: !!input && legacyScalarMatches(input.value, field.value), target: input?.parentElement || input };
+    const matched = field.clear
+      ? !String(input?.value || "").trim()
+      : legacyScalarMatches(input?.value, field.value);
+    return { supported: true, filled: !!input && matched, target: input?.parentElement || input };
   }
 
   const found = findNamedElement(field.comp, names);
@@ -236,9 +259,11 @@ function legacyFieldState(field) {
 
   if (field.comp === "x-input" || field.comp === "x-input-number") {
     const input = container.querySelector("input");
+    // Field "clear": đạt yêu cầu khi ô đã TRỐNG, không phải khi khớp giá trị.
+    const empty = !String(input?.value || "").trim();
     return {
       supported: true,
-      filled: !!input && legacyScalarMatches(input.value, field.value),
+      filled: !!input && (field.clear ? empty : legacyScalarMatches(input.value, field.value)),
       container,
       target: input?.parentElement || container,
     };
@@ -248,6 +273,10 @@ function legacyFieldState(field) {
     const day = container.querySelector(`input[${suffix}$="-day"]`);
     const month = container.querySelector(`input[${suffix}$="-month"]`);
     const year = container.querySelector(`input[${suffix}$="-year"]`);
+    if (field.clear) {
+      const empty = [day, month, year].every((el) => !String(el?.value || "").trim());
+      return { supported: true, filled: empty, container, target: (day || month || year)?.parentElement || container };
+    }
     const raw = String(field.value || "").trim();
     const full = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     const yearOnly = raw.match(/^\d{4}$/);
@@ -263,11 +292,15 @@ function legacyFieldState(field) {
   }
   if (field.comp === "x-radio") {
     const target = findLegacyRadioTarget(container, field.value);
-    const label = target ? container.querySelector(`label[for="${CSS.escape(target.id)}"]`) : null;
-    return { supported: true, filled: !!target?.checked, container, target: label || target || container };
+    const mark = target ? legacyRadioMarkTarget(container, target) : null;
+    return { supported: true, filled: !!target?.checked, container, target: mark || target || container };
   }
   if (field.comp === "x-select") {
     const target = container.querySelector(".input-field-select");
+    if (field.clear) {
+      const empty = isPlaceholderOpt(norm(String(target?.textContent || "").replace(/[▲▼▾▿]/g, "")));
+      return { supported: true, filled: empty, container, target: target || container };
+    }
     return { supported: true, filled: legacyChoiceMatches(target?.textContent, field.value), container, target: target || container };
   }
   const root = container.querySelector('[id^="custom-select-default-"]');
@@ -275,7 +308,66 @@ function legacyFieldState(field) {
   return { supported: true, filled: legacyChoiceMatches(target?.textContent, field.value), container, target: target || container };
 }
 
-async function fillLegacyComponent(container, field, { birthRelationshipForm = false } = {}) {
+// Field mang cờ "clear": cổng đã điền sẵn ô này từ tài khoản VNeID đang đăng nhập, nhưng hồ sơ
+// cho biết đó là dữ liệu của NGƯỜI KHÁC (người nộp hộ). Giữ lại nghĩa là ghép họ tên người này
+// với giấy tờ tùy thân người kia, nên phải xóa cho trống — ô sẽ hiện đỏ để người dùng gõ lại.
+async function clearLegacyComponent(container, field) {
+  switch (field.comp) {
+    case "raw":
+    case "x-input":
+    case "x-input-number": return clearLegacyInput(container, field);
+    case "x-date":
+    case "x-date-text": return clearLegacyDate(container, field);
+    case "x-select": return clearLegacySelect(container);
+    default: return false;
+  }
+}
+
+function clearLegacyInput(container, f) {
+  const escaped = CSS.escape(f.name);
+  const containers = Array.from(document.querySelectorAll(`x-input[name="${escaped}"], x-input-number[name="${escaped}"]`));
+  const targets = containers.length ? containers : [container];
+  let any = false;
+  for (const target of targets) {
+    const el = target.querySelector(`input[name="${escaped}"]`) || target.querySelector("input");
+    if (!el) continue;
+    setNativeValue(el, "", { typing: true, commit: true });
+    any = true;
+  }
+  return any;
+}
+
+function clearLegacyDate(container, f) {
+  // x-date đặt tên ô con qua name, x-date-text qua id (xem legacyFieldState).
+  const suffix = f.comp === "x-date" ? "name" : "id";
+  const parts = ["day", "month", "year"].map((part) => container.querySelector(`input[${suffix}$="-${part}"]`));
+  parts.push(container.querySelector(`input[name$="-name-date-input"]`));
+  let any = false;
+  for (const el of parts) {
+    if (!el) continue;
+    setNativeValue(el, "", { typing: true, commit: true });
+    any = true;
+  }
+  return any;
+}
+
+async function clearLegacySelect(container) {
+  const root = container.querySelector('[id^="custom-select-"]');
+  const header = root?.querySelector(".input-field-select");
+  if (!header) return false;
+  header.click();
+  const options = () => Array.from(root.querySelector(".input-field-select-options")?.querySelectorAll("div") || []);
+  await waitFor(() => options().length > 0, 1500);
+  // Dropdown chỉ về trống được bằng chính option giữ chỗ ("-- Chọn --").
+  const placeholder = options().find((o) => isPlaceholderOpt(norm(o.textContent)));
+  if (!placeholder) { header.click(); return false; }
+  placeholder.click();
+  await sleep(150);
+  return true;
+}
+
+async function fillLegacyComponent(container, field) {
+  if (field.clear) return clearLegacyComponent(container, field);
   switch (field.comp) {
     case "x-input": return fillInput(container, field);
     case "x-input-number": return fillInput(container, field);
@@ -285,16 +377,13 @@ async function fillLegacyComponent(container, field, { birthRelationshipForm = f
       const ok = fillRadio(container, field);
       // QuanHe làm eForm dựng lại đồng thời ba khối con/cha/mẹ nên cần thêm một nhịp ổn định
       // trước khi vòng fill tiếp tục. Radio thường giữ mức chờ cũ để không làm chậm toàn bộ form.
-      if (ok) {
-        const isBirthRelationDriver = birthRelationshipForm
-          && legacyFieldHasName(field, LEGACY_BIRTH_RELATION_NAME);
-        await sleep(isBirthRelationDriver ? 350 : 200);
-      }
+      if (ok) await sleep(isLegacyRelationDriver(field) ? 350 : 200);
       return ok;
     }
     case "x-select": return fillSelect(container, field);
     case "x-select-default": return fillSelectDefault(container, field);
     case "x-select-area": return fillSelectArea(container, field);
+    case "x-table": return fillTable(container, field);
     default: return false;
   }
 }
@@ -304,9 +393,9 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
     .filter((field) => field?.value != null && LEGACY_REPAIRABLE_COMPS.has(field.comp))
     // Không retry field đã thất bại ngay từ đầu (vd dropdown không có option): guard chỉ chữa
     // race condition của field đã từng điền thành công rồi bị web-component xóa.
-    // Ô ghi tay "Khác" của dropdown (otherOf) render động: ô chỉ hiện sau khi dropdown đổi sang
-    // "Khác" nên lượt đầu hay hụt — cho retry cả khi pass đầu chưa tìm thấy ô nhập.
-    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || !!field.otherOf)
+    // Ô "Khác" render động: cho phép retry cả khi pass đầu chưa tìm thấy ô nhập.
+    // Ô ghi tay "Khác" của dropdown (otherOf) cũng vậy: ô chỉ hiện sau khi dropdown đổi nên lượt đầu hay hụt.
+    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || hasLegacyOtherTextDriver(field) || !!field.otherOf)
     .filter((field) => !legacyFieldState(field).filled)
     // Dropdown/radio có thể render lại cả khối; sửa chúng trước rồi mới chốt input/date.
     .sort((left, right) => Number(LEGACY_DRIVER_COMPS.has(right.comp)) - Number(LEGACY_DRIVER_COMPS.has(left.comp)));
@@ -324,9 +413,7 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
     const found = findNamedElement(field.comp, names);
     if (!found.el) continue;
     const effective = found.usedName === field.name ? field : { ...field, name: found.usedName };
-    if (await fillLegacyComponent(found.el, effective, { birthRelationshipForm: true })) {
-      repaired.add(field.name);
-    }
+    if (await fillLegacyComponent(found.el, effective)) repaired.add(field.name);
   }
   return repaired;
 }
@@ -339,7 +426,8 @@ function refreshRequestedLegacyMarks(fields) {
     for (const node of marked) {
       node?.classList?.remove("autofill-filled", "autofill-not-filled", "autofill-default");
     }
-    if (state.filled) {
+    // Ô bị xóa chủ động vẫn là ô TRỐNG người dùng phải tự nhập → luôn đỏ, không tô xanh.
+    if (state.filled && !field.clear) {
       markFilled(state.target);
       if (field.default) _convertGreenToYellow(state.container || state.target);
     } else {
@@ -421,6 +509,28 @@ async function applyLegacyMirrorFields(fields, result, filledNames) {
   }
 }
 
+// Fallback khi KHÔNG tìm được container theo name (vd click giả lập vào dropdown "Tình trạng
+// hôn nhân" không kích hoạt render x-select-area con như click thật của người dùng): định vị
+// qua chính Ô INPUT CON đã biết tên thật trên cổng (BenNam_SoBanAn/BenNu_SoBanAn — xác nhận từ
+// DevTools), rồi leo lên container thật bằng closest() — KHÔNG phụ thuộc thuộc tính name của
+// container nữa. Chỉ áp dụng cho field mang dữ liệu bản án/quyết định ly hôn (có
+// soBanAnQuyetDinhLyHon/ngayCap.../coQuanCap...) để tránh áp dụng nhầm sang widget khác.
+function guessDivorceDecisionContainer(field) {
+  const value = field?.value;
+  const looksLikeDivorceDecision = value && typeof value === "object" && (
+    "soBanAnQuyetDinhLyHon" in value ||
+    "ngayCapBanAnQuyetDinhLyHon" in value ||
+    "coQuanCapBanAnQuyetDinhLyHon" in value
+  );
+  if (!looksLikeDivorceDecision) return null;
+  const suffixMatch = /Ben(Nam|Nu)$/.exec(String(field.name || ""));
+  if (!suffixMatch) return null;
+  const inputName = `Ben${suffixMatch[1]}_SoBanAn`;
+  const anchorInput = document.querySelector(`input[name="${CSS.escape(inputName)}"]`);
+  if (!anchorInput) return null;
+  return anchorInput.closest("x-select-area") || anchorInput.closest("div") || anchorInput.parentElement;
+}
+
 // Ô ghi tay đi kèm option "Khác" của một DROPDOWN (vd dân tộc "Khác" → ghi "Cill"). BE gửi
 // `otherOf` = name dropdown gốc. Tên ô ghi tay đổi theo eForm ("DanTocKhacBenNu", "DanTocBenNuKhac",
 // "DanTocBenNu_Khac"...) nên khớp theo quy tắc: bỏ chữ "khac" và gạch nối thì phải TRÙNG name dropdown.
@@ -433,7 +543,6 @@ function guessOtherTextOfSelect(field) {
     return name.includes("khac") && name.replace("khac", "") === driverKey;
   }) || null;
 }
-
 
 // ---- Đăng ký lại khai sinh: giữ dữ liệu khi người dùng đổi "Quan hệ với người được khai sinh" ----
 // eForm dựng lại ba khối con/cha/mẹ mỗi lần QuanHe đổi: Bản thân → chép người yêu cầu sang khối con, xóa
@@ -634,8 +743,7 @@ async function fillForm(fields) {
   const result = { filled: 0, notFound: [], errors: [] };
   const filledNames = new Set();
 
-  const isBirthRelationshipForm = isLegacyBirthRelationshipForm(fields);
-  const orderedFields = isBirthRelationshipForm ? orderLegacyFields(fields) : fields;
+  const orderedFields = orderLegacyFields(fields);
   for (const f of orderedFields) {
     // Tên cần thử: name chính + các alias (form khác phiên bản có thể đổi tên field).
     const candidates = fieldCandidates(f);
@@ -662,6 +770,8 @@ async function fillForm(fields) {
     }
     // Tìm container theo name chính rồi tới alias; ghi nhận tên KHỚP để filler dùng đúng.
     let found = findNamedElement(f.comp, candidates);
+    // Bảng lặp dòng: một số mẫu gắn name lên thẻ bọc khác x-table.
+    if (!found.el && f.comp === "x-table") found = findNamedElement("*", candidates);
     // x-select-area động (vd khối "Số bản án/Quyết định ly hôn") chỉ được cổng render SAU KHI
     // field driver (x-select "Tình trạng hôn nhân") vừa chọn xong — container có thể CHƯA có
     // trong DOM ngay lúc này, nên chờ thêm thay vì bỏ cuộc ngay ở lần thử đầu.
@@ -671,7 +781,8 @@ async function fillForm(fields) {
         return !!found.el;
       }, 3000, 100);
     }
-    // Vẫn không thấy theo name → định vị qua chính ô con (xem guessDivorceDecisionContainer).
+    // Vẫn không thấy theo name → thử fallback định vị qua input con đã biết tên thật
+    // (xem guessDivorceDecisionContainer). Chờ thêm vì input con cũng có thể render trễ.
     if (!found.el && f.comp === "x-select-area") {
       let guessed = guessDivorceDecisionContainer(f);
       if (!guessed) {
@@ -717,11 +828,9 @@ async function fillForm(fields) {
       continue;
     }
     const renamed = usedName === f.name ? f : { ...f, name: usedName };
-    // compOverride: ô tìm được qua dropdown gốc là x-input, không còn là comp gốc (x-select-area)
-    // mà BE gửi — không đổi comp thì filler chạy sai nhánh và trượt.
     const ff = compOverride ? { ...renamed, comp: compOverride } : renamed;
     try {
-      const ok = await fillLegacyComponent(container, ff, { birthRelationshipForm: isBirthRelationshipForm });
+      const ok = await fillLegacyComponent(container, ff);
       // Việc đánh dấu xanh giờ do từng filler tự làm cho element thực sự nhận giá trị,
       // tránh tô cả khối x-select-area khi chỉ có vài sub-widget được điền.
       if (ok) {
@@ -739,36 +848,29 @@ async function fillForm(fields) {
     }
   }
 
-  if (isBirthRelationshipForm) {
-    // Chỉ mẫu khai sinh có QuanHe mới dùng pass kiểm tra trạng thái thật và guard nền.
-    // Các thủ tục legacy khác giữ nguyên nhịp fill cũ để tránh thay đổi hành vi đã vận hành.
-    await sleep(120);
-    const repaired = await repairLostLegacyFields(fields, filledNames);
-    for (const name of repaired) {
-      result.notFound = removeResultName(result.notFound, name);
-      result.errors = removeResultName(result.errors, name);
-      if (!filledNames.has(name)) {
-        result.filled++;
-        filledNames.add(name);
-      }
+  // Pass 2: kiểm tra sớm trạng thái THẬT. Guard nền bên dưới tiếp tục bắt lần render muộn mà
+  // không bắt người dùng phải chờ cứng 400ms trong mọi hồ sơ.
+  await sleep(120);
+  const repaired = await repairLostLegacyFields(fields, filledNames);
+  for (const name of repaired) {
+    result.notFound = removeResultName(result.notFound, name);
+    result.errors = removeResultName(result.errors, name);
+    if (!filledNames.has(name)) {
+      result.filled++;
+      filledNames.add(name);
     }
-  } else {
-    await sleep(400);
-    await reapplyEmptyTextFields(fields);
   }
   await applyLegacyMirrorFields(fields, result, filledNames);
   // Pass 3: x-date-text trong eform render ô con (day/month/year) TRỄ → thử lại có chờ.
   await retryLateDateTextFields(fields, result, filledNames);
 
-  if (isBirthRelationshipForm) {
-    // Màu phải phản ánh giá trị cuối trong DOM, không phản ánh việc extension từng gọi setValue.
-    refreshRequestedLegacyMarks(fields);
-  }
+  // Màu phải phản ánh giá trị cuối trong DOM, không phản ánh việc extension từng gọi setValue.
+  refreshRequestedLegacyMarks(fields);
   // Quét toàn bộ form: ô nào còn rỗng (chưa được fill) → mark đỏ.
   markAllEmptyFieldsRed();
   // Field mặc định (default=true) → đổi viền XANH sang VÀNG (chạy sau cùng để không bị đè).
   markLegacyDefaultsYellow(fields);
-  if (isBirthRelationshipForm) armLegacyStabilityGuard(fields, filledNames);
+  armLegacyStabilityGuard(fields, filledNames);
   armLegacyRelationKeeper(fields, filledNames);
   H.resolveAltNameGroups(result, fields);
   console.log("[AutoFill] Kết quả:", result);
@@ -786,30 +888,6 @@ function markLegacyDefaultsYellow(fields) {
     }
     const found = findNamedElement(f.comp, fieldCandidates(f));
     if (found.el) _convertGreenToYellow(found.el);
-  }
-}
-
-async function reapplyEmptyTextFields(fields) {
-  const SIMPLE = ["x-input", "x-input-number", "x-date", "x-date-text", "raw"];
-  for (const f of fields) {
-    if (!SIMPLE.includes(f.comp)) continue;
-    const names = fieldCandidates(f);
-
-    if (f.comp === "raw") {
-      const el = findNamedElement("input", names).el;
-      if (el && (!el.value || !el.value.trim())) setNativeValue(el, f.value);
-      continue;
-    }
-    const found = findNamedElement(f.comp, names);
-    const container = found.el;
-    const usedName = found.usedName;
-    if (!container) continue;
-    const inp = container.querySelector("input");
-    if (inp && inp.value && inp.value.trim()) continue;
-    const ff = usedName === f.name ? f : { ...f, name: usedName };
-    if (f.comp === "x-date") fillDate(container, ff);
-    else if (f.comp === "x-date-text") fillDateText(container, ff);
-    else fillInput(container, ff);
   }
 }
 
@@ -878,6 +956,97 @@ function fillDate(container, f) {
   return any;
 }
 
+// x-table (bảng lặp dòng, vd "Quá trình hoạt động" của văn bản đề nghị cấp CCHN luật sư): value là mảng dòng
+// {tuNgay, denNgay, chucDanh, coQuan, ghiChu}. DOM chỉ dựng sẵn 1 dòng mẫu → bấm nút "+" tới đủ số dòng. Ô ngày là
+// nhóm g-input-day/month/year (+ input type="date"), ô chữ là input text; ghép theo THỨ TỰ cột nên không phụ thuộc
+// vào việc có cột STT hay không. Ngày đi vào ô ngày thứ 1/2, chữ vào ô chữ thứ 1/2/3.
+const TABLE_DATE_KEYS = ["tuNgay", "denNgay"];
+const TABLE_TEXT_KEYS = ["chucDanh", "coQuan", "ghiChu"];
+
+function legacyTableRows(container) {
+  return Array.from(container.querySelectorAll("tr")).filter((tr) =>
+    Array.from(tr.querySelectorAll("input")).some((input) => isLegacyTableInput(input))
+  );
+}
+
+function isLegacyTableInput(input) {
+  const type = String(input.type || "text").toLowerCase();
+  if (type === "hidden" || type === "checkbox" || type === "radio" || type === "button") return false;
+  return !input.classList.contains("hidden");
+}
+
+function legacyTableAddButton(container) {
+  const nodes = Array.from(container.querySelectorAll("button, a, [role='button'], i, span"));
+  const isRemove = (node) => /xoa|xóa|remove|delete|trash|minus|close/i.test(
+    `${node.className || ""} ${node.getAttribute("title") || ""} ${node.textContent || ""}`
+  );
+  const isAdd = (node) => {
+    const text = String(node.textContent || "").trim();
+    const meta = `${node.className || ""} ${node.getAttribute("title") || ""} ${node.getAttribute("aria-label") || ""}`;
+    return text === "+" || /^thêm/i.test(text) || /\b(add|plus)\b|fa-plus|icon-plus|btn-add/i.test(meta);
+  };
+  const hit = nodes.find((node) => isAdd(node) && !isRemove(node));
+  return hit ? (hit.closest("button, a, [role='button']") || hit) : null;
+}
+
+function fillLegacyTableDate(cell, value) {
+  const m = String(value || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return false;
+  const dd = m[1].padStart(2, "0");
+  const mm = m[2].padStart(2, "0");
+  const yyyy = m[3];
+  const day = cell.querySelector(".g-input-day, input[name$='-day'], input[id$='-day']");
+  const month = cell.querySelector(".g-input-month, input[name$='-month'], input[id$='-month']");
+  const year = cell.querySelector(".g-input-year, input[name$='-year'], input[id$='-year']");
+  const picker = cell.querySelector('input[type="date"]');
+  let any = false;
+  if (day) { setNativeValue(day, dd, { typing: true, commit: true }); any = true; }
+  if (month) { setNativeValue(month, mm, { typing: true, commit: true }); any = true; }
+  if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); any = true; }
+  if (picker) { setNativeValue(picker, `${yyyy}-${mm}-${dd}`); any = true; }
+  if (any) markFilled((day || month || year || picker).parentElement || cell);
+  return any;
+}
+
+async function fillTable(container, f) {
+  const rows = Array.isArray(f.value) ? f.value.filter((row) => row && typeof row === "object") : [];
+  if (!rows.length) return false;
+  while (legacyTableRows(container).length < rows.length) {
+    const before = legacyTableRows(container).length;
+    const add = legacyTableAddButton(container);
+    if (!add) break;
+    add.click();
+    const grew = await waitFor(() => legacyTableRows(container).length > before, 1500, 80);
+    if (!grew) break;
+  }
+  const domRows = legacyTableRows(container);
+  let filledRows = 0;
+  for (let i = 0; i < rows.length && i < domRows.length; i++) {
+    const cells = Array.from(domRows[i].children).filter((cell) =>
+      Array.from(cell.querySelectorAll("input")).some((input) => isLegacyTableInput(input))
+    );
+    const dateCells = cells.filter((cell) => cell.querySelector(".g-input-day, input[type='date']"));
+    const textCells = cells.filter((cell) => !dateCells.includes(cell));
+    let any = false;
+    TABLE_DATE_KEYS.forEach((key, idx) => {
+      if (dateCells[idx] && rows[i][key] && fillLegacyTableDate(dateCells[idx], rows[i][key])) any = true;
+    });
+    TABLE_TEXT_KEYS.forEach((key, idx) => {
+      const value = String(rows[i][key] || "").trim();
+      const input = textCells[idx] && Array.from(textCells[idx].querySelectorAll("input, textarea")).find(isLegacyTableInput);
+      if (!input || !value) return;
+      setNativeValue(input, value, { typing: true, commit: true });
+      markFilled(input.parentElement || input);
+      any = true;
+    });
+    if (any) filledRows++;
+  }
+  if (filledRows < rows.length) {
+    console.warn(`[AutoFill] Bảng ${f.name}: điền ${filledRows}/${rows.length} dòng — kiểm tra nút "+" thêm dòng.`);
+  }
+  return filledRows > 0;
+}
+
 function fillDateText(container, f) {
   const day = container.querySelector('input[id$="-day"]');
   const month = container.querySelector('input[id$="-month"]');
@@ -908,54 +1077,39 @@ function fillDateText(container, f) {
 function fillRadio(container, f) {
   const boxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
   if (!boxes.length) return false;
-  const isBirthRelation = legacyFieldHasName(f, LEGACY_BIRTH_RELATION_NAME)
-    && boxes.some((box) => /-(BanThan|ChaDe|MeDe)$/i.test(String(box.id || "")));
-
-  const wanted = norm(String(f.value));
-  const target = isBirthRelation
-    ? findLegacyRadioTarget(container, f.value)
-    : boxes.find((box) => {
-        if (box.id.toLowerCase().endsWith("-" + String(f.value).toLowerCase())) return true;
-        const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
-        return label && norm(label.textContent) === wanted;
-      });
+  const target = findLegacyRadioTarget(container, f.value);
   if (!target) return false;
-
-  if (!isBirthRelation) {
-    // Giữ nguyên hành vi cũ cho toàn bộ radio của các thủ tục khác.
-    boxes.forEach((box) => {
-      if (box !== target && box.checked) {
-        box.checked = false;
-        box.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    });
-    if (!target.checked) target.click();
-    target.checked = true;
-    target.dispatchEvent(new Event("change", { bubbles: true }));
-    const label = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
-    markFilled(label || target);
-    return true;
-  }
 
   // Không phát change khi option đã đúng. Một số eForm dùng QuanHe làm driver và sẽ xóa
   // toàn bộ khối con/cha/mẹ sau mỗi change, kể cả giá trị thực tế không đổi.
   if (target.checked) {
-    const currentLabel = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
-    markFilled(currentLabel || target);
+    markFilled(legacyRadioMarkTarget(container, target));
     return true;
   }
 
+  const isBirthRelation = legacyFieldHasName(f, LEGACY_BIRTH_RELATION_NAME)
+    && boxes.some((box) => /-(BanThan|ChaDe|MeDe)$/i.test(String(box.id || "")));
+  if (!isBirthRelation) {
+    boxes.forEach((b) => {
+      if (b !== target && b.checked) {
+        b.checked = false;
+        b.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  }
   // click() đã phát chuỗi click/input/change như thao tác thật; không phát change lần hai.
   // Riêng QuanHe, chỉ click đúng option như người dùng; chính web-component sẽ bỏ option cũ.
   // Nếu tự change option cũ trước rồi click option mới, cổng sẽ reset khối nhân thân hai lần.
   target.click();
+  // Mẫu trích lục ẩn hẳn input (display:none) và bắt click trên ô bọc: click input không đổi state.
+  const wrap = legacyRadioOptionWrap(container, target);
+  if (!target.checked && wrap && wrap !== target) wrap.click();
   // Fallback cho bản web-component chặn click tổng hợp nhưng vẫn cho phép cập nhật checkbox.
   if (!target.checked) {
     target.checked = true;
     target.dispatchEvent(new Event("change", { bubbles: true }));
   }
-  const lbl = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
-  markFilled(lbl || target);
+  markFilled(legacyRadioMarkTarget(container, target));
   return true;
 }
 
@@ -972,9 +1126,31 @@ function foldLegacyChoice(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s*[-–—‐‑]+\s*/g, " ")
+    // Dấu nháy trong tên dân tộc ("K'Ho", "H'Mông", "M'Nông") phải DÍNH LIỀN, không được thành
+    // khoảng trắng/ranh giới từ: "k'ho" tách ra thì option "Họ" lọt vào khớp lỏng và được chọn
+    // thay cho "Cơ Ho" (gặp thật ở thủ tục xác nhận tình trạng hôn nhân).
+    .replace(/['’‘`´ʼ]/g, "")
+    // Nhãn option của cổng có chỗ viết "…" (một ký tự), chỗ viết "..." (ba dấu chấm), lại hay
+    // kèm khoảng trắng lạ — vd option tình trạng hôn nhân "Từ ngày… tháng… năm… đến ngày…".
+    // Không gộp thì chuỗi ta gửi lên không khớp option nào, dropdown bị bỏ trống.
+    .replace(/\s*(?:…|\.{2,})\s*/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+// Khớp "lỏng" phải theo RANH GIỚI TỪ, không phải includes() thô: dân tộc "Hán" nằm lọt trong
+// "Kháng" ("k|hán|g") nên includes() chọn nhầm "Kháng" cho người Trung Quốc (lỗi đã gặp ở thủ tục
+// kết hôn có yếu tố nước ngoài). Chỉ chấp nhận khi chuỗi cần tìm đứng trọn vẹn giữa hai ranh giới
+// không phải chữ/số.
+function legacyChoiceHasWord(haystack, needle) {
+  if (!haystack || !needle) return false;
+  const escaped = String(needle).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try {
+    return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}([^\\p{L}\\p{N}]|$)`, "u").test(haystack);
+  } catch {
+    return haystack.includes(needle);
+  }
 }
 
 async function pickInWidget(root, value, { markMissing = true } = {}) {
@@ -982,31 +1158,68 @@ async function pickInWidget(root, value, { markMissing = true } = {}) {
   if (!header) return false;
   header.click();
   const want = norm(value);
+  const foldedWant = foldLegacyChoice(value);
   const getOpts = () => {
     const box = root.querySelector(".input-field-select-options");
     return box ? Array.from(box.querySelectorAll("div")) : [];
   };
-  const match = () => {
-    const opts = getOpts().filter((o) => !isPlaceholderOpt(norm(o.textContent)));
+  const realOpts = () => getOpts().filter((o) => !isPlaceholderOpt(norm(o.textContent)));
+  // Khớp CHÍNH XÁC (nguyên văn hoặc chỉ khác dấu/hoa-thường) — luôn được ưu tiên tuyệt đối.
+  const exactMatch = () => {
+    const opts = realOpts();
     return opts.find((o) => norm(o.textContent) === want) ||
-           opts.find((o) => norm(o.textContent).includes(want));
+           opts.find((o) => foldLegacyChoice(o.textContent) === foldedWant) ||
+           null;
   };
+  // Khớp lỏng theo ranh giới từ (option chứa trọn cụm cần tìm hoặc ngược lại).
+  //
+  // CHỈ chấp nhận khi ĐÚNG MỘT option khớp. Nhiều option cùng khớp nghĩa là cụm cần tìm không đủ
+  // để chỉ ra một lựa chọn — lấy option đầu danh sách lúc đó là bốc thăm, mà vẫn tô XANH như đã
+  // điền đúng nên không ai soát ra. Thà bỏ trống + viền vàng để cán bộ chọn.
+  const singleLooseMatch = (predicate) => {
+    const hits = realOpts().filter(predicate);
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      console.warn(`[AutoFill] pickInWidget: "${value}" khớp lỏng ${hits.length} option, bỏ qua:`,
+        hits.map((o) => o.textContent.trim()).slice(0, 8));
+    }
+    return null;
+  };
+  const looseMatch = () =>
+    singleLooseMatch((o) => legacyChoiceHasWord(norm(o.textContent), want)) ||
+    singleLooseMatch((o) => {
+      const foldedOption = foldLegacyChoice(o.textContent);
+      return legacyChoiceHasWord(foldedOption, foldedWant) ||
+        legacyChoiceHasWord(foldedWant, foldedOption);
+    }) ||
+    null;
+  const match = () => exactMatch() || looseMatch();
 
   // Chờ option thật xuất hiện (list có thể load AJAX sau khi mở)
   await waitFor(() => getOpts().some((o) => !isPlaceholderOpt(norm(o.textContent))), 3000);
 
-  // 1) Thử khớp trên danh sách ĐẦY ĐỦ (không gõ search) — quan trọng cho Quốc gia,
-  //    vì bộ lọc của dropdown có thể khắt khe dấu/hoa-thường và lọc sạch hết.
-  let target = match();
+  // 1) Thử khớp CHÍNH XÁC trên danh sách ĐẦY ĐỦ (không gõ search) — quan trọng cho Quốc gia,
+  //    vì bộ lọc của dropdown có thể khắt khe dấu/hoa-thường và lọc sạch hết. CHƯA khớp lỏng ở
+  //    bước này: danh sách đầy đủ (vd 54 dân tộc) dễ có option "chứa" nhầm, phải nhường cho
+  //    option trùng khít tìm được sau khi lọc.
+  let target = exactMatch();
 
   // 2) Nếu chưa thấy và có ô tìm kiếm: lọc rồi khớp; nếu lọc ra rỗng thì xóa search, quét lại.
   if (!target) {
     const search = root.querySelector('input[placeholder="Tìm kiếm..."]');
     if (search) {
       setNativeValue(search, value);
-      await waitFor(() => match() ||
+      await waitFor(() => exactMatch() ||
         getOpts().some((o) => norm(o.textContent).includes("không tìm thấy")), 2000);
-      target = match();
+      target = exactMatch();
+      if (!target && foldedWant !== want) {
+        setNativeValue(search, foldedWant);
+        await waitFor(() => exactMatch() ||
+          getOpts().some((o) => foldLegacyChoice(o.textContent).includes("khong tim thay")), 2000);
+        target = exactMatch();
+      }
+      // Hết cách khớp chính xác mới chấp nhận khớp lỏng: trên list đã lọc trước, rồi list đầy đủ.
+      if (!target) target = looseMatch();
       if (!target) { setNativeValue(search, ""); await sleep(400); target = match(); }
     } else {
       await waitFor(() => match(), 1500);
@@ -1056,115 +1269,6 @@ function areaRoleOf(widget) {
   return "quocGia";
 }
 
-// Nhãn hiển thị gần nhất của một ô nhập. Leo cha tới khi gặp text không rỗng và còn ĐỦ NGẮN —
-// leo cao hơn thì textContent gộp cả khối và nhãn nào cũng "khớp".
-function nearbyLabelText(node, maxUp = 4, maxLen = 200) {
-  let el = node;
-  for (let up = 0; up < maxUp && el; up += 1) {
-    el = el.parentElement;
-    const text = norm(el?.textContent || "");
-    if (text && text.length <= maxLen) return text;
-  }
-  return "";
-}
-
-function closestCommonAncestor(nodes) {
-  let node = nodes[0]?.parentElement || null;
-  while (node && !nodes.every((n) => node.contains(n))) node = node.parentElement;
-  return node;
-}
-
-// Nới container lên tới khi bọc ĐỦ cả ba ô. closest("div") hay cha của một ô duy nhất thường chỉ
-// bọc RIÊNG dòng đó — điền được ô số rồi bỏ sót ngày cấp và cơ quan cấp. Dừng ngay khi đã thấy ô
-// ngày hoặc đã có từ 3 ô nhập trở lên, để không nới ra ngoài khối.
-function widenToDivorceBlock(container, maxUp = 3) {
-  let node = container;
-  for (let up = 0; up < maxUp && node?.parentElement; up += 1) {
-    const hasDate = node.querySelector('x-date, input[name$="-day"], input[id$="-day"], input[type="date"]');
-    const inputs = node.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea');
-    if (hasDate || inputs.length >= 3) break;
-    node = node.parentElement;
-  }
-  return node || container;
-}
-
-// Ô nhập của khối bản án/quyết định ly hôn thuộc ĐÚNG một bên, tìm theo NHÃN chứ không theo name.
-// Phạm vi của bên được chặn bằng chính dropdown "Tình trạng hôn nhân" của hai bên: khối bản án
-// luôn nằm ngay sau dropdown của bên mình và trước dropdown của bên kia.
-function divorceDecisionInputsByLabel(side) {
-  const other = side === "Nam" ? "Nu" : "Nam";
-  const self = findNamedElement("x-select", [`LoaiTinhTrangHonNhan_Ben${side}`]).el;
-  if (!self) return [];
-  const otherSelect = findNamedElement("x-select", [`LoaiTinhTrangHonNhan_Ben${other}`]).el;
-  // Chỉ dùng dropdown bên kia làm biên khi nó đứng SAU bên này (bên nữ ở mục I, bên nam ở mục II).
-  const boundary = otherSelect && otherSelect !== self
-    && (self.compareDocumentPosition(otherSelect) & Node.DOCUMENT_POSITION_FOLLOWING)
-    ? otherSelect : null;
-
-  return Array.from(document.querySelectorAll("input, textarea")).filter((node) => {
-    const type = String(node.getAttribute("type") || "").toLowerCase();
-    if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio") return false;
-    if (!(self.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
-    if (boundary && (boundary.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
-    return nearbyLabelText(node).includes("bản án");
-  });
-}
-
-// Fallback khi KHÔNG tìm được container theo name (cổng không đặt name TTHN_LyHonBenNam/BenNu lên
-// x-select-area, hoặc khối chỉ render sau khi dropdown tình trạng hôn nhân vừa đổi): định vị qua
-// chính ô con. Chỉ áp dụng cho field mang dữ liệu bản án/quyết định ly hôn.
-function guessDivorceDecisionContainer(field) {
-  const value = field?.value;
-  const looksLikeDivorceDecision = value && typeof value === "object" && (
-    "soBanAnQuyetDinhLyHon" in value ||
-    "ngayCapBanAnQuyetDinhLyHon" in value ||
-    "coQuanCapBanAnQuyetDinhLyHon" in value
-  );
-  if (!looksLikeDivorceDecision) return null;
-  const suffixMatch = /Ben(Nam|Nu)$/.exec(String(field.name || ""));
-  if (!suffixMatch) return null;
-  const side = suffixMatch[1];
-
-  // Tên thật xác nhận trên cổng cho thủ tục Đăng ký kết hôn trong nước.
-  const anchorInput = document.querySelector(`input[name="${CSS.escape(`Ben${side}_SoBanAn`)}"]`);
-  if (anchorInput) {
-    const byName = anchorInput.closest("x-select-area")
-      || anchorInput.closest("div")
-      || anchorInput.parentElement;
-    return widenToDivorceBlock(byName);
-  }
-
-  // Tầng CUỐI: neo theo nhãn. Tên input khác nhau giữa các thủ tục (kết hôn trong nước dùng
-  // BenNam_SoBanAn/BenNu_SoBanAn; bản CÓ YẾU TỐ NƯỚC NGOÀI đặt tên khác) nhưng ba nhãn
-  // "Số bản án/Quyết định ly hôn", "Ngày cấp bản án…", "Cơ quan cấp bản án…" thì giữ nguyên.
-  const labelled = divorceDecisionInputsByLabel(side);
-  if (!labelled.length) return null;
-  const container = labelled.length > 1
-    ? closestCommonAncestor(labelled)
-    : labelled[0].parentElement;
-  return widenToDivorceBlock(container || labelled[0].parentElement);
-}
-
-// Khớp TỪNG ô trong khối bản án theo NHÃN. Chắc hơn đếm thứ tự: cổng có thể đổi tên input giữa
-// các thủ tục (kết hôn trong nước vs có yếu tố nước ngoài) hoặc chèn thêm ô, lúc đó đếm là lệch.
-function divorceControlsByLabel(container) {
-  const found = { number: null, date: null, agency: null };
-  for (const node of container.querySelectorAll("input, textarea")) {
-    const type = String(node.getAttribute("type") || "").toLowerCase();
-    if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio") continue;
-    const label = nearbyLabelText(node);
-    if (!label.includes("bản án")) continue;
-    if (label.includes("ngày cấp")) {
-      found.date = found.date || node.closest("x-date") || node.parentElement;
-    } else if (label.includes("cơ quan cấp")) {
-      found.agency = found.agency || node;
-    } else if (label.includes("số bản án")) {
-      found.number = found.number || node;
-    }
-  }
-  return found;
-}
-
 function hasDivorceDecisionAreaValue(data) {
   return !!(
     data &&
@@ -1172,8 +1276,8 @@ function hasDivorceDecisionAreaValue(data) {
       data.soBanAnQuyetDinhLyHon ||
       data.ngayCapBanAnQuyetDinhLyHon ||
       data.coQuanCapBanAnQuyetDinhLyHon ||
-      data.voChongHoTen ||  // vùng "đang có vợ/chồng" (=2) có thêm tên vợ/chồng
-      // vùng =5 ("Từ ngày… đến ngày… chưa ĐKKH với ai; hiện tại đang có vợ/chồng"): thêm hai mốc
+      data.voChongHoTen ||  // area "đang có vợ/chồng" (=2): thêm tên vợ/chồng
+      // area =5 ("Từ ngày… đến ngày… chưa ĐKKH với ai; hiện tại đang có vợ/chồng"): thêm hai mốc
       // thời gian của khoảng cần xác nhận.
       data.thoiDiemBatDau ||
       data.thoiDiemKetThuc
@@ -1221,8 +1325,8 @@ function selectAreaDateControls(container) {
  *
  * Vùng =5 có ba ô ngày ("Ngày cấp giấy chứng nhận kết hôn", "Thời điểm bắt đầu…", "Thời điểm kết
  * thúc…") nên đếm thứ tự lệch ngay: ô ngày cấp nuốt mất mốc bắt đầu, rồi field raw ngayCapGiayTo-*
- * ghi đè lên nó, kết quả là mốc bắt đầu biến mất còn mốc kết thúc nhảy vào ô bắt đầu. Nhãn "thời
- * điểm bắt đầu/kết thúc" là chuỗi dài, riêng biệt — khớp chắc hơn hẳn.
+ * ghi đè lên nó, kết quả là mốc bắt đầu biến mất còn mốc kết thúc nhảy vào ô bắt đầu (lỗi đã gặp
+ * trên cổng thật). Nhãn "thời điểm bắt đầu/kết thúc" là chuỗi dài, riêng biệt — khớp chắc hơn hẳn.
  */
 function findLabelledDateControl(controls, keyword) {
   const want = norm(keyword);
@@ -1240,7 +1344,6 @@ function findLabelledDateControl(controls, keyword) {
   }
   return null;
 }
-
 
 function setGenericDateControl(control, value) {
   const raw = String(value || "").trim();
@@ -1284,8 +1387,8 @@ function selectAreaPlainTextInput(container, name) {
 }
 
 // Ô nhập của vùng "Khác" (vd NhapDanTocBenNuKhac) được eForm để display:none cho tới khi dropdown đi
-// trước đổi sang "Khác". Ghi vào lúc ô còn ẩn thì eForm bật hiện ô là XÓA giá trị → ô trống viền đỏ.
-// Chờ ô hiện rồi mới ghi, và ghi lại nếu vừa ghi xong đã bị xóa.
+// trước đổi sang "Khác". Ghi vào lúc ô còn ẩn thì eForm bật hiện ô là XÓA giá trị → ô trống viền đỏ
+// (req_8b71d6a7265b). Chờ ô hiện rồi mới ghi, và ghi lại nếu vừa ghi xong đã bị xóa.
 async function fillPlainTextSelectArea(container, f) {
   const text = String(f.value ?? "").trim();
   if (!text) return false;
@@ -1312,7 +1415,7 @@ async function fillPlainTextSelectArea(container, f) {
 function fillDivorceDecisionAreaByKnownNames(container, data) {
   const used = new Set();
   let any = false;
-  // Vùng động =2 có ô này; vùng ly hôn/góa (=3/=4) không có nên selector tự bỏ qua.
+  // Area "đang có vợ/chồng" (=2) có thêm ô tên vợ/chồng; area ly hôn/góa (=3/=4) không có ô này.
   const spouseInput = container.querySelector('input[name="voChongHoTen"]');
   if (spouseInput && data.voChongHoTen) {
     setNativeValue(spouseInput, data.voChongHoTen, { typing: true, commit: true });
@@ -1321,7 +1424,7 @@ function fillDivorceDecisionAreaByKnownNames(container, data) {
     any = true;
   }
   // "soGiayTo" = tên dùng ở thủ tục Xác nhận TTHN; "*_SoBanAn" (vd BenNam_SoBanAn/BenNu_SoBanAn)
-  // = tên thật trên cổng cho thủ tục Đăng ký kết hôn — khớp CẢ HAI cho chắc.
+  // = tên thật xác nhận trên cổng cho thủ tục Đăng ký kết hôn — khớp CẢ HAI cho chắc.
   const numberInput = container.querySelector('input[name="soGiayTo"], input[name$="_SoBanAn"]');
   const numberHandled = !!(numberInput && data.soBanAnQuyetDinhLyHon);
   if (numberHandled) {
@@ -1365,64 +1468,47 @@ async function fillDivorceDecisionArea(container, data) {
   const byName = fillDivorceDecisionAreaByKnownNames(container, data);
   let any = byName.any;
 
-  // Tầng 2 — theo NHÃN, chạy trước khi phải suy theo vị trí. Chỉ đụng ô tầng tên chưa xử lý.
-  const labelled = divorceControlsByLabel(container);
-  if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled && labelled.number) {
-    setNativeValue(labelled.number, data.soBanAnQuyetDinhLyHon, { typing: true, commit: true });
-    markFilled(labelled.number.parentElement || labelled.number);
-    byName.used.add(labelled.number);
-    byName.numberHandled = true;
-    any = true;
-  }
-  if (data.ngayCapBanAnQuyetDinhLyHon && !byName.dateHandled && labelled.date) {
-    if (setGenericDateControl(labelled.date, data.ngayCapBanAnQuyetDinhLyHon)) {
-      byName.used.add(labelled.date);
-      byName.dateHandled = true;
-      any = true;
-    }
-  }
-  if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled && labelled.agency) {
-    setNativeValue(labelled.agency, data.coQuanCapBanAnQuyetDinhLyHon, { typing: true, commit: true });
-    markFilled(labelled.agency.parentElement || labelled.agency);
-    byName.used.add(labelled.agency);
-    byName.agencyHandled = true;
-    any = true;
-  }
-
-  // Tầng 3 — suy theo thứ tự hiển thị: Số bản án -> Ngày cấp -> Cơ quan cấp. Ô nào hai tầng trên
-  // ĐÃ xử lý thì loại khỏi danh sách, nếu không index lệch và ô ngày bị điền đè lần hai.
+  // Phần nào byName ĐÃ xử lý (khớp tên thật hoặc tên cũ) thì bỏ qua, KHÔNG suy vị trí lại —
+  // tránh ghi đè/lệch ô. Phần còn thiếu mới suy theo thứ tự hiển thị: Số bản án -> Ngày cấp ->
+  // Cơ quan cấp. Loại các input byName đã dùng ra khỏi danh sách để index không bị lệch.
+  // used chứa các INPUT đã điền theo tên, còn selectAreaDateControls trả về x-date BỌC chúng — nên
+  // phải loại cả control chứa input đã dùng, nếu không ô "Ngày cấp" sẽ bị điền đè lần hai bằng mốc
+  // thời gian và đẩy lệch toàn bộ phần điền theo vị trí bên dưới.
   const isUsed = (el) => byName.used.has(el)
     || [...byName.used].some((node) => el?.contains?.(node));
-  const textControls = selectAreaTextControls(container).filter((el) => !isUsed(el));
-  const dateControls = selectAreaDateControls(container).filter((el) => !isUsed(el));
+  const remainingText = selectAreaTextControls(container).filter((el) => !isUsed(el));
+  const remainingDate = selectAreaDateControls(container).filter((el) => !isUsed(el));
 
   if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled) {
-    any = setGenericTextControl(textControls.shift(), data.soBanAnQuyetDinhLyHon) || any;
+    any = setGenericTextControl(remainingText.shift(), data.soBanAnQuyetDinhLyHon) || any;
   }
   if (data.ngayCapBanAnQuyetDinhLyHon && !byName.dateHandled) {
-    if (dateControls.length) {
-      any = setGenericDateControl(dateControls.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+    if (remainingDate.length) {
+      any = setGenericDateControl(remainingDate.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
     } else {
-      // Không có control ngày riêng → ô ngày thực chất là input text thường (đã nằm trong
-      // textControls), lấy đúng slot kế tiếp.
-      any = setGenericTextControl(textControls.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+      // Không có control ngày dạng x-date/day-input riêng → ô ngày thực chất là input text
+      // thường (đã bị gom vào remainingText), lấy đúng slot kế tiếp.
+      any = setGenericTextControl(remainingText.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
     }
   }
   if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled) {
-    any = setGenericTextControl(textControls.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
+    any = setGenericTextControl(remainingText.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
   }
 
   // Vùng =5 có THÊM hai ô ngày: "Thời điểm bắt đầu/kết thúc của khoảng thời gian mong muốn xác nhận
   // chưa đăng ký kết hôn với ai". Tên DOM của hai ô này chưa được xác nhận trên cổng nên KHÔNG đoán
-  // tên — ưu tiên khớp theo NHÃN, hụt mới suy theo VỊ TRÍ.
+  // tên — điền theo VỊ TRÍ, việc này chắc chắn vì ô "Ngày cấp giấy chứng nhận kết hôn" đã bị khớp
+  // theo tên thật (ngayCapGiayTo-*) và loại khỏi danh sách ở trên, chỉ còn đúng [bắt đầu, kết thúc]
+  // theo thứ tự hiển thị.
   // Ô "Ngày cấp giấy chứng nhận kết hôn" do các field raw ngayCapGiayTo-* điền ở tầng trên nên KHÔNG
-  // nằm trong `used` của vùng này — loại theo cả name lẫn id (eForm đặt tên bằng id ở nhiều ô).
-  const positional = dateControls.filter(
+  // nằm trong `used` của vùng này — loại theo cả name lẫn id (eForm đặt tên bằng id ở nhiều ô, xem
+  // chính setGenericDateControl bên dưới cũng phải dò cả hai).
+  const positional = remainingDate.filter(
     (el) => !el?.querySelector?.('input[name^="ngayCapGiayTo"], input[id^="ngayCapGiayTo"]')
   );
   const usedPeriod = new Set();
   const takePeriodControl = (label) => {
-    const free = dateControls.filter((el) => !usedPeriod.has(el));
+    const free = remainingDate.filter((el) => !usedPeriod.has(el));
     const byLabel = findLabelledDateControl(free, label);
     if (byLabel) { usedPeriod.add(byLabel); return byLabel; }
     const next = positional.find((el) => !usedPeriod.has(el));
@@ -1439,58 +1525,6 @@ async function fillDivorceDecisionArea(container, data) {
     any = setGenericDateControl(control, value) || any;
   }
   return any;
-}
-
-async function fillSelectArea(container, f) {
-  if (isPlainSelectAreaValue(f.value)) {
-    await waitFor(() => selectAreaPlainTextInput(container, f.name), 1500);
-    return fillPlainTextSelectArea(container, f);
-  }
-
-  const data = normalizeAreaValue(f.value);
-  if (hasDivorceDecisionAreaValue(data)) {
-    return fillDivorceDecisionArea(container, data);
-  }
-  // Không có Tỉnh/Xã để đối chiếu thì không kết luận được khối đúng hay sai → điền một lượt như cũ.
-  if (!data.tinh && !data.xa) return fillAreaWidgets(container, data);
-
-  const state = legacyAreaFillState(container);
-  // ĐÃ ĐIỀN ĐƯỢC: giữ nguyên khối xanh — không tick lại ô phạm vi, không chọn lại dropdown.
-  if (state.fills && legacyAreaRolesFilled(container, data) && legacyAreaDetailFilled(container, data)) {
-    return true;
-  }
-  // Hết hai lượt mà vẫn trượt → dừng, nhường cho pass đánh dấu cuối cùng tô đỏ.
-  if (state.fills >= LEGACY_AREA_MAX_FILLS) return false;
-
-  // LƯỢT 1 — chưa phân biệt được "cổng dựng hỏng khối" với "khối render chậm" nên KHÔNG tô đỏ:
-  // còn nguyên một lượt điền nữa sau khi tick lại ô phạm vi, tô đỏ bây giờ chỉ làm khối nháy đỏ.
-  state.fills++;
-  const any = await fillAreaWidgets(container, data, { markMissing: false });
-  if (legacyAreaRolesFilled(container, data)) return any;
-  // Tỉnh đã vào, chỉ Xã trượt → khối KHÔNG hỏng (danh sách xã nạp chậm, hoặc xã cũ đã sáp nhập không còn
-  // trên cổng). Tick lại ô phạm vi làm cổng xóa trắng cả khối, mất luôn Tỉnh vừa điền → chỉ chọn lại Xã
-  // MỘT lần; vẫn trượt thì giữ nguyên Tỉnh + Địa chỉ, tô đỏ riêng ô Xã cho người dùng tự chọn.
-  if (data.tinh && data.xa && legacyAreaRoleFilled(container, data, "tinh")) {
-    state.fills = LEGACY_AREA_MAX_FILLS;
-    await retryLegacyAreaWard(container, data);
-    return true;
-  }
-  if (!(await resetLegacyAreaScope(container))) {
-    // Không tìm được ô "Trong nước/Khác" để tick lại thì điền lần 2 cũng ra kết quả cũ → tô đỏ luôn.
-    state.fills = LEGACY_AREA_MAX_FILLS;
-    markMissingAreaRoles(container, data);
-    return any;
-  }
-  // Tick lại có thể làm cổng dựng phần tử MỚI → lấy lại khối theo name trước khi điền lần 2.
-  let fresh = container;
-  if (!container.isConnected) {
-    fresh = findNamedElement("x-select-area", fieldCandidates(f)).el || container;
-  }
-  // LƯỢT 2 là lượt cuối → tô bình thường: vào được thì xanh, vẫn trượt thì đỏ.
-  state.fills = LEGACY_AREA_MAX_FILLS;
-  legacyAreaFillState(fresh).fills = LEGACY_AREA_MAX_FILLS;
-  const retried = await fillAreaWidgets(fresh, data);
-  return any || retried;
 }
 
 function legacyAreaWidgetsByRole(container) {
@@ -1518,7 +1552,6 @@ async function retryLegacyAreaWard(container, data) {
   await sleep(600);
   const ward = legacyAreaWidgetsByRole(container).xa;
   const ok = ward ? await pickInWidget(ward, data.xa) : false;
-  if (!ward) markMissingAreaRoles(container, data);
   // Chọn Xã có thể làm cổng xóa ô Địa chỉ → ghi lại nếu mất.
   const addr = container.querySelector("input.input-field");
   if (addr && !legacyAreaDetailFilled(container, data)) {
@@ -1526,23 +1559,6 @@ async function retryLegacyAreaWard(container, data) {
     markFilled(addr.parentElement || addr);
   }
   return ok;
-}
-
-// Ô "Địa chỉ" (số nhà/đường) trong khối đã đúng giá trị cần điền chưa.
-function legacyAreaDetailFilled(container, data) {
-  if (!data.diaChi) return true;
-  return legacyScalarMatches(container.querySelector("input.input-field")?.value, data.diaChi);
-}
-
-// Lượt 1 điền với markMissing=false; khi không còn lượt 2 thì phải tự tô đỏ ô Tỉnh/Xã còn trượt.
-function markMissingAreaRoles(container, data) {
-  const byRole = legacyAreaWidgetsByRole(container);
-  for (const role of ["tinh", "xa"]) {
-    const w = byRole[role];
-    if (!w || !data[role]) continue;
-    const header = w.querySelector(".input-field-select");
-    if (!legacyChoiceMatches(header?.textContent, data[role])) markUnfilled(header || w);
-  }
 }
 
 // Ô tích phạm vi địa chỉ ("Trong nước" / "Nước ngoài" / "Khác") chi phối khối x-select-area đứng
@@ -1609,29 +1625,107 @@ function legacyAreaFillState(container) {
   return fresh;
 }
 
+// Ô "Địa chỉ" (số nhà/đường) trong khối đã đúng giá trị cần điền chưa.
+function legacyAreaDetailFilled(container, data) {
+  if (!data.diaChi) return true;
+  return legacyScalarMatches(container.querySelector("input.input-field")?.value, data.diaChi);
+}
+
+async function fillSelectArea(container, f) {
+  if (isPlainSelectAreaValue(f.value)) {
+    await waitFor(() => selectAreaPlainTextInput(container, f.name), 1500);
+    return fillPlainTextSelectArea(container, f);
+  }
+
+  const data = normalizeAreaValue(f.value);
+  if (hasDivorceDecisionAreaValue(data)) {
+    return fillDivorceDecisionArea(container, data);
+  }
+  // Không có Tỉnh/Xã để đối chiếu thì không kết luận được khối đúng hay sai → điền một lượt như cũ.
+  if (!data.tinh && !data.xa) return fillAreaWidgets(container, data);
+
+  const state = legacyAreaFillState(container);
+  // ĐÃ ĐIỀN ĐƯỢC: giữ nguyên khối xanh — không tick lại ô phạm vi, không chọn lại dropdown.
+  if (state.fills && legacyAreaRolesFilled(container, data) && legacyAreaDetailFilled(container, data)) {
+    return true;
+  }
+  // Hết hai lượt mà vẫn trượt → dừng, nhường cho pass đánh dấu cuối cùng tô đỏ.
+  if (state.fills >= LEGACY_AREA_MAX_FILLS) return false;
+
+  // LƯỢT 1 — chưa phân biệt được "cổng dựng hỏng khối" với "khối render chậm" nên KHÔNG tô đỏ:
+  // còn nguyên một lượt điền nữa sau khi tick lại ô phạm vi, tô đỏ bây giờ chỉ làm khối nháy đỏ.
+  state.fills++;
+  const any = await fillAreaWidgets(container, data, { markMissing: false });
+  if (legacyAreaRolesFilled(container, data)) return any;
+  // Tỉnh đã vào, chỉ Xã trượt → khối KHÔNG hỏng (danh sách xã nạp chậm, hoặc xã cũ đã sáp nhập không còn
+  // trên cổng). Tick lại ô phạm vi làm cổng xóa trắng cả khối, mất luôn Tỉnh vừa điền → chỉ chọn lại Xã
+  // MỘT lần; vẫn trượt thì giữ nguyên Tỉnh + Địa chỉ, tô đỏ riêng ô Xã cho người dùng tự chọn.
+  if (data.tinh && data.xa && legacyAreaRoleFilled(container, data, "tinh")) {
+    state.fills = LEGACY_AREA_MAX_FILLS;
+    await retryLegacyAreaWard(container, data);
+    return true;
+  }
+  if (!(await resetLegacyAreaScope(container))) {
+    // Không tìm được ô "Trong nước/Khác" để tick lại thì điền lần 2 cũng ra kết quả cũ.
+    state.fills = LEGACY_AREA_MAX_FILLS;
+    return any;
+  }
+  // Tick lại có thể làm cổng dựng phần tử MỚI → lấy lại khối theo name trước khi điền lần 2.
+  let fresh = container;
+  if (!container.isConnected) {
+    fresh = findNamedElement("x-select-area", fieldCandidates(f)).el || container;
+  }
+  // LƯỢT 2 là lượt cuối → tô bình thường: vào được thì xanh, vẫn trượt thì đỏ.
+  state.fills = LEGACY_AREA_MAX_FILLS;
+  legacyAreaFillState(fresh).fills = LEGACY_AREA_MAX_FILLS;
+  const retried = await fillAreaWidgets(fresh, data);
+  return any || retried;
+}
+
 async function fillAreaWidgets(container, data, { markMissing = true } = {}) {
   // Area thường được hiện ra sau khi tick radio "Trong nước" ngay trước đó →
   // sub-widget có thể chưa kịp render. Chờ tối đa 1.5s.
   await waitFor(() => container.querySelector('[id^="custom-select-"]'), 1500);
-  const byRole = legacyAreaWidgetsByRole(container);
+  const widgets = Array.from(container.querySelectorAll('[id^="custom-select-"]'));
+  const byRole = {};
+  for (const w of widgets) {
+    const r = areaRoleOf(w);
+    if (r && !byRole[r]) byRole[r] = w;
+  }
+  const selectedText = (w) => norm(w.querySelector(".input-field-select")?.textContent || "");
   let any = false;
+  // Tỉnh hoặc xã có thật sự ĐỔI sang địa bàn khác không — quyết định số nhà cũ còn dùng được không.
+  let areaMoved = false;
   for (const role of ["quocGia", "tinh", "xa"]) {
     const w = byRole[role];
     const val = data[role];
     if (!w || !val) continue;
+    const before = selectedText(w);
     // Ô đã đúng sẵn → giữ nguyên viền xanh: chọn lại chỉ làm cổng load lại tầng dưới và xóa mất
     // xã/phường vừa chọn ở lượt trước.
-    if (legacyChoiceMatches(w.querySelector(".input-field-select")?.textContent, val)) {
+    if (legacyChoiceMatches(before, val)) {
       markFilled(w.querySelector(".input-field-select") || w);
       any = true;
       continue;
     }
     const ok = await pickInWidget(w, val, { markMissing });
-    if (ok) { any = true; await sleep(700); } // chờ tầng dưới load qua AJAX
+    if (ok) {
+      any = true;
+      if (role !== "quocGia" && selectedText(w) !== before) areaMoved = true;
+      await sleep(700); // chờ tầng dưới load qua AJAX
+    }
   }
+  const addr = container.querySelector("input.input-field");
   if (data.diaChi) {
-    const addr = container.querySelector("input.input-field");
     if (addr) { setNativeValue(addr, data.diaChi); markFilled(addr.parentElement || addr); any = true; }
+  } else if (areaMoved && addr && String(addr.value || "").trim()) {
+    // Cổng điền sẵn ô "Địa chỉ" (số nhà/đường) theo TÀI KHOẢN VNeID đang đăng nhập. Giấy tờ vừa
+    // kéo tỉnh/xã sang địa bàn KHÁC mà không đọc được số nhà → để nguyên dòng cũ là ghép ra một địa
+    // chỉ lai: tỉnh/xã của giấy + số nhà của người khác. Sai kiểu này trông vẫn "hợp lệ" nên không
+    // ai soát ra và sẽ được nộp đi. Xóa rồi tô đỏ để người dân tự gõ lại: ô trống thì nhìn là thấy.
+    setNativeValue(addr, "");
+    markUnfilled(addr.parentElement || addr);
+    any = true;
   }
   return any;
 }

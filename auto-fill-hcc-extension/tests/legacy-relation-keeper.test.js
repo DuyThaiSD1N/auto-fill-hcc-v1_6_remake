@@ -33,11 +33,3 @@ test("ghi lại cả ô bị xóa lẫn ô bị chép đè, radio/dropdown trư�
 test("cài sau mỗi lượt điền", () => {
   assert.match(src, /armLegacyRelationKeeper\(fields, filledNames\);/);
 });
-
-test("bộ giữ giống hệt bản Auto Fill", () => {
-  const otherPath = path.join(__dirname, "..", "..", "auto-fill-hcc-extension", "content", "fill-legacy.js");
-  if (!fs.existsSync(otherPath)) return;
-  const other = fs.readFileSync(otherPath, "utf8");
-  const cut = (s) => s.slice(s.indexOf("// ---- Đăng ký lại khai sinh: giữ dữ liệu"), s.indexOf("async function fillForm(fields) {"));
-  assert.equal(block, cut(other));
-});

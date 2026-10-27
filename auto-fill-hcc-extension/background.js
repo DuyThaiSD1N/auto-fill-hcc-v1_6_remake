@@ -1,1152 +1,26 @@
-// Service worker — bấm icon extension → mở/đóng khung Trợ lý trên trang.
-//
-// Hai chế độ khung (xem lib/panelMode.js):
-//   push      — iframe đẩy trang sang trái, do content.js dựng. MẶC ĐỊNH.
-//   sidepanel — khung bên của chính trình duyệt (chrome.sidePanel).
-// Ở chế độ sidepanel, cú bấm icon do CHROME xử lý (openPanelOnActionClick=true)
-// nên listener dưới đây KHÔNG chạy. Cố tự mở bằng sidePanel.open() trong listener
-// là hỏng: hàm đó đòi user gesture, mà đọc cài đặt là async nên gesture đã mất.
-
-importScripts("lib/panelMode.js");
-// config.js: base BE + failover (dùng chung với sidebar). submitClickReporter: gửi mốc nộp hồ sơ.
-importScripts("api/config.js", "lib/submitClickReporter.js");
-// Ảnh chụp form (content/form-snapshot); dùng refreshAuth của submitClickReporter.
-importScripts("lib/formSnapshotOutbox.js");
-const PM = globalThis.__TLND_PANEL_MODE__;
-
-// Bấm icon. Content script còn sống thì chỉ bật/tắt panel như trước.
-//
-// Tab mở từ TRƯỚC lần nạp lại extension (tự cập nhật, bấm "⬆ Cập nhật", nạp tay ở chrome://extensions)
-// giữ content script MỒ CÔI: mọi message tới nó hỏng ("Receiving end does not exist"), nên trước đây bấm
-// icon im lặng và cán bộ phải tự tải lại trang. Giờ tiêm lại ĐỦ bộ file theo đúng thứ tự manifest rồi gửi
-// lại. Đo 2026-09-14 trên Chrome 151: bản tiêm lại chạy trong isolated world MỚI (cờ window.__TLND_*__ của
-// bản mồ côi không còn), nên các guard chống nạp trùng không chặn.
-//
-// Chỉ tiêm trên trang khớp content_scripts.matches — trùng khít web_accessible_resources, nên trang khác
-// không bao giờ bị dựng panel chết. Panel/launcher mồ côi còn nằm trên trang (nạp lại mà không kịp
-// hccGoPanelTruocKhiNapLai) thì gỡ trước: iframe của nó thuộc bản extension cũ đã chết, còn listener thuộc
-// world cũ — để lại thì content.js mới sẽ dùng lại đúng cái xác đó (createPanel/showLauncher tìm theo id).
-function khopMauUrl(url, mau) {
-  const m = /^(\*|https?):\/\/(\*|(?:\*\.)?[^/*]+)(\/.*)$/.exec(String(mau || ""));
-  if (!m || !url) return false;
-  let u;
-  try { u = new URL(url); } catch (e) { return false; }
-  const scheme = u.protocol.slice(0, -1);
-  if (m[1] === "*" ? scheme !== "http" && scheme !== "https" : scheme !== m[1]) return false;
-  const host = m[2];
-  if (host.startsWith("*.")) {
-    const goc = host.slice(2);
-    if (u.hostname !== goc && !u.hostname.endsWith("." + goc)) return false;
-  } else if (host !== "*" && u.hostname !== host) {
-    return false;
-  }
-  const duong = m[3].split("*").map((x) => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
-  return new RegExp("^" + duong + "$").test(u.pathname + u.search);
-}
-
-async function moPanelTheoIcon(tab) {
-  if (!tab?.id) return "khong-tab";
+// Background runtime xử lý click extension icon (Chrome service worker / Firefox event page).
+// Firefox nạp các file này qua background.scripts (event page không có importScripts).
+if (typeof importScripts === "function") importScripts("background/form-snapshot.js");
+// Bấm icon → gửi message content script (top frame) tab hiện tại để toggle panel nổi.
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab?.id) return;
   try {
     await chrome.tabs.sendMessage(tab.id, { action: "togglePanel" });
-    return "da-gui";
-  } catch (e) { /* không có content script sống — xét tiêm lại */ }
-  const cs = chrome.runtime.getManifest().content_scripts?.[0];
-  if (!cs || !(cs.matches || []).some((mau) => khopMauUrl(tab.url, mau))) return "khong-ho-tro";
-  // id khớp PANEL_ID / BUBBLE_ID trong content.js.
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => {
-      document.getElementById("tro-ly-nguoi-dan-panel")?.remove();
-      document.getElementById("tro-ly-nguoi-dan-bubble")?.remove();
-    },
-  });
-  const target = { tabId: tab.id, allFrames: !!cs.all_frames };
-  if (cs.css?.length) await chrome.scripting.insertCSS({ target, files: cs.css });
-  await chrome.scripting.executeScript({ target, files: cs.js });
-  await chrome.tabs.sendMessage(tab.id, { action: "togglePanel" });
-  return "tiem-lai";
-}
-
-chrome.action.onClicked.addListener((tab) => {
-  moPanelTheoIcon(tab)
-    .then((kq) => { if (kq === "khong-ho-tro") console.warn("[BG] Trang không hỗ trợ Trợ lý:", tab?.url); })
-    .catch((e) => console.warn("[BG] Không mở được panel:", e?.message || e));
-});
-
-// ── Áp dụng chế độ khung ────────────────────────────────────────────────────
-// Service worker bị Chrome giết/dựng lại liên tục, nên phải áp lại ở MỌI lần
-// khởi động chứ không chỉ lúc người dùng đổi cài đặt — không thì sau một lần SW
-// ngủ dậy, bấm icon lại quay về đẩy trang.
-
-async function ganTuyChonKhungBen(tabId) {
-  if (!tabId) return;
-  try {
-    await chrome.sidePanel.setOptions({
-      tabId, path: PM.duongSidebar(tabId), enabled: true,
-    });
   } catch (e) {
-    console.warn("[BG] Không đặt được sidePanel cho tab", tabId, e?.message || e);
-  }
-}
-
-// phatChoMoiTab=true CHỈ khi cài đặt thật sự đổi. Không được phát lúc SW khởi động
-// lại (chuyện xảy ra liên tục): tab đang mở sẽ bị dựng/dọn khung mỗi lần SW ngủ dậy.
-async function apDungCheDo(phatChoMoiTab = false) {
-  const mode = await PM.cheDoHieuLuc();
-  if (phatChoMoiTab) void baoMoiTab(mode);
-  if (!PM.hoTroKhungBen()) return PM.DAY_TRANG;   // Chrome/Cốc Cốc cũ → không đụng gì
-  const khungBen = mode === PM.KHUNG_BEN;
-  try {
-    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: khungBen });
-  } catch (e) {
-    console.warn("[BG] Không đổi được hành vi sidePanel:", e?.message || e);
-    return PM.DAY_TRANG;
-  }
-  // Gán đường có sẵn tabId cho các tab đang mở. Chỉ bật khi thật sự ở chế độ khung
-  // bên: bật khi đang chạy đẩy trang là mọc thêm một cửa thứ hai trong menu khung
-  // bên của Chrome, mở ra hai phiên hội thoại song song trên cùng một tab.
-  try {
-    const tabs = await chrome.tabs.query({});
-    await Promise.all(tabs.map((t) => (
-      khungBen
-        ? ganTuyChonKhungBen(t.id)
-        : chrome.sidePanel.setOptions({ tabId: t.id, enabled: false }).catch(() => {})
-    )));
-  } catch (e) {
-    console.warn("[BG] Không quét được tab để áp chế độ khung:", e?.message || e);
-  }
-  return mode;
-}
-
-void apDungCheDo();
-chrome.runtime.onStartup?.addListener(() => void apDungCheDo());
-chrome.runtime.onInstalled.addListener(() => void apDungCheDo());
-
-// Tab mới / điều hướng: đường sidebar phải mang đúng tabId của tab đó.
-chrome.tabs.onCreated.addListener(async (tab) => {
-  if (!PM.hoTroKhungBen() || !tab?.id) return;
-  if (await PM.cheDoHieuLuc() === PM.KHUNG_BEN) await ganTuyChonKhungBen(tab.id);
-});
-
-// Đổi cài đặt ở BẤT KỲ đâu đều áp lại — kể cả khi màn Cài đặt nằm trong khung bên
-// của một cửa sổ khác.
-// Đổi chế độ phải tới MỌI tab đang mở, không chỉ tab đang mở màn Cài đặt: bỏ sót
-// là tab kia giữ nguyên khung đẩy trang trong khi cả máy đã chuyển sang khung bên.
-async function baoMoiTab(mode) {
-  let tabs = [];
-  try { tabs = await chrome.tabs.query({}); } catch (_) { return; }
-  await Promise.all(tabs.map(async (t) => {
-    if (!t.id) return;
-    try { await chrome.tabs.sendMessage(t.id, { action: "panelModeChanged", mode }); }
-    catch (_) { /* tab không có content script — bình thường */ }
-  }));
-}
-
-chrome.storage.onChanged.addListener((thayDoi, vung) => {
-  if (vung !== "local" || !(PM.KHOA in thayDoi)) return;
-  void apDungCheDo(true);
-});
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.action !== "getPanelMode") return;
-  // content.js hỏi đường này vì chrome.sidePanel không tồn tại trong content script.
-  (async () => {
-    sendResponse({
-      mode: await PM.cheDoHieuLuc(),
-      dat: await PM.docCheDo(),
-      hoTro: PM.hoTroKhungBen(),
-      moNgay: PM.hoTroMoNgay(),
-      khungBenMo: khungBenMoTheoTab.has(sender?.tab?.id),
-    });
-  })();
-  return true;
-});
-
-// ── Nút tròn trên trang mở khung bên ────────────────────────────────────────
-// Đo trên Chrome 152 (2026-09-13): cú bấm THẬT trong content script chuyển được user gesture qua
-// runtime.sendMessage, nên gọi sidePanel.open() ở đây được. Trình duyệt cũ không chuyển gesture
-// thì open() bị từ chối → trả ok:false để content.js chỉ đường sang biểu tượng thanh công cụ.
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.action !== "openSidePanel") return;
-  const tabId = sender?.tab?.id;
-  if (!tabId || !PM.hoTroMoNgay()) { sendResponse({ ok: false }); return; }
-  // KHÔNG await gì trước open(): mọi await đều làm rơi mất gesture vừa chuyển sang.
-  try {
-    chrome.sidePanel.setOptions({ tabId, path: PM.duongSidebar(tabId), enabled: true }).catch(() => {});
-    chrome.sidePanel.open({ tabId })
-      .then(() => sendResponse({ ok: true }))
-      .catch((e) => {
-        console.warn("[BG] Nút tròn không mở được khung bên:", e?.message || e);
-        sendResponse({ ok: false });
-      });
-  } catch (e) {
-    console.warn("[BG] Nút tròn không mở được khung bên:", e?.message || e);
-    sendResponse({ ok: false });
-  }
-  return true;
-});
-
-// ── Khung bên đang mở cho tab nào ───────────────────────────────────────────
-// Sidebar ở khung bên giữ một port suốt đời trang; port đứt nghĩa là khung đã đóng. Dùng port chứ
-// không dùng sidePanel.onOpened/onClosed: hai sự kiện đó chỉ có ở Chrome gần đây, port thì chạy ở
-// mọi bản có sidePanel. SW bị Chrome dọn thì bảng này mất, nhưng sidebar tự nối lại port nên bảng
-// dựng lại được — và SW chết thì không có onDisconnect nào báo "đóng" oan.
-const khungBenMoTheoTab = new Map(); // tabId -> số port đang mở
-
-async function baoKhungBen(tabId, mo) {
-  try { await chrome.tabs.sendMessage(tabId, { action: "khungBenTrangThai", mo }); }
-  catch (_) { /* tab không có content script — bình thường */ }
-}
-
-chrome.runtime.onConnect.addListener((port) => {
-  const m = /^tlnd-khung-ben:(\d+)$/.exec(port.name || "");
-  if (!m) return;
-  const tabId = Number(m[1]);
-  khungBenMoTheoTab.set(tabId, (khungBenMoTheoTab.get(tabId) || 0) + 1);
-  void baoKhungBen(tabId, true);
-  port.onDisconnect.addListener(() => {
-    const con = (khungBenMoTheoTab.get(tabId) || 1) - 1;
-    if (con > 0) { khungBenMoTheoTab.set(tabId, con); return; }
-    khungBenMoTheoTab.delete(tabId);
-    void baoKhungBen(tabId, false);
-  });
-});
-
-// Phiên đăng nhập của công dân nằm ở nhiều miền dù tab hoàn tất có thể đang ở cổng Bộ Tư pháp.
-// Chỉ xóa đúng các miền tham gia luồng DVC/VNeID; tuyệt đối không quét rộng *.gov.vn hoặc *.moj.gov.vn.
-const CITIZEN_COOKIE_HOSTS = Object.freeze([
-  "dichvucong.gov.vn",
-  "sso.dancuquocgia.gov.vn",
-  "dichvucongnganhtuphap.moj.gov.vn",
-  "tokhaidientu.moj.gov.vn",
-  "dichvucongnnmt.mae.gov.vn",
-  "dvc.moet.gov.vn",
-  "dvc.moc.gov.vn",
-  "dichvucong.bacninh.gov.vn",
-]);
-
-// Token đăng nhập của các cổng SPA không nhất thiết chỉ nằm trong cookie. Xóa thêm
-// dữ liệu web đúng các origin tham gia luồng; không đụng chrome.storage của Trợ lý.
-const CITIZEN_STORAGE_ORIGINS = Object.freeze([
-  "https://dichvucong.gov.vn",
-  "https://lienthong.dichvucong.gov.vn",
-  "https://sso.dancuquocgia.gov.vn",
-  "https://dichvucongnganhtuphap.moj.gov.vn",
-  "https://tokhaidientu.moj.gov.vn",
-  "https://dichvucongnnmt.mae.gov.vn",
-  "https://dvc.moet.gov.vn",
-  "https://dvc.moc.gov.vn",
-  "https://dichvucong.bacninh.gov.vn",
-]);
-
-const CITIZEN_TAB_URL_PATTERNS = Object.freeze([
-  "https://dichvucong.gov.vn/*",
-  "https://*.dichvucong.gov.vn/*",
-  "https://sso.dancuquocgia.gov.vn/*",
-  "https://dichvucongnganhtuphap.moj.gov.vn/*",
-  "https://tokhaidientu.moj.gov.vn/*",
-  "https://dichvucongnnmt.mae.gov.vn/*",
-  "https://dvc.moet.gov.vn/*",
-  "https://dvc.moc.gov.vn/*",
-  "https://dichvucong.bacninh.gov.vn/*",
-]);
-
-const JOURNEY_KEY = "tlnd_journey";
-const COMPLETION_LOGOUT_KEY_PREFIX = "tlnd_completion_logout:";
-
-// Click Đăng xuất thường điều hướng ngay, có thể hủy iframe sidebar trước khi nó kịp
-// ghi trạng thái. Service worker xóa deadline theo tab để bộ đếm của công dân cũ
-// tuyệt đối không sống lại khi trang kế tiếp dựng sidebar mới.
-function clearCompletionLogoutForTab(tabId) {
-  return new Promise((resolve) => {
-    const key = String(tabId ?? "");
-    if (!key) return resolve({ ok: false, cleared: false });
-    const completionKey = `${COMPLETION_LOGOUT_KEY_PREFIX}${key}`;
-    chrome.storage.local.get([JOURNEY_KEY, completionKey], (res) => {
-      const journeys = res?.[JOURNEY_KEY] || {};
-      const current = journeys[key];
-      const hadSeparateState = !!res?.[completionKey];
-      const hadLegacyState = !!current?.completion_logout;
-      const removeSeparateState = () => {
-        chrome.storage.local.remove([completionKey], () => {
-          resolve({
-            ok: !chrome.runtime.lastError,
-            cleared: hadSeparateState || hadLegacyState,
-          });
-        });
-      };
-      if (!hadLegacyState) {
-        removeSeparateState();
-        return;
-      }
-      const next = { ...current };
-      delete next.completion_logout;
-      journeys[key] = next;
-      chrome.storage.local.set({ [JOURNEY_KEY]: journeys }, removeSeparateState);
-    });
-  });
-}
-
-function citizenCookieRemovalHost(cookie) {
-  const domain = String(cookie?.domain || "").replace(/^\./, "").toLowerCase();
-  if (!domain) return "";
-  for (const host of CITIZEN_COOKIE_HOSTS) {
-    if (domain === host || domain.endsWith(`.${host}`)) return domain;
-    // Cookie có thể được đặt ở miền cha (ví dụ dancuquocgia.gov.vn) nhưng vẫn áp dụng
-    // cho đúng cổng SSO. Xóa qua host con đã được cấp quyền, không mở quyền toàn miền cha.
-    if (host.endsWith(`.${domain}`)) return host;
-  }
-  return "";
-}
-
-function cookieRemovalUrl(cookie, host) {
-  const path = String(cookie?.path || "/");
-  if (!host) return "";
-  // Cả cookie Secure và không-Secure đều có thể được xóa qua URL HTTPS; dùng một scheme
-  // giúp quyền host không phải mở rộng thêm sang HTTP cho các cổng chỉ phục vụ HTTPS.
-  return `https://${host}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
-async function cookieStoreIdForTab(tabId) {
-  if (!Number.isInteger(Number(tabId)) || Number(tabId) <= 0) return null;
-  const stores = await chrome.cookies.getAllCookieStores();
-  return stores.find((store) => Array.isArray(store?.tabIds)
-    && store.tabIds.some((id) => Number(id) === Number(tabId)))?.id || null;
-}
-
-async function clearCitizenDvcCookies(tabId) {
-  const storeId = await cookieStoreIdForTab(tabId).catch(() => null);
-  const queryDetails = [{}];
-  if (storeId) queryDetails[0].storeId = storeId;
-
-  // Phiên đăng nhập chính là cookie không partition. Nếu Chrome hỗ trợ partition key,
-  // quét thêm partition hiện tại để không bỏ sót cookie của iframe SSO.
-  if (typeof chrome.cookies.getPartitionKey === "function"
-      && Number.isInteger(Number(tabId)) && Number(tabId) > 0) {
+    // Content script chưa có / mồ côi sau reload extension → inject lại rồi thử lại.
     try {
-      // Chrome trả BAO NGOÀI { partitionKey: {...} }, KHÔNG trả thẳng CookiePartitionKey.
-      // Nhét nguyên bao ngoài vào getAll làm Chrome ném "Unexpected property: 'partitionKey'"
-      // — và ném ĐỒNG BỘ ngay trong .map() nên Promise.allSettled bên dưới không đỡ được:
-      // cả lượt dọn đổ vỡ, không xóa nổi một cookie nào, công dân trước vẫn đăng nhập.
-      const res = await chrome.cookies.getPartitionKey({ tabId: Number(tabId) });
-      const partitionKey = res?.partitionKey || res;
-      // Chỉ gửi khi có topLevelSite thật: object rỗng/hình dạng lạ cũng bị API từ chối.
-      if (partitionKey && typeof partitionKey.topLevelSite === "string" && partitionKey.topLevelSite) {
-        queryDetails.push({ ...(storeId ? { storeId } : {}), partitionKey });
-      }
-    } catch (_) {
-      /* Chrome cũ hoặc frame không còn tồn tại: lượt cookie thường vẫn tiếp tục. */
+      // PHẢI inject ĐỦ bộ file theo đúng thứ tự manifest. Inject mỗi content.js sẽ thiếu
+      // api/config.js (nơi khai SUBMIT_WATCH_KEY) → content.js ném ReferenceError ngay ở top-level,
+      // IIFE dừng giữa chừng nên các const phía sau (sleep, FIELD_NAME_ALIASES...) không kịp khởi
+      // tạo → mọi lần điền sau đó đều lỗi "Cannot access ... before initialization".
+      // Đọc thẳng từ manifest để danh sách không lệch khi thêm/bớt file.
+      const files = chrome.runtime.getManifest()?.content_scripts?.[0]?.js
+        || ["api/config.js", "content/locations.js", "content.js"];
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
+      await chrome.tabs.sendMessage(tab.id, { action: "togglePanel" });
+    } catch (e2) {
+      console.warn("[BG] Không mở được panel:", e2?.message || e2);
     }
-  }
-  // async arrow: biến cú ném ĐỒNG BỘ của API thành promise bị từ chối để allSettled đỡ được.
-  // Một lượt quét hỏng chỉ được làm hỏng chính nó, không được kéo sập việc dọn phiên công dân.
-  const queries = await Promise.allSettled(
-    queryDetails.map(async (details) => chrome.cookies.getAll(details)),
-  );
-
-  const unique = new Map();
-  let failedQueries = 0;
-  for (const query of queries) {
-    if (query.status !== "fulfilled") {
-      failedQueries += 1;
-      continue;
-    }
-    for (const cookie of query.value || []) {
-      const removalHost = citizenCookieRemovalHost(cookie);
-      if (!removalHost) continue;
-      const key = [
-        cookie.storeId || storeId || "",
-        cookie.domain || "",
-        cookie.path || "/",
-        cookie.name || "",
-        JSON.stringify(cookie.partitionKey || null),
-      ].join("|");
-      unique.set(key, { cookie, removalHost });
-    }
-  }
-
-  let removed = 0;
-  let failed = 0;
-  await Promise.all([...unique.values()].map(async ({ cookie, removalHost }) => {
-    const url = cookieRemovalUrl(cookie, removalHost);
-    if (!url || !cookie?.name) {
-      failed += 1;
-      return;
-    }
-    const details = { url, name: cookie.name };
-    if (cookie.storeId || storeId) details.storeId = cookie.storeId || storeId;
-    if (cookie.partitionKey) details.partitionKey = cookie.partitionKey;
-    try {
-      const result = await chrome.cookies.remove(details);
-      if (result) removed += 1;
-      else failed += 1;
-    } catch (_) {
-      failed += 1;
-    }
-  }));
-
-  let storageCleared = false;
-  let storageError = "";
-  try {
-    await chrome.browsingData.remove(
-      { origins: [...CITIZEN_STORAGE_ORIGINS] },
-      { localStorage: true, indexedDB: true },
-    );
-    storageCleared = true;
-  } catch (error) {
-    storageError = error?.message || String(error);
-  }
-
-  // sessionStorage không thuộc BrowsingData API. Yêu cầu content script xóa tại từng
-  // tab đang mở, nhưng không reload trang vì công dân vừa nộp xong cần giữ nguyên màn hình.
-  let clearedTabs = 0;
-  let failedTabs = 0;
-  try {
-    const tabs = await chrome.tabs.query({ url: [...CITIZEN_TAB_URL_PATTERNS] });
-    for (const tab of tabs || []) {
-      if (!Number.isInteger(Number(tab?.id)) || Number(tab.id) <= 0) continue;
-      try {
-        await chrome.tabs.sendMessage(Number(tab.id), { action: "clearCitizenPortalSessionStorage" });
-        clearedTabs += 1;
-      } catch (_) {
-        // Tab có thể chưa nạp content script; cookie và dữ liệu origin vẫn đã được dọn.
-      }
-    }
-  } catch (_) {
-    failedTabs += 1;
-  }
-
-  // Chỉ trả số lượng; không đưa tên hay giá trị cookie nhạy cảm về sidebar/log.
-  return {
-    ok: failedQueries === 0 && failed === 0 && storageCleared && failedTabs === 0,
-    scopes: CITIZEN_COOKIE_HOSTS.length,
-    found: unique.size,
-    removed,
-    failed,
-    failedQueries,
-    storageCleared,
-    storageError,
-    clearedTabs,
-    failedTabs,
-  };
-}
-
-// Cho khung Trợ lý (popup chạy trong iframe) lấy tabId của chính nó.
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.action === "getTabId") {
-    sendResponse({ tabId: sender?.tab?.id ?? null });
-    return true;
-  }
-  // Cổng DVC Bộ Công an: ô ngày là bootstrap-datepicker — gán ngày qua API của picker (MAIN world) rồi ĐÓNG lịch.
-  // Gõ chữ từ content script thì lịch bật lên và treo, giá trị không vào model của picker (mất khi đóng).
-  if (msg?.action === "bcaSetDatepickers" && sender?.tab?.id != null && Array.isArray(msg.dates)) {
-    chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id, frameIds: [sender.frameId ?? 0] },
-      world: "MAIN",
-      func: (dates) => {
-        const $ = window.jQuery;
-        return dates.map(({ id, value }) => {
-          const el = document.getElementById(id);
-          if (!el) return { id, ok: false };
-          // Chỉ ô ĐÚNG là datepicker mới gọi API lịch — gọi lên ô chữ thường (vd txtDOB0) là vô tình dựng lịch mới.
-          const isPicker = !!($ && $(el).data("datepicker")) || el.getAttribute("data-provide") === "datepicker";
-          if (isPicker && $ && $.fn && $.fn.datepicker) {
-            const $el = $(el);
-            $el.datepicker("update", value);
-            $el.trigger("change");
-            $el.datepicker("hide");
-          } else {
-            el.value = value;
-            el.dispatchEvent(new Event("change", { bubbles: true }));
-          }
-          el.blur();
-          return { id, ok: el.value === value, value: el.value };
-        });
-      },
-      args: [msg.dates],
-    })
-      .then((results) => sendResponse({ ok: true, results: results?.[0]?.result || [] }))
-      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
-    return true;
-  }
-  // Cổng DVC Bộ Công an: mở nhóm giấy tờ ở mục Hồ sơ đính kèm bằng chính hàm của trang (MAIN world).
-  // Dự phòng khi bấm <a href="javascript:load_table_tphs_new(i)"> từ content script bị CSP chặn.
-  if (msg?.action === "bcaLoadGroup" && sender?.tab?.id != null && Number.isInteger(msg.index)) {
-    chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id, frameIds: [sender.frameId ?? 0] },
-      world: "MAIN",
-      func: (index) => {
-        if (typeof window.load_table_tphs_new !== "function") return false;
-        window.load_table_tphs_new(index);
-        return true;
-      },
-      args: [msg.index],
-    })
-      .then((results) => sendResponse({ ok: results?.[0]?.result === true }))
-      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
-    return true;
-  }
-  if (msg?.action === "clearCitizenDvcCookies") {
-    clearCitizenDvcCookies(sender?.tab?.id)
-      .then(sendResponse)
-      .catch((error) => sendResponse({
-        ok: false,
-        scopes: CITIZEN_COOKIE_HOSTS.length,
-        found: 0,
-        removed: 0,
-        failed: 0,
-        failedQueries: 1,
-        storageCleared: false,
-        storageError: error?.message || String(error),
-        clearedTabs: 0,
-        failedTabs: 0,
-        error: error?.message || String(error),
-      }));
-    return true;
-  }
-  if (msg?.action === "citizenManualLogoutDetected") {
-    clearCompletionLogoutForTab(sender?.tab?.id).then(sendResponse);
-    return true;
-  }
-});
-
-// ───────────── Tách hồ sơ chứng thực: queue tuần tự, bền qua MV3 service-worker sleep ─────────────
-// Không truyền dataUrl của cả queue qua runtime message (có thể vượt trần ~64 MiB). Sidebar staging
-// bundle trong storage; background chỉ nhận key nhẹ, mỗi lúc mở đúng MỘT tab active.
-const PENDING_ATTACH_KEY = "tro_ly_pending_attach";
-const SPLIT_ATTACH_QUEUE_KEY = "tro_ly_split_attach_queue";
-const SPLIT_ATTACH_QUEUE_STAGE_KEY = "tro_ly_split_attach_queue_stage";
-
-async function getPendingMap() {
-  try {
-    const res = await chrome.storage.local.get(PENDING_ATTACH_KEY);
-    return res[PENDING_ATTACH_KEY] || {};
-  } catch (_) { return {}; }
-}
-
-async function setPendingMap(map) {
-  try {
-    await chrome.storage.local.set({ [PENDING_ATTACH_KEY]: map });
-    return true;
-  } catch (_) { return false; }
-}
-
-async function getSplitAttachQueue() {
-  try {
-    const res = await chrome.storage.local.get(SPLIT_ATTACH_QUEUE_KEY);
-    return res[SPLIT_ATTACH_QUEUE_KEY] || null;
-  } catch (_) { return null; }
-}
-
-async function setSplitAttachQueue(state) {
-  try {
-    await chrome.storage.local.set({ [SPLIT_ATTACH_QUEUE_KEY]: state });
-    return true;
-  } catch (_) { return false; }
-}
-
-let splitQueueMutation = Promise.resolve();
-function withSplitQueueLock(task) {
-  const run = splitQueueMutation.then(task, task);
-  splitQueueMutation = run.catch(() => {});
-  return run;
-}
-
-function splitQueueSummary(state) {
-  if (!state) return null;
-  const results = Array.isArray(state.results) ? state.results : [];
-  return {
-    queueId: state.queueId,
-    status: state.status || "running",
-    total: Number(state.total) || 0,
-    completed: results.length,
-    succeeded: results.filter((r) => r?.ok).length,
-    failed: results.filter((r) => !r?.ok).length,
-    activeOrdinal: state.activeItem?.ordinal || null,
-    results,
-    startedAt: state.startedAt || null,
-    completedAt: state.completedAt || null,
-  };
-}
-
-async function completeSplitQueueUnlocked(state) {
-  state.status = "done";
-  state.activeTabId = null;
-  state.activeItem = null;
-  state.remaining = [];
-  state.completedAt = Date.now();
-  state.updatedAt = Date.now();
-  await setSplitAttachQueue(state); // giữ summary nhẹ để sidebar đóng/mở lại vẫn báo kết quả được
-  console.log("[TLND-SplitQueue] Hoàn tất", splitQueueSummary(state));
-  return { done: true, summary: splitQueueSummary(state) };
-}
-
-// Hàng đợi nằm trong chrome.storage.local nên sống qua cả lần tắt Chrome. Tab đang xử lý không bao
-// giờ báo xong (trang chuyển đi, lỗi, Chrome tắt giữa chừng — mở lại thì mã tab đổi nên onRemoved
-// không còn khớp) là "running" kẹt mãi và mọi lượt tách sau đều bị từ chối. Coi là BỎ DỞ khi tab
-// đang xử lý không còn, hoặc quá hạn chờ của sidebar (monitorSplitQueue) mà không tiến triển.
-const SPLIT_QUEUE_STALE_MS = 30 * 60 * 1000;
-async function isSplitQueueAbandoned(state) {
-  if (state?.status !== "running") return false;
-  if (Date.now() - Number(state.updatedAt || state.startedAt || 0) > SPLIT_QUEUE_STALE_MS) return true;
-  if (!state.activeTabId) return false;
-  try { await chrome.tabs.get(Number(state.activeTabId)); return false; }
-  catch (_) { return true; }
-}
-
-// ── Tab tách → tab gốc (để đếm được cú bấm "Nộp" ở tab tách) ──
-// Chứng thực tách mỗi tài liệu thành một hồ sơ riêng trên một tab MỚI. Mốc nộp của handfree đi
-// qua sidebar của tab gốc (sidebar mới có token + phiên trò chuyện), mà sidebar chỉ nhận cú bấm
-// từ đúng tab của nó → cú bấm ở tab tách bị bỏ, 4 hồ sơ chỉ đếm được 1. Nhớ tab tách thuộc tab
-// gốc nào để background chuyển tiếp về đúng sidebar đó.
-// Key RIÊNG, không nằm trong state hàng đợi: hàng đợi xoá khi đính kèm xong, còn công dân bấm
-// "Nộp" SAU đó — gắn vào hàng đợi là mất dấu đúng lúc cần.
-const SPLIT_TAB_ORIGIN_KEY = "tlnd_split_tab_origin";
-
-async function getSplitTabOrigins() {
-  try {
-    const res = await chrome.storage.local.get([SPLIT_TAB_ORIGIN_KEY]);
-    return res?.[SPLIT_TAB_ORIGIN_KEY] || {};
-  } catch (_) { return {}; }
-}
-
-async function rememberSplitTabOrigin(splitTabId, originTabId) {
-  if (!splitTabId || !originTabId || splitTabId === originTabId) return;
-  const map = await getSplitTabOrigins();
-  map[splitTabId] = originTabId;
-  try { await chrome.storage.local.set({ [SPLIT_TAB_ORIGIN_KEY]: map }); } catch (_) { /* bỏ qua */ }
-}
-
-async function forgetSplitTabOrigin(tabId) {
-  const map = await getSplitTabOrigins();
-  if (!(tabId in map)) return;
-  delete map[tabId];
-  try { await chrome.storage.local.set({ [SPLIT_TAB_ORIGIN_KEY]: map }); } catch (_) { /* bỏ qua */ }
-}
-
-// ── Thẻ "hồ sơ phụ" của tab tách (CHỈ để hiển thị) ──
-// Tab tách sinh bằng tabs.create nên không có dấu phiên (tlnd_journey) → content.js không dựng
-// khung, công dân bấm bong bóng thì ra màn bắt đầu y như chưa làm gì. Ghi vài thông tin nhẹ để
-// tab đó dựng được khung "hồ sơ phụ" CHỈ ĐỌC (nó không cầm phiên, không gửi gì lên BE).
-// Key RIÊNG, KHÔNG nhét vào SPLIT_TAB_ORIGIN_KEY: bản đồ kia là đường đếm mốc "Nộp hồ sơ" vừa vá
-// sau sự cố đếm thiếu hồ sơ tách — đổi hình dạng giá trị của nó là đụng đúng chỗ đó.
-const SPLIT_TAB_INFO_KEY = "tlnd_split_tab_info";
-// Tab đóng lúc service worker đang ngủ thì không ai dọn được mục của nó. Mốc thời gian để tab
-// mang lại đúng số tab cũ (Chrome dùng lại id) không dựng nhầm thẻ của hồ sơ hôm trước.
-const SPLIT_TAB_INFO_TTL_MS = 12 * 60 * 60 * 1000;
-
-async function getSplitTabInfos() {
-  try {
-    const res = await chrome.storage.local.get([SPLIT_TAB_INFO_KEY]);
-    return res?.[SPLIT_TAB_INFO_KEY] || {};
-  } catch (_) { return {}; }
-}
-
-// Nhãn ngắn để công dân nhận ra tab này là hồ sơ của giấy tờ nào. detectedType là loại giấy đã
-// chuẩn hoá ("Căn cước công dân"), dễ đọc hơn documentName — thứ có thể là cả câu mô tả.
-function splitDocLabel(item) {
-  const first = (Array.isArray(item?.attachments) ? item.attachments : [])[0] || {};
-  const raw = String(first.detectedType || first.documentName || first.fileName
-    || item?.files?.[0]?.name || "").trim();
-  return raw.length > 40 ? `${raw.slice(0, 39)}…` : raw;
-}
-
-// Chỉ giữ đúng các trường engine gạt công tắc cần; dữ liệu lạ không được lọt vào storage chung.
-function cleanResultMethod(raw) {
-  const label = String(raw?.label || "").trim();
-  if (!label) return null;
-  return {
-    method: String(raw.method || ""),
-    label,
-    allLabels: (Array.isArray(raw.allLabels) ? raw.allLabels : []).map((x) => String(x || "")).filter(Boolean),
-    needsInput: raw.needsInput === true,
-    // Danh sách để khung hồ sơ phụ vẽ card chọn cách nhận kết quả như hồ sơ chính.
-    options: (Array.isArray(raw.options) ? raw.options : [])
-      .map((o) => ({
-        key: String(o?.key || ""),
-        label: String(o?.label || ""),
-        icon: String(o?.icon || ""),
-        desc: String(o?.desc || ""),
-        needsInput: o?.needsInput === true,
-      }))
-      .filter((o) => o.key && o.label),
-  };
-}
-
-async function rememberSplitTabInfo(splitTabId, info) {
-  if (!splitTabId) return;
-  const map = await getSplitTabInfos();
-  map[splitTabId] = { ...info, ts: Date.now() };
-  try { await chrome.storage.local.set({ [SPLIT_TAB_INFO_KEY]: map }); } catch (_) { /* bỏ qua */ }
-}
-
-async function forgetSplitTabInfo(tabId) {
-  const map = await getSplitTabInfos();
-  if (!(tabId in map)) return;
-  delete map[tabId];
-  try { await chrome.storage.local.set({ [SPLIT_TAB_INFO_KEY]: map }); } catch (_) { /* bỏ qua */ }
-}
-
-// Khung hồ sơ phụ xin quay về tab gốc. Đi qua background vì content script không có chrome.tabs.
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.action !== "focusDossierTab") return;
-  (async () => {
-    try {
-      const tabId = Number(msg.tabId);
-      if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Thiếu tab để quay về.");
-      const tab = await chrome.tabs.get(tabId);
-      await chrome.tabs.update(tabId, { active: true });
-      if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
-      sendResponse({ ok: true });
-    } catch (e) { sendResponse({ error: e?.message || String(e) }); }
-  })();
-  return true;
-});
-
-// Cú bấm "Nộp": (1) background TỰ gửi mốc lên BE (lib/submitClickReporter.js) — không phụ thuộc
-// sidebar còn sống; (2) tab tách thì chuyển tiếp thêm về sidebar tab gốc để nó hiện phiếu đánh
-// giá. CHỈ chuyển tiếp tab TÁCH (có trong bản đồ): cú bấm ở chính tab gốc thì sidebar đã tự nhận
-// trực tiếp. Hai đường mang chung clickId nên BE không đếm đôi.
-// Cùng đường chuyển tiếp cho câu báo "dịch vụ công đang lỗi, em đính lại": tab tách không có sidebar.
-chrome.runtime.onMessage.addListener((msg, sender) => {
-  if (msg?.__tlnd !== "submitClicked" && msg?.__tlnd !== "attachRetrying") return;
-  const tabId = sender?.tab?.id;
-  if (!tabId) return;
-  void (async () => {
-    const originTabId = (await getSplitTabOrigins())[tabId];
-    if (msg.__tlnd === "submitClicked") {
-      void globalThis.__TLND_SUBMIT__?.reportClick({
-        tabId, originTabId, host: msg.host, ref: msg.ref, clickId: msg.clickId, clickedAt: msg.clickedAt,
-      });
-    }
-    if (!originTabId) return;
-    try {
-      await chrome.runtime.sendMessage(msg.__tlnd === "attachRetrying"
-        ? { __tlnd: "attachRetryingRelay", originTabId }
-        : {
-          __tlnd: "submitClickedRelay", originTabId, host: msg.host || "", ref: msg.ref || "",
-          clickId: msg.clickId || "", clickedAt: msg.clickedAt,
-        });
-    } catch (_) { /* sidebar tab gốc đã đóng — mốc nộp background đã gửi ở trên */ }
-  })();
-});
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  void forgetSplitTabOrigin(tabId);
-  void forgetSplitTabInfo(tabId);
-});
-
-async function openNextSplitQueueItemUnlocked() {
-  let state = await getSplitAttachQueue();
-  if (!state) return { done: true };
-  if (state.status === "done") return { done: true, summary: splitQueueSummary(state) };
-  if (state.activeTabId) return { waiting: true, tabId: state.activeTabId };
-
-  while (Array.isArray(state.remaining) && state.remaining.length) {
-    const item = state.remaining.shift();
-    let tab = null;
-    try {
-      const files = Array.isArray(item?.files) ? item.files.filter(Boolean) : [];
-      const attachments = Array.isArray(item?.attachments) ? item.attachments.filter(Boolean) : [];
-      if (!item?.url || !files.length || !attachments.length) {
-        throw new Error("Bundle tách hồ sơ không đủ URL, file hoặc kế hoạch đính kèm.");
-      }
-
-      // Lưu pending + activeTabId TRƯỚC khi điều hướng để content không thể đọc hụt bundle.
-      tab = await chrome.tabs.create({ url: "about:blank", active: true });
-      const pending = await getPendingMap();
-      pending[tab.id] = {
-        queueId: state.queueId,
-        ordinal: item.ordinal || null,
-        files,
-        attachments,
-        procedure: item.procedure,
-        ts: Date.now(),
-      };
-      if (!await setPendingMap(pending)) throw new Error("Không lưu được bundle cho tab mới.");
-      await rememberSplitTabOrigin(tab.id, state.originTabId);
-      await rememberSplitTabInfo(tab.id, {
-        ordinal: Number(item.ordinal) || null,
-        total: Number(state.total) || null,
-        label: splitDocLabel(item),
-        originTabId: Number(state.originTabId) || null,
-        resultMethod: state.resultMethod || null,
-      });
-      state.activeTabId = tab.id;
-      state.activeItem = { ordinal: item.ordinal || null };
-      state.updatedAt = Date.now();
-      if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được trạng thái queue.");
-      await chrome.tabs.update(tab.id, { url: item.url, active: true });
-      return { ok: true, tabId: tab.id, remaining: state.remaining.length };
-    } catch (e) {
-      if (tab?.id != null) {
-        const pending = await getPendingMap();
-        delete pending[tab.id];
-        await setPendingMap(pending);
-        try { await chrome.tabs.remove(tab.id); } catch (_) { /* bỏ qua */ }
-      }
-      state.activeTabId = null;
-      state.activeItem = null;
-      state.results = Array.isArray(state.results) ? state.results : [];
-      state.results.push({ ok: false, ordinal: item?.ordinal || null,
-        code: "open-tab-failed", error: e?.message || String(e) });
-      state.updatedAt = Date.now();
-      if (!await setSplitAttachQueue(state)) break;
-    }
-  }
-  return await completeSplitQueueUnlocked(state);
-}
-
-async function finishSplitQueueTabUnlocked(tabId, result = {}) {
-  const state = await getSplitAttachQueue();
-  if (!state || state.status === "done" || Number(state.activeTabId) !== Number(tabId)) {
-    return { queueAdvanced: false };
-  }
-  state.results = Array.isArray(state.results) ? state.results : [];
-  state.results.push({
-    ok: result.ok === true,
-    ordinal: state.activeItem?.ordinal || null,
-    code: result.code || null,
-    error: result.error || null,
-  });
-  state.activeTabId = null;
-  state.activeItem = null;
-  state.updatedAt = Date.now();
-  if (!await setSplitAttachQueue(state)) return { queueAdvanced: false, error: "Không lưu được kết quả tab." };
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  return { queueAdvanced: true, next: await openNextSplitQueueItemUnlocked() };
-}
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.action === "prepareSplitAttachQueue") {
-    (async () => {
-      const current = await getSplitAttachQueue();
-      if (current?.status === "running") {
-        if (!await isSplitQueueAbandoned(current)) {
-          sendResponse({ error: "Đang có một lượt tách hồ sơ khác chưa hoàn tất." });
-          return;
-        }
-        console.warn("[TLND-SplitQueue] Dọn hàng đợi bỏ dở", splitQueueSummary(current));
-      }
-      await setPendingMap({});
-      await chrome.storage.local.remove([SPLIT_ATTACH_QUEUE_KEY, SPLIT_ATTACH_QUEUE_STAGE_KEY]);
-      sendResponse({ ok: true });
-    })();
-    return true;
-  }
-  if (msg?.action === "stageDossierTabAttach") {
-    (async () => {
-      try {
-        const tabId = Number(msg.tabId);
-        if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Không xác định được tab hiện tại.");
-        await chrome.tabs.get(tabId);
-        const files = Array.isArray(msg.files) ? msg.files.filter(Boolean) : [];
-        const attachments = Array.isArray(msg.attachments) ? msg.attachments.filter(Boolean) : [];
-        if (!files.length || !attachments.length) throw new Error("Thiếu bundle phục hồi cho tab hiện tại.");
-        const pending = await getPendingMap();
-        pending[tabId] = {
-          queueId: msg.queueId,
-          ordinal: 1,
-          files,
-          attachments,
-          procedure: msg.procedure,
-          ts: Date.now(),
-          recoveryCode: msg.recoveryCode || null,
-          recoveryCount: msg.recoveryCode ? 1 : 0,
-        };
-        if (!await setPendingMap(pending)) throw new Error("Không lưu được bundle phục hồi.");
-        sendResponse({ ok: true, tabId });
-      } catch (e) { sendResponse({ error: e?.message || String(e) }); }
-    })();
-    return true;
-  }
-  if (msg?.action === "reloadDossierTabAttach") {
-    (async () => {
-      const tabId = Number(msg.tabId);
-      try {
-        const pending = await getPendingMap();
-        if (!pending[tabId]) throw new Error("Tab chưa có bundle phục hồi.");
-        await chrome.tabs.reload(tabId);
-        sendResponse({ ok: true, tabId });
-      } catch (e) {
-        await withSplitQueueLock(async () => {
-          const pending = await getPendingMap();
-          if (pending[tabId]) { delete pending[tabId]; await setPendingMap(pending); }
-          await finishSplitQueueTabUnlocked(tabId, {
-            ok: false, code: "tab-reload-failed", error: e?.message || String(e),
-          });
-        });
-        sendResponse({ error: e?.message || String(e) });
-      }
-    })();
-    return true;
-  }
-  if (msg?.action === "startSplitAttachQueue") {
-    (async () => {
-      const itemsStorageKey = String(msg.itemsStorageKey || "");
-      try {
-        if (itemsStorageKey !== SPLIT_ATTACH_QUEUE_STAGE_KEY) throw new Error("Khóa staging không hợp lệ.");
-        const staged = await chrome.storage.local.get(itemsStorageKey);
-        const items = staged?.[itemsStorageKey]?.items;
-        if (!Array.isArray(items)) throw new Error("Không đọc được hàng đợi từ storage.");
-        const queueId = String(msg.queueId || "");
-        if (!queueId) throw new Error("Thiếu mã queue.");
-        const waitForTabId = Number(msg.waitForTabId) || null;
-        const result = await withSplitQueueLock(async () => {
-          const current = await getSplitAttachQueue();
-          if (current?.status === "running") throw new Error("Đang có một queue khác hoạt động.");
-          if (waitForTabId) {
-            await chrome.tabs.get(waitForTabId);
-            const pending = await getPendingMap();
-            if (!pending[waitForTabId]) throw new Error("Tab hiện tại chưa có bundle phục hồi.");
-          }
-          const initialResults = Array.isArray(msg.initialResults) ? msg.initialResults.filter(Boolean) : [];
-          const state = {
-            queueId,
-            status: "running",
-            total: Number(msg.total) || (items.length + initialResults.length + (waitForTabId ? 1 : 0)),
-            remaining: items.filter(Boolean),
-            activeTabId: waitForTabId,
-            activeItem: waitForTabId ? { ordinal: 1 } : null,
-            // Tab có sidebar đã bắt đầu lượt tách — đích chuyển tiếp mốc "Nộp" của các tab tách.
-            originTabId: Number(msg.originTabId) || waitForTabId || null,
-            // Lệnh gạt "cách nhận kết quả" mặc định do BE gửi kèm. Tab tách chạy khung hồ sơ phụ
-            // không nói chuyện với BE nên chỉ có nguồn này để tự gạt ở bước nhận kết quả.
-            resultMethod: cleanResultMethod(msg.resultMethod),
-            results: initialResults,
-            startedAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được queue.");
-          return waitForTabId ? { ok: true, waiting: true, tabId: waitForTabId }
-            : await openNextSplitQueueItemUnlocked();
-        });
-        sendResponse({ ...result, queueId });
-      } catch (e) { sendResponse({ error: e?.message || String(e) }); }
-      finally { try { await chrome.storage.local.remove(itemsStorageKey); } catch (_) { /* bỏ qua */ } }
-    })();
-    return true;
-  }
-  // Sidebar hết hạn chờ đã báo lỗi về BE → bỏ hàng đợi đó, không để "running" chặn lượt sau.
-  if (msg?.action === "abandonSplitAttachQueue") {
-    (async () => {
-      await withSplitQueueLock(async () => {
-        const state = await getSplitAttachQueue();
-        if (!state || state.status !== "running" || state.queueId !== msg.queueId) return;
-        const pending = await getPendingMap();
-        if (state.activeTabId && pending[state.activeTabId]) {
-          delete pending[state.activeTabId];
-          await setPendingMap(pending);
-        }
-        await completeSplitQueueUnlocked(state);
-      });
-      sendResponse({ ok: true });
-    })();
-    return true;
-  }
-  if (msg?.action === "getSplitAttachQueueStatus") {
-    (async () => {
-      const state = await getSplitAttachQueue();
-      if (!state || (msg.queueId && state.queueId !== msg.queueId)) return sendResponse({ status: null });
-      sendResponse({ ok: true, ...splitQueueSummary(state) });
-    })();
-    return true;
-  }
-  if (msg?.action === "getPendingAttach") {
-    (async () => {
-      const pending = await getPendingMap();
-      sendResponse({ pending: pending[sender?.tab?.id] || null });
-    })();
-    return true;
-  }
-  if (msg?.action === "clearPendingAttach" || msg?.action === "failPendingAttach") {
-    (async () => {
-      const tabId = msg.tabId ?? sender?.tab?.id;
-      const result = await withSplitQueueLock(async () => {
-        const pending = await getPendingMap();
-        if (tabId != null && pending[tabId]) { delete pending[tabId]; await setPendingMap(pending); }
-        return await finishSplitQueueTabUnlocked(tabId, {
-          ok: msg.action === "clearPendingAttach",
-          code: msg.code || (msg.action === "clearPendingAttach" ? null : "attach-failed"),
-          error: msg.error || null,
-        });
-      });
-      sendResponse({ ok: true, ...result });
-    })();
-    return true;
-  }
-});
-
-// Đóng tab đang xử lý được tính là một hồ sơ lỗi, nhưng queue vẫn tiếp tục tab kế tiếp.
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-  try {
-    await withSplitQueueLock(async () => {
-      const pending = await getPendingMap();
-      if (pending[tabId]) { delete pending[tabId]; await setPendingMap(pending); }
-      await finishSplitQueueTabUnlocked(tabId, {
-        ok: false, code: "tab-closed", error: "Tab hồ sơ đã bị đóng.",
-      });
-    });
-  } catch (_) { /* bỏ qua */ }
-});
-
-// ───────────── Voice ASR qua offscreen document ─────────────
-// Mic bị chặn trong iframe popup → đẩy việc thu mic + WS sang offscreen (top-level extension).
-// popup → SW {type:"asr-start"|"asr-stop"} → SW đảm bảo offscreen tồn tại → chuyển lệnh xuống.
-// QUAN TRỌNG: tạo MỚI offscreen mỗi lượt. Tái dùng document làm AudioContext lần 2 trở đi
-// khởi tạo "suspended"/không thu được (mic sáng đèn nhưng im) → chỉ lần đầu chạy. Vì vậy đóng
-// offscreen sau mỗi lượt (final/stop/error) để lượt sau luôn là document mới = giống lần đầu.
-const OFFSCREEN_OPTS = {
-  url: "offscreen.html",
-  reasons: ["USER_MEDIA", "AUDIO_PLAYBACK"],
-  justification: "Thu âm micro (ASR) và phát giọng đọc (TTS) cho trợ lý giọng nói.",
-};
-
-async function ensureFreshOffscreen() {
-  await closeOffscreen(); // đảm bảo không còn document cũ → luôn tạo mới
-  try {
-    await chrome.offscreen.createDocument(OFFSCREEN_OPTS);
-  } catch (e) {
-    if (!/single offscreen/i.test(e?.message || "")) throw e;
-    await closeOffscreen(); // race: còn sót document → đóng rồi tạo lại
-    await chrome.offscreen.createDocument(OFFSCREEN_OPTS);
-  }
-}
-
-// Giữ sẵn phiên nhận giọng nói (voice/config.asrWarm): DÙNG LẠI offscreen đang có, không tạo mới mỗi lượt — mic +
-// WS giữ sẵn sống trong document đó (services/asr.js AsrWarmSession tự resume AudioContext thay cho việc tạo lại).
-async function ensureOffscreen() {
-  if (await chrome.offscreen.hasDocument()) return;
-  await chrome.offscreen.createDocument(OFFSCREEN_OPTS).catch((e) => {
-    if (!/single offscreen/i.test(e?.message || "")) throw e;
-  });
-}
-
-async function closeOffscreen() {
-  try {
-    if (await chrome.offscreen.hasDocument()) await chrome.offscreen.closeDocument();
-  } catch (_) {
-    /* không có document / version cũ → bỏ qua */
-  }
-}
-
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === "asr-warm" || (msg?.type === "asr-start" && msg.warm === true)) {
-    // asr-warm: sidebar báo sống, mở sẵn mic + WS. asr-start warm: bấm mic → chỉ mở lượt nói trên phiên giữ sẵn.
-    (async () => {
-      try {
-        await ensureOffscreen();
-        chrome.runtime.sendMessage(
-          {
-            target: "offscreen",
-            cmd: msg.type === "asr-warm" ? "warm" : "arm",
-            lang: msg.lang || "vi",
-            baseUrl: msg.baseUrl,
-            accessToken: msg.accessToken || "",
-          },
-          () => void chrome.runtime.lastError,
-        );
-        sendResponse({ ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
-      }
-    })();
-    return true;
-  }
-  if (msg?.type === "asr-cool") {
-    (async () => {
-      if (await chrome.offscreen.hasDocument()) {
-        chrome.runtime.sendMessage({ target: "offscreen", cmd: "cool" }, () => void chrome.runtime.lastError);
-      }
-      sendResponse?.({ ok: true });
-    })();
-    return true;
-  }
-  if (msg?.type === "asr-start") {
-    (async () => {
-      try {
-        await ensureFreshOffscreen();
-        chrome.runtime.sendMessage(
-          {
-            target: "offscreen",
-            cmd: "start",
-            lang: msg.lang || "vi",
-            baseUrl: msg.baseUrl,
-            accessToken: msg.accessToken || "",
-          },
-          () => void chrome.runtime.lastError,
-        );
-        sendResponse({ ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
-      }
-    })();
-    return true; // async sendResponse
-  }
-  if (msg?.type === "asr-stop") {
-    // Offscreen dùng CHUNG cho ASR và TTS. Đóng cả document ở đây sẽ cắt câu TTS
-    // vừa phát (đặc biệt: thông báo hỏi đăng xuất gọi stopVoice ngay sau renderReply).
-    // Chỉ dừng session micro; giữ document để hàng đợi loa tiếp tục phát bình thường.
-    (async () => {
-      try {
-        if (await chrome.offscreen.hasDocument()) {
-          chrome.runtime.sendMessage(
-            { target: "offscreen", cmd: "stop" },
-            () => void chrome.runtime.lastError,
-          );
-        }
-        sendResponse?.({ ok: true });
-      } catch (e) {
-        sendResponse?.({ ok: false, error: e?.message || String(e) });
-      }
-    })();
-    return true;
-  }
-  // Lượt kết thúc tự nhiên/lỗi → đóng offscreen để lượt sau tạo mới. Riêng "stopped"
-  // là lệnh dừng micro chủ động; giữ offscreen vì cùng document có thể đang phát TTS.
-  // CHỈ đóng sau khi popup đã nhận event (event được broadcast tới cả popup lẫn SW cùng lúc).
-  if (msg?.type === "asr-event") {
-    // Phiên giữ sẵn (msg.warm) sống qua nhiều lượt — đóng offscreen là mất mic + WS vừa giữ.
-    if ((msg.event === "final" || msg.event === "error") && !msg.warm) {
-      closeOffscreen();
-    }
-    return false;
-  }
-  // TTS phát tại offscreen (sống xuyên chuyển trang, miễn autoplay policy). Tái dùng
-  // document nếu có, KHÔNG đóng sau khi đọc — asr-start vẫn tạo mới (cắt loa = barge-in).
-  if (msg?.type === "tts-speak") {
-    (async () => {
-      try {
-        if (!(await chrome.offscreen.hasDocument())) {
-          await chrome.offscreen.createDocument(OFFSCREEN_OPTS).catch((e) => {
-            if (!/single offscreen/i.test(e?.message || "")) throw e;
-          });
-        }
-        chrome.runtime.sendMessage(
-          {
-            target: "offscreen",
-            cmd: "tts-speak",
-            url: msg.url,
-            protocols: msg.protocols || [],
-            text: msg.text,
-            id: msg.id,
-          },
-          () => void chrome.runtime.lastError,
-        );
-        sendResponse({ ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
-      }
-    })();
-    return true; // async sendResponse
-  }
-  if (msg?.type === "tts-stop") {
-    chrome.runtime.sendMessage(
-      { target: "offscreen", cmd: "tts-stop" },
-      () => void chrome.runtime.lastError,
-    );
-    sendResponse?.({ ok: true });
-    return false;
   }
 });
 
@@ -1185,7 +59,6 @@ async function coTabNaoDangLamViec() {
   // cả hàm hỏng theo một đường khó lần. Quan trọng hơn: không biết gì về các tab
   // thì câu trả lời đúng là "coi như đang bận", không phải "rảnh".
   if (!Array.isArray(tabs)) return true;
-  if (await coPanelDangLamViec()) return true;
   const kq = await Promise.all(tabs.map(async (t) => {
     if (!t?.id) return false;
     let r;
@@ -1221,6 +94,784 @@ async function goPanelMoiTab() {
     catch (e) { /* tab khong co content script - khong sao */ }
   }));
 }
+
+
+// ===== Tách hồ sơ (split KPI): hàng đợi file chờ đính, keyed theo tabId =====
+// Mỗi tab hồ sơ mới giữ một bundle riêng; chữ ký có thể gồm tài liệu STT1 + CCCD dùng chung ở STT2.
+const PENDING_ATTACH_KEY = "autofill_pending_attach";
+const SPLIT_ATTACH_QUEUE_KEY = "autofill_split_attach_queue";
+const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
+const SPLIT_ATTACH_PROGRESS_KEY = "autofill_split_attach_progress";
+const SPLIT_ATTACH_PROGRESS_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function getPendingMap() {
+  try {
+    const res = await chrome.storage.local.get(PENDING_ATTACH_KEY);
+    return res[PENDING_ATTACH_KEY] || {};
+  } catch (e) { return {}; }
+}
+async function setPendingMap(map) {
+  try {
+    await chrome.storage.local.set({ [PENDING_ATTACH_KEY]: map });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getSplitAttachQueue() {
+  try {
+    const res = await chrome.storage.local.get(SPLIT_ATTACH_QUEUE_KEY);
+    return res[SPLIT_ATTACH_QUEUE_KEY] || null;
+  } catch (e) { return null; }
+}
+async function setSplitAttachQueue(state) {
+  try {
+    await chrome.storage.local.set({ [SPLIT_ATTACH_QUEUE_KEY]: state });
+    return true;
+  } catch (e) { return false; }
+}
+async function clearSplitAttachQueue() {
+  try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_KEY); }
+  catch (e) { /* ignore */ }
+}
+
+async function getSplitAttachProgress() {
+  try {
+    const res = await chrome.storage.local.get(SPLIT_ATTACH_PROGRESS_KEY);
+    return res[SPLIT_ATTACH_PROGRESS_KEY] || null;
+  } catch (e) { return null; }
+}
+
+async function setSplitAttachProgress(progress) {
+  try {
+    await chrome.storage.local.set({
+      [SPLIT_ATTACH_PROGRESS_KEY]: {
+        ...progress,
+        updatedAt: Date.now(),
+        expiresAt: Date.now() + SPLIT_ATTACH_PROGRESS_TTL_MS,
+      },
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function updateSplitAttachProgress(state, patch = {}) {
+  if (!state?.runId) return false;
+  const current = await getSplitAttachProgress();
+  if (!current || current.runId !== state.runId) return false;
+  return await setSplitAttachProgress({ ...current, ...patch });
+}
+
+async function recordSplitAttachProgressResult(state, result = {}, ordinal = null) {
+  const current = await getSplitAttachProgress();
+  if (!current || !state?.runId || current.runId !== state.runId) return false;
+  const ok = result.ok === true;
+  return await setSplitAttachProgress({
+    ...current,
+    status: "running",
+    completed: Math.min(Number(current.total) || 0, (Number(current.completed) || 0) + 1),
+    succeeded: (Number(current.succeeded) || 0) + (ok ? 1 : 0),
+    failed: (Number(current.failed) || 0) + (ok ? 0 : 1),
+    activeOrdinal: null,
+    lastResult: {
+      ordinal: Number(ordinal) || null,
+      ok,
+      code: result.code || null,
+      error: result.error || null,
+    },
+  });
+}
+
+// Mọi mutation của queue đi qua một chuỗi Promise để clear/đóng tab không thể cùng lúc mở hai tab.
+let splitQueueMutation = Promise.resolve();
+function withSplitQueueLock(task) {
+  const run = splitQueueMutation.then(task, task);
+  splitQueueMutation = run.catch(() => {});
+  return run;
+}
+
+async function openNextSplitQueueItemUnlocked() {
+  let state = await getSplitAttachQueue();
+  if (!state) return { done: true };
+  if (state.activeTabId) return { waiting: true, tabId: state.activeTabId };
+
+  while (Array.isArray(state.remaining) && state.remaining.length) {
+    const item = state.remaining.shift();
+    let tab = null;
+    try {
+      const files = Array.isArray(item?.files) ? item.files.filter(Boolean) : [];
+      const attachments = Array.isArray(item?.attachments) ? item.attachments.filter(Boolean) : [];
+      if (!item?.url || !files.length || !attachments.length) {
+        throw new Error("Bundle tách hồ sơ không đủ URL/file/kế hoạch đính kèm.");
+      }
+
+      // Modal Radix/React không ổn định trong tab nền. Chỉ tạo DUY NHẤT một tab và kích hoạt nó;
+      // tab kế tiếp chỉ được tạo khi content báo thành công hoặc thất bại terminal.
+      tab = await chrome.tabs.create({ url: "about:blank", active: true });
+      const pendingMap = await getPendingMap();
+      pendingMap[tab.id] = {
+        files,
+        attachments,
+        procedure: item.procedure,
+        ts: Date.now(),
+      };
+      // Tab tách là hồ sơ RIÊNG trên cổng nhưng cùng LƯỢT đính kèm → gieo khóa hồ sơ gốc vào
+      // session của tab để cú bấm "Gửi hồ sơ" ở đây báo về được. Không gieo thì
+      // reportDossierSubmitClick không thấy khóa và bỏ im lặng → mất hết hồ sơ tách.
+      if (item.dossierId) {
+        await chrome.storage.local.set({
+          ["autofill_session_" + tab.id]: { dossierId: item.dossierId },
+        });
+      }
+      if (!await setPendingMap(pendingMap)) throw new Error("Không lưu được bundle đính kèm cho tab kế tiếp.");
+
+      state.activeTabId = tab.id;
+      state.activeItem = { ordinal: item.ordinal || null };
+      if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được trạng thái hàng đợi tách hồ sơ.");
+      await updateSplitAttachProgress(state, {
+        status: "running",
+        activeOrdinal: Number(item.ordinal) || null,
+        paused: null,
+      });
+      await chrome.tabs.update(tab.id, { url: item.url, active: true });
+      console.log("[AutoFill-SplitQueue] Bắt đầu bundle", item.ordinal || "?", {
+        tabId: tab.id,
+        remaining: state.remaining.length,
+        procedure: item.procedure,
+      });
+      return { ok: true, tabId: tab.id, remaining: state.remaining.length };
+    } catch (e) {
+      if (tab?.id != null) {
+        const pendingMap = await getPendingMap();
+        if (pendingMap[tab.id]) { delete pendingMap[tab.id]; await setPendingMap(pendingMap); }
+        try { await chrome.tabs.remove(tab.id); } catch (_) { /* ignore */ }
+      }
+      state.activeTabId = null;
+      state.activeItem = null;
+      state.results = Array.isArray(state.results) ? state.results : [];
+      const failedResult = { ok: false, ordinal: item?.ordinal || null, error: e?.message || String(e) };
+      state.results.push(failedResult);
+      await recordSplitAttachProgressResult(state, failedResult, item?.ordinal || null);
+      if (!await setSplitAttachQueue(state)) break;
+    }
+  }
+
+  const progress = await getSplitAttachProgress();
+  if (progress && state?.runId && progress.runId === state.runId) {
+    await setSplitAttachProgress({
+      ...progress,
+      status: "completed",
+      completed: Number(progress.total) || Number(progress.completed) || 0,
+      activeOrdinal: null,
+      paused: null,
+    });
+  }
+  await clearSplitAttachQueue();
+  console.log("[AutoFill-SplitQueue] Đã xử lý hết hàng đợi.", state?.results || []);
+  return { done: true, results: state?.results || [] };
+}
+
+async function finishSplitQueueTabUnlocked(tabId, result = {}) {
+  const state = await getSplitAttachQueue();
+  if (!state || Number(state.activeTabId) !== Number(tabId)) return { queueAdvanced: false };
+  state.results = Array.isArray(state.results) ? state.results : [];
+  state.results.push({
+    ok: result.ok === true,
+    ordinal: state.activeItem?.ordinal || null,
+    code: result.code || null,
+    error: result.error || null,
+  });
+  state.activeTabId = null;
+  state.activeItem = null;
+  delete state.paused;
+  await recordSplitAttachProgressResult(state, result, state.results[state.results.length - 1]?.ordinal || null);
+  if (!await setSplitAttachQueue(state)) return { queueAdvanced: false, error: "Không lưu được kết quả tab." };
+  console.log("[AutoFill-SplitQueue] Kết thúc bundle", state.results[state.results.length - 1]);
+  // Cho cổng giải phóng request/session của tab vừa xong trước khi khởi tạo eForm tiếp theo.
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const next = await openNextSplitQueueItemUnlocked();
+  return { queueAdvanced: true, next };
+}
+
+// Cho phép content script / popup-iframe lấy tabId của chính nó.
+// Dọn state theo tab khi tab đóng (key panel + session lưu theo tabId, tránh tồn đọng storage).
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  try {
+    chrome.storage.local.remove([
+      "autofill_panel_open_" + tabId,
+      "autofill_session_" + tabId,
+      "autofill_phone_upload_" + tabId,
+    ]);
+    void mutateSubmitStore(SUBMIT_MARKS_KEY, (cur) => {
+      const all = cur && typeof cur === "object" ? { ...cur } : {};
+      delete all[tabId];
+      return all;
+    });
+    await withSplitQueueLock(async () => {
+      const map = await getPendingMap();
+      if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+      await finishSplitQueueTabUnlocked(tabId, { ok: false, code: "tab-closed", error: "Tab hồ sơ đã bị đóng." });
+    });
+  } catch (e) { /* ignore */ }
+});
+
+// Mốc "bấm Gửi hồ sơ" từ content script → BE. Xử ở background chứ không ở popup vì popup có
+// thể đã đóng lúc cán bộ bấm nộp; background thì luôn sống dậy được.
+// SUBMIT_WATCH_KEY khai lại ở đây (service worker không nạp api/config.js) — sửa thì sửa cả hai.
+const SUBMIT_WATCH_KEY = "autofill_submit_watch";
+
+// Cờ "cần hỏi đánh giá", theo KHÓA HỒ SƠ chứ không theo tab.
+// - theo hồ sơ: chứng thực tách nhiều tab dùng CHUNG một dossierId và tab nào cũng bấm nộp —
+//   đánh dấu theo tab thì cán bộ bị hỏi 4 lần cho 1 hồ sơ.
+// - vào storage chứ không giữ trong RAM của popup: bấm nộp xong trang thường điều hướng/postback
+//   ngay (HkdOnline là full postback), panel dựng lại là mất sạch trạng thái trong RAM.
+const RATING_PENDING_KEY = "autofill_rating_pending";
+const RATING_DONE_KEY = "autofill_rating_done";
+// Trần danh sách hồ sơ ĐÃ hỏi: chỉ để chống hỏi lại, không phải dữ liệu cần giữ lâu.
+const RATING_DONE_MAX = 200;
+
+async function markRatingPending(dossierId, tabId) {
+  if (!dossierId) return false;
+  const store = await chrome.storage.local.get([RATING_PENDING_KEY, RATING_DONE_KEY]);
+  const done = Array.isArray(store?.[RATING_DONE_KEY]) ? store[RATING_DONE_KEY] : [];
+  // Đã hỏi rồi thì thôi — kể cả khi cán bộ bấm nộp thêm lần nữa trên chính hồ sơ đó.
+  if (done.includes(dossierId)) return false;
+  const pending = store?.[RATING_PENDING_KEY];
+  if (pending?.dossierId === dossierId) return true; // đã chờ sẵn, không ghi đè mốc cũ
+  await chrome.storage.local.set({
+    [RATING_PENDING_KEY]: { dossierId, tabId: tabId ?? null, at: Date.now() },
+  });
+  return true;
+}
+
+// ── Gửi mốc nộp lên BE: hàng đợi bền + làm mới token ──
+// Trước đây gửi một phát bằng access token đang nằm trong storage: token sống 1 giờ và chỉ
+// popup biết làm mới, nên token hết hạn đúng lúc bấm nộp là BE trả 401 — mà fetch không ném
+// lỗi với 401 nên extension vẫn tưởng đã ghi. Đo trên prod: ~1,6% hồ sơ đã hỏi đánh giá (tức
+// chắc chắn đã bấm nộp) mà sổ hồ sơ vẫn "chưa nộp". Giờ mỗi mốc vào hàng đợi trong storage,
+// gửi đến khi BE nhận (res.ok) mới xoá; lần gửi lại mang giờ bấm thật + mã cú bấm để BE không
+// ghi trùng (dossiers/repo.add_submit_event).
+const SUBMIT_OUTBOX_KEY = "autofill_submit_outbox";
+// Mốc nộp theo TAB (không để trong autofill_session_<tab>: popup ghi đè nguyên phiên bằng
+// snapshot của nó, mọi khoá lạ trong đó sẽ mất).
+const SUBMIT_MARKS_KEY = "autofill_submit_marks";
+const SUBMIT_OUTBOX_ALARM = "autofill-submit-outbox";
+const SUBMIT_OUTBOX_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+const SUBMIT_OUTBOX_MAX = 100;
+const SUBMIT_FETCH_TIMEOUT_MS = 20000;
+const SUBMIT_RETRY_STATUS = new Set([401, 408, 429]);
+const SUBMIT_INFRA_STATUS = new Set([502, 503, 504]);
+
+function newSubmitClickId() {
+  try { return crypto.randomUUID(); } catch (_) { }
+  return "c-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+let submitStoreChain = Promise.resolve();
+// Mọi đọc-sửa-ghi hàng đợi/mốc đi qua một chuỗi: enqueue lúc đang flush không được mất mục.
+function mutateSubmitStore(key, fn) {
+  const run = async () => {
+    const cur = (await chrome.storage.local.get([key]))?.[key];
+    const next = fn(cur);
+    await chrome.storage.local.set({ [key]: next });
+    return next;
+  };
+  submitStoreChain = submitStoreChain.then(run, run);
+  return submitStoreChain;
+}
+
+async function fetchWithTimeout(url, init) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), SUBMIT_FETCH_TIMEOUT_MS);
+  try { return await fetch(url, { ...init, signal: ctrl.signal }); }
+  finally { clearTimeout(timer); }
+}
+
+// BE XOAY VÒNG refresh token (token cũ bị thu hồi ngay). Popup có thể làm mới cùng lúc với ta:
+// bên thua nhận 401 dù cặp token mới đã có trong storage → đọc lại trước khi coi là hỏng.
+// Không bao giờ xoá token ở đây: đá cán bộ ra màn đăng nhập là việc của popup.
+async function refreshSubmitTokens(base, used) {
+  try {
+    const res = await fetchWithTimeout(base + "/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: used.refreshToken }),
+    });
+    if (res.ok) {
+      const nt = await res.json();
+      if (nt?.accessToken && nt?.refreshToken) {
+        const saved = { accessToken: nt.accessToken, refreshToken: nt.refreshToken, savedAt: Date.now() };
+        // Cán bộ vừa đăng xuất / đăng nhập tài khoản khác trong lúc ta làm mới → không được
+        // hồi sinh phiên cũ vào storage; cặp mới chỉ dùng cho request này.
+        const cur = (await chrome.storage.local.get(["auth_tokens"]))?.auth_tokens;
+        if (cur?.refreshToken === used.refreshToken) await chrome.storage.local.set({ auth_tokens: saved });
+        return saved;
+      }
+    }
+  } catch (_) { /* mạng — thử lại sau */ }
+  await new Promise((r) => setTimeout(r, 1500));
+  const cur = (await chrome.storage.local.get(["auth_tokens"]))?.auth_tokens;
+  return cur?.accessToken && cur.accessToken !== used.accessToken ? cur : null;
+}
+
+/** Gửi MỘT mốc. "ok" = BE đã nhận · "drop" = BE từ chối hẳn (gửi lại cũng vậy) · "retry". */
+async function sendSubmitReport(item) {
+  const store = await chrome.storage.local.get([SUBMIT_WATCH_KEY, "auth_tokens"]);
+  const conf = store?.[SUBMIT_WATCH_KEY] || {};
+  // Base popup đang dùng lúc nạp thủ tục trước, rồi tới các base còn lại (chính/phụ) khi lỗi hạ tầng.
+  const bases = [...new Set([conf.base, ...(Array.isArray(conf.bases) ? conf.bases : [])]
+    .map((b) => String(b || "").trim().replace(/\/+$/, "")).filter(Boolean))];
+  let tokens = store?.auth_tokens;
+  if (!bases.length || !tokens?.accessToken) return "retry"; // chưa đăng nhập — chờ popup
+  const body = JSON.stringify({
+    dossierId: item.dossierId, portalHost: item.host || "", portalDossierRef: item.ref || "",
+    clickId: item.clickId, clickedAt: item.clickedAt, source: item.source || "click",
+  });
+  const post = (base) => fetchWithTimeout(base + "/api/v1/dossiers/submit-click", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + tokens.accessToken },
+    body,
+  });
+  for (const base of bases) {
+    let res;
+    try { res = await post(base); } catch (_) { continue; }
+    if (SUBMIT_INFRA_STATUS.has(res.status)) continue;
+    if (res.status === 401 && tokens.refreshToken) {
+      const nt = await refreshSubmitTokens(base, tokens);
+      if (!nt) return "retry";
+      tokens = nt;
+      try { res = await post(base); } catch (_) { continue; }
+    }
+    if (res.ok) return "ok";
+    if (SUBMIT_RETRY_STATUS.has(res.status) || res.status >= 500) return "retry";
+    return "drop";
+  }
+  return "retry";
+}
+
+let submitFlushing = null;
+function flushSubmitOutbox() {
+  if (submitFlushing) return submitFlushing;
+  submitFlushing = (async () => {
+    let queue = (await chrome.storage.local.get([SUBMIT_OUTBOX_KEY]))?.[SUBMIT_OUTBOX_KEY];
+    queue = Array.isArray(queue) ? queue : [];
+    const fresh = queue.filter((it) => it?.clickId && Date.now() - Number(it.clickedAt || 0) < SUBMIT_OUTBOX_MAX_AGE_MS);
+    if (fresh.length !== queue.length) {
+      const keep = new Set(fresh.map((it) => it.clickId));
+      await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => (Array.isArray(cur) ? cur : []).filter((it) => keep.has(it?.clickId)));
+    }
+    // Đúng thứ tự: mốc dò chữ luôn xếp SAU cú bấm của cùng lần nộp — gửi chệch thứ tự thì BE
+    // không lọc được mốc dò chữ trùng. Mục đầu chưa gửi được thì dừng cả hàng.
+    for (const item of fresh) {
+      const r = await sendSubmitReport(item);
+      if (r === "retry") {
+        try { chrome.alarms.create(SUBMIT_OUTBOX_ALARM, { delayInMinutes: 1 }); } catch (_) {}
+        return;
+      }
+      if (r === "drop") console.warn("[BG] BE từ chối mốc nộp hồ sơ, bỏ khỏi hàng đợi:", item.dossierId);
+      await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => (Array.isArray(cur) ? cur : []).filter((it) => it?.clickId !== item.clickId));
+    }
+  })().catch((e) => console.warn("[BG] Không gửi được hàng đợi mốc nộp:", e?.message || e))
+    .finally(() => { submitFlushing = null; });
+  return submitFlushing;
+}
+
+async function enqueueSubmitReport(item) {
+  await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => {
+    const list = (Array.isArray(cur) ? cur : []).filter((it) => it?.clickId !== item.clickId);
+    list.push(item);
+    return list.slice(-SUBMIT_OUTBOX_MAX);
+  });
+  void flushSubmitOutbox();
+}
+
+// Hàng đợi còn mốc thì mọi dịp sống dậy đều thử gửi: hẹn giờ, trình duyệt mở lại, và lúc popup
+// vừa đăng nhập/làm mới token (401 vì refresh token hỏng chỉ gỡ được khi cán bộ đăng nhập lại).
+chrome.alarms.onAlarm.addListener((a) => { if (a?.name === SUBMIT_OUTBOX_ALARM) void flushSubmitOutbox(); });
+chrome.runtime.onStartup.addListener(() => { void flushSubmitOutbox(); });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.auth_tokens?.newValue?.accessToken) void flushSubmitOutbox();
+});
+
+async function readSubmitSession(tabId) {
+  const sessionKey = "autofill_session_" + tabId;
+  const store = await chrome.storage.local.get([sessionKey, SUBMIT_MARKS_KEY]);
+  const session = store?.[sessionKey];
+  const marks = store?.[SUBMIT_MARKS_KEY]?.[tabId] || {};
+  return { sessionKey, session, marks, dossierId: String(session?.dossierId || "").trim() };
+}
+
+async function markTabSubmitted(tabId, sessionKey, session, patch) {
+  await mutateSubmitStore(SUBMIT_MARKS_KEY, (cur) => {
+    const all = cur && typeof cur === "object" ? cur : {};
+    return { ...all, [tabId]: { ...(all[tabId] || {}), ...patch } };
+  });
+  // GIỮ khóa, chỉ đánh dấu đã nộp: chứng thực tách nhiều tab còn bấm nộp tiếp trên chính khóa
+  // này và mỗi lần là một sự kiện. Khóa mới sinh ở LƯỢT process/đính kèm kế tiếp (popup.js
+  // ensureDossierId), tức khi cán bộ bắt đầu hồ sơ khác.
+  await chrome.storage.local.set({ [sessionKey]: { ...session, dossierSubmitted: true } });
+}
+
+async function afterDossierSubmitted(tabId, dossierId) {
+  // Bấm nộp = coi như đã nộp. Không chờ cổng báo "thành công": câu chữ đó khác nhau theo cổng
+  // và chỉ thu thập được bằng cách nộp hồ sơ thật, nên chờ nó là không bao giờ hỏi được ở
+  // phần lớn cổng. Đổi lại: có thể hỏi cả khi cổng báo thiếu giấy tờ — chấp nhận.
+  await markRatingPending(dossierId, tabId);
+  try {
+    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId, dossierId });
+  } catch (_) { /* panel chưa dựng lại sau điều hướng → cờ ở storage lo tiếp */ }
+}
+
+async function reportDossierSubmitClick(tabId, host, ref, clickId, clickedAt) {
+  if (!tabId) return;
+  const { sessionKey, session, dossierId } = await readSubmitSession(tabId);
+  // Chưa có khóa = extension chưa điền/đính kèm gì cho hồ sơ này → không có gì để chấm.
+  // Cố ý: báo cáo chỉ tính hồ sơ trợ lý có tham gia.
+  if (!dossierId) return;
+  const at = Number(clickedAt) || Date.now();
+  await markTabSubmitted(tabId, sessionKey, session, { clickDossierId: dossierId });
+  await enqueueSubmitReport({
+    dossierId, host: host || "", ref: ref || "", source: "click",
+    clickId: String(clickId || "") || newSubmitClickId(), clickedAt: at,
+  });
+  await afterDossierSubmitted(tabId, dossierId);
+}
+
+// Lớp 2: màn kết quả hiện chữ "nộp hồ sơ thành công" (hoặc successText riêng của cổng) mà cú
+// bấm không bắt được — nút nằm trong khung lạ, nộp bằng phím Enter, cổng đổi nút.
+async function reportDossierSubmitSeen(tabId, host, ref, seenAt) {
+  if (!tabId) return;
+  const { sessionKey, session, marks, dossierId } = await readSubmitSession(tabId);
+  if (!dossierId) return;
+  const at = Number(seenAt) || Date.now();
+  // Chữ đã nằm sẵn trên trang TỪ TRƯỚC khi bắt đầu hồ sơ này (cán bộ làm hồ sơ mới ngay trên
+  // màn kết quả của hồ sơ cũ) → là của hồ sơ cũ.
+  const createdAt = Number(session?.dossierCreatedAt || 0);
+  if (createdAt && at < createdAt) return;
+  // Lọc THEO TAB + HỒ SƠ, không theo thời gian: tab này đã có cú bấm (hoặc đã ghi chữ) cho hồ
+  // sơ này thì chữ "thành công" là của chính lần đó. Không dùng cửa sổ thời gian vì hàng đợi tách
+  // tự chuyển sang tab kế — tab cũ bị ẩn, chữ của nó chỉ được dò khi cán bộ quay lại, có khi rất lâu.
+  // Không lọc theo cả hồ sơ vì các tab tách dùng CHUNG khóa: tab 2 rớt cú bấm mà bị cú bấm tab 1
+  // che thì đếm thiếu một hồ sơ (BE cũng không lọc lại — text_dedupe_window=False).
+  if (marks.clickDossierId === dossierId || marks.textDossierId === dossierId) return;
+  await markTabSubmitted(tabId, sessionKey, session, { textDossierId: dossierId });
+  await enqueueSubmitReport({
+    dossierId, host: host || "", ref: ref || "", source: "text",
+    clickId: newSubmitClickId(), clickedAt: at,
+  });
+  await afterDossierSubmitted(tabId, dossierId);
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.action === "hccCoTabNaoDangLamViec") {
+    coTabNaoDangLamViec().then((co) => sendResponse({ co }));
+    return true;
+  }
+  if (msg?.action === "hccGoPanelMoiTab") {
+    goPanelMoiTab().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg?.action === "getTabId") {
+    sendResponse({ tabId: sender?.tab?.id ?? null });
+    return true;
+  }
+  if (msg?.action === "dossierSubmitClicked") {
+    void reportDossierSubmitClick(sender?.tab?.id, msg.host, msg.ref, msg.clickId, msg.clickedAt);
+    sendResponse?.({ ok: true });
+    return true;
+  }
+  if (msg?.action === "dossierSubmitSeen") {
+    void reportDossierSubmitSeen(sender?.tab?.id, msg.host, msg.ref, msg.seenAt);
+    sendResponse?.({ ok: true });
+    return true;
+  }
+  // Proxy fetch: popup-iframe gọi API BE qua background để TRÁNH mixed-content blocking
+  // (popup nhúng iframe trên trang HTTPS, fetch http:// bị auto-upgrade → ERR_SSL_PROTOCOL_ERROR).
+  // Background SW chạy ở context extension thuần, fetch http:// bình thường.
+  if (msg?.action === "apiFetch") {
+    (async () => {
+      try {
+        const init = { method: msg.method || "GET", headers: msg.headers || {} };
+        if (msg.body != null) init.body = msg.body;
+        const res = await fetch(msg.url, init);
+        const body = await res.text();
+        sendResponse({ ok: res.ok, status: res.status, body });
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true; // giữ kênh cho phản hồi async
+  }
+
+  // Tải 1 ảnh (nhị phân) từ BE → dataURL base64. apiFetch trả text làm HỎNG nhị phân,
+  // nên ảnh phiên QR dùng riêng handler này. GET mở (guard bằng sid bí mật, không cần token).
+  if (msg?.action === "fetchImageDataUrl") {
+    (async () => {
+      try {
+        const res = await fetch(msg.url, { headers: msg.headers || {} });
+        if (!res.ok) return sendResponse({ error: `HTTP ${res.status}` });
+        const blob = await res.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = () => reject(r.error);
+          r.readAsDataURL(blob);
+        });
+        sendResponse({ ok: true, dataUrl, type: blob.type });
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // ===== Điều phối tách hồ sơ (split) =====
+  if (msg?.action === "stageDossierTabAttach") {
+    (async () => {
+      const tabId = Number(msg.tabId);
+      try {
+        if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Không xác định được tab hồ sơ hiện tại.");
+        await chrome.tabs.get(tabId); // xác nhận tab vẫn còn trước khi ghi pending
+        const files = Array.isArray(msg.files) && msg.files.length ? msg.files : (msg.file ? [msg.file] : []);
+        const attachments = Array.isArray(msg.attachments) && msg.attachments.length
+          ? msg.attachments
+          : (msg.planItem ? [msg.planItem] : []);
+        if (!files.length || !attachments.length) throw new Error("Thiếu bộ file/kế hoạch phục hồi cho tab hiện tại.");
+        const map = await getPendingMap();
+        map[tabId] = {
+          files,
+          attachments,
+          procedure: msg.procedure,
+          ts: Date.now(),
+          // Lượt reload chuyển từ thao tác trực tiếp sang state machine được tính là lượt đầu tiên.
+          recoveryCode: msg.recoveryCode || null,
+          recoveryCount: msg.recoveryCode ? 1 : 0,
+        };
+        if (!await setPendingMap(map)) throw new Error("Không lưu được hàng đợi phục hồi cho tab hiện tại.");
+        sendResponse({ ok: true, tabId, ts: map[tabId].ts });
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg?.action === "reloadDossierTabAttach") {
+    (async () => {
+      const tabId = Number(msg.tabId);
+      try {
+        if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Không xác định được tab cần tải lại.");
+        const map = await getPendingMap();
+        if (!map[tabId]) throw new Error("Tab hiện tại chưa có hàng đợi đính kèm để phục hồi.");
+        await chrome.tabs.reload(tabId);
+        sendResponse({ ok: true, tabId });
+      } catch (e) {
+        await withSplitQueueLock(async () => {
+          const map = await getPendingMap();
+          if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+          await finishSplitQueueTabUnlocked(tabId, {
+            ok: false,
+            code: "tab-reload-failed",
+            error: e?.message || String(e),
+          });
+        });
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg?.action === "startSplitAttachQueue") {
+    (async () => {
+      let itemsStorageKey = "";
+      try {
+        itemsStorageKey = String(msg.itemsStorageKey || "");
+        let rawItems = msg.items;
+        if (itemsStorageKey) {
+          if (itemsStorageKey !== SPLIT_ATTACH_QUEUE_STAGE_KEY) {
+            throw new Error("Khóa staging của hàng đợi tách hồ sơ không hợp lệ.");
+          }
+          const staged = await chrome.storage.local.get(itemsStorageKey);
+          rawItems = staged?.[itemsStorageKey]?.items;
+          if (!Array.isArray(rawItems)) {
+            throw new Error("Không đọc được dữ liệu hàng đợi tách hồ sơ từ storage.");
+          }
+        }
+        const items = Array.isArray(rawItems) ? rawItems.filter(Boolean) : [];
+        if (!items.length) throw new Error("Hàng đợi tách hồ sơ không có bundle hợp lệ.");
+        const waitForTabId = Number(msg.waitForTabId) || null;
+        const result = await withSplitQueueLock(async () => {
+          if (waitForTabId) {
+            await chrome.tabs.get(waitForTabId);
+            const pendingMap = await getPendingMap();
+            if (!pendingMap[waitForTabId]) {
+              throw new Error("Tab hiện tại chưa có bundle phục hồi trước khi bắt đầu hàng đợi.");
+            }
+          }
+          const state = {
+            remaining: items,
+            activeTabId: waitForTabId,
+            activeItem: waitForTabId ? { ordinal: 1 } : null,
+            results: [],
+            startedAt: Date.now(),
+            runId: String(msg.runId || `split-${Date.now()}`),
+          };
+          const total = Math.max(Number(msg.totalBundles) || 0, items.length + (waitForTabId ? 1 : 0));
+          const initialCompleted = Math.max(0, Math.min(total, Number(msg.initialCompleted) || 0));
+          const initialSucceeded = Math.max(0, Math.min(initialCompleted, Number(msg.initialSucceeded) || 0));
+          if (!await setSplitAttachProgress({
+            runId: state.runId,
+            originTabId: Number(msg.originTabId) || null,
+            procedure: String(msg.procedure || ""),
+            status: "running",
+            total,
+            completed: initialCompleted,
+            succeeded: initialSucceeded,
+            failed: Math.max(0, initialCompleted - initialSucceeded),
+            activeOrdinal: waitForTabId ? 1 : null,
+            startedAt: state.startedAt,
+            paused: null,
+            lastResult: null,
+          })) {
+            throw new Error("Không lưu được tiến độ hàng đợi tách hồ sơ.");
+          }
+          if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được hàng đợi tách hồ sơ tuần tự.");
+          return waitForTabId
+            ? { ok: true, waiting: true, tabId: waitForTabId, remaining: items.length }
+            : await openNextSplitQueueItemUnlocked();
+        });
+        sendResponse(result);
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      } finally {
+        if (itemsStorageKey) {
+          try { await chrome.storage.local.remove(itemsStorageKey); } catch (_) { /* ignore */ }
+        }
+      }
+    })();
+    return true;
+  }
+  if (msg?.action === "getPendingAttach") {
+    (async () => {
+      const map = await getPendingMap();
+      sendResponse({ pending: map[sender?.tab?.id] || null });
+    })();
+    return true;
+  }
+  if (msg?.action === "clearPendingAttach") {
+    (async () => {
+      const tabId = msg.tabId ?? sender?.tab?.id;
+      const result = await withSplitQueueLock(async () => {
+        const map = await getPendingMap();
+        if (tabId != null && map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+        return await finishSplitQueueTabUnlocked(tabId, { ok: true });
+      });
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+  if (msg?.action === "pausePendingAttach") {
+    (async () => {
+      const tabId = msg.tabId ?? sender?.tab?.id;
+      const result = await withSplitQueueLock(async () => {
+        const state = await getSplitAttachQueue();
+        if (!state || Number(state.activeTabId) !== Number(tabId)) {
+          return { paused: false };
+        }
+        // Giữ nguyên pending + activeTabId để không mở tab kế tiếp. Reload thủ công tab này sẽ đọc
+        // lại bundle và chạy lại; đóng tab thì onRemoved mới kết thúc bundle lỗi và chuyển tiếp.
+        state.paused = {
+          tabId,
+          code: msg.code || "attach-failed",
+          error: msg.error || "Đính kèm thất bại.",
+          pausedAt: Date.now(),
+        };
+        await updateSplitAttachProgress(state, {
+          status: "paused",
+          activeOrdinal: Number(state.activeItem?.ordinal) || null,
+          paused: {
+            ordinal: Number(state.activeItem?.ordinal) || null,
+            code: msg.code || "attach-failed",
+            error: msg.error || "Đính kèm thất bại.",
+          },
+        });
+        const saved = await setSplitAttachQueue(state);
+        return { paused: saved, tabId };
+      });
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+  if (msg?.action === "failPendingAttach") {
+    (async () => {
+      const tabId = msg.tabId ?? sender?.tab?.id;
+      const result = await withSplitQueueLock(async () => {
+        const map = await getPendingMap();
+        if (tabId != null && map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+        return await finishSplitQueueTabUnlocked(tabId, {
+          ok: false,
+          code: msg.code || "attach-failed",
+          error: msg.error || "Đính kèm thất bại.",
+        });
+      });
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+  if (msg?.action === "clearAllPendingAttach") {
+    (async () => {
+      await withSplitQueueLock(async () => {
+        await setPendingMap({});
+        await clearSplitAttachQueue();
+        try {
+          await chrome.storage.local.remove([SPLIT_ATTACH_QUEUE_STAGE_KEY, SPLIT_ATTACH_PROGRESS_KEY]);
+        } catch (_) { /* ignore */ }
+      });
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+});
+
+// Kéo file phiên QR về dataURL theo CHUNK qua Port (thay cho fetchImageDataUrl gửi 1 cục).
+// chrome.runtime message có trần kích thước (~64MB); file lớn (PDF 65MB → base64 ~87MB) gửi 1
+// message sẽ HỤT → popup không nhận được. Port stream từng mảnh nhỏ để vượt trần này.
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "filePull") return;
+  port.onMessage.addListener(async (msg) => {
+    try {
+      // PHẢI có timeout: fetch trần treo vô hạn thì port không bao giờ settle, popup coi như
+      // đang kéo dở và KHÔNG thử lại → file "gửi rồi mà không thấy". 60s đủ cho PDF scan qua 4G.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 60000);
+      let res;
+      try {
+        res = await fetch(msg.url, { headers: msg.headers || {}, signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!res.ok) {
+        console.warn("[BG] Kéo tệp phiên QR lỗi:", res.status, msg.url);
+        port.postMessage({ error: `HTTP ${res.status}` });
+        return;
+      }
+      const blob = await res.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+      });
+      port.postMessage({ meta: true, type: blob.type });
+      const CHUNK = 4 * 1024 * 1024; // 4MB/mảnh — an toàn dưới trần message
+      for (let i = 0; i < dataUrl.length; i += CHUNK) {
+        port.postMessage({ chunk: dataUrl.slice(i, i + CHUNK) });
+      }
+      port.postMessage({ done: true });
+    } catch (e) {
+      try { port.postMessage({ error: e?.message || String(e) }); } catch (_) { /* port đã đóng */ }
+    }
+  });
+});
 
 // ===== Tự cập nhật: kiểm tra ở BACKGROUND, không phụ thuộc panel =====
 //
@@ -1271,6 +922,12 @@ async function ghiBanCho(version) {
 async function boBanCho() {
   try { await chrome.storage.local.remove(KHOA_BAN_CHO); } catch (e) { /* ignore */ }
 }
+
+// Panel vừa nghe agent báo có bản mới trên đĩa → kiểm NGAY, khỏi chờ nhịp 1 phút. kiemBanMoi tự giữ mọi
+// luật "chỉ nạp lại khi rảnh", nên gọi thêm lần nào cũng an toàn.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.action === "hccKiemBanMoiNgay") void kiemBanMoi();
+});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.action !== "hccCapNhatNgay") return;
@@ -1340,35 +997,6 @@ async function hoiAgent() {
 }
 
 // Máy có đang rảnh không — theo thao tác chuột/phím của CẢ MÁY, không chỉ tab này.
-// Sidebar tự ghi trạng thái (lib/trangThai.js) theo tab — background không hỏi thẳng được iframe hay
-// khung bên. Có panel nào "đang làm việc" trong 10 giây gần nhất (đang tải tệp quét lên, đang gọi BE…)
-// là bận. Nhịp quá 60 giây = panel đã chết → dọn.
-const TIEN_TO_TRANG_THAI_PANEL = "tlnd_trang_thai_panel:";
-async function coPanelDangLamViec() {
-  const kho = chrome.storage.session || chrome.storage.local;
-  let tatCa;
-  try { tatCa = await kho.get(null); } catch (e) { return false; }
-  // Trình duyệt cũ không trả Promise → không biết gì → coi như bận (cùng quy ước với các tab).
-  if (tatCa === undefined || tatCa === null) return !hoTroPromise();
-  const gio = Date.now();
-  const hetHan = [];
-  let ban = false;
-  for (const [k, v] of Object.entries(tatCa)) {
-    if (!k.startsWith(TIEN_TO_TRANG_THAI_PANEL)) continue;
-    const tuoi = gio - Number(v?.luc || 0);
-    if (tuoi > 60 * 1000) { hetHan.push(k); continue; }
-    if (tuoi <= 10 * 1000 && v?.tt === "dang-lam-viec") ban = true;
-  }
-  if (hetHan.length) { try { await kho.remove(hetHan); } catch (_) { /* ignore */ } }
-  return ban;
-}
-
-// Sidebar vừa nghe agent báo có bản extension mới trên đĩa → kiểm NGAY, khỏi chờ nhịp 1 phút.
-// kiemBanMoi tự giữ mọi luật "chỉ nạp lại khi rảnh", nên gọi thêm lần nào cũng an toàn.
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.action === "hccKiemBanMoiNgay") void kiemBanMoi();
-});
-
 async function mayDangRanh() {
   try {
     const tt = await chrome.idle.queryState(NGUONG_RANH_GIAY);

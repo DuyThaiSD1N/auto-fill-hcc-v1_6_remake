@@ -27,12 +27,10 @@ test("lượt điền của engine không bị chụp / ghi lại", () => {
   assert.match(src, /if \(toolWriting\) \{ pending = null; return; \}/);
 });
 
-test("bộ giữ khối giống hệt bản Auto Fill", () => {
-  // Chỉ so được khi có repo Auto Fill nằm cạnh (máy dev); CI chỉ checkout một repo.
-  const otherPath = path.join(__dirname, "..", "..", "auto-fill-hcc-extension", "content", "surveyjs-main.js");
-  if (!fs.existsSync(otherPath)) return;
-  const other = fs.readFileSync(otherPath, "utf8");
-  const block = (s) => s.slice(s.indexOf("// ---- Giữ khối thông tin người được cấp"), s.indexOf("// ---- Chặn hộp thoại"));
-  if (!other.includes("Giữ khối thông tin người được cấp")) return;
-  assert.equal(block(src), block(other));
+test("điền xong đọc lại model: ô còn hiện mà cổng đã xoá thì báo đỏ, không gõ đè qua DOM", () => {
+  assert.match(src, /await settle\(300\);\s*for \(const r of results\) verifyKept\(survey, r\);\s*return \{ ok: true, results \};/);
+  assert.match(src, /return !!q && q\.isVisible && typeof q\.isEmpty === "function" && q\.isEmpty\(\);/);
+  assert.match(src, /if \(!r\.ok \|\| r\.kept\) return;/);
+  const fill = fs.readFileSync(path.join(__dirname, "..", "content", "fill-surveyjs.js"), "utf8");
+  assert.match(fill, /r\.reason !== "readonly" && r\.reason !== "cleared-after-set"/);
 });

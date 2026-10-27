@@ -1478,17 +1478,6 @@
     bcaSetSelect(village, wardOpt);
     return { ok: true, province: cityOpt.text.trim(), ward: wardOpt.text.trim() };
   }
-  // Ô cam kết cuối trang ("Tôi xin chịu trách nhiệm…", #chkCHECK_LIABILITY): click thật để handler của cổng
-  // (bật nút nộp) chạy như công dân tự tích; đã tích sẵn thì không click (click nữa là bỏ tích).
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.action !== "tickCommitBox" || !IS_TOP_FRAME) return;
-    const box = document.getElementById(String(msg.id || ""));
-    if (!box || box.type !== "checkbox") { sendResponse({ ok: false, error: "not_found" }); return; }
-    box.scrollIntoView({ block: "center", behavior: "smooth" });
-    if (!box.checked) box.click();
-    sendResponse(box.checked ? { ok: true } : { ok: false, error: "not_checked" });
-  });
-
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "fillBcaAgency" || !IS_TOP_FRAME) return;
     fillBcaAgency(String(msg.province || ""), String(msg.ward || ""))

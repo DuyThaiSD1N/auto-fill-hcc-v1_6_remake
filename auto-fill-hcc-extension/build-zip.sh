@@ -1,45 +1,34 @@
 #!/usr/bin/env bash
-
+# Đóng gói extension auto-fill-hcc thành .zip để nạp/phát hành, LOẠI file thừa (git, tests, docs, junk mac).
+# Zip đặt manifest.json ở GỐC archive (đúng cho "Load packed" / upload store). Chạy: bash build-zip.sh
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MANIFEST_FILE="${SCRIPT_DIR}/manifest.json"
-OUTPUT_DIR="$(dirname "${SCRIPT_DIR}")"
+SRC="$(cd "$(dirname "$0")" && pwd)"                 # thư mục extension (nơi chứa manifest.json)
+VERSION="$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9.]+"' "$SRC/manifest.json" | grep -oE '[0-9.]+' | head -1)"
+OUT="$SRC/../auto-fill-hcc-extension-v${VERSION:-dev}.zip"
 
-if ! command -v zip >/dev/null 2>&1; then
-  echo "Lỗi: máy chưa cài lệnh zip." >&2
-  exit 1
-fi
+rm -f "$OUT"
+cd "$SRC"
 
-if [[ ! -f "${MANIFEST_FILE}" ]]; then
-  echo "Lỗi: không tìm thấy manifest.json tại ${SCRIPT_DIR}." >&2
-  exit 1
-fi
+# -r đệ quy, -X bỏ metadata mac (uid/gid...). Loại: git, CI, cache pytest, junk mac, tests, docs, tài liệu,
+# zip cũ, sourcemap, và chính script build này.
+zip -r -X "$OUT" . \
+  -x '.git/*' \
+  -x '.github/*' \
+  -x '.pytest_cache/*' \
+  -x '*/.DS_Store' -x '.DS_Store' \
+  -x '__MACOSX/*' \
+  -x 'tests/*' \
+  -x 'docs/*' \
+  -x '*.md' \
+  -x '*.zip' \
+  -x '*.map' \
+  -x 'build-zip.sh' >/dev/null
 
-EXTENSION_VERSION="$(awk -F'"' '/"version"[[:space:]]*:/ { print $4; exit }' "${MANIFEST_FILE}")"
-if [[ -z "${EXTENSION_VERSION}" ]]; then
-  echo "Lỗi: không đọc được version trong manifest.json." >&2
-  exit 1
-fi
-
-BUILD_TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
-OUTPUT_FILE="${OUTPUT_DIR}/tro-ly-nguoi-dan-extension-v${EXTENSION_VERSION}-${BUILD_TIMESTAMP}.zip"
-
-mkdir -p "${OUTPUT_DIR}"
-
-(
-  cd "${SCRIPT_DIR}"
-  zip -rq "${OUTPUT_FILE}" . \
-    -x '.git/*' \
-       '.github/*' \
-       '.gitignore' \
-       '.DS_Store' \
-       'dist/*' \
-       'tests/*' \
-       'node_modules/*' \
-       'build-zip.sh' \
-       '*.md' \
-       '*.zip'
-)
-
-echo "Đã tạo: ${OUTPUT_FILE}"
+echo "✅ Đã tạo: $OUT"
+echo "   Dung lượng: $(du -h "$OUT" | cut -f1)"
+echo "   Số file:    $(unzip -l "$OUT" | tail -1 | awk '{print $2}')"
+echo "── Kiểm tra không lẫn file thừa (phải RỖNG) ──"
+unzip -l "$OUT" | grep -E '\.git/|\.github/|\.pytest_cache/|\.DS_Store|/tests/|/docs/|\.md$|\.map$' || echo "   (sạch — không có file thừa)"
+echo "── manifest.json phải ở gốc archive ──"
+unzip -l "$OUT" | grep -E ' manifest\.json$' || echo "   ⚠ KHÔNG thấy manifest.json ở gốc!"

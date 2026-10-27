@@ -9,62 +9,48 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "content.js"), "utf8");
-const start = src.indexOf("  const SS_PENDING_SUBMIT_KEY");
-const end = src.indexOf("\n  }\n", src.indexOf("  if (IS_TOP_FRAME) {\n    const pending = readPendingSubmits()")) + 4;
+const start = src.indexOf("    function sendSubmitClick(click) {");
+const endMarker = "      pending.forEach(sendSubmitClick);\n    }\n";
+const end = src.indexOf(endMarker, start) + endMarker.length;
 const snippet = src.slice(start, end);
 
 function page(store, { now = Date.now() } = {}) {
   const sent = [];
-  const timers = [];
   const ctx = vm.createContext({
-    IS_TOP_FRAME: true, JSON, Number, Array, Date: { now: () => now },
+    SS_PENDING_SUBMIT_KEY: "__autofill_pending_submit", PENDING_SUBMIT_TTL_MS: 10 * 60 * 1000,
+    JSON, Number, Array, Date: { now: () => now },
     sessionStorage: {
       getItem: (k) => (k in store ? store[k] : null),
       setItem: (k, v) => { store[k] = String(v); },
       removeItem: (k) => { delete store[k]; },
     },
     chrome: { runtime: { lastError: null, sendMessage: (m, cb) => { sent.push(m); cb && cb(); } } },
-    setTimeout: (fn) => { timers.push(fn); return 0; },
   });
-  vm.runInContext(`${snippet}\nthis.api = { rememberPendingSubmit, sendSubmitClick };`, ctx);
-  return { api: ctx.api, sent, runTimers: () => timers.splice(0).forEach((fn) => fn()) };
+  vm.runInContext(`${snippet}\nthis.api = { rememberPendingSubmit };`, ctx);
+  return { api: ctx.api, sent };
 }
 
-const click = (id, at) => ({ __tlnd: "submitClicked", host: "hokinhdoanh.dkkd.gov.vn", ref: "", clickId: id, clickedAt: at });
+const click = (id, at) => ({ action: "dossierSubmitClicked", host: "hokinhdoanh.dkkd.gov.vn", ref: "", clickId: id, clickedAt: at });
 
-test("bấm nộp → trang tải lại → trang mới gửi lại ĐÚNG cú bấm cũ (mã + giờ bấm), rồi dọn", () => {
+test("bấm nộp → trang tải lại → trang mới gửi lại ĐÚNG cú bấm cũ (mã + giờ bấm) một lần rồi dọn", () => {
   const store = {};
   const t0 = Date.now();
-  const p1 = page(store, { now: t0 });
-  p1.api.rememberPendingSubmit(click("c-1", t0));
-  // Trang bị huỷ trước khi tin đi được — p1.sent không quan trọng. Trang mới nạp lên:
+  page(store, { now: t0 }).api.rememberPendingSubmit(click("c-1", t0));
   const p2 = page(store, { now: t0 + 3000 });
-  assert.deepEqual(p2.sent.map((m) => [m.clickId, m.clickedAt]), [["c-1", t0]]);
-  assert.ok(store.__tlnd_pending_submit, "chưa xoá trước lần gửi thứ hai");
-  p2.runTimers();
-  assert.equal(p2.sent.length, 2, "gửi lại lần nữa cho sidebar khung trong trang");
-  assert.equal(store.__tlnd_pending_submit, undefined);
+  assert.deepEqual(p2.sent.map((m) => [m.action, m.clickId, m.clickedAt]), [["dossierSubmitClicked", "c-1", t0]]);
+  assert.equal(store.__autofill_pending_submit, undefined);
+  assert.equal(page(store, { now: t0 + 6000 }).sent.length, 0, "trang sau nữa không gửi lại");
 });
 
-test("cú bấm quá 10 phút không gửi lại (không chấm mốc nộp muộn cho lần khác)", () => {
+test("cú bấm quá 10 phút không gửi lại", () => {
   const store = {};
   const t0 = Date.now();
   page(store, { now: t0 }).api.rememberPendingSubmit(click("c-old", t0));
-  const later = page(store, { now: t0 + 11 * 60 * 1000 });
-  assert.equal(later.sent.length, 0);
-  assert.equal(store.__tlnd_pending_submit, undefined);
-});
-
-test("giữ tối đa 5 cú bấm treo", () => {
-  const store = {};
-  const t0 = Date.now();
-  const p = page(store, { now: t0 });
-  for (let i = 0; i < 7; i++) p.api.rememberPendingSubmit(click(`c-${i}`, t0));
-  assert.deepEqual(JSON.parse(store.__tlnd_pending_submit).map((c) => c.clickId), ["c-2", "c-3", "c-4", "c-5", "c-6"]);
+  assert.equal(page(store, { now: t0 + 11 * 60 * 1000 }).sent.length, 0);
 });
 
 test("cú bấm được GHI trước khi gửi (trang có thể bị huỷ ngay sau đó)", () => {
-  const i = src.indexOf('const click = { __tlnd: "submitClicked"');
+  const i = src.indexOf('const click = { action: "dossierSubmitClicked"');
   const block = src.slice(i, i + 300);
   assert.ok(block.indexOf("rememberPendingSubmit(click);") < block.indexOf("sendSubmitClick(click);"));
 });

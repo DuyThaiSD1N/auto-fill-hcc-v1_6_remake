@@ -4,16 +4,19 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const sidebar = fs.readFileSync(path.join(root, "sidebar.js"), "utf8");
-const helpersStart = sidebar.indexOf("function planItemForSplitFile");
-const helpersEnd = sidebar.indexOf("\n  function splitQueueReport", helpersStart);
+const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+const helpersStart = popup.indexOf("function planItemForFile");
+const helpersEnd = popup.indexOf("\n// Tách hồ sơ: bundle[0]", helpersStart);
 assert.ok(helpersStart >= 0 && helpersEnd > helpersStart, "Không tìm thấy helpers tách hồ sơ chữ ký");
 
-const context = { window: {} };
+const context = {
+  window: {},
+  PdfConvert: null,
+};
 vm.createContext(context);
 vm.runInContext(
-  sidebar.slice(helpersStart, helpersEnd)
-    + "\nthis.buildSignatureSplitBundles = buildSignatureSplitBundles;",
+  popup.slice(helpersStart, helpersEnd) +
+    "\nthis.buildSignatureSplitBundles = buildSignatureSplitBundles;",
   context
 );
 
@@ -26,98 +29,102 @@ function plain(value) {
 }
 
 (async () => {
-  const documentA = file("van-ban-a.pdf");
-  const documentB = file("van-ban-b.pdf");
-  const identity = file("can-cuoc.pdf");
-  const built = await context.buildSignatureSplitBundles(
-    [documentA, documentB, identity],
+  const tla = file("TLA.pdf");
+  const tlb = file("TLB.pdf");
+  const cccd = file("CCCD.pdf");
+  const withIdentity = await context.buildSignatureSplitBundles(
+    [tla, tlb, cccd],
     [
-      { fileIndex: 0, documentName: "Văn bản A", componentIndex: 1, target: "existing" },
-      { fileIndex: 1, documentName: "Văn bản B", componentIndex: null, target: "new" },
-      { fileIndex: 2, documentName: "Căn cước", componentIndex: 9, target: "existing" },
+      { fileIndex: 0, documentName: "TLA", componentIndex: 1, target: "existing" },
+      { fileIndex: 2, documentName: "CCCD", componentIndex: 2, target: "existing" },
+      { fileIndex: 1, documentName: "TLB", componentIndex: null, target: "new" },
     ]
   );
-
-  assert.equal(built.error, undefined);
-  assert.equal(built.bundles.length, 2, "Số hồ sơ phải bằng số văn bản STT1");
+  assert.equal(withIdentity.error, undefined);
+  assert.equal(withIdentity.bundles.length, 2, "Số tab phải bằng số tài liệu STT1");
   assert.deepEqual(
-    plain(built.bundles.map((bundle) => bundle.files.map((item) => item.name))),
-    [["van-ban-a.pdf", "can-cuoc.pdf"], ["van-ban-b.pdf"]]
+    plain(withIdentity.bundles.map((bundle) => bundle.files.map((item) => item.name))),
+    [["TLA.pdf", "CCCD.pdf"], ["TLB.pdf"]]
   );
   assert.deepEqual(
-    plain(built.bundles.map((bundle) => bundle.attachments.map((item) => item.componentIndex))),
+    plain(withIdentity.bundles.map((bundle) => bundle.planItems.map((item) => item.componentIndex))),
     [[1, 2], [null]]
   );
-  assert.equal(built.bundles[0].files[1], identity,
-    "Giấy tờ tùy thân chỉ được đính STT2 ở hồ sơ đầu tiên");
-  assert.equal(built.bundles[1].files.length, 1,
-    "Hồ sơ tiếp theo không được đính lặp giấy tờ tùy thân");
+  assert.equal(withIdentity.bundles[0].files[1], cccd, "CCCD chỉ dùng ở STT2 của tab đầu tiên");
+  assert.equal(withIdentity.bundles[1].files.length, 1, "Tab tiếp theo không được đính lặp CCCD");
 
+  const uqZhou = file("UQ-Zhou.pdf");
+  const idZhou = file("ID-Zhou.pdf");
+  const uqHsieh = file("UQ-Hsieh.pdf");
+  const idHsieh = file("ID-Hsieh.pdf");
+  const uqYi = file("UQ-Yi.pdf");
+  const idYi = file("ID-Yi.pdf");
   const matched = await context.buildSignatureSplitBundles(
+    [uqZhou, idZhou, uqHsieh, idHsieh, uqYi, idYi],
     [
-      file("uy-quyen-zhou.pdf"),
-      file("cccd-ho-chieu-zhou.pdf"),
-      file("uy-quyen-hsieh.pdf"),
-      file("cccd-ho-chieu-hsieh.pdf"),
-      file("uy-quyen-yi.pdf"),
-      file("cccd-ho-chieu-yi.pdf"),
-    ],
-    [
-      { fileIndex: 0, bundleId: "signature-1", bundleRole: "signature_document", documentName: "Văn bản ủy quyền Zhou" },
-      { fileIndex: 1, bundleId: "signature-1", bundleRole: "identity", identityScope: "matched", documentName: "Hộ chiếu Zhou Yang" },
-      { fileIndex: 2, bundleId: "signature-2", bundleRole: "signature_document", documentName: "Văn bản ủy quyền Hsieh" },
-      { fileIndex: 3, bundleId: "signature-2", bundleRole: "identity", identityScope: "matched", documentName: "Hộ chiếu Hsieh Tse-Yu" },
-      { fileIndex: 4, bundleId: "signature-3", bundleRole: "signature_document", documentName: "Văn bản ủy quyền Yi" },
-      { fileIndex: 5, bundleId: "signature-3", bundleRole: "identity", identityScope: "matched", documentName: "Hộ chiếu Yi Tingkun" },
+      { fileIndex: 0, bundleId: "signature-1", bundleRole: "signature_document", componentIndex: 1 },
+      { fileIndex: 1, bundleId: "signature-1", bundleRole: "identity", identityScope: "matched", componentIndex: 2 },
+      { fileIndex: 2, bundleId: "signature-2", bundleRole: "signature_document", componentIndex: 1 },
+      { fileIndex: 3, bundleId: "signature-2", bundleRole: "identity", identityScope: "matched", componentIndex: 2 },
+      { fileIndex: 4, bundleId: "signature-3", bundleRole: "signature_document", componentIndex: 1 },
+      { fileIndex: 5, bundleId: "signature-3", bundleRole: "identity", identityScope: "matched", componentIndex: 2 },
     ]
   );
-
   assert.equal(matched.error, undefined);
   assert.deepEqual(
     plain(matched.bundles.map((bundle) => bundle.files.map((item) => item.name))),
-    [
-      ["uy-quyen-zhou.pdf", "cccd-ho-chieu-zhou.pdf"],
-      ["uy-quyen-hsieh.pdf", "cccd-ho-chieu-hsieh.pdf"],
-      ["uy-quyen-yi.pdf", "cccd-ho-chieu-yi.pdf"],
-    ]
+    [["UQ-Zhou.pdf", "ID-Zhou.pdf"], ["UQ-Hsieh.pdf", "ID-Hsieh.pdf"], ["UQ-Yi.pdf", "ID-Yi.pdf"]]
   );
   assert.deepEqual(
-    plain(matched.bundles.map((bundle) => bundle.attachments.map((item) => item.componentIndex))),
+    plain(matched.bundles.map((bundle) => bundle.planItems.map((item) => item.componentIndex))),
     [[1, 2], [1, 2], [1, 2]]
   );
 
   const shared = await context.buildSignatureSplitBundles(
-    [file("giay-to-1.pdf"), file("giay-to-2.pdf"), file("cccd-dung-chung.pdf")],
+    [tla, cccd, tlb],
     [
-      { fileIndex: 0, bundleId: "signature-1", bundleRole: "signature_document", documentName: "Giấy tờ 1" },
-      { fileIndex: 1, bundleId: "signature-2", bundleRole: "signature_document", documentName: "Giấy tờ 2" },
-      { fileIndex: 2, bundleId: "signature-1", bundleRole: "identity", identityScope: "shared", documentName: "CCCD dùng chung" },
+      { fileIndex: 0, bundleId: "signature-1", bundleRole: "signature_document", componentIndex: 1 },
+      { fileIndex: 1, bundleId: "signature-1", bundleRole: "identity", identityScope: "shared", componentIndex: 2 },
+      { fileIndex: 2, bundleId: "signature-2", bundleRole: "signature_document", componentIndex: 1 },
     ]
   );
-
-  assert.equal(shared.error, undefined);
   assert.deepEqual(
     plain(shared.bundles.map((bundle) => bundle.files.map((item) => item.name))),
-    [["giay-to-1.pdf", "cccd-dung-chung.pdf"], ["giay-to-2.pdf"]]
+    [["TLA.pdf", "CCCD.pdf"], ["TLB.pdf"]]
   );
 
   const unsafeLegacy = await context.buildSignatureSplitBundles(
-    [file("giay-to.pdf"), file("cccd-a.pdf"), file("cccd-b.pdf")],
+    [tla, tlb, idZhou, idHsieh],
     [
-      { fileIndex: 0, documentName: "Giấy tờ", componentIndex: 1 },
-      { fileIndex: 1, documentName: "CCCD A", componentIndex: 2 },
-      { fileIndex: 2, documentName: "CCCD B", componentIndex: 2 },
+      { fileIndex: 0, componentIndex: 1 },
+      { fileIndex: 1, componentIndex: null },
+      { fileIndex: 2, componentIndex: 2 },
+      { fileIndex: 3, componentIndex: 2 },
     ]
   );
-  assert.match(unsafeLegacy.error, /bundle|quan hệ/i);
+  assert.match(unsafeLegacy.error, /chưa trả quan hệ ghép hồ sơ/i);
+
+  const withoutIdentity = await context.buildSignatureSplitBundles(
+    [tla, tlb],
+    [
+      { fileIndex: 0, documentName: "TLA", componentIndex: 1, target: "existing" },
+      { fileIndex: 1, documentName: "TLB", componentIndex: null, target: "new" },
+    ]
+  );
+  assert.equal(withoutIdentity.bundles.length, 2);
+  assert.deepEqual(
+    plain(withoutIdentity.bundles.map((bundle) => bundle.files.map((item) => item.name))),
+    [["TLA.pdf"], ["TLB.pdf"]]
+  );
 
   const identityOnly = await context.buildSignatureSplitBundles(
-    [identity],
-    [{ fileIndex: 0, documentName: "Căn cước", componentIndex: 2, target: "existing" }]
+    [cccd],
+    [{ fileIndex: 0, documentName: "CCCD", componentIndex: 2, target: "existing" }]
   );
   assert.match(identityOnly.error, /STT1/);
-  // Sự cố Nghĩa Hưng 21/09/2026: BE bản cũ vẫn gửi tệp KHÔNG có bundleId (giấy tùy thân không
-  // khớp người ký nào). Bỏ RIÊNG tệp đó rồi đính tiếp, thay vì hủy cả lượt làm mất sạch tệp lành.
+
+  // Sự cố Nghĩa Hưng 21/09/2026 (gặp ở bản Handfree, cùng máy đính kèm): kế hoạch có tệp KHÔNG
+  // mang bundleId → trước đây hủy cả lượt, mất luôn các tệp lành, mà thử lại thì hỏng y hệt.
   const lac = await context.buildSignatureSplitBundles(
     [file("van-ban-1.pdf"), file("van-ban-2.pdf"), file("cccd-ban.pdf"), file("cccd-nguoi-la.pdf")],
     [
@@ -138,7 +145,6 @@ function plain(value) {
   );
   assert.deepEqual(lac.skippedNames, ["cccd-nguoi-la.pdf"], "phải nêu tên tệp bị bỏ");
 
-  // Bỏ hết tệp lạc mà không còn văn bản STT1 nào thì vẫn phải dừng — không có gì để đính.
   const chiToanTepLac = await context.buildSignatureSplitBundles(
     [file("cccd-a.pdf"), file("cccd-b.pdf")],
     [
@@ -149,7 +155,7 @@ function plain(value) {
   );
   assert.match(chiToanTepLac.error, /chứng thực chữ ký|STT1/i);
 
-  console.log("TLND signature split bundles passed");
+  console.log("signature split bundles: shared, matched and safe legacy fallback passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -8,11 +8,6 @@ const source = fs.readFileSync(path.join(__dirname, "..", "content", "fill-legac
 const helperStart = source.indexOf('const LEGACY_BIRTH_RELATION_NAME = "quanhe"');
 const helperEnd = source.indexOf("\nfunction legacyScalarMatches", helperStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart, "Không tách được helper sắp thứ tự QuanHe");
-assert.match(
-  source,
-  /window\.__TLND__\s*\|\|\s*\(window\.__TLND__\s*=\s*\{\}\)/,
-  "Engine legacy phải đăng ký đúng namespace của Trợ lý nhân dân",
-);
 
 const sandbox = {
   fieldCandidates: (field) => [field.name, ...(field.aliases || [])],
@@ -64,25 +59,25 @@ assert.match(
   /if \(target\.checked\) \{[\s\S]*?return true;[\s\S]*?target\.click\(\);/,
   "Radio đã chọn sẵn phải thoát sớm, không phát change làm reset form",
 );
-assert.match(
+assert.doesNotMatch(
   source,
-  /if \(!isBirthRelation\) \{[\s\S]*?target\.checked = true;[\s\S]*?target\.dispatchEvent/,
-  "Radio thủ tục khác phải giữ nguyên hành vi cũ",
+  /target\.click\(\);\s*target\.checked = true;\s*target\.dispatchEvent/,
+  "Không được phát change trùng ngay sau click",
 );
 assert.match(
   source,
-  /birthRelationshipForm[\s\S]*?legacyFieldHasName\(field, LEGACY_BIRTH_RELATION_NAME\)[\s\S]*?isBirthRelationDriver \? 350 : 200/,
+  /isLegacyRelationDriver\(field\) \? 350 : 200/,
   "QuanHe phải có nhịp chờ riêng trước khi điền con/cha/mẹ",
 );
 assert.match(
   source,
-  /if \(isBirthRelationshipForm\) armLegacyStabilityGuard/,
-  "Stability guard chỉ được bật cho mẫu khai sinh có QuanHe",
+  /const LEGACY_RELATION_NAMES = \[LEGACY_BIRTH_RELATION_NAME,/,
+  "Nhịp chờ riêng phải áp cho QuanHe khai sinh",
 );
 assert.match(
   source,
-  /if \(isBirthRelationshipForm\) \{[\s\S]*?repairLostLegacyFields[\s\S]*?\} else \{[\s\S]*?reapplyEmptyTextFields/,
-  "Thủ tục khác phải tiếp tục dùng pass fill cũ",
+  /if \(!isBirthRelation\) \{[\s\S]*?b\.dispatchEvent\(new Event\("change"/,
+  "QuanHe không được change option cũ rồi mới click option mới",
 );
 
 console.log("legacy birth relationship order: driver first and idempotent radio passed");

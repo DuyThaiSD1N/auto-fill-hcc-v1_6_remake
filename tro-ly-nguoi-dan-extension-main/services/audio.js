@@ -175,6 +175,19 @@
       }
     }
 
+    // Giữ sẵn mic nhiều lượt (AsrWarmSession): AudioContext sống lâu có thể bị trình duyệt treo "suspended" → ép chạy
+    // lại trước mỗi lượt nói.
+    async ensureRunning() {
+      if (this._ctx && this._ctx.state === "suspended") {
+        try {
+          await this._ctx.resume();
+        } catch (_) {
+          /* không resume được → AsrWarmSession dựng lại mic khi lượt nói không có âm thanh */
+        }
+      }
+      return !!this._ctx && this._ctx.state === "running";
+    }
+
     stop() {
       this._gen++;
       this._cleanup();
