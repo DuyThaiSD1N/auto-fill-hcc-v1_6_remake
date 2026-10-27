@@ -387,16 +387,51 @@ BCA_PORTAL_OPEN = {
     "tts": "Dạ, em đang mở trang {procedure} ạ.",
 }
 
-BCA_AGENCY_GUIDE = {
+# Hỏi nơi đăng ký tạm trú để chọn hộ khối "Cơ quan thực hiện" (đi kèm thẻ chọn Tỉnh → Xã, chọn xong mới có nút điền).
+BCA_AGENCY_ASK = {
     "md": (
-        "Ở mục **Cơ quan thực hiện**, công dân chọn **Tỉnh/Thành phố** rồi **Xã/Phường/Đặc khu** "
-        "nơi đăng ký tạm trú ạ.\n\n"
-        "Chọn xong thì trang mới hiện các mục tiếp theo."
+        "Dạ, công dân đăng ký tạm trú ở **tỉnh/thành phố** và **xã/phường** nào ạ?\n\n"
+        "Công dân chọn **Tỉnh/Thành phố** rồi **Phường/Xã** ở thẻ bên dưới, xong bấm **Điền cơ quan thực hiện** "
+        "để em chọn giúp trên trang. Chọn xong trang mới hiện các mục tiếp theo."
     ),
     "tts": (
-        "Dạ, ở mục Cơ quan thực hiện, công dân chọn tỉnh, thành phố rồi chọn xã, phường nơi đăng ký "
-        "tạm trú ạ. Chọn xong trang mới hiện các mục tiếp theo."
+        "Dạ, công dân chọn tỉnh, thành phố rồi xã, phường nơi đăng ký tạm trú ở bên dưới, "
+        "xong bấm Điền cơ quan thực hiện giúp em ạ."
     ),
+}
+
+BCA_AGENCY_READY = {
+    "md": "Đã chọn **{ward}, {province}**. Bấm **Điền cơ quan thực hiện** để em chọn trên trang ạ.",
+    "tts": "Dạ, công dân bấm Điền cơ quan thực hiện để em chọn trên trang ạ.",
+}
+
+BCA_AGENCY_REMIND = {
+    "md": "Dạ, công dân chọn **Tỉnh/Thành phố** và **Phường/Xã** ở thẻ **Nơi làm thủ tục** phía trên, "
+          "rồi bấm **Điền cơ quan thực hiện** giúp em ạ.",
+    "tts": "Dạ, công dân chọn tỉnh và phường xã ở thẻ phía trên, rồi bấm Điền cơ quan thực hiện giúp em ạ.",
+}
+
+BCA_AGENCY_NEED_WARD = {
+    "md": "Dạ, công dân chọn tiếp **xã/phường** thuộc **{province}** ạ.",
+    "tts": "Dạ, công dân chọn tiếp xã, phường thuộc {province} ạ.",
+}
+
+BCA_AGENCY_FILLING = {
+    "md": "Em đang chọn **{ward}, {province}** ở mục Cơ quan thực hiện ạ.",
+    "tts": "Dạ, em đang chọn {ward}, {province} ạ.",
+}
+
+BCA_AGENCY_FILLED = {
+    "md": "✓ Đã chọn Cơ quan thực hiện: **{ward}, {province}**.",
+    "tts": "Dạ, em đã chọn xong cơ quan thực hiện ạ.",
+}
+
+BCA_AGENCY_FILL_FAILED = {
+    "md": (
+        "⚠️ Em chưa chọn được **{missing}** trên trang cho **{place}** ạ.\n\n"
+        "Công dân chọn lại ở thẻ bên dưới, hoặc tự chọn ở mục **Cơ quan thực hiện** trên trang."
+    ),
+    "tts": "Dạ, em chưa chọn được trên trang. Công dân chọn lại bên dưới, hoặc tự chọn trên trang giúp em ạ.",
 }
 
 BCA_QR_LOGIN_GUIDE = {
@@ -550,6 +585,12 @@ REFILL_WRONG_PAGE = {
     "md": "Mình chưa ở trang **Kê khai** ạ. Công dân quay lại trang Kê khai → bấm **Điền lại thông tin**.",
     "tts": "Dạ, công dân quay lại trang kê khai, rồi bấm Điền lại thông tin ạ.",
 }
+# Cổng đính kèm CÙNG TRANG kê khai (samePageAttach) mà điền xong không tự đính (askBeforeAttach).
+REVIEW_ATTACHMENT_SAME_PAGE = {
+    "md": "\n\nKiểm tra xong → bấm **Đính kèm giấy tờ**, em đính kèm ngay ở mục **Hồ sơ đính kèm** trên trang này ạ.",
+    "tts": " Kiểm tra xong, công dân bấm Đính kèm giấy tờ, em đính kèm ngay trên trang này ạ.",
+}
+
 REVIEW_ATTACHMENT_ACTION = {
     "md": "\n\nKiểm tra xong → sang **Thành phần hồ sơ** → bấm **Đính kèm giấy tờ** trong Trợ lý ạ.",
     "tts": " Kiểm tra xong, công dân sang bước thành phần hồ sơ, rồi bấm Đính kèm giấy tờ ạ.",
@@ -1062,6 +1103,15 @@ ATTACH_DONE = {
     # "Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé."
     # ),
     "tts": "Dạ, em đính kèm xong. Công dân xem lại, rồi tự bấm Nộp hồ sơ ạ.",
+}
+
+# Cổng bắt tích ô cam kết trước khi nộp (registry submitCommitLabel = nhãn ô trên trang, vd Cổng DVC Bộ Công an).
+ATTACH_DONE_COMMIT = {
+    "md": (
+        "✓ Đã đính **{attached} tệp**.\n\nCông dân rà lại lần cuối, tích ô **\"{commit}\"** ở cuối trang, "
+        "rồi bấm **Nộp hồ sơ** ạ."
+    ),
+    "tts": "Dạ, em đính kèm xong. Công dân xem lại, tích ô {commit} ở cuối trang, rồi bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_DONE_WITH_ERRORS = {
@@ -2033,6 +2083,8 @@ STEP_LABELS = {
     "attaching": "Đính kèm",
     "done": "Hoàn thành",
 }
+
+BCA_AGENCY_STEP_LABEL = "Chọn cơ quan thực hiện"
 
 # Thứ tự bước cho progress.step (1-based).
 STEP_ORDER = [

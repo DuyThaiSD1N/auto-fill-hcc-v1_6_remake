@@ -33,6 +33,11 @@ function detectFormKind() {
     document.querySelectorAll("liz-form-component, liz-input, liz-datepicker, liz-select").length >= 3 &&
     document.querySelectorAll("[formcontrolname]").length === 0
   ) return "liz";
+  // Cổng DVC Bộ Công an (jQuery + select2, id = name): form cư trú nhận theo ô họ tên đặc trưng, không phụ
+  // thuộc ô có nằm trong <form> hay không.
+  if (location.hostname === "dichvucong.dancuquocgia.gov.vn" && document.getElementById("txtFULLNAME")) {
+    return "standard";
+  }
   const ngCount = document.querySelectorAll("[formcontrolname]").length;
   const legacyCount = document.querySelectorAll("x-input, x-date, x-radio").length;
   const standardCount = document.querySelectorAll(
@@ -1524,10 +1529,52 @@ async function fillFormStandard(fields) {
   await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
   await reapplyEmptyStandardTextFields(fields);
   await reapplyOwnerDossierCopy(fields);
+  await settleBcaDatepickers(fields);
   markAllStandardEmptyFieldsRed();
+  markStandardDefaultsYellow(fields);
   scheduleBusinessLineCodeSubmit(fields, result);
   console.log("[AutoFill-STD] Kết quả:", result);
   return result;
+}
+
+// Ô BE điền theo MẶC ĐỊNH (field.default, không đọc từ giấy tờ) → viền VÀNG thay vì xanh để công dân soát lại,
+// giống markDefaultsYellow của engine Angular.
+function markStandardDefaultsYellow(fields) {
+  for (const f of fields || []) {
+    if (!f?.default || f.clear) continue;
+    const candidates = fieldCandidates(f);
+    const target = standardMarkTarget(findStandardSelect(candidates) || findStandardInputForField(f, candidates));
+    if (!target?.classList?.contains("autofill-filled")) continue;
+    target.classList.remove("autofill-filled");
+    target.classList.add("autofill-default");
+  }
+}
+
+// Cổng DVC Bộ Công an: ô ngày là bootstrap-datepicker (data-provide="datepicker", dd/mm/yyyy). Gõ chữ thì lịch bật
+// lên và TREO, giá trị không vào model của picker (đóng lịch là mất). Gán lại qua API $.fn.datepicker ở MAIN world
+// (background bcaSetDatepickers) rồi đóng lịch; không gọi được thì ít nhất bấm Esc đóng lịch.
+async function settleBcaDatepickers(fields) {
+  if (location.hostname !== "dichvucong.dancuquocgia.gov.vn") return;
+  const dates = fields
+    .filter((f) => (f.comp === "dom-date" || f.comp === "dom-datetime") && f.value && !f.clear)
+    .map((f) => ({ id: f.name, value: String(f.value) }));
+  if (!dates.length) return;
+  const res = await new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ action: "bcaSetDatepickers", dates }, (r) => {
+        void chrome.runtime.lastError;
+        resolve(r || null);
+      });
+    } catch (_) { resolve(null); }
+  });
+  console.log("[AutoFill-STD] BCA datepicker:", res);
+  if (!res?.ok) {
+    for (const { id } of dates) {
+      const el = document.getElementById(id);
+      el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, which: 27, bubbles: true }));
+      el?.blur?.();
+    }
+  }
 }
 
 async function retryStandardAreaSelects(fields, result, deadlines, failedFieldKeys) {

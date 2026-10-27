@@ -1400,6 +1400,10 @@ def _apply_location(conv: dict, payload: dict) -> Reply:
     # Đang xác nhận thủ tục: nơi làm đổi → hỏi lại câu xác nhận với nơi MỚI.
     if state == "confirm_procedure" and conv.get("procedure_key"):
         return _confirm_procedure_refresh(conv)
+    if (state == "guide_login" and conv.get("bca_agency_pending")
+            and (get_procedure(conv.get("procedure_key") or "") or {}).get("bcaPortal")):
+        # Cổng Bộ Công an đang hỏi cơ quan thực hiện: chọn xong xã trên thẻ → hiện nút "Điền cơ quan thực hiện".
+        return _bca_agency_ready(conv)
     return Reply(*_fmt(vi.CHANGED_LOCATION, ward=loc["ward"] or "(chưa chọn xã)", province=loc["province"]))
 
 
@@ -2743,9 +2747,10 @@ def _bca_portal_on_page(conv: dict, ctx: dict) -> Reply:
     """Cổng DVC Bộ Công an (registry `bcaPortal`), dẫn theo cái trang đang hiện.
 
     Khối "Cơ quan thực hiện" (Tỉnh/Thành phố + Xã/Phường/Đặc khu) phải chọn xong thì cổng mới hiện các mục
-    sau, nên đó là việc đầu tiên công dân làm. content.js báo `bcaAgencyBlock` (có khối) và
-    `bcaAgencyDone` (đã chọn đủ hai ô). Không đi các nhánh chung bên dưới: trang này có ô nhập nên
-    formKind dương tính, rơi xuống là bị xin giấy tờ khi chưa có pipeline điền.
+    sau, nên đó là việc đầu tiên: trợ lý hỏi nơi đăng ký (thẻ chọn nơi hoặc nói tên) rồi chọn hộ hai ô
+    (_bca_fill_agency). content.js báo `bcaAgencyBlock` (có khối) và `bcaAgencyDone` (đã chọn đủ hai ô).
+    Không đi các nhánh chung bên dưới: trang này có ô nhập nên formKind dương tính, rơi xuống là bị xin
+    giấy tờ khi chưa có pipeline điền.
     """
     manual_check = ctx.get("manualCheck") is True
     if ctx.get("loginPage") and not ctx.get("loggedIn"):
@@ -2761,12 +2766,85 @@ def _bca_portal_on_page(conv: dict, ctx: dict) -> Reply:
         return Reply(*_fmt(vi.PORTAL_NOT_READY)) if manual_check else Reply()
     conv["needed_login"] = False  # đã thấy trang kê khai = qua đăng nhập; câu nhắc khi chat theo bước này
     if ctx.get("bcaAgencyDone"):
-        conv["agency_done"] = True
-        return Reply()
+        if conv.get("bca_agency_filling"):
+            return Reply()  # trợ lý đang chọn hộ — chờ bca_agency_result rồi mới sang bước giấy tờ
+        # Công dân tự chọn trên trang → sang bước giấy tờ luôn.
+        return _bca_to_documents(conv)
     conv["agency_done"] = False
     if _say_once(conv, "bca_agency") or manual_check:
-        return Reply(*_fmt(vi.BCA_AGENCY_GUIDE))
+        return _bca_agency_ask(conv)
     return Reply()
+
+
+def _bca_location_card(conv: dict) -> dict:
+    # Cơ quan thực hiện chỉ cần Tỉnh + Xã; dòng "Đối tượng thực hiện" của thẻ là việc của cổng tư pháp.
+    return {**_location_card(conv), "executionSubject": {"current": "", "options": []}}
+
+
+def _bca_agency_ask(conv: dict) -> Reply:
+    """Hỏi nơi đăng ký tạm trú: chọn Tỉnh → Xã trên thẻ, rồi bấm nút "Điền cơ quan thực hiện" (_bca_agency_ready)."""
+    conv["bca_agency_pending"] = True
+    r = Reply(*_fmt(vi.BCA_AGENCY_ASK))
+    r.cards = [_bca_location_card(conv)]
+    return r
+
+
+_BCA_FILL_AGENCY_CHIP = {"label": "✍️ Điền cơ quan thực hiện", "send": "__action:bca_fill_agency",
+                         "solid": True, "cta": True}
+
+
+def _bca_agency_ready(conv: dict) -> Reply:
+    """Đã chọn Tỉnh + Xã trên thẻ: xác nhận lựa chọn và đưa nút điền; bấm nút thì mới chọn trên trang."""
+    loc = conv.get("location") or {}
+    if not loc.get("province") or not loc.get("ward"):
+        return _bca_fill_agency(conv)  # thiếu xã → nhắc chọn tiếp xã
+    r = Reply(*_fmt(vi.BCA_AGENCY_READY, ward=loc["ward"], province=loc["province"]))
+    r.chips = [dict(_BCA_FILL_AGENCY_CHIP)]
+    return r
+
+
+def _bca_to_documents(conv: dict, lead: tuple[str, str] | None = None) -> Reply:
+    """Cơ quan thực hiện đã chọn → bước giấy tờ như mọi thủ tục (xin phép xử lý dữ liệu → QR/Scan)."""
+    conv["agency_done"] = True
+    conv["bca_agency_pending"] = False
+    conv["bca_agency_filling"] = False
+    r = _to_ask_doc_method(conv)
+    if lead:
+        # Câu "✓ Đã chọn …" là một bong bóng riêng đứng trước lời mời gửi giấy tờ.
+        r.actions = [{"type": "lead_message", "md": lead[0]}, *r.actions]
+        r.tts_text = f"{lead[1]} {r.tts_text}".strip()
+    return r
+
+
+def _bca_fill_agency(conv: dict) -> Reply:
+    """Nơi đã chốt (thẻ / lời nói) → extension chọn Tỉnh rồi Xã ở khối "Cơ quan thực hiện".
+
+    Extension báo lại bằng event `bca_agency_result`. Tên gửi xuống là tên theo danh mục của BE;
+    content.js khớp theo tên bỏ tiền tố (cổng ghi "Thành phố Bắc Ninh" khi danh mục ghi "Tỉnh …").
+    """
+    loc = conv.get("location") or {}
+    if not loc.get("province") or not loc.get("ward"):
+        r = Reply(*_fmt(vi.BCA_AGENCY_NEED_WARD, province=loc.get("province") or "tỉnh/thành phố"))
+        r.cards = [_bca_location_card(conv)]
+        return r
+    conv["bca_agency_filling"] = True
+    r = Reply(*_fmt(vi.BCA_AGENCY_FILLING, ward=loc["ward"], province=loc["province"]))
+    r.actions = [{"type": "fill_bca_agency", "province": loc["province"], "ward": loc["ward"]}]
+    return r
+
+
+def _bca_agency_result(conv: dict, payload: dict) -> Reply:
+    conv["bca_agency_filling"] = False
+    if payload.get("ok") is True:
+        return _bca_to_documents(conv, _fmt(vi.BCA_AGENCY_FILLED, ward=str(payload.get("ward") or ""),
+                                            province=str(payload.get("province") or "")))
+    conv["bca_agency_pending"] = True
+    missing = "tỉnh/thành phố" if payload.get("error") == "province_not_found" else "xã/phường"
+    loc = conv.get("location") or {}
+    r = Reply(*_fmt(vi.BCA_AGENCY_FILL_FAILED, missing=missing,
+                    place=", ".join(p for p in (loc.get("ward"), loc.get("province")) if p)))
+    r.cards = [_bca_location_card(conv)]
+    return r
 
 
 def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
@@ -2774,6 +2852,11 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if intent.kind == "event" and intent.value == "page_status":
         return _guide_login_on_page(conv, proc, loc, intent.payload)
+    if proc.get("bcaPortal"):
+        if intent.kind == "event" and intent.value == "bca_agency_result":
+            return _bca_agency_result(conv, intent.payload or {})
+        if conv.get("bca_agency_pending") and intent.kind == "action" and intent.value == "bca_fill_agency":
+            return _bca_fill_agency(conv)
     if intent.kind == "action" and intent.value == "reload_page":
         r = Reply()
         r.actions = [{"type": "reload_page"}]
@@ -2843,10 +2926,11 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
         return field_review.owner_ready_reply()
     # Người dân gõ/nói giữa lúc chờ → nhắc NGẮN đúng việc đang chờ + chip phao
     # (chip chỉ xuất hiện ở đây, không phải bước bắt buộc của flow).
+    if proc.get("bcaPortal") and conv.get("bca_agency_pending"):
+        # Chọn cơ quan chỉ qua thẻ phía trên (không nhận nói tên tỉnh/phường) — nhắc ngắn, không vẽ thêm thẻ.
+        return Reply(*_fmt(vi.BCA_AGENCY_REMIND))
     if conv.get("needed_login"):
         template = vi.WAIT_LOGIN_REMIND
-    elif proc.get("bcaPortal") and not conv.get("agency_done"):
-        template = vi.BCA_AGENCY_GUIDE
     else:
         template = vi.WAIT_ATTACH_PORTAL_REMIND if proc.get("mode") == "attach" else vi.WAIT_PORTAL_REMIND
     r = Reply(*_fmt(template))
@@ -4134,9 +4218,11 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             return await tpm.fill_report_reply(conv, rep, intent.payload.get("review"))
         if conv.get("eform_flow") and _eforms(proc):
             return await _eform_fill_report(conv, proc, rep)
+        # askBeforeAttach (registry): điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính.
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
             and get_attach_pipeline(conv.get("procedure_key") or "")
+            and not proc.get("askBeforeAttach")
         )
         # Cổng 2-tab cùng trang (Bắc Ninh): DOM không đổi sau khi điền → watcher (chỉ bắn khi
         # chữ ký trang đổi) sẽ KHÔNG phát page_status nữa. Không được chờ chuyển bước — chạy
@@ -4165,7 +4251,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # đọc chữ Việt (xem chú thích ở _fmt).
         tail = (
             (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
-            if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
+            if auto_wait_attachment
+            else (vi.REVIEW_ATTACHMENT_SAME_PAGE if proc.get("samePageAttach") else vi.REVIEW_ATTACHMENT_ACTION)
         )
         v2 = (lien_thong.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
               or bxd.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
@@ -4395,11 +4482,14 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
     if (intent.kind == "action" and intent.value in {"confirm_review", "request_attach"}) \
             or intent.kind == "confirm":
         conv["state"] = "attaching"
-        if conv.get("docs_target") == "declaration":
+        # Cổng đính kèm CÙNG TRANG kê khai (samePageAttach): không có trang "Thành phần hồ sơ" để chờ —
+        # bấm đính kèm là chạy planner ngay trên trang hiện tại.
+        same_page = bool(proc.get("samePageAttach"))
+        if conv.get("docs_target") == "declaration" and not same_page:
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
             return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
-        if _wait_for_attachment_context(conv):
+        if not same_page and _wait_for_attachment_context(conv):
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
             return Reply(*_fmt(vi.WAIT_ATTACHMENT_PAGE))
@@ -4432,11 +4522,12 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "event" and intent.value in {"attach_started", "attach_heartbeat"}:
         _renew_attach_action(conv, str(intent.payload.get("dispatch_id") or ""))
         return Reply()
+    same_page = bool((get_procedure(conv.get("procedure_key") or "") or {}).get("samePageAttach"))
     if (intent.kind == "action" and intent.value == "request_attach"
-            and conv.get("docs_target") == "declaration"):
+            and conv.get("docs_target") == "declaration" and not same_page):
         return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
     if (intent.kind == "action" and intent.value == "request_attach"
-            and conv.get("docs_target") == "attachment"):
+            and (conv.get("docs_target") == "attachment" or same_page)):
         # Công dân đang đứng đúng trang: dùng plan đã lưu nếu có; nếu chưa có thì khởi động
         # planner ngay. Không rơi xuống câu "đang ở Kê khai" chỉ vì pipeline_status còn là
         # waiting_attachment_page từ thời điểm điền form xong.
@@ -4603,7 +4694,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             r = Reply(*_fmt(vi.ATTACH_DONE_WITH_ERRORS, error_list=err_list,
                             note=recap, **{**recap_kw, "attached": attached}))
         else:
-            r = Reply(*_fmt(vi.ATTACH_DONE, note=recap, **{**recap_kw, "attached": attached}))
+            done_tpl, commit = _attach_done_template(proc_done)
+            r = Reply(*_fmt(done_tpl, note=recap, commit=commit, **{**recap_kw, "attached": attached}))
         # Luồng dẫn từng bước: thay lời "tự bấm Nộp hồ sơ" bằng nút chuyển sang bước nhận kết
         # quả. Chế độ tách hồ sơ VẪN có nút, chỉ khác câu chữ: nút bấm qua sendToContent gắn
         # chặt tab của sidebar nên nó luôn chuyển đúng hồ sơ ở tab gốc; các tab tách không có
@@ -4840,9 +4932,17 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
     # Nuốt im lặng để báo cáo trùng không sinh thêm bubble "đã đính xong".
     if intent.kind in {"event", "action"}:
         return Reply()
-    r = Reply(*_fmt(vi.ATTACH_DONE, attached=len(conv.get("attach_plan") or [])))
+    done_tpl, commit = _attach_done_template(get_procedure(conv.get("procedure_key") or "") or {})
+    r = Reply(*_fmt(done_tpl, commit=commit, attached=len(conv.get("attach_plan") or [])))
     r.chips = [_supplement_documents_chip()]
     return r
+
+
+def _attach_done_template(proc: dict) -> tuple[dict, str]:
+    """(template, nhãn ô cam kết) cho câu đính kèm xong: cổng bắt tích ô cam kết (registry submitCommitLabel)
+    thì nhắc đúng nhãn ô đó trước nút Nộp hồ sơ."""
+    commit = str((proc or {}).get("submitCommitLabel") or "")
+    return (vi.ATTACH_DONE_COMMIT if commit else vi.ATTACH_DONE), commit
 
 
 _HANDLERS = {
@@ -4872,8 +4972,11 @@ def build_progress(conv: dict) -> dict:
     except ValueError:
         step = 1
     progress = {"step": step, "total": len(vi.STEP_ORDER), "label": vi.STEP_LABELS.get(state, "")}
+    if (state == "guide_login" and (conv.get("bca_agency_pending") or conv.get("agency_done"))
+            and (get_procedure(conv.get("procedure_key") or "") or {}).get("bcaPortal")):
+        progress["label"] = vi.BCA_AGENCY_STEP_LABEL  # đã qua đăng nhập, ở khối cơ quan (cổng Bộ Công an)
     # Đọc conv.lang trực tiếp (router GET conversation gọi ngoài handle_turn).
-    if (conv.get("lang") or "vi") == "hmong":
+    if (conv.get("lang") or "vi") == "hmong" and progress["label"] == vi.STEP_LABELS.get(state, ""):
         hmong_label = mong.STEP_LABELS_HMONG.get(state, "")
         if hmong_label:
             progress["labelHmong"] = hmong_label

@@ -145,6 +145,14 @@ PORTAL_SUBMIT: dict[str, dict] = {
         "urlPattern": r"^/nop-ho-so$",
         "buttonText": ["luu va nop ho so"],
     },
+    # Cổng DVC Bộ Công an (jQuery/bootstrap): các thủ tục cư trú là trang /portal/p/home/dang-ky-<…>.html, form +
+    # đính kèm + nộp cùng một trang. Nút nộp <button id="btn-save-send">Nộp hồ sơ</button>; cùng hàng có "Lưu nháp"
+    # (btn-save), "In CT01", "Quay lại" — khớp id/NGUYÊN nhãn "nộp hồ sơ" nên không dính các nút đó.
+    "dichvucong.dancuquocgia.gov.vn": {
+        "urlPattern": r"^/portal/p/home/dang-ky-[a-z0-9-]+\.html$",
+        "buttonIds": ["btn-save-send"],
+        "buttonText": ["nop ho so"],
+    },
     # Mười cổng dưới đây chạy CÙNG nền Form.io/iGate, mỗi cổng đã đối chiếu snapshot màn cuối riêng.
     "dichvucong.danang.gov.vn": _FORMIO,
     "dvc.moc.gov.vn": _FORMIO,

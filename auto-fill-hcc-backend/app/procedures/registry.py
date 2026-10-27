@@ -54,6 +54,8 @@ from app.pipelines.chung_thuc_phan_chia_di_san.attach import plan as chung_thuc_
 from app.pipelines.chung_thuc_sua_doi_giao_dich.attach import plan as chung_thuc_sua_doi_giao_dich_attach
 from app.pipelines.chung_thuc_tu_choi_di_san.attach import plan as chung_thuc_tu_choi_di_san_attach
 from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
+from app.pipelines.dang_ky_tam_tru.process import run as dang_ky_tam_tru_process
+from app.pipelines.dang_ky_tam_tru.attach import plan as dang_ky_tam_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -8215,6 +8217,29 @@ PROCEDURES: list[dict] = [
             "Nhiều file cùng dòng gộp một PDF."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
+        # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
+        # đề nghị + thời hạn.
+        "key": "dang-ky-tam-tru",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["dang-ky-tam-tru.html"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký tạm trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính điền đơn.\n"
+            "2. Giấy tờ chứng minh chỗ ở hợp pháp: hợp đồng cho thuê/cho mượn/cho ở nhờ, Giấy chứng nhận quyền "
+            "sử dụng đất…\n"
+            "3. CCCD của người đăng ký tạm trú (nếu có) để đối chiếu nhân thân."
+        ),
+    },
 ]
 
 
@@ -8292,6 +8317,7 @@ _PIPELINE = {
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_process,
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_process,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_process,
+    "dang-ky-tam-tru": dang_ky_tam_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
@@ -8639,6 +8665,7 @@ _ATTACH_PIPELINE = {
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
+    "dang-ky-tam-tru": dang_ky_tam_tru_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,

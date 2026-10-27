@@ -5503,8 +5503,11 @@ PROCEDURES: list[dict] = [
     },
     {
         # Cổng DVC Bộ Công an (bcaPortal — flow._bca_portal_on_page): chọn thẻ là mở thẳng trang kê khai,
-        # không hỏi xác nhận nơi làm. Trên trang, công dân phải chọn Tỉnh + Xã/Phường/Đặc khu ở khối
-        # "Cơ quan thực hiện" thì các mục sau mới hiện → trợ lý nhắc bước đó trước. Chưa có pipeline điền.
+        # không hỏi xác nhận nơi làm. Trên trang, trợ lý hỏi rồi chọn hộ Tỉnh + Xã/Phường/Đặc khu ở khối
+        # "Cơ quan thực hiện" (chọn xong cổng mới hiện các mục sau), rồi mới xin giấy tờ để điền
+        # (pipeline dang_ky_tam_tru). Mục "HỒ SƠ ĐÍNH KÈM" nằm ngay trên trang kê khai → samePageAttach:
+        # điền xong hỏi, bấm "Đính kèm giấy tờ" là đính ngay trên trang (attach/planner.py,
+        # engine attachFilesByBcaPlan).
         # URL giống hệt ke_khai_links.json (mã TTHC 1.004194) — sửa một bên phải sửa cả bên kia.
         "key": "dang-ky-tam-tru",
         "label": "Đăng ký tạm trú",
@@ -5516,6 +5519,33 @@ PROCEDURES: list[dict] = [
             "&TT=TAMTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA"
         ),
         "bcaPortal": True,
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        # Điền xong hỏi trước, công dân bấm "Đính kèm giấy tờ" mới đính (flow fill_report).
+        "askBeforeAttach": True,
+        # Đính xong nhắc tích ô cam kết cuối trang rồi mới bấm "Nộp hồ sơ" (flow._attach_done_template).
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cho_o", "name": "Giấy tờ chứng minh chỗ ở hợp pháp (hợp đồng thuê/mượn/ở nhờ, "
+             "Giấy chứng nhận quyền sử dụng đất…)", "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đăng ký tạm trú", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính điền đơn.\n"
+            "2. Giấy tờ chứng minh chỗ ở hợp pháp: hợp đồng cho thuê/cho mượn/cho ở nhờ, Giấy chứng nhận quyền "
+            "sử dụng đất…\n"
+            "3. CCCD của người đăng ký tạm trú (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
     },
 ]
 
