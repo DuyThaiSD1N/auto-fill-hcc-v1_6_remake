@@ -1256,9 +1256,9 @@ PROCEDURES: list[dict] = [
         "ownerInfo": {"enabled": False},
         # Toàn trình như chứng thực chữ ký (xem _TU_PHAP_ATTACH_GUIDED_STEPS).
         "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
-        # Cổng có 2 dòng cố định: (1) dự thảo sửa đổi/bổ sung/hủy bỏ + giấy tờ tài sản liên quan
-        # (planner gộp một PDF), (2) giao dịch/hợp đồng cũ đã chứng thực. CCCD/ủy quyền/giấy khác
-        # thêm thành phần mới. Bộ phân loại lúc tải lên (pipelines/chung_thuc_sua_doi_giao_dich/
+        # Cổng có 2 dòng cố định: (1) dự thảo sửa đổi/bổ sung/hủy bỏ, (2) giao dịch/hợp đồng cũ đã
+        # chứng thực. Mỗi file một dòng, không gộp PDF: giấy tờ tài sản/CCCD/ủy quyền/giấy khác thêm
+        # thành phần mới. Bộ phân loại lúc tải lên (pipelines/chung_thuc_sua_doi_giao_dich/
         # handfree) xếp tệp vào đúng ô; planner vẫn tự phân loại lại theo nội dung lúc đính.
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -1281,8 +1281,8 @@ PROCEDURES: list[dict] = [
             "3. Nếu giao dịch liên quan tài sản phải đăng ký: giấy chứng nhận quyền sở hữu/sử dụng "
             "hoặc giấy tờ thay thế.\n"
             "4. Nếu có: căn cước của các bên, văn bản ủy quyền hoặc giấy tờ khác.\n"
-            "Bước Thành phần hồ sơ: dự thảo và giấy tờ tài sản gộp một PDF vào dòng 1; giao dịch cũ "
-            "đã chứng thực vào dòng 2; giấy tờ còn lại thêm thành phần hồ sơ mới."
+            "Bước Thành phần hồ sơ: mỗi file đính nguyên một dòng, không gộp — dự thảo vào dòng 1; "
+            "giao dịch cũ đã chứng thực vào dòng 2; giấy tờ tài sản và giấy tờ khác thêm thành phần mới."
         ),
     },
     {
@@ -1399,6 +1399,8 @@ PROCEDURES: list[dict] = [
         "mode": "attach",
         "roles": [],
         "useDangKyBy": False,
+        # Planner tách theo trang khi máy quầy bật "tách giấy tờ" (flow chỉ gửi khi engine cắt được trang).
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Các giấy tờ, văn bản cần chứng thực chữ ký/điểm chỉ (không giới hạn số lượng).\n"

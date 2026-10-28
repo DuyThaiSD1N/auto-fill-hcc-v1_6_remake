@@ -51,6 +51,17 @@ async def test_tu_choi_bang_loi_o_buoc_xin_phep(monkeypatch):
     assert {"type": "consent_verbal", "accepted": False} in r.actions
 
 
+async def test_tu_choi_roi_xem_lai_thi_noi_dong_y_ra_dong_y(monkeypatch):
+    # Sau khi từ chối, thẻ hiện lại phải thay danh sách nút nói được — không còn nút "Xem lại và đồng ý"
+    # (có chữ "đồng ý") để lời "đồng ý" bị gán nhầm vào nó.
+    monkeypatch.setattr(flow.consent_log, "persist", AsyncMock())
+    conv = _conv("consent")
+    flow.update_voice_options(conv, await flow.handle_turn(conv, Intent("deny")))
+    flow.update_voice_options(conv, await flow.handle_turn(conv, Intent("action", "show_consent")))
+    sends = [b["send"] for b in intents.voice_buttons(conv, "consent")]
+    assert sends == ["__action:consent_agree", "__action:consent_decline"]
+
+
 # ── Bước xác nhận: sửa nơi làm / đối tượng bằng lời ───────────────────────────────────────
 
 async def test_noi_doi_phuong_thi_ap_va_hoi_xac_nhan_lai(monkeypatch):

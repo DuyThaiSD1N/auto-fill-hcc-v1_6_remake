@@ -81,7 +81,8 @@ def test_registry_enables_only_handfree_procedures_with_split_planners():
 
     assert all(get_procedure(key).get("supportsSplitDocuments") is True for key in supported)
     assert get_procedure("chung-thuc-ban-sao").get("supportsSplitDocuments") is not True
-    assert get_procedure("chung-thuc-chu-ky").get("supportsSplitDocuments") is not True
+    # Chữ ký có nhánh tách trang + chia hồ sơ theo văn bản/CCCD; flow vẫn chỉ gửi khi engine cắt được trang.
+    assert get_procedure("chung-thuc-chu-ky").get("supportsSplitDocuments") is True
 
 
 @pytest.mark.parametrize(

@@ -158,6 +158,8 @@ def _restore_relationship_metadata(segments: list[dict], raw_segments: list[dict
             "identityHolders": raw.get("identityHolders")
             if isinstance(raw.get("identityHolders"), list)
             else [],
+            # None = provider không trả khóa này (prompt giữ nguyên tệp không hỏi), khác với "".
+            "startHeading": raw.get("startHeading") if isinstance(raw.get("startHeading"), str) else None,
         })
     return restored
 
@@ -176,6 +178,75 @@ def _is_identity(detected: str, ocr_text: str, file_name: str) -> bool:
         return False
     haystack = _fold((ocr_text or "") + "\n" + (file_name or ""))
     return any(kw in haystack for kw in _IDENTITY_KEYWORDS_FOLDED)
+
+
+def _attach_untyped_pages_to_previous(segments: list[dict], raw_files: list[dict]) -> list[dict]:
+    """Đoạn trang LLM không nhận ra loại thì nối vào giấy liền trước trong cùng tệp.
+
+    Máy quét hai mặt sinh một mặt sau trắng sau mỗi tờ; OCR trang đó ra rỗng/ký hiệu rác và LLM để
+    trống loại (hoặc bỏ sót, validator bù bằng đoạn mang tên tệp). Để nguyên thì mỗi mặt sau thành
+    một văn bản cần ký riêng, tức một hồ sơ rỗng. Không bỏ trang để không mất trang nào của tệp.
+    """
+    merged: list[dict] = []
+    for segment in sorted(segments, key=lambda item: (item["fileIndex"], item["pageFrom"])):
+        file_name = str(raw_files[segment["fileIndex"]].get("name") or "")
+        document_name = str(segment.get("documentName") or "")
+        untyped = (
+            not segment.get("detectedType")
+            and not segment.get("logicalKey")
+            and (not document_name or (file_name and document_name.startswith(file_name)))
+        )
+        previous = merged[-1] if merged else None
+        if (
+            untyped
+            and previous is not None
+            and previous["fileIndex"] == segment["fileIndex"]
+            and previous["pageTo"] + 1 == segment["pageFrom"]
+        ):
+            merged[-1] = {**previous, "pageTo": segment["pageTo"]}
+            continue
+        merged.append(segment)
+    return merged
+
+
+def _heading_on_first_page(segment: dict, page_text_by_file: dict[int, dict[int, str]]) -> bool | None:
+    """Tiêu đề LLM chép cho đoạn có thật ở OCR trang pageFrom không; None nếu LLM không trả khóa."""
+    heading = segment.get("startHeading")
+    if not isinstance(heading, str):
+        return None
+    # So phần đầu tiêu đề: LLM hay chép lệch đuôi tiêu đề dài (phần "V/v: ...") so với OCR.
+    heading_key = _normalize_person_key(heading)[:40]
+    page_key = _normalize_person_key(
+        (page_text_by_file.get(segment["fileIndex"]) or {}).get(segment["pageFrom"], "")
+    )
+    return len(heading_key) >= 4 and heading_key in page_key
+
+
+def _merge_headless_continuations(
+    segments: list[dict], page_text_by_file: dict[int, dict[int, str]]
+) -> list[dict]:
+    """Đoạn văn bản mà trang đầu không có tiêu đề LLM chép ra thì là trang tiếp của văn bản trước.
+
+    LLM hay tách theo nhịp trang đều (2 trang một văn bản) dù trang mới mở đầu giữa bảng/giữa đoạn.
+    Prompt bắt chép nguyên văn tiêu đề ở pageFrom; tiêu đề rỗng hoặc không có trong OCR trang đó
+    nghĩa là không có bằng chứng một văn bản mới bắt đầu. Chỉ nối khi đoạn liền trước cùng tệp, sát
+    trang và CÙNG loại, để tiêu đề chép lệch vài chữ không làm dính hai văn bản khác loại.
+    """
+    merged: list[dict] = []
+    for segment in sorted(segments, key=lambda item: (item["fileIndex"], item["pageFrom"])):
+        previous = merged[-1] if merged else None
+        if (
+            _heading_on_first_page(segment, page_text_by_file) is False
+            and previous is not None
+            and previous["fileIndex"] == segment["fileIndex"]
+            and previous["pageTo"] + 1 == segment["pageFrom"]
+            and segment.get("detectedType")
+            and _fold(previous.get("detectedType") or "") == _fold(segment["detectedType"])
+        ):
+            merged[-1] = {**previous, "pageTo": segment["pageTo"]}
+            continue
+        merged.append(segment)
+    return merged
 
 
 # STT2 là dòng giấy tùy thân có sẵn: chỉ chủ thể đầu dùng dòng này. Các chủ thể sau được thêm dòng;
@@ -299,21 +370,78 @@ def build_plan_items(
     return items
 
 
-async def _classify_documents_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
+async def _classify_documents_with_llm(documents: list[dict[str, Any]], feedback: str = "") -> list[dict]:
     """Phân đoạn toàn bộ file/trang bằng đúng một request LLM."""
     if not documents:
         return []
     page_total = sum(len(item.get("pages") or []) for item in documents)
+    user_prompt = chu_ky_prompt.build_user_prompt(documents)
     raw = await client.chat(
         [
             {"role": "system", "content": chu_ky_prompt.SYSTEM_PROMPT},
-            {"role": "user", "content": chu_ky_prompt.build_user_prompt(documents)},
+            {"role": "user", "content": f"{user_prompt}\n\n{feedback}" if feedback else user_prompt},
         ],
         max_tokens=max(settings.attach_classify_max_tokens, min(5000, page_total * 220)),
         enable_thinking=False,
     )
     parsed = client.extract_json_block(raw)
     return parsed.get("documents", []) or []
+
+
+def _misplaced_headings(segments: list[dict], page_text_by_file: dict[int, dict[int, str]]) -> list[dict]:
+    """Đoạn văn bản có tiêu đề LLM chép ra nhưng tiêu đề đó không nằm ở trang pageFrom: LLM đếm lệch trang."""
+    return [
+        segment
+        for segment in segments
+        if str(segment.get("startHeading") or "").strip()
+        and _heading_on_first_page(segment, page_text_by_file) is False
+    ]
+
+
+def _page_segments(
+    raw: list[dict],
+    raw_files: list[dict],
+    file_meta: dict[int, dict],
+    page_text_by_file: dict[int, dict[int, str]],
+    errors: list[str],
+) -> list[dict]:
+    """Kiểm khoảng trang LLM trả rồi nối mặt sau trắng và trang tiếp không tiêu đề vào giấy trước."""
+    segments = _restore_relationship_metadata(_validated_segments(raw, raw_files, file_meta, errors), raw)
+    return _merge_headless_continuations(
+        _attach_untyped_pages_to_previous(segments, raw_files), page_text_by_file
+    )
+
+
+async def _classify_pages_with_retry(
+    documents: list[dict[str, Any]],
+    raw_files: list[dict],
+    file_meta: dict[int, dict],
+    page_text_by_file: dict[int, dict[int, str]],
+) -> list[dict]:
+    """Phân đoạn trang; LLM đếm lệch trang thì gọi lại đúng một lần kèm chỉ chỗ lệch.
+
+    Tệp dài nhiều mặt sau trắng làm LLM gán tiêu đề trang 11 cho đoạn 9-10. Tiêu đề chép ra không
+    có ở trang đầu đoạn là bằng chứng lệch; lấy lượt có ít đoạn lệch hơn.
+    """
+    raw = await _classify_documents_with_llm(documents)
+    misplaced = _misplaced_headings(
+        _page_segments(raw, raw_files, file_meta, page_text_by_file, []), page_text_by_file
+    )
+    if not misplaced:
+        return raw
+    feedback = "Lần trước đếm lệch trang: " + "; ".join(
+        f"fileIndex={segment['fileIndex']} đoạn {segment['pageFrom']}-{segment['pageTo']} có "
+        f"startHeading \"{segment['startHeading']}\" nhưng tiêu đề này không nằm ở trang {segment['pageFrom']}"
+        for segment in misplaced
+    ) + ". Đọc lại từng pageNumber và trả lại toàn bộ phân đoạn cho đúng."
+    try:
+        retried = await _classify_documents_with_llm(documents, feedback=feedback)
+    except Exception:  # noqa: BLE001 — lượt gọi lại hỏng thì vẫn dùng kết quả lượt đầu
+        return raw
+    retried_misplaced = _misplaced_headings(
+        _page_segments(retried, raw_files, file_meta, page_text_by_file, []), page_text_by_file
+    )
+    return retried if len(retried_misplaced) < len(misplaced) else raw
 
 
 async def _classify_source_files_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
@@ -435,6 +563,46 @@ def _build_split_bundle_plan_items(
                 "bundleRole": "signature_document",
             })
 
+    assigned_by_bundle: dict[int, list[tuple[list[dict], str]]] = {
+        index: [] for index in range(len(bundles))
+    }
+    # Tệp quét chung nhiều bộ (văn bản, CCCD, văn bản, CCCD...): bản CCCD nằm cùng tệp đi theo văn
+    # bản liền kề với nó — liền trước, hoặc liền sau nếu tệp mở đầu bằng giấy tùy thân. Gom theo
+    # người ở dưới sẽ dồn mọi bản CCCD của cùng một người ký vào hồ sơ đầu. Bản CCCD mang số của
+    # người khác hẳn người liên quan của văn bản liền kề thì không ghép theo vị trí.
+    positioned: set[int] = set()
+    for record in identity_records:
+        file_index = record["fileIndex"]
+        neighbours = sorted(
+            (document["segment"]["pageFrom"], bundle_index)
+            for bundle_index, group in enumerate(document_groups)
+            for document in group
+            if document["fileIndex"] == file_index
+        )
+        if not neighbours:
+            continue
+        first_page_in_file = min(
+            [page for page, _bundle_index in neighbours]
+            + [
+                other["segment"]["pageFrom"]
+                for other in identity_records
+                if other["fileIndex"] == file_index
+            ]
+        )
+        page = record["segment"]["pageFrom"]
+        before = [bundle_index for start, bundle_index in neighbours if start < page]
+        after = [bundle_index for start, bundle_index in neighbours if start > page]
+        identity_first = first_page_in_file not in {start for start, _bundle_index in neighbours}
+        preferred = (after[:1] or before[-1:]) if identity_first else (before[-1:] or after[:1])
+        bundle_index = preferred[0]
+        record_keys = _identity_record_keys(record)
+        bundle_keys = bundles[bundle_index]["signerKeys"] | bundles[bundle_index]["relatedKeys"]
+        if record_keys and bundle_keys and not record_keys & bundle_keys:
+            continue
+        assigned_by_bundle[bundle_index].append(([record], "matched"))
+        positioned.add(record["order"])
+    identity_records = [record for record in identity_records if record["order"] not in positioned]
+
     # Hai mặt/rời file của cùng đúng tập chủ thể trở thành một identity unit. Ba file cùng chứa một
     # CCCD chung nhưng mỗi file có hộ chiếu khác nhau sẽ có ba tập khóa khác nhau, nên không bị gom.
     identity_units: list[list[dict]] = []
@@ -448,9 +616,6 @@ def _build_split_bundle_plan_items(
             identity_units.append([])
         identity_units[unit_position[grouping_key]].append(record)
 
-    assigned_by_bundle: dict[int, list[tuple[list[dict], str]]] = {
-        index: [] for index in range(len(bundles))
-    }
     unmatched_units: list[list[dict]] = []
     for unit in identity_units:
         # Quy ước nhiều hồ sơ đã chốt với extension: nếu cả batch chỉ có đúng MỘT nhóm/file giấy
@@ -653,6 +818,17 @@ def build_segment_plan_items(
             if explicit
             else f"single:{record['order']}"
         )
+        # Hai bản cùng tiêu đề trong một tệp quét (mỗi bản kèm CCCD riêng) hay bị LLM cho chung
+        # logicalKey. Phần có tiêu đề thật ở trang đầu và không nằm sát phần trước của nhóm là bản
+        # mới bắt đầu; phần không tiêu đề (trang tiếp bị CCCD chen giữa) vẫn ở lại nhóm cũ.
+        if key in group_position and _heading_on_first_page(record["segment"], page_text_by_file):
+            last = document_groups[group_position[key]][-1]["segment"]
+            adjacent = (
+                last["fileIndex"] == record["fileIndex"]
+                and last["pageTo"] + 1 == record["segment"]["pageFrom"]
+            )
+            if not adjacent:
+                group_position.pop(key)
         if key not in group_position:
             group_position[key] = len(document_groups)
             document_groups.append([])
@@ -864,7 +1040,7 @@ async def plan(
     if llm_docs:
         try:
             raw_segments = await (
-                _classify_documents_with_llm(llm_docs)
+                _classify_pages_with_retry(llm_docs, raw_files, file_meta, page_text_by_file)
                 if split_documents
                 else _classify_source_files_with_llm(llm_docs)
             )
@@ -872,9 +1048,11 @@ async def plan(
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
-    segments = _restore_relationship_metadata(segments, raw_segments)
-    if not split_documents:
+    if split_documents:
+        segments = _page_segments(raw_segments, raw_files, file_meta, page_text_by_file, errors)
+    else:
+        segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
+        segments = _restore_relationship_metadata(segments, raw_segments)
         segments = _preserve_source_file_segments(
             segments,
             raw_files,

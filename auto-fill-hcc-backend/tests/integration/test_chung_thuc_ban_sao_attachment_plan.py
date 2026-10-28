@@ -420,7 +420,8 @@ async def test_split_dossier_mode_merges_front_and_back_of_same_identity(monkeyp
         FileItem(
             name="cccd-mat-sau.jpg",
             type="image/jpeg",
-            dataUrl="data:image/jpeg;base64,AA==",
+            # Nội dung khác mặt trước: hai tệp cùng byte bị planner bỏ như tệp chọn trùng.
+            dataUrl="data:image/jpeg;base64,AQ==",
             role="doc",
         ),
     ]
@@ -622,7 +623,8 @@ async def test_plan_uses_one_batch_ocr_and_one_llm_request_for_duplicate_names(m
     monkeypatch.setattr(planner, "_classify_source_files_with_llm", fake_classify)
     result = await planner.plan([
         FileItem(name="image.pdf", type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc"),
-        FileItem(name="image.pdf", type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc"),
+        # Trùng tên nhưng khác nội dung: là hai giấy khác nhau, không phải tệp chọn trùng.
+        FileItem(name="image.pdf", type="application/pdf", dataUrl="data:application/pdf;base64,AQ==", role="doc"),
     ])
 
     assert calls == {"ocr": 1, "llm": 1}

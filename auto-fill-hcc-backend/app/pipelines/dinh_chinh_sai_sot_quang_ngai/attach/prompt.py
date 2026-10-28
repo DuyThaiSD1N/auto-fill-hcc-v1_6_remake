@@ -35,7 +35,10 @@ trên cổng dịch vụ công tỉnh Quảng Ngãi. Đọc OCR_TEXT của từn
   dùng để chứng minh thông tin ĐÚNG, đối chiếu với thông tin SAI ghi trên Giấy chứng nhận. Ví dụ:
   giấy khai sinh, trích lục hộ tịch, quyết định/giấy xác nhận của cơ quan có thẩm quyền, sao y bản
   chính trích lục hồ sơ đất, hồ sơ địa chính, bản trích đo/phiếu xác nhận kết quả đo đạc khi sai sót
-  là về thửa đất. KHÔNG bao gồm thẻ căn cước/CMND thuần túy (loại đó trả identity).
+  là về thửa đất. Gồm cả ĐƠN XIN XÁC NHẬN / bản cam kết do người dân viết mà CÓ PHẦN XÁC NHẬN (chữ ký,
+  dấu) của UBND/cơ quan có thẩm quyền rằng người ghi trên Giấy chứng nhận và người hiện tại là CÙNG MỘT
+  NGƯỜI, hoặc xác nhận thông tin đúng về người/thửa đất. KHÔNG bao gồm thẻ căn cước/CMND thuần túy (loại
+  đó trả identity).
 - identity: CĂN CƯỚC CÔNG DÂN/thẻ căn cước/CMND/hộ chiếu THUẦN TÚY (ảnh mặt trước và/hoặc mặt sau,
   không kèm nội dung khác), của người sử dụng đất, người bị sai thông tin trên Giấy chứng nhận hoặc
   người nộp hồ sơ. Cũng nhận giấy xác nhận số định danh cá nhân/xác nhận số CMND 9 số và số căn cước
@@ -62,6 +65,8 @@ trên cổng dịch vụ công tỉnh Quảng Ngãi. Đọc OCR_TEXT của từn
   "giay_to_chung_minh_sai_sot", kể cả khi trong đó có ghi lại số Giấy chứng nhận.
 - Văn bản ủy quyền/đại diện -> "authorization" dù người ủy quyền và người được ủy quyền cùng xuất
   hiện trên văn bản.
+- Đơn xin xác nhận có phần UBND/cơ quan có thẩm quyền xác nhận thông tin đúng/cùng một người ->
+  "giay_to_chung_minh_sai_sot", KHÔNG phải "don_bien_dong" hay "other" dù mở đầu bằng chữ "ĐƠN".
 - Giấy xác nhận cư trú, tờ khai thuế, biên lai -> đều là "other": danh mục thành phần hồ sơ của thủ
   tục này KHÔNG có dòng riêng cho chúng.
 </overlap_rules>

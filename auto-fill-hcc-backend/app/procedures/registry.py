@@ -539,6 +539,10 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         # Hai thủ tục chứng thực này đi thẳng vào luồng đính kèm, không mở màn xin consent.
         "skipConsent": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → file quét chung nhiều
+        # bộ được tách theo trang thành từng văn bản + CCCD đi kèm; TẮT/bản cũ → giữ nguyên từng file.
+        # Bật thêm ô "tách hồ sơ" (splitMode) thì mỗi văn bản kèm CCCD của nó là một hồ sơ.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Giấy tờ, văn bản cần chứng thực chữ ký/điểm chỉ.\n"
@@ -653,8 +657,8 @@ PROCEDURES: list[dict] = [
             "3. Giao dịch/hợp đồng cũ đã được chứng thực.\n"
             "4. Nếu có: CCCD/căn cước công dân của các bên, văn bản ủy quyền hoặc tài liệu khác; "
             "hệ thống sẽ thêm thành phần hồ sơ mới.\n"
-            "Bước 3: BE yêu cầu FE gộp dự thảo sửa đổi/bổ sung/hủy bỏ với giấy tờ tài sản "
-            "vào cùng PDF để upload dòng STT 1; giao dịch cũ đã chứng thực upload dòng STT 2."
+            "Mỗi file đính nguyên một dòng, không gộp: dự thảo sửa đổi/bổ sung/hủy bỏ vào dòng STT 1; "
+            "giao dịch cũ đã chứng thực vào dòng STT 2; giấy tờ tài sản và giấy tờ khác thêm thành phần mới."
         ),
     },
     {

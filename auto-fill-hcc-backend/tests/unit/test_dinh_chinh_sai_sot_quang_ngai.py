@@ -648,3 +648,11 @@ def test_don_dia_chi_fields_declared_and_exclusive_to_don():
     # Hướng dẫn tách chuỗi địa chỉ viết liền trên đơn (đơn viết tay không có nhãn con).
     assert "cụm CUỐI làm tinh" in desc
     assert "Mẫu số 18" in desc
+
+
+def test_prompt_don_xin_xac_nhan_co_ubnd_xac_nhan_la_chung_minh_sai_sot():
+    # Đơn xin xác nhận "người trên GCN và người hiện tại là một" có UBND xác nhận → mục ③, không vào dòng Đơn.
+    from app.pipelines.dinh_chinh_sai_sot_quang_ngai.attach.prompt import SYSTEM_PROMPT
+
+    assert "ĐƠN XIN XÁC NHẬN" in SYSTEM_PROMPT
+    assert "KHÔNG phải \"don_bien_dong\" hay \"other\" dù mở đầu bằng chữ \"ĐƠN\"" in SYSTEM_PROMPT

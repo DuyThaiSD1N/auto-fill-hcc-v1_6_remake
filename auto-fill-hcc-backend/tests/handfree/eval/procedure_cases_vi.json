@@ -581,6 +581,52 @@
    }
   },
   {
+   "id": "E09",
+   "group": "nhieu_luot",
+   "text": "đăng ký khai sinh",
+   "history": [
+    {
+     "role": "user",
+     "text": "đăng ký khai sinh"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ, công dân cần thủ tục nào ạ? Đăng ký Khai sinh; Liên thông đăng ký khai sinh; Khai sinh (đã có giấy tờ cá nhân)"
+    }
+   ],
+   "candidates_shown": [
+    "khai-sinh-dang-ky-thuong",
+    "khai-sinh-dang-ky",
+    "khai-sinh-da-co-ho-so"
+   ],
+   "expect": {
+    "pick": "khai-sinh-dang-ky-thuong"
+   }
+  },
+  {
+   "id": "E10",
+   "group": "nhieu_luot",
+   "text": "dang ky khai sinh",
+   "history": [
+    {
+     "role": "user",
+     "text": "đăng ký khai sinh"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ, công dân cần thủ tục nào ạ? Đăng ký Khai sinh; Liên thông đăng ký khai sinh; Khai sinh (đã có giấy tờ cá nhân)"
+    }
+   ],
+   "candidates_shown": [
+    "khai-sinh-dang-ky-thuong",
+    "khai-sinh-dang-ky",
+    "khai-sinh-da-co-ho-so"
+   ],
+   "expect": {
+    "pick": "khai-sinh-dang-ky-thuong"
+   }
+  },
+  {
    "id": "F01",
    "group": "hoi_khong_phai_thu_tuc",
    "text": "chào em",

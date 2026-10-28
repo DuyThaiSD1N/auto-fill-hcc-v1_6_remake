@@ -553,6 +553,13 @@ mới là câu trả lời ngắn — "cái thứ hai", "cái đầu", hoặc n�
 nào, tuổi, có lương hưu không, sổ gốc còn hay mất...) — thì ghép câu mới với câu trước và các gợi ý
 để chọn. "Cái thứ nhất/thứ hai" tính theo đúng thứ tự trong GỢI Ý LƯỢT TRƯỚC (KHÔNG phải số trong
 ngoặc vuông).
+Câu mới đọc lại TÊN của một thủ tục trong GỢI Ý LƯỢT TRƯỚC (đúng tên đó hoặc gần đúng, kể cả nghe
+nhầm/không dấu) là công dân đã CHỌN thủ tục đó → pick thẳng thủ tục ấy, KHÔNG unclear lại. Các quy
+tắc "câu chung chung → unclear" ở phần PHÂN BIỆT bên dưới chỉ dùng khi CHƯA có gợi ý lượt trước;
+đã gợi ý rồi mà hỏi lại y như cũ thì công dân bị kẹt mãi. Tên đọc lại khớp nhiều gợi ý như nhau → chọn
+gợi ý có tên NGẮN nhất chứa trọn câu nói (vd đọc "đăng ký khai sinh" hay "dang ky khai sinh" giữa
+"Đăng ký khai sinh" và "Liên thông đăng ký khai sinh" → "Đăng ký khai sinh"). So tên sau khi bỏ dấu:
+câu không dấu khớp tên gợi ý cũng là đã chọn.
 
 CÂU CÓ THỂ ĐẾN TỪ NHẬN GIỌNG NÓI hoặc gõ vội: có thể không dấu, sai dấu, sai chính tả, nghe nhầm
 thành âm gần giống, lẫn từ đệm ("ừ thì", "em ơi", "cho chị cái"). Hiểu theo nghĩa gần nhất với một

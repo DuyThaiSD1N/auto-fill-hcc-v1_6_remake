@@ -12,6 +12,8 @@ Bạn phân loại OCR_TEXT của hồ sơ cấp Giấy chứng nhận cơ sở 
 1. Chỉ dựa vào OCR_TEXT, không dựa vào tên file hoặc thứ tự upload.
 2. Mỗi tài liệu trả đúng một docType trong allowed_types.
 3. Không đủ bằng chứng thì trả other. Trả JSON duy nhất, không markdown.
+4. Một tài liệu có thể là tệp scan GỘP nhiều giấy (đơn + thuyết minh + danh sách, GCN + giấy khám sức khỏe...): xếp
+   loại theo giấy ở TRANG ĐẦU của tài liệu.
 </critical_rules>
 
 <allowed_types>
@@ -28,7 +30,9 @@ Bạn phân loại OCR_TEXT của hồ sơ cấp Giấy chứng nhận cơ sở 
 - thuyet_minh: Bản thuyết minh điều kiện bảo đảm ATTP theo Phụ lục II; có phần Thông tin chung,
   Mô tả sản phẩm và Tóm tắt hiện trạng điều kiện cơ sở.
 - cccd: CCCD/CMND/thẻ căn cước/hộ chiếu dùng làm nguồn nhân thân; cổng cần tạo dòng đính kèm qua modal Thêm giấy tờ.
-- gcn_dkkd: Giấy chứng nhận đăng ký doanh nghiệp/hộ kinh doanh/địa điểm kinh doanh, không có dòng đính kèm riêng.
+- gcn_dkkd: tài liệu CHÍNH LÀ tờ Giấy chứng nhận đăng ký doanh nghiệp/hộ kinh doanh/địa điểm kinh doanh (tiêu đề
+  đó ở đầu tài liệu), không có dòng đính kèm riêng. Giấy khác chỉ NHẮC số đăng ký kinh doanh (Giấy chứng nhận cơ sở
+  đủ điều kiện ATTP cũ, giấy khám sức khỏe, hợp đồng...) KHÔNG phải gcn_dkkd.
 - other: tài liệu khác hoặc OCR_TEXT không đủ bằng chứng.
 </type_definitions>
 

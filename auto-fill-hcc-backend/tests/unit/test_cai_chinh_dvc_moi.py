@@ -233,6 +233,21 @@ def test_quan_he_cai_chinh_ten_theo_ket_luan_phan_vai_khi_thieu_so():
     assert cc_mapper._relation({}, ctx.replace("Bản thân", "Khác"), opts)[0] == "Khác"
 
 
+def test_chu_tai_khoan_khai_quan_he_me_thi_khong_tin_ket_luan_ban_than():
+    """Phân vai so nhầm người nộp với người yêu cầu tờ khai ra "Bản thân"; tờ khai chủ tài khoản khai ghi "Mẹ đẻ"."""
+    from app.pipelines.cai_chinh_dvc_moi.process import mapper as cc_mapper
+    ctx = ("<nguoi_thay_doi>\nHọ tên: LE VAN B\nSố định danh:\nTrạng thái: còn sống\n</nguoi_thay_doi>\n"
+           "<quan_he>\nKết luận: Bản thân\nQuan hệ trên tờ khai: Mẹ đẻ\nNgười yêu cầu tờ khai: Nguyễn Thị An\n"
+           "Số định danh người yêu cầu tờ khai: 001183000001\n</quan_he>")
+    opts = {"formContext": {"applicantFullname": "Nguyễn Thị An", "applicantIdentityNumber": "001183000001"}}
+    assert cc_mapper._relation({"NguoiThayDoi_HoTen": "LE VAN B"}, ctx, opts)[0] == "Khác"
+    out, _ = cc_mapper.enrich([{"name": "NguoiThayDoi_HoTen", "value": "LE VAN B"}],
+                              {**opts, "_reasoning_context": ctx})
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhevsngcaichinhhotich1"] == "Khác" and by["citizenMqhkhac"] == "Mẹ đẻ"
+    assert by["citizenNDKHoTen"] == "LE VAN B"
+
+
 def test_noi_dung_bo_muc_cu_moi_giong_nhau():
     from app.pipelines.cai_chinh_dvc_moi.process.mapper import _drop_no_change
     text = "Cải chính tên mẹ từ A thành B; cải chính tên bố từ Trần Văn C thành Trần Văn C; cải chính năm sinh bố từ 1968 thành 1964"

@@ -55,16 +55,18 @@ LOẠI VIỆC — chọn MỘT trong bốn: Cải chính / Thay đổi / Bổ su
    Vd dòng đề nghị ghi "Xác định lại quốc tịch", lý do "ghi nhầm khi đăng ký" → Cải chính.
 "không xác định" CHỈ khi hồ sơ không có cả dòng đề nghị, nội dung lẫn lý do.
 
-QUAN HỆ:
+QUAN HỆ — so người nộp với NGƯỜI CÓ NỘI DUNG THAY ĐỔI (khối <nguoi_thay_doi>), KHÔNG so với người yêu cầu tờ
+khai. Người nộp trùng người yêu cầu tờ khai CHỈ cho biết người nộp tự đứng tên tờ khai, KHÔNG phải căn cứ
+"Bản thân":
 - Người nộp CHÍNH LÀ người có nội dung thay đổi (trùng số định danh; thiếu số thì trùng họ tên VÀ ngày sinh)
   → "Bản thân". Người có nội dung thay đổi đã chết → không bao giờ "Bản thân".
 - Người nộp là người khác (khác số định danh hoặc khác họ tên) → "Khác".
+- Người nộp là người yêu cầu tờ khai mà tờ khai ghi quan hệ khác "Bản thân" (mẹ đẻ, cha, chồng...) → "Khác".
 - Không đủ thông tin để so → "Không xác định". Không suy từ họ, tuổi, địa chỉ.
-- Ba dòng "... tờ khai" trong khối <quan_he> CHỈ chép từ TỜ KHAI, KHÔNG so với người nộp, KHÔNG ảnh hưởng
-  "Kết luận": "Quan hệ trên tờ khai" = chữ ghi sau dấu hai chấm của dòng "Quan hệ với người được thay đổi, cải
-  chính..." (vd "Chồng", "Mẹ đẻ"); "Người yêu cầu tờ khai" / "Số định danh người yêu cầu tờ khai" = họ tên / số
-  định danh trên dòng "Họ, chữ đệm, tên người yêu cầu" và dòng giấy tờ tùy thân ngay dưới. Không có tờ khai hoặc
-  dòng đó trống → "không có". Giấy ủy quyền, bản cam đoan, giấy hộ tịch KHÔNG dùng cho ba dòng này.
+- Ba dòng "... tờ khai" trong khối <quan_he> CHỈ chép từ TỜ KHAI: "Quan hệ trên tờ khai" = chữ ghi sau dấu hai
+  chấm của dòng "Quan hệ với người được thay đổi, cải chính..." (vd "Chồng", "Mẹ đẻ"); "Người yêu cầu tờ khai" /
+  "Số định danh người yêu cầu tờ khai" = họ tên / số định danh trên dòng "Họ, chữ đệm, tên người yêu cầu" và
+  dòng giấy tờ tùy thân ngay dưới. Không có tờ khai hoặc dòng đó trống → "không có". Giấy ủy quyền, bản cam đoan, giấy hộ tịch KHÔNG dùng cho ba dòng này.
 - Ba dòng "... giấy ủy quyền" CHỈ đọc từ GIẤY ỦY QUYỀN mà BÊN ỦY QUYỀN là người có nội dung thay đổi; không có
   giấy đó → "không có". "Người được ủy quyền" / "Số định danh người được ủy quyền" = họ tên / số giấy tờ của bên
   ĐƯỢC ủy quyền (dòng "Ủy quyền cho" ghi nhầm tên bên ủy quyền thì lấy tên bên được ủy quyền ở phần nội dung).
@@ -111,8 +113,8 @@ Thông tin cần sửa: (chỉ khi không có tờ khai mà có bản cam đoan;
 - <thông tin>: đang ghi <A> | đúng theo <tên giấy khác>: <B>
 </viec_dang_ky>
 <quan_he>
-Kết luận: Bản thân|Khác|Không xác định
 Căn cứ: ...
+Kết luận: Bản thân|Khác|Không xác định
 Quan hệ trên tờ khai: ...
 Người yêu cầu tờ khai: ...
 Số định danh người yêu cầu tờ khai: ...

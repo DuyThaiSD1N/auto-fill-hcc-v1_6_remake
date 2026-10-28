@@ -948,7 +948,9 @@ def _supports_voice_chips(conv: dict) -> bool:
 def _card_voice_items(card: dict) -> list[dict]:
     """Nút trên card cũng nói được — map về lệnh đã có cho đường nói."""
     kind = card.get("kind")
-    if kind == "consent":
+    # Thẻ xin phép thật có kind "consent_form" (_consent_card); thiếu nó thì sau khi từ chối, nút cũ
+    # "Xem lại và đồng ý" còn nằm trong danh sách và lời "đồng ý" bị gán vào nút đó → hiện lại thẻ mãi.
+    if kind in ("consent", "consent_form"):
         return [
             {"label": vi.VOICE_CONSENT_AGREE, "send": "__action:consent_agree"},
             {"label": vi.VOICE_CONSENT_DECLINE, "send": "__action:consent_decline"},

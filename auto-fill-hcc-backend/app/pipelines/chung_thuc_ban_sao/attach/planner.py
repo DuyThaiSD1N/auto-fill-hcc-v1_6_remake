@@ -550,6 +550,26 @@ def _is_blank_segment(segment: dict) -> bool:
     return _fold(segment.get("detectedType") or "") == _BLANK_PAGE_KEY
 
 
+def _duplicate_files(raw_files: list[dict]) -> dict[int, int]:
+    """{chỉ số tệp trùng: chỉ số tệp gốc} — tệp chọn lại y hệt (cùng nội dung byte) một tệp trước đó.
+
+    Cán bộ hay chọn một tệp hai lần; đính cả hai thì thành hai dòng giống hệt nhau (số bản đã có ô
+    "Số bản" riêng trên cổng), gộp thì thành một PDF lặp trang. Chỉ so nội dung, không so tên tệp.
+    """
+    first_by_content: dict[str, int] = {}
+    duplicates: dict[int, int] = {}
+    for index, file in enumerate(raw_files):
+        data_url = str(file.get("dataUrl") or "")
+        payload = data_url.split(",", 1)[1] if "," in data_url else data_url
+        if not payload:
+            continue
+        if payload in first_by_content:
+            duplicates[index] = first_by_content[payload]
+        else:
+            first_by_content[payload] = index
+    return duplicates
+
+
 def _has_letters(text: str) -> bool:
     """OCR có đọc ra CHỮ CÁI nào không (bỏ dòng "Trang n/m"): tệp chỉ có số trang/ký hiệu là trang trắng."""
     return any(ch.isalpha() for ch in _PAGE_HEADER_RE.sub(" ", str(text or "")))
@@ -880,6 +900,7 @@ async def plan(
     page_text_by_file: dict[int, dict[int, str]] = {}
     full_text_by_file: dict[int, str] = {}
     llm_docs: list[dict[str, Any]] = []
+    duplicate_of = _duplicate_files(raw_files)
     for file_index, file in enumerate(raw_files):
         text = str(ocr_by_index.get(file_index, {}).get("text") or "")
         page_count = _pdf_page_count(file)
@@ -895,7 +916,7 @@ async def plan(
             int(page.get("pageNumber") or 1): str(page.get("ocrText") or "")
             for page in pages
         }
-        if text.strip():
+        if text.strip() and file_index not in duplicate_of:
             llm_docs.append({
                 "fileIndex": file_index,
                 "pageCount": page_count,
@@ -922,7 +943,7 @@ async def plan(
     # không rỗng.
     blank_files = {
         index for index, result in ocr_by_index.items()
-        if not result.get("error") and not _has_letters(result.get("text"))
+        if not result.get("error") and not _has_letters(result.get("text")) and index not in duplicate_of
     }
     if len(blank_files) == len(raw_files):
         blank_files = set()
@@ -932,6 +953,20 @@ async def plan(
             + ", ".join(str(raw_files[i].get("name") or "") for i in sorted(blank_files))
             + " — nếu đó là ảnh cần chứng thực, cán bộ đính tay."
         )
+    if duplicate_of:
+        errors.append(
+            f"Đã bỏ {len(duplicate_of)} tệp trùng (giống hệt tệp đã chọn trước, chỉ đính 1 lần): "
+            + ", ".join(
+                name if name == source else f"{name} (trùng {source})"
+                for name, source in (
+                    (str(raw_files[dup].get("name") or ""), str(raw_files[src].get("name") or ""))
+                    for dup, src in sorted(duplicate_of.items())
+                )
+            )
+            + "."
+        )
+    duplicate_segments = [segment for segment in segments if segment["fileIndex"] in duplicate_of]
+    segments = [segment for segment in segments if segment["fileIndex"] not in duplicate_of]
     blank_segments: list[dict] = [segment for segment in segments if segment["fileIndex"] in blank_files]
     segments = [segment for segment in segments if segment["fileIndex"] not in blank_files]
     if split_documents:
@@ -946,7 +981,7 @@ async def plan(
                 segment.get("detectedType") or segment.get("documentName") or ""
             ) in _IDENTITY_DOCUMENT_TYPES,
             long_name_fallback="Hồ sơ chứng thực",
-            skip_file_indexes=blank_files,
+            skip_file_indexes=blank_files | set(duplicate_of),
         )
     attachments, classified = build_segment_plan_items(
         raw_files,
@@ -957,6 +992,19 @@ async def plan(
         require_part_flag=not split_documents,
     )
     classified = sorted(classified + [
+        {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(raw_files[segment["fileIndex"]].get("name") or ""),
+            "pageFrom": segment["pageFrom"],
+            "pageTo": segment["pageTo"],
+            "detectedType": "",
+            "documentName": "Tệp trùng",
+            "logicalGroup": None,
+            "target": "skipped",
+            "componentIndex": None,
+        }
+        for segment in duplicate_segments
+    ] + [
         {
             "fileIndex": segment["fileIndex"],
             "fileName": str(raw_files[segment["fileIndex"]].get("name") or ""),

@@ -1,12 +1,17 @@
 """Chứng thực bản sao, chế độ giữ nguyên file: hai giấy độc lập bị LLM đặt trùng logicalKey không được ghép
 thành một PDF; chỉ ghép khi LLM đánh dấu file là một PHẦN của giấy nằm ở nhiều file (và CCCD hai mặt)."""
 
+import base64
+
 from app.pipelines.chung_thuc_ban_sao.attach import planner, preserve_prompt
 from app.process.schemas import FileItem
 
 
 def _files(*names: str) -> list[FileItem]:
-    return [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc") for n in names]
+    # Nội dung giả theo tên: tệp khác tên là tệp khác, cùng tên là tệp chọn trùng.
+    return [FileItem(name=n, type="application/pdf",
+                     dataUrl="data:application/pdf;base64," + base64.b64encode(n.encode()).decode(), role="doc")
+            for n in names]
 
 
 def _patch(monkeypatch, texts: list[str], segments: list[dict]):
@@ -87,3 +92,18 @@ def test_prompt_giu_nguyen_co_quy_tac_khoa_va_danh_dau_phan():
     assert "isPartOfLargerDocument" in text
     assert "phải có logicalKey KHÁC nhau" in text
     assert "mốc phân biệt" in text
+
+
+async def test_tep_chon_hai_lan_chi_dinh_mot_lan_va_bao_can_bo(monkeypatch):
+    seg = {"detectedType": "Giấy khai sinh", "documentName": "Giấy khai sinh Nguyễn Văn A",
+           "subjectName": "Nguyễn Văn A", "logicalKey": "ks-001"}
+    _patch(monkeypatch, ["GIẤY KHAI SINH", "GIẤY KHAI SINH", "BẰNG TỐT NGHIỆP"],
+           [_seg(0, **seg), _seg(2, detectedType="Bằng tốt nghiệp", documentName="Bằng tốt nghiệp A")])
+    files = _files("ks.pdf", "ks.pdf", "bang.pdf")
+
+    result = await planner.plan(files)
+
+    assert sorted(item["fileIndex"] for item in result["attachments"]) == [0, 2]
+    assert any("Đã bỏ 1 tệp trùng" in err and "ks.pdf" in err for err in result["errors"])
+    skipped = [row for row in result["extracted"]["classified"] if row["fileIndex"] == 1]
+    assert skipped and skipped[0]["target"] == "skipped"

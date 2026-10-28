@@ -85,3 +85,38 @@ def test_mot_cccd_khong_gop():
     assert len(cccd) == 1
     assert "sourceFileIndexes" not in cccd[0]
     assert cccd[0]["documentName"] == "Căn cước công dân"
+
+
+_GCN_ATTP_CU = (
+    "GIẤY CHỨNG NHẬN CƠ SỞ ĐỦ ĐIỀU KIỆN AN TOÀN THỰC PHẨM Tên cơ sở ... Giấy chứng nhận đăng ký hộ kinh doanh số ..."
+    " GIẤY KHÁM SỨC KHỎE Họ và tên NGUYỄN VĂN A"
+)
+
+
+def test_llm_quyet_loai_keyword_khong_de():
+    # Keyword khớp "giấy chứng nhận đăng ký hộ kinh doanh" nhưng LLM đọc ra giấy khác → theo LLM, vẫn đính.
+    files = [{"name": "gcn-va-ksk.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "gcn-va-ksk.pdf", "text": _GCN_ATTP_CU}]
+    attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "other"})
+    assert [a["componentName"] for a in attachments] == [_DON_ROW]
+    assert classified[0]["source"] == "llm" and not classified[0].get("skipped")
+    assert warnings == []
+
+
+def test_gcn_dkkd_khong_bi_bo_ma_dinh_chung_dong_don():
+    # Tệp scan gộp GCN ĐKKD + giấy khám sức khỏe: bỏ cả tệp là mất giấy → đính dòng Đơn, giữ tên gốc.
+    files = [{"name": "gcn-va-ksk.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "gcn-va-ksk.pdf", "text": "GIẤY CHỨNG NHẬN ĐĂNG KÝ HỘ KINH DOANH Mã số ... GIẤY KHÁM SỨC KHỎE"}]
+    for llm in ({0: "gcn_dkkd"}, {}):  # LLM trả gcn_dkkd, hoặc LLM lỗi → keyword dự phòng
+        attachments, warnings, classified = planner.build_plan_items(files, ocr, llm)
+        assert [a["componentName"] for a in attachments] == [_DON_ROW]
+        assert attachments[0]["documentName"] == "gcn-va-ksk.pdf" and attachments[0]["detectedType"] == "gcn_dkkd"
+        assert classified[0]["routedTo"] == "don_de_nghi" and warnings == []
+
+
+def test_prompt_gcn_dkkd_chi_khi_chinh_la_giay_dkkd():
+    from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.attach.prompt import SYSTEM_PROMPT
+
+    assert "CHÍNH LÀ tờ Giấy chứng nhận đăng ký" in SYSTEM_PROMPT
+    assert "chỉ NHẮC số đăng ký kinh doanh" in SYSTEM_PROMPT
+    assert "xếp\n   loại theo giấy ở TRANG ĐẦU" in SYSTEM_PROMPT

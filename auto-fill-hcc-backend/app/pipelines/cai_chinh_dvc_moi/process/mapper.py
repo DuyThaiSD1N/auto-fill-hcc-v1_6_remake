@@ -142,7 +142,12 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bo
     from_account_docs = _fold(labeled_value(subject, "Nguồn")) == "giay to chu tai khoan"
 
     reasoned = _fold(labeled_value(section(context, "quan_he"), "Kết luận"))
-    declared_self = _fold(_declared_relation(context, options)) == "ban than"
+    declared = _fold(_declared_relation(context, options))
+    declared_self = declared == "ban than"
+    # Chủ tài khoản tự khai tờ khai với quan hệ khác "Bản thân" (mẹ đẻ, chồng...) mà bước phân vai vẫn ra "Bản thân"
+    # (model so nhầm người nộp với người yêu cầu tờ khai) → không tin kết luận đó.
+    if declared and not declared_self and reasoned == "ban than":
+        reasoned = "khac"
     if account_id and subject_id:
         return (_SELF if account_id == subject_id and not deceased else _OTHER), from_account_docs, ""
     if account_name and subject_name:

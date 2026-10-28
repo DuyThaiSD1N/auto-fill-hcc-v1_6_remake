@@ -20,9 +20,16 @@ Một file có thể chứa nhiều giấy tờ; một giấy tờ cũng có th�
 3. Các trang/phần của CÙNG một giấy tờ phải dùng cùng logicalKey. Hai giấy tờ độc lập dù cùng loại
    phải có logicalKey khác nhau. Trang trắng hoặc chỉ có phần tiếp nối/ghi chú thuộc giấy tờ trước đó,
    không tạo thành một tài liệu độc lập.
+   - Một tài liệu mới chỉ bắt đầu ở trang có phần đầu văn bản (quốc hiệu, tiêu đề, mặt trước thẻ).
+     Trang mở đầu giữa chừng — tiếp dòng của bảng, tiếp đoạn văn, phần ký tên/xác nhận cuối văn
+     bản — là trang sau của giấy tờ liền trước: gộp vào khoảng trang của giấy tờ đó.
+   - Mặt sau trắng do máy quét hai mặt (OCR rỗng, chỉ ký hiệu, hoặc câu không liên quan đến giấy tờ)
+     cũng gộp vào khoảng trang của giấy tờ liền trước; không bỏ trang đó.
 4. Đặt documentName theo LOẠI/TIÊU ĐỀ văn bản, KHÔNG BAO GIỜ lấy TÊN NGƯỜI làm tên. Ví dụ tờ
    "SƠ YẾU LÝ LỊCH" của ông A → detectedType/documentName = "Sơ yếu lý lịch" (KHÔNG phải "A").
-   Đơn/hợp đồng cũng vậy.
+   Đơn/hợp đồng cũng vậy. documentName KHÁC startHeading: startHeading chép nguyên văn để đối chiếu
+   trang, còn documentName là tên rút gọn — bỏ phần trong ngoặc và "V/v:"/"Về việc"; cần phân biệt
+   hai văn bản cùng loại thì chỉ thêm vài chữ nội dung chính (vd "Bản giải trình tài khoản ngân hàng").
 5. KHÔNG kết luận là Căn cước công dân chỉ vì thấy "Số định danh cá nhân" — sơ yếu lý lịch, đơn,
    giấy khai sinh, giấy chứng nhận kết hôn... đều có thể chứa số định danh. Chỉ trả
    "Căn cước công dân" khi văn bản ĐÚNG là thẻ CCCD/CMND/Căn cước.
@@ -33,6 +40,9 @@ Một file có thể chứa nhiều giấy tờ; một giấy tờ cũng có th�
    KHÔNG thêm tên người, số định danh hay ngày tháng để phân biệt.
 8. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, logicalKey rỗng.
 9. Với VĂN BẢN CẦN CHỨNG THỰC, trả thêm:
+   - startHeading: chép NGUYÊN VĂN tiêu đề văn bản đọc được trong OCR của chính trang pageFrom (vd
+     dòng tên văn bản ngay dưới quốc hiệu). Trang pageFrom không có tiêu đề nào thì trả "" — khi đó
+     trang này là trang tiếp của giấy tờ liền trước, xem lại quy tắc 3;
    - signerName: người có chữ ký/điểm chỉ cần chứng thực. Với văn bản ủy quyền, đây là NGƯỜI ỦY
      QUYỀN, không phải người được ủy quyền;
    - signerIdentityNumber: số CCCD/CMND/hộ chiếu của signerName ghi trong văn bản;
@@ -64,7 +74,7 @@ Sổ hộ khẩu, Trích lục hộ tịch.
 </document_name_rules>
 
 <output_contract>
-{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":2,"detectedType":"Văn bản ủy quyền","documentName":"Văn bản ủy quyền","logicalKey":"van-ban-uy-quyen-1","signerName":"Nguyễn Văn A","signerIdentityNumber":"AB1234567","relatedIdentityNumbers":["AB1234567","012345678901"],"identityHolders":[]},{"fileIndex":1,"pageFrom":1,"pageTo":2,"detectedType":"Hộ chiếu","documentName":"Hộ chiếu","logicalKey":"ho-chieu-1","signerName":"","signerIdentityNumber":"","relatedIdentityNumbers":[],"identityHolders":[{"name":"Nguyễn Văn A","identityNumber":"AB1234567","documentType":"Hộ chiếu"}]}]}
+{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":2,"detectedType":"Văn bản ủy quyền","documentName":"Văn bản ủy quyền","logicalKey":"van-ban-uy-quyen-1","startHeading":"VĂN BẢN ỦY QUYỀN","signerName":"Nguyễn Văn A","signerIdentityNumber":"AB1234567","relatedIdentityNumbers":["AB1234567","012345678901"],"identityHolders":[]},{"fileIndex":1,"pageFrom":1,"pageTo":2,"detectedType":"Hộ chiếu","documentName":"Hộ chiếu","logicalKey":"ho-chieu-1","startHeading":"","signerName":"","signerIdentityNumber":"","relatedIdentityNumbers":[],"identityHolders":[{"name":"Nguyễn Văn A","identityNumber":"AB1234567","documentType":"Hộ chiếu"}]}]}
 </output_contract>
 """.strip()
 

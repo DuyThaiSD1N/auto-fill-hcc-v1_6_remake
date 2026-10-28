@@ -1,5 +1,6 @@
 """Chứng thực bản sao — hai chế độ đính kèm: gộp (giữ nguyên file) và tách tài liệu (splitDocuments)."""
 
+import base64
 import re
 
 from app.pipelines.chung_thuc_ban_sao.attach import planner, preserve_prompt, prompt
@@ -219,7 +220,9 @@ def _patch_files(monkeypatch, ocr_rows: list[dict], segments: list[dict]):
 
 
 def _named(*names: str) -> list[FileItem]:
-    return [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc")
+    # Nội dung giả theo tên: tệp khác tên là tệp khác (planner bỏ tệp trùng nội dung byte).
+    return [FileItem(name=n, type="application/pdf",
+                     dataUrl="data:application/pdf;base64," + base64.b64encode(n.encode()).decode(), role="doc")
             for n in names]
 
 

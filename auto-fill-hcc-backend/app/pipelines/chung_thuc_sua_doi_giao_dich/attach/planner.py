@@ -1,12 +1,15 @@
 """Đính kèm cho thủ tục chứng thực sửa đổi, bổ sung, hủy bỏ giao dịch.
 
 Bảng thành phần hồ sơ có 2 dòng cố định:
-  STT1 - Dự thảo/văn bản sửa đổi, bổ sung, hủy bỏ giao dịch đã chứng thực và
-         giấy tờ tài sản liên quan. Các file nhóm này cần gộp vào cùng PDF.
+  STT1 - Dự thảo/văn bản sửa đổi, bổ sung, hủy bỏ giao dịch đã chứng thực.
   STT2 - Giao dịch/hợp đồng cũ đã được chứng thực.
 
-CCCD/căn cước của các bên, ủy quyền hoặc giấy tờ ngoài 2 dòng cố định sẽ thêm
-thành phần hồ sơ mới.
+Mỗi file đính nguyên một dòng, KHÔNG gộp PDF: giấy tờ tài sản, CCCD, ủy quyền, dự thảo/giao dịch thứ hai…
+mỗi file thêm một thành phần hồ sơ mới. Hồ sơ không có dự thảo thì giấy tờ tài sản đầu tiên vào STT1
+(tên STT1 trên cổng gồm cả bản sao giấy tờ tài sản).
+
+Loại giấy do LLM quyết định. Rule keyword chỉ dùng khi LLM không trả loại cho file đó — hợp đồng cũ hay
+có điều khoản "sửa đổi, bổ sung hợp đồng" nên rule từng đè LLM, xếp hợp đồng cũ thành dự thảo.
 """
 
 import re
@@ -37,7 +40,6 @@ _ALLOWED_DOC_TYPES = {
     _DOC_AUTHORIZATION,
     _DOC_OTHER,
 }
-_ROW_1_TYPES = {_DOC_MODIFICATION_DRAFT, _DOC_ASSET}
 
 _ROW_1_COMPONENT = (
     "Dự thảo giao dịch sửa đổi, bổ sung, hủy bỏ giao dịch đã được chứng thực. "
@@ -47,7 +49,6 @@ _ROW_1_COMPONENT = (
 )
 _ROW_2_COMPONENT = "Giao dịch đã được chứng thực"
 
-_ROW_1_LABEL = "Dự thảo sửa đổi giao dịch và giấy tờ tài sản"
 _MODIFICATION_LABEL = "Dự thảo giao dịch sửa đổi bổ sung hủy bỏ"
 _CERTIFIED_TRANSACTION_LABEL = "Giao dịch đã được chứng thực"
 _ASSET_LABEL = "Giấy tờ chứng minh quyền sở hữu quyền sử dụng tài sản"
@@ -308,27 +309,29 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     return out
 
 
-def _build_group_item(
+def _build_existing_item(
     files: list[dict],
-    entries: list[dict],
-    document_name: str,
+    entry: dict,
     component_name: str,
     component_index: int,
     used_names: set[str],
 ) -> dict:
-    source_indexes = [entry["idx"] for entry in sorted(entries, key=lambda item: item["idx"])]
-    primary = source_indexes[0]
-    normalized_name = _unique_document_name(document_name, used_names, document_name)
+    idx = entry["idx"]
+    document_name = _unique_document_name(
+        _label_for_type(entry["docType"], entry.get("title", "")),
+        used_names,
+        _OTHER_LABEL,
+    )
     return {
-        "fileIndex": primary,
-        "sourceFileIndexes": source_indexes,
-        "fileName": str(files[primary].get("name") or f"file-{primary + 1}"),
-        "documentName": normalized_name,
+        "fileIndex": idx,
+        "sourceFileIndexes": None,
+        "fileName": str(files[idx].get("name") or f"file-{idx + 1}"),
+        "documentName": document_name,
         "componentName": component_name,
         "target": "existing",
         "componentIndex": component_index,
         "needsAddComponent": False,
-        "detectedType": normalized_name,
+        "detectedType": document_name,
     }
 
 
@@ -352,94 +355,102 @@ def _build_new_item(files: list[dict], entry: dict, used_names: set[str]) -> dic
     }
 
 
+def _duplicate_files(raw_files: list[dict]) -> dict[int, int]:
+    """{chỉ số tệp trùng: chỉ số tệp gốc} — tệp chọn lại y hệt (cùng nội dung byte) một tệp trước đó.
+    Đính cả hai thì thành hai dòng giống hệt nhau; chỉ so nội dung, không so tên tệp."""
+    first_by_content: dict[str, int] = {}
+    duplicates: dict[int, int] = {}
+    for index, file in enumerate(raw_files):
+        data_url = str(file.get("dataUrl") or "")
+        payload = data_url.split(",", 1)[1] if "," in data_url else data_url
+        if not payload:
+            continue
+        if payload in first_by_content:
+            duplicates[index] = first_by_content[payload]
+        else:
+            first_by_content[payload] = index
+    return duplicates
+
+
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
     llm_types: dict[int, dict[str, str]] | None = None,
+    duplicate_of: dict[int, int] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
+    duplicate_of = duplicate_of or {}
     by_name = {item.get("name"): item for item in ocr_results}
     resolved: list[dict] = []
     warnings: list[str] = []
 
+    if duplicate_of:
+        warnings.append(
+            f"Đã bỏ {len(duplicate_of)} tệp trùng (giống hệt tệp đã chọn trước, chỉ đính 1 lần): "
+            + ", ".join(
+                name if name == source else f"{name} (trùng {source})"
+                for name, source in (
+                    (str(files[dup].get("name") or ""), str(files[src].get("name") or ""))
+                    for dup, src in sorted(duplicate_of.items())
+                )
+            )
+            + "."
+        )
+
     for idx, file in enumerate(files):
+        if idx in duplicate_of:
+            continue
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
-        rule_type = _rule_doc_type(text)
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
-        doc_type = rule_type or llm_type or _DOC_OTHER
-        if doc_type not in _ALLOWED_DOC_TYPES:
-            doc_type = _DOC_OTHER
-        title = "" if rule_type and llm_type and rule_type != llm_type else detected.get("title", "")
+        if llm_type in _ALLOWED_DOC_TYPES:
+            doc_type, title, source = llm_type, detected.get("title", ""), "llm"
+        else:
+            # LLM lỗi/không trả loại cho file này → mới dùng rule dự phòng.
+            text = str(by_name.get(file_name, {}).get("text") or "")
+            rule_type = _rule_doc_type(text)
+            doc_type, title, source = (rule_type, "", "rule") if rule_type else (_DOC_OTHER, "", "default")
         resolved.append({
             "idx": idx,
             "fileName": file_name,
             "docType": doc_type,
             "title": title,
-            "source": "rule" if rule_type else ("llm" if llm_type else "default"),
+            "source": source,
         })
 
-    row1_entries = [entry for entry in resolved if entry["docType"] in _ROW_1_TYPES]
-    row2_entries = [entry for entry in resolved if entry["docType"] == _DOC_CERTIFIED_TRANSACTION]
-    new_entries = [entry for entry in resolved if entry["docType"] not in _ROW_1_TYPES | {_DOC_CERTIFIED_TRANSACTION}]
+    row1 = next((e for e in resolved if e["docType"] == _DOC_MODIFICATION_DRAFT), None)
+    if row1 is None:
+        row1 = next((e for e in resolved if e["docType"] == _DOC_ASSET), None)
+    row2 = next((e for e in resolved if e["docType"] == _DOC_CERTIFIED_TRANSACTION), None)
 
     used_names: set[str] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
-
-    if row1_entries:
-        row1_name = _ROW_1_LABEL if len(row1_entries) > 1 else _label_for_type(
-            row1_entries[0]["docType"], row1_entries[0].get("title", "")
-        )
-        row1_item = _build_group_item(files, row1_entries, row1_name, _ROW_1_COMPONENT, 1, used_names)
-        attachments.append(row1_item)
-        row1_primary = row1_item["fileIndex"]
-        for entry in row1_entries:
-            classified.append({
-                "fileName": entry["fileName"],
-                "docType": entry["docType"],
-                "documentName": _label_for_type(entry["docType"], entry.get("title", "")),
-                "target": "existing",
-                "componentIndex": 1,
-                "mergedIntoFileIndex": row1_primary,
-                "source": entry["source"],
-            })
-
-    if row2_entries:
-        row2_item = _build_group_item(
-            files,
-            row2_entries,
-            _CERTIFIED_TRANSACTION_LABEL,
-            _ROW_2_COMPONENT,
-            2,
-            used_names,
-        )
-        attachments.append(row2_item)
-        row2_primary = row2_item["fileIndex"]
-        for entry in row2_entries:
-            classified.append({
-                "fileName": entry["fileName"],
-                "docType": entry["docType"],
-                "documentName": _CERTIFIED_TRANSACTION_LABEL,
-                "target": "existing",
-                "componentIndex": 2,
-                "mergedIntoFileIndex": row2_primary,
-                "source": entry["source"],
-            })
-
-    for entry in new_entries:
-        item = _build_new_item(files, entry, used_names)
+    for entry in resolved:
+        if entry is row1:
+            item = _build_existing_item(files, entry, _ROW_1_COMPONENT, 1, used_names)
+        elif entry is row2:
+            item = _build_existing_item(files, entry, _ROW_2_COMPONENT, 2, used_names)
+        else:
+            item = _build_new_item(files, entry, used_names)
         attachments.append(item)
         classified.append({
             "fileName": entry["fileName"],
             "docType": entry["docType"],
             "documentName": item["documentName"],
-            "target": "new",
-            "componentIndex": None,
+            "target": item["target"],
+            "componentIndex": item["componentIndex"],
             "source": entry["source"],
         })
 
+    # Tên dòng 2 "Giao dịch đã được chứng thực" nằm trọn trong chữ của dòng 1, mà engine tìm dòng
+    # trống theo tên chứa nhau từ trên xuống. Đính dòng 1 trước thì dòng 1 đã có tệp khi tới mục
+    # dòng 2; đính dòng 2 trước thì tệp đó rơi nhầm vào dòng 1.
+    attachments.sort(key=lambda item: (
+        0 if item["target"] == "existing" else 1,
+        item["componentIndex"] or 0,
+        item["fileIndex"],
+    ))
     return attachments, warnings, classified
 
 
@@ -461,12 +472,14 @@ async def plan(
             errors.append(f"OCR {item.get('name')}: {item['error']}")
 
     ocr_by_name = {item.get("name"): item for item in ocr_results}
+    duplicate_of = _duplicate_files(raw_files)
     llm_docs = [
         {
             "index": idx,
             "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or ""),
         }
         for idx, file in enumerate(raw_files)
+        if idx not in duplicate_of
     ]
 
     t1 = time.monotonic()
@@ -478,7 +491,7 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types)
+    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types, duplicate_of)
     errors.extend(warnings)
     skipped_ocr = [file["name"] for file in raw_files if file.get("type") not in _OCR_TYPES]
 

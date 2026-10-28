@@ -1,3 +1,4 @@
+import base64
 import json
 
 from app.pipelines.chung_thuc_sua_doi_giao_dich.attach import planner
@@ -7,35 +8,28 @@ from app.procedures.registry import get_attach_pipeline, get_pipeline, get_proce
 
 
 def _file(name):
-    return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
+    # Nội dung giả theo tên: tệp khác tên là tệp khác, cùng tên là tệp chọn trùng.
+    data = base64.b64encode(name.encode()).decode()
+    return FileItem(name=name, type="application/pdf", dataUrl=f"data:application/pdf;base64,{data}", role="doc")
 
 
-async def test_sua_doi_giao_dich_attachment_groups_draft_and_asset_then_routes_old_transaction(monkeypatch):
+async def test_sua_doi_giao_dich_moi_file_mot_dong_khong_gop(monkeypatch):
+    """LLM quyết loại; mỗi file đính nguyên một dòng — dự thảo STT1, giao dịch cũ STT2, còn lại thêm mới."""
     async def fake_ocr_per_file(files):
         texts = {
-            "van-ban-huy-bo.pdf": (
-                "VĂN BẢN HỦY BỎ HỢP ĐỒNG TẶNG CHO\n"
-                "Các bên thống nhất hủy bỏ hợp đồng tặng cho quyền sử dụng đất đã được chứng thực."
-            ),
-            "gcn-qsd.pdf": (
-                "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT\n"
-                "Thửa đất số 77, tờ bản đồ số 49."
-            ),
-            "hop-dong-cu.pdf": (
-                "HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\n"
-                "LỜI CHỨNG\n"
-                "Số chứng thực 123, quyển số chứng thực 01/2025."
-            ),
-            "cccd.pdf": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 012173002914\nIDVNM173002914",
+            "van-ban-huy-bo.pdf": "VĂN BẢN HỦY BỎ HỢP ĐỒNG TẶNG CHO",
+            "gcn-qsd.pdf": "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT",
+            "hop-dong-cu.pdf": "HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\nLỜI CHỨNG\nSố chứng thực 123.",
+            "cccd.pdf": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 012345678901",
         }
         return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
             "documents": [
-                {"index": 0, "type": "certified_transaction", "title": "Hợp đồng tặng cho đã chứng thực"},
+                {"index": 0, "type": "modification_draft", "title": "Văn bản hủy bỏ hợp đồng tặng cho"},
                 {"index": 1, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"},
-                {"index": 2, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"},
+                {"index": 2, "type": "certified_transaction", "title": "Hợp đồng tặng cho đã chứng thực"},
                 {"index": 3, "type": "identity_document", "title": "Căn cước công dân"},
             ]
         })
@@ -48,51 +42,63 @@ async def test_sua_doi_giao_dich_attachment_groups_draft_and_asset_then_routes_o
         {},
         {"request_id": "req_sua_doi_giao_dich"},
     )
-    items = res["attachments"]
+    items = {item["fileIndex"]: item for item in res["attachments"]}
 
-    assert len(items) == 3
-    assert items[0]["target"] == "existing"
-    assert items[0]["componentIndex"] == 1
+    assert len(items) == 4
+    assert all(not item.get("sourceFileIndexes") for item in items.values()), "không gộp PDF"
+    assert (items[0]["target"], items[0]["componentIndex"]) == ("existing", 1)
     assert "Dự thảo giao dịch sửa đổi" in items[0]["componentName"]
-    assert items[0]["documentName"] == "Dự thảo sửa đổi giao dịch và giấy tờ tài sản"
-    assert items[0]["sourceFileIndexes"] == [0, 1]
-
-    assert items[1]["target"] == "existing"
-    assert items[1]["componentIndex"] == 2
-    assert items[1]["componentName"] == "Giao dịch đã được chứng thực"
-    assert items[1]["documentName"] == "Giao dịch đã được chứng thực"
-    assert items[1]["sourceFileIndexes"] == [2]
-
-    assert items[2]["target"] == "new"
-    assert items[2]["componentName"] == "Căn cước công dân"
-    assert items[2]["needsAddComponent"] is True
+    assert (items[2]["target"], items[2]["componentIndex"]) == ("existing", 2)
+    assert items[2]["componentName"] == "Giao dịch đã được chứng thực"
+    assert items[1]["target"] == "new" and items[1]["componentName"] == "Giấy chứng nhận quyền sử dụng đất"
+    assert items[3]["target"] == "new" and items[3]["componentName"] == "Căn cước công dân"
+    assert {entry["source"] for entry in res["extracted"]["classified"]} == {"llm"}
     assert not res["errors"]
 
-    assert any(
-        entry["fileName"] == "van-ban-huy-bo.pdf"
-        and entry["docType"] == "modification_draft"
-        and entry["source"] == "rule"
-        and entry["componentIndex"] == 1
-        for entry in res["extracted"]["classified"]
-    )
+
+async def test_sua_doi_giao_dich_hop_dong_cu_co_dieu_khoan_sua_doi_khong_bi_rule_de(monkeypatch):
+    """Hợp đồng cũ có điều khoản "sửa đổi, bổ sung hợp đồng": LLM nói giao dịch cũ thì phải vào STT2."""
+    async def fake_ocr_per_file(files):
+        texts = {
+            "hd-cu.pdf": (
+                "HỢP ĐỒNG THẾ CHẤP QUYỀN SỬ DỤNG ĐẤT\n"
+                "Điều 9. Sửa đổi, bổ sung hợp đồng: mọi sửa đổi bổ sung hợp đồng phải lập thành văn bản.\n"
+                "Lời chứng của người thực hiện chứng thực. Số chứng thực 15."
+            ),
+            "vb-sua-doi.pdf": "VĂN BẢN SỬA ĐỔI, BỔ SUNG HỢP ĐỒNG THẾ CHẤP",
+        }
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {"index": 0, "type": "certified_transaction", "title": "Hợp đồng thế chấp quyền sử dụng đất"},
+                {"index": 1, "type": "modification_draft", "title": "Văn bản sửa đổi bổ sung hợp đồng thế chấp"},
+            ]
+        })
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+    res = await planner.plan([_file("hd-cu.pdf"), _file("vb-sua-doi.pdf")], {}, None)
+    items = {item["fileIndex"]: item for item in res["attachments"]}
+
+    assert len(items) == 2
+    assert items[0]["componentIndex"] == 2
+    assert items[1]["componentIndex"] == 1
+    assert all(not item.get("sourceFileIndexes") for item in items.values())
 
 
-async def test_sua_doi_giao_dich_old_contract_not_misrouted_as_asset(monkeypatch):
+async def test_sua_doi_giao_dich_llm_loi_moi_dung_rule_du_phong(monkeypatch):
     async def fake_ocr_per_file(files):
         return [{
             "name": "hop-dong-tang-cho-cu.pdf",
-            "text": (
-                "HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\n"
-                "Bên tặng cho thửa đất số 10, tờ bản đồ số 2.\n"
-                "LỜI CHỨNG của người thực hiện chứng thực. Số chứng thực 88."
-            ),
+            "text": "HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\nLỜI CHỨNG của người thực hiện chứng thực. Số chứng thực 88.",
             "provider": "tiengnoi",
         }]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({
-            "documents": [{"index": 0, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"}]
-        })
+        raise RuntimeError("llm down")
 
     monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(planner.client, "chat", fake_chat)
@@ -101,85 +107,30 @@ async def test_sua_doi_giao_dich_old_contract_not_misrouted_as_asset(monkeypatch
     item = res["attachments"][0]
 
     assert item["componentIndex"] == 2
-    assert item["componentName"] == "Giao dịch đã được chứng thực"
-    assert item["sourceFileIndexes"] == [0]
     assert res["extracted"]["classified"][0]["docType"] == "certified_transaction"
     assert res["extracted"]["classified"][0]["source"] == "rule"
 
 
-async def test_sua_doi_giao_dich_user_case_routes_cancellation_asset_and_old_contract(monkeypatch):
+async def test_sua_doi_giao_dich_khong_co_du_thao_thi_giay_to_tai_san_vao_stt1(monkeypatch):
     async def fake_ocr_per_file(files):
-        texts = {
-            "thoa-thuan-huy.pdf": (
-                "THỎA THUẬN HỦY HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\n"
-                "THÔNG TIN HỢP ĐỒNG TẶNG CHO:\n"
-                "Hợp đồng tặng cho quyền sử dụng đất được ký ngày 19/12/2025, công chứng tại Ủy ban nhân dân phường Tân Phong.\n"
-                "THỎA THUẬN HỦY HỢP ĐỒNG:\n"
-                "Hai bên đồng thuận hủy hợp đồng tặng cho quyền sử dụng đất số 29."
-            ),
-            "cccd-2-ben.pdf": (
-                "CĂN CƯỚC CÔNG DÂN\n"
-                "Số / No.: 012093000910\n"
-                "CĂN CƯỚC CÔNG DÂN\n"
-                "Số / No.: 012060000361"
-            ),
-            "gcn-qsd-cu.pdf": (
-                "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT\n"
-                "ỦY BAN NHÂN DÂN Huyện Phong Thổ CHỨNG NHẬN Hộ ông Trần Văn Quí.\n"
-                "Vào sổ cấp giấy chứng nhận quyền sử dụng đất số 00074 QSDĐ/747/QĐ-UB/H-UBND.\n"
-                "Ngày 16 tháng 12 năm 1999 Chủ tịch UBND."
-            ),
-            "hop-dong-tang-cho.pdf": (
-                "HỢP ĐỒNG TẶNG CHO QUYỀN SỬ DỤNG ĐẤT\n"
-                "Theo Giấy chứng nhận quyền sử dụng đất số Q 086383.\n"
-                "Lời chứng chứng thực hợp đồng tại Trung tâm Phục vụ hành chính công.\n"
-                "Số chứng thực 29 quyển số 01 -SCT/HĐ,GD."
-            ),
-        }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
+        return [{"name": f["name"], "text": "OCR", "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
             "documents": [
-                {"index": 0, "type": "certified_transaction", "title": "Giao dịch đã được chứng thực"},
-                {"index": 1, "type": "identity_document", "title": "Căn cước công dân"},
-                {"index": 2, "type": "certified_transaction", "title": "Giao dịch đã được chứng thực"},
-                {"index": 3, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"},
+                {"index": 0, "type": "certified_transaction", "title": "Hợp đồng tặng cho"},
+                {"index": 1, "type": "asset_ownership_proof", "title": "Giấy chứng nhận quyền sử dụng đất"},
             ]
         })
 
     monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(planner.client, "chat", fake_chat)
 
-    res = await planner.plan(
-        [
-            _file("thoa-thuan-huy.pdf"),
-            _file("cccd-2-ben.pdf"),
-            _file("gcn-qsd-cu.pdf"),
-            _file("hop-dong-tang-cho.pdf"),
-        ],
-        {},
-        None,
-    )
-    items = res["attachments"]
+    res = await planner.plan([_file("hd.pdf"), _file("so-do.pdf")], {}, None)
+    items = {item["fileIndex"]: item for item in res["attachments"]}
 
-    assert items[0]["target"] == "existing"
-    assert items[0]["componentIndex"] == 1
-    assert items[0]["documentName"] == "Dự thảo sửa đổi giao dịch và giấy tờ tài sản"
-    assert items[0]["sourceFileIndexes"] == [0, 2]
-
-    assert items[1]["target"] == "existing"
-    assert items[1]["componentIndex"] == 2
-    assert items[1]["componentName"] == "Giao dịch đã được chứng thực"
-    assert items[1]["sourceFileIndexes"] == [3]
-
-    assert items[2]["target"] == "new"
-    assert items[2]["componentName"] == "Căn cước công dân"
-
-    by_name = {entry["fileName"]: entry for entry in res["extracted"]["classified"]}
-    assert by_name["thoa-thuan-huy.pdf"]["docType"] == "modification_draft"
-    assert by_name["gcn-qsd-cu.pdf"]["docType"] == "asset_ownership_proof"
-    assert by_name["hop-dong-tang-cho.pdf"]["docType"] == "certified_transaction"
+    assert items[0]["componentIndex"] == 2
+    assert items[1]["componentIndex"] == 1
 
 
 async def test_sua_doi_giao_dich_unknown_document_adds_new_component(monkeypatch):
@@ -208,7 +159,7 @@ def test_sua_doi_giao_dich_registry_is_attach_only():
     assert proc is not None
     assert proc["mode"] == "attach"
     assert proc["roles"] == []
-    assert "gộp dự thảo sửa đổi/bổ sung/hủy bỏ với giấy tờ tài sản" in proc["uploadHint"]
+    assert "không gộp" in proc["uploadHint"]
     assert get_pipeline(key) is None
     assert get_attach_pipeline(key) is not None
 
@@ -233,3 +184,45 @@ def test_sua_doi_giao_dich_prompt_uses_ocr_text_only():
     assert "VĂN BẢN HỦY BỎ HỢP ĐỒNG TẶNG CHO" in user_prompt
     assert "van-ban-huy-bo.pdf" not in user_prompt
     assert "fileName" not in user_prompt
+
+
+async def test_sua_doi_giao_dich_tep_chon_hai_lan_chi_dinh_mot_lan(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{"name": f["name"], "text": "VĂN BẢN HỦY GIAO DỊCH TẶNG CHO", "provider": "tiengnoi"} for f in files]
+
+    seen = {}
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        seen["prompt"] = messages[-1]["content"]
+        return json.dumps({"documents": [{"index": 0, "type": "modification_draft", "title": "Văn bản hủy giao dịch"}]})
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+    res = await planner.plan([_file("du-thao.pdf"), _file("du-thao.pdf")], {}, None)
+
+    assert [item["fileIndex"] for item in res["attachments"]] == [0]
+    assert res["attachments"][0]["componentIndex"] == 1
+    assert any("Đã bỏ 1 tệp trùng" in err for err in res["errors"])
+    assert '"index": 1' not in seen["prompt"], "tệp trùng không gửi LLM"
+
+
+async def test_sua_doi_giao_dich_dong_1_dung_truoc_dong_2_du_tep_giao_dich_cu_chon_truoc(monkeypatch):
+    """Tên dòng 2 nằm trọn trong chữ dòng 1: engine tìm dòng trống theo tên từ trên xuống, nên mục dòng 1
+    phải đi trước, kể cả khi cán bộ chọn hợp đồng cũ trước văn bản sửa đổi."""
+    async def fake_ocr_per_file(files):
+        texts = {"hd-cu.pdf": "HỢP ĐỒNG THẾ CHẤP", "sua-doi.pdf": "VĂN BẢN SỬA ĐỔI, BỔ SUNG HỢP ĐỒNG THẾ CHẤP"}
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "type": "certified_transaction", "title": "Hợp đồng thế chấp"},
+            {"index": 1, "type": "modification_draft", "title": "Văn bản sửa đổi bổ sung hợp đồng thế chấp"},
+        ]})
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+    res = await planner.plan([_file("hd-cu.pdf"), _file("sua-doi.pdf")], {}, {"request_id": "req_thu_tu"})
+
+    assert [(item["fileIndex"], item["componentIndex"]) for item in res["attachments"]] == [(1, 1), (0, 2)]

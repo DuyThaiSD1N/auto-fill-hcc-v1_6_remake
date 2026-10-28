@@ -14,6 +14,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -246,6 +247,17 @@ async def plan(
             "documentName": document_name,
             "componentIndex": item["componentIndex"],
         })
+
+    # Hai mặt CCCD chụp thành 2 ảnh rời: gộp theo số định danh thành 1 PDF cho dòng STT 2. Để lẻ thì
+    # mặt sau gặp dòng STT 2 đã có tệp và bị đẩy xuống một dòng thêm mới.
+    attachments = merge_identity_attachments(
+        attachments,
+        {
+            idx: str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+            for idx, file in enumerate(raw_files)
+        },
+        {item["fileIndex"] for item in attachments if item["componentIndex"] == 2},
+    )
 
     return {
         "attachments": attachments,

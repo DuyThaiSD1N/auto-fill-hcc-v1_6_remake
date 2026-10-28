@@ -7,7 +7,7 @@ def _raw(name: str) -> dict:
     return {"name": name, "type": "application/pdf", "dataUrl": "data:application/pdf;base64,AAA"}
 
 
-def test_attachment_plan_routes_two_rows_adds_cccd_and_skips_business_registration():
+def test_attachment_plan_routes_two_rows_adds_cccd_and_business_registration_to_don_row():
     files = [
         _raw("file-1.pdf"),
         _raw("file-2.pdf"),
@@ -30,8 +30,11 @@ def test_attachment_plan_routes_two_rows_adds_cccd_and_skips_business_registrati
     attachments, warnings, classified = planner.build_plan_items(files, ocr_results)
 
     assert warnings == []
-    assert [item["fileIndex"] for item in attachments] == [0, 1, 2]
-    assert [item["detectedType"] for item in attachments] == ["don_de_nghi", "thuyet_minh", "cccd"]
+    # Giấy ĐKKD không bị bỏ: đính chung dòng Đơn (Phụ lục I); CCCD (modal) xếp cuối.
+    assert [item["fileIndex"] for item in attachments] == [0, 1, 3, 2]
+    assert [item["detectedType"] for item in attachments] == ["don_de_nghi", "thuyet_minh", "gcn_dkkd", "cccd"]
+    attachments = [attachments[0], attachments[1], attachments[3], attachments[2]]
+    assert attachments[3]["componentName"] == attachments[0]["componentName"]
     assert all(item["target"] == "attp-row" for item in attachments[:2])
     assert all(item["needsAddComponent"] is False for item in attachments[:2])
     assert all(item["loaiBan"] == "Bản chính" for item in attachments)
@@ -43,7 +46,7 @@ def test_attachment_plan_routes_two_rows_adds_cccd_and_skips_business_registrati
     assert "Trường hợp nộp trực tiếp" in attachments[2]["componentName"]
     assert attachments[2]["documentName"] == "Căn cước công dân"
     assert classified[2]["docType"] == "cccd"
-    assert classified[3]["skipped"] is True
+    assert classified[3]["routedTo"] == "don_de_nghi"
 
 
 def test_attachment_plan_uses_llm_result_for_every_rule_other():

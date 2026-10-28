@@ -1,10 +1,11 @@
 """Lập kế hoạch đính kèm hồ sơ ATTP trên cổng MAE.
 
 Hai dòng Phụ lục I/II có sẵn trong bảng Angular nên dùng engine ``attp-row``.
-CCCD không có dòng cố định nên dùng modal "Thêm giấy tờ"; Giấy đăng ký kinh doanh chỉ là nguồn điền
-eForm và không được gắn nhầm vào hai dòng Phụ lục I/II.
+CCCD không có dòng cố định nên dùng modal "Thêm giấy tờ". Giấy đăng ký kinh doanh và giấy khác đính chung
+dòng Đơn (Phụ lục I) — cán bộ hay scan gộp GCN ĐKKD với giấy khám sức khỏe, bỏ cả tệp là mất giấy.
 """
 
+import asyncio
 import time
 from typing import Any
 
@@ -39,8 +40,7 @@ _CCCD_COMPONENT = (
     "Trường hợp nộp trực tiếp thì xuất trình bản chính hoặc bản sao có chứng thực giấy chứng minh nhân dân "
     "hoặc hộ chiếu còn giá trị sử dụng."
 )
-_SKIP_DOCS = {_GCN_DKKD}
-_ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_CCCD, _OTHER}
+_ALLOWED_DOC_TYPES = set(_ROWS) | {_GCN_DKKD, _CCCD, _OTHER}
 
 
 def _rule_doc_type(text: str) -> str:
@@ -84,23 +84,26 @@ def _normalize_doc_type(value: str) -> str:
     return value if value in _ALLOWED_DOC_TYPES else _OTHER
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
-    if not documents:
-        return {}
+async def _classify_one(document: dict[str, Any]) -> str:
     messages = [
         {"role": "system", "content": prompt.SYSTEM_PROMPT},
-        {"role": "user", "content": prompt.build_user_prompt(documents)},
+        {"role": "user", "content": prompt.build_user_prompt([{**document, "index": 0}])},
     ]
-    raw = await client.chat(messages, max_tokens=400, enable_thinking=settings.agent_reasoning)
-    parsed = client.extract_json_block(raw)
-    out: dict[int, str] = {}
-    for item in parsed.get("documents", []) or []:
-        try:
-            index = int(item.get("index"))
-        except Exception:  # noqa: BLE001
-            continue
-        out[index] = _normalize_doc_type(str(item.get("docType") or item.get("type") or ""))
-    return out
+    raw = await client.chat(messages, max_tokens=200, enable_thinking=settings.agent_reasoning)
+    for item in client.extract_json_block(raw).get("documents", []) or []:
+        return _normalize_doc_type(str(item.get("docType") or item.get("type") or ""))
+    return ""
+
+
+async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
+    """Mỗi tệp một lượt LLM: tệp scan gộp dài (hàng chục nghìn ký tự) chung một lượt làm model xếp nhầm tệp
+    khác. Kết quả ghép theo THỨ TỰ, lỗi một tệp chỉ rơi tệp đó về keyword dự phòng."""
+    results = await asyncio.gather(*(_classify_one(doc) for doc in documents), return_exceptions=True)
+    return {
+        doc["index"]: result
+        for doc, result in zip(documents, results)
+        if isinstance(result, str) and result
+    }
 
 
 _CCCD_LABEL = "Căn cước công dân"
@@ -163,12 +166,14 @@ def build_plan_items(
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
         text = str(ocr_by_name.get(file_name, {}).get("text") or "")
-        rule_type = _rule_doc_type(text)
+        # LLM quyết loại; keyword chỉ dự phòng khi LLM không trả gì cho tệp (lỗi/thiếu) — keyword "giấy chứng
+        # nhận đăng ký hộ kinh doanh" khớp cả giấy khác chỉ NHẮC số ĐKKD (GCN ATTP cũ) rồi bỏ không đính.
         llm_type = llm_types.get(index, "")
-        if rule_type in _ROWS or rule_type == _CCCD or rule_type in _SKIP_DOCS:
-            doc_type, source = rule_type, "rule"
-        elif llm_type in _ROWS or llm_type == _CCCD or llm_type in _SKIP_DOCS:
+        rule_type = "" if llm_type else _rule_doc_type(text)
+        if llm_type in _ALLOWED_DOC_TYPES:
             doc_type, source = llm_type, "llm"
+        elif rule_type in _ROWS or rule_type in (_CCCD, _GCN_DKKD):
+            doc_type, source = rule_type, "rule"
         else:
             doc_type, source = _OTHER, "unknown"
 
@@ -182,14 +187,11 @@ def build_plan_items(
         elif doc_type == _CCCD:
             cccd_group.append((index, file))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-        elif doc_type in _SKIP_DOCS:
-            # Giấy ĐKKD/ĐKDN chỉ là nguồn điền eForm — KHÔNG đính (tránh gắn nhầm vào hàng Phụ lục).
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
         else:
-            # Giấy tờ ngoài 2 loại đã định nghĩa (other) → ĐÍNH CHUNG vào HÀNG TỜ KHAI (Đơn Phụ lục I),
-            # KHÔNG bỏ qua; giữ tên file gốc vì không biết là giấy gì (attp-row nhận nhiều file/1 dòng).
-            attachments.append(_build_row_item(file, index, _DON, detected_type=_OTHER))
-            classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
+            # Giấy ĐKKD và giấy ngoài 2 loại đã định nghĩa → ĐÍNH CHUNG vào HÀNG TỜ KHAI (Đơn Phụ lục I),
+            # KHÔNG bỏ qua; giữ tên file gốc vì tệp có thể gộp nhiều giấy (attp-row nhận nhiều file/1 dòng).
+            attachments.append(_build_row_item(file, index, _DON, detected_type=doc_type))
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
 
     # 2 mặt CCCD (hoặc nhiều ảnh CCCD lẻ) → gộp thành 1 PDF rồi vào modal "Thêm giấy tờ".
     if cccd_group:
@@ -218,8 +220,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     unresolved: list[dict[str, Any]] = []
     for index, file in enumerate(raw_files):
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if text.strip() and not _rule_doc_type(text):
-            # Mọi tài liệu rule chưa xác định đều phải qua LLM trước khi trở thành other.
+        if text.strip():
+            # Mọi tài liệu có chữ đều qua LLM; keyword chỉ dự phòng trong build_plan_items.
             unresolved.append({"index": index, "text": text})
 
     llm_started = time.monotonic()

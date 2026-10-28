@@ -618,9 +618,10 @@ async def test_dang_nhap_that_van_nhac_dang_nhap():
 
 # ── Đăng ký kết hôn ──
 
-KH_REQUIRED = ["HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu_TrongNuoc",
+# Ô chọn nơi cư trú (Trong nước / Khác) cũng bắt buộc: chưa tích thì khối trong nước chưa hiện, cổng chặn Xem trước.
+KH_REQUIRED = ["HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
                "LoaiTinhTrangHonNhan_BenNu", "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam",
-               "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam"]
+               "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam"]
 
 
 def test_ket_hon_bat_bo_sung_voi_o_bat_buoc_cua_hai_ben():

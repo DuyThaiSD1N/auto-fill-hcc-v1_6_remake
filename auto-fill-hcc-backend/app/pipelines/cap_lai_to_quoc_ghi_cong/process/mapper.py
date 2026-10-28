@@ -253,24 +253,42 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(seen_key)
 
+    # CCCD tải kèm có thể là của NGƯỜI NỘP khác người đề nghị trong tờ khai (vd cháu thờ cúng nhờ người khác nộp):
+    # chỉ trộn CCCD vào người đề nghị khi CCCD khớp đúng người trong tờ khai, không thì mỗi người một khối.
+    td_name, td_identity = values.get("ToKhai_HoTen"), values.get("ToKhai_SoDinhDanh")
+    p1_name, p1_identity = values.get("Person1_HoTen"), values.get("Person1_SoDinhDanh")
+    has_tokhai = bool(_fold(td_name) or _identity(td_identity))
+    has_cccd = bool(_fold(p1_name) or _identity(p1_identity))
+    cccd_is_applicant = not has_tokhai or not has_cccd or _same_person(p1_identity, p1_name, td_identity, td_name)
+
+    def applicant(person1_key: str, tokhai_key: str):
+        if cccd_is_applicant:
+            return _pick(values.get(person1_key), values.get(tokhai_key))
+        return values.get(tokhai_key)
+
     # Định danh/ngày cấp/nơi cấp ưu tiên CCCD; họ tên/ngày sinh/giới tính ưu tiên CCCD, fallback tờ khai.
-    candidate_name = _text(_pick(values.get("Person1_HoTen"), values.get("ToKhai_HoTen")))
-    candidate_identity = _identity(_pick(values.get("Person1_SoDinhDanh"), values.get("ToKhai_SoDinhDanh")))
-    candidate_birthday = _pick(values.get("Person1_NgaySinh"), values.get("ToKhai_NgaySinh"))
-    candidate_gender = _pick(values.get("Person1_GioiTinh"), values.get("ToKhai_GioiTinh"))
-    candidate_issue_date = _date(_pick(values.get("Person1_NgayCap"), values.get("ToKhai_NgayCap")))
-    candidate_issue_place = _pick(values.get("Person1_NoiCap"), values.get("ToKhai_NoiCap"))
-    # Cư trú ưu tiên TỜ KHAI (đơn vị hành chính hiện hành), fallback CCCD.
-    candidate_residence = _area(values.get("ToKhai_NoiThuongTru")) or _area(values.get("Person1_NoiCuTru"))
+    candidate_name = _text(applicant("Person1_HoTen", "ToKhai_HoTen"))
+    candidate_identity = _identity(applicant("Person1_SoDinhDanh", "ToKhai_SoDinhDanh"))
+    candidate_birthday = applicant("Person1_NgaySinh", "ToKhai_NgaySinh")
+    candidate_gender = applicant("Person1_GioiTinh", "ToKhai_GioiTinh")
+    candidate_issue_date = _date(applicant("Person1_NgayCap", "ToKhai_NgayCap"))
+    candidate_issue_place = applicant("Person1_NoiCap", "ToKhai_NoiCap")
+    # Cư trú ưu tiên TỜ KHAI (đơn vị hành chính hiện hành), fallback CCCD cùng người.
+    candidate_residence = _area(values.get("ToKhai_NoiThuongTru")) or (
+        _area(values.get("Person1_NoiCuTru")) if cccd_is_applicant else None
+    )
     candidate_phone = values.get("ToKhai_DienThoai")
 
     if not candidate_name or not candidate_identity:
         warnings.append("Thiếu họ tên hoặc số định danh người đề nghị từ tờ khai/CCCD.")
 
-    can_fill_applicant = (
-        not _has_context_anchor(context)
-        or _same_person(candidate_identity, candidate_name, context.get("applicant_identity"), context.get("applicant_name"))
-    )
+    if _has_context_anchor(context):
+        can_fill_applicant = _same_person(
+            candidate_identity, candidate_name, context.get("applicant_identity"), context.get("applicant_name")
+        )
+    else:
+        # Không có mốc tài khoản: CCCD người khác người đề nghị chính là người nộp.
+        can_fill_applicant = cccd_is_applicant
 
     # --- Phần I: Thông tin người nộp hồ sơ (occurrence 0) ---
     if can_fill_applicant:
@@ -292,6 +310,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     else:
         add("data[isOwnerDossierCheck]", False)
         add("data[chonDoiTuong1]", "Cá nhân")
+        if not _has_context_anchor(context) and has_cccd:
+            add("data[chonDoiTuong]", "Cá nhân")
+            _add_person_block(
+                add,
+                "",
+                name=_text(p1_name),
+                birthday=values.get("Person1_NgaySinh"),
+                gender=values.get("Person1_GioiTinh"),
+                identity=p1_identity,
+                issue_date=values.get("Person1_NgayCap"),
+                issue_place=values.get("Person1_NoiCap"),
+                residence=values.get("Person1_NoiCuTru"),
+                phone=None,
+                occurrence=0,
+            )
 
     # --- Phần II: Thông tin chủ hồ sơ (đối tượng thụ hưởng, trùng người đề nghị) ---
     _add_person_block(

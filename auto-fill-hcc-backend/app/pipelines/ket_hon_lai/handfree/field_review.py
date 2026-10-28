@@ -6,12 +6,13 @@ không đánh dấu bắt buộc nên hỏi như ô không bắt buộc) → cù
 
 PROCEDURE_KEYS = ("dang-ky-lai-ket-hon",)
 
-# Theo chấm đỏ của eForm sau "Xem trước". Mỗi bên: họ tên, dân tộc, loại giấy tờ, khối nơi cư trú trong nước,
-# tình trạng hôn nhân.
+# Theo chấm đỏ của eForm sau "Xem trước". Mỗi bên: họ tên, dân tộc, loại giấy tờ, ô chọn nơi cư trú (Trong nước /
+# Khác), khối nơi cư trú trong nước, tình trạng hôn nhân. Khối trong nước chỉ hiện sau khi tích "Trong nước" — thiếu ô
+# chọn thì lúc chưa tích không còn ô bắt buộc nào ở dòng nơi cư trú, ô bị tô cam rồi cổng chặn Xem trước.
 REQUIRED = (
-    "HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu_TrongNuoc",
+    "HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
     "LoaiTinhTrangHonNhan_BenNu",
-    "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam", "NoiCuTru_BenNam_TrongNuoc",
+    "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam", "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc",
     "LoaiTinhTrangHonNhan_BenNam",
 )
 
