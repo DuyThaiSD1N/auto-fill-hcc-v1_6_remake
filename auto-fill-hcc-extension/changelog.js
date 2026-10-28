@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25.7",
+    date: "28/10/2026",
+    items: [
+      "Mã hỗ trợ và các nút Hướng dẫn/Cài đặt luôn hiện ở đáy panel, kể cả khi cửa sổ trình duyệt thấp; phóng to cửa sổ lại thì panel giãn theo.",
+      "Thủ tục hộ kinh doanh: tệp gồm nhiều giấy tờ được tách theo trang trước khi đính kèm.",
+      "Bắc Ninh: eform cũ dùng mã thành phần hồ sơ cũ vẫn đính kèm được.",
+    ],
+  },
+  {
     version: "1.25.3",
     date: "26/10/2026",
     items: [

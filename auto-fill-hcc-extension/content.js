@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "26/10";
+  const APP_RELEASE_DATE = "28/10";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -753,6 +753,10 @@
       panel.style.top = v.top + "px";
     }
     if (previewBox && previewBox.style.display !== "none") datChoPreview(previewBox);
+    // Thu nhỏ cửa sổ làm iframe bị kẹp theo innerHeight; phóng to lại thì nội dung popup không đổi nên
+    // ResizeObserver bên trong im lặng → panel kẹt ở cỡ nhỏ. Xin popup đo lại để nới theo cửa sổ mới.
+    const iframe = document.getElementById(IFRAME_ID);
+    iframe?.contentWindow?.postMessage({ type: "autofill-hcc-request-resize" }, "*");
   });
 
   // Panel tự tô sáng dòng file đang xem, nhưng nó KHÔNG biết lúc nào khung tắt (khung do
