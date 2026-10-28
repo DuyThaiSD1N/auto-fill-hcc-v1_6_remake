@@ -53,6 +53,17 @@ DECEASED_AS_OWNER_OPTION = "deceasedAsOwner"
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 
 
+def is_deceased_owner(options: dict | None) -> bool:
+    """Người chết là chủ hồ sơ: cờ theo tài khoản HOẶC công tắc "Lấy người nộp theo tờ khai" đang bật
+    (submitterMode=owner_as_submitter, mọi tài khoản) — bật thì chủ hồ sơ = người mất, người nộp = người đề
+    nghị trên tờ khai; tắt thì giữ logic mỏ neo UI cũ."""
+    options = options or {}
+    return (
+        options.get(DECEASED_AS_OWNER_OPTION) is True
+        or str(options.get("submitterMode") or "") == "owner_as_submitter"
+    )
+
+
 def is_lao_cai_cam_duong(user: dict | None) -> bool:
     """True khi tài khoản thuộc phường Cam Đường, tỉnh Lào Cai (khớp tỉnh và ĐÚNG tên phường)."""
     if not user:
@@ -274,24 +285,11 @@ def _enrich_roles(
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    if (options or {}).get(DECEASED_AS_OWNER_OPTION) is True:
+    if is_deceased_owner(options):
         return out, _fill_deceased_owner(add, values, owner, requester, context, options)
 
     if not owner and not requester:
         return out, ["Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."]
-
-    # === MODE "owner_as_submitter" (toggle extension): KHÔNG dùng mỏ neo UI. LUÔN lấy CHỦ HỒ SƠ làm người
-    # nộp (tự nộp, tick checkbox) — thủ tục này thực tế không có giấy ủy quyền. ===
-    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
-        person = owner or requester
-        if person is owner:
-            add("data[isOwnerDossierCheck]", True)
-            _add_requester(add, person)      # người nộp = chủ hồ sơ
-            add("data[ownerBirthday]", person.birthday)  # portal bỏ sót khi tick
-        else:
-            add("data[isOwnerDossierCheck]", False)
-            _add_requester(add, person)
-        return out, warnings
 
     # Người đứng ra mai táng trùng mỏ neo UI: tự nộp, tích checkbox và dùng
     # chính chủ hồ sơ cho khối người nộp. Ngày sinh UI cũ không tham gia khớp.
@@ -348,7 +346,7 @@ def _fill_deceased_owner(
     context: dict,
     options: dict | None,
 ) -> list[str]:
-    """Cờ deceasedAsOwner: khối chủ hồ sơ = người chết, không bao giờ tick tự nộp.
+    """Cờ deceasedAsOwner / công tắc owner_as_submitter: khối chủ hồ sơ = người chết, không bao giờ tick tự nộp.
 
     Người đứng ra mai táng (ChuHoSo_*) hoặc NguoiNop_* chỉ vào khối người nộp khi khớp mỏ neo UI;
     toggle owner_as_submitter thì lấy thẳng người đứng ra mai táng làm người nộp.

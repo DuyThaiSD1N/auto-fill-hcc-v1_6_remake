@@ -185,7 +185,8 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
 
 async def _owner_only_context(documents: list[dict], options: dict) -> str:
     """Mode owner_as_submitter: KHÔNG đưa mỏ neo UI vào prompt. Gắn result="missing_ui_anchor" để prompt
-    sẵn có tự bỏ NguoiNop_* (mapper luôn lấy chủ hồ sơ làm người nộp); chỉ khoanh mục II.2 cho ChuHoSo_*."""
+    sẵn có tự bỏ NguoiNop_* (mapper lấy người đứng ra mai táng làm người nộp, người chết làm chủ hồ sơ);
+    chỉ khoanh mục II.2 cho ChuHoSo_*."""
     _ = options
     owner_scopes = [
         (index, scope)
@@ -194,7 +195,8 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
     ]
     requester_context = (
         '<requester_context result="missing_ui_anchor">\n'
-        "Chế độ điền người nộp = chủ hồ sơ: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích ChuHoSo_*.\n"
+        "Chế độ lấy người nộp theo tờ khai: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích ChuHoSo_* "
+        "(người đề nghị / người đứng ra mai táng).\n"
         "</requester_context>"
     )
     parts = [requester_context]
@@ -212,10 +214,10 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
-    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
+    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; người đề nghị trên tờ khai là người nộp.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
-    # Cờ theo tài khoản (phường Cam Đường, xã Bình Chương): người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
-    deceased_owner = (options or {}).get(mapper.DECEASED_AS_OWNER_OPTION) is True
+    # Cờ theo tài khoản (phường Cam Đường, xã Bình Chương) hoặc toggle trên: người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
+    deceased_owner = mapper.is_deceased_owner(options)
     res = await runner.run(
         files_by_role,
         fields=DECEASED_OWNER_FIELDS if deceased_owner else FIELDS,

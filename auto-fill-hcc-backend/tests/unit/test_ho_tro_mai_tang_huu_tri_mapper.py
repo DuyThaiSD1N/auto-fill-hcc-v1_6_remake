@@ -40,36 +40,61 @@ def _run_mode(values: dict, mode: str = "owner_as_submitter"):
     return {field["name"]: field["value"] for field in fields}, warnings
 
 
-def test_owner_mode_no_uyquyen_self_submit():
-    """Toggle owner_as_submitter, KHÔNG có ủy quyền → chủ hồ sơ = người nộp (tick), bỏ qua mỏ neo UI."""
-    got, _ = _run_mode(_DANG_VAN_LAM)
-    assert got["data[isOwnerDossierCheck]"] is True
-    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"          # người nộp = chủ hồ sơ
+_NGUOI_MAT = {
+    "NguoiMat_HoTen": "TRẦN THỊ HOA",
+    "NguoiMat_NgaySinh": "05/06/1940",
+    "NguoiMat_GioiTinh": "Nữ",
+    "NguoiMat_SoDinhDanh": "068140000123",
+    "NguoiMat_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Đơn Dương", "diaChi": "Thạnh Nghĩa"},
+}
+
+
+def test_owner_mode_lay_nguoi_mat_lam_chu_ho_so():
+    """Bật "Lấy người nộp theo tờ khai" → chủ hồ sơ = người mất, người nộp = người đề nghị, không tick tự nộp."""
+    got, warnings = _run_mode({**_DANG_VAN_LAM, **_NGUOI_MAT})
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"
     assert got["data[identityNumber]"] == "068080000292"
-    assert got["data[ownerBirthday]"] == "03/03/1980"       # portal bỏ sót khi tick
-    assert "data[ownerFullname]" not in got                 # tự nộp: không lặp khối chủ hồ sơ
+    assert got["data[ownerFullname]"] == "TRẦN THỊ HOA"
+    assert got["data[ownerIdentityNumber]"] == "068140000123"
+    assert got["data[ownerBirthday]"] == "05/06/1940"
+    assert got["data[ownerGender]"] == "Nữ"
+    assert not warnings
 
 
-def test_owner_mode_always_owner_even_with_extra_person():
-    """Mode 2 = LUÔN chủ hồ sơ làm người nộp, kể cả nếu OCR lỡ trích NguoiNop (thủ tục này không có ủy quyền)."""
-    values = dict(_DANG_VAN_LAM)
-    values.update({"NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"})
-    got, _ = _run_mode(values)
-    assert got["data[isOwnerDossierCheck]"] is True
-    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"          # người nộp = chủ hồ sơ (bỏ qua NguoiNop)
-    assert "data[ownerFullname]" not in got                 # tự nộp: không lặp khối chủ hồ sơ
-    assert "Phan Mỹ Dung" not in str(list(got.values()))    # người phụ bị bỏ qua
-
-
-def test_owner_mode_ignores_ui_anchor():
-    """Owner mode KHÔNG so khớp mỏ neo UI: dù formContext có người khác vẫn owner=submitter."""
-    compact = [{"name": k, "value": v} for k, v in _DANG_VAN_LAM.items()]
+def test_owner_mode_bo_qua_nguoi_nop_phu_va_mo_neo_ui():
+    """Toggle bật vẫn KHÔNG so mỏ neo UI: người đề nghị trên tờ khai là người nộp, NguoiNop lỡ trích bị bỏ."""
+    values = {**_DANG_VAN_LAM, **_NGUOI_MAT, "NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"}
+    compact = [{"name": k, "value": v} for k, v in values.items()]
     fields, _ = mapper.enrich(compact, {
         "submitterMode": "owner_as_submitter",
         "formContext": {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
     })
     got = {f["name"]: f["value"] for f in fields}
-    assert got["data[isOwnerDossierCheck]"] is True and got["data[fullname]"] == "ĐẶNG VĂN LÂM"
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"
+    assert got["data[ownerFullname]"] == "TRẦN THỊ HOA"
+    assert "Phan Mỹ Dung" not in str(list(got.values()))
+
+
+def test_owner_mode_khong_doc_duoc_nguoi_mat_thi_canh_bao():
+    got, warnings = _run_mode(_DANG_VAN_LAM)
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"
+    assert "data[ownerFullname]" not in got
+    assert any("người chết" in w for w in warnings)
+
+
+def test_tat_toggle_giu_logic_cu_khong_lay_nguoi_mat():
+    got, _ = _run({**_DANG_VAN_LAM, **_NGUOI_MAT}, {"applicantFullname": "ĐẶNG VĂN LÂM", "applicantIdentityNumber": "068080000292"})
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert "TRẦN THỊ HOA" not in str(list(got.values()))
+
+
+def test_toggle_bat_thi_runner_trich_them_nguoi_mat():
+    assert mapper.is_deceased_owner({"submitterMode": "owner_as_submitter"})
+    assert mapper.is_deceased_owner({mapper.DECEASED_AS_OWNER_OPTION: True})
+    assert not mapper.is_deceased_owner({})
+    assert not mapper.is_deceased_owner({"submitterMode": "anchor"})
 
 
 def test_schema_only_exposes_owner_and_requester_roles():

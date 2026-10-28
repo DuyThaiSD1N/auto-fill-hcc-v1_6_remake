@@ -5,6 +5,8 @@
 - Phần 4 thường trú người khai = province3/village3/address3 (tên riêng, không occurrence).
 - Liệt sĩ quê quán = province4/village4/address4. Bảng người cùng đi = dataGrid2.
 - Cư trú ưu tiên TỜ KHAI; số định danh/ngày cấp ưu tiên CCCD.
+- Địa chỉ CCCD/giấy giới thiệu cấp trước sáp nhập (vd "An Châu, Sơn Động, Bắc Giang") đi qua remap_area
+  sang tỉnh/xã hiện hành — để nguyên thì dropdown Tỉnh/Phường-Xã trên cổng không có option, bỏ trống.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.tham_vieng_mo_liet_si.process.schema import UI_COMP_BY_NAME
@@ -91,6 +94,7 @@ def _parse_area_text(value: Any) -> dict | None:
     if len(parts) >= 4 and district_prefix.match(parts[-2]):
         out["tinh"] = parts[-1]
         out["xa"] = parts[-3]
+        out["huyen"] = parts[-2]
         out["diaChi"] = ", ".join(parts[:-3]).strip()
     elif len(parts) >= 3:
         out["tinh"] = parts[-1]
@@ -106,16 +110,25 @@ def _parse_area_text(value: Any) -> dict | None:
 
 def _area(value: Any) -> dict | None:
     if isinstance(value, str):
-        return _parse_area_text(value)
-    if not isinstance(value, dict):
+        out = _parse_area_text(value)
+    elif isinstance(value, dict):
+        out = {
+            "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+            "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
+            "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
+            "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
+        }
+        if not any(out.values()):
+            return None
+        # Gợi ý cấp huyện cũ: remap_area dùng để gỡ tên xã trùng ở nhiều huyện rồi tự bỏ khóa này.
+        huyen = value.get("huyen") or value.get("quanHuyen")
+        if huyen:
+            out["huyen"] = huyen
+    else:
         return None
-    out = {
-        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
-        "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
-        "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
-        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
-    }
-    return out if any(out.values()) else None
+    if out and (out.get("tinh") or out.get("xa")):
+        out = remap_area(out)
+    return out
 
 
 def _identity(value: Any) -> str | None:

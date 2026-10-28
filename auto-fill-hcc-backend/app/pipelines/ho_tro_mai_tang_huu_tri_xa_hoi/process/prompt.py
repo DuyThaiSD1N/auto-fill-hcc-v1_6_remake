@@ -57,7 +57,8 @@ QUY TẮC FIELD:
 - Không tạo field không có bằng chứng OCR."""
 
 
-# Nối sau EXTRA_RULES khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường, xã Bình Chương).
+# Nối sau EXTRA_RULES khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường, xã Bình Chương) hoặc công tắc
+# "Lấy người nộp theo tờ khai" (submitterMode=owner_as_submitter).
 DECEASED_OWNER_RULES = """
 
 CẤU HÌNH TÀI KHOẢN: NGƯỜI CHẾT LÀ CHỦ HỒ SƠ TRÊN CỔNG

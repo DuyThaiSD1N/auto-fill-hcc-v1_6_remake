@@ -529,9 +529,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
 SYSTEM = """Bạn là agent CHỌN THỦ TỤC cho trợ lý thủ tục hành chính công tại quầy một cửa.
 Đọc hội thoại gần đây và câu MỚI NHẤT của người dân, xác định họ cần thủ tục nào trong DANH SÁCH
 THỦ TỤC. Trả DUY NHẤT một JSON, không giải thích:
-{{"result": "<pick|ask_about|unclear|not_procedure>", "id": <số hoặc null>, "candidates": [<số>, ...]}}
+{{"result": "<pick|ask_about|unclear|not_procedure>", "id": <số hoặc null>, "ten": "<tên thủ tục của id>", "candidates": [<số>, ...]}}
 
 Mỗi thủ tục trong DANH SÁCH có một SỐ trong ngoặc vuông [..] — trả lời bằng số đó.
+"ten" = chép NGUYÊN VĂN khoảng 8 chữ đầu của tên thủ tục ngay sau [id] trong DANH SÁCH (để đối chiếu,
+tránh nhầm số của dòng bên cạnh); id = null thì "ten" = "".
 - pick: câu thể hiện MUỐN LÀM thủ tục và chỉ khớp chắc chắn MỘT thủ tục → id = số của thủ tục đó,
   candidates = [].
 - ask_about: HỎI thông tin (lệ phí, thời gian, cần giấy tờ gì, làm ở đâu...) về MỘT thủ tục cụ thể
@@ -627,7 +629,8 @@ def catalog(procedures: list[dict]) -> str:
 
     Không đưa key: model chọn theo tên key trông giống câu nói ("khai-sinh-dang-ky" ≈ "đăng ký khai
     sinh" nhưng là bản liên thông) và chép sót ký tự của key dài. Số = vị trí trong `procedures`
-    (bắt đầu từ 1), agent đổi ngược ra key.
+    (agent.procedures_for — thứ tự khai báo, không phải thứ tự thẻ màn chào)
+    (bắt đầu từ 1), agent đổi ngược ra key và đối chiếu "ten" LLM chép với nhãn ở đây.
     """
     lines = []
     for n, p in enumerate(procedures, 1):
