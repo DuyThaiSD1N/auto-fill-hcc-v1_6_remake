@@ -3642,21 +3642,23 @@ async function runBusinessAttach(cfg, options) {
   if (!payloadFiles.length) return { error: "Chưa có file nào." };
 
   setStatus("Đang phân tích & phân loại tài liệu...", "info");
+  if (cfg.supportsSplitDocuments) options.splitDocuments = !!attachSplitDocuments;
   const planRes = await api.attachmentPlan({ procedure: cfg.key, options, files: payloadFiles });
   console.log("[BE AttachmentPlan][HKD]", {
     attachments: planRes.attachments, extracted: planRes.extracted, errors: planRes.errors,
   });
-  const attachments = planRes.attachments || [];
-  if (!attachments.length) {
+  if (!(planRes.attachments || []).length) {
     const reason = Array.isArray(planRes.errors) && planRes.errors.length
       ? planRes.errors.join("; ")
       : "Backend chưa trả về kế hoạch đính kèm.";
     return { error: reason };
   }
+  // Tệp nhiều giấy được BE chia theo trang (sourceSegments) → cắt PDF trước khi engine HkdOnline đính.
+  const { files: attachFiles, attachments } = await applyMergeGroups(payloadFiles, planRes.attachments);
 
   const startRes = await sendToContent({
     action: "startAttachAllBusiness",
-    files: payloadFiles,
+    files: attachFiles,
     attachments,
     businessDefaults: buildBusinessDefaults(currentUser),
   });
@@ -5073,10 +5075,12 @@ if (fillAllBtn) {
       try {
         setStatus("Đang phân tích & phân loại tài liệu đính kèm...", "info");
         const attachFiles = await toPdfForAttach(payloadFiles);
-        const planRes = await api.attachmentPlan({ procedure: cfg.key, options: {}, files: attachFiles });
+        const attachOptions = cfg.supportsSplitDocuments ? { splitDocuments: !!attachSplitDocuments } : {};
+        const planRes = await api.attachmentPlan({ procedure: cfg.key, options: attachOptions, files: attachFiles });
         console.log("[BE AttachmentPlan][HKD merged]", { attachments: planRes.attachments, errors: planRes.errors });
         const attachments = planRes.attachments || [];
-        if (attachments.length) attachPayload = { files: attachFiles, attachments };
+        // Tệp nhiều giấy được BE chia theo trang (sourceSegments) → cắt PDF trước khi engine HkdOnline đính.
+        if (attachments.length) attachPayload = await applyMergeGroups(attachFiles, attachments);
         else console.warn("[HKD] Không có kế hoạch đính kèm — chỉ điền 8 trang:", planRes.errors);
       } catch (e) {
         console.warn("[HKD] Lỗi lấy kế hoạch đính kèm — chỉ điền 8 trang:", e?.message || e);

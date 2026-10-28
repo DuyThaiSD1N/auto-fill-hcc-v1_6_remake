@@ -753,10 +753,6 @@
       panel.style.top = v.top + "px";
     }
     if (previewBox && previewBox.style.display !== "none") datChoPreview(previewBox);
-    // Thu nhỏ cửa sổ làm iframe bị kẹp theo innerHeight; phóng to lại thì nội dung popup không đổi nên
-    // ResizeObserver bên trong im lặng → panel kẹt ở cỡ nhỏ. Xin popup đo lại để nới theo cửa sổ mới.
-    const iframe = document.getElementById(IFRAME_ID);
-    iframe?.contentWindow?.postMessage({ type: "autofill-hcc-request-resize" }, "*");
   });
 
   // Panel tự tô sáng dòng file đang xem, nhưng nó KHÔNG biết lúc nào khung tắt (khung do
@@ -4011,6 +4007,14 @@
     gpxd_design_dossier: ["ho so thiet ke xay dung doi voi nha o rieng le", "doi voi nha o rieng le cua ho gia dinh ca nhan", "doi voi nha o rieng le cua to chuc"],
   };
 
+  // Từ khoá nhận dòng do BE gửi theo từng ô (slotKeywords) → thêm/sửa thủ tục không phải phát hành extension.
+  // Bảng trên chỉ còn cho planner chưa gửi slotKeywords.
+  function fixedSlotKeywords(item) {
+    // Ô có sectionHeader (nhánh Lào Cai) khớp từ khoá trong phạm vi nhánh ở chỗ khác — không dùng ở đây.
+    const fromBe = item.sectionHeader ? [] : (item.slotKeywords || []).map(foldChoiceText).filter(Boolean);
+    return fromBe.length ? fromBe : FIXED_SLOT_KEYWORDS[item.slotKey] || [];
+  }
+
   // input[type=file] thuộc bảng thành phần hồ sơ (có nút "Chọn tệp tin"/btn_upload gần đó).
   function isUploadSlotInput(input) {
     // Cổng Bộ VHTTDL (liz): input file nằm trong <app-upload-flie-multi>, nút upload là icon fa-upload
@@ -4167,7 +4171,7 @@
     }
     const inputs = fixedSlotUploadInputs();
     const free = inputs.filter((el) => !usedInputs.has(el));
-    const keywords = FIXED_SLOT_KEYWORDS[item.slotKey] || [];
+    const keywords = fixedSlotKeywords(item);
     const byText = free.find((el) => {
       const text = fixedSlotRowText(el);
       return keywords.some((kw) => text.includes(kw));
@@ -4281,7 +4285,7 @@
       return all[idx];
     }
     // 1) Ưu tiên khớp theo NỘI DUNG dòng (tên giấy tờ) — bền vững với số dòng/thứ tự nút.
-    const keywords = FIXED_SLOT_KEYWORDS[item.slotKey] || [];
+    const keywords = fixedSlotKeywords(item);
     if (keywords.length) {
       const byText = free.find((b) => {
         const text = menuSlotRowText(b);

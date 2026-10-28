@@ -813,13 +813,10 @@ input, select, textarea { font-family: inherit; }
 
 /* ===== Mã hỗ trợ: chip copy request_id để cán bộ gửi hỗ trợ khi báo lỗi ===== */
 .support-code {
-  display: flex;
-  width: fit-content;
-  max-width: 100%;
-  box-sizing: border-box;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 4px 8px;
   border: 1px dashed #c8ccd2;
   border-radius: 6px;
@@ -830,7 +827,6 @@ input, select, textarea { font-family: inherit; }
   cursor: pointer;
   transition: background .15s, border-color .15s;
 }
-.support-code[hidden] { display: none; }
 .support-code:hover { background: #eef1f5; border-color: #9aa2ad; }
 .support-code-label { color: #838a95; }
 .support-code-value {
@@ -838,8 +834,6 @@ input, select, textarea { font-family: inherit; }
   font-weight: 600;
   color: #33383f;
   letter-spacing: .2px;
-  min-width: 0;
-  overflow-wrap: anywhere;
   user-select: text;   /* cho bôi đen chọn tay khi copy tự động thất bại */
   -webkit-user-select: text;
 }
@@ -929,25 +923,8 @@ input, select, textarea { font-family: inherit; }
 .review-item__btn:hover { background: #fdecec; }
 .review-item__btn.no-bbox { color: #92400e; border-color: #fcd34d; }
 
-/* Khối đáy dính mép dưới panel (iframe cuộn bên trong khi cửa sổ thấp). Margin âm = padding body
-   để nền trắng phủ hết bề ngang, nội dung cuộn phía sau không lộ qua hai bên. */
-.bottom-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 8px -10px -10px;
-  padding: 8px 10px 10px;
-  background: #fff;
-  border-top: 1px solid #e3e8ef;
-  box-shadow: 0 -4px 10px rgba(26, 48, 79, .08);
-}
-/* Đang ở view chấp thuận/đánh giá thì mã hỗ trợ của màn chính không liên quan → ẩn. */
-#view-main[hidden] ~ .bottom-dock .support-code { display: none; }
-
 .app-footer {
+  margin-top: 8px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
