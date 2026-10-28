@@ -1182,6 +1182,7 @@
       "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1579,6 +1580,7 @@
       "label": "[Lâm Đồng] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

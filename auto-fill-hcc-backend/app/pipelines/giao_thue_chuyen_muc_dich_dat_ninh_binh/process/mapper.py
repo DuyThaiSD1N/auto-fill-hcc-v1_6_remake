@@ -13,25 +13,26 @@ from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import is_ninh_binh_n
 
 from .schema import UI_COMP_BY_NAME
 
-# Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) khai CHỦ HỒ SƠ vừa là người nộp, kể cả khi Đơn do
-# người nhà ký, CCCD đính kèm là của người khác hay hồ sơ có ủy quyền; nơi khác giữ nguyên logic. Mapper
-# không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options
-# để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+# Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) khai NGƯỜI NỘP đứng tên luôn CHỦ HỒ SƠ — có ủy quyền
+# thì bên được ủy quyền điền ô Chủ hồ sơ (tích isOwnerDossier), phần người nộp và khối nhận kết quả; không
+# ủy quyền thì vẫn là chủ hồ sơ như cũ. Nơi khác giữ nguyên logic. Mapper không biết tài khoản nên router
+# (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ luôn
+# bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
 PROCEDURE_KEY = "giao-thue-chuyen-muc-dich-dat-ninh-binh"
-OWNER_AS_SUBMITTER_OPTION = "ownerAsSubmitter"
+SUBMITTER_AS_OWNER_OPTION = "submitterAsOwner"
 
 
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ theo tài khoản do server quyết (chủ hồ sơ đứng luôn phần người nộp)."""
+    """Trả bản sao options với cờ theo tài khoản do server quyết (người nộp đứng tên luôn chủ hồ sơ)."""
     result = dict(options or {})
-    result.pop(OWNER_AS_SUBMITTER_OPTION, None)
+    result.pop(SUBMITTER_AS_OWNER_OPTION, None)
     if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
-        result[OWNER_AS_SUBMITTER_OPTION] = True
+        result[SUBMITTER_AS_OWNER_OPTION] = True
     return result
 
 
-def owner_as_submitter(options: dict | None) -> bool:
-    return (options or {}).get(OWNER_AS_SUBMITTER_OPTION) is True
+def submitter_as_owner(options: dict | None) -> bool:
+    return (options or {}).get(SUBMITTER_AS_OWNER_OPTION) is True
 
 
 def _by_name(fields: list[dict]) -> dict[str, Any]:
@@ -129,13 +130,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_name = _text(values.get("ChuHoSo_HoTen"))
     applicant_name = _text(values.get("NguoiNop_HoTen")) or owner_name
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
-    if owner_name and owner_as_submitter(options):
-        # Xã Nghĩa Hưng: bỏ qua người nộp model tách ra, chủ hồ sơ đứng cả hai phần.
-        applicant_name = owner_name
-        authorized = False
-
     # Không có giấy ủy quyền: dùng toàn bộ fact chủ hồ sơ cho người nộp, không chỉ sao chép họ tên.
     source_prefix = "NguoiNop" if authorized else "ChuHoSo"
+    if authorized and submitter_as_owner(options):
+        # Xã Nghĩa Hưng: bên được ủy quyền đứng tên luôn ô Chủ hồ sơ, người nộp và người nhận kết quả.
+        owner_name = applicant_name
+        authorized = False
     applicant_area = _area(values.get(f"{source_prefix}_NoiCuTru"))
     applicant_id = _identity(values.get(f"{source_prefix}_SoDinhDanh"))
 

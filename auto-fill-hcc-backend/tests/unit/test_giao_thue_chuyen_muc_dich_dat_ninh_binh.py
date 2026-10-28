@@ -193,39 +193,53 @@ _SPOUSE_SIGNED_FIELDS = [
 ]
 
 
-def test_nghia_hung_account_sets_owner_as_submitter_flag_only_for_this_procedure():
+def test_nghia_hung_account_sets_submitter_as_owner_flag_only_for_this_procedure():
     key = "giao-thue-chuyen-muc-dich-dat-ninh-binh"
 
-    assert mapper.owner_as_submitter(mapper.with_account_process_options({}, _NGHIA_HUNG_USER, key))
-    assert not mapper.owner_as_submitter(
+    assert mapper.submitter_as_owner(mapper.with_account_process_options({}, _NGHIA_HUNG_USER, key))
+    assert not mapper.submitter_as_owner(
         mapper.with_account_process_options({}, _NGHIA_HUNG_USER, "giao-thue-chuyen-muc-dich-dat-quang-ngai")
     )
-    assert not mapper.owner_as_submitter(
+    assert not mapper.submitter_as_owner(
         mapper.with_account_process_options({}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư"}, key)
     )
     # Client tự gửi cờ cũng bị server ghi đè theo tài khoản.
-    assert not mapper.owner_as_submitter(
-        mapper.with_account_process_options({"ownerAsSubmitter": True}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư"}, key)
+    assert not mapper.submitter_as_owner(
+        mapper.with_account_process_options({"submitterAsOwner": True}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư"}, key)
     )
 
 
-def test_nghia_hung_owner_fills_both_parts_even_when_model_split_a_submitter():
+def test_nghia_hung_authorized_submitter_fills_owner_applicant_and_receiver():
     options = mapper.with_account_process_options({}, _NGHIA_HUNG_USER, "giao-thue-chuyen-muc-dich-dat-ninh-binh")
 
     out, warnings = mapper.enrich(_SPOUSE_SIGNED_FIELDS, options)
     values = _values(out)
 
+    assert values["data[ownerFullname]"] == "LÊ THỊ HOA"
+    assert values["data[isOwnerDossier]"] is True
+    assert values["data[fullname]"] == "LÊ THỊ HOA"
+    assert values["data[birthday]"] == "07/08/1965"
+    assert values["data[gender]"] == "Nữ"
+    assert values["data[identityNumber]"] == "036165005678"
+    assert values["data[identityDate]"] == "20/10/2024"
+    assert values["data[hoTen]"] == "LÊ THỊ HOA"
+    assert values["data[soCCCD]"] == "036165005678"
+    assert "Thôn Đông" in values["data[diaChi]"]
+    assert warnings == []
+
+
+def test_nghia_hung_without_authorization_keeps_owner_in_every_part():
+    options = mapper.with_account_process_options({}, _NGHIA_HUNG_USER, "giao-thue-chuyen-muc-dich-dat-ninh-binh")
+    owner_only = [item for item in _SPOUSE_SIGNED_FIELDS if not item["name"].startswith("NguoiNop_")]
+
+    out, _ = mapper.enrich(owner_only, options)
+    values = _values(out)
+
     assert values["data[ownerFullname]"] == "TRẦN VĂN BÌNH"
     assert values["data[isOwnerDossier]"] is True
     assert values["data[fullname]"] == "TRẦN VĂN BÌNH"
-    assert values["data[birthday]"] == "05/06/1962"
-    assert values["data[gender]"] == "Nam"
-    assert values["data[identityNumber]"] == "036062001234"
-    assert values["data[identityDate]"] == "10/05/2023"
     assert values["data[hoTen]"] == "TRẦN VĂN BÌNH"
     assert values["data[soCCCD]"] == "036062001234"
-    assert "Thôn Đông" in values["data[diaChi]"]
-    assert warnings == []
 
 
 def test_other_wards_keep_separate_submitter():
