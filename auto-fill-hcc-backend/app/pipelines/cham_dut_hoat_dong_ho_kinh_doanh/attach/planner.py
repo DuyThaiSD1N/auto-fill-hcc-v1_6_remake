@@ -7,6 +7,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.kinh_doanh_tach_giay_to import plan_with_split, split_requested
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -84,7 +85,7 @@ def _unique_name(value: str, used: set[str], fallback: str) -> str:
         number += 1
 
 
-async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+async def _plan_files(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     _ = options or {}
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
     ocr_indexes = [index for index, item in enumerate(raw_files) if item.get("type") in _OCR_TYPES]
@@ -150,3 +151,19 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "stats": {"ocr_latency_ms": ocr_ms, "llm_latency_ms": llm_ms, "total_latency_ms": ocr_ms + llm_ms},
         "errors": errors,
     }
+
+
+# Giấy tờ hay gặp trong tệp scan gộp của thủ tục — gợi ý cho LLM chia trang.
+_SPLIT_DOC_HINTS = (
+    "Thông báo chấm dứt hoạt động hộ kinh doanh (Mẫu số 4); Giấy chứng nhận đăng ký hộ kinh doanh; thông "
+    "báo của cơ quan thuế (hoàn thành nghĩa vụ thuế, chấm dứt hiệu lực mã số thuế); biên bản họp thành "
+    "viên hộ gia đình; CCCD."
+)
+
+
+async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    # "Tách tệp có nhiều giấy tờ": cán bộ hay scan cả bộ (giấy đề nghị + CCCD + giấy tờ trụ sở...) thành một
+    # PDF mà planner phân loại NGUYÊN tệp → chia theo trang, phân loại từng giấy, extension cắt theo sourceSegments.
+    if split_requested(options):
+        return await plan_with_split(_plan_files, files, options, session, doc_hints=_SPLIT_DOC_HINTS)
+    return await _plan_files(files, options, session)

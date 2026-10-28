@@ -91,7 +91,7 @@ async def test_docs_complete_spawns_combined_business_job(monkeypatch):
 
     assert conv["state"] == "filling"
     assert conv["pipeline_status"] == "running"
-    assert spawned == [("business", ("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh"))]
+    assert spawned == [("business", ("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh", {}))]
     assert "chuẩn bị điền" in reply.display_md
 
 

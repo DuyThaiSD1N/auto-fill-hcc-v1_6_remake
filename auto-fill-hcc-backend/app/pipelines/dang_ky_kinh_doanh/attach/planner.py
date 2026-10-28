@@ -17,6 +17,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.kinh_doanh_tach_giay_to import plan_with_split, split_requested
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -158,7 +159,7 @@ def _build_item(file: dict, idx: int, category: str, document_name: str) -> dict
     }
 
 
-async def plan(
+async def _plan_files(
     files: list[FileItem],
     options: dict | None = None,
     session: dict | None = None,
@@ -243,3 +244,19 @@ async def plan(
         },
         "errors": errors,
     }
+
+
+# Giấy tờ hay gặp trong tệp scan gộp của thủ tục — gợi ý cho LLM chia trang.
+_SPLIT_DOC_HINTS = (
+    "Giấy đề nghị đăng ký hộ kinh doanh (Mẫu số 1, thường 3-4 trang); CCCD của chủ hộ/thành viên hộ gia "
+    "đình; giấy tờ trụ sở (Giấy chứng nhận quyền sử dụng đất, hợp đồng thuê/mượn nhà); văn bản ủy quyền; "
+    "biên bản họp thành viên hộ gia đình."
+)
+
+
+async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    # "Tách tệp có nhiều giấy tờ": cán bộ hay scan cả bộ (giấy đề nghị + CCCD + giấy tờ trụ sở...) thành một
+    # PDF mà planner phân loại NGUYÊN tệp → chia theo trang, phân loại từng giấy, extension cắt theo sourceSegments.
+    if split_requested(options):
+        return await plan_with_split(_plan_files, files, options, session, doc_hints=_SPLIT_DOC_HINTS)
+    return await _plan_files(files, options, session)

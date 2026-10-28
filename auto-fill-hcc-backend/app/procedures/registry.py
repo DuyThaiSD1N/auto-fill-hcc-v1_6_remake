@@ -724,6 +724,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Mã TTHC quốc gia 1.001612. KHÔNG đưa vào urlIncludes: cả hai nơi đều không mang mã trên URL —
         # HkdOnline dạng DW_DOCUMENTEdit.aspx?h=<handle phiên>, cổng QG dạng /thu-tuc-hanh-chinh/<uuid>.
         # Trang trên cổng QG chỉ là điểm vào (xem PROCEDURE_KE_KHAI_LINKS ở extension); việc điền diễn ra
@@ -857,6 +859,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Không nhận diện bằng body text: màn chọn chung cũng chứa label thủ tục này dù người dùng
         # chưa chọn. Extension gửi businessProcedureHint theo active wizard step/loại hồ sơ.
         "detect": {"headingDisabled": True},
@@ -884,6 +888,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cham-dut-hoat-dong-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Bốn bước wizard đầu dùng chung URL/heading với các nhánh thay đổi khác. Extension chỉ
         # nhận diện chắc chắn khi session đã chọn nhánh này hoặc trang Dissolution.aspx đang mở.
         "detect": {"headingDisabled": True},
@@ -908,6 +914,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tam-ngung-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Cùng wizard "Chọn loại đăng ký thay đổi" với chấm dứt hoạt động (radio SUSPEN). Trang chính
         # DW_SUSPENSIONEdit.aspx đã xác nhận field DOM thật qua đặc tả HTML (ngày bắt đầu/kết thúc,
         # lý do tạm ngừng); trang "Người nộp hồ sơ" dùng chung logic các thủ tục HKD khác. Nhãn menu
@@ -934,6 +942,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-cap-doi-gcn-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Wizard REI dùng chung màn chọn/tìm kiếm với các nhánh HKD khác; extension giữ lựa chọn
         # hiện tại ở màn mơ hồ và chỉ xác nhận lại bằng loại hồ sơ/trang DW_RE_ISSUANCEEdit.
         "detect": {"headingDisabled": True},

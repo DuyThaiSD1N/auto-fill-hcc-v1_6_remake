@@ -1050,7 +1050,8 @@ async def _resync_intent(conv: dict) -> Intent | None:
         pipeline_runner.spawn(pipeline_runner.run_attach(
             conv["_id"], sid, key, _attachment_options(conv, _attach_mode_options(conv))))
     elif kind == "business":
-        pipeline_runner.spawn(pipeline_runner.run_business_registration(conv["_id"], sid, key))
+        pipeline_runner.spawn(pipeline_runner.run_business_registration(
+            conv["_id"], sid, key, _attachment_options(conv)))
     return None
 
 
@@ -3220,7 +3221,8 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         conv["business_action_started"] = False
         conv["business_result"] = None
         pipeline_runner.spawn(pipeline_runner.run_business_registration(
-            conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or ""
+            conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or "",
+            _attachment_options(conv),
         ))
         docs_template = (vi.BUSINESS_DOCS_COMPLETE if proc.get("businessWorkflow") == "create"
                          else vi.BUSINESS_DOCS_COMPLETE_CHANGE)

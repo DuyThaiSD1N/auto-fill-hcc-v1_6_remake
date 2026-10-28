@@ -910,6 +910,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # Trang DVCQG chỉ là điểm vào. Sau đăng nhập, hồ sơ chạy trên HkdOnline WebForms
         # và reload toàn trang sau gần như mọi thao tác; extension nhận diện bằng DOM + domain.
         "detect": {
@@ -4552,6 +4554,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # HkdOnline (cùng cổng thành lập mới) — businessWorkflow "change": wizard 4 bước
         # (chọn CHN → TRA CỨU hộ KD theo mã số → chọn CHAPAR + hỏi đổi tên → Bắt đầu), trang
         # điền ĐỘNG theo businessFlow.pageOrder (pipeline so GCN cũ vs Thông báo, chỉ dựng
@@ -4612,6 +4616,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cham-dut-hoat-dong-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # HkdOnline, businessWorkflow "dissolution" — ĐI CHUNG wizard với nhánh thay đổi: cổng
         # gộp cả hai vào màn "Chọn loại đăng ký thay đổi" (radio DISSOLU, có AutoPostBack). Vì
         # workflow != "create" nên flow tự đặt stop_at="search-business": bootstrap dừng ở màn
@@ -4668,6 +4674,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tam-ngung-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # HkdOnline, businessWorkflow "suspension" — cùng wizard "Chọn loại đăng ký thay đổi" với
         # chấm dứt (radio SUSPEN, có AutoPostBack). Bootstrap dừng ở màn TRA CỨU hộ kinh doanh để
         # nhận giấy tờ trước (mã số nằm trong GCN), pipeline xong FE mới đi nốt wizard rồi điền
@@ -4717,6 +4725,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-cap-doi-gcn-ho-kinh-doanh",
+        # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
+        "supportsSplitDocuments": True,
         # HkdOnline, businessWorkflow "reissue" — KHÁC chấm dứt/tạm ngừng: rẽ ngay ở màn chọn loại
         # đăng ký (radio REI, không qua "Chọn loại đăng ký thay đổi"). Bootstrap dừng ở màn TRA CỨU
         # hộ kinh doanh để nhận giấy tờ trước (mã số nằm trong Giấy đề nghị/GCN), pipeline xong FE

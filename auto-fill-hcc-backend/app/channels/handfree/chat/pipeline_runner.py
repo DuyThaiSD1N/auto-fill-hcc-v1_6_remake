@@ -376,7 +376,8 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
 
 
 @_tracked("business")
-async def run_business_registration(conv_id: str, sid: str, procedure_key: str) -> None:
+async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
+                                    attach_options: dict | None = None) -> None:
     """Chuẩn bị trọn gói cho HkdOnline: 8 trang + kế hoạch đính kèm.
 
     Cổng hộ kinh doanh reload toàn trang sau từng lần lưu nên extension phải nhận toàn bộ
@@ -413,7 +414,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         rec_attach = _start_recorder("attach", conv_id, sid, procedure_key)
         file_items = [FileItem(**item) for item in raw_files]
         async with mon.span("post.plan", procedure=procedure_key):
-            attach_result = await attach_fn(file_items, {}, session=None)
+            attach_result = await attach_fn(file_items, attach_options or {}, session=None)
         _note_result(rec_attach, attach_result)
 
         conv = await conv_store.get(conv_id)
@@ -425,6 +426,8 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         conv["business_flow"] = process_result.get("businessFlow") or {}
         conv["extracted"] = process_result.get("extracted", {})
         conv["attach_plan"] = attach_result.get("attachments", [])
+        # Kế hoạch lập theo cài đặt tách giấy tờ nào (cùng khóa với run_attach).
+        conv["attach_plan_split_documents"] = (attach_options or {}).get("splitDocuments") is True
         conv["attach_errors"] = attach_result.get("errors", [])
         conv["attach_fail_streak"] = 0  # kế hoạch MỚI → cho watcher tự đính lại từ đầu
         conv["pipeline_status"] = "business_ready"
