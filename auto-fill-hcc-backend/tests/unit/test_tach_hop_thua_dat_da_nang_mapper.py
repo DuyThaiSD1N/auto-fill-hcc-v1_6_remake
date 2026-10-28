@@ -25,7 +25,7 @@ def test_tu_nop_owner_bang_nguoi_nop_tich_va_ghep_noi_dung():
     assert d["data[ownerFullname]"] == "NGUYỄN VĂN HOÀNG"
     assert d["data[fullname]"] == "NGUYỄN VĂN HOÀNG"
     assert d["data[identityNumber]"] == "027060001118"
-    assert d["data[province]"] == "Tỉnh Bắc Ninh"
+    assert d["data[province]"] == "Thành phố Bắc Ninh"
     assert d["data[district]"] == "Phường Song Liễu"
     assert d["data[chonDoiTuong]"] == "Cá nhân"
     assert d["data[noidungyeucaugiaiquyet]"] == "NGUYỄN VĂN HOÀNG ĐỀ NGHỊ GIẢI QUYẾT Tách thửa đất hoặc hợp thửa đất"
@@ -89,8 +89,8 @@ def test_tu_nop_lay_dia_chi_chu_ho_so_khi_thieu_dia_chi_nguoi_nop():
         "NguoiNop_SoDinhDanh": "027060001118",
     })
     assert d["data[isOwnerDossier]"] is True
-    assert d["data[province]"] == "Tỉnh Bắc Ninh"
-    assert d["data[district]"] == "Song Liễu"
+    assert d["data[province]"] == "Thành phố Bắc Ninh"
+    assert d["data[district]"] == "Phường Song Liễu"
 
 
 def test_uy_quyen_khong_lay_dia_chi_chu_ho_so_cho_nguoi_nop():

@@ -18,6 +18,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.process.schema import UI_COMP_BY_NAME
@@ -67,9 +68,10 @@ def _province_label(value: Any) -> str | None:
     if not text:
         return None
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ", "tp ")):
+    if folded.startswith(("thanh pho ", "tp ")):
         return text
-    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "tp ho chi minh", "hue"}
+    folded = _fold(_strip_admin_prefix(text))
+    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "tp ho chi minh", "hue", "bac ninh"}
     return f"{'Thành phố' if folded in city_markers else 'Tỉnh'} {_strip_admin_prefix(text)}"
 
 
@@ -104,7 +106,7 @@ def _parse_area_text(value: Any) -> dict | None:
 
 def _area(value: Any) -> dict | None:
     if isinstance(value, str):
-        return _parse_area_text(value)
+        return remap_area(_parse_area_text(value), allow_diachi_fallback=True)
     if not isinstance(value, dict):
         return None
     out = {
@@ -113,7 +115,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    return remap_area(out, allow_diachi_fallback=True) if any(out.values()) else None
 
 
 def _identity(value: Any) -> str | None:

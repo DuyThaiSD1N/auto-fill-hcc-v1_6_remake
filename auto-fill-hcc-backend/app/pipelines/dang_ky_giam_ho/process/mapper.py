@@ -3,6 +3,7 @@
 import re
 import unicodedata
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines.dang_ky_giam_ho.process.schema import UI_COMP_BY_NAME, UI_COMP_BY_NAME_CHAM_DUT
@@ -52,7 +53,7 @@ def _parse_area_text(value: str) -> dict | None:
 
 def _area(value):
     if isinstance(value, str):
-        return _parse_area_text(value)
+        return remap_area(_parse_area_text(value), allow_diachi_fallback=True)
     if not isinstance(value, dict):
         return None
     out = {
@@ -63,7 +64,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return out
+    return remap_area(out, allow_diachi_fallback=True)
 
 
 def _province_label(value) -> str:
@@ -71,11 +72,11 @@ def _province_label(value) -> str:
     if not text:
         return ""
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ")):
+    if folded.startswith("thanh pho "):
         return text
     # Viết tắt "TP X" / "TP. X" / "T.P X" không có trong danh mục cổng (chỉ "Thành phố X") → bỏ để gắn lại.
     text = re.sub(r"^t\.?\s?p\b\.?\s*", "", text, flags=re.IGNORECASE).strip() or text
-    folded = _fold(text)
+    folded = _fold(_strip_admin_prefix(text))
     if folded in {
         "ha noi",
         "hai phong",
@@ -84,6 +85,7 @@ def _province_label(value) -> str:
         "tp ho chi minh",
         "can tho",
         "hue",
+        "bac ninh",
     }:
         return f"Thành phố {_strip_admin_prefix(text)}"
     return f"Tỉnh {_strip_admin_prefix(text)}"

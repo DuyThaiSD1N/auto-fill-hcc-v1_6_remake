@@ -55,9 +55,9 @@ def _province_label(value: Any) -> str | None:
     if not text:
         return None
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ", "tp ")):
+    if folded.startswith(("thanh pho ", "tp ")):
         return text
-    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
     bare = _strip_admin_prefix(text)
     return f"{'Thành phố' if _fold(bare) in city_markers else 'Tỉnh'} {bare}"
 

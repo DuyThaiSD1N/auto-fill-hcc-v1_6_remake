@@ -1,7 +1,7 @@
 """Map compact marriage facts (có yếu tố nước ngoài) to legacy x-* UI fields.
 
 Khác ket_hon nội địa: KHÔNG mặc định quốc tịch = Việt Nam, KHÔNG mặc định nơi cư trú = trong nước.
-Bên nước ngoài → radio cư trú "2" (Khác) + ô NuocNgoai (quốc gia + địa chỉ), loại giấy tờ = "Giấy tờ khác...".
+Bên nước ngoài → radio cư trú "2" (Khác) + ô NuocNgoai (quốc gia + địa chỉ), loại giấy tờ = "Hộ chiếu" hoặc "Giấy tờ khác...".
 """
 
 import re
@@ -24,6 +24,9 @@ from app.pipelines.ket_hon_nuoc_ngoai.process.schema import UI_COMP_BY_NAME
 # chuỗi lệch sẽ lọc ra 0 kết quả → không chọn được). Text option trên form: "Giấy tờ khác bao gồm
 # các giấy tờ có dán".
 FOREIGN_DOC_TYPE = "Giấy tờ khác bao gồm các giấy tờ có dán"
+# Hộ chiếu nước ngoài có option RIÊNG trong dropdown → chọn thẳng, không qua "Giấy tờ khác..." (chọn
+# "Hộ chiếu" thì cổng không mở ô tên giấy tờ TenGiayTo_*).
+PASSPORT_DOC_TYPE = "Hộ chiếu"
 
 # Category tình trạng hôn nhân (LLM trả) → ĐÚNG text option dropdown.
 # CỐ Ý KHÔNG có "dang_co_vo_chong": người đi đăng ký kết hôn luôn độc thân → nếu LLM lỡ trả
@@ -262,7 +265,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # chọn "Khác" rồi ghi nguyên văn vào ô nhập kề bên.
         # Chỉ xét QUỐC TỊCH, không xét `foreign`: người Việt cư trú ở nước ngoài vẫn mang dân tộc
         # Việt Nam bình thường, phải giữ nguyên option trong dropdown.
-        dan_toc = _normalize_dan_toc(values.get(f"{src}_DanToc"))
+        # Agent hay bỏ trống Nam_DanToc của người nước ngoài khi tờ khai ghi trùng tên dân tộc VN
+        # ("Hoa") → lấy cột dân tộc chép nguyên văn từ tờ khai.
+        dan_toc = _normalize_dan_toc(values.get(f"{src}_DanToc") or values.get(f"ToKhai{side}_DanToc"))
         if quoc_tich and not _is_vn(quoc_tich):
             # Hồ sơ KHÔNG ghi dân tộc thì để TRỐNG cả dropdown: chọn sẵn "Khác" khi không có gì để
             # gõ vào ô kề bên chỉ tạo ra một lựa chọn không có căn cứ trong giấy tờ. Có ghi mới chọn
@@ -275,10 +280,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add(f"DanToc{dst}", dan_toc)
 
         if foreign:
-            # Giấy tờ nước ngoài: loại = "Giấy tờ khác..." + ô tên giấy tờ = tên giấy tờ thật.
-            # Form thật đặt name TenGiayTo_* (x-select-area) — không có ô NhapTenGiayTo_*.
-            add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_DOC_TYPE)
-            add(f"TenGiayTo_{dst}", values.get(f"{src}_TenGiayTo") or "Chứng minh thư")
+            # Hộ chiếu (theo tên giấy tờ, hoặc dòng "Giấy tờ tùy thân" trên tờ khai "Hộ chiếu số: ...")
+            # → option "Hộ chiếu". Giấy tờ nước ngoài khác: loại = "Giấy tờ khác..." + ô tên giấy tờ =
+            # tên giấy tờ thật. Form thật đặt name TenGiayTo_* (x-select-area) — không có ô NhapTenGiayTo_*.
+            ten_giay_to = values.get(f"{src}_TenGiayTo")
+            doc_hint = _fold(ten_giay_to or values.get(f"ToKhai{side}_SoGiayTo"))
+            if "ho chieu" in doc_hint or "passport" in doc_hint:
+                add(f"LoaiGiayToDinhDanh_{dst}", PASSPORT_DOC_TYPE)
+            else:
+                add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_DOC_TYPE)
+                add(f"TenGiayTo_{dst}", ten_giay_to or "Chứng minh thư")
             # Giữ NGUYÊN VĂN (không chuẩn hóa về cơ quan VN), nhưng chỉ khi đó thật sự là tên
             # một cơ quan. Đọc nhầm ra địa danh thì để TRỐNG cho người dùng gõ: ô đỏ còn hơn một
             # cái tên tỉnh nằm chình ình ở ô "Cơ quan cấp" mà người soát hồ sơ dễ cho qua.

@@ -116,7 +116,8 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
 
     # ==================================================================================
     # TRANG "TẠM NGỪNG HOẠT ĐỘNG" (DW_SUSPENSIONEdit.aspx) — field DOM đã xác nhận qua bảng đặc tả
-    # HTML thật (sheet "Ta_m_ngu_ng_kinh_doanh"). Checkbox "Áp dụng cho đơn vị trực thuộc" luôn
+    # HTML thật (sheet "Ta_m_ngu_ng_kinh_doanh"). Tiền tố trên cổng là "UC_DW_SUSPENSIONEditCtl" (có
+    # chữ "i", đối chiếu DevTools 2026-10-28) — viết "EdtCtl" thì extension không thấy ô nào. Checkbox "Áp dụng cho đơn vị trực thuộc" luôn
     # checked+disabled sẵn trên cổng (không cho đổi) nên KHÔNG cần điền.
     # ==================================================================================
     suspension_fields: list[dict] = []
@@ -125,19 +126,19 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     ly_do = _text(values.get("TamNgung_LyDo"))
     if tu_ngay:
         suspension_fields.append({
-            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_START_DATEFld",
+            "name": "ctl00$C$UC_DW_SUSPENSIONEditCtl$SUSPENSION_START_DATEFld",
             "comp": "dom-date",
             "value": tu_ngay,
         })
     if den_ngay:
         suspension_fields.append({
-            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_END_DATEFld",
+            "name": "ctl00$C$UC_DW_SUSPENSIONEditCtl$SUSPENSION_END_DATEFld",
             "comp": "dom-date",
             "value": den_ngay,
         })
     if ly_do:
         suspension_fields.append({
-            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_REASONFld",
+            "name": "ctl00$C$UC_DW_SUSPENSIONEditCtl$SUSPENSION_REASONFld",
             "comp": "dom-input",
             "value": ly_do,
         })

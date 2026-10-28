@@ -28,7 +28,7 @@ from app.pipelines.xac_nhan_thong_tin_ho_tich.process.schema import (
 
 _ALL_COMP_BY_NAME = {**UI_COMP_BY_NAME, **EFORM_COMP_BY_NAME}
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
 
 
 def _by_name(fields: list[dict]) -> dict:

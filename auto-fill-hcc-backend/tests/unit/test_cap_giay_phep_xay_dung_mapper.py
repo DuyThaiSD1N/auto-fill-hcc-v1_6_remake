@@ -90,7 +90,7 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[fullname]"] == "NGUYỄN TRUNG CHÍNH"
     assert d["data[birthday]"] == "08/03/1977"
     assert d["data[identityAgency]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert d["data[province]"] == "Tỉnh Bắc Ninh"
+    assert d["data[province]"] == "Thành phố Bắc Ninh"
     assert d["data[district]"] == "Phường Song Liễu"
     assert d["data[address]"] == "TDP Liễu Khê"  # thôn Ngọc Tỉnh nhập vào Liễu Khê
     assert d["data[kinhGui]"] == "UBND phường Song Liễu"

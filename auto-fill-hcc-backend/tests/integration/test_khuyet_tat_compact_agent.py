@@ -10,6 +10,7 @@ from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.khuyet_tat import process as agent
 from app.pipelines.khuyet_tat.process import mapper
 from app.pipelines.khuyet_tat.process import runner as process_runner
+from app.pipelines.khuyet_tat.process import vision
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
 from app.pipelines.khuyet_tat.process.schema import CONTEXT_FIELDS, FIELDS
 from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
@@ -287,7 +288,8 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     assert d["data[mucDoKhuyetTatObj][mucDoRadio4]"] == "CTG"
     assert d["data[mucDoKhuyetTatObj][mucDoRadio8]"] == "KTHD"
     assert d["data[mucDoKhuyetTatObj][mucDoRadio10]"] == "CTG"
-    assert not res["errors"]
+    # Không đọc được ảnh Mục III → giữ bảng từ OCR + LLM, kèm cảnh báo cho cán bộ soát lại.
+    assert res["errors"] == [vision.SECTION_III_WARNING]
 
 
 def test_khuyet_tat_compact_prompt_contract():

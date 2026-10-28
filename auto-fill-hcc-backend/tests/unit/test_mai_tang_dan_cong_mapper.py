@@ -33,8 +33,8 @@ def test_tu_nop_owner_matches_ui_ticks_and_fills_phan_i():
     assert d["data[fullname]"] == "NGUYỄN VĂN THÀNH"
     assert d["data[birthday]"] == "22/02/1964"
     assert d["data[phoneNumber]"] == "0366752439"
-    assert d["data[province]"] == "Tỉnh Bắc Ninh"
-    assert d["data[district]"] == "Hiệp Hòa"
+    assert d["data[province]"] == "Thành phố Bắc Ninh"
+    assert d["data[district]"] == "Phường Hiệp Hòa"
     # Tự nộp: cổng tự đổ Phần II → KHÔNG phát owner_*.
     assert "data[ownerFullname]" not in d
     assert not w
@@ -63,7 +63,7 @@ def test_nop_thay_phan_i_la_nguoi_nop_ui_phan_ii_la_chu_ho_so():
     assert d["data[ownerFullname]"] == "NGUYỄN VĂN THÀNH"
     assert d["data[ownerBirthday]"] == "22/02/1964"
     assert d["data[ownerIdentityNumber]"] == "024064010233"
-    assert d["data[ownerProvince]"] == "Tỉnh Bắc Ninh"
+    assert d["data[ownerProvince]"] == "Thành phố Bắc Ninh"
     assert not w
 
 
@@ -102,6 +102,6 @@ def test_dia_chi_chuoi_duoc_tach_thanh_area():
         },
         {},
     )
-    assert d["data[province]"] == "Tỉnh Bắc Ninh"
-    assert d["data[district]"] == "Hiệp Hòa"
+    assert d["data[province]"] == "Thành phố Bắc Ninh"
+    assert d["data[district]"] == "Phường Hiệp Hòa"
     assert d["data[address]"] == "Thôn số 1"

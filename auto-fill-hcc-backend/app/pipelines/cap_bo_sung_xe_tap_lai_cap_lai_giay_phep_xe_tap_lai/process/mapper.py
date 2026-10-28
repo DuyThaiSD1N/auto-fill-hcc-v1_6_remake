@@ -17,6 +17,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.process.schema import (
@@ -88,7 +89,7 @@ def _province_label(value: Any) -> str | None:
         return None
     bare = _strip_admin_prefix(text)
     folded = _fold(bare)
-    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
     return f"{'Thành phố' if folded in city_markers else 'Tỉnh'} {bare}"
 
 
@@ -111,7 +112,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("phuong") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    return remap_area(out, allow_diachi_fallback=True) if any(out.values()) else None
 
 
 def _identity(value: Any) -> str | None:

@@ -13,6 +13,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines.mai_tang_dan_cong.process.schema import UI_COMP_BY_NAME
 
@@ -60,7 +61,7 @@ def _area(value: Any) -> dict | None:
             out["tinh"], out["diaChi"] = _strip_admin_prefix(parts[-1]), parts[0]
         else:
             out["diaChi"] = parts[0]
-        return out if any((out["tinh"], out["xa"], out["diaChi"])) else None
+        return remap_area(out, allow_diachi_fallback=True) if any((out["tinh"], out["xa"], out["diaChi"])) else None
     if not isinstance(value, dict):
         return None
     out = {
@@ -69,7 +70,7 @@ def _area(value: Any) -> dict | None:
         "xa": _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
     }
-    return out if any((out["tinh"], out["xa"], out["diaChi"])) else None
+    return remap_area(out, allow_diachi_fallback=True) if any((out["tinh"], out["xa"], out["diaChi"])) else None
 
 
 def _province_label(value: Any) -> str | None:
@@ -77,9 +78,10 @@ def _province_label(value: Any) -> str | None:
     if not text:
         return None
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ")):
+    if folded.startswith("thanh pho "):
         return text
-    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+    folded = _fold(_strip_admin_prefix(text))
+    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
     return f"{'Thành phố' if folded in cities else 'Tỉnh'} {_strip_admin_prefix(text)}"
 
 

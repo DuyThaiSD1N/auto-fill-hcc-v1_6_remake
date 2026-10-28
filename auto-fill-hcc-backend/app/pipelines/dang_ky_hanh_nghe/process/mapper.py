@@ -20,7 +20,7 @@ from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.dang_ky_hanh_nghe.process.schema import UI_COMP_BY_NAME
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
 
 
 def _by_name(fields: list[dict]) -> dict:

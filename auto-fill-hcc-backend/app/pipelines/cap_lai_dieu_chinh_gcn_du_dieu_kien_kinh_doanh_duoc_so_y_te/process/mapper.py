@@ -26,7 +26,7 @@ from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.p
     UI_COMP_BY_NAME,
 )
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
 
 # Tiền tố trình độ đứng trước tên người phụ trách chuyên môn trên Đơn / GPP ("DSĐH. Trần Thị Bích").
 _TITLE_PREFIX = re.compile(

@@ -45,7 +45,7 @@ def test_uy_quyen_to_chuc_sample():
     assert got["data[phoneNumber]"] == "0934862336"
     # FIX #4: địa chỉ lấy của chủ hồ sơ (Phú Thọ), KHÔNG phải người nộp (Đà Nẵng).
     assert got["data[province]"] == "Tỉnh Phú Thọ"
-    assert got["data[district]"] == "Bình Nguyên"
+    assert got["data[district]"] == "Xã Bình Nguyên"
     assert got["data[address]"] == "Khu Đồng Mố"
     # FIX #5: Nội dung yêu cầu = nội dung biến động trong đơn, không phải câu ghép mặc định.
     assert got["data[noidungyeucaugiaiquyet]"] == "Nhận chuyển nhượng"

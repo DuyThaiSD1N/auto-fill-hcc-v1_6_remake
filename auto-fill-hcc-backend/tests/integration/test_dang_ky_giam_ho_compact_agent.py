@@ -119,7 +119,7 @@ async def test_dang_ky_giam_ho_derives_iframe_fields(monkeypatch):
     assert d["cutru1"] == "Thường trú"
     assert d["noicutruA"] == "Tổ 22"
     assert d["tinhA"] == "Tỉnh Lai Châu"
-    assert d["xaA"] == "Phường Đông Phong"
+    assert d["xaA"] == "Phường Tân Phong"  # Đông Phong (Lai Châu) đã nhập vào Tân Phong
 
     assert d["hotenB"] == "BÙI GIA HOÀNG THỊNH"
     assert d["ngaysinhB"] == "04/08/2018"

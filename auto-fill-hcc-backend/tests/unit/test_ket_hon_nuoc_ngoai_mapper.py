@@ -30,6 +30,33 @@ def test_my_doi_thanh_hoa_ky_ca_quoc_tich_lan_noi_cu_tru():
     assert out["NoiCuTru_BenNu_NuocNgoai"]["quocGia"] == "Hoa Kỳ"
 
 
+def test_ho_chieu_nuoc_ngoai_chon_option_ho_chieu_khong_mo_o_ten_giay_to():
+    out = _values(_NU_NUOC_NGOAI)
+    assert out["LoaiGiayToDinhDanh_BenNu"] == "Hộ chiếu"
+    assert "TenGiayTo_BenNu" not in out
+
+
+def test_thieu_ten_giay_to_thi_nhan_ho_chieu_theo_dong_giay_to_tren_to_khai():
+    values = {k: v for k, v in _NU_NUOC_NGOAI.items() if k != "Nu_TenGiayTo"}
+    out = _values({**values, "ToKhaiNu_SoGiayTo": "Hộ chiếu số: A00000001 do Hoa Kỳ cấp"})
+    assert out["LoaiGiayToDinhDanh_BenNu"] == "Hộ chiếu"
+
+
+def test_giay_to_nuoc_ngoai_khac_van_chon_giay_to_khac_kem_ten():
+    out = _values({**_NU_NUOC_NGOAI, "Nu_TenGiayTo": "Chứng minh thư"})
+    assert out["LoaiGiayToDinhDanh_BenNu"] == mapper.FOREIGN_DOC_TYPE
+    assert out["TenGiayTo_BenNu"] == "Chứng minh thư"
+
+
+def test_nguoi_nuoc_ngoai_dan_toc_chon_khac_va_ghi_nguyen_van_theo_to_khai():
+    # Agent bỏ trống Nu_DanToc, chỉ còn cột tờ khai ghi "Hoa" (trùng tên dân tộc VN).
+    out = _values({**_NU_NUOC_NGOAI, "ToKhaiNu_DanToc": "Hoa"})
+    assert out["DanTocBenNu"] == mapper.DAN_TOC_KHAC
+    assert out["NhapDanTocBenNuKhac"] == "Hoa"
+    names = list(out)
+    assert names.index("NhapDanTocBenNuKhac") == names.index("DanTocBenNu") + 1
+
+
 def test_ten_nuoc_khong_co_trong_bang_giu_nguyen_khong_khop_mot_phan():
     out = _values({**_NU_NUOC_NGOAI, "Nu_QuocTich": "Ukraine",
                    "Nu_NoiCuTru": {"quocGia": "Ukraine", "diaChi": "Kyiv"}})

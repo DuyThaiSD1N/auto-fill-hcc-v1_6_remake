@@ -7,6 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.process.schema import UI_COMP_BY_NAME
@@ -100,7 +101,7 @@ def _area(value: Any) -> dict | None:
             out["tinh"], out["diaChi"] = parts[-1], parts[0]
         else:
             out["diaChi"] = parts[0]
-        return out
+        return remap_area(out, allow_diachi_fallback=True)
     if not isinstance(value, dict):
         return None
     out = {
@@ -112,7 +113,7 @@ def _area(value: Any) -> dict | None:
     # Hồ sơ cũ có thể còn tên phường An Hải Tây; danh mục hiện tại của cổng dùng Phường An Hải.
     if "da nang" in _fold(out["tinh"]) and _fold(out["xa"]) == "an hai tay":
         out["xa"] = "Phường An Hải"
-    return out if any(out.values()) else None
+    return remap_area(out, allow_diachi_fallback=True) if any(out.values()) else None
 
 
 def _province_label(value: Any) -> str | None:
@@ -120,11 +121,12 @@ def _province_label(value: Any) -> str | None:
     if not text:
         return None
     folded = _fold(text)
-    if folded.startswith("tinh ") or folded.startswith("thanh pho "):
+    if folded.startswith("thanh pho "):
         return text
     if folded.startswith("tp "):
         return re.sub(r"^TP\.?\s+", "Thành phố ", text, flags=re.IGNORECASE)
-    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+    folded = _fold(_strip_admin_prefix(text))
+    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
     return f"{'Thành phố' if folded in cities else 'Tỉnh'} {_strip_admin_prefix(text)}"
 
 

@@ -37,7 +37,7 @@ _PROC_TITLE = (
     "đất theo quy hoạch xây dựng chi tiết cho chủ đầu tư dự án có nhu cầu"
 )
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
 _ORG_MARKERS = ("cong ty", "doanh nghiep", "hop tac xa", "htx", "cty", "co phan", "tnhh", "co quan",
                 "xi nghiep", "tap doan", "chi nhanh", "ngan hang")
 _MOBILE_PREFIX = re.compile(r"^0[35789]\d{8}$")

@@ -66,9 +66,10 @@ GIẤY TỜ TÙY THÂN (số/ngày/nơi cấp/tên):
 DÂN TỘC (Nam_DanToc/Nu_DanToc): chỉ điền khi giấy tờ/tờ khai có ghi rõ, đối chiếu đúng người; ô dân tộc ghi
 tên một NƯỚC (ghi nhầm quốc tịch vào dân tộc) thì bỏ trống;
 không có thì để trống, KHÔNG mặc định. "H'Mông"/"Hmông"/"H Mông" → "Mông (Hmông)"; "Mông" → "Mông".
-  + Dân tộc của người NƯỚC NGOÀI giữ NGUYÊN VĂN như giấy tờ ghi ("Hán"/"汉", "Triều Tiên", "Đại Hòa"...).
-    TUYỆT ĐỐI KHÔNG quy về tên dân tộc Việt Nam tương đương ("Hán" → "Hoa" là SAI): mapper tự chọn
-    option "Khác" rồi ghi nguyên văn vào ô nhập bên cạnh.
+  + Dân tộc của người NƯỚC NGOÀI giữ NGUYÊN VĂN như giấy tờ/tờ khai ghi ("Hán"/"汉", "Hoa", "Triều Tiên",
+    "Đại Hòa"...). TUYỆT ĐỐI KHÔNG quy đổi sang tên khác ("Hán" → "Hoa" là SAI), nhưng giấy ghi sẵn "Hoa"
+    thì trả "Hoa" — KHÔNG bỏ trống. "Hoa" là tên dân tộc, không phải tên nước. Mapper tự chọn option
+    "Khác" rồi ghi nguyên văn vào ô nhập bên cạnh.
 
 SỐ LẦN KẾT HÔN: chỉ khi tờ khai ghi rõ cho từng cột nam/nữ → trả SỐ NGUYÊN (ghi bằng chữ như "đầu tiên",
 "lần một" → 1). Cột để trống thì bỏ qua.

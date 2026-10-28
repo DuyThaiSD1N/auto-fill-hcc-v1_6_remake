@@ -20,7 +20,7 @@ from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cong_bo_du_dk_tiem_chung.process.schema import UI_COMP_BY_NAME
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
 
 # Học hàm / chức danh chuyên môn hay đứng trước tên người đứng đầu cơ sở y tế ("BS CK1 Hoàng Việt Bắc").
 _TITLE_PREFIX = re.compile(

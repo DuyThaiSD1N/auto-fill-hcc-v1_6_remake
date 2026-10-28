@@ -73,6 +73,7 @@ for _side, _label in (("Nam", "bên nam"), ("Nu", "bên nữ")):
         {"name": f"ToKhai{_side}_HoTen", "desc": f"Họ tên {_label} CHÉP NGUYÊN VĂN từ tờ khai đăng ký kết hôn; không lấy từ giấy tờ tùy thân."},
         {"name": f"ToKhai{_side}_SoGiayTo", "desc": f"Số giấy tờ tùy thân {_label} CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ giấy tờ tùy thân."},
         {"name": f"ToKhai{_side}_NgaySinh", "desc": f"Ngày sinh {_label} trên tờ khai, dd/mm/yyyy; không lấy từ giấy tờ tùy thân."},
+        {"name": f"ToKhai{_side}_DanToc", "desc": f"Dân tộc {_label} CHÉP NGUYÊN VĂN từ dòng 'Dân tộc' của tờ khai (vd 'Kinh', 'Hoa', 'Hán'), kể cả người nước ngoài; không quy đổi."},
     ]
 
 ALLOWED = {f["name"] for f in FIELDS}

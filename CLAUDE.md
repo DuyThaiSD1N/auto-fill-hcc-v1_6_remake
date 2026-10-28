@@ -117,6 +117,12 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-10-28, sau commit "update code mới" 4e6bce2 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`11 failed, 3103 passed, 40 skipped, 5 errors`. Lại đúng 11 đỏ môi trường (4 heic + 7 v2 422);
+`test_registry_uses_ho_tro_mai_tang_process_pipeline` đã hết đỏ. Bản dán 4e6bce2 đưa 3 test của commit 11e46e3 về bản cũ
+(mai táng hưu trí, procedure_picker, assistant_flow) nên đã khôi phục lại; `test_khuyet_tat_compact_agent` chỉnh để nhận
+cảnh báo `SECTION_III_WARNING` khi đọc ảnh Mục III lỗi.
+
 Baseline ngày 2026-10-27, sau commit "update code" 60b7f96 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `12 failed, 3082 passed, 40 skipped, 5 errors`. Thêm 1 đỏ so với 2026-10-25:
 `test_registry_uses_ho_tro_mai_tang_process_pipeline` (BE 3e6e220 thêm mã "(1.001731)" vào label mai táng, test còn tên cũ);

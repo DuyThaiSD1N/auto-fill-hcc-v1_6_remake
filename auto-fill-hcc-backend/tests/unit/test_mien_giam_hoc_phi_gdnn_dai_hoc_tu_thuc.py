@@ -241,7 +241,7 @@ def test_thieu_don_lay_du_phong_giay_xac_nhan_va_khai_sinh():
 def test_noi_sinh_dia_danh_cu_quy_doi_sang_tinh_xa_hien_hanh():
     values = {**_HO_SO, "SinhVien_NoiSinh": {"tinh": "Bắc Giang", "huyen": "Lục Nam", "xa": "Tam Dị"}}
     by, _, warnings = _run(values, _ME_DANG_NHAP)
-    assert _val(by, "data[TinhThanhPho]") == "Tỉnh Bắc Ninh"
+    assert _val(by, "data[TinhThanhPho]") == "Thành phố Bắc Ninh"
     assert by["data[QuanHuyen]"]["comp"] == "dom-select"
     assert not any("Nơi sinh chưa có phường/xã" in w for w in warnings)
 

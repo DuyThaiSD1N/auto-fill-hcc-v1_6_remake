@@ -72,7 +72,7 @@ def _province_label(value: Any) -> str | None:
         return None
     folded = _fold(text)
     # Đã có tiền tố hành chính rồi → trả nguyên
-    if folded.startswith(("tinh ", "thanh pho ", "tp ")):
+    if folded.startswith(("thanh pho ", "tp ")):
         return text
     # Các thành phố trực thuộc Trung ương (bao gồm sau sáp nhập 2025)
     city_set = {
@@ -80,6 +80,7 @@ def _province_label(value: Any) -> str | None:
         "ho chi minh", "tp ho chi minh",
         # Huế trở thành thành phố trực thuộc TW từ 01/01/2025
         "hue",
+        "bac ninh",
     }
     bare = _fold(_strip_admin_prefix(text))
     is_city = bare in city_set or folded in city_set

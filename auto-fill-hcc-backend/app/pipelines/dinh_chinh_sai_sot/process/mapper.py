@@ -5,6 +5,7 @@ import unicodedata
 
 from app.pipelines.dinh_chinh_sai_sot.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 
 
@@ -40,9 +41,10 @@ def _province_label(value) -> str | None:
     if not text:
         return None
     folded = _fold(text)
-    if folded.startswith(("tinh ", "thanh pho ", "tp ")):
+    if folded.startswith(("thanh pho ", "tp ")):
         return text
-    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "tp ho chi minh", "hue"}
+    folded = _fold(_strip_admin_prefix(text))
+    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "tp ho chi minh", "hue", "bac ninh"}
     return f"{'Thành phố' if folded in city_markers else 'Tỉnh'} {_strip_admin_prefix(text)}"
 
 
@@ -58,7 +60,7 @@ def _area(value) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    return remap_area(out, allow_diachi_fallback=True) if any(out.values()) else None
 
 
 def _full_address(area: dict) -> str | None:

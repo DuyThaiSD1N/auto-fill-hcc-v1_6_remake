@@ -77,7 +77,7 @@ def test_thua_dat_chi_phuong_tinh_van_dien():
         "ChuHoSo_HoTen": "NGUYỄN VĂN A", "NguoiNop_HoTen": "NGUYỄN VĂN A",
         "ThuaDat_DiaChi": {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Song Liễu", "diaChi": ""},
     })
-    assert out["data[province2]"] == "Tỉnh Bắc Ninh"
+    assert out["data[province2]"] == "Thành phố Bắc Ninh"
     assert out["data[district2]"] == "Phường Song Liễu"
     assert "data[diaChiThuaDat]" not in out  # không có chi tiết → bỏ trống, không bịa
 
