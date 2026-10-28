@@ -428,6 +428,20 @@ async def test_so_dien_thoai_thieu_so_thi_noi_ro_nghe_duoc_may_so(monkeypatch):
     assert "apply" not in str(reply.actions)
 
 
+async def test_so_dien_thoai_du_10_so_nhung_khong_bat_dau_bang_0_thi_bao_sai_dang(monkeypatch):
+    conv = _conv()
+    field = {**FIELD, "key": "citizenPhone", "name": "citizenPhone", "kind": "text", "label": "Số điện thoại",
+             "section": "Thông tin người nộp", "required": True, "options": []}
+    await _ask(conv, field)
+    _answer(monkeypatch, "unclear", "2372784529")
+    reply = await _turn(conv, "action", "field_review_answer", {"text": "hai ba bảy hai bảy tám bốn năm hai chín"})
+    assert "phải **bắt đầu bằng số 0**" in reply.display_md and "cần đủ" not in reply.display_md
+    assert "bắt đầu bằng số không" in reply.tts_text
+    assert "apply" not in str(reply.actions)
+    assert agent.phone_format_wrong("2372784529", agent.PHONE_LENGTHS)
+    assert not agent.phone_format_wrong("237278452", agent.PHONE_LENGTHS), "thiếu số vẫn là câu đọc thiếu"
+
+
 async def _ask(conv, field):
     await _turn(conv, "action", "fill_report", {"filled": 30, "review": STATS})
     await _turn(conv, "action", "field_review_start")

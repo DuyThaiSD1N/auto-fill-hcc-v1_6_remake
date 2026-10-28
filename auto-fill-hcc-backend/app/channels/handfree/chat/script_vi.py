@@ -2362,6 +2362,13 @@ FR_DIGITS_SHORT = {
           "từng số giúp em.",
     "tts": "Dạ em mới nghe được {count} số, ô {label_tts} cần đủ {need} số. Công dân đọc lại chậm từng số giúp em ạ.",
 }
+# Ô số điện thoại: đọc đủ số chữ số nhưng không bắt đầu bằng số 0 → sai dạng, không phải thiếu số.
+FR_PHONE_FORMAT = {
+    "md": "Em nghe được **{heard}**, nhưng **{label}** phải **bắt đầu bằng số 0** ạ. Công dân đọc lại cả số, bắt đầu "
+          "từ số 0 giúp em.",
+    "tts": "Dạ em nghe được số này, nhưng {label_tts} phải bắt đầu bằng số không. Công dân đọc lại cả số, bắt đầu từ số "
+           "không giúp em ạ.",
+}
 FR_DATE_HINT = " (đủ ngày, tháng, năm, vd 12/04/1978)"
 FR_YEAR_HINT = " (ngày, tháng, năm, hoặc chỉ năm, vd 1978)"
 FR_PARTIAL_DATE_HINT = " (ngày tháng năm, tháng năm, hoặc chỉ năm, vd 05/03/1978, 03/1978 hoặc 1978)"

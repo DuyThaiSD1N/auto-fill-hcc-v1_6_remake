@@ -441,7 +441,8 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                       "vay vốn tự xây hoặc sửa chữa nhà ở theo chính sách nhà ở xã hội",
                                       "đăng ký nhà ở xã hội ở bắc ninh"],
     # "Đăng ký lại" = sổ hộ tịch GỐC ở cơ quan đã mất/hư hỏng; sổ còn mà chỉ cần bản sao là trích lục.
-    "khai-sinh-dang-ky-lai": ["đăng ký lại khai sinh", "khai sinh lại vì sổ hộ tịch gốc bị mất",
+    "khai-sinh-dang-ky-lai": ["đăng ký lại khai sinh", "mất giấy khai sinh muốn làm lại", "làm lại giấy khai sinh",
+                              "khai sinh lại vì sổ hộ tịch gốc bị mất",
                               "đã đăng ký khai sinh trước đây nhưng cơ quan không còn lưu sổ",
                               "làm lại khai sinh do cả bản chính lẫn sổ gốc đều mất"],
     # CHƯA TỪNG đăng ký khai sinh nhưng đã có giấy tờ cá nhân; từng đăng ký mà mất sổ gốc là đăng ký lại.
@@ -575,9 +576,10 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   Chỉ xin tiền mai táng (không nhắc khai tử) → xem quy tắc hai thủ tục mai táng bên dưới.
 - ĐĂNG KÝ LẠI (khai sinh, kết hôn, khai tử) = việc đã đăng ký trước đây nhưng SỔ HỘ TỊCH GỐC ở cơ
   quan bị mất/hư hỏng. Sổ gốc còn, chỉ cần BẢN SAO/trích lục → trích lục hộ tịch. Cải chính/thay
-  đổi/bổ sung hộ tịch = SỬA thông tin đã đăng ký. Chỉ nói "mất giấy khai sinh" mà không rõ sổ gốc
-  còn hay mất → unclear với trích lục và đăng ký lại khai sinh; "mất giấy kết hôn" tương tự → unclear
-  với trích lục và đăng ký lại kết hôn.
+  đổi/bổ sung hộ tịch = SỬA thông tin đã đăng ký. MẤT / hỏng / thất lạc GIẤY KHAI SINH (muốn làm lại,
+  xin lại, hỏi phải làm sao) → chọn thẳng ĐĂNG KÝ LẠI KHAI SINH, không hỏi lại; chỉ chọn trích lục khi câu
+  nói rõ xin BẢN SAO / trích lục, hoặc nói sổ gốc ở cơ quan vẫn còn. "Mất giấy kết hôn" mà không rõ sổ
+  gốc còn hay mất → unclear với trích lục và đăng ký lại kết hôn.
 - "Nhận cha, mẹ, con" = xác nhận quan hệ cha/mẹ/con RUỘT. Nhận/xin con NUÔI là thủ tục khác, không
   có trong danh sách → không chọn "nhận cha, mẹ, con".
 - BỐN thủ tục của cổng Bộ Y tế RẤT DỄ LẪN: "trợ cấp HƯU TRÍ xã hội" là chế độ cho NGƯỜI CAO TUỔI

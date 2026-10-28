@@ -219,7 +219,9 @@ def _skipped(conv: dict, key: str) -> tuple[str, str]:
 
 def _unclear(conv: dict, st: dict, key: str, field: dict, answer):
     label = _display(_owner_field(conv, key) or {})
-    if agent.id_lengths(field) and answer.value:
+    if agent.id_lengths(field) and answer.value and agent.phone_format_wrong(answer.value, agent.id_lengths(field)):
+        lead = _say(vi.FR_PHONE_FORMAT, label=label, label_tts=label, heard=answer.value)
+    elif agent.id_lengths(field) and answer.value:
         lead = _say(vi.FR_DIGITS_SHORT, label=label, label_tts=label, count=len(answer.value),
                     heard=answer.value, need="10")
     else:

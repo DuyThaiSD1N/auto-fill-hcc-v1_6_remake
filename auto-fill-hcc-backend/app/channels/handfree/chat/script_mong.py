@@ -67,6 +67,8 @@ PROCEDURE_HMONG = {
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": "Nyiaj pab tsheb thauj neeg tuag mus hlawv (Đà Nẵng)",
     "dang-ky-lap-dat-su-dung-nuoc-sach": "Cuv npe txuas dej huv thiab ntsuas dej (Lai Châu)",
     "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
+    # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
+    "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
@@ -286,6 +288,7 @@ CHIP_HMONG = {
     "🗑️ Xóa dữ liệu": "Rho tawm",
     # Tờ khai điện tử mở bằng nút "Khai tờ khai" (declarationEforms).
     "✍️ Điền tờ khai": "Sau daim foos",
+    "✍️ Điền cơ quan thực hiện": "Sau qhov chaw ua",
     "🔁 Điền lại tờ khai đang mở": "Sau dua daim foos tab tom qhib",
     # Nhãn động (không nằm trong literal "label": ... của flow):
     "Kiểm tra lại trang hiện tại": "Xyuas dua nplooj no",
@@ -1635,4 +1638,62 @@ TPM_AUTO_RESULT_DEFAULT = {
 TPM_DONE_REMIND = {
     "md": "Pej xeem nias lub pob hauv qab no mus ntxiv.",
     "tts": "Pej xeem nias lub pob hauv qab no mus ntxiv.",
+}
+
+
+# ── Cổng DVC Bộ Công an (đăng ký tạm trú) ──
+# BẢN NHÁP ghép từ chữ đã có trong file (xaiv = chọn, xeev = tỉnh, zos = xã/phường, qhov chaw ua = nơi làm thủ tục /
+# cơ quan thực hiện, nyob ib ntus = ở tạm, kos lub thawv = tích ô, los yog = hoặc) — chờ người bản ngữ soát. Tên nút
+# trên trang / thẻ giữ chữ Việt như các câu Mông khác; {missing}, {commit} là chữ Việt nên không nhúng.
+BCA_AGENCY_ASK = {
+    "md": ("Pej xeem cuv npe nyob ib ntus ntawm xeev thiab zos twg? Pej xeem xaiv xeev ces xaiv zos hauv daim "
+           "npav hauv qab, ces nias Điền cơ quan thực hiện kom kuv xaiv pab ntawm nplooj ntawv."),
+    "tts": "Pej xeem xaiv xeev thiab zos qhov chaw cuv npe nyob ib ntus hauv qab, ces nias Sau qhov chaw ua.",
+}
+BCA_AGENCY_ASK_PREFILLED = {
+    "md": ("Pej xeem cuv npe nyob ib ntus ntawm {ward}, {province} — puas yog? Yog lawm ces nias Điền cơ quan "
+           "thực hiện kom kuv xaiv pab ntawm nplooj ntawv; tsis yog ces xaiv dua hauv daim npav hauv qab no."),
+    "tts": ("Pej xeem cuv npe nyob ib ntus ntawm {ward}, {province} — puas yog? Yog lawm ces nias Sau qhov chaw "
+            "ua kom kuv xaiv pab."),
+}
+BCA_AGENCY_FILLED = {
+    "md": "Kuv xaiv qhov chaw ua {ward}, {province} tiav lawm.",
+    "tts": "Kuv xaiv qhov chaw ua tiav lawm.",
+}
+BCA_AGENCY_FILLING = {
+    "md": "Kuv tab tom xaiv {ward}, {province} rau qhov chaw ua.",
+    "tts": "Kuv tab tom xaiv {ward}, {province}.",
+}
+BCA_AGENCY_FILL_FAILED = {
+    "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv rau {place}. Pej xeem xaiv dua hauv daim npav hauv qab, los yog "
+           "xaiv kiag ntawm qhov chaw ua hauv nplooj ntawv."),
+    "tts": "Kuv xaiv tsis tau. Pej xeem xaiv dua hauv qab, los yog xaiv kiag ntawm nplooj ntawv.",
+}
+BCA_AGENCY_NEED_WARD = {
+    "md": "Pej xeem xaiv ntxiv zos hauv {province}.",
+    "tts": "Pej xeem xaiv ntxiv zos hauv {province}.",
+}
+BCA_AGENCY_READY = {
+    "md": "Xaiv {ward}, {province} lawm. Nias Điền cơ quan thực hiện kom kuv xaiv ntawm nplooj ntawv.",
+    "tts": "Pej xeem nias Sau qhov chaw ua kom kuv xaiv ntawm nplooj ntawv.",
+}
+BCA_AGENCY_REMIND = {
+    "md": "Pej xeem xaiv xeev thiab zos hauv daim npav Nơi làm thủ tục saum toj, ces nias Điền cơ quan thực hiện.",
+    "tts": "Pej xeem xaiv xeev thiab zos hauv daim npav saum toj, ces nias Sau qhov chaw ua.",
+}
+BCA_PORTAL_OPEN = {
+    "md": "Kuv tab tom qhib nplooj ntawv {procedure} ntawm Cổng dịch vụ công Bộ Công an.",
+    "tts": "Kuv tab tom qhib nplooj ntawv.",
+}
+BCA_QR_LOGIN_GUIDE = {
+    "md": "Pej xeem qhib app VNeID hauv xov tooj, xaiv Quét QR, luam tus QR ntawm npo kom nkag.",
+    "tts": "Pej xeem qhib app VNeID, xaiv luam QR, ces luam tus QR ntawm npo kom nkag tau.",
+}
+COMMIT_TICKED = {
+    "md": "Kuv kos lub thawv lees paub lawm. Pej xeem nias Nộp hồ sơ.",
+    "tts": "Kuv kos tiav lawm. Pej xeem nias Nộp hồ sơ.",
+}
+COMMIT_TICK_FAILED = {
+    "md": "Kuv kos tsis tau lub thawv lees paub. Pej xeem kos lub thawv no hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
+    "tts": "Kuv kos tsis tau. Pej xeem kos lub thawv lees paub hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
 }

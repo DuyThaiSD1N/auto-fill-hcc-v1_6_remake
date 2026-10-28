@@ -1,10 +1,12 @@
 """Đính kèm cho thủ tục Thăm viếng mộ liệt sĩ.
 
-Bước "Thành phần hồ sơ" có 3 ô cố định + "Thêm giấy tờ":
-- STT1 (fixed-slot 0): hồ sơ/trích lục liệt sĩ, giấy báo tin mộ, giấy xác nhận nơi hy sinh (Mẫu 44).
-- STT2 (fixed-slot 1): giấy chứng nhận gia đình/thân nhân liệt sĩ, quyết định trợ cấp thờ cúng.
-- STT3 (fixed-slot 2): Đơn đề nghị/Giấy giới thiệu thăm viếng (Mẫu 31/42).
-- CCCD, Bằng TQGC → target "new" ("Thêm giấy tờ").
+Bước "Thành phần hồ sơ" có 3 ô cố định; thứ tự dòng khác nhau giữa các lần cổng cấu hình nên extension khớp dòng
+theo chữ (slotKeywords, đã fold dấu), slotIndex (theo thứ tự cổng hiện tại) chỉ là dự phòng cho bản extension chưa
+đọc slotKeywords:
+- STT1: Hồ sơ/trích lục liệt sĩ, giấy báo tin mộ, giấy xác nhận nơi hy sinh (Mẫu 44).
+- STT2: Đơn đề nghị/Giấy giới thiệu thăm viếng (Mẫu 31/42).
+- STT3: Giấy chứng nhận gia đình/thân nhân liệt sĩ, quyết định trợ cấp thờ cúng.
+- CCCD, Bằng TQGC, giấy chưa rõ loại → cùng ô Đơn (cổng không phải lúc nào cũng có nút "Thêm giấy tờ").
 """
 
 import time
@@ -30,20 +32,23 @@ SLOTS: list[dict[str, Any]] = [
         "slotKey": _HO_SO_LS,
         "slotIndex": 0,
         "slotName": "Giấy báo tin mộ liệt sĩ hoặc giấy xác nhận nơi liệt sĩ hy sinh hoặc trích lục hồ sơ liệt sĩ",
+        "slotKeywords": ["giay bao tin mo liet si", "trich luc ho so liet si"],
         "detectedType": "Hồ sơ/trích lục liệt sĩ",
         "documentName": "Hồ sơ/trích lục liệt sĩ",
     },
     {
         "slotKey": _CHUNG_NHAN_TN,
-        "slotIndex": 1,
+        "slotIndex": 2,
         "slotName": "Giấy chứng nhận gia đình hoặc thân nhân liệt sĩ; quyết định trợ cấp thờ cúng liệt sĩ",
+        "slotKeywords": ["giay chung nhan gia dinh hoac than nhan liet si", "tro cap tho cung liet si"],
         "detectedType": "Giấy chứng nhận thân nhân liệt sĩ",
         "documentName": "Giấy chứng nhận thân nhân liệt sĩ",
     },
     {
         "slotKey": _DON,
-        "slotIndex": 2,
+        "slotIndex": 1,
         "slotName": "Đơn đề nghị theo Mẫu số 31 Phụ lục I Nghị định số 131/2021/NĐ-CP",
+        "slotKeywords": ["don de nghi theo mau so 31", "mau so 31 phu luc i"],
         "detectedType": "Đơn đề nghị/Giấy giới thiệu thăm viếng mộ liệt sĩ",
         "documentName": "Đơn đề nghị/Giấy giới thiệu thăm viếng mộ liệt sĩ",
     },
@@ -160,22 +165,17 @@ def _build_fixed_item(file: dict, file_index: int, slot_key: str) -> dict:
         "slotKey": slot["slotKey"],
         "slotIndex": slot["slotIndex"],
         "slotName": slot["slotName"],
+        "slotKeywords": slot["slotKeywords"],
     }
 
 
-def _build_new_item(file: dict, file_index: int, doc_type: str) -> dict:
-    cfg = _NEW_DOCS[doc_type]
-    file_name = str(file.get("name") or f"file-{file_index + 1}")
-    return {
-        "fileIndex": file_index,
-        "fileName": file_name,
-        "documentName": cfg["documentName"],
-        "componentName": cfg["documentName"],
-        "target": "new",
-        "componentIndex": None,
-        "needsAddComponent": True,
-        "detectedType": cfg["detectedType"],
-    }
+def _build_extra_item(file: dict, file_index: int, doc_type: str) -> dict:
+    """Giấy kèm thêm (CCCD, Bằng TQGC, chưa rõ loại) đính chung ô Đơn."""
+    item = _build_fixed_item(file, file_index, _DON)
+    cfg = _NEW_DOCS.get(doc_type) or {"documentName": "Giấy tờ kèm theo", "detectedType": "Giấy tờ kèm theo"}
+    item["documentName"] = cfg["documentName"]
+    item["detectedType"] = cfg["detectedType"]
+    return item
 
 
 def build_plan_items(
@@ -200,12 +200,12 @@ def build_plan_items(
             items.append(_build_fixed_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
+        items.append(_build_extra_item(file, idx, doc_type))
         if doc_type in _NEW_DOCS:
-            items.append(_build_new_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công.")
+        warnings.append(f"Chưa xác định được loại giấy tờ của file '{file_name}' — đã đính vào dòng Đơn, cán bộ kiểm lại.")
         classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
 
     return items, warnings, classified

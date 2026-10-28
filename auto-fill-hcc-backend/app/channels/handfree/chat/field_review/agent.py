@@ -110,6 +110,11 @@ def _digits_ok(digits: str, lengths: tuple[int, ...]) -> bool:
     return len(digits) in lengths
 
 
+def phone_format_wrong(digits: str, lengths: tuple[int, ...]) -> bool:
+    """Ô số điện thoại: đủ số chữ số nhưng không bắt đầu bằng 0 — lỗi dạng số, không phải đọc thiếu số."""
+    return lengths in (PHONE_LENGTHS, MOBILE_LENGTHS) and len(digits) in lengths and not digits.startswith("0")
+
+
 def _bare(text: str) -> str:
     return _UNIT_PREFIX.sub("", fold(text)).strip()
 

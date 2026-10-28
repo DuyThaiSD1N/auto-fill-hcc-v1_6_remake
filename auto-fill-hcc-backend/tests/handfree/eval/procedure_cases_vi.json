@@ -324,10 +324,7 @@
    "group": "mo_ho",
    "text": "mất giấy khai sinh rồi",
    "expect": {
-    "unclear": [
-     "trich-luc-ks",
-     "khai-sinh-dang-ky-lai"
-    ]
+    "pick": "khai-sinh-dang-ky-lai"
    }
   },
   {

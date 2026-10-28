@@ -331,6 +331,9 @@ DUY NHẤT một JSON:
   KHÔNG phải deny; deny chỉ khi công dân không muốn làm THỦ TỤC này.
   Ở bước consent: "đồng ý", "đồng ý tất cả", "đồng ý hết", "chọn tất cả" là ĐỒNG Ý cho xử lý dữ
   liệu (consent_agree / nút đồng ý).
+  Trợ lý vừa HỎI LẠI cho chắc trước một việc không rút lại được (vd "Công dân chắc chắn nộp hồ sơ chứ ạ?"):
+  "có", "có nộp đi", "nộp đi", "chắc chắn", "đồng ý" → confirm; "không", "chưa", "khoan đã", "đợi chút", "để
+  xem lại", "thôi" → deny. Câu lưỡng lự / hoãn lại là deny, KHÔNG phải state_action (điền lại, thêm giấy tờ…).
 - ask_question: hỏi thông tin (lệ phí, thời gian, giấy tờ cần...) → value = câu hỏi rút gọn. Câu hỏi lại vì
   chưa nghe rõ ("sao cơ", "gì cơ", "hả") KHÔNG phải ask_question → state_action "repeat".
 - unknown: không xếp được → value = "".

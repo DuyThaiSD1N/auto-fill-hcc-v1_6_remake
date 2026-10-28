@@ -58,6 +58,10 @@ _ATTACH_MODE_PROCEDURES = {
     "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-chu-ky-nguoi-dich-ctv",
 }
 _ATTACH_ACTION_LEASE_SECONDS = 30
+# Khoảng không gửi lại lệnh chọn cơ quan (xem _guide_login_on_page) — đủ cho chọn tỉnh, xã, Đồng ý, Nộp trực tuyến.
+_AGENCY_DISPATCH_GAP_SECONDS = 20
+# Chữ sidebar tự điền khi lệnh chọn cơ quan không nhận được trả lời nào (sidebar.js select_agency).
+_AGENCY_NO_RESPONSE = "trang chưa sẵn sàng"
 # Số lần tự mở lại link kê khai khi cổng liên thông đưa về trang chủ (sau đăng nhập).
 _LIEN_THONG_HOME_REOPEN_MAX = 3
 
@@ -864,6 +868,10 @@ async def handle_turn(
     pending_submit = conv.get("voice_submit_confirm")
     if intent.kind != "event":
         conv.pop("voice_submit_confirm", None)  # lượt nói/bấm khác = bỏ câu hỏi xác nhận (sự kiện nền thì giữ)
+    if voice_send.endswith(_VOICE_CONFIRMED):
+        # Nút nộp ĐÃ xác nhận chỉ chạy bằng cú bấm thật hoặc lượt "có" (nhánh confirm dưới). Lời nói mà bộ phân loại
+        # gán vào nút này (từng gặp: "không" → chọn nút nộp duy nhất trên màn hình → nộp luôn) → hỏi xác nhận lại.
+        voice_send = voice_send.removesuffix(_VOICE_CONFIRMED)
     if voice_send in _VOICE_CONFIRM_SENDS:
         return _voice_submit_confirm(conv, voice_send)
     if isinstance(pending_submit, dict) and intent.kind in {"confirm", "deny"}:
@@ -981,10 +989,16 @@ def update_voice_options(conv: dict, reply: Reply) -> None:
     còn trên màn hình); sang bước khác → bỏ, nút cũ không còn đúng bước nữa.
     """
     items = []
+    asking_confirm = False
     hmong = (conv.get("lang") or "vi") == "hmong"
     for chip in reply.chips:
         send = str((chip or {}).get("send") or "")
         if not send or send in _VOICE_BLOCKED_SENDS or (hmong and send in _VOICE_CONFIRM_SENDS):
+            continue
+        # Nút nộp của câu hỏi xác nhận: trả lời bằng lời là "có" / "không" (confirm / deny ở handle_turn), không phải
+        # chọn nút — để nó trong danh sách thì "không" bị gán thành chọn nút nộp duy nhất trên màn hình.
+        if send.endswith(_VOICE_CONFIRMED):
+            asking_confirm = True
             continue
         item = {"label": str(chip.get("label") or ""), "send": send, "chip": dict(chip)}
         if chip.get("phase"):
@@ -994,7 +1008,8 @@ def update_voice_options(conv: dict, reply: Reply) -> None:
         if isinstance(card, dict):
             items += [i for i in _card_voice_items(card) if i["send"] not in _VOICE_BLOCKED_SENDS]
     state = conv.get("state", "greet")
-    if items:
+    if items or asking_confirm:
+        # Câu hỏi xác nhận: xoá cả nút cũ của bước (nút nộp chưa xác nhận) — lời đáp chỉ còn có / không.
         conv["voice_options"] = {"state": state, "items": items}
     elif (conv.get("voice_options") or {}).get("state") != state:
         conv["voice_options"] = None
@@ -1721,6 +1736,8 @@ def _start_guide_login(conv: dict) -> Reply:
     # Mốc "đã nói" của chặng mở-trang/đăng-nhập — mỗi câu trạng thái chỉ nói 1 lần.
     conv["milestones"] = []
     conv["agency_done"] = False
+    conv["agency_dispatched_at"] = 0
+    conv["agency_no_response"] = 0
     conv["consent"] = None  # thủ tục mới bắt đầu = xin phép lại từ đầu
     conv["owner_context"] = {}
     conv["owner_fields"] = []
@@ -2575,6 +2592,12 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         r.actions = [action]
         return r
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):
+        # Lệnh chọn cơ quan đang chạy: trang đổi nhiều nhịp (danh sách kết quả hiện ra…) nên watcher báo trạng thái
+        # MỚI giữa chừng — gửi lệnh lần hai là lần đó chạy đúng lúc trang chuyển đi, không ai trả lời → sidebar báo
+        # "trang chưa sẵn sàng" dù lần đầu đã chọn đúng. Lượt đọc lại trang do công dân yêu cầu vẫn gửi.
+        now = datetime.now(timezone.utc).timestamp()
+        if not manual_check and now - float(conv.get("agency_dispatched_at") or 0) < _AGENCY_DISPATCH_GAP_SECONDS:
+            return Reply()
         # Khối chọn cơ quan còn trên trang = vẫn ở trang chi tiết (formKind lúc này có thể
         # dương tính giả từ ô tìm kiếm) → chọn cơ quan TRƯỚC; FE hiện dòng status, không bubble.
         # agencyProvinceOnly (cổng bộ ngành): ward RỖNG → engine FE tự bỏ qua ô xã, bấm
@@ -2601,6 +2624,7 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
                                        province=action["province"], card=card))
                 return Reply()
             action["cardIncludes"] = card
+        conv["agency_dispatched_at"] = now
         r.actions = [action]
         return r
     if proc.get("maePortal") and ctx.get("maeAgencyBlock"):
@@ -2905,13 +2929,25 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
         return _guide_login_on_page(conv, proc, loc, {"agencyBlock": True})
     if intent.kind == "event" and intent.value == "agency_selected":
         conv["agency_done"] = True
+        conv["agency_dispatched_at"] = 0
+        conv["agency_no_response"] = 0
         # Không tin loggedIn chụp trước điều hướng, kể cả sidebar cũ còn gửi payload này.
         # DVCQG có phiên không đồng nghĩa cổng đích có phiên SSO. Chờ page_status thật:
         # trang login → QR_LOGIN_GUIDE; trang hồ sơ → chuyển bước nhận giấy tờ.
         conv["needed_login"] = False
         return Reply()
     if intent.kind == "event" and intent.value == "agency_failed":
-        return Reply(*_fmt(vi.AGENCY_SELECT_FAILED, error=intent.payload.get("value") or "không rõ",
+        if conv.get("agency_done"):
+            return Reply()  # báo muộn của một lệnh trùng — lần chọn trước đã xong, trang đang sang kê khai
+        error = str(intent.payload.get("value") or "")
+        conv["agency_dispatched_at"] = 0
+        if error == _AGENCY_NO_RESPONSE and not conv.get("agency_no_response"):
+            # Không ai trả lời (trang đang chuyển đi, hoặc khối chọn cơ quan chưa vẽ xong) chưa phải là chọn hỏng:
+            # chọn lại một lần, im lặng. Trang đã sang chỗ khác thì lệnh này không chạy, watcher của trang mới dẫn tiếp.
+            conv["agency_no_response"] = 1
+            return _guide_login_on_page(conv, proc, loc, {"agencyBlock": True})
+        conv["agency_no_response"] = 0
+        return Reply(*_fmt(vi.AGENCY_SELECT_FAILED, error=error or "không rõ",
                            ward=_agency_ward_display(proc, loc), province=loc.get("province") or ""))
     if intent.kind == "event" and intent.value == "agency_card_missing":
         # Tỉnh/xã + Đồng ý đã xong, chỉ không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".

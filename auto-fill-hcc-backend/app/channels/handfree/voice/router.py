@@ -34,6 +34,9 @@ async def voice_config(user: dict = Depends(require_auth)):
         langs.append("hmong")
     return {
         "asr": bool(settings.asr_grpc_uri and settings.asr_grpc_token),
+        # /ws/asr nhận nhiều lượt nói trên một WS (start/cancel/warm/ping) → extension mới giữ sẵn mic + WS, bấm mic
+        # chỉ còn truyền âm thanh. Extension cũ không đọc khoá này, vẫn mở / đóng WS mỗi lượt.
+        "asrWarm": True,
         "tts": bool(settings.tts_ws_url and settings.tts_api_key),
         "langs": langs,
         "rate": settings.asr_rate,

@@ -452,6 +452,21 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert not bn_noxh.get("agencyProvinceOnly")
     assert not bn_noxh.get("agencySoFirst")
     assert "wizard" not in bn_noxh and "maePortal" not in bn_noxh
+    # 1.115476: cùng thủ tục đính chính 1.115436 nhưng như 1.115470 — chỉ chọn Tỉnh, không gạt "Sở".
+    bn_dinh_chinh_476 = procedures.pop("dinh-chinh-gcn-da-cap-1115476-bac-ninh")
+    assert bn_dinh_chinh_476["samePageAttach"] is True
+    assert bn_dinh_chinh_476["agencyProvince"] == "Bắc Ninh"
+    assert bn_dinh_chinh_476["agencyProvinceOnly"] is True
+    assert not bn_dinh_chinh_476.get("agencySoFirst")
+    assert bn_dinh_chinh_476["provinceOnly"] == ["bacninh"]
+    assert "wizard" not in bn_dinh_chinh_476 and "maePortal" not in bn_dinh_chinh_476
+
+    # Đăng ký tạm trú (Cổng DVC Bộ Công an): một trang, đính kèm cùng trang, hỏi trước khi đính.
+    bca_tam_tru = procedures.pop("dang-ky-tam-tru")
+    assert bca_tam_tru.get("flowProfile") is None
+    assert bca_tam_tru["bcaPortal"] is True and bca_tam_tru["samePageAttach"] is True
+    assert bca_tam_tru["askBeforeAttach"] is True
+    assert "wizard" not in bca_tam_tru and "maePortal" not in bca_tam_tru
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -583,7 +598,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +5 đợt 26/10: "dang-ky-noi-quy-lao-dong" (2.001955, Sở Nội vụ), "cap-gcn-diem-tro-choi-dien-tu-cong-cong"
     # (1.013792, Bộ VHTTDL), "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang" (3.000721, Đà Nẵng),
     # "dang-ky-lap-dat-su-dung-nuoc-sach" (3.000598) + "chuyen-doi-ten-hop-dong-nuoc-sach" (3.000600, Lai Châu).
-    assert len(procedures) == 105
+    # +1 cổng Bộ Công an "dang-ky-tam-tru" (1.004194); +1 cổng Bắc Ninh "dinh-chinh-gcn-da-cap-1115476-bac-ninh".
+    assert len(procedures) == 107
 
     for procedure in procedures:
         key = procedure["key"]

@@ -7,19 +7,19 @@
 # đích chạy. Server đích chỉ cần Docker + Docker Compose — KHÔNG cần mã nguồn,
 # KHÔNG cần git, KHÔNG cần build lại.
 #
-# Script này CHỈ build + đẩy file (image tarball + compose.prod.yml) LÊN server đích.
-# Việc NẠP image và CHẠY thì bấm ./server_up.sh (bạn tạo sẵn) trên server đích.
+# Script build + đẩy file (image tarball + compose.prod.yml) LÊN server đích, rồi chạy
+# ./server_up.sh (có sẵn trên server đích) để NẠP image và CHẠY bản mới.
 # Cách chuyển: docker save → scp (không cần registry riêng).
 #
 # DÙNG:
 #   TARGET=user@server-dich ./scripts/deploy_to_server.sh
-#   # rồi trên server đích:  cd <TARGET_DIR> && ./server_up.sh
 #
 # TÙY CHỌN (biến môi trường):
 #   TARGET_DIR   thư mục đặt compose/.env ở server đích   (mặc định /opt/autofill-hcc)
 #   PLATFORM     kiến trúc server đích                    (mặc định linux/amd64)
 #   SEND_ENV=1   gửi luôn ./.env sang đích (secret!)      (mặc định 0 — đặt .env sẵn ở đích)
 #   BUILD=0      bỏ qua bước build, dùng image đang có     (mặc định 1)
+#   UP=0         chỉ đẩy file, không chạy server_up.sh     (mặc định 1)
 # =============================================================================
 set -euo pipefail
 
@@ -28,6 +28,7 @@ TARGET_DIR="${TARGET_DIR:-/opt/autofill-hcc}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 SEND_ENV="${SEND_ENV:-0}"
 BUILD="${BUILD:-1}"
+UP="${UP:-1}"
 BE_IMG="autofill-hcc-be:latest"
 FE_IMG="autofill-hcc-fe:latest"
 MONITOR_FE_IMG="autofill-hcc-monitor-fe:latest"   # FE thứ 2 (Web Monitor :12007) — compose.prod.yml có build:./monitor-fe
@@ -62,6 +63,12 @@ else
 fi
 
 rm -f "$TARBALL"
-echo "✅ Đã đẩy xong. GIỜ TRÊN SERVER ĐÍCH chạy:"
-echo "     cd $TARGET_DIR && ./server_up.sh"
-echo "   (server_up.sh sẽ: docker load → compose up -d → ps → dọn tarball)"
+if [ "$UP" = "1" ] && ssh "$TARGET" "test -x '$TARGET_DIR/server_up.sh'"; then
+  echo "==> Chạy server_up.sh trên server đích (docker load → compose up -d → ps → dọn tarball)"
+  ssh -t "$TARGET" "cd '$TARGET_DIR' && ./server_up.sh"
+  echo "✅ Đã deploy bản mới lên $TARGET:$TARGET_DIR"
+else
+  [ "$UP" = "1" ] && echo "  ⚠  Server đích chưa có $TARGET_DIR/server_up.sh (hoặc chưa chmod +x) — chưa chạy bản mới."
+  echo "✅ Đã đẩy xong. GIỜ TRÊN SERVER ĐÍCH chạy:"
+  echo "     cd $TARGET_DIR && ./server_up.sh"
+fi

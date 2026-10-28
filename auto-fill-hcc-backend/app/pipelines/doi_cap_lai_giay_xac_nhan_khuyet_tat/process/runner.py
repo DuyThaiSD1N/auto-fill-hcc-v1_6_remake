@@ -41,5 +41,8 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
             {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
         ]
+    else:
+        # Kết quả dự phòng từ OCR văn bản hay mất cột Có/Không của bảng tích.
+        res.setdefault("errors", []).append(vision.SECTION_III_WARNING)
     res["fields"] = mapper.enrich(res["fields"], options)
     return res

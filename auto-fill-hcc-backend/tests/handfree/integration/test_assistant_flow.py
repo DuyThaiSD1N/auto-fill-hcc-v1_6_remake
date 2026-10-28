@@ -621,8 +621,8 @@ def _stub_llm(monkeypatch, response):
 
 def _pid(key):
     """Số thứ tự agent chọn thủ tục đưa LLM (resolve không có conv → danh sách mọi tỉnh)."""
-    from app.channels.handfree.chat.procedure_picker.agent import procedures_for
-    return [p["key"] for p in procedures_for("")].index(key) + 1
+    from app.channels.handfree.procedure_registry import public_list
+    return [p["key"] for p in public_list()].index(key) + 1
 
 
 def _stub_picker(monkeypatch, response):
@@ -649,7 +649,6 @@ async def test_resolve_llm_pick_procedure_validate(monkeypatch):
     _stub_picker(monkeypatch, '{"result":"pick","id":999,"candidates":[]}')  # số ngoài danh sách
     i = await resolve("làm cái gì đó", "greet")
     assert i.kind == "procedure_unclear" and i.payload["candidates"] == []
-
 
 
 @pytest.mark.asyncio

@@ -662,8 +662,12 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
         lengths = agent.id_lengths(field)
         if lengths and answer.value:
             need = "10" if lengths == agent.PHONE_LENGTHS else " hoặc ".join(str(n) for n in lengths)
-            r = Reply(*_say(vi.FR_DIGITS_SHORT, label=field["label"], label_tts=_tts(field["label"]),
-                            count=len(answer.value), heard=answer.value, need=need))
+            if agent.phone_format_wrong(answer.value, lengths):
+                r = Reply(*_say(vi.FR_PHONE_FORMAT, label=field["label"], label_tts=_tts(field["label"]),
+                                heard=answer.value))
+            else:
+                r = Reply(*_say(vi.FR_DIGITS_SHORT, label=field["label"], label_tts=_tts(field["label"]),
+                                count=len(answer.value), heard=answer.value, need=need))
             r.actions = [{"type": "listen_after_tts"}]
             r.chips = _chips(st)
             return r

@@ -26,6 +26,8 @@ _JPEG_QUALITY = 85
 _MAX_PAGES = 20
 _MAX_TOKENS = 2500
 _TIMEOUT_S = 300
+# Cùng ảnh, model đôi khi trả kết quả suy biến (mọi dòng "co"); đọc lại 1 lần thường ra đúng.
+_MAX_ATTEMPTS = 2
 
 ROWS = (
     "1", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6",
@@ -36,6 +38,9 @@ ROWS = (
     "6", "6.1", "6.2", "6.3",
 )
 _VALID_MUC_DO = {"THD", "CTG", "KTHD", "KXD"}
+SECTION_III_WARNING = (
+    "Chưa đọc chắc được bảng Mục III (dạng khuyết tật, mức độ) từ ảnh — cán bộ soát lại các ô Có/Không và mức độ."
+)
 
 PROMPT = """Bạn đọc ẢNH các trang của hồ sơ "Đơn đề nghị xác định, xác định lại mức độ khuyết tật" (Mẫu số 01, Thông tư 01/2019/TT-BLĐTBXH).
 Chỉ trích mục "III. Thông tin về tình trạng khuyết tật", gồm 2 bảng. Bỏ qua mọi trang/giấy tờ khác (CCCD, bệnh án, phiếu của trường...).
@@ -81,18 +86,43 @@ def _page_images(files: list[dict]) -> list[bytes]:
     return images
 
 
+def _row_values(rows: dict) -> dict[str, str]:
+    values = {str(k): str(v).strip().lower() for k, v in rows.items() if str(k) in ROWS}
+    # Dòng nhóm in đậm hay để trống trên giấy, model lại hay tích nhầm nó. Nhóm "co" mà MỌI dòng con "khong"
+    # là tự mâu thuẫn; nhóm trống mà không dòng con nào "co" và có dòng con "khong" thì cổng vẫn cần chọn
+    # "Không" ở dòng nhóm → cả hai theo các dòng con.
+    for parent in [r for r in ROWS if "." not in r]:
+        kids = [values.get(c) for c in ROWS if c.startswith(parent + ".")]
+        if values.get(parent) == "co" and all(v == "khong" for v in kids):
+            values[parent] = "khong"
+        elif values.get(parent) in (None, "trong") and "co" not in kids and "khong" in kids:
+            values[parent] = "khong"
+    return values
+
+
+def is_degenerate(data: dict) -> bool:
+    """Mọi dòng con cùng "co" — kiểu trả lời suy biến model thỉnh thoảng ra với cùng ảnh, không phải tờ khai thật."""
+    rows = data.get("dang_khuyet_tat") if isinstance(data, dict) else None
+    if not isinstance(rows, dict):
+        return False
+    children = [r for r in ROWS if "." in r]
+    return all(str(rows.get(r) or "").strip().lower() == "co" for r in children)
+
+
 def to_compact_fields(data: dict) -> dict | None:
-    """JSON model → ba field compact của pipeline. Thiếu khung bảng → None (coi như không đọc được)."""
+    """JSON model → field compact của pipeline. Thiếu khung bảng → None (coi như không đọc được)."""
     rows = data.get("dang_khuyet_tat") if isinstance(data, dict) else None
     muc_do = data.get("muc_do") if isinstance(data, dict) else None
     if not isinstance(rows, dict) or not isinstance(muc_do, dict):
         return None
     if not any(str(k) in ROWS for k in rows):
         return None
-    marked = [str(k) for k, v in rows.items() if str(k) in ROWS and str(v).strip().lower() == "co"]
+    values = _row_values(rows)
+    marked = [k for k in ROWS if values.get(k) == "co"]
     return {
         "KhuyetTat_DanhMuc": [f"kt{k}" for k in marked if "." not in k],
         "KhuyetTat_ChiTiet": [f"kt{k.replace('.', '_')}" for k in marked if "." in k],
+        "KhuyetTat_Khong": [f"kt{k.replace('.', '_')}" for k in ROWS if values.get(k) == "khong"],
         "MucDo_HoatDong": {
             str(k): str(v).strip().upper()
             for k, v in muc_do.items()
@@ -111,18 +141,23 @@ async def read_section_iii(files: list[dict]) -> dict | None:
                 {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(b).decode()}}
                 for b in images
             ]
-            res = await ocr_qwen.chat(
-                [{"role": "user", "content": content}],
-                max_tokens=_MAX_TOKENS,
-                timeout_s=_TIMEOUT_S,
-                ocr_server=True,
-            )
             span.attrs["pages"] = len(images)
-            span.attrs["usage"] = res.get("usage")
-            if res.get("finish_reason") == "length":
-                raise ValueError("JSON bị cắt (chạm max_tokens)")
-            data = extract_json_block(res.get("content") or "")
-            mon.output("vision_muc_iii", data)
+            for attempt in range(_MAX_ATTEMPTS):
+                res = await ocr_qwen.chat(
+                    [{"role": "user", "content": content}],
+                    max_tokens=_MAX_TOKENS,
+                    timeout_s=_TIMEOUT_S,
+                    ocr_server=True,
+                )
+                span.attrs["usage"] = res.get("usage")
+                if res.get("finish_reason") == "length":
+                    raise ValueError("JSON bị cắt (chạm max_tokens)")
+                data = extract_json_block(res.get("content") or "")
+                mon.output("vision_muc_iii" if attempt == 0 else f"vision_muc_iii_{attempt + 1}", data)
+                if not is_degenerate(data or {}):
+                    break
+            else:
+                raise ValueError("Mọi dòng con đều 'co' sau %d lần đọc" % _MAX_ATTEMPTS)
             parsed = to_compact_fields(data or {})
             if parsed is None:
                 raise ValueError("JSON không đúng khung dang_khuyet_tat/muc_do")

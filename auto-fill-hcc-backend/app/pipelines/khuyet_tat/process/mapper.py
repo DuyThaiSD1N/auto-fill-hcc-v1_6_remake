@@ -373,6 +373,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     categories = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_DanhMuc"))}
     details = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_ChiTiet"))}
     categories.update(code.split("_", 1)[0] for code in details if "_" in code)
+    # "Không" chỉ có từ lượt đọc ảnh. Radio con chỉ hiện khi nhóm cha "Có" → nhóm không "Có" thì chỉ
+    # tích "Không" ở dòng nhóm; dòng con "Không" chỉ phát trong nhóm "Có".
+    no_codes = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_Khong"))}
     for code in sorted(categories):
         name = DISABILITY_RADIO_FIELDS.get(code)
         if name:
@@ -381,6 +384,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         name = DISABILITY_RADIO_FIELDS.get(code)
         if name:
             add(name, "co")
+    for code in sorted(no_codes - categories - details):
+        parent = code.split("_", 1)[0]
+        if ("_" in code) != (parent in categories):
+            continue
+        name = DISABILITY_RADIO_FIELDS.get(code)
+        if name:
+            add(name, "khong")
 
     muc_do = values.get("MucDo_HoatDong")
     if isinstance(muc_do, dict):

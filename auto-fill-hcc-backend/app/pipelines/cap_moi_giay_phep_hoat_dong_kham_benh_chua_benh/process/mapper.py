@@ -223,15 +223,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(address_name, _address_detail(area))
 
     # --- CHỦ HỒ SƠ = người đại diện cơ sở đề nghị ---
-    name = _text(values.get("ChuHoSo_HoTen"))
-    identity = _identity(values.get("ChuHoSo_SoDinhDanh"))
-    birthday = _date(values.get("ChuHoSo_NgaySinh"))
-    gender = _text(values.get("ChuHoSo_GioiTinh"))
-    id_date = _date(values.get("ChuHoSo_NgayCap"))
-    issuer = _issuer(values.get("ChuHoSo_NoiCap"))
-    residence = _area(values.get("ChuHoSo_ThuongTru"))
-    phone = _phone(values.get("ChuHoSo_DienThoai")) or _phone(values.get("CoSo_DienThoai"))
-    email = _email(values.get("ChuHoSo_Email"))
+    # Hồ sơ chỉ có CCCD của tài khoản nộp (không giấy nào của chủ hồ sơ): LLM theo <nguoi_nop_context> trích
+    # vào NguoiNop_* và để trống ChuHoSo_* → chủ hồ sơ chính là người có CCCD đó, lấy NguoiNop_* làm nguồn.
+    owner_from_submitter = not _text(values.get("ChuHoSo_HoTen")) and not _identity(
+        values.get("ChuHoSo_SoDinhDanh")
+    ) and bool(_text(values.get("NguoiNop_HoTen")) or _identity(values.get("NguoiNop_SoDinhDanh")))
+    p = "NguoiNop_" if owner_from_submitter else "ChuHoSo_"
+    name = _text(values.get(f"{p}HoTen"))
+    identity = _identity(values.get(f"{p}SoDinhDanh"))
+    birthday = _date(values.get(f"{p}NgaySinh"))
+    gender = _text(values.get(f"{p}GioiTinh"))
+    id_date = _date(values.get(f"{p}NgayCap"))
+    issuer = _issuer(values.get(f"{p}NoiCap"))
+    residence = _area(values.get(f"{p}ThuongTru"))
+    phone = _phone(values.get(f"{p}DienThoai")) or _phone(values.get("CoSo_DienThoai"))
+    email = _email(values.get(f"{p}Email"))
 
     if not name:
         warnings.append("Thiếu họ tên chủ hồ sơ (người đại diện cơ sở) từ CCCD/GCN đăng ký/Đơn Mẫu 02.")
@@ -246,8 +252,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     ctx_identity = _identity(
         ctx.get("applicantIdentityNumber") or ctx.get("ownerIdentityNumber") or ctx.get("identityNumber")
     )
-    sub_name = _text(values.get("NguoiNop_HoTen")) or ctx_name
-    sub_id = _identity(values.get("NguoiNop_SoDinhDanh")) or ctx_identity
+    if owner_from_submitter:
+        # NguoiNop_* đã thành chủ hồ sơ → so với tài khoản đăng nhập để chốt tự nộp / nộp thay.
+        sub_name, sub_id = ctx_name, ctx_identity
+    else:
+        sub_name = _text(values.get("NguoiNop_HoTen")) or ctx_name
+        sub_id = _identity(values.get("NguoiNop_SoDinhDanh")) or ctx_identity
 
     is_nop_thay = False
     if sub_id and identity:

@@ -176,6 +176,27 @@ async def test_noi_khong_thi_chua_nop_va_giu_nut():
     assert reply.chips == [chip] and not reply.actions
 
 
+async def test_noi_khong_khong_bao_gio_bi_gan_thanh_bam_nut_nop(monkeypatch):
+    """Ca thật: hỏi xác nhận nộp, công dân nói "không" → bộ phân loại chọn nút nộp DUY NHẤT trên màn hình → nộp luôn.
+    Nút nộp đã xác nhận không được nằm trong danh sách nút nói được; lỡ có lời nói gán vào nó thì hỏi lại, không nộp."""
+    conv = _conv("done")
+    chip = {"label": "💾 Lưu và nộp hồ sơ", "send": "__action:tpm_submit", "solid": True, "cta": True}
+    conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
+    asked = await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
+    flow.update_voice_options(conv, asked)
+    assert intents.voice_buttons(conv, "done") == [], "câu hỏi xác nhận chỉ nhận có / không bằng lời"
+    # Bộ phân loại nhận lời nói thì chỉ còn confirm / deny / … — không thể ra nút nộp.
+    _stub(monkeypatch, intents, '{"kind":"button","value":"1"}')
+    i = await intents.resolve("không", "done", conv)
+    assert i.kind != "action"
+    # Lỡ có lượt lời nói mang đúng lệnh nộp đã xác nhận → hỏi lại, không nộp.
+    confirmed = '__action:tpm_submit:{"voiceConfirmed":true}'
+    again = await flow.handle_turn(conv, Intent("action", "tpm_submit", {"voiceConfirmed": True,
+                                                                        "_voice_button": confirmed}))
+    assert not any(a.get("type") == "guided_submit" for a in again.actions)
+    assert again.display_md.startswith("Công dân chắc chắn **nộp hồ sơ**")
+
+
 async def test_bo_phan_loai_chon_nut_ra_dung_lenh_cua_nut(monkeypatch):
     conv = _conv("owner_waiting_next")
     conv["voice_options"] = {"state": "owner_waiting_next", "items": [

@@ -4,7 +4,7 @@ Bước "Thành phần hồ sơ" có 3 ô cố định + "Thêm giấy tờ":
 - STT1 (fixed-slot 0): Văn bản ủy quyền.
 - STT2 (fixed-slot 1): Đơn đề nghị Mẫu số 18.
 - STT3 (fixed-slot 2): Bản sao chứng thực từ Bằng "Tổ quốc ghi công".
-- CCCD, Trích lục khai tử → target "new" ("Thêm giấy tờ").
+- CCCD, Trích lục khai tử, giấy chưa rõ loại → cùng ô Đơn (cổng không phải lúc nào cũng có "Thêm giấy tờ").
 """
 
 import time
@@ -30,6 +30,7 @@ SLOTS: list[dict[str, Any]] = [
         "slotKey": _UY_QUYEN,
         "slotIndex": 0,
         "slotName": "Văn bản ủy quyền",
+        "slotKeywords": ["van ban uy quyen"],
         "detectedType": "Văn bản ủy quyền",
         "documentName": "Văn bản ủy quyền thờ cúng liệt sĩ",
     },
@@ -37,6 +38,7 @@ SLOTS: list[dict[str, Any]] = [
         "slotKey": _DON,
         "slotIndex": 1,
         "slotName": "Đơn đề nghị Mẫu số 18 Phụ lục I Nghị định số 131/2021/NĐ-CP",
+        "slotKeywords": ["mau so 18 phu luc i", "don de nghi theo mau so 18"],
         "detectedType": "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ",
         "documentName": "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18)",
     },
@@ -44,6 +46,7 @@ SLOTS: list[dict[str, Any]] = [
         "slotKey": _BANG,
         "slotIndex": 2,
         "slotName": 'Bản sao chứng thực từ Bằng "Tổ quốc ghi công"',
+        "slotKeywords": ["to quoc ghi cong"],
         "detectedType": 'Bằng "Tổ quốc ghi công"',
         "documentName": 'Bằng "Tổ quốc ghi công"',
     },
@@ -151,22 +154,17 @@ def _build_fixed_item(file: dict, file_index: int, slot_key: str) -> dict:
         "slotKey": slot["slotKey"],
         "slotIndex": slot["slotIndex"],
         "slotName": slot["slotName"],
+        "slotKeywords": slot["slotKeywords"],
     }
 
 
-def _build_new_item(file: dict, file_index: int, doc_type: str) -> dict:
-    cfg = _NEW_DOCS[doc_type]
-    file_name = str(file.get("name") or f"file-{file_index + 1}")
-    return {
-        "fileIndex": file_index,
-        "fileName": file_name,
-        "documentName": cfg["documentName"],
-        "componentName": cfg["documentName"],
-        "target": "new",
-        "componentIndex": None,
-        "needsAddComponent": True,
-        "detectedType": cfg["detectedType"],
-    }
+def _build_extra_item(file: dict, file_index: int, doc_type: str) -> dict:
+    """Giấy kèm thêm (ngoài các ô cố định) và giấy chưa rõ loại đính chung ô Đơn."""
+    item = _build_fixed_item(file, file_index, _DON)
+    cfg = _NEW_DOCS.get(doc_type) or {"documentName": "Giấy tờ kèm theo", "detectedType": "Giấy tờ kèm theo"}
+    item["documentName"] = cfg["documentName"]
+    item["detectedType"] = cfg["detectedType"]
+    return item
 
 
 def build_plan_items(
@@ -191,12 +189,12 @@ def build_plan_items(
             items.append(_build_fixed_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
+        items.append(_build_extra_item(file, idx, doc_type))
         if doc_type in _NEW_DOCS:
-            items.append(_build_new_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công.")
+        warnings.append(f"Chưa xác định được loại giấy tờ của file '{file_name}' — đã đính vào dòng Đơn, cán bộ kiểm lại.")
         classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
 
     return items, warnings, classified

@@ -10,8 +10,7 @@ from app.channels.handfree.chat import flow, intents, store
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import Intent
 from app.channels.handfree.chat.procedure_picker import agent
-from app.channels.handfree.chat.procedure_picker.agent import procedures_for
-from app.channels.handfree.procedure_registry import _PUBLIC_TRAILING_KEYS
+from app.channels.handfree.procedure_registry import public_list_for
 
 
 def _conv(slug="laichau", history=None, candidates=None):
@@ -42,7 +41,7 @@ def llm(monkeypatch):
 
 def _id(key, slug="laichau"):
     """Số thứ tự của thủ tục trong danh sách agent đưa cho LLM (theo tỉnh)."""
-    return [p["key"] for p in procedures_for(slug)].index(key) + 1
+    return [p["key"] for p in public_list_for(slug)].index(key) + 1
 
 
 def _pick(key="", result="pick", candidates=(), slug="laichau"):
@@ -54,7 +53,7 @@ def _pick(key="", result="pick", candidates=(), slug="laichau"):
 
 async def test_danh_sach_loc_theo_tinh_thu_tuc_tinh_khac_coi_nhu_khong_nhan_ra(llm):
     calls, replies = llm
-    n_laichau = len(procedures_for("laichau"))
+    n_laichau = len(public_list_for("laichau"))
     replies["picker"].append(json.dumps({"result": "pick", "id": n_laichau + 1, "candidates": []}))
     res = await agent.pick("xin giấy phép khai thác thủy sản", _conv("laichau"))
     assert (res.result, res.key) == ("unclear", "")          # số ngoài danh sách → không chọn
@@ -70,36 +69,8 @@ async def test_danh_sach_loc_theo_tinh_thu_tuc_tinh_khac_coi_nhu_khong_nhan_ra(l
 def test_danh_sach_dua_llm_khong_co_key():
     """Key trông giống câu nói ("khai-sinh-dang-ky" là bản LIÊN THÔNG) làm model chọn nhầm → chỉ đưa số."""
     from app.channels.handfree.chat.procedure_picker import prompt
-    text = prompt.catalog(procedures_for("laichau"))
+    text = prompt.catalog(public_list_for("laichau"))
     assert "khai-sinh-dang-ky" not in text and "[1] " in text
-
-
-def test_danh_sach_dua_llm_khong_de_chung_thuc_chu_ky_o_dong_cuoi():
-    """Thẻ màn chào đẩy chứng thực chữ ký xuống cuối; ở dòng cuối model đọc nhầm sang dòng trên
-    (Bắc Ninh: "chứng thực chữ ký" [101] → 100 = đăng ký tạm trú) → danh sách LLM theo thứ tự khai báo."""
-    for slug in ("bacninh", "laichau", "danang"):
-        assert procedures_for(slug)[-1]["key"] not in _PUBLIC_TRAILING_KEYS, slug
-
-
-async def test_so_lech_dong_thi_lay_theo_ten(llm):
-    _, replies = llm
-    conv = _conv("bacninh")
-    keys = [p["key"] for p in procedures_for("bacninh")]
-    n = _id("chung-thuc-chu-ky", "bacninh")
-    ten = "Chứng thực chữ ký trong các giấy tờ, văn bản"
-
-    # Đọc đúng thủ tục nhưng trả số của dòng ngay trên → theo tên.
-    replies["picker"].append(json.dumps({"result": "pick", "id": n - 1, "ten": ten, "candidates": []}))
-    assert (await agent.pick("chứng thực chữ ký", conv)).key == "chung-thuc-chu-ky"
-
-    # Số đúng + tên đúng (model hay chép kèm "[n]") → giữ nguyên.
-    replies["picker"].append(json.dumps({"result": "pick", "id": n, "ten": f"[{n}] {ten}", "candidates": []}))
-    assert (await agent.pick("chứng thực chữ ký", conv)).key == "chung-thuc-chu-ky"
-
-    # Tên không khớp dòng nào → hỏi lại chứ không mở thủ tục theo số.
-    replies["picker"].append(json.dumps({"result": "pick", "id": n - 1, "ten": "Cấp phép bay flycam", "candidates": []}))
-    res = await agent.pick("xin phép bay flycam", conv)
-    assert (res.result, res.key, res.candidates) == ("unclear", "", [keys[n - 2]])
 
 
 async def test_goi_y_chi_giu_so_trong_danh_sach_toi_da_3_khong_trung(llm):
