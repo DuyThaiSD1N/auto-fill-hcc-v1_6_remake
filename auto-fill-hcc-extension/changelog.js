@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25.8",
+    date: "28/10/2026",
+    items: [
+      "Đăng ký hộ kinh doanh và doanh nghiệp (cổng ĐKKD): trên máy chậm, trợ lý chờ trang ổn định và kiểm tra lại từng ô trước khi bấm Lưu, điền bù ô bị cổng xoá; sau khi Lưu kiểm tra lại rồi mới sang trang kế, trang nào chưa đủ sẽ được báo ở cuối.",
+    ],
+  },
+  {
     version: "1.25.7",
     date: "28/10/2026",
     items: [

@@ -320,3 +320,19 @@ test("Đính kèm tự khai lại loại khi sidebar HkdOnline chưa dựng CtlA
   assert.match(source, /Sidebar chưa hiển thị loại tài liệu\. Em đang kiểm tra và khai lại/);
   assert.doesNotMatch(source, /✓ Đã khai loại\. Hãy bấm 1 mục trong danh sách/);
 });
+
+test("máy yếu: đọc lại ô trước khi Lưu và sau khi Lưu mới sang trang kế", async () => {
+  const { H } = loadCore();
+  const fields = [
+    { name: "ctl00$C$NAMEFld", comp: "dom-input", value: "Hộ kinh doanh Mẫu" },
+    { name: "ctl00$C$EMPTYFld", comp: "dom-input", value: "" },
+    { name: "__businessLines", comp: "dom-input", value: "x" },
+  ];
+  // Ô chưa render (không thấy trên DOM) tính là thiếu TRƯỚC khi Lưu, nhưng sau khi Lưu thì bỏ qua.
+  assert.deepEqual(Array.from(H.businessFieldsMissing(fields), (f) => f.name), ["ctl00$C$NAMEFld"]);
+  assert.equal(H.businessFieldsMissing(fields, { postSave: true }).length, 0);
+  const still = await H.ensureBusinessFieldsFilled(fields, "test");
+  assert.deepEqual(Array.from(still, (f) => f.name), ["ctl00$C$NAMEFld"]);
+  assert.match(source, /verifyBusinessPageAfterSave\(st, targetKey, verifyFields\)/);
+  assert.doesNotMatch(source, /await sleep\(800\); \/\/ để form "dirty"/);
+});

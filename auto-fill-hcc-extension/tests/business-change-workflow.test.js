@@ -87,6 +87,31 @@ const citySel = fakeSelect(CITY, [["", ""], ["68", "Tỉnh Lâm Đồng (cũ)"],
   console.log("business change workflow: address cascade re-chooses province on loose match passed");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
 
+// Máy yếu: trước khi Lưu phải đọc lại DOM — ô hồ sơ có giá trị mà select đang trống/đứng ở
+// "-- Chọn --" là chưa điền được; ô không thấy trên DOM chỉ tính thiếu TRƯỚC khi Lưu.
+(async () => {
+  const H = sandbox.window.__HCC__;
+  const TYPE = "ctl00$C$TYPE_IDFld";
+  const REASON = "ctl00$C$REASON_IDFld";
+  fakeSelect(TYPE, [["", ""], ["1", "Loại A"]], "1");
+  fakeSelect(REASON, [["0", "-- Chọn --"], ["7", "Khác"]], "0");
+  const fields = [
+    { name: TYPE, comp: "dom-select", value: "Loại A" },
+    { name: REASON, comp: "dom-select", value: "Khác" },
+    { name: "ctl00$C$NOTE_TXTFld", comp: "dom-input", value: "ghi chú" },
+    { name: "ctl00$C$EMPTY_TXTFld", comp: "dom-input", value: "" },
+    { name: "__businessLines", comp: "dom-input", value: "x" },
+  ];
+  assert.deepEqual(Array.from(H.businessFieldsMissing(fields), (f) => f.name), [REASON, "ctl00$C$NOTE_TXTFld"]);
+  assert.deepEqual(Array.from(H.businessFieldsMissing(fields, { postSave: true }), (f) => f.name), [REASON]);
+  // fillFormStandard giả không điền được gì → hết lượt điền bù vẫn trả lại đúng ô còn trống.
+  const still = await H.ensureBusinessFieldsFilled(fields.slice(0, 2), "test");
+  assert.deepEqual(Array.from(still, (f) => f.name), [REASON]);
+  fakeSelects.get(REASON).value = "7";
+  assert.equal((await H.ensureBusinessFieldsFilled(fields.slice(0, 2), "test")).length, 0);
+  console.log("business change workflow: verify filled fields before save passed");
+})().catch((error) => { console.error(error); process.exitCode = 1; });
+
 const cases = [
   ["ctl00_C_myWizard_LblQuestion1", "Chọn loại đăng ký trực tuyến", "select-registration"],
   ["ctl00_C_myWizard_Label2", "Tìm kiếm Hộ kinh doanh để tiến hành đăng ký thay đổi", "search-business"],

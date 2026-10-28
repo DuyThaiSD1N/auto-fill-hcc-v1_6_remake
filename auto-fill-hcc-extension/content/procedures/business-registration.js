@@ -416,14 +416,173 @@
       window.addEventListener("beforeunload", onLeave, { once: true });
       window.addEventListener("pagehide", onLeave, { once: true });
       try { btn.click(); } catch (e) { /* ignore */ }
+      // Máy yếu: từ lúc bấm tới lúc trình duyệt bắt đầu rời trang có thể quá 2-3s (validator của cổng
+      // chạy trên main thread đang bận). Hết hạn sớm là coi nhầm "bị chặn" rồi điền lại + bấm Lưu lần
+      // hai trong khi postback lần đầu vẫn đang bay.
       setTimeout(() => {
         if (done) return;
         done = true;
         window.removeEventListener("beforeunload", onLeave);
         window.removeEventListener("pagehide", onLeave);
         resolve(false);
-      }, 2600);
+      }, 5000);
     });
+  }
+
+  // ===================== XÁC NHẬN ĐÃ ĐIỀN TRƯỚC KHI LƯU / SANG TRANG =====================
+  // Trên máy yếu, các mốc chờ cứng (sleep 300-800ms) không đủ: postback AJAX của ô AutoPostBack chưa
+  // về đã bấm Lưu, hoặc khối vừa điền bị cổng render lại xoá trắng ngay sau khi điền. Nên trước khi
+  // Lưu phải: CHỜ form đứng yên → ĐỌC LẠI từng ô trên DOM → điền bù ô còn trống → lặp tới khi đủ.
+  // Sau khi Lưu tải lại trang cũng đọc lại một lượt: còn ô trống hay validator báo lỗi thì điền + Lưu
+  // lại một lần trước khi sang trang kế.
+  const FORM_QUIET_MS = 700;
+  const FORM_QUIET_TIMEOUT = 10000;
+  const FIELD_VERIFY_ROUNDS = 3;
+  const VERIFIABLE_COMPS = new Set(["dom-input", "dom-date", "dom-datetime", "raw", "dom-select", "dom-radio"]);
+
+  /** Cổng đang chạy postback AJAX: UpdateProgress của ScriptManager đang hiện. */
+  function businessAsyncPostbackBusy() {
+    return Array.from(document.querySelectorAll('[id*="UpdateProgress"]')).some(businessNodeVisible);
+  }
+
+  /**
+   * Chờ trang tải xong, không còn postback AJAX và form không đổi DOM trong FORM_QUIET_MS.
+   * Chỉ theo dõi childList (cổng render lại = thay node); đổi class tô màu của extension không tính.
+   */
+  async function waitBusinessFormQuiet(timeout = FORM_QUIET_TIMEOUT) {
+    const started = Date.now();
+    const left = () => timeout - (Date.now() - started);
+    if (document.readyState !== "complete") {
+      await waitFor(() => document.readyState === "complete", Math.max(0, left()), 150);
+    }
+    const target = document.forms?.namedItem?.("aspnetForm") || document.querySelector("form") || document.body;
+    if (!target || typeof MutationObserver !== "function") return;
+    let lastChange = Date.now();
+    const observer = new MutationObserver(() => { lastChange = Date.now(); });
+    try { observer.observe(target, { childList: true, subtree: true }); } catch (e) { return; }
+    try {
+      while (left() > 0) {
+        if (Date.now() - lastChange >= FORM_QUIET_MS && !businessAsyncPostbackBusy()) return;
+        await sleep(150);
+      }
+      console.warn("[FillAll] form chưa đứng yên sau", timeout, "ms — tiếp tục");
+    } finally {
+      observer.disconnect();
+    }
+  }
+
+  function businessSelectEmpty(sel) {
+    const text = foldBusinessPageText(sel.selectedOptions?.[0]?.textContent || "").replace(/^[-\s]+/, "");
+    return !String(sel.value || "").trim() || text.startsWith("chon ") || text === "chon"
+      || text.includes("vui long chon");
+  }
+
+  /**
+   * Ô hồ sơ có giá trị mà DOM đang TRỐNG. `postSave`: trang vừa Lưu tải lại — ô không thấy trên DOM thì
+   * bỏ qua (cổng có thể hiện dạng nhãn sau khi lưu); còn trước khi Lưu, không thấy ô = chưa render kịp
+   * nên vẫn tính là thiếu.
+   */
+  function businessFieldsMissing(fields, { postSave = false } = {}) {
+    const missing = [];
+    for (const f of fields || []) {
+      if (!f || !VERIFIABLE_COMPS.has(f.comp) || f.clear || /^__/.test(f.name || "")) continue;
+      if (f.value === undefined || f.value === null || String(f.value).trim() === "") continue;
+      const names = fieldCandidates(f);
+      if (f.comp === "dom-radio") {
+        const radios = names.flatMap((n) => Array.from(document.getElementsByName(n) || []))
+          .filter((r) => r.type === "radio");
+        if (!radios.length) { if (!postSave) missing.push(f); continue; }
+        if (radios.every((r) => r.disabled)) continue;
+        if (!radios.some((r) => r.checked)) missing.push(f);
+        continue;
+      }
+      const el = f.comp === "dom-select" ? findStandardSelect(names) : findStandardInput(names);
+      if (!el) { if (!postSave) missing.push(f); continue; }
+      if (el.disabled || el.type === "hidden") continue;
+      const empty = f.comp === "dom-select" ? businessSelectEmpty(el) : !String(el.value || "").trim();
+      if (empty) missing.push(f);
+    }
+    return missing;
+  }
+
+  /** Chữ lỗi của validator ASP.NET/ValidationSummary đang hiện trên trang. */
+  function businessValidationErrors() {
+    const nodes = document.querySelectorAll(
+      'span[id*="Validator"], [id*="ValidationSummary"], .validation-summary-errors, .field-validation-error');
+    return Array.from(nodes)
+      .filter(businessNodeVisible)
+      .map((node) => norm(node.textContent))
+      .filter(Boolean);
+  }
+
+  /**
+   * Chờ form yên → đọc lại → điền bù ô trống, tối đa FIELD_VERIFY_ROUNDS lượt. Ô địa bàn AutoPostBack
+   * điền bù bằng cascade (từng cấp chờ postback), ô thường bằng fillFormStandard.
+   * Trả về các field VẪN trống sau mọi lượt (rỗng = đã xác nhận đủ).
+   */
+  async function ensureBusinessFieldsFilled(fields, label = "") {
+    let missing = [];
+    for (let round = 0; round <= FIELD_VERIFY_ROUNDS; round += 1) {
+      await waitBusinessFormQuiet();
+      missing = businessFieldsMissing(fields);
+      if (!missing.length || round === FIELD_VERIFY_ROUNDS) break;
+      console.warn(`[FillAll] ${label}: ${missing.length} ô còn trống sau khi điền → điền bù (lượt ${round + 1}):`,
+        missing.map((f) => f.name));
+      const area = missing.filter((f) => isPostbackAddressField(f));
+      const plain = missing.filter((f) => !isPostbackAddressField(f));
+      if (plain.length) { try { await fillFormStandard(plain); } catch (e) { /* ignore */ } }
+      // Cascade theo TỪNG khối địa chỉ (cùng tiền tố control): một trang có thể có vài khối (trụ sở,
+      // thuế, người đại diện) mà fillAddressCascade chỉ nhận một ô mỗi cấp.
+      const blocks = new Map();
+      for (const f of area) {
+        const prefix = String(f.name || "").replace(/[^$]+$/, "");
+        blocks.set(prefix, [...(blocks.get(prefix) || []), f]);
+      }
+      for (const block of blocks.values()) {
+        try { await fillAddressCascade(block); } catch (e) { /* ignore */ }
+      }
+    }
+    if (missing.length) {
+      console.warn(`[FillAll] ${label}: vẫn trống sau ${FIELD_VERIFY_ROUNDS} lượt điền bù:`, missing.map((f) => f.name));
+    }
+    return missing;
+  }
+
+  /** Ghi nhận trang chưa xác nhận đủ để báo cán bộ ở cuối phiên (không chặn cả luồng). */
+  function noteUnverifiedPage(st, pageKey, count) {
+    const label = BUSINESS_PAGE_LABELS[pageKey] || pageKey;
+    st.unverifiedPages = (Array.isArray(st.unverifiedPages) ? st.unverifiedPages : [])
+      .filter((p) => p.label !== label);
+    st.unverifiedPages.push({ label, count });
+  }
+
+  function unverifiedPagesText(list) {
+    if (!Array.isArray(list) || !list.length) return "";
+    return "\n⚠ Chưa xác nhận đủ: " + list.map((p) => p.count ? `${p.label} (${p.count} ô)` : p.label).join(", ")
+      + " — kiểm tra lại các ô tô đỏ.";
+  }
+
+  /**
+   * Vừa Lưu xong trang tải lại: đọc lại trang trước khi sang trang kế. Trả TRUE = đã xác nhận (đi tiếp),
+   * FALSE = đã đưa trang về pha điền để điền + Lưu lại (người gọi chạy lại stepFillAll).
+   */
+  async function verifyBusinessPageAfterSave(st, targetKey, fields) {
+    if (detectBusinessPageKey().pageKey !== targetKey) return true; // cổng đã chuyển trang → không đọc được
+    await waitBusinessFormQuiet();
+    const errors = businessValidationErrors();
+    const missing = businessFieldsMissing(fields, { postSave: true });
+    if (!errors.length && !missing.length) return true;
+    console.warn("[FillAll] sau khi Lưu trang", targetKey, "chưa đạt:", { errors, missing: missing.map((f) => f.name) });
+    if ((st.saveVerifyTries || 0) >= 1) {
+      noteUnverifiedPage(st, targetKey, missing.length);
+      return true;
+    }
+    st.saveVerifyTries = (st.saveVerifyTries || 0) + 1;
+    st.phase = "fill";
+    st.filledStep = -1;
+    st.taxPhase = "";
+    await setFillAllState(st);
+    return false;
   }
 
   function selectNativeRadio(node) {
@@ -1401,7 +1560,9 @@
     const address = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
     try { await fillAddressCascade(address); } catch (e) { /* ignore */ }
 
-    // 4. Mỗi postback của cascade địa chỉ đều render lại khối nhân thân → ghi lại ngay trước khi Lưu.
+    // 4. Mỗi postback của cascade địa chỉ đều render lại khối nhân thân → ghi lại ngay trước khi Lưu,
+    //    sau khi form đã yên (máy yếu: postback cuối của cascade có thể chưa về).
+    await waitBusinessFormQuiet();
     applyOwnerFromDossier(fields);
 
     const saveBtn = findBusinessSaveButton();
@@ -1565,6 +1726,8 @@
 
     // 4. Lưu. Ghi lại nhân thân người nộp ngay trước khi Lưu: mỗi postback của cascade địa chỉ đều
     // render lại khối người nộp theo dữ liệu tài khoản nên bản ghi ở bước 2d có thể đã bị đè.
+    // Máy yếu: postback cuối của cascade có thể còn đang bay → chờ form yên rồi mới ghi lại.
+    await waitBusinessFormQuiet();
     if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
       if (await enableSubmitterEdit(st)) return;
       applySubmitterOverride(submitterOverride);
@@ -2515,6 +2678,10 @@
 
     // 2. Cascade địa chỉ (inline). Nếu là full-postback thì reload sẽ cắt ngang → resume chạy tiếp phần còn lại.
     try { await fillAddressCascade(fields.filter((f) => isPostbackAddressField(f))); } catch (e) { /* ignore */ }
+    // Postback cascade render lại khối → đọc lại trang, điền bù ô bị xoá (điện thoại/email/số nhà)
+    // trước khi Lưu. Select địa danh thì cascade ở trên đã tự xác minh từng cấp, không chạy lại.
+    await ensureBusinessFieldsFilled(fields.filter((f) => !(isPostbackAddressField(f) && f.comp === "dom-select")),
+      BUSINESS_PAGE_LABELS[targetKey] || targetKey);
 
     // 3. Lưu.
     const saveBtn = findBusinessSaveButton();
@@ -2661,6 +2828,7 @@
     }
 
     if (stableFields.length) { try { await fillFormStandard(stableFields); } catch (e) { /* ignore */ } }
+    if (stableFields.length) await ensureBusinessFieldsFilled(stableFields, BUSINESS_PAGE_LABELS["thong-tin-ve-thue"]);
 
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
@@ -2676,7 +2844,7 @@
     // Loại tăng/giảm có thể AutoPostBack. Không dùng filledStep: sau reload phải điền lại số tiền
     // và thời điểm; select đã đúng sẽ không gây postback lần hai.
     try { await fillFormStandard(fields); } catch (e) { /* ignore */ }
-    await sleep(500);
+    await ensureBusinessFieldsFilled(fields, BUSINESS_PAGE_LABELS["thong-tin-ve-von"]);
     const save = findBusinessSaveButton();
     if (!save || save.disabled) return void advanceFillAll(st);
     st.phase = "saving";
@@ -2696,9 +2864,11 @@
   async function finishFillAllThenAttach(st) {
     const payload = st && st.attachPayload;
     await clearFillAllState();
+    const warn = unverifiedPagesText(st && st.unverifiedPages);
     if (payload && Array.isArray(payload.files) && payload.files.length
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
+      if (warn) H.showPageToast?.(warn.trim(), "warn");
       H.setRunProgressText(`✓ Đã điền xong ${businessPageCount(st)} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
       // Ngoại lệ địa bàn ở bước đính kèm chỉ áp cho "Đăng ký hộ kinh doanh" (workflow create).
       const attachDefaults = (st.workflow || "create") === "create" ? st.businessDefaults : null;
@@ -2706,7 +2876,25 @@
       setTimeout(H.stepAttachAll, 400);
       return;
     }
-    H.endFillAllUI(`✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.`);
+    H.endFillAllUI(`✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.${warn}`);
+  }
+
+  /**
+   * Ô dùng để đọc lại trang sau khi Lưu. Trang chủ hộ/người nộp/ngành nghề/cấp lại có logic ghi riêng
+   * (tên control khác field hồ sơ, hoặc cổng tự sao chép tài khoản) → không đối chiếu ở đây.
+   * Trang thuế chỉ đối chiếu ô thường: khối địa chỉ thuế cổng cố ý reset khi đảo radio.
+   */
+  function businessVerifyFieldsFor(st, targetKey) {
+    const fields = (st.pages && st.pages[targetKey]) || [];
+    if (["chu-ho-kinh-doanh", "nguoi-nop-ho-so", "nganh-nghe-kinh-doanh", "thong-tin-de-nghi-cap-lai"].includes(targetKey)) {
+      return [];
+    }
+    if (targetKey === "thong-tin-ve-thue") {
+      if (isFinalTaxPass(st)) return [];
+      return fields.filter((f) => !isTaxAddressModeField(f) && !isPostbackAddressField(f));
+    }
+    if (["dia-chi", "thong-tin-ve-von"].includes(targetKey)) return fields;
+    return applyBusinessLocalDefaults(fields, st.businessDefaults, targetKey);
   }
 
   async function advanceFillAll(st) {
@@ -2715,7 +2903,7 @@
     st.nnAdds = 0; st.nnAddTries = {}; st.nnSkippedAddCodes = []; st.nnSkip = [];
     st.nnMainDone = false; st.nnDescriptionsDone = false; st.nnBusinessActDefaultDone = false;
     st.nnRemoveTries = 0; st.nnTextDone = false; st.taxPhase = ""; st.copyTries = 0;
-    st.ownerEnableTries = 0; st.ownerTypeVerifyTries = 0;
+    st.ownerEnableTries = 0; st.ownerTypeVerifyTries = 0; st.saveVerifyTries = 0;
     await setFillAllState(st);
     if (st.step >= st.order.length) {
       return void finishFillAllThenAttach(st);
@@ -2750,6 +2938,9 @@
 
     if (st.step >= order.length) return finish();
     const targetKey = order[st.step];
+    // Máy yếu: lượt resume chạy ngay sau DOMContentLoaded, lúc script/UpdatePanel của cổng còn dựng
+    // form. Điền lúc đó là điền vào node sắp bị thay → chờ form đứng yên trước mọi thao tác.
+    await waitBusinessFormQuiet();
     const _det = detectBusinessPageKey();
     console.log("[FillAll] step", st.step, "phase", st.phase, "target", targetKey, "onPage", _det.pageKey, `(${_det.label})`);
 
@@ -2761,8 +2952,13 @@
     }
     H.setFillAllProgress(st.step + 1, order.length, BUSINESS_PAGE_LABELS[targetKey] || targetKey);
 
-    // Vừa reload sau khi bấm Lưu → coi như đã lưu → sang trang kế.
+    // Vừa reload sau khi bấm Lưu → đọc lại trang: đủ thì sang trang kế, còn ô trống/lỗi validator thì
+    // điền + Lưu lại một lần (verifyBusinessPageAfterSave đã đưa state về pha điền).
     if (st.phase === "saving") {
+      const verifyFields = businessVerifyFieldsFor(st, targetKey);
+      if (verifyFields.length && !(await verifyBusinessPageAfterSave(st, targetKey, verifyFields))) {
+        return void stepFillAll();
+      }
       return void advanceFillAll(st);
     }
 
@@ -2826,8 +3022,10 @@
       if (pageFields.length) {
         try { await fillFormStandard(pageFields); } catch (e) { /* ignore */ }
       }
-      await sleep(800); // để form "dirty" + cascade địa danh xong → nút Lưu bật
     }
+    // Không dựa mốc chờ cứng: chờ form yên rồi đọc lại từng ô, điền bù ô trống. Chạy cả ở lượt resume
+    // (filledStep đã chốt) vì postback giữa chừng có thể đã xoá ô vừa điền.
+    if (pageFields.length) await ensureBusinessFieldsFilled(pageFields, BUSINESS_PAGE_LABELS[targetKey] || targetKey);
 
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
@@ -2847,6 +3045,8 @@
     if (reloaded) return; // đang reload → bước "saving" xử lý ở lần load kế
 
     // Không reload = bị validation chặn → retry tối đa 2 lần rồi sang trang kế.
+    const blockErrors = businessValidationErrors();
+    if (blockErrors.length) console.warn("[FillAll] Lưu bị chặn:", blockErrors);
     st.retries = (st.retries || 0) + 1;
     st.phase = "fill";
     if (st.retries < 2) {
@@ -3317,6 +3517,11 @@
     findUpdateButton: findBusinessLineUpdateButton,
   };
   H.applyBusinessLocalDefaults = applyBusinessLocalDefaults;
+  // Xác nhận đã điền trước khi Lưu/sang trang — engine doanh nghiệp (cùng cổng WebForms) dùng chung.
+  H.waitBusinessFormQuiet = waitBusinessFormQuiet;
+  H.businessFieldsMissing = businessFieldsMissing;
+  H.businessValidationErrors = businessValidationErrors;
+  H.ensureBusinessFieldsFilled = ensureBusinessFieldsFilled;
   // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
   H.applySubmitterOverride = applySubmitterOverride;
   H.submitterAddressFields = submitterAddressFields;

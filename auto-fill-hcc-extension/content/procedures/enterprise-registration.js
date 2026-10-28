@@ -636,13 +636,15 @@
       window.addEventListener("beforeunload", onLeave, { once: true });
       window.addEventListener("pagehide", onLeave, { once: true });
       try { button.click(); } catch (_) { /* ignore */ }
+      // Máy yếu có thể mất quá 2-3s mới bắt đầu rời trang; hết hạn sớm là đi tiếp khi postback Lưu
+      // còn đang bay (xem clickSaveDetectReload bên hộ kinh doanh).
       setTimeout(() => {
         if (done) return;
         done = true;
         window.removeEventListener("beforeunload", onLeave);
         window.removeEventListener("pagehide", onLeave);
         resolve(false);
-      }, 2600);
+      }, 5000);
     });
   }
 
@@ -1078,9 +1080,55 @@
     H.setRunProgressText?.(`Đang điền trang ${step}/${state.order.length} — ${text}\n(đừng thao tác tới khi xong)`);
   }
 
+  /** Ghi nhận trang chưa xác nhận đủ để báo ở cuối phiên (không chặn cả luồng). */
+  function noteUnverified(state, label, count) {
+    state.unverifiedPages = (Array.isArray(state.unverifiedPages) ? state.unverifiedPages : [])
+      .filter((p) => p.label !== label);
+    if (count) state.unverifiedPages.push({ label, count });
+  }
+
+  /**
+   * Lượt tải trang ngay sau khi Lưu: đọc lại trang vừa lưu. Còn ô trống (ô có trên DOM) hay validator
+   * báo lỗi thì đưa trang về "chưa xong" để điền + Lưu lại MỘT lần; lần sau vẫn thiếu thì ghi cảnh báo
+   * rồi đi tiếp. Trả TRUE = đã đưa trang về chưa xong (người gọi hẹn nhịp mới).
+   */
+  async function recheckSavedPage(state, onPage) {
+    const check = state.saveCheck;
+    if (!check || typeof H.businessFieldsMissing !== "function") return false;
+    state.saveCheck = null;
+    const spec = PAGE_SPEC[check.page];
+    // Cổng đã chuyển trang khác → không đọc lại được, coi như lưu xong như trước.
+    if (onPage !== check.page || !spec) { await setFillState(state); return false; }
+    const fields = ((state.pages && state.pages[check.page]) || []).filter((f) => !String(f.name || "").startsWith("__"));
+    const missing = H.businessFieldsMissing(fields, { postSave: true });
+    const errors = H.businessValidationErrors?.() || [];
+    if (!missing.length && !errors.length) {
+      noteUnverified(state, spec.label, 0);
+      await setFillState(state);
+      return false;
+    }
+    console.warn("[EnterpriseFill] sau khi Lưu trang", spec.label, "chưa đạt:", { errors, missing: missing.map((f) => f.name) });
+    state.saveRetried = state.saveRetried && typeof state.saveRetried === "object" ? state.saveRetried : {};
+    if (state.saveRetried[check.page]) {
+      noteUnverified(state, spec.label, missing.length || errors.length);
+      await setFillState(state);
+      return false;
+    }
+    state.saveRetried[check.page] = true;
+    state.done = state.done.filter((key) => key !== check.page);
+    // Lượt điền lại không được ăn vào trần fillTries của trang (trần đó dành cho postback lặp).
+    state.fillTries[check.page] = Math.min(Number(state.fillTries[check.page] || 0), MAX_FILL_TRIES - 1);
+    await setFillState(state);
+    return true;
+  }
+
   async function finishFill(state) {
     await clearFillState();
     const filled = (state.done || []).length;
+    const unverified = Array.isArray(state.unverifiedPages) ? state.unverifiedPages : [];
+    const warn = unverified.length
+      ? "\n⚠ Chưa xác nhận đủ: " + unverified.map((p) => `${p.label} (${p.count} ô)`).join(", ") + " — kiểm tra lại các ô tô đỏ."
+      : "";
     const payload = state.attachPayload;
     const files = payload && payload.files;
     const attachments = payload && payload.attachments;
@@ -1090,12 +1138,13 @@
     // luôn state machine đã chạy ổn định ở business-registration.js thay vì viết lại.
     if (Array.isArray(files) && files.length && Array.isArray(attachments) && attachments.length
       && typeof H.startAttachAllBusiness === "function") {
+      if (warn) toast(warn.trim(), "warn");
       H.setRunProgressText?.(`✓ Đã điền xong ${filled}/${state.order.length} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
       await H.startAttachAllBusiness(files, attachments);
       setTimeout(() => H.stepAttachAll && H.stepAttachAll(), 400);
       return;
     }
-    H.endFillAllUI?.(`✓ Đã điền xong ${filled}/${state.order.length} trang. Vui lòng rà soát rồi bấm Nộp.`);
+    H.endFillAllUI?.(`✓ Đã điền xong ${filled}/${state.order.length} trang. Vui lòng rà soát rồi bấm Nộp.${warn}`);
   }
 
   /**
@@ -1135,8 +1184,11 @@
       return;
     }
 
+    // Máy yếu: resume chạy lúc script/UpdatePanel của cổng còn dựng form → chờ form đứng yên trước.
+    await H.waitBusinessFormQuiet?.();
     const onPage = currentFillPage();
     const onDetail = currentDetailPage();
+    if (await recheckSavedPage(state, onPage)) return void scheduleStepFill();
     console.log("[EnterpriseFill] nhịp:", {
       onPage,
       onDetail,
@@ -1207,10 +1259,18 @@
         } catch (error) {
           console.warn("[EnterpriseFill] điền trang lỗi:", spec.label, error);
         }
-        await sleep(500);
+        // Máy yếu: không bấm Lưu theo mốc chờ cứng. Chờ form yên, đọc lại từng ô, điền bù ô trống
+        // (postback AutoPostBack/cascade có thể xoá ô vừa điền) rồi mới Lưu.
+        if (typeof H.ensureBusinessFieldsFilled === "function") {
+          await H.ensureBusinessFieldsFilled(fields, spec.label);
+        } else {
+          await sleep(500);
+        }
       }
       // Đánh dấu đã xử lý TRƯỚC khi bấm Lưu: bấm xong là postback, không còn cơ hội ghi state.
+      // `saveCheck`: lượt tải trang sau Lưu phải đọc lại trang này rồi mới sang trang kế.
       state.done = [...state.done, onPage];
+      state.saveCheck = fields.length ? { page: onPage } : null;
       await setFillState(state);
       const save = await waitForSaveButton(spec);
       if (!save) {
@@ -1218,10 +1278,23 @@
         // hoặc trang cần thao tác riêng như thêm ngành nghề bằng mã số) -> bỏ qua là ĐÚNG.
         console.warn("[EnterpriseFill] bỏ qua lưu ở trang:", spec.label,
           saveButtonExists(spec) ? "(nút Lưu có nhưng không bật - form chưa đổi gì)" : "(không thấy nút Lưu)");
+        state.saveCheck = null; // không Lưu thì không có gì để đọc lại
+        await setFillState(state);
         return void scheduleStepFill();
       }
       const reloaded = await clickSaveDetectReload(save);
-      if (!reloaded) return void scheduleStepFill();   // cổng không tải lại → đi tiếp ngay
+      if (!reloaded) {
+        // Không tải lại mà validator đang báo lỗi = Lưu bị chặn → đưa trang về chưa xong để điền lại
+        // (trần fillTries chặn lặp vô hạn). Không lỗi thì như cũ: đi tiếp ngay.
+        const errors = H.businessValidationErrors?.() || [];
+        if (errors.length && fillTries < MAX_FILL_TRIES) {
+          console.warn("[EnterpriseFill] Lưu bị chặn ở trang", spec.label, errors);
+          state.done = state.done.filter((key) => key !== onPage);
+          state.saveCheck = null;
+          await setFillState(state);
+        }
+        return void scheduleStepFill();
+      }
       return;
     }
 
