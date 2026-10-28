@@ -57,6 +57,8 @@ from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.
     with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
 )
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
+from app.pipelines._shared.lao_cai_tach_giay_to import always_split, plan_with_split
+from app.pipelines._shared.lao_cai_tach_giay_to import with_account_attach_options as with_cam_duong_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
 from app.upload_session.ws import broadcast
@@ -591,6 +593,10 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             attach_options = with_account_attach_options(attach_options, owner_user, procedure_key)
             attach_options = with_nghia_lo_attach_options(attach_options, owner_user, procedure_key)
             attach_options = with_gpxd_attach_options(attach_options, owner_user, procedure_key)
+            attach_options = with_cam_duong_attach_options(attach_options, owner_user, procedure_key)
+            # Cam Đường luôn tách giấy tờ — chỉ khi extension có engine cắt trang (sourceSegments).
+            if always_split(attach_options) and attach_options.get("supportsSourceSegments") is True:
+                attach_fn = functools.partial(plan_with_split, attach_fn)
         # Bọc cả planner: OCR/LLM bên trong tự tách thành bước riêng; phần còn lại = luật planner.
         async with mon.span("post.plan", procedure=procedure_key):
             result = await attach_fn(files, attach_options, session=None)

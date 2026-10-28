@@ -344,3 +344,140 @@ def test_prompt_cam_chep_ten_tep():
 
     assert "documentName" in SYSTEM_PROMPT
     assert "TUYỆT ĐỐI KHÔNG chép tên tệp" in SYSTEM_PROMPT
+
+
+# ── Phường Cam Đường: thủ tục đất đai Lào Cai luôn tách giấy tờ ─────────────────────────────────────────
+
+import base64
+import json
+
+import fitz
+
+from app.pipelines._shared import lao_cai_tach_giay_to as tach
+from app.process.schemas import FileItem
+
+_CAM_DUONG = {"tinh": "Tỉnh Lào Cai", "xa": "Phường Cam Đường"}
+
+
+def _pdf_item(name: str, pages: int) -> FileItem:
+    doc = fitz.open()
+    for n in range(pages):
+        doc.new_page().insert_text((72, 72), f"page {n + 1}")
+    data = base64.b64encode(doc.tobytes()).decode("ascii")
+    doc.close()
+    return FileItem(name=name, type="application/pdf", dataUrl=f"data:application/pdf;base64,{data}", role="")
+
+
+def _ocr_text(pages: list[str]) -> str:
+    return "\n".join(f"───── Trang {n + 1}/{len(pages)} ─────\n{p}" for n, p in enumerate(pages))
+
+
+def _fake_stack(monkeypatch, texts: dict[str, str], starts: dict | None):
+    """OCR theo tên tệp gốc (đếm số lượt) + LLM: lượt chia giấy trả `starts`, lượt phân loại đọc từ khoá."""
+    from app.services import ocr
+    from app.services.llm import client
+
+    calls = {"ocr": []}
+
+    async def fake_ocr(files, *, classify):
+        calls["ocr"].append([f["name"] for f in files])
+        return [{"name": f["name"], "type": f["type"], "text": texts.get(f["name"], ""), "provider": "tiengnoi"}
+                for f in files]
+
+    async def fake_chat(messages, max_tokens=None, enable_thinking=False, **_):
+        if messages[0]["content"] == tach.SYSTEM_PROMPT:
+            if starts is None:
+                raise RuntimeError("LLM chết")
+            return json.dumps(starts, ensure_ascii=False)
+        text = messages[1]["content"]
+        doc_type = ("don_mau_01" if "ĐƠN ĐỀ NGHỊ" in text
+                    else "giay_to_mien_giam" if "MIỄN TIỀN" in text else "other")
+        return json.dumps({"documents": [{"index": 0, "docType": doc_type, "documentName": "GCN đăng ký doanh nghiệp"}]},
+                          ensure_ascii=False)
+
+    monkeypatch.setattr(ocr, "_ocr_per_file", fake_ocr)
+    monkeypatch.setattr(client, "chat", fake_chat)
+    return calls
+
+
+def test_cam_duong_dat_co_luon_tach_cho_thu_tuc_dat_dai():
+    opts = tach.with_account_attach_options({}, _CAM_DUONG, _KEY)
+    assert opts[tach.ALWAYS_SPLIT_OPTION] is True
+    assert tach.always_split(opts)
+    # Không có engine cắt trang (trợ lý bản cũ) → không tách.
+    assert not tach.always_split({**opts, "supportsSourceSegments": False})
+
+
+def test_cam_duong_khong_ap_cho_xa_khac_thu_tuc_khac_va_client_khong_tu_bat_duoc():
+    assert tach.ALWAYS_SPLIT_OPTION not in tach.with_account_attach_options(
+        {}, {"tinh": "Tỉnh Lào Cai", "xa": "Phường Yên Bái"}, _KEY)
+    assert tach.ALWAYS_SPLIT_OPTION not in tach.with_account_attach_options(
+        {tach.ALWAYS_SPLIT_OPTION: True}, {"tinh": "Tỉnh Lào Cai", "xa": "Xã Đơn Dương"}, _KEY)
+    # Chủ trương đầu tư không phải thủ tục đất đai.
+    assert tach.ALWAYS_SPLIT_OPTION not in tach.with_account_attach_options(
+        {}, _CAM_DUONG, "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai")
+
+
+def test_moi_thu_tuc_dat_dai_cam_duong_deu_co_trong_registry_va_planner():
+    from app.procedures.registry import get_attach_pipeline
+
+    keys = {p["key"] for p in public_list()}
+    assert tach.PROCEDURE_KEYS <= keys
+    assert all(get_attach_pipeline(k) for k in tach.PROCEDURE_KEYS)
+
+
+async def test_tep_gop_tach_tung_giay_vao_dung_dong_con_lai_vao_giay_to_khac(monkeypatch):
+    texts = {"ho_so.pdf": _ocr_text([
+        "ĐƠN ĐỀ NGHỊ GIAO ĐẤT, CHO THUÊ ĐẤT", "tiếp theo đơn, chữ ký",
+        "GIẤY CHỨNG NHẬN ĐĂNG KÝ DOANH NGHIỆP", "QUYẾT ĐỊNH MIỄN TIỀN SỬ DỤNG ĐẤT",
+    ])}
+    starts = {"tep": [{"fileIndex": 0, "giayTo": [
+        {"trangDau": 1, "ten": "Đơn đề nghị"}, {"trangDau": 3, "ten": "GCN đăng ký doanh nghiệp"},
+        {"trangDau": 4, "ten": "Quyết định miễn tiền"}]}]}
+    calls = _fake_stack(monkeypatch, texts, starts)
+
+    result = await tach.plan_with_split(planner.plan, [_pdf_item("ho_so.pdf", 4)], {})
+
+    # OCR tệp gốc đúng một lượt; planner dùng lại chữ của từng đoạn.
+    assert calls["ocr"] == [["ho_so.pdf"]]
+    items = result["attachments"]
+    assert [(i.get("slotIndex"), i["target"]) for i in items] == [(0, "fixed-slot"), (None, "new"), (8, "fixed-slot")]
+    assert [i["sourceSegments"] for i in items] == [
+        [{"fileIndex": 0, "pageIndexes": [0, 1]}],
+        [{"fileIndex": 0, "pageIndexes": [2]}],
+        [{"fileIndex": 0, "pageIndexes": [3]}],
+    ]
+    assert all(i["fileIndex"] == 0 for i in items)
+    assert items[1]["componentName"] == "GCN đăng ký doanh nghiệp"
+
+
+async def test_giay_planner_bo_qua_van_vao_giay_to_khac(monkeypatch):
+    texts = {"a.pdf": _ocr_text(["HỢP ĐỒNG CHUYỂN NHƯỢNG", "CĂN CƯỚC CÔNG DÂN"])}
+    starts = {"tep": [{"fileIndex": 0, "giayTo": [{"trangDau": 1, "ten": "Hợp đồng chuyển nhượng"},
+                                                  {"trangDau": 2, "ten": "CCCD Trần Thị B"}]}]}
+    _fake_stack(monkeypatch, texts, starts)
+
+    async def plan_chi_dinh_hop_dong(files, options=None, session=None):
+        return {"attachments": [{"fileIndex": 0, "fileName": files[0].name, "target": "fixed-slot", "slotIndex": 2}],
+                "errors": []}
+
+    result = await tach.plan_with_split(plan_chi_dinh_hop_dong, [_pdf_item("a.pdf", 2)], {})
+
+    extra = result["attachments"][1]
+    assert extra["target"] == "new" and extra["needsAddComponent"] and extra["noChooserClick"]
+    assert extra["componentName"] == "CCCD Trần Thị B"
+    assert extra["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [1]}]
+    assert any("Giấy tờ khác" in e for e in result["errors"])
+
+
+async def test_mot_giay_hoac_llm_chia_loi_thi_dinh_nguyen_tep(monkeypatch):
+    texts = {"don.pdf": _ocr_text(["ĐƠN ĐỀ NGHỊ GIAO ĐẤT", "trang 2"]), "anh.jpg": "QUYẾT ĐỊNH MIỄN TIỀN"}
+    _fake_stack(monkeypatch, texts, None)
+    files = [_pdf_item("don.pdf", 2), FileItem(name="anh.jpg", type="image/jpeg", dataUrl="data:image/jpeg;base64,AA", role="")]
+
+    result = await tach.plan_with_split(planner.plan, files, {})
+
+    items = result["attachments"]
+    assert [(i["fileIndex"], i.get("slotIndex")) for i in items] == [(0, 0), (1, 8)]
+    assert not any("sourceSegments" in i for i in items)
+    assert any("đính nguyên tệp" in e for e in result["errors"])

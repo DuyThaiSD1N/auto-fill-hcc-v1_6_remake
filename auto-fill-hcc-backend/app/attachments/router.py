@@ -1,3 +1,4 @@
+import functools
 import logging
 import time
 from datetime import datetime, timezone
@@ -24,6 +25,8 @@ from app.pipelines.cap_giay_phep_xay_dung.attach.planner import (
     with_account_attach_options as with_gpxd_attach_options,
 )
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
+from app.pipelines._shared.lao_cai_tach_giay_to import always_split, plan_with_split
+from app.pipelines._shared.lao_cai_tach_giay_to import with_account_attach_options as with_cam_duong_attach_options
 from app.procedures.registry import get_attach_pipeline, get_procedure
 from app.services import ocr
 from app.storage.files import save_request_files
@@ -158,6 +161,9 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
 
     # Thủ tục đã migrate sang app/pipelines/<thủ tục>/attach → dispatch qua registry.
     attach_fn = get_attach_pipeline(body.procedure)
+    if attach_fn and always_split(options):
+        # Phường Cam Đường: thủ tục đất đai Lào Cai luôn tách giấy tờ trong tệp gộp rồi mới phân loại.
+        attach_fn = functools.partial(plan_with_split, attach_fn)
     if attach_fn:
         # Mã hỗ trợ: sinh 1 request_id cho lượt đính kèm, trả về FE để cán bộ copy khi báo lỗi.
         request_id = traces_repo.new_request_id()
@@ -240,6 +246,7 @@ async def _prepare_attach(body: AttachmentPlanReq, user: dict):
     options = with_account_attach_options(body.options, user, body.procedure)
     options = with_nghia_lo_attach_options(options, user, body.procedure)
     options = with_gpxd_attach_options(options, user, body.procedure)
+    options = with_cam_duong_attach_options(options, user, body.procedure)
 
     session = None
     session_id = str(options.get("sessionId") or options.get("requestId") or "").strip()

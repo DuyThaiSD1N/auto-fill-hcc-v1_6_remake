@@ -4,10 +4,25 @@ Mọi pipeline gọi module này để dùng chung cache theo nội dung file v�
 provider/fallback khác. Tiếng Nói tự tách trang PDF, xoay ảnh và OCR nhiều tệp multipart.
 """
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from app.config import settings
 from app.monitor import recorder as mon
 from app.services import ocr_tiengnoi
+
+# Chữ OCR đã có sẵn theo dataUrl: planner chạy lại trên các đoạn trang đã cắt từ tệp vừa OCR thì lấy
+# chữ của đúng các trang đó, không gửi OCR lần hai.
+_preset_texts: ContextVar[dict[str, str] | None] = ContextVar("ocr_preset_texts", default=None)
+
+
+@contextmanager
+def preset_texts(texts_by_data_url: dict[str, str]):
+    token = _preset_texts.set(dict(texts_by_data_url))
+    try:
+        yield
+    finally:
+        _preset_texts.reset(token)
 
 _PAGE_SEPARATOR_RE = re.compile(
     r"(?im)^[\s\u2500-\u257f-]*(?:trang|page)\s+\d+\s*/\s*\d+[\s\u2500-\u257f-]*$"
@@ -95,6 +110,17 @@ async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dic
     text cắt ở trần phân loại (thấp hơn) không đủ dày cho trích xuất nên cache nó là bẫy — lượt
     sau vẫn phải OCR lại mà lại tưởng là đã có. ``classify`` chỉ còn tác dụng khi cache tắt.
     """
+    preset = _preset_texts.get()
+    if preset:
+        hits = {i: preset[f.get("dataUrl")] for i, f in enumerate(files or []) if f.get("dataUrl") in preset}
+        if hits:
+            misses = [f for i, f in enumerate(files) if i not in hits]
+            fresh = iter(await ocr_per_file(misses, classify=classify) if misses else [])
+            return [
+                {"name": f.get("name"), "type": f.get("type"), "text": hits[i], "provider": "tiengnoi"}
+                if i in hits else next(fresh)
+                for i, f in enumerate(files)
+            ]
     async with mon.span("ocr.call", files=len(files or []), classify=classify):
         return await _ocr_per_file(files, classify=classify)
 
