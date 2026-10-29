@@ -29,6 +29,11 @@ hồ sơ đi lạc cơ quan tiếp nhận ngay từ bước đầu. Không khớ
 Xã có trong bảng thì đè `submitCardIncludes`; xã khác giữ nguyên cách chọn thẻ cũ. Extension chốt
 chuỗi theo xã đang chọn ở popup.js:submitCardIncludesFor.
 
+`submitCardIndex`: chốt thẻ "Nộp trực tuyến" theo VỊ TRÍ trong danh sách kết quả (đếm từ 1), dùng khi
+không có chuỗi đủ phân biệt (vd Đà Nẵng 1.013980: tick Sở xong, Văn phòng Đăng ký đất đai là thẻ thứ 2).
+`submitCardIncludes` khớp được thì vẫn ưu tiên chuỗi. Danh sách chưa đủ số thẻ thì trợ lý dừng, nhường
+cán bộ bấm tay, chứ không rơi về thẻ đầu.
+
 `provincePortalFlow`: thủ tục đặc thù của tỉnh — bấm "Nộp trực tuyến" trên cổng quốc gia xong là
 cổng ném sang CỔNG TỈNH, ở đó còn phải bấm "Nộp hồ sơ" đúng dòng, qua đăng nhập riêng của tỉnh rồi
 chọn cơ quan tiếp nhận. `{host, rowIncludes, rowIndex, agency}` do content/portal-quangninh.js đọc:

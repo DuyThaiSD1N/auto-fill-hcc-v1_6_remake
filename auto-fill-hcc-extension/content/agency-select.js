@@ -323,10 +323,15 @@
    * `cardIncludes` (khai ở ke_khai_links.json) ĐÈ quy ước trên: thủ tục đất đai Quảng Ninh ra nhiều
    * thẻ khác nhau ở CƠ QUAN THỰC HIỆN, phải vào đúng thẻ "Văn phòng Đăng ký đất đai" — thẻ đầu là
    * cơ quan khác thì hồ sơ đi lạc ngay từ bước này.
+   *
+   * `cardIndex` (khai `submitCardIndex`, đếm từ 1) chốt thẻ theo VỊ TRÍ khi không có chuỗi đủ phân
+   * biệt: Đà Nẵng 1.013980 tick Sở xong thì Văn phòng Đăng ký đất đai là thẻ thứ 2. Danh sách chưa vẽ
+   * tới vị trí đó thì trả null để submitStage chờ tiếp — bấm thẻ đầu thay vào là hồ sơ đi lạc.
    */
-  function pickSubmitButton(procedureLabel, cardIncludes) {
+  function pickSubmitButton(procedureLabel, cardIncludes, cardIndex) {
     const all = submitButtons();
-    if (all.length <= 1) return all[0] || null;
+    const index = Math.trunc(Number(cardIndex) || 0);
+    if (all.length <= 1 && index <= 1) return all[0] || null;
 
     const wantedCard = fold(cardIncludes);
     if (wantedCard) {
@@ -339,6 +344,12 @@
         `[AgencySelect] không thấy thẻ nào chứa "${cardIncludes}" — rơi về quy ước thẻ đầu`,
         all.map((button) => submitButtonContext(button)),
       );
+    }
+
+    if (index > 0) {
+      const byIndex = all[index - 1] || null;
+      if (byIndex) console.log(`[AgencySelect] chọn thẻ thứ ${index}:`, submitButtonContext(byIndex));
+      return byIndex;
     }
 
     const wanted = fold(procedureLabel);
@@ -366,7 +377,7 @@
    * (instance mới đọc cờ stage="submit").
    */
   async function submitStage(arm) {
-    const found = await waitFor(() => pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes), 15000, 300);
+    const found = await waitFor(() => pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes, arm.submitCardIndex), 15000, 300);
     // Danh sách kết quả là React render DẦN: thẻ đầu tiên nhìn thấy chưa chắc là thẻ đứng đầu khi
     // danh sách vẽ xong. Vì quy ước là "luôn lấy thẻ đầu", phải đợi số thẻ đứng yên rồi mới chốt —
     // bấm sớm là mở nhầm cơ quan tiếp nhận.
@@ -379,7 +390,7 @@
         if (now === count) break;      // hai nhịp liền không đổi -> danh sách đã vẽ xong
         count = now;
       }
-      button = pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes) || found;
+      button = pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes, arm.submitCardIndex) || found;
     }
     if (!button) {
       // Chưa đăng nhập thì cổng không dựng danh sách kết quả. Xoá cờ ở đây là bắt cán bộ bấm
@@ -474,7 +485,7 @@
       await setArm(next);
       return void await confirmStage(next);
     }
-    if (pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes)) {
+    if (pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes, arm.submitCardIndex)) {
       const next = { ...arm, stage: "submit", at: Date.now() };
       await setArm(next);
       return void await submitStage(next);

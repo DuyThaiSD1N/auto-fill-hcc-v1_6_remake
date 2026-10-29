@@ -709,6 +709,16 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-da-nang",
+      "code": "1.013980",
+      "label": "Đà Nẵng - Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai hoặc bản án, quyết định của Tòa án, quyết định thi hành án của cơ quan thi hành án đã được thi hành; quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam về giải quyết tranh chấp giữa các bên phát sinh từ hoạt động thương mại liên quan đến đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất đã được đăng ký, bao gồm cả xử lý khoản nợ có nguồn gốc từ khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-7030-8757-6ff69db130e3",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "submitCardIndex": 2,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-moi-cap-lai-giay-chung-nhan-so-nha",
       "label": "Cấp mới/cấp lại Giấy chứng nhận số nhà (cấp xã)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019dbd74-6433-769b-880a-b3bbe66d7694",

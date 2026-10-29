@@ -4838,8 +4838,16 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "chap-thuan-dau-noi-tam" ||
       // [Lào Cai] 1.115667: tài khoản prefill CongDan_tenCongDan/CongDan_soCmnd → mốc chọn CCCD người nộp.
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115667: mốc tài khoản chọn đúng CCCD người nộp giữa bên nhận chuyển nhượng /
+      // vợ chồng cùng đứng tên / bên được ủy quyền.
+      cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai" ||
+      cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai-test" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115651: data[fullname]/data[identityNumber] khoá theo tài khoản → mốc chọn
+      // CCCD người nộp và biết người nộp có phải chủ hồ sơ không (SĐT/Email trên Đơn).
+      cfg.key === "chuyen-muc-dich-su-dung-dat-igate-lao-cai" ||
+      cfg.key === "chuyen-muc-dich-su-dung-dat-igate-lao-cai-test" ||
       // [Lào Cai] 1.115679 (bản nộp ở Phường/Xã): hồ sơ hay nộp thay theo Giấy uỷ quyền, và khối
       // người nộp có 6 ô (*) phải điền theo giấy tờ của CHÍNH người đăng nhập → thiếu mốc tài khoản
       // là BE bỏ trống cả khối.
@@ -4868,10 +4876,16 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115650: chủ hồ sơ thường là DOANH NGHIỆP, hồ sơ đầy người có số định danh (người
       // đại diện, thành viên góp vốn) → thiếu mốc tài khoản thì không biết ai đang đi nộp.
       cfg.key === "giao-thue-dat-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115650: mốc tài khoản chọn đúng người nộp giữa người đại diện / bên được ủy quyền.
+      cfg.key === "giao-thue-dat-igate-lao-cai" ||
+      cfg.key === "giao-thue-dat-igate-lao-cai-test" ||
       // [Lào Cai] 1.115678: hồ sơ giao đất sau trúng đấu giá rất hay nộp thay theo Hợp đồng ủy quyền
       // → mốc tài khoản là thứ DUY NHẤT phân biệt "người trúng đấu giá tự nộp" với "người được ủy
       // quyền nộp thay"; thiếu nó BE phải đoán mode từ giấy tờ.
       cfg.key === "cho-thue-dat-thue-rung" ||
+      // [Lào Cai - cổng iGate mới] 1.115678: cùng lý do — mốc tài khoản tách người được ủy quyền khỏi người trúng đấu giá.
+      cfg.key === "cho-thue-dat-thue-rung-igate-lao-cai" ||
+      cfg.key === "cho-thue-dat-thue-rung-igate-lao-cai-test" ||
       // [Lào Cai] 1.011443.H38 (xóa đăng ký biện pháp bảo đảm): khối người nộp chỉ được điền theo giấy tờ
       // của CHÍNH người đăng nhập (cổng xác thực với CSDLQG) → thiếu mốc là BE bỏ trống cả khối.
       cfg.key === "xoa-dang-ky-bien-phap-bao-dam-lao-cai" ||
@@ -4902,6 +4916,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115652: mốc tài khoản chọn đúng người nộp giữa người ký đơn / bên được ủy quyền.
+      cfg.key === "dieu-chinh-quyet-dinh-giao-dat-igate-lao-cai" ||
+      cfg.key === "dieu-chinh-quyet-dinh-giao-dat-igate-lao-cai-test" ||
       // [Lào Cai] 1.115680 (bản cấp xã của 1.115652): cùng contract hai chế độ người nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai" ||
       // [Lào Cai] 1.115687 (thu hồi GCN cấp sai): mapper chỉ điền nhân thân khối người nộp khi khớp mốc
@@ -6000,6 +6017,8 @@ async function openKeKhaiPage() {
         // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
         // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu". Chốt theo XÃ đang chọn (xem submitCardIncludesFor).
         submitCardIncludes: submitCardIncludesFor(link),
+        // Chốt thẻ theo VỊ TRÍ (đếm từ 1) khi không có chuỗi đủ phân biệt; 0 = theo quy ước cũ.
+        submitCardIndex: Number(link.submitCardIndex) || 0,
         // Thủ tục đặc thù của tỉnh: sau "Nộp trực tuyến" cổng QG ném sang cổng tỉnh, còn ba việc
         // nữa (bấm "Nộp hồ sơ" đúng dòng, đăng nhập riêng, chọn cơ quan tiếp nhận) do
         // content/portal-quangninh.js làm nốt theo đúng cấu hình này.

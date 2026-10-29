@@ -27,7 +27,7 @@
   // là của thủ tục cầu nên phải lấy theo link cầu.
   const TRUONG_TRANG_DVC = [
     "needsAgencySelect", "provinceOnlyAgency", "selectSo", "selectSoProvinces",
-    "submitCardIncludes", "submitCardIncludesByWard", "autoConfirm",
+    "submitCardIncludes", "submitCardIncludesByWard", "submitCardIndex", "autoConfirm",
   ];
 
   function apDungDiVong(links, quyTac = QUY_TAC) {

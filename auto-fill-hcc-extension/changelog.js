@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25.9",
+    date: "29/10/2026",
+    items: [
+      "Lào Cai (cổng iGate mới): giao đất/cho thuê đất, cho thuê đất sau trúng đấu giá, điều chỉnh quyết định giao đất, cấp GCN nhận chuyển nhượng dự án bất động sản, chuyển mục đích sử dụng đất — trợ lý xác định đúng người đi nộp (chủ hồ sơ hay người được ủy quyền) theo tài khoản đăng nhập.",
+      "Đà Nẵng: thêm thủ tục đăng ký biến động theo thỏa thuận của thành viên hộ gia đình/vợ chồng (1.013980); khi kê khai, trợ lý chọn đúng thẻ Văn phòng Đăng ký đất đai.",
+    ],
+  },
+  {
     version: "1.25.8",
     date: "28/10/2026",
     items: [
