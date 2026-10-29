@@ -6,12 +6,16 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.area_remap import city_province, province_label
+from app.pipelines._shared.area_remap import city_province, province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.nhan_cha_me_con.process.schema import UI_COMP_BY_NAME
 
-_OTHER_DOC = "Giấy tờ khác bao gồm các giấy tờ có dán"
+# Danh mục "Giấy tờ tùy thân" của eForm này có sẵn "Giấy khai sinh"; giấy khác (chứng sinh...) chọn
+# "Các loại giấy tờ tùy thân khác" (mã 8) thì ô tengiaytoB mới hiện. Chuỗi "Giấy tờ khác bao gồm các
+# giấy tờ có dán" của eForm kết hôn không có ở đây → trượt cả loại lẫn tên giấy tờ.
+_BIRTH_CERT = "Giấy khai sinh"
+_OTHER_DOC = "Các loại giấy tờ tùy thân khác"
 _REG_FOREIGN = "Ghi vào sổ việc nhận cha, mẹ, con đã được đăng ký tại cơ quan có thẩm quyền của nước ngoài"
 
 
@@ -86,6 +90,12 @@ def _parse_area_text(value: str) -> dict | None:
 
 
 def _area(value: Any) -> dict | None:
+    # Giấy tờ cũ ghi xã trước sáp nhập ("Xã Hòa Phong", Đà Nẵng) → quy về đơn vị hiện hành ("Xã Hòa
+    # Vang"), không thì ô xã không khớp option nào trên cổng.
+    return remap_area(_raw_area(value))
+
+
+def _raw_area(value: Any) -> dict | None:
     if isinstance(value, str):
         return _parse_area_text(value)
     if not isinstance(value, dict):
@@ -479,8 +489,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("ngaycapB", child_issue_date)
         add("noicapB", child_issuer)
     elif birth_doc.get("number") or birth_doc.get("issue_date") or birth_doc.get("issue_place"):
-        add("loaigiaytoB", _OTHER_DOC)
-        add("tengiaytoB", birth_doc.get("type") or "Giấy khai sinh/Giấy chứng sinh")
+        doc_type = _clean(birth_doc.get("type"))
+        if not doc_type or _fold(doc_type) == _fold(_BIRTH_CERT):
+            add("loaigiaytoB", _BIRTH_CERT)
+        else:
+            add("loaigiaytoB", _OTHER_DOC)
+            add("tengiaytoB", doc_type)
         add("sogiaytodinhdanhB", birth_doc.get("number"))
         add("ngaycapB", normalize_date(birth_doc.get("issue_date")))
         add("noicapB", birth_doc.get("issue_place"))

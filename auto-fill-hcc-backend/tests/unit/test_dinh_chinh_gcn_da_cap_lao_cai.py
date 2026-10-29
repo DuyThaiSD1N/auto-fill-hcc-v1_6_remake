@@ -49,8 +49,10 @@ def test_ma_thu_tuc_la_thu_duy_nhat_phan_biet_voi_ban_dinh_chinh_tinh_khac():
     """Tên thủ tục trùng nguyên văn với Lai Châu/Bắc Ninh/Lâm Đồng/Ninh Bình/Quảng Ngãi/Đà Nẵng."""
     entry = _entry()
     cum_ten = next(t for t in entry["detect"]["textIncludes"] if "đính chính" in t)
+    # Mục cổng iGate mới của CHÍNH thủ tục này (Lào Cai) cũng khai mã 1.115686 — không phải bản tỉnh khác.
     khac = [p for p in public_list()
-            if p["key"] != _KEY and "đính chính giấy chứng nhận đã cấp lần đầu" in p["label"].lower()]
+            if p["key"] != _KEY and not p["key"].startswith("dinh-chinh-gcn-da-cap-igate-lao-cai")
+            and "đính chính giấy chứng nhận đã cấp lần đầu" in p["label"].lower()]
     assert khac, "phải còn bản đính chính của tỉnh khác để đối chiếu"
     for other in khac:
         assert cum_ten in other["label"].lower() or True  # tên trùng là chuyện bình thường

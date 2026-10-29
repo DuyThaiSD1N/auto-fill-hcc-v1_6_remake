@@ -51,13 +51,13 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Làn Nhì Thàng",
+        "xa_cu": "Lản Nhì Thàng",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Phường Đoàn Kết"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Sùng Phải",
+        "xa_cu": "Sùng Phài",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Phường Đoàn Kết"
     },
@@ -75,7 +75,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Mường Tè",
+        "xa_cu": "Thị trấn Mường Tè",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Bum Tở",
         "ghi_chu": "Thị trấn Mường Tè"
@@ -94,7 +94,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Tam Đường",
+        "xa_cu": "Thị trấn Tam Đường",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Bình Lư",
         "ghi_chu": "Thị trấn Tam Đường"
@@ -301,7 +301,8 @@
         "tinh_cu": "Lai Châu",
         "xa_cu": "Mường Than",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Mường Than"
+        "xa_moi": "Xã Mường Than",
+        "ghi_chu": "Tên xã mới (khoản 4 NQ 1670) trùng tên xã cũ; không ghi huyện cũ thì giữ Xã Mường Than."
     },
     {
         "tinh_cu": "Lai Châu",
@@ -317,7 +318,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Nậm Hằn",
+        "xa_cu": "Nậm Hăn",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Nậm Cuổi"
     },
@@ -329,7 +330,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Nậm Nhùn",
+        "xa_cu": "Thị trấn Nậm Nhùn",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Nậm Hàng",
         "ghi_chu": "Thị trấn Nậm Nhùn"
@@ -420,7 +421,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Phong Thổ",
+        "xa_cu": "Thị trấn Phong Thổ",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Phong Thổ",
         "ghi_chu": "Thị trấn Phong Thổ"
@@ -495,54 +496,54 @@
         "tinh_cu": "Lai Châu",
         "xa_cu": "Vàng Ma Chải",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sì Lờ Lầu"
+        "xa_moi": "Xã Sì Lở Lầu"
     },
     {
         "tinh_cu": "Lai Châu",
         "xa_cu": "Mồ Sì San",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sì Lờ Lầu"
+        "xa_moi": "Xã Sì Lở Lầu"
     },
     {
         "tinh_cu": "Lai Châu",
         "xa_cu": "Pa Vây Sử",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sì Lờ Lầu"
+        "xa_moi": "Xã Sì Lở Lầu"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Sì Lờ Lầu",
+        "xa_cu": "Sì Lở Lầu",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sì Lờ Lầu"
+        "xa_moi": "Xã Sì Lở Lầu"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Sin Hồ",
+        "xa_cu": "Thị trấn Sìn Hồ",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sin Hồ",
-        "ghi_chu": "Thị trấn Sin Hồ"
+        "xa_moi": "Xã Sìn Hồ",
+        "ghi_chu": "Thị trấn Sìn Hồ"
     },
     {
         "tinh_cu": "Lai Châu",
         "xa_cu": "Sà Dề Phìn",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sin Hồ"
+        "xa_moi": "Xã Sìn Hồ"
     },
     {
         "tinh_cu": "Lai Châu",
         "xa_cu": "Phăng Sô Lin",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sin Hồ"
+        "xa_moi": "Xã Sìn Hồ"
     },
     {
         "tinh_cu": "Lai Châu",
         "xa_cu": "Tả Phìn",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Sin Hồ"
+        "xa_moi": "Xã Sìn Hồ"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Than Uyên",
+        "xa_cu": "Thị trấn Than Uyên",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Than Uyên",
         "ghi_chu": "Thị trấn Than Uyên"
@@ -552,8 +553,8 @@
         "xa_cu": "Mường Than",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Than Uyên",
-        "ghi_chu": "Trùng tên Mường Than — xã Than Uyên ưu tiên sau Mường Than (Xã Mường Than)",
-        "ambiguous": true
+        "ghi_chu": "Xã Mường Than cũ (huyện Than Uyên) nhập vào xã Than Uyên (khoản 3 NQ 1670). Xã Mường Than mới là Phúc Than + Mường Mít; chỉ đi theo huyện để giấy tờ mới ghi \"Xã Mường Than\" không bị đổi.",
+        "huyen_cu": "Than Uyên"
     },
     {
         "tinh_cu": "Lai Châu",
@@ -581,7 +582,7 @@
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Tân Uyên",
+        "xa_cu": "Thị trấn Tân Uyên",
         "tinh_moi": "Lai Châu",
         "xa_moi": "Xã Tân Uyên",
         "ghi_chu": "Thị trấn Tân Uyên"
@@ -626,18 +627,18 @@
         "tinh_cu": "Lai Châu",
         "xa_cu": "Làng Mô",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Túa Sín Chải"
+        "xa_moi": "Xã Tủa Sín Chải"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Tả Ngão",
+        "xa_cu": "Tả Ngảo",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Túa Sín Chải"
+        "xa_moi": "Xã Tủa Sín Chải"
     },
     {
         "tinh_cu": "Lai Châu",
-        "xa_cu": "Túa Sín Chải",
+        "xa_cu": "Tủa Sín Chải",
         "tinh_moi": "Lai Châu",
-        "xa_moi": "Xã Túa Sín Chải"
+        "xa_moi": "Xã Tủa Sín Chải"
     }
 ]

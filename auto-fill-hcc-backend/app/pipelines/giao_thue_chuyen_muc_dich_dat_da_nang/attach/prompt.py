@@ -25,6 +25,11 @@ OCR_TEXT của từng file và xếp vào đúng MỘT loại giấy tờ theo b
 - phuong_an_dat_mat
 - du_an_giao_rung
 - dau_gia_thue_rung
+- van_ban_giao_thue
+- chu_truong_dau_tu
+- lua_chon_nha_dau_tu
+- phuong_an_sdd
+- van_ban_gia_han_du_an
 - cccd
 - other
 </allowed_types>
@@ -42,9 +47,21 @@ OCR_TEXT của từng file và xếp vào đúng MỘT loại giấy tờ theo b
   BẢN ĐỒ hiện trạng rừng (trường hợp giao đất và giao rừng).
 - dau_gia_thue_rung: Kết quả/BIÊN BẢN đấu giá cho thuê rừng, danh sách người trúng đấu giá thuê rừng, thông
   báo hoàn thành nghĩa vụ tài chính đấu giá thuê rừng (trường hợp cho thuê đất và cho thuê rừng).
+- van_ban_giao_thue: văn bản của cơ quan nhà nước CHẤP THUẬN NHÀ ĐẦU TƯ (khoản 5 Điều 124 Luật Đất đai); văn bản
+  về kết quả ĐẤU GIÁ QUYỀN SỬ DỤNG ĐẤT KHÔNG THÀNH; văn bản về kết quả NHẬN CHUYỂN NHƯỢNG DỰ ÁN BẤT ĐỘNG SẢN; văn
+  bản theo trường hợp điểm i khoản 1 Điều 133 Luật Đất đai.
+- chu_truong_dau_tu: văn bản/quyết định PHÊ DUYỆT DỰ ÁN ĐẦU TƯ, QUYẾT ĐỊNH CHẤP THUẬN CHỦ TRƯƠNG ĐẦU TƯ (kể cả
+  đồng thời chấp thuận nhà đầu tư).
+- lua_chon_nha_dau_tu: văn bản/quyết định PHÊ DUYỆT KẾT QUẢ LỰA CHỌN NHÀ ĐẦU TƯ.
+- phuong_an_sdd: PHƯƠNG ÁN SỬ DỤNG ĐẤT đã được cơ quan có thẩm quyền phê duyệt (của tổ chức kinh tế, đơn vị sự
+  nghiệp công lập, công ty nông, lâm nghiệp). KHÔNG phải phương án sử dụng tầng đất mặt.
+- van_ban_gia_han_du_an: văn bản của cơ quan có thẩm quyền CHO PHÉP GIA HẠN thời hạn hoạt động của dự án đầu tư
+  hoặc thể hiện thời hạn hoạt động của dự án đầu tư.
 - cccd: Thẻ Căn cước công dân / Căn cước / CMND / hộ chiếu (chỉ đối chiếu, KHÔNG có dòng riêng).
 - other: giấy tờ khác không có dòng riêng để đính kèm (Tờ khai lệ phí trước bạ, Tờ khai tiền sử dụng đất,
-  Đơn/Giấy cam kết, Hợp đồng/Giấy ủy quyền, Giấy chứng nhận ĐKKD) hoặc không đủ bằng chứng.
+  Đơn/Giấy cam kết, Hợp đồng/Giấy ủy quyền, Giấy chứng nhận ĐKKD, Phiếu đo đạc chỉnh lý thửa đất, công văn trả lời
+  hồ sơ, văn bản cung cấp thông tin quy hoạch) hoặc không đủ bằng chứng. Giấy ủy quyền/phiếu đo đạc/tờ khai có
+  NHẮC TỚI số Giấy chứng nhận vẫn là other, không phải gcn.
 </type_definitions>
 
 <output_contract>

@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.25.10",
+    date: "29/10/2026",
+    items: [
+      "Lào Cai (cổng iGate mới): thêm 9 thủ tục đất đai — đăng ký GCN chuyển quyền trước 2024, đăng ký biến động chia tách tổ chức, xác nhận tiếp tục sử dụng đất nông nghiệp, đăng ký biến động theo thỏa thuận/bản án, chuyển mục đích sử dụng đất cấp phường/xã, tổ chức kinh tế nhận chuyển nhượng QSDĐ dự án, sử dụng đất kết hợp đa mục đích, xác định lại diện tích đất ở, đính chính Giấy chứng nhận — trợ lý xác định đúng người đi nộp theo tài khoản đăng nhập.",
+    ],
+  },
+  {
     version: "1.25.9",
     date: "29/10/2026",
     items: [

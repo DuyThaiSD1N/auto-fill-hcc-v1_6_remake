@@ -2978,6 +2978,8 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → ô Đơn / ô CCCD chỉ nhận đúng trang của mình.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đề nghị di chuyển hồ sơ theo Mẫu số 27 (Phụ lục I Nghị định 131/2021/NĐ-CP), "

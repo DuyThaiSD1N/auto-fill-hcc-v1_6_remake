@@ -430,17 +430,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # nộp thì mới được dùng số của tổ chức — lúc đó họ đại diện cho chính tổ chức đó. Nộp thay theo
     # uỷ quyền mà mượn số 0912282787 của Giấy chứng nhận ĐKDN là điền số của người khác (sheet
     # mapping, ghi chú ô số 14).
+    # Người đại diện không có khối liên lạc riêng (ddn_key None): số NguoiNop_* là của bên được uỷ quyền, chỉ
+    # dùng cho người đại diện khi hai khối là MỘT người.
     lien_lac_to_chuc = nop_source == "ddn"
     add("CongDan_diDong", _phone(
-        pick("NguoiNop_DienThoai", "NguoiNop_DienThoai")
+        pick("NguoiNop_DienThoai", None)
         or (values.get("ChuHoSo_DienThoai") if lien_lac_to_chuc else None)
     ))
     add("CongDan_email", _plain(
-        pick("NguoiNop_Email", "NguoiNop_Email")
+        pick("NguoiNop_Email", None)
         or (values.get("ChuHoSo_Email") if lien_lac_to_chuc else None)
     ))
     add("CongDan_fax", _plain(
-        pick("NguoiNop_Fax", "NguoiNop_Fax")
+        pick("NguoiNop_Fax", None)
         or (values.get("ChuHoSo_Fax") if lien_lac_to_chuc else None)
     ))
 

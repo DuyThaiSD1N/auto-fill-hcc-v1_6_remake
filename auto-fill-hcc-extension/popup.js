@@ -4852,6 +4852,8 @@ ocrBtn.addEventListener("click", async () => {
       // người nộp có 6 ô (*) phải điền theo giấy tờ của CHÍNH người đăng nhập → thiếu mốc tài khoản
       // là BE bỏ trống cả khối.
       cfg.key === "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175" ||
+      cfg.key === "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175-igate-lao-cai" ||
+      cfg.key === "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175-igate-lao-cai-test" ||
       // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
       // [Lào Cai] 1.115693: chủ hộ hay thường trú ở tỉnh khác nơi có thửa đất nên gần như luôn ủy
@@ -4860,6 +4862,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi" ||
       // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
       cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep" ||
+      // [Lào Cai - cổng iGate mới] 1.115677: cùng mốc tài khoản — vợ/chồng ký Đơn Mẫu 39 hay đi nộp thay.
+      cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-igate-lao-cai" ||
+      cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-igate-lao-cai-test" ||
       // [Lào Cai] 1.013947: cùng form bước 2 + mapper với 1.115677 → cũng cần mốc tài khoản.
       cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai" ||
       // [Lào Cai] 1.013831: cùng form bước 2 + mapper với 1.115668; hồ sơ chuyển nhượng hay nộp qua người
@@ -4873,6 +4878,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
       // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
+      // [Lào Cai - cổng iGate mới] 1.115671: mốc tài khoản chọn CCCD người nộp (địa chỉ người nộp lấy theo thẻ).
+      cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai" ||
+      cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai-test" ||
       // [Lào Cai] 1.115650: chủ hồ sơ thường là DOANH NGHIỆP, hồ sơ đầy người có số định danh (người
       // đại diện, thành viên góp vốn) → thiếu mốc tài khoản thì không biết ai đang đi nộp.
       cfg.key === "giao-thue-dat-lao-cai" ||
@@ -4897,13 +4905,19 @@ ocrBtn.addEventListener("click", async () => {
       // khác đi nộp → mốc tài khoản vừa chốt mode, vừa quyết định ô "Tên cơ quan/tổ chức" của
       // khối người nộp mang tên đơn vị được ủy quyền hay tên chủ hồ sơ; thiếu nó BE bỏ trống cả khối.
       cfg.key === "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an" ||
+      cfg.key === "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-igate-lao-cai" ||
+      cfg.key === "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-igate-lao-cai-test" ||
       // [Lào Cai] 1.115685: hồ sơ thường là người dân TỰ NỘP, nhưng khối "Thông tin người nộp" chỉ
       // được điền khi đối chiếu khớp với tài khoản đang đăng nhập → thiếu mốc là BE bỏ trống cả khối.
       cfg.key === "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004" ||
+      cfg.key === "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai" ||
+      cfg.key === "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai-test" ||
       // [Lào Cai] 1.115682: ca thường gặp là CÁN BỘ MỘT CỬA nộp thay người dân (chủ hồ sơ thường
       // trú tỉnh khác nơi có thửa đất) → mốc tài khoản là thứ DUY NHẤT tách được người nộp khỏi chủ
       // hồ sơ; thiếu nó BE cố ý bỏ trống cả khối "Thông tin người nộp" thay vì điền nhầm nhân thân.
       cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa" ||
+      cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa-igate-lao-cai" ||
+      cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa-igate-lao-cai-test" ||
       // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): khối "Thông tin người nộp hồ sơ" chỉ được điền khi CCCD
       // tài khoản TRÙNG CCCD trên đơn; thiếu mốc là BE bỏ trống khối đó, chỉ điền phần cấp thẻ.
       cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
@@ -4930,8 +4944,18 @@ ocrBtn.addEventListener("click", async () => {
       // khối người nộp với CSDLQG dân cư → chế độ theo tài khoản cần mốc để chỉ lấy nhân thân của chính
       // người đang đăng nhập.
       cfg.key === "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115666: mốc tài khoản chọn đúng người nộp giữa bên nhận chuyển quyền / bên được
+      // ủy quyền (bên chuyển quyền đứng tên GCN cũng có số định danh trong hồ sơ).
+      cfg.key === "dang-ky-gcn-chuyen-quyen-truoc-2024-igate-lao-cai" ||
+      cfg.key === "dang-ky-gcn-chuyen-quyen-truoc-2024-igate-lao-cai-test" ||
       cfg.key === "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115670: mốc tài khoản chọn đúng người nộp giữa người đại diện tổ chức / bên được
+      // ủy quyền.
+      cfg.key === "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai" ||
+      cfg.key === "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai-test" ||
       cfg.key === "dinh-chinh-gcn-da-cap-lao-cai" ||
+      cfg.key === "dinh-chinh-gcn-da-cap-igate-lao-cai" ||
+      cfg.key === "dinh-chinh-gcn-da-cap-igate-lao-cai-test" ||
       cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai" ||
       // [Lào Cai] 1.011441 / 1.011442 (đăng ký / đăng ký thay đổi biện pháp bảo đảm): người đi nộp hay là
       // cán bộ ngân hàng/quỹ tín dụng theo Giấy giới thiệu, khác người yêu cầu đăng ký → chế độ theo tài

@@ -246,6 +246,7 @@
       "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-df63-75bf-8bff-4c9d1f98674c",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -673,6 +674,7 @@
       "label": "Di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi thay đổi nơi thường trú",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d1-7738-83c0-e5b7b37f5bb0",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

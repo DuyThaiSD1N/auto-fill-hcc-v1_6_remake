@@ -74,7 +74,7 @@ def test_nhan_cha_me_con_maps_father_recognizes_child():
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["DiaChiC"] == "Thôn Tây Sơn"
     assert d["TT_TinhThanhC"] == "Tỉnh Lai Châu"
-    assert d["TT_PhuongXaC"] == "Mường So"
+    assert d["TT_PhuongXaC"] == "Xã Phong Thổ"  # Mường So đã sáp nhập
     assert d["Quanhe"] == "Cha"
     assert d["LoaiDangKy"] == "Đăng ký mới"
     assert d["loaiXacNhan"] == "Cha nhận con"
@@ -92,7 +92,7 @@ def test_nhan_cha_me_con_maps_father_recognizes_child():
     assert d["hotenB"] == "VŨ MY AN"
     assert d["ngaysinhB"] == "18/12/2025"
     assert d["gioitinhB"] == "Nữ"
-    assert d["loaigiaytoB"] == "Giấy tờ khác bao gồm các giấy tờ có dán"
+    assert d["loaigiaytoB"] == "Các loại giấy tờ tùy thân khác"
     assert d["tengiaytoB"] == "Giấy chứng sinh"
     assert "NhaptengiaytoB" not in d
     assert d["sogiaytodinhdanhB"] == "02020.GCS.12096.25"
@@ -190,3 +190,32 @@ def test_tinh_xa_viet_tat_ra_nhan_danh_muc():
     assert _province_label("Lai Châu") == "Tỉnh Lai Châu"
     assert [_commune_label(x) for x in ("P. Hòa Cường", "X.Tân Phong", "TT Tam Đường", "Pa Tần")] == [
         "Phường Hòa Cường", "Xã Tân Phong", "Thị trấn Tam Đường", "Pa Tần"]
+
+
+def test_giay_khai_sinh_chon_thang_option_va_xa_cu_quy_ve_xa_moi():
+    # Danh mục giấy tờ tùy thân của eForm có sẵn "Giấy khai sinh" (không cần ô tên giấy tờ); xã trước
+    # sáp nhập ("Xã Hòa Phong", Đà Nẵng) không có trên cổng → phải quy về "Xã Hòa Vang".
+    area = {"quocGia": "Việt Nam", "tinh": "Thành phố Đà Nẵng", "xa": "Xã Hòa Phong", "diaChi": "Thôn Một"}
+    fields = [
+        _field("Requester_FullName", "Trần Văn Bình"),
+        _field("Requester_IdNumber", "048090001234"),
+        _field("Requester_ResidenceDomestic", area),
+        _field("Requester_RelationshipToRecognized", "Cha"),
+        _field("Parent_ResidenceDomestic", area),
+        _field("Child_FullName", "Trần Thị Cúc"),
+        _field("Child_IdNumber", "048322001234"),
+        _field("Child_BirthDocumentType", "Giấy khai sinh"),
+        _field("Child_BirthDocumentNumber", "12"),
+        _field("Child_BirthDocumentIssueDate", "15/12/2022"),
+        _field("Child_BirthDocumentIssuePlace", "UBND xã Hòa Liên"),
+    ]
+
+    d = _values(mapper.enrich(fields, {}))
+
+    assert d["loaigiaytoB"] == "Giấy khai sinh"
+    assert "tengiaytoB" not in d
+    assert d["sogiaytodinhdanhB"] == "12"
+    assert d["TT_TinhThanhC"] == "Thành phố Đà Nẵng"
+    assert d["TT_PhuongXaC"] == "Xã Hòa Vang"
+    assert d["DiaChiC"] == "Thôn Một"
+    assert d["noicutruA_TrongNuoc"]["xa"] == "Xã Hòa Vang"
