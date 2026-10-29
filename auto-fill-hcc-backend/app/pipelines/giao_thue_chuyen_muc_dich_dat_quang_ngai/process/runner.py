@@ -17,7 +17,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
     )
-    result["fields"], warnings = mapper.enrich(result["fields"], options)
+    result["fields"], warnings = mapper.enrich(result["fields"], options, result.get("ocr_text"))
     if warnings:
         result.setdefault("errors", []).extend(warnings)
     return result

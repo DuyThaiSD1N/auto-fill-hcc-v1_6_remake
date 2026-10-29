@@ -480,3 +480,55 @@ def test_prompt_forces_phone_extraction_from_contact_lines():
     phone_desc = next(f["desc"] for f in FIELDS if f["name"] == "ChuHoSo_DienThoai")
     assert "PHẢI lấy khi hồ sơ có" in phone_desc
     assert "Mẫu số 18" in phone_desc
+
+
+def _map_qn(values):
+    from app.pipelines.giao_thue_chuyen_muc_dich_dat_quang_ngai.process import mapper as qn_mapper
+
+    fields, _ = qn_mapper.enrich([{"name": k, "value": v} for k, v in values.items()], {})
+    return {f["name"]: f["value"] for f in fields}
+
+
+def test_xa_tren_don_ocr_lech_khong_co_trong_danh_muc_thi_lay_theo_cccd_cung_tinh():
+    d = _map_qn({
+        "ChuHoSo_HoTen": "NGUYỄN VĂN A",
+        "ChuHoSo_DonDiaChi": {"quocGia": "Việt Nam", "tinh": "Quảng Ngãi", "xa": "Kim Tam", "diaChi": "1 Đường X"},
+        "ChuHoSo_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Kon Tum", "xa": "Quyết Thắng", "diaChi": "Số 1, tổ 1"},
+    })
+    assert d["data[district]"] == "Phường Kon Tum"
+    assert d["data[address]"] == "1 Đường X"  # giữ chi tiết của đơn
+
+
+def test_xa_tren_don_hop_le_thi_khong_doi():
+    d = _map_qn({
+        "ChuHoSo_HoTen": "NGUYỄN VĂN A",
+        "ChuHoSo_DonDiaChi": {"quocGia": "Việt Nam", "tinh": "Quảng Ngãi", "xa": "Đăk Bla", "diaChi": "1 Đường X"},
+        "ChuHoSo_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Kon Tum", "xa": "Quyết Thắng", "diaChi": "Số 1"},
+    })
+    assert "Bla" in d["data[district]"]
+
+
+def test_prompt_thua_dat_theo_don_va_bay_quang_ngai_kon_tum():
+    from app.pipelines.giao_thue_chuyen_muc_dich_dat_quang_ngai.process.prompt import EXTRA_RULES
+
+    assert "TỈNH và XÃ/PHƯỜNG của thửa đất lấy THEO ĐƠN" in EXTRA_RULES
+    assert "TỈNH KON TUM CŨ" in EXTRA_RULES
+    assert "KHÔNG thay bằng phường/xã ở dòng \"Kính gửi\"" in EXTRA_RULES
+
+
+def test_xa_khong_nam_tren_dong_dia_chi_ocr_thi_lay_theo_cccd():
+    from app.pipelines.giao_thue_chuyen_muc_dich_dat_quang_ngai.process import mapper as qn_mapper
+
+    values = {
+        "ChuHoSo_HoTen": "NGUYỄN VĂN A",
+        # Model thay xã viết tay bị méo bằng phường ở dòng "Kính gửi".
+        "ChuHoSo_DonDiaChi": {"quocGia": "Việt Nam", "tinh": "Quảng Ngãi", "xa": "Đăk Bla", "diaChi": "1 Đường X"},
+        "ChuHoSo_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Kon Tum", "xa": "Quyết Thắng", "diaChi": "Số 1"},
+    }
+    ocr = "Kính gửi: Ủy ban nhân dân phường Đăk Bla\n2. Địa chỉ/trụ sở chính: 1 Đường X, P. Kim Tam, Tỉnh Quảng Ngãi\n"
+    fields, _ = qn_mapper.enrich([{"name": k, "value": v} for k, v in values.items()], {}, ocr)
+    assert {f["name"]: f["value"] for f in fields}["data[district]"] == "Phường Kon Tum"
+    # Dòng địa chỉ ghi đúng phường đó → giữ.
+    ok = "2. Địa chỉ: 1 Đường X, phường Đăk Bla, tỉnh Quảng Ngãi\n"
+    fields, _ = qn_mapper.enrich([{"name": k, "value": v} for k, v in values.items()], {}, ok)
+    assert "Bla" in {f["name"]: f["value"] for f in fields}["data[district]"]

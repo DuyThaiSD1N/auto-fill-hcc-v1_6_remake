@@ -164,6 +164,9 @@ PORTAL_SUBMIT: dict[str, dict] = {
     "dichvucongbnv.moha.gov.vn": _FORMIO,       # nhãn nút cuối: "Tiếp tục"
     "dvc.moet.gov.vn": _FORMIO,                 # nhãn nút cuối: "Tiếp tục"
     "dichvucong-tthc.moit.gov.vn": _FORMIO,     # nhãn nút cuối: "Nộp hồ sơ"
+    # Lào Cai chuyển sang nền iGate mới (cổng cũ dichvucong.laocai.gov.vn là eForm khác, không dùng luật này).
+    # Nút cuối chỉ dựng sau khi tích cam đoan: <button form="captchaForm" class="… btn_next">Tiếp tục</button>.
+    "dichvucongtest.laocai.gov.vn": _FORMIO,    # nhãn nút cuối: "Tiếp tục"
 }
 
 

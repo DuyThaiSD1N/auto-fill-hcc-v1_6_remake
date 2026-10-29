@@ -687,10 +687,21 @@ def _person_from_document(document: dict) -> dict | None:
     gender = _first_match(block, (
         r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
     ))
-    id_number = _first_match(block, (
-        r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})",
-        r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:\s*([0-9 ]{9,})",
-    ))
+    if is_death:
+        # Giấy khai tử: chỉ dòng "Số định danh cá nhân" ĐẦU TIÊN là của người chết. Dòng đó trống thì người
+        # chết không có số — tìm tiếp xuống dưới sẽ vớ số người đi khai tử, hoặc số trên giấy khác bị ghép
+        # chung trang (phiếu từ chối tiếp nhận không có dòng họ tên nên dính vào trang trích lục).
+        label = re.search(
+            r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:[ \t]*(?:\n[ \t]*)?([0-9][0-9 ]{8,})?",
+            block,
+            flags=re.IGNORECASE,
+        )
+        id_number = (label.group(1) or "").strip() if label else ""
+    else:
+        id_number = _first_match(block, (
+            r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})",
+            r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:\s*([0-9 ]{9,})",
+        ))
     ethnicity = _first_match(block, (
         r"Dân\s*tộc\s*:\s*([^\n\r]+?)(?=\s+Quốc\s*tịch|$)",
     ))
@@ -1383,6 +1394,13 @@ def _merge_role_section(primary: str, secondary: str) -> str:
         if separator and label not in _MERGE_PROTECTED_LABELS and "khong xac dinh" in _fold(value):
             fallback = _labeled_value(secondary, label)
             if fallback and "khong xac dinh" not in _fold(fallback):
+                line = f"{label}: {fallback}"
+        elif separator and label == "Ngày sinh" and re.fullmatch(r"\d{4}", value.strip()):
+            # Tờ khai mục cha/mẹ chỉ in ô "Năm sinh"; giấy tờ của chính người đó (CCCD, trích lục khai tử)
+            # ghi đủ ngày CÙNG năm thì lấy ngày đủ — khác năm vẫn giữ theo tờ khai.
+            fallback = _labeled_value(secondary, label)
+            if re.search(r"\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{4}", fallback or "") and \
+                    _year_of(fallback) == int(value.strip()):
                 line = f"{label}: {fallback}"
         merged.append(line)
     return "\n".join(merged)
@@ -3436,7 +3454,8 @@ def _reconcile_birth_fields(fields: list[dict]) -> list[dict]:
 
 def _parent_birth_from_context(fields: list[dict], context: str) -> list[dict]:
     """Năm sinh cha/mẹ agent trích chép từ tờ khai mà trẻ hơn con < 15 năm (chữ viết tay đọc lệch) → lấy theo khối
-    vai đã kiểm thế hệ; khối đó cũng không có năm hợp lý thì bỏ field, không điền con số phi lý."""
+    vai đã kiểm thế hệ; khối đó cũng không có năm hợp lý thì bỏ field, không điền con số phi lý. Agent chỉ trả năm
+    mà khối vai có ngày đủ cùng năm → lấy ngày đủ."""
     values = {field.get("name"): field.get("value") for field in fields if field.get("name")}
     child_year = _year_of(values.get("Subject_BirthDate")) or _role_year(_section(context, "con"))
     if not child_year:
@@ -3445,7 +3464,15 @@ def _parent_birth_from_context(fields: list[dict], context: str) -> list[dict]:
     for prefix, tag in (("Father_", "cha"), ("Mother_", "me")):
         name = prefix + "BirthDateOrYear"
         year = _year_of(values.get(name))
-        if not year or child_year - year >= 15:
+        if not year:
+            continue
+        if child_year - year >= 15:
+            # Agent chép "Năm sinh" của tờ khai trong khi khối vai đã có ngày đủ CÙNG năm (trích lục khai tử,
+            # CCCD của chính người đó) → lấy ngày đủ.
+            full = _labeled_value(_section(context, tag), "Ngày sinh")
+            if re.fullmatch(r"\d{4}", str(values.get(name) or "").strip()) and _year_of(full) == year and \
+                    re.search(r"\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{4}", full):
+                fixes[name] = full
             continue
         section = _section(context, tag)
         # Vai giữ theo tờ khai với năm sinh đúng như OCR (xem _flag_generation_mismatch_births) → không bỏ.

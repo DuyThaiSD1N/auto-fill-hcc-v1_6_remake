@@ -65,7 +65,16 @@ _FORMIO_HOSTS = [
     "dichvucongbnv.moha.gov.vn",
     "dvc.moet.gov.vn",
     "dichvucong-tthc.moit.gov.vn",
+    "dichvucongtest.laocai.gov.vn",
 ]
+
+
+def test_lao_cai_cong_moi_khop_url_va_nut_that():
+    """URL và thẻ nút cắt từ trang thật (html/nhận kq lào cài; nút chỉ hiện sau khi tích cam đoan)."""
+    tag = ('<button mat-flat-button="" form="captchaForm" class="mat-flat-button mat-button-base '
+           'mat-focus-indicator ng-star-inserted btn_next">')
+    assert _matches("dichvucongtest.laocai.gov.vn", "/vi/padsvc/apply-online/6aa4c6f30ac3ff7a28894b2f",
+                    label="Tiếp tục", tag=tag)
 _FORMIO_PATH = "/vi/padsvc/apply-online/6861598cacfde3146c41cc08"
 # Nguyên văn từ snapshot Ninh Bình / Lâm Đồng (nhãn "Thanh toán") và MAE / Bộ Y tế ("Tiếp tục").
 _FORMIO_SUBMIT = (

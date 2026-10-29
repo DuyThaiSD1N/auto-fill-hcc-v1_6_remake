@@ -89,7 +89,8 @@ FIELDS: list[dict] = [
     {"name": "Father_BirthDateOrYear",
      "desc": "Ngày sinh cha. Nếu cha có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
              "chỉ trả năm (yyyy) khi cha KHÔNG có CCCD và tài liệu chỉ ghi năm. "
-             "Nếu cha đã mất, lấy năm sinh từ TRÍCH LỤC KHAI TỬ của cha (dòng 'Ngày, tháng, năm sinh')."},
+             "Nếu cha đã mất, lấy từ TRÍCH LỤC KHAI TỬ của cha (dòng 'Ngày, tháng, năm sinh'): trích lục ghi đủ "
+             "ngày thì trả NGÀY đầy đủ dd/mm/yyyy, kể cả khi tờ khai chỉ ghi năm."},
     {"name": "Father_Ethnicity",
      "desc": "Dân tộc cha nếu tài liệu ghi rõ; nếu cha đã mất thì lấy từ dòng 'Dân tộc' trên TRÍCH LỤC KHAI TỬ của cha."},
     {"name": "Father_Nationality",
@@ -119,7 +120,8 @@ FIELDS: list[dict] = [
     {"name": "Mother_BirthDateOrYear",
      "desc": "Ngày sinh mẹ. Nếu mẹ có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
              "chỉ trả năm (yyyy) khi mẹ KHÔNG có CCCD và tài liệu chỉ ghi năm. "
-             "Nếu mẹ đã mất, lấy năm sinh từ TRÍCH LỤC KHAI TỬ của mẹ (dòng 'Ngày, tháng, năm sinh')."},
+             "Nếu mẹ đã mất, lấy từ TRÍCH LỤC KHAI TỬ của mẹ (dòng 'Ngày, tháng, năm sinh'): trích lục ghi đủ "
+             "ngày thì trả NGÀY đầy đủ dd/mm/yyyy, kể cả khi tờ khai chỉ ghi năm."},
     {"name": "Mother_Ethnicity",
      "desc": "Dân tộc mẹ nếu tài liệu ghi rõ; nếu mẹ đã mất thì lấy từ dòng 'Dân tộc' trên TRÍCH LỤC KHAI TỬ của mẹ."},
     {"name": "Mother_Nationality",

@@ -57,6 +57,9 @@ EXTRA_RULES = """
      Đừng vì dễ mà quay sang CCCD. PHẢI tự tách chuỗi trên đơn: cụm CUỐI là tỉnh/thành phố, cụm ngay
      TRƯỚC nó là xã/phường, phần còn lại cho vào chiTietDuoiXa (thêm tiền tố "Phường"/"Xã" nếu đơn viết trống).
    - Nếu TỈNH ghi trên ĐƠN khác TỈNH ghi trên CCCD thì LUÔN theo ĐƠN, không lấy tỉnh của thẻ.
+   - Tên xã/phường viết tay trên dòng địa chỉ bị OCR đọc méo (không ra tên đơn vị có thật) thì CHÉP NGUYÊN
+     chữ OCR đọc được; KHÔNG thay bằng phường/xã ở dòng "Kính gửi" hay phường/xã của thửa đất — đó là nơi
+     nộp hồ sơ/vị trí đất, không phải nơi ở. Hệ thống tự đối chiếu với giấy tờ tùy thân.
 10. QUY TẮC ĐỊA CHỈ THỬA ĐẤT (ThuaDat_DiaChi) — TÁCH HẲN với nơi cư trú:
    - Đây là ĐỊA ĐIỂM KHU ĐẤT xin giao/thuê/chuyển mục đích/gia hạn, KHÔNG phải chỗ ở của ai.
    - Nguồn: mục "Địa điểm thửa đất"/"Địa điểm khu đất"/"Vị trí khu đất" trên Đơn đề nghị; phụ trợ
@@ -64,6 +67,17 @@ EXTRA_RULES = """
    - TUYỆT ĐỐI KHÔNG lấy dòng "2. Địa chỉ:"/nơi thường trú của người đề nghị, người nộp hoặc địa chỉ
      trên CCCD làm địa chỉ thửa đất; hai địa chỉ này thường KHÁC nhau.
    - Không tìm thấy mục địa điểm thửa đất ghi rõ thì BỎ FIELD, không suy từ nơi cư trú.
+   - TỈNH và XÃ/PHƯỜNG của thửa đất lấy THEO ĐƠN (đơn ghi địa giới HIỆN HÀNH): mục địa điểm thửa đất, hoặc
+     chỗ khác trong chính đơn nhắc tới thửa đất đó ("thửa đất số .. tờ bản đồ số .., phường .., tỉnh ..").
+     Mục địa điểm chỉ ghi xã/phường mà không ghi tỉnh thì tỉnh là tỉnh hiện hành ghi ở chỗ khác trong đơn
+     (dòng "Kính gửi", địa danh nơi làm đơn). KHÔNG lấy tỉnh/huyện từ Giấy chứng nhận, quyết định, tờ khai
+     thuế, trích lục cũ kèm trong hồ sơ.
+   - BẪY QUẢNG NGÃI: tỉnh Quảng Ngãi hiện nay gồm Quảng Ngãi cũ và TỈNH KON TUM CŨ (sáp nhập 2025, bỏ cấp
+     huyện). Hồ sơ đất đai thường kèm nhiều giấy cũ ghi "tỉnh Kon Tum", "thị xã/thành phố Kon Tum", huyện
+     Đăk Hà, Đăk Tô, Sa Thầy, Kon Rẫy, Ngọc Hồi... — đó là địa giới CŨ. Đơn mới ghi "tỉnh Quảng Ngãi" với các
+     phường/xã MỚI (vd phường Kon Tum, phường Đăk Bla, phường Đăk Cấm, xã Đăk Rơ Wa, xã Ngọk Bay...) thì trả
+     tinh = "Quảng Ngãi" và xa đúng như đơn; KHÔNG trả tinh = "Kon Tum" chỉ vì giấy cũ ghi vậy hay vì tên
+     phường trùng tên thành phố cũ — tỉnh sai làm hệ thống đổi sang một xã khác.
 11. Don_NoiDungDeNghi lấy NGUYÊN VĂN nội dung đề nghị người dân khai trên Đơn (đề nghị giao đất/cho
    thuê đất/cho phép chuyển mục đích sử dụng đất/giao đất và giao rừng/cho thuê đất và cho thuê
    rừng/gia hạn sử dụng đất). KHÔNG lấy tiêu đề thủ tục trên cổng thay nội dung đơn.

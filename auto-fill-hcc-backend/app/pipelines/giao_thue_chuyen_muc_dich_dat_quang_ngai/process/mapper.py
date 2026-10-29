@@ -6,7 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.area_remap import province_label, remap_area
+from app.pipelines._shared.area_remap import canonical_province, is_current_area, province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 
@@ -71,7 +71,21 @@ def _province_label(value: Any) -> str | None:
     return province_label(bare)
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+def _xa_on_address_line(area: dict, ocr_text: str | None) -> bool:
+    """Tên xã LLM trả có nằm trên chính dòng OCR chứa phần chi tiết địa chỉ không (so không dấu, bỏ khoảng
+    trắng). Không đủ dữ kiện để kiểm thì coi như có."""
+    detail = re.sub(r"\W+", "", _fold(area.get("diaChi")))
+    xa = re.sub(r"\W+", "", re.sub(r"^(phuong|xa|thi tran)\s+", "", _fold(area.get("xa"))))
+    if not ocr_text or len(detail) < 6 or not xa:
+        return True
+    lines = [re.sub(r"\W+", "", _fold(line)) for line in str(ocr_text).splitlines()]
+    lines = [line for line in lines if detail in line]
+    return not lines or any(xa in line for line in lines)
+
+
+def enrich(
+    fields: list[dict], options: dict | None = None, ocr_text: str | None = None
+) -> tuple[list[dict], list[str]]:
     del options
     values = _by_name(fields)
     out: list[dict] = []
@@ -116,6 +130,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         or (None if authorized else _area(values.get("NguoiNop_DonDiaChi")))
         or _area(owner_val("NoiCuTru"))
     )
+    # Xã viết tay trên đơn bị OCR đọc lệch: ra tên không có trong danh mục (cổng bỏ trống ô Phường/xã), hoặc
+    # model thay bằng một phường có thật lấy chỗ khác ("Kính gửi", vị trí thửa đất) mà dòng địa chỉ không hề
+    # ghi. CHỈ khi đó mới lấy tỉnh/xã từ nơi cư trú trên giấy tờ tùy thân (đã đổi sang địa giới hiện hành),
+    # cùng tỉnh với đơn; giữ phần chi tiết của đơn.
+    if owner_area and owner_area.get("xa") and (
+        not is_current_area(owner_area.get("tinh") or "", owner_area["xa"])
+        or not _xa_on_address_line(owner_area, ocr_text)
+    ):
+        id_area = _area(owner_val("NoiCuTru"))
+        if (
+            id_area
+            and id_area.get("xa")
+            and is_current_area(id_area.get("tinh") or "", id_area["xa"])
+            and canonical_province(id_area.get("tinh")) == canonical_province(owner_area.get("tinh"))
+        ):
+            owner_area = {**owner_area, "tinh": id_area["tinh"], "xa": id_area["xa"]}
     owner_id = _identity(owner_val("SoDinhDanh"))
 
     add("data[ownerFullname]", owner_name)
