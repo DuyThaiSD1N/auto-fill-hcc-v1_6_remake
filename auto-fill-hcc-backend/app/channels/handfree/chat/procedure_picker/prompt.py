@@ -393,6 +393,9 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "dang-ky-bien-dong-dat-dai-bac-ninh": ["sang tên sổ đỏ khi mua bán đất", "chuyển nhượng quyền sử dụng đất",
                                            "nhận thừa kế đất đai", "bố mẹ tặng cho đất cho con",
                                            "góp vốn bằng quyền sử dụng đất",
+                                           "cho thuê quyền sử dụng đất", "cho thuê lại quyền sử dụng đất",
+                                           "đăng ký biến động: chuyển nhượng, thừa kế, tặng cho, góp vốn; cho "
+                                           "thuê, cho thuê lại",
                                            "đăng ký biến động đất đai chuyển nhượng tặng cho ở bắc ninh"],
     "tach-hop-thua-dat-bac-ninh": ["tách thửa đất", "hợp thửa đất", "chia sổ đỏ cho các con",
                                    "tách sổ đỏ thành nhiều sổ", "gộp hai thửa đất thành một sổ",
@@ -415,12 +418,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                "chuyển đất nông nghiệp sang đất ở", "xin thuê đất",
                                                "xin giao đất", "gia hạn sử dụng đất khi hết hạn",
                                                "chuyển mục đích sử dụng đất ở bắc ninh"],
-    # Mã cũ 1.013831: cùng nghiệp vụ sang tên với dang-ky-bien-dong-dat-dai-bac-ninh (1.115468, phạm vi
-    # rộng hơn) → chỉ gợi ý cách nói riêng (cho thuê lại, mã cũ); "sang tên sổ đỏ" trơn để bên kia.
-    "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": ["cho thuê quyền sử dụng đất", "cho thuê lại quyền sử dụng đất",
-                                                 "đăng ký biến động chuyển nhượng mã 1.013831",
-                                                 "đăng ký biến động thừa kế, tặng cho, góp vốn theo thủ tục cũ",
-                                                 "đăng ký cho thuê đất ở bắc ninh"],
+    # Mã cũ 1.013831: cùng nghiệp vụ với dang-ky-bien-dong-dat-dai-bac-ninh (1.115468, phạm vi rộng hơn, kể
+    # cả cho thuê / cho thuê lại) → chỉ gọi theo MÃ hoặc "thủ tục cũ"; nói tên trơn thì về 1.115468.
+    "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": ["đăng ký biến động chuyển nhượng mã 1.013831",
+                                                 "thủ tục 1.013831", "mã 1013831",
+                                                 "đăng ký biến động thừa kế, tặng cho, góp vốn theo thủ tục cũ"],
     # Chế độ RIÊNG của Bắc Ninh (NQ 103/2025/NQ-HĐND) cho người 70–dưới 75 tuổi hoặc đảng viên huy hiệu
     # 40 năm tuổi đảng. Chỉ nhận cụm có mốc tuổi 70–75, huy hiệu đảng hoặc Bắc Ninh; "trợ cấp người
     # cao tuổi" trơn vẫn để LLM đọc cả câu (hưu trí xã hội / trợ cấp xã hội hàng tháng cũng nhận).
@@ -619,6 +621,11 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   nhà ở xã hội (thường của dự án), hoặc VAY VỐN tự xây, sửa nhà. Nói rõ nhà của Nhà nước / vốn đầu tư
   công → bản Bộ Xây dựng; nói mua nhà xã hội của dự án, xin giấy xác nhận điều kiện nhà ở hoặc vay vốn
   → bản Bắc Ninh; chỉ nói chung "đăng ký / thuê nhà ở xã hội" → unclear với cả hai.
+- HAI thủ tục "Đăng ký biến động … chuyển nhượng, thừa kế, tặng cho, góp vốn …; cho thuê, cho thuê lại …"
+  (khi danh sách có cả hai, Bắc Ninh): bản tên dài có "chuyển đổi quyền sử dụng đất nông nghiệp" và "mua
+  bán nhà ở có thời hạn" là thủ tục HIỆN HÀNH → nói tên/nghiệp vụ (sang tên, chuyển nhượng, thừa kế, tặng
+  cho, góp vốn, cho thuê, cho thuê lại) thì CHỌN LUÔN bản này, không hỏi lại. Bản tên ngắn hơn là MÃ CŨ
+  — chỉ chọn khi câu nói rõ mã 1.013831 hoặc "thủ tục cũ".
 - "CẤP BẢN SAO TỪ SỔ GỐC" = cơ quan đang giữ sổ gốc cấp lại bản sao (người dân không còn bản chính),
   KHÁC chứng thực bản sao (đem BẢN CHÍNH tới để sao y). Bản sao giấy khai sinh/kết hôn/khai tử là
   trích lục hộ tịch; bản sao văn bằng, chứng chỉ là thủ tục văn bằng — chỉ chọn "cấp bản sao từ sổ

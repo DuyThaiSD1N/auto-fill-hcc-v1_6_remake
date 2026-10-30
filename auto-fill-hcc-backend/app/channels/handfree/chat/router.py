@@ -413,6 +413,7 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             intent,
             client_page_context=(req.client_context.page_context if req.client_context else None),
             free_text=bool(message) and not message.startswith("__"),
+            client_url=str(req.client_context.url or "")[:2000] if req.client_context else "",
         )
     flow.update_voice_options(conv, reply)
 

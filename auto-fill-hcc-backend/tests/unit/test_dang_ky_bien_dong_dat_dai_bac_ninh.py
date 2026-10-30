@@ -260,9 +260,10 @@ def test_tro_ly_co_the_rieng_ma_1_115476():
     assert procedure_code(moi) == "1.115476" and procedure_code(cu) == "1.115436"
     assert moi["keKhaiUrl"].endswith("019f169e-c716-76a7-b47e-269721b1d9c2")
     assert moi["provinceOnly"] == ["bacninh"] and not moi.get("agencySoFirst")
+    # Cùng tên gốc, hậu tố theo trường hợp cổng ghi để công dân / cán bộ không chọn nhầm.
     assert cu["label"] == "Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận cấp lần đầu có sai sót)"
-    assert moi["label"] == ("Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động "
-                            "có sai sót)")
+    assert moi["label"] == ("Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động có "
+                            "sai sót)")
 
 
 def test_dinh_chinh_gcn_da_cap_dinh_kem_theo_form_moi():
@@ -324,3 +325,20 @@ def test_dinh_chinh_gcn_da_cap_kinh_gui_va_hien_trang():
         "value": "Sử dụng ổn định, không tranh chấp",
     }
     assert "Don_HienTrang" in dc_schema.ALLOWED
+
+
+def test_tro_ly_noi_ten_chuyen_nhuong_cho_thue_ve_ma_1_115468():
+    # Công dân nói "Đăng ký biến động: chuyển nhượng, thừa kế, tặng cho, góp vốn; cho thuê, cho thuê lại" phải ra
+    # thẻ HIỆN HÀNH 1.115468; thẻ mã cũ 1.013831 chỉ gọi theo mã. Tên hiển thị của 1.115468 có cả cho thuê.
+    from app.channels.handfree.chat.procedure_picker import prompt as picker
+    from app.channels.handfree.procedure_registry import get_procedure as get_tl, procedure_code
+
+    moi, cu = get_tl(_KEY), get_tl("dang-ky-bien-dong-chuyen-nhuong-bac-ninh")
+    assert procedure_code(moi) == "1.115468" and procedure_code(cu) == "1.013831"
+    hint_moi = " | ".join(picker.PROCEDURE_HINTS[_KEY])
+    hint_cu = " | ".join(picker.PROCEDURE_HINTS["dang-ky-bien-dong-chuyen-nhuong-bac-ninh"])
+    assert "cho thuê lại quyền sử dụng đất" in hint_moi and "cho thuê" not in hint_cu
+    assert "1.013831" in hint_cu
+    assert moi["shortLabel"].endswith("góp vốn; cho thuê, cho thuê lại")
+    assert moi["subtitle"].startswith("Mã 1.115468") and cu["subtitle"].startswith("Mã cũ 1.013831")
+    assert "chỉ chọn khi câu nói rõ mã 1.013831" in picker.SYSTEM

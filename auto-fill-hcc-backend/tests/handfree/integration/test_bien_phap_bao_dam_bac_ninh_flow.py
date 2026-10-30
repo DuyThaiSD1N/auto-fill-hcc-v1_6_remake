@@ -199,3 +199,44 @@ def test_upload_classifier_fallback_dung_o():
         docs, [], None)[0] == "gcn"
     assert classifier.fallback_to_slot(
         "GIẤY GIỚI THIỆU — Ngân hàng TMCP cử ông A đi nộp hồ sơ", docs, [], None)[0] == "khac"
+
+
+# Nhà ở xã hội 1.014632 đi vòng qua 1.014589 (như popup-ke-khai-di-vong.js của Auto Fill).
+_NOXH = "dang-ky-nha-o-xa-hoi-bac-ninh"
+_EFORM = ("https://dichvucong.bacninh.gov.vn/web/guest/eform?p_p_id=org_bn_hoso_noptructuyen&p_p_state=normal"
+          "&_org_bn_hoso_noptructuyen_maThuTucHanhChinh={ma}&_org_bn_hoso_noptructuyen_x=a%2Fb")
+
+
+async def test_nha_o_xa_hoi_mo_trang_dvcqg_cua_thu_tuc_cau():
+    conv = _conv(location={"province": "Tỉnh Bắc Ninh", "ward": "Phường Hiệp Hòa"})
+    await flow.handle_turn(conv, intents.Intent("action", "pick_procedure", {"key": _NOXH}))
+    r = await flow.handle_turn(conv, intents.Intent("confirm"))
+    assert conv["state"] == "guide_login"
+    assert r.actions[0] == {"type": "navigate", "url": get_procedure("ho-tro-nguoi-cao-tuoi-bac-ninh")["keKhaiUrl"]}
+
+
+async def test_nha_o_xa_hoi_eform_ma_cau_thi_mo_lai_voi_ma_dich():
+    conv = _conv(state="guide_login", procedure_key=_NOXH, milestones=[], agency_done=True)
+    page = {"formKind": "bacninh", "attachmentTarget": True}
+    r = await flow.handle_turn(conv, intents.Intent("event", "page_status", dict(page)),
+                               client_url=_EFORM.format(ma="1.014589"))
+    # Chỉ đổi đúng tham số mã, các tham số khác giữ nguyên từng ký tự (kể cả %2F).
+    assert r.actions == [{"type": "navigate", "url": _EFORM.format(ma="1.014632")}]
+    assert conv["state"] == "guide_login" and not r.display_md
+
+    # Cổng cứ đá về mã cầu: đổi tối đa 2 lần rồi thôi, không tải lại vô hạn.
+    await flow.handle_turn(conv, intents.Intent("event", "page_status", dict(page)),
+                           client_url=_EFORM.format(ma="1.014589"))
+    r = await flow.handle_turn(conv, intents.Intent("event", "page_status", dict(page)),
+                               client_url=_EFORM.format(ma="1.014589"))
+    assert not any(a.get("type") == "navigate" for a in r.actions)
+
+
+async def test_doi_ma_chi_ap_cho_thu_tuc_di_vong():
+    # Đã ở mã đích → luồng thường; thủ tục cầu làm thật (người cao tuổi) → không bao giờ bị đổi mã.
+    flow_cfg = get_procedure(_NOXH)
+    assert flow._doi_ma_thu_tuc_reply({}, flow_cfg, _EFORM.format(ma="1.014632")) is None
+    assert flow._doi_ma_thu_tuc_reply({}, flow_cfg, "https://dichvucong.gov.vn/x?"
+                                      "_org_bn_hoso_noptructuyen_maThuTucHanhChinh=1.014589") is None
+    cau = get_procedure("ho-tro-nguoi-cao-tuoi-bac-ninh")
+    assert flow._doi_ma_thu_tuc_reply({}, cau, _EFORM.format(ma="1.014589")) is None

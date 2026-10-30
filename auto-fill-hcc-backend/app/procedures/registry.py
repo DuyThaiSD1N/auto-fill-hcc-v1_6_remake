@@ -4456,8 +4456,7 @@ PROCEDURES: list[dict] = [
             "urlScope": ["dichvucong.bacninh.gov.vn"],
             "urlIncludes": ["maThuTucHanhChinh=1.115436"],
         },
-        "label": ("[Tỉnh Bắc Ninh] Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận cấp lần đầu "
-                  "có sai sót)"),
+        "label": "[Tỉnh Bắc Ninh] Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận cấp lần đầu có sai sót)",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -4489,8 +4488,7 @@ PROCEDURES: list[dict] = [
             "urlScope": ["dichvucong.bacninh.gov.vn"],
             "urlIncludes": ["maThuTucHanhChinh=1.115476"],
         },
-        "label": ("[Tỉnh Bắc Ninh] Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký "
-                  "biến động có sai sót)"),
+        "label": "[Tỉnh Bắc Ninh] Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động có sai sót)",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],

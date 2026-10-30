@@ -13,6 +13,7 @@ import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 from app.channels.handfree.chat import consent as consent_log
 from app.channels.handfree.chat import field_review
@@ -857,6 +858,7 @@ async def handle_turn(
     intent: Intent,
     client_page_context: dict | None = None,
     free_text: bool = False,
+    client_url: str = "",
 ) -> Reply:
     # Ngôn ngữ của lượt: _fmt đọc qua ContextVar nên mọi handler tự song ngữ hoá,
     # không phải truyền conv xuống từng chỗ dựng câu.
@@ -894,7 +896,7 @@ async def handle_turn(
         r = Reply()
         r.actions = [{"type": "press_chip", "send": voice_send}]
         return r
-    reply = await _handle_turn_inner(conv, intent, client_page_context)
+    reply = await _handle_turn_inner(conv, intent, client_page_context, client_url)
     field_review.finalize(conv, intent, reply)
     owner_review.finalize(conv, intent)
     _lock_docs_chips(conv, intent, reply)
@@ -1116,6 +1118,7 @@ async def _handle_turn_inner(
     conv: dict,
     intent: Intent,
     client_page_context: dict | None = None,
+    client_url: str = "",
 ) -> Reply:
     state = conv.get("state", "greet")
     current_proc = get_procedure(conv.get("procedure_key") or "") or {}
@@ -1137,6 +1140,12 @@ async def _handle_turn_inner(
         # Mọi request mới là một cơ hội thu hồi action mà sidebar đã làm mất. Action đang chạy
         # thật được extension gia hạn mỗi 10 giây nên không bị phát trùng dù xử lý lâu.
         _expire_attach_action(conv)
+    if intent.kind == "event" and intent.value == "page_status":
+        # Thủ tục đi vòng đang đứng ở eform của thủ tục CẦU: đổi mã TRƯỚC mọi nhánh khác, không thì
+        # trợ lý điền/đính kèm lên form của thủ tục khác.
+        doi_ma = _doi_ma_thu_tuc_reply(conv, current_proc, client_url)
+        if doi_ma is not None:
+            return doi_ma
     # Vòng bổ sung ô còn trống trên tờ khai: lệnh/sự kiện riêng, không phụ thuộc state.
     review_reply = await field_review.handle(conv, current_proc, intent)
     if review_reply is not None:
@@ -1725,6 +1734,38 @@ def _agency_province(proc: dict, loc: dict) -> str:
     return str(proc.get("agencyProvince") or loc.get("province") or "")
 
 
+# Thủ tục ĐI VÒNG: cổng trả về mã cầu sau khi đã đổi → dừng, không tải lại vô hạn (như Auto Fill).
+_DOI_MA_LAN_TOI_DA = 2
+
+
+def _doi_ma_thu_tuc_reply(conv: dict, proc: dict, page_url: str) -> Reply | None:
+    """Thủ tục ĐI VÒNG (doiMaThuTuc, như content/portal-doi-ma-tthc.js của Auto Fill): trang là eform cổng
+    tỉnh mang mã TTHC của thủ tục CẦU → mở lại đúng URL đó với tham số mã của thủ tục đích (phiên cổng tỉnh
+    vẫn giữ). URL lấy từ client_context mà sidebar gửi kèm mọi lượt nên sidebar bản cũ cũng chạy được.
+    None = trang không phải eform mang mã cầu, để luồng thường xử lý."""
+    flow = proc.get("doiMaThuTuc") or {}
+    if not flow or not page_url:
+        return None
+    try:
+        parts = urlsplit(page_url)
+    except ValueError:
+        return None
+    # Chỉ thay đúng cặp tham_số=mã_cầu; các tham số khác của eform giữ nguyên từng ký tự.
+    tu, sang = f"{flow['thamSo']}={flow['tu']}", f"{flow['thamSo']}={flow['sang']}"
+    segments = parts.query.split("&")
+    if parts.hostname != flow["host"] or tu not in segments:
+        return None
+    count = int(conv.get("doi_ma_lan_thu") or 0)
+    if count >= _DOI_MA_LAN_TOI_DA:
+        logger.warning("doi_ma_tthc: đổi %s lần mà cổng vẫn về mã %s — dừng", count, flow["tu"])
+        return Reply()
+    conv["doi_ma_lan_thu"] = count + 1
+    query = "&".join(sang if segment == tu else segment for segment in segments)
+    r = Reply()
+    r.actions = [{"type": "navigate", "url": urlunsplit(parts._replace(query=query))}]
+    return r
+
+
 def _start_guide_login(conv: dict) -> Reply:
     if tpm.is_active(get_procedure(conv.get("procedure_key") or "")) and not tpm.supported(conv):
         # Engine cũ không điền/đính được trang nộp một trang — dẫn vào là công dân kẹt giữa chừng.
@@ -1741,6 +1782,7 @@ def _start_guide_login(conv: dict) -> Reply:
     conv["agency_done"] = False
     conv["agency_dispatched_at"] = 0
     conv["agency_no_response"] = 0
+    conv["doi_ma_lan_thu"] = 0
     conv["consent"] = None  # thủ tục mới bắt đầu = xin phép lại từ đầu
     conv["owner_context"] = {}
     conv["owner_fields"] = []

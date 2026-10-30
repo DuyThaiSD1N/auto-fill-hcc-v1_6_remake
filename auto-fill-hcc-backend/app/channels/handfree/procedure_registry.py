@@ -4913,8 +4913,9 @@ PROCEDURES: list[dict] = [
             "urlIncludes": ["maThuTucHanhChinh=1.115436"],
             "headingDisabled": True,
         },
+        # Hai mã cùng tên trên cổng → hậu tố theo đúng tên trường hợp cổng ghi để không chọn nhầm.
         "label": "Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận cấp lần đầu có sai sót)",
-        "subtitle": "Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
+        "subtitle": "Mã 1.115436 · Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
         "icon": "📜",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f02e5-91cd-7697-8bb3-89bd36d1fa8a",
         "needsAgencySelect": True,
@@ -4965,9 +4966,8 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "code": "1.115476",
-        "label": ("Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động có "
-                  "sai sót)"),
-        "subtitle": "Mã 1.115476 ·Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
+        "label": "Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động có sai sót)",
+        "subtitle": "Mã 1.115476 · Sửa thông tin ghi sai trên Giấy chứng nhận quyền sử dụng đất tại Bắc Ninh",
         "icon": "📜",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f169e-c716-76a7-b47e-269721b1d9c2",
         "needsAgencySelect": True,
@@ -5098,9 +5098,12 @@ PROCEDURES: list[dict] = [
         ),
         "shortLabel": (
             "Đăng ký biến động quyền sử dụng đất trong các trường hợp chuyển đổi, chuyển nhượng, "
-            "thừa kế, tặng cho, góp vốn"
+            "thừa kế, tặng cho, góp vốn; cho thuê, cho thuê lại"
         ),
-        "subtitle": "Đăng ký biến động khi chuyển nhượng, thừa kế, tặng cho, góp vốn quyền sử dụng đất tại Bắc Ninh",
+        "subtitle": (
+            "Mã 1.115468 · Đăng ký biến động khi chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê quyền "
+            "sử dụng đất tại Bắc Ninh"
+        ),
         "icon": "📜",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1670-20cd-712b-b05b-59235ae8a21b",
         "needsAgencySelect": True,
@@ -5482,7 +5485,12 @@ PROCEDURES: list[dict] = [
             "Đăng ký biến động quyền sử dụng đất trong các trường hợp chuyển nhượng, thừa kế, tặng "
             "cho, góp vốn; cho thuê, cho thuê lại"
         ),
-        "subtitle": "Sang tên khi chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê quyền sử dụng đất tại Bắc Ninh",
+        # Thẻ mã CŨ: cùng nghiệp vụ với 1.115468 (thẻ mặc định khi công dân nói tên) → subtitle nêu mã để
+        # phân biệt hai thẻ gần cùng tên.
+        "subtitle": (
+            "Mã cũ 1.013831 · Sang tên khi chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê quyền sử dụng "
+            "đất tại Bắc Ninh"
+        ),
         "icon": "📜",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
         "needsAgencySelect": True,
@@ -5654,7 +5662,17 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Đăng ký mua, thuê mua, thuê nhà ở xã hội",
         "subtitle": "Xác nhận điều kiện nhà ở để mua, thuê, thuê mua nhà ở xã hội hoặc vay vốn tại Bắc Ninh",
         "icon": "🏘️",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
+        # ĐI VÒNG như Auto Fill (popup-ke-khai-di-vong.js): 1.014632 chưa liên thông DVCQG ↔ Bắc Ninh,
+        # "Nộp trực tuyến" ở trang DVCQG của nó không tới cổng tỉnh. Mở trang DVCQG của thủ tục CẦU
+        # 1.014589 (hỗ trợ người cao tuổi, đã liên thông; chọn cơ quan y hệt: Tỉnh + Phường/Xã), tới
+        # eform Bắc Ninh mang mã cầu thì flow (_doi_ma_thu_tuc_reply) mở lại URL đó với mã 1.014632.
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c4f-0f4f-756f-a7db-e8f96edb8171",
+        "doiMaThuTuc": {
+            "host": "dichvucong.bacninh.gov.vn",
+            "thamSo": "_org_bn_hoso_noptructuyen_maThuTucHanhChinh",
+            "tu": "1.014589",
+            "sang": "1.014632",
+        },
         "needsAgencySelect": True,
         "agencyProvince": "Bắc Ninh",
         "samePageAttach": True,
