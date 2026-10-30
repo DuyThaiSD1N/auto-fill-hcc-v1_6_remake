@@ -121,8 +121,15 @@
   const previewDialog = () => Array.from(document.querySelectorAll('[role="dialog"],[role="alertdialog"]'))
     .find((el) => shown(el) && isPreviewTitle(fold(el.textContent)));
 
+  // Cổng tư pháp lâu lâu lờ cú bấm đầu (không mở, không báo gì): ~3 giây từ cú bấm (rình toast ~1,6 giây + 6 nhịp)
+  // vẫn trống trơn thì bấm lại MỘT lần ngay, khỏi chờ hết ~20 giây mới thử lại. Cổng đã nháy lời chặn thì không bấm lại.
+  const PREVIEW_RETRY_TICKS = 6;
   async function openPreview(button) {
-    const watched = await pressAndWatch(button);
+    let watched = await pressAndWatch(button);
+    if (!watched.message) {
+      for (let i = 0; i < PREVIEW_RETRY_TICKS && !previewDialog(); i++) await sleep(250);
+      if (!previewDialog() && button.isConnected !== false && !button.disabled) watched = await pressAndWatch(button);
+    }
     // Cổng dựng bản xem trước (PDF) có lúc quá 10 giây → chờ tới ~20 giây. Cổng đã nháy toast chặn (còn
     // ô bắt buộc trống) thì bản xem trước sẽ không mở → chỉ chờ thêm ~3 giây rồi báo.
     const limit = watched.message ? 12 : 80;
@@ -180,6 +187,27 @@
       else document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     }
     sendResponse({ ok: true });
+  });
+
+  // Thủ tục có tờ khai nằm trong bảng Thành phần hồ sơ (nuôi con nuôi, khai sinh kết hợp nhận cha, mẹ, con): cổng
+  // bỏ qua bước Kê khai, tờ khai chỉ mở khi bấm "Khai tờ khai" của ĐÚNG dòng. Dòng chọn theo STT (ô đầu của dòng);
+  // không khớp STT thì theo tên tờ khai. Một dòng có hai nút (bố cục điện thoại / máy tính) — lấy nút đang hiện.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "openDeclarationEform") return;
+    const buttons = Array.from(document.querySelectorAll("button"))
+      .filter((el) => isVisible(el) && fold(el.textContent) === "khai to khai");
+    if (!buttons.length) return; // frame không có bảng thành phần hồ sơ → im để frame đúng trả lời
+    const rowOf = (el) => el.closest("tr");
+    const stt = (tr) => fold(tr?.querySelector("td")?.textContent);
+    const label = fold(msg.label);
+    const button = buttons.find((el) => stt(rowOf(el)) === String(msg.row || ""))
+      || (label ? buttons.find((el) => fold(rowOf(el)?.textContent).includes(label)) : null);
+    if (!button) {
+      sendResponse({ ok: false, clicked: false });
+      return;
+    }
+    clickLikeUser(button);
+    sendResponse({ ok: true, clicked: true });
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

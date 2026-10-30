@@ -59,7 +59,7 @@ test("bot đang THAO TÁC trên trang (điền, chọn cơ quan, bấm, đính�
   // Lệnh thao tác vừa gửi xuống trang → tắt mic ngay; xong (hoặc lỗi) mới trừ đếm.
   assert.match(sidebar, /if \(work\) \{\s*pageWorkInFlight \+= 1;\s*pauseMic\(\);\s*\}/);
   assert.match(sidebar, /\}\)\.finally\(\(\) => \{\s*if \(!work\) return;\s*pageWorkInFlight = Math\.max\(0, pageWorkInFlight - 1\);/);
-  assert.match(sidebar, /function botWorking\(\) \{\s*return pageWorkInFlight > 0 \|\| Date\.now\(\) - pageWorkEndedAt < 2000 \|\| \(!!\$pipe && !pipeFinished\);/);
+  assert.match(sidebar, /function botWorking\(\) \{[\s\S]*?return pageWorkInFlight > 0 \|\| Date\.now\(\) - pageWorkEndedAt < 2000 \|\| \(!!\$pipe && !pipeFinished\)/);
   // Mic đang mở mà bot bắt đầu nói / thao tác → vòng canh tắt mic.
   assert.match(sidebar, /if \(handsfree && voiceListening && \(botWorking\(\) \|\| window\.__hccTTS\?\.isSpeaking\?\.\(\)\)\) \{\s*pauseMic\(\);/);
 });

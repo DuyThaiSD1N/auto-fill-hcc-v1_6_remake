@@ -109,4 +109,28 @@ test("nút quay về hồ sơ chính đi qua background", () => {
   assert.match(background, /chrome\.tabs\.update\(tabId, \{ active: true \}\)/);
 });
 
+
+// Cổng tư pháp đổi thanh bước vài giây sau cú bấm: đọc ngay là thấy bước cũ → báo nhầm "chưa chuyển bước" và nút
+// kẹt ở "sang bước", không hiện "Gửi hồ sơ". Chạy thật choSangBuoc với trang giả đổi bước chậm.
+function choSangBuocVoi(steps, hanMs) {
+  const src = companion.match(/async function choSangBuoc\(step\) \{[\s\S]*?\n  \}/)[0];
+  let i = 0;
+  let now = 0;
+  const docBuocHienTai = async () => steps[Math.min(i++, steps.length - 1)];
+  const fakeDate = { now: () => now };
+  const setTimeout = (fn, ms) => { now += ms; fn(); };
+  // eslint-disable-next-line no-new-func
+  return new Function("docBuocHienTai", "Date", "setTimeout", "CHO_SANG_BUOC_MS",
+    `${src}; return choSangBuoc;`)(docBuocHienTai, fakeDate, setTimeout, hanMs);
+}
+
+test("tab phụ: bấm sang bước thì chờ trang đổi thanh bước (tới ~15 giây) rồi mới kết luận", async () => {
+  assert.match(companion, /const CHO_SANG_BUOC_MS = 15000;/);
+  assert.equal(await choSangBuocVoi([3, 3, 0, 3, 4], 15000)(3), 4, "trang đổi chậm (có lúc đang tải ra 0) vẫn nhận ra bước 4");
+  assert.equal(await choSangBuocVoi([3], 15000)(3), 3, "trang thật sự không chuyển → hết hạn thì trả bước cũ, không treo");
+  // Chỉ chờ khi đã bấm được và cổng không báo lỗi; nút Gửi hồ sơ không chờ chuyển bước.
+  assert.match(companion, /const choTrang = !laGui && res\?\.clicked && !res\.message;/);
+  assert.match(companion, /const buocSau = choTrang \? await choSangBuoc\(step\) : step;/);
+});
+
 if (require.main === module) test.run?.();

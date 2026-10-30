@@ -210,6 +210,20 @@
     return Number.isInteger(step) && step > 0 ? step : 0;
   }
 
+  // Cổng chuyển bước chậm hơn lúc đọc lại (tư pháp: vài giây sau cú bấm thanh bước mới đổi). Đọc ngay sau khi bấm
+  // là thấy bước cũ → báo nhầm "chưa chuyển bước" và nút kẹt ở "sang bước", không bao giờ hiện "Gửi hồ sơ".
+  // Đọc lại tới ~15 giây như khung chính; trang đang tải (đọc ra 0) cũng chờ tiếp.
+  const CHO_SANG_BUOC_MS = 15000;
+  async function choSangBuoc(step) {
+    const hetHan = Date.now() + CHO_SANG_BUOC_MS;
+    let buoc = await docBuocHienTai();
+    while (buoc <= step && Date.now() < hetHan) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      buoc = await docBuocHienTai();
+    }
+    return buoc;
+  }
+
   function themNutBuoc(step) {
     // Không đọc được thanh bước thì KHÔNG đoán: bấm nhầm "Gửi hồ sơ" lúc mới ở bước đính kèm
     // là nộp một hồ sơ công dân chưa kịp rà.
@@ -229,7 +243,9 @@
         const res = await guiToiTrang({ action: laGui ? "guidedSubmit" : "guidedClickNext" });
         // Bấm được ≠ trang chịu chuyển. Đối chiếu lại thanh bước rồi mới dám báo đã sang bước,
         // không thì công dân tin lời em mà hồ sơ vẫn đứng nguyên chỗ cũ.
-        const buocSau = laGui ? step : await docBuocHienTai();
+        const choTrang = !laGui && res?.clicked && !res.message;
+        if (choTrang) btn.textContent = "⏳ Đang chờ trang chuyển bước…";
+        const buocSau = choTrang ? await choSangBuoc(step) : step;
         if (!res?.clicked) {
           loiVuaRoi = "⚠️ Em chưa bấm được nút trên trang. Công dân cuộn xuống cuối trang bấm "
             + `**${tenNutTrang}** giúp em ạ.`;

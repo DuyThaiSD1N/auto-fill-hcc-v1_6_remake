@@ -72,10 +72,17 @@ async function tlndBases() {
 }
 
 // fetch có timeout — cắt request treo để failover kịp.
+// `timeoutMs` (tuỳ chọn): request biết trước là lâu (tải tệp lên kèm phân loại) cho chờ lâu hơn mặc định.
+// Hết giờ thì lỗi mang name "TimeoutError" để chỗ báo lỗi nói đúng "quá lâu", không ra câu tiếng Anh của trình duyệt.
 function tlndFetch(url, init = {}) {
+  const { timeoutMs = TLND_API_TIMEOUT_MS, ...rest } = init;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TLND_API_TIMEOUT_MS);
-  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  const timer = setTimeout(() => {
+    const reason = new Error("Hết thời gian chờ máy chủ");
+    reason.name = "TimeoutError";
+    ctrl.abort(reason);
+  }, timeoutMs);
+  return fetch(url, { ...rest, signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
 // Chạy 1 request qua nhiều base. doReq(base) tự dựng URL = base + path rồi fetch (kèm Bearer/refresh

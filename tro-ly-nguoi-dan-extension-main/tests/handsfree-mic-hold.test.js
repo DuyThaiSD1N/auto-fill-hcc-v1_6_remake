@@ -43,3 +43,29 @@ test("mọi đường tự mở mic đều xét micHeld; đang nghe mà vào bư
   assert.match(sidebar, /loginPageNow = !!ctx\.loginPage;/);
   assert.match(sidebar, /uploadsInFlight \+= 1;[\s\S]*?finally \{\s*uploadsInFlight = Math\.max\(0, uploadsInFlight - 1\);/);
 });
+
+// Chạy thật botWorking: thẻ tiến trình nhiều bước (luồng bản 2) đang chạy = bot đang làm → mic không tự mở.
+function botWorking(vars) {
+  const src = sidebar.match(/function botWorking\(\) \{[\s\S]*?\n  \}/)[0];
+  const names = ["pageWorkInFlight", "pageWorkEndedAt", "$pipe", "pipeFinished", "$steps"];
+  // eslint-disable-next-line no-new-func
+  return new Function(...names, `${src}; return botWorking();`)(...names.map((n) => vars[n]));
+}
+const idle = { pageWorkInFlight: 0, pageWorkEndedAt: 0, $pipe: null, pipeFinished: true, $steps: null };
+
+test("rảnh tay: thẻ 'Đang xử lý hồ sơ' đang chạy thì mic nghỉ, xong / lỗi thì mở lại", () => {
+  assert.equal(botWorking(idle), false);
+  assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "running" } } }), true);
+  assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "done" } } }), false);
+  assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "failed" } } }), false);
+});
+
+test("luồng bản 2: điền tờ khai chờ câu 'đang đọc giấy tờ' đọc xong (có giới hạn); câu 'đã nhận N tệp' không cắt ngang", () => {
+  const fill = sidebar.match(/a\.type === "fill_fields" && Array\.isArray\(a\.fields\)\) \{[\s\S]*?sendToContent/)[0];
+  assert.match(fill, /\$steps\?\.dataset\.state === "running"\) await waitReplyTts\(\d+\)/);
+  assert.match(sidebar, /async function waitReplyTts\(maxMs\) \{[\s\S]*?replyTtsInFlight > 0[\s\S]*?Date\.now\(\) < deadline/);
+  const announce = sidebar.match(/function announceFilesReceived\(p\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(announce, /ttsMuted \|\| botWorking\(\)\) return/);
+  const scan = sidebar.match(/function renderScanFeedback\(\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(scan, /tts && !botWorking\(\)\)/);
+});

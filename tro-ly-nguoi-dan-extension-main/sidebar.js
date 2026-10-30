@@ -38,6 +38,7 @@
   // Upload session chứa giấy tờ công dân nên mọi request từ extension phải mang Bearer.
   // Trang mobile dùng capability riêng nhúng trong QR, không đi qua helper này.
   const uploadSessionFetch = (url, init) => window.tlndAuth.authFetch(url, init);
+  const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
   const JOURNEY_KEY = "tlnd_journey"; // { [tabId]: {conversation_id, ts} } — sống qua đổi origin
   const COMPLETION_LOGOUT_KEY_PREFIX = "tlnd_completion_logout:";
   const COMPLETION_LOGOUT_STORAGE_KEY = TAB_ID ? `${COMPLETION_LOGOUT_KEY_PREFIX}${TAB_ID}` : "";
@@ -94,6 +95,9 @@
     // Biết tích ô cam kết cuối trang theo id (lệnh tick_commit → content.js::tickCommitBox, cổng DVC Bộ Công an).
     // BE chỉ hiện nút cam "Tôi xin chịu trách nhiệm…" khi thấy cờ này.
     supportsTickCommit: true,
+    // Biết tự bấm "Khai tờ khai" ở đúng dòng bảng Thành phần hồ sơ (lệnh open_eform → guided-steps.js) rồi tự gửi lệnh
+    // điền khi tờ khai mở ra. Thiếu cờ → BE bảo công dân tự bấm như cũ.
+    supportsOpenEform: true,
     // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
     // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
     supportsProcedureFirst: true,
@@ -598,7 +602,8 @@
       return data;
     } catch (e) {
       hideTyping();
-      setStatus(`Không gọi được trợ lý: ${e?.message || e}. Kiểm tra backend đang chạy?`, true);
+      console.warn("[TLND] gọi trợ lý lỗi:", e);
+      setStatus(`⚠️ Trợ lý chưa trả lời được: ${viError(e)}`, true);
       setTimeout(() => setStatus(""), 5000);
       if ((source === "system" || source === "chip") && isTransientAskError(e)) {
         addBotMd("⚠️ Máy chủ chưa phản hồi, em chưa làm tiếp được. Bấm **Thử lại** khi máy chủ đã chạy lại ạ.");
@@ -1390,6 +1395,29 @@
     // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
     // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
     if (moved && (phase === "owner" || phase === "field_review_owner")) await verifyPortalState();
+  }
+
+  // Tờ khai trong bảng Thành phần hồ sơ: bấm "Khai tờ khai" ở đúng dòng, chờ ĐÚNG mẫu đó mở ra (cổng dựng tờ khai mất
+  // vài giây) rồi gửi lệnh điền như công dân bấm "Điền tờ khai". Không mở được → báo BE để quay về hướng dẫn bấm tay.
+  const OPEN_EFORM_WAIT_MS = 20000;
+  async function runOpenEform(a) {
+    setStatus("📝 Đang mở tờ khai…");
+    const res = await sendToContent({ action: "openDeclarationEform", row: a.row, label: a.label || "" });
+    let opened = false;
+    if (res?.clicked) {
+      const deadline = Date.now() + OPEN_EFORM_WAIT_MS;
+      while (!opened && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 500));
+        const form = await sendToContent({ action: "collectFormContext" });
+        opened = form?.formContext?.formVariant === a.variant;
+      }
+    }
+    setStatus("");
+    // fill:false = chỉ mở sẵn lúc vừa tới bước (trước khi xin phép / nhận giấy): mở xong để đó, không mở được cũng im —
+    // nhận đủ giấy tờ BE tự mở lại rồi mới điền.
+    if (a.fill === false) return;
+    if (opened) await ask("__action:fill_eform", "system");
+    else await ask(`__event:eform_open_failed:${JSON.stringify({ clicked: !!res?.clicked })}`, "system");
   }
 
   // Giấy ủy quyền đính vào ô RIÊNG ở bước chủ hồ sơ, ngay sau khi điền xong hai khối.
@@ -2963,7 +2991,7 @@
           ? `Trong thư mục quét đã có tệp tên "${ten}" rồi — đặt tên khác ạ.`
           : e?.code === "BAD_NAME"
             ? "Tên không hợp lệ: phải là tên tệp trần và giữ đuôi .pdf."
-            : `Không đổi tên được trên đĩa: ${e?.message || e}`;
+            : `Không đổi tên được tệp trên máy: ${viError(e, "tệp đang mở ở chương trình khác hoặc máy quét chưa sẵn sàng.")}`;
         console.warn("[TLND] Đổi tên tệp máy quét lỗi:", relCu, e);
         setStatus(`⚠️ ${msg}`, true);
         renderUploadFileList();
@@ -3408,8 +3436,9 @@
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f, f.name));
+      // Máy chủ OCR + phân loại ngay trong lượt tải: bản vẽ / hồ sơ dày chục trang qua mạng quầy chậm vượt 100 giây.
       const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${uploadSid}/files`,
-        { method: "POST", body: fd });
+        { method: "POST", body: fd, timeoutMs: UPLOAD_TIMEOUT_MS });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
       console.log("[TLND] upload session files", {
@@ -3443,7 +3472,8 @@
       }
       return data;
     } catch (err) {
-      setStatus(`⚠️ Tải tệp lỗi: ${err?.message || err}`, true);
+      console.warn("[TLND] tải tệp lên lỗi:", err);
+      setStatus(`⚠️ Chưa tải được tệp: ${viError(err)}`, true);
       setTimeout(() => setStatus(""), 5000);
       return null;
     } finally {
@@ -3667,7 +3697,7 @@
     // Đọc thành tiếng (rảnh tay). Tệp đầu đọc đủ hướng dẫn; các tệp sau đọc gọn để đỡ rườm.
     const spoken = hmPack || viPack;
     const tts = fill(n <= 1 ? spoken.tts : (spoken.ttsMore || spoken.tts));
-    if (voiceCfg?.tts && !ttsMuted && tts) {
+    if (voiceCfg?.tts && !ttsMuted && tts && !botWorking()) {
       try { stopReplyTts(); } catch (_) { /* ignore */ }
       window.__hccTTS?.speak?.(tts, hmPack ? "hmong" : "vi");
     }
@@ -3690,7 +3720,8 @@
     if (filesAnnounceTtsTimer) clearTimeout(filesAnnounceTtsTimer);
     filesAnnounceTtsTimer = setTimeout(() => {
       filesAnnounceTtsTimer = null;
-      if (!voiceCfg?.tts || ttsMuted) return;
+      // Đã chốt giấy tờ, bot đang đọc/điền: câu "đã nhận N tệp" lúc này thừa và cắt mất câu bot đang nói.
+      if (!voiceCfg?.tts || ttsMuted || botWorking()) return;
       try { stopReplyTts(); } catch (_) { /* ignore */ }
       // Câu chỉ có tiếng Việt → đọc giọng Việt (giọng đi theo ngôn ngữ của chữ, không theo chế độ).
       const lang = "vi";
@@ -4321,6 +4352,37 @@
     if (/quota|memory|allocation/.test(low))
       return "Giấy tờ quá lớn nên máy xử lý chưa xong. Công dân thử đính lại từng tệp giúp em ạ.";
     return "Chưa đính được giấy tờ do sự cố kỹ thuật. Công dân vui lòng bấm đính kèm lại giúp em ạ.";
+  }
+
+  /** Lỗi kỹ thuật (câu tiếng Anh của trình duyệt, mã HTTP) → câu tiếng Việt ngắn, nói rõ việc cần làm. Câu đã là
+   *  tiếng Việt (máy chủ hoặc mình tự ném) thì giữ nguyên; câu gốc chưa dịch được vẫn ghi console để tra. */
+  function viError(e, fallback = "Có sự cố kỹ thuật. Công dân thử lại giúp em ạ.") {
+    const raw = String(e?.message ?? e ?? "").trim();
+    if (raw && /[^\x00-\x7F]/.test(raw)) return raw;
+    const low = `${e?.name || ""} ${raw}`.toLowerCase();
+    if (/timeouterror|aborterror|signal is aborted|timed? ?out/.test(low))
+      return "Máy chủ xử lý quá lâu (mạng chậm hoặc tệp quá lớn). Công dân thử lại, hoặc gửi từng tệp một ạ.";
+    if (/failed to fetch|networkerror|network error|load failed|err_internet|err_network/.test(low))
+      return "Mất kết nối mạng. Kiểm tra mạng của máy rồi thử lại ạ.";
+    const status = Number((low.match(/http (\d{3})/) || [])[1]) || 0;
+    if (status === 401 || status === 403) return "Phiên đăng nhập đã hết hạn. Cán bộ đăng nhập lại giúp em ạ.";
+    if (status === 413) return "Tệp quá lớn, máy chủ không nhận. Công dân scan lại nhẹ hơn hoặc chia nhỏ tệp ạ.";
+    if (status >= 500) return "Máy chủ đang bận hoặc gặp sự cố. Thử lại sau ít phút ạ.";
+    if (raw) console.warn("[TLND] lỗi chưa có câu tiếng Việt:", e?.name || "", raw);
+    return fallback;
+  }
+
+  /** Lỗi micro / nhận giọng nói (offscreen gửi name + câu gốc của trình duyệt) → câu tiếng Việt kèm cách xử lý. */
+  function viMicError(name, raw) {
+    if (raw && /[^\x00-\x7F]/.test(String(raw))) return String(raw);
+    if (name === "NotFoundError" || name === "DevicesNotFoundError")
+      return "Không tìm thấy micro. Kiểm tra micro đã cắm vào máy chưa rồi bấm mic lại ạ.";
+    if (name === "NotReadableError" || name === "TrackStartError")
+      return "Micro đang bị ứng dụng khác dùng (Zalo, Zoom…) hoặc bị lỗi. Tắt ứng dụng đó rồi bấm mic lại ạ.";
+    if (name === "OverconstrainedError")
+      return "Micro của máy không dùng được. Chọn micro khác trong cài đặt âm thanh của máy ạ.";
+    if (name === "AbortError") return "Micro bị ngắt giữa chừng. Bấm mic lại giúp em ạ.";
+    return viError({ name, message: raw }, "Chưa bật được giọng nói. Bấm mic lại, hoặc gõ chữ giúp em ạ.");
   }
 
   // Dựng payload theo hợp đồng BE: sourceSegments trích đúng trang; sourceFileIndexes là
@@ -4975,6 +5037,8 @@
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "open_eform") {
+        setTimeout(() => { void runOpenEform(a); }, 0);
       } else if (a.type === "declaration_preview") {
         const required = a.required || [];
         setTimeout(() => { void runDeclarationPreview(required); }, 0);
@@ -5052,6 +5116,7 @@
         ask(`__action:owner_fill_report:${JSON.stringify(report)}`, "system");
       } else if (a.type === "fill_fields" && Array.isArray(a.fields)) {
         pipeDone(); // dữ liệu về tới nơi — card tiến trình chốt ✓ dù WS có rớt
+        if ($steps?.dataset.state === "running") await waitReplyTts(8000);
         setStatus("Đang điền form…");
         const res = await sendToContent({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
@@ -5733,7 +5798,18 @@
   }
   // Bot đang thao tác trên trang (và ~2 giây sau lệnh cuối, trang còn đang đổi) hoặc đang đọc giấy tờ.
   function botWorking() {
-    return pageWorkInFlight > 0 || Date.now() - pageWorkEndedAt < 2000 || (!!$pipe && !pipeFinished);
+    // $steps: thẻ tiến trình nhiều bước (luồng bản 2) — đang chạy là đang đọc giấy tờ / điền / đính, công dân chưa
+    // cần nói gì; mic mở lúc này chỉ thu tiếng ồn thành lượt mới, lượt đó cắt luôn câu bot đang đọc.
+    return pageWorkInFlight > 0 || Date.now() - pageWorkEndedAt < 2000 || (!!$pipe && !pipeFinished)
+      || $steps?.dataset.state === "running";
+  }
+  // Câu "Em đang đọc giấy tờ…" tới ngay trước dữ liệu điền (giấy tờ đã đọc sẵn thì gần như liền nhau): cho câu đọc
+  // xong rồi mới điền, tối đa vài giây, để công dân nghe được bot đang làm gì trước khi trang đổi.
+  async function waitReplyTts(maxMs) {
+    const deadline = Date.now() + maxMs;
+    while ((replyTtsInFlight > 0 || window.__hccTTS?.isSpeaking?.()) && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
   // Bước công dân bận tay với máy (đăng nhập VNeID, scan / chụp giấy tờ bằng điện thoại): quầy đông, mic mở là
   // thu tiếng xung quanh thành câu nói, bot đọc lại hướng dẫn liên tục hoặc bấm nhầm nút thật ("đủ rồi" →
@@ -5927,7 +6003,8 @@
         // Chưa cấp quyền thì mở lại bao nhiêu lần cũng lỗi → tắt rảnh tay, chờ cấp quyền xong bật lại.
         if (handsfree) setHandsfree(false);
       } else {
-        setStatus(`⚠️ Lỗi giọng nói: ${msg.error || "không rõ"}`, true);
+        console.warn("[TLND] lỗi giọng nói:", msg.name, msg.error);
+        setStatus(`⚠️ ${viMicError(msg.name, msg.error)}`, true);
         setTimeout(() => setStatus(""), 4000);
         // Rớt mạng / dịch vụ chập chờn: rảnh tay vẫn bật, mở lại mic sau 1s, 2s, 4s… (tối đa 30s).
         micErrors += 1;
