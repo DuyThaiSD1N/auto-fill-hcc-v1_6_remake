@@ -5,8 +5,9 @@ vào gồm: một hoặc nhiều DANH SÁCH ĐĂNG KÝ NGƯỜI HÀNH NGHỀ (M�
 cơ sở khám bệnh, chữa bệnh; CCCD của người đại diện / người chịu trách nhiệm chuyên môn; có thể có Báo cáo
 và CCCD của người nộp thay.
 
-Form online có mục "Thông tin người nộp hồ sơ" (cổng tự đổ tài khoản đăng nhập, ta KHÔNG động vào) và mục
-"Thông tin chủ hồ sơ" — chủ hồ sơ là CƠ SỞ KHÁM BỆNH, CHỮA BỆNH.
+Form online có mục "Thông tin người nộp hồ sơ" (tài khoản đăng nhập; cổng chỉ đổ họ tên, CCCD, ngày sinh — phần
+còn lại lấy từ CCCD của chính người đó, trích vào NguoiNop_*) và mục "Thông tin chủ hồ sơ" — chủ hồ sơ là CƠ SỞ
+KHÁM BỆNH, CHỮA BỆNH.
 
 CƠ SỞ (CoSo_*) — chỉ đọc ở Danh sách đăng ký hành nghề:
 - CoSo_Ten = tên cơ sở ở mục 1 ("Tên cơ sở khám bệnh, chữa bệnh"), chép nguyên văn.
@@ -30,9 +31,13 @@ CƠ SỞ (CoSo_*) — chỉ đọc ở Danh sách đăng ký hành nghề:
 NGƯỜI ĐẠI DIỆN (NguoiDaiDien_*) — chỉ đọc ở CCCD:
 - Là CCCD của người đứng đầu / người đại diện cơ sở. Có CoSo_NguoiChiuTrachNhiem thì chọn CCCD trùng họ
   tên đó.
-- CCCD của NGƯỜI NỘP THAY (xem <nguoi_nop_context> nếu có) KHÔNG phải người đại diện → trích vào
-  NguoiNop_*. NẾU người nộp chính là người đại diện (trùng họ tên với người chịu trách nhiệm) → chỉ trích
-  NguoiDaiDien_*, bỏ trống NguoiNop_*.
+- CCCD của NGƯỜI NỘP THAY (xem <nguoi_nop_context> nếu có) KHÔNG phải người đại diện → chỉ trích vào
+  NguoiNop_*. NẾU người nộp chính là người đại diện (trùng họ tên với người chịu trách nhiệm) → trích CÙNG
+  CCCD đó vào CẢ NguoiDaiDien_* LẪN NguoiNop_*.
+
+NGƯỜI NỘP (NguoiNop_*) — chỉ đọc ở THẺ CCCD của người nộp: họ tên, số, ngày sinh, giới tính, ngày cấp, nơi
+cấp, NƠI THƯỜNG TRÚ (NguoiNop_ThuongTru). Không có <nguoi_nop_context> và hồ sơ chỉ có CCCD người đại diện
+→ bỏ trống NguoiNop_*.
 - CHỈ đọc trên THẺ CCCD/căn cước. Hợp đồng lao động, chứng chỉ hành nghề, giấy phép hành nghề có ghi "Số
   CCCD/CMT", ngày cấp, ngày sinh của NGƯỜI LAO ĐỘNG / NGƯỜI HÀNH NGHỀ — dù cùng trang có tên giám đốc ký,
   các số đó KHÔNG phải của người đại diện, không trích vào NguoiDaiDien_*.

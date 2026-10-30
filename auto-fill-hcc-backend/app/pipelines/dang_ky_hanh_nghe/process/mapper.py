@@ -1,8 +1,9 @@
 """Map compact source facts → Form.io data[...] fields cho thủ tục "Đăng ký hành nghề".
 
 CHỦ HỒ SƠ LÀ CƠ SỞ KHÁM BỆNH, CHỮA BỆNH, ĐI XUỐNG PHẦN II — KHÔNG LÊN PHẦN I. Phần I "Thông tin người nộp
-hồ sơ" là tài khoản VNeID đang đăng nhập do cổng tự đổ; mapper không phát ô nhân thân nào của khối đó, chỉ
-bỏ tích "Người nộp hồ sơ là chủ hồ sơ" để mở khoá Phần II.
+hồ sơ" là tài khoản VNeID đang đăng nhập; cổng chỉ đổ họ tên, CCCD, ngày sinh (không ghi đè). Giới tính,
+ngày/nơi cấp, nơi thường trú bù từ CCCD KHỚP tài khoản (formContext); không khớp thì để trống, không mượn
+nhân thân người khác. Luôn bỏ tích "Người nộp hồ sơ là chủ hồ sơ" để mở khoá Phần II.
 
 Phần II ghép HAI nguồn theo bảng mapping nghiệp vụ:
   - tên + địa chỉ  ← Danh sách đăng ký hành nghề (cơ sở);
@@ -153,6 +154,46 @@ def _same_person(a: Any, b: Any) -> bool:
     return bool(key_a) and key_a == key_b
 
 
+def _is_account(name: Any, identity: str | None, anchor_name: Any, anchor_identity: str | None) -> bool:
+    # Có CCCD cả hai phía thì CCCD quyết: hai người trùng họ tên bỏ dấu chỉ tách được bằng CCCD.
+    if identity and anchor_identity:
+        return identity == anchor_identity
+    return _same_person(name, anchor_name)
+
+
+def _submitter_source(values: dict, context: dict) -> dict | None:
+    """Nhân thân CCCD của người nộp (tài khoản) để bù Phần I; None khi không chắc là cùng người.
+
+    Có mốc tài khoản: chỉ nhận CCCD khớp mốc — NguoiNop_* trước, rồi người đại diện (giám đốc tự nộp).
+    Không mốc (extension đời cũ): chỉ nhận NguoiNop_* khác người đại diện, vì LLM chỉ trích khi có CCCD riêng.
+    """
+    anchor_name = _text(context.get("applicantFullname") or context.get("fullname"))
+    anchor_identity = _identity(context.get("applicantIdentityNumber") or context.get("identityNumber"))
+    candidates = []
+    for prefix, area_key in (("NguoiNop_", "NguoiNop_ThuongTru"), ("NguoiDaiDien_", None)):
+        name = _text(values.get(f"{prefix}HoTen"))
+        identity = _identity(values.get(f"{prefix}SoDinhDanh"))
+        if not name and not identity:
+            continue
+        candidates.append({
+            "prefix": prefix,
+            "name": name,
+            "identity": identity,
+            "gender": _gender(values.get(f"{prefix}GioiTinh")),
+            "id_date": _date(values.get(f"{prefix}NgayCapCCCD")),
+            "issuer": normalize_issuer(values.get(f"{prefix}NoiCapCCCD")) or None,
+            "residence": _area(values.get(area_key)) if area_key else None,
+        })
+    if anchor_name or anchor_identity:
+        return next((c for c in candidates
+                     if _is_account(c["name"], c["identity"], anchor_name, anchor_identity)), None)
+    nop = next((c for c in candidates if c["prefix"] == "NguoiNop_"), None)
+    dai_dien = next((c for c in candidates if c["prefix"] == "NguoiDaiDien_"), None)
+    if nop and dai_dien and _is_account(nop["name"], nop["identity"], dai_dien["name"], dai_dien["identity"]):
+        return None
+    return nop
+
+
 _NGUOI_DAI_DIEN_FIELDS = (
     "NguoiDaiDien_HoTen",
     "NguoiDaiDien_NgaySinh",
@@ -169,6 +210,8 @@ def enrich(
     context = (options or {}).get("formContext") or {}
     submitter = context.get("applicantFullname") or context.get("fullname") or ""
     values = _by_name(fields)
+    # Trước các chốt chặn bên dưới: CCCD bị gỡ khỏi người đại diện vẫn có thể đúng là CCCD của người nộp.
+    nguoi_nop = _submitter_source(values, context)
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
@@ -208,6 +251,27 @@ def enrich(
             values.pop(key, None)
         identity = None
     dia_chi = _area(values.get("CoSo_DiaChi"))
+
+    # Phần I: chỉ bù các ô cổng không đổ từ VNeID, nguồn là CCCD khớp tài khoản.
+    if nguoi_nop:
+        add("data[gender]", nguoi_nop["gender"])
+        add("data[identityDate]", nguoi_nop["id_date"])
+        add("data[idIssuePlace]", nguoi_nop["issuer"])
+        thuong_tru = nguoi_nop["residence"]
+        if thuong_tru:
+            add("data[province]", _province_label(thuong_tru.get("tinh")))
+            add("data[district]", _text(thuong_tru.get("xa")))
+            add("data[address]", _text(thuong_tru.get("diaChi")))
+        else:
+            warnings.append(
+                "Chưa đọc được nơi thường trú trên CCCD người nộp — vui lòng chọn Tỉnh/Phường xã và nhập địa chỉ "
+                "chi tiết ở mục Thông tin người nộp hồ sơ."
+            )
+    elif submitter:
+        warnings.append(
+            f"Hồ sơ không có CCCD của người nộp ({submitter}) — giới tính, ngày cấp, nơi cấp, địa chỉ ở mục "
+            "Thông tin người nộp hồ sơ còn trống, vui lòng tải CCCD người nộp hoặc điền tay."
+        )
 
     # Bỏ tích "Người nộp hồ sơ là chủ hồ sơ": chủ hồ sơ là cơ sở, không phải tài khoản đang đăng nhập.
     add("data[isOwnerDossierCheck]", False)

@@ -1,14 +1,15 @@
 """Compact schema cho "Đăng ký hành nghề" (mã 1.012275 — Sở Y tế, Form.io trên Cổng DVC quốc gia).
 
 Form bước kê khai có hai khối nhân thân giống thủ tục thú y:
-  Phần I  "THÔNG TIN NGƯỜI NỘP HỒ SƠ" → data[fullname…]: cổng tự đổ TÀI KHOẢN ĐANG ĐĂNG NHẬP. KHÔNG động vào.
+  Phần I  "THÔNG TIN NGƯỜI NỘP HỒ SƠ" → data[fullname…]: TÀI KHOẢN ĐANG ĐĂNG NHẬP. Cổng chỉ đổ họ tên, CCCD,
+          ngày sinh (không ghi đè); giới tính, ngày/nơi cấp, nơi thường trú bù từ CCCD khớp tài khoản.
   Phần II "THÔNG TIN CHỦ HỒ SƠ"       → data[owner…]: CƠ SỞ KHÁM BỆNH, CHỮA BỆNH + người đại diện của cơ sở.
 Ô tích "Người nộp hồ sơ là chủ hồ sơ" (data[isOwnerDossierCheck]) khoá Phần II; bỏ tích thì mới điền được.
 
 Nhóm field:
 - CoSo_*         : cơ sở khám bệnh, chữa bệnh — đọc ở Danh sách đăng ký hành nghề (Mẫu 01 PL II NĐ 96/2023).
 - NguoiDaiDien_* : nhân thân người đại diện / người chịu trách nhiệm chuyên môn — đọc ở CCCD của họ.
-- NguoiNop_*     : chỗ để LLM "đỗ" nhân thân người nộp thay, KHÔNG đổ ra form.
+- NguoiNop_*     : nhân thân người nộp (tài khoản) — tách vai với người đại diện + bù ô trống Phần I.
 """
 
 _DS_SRC = "Danh sách đăng ký hành nghề (Mẫu 01 Phụ lục II NĐ 96/2023/NĐ-CP)"
@@ -54,10 +55,21 @@ FIELDS += [
     {"name": "NguoiDaiDien_NoiCapCCCD", "desc": "Nơi cấp CCCD NGƯỜI ĐẠI DIỆN. Mặt sau CCCD ghi \"CỤC TRƯỞNG CỤC "
         'CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát quản lý hành chính về trật tự xã '
         'hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an".'},
-    # Hai field dưới CHỈ để tách vai, mapper KHÔNG đổ ra form.
-    {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP THAY — CHỈ điền khi hồ sơ có CCCD RIÊNG của người "
-        "nộp và người đó KHÁC người đại diện của cơ sở. Không có → bỏ trống."},
-    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/định danh NGƯỜI NỘP THAY, chỉ chữ số. Không có → bỏ trống."},
+]
+
+# --- Người nộp (tài khoản VNeID đang đăng nhập): bù các ô Phần I cổng không đổ ---
+_NOP_SRC = ("CCCD của NGƯỜI NỘP = tài khoản đăng nhập (tài liệu chỉ ra trong <nguoi_nop_context>). Có "
+    "<nguoi_nop_context result=\"co_giay_to\"> thì LUÔN trích, KỂ CẢ khi người nộp cũng là người đại diện. Không "
+    "có <nguoi_nop_context> thì chỉ trích khi hồ sơ có CCCD RIÊNG của một người KHÁC người đại diện cơ sở")
+FIELDS += [
+    {"name": "NguoiNop_HoTen", "desc": f"Họ và tên NGƯỜI NỘP — {_NOP_SRC}. Ghi IN HOA. Không có → bỏ trống."},
+    {"name": "NguoiNop_SoDinhDanh", "desc": f"Số CCCD/định danh NGƯỜI NỘP, chỉ chữ số — {_NOP_SRC}."},
+    {"name": "NguoiNop_NgaySinh", "desc": f"Ngày sinh NGƯỜI NỘP, dd/mm/yyyy — {_NOP_SRC}."},
+    {"name": "NguoiNop_GioiTinh", "desc": f'Giới tính NGƯỜI NỘP: "Nam" hoặc "Nữ" — {_NOP_SRC}. KHÔNG suy từ họ tên.'},
+    {"name": "NguoiNop_NgayCapCCCD", "desc": f"Ngày cấp CCCD NGƯỜI NỘP (mặt sau thẻ), dd/mm/yyyy — {_NOP_SRC}."},
+    {"name": "NguoiNop_NoiCapCCCD", "desc": "Nơi cấp CCCD NGƯỜI NỘP, cùng quy tắc như NguoiDaiDien_NoiCapCCCD."},
+    {"name": "NguoiNop_ThuongTru", "desc": f"NƠI THƯỜNG TRÚ trên CCCD NGƯỜI NỘP, object {{quocGia,tinh,xa,"
+        f"chiTietDuoiXa}} — {_NOP_SRC}. KHÔNG lấy địa chỉ cơ sở."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -67,11 +79,21 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 COMPACT_COMP_BY_NAME["CoSo_DiaChi"] = "x-select-area"
 COMPACT_COMP_BY_NAME["NguoiDaiDien_NgaySinh"] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiDaiDien_NgayCapCCCD"] = "x-date"
+COMPACT_COMP_BY_NAME["NguoiNop_NgaySinh"] = "x-date"
+COMPACT_COMP_BY_NAME["NguoiNop_NgayCapCCCD"] = "x-date"
+COMPACT_COMP_BY_NAME["NguoiNop_ThuongTru"] = "x-select-area"
 
 # ---- UI Form.io fields (data[...]) — comp dom-*, tên theo bảng mapping nghiệp vụ.
 UI_COMP_BY_NAME = {
     # --- Phần I "THÔNG TIN NGƯỜI NỘP HỒ SƠ" = TÀI KHOẢN ĐANG ĐĂNG NHẬP ---
-    # KHÔNG có ô nhân thân nào của Phần I: cổng đã đổ sẵn tài khoản VNeID, ghi vào là ghi đè người khác.
+    # Họ tên, CCCD, ngày sinh cổng đổ sẵn từ VNeID → KHÔNG có trong bảng này, không bao giờ ghi đè.
+    # Các ô cổng để trống chỉ bù từ CCCD KHỚP tài khoản (mapper đối chiếu formContext).
+    "data[gender]": "dom-select",
+    "data[identityDate]": "dom-date",
+    "data[idIssuePlace]": "dom-input",
+    "data[province]": "dom-select",            # nơi thường trú — Tỉnh/Thành phố.
+    "data[district]": "dom-select",            # nơi thường trú — Phường/Xã.
+    "data[address]": "dom-input",              # nơi thường trú — chi tiết.
     # Ô tích "Người nộp hồ sơ là chủ hồ sơ" không phải dữ liệu nhân thân — bỏ tích để MỞ KHOÁ Phần II.
     "data[isOwnerDossierCheck]": "dom-checkbox",
 

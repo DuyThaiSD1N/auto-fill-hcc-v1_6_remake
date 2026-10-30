@@ -4809,6 +4809,9 @@ ocrBtn.addEventListener("click", async () => {
       // Điều chỉnh GPHĐ KCB: chủ hồ sơ là cơ sở, tài khoản so với người ký Đơn để quyết tự nộp / nộp thay.
       cfg.key === "dieu-chinh-giay-phep-hoat-dong-kcb" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
+      // [Bộ Y tế] 1.012275 (đăng ký hành nghề): chủ hồ sơ là cơ sở; Phần I cổng chỉ đổ họ tên/CCCD/ngày sinh
+      // theo VNeID → mốc tài khoản chỉ ra CCCD nào là của người nộp để BE bù giới tính, nơi cấp, địa chỉ.
+      cfg.key === "dang-ky-hanh-nghe" ||
       // [Bộ Y tế] 1.014104: Họ tên + CCCD người nộp bị khoá theo tài khoản, hay nộp thay → mốc tài khoản
       // quyết định Phần I lấy nhân thân chủ cơ sở hay CCCD người nộp; thiếu mốc là BE không đụng Phần I.
       cfg.key === "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" ||

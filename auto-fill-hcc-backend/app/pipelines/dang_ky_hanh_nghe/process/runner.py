@@ -67,10 +67,11 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
         return (
             "\n\n<nguoi_nop_context result=\"co_giay_to\">\n"
             f"NGƯỜI NỘP HỒ SƠ (tài khoản đăng nhập) là: {anchor}. Tài liệu #{idx} là CCCD của NGƯỜI NỘP.\n"
+            f"- LUÔN trích NguoiNop_* (gồm giới tính, ngày/nơi cấp, nơi thường trú) từ CCCD #{idx}.\n"
             f"- Nếu người này TRÙNG họ tên với người chịu trách nhiệm chuyên môn trên Danh sách đăng ký hành "
-            f"nghề → đây cũng là NGƯỜI ĐẠI DIỆN: trích NguoiDaiDien_* từ CCCD #{idx}, bỏ trống NguoiNop_*.\n"
-            f"- Nếu KHÁC → trích NguoiNop_* từ CCCD #{idx}; NguoiDaiDien_* chỉ lấy từ CCCD KHÁC trùng tên "
-            "người chịu trách nhiệm, không có thì bỏ trống.\n"
+            f"nghề → đây cũng là NGƯỜI ĐẠI DIỆN: trích CẢ NguoiDaiDien_* từ CCCD #{idx}.\n"
+            f"- Nếu KHÁC → NguoiDaiDien_* chỉ lấy từ CCCD KHÁC trùng tên người chịu trách nhiệm, không có thì "
+            "bỏ trống.\n"
             f"<cccd_nguoi_nop tai_lieu=\"{idx}\">\n{scope}\n</cccd_nguoi_nop>\n"
             "</nguoi_nop_context>"
         )

@@ -260,7 +260,9 @@ def test_tro_ly_co_the_rieng_ma_1_115476():
     assert procedure_code(moi) == "1.115476" and procedure_code(cu) == "1.115436"
     assert moi["keKhaiUrl"].endswith("019f169e-c716-76a7-b47e-269721b1d9c2")
     assert moi["provinceOnly"] == ["bacninh"] and not moi.get("agencySoFirst")
-    assert moi["label"] == cu["label"] == "Đính chính giấy chứng nhận đã cấp"
+    assert cu["label"] == "Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận cấp lần đầu có sai sót)"
+    assert moi["label"] == ("Đính chính Giấy chứng nhận đã cấp (Trường hợp Giấy chứng nhận đã đăng ký biến động "
+                            "có sai sót)")
 
 
 def test_dinh_chinh_gcn_da_cap_dinh_kem_theo_form_moi():

@@ -1,7 +1,8 @@
 """Tests cho thủ tục "Đăng ký hành nghề" (mã 1.012275 — Sở Y tế).
 
 Chủ hồ sơ (Phần II) là CƠ SỞ khám bệnh, chữa bệnh: tên + địa chỉ lấy từ Danh sách đăng ký hành nghề, nhân
-thân lấy từ CCCD người đứng đầu cơ sở. Phần I (tài khoản VNeID) không được chạm tới.
+thân lấy từ CCCD người đứng đầu cơ sở. Phần I (tài khoản VNeID): không ghi đè họ tên/CCCD/ngày sinh cổng đổ,
+chỉ bù giới tính, ngày/nơi cấp, nơi thường trú từ CCCD khớp tài khoản.
 """
 
 from app.pipelines.dang_ky_hanh_nghe import process as agent
@@ -153,6 +154,74 @@ def test_dang_ky_hanh_nghe_cccd_dung_nguoi_chiu_trach_nhiem_thi_van_dien():
 
     assert d["data[ownerIdentityNumber]"] == "012080000123"
     assert d["data[ownerBirthday]"] == "02/03/1980"
+
+
+_TAI_KHOAN = {"formContext": {"applicantFullname": "Phạm Văn Long", "applicantIdentityNumber": "001204000777"}}
+
+
+def _cccd_nguoi_nop() -> list[dict]:
+    return [
+        _field("NguoiNop_HoTen", "PHẠM VĂN LONG"),
+        _field("NguoiNop_SoDinhDanh", "001204000777"),
+        _field("NguoiNop_NgaySinh", "05/06/2004"),
+        _field("NguoiNop_GioiTinh", "Nam"),
+        _field("NguoiNop_NgayCapCCCD", "20/04/2021"),
+        _field("NguoiNop_NoiCapCCCD", "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI"),
+        _field("NguoiNop_ThuongTru", {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Xã Mường Than",
+                                      "diaChi": "Bản Nà B"}),
+    ]
+
+
+def test_dang_ky_hanh_nghe_bu_phan_i_tu_cccd_nguoi_nop_khop_tai_khoan():
+    """Cổng chỉ đổ họ tên/CCCD/ngày sinh theo VNeID; hồ sơ có CCCD riêng của người nộp (khác người đại diện)
+    → bù giới tính, ngày/nơi cấp, nơi thường trú vào Phần I, không ghi đè ô cổng đã đổ, Phần II vẫn là cơ sở."""
+    out, warnings = mapper.enrich(_ho_so() + _cccd_nguoi_nop(), _TAI_KHOAN)
+    d = _values(out)
+
+    assert d["data[gender]"] == "Nam"
+    assert d["data[identityDate]"] == "20/04/2021"
+    assert d["data[idIssuePlace]"]
+    assert d["data[province]"] == "Tỉnh Lai Châu"
+    assert d["data[district]"]
+    assert d["data[address]"] == "Bản Nà B"
+    for name in ("data[fullname]", "data[identityNumber]", "data[birthday]"):
+        assert name not in d, name
+    assert d["data[ownerIdentityNumber]"] == "012090000111"
+    assert d["data[ownerGender]"] == "Nam"
+    assert not any("CCCD của người nộp" in w for w in warnings)
+
+
+def test_dang_ky_hanh_nghe_khong_bu_phan_i_khi_cccd_khac_tai_khoan():
+    other = [f if f["name"] != "NguoiNop_SoDinhDanh" else _field("NguoiNop_SoDinhDanh", "001204000999")
+             for f in _cccd_nguoi_nop()]
+    out, warnings = mapper.enrich(_ho_so() + other, _TAI_KHOAN)
+    d = _values(out)
+
+    assert not any(name in d for name in ("data[gender]", "data[identityDate]", "data[province]", "data[address]"))
+    assert any("CCCD của người nộp (Phạm Văn Long)" in w for w in warnings)
+
+
+def test_dang_ky_hanh_nghe_giam_doc_tu_nop_bu_phan_i_tu_cccd_dai_dien():
+    out, _ = mapper.enrich(
+        _ho_so(), {"formContext": {"applicantFullname": "Trần Văn Bình", "applicantIdentityNumber": "012090000111"}}
+    )
+    d = _values(out)
+    assert d["data[gender]"] == "Nam"
+    assert d["data[identityDate]"] == "01/07/2022"
+    assert d["data[ownerIdentityNumber]"] == "012090000111"
+
+
+def test_dang_ky_hanh_nghe_context_luon_trich_nguoi_nop():
+    from app.pipelines.dang_ky_hanh_nghe.process.runner import _submitter_context
+
+    docs = [{"text": "CĂN CƯỚC CÔNG DÂN Số 001204000777 Họ và tên PHẠM VĂN LONG"}]
+    # Coroutine không await gì → chạy thẳng, khỏi tạo event loop (Windows tạo loop cần socketpair).
+    try:
+        _submitter_context(docs, _TAI_KHOAN).send(None)
+    except StopIteration as done:
+        ctx = done.value
+    assert 'result="co_giay_to"' in ctx
+    assert "LUÔN trích NguoiNop_*" in ctx
 
 
 def test_dang_ky_hanh_nghe_dien_sdt_co_so_khi_giay_to_co():
