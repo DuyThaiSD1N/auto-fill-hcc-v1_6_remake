@@ -422,3 +422,67 @@ def test_dang_ky_cham_dut_giam_ho_split_routing_renames_group_labels():
     assert items[1]["target"] == "new"
     assert items[1]["componentName"] == "Tài liệu chấm dứt giám hộ 2"
     assert items[2]["target"] == "new"
+
+
+async def test_dang_ky_cham_dut_giam_ho_split_mode_tach_cam_doan_trich_luc_to_khai(monkeypatch):
+    assert get_procedure("dang-ky-cham-dut-giam-ho")["supportsSplitDocuments"] is True
+    ocr_text = """───── Trang 1/3 ─────
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+BẢN CAM ĐOAN
+Họ, chữ đệm, tên: LÊ VĂN BÌNH
+Giấy tờ tùy thân: 001090000111 cấp ngày 01/02/2021
+Vợ chồng tôi đã về sinh sống tại địa phương, đủ điều kiện chăm sóc con.
+───── Trang 2/3 ─────
+UBND PHƯỜNG AN BÌNH
+Số: 12/2025/TLGH
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+TRÍCH LỤC ĐĂNG KÝ GIÁM HỘ
+(BẢN SAO)
+Người giám hộ: TRẦN VĂN CƯỜNG
+Giấy tờ tùy thân: Thẻ căn cước công dân số 001060000222, Cục CS QLHC về trật tự xã hội cấp
+Người được giám hộ: LÊ THỊ HOA
+───── Trang 3/3 ─────
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+TỜ KHAI ĐĂNG KÝ CHẤM DỨT GIÁM HỘ
+Họ, chữ đệm, tên người yêu cầu: LÊ VĂN BÌNH
+Giấy tờ tùy thân: CCCD số: 001090000111
+"""
+
+    async def fake_ocr_per_file(files):
+        return [{"name": files[0]["name"], "text": ocr_text, "provider": "tiengnoi"}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        # LLM đoán sai trang 2 là CCCD — luật tiêu đề trích lục phải thắng.
+        return json.dumps({"documents": [
+            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "guardian_condition",
+             "documentName": "Bản cam đoan đủ điều kiện giám hộ"},
+            {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "identity",
+             "documentName": "CCCD TRẦN VĂN CƯỜNG", "subjectName": "TRẦN VĂN CƯỜNG"},
+            {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "paper_declaration",
+             "documentName": "Tờ khai đăng ký giám hộ bản giấy"},
+        ]})
+
+    monkeypatch.setattr(split_planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(split_planner.client, "chat", fake_chat)
+
+    plan_fn = get_attach_pipeline("dang-ky-cham-dut-giam-ho")
+    res = await plan_fn([_file("scan.pdf")], {"splitDocuments": True}, {"request_id": "req_cham_dut"})
+    items = res["attachments"]
+
+    assert res["extracted"]["attachmentMode"] == "split_documents"
+    assert [item["documentName"] for item in items] == [
+        "Bản cam đoan",
+        "Trích lục đăng ký giám hộ",
+        "Tờ khai đăng ký chấm dứt giám hộ bản giấy",
+    ]
+    assert [item["sourceSegments"] for item in items] == [
+        [{"fileIndex": 0, "pageIndexes": [0]}],
+        [{"fileIndex": 0, "pageIndexes": [1]}],
+        [{"fileIndex": 0, "pageIndexes": [2]}],
+    ]
+    assert items[0]["target"] == "existing"
+    assert items[0]["componentIndex"] == 2
+    assert items[0]["componentName"].startswith("- Giấy tờ làm căn cứ chấm dứt giám hộ")
+    assert items[1]["target"] == "new" and items[1]["needsAddComponent"] is True
+    assert items[2]["target"] == "new" and items[2]["needsAddComponent"] is True
+    assert res["extracted"]["classified"][1]["type"] == "other"

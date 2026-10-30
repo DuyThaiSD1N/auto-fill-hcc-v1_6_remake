@@ -1,6 +1,7 @@
 """Map compact source facts → Form.io data[...] fields cho "Cung cấp thông tin quy hoạch".
 
-Chỉ điền MỘT khối: Phần I "Thông tin người nộp hồ sơ". Không có khối chủ hồ sơ/thửa đất/GCN.
+Chỉ có người nộp: khối "Thông tin người nộp hồ sơ" lặp 2 lần trên trang (đầu trang + "Thông tin chi tiết"),
+điền cả hai theo occurrence 0/1. Không có khối chủ hồ sơ/thửa đất/GCN.
 Guard formContext: chỉ đè Phần I khi người nộp (NguoiNop_*) TRÙNG tài khoản đăng nhập (VNeID) —
 tránh đè nhầm thông tin cổng đã tự điền khi nộp thay. Không có mỏ neo → điền theo giấy tờ.
 """
@@ -204,23 +205,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, int]] = set()
     context = _form_context(options)
 
-    def add(name: str, value) -> None:
-        if name in seen or value in (None, "", {}, []):
+    def add(name: str, value, occurrence: int, extra: dict | None = None) -> None:
+        if (name, occurrence) in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
-        seen.add(name)
+        out.append({"name": name, "comp": comp, "value": value, "occurrence": occurrence, **(extra or {})})
+        seen.add((name, occurrence))
 
-    def expect(names: tuple[str, ...]) -> None:
+    def expect(names: tuple[str, ...], occurrence: int) -> None:
         for name in names:
-            if name not in seen:
-                out.append({"name": name, "comp": "dom-expect", "value": ""})
-                seen.add(name)
+            if (name, occurrence) not in seen:
+                out.append({"name": name, "comp": "dom-expect", "value": "", "occurrence": occurrence})
+                seen.add((name, occurrence))
 
     name = _text(values.get("NguoiNop_HoTen"))
     identity = _identity(values.get("NguoiNop_SoDinhDanh"))
@@ -240,23 +241,30 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         or _same_person(identity, name, context.get("applicant_identity"), context.get("applicant_name"))
     )
 
+    # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người nộp theo tờ khai có thể là người
+    # khác nên kèm enableInput để extension bỏ disabled trước khi ghi.
+    unlock = {"enableInput": True} if theo_to_khai(options) else None
+
     if can_fill_applicant and (name or identity):
-        # Hồ sơ cá nhân (có CCCD) → mặc định "Cá nhân"; người dùng tự đổi sang Tổ chức nếu cần.
-        add("data[chonDoiTuong]", "Cá nhân")
-        add("data[fullname]", name)
-        add("data[birthday]", birthday)
-        add("data[gender]", gender)
-        add("data[phoneNumber]", phone)
-        add("data[email]", email)
-        add("data[identityNumber]", identity)
-        add("data[identityDate]", id_date)
-        add("data[identityAgency]", id_agency)
-        add("data[nation]", "Việt Nam")
-        if residence:
-            add("data[province]", _province_label(residence.get("tinh")))
-            add("data[district]", _commune_label(residence.get("xa")))
-            add("data[address]", _text(residence.get("diaChi")))
-        expect(_EXPECT_APPLICANT)
+        # Cùng bộ ô data[...] xuất hiện 2 lần: occurrence 0 = "Thông tin người nộp" (đầu trang), occurrence 1 =
+        # "Thông tin chi tiết" (cổng đổ sẵn từ tài khoản). Không ghi occurrence thì extension chỉ điền khối đầu.
+        for occ in (0, 1):
+            # Hồ sơ cá nhân (có CCCD) → mặc định "Cá nhân"; người dùng tự đổi sang Tổ chức nếu cần.
+            add("data[chonDoiTuong]", "Cá nhân", occ)
+            add("data[fullname]", name, occ, unlock)
+            add("data[birthday]", birthday, occ)
+            add("data[gender]", gender, occ)
+            add("data[phoneNumber]", phone, occ)
+            add("data[email]", email, occ)
+            add("data[identityNumber]", identity, occ, unlock)
+            add("data[identityDate]", id_date, occ)
+            add("data[identityAgency]", id_agency, occ)
+            add("data[nation]", "Việt Nam", occ)
+            if residence:
+                add("data[province]", _province_label(residence.get("tinh")), occ)
+                add("data[district]", _commune_label(residence.get("xa")), occ)
+                add("data[address]", _text(residence.get("diaChi")), occ)
+            expect(_EXPECT_APPLICANT, occ)
 
     if not name or not identity:
         warnings.append("Thiếu họ tên/số định danh người nộp hồ sơ từ CCCD hoặc Đơn đề nghị.")

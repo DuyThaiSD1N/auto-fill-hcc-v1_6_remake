@@ -1226,6 +1226,9 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký chấm dứt giám hộ",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Bật "Có tách hồ sơ khi đính kèm" → PDF gộp (cam đoan + trích lục + tờ khai...) tách theo trang;
+        # client cũ hoặc không gửi option vẫn giữ nguyên từng file.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -6324,13 +6327,17 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy
+        # (Văn bản đề nghị, Giấy ủy quyền, CCCD…) thành một tệp riêng, vẫn cùng dòng 1; TẮT/bản cũ → đính nguyên tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Văn bản đề nghị Mẫu số 01 (Nghị định 176/2025/NĐ-CP).\n"
             "2. CCCD của người nộp/chủ hồ sơ.\n"
             "Hệ thống lấy chủ hồ sơ từ mục thông tin người đề nghị cấp/hưởng trợ cấp hưu trí xã hội.\n"
             "Bước thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng nên MỌI file đều được đính vào dòng đó; "
-            "file không phải Văn bản đề nghị vẫn được đính kèm nhưng có cảnh báo để cán bộ soát."
+            "file không phải Văn bản đề nghị vẫn được đính kèm nhưng có cảnh báo để cán bộ soát. Bật \"Có tách hồ "
+            "sơ khi đính kèm\" thì PDF scan chung nhiều giấy được tách thành từng tệp riêng."
         ),
     },
     {

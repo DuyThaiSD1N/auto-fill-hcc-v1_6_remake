@@ -10,20 +10,42 @@ target `fixed-slot`, FE upload bằng TÊN FILE GỐC — `documentName` chỉ h
 
 ⚠ TUYỆT ĐỐI KHÔNG dùng lưới keyword để phân loại (chốt user 2026-09-15). Hai hàm
 `is_excluded_document` / `detect_slot_key` bên dưới CHỈ còn để đối chứng, không nằm trong luồng.
+
+Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments``, cách làm như thủ tục thờ cúng liệt sĩ cùng cổng):
+PDF nhiều trang được LLM xếp loại TỪNG TRANG; mỗi giấy (Văn bản đề nghị, Giấy ủy quyền, CCCD…) thành một tệp riêng
+chỉ gồm đúng các trang của nó (``sourceSegments``, extension cắt PDF, tên tệp = documentName), bỏ trang trắng. Vẫn
+cùng dòng 1, Văn bản đề nghị đứng đầu. Chia trang lỗi / số trang OCR lệch PDF → tệp đó đính nguyên như chế độ thường.
 """
 
+import re
 import time
 from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
+from app.pipelines._shared.lao_cai_tach_giay_to import split_pages
+from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.attach.planner import split_requested, splittable_pages
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import prompt
 from app.process.schemas import FileItem
 from app.services.llm import client
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
+# Trang trắng / mặt sau in xuyên dấu: OCR chỉ ra vài chữ rác → không đưa vào tệp cắt.
+_MIN_PAGE_CHARS = 40
+# Trang LLM trả other mà ít chữ (trang chỉ có dấu/chức danh) là trang nối tiếp của giấy liền trước.
+_SHORT_OTHER_CHARS = 200
 
 _TYPE_GIAY_TO_TUY_THAN = "giay_to_tuy_than"
+_TYPE_UY_QUYEN = "giay_uy_quyen"
+_TYPE_OTHER = "other"
+
+_IDENTITY_LABEL = "Giấy tờ tùy thân có ảnh (CCCD/CMND/Hộ chiếu)"
+# Tên tệp cắt khi tách (extension đặt tên tệp = documentName) → không chứa "/".
+_SPLIT_LABELS = {
+    _TYPE_UY_QUYEN: "Giấy ủy quyền",
+    _TYPE_GIAY_TO_TUY_THAN: "Căn cước công dân",
+    _TYPE_OTHER: "Giấy tờ kèm theo",
+}
 
 SLOT = {
     "slotKey": "van_ban_de_nghi_huu_tri",
@@ -153,25 +175,126 @@ def _build_item(file: dict, file_index: int, document_name: str = "") -> dict:
     }
 
 
+def _page_type(value: str) -> str:
+    """Type LLM của một trang → slotKey văn bản đề nghị | giay_to_tuy_than | giay_uy_quyen | other."""
+    slot = _slot_from_llm_type(value)
+    if slot:
+        return slot
+    if str(value or "").strip() == _TYPE_UY_QUYEN or "uy quyen" in _fold(value or ""):
+        return _TYPE_UY_QUYEN
+    return _TYPE_OTHER
+
+
+async def _classify_pages(pages_by_file: dict[int, list[str]]) -> dict[int, list[str]]:
+    """LLM xếp loại TỪNG TRANG (trang nối tiếp mang loại của giấy chứa nó) → {tệp: [type mỗi trang]}."""
+    total = sum(len(p) for p in pages_by_file.values())
+    messages = [
+        {"role": "system", "content": prompt.SPLIT_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt.build_split_user_prompt(pages_by_file)},
+    ]
+    # temperature 0: cùng tệp phải ra cùng cách chia giữa các lần chạy.
+    raw = await client.chat(messages, temperature=0, max_tokens=max(300, min(3000, 100 + 20 * total)),
+                            enable_thinking=settings.agent_reasoning)
+    out: dict[int, list[str]] = {}
+    for item in client.extract_json_block(raw).get("tep", []) or []:
+        try:
+            idx = int(item.get("fileIndex"))
+        except Exception:  # noqa: BLE001
+            continue
+        types = [_page_type(str(t)) for t in item.get("trang") or []]
+        # Số phần tử lệch số trang → không biết trang nào là gì, tệp đó đính nguyên như chế độ thường.
+        if idx in pages_by_file and idx not in out and len(types) == len(pages_by_file[idx]):
+            out[idx] = types
+    return out
+
+
+def _is_blank(page: str) -> bool:
+    return len(re.findall(r"\w", page or "")) < _MIN_PAGE_CHARS
+
+
+def _absorb_short_other(types: list[str], pages: list[str]) -> list[str]:
+    out: list[str] = []
+    for page, doc_type in enumerate(types):
+        prev = next((t for t in reversed(out) if t != _TYPE_OTHER), "")
+        short = len(re.findall(r"\w", pages[page] or "")) < _SHORT_OTHER_CHARS
+        out.append(prev if doc_type == _TYPE_OTHER and prev and short else doc_type)
+    return out
+
+
+def split_log(files: list[dict], ocr_results: list[dict], page_types: dict[int, list[str]]) -> list[dict]:
+    """Các đoạn trang liền nhau cùng loại của mỗi tệp đã tách (trang 1-based, bỏ trang trắng) — ghi trace."""
+    by_name = {item.get("name"): item for item in ocr_results}
+    log: list[dict] = []
+    for idx, raw_types in page_types.items():
+        file_name = str(files[idx].get("name") or f"file-{idx + 1}")
+        pages = split_pages(str(by_name.get(file_name, {}).get("text") or ""))
+        runs: list[dict] = []
+        for page, doc_type in enumerate(_absorb_short_other(raw_types, pages)):
+            if _is_blank(pages[page]):
+                continue
+            if runs and runs[-1]["docType"] == doc_type and runs[-1]["pages"][-1] == page:
+                runs[-1]["pages"].append(page + 1)
+            else:
+                runs.append({"docType": doc_type, "pages": [page + 1]})
+        log.append({"fileName": file_name, "tachGiayTo": runs})
+    return log
+
+
+def _split_file_items(file: dict, idx: int, pages: list[str], types: list[str]) -> tuple[list[dict], list[str]]:
+    """Tệp đã xếp loại theo trang → mỗi giấy một mục chỉ gồm đúng các trang của nó, cùng dòng 1: Văn bản đề nghị
+    đứng đầu, giấy còn lại theo thứ tự xuất hiện."""
+    file_name = str(file.get("name") or f"file-{idx + 1}")
+    by_type: dict[str, list[int]] = {}
+    for page, doc_type in enumerate(_absorb_short_other(types, pages)):
+        if not _is_blank(pages[page]):
+            by_type.setdefault(doc_type, []).append(page)
+    order = sorted(by_type, key=lambda t: (t != SLOT["slotKey"], by_type[t][0]))
+    items: list[dict] = []
+    for doc_type in order:
+        item = _build_item(file, idx, "" if doc_type == SLOT["slotKey"] else _SPLIT_LABELS[doc_type])
+        if by_type[doc_type] != list(range(len(pages))):
+            item["sourceSegments"] = [{"fileIndex": idx, "pageIndexes": by_type[doc_type]}]
+        items.append(item)
+    warnings: list[str] = []
+    if SLOT["slotKey"] not in by_type:
+        warnings.append(
+            f"File '{file_name}' không có trang nào là Văn bản đề nghị (Mẫu số 01) — các giấy tách ra vẫn đính "
+            "vào dòng duy nhất của thủ tục; cán bộ kiểm tra lại."
+        )
+    if _TYPE_OTHER in by_type:
+        warnings.append(
+            f"Chưa xác định được loại giấy tờ của một số trang trong file '{file_name}' — đã tách thành "
+            f"'{_SPLIT_LABELS[_TYPE_OTHER]}' và đính vào dòng duy nhất; cán bộ kiểm tra lại."
+        )
+    return items, warnings
 
 
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
     llm_slots: dict[int, str] | None = None,
+    page_types: dict[int, list[str]] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """MỌI FILE đều đính vào dòng 1 — bảng của thủ tục này chỉ còn đúng một dòng.
 
     LLM chỉ dùng để đặt tên hiển thị và cảnh báo giấy tờ không phải Văn bản đề nghị; nó KHÔNG còn
-    quyết định đích đến, và KHÔNG có lưới keyword nào tham gia.
+    quyết định đích đến, và KHÔNG có lưới keyword nào tham gia. ``page_types`` (chỉ có khi bật tách) chia
+    tệp theo trang do LLM xếp loại; OCR text chỉ dùng để cắt trang, không để suy loại.
     """
     llm_slots = llm_slots or {}
-    del ocr_results  # OCR text không còn được dùng để suy loại (LLM-first tuyệt đối).
+    page_types = page_types or {}
+    by_name = {item.get("name"): item for item in ocr_results}
     items: list[dict] = []
     warnings: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
+        if idx in page_types:
+            pages = split_pages(str(by_name.get(file_name, {}).get("text") or ""))
+            split_items, split_warnings = _split_file_items(file, idx, pages, page_types[idx])
+            items.extend(split_items)
+            warnings.extend(split_warnings)
+            continue
         doc_type = llm_slots.get(idx, "")
 
         if doc_type == SLOT["slotKey"]:
@@ -181,7 +304,7 @@ def build_plan_items(
         # Không phải Văn bản đề nghị nhưng VẪN đính (dòng 1 là chỗ duy nhất) — tuyệt đối không bỏ sót
         # file. Tên hiển thị giữ khác nhau để cán bộ soát được trong danh sách kế hoạch.
         if doc_type == _TYPE_GIAY_TO_TUY_THAN:
-            label = "Giấy tờ tùy thân có ảnh (CCCD/CMND/Hộ chiếu)"
+            label = _IDENTITY_LABEL
             reason = "là giấy tờ tùy thân"
         else:
             label = f"Tài liệu khác - {file_name}"
@@ -202,6 +325,7 @@ async def plan(
 ) -> dict:
     """Entry point đính kèm cho dieu-chinh-huu-tri-xa-hoi."""
     _ = session
+    split = split_requested(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -216,13 +340,27 @@ async def plan(
             errors.append(f"OCR {item.get('name')}: {item['error']}")
 
     ocr_by_name = {item.get("name"): item for item in ocr_results}
-    llm_docs: list[dict[str, Any]] = []
-    for idx, file in enumerate(raw_files):
-        text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if text.strip():
-            llm_docs.append({"index": idx, "text": text})
+    texts = {idx: str(ocr_by_name.get(f.get("name"), {}).get("text") or "") for idx, f in enumerate(raw_files)}
 
     t1 = time.monotonic()
+    page_types: dict[int, list[str]] = {}
+    if split:
+        # Chỉ tệp nhiều trang mới có thể gộp nhiều giấy; tệp một trang đi phân loại thường.
+        pages_by_file = {
+            idx: pages for idx, text in texts.items()
+            if len(pages := splittable_pages(raw_files[idx], text)) > 1
+        }
+        if pages_by_file:
+            try:
+                page_types = await _classify_pages(pages_by_file)
+            except Exception as exc:  # noqa: BLE001 — chia trang hỏng thì đính nguyên tệp
+                errors.append(f"Tách giấy tờ: {exc} — đính nguyên tệp.")
+    llm_docs: list[dict[str, Any]] = [
+        {"index": idx, "text": text}
+        for idx, text in texts.items()
+        if idx not in page_types and text.strip()
+    ]
+
     llm_slots: dict[int, str] = {}
     if llm_docs:
         try:
@@ -231,7 +369,7 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots)
+    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots, page_types)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
     ocr_text = "\n\n---\n\n".join(
@@ -248,6 +386,8 @@ async def plan(
             "llmDocuments": [raw_files[doc["index"]]["name"] for doc in llm_docs],
             "skippedOcr": skipped_ocr,
             "slots": [SLOT["slotName"]],
+            "splitDocuments": split,
+            "tachGiayTo": split_log(raw_files, ocr_results, page_types),
         },
         "ocr_text": ocr_text,
         "stats": {

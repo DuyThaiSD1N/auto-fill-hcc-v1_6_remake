@@ -1,6 +1,7 @@
 """LLM prompt for social pension adjustment attachment classification."""
 
 import json
+import re
 from typing import Any
 
 
@@ -70,6 +71,50 @@ Ví dụ sai:
 Sai vì thừa code fence và type không thuộc allowed_types.
 </output_contract>
 """.strip()
+
+
+SPLIT_SYSTEM_PROMPT = """
+<persona>
+Bạn đọc bộ hồ sơ scan của thủ tục "Thực hiện trợ cấp hưu trí xã hội" và xếp loại TỪNG TRANG. Mỗi tệp gồm các trang
+theo thứ tự, mỗi trang kèm chữ OCR (chỉ phần đầu trang).
+</persona>
+
+<rules>
+1. Mỗi trang trả đúng một type trong allowed_types: loại của GIẤY chứa trang đó.
+2. Trang mở đầu một giấy có quốc hiệu / tiêu đề riêng (VĂN BẢN ĐỀ NGHỊ, GIẤY ỦY QUYỀN, thẻ CĂN CƯỚC...). Trang nối
+   tiếp của cùng giấy (nội dung tiếp như mục "10. Tài khoản ngân hàng", "II. Thông tin người giám hộ", trang chữ ký,
+   "XÁC NHẬN CỦA CƠ QUAN NHÀ NƯỚC CÓ THẨM QUYỀN" cuối giấy ủy quyền, lời chứng thực, mặt sau, trang không có tiêu
+   đề) mang CÙNG loại với trang liền trước. Mặt trước + mặt sau CCCD là giay_to_tuy_than cả hai.
+3. Phân loại theo CHÍNH giấy đó là gì, không theo giấy được NHẮC tới: giấy ủy quyền ghi "Căn cước công dân số…" vẫn là
+   giay_uy_quyen; văn bản đề nghị ghi "Thẻ Căn cước hoặc số định danh cá nhân" vẫn là van_ban_de_nghi_huu_tri.
+4. Văn bản đề nghị ghi rõ "Mẫu số 02" → other.
+5. Trang trắng, không đọc được, hoặc chỉ có vài dòng rời rạc không phải tiêu đề giấy mới (tên cơ quan, dấu, chức
+   danh người ký, chữ in xuyên từ mặt sau) → cùng loại với trang liền trước, KHÔNG trả other.
+6. Chỉ dùng chữ OCR, không dùng tên tệp. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
+</rules>
+
+<allowed_types>
+- van_ban_de_nghi_huu_tri: Văn bản đề nghị hưởng / nhận tại nơi cư trú mới / thay đổi thông tin trợ cấp hưu trí xã
+  hội (Mẫu số 01), kể cả trang tài khoản ngân hàng, người giám hộ, chữ ký đi kèm.
+- giay_uy_quyen: Giấy ủy quyền / văn bản ủy quyền (kể cả trang xác nhận, chứng thực chữ ký đi kèm).
+- giay_to_tuy_than: Căn cước công dân / thẻ căn cước / CMND / hộ chiếu.
+- other: giấy khác hoặc không đủ bằng chứng.
+</allowed_types>
+
+<output_contract>
+{"tep":[{"fileIndex":0,"trang":["giay_uy_quyen","giay_uy_quyen","van_ban_de_nghi_huu_tri","van_ban_de_nghi_huu_tri","giay_to_tuy_than"]}]}
+Mỗi tệp đầu vào đúng một phần tử "tep"; "trang" có ĐÚNG soTrang phần tử theo thứ tự trang.
+</output_contract>
+""".strip()
+
+
+def build_split_user_prompt(pages_by_file: dict[int, list[str]]) -> str:
+    payload = [
+        {"fileIndex": i, "soTrang": len(pages),
+         "trang": [{"trang": n + 1, "ocr": re.sub(r"\s+", " ", t).strip()[:1200]} for n, t in enumerate(pages)]}
+        for i, pages in pages_by_file.items()
+    ]
+    return "HỒ SƠ:\n" + json.dumps(payload, ensure_ascii=False)
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

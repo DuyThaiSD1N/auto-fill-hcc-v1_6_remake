@@ -56,6 +56,14 @@ _IDENTITY_DIRECT_MARKERS = (
     "can cuoc cong dan", "the can cuoc", "citizen identity card", "identity card",
     "giay chung minh nhan dan", "chung minh nhan dan", "passport", "ho chieu", "idvnm",
 )
+# Giấy tờ hộ tịch có tiêu đề riêng (căn cứ chấm dứt giám hộ): type other, thủ tục chấm dứt route STT 2.
+_TITLED_OTHER_DOCUMENTS = (
+    ("trich luc dang ky giam ho", "Trích lục đăng ký giám hộ"),
+    ("trich luc dang ky cham dut giam ho", "Trích lục đăng ký chấm dứt giám hộ"),
+    ("trich luc khai tu", "Trích lục khai tử"),
+    ("giay chung tu", "Giấy chứng tử"),
+    ("giay bao tu", "Giấy báo tử"),
+)
 _IDENTITY_BACK_GROUPS = (
     ("dac diem nhan dang", "personal identification"),
     ("van tay", "ngon tro", "left index finger", "right index finger"),
@@ -164,6 +172,15 @@ def _rule_segment(text: str, proposed_subject: str = "") -> tuple[str, str] | No
         "van ban uy quyen", "giay uy quyen", "ben uy quyen", "ben duoc uy quyen",
     )):
         return "authorization", _AUTHORIZATION_LABEL
+    # Trích lục/quyết định có dòng "Thẻ căn cước công dân số ..." của các bên → phải chặn trước luật
+    # CCCD. Chỉ xét phần đầu trang (quốc hiệu, cơ quan, tiêu đề) để câu nhắc tới giấy tờ khác trong
+    # thân văn bản không đổi loại.
+    head = folded[:400]
+    for marker, name in _TITLED_OTHER_DOCUMENTS:
+        if marker in head:
+            return "other", name
+    if "toa an nhan dan" in head and ("quyet dinh" in head or "ban an" in head):
+        return "other", "Quyết định của Tòa án" if "quyet dinh" in head else "Bản án của Tòa án"
     if _has_identity_evidence(text):
         subject = _clean_subject(proposed_subject)
         return "identity", f"CCCD {subject}" if subject else _IDENTITY_LABEL

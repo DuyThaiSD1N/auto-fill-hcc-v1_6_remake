@@ -32,7 +32,10 @@ Mỗi file PDF có thể chứa nhiều giấy tờ độc lập; hãy trả đ�
     "Giấy xác nhận tình trạng hôn nhân" và thêm thành phần mới. Không được đổi thành identity hay bỏ
     qua chỉ vì trang sau có số CCCD.
 12. Trang thực sự trắng/OCR rỗng dùng blank_page. Trang có nội dung nhưng chưa rõ loại dùng other.
-13. Trả đúng một JSON object, không markdown, không giải thích.
+13. Cùng bộ quy tắc dùng cho thủ tục "Đăng ký chấm dứt giám hộ": "TỜ KHAI ĐĂNG KÝ CHẤM DỨT GIÁM HỘ" là
+    paper_declaration. Trích lục đăng ký giám hộ, giấy chứng tử/trích lục khai tử, quyết định/bản án
+    của Tòa án là other với documentName theo tiêu đề; không đổi thành identity dù có số CCCD các bên.
+14. Trả đúng một JSON object, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>
@@ -53,6 +56,8 @@ Mỗi file PDF có thể chứa nhiều giấy tờ độc lập; hãy trả đ�
   CSDL của người khác: trả riêng trang 1 type marital_status_certificate, trang 2-3 guardian_condition,
   trang 4-5 guardian_condition.
 - Trang "Thông tin gia đình" tiếp sau "Thông tin cá nhân" của cùng người vẫn thuộc cùng một đoạn CSDL.
+- PDF 3 trang gồm trang 1 Bản cam đoan, trang 2 Trích lục đăng ký giám hộ, trang 3 Tờ khai đăng ký
+  chấm dứt giám hộ: trả 3 đoạn 1-1 guardian_condition, 2-2 other, 3-3 paper_declaration.
 </boundary_examples>
 
 <document_name_rules>
@@ -70,6 +75,7 @@ Mỗi file PDF có thể chứa nhiều giấy tờ độc lập; hãy trả đ�
 - Giấy khai sinh: "Giấy khai sinh người được giám hộ".
 - Màn hình/trích xuất CSDL dân cư: "Trích xuất CSDL dân cư HỌ TÊN" nếu đọc chắc chủ thể,
   nếu không thì "Trích xuất cơ sở dữ liệu dân cư".
+- Trích lục: "Trích lục đăng ký giám hộ", "Trích lục khai tử"... đúng tiêu đề đọc được.
 - marital_status_certificate: "Giấy xác nhận tình trạng hôn nhân".
 - other không nhận diện chắc: "Tài liệu đăng ký giám hộ".
 - Các documentName trong một kế hoạch phải khác nhau; thêm họ tên/số hiệu khi OCR có.

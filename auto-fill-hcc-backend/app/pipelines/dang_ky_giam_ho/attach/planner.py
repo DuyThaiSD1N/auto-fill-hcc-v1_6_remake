@@ -33,6 +33,8 @@ _CHAM_DUT_RENAME = {
     "to khai dang ky giam ho ban giay": "Tờ khai đăng ký chấm dứt giám hộ bản giấy",
     "giay to chung minh dieu kien giam ho": "Giấy tờ làm căn cứ chấm dứt giám hộ",
     "tai lieu dang ky giam ho": "Tài liệu chấm dứt giám hộ",
+    # Bản cam đoan ở thủ tục chấm dứt nêu lý do chấm dứt, không phải cam đoan đủ điều kiện giám hộ.
+    "ban cam doan du dieu kien giam ho": "Bản cam đoan",
 }
 
 

@@ -191,3 +191,136 @@ def test_prompt_co_type_rieng_va_chan_bay_trich_luc_khai_tu():
 
 def test_slot_name_khop_text_that_cua_cong():
     assert "Mẫu số 01 ban hành kèm theo Nghị định số 176/2025/NĐ-CP" in planner.SLOT["slotName"]
+
+
+# ---------------------------------------------------------------------------
+# Cài đặt "Có tách hồ sơ khi đính kèm" — mẫu theo hồ sơ thật req_e466442af788 (dữ liệu bịa): một PDF 6 trang gồm
+# Giấy ủy quyền (trang 1 + trang xác nhận), Văn bản đề nghị Mẫu 01 (2 trang), CCCD bên ủy quyền, CCCD bên được ủy quyền.
+# ---------------------------------------------------------------------------
+_BO_GOP_TRANG = [
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nGIẤY ỦY QUYỀN\nI. BÊN ỦY QUYỀN: Ông TRẦN VĂN MẪU sinh năm 1950\n"
+    "Căn cước công dân số: 001050000001\nII. BÊN ĐƯỢC ỦY QUYỀN: Bà LÊ THỊ THỬ sinh năm 1980",
+    "XÁC NHẬN CỦA CƠ QUAN NHÀ NƯỚC CÓ THẨM QUYỀN\nGIÁM ĐỐC",
+    "Mẫu số 01\nVĂN BẢN ĐỀ NGHỊ HƯỞNG TRỢ CẤP HƯU TRÍ XÃ HỘI\nI. Thông tin người đề nghị trợ cấp hưu trí xã hội\n"
+    "1. Họ, chữ đệm, tên: TRẦN VĂN MẪU\n3. Thẻ Căn cước hoặc số định danh cá nhân: 001050000001",
+    "10. Tài khoản ngân hàng:\n- Tên tài khoản: Trần Văn Mẫu\nII. Thông tin người giám hộ, người được uỷ quyền (nếu có)\n"
+    "7. Tôi xin cam đoan những lời khai trên là đúng sự thật",
+    "CĂN CƯỚC CÔNG DÂN\nCitizen Identity Card\nSố / No.: 001050000001\nHọ và tên / Full name: TRẦN VĂN MẪU",
+    "CĂN CƯỚC\nIDENTITY CARD\nSố định danh cá nhân: 001080000002\nHọ, chữ đệm và tên khai sinh: LÊ THỊ THỬ",
+]
+_PAGE_TYPES = [
+    "giay_uy_quyen", "giay_uy_quyen", "van_ban_de_nghi_huu_tri", "van_ban_de_nghi_huu_tri",
+    "giay_to_tuy_than", "giay_to_tuy_than",
+]
+
+
+def _pdf_file(name: str, pages: int) -> FileItem:
+    import base64
+
+    import fitz
+
+    doc = fitz.open()
+    for _ in range(pages):
+        doc.new_page()
+    data = base64.b64encode(doc.tobytes()).decode()
+    return FileItem(name=name, type="application/pdf", dataUrl=f"data:application/pdf;base64,{data}", role="doc")
+
+
+def _ocr_text(pages: list[str]) -> str:
+    return "\n\n".join(f"───── Trang {n + 1}/{len(pages)} ─────\n{p}" for n, p in enumerate(pages))
+
+
+def _mock_split(monkeypatch, page_types, calls):
+    async def fake_ocr_per_file(files):
+        return [{"name": "bo-gop.pdf", "text": _ocr_text(_BO_GOP_TRANG)}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking, temperature=None):
+        calls.append(messages[0]["content"])
+        if messages[0]["content"] == planner.prompt.SPLIT_SYSTEM_PROMPT:
+            return json.dumps({"tep": [{"fileIndex": 0, "trang": page_types}]})
+        return json.dumps({"documents": [{"index": 0, "type": "other", "title": "Giấy ủy quyền"}]})
+
+    monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+
+async def test_bat_tach_ho_so_cat_bo_gop_thanh_tung_giay(monkeypatch):
+    calls: list[str] = []
+    _mock_split(monkeypatch, _PAGE_TYPES, calls)
+
+    res = await planner.plan([_pdf_file("bo-gop.pdf", 6)], {"splitDocuments": True}, None)
+
+    items = res["attachments"]
+    assert [i["documentName"] for i in items] == [
+        "Văn bản đề nghị trợ cấp hưu trí xã hội", "Giấy ủy quyền", "Căn cước công dân",
+    ]
+    assert [i["sourceSegments"] for i in items] == [
+        [{"fileIndex": 0, "pageIndexes": [2, 3]}],
+        [{"fileIndex": 0, "pageIndexes": [0, 1]}],
+        [{"fileIndex": 0, "pageIndexes": [4, 5]}],
+    ]
+    assert all(i["target"] == "fixed-slot" and i["slotIndex"] == 0 for i in items)
+    assert all("/" not in i["documentName"] for i in items)
+    # Có Văn bản đề nghị trong bộ → không cảnh báo; chỉ một lượt LLM (xếp loại trang).
+    assert res["errors"] == []
+    assert calls == [planner.prompt.SPLIT_SYSTEM_PROMPT]
+    assert res["extracted"]["splitDocuments"] is True
+    assert res["extracted"]["tachGiayTo"][0]["tachGiayTo"] == [
+        {"docType": "giay_uy_quyen", "pages": [1, 2]},
+        {"docType": "van_ban_de_nghi_huu_tri", "pages": [3, 4]},
+        {"docType": "giay_to_tuy_than", "pages": [5, 6]},
+    ]
+
+
+async def test_tat_tach_ho_so_giu_nguyen_tep_nhu_cu(monkeypatch):
+    calls: list[str] = []
+    _mock_split(monkeypatch, _PAGE_TYPES, calls)
+
+    for options in ({}, {"splitDocuments": False}, {"splitDocuments": "true"}):
+        calls.clear()
+        res = await planner.plan([_pdf_file("bo-gop.pdf", 6)], options, None)
+        assert len(res["attachments"]) == 1
+        assert "sourceSegments" not in res["attachments"][0]
+        assert planner.prompt.SPLIT_SYSTEM_PROMPT not in calls
+        assert res["extracted"]["splitDocuments"] is False
+
+
+async def test_tach_loi_so_trang_lech_thi_dinh_nguyen_tep(monkeypatch):
+    calls: list[str] = []
+    _mock_split(monkeypatch, _PAGE_TYPES[:4], calls)
+
+    res = await planner.plan([_pdf_file("bo-gop.pdf", 6)], {"splitDocuments": True}, None)
+
+    assert len(res["attachments"]) == 1
+    assert "sourceSegments" not in res["attachments"][0]
+    assert res["extracted"]["tachGiayTo"] == []
+
+
+async def test_tach_pdf_lech_so_trang_ocr_khong_goi_llm_chia_trang(monkeypatch):
+    calls: list[str] = []
+    _mock_split(monkeypatch, _PAGE_TYPES, calls)
+
+    res = await planner.plan([_pdf_file("bo-gop.pdf", 5)], {"splitDocuments": True}, None)
+
+    assert len(res["attachments"]) == 1
+    assert planner.prompt.SPLIT_SYSTEM_PROMPT not in calls
+
+
+def test_tach_trang_other_ngan_nhap_giay_truoc_va_canh_bao_khi_khong_co_van_ban():
+    files = [{"name": "bo-gop.pdf", "type": "application/pdf"}]
+    pages = [_BO_GOP_TRANG[0], _BO_GOP_TRANG[1], _BO_GOP_TRANG[4]]
+    ocr = [{"name": "bo-gop.pdf", "text": _ocr_text(pages)}]
+
+    items, warnings = planner.build_plan_items(
+        files, ocr, {}, {0: ["giay_uy_quyen", "other", "giay_to_tuy_than"]}
+    )
+
+    assert [i["sourceSegments"][0]["pageIndexes"] for i in items] == [[0, 1], [2]]
+    assert any("không có trang nào là Văn bản đề nghị" in w for w in warnings)
+
+
+def test_registry_bat_cai_dat_tach_ho_so():
+    from app.procedures.registry import PROCEDURES
+
+    cfg = next(p for p in PROCEDURES if p["key"] == "dieu-chinh-huu-tri-xa-hoi")
+    assert cfg["supportsSplitDocuments"] is True
