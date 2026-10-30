@@ -4758,6 +4758,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "ket-hon-nuoc-ngoai" ||
       cfg.key === "dang-ky-lai-ket-hon" ||
       cfg.key === "khai-sinh-dang-ky-lai" ||
+      // Khai sinh cho người đã có hồ sơ: không có tờ khai thì BE nhận người yêu cầu bằng tài khoản
+      // (chính chủ → "Bản thân"; người nộp hộ kèm CCCD của mình → lấy nơi cư trú mục I từ thẻ đó).
+      cfg.key === "khai-sinh-da-co-ho-so" ||
       cfg.key === "khai-sinh-ket-hop-nhan-cha-me-con" ||
       cfg.key === "khai-tu" ||
       cfg.key === "khai-tu-dang-ky-lai" ||
@@ -4938,6 +4941,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115687 (thu hồi GCN cấp sai): mapper chỉ điền nhân thân khối người nộp khi khớp mốc
       // tài khoản; thiếu mốc là cả khối "Thông tin người nộp" luôn trống.
       cfg.key === "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai" ||
+      // [Lào Cai - cổng iGate mới] 1.115687: mốc tài khoản chọn đúng người nộp giữa người đứng đơn / Bên B ủy quyền.
+      cfg.key === "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai" ||
+      cfg.key === "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test" ||
       // [Lào Cai] 1.115688 (đăng ký đất đai lần đầu cho tổ chức): cùng contract mốc tài khoản với 1.115687.
       cfg.key === "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc" ||
       // [Lào Cai] 1.115666 / 1.115670 / 1.115686 / 1.115689: cổng xác thực Họ tên/Số Căn cước/Ngày sinh

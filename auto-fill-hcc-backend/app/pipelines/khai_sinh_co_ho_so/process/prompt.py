@@ -54,6 +54,9 @@ Nguồn duy nhất để chốt ô này là TỜ KHAI ĐĂNG KÝ KHAI SINH.
    Cổng đã tự điền khối người yêu cầu từ tài khoản VNeID đang đăng nhập; Python chỉ tick "Khác" để tách
    khối đó ra, KHÔNG ghi đè, rồi đổ toàn bộ dữ liệu quét được vào các khối con/cha/mẹ.
    TUYỆT ĐỐI KHÔNG bịa Requester_* từ CCCD của con/cha/mẹ.
+   Riêng tấm CCCD/CMND mang ĐÚNG số định danh ghi trong khối <tai_khoan_dang_nhap> (người nộp hộ kèm
+   thẻ của chính mình) → trích vào AccountCard_* (số, họ tên, ngày cấp, nơi cấp, nơi thường trú) — kể cả
+   khi người đó trùng con/cha/mẹ. Không có khối đó hoặc không thẻ nào trùng số → BỎ toàn bộ AccountCard_*.
 3. Vì vậy CCCD/CMND của CHÍNH người được khai sinh phải được trích đủ vào Subject_IdNumber,
    Subject_IdIssueDate, Subject_IdIssuePlace, Subject_ResidenceDomestic (ngoài họ tên/ngày sinh/giới tính).
    Đây là nguồn duy nhất của khối "Người được đăng ký khai sinh" — thiếu là hỏng cả khối. KHÔNG lấy

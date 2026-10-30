@@ -219,3 +219,43 @@ def test_giay_khai_sinh_chon_thang_option_va_xa_cu_quy_ve_xa_moi():
     assert d["TT_PhuongXaC"] == "Xã Hòa Vang"
     assert d["DiaChiC"] == "Thôn Một"
     assert d["noicutruA_TrongNuoc"]["xa"] == "Xã Hòa Vang"
+
+
+def test_cha_trung_so_nguoi_yeu_cau_lay_ngay_cap_noi_cap_muc_i():
+    # Mục II chỉ ghi số CCCD của cha (tên OCR lệch một dấu so với mục I) → loại giấy tờ (12),
+    # ngày cấp, cơ quan cấp lấy theo người yêu cầu cùng số định danh.
+    fields = [
+        _field("Requester_FullName", "Lê Văn Tâm"),
+        _field("Requester_IdNumber", "048090001234"),
+        _field("Requester_IdIssueDate", "06/11/2024"),
+        _field("Requester_IdIssuePlace", "Bộ Công an"),
+        _field("Requester_RelationshipToRecognized", "Cha"),
+        _field("Parent_FullName", "Lê Văn Tám"),
+        _field("Parent_IdNumber", "048090001234"),
+        _field("Child_FullName", "Lê Thị Hoa"),
+        _field("Child_IdNumber", "048322001234"),
+    ]
+
+    d = _values(mapper.enrich(fields, {}))
+
+    assert d["loaigiaytoA"] == "Thẻ căn cước"
+    assert d["sogiaytodinhdanhA"] == "048090001234"
+    assert d["ngaycapA"] == "06/11/2024"
+    assert d["NoiCapA"] == "Bộ Công an"
+
+
+def test_cha_khac_so_nguoi_yeu_cau_khong_muon_ngay_cap():
+    fields = [
+        _field("Requester_FullName", "Lê Thị Mai"),
+        _field("Requester_IdNumber", "048190005678"),
+        _field("Requester_IdIssueDate", "06/11/2024"),
+        _field("Requester_IdIssuePlace", "Bộ Công an"),
+        _field("Requester_RelationshipToRecognized", "Mẹ"),
+        _field("Parent_FullName", "Lê Văn Tám"),
+        _field("Parent_IdNumber", "048090001234"),
+    ]
+
+    d = _values(mapper.enrich(fields, {}))
+
+    assert "ngaycapA" not in d
+    assert "NoiCapA" not in d

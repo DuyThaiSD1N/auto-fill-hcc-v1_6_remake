@@ -33,6 +33,17 @@ FIELDS: list[dict] = [
      "desc": "Chữ NGUYÊN VĂN ghi ở dòng quan hệ trên tờ khai khi không quy được về 4 giá trị chuẩn "
              "(vd 'Con', 'Anh', 'Em', 'Chị', 'Cháu nội'...). Dùng kèm Requester_RelationToSubject=\"Khác\"."},
 
+    # CCCD của CHÍNH TÀI KHOẢN đang đăng nhập cổng (khối <tai_khoan_dang_nhap>) — người nộp hộ hay kèm
+    # thẻ của mình vào hồ sơ. Không có tờ khai thì đây là nguồn duy nhất của nơi cư trú mục I.
+    {"name": "AccountCard_IdNumber",
+     "desc": "Số định danh in trên tấm CCCD/CMND mang ĐÚNG số định danh của tài khoản trong khối "
+             "<tai_khoan_dang_nhap>. Không có thẻ nào mang số đó, hoặc không có khối đó → BỎ toàn bộ AccountCard_*."},
+    {"name": "AccountCard_FullName", "desc": "Họ tên in trên chính tấm thẻ AccountCard_IdNumber."},
+    {"name": "AccountCard_IdIssueDate", "desc": "Ngày cấp (mặt sau) của chính tấm thẻ AccountCard_IdNumber, dd/mm/yyyy."},
+    {"name": "AccountCard_IdIssuePlace", "desc": "Nơi cấp của chính tấm thẻ AccountCard_IdNumber (quy tắc nơi cấp như các vai khác)."},
+    {"name": "AccountCard_ResidenceDomestic",
+     "desc": '"Nơi thường trú" in trên chính tấm thẻ AccountCard_IdNumber, object {quocGia,tinh,xa,chiTietDuoiXa}.'},
+
     # Người được đăng ký khai sinh — thường là NGƯỜI LỚN đã có CCCD/học bạ/bằng cấp.
     {"name": "Subject_FullName", "desc": "Họ tên đầy đủ của người được đăng ký khai sinh."},
     {"name": "Subject_BirthDate",
@@ -151,6 +162,7 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Requester_IdIssueDate",
+    "AccountCard_IdIssueDate",
     "Subject_BirthDate",
     "Subject_IdIssueDate",
     "Father_IdIssueDate",
@@ -159,6 +171,7 @@ for _name in (
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (
     "Requester_ResidenceDomestic",
+    "AccountCard_ResidenceDomestic",
     "Subject_BirthPlaceDomestic",
     "Subject_ResidenceDomestic",
     "Subject_HometownDomestic",

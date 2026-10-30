@@ -28,7 +28,9 @@ _COMP_BY_NAME = {
     # được xác nhận bằng eForm thật; đặt theo quy ước <field ngày sinh> + "BangChu". Điền hụt chỉ là
     # bỏ trống ô không bắt buộc, không làm sai ô nào khác.
     "NgaySinhChonBangChu": "x-input",
-    "nksLoaiKhaiSinh": "x-select-default",
+    # Mẫu "hộ tịch điện tử tương tác" của thủ tục này dựng "Loại khai sinh" bằng <x-select>, không phải
+    # x-select-default như mẫu khai sinh thường → giữ comp cũ thì extension không tìm thấy ô.
+    "nksLoaiKhaiSinh": "x-select",
     "DanTocC": "x-select",
     "CapBanSao": "x-radio",
     "SoLuong": "raw",
@@ -45,8 +47,12 @@ _LOAI_DANG_KY = "Đăng ký cho người đã có hồ sơ, giấy tờ cá nhâ
 
 _STRUCTURAL_DEFAULTS = [
     {"name": "LoaiDangKy", "comp": "x-radio", "value": _LOAI_DANG_KY},
-    {"name": "nksLoaiKhaiSinh", "comp": "x-select-default", "value": "Đã xác định được cả cha lẫn mẹ"},
+    {"name": "nksLoaiKhaiSinh", "comp": "x-select", "value": "Đã xác định được cả cha lẫn mẹ"},
 ]
+# Hai lựa chọn còn lại của nksLoaiKhaiSinh; giá trị vẫn nằm ở vị trí mặc định trong `out` vì ô
+# này phải chọn trước để cổng hiện/ẩn đúng mục cha, mẹ.
+_BIRTH_TYPE_NO_FATHER = "Chưa xác định được cha"
+_BIRTH_TYPE_NO_MOTHER = "Chưa xác định được mẹ"
 
 
 def _fold(value: str) -> str:
@@ -258,7 +264,20 @@ _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Moth
 
 # Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ tờ khai, hoặc
 # đối chiếu được người đăng nhập chính là người được đăng ký khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"to_khai", "cccd_con"})
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"to_khai", "cccd_con", "cccd_tai_khoan"})
+# Nguồn được ghi đè cả NHÂN THÂN mục I. CCCD của tài khoản thì không: cổng đã đổ đúng họ tên/số/ngày
+# cấp/nơi cấp từ VNeID của chính người đó, sạch hơn OCR — thẻ chỉ bù nơi cư trú mà VNeID không đổ.
+_REQUESTER_IDENTITY_SOURCES = frozenset({"to_khai", "cccd_con"})
+
+# Ô nhân thân cha/mẹ ({0} = "Cha"/"Me") có thể còn dữ liệu cổng điền sẵn: hồ sơ thiếu thì xoá trắng.
+_PARENT_CLEARABLE_FIELDS = {
+    "FullName": ("HoTen{0}KS",),
+    "IdNumber": ("SoDinhDanh{0}", "SoGiayToDinhDanh{0}"),
+    "IdIssueDate": ("NgayCapDD{0}",),
+    "IdIssuePlace": ("NoiCapDD{0}",),
+    "BirthDateOrYear": ("NamSinh{0}KS",),
+    "Ethnicity": ("DanToc{0}KS",),
+}
 
 # Thứ tự đọc dân tộc người yêu cầu theo ô tích đã chốt (không có "Khac": người thứ ba
 # không có nguồn dân tộc trong hồ sơ nên để cổng giữ dữ liệu VNeID).
@@ -502,6 +521,28 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         if person.get("ho_ten") or person.get("so_dinh_danh"):
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
 
+    # Người nộp hộ kèm CCCD của CHÍNH tài khoản đang đăng nhập → thẻ đó là của người yêu cầu. Chỉ tin
+    # khi số trên thẻ TRÙNG số định danh tài khoản: agent đoán nhầm thẻ thì cũng không lọt qua đây.
+    card_id = _digits(values.get("AccountCard_IdNumber"))
+    if applicant[1] and card_id == applicant[1]:
+        area = values.get("AccountCard_ResidenceDomestic")
+        relation = "Khac"
+        for prefix, tick in (("Father", "ChaDe"), ("Mother", "MeDe")):
+            if card_id == _digits(values.get(f"{prefix}_IdNumber")):
+                relation = tick
+                break
+        return {
+            "ho_ten": values.get("AccountCard_FullName"),
+            "so_dinh_danh": card_id,
+            "ngay_cap": values.get("AccountCard_IdIssueDate"),
+            "noi_cap": _issuer_or_default(values, "AccountCard"),
+            "noi_cu_tru": _normalize_domestic_area(area) if isinstance(area, dict) else None,
+            # Thẻ không phải của cha/mẹ thì "Khác" là kết luận chắc, không còn là đoán.
+            "quan_he": relation,
+            "quan_he_default": False,
+            "source": "cccd_tai_khoan",
+        }
+
     return {"quan_he": "Khac", "quan_he_default": True, "source": "khong_to_khai"}
 
 
@@ -527,6 +568,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
+    def clear(name: str) -> None:
+        """Yêu cầu extension XÓA giá trị cổng đã điền sẵn ở ô ta không có dữ liệu."""
+        if name in seen:
+            return
+        comp = _COMP_BY_NAME.get(name)
+        if not comp:
+            return
+        out.append({"name": name, "comp": comp, "value": "", "clear": True})
+        seen.add(name)
+
+    def clear_missing_parent_fields(prefix: str, suffix: str) -> None:
+        """Ô nhân thân cha/mẹ mà hồ sơ không có → xoá trắng, không để sót dữ liệu cổng điền sẵn."""
+        for key, names in _PARENT_CLEARABLE_FIELDS.items():
+            if not values.get(f"{prefix}_{key}"):
+                for name in names:
+                    clear(name.format(suffix))
+
     for default in _STRUCTURAL_DEFAULTS:
         add(default["name"], default["value"])
 
@@ -541,7 +599,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # doi chieu nguoi dang nhap cong voi <con>. Khong xac dinh duoc thi giu nguyen du lieu cong da
     # dien san tu tai khoan VNeID, chi tick "Khac" o buoc 1.
     if requester.get("source") in _REQUESTER_OVERWRITE_SOURCES:
-        if requester.get("ho_ten") or requester.get("so_dinh_danh"):
+        if requester.get("source") in _REQUESTER_IDENTITY_SOURCES and (
+            requester.get("ho_ten") or requester.get("so_dinh_danh")
+        ):
             req_id = requester.get("so_dinh_danh")
             add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
             add("SoDinhDanhC", req_id)
@@ -602,6 +662,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_id_default)
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
         add("DanTocMeKS", _ethnicity(values.get("Mother_Ethnicity")), me_default)
+        clear_missing_parent_fields("Mother", "Me")
         add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
         _add_residence(add, "Me", _resolve_residence(values, "Mother", context))
 
@@ -619,9 +680,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_id_default)
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
         add("DanTocChaKS", _ethnicity(values.get("Father_Ethnicity")), cha_default)
+        clear_missing_parent_fields("Father", "Cha")
         add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context))
 
+    # Loại khai sinh theo cha/mẹ đã xác định (chỉ dựa vào họ tên/số định danh như khối III, IV).
+    # Thiếu cả hai thì nhiều khả năng là OCR hỏng → giữ mặc định.
+    birth_type = None
+    if has_mother and not has_father:
+        birth_type = _BIRTH_TYPE_NO_FATHER
+    elif has_father and not has_mother:
+        birth_type = _BIRTH_TYPE_NO_MOTHER
+    if birth_type:
+        for field in out:
+            if field["name"] == "nksLoaiKhaiSinh":
+                field["value"] = birth_type
     # Chi dien yeu cau ban sao khi to khai co khai bao that.
     if _is_birth_declaration(values.get("CopyRequest_SourceDocumentTitle")):
         copy = _copy_value(values.get("CopyRequest_WantsCopy"))

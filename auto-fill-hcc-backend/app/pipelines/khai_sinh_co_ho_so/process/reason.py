@@ -1339,6 +1339,17 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         raw, sections, bool(declaration_sources), _requester_context(options), documents
     )
 
+    # Mỏ neo tài khoản cho bước trích AccountCard_*: không có số định danh thì không có gì để
+    # khớp thẻ, bỏ hẳn khối để agent không đoán thẻ nào là của người nộp.
+    account_name, account_id = _requester_context(options)
+    account_block = (
+        "<tai_khoan_dang_nhap>\n"
+        f"Họ tên: {account_name or 'Không xác định'}\n"
+        f"Số định danh: {account_id}\n"
+        "</tai_khoan_dang_nhap>\n"
+        if account_id else ""
+    )
+
     return (
         "\n\n<phan_vai_da_xac_dinh>\n"
         "Dùng đúng các vai dưới đây; không tự đổi người giữa Subject/Father/Mother.\n"
@@ -1363,6 +1374,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         f"Nguồn: {declaration_source}\n"
         "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
         "</to_khai_dang_ky_khai_sinh>\n"
+        f"{account_block}"
         "Subject_* chỉ thuộc <con>; Mother_* chỉ thuộc <me>; Father_* chỉ thuộc <cha>. "
         "Nếu một khối ghi Không xác định thì bỏ toàn bộ field của vai đó. "
         f"Khối <cha>/<me> có dòng \"{_NO_CARD_MATCH_LABEL}\" nghĩa là KHÔNG tấm CCCD/CMND nào trong hồ sơ "

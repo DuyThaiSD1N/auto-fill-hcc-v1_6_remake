@@ -379,6 +379,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 if requester_value not in (None, "", {}, []):
                     values[f"Child_{suffix}"] = requester_value
 
+    # Mục II tờ khai thường chỉ ghi số CCCD của cha/mẹ (hoặc con), ngày cấp/nơi cấp chỉ có ở mục I.
+    # Cùng số định danh với người yêu cầu là cùng một người → lấy theo mục I, không thì loại giấy tờ
+    # (12) không suy được và ô để "-- Chọn --".
+    requester_digits = _digits(values.get("Requester_IdNumber"))
+    for role in ("Parent", "Child"):
+        if not requester_digits or _digits(values.get(f"{role}_IdNumber")) != requester_digits:
+            continue
+        for suffix in ("IdIssueDate", "IdIssuePlace"):
+            if not values.get(f"{role}_{suffix}") and values.get(f"Requester_{suffix}"):
+                values[f"{role}_{suffix}"] = values[f"Requester_{suffix}"]
+
     # TH1/TH2: CCCD cha/mẹ, con đối chiếu với tờ khai của chính thủ tục.
     flagged = _reconcile_with_declaration(values)
     flagged_ui = {name for role in flagged for name in _FLAGGED_UI_FIELDS[role]}

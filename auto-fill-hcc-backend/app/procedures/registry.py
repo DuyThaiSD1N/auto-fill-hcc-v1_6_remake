@@ -300,6 +300,8 @@ from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.attach im
 from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.process import (
     run as thu_hoi_gcn_cap_lan_dau_lao_cai_process,
 )
+from app.pipelines.thu_hoi_gcn_igate_lao_cai.attach import plan as thu_hoi_gcn_igate_lao_cai_attach
+from app.pipelines.thu_hoi_gcn_igate_lao_cai.process import run as thu_hoi_gcn_igate_lao_cai_process
 from app.pipelines.thu_hoi_gcn_cap_sai_bac_ninh.process import run as thu_hoi_gcn_cap_sai_bac_ninh_process
 from app.pipelines.thu_hoi_gcn_cap_sai_bac_ninh.attach import plan as thu_hoi_gcn_cap_sai_bac_ninh_attach
 from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_bac_ninh.process import run as dang_ky_bien_dong_chuyen_nhuong_bac_ninh_process
@@ -5020,6 +5022,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai",
+        # 1.115687 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
+        # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
+        # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
+        # → mục này PHẢI đứng trước.
+        # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 vẫn là bảng 2 dòng của cổng cũ, nhưng không còn "Giấy tờ khác".
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6aa4cc510ac3ff7a288951a0", "matthc=1.115687", "madvc=1.115687."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] (Cấp phường/xã) Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của "
+            "pháp luật đất đai do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy "
+            "chứng nhận sau khi thu hồi"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị thu hồi/hủy Giấy chứng nhận (văn bản kiến nghị việc cấp Giấy chứng nhận không đúng quy "
+            "định) — BẢN CHÍNH, có chữ ký của chủ sử dụng đất → dòng 1.\n"
+            "2. Giấy chứng nhận ĐÃ CẤP (bản gốc) — quét đủ trang bìa và các trang trong → dòng 2.\n"
+            "3. Giấy ủy quyền nếu nộp thay; văn bản rà soát, giấy tờ người đồng sử dụng đất (nếu có) — cổng mới không "
+            "còn \"Giấy tờ khác\", trợ lý đính chung dòng 1 (vẫn là tệp riêng); muốn tách dòng riêng thì dùng nút "
+            "\"Thêm giấy tờ\" của cổng.\n"
+            "4. CCCD người đi nộp và chủ hồ sơ — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
+            "⚠ MỖI DÒNG KHÔNG QUÁ 6 MB.\n"
+            "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — phải đăng nhập đúng "
+            "tài khoản NGƯỜI ĐI NỘP. Trợ lý điền giới tính, ngày/nơi cấp, địa chỉ theo giấy tờ của CHÍNH người đó.\n"
+            "Chủ hồ sơ = người ĐỨNG ĐƠN (nộp thay là Bên A Giấy ủy quyền), KHÔNG phải người đang đứng tên trên Giấy "
+            "chứng nhận bị cấp sai. Trợ lý KHÔNG tích \"Người nộp hồ sơ là chủ hồ sơ\"."
+        ),
+    },
+    {
         "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT) — CÙNG form bước 2 CongDan_*/ChuHoSo_* với
         # 1.115651/1.115667/1.115668/1.115671 (engine dom-*), mapping theo
@@ -8941,6 +8980,7 @@ _IGATE_LAO_CAI = {
     "su-dung-dat-ket-hop-da-muc-dich-cap-xa-igate-lao-cai": "su-dung-dat-ket-hop-da-muc-dich-cap-xa",
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004",
     "dinh-chinh-gcn-da-cap-igate-lao-cai": "dinh-chinh-gcn-da-cap-lao-cai",
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
 }
 for _key, _cu in _IGATE_LAO_CAI.items():
     _goc = next(p for p in PROCEDURES if p["key"] == _key)
@@ -9081,6 +9121,8 @@ _PIPELINE = {
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai-test": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_process,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_process,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_process,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": thu_hoi_gcn_igate_lao_cai_process,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test": thu_hoi_gcn_igate_lao_cai_process,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai": chuyen_doi_md_sd_dat_igate_lao_cai_process,
@@ -9211,6 +9253,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai-test": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_attach,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_attach,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": thu_hoi_gcn_igate_lao_cai_attach,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test": thu_hoi_gcn_igate_lao_cai_attach,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai": chuyen_doi_md_sd_dat_igate_lao_cai_attach,
