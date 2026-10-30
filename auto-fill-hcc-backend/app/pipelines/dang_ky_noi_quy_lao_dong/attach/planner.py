@@ -2,17 +2,18 @@
 mat-table, engine FE `attp-row` + modal "Thêm giấy tờ").
 
 ENGINE TÁCH/GỘP (như bao_cao_to_chuc_dai_hoi_hoi_cap_tinh): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG TRANG
-+ loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn cùng dòng thành MỘT file gộp (`sourceSegments`).
++ loại cho từng đoạn → hậu xử lý tất định → MỖI giấy một file riêng vào đúng dòng (dòng attp-row nhận nhiều file);
+chỉ cắt trang (`sourceSegments`) khi một file chứa nhiều giấy, không ghép các file khác nhau lại.
 
 Bảng 4 dòng cố định (đều "1 Bản chính"), theo ảnh ánh xạ thành phần hồ sơ:
-  1. "Nội quy lao động"                 ← Quyết định ban hành (trang đầu) + toàn văn Nội quy lao động, GHÉP 1 file.
+  1. "Nội quy lao động"                 ← Quyết định ban hành + toàn văn Nội quy lao động (mỗi giấy một file).
   2. "Văn bản góp ý của tổ chức đại diện người lao động tại cơ sở" ← Biên bản hội nghị đối thoại / văn bản góp ý.
   3. "Các văn bản của người sử dụng lao động có quy định liên quan đến kỷ luật lao động và trách nhiệm vật chất (nếu
      có)" ← quy chế riêng; hồ sơ không có thì để trống (không phải lỗi thiếu file).
   4. "Văn bản đề nghị đăng ký nội quy lao động." (cổng tích sẵn) ← công văn đề nghị, khớp 1:1.
 Giấy ủy quyền không có dòng → tạo dòng 5 bằng "+ Thêm giấy tờ" (`add-document-dialog`, 1 Bản chính); modal không tạo
-được thì FE ĐÍNH CHUNG vào dòng 4 (`fallbackComponentName`). CCCD / Giấy chứng nhận ĐKDN không có dòng → bỏ qua (chỉ
-dùng ở bước điền thông tin).
+được thì FE ĐÍNH CHUNG vào dòng 4 (`fallbackComponentName`). CCCD / Giấy chứng nhận ĐKDN / giấy chưa rõ loại không có
+dòng → đính chung dòng 1, không bỏ file nào.
 """
 
 import re
@@ -51,10 +52,10 @@ _UY_QUYEN = "giay_uy_quyen"
 _DKDN = "dang_ky_doanh_nghiep"
 _CCCD = "cccd"
 _OTHER = "other"
-# Thứ tự ghép các loại trong CÙNG một file gộp: Quyết định đứng trước toàn văn Nội quy.
+# Thứ tự các file trong cùng một dòng: Quyết định đứng trước toàn văn Nội quy.
 _ORDER = [_DE_NGHI, _QUYET_DINH, _NOI_QUY, _GOP_Y, _KY_LUAT, _UY_QUYEN]
 _ALLOWED = set(_ORDER) | {_DKDN, _CCCD, _OTHER}
-_NOT_IN_TABLE = {_DKDN: "Giấy chứng nhận đăng ký doanh nghiệp", _CCCD: "CCCD"}
+_EXTRA_NAMES = {_DKDN: "Giấy chứng nhận đăng ký doanh nghiệp", _CCCD: "Căn cước công dân"}
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold); componentIndex = STT dòng (1-based). Dòng 1
 # "Nội quy lao động" nằm trong chữ dòng 4 → FE định vị theo componentIndex trước.
@@ -212,7 +213,7 @@ def build_plan_items(
 
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    extra_pages: list[str] = []
     by_row: dict[int, list[tuple[dict, str]]] = {}
     uy_quyen: list[tuple[dict, str]] = []
 
@@ -220,19 +221,14 @@ def build_plan_items(
         file = raw_files[segment["fileIndex"]]
         base = {"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
-        if doc_type in _NOT_IN_TABLE:
-            classified.append({**base, "target": "skip", "reason": f"{_NOT_IN_TABLE[doc_type]} không nằm trong "
-                               "thành phần hồ sơ"})
-            continue
         if doc_type == _UY_QUYEN:
             uy_quyen.append((segment, doc_type))
             classified.append({**base, "target": "add-document-dialog"})
             continue
-        row_idx = _ROUTE.get(doc_type)
-        if row_idx is None:
-            skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-            classified.append({**base, "target": "skip"})
-            continue
+        # GCN ĐKDN, CCCD, giấy chưa rõ loại không có dòng riêng → đính chung dòng 1, không bỏ file nào.
+        row_idx = _ROUTE.get(doc_type, 1)
+        if doc_type not in _ROUTE:
+            extra_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx})
 
@@ -252,21 +248,40 @@ def build_plan_items(
             "loaiBan": "Bản chính",
             "detectedType": parts[0][1],
             "includedTypes": [doc_type for _, doc_type in parts],
-            # Mỗi dòng = MỘT file gộp: FE trích đúng trang từng đoạn rồi ghép theo thứ tự này.
             "sourceSegments": [
                 _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"]) for segment, _ in parts
             ],
         }
 
+    def segment_item(segment: dict, doc_type: str, default_name: str) -> dict:
+        """Một giấy = một file riêng (dòng attp-row nhận nhiều file); chỉ cắt trang khi giấy chiếm một phần file."""
+        file = raw_files[segment["fileIndex"]]
+        source = _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"])
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(file.get("name") or f"file-{segment['fileIndex'] + 1}"),
+            "documentName": _unique_name(
+                (segment.get("documentName") or default_name).replace("/", "-"), used_names, default_name
+            ),
+            "loaiBan": "Bản chính",
+            "detectedType": doc_type,
+        }
+        if source["pageIndexes"] is not None:
+            item["sourceSegments"] = [source]
+        return item
+
     for row_idx in sorted(by_row):
         row = _ROWS[row_idx]
-        attachments.append({
-            **merged_item(by_row[row_idx], row["documentName"]),
-            "componentName": row["componentName"],
-            "componentIndex": row_idx,
-            "target": "attp-row",
-            "needsAddComponent": False,
-        })
+        parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
+        for segment, doc_type in parts:
+            attachments.append({
+                **segment_item(segment, doc_type, row["documentName"] if doc_type in _ROUTE else
+                               _EXTRA_NAMES.get(doc_type, "Giấy tờ kèm theo")),
+                "componentName": row["componentName"],
+                "componentIndex": row_idx,
+                "target": "attp-row",
+                "needsAddComponent": False,
+            })
     if uy_quyen:
         attachments.append({
             **merged_item(uy_quyen, _ROW_UY_QUYEN["documentName"]),
@@ -289,11 +304,9 @@ def build_plan_items(
     if 2 not in by_row:
         warnings.append("Chưa có văn bản góp ý / biên bản đối thoại của tổ chức đại diện người lao động (dòng 2) — bắt "
                         "buộc với nơi có tổ chức đại diện người lao động tại cơ sở.")
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
-    if _DKDN in found:
-        warnings.append("Giấy chứng nhận đăng ký doanh nghiệp không có dòng trong thành phần hồ sơ — chỉ dùng để điền "
-                        "thông tin, không đính kèm.")
+    if extra_pages:
+        warnings.append("Giấy tờ không có dòng riêng (GCN đăng ký doanh nghiệp, CCCD, giấy chưa rõ loại) đã đính chung "
+                        "dòng 1 Nội quy lao động: " + "; ".join(extra_pages))
     return attachments, classified, warnings
 
 

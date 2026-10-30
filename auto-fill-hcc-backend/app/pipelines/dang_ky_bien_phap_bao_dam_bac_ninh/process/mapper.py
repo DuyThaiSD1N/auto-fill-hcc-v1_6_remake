@@ -1,7 +1,7 @@
 """Map compact facts → UI eForm Bắc Ninh (Đăng ký biện pháp bảo đảm, 1.011441).
 
 - purpose='registration_form' (mặc định): điền Đơn Mẫu 01a theo NAME element_478xx.
-- purpose='authorized_person': điền khối doiTuongKhac* của người được ủy quyền.
+- purpose='authorized_person': điền khối doiTuongKhac* của người ủy quyền (chủ hồ sơ).
 CHECKBOX (tư cách, loại giấy tờ pháp lý, tài sản 5.1) để USER tự tích — nhãn CMND/Mã số thuế trùng giữa
 mục 3 & 4 nên không tích đúng bằng nhãn được.
 """
@@ -95,13 +95,35 @@ def _registration_fields(v: dict) -> list[dict]:
     return [{"name": key, "comp": "bn-input", "value": val} for key, val in mapping if val]
 
 
+# Lựa chọn "Người ủy quyền là:" trên cổng mà mapper điền được (mỗi loại cổng nạp bộ ô riêng; ô cá nhân — giới
+# tính, ngày sinh, nơi cấp — chỉ có ở loại cá nhân).
+AUTHORIZED_SUBJECTS = (
+    "Cá nhân khác là Công dân Việt Nam", "Người nước ngoài", "Doanh nghiệp", "Tổ chức", "Hộ kinh doanh cá thể",
+)
+_PERSON_SUBJECTS = {"Cá nhân khác là Công dân Việt Nam", "Người nước ngoài"}
+
+
+def _subject(v: dict) -> str | None:
+    text = _text(v.get("NguoiUyQuyen_Loai"))
+    return next((s for s in AUTHORIZED_SUBJECTS if text and text.casefold() == s.casefold()), None)
+
+
+def authorized_subject(fields: list[dict]) -> str | None:
+    """Loại "Người ủy quyền là:" LLM đọc được từ văn bản ủy quyền; None → để lời gọi dùng loại mặc định."""
+    v = _by_name(fields)
+    return _subject(v) if _truthy(v.get("UyQuyen_CoVanBan")) else None
+
+
 def _authorized_fields(v: dict) -> list[dict]:
+    """Khối "Thông tin trong trường hợp được ủy quyền" = NGƯỜI ỦY QUYỀN (chủ hồ sơ); người được ủy quyền chính là
+    tài khoản đang nộp nên không lên khối này."""
     if not _truthy(v.get("UyQuyen_CoVanBan")):
         return []
-    name = _text(v.get("NguoiDuocUyQuyen_HoTen"))
-    identity = re.sub(r"\D+", "", str(v.get("NguoiDuocUyQuyen_SoDinhDanh") or ""))
+    name = _text(v.get("NguoiUyQuyen_Ten"))
+    identity = re.sub(r"[^0-9A-Za-z-]+", "", str(v.get("NguoiUyQuyen_SoDinhDanh") or ""))
     if not name or not identity:
         return []
+    person = (_subject(v) or AUTHORIZED_SUBJECTS[0]) in _PERSON_SUBJECTS
 
     out: list[dict] = []
 
@@ -112,16 +134,18 @@ def _authorized_fields(v: dict) -> list[dict]:
         out.append({"name": key, "comp": comp, "value": value})
 
     add("doiTuongKhachoTen", name)
-    add("doiTuongKhacgioiTinhId", v.get("NguoiDuocUyQuyen_GioiTinh"), "bn-select")
+    if person:
+        add("doiTuongKhacgioiTinhId", v.get("NguoiUyQuyen_GioiTinh"), "bn-select")
     add("doiTuongKhacsoDinhDanh", identity)
-    add("doiTuongKhacngayCap", v.get("NguoiDuocUyQuyen_NgayCap"))
-    add("doiTuongKhacnoiCap", _issuer(v.get("NguoiDuocUyQuyen_NoiCap")))
-    add("doiTuongKhacngaySinh", v.get("NguoiDuocUyQuyen_NgaySinh"))
-    add("doiTuongKhacemail", v.get("NguoiDuocUyQuyen_Email"))
-    add("doiTuongKhacsoDienThoai", v.get("NguoiDuocUyQuyen_SoDienThoai"))
-    address = v.get("NguoiDuocUyQuyen_ThuongTru")
+    add("doiTuongKhacngayCap", v.get("NguoiUyQuyen_NgayCap"))
+    if person:
+        add("doiTuongKhacnoiCap", _issuer(v.get("NguoiUyQuyen_NoiCap")))
+        add("doiTuongKhacngaySinh", v.get("NguoiUyQuyen_NgaySinh"))
+    add("doiTuongKhacemail", v.get("NguoiUyQuyen_Email"))
+    add("doiTuongKhacsoDienThoai", re.sub(r"\D+", "", str(v.get("NguoiUyQuyen_SoDienThoai") or "")))
+    address = v.get("NguoiUyQuyen_DiaChi")
     if isinstance(address, dict):
         add("doiTuongKhactinhThanhId", address.get("tinh"), "bn-select")
         add("doiTuongKhacphuongXaId", address.get("xa"), "bn-select")
-        add("doiTuongKhacdiaChiChiTiet", address.get("diaChi"))
+        add("doiTuongKhacdiaChiChiTiet", address.get("chiTietDuoiXa") or address.get("diaChi"))
     return out

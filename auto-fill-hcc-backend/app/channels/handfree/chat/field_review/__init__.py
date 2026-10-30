@@ -18,14 +18,17 @@ trợ lý hiện nút khi ô bắt buộc về 0.
 Cổng liên thông (form Angular, chat/lien_thong.py) cần thêm cờ supportsLienThongFlow
 (content/field-review-angular.js): đủ ô bắt buộc thì bước kế tiếp là "Xem lại các tờ khai chi tiết". Cổng Bộ Xây dựng
 (tờ khai Form.io, chat/bxd) cần cờ supportsBxdFlow (content/bxd/field-review-formio.js): bước kế tiếp là "Thành phần
-hồ sơ".
+hồ sơ". Cổng Bắc Ninh (4 tab cùng trang, chat/bac_ninh.py) cần cờ supportsBacNinhTabFlow
+(content/bacninh/field-review.js): bước kế tiếp là tab sau (khối ủy quyền → Nhập đơn đăng ký → Thành phần hồ sơ).
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
 import re
+from contextvars import ContextVar
 
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.field_review import agent, registry
+from app.channels.handfree.chat import intents
 from app.channels.handfree.chat.intents import Intent, fold
 
 CAPABILITY = "supportsFieldReview"
@@ -33,6 +36,7 @@ SURVEY_CAPABILITY = "supportsFieldReviewSurvey"
 FLOW_V2_CAPABILITY = "supportsFlowV2"
 LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
 BXD_CAPABILITY = "supportsBxdFlow"
+BAC_NINH_CAPABILITY = "supportsBacNinhTabFlow"
 OTHER_TEXT_CAPABILITY = "supportsFieldReviewOtherText"
 NESTED_CAPABILITY = "supportsFieldReviewNested"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
@@ -75,6 +79,11 @@ def bxd(proc: dict | None) -> bool:
     return bool((proc or {}).get("bxdFlow"))
 
 
+def bac_ninh(proc: dict | None) -> bool:
+    """Cổng Bắc Ninh (Liferay, 4 tab cùng trang): đi tiếp là sang tab sau."""
+    return bool((proc or {}).get("bacNinhTabFlow"))
+
+
 def active(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
     return (
@@ -85,6 +94,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         and (not lien_thong(proc) or caps.get(LIEN_THONG_CAPABILITY) is True)
         # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
         and (not bxd(proc) or caps.get(BXD_CAPABILITY) is True)
+        # Ô eForm / khối ủy quyền của cổng Bắc Ninh chỉ bộ đọc content/bacninh/field-review.js đọc được.
+        and (not bac_ninh(proc) or caps.get(BAC_NINH_CAPABILITY) is True)
         # Tờ khai có khối lồng (khối mẹ / cha nuôi): bản đọc eForm cũ tách khối như khối địa chỉ → hỏi sai ô.
         and (not (config(proc) or {}).get("nested") or caps.get(NESTED_CAPABILITY) is True)
         and (conv.get("lang") or "vi") != "hmong"
@@ -98,7 +109,7 @@ def legacy_wizard(proc: dict | None) -> bool:
 
 def flow_v2(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    if lien_thong(proc) or bxd(proc):
+    if lien_thong(proc) or bxd(proc) or bac_ninh(proc):
         return active(conv, proc)
     return ((single_page(proc) or legacy_wizard(proc)) and active(conv, proc)
             and caps.get(FLOW_V2_CAPABILITY) is True)
@@ -107,7 +118,7 @@ def flow_v2(conv: dict, proc: dict | None) -> bool:
 def _wizard_form(proc: dict | None) -> bool:
     """Bước kế tiếp sau tờ khai là một nút trên cổng (form cũ: Xem trước; liên thông: Xem lại tờ khai; Bộ Xây dựng:
     Tiếp tục sang Thành phần hồ sơ)."""
-    return legacy_wizard(proc) or lien_thong(proc) or bxd(proc)
+    return legacy_wizard(proc) or lien_thong(proc) or bxd(proc) or bac_ninh(proc)
 
 
 def asking(conv: dict) -> bool:
@@ -143,7 +154,7 @@ def _form_rules(proc: dict | None) -> dict:
     cfg = config(proc) or {}
     rules = {"noAsk": _no_ask(proc),
              **{key: [str(name) for name in cfg.get(key) or []]
-                for key in ("zeroIsEmpty", "textDates", "lookup", "nested")}}
+                for key in ("zeroIsEmpty", "textDates", "lookup", "nested", "mirror")}}
     return {key: names for key, names in rules.items() if names}
 
 
@@ -180,8 +191,12 @@ def _preview_chip() -> dict:
     return {"label": vi.FR_PREVIEW_CHIP, "send": "__action:field_review_preview", "solid": True}
 
 
-def _go_chip(proc: dict | None) -> dict:
+def _go_chip(proc: dict | None, conv: dict | None = None) -> dict:
     """Nút sang bước sau tờ khai: form cũ mở Xem trước; liên thông sang "Xem lại các tờ khai chi tiết"."""
+    if bac_ninh(proc) and conv is not None:
+        from app.channels.handfree.chat import bac_ninh as bn_flow
+
+        return {k: v for k, v in bn_flow.go_chip(conv, proc).items() if k != "cta"}
     if lien_thong(proc):
         return {"label": vi.LT_REVIEW_CHIP, "send": "__action:lt_next", "solid": True}
     if bxd(proc):
@@ -216,10 +231,15 @@ def next_chips(conv: dict, proc: dict | None, keep: list[dict]) -> list[dict]:
     if not flow_v2(conv, proc):
         return [dict(c) for c in keep]
     if _wizard_form(proc):
+        if stats.get("required") and bac_ninh(proc):
+            from app.channels.handfree.chat import bac_ninh as bn_flow
+
+            if bn_flow.hide_go_while_required(conv, proc):
+                return [_start_chip(), *_small_chips(keep)]
         if stats.get("required"):
-            return [_start_chip(), {**_go_chip(proc), "solid": False}, *_small_chips(keep)]
+            return [_start_chip(), {**_go_chip(proc, conv), "solid": False}, *_small_chips(keep)]
         optional = [{**_start_chip(), "solid": False}] if stats.get("optional") else []
-        return [{**_go_chip(proc), "cta": True}, *optional, *_small_chips(keep)]
+        return [{**_go_chip(proc, conv), "cta": True}, *optional, *_small_chips(keep)]
     if stats.get("required"):
         return [_start_chip(), *_small_chips(keep)]
     return [dict(c) for c in keep]
@@ -232,6 +252,7 @@ def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
     if _wizard_form(proc):
         optional = (st.get("stats") or {}).get("optional") or 0
         template = (vi.LT_FILL_READY if lien_thong(proc) else vi.BXD_FILL_READY if bxd(proc)
+                    else vi.BN_FILL_READY if bac_ninh(proc)
                     else vi.FLOW2_PREVIEW_READY)
         return _say(template,
                     optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "",
@@ -271,6 +292,9 @@ def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
                 and int((conv.get("lien_thong") or {}).get("at") or 2) == 2)
     if bxd(proc):
         return conv.get("state") in {"reviewing", "attaching"} and int((conv.get("bxd") or {}).get("at") or 1) == 1
+    if bac_ninh(proc):
+        bn = conv.get("bac_ninh") or {}
+        return conv.get("state") == "reviewing" and (bn.get("phase") == "account" or int(bn.get("at") or 0) in (1, 2))
     if legacy_wizard(proc):
         return (conv.get("state") in {"reviewing", "attaching"} and conv.get("docs_target") == "declaration"
                 and not st.get("preview_open"))
@@ -399,15 +423,26 @@ def _label(text) -> str:
     return text.rstrip(" :").strip()
 
 
+# Số mục đầu nhãn / tên phần ("3.", "3.1.", "(ii)") của đơn cổng Bắc Ninh — đọc lên chỉ gây rối.
+_OUTLINE_NUMBER = re.compile(r"^\s*(?:\d+(?:\.\d+)*\.?|\(?[ivx]+\))\s+", re.IGNORECASE)
+
+
+def _bac_ninh_portal(proc: dict | None) -> bool:
+    return "bacninh" in ((proc or {}).get("provinceOnly") or [])
+
+
 def _section(text) -> str:
     text = re.sub(r"^[IVXLC]+\s*[.)]\s*", "", _label(text))
     text = re.sub(r"^Thông tin (về )?", "", text, flags=re.IGNORECASE)
     return text[:1].upper() + text[1:] if text else ""
 
 
-def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] = ()) -> dict | None:
+def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] = (),
+           strip_numbers: bool = False) -> dict | None:
     if not isinstance(raw, dict) or not _clean(raw.get("key")):
         return None
+    if strip_numbers:
+        raw = {**raw, **{k: _OUTLINE_NUMBER.sub("", _clean(raw.get(k))) for k in ("label", "section")}}
     options = [_clean(o, 120) for o in (raw.get("options") or []) if _clean(o, 120)][:_MAX_OPTIONS]
     label = _label(raw.get("label")) or _clean(raw.get("name"))
     label += _unit_suffix(label, options)
@@ -641,11 +676,47 @@ def _reload(proc: dict | None, st: dict):
     return r
 
 
+# Lệnh của bước nói ra giữa lúc đang hỏi ô (vd "điều chỉnh giấy tờ"): vòng hỏi dừng rồi flow chạy lệnh đó NGAY trong
+# lượt này. Đặt theo lượt (ContextVar), flow đọc và xoá ngay sau field_review.handle.
+_REROUTE: ContextVar[Intent | None] = ContextVar("field_review_reroute", default=None)
+
+
+def take_reroute() -> Intent | None:
+    intent = _REROUTE.get()
+    _REROUTE.set(None)
+    return intent
+
+
+async def reroute(conv: dict, text: str) -> bool:
+    """Câu không trả lời ô mà ra lệnh khác (vòng hỏi tờ khai lẫn vòng hỏi chủ hồ sơ): bộ phân loại ý định của bước
+    hiểu ra việc thì giao việc đó cho flow (True — bên gọi dừng vòng hỏi của mình); không ra việc gì thì False."""
+    intent = await intents.resolve(text, conv.get("state", "greet"), conv)
+    if intent.kind in {"unknown", "procedure_unclear"}:
+        return False
+    _REROUTE.set(intent)
+    return True
+
+
+async def _reroute(conv: dict, st: dict, text: str):
+    from app.channels.handfree.chat.flow import Reply
+
+    if not await reroute(conv, text):
+        return None
+    st.update(running=False, current=None)
+    r = Reply()
+    r.actions = [{"type": "field_review_stop"}]
+    return r
+
+
 async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     from app.channels.handfree.chat.flow import Reply
 
     field = st["current"]
     answer = await agent.interpret(text, field, _visited_before(st))
+    if answer.action == "command":
+        rerouted = await _reroute(conv, st, text)
+        if rerouted is not None:
+            return rerouted
     if answer.action == "skip":
         return _skip_current(proc, st)
     if answer.action == "stop":
@@ -699,12 +770,13 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
-    if lien_thong(proc) or bxd(proc):
+    if lien_thong(proc) or bxd(proc) or bac_ninh(proc):
+        from app.channels.handfree.chat import bac_ninh as bn_flow
         from app.channels.handfree.chat import bxd as bxd_flow
         from app.channels.handfree.chat import lien_thong as lt
 
         st.update(running=False, current=None)
-        r = (lt if lien_thong(proc) else bxd_flow).next_reply(conv, proc)
+        r = (lt if lien_thong(proc) else bxd_flow if bxd(proc) else bn_flow).next_reply(conv, proc)
         r.actions = [{"type": "field_review_stop"}, *r.actions]
         return r
     if not legacy_wizard(proc):
@@ -820,7 +892,7 @@ async def handle(conv: dict, proc: dict | None, intent):
     if isinstance(payload.get("stats"), dict):
         st["stats"] = _stats(payload["stats"])
     back = bool(st.get("back_label"))
-    field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc))
+    field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc), strip_numbers=_bac_ninh_portal(proc))
     if field is not None and bxd(proc):
         field["mobile_only"] = True  # cổng iGate các bộ không nhận số máy bàn
     other = _other_text(conv, proc).get(field["name"]) if field is not None else None
@@ -851,13 +923,14 @@ def _optional_phase(conv: dict, proc: dict | None, st: dict, field: dict) -> tup
         return "", ""
     # Cỡ thường như các nút của câu hỏi (không cta): việc chính lúc này vẫn là trả lời ô đang hỏi.
     if _wizard_form(proc):
-        st["phase_chips"] = [_go_chip(proc)]
+        st["phase_chips"] = [_go_chip(proc, conv)]
     else:
         st["phase_chips"] = [{k: v for k, v in c.items() if k != "cta"} for c in st.get("chips") or [] if c.get("cta")]
     if st.get("optional_said"):
         return "", ""
     st["optional_said"] = True
     template = (vi.LT_OPTIONAL_PHASE if lien_thong(proc) else vi.BXD_OPTIONAL_PHASE if bxd(proc) else
+                vi.BN_OPTIONAL_PHASE if bac_ninh(proc) else
                 vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE)
     return _say(template, optional=stats.get("optional") or 0)
 
@@ -866,7 +939,7 @@ def _next_step(conv: dict, proc: dict | None, intent) -> str:
     """Câu "xong rồi / xem trước / đính kèm đi" ở Kê khai → bấm Xem trước (bản xem trước đang mở → Xác nhận).
     Trang một trang không có Xem trước: luồng tu_phap_moi tự lo câu đi tiếp; liên thông: chat/lien_thong.py."""
     if (not active(conv, proc) or asking(conv) or conv.get("docs_target") != "declaration" or single_page(proc)
-            or lien_thong(proc) or bxd(proc)):
+            or lien_thong(proc) or bxd(proc) or bac_ninh(proc)):
         return ""
     if conv.get("state") not in {"reviewing", "attaching"}:
         return ""
@@ -997,6 +1070,11 @@ def _owner_step(proc: dict | None, intent):
 
     if intent.value == "field_review_owner_next":
         expect = int(((proc or {}).get("wizard") or {}).get("declarationStep") or 2)
+        if (proc or {}).get("declarationEforms"):
+            # Tờ khai nằm ở dòng "Khai tờ khai" của Thành phần hồ sơ: cổng bỏ qua bước Kê khai (tích xanh sẵn) và
+            # nhảy thẳng sang bước 3 — chờ bước 2 là báo nhầm "chưa sang được" rồi bấm tiếp "Bước tiếp theo" ở
+            # bước 3, cổng chặn "Vui lòng khai tờ khai!".
+            expect = 3
         r = Reply()
         r.actions = [{"type": "guided_click_next", "phase": OWNER_PHASE, "expectStep": expect}]
         return r

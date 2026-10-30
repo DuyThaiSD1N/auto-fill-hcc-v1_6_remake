@@ -39,11 +39,17 @@ EXTRA_RULES = """<critical_rules>
 2. Mỗi nhóm Person* chỉ chứa dữ liệu của một người; không trộn ngày cấp/nơi cấp giữa hai CCCD.
 3. Person*_NoiCuTru có dạng {quocGia,tinh,xa,chiTietDuoiXa}; chiTietDuoiXa chỉ giữ số nhà, đường, tổ/thôn/xóm.
 4. LLM không quyết định ai là người nộp. Python sẽ đối chiếu cả họ tên và số định danh với formContext.
+5. DaiDien_*: hồ sơ không kèm CCCD của người đại diện cơ sở thì nhân thân người đó thường nằm ở giấy khám sức khỏe
+   ("Họ và tên", "Ngày tháng năm sinh", "Số CCCD/Hộ chiếu/Mã định danh", "Cấp ngày ... Nơi cấp ...") hoặc giấy xác
+   nhận kiến thức ATTP. Quét MỌI tài liệu, lấy đúng giấy của người đại diện (tên trùng Don_DaiDienCoSo, chấp nhận
+   lệch dấu do OCR; hoặc số định danh trùng Mã số ĐKKD trên Đơn). Mọi thuộc tính DaiDien_* phải cùng một giấy,
+   cùng một người; giấy khám sức khỏe của người lao động khác thì bỏ qua.
 </person_rules>
 
 <source_priority>
 1. Field eForm: Đơn Phụ lục I > Giấy đăng ký kinh doanh > Bản thuyết minh.
-2. Nhân thân đại diện: CCCD khớp Don_DaiDienCoSo > CCCD khớp DangKy_NguoiDaiDien > chỉ họ tên trên Đơn.
+2. Nhân thân đại diện: CCCD khớp Don_DaiDienCoSo > CCCD khớp DangKy_NguoiDaiDien > DaiDien_* từ giấy khám sức
+   khỏe/giấy tờ khác của chính người đại diện > chỉ họ tên trên Đơn.
 3. Địa chỉ chủ hồ sơ cá nhân: CCCD đúng người > địa chỉ cơ sở trên Đơn/Bản thuyết minh.
 4. Không bịa email, ngày cấp, nơi cấp hoặc địa chỉ chi tiết khi hồ sơ không ghi.
 </source_priority>

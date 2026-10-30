@@ -12,7 +12,7 @@ from app.services.llm.client import chat as llm_chat
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"value", "skip", "stop", "proceed", "repeat", "back", "unclear"}
+ACTIONS = {"value", "skip", "stop", "proceed", "repeat", "back", "command", "unclear"}
 _DATE = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})\s*$")
 _YEAR = re.compile(r"^\s*(\d{4})\s*$")
 _MONTH_YEAR = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{4})\s*$")

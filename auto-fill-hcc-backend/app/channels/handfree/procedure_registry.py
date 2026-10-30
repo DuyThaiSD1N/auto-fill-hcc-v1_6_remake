@@ -32,6 +32,21 @@ _BN_AUTHORIZED_PERSON = {
     "subjectOption": "Cá nhân khác là Công dân Việt Nam",
 }
 
+# Luồng tab cổng Bắc Ninh (chat/bac_ninh.py, extension khai supportsBacNinhTabFlow): trợ lý dẫn lần lượt 4 tab cùng
+# trang "Chọn cơ quan tiếp nhận" → "Nhập đơn đăng ký" → "Tải thành phần hồ sơ" → "Thông tin đăng ký nhận kết quả",
+# có vòng bổ sung ô ở hai tab đầu và nút Nộp hồ sơ ở tab cuối. resultMethods: radio noiNhanKetQua đúng value + nhãn
+# trên cổng (value 4 "Tại các điểm tiếp nhận…" cổng để ẩn). Cổng tick sẵn value 1. points: chọn cách này cổng có thể hiện
+# thêm danh sách "Điểm tiếp nhận" (radio noiNhanKetQuadiemTiepNhanId, theo cơ quan tiếp nhận) bắt chọn một điểm.
+_BN_HOST = "dichvucong.bacninh.gov.vn"
+_BN_TAB_FLOW = {
+    "resultMethods": [
+        {"value": "1", "label": "Tại nơi nộp hồ sơ (theo giấy hẹn trả)", "icon": "🏛️",
+         "desc": "Đến nơi nộp hồ sơ nhận kết quả theo giấy hẹn trả.", "default": True, "points": True},
+        {"value": "3", "label": "Tại nhà qua bưu chính công ích (VNPOST)", "icon": "📮",
+         "desc": "Bưu điện trả kết quả tại nhà; công dân điền địa chỉ nhận trên trang.", "needsInput": True},
+    ],
+}
+
 # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (stepper iGate 1 Thông tin hồ sơ → 2 Thành phần hồ sơ →
 # 3 Hình thức nhận kết quả → 4 Nộp hồ sơ = màn đã nộp). Đính kèm xong: nút sang bước 3 (trợ lý bấm
 # "Tiếp tục"), chọn ô mat-select[formcontrolname="receivingKind"] theo thẻ, rồi NHẮC công dân tự tích ô
@@ -4924,6 +4939,8 @@ PROCEDURES: list[dict] = [
         "agencyProvince": "Bắc Ninh",
         "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
         "samePageAttach": True,
+        # Cổng chọn sẵn cơ quan tiếp nhận (theo tài khoản / thủ tục) → không hỏi bước này.
+        "bacNinhAgencyAsk": False,
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -4975,6 +4992,8 @@ PROCEDURES: list[dict] = [
         "agencyProvince": "Bắc Ninh",
         "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
         "samePageAttach": True,
+        # Cổng chọn sẵn cơ quan tiếp nhận (theo tài khoản / thủ tục) → không hỏi bước này.
+        "bacNinhAgencyAsk": False,
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -5563,8 +5582,17 @@ PROCEDURES: list[dict] = [
         "needsAgencySelect": True,
         "agencyProvince": "Bắc Ninh",
         "samePageAttach": True,
+        # Cổng chọn sẵn cơ quan tiếp nhận (theo tài khoản / thủ tục) → không hỏi bước này.
+        "bacNinhAgencyAsk": False,
+        # Trang chỉ có 2 tab (Chọn cơ quan tiếp nhận / Tải thành phần hồ sơ): khối gửi hồ sơ / nhận kết quả qua bưu
+        # chính công ích nằm ở tab đầu (cổng mặc định bưu chính), nút Nộp hồ sơ hiện ở tab đính kèm.
+        "bacNinhTabFlow": {**_BN_TAB_FLOW, "twoTabs": True},
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
+        # Khối "Thông tin trong trường hợp được ủy quyền" của thủ tục này điền NGƯỜI CAO TUỔI (loại đối tượng "Người
+        # cao tuổi") khi có người nộp thay — cùng logic nút điền của auto-fill. Pipeline lõi chính là pipeline khối này.
+        "bacNinhAuthorizedPerson": {**_BN_AUTHORIZED_PERSON, "subjectOption": "Người cao tuổi",
+                                    "askLabel": "người cao tuổi"},
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai đề nghị hưởng trợ cấp xã hội (Mẫu số 01) — đã kê "
              "khai, có xác nhận của UBND xã", "icon": "📄", "sides": 1, "repeatable": True},
@@ -5608,6 +5636,8 @@ PROCEDURES: list[dict] = [
         "needsAgencySelect": True,
         "agencyProvince": "Bắc Ninh",
         "samePageAttach": True,
+        # Cổng chọn sẵn cơ quan tiếp nhận (theo tài khoản / thủ tục) → không hỏi bước này.
+        "bacNinhAgencyAsk": False,
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6015,6 +6045,13 @@ for _procedure in PROCEDURES:
             and "guidedSteps" not in _procedure):
         _procedure["guidedSteps"] = deepcopy(_BYT_GUIDED_STEPS)
         _procedure["wizard"] = {**(_procedure.get("wizard") or {}), "resultStep": _BYT_RESULT_STEP}
+    # Mọi thủ tục trang nộp hồ sơ 4 tab cùng trang của cổng Bắc Ninh (cùng khuôn): luồng tab mới, hỏi cơ quan tiếp nhận;
+    # thủ tục có khối người ủy quyền thì hỏi có điền không. Thủ tục tự khai giá trị (kể cả False) thì giữ nguyên.
+    if (_BN_HOST in ((_procedure.get("detect") or {}).get("urlScope") or [])
+            and _procedure.get("samePageAttach")):
+        _procedure.setdefault("bacNinhTabFlow", deepcopy(_BN_TAB_FLOW))
+        _procedure.setdefault("bacNinhAgencyAsk", True)
+        _procedure.setdefault("bacNinhAuthorizedAsk", bool(_procedure.get("bacNinhAuthorizedPerson")))
 
 # Materialize reusable flow capabilities once. Runtime and extension continue consuming
 # the same resolved procedure contract; they never need procedure-specific profile logic.

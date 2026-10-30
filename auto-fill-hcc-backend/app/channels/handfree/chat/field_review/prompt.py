@@ -48,8 +48,9 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
 - "stop": công dân muốn dừng hẳn, không bổ sung các ô còn lại ("bỏ qua hết", "thôi", "đủ rồi", "dừng lại",
   "không bổ sung nữa", "để tôi tự điền", "chuyển sang đính kèm").
 - "proceed": công dân muốn đi luôn sang bước sau, không bổ sung tiếp từng ô ("xem trước", "cho xem trước tờ khai",
-  "mở xem trước", "xong rồi, xem trước đi", "sang bước tiếp", "nộp luôn", "lưu và nộp"). Khác "stop": "stop" là chỉ
-  dừng hỏi; "proceed" là đòi làm ngay bước kế tiếp.
+  "mở xem trước", "xong rồi, xem trước đi", "sang bước tiếp", "tiếp tục", "nộp luôn", "lưu và nộp"), kể cả khi gọi
+  bước sau bằng TÊN bước trên cổng ("sang thành phần hồ sơ", "chuyển sang thành phần hồ sơ", "xem lại tờ khai",
+  "sang bước nhận kết quả"). Khác "stop": "stop" là chỉ dừng hỏi; "proceed" là đòi làm ngay bước kế tiếp.
 - "repeat": công dân muốn nghe lại câu hỏi hoặc hỏi ô này là gì ("nói lại", "nhắc lại", "ô nào cơ", "hỏi gì
   thế", "là sao", "không nghe rõ").
 - "back": công dân muốn quay lại sửa / điền một ô ĐÃ QUA trong vòng này ("sửa lại ô vừa rồi", "ô trước điền
@@ -57,6 +58,10 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
   qua. Công dân nêu tên ô → "option" = số thứ tự [n] của ô đó trong <o_da_qua> (khớp theo nhãn và phần; tên ô
   trùng ở hai phần mà không nói rõ phần nào → chọn ô gần nhất, tức số lớn nhất). Không nêu tên ô → "option": 0
   (ô vừa điền).
+- "command": công dân KHÔNG trả lời ô này mà bảo trợ lý làm một VIỆC KHÁC của hồ sơ — điều chỉnh / thêm / xoá /
+  chụp lại / scan lại giấy tờ, điền lại tờ khai, làm thủ tục khác ("điều chỉnh giấy tờ", "thêm giấy tờ", "chụp lại
+  cái căn cước", "điền lại từ đầu", "làm thủ tục khác"). Khác "stop" (chỉ thôi hỏi) và "proceed": đòi sang bước kế
+  tiếp của tờ khai — dù gọi bằng tên bước như "sang thành phần hồ sơ" — LUÔN là "proceed", không phải "command".
 - "unclear": không đủ rõ để làm các việc trên — câu rỗng hoặc chỉ có từ đệm, câu không liên quan, công dân nói
   thông tin của ô KHÁC hoặc người KHÁC với ô đang hỏi, ô có danh sách mà không dòng nào đúng ý, giá trị không
   đúng loại ô (vd ô ngày mà nói tên người).
@@ -138,7 +143,7 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
 Output đúng 1 JSON object, không bọc code fence, không giải thích, sau JSON không thêm ký tự nào.
 
 Schema:
-{{"action": "value" | "skip" | "stop" | "proceed" | "repeat" | "back" | "unclear", "value": "<giá trị đã chuẩn hoá hoặc rỗng>", "option": <số thứ tự hoặc 0>}}
+{{"action": "value" | "skip" | "stop" | "proceed" | "repeat" | "back" | "command" | "unclear", "value": "<giá trị đã chuẩn hoá hoặc rỗng>", "option": <số thứ tự hoặc 0>}}
 
 - action khác "value" → "value": "" và "option": 0 (riêng "back": "option" = số ô trong <o_da_qua> hoặc 0).
 - Ô có danh sách: ưu tiên "option" > 0; "value" chỉ dùng khi để "option": 0.

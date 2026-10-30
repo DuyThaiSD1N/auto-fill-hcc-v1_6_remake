@@ -56,6 +56,11 @@ def _date(value: Any) -> str | None:
     return normalize_date(text) if text else None
 
 
+def _full_date(value: Any) -> str | None:
+    date = _date(value)
+    return date if date and re.fullmatch(r"\d{2}/\d{2}/\d{4}", date) else None
+
+
 def _issuer(value: Any, issue_date: Any = None) -> str | None:
     text = _text(value)
     normalized = normalize_issuer(text) if text else None
@@ -198,7 +203,25 @@ def _pick(*values: Any) -> Any:
     return next((value for value in values if value not in (None, "", {}, [])), None)
 
 
-def _owner(values: dict, people: list[Person]) -> Person | None:
+def _near_identity(ocr_text: str | None, identity: str | None, date: str | None, window: int = 300) -> bool:
+    """Ngày có nằm sát số định danh trong chữ OCR (cùng khối giấy) không. Giấy khám sức khỏe của nhiều người lao
+    động nằm liền nhau, model hay ghép ngày cấp của người bên cạnh sang người đại diện. Không có OCR để kiểm thì
+    nhận."""
+    if not date:
+        return False
+    if not ocr_text:
+        return True
+    if not identity:
+        return False
+    d, m, y = date.split("/")
+    date_re = re.compile(rf"(?<!\d)0?{int(d)}\s*[/.\-]\s*0?{int(m)}\s*[/.\-]\s*{y}(?!\d)")
+    for hit in re.finditer(r"[\s.]*".join(identity), ocr_text):
+        if date_re.search(ocr_text[max(0, hit.start() - window): hit.end() + window]):
+            return True
+    return False
+
+
+def _owner(values: dict, people: list[Person], ocr_text: str | None = None) -> Person | None:
     representative = _text(_pick(
         values.get("Don_DaiDienCoSo"),
         values.get("DangKy_NguoiDaiDien"),
@@ -206,6 +229,8 @@ def _owner(values: dict, people: list[Person]) -> Person | None:
     ))
     if not representative:
         return None
+    # Đơn hay ghi tên ký lẫn hoa/thường ("TRần văn thơ"); ô họ tên chủ hồ sơ trên cổng dùng chữ in hoa.
+    representative = representative.upper()
     matching = [person for person in people if _same_name(person.name, representative)]
     if len(matching) == 1:
         matched = matching[0]
@@ -221,6 +246,18 @@ def _owner(values: dict, people: list[Person]) -> Person | None:
         )
     else:
         person = Person(name=representative, nationality="Việt Nam")
+    # Không có CCCD đúng người: bổ sung từng thuộc tính từ giấy tờ khác của chính người đại diện (giấy khám sức
+    # khỏe...). Ngày phải đủ dd/mm/yyyy; nơi cấp chỉ đi kèm ngày cấp cùng nguồn.
+    # Ngày phải nằm sát số định danh trong OCR (cùng giấy), không thì bỏ.
+    person.identity = person.identity or _identity(values.get("DaiDien_SoDinhDanh"))
+    birthday = _full_date(values.get("DaiDien_NgaySinh"))
+    if not person.birthday and _near_identity(ocr_text, person.identity, birthday):
+        person.birthday = birthday
+    person.gender = person.gender or _text(values.get("DaiDien_GioiTinh"))
+    issue_date = _full_date(values.get("DaiDien_NgayCap"))
+    if not person.issue_date and _near_identity(ocr_text, person.identity, issue_date):
+        person.issue_date = issue_date
+        person.issuer = _issuer(values.get("DaiDien_NoiCap"), issue_date)
     person.residence = person.residence or _area(_pick(
         values.get("Don_DiaChiCoSo"),
         values.get("DangKy_DiaChiCoSo"),
@@ -229,11 +266,13 @@ def _owner(values: dict, people: list[Person]) -> Person | None:
     return person
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+def enrich(
+    fields: list[dict], options: dict | None = None, ocr_text: str | None = None
+) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     people = _people(values)
     requester, requester_warning = _requester_from_context(people, options)
-    owner = _owner(values, people)
+    owner = _owner(values, people, ocr_text)
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[tuple[str, int | None]] = set()

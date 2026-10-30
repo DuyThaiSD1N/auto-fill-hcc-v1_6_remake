@@ -193,3 +193,37 @@ def test_prompt_locks_facility_representative_and_source_priority():
     assert "Python sẽ đối chiếu cả họ tên và số định danh với formContext" in system_prompt
     assert "Không trích toàn bộ các bảng thiết bị" in system_prompt
 
+
+
+# --- Nhân thân đại diện cơ sở từ giấy khám sức khỏe (không có CCCD của đại diện). Dữ liệu giả. ---
+_KSK_OCR = (
+    "GIẤY KHÁM SỨC KHỎE\n1. Họ và tên (viết chữ in hoa): NGUYỄN VĂN A\n2. Giới tính: Nam\n"
+    "3. Ngày tháng năm sinh: 10/06/1973\n4. Số CCCD/Hộ chiếu/Mã định danh: 001073000001\n"
+    "5. Cấp ngày 10/05/2021 Nơi cấp Cục cảnh sát QLHC về TTXH\n" + "nội dung khám " * 60 +
+    "\nGIẤY KHÁM SỨC KHỎE\n1. Họ và tên: TRẦN VĂN B\n4. Số CCCD/Hộ chiếu/Mã định danh: 001080000002\n"
+    "5. Cấp ngày: 26/02/2022 Nơi cấp: CA tỉnh\n"
+)
+
+
+def _owner_values(**dai_dien):
+    from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.process import mapper as attp_mapper
+
+    values = {"Don_DaiDienCoSo": "NGUYỄN VĂN A", **dai_dien}
+    fields, _ = attp_mapper.enrich([{"name": k, "value": v} for k, v in values.items()], {}, _KSK_OCR)
+    return {f["name"]: f["value"] for f in fields}
+
+
+def test_dai_dien_lay_nhan_than_tu_giay_kham_suc_khoe():
+    d = _owner_values(DaiDien_SoDinhDanh="001073000001", DaiDien_NgaySinh="10/06/1973", DaiDien_GioiTinh="Nam",
+                      DaiDien_NgayCap="10/05/2021", DaiDien_NoiCap="Cục cảnh sát QLHC về TTXH")
+    assert d["data[ownerIdentityNumber]"] == "001073000001"
+    assert d["data[ownerBirthday]"] == "10/06/1973"
+    assert d["data[ownerIdentityDate]"] == "10/05/2021"
+    assert d["data[ownerIdIssuePlace]"]
+
+
+def test_ngay_cap_cua_nguoi_lao_dong_khac_khong_ghep_sang_dai_dien():
+    d = _owner_values(DaiDien_SoDinhDanh="001073000001", DaiDien_NgayCap="26/02/2022", DaiDien_NoiCap="CA tỉnh",
+                      DaiDien_NgaySinh="1973")
+    assert "data[ownerIdentityDate]" not in d and "data[ownerIdIssuePlace]" not in d
+    assert "data[ownerBirthday]" not in d  # chỉ có năm → bỏ

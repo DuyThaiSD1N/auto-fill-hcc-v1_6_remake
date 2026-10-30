@@ -79,11 +79,11 @@ def _truthy(value) -> bool:
 def _authorized_fields(v: dict) -> list[dict]:
     """Khối 'Thông tin trong trường hợp được ủy quyền' (nút 'Điền thông tin người ủy quyền').
 
-    Chỉ phát khi hồ sơ có Văn bản ủy quyền + đủ họ tên & CCCD người được ủy quyền."""
+    = NGƯỜI ỦY QUYỀN (chủ hồ sơ). Chỉ phát khi hồ sơ có Văn bản ủy quyền + đủ họ tên & CCCD người ủy quyền."""
     if not _truthy(v.get("UyQuyen_CoVanBan")):
         return []
-    name = " ".join(str(v.get("NguoiDuocUyQuyen_HoTen") or "").split()).strip()
-    identity = re.sub(r"\D+", "", str(v.get("NguoiDuocUyQuyen_SoDinhDanh") or ""))
+    name = " ".join(str(v.get("NguoiUyQuyen_HoTen") or "").split()).strip()
+    identity = re.sub(r"\D+", "", str(v.get("NguoiUyQuyen_SoDinhDanh") or ""))
     if not name or not identity:
         return []
 
@@ -96,14 +96,14 @@ def _authorized_fields(v: dict) -> list[dict]:
         out.append({"name": key, "comp": comp, "value": value})
 
     add("doiTuongKhachoTen", name)
-    add("doiTuongKhacgioiTinhId", v.get("NguoiDuocUyQuyen_GioiTinh"), "bn-select")
+    add("doiTuongKhacgioiTinhId", v.get("NguoiUyQuyen_GioiTinh"), "bn-select")
     add("doiTuongKhacsoDinhDanh", identity)
-    add("doiTuongKhacngayCap", v.get("NguoiDuocUyQuyen_NgayCap"))
-    add("doiTuongKhacnoiCap", v.get("NguoiDuocUyQuyen_NoiCap"))
-    add("doiTuongKhacngaySinh", v.get("NguoiDuocUyQuyen_NgaySinh"))
-    add("doiTuongKhacemail", v.get("NguoiDuocUyQuyen_Email"))
-    add("doiTuongKhacsoDienThoai", v.get("NguoiDuocUyQuyen_SoDienThoai"))
-    address = v.get("NguoiDuocUyQuyen_ThuongTru")
+    add("doiTuongKhacngayCap", v.get("NguoiUyQuyen_NgayCap"))
+    add("doiTuongKhacnoiCap", v.get("NguoiUyQuyen_NoiCap"))
+    add("doiTuongKhacngaySinh", v.get("NguoiUyQuyen_NgaySinh"))
+    add("doiTuongKhacemail", v.get("NguoiUyQuyen_Email"))
+    add("doiTuongKhacsoDienThoai", v.get("NguoiUyQuyen_SoDienThoai"))
+    address = v.get("NguoiUyQuyen_ThuongTru")
     if isinstance(address, dict):
         add("doiTuongKhactinhThanhId", address.get("tinh"), "bn-select")
         add("doiTuongKhacphuongXaId", address.get("xa"), "bn-select")

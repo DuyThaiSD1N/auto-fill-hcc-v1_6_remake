@@ -39,6 +39,14 @@ FIELDS: list[dict] = [
     {"name": "Don_LyDoCap", "desc": "Nội dung sau nhãn Lý do cấp trên Đơn, ví dụ Cấp mới; không tự suy diễn nếu bỏ trống."},
     {"name": "Don_DaiDienCoSo", "desc": "Họ tên người tại mục Đại diện cơ sở hoặc người ký cuối Đơn; không lấy tên cơ sở ở mục 1."},
 
+    # Nhân thân NGƯỜI ĐẠI DIỆN CƠ SỞ từ giấy tờ KHÁC CCCD: hồ sơ nhiều khi không kèm CCCD của đại diện, nhưng giấy
+    # khám sức khỏe/giấy xác nhận kiến thức ATTP của chính người đó có ghi đủ ngày sinh, số định danh, ngày cấp.
+    {"name": "DaiDien_SoDinhDanh", "desc": "Số CCCD/định danh của NGƯỜI ĐẠI DIỆN CƠ SỞ (Don_DaiDienCoSo) ghi trên giấy tờ KHÁC CCCD (giấy khám sức khỏe, giấy xác nhận kiến thức ATTP...); chỉ chữ số. Chỉ lấy ở giấy mà họ tên trùng người đại diện (chấp nhận lệch dấu do OCR, vd Thơ/Thu) hoặc số đó trùng Mã số đăng ký kinh doanh trên Đơn. Hồ sơ hay kèm giấy khám sức khỏe của NGƯỜI LAO ĐỘNG KHÁC: tuyệt đối không lấy của họ. Không có thì bỏ."},
+    {"name": "DaiDien_NgaySinh", "desc": "Ngày sinh NGƯỜI ĐẠI DIỆN CƠ SỞ trên cùng giấy tờ với DaiDien_SoDinhDanh, dd/mm/yyyy; chỉ có năm thì bỏ."},
+    {"name": "DaiDien_GioiTinh", "desc": 'Giới tính NGƯỜI ĐẠI DIỆN CƠ SỞ trên cùng giấy tờ đó (ô được đánh dấu): "Nam" hoặc "Nữ".'},
+    {"name": "DaiDien_NgayCap", "desc": "Ngày cấp CCCD của NGƯỜI ĐẠI DIỆN CƠ SỞ ghi trên cùng giấy tờ đó (dòng 'Cấp ngày'), dd/mm/yyyy."},
+    {"name": "DaiDien_NoiCap", "desc": "Nơi cấp CCCD của NGƯỜI ĐẠI DIỆN CƠ SỞ ghi trên cùng giấy tờ đó (dòng 'Nơi cấp')."},
+
     # Bản thuyết minh Phụ lục II chỉ là nguồn đối chiếu/fallback vì cổng không dựng eForm riêng.
     {"name": "ThuyetMinh_TenCoSo", "desc": "Mục I.1 - Tên cơ sở trong Bản thuyết minh Phụ lục II."},
     {"name": "ThuyetMinh_DiaChiCoSo", "desc": "Mục I.2 - Địa chỉ cơ sở trong Bản thuyết minh, object {quocGia,tinh,xa,chiTietDuoiXa}."},
@@ -61,7 +69,7 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Person1_NgaySinh", "Person1_NgayCap", "Person2_NgaySinh", "Person2_NgayCap",
-    "Don_NgayDon", "Don_NgayCapDKKD", "DangKy_NgayCap",
+    "Don_NgayDon", "Don_NgayCapDKKD", "DangKy_NgayCap", "DaiDien_NgaySinh", "DaiDien_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (

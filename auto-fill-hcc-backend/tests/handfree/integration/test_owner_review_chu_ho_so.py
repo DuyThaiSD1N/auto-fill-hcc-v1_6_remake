@@ -308,3 +308,50 @@ async def test_nhom_chung_thuc_hoi_bo_sung_o_trong(key):
     r = await _report(conv, filled=["Ngày cấp", "Nơi cấp"], missing=["Số điện thoại", "Địa chỉ chi tiết"])
     assert conv["owner_review"]["current"] == "phoneNumber"
     assert "certify_identity" not in " ".join(_sends(r))
+
+
+# ── Bước chủ hồ sơ: "điều chỉnh giấy tờ" (giữ nguyên phiên, chốt lại thì điền lại chủ hồ sơ) ──
+
+@pytest.fixture
+def _adjust_io(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.channels.handfree.chat import pipeline_runner
+
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", AsyncMock(return_value={"_id": "sid", "files": []}))
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", AsyncMock())
+    monkeypatch.setattr(flow.upload_service, "progress_of",
+                        AsyncMock(return_value={"received": 1, "total": 1, "files_count": 2}))
+    spawned = []
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: (spawned.append(coro), coro.close()))
+    return spawned
+
+
+async def test_dang_hoi_o_chu_ho_so_noi_dieu_chinh_giay_to_thi_mo_dieu_chinh(monkeypatch, _adjust_io):
+    conv = _conv()
+    await _report(conv, missing=ALL_MISSING)
+    assert owner_review.asking(conv)
+    _answers(monkeypatch, Answer("command"))
+
+    async def resolve(text, state, _conv):
+        assert state == "owner_waiting_next"
+        return Intent("action", "add_documents", {})
+
+    monkeypatch.setattr(flow.field_review.intents, "resolve", resolve)
+    r = await flow.handle_turn(conv, Intent("action", "owner_review_answer", {"text": "điều chỉnh giấy tờ"}))
+    assert not owner_review.asking(conv), "thôi hỏi ô"
+    assert conv["state"] == "ask_doc_method" and conv["documents_adjustment_target"] == "owner"
+    assert conv["owner_phase"] is True and conv["upload_session_id"] == "sid", "giữ nguyên phiên giấy tờ"
+    assert any(a.get("type") == "resume_upload_session" for a in r.actions)
+    assert "điền lại thông tin chủ hồ sơ" in r.display_md.lower() or any(
+        "chủ hồ sơ" in c.get("label", "") for c in r.chips)
+
+
+async def test_cho_sang_ke_khai_noi_dieu_chinh_roi_chot_thi_dien_lai_chu_ho_so(_adjust_io):
+    conv = _conv(state="owner_waiting_next", owner_info_done=True)
+    await flow.handle_turn(conv, Intent("action", "add_documents", {}))
+    assert conv["documents_adjustment_target"] == "owner"
+    r = await flow._docs_complete(conv, None)
+    assert conv["state"] == "owner_filling" and len(_adjust_io) == 1, "chạy lại pipeline điền chủ hồ sơ"
+    assert not conv.get("supplementing_documents"), "xong lượt điều chỉnh — lần chốt ở Kê khai không bị đưa về đây"
+    assert r.display_md

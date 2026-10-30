@@ -300,6 +300,8 @@ CHIP_HMONG = {
     "✅ Đã đưa đủ giấy tờ, đính kèm đi": "Muab txaus lawm, muab tso",
     "✅ Hoàn tất điều chỉnh, điền lại tờ khai": "Kho tiav lawm, sau daim foos dua",
     "✅ Hoàn tất điều chỉnh, đính kèm lại": "Kho tiav lawm, muab tso dua",
+    # Ghép "Kho tiav lawm," + "Sau dua tus tswv" (Điền lại thông tin chủ hồ sơ) — cần người dịch soát.
+    "✅ Hoàn tất điều chỉnh, điền lại thông tin chủ hồ sơ": "Kho tiav lawm, sau dua tus tswv",
 }
 
 # ── Card CONSENT (xin phép xử lý dữ liệu) — bản Mông chỉ HỖ TRỢ HIỂU, bản tiếng Việt
@@ -840,6 +842,11 @@ BUSINESS_FAILED = {
     "tts": "Qhov sau kiag nres lawm. Pej xeem nias ua dua kom kuv ua ntxiv.",
 }
 
+# Ghép từ EFORM_FILLING ("Kuv tab tom …", "qhib daim foos", "tos ib pliag") — cần người dịch soát.
+EFORM_OPENING = {
+    "md": "Kuv tab tom qhib daim foos. Pej xeem tos ib pliag…",
+    "tts": "Kuv tab tom qhib daim foos. Pej xeem tos ib pliag.",
+}
 EFORM_FILLING = {
     "md": "Kuv tab tom sau daim foos. Pej xeem cia daim foos qhib li qub, tos ib pliag…",
     "tts": "Kuv tab tom sau daim foos. Pej xeem cia daim foos qhib li qub, tos ib pliag.",

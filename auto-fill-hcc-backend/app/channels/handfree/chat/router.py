@@ -157,6 +157,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết tích ô cam kết cuối trang theo id (lệnh tick_commit, cổng DVC Bộ Công an). Thiếu cờ → không hiện nút
         # cam, công dân tự tích như cũ.
         "supportsTickCommit": raw.get("supportsTickCommit") is True,
+        # Biết tự bấm "Khai tờ khai" ở đúng dòng Thành phần hồ sơ (lệnh open_eform) rồi tự gửi fill_eform khi tờ khai
+        # mở ra. Thiếu cờ → bảo công dân tự bấm như cũ.
+        "supportsOpenEform": raw.get("supportsOpenEform") is True,
         # Màn chào thứ tự mới: chọn thủ tục trước, card chọn nơi xuống lượt xác nhận.
         # Extension cũ không khai → giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
         "supportsProcedureFirst": raw.get("supportsProcedureFirst") is True,
@@ -214,6 +217,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cổng Bộ Xây dựng (chat/bxd): nút / lệnh nói chuyển bước của wizard 4 bước, bổ sung ô trên tờ khai Form.io,
         # chọn hình thức nhận kết quả, bấm Nộp hồ sơ sau khi soát cam đoan + mã xác nhận.
         "supportsBxdFlow": raw.get("supportsBxdFlow") is True,
+        # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
+        # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
+        "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,
     }
 
 
@@ -266,6 +272,8 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         "result_step_watch": flow.guided.result_flow_enabled(conv, get_procedure(conv.get("procedure_key") or "")),
         # Cổng Bộ Xây dựng: sidebar báo bước wizard (wizardStep) ở mọi state, kể cả sau đính kèm.
         "bxd": flow.bxd.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
+        # Cổng Bắc Ninh: sidebar báo tab đang mở (bnTab) ở mọi state, kể cả sau đính kèm.
+        "bac_ninh": flow.bac_ninh.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
     }
 
 
@@ -398,6 +406,12 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         # Cùng lối với vòng bổ sung tờ khai, cho các ô còn trống ở bước Thông tin chủ hồ sơ.
         if intent is None and owner_review.asking(conv) and message and not message.startswith("__"):
             intent = intents.Intent("action", "owner_review_answer", {"text": message})
+        # Cổng Bắc Ninh đang hỏi cơ quan tiếp nhận: câu gõ/nói dò trên cả danh sách cơ quan đọc từ trang (thẻ chỉ gợi
+        # ý vài dòng); không khớp rõ thì đi bộ phân loại chung như thường.
+        if intent is None and flow.bac_ninh.agency_asking(conv) and message and not message.startswith("__"):
+            picked = await flow.bac_ninh.match_agency(conv, message)
+            if picked:
+                intent = intents.Intent("action", "bn_agency_pick", {"value": picked})
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
         # Câu nói về chuyển bước trên wizard ("bước tiếp theo" ở Thành phần hồ sơ, "gửi hồ sơ" ở bước nhận

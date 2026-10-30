@@ -23,9 +23,11 @@ TÀI SẢN (Gcn_*): lấy ở GIẤY CHỨNG NHẬN QSDĐ — thửa đất, t�
 CƠ QUAN CẤP giấy tờ pháp lý: CCCD gắn chip → 'Cục Cảnh sát quản lý hành chính về trật tự xã hội'; GCN
 ĐKDN → 'Sở Kế hoạch và Đầu tư …'. Số giấy tờ (BenBaoDam_So/BenNhan_So) phải KHỚP loại giấy tờ pháp lý.
 
-NGƯỜI ĐƯỢC ỦY QUYỀN (NguoiDuocUyQuyen_*): CHỈ là người được cử đi nộp trong Giấy giới thiệu/Văn bản ủy
-quyền độc lập. UyQuyen_CoVanBan chỉ true khi thực sự có tài liệu đó; nếu không thì BỎ toàn bộ
-UyQuyen_CoVanBan và NguoiDuocUyQuyen_*. NguoiDuocUyQuyen_ThuongTru là OBJECT địa chỉ (dropdown Tỉnh/Xã).
+KHỐI ỦY QUYỀN (NguoiUyQuyen_*) = BÊN ỦY QUYỀN, tức chủ hồ sơ đã ký Văn bản ủy quyền / cấp Giấy giới thiệu
+cử người khác đi nộp (thường là ngân hàng nhận thế chấp hoặc chủ tài sản). TUYỆT ĐỐI KHÔNG lấy người được ủy
+quyền (người đi nộp — đó là tài khoản đang nộp). UyQuyen_CoVanBan chỉ true khi thực sự có tài liệu ủy quyền /
+giới thiệu; nếu không thì BỎ toàn bộ UyQuyen_CoVanBan và NguoiUyQuyen_*. NguoiUyQuyen_Loai chép đúng một lựa
+chọn trong mô tả. NguoiUyQuyen_DiaChi là OBJECT địa chỉ (dropdown Tỉnh/Xã).
 
 Ngày dd/mm/yyyy. KHÔNG trả field UI ('element_...', field-key); chỉ trả field nguồn trong schema. Không
 bịa; thiếu thì bỏ field.

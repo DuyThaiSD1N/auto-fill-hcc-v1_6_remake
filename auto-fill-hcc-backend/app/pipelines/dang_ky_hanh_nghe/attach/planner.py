@@ -15,8 +15,9 @@ CHỈ dòng đó có ("đã thay đổi theo Mẫu 01", "đã bổ sung theo M�
 Cả 3 loại danh sách dùng chung biểu mẫu Mẫu 01 nên rất khó phân biệt: mặc định là danh sách LẦN ĐẦU, chỉ
 xếp vào dòng 2/4 khi LLM thấy RÕ là thay đổi/bổ sung (rule dự phòng không bao giờ tự đoán sang dòng 2/4).
 
-Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. CCCD KHÔNG có dòng riêng
-(chỉ dùng ở bước thông tin) → bỏ qua. Giấy tờ không xác định → KHÔNG đính bừa, chỉ cảnh báo.
+Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. CCCD và giấy không có dòng riêng
+(bằng cấp, chứng chỉ hành nghề, giấy xác nhận, hợp đồng lao động...) hoặc không xác định → ĐÍNH CHUNG dòng 1, giữ tên
+file gốc + cảnh báo; không bỏ file nào.
 """
 
 import time
@@ -163,6 +164,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -176,15 +178,13 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
-        if doc_type == _OTHER:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            warnings.append(
-                f"Không xác định được file '{file_name}' thuộc dòng nào của Thành phần hồ sơ — chưa đính kèm, "
-                "vui lòng đính tay nếu cần."
-            )
+        if doc_type in _SKIP_DOCS or doc_type == _OTHER:
+            # Không có dòng riêng/không rõ loại → dòng 1, giữ tên gốc (không biết chắc là giấy gì).
+            item = _build_row_item(idx, file_name, _DS_LAN_DAU, file_name)
+            item["detectedType"] = doc_type
+            items.append(item)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DS_LAN_DAU})
+            extra_files.append(file_name)
             continue
 
         items.append(_build_row_item(idx, file_name, doc_type, _ROWS[doc_type]["documentName"]))
@@ -204,6 +204,11 @@ def build_plan_items(
     for item in items:
         if per_row[item["detectedType"]] > 1:
             item["documentName"] = item["fileName"]
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng 1 (Danh sách đăng ký hành nghề): "
+            + ", ".join(extra_files) + "."
+        )
 
     types = {item["detectedType"] for item in items}
     if not types & _DS_TYPES:

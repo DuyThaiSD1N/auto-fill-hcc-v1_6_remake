@@ -190,3 +190,59 @@ def test_v2_attach_keeps_v1_file_persistence(tmp_path, monkeypatch):
     saved = list(Path(tmp_path).glob("*/req_*/00_ho-so.pdf"))
     assert len(saved) == 1
     assert saved[0].read_bytes() == b"binary-pdf"
+
+
+def _stored_setup(tmp_path, monkeypatch, content: bytes, *, on_disk: bytes | None = None):
+    import hashlib
+
+    sha = hashlib.sha256(content).hexdigest()
+    (tmp_path / "2026-10-29" / "req_fill").mkdir(parents=True)
+    (tmp_path / "2026-10-29" / "req_fill" / "00_cu.pdf").write_bytes(content if on_disk is None else on_disk)
+    monkeypatch.setattr(settings, "storage_dir", str(tmp_path))
+    monkeypatch.setattr(v2, "_STORED_RETRY_DELAYS_S", ())
+    calls = []
+
+    async def fake_find(user_id, sha256s, since):
+        calls.append(user_id)
+        return {sha: "2026-10-29/req_fill/00_cu.pdf"} if sha in sha256s else {}
+
+    monkeypatch.setattr(v2.requests_repo, "find_stored_files", fake_find)
+    return sha, calls
+
+
+def test_v2_attach_dung_lai_tep_da_luu_theo_sha256(tmp_path, monkeypatch):
+    sha, calls = _stored_setup(tmp_path, monkeypatch, b"pdf-da-gui-luc-dien")
+    captured = {}
+
+    async def fake_plan(body, user):
+        captured.update(body=body)
+        return {"attachments": [], "extracted": {}, "stats": {}, "errors": [], "requestId": "req_attach"}
+
+    monkeypatch.setattr(v2, "plan_attachments_v1", fake_plan)
+    request = _multipart("attach", metadata=[
+        {"name": "cu.pdf", "type": "application/pdf", "role": "doc", "stored": sha},
+        {"name": "ho-so.pdf", "type": "application/pdf", "role": "doc"},
+    ])
+    response = _client().post("/api/v2/process", **request)
+
+    assert response.status_code == 200
+    assert response.json()["fileRefs"] is True
+    files = captured["body"].files
+    assert [f.name for f in files] == ["cu.pdf", "ho-so.pdf"]
+    assert base64.b64decode(files[0].dataUrl.split(",", 1)[1]) == b"pdf-da-gui-luc-dien"
+    assert base64.b64decode(files[1].dataUrl.split(",", 1)[1]) == b"binary-pdf"
+    assert calls == ["user-1"]
+
+
+def test_v2_tep_da_luu_khong_con_thi_409_de_extension_gui_lai(tmp_path, monkeypatch):
+    sha, _ = _stored_setup(tmp_path, monkeypatch, b"pdf-cu", on_disk=b"noi-dung-khac")
+    request = _multipart("attach", metadata=[
+        {"name": "cu.pdf", "type": "application/pdf", "role": "doc", "stored": sha},
+        {"name": "ho-so.pdf", "type": "application/pdf", "role": "doc"},
+    ])
+    response = _client().post("/api/v2/process", **request)
+    assert response.status_code == 409
+    assert response.json()["error"] == "STORED_FILE_MISSING"
+
+    bad = _multipart("attach", metadata=[{"name": "x.pdf", "stored": "../etc/passwd"}, {"name": "ho-so.pdf"}])
+    assert _client().post("/api/v2/process", **bad).json()["error"] == "BAD_FILE_METADATA"

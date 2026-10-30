@@ -68,3 +68,17 @@ async def get_request_by_request_id(request_id: str, user_id: str | None = None)
     if user_id:
         query["user_id"] = user_id
     return await get_db().process_requests.find_one(query)
+
+
+async def find_stored_files(user_id: str, sha256s: list[str], since: datetime) -> dict[str, str]:
+    """{sha256: đường dẫn tương đối} của tệp CHÍNH tài khoản này đã gửi từ ``since`` (lượt điền/đính)."""
+    found: dict[str, str] = {}
+    cursor = get_db().process_requests.find(
+        {"user_id": user_id, "created_at": {"$gte": since}, "files.sha256": {"$in": sha256s}},
+        {"files.sha256": 1, "files.path": 1},
+    ).sort("created_at", -1)
+    async for doc in cursor:
+        for f in doc.get("files") or []:
+            if f.get("sha256") in sha256s and f.get("path"):
+                found.setdefault(f["sha256"], f["path"])
+    return found

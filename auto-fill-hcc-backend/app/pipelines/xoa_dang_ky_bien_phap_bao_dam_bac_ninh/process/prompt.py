@@ -35,10 +35,11 @@ THẾ CHẤP (xóa thế chấp) — TheChap_SoHopDong / TheChap_NgayKy:
 
 NGÀY dd/mm/yyyy: NguoiYeuCau_NgayCap, Gcn_NgayCap, TheChap_NgayKy. Đọc đúng, KHÔNG bịa.
 
-NGƯỜI ĐƯỢC ỦY QUYỀN (NguoiDuocUyQuyen_*): CHỈ là BÊN ĐƯỢC ỦY QUYỀN trong một Văn bản/Giấy ủy quyền độc
-lập. UyQuyen_CoVanBan chỉ true khi OCR thực sự có văn bản ủy quyền và xác định được bên được ủy quyền;
-nếu không có thì BỎ toàn bộ UyQuyen_CoVanBan và NguoiDuocUyQuyen_*. KHÔNG lấy người yêu cầu xóa (bên bảo
-đảm) làm người được ủy quyền. NguoiDuocUyQuyen_ThuongTru là OBJECT địa chỉ (phục vụ dropdown Tỉnh/Xã).
+NGƯỜI ỦY QUYỀN (NguoiUyQuyen_*) = BÊN ỦY QUYỀN (chủ hồ sơ, thường là người yêu cầu xóa) trong một Văn bản/Giấy
+ủy quyền độc lập. KHÔNG lấy BÊN ĐƯỢC ỦY QUYỀN (người đi nộp thay — chính là tài khoản đang nộp).
+UyQuyen_CoVanBan chỉ true khi OCR thực sự có văn bản ủy quyền và xác định được bên ủy quyền; nếu không có thì
+BỎ toàn bộ UyQuyen_CoVanBan và NguoiUyQuyen_*. NguoiUyQuyen_ThuongTru là OBJECT địa chỉ (phục vụ dropdown
+Tỉnh/Xã).
 
 KHÔNG trả field UI ('element_...', tên field-key, 'nhanTaiNha...'); chỉ trả field nguồn trong schema.
 Không bịa; thiếu thì bỏ field.

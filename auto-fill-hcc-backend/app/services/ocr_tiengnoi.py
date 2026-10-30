@@ -7,6 +7,7 @@ song song, trả results[] KHỚP THỨ TỰ files gửi lên. Keyless: để tr
 Đây là adapter OCR duy nhất của backend. `max_tokens` ngắn dùng cho phân loại; giới hạn dài
 dùng cho fill và lập kế hoạch đính kèm.
 """
+import asyncio
 import base64
 from contextlib import ExitStack
 import logging
@@ -14,6 +15,7 @@ from pathlib import Path
 import re
 from typing import BinaryIO
 
+import fitz
 import httpx
 
 from app.config import settings
@@ -163,13 +165,147 @@ def _tokens(res: dict) -> list[dict]:
     return out
 
 
+# Gateway OCR song song theo trang nhưng có trần mỗi request → hồ sơ nhiều trang gửi một request
+# phải xếp hàng. Chia nhóm tệp liền nhau gửi song song: đo trên OCR prod, 4 nhóm nhanh ~1,7 lần,
+# chữ OCR không lệch hơn gửi lại một lần; 8 nhóm không nhanh thêm đáng kể mà chiếm gấp đôi chỗ của
+# người dùng khác. Hồ sơ ít trang lợi chưa tới 1 giây → vẫn một request.
+_MAX_GROUPS = 4
+_GROUP_MIN_PAGES = 9
+# Một PDF nhiều trang cũng xếp hàng trong trần song song của một request → cắt thành vài PDF con gửi
+# song song rồi ghép lại đúng khuôn "Trang i/N" của gateway. Đo trên OCR prod (18 PDF thật 6–97 trang):
+# 6–15 trang nhanh 1,6–2,1 lần khi cắt phần 2–4 trang; 16–40 trang tốt nhất 4 trang/phần (~2,3 lần);
+# trên 40 trang phần to hơn, khoảng 8 phần là đủ (~2,8 lần) — cắt quá nhiều phần lại chậm. Chữ OCR không
+# lệch hơn gửi lại nguyên tệp. Dưới 6 trang không đáng cắt.
+_SPLIT_MIN_PAGES = 6
+_MAX_PARTS = 8
+_PAGE_HEADER = "───── Trang {page}/{total} ─────"
+
+
+def _page_count(f: dict, data: bytes | BinaryIO) -> int:
+    """Số trang để chia nhóm; ảnh và tệp không mở được tính 1."""
+    try:
+        if isinstance(data, (bytes, bytearray)):
+            if bytes(data[:5]) != b"%PDF-":
+                return 1
+            document = fitz.open(stream=data, filetype="pdf")
+        else:
+            document = fitz.open(str(f.get("path")))
+        try:
+            return max(1, document.page_count)
+        finally:
+            document.close()
+    except Exception:  # noqa: BLE001 - chỉ để chia nhóm, sai thì gửi như ảnh một trang
+        return 1
+
+
+def _page_groups(pages: list[int], max_groups: int = _MAX_GROUPS) -> list[list[int]]:
+    """Nhóm chỉ số tệp LIỀN NHAU, cân theo số trang (không tách tệp)."""
+    count = min(max_groups, len(pages))
+    if count < 2 or sum(pages) < _GROUP_MIN_PAGES:
+        return [list(range(len(pages)))]
+    target = sum(pages) / count
+    groups: list[list[int]] = []
+    current: list[int] = []
+    filled = 0
+    for index, page in enumerate(pages):
+        if current and filled + page / 2 > target and len(groups) < count - 1:
+            groups.append(current)
+            current, filled = [], 0
+        current.append(index)
+        filled += page
+    return groups + [current]
+
+
+def _cut_pdf(raw: bytes, first: int, last: int) -> bytes:
+    source = fitz.open(stream=raw, filetype="pdf")
+    part = fitz.open()
+    try:
+        part.insert_pdf(source, from_page=first, to_page=last)
+        return part.tobytes(garbage=1)
+    finally:
+        part.close()
+        source.close()
+
+
+def _split_units(
+    decoded: list[tuple[str, bytes | BinaryIO, str]], pages: list[int],
+) -> list[tuple[int, int, tuple[str, bytes | BinaryIO, str]]]:
+    """(chỉ số tệp, số trang, input gửi OCR); PDF đủ lớn cắt thành các phần trang liền nhau."""
+    units = []
+    for index, ((name, data, mime), count) in enumerate(zip(decoded, pages)):
+        if count < _SPLIT_MIN_PAGES:
+            units.append((index, count, (name, data, mime)))
+            continue
+        raw = data if isinstance(data, (bytes, bytearray)) else data.read()
+        size = max(-(-count // _MAX_PARTS), min(4, -(-count // 4)))
+        for first in range(0, count, size):
+            last = min(count, first + size) - 1
+            units.append((index, last - first + 1, (name, _cut_pdf(bytes(raw), first, last), "application/pdf")))
+    return units
+
+
+def _merge_parts(parts: list[tuple[int, dict | None]]) -> dict | None:
+    """Ghép kết quả các phần của MỘT tệp như gateway trả cho cả tệp (đánh lại số trang toàn tệp)."""
+    if len(parts) == 1:
+        return parts[0][1]
+    pages: list[dict] = []
+    for count, res in parts:
+        got = (res or {}).get("pages") if isinstance((res or {}).get("pages"), list) else None
+        if res is None or got is None:
+            got = [{"ok": False, "text": ""}] * count
+        pages.extend(got)
+    total = len(pages)
+    pages = [{**page, "index": i} for i, page in enumerate(pages)]
+    return {
+        "ok": all(page.get("ok") is not False for page in pages),
+        "num_pages": total,
+        "pages": pages,
+        "text": "\n\n".join(
+            f"{_PAGE_HEADER.format(page=i + 1, total=total)}\n{page.get('text') or ''}" for i, page in enumerate(pages)
+        ),
+        "error": next((res.get("error") for _c, res in parts if res and res.get("error")), None),
+    }
+
+
+async def _post_groups(
+    decoded: list[tuple[str, bytes | BinaryIO, str]],
+    groups: list[list[int]],
+    max_tokens: int | None,
+    *,
+    include_tokens: bool,
+) -> list[dict | None]:
+    """Kết quả theo đúng thứ tự tệp; tệp OCR báo lỗi (thường một trang vLLM lỗi) gửi lại riêng một lần."""
+    datas = await asyncio.gather(*(
+        _post([decoded[i] for i in group], max_tokens, include_tokens=include_tokens)
+        for group in groups
+    ))
+    results: list[dict | None] = [None] * len(decoded)
+    for group, data in zip(groups, datas):
+        for index, res in zip(group, data.get("results") or []):
+            results[index] = res
+    failed = [i for i, res in enumerate(results) if res is None or res.get("ok") is False]
+    if failed and len(failed) < len(results):
+        mon.flag("ocr_retry")
+        _rewind([decoded[i] for i in failed])
+        try:
+            data = await _post([decoded[i] for i in failed], max_tokens, include_tokens=include_tokens)
+        except Exception as e:  # noqa: BLE001 - giữ kết quả lần đầu
+            logger.warning("OCR gửi lại %d tệp lỗi: %r", len(failed), e)
+            return results
+        for index, res in zip(failed, data.get("results") or []):
+            if res and res.get("ok") is not False:
+                results[index] = res
+    return results
+
+
 async def _ocr_per_file(
     files: list[dict],
     max_tokens: int | None = None,
     *,
     include_tokens: bool = False,
 ) -> list[dict]:
-    """Batch TẤT CẢ file trong 1 request → [{name, type, text, error?}] khớp thứ tự input.
+    """OCR các file (một request, hoặc vài nhóm song song khi nhiều trang) → [{name, type, text, error?}]
+    khớp thứ tự input.
 
     max_tokens: None → dùng ocr_tiengnoi_max_tokens (classify, ngắn). Fill truyền giá trị cao hơn.
     """
@@ -180,12 +316,21 @@ async def _ocr_per_file(
         with mon.span("pre.decode", files=len(files)) as dec:
             decoded = [_open_input(f, stack) for f in files]
             dec.attrs["bytes"] = sum(len(d) for _n, d, _m in decoded if isinstance(d, (bytes, bytearray)))
-        data = await _post(decoded, max_tokens, include_tokens=include_tokens)
+            pages = [_page_count(f, d) for f, (_n, d, _m) in zip(files, decoded)]
+            units = await asyncio.to_thread(_split_units, decoded, pages)
+            # Có tệp bị cắt thì mỗi phần cần request riêng mới song song được → nới trần số request.
+            groups = _page_groups([count for _i, count, _d in units], _MAX_PARTS if len(units) > len(files) else _MAX_GROUPS)
+            dec.attrs["parts"] = len(units)
+            dec.attrs["groups"] = len(groups)
+        unit_results = await _post_groups([d for _i, _c, d in units], groups, max_tokens, include_tokens=include_tokens)
+        results = [
+            _merge_parts([(count, res) for (index, count, _d), res in zip(units, unit_results) if index == file_index])
+            for file_index in range(len(files))
+        ]
     with mon.span("ocr.split", files=len(files)) as split:
-        results = data.get("results") or []
         pages: list[int | None] = []
         for i, o in enumerate(out):
-            if i < len(results):
+            if results[i] is not None:
                 res = results[i] or {}
                 o["text"] = res.get("text") or ""
                 if include_tokens:

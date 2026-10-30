@@ -28,6 +28,7 @@ from app.channels.handfree.procedure_registry import (
     get_procedure,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import MAX_FILE_BYTES, shrink_file
 from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
     with_account_process_options as with_cai_chinh_account_process_options,
 )
@@ -126,6 +127,12 @@ def _bac_ninh_authorized_block(proc: dict, conv: dict | None) -> dict | None:
     caps = (conv or {}).get("client_capabilities") or {}
     if not config or caps.get("supportsBacNinhAuthorizedPerson") is not True:
         return None
+    from app.channels.handfree.chat import bac_ninh
+
+    choice = bac_ninh.authorized_choice(conv or {}, proc)
+    if choice is not None:
+        # Luồng tab Bắc Ninh: công dân đã trả lời ngay ở tab "Chọn cơ quan tiếp nhận" có điền khối này không.
+        return config if choice else None
     subject = str((conv or {}).get("execution_subject") or "self")
     return config if subject in (config.get("executionSubjects") or []) else None
 
@@ -142,8 +149,9 @@ async def _run_bac_ninh_authorized(pipeline, files_by_role: dict, options: dict,
         return {"fields": [], "errors": [f"Không đọc được thông tin người ủy quyền: {str(e)[:200]}"]}
     fields = list(res.get("fields") or [])
     if fields:
+        # Thủ tục đọc được loại bên ủy quyền (doanh nghiệp, tổ chức…) thì chọn đúng loại đó; không thì loại mặc định.
         fields.insert(0, {"name": "loaiDoiTuongKhac", "comp": "bn-doi-tuong-khac",
-                          "value": config["subjectOption"]})
+                          "value": res.get("authorizedSubject") or config["subjectOption"]})
     return {"fields": fields, "errors": list(res.get("errors") or [])}
 
 
@@ -195,6 +203,55 @@ def _session_files_with_fids(sess: dict) -> tuple[list[dict], list[str]]:
                         "dataUrl": data_url, "role": ""})
             fids.append(f["fid"])
     return out, fids
+
+
+# Lệnh đính kèm mang TOÀN BỘ tệp của phiên sang trang trong MỘT tin nhắn của Chrome (trần cứng 64 MiB; base64 phình
+# ~1,34 lần): 10 bản quét màu độ phân giải cao là vượt, tin bị trình duyệt chặn và trang "không nhận lệnh đính kèm".
+# Tổng byte gốc vượt ngưỡng → nén các tệp nặng nhất (nấc ~5 MB giữ nét trước, vẫn quá thì xuống nấc của cổng
+# ~1,9 MB) tới khi lọt; tệp planner đã nén sẵn để nguyên. Tổng dưới ngưỡng thì không đụng gì.
+_ATTACH_MESSAGE_BUDGET = 40_000_000
+_SHRINK_STEPS = (5_000_000, MAX_FILE_BYTES)
+
+
+def _data_url_bytes(data_url: str) -> bytes:
+    return base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+
+
+async def _fit_attach_message(files: list[dict], replace_files: dict | None, errors: list) -> dict | None:
+    replaced = dict(replace_files or {})
+    sizes = {}
+    for i, f in enumerate(files):
+        if not f.get("dataUrl"):
+            continue
+        entry = replaced.get(str(i))
+        sizes[i] = entry["bytes"] if entry and entry.get("bytes") else len(_data_url_bytes(f["dataUrl"]))
+    total = sum(sizes.values())
+    if total <= _ATTACH_MESSAGE_BUDGET:
+        return replace_files
+    for limit in _SHRINK_STEPS:
+        for i in sorted(sizes, key=sizes.get, reverse=True):
+            if total <= _ATTACH_MESSAGE_BUDGET:
+                break
+            if sizes[i] <= limit or (str(i) in (replace_files or {})):
+                continue
+            try:
+                out, _label = await asyncio.to_thread(shrink_file, _data_url_bytes(files[i]["dataUrl"]), limit)
+            except Exception as e:  # noqa: BLE001 — nén hỏng thì để bản gốc
+                logger.warning("[attach] không nén được tệp %s: %s", files[i].get("name"), e)
+                continue
+            if len(out) >= sizes[i]:
+                continue
+            stem = (str(files[i].get("name") or "tai-lieu").rsplit(".", 1)[0]) or "tai-lieu"
+            replaced[str(i)] = {"name": f"{stem}.pdf", "type": "application/pdf", "bytes": len(out),
+                                "dataUrl": "data:application/pdf;base64," + base64.b64encode(out).decode("ascii")}
+            total -= sizes[i] - len(out)
+            sizes[i] = len(out)
+        if total <= _ATTACH_MESSAGE_BUDGET:
+            break
+    if total > _ATTACH_MESSAGE_BUDGET:
+        errors.append(f"Giấy tờ quá nặng (khoảng {total / 1e6:.0f} MB sau khi nén) — công dân scan lại nhẹ hơn "
+                      "(ảnh xám / độ phân giải thấp hơn) hoặc bỏ bớt tệp không cần.")
+    return replaced or None
 
 
 async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | None) -> dict | None:
@@ -309,10 +366,22 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # form cho mapper thay vì để nó tự đoán từ giấy tờ.
             options.update(case_pipeline_options(proc, conv))
             authorized = _bac_ninh_authorized_block(proc, conv)
+            from app.channels.handfree.chat import bac_ninh
+
+            if bac_ninh.account_phase(conv or {}, proc):
+                # Trang hoàn thiện tài khoản Bắc Ninh: request tài khoản, neo đúng chủ tài khoản bằng họ tên + số định
+                # danh cổng điền sẵn. Request đơn chạy ngầm cùng lúc để sang trang thủ tục điền ngay.
+                pipeline = get_pipeline(bac_ninh.ACCOUNT_PROCEDURE)
+                options = {"formContext": bac_ninh.account_context(conv)}
+                authorized = None
+                spawn(run_bac_ninh_prefill(conv_id, sid, procedure_key))
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):
-            if authorized:
+            if authorized and proc.get("mode") == "attach":
+                # Thủ tục chỉ đính kèm (vd hỗ trợ người cao tuổi): pipeline lõi chính là pipeline khối ủy quyền.
+                result = await _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized)
+            elif authorized:
                 # Hai lượt OCR/LLM độc lập trên cùng bộ giấy tờ → chạy song song cho đỡ chờ.
                 result, extra = await asyncio.gather(
                     pipeline(files_by_role, options),
@@ -373,6 +442,79 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             error_request_id = await tracing.record_error(conv, procedure_key, "autofill", str(e), rec=rec)
         await broadcast(sid, {"type": "pipeline_error", "message": str(e)[:200]})
         _finish_recorder(rec, error_request_id)
+
+
+# Kết quả request đơn chạy ngầm ở bước tài khoản Bắc Ninh: collection riêng (không ghi vào conversation — lượt chat
+# đang chạy lưu lại cả hội thoại sẽ đè mất), xoá khi đã dùng, TTL dọn bản bỏ dở (app/db/indexes.py).
+_PREFILL_WAIT_S = 600
+
+
+async def run_bac_ninh_prefill(conv_id: str, sid: str, procedure_key: str) -> None:
+    """Pipeline đơn (+ lượt người ủy quyền nếu thủ tục có) trên đúng bộ giấy tờ nhận ở bước tài khoản. Lượt ủy quyền
+    chạy luôn vì câu hỏi có điền hay không đến sau; apply_bac_ninh_prefill chỉ ghép khi công dân chọn điền."""
+    db = get_db().bac_ninh_prefill
+    await db.replace_one({"_id": conv_id}, {"_id": conv_id, "status": "running", "at": datetime.now(timezone.utc)},
+                         upsert=True)
+    try:
+        sess = await up_store.get(sid)
+        proc = get_procedure(procedure_key)
+        pipeline = get_pipeline(procedure_key)
+        files = _session_files(sess) if sess else []
+        conv = await conv_store.get(conv_id)
+        if not files or not proc or not pipeline or not conv:
+            raise RuntimeError("Thiếu phiên/thủ tục/pipeline.")
+        files_by_role = {"": files}
+        options: dict = {"formContext": dict(conv.get("form_context") or {})}
+        options.update(case_pipeline_options(proc, conv))
+        config = proc.get("bacNinhAuthorizedPerson") or {}
+        caps = conv.get("client_capabilities") or {}
+        t_pipe = time.monotonic()
+        if config and caps.get("supportsBacNinhAuthorizedPerson") is True:
+            result, extra = await asyncio.gather(
+                pipeline(files_by_role, options),
+                _run_bac_ninh_authorized(pipeline, files_by_role, options, config),
+            )
+        else:
+            result, extra = await pipeline(files_by_role, options), {"fields": [], "errors": []}
+        pipe_ms = int((time.monotonic() - t_pipe) * 1000)
+        trace_id = await tracing.record_process(conv, procedure_key, proc, files, result, pipe_ms)
+        await db.update_one({"_id": conv_id}, {"$set": {
+            "status": "done", "fields": result.get("fields") or [], "authFields": extra["fields"],
+            "extracted": result.get("extracted") or {}, "errors": [*(result.get("errors") or []), *extra["errors"]],
+            "traceId": trace_id, "at": datetime.now(timezone.utc),
+        }})
+    except Exception as e:  # noqa: BLE001 — chạy ngầm hỏng thì apply_bac_ninh_prefill đọc lại như thường
+        logger.warning("[pipeline] đọc ngầm đơn Bắc Ninh lỗi (%s): %s", conv_id, e)
+        await db.update_one({"_id": conv_id}, {"$set": {"status": "error", "at": datetime.now(timezone.utc)}})
+
+
+@_tracked("process")
+async def apply_bac_ninh_prefill(conv_id: str, sid: str, procedure_key: str) -> None:
+    """Sang trang thủ tục sau bước tài khoản: chờ kết quả đọc ngầm rồi phát fields_ready như một lượt process; không có /
+    hỏng / quá hạn → đọc lại bằng run_process (giấy tờ vẫn là phiên cũ)."""
+    db = get_db().bac_ninh_prefill
+    deadline = time.monotonic() + _PREFILL_WAIT_S
+    doc = await db.find_one({"_id": conv_id})
+    while doc and doc.get("status") == "running" and time.monotonic() < deadline:
+        await asyncio.sleep(1)
+        doc = await db.find_one({"_id": conv_id})
+    await db.delete_one({"_id": conv_id})
+    if not doc or doc.get("status") != "done":
+        await run_process.__wrapped__(conv_id, sid, procedure_key)
+        return
+    conv = await conv_store.get(conv_id)
+    if not conv:
+        return
+    authorized = (conv.get("bac_ninh") or {}).get("authorized") is True
+    conv["fields"] = [*(doc.get("fields") or []), *((doc.get("authFields") or []) if authorized else [])]
+    conv["extracted"] = doc.get("extracted") or {}
+    conv["pipeline_status"] = "fields_ready"
+    conv["pipeline_error"] = ""
+    conv["fields_dispatched"] = False
+    if doc.get("traceId"):
+        conv["trace_request_id"] = doc["traceId"]
+    await conv_store.save(conv)
+    await broadcast(sid, {"type": "fields_ready", "count": len(conv["fields"])})
 
 
 @_tracked("business")
@@ -606,7 +748,9 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         _note_result(rec, result)
         # Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): lấy bản nén ra khỏi result trước khi ghi trace.
         async with mon.span("post.shrunk"):
-            replace_by_fid = await _store_shrunk_files(sid, raw_fids, result.pop("replaceFiles", None))
+            replace_files = await _fit_attach_message(raw_files, result.pop("replaceFiles", None),
+                                                      result.setdefault("errors", []))
+            replace_by_fid = await _store_shrunk_files(sid, raw_fids, replace_files)
 
         conv = await conv_store.get(conv_id)
         if not conv:

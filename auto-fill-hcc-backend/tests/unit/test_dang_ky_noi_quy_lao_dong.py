@@ -140,7 +140,7 @@ def _segment(page_from, page_to, doc_type, name=""):
     return {"fileIndex": 0, "pageFrom": page_from, "pageTo": page_to, "type": doc_type, "documentName": name}
 
 
-def test_plan_ghep_quyet_dinh_va_noi_quy_vao_dong_1_uy_quyen_qua_modal():
+def test_plan_moi_giay_mot_file_dung_dong_cccd_vao_dong_1_uy_quyen_qua_modal():
     raw_files = [{"name": "ho-so.pdf", "type": "application/pdf", "dataUrl": ""}]
     segments = [
         _segment(1, 4, "gop_y_dai_dien", "Biên bản hội nghị đối thoại"),
@@ -152,18 +152,39 @@ def test_plan_ghep_quyet_dinh_va_noi_quy_vao_dong_1_uy_quyen_qua_modal():
     ]
     file_meta = {0: {"pageCount": 40, "pageBoundariesAvailable": True}}
     attachments, classified, warnings = planner.build_plan_items(raw_files, segments, file_meta, {0: {}})
-    by_row = {a.get("componentIndex"): a for a in attachments if a["target"] == "attp-row"}
-    assert sorted(by_row) == [1, 2, 4]
-    row1 = by_row[1]
-    assert row1["includedTypes"] == ["quyet_dinh_ban_hanh", "noi_quy_lao_dong"], "Quyết định đứng trước Nội quy"
-    assert [s["pageIndexes"][0] for s in row1["sourceSegments"]] == [6, 9]
-    assert row1["loaiBan"] == "Bản chính"
+    rows = [a for a in attachments if a["target"] == "attp-row"]
+    row1 = [a for a in rows if a["componentIndex"] == 1]
+    # Không ghép: Quyết định, Nội quy, CCCD là 3 file riêng ở dòng 1, Quyết định đứng trước Nội quy.
+    assert [a["detectedType"] for a in row1] == ["quyet_dinh_ban_hanh", "noi_quy_lao_dong", "cccd"]
+    assert [a["sourceSegments"][0]["pageIndexes"][0] for a in row1] == [6, 9, 39]
+    assert all(len(a["sourceSegments"]) == 1 for a in rows)
+    assert {a["componentIndex"] for a in rows} == {1, 2, 4}
+    assert row1[0]["loaiBan"] == "Bản chính"
     dialog = next(a for a in attachments if a["target"] == "add-document-dialog")
     assert dialog["componentName"] == "Giấy ủy quyền"
-    assert dialog["fallbackComponentName"] == by_row[4]["componentName"]
+    assert dialog["fallbackComponentName"] == next(a for a in rows if a["componentIndex"] == 4)["componentName"]
     assert dialog["quantity"] == 1 and dialog["needsAddComponent"] is True
-    assert any(c["type"] == "cccd" and c["target"] == "skip" for c in classified)
-    assert not warnings, "dòng 3 (nếu có) để trống không phải lỗi"
+    assert not any(c.get("target") == "skip" for c in classified), "không bỏ file nào"
+    assert len(warnings) == 1 and "trang 40-40" in warnings[0]
+
+
+def test_plan_nhieu_file_cung_dong_khong_gop_gcn_dkdn_vao_dong_1():
+    raw_files = [{"name": n, "type": "application/pdf", "dataUrl": ""}
+                 for n in ("bien-ban.pdf", "gcn-dkdn.pdf", "noi-quy.pdf", "quyet-dinh.pdf", "gop-y.pdf")]
+    segments = [
+        {"fileIndex": 0, "pageFrom": 1, "pageTo": 2, "type": "gop_y_dai_dien", "documentName": ""},
+        {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "dang_ky_doanh_nghiep", "documentName": ""},
+        {"fileIndex": 2, "pageFrom": 1, "pageTo": 21, "type": "noi_quy_lao_dong", "documentName": ""},
+        {"fileIndex": 3, "pageFrom": 1, "pageTo": 1, "type": "quyet_dinh_ban_hanh", "documentName": ""},
+        {"fileIndex": 4, "pageFrom": 1, "pageTo": 1, "type": "gop_y_dai_dien", "documentName": ""},
+    ]
+    file_meta = {0: {"pageCount": 2}, 1: {"pageCount": 1}, 2: {"pageCount": 21}, 3: {"pageCount": 1}, 4: {"pageCount": 1}}
+    attachments, classified, _ = planner.build_plan_items(raw_files, segments, file_meta, {i: {} for i in range(5)})
+    assert sorted(a["fileIndex"] for a in attachments) == [0, 1, 2, 3, 4]
+    # Cả file → không cắt trang, FE đính nguyên file.
+    assert not any("sourceSegments" in a for a in attachments)
+    by_file = {a["fileIndex"]: a["componentIndex"] for a in attachments}
+    assert by_file == {0: 2, 1: 1, 2: 1, 3: 1, 4: 2}
 
 
 def test_plan_thieu_giay_bat_buoc_thi_canh_bao():

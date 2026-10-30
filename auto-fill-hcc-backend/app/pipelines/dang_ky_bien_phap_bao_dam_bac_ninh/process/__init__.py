@@ -2,7 +2,7 @@
 
 from app.pipelines._shared.compact_agent import runner
 
-from .mapper import enrich
+from .mapper import authorized_subject, enrich
 from .prompt import EXTRA_RULES
 from .schema import ALIASES, ALLOWED, COMPACT_COMP_BY_NAME, FIELDS
 
@@ -18,5 +18,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         max_tokens=3200,
     )
-    result["fields"] = enrich(result.get("fields", []), options)
+    raw = result.get("fields", [])
+    result["fields"] = enrich(raw, options)
+    if str((options or {}).get("purpose") or "") == "authorized_person":
+        # Loại "Người ủy quyền là:" cho lượt điền khối ủy quyền handfree; auto-fill không đọc khoá này.
+        result["authorizedSubject"] = authorized_subject(raw)
     return result

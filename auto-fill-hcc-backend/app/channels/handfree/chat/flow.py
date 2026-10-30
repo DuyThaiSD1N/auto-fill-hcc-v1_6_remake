@@ -17,6 +17,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from app.channels.handfree.chat import consent as consent_log
 from app.channels.handfree.chat import field_review
+from app.channels.handfree.chat import bac_ninh
 from app.channels.handfree.chat import bxd
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import lien_thong
@@ -397,6 +398,7 @@ _DOCS_TARGET_LABELS = {
 _DOCUMENT_ADJUSTMENT_LABELS = {
     "declaration": "✅ Hoàn tất điều chỉnh, điền lại tờ khai",
     "attachment": "✅ Hoàn tất điều chỉnh, đính kèm lại",
+    "owner": "✅ Hoàn tất điều chỉnh, điền lại thông tin chủ hồ sơ",
 }
 
 
@@ -922,7 +924,8 @@ _VOICE_BLOCKED_SENDS = {
 # Nộp hồ sơ không rút lại được: chọn bằng lời thì hỏi xác nhận một lần (tạp âm / nói nhầm không nộp luôn). Nút xác
 # nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
 # nhận chưa có bản dịch).
-_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND}
+_VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND,
+                        bac_ninh.SUBMIT_SEND}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
@@ -1005,6 +1008,8 @@ def update_voice_options(conv: dict, reply: Reply) -> None:
             asking_confirm = True
             continue
         item = {"label": str(chip.get("label") or ""), "send": send, "chip": dict(chip)}
+        if chip.get("desc"):
+            item["desc"] = str(chip["desc"])  # mô tả cho bộ phân loại câu nói, không hiện trên nút
         if chip.get("phase"):
             item["phase"] = chip["phase"]
         items.append(item)
@@ -1149,17 +1154,31 @@ async def _handle_turn_inner(
     # Vòng bổ sung ô còn trống trên tờ khai: lệnh/sự kiện riêng, không phụ thuộc state.
     review_reply = await field_review.handle(conv, current_proc, intent)
     if review_reply is not None:
-        return review_reply
+        rerouted = field_review.take_reroute()
+        if rerouted is None:
+            return review_reply
+        # Đang hỏi ô mà công dân ra lệnh khác của bước ("điều chỉnh giấy tờ"…): vòng hỏi đã dừng → chạy lệnh đó
+        # luôn trong lượt này, kèm lệnh tắt tô ô của vòng hỏi.
+        r = await _handle_turn_inner(conv, rerouted, client_page_context)
+        r.actions = [*review_reply.actions, *r.actions]
+        return r
     lien_thong_reply = lien_thong.handle(conv, current_proc, intent)
     if lien_thong_reply is not None:
         return lien_thong_reply
     bxd_reply = bxd.handle(conv, current_proc, intent)
     if bxd_reply is not None:
         return bxd_reply
+    bac_ninh_reply = bac_ninh.handle(conv, current_proc, intent)
+    if bac_ninh_reply is not None:
+        return bac_ninh_reply
     # Vòng hỏi bổ sung ô còn trống ở bước Thông tin chủ hồ sơ (quét sớm).
     owner_review_reply = await owner_review.handle(conv, current_proc, intent)
     if owner_review_reply is not None:
-        return owner_review_reply
+        rerouted = field_review.take_reroute()
+        if rerouted is None:
+            return owner_review_reply
+        # Đang hỏi ô chủ hồ sơ mà công dân ra lệnh khác của bước ("điều chỉnh giấy tờ"…) → chạy lệnh đó luôn.
+        return await _handle_turn_inner(conv, rerouted, client_page_context)
     if intent.kind == "event" and intent.value == "page_status":
         principal = intent.payload.get("principal") or {}
         if principal:
@@ -2459,6 +2478,20 @@ def _to_consent(conv: dict) -> Reply:
                    doc_list_tts=tts_list)
     r = Reply(md, tts)
     r.cards = [_consent_card(conv)]
+    return _with_eform_preopen(conv, proc, r)
+
+
+def _with_eform_preopen(conv: dict, proc: dict, r: Reply) -> Reply:
+    """Thủ tục có tờ khai trong bảng Thành phần hồ sơ: vừa tới bước này là mở luôn tờ khai (như thủ tục thường vào là
+    thấy trang kê khai), rồi mới xin phép / nhận giấy tờ — nhận đủ giấy thì tờ khai đã mở sẵn, điền ngay. Chỉ MỞ,
+    không điền; mở không được thì im, tới lúc nhận đủ giấy trợ lý thử mở lại (_eform_open_reply)."""
+    if (not _eform_pending(conv, proc) or _eform_open_now(conv, proc)
+            or conv.get("owner_phase") or conv.get("docs_target") != "declaration"
+            or not (conv.get("client_capabilities") or {}).get("supportsOpenEform")):
+        return r
+    item = _next_eform(conv, proc) or _eforms(proc)[0]
+    r.actions = [*r.actions, {"type": "open_eform", "row": item.get("row"), "label": item.get("label") or "",
+                              "variant": item["variant"], "fill": False}]
     return r
 
 
@@ -2493,7 +2526,7 @@ def _to_ask_doc_method(conv: dict, intro: tuple[str, str] | None = None) -> Repl
                    procedure=_proc_label(conv), doc_list=md_list, doc_list_tts=tts_list)
     r = Reply(md, tts)
     r.cards = [_doc_options_card()]
-    return r
+    return _with_eform_preopen(conv, proc, r)
 
 
 async def _handle_consent(conv: dict, intent: Intent) -> Reply:
@@ -2756,6 +2789,10 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
     owner_step = _wizard_step(proc, "ownerStep", 1)
     declaration_step = _wizard_step(proc, "declarationStep", 2)
     attachment_step = _wizard_step(proc, "attachmentStep", 3)
+    bac_ninh_reply = bac_ninh.arrive_reply(conv, proc, ctx)
+    if bac_ninh_reply is not None:
+        # Trang 4 tab Bắc Ninh: hỏi điền người ủy quyền trước, rồi xin đồng ý / nhận giấy tờ ở đúng tab.
+        return bac_ninh_reply
     if ctx.get("wizardStep") == attachment_step or ctx.get("attachmentTarget"):
         # Cổng có thể mở thẳng Thành phần hồ sơ: attach-only vốn bỏ qua kê khai, còn thủ tục
         # thường có thể được công dân tự chuyển tới bước 3 trước khi bắt đầu với Trợ lý.
@@ -3115,18 +3152,16 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
             await upload_service.create_for_conversation(conv)
         proc = get_procedure(conv.get("procedure_key") or "") or {}
         template = _scan_pick_template(conv, proc)
-        # Scan tại quầy: cả đợt tệp đi trong 1 request và đã phân loại xong khi request trả
-        # về → FE tự chốt (docs_done) ngay sau đợt chọn, không bắt bấm "Đã đưa đủ".
-        # CHỈ bật (kèm câu "em tự xử lý luôn") khi client khai supportsScanAutoRun — extension
-        # cũ trên chợ không khai → giữ luồng bấm tay, không hứa điều nó không làm.
-        # RIÊNG lượt Điều chỉnh giấy tờ giữ chốt tay (có thể chỉ xóa tệp rồi bấm hoàn tất).
-        auto_run = _supports_scan_auto_run(conv) and not bool(conv.get("supplementing_documents"))
-        r = Reply(*_fmt(template, note=vi.SCAN_AUTO_RUN_NOTE if auto_run else None,
+        # Chọn tệp từ máy: mỗi đợt tệp tải lên + phân loại ngay, nhưng KHÔNG tự chốt (auto_run=False) — công dân
+        # có thể chọn thêm nhiều đợt, tự bấm "Đã đưa đủ" như máy quét. Câu nhắc bấm nút chỉ nối cho client khai
+        # supportsScanAutoRun (giữ nguyên câu cũ của bản chợ cũ); lượt Điều chỉnh giấy tờ có nút hoàn tất riêng.
+        guide_done = _supports_scan_auto_run(conv) and not bool(conv.get("supplementing_documents"))
+        r = Reply(*_fmt(template, note=vi.SCAN_AUTO_RUN_NOTE if guide_done else None,
                         doc_name=_scan_pick_doc_name(conv)))
         r.actions = [{
             "type": "pick_files",
             "session_id": conv["upload_session_id"],
-            "auto_run": auto_run,
+            "auto_run": False,
         }]
         r.chips = [
             {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
@@ -3192,7 +3227,7 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         (conv.get("client_capabilities") or {}).get("supportsPageBoundDocsComplete")
     )
     captured_now = "pageContextCaptured" in (page_context or {})
-    target = _resolve_docs_target(proc, page_context, conv)
+    target = bac_ninh.docs_target(conv, proc, _resolve_docs_target(proc, page_context, conv))
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
         # Lượt điều chỉnh phải chạy lại đúng pipeline của bước đã mở yêu cầu. Page context
@@ -3295,6 +3330,9 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         conv["owner_info_done"] = False
         conv["state"] = "owner_filling"
         conv["pipeline_status"] = "running"
+        if adjustment_target == "owner":
+            # Xong lượt điều chỉnh của bước chủ hồ sơ; để lại thì lần chốt giấy tờ ở Kê khai bị đưa nhầm về đây.
+            _clear_documents_adjustment(conv)
         pipeline_runner.spawn(pipeline_runner.run_owner_info(
             conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or ""))
         return Reply(*_fmt(vi.DOCS_COMPLETE_OWNER, files_count=files_count))
@@ -3434,6 +3472,13 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
         # Đã qua bước chủ hồ sơ rồi mới mở lại chỗ tải giấy: checklist phải chỉ còn giấy tờ
         # của bước hiện tại, không hiện lại ô căn cước công dân đã dùng để điền form.
         await upload_service.sync_for_conversation(conv, session)
+    if target == "owner":
+        # Bước Thông tin chủ hồ sơ: chốt lại thì đọc lại giấy tờ và điền lại khối chủ hồ sơ (nhánh owner của
+        # _docs_complete), cùng phiên giấy tờ — tệp đã gửi còn nguyên, công dân chỉ thêm / bớt.
+        conv["owner_phase"] = True
+        conv["owner_info_done"] = False
+        conv["owner_fields"] = []
+        conv.pop("owner_review", None)
     if target == "declaration":
         # Kết quả cũ chỉ dùng để hiển thị form hiện tại. Lượt chốt sau phải tạo trace mới
         # và nhận fields mới từ OCR/LLM, không được phát lại cache cũ.
@@ -3448,6 +3493,8 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
     finish_detail = finish_detail or (
         "em sẽ đọc lại toàn bộ danh sách giấy tờ và điền lại tờ khai"
         if target == "declaration"
+        else "em sẽ đọc lại giấy tờ và điền lại thông tin chủ hồ sơ"
+        if target == "owner"
         else "em sẽ kiểm tra toàn bộ danh sách còn lại và tự bỏ qua những tệp đã có trên hồ sơ"
     )
     r = Reply(*_fmt(
@@ -3533,7 +3580,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
         r.actions = [{
             "type": "pick_files",
             "session_id": conv["upload_session_id"],
-            "auto_run": _supports_scan_auto_run(conv) and not bool(conv.get("supplementing_documents")),
+            "auto_run": False,  # chờ công dân bấm "Đã đưa đủ" (xem _apply_doc_method)
         }]
         r.chips = [_switch_to_qr_chip(), _docs_done_chip(conv)]
         return r
@@ -3594,6 +3641,7 @@ def _fill_fields_reply(conv: dict) -> Reply:
         r.actions = actions
         r.actions[0]["fieldReview"] = review
         r = tpm.fill_started_reply(conv, proc, r)
+    r = bac_ninh.fill_started_reply(conv, proc, r)
     return tu_phap_v2.fill_started_reply(conv, proc, r)
 
 
@@ -3764,7 +3812,8 @@ def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> I
     from app.channels.handfree.chat.intents import asks_next_step, asks_submit
 
     family_intent = (lien_thong.voice_intent(conv, message, page_context)
-                     or bxd.voice_intent(conv, message, page_context))
+                     or bxd.voice_intent(conv, message, page_context)
+                     or bac_ninh.voice_intent(conv, message, page_context))
     if family_intent is not None:
         return family_intent
     proc = get_procedure(conv.get("procedure_key") or "") or {}
@@ -4085,6 +4134,9 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
 
 
 async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
+    if intent.kind == "action" and intent.value == "add_documents":
+        # Xem / thêm / bớt giấy tờ ngay ở bước chủ hồ sơ, giữ nguyên phiên (khác "gửi lại giấy tờ" là bỏ phiên cũ).
+        return await _start_documents_adjustment(conv, "owner")
     if intent.kind == "action" and intent.value == "retry_owner_fill":
         conv["state"] = "owner_filling"
         conv["owner_info_done"] = False
@@ -4350,7 +4402,13 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         if tpm.is_active(proc):
             return await tpm.fill_report_reply(conv, rep, intent.payload.get("review"))
         if conv.get("eform_flow") and _eforms(proc):
-            return await _eform_fill_report(conv, proc, rep)
+            eform_reply = await _eform_fill_report(conv, proc, rep)
+            if eform_reply is not None:
+                return eform_reply
+            # Xong tờ khai cuối của thủ tục có vòng bổ sung ô: báo như mọi tờ khai tư pháp (ô bắt buộc / Bổ sung /
+            # Xem trước → Xác nhận) và chờ trang đính kèm như thường — Xác nhận xong tờ khai đóng, trang về bảng Thành
+            # phần hồ sơ thì tự đính (_eform_pending hết, _attachment_page_reached mới tính).
+            conv["auto_attach_after_fill"] = True
         # askBeforeAttach (registry): điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính.
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
@@ -4360,7 +4418,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # Cổng 2-tab cùng trang (Bắc Ninh): DOM không đổi sau khi điền → watcher (chỉ bắn khi
         # chữ ký trang đổi) sẽ KHÔNG phát page_status nữa. Không được chờ chuyển bước — chạy
         # planner đính kèm ngay tại đây; attach_ready về sẽ phát action như thường.
-        same_page_attach = auto_wait_attachment and bool(proc.get("samePageAttach"))
+        # Luồng tab Bắc Ninh: trợ lý tự dẫn sang tab Thành phần hồ sơ sau vòng bổ sung rồi mới đính (bac_ninh._arrive).
+        same_page_attach = (auto_wait_attachment and bool(proc.get("samePageAttach"))
+                            and not bac_ninh.enabled(conv, proc))
         conv["state"] = "attaching" if auto_wait_attachment else "reviewing"
         if same_page_attach:
             from app.channels.handfree.chat import pipeline_runner
@@ -4377,7 +4437,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
         from app.channels.handfree.chat import tracing
-        await tracing.set_report(conv.get("trace_request_id"), "autofill", rep)
+        await tracing.set_report(conv.get("trace_request_id"), "autofill", bac_ninh.trace_report(conv, proc, rep))
         missing = rep["notFound"]
         note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
         # Câu đuôi đi qua note= của _fmt: nối tay sẽ lẫn khối Việt–Mông và bắt giọng Mông
@@ -4389,6 +4449,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         )
         v2 = (lien_thong.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
               or bxd.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
+              or bac_ninh.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
               or tu_phap_v2.fill_report_reply(conv, proc, rep, intent.payload.get("review"), tail,
                                               auto_wait_attachment))
         if v2 is not None:
@@ -4432,8 +4493,15 @@ def _eforms(proc: dict | None) -> list[dict]:
 
 def _eform_pending(conv: dict, proc: dict | None) -> bool:
     """Còn ở chặng điền tờ khai: chưa sang đính kèm thì bước Thành phần hồ sơ vẫn là kê khai."""
-    return (bool(_eforms(proc)) and (proc or {}).get("mode") != "attach"
-            and not conv.get("eforms_attach_started"))
+    if not _eforms(proc) or (proc or {}).get("mode") == "attach" or conv.get("eforms_attach_started"):
+        return False
+    # Tờ khai lưu bằng Xem trước → Xác nhận (thủ tục có vòng bổ sung ô): Xác nhận xong tờ khai đóng, trang về bảng
+    # Thành phần hồ sơ. Đã điền hết mà không còn tờ khai nào mở thì đây là chặng đính kèm — giữ "kê khai" là trợ lý
+    # đứng im mãi. Đang điều chỉnh giấy tờ để điền lại thì vẫn là kê khai.
+    done = (conv.get("eform_flow") and not conv.get("eform_running") and not _next_eform(conv, proc)
+            and not _eform_open_now(conv, proc) and field_review.active(conv, proc or {})
+            and _documents_adjustment_target(conv) != "declaration")
+    return not done
 
 
 def _eform_by_variant(proc: dict, variant: str) -> dict:
@@ -4460,11 +4528,25 @@ def _enter_eform_phase(conv: dict, *, reset: bool) -> None:
         conv["eforms_filled"] = []
         conv["eforms_attach_started"] = False
     conv["eform_running"] = None
+    conv["eform_open_sent"] = False
     conv["state"] = "reviewing"
     conv["owner_phase"] = False
     conv["main_processing_started"] = True
     conv["auto_attach_after_fill"] = False
     conv["pipeline_status"] = ""
+
+
+def _eform_open_reply(conv: dict, proc: dict) -> Reply | None:
+    """Extension tự bấm "Khai tờ khai" ở đúng dòng rồi tự gửi fill_eform khi tờ khai mở ra. Chỉ thử MỘT lần mỗi lượt
+    điền: mở xong mà BE vẫn chưa thấy tờ khai thì quay về hướng dẫn bấm tay, không bấm lặp. None = không tự mở."""
+    if not (conv.get("client_capabilities") or {}).get("supportsOpenEform") or conv.get("eform_open_sent"):
+        return None
+    item = _next_eform(conv, proc) or _eforms(proc)[0]
+    conv["eform_open_sent"] = True
+    r = Reply(*_fmt(vi.EFORM_OPENING, row=item.get("row") or "", label=item.get("label") or ""))
+    r.actions = [{"type": "open_eform", "row": item.get("row"), "label": item.get("label") or "",
+                  "variant": item["variant"]}]
+    return r
 
 
 def _eform_guide_reply(conv: dict, proc: dict, template: dict, **kw) -> Reply:
@@ -4484,7 +4566,8 @@ async def _eform_start(conv: dict, proc: dict, *, files_count: int) -> Reply:
     ))
     if _eform_open_now(conv, proc):
         return await _eform_fill(conv, proc)
-    return _eform_guide_reply(conv, proc, vi.EFORM_DOCS_READY, files_count=files_count)
+    return _eform_open_reply(conv, proc) or _eform_guide_reply(conv, proc, vi.EFORM_DOCS_READY,
+                                                               files_count=files_count)
 
 
 async def _eform_fill(conv: dict, proc: dict) -> Reply:
@@ -4495,7 +4578,8 @@ async def _eform_fill(conv: dict, proc: dict) -> Reply:
         return Reply(*_fmt(vi.REFILL_ALREADY_RUNNING))
     eform = _eform_open_now(conv, proc)
     if not eform:
-        return _eform_guide_reply(conv, proc, vi.EFORM_NOT_OPEN)
+        return _eform_open_reply(conv, proc) or _eform_guide_reply(conv, proc, vi.EFORM_NOT_OPEN)
+    conv["eform_open_sent"] = False
     sid = str(conv.get("upload_session_id") or "")
     procedure_key = str(conv.get("procedure_key") or "")
     if not sid or not procedure_key:
@@ -4515,7 +4599,10 @@ async def _eform_fill(conv: dict, proc: dict) -> Reply:
     return Reply(*_fmt(vi.EFORM_FILLING, label=label))
 
 
-async def _eform_fill_report(conv: dict, proc: dict, rep: dict) -> Reply:
+async def _eform_fill_report(conv: dict, proc: dict, rep: dict) -> Reply | None:
+    """Ghi tờ khai vừa điền xong. Còn tờ khai kế tiếp → câu mời mở tờ khai đó. Hết tờ khai mà thủ tục có vòng bổ sung
+    ô (tờ khai lưu bằng Xem trước → Xác nhận như tờ khai tư pháp thường) → None: người gọi báo theo luồng chuẩn (số ô
+    bắt buộc, Bổ sung, Xem trước). Thủ tục không có vòng bổ sung giữ câu "lưu, đóng lại rồi đính kèm"."""
     from app.channels.handfree.chat import tracing
 
     variant = str((conv.get("eform_running") or {}).get("formVariant") or "")
@@ -4526,12 +4613,14 @@ async def _eform_fill_report(conv: dict, proc: dict, rep: dict) -> Reply:
     conv["eform_running"] = None
     conv["state"] = "reviewing"
     conv["pipeline_status"] = ""
+    nxt = _next_eform(conv, proc)
+    if not nxt and field_review.active(conv, proc):
+        return None
     await tracing.set_report(conv.get("trace_request_id"), "autofill", rep)
     _clear_documents_adjustment(conv)
 
     missing = rep["notFound"]
     note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
-    nxt = _next_eform(conv, proc)
     r = Reply(*_fmt(
         vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
         note=vi.EFORM_NEXT if nxt else vi.EFORM_ALL_FILLED,
@@ -4545,6 +4634,7 @@ async def _eform_fill_report(conv: dict, proc: dict, rep: dict) -> Reply:
         r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
                    {"label": "🔁 Điền lại tờ khai đang mở", "send": "__action:refill"},
                    _supplement_documents_chip()]
+    r.actions = [*tu_phap_v2.fill_card_done(conv, proc), *r.actions]
     return r
 
 
@@ -4563,6 +4653,9 @@ async def _handle_eform_reviewing(conv: dict, proc: dict, intent: Intent) -> Rep
         return await _handle_attaching(conv, Intent("action", "request_attach", {}))
     if intent.kind == "action" and intent.value == "add_documents":
         return None
+    if intent.kind == "event" and intent.value == "eform_open_failed":
+        # Không thấy nút "Khai tờ khai" / tờ khai không mở ra trong thời gian chờ → công dân tự bấm như cũ.
+        return _eform_guide_reply(conv, proc, vi.EFORM_NOT_OPEN)
     if intent.kind == "event":
         return Reply()
     # Câu hỏi/gõ khác: nhắc lại đúng việc đang chờ.
@@ -4732,7 +4825,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             return await _handle_attaching(conv, Intent("event", "pipeline_error"))
         plan = conv.get("attach_plan") or []
         proc = get_procedure(conv.get("procedure_key") or "") or {}
-        attachment_page_reached = _attachment_page_reached(conv, proc, intent.payload)
+        # Tờ khai mở ngay trên bảng Thành phần hồ sơ (declarationEforms): thanh bước đã là 3 nhưng tờ khai còn đang
+        # điền / chưa Xác nhận → chưa phải lúc đính kèm.
+        attachment_page_reached = (not _eform_pending(conv, proc)
+                                   and _attachment_page_reached(conv, proc, intent.payload))
         if attachment_page_reached and plan and not conv.get("attach_done"):
             replan = _replan_attach_if_settings_changed(conv)
             if replan is not None:
@@ -4858,6 +4954,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         elif bxd.enabled(conv, proc_done):
             r = bxd.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                       split=conv.get("attach_mode") == "split")
+        elif bac_ninh.enabled(conv, proc_done):
+            r = bac_ninh.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors)
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")

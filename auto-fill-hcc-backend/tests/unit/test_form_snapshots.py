@@ -136,7 +136,7 @@ def test_luat_buoc_hop_le():
 
 def test_formio_khong_khop_theo_nhan_tiep_tuc():
     formio = [h for h, r in PORTAL_SUBMIT.items() if r.get("buttonSelector") == 'button[form="captchaForm"]']
-    assert len(formio) == 10
+    assert len(formio) == 11  # 10 cổng cũ + Lào Cai iGate mới (dichvucongtest.laocai.gov.vn)
     for host in formio:
         (rule,) = PORTAL_STEP[host]
         assert "buttonText" not in rule and "-0" in rule["buttonSelector"]

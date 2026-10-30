@@ -158,6 +158,12 @@ async def handle(conv: dict, proc: dict | None, intent):
         return _apply(conv, st, key, ISSUE_PLACE_OPTIONS[index])
     field = _ask_field(conv, key)
     answer = await agent.interpret(str((intent.payload or {}).get("text") or ""), field)
+    if answer.action == "command" and await field_review.reroute(conv, str((intent.payload or {}).get("text") or "")):
+        # Không trả lời ô mà ra lệnh khác của bước ("điều chỉnh giấy tờ"…): thôi hỏi, flow chạy lệnh đó luôn.
+        from app.channels.handfree.chat.flow import Reply
+
+        st["current"] = None
+        return Reply()
     if answer.action == "skip":
         return _next(conv, proc, st, _skipped(conv, key))
     if answer.action in {"stop", "proceed"}:

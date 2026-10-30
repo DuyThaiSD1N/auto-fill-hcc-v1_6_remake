@@ -40,6 +40,11 @@ def _discover() -> dict[str, dict]:
             "textDates": _names(module_name, getattr(module, "TEXT_DATES", ()), "TEXT_DATES"),
             "lookup": _names(module_name, getattr(module, "LOOKUP", ()), "LOOKUP"),
         }
+        mirror = _names(module_name, getattr(module, "MIRROR", ()), "MIRROR")
+        if mirror:
+            if not all(item.count("=") == 1 and all(item.split("=")) for item in mirror):
+                raise RuntimeError(f"{module_name}.MIRROR phải là các chuỗi 'ô trả lời=ô ghi kèm'")
+            config["mirror"] = mirror
         nested = _names(module_name, getattr(module, "NESTED", ()), "NESTED")
         if nested:
             config["nested"] = nested

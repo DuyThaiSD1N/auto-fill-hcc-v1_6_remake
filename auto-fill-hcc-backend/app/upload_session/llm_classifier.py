@@ -8,11 +8,14 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.pipelines._shared.documents import first_ocr_pages
 from app.services import ocr
 from app.services.llm import client
 
 
 logger = logging.getLogger(__name__)
+
+_CLASSIFY_PAGES = 3
 
 
 @dataclass(frozen=True)
@@ -32,7 +35,9 @@ async def _classify_one(file: dict, ocr_result: dict, spec: ClassificationSpec,
                         context: dict | None = None) -> str | None:
     """Gọi LLM cho đúng một tệp; lỗi tệp này không làm hỏng tệp khác."""
     name = file.get("name") or "file"
-    text = ocr_result.get("text") or ""
+    # Loại giấy nằm ở vài trang đầu; bản vẽ / bộ hồ sơ dày chục trang mà đưa cả vào prompt chỉ làm lượt tải lên
+    # chậm thêm. OCR vẫn đọc hết (vào cache cho bước điền), chỉ LLM phân loại xem phần đầu.
+    text = first_ocr_pages(ocr_result.get("text") or "", _CLASSIFY_PAGES)
     user_content = (
         spec.build_user_prompt_with_context(name, text, dict(context or {}))
         if spec.build_user_prompt_with_context

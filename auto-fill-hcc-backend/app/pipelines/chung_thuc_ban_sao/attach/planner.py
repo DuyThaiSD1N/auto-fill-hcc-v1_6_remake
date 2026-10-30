@@ -3,6 +3,7 @@
 OCR toàn bộ file trong một batch, phân đoạn mọi trang bằng đúng một request LLM, sau đó hậu xử lý
 tất định: phủ đủ trang, gom các phần cùng giấy tờ và gom CCCD theo đúng số định danh/chủ thể.
 """
+import asyncio
 import base64
 import logging
 import re
@@ -301,10 +302,31 @@ async def _classify_documents_with_llm(documents: list[dict[str, Any]]) -> list[
     return parsed.get("documents", []) or []
 
 
+# Output giữ nguyên là một object cho MỖI tệp nên dài theo số tệp: hồ sơ vài chục tệp gọi một lượt
+# vừa chậm vừa bị cắt ở trần token. Chia nhóm tệp LIỀN NHAU (mặt trước/sau tách hai tệp thường đứng cạnh
+# nhau) và gọi song song; hồ sơ không quá một nhóm vẫn đúng một lượt như cũ.
+_SOURCE_FILES_PER_LLM_CALL = 8
+
+
 async def _classify_source_files_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
-    """Giữ nguyên mỗi file và đặt đúng một tên bằng prompt riêng, vẫn chỉ một request LLM."""
+    """Giữ nguyên mỗi file và đặt đúng một tên bằng prompt riêng, mỗi nhóm tệp một request LLM."""
     if not documents:
         return []
+    groups = [
+        documents[start:start + _SOURCE_FILES_PER_LLM_CALL]
+        for start in range(0, len(documents), _SOURCE_FILES_PER_LLM_CALL)
+    ]
+    results = await asyncio.gather(*(_classify_source_group(group) for group in groups), return_exceptions=True)
+    failed = [result for result in results if isinstance(result, BaseException)]
+    if len(failed) == len(results):
+        raise failed[0]
+    for error in failed:
+        # Nhóm lỗi: tệp của nhóm đó rơi về tên dự phòng ở _validated_segments, các nhóm khác vẫn dùng.
+        logger.warning("Phân loại chứng thực: một nhóm tệp lỗi LLM: %s", error)
+    return [doc for result in results if not isinstance(result, BaseException) for doc in result]
+
+
+async def _classify_source_group(documents: list[dict[str, Any]]) -> list[dict]:
     page_total = sum(len(item.get("pages") or []) for item in documents)
     raw = await client.chat(
         [

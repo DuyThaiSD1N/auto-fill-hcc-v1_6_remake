@@ -43,8 +43,8 @@ def test_registration_mapper_separates_deceased_and_arranger_duplicate_labels():
 
 def test_authorized_mapper_requires_real_authorization_document():
     fields, warnings = _mapped({
-        "NguoiDuocUyQuyen_HoTen": "PHẠM THỊ HỒNG",
-        "NguoiDuocUyQuyen_SoDinhDanh": "027194012345",
+        "NguoiUyQuyen_HoTen": "PHẠM THỊ HỒNG",
+        "NguoiUyQuyen_SoDinhDanh": "027194012345",
     }, "authorized_person")
 
     assert fields == {}
@@ -54,11 +54,11 @@ def test_authorized_mapper_requires_real_authorization_document():
 def test_authorized_mapper_fills_only_authorized_person_block():
     fields, warnings = _mapped({
         "UyQuyen_CoBienBan": True,
-        "NguoiDuocUyQuyen_HoTen": "PHẠM THỊ HỒNG",
-        "NguoiDuocUyQuyen_NgaySinh": "02/03/1994",
-        "NguoiDuocUyQuyen_GioiTinh": "Nữ",
-        "NguoiDuocUyQuyen_SoDinhDanh": "027194012345",
-        "NguoiDuocUyQuyen_ThuongTru": {
+        "NguoiUyQuyen_HoTen": "PHẠM THỊ HỒNG",
+        "NguoiUyQuyen_NgaySinh": "02/03/1994",
+        "NguoiUyQuyen_GioiTinh": "Nữ",
+        "NguoiUyQuyen_SoDinhDanh": "027194012345",
+        "NguoiUyQuyen_ThuongTru": {
             "quocGia": "Việt Nam",
             "tinh": "Bắc Ninh",
             "xa": "Phường Song Liễu",

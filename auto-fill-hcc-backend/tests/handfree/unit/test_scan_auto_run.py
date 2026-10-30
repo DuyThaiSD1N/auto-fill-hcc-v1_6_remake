@@ -1,5 +1,5 @@
-"""Scan tại quầy tự chốt sau mỗi đợt chọn tệp: action pick_files mang auto_run (True lượt
-thường, False lượt Điều chỉnh giấy tờ) — FE dựa cờ này để tự gửi docs_done thay nút bấm."""
+"""Chọn tệp từ máy: mỗi đợt tệp vẫn tải lên + phân loại, nhưng KHÔNG tự chốt — action pick_files luôn auto_run=False,
+công dân tự bấm "Đã đưa đủ" như máy quét (câu nhắc bấm nút chỉ nối cho client khai supportsScanAutoRun)."""
 import pytest
 
 from app.channels.handfree.chat import flow
@@ -24,11 +24,11 @@ def _conv(**kw):
     return base
 
 
-async def test_scan_luot_dau_auto_run_va_bao_truoc(stub_upload_session):
+async def test_scan_luot_dau_khong_tu_chot_va_nhac_bam_da_dua_du(stub_upload_session):
     conv = _conv()
     r = await flow._apply_doc_method(conv, "scan", reuse_session=False)
     action = next(a for a in r.actions if a["type"] == "pick_files")
-    assert action["auto_run"] is True
+    assert action["auto_run"] is False
     assert "Đã đưa đủ giấy tờ" in r.display_md, "phải hướng dẫn bấm Đã đưa đủ khi scan xong"
 
 
@@ -54,7 +54,7 @@ async def test_pick_files_again_mang_cung_co(stub_upload_session):
     conv = _conv(state="collecting_docs", doc_method="scan", upload_session_id="HS-TEST")
     r = await flow._handle_collecting_docs(conv, Intent("action", "pick_files_again"))
     action = next(a for a in r.actions if a["type"] == "pick_files")
-    assert action["auto_run"] is True
+    assert action["auto_run"] is False
 
     conv2 = _conv(state="collecting_docs", doc_method="scan", upload_session_id="HS-TEST",
                   supplementing_documents=True)

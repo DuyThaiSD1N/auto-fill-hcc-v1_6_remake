@@ -11,6 +11,19 @@ def split_ocr_pages(text: str) -> list[str]:
     return [p for p in _PAGE_SPLIT_RE.split(raw) if p.strip()] or ([raw] if raw.strip() else [])
 
 
+def first_ocr_pages(text: str, count: int) -> str:
+    """Nguyên văn OCR của `count` trang đầu (cắt ngay trước vạch chia trang kế tiếp); ít trang hơn → giữ nguyên.
+
+    Trang 1 có thể không mang vạch (provider chỉ chèn vạch từ trang 2) — khi đó vạch đầu tiên đã là trang 2.
+    """
+    raw = str(text or "")
+    marks = list(_PAGE_SPLIT_RE.finditer(raw))
+    if count <= 0 or not marks:
+        return raw
+    index = count if not raw[:marks[0].start()].strip() else count - 1
+    return raw[:marks[index].start()] if index < len(marks) else raw
+
+
 def representative_excerpt(text: str, limit: int = 3000) -> str:
     """Trích đoạn ĐẠI DIỆN của một tệp nhiều trang để LLM phân loại, thay cho cắt N ký tự đầu.
 

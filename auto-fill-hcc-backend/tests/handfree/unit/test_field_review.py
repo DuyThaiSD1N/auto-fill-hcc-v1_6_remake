@@ -721,7 +721,15 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cung-cap-thong-tin-quy-hoach", "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
                                      "cap-phep-long-duong-via-he", "cho-thue-thue-mua-nha-o-xa-hoi",
                                      "cap-giay-phep-chat-ha-cay-xanh", "chap-thuan-dau-noi-tam",
-                                     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan"}
+                                     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+                                     "dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
+                                     "dinh-chinh-gcn-da-cap-bac-ninh", "dinh-chinh-gcn-da-cap-1115476-bac-ninh",
+                                     "dang-ky-bien-dong-dat-dai-bac-ninh", "dang-ky-bien-dong-thoa-thuan-bac-ninh",
+                                     "tach-hop-thua-dat-bac-ninh", "cap-doi-gcn-bac-ninh",
+                                     "dang-ky-dat-dai-lan-dau-bac-ninh", "thu-hoi-gcn-cap-sai-bac-ninh",
+                                     "dinh-chinh-sai-sot-bac-ninh", "giao-thue-chuyen-muc-dich-dat-bac-ninh",
+                                     "dang-ky-bien-dong-chuyen-nhuong-bac-ninh", "ho-tro-nguoi-cao-tuoi-bac-ninh",
+                                     "ho-tro-chi-phi-hoa-tang-bac-ninh", "dang-ky-nha-o-xa-hoi-bac-ninh"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")
@@ -1019,3 +1027,54 @@ async def test_sua_lai_to_khai_khi_da_du_o_chi_con_nut_xem_truoc():
     reply = await _turn(conv, "action", "field_review_preview_close")
     assert _sends(reply) == ["__action:field_review_preview"]
     assert "Bổ sung" not in reply.display_md
+
+
+# ── Đang hỏi ô mà công dân ra lệnh khác của bước ──
+
+async def test_dang_hoi_o_noi_dieu_chinh_giay_to_thi_dung_hoi_va_chay_lenh(monkeypatch):
+    conv = _conv()
+    await _ask(conv, FIELD)
+    assert conv["field_review"]["running"]
+    _answer(monkeypatch, "command")
+    seen = {}
+
+    async def resolve(text, state, _conv):
+        seen["text"], seen["state"] = text, state
+        return Intent("action", "add_documents", {})
+
+    async def adjust(_conv, target, **_kw):
+        seen["target"] = target
+        return flow.Reply("điều chỉnh giấy tờ")
+
+    monkeypatch.setattr(field_review.intents, "resolve", resolve)
+    monkeypatch.setattr(flow, "_start_documents_adjustment", adjust)
+    reply = await _turn(conv, "action", "field_review_answer", {"text": "điều chỉnh giấy tờ"})
+    assert seen["text"] == "điều chỉnh giấy tờ"
+    assert seen["target"] == "declaration", "chạy đúng lệnh Điều chỉnh giấy tờ của bước"
+    assert reply.display_md == "điều chỉnh giấy tờ"
+    assert _types(reply)[0] == "field_review_stop", "tắt tô ô của vòng hỏi"
+    assert not conv["field_review"]["running"]
+
+
+async def test_lenh_khong_ro_viec_gi_thi_hoi_lai_o_nhu_cu(monkeypatch):
+    conv = _conv()
+    await _ask(conv, FIELD)
+    _answer(monkeypatch, "command")
+    monkeypatch.setattr(field_review.intents, "resolve", AsyncMock(return_value=Intent("unknown")))
+    reply = await _turn(conv, "action", "field_review_answer", {"text": "ờ cái kia"})
+    assert conv["field_review"]["running"], "không ra việc gì → vẫn đang hỏi ô"
+    assert "field_review_stop" not in _types(reply)
+
+
+# ── Bước chủ hồ sơ → "sang bước điền tờ khai" ──
+
+@pytest.mark.parametrize(("key", "step"), [
+    ("khai-sinh-dang-ky-thuong", 2),                      # tờ khai ở bước Kê khai
+    ("dang-ky-nuoi-con-nuoi-trong-nuoc", 3),              # tờ khai ở dòng "Khai tờ khai" của Thành phần hồ sơ
+    ("khai-sinh-ket-hop-nhan-cha-me-con", 3),
+])
+def test_sang_buoc_dien_to_khai_cho_dung_buoc_cong_nhay_toi(key, step):
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    r = field_review._owner_step(get_procedure(key), Intent("action", "field_review_owner_next", {}))
+    assert r.actions == [{"type": "guided_click_next", "phase": field_review.OWNER_PHASE, "expectStep": step}]

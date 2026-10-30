@@ -1,4 +1,4 @@
-"""Schema nguồn cho đơn hỗ trợ chi phí hỏa táng và khối người được ủy quyền."""
+"""Schema nguồn cho đơn hỗ trợ chi phí hỏa táng và khối người ủy quyền (chủ hồ sơ)."""
 
 FIELDS: list[dict] = [
     {"name": "Don_KinhGui", "desc": "Cơ quan ở dòng Kính gửi của Đơn đề nghị hỗ trợ kinh phí hỏa táng."},
@@ -32,18 +32,18 @@ FIELDS: list[dict] = [
         "name": "UyQuyen_CoBienBan",
         "desc": "Boolean true CHỈ khi hồ sơ có tài liệu độc lập mang tiêu đề/nội dung Biên bản hoặc Văn bản ủy quyền; không suy từ việc người làm đơn khác người chết.",
     },
-    {"name": "NguoiDuocUyQuyen_HoTen", "desc": "Họ tên BÊN ĐƯỢC ỦY QUYỀN trong Biên bản/Văn bản ủy quyền; không lấy bên ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_GioiTinh", "desc": "Giới tính bên được ủy quyền, chỉ Nam hoặc Nữ khi giấy tờ ghi rõ."},
-    {"name": "NguoiDuocUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh của bên được ủy quyền, chỉ giữ chữ số."},
-    {"name": "NguoiDuocUyQuyen_NgayCap", "desc": "Ngày cấp CCCD của bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_NoiCap", "desc": "Nơi cấp CCCD của bên được ủy quyền."},
+    {"name": "NguoiUyQuyen_HoTen", "desc": "Họ tên BÊN ỦY QUYỀN (chủ hồ sơ) trong Biên bản/Văn bản ủy quyền; nhiều người cùng ủy quyền thì lấy người đứng đầu danh sách bên ủy quyền; không lấy bên ủy quyền (người đi nộp thay)."},
+    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền, chỉ Nam hoặc Nữ khi giấy tờ ghi rõ."},
+    {"name": "NguoiUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh của bên ủy quyền, chỉ giữ chữ số."},
+    {"name": "NguoiUyQuyen_NgayCap", "desc": "Ngày cấp CCCD của bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_NoiCap", "desc": "Nơi cấp CCCD của bên ủy quyền."},
     {
-        "name": "NguoiDuocUyQuyen_ThuongTru",
-        "desc": "Địa chỉ của bên được ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên Biên bản ủy quyền rồi CCCD đúng người.",
+        "name": "NguoiUyQuyen_ThuongTru",
+        "desc": "Địa chỉ của bên ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên Biên bản ủy quyền rồi CCCD đúng người.",
     },
-    {"name": "NguoiDuocUyQuyen_Email", "desc": "Email của bên được ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
-    {"name": "NguoiDuocUyQuyen_SoDienThoai", "desc": "Số điện thoại của bên được ủy quyền nếu hồ sơ ghi rõ."},
+    {"name": "NguoiUyQuyen_Email", "desc": "Email của bên ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
+    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại của bên ủy quyền nếu hồ sơ ghi rõ."},
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}
@@ -57,8 +57,8 @@ for _name in (
     "NguoiDungRa_NgaySinh",
     "NguoiDungRa_NgayCap",
     "Don_NgayLap",
-    "NguoiDuocUyQuyen_NgaySinh",
-    "NguoiDuocUyQuyen_NgayCap",
+    "NguoiUyQuyen_NgaySinh",
+    "NguoiUyQuyen_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-COMPACT_COMP_BY_NAME["NguoiDuocUyQuyen_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiUyQuyen_ThuongTru"] = "x-select-area"

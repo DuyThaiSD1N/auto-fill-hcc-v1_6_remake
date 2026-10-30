@@ -134,6 +134,8 @@ _STATE_INTENTS: dict[str, list[dict]] = {
     "owner_waiting_next": [
         {"kind": "action", "value": "retry_owner_fill",
          "desc": "yêu cầu điền lại thông tin chủ hồ sơ, ví dụ 'điền đi', 'điền lại', 'thử lại'"},
+        {"kind": "action", "value": "add_documents",
+         "desc": "muốn xem, thêm, xóa hoặc chụp lại giấy tờ rồi điền lại thông tin chủ hồ sơ (điều chỉnh giấy tờ)"},
     ],
     "filling": [
         {"kind": "action", "value": "request_attach",

@@ -75,20 +75,28 @@ FIELDS: list[dict] = [
     {"name": "Gcn_CoQuanCap", "desc": "Cơ quan cấp GCN, vd 'Văn phòng Đăng ký Đất đai TP …'."},
     {"name": "Gcn_NgayCap", "desc": "Ngày cấp GCN, dd/mm/yyyy."},
 
-    # --- Khối NGƯỜI ĐƯỢC ỦY QUYỀN (nút 'Điền thông tin người ủy quyền') ---
+    # --- Khối "Thông tin trong trường hợp được ủy quyền" = NGƯỜI ỦY QUYỀN (chủ hồ sơ) ---
     {"name": "UyQuyen_CoVanBan", "desc": "Boolean true CHỈ khi hồ sơ có tài liệu độc lập mang tiêu đề/nội "
         "dung Giấy giới thiệu/Văn bản ủy quyền cử người nộp hồ sơ; không suy từ việc người nộp khác chủ hồ sơ."},
-    {"name": "NguoiDuocUyQuyen_HoTen", "desc": "Họ tên BÊN ĐƯỢC ỦY QUYỀN/người được cử đi nộp trong Giấy "
-        "giới thiệu/Văn bản ủy quyền; không lấy bên ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_GioiTinh", "desc": "Giới tính bên được ủy quyền, chỉ 'Nam'/'Nữ' khi ghi rõ."},
-    {"name": "NguoiDuocUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh bên được ủy quyền, chỉ chữ số."},
-    {"name": "NguoiDuocUyQuyen_NgayCap", "desc": "Ngày cấp CCCD bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên được ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_ThuongTru", "desc": "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,"
-        "chiTietDuoiXa}; ưu tiên Văn bản ủy quyền rồi CCCD. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_Email", "desc": "Email bên được ủy quyền nếu ghi rõ."},
-    {"name": "NguoiDuocUyQuyen_SoDienThoai", "desc": "Số điện thoại bên được ủy quyền nếu ghi rõ."},
+    {"name": "NguoiUyQuyen_Loai", "desc": "Loại của BÊN ỦY QUYỀN (bên ký Văn bản ủy quyền / đơn vị cấp Giấy giới "
+        "thiệu), chép ĐÚNG MỘT trong: 'Cá nhân khác là Công dân Việt Nam', 'Người nước ngoài', 'Doanh nghiệp', "
+        "'Tổ chức', 'Hộ kinh doanh cá thể'. Ngân hàng/công ty → 'Doanh nghiệp'; cơ quan, hợp tác xã, đơn vị sự "
+        "nghiệp → 'Tổ chức'; cá nhân quốc tịch Việt Nam → 'Cá nhân khác là Công dân Việt Nam'."},
+    {"name": "NguoiUyQuyen_Ten", "desc": "Họ tên (cá nhân) hoặc tên đầy đủ (doanh nghiệp/tổ chức) của BÊN ỦY QUYỀN "
+        "trong Văn bản ủy quyền/Giấy giới thiệu; không lấy người được ủy quyền (người đi nộp)."},
+    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền là cá nhân, chỉ 'Nam'/'Nữ' khi giấy tờ ghi rõ."},
+    {"name": "NguoiUyQuyen_SoDinhDanh", "desc": "Số giấy tờ của bên ủy quyền: cá nhân → số CCCD/định danh; doanh "
+        "nghiệp/hộ kinh doanh → mã số doanh nghiệp/số đăng ký kinh doanh; tổ chức → mã đơn vị/mã số thuế; người "
+        "nước ngoài → số hộ chiếu. Chỉ chữ số (hộ chiếu giữ chữ cái)."},
+    {"name": "NguoiUyQuyen_NgayCap", "desc": "Ngày cấp CCCD/hộ chiếu (cá nhân) hoặc ngày đăng ký lần đầu (doanh "
+        "nghiệp/hộ kinh doanh) của bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_NoiCap", "desc": "Nơi cấp CCCD/hộ chiếu của bên ủy quyền là cá nhân."},
+    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền là cá nhân, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_DiaChi", "desc": "Địa chỉ bên ủy quyền (cá nhân: nơi thường trú; doanh nghiệp/tổ chức: "
+        "trụ sở chính), object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên Văn bản ủy quyền/Giấy giới thiệu rồi tới "
+        "Phiếu yêu cầu, GCN ĐKDN, CCCD. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
+    {"name": "NguoiUyQuyen_Email", "desc": "Email bên ủy quyền nếu ghi rõ."},
+    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại bên ủy quyền nếu ghi rõ. Chỉ chữ số."},
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}
@@ -96,7 +104,7 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _d in (
     "Don_NgayKhai", "HopDong_ThoiDiemHieuLuc", "BenBaoDam_NgayCap", "Gcn_NgayCap",
-    "NguoiDuocUyQuyen_NgaySinh", "NguoiDuocUyQuyen_NgayCap",
+    "NguoiUyQuyen_NgaySinh", "NguoiUyQuyen_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_d] = "x-date"
-COMPACT_COMP_BY_NAME["NguoiDuocUyQuyen_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiUyQuyen_DiaChi"] = "x-select-area"

@@ -90,8 +90,7 @@ GUIDE_LOGIN = {
     "tts": "Nếu trang hiện mã, công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã ạ.",
 }
 
-# Máy quét trả tệp lẻ tẻ (scan-bridge) → công dân chủ động bấm "Đã đưa đủ" khi xong. Câu này NỐI
-# vào SCAN_PICK. (Đường chọn tệp tay khi máy chưa cài agent vẫn tự chốt theo đợt như trước.)
+# Máy quét / chọn tệp từ máy: công dân chủ động bấm "Đã đưa đủ" khi xong. Câu này NỐI vào SCAN_PICK.
 SCAN_AUTO_RUN_NOTE = {
     "md": " Xong hết → bấm **Đã đưa đủ giấy tờ** ạ.",
     "tts": " Xong hết thì bấm Đã đưa đủ giấy tờ ạ.",
@@ -640,6 +639,11 @@ EFORM_NOT_OPEN = {
         "Em chưa thấy tờ khai đang mở. Công dân nhấn nút Khai tờ khai ở dòng {row}, "
         "tờ khai hiện ra rồi bấm lại Điền tờ khai ạ."
     ),
+}
+# Extension tự bấm "Khai tờ khai" (cờ supportsOpenEform): tờ khai mở ra thì điền luôn, công dân không phải bấm gì.
+EFORM_OPENING = {
+    "md": "Em đang mở **{label}** (dòng {row} của Thành phần hồ sơ) để điền, công dân chờ chút ạ…",
+    "tts": "Dạ, em đang mở tờ khai để điền, công dân chờ chút ạ.",
 }
 EFORM_FILLING = {
     "md": "Em đang điền **{label}**. Công dân giữ nguyên tờ khai đang mở, chờ chút ạ…",
@@ -2089,6 +2093,217 @@ BXD_SUBMIT_FAILED = {
            "cạnh ảnh để lấy mã khác) rồi bấm **Nộp hồ sơ** lại ạ."),
     "tts": ("Dạ hồ sơ chưa nộp được. Công dân kiểm tra lại mã xác nhận, nếu cần bấm làm mới để lấy mã khác, rồi bấm "
             "Nộp hồ sơ lại ạ."),
+}
+# ── Cổng Bắc Ninh (Liferay, 4 tab cùng trang, chat/bac_ninh.py): câu hỏi điền người ủy quyền ở tab Chọn cơ quan tiếp
+# nhận, nút + lệnh nói "bước tiếp theo" chuyển tab, nơi nhận kết quả, nút Nộp hồ sơ. Chỉ bản tiếng Việt: luồng tắt ở
+# chế độ Mông. Thẻ nơi nhận kết quả dùng chung khuôn result_methods. ──
+BN_TAB_LABELS = {1: "Chọn cơ quan tiếp nhận", 2: "Nhập đơn đăng ký", 3: "Tải thành phần hồ sơ",
+                 4: "Thông tin đăng ký nhận kết quả"}
+# Nút đi tiếp theo tab ĐÍCH - 1 (tab 2 / 3 / 4).
+BN_NEXT_CHIPS = {1: "📝 Sang Nhập đơn đăng ký ▶", 2: "📎 Sang Thành phần hồ sơ ▶",
+                 3: "📬 Sang Thông tin đăng ký nhận kết quả ▶"}
+BN_WHO_DEFAULT = "người ủy quyền"
+BN_NEXT_DESC = "đi tiếp, sang bước / phần tiếp theo, qua {step}, ok được rồi đi tiếp"
+BN_AUTHORIZED_YES_CHIP = "✍️ Điền thông tin {who}"
+BN_AUTHORIZED_NO_CHIP = "➡️ Không điền, sang {step}"
+BN_AUTHORIZED_YES_DESC = "có, có điền, điền đi, có {who}, có giấy ủy quyền / giấy giới thiệu"
+BN_AUTHORIZED_NO_DESC = "không, không điền, không cần, không có ủy quyền, bỏ qua, sang {step} luôn"
+BN_RETRY_CHIP = "🔁 Thử chuyển lại"
+BN_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+BN_ATTACH_RETRY_CHIP = "🔁 Đính kèm lại"
+BN_ATTACH_RETRYING = {
+    "md": "Dạ em đính kèm lại các tệp chưa lên trang ạ…",
+    "tts": "Dạ em đính kèm lại các tệp chưa lên trang ạ.",
+}
+BN_AGENCY_ASK = {
+    "md": ("Đây là phần **Chọn cơ quan tiếp nhận**. Công dân nộp hồ sơ tại **cơ quan nào** ạ?\n\nCông dân **nói tên chi "
+           "nhánh** (tên địa danh là được), bấm gợi ý bên dưới nếu có, hoặc chọn thẳng ở ô **Cơ quan tiếp nhận, giải quyết "
+           "hồ sơ** trên trang."),
+    "tts": ("Đây là phần chọn cơ quan tiếp nhận. Công dân nộp hồ sơ tại cơ quan nào ạ? Công dân nói tên chi nhánh, hoặc "
+            "chọn thẳng trên trang."),
+}
+BN_AGENCY_SELECTED = {
+    "md": "✓ Đã chọn cơ quan tiếp nhận: **{agency}**.\n\n",
+    "tts": "Dạ đã chọn cơ quan tiếp nhận {agency}. ",
+}
+BN_AGENCY_FAILED = {
+    "md": ("⚠️ Em chưa chọn được cơ quan này trên trang. Công dân chọn thẳng ở ô **Cơ quan tiếp nhận, giải quyết hồ "
+           "sơ** giúp em ạ."),
+    "tts": "Dạ em chưa chọn được cơ quan này. Công dân chọn thẳng trên trang giúp em ạ.",
+}
+BN_AGENCY_UNREAD = {
+    "md": ("⚠️ Em chưa đọc được danh sách cơ quan tiếp nhận. Công dân chọn ở ô **Cơ quan tiếp nhận, giải quyết hồ sơ** "
+           "trên trang, chọn xong em hỏi tiếp ạ."),
+    "tts": "Dạ em chưa đọc được danh sách cơ quan tiếp nhận. Công dân chọn trên trang, chọn xong em hỏi tiếp ạ.",
+}
+BN_AUTHORIZED_ASK = {
+    "md": "Công dân có điền **thông tin {who}** (khối *Thông tin trong trường hợp được ủy quyền*) không ạ?",
+    "tts": "Công dân có điền thông tin {who} không ạ?",
+}
+BN_PART_AUTHORIZED = "khối thông tin người ủy quyền"
+BN_PART_ACCOUNT = "thông tin tài khoản"
+BN_ACCOUNT_INTRO = {
+    "md": ("🪪 Trước khi vào thủ tục, công dân cần **hoàn thiện thông tin tài khoản** trên cổng Bắc Ninh. Em xin phép và "
+           "nhận **đủ giấy tờ của thủ tục một lần** (có căn cước của chủ tài khoản) — em điền tài khoản trước, sang thủ "
+           "tục em điền luôn, không hỏi lại giấy tờ."),
+    "tts": ("Trước khi vào thủ tục, công dân cần hoàn thiện thông tin tài khoản. Em xin phép và nhận đủ giấy tờ của thủ "
+            "tục một lần, em điền tài khoản trước, sang thủ tục em điền luôn ạ. "),
+}
+BN_ACCOUNT_SAVE_CHIP = "💾 Lưu và sang bước tiếp theo"
+BN_ACCOUNT_SAVE_DESC = "lưu, lưu lại, lưu thông tin tài khoản, sang bước tiếp theo, đi tiếp"
+BN_ACCOUNT_SAVING = {
+    "md": "Dạ em bấm **Lưu** thông tin tài khoản trên trang ạ.",
+    "tts": "Dạ em bấm Lưu thông tin tài khoản ạ.",
+}
+BN_ACCOUNT_SAVED = {
+    "md": "✓ Đã lưu thông tin tài khoản. Cổng đang chuyển sang trang thủ tục, công dân chờ chút ạ…",
+    "tts": "Dạ đã lưu thông tin tài khoản. Cổng đang chuyển sang trang thủ tục, công dân chờ chút ạ.",
+}
+BN_ACCOUNT_SAVE_FAILED = {
+    "md": ("⚠️ Cổng chưa cho lưu: *{message}*.\n\nCông dân bấm **Bổ sung các thông tin còn thiếu** để em hỏi từng ô, hoặc "
+           "sửa trên trang rồi bấm **Lưu và sang bước tiếp theo** lại ạ."),
+    "tts": ("Dạ cổng chưa cho lưu. Công dân bấm Bổ sung các thông tin còn thiếu để em hỏi từng ô, hoặc sửa trên trang rồi "
+            "bấm Lưu lại ạ."),
+}
+BN_ACCOUNT_STILL_HERE = "trang vẫn đang ở bước hoàn thiện thông tin tài khoản"
+BN_FILL_FROM_DOCS = {
+    "md": "📝 Em điền luôn từ giấy tờ công dân đã đưa ở bước tài khoản, công dân chờ chút ạ…",
+    "tts": "Dạ em điền luôn từ giấy tờ công dân đã đưa, công dân chờ chút ạ.",
+}
+BN_PART_FORM = "đơn đăng ký"
+BN_FILL_RESULT = {
+    "md": "🟩 Em đã điền **{filled} ô** vào {part}.{not_found_md}",
+    "tts": "Dạ em đã điền {filled} ô vào {part}.",
+}
+BN_FILL_NOT_FOUND = "\n\n⚠️ **{count} ô** chưa khớp được trên trang."
+# Cùng khoá với FLOW2_PREVIEW_READY: field_review._ready dùng chung bộ tham số.
+BN_FILL_READY = {
+    "md": ("✓ Em đã điền xong phần này{optional_md}.\n\n{optional_hint_md}Công dân rà lại rồi bấm nút đi tiếp bên "
+           "dưới hoặc nói **“bước tiếp theo”** ạ."),
+    "tts": (" Em đã điền xong phần này{optional_tts}. {optional_hint_tts}Công dân rà lại rồi bấm nút đi tiếp bên dưới, "
+            "hoặc nói bước tiếp theo ạ."),
+}
+BN_FILL_NEXT = {
+    "md": "Công dân rà lại, ô nào sai thì sửa thẳng trên trang, xong bấm nút đi tiếp hoặc nói **“bước tiếp theo”** ạ.",
+    "tts": " Công dân rà lại, xong bấm nút đi tiếp, hoặc nói bước tiếp theo ạ.",
+}
+BN_OPTIONAL_PHASE = {
+    "md": ("Em hỏi lần lượt **{optional} ô còn trống**; ô nào không có thì công dân nói **“bỏ qua”**, muốn đi tiếp "
+           "luôn thì bấm nút đi tiếp ạ."),
+    "tts": ("Dạ em hỏi lần lượt các ô còn trống, ô nào không có thì công dân nói bỏ qua, muốn đi tiếp luôn thì bấm nút "
+            "đi tiếp ạ. "),
+}
+BN_MOVING = {
+    "md": "Dạ em chuyển sang **{step}** ạ.",
+    "tts": "Dạ em chuyển sang phần {step} ạ.",
+}
+BN_TAB_BLOCKED = {
+    "md": "⚠️ Em chưa chuyển được sang **{step}**. Công dân bấm thẳng tab **{step}** trên trang hoặc bấm thử lại ạ.",
+    "tts": "Dạ em chưa chuyển được sang phần {step}. Công dân bấm thẳng tab đó trên trang, hoặc bấm thử lại ạ.",
+}
+BN_FORM_FILLING = {
+    "md": "📝 Đã sang **Nhập đơn đăng ký**. Em điền đơn luôn từ giấy tờ công dân đã đưa ạ.",
+    "tts": "Đã sang phần nhập đơn đăng ký. Em điền đơn luôn từ giấy tờ công dân đã đưa ạ. ",
+}
+BN_BACK_TO_TAB = {
+    "md": "✏️ Đã quay lại **{step}**. Công dân sửa xong thì bấm nút đi tiếp hoặc nói **“bước tiếp theo”** ạ.",
+    "tts": "Đã quay lại phần {step}. Công dân sửa xong thì bấm nút đi tiếp, hoặc nói bước tiếp theo ạ.",
+}
+BN_ATTACHING = {
+    "md": "📎 Đã sang **Tải thành phần hồ sơ**. Em đang xếp giấy tờ vào từng thành phần, công dân chờ chút ạ…",
+    "tts": "Đã sang phần tải thành phần hồ sơ. Em đang xếp giấy tờ vào từng thành phần, công dân chờ chút ạ.",
+}
+BN_ATTACHED_ALREADY = {
+    "md": "📎 Giấy tờ đã đính ở **Tải thành phần hồ sơ**. Công dân bấm nút dưới hoặc nói **“bước tiếp theo”** ạ.",
+    "tts": "Dạ giấy tờ đã đính rồi. Công dân bấm nút bên dưới, hoặc nói bước tiếp theo ạ.",
+}
+BN_ATTACH_NEXT = {
+    "md": "Tiếp theo là **Thông tin đăng ký nhận kết quả**, công dân bấm nút dưới hoặc nói **“bước tiếp theo”** ạ.",
+    "tts": " Tiếp theo là phần thông tin đăng ký nhận kết quả, công dân bấm nút bên dưới hoặc nói bước tiếp theo ạ.",
+}
+BN_RESULT_READING = {
+    "md": "📬 Đây là **Thông tin đăng ký nhận kết quả**. Em đang đọc nơi nhận kết quả trên trang ạ…",
+    "tts": "Đây là phần thông tin đăng ký nhận kết quả. Em đang đọc nơi nhận kết quả trên trang ạ.",
+}
+BN_RESULT_SUMMARY = {
+    "md": ("Nơi nhận kết quả đang là **{label}**. Công dân chọn nơi khác ở thẻ dưới nếu muốn, xong bấm **Nộp hồ sơ** "
+           "để em bấm Nộp hồ sơ trên trang ạ."),
+    "tts": (" Nơi nhận kết quả đang là {label}. Công dân chọn nơi khác nếu muốn, xong bấm Nộp hồ sơ để em nộp giúp "
+            "ạ."),
+}
+BN_POINT_ASK = {
+    "md": ("Nhận kết quả **Tại nơi nộp hồ sơ**: công dân chọn **điểm tiếp nhận** muốn đến nhận kết quả ở thẻ dưới (nói "
+           "tên điểm hoặc chọn thẳng trên trang), xong bấm **Nộp hồ sơ** ạ."),
+    "tts": ("Nhận kết quả tại nơi nộp hồ sơ, công dân chọn điểm tiếp nhận muốn đến nhận kết quả, nói tên điểm hoặc chọn "
+            "trên trang, xong bấm Nộp hồ sơ ạ."),
+}
+BN_POSTAL_STEP = "gửi hồ sơ / nhận kết quả qua bưu chính công ích"
+BN_POSTAL_STEP_CHIP = "📬 Chọn gửi / nhận kết quả qua bưu điện ▶"
+BN_TWO_TAB_ATTACH_NEXT = {
+    "md": ("Tiếp theo là **gửi hồ sơ / nhận kết quả qua bưu chính công ích** (ở phần Chọn cơ quan tiếp nhận), công dân "
+           "bấm nút dưới hoặc nói **“bước tiếp theo”** ạ."),
+    "tts": " Tiếp theo là phần gửi hồ sơ và nhận kết quả qua bưu chính, công dân bấm nút bên dưới hoặc nói bước tiếp theo ạ.",
+}
+BN_POSTAL_READING = {
+    "md": "📬 Đây là phần **gửi hồ sơ và nhận kết quả qua bưu chính công ích**. Em đang đọc trên trang ạ…",
+    "tts": "Đây là phần gửi hồ sơ và nhận kết quả qua bưu chính. Em đang đọc trên trang ạ.",
+}
+BN_POSTAL_BOTH_CHIP = "Cả hai"
+BN_POSTAL_BOTH_DESC = "cả hai, gửi hồ sơ và nhận kết quả đều qua bưu điện"
+BN_POSTAL_ASK = {
+    "md": ("Công dân muốn **gửi hồ sơ** qua bưu điện, **nhận kết quả** qua bưu điện, hay **cả hai** ạ? Công dân chọn ở "
+           "nút dưới hoặc nói giúp em."),
+    "tts": "Công dân muốn gửi hồ sơ qua bưu điện, nhận kết quả qua bưu điện, hay cả hai ạ?",
+}
+BN_POSTAL_DONE = {
+    "md": ("✓ Đã chọn **{labels}**. Công dân điền thông tin ở khối tương ứng trên trang (họ tên, số điện thoại, tỉnh, "
+           "phường/xã, địa chỉ liên hệ) rồi bấm **Nộp hồ sơ** ạ."),
+    "tts": ("Dạ đã chọn {labels}. Công dân điền họ tên, số điện thoại, tỉnh, phường xã và địa chỉ liên hệ trên trang, "
+            "rồi bấm Nộp hồ sơ ạ."),
+}
+BN_POSTAL_MISSING = {
+    "md": ("⚠️ Công dân chưa chọn **gửi hồ sơ** hay **nhận kết quả** qua bưu điện. Công dân chọn ở nút dưới, điền thông "
+           "tin trên trang rồi bấm **Nộp hồ sơ** lại ạ."),
+    "tts": ("Dạ công dân chưa chọn gửi hồ sơ hay nhận kết quả qua bưu điện. Công dân chọn xong, điền thông tin rồi bấm "
+            "Nộp hồ sơ lại ạ."),
+}
+BN_POSTAL_FAILED = {
+    "md": ("⚠️ Em chưa tích được trên trang. Công dân tích thẳng ô **Gửi hồ sơ qua bưu điện** / **Nhận kết quả qua bưu "
+           "điện** giúp em ạ."),
+    "tts": "Dạ em chưa tích được trên trang. Công dân tích thẳng ô gửi hồ sơ hoặc nhận kết quả qua bưu điện giúp em ạ.",
+}
+BN_POINT_MISSING = {
+    "md": ("⚠️ Công dân chưa chọn **điểm tiếp nhận** để nhận kết quả. Công dân chọn ở thẻ dưới hoặc trên trang rồi bấm "
+           "**Nộp hồ sơ** lại ạ."),
+    "tts": "Dạ công dân chưa chọn điểm tiếp nhận để nhận kết quả. Công dân chọn xong rồi bấm Nộp hồ sơ lại ạ.",
+}
+BN_RESULT_UNREAD = {
+    "md": "⚠️ Em chưa đọc được nơi nhận kết quả trên trang. Công dân chọn tay trên trang rồi bấm **Nộp hồ sơ** ạ.",
+    "tts": "Dạ em chưa đọc được nơi nhận kết quả. Công dân chọn tay trên trang rồi bấm Nộp hồ sơ ạ.",
+}
+BN_RESULT_CHANGED = {
+    "md": "✓ Đã chọn nhận kết quả **{label}**. ",
+    "tts": "Dạ đã chọn nhận kết quả {label}. ",
+}
+BN_RESULT_ADDRESS_HINT = {
+    "md": " Công dân điền **địa chỉ nhận** (họ tên, số điện thoại, tỉnh, xã, địa chỉ) ngay trên trang rồi bấm **Nộp hồ sơ** ạ.",
+    "tts": " Công dân điền địa chỉ nhận ngay trên trang rồi bấm Nộp hồ sơ ạ.",
+}
+BN_RESULT_FAILED = {
+    "md": "⚠️ Em chưa chọn được **{label}**. Công dân bấm chọn thẳng trên trang giúp em ạ.",
+    "tts": "Dạ em chưa chọn được {label}. Công dân bấm chọn thẳng trên trang giúp em ạ.",
+}
+BN_SUBMITTING = {
+    "md": "Dạ em bấm **Nộp hồ sơ** trên trang ạ.",
+    "tts": "Dạ em bấm Nộp hồ sơ trên trang ạ.",
+}
+BN_SUBMIT_SENT = {
+    "md": "📨 Em đã bấm **Nộp hồ sơ**. Công dân chờ cổng chuyển sang trang hồ sơ đã nộp ạ.",
+    "tts": "Dạ em đã bấm Nộp hồ sơ. Công dân chờ cổng chuyển sang trang hồ sơ đã nộp ạ.",
+}
+BN_SUBMIT_FAILED = {
+    "md": "⚠️ Hồ sơ **chưa nộp được**{message}.\n\nCông dân xem lại các phần trên trang rồi bấm **Nộp hồ sơ** lại ạ.",
+    "tts": "Dạ hồ sơ chưa nộp được. Công dân xem lại các phần trên trang rồi bấm Nộp hồ sơ lại ạ.",
 }
 FLOW2_NEXT_RESULT_STEP = {
     "md": "Tiếp theo là **{result_step}**, công dân bấm nút dưới hoặc nói **“bước tiếp theo”** ạ.",

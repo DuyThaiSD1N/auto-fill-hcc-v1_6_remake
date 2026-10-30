@@ -82,22 +82,22 @@ FIELDS: list[dict] = [
              "sung GCN, thường lệch vài ngày) — ô này lấy ngày KÝ, KHÔNG lấy ngày đăng ký. KHÔNG lấy ngày "
              "Hợp đồng chuyển nhượng ở mục IV. Bỏ nếu không có."},
 
-    # ---- Khối NGƯỜI ĐƯỢC ỦY QUYỀN (nút "Điền thông tin người ủy quyền") — chỉ khi có Văn bản ủy quyền ----
+    # ---- Khối NGƯỜI ỦY QUYỀN = chủ hồ sơ (nút "Điền thông tin người ủy quyền") — chỉ khi có Văn bản ủy quyền ----
     {"name": "UyQuyen_CoVanBan",
      "desc": "Boolean true CHỈ khi hồ sơ có tài liệu độc lập mang tiêu đề/nội dung Giấy/Văn bản ủy quyền; "
              "không suy từ việc người nộp khác người yêu cầu."},
-    {"name": "NguoiDuocUyQuyen_HoTen", "desc": "Họ tên BÊN ĐƯỢC ỦY QUYỀN trong Văn bản ủy quyền; không lấy "
-        "bên ủy quyền (người yêu cầu xóa)."},
-    {"name": "NguoiDuocUyQuyen_GioiTinh", "desc": "Giới tính bên được ủy quyền, chỉ 'Nam' hoặc 'Nữ' khi giấy "
+    {"name": "NguoiUyQuyen_HoTen", "desc": "Họ tên BÊN ỦY QUYỀN (chủ hồ sơ, thường là người yêu cầu "
+        "xóa) trong Văn bản ủy quyền; không lấy bên ủy quyền (người đi nộp thay)."},
+    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền, chỉ 'Nam' hoặc 'Nữ' khi giấy "
         "tờ ghi rõ."},
-    {"name": "NguoiDuocUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh bên được ủy quyền, chỉ chữ số."},
-    {"name": "NguoiDuocUyQuyen_NgayCap", "desc": "Ngày cấp CCCD bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên được ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_ThuongTru", "desc": "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,"
+    {"name": "NguoiUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh bên ủy quyền, chỉ chữ số."},
+    {"name": "NguoiUyQuyen_NgayCap", "desc": "Ngày cấp CCCD bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên ủy quyền."},
+    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_ThuongTru", "desc": "Địa chỉ bên ủy quyền, object {quocGia,tinh,xa,"
         "chiTietDuoiXa}; ưu tiên Văn bản ủy quyền rồi CCCD đúng người. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_Email", "desc": "Email bên được ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
-    {"name": "NguoiDuocUyQuyen_SoDienThoai", "desc": "Số điện thoại bên được ủy quyền nếu hồ sơ ghi rõ."},
+    {"name": "NguoiUyQuyen_Email", "desc": "Email bên ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
+    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại bên ủy quyền nếu hồ sơ ghi rõ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -105,9 +105,9 @@ ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _d in ("NguoiYeuCau_NgayCap", "Gcn_NgayCap", "TheChap_NgayKy",
-           "NguoiDuocUyQuyen_NgaySinh", "NguoiDuocUyQuyen_NgayCap"):
+           "NguoiUyQuyen_NgaySinh", "NguoiUyQuyen_NgayCap"):
     COMPACT_COMP_BY_NAME[_d] = "x-date"
-COMPACT_COMP_BY_NAME["NguoiDuocUyQuyen_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiUyQuyen_ThuongTru"] = "x-select-area"
 
 # ================= UI field (fill-bacninh.js) — name = <Key> (class eform-element-<Key>) =================
 # --- Bước 1: cơ quan tiếp nhận (select theo địa bàn) ---

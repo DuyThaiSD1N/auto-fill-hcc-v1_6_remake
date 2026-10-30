@@ -97,6 +97,14 @@ def fill_started_reply(conv: dict, proc: dict | None, reply):
     return _silent([_card(conv, "fill", vi.FLOW2_FILL_STEPS, active=1), *actions])
 
 
+def fill_card_done(conv: dict, proc: dict | None) -> list[dict]:
+    """Điền xong theo nhánh riêng (tờ khai mở từ bảng Thành phần hồ sơ) → chốt thẻ chặng điền đang quay; không chốt thì
+    thẻ quay mãi và rảnh tay coi như trợ lý còn bận (mic không mở lại)."""
+    if not enabled(conv, proc) or conv.get("flow2_card") != "fill":
+        return []
+    return [_card(conv, "fill", vi.FLOW2_FILL_STEPS, active=2, done=True)]
+
+
 def fill_report_reply(conv: dict, proc: dict | None, rep: dict, review, tail: dict, auto_wait: bool):
     """Khung kết quả điền + khung kết luận (bong bóng riêng); thẻ chặng điền chốt. None = luồng cũ."""
     from app.channels.handfree.chat.flow import Reply, _supplement_documents_chip

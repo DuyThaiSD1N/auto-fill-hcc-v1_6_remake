@@ -83,22 +83,22 @@ def _authorized_fields(values: dict[str, Any]) -> tuple[list[dict], list[str]]:
         if value:
             out.append({"name": name, "comp": comp, "value": value})
 
-    add("doiTuongKhachoTen", values.get("NguoiDuocUyQuyen_HoTen"))
-    add("doiTuongKhacgioiTinhId", values.get("NguoiDuocUyQuyen_GioiTinh"), "bn-select")
-    add("doiTuongKhacsoDinhDanh", values.get("NguoiDuocUyQuyen_SoDinhDanh"))
-    add("doiTuongKhacngayCap", values.get("NguoiDuocUyQuyen_NgayCap"))
-    add("doiTuongKhacnoiCap", values.get("NguoiDuocUyQuyen_NoiCap"))
-    add("doiTuongKhacngaySinh", values.get("NguoiDuocUyQuyen_NgaySinh"))
-    add("doiTuongKhacemail", values.get("NguoiDuocUyQuyen_Email"))
-    add("doiTuongKhacsoDienThoai", values.get("NguoiDuocUyQuyen_SoDienThoai"))
-    address = values.get("NguoiDuocUyQuyen_ThuongTru")
+    add("doiTuongKhachoTen", values.get("NguoiUyQuyen_HoTen"))
+    add("doiTuongKhacgioiTinhId", values.get("NguoiUyQuyen_GioiTinh"), "bn-select")
+    add("doiTuongKhacsoDinhDanh", values.get("NguoiUyQuyen_SoDinhDanh"))
+    add("doiTuongKhacngayCap", values.get("NguoiUyQuyen_NgayCap"))
+    add("doiTuongKhacnoiCap", values.get("NguoiUyQuyen_NoiCap"))
+    add("doiTuongKhacngaySinh", values.get("NguoiUyQuyen_NgaySinh"))
+    add("doiTuongKhacemail", values.get("NguoiUyQuyen_Email"))
+    add("doiTuongKhacsoDienThoai", values.get("NguoiUyQuyen_SoDienThoai"))
+    address = values.get("NguoiUyQuyen_ThuongTru")
     if isinstance(address, dict):
         add("doiTuongKhactinhThanhId", address.get("tinh"), "bn-select")
         add("doiTuongKhacphuongXaId", address.get("xa"), "bn-select")
         add("doiTuongKhacdiaChiChiTiet", address.get("diaChi"))
 
-    identity = _text(values.get("NguoiDuocUyQuyen_SoDinhDanh"))
-    name = _text(values.get("NguoiDuocUyQuyen_HoTen"))
+    identity = _text(values.get("NguoiUyQuyen_SoDinhDanh"))
+    name = _text(values.get("NguoiUyQuyen_HoTen"))
     if not name or not identity:
-        return [], ["Biên bản ủy quyền chưa cho biết đủ họ tên và CCCD của người được ủy quyền."]
+        return [], ["Biên bản ủy quyền chưa cho biết đủ họ tên và CCCD của người ủy quyền."]
     return out, []

@@ -46,21 +46,22 @@ FIELDS: list[dict] = [
     {"name": "Don_NgayKhai", "desc": "Ngày ký/khai đơn ở dòng ký cuối Mẫu 02, dd/mm/yyyy. Lấy đúng ngày trên "
         "bản giấy đã ký."},
 
-    # --- Khối NGƯỜI ĐƯỢC ỦY QUYỀN (chỉ khi nộp thay & có Văn bản ủy quyền độc lập) ---
+    # --- Khối NGƯỜI ỦY QUYỀN = chủ hồ sơ (chỉ khi nộp thay & có Văn bản ủy quyền độc lập) ---
     {"name": "UyQuyen_CoVanBan", "desc": "Boolean true CHỈ khi hồ sơ có tài liệu độc lập mang tiêu đề/nội "
         "dung Giấy/Văn bản ủy quyền; không suy từ việc hồ sơ có 2 vợ chồng."},
-    {"name": "NguoiDuocUyQuyen_HoTen", "desc": "Họ tên BÊN ĐƯỢC ỦY QUYỀN trong Văn bản ủy quyền; không lấy "
-        "bên ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_GioiTinh", "desc": "Giới tính bên được ủy quyền, chỉ 'Nam' hoặc 'Nữ' khi giấy "
+    {"name": "NguoiUyQuyen_HoTen", "desc": "Họ tên BÊN ỦY QUYỀN (chủ hồ sơ) trong Văn bản ủy quyền; "
+        "nhiều người cùng ủy quyền thì lấy người đứng đầu danh sách bên ủy quyền; không lấy bên ủy quyền "
+        "(người đi nộp thay)."},
+    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền, chỉ 'Nam' hoặc 'Nữ' khi giấy "
         "tờ ghi rõ."},
-    {"name": "NguoiDuocUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh bên được ủy quyền, chỉ chữ số."},
-    {"name": "NguoiDuocUyQuyen_NgayCap", "desc": "Ngày cấp CCCD bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên được ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiDuocUyQuyen_ThuongTru", "desc": "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,"
+    {"name": "NguoiUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh bên ủy quyền, chỉ chữ số."},
+    {"name": "NguoiUyQuyen_NgayCap", "desc": "Ngày cấp CCCD bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên ủy quyền."},
+    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy."},
+    {"name": "NguoiUyQuyen_ThuongTru", "desc": "Địa chỉ bên ủy quyền, object {quocGia,tinh,xa,"
         "chiTietDuoiXa}; ưu tiên Văn bản ủy quyền rồi CCCD đúng người. Dùng cho dropdown Tỉnh/Xã của khối ủy quyền."},
-    {"name": "NguoiDuocUyQuyen_Email", "desc": "Email bên được ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
-    {"name": "NguoiDuocUyQuyen_SoDienThoai", "desc": "Số điện thoại bên được ủy quyền nếu hồ sơ ghi rõ."},
+    {"name": "NguoiUyQuyen_Email", "desc": "Email bên ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
+    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại bên ủy quyền nếu hồ sơ ghi rõ."},
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}
@@ -70,8 +71,8 @@ for _name in (
     "NguoiKeKhai_NgayCap",
     "VoChong_NgayCap",
     "Don_NgayKhai",
-    "NguoiDuocUyQuyen_NgaySinh",
-    "NguoiDuocUyQuyen_NgayCap",
+    "NguoiUyQuyen_NgaySinh",
+    "NguoiUyQuyen_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-COMPACT_COMP_BY_NAME["NguoiDuocUyQuyen_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiUyQuyen_ThuongTru"] = "x-select-area"
