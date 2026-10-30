@@ -284,13 +284,14 @@
     <!-- Khối đáy (mã hỗ trợ + nút chân) dính mép dưới panel: thu nhỏ cửa sổ thì iframe cuộn bên trong,
          khối này vẫn luôn hiện. Phải là anh em SAU #view-main để CSS ẩn mã hỗ trợ khi đang ở view khác. -->
     <div class="bottom-dock">
-      <button id="supportCode" class="support-code" type="button" hidden
-              title="Sao chép và gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
-        <span class="support-code-label">Mã hỗ trợ</span>
-        <span id="supportCodeValue" class="support-code-value"></span>
-        <span class="support-code-action" aria-hidden="true">📋 Sao chép</span>
-      </button>
       <div class="app-footer">
+        <!-- Mã hỗ trợ nằm cùng hàng, bên trái nút chân: để riêng một hàng thì thủ tục dài đẩy nó khuất. -->
+        <button id="supportCode" class="support-code" type="button" hidden
+                title="Mã hỗ trợ — bấm để sao chép, gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
+          <span class="support-code-label">Mã</span>
+          <span id="supportCodeValue" class="support-code-value"></span>
+          <span class="support-code-action" aria-hidden="true">📋</span>
+        </button>
         <a id="reportBtn" class="guide-btn report-btn" href="#" hidden
           title="Xem báo cáo thống kê của đơn vị">Xem báo cáo</a>
         <a id="guideBtn" class="guide-btn" href="https://kynguyen.io/huong-dan-van-hanh-bot-hcc" target="_blank"

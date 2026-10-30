@@ -3063,6 +3063,8 @@ PROCEDURES: list[dict] = [
             "Bước Thành phần hồ sơ: văn bản ủy quyền vào ô 1, Đơn Mẫu 18 vào ô 2, Bằng Tổ quốc "
             "ghi công vào ô 3; căn cước và trích lục khai tử xếp vào mục 'Thêm giấy tờ'."
         ),
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → PDF gộp thành từng tệp riêng mỗi giấy.
+        "supportsSplitDocuments": True,
     },
     {
         "key": "cap-lai-to-quoc-ghi-cong",
@@ -3591,6 +3593,8 @@ PROCEDURES: list[dict] = [
             "Bước Thành phần hồ sơ: Bản khai Mẫu 12 vào ô 1; trích lục khai tử, căn cước và các "
             "giấy còn lại xếp vào mục 'Thêm giấy tờ'."
         ),
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → PDF gộp thành từng tệp riêng mỗi giấy.
+        "supportsSplitDocuments": True,
     },
     {
         "key": "xac-dinh-muc-do-khuyet-tat",

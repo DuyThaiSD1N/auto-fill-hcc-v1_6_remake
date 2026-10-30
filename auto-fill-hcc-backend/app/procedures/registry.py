@@ -6618,6 +6618,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy thành
+        # một tệp riêng (ủy quyền / Đơn / Bằng vào ô của mình, còn lại vào ô Đơn); TẮT/bản cũ → đính nguyên tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18) — nguồn chính điền mẫu khai.\n"
@@ -6641,6 +6644,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy (Bản
+        # khai, trích lục khai tử, CCCD...) thành một tệp riêng trong ô Bản khai; TẮT/bản cũ → đính nguyên tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Bản khai giải quyết chế độ ưu đãi khi người có công từ trần (Mẫu số 12) — nguồn chính điền mẫu khai.\n"

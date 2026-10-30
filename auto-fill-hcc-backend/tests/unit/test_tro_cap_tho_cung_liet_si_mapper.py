@@ -265,3 +265,126 @@ Thờ cúng liệt sĩ Vũ Đình Soang
         }},
     )
     assert 'result="no_document_match"' in mismatch_context
+
+
+# ---- Đính kèm: cài đặt "Có tách hồ sơ khi đính kèm" (PDF gộp → mỗi giấy một tệp) ----
+
+_TRANG = (
+    "Mẫu số 18 CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM ĐƠN ĐỀ NGHỊ Giải quyết chế độ trợ cấp thờ cúng liệt sĩ",
+    "",
+    "Mẫu số 80A BIÊN BẢN HỌP ĐỒNG THUẬN Giải quyết chế độ trợ cấp thờ cúng liệt sĩ Nguyễn Văn B, ủy quyền cho",
+    "CÁC THÀNH VIÊN (Ký và ghi rõ họ tên) Nguyễn Văn A, Nguyễn Văn C, Nguyễn Thị D, chức vụ người ký",
+    "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM ĐƠN ĐỀ NGHỊ Về việc thay đổi người thờ cúng liệt sĩ Nguyễn Văn B",
+    "XÁC NHẬN CỦA TỔ TRƯỞNG TỔ DÂN PHỐ Xác nhận lời khai của ông Nguyễn Văn A trong đơn nêu trên là đúng",
+    "CĂN CƯỚC CÔNG DÂN Citizen Identity Card số định danh 001070000001 họ và tên Nguyễn Văn A",
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM TỔ QUỐC GHI CÔNG LIỆT SĨ Nguyễn Văn B Bằng số GX 100",
+    "UBND PHƯỜNG",
+    "UBND XÃ AN BÌNH TRÍCH LỤC KHAI TỬ Họ, chữ đệm, tên: NGUYỄN VĂN E, ngày chết 01/01/2023",
+)
+_TEXT_10 = "\n".join(f"───── Trang {n + 1}/10 ─────\n{t}" for n, t in enumerate(_TRANG))
+_LOAI_10 = ["don_de_nghi", "don_de_nghi", "van_ban_uy_quyen", "van_ban_uy_quyen", "don_thay_doi_nguoi_tho_cung",
+            "don_thay_doi_nguoi_tho_cung", "cccd", "bang_tqgc", "bang_tqgc", "trich_luc_khai_tu"]
+
+
+def _plan_split(page_types, text=_TEXT_10):
+    from app.pipelines.tro_cap_tho_cung_liet_si.attach import planner
+
+    return planner.build_plan_items([{"name": "goc.pdf"}], [{"name": "goc.pdf", "text": text}], {}, {0: page_types})
+
+
+def test_tach_moi_giay_mot_tep_vao_dung_o():
+    items, warnings, classified = _plan_split(_LOAI_10)
+    assert [(i["slotIndex"], i["documentName"], i["sourceSegments"][0]["pageIndexes"]) for i in items] == [
+        (0, "Văn bản ủy quyền thờ cúng liệt sĩ", [2, 3]),
+        (1, "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18)", [0]),
+        (2, 'Bằng "Tổ quốc ghi công"', [7]),
+        (1, "Đơn đề nghị thay đổi người thờ cúng liệt sĩ", [4, 5]),
+        (1, "Căn cước công dân người nộp", [6]),
+        (1, "Trích lục khai tử thân nhân liệt sĩ", [9]),
+    ]
+    assert {(i["target"], i["fileIndex"]) for i in items} == {("fixed-slot", 0)}
+    assert not warnings
+    assert classified[0]["source"] == "llm-pages"
+    assert classified[0]["tachGiayTo"][0] == {"docType": "don_de_nghi", "pages": [1]}
+
+
+def test_tach_ca_tep_mot_giay_khong_trang_trang_thi_khong_cat():
+    text = "\n".join(f"───── Trang {n + 1}/2 ─────\n{_TRANG[n * 2]}" for n in range(2))
+    items, _, _ = _plan_split(["don_de_nghi", "don_de_nghi"], text)
+    assert len(items) == 1 and items[0]["slotKey"] == "don_de_nghi" and "sourceSegments" not in items[0]
+
+
+def test_tach_trang_chua_ro_loai_van_dinh_o_don_va_canh_bao():
+    trang = list(_TRANG)
+    trang[9] = "HỢP ĐỒNG MUA BÁN " + "nội dung điều khoản thỏa thuận giữa các bên " * 8
+    text = "\n".join(f"───── Trang {n + 1}/10 ─────\n{t}" for n, t in enumerate(trang))
+    loai = list(_LOAI_10)
+    loai[9] = "other"
+    items, warnings, _ = _plan_split(loai, text)
+    assert (items[-1]["slotKey"], items[-1]["documentName"]) == ("don_de_nghi", "Giấy tờ kèm theo")
+    assert len(warnings) == 1
+
+
+def test_tach_trang_other_it_chu_la_trang_noi_tiep_giay_truoc():
+    # Mặt sau in xuyên: OCR ra một dòng tên cơ quan → không thành tệp "Giấy tờ kèm theo" riêng.
+    loai = list(_LOAI_10)
+    loai[9] = "other"
+    items, warnings, classified = _plan_split(loai)
+    assert [i["documentName"] for i in items if i["documentName"] == "Giấy tờ kèm theo"] == []
+    assert next(i for i in items if i["slotKey"] == "bang_tqgc")["sourceSegments"][0]["pageIndexes"] == [7, 9]
+    assert not warnings
+    assert classified[0]["tachGiayTo"][-1] == {"docType": "bang_tqgc", "pages": [10]}
+
+
+def test_don_thay_doi_nguoi_tho_cung_khong_lan_voi_mau_18():
+    from app.pipelines.tro_cap_tho_cung_liet_si.attach import planner
+
+    assert planner._rule_doc_type(_TRANG[4]) == "don_thay_doi_nguoi_tho_cung"
+    assert planner._rule_doc_type(_TEXT_10) == "don_de_nghi"  # PDF gộp mở đầu Mẫu 18 (chế độ thường)
+    assert planner._normalize_doc_type("Biên bản họp đồng thuận") == "van_ban_uy_quyen"
+    assert planner._normalize_doc_type("don_thay_doi_nguoi_tho_cung") == "don_thay_doi_nguoi_tho_cung"
+
+
+def _plan_e2e(monkeypatch, options):
+    import asyncio
+
+    from app.pipelines.tro_cap_tho_cung_liet_si.attach import planner
+    from app.process.schemas import FileItem
+    from app.services import ocr
+
+    async def _ocr(files, **_k):
+        return [{"name": f["name"], "text": _TEXT_10} for f in files]
+
+    calls = []
+
+    async def _chat(messages, **_k):
+        calls.append(messages[0]["content"])
+        return '{"tep":[{"fileIndex":0,"trang":%s}]}' % str(_LOAI_10).replace("'", '"')
+
+    monkeypatch.setattr(ocr, "ocr_per_file", _ocr)
+    monkeypatch.setattr(planner.client, "chat", _chat)
+    monkeypatch.setattr(planner, "splittable_pages", lambda _f, text: planner.split_pages(text))
+    files = [FileItem(name="goc.pdf", type="application/pdf", role="", dataUrl="data:application/pdf;base64,AA==")]
+    return asyncio.run(planner.plan(files, options)), calls
+
+
+def test_bat_cai_dat_thi_xep_trang_ca_tep_khop_luat_don(monkeypatch):
+    result, calls = _plan_e2e(monkeypatch, {"splitDocuments": True, "supportsSourceSegments": True})
+    assert len(calls) == 1 and "TỪNG TRANG" in calls[0]
+    assert len(result["attachments"]) == 6 and result["extracted"]["splitDocuments"] is True
+
+
+def test_tat_cai_dat_thi_dinh_nguyen_tep_khong_goi_llm(monkeypatch):
+    result, calls = _plan_e2e(monkeypatch, {"splitDocuments": False})
+    assert calls == []
+    assert len(result["attachments"]) == 1 and "sourceSegments" not in result["attachments"][0]
+    assert result["attachments"][0]["slotKey"] == "don_de_nghi"
+    assert result["extracted"]["splitDocuments"] is False
+
+
+def test_registry_cong_bo_ho_tro_tach():
+    from app.channels.handfree.procedure_registry import get_procedure as hf_get
+    from app.procedures.registry import get_procedure
+
+    assert get_procedure("tro-cap-tho-cung-liet-si")["supportsSplitDocuments"] is True
+    assert hf_get("tro-cap-tho-cung-liet-si")["supportsSplitDocuments"] is True

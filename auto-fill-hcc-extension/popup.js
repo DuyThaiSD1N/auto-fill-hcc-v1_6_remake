@@ -447,6 +447,7 @@ function showSupportCode(id) {
   if (!supportCodeBtn || !supportCodeValueEl) return;
   if (!id) { hideSupportCode(); return; }
   supportCodeValueEl.textContent = id;
+  supportCodeValueEl.title = id;  // chip co lại thì mã bị cắt "…" → rê chuột xem đủ
   supportCodeBtn.dataset.code = id;
   supportCodeBtn.classList.remove("copied");
   supportCodeBtn.hidden = false;
@@ -481,8 +482,8 @@ if (supportCodeBtn) {
       } catch { ok = false; }
     }
     supportCodeBtn.classList.add("copied");
-    // Báo ĐÚNG kết quả: fail thì nhắc bôi đen mã để copy tay (value đã cho user-select).
-    supportCodeValueEl.textContent = ok ? "Đã sao chép ✓" : "Chưa copy được — bôi đen mã để copy tay";
+    // Chip nằm chung hàng nút chân nên câu báo phải ngắn; lỗi thì 3s sau hiện lại mã để bôi đen copy tay.
+    supportCodeValueEl.textContent = ok ? "Đã chép ✓" : "Chưa chép được";
     if (_supportCodeResetTimer) clearTimeout(_supportCodeResetTimer);
     _supportCodeResetTimer = setTimeout(() => {
       supportCodeBtn.classList.remove("copied");

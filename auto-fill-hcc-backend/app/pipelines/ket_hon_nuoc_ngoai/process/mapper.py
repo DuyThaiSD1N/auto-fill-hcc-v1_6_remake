@@ -182,6 +182,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         status_cat = _fold(values.get(f"{src}_TinhTrangHonNhan")).replace(" ", "_")
         status_label = _MARITAL_STATUS.get(status_cat)
         so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
+        # Tờ khai ghi kết hôn lần thứ nhất = chưa từng đăng ký kết hôn → tình trạng chỉ có thể là
+        # "chưa đăng ký kết hôn với ai" (như ket_hon nội địa). LLM từng chép quyết định ly hôn của
+        # bên kia sang bên kết hôn lần đầu → bỏ luôn khối ly hôn.
+        if so_lan == "1":
+            status_cat = "chua_ket_hon"
+            status_label = _MARITAL_STATUS[status_cat]
         # Chưa kết hôn (theo giấy xác nhận) → suy số lần kết hôn = 1 nếu tờ khai không ghi.
         if not so_lan and status_cat == "chua_ket_hon":
             so_lan = "1"

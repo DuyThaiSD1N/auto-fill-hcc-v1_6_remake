@@ -17,6 +17,24 @@ def _values(values: dict) -> dict:
     return {f["name"]: f["value"] for f in out}
 
 
+def test_ket_hon_lan_dau_khong_nhan_ly_hon_cua_ben_kia():
+    # Tờ khai ghi bên nam kết hôn lần thứ nhất nhưng LLM chép quyết định ly hôn của bên nữ sang.
+    ly_hon = {"BanAnLyHon_So": "01/2024/QĐCNTTLH", "BanAnLyHon_Ngay": "01/02/2024",
+              "BanAnLyHon_CoQuan": "Tòa án nhân dân thành phố X"}
+    out = _values({
+        "Nam_HoTen": "NGUYEN VAN B", "Nam_SoDinhDanh": "A00000002", "Nam_QuocTich": "Hoa Kỳ",
+        "Nam_SoLanKetHon": 1, "Nam_TinhTrangHonNhan": "ly_hon",
+        **{f"Nam_{k}": v for k, v in ly_hon.items()},
+        **_NU_NUOC_NGOAI, "Nu_SoLanKetHon": 2, "Nu_TinhTrangHonNhan": "ly_hon",
+        **{f"Nu_{k}": v for k, v in ly_hon.items()},
+    })
+    assert out["SoLanKetHon_BenNam"] == "1"
+    assert out["LoaiTinhTrangHonNhan_BenNam"] == mapper._MARITAL_STATUS["chua_ket_hon"]
+    assert "TTHN_LyHonBenNam" not in out
+    assert out["LoaiTinhTrangHonNhan_BenNu"] == mapper._MARITAL_STATUS["ly_hon"]
+    assert out["TTHN_LyHonBenNu"]["soBanAnQuyetDinhLyHon"] == "01/2024/QĐCNTTLH"
+
+
 def test_ten_nhom_khong_mang_nghia_cccd():
     assert not [name for name in ALLOWED if name.startswith("Cccd")]
     assert {"Nam_HoTen", "Nu_HoTen", "ToKhaiNu_HoTen"} <= ALLOWED
