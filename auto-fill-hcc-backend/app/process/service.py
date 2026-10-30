@@ -116,13 +116,18 @@ def prepare_process(
 
 
 async def execute_process(prepared: PreparedProcess) -> dict:
-    async with mon.span("pipeline", procedure=prepared.procedure):
-        result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
-        rec = mon.current()
-        if rec is not None:
-            # Hậu xử lý riêng của package + mapper nằm trong 148 runner → đo bằng khoảng trống từ
-            # lúc runner chung xong tới lúc pipeline trả (con của span pipeline), không sửa từng package.
-            rec.close_gap("agent_end", "post.mapper")
+    # Chỉ boolean True (web Kiểm thử gửi) mới bỏ cache OCR; extension không gửi khoá này.
+    fresh = ocr.fresh_ocr.set(prepared.pipeline_options.get("freshOcr") is True)
+    try:
+        async with mon.span("pipeline", procedure=prepared.procedure):
+            result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+            rec = mon.current()
+            if rec is not None:
+                # Hậu xử lý riêng của package + mapper nằm trong 148 runner → đo bằng khoảng trống từ
+                # lúc runner chung xong tới lúc pipeline trả (con của span pipeline), không sửa từng package.
+                rec.close_gap("agent_end", "post.mapper")
+    finally:
+        ocr.fresh_ocr.reset(fresh)
     # Chốt chặn CHUNG cho mọi thủ tục: mỗi pipeline tự chuẩn hóa ngày một kiểu (nhiều pipeline
     # không chuẩn hóa gì cả), nên siết một lần ở đây thay vì vá rải rác 90 mapper.
     if isinstance(result, dict):

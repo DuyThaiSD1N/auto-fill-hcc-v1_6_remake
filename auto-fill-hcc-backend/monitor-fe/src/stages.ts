@@ -74,6 +74,7 @@ export const CACHE_REASONS: Record<string, string> = {
   empty: "text rỗng",
   provider: "khác provider",
   no_key: "không băm được",
+  fresh: "web Kiểm thử bỏ qua cache",
 };
 
 export const DROP_REASONS: Record<string, string> = {
