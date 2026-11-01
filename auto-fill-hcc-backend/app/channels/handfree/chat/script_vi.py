@@ -368,6 +368,39 @@ AGENCY_CARD_MANUAL_GUIDE = {
 }
 
 # Đã chọn xong tỉnh/xã + Đồng ý nhưng không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
+# Chặng cổng tỉnh (registry provincePortalFlow, vd Quảng Ninh): sau "Nộp trực tuyến" cổng quốc gia ném sang cổng
+# tỉnh — bảng thủ tục, đăng nhập VNeID riêng của cổng tỉnh, modal "Thông tin chung".
+PROVINCE_PORTAL_LOGIN = {
+    "md": (
+        "Cổng dịch vụ công **{province}** cần đăng nhập riêng ạ.\n\n"
+        "Công dân bấm **Đăng nhập bằng VNeID** rồi quét mã QR như lúc nãy. Đăng nhập xong em chọn tiếp thủ tục."
+    ),
+    "tts": (
+        "Dạ, cổng dịch vụ công {province} cần đăng nhập riêng. Công dân bấm Đăng nhập bằng VNeID, "
+        "quét mã QR như lúc nãy. Xong em chọn tiếp thủ tục ạ."
+    ),
+}
+PROVINCE_ROW_MANUAL = {
+    "md": "Công dân bấm **Nộp hồ sơ** ở {row} trong danh sách thủ tục giúp em ạ.",
+    "tts": "Dạ, công dân bấm Nộp hồ sơ ở {row} trong danh sách thủ tục giúp em ạ.",
+}
+PROVINCE_ROW_FAILED = {
+    "md": (
+        "⚠️ Em chưa tự chọn được dòng thủ tục ({error}).\n\n"
+        "Công dân bấm **Nộp hồ sơ** ở {row} giúp em ạ."
+    ),
+    "tts": "Dạ, em chưa tự chọn được dòng thủ tục. Công dân bấm Nộp hồ sơ ở {row} giúp em ạ.",
+}
+PROVINCE_INFO_MANUAL = {
+    "md": (
+        "Ở ô **Thông tin chung**, công dân chọn Cơ quan thực hiện **{agency}**, chọn nốt các ô còn trống "
+        "rồi bấm **Xác nhận** giúp em ạ."
+    ),
+    "tts": (
+        "Dạ, ở ô Thông tin chung, công dân chọn cơ quan thực hiện {agency}, chọn nốt các ô còn trống "
+        "rồi bấm Xác nhận giúp em ạ."
+    ),
+}
 AGENCY_CARD_MISSING = {
     "md": (
         "⚠️ Em chưa thấy thẻ có dòng **{card}** ạ.\n\n"

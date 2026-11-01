@@ -1194,9 +1194,37 @@
     }
   }
 
+  /**
+   * Field KHÔNG nhãn (cổng tỉnh, vd chi nhánh VPĐK Quảng Ninh): dò TỪNG ô tới ô nào có lựa chọn cần tìm. Modal cổng tỉnh
+   * có Cấp thực hiện / Tỉnh / Cơ quan thực hiện / Đơn vị tiếp nhận, thứ tự đổi theo thủ tục — tìm theo TÊN thì chỉ đúng
+   * một ô chứa nó, không đặt nhầm vào ô khác (cùng cách content/portal-quangninh.js của Auto Fill).
+   */
+  async function pickInfoAnyCombo(dialog, wanted) {
+    const target = fold(wanted);
+    const subject = infoSubjectCombobox(dialog);
+    for (let index = 0; index < infoCombos(dialog).length; index += 1) {
+      const control = infoCombos(dialog)[index];
+      if (!control || control === subject) continue;
+      if (fold(infoComboValue(control)).includes(target)) return control;
+      try {
+        await pickInfoField(control, wanted);
+        return control;
+      } catch (_) {
+        await sleep(300); // pickInfoField đã đóng danh sách → thử ô kế
+      }
+    }
+    throw new Error(`Không thấy "${wanted}" ở ô nào của Thông tin chung`);
+  }
+
   async function fillInfoFields(dialog, fields) {
     const chosen = [];
     for (const field of fields) {
+      if (!field.label) {
+        const control = await pickInfoAnyCombo(dialog, field.value);
+        chosen.push(infoComboValue(control));
+        await sleep(600); // cổng gọi API nạp ô phụ thuộc (Đơn vị tiếp nhận theo cơ quan)
+        continue;
+      }
       const control = await waitFor(() => infoFieldCombobox(dialog, field.label), 4000, 150);
       if (!control) throw new Error(`Không tìm thấy ô ${field.label}`);
       const current = infoComboValue(control);
@@ -1282,15 +1310,26 @@
     return { closed: !infoDialogOpen(dialog, btn), clicks, error: infoDialogError(dialog) };
   }
 
-  async function confirmInfoModal(executionSubject, infoFields) {
-    const btn = Array.from(document.querySelectorAll(
+  // Cổng tỉnh cùng nền có thể không gắn data-e2e → nút "Xác nhận" của dialog tiêu đề "Thông tin chung".
+  function infoConfirmButton() {
+    const tagged = Array.from(document.querySelectorAll(
       'button[data-e2e="confirm-button-information"]'
     )).find(isVisible);
+    if (tagged) return tagged;
+    return Array.from(document.querySelectorAll('[role="dialog"]'))
+      .filter((d) => isVisible(d) && fold(d.textContent).includes("thong tin chung"))
+      .flatMap((d) => Array.from(d.querySelectorAll("button")))
+      .find((b) => isVisible(b) && fold(b.textContent) === "xac nhan") || null;
+  }
+
+  async function confirmInfoModal(executionSubject, infoFields, fillEmpty = false) {
+    const btn = infoConfirmButton();
     if (!btn) return null; // frame không có modal → để frame đúng trả lời
     const dialog = btn.closest('[role="dialog"]');
     if (!dialog || !isVisible(dialog)) throw new Error("Không tìm thấy modal Thông tin chung");
-    const fields = Array.isArray(infoFields) ? infoFields.filter((f) => f?.label && f?.value) : [];
-    const chosen = fields.length ? await fillInfoFields(dialog, fields) : [];
+    // Field không nhãn = chọn theo tên ở mọi ô (pickInfoAnyCombo).
+    const fields = Array.isArray(infoFields) ? infoFields.filter((f) => f?.value) : [];
+    const chosen = (fields.length || fillEmpty) ? await fillInfoFields(dialog, fields) : [];
     const subjectResult = await selectInfoSubject(dialog, executionSubject);
     const settled = await settleInfoCombos(dialog);
     infoLog("confirm:click", { executionSubject: executionSubject || null, subjectResult, chosen, settled });
@@ -1301,11 +1340,65 @@
     return { ok: true, closed: true, clicks: result.clicks, ...subjectResult, chosen };
   }
 
+  // ── Bảng "Danh sách thủ tục hành chính" của CỔNG TỈNH (provincePortalFlow, port content/portal-quangninh.js) ──
+  // Một mã TTHC ra NHIỀU dòng (đồng bằng / "Miền núi, hải đảo"…), mỗi dòng một nút "Nộp hồ sơ".
+  const provinceSubmitButtons = () => Array.from(document.querySelectorAll("button, a"))
+    .filter((el) => isVisible(el) && fold(el.textContent) === "nop ho so");
+  const provinceRowOf = (button) => button?.closest?.("tr") || button?.parentElement || null;
+
+  /**
+   * Ưu tiên khớp CHỮ trong dòng (`rowIncludes`: chuỗi, hoặc mảng phải chứa ĐỦ) vì thứ tự bảng đổi theo dữ liệu cổng;
+   * không khớp mới rơi về VỊ TRÍ (`rowIndex`, đếm từ 1). Không có rowIndex hoặc bảng thiếu dòng thì KHÔNG bấm: mở nhầm
+   * biến thể (đồng bằng thay vì miền núi, "không phải nộp" thay vì "phải nộp nghĩa vụ tài chính") là sai cả hồ sơ.
+   */
+  async function pickProvinceRow({ rowIncludes = "", rowIndex = 0 } = {}) {
+    if (!await waitFor(() => provinceSubmitButtons().length, 12000, 300)) {
+      return { ok: false, error: "chưa thấy nút Nộp hồ sơ trên bảng thủ tục" };
+    }
+    // Bảng render DẦN: chờ số nút đứng yên rồi mới chốt, bấm sớm là trúng dòng khác.
+    let count = provinceSubmitButtons().length;
+    for (let round = 0; round < 5; round += 1) {
+      await sleep(400);
+      const now = provinceSubmitButtons().length;
+      if (now === count) break;
+      count = now;
+    }
+    const all = provinceSubmitButtons();
+    const wanted = (Array.isArray(rowIncludes) ? rowIncludes : [rowIncludes]).map(fold).filter(Boolean);
+    let button = null;
+    if (wanted.length) {
+      button = all.find((b) => {
+        const text = fold(provinceRowOf(b)?.textContent);
+        return wanted.every((part) => text.includes(part));
+      }) || null;
+      if (!button) infoWarn("province-row:no-text-match", { rowIncludes, rows: all.length });
+    }
+    if (!button && rowIndex > 0) {
+      if (rowIndex > all.length) {
+        return { ok: false, error: `bảng mới có ${all.length} dòng, cần dòng thứ ${rowIndex}` };
+      }
+      button = all[rowIndex - 1];
+    }
+    if (!button) return { ok: false, error: "không thấy dòng đúng thủ tục" };
+    infoLog("province-row:click", { rowIncludes, rowIndex, rows: all.length });
+    button.scrollIntoView?.({ block: "center" });
+    clickLikeUser(button);
+    return { ok: true, rows: all.length };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "pickProvinceRow" || window.top !== window) return;
+    pickProvinceRow(msg)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
+    return true;
+  });
+
   // Modal "Thông tin chung" của wizard hồ sơ: chọn Đối tượng thực hiện theo contract
   // backend rồi mới bấm "Xác nhận". data-e2e là hook ổn định hơn class Tailwind động.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "confirmInfoModal") return;
-    confirmInfoModal(msg.executionSubject || null, msg.infoFields || null)
+    confirmInfoModal(msg.executionSubject || null, msg.infoFields || null, msg.fillEmpty === true)
       .then((result) => {
         if (result) sendResponse(result);
       })

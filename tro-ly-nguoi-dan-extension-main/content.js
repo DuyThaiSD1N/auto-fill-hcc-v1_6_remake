@@ -1780,6 +1780,22 @@
       // Modal xác thực là bằng chứng mạnh hơn nhãn tài khoản phía sau modal. Sau OTP, cổng
       // có thể đã hiện trạng thái đăng nhập nhưng vẫn bắt buộc công dân chia sẻ/passcode.
       if (vneidLoginCodePrompt || vneidDataSharingPrompt || vneidPasscodePrompt) loginPage = true;
+      // Cổng TỈNH (vd dichvucong.quangninh.gov.vn) chặn bằng dialog chỉ có nút "Đăng nhập bằng VNeID" — không có chữ
+      // "quét mã QR" như SSO. Bắt buộc nằm trong dialog đang mở: nút cùng chữ còn nằm sẵn ở khu tài khoản của cổng tỉnh
+      // kể cả khi đã đăng nhập (cùng chốt với portal-login.js của Auto Fill).
+      const provinceLoginDialog = Array.from(document.querySelectorAll("button, a")).some((el) =>
+        foldTxt(el.textContent).startsWith("dang nhap bang vneid") && isPageVisible(el)
+        && !!el.closest('[role="dialog"], [role="alertdialog"], .ant-modal-content, .modal-dialog'));
+      if (provinceLoginDialog) loginPage = true;
+      // Bảng "Danh sách thủ tục hành chính" của cổng tỉnh (/nop-ho-so?...MaTTHC=): một mã ra nhiều dòng, mỗi dòng một nút
+      // "Nộp hồ sơ" — BE chọn đúng dòng (provincePortalFlow). Chỉ đếm khi bảng đó đang hiện và CHƯA vào kê khai: trang hồ
+      // sơ cũng có nút "Nộp hồ sơ" cuối trang, đếm nhầm là trợ lý bấm nộp hộ.
+      const provinceRows = location.pathname.startsWith("/nop-ho-so") && !provinceLoginDialog
+        && hasVisibleText("danh sach thu tuc hanh chinh")
+        && !hasVisibleText("ke khai thong tin") && !hasVisibleText("thong tin ke khai")
+        ? Array.from(document.querySelectorAll("button, a"))
+          .filter((el) => isPageVisible(el) && foldTxt(el.textContent) === "nop ho so").length
+        : 0;
       // VNeID đôi khi lỗi không dựng mã QR (khung QR 192px trống, ảnh img[alt="qr_images"] không có/không tải
       // được). Chờ trang đứng yên ~6 giây rồi mới kết luận, tránh báo nhầm lúc ảnh còn đang tải.
       const qrImage = document.querySelector('img[alt="qr_images"]');
@@ -1788,7 +1804,12 @@
         && !!document.querySelector("#username") && performance.now() > 6000
         && !(qrImage && qrImage.complete && qrImage.naturalWidth > 0 && qrImage.getClientRects().length > 0);
       // Modal "Thông tin chung" của wizard hồ sơ — nút Xác nhận có data-e2e (hook test của cổng).
-      const infoModalBtn = document.querySelector('button[data-e2e="confirm-button-information"]');
+      // Cổng tỉnh cùng nền có thể không gắn data-e2e → nhận theo dialog tiêu đề "Thông tin chung" có nút "Xác nhận".
+      const infoModalBtn = document.querySelector('button[data-e2e="confirm-button-information"]')
+        || Array.from(document.querySelectorAll('[role="dialog"]'))
+          .filter((d) => isPageVisible(d) && foldTxt(d.textContent).includes("thong tin chung"))
+          .flatMap((d) => Array.from(d.querySelectorAll("button")))
+          .find((b) => isPageVisible(b) && foldTxt(b.textContent) === "xac nhan") || null;
       const infoModal = !!(infoModalBtn && infoModalBtn.offsetParent !== null);
       // Wizard hồ sơ 4 bước (chủ hồ sơ → kê khai → thành phần → nhận kết quả): bước hiện
       // tại = bước ĐẦU TIÊN còn hiện SỐ thứ tự — bước đã xong thay số bằng icon ✓.
@@ -1870,6 +1891,8 @@
         maeAgencyBlock,
         bcaAgencyBlock,
         bcaAgencyDone,
+        provinceRows,
+        provinceLoginDialog,
         loginPage,
         vneidLoginCodePrompt,
         vneidDataSharingPrompt,

@@ -68,3 +68,97 @@ def test_khong_con_cho_trong_nao_khac():
     found = set(re.findall(r"\{(\w+)\}", json.dumps(agency_plans.LIEN_THONG_KHAI_SINH,
                                                     ensure_ascii=False)))
     assert found <= {"province", "ward"}, f"chỗ trống chưa ai thay: {found - {'province', 'ward'}}"
+
+
+# ── Chặng cổng tỉnh Quảng Ninh (provincePortalFlow) — trợ lý dùng CHUNG cấu hình ke_khai_links với Auto Fill ──
+_QN_LOC = {"province": "Tỉnh Quảng Ninh", "province_slug": "quangninh", "ward": "Phường Hạ Long"}
+
+
+def _qn_conv(provincial=True):
+    from app.channels.handfree.chat import store
+
+    conv = store.new_conversation(location=dict(_QN_LOC))
+    if provincial:
+        conv["client_capabilities"] = {"supportsProvincePortal": True, "supportsAgencyCard": True}
+    return conv
+
+
+def _handfree(key):
+    return next(p for p in HANDFREE if p["key"] == key)
+
+
+def test_quang_ninh_cung_cau_hinh_cong_tinh_voi_auto_fill():
+    """Thủ tục có provincePortalFlow ở ke_khai_links: trợ lý dùng đúng bản đó (dòng, chi nhánh VPĐK), không chép tay."""
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    links = {l["code"]: l for l in KE_KHAI_LINKS if l["label"].startswith("Quảng Ninh - ")}
+    qn = [p for p in HANDFREE if p.get("provinceOnly") == ["quangninh"]]
+    assert len(qn) == 14
+    for proc in qn:
+        link = links[proc["code"]]
+        assert proc["keKhaiUrl"] == link["url"], proc["key"]
+        assert proc["provincePortalFlow"]["host"] == "dichvucong.quangninh.gov.vn", proc["key"]
+        if link.get("provincePortalFlow"):
+            assert proc["provincePortalFlow"] == link["provincePortalFlow"], proc["key"]
+        assert bool(proc.get("agencyProvinceOnly")) == bool(link.get("provinceOnlyAgency")), proc["key"]
+        assert proc.get("agencyCardIncludes", "") == link.get("submitCardIncludes", ""), proc["key"]
+        assert proc.get("agencyWard", "") == link.get("agencyWard", ""), proc["key"]
+
+
+def test_quang_ninh_bam_dung_dong_bang_thu_tuc_mot_lan():
+    from app.channels.handfree.chat import flow
+
+    proc = flow.get_procedure("dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao")
+    conv = _qn_conv()
+    ctx = {"provinceRows": 3, "loggedIn": True}
+    r = flow._guide_login_on_page(conv, proc, conv["location"], ctx)  # noqa: SLF001
+    assert r.actions == [{"type": "pick_province_row", "rowIncludes": "Miền núi, hải đảo", "rowIndex": 2}]
+    # Watcher báo lại giữa lúc cổng đang dựng modal → không bấm lần hai (mở hai hồ sơ).
+    again = flow._guide_login_on_page(conv, proc, conv["location"], ctx)  # noqa: SLF001
+    assert again.actions == [] and not again.display_md
+
+
+def test_quang_ninh_extension_cu_dan_bam_tay_khong_xac_nhan_ho():
+    """Extension chưa biết chọn cơ quan theo tên: bấm Xác nhận lúc này là nộp vào cơ quan cổng để sẵn."""
+    from app.channels.handfree.chat import flow
+
+    proc = flow.get_procedure("tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao")
+    conv = _qn_conv(provincial=False)
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"provinceRows": 6})  # noqa: SLF001
+    assert not r.actions and "dòng thứ 4" in r.display_md
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"infoModal": True})  # noqa: SLF001
+    assert not r.actions and "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô" in r.display_md
+
+
+def test_quang_ninh_modal_chon_chi_nhanh_theo_ten_va_dien_o_trong():
+    from app.channels.handfree.chat import flow
+
+    proc = flow.get_procedure("xoa-dang-ky-bien-phap-bao-dam-quang-ninh")
+    conv = _qn_conv()
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"infoModal": True})  # noqa: SLF001
+    action = r.actions[0]
+    assert action["type"] == "confirm_info_modal"
+    assert action["infoFields"] == [{"value": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"}]
+    assert action["fillEmpty"] is True
+
+
+def test_quang_ninh_dang_nhap_rieng_cong_tinh():
+    from app.channels.handfree.chat import flow
+
+    proc = flow.get_procedure("dang-ky-bien-phap-bao-dam-quang-ninh")
+    conv = _qn_conv()
+    r = flow._guide_login_on_page(  # noqa: SLF001
+        conv, proc, conv["location"], {"provinceLoginDialog": True, "loginPage": True, "provinceRows": 2})
+    assert "tỉnh Quảng Ninh" in r.display_md and "Đăng nhập bằng VNeID" in r.display_md
+    assert r.actions == [{"type": "collapse_after_tts"}]
+
+
+def test_quang_ninh_xa_co_dinh_dac_khu_co_to():
+    """agencyWard (ke_khai_links): DVCQG chọn Đặc khu Cô Tô thay vì xã của tài khoản."""
+    from app.channels.handfree.chat import flow
+
+    proc = flow.get_procedure("dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh")
+    conv = _qn_conv()
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"agencyBlock": True})  # noqa: SLF001
+    assert r.actions[0]["type"] == "select_agency"
+    assert r.actions[0]["ward"] == "Đặc khu Cô Tô"

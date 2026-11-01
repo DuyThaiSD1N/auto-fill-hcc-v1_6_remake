@@ -113,6 +113,9 @@
     // Bấm "Nộp trực tuyến" ở đúng thẻ theo chữ BE gửi (portal-dvc.js::clickNopTrucTuyenByCard).
     // Thiếu cờ → BE dặn công dân chọn tay thay vì để engine cũ bấm thẻ đầu (cấp Sở).
     supportsAgencyCard: true,
+    // Chặng cổng tỉnh của thủ tục đặc thù (vd Quảng Ninh): bấm "Nộp hồ sơ" đúng dòng bảng thủ tục
+    // (portal-dvc.js::pickProvinceRow) + chọn cơ quan theo tên ở mọi ô modal Thông tin chung. Thiếu cờ → BE dặn chọn tay.
+    supportsProvincePortal: true,
     // Biết sửa TẠI CHỖ bong bóng bot gần nhất (d.replace_last) — chỉnh nơi làm/đối tượng trên card
     // xác nhận thủ tục thì câu hỏi đổi theo ngay trong bong bóng cũ, không đẻ bong bóng mới.
     supportsReplaceLast: true,
@@ -361,6 +364,7 @@
   // thao tác — công dân nói đè giữa lúc trang đổi thì câu nói lạc lượt. Lệnh chỉ đọc trang không tính.
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
+    "pickProvinceRow",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
     "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
     "prepareBusinessRegistration", "startBusinessRegistration",
@@ -1072,6 +1076,7 @@
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
       || c.maeAgencyBlock || c.lienThongHome || c.bcaAgencyBlock
+      || c.provinceRows || c.provinceLoginDialog
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -1208,6 +1213,9 @@
       // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
       bcaAgencyBlock: !!c.bcaAgencyBlock,
       bcaAgencyDone: !!c.bcaAgencyDone,
+      // Cổng tỉnh (/nop-ho-so): số nút "Nộp hồ sơ" trên bảng thủ tục + dialog "Đăng nhập bằng VNeID" riêng của cổng tỉnh.
+      provinceRows: Number(c.provinceRows) || 0,
+      provinceLoginDialog: !!c.provinceLoginDialog,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -1595,7 +1603,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -5074,6 +5082,17 @@
         // Cổng đã sang trang kê khai / đăng nhập dù content không kịp trả lời → im lặng, watcher
         // gửi page_status của trang mới. Báo agency_failed ở đây là nhắc chọn tay trong khi đã vào form.
         else if (!movedOn) ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+      } else if (a.type === "pick_province_row") {
+        // Cổng tỉnh (thủ tục đặc thù): bấm "Nộp hồ sơ" ở đúng dòng bảng thủ tục. Thành công thì im — cổng mở modal
+        // Thông tin chung / dialog đăng nhập, watcher báo trạng thái mới. Không thấy dòng đúng thì BE dặn bấm tay.
+        setStatus("Đang chọn đúng thủ tục trên cổng tỉnh…");
+        const res = await sendToContent({
+          action: "pickProvinceRow",
+          rowIncludes: a.rowIncludes || "",
+          rowIndex: Number(a.rowIndex) || 0,
+        });
+        setStatus("");
+        if (!res?.ok) ask(`__event:province_row_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
       } else if (a.type === "fill_bca_agency") {
         // Cổng DVC Bộ Công an: content.js chọn Tỉnh → Xã ở khối "Cơ quan thực hiện". Báo lại cả khi lỗi
         // (BE mời chọn lại hoặc tự chọn trên trang).
@@ -5108,6 +5127,8 @@
           action: "confirmInfoModal",
           executionSubject: a.executionSubject || null,
           infoFields: a.infoFields || null,
+          // Cổng tỉnh: ô còn trống (Đơn vị tiếp nhận…) lấy lựa chọn đầu kể cả khi BE không gửi ô nào để chọn.
+          fillEmpty: a.fillEmpty === true,
         });
         // Trang báo modal ĐÃ ĐÓNG (content chờ cổng nhận Xác nhận) → báo trạng thái trang ngay, không đợi nhịp
         // watcher; mở lại hạn mức cho lần modal sau. Chưa đóng (bản content cũ / lỗi) thì chờ một nhịp như trước.

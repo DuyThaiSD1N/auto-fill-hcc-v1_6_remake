@@ -47,6 +47,16 @@ _BN_TAB_FLOW = {
     ],
 }
 
+# Cổng dịch vụ công Quảng Ninh: thủ tục đặc thù tỉnh đi DVCQG (chọn tỉnh, thẻ "Nộp trực tuyến") rồi bị ném sang
+# dichvucong.quangninh.gov.vn/nop-ho-so — bảng thủ tục (bấm "Nộp hồ sơ" đúng dòng), đăng nhập VNeID riêng của cổng
+# tỉnh, modal "Thông tin chung" (chọn chi nhánh VPĐK). Link kê khai + provincePortalFlow lấy theo MÃ từ ke_khai_links ở
+# cuối danh sách (cùng nguồn với content/portal-quangninh.js của Auto Fill); uploadHint lấy từ registry lõi.
+_QN_HOST = "dichvucong.quangninh.gov.vn"
+# Trang kết quả DVCQG ra thẻ UBND lẫn thẻ VPĐK cùng tên thủ tục (ke_khai_links submitCardIncludes).
+_QN_VPDK_CARD = "Cơ quan thực hiện: Văn phòng Đăng ký đất đai"
+# Chi nhánh VPĐK Auto Fill đang chọn trong modal "Thông tin chung" (ke_khai_links provincePortalFlow.agency).
+_QN_VPDK_CO_TO = "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+
 # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (stepper iGate 1 Thông tin hồ sơ → 2 Thành phần hồ sơ →
 # 3 Hình thức nhận kết quả → 4 Nộp hồ sơ = màn đã nộp). Đính kèm xong: nút sang bước 3 (trợ lý bấm
 # "Tiếp tục"), chọn ô mat-select[formcontrolname="receivingKind"] theo thẻ, rồi NHẮC công dân tự tích ô
@@ -1856,7 +1866,7 @@ PROCEDURES: list[dict] = [
                 "MaTTHC=1.005319",
                 "019d2bfa-47c1-71d9-a6f9-c0f5829bb34e",
             ],
-            # KHÁC gia hạn CCHN thú y (2.001064, chưa lên vì cần add-document-dialog): "cấp lại" ≠ "gia hạn".
+            # KHÁC gia hạn CCHN thú y (2.001064, entry "gia-han-chung-chi-hanh-nghe-thu-y"): "cấp lại" ≠ "gia hạn".
             "textIncludes": ["cấp lại chứng chỉ hành nghề thú y"],
             "headingDisabled": True,
             "textPriority": True,
@@ -6039,6 +6049,1511 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──
+    # Key TRÙNG lõi → process/attach tự nối qua core_registry. Cờ chọn cơ quan theo ke_khai_links: selectSo →
+    # agencyProvinceOnly + agencySoFirst; provinceOnlyAgency → agencyProvinceOnly (+ maePortal cổng NN&MT). Cổng Bộ
+    # Xây dựng dùng profile "xay-dung" + bxdFlow như các thủ tục cùng cổng. Cổng Bộ VHTTDL, Bộ Công Thương, Bộ Nội vụ
+    # chưa có luồng dẫn bước riêng (content/bxd/portal.js không khai host) → luồng chung: chọn cơ quan, điền, đính
+    # kèm, công dân tự chuyển bước và nộp. Chỉ đưa lên thủ tục đã có URL kê khai (cấp GCN ATTP Công Thương, khuyến
+    # mại may rủi, thi tuyển Một cửa Bộ Nội vụ, xóa đăng ký phương tiện thủy, GCNKNCM chưa có → chưa lên). Chưa chạy
+    # thử trên cổng thật — kiểm khi chạy thử.
+    {
+        "key": "thong-bao-san-pham-quang-cao-bang-ron",
+        # Mã TTHC 1.004650, cổng Bộ VHTTDL (liz-*, engine content/fill-liz.js như điểm trò chơi điện tử).
+        # ke_khai_links ghi key khác ("thong-bao-san-pham-quang-cao-bang-quang-cao-bang-ron") → khai tay uuid + mã.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.004650",
+                "019d2bfd-d4c8-725d-8498-130caf913cf2",
+            ],
+        },
+        "code": "1.004650",
+        "label": "Thủ tục tiếp nhận hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn",
+        "shortLabel": "Thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn",
+        "subtitle": "Doanh nghiệp thông báo nội dung bảng quảng cáo, băng-rôn trước khi treo",
+        "icon": "📢",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-d4c8-725d-8498-130caf913cf2",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn (Mẫu số 01)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_dkdn", "name": "Giấy chứng nhận đăng ký doanh nghiệp", "icon": "🏢", "sides": 1,
+             "repeatable": True},
+            {"key": "ma_ket", "name": "Ma-két, bản phối cảnh, giấy tờ hợp chuẩn / hợp quy", "icon": "🖼️",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Thông báo khuyến mại, văn bản quyền sử dụng địa điểm, giấy phép xây dựng "
+             "(nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn (Mẫu số 01) — nguồn chính để điền.\n"
+            "2. Giấy chứng nhận đăng ký doanh nghiệp — để điền khối 'Thông tin người ủy quyền'.\n"
+            "3. Ma-két, bản phối cảnh, giấy tờ hợp chuẩn / hợp quy.\n"
+            "4. Nếu có: thông báo khuyến mại, văn bản quyền sử dụng địa điểm, giấy phép xây dựng.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối người nộp giữ nguyên thông tin tài khoản. Chưa tích ô cam kết thì nút 'Lưu và nộp hồ sơ' bị "
+            "khoá — tự tích sau khi rà soát."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh",
+        # Mã TTHC 1.003868, cổng Bộ VHTTDL (liz-*). Khối 'Thông tin doanh nghiệp' là của CƠ SỞ IN, không phải tổ chức
+        # đề nghị cấp phép — mapper lõi điền tách hai bên. Bảng đính kèm 4 dòng, không có dòng 'Giấy tờ khác'.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.003868",
+                "019d90c9-cee7-727c-a855-ac24b8084e6f",
+            ],
+        },
+        "label": "Cấp giấy phép xuất bản tài liệu không kinh doanh",
+        "shortLabel": "Giấy phép xuất bản tài liệu không kinh doanh",
+        "subtitle": "Cơ quan, tổ chức xin phép in tài liệu phát hành không thu tiền",
+        "icon": "📚",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90c9-cee7-727c-a855-ac24b8084e6f",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp giấy phép xuất bản tài liệu không kinh doanh (Mẫu số 04)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "ban_thao", "name": "Bản thảo tài liệu sẽ xuất bản", "icon": "📚", "sides": 1,
+             "repeatable": True},
+            {"key": "co_so_in", "name": "Giấy chứng nhận đăng ký doanh nghiệp và Giấy phép hoạt động in của cơ sở in",
+             "icon": "🖨️", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Bản dịch tiếng Việt, văn bản ý kiến của cơ quan có thẩm quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp giấy phép xuất bản tài liệu không kinh doanh (Mẫu số 04) — nguồn chính để điền.\n"
+            "2. Bản thảo tài liệu sẽ xuất bản.\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp và Giấy phép hoạt động in của CƠ SỞ IN — để điền khối "
+            "'Thông tin doanh nghiệp'.\n"
+            "4. Nếu có: bản dịch tiếng Việt, văn bản nêu ý kiến của cơ quan có thẩm quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bảng đính kèm chỉ có 4 dòng: giấy tờ ngoài danh mục được đưa vào dòng 4 kèm cảnh báo. Tự tích ô cam "
+            "kết thì nút 'Lưu và nộp hồ sơ' mới mở."
+        ),
+    },
+    {
+        "key": "cap-the-huong-dan-vien-du-lich-noi-dia",
+        # Mã TTHC 1.004623, cổng Bộ VHTTDL (liz-*). Auto Fill chạy điền + đính kèm một lượt (fillWithAttach); trợ lý
+        # đi hai bước như thường, cùng pipeline process/attach.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.004623",
+                "019d7fa4-c5c7-744b-afcf-3c51350aa612",
+            ],
+            "textIncludes": ["cấp thẻ hướng dẫn viên du lịch nội địa"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch nội địa",
+        "shortLabel": "Cấp thẻ hướng dẫn viên du lịch nội địa",
+        "subtitle": "Xin thẻ hướng dẫn viên dẫn khách du lịch trong nước",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa4-c5c7-744b-afcf-3c51350aa612",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp thẻ hướng dẫn viên du lịch nội địa (Mẫu số 04)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Bằng tốt nghiệp trung cấp trở lên (bản sao chứng thực)", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_chi", "name": "Chứng chỉ nghiệp vụ hướng dẫn du lịch nội địa (khi văn bằng không thuộc "
+             "chuyên ngành hướng dẫn du lịch)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "anh", "name": "Ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp thẻ hướng dẫn viên du lịch nội địa (Mẫu số 04) — nguồn chính để điền.\n"
+            "2. Bản sao chứng thực bằng tốt nghiệp trung cấp trở lên.\n"
+            "3. Bản sao chứng thực chứng chỉ nghiệp vụ hướng dẫn du lịch nội địa (khi văn bằng không thuộc chuyên "
+            "ngành hướng dẫn du lịch).\n"
+            "4. Ảnh chân dung màu 3x4.\n"
+            "5. Nếu có: căn cước của người đề nghị — để bổ sung ngày sinh, ngày cấp, địa chỉ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi căn cước tài khoản trùng căn cước trên đơn.\n"
+            "Bước đính kèm: Đơn → dòng 1; văn bằng + chứng chỉ → dòng 2; ảnh → dòng 3."
+        ),
+    },
+    {
+        "key": "gia-han-giay-phep-xay-dung",
+        "flowProfile": "xay-dung",
+        # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
+        # như điều chỉnh. GCN quyền sử dụng đất thành dòng mới qua "+ Thêm giấy tờ" (add-document-dialog).
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "label": (
+            "Gia hạn giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo tuyến "
+            "trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Sửa chữa, cải tạo/Theo giai đoạn cho "
+            "công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) và nhà ở "
+            "riêng lẻ"
+        ),
+        "shortLabel": "Gia hạn giấy phép xây dựng",
+        "subtitle": "Xin thêm thời gian khởi công khi giấy phép xây dựng sắp hết hạn",
+        "icon": "🏗️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9097-700f-899f-6dfc532f0e6b",
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị gia hạn giấy phép xây dựng (Mẫu số 02) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hộ (hai vợ chồng thì đủ cả hai)", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "gpxd", "name": "Giấy phép xây dựng đã được cấp (bản chính, đủ các trang)", "icon": "📑",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn_qsdd", "name": "Giấy chứng nhận quyền sử dụng đất (đủ trang, gồm trang những thay đổi)",
+             "icon": "🏠", "sides": 1, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị gia hạn giấy phép xây dựng (Mẫu số 02), đã ký — nguồn chính để điền.\n"
+            "2. Căn cước công dân 2 mặt của chủ hộ (hai vợ chồng thì đủ cả hai) — có thể gộp chung file với Đơn.\n"
+            "3. Bản chính Giấy phép xây dựng đã được cấp (đủ các trang).\n"
+            "4. Giấy chứng nhận quyền sử dụng đất (đủ trang, gồm trang 'Những thay đổi sau khi cấp').\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn + căn cước → dòng 1; giấy phép xây dựng → dòng 2; giấy chứng nhận quyền sử dụng "
+            "đất thành dòng mới qua '+ Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+        # Mã TTHC 2.000535, cổng Bộ Công Thương (bảng attp-row). ke_khai_links ghi key khác
+        # ("cap-lai-gcn-attp-so-cong-thuong") → khai tay uuid + mã; ke_khai khai selectSo → Sở Công Thương.
+        "detect": {
+            "textIncludes": [
+                "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
+            ],
+            "urlIncludes": ["019d2bf8-32f5-71a9-8925-3524dc3d03fd"],
+            "headingDisabled": True,
+        },
+        "code": "2.000535",
+        "label": "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
+        "shortLabel": "Cấp lại giấy chứng nhận an toàn thực phẩm (Sở Công Thương)",
+        "subtitle": "Cơ sở sản xuất, kinh doanh thực phẩm xin cấp lại giấy chứng nhận còn hạn",
+        "icon": "🍱",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-32f5-71a9-8925-3524dc3d03fd",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Công Thương",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp lại Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đã được cấp",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy đăng ký doanh nghiệp, thuyết minh cơ sở vật chất, giấy tập huấn, giấy "
+             "sức khỏe, giấy ủy quyền (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp lại Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm.\n"
+            "2. Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đã được cấp.\n"
+            "3. Nếu có: giấy đăng ký doanh nghiệp / địa điểm kinh doanh, bản thuyết minh cơ sở vật chất, giấy xác "
+            "nhận tập huấn an toàn thực phẩm, giấy xác nhận đủ sức khỏe, giấy ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+        # Mã TTHC 2.001474, cổng Bộ Công Thương (attp-row MỘT dòng — mọi tệp đính vào đó). ke_khai_links ghi key khác
+        # ("thong-bao-sua-doi-bo-sung-chuong-trinh-khuyen-mai") → khai tay uuid + mã; ke_khai khai selectSo.
+        "detect": {
+            "urlScope": ["dichvucong-tthc.moit.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bf8-428e-76a8-a8e8-65eee3365b73"],
+            "textIncludes": ["2.001474", "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "2.001474",
+        "label": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại",
+        "shortLabel": "Sửa đổi, bổ sung chương trình khuyến mại",
+        "subtitle": "Thương nhân thông báo thay đổi chương trình khuyến mại đã đăng ký",
+        "icon": "🎁",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-428e-76a8-a8e8-65eee3365b73",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Công Thương",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại (Mẫu 06, bản "
+             "đã ký số)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đang đăng nhập nộp hồ sơ (nếu muốn điền khối tài "
+             "khoản)", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại (Mẫu 06, bản đã ký số) — nguồn chính.\n"
+            "2. Nếu muốn điền khối thông tin tài khoản: căn cước của chính người đang đăng nhập nộp hồ sơ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: mọi tệp đính vào dòng 'Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại', "
+            "giữ nguyên tên tệp."
+        ),
+    },
+    {
+        "key": "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
+        # Mã TTHC 1.115377, cổng một cửa Bộ Công Thương, tiếp nhận ở UBND cấp xã (DVCQG chọn Tỉnh + Xã). Bản vẽ và tài
+        # liệu công trình thành dòng mới qua "+ Thêm giấy tờ" (add-document-dialog).
+        "detect": {
+            "urlIncludes": ["019f1695-894f-72b8-80a8-2fee368722be"],
+            "textIncludes": ["Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất", "cấp điện áp hạ áp"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất, tự tiêu thụ đấu nối với hệ thống điện "
+            "quốc gia tại cấp điện áp hạ áp"
+        ),
+        "shortLabel": "Thông báo lắp điện mặt trời mái nhà",
+        "subtitle": "Hộ gia đình, tổ chức lắp điện mặt trời mái nhà tự dùng, đấu nối lưới hạ áp",
+        "icon": "☀️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1695-894f-72b8-80a8-2fee368722be",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Thông báo phát triển nguồn điện mặt trời mái nhà (Mẫu số 01) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "ban_ve", "name": "Bản vẽ thiết kế lắp đặt nguồn điện", "icon": "📐", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng tên hoặc người đại diện", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy chứng nhận quyền sử dụng đất, giấy phép xây dựng, nghiệm thu PCCC, hình "
+             "ảnh, chứng từ thiết bị (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo phát triển nguồn điện mặt trời mái nhà (Mẫu số 01 Phụ lục III), đã ký — nguồn chính.\n"
+            "2. Bản vẽ thiết kế lắp đặt nguồn điện.\n"
+            "3. Căn cước của người đứng tên (cá nhân) hoặc người đại diện (tổ chức / hộ kinh doanh).\n"
+            "4. Nếu có: giấy chứng nhận quyền sử dụng đất, giấy phép xây dựng, nghiệm thu PCCC; hình ảnh dự án; "
+            "chứng từ thiết bị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Thông báo vào dòng Mẫu số 01; bản vẽ và tài liệu công trình thêm dòng qua '+ Thêm giấy "
+            "tờ' (không thêm được thì đính chung dòng Thông báo)."
+        ),
+    },
+    {
+        "key": "xet-tuyen-vien-chuc",
+        # Mã 3.000601. Bước đính kèm chỉ có ô Phiếu đăng ký dự tuyển (slot 0); căn cước chỉ để đối chiếu người nộp.
+        "detect": {
+            "urlIncludes": ["019f1834-0004-71bd-abd7-6c634065e005"],
+            "textIncludes": ["Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)",
+        "shortLabel": "Xét tuyển viên chức",
+        "subtitle": "Nộp phiếu đăng ký dự tuyển viên chức",
+        "icon": "👩‍💼",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1834-0004-71bd-abd7-6c634065e005",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_du_tuyen", "name": "Phiếu đăng ký dự tuyển (Mẫu số 01)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người nộp hồ sơ (khi khác người dự tuyển)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đăng ký dự tuyển theo Mẫu số 01.\n"
+            "2. Nếu người nộp khác người dự tuyển: căn cước của người nộp hồ sơ.\n"
+            "Hệ thống lấy chủ hồ sơ từ phiếu đăng ký, rồi so với thông tin người nộp trên form.\n"
+            "Bước đính kèm: chỉ đính Phiếu đăng ký dự tuyển."
+        ),
+    },
+    {
+        "key": "xet-tuyen-cong-chuc",
+        # Mã TTHC 1.014113. Bảng đính kèm ô cố định, planner chỉ đính Phiếu đăng ký dự tuyển.
+        "detect": {
+            "urlIncludes": ["019d2bfb-2326-7367-83e6-f242eef7cbc5"],
+            "textIncludes": ["Xét tuyển công chức"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Xét tuyển công chức",
+        "shortLabel": "Xét tuyển công chức",
+        "subtitle": "Nộp phiếu đăng ký dự tuyển công chức theo hình thức xét tuyển",
+        "icon": "🧑‍💼",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2326-7367-83e6-f242eef7cbc5",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_du_tuyen", "name": "Phiếu đăng ký dự tuyển (Mẫu số 01)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "khac", "name": "Căn cước / giấy tờ khác theo yêu cầu của cơ quan tuyển dụng (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đăng ký dự tuyển theo Mẫu số 01.\n"
+            "2. Nếu có: căn cước / giấy tờ định danh hoặc tài liệu khác theo yêu cầu của cơ quan tuyển dụng.\n"
+            "Hệ thống lấy người nộp, chủ hồ sơ và toàn bộ mẫu khai chi tiết từ Phiếu đăng ký dự tuyển.\n"
+            "Bước đính kèm: chỉ đính Phiếu đăng ký dự tuyển."
+        ),
+    },
+    {
+        "key": "thi-tuyen-cong-chuc",
+        # Mã TTHC 1.014111. KHÁC "thi-tuyen-cong-chuc-mot-cua-moha" của Auto Fill (cổng Một cửa Bộ Nội vụ).
+        "detect": {
+            "urlIncludes": ["019d90b5-0f50-773c-88d5-07d6ef77b613"],
+            "textIncludes": ["Thi tuyển công chức"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thi tuyển công chức",
+        "shortLabel": "Thi tuyển công chức",
+        "subtitle": "Nộp phiếu đăng ký dự thi tuyển công chức",
+        "icon": "📝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90b5-0f50-773c-88d5-07d6ef77b613",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_du_tuyen", "name": "Phiếu đăng ký dự tuyển (Mẫu số 01)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "khac", "name": "Căn cước / giấy tờ khác theo yêu cầu của cơ quan tuyển dụng (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đăng ký dự tuyển theo Mẫu số 01.\n"
+            "2. Nếu có: căn cước / giấy tờ định danh hoặc tài liệu khác theo yêu cầu của cơ quan tuyển dụng.\n"
+            "Hệ thống lấy người nộp, chủ hồ sơ và toàn bộ mẫu khai chi tiết từ Phiếu đăng ký dự tuyển.\n"
+            "Bước đính kèm: chỉ đính Phiếu đăng ký dự tuyển."
+        ),
+    },
+    {
+        "key": "gia-han-chung-chi-hanh-nghe-thu-y",
+        # Mã TTHC 2.001064, cổng NN&MT, CÙNG khung chọn cơ quan với "cap-lai-chung-chi-hanh-nghe-thu-y": ke_khai_links
+        # khai provinceOnlyAgency + selectSo → DVCQG chỉ chọn Tỉnh, trang MAE chọn Sở NN&MT. Văn bằng thành dòng mới qua
+        # "+ Thêm giấy tờ" (add-document-dialog); dòng 'Giấy phép lao động' (người nước ngoài) planner bỏ tick.
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=2.001064",
+                "019d2bfa-a5c7-766f-af92-cdc33555359c",
+            ],
+            "textIncludes": ["gia hạn chứng chỉ hành nghề thú y"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Gia hạn Chứng chỉ hành nghề thú y",
+        "shortLabel": "Gia hạn chứng chỉ hành nghề thú y",
+        "subtitle": "Gia hạn chứng chỉ hành nghề thú y sắp hoặc đã hết hiệu lực",
+        "icon": "🐄",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-a5c7-766f-af92-cdc33555359c",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký gia hạn Chứng chỉ hành nghề thú y (Mẫu 02.HNTY) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "suc_khoe", "name": "Giấy khám sức khỏe (bản chính)", "icon": "🩺", "sides": 1,
+             "repeatable": True},
+            {"key": "van_bang", "name": "Văn bằng / chứng chỉ chuyên môn (bản sao chứng thực)", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "cchn_cu", "name": "Chứng chỉ hành nghề thú y đã cấp", "icon": "🐄", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người đứng đơn, thêm căn cước người nộp nếu nộp thay (chỉ để "
+             "điền)", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của NGƯỜI ĐỨNG ĐƠN — người được gia hạn chứng chỉ):\n"
+            "1. Đơn đăng ký gia hạn Chứng chỉ hành nghề thú y (Mẫu 02.HNTY), đã ký — nguồn chính để điền.\n"
+            "2. Giấy khám sức khỏe (bản chính).\n"
+            "3. Văn bằng / chứng chỉ chuyên môn (bản sao chứng thực).\n"
+            "4. Chứng chỉ hành nghề thú y đã cấp — để lấy số đăng ký và ngày hết hiệu lực.\n"
+            "5. Căn cước của người đứng đơn; người khác nộp thay thì thêm căn cước người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: Giấy khám sức khỏe → dòng 'Giấy chứng nhận sức khỏe'; Đơn → dòng 'Đơn đăng ký "
+            "gia hạn'; văn bằng thêm dòng qua '+ Thêm giấy tờ'; căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "xoa-dang-ky-tau-ca",
+        # Mã TTHC 1.003681, cổng NN&MT, CÙNG khung chọn cơ quan với "cap-gcn-dang-ky-tau-ca" (provinceOnlyAgency →
+        # DVCQG chỉ chọn Tỉnh, trang MAE chọn Sở NN&MT). attp-row 4 dòng Mẫu 10/11/12/13.ĐKT; hợp đồng, GCN cũ, căn
+        # cước tách riêng thêm dòng qua "Thêm giấy tờ".
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "019d2bfa-286c-7701-adcc-2ef71bbbe72e",
+                "apply-online/69394b62da87c4718eca03a3",
+                "process=6a588c510c8bb839cdfb06c8",
+            ],
+            "textIncludes": ["xóa đăng ký tàu cá"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Xóa đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
+        "shortLabel": "Xóa đăng ký tàu cá",
+        "subtitle": "Xóa đăng ký tàu cá đã bán, chuyển nhượng, hỏng hoặc không còn sử dụng",
+        "icon": "🚢",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-286c-7701-adcc-2ef71bbbe72e",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai xóa đăng ký tàu cá (Mẫu số 10.ĐKT)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận đăng ký tàu cá cũ", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "ly_do", "name": "Giấy tờ chứng minh lý do xóa đăng ký (vd Hợp đồng mua bán tàu)", "icon": "🤝",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị xóa đăng ký", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "mau_khac", "name": "Mẫu 11.ĐKT, 12.ĐKT, 13.ĐKT (nếu thuộc trường hợp bắt buộc)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai xóa đăng ký tàu cá / tàu phục vụ nuôi trồng thủy sản (Mẫu số 10.ĐKT) — nguồn chính.\n"
+            "2. Giấy chứng nhận đăng ký tàu cá cũ.\n"
+            "3. Giấy tờ chứng minh lý do xóa đăng ký, ví dụ Hợp đồng mua bán / chuyển nhượng tàu cá.\n"
+            "4. Căn cước của người đề nghị xóa đăng ký.\n"
+            "5. Mẫu 11.ĐKT, 12.ĐKT, 13.ĐKT nếu hồ sơ thuộc trường hợp bắt buộc.\n"
+            "Có thể tải một PDF gộp. Người nộp trên cổng giữ theo tài khoản.\n"
+            "Bước Thành phần hồ sơ: Mẫu 10/11/12/13.ĐKT vào 4 dòng tương ứng; giấy tờ tách riêng thêm dòng qua "
+            "'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+        # Mã TTHC 1.012945, Sở Nội vụ (ke_khai selectSo). Form.io + attp-row 7 dòng, engine tách/gộp trang
+        # (sourceSegments) → có thể scan cả bộ hồ sơ vào một PDF.
+        "detect": {
+            "urlIncludes": ["019d2bfb-138e-725c-a0d7-46a5f07bc45b"],
+            "textIncludes": ["chia, tách; sáp nhập; hợp nhất hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thủ tục chia, tách; sáp nhập; hợp nhất hội (cấp tỉnh)",
+        "shortLabel": "Chia, tách, sáp nhập, hợp nhất hội",
+        "subtitle": "Hội cấp tỉnh xin chia, tách, sáp nhập hoặc hợp nhất",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-138e-725c-a0d7-46a5f07bc45b",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị chia, tách, sáp nhập, hợp nhất hội (Mẫu số 10) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "de_an", "name": "Đề án", "icon": "📘", "sides": 1, "repeatable": True},
+            {"key": "nghi_quyet", "name": "Nghị quyết, Biên bản họp Ban chấp hành; danh sách Ban chấp hành, Ban kiểm "
+             "tra hội mới", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "dieu_le", "name": "Dự thảo Điều lệ; văn bản xác nhận nơi dự kiến đặt trụ sở", "icon": "📑",
+             "sides": 1, "repeatable": True},
+            {"key": "ly_lich", "name": "Phiếu lý lịch tư pháp số 1 + Sơ yếu lý lịch của người dự kiến làm chủ tịch",
+             "icon": "👤", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị chia, tách, sáp nhập, hợp nhất hội (Mẫu số 10), đã ký.\n"
+            "2. Đề án — lý do, tên gọi, địa chỉ trụ sở, nhân sự Ban chấp hành / Ban kiểm tra.\n"
+            "3. Nghị quyết + Biên bản họp Ban chấp hành; danh sách Ban chấp hành, Ban kiểm tra hội mới.\n"
+            "4. Dự thảo Điều lệ; văn bản xác nhận nơi dự kiến đặt trụ sở (nếu có).\n"
+            "5. Phiếu lý lịch tư pháp số 1 + Sơ yếu lý lịch của người dự kiến làm chủ tịch — điền chủ hồ sơ.\n"
+            "6. Căn cước của người nộp (tài khoản đăng nhập).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
+            "Bước đính kèm: mỗi dòng một tệp gộp (đều Bản chính) — trụ sở dòng 1, Đơn dòng 2, Đề án dòng 3, Nghị "
+            "quyết + Biên bản dòng 4, danh sách Ban chấp hành dòng 5, lý lịch dòng 6, Điều lệ dòng 7."
+        ),
+    },
+    {
+        "key": "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh",
+        # Mã TTHC 1.012942, Sở Nội vụ (ke_khai selectSo). Form.io + attp-row 18 dòng, engine tách/gộp trang.
+        "detect": {
+            "urlIncludes": ["019d2bfb-137c-7669-b668-60277b1a9cb7"],
+            "textIncludes": ["báo cáo tổ chức đại hội thành lập, đại hội nhiệm kỳ, đại hội bất thường của hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thủ tục báo cáo tổ chức đại hội thành lập, đại hội nhiệm kỳ, đại hội bất thường của hội (cấp tỉnh)"
+        ),
+        "shortLabel": "Báo cáo tổ chức đại hội hội",
+        "subtitle": "Hội cấp tỉnh báo cáo trước khi tổ chức đại hội thành lập, nhiệm kỳ, bất thường",
+        "icon": "🗓️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-137c-7669-b668-60277b1a9cb7",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "bao_cao", "name": "Văn bản báo cáo tổ chức đại hội + Nghị quyết Ban chấp hành về việc tổ chức "
+             "đại hội", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "de_an_nhan_su", "name": "Đề án nhân sự, danh sách dự kiến Ban chấp hành; công văn cử cán bộ",
+             "icon": "📘", "sides": 1, "repeatable": True},
+            {"key": "du_thao", "name": "Dự thảo báo cáo tổng kết, báo cáo kiểm điểm, tài chính, số lượng hội viên",
+             "icon": "📊", "sides": 1, "repeatable": True},
+            {"key": "nghi_quyet", "name": "Dự thảo Nghị quyết đại hội; Dự thảo Điều lệ sửa đổi (nếu có)",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "ly_lich", "name": "Sơ yếu lý lịch + Phiếu lý lịch tư pháp số 1 của nhân sự dự kiến Chủ tịch",
+             "icon": "👤", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Văn bản báo cáo tổ chức đại hội gửi Sở Nội vụ + Nghị quyết Ban chấp hành về việc tổ chức đại hội.\n"
+            "2. Đề án nhân sự + danh sách dự kiến Ban chấp hành; công văn cử cán bộ / ý kiến đồng ý.\n"
+            "3. Dự thảo báo cáo tổng kết, báo cáo kiểm điểm Ban chấp hành, Ban kiểm tra, tài chính, số lượng hội "
+            "viên.\n"
+            "4. Dự thảo Nghị quyết đại hội; Dự thảo Điều lệ sửa đổi (nếu có).\n"
+            "5. Sơ yếu lý lịch + Phiếu lý lịch tư pháp số 1 của nhân sự dự kiến Chủ tịch — điền chủ hồ sơ.\n"
+            "6. Căn cước của người nộp (tài khoản đăng nhập).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
+            "Bước đính kèm: mỗi dòng một tệp gộp (đều Bản chính), dòng dùng tùy loại đại hội (thành lập / nhiệm kỳ "
+            "/ bất thường)."
+        ),
+    },
+    {
+        "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh",
+        # Mã TTHC 1.012943, Sở Nội vụ (ke_khai selectSo). Form.io + attp-row 7 dòng, engine tách/gộp trang.
+        "detect": {
+            "urlIncludes": ["019d2bfb-138a-761e-a8e5-014dbed4f2be"],
+            "textIncludes": ["thông báo kết quả đại hội", "phê duyệt điều lệ hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp tỉnh)",
+        "shortLabel": "Thông báo kết quả đại hội, phê duyệt điều lệ hội",
+        "subtitle": "Hội cấp tỉnh báo kết quả đại hội, xin duyệt đổi tên, điều lệ",
+        "icon": "📣",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-138a-761e-a8e5-014dbed4f2be",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_trinh", "name": "Tờ trình / văn bản báo cáo kết quả đại hội gửi Sở Nội vụ", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "nghi_quyet", "name": "Nghị quyết đại hội", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "bien_ban", "name": "Biên bản đại hội, biên bản bầu cử, biên bản họp Ban chấp hành lần thứ nhất "
+             "và các danh sách nhân sự", "icon": "📋", "sides": 1, "repeatable": True},
+            {"key": "chuong_trinh", "name": "Chương trình hoạt động của hội (hoặc Báo cáo tổng kết nhiệm kỳ)",
+             "icon": "📘", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Dự thảo Điều lệ sửa đổi, đơn đề nghị đổi tên, lý lịch Chủ tịch, căn cước người "
+             "nộp (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ trình / văn bản báo cáo kết quả đại hội gửi Sở Nội vụ (kèm danh sách Ban chấp hành nếu có).\n"
+            "2. Nghị quyết đại hội.\n"
+            "3. Biên bản đại hội / biên bản bầu cử, biên bản họp Ban chấp hành lần thứ nhất và các danh sách nhân sự.\n"
+            "4. Chương trình hoạt động của hội (không có thì đính tạm Báo cáo tổng kết nhiệm kỳ).\n"
+            "5. Nếu có: Dự thảo Điều lệ sửa đổi, đơn đề nghị đổi tên hội, lý lịch Chủ tịch; căn cước người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
+            "Bước đính kèm: Tờ trình dòng 1; Biên bản + danh sách dòng 3; Nghị quyết dòng 5; Chương trình hoạt động "
+            "dòng 6; dòng đổi tên, Điều lệ, lý lịch chỉ đính khi có giấy tờ."
+        ),
+    },
+    {
+        "key": "tham-dinh-bcnckt",
+        "flowProfile": "xay-dung",
+        # Mã TTHC 1.013239, cổng Bộ Xây dựng. ke_khai_links không khai selectSo nhưng thẩm định do Sở Xây dựng giải
+        # quyết → chọn cơ quan cấp Sở như "dang-ky-noi-quy-lao-dong" (kiểm khi chạy thử).
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bfe-90c2-742a-9dfb-c6d2bdd9aac8"],
+            "textIncludes": ["Thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng/Báo cáo nghiên cứu khả thi đầu tư xây dựng điều "
+            "chỉnh"
+        ),
+        "shortLabel": "Thẩm định báo cáo nghiên cứu khả thi đầu tư xây dựng",
+        "subtitle": "Chủ đầu tư trình Sở Xây dựng thẩm định dự án",
+        "icon": "📊",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90c2-742a-9dfb-c6d2bdd9aac8",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "requiredDocs": [
+            {"key": "to_trinh", "name": "Tờ trình thẩm định Báo cáo nghiên cứu khả thi (Mẫu số 01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người nộp hồ sơ (đại diện chủ đầu tư)", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "khac", "name": "Quyết định ĐTM, chủ trương đầu tư, thỏa thuận đấu nối, danh sách nhà thầu, quy "
+             "hoạch, hồ sơ khảo sát / thiết kế cơ sở, GCN đầu tư (nếu có)", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ trình thẩm định Báo cáo nghiên cứu khả thi (Mẫu số 01) — nguồn chính để điền.\n"
+            "2. Căn cước người nộp hồ sơ (đại diện chủ đầu tư).\n"
+            "3. Nếu có: quyết định phê duyệt ĐTM / giấy phép môi trường, văn bản chủ trương đầu tư, thỏa thuận đấu "
+            "nối hạ tầng, danh sách nhà thầu + chứng chỉ, quyết định phê duyệt quy hoạch, hồ sơ khảo sát / thiết "
+            "kế cơ sở, giấy chứng nhận đầu tư.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Ô không có trong Tờ trình (diện tích đất, chi phí xây dựng, mục tiêu đầu tư…) để trống cho cán bộ bổ "
+            "sung. Bước đính kèm: mỗi loại giấy tờ vào một dòng."
+        ),
+    },
+    {
+        "key": "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
+        "flowProfile": "xay-dung",
+        # Mã TTHC 1.001751, cổng Bộ Xây dựng, Sở Xây dựng (ke_khai selectSo). attp-row 2 dòng.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bfe-1332-703e-951b-def74019fb46"],
+            "textIncludes": ["cấp bổ sung xe tập lái, cấp lại giấy phép xe tập lái"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp bổ sung xe tập lái, cấp lại Giấy phép xe tập lái",
+        "shortLabel": "Cấp bổ sung, cấp lại giấy phép xe tập lái",
+        "subtitle": "Cơ sở đào tạo lái xe xin giấy phép cho xe tập lái",
+        "icon": "🚗",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-1332-703e-951b-def74019fb46",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "danh_sach", "name": "Danh sách xe đề nghị cấp giấy phép xe tập lái — đã ký, đóng dấu",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_to_xe", "name": "Chứng nhận đăng ký xe, chứng nhận kiểm định, hợp đồng thuê xe (nếu xe "
+             "không thuộc sở hữu cơ sở)", "icon": "🚗", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Danh sách xe đề nghị cấp giấy phép xe tập lái của cơ sở đào tạo — đã ký, đóng dấu. Nguồn chính.\n"
+            "2. Giấy tờ xe tập lái (có thể gộp một tệp): chứng nhận đăng ký xe, chứng nhận kiểm định, hợp đồng thuê "
+            "xe.\n"
+            "3. Nếu muốn điền phần người nộp: căn cước của người nộp (không đính kèm).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Danh sách đề nghị → dòng 1; giấy tờ xe → dòng 2."
+        ),
+    },
+    {
+        "key": "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai",
+        "flowProfile": "xay-dung",
+        # Mã TTHC 2.002288, cổng Bộ Xây dựng, Sở Xây dựng (ke_khai selectSo). Trợ lý điền xe đầu tiên trong bảng
+        # 'Thêm phương tiện'; màu phù hiệu công dân tự chọn.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bfe-a055-702e-b40b-ed5848ebb0d9"],
+            "textIncludes": ["cấp, cấp lại phù hiệu cho xe ô tô, xe bốn bánh có gắn động cơ kinh doanh vận tải"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp, cấp lại Phù hiệu cho xe ô tô, xe bốn bánh có gắn động cơ kinh doanh vận tải",
+        "shortLabel": "Cấp, cấp lại phù hiệu xe kinh doanh vận tải",
+        "subtitle": "Đơn vị vận tải xin phù hiệu cho xe ô tô kinh doanh",
+        "icon": "🚌",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-a055-702e-b40b-ed5848ebb0d9",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Giấy đề nghị cấp (cấp lại) phù hiệu — đã ký, đóng dấu", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "dang_ky_xe", "name": "Chứng nhận đăng ký xe ô tô (kèm hợp đồng nếu xe không đứng tên đơn vị)",
+             "icon": "🚌", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy phép kinh doanh vận tải, GCN đăng ký doanh nghiệp / HTX, căn cước người "
+             "nộp (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp (cấp lại) phù hiệu của đơn vị kinh doanh vận tải — đã ký, đóng dấu. Nguồn chính.\n"
+            "2. Chứng nhận đăng ký xe ô tô, kèm hợp đồng dịch vụ / hợp đồng thuê xe nếu xe không đứng tên đơn vị.\n"
+            "3. Nếu có: giấy phép kinh doanh vận tải, GCN đăng ký doanh nghiệp / HTX; căn cước người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Trợ lý điền thông tin xe đầu tiên; màu phù hiệu tự chọn, soát rồi bấm 'Thêm'.\n"
+            "Bước đính kèm: đăng ký xe + hợp đồng → dòng 1 (Bản sao); Giấy đề nghị → dòng 2 (Bản chính)."
+        ),
+    },
+    {
+        "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru",
+        # Mã TTHC 1.013314, cổng tỉnh iGate (attp-row 1 dòng + "Thêm giấy tờ", engine tách/gộp trang). UBND cấp xã
+        # tiếp nhận → DVCQG chọn Tỉnh + Xã.
+        "detect": {
+            "urlIncludes": ["019d2bf7-9660-707e-97b1-ef8876f54d3b"],
+            "textIncludes": ["Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; "
+            "nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không "
+            "được đăng ký thường trú mới"
+        ),
+        "shortLabel": "Xác nhận diện tích nhà ở để đăng ký thường trú",
+        "subtitle": "Xác nhận chỗ thuê, mượn, ở nhờ đủ diện tích để đăng ký thường trú",
+        "icon": "🏠",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở (Mẫu số 02) — "
+             "đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất / quyền sở hữu nhà ở của chỗ ở (đủ bìa và các "
+             "trang)", "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Hợp đồng thuê, mượn, ở nhờ; văn bản ủy quyền; căn cước người đề nghị (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu (Mẫu số 02), đã ký — nguồn "
+            "chính để điền.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu nhà ở của chỗ ở (đủ bìa và các trang).\n"
+            "3. Nếu có: hợp đồng thuê, mượn, ở nhờ; văn bản ủy quyền khi nộp thay.\n"
+            "4. Căn cước của người đề nghị (nếu có) — chỉ để điền ngày cấp, nơi cấp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
+            "Bước đính kèm: Tờ khai → dòng 1; Giấy chứng nhận thêm dòng qua 'Thêm giấy tờ' (không thêm được thì "
+            "đính chung dòng Tờ khai)."
+        ),
+    },
+    # ── Thủ tục đặc thù Quảng Ninh (01/11/2026) ──
+    # Key TRÙNG registry lõi → attach pipeline tự nối; label = label lõi bỏ "[Tỉnh Quảng Ninh] " (như Bắc Ninh); detect
+    # y hệt lõi. Cả 14 là ATTACH-ONLY: cổng tỉnh chỉ có bước Thành phần hồ sơ (ví giấy tờ React/Radix). Cờ chọn cơ quan
+    # ở DVCQG theo ke_khai_links của đúng mã: provinceOnlyAgency → agencyProvinceOnly, selectSo → agencySoFirst,
+    # submitCardIncludes → agencyCardIncludes, agencyWard giữ nguyên. keKhaiUrl / provincePortalFlow / uploadHint gán ở
+    # cuối danh sách (xem _QN_HOST); entry tự khai provincePortalFlow khi ke_khai_links không có (bên Auto Fill cán bộ
+    # bấm tay dòng đó) — khi ấy chọn dòng theo cụm chữ đặc trưng của detect, không có rowIndex dự phòng.
+    {
+        "key": "dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115820 (ke_khai_links "dang-ky-dat-dai-tai-san-gan-lien-lan-dau-quang-ninh"): DVCQG chọn đủ Tỉnh + Xã.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Thủ tục đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115820",
+        "label": (
+            "[Đặc thù] Thủ tục đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận quyền sử dụng đất, "
+            "quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người "
+            "gốc việt nam định cư ở nước ngoài - Trường hợp thực hiện thủ tục đăng ký đất đai, tài sản gắn liền với "
+            "đất, cấp giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu (gồm trường "
+            "hợp chưa thực hiện đăng ký đất đai lần đầu; trường hợp đã có thông báo kết quả đăng ký đất đai, tài sản "
+            "gắn liền với đất không thể hiện đủ điều kiện cấp giấy chứng nhận) - Miền núi, hải đảo"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp giấy chứng nhận quyền sử dụng đất lần đầu - Miền núi, hải đảo",
+        "subtitle": "Mã 1.115820 · Đăng ký và cấp Giấy chứng nhận lần đầu cho hộ gia đình, cá nhân tại Quảng Ninh",
+        "icon": "🏞️",
+        "needsAgencySelect": True,
+        "agencyProvince": "Quảng Ninh",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) đã kê khai",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "do_dac", "name": "Mảnh trích đo / phiếu đo đạc, xác nhận hiện trạng, ranh giới thửa đất (nếu có)",
+             "icon": "📐", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ về nguồn gốc đất, nghĩa vụ tài chính, tờ khai thuế, ủy quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-bien-dong-chuyen-nhuong-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115835 (ke_khai_links "dang-ky-bien-dong-dat-dai-quang-ninh"): provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+                "Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115835",
+        "label": (
+            "[Đặc thù] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường "
+            "hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển "
+            "nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền "
+            "sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự "
+            "án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản "
+            "gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; chuyển quyền khai thác "
+            "khoáng sản theo quy định của pháp luật về địa chất và khoáng sản - Chuyển đổi quyền sử dụng đất nông "
+            "nghiệp mà không theo phương án dồn điền, đổi thửa hoặc trường hợp chuyển nhượng, thừa kế, tặng cho "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu "
+            "tài sản gắn liền với đất; bán, thừa kế, tặng cho hoặc góp vốn bằng tài sản gắn liền với đất được Nhà "
+            "nước cho thuê đất thu tiền thuê đất hằng năm - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam "
+            "định cư ở nước ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động quyền sử dụng đất: chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn - "
+            "Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115835 · Sang tên sổ đỏ khi chuyển nhượng, thừa kế, tặng cho đất tại Quảng Ninh",
+        "icon": "🤝",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (sổ đỏ / sổ hồng)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng / văn bản chuyển nhượng, thừa kế, tặng cho, góp vốn",
+             "icon": "🤝", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Mảnh trích đo, tờ khai thuế, lệ phí trước bạ, ủy quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "chuyen-muc-dich-su-dung-dat-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115811 (ke_khai_links "chuyen-muc-dich-su-dung-dat-quang-ninh"): DVCQG chọn đủ Tỉnh + Xã. ke_khai_links
+        # không khai provincePortalFlow → chọn dòng theo cụm chữ của detect, cơ quan trong modal để lựa chọn đầu.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Thủ tục chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất",
+                "Trường hợp thuê đất trả tiền thuê đất hằng năm",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115811",
+        "label": (
+            "[Đặc thù] Thủ tục chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi "
+            "hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư - Trường hợp thuê đất trả "
+            "tiền thuê đất hằng năm hoặc trường hợp dự án có nhiều hình thức sử dụng đất mà không có trường hợp nào "
+            "thuộc thẩm quyền của chủ tịch ủy ban nhân dân tỉnh theo quy định - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất - Trường hợp thuê đất "
+            "trả tiền thuê đất hằng năm - Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115811 · Chuyển mục đích, hình thức, gia hạn sử dụng đất thuê trả tiền hằng năm tại Quảng Ninh",
+        "icon": "🔄",
+        "needsAgencySelect": True,
+        "agencyProvince": "Quảng Ninh",
+        "provincePortalFlow": {
+            "host": _QN_HOST,
+            "rowIncludes": ["Trường hợp thuê đất trả tiền thuê đất hằng năm", "Miền núi, hải đảo"],
+        },
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn chuyển mục đích (Mẫu 02) / chuyển hình thức (Mẫu 03) / gia hạn (Mẫu 23) / "
+             "điều chỉnh thời hạn dự án (Mẫu 10)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Trích lục, quyết định / văn bản dự án, tờ khai thuế, ủy quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "cap-doi-gcn-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115848 (ke_khai_links "cap-doi-gcn-quyen-su-dung-dat-quang-ninh"): provinceOnlyAgency + thẻ VPĐK. ke_khai_links
+        # không khai provincePortalFlow → chọn dòng theo cụm chữ của detect; chi nhánh VPĐK như các thủ tục VPĐK khác.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+                "Các trường hợp khác - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - "
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115848",
+        "label": (
+            "[Đặc thù] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất - Các trường "
+            "hợp khác - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": "Cấp đổi Giấy chứng nhận quyền sử dụng đất - Các trường hợp khác - Miền núi, hải đảo",
+        "subtitle": "Mã 1.115848 · Đổi sổ đỏ / sổ hồng đã cấp sang Giấy chứng nhận mới tại Quảng Ninh",
+        "icon": "📜",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "provincePortalFlow": {
+            "host": _QN_HOST,
+            "rowIncludes": [
+                "Các trường hợp khác - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - "
+                "Miền núi, hải đảo",
+            ],
+            "agency": _QN_VPDK_CO_TO,
+        },
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (bản cần cấp đổi)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Mảnh trích đo, tờ khai thuế, lệ phí trước bạ, ủy quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "cap-doi-gcn-do-do-dac-khong-nvtc-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # Biến thể CÙNG mã 1.115848 với thẻ ngay trên (đo đạc lại, không nghĩa vụ tài chính): cùng đường DVCQG, khác
+        # dòng trên bảng cổng tỉnh → chọn dòng theo cụm chữ riêng của detect.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+                "do thay đổi kích thước các cạnh, diện tích, số hiệu của thửa đất do đo đạc",
+                "Trường hợp không phải thực hiện nghĩa vụ tài chính",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115848",
+        "label": (
+            "[Đặc thù] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất - Trường hợp "
+            "cấp đổi Giấy chứng nhận do thay đổi kích thước các cạnh, diện tích, số hiệu của thửa đất do đo đạc lập "
+            "bản đồ địa chính, trích đo địa chính thửa đất mà ranh giới thửa đất không thay đổi - Trường hợp không "
+            "phải thực hiện nghĩa vụ tài chính - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở "
+            "nước ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Cấp đổi Giấy chứng nhận do thay đổi kích thước, diện tích thửa đất do đo đạc - Không phải thực hiện "
+            "nghĩa vụ tài chính - Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115848 · Đổi Giấy chứng nhận sau khi đo đạc lại thửa đất (ranh giới không đổi) tại Quảng Ninh",
+        "icon": "📐",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "provincePortalFlow": {
+            "host": _QN_HOST,
+            "rowIncludes": [
+                "do thay đổi kích thước các cạnh, diện tích, số hiệu của thửa đất do đo đạc",
+                "Trường hợp không phải thực hiện nghĩa vụ tài chính",
+                "Miền núi, hải đảo",
+            ],
+            "agency": _QN_VPDK_CO_TO,
+        },
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (bản cần cấp đổi)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "do_dac", "name": "Mảnh trích đo / phiếu đo đạc chỉnh lý thửa đất", "icon": "📐",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Tờ khai thuế, lệ phí trước bạ, ủy quyền (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115832 (ke_khai_links "tach-thua-hop-thua-dat-quang-ninh"): provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Tách thửa đất, hợp thửa đất",
+                "Đối với trường hợp Tách thửa cùng tên - Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115832",
+        "label": (
+            "[Đặc thù] Tách thửa đất, hợp thửa đất - Đối với trường hợp Giấy chứng nhận đã cấp khi thực hiện các "
+            "quyền của hộ gia đình, cá nhân, cộng đồng dân cư, người Việt Nam định cư ở nước ngoài được sở hữu nhà ở "
+            "gắn liền với quyền sử dụng đất ở tại Việt Nam - Đối với trường hợp Tách thửa cùng tên - Miền núi, hải đảo"
+        ),
+        "shortLabel": "Tách thửa đất, hợp thửa đất - Tách thửa cùng tên - Miền núi, hải đảo",
+        "subtitle": "Mã 1.115832 · Tách một thửa thành nhiều thửa hoặc gộp thửa, cùng người đứng tên, tại Quảng Ninh",
+        "icon": "✂️",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 26)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "ban_ve", "name": "Bản vẽ tách thửa đất, hợp thửa đất (Mẫu số 27)", "icon": "📐",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Tờ khai thuế, lệ phí trước bạ, văn bản cho phép tách / hợp thửa (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115840 (ke_khai_links "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-quang-ninh"): provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận",
+                "Trường hợp phải thực hiện nghĩa vụ tài chính",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115840",
+        "label": (
+            "[Đặc thù] Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận hoặc đăng ký thay đổi về tài "
+            "sản gắn liền với đất; gia hạn thời hạn sở hữu nhà ở của tổ chức, cá nhân nước ngoài - Trường hợp phải "
+            "thực hiện nghĩa vụ tài chính - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận - Phải thực hiện nghĩa vụ tài chính - "
+            "Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115840 · Đăng ký nhà, công trình xây trên đất đã có sổ đỏ tại Quảng Ninh",
+        "icon": "🏠",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "tai_san", "name": "Giấy phép xây dựng, hồ sơ thiết kế, sơ đồ / phiếu đo đạc tài sản",
+             "icon": "🏗️", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ chứng minh sở hữu tài sản, tờ khai thuế, lệ phí trước bạ (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115837 (ke_khai_links "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-quang-ninh"): provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "[Đặc thù] Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất",
+                "đổi tên hoặc thay đổi thông tin về người sử dụng đất",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115837",
+        "label": (
+            "[Đặc thù] Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, chủ "
+            "sở hữu tài sản gắn liền với đất - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động do đổi tên hoặc thay đổi thông tin về người sử dụng đất - Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115837 · Cập nhật tên, thông tin người đứng tên trên Giấy chứng nhận tại Quảng Ninh",
+        "icon": "✏️",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "thay_doi", "name": "Giấy tờ chứng minh việc đổi tên / thay đổi thông tin người sử dụng đất",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Mảnh trích đo, văn bản cho phép đổi tên, ủy quyền (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115841: ke_khai_links khai agencyWard "Đặc khu Cô Tô" → DVCQG chọn Tỉnh + đúng xã đó, bỏ qua xã tài khoản.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 điều 24",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115841",
+        "label": (
+            "[Đặc thù] Thủ tục đăng ký, cấp giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất "
+            "đối với toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP - "
+            "Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Đăng ký, cấp giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng (khoản 2 Điều 24 Nghị định "
+            "101/2024/NĐ-CP) - Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115841 · Cấp Giấy chứng nhận khi diện tích thực tế tăng thêm so với sổ đã cấp tại Quảng Ninh",
+        "icon": "🗺️",
+        "needsAgencySelect": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyWard": "Đặc khu Cô Tô",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (bìa + trang chứng nhận, sơ đồ đất)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "do_dac", "name": "Phiếu đo đạc chỉnh lý, xác nhận kết quả đo đạc hiện trạng thửa đất",
+             "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Tờ khai thuế, lệ phí trước bạ, ủy quyền (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115148: DVCQG chọn đủ Tỉnh + Xã; modal cổng tỉnh chọn "UBND Đặc khu Cô Tô" (ke_khai_links). CÙNG mã với bản
+        # Quảng Ngãi — urlScope + provinceOnly giữ hai tỉnh không tráo nhau.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "tính lại tiền sử dụng đất",
+                "50/2026/NĐ-CP",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115148",
+        "label": (
+            "Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 "
+            "Nghị định số 50/2026/NĐ-CP"
+        ),
+        "shortLabel": "Tính hoặc tính lại tiền sử dụng đất theo Nghị định số 50/2026/NĐ-CP",
+        "subtitle": "Mã 1.115148 · Đề nghị tính lại tiền sử dụng đất đã nộp tại Quảng Ninh",
+        "icon": "🧮",
+        "needsAgencySelect": True,
+        "agencyProvince": "Quảng Ninh",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị tính lại tiền sử dụng đất", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "kem_theo", "name": "Giấy tờ kèm theo đơn (quyết định, Giấy chứng nhận, thông báo và chứng từ nộp "
+             "tiền…)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "cap-lai-gcn-do-bi-mat-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115849: ke_khai_links provinceOnlyAgency + selectSo → DVCQG chỉ chọn Tỉnh, gạt "Sở", thẻ đầu.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "Cấp lại Giấy chứng nhận do bị mất",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115849",
+        "label": (
+            "[Đặc thù] Cấp lại Giấy chứng nhận do bị mất - Trường hợp không phải thực hiện nghĩa vụ tài chính - Đối "
+            "với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": "Cấp lại Giấy chứng nhận do bị mất - Không phải thực hiện nghĩa vụ tài chính - Miền núi, hải đảo",
+        "subtitle": "Mã 1.115849 · Xin cấp lại sổ đỏ / sổ hồng bị mất tại Quảng Ninh",
+        "icon": "🔁",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "mat_gcn", "name": "Giấy tờ về việc mất Giấy chứng nhận (bản cam kết, xác nhận niêm yết thông "
+             "báo mất…)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "do_dac", "name": "Phiếu đo đạc chỉnh lý / mảnh trích đo thửa đất (nếu có)", "icon": "📐",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Tờ khai thuế, lệ phí trước bạ, ủy quyền (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.115846: ke_khai_links provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.115846",
+        "label": (
+            "[Đặc thù] Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm "
+            "quyền - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - Miền núi, hải đảo"
+        ),
+        "shortLabel": (
+            "Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm quyền - "
+            "Miền núi, hải đảo"
+        ),
+        "subtitle": "Mã 1.115846 · Đăng ký đổi mục đích sử dụng đất thuộc diện không phải xin phép tại Quảng Ninh",
+        "icon": "🌾",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Tờ khai thuế, lệ phí trước bạ, mảnh trích đo, ủy quyền (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "xoa-dang-ky-bien-phap-bao-dam-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.011443: ke_khai_links provinceOnlyAgency + thẻ VPĐK. textIncludes dài hơn cụm của thủ tục ĐĂNG KÝ ngay dưới
+        # (chuỗi con) — giữ nguyên như lõi để trang xóa vẫn về đúng thẻ này.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.011443",
+        "label": "Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "subtitle": "Mã 1.011443 · Xóa thế chấp sổ đỏ sau khi trả xong khoản vay tại Quảng Ninh",
+        "icon": "🔓",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu", "name": "Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu số 02a)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "van_ban", "name": "Văn bản của bên nhận bảo đảm (ngân hàng) đồng ý xóa đăng ký thế chấp",
+             "icon": "🏦", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận bản gốc (nếu tài sản bảo đảm có Giấy chứng nhận)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
+    {
+        "key": "dang-ky-bien-phap-bao-dam-quang-ninh",
+        "provinceOnly": ["quangninh"],  # đặc thù Quảng Ninh: chỉ account tỉnh này thấy + gọi được
+        # 1.011441: ke_khai_links provinceOnlyAgency + thẻ VPĐK.
+        "detect": {
+            "urlScope": [_QN_HOST],
+            "textIncludes": [
+                "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "1.011441",
+        "label": "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "subtitle": "Mã 1.011441 · Đăng ký thế chấp quyền sử dụng đất, nhà ở để vay vốn tại Quảng Ninh",
+        "icon": "🔒",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Quảng Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai",
+        "agencyCardIncludes": _QN_VPDK_CARD,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu", "name": "Phiếu yêu cầu đăng ký biện pháp bảo đảm", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng thế chấp quyền sử dụng đất, tài sản gắn liền với đất",
+             "icon": "🏦", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận bản gốc (nếu tài sản bảo đảm có Giấy chứng nhận)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền hoặc giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+    },
 ]
 
 # Video hướng dẫn làm thủ tục (Google Drive, theo ID tệp). Ở lượt xác nhận thủ tục, trợ lý hiện mã QR của link
@@ -6118,6 +7633,11 @@ _HUONG_DAN_DRIVE_ID = {
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": "1-KXJ_zW4hn6cFoo2jHj4gASsfPqGZQl3",
 }
 
+_QN_LINKS_BY_CODE = {
+    str(_qn_link["code"]): _qn_link for _qn_link in core_ke_khai_links.KE_KHAI_LINKS
+    if _qn_link.get("code") and str(_qn_link.get("label") or "").startswith("Quảng Ninh - ")
+}
+
 for _procedure in PROCEDURES:
     if (_BYT_HOST in ((_procedure.get("detect") or {}).get("urlScope") or [])
             and "guidedSteps" not in _procedure):
@@ -6130,6 +7650,16 @@ for _procedure in PROCEDURES:
         _procedure.setdefault("bacNinhTabFlow", deepcopy(_BN_TAB_FLOW))
         _procedure.setdefault("bacNinhAgencyAsk", True)
         _procedure.setdefault("bacNinhAuthorizedAsk", bool(_procedure.get("bacNinhAuthorizedPerson")))
+    # Thủ tục đặc thù Quảng Ninh: link kê khai DVCQG + chặng cổng tỉnh lấy THẲNG từ ke_khai_links theo mã — cùng nguồn
+    # với Auto Fill, đổi chi nhánh tiếp nhận ở đó là trợ lý đổi theo. Entry tự khai thì giữ nguyên.
+    if _QN_HOST in ((_procedure.get("detect") or {}).get("urlScope") or []):
+        _qn_link = _QN_LINKS_BY_CODE.get(str(_procedure.get("code") or "")) or {}
+        _procedure.setdefault("keKhaiUrl", _qn_link.get("url") or "")
+        if _qn_link.get("provincePortalFlow"):
+            _procedure.setdefault("provincePortalFlow", deepcopy(_qn_link["provincePortalFlow"]))
+        _procedure.setdefault(
+            "uploadHint", (core_registry.get_procedure(_procedure["key"]) or {}).get("uploadHint") or "",
+        )
     if _procedure["key"] in _HUONG_DAN_DRIVE_ID:
         _procedure["guideUrl"] = _HUONG_DAN_DRIVE_URL.format(_HUONG_DAN_DRIVE_ID[_procedure["key"]])
 

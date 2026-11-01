@@ -65,6 +65,9 @@ _ATTACH_ACTION_LEASE_SECONDS = 30
 _AGENCY_DISPATCH_GAP_SECONDS = 20
 # Chữ sidebar tự điền khi lệnh chọn cơ quan không nhận được trả lời nào (sidebar.js select_agency).
 _AGENCY_NO_RESPONSE = "trang chưa sẵn sàng"
+# Khoảng không bấm lại "Nộp hồ sơ" trên bảng thủ tục cổng tỉnh: bấm xong cổng cần vài giây để dựng modal / đẩy sang
+# đăng nhập; watcher báo trạng thái giữa chừng mà bấm lần hai là mở hai hồ sơ (cùng lý do CLICK_COOLDOWN_MS Auto Fill).
+_PROVINCE_ROW_GAP_SECONDS = 10
 # Số lần tự mở lại link kê khai khi cổng liên thông đưa về trang chủ (sau đăng nhập).
 _LIEN_THONG_HOME_REOPEN_MAX = 3
 
@@ -1763,7 +1766,7 @@ def _agency_ward_display(proc: dict, loc: dict) -> str:
     thì đọc tên Sở chuyên ngành thay vì xã."""
     if proc.get("agencyProvinceOnly"):
         return str(proc.get("agencyDeptLabel") or "Sở chuyên ngành")
-    return loc.get("ward") or ""
+    return proc.get("agencyWard") or loc.get("ward") or ""
 
 
 def _portal_ward(loc: dict) -> str:
@@ -1994,6 +1997,61 @@ def _supports_mae_ward_agency(conv: dict) -> bool:
 def _supports_agency_card(conv: dict) -> bool:
     """Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) thay vì thẻ đầu."""
     return (conv.get("client_capabilities") or {}).get("supportsAgencyCard") is True
+
+
+def _supports_province_portal(conv: dict) -> bool:
+    """Biết đi chặng cổng tỉnh (bảng "Nộp hồ sơ" + modal Thông tin chung theo tên cơ quan)."""
+    return (conv.get("client_capabilities") or {}).get("supportsProvincePortal") is True
+
+
+def _province_row_hint(flow_cfg: dict) -> str:
+    """Dòng cần bấm "Nộp hồ sơ" trên bảng cổng tỉnh, để dặn công dân khi trợ lý không tự bấm được."""
+    wanted = flow_cfg.get("rowIncludes") or ""
+    if isinstance(wanted, list):
+        wanted = " – ".join(str(part) for part in wanted if part)
+    if wanted:
+        return f"dòng có chữ “{wanted}”"
+    return f"dòng thứ {int(flow_cfg.get('rowIndex') or 1)}"
+
+
+def _province_portal_on_page(conv: dict, proc: dict, ctx: dict, manual_check: bool) -> Reply | None:
+    """Chặng CỔNG TỈNH của thủ tục đặc thù (registry `provincePortalFlow`, cùng cấu hình content/portal-quangninh.js
+    của Auto Fill): bấm "Nộp trực tuyến" ở DVCQG xong cổng ném sang dichvucong.<tỉnh>.gov.vn/nop-ho-so, ở đó còn
+    bảng "Danh sách thủ tục hành chính" (một mã ra nhiều dòng đồng bằng / miền núi, hải đảo) và dialog "Đăng nhập
+    bằng VNeID" riêng của cổng tỉnh. Modal "Thông tin chung" đi nhánh infoModal chung.
+
+    None = trang không thuộc chặng này, để luồng thường xử lý.
+    """
+    flow_cfg = proc.get("provincePortalFlow") or {}
+    if not flow_cfg:
+        return None
+    if ctx.get("provinceLoginDialog"):
+        conv["needed_login"] = True
+        if _say_once(conv, "province_login"):
+            slugs = proc.get("provinceOnly") or []
+            name = str((province_by_slug(slugs[0]) or {}).get("text") or "") if slugs else ""
+            r = Reply(*_fmt(vi.PROVINCE_PORTAL_LOGIN, province=(name[:1].lower() + name[1:]) or "tỉnh"))
+            r.actions = [{"type": "collapse_after_tts"}]
+            return r
+        return Reply()
+    rows = int(ctx.get("provinceRows") or 0)
+    # Bảng chỉ còn ở trang danh sách: modal đang mở, đã có bảng đính kèm hay stepper thì không phải chặng này.
+    if not rows or ctx.get("infoModal") or ctx.get("attachmentTarget") or ctx.get("wizardStep"):
+        return None
+    hint = _province_row_hint(flow_cfg)
+    if not _supports_province_portal(conv):
+        if _say_once(conv, "province_row_manual"):
+            return Reply(*_fmt(vi.PROVINCE_ROW_MANUAL, row=hint))
+        return Reply()
+    now = datetime.now(timezone.utc).timestamp()
+    if not manual_check and now - float(conv.get("province_row_at") or 0) < _PROVINCE_ROW_GAP_SECONDS:
+        return Reply()
+    conv["province_row_at"] = now
+    r = Reply()
+    r.actions = [{"type": "pick_province_row",
+                  "rowIncludes": flow_cfg.get("rowIncludes") or "",
+                  "rowIndex": int(flow_cfg.get("rowIndex") or 0)}]
+    return r
 
 
 def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
@@ -2675,6 +2733,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             return r
         return Reply()
 
+    province_reply = _province_portal_on_page(conv, proc, ctx, manual_check)
+    if province_reply is not None:
+        return province_reply
     if ctx.get("infoModal"):
         # Modal "Thông tin chung": backend gửi đúng đối tượng thực hiện theo flow profile;
         # extension phải chọn thành công rồi mới bấm Xác nhận. Đã BỎ câu "Em xác nhận Thông
@@ -2691,6 +2752,19 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         slug = str(loc.get("province_slug") or _account_province_slug(conv))
         info_fields = (proc.get("infoModalFieldsByProvince") or {}).get(slug) \
             or proc.get("infoModalFields")
+        province_flow = proc.get("provincePortalFlow") or {}
+        if province_flow:
+            # Cổng tỉnh: modal có Cấp thực hiện / Tỉnh / Cơ quan thực hiện / Đơn vị tiếp nhận, thứ tự đổi theo thủ
+            # tục → chọn cơ quan THEO TÊN ở bất kỳ ô nào (field không nhãn), ô còn trống lấy lựa chọn đầu như Auto Fill.
+            # Extension cũ chỉ bấm Xác nhận với cơ quan cổng để sẵn → dặn chọn tay thay vì nộp nhầm nơi tiếp nhận.
+            agency = str(province_flow.get("agency") or "")
+            if not _supports_province_portal(conv):
+                if _say_once(conv, "province_info_manual"):
+                    return Reply(*_fmt(vi.PROVINCE_INFO_MANUAL, agency=agency or "cơ quan tiếp nhận hồ sơ"))
+                return Reply()
+            if agency and not info_fields:
+                info_fields = [{"value": agency}]
+            action["fillEmpty"] = True
         if info_fields:
             action["infoFields"] = info_fields
         r.actions = [action]
@@ -2710,8 +2784,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # cụ thể) rồi Đồng ý; "Nộp trực tuyến" ở kết quả ĐẦU TIÊN của danh sách sau đó mới
         # là Sở chuyên ngành của thủ tục.
         r = Reply()
+        # agencyWard: thủ tục đặc thù chỉ nộp qua MỘT xã cố định (vd "Đặc khu Cô Tô", ke_khai_links) — bỏ qua xã tài khoản.
         ward = "" if proc.get("agencyProvinceOnly") else handfree_agency_ward(
-            loc.get("province_slug") or loc.get("province"), loc.get("ward"),
+            loc.get("province_slug") or loc.get("province"), proc.get("agencyWard") or loc.get("ward"),
         )
         # Tên tỉnh theo khối chọn cơ quan của cổng (có thể còn tên cũ, vd "Tỉnh Bắc Ninh").
         action = {"type": "select_agency",
@@ -3062,6 +3137,11 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
         # KHÔNG lùi về thẻ đầu (thẻ đầu là cấp Sở) — dặn công dân bấm đúng thẻ.
         return Reply(*_fmt(vi.AGENCY_CARD_MISSING,
                            card=str(proc.get("agencyCardIncludes") or "cơ quan đúng")))
+    if intent.kind == "event" and intent.value == "province_row_failed":
+        # Bảng cổng tỉnh không có dòng khớp (hoặc thiếu dòng theo vị trí): KHÔNG bấm dòng khác — mở nhầm biến thể
+        # thủ tục (đồng bằng thay vì miền núi) là sai cả hồ sơ. Dặn công dân bấm đúng dòng.
+        return Reply(*_fmt(vi.PROVINCE_ROW_FAILED, error=str(intent.payload.get("value") or "không rõ"),
+                           row=_province_row_hint(proc.get("provincePortalFlow") or {})))
     if intent.kind == "event" and intent.value == "mae_agency_failed":
         # Trang MAE không tự điền được → dặn chọn tay đầy đủ (tỉnh, sở, trường hợp) rồi chờ
         # page_status của trang kê khai; chip phao cho công dân yêu cầu kiểm tra lại.
