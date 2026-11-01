@@ -1129,6 +1129,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Tách tệp gộp nhiều giấy theo trang; chỉ khi client gửi boolean true, extension cũ giữ nguyên file.
+        "supportsSplitDocuments": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,

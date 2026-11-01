@@ -45,6 +45,7 @@ from app.channels.handfree.profiles import service as profile_service
 from app.procedures.portal_submit import needs_submit_click
 from app.form_snapshots.step_rules import form_snapshot_config
 from app.channels.handfree.documents import service as upload_service
+from app.channels.handfree.documents.router import _qr_png_base64
 from app.dossiers import rating_card
 from app.dossiers import repo as dossiers_repo
 from app.channels.handfree.authorization_letter.card import AUTHORIZATION_LETTER_TOOL, COUNTER_TOOLS_SECTION
@@ -242,6 +243,26 @@ def _location_card(conv: dict) -> dict:
     if (conv.get("lang") or "vi") == "hmong":
         card["hmong"] = dict(mong.LOCATION_CARD_HMONG)
     return card
+
+
+_GUIDE_INTRO = (
+    "Để xem video hướng dẫn làm thủ tục, công dân bấm nút “Mở hướng dẫn”. Công dân cũng có thể dùng camera "
+    "điện thoại quét mã QR bên dưới, rồi bấm vào đường link hiện trên điện thoại để xem."
+)
+_GUIDE_QR_CACHE: dict[str, str] = {}
+
+
+def _procedure_guide_action(proc: dict) -> dict | None:
+    """Video hướng dẫn của thủ tục (guideUrl ở registry handfree) → action vẽ thẻ QR + nút mở link.
+
+    FE vẽ thẻ ngay TRƯỚC câu xác nhận, chỉ hiển thị (lời giới thiệu không đọc). Ảnh QR sinh một lần mỗi link.
+    """
+    url = str(proc.get("guideUrl") or "")
+    if not url:
+        return None
+    if url not in _GUIDE_QR_CACHE:
+        _GUIDE_QR_CACHE[url] = _qr_png_base64(url)
+    return {"type": "procedure_guide", "url": url, "qr_png_base64": _GUIDE_QR_CACHE[url], "intro": _GUIDE_INTRO}
 
 
 def _doc_options_card() -> dict:
@@ -1496,6 +1517,8 @@ def _confirm_procedure_refresh(conv: dict) -> Reply:
     if _supports_replace_last(conv):
         r.replace_last = True
         r.tts_text = ""
+        # Thẻ hướng dẫn đã hiện ở lượt xác nhận đầu; sửa tại chỗ không vẽ lại.
+        r.actions = [a for a in r.actions if a.get("type") != "procedure_guide"]
     return r
 
 
@@ -1629,6 +1652,9 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
             subject=subject.get("shortLabel") or subject.get("label") or "cho bản thân",
         ))
         r.cards = [_location_card(conv)]
+        guide = _procedure_guide_action(proc)
+        if guide:
+            r.actions = [guide]
     else:
         r = Reply(*_fmt(vi.CONFIRM_PROCEDURE, procedure=label, place=_confirm_place(loc)))
     r.chips = [

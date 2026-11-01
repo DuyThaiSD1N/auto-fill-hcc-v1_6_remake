@@ -65,6 +65,48 @@ def test_doi_doi_tuong_client_cu_van_im_lang():
     assert not r.display_md and not r.cards and r.replace_last is False
 
 
+# ── Thẻ QR video hướng dẫn: link + ảnh QR do BE gửi (FE không còn bảng link) ──
+
+def _guide(r):
+    return [a for a in r.actions if a.get("type") == "procedure_guide"]
+
+
+def test_xac_nhan_thu_tuc_kem_qr_huong_dan():
+    import base64
+
+    conv = {"state": "greet", "client_capabilities": dict(NEW), "location": {}}
+    r = flow._to_confirm_procedure(conv, "khai-sinh-da-co-ho-so")
+    [guide] = _guide(r)
+    assert guide["url"] == "https://drive.google.com/file/d/1go4rCp-Br5Zb5ja-V6Hm3869p4uhhBw8/view?usp=drive_link"
+    assert base64.b64decode(guide["qr_png_base64"]).startswith(b"\x89PNG")
+    assert "“Mở hướng dẫn”" in guide["intro"]
+
+
+def test_sua_tai_cho_khong_ve_lai_qr():
+    conv = _conv(NEW)
+    r = flow._apply_location(conv, {"province_slug": "hanoi", "ward": "Phường Ngọc Hà"})
+    assert r.replace_last is True and not _guide(r)
+
+
+def test_thu_tuc_khong_co_huong_dan_hoac_man_chao_cu_khong_co_qr():
+    from app.channels.handfree.procedure_registry import PROCEDURES
+
+    khong_co = next(p["key"] for p in PROCEDURES if not p.get("guideUrl") and not p.get("bcaPortal"))
+    conv = {"state": "greet", "client_capabilities": dict(NEW), "location": {}}
+    assert not _guide(flow._to_confirm_procedure(conv, khong_co))
+    # Màn chào cũ (không supportsProcedureFirst) không có card chọn nơi → FE cũng không vẽ thẻ.
+    conv = {"state": "greet", "client_capabilities": {}, "location": {}}
+    assert not _guide(flow._to_confirm_procedure(conv, "khai-sinh-da-co-ho-so"))
+
+
+def test_bang_huong_dan_du_70_thu_tuc():
+    from app.channels.handfree.procedure_registry import PROCEDURES
+
+    keys = {p["key"] for p in PROCEDURES if p.get("guideUrl")}
+    assert len(keys) == 70
+    assert {"khai-sinh-dang-ky-lai", "ket-hon", "chung-thuc-ban-sao", "sua-chua-cai-tao-gpxd-cong-trinh"} <= keys
+
+
 # ── Tầng router: history phải khớp màn hình ──
 
 def _client(conv, monkeypatch):

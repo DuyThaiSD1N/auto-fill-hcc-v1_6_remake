@@ -33,6 +33,100 @@ def test_bo_gop_khong_gan_ten_nguoi(monkeypatch):
     assert res["attachments"][0]["documentName"] == "Hồ sơ giấy tờ cá nhân"
 
 
+# ---- Cài đặt "Tách giấy tờ": tệp gộp chia theo trang, mỗi giấy vào đúng dòng ----
+
+_TRANG_TACH = [
+    "BẢN CAM ĐOAN về việc chưa được đăng ký khai sinh. Tôi cam đoan người con chưa được đăng ký khai sinh " + "x" * 80,
+    "CĂN CƯỚC CÔNG DÂN Họ và tên / Full name: TRẦN VĂN CON Ngày sinh: 15/10/2000 " + "x" * 80,
+    "GIẤY ỦY QUYỀN thực hiện việc đăng ký khai sinh, bên ủy quyền LÊ VĂN NỘP " + "x" * 80,
+]
+_BO_TACH = "\n".join(f"───── Trang {i}/3 ─────\n{body}" for i, body in enumerate(_TRANG_TACH, start=1))
+
+
+def _pdf_ba_trang() -> str:
+    import base64
+
+    import fitz
+
+    with fitz.open() as doc:
+        for _ in _TRANG_TACH:
+            doc.new_page()
+        return "data:application/pdf;base64," + base64.b64encode(doc.tobytes()).decode()
+
+
+def _fake_ocr_theo_preset(files, *_a, **_k):
+    async def _run():
+        preset = ocr._preset_texts.get() or {}
+        return [{"name": f["name"], "text": preset.get(f["dataUrl"], _BO_TACH)} for f in files]
+    return _run()
+
+
+def _fake_chat_tach(calls):
+    async def fake_chat(messages, *_a, **_k):
+        calls.append(messages[0]["content"])
+        if messages[0]["content"] == prompt.SPLIT_SYSTEM_PROMPT:
+            return json.dumps({"tep": [{"fileIndex": 0, "trangDau": [1, 2, 3]}]})
+        return json.dumps({"documents": [
+            {"index": 0, "type": "commitment", "title": "Bản cam đoan"},
+            {"index": 1, "type": "personal_document", "title": "Căn cước công dân"},
+            {"index": 2, "type": "authorization", "title": "Văn bản ủy quyền"},
+        ]})
+    return fake_chat
+
+
+def test_tach_giay_to_moi_giay_vao_dung_dong(monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_theo_preset)
+    monkeypatch.setattr(planner.client, "chat", _fake_chat_tach(calls))
+    files = [FileItem(name="bo-ho-so.pdf", type="application/pdf", dataUrl=_pdf_ba_trang(), role="")]
+    res = asyncio.run(attach.plan(files, {"splitDocuments": True, "supportsSourceSegments": True}))
+
+    rows = [(a["componentIndex"], a["fileIndex"], a["sourceSegments"]) for a in res["attachments"]]
+    assert rows == [
+        (2, 0, [{"fileIndex": 0, "pageIndexes": [0]}]),
+        (3, 0, [{"fileIndex": 0, "pageIndexes": [1]}]),
+        (5, 0, [{"fileIndex": 0, "pageIndexes": [2]}]),
+    ]
+    assert res["extracted"]["attachmentMode"] == "split_documents"
+    assert [c["pageFrom"] for c in res["extracted"]["classified"]] == [1, 2, 3]
+    assert {c["fileName"] for c in res["extracted"]["classified"]} == {"bo-ho-so.pdf"}
+
+
+def test_khong_bat_tach_thi_giu_nguyen_tep(monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_theo_preset)
+    monkeypatch.setattr(planner.client, "chat", _fake_chat_tach(calls))
+    files = [FileItem(name="bo-ho-so.pdf", type="application/pdf", dataUrl=_pdf_ba_trang(), role="")]
+    # Extension cũ không cắt được trang → không tách dù bật cài đặt.
+    for options in ({}, {"splitDocuments": "true"}, {"splitDocuments": True, "supportsSourceSegments": False}):
+        calls.clear()
+        res = asyncio.run(attach.plan(files, options))
+        assert prompt.SPLIT_SYSTEM_PROMPT not in calls
+        assert all("sourceSegments" not in a for a in res["attachments"])
+
+
+def test_tach_giay_to_loi_llm_dinh_nguyen_tep(monkeypatch):
+    async def fake_chat(messages, *_a, **_k):
+        if messages[0]["content"] == prompt.SPLIT_SYSTEM_PROMPT:
+            return "không phải JSON"
+        return json.dumps({"documents": [{"index": 0, "type": "personal_document", "title": "Hồ sơ giấy tờ cá nhân"}]})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_theo_preset)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(name="bo-ho-so.pdf", type="application/pdf", dataUrl=_pdf_ba_trang(), role="")]
+    res = asyncio.run(attach.plan(files, {"splitDocuments": True, "supportsSourceSegments": True}))
+    assert len(res["attachments"]) == 1 and "sourceSegments" not in res["attachments"][0]
+    assert res["attachments"][0]["componentIndex"] == 3
+
+
+def test_registry_bat_tach_giay_to():
+    from app.channels.handfree.procedure_registry import get_procedure as hf_get
+    from app.procedures.registry import get_procedure
+
+    assert get_procedure("khai-sinh-da-co-ho-so")["supportsSplitDocuments"] is True
+    assert hf_get("khai-sinh-da-co-ho-so")["supportsSplitDocuments"] is True
+
+
 # ---- Bước điền (process/mapper): người nộp hộ kèm CCCD của tài khoản, loại khai sinh, xoá ô cha/mẹ trống ----
 
 from app.pipelines.khai_sinh_co_ho_so.process import mapper  # noqa: E402

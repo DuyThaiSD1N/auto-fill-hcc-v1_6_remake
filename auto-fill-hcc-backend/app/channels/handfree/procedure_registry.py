@@ -488,7 +488,7 @@ PROCEDURES: list[dict] = [
     {
         # Cùng eForm "Tờ khai đăng ký khai sinh" với đăng ký lại khai sinh (1.004884) nhưng người được
         # khai sinh CHƯA TỪNG đăng ký khai sinh, chỉ có sẵn hồ sơ, giấy tờ cá nhân (CCCD, học bạ...).
-        # Planner đính kèm chưa có nhánh tách giấy tờ → không bật supportsSplitDocuments.
+        # Cài đặt "Tách giấy tờ" → planner chia tệp gộp theo trang, mỗi giấy vào đúng dòng của nó.
         "key": "khai-sinh-da-co-ho-so",
         "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
         "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
@@ -497,6 +497,7 @@ PROCEDURES: list[dict] = [
         "icon": "🪪",
         "flowProfile": "tu-phap",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
+        "supportsSplitDocuments": True,
         # Mỗi slot tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6040,6 +6041,83 @@ PROCEDURES: list[dict] = [
     },
 ]
 
+# Video hướng dẫn làm thủ tục (Google Drive, theo ID tệp). Ở lượt xác nhận thủ tục, trợ lý hiện mã QR của link
+# + nút "Mở hướng dẫn"; ảnh QR do BE sinh (chat/flow.py:_procedure_guide_action). Thủ tục không có trong bảng thì
+# không hiện. Sửa/thêm link chỉ cần sửa ở đây, không phải phát hành lại extension.
+_HUONG_DAN_DRIVE_URL = "https://drive.google.com/file/d/{}/view?usp=drive_link"
+_HUONG_DAN_DRIVE_ID = {
+    "khai-sinh-dang-ky-lai": "1ObePKXQq2rS62F72ipMMmXVVS399rMs4",
+    "xac-nhan-tinh-trang-hon-nhan": "1K72MmetiOzQuVywsyest5ZP-GpZGJS6G",
+    "khai-sinh-dang-ky": "1GrI9R8FRMUpphFxsIH2QdGR3h1wojwlk",
+    "ket-hon": "1yM72x0kkgS0ouLuCjejiTLGYJ0cEyFGR",
+    "khai-sinh-dang-ky-thuong": "1_c-8Xx4O9KqTH9KbCG0uqQlPNRH3-2du",
+    "chung-thuc-ban-sao": "1rv3_eC98iTnAZX0Bc9cKnWQLsGCPq9Bi",
+    "thay-doi-cai-chinh-ho-tich": "1_pns6gVNa2gP0aIWI3FfcyVk1A05FCAB",
+    "trich-luc-ks": "1obk7WGRKMMecQXT2sx0APLpfhYUH9Ywm",
+    "khai-tu": "1uhQSm10k6DsJOvL96YoM-YURMnF2jABU",
+    "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "1Z8ScsMCKgN4AfKQAG33yFknek5id9w4N",
+    "tro-cap-tho-cung-liet-si": "1u9hAr0bbvbiKH_JY9rE1B98lRUYHxU-B",
+    "dieu-chinh-giay-phep-xay-dung": "1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV",
+    "ho-tro-mai-tang-1116910": "1-K38biVwl2zRrbR3M__Qy0pSDYOgc1Cq",
+    "dieu-chinh-huu-tri-xa-hoi": "1-KXJ_zW4hn6cFoo2jHj4gASsfPqGZQl3",
+    "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": "1ORJtRrL3ty313uHRQbGAeZJBDJliGhjl",
+    "ket-hon-nuoc-ngoai": "1eYQXb3VsN20bOYFFkKPWR3Kaqcvy5ViK",
+    "dang-ky-kinh-doanh": "1nkFVTbD-aPwaKLMK4_qoTf080CvgYEXq",
+    "chung-thuc-chu-ky": "11KgBXkRJBDUJBC8EJJJZrONv0zZm2jH4",
+    "dang-ky-lai-ket-hon": "1dCLFbXDjZgq1N2R42jxEkXE-KeyLuWLi",
+    "dang-ky-giam-ho": "1xyKfpKX0WSlGBmC1ixHrB1XLLwWbsEU2",
+    "dang-ky-nhan-cha-me-con": "17s-RDK0BtVP_XQIQZTBsm_b1PLMBuVmO",
+    "khai-tu-dang-ky-lai": "1gfEicBzNG1N8_RPXP8F2E3P9qHNV5j6j",
+    "khai-sinh-da-co-ho-so": "1go4rCp-Br5Zb5ja-V6Hm3869p4uhhBw8",
+    "xac-dinh-muc-do-khuyet-tat": "1Jd9FvVWRSQb2fkaHxkcsojZzmnrPofuS",
+    "uu-dai-ncc-tu-tran": "1tGc8cnFPhX7gaWOGAwb0Z5t8NFfBfi13",
+    "cap-ban-sao-van-bang-so-goc": "1zJFnnRdDnPNSGvogPT2ZMwRallxgDhbk",
+    "yeu-cau-tro-giup-phap-ly": "1Ibn6YCXw03vDsflSwx74xAw6aTqayYnU",
+    "dang-ky-cham-dut-giam-ho": "1U3McFslAYPfQV9Fx7vZpitVcxFL0Dtxd",
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": "19jneTL-XRrmqz0-1boAdcdrSrLuv_n_w",
+    "dang-ky-hanh-nghe": "1noRcH9RXzM7WRuC7A_YeTpsOymSwtaV0",
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": "1i9d4XLg4pZ658KA_MEIAC6qiKDbJZXd0",
+    "di-chuyen-ho-so-nguoi-huong-tro-cap": "1RBzuyK8hJmE6Hzunvz9gN_vwKth_UFjv",
+    "chung-thuc-giao-dich-tai-san": "1zmHHBGqmKvwQ2UNV13OJsI1KMXGxU8rd",
+    "chung-thuc-phan-chia-di-san": "1OdeaVW389V0G4ELt2oJLAVBMYWdw9bqH",
+    "chung-thuc-tu-choi-nhan-di-san": "16EguoFOnn3-grra3qMZUXHD4OBssDSkh",
+    "chung-thuc-di-chuc": "1WeGi4P4TGrr92dNBEOjb4mkld19uF9RX",
+    "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "14r9iWkv61mF00DV0xPr0tALU0G-abnpC",
+    "chung-thuc-chu-ky-nguoi-dich-ctv": "1w3yqMBa9KnJ5n57sDh5vtIr4LtxzGelQ",
+    "cap-ban-sao-so-goc": "1JjmwEVy0iR29rvOve1OXR_tK7mU108PM",
+    "bau-to-truong-to-hoa-giai": "1EvXp7LtrPeK2zU9Ow0-E3AjlxTCdVFjv",
+    "xac-nhan-thong-tin-ho-tich": "1WLuWT1MqITyX8IdsvpNmgxp84IpwCfMZ",
+    "chung-thuc-chu-ky-nguoi-dich-khong-ctv": "1kAXCbfAp_yojO99FfVA9rDKii95hlgiI",
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": "1JaH3n4ynifkDHrEI4gEhSN1WkMsRqCB1",
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": "1kzwhFa08Oh3pjJw3IifNtFSrGAKakqhr",
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": "1KumQ5tVo-DN40kkWw-xC8PERxrZtzNam",
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": "12kKYIFbtGNGaS0EcPEjpGwe5vxxXtwVf",
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": "1PBpgeS9Ck68wbvDaxqptiMejJGNNiVbB",
+    "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": "1lHADxAbbec67gJ-ipKcrslM2851xsJda",
+    "dieu-chinh-giay-phep-hoat-dong-kcb": "1vex-ipG6oOqF68aVk1hlsBUWQrGznfqf",
+    "cap-chung-chi-hanh-nghe-duoc": "1FjMj-2c5avOpfzIIOptJfLbm_wa3260f",
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": "1cfEza6p82akH1WRxFXSJpQTSECYl8yf3",
+    "cap-lai-to-quoc-ghi-cong": "19i4wQTMN-LKn47OwU7tZH8chwroG-AJu",
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": "1kui3Ah2HwSo-wmoqYBT3YKXvi9WYy6sv",
+    "bo-sung-than-nhan-liet-si": "19inb6kr64sBz933Rsf867dH-T4--KCa2",
+    "tham-vieng-mo-liet-si": "1SoKUS5aQJnWbCy_aPrx5AcJP4NgjTVz5",
+    "giai-quyet-che-do-khang-chien": "1EOU-FByoS1pp7Ad0T3lgXnXCwNEWIQna",
+    "sua-doi-thong-tin-ho-so-nguoi-co-cong": "1fKhfXW_qlu4ISZ7S1x-wrib3Ttv8qNSt",
+    "mai-tang-dan-cong-hoa-tuyen": "1fxYwqzaxWPZwO5G6KuSQIZ2v2IipQr5Z",
+    "dang-ky-noi-quy-lao-dong": "1Fxzg_pX1nYR-b8JfKAStWdoLRrAwZxDG",
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": "1qa7Mp22YYEM3zsiJMusVH-uOsV2gmX6o",
+    "cung-cap-thong-tin-quy-hoach": "1FFJ_R8MnRpxB0A-IbWMb0g1frtIIm9fe",
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": "1SvVKk7I4miZ-FqAUvj1W0ok5rqaPZklN",
+    "cap-phep-long-duong-via-he": "1DiliuPSz7j8HqpFk4tvtnopUFHPR9aEB",
+    "cho-thue-thue-mua-nha-o-xa-hoi": "1k9-w93efKijs12F8hNTcTqEuLIgUFWEE",
+    "cap-giay-phep-chat-ha-cay-xanh": "1jZB1r7lXeBC5YX-_PUUNJ6G7ofn5NQ-B",
+    "chap-thuan-dau-noi-tam": "1ihKybJf-RK3LJUSg9iv8hZUzeGGHwHIz",
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": "1Mou3jefByWfL4QmuEtD_ttuOvYLZzfXH",
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": "1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV",
+    "sua-chua-cai-tao-gpxd-cong-trinh": "1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV",
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": "1-KXJ_zW4hn6cFoo2jHj4gASsfPqGZQl3",
+}
+
 for _procedure in PROCEDURES:
     if (_BYT_HOST in ((_procedure.get("detect") or {}).get("urlScope") or [])
             and "guidedSteps" not in _procedure):
@@ -6052,6 +6130,8 @@ for _procedure in PROCEDURES:
         _procedure.setdefault("bacNinhTabFlow", deepcopy(_BN_TAB_FLOW))
         _procedure.setdefault("bacNinhAgencyAsk", True)
         _procedure.setdefault("bacNinhAuthorizedAsk", bool(_procedure.get("bacNinhAuthorizedPerson")))
+    if _procedure["key"] in _HUONG_DAN_DRIVE_ID:
+        _procedure["guideUrl"] = _HUONG_DAN_DRIVE_URL.format(_HUONG_DAN_DRIVE_ID[_procedure["key"]])
 
 # Materialize reusable flow capabilities once. Runtime and extension continue consuming
 # the same resolved procedure contract; they never need procedure-specific profile logic.
@@ -6193,6 +6273,9 @@ def _validate_profile_dispatch() -> None:
     for key in _HOME_FREQUENT_KEYS:
         if key not in _BY_KEY:
             raise RuntimeError(f"_HOME_FREQUENT_KEYS có key không tồn tại: {key}")
+    for key in _HUONG_DAN_DRIVE_ID:
+        if key not in _BY_KEY:
+            raise RuntimeError(f"_HUONG_DAN_DRIVE_ID có key không tồn tại: {key}")
     for procedure in PROCEDURES:
         if not procedure.get("flowProfile"):
             continue

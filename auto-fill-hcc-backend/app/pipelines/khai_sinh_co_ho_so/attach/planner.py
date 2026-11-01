@@ -12,6 +12,9 @@ Bảng "Thành phần hồ sơ" của thủ tục này có 5 dòng CỐ ĐỊNH:
 
 Tờ khai bản GIẤY người dân nộp kèm chỉ dùng để OCR ở bước 2; đính vào thành phần MỚI để không đụng
 STT 1 mà cũng không bỏ rơi file nào.
+
+Cài đặt "Tách giấy tờ" (``options.splitDocuments`` là boolean true): tệp scan gộp nhiều giấy được chia theo
+trang trước, rồi mỗi giấy mới được phân loại riêng (xem ``_plan_tach_giay_to``). Thiếu cờ → giữ nguyên tệp.
 """
 import re
 import time
@@ -19,6 +22,8 @@ import unicodedata
 from typing import Any
 
 from app.config import settings
+# Helper chia trang/cắt PDF của bộ tách HKD không gắn với giấy tờ HKD (prompt chia giấy là của thủ tục này).
+from app.pipelines._shared import kinh_doanh_tach_giay_to as tach
 from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.khai_sinh_co_ho_so.attach import prompt
 from app.process.schemas import FileItem
@@ -206,11 +211,12 @@ def _fallback_type(doc_type: str, text: str) -> str:
     return "other"
 
 
-async def plan_khai_sinh_co_ho_so_attachments(
+async def _plan_theo_tep(
     files: list[FileItem],
     options: dict | None = None,
     session: dict | None = None,
 ) -> dict:
+    """Phân loại NGUYÊN từng tệp vào dòng thành phần hồ sơ."""
     _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
@@ -345,6 +351,127 @@ async def plan_khai_sinh_co_ho_so_attachments(
         },
         "errors": errors,
     }
+
+
+async def _chia_giay(pages_by_file: dict[int, list[str]]) -> dict[int, list[int]]:
+    """LLM chỉ ra trang nào MỞ giấy mới → {tệp: [trang đầu 0-based]}."""
+    total = sum(len(pages) for pages in pages_by_file.values())
+    # temperature 0: chỉ ra số trang, cần ổn định giữa các lần chạy cùng tệp.
+    raw = await client.chat(
+        [
+            {"role": "system", "content": prompt.SPLIT_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt.build_split_user_prompt(pages_by_file)},
+        ],
+        temperature=0,
+        max_tokens=max(300, min(2000, 100 + 20 * total)),
+        enable_thinking=settings.agent_reasoning,
+    )
+    return tach.page_starts(client.extract_json_block(raw), pages_by_file)
+
+
+def _ve_tep_goc(item: dict, segments: list[dict]) -> dict:
+    """Mục kế hoạch trên tệp ảo (một giấy đã cắt) → mục trên tệp gốc kèm sourceSegments.
+
+    Hai mặt CCCD nằm ở hai tệp ảo được merge_identity_attachments gộp bằng sourceFileIndexes → giữ đủ cả hai.
+    """
+    refs = item.get("sourceFileIndexes") or [item["fileIndex"]]
+    parts = [segments[int(ref)] for ref in refs]
+    out = {k: v for k, v in item.items() if k not in ("sourceSegments", "sourceFileIndexes")}
+    out["fileIndex"] = parts[0]["source"]
+    if all(part["pages"] is None for part in parts):
+        if len(parts) > 1:
+            out["sourceFileIndexes"] = [part["source"] for part in parts]
+    else:
+        # pageIndexes None = lấy cả tệp (extension hiểu như vậy).
+        out["sourceSegments"] = [
+            {"fileIndex": part["source"], "pageIndexes": part["pages"]} for part in parts
+        ]
+    return out
+
+
+async def _plan_tach_giay_to(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    """Tách tệp scan gộp nhiều giấy rồi phân loại TỪNG giấy.
+
+    Không tách thì cả bộ (cam đoan + CCCD + ủy quyền…) chỉ vào được một dòng. Cách làm:
+    1. OCR tệp gốc một lần; LLM đọc đầu từng trang, chỉ ra trang nào mở giấy mới.
+    2. Cắt mỗi đoạn thành PDF con, chạy ``_plan_theo_tep`` trên các PDF con (chữ OCR nạp sẵn qua
+       ``ocr.preset_texts``, không OCR lần hai) → cam đoan vào STT 2, giấy tờ cá nhân STT 3, ủy quyền STT 5…
+    3. Đổi kế hoạch về tệp gốc bằng ``sourceSegments``; extension cắt trang trước khi tải lên cổng.
+    LLM chia lỗi / tệp ảnh / số trang OCR lệch PDF → tệp đó đính nguyên như không tách.
+    """
+    from app.services import ocr
+
+    raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl, "role": f.role} for f in files]
+    ocr_pairs = [(idx, file) for idx, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES]
+    t0 = time.monotonic()
+    ocr_results = await ocr.ocr_per_file([file for _, file in ocr_pairs]) if ocr_pairs else []
+    ocr_ms = int((time.monotonic() - t0) * 1000)
+    texts = {
+        idx: str(result.get("text") or "")
+        for (idx, _), result in zip(ocr_pairs, ocr_results)
+        if not result.get("error") and str(result.get("text") or "").strip()
+    }
+    pages_by_file = {
+        idx: pages for idx, text in texts.items() if len(pages := tach.split_pages(text)) > 1
+    }
+
+    errors: list[str] = []
+    t1 = time.monotonic()
+    starts: dict[int, list[int]] = {}
+    if pages_by_file:
+        try:
+            starts = await _chia_giay(pages_by_file)
+        except Exception as e:  # noqa: BLE001 — chia giấy hỏng thì đính nguyên tệp
+            errors.append(f"Tách giấy tờ: {e} — đính nguyên tệp.")
+    split_ms = int((time.monotonic() - t1) * 1000)
+
+    segments = tach.build_segments(raw_files, texts, starts)
+    virtual = [FileItem(**segment["file"]) for segment in segments]
+    with ocr.preset_texts({seg["file"]["dataUrl"]: seg["text"] for seg in segments if seg["text"]}):
+        result = await _plan_theo_tep(virtual, options, session)
+
+    result["attachments"] = [_ve_tep_goc(item, segments) for item in result.get("attachments") or []]
+    extracted = dict(result.get("extracted") or {})
+    classified = []
+    for entry in extracted.get("classified") or []:
+        segment = segments[int(entry["fileIndex"])]
+        entry = {**entry, "fileIndex": segment["source"],
+                 "fileName": raw_files[segment["source"]]["name"]}
+        if segment["pages"] is not None:
+            entry["pageFrom"], entry["pageTo"] = segment["pages"][0] + 1, segment["pages"][-1] + 1
+        classified.append(entry)
+    result["extracted"] = {
+        **extracted,
+        "documents": [file["name"] for file in raw_files],
+        "attachmentMode": "split_documents",
+        "classified": classified,
+        "tachGiayTo": [
+            {"fileName": raw_files[seg["source"]]["name"],
+             "pages": "cả tệp" if seg["pages"] is None else [p + 1 for p in seg["pages"]]}
+            for seg in segments
+        ],
+    }
+    result["errors"] = [*errors, *(result.get("errors") or [])]
+    stats = dict(result.get("stats") or {})
+    stats["ocr_latency_ms"] = int(stats.get("ocr_latency_ms") or 0) + ocr_ms
+    stats["llm_latency_ms"] = int(stats.get("llm_latency_ms") or 0) + split_ms
+    stats["total_latency_ms"] = int(stats.get("total_latency_ms") or 0) + ocr_ms + split_ms
+    result["stats"] = stats
+    return result
+
+
+async def plan_khai_sinh_co_ho_so_attachments(
+    files: list[FileItem],
+    options: dict | None = None,
+    session: dict | None = None,
+) -> dict:
+    """Chỉ boolean ``True`` mới tách (và extension phải cắt được trang); client cũ giữ nguyên tệp."""
+    planner = _plan_tach_giay_to if tach.split_requested(options) else _plan_theo_tep
+    return await planner(files, options, session)
 
 
 plan = plan_khai_sinh_co_ho_so_attachments

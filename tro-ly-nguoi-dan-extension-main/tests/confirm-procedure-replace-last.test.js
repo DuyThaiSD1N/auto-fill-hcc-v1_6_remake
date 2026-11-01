@@ -30,7 +30,6 @@ test("câu xác nhận đi kèm card chọn nơi được đánh dấu để lư
 });
 
 test("QR hướng dẫn hiện trước, lời giới thiệu chỉ hiển thị không đọc; câu xác nhận vẽ và đọc ngay bên dưới", () => {
-  assert.match(sidebar, /"khai-sinh-dang-ky-lai":\s*\{\s*url: "https:\/\/drive\.google\.com\/file\/d\/1ObePKXQq2rS62F72ipMMmXVVS399rMs4\//);
   const dau = render.slice(0, render.indexOf("lastReplyData = d;", render.indexOf("return;")));
   assert.match(dau, /!opts\?\.noTts && !opts\?\.sauHuongDan && canHuongDanQr\(d\)[\s\S]*hienHuongDanQr\(d\);\s*return;/);
   const qr = sidebar.match(/function hienHuongDanQr\(d\) \{[\s\S]*?\n  \}/)[0];
@@ -43,18 +42,15 @@ test("bấm Mở hướng dẫn thì cắt câu đang đọc, kẻo đè tiếng
   assert.match(sidebar, /\.guide-qr-link"\)\?\.addEventListener\("click", \(\) => \{\s*markActivity\(\);\s*stopReplyTts\(\);/);
 });
 
-test("QR hướng dẫn có đủ các thủ tục tư pháp, mỗi thủ tục đúng link Drive", () => {
-  const bang = {
-    "khai-sinh-dang-ky-lai": "1ObePKXQq2rS62F72ipMMmXVVS399rMs4",
-    "xac-nhan-tinh-trang-hon-nhan": "1K72MmetiOzQuVywsyest5ZP-GpZGJS6G",
-    "khai-sinh-dang-ky": "1GrI9R8FRMUpphFxsIH2QdGR3h1wojwlk",
-    "ket-hon": "1yM72x0kkgS0ouLuCjejiTLGYJ0cEyFGR",
-    "khai-sinh-dang-ky-thuong": "1_c-8Xx4O9KqTH9KbCG0uqQlPNRH3-2du",
-    "chung-thuc-ban-sao": "1rv3_eC98iTnAZX0Bc9cKnWQLsGCPq9Bi",
-    "thay-doi-cai-chinh-ho-tich": "1_pns6gVNa2gP0aIWI3FfcyVk1A05FCAB",
-  };
-  for (const [key, id] of Object.entries(bang)) {
-    const re = new RegExp(`"${key}":\\s*\\{\\s*url: "https://drive\\.google\\.com/file/d/${id}/view`);
-    assert.match(sidebar, re, key);
-  }
+test("QR hướng dẫn lấy từ action procedure_guide của BE — FE không còn bảng link/QR vẽ sẵn", () => {
+  assert.doesNotMatch(sidebar, /HUONG_DAN_THU_TUC|qrPath|qrSize|drive\.google\.com/);
+  const lay = sidebar.match(/function huongDanAction\(d\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(lay, /a\.type === "procedure_guide" && a\.url && a\.qr_png_base64/);
+  const can = sidebar.match(/function canHuongDanQr\(d\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(can, /!!huongDanAction\(d\)/);
+  const qr = sidebar.match(/function hienHuongDanQr\(d\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(qr, /src="data:image\/png;base64,\$\{window\.escapeHtml\(String\(hd\.qr_png_base64\)\)\}"/);
+  assert.match(qr, /href="\$\{window\.escapeHtml\(hd\.url\)\}"/);
+  // runActions không báo "action chưa hỗ trợ" cho thẻ đã vẽ ở renderReply.
+  assert.match(sidebar, /a\.type === "procedure_guide"\) \{/);
 });
