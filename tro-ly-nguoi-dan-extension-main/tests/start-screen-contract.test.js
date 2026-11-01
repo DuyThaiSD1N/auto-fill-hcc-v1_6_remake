@@ -31,7 +31,7 @@ test("cổng báo nộp thành công hỏi giữ phiên và mặc định logout
   assert.match(content, /SUBMIT_SUCCESS_PHRASES\.some\(\(p\) => body\.includes\(p\)\) && successPhraseShown\(document\.body\)/);
   assert.doesNotMatch(content, /body\.includes\("thanh cong"\) && body\.includes\("ma ho so"\)/);
   assert.match(sidebar, /!submittedReported && \(\s*\(lastState === "done" && \(ctx\.submitted \|\| ctx\.submittedToast\)\)/);
-  assert.match(sidebar, /submittedReported = true;\s*clearInterval\(watcherTimer\); watcherTimer = null;\s*(if \(ctx\.submittedToast\)[^\n]*\n\s*)?ask\("__event:submitted"/);
+  assert.match(sidebar, /submittedReported = true;\s*clearInterval\(watcherTimer\); watcherTimer = null;\s*(if \(ctx\.submittedToast\)[^\n]*\n\s*)?ask\(`__event:submitted:/);
   assert.match(sidebar, /a\.type === "await_logout_choice"/);
   assert.match(sidebar, /Number\(a\.delay_ms\) \|\| 120000/);
   assert.match(sidebar, /a\.type === "logout_citizen"[\s\S]*returnToStart\("completed"\)/);

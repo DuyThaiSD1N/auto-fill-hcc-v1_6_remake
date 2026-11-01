@@ -2441,12 +2441,18 @@ function handleFillMessage(msg, _sender, sendResponse) {
   // Trang Bắc Ninh gồm nhiều tab CÙNG TRANG (Liferay Tabs): phải mở đúng tab
   // "Nhập đơn đăng ký" trước, nếu không ô đơn nằm trong pane ẩn — điền được nhưng
   // công dân không thấy, còn markFilled/legend lệch.
+  // Luồng tab Bắc Ninh: BE gửi kèm tên tab của lượt điền (khối người ủy quyền nằm ở tab "Chọn cơ quan tiếp nhận").
   const prepare = (formKind === "bacninh" && typeof H.activateBacNinhTab === "function")
-    ? Promise.resolve(H.activateBacNinhTab("nhapdondangky"))
+    ? Promise.resolve(H.activateBacNinhTab(String(msg.bnTab || "") || "nhapdondangky"))
     : Promise.resolve(null);
   // LUÔN trả response (kể cả engine ném lỗi) → tránh sidebar retry gây điền lặp.
   prepare.then(() => filler(fields))
-    .then((res) => { trackSnapshot(res); sendResponse(res); })
+    .then((res) => {
+      // Bắc Ninh: điền xong đưa trang về đầu (thanh tab + đầu đơn) — engine cuộn theo từng ô tới cuối đơn.
+      if (formKind === "bacninh") window.scrollTo({ top: 0, behavior: "smooth" });
+      trackSnapshot(res);
+      sendResponse(res);
+    })
     .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
   return true; // giữ kênh phản hồi bất đồng bộ (cascade địa danh cần chờ)
 }

@@ -81,6 +81,9 @@
     // Hiểu card "rating" (đánh giá trải nghiệm trước đăng xuất). BE chỉ chèn bước đánh giá khi
     // client khai cờ này; extension cũ không khai → BE ra thẳng 2 nút đăng xuất như trước.
     supportsRating: true,
+    // Cú bấm nộp mang mã tab + báo tab tách bị đóng: BE đếm đủ hồ sơ tách rồi mới mời đánh giá.
+    // Thiếu cờ → BE mời ngay khi tab gốc nộp xong như cũ.
+    supportsSplitSubmitTabs: true,
     // Hiểu nút chuyển bước / gửi hồ sơ do BE điều phối (guided_click_next, guided_submit) và
     // biết đọc giá trị ô chủ hồ sơ trước khi chuyển bước. BE chỉ bật luồng dẫn từng bước cho
     // client khai cờ này; bản trên chợ không khai → giữ nguyên câu "công dân tự bấm nút trang".
@@ -152,6 +155,9 @@
     // bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành — content/lien-thong.js).
     // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Chuyển bước tiếp theo").
     supportsLienThongFlow: true,
+    // Liên thông khai tử: điền bước chọn cơ quan (CqdkktDiaChi + ô đối tượng mai táng phí chọn nhiều giá trị), ô cam
+    // đoan IsCamdoan ở bước nhận kết quả. Thiếu cờ → BE giữ luồng cũ cho khai tử (chọn tay bước 1).
+    supportsLienThongKhaiTu: true,
     // Cổng Bắc Ninh: biết mở khối "Thông tin trong trường hợp được ủy quyền" (tick ô bổ sung + chọn loại
     // đối tượng theo ô đánh dấu bn-doi-tuong-khac) rồi điền doiTuongKhac*. Thiếu cờ → BE không gửi khối này.
     supportsBacNinhAuthorizedPerson: true,
@@ -159,6 +165,16 @@
     // (content/bxd/field-review-formio.js), chọn hình thức nhận kết quả, bấm Nộp hồ sơ (content/bxd/portal.js).
     // Thiếu cờ → BE giữ luồng cũ (công dân tự bấm "Tiếp tục" / "Nộp hồ sơ").
     supportsBxdFlow: true,
+    // Luồng 4 bước trên cổng NN&MT (dichvucongnnmt.mae.gov.vn): content/bxd/portal.js + field-review-formio.js
+    // đã chạy trên host này (bản cũ khai supportsBxdFlow nhưng chưa chạy ở đây).
+    supportsBxdFlowMae: true,
+    // Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn): content.js báo bước đang mở, content/bxd
+    // chạy trên host này (bản cũ không báo bước, không chạy ở đây).
+    supportsBxdFlowMoit: true,
+    // Cổng Bắc Ninh (trang nộp hồ sơ 4 tab cùng trang): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng
+    // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
+    // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.
+    supportsBacNinhTabFlow: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -367,7 +383,7 @@
     "pickProvinceRow",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
     "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
-    "prepareBusinessRegistration", "startBusinessRegistration",
+    "prepareBusinessRegistration", "startBusinessRegistration", "bnShowTab", "bnAgency", "bnResult", "bnSubmit", "bnAccountSave",
   ]);
   let pageWorkInFlight = 0;
   let pageWorkEndedAt = 0;
@@ -417,10 +433,18 @@
   // không gửi được runtime message vào extension nên số liệu không bị trang giả mạo.
   chrome.runtime.onMessage.addListener((msg, sender) => {
     let fromThisDossier = false;
+    let clickTabId = Number(TAB_ID) || 0;
+    if (msg?.__tlnd === "splitTabClosedRelay") {
+      // Tab tách bị đóng: chưa bấm nộp thì BE trừ hồ sơ đó khỏi số phải nộp trước khi mời đánh giá.
+      if (String(msg.originTabId || "") !== String(TAB_ID) || !api.conversationId) return;
+      void ask(`__event:split_tab_closed:${JSON.stringify({ tab_id: Number(msg.splitTabId) || 0 })}`, "system");
+      return;
+    }
     if (msg?.__tlnd === "submitClicked") {
       // Cú bấm ngay trên tab của sidebar này.
       fromThisDossier = String(sender?.tab?.id || "") === String(TAB_ID);
     } else if (msg?.__tlnd === "submitClickedRelay") {
+      clickTabId = Number(msg.splitTabId) || 0;
       // Cú bấm ở tab TÁCH (chứng thực nhiều hồ sơ) — background chuyển tiếp về đây vì tab tách
       // không có sidebar mang phiên trò chuyện. Mỗi lần là MỘT hồ sơ riêng trên cổng; BE ghi
       // thành sự kiện nộp riêng nên đếm đủ số hồ sơ thay vì chỉ tab đầu.
@@ -434,6 +458,8 @@
       click_id: String(msg.clickId || ""),
       // Giờ bấm thật: BE phân biệt cú bấm của tab tách với mốc dò chữ của tab gốc.
       clicked_at: Number(msg.clickedAt) || undefined,
+      // Đếm hồ sơ tách theo TAB: một tab bấm lại nhiều lần vẫn là một hồ sơ.
+      tab_id: clickTabId,
     })}`, "system");
   });
 
@@ -1120,6 +1146,8 @@
       // Backend phân biệt context vừa đọc thất bại với lệnh giọng nói dùng target đã lưu.
       pageContextCaptured: !!ctx?.ok,
       wizardStep: Number(ctx?.wizardStep) || 0,
+      // Lệnh nói "bước tiếp theo" ở cổng Bắc Ninh đi theo tab đang mở.
+      bnTab: Number(ctx?.bnTab) || 0,
       formKind: String(ctx?.formKind || ""),
       declarationTarget: !!ctx?.declarationTarget,
       attachmentTarget: !!ctx?.attachmentTarget,
@@ -1206,6 +1234,10 @@
       loginQrMissing: !!c.loginQrMissing,
       infoModal: !!c.infoModal, wizardStep: c.wizardStep || 0,
       attachmentTarget: !!c.attachmentTarget,
+      // Cổng Bắc Ninh: tab đang mở của trang nộp hồ sơ 4 tab (0 = không phải trang đó).
+      bnTab: Number(c.bnTab) || 0,
+      bnAgency: String(c.bnAgency || ""),
+      bnAccountForm: !!c.bnAccountForm,
       // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
       maeAgencyBlock: !!c.maeAgencyBlock,
       // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
@@ -1564,6 +1596,72 @@
     })}`, "system");
   }
 
+  // ── Cổng Bắc Ninh (4 tab cùng trang): chuyển tab, đọc / chọn nơi nhận kết quả, bấm Nộp hồ sơ ──
+  // Chạy NGOÀI lượt ask() như runBxdMove. Tab đang mở = bnTab (content/bacninh/tab-flow.js).
+  async function runBnTab(a) {
+    const expect = Number(a.expect) || 0;
+    setStatus("Đang chuyển phần trên trang…");
+    await sendToContent({ action: "bnShowTab", tab: a.tab || "" });
+    let tab = 0;
+    for (let i = 0; i < 10 && tab !== expect; i++) {
+      const ctx = await sendToContent({ action: "getPageContext" });
+      tab = Number(ctx?.bnTab) || 0;
+      if (tab !== expect) await new Promise((r) => setTimeout(r, 300));
+    }
+    const ok = !!expect && tab === expect;
+    if (ok) lastFamilyStep = tab; // trợ lý đã nói câu của tab mới → watcher không báo lại
+    setStatus("");
+    await ask(`__action:bn_tab_report:${JSON.stringify({ ok, expect, tab })}`, "system");
+  }
+
+  async function runBnAgency(a) {
+    setStatus(a.value ? "Đang chọn cơ quan tiếp nhận…" : "Đang đọc danh sách cơ quan tiếp nhận…");
+    const res = await sendToContent({ action: "bnAgency", value: a.value || "" });
+    setStatus("");
+    const report = { selected: res?.selected || "", options: res?.options || [] };
+    if (a.value) report.changed = { value: a.value, ok: !!res?.ok };
+    await ask(`__action:bn_agency_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runBnAccountSave() {
+    setStatus("Đang lưu thông tin tài khoản…");
+    const res = await sendToContent({ action: "bnAccountSave" });
+    setStatus("");
+    // null = trang đã chuyển đi sau khi bấm Lưu (content script của trang cũ mất) → coi như lưu được.
+    await ask(`__action:bn_account_report:${JSON.stringify({
+      clicked: res ? !!res.clicked : true, message: res?.message || "", gone: !res,
+    })}`, "system");
+  }
+
+  async function runBnResult(a) {
+    const set = !!a.value || Array.isArray(a.postal);
+    setStatus(set ? "Đang chọn nơi nhận kết quả…" : "Đang đọc nơi nhận kết quả…");
+    const res = await sendToContent({
+      action: "bnResult", value: a.value || "", point: a.point || "", postal: Array.isArray(a.postal) ? a.postal : null,
+    });
+    setStatus("");
+    const report = {
+      checked: res?.checked || "", options: res?.options || [], point: res?.point || "", points: res?.points || [],
+      postal: res?.postal || [],
+    };
+    if (set) {
+      report.changed = Array.isArray(a.postal) ? { postal: a.postal, ok: !!res?.ok }
+        : { value: a.value, point: a.point || "", ok: !!res?.ok };
+    }
+    await ask(`__action:bn_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  async function runBnSubmit() {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ action: "bnSubmit" });
+    setStatus("");
+    await ask(`__action:bn_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, message: res?.message || res?.error || "", missing: res?.missing || "",
+      checked: res?.checked || "", options: res?.options || [], point: res?.point || "", points: res?.points || [],
+      postal: res?.postal || [],
+    })}`, "system");
+  }
+
   let lastPageSig = "";
   // Bước wizard đã báo BE lúc state done (result_step_watch) — chỉ báo lại khi số bước đổi.
   let doneWizardStep = 0;
@@ -1603,7 +1701,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.bnAgency || ""}|${ctx.bnAccountForm ? 1 : 0}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -1613,7 +1711,8 @@
       // Cổng liên thông / Bộ Xây dựng: đổi bước (công dân tự bấm trên trang) thì báo ở MỌI state đang theo dõi — trợ lý
       // dẫn tiếp từ bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
       const familyStep = lastReplyData?.lien_thong ? Number(ctx.lienThongStep) || 0
-        : lastReplyData?.bxd ? Number(ctx.wizardStep) || 0 : 0;
+        : lastReplyData?.bxd ? Number(ctx.wizardStep) || 0
+          : lastReplyData?.bac_ninh ? Number(ctx.bnTab) || 0 : 0;
       const stepMoved = !!familyStep && familyStep !== lastFamilyStep;
       if (stepMoved && !watcherPageStatusInFlight) {
         lastFamilyStep = familyStep;
@@ -1658,7 +1757,7 @@
         submittedReported = true;
         clearInterval(watcherTimer); watcherTimer = null;
         if (ctx.submittedToast) void sendToContent({ action: "ackSubmitToast" });
-        ask("__event:submitted", "system");
+        ask(`__event:submitted:${JSON.stringify({ tab_id: Number(TAB_ID) || 0 })}`, "system");
       } else if (lastState === "done" && lastReplyData?.result_step_watch && ctx.wizardStep
           && ctx.wizardStep !== doneWizardStep && !watcherPageStatusInFlight) {
         // Đính kèm xong (state done) mà công dân TỰ bấm chuyển bước trên cổng (không qua nút của trợ lý)
@@ -3348,6 +3447,13 @@
     setStatus(`⏳ Đang tải ${files.length} tệp lên hệ thống…`);
     uploadsInFlight += 1;
     try {
+      // Tệp trên 10 MB gửi bản nén (lib/nenTep.js); giữ tên/loại để cacheUploadedBlobs đối chiếu với tệp BE nhận.
+      if (typeof NenTep !== "undefined") {
+        files = await Promise.all(files.map(async (f) => {
+          const out = await NenTep.forUpload(f);
+          return out === f ? f : new File([out], f.name, { type: f.type || out.type, lastModified: f.lastModified });
+        }));
+      }
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f, f.name));
       // Máy chủ OCR + phân loại ngay trong lượt tải: bản vẽ / hồ sơ dày chục trang qua mạng quầy chậm vượt 100 giây.
@@ -4996,6 +5102,16 @@
         setTimeout(() => { void runBxdResult(a); }, 0);
       } else if (a.type === "bxd_submit") {
         setTimeout(() => { void runBxdSubmit(); }, 0);
+      } else if (a.type === "bn_tab") {
+        setTimeout(() => { void runBnTab(a); }, 0);
+      } else if (a.type === "bn_account_save") {
+        setTimeout(() => { void runBnAccountSave(); }, 0);
+      } else if (a.type === "bn_agency") {
+        setTimeout(() => { void runBnAgency(a); }, 0);
+      } else if (a.type === "bn_result") {
+        setTimeout(() => { void runBnResult(a); }, 0);
+      } else if (a.type === "bn_submit") {
+        setTimeout(() => { void runBnSubmit(); }, 0);
       } else if (a.type === "attach_authorization_doc") {
         setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
       } else if (a.type === "save_owner_profile") {
@@ -5035,6 +5151,8 @@
         const res = await sendToContent({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
           formSnapshot: a.formSnapshot || null,
+          // Cổng Bắc Ninh: tab chứa các ô của lượt điền này (khối người ủy quyền / đơn đăng ký).
+          bnTab: a.bnTab || "",
         });
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
@@ -5296,7 +5414,7 @@
   // CUỐI một try…finally không có catch, nên bất kỳ bước dọn nào ở trên ném lỗi là nó bị bỏ
   // qua hoàn toàn, không một dòng cảnh báo.
   async function clearCitizenSessionAndGoHome() {
-    const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies" });
+    const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies", tabId: TAB_ID });
     if (!cookieCleanup?.ok) {
       console.warn("[TLND] Chưa xóa hết phiên công dân", {
         found: Number(cookieCleanup?.found) || 0,

@@ -9,8 +9,10 @@
   window.__TLND_BXD_PORTAL__ = true;
   const H = (window.__TLND__ = window.__TLND__ || {});
 
-  // Cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT cùng nền iGate: cùng stepper 4 bước, cùng bước nhận kết quả + cam đoan + mã xác nhận.
-  const HOSTS = ["dvc.moc.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucongbnv.moha.gov.vn", "dvc.moet.gov.vn"];
+  // Cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT, Bộ NN&MT, Bộ Công Thương cùng nền iGate: cùng stepper 4 bước, cùng bước nhận
+  // kết quả + cam đoan + mã xác nhận.
+  const HOSTS = ["dvc.moc.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucongbnv.moha.gov.vn", "dvc.moet.gov.vn",
+    "dichvucongnnmt.mae.gov.vn", "dichvucong-tthc.moit.gov.vn"];
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/đ/gi, "d").replace(/\s+/g, " ").trim().toLowerCase();

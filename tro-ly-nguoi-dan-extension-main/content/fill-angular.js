@@ -6,9 +6,9 @@
     markFilled, markUnfilled, markDefaultsYellow, clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles,
   } = H;
 
-async function fillFormAngular(fields) {
+async function fillFormAngular(fields, opts = {}) {
   injectAutofillStyles();
-  clearAutofillMarks();
+  if (!opts.keepMarks) clearAutofillMarks();
   const result = { filled: 0, notFound: [], errors: [] };
 
   for (const f of fields) {
@@ -625,6 +625,11 @@ async function fillMatSelect(ms, value, wrapper) {
   }
   target.click();
   await sleep(150);
+  // Ô chọn nhiều giá trị: chọn xong danh sách vẫn mở, che các ô điền tiếp theo → đóng bằng lớp nền.
+  if (ms.classList.contains("mat-select-multiple")) {
+    document.querySelector(".cdk-overlay-backdrop")?.click();
+    await waitFor(() => !opts().length, 1200);
+  }
   markFilled(ms);
   return true;
 }
@@ -848,10 +853,22 @@ function readAngularField(f) {
   // trưng); frame khác im lặng để không cướp sendResponse.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.action !== "fillAgencyByPlan") return;
-    if (!document.querySelector('[formcontrolname="IsNuocNgoai"]')) return; // không phải frame chọn cơ quan
+    // Không phải frame chọn cơ quan (khai sinh: IsNuocNgoai; khai tử: CqdkktDiaChi).
+    if (!document.querySelector('[formcontrolname="IsNuocNgoai"], [formcontrolname="CqdkktDiaChi"]')) return;
     (async () => {
       try {
-        const r = await fillFormAngular(msg.fields || []);
+        const fields = msg.fields || [];
+        const r = await fillFormAngular(fields);
+        // Cổng dựng khối sau theo lựa chọn ô trước (khai tử: khối cơ quan mai táng phí theo đối tượng) → ô chưa
+        // thấy ở lượt đầu thì chờ hiện rồi điền lại một lượt.
+        const late = fields.filter((f) => (r.notFound || []).includes(f.name));
+        if (late.length) {
+          await waitFor(() => late.every((f) => document.querySelector(`[formcontrolname="${CSS.escape(f.name)}"]`)), 3000);
+          const again = await fillFormAngular(late, { keepMarks: true });
+          r.filled = (r.filled || 0) + (again.filled || 0);
+          r.notFound = again.notFound || [];
+          r.errors = [...(r.errors || []), ...(again.errors || [])];
+        }
         sendResponse({ ok: (r.filled || 0) > 0, filled: r.filled || 0,
                        notFound: r.notFound || [], errors: r.errors || [] });
       } catch (e) {

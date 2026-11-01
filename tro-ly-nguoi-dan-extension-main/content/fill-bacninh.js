@@ -328,8 +328,13 @@
       link.classList.contains("active") && (!targetSection || !targetSection.classList.contains("hide"));
 
     if (!isShown()) {
-      // Ưu tiên hàm thật của cổng: <a href="javascript:Liferay.Portal.Tabs.show(...)"> chạy trong
-      // main-world (nơi có Liferay). click() đủ khi cổng KHÔNG chặn điều hướng javascript:.
+      // Ưu tiên hàm thật của cổng Liferay.Portal.Tabs.show (content/bacninh/tabs-main.js gọi trong MAIN world): nó
+      // phát "showTab" để cổng ẩn/hiện nút Bước tiếp theo / Nộp hồ sơ theo tab.
+      document.dispatchEvent(new CustomEvent("tlnd-bn-show-tab", { detail: name }));
+      await sleep(250);
+    }
+    if (!isShown()) {
+      // <a href="javascript:Liferay.Portal.Tabs.show(...)">: click() đủ khi cổng KHÔNG chặn điều hướng javascript:.
       try { link.click(); } catch { /* href hỏng → dùng fallback bên dưới */ }
       await sleep(250);
     }
@@ -514,9 +519,9 @@
   // Tên file đã tải (vd "Giấy chứng nhận QSDĐ.pdf"); loại trừ dòng gợi ý "cho phép .pdf,.docx…".
   const FILENAME_RE = /[^\s,\/\\]{2,}\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|gif)\b/i;
 
-  // Ô (Bản chính/Bản sao) đã có file đính kèm chưa → để BỎ QUA, không đính lại (giống hộ tịch).
+  // Ô (Bản chính/Bản sao) đã có file đính kèm chưa → để BỎ QUA, không đính lại (giống hộ tịch). Chỉ tin tên tệp cổng đã
+  // hiện trên dòng: input.files còn giữ tệp của lượt gán mà cổng chưa nhận thì lượt "Đính kèm lại" phải đính lại.
   function slotHasFile(input) {
-    if (input && input.files && input.files.length) return true;
     const scope = input && (input.closest("tr") || input.closest(".form-group, li, div"));
     if (!scope) return false;
     for (const el of scope.querySelectorAll("a, span, div, td, li, p")) {
@@ -547,6 +552,18 @@
     setChecked(cb);
   }
 
+  // Cổng tải tệp lên bằng AJAX rồi mới vẽ tên tệp: dòng thành phần → div.tphsItem trong #thanhPhanHoSo<slot><id>, ô
+  // "File đính kèm khác" → li.list-group-item trong #filethanhPhanHoSofileDinhKem. Chờ tới lúc đó mới coi là đính xong.
+  const LANDED_WAIT_MS = 15000;
+  const suppBox = () => document.getElementById(`${PFX}filethanhPhanHoSofileDinhKem`);
+  const suppFileCount = () => (suppBox() ? suppBox().querySelectorAll("li.list-group-item").length : 0);
+
+  async function waitLanded(pending) {
+    for (let waited = 0; waited < LANDED_WAIT_MS && pending.some((p) => !p.landed()); waited += 300) {
+      await sleep(300);
+    }
+  }
+
   async function attachBacNinhByPlan(payloadFiles, attachments, opts = {}) {
     if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
       return { error: "Đang có lượt đính kèm khác đang chạy, vui lòng đợi hoàn tất." };
@@ -560,6 +577,7 @@
       // Gom file theo componentName + slot (nhiều file có thể vào cùng ô Bản chính multiple).
       // Item target="supplementary" (CCCD/ủy quyền/khác — không có slot riêng) gom vào ô đính kèm bổ sung.
       const groups = new Map(); // key = componentName||slot → { comp, slot, files[] }
+      const pending = []; // tệp đã gán, chờ cổng nhận xong (hiện tên tệp trên dòng)
       const suppEntries = [];
       const errors = [];
       const attachedNames = [];
@@ -606,7 +624,7 @@
           continue;
         }
         // Đã có file ở ô này rồi → BỎ QUA, không đính lại (tránh trùng khi chạy lại).
-        if (slotHasFile(input)) {
+        if (slotFileCount(comp.id, g.slot) > 0 || slotHasFile(input)) {
           skippedNames.push(...g.entries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
           // Lượt trước đã đính nhưng ô Số lượng vẫn để mặc định 1 → sửa theo số tệp đang có.
           setSlotQuantity(comp.id, g.slot, slotFileCount(comp.id, g.slot));
@@ -627,9 +645,13 @@
           assumeConsumed: true,
         });
         if (ok) {
-          attachedNames.push(...files.map((f) => f.name));
-          // Upload chạy bất đồng bộ → container có thể chưa kịp có .tphsItem, lấy max với số tệp vừa gán.
-          setSlotQuantity(comp.id, g.slot, Math.max(slotFileCount(comp.id, g.slot), files.length));
+          const box = document.getElementById(`${PFX}thanhPhanHoSo${g.slot}${comp.id}`);
+          pending.push({
+            names: files.map((f) => f.name),
+            cell: box?.closest("td") || box || input.closest("tr"),
+            landed: () => slotFileCount(comp.id, g.slot) >= files.length,
+            done: () => setSlotQuantity(comp.id, g.slot, slotFileCount(comp.id, g.slot)),
+          });
         } else errors.push(`Gán file thất bại cho "${g.componentName}".`);
         await H.sleep(150);
       }
@@ -640,7 +662,7 @@
           || document.querySelector(`input[type="file"][name*="fileDinhKem"]`);
         if (!suppInput) {
           errors.push("Không thấy ô đính kèm bổ sung (fileDinhKem).");
-        } else if (slotHasFile(suppInput)) {
+        } else if (suppFileCount() > 0 || slotHasFile(suppInput)) {
           skippedNames.push(...suppEntries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
         } else {
           const files = [];
@@ -649,11 +671,32 @@
             if (file) files.push(file);
           }
           if (files.length) {
+            const before = suppFileCount();
             const ok = H.setFilesOnInput(suppInput, files, { allowMultiple: true, assumeConsumed: true });
-            if (ok) attachedNames.push(...files.map((f) => f.name));
-            else errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
+            if (ok) {
+              pending.push({
+                names: files.map((f) => f.name),
+                cell: suppBox()?.closest("td") || suppBox() || suppInput.closest("tr, div"),
+                landed: () => suppFileCount() >= before + files.length,
+                done: () => {},
+              });
+            } else errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
             await H.sleep(150);
           }
+        }
+      }
+
+      // Tô xanh dòng cổng đã nhận tệp; quá hạn chờ mà chưa thấy tên tệp → tô đỏ, báo lỗi để công dân bấm Đính kèm lại.
+      await waitLanded(pending);
+      H.injectAutofillStyles && H.injectAutofillStyles();
+      for (const p of pending) {
+        if (p.landed()) {
+          p.done();
+          attachedNames.push(...p.names);
+          H.markFilled && H.markFilled(p.cell);
+        } else {
+          H.markUnfilled && H.markUnfilled(p.cell);
+          errors.push(...p.names.map((name) => `Tệp "${name}" chưa lên trang sau ${LANDED_WAIT_MS / 1000} giây.`));
         }
       }
 

@@ -107,3 +107,15 @@ test("người yêu cầu là cha / mẹ / người thứ ba → chọn theo s�
   assert.equal(chonNguoiYeuCau(nguoi, { cccd: "001090000099", ten: "TRẦN VĂN BỐ" }), null);
   assert.equal(chonNguoiYeuCau([{ vaiTro: "toKhai", ten: "ĐỖ THỊ BÀ" }], { cccd: "001150000044", ten: "Do Thi Ba" }).vaiTro, "toKhai");
 });
+
+test("liên thông khai tử: cờ riêng, điền bước chọn cơ quan khai tử, ô đối tượng chọn nhiều giá trị, cam đoan IsCamdoan", () => {
+  const angular = read("content/fill-angular.js");
+  assert.match(sidebar, /supportsLienThongKhaiTu: true/);
+  assert.match(angular, /\[formcontrolname="IsNuocNgoai"\], \[formcontrolname="CqdkktDiaChi"\]/);
+  // Khối cơ quan mai táng phí chỉ dựng sau khi chọn đối tượng → ô chưa thấy thì chờ rồi điền lại, giữ dấu đã điền.
+  assert.match(angular, /const late = fields\.filter\([\s\S]*?fillFormAngular\(late, \{ keepMarks: true \}\)/);
+  assert.match(angular, /if \(!opts\.keepMarks\) clearAutofillMarks\(\);/);
+  assert.match(angular, /ms\.classList\.contains\("mat-select-multiple"\)[\s\S]{0,120}?cdk-overlay-backdrop/);
+  assert.match(portal, /byName\("IsCamDoan"\) \|\| byName\("IsCamdoan"\)/);
+  assert.match(portal, /"IsCamDoan", "IsCamdoan"/);
+});

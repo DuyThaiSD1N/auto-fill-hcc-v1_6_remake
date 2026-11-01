@@ -212,44 +212,89 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 
-// Phiên đăng nhập của công dân nằm ở nhiều miền dù tab hoàn tất có thể đang ở cổng Bộ Tư pháp.
-// Chỉ xóa đúng các miền tham gia luồng DVC/VNeID; tuyệt đối không quét rộng *.gov.vn hoặc *.moj.gov.vn.
-const CITIZEN_COOKIE_HOSTS = Object.freeze([
+// Phiên đăng nhập của công dân: dọn ĐÚNG các cổng công dân đã đi qua + DVCQG/VNeID — không quét
+// rộng *.gov.vn. Cổng iGate giữ phiên ở miền SSO RIÊNG cùng đơn vị (dichvucongbyt.moh.gov.vn →
+// sso-dvc.moh.gov.vn, dvc.moet.gov.vn → ssodvc.moet.gov.vn, dichvucong.danang.gov.vn →
+// ssoigate.danang.gov.vn): chỉ xóa miền cổng thì SSO tự đăng nhập lại bằng phiên người trước.
+// Nên xóa theo MIỀN ĐƠN VỊ (3 nhãn cuối: moh.gov.vn, danang.gov.vn…) của từng cổng đã đi qua.
+const DVCQG_LOGOUT_DOMAINS = Object.freeze(["dichvucong.gov.vn", "dancuquocgia.gov.vn"]);
+// Trang SPA (Liên thông) giữ token ở localStorage — luôn dọn cùng DVCQG.
+const DVCQG_STORAGE_HOSTS = Object.freeze([
   "dichvucong.gov.vn",
+  "lienthong.dichvucong.gov.vn",
   "sso.dancuquocgia.gov.vn",
-  "dichvucongnganhtuphap.moj.gov.vn",
-  "tokhaidientu.moj.gov.vn",
-  "dichvucongnnmt.mae.gov.vn",
-  "dvc.moet.gov.vn",
-  "dvc.moc.gov.vn",
-  "dichvucong.bacninh.gov.vn",
 ]);
+const CITIZEN_TAB_URL_PATTERNS = Object.freeze(["https://*.gov.vn/*"]);
+const CITIZEN_VISITED_KEY = "tlnd_citizen_visited_hosts"; // { [host]: lần thấy cuối (ms) }
+const CITIZEN_VISIT_TTL_MS = 24 * 60 * 60 * 1000;
 
-// Token đăng nhập của các cổng SPA không nhất thiết chỉ nằm trong cookie. Xóa thêm
-// dữ liệu web đúng các origin tham gia luồng; không đụng chrome.storage của Trợ lý.
-const CITIZEN_STORAGE_ORIGINS = Object.freeze([
-  "https://dichvucong.gov.vn",
-  "https://lienthong.dichvucong.gov.vn",
-  "https://sso.dancuquocgia.gov.vn",
-  "https://dichvucongnganhtuphap.moj.gov.vn",
-  "https://tokhaidientu.moj.gov.vn",
-  "https://dichvucongnnmt.mae.gov.vn",
-  "https://dvc.moet.gov.vn",
-  "https://dvc.moc.gov.vn",
-  "https://dichvucong.bacninh.gov.vn",
-]);
+function citizenGovHost(url) {
+  try {
+    const u = new URL(String(url || ""));
+    const host = u.hostname.toLowerCase();
+    return u.protocol === "https:" && host.endsWith(".gov.vn") ? host : "";
+  } catch (_) { return ""; }
+}
 
-const CITIZEN_TAB_URL_PATTERNS = Object.freeze([
-  "https://dichvucong.gov.vn/*",
-  "https://*.dichvucong.gov.vn/*",
-  "https://sso.dancuquocgia.gov.vn/*",
-  "https://dichvucongnganhtuphap.moj.gov.vn/*",
-  "https://tokhaidientu.moj.gov.vn/*",
-  "https://dichvucongnnmt.mae.gov.vn/*",
-  "https://dvc.moet.gov.vn/*",
-  "https://dvc.moc.gov.vn/*",
-  "https://dichvucong.bacninh.gov.vn/*",
-]);
+// Miền đơn vị = 3 nhãn cuối. "gov.vn" trần không bao giờ là miền đơn vị.
+function citizenUnitDomain(host) {
+  const labels = String(host || "").replace(/^\./, "").toLowerCase().split(".").filter(Boolean);
+  if (labels.length < 3 || labels.slice(-2).join(".") !== "gov.vn") return "";
+  return labels.slice(-3).join(".");
+}
+
+function inCitizenDomains(host, domains) {
+  const h = String(host || "").replace(/^\./, "").toLowerCase();
+  return !!h && domains.some((d) => h === d || h.endsWith(`.${d}`));
+}
+
+let citizenVisitChain = Promise.resolve();
+function mutateCitizenVisits(mutator) {
+  const run = async () => {
+    const res = await chrome.storage.local.get([CITIZEN_VISITED_KEY]);
+    const map = res?.[CITIZEN_VISITED_KEY] || {};
+    mutator(map);
+    await chrome.storage.local.set({ [CITIZEN_VISITED_KEY]: map });
+  };
+  citizenVisitChain = citizenVisitChain.then(run, run).catch(() => {});
+  return citizenVisitChain;
+}
+
+// Chỉ ghi khi tab đang có hồ sơ Trợ lý (tlnd_journey), là tab tách của hồ sơ, hoặc mở ra từ tab
+// có hồ sơ: content script chạy trên mọi *.gov.vn nên ghi bừa là xóa cả cổng cán bộ tự mở.
+async function rememberCitizenVisit(sender) {
+  const host = citizenGovHost(sender?.url);
+  const tabId = sender?.tab?.id;
+  if (!host || !tabId) return;
+  const res = await chrome.storage.local.get([JOURNEY_KEY, SPLIT_TAB_ORIGIN_KEY]);
+  const journeys = res?.[JOURNEY_KEY] || {};
+  const splits = res?.[SPLIT_TAB_ORIGIN_KEY] || {};
+  const opener = sender?.tab?.openerTabId;
+  if (!journeys[tabId] && !splits[tabId] && !(opener && journeys[opener])) return;
+  await mutateCitizenVisits((map) => { map[host] = Date.now(); });
+}
+
+async function citizenVisitedHosts() {
+  const res = await chrome.storage.local.get([CITIZEN_VISITED_KEY]);
+  const map = res?.[CITIZEN_VISITED_KEY] || {};
+  const now = Date.now();
+  return Object.keys(map).filter((h) => citizenGovHost(`https://${h}/`) && now - Number(map[h] || 0) < CITIZEN_VISIT_TTL_MS);
+}
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.__tlnd !== "citizenPortalVisit") return;
+  void rememberCitizenVisit(sender).catch(() => {});
+});
+
+async function citizenLogoutScope() {
+  const visited = await citizenVisitedHosts();
+  const domains = new Set(DVCQG_LOGOUT_DOMAINS);
+  for (const host of visited) {
+    const unit = citizenUnitDomain(host);
+    if (unit) domains.add(unit);
+  }
+  return { domains: [...domains], hosts: [...new Set([...DVCQG_STORAGE_HOSTS, ...visited])] };
+}
 
 const JOURNEY_KEY = "tlnd_journey";
 const COMPLETION_LOGOUT_KEY_PREFIX = "tlnd_completion_logout:";
@@ -287,16 +332,12 @@ function clearCompletionLogoutForTab(tabId) {
   });
 }
 
-function citizenCookieRemovalHost(cookie) {
+function citizenCookieRemovalHost(cookie, scope) {
   const domain = String(cookie?.domain || "").replace(/^\./, "").toLowerCase();
-  if (!domain) return "";
-  for (const host of CITIZEN_COOKIE_HOSTS) {
-    if (domain === host || domain.endsWith(`.${host}`)) return domain;
-    // Cookie có thể được đặt ở miền cha (ví dụ dancuquocgia.gov.vn) nhưng vẫn áp dụng
-    // cho đúng cổng SSO. Xóa qua host con đã được cấp quyền, không mở quyền toàn miền cha.
-    if (host.endsWith(`.${domain}`)) return host;
-  }
-  return "";
+  if (!inCitizenDomains(domain, scope.domains)) return "";
+  // Cookie đặt ở miền cha (ví dụ dancuquocgia.gov.vn) → xóa qua một host con đã đi qua thuộc
+  // miền đó (URL khớp cookie miền cha), không có thì qua chính miền.
+  return scope.hosts.find((host) => host.endsWith(`.${domain}`)) || domain;
 }
 
 function cookieRemovalUrl(cookie, host) {
@@ -314,7 +355,37 @@ async function cookieStoreIdForTab(tabId) {
     && store.tabIds.some((id) => Number(id) === Number(tabId)))?.id || null;
 }
 
+const CITIZEN_HOME_URL = "https://dichvucong.gov.vn/";
+
 async function clearCitizenDvcCookies(tabId) {
+  const scope = await citizenLogoutScope();
+
+  // Dọn TRONG trang trước: SPA (Liên thông) giữ token cả trong bộ nhớ trang và ghi lại vào
+  // localStorage — chỉ xóa từ ngoài (browsingData) thì tab còn mở vẫn đăng nhập. Tab cổng khác
+  // công dân đã đi qua thì đưa về trang chủ DVCQG để ứng dụng cũ chết hẳn; tab đang làm do
+  // sidebar tự điều hướng sau khi dọn xong.
+  let clearedTabs = 0;
+  let failedTabs = 0;
+  try {
+    const tabs = await chrome.tabs.query({ url: [...CITIZEN_TAB_URL_PATTERNS] });
+    for (const tab of tabs || []) {
+      const id = Number(tab?.id);
+      const host = citizenGovHost(tab?.url);
+      if (!Number.isInteger(id) || id <= 0 || !inCitizenDomains(host, scope.domains)) continue;
+      try {
+        await chrome.tabs.sendMessage(id, { action: "clearCitizenPortalSessionStorage", localStorage: true });
+        clearedTabs += 1;
+      } catch (_) {
+        // Tab có thể chưa nạp content script; cookie và dữ liệu origin vẫn được dọn bên dưới.
+      }
+      if (id !== Number(tabId) && scope.hosts.includes(host)) {
+        try { await chrome.tabs.update(id, { url: CITIZEN_HOME_URL }); } catch (_) { failedTabs += 1; }
+      }
+    }
+  } catch (_) {
+    failedTabs += 1;
+  }
+
   const storeId = await cookieStoreIdForTab(tabId).catch(() => null);
   const queryDetails = [{}];
   if (storeId) queryDetails[0].storeId = storeId;
@@ -352,7 +423,7 @@ async function clearCitizenDvcCookies(tabId) {
       continue;
     }
     for (const cookie of query.value || []) {
-      const removalHost = citizenCookieRemovalHost(cookie);
+      const removalHost = citizenCookieRemovalHost(cookie, scope);
       if (!removalHost) continue;
       const key = [
         cookie.storeId || storeId || "",
@@ -385,11 +456,17 @@ async function clearCitizenDvcCookies(tabId) {
     }
   }));
 
+  // localStorage/IndexedDB: các host đã đi qua + host đang giữ cookie phiên (miền SSO của cổng).
+  const origins = new Set(scope.hosts.map((host) => `https://${host}`));
+  for (const { cookie } of unique.values()) {
+    const host = String(cookie?.domain || "").replace(/^\./, "").toLowerCase();
+    if (host) origins.add(`https://${host}`);
+  }
   let storageCleared = false;
   let storageError = "";
   try {
     await chrome.browsingData.remove(
-      { origins: [...CITIZEN_STORAGE_ORIGINS] },
+      { origins: [...origins] },
       { localStorage: true, indexedDB: true },
     );
     storageCleared = true;
@@ -397,29 +474,13 @@ async function clearCitizenDvcCookies(tabId) {
     storageError = error?.message || String(error);
   }
 
-  // sessionStorage không thuộc BrowsingData API. Yêu cầu content script xóa tại từng
-  // tab đang mở, nhưng không reload trang vì công dân vừa nộp xong cần giữ nguyên màn hình.
-  let clearedTabs = 0;
-  let failedTabs = 0;
-  try {
-    const tabs = await chrome.tabs.query({ url: [...CITIZEN_TAB_URL_PATTERNS] });
-    for (const tab of tabs || []) {
-      if (!Number.isInteger(Number(tab?.id)) || Number(tab.id) <= 0) continue;
-      try {
-        await chrome.tabs.sendMessage(Number(tab.id), { action: "clearCitizenPortalSessionStorage" });
-        clearedTabs += 1;
-      } catch (_) {
-        // Tab có thể chưa nạp content script; cookie và dữ liệu origin vẫn đã được dọn.
-      }
-    }
-  } catch (_) {
-    failedTabs += 1;
-  }
+  // Đã dọn xong lượt này → hồ sơ sau bắt đầu lại từ DVCQG.
+  await mutateCitizenVisits((map) => { for (const host of Object.keys(map)) delete map[host]; });
 
   // Chỉ trả số lượng; không đưa tên hay giá trị cookie nhạy cảm về sidebar/log.
   return {
     ok: failedQueries === 0 && failed === 0 && storageCleared && failedTabs === 0,
-    scopes: CITIZEN_COOKIE_HOSTS.length,
+    scopes: scope.domains.length,
     found: unique.size,
     removed,
     failed,
@@ -487,11 +548,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg?.action === "clearCitizenDvcCookies") {
-    clearCitizenDvcCookies(sender?.tab?.id)
+    // Khung bên (side panel) không có sender.tab → sidebar gửi kèm tabId của nó.
+    clearCitizenDvcCookies(sender?.tab?.id ?? (Number(msg.tabId) || undefined))
       .then(sendResponse)
       .catch((error) => sendResponse({
         ok: false,
-        scopes: CITIZEN_COOKIE_HOSTS.length,
+        scopes: 0,
         found: 0,
         removed: 0,
         failed: 0,
@@ -724,7 +786,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       await chrome.runtime.sendMessage(msg.__tlnd === "attachRetrying"
         ? { __tlnd: "attachRetryingRelay", originTabId }
         : {
-          __tlnd: "submitClickedRelay", originTabId, host: msg.host || "", ref: msg.ref || "",
+          __tlnd: "submitClickedRelay", originTabId, splitTabId: tabId, host: msg.host || "", ref: msg.ref || "",
           clickId: msg.clickId || "", clickedAt: msg.clickedAt,
         });
     } catch (_) { /* sidebar tab gốc đã đóng — mốc nộp background đã gửi ở trên */ }
@@ -732,9 +794,20 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  void relaySplitTabClosed(tabId);
   void forgetSplitTabOrigin(tabId);
   void forgetSplitTabInfo(tabId);
 });
+
+// Tab tách đóng → báo sidebar tab gốc để BE không chờ mãi hồ sơ đã bỏ mới mời đánh giá.
+// Phải gọi TRƯỚC forgetSplitTabOrigin: storage chạy theo thứ tự gọi nên lần đọc này còn thấy tab tách.
+async function relaySplitTabClosed(tabId) {
+  const originTabId = (await getSplitTabOrigins())[tabId];
+  if (!originTabId) return;
+  try {
+    await chrome.runtime.sendMessage({ __tlnd: "splitTabClosedRelay", originTabId, splitTabId: tabId });
+  } catch (_) { /* sidebar tab gốc đã đóng */ }
+}
 
 async function openNextSplitQueueItemUnlocked() {
   let state = await getSplitAttachQueue();

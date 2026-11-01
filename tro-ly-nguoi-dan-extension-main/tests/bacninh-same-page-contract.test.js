@@ -41,7 +41,8 @@ test("fill-bacninh đồng bộ bản auto-fill: tab helper + khớp class eform
 test("fill: trước khi điền form Bắc Ninh phải mở tab 'Nhập đơn đăng ký'", () => {
   const i = fillCore.indexOf('formKind === "bacninh"');
   assert.ok(i > 0);
-  assert.ok(fillCore.includes('H.activateBacNinhTab("nhapdondangky")'),
+  // Mặc định tab đơn; luồng tab mới gửi kèm tên tab (khối người ủy quyền ở tab đầu).
+  assert.ok(fillCore.includes('H.activateBacNinhTab(String(msg.bnTab || "") || "nhapdondangky")'),
     "thiếu bước mở tab nhapdondangky — ô đơn nằm trong pane ẩn, công dân không thấy bot điền");
 });
 
@@ -133,11 +134,14 @@ test("khối ủy quyền: trang không có khối → đơn vẫn điền, ô �
 });
 
 // ── Đính kèm: ô "Số lượng" Bản chính (`thanhPhanHoSo<id>banChinhsoBo`) = số tệp đã đính ──
-function loadBacNinhAttach({ landedBefore = 0 } = {}) {
+function loadBacNinhAttach({ landedBefore = 0, portalUploads = true } = {}) {
   const ID = "50511";
   const qty = { value: "1", getAttribute: () => "number" };
   const fileInput = { files: [], multiple: true, hasAttribute: () => true, closest: () => null };
-  const landed = { querySelectorAll: () => Array.from({ length: landedBefore }, () => ({})) };
+  // Cổng tải tệp bằng AJAX rồi mới vẽ div.tphsItem vào khung của dòng.
+  let landedCount = landedBefore;
+  const cell = { classList: { add() {}, remove() {}, contains: () => false } };
+  const landed = { querySelectorAll: () => Array.from({ length: landedCount }, () => ({})), closest: () => cell };
   const row = { textContent: "TP-H05.000026 Mẫu số 18. Đơn đăng ký biến động đất đai" };
   const checkbox = {
     checked: true, getAttribute: (a) => (a === "name" ? `${PFX}thanhPhanHoSo${ID}` : null),
@@ -151,28 +155,37 @@ function loadBacNinhAttach({ landedBefore = 0 } = {}) {
   };
   const H = {
     setNativeValue(el, value) { el.value = value; },
-    setFilesOnInput: () => true,
+    setFilesOnInput: (_input, files) => { if (portalUploads) landedCount += files.length; return true; },
+    markFilled: (el) => { el.marked = "filled"; },
+    markUnfilled: (el) => { el.marked = "unfilled"; },
     dataUrlToFile: (p, name) => ({ name }),
     sleep: () => Promise.resolve(),
   };
-  // slotHasFile: lượt trước đã lên tệp → input.files giữ tệp (giả lập ô đã có file).
-  if (landedBefore) fileInput.files = [{}];
-  const ctx = { document, console, setTimeout, __TLND__: H, CSS: { escape: (s) => s }, Event: class {} };
+  // Chờ cổng nhận tệp: hẹn giờ chạy ngay để test không phải chờ thật 15 giây.
+  const ctx = { document, console, setTimeout: (fn) => fn(), __TLND__: H, CSS: { escape: (s) => s }, Event: class {} };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(engine, ctx);
-  return { H, qty };
+  return { H, qty, cell };
 }
 
 const ATTACH_PLAN = ["Đơn 18.pdf", "Phiếu đo đạc.pdf", "Hồ sơ kỹ thuật.pdf", "Căn cước.pdf"].map((n, i) => ({
   fileIndex: i, componentName: "Mẫu số 18. Đơn đăng ký biến động", slotKey: "banChinh", documentName: n,
 }));
 
-test("đính 4 tệp vào Bản chính → ô Số lượng ghi 4 thay mặc định 1", async () => {
-  const { H, qty } = loadBacNinhAttach();
+test("đính 4 tệp vào Bản chính → ô Số lượng ghi 4 thay mặc định 1, dòng tô xanh khi cổng đã nhận", async () => {
+  const { H, qty, cell } = loadBacNinhAttach();
   const res = await H.attachBacNinhByPlan(["a", "b", "c", "d"], ATTACH_PLAN);
   assert.equal(res.attached, 4);
   assert.equal(qty.value, "4");
+  assert.equal(cell.marked, "filled");
+});
+
+test("cổng không vẽ tên tệp sau 15 giây → báo lỗi từng tệp, tô đỏ dòng", async () => {
+  const { H, cell } = loadBacNinhAttach({ portalUploads: false });
+  const res = await H.attachBacNinhByPlan(["a", "b", "c", "d"], ATTACH_PLAN);
+  assert.ok(res.error && /chưa lên trang sau 15 giây/.test(res.error));
+  assert.equal(cell.marked, "unfilled");
 });
 
 test("ô đã có tệp từ lượt trước → bỏ qua đính lại nhưng vẫn sửa Số lượng theo số tệp đang có", async () => {
@@ -190,9 +203,6 @@ test("manifest + background phủ host dichvucong.bacninh.gov.vn (inject + dọn
   const bn = "https://dichvucong.bacninh.gov.vn/*";
   assert.ok(manifest.content_scripts[0].matches.includes(bn));
   assert.ok(manifest.host_permissions.includes(bn));
-  assert.ok(background.includes('"dichvucong.bacninh.gov.vn"'), "CITIZEN_COOKIE_HOSTS thiếu Bắc Ninh");
-  assert.ok(background.includes('"https://dichvucong.bacninh.gov.vn"'),
-    "CITIZEN_STORAGE_ORIGINS thiếu Bắc Ninh");
-  assert.ok(background.includes('"https://dichvucong.bacninh.gov.vn/*"'),
-    "CITIZEN_TAB_URL_PATTERNS thiếu Bắc Ninh");
+  // Dọn phiên theo cổng đã đi qua: Bắc Ninh nằm trong *.gov.vn nên tự vào phạm vi khi công dân làm ở đó.
+  assert.ok(background.includes('const CITIZEN_TAB_URL_PATTERNS = Object.freeze(["https://*.gov.vn/*"])'));
 });

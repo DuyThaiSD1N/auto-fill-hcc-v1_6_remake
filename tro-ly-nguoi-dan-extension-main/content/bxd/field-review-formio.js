@@ -15,7 +15,8 @@
   window.__TLND_FIELD_REVIEW_FORMIO__ = true;
   const H = (window.__TLND__ = window.__TLND__ || {});
 
-  const HOSTS = ["dvc.moc.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucongbnv.moha.gov.vn", "dvc.moet.gov.vn"];
+  const HOSTS = ["dvc.moc.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucongbnv.moha.gov.vn", "dvc.moet.gov.vn",
+    "dichvucongnnmt.mae.gov.vn", "dichvucong-tthc.moit.gov.vn"];
   const ASKING = "tlnd-fr-asking";
   const OPTIONAL = "tlnd-fr-optional";
   const MARKS = ["autofill-filled", "autofill-not-filled", "autofill-default", OPTIONAL];

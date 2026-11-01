@@ -29,6 +29,9 @@
   const LAUNCHER_SIZE = 80;
   const LAUNCHER_EDGE_GAP = 8;
   const IS_TOP_FRAME = window === window.top;
+  // Báo background cổng đang mở (cả iframe SSO/tờ khai): lúc đăng xuất công dân chỉ dọn đúng các
+  // cổng tab hồ sơ đã đi qua. Background tự lọc tab không có hồ sơ Trợ lý.
+  try { chrome.runtime.sendMessage({ __tlnd: "citizenPortalVisit" }, () => void chrome.runtime.lastError); } catch (_) { }
   const IS_DVC_HOST = location.origin === "https://dichvucong.gov.vn";
   const IS_DVC_HOME = IS_DVC_HOST && location.pathname === "/";
   const IS_BUSINESS_HOST = location.hostname === "hokinhdoanh.dkkd.gov.vn";
@@ -1596,9 +1599,12 @@
     if (msg?.action === "clearCitizenPortalSessionStorage" && IS_TOP_FRAME) {
       // Kết thúc hồ sơ mới được gọi action này. Xóa phiên web của cổng nhưng giữ trạng thái
       // mở/thu panel để reload xong Trợ lý không biến mất hoặc tự đổi trải nghiệm.
+      // localStorage xóa NGAY trong trang: SPA (Liên thông) giữ token ở đây, xóa từ ngoài thì
+      // trang đang mở không thấy.
       let panelState = null;
       try { panelState = sessionStorage.getItem(SS_OPEN_KEY); } catch (_) { }
       try {
+        if (msg.localStorage) localStorage.clear();
         sessionStorage.clear();
         if (panelState === "1" || panelState === "0") sessionStorage.setItem(SS_OPEN_KEY, panelState);
         sendResponse?.({ ok: true });
@@ -1736,8 +1742,9 @@
       // Bộ Y tế: thủ tục cấp Sở (vd cấp lại/điều chỉnh GCN kinh doanh dược) mở TRANG nps/apply
       // "Chọn trường hợp giải quyết" = CÙNG form#ngSelectAgencyForm (agency + procedureProcess)
       // với hộp thoại Bộ Xây dựng.
+      // Cổng Bộ Công Thương cùng stepper iGate (không có trang chọn nơi và loại) → chỉ cần đọc bước đang mở.
       const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
-        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn"].includes(location.hostname);
+        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucong-tthc.moit.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
       // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
@@ -1905,6 +1912,15 @@
         lienThongStep: (window.__TLND__ && typeof window.__TLND__.lienThongStep === "function")
           ? window.__TLND__.lienThongStep() : 0,
         lienThongHome,
+        // Cổng Bắc Ninh: tab đang mở của trang nộp hồ sơ 4 tab cùng trang (content/bacninh/tab-flow.js), 0 = không phải.
+        bnTab: (window.__TLND__ && typeof window.__TLND__.bacNinhTab === "function")
+          ? window.__TLND__.bacNinhTab() : 0,
+        // Cổng Bắc Ninh: trang hoàn thiện thông tin tài khoản (người làm lần đầu) trước trang thủ tục.
+        bnAccountForm: !!(window.__TLND__ && typeof window.__TLND__.bacNinhAccountForm === "function"
+          && window.__TLND__.bacNinhAccountForm()),
+        // Cổng Bắc Ninh: cơ quan tiếp nhận đang chọn ở tab đầu ("" = chưa chọn).
+        bnAgency: (window.__TLND__ && typeof window.__TLND__.bacNinhAgency === "function")
+          ? window.__TLND__.bacNinhAgency() : "",
         // Thông tin định danh của đúng người đang đứng tên chủ hồ sơ. Backend dùng làm
         // context nghiệp vụ; extension không tự quyết người hay nguồn dữ liệu.
         ownerContext,

@@ -144,7 +144,7 @@
   // mọc khối địa chỉ Tỉnh/Thành phố · Phường/Xã · Chi tiết) — trừ mã kiểm tra, ô cam đoan (nhắc riêng lúc nộp) và
   // chính các ô chọn cách nhận. Khoá "tên ô|nhãn" để so trước / sau một lần đổi.
   function missingFields(groups) {
-    const skip = new Set(["textCaptcha", "IsCamDoan", ...(groups || []).flatMap((g) => [g.name, g.place])]);
+    const skip = new Set(["textCaptcha", "IsCamDoan", "IsCamdoan", ...(groups || []).flatMap((g) => [g.name, g.place])]);
     const out = new Map();
     for (const host of document.querySelectorAll("app-input[formcontrolname]")) {
       const name = host.getAttribute("formcontrolname");
@@ -187,7 +187,7 @@
 
   async function submit() {
     const missing = [];
-    const camDoan = byName("IsCamDoan");
+    const camDoan = byName("IsCamDoan") || byName("IsCamdoan"); // khai sinh / khai tử
     if (camDoan && !camDoanTicked(camDoan)) missing.push("camDoan");
     const captcha = byName("textCaptcha");
     const captchaInput = captcha?.matches("input") ? captcha : captcha?.querySelector("input");

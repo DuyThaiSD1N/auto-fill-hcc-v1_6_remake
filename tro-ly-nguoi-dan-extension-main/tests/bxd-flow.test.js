@@ -34,7 +34,7 @@ test("sidebar khai cờ, chạy lệnh bxd ngoài lượt ask() và đối chi�
   assert.match(sidebar, /a\.type === "bxd_result_scan" \|\| a\.type === "bxd_result_set"\) \{\s*setTimeout/);
   assert.match(sidebar, /a\.type === "bxd_submit"\) \{\s*setTimeout\(\(\) => \{ void runBxdSubmit\(\); \}, 0\);/);
   assert.match(sidebar, /step = Number\(ctx\?\.wizardStep\) \|\| 0;\s*moved = !!expect && step === expect;/);
-  assert.match(sidebar, /: lastReplyData\?\.bxd \? Number\(ctx\.wizardStep\) \|\| 0 : 0;/);
+  assert.match(sidebar, /: lastReplyData\?\.bxd \? Number\(ctx\.wizardStep\) \|\| 0\s*:/);
 });
 
 test("bấm Tiếp tục của bước đang mở; nộp chỉ sau khi tích cam đoan + nhập mã, tin bước 4 thật chứ không tin chữ", () => {
@@ -91,11 +91,16 @@ test("đổi hình thức nhận kết quả: chọn lựa chọn khớp NGUYÊN
   }
 });
 
-test("cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT cùng nền iGate: chạy cùng luồng, ô bắt buộc đánh dấu trên nhãn label.field-required", () => {
+test("cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT, Bộ NN&MT cùng nền iGate: chạy cùng luồng, ô bắt buộc đánh dấu trên nhãn label.field-required", () => {
   for (const src of [portal, review]) {
-    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn"\];/);
+    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn",\s*"dichvucongnnmt\.mae\.gov\.vn", "dichvucong-tthc\.moit\.gov\.vn"\];/);
   }
   assert.match(portal, /!HOSTS\.includes\(location\.hostname\)/);
+  // Bản cũ đã khai supportsBxdFlow mà chưa chạy trên cổng NN&MT → BE gác host này bằng cờ riêng.
+  assert.match(sidebar, /supportsBxdFlowMae: true/);
+  // Cổng Bộ Công Thương: content.js báo bước stepper trên host này + cờ riêng supportsBxdFlowMoit.
+  assert.match(content, /const maeHost = \[[^\]]*"dichvucong-tthc\.moit\.gov\.vn"\]\.includes\(location\.hostname\)/);
+  assert.match(sidebar, /supportsBxdFlowMoit: true/);
   assert.match(review, /comp\.querySelector\(":scope > label\.field-required"\)/);
 });
 

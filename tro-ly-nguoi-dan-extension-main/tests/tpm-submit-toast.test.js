@@ -106,5 +106,5 @@ test("trang trả dấu toast cho watcher; sidebar xác nhận lại để xoá 
 test("sidebar: khai cờ luồng tự động; toast báo ở mọi bước CHỈ khi BE cho phép", () => {
   assert.match(sidebar, /supportsTpmAutoFlow: true,/);
   assert.match(sidebar, /\(lastState === "done" && \(ctx\.submitted \|\| ctx\.submittedToast\)\)\s*(\/\/[^\n]*\n\s*)*\|\| \(ctx\.submittedToast && lastReplyData\?\.submit_anywhere\)/);
-  assert.match(sidebar, /if \(ctx\.submittedToast\) void sendToContent\(\{ action: "ackSubmitToast" \}\);\s*ask\("__event:submitted", "system"\);/);
+  assert.match(sidebar, /if \(ctx\.submittedToast\) void sendToContent\(\{ action: "ackSubmitToast" \}\);\s*ask\(`__event:submitted:\$\{JSON\.stringify\(\{ tab_id: Number\(TAB_ID\) \|\| 0 \}\)\}`, "system"\);/);
 });
