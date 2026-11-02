@@ -1694,7 +1694,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-phep-khai-thac-thuy-san",
-        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        # Mở dần theo tỉnh thí điểm: Đà Nẵng, rồi Quảng Trị (danh mục TTHC cấp tỉnh thí điểm trợ lý, 02/11).
+        "provinceOnly": ["danang", "quangtri"],
         # Cổng Bộ Nông nghiệp & Môi trường (dichvucongnnmt.mae.gov.vn) — LUỒNG KHÁC hẳn tư pháp:
         # (1) DVCQG "Chọn cơ quan thực hiện": CHỈ chọn Tỉnh (bỏ xã) → Đồng ý → kết quả ĐẦU
         #     TIÊN "Nộp trực tuyến" chính là Sở NN&MT (agencyProvinceOnly).

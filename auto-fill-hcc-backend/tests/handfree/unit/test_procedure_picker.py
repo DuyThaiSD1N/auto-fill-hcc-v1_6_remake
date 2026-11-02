@@ -62,9 +62,10 @@ async def test_danh_sach_loc_theo_tinh_thu_tuc_tinh_khac_coi_nhu_khong_nhan_ra(l
     assert "giấy phép khai thác thủy sản" not in system.lower()   # Lai Châu không thấy thủ tục riêng Đà Nẵng
     assert f"[{n_laichau}]" in system and f"[{n_laichau + 1}]" not in system
 
-    replies["picker"].append(_pick("cap-giay-phep-khai-thac-thuy-san", slug="danang"))
-    res = await agent.pick("xin giấy phép khai thác thủy sản", _conv("danang"))
-    assert (res.result, res.key) == ("pick", "cap-giay-phep-khai-thac-thuy-san")
+    for slug in ("danang", "quangtri"):
+        replies["picker"].append(_pick("cap-giay-phep-khai-thac-thuy-san", slug=slug))
+        res = await agent.pick("xin giấy phép khai thác thủy sản", _conv(slug))
+        assert (res.result, res.key) == ("pick", "cap-giay-phep-khai-thac-thuy-san"), slug
 
 
 def test_danh_sach_dua_llm_khong_co_key():
