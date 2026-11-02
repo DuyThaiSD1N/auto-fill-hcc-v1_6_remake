@@ -35,7 +35,7 @@ def is_active(proc: dict | None) -> bool:
 
 def enabled(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    return is_active(proc) and caps.get(CAPABILITY) is True and (conv.get("lang") or "vi") != "hmong"
+    return is_active(proc) and field_review.bxd_supported(caps, proc) and (conv.get("lang") or "vi") != "hmong"
 
 
 def _st(conv: dict) -> dict:

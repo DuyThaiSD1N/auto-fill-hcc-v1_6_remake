@@ -17,6 +17,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
         max_tokens=3200,
+        llm_reuse="use" if str((options or {}).get("purpose") or "") == "authorized_person" else "save",
     )
     raw = result.get("fields", [])
     result["fields"] = enrich(raw, options)

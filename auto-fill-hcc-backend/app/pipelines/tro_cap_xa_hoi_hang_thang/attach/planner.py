@@ -8,7 +8,7 @@ FE `attachFilesByAttpRow` (target "attp-row"). Ta upload BẢN SCAN → loaiBan 
 
 Phân loại **LLM-primary**: LLM đọc OCR mọi file quyết định loại; rule keyword chỉ DỰ PHÒNG khi LLM trả
 other/không hợp lệ. Mỗi loại → 1 dòng; FE gom item theo componentName rồi set nhiều file 1 lần. Giấy tờ
-nguồn không có dòng riêng (ủy quyền) → bỏ qua.
+không có dòng riêng (ủy quyền) hoặc chưa rõ loại → đính chung dòng Tờ khai (Mẫu 1a-1d), giữ tên gốc + cảnh báo.
 """
 
 import time
@@ -92,7 +92,7 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Biên bản giám định y khoa (kèm Giấy xác nhận khuyết tật)",
     },
 }
-# Giấy tờ nguồn KHÔNG có dòng riêng trên bảng thành phần hồ sơ → bỏ qua.
+# Giấy tờ KHÔNG có dòng riêng trên bảng thành phần hồ sơ → đính chung dòng Tờ khai.
 _SKIP_DOCS = {_UY_QUYEN}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
@@ -227,6 +227,7 @@ def build_plan_items(
     classified: list[dict] = []
     # Hai tệp cùng loại vào cùng một dòng phải khác tên để cán bộ phân biệt trên cổng.
     name_counts: dict[str, int] = {}
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -249,22 +250,21 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type, document_name))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
+        # Bảng thành phần hồ sơ KHÔNG có dòng "Giấy tờ khác" → không được BỎ file. Giấy không có dòng riêng
+        # (ủy quyền) hoặc chưa nhận diện chắc → dòng ĐƠN chính (Tờ khai Mẫu 1a-1d); cán bộ soát lại. FE gom
+        # nhiều file cùng componentName vào 1 dòng nên không đè file đã đúng.
+        # Giữ TÊN GỐC: đặt tên Tờ khai cho tệp lạ là cán bộ nhầm hai tệp cùng dòng.
+        item = _build_row_item(file, idx, _TK_DOITUONG, file_name)
+        item["detectedType"] = doc_type
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _TK_DOITUONG})
 
-        # Bảng thành phần hồ sơ KHÔNG có dòng "Giấy tờ khác" → không được BỎ file (sẽ ra plan rỗng,
-        # FE báo "chưa có kế hoạch đính kèm"). Theo nguyên tắc "đính đủ, không rớt": route file chưa
-        # nhận diện chắc về dòng ĐƠN chính (Tờ khai Mẫu 1a-1d) — giấy tờ bắt buộc, khả năng cao nhất;
-        # cán bộ soát lại. FE gom nhiều file cùng componentName vào 1 dòng nên không đè file đã đúng.
-        # Chưa biết loại → giữ TÊN GỐC: đặt tên Tờ khai cho tệp lạ là cán bộ nhầm hai tệp cùng dòng.
-        items.append(_build_row_item(file, idx, _TK_DOITUONG, file_name))
+    if extra_files:
         warnings.append(
-            f"Chưa nhận diện chắc loại giấy tờ cho '{file_name}' — tạm đính vào dòng Tờ khai "
-            f"(Mẫu số 1a/1b/1c/1d); cán bộ kiểm tra lại."
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng Tờ khai "
+            f"(Mẫu số 1a/1b/1c/1d): {', '.join(extra_files)}; cán bộ kiểm tra lại."
         )
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _TK_DOITUONG})
-
     return items, warnings, classified
 
 
@@ -302,18 +302,6 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types)
-    # Lưới CUỐI: bảng KHÔNG có dòng "khác" → nếu MỌI file đều rơi vào nhóm bỏ qua (vd 1 PDF gộp mà
-    # trang đầu là Giấy ủy quyền → cả file bị xếp uy_quyen/skip) thì plan RỖNG → FE báo "chưa có kế
-    # hoạch". Bảo hiểm: đưa file OCR được ĐẦU TIÊN vào dòng Tờ khai để luôn đính được ít nhất 1 (cán
-    # bộ tự soát/tách lại), thay vì kẹt không đính được gì.
-    if not attachments and raw_files:
-        seed = next((i for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES), 0)
-        seed_name = str(raw_files[seed].get("name") or f"file-{seed + 1}")
-        attachments.append(_build_row_item(raw_files[seed], seed, _TK_DOITUONG, seed_name))
-        warnings.append(
-            "Chưa nhận diện được loại giấy tờ nào khớp bảng thành phần hồ sơ — tạm đính vào dòng "
-            "Tờ khai (Mẫu số 1a/1b/1c/1d); cán bộ kiểm tra, tách lại nếu file gộp nhiều giấy tờ."
-        )
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
 

@@ -21,9 +21,11 @@ def test_mat_sau_cccd_luat_bo_sot_thi_llm_van_dinh():
     assert [i["slotKey"] for i in items] == ["cccd"]
 
 
-def test_llm_noi_giay_nguon_khac_thi_bo_qua():
+def test_llm_noi_giay_nguon_khac_thi_dinh_chung_o_don():
     items, warnings, classified = _plan(["PHIẾU BÁO DI CHUYỂN HỒ SƠ"], {0: "phieu_bao_di_chuyen"})
-    assert items == [] and classified[0].get("skipped") and not warnings
+    assert [(i["slotKey"], i["slotIndex"], i["documentName"], i["detectedType"]) for i in items] == [
+        ("don_mau_27", 1, "f0.pdf", "phieu_bao_di_chuyen")]
+    assert classified[0]["routedTo"] == "don_mau_27" and len(warnings) == 1 and "f0.pdf" in warnings[0]
 
 
 def test_llm_khong_tra_loi_thi_moi_dung_luat_du_phong():
@@ -48,7 +50,9 @@ def test_tep_gop_llm_noi_other_thi_do_tieu_de_tung_trang():
 
 def test_tep_mot_trang_llm_noi_giay_khac_khong_bi_do_trang():
     items, _, classified = _plan(["PHIẾU BÁO DI CHUYỂN HỒ SƠ ... theo Đơn đề nghị Mẫu số 27"], {0: "phieu_bao_di_chuyen"})
-    assert items == [] and classified[0].get("skipped")
+    # Không dò trang để đổi loại: vẫn là phiếu báo, chỉ đính chung ô Đơn với tên gốc.
+    assert [(i["slotKey"], i["detectedType"]) for i in items] == [("don_mau_27", "phieu_bao_di_chuyen")]
+    assert classified[0]["docType"] == "phieu_bao_di_chuyen"
 
 
 def test_tep_gop_co_cccd_khong_co_don():
@@ -142,9 +146,25 @@ def test_tach_ca_tep_mot_loai_khong_trang_trang_thi_khong_cat():
     assert len(items) == 1 and "sourceSegments" not in items[0]
 
 
-def test_tach_chi_co_giay_nguon_khac_thi_bo_qua_khong_canh_bao():
+def test_tach_chi_co_giay_nguon_khac_thi_dinh_nguyen_tep_vao_o_don():
     items, warnings, classified = _plan_split(["phieu_bao_di_chuyen", "ban_khai", "ban_khai", "ban_khai", "to_quoc_ghi_cong"])
-    assert items == [] and not warnings and classified[0].get("skipped")
+    assert [(i["slotKey"], i["documentName"]) for i in items] == [("don_mau_27", "goc.pdf")]
+    assert "sourceSegments" not in items[0]
+    assert classified[0]["routedTo"] == "don_mau_27" and len(warnings) == 1 and "goc.pdf" in warnings[0]
+
+
+def test_tach_tep_toan_trang_trang_van_dinh_nguyen_tep():
+    text = "\n".join(f"───── Trang {n + 1}/2 ─────\n(1)" for n in range(2))
+    items, warnings, _ = build_plan_items([{"name": "trang.pdf"}], [{"name": "trang.pdf", "text": text}], {},
+                                          {0: ["other", "other"]})
+    assert [(i["slotKey"], i["documentName"]) for i in items] == [("don_mau_27", "trang.pdf")]
+    assert "sourceSegments" not in items[0] and "trang.pdf" in warnings[0]
+
+
+def test_tep_la_va_cccd_deu_co_muc():
+    items, warnings, _ = _plan(["noi dung la", "CĂN CƯỚC CÔNG DÂN số 001000000001"], {0: "other", 1: "cccd"})
+    assert [(i["fileName"], i["slotKey"]) for i in items] == [("f0.pdf", "don_mau_27"), ("f1.pdf", "cccd")]
+    assert items[0]["detectedType"] == "other" and "f0.pdf" in warnings[0]
 
 
 def test_tach_chi_khi_bat_cai_dat_va_extension_cat_duoc_trang():

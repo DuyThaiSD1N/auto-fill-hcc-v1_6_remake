@@ -173,7 +173,7 @@ def test_nhom_chuyen_muc_dich_dung_dong_1_2():
     assert by_file[1]["componentIndex"] == 2
     assert by_file[1]["componentName"] == _ROWS[1]["componentName"]
     assert by_file[2]["componentIndex"] == 1
-    assert 3 not in by_file
+    assert by_file[3]["componentIndex"] == 1 and by_file[3]["detectedType"] == "cccd"
     assert all(i["untickUnplannedRows"] is True for i in by_file.values())
     assert any("không có dòng riêng" in w for w in warnings)
 

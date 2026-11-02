@@ -39,6 +39,12 @@ SCOPE = (
 )
 
 
+def attach_only_card(conv: dict, proc: dict) -> bool:
+    """Thẻ xin phép "chỉ đính kèm" (không trích xuất để điền) cho thủ tục chỉ đính kèm — trừ khi công dân đã chọn điền
+    khối ủy quyền Bắc Ninh: lượt đó đọc giấy tờ để điền nên phải xin phép bằng thẻ đọc và tự động điền."""
+    return proc.get("mode") == "attach" and ((conv or {}).get("bac_ninh") or {}).get("phase") != "authorized"
+
+
 def build_entry(conv: dict, proc: dict, accepted: bool,
                 method: str = "chip", checks: list | None = None, prechecked: bool = False) -> dict:
     from app.channels.handfree.chat import script_vi as vi  # import trễ — script_vi là file text, tránh vòng
@@ -46,7 +52,7 @@ def build_entry(conv: dict, proc: dict, accepted: bool,
     now = datetime.now(timezone.utc)
     loc = conv.get("location") or {}
     # Đúng thẻ đã hiển thị: thủ tục chỉ đính kèm dùng thẻ "tự động đính kèm" (flow._consent_card).
-    card = vi.CONSENT_ATTACH_CARD_TEXT if proc.get("mode") == "attach" else vi.CONSENT_CARD_TEXT
+    card = vi.CONSENT_ATTACH_CARD_TEXT if attach_only_card(conv, proc) else vi.CONSENT_CARD_TEXT
     return {
         "_id": f"TLND-{secrets.token_hex(4).upper()}",
         "conversation_id": conv.get("_id", ""),

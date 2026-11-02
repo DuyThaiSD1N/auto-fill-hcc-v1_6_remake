@@ -5,8 +5,8 @@ Bảng thành phần hồ sơ 3 dòng (dùng chung rdo_File): (1) HĐ thi công 
 (2) Văn bản đề nghị (Đơn Mẫu Mucb); (3) Hồ sơ thiết kế bản vẽ thi công nút giao. FE khớp dòng bằng
 componentName (substring fold).
 
-Theo yêu cầu: Công văn/Nghị quyết/hồ sơ pháp lý → gom dòng (1); Đơn → dòng (2); bản vẽ → dòng (3). CCCD chỉ
-dùng để trích thông tin, KHÔNG đính. Phân loại **LLM-primary**; rule keyword + heuristic ảnh chỉ DỰ PHÒNG.
+Công văn/Nghị quyết/hồ sơ pháp lý → gom dòng (1); Đơn → dòng (2); bản vẽ → dòng (3). CCCD không có dòng riêng →
+đính chung dòng (2), giữ tên file gốc + cảnh báo. Phân loại **LLM-primary**; rule keyword + heuristic ảnh chỉ DỰ PHÒNG.
 """
 
 import time
@@ -48,7 +48,7 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Hồ sơ thiết kế bản vẽ thi công nút giao đấu nối tạm, phương án tổ chức giao thông",
     },
 }
-# CCCD chỉ trích xuất, không đính → bỏ qua.
+# CCCD không có dòng riêng → đính chung dòng Đơn.
 _SKIP_DOCS: set[str] = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
@@ -142,6 +142,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -159,21 +160,26 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
+        if doc_type in _SKIP_DOCS or _is_docx(file) or not _is_photo_like(text):
+            # Không có dòng riêng hoặc chưa rõ loại (trừ ảnh/bản vẽ scan bên dưới) → dòng Đơn, giữ tên gốc để
+            # FE không coi là trùng tài liệu của dòng.
+            item = _build_row_item(file, idx, _DON)
+            item["documentName"] = file_name
+            item["detectedType"] = doc_type
+            items.append(item)
+            extra_files.append(file_name)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
             continue
 
         # DỰ PHÒNG: file ẢNH/bản vẽ scan (OCR rỗng/rác) → dòng "Hồ sơ thiết kế bản vẽ". KHÔNG cho docx.
-        if not _is_docx(file) and _is_photo_like(text):
-            items.append(_build_row_item(file, idx, _BANVE))
-            classified.append({"fileName": file_name, "docType": _BANVE, "source": "photo-fallback"})
-            continue
+        items.append(_build_row_item(file, idx, _BANVE))
+        classified.append({"fileName": file_name, "docType": _BANVE, "source": "photo-fallback"})
 
-        # Mặc định an toàn: gom file chưa rõ (công văn/pháp lý) vào dòng (1) HĐ/chủ trương.
-        items.append(_build_row_item(file, idx, _HD))
-        classified.append({"fileName": file_name, "docType": _HD, "source": f"{source}-default"})
-        warnings.append(f"Không phân loại chắc chắn '{file_name}' — tạm đính dòng 'HĐ/chủ trương', vui lòng kiểm tra.")
-
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

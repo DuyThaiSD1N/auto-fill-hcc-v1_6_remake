@@ -6,7 +6,8 @@ SCAN → loaiBan = "Scan tệp tin". FE khớp dòng bằng componentName (subst
 nhau (Giấy chứng nhận xóa đăng ký ở dòng 3/8/13) được disambiguate bằng componentIndex (vị trí dòng).
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. CCCD chỉ đối chiếu,
-KHÔNG có dòng riêng → bỏ qua. Ảnh tàu (file ảnh, OCR nghèo) thường không phân loại được → để thủ công.
+KHÔNG có dòng riêng; CCCD và giấy không rõ loại (ảnh tàu OCR nghèo, file gộp...) → ĐÍNH CHUNG dòng 5
+(Tờ khai đăng ký Mẫu 02a — dòng giấy chính), giữ tên file gốc + cảnh báo; không bỏ file nào.
 
 ⚠ Route mặc định theo doc-type PHỔ BIẾN: Giấy chứng nhận xóa đăng ký → dòng 8 (mua bán trong tỉnh/thành
 phố). Trường hợp nhập khẩu (dòng 3) / mua bán ngoài tỉnh (dòng 13) hiếm → cần hồ sơ thật để tinh chỉnh.
@@ -75,6 +76,8 @@ _ROWS: dict[str, dict[str, Any]] = {
 _CCCD = "cccd"
 _OTHER = "other"
 _SKIP_DOCS = {_CCCD}
+# Dòng hứng CCCD/giấy không rõ loại: Tờ khai đăng ký (dòng giấy chính của hồ sơ).
+_FALLBACK_ROW = "to_khai_02a"
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
 
@@ -196,6 +199,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -214,14 +218,19 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type == _CCCD:
-            # CCCD chỉ đối chiếu ở bước thông tin, không có dòng đính kèm → bỏ qua.
-            classified.append({"fileName": file_name, "docType": _CCCD, "source": source})
-            continue
+        # CCCD/không rõ loại không có dòng riêng → dòng Tờ khai, giữ tên gốc (không biết chắc là giấy gì).
+        item = _build_row_item(file, idx, _FALLBACK_ROW)
+        item["documentName"] = file_name
+        item["detectedType"] = doc_type
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _FALLBACK_ROW})
+        extra_files.append(file_name)
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "manualAttachment": True})
-
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+            f"\"{_ROWS[_FALLBACK_ROW]['componentName']}\": " + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

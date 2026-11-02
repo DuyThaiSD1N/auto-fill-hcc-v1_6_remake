@@ -214,11 +214,13 @@ async def test_attach_puts_notice_then_declaration_on_row_1_without_llm(monkeypa
 
     result = await planner.plan([_file("image.pdf"), _file("image.pdf"), _file("image.pdf")], {}, {})
 
-    assert result["errors"] == []
-    assert [item["fileIndex"] for item in result["attachments"]] == [2, 0]
+    assert [item["fileIndex"] for item in result["attachments"]] == [2, 0, 1]
     assert {item["slotIndex"] for item in result["attachments"]} == {0}
     assert all(item["repeatUpload"] and item["target"] == "fixed-slot" for item in result["attachments"])
-    assert [item["documentName"] for item in result["attachments"]] == ["Giấy báo tử", "Tờ khai đăng ký khai tử"]
+    assert [item["documentName"] for item in result["attachments"]] == [
+        "Giấy báo tử", "Tờ khai đăng ký khai tử", "Căn cước công dân",
+    ]
+    assert len(result["errors"]) == 1 and "đính chung dòng" in result["errors"][0]
     classified = [row["docType"] for row in result["extracted"]["classified"]]
     assert classified == ["paper_declaration", "identity", "death_notice"]
 
@@ -271,8 +273,9 @@ async def test_attach_does_not_trust_a_mere_mention_of_giay_bao_tu(monkeypatch):
     result = await planner.plan([_file("gbt.pdf"), _file("anh_man_hinh.png")], {}, {})
 
     assert len(calls) == 1, "tài liệu chưa chắc phải đưa LLM quyết, không tự nhận là giấy báo tử"
-    assert [item["fileIndex"] for item in result["attachments"]] == [0]
-    assert result["extracted"]["skipped"] == ["anh_man_hinh.png"]
+    assert [item["fileIndex"] for item in result["attachments"]] == [0, 1]
+    assert result["attachments"][1]["documentName"] == "anh_man_hinh.png"
+    assert result["extracted"]["skipped"] == []
 
 
 def test_rule_accepts_notice_title_merged_into_one_line():
@@ -280,11 +283,11 @@ def test_rule_accepts_notice_title_merged_into_one_line():
     assert planner._rule_type(merged) == planner._DOC_DEATH_NOTICE
 
 
-async def test_attach_reports_missing_notice_and_skips_identity(monkeypatch):
+async def test_attach_reports_missing_notice_and_still_attaches_identity_on_row_1(monkeypatch):
     monkeypatch.setattr(planner.ocr, "ocr_per_file", _fake_ocr([_IDENTITY_OCR]))
 
     result = await planner.plan([_file("cccd.pdf")], {}, {})
 
-    assert result["attachments"] == []
-    assert result["extracted"]["skipped"] == ["cccd.pdf"]
+    assert [(item["fileIndex"], item["slotIndex"]) for item in result["attachments"]] == [(0, 0)]
+    assert result["extracted"]["skipped"] == []
     assert any("Không tìm thấy Giấy báo tử" in error for error in result["errors"])

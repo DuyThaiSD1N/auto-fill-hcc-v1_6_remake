@@ -175,12 +175,11 @@ def test_dinh_kem_bang_2_dong():
     }
     for rows in (_ROWS, _ROWS_CRAWL, None):
         items, warnings, _ = planner.build_plan_items(_files(5), types, rows)
-        assert [i["fileIndex"] for i in items] == [0, 1, 2, 3]
-        assert [i["componentIndex"] for i in items] == [1, 2, 2, 1]
+        assert [i["fileIndex"] for i in items] == [0, 1, 2, 3, 4]
+        assert [i["componentIndex"] for i in items] == [1, 2, 2, 1, 1]
         assert all(i["target"] == "attp-row" and i["untickUnplannedRows"] is True for i in items)
-        assert len({i["documentName"] for i in items}) == 4
-        assert any("Thêm giấy tờ" in w and "t3.pdf" in w for w in warnings)
-        assert any("t4.pdf" in w and "bỏ qua" in w for w in warnings)
+        assert len({i["documentName"] for i in items}) == 5
+        assert any("Thêm giấy tờ" in w and "t3.pdf" in w and "t4.pdf" in w for w in warnings)
 
 
 def test_khong_bo_sot_file_khi_llm_chet():

@@ -7,7 +7,7 @@ Bảng CÓ 2 DÒNG:
 
 ⚠ Tên dòng 2 ("Giấy chứng nhận biển số nhà") là CHUỖI CON của dòng 1 → PHẢI kèm componentIndex để FE
 khớp đúng dòng (findAttachmentRowByComponent ưu tiên rows[componentIndex-1]). loaiBan "Bản chính"/"Bản
-sao". CCCD → bỏ qua (không có dòng riêng).
+sao". CCCD / giấy không rõ loại (không có dòng riêng) → đính chung dòng 1, giữ tên tệp gốc.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG.
 """
@@ -44,7 +44,7 @@ _ROWS: dict[str, dict[str, Any]] = {
         "documentName": "Giấy chứng nhận biển số nhà (bản sao minh chứng)",
     },
 }
-# CCCD chỉ đối chiếu, KHÔNG có dòng riêng trên bảng → bỏ qua.
+# CCCD không có dòng riêng → đính chung dòng chính (xem build_plan_items).
 _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
@@ -128,6 +128,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -146,13 +147,20 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
+        # CCCD / giấy không có dòng riêng / không rõ loại → đính chung dòng chính, giữ tên tệp gốc (không biết chắc
+        # là giấy gì); detectedType giữ loại thật.
+        item = _build_row_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = doc_type
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
+        extra_files.append(file_name)
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
-
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

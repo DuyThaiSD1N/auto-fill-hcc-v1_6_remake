@@ -15,7 +15,8 @@ Bảng 6 dòng (đều "1 Bản chính"):
   [4] Chứng chỉ hành nghề dược                    ← cchn_duoc
   [5] GCN đăng ký DN / tài liệu pháp lý thay đổi  ← giay_to_phap_ly (GCN ĐKHKD, GCN ĐKDN, GPP... cùng dòng)
   [6] Tài liệu thuyết minh an ninh (Mẫu 11 PL II)  ← thuyet_minh_an_ninh
-CCCD không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+CCCD và giấy không xác định được loại không có dòng riêng → đính chung dòng Đơn (dòng 3 nếu hồ sơ có Đơn điều
+chỉnh, còn lại dòng 1) + cảnh báo; không bỏ tệp nào.
 """
 
 import base64
@@ -314,22 +315,17 @@ def build_plan_items(
     classified: list[dict] = []
     warnings: list[str] = []
     used_names: set[str] = set()
-    skipped_pages: list[str] = []
+    extras: list[tuple[dict, str, dict]] = []
 
     for segment, doc_type, _ in typed:
         file_index = segment["fileIndex"]
         file = raw_files[file_index]
         page_count = file_meta[file_index]["pageCount"]
-        where = f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}"
         base = {"fileIndex": file_index, "fileName": file.get("name"),
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
 
-        if doc_type == _CCCD:
-            classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
         if doc_type not in _ROWS:
-            skipped_pages.append(where)
-            classified.append({**base, "type": _OTHER, "target": "skip"})
+            extras.append((segment, doc_type if doc_type == _CCCD else _OTHER, base))
             continue
 
         row = _ROWS[doc_type]
@@ -352,8 +348,34 @@ def build_plan_items(
         attachments.append(item)
         classified.append({**base, "documentName": document_name, "componentIndex": row["componentIndex"]})
 
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    # Dòng Đơn đích chọn SAU khi đã biết hồ sơ có Đơn nào: có Đơn điều chỉnh → dòng 3, còn lại dòng 1.
+    found_types = {item["detectedType"] for item in attachments}
+    extra_key = _DON_DIEU_CHINH if _DON_DIEU_CHINH in found_types and _DON_CAP_LAI not in found_types else _DON_CAP_LAI
+    extra_row = _ROWS[extra_key]
+    extra_files: list[str] = []
+    for segment, doc_type, base in extras:
+        file_index = segment["fileIndex"]
+        file_name = str(raw_files[file_index].get("name") or f"file-{file_index + 1}")
+        document_name = _unique_name(segment.get("documentName") or file_name, used_names, file_name)
+        attachments.append({
+            "fileIndex": file_index,
+            "fileName": file_name,
+            "documentName": document_name,
+            "componentName": extra_row["componentName"],
+            "componentIndex": extra_row["componentIndex"],
+            "loaiBan": _LOAI_BAN,
+            "target": "attp-row",
+            "needsAddComponent": False,
+            "detectedType": doc_type,
+        })
+        classified.append({**base, "type": doc_type, "documentName": document_name,
+                           "componentIndex": extra_row["componentIndex"], "routedTo": extra_key})
+        extra_files.append(file_name)
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+            f"\"{extra_row['componentName']}\": " + ", ".join(extra_files) + "."
+        )
 
     found = {item["detectedType"] for item in attachments}
     if not found & {_DON_CAP_LAI, _DON_DIEU_CHINH}:

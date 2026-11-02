@@ -4,7 +4,7 @@ LLM đọc OCR từng file → nhãn rút gọn (catalog.py). BE đổi nhãn th
   - ô fixed-slot của đúng 1 trong 2 dòng bảng "Thành phần hồ sơ" (FE tích checkbox dòng rồi bơm tệp);
   - hoặc một dòng "Giấy tờ khác" (target=new, tên = documentName) cho mọi giấy tờ còn lại: giấy ủy quyền, văn
     bản rà soát của Văn phòng đăng ký đất đai, giấy tờ của người đồng sử dụng đất, tài liệu khác.
-CCCD không phải thành phần hồ sơ → bỏ qua kèm cảnh báo.
+CCCD không có dòng riêng → cũng xuống "Giấy tờ khác" (giữ tên) kèm cảnh báo; không bỏ tệp nào.
 
 Bảng không chia nhóm nên không có bước đoán nhóm như 1.115651/1.115671 — chỉ cần nhãn đúng là đủ.
 """
@@ -152,13 +152,14 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
     for entry in entries:
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
         if entry["label"] in catalog.SKIPPED_LABELS:
-            warnings.append(
-                f"File '{entry['fileName']}' ({entry['documentName']}) không phải thành phần hồ sơ — đã bỏ qua."
-            )
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
+            # Không có dòng riêng → "Giấy tờ khác" để không rơi tệp.
+            attachments.append(_other_item(entry))
+            classified.append({**base, "target": "new", "routedTo": "giay_to_khac", "reason": "not_a_component"})
+            extra_files.append(entry["fileName"])
             continue
 
         position = catalog.row_for(entry["label"])
@@ -167,8 +168,16 @@ def build_plan_items(
             attachments.append(item)
             classified.append({**base, "target": "fixed-slot", "slotKey": item["slotKey"]})
         else:
+            if entry["label"] == "khac":
+                extra_files.append(entry["fileName"])
             attachments.append(_other_item(entry))
             classified.append({**base, "target": "new"})
+
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính vào \"Giấy tờ khác\" để không bỏ sót — cán bộ "
+            f"kiểm tra lại: {', '.join(extra_files)}."
+        )
 
     return attachments, warnings, classified
 

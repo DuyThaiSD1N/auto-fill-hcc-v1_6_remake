@@ -163,7 +163,7 @@ async def test_chung_thuc_di_chuc_will_with_asset_references_stays_on_will_row(m
     assert res["extracted"]["classified"][0]["source"] == "rule"
 
 
-async def test_chung_thuc_di_chuc_unknown_document_is_skipped(monkeypatch):
+async def test_chung_thuc_di_chuc_unknown_document_attached_to_stt1(monkeypatch):
     async def fake_ocr_per_file(files):
         return [{"name": "phieu-hen.pdf", "text": "PHIẾU HẸN TRẢ KẾT QUẢ"}]
 
@@ -175,8 +175,12 @@ async def test_chung_thuc_di_chuc_unknown_document_is_skipped(monkeypatch):
 
     res = await planner.plan([_file("phieu-hen.pdf")], {}, None)
 
-    assert res["attachments"] == []
-    assert any("đã bỏ qua" in err for err in res["errors"])
+    assert len(res["attachments"]) == 1
+    item = res["attachments"][0]
+    assert item["target"] == "existing" and item["componentIndex"] == 1
+    assert item["componentName"] == "+ Dự thảo di chúc;"
+    assert item["documentName"] == "Phiếu hẹn"
+    assert any("đính chung dòng" in err and "phieu-hen.pdf" in err for err in res["errors"])
 
 
 def test_chung_thuc_di_chuc_procedure_is_attach_only():

@@ -179,7 +179,7 @@ def _files(n):
 
 def test_dinh_kem_bang_13_dong_theo_nhom_mau_don():
     cases = {
-        ("don_mau_02", "gcn", "cccd"): [1, 2],
+        ("don_mau_02", "gcn", "cccd"): [1, 2, 1],
         ("don_mau_17", "gcn", "quyet_dinh_giao_dat", "vb_thoi_han_du_an"): [6, 7, 8, 9],
         ("don_mau_18", "vb_thay_doi_thoi_han_du_an", "gcn", "quyet_dinh_giao_dat", "vb_uy_quyen"): [10, 11, 12, 13, 10],
     }

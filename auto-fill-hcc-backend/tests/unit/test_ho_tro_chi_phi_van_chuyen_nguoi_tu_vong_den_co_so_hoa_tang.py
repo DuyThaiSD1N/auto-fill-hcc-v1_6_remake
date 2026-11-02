@@ -75,15 +75,33 @@ def test_row_names_do_not_cross_match():
     assert {row["componentName"] for row in planner._ROWS.values()} == {_ROW_DON, _ROW_HOP_DONG}
 
 
-def test_quyet_dinh_is_result_and_never_attached():
+def test_quyet_dinh_never_goes_to_result_row_but_kept_on_don_row():
     files = _files(["don.pdf", "quyet-dinh.pdf"])
     attachments, warnings, classified = planner.build_plan_items(
         files, None, {0: ["don_de_nghi", "hop_dong_hoa_tang"], 1: ["quyet_dinh_ho_tro"]}
     )
 
-    assert {item["fileIndex"] for item in attachments} == {0}
-    assert classified[1]["skipped"] is True
-    assert any("quyet-dinh.pdf" in warning for warning in warnings)
+    qd = [item for item in attachments if item["fileIndex"] == 1]
+    assert [(item["componentIndex"], item["componentName"], item["documentName"]) for item in qd] == [
+        (0, _ROW_DON, "quyet-dinh.pdf")
+    ]
+    assert qd[0]["detectedType"] == "quyet_dinh_ho_tro"
+    assert all(item["componentName"] != _ROW_QUYET_DINH for item in attachments)
+    assert classified[1]["routedTo"] == [_ROW_DON]
+    assert any("đã đính chung dòng" in warning and "quyet-dinh.pdf" in warning for warning in warnings)
+
+
+def test_other_and_identity_files_both_have_item_on_don_row():
+    files = _files(["don.pdf", "la.pdf", "cccd.jpg"])
+    attachments, warnings, _ = planner.build_plan_items(
+        files, None, {0: ["don_de_nghi", "hop_dong_hoa_tang"], 1: ["other"], 2: ["identity"]}
+    )
+
+    assert [(item["fileIndex"], item["componentIndex"], item["target"]) for item in attachments] == [
+        (0, 0, "attp-row"), (0, 2, "attp-row"), (1, 0, "attp-row"), (2, 0, "attp-row")
+    ]
+    assert attachments[2]["detectedType"] == "other" and attachments[3]["detectedType"] == "identity"
+    assert any("la.pdf" in warning for warning in warnings)
 
 
 def test_unknown_file_is_kept_on_don_row_with_warning():

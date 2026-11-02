@@ -35,6 +35,9 @@ lặp y hệt ở 4 dòng (1, 6, 12, 17, 23) và "Giấy tờ đất đai" ở 5
 trực tiếp cho việc keyword theo text KHÔNG THỂ chọn đúng khối. Riêng bản vẽ của nhà ở riêng lẻ là
 loại RIÊNG ("Bộ bản vẽ thiết kế xây dựng kèm theo…") và chỉ xuất hiện đúng một lần ở dòng 16.
 Cấu trúc 29 dòng được khoá trong `tests/integration/..._attachment_plan.py::_ROW_KINDS`.
+
+Giấy không có dòng trong khối (other/skip, văn bản phê duyệt dự án, GPXD cũ…) → đính chung ô Đơn của khối, kèm
+cảnh báo; không bỏ tệp nào.
 """
 
 import re
@@ -394,22 +397,34 @@ def build_plan_items(
                 "source": entry["source"],
             })
 
+    # Không có dòng trong khối/không rõ loại → ô Đơn của khối (ô nhận nhiều tệp). Tên: tiêu đề LLM đặt, không có
+    # thì tên file gốc (nhãn chung "Bỏ qua"/"Tài liệu…" không cho cán bộ biết là giấy gì).
+    don_slot = slots[_GROUP_DON]
     for entry in skipped_entries:
-        if entry["docType"] in {_DOC_OTHER, _DOC_SKIP}:
-            warnings.append(f"Không xác định được dòng thành phần hồ sơ GPXD cho file '{entry['fileName']}' — đã bỏ qua.")
+        if entry.get("title") or entry["docType"] not in {_DOC_OTHER, _DOC_SKIP}:
+            document_name = _label_for_type(entry["docType"], entry.get("title", ""))
         else:
-            warnings.append(
-                f"File '{entry['fileName']}' thuộc nhóm '{entry['docType']}' chưa có dòng tương ứng "
-                f"trong khối '{nhanh}' — đã bỏ qua."
-            )
+            document_name = normalize_document_name(entry["fileName"], _LABELS[_DOC_OTHER])
+        item = _build_fixed_item(files, entry, don_slot)
+        item["documentName"] = document_name
+        item["detectedType"] = entry["docType"]
+        attachments.append(item)
         classified.append({
             "fileName": entry["fileName"],
             "docType": entry["docType"],
-            "documentName": _label_for_type(entry["docType"], entry.get("title", "")),
-            "target": "skip",
-            "componentIndex": None,
+            "documentName": document_name,
+            "target": "fixed-slot",
+            "componentIndex": don_slot["componentIndex"],
+            "slotKey": don_slot["slotKey"],
+            "slotIndex": don_slot["slotIndex"],
             "source": entry["source"],
+            "routedTo": _GROUP_DON,
         })
+    if skipped_entries:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_LABEL_DON} (STT "
+            f"{don_slot['componentIndex']})\": " + ", ".join(entry["fileName"] for entry in skipped_entries)
+        )
 
     # Dòng không có tệp KHÔNG phải thiếu thành phần: hồ sơ chỉ có Đơn vẫn hợp lệ, dòng trống được bỏ tích
     # (untickUnplannedRows) nên không chặn chuyển bước → không cảnh báo dòng trống.

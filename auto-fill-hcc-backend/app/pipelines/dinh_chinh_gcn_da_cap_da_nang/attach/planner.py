@@ -8,6 +8,7 @@ rồi engine attp-row gom theo dòng. Xử lý được cả 2 kiểu: 1 PDF g�
 
 Bảng 4 dòng (đều "Bản chính"): [1] Bản gốc GCN đã cấp · [2] Giấy tờ chứng minh sai sót (CCCD/trích lục/
 khai sinh/HĐ — mỗi giấy 1 file, cùng đổ vào dòng 2) · [3] Văn bản ủy quyền · [4] Đơn Mẫu 18.
+Đoạn chưa rõ loại → đính chung dòng 4 (Đơn), mỗi đoạn một file riêng; chỉ bỏ trang trắng trong tệp có chữ.
 """
 
 import base64
@@ -290,7 +291,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     attachments: list[dict] = []
     classified: list[dict] = []
     used_names: set[str] = set()
-    skipped_pages: list[str] = []
+    blank_pages: list[str] = []
+    extra_pages: list[str] = []
     for segment in segments:
         file_index = segment["fileIndex"]
         file = raw_files[file_index]
@@ -301,14 +303,27 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if doc_type not in _ROWS:
             doc_type = _rule_type(seg_text)
 
-        if doc_type not in _ROWS:
-            skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
+        where = f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}"
+        if doc_type not in _ROWS and sum(ch.isalnum() for ch in seg_text) < 5 \
+                and full_text_by_file.get(file_index, "").strip():
+            # Trang trắng (mặt sau không in) trong tệp có chữ: không đính.
+            blank_pages.append(where)
             classified.append({"fileIndex": file_index, "pageFrom": segment["pageFrom"],
-                               "pageTo": segment["pageTo"], "type": _OTHER, "target": "skip"})
+                               "pageTo": segment["pageTo"], "type": _OTHER, "target": "skip", "reason": "trang trắng"})
             continue
 
-        row = _ROWS[doc_type]
-        document_name = _unique_name(segment.get("documentName") or row["documentName"], used_names, row["documentName"])
+        routed_to = None
+        if doc_type in _ROWS:
+            row = _ROWS[doc_type]
+            document_name = _unique_name(segment.get("documentName") or row["documentName"], used_names,
+                                         row["documentName"])
+        else:
+            # Chưa rõ loại / không đọc được chữ → đính chung dòng Đơn; tên LLM đặt, không có thì tên tệp gốc.
+            routed_to = _DON18
+            row = _ROWS[_DON18]
+            file_name = str(file.get("name") or f"file-{file_index + 1}")
+            document_name = _unique_name(segment.get("documentName") or file_name, used_names, file_name)
+            extra_pages.append(where)
         item = {
             "fileIndex": file_index,
             "fileName": str(file.get("name") or f"file-{file_index + 1}"),
@@ -324,15 +339,23 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if source["pageIndexes"] is not None:  # đoạn con của PDF gộp → FE tách theo trang.
             item["sourceSegments"] = [source]
         attachments.append(item)
-        classified.append({
+        classified_item = {
             "fileIndex": file_index, "fileName": file.get("name"),
             "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"],
             "type": doc_type, "documentName": document_name,
             "componentIndex": row["componentIndex"],
-        })
+        }
+        if routed_to:
+            classified_item["routedTo"] = routed_to
+        classified.append(classified_item)
 
-    if skipped_pages:
-        errors.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    if extra_pages:
+        errors.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON18]['componentName']}\": "
+            + "; ".join(extra_pages) + "."
+        )
+    if blank_pages:
+        errors.append("Đã bỏ trang trắng không đính kèm: " + "; ".join(blank_pages) + ".")
 
     indexed_ocr = []
     for file_index, file in enumerate(raw_files):

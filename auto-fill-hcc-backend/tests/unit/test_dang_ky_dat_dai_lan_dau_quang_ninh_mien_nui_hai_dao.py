@@ -47,10 +47,19 @@ def test_mau_15a_is_not_promoted_to_household_members_row_without_explicit_docum
 
     attachments, warnings, classified = planner.build_plan_items(files, ocr)
 
-    assert attachments == []
+    # Không đẩy lên hàng hộ gia đình; tệp vẫn được đính chung hàng Đơn Mẫu 15.
+    assert len(attachments) == 1
+    assert attachments[0]["componentIndex"] == 2
+    assert attachments[0]["detectedType"] == "other"
     assert len(warnings) == 1
     assert classified == [
-        {"fileName": "mau-15a.pdf", "docType": "other", "source": "unknown", "skipped": True}
+        {
+            "fileName": "mau-15a.pdf",
+            "docType": "other",
+            "source": "unknown",
+            "componentIndex": 2,
+            "routedTo": "don_mau_15",
+        }
     ]
 
 
@@ -89,7 +98,7 @@ def test_tax_forms_use_three_distinct_rows_and_01_sddpnn_shares_application_row(
         assert classified[0]["docType"] == expected_type
 
 
-def test_heading_rows_have_no_route_and_unknown_document_is_skipped():
+def test_heading_rows_have_no_route_and_unknown_document_goes_to_application_row():
     route_indexes = {route["index"] for route in planner._ROUTES.values()}
     assert 1 not in route_indexes  # HTML hàng 2: tiêu đề nhánh đăng ký/cấp GCN.
     assert 17 not in route_indexes  # HTML hàng 18: tiêu đề nhánh đã có thông báo kết quả.
@@ -98,9 +107,29 @@ def test_heading_rows_have_no_route_and_unknown_document_is_skipped():
     ocr = [{"name": "tai-lieu-la.pdf", "text": "TÀI LIỆU KHÔNG XÁC ĐỊNH"}]
     attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "other"})
 
-    assert attachments == []
+    assert [item["componentIndex"] for item in attachments] == [2]
+    assert attachments[0]["target"] == "existing"
+    assert attachments[0]["documentName"] == "tai-lieu-la"
+    assert len(warnings) == 1 and "tai-lieu-la.pdf" in warnings[0]
+    assert classified[0]["routedTo"] == "don_mau_15"
+
+
+def test_unknown_and_identity_files_both_attach_to_application_row():
+    files = [
+        {"name": "la.pdf", "type": "application/pdf"},
+        {"name": "cccd.jpg", "type": "image/jpeg"},
+    ]
+    ocr = [
+        {"name": "la.pdf", "text": "TÀI LIỆU KHÔNG XÁC ĐỊNH"},
+        {"name": "cccd.jpg", "text": "CĂN CƯỚC CÔNG DÂN NGUYEN VAN A 001000000001"},
+    ]
+
+    attachments, warnings, _ = planner.build_plan_items(files, ocr, {0: "other", 1: "other"})
+
+    assert [item["fileIndex"] for item in attachments] == [0, 1]
+    assert {item["componentIndex"] for item in attachments} == {2}
+    assert {item["detectedType"] for item in attachments} == {"other"}
     assert len(warnings) == 1
-    assert classified[0]["skipped"] is True
 
 
 def test_llm_classification_is_used_before_rule_fallback():

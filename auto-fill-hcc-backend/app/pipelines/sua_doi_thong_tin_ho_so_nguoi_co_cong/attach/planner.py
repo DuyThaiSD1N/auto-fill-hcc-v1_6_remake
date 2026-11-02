@@ -6,9 +6,10 @@ người có công" (cổng MOHA).
   slot 1  Đơn đề nghị theo Mẫu số 26 Phụ lục I Nghị định số 131/2021/NĐ-CP   ← don_mau_26
 
 Giấy tờ nguồn khác (Bản khai thân nhân, Giấy khai sinh, Trích lục khai tử, Bằng Tổ quốc ghi công,
-Công văn/Tờ trình Sở Nội vụ...) KHÔNG có ô cố định riêng (chỉ đính kèm bổ sung qua FormArray text,
-extension không tải file vào đó) → BỎ QUA (skipped), KHÔNG route "new" (form không có nút "Thêm thành
-phần hồ sơ"). Route TẤT ĐỊNH theo rule OCR; LLM dự phòng khi rule không chắc.
+Công văn/Tờ trình Sở Nội vụ...) và giấy chưa rõ loại KHÔNG có ô cố định riêng (chỉ đính kèm bổ sung qua
+FormArray text, extension không tải file vào đó) → đính chung ô Đơn Mẫu 26 (FE gom nhiều tệp cùng slotKey vào
+một ô), giữ tên tệp gốc + cảnh báo; KHÔNG route "new" (form không có nút "Thêm thành phần hồ sơ"). Route TẤT
+ĐỊNH theo rule OCR; LLM dự phòng khi rule không chắc.
 """
 
 import time
@@ -50,7 +51,7 @@ SLOTS: list[dict[str, Any]] = [
 _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 # Giấy tờ nguồn KHÁC (Bản khai / khai sinh / trích lục khai tử / TQGC / công văn) không có ô cố định
-# → BỎ QUA, không route "new" (form MOHA này không có nút "Thêm thành phần hồ sơ").
+# → đính chung ô Đơn, không route "new" (form MOHA này không có nút "Thêm thành phần hồ sơ").
 _SKIP_DOCS = {_BAN_KHAI, _KHAI_SINH, _KHAI_TU, _TQGC, _CONG_VAN}
 _ALLOWED_DOC_TYPES = set(_SLOT_BY_KEY) | _SKIP_DOCS | {_OTHER}
 
@@ -159,6 +160,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -171,14 +173,20 @@ def build_plan_items(
             items.append(_build_fixed_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
-        if doc_type in _SKIP_DOCS:
-            # Giấy tờ nguồn (bản khai/khai sinh/khai tử/TQGC/công văn) — không có ô cố định → bỏ qua.
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm", "skipped": True})
-            continue
+        # Giấy tờ nguồn (bản khai/khai sinh/khai tử/TQGC/công văn) hoặc chưa rõ loại — không có ô cố định → ô Đơn.
+        item = _build_fixed_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = doc_type
+        items.append(item)
+        source = ("rule" if rule_type else "llm") if doc_type in _SKIP_DOCS else "unknown"
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
+        extra_files.append(file_name)
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
-
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_SLOT_BY_KEY[_DON]['slotName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

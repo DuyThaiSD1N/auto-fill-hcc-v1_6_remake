@@ -2,8 +2,9 @@
 
 Khác với chứng thực (ví giấy tờ + thêm thành phần mới), thủ tục này có 3 THÀNH PHẦN
 HỒ SƠ CỐ ĐỊNH sẵn trên form, mỗi thành phần 1 ô upload riêng. Nhiệm vụ ở đây là OCR +
-phân loại mỗi file vào ĐÚNG 1 trong 3 ô (hoặc bỏ qua nếu không khớp) rồi trả "fixed-slot"
-plan để extension bơm file vào input của đúng hàng.
+phân loại mỗi file vào ĐÚNG 1 trong 3 ô rồi trả "fixed-slot" plan để extension bơm file vào input
+của đúng hàng. Giấy không thuộc 3 thành phần (CCCD, sổ hộ khẩu…) hoặc chưa rõ loại → đính chung ô Tờ khai
+(ô 0), giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
 
 LLM quyết định loại giấy tờ. Luật dò chữ (`detect_slot_key`) CHỈ dự phòng cho file LLM không trả lời (lỗi/thiếu),
 không bao giờ đè kết quả LLM: giấy chỉ NHẮC số căn cước (quyết định thôi hưởng, trích lục khai tử) hay có chữ
@@ -117,43 +118,40 @@ def build_plan_items(
     by_name = {item.get("name"): item for item in ocr_results}
     items: list[dict] = []
     warnings: list[str] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         ocr_item = by_name.get(file_name, {})
         text = str(ocr_item.get("text") or "")
-        if idx in llm_slots:
-            slot_key = llm_slots[idx]
-            if not slot_key:
-                # LLM nhận là giấy khác (CCCD, sổ hộ khẩu…): không thuộc 3 thành phần hồ sơ.
-                warnings.append(
-                    f"File '{file_name}' không thuộc 3 thành phần hồ sơ của thủ tục — không đính kèm; "
-                    "cán bộ kiểm tra lại."
-                )
-                continue
-        else:
-            slot_key = detect_slot_key(text, file_name)
+        # "" từ LLM = giấy khác (CCCD, sổ hộ khẩu…); rule chỉ chạy khi LLM không trả lời file này.
+        slot_key = llm_slots[idx] if idx in llm_slots else detect_slot_key(text, file_name)
         slot = _SLOT_BY_KEY.get(slot_key)
-        if not slot:
-            warnings.append(
-                f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công."
-            )
-            continue
+        is_extra = slot is None
+        if is_extra:
+            # Không thuộc 3 thành phần/không rõ loại → ô Tờ khai, giữ tên tệp gốc (không biết chắc là giấy gì).
+            slot = SLOTS[0]
+            extra_files.append(file_name)
         items.append(
             {
                 "fileIndex": idx,
                 "fileName": file_name,
-                "documentName": slot["detectedType"],
+                "documentName": file_name if is_extra else slot["detectedType"],
                 "componentName": slot["slotName"],
                 "target": "fixed-slot",
                 "needsAddComponent": False,
-                "detectedType": slot["detectedType"],
+                "detectedType": "other" if is_extra else slot["detectedType"],
                 "slotKey": slot["slotKey"],
                 "slotIndex": slot["slotIndex"],
                 "slotName": slot["slotName"],
             }
         )
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{SLOTS[0]['slotName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings
 
 

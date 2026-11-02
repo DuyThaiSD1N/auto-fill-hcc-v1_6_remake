@@ -106,7 +106,7 @@ def test_agricultural_and_non_agricultural_tax_are_distinct():
         assert attachments[0].get("componentIndex") == expected_row
 
 
-def test_llm_first_and_unknown_document_is_not_added_as_generic_component():
+def test_llm_first_and_unknown_document_goes_to_application_row_not_generic_component():
     files = [{"name": "tai-lieu.pdf", "type": "application/pdf"}]
     ocr = [{"name": "tai-lieu.pdf", "text": "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT"}]
 
@@ -121,9 +121,31 @@ def test_llm_first_and_unknown_document_is_not_added_as_generic_component():
         [{"name": "tai-lieu.pdf", "text": "TÀI LIỆU KHÔNG XÁC ĐỊNH"}],
         {0: "other"},
     )
-    assert unknown_attachments == []
-    assert len(unknown_warnings) == 1
-    assert unknown_classified[0]["skipped"] is True
+    assert len(unknown_attachments) == 1
+    assert unknown_attachments[0]["componentIndex"] == 6
+    assert unknown_attachments[0]["target"] == "existing"
+    assert unknown_attachments[0]["needsAddComponent"] is False
+    assert unknown_attachments[0]["detectedType"] == "other"
+    assert len(unknown_warnings) == 1 and "tai-lieu.pdf" in unknown_warnings[0]
+    assert unknown_classified[0]["routedTo"] == "don_mau_18"
+
+
+def test_unknown_and_identity_files_both_attach_to_application_row():
+    files = [
+        {"name": "la.pdf", "type": "application/pdf"},
+        {"name": "cccd.jpg", "type": "image/jpeg"},
+    ]
+    ocr = [
+        {"name": "la.pdf", "text": "TÀI LIỆU KHÔNG XÁC ĐỊNH"},
+        {"name": "cccd.jpg", "text": "CĂN CƯỚC CÔNG DÂN NGUYEN VAN A 001000000001"},
+    ]
+
+    attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "other", 1: "other"})
+
+    assert [item["fileIndex"] for item in attachments] == [0, 1]
+    assert {item["componentIndex"] for item in attachments} == {6}
+    assert [item["documentName"] for item in attachments] == ["la", "cccd"]
+    assert len(warnings) == 1
 
 
 @pytest.mark.asyncio

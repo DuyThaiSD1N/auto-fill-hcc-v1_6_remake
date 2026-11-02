@@ -16,7 +16,8 @@ NGUYÊN VĂN từ DOM đính kèm thật:
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. CCCD và ẢNH chân dung
 KHÔNG có dòng riêng → đính CHUNG vào dòng Đơn đề nghị (dòng ghi "có ảnh chân dung"). Ảnh scan cho OCR
-rỗng/rác nên nhận bằng heuristic "không có chữ nghĩa" thay vì tin LLM/rule.
+rỗng/rác nên nhận bằng heuristic "không có chữ nghĩa" thay vì tin LLM/rule. Giấy không xác định được loại cũng
+đính chung dòng Đơn đề nghị, giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
 """
 
 import time
@@ -163,7 +164,7 @@ def _rule_doc_type(text: str) -> str:
     # Văn bằng chuyên môn / bằng tốt nghiệp.
     if "bang tot nghiep" in h or "van bang" in h or "cu nhan" in h or ("bang" in h and "duoc" in h):
         return _VANBANG
-    # CCCD/CMND (bỏ qua).
+    # CCCD/CMND (đính chung dòng Đơn đề nghị).
     if _is_identity_text(h):
         return _CCCD
     return ""
@@ -242,6 +243,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -270,9 +272,27 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": _ANH, "source": "photo-fallback"})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        # Không rõ loại → dòng Đơn đề nghị, giữ tên gốc (không biết chắc là giấy gì).
+        item = _build_row_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
+        extra_files.append(file_name)
 
+    # Nhiều tệp cùng loại (vd 2 mặt CCCD) cùng một dòng phải khác tên: FE coi tệp trùng tên đã có trên dòng
+    # là đã đính khi bấm đính lần sau.
+    name_counts: dict[str, int] = {}
+    for item in items:
+        name_counts[item["documentName"]] = name_counts.get(item["documentName"], 0) + 1
+        if name_counts[item["documentName"]] > 1:
+            item["documentName"] = f"{item['documentName']} {name_counts[item['documentName']]}"
+
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

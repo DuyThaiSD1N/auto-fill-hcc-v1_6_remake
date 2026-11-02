@@ -358,62 +358,42 @@ def build_plan_items(
         })
 
     branch, branch_source = _branch_from_entries(entries)
+    warnings: list[str] = []
     if not branch:
-        message = "Phát hiện đồng thời Đơn Mẫu 11/ĐK và Mẫu 18; không tự đính kèm để tránh chọn sai nhóm hồ sơ."
-        classified = [
-            {
-                "fileName": entry["fileName"],
-                "docType": entry["docType"],
-                "target": "skip",
-                "source": entry["source"],
-                "reason": "branch_conflict",
-            }
-            for entry in entries
-        ]
-        return [], [message], classified, "", branch_source
+        # Không bỏ cả hồ sơ: đính theo nhóm hiện hành 11/ĐK (mọi đơn vào dòng Đơn) để cán bộ đổi nhóm nếu cần.
+        branch = _BRANCH_11
+        warnings.append(
+            "Phát hiện đồng thời Đơn Mẫu 11/ĐK và Mẫu 16/18 — đã đính theo nhóm Mẫu 11/ĐK (dòng 1-4), "
+            "cán bộ kiểm lại nhóm hồ sơ."
+        )
 
     authorized_numbers = _authorized_identity_numbers(ocr_results)
     attachments: list[dict] = []
-    warnings: list[str] = []
     classified: list[dict] = []
     used_names: set[str] = set()
 
     for entry in entries:
         doc_type = entry["docType"]
         identity_numbers = _numbers(entry["text"]) if doc_type == _IDENTITY else set()
+        offset = 0 if branch == _BRANCH_11 else 4
+        unknown_type = False
         if doc_type == _IDENTITY and identity_numbers & authorized_numbers:
-            warnings.append(
-                f"File '{entry['fileName']}' là giấy tờ của người được ủy quyền; trang không có dòng "
-                "CCCD riêng nên đã bỏ qua."
-            )
-            classified.append({
-                "fileName": entry["fileName"],
-                "docType": doc_type,
-                "target": "skip",
-                "source": entry["source"],
-                "reason": "authorized_representative_identity",
-            })
-            continue
-
-        slot_index = _slot_index(branch, doc_type)
+            # Trang không có dòng CCCD riêng: giấy của người được ủy quyền đi cùng văn bản ủy quyền.
+            slot_index = offset + 2
+        else:
+            slot_index = _slot_index(branch, doc_type)
         if slot_index is None:
-            stem = normalize_document_name(Path(entry["fileName"]).stem, "Tài liệu chưa xác định")
-            warnings.append(
-                f"Không xác định được dòng thành phần hồ sơ cho file '{entry['fileName']}' "
-                f"(nhận diện: {stem}) — đã bỏ qua."
-            )
-            classified.append({
-                "fileName": entry["fileName"],
-                "docType": doc_type,
-                "documentName": stem,
-                "target": "skip",
-                "source": entry["source"],
-                "reason": "unknown_document_type",
-            })
-            continue
+            # Không bỏ tệp: giấy chưa rõ loại đính chung dòng Đơn, giữ tên gốc.
+            slot_index = offset + 3
+            unknown_type = True
 
         slot = _SLOT_BY_INDEX[slot_index]
         fallback = _LABELS[doc_type]
+        if unknown_type:
+            fallback = normalize_document_name(Path(entry["fileName"]).stem, fallback)
+            warnings.append(
+                f"Không xác định được dòng cho file '{entry['fileName']}' — đã đính chung dòng Đơn, cán bộ kiểm lại."
+            )
         title = entry["title"] if entry["source"] == "llm" else ""
         document_name = _unique_document_name(title or fallback, used_names, fallback)
         item = {

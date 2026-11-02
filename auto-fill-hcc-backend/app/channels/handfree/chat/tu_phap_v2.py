@@ -21,8 +21,8 @@ from app.channels.handfree.chat.tu_phap_moi import fill_result, steps_action
 def enabled(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
     supported = ((field_review.legacy_wizard(proc) and caps.get(field_review.FLOW_V2_CAPABILITY) is True)
-                 or (field_review.lien_thong(proc) and caps.get(field_review.LIEN_THONG_CAPABILITY) is True)
-                 or (field_review.bxd(proc) and caps.get(field_review.BXD_CAPABILITY) is True))
+                 or (field_review.lien_thong(proc) and field_review.lien_thong_supported(caps, proc))
+                 or (field_review.bxd(proc) and field_review.bxd_supported(caps, proc)))
     return supported and (conv.get("lang") or "vi") != "hmong"
 
 

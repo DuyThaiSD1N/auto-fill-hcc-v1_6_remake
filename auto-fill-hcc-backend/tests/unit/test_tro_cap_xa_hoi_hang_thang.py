@@ -264,9 +264,9 @@ def test_attach_known_file_still_routes_to_its_own_row():
     assert items[0]["detectedType"] == "khai_sinh"
 
 
-async def test_attach_plan_never_empty_even_if_all_files_skip(monkeypatch):
-    """1 PDF gộp mà trang đầu là Giấy ủy quyền → cả file bị xếp uy_quyen (skip). Plan KHÔNG được
-    rỗng (FE sẽ báo 'chưa có kế hoạch') → lưới cuối đính file đầu vào dòng Tờ khai."""
+async def test_attach_uy_quyen_file_routes_to_declaration_row(monkeypatch):
+    """1 PDF gộp mà trang đầu là Giấy ủy quyền → cả file bị xếp uy_quyen (không có dòng riêng) → vẫn đính
+    vào dòng Tờ khai, plan không rỗng."""
     from app.pipelines.tro_cap_xa_hoi_hang_thang.attach import planner as ap
     from app.process.schemas import FileItem
     from app.services import ocr as ocr_service
@@ -283,9 +283,22 @@ async def test_attach_plan_never_empty_even_if_all_files_skip(monkeypatch):
     files = [FileItem(name="Scan_0029.pdf", type="application/pdf",
                       dataUrl="data:application/pdf;base64,QUJD", role="attachment")]
     result = await ap.plan(files, {}, None)
-    assert len(result["attachments"]) == 1, "plan không được rỗng dù file bị xếp skip"
+    assert len(result["attachments"]) == 1, "plan không được rỗng dù file không có dòng riêng"
     assert result["attachments"][0]["componentName"] == "Mẫu số 1a, 1b, 1c, 1d"
     assert result["attachments"][0]["target"] == "attp-row"
+    assert result["attachments"][0]["detectedType"] == "uy_quyen"
+
+
+def test_attach_other_and_uy_quyen_both_get_item_on_declaration_row():
+    files = [{"name": n, "type": "application/pdf", "dataUrl": ""} for n in ("la.pdf", "uq.pdf", "tk.pdf")]
+    llm = {0: attach_planner._OTHER, 1: attach_planner._UY_QUYEN, 2: attach_planner._TK_DOITUONG}
+    items, warnings, classified = attach_planner.build_plan_items(files, [], llm)
+    assert [i["fileName"] for i in items] == ["la.pdf", "uq.pdf", "tk.pdf"]
+    assert {i["componentName"] for i in items} == {"Mẫu số 1a, 1b, 1c, 1d"}
+    assert [i["detectedType"] for i in items[:2]] == ["other", "uy_quyen"]
+    assert [i["documentName"] for i in items[:2]] == ["la.pdf", "uq.pdf"]
+    assert [c.get("routedTo") for c in classified[:2]] == ["to_khai_doi_tuong"] * 2
+    assert len(warnings) == 1 and "la.pdf, uq.pdf" in warnings[0]
 
 
 def test_khong_co_email_thi_xoa_o_email_cong_nho_tu_luot_truoc():

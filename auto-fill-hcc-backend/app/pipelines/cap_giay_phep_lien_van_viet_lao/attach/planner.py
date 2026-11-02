@@ -7,7 +7,8 @@ Bảng 6 dòng (2)-(7); mỗi dòng có mat-checkbox + rdo_File (Bản chính / 
 biệt 2 dòng cùng tên (đăng ký xe / giấy đề nghị).
 
 Phân loại **LLM-primary**: LLM đọc OCR mọi file quyết định loại + cờ thuongMai; rule keyword chỉ DỰ PHÒNG.
-CCCD/other không có dòng riêng → bỏ qua.
+CCCD/other không có dòng riêng → đính chung dòng Giấy đề nghị của nhóm (thương mại/phi thương mại), giữ tên file
+gốc + cảnh báo.
 """
 
 import time
@@ -173,6 +174,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
+    don_row = "denghi_tm" if thuong_mai else "denghi_ptm"
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -187,19 +190,25 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
-
         row_id = _row_id(doc_type, thuong_mai)
         if row_id:
             items.append(_build_row_item(file, idx, row_id, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "rowId": row_id, "source": source})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        # Không có dòng riêng/không rõ loại → dòng Giấy đề nghị, giữ tên gốc để FE không coi là trùng tài liệu.
+        resolved = doc_type if doc_type in _SKIP_DOCS else _OTHER
+        item = _build_row_item(file, idx, don_row, resolved)
+        item["documentName"] = file_name
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": resolved, "source": source, "routedTo": don_row})
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROW_DEFS[don_row]['documentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

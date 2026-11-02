@@ -92,7 +92,7 @@ def test_hop_thoai_cong_bo_gui_lenh_chon_phuong_xa(key):
     r = flow._variant_fill_agency_reply(conv, _proc(key), LOC)
     assert r.actions == [{
         "type": "fill_mae_agency",
-        "province": "Tỉnh Quảng Ngãi",
+        "province": "Quảng Ngãi",
         "ward": "Phường Nghĩa Lộ",
         "agencyLevel": "ward",
         "agency": "",
@@ -102,6 +102,20 @@ def test_hop_thoai_cong_bo_gui_lenh_chon_phuong_xa(key):
     }]
     assert "Phường Nghĩa Lộ" in r.display_md
     assert "Sở" not in r.display_md, "cấp xã mà đọc tên Sở là sai cơ quan"
+
+
+@pytest.mark.parametrize("province", ["Thành phố Bắc Ninh", "Tỉnh Bắc Ninh", "TP. Bắc Ninh", "Bắc Ninh"])
+def test_o_tinh_hop_thoai_cong_bo_gui_ten_tran(province):
+    """Danh mục cổng bộ còn "Tỉnh Bắc Ninh" trong khi tài khoản đã là "Thành phố Bắc Ninh" → gửi tên không tiền tố,
+    engine khớp chứa thì ăn cả hai dạng (bản extension cũ cũng vậy)."""
+    key = "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat"
+    loc = {"province": province, "ward": "Phường Kinh Bắc"}
+    r = flow._variant_fill_agency_reply(_conv(WARD_CLIENT, key), _proc(key), loc)
+    assert r.actions[0]["province"] == "Bắc Ninh"
+    assert province in r.display_md, "câu thoại vẫn đọc tên đầy đủ"
+    so = flow._variant_fill_agency_reply(_conv(WARD_CLIENT, "di-chuyen-ho-so-nguoi-huong-tro-cap"),
+                                         _proc("di-chuyen-ho-so-nguoi-huong-tro-cap"), loc)
+    assert so.actions[0]["province"] == "Bắc Ninh"
 
 
 @pytest.mark.parametrize("key", WARD_KEYS)

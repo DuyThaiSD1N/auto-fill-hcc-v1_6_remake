@@ -31,3 +31,16 @@ LIEN_THONG_KHAI_SINH = [
      "value": "Con về với cha, mẹ; cha, mẹ là chủ sở hữu chỗ ở hợp pháp"},
     {"name": "IsCapTheCanCuoc", "comp": "checkbox", "value": True},
 ]
+
+# Liên thông khai tử (cùng cổng), bước 01 — chỉ Handfree dùng (luồng lien_thong hỏi đối tượng trước).
+# "Đối tượng hưởng trợ cấp mai táng phí" quyết định khối mai táng phí ở bước Kê khai và cơ quan giải quyết →
+# không có mặc định đúng cho mọi hồ sơ: `{agency_choice}` là lựa chọn công dân vừa trả lời. Khối cơ quan mai táng
+# phí đứng SAU ô đối tượng (cổng dựng theo đối tượng). "Cơ quan thực hiện" (CqdkktTenCoquan, CqmtpTenCquan)
+# readonly, cổng tự suy từ tỉnh/xã → bỏ.
+LIEN_THONG_KHAI_TU = [
+    {"name": "CqdkktDiaChi", "comp": "diachi",
+     "value": {"tinh": "{province}", "xa": "{ward}"}},
+    {"name": "DtMaitangphi", "comp": "select", "value": "{agency_choice}"},
+    {"name": "CqmtpDiaChi", "comp": "diachi",
+     "value": {"tinh": "{province}", "xa": "{ward}"}},
+]

@@ -2,7 +2,7 @@
 tiếp..." (cổng Bộ Y tế — Angular mat-table, engine FE `attp-row`).
 
 Bảng có 10 dòng, cổng gộp cấu hình nhiều trường hợp nên TÊN DÒNG TRÙNG NHAU:
-  1  "Đơn theo Mẫu 08 Phụ lục I …;"                    ← Đơn đề nghị (bản chính) + tệp không nhận ra
+  1  "Đơn theo Mẫu 08 Phụ lục I …;"                    ← Đơn đề nghị (bản chính) + tệp không nhận ra + CCCD
   2  "a) Đơn theo Mẫu 08 Phụ lục I …."                  ← (trùng dòng 1, để trống)
   3  "b) Bản sao hợp lệ giấy phép hành nghề đã cấp …"    ← CCHN/GPHN đã cấp (bản sao)
   4  ") Bản sao hợp lệ của một trong các giấy tờ sau …"  ← Chứng chỉ đào tạo (bản sao)
@@ -20,8 +20,8 @@ trùng chữ → mỗi dòng một componentName KHÁC NHAU (đoạn con vẫn k
 cổng đổi thứ tự dòng, engine rơi về dòng đầu tiên khớp tên và bỏ qua tệp đã có ở dòng đó (không đính trùng).
 Dòng trùng vẫn giữ trong _ROWS (docTypes rỗng) để trace thấy đủ bảng.
 
-Phân loại THUẦN LLM, mỗi tệp một lượt gọi (xem prompt). ⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other)
-hoặc lượt gọi lỗi → đính vào dòng 1 (Đơn), giữ tên tệp gốc. CCCD không có dòng riêng → bỏ qua.
+Phân loại THUẦN LLM, mỗi tệp một lượt gọi (xem prompt). ⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other),
+lượt gọi lỗi, hoặc CCCD (không có dòng riêng) → đính vào dòng 1 (Đơn), giữ tên tệp gốc.
 """
 
 import asyncio
@@ -63,7 +63,7 @@ _DOC_NAMES = {
 # theo nó). Mỗi docType nằm ở ĐÚNG MỘT dòng → mỗi tệp chỉ đính một lần; dòng trùng tên để docTypes rỗng.
 _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 1, "componentName": "Đơn theo Mẫu 08 Phụ lục I",
-     "loaiBan": _BAN_CHINH, "docTypes": [_DON, _OTHER]},
+     "loaiBan": _BAN_CHINH, "docTypes": [_DON, _OTHER, _CCCD]},
     {"componentIndex": 2, "componentName": "a) Đơn theo Mẫu 08 Phụ lục I",
      "loaiBan": _BAN_CHINH, "docTypes": []},
     {"componentIndex": 3, "componentName": "b) Bản sao hợp lệ giấy phép hành nghề đã cấp",
@@ -131,9 +131,9 @@ async def _classify_with_llm(
 
 
 def _document_name(file_name: str, doc_type: str, same_type_count: int) -> str:
-    # Tệp lạ giữ TÊN GỐC để cán bộ nhận ra; nhiều tệp cùng loại (vd 2 chứng chỉ đào tạo) thêm tên gốc để
-    # hai tệp trong cùng dòng không mang cùng một tên.
-    if doc_type == _OTHER:
+    # Tệp lạ / CCCD (không có tên chuẩn) giữ TÊN GỐC để cán bộ nhận ra; nhiều tệp cùng loại (vd 2 chứng chỉ đào
+    # tạo) thêm tên gốc để hai tệp trong cùng dòng không mang cùng một tên.
+    if doc_type not in _DOC_NAMES:
         return file_name
     base = _DOC_NAMES[doc_type]
     return f"{base} ({PurePath(file_name).stem})" if same_type_count > 1 else base
@@ -154,13 +154,11 @@ def build_plan_items(
         names[idx] = file_name
         doc_type = llm_types.get(idx, _OTHER)
         entry = {"fileName": file_name, "docType": doc_type, "source": "llm" if idx in llm_types else "fallback"}
-        if doc_type in _SKIP_DOCS:
-            entry["skipped"] = True
-        else:
-            by_type.setdefault(doc_type, []).append(idx)
-            entry["rows"] = [r["componentIndex"] for r in _ROWS if doc_type in r["docTypes"]]
-        if doc_type == _OTHER:
+        by_type.setdefault(doc_type, []).append(idx)
+        entry["rows"] = [r["componentIndex"] for r in _ROWS if doc_type in r["docTypes"]]
+        if doc_type in (_OTHER, _CCCD):
             entry["fallbackRow"] = _DON
+            entry["routedTo"] = _DON
         classified.append(entry)
 
     items: list[dict] = []
@@ -180,10 +178,10 @@ def build_plan_items(
                     "detectedType": doc_type,
                 })
 
-    fallback = [names[idx] for idx in by_type.get(_OTHER, [])]
+    fallback = [names[idx] for idx in sorted(by_type.get(_OTHER, []) + by_type.get(_CCCD, []))]
     if fallback:
         warnings.append(
-            "Chưa nhận ra loại giấy tờ, đã đính kèm chung vào dòng Đơn Mẫu 08 để không bỏ sót — cán bộ "
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng Đơn Mẫu 08 để không bỏ sót — cán bộ "
             f"kiểm tra lại: {', '.join(fallback)}."
         )
     return items, warnings, classified

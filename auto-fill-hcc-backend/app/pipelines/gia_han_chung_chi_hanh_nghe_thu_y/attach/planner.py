@@ -13,8 +13,8 @@ Bảng KHÔNG có dòng cho văn bằng chuyên môn → dùng nút "+ Thêm gi�
 "Văn bằng, chứng chỉ chuyên môn phù hợp với từng loại hình hành nghề thú y" (1 Bản sao). Cổng không tạo
 được dòng đó thì FE ĐÍNH CHUNG vào dòng Đơn (`fallbackComponentName`) và nhắc ghi chú hồ sơ.
 
-Chứng chỉ hành nghề cũ / ảnh thẻ / giấy tờ khác không có dòng riêng → đính chung vào dòng Đơn (ô upload
-nhận nhiều file). Mọi item GIỮ TÊN FILE GỐC. CCCD chỉ dùng ở bước thông tin → bỏ qua.
+Chứng chỉ hành nghề cũ / ảnh thẻ / CCCD / giấy tờ khác không có dòng riêng → đính chung vào dòng Đơn (ô
+upload nhận nhiều file); loại đã nhận diện đặt tên theo loại, CCCD / giấy chưa rõ loại giữ TÊN FILE GỐC.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG.
 """
@@ -192,6 +192,7 @@ def build_plan_items(
     classified: list[dict] = []
     # Hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
     name_counts: dict[str, int] = {}
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -207,10 +208,6 @@ def build_plan_items(
             doc_type, source = _ANH_THE, "rule"
         else:
             doc_type, source = _OTHER, "unknown"
-
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
 
         document_name = _LABELS.get(doc_type, "")
         if document_name:
@@ -229,13 +226,15 @@ def build_plan_items(
         else:
             items.append(_row_item(file_name, idx, _ROWS[_DON], doc_type, document_name))
             routed = _DON
-            if doc_type == _OTHER:
-                warnings.append(
-                    f"Không xác định được loại giấy tờ cho file '{file_name}' — đã đính chung vào dòng "
-                    "'Đơn đăng ký gia hạn', vui lòng kiểm tra lại."
-                )
+            if doc_type in _SKIP_DOCS or doc_type == _OTHER:
+                extra_files.append(file_name)
         classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": routed})
 
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Đơn đăng ký gia hạn\": "
+            + ", ".join(extra_files) + "."
+        )
     detected = {item["detectedType"] for item in items}
     if _DON not in detected:
         warnings.append("Không tìm thấy Đơn đăng ký gia hạn Chứng chỉ hành nghề thú y (Mẫu 02.HNTY) trong hồ sơ.")

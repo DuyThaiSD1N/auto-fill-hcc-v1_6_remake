@@ -20,9 +20,21 @@ def test_trich_luc_khai_tu_co_mau_so_04_vao_dong_chung_tu_theo_llm():
     assert [i["slotKey"] for i in items] == ["giay_chung_tu"]
 
 
-def test_llm_noi_giay_khac_thi_khong_dinh_va_canh_bao():
+def test_llm_noi_giay_khac_thi_dinh_chung_o_to_khai_va_canh_bao():
     items, warnings = _plan(["CĂN CƯỚC CÔNG DÂN"], {0: ""})
-    assert items == [] and "không thuộc 3 thành phần" in warnings[0]
+    assert [(i["slotKey"], i["documentName"], i["detectedType"]) for i in items] == [
+        ("to_khai_mai_tang", "f0.pdf", "other")
+    ]
+    assert "đã đính chung dòng" in warnings[0] and "f0.pdf" in warnings[0]
+
+
+def test_giay_la_va_cccd_deu_co_item_o_to_khai():
+    items, warnings = _plan(["GIẤY XÁC NHẬN", "CĂN CƯỚC CÔNG DÂN Số 001000000001", "Văn bản không rõ"],
+                            {0: "", 1: ""})
+    assert [(i["fileIndex"], i["slotIndex"], i["target"]) for i in items] == [
+        (0, 0, "fixed-slot"), (1, 0, "fixed-slot"), (2, 0, "fixed-slot")
+    ]
+    assert len(warnings) == 1 and "f0.pdf, f1.pdf, f2.pdf" in warnings[0]
 
 
 def test_llm_khong_tra_loi_thi_moi_dung_luat_du_phong():

@@ -24,6 +24,7 @@ from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import owner_review
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
+from app.channels.handfree.chat import split_submit
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tu_phap_moi as tpm
 from app.channels.handfree.chat import tu_phap_v2
@@ -339,7 +340,8 @@ def _attachment_plan_line(item: dict) -> str:
     """Tên đầy đủ phục vụ engine; hội thoại chỉ nói vị trí đích ngắn, dễ rà."""
     source = str(item.get("fileName") or item.get("documentName") or "?").strip()
     component_index = item.get("componentIndex")
-    if component_index not in (None, ""):
+    # Số dòng đếm từ 1; planner nào để 0 là chỉ khớp dòng theo tên (FE coi 0 như không có số) → nói tên dòng.
+    if component_index not in (None, "", 0, "0"):
         try:
             target = f"STT {int(component_index)}"
         except (TypeError, ValueError):
@@ -479,7 +481,9 @@ def _resolve_page_docs_target(proc: dict, page_context: dict | None) -> str:
 
 def _remember_docs_target(conv: dict, proc: dict, page_context: dict | None) -> tuple[str, bool]:
     """Lưu target mới nếu page context nhận diện chắc chắn; trả (target, changed)."""
-    target = _resolve_docs_target(proc, page_context, conv)
+    # Cổng Bắc Ninh 2 tab cùng DOM luôn có bảng đính kèm: thủ tục chỉ đính kèm có chọn điền khối ủy quyền vẫn phải điền
+    # trước, không để dấu vết trang đè thành đính kèm.
+    target = bac_ninh.docs_target(conv, proc, _resolve_docs_target(proc, page_context, conv))
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target and conv.get("state") in {
         "ask_doc_method", "qr_waiting", "collecting_docs",
@@ -515,6 +519,9 @@ def _docs_done_label_for_conv(conv: dict) -> str:
     # Nhánh ủy quyền: xong lượt này trợ lý điền HAI khối rồi đính luôn giấy ủy quyền, nên
     # nhãn "điền chủ hồ sơ đi" vừa sai vai vừa thiếu việc.
     if conv.get("authorization_page") and str(conv.get("docs_target") or "") == "owner":
+        return "✅ Đã đưa đủ giấy tờ, điền thông tin và đính kèm đi"
+    # Thủ tục chỉ đính kèm Bắc Ninh có chọn điền khối ủy quyền: điền khối đó rồi đính kèm, không phải "điền tờ khai".
+    if bac_ninh.fills_authorized_first(conv, get_procedure(conv.get("procedure_key") or "")):
         return "✅ Đã đưa đủ giấy tờ, điền thông tin và đính kèm đi"
     return _docs_done_label(str(conv.get("docs_target") or ""))
 
@@ -1263,10 +1270,7 @@ async def _handle_turn_inner(
             if switched is not None:
                 return switched
             r = Reply()
-            r.actions = [_update_docs_done_action(
-                conv.get("docs_target") or "",
-                adjustment_target=_documents_adjustment_target(conv),
-            )]
+            r.actions = [{"type": "update_docs_done_chip", "label": _docs_done_label_for_conv(conv)}]
             return r
     # page_status chỉ có nghĩa ở chặng guide_login (dẫn đường) và attaching (chờ sang bước
     # Thành phần hồ sơ); đến muộn ở chỗ khác → im lặng, không đẻ bubble.
@@ -1326,9 +1330,22 @@ async def _handle_turn_inner(
         r = _record_submit_click(conv, intent.payload)
         if tpm.is_active(current_proc) and tpm.auto_flow(conv):
             conv["state"] = "done"  # bấm nộp = đã nộp, ở bước nào cũng vậy
+        if split_submit.note_click(conv, intent.payload):
+            return await _split_submit_released(conv, current_proc)
         return r
+    if intent.kind == "event" and intent.value == "split_tab_closed":
+        if split_submit.note_closed(conv, intent.payload):
+            return await _split_submit_released(conv, current_proc)
+        return Reply()
+    if intent.kind == "action" and intent.value == split_submit.DONE_ACTION:
+        if split_submit.release(conv):
+            return await _split_submit_released(conv, current_proc)
+        return Reply()
     if tpm.is_active(current_proc) and tpm.auto_flow(conv):
         if intent.kind == "event" and intent.value == "submitted":
+            held = split_submit.hold(conv, intent.payload)
+            if held:
+                return _split_submit_wait_reply(conv) if held == "new" else Reply()
             return tpm.on_submitted(conv)
         if intent.kind == "action" and intent.value == "tpm_adjust_done":
             return await tpm.adjust_done(conv, intent.payload or {})
@@ -1564,6 +1581,7 @@ def _reset_for_new_procedure(conv: dict) -> None:
     conv["doc_method"] = None
     conv["attach_mode"] = None
     conv["attach_has_files"] = False
+    split_submit.clear(conv)
     conv["docs_target"] = ""
     conv["docs_page_context"] = {}
     conv["docs_dispatch_key"] = ""
@@ -1622,6 +1640,7 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
     if conv.get("procedure_key") != key:
         conv["attach_mode"] = None  # lựa chọn tách/gộp không được rò sang thủ tục khác
         conv["attach_has_files"] = False  # hồ sơ mới: lượt đầu không gỡ tệp nào
+        split_submit.clear(conv)
         conv["procedure_variant"] = ""  # trường hợp giải quyết gắn với TỪNG thủ tục
         conv["mae_dialog_options"] = {}
         conv["mae_dialog_choice"] = {}
@@ -1827,6 +1846,7 @@ def _start_guide_login(conv: dict) -> Reply:
     conv.setdefault("dossier_started_at", datetime.now(timezone.utc))
     # Mốc "đã nói" của chặng mở-trang/đăng-nhập — mỗi câu trạng thái chỉ nói 1 lần.
     conv["milestones"] = []
+    lien_thong.reset_agency(conv)
     conv["agency_done"] = False
     conv["agency_dispatched_at"] = 0
     conv["agency_no_response"] = 0
@@ -1990,6 +2010,15 @@ def _mae_ward_level(proc: dict) -> bool:
     return str(proc.get("maeAgencyLevel") or "") == "ward"
 
 
+_MAE_PROVINCE_PREFIX_RE = re.compile(r"^\s*(?:tỉnh|thành phố|tp\.?)\s+", re.IGNORECASE)
+
+
+def _mae_province_name(province: str) -> str:
+    """Tên tỉnh bỏ tiền tố cho ô Tỉnh của hộp thoại cổng bộ: danh mục cổng bộ đổi tên chậm (vẫn "Tỉnh Bắc Ninh" khi
+    tài khoản ghi "Thành phố Bắc Ninh") → engine khớp chứa theo tên trần thì ăn cả hai dạng."""
+    return _MAE_PROVINCE_PREFIX_RE.sub("", province or "").strip()
+
+
 def _supports_mae_ward_agency(conv: dict) -> bool:
     return (conv.get("client_capabilities") or {}).get("supportsMaeWardAgency") is True
 
@@ -2075,7 +2104,7 @@ def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
                                province=province, ward=ward))
         r = Reply(*_fmt(vi.AGENCY_WARD_DIALOG_AUTOFILL_GUIDE, province=province, ward=ward))
         r.actions = [{"type": "fill_mae_agency",
-                      "province": province,
+                      "province": _mae_province_name(province),
                       "ward": ward,
                       "agencyLevel": "ward",
                       "agency": "",
@@ -2096,7 +2125,7 @@ def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
         r = Reply(*_fmt(vi.MAE_DIALOG_AUTOFILL_GUIDE, choice_md="lựa chọn cổng đã điền sẵn",
                         choice_tts="lựa chọn cổng đã điền sẵn"))
     r.actions = [{"type": "fill_mae_agency",
-                  "province": province,
+                  "province": _mae_province_name(province),
                   "agency": agency,
                   "variant": variant.get("key") or "",
                   "variantMatch": variant.get("portalMatch") or "",
@@ -2517,7 +2546,7 @@ def _login_ok_prefix(conv: dict) -> tuple[str, str]:
 def _consent_card(conv: dict) -> dict:
     """Card xin phép xử lý dữ liệu — server-driven toàn bộ chữ nghĩa, FE chỉ render."""
     proc = get_procedure(conv.get("procedure_key") or "") or {}
-    attach_mode = proc.get("mode") == "attach"
+    attach_mode = consent_log.attach_only_card(conv, proc)
     card_text = vi.CONSENT_ATTACH_CARD_TEXT if attach_mode else vi.CONSENT_CARD_TEXT
     hmong = (conv.get("lang") or "vi") == "hmong"
     documents = []
@@ -2553,9 +2582,10 @@ def _to_consent(conv: dict) -> Reply:
     proc = get_procedure(conv["procedure_key"]) or {}
     _, tts_list = _doc_list(proc)
     pmd, ptts = _login_ok_prefix(conv)
-    template = vi.CONSENT_ATTACH_INTRO if proc.get("mode") == "attach" else vi.CONSENT_INTRO
+    attach_mode = consent_log.attach_only_card(conv, proc)
+    template = vi.CONSENT_ATTACH_INTRO if attach_mode else vi.CONSENT_INTRO
     reached = (vi.INTRO_OWNER_REACHED if conv.get("owner_phase")
-               else (vi.INTRO_ATTACH_REACHED if proc.get("mode") == "attach" else vi.INTRO_FORM_REACHED))
+               else (vi.INTRO_ATTACH_REACHED if attach_mode else vi.INTRO_FORM_REACHED))
     md, tts = _fmt(template,
                    intro_md=pmd + reached["md"],
                    intro_tts=ptts + reached["tts"],
@@ -2602,7 +2632,7 @@ def _to_ask_doc_method(conv: dict, intro: tuple[str, str] | None = None) -> Repl
         elif conv.get("owner_phase"):
             reached = vi.INTRO_OWNER_REACHED
         else:
-            reached = (vi.INTRO_ATTACH_REACHED if proc.get("mode") == "attach"
+            reached = (vi.INTRO_ATTACH_REACHED if consent_log.attach_only_card(conv, proc)
                        else vi.INTRO_FORM_REACHED)
         intro = (pmd + reached["md"], ptts + reached["tts"])
     md, tts = _fmt(vi.ASK_DOC_METHOD,
@@ -2831,7 +2861,10 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # Liên thông: trang CHỌN CƠ QUAN — có agencyBlock nhưng CHƯA có form kê khai (content.js
         # chỉ tin formKind khi trang có section "kê khai thông tin", còn trang chọn cơ quan thì
         # KHÔNG). Sang trang kê khai (có formKind) thì nhánh dưới đưa vào ask_doc_method.
-        plan = _resolve_agency_plan(proc.get("agencyFillPlan"), loc)
+        plan = lien_thong.agency_plan(conv, proc, _resolve_agency_plan(proc.get("agencyFillPlan"), loc))
+        if plan is None:
+            # Thủ tục cần công dân trả lời trước (liên thông khai tử: đối tượng mai táng phí).
+            return lien_thong.agency_ask(conv, proc)
         if plan:
             # Có cấu hình điền hộ (liên thông khai sinh) → trợ lý điền khối chọn cơ quan qua engine
             # fillFormAngular (FE), nói 1 lần rồi để người dân tự bấm "Chuyển bước tiếp theo".
@@ -5010,10 +5043,12 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             else None
         )
         recap_kw = {"filled": filled_count, "attached": attached} if recap else {}
+        split_submit.clear(conv)  # lượt đính gộp không được mang sổ của lượt tách trước
         if conv.get("attach_mode") == "split":
             total = int(intent.payload.get("dossiersTotal") or len(conv.get("attach_plan") or []))
             succeeded = int(intent.payload.get("dossiersSucceeded") or attached)
             failed = int(intent.payload.get("dossiersFailed") or max(0, total - succeeded))
+            split_submit.start(conv, total)
             if failed or errors:
                 err_list = "\n".join(f"- {e}" for e in errors[:5]) or f"- {failed} hồ sơ chưa đính kèm được"
                 r = Reply(*_fmt(vi.ATTACH_SPLIT_DONE_WITH_ERRORS, succeeded=succeeded,
@@ -5122,6 +5157,20 @@ def _rating_level_label(level) -> str:
     return rating_card.level_label(level)
 
 
+def _split_submit_wait_reply(conv: dict) -> Reply:
+    done, total = split_submit.progress(conv)
+    r = Reply(*_fmt(vi.SPLIT_SUBMIT_WAITING, done=done, total=total, left=total - done))
+    r.chips = [split_submit.done_chip()]
+    return r
+
+
+async def _split_submit_released(conv: dict, proc: dict | None) -> Reply:
+    """Đủ hồ sơ tách (hoặc cán bộ bấm "Đã nộp hết") → chạy tiếp nhánh nộp thành công đã giữ lại."""
+    if tpm.is_active(proc) and tpm.auto_flow(conv):
+        return tpm.on_submitted(conv)
+    return await _handle_done(conv, Intent(kind="event", value="submitted"))
+
+
 def _rating_card_reply() -> Reply:
     """Hiện card đánh giá NHƯ MỘT KHỐI — KHÔNG bong bóng (title card đã là câu mời), chỉ đọc tts.
     Card tự morph (mời→chọn mức→lý do→cảm ơn) ở FE nên không đẻ thêm bong bóng nào."""
@@ -5186,6 +5235,9 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         # cú bấm nút nộp trước → chưa có cú bấm thì bỏ qua event. Client cũ giữ hành vi cũ.
         if _supports_rating(conv) and not conv.get("submit_clicked_at") and _portal_needs_submit_click(conv):
             return Reply()
+        held = split_submit.hold(conv, intent.payload)
+        if held:
+            return _split_submit_wait_reply(conv) if held == "new" else Reply()
         conv["submitted_completed"] = True
         # TẠM THỜI (gỡ được sau khi bản extension có bắt click nút đã lên chợ): chấm luôn mốc
         # nộp từ đường CŨ — dò chữ "nộp hồ sơ thành công" trên trang. Không có dòng này thì

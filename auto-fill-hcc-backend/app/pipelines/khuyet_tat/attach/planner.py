@@ -2,6 +2,8 @@
 
 Form bước Thành phần hồ sơ có các ô upload cố định. Pipeline này OCR + LLM để
 phân loại file vào đúng slot rồi trả target="fixed-slot" cho extension.
+Giấy tờ tùy thân và giấy chưa rõ loại không có ô riêng → đính chung ô Đơn đề nghị (FE gom nhiều tệp cùng
+slotKey vào một ô), giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
 """
 
 import time
@@ -176,6 +178,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -184,13 +187,19 @@ def build_plan_items(
         llm_type = llm_types.get(idx, "")
         doc_type = llm_type if llm_type in _SLOT_BY_KEY else rule_type
 
-        if not doc_type and _is_identity_text(text):
-            warnings.append(f"File '{file_name}' là giấy tờ tùy thân — không đính kèm ở bước này, đã bỏ qua.")
-            classified.append({"fileName": file_name, "docType": _DOC_OTHER, "source": "identity-skip"})
-            continue
         if not doc_type:
-            warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công.")
-            classified.append({"fileName": file_name, "docType": _DOC_OTHER, "source": "unknown"})
+            real_type = "cccd" if _is_identity_text(text) else _DOC_OTHER
+            item = _build_item(file, idx, _DOC_APPLICATION)
+            item["documentName"] = file_name
+            item["detectedType"] = real_type
+            items.append(item)
+            classified.append({
+                "fileName": file_name,
+                "docType": real_type,
+                "source": "identity" if real_type == "cccd" else "unknown",
+                "routedTo": _DOC_APPLICATION,
+            })
+            extra_files.append(file_name)
             continue
 
         items.append(_build_item(file, idx, doc_type))
@@ -201,6 +210,11 @@ def build_plan_items(
             "slotIndex": _SLOT_BY_KEY[doc_type]["slotIndex"],
         })
 
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+            f"\"{_SLOT_BY_KEY[_DOC_APPLICATION]['slotName']}\": " + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

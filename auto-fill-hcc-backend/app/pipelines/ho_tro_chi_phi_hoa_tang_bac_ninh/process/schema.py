@@ -32,9 +32,9 @@ FIELDS: list[dict] = [
         "name": "UyQuyen_CoBienBan",
         "desc": "Boolean true CHỈ khi hồ sơ có tài liệu độc lập mang tiêu đề/nội dung Biên bản hoặc Văn bản ủy quyền; không suy từ việc người làm đơn khác người chết.",
     },
-    {"name": "NguoiUyQuyen_HoTen", "desc": "Họ tên BÊN ỦY QUYỀN (chủ hồ sơ) trong Biên bản/Văn bản ủy quyền; nhiều người cùng ủy quyền thì lấy người đứng đầu danh sách bên ủy quyền; không lấy bên ủy quyền (người đi nộp thay)."},
-    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy."},
-    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền, chỉ Nam hoặc Nữ khi giấy tờ ghi rõ."},
+    {"name": "NguoiUyQuyen_HoTen", "desc": "Họ tên BÊN ỦY QUYỀN (chủ hồ sơ) trong Biên bản/Văn bản ủy quyền; nhiều người cùng ủy quyền thì lấy người đứng đầu danh sách bên ủy quyền; không lấy bên được ủy quyền (người đi nộp thay)."},
+    {"name": "NguoiUyQuyen_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy — chỉ khi giấy ghi rõ là ngày sinh của chính người này (dòng 'sinh ngày', cột ngày sinh, CCCD đúng người). Ngày cấp CCCD, ngày lập/ký biên bản hay ngày sinh của bên được ủy quyền không phải ngày sinh bên ủy quyền; không có thì bỏ trống."},
+    {"name": "NguoiUyQuyen_GioiTinh", "desc": "Giới tính bên ủy quyền, chỉ Nam hoặc Nữ khi giấy tờ ghi rõ giới tính của chính người này; không suy từ họ tên, không có thì bỏ trống."},
     {"name": "NguoiUyQuyen_SoDinhDanh", "desc": "Số CCCD/định danh của bên ủy quyền, chỉ giữ chữ số."},
     {"name": "NguoiUyQuyen_NgayCap", "desc": "Ngày cấp CCCD của bên ủy quyền, dd/mm/yyyy."},
     {"name": "NguoiUyQuyen_NoiCap", "desc": "Nơi cấp CCCD của bên ủy quyền."},
@@ -43,7 +43,7 @@ FIELDS: list[dict] = [
         "desc": "Địa chỉ của bên ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}; ưu tiên Biên bản ủy quyền rồi CCCD đúng người.",
     },
     {"name": "NguoiUyQuyen_Email", "desc": "Email của bên ủy quyền nếu hồ sơ ghi rõ; không tự tạo."},
-    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại của bên ủy quyền nếu hồ sơ ghi rõ."},
+    {"name": "NguoiUyQuyen_SoDienThoai", "desc": "Số điện thoại của bên ủy quyền nếu hồ sơ ghi rõ cạnh chính người này; số của bên được ủy quyền hay cơ sở dịch vụ không phải của bên ủy quyền, không có thì bỏ trống."},
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}

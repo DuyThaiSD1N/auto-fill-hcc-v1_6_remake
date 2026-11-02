@@ -440,11 +440,15 @@ def _start_docs(conv: dict, proc: dict | None):
     return r
 
 
+def fills_authorized_first(conv: dict, proc: dict | None) -> bool:
+    """Thủ tục chỉ đính kèm mà công dân chọn điền khối ủy quyền: giấy tờ chạy lượt điền khối ủy quyền trước."""
+    return enabled(conv, proc) and attach_only(proc) and (conv.get("bac_ninh") or {}).get("phase") == "authorized"
+
+
 def docs_target(conv: dict, proc: dict | None, target: str) -> str:
     """Thủ tục chỉ đính kèm mà công dân chọn điền khối ủy quyền: chốt giấy tờ chạy lượt điền (khối ủy quyền) trước,
     đính kèm sau khi sang tab Thành phần hồ sơ."""
-    if (enabled(conv, proc) and attach_only(proc) and target == "attachment"
-            and (conv.get("bac_ninh") or {}).get("phase") == "authorized"):
+    if target == "attachment" and fills_authorized_first(conv, proc):
         return "declaration"
     return target
 

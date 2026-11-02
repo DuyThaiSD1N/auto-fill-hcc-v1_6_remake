@@ -1,8 +1,8 @@
 """Đính kèm cho thủ tục Thi tuyển công chức.
 
-Form bước "Thành phần hồ sơ" của nhóm thủ tục này là bảng ô cố định. Planner chỉ
-đính file được nhận diện là Phiếu đăng ký dự tuyển vào slot tương ứng; giấy tờ
-định danh/tài liệu khác được bỏ qua để tránh đính nhầm.
+Form bước "Thành phần hồ sơ" chỉ có một ô cố định: Phiếu đăng ký dự tuyển (slot 0).
+Cổng không có ô riêng cho CCCD/bằng cấp/chứng chỉ/giấy chưa rõ loại → các tệp đó đính chung
+ô Phiếu (mỗi tệp một item, giữ tên tệp gốc) + cảnh báo để cán bộ soát; không bỏ tệp nào.
 """
 
 from __future__ import annotations
@@ -105,6 +105,7 @@ def build_plan_items(
     by_name = {item.get("name"): item for item in ocr_results}
     items: list[dict] = []
     warnings: list[str] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -112,27 +113,30 @@ def build_plan_items(
         text = str(ocr_item.get("text") or "")
         rule_slot = detect_slot_key(text, file_name)
         slot_key = rule_slot or llm_slots.get(idx, "")
-        if slot_key != SLOT["slotKey"]:
-            if is_excluded_document(text, file_name):
-                warnings.append(f"File '{file_name}' là giấy tờ/tài liệu khác — không đính ở ô Phiếu đăng ký dự tuyển.")
-            else:
-                warnings.append(f"Không xác định được file '{file_name}' là Phiếu đăng ký dự tuyển — bỏ qua.")
-            continue
+        is_phieu = slot_key == SLOT["slotKey"]
+        if not is_phieu:
+            # Không có ô riêng → đính chung ô Phiếu, giữ tên tệp gốc (không biết chắc là giấy gì).
+            extra_files.append(file_name)
         items.append(
             {
                 "fileIndex": idx,
                 "fileName": file_name,
-                "documentName": SLOT["detectedType"],
+                "documentName": SLOT["detectedType"] if is_phieu else file_name,
                 "componentName": SLOT["slotName"],
                 "target": "fixed-slot",
                 "needsAddComponent": False,
-                "detectedType": SLOT["detectedType"],
+                "detectedType": SLOT["detectedType"] if is_phieu else "other",
                 "slotKey": SLOT["slotKey"],
                 "slotIndex": SLOT["slotIndex"],
                 "slotName": SLOT["slotName"],
             }
         )
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{SLOT['slotName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings
 
 

@@ -5,8 +5,9 @@
   slot 1  Giấy báo tử / trích lục khai tử                ← giay_bao_tu (chỉ khi đối tượng đã chết)
   slot 2  Bản sao Huân/Huy chương Kháng chiến, Chiến thắng ← huy_chuong
 
-Giấy tờ nguồn khác (CCCD, Sổ BHXH...) không có ô riêng → target "new" (Thêm giấy tờ). Mọi file có OCR
-đều được LLM phân loại trước; rule OCR chỉ dự phòng. Riêng file gộp nhiều giấy phải ưu tiên Bản khai.
+Giấy tờ nguồn khác (CCCD, Sổ BHXH...) và giấy chưa rõ loại không có ô riêng → đính chung ô Bản khai (FE gom
+nhiều tệp cùng slotKey vào một ô), giữ tên tệp gốc + cảnh báo. Mọi file có OCR đều được LLM phân loại trước;
+rule OCR chỉ dự phòng. Riêng file gộp nhiều giấy phải ưu tiên Bản khai.
 """
 
 import time
@@ -54,7 +55,7 @@ _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 # CCCD/Sổ BHXH là GIẤY TỜ NGUỒN (để điền form), KHÔNG thuộc 3 thành phần hồ sơ bắt buộc
 # (Bản khai / Giấy báo tử / Huân-Huy chương). Form MOHA này KHÔNG có nút "Thêm thành phần hồ sơ"
-# → KHÔNG route sang target "new" (sẽ lỗi "không tìm thấy nút"). Chỉ bỏ qua, không đính kèm.
+# → KHÔNG route sang target "new" (sẽ lỗi "không tìm thấy nút"); đính chung ô Bản khai.
 _SKIP_DOCS = {_CCCD, _BHXH}
 _NEW_DOCS: dict[str, dict[str, str]] = {}
 _ALLOWED_DOC_TYPES = set(_SLOT_BY_KEY) | _SKIP_DOCS | {_OTHER}
@@ -165,6 +166,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -192,14 +194,19 @@ def build_plan_items(
             items.append(_build_fixed_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            # Giấy tờ nguồn (CCCD/BHXH) — chỉ dùng để điền form, KHÔNG thuộc thành phần hồ sơ → bỏ qua.
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
+        # Giấy tờ nguồn (CCCD/BHXH) hoặc chưa rõ loại — không có ô riêng → ô Bản khai.
+        item = _build_fixed_item(file, idx, _BAN_KHAI)
+        item["documentName"] = file_name
+        item["detectedType"] = doc_type
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _BAN_KHAI})
+        extra_files.append(file_name)
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
-
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_SLOT_BY_KEY[_BAN_KHAI]['slotName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

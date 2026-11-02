@@ -2,7 +2,8 @@
 Angular mat-table, engine FE `attp-row`, CÙNG cổng #114 tham_dinh_bcnckt).
 
 Bảng có 5 dòng thành phần hồ sơ; FE khớp dòng bằng componentName substring fold, tick + chọn loaiBan +
-set file. Phân loại **LLM-primary**; rule keyword chỉ DỰ PHÒNG. CCCD/ủy quyền → other (bỏ qua).
+set file. Phân loại **LLM-primary**; rule keyword chỉ DỰ PHÒNG. CCCD/ủy quyền → other → đính chung dòng Đơn, giữ
+tên file gốc + cảnh báo.
 """
 
 import re
@@ -180,6 +181,7 @@ def build_plan_items(
     classified: list[dict] = []
     texts: dict[int, str] = {}
     covered: set[str] = set()
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -203,8 +205,14 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             covered.add(doc_type)
             continue
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        # Không rõ loại → dòng Đơn, giữ tên gốc để FE không coi là trùng tài liệu của dòng. KHÔNG tính vào
+        # `covered`: trang Đơn gộp trong tệp khác vẫn phải được nhận ở vòng dưới.
+        item = _build_row_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
 
     # Tệp GỘP (vd đơn + GPXD đã cấp + sổ đỏ trong một bản scan): dòng nào chưa có tệp riêng mà
     # có trang mang đúng tiêu đề của dòng đó → đính CÙNG tệp vào dòng đó (engine attp-row nhận
@@ -224,6 +232,11 @@ def build_plan_items(
                 "trong tệp khác mà hệ thống chưa nhận ra thì cán bộ đính thêm thủ công."
             )
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

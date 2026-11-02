@@ -9,8 +9,8 @@ Cổng Bộ VHTTDL — bảng `<table class="style_table">` 3 dòng cố định
   slot 1  "Giấy tờ tùy thân của chủ điểm"                ← CCCD (identity)
   slot 2  "GCN đăng ký hộ kinh doanh"                    ← Giấy phép kinh doanh (business_registration)
 
-LLM phân loại chính; rule dự phòng khi LLM lỗi/không chắc. Nhiều file cùng loại → gộp vào 1 slot
-(FE input multiple).
+LLM phân loại chính; rule dự phòng khi LLM lỗi/không chắc. Mỗi file một item; nhiều file cùng loại → cùng
+slotKey, FE gom vào input multiple của ô. File không rõ loại → item RIÊNG ở slot 0 (Đơn đề nghị); không bỏ file nào.
 """
 import re
 import time
@@ -181,36 +181,63 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # FE coi tệp trùng tên đã có trên ô là đã đính → mỗi item một tên.
+    used_names: set[str] = set()
+
+    def _unique(label: str) -> str:
+        name, n = label, 2
+        while name in used_names:
+            name, n = f"{label[:46]} {n}", n + 1
+        used_names.add(name)
+        return name
 
     for group_key, meta in _GROUPS.items():
-        entries = sorted(groups[group_key], key=lambda e: e["idx"])
-        if not entries:
-            continue
-        source_indexes = [e["idx"] for e in entries]
-        head = entries[0]
-        document_name = _label_for_type(head["docType"], head.get("title", "")) if len(entries) == 1 else meta["label"]
-        attachments.append({
-            "fileIndex": source_indexes[0],
-            "sourceFileIndexes": source_indexes,   # nhiều file cùng loại → 1 slot (input multiple)
-            "fileName": str(files[source_indexes[0]].get("name") or f"file-{source_indexes[0] + 1}"),
-            "documentName": document_name,
-            "componentName": meta["componentName"],
-            "target": "fixed-slot",
-            "needsAddComponent": False,
-            "detectedType": document_name,
-            "slotKey": group_key,
-            "slotIndex": meta["slotIndex"],
-            "slotName": meta["componentName"],
-        })
-        for e in entries:
+        for e in sorted(groups[group_key], key=lambda e: e["idx"]):
+            document_name = _unique(_label_for_type(e["docType"], e.get("title", "")))
+            attachments.append({
+                "fileIndex": e["idx"],
+                "fileName": e["fileName"],
+                "documentName": document_name,
+                "componentName": meta["componentName"],
+                "target": "fixed-slot",
+                "needsAddComponent": False,
+                "detectedType": e["docType"],
+                "slotKey": group_key,
+                "slotIndex": meta["slotIndex"],
+                "slotName": meta["componentName"],
+            })
             classified.append({
                 "fileName": e["fileName"], "docType": e["docType"],
-                "documentName": _label_for_type(e["docType"], e.get("title", "")),
+                "documentName": document_name,
                 "group": group_key, "slotIndex": meta["slotIndex"], "source": e["source"],
             })
 
+    # Không rõ loại → mỗi file một item ở ô Đơn (cùng slotKey → FE gom vào cùng input multiple).
+    request_meta = _GROUPS[_G_REQUEST]
     for e in unclassified:
-        warnings.append(f"Không phân loại được tài liệu '{e['fileName']}' vào 3 thành phần (Đơn 51a/CCCD/GPKD).")
+        document_name = _unique(_label_for_type(_T_OTHER, e.get("title", "")))
+        attachments.append({
+            "fileIndex": e["idx"],
+            "fileName": e["fileName"],
+            "documentName": document_name,
+            "componentName": request_meta["componentName"],
+            "target": "fixed-slot",
+            "needsAddComponent": False,
+            "detectedType": _T_OTHER,
+            "slotKey": _G_REQUEST,
+            "slotIndex": request_meta["slotIndex"],
+            "slotName": request_meta["componentName"],
+        })
+        classified.append({
+            "fileName": e["fileName"], "docType": e["docType"], "documentName": document_name,
+            "group": _G_REQUEST, "slotIndex": request_meta["slotIndex"], "source": e["source"],
+            "routedTo": _G_REQUEST,
+        })
+    if unclassified:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Đơn đề nghị cấp GCN\": "
+            + ", ".join(e["fileName"] for e in unclassified) + "."
+        )
 
     if not attachments:
         warnings.append("Không phân loại được tài liệu nào vào thành phần hồ sơ.")

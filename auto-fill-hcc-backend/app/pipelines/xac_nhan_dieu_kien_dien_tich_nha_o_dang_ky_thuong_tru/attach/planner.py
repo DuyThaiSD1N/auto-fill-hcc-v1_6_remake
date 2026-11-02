@@ -1,15 +1,16 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú
 ..." (1.013314, cổng tỉnh iGate — Angular mat-table, engine FE `attp-row` + modal "Thêm giấy tờ").
 
-ENGINE TÁCH/GỘP (như dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan): OCR per-file có header
-"Trang n/m" → LLM gán KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn cùng dòng thành MỘT
-file (`sourceSegments`). Hồ sơ hay là MỘT PDF gộp Tờ khai + Giấy chứng nhận.
+ENGINE TÁCH (như dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan): OCR per-file có header
+"Trang n/m" → LLM gán KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI đoạn (một giấy) một item; đoạn
+chỉ là một phần file thì cắt đúng trang (`sourceSegments` một đoạn), đoạn phủ trọn file thì đính nguyên file.
+Hồ sơ hay là MỘT PDF scan chung Tờ khai + Giấy chứng nhận.
 
 Bảng thành phần hồ sơ CHỈ CÓ MỘT dòng (theo ảnh ánh xạ của thủ tục):
   1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu ... (Mẫu số 02)
-TOÀN BỘ file đính chung vào dòng 1 (mục I), KHÔNG tạo dòng mới qua "+ Thêm giấy tờ". Thứ tự trong file gộp: Tờ
-khai → Giấy chứng nhận (trang BÌA + "VI- Những thay đổi sau khi cấp" đứng TRƯỚC trang I-V) → giấy tờ chỗ ở khác →
-văn bản ủy quyền → CCCD → trang không rõ loại (kèm cảnh báo).
+TOÀN BỘ giấy tờ đính chung vào dòng 1 (mục I, attp-row nhận nhiều tệp), KHÔNG tạo dòng mới qua "+ Thêm giấy tờ".
+Thứ tự các tệp: Tờ khai → Giấy chứng nhận (trong tệp GCN: trang BÌA + "VI- Những thay đổi sau khi cấp" đứng TRƯỚC
+trang I-V) → giấy tờ chỗ ở khác → văn bản ủy quyền → CCCD → trang không rõ loại (kèm cảnh báo).
 """
 
 import re
@@ -53,8 +54,16 @@ _TO_KHAI_ROW = {
     "documentName": "Tờ khai xác nhận tình trạng chỗ ở hợp pháp",
     "loaiBan": "Bản chính",
 }
-# Thứ tự các loại giấy tờ khi gộp vào dòng Tờ khai.
+# Thứ tự các tệp trên dòng Tờ khai.
 _ORDER = [_TO_KHAI, _GCN, _GIAY_TO_CHO_O, _AUTHORIZATION, _CCCD, _OTHER]
+_LABELS = {
+    _TO_KHAI: _TO_KHAI_ROW["documentName"],
+    _GCN: "Giấy chứng nhận quyền sử dụng đất",
+    _GIAY_TO_CHO_O: "Giấy tờ chứng minh chỗ ở hợp pháp",
+    _AUTHORIZATION: "Văn bản ủy quyền",
+    _CCCD: "Căn cước công dân",
+    _OTHER: "Giấy tờ kèm theo hồ sơ",
+}
 
 
 def _normalize_type(value: Any) -> str:
@@ -200,25 +209,32 @@ def build_plan_items(
                            "componentIndex": _TO_KHAI_ROW["componentIndex"]})
 
     attachments: list[dict] = []
-    if parts:
-        parts.sort(key=lambda p: (_ORDER.index(p[1]), p[0]["fileIndex"], p[0]["pageFrom"]))
-        first = parts[0][0]
-        file = raw_files[first["fileIndex"]]
-        attachments.append({
-            "fileIndex": first["fileIndex"],
-            "fileName": str(file.get("name") or f"file-{first['fileIndex'] + 1}"),
-            "documentName": _TO_KHAI_ROW["documentName"],
+    # FE coi tệp trùng tên đã có trên dòng là đã đính → mỗi item một tên.
+    used_names: set[str] = set()
+    parts.sort(key=lambda p: (_ORDER.index(p[1]), p[0]["fileIndex"], p[0]["pageFrom"]))
+    for segment, doc_type in parts:
+        file = raw_files[segment["fileIndex"]]
+        base = (segment.get("documentName") or _LABELS[doc_type]).replace("/", "-")
+        document_name, n = base, 2
+        while document_name in used_names:
+            document_name, n = f"{base[:46]} {n}", n + 1
+        used_names.add(document_name)
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(file.get("name") or f"file-{segment['fileIndex'] + 1}"),
+            "documentName": document_name,
             "componentName": _TO_KHAI_ROW["componentName"],
             "componentIndex": _TO_KHAI_ROW["componentIndex"],
             "loaiBan": _TO_KHAI_ROW["loaiBan"],
             "target": "attp-row",
             "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            "sourceSegments": [
-                _source_segment(s, file_meta[s["fileIndex"]]["pageCount"]) for s, _ in parts
-            ],
-        })
+            "detectedType": doc_type,
+        }
+        # Đoạn chỉ là một phần file (hoặc GCN đảo trang bìa lên trước) → cắt đúng trang; phủ trọn file → nguyên file.
+        source = _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"])
+        if source["pageIndexes"] is not None:
+            item["sourceSegments"] = [source]
+        attachments.append(item)
 
     # --- Cảnh báo ---
     found = {doc_type for _, doc_type in typed}

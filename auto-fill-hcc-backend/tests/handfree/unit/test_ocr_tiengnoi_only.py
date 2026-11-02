@@ -91,7 +91,7 @@ async def test_tiengnoi_doc_file_tu_path_va_dong_handle_sau_khi_gui(monkeypatch,
     captured = {}
     monkeypatch.setattr(ocr_tiengnoi.settings, "storage_dir", str(tmp_path))
 
-    async def fake_post(decoded, max_tokens=None, *, include_tokens=False):
+    async def fake_post(decoded, max_tokens=None, *, include_tokens=False, timeout_s=None):
         name, source, mime = decoded[0]
         captured.update(name=name, source=source, mime=mime, content=source.read())
         return {"results": [{"ok": True, "text": "NỘI DUNG"}]}
@@ -127,7 +127,7 @@ async def test_tiengnoi_tu_choi_path_ngoai_kho_upload(monkeypatch, tmp_path):
 async def test_tiengnoi_van_ho_tro_data_url_cu(monkeypatch):
     captured = {}
 
-    async def fake_post(decoded, max_tokens=None, *, include_tokens=False):
+    async def fake_post(decoded, max_tokens=None, *, include_tokens=False, timeout_s=None):
         captured["decoded"] = decoded
         return {"results": [{"ok": True, "text": "A"}]}
 

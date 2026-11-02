@@ -79,6 +79,20 @@ def bxd(proc: dict | None) -> bool:
     return bool((proc or {}).get("bxdFlow"))
 
 
+def lien_thong_supported(caps: dict, proc: dict | None) -> bool:
+    """Extension chạy được luồng 6 bước cho thủ tục liên thông này. Thủ tục thêm sau khai cờ riêng ở
+    lienThongFlow.capability: bản cũ đã khai supportsLienThongFlow nhưng chưa xử lý được trang của thủ tục đó."""
+    extra = ((proc or {}).get("lienThongFlow") or {}).get("capability")
+    return caps.get(LIEN_THONG_CAPABILITY) is True and (not extra or caps.get(extra) is True)
+
+
+def bxd_supported(caps: dict, proc: dict | None) -> bool:
+    """Extension chạy được luồng 4 bước trên cổng của thủ tục. Cổng thêm sau khai cờ riêng ở bxdFlow.capability: bản cũ
+    trên chợ đã khai supportsBxdFlow nhưng content/bxd/*.js của nó không chạy trên host đó."""
+    extra = ((proc or {}).get("bxdFlow") or {}).get("capability")
+    return caps.get(BXD_CAPABILITY) is True and (not extra or caps.get(extra) is True)
+
+
 def bac_ninh(proc: dict | None) -> bool:
     """Cổng Bắc Ninh (Liferay, 4 tab cùng trang): đi tiếp là sang tab sau."""
     return bool((proc or {}).get("bacNinhTabFlow"))
@@ -91,9 +105,9 @@ def active(conv: dict, proc: dict | None) -> bool:
         and caps.get(CAPABILITY) is True
         and (not single_page(proc) or caps.get(SURVEY_CAPABILITY) is True)
         # Extension chỉ có bộ đọc eForm / SurveyJS không đọc được form Angular của cổng liên thông.
-        and (not lien_thong(proc) or caps.get(LIEN_THONG_CAPABILITY) is True)
+        and (not lien_thong(proc) or lien_thong_supported(caps, proc))
         # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
-        and (not bxd(proc) or caps.get(BXD_CAPABILITY) is True)
+        and (not bxd(proc) or bxd_supported(caps, proc))
         # Ô eForm / khối ủy quyền của cổng Bắc Ninh chỉ bộ đọc content/bacninh/field-review.js đọc được.
         and (not bac_ninh(proc) or caps.get(BAC_NINH_CAPABILITY) is True)
         # Tờ khai có khối lồng (khối mẹ / cha nuôi): bản đọc eForm cũ tách khối như khối địa chỉ → hỏi sai ô.

@@ -10,8 +10,7 @@ mở đầu bằng dòng Đơn Mẫu số 24:
    19–24 (4) tranh chấp, bản án, trọng tài    · 25–30 (5) xử lý tài sản thế chấp
 Đơn/GCN/Bản vẽ/Trích đo/Đại diện lặp y hệt ở cả 5 nhóm → khoanh nhóm theo dòng Đơn, dò từ khoá trong nhóm (không khớp
 thì lấy theo vị trí trong nhóm của catalog cũ) và gửi componentIndex để FE chọn đúng dòng. Giấy tờ không có dòng trong
-nhóm (cổng cũ xuống "Giấy tờ khác") → dòng Đơn của nhóm, giữ tên + cảnh báo. CCCD không phải thành phần hồ sơ → bỏ
-qua như cổng cũ.
+nhóm (cổng cũ xuống "Giấy tờ khác") và CCCD → dòng Đơn của nhóm, giữ tên + cảnh báo; không bỏ tệp nào.
 
 Engine FE "attp-row" + untickUnplannedRows dùng chung với cho_thue_dat_thue_rung_igate_lao_cai.
 """
@@ -123,22 +122,20 @@ def build_plan_items(
     don = _row_in_group("don_dang_ky", group, rows) or rows[0]
     attachments: list[dict] = []
     classified: list[dict] = []
-    skipped: list[str] = []
     ngoai: list[str] = []
     bytes_per_row: dict[int, int] = {}
     for entry in entries:
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
-        if entry["label"] in catalog.SKIPPED_LABELS:
-            skipped.append(f"{entry['fileName']} ({entry['documentName']})")
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
-            continue
+        # CCCD không có dòng trong catalog nên cũng về dòng Đơn của nhóm.
         row = _row_in_group(entry["label"], group, rows)
-        if row is None:
+        routed = row is None
+        if routed:
             row = don
             ngoai.append(f"{entry['fileName']} → \"{entry['documentName']}\"")
         bytes_per_row[row[0]] = bytes_per_row.get(row[0], 0) + entry["bytes"]
         attachments.append(_igate._item(entry["idx"], entry["fileName"], entry["documentName"], row, entry["label"]))
-        classified.append({**base, "target": "attp-row", "componentIndex": row[0]})
+        classified.append({**base, "target": "attp-row", "componentIndex": row[0],
+                           **({"routedTo": "don_dang_ky"} if routed else {})})
 
     if attachments:
         warnings.append(
@@ -147,11 +144,9 @@ def build_plan_items(
                "kiểm tra lại nhóm).")
             + " Trợ lý chỉ tích các dòng có tệp."
         )
-    if skipped:
-        warnings.append(f"CCCD không phải thành phần hồ sơ của thủ tục này — đã bỏ qua: {', '.join(skipped)}.")
     if ngoai:
         warnings.append(
-            "Giấy tờ không có dòng trong nhóm này đã tạm đính vào dòng \"Đơn Mẫu số 24\" (vẫn là tệp riêng, giữ tên) "
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã tạm đính vào dòng \"Đơn Mẫu số 24\" (vẫn là tệp riêng, giữ tên) "
             "vì cổng mới không có dòng \"giấy tờ khác\" — nếu cần tách riêng, cán bộ dùng nút \"Thêm giấy tờ\" của "
             f"cổng: {', '.join(ngoai)}."
         )

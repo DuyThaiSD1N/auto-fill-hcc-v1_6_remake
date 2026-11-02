@@ -118,6 +118,23 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký mua/thuê/thuê mua nhà ở xã hội 1.014632); ghép từ
     # "cho-thue-thue-mua-nha-o-xa-hoi" đã có trong file, thêm "yuav" (mua) đứng trước.
     "dang-ky-nha-o-xa-hoi-bac-ninh": "Cuv npe yuav / xauj tsev nyob pab pej xeem (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát — 14 thẻ Quảng Ninh (01/11): ghép y như thẻ Bắc Ninh cùng loại. TỪ MỚI: "ntsuas av"
+    # (đo đạc đất), "tsev" + "saum" (nhà trên đất), "tus tswv" (chủ), "suav nyiaj" (tính tiền), "ploj" (mất),
+    # "tsis tas thov" (không phải xin).
+    "dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao": "Cuv npe av, muab daim ntawv av thawj zaug (Quảng Ninh)",
+    "dang-ky-bien-dong-chuyen-nhuong-quang-ninh-mien-nui-hai-dao": "Cuv npe hloov daim av, muag daim av (Quảng Ninh)",
+    "chuyen-muc-dich-su-dung-dat-quang-ninh-mien-nui-hai-dao": "Hloov daim av (Quảng Ninh)",
+    "cap-doi-gcn-quang-ninh-mien-nui-hai-dao": "Pauv daim ntawv av tshiab (Quảng Ninh)",
+    "cap-doi-gcn-do-do-dac-khong-nvtc-quang-ninh-mien-nui-hai-dao": "Pauv daim ntawv av tshiab vim ntsuas av (Quảng Ninh)",
+    "tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao": "Faib los yog muab daim av ua ke (Quảng Ninh)",
+    "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": "Cuv npe tsev saum daim av (Quảng Ninh)",
+    "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": "Cuv npe hloov npe tus tswv daim av (Quảng Ninh)",
+    "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": "Cuv npe av, muab daim ntawv av (Quảng Ninh)",
+    "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh": "Suav nyiaj siv av dua tshiab (Quảng Ninh)",
+    "cap-lai-gcn-do-bi-mat-quang-ninh": "Muab daim ntawv av dua tshiab vim ploj (Quảng Ninh)",
+    "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh": "Cuv npe hloov daim av, tsis tas thov (Quảng Ninh)",
+    "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": "Rho npe siv daim av ua puav pheej (Quảng Ninh)",
+    "dang-ky-bien-phap-bao-dam-quang-ninh": "Cuv npe siv daim av ua puav pheej (Quảng Ninh)",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
     # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
     "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",
@@ -225,6 +242,39 @@ PROCEDURE_HMONG = {
     "gia-han-luu-hanh-phuong-tien-lao": "Ntxiv sij hawm rau tsheb Nplog nyob Nyab Laj",
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan":
         "Cuv npe nkoj dua tshiab thaum muag rau tus tswv tshiab",
+    # BẢN NHÁP chờ anh Dư soát — 19 thẻ đợt 01/11. Ghép từ chữ đã có trong file: "ntxiv sij hawm" (gia hạn),
+    # "ntawv tso cai" (giấy phép), "ntawv tso cai ua haujlwm kho tsiaj" (CCHN thú y), "rho npe" (xóa đăng ký),
+    # "nkoj nuv ntses" (tàu cá), "muab … dua tshiab" (cấp lại), "chaw ua zaub mov huv si" (cơ sở ATTP), "kho, ntxiv"
+    # (sửa đổi, bổ sung), "txo" (giảm), "tshaj tawm" (công bố), "txuas" (nối/lắp), "faib los yog muab … ua ke"
+    # (chia/hợp), "kev cai" (quy định), "lees paub" (xác nhận), "tsev nyob", "cuv npe nyob", "daim npav" (thẻ),
+    # "tsheb thauj" (xe chở), "lag luam", "kawm", "tsis yog", "hauv teb chaws", "xaiv", "tsev loj", "npaj".
+    # TỪ MỚI cần soát kỹ: "kev tshaj tawm khoom muag" (quảng cáo), "luam ntawv" (xuất bản), "neeg coj kev mus ncig"
+    # (hướng dẫn viên du lịch), "nqi" (giá), "hluav taws xob hnub ci" (điện mặt trời), "ru tsev" (mái nhà),
+    # "neeg ua haujlwm pej xeem" (viên chức), "neeg ua haujlwm tsoom fwv" (công chức), "xeem" (thi), "koom haum"
+    # (hội), "qhia" (báo cáo), "kev sib tham loj" (đại hội), "qhov tshwm sim" (kết quả), "kuaj xyuas" (thẩm định),
+    # "tsav" (lái), "qhov loj" (diện tích), "mus ib txhis" (lâu dài = thường trú).
+    "thong-bao-san-pham-quang-cao-bang-ron": "Tshaj tawm kev tshaj tawm khoom muag",
+    "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": "Ntawv tso cai luam ntawv tsis yog lag luam",
+    "cap-the-huong-dan-vien-du-lich-noi-dia": "Daim npav neeg coj kev mus ncig (hauv teb chaws)",
+    "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
+    "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": "Kho, ntxiv kev txo nqi khoom muag",
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": "Tshaj tawm txuas hluav taws xob hnub ci saum ru tsev",
+    "xet-tuyen-vien-chuc": "Xaiv neeg ua haujlwm pej xeem",
+    "xet-tuyen-cong-chuc": "Xaiv neeg ua haujlwm tsoom fwv",
+    "thi-tuyen-cong-chuc": "Xeem xaiv neeg ua haujlwm tsoom fwv",
+    "gia-han-chung-chi-hanh-nghe-thu-y": "Ntxiv sij hawm rau ntawv tso cai ua haujlwm kho tsiaj",
+    "xoa-dang-ky-tau-ca": "Rho npe nkoj nuv ntses",
+    "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": "Faib los yog muab koom haum ua ke",
+    "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": "Qhia txog kev sib tham loj ntawm koom haum",
+    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh":
+        "Tshaj tawm qhov tshwm sim kev sib tham loj thiab lees paub kev cai ntawm koom haum",
+    "tham-dinh-bcnckt": "Kuaj xyuas daim ntawv npaj ua tsev loj",
+    "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai":
+        "Ntxiv los yog muab ntawv tso cai tsheb kawm tsav dua tshiab",
+    "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": "Daim npav tsheb thauj lag luam (muab tshiab / muab dua)",
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru":
+        "Lees paub qhov loj ntawm tsev nyob kom cuv npe nyob mus ib txhis",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).
@@ -602,6 +652,28 @@ AGENCY_CARD_MANUAL_GUIDE = {
 AGENCY_CARD_MISSING = {
     "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
     "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
+}
+
+# BẢN NHÁP chờ anh Dư soát — chặng cổng tỉnh (Quảng Ninh), ghép từ câu đã có (nkag VNeID, xaiv tsis tau, nias kiag).
+PROVINCE_PORTAL_LOGIN = {
+    "md": "Cổng dịch vụ công {province} kom nkag dua. Pej xeem nias Đăng nhập bằng VNeID ces luam QR kom nkag. "
+          "Tiav lawm kuv pab ntxiv.",
+    "tts": "Pej xeem nias Đăng nhập bằng VNeID ces luam QR kom nkag. Tiav lawm kuv pab ntxiv.",
+}
+
+PROVINCE_ROW_MANUAL = {
+    "md": "Pej xeem nias Nộp hồ sơ ntawm {row}.",
+    "tts": "Pej xeem nias Nộp hồ sơ kiag.",
+}
+
+PROVINCE_ROW_FAILED = {
+    "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp hồ sơ ntawm {row}.",
+    "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp hồ sơ kiag.",
+}
+
+PROVINCE_INFO_MANUAL = {
+    "md": "Pej xeem xaiv {agency} ces nias Xác nhận.",
+    "tts": "Pej xeem xaiv kiag ces nias Xác nhận.",
 }
 
 GUIDE_LOGIN_NO_URL = {
@@ -1257,6 +1329,11 @@ RATE_INVITE = {
            "zoo li cas? Nias ib qho xwb, tsis yuam."),
     "tts": ("Pej xeem xa tau ntaub ntawv lawm. Ua ntej tas, pej xeem qhia kuv hnub no kuv pab "
             "zoo li cas? Nias ib qho xwb, tsis yuam."),
+}
+
+SPLIT_SUBMIT_WAITING = {
+    "md": "Pej xeem xa tau {done}/{total} phau lawm. Pej xeem xyuas cov tab tshuav ces xa ntaub ntawv.",
+    "tts": "Pej xeem xyuas cov tab tshuav ces xa ntaub ntawv.",
 }
 
 REFILL_ALREADY_RUNNING = {

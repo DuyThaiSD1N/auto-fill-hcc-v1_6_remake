@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.channels.handfree.chat import bac_ninh, field_review, flow, pipeline_runner, store, tracing
+from app.channels.handfree.chat import bac_ninh, consent, field_review, flow, pipeline_runner, store, tracing
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import Intent
 from app.pipelines.dang_ky_bien_phap_bao_dam_bac_ninh.process import mapper
@@ -578,14 +578,21 @@ ELDER = "ho-tro-nguoi-cao-tuoi-bac-ninh"
 async def test_nguoi_cao_tuoi_hoi_dien_khoi_nguoi_cao_tuoi_roi_sang_thang_thanh_phan(_no_io):
     conv = _conv("guide_login", procedure_key=ELDER, consent={})
     r = await _arrive_page(conv)
-    assert "thông tin người cao tuổi" in r.display_md
-    assert [c["label"] for c in r.chips] == ["✍️ Điền thông tin người cao tuổi",
+    assert "thông tin người ủy quyền" in r.display_md
+    assert [c["label"] for c in r.chips] == ["✍️ Điền thông tin người ủy quyền",
                                             "➡️ Không điền, sang Tải thành phần hồ sơ"]
-    await _turn(conv, "action", "bn_authorized", {"value": True})
+    r = await _turn(conv, "action", "bn_authorized", {"value": True})
     assert conv["bac_ninh"]["phase"] == "authorized"
+    # Lượt này đọc giấy tờ để điền khối ủy quyền: xin phép bằng thẻ đọc và tự động điền, không phải thẻ chỉ đính kèm.
+    assert "Thành phần hồ sơ" not in r.display_md and "Đồng ý và tự động điền" in r.display_md
+    assert r.cards[0]["accept_label"] == vi.CONSENT_CARD_TEXT["accept_label"]
+    entry = consent.build_entry(conv, flow.get_procedure(ELDER), True)
+    assert entry["notice"]["accept_label"] == vi.CONSENT_CARD_TEXT["accept_label"]
     proc = flow.get_procedure(ELDER)
     # Chốt giấy tờ: chạy lượt điền khối người cao tuổi trước, chưa đính kèm.
     assert bac_ninh.docs_target(conv, proc, "attachment") == "declaration"
+    conv["docs_target"] = "attachment"
+    assert flow._docs_done_label_for_conv(conv) == "✅ Đã đưa đủ giấy tờ, điền thông tin và đính kèm đi"
     assert pipeline_runner._bac_ninh_authorized_block(proc, conv)["subjectOption"] == "Người cao tuổi"
     conv.update(state="filling", fields=[{"name": "loaiDoiTuongKhac", "comp": "bn-doi-tuong-khac",
                                           "value": "Người cao tuổi"},
@@ -599,12 +606,32 @@ async def test_nguoi_cao_tuoi_hoi_dien_khoi_nguoi_cao_tuoi_roi_sang_thang_thanh_
     assert conv["state"] == "attaching" and r.display_md == vi.BN_ATTACHING["md"]
 
 
+async def test_nguoi_cao_tuoi_chon_dien_bam_da_dua_du_thi_dien_khoi_uy_quyen_truoc(monkeypatch):
+    # Trang Bắc Ninh 2 tab cùng DOM: bảng đính kèm luôn có (attachmentTarget) dù công dân còn ở tab đầu.
+    monkeypatch.setattr(flow.upload_service, "complete_session", AsyncMock())
+    monkeypatch.setattr(flow.upload_service, "progress_of",
+                        AsyncMock(return_value={"received": 1, "total": 1, "files_count": 1}))
+    conv = _conv("guide_login", procedure_key=ELDER, consent={})
+    await _arrive_page(conv)
+    await _turn(conv, "action", "bn_authorized", {"value": True})
+    page = {"pageContextCaptured": True, "formKind": "bacninh", "attachmentTarget": True, "bnTab": 1}
+    await _turn(conv, "event", "page_status", page)
+    assert flow._docs_done_label_for_conv(conv) == "✅ Đã đưa đủ giấy tờ, điền thông tin và đính kèm đi"
+    conv.update(state="collecting_docs", doc_method="scan")
+    await flow.handle_turn(conv, Intent("action", "docs_done", page), page)
+    assert conv["docs_target"] == "declaration" and conv["pipeline_status"] == "running"
+    assert conv["state"] == "filling"
+
+
 async def test_nguoi_cao_tuoi_khong_dien_thi_dinh_kem_luon():
     conv = _conv("guide_login", procedure_key=ELDER, consent={})
     await _arrive_page(conv)
     r = await _turn(conv, "action", "bn_authorized", {"value": False})
     assert conv["bac_ninh"]["phase"] == "attach" and "bn_tab" not in _types(r)
+    assert r.cards[0]["accept_label"] == vi.CONSENT_ATTACH_CARD_TEXT["accept_label"]
     assert bac_ninh.docs_target(conv, flow.get_procedure(ELDER), "attachment") == "attachment"
+    conv["docs_target"] = "attachment"
+    assert flow._docs_done_label_for_conv(conv) == "✅ Đã đưa đủ giấy tờ, đính kèm đi"
 
 
 
@@ -635,3 +662,32 @@ async def test_nguoi_cao_tuoi_trang_2_tab_dinh_xong_quay_lai_chon_buu_chinh_roi_
     # Đi tiếp ở bước này = nộp hồ sơ.
     r = await _turn(conv, "action", "bn_next")
     assert r.actions == [{"type": "bn_submit"}]
+
+
+async def test_luot_uy_quyen_chay_sau_luot_don_thanh_request_rieng_tren_monitor(monkeypatch, _no_io):
+    conv = _conv("filling")
+    order, finished = [], []
+
+    async def pipeline(files_by_role, options):
+        order.append(options.get("purpose") or "registration_form")
+        if options.get("purpose") == "authorized_person":
+            return {"fields": [{"name": "doiTuongKhachoTen", "comp": "bn-input", "value": "A"}]}
+        return {"fields": [{"name": "element_47783", "comp": "bn-input", "value": "B"}]}
+
+    monkeypatch.setattr(pipeline_runner, "get_pipeline", lambda key: pipeline)
+    monkeypatch.setattr(pipeline_runner, "_bac_ninh_authorized_block", lambda proc, c: {"subjectOption": "Cá nhân"})
+    monkeypatch.setattr(pipeline_runner.up_store, "get", AsyncMock(return_value={"files": [{"fid": "f1"}]}))
+    monkeypatch.setattr(pipeline_runner, "_session_files", lambda sess: [{"name": "a.pdf"}])
+    monkeypatch.setattr(pipeline_runner.conv_store, "get", AsyncMock(return_value=conv))
+    monkeypatch.setattr(pipeline_runner.conv_store, "save", AsyncMock())
+    monkeypatch.setattr(pipeline_runner, "broadcast", AsyncMock())
+    monkeypatch.setattr(tracing, "record_process", AsyncMock(return_value="t-don"))
+    monkeypatch.setattr(pipeline_runner, "_load_owner_user", AsyncMock(return_value=None))
+    monkeypatch.setattr(pipeline_runner, "_finish_recorder",
+                        lambda rec, rid: finished.append((rec.meta.get("purpose"), rid)))
+    await pipeline_runner.run_process.__wrapped__(conv["_id"], "s1", KEY)
+
+    assert order == ["registration_form", "authorized_person"]
+    assert [f["name"] for f in conv["fields"]] == ["element_47783", "loaiDoiTuongKhac", "doiTuongKhachoTen"]
+    assert finished[0][0] == "authorized_person" and finished[0][1] != "t-don"
+    assert finished[1] == ("registration_form", "t-don")

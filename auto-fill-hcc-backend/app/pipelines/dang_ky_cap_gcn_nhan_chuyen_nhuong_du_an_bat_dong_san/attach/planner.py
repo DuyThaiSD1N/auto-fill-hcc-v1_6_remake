@@ -14,9 +14,9 @@ Bảng 11 dòng (theo ảnh ánh xạ đính kèm của thủ tục):
   [9] = dòng 1 "(nếu có)" → để trống.   [10] không có tên trên cổng → để trống, không suy đoán.
   [11] = dòng 7 "(nếu có)" → đính LẠI cùng tệp dòng 7 (khi dòng 7 có chứng từ tài chính).
 
-Ô upload mỗi dòng chỉ nhận MỘT tệp → mọi trang của một dòng (kể cả từ nhiều file) ghép thành MỘT PDF qua
-`sourceSegments` (FE applyMergeGroups/composeSegmentsToPdf; pageIndexes=None = nguyên file). Dòng chỉ gồm
-nguyên một file → đính file gốc, không tách.
+Ô upload mỗi dòng là `multiple` (snapshot cổng) → MỖI GIẤY một file riêng trên dòng, không ghép các giấy/file
+khác nhau. Giấy chiếm một phần file → `sourceSegments` đúng 1 đoạn (FE cắt trang); giấy phủ trọn file → đính
+nguyên file gốc. Trang trắng và trang LLM bỏ sót đi liền với giấy đứng cạnh nó trong cùng đoạn.
 
 FE gom item theo componentName (không theo index) → dòng trùng tên (4/8, 7/11) PHẢI có componentName khác
 nhau. Dòng 10 không tên bị FE loại khỏi danh sách dòng nên index của dòng 11 lệch → componentName dòng 11 phải
@@ -316,10 +316,25 @@ def _unique_name(base: str, used: set[str], fallback: str) -> str:
 
 def _group_name(row: int, group: list[dict]) -> str:
     content = [s for s in group if s["type"] != _BLANK]
-    if len(content) == 1:
+    if content:
         seg = content[0]
         return seg.get("documentName") or _TYPE_NAMES.get(seg["type"], _ROWS[row]["documentName"])
     return _ROWS[row]["documentName"]
+
+
+def _continues(group: list[dict], row: int, group_row: int, seg: dict) -> bool:
+    """Đoạn `seg` có thuộc cùng MỘT giấy với nhóm đang dựng không: cùng file, trang liền, cùng dòng, và là trang
+    trắng / trang LLM bỏ sót đã nhận loại giấy trước / cùng loại giấy (trừ nhân thân, chưa rõ loại: hai đoạn
+    liền nhau có thể là hai giấy khác nhau)."""
+    last = group[-1]
+    if row != group_row or seg["fileIndex"] != last["fileIndex"] or seg["pageFrom"] != last["pageTo"] + 1:
+        return False
+    content = [s["type"] for s in group if s["type"] != _BLANK]
+    if seg["type"] == _BLANK or not content:
+        return True
+    if seg["type"] != content[0]:
+        return False
+    return bool(seg.get("fallback")) or seg["type"] not in (_NHAN_THAN, _OTHER)
 
 
 def build_attachments(
@@ -329,7 +344,7 @@ def build_attachments(
     page_text_by_file: dict[int, dict[int, str]],
     full_text_by_file: dict[int, str],
 ) -> tuple[list[dict], list[dict], list[str]]:
-    """Gom đoạn đã kiểm tra thành kế hoạch attp-row (mỗi dòng MỘT tệp). Trả (attachments, classified, errors)."""
+    """Đoạn đã kiểm tra → kế hoạch attp-row (mỗi giấy một tệp). Trả (attachments, classified, errors)."""
     resolved: dict[int, list[dict]] = {}
     prev_type: dict[int, str] = {}
     for segment in segments:
@@ -342,12 +357,17 @@ def build_attachments(
             prev_type[file_index] = doc_type
         resolved.setdefault(file_index, []).append({**segment, "type": doc_type})
 
-    by_row: dict[int, list[dict]] = {}
+    by_row: dict[int, list[list[dict]]] = {}
     classified: list[dict] = []
     for file_index in sorted(resolved):
         file_segments = resolved[file_index]
+        group_row = None
         for seg, row in zip(file_segments, _rows_for_file(file_segments)):
-            by_row.setdefault(row, []).append(seg)
+            if group_row is not None and _continues(by_row[group_row][-1], row, group_row, seg):
+                by_row[group_row][-1].append(seg)
+            else:
+                by_row.setdefault(row, []).append([seg])
+                group_row = row
             classified.append({
                 "fileIndex": file_index, "fileName": raw_files[file_index].get("name"),
                 "pageFrom": seg["pageFrom"], "pageTo": seg["pageTo"], "type": seg["type"],
@@ -358,42 +378,40 @@ def build_attachments(
     attachments: list[dict] = []
     used_names: set[str] = set()
     for row in sorted(by_row):
-        group = by_row[row]
         spec = _ROWS[row]
-        pages_by_file: dict[int, set[int]] = {}
-        for seg in group:
-            pages_by_file.setdefault(seg["fileIndex"], set()).update(range(seg["pageFrom"], seg["pageTo"] + 1))
-        sources = []
-        for file_index in sorted(pages_by_file):
-            pages = sorted(pages_by_file[file_index])
-            full = pages == list(range(1, file_meta[file_index]["pageCount"] + 1))
-            sources.append({"fileIndex": file_index, "pageIndexes": None if full else [p - 1 for p in pages]})
-        first = sources[0]["fileIndex"]
-        item = {
-            "fileIndex": first,
-            "fileName": str(raw_files[first].get("name") or f"file-{first + 1}"),
-            "documentName": _unique_name(_group_name(row, group), used_names, spec["documentName"]),
-            "componentName": spec["componentName"],
-            "componentIndex": spec["componentIndex"],
-            "loaiBan": spec["loaiBan"],
-            "target": "attp-row",
-            "needsAddComponent": False,
-            "detectedType": next((s["type"] for s in group if s["type"] != _BLANK), group[0]["type"]),
-        }
-        # Nhiều file hoặc một phần file → FE ghép thành MỘT PDF (ô chỉ nhận một tệp).
-        if len(sources) > 1 or sources[0]["pageIndexes"] is not None:
-            item["sourceSegments"] = sources
-        attachments.append(item)
+        row_items: list[dict] = []
+        for group in by_row[row]:
+            file_index = group[0]["fileIndex"]
+            page_from, page_to = group[0]["pageFrom"], group[-1]["pageTo"]
+            item = {
+                "fileIndex": file_index,
+                "fileName": str(raw_files[file_index].get("name") or f"file-{file_index + 1}"),
+                # Tên khác nhau từng file: FE coi tệp trùng tên đã có trên dòng là đã đính.
+                "documentName": _unique_name(_group_name(row, group), used_names, spec["documentName"]),
+                "componentName": spec["componentName"],
+                "componentIndex": spec["componentIndex"],
+                "loaiBan": spec["loaiBan"],
+                "target": "attp-row",
+                "needsAddComponent": False,
+                "detectedType": next((s["type"] for s in group if s["type"] != _BLANK), group[0]["type"]),
+            }
+            # Giấy chỉ là một phần file → FE cắt đúng các trang của giấy này.
+            if page_from != 1 or page_to != file_meta[file_index]["pageCount"]:
+                item["sourceSegments"] = [{"fileIndex": file_index,
+                                           "pageIndexes": list(range(page_from - 1, page_to))}]
+            row_items.append(item)
+        attachments.extend(row_items)
 
         dup_row = _DUPLICATES.get(row)
-        if dup_row and (row != _ROW_CHUNG or any(s["type"] == _TAI_CHINH for s in group)):
+        segs = [s for group in by_row[row] for s in group]
+        if dup_row and (row != _ROW_CHUNG or any(s["type"] == _TAI_CHINH for s in segs)):
             dup_spec = _ROWS[dup_row]
-            attachments.append({
+            attachments.extend({
                 **item,
                 "componentName": dup_spec["componentName"],
                 "componentIndex": dup_spec["componentIndex"],
                 "loaiBan": dup_spec["loaiBan"],
-            })
+            } for item in row_items)
 
     errors: list[str] = []
     all_types = {c["type"] for c in classified}

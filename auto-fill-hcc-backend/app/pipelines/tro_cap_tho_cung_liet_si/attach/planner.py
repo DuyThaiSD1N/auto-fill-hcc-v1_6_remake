@@ -10,7 +10,8 @@ Bước "Thành phần hồ sơ" có 3 ô cố định + "Thêm giấy tờ":
 Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments``, cách làm như thủ tục NCC từ trần cùng cổng): LLM
 xếp loại TỪNG TRANG; mỗi giấy trong PDF gộp thành một tệp riêng chỉ gồm đúng các trang của nó (``sourceSegments``,
 extension cắt PDF, tên tệp = documentName), bỏ trang trắng. Văn bản ủy quyền / Đơn / Bằng vào đúng ô của mình, giấy
-còn lại vào ô Đơn như chế độ thường. Chia trang lỗi / số trang OCR lệch PDF → tệp đó đính nguyên.
+còn lại vào ô Đơn như chế độ thường. Chia trang lỗi / số trang OCR lệch PDF / mọi trang đều trắng → tệp đó đính
+nguyên.
 """
 
 import re
@@ -263,7 +264,12 @@ def _split_file_items(file: dict, idx: int, pages: list[str], types: list[str]) 
     entry = {"fileName": file_name, "docType": ",".join(order) or _OTHER, "source": "llm-pages",
              "tachGiayTo": _page_runs(types, pages)}
     warning = ""
-    if not items or _OTHER in by_type:
+    if not items:
+        # Mọi trang đều trắng (OCR < _MIN_PAGE_CHARS) → đính NGUYÊN tệp vào ô Đơn, không cắt trang.
+        items.append(_build_extra_item(file, idx, _OTHER))
+        entry["routedTo"] = items[0]["slotKey"]
+        warning = f"File '{file_name}' không đọc được chữ ở trang nào — đã đính nguyên tệp vào dòng Đơn, cán bộ kiểm lại."
+    elif _OTHER in by_type:
         warning = f"Chưa xác định được loại giấy tờ của một số trang trong file '{file_name}' — đã đính vào dòng Đơn, cán bộ kiểm lại."
     return items, warning, entry
 

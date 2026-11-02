@@ -1,9 +1,10 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội
 (cấp tỉnh)" (1.012943, cổng DVCQG — Angular mat-table, engine FE `attp-row`).
 
-ENGINE TÁCH/GỘP (như bao_cao_to_chuc_dai_hoi_hoi_cap_tinh): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG TRANG
-+ loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn cùng dòng thành MỘT file gộp (`sourceSegments`, theo thứ
-tự trang trong hồ sơ). Đều "Bản chính".
+ENGINE TÁCH ĐOẠN (như bao_cao_to_chuc_dai_hoi_hoi_cap_tinh): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG
+TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI ĐOẠN (một giấy liền trang trong một tệp) là một item riêng của
+dòng (dòng attp-row nhận nhiều tệp, theo thứ tự trang trong hồ sơ); đoạn chỉ là một phần tệp thì gửi `sourceSegments`
+để FE cắt trang. Đều "Bản chính".
 
 Bảng 7 dòng:
   1 văn bản báo cáo kết quả đại hội (Tờ trình) + Danh sách BCH "kèm theo tờ trình"
@@ -15,7 +16,8 @@ Bảng 7 dòng:
     cáo kinh phí, phụ lục thi đua
   7 Sơ yếu lý lịch + Phiếu LLTP số 1 của Chủ tịch (chỉ khi Chủ tịch không phải nhân sự dự kiến đã báo cáo)
 Dòng 2, 4, 7 là dòng điều kiện — hồ sơ không có giấy tờ thì gửi `untickRows` để FE bỏ tick (cổng tick sẵn dòng 7).
-CCCD không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+CCCD và đoạn chưa rõ loại không có dòng riêng → mỗi đoạn một item riêng ở dòng 1 (văn bản báo cáo kết quả đại hội),
+giữ tên LLM đặt hoặc tên tệp gốc + cảnh báo; không bỏ đoạn nào.
 """
 
 import re
@@ -256,51 +258,66 @@ def build_plan_items(
 
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    shared_pages: list[str] = []
+    shared_segments: list[tuple[dict, str]] = []
     by_row: dict[int, list[tuple[dict, str]]] = {}
+    main_row = 1
 
     for segment, doc_type in typed:
         file = raw_files[segment["fileIndex"]]
         base = {"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
-        if doc_type == _CCCD:
-            classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
         row_idx = _ROUTE.get(doc_type)
         if doc_type == _DANH_SACH and has_report and _attached_to_report(_segment_text(segment, pages_by_file)):
             row_idx = 1
         if row_idx is None:
-            skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-            classified.append({**base, "target": "skip"})
+            # CCCD / chưa rõ loại → item riêng ở dòng văn bản báo cáo.
+            shared_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
+            shared_segments.append((segment, doc_type))
+            classified.append({**base, "componentIndex": main_row, "routedTo": main_row})
             continue
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx})
 
     attachments: list[dict] = []
     used_names: set[str] = set()
-    for row_idx in sorted(by_row):
-        row = _ROWS[row_idx]
-        # Ghép theo đúng thứ tự trang trong hồ sơ (biên bản → danh sách kèm theo → biên bản họp BCH ...).
-        parts = sorted(by_row[row_idx], key=lambda p: (p[0]["fileIndex"], p[0]["pageFrom"]))
-        first_segment = parts[0][0]
-        base_name = (first_segment.get("documentName") if len(parts) == 1 else "") or row["documentName"]
-        document_name = _unique_name(base_name.replace("/", "-"), used_names, row["documentName"])
-        first_file = raw_files[first_segment["fileIndex"]]
-        attachments.append({
-            "fileIndex": first_segment["fileIndex"],
-            "fileName": str(first_file.get("name") or f"file-{first_segment['fileIndex'] + 1}"),
-            "documentName": document_name,
-            "componentName": row["componentName"],
-            "componentIndex": row_idx,
+
+    def segment_item(segment: dict, doc_type: str, base_name: str, fallback: str) -> dict:
+        """Một giấy = một file riêng (dòng attp-row nhận nhiều file); chỉ cắt trang khi giấy chiếm một phần file."""
+        page_count = file_meta[segment["fileIndex"]]["pageCount"]
+        source = _source_segment(segment, page_count)
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}"),
+            "documentName": _unique_name(base_name.replace("/", "-"), used_names, fallback),
             "loaiBan": "Bản chính",
             "target": "attp-row",
             "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            # Mỗi dòng = MỘT file gộp: FE trích đúng trang từng đoạn rồi ghép theo thứ tự này.
-            "sourceSegments": [
-                _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"]) for segment, _ in parts
-            ],
+            "detectedType": doc_type,
+            "includedTypes": [doc_type],
+        }
+        if source["pageIndexes"] is not None and source["pageIndexes"] != list(range(page_count)):
+            item["sourceSegments"] = [source]
+        return item
+
+    for row_idx in sorted(by_row):
+        row = _ROWS[row_idx]
+        # Item theo đúng thứ tự trang trong hồ sơ (biên bản → danh sách kèm theo → biên bản họp BCH ...).
+        parts = sorted(by_row[row_idx], key=lambda p: (p[0]["fileIndex"], p[0]["pageFrom"]))
+        for segment, doc_type in parts:
+            attachments.append({
+                **segment_item(segment, doc_type, segment.get("documentName") or row["documentName"],
+                               row["documentName"]),
+                "componentName": row["componentName"],
+                "componentIndex": row_idx,
+            })
+    main = _ROWS[main_row]
+    for segment, doc_type in shared_segments:
+        file_name = str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}")
+        attachments.append({
+            **segment_item(segment, doc_type, segment.get("documentName") or file_name, main["documentName"]),
+            "componentName": main["componentName"],
+            "componentIndex": main_row,
         })
 
     # Dòng điều kiện cổng có thể tick sẵn (dòng 7) mà hồ sơ không có → bỏ tick.
@@ -334,8 +351,9 @@ def build_plan_items(
     elif _SYLL in found and _LLTP not in found:
         warnings.append("Chưa có Phiếu lý lịch tư pháp số 1 của Chủ tịch hội (dòng 7) — cần bổ sung, trừ khi người đó "
                         "là cán bộ, công chức, viên chức (kể cả đã nghỉ hưu) được cơ quan có thẩm quyền đồng ý.")
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    if shared_pages:
+        warnings.append("Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+                        f"\"{main['componentName']}\" (dòng {main_row}): " + "; ".join(shared_pages))
     return attachments, classified, warnings
 
 

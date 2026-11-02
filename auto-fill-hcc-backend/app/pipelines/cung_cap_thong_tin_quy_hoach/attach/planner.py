@@ -1,13 +1,12 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Cung cấp thông tin quy hoạch đô thị và nông thôn".
 
-Cổng Bộ Xây dựng (Form.io/Angular apply-online) — CÙNG nền tảng đính kèm với các thủ tục Lâm Đồng:
-gộp NHIỀU file → 1 PDF (FE `applyMergeGroups` theo `sourceFileIndexes`), bơm file gộp vào TRIGGER
-'Chọn tệp tin' theo slotIndex (FE fallback vị trí, không cần sửa extension).
+Cổng Bộ Xây dựng (Form.io/Angular apply-online) — ô đính kèm là `input[type=file] multiple` (snapshot bước
+đính kèm). Engine fixed-slot theo slotIndex: MỖI file một item cùng slotKey → FE gom vào cùng input.
 
 Thủ tục này chỉ có 1 thành phần hồ sơ:
   slot 0  "Văn bản đề nghị cung cấp thông tin về quy hoạch đô thị và nông thôn"
           ← Đơn đề nghị + Giấy chứng nhận QSDĐ + CCCD (+ Giấy ủy quyền nếu nộp thay).
-Tất cả file gộp thành 1 PDF, sắp thứ tự: Đơn đề nghị → GCN → ủy quyền → CCCD.
+Thứ tự các tệp: Đơn đề nghị → GCN → ủy quyền → CCCD → khác.
 
 LLM phân loại chính (đặt documentName + xếp thứ tự); rule chỉ dự phòng khi LLM lỗi/không chắc.
 """
@@ -41,7 +40,7 @@ _COMP_MAIN = "Văn bản đề nghị cung cấp thông tin về quy hoạch đ�
 _SLOT_INDEX = 0
 _SLOT_KEY = "g_request"
 
-# thứ tự ưu tiên khi gộp (số nhỏ lên trước): Đơn đề nghị → GCN → ủy quyền → CCCD → khác.
+# thứ tự các tệp trên ô (số nhỏ lên trước): Đơn đề nghị → GCN → ủy quyền → CCCD → khác.
 _TYPE_PRIORITY = {
     _T_REQUEST: 10, _T_LAND_CERT: 20, _T_AUTHORIZATION: 25, _T_IDENTITY: 30, _T_OTHER: 90,
 }
@@ -166,36 +165,36 @@ def build_plan_items(
             "source": "llm" if llm_ok else ("rule" if rule_type else "default"),
         })
 
-    # 1 nhóm duy nhất — gộp mọi file theo thứ tự ưu tiên loại.
+    # 1 ô duy nhất — mỗi file một item, xếp theo thứ tự ưu tiên loại.
     entries = sorted(resolved, key=lambda e: (_TYPE_PRIORITY.get(e["docType"], 99), e["idx"]))
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # FE coi tệp trùng tên đã có trên ô là đã đính → mỗi item một tên.
+    used_names: set[str] = set()
 
     if entries:
-        source_indexes = [e["idx"] for e in entries]
-        head = entries[0]
-        document_name = (
-            _label_for_type(head["docType"], head.get("title", "")) if len(entries) == 1
-            else "Văn bản đề nghị cung cấp thông tin quy hoạch (kèm giấy tờ liên quan)"
-        )
-        attachments.append({
-            "fileIndex": source_indexes[0],
-            "sourceFileIndexes": source_indexes,   # FE gộp các file này thành 1 PDF theo thứ tự
-            "fileName": str(files[source_indexes[0]].get("name") or f"file-{source_indexes[0] + 1}"),
-            "documentName": document_name,
-            "componentName": _COMP_MAIN,
-            "target": "fixed-slot",
-            "needsAddComponent": False,
-            "detectedType": document_name,
-            "slotKey": _SLOT_KEY,
-            "slotIndex": _SLOT_INDEX,
-            "slotName": _COMP_MAIN,
-        })
         for e in entries:
+            label = _label_for_type(e["docType"], e.get("title", ""))
+            document_name, n = label, 2
+            while document_name in used_names:
+                document_name, n = f"{label[:46]} {n}", n + 1
+            used_names.add(document_name)
+            attachments.append({
+                "fileIndex": e["idx"],
+                "fileName": e["fileName"],
+                "documentName": document_name,
+                "componentName": _COMP_MAIN,
+                "target": "fixed-slot",
+                "needsAddComponent": False,
+                "detectedType": e["docType"],
+                "slotKey": _SLOT_KEY,
+                "slotIndex": _SLOT_INDEX,
+                "slotName": _COMP_MAIN,
+            })
             classified.append({
                 "fileName": e["fileName"], "docType": e["docType"],
-                "documentName": _label_for_type(e["docType"], e.get("title", "")),
+                "documentName": document_name,
                 "group": _SLOT_KEY, "slotIndex": _SLOT_INDEX, "source": e["source"],
             })
     else:

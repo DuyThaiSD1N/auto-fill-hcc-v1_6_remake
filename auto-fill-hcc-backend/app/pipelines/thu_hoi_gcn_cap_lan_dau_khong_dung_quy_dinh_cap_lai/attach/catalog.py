@@ -63,7 +63,7 @@ LABELS: list[tuple[str, str, str]] = [
      "Giấy tờ khác (quyết định giao đất, biên lai, tờ khai thuế, trích lục bản đồ…) hoặc không xác định được loại"),
 ]
 
-# CCCD không phải thành phần hồ sơ của thủ tục → không đính kèm.
+# CCCD không có dòng riêng trong bảng → planner đính vào dòng hứng chung, không bỏ tệp.
 SKIPPED_LABELS = {"cccd"}
 
 _DISPLAY = {label: name for label, name, _ in LABELS}

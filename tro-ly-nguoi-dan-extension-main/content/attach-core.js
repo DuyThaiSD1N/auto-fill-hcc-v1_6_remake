@@ -87,6 +87,9 @@ function hasAttachmentTarget() {
   if (globalThis.location?.hostname === "dichvucong.dancuquocgia.gov.vn"
     && document.querySelector('[id^="tphs_new_"]')) return true;
   if (findCopyCertificationAttachmentRow()) return true;
+  // Mọi dòng đã có tệp thì cổng tư pháp không còn nút chọn tệp nào, nhưng vẫn là bảng thành phần hồ
+  // sơ: đính kèm lại phải tới được engine để bỏ qua tệp đã có, không im lặng.
+  if (findAttachmentRows().length) return true;
   // Xét MỌI nút chọn tệp, không chỉ nút đầu: nút đầu rơi vào dòng bị loại (bảng ủy quyền) không
   // có nghĩa trang không còn dòng đính kèm hợp lệ nào. Trả false ở đây là listener im lặng và
   // sidebar nhận "0 tệp" không lý do.
@@ -293,20 +296,31 @@ function hasAttachmentChooseControl(row) {
   );
 }
 
+// Cổng tư pháp thay hẳn nút "Chọn tệp đính kèm" bằng chip tên tệp khi dòng đã có tệp (không còn ô
+// chọn tệp nào). Dòng đó vẫn là dòng thành phần hồ sơ: bỏ nó thì đính kèm lại không nhận ra tệp đã
+// có, đếm dòng theo STT bị lệch, và khi mọi dòng đã đủ tệp thì trang bị coi là không có bảng đính kèm.
+// Chỉ nhận dòng dữ liệu (td) trong bảng có tiêu đề cột thành phần hồ sơ để không vơ bảng khác.
+function isFilledComponentTableRow(row, componentTables = new Map()) {
+  if (row?.cells?.[0]?.tagName !== "TD") return false;
+  const table = row.closest?.("table");
+  if (!table) return false;
+  if (!componentTables.has(table)) {
+    componentTables.set(table, textContainsAll(table, ["ten thanh phan ho so", "dinh kem tep tin"]));
+  }
+  return componentTables.get(table) && rowHasAttachedFile(row);
+}
+
 function findAttachmentCandidateRows() {
+  const componentTables = new Map();
   return Array.from(document.querySelectorAll("tr")).filter((row) => {
     if (isAddAttachmentRow(row)) return false;
     if (isAuthorizationAttachmentRow(row)) return false; // dòng giấy ủy quyền ở bước chủ hồ sơ
-    return hasAttachmentChooseControl(row);
+    return hasAttachmentChooseControl(row) || isFilledComponentTableRow(row, componentTables);
   });
 }
 
 function findAttachmentRows() {
-  return findAttachmentCandidateRows().filter((row) => {
-    const hasChooseButton = hasAttachmentChooseControl(row);
-    const hasKnownComponent = !!attachmentComponentName(row);
-    return hasChooseButton && hasKnownComponent;
-  });
+  return findAttachmentCandidateRows().filter((row) => !!attachmentComponentName(row));
 }
 
 function componentTextMatches(row, componentName) {
@@ -450,6 +464,9 @@ function dataUrlFilesForBatch(entries) {
   });
 }
 
+// File dựng ra → payload nguồn của nó (chống trùng khi đính kèm lại, xem rememberUploadedFiles).
+const ATTACH_FILE_SOURCE = new WeakMap();
+
 function dataUrlToFile(payload, documentName = "", nameOptions = {}) {
   const dataUrl = String(payload?.dataUrl || "");
   const comma = dataUrl.indexOf(",");
@@ -460,10 +477,12 @@ function dataUrlToFile(payload, documentName = "", nameOptions = {}) {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new File([bytes], safeAttachmentFileName(payload, documentName, nameOptions), {
+  const file = new File([bytes], safeAttachmentFileName(payload, documentName, nameOptions), {
     type: mime,
     lastModified: Date.now(),
   });
+  ATTACH_FILE_SOURCE.set(file, payload);
+  return file;
 }
 
 // normalize NFC: tên tệp tạo trên macOS ở dạng NFD (chữ + dấu tách rời) → dấu bị coi là ký tự lạ,
@@ -2079,19 +2098,40 @@ async function ensureOtherListFileRow(componentName) {
   return row;
 }
 
+function otherListFileAttachedName(row) {
+  const fileInput = otherListFileInput(row);
+  const textInput = fileInput?.closest?.(".input-group")?.querySelector?.('input[readonly="readonly"], input[readonly]');
+  const name = String(textInput?.value || "").trim() || fileInput?.files?.[0]?.name || "";
+  return name.split(/[\\/]/).pop();
+}
+
 async function attachOneFileToOtherListFile(payloadFile, planItem = {}) {
   const componentName = planItem.componentName || planItem.documentName || attachmentDocumentName(payloadFile);
+  const file = dataUrlToFile(payloadFile, planItem.documentName || componentName);
+  // Đính kèm lại: dòng đã mang tệp nguồn này (theo tên nó từng lên cổng), hoặc — chưa nhớ — dòng cùng tên giấy tờ
+  // mang trọn tên tệp → không thêm dòng mới (mỗi lượt sẽ đẻ thêm một bản).
+  const memory = readUploadedNames();
+  const remembered = !!(memory[attachSourceKey(file)] || []).length;
+  const existing = otherListFileRows().find((candidate) => {
+    const shown = attpDocFingerprint(otherListFileAttachedName(candidate));
+    if (!shown || shownIndexForFile([shown], file, memory) < 0) return false;
+    return remembered || attachmentKeyEquals(otherListFileNameInput(candidate)?.value, componentName);
+  });
+  if (existing) {
+    markAttachmentResult(existing, true);
+    return { ok: true, method: "other-listfile", attached: 0, fileNames: [], skippedNames: [file.name] };
+  }
   const row = await ensureOtherListFileRow(componentName);
   const input = otherListFileInput(row);
   if (!input) {
     return { error: `Không tìm thấy input file Giấy tờ khác cho "${componentName}".`, fileNames: [] };
   }
-  const file = dataUrlToFile(payloadFile, planItem.documentName || componentName);
   await chooseBootstrapFileOptionForInput(input);
   const ok = setFilesOnInput(input, [file], { assumeConsumed: true });
   await sleep(500);
   markAttachmentResult(row, ok);
   if (!ok) return { error: `Không gắn được file vào Giấy tờ khác "${componentName}".`, fileNames: [file.name] };
+  rememberUploadedFiles([file]);
   return { ok: true, method: "other-listfile", attached: 1, fileNames: [file.name] };
 }
 
@@ -2221,11 +2261,62 @@ async function closeOpenMenu() {
   await waitFor(() => openMenuPanels().length === 0, 1500);
 }
 
+// Tên tệp đặt theo phân loại LLM có thể khác giữa hai lượt đính kèm → chống trùng phải lần từ tệp NGUỒN (tên gốc + cỡ)
+// về tên nó đã lên cổng ở trang này, không so tên mới với dòng. Nhớ trong sessionStorage của tab (sống qua F5).
+const UPLOADED_NAMES_KEY = "hcc_attach_uploaded_names";
+
+function attachSourceKey(file) {
+  const payload = ATTACH_FILE_SOURCE.get(file);
+  if (!payload) return "";
+  // Theo host, không theo đường dẫn: cổng SPA đổi URL giữa các bước; tệp phải còn hiện trên dòng mới được bỏ qua.
+  return `${location.host}|${payload.name || ""}|${String(payload.dataUrl || "").length}`;
+}
+
+function readUploadedNames() {
+  try { return JSON.parse(sessionStorage.getItem(UPLOADED_NAMES_KEY) || "{}") || {}; } catch { return {}; }
+}
+
+function rememberUploadedFiles(files) {
+  const memory = readUploadedNames();
+  for (const file of files) {
+    const key = attachSourceKey(file);
+    if (key) memory[key] = [...new Set([...(memory[key] || []), file.name])].slice(-5);
+  }
+  const keys = Object.keys(memory);
+  for (const key of keys.slice(0, Math.max(0, keys.length - 200))) delete memory[key];
+  try { sessionStorage.setItem(UPLOADED_NAMES_KEY, JSON.stringify(memory)); } catch { /* bị chặn → chỉ mất chống trùng */ }
+}
+
+// Vị trí tệp đang hiện (fingerprint) mà tệp này đã chiếm, -1 nếu chưa có.
+//  - Đã nhớ tệp nguồn: so với các tên nó từng lên cổng; cổng cắt ngắn tên hiển thị ("…khuyết ....pdf") → nhận tiền tố.
+//  - Chưa nhớ: chỉ trùng TRỌN tên — nhiều tệp khác nhau có thể cùng nhãn, bỏ nhầm là sót tệp.
+function shownIndexForFile(shown, file, memory) {
+  const remembered = (memory[attachSourceKey(file)] || []).map(attpDocFingerprint);
+  if (remembered.length) {
+    return shown.findIndex((fp) => remembered.some((name) => name === fp || (fp.length >= 12 && name.startsWith(fp))));
+  }
+  const own = attpDocFingerprint(file.name);
+  return shown.findIndex((fp) => fp === own);
+}
+
+// Đính kèm lại: tệp đã nằm trên dòng thì không gắn nữa (cổng nhận thêm bản trùng chứ không thay).
+function filesNotOnRow(row, files) {
+  const shown = attpRowAttachedFingerprints(row);
+  const memory = readUploadedNames();
+  return files.filter((file) => {
+    const at = shownIndexForFile(shown, file, memory);
+    if (at < 0) return true;
+    shown.splice(at, 1); // mỗi tệp đang hiện chỉ đỡ cho MỘT tệp
+    return false;
+  });
+}
+
 // Đính kèm cho thủ tục có ô upload cố định: bơm thẳng file vào input ẩn của đúng hàng, không qua
 // modal "ví giấy tờ". Hỗ trợ 2 dạng: (1) input cạnh .btn_upload (vd mai táng); (2) bảng + menu
 // "Chọn tệp tin" (vd khai sinh liên thông). Gom nhiều file cùng 1 ô (input multiple) nếu có.
 async function attachFilesByFixedSlot(payloadFiles, attachments) {
   const attachedNames = [];
+  const skippedNames = [];
   const errors = [];
   const usedInputs = new Set();
   const usedTriggers = new Set();
@@ -2259,14 +2350,21 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
     if (input) {
       if (!item.repeatUpload) usedInputs.add(input);
       console.log("[AutoFill-FixedSlot] attaching (input)", { slotIndex: item.slotIndex, slotName: slotLabel, fileNames });
+      const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
+      const pending = filesNotOnRow(markTarget, files);
+      skippedNames.push(...fileNames.filter((name) => !pending.some((f) => f.name === name)));
+      if (!pending.length) {
+        markAttachmentResult(markTarget, true);
+        continue;
+      }
       await chooseBootstrapFileOptionForInput(input);
       // assumeConsumed: form mai táng reset input.files sau khi đọc → lấy kết quả gán trước dispatch.
-      const ok = setFilesOnInput(input, files, { assumeConsumed: true });
+      const ok = setFilesOnInput(input, pending, { assumeConsumed: true });
       await sleep(600);
-      const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
       markAttachmentResult(markTarget, ok);
       if (ok && untick && input.closest("tr")) await tickAttpRowCheckbox(input.closest("tr"));
-      if (ok) attachedNames.push(...fileNames);
+      if (ok) rememberUploadedFiles(pending);
+      if (ok) attachedNames.push(...pending.map((f) => f.name));
       else errors.push(`Không gắn được file vào ô "${slotLabel}".`);
       continue;
     }
@@ -2277,8 +2375,16 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
       const trigger = findMenuSlotTrigger(slotItem, usedTriggers);
       if (!trigger) return { found: false };
       if (!slotItem.repeatUpload) usedTriggers.add(trigger);
+      const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
+      const pending = filesNotOnRow(markTarget, files);
+      const pendingNames = pending.map((f) => f.name);
+      const skipped = fileNames.filter((name) => !pendingNames.includes(name));
+      if (!pending.length) {
+        markAttachmentResult(markTarget, true);
+        return { found: true, ok: true, attached: [], skipped };
+      }
       console.log("[AutoFill-FixedSlot] attaching (menu)", {
-        slotIndex: slotItem.slotIndex, slotName: label, fileNames,
+        slotIndex: slotItem.slotIndex, slotName: label, fileNames: pendingNames,
       });
       const menuInput = await openMenuGetFileInput(trigger);
       if (!menuInput) {
@@ -2288,10 +2394,9 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
       // Chụp toast ĐANG hiện TRƯỚC khi gắn: lần thử ô dự phòng chạy ngay sau lần thử ô chính
       // nên toast cũ còn nguyên trên màn hình, không chụp trước là đọc lại chính nó.
       const toastsBefore = snapshotSizeLimitToasts();
-      const ok = setFilesOnInput(menuInput, files, { assumeConsumed: true });
+      const ok = setFilesOnInput(menuInput, pending, { assumeConsumed: true });
       await sleep(500);
       await closeOpenMenu();
-      const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
       // THÀNH CÔNG = BẰNG CHỨNG DƯƠNG: tên tệp hiện thật trong dòng. POLL tới ~7s vì cổng cập nhật
       // bất đồng bộ; song song canh toast "quá dung lượng". Hết giờ mà tên CHƯA hiện = ô KHÔNG nhận
       // (tổng dung lượng 1 loại giấy tờ vượt ngưỡng, hoặc ô 1-tệp đã đầy) → coi là HỎNG để dời ô dự
@@ -2301,7 +2406,7 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
       if (ok) {
         const deadline = Date.now() + 7000;
         while (Date.now() < deadline) {
-          if (fileNames.every((name) => menuSlotRowText(trigger).includes(foldChoiceText(name)))) { landed = true; break; }
+          if (pendingNames.every((name) => menuSlotRowText(trigger).includes(foldChoiceText(name)))) { landed = true; break; }
           const t = newSizeLimitError(toastsBefore);
           if (t) { sizeError = t; break; }
           await sleep(200);
@@ -2313,14 +2418,16 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
           error: sizeError || `Ô "${label}" không nhận thêm tệp.` };
       }
       if (untick && trigger.closest("tr")) await tickAttpRowCheckbox(trigger.closest("tr"));
+      rememberUploadedFiles(pending);
       markAttachmentResult(markTarget, true);
-      return { found: true, ok: true };
+      return { found: true, ok: true, attached: pendingNames, skipped };
     };
 
     const first = await tryMenuSlot(item, slotLabel);
     if (first.found) {
       if (first.ok) {
-        attachedNames.push(...fileNames);
+        attachedNames.push(...first.attached);
+        skippedNames.push(...first.skipped);
         continue;
       }
       // Ô chính KHÔNG nhận tệp (quá dung lượng, ô 1-tệp đã đầy…) → thử ô DỰ PHÒNG do BE chỉ định
@@ -2338,7 +2445,8 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
           slotName: fallbackLabel,
         }, fallbackLabel || `ô ${Number(item.fallbackSlotIndex) + 1}`);
         if (second.found && second.ok) {
-          attachedNames.push(...fileNames);
+          attachedNames.push(...second.attached);
+          skippedNames.push(...second.skipped);
           continue;
         }
         // Cả hai ô đều không nhận → nói RÕ tệp nào để cán bộ tự đính, kèm nguyên văn cổng báo (nếu có).
@@ -2360,18 +2468,18 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
     return {
       error: errors.join("; "),
       attached: attachedNames.length,
-      skipped: 0,
+      skipped: skippedNames.length,
       fileNames: attachedNames,
-      skippedNames: [],
+      skippedNames,
     };
   }
   return {
     ok: true,
     method: "fixed-slot",
     attached: attachedNames.length,
-    skipped: 0,
+    skipped: skippedNames.length,
     fileNames: attachedNames,
-    skippedNames: [],
+    skippedNames,
   };
 }
 
@@ -2623,7 +2731,9 @@ function bcaFilesForRow(entries) {
     let base = file.name.slice(0, file.name.length - ext.length).normalize("NFC")
       .replace(BCA_FILENAME_FORBIDDEN, " ").replace(/\s+/g, " ").trim() || "Tai lieu";
     if (withPayload.length > 1) base = `${base} ${i + 1}`;
-    return new File([file], base + ext, { type: file.type, lastModified: Date.now() });
+    const renamed = new File([file], base + ext, { type: file.type, lastModified: Date.now() });
+    ATTACH_FILE_SOURCE.set(renamed, e.payload);
+    return renamed;
   });
 }
 
@@ -2645,30 +2755,49 @@ async function attachFilesByBcaPlan(payloadFiles, attachments) {
       rows.get(key).entries.push({ item, payload: payloadForPlanItem(payloadFiles, item, i) });
     });
     const attachedNames = [];
+    const skippedNames = [];
     const errors = [];
     for (const { item, entries } of rows.values()) {
-      const row = item.newRow
+      let files = bcaFilesForRow(entries);
+      // Đính kèm lại: dòng tự thêm lượt trước đã mang đủ tệp → không bấm "Thêm mới" lần nữa. Tên giấy tờ do LLM đặt có thể
+      // khác giữa hai lượt → chỉ đòi trùng tên dòng khi chưa nhớ được tệp nguồn.
+      const memory = readUploadedNames();
+      const allRemembered = files.every((f) => (memory[attachSourceKey(f)] || []).length);
+      const reusable = item.newRow && files.length && bcaGroupRows(container).find((tr) =>
+        (allRemembered || attachmentKeyEquals(bcaRowNameInput(tr)?.value, item.componentName))
+        && !filesNotOnRow(tr, files).length);
+      const row = reusable || (item.newRow
         ? await bcaAddRow(container, item.componentName)
-        : bcaGroupRows(container).find((tr) => bcaText(tr.textContent).includes(item.rowKey));
+        : bcaGroupRows(container).find((tr) => bcaText(tr.textContent).includes(item.rowKey)));
       if (!row) {
         const seen = bcaGroupRows(container).map((tr) => nodeText(tr).slice(0, 60)).join(" | ");
         errors.push(item.newRow ? `Không thêm được dòng "${item.componentName}".`
           : `Không thấy dòng "${item.componentName}" trong nhóm giấy tờ (đang có: ${seen || "không dòng nào"}).`);
         continue;
       }
-      const files = bcaFilesForRow(entries);
+      const pending = filesNotOnRow(row, files);
+      skippedNames.push(...files.filter((f) => !pending.includes(f)).map((f) => f.name));
+      if (!pending.length) {
+        markAttachmentResult(row, true);
+        continue;
+      }
+      files = pending;
       const checkbox = row.querySelector('input[type="checkbox"]');
       if (checkbox && !checkbox.checked) checkbox.click(); // MỘT lần, bấm 2 lần là bỏ tick
       const ok = setFilesOnInput(row.querySelector('input[type="file"]'), files, {
         allowMultiple: true, assumeConsumed: true,
       });
       markAttachmentResult(row, ok);
+      if (ok) rememberUploadedFiles(files);
       if (ok) attachedNames.push(...files.map((f) => f.name));
       else errors.push(`Gán tệp thất bại cho dòng "${item.componentName}".`);
       await sleep(400); // cổng tải tệp lên ngay khi chọn — giãn nhịp giữa các dòng
     }
-    if (!attachedNames.length) return { error: errors.join("; ") || "Không đính được tệp nào." };
-    return { ok: true, method: "bca", attached: attachedNames.length, fileNames: attachedNames, errors };
+    if (!attachedNames.length && !skippedNames.length) return { error: errors.join("; ") || "Không đính được tệp nào." };
+    return {
+      ok: true, method: "bca", attached: attachedNames.length, fileNames: attachedNames,
+      skipped: skippedNames.length, skippedNames, errors,
+    };
   } catch (e) {
     return { error: `Lỗi đính kèm Cổng Bộ Công an: ${e?.message || e}` };
   } finally {
@@ -2733,6 +2862,7 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     if (fixedItems.length) {
       const fixedResult = await attachFilesByFixedSlot(payloadFiles, fixedItems);
       attachedNames.push(...(fixedResult.fileNames || []));
+      skippedNames.push(...(fixedResult.skippedNames || []));
       if (fixedResult.error) errors.push(fixedResult.error);
       if (!normalItems.length) {
         if (errors.length) {
@@ -2844,6 +2974,7 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
             continue;
           }
           attachedNames.push(...(result.fileNames || []));
+          skippedNames.push(...(result.skippedNames || []));
           await sleep(400);
           continue;
         }

@@ -143,6 +143,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Bản extension mới hiểu card "rating" (đánh giá trước đăng xuất). Client cũ không khai
         # → BE giữ nguyên luồng cũ (hiện thẳng 2 nút đăng xuất/nộp thêm), không vỡ.
         "supportsRating": raw.get("supportsRating") is True,
+        # Cú bấm nộp mang mã tab (tab gốc + tab tách) và báo tab tách bị đóng → đính tách nhiều
+        # hồ sơ chỉ mời đánh giá khi mọi tab đã nộp. Client cũ không khai → mời ngay như cũ.
+        "supportsSplitSubmitTabs": raw.get("supportsSplitSubmitTabs") is True,
         # Bản extension mới hiểu nút chuyển bước/gửi hồ sơ do BE điều phối (guided_steps).
         # Extension cũ không khai → BE giữ nguyên câu thoại và luồng "công dân tự bấm nút
         # của trang" như cũ.
@@ -215,12 +218,18 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Dẫn đủ 6 bước cổng liên thông (chat/lien_thong.py): báo bước đang mở (lienThongStep), bổ sung ô
         # trên form Angular, bấm chuyển bước / quay lại, chọn cách nhận kết quả từng giấy tờ, bấm Hoàn thành.
         "supportsLienThongFlow": raw.get("supportsLienThongFlow") is True,
+        # Liên thông khai tử (thủ tục khai lienThongFlow.capability): điền bước chọn cơ quan + ô cam đoan của khai tử.
+        "supportsLienThongKhaiTu": raw.get("supportsLienThongKhaiTu") is True,
         # Cổng Bắc Ninh: biết tick ô bổ sung + chọn loại đối tượng rồi điền khối "Thông tin trong trường
         # hợp được ủy quyền" (doiTuongKhac*). Client cũ không khai → BE không chạy lượt người ủy quyền.
         "supportsBacNinhAuthorizedPerson": raw.get("supportsBacNinhAuthorizedPerson") is True,
         # Cổng Bộ Xây dựng (chat/bxd): nút / lệnh nói chuyển bước của wizard 4 bước, bổ sung ô trên tờ khai Form.io,
         # chọn hình thức nhận kết quả, bấm Nộp hồ sơ sau khi soát cam đoan + mã xác nhận.
         "supportsBxdFlow": raw.get("supportsBxdFlow") is True,
+        # Luồng 4 bước trên cổng NN&MT (dichvucongnnmt.mae.gov.vn) — thủ tục khai bxdFlow.capability.
+        "supportsBxdFlowMae": raw.get("supportsBxdFlowMae") is True,
+        # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.
+        "supportsBxdFlowMoit": raw.get("supportsBxdFlowMoit") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,

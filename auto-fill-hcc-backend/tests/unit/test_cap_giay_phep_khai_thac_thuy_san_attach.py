@@ -31,9 +31,10 @@ def test_giay_phep_cu_va_cccd_di_kem_dong_don_dat_ten_theo_loai():
     assert not warnings
 
 
-def test_khong_co_don_thi_canh_bao_chu_khong_im_lang():
+def test_khong_co_don_van_dinh_vao_dong_1_va_canh_bao():
     items, warnings, _ = planner.build_plan_items(_files("gp.pdf", "cccd.jpg"), [], {0: "giay_phep_cu", 1: "cccd"})
-    assert items == []
+    assert [item["fileIndex"] for item in items] == [0, 1]
+    assert {item["componentName"] for item in items} == {"Đơn đề nghị theo Mẫu số 04"}
     assert warnings and "gp.pdf" in warnings[0] and "cccd.jpg" in warnings[0]
 
 

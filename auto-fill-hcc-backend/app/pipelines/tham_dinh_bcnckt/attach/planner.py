@@ -3,8 +3,8 @@ dvc.moc.gov.vn — Angular mat-table, engine FE `attp-row`, CÙNG cổng #113/#7
 
 Bảng có 19 dòng, PHẦN LỚN "(nếu có)"/điều kiện (sửa chữa, vốn công, điều chỉnh, vi phạm, BIM). Chỉ classify
 vào 8 dòng CÓ THẬT phổ biến; các dòng còn lại (kể cả QĐ điều chỉnh quy hoạch dòng 18 — dễ nhầm dòng 9) →
-other, cán bộ tự đính. FE khớp dòng bằng componentName substring fold (không dùng componentIndex vì thứ tự
-DOM ≠ thứ tự hiển thị).
+other → đính chung dòng Tờ trình, giữ tên file gốc + cảnh báo. FE khớp dòng bằng componentName substring fold
+(không dùng componentIndex vì thứ tự DOM ≠ thứ tự hiển thị).
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định; rule keyword chỉ DỰ PHÒNG.
 """
@@ -169,6 +169,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -186,9 +187,20 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        # other = giấy tờ không map dòng cố định (CCCD/ủy quyền/nội bộ, hoặc dòng điều kiện hiếm) → bỏ qua.
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        # other (CCCD/ủy quyền/nội bộ, dòng điều kiện hiếm, không rõ) → dòng Tờ trình, giữ tên gốc để FE không
+        # coi là trùng tài liệu của dòng.
+        item = _build_row_item(file, idx, _TO_TRINH)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _TO_TRINH})
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_TO_TRINH]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

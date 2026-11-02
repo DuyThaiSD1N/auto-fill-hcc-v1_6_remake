@@ -16,7 +16,7 @@ bảng: khoanh vùng NHÓM từ dòng Đơn của mẫu đơn trong hồ sơ t�
 Engine FE "attp-row": mỗi dòng mat-checkbox + input[type=file] multiple; gửi index + tên NGUYÊN VĂN của dòng (FE
 kiểm rows[index-1] khớp tên). Dòng lấy từ attachmentContext.components; extension không gửi thì dùng bảng 13 dòng ở
 dưới. Giấy tờ không có dòng trong nhóm (bản đồ, GCN ĐKDN, giấy ủy quyền, tài liệu khác) — cổng không có dòng "giấy tờ
-khác" → đính chung dòng Đơn của nhóm (vẫn là tệp riêng) + cảnh báo. CCCD không phải thành phần hồ sơ → bỏ qua.
+khác" → đính chung dòng Đơn của nhóm (vẫn là tệp riêng) + cảnh báo; CCCD cũng vậy.
 TUYỆT ĐỐI không làm rơi tệp.
 """
 
@@ -200,24 +200,27 @@ def build_plan_items(
 
     attachments: list[dict] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
     for entry in entries:
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
         label = entry["label"]
-        if label in catalog.SKIPPED_LABELS:
-            warn(f"File '{entry['fileName']}' ({entry['documentName']}) không phải thành phần hồ sơ — đã bỏ qua.")
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
-            continue
+        routed = False
         if label in _DON_KEYS:
             # Đơn khác nhóm (hiếm) vẫn về dòng Đơn của chính nó.
             row = (groups.get(label) or [anchor])[0]
         else:
+            # CCCD không có trong _ROW_KEYS nên cũng về dòng Đơn của nhóm như giấy không có dòng riêng.
             row = _find(_ROW_KEYS.get(label, []), group_rows)
             if row is None:
                 row = anchor
-                warn(f"'{entry['fileName']}' ({entry['documentName']}) không có dòng riêng trong nhóm hồ sơ — đính "
-                     f"chung dòng '{anchor[1]}'; cán bộ kiểm tra lại.")
+                routed = True
+                extra_files.append(f"{entry['fileName']} ({entry['documentName']})")
         attachments.append(_item(entry, row))
-        classified.append({**base, "target": "attp-row", "componentIndex": row[0], "componentName": row[1]})
+        classified.append({**base, "target": "attp-row", "componentIndex": row[0], "componentName": row[1],
+                           **({"routedTo": "don"} if routed else {})})
+    if extra_files:
+        warn(f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{anchor[1]}\": "
+             f"{', '.join(extra_files)}; cán bộ kiểm tra lại.")
 
     _dedupe_document_names(attachments)
     if not attachments:

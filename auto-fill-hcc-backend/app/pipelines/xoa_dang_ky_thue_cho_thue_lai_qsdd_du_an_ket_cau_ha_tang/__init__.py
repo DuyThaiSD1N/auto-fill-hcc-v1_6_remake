@@ -10,5 +10,6 @@ thửa đất) → engine dom-* của extension, không phải sửa FE. Chủ h
 
 Bước 2 là bảng attp-row 4 dòng: (1) Đơn Mẫu 18 / (2) Giấy chứng nhận đã cấp / (4) Văn bản về việc đại diện /
 (3) Văn bản về việc xóa cho thuê. Hồ sơ mẫu là MỘT file gộp Hợp đồng chấm dứt thuê + Đơn + Văn bản thỏa thuận
-→ KHÔNG tách trang, đính nguyên file MỘT lần ở dòng 1 (dòng 4 coi như đã đính chung).
+→ KHÔNG tách trang, đính nguyên file MỘT lần ở dòng 1 (dòng 4 coi như đã đính chung). Nhiều file cùng dòng →
+mỗi file một tệp riêng (ô upload `multiple`), không ghép.
 """

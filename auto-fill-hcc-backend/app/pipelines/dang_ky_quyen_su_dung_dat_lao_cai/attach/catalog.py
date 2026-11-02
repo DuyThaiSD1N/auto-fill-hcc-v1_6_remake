@@ -83,7 +83,7 @@ OTHER: list[tuple[str, str, str]] = [
     ("to_khai_thue", "Tờ khai thuế, lệ phí", "Tờ khai thuế thu nhập cá nhân, lệ phí trước bạ, thuế sử dụng đất"),
     ("khac", "Tài liệu kèm theo", "Giấy tờ khác (biên bản đấu giá, giấy tờ hộ tịch…) hoặc không xác định"),
 ]
-# CCCD không phải thành phần hồ sơ của thủ tục → không đính kèm.
+# CCCD không có dòng riêng trong bảng → planner đính vào dòng hứng chung, không bỏ tệp.
 SKIPPED: list[tuple[str, str, str]] = [
     ("cccd", "Căn cước công dân", "CCCD/CMND/thẻ căn cước/hộ chiếu của bất kỳ ai"),
 ]

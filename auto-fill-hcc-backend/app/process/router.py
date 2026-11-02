@@ -59,10 +59,13 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     handler_start = time.perf_counter()
     request_id = traces_repo.new_request_id()
     created_at = datetime.now(timezone.utc)
+    purpose = (body.options or {}).get("purpose")
     rec = mon.start(
         "autofill", "autofill", request_id=request_id, procedure=body.procedure,
         user_id=user.get("id"), username=user.get("username"), name=user.get("name"),
         files=len(body.files), dossier_id=dossier_id_from_options(body.options),
+        # Nút "Điền thông tin người ủy quyền" (Bắc Ninh) gọi lại với purpose riêng → Monitor tách được hai lượt.
+        **({"purpose": purpose} if purpose else {}),
     )
     # Nhận + parse body + xác thực (chạy trước handler) — v2 bọc v1 thì v2 đã tự ghi phần này.
     if rec is not None and not any(sp.name == "pre.request" for sp in rec.spans):

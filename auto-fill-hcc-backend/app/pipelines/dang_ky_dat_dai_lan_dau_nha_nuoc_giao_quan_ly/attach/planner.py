@@ -14,7 +14,8 @@ Bảng 2 dòng (thứ tự trên cổng, cả hai "Bản chính"):
           nghia_vu_tai_chinh (xác nhận / thông báo thuế), to_khai_thue (LPTB), van_ban_dai_dien, giay_to_khac
   [2] Báo cáo kết quả rà soát hiện trạng sử dụng đất (Mẫu 15đ)
         ← bao_cao_ra_soat + trich_luc_ban_do (mục "Kèm theo Báo cáo này": trích lục / mảnh trích đo thửa đất)
-Cùng loại thì theo thứ tự trang trong hồ sơ. CCCD không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+Cùng loại thì theo thứ tự trang trong hồ sơ. CCCD / giấy chưa rõ loại / tệp không đọc được chữ → đính chung dòng 1
+(sau cùng), mỗi giấy một file riêng; chỉ bỏ trang trắng trong tệp có chữ.
 """
 
 import re
@@ -269,7 +270,7 @@ def build_plan_items(
     """Đoạn đã hợp lệ → (attachments, classified, warnings). Thuần tất định, không gọi OCR/LLM."""
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    extra_pages: list[str] = []
     blank_pages: list[str] = []
 
     # 1) Loại + trang có nội dung. LLM là chính; rule OCR chỉ vá khi LLM trả other. Đoạn liền sau KHÔNG mở đầu văn
@@ -280,6 +281,9 @@ def build_plan_items(
         file = raw_files[segment["fileIndex"]]
         texts = page_text_by_file.get(segment["fileIndex"]) or {}
         pages = _content_pages(segment, file_meta, page_text_by_file)
+        if not pages and not full_text_by_file.get(segment["fileIndex"], "").strip():
+            # Cả tệp không đọc được chữ (OCR lỗi / ảnh không chữ): không phải trang trắng → vẫn đính.
+            pages = list(range(segment["pageFrom"], segment["pageTo"] + 1))
         dropped = [p for p in range(segment["pageFrom"], segment["pageTo"] + 1) if p not in pages]
         if dropped:
             blank_pages.append(f"{file.get('name')} trang {', '.join(map(str, dropped))}")
@@ -315,13 +319,12 @@ def build_plan_items(
     by_row: dict[int, list[dict]] = {}
     for doc in docs:
         base = {k: doc[k] for k in ("fileIndex", "fileName", "pageFrom", "pageTo", "type")}
-        if doc["type"] == _CCCD:
-            classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
         row_idx = _ROW_OF_TYPE.get(doc["type"])
         if row_idx is None:
-            skipped_pages.append(f"{doc['fileName']} trang {doc['pageFrom']}-{doc['pageTo']}")
-            classified.append({**base, "type": _OTHER, "target": "skip"})
+            # CCCD / chưa rõ loại → dòng 1 (dòng Đơn), xếp sau cùng của dòng.
+            by_row.setdefault(1, []).append(doc)
+            classified.append({**base, "componentIndex": 1, "shared": True, "routedTo": 1})
+            extra_pages.append(f"{doc['fileName']} trang {doc['pageFrom']}-{doc['pageTo']}")
             continue
         by_row.setdefault(row_idx, []).append(doc)
         classified.append({**base, "componentIndex": row_idx, "shared": doc["type"] != _ROWS[row_idx]["types"][0]})
@@ -337,7 +340,9 @@ def build_plan_items(
             attachments.append({
                 "fileIndex": file_index,
                 "fileName": str(doc["fileName"] or f"file-{file_index + 1}"),
-                "documentName": _file_name(row_idx, position, doc["documentName"], _TYPE_NAMES[doc["type"]]),
+                # Giấy không có dòng riêng: tên LLM đặt, không có thì tên tệp gốc.
+                "documentName": _file_name(row_idx, position, doc["documentName"],
+                                           _TYPE_NAMES.get(doc["type"]) or str(doc["fileName"] or "")),
                 "componentName": row["componentName"],
                 "componentIndex": row_idx,
                 "loaiBan": row["loaiBan"],
@@ -348,8 +353,11 @@ def build_plan_items(
                 "sourceSegments": [_source_segment(file_index, doc["pages"], file_meta[file_index]["pageCount"])],
             })
 
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    if extra_pages:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[1]['componentName']}\": "
+            + "; ".join(extra_pages) + "."
+        )
     if blank_pages:
         warnings.append("Đã bỏ trang trắng không đính kèm: " + "; ".join(blank_pages) + ".")
 

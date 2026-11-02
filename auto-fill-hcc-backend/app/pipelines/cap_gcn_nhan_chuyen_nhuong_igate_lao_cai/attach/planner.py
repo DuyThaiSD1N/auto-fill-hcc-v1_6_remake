@@ -10,7 +10,8 @@ mỗi nhánh mở đầu bằng dòng Đơn Mẫu số 24:
    9–16 b) người nhận tự nộp    : Đơn · Hợp đồng · bàn giao · nghiệm thu · đủ điều kiện · GCN chủ đầu tư · chứng từ · Sơ đồ
 Dòng 4/10 và 5/11 TRÙNG tên nguyên văn → khoanh nhóm theo dòng Đơn rồi mới dò từ khoá, và gửi componentIndex để FE chọn
 đúng dòng của nhánh. GCN chủ đầu tư có trang Sơ đồ mà hồ sơ không có sơ đồ riêng → đính lại chính tệp GCN vào dòng Sơ đồ
-(như cổng cũ). CCCD và tài liệu không rõ loại không có dòng → bỏ qua kèm cảnh báo (như cổng cũ).
+(như cổng cũ). CCCD, tài liệu không rõ loại hoặc không tìm thấy dòng → đính chung dòng Đơn của nhánh (vẫn là tệp
+riêng, giữ tên) kèm cảnh báo; không bỏ tệp nào.
 
 Engine FE "attp-row" + untickUnplannedRows dùng chung với cho_thue_dat_thue_rung_igate_lao_cai.
 """
@@ -96,8 +97,7 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
-    skipped: list[str] = []
-    missing: list[str] = []
+    extra_files: list[str] = []
     bytes_per_row: dict[int, int] = {}
     used_names: set[str] = set()
 
@@ -105,6 +105,8 @@ def build_plan_items(
         bytes_per_row[row[0]] = bytes_per_row.get(row[0], 0) + _goc._data_url_size(file.get("dataUrl"))
         attachments.append(_igate._item(index, file_name, document_name, row, label))
 
+    # Bảng không có dòng "giấy tờ khác" → tệp không có dòng riêng vào dòng Đơn của nhánh để không rơi tệp.
+    don_row = _igate._find(_ROW_KEYS["don_dang_ky"] + [_DON_KEY], rows) or rows[0]
     gcn_entries: list[tuple[int, dict, str, str]] = []
     has_so_do = False
     for position, file in enumerate(files):
@@ -115,21 +117,18 @@ def build_plan_items(
         fallback = catalog.display_name(label)
         document_name = _goc._unique_document_name(detected.get("documentName") or fallback, used_names, fallback)
         row = _igate._find(_ROW_KEYS[label], rows) if catalog.has_slot(label) else None
-        if row is None:
-            target = "skip"
-            if catalog.has_slot(label):
-                missing.append(f"{file_name} ({document_name})")
-            else:
-                skipped.append(f"{file_name} ({document_name})")
-        else:
-            target = "attp-row"
-            place(index, file, file_name, document_name, row, label)
+        routed = row is None
+        if routed:
+            row = don_row
+            extra_files.append(f"{file_name} ({document_name})")
+        place(index, file, file_name, document_name, row, label)
+        if not routed:
             has_so_do = has_so_do or label == "so_do"
             if label == "gcn_chu_dau_tu":
                 gcn_entries.append((index, file, file_name, document_name))
-        classified.append({"fileName": file_name, "label": label, "documentName": document_name, "target": target,
+        classified.append({"fileName": file_name, "label": label, "documentName": document_name, "target": "attp-row",
                            "source": "llm" if detected.get("label") else "default",
-                           "componentIndex": row[0] if row else None})
+                           "componentIndex": row[0], **({"routedTo": "don_dang_ky"} if routed else {})})
 
     # Sơ đồ nằm ở trang 2 GCN của chủ đầu tư → đính lại chính tệp GCN vào dòng Sơ đồ khi không có sơ đồ riêng.
     so_do_row = _igate._find(_ROW_KEYS["so_do"], rows)
@@ -142,15 +141,10 @@ def build_plan_items(
                                    "target": "attp-row", "componentIndex": so_do_row[0], "reason": "so_do_in_gcn"})
                 break
 
-    if skipped:
+    if extra_files:
         warnings.append(
-            "Bảng thành phần hồ sơ không có dòng cho CCCD và giấy tờ không rõ loại — đã bỏ qua (cổng mới không có dòng "
-            f"\"giấy tờ khác\"): {', '.join(skipped)}."
-        )
-    if missing:
-        warnings.append(
-            "Bảng thành phần hồ sơ trên trang không có dòng cho các giấy tờ sau — đã bỏ qua, cán bộ đính tay: "
-            f"{', '.join(missing)}."
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{don_row[1]}\": "
+            f"{', '.join(extra_files)}."
         )
     for row_index, total in sorted(bytes_per_row.items()):
         if total > _goc._MAX_FILE_BYTES:

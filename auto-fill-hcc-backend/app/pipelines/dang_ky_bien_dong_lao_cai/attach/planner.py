@@ -6,7 +6,7 @@ xử lý tài sản thế chấp); không có căn cứ nào thì theo nhóm LLM
   - ô fixed-slot của đúng dòng trong nhóm (FE khoanh vùng theo tiêu đề nhóm, tích checkbox dòng rồi bơm tệp);
   - hoặc một dòng "Giấy tờ khác" (target=new, tên = documentName) cho giấy tờ không có dòng trong nhóm: mảnh
     trích đo khi đang ở nhóm (3), đơn/hợp đồng của nhóm khác, hóa đơn, tờ khai thuế, tài liệu khác.
-CCCD không phải thành phần hồ sơ → bỏ qua kèm cảnh báo.
+CCCD không có dòng riêng → cũng xuống "Giấy tờ khác" (giữ tên) kèm cảnh báo; không bỏ tệp nào.
 
 Đơn/GCN/bản vẽ/trích đo/ủy quyền có mặt ở MỌI nhóm nên không được dùng để đoán nhóm — chỉ văn bản căn cứ mới
 phân biệt được. Chọn sai nhóm thì cán bộ phải bỏ tích cả 6 dòng rồi làm lại, nên thà rơi xuống "Giấy tờ khác".
@@ -171,13 +171,14 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
     for entry in entries:
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
         if entry["label"] in catalog.SKIPPED_LABELS:
-            warnings.append(
-                f"File '{entry['fileName']}' ({entry['documentName']}) không phải thành phần hồ sơ — đã bỏ qua."
-            )
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
+            # Không có dòng riêng → "Giấy tờ khác" để không rơi tệp.
+            attachments.append(_other_item(entry))
+            classified.append({**base, "target": "new", "routedTo": "giay_to_khac", "reason": "not_a_component"})
+            extra_files.append(entry["fileName"])
             continue
 
         row = catalog.row_for(entry["label"], group)
@@ -186,8 +187,16 @@ def build_plan_items(
             attachments.append(item)
             classified.append({**base, "target": "fixed-slot", "slotKey": item["slotKey"]})
         else:
+            if entry["label"] == "khac":
+                extra_files.append(entry["fileName"])
             attachments.append(_other_item(entry))
             classified.append({**base, "target": "new"})
+
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính vào \"Giấy tờ khác\" để không bỏ sót — cán bộ "
+            f"kiểm tra lại: {', '.join(extra_files)}."
+        )
 
     return attachments, warnings, classified, group, group_source
 

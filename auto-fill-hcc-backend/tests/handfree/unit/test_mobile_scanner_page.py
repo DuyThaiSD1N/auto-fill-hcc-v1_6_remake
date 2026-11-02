@@ -106,3 +106,14 @@ def test_mobile_scanner_static_assets_are_mounted_and_present():
     assert "CaptureStore" in bundle
     assert list((scanner_root / "chunks").glob("scanic-mlDetector-*.js"))
     assert list((scanner_root / "chunks").glob("scanic-ort.wasm.min-*.js"))
+
+
+def test_mobile_page_nen_pdf_tren_10mb_truoc_khi_gui():
+    html = render_mobile_page("HS-TEST-SHRINK")
+
+    assert "const PDF_SHRINK_MIN_BYTES = 10 * 1024 * 1024;" in html
+    assert 'fd.append("files", isPdf ? await shrinkPdf(f) : await compress(f)' in html
+    # Chỉ thay ảnh quét JPEG cạnh dài trên 2400 px, về 2000 px JPEG 0.85; nén hỏng gửi bản gốc.
+    assert "Math.max(w.asNumber(), h.asNumber()) <= 2400" in html
+    assert "img.width * 2000 / edge" in html and '"image/jpeg", 0.85' in html
+    assert "return out.size < file.size ? out : file;" in html

@@ -238,7 +238,7 @@ def test_dang_ky_hanh_nghe_attach_rule_xep_dung_dong_khi_llm_loi():
     items, warnings, classified = build_plan_items(files, ocr, {})
 
     by_file = {item["fileName"]: item for item in items}
-    assert set(by_file) == {"ds1.pdf", "ds2.pdf", "ds3.pdf", "baocao.pdf"}
+    assert set(by_file) == {"ds1.pdf", "ds2.pdf", "ds3.pdf", "baocao.pdf", "cccd.pdf"}
     for name in ("ds1.pdf", "ds2.pdf", "ds3.pdf"):
         assert by_file[name]["componentIndex"] == 1
         assert by_file[name]["target"] == "attp-row"
@@ -247,7 +247,9 @@ def test_dang_ky_hanh_nghe_attach_rule_xep_dung_dong_khi_llm_loi():
         assert by_file[name]["documentName"] == name
     assert by_file["baocao.pdf"]["componentIndex"] == 3
     assert by_file["baocao.pdf"]["documentName"] == "Báo cáo"
-    assert any(c["fileName"] == "cccd.pdf" and c.get("skipped") for c in classified)
+    # CCCD không có dòng riêng → đính chung dòng 1, không bỏ tệp.
+    assert by_file["cccd.pdf"]["componentIndex"] == 1
+    assert any(c["fileName"] == "cccd.pdf" and c.get("routedTo") for c in classified)
     assert not any("Danh sách đăng ký hành nghề" in w and "bắt buộc" in w for w in warnings)
 
 
@@ -269,7 +271,8 @@ def test_dang_ky_hanh_nghe_attach_llm_thay_doi_bo_sung_khong_lan_sang_dong_1():
     # componentName dòng 2/4 KHÔNG được chứa tên dòng 1, nếu không FE khớp "chứa nhau" sẽ rơi vào dòng 1.
     for name in ("thaydoi.pdf", "bosung.pdf"):
         assert "danh sách đăng ký hành nghề" not in by_file[name]["componentName"].lower()
-    # File không xác định không bị đính bừa.
-    assert "la.pdf" not in by_file
+    # File không xác định đính chung dòng 1 (không bỏ tệp), giữ tên gốc.
+    assert by_file["la.pdf"]["componentIndex"] == 1
+    assert by_file["la.pdf"]["documentName"] == "la.pdf"
     assert any("la.pdf" in w for w in warnings)
     assert any("Báo cáo" in w for w in warnings)

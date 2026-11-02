@@ -135,7 +135,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert mae_fishing["wizard"]["declarationStep"] == 1
     assert mae_fishing["wizard"]["attachmentStep"] == 2
     # Đăng ký tàu cá / chấp thuận đóng mới, cải hoán tàu cá: cùng khung chọn cơ quan với giấy phép khai thác.
-    for key in ("cap-gcn-dang-ky-tau-ca", "cap-van-ban-chap-thuan-tau-ca", "cap-lai-chung-chi-hanh-nghe-thu-y"):
+    for key in ("cap-gcn-dang-ky-tau-ca", "cap-van-ban-chap-thuan-tau-ca", "cap-lai-chung-chi-hanh-nghe-thu-y",
+                "gia-han-chung-chi-hanh-nghe-thu-y", "xoa-dang-ky-tau-ca"):
         mae_vessel = procedures.pop(key)
         assert mae_vessel.get("flowProfile") is None, key
         assert mae_vessel["agencyProvinceOnly"] is True and mae_vessel["maePortal"] is True, key
@@ -193,7 +194,9 @@ def test_registered_procedures_use_their_declared_flow_family():
                 "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh",
                 "chap-thuan-dau-noi-tam", "gia-han-luu-hanh-phuong-tien-lao",
                 "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
-                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san"):
+                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "gia-han-giay-phep-xay-dung",
+                "tham-dinh-bcnckt", "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
+                "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai"):
         moc_other = moc_by_key[key] = procedures.pop(key)
         assert moc_other["flowProfile"] == "xay-dung", key
         assert moc_other["maePortal"] is True, key
@@ -201,7 +204,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # ke_khai_links khai selectSo cho gia hạn xe Lào / đăng ký lại phương tiện thủy → chọn Sở Xây dựng; đấu nối
     # tạm thì không → chọn đủ Tỉnh + Xã như lòng đường, vỉa hè.
     for key in ("gia-han-luu-hanh-phuong-tien-lao", "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
-                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san"):
+                "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "tham-dinh-bcnckt",
+                "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai", "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai"):
         moc_so = moc_by_key[key]
         assert moc_so["agencyProvinceOnly"] is True and moc_so["agencySoFirst"] is True, key
         assert moc_so["agencyDeptLabel"] == "Sở Xây dựng", key
@@ -492,6 +496,36 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert host in local["detect"]["urlScope"], key
         assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
 
+    # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
+    # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
+    moit = {"cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+            "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+            "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha"}
+    for key, dept in (
+        ("thong-bao-san-pham-quang-cao-bang-ron", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham", "Sở Công Thương"),
+        ("thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "Sở Công Thương"),
+        ("chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh", "Sở Nội vụ"),
+        ("bao-cao-to-chuc-dai-hoi-hoi-cap-tinh", "Sở Nội vụ"),
+        ("thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh", "Sở Nội vụ"),
+    ):
+        so_level = procedures.pop(key)
+        assert so_level.get("flowProfile") is None and so_level["needsAgencySelect"] is True, key
+        assert so_level["agencyProvinceOnly"] is True and so_level["agencySoFirst"] is True, key
+        assert so_level["agencyDeptLabel"] == dept, key
+        assert "maePortal" not in so_level, key
+        assert so_level.get("wizard") == (mae_fishing["wizard"] if key in moit else None), key
+    # DVCQG chọn đủ Tỉnh + Xã, không gạt "Sở", không wizard iGate.
+    for key in ("thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha", "xet-tuyen-vien-chuc", "xet-tuyen-cong-chuc",
+                "thi-tuyen-cong-chuc", "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru"):
+        ward_level = procedures.pop(key)
+        assert ward_level.get("flowProfile") is None and ward_level["needsAgencySelect"] is True, key
+        assert "agencyProvinceOnly" not in ward_level and "agencySoFirst" not in ward_level, key
+        assert "maePortal" not in ward_level, key
+        assert ward_level.get("wizard") == (mae_fishing["wizard"] if key in moit else None), key
+
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
@@ -505,6 +539,17 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert "ownerInfo" not in single_page
         assert single_page["detect"] == core_detect[key]
         assert get_owner_info_pipeline(key) is None
+
+    # Đặc thù Quảng Ninh (attach-only): DVCQG chọn tỉnh Quảng Ninh rồi cổng tỉnh dichvucong.quangninh.gov.vn bấm
+    # "Nộp hồ sơ" đúng dòng + chọn chi nhánh trong modal (provincePortalFlow). Detect y hệt lõi; chỉ tài khoản QN.
+    for key in [k for k, p in procedures.items() if p.get("provinceOnly") == ["quangninh"]]:
+        qn = procedures.pop(key)
+        assert qn.get("flowProfile") is None and qn["mode"] == "attach", key
+        assert qn["needsAgencySelect"] is True and qn["agencyProvince"] == "Quảng Ninh", key
+        assert qn["provincePortalFlow"]["host"] == "dichvucong.quangninh.gov.vn", key
+        assert "wizard" not in qn and "maePortal" not in qn, key
+        assert qn["detect"] == core_detect[key], key
+        assert is_allowed_in_province(qn, "quangninh") and not is_allowed_in_province(qn, "bacninh"), key
 
     assert procedures
     assert {
@@ -533,6 +578,10 @@ def test_registered_procedures_use_their_declared_flow_family():
 
 def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     procedures = public_list()
+    # 14 thủ tục đặc thù Quảng Ninh (01/11) đếm riêng: chốt đủ 14 + cùng cấu hình cổng tỉnh với Auto Fill ở
+    # tests/unit/test_agency_fill_plan.py::test_quang_ninh_cung_cau_hinh_cong_tinh_voi_auto_fill. Mốc dưới không cộng.
+    assert all(get_attach_pipeline(p["key"]) for p in procedures if p.get("provinceOnly") == ["quangninh"])
+    procedures = [p for p in procedures if p.get("provinceOnly") != ["quangninh"]]
     # So với mốc 21 ban đầu: +1 "khai-sinh-dang-ky-thuong" (khai sinh đơn lẻ),
     # +1 "chung-thuc-giao-dich-tai-san", +1 "chung-thuc-chu-ky-nguoi-dich-ctv" (attach-only)
     # +1 "dieu-chinh-huu-tri-xa-hoi" (Bộ Y tế), +1 "cham-dut-hoat-dong-ho-kinh-doanh"
@@ -599,7 +648,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # (1.013792, Bộ VHTTDL), "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang" (3.000721, Đà Nẵng),
     # "dang-ky-lap-dat-su-dung-nuoc-sach" (3.000598) + "chuyen-doi-ten-hop-dong-nuoc-sach" (3.000600, Lai Châu).
     # +1 cổng Bộ Công an "dang-ky-tam-tru" (1.004194); +1 cổng Bắc Ninh "dinh-chinh-gcn-da-cap-1115476-bac-ninh".
-    assert len(procedures) == 107
+    # +19 đợt 01/11: Sở VHTTDL (quảng cáo băng-rôn, xuất bản tài liệu, thẻ hướng dẫn viên), Sở Công Thương (cấp lại
+    # GCN ATTP, sửa đổi khuyến mại), Sở Nội vụ (3 thủ tục hội), Bộ Xây dựng (gia hạn GPXD, thẩm định BCNCKT, xe tập
+    # lái, phù hiệu xe), NN&MT (gia hạn CCHN thú y, xóa đăng ký tàu cá), cấp xã (điện mặt trời mái nhà, xét tuyển
+    # viên chức, xét tuyển / thi tuyển công chức, xác nhận diện tích nhà ở đăng ký thường trú).
+    assert len(procedures) == 126
 
     for procedure in procedures:
         key = procedure["key"]

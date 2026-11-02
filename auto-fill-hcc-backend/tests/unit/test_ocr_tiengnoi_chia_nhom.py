@@ -128,3 +128,62 @@ async def test_pdf_rat_lon_toi_da_8_phan():
     result = await ocr_tiengnoi.ocr_per_file([_pdf_text("rat-lon.pdf", 88)])
     assert route.call_count == 8
     assert "───── Trang 88/88 ─────\nP88" in result[0]["text"]
+
+
+def _route_at(base_url: str, broken: set[bytes] | None = None):
+    """Gateway giả; request chứa tệp trong `broken` thì treo quá giờ."""
+    def reply(request):
+        names = _names(request)
+        if broken and broken & set(names):
+            raise httpx.ReadTimeout("treo", request=request)
+        return httpx.Response(200, json={"results": [{"ok": True, "text": f"chu {n.decode()}"} for n in names]})
+
+    return respx.post(base_url.rstrip("/") + "/v1/ocr").mock(side_effect=reply)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_nhom_treo_chi_gui_rieng_nhom_do_sang_may_du_phong(monkeypatch):
+    monkeypatch.setattr(settings, "fallback_ocr_tiengnoi_base_url", "https://ocr-du-phong.test")
+    primary = _route_at(settings.ocr_tiengnoi_base_url, broken={b"t0.pdf"})
+    backup = _route_at("https://ocr-du-phong.test")
+    files = [_pdf(f"t{i}.pdf", 3) for i in range(10)]
+
+    result = await ocr_tiengnoi.ocr_per_file(files)
+
+    assert [r["text"] for r in result] == [f"chu t{i}.pdf" for i in range(10)]
+    assert primary.call_count == 4
+    assert backup.call_count == 1
+    assert b"t0.pdf" in _names(backup.calls[0].request)
+    assert b"t9.pdf" not in _names(backup.calls[0].request)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_nhom_hong_o_ca_hai_may_van_giu_cac_nhom_xong(monkeypatch):
+    monkeypatch.setattr(settings, "fallback_ocr_tiengnoi_base_url", "https://ocr-du-phong.test")
+    primary = _route_at(settings.ocr_tiengnoi_base_url, broken={b"t0.pdf"})
+    backup = _route_at("https://ocr-du-phong.test", broken={b"t0.pdf"})
+    files = [_pdf(f"t{i}.pdf", 3) for i in range(10)]
+
+    result = await ocr_tiengnoi.ocr_per_file(files)
+
+    assert result[0]["text"] == "" and result[0]["error"]
+    assert result[9]["text"] == "chu t9.pdf"
+    assert primary.call_count == 4 and backup.call_count == 1
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_moi_nhom_hong_thi_bao_loi_nhu_mot_request(monkeypatch):
+    monkeypatch.setattr(settings, "fallback_ocr_tiengnoi_base_url", "")
+    _route_at(settings.ocr_tiengnoi_base_url, broken={f"t{i}.pdf".encode() for i in range(10)})
+    with pytest.raises(httpx.ReadTimeout):
+        await ocr_tiengnoi.ocr_per_file([_pdf(f"t{i}.pdf", 3) for i in range(10)])
+
+
+def test_tran_cho_theo_so_trang_khong_vuot_cau_hinh(monkeypatch):
+    monkeypatch.setattr(settings, "ocr_tiengnoi_timeout_ms", 120000)
+    assert ocr_tiengnoi._timeout_for(1) == 33
+    assert ocr_tiengnoi._timeout_for(12) == 66
+    assert ocr_tiengnoi._timeout_for(60) == 120

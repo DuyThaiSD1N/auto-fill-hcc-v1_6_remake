@@ -1,14 +1,15 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật" (1.013997,
 cổng ngành Nông nghiệp và Môi trường — Angular mat-table, engine FE `attp-row`).
 
-ENGINE TÁCH/GỘP (như xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru): OCR per-file có header "Trang n/m"
-→ LLM gán KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn thành MỘT file (`sourceSegments`).
-Hồ sơ hay là MỘT PDF gộp Đơn đề nghị + nhiều Biên bản tiêu hủy.
+ENGINE TÁCH (như xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru): OCR per-file có header "Trang n/m"
+→ LLM gán KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI đoạn (một giấy) một item; đoạn chỉ là một
+phần file thì cắt đúng trang (`sourceSegments` một đoạn), đoạn phủ trọn file thì đính nguyên file.
+Hồ sơ hay là MỘT PDF scan chung Đơn đề nghị + nhiều Biên bản tiêu hủy.
 
 Bảng thành phần hồ sơ CHỈ CÓ MỘT dòng (theo ảnh ánh xạ của thủ tục):
   1. Đơn đề nghị hỗ trợ theo từng loại hình cơ sở sản xuất theo Mẫu số 2a, Mẫu số 2b ... NĐ 116/2025/NĐ-CP
-Đơn + mọi Biên bản tiêu hủy đính chung vào dòng 1 (Bản chính), Đơn đứng trước, Biên bản giữ thứ tự trang. CCCD chỉ
-dùng ở bước điền, không đính kèm. Trang không rõ loại vẫn đính cuối file kèm cảnh báo để cán bộ kiểm tra.
+Dòng attp-row nhận nhiều tệp → Đơn, từng Biên bản tiêu hủy, đoạn không rõ loại (kèm cảnh báo) và CCCD đều là item
+riêng cùng dòng 1 (Bản chính), thứ tự Đơn → Biên bản → không rõ loại → CCCD.
 """
 
 import re
@@ -26,7 +27,6 @@ from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach.planner impor
 from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.attach.planner import (
     _coerce_int,
     _fallback_segment,
-    _merge_adjacent,
     _pdf_page_count,
     _truncate,
 )
@@ -50,8 +50,14 @@ _DON_ROW = {
     "documentName": "Đơn đề nghị hỗ trợ thiệt hại do dịch bệnh động vật",
     "loaiBan": "Bản chính",
 }
-# Thứ tự gộp vào dòng Đơn; CCCD không đính.
+# Thứ tự các tệp trên dòng Đơn; CCCD đứng cuối.
 _ORDER = [_DON, _BIEN_BAN, _OTHER]
+_LABELS = {
+    _DON: _DON_ROW["documentName"],
+    _BIEN_BAN: "Biên bản tiêu hủy động vật",
+    _OTHER: "Giấy tờ kèm theo hồ sơ",
+    _CCCD: "Căn cước công dân",
+}
 
 
 def _normalize_type(value: Any) -> str:
@@ -153,43 +159,71 @@ def build_plan_items(
         if doc_type == _OTHER:
             doc_type = _rule_type(_segment_text(segment, pages_by_file))
         typed.append((segment, doc_type))
-    typed = _merge_adjacent(typed)
+    # Chỉ nối đoạn Đơn liền kề cùng file; mỗi Biên bản tiêu hủy là một giấy riêng (prompt tách theo tiêu đề biên
+    # bản) nên hai đoạn biên bản liền nhau vẫn là hai tệp.
+    merged: list[tuple[dict, str]] = []
+    for segment, doc_type in typed:
+        if doc_type == _DON and merged:
+            prev_segment, prev_type = merged[-1]
+            if (prev_type == _DON and prev_segment["fileIndex"] == segment["fileIndex"]
+                    and prev_segment["pageTo"] + 1 == segment["pageFrom"]):
+                merged[-1] = ({**prev_segment, "pageTo": segment["pageTo"]}, _DON)
+                continue
+        merged.append((segment, doc_type))
+    typed = merged
 
     classified: list[dict] = []
     unknown_pages: list[str] = []
     parts: list[tuple[dict, str]] = []
+    cccd_parts: list[dict] = []
     for segment, doc_type in typed:
         file = raw_files[segment["fileIndex"]]
         entry = {"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
                  "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
         if doc_type == _CCCD:
-            classified.append({**entry, "attached": False})
+            cccd_parts.append(segment)
+            classified.append({**entry, "componentIndex": _DON_ROW["componentIndex"], "routedTo": _DON})
             continue
         if doc_type == _OTHER:
             unknown_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
         parts.append((segment, doc_type))
         classified.append({**entry, "componentIndex": _DON_ROW["componentIndex"]})
 
+    parts.sort(key=lambda p: (_ORDER.index(p[1]), p[0]["fileIndex"], p[0]["pageFrom"]))
+    parts += [(segment, _CCCD) for segment in cccd_parts]
     attachments: list[dict] = []
-    if parts:
-        parts.sort(key=lambda p: (_ORDER.index(p[1]), p[0]["fileIndex"], p[0]["pageFrom"]))
-        first = parts[0][0]
-        file = raw_files[first["fileIndex"]]
-        attachments.append({
-            "fileIndex": first["fileIndex"],
-            "fileName": str(file.get("name") or f"file-{first['fileIndex'] + 1}"),
-            "documentName": _DON_ROW["documentName"],
+    # FE coi tệp trùng tên đã có trên dòng là đã đính → mỗi item một tên.
+    used_names: set[str] = set()
+    cccd_labels: list[str] = []
+    for segment, doc_type in parts:
+        file = raw_files[segment["fileIndex"]]
+        file_name = str(file.get("name") or f"file-{segment['fileIndex'] + 1}")
+        base = (segment.get("documentName") or _LABELS[doc_type]).replace("/", "-")
+        document_name, n = base, 2
+        while document_name in used_names:
+            document_name, n = f"{base[:46]} {n}", n + 1
+        used_names.add(document_name)
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": file_name,
+            "documentName": document_name,
             "componentName": _DON_ROW["componentName"],
             "componentIndex": _DON_ROW["componentIndex"],
             "loaiBan": _DON_ROW["loaiBan"],
             "target": "attp-row",
             "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            "sourceSegments": [
-                _source_segment(s, file_meta[s["fileIndex"]]["pageCount"]) for s, _ in parts
-            ],
-        })
+            "detectedType": doc_type,
+        }
+        # Đoạn chỉ là một phần file → cắt đúng trang của nó; đoạn phủ trọn file → đính nguyên file.
+        source = _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"])
+        if source["pageIndexes"] is not None:
+            item["sourceSegments"] = [source]
+        if doc_type == _CCCD:
+            cccd_labels.append(
+                f"{file_name} trang {segment['pageFrom']}-{segment['pageTo']}" if source["pageIndexes"] is not None
+                else file_name
+            )
+        attachments.append(item)
 
     warnings: list[str] = []
     found = {doc_type for _, doc_type in typed}
@@ -197,12 +231,15 @@ def build_plan_items(
         warnings.append(
             "Chưa có Đơn đề nghị hỗ trợ thiệt hại (Mẫu số 2a/2b) — cần bổ sung; đã đính Biên bản vào dòng Đơn."
         )
-    if _BIEN_BAN not in found:
-        warnings.append("Chưa thấy Biên bản tiêu hủy động vật — cần bổ sung.")
     if unknown_pages:
         warnings.append(
             "Không xác định được loại giấy tờ, đã đính chung dòng Đơn đề nghị (cán bộ kiểm tra lại): "
             + "; ".join(unknown_pages)
+        )
+    if cccd_labels:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Đơn đề nghị hỗ trợ\": "
+            + ", ".join(cccd_labels) + "."
         )
     return attachments, classified, warnings
 

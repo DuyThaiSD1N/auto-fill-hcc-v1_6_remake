@@ -1,7 +1,7 @@
 """Đính kèm cho [Lào Cai - cổng iGate mới] thu hồi GCN cấp lần đầu không đúng quy định, cấp lại (1.115687).
 
 Phân loại giữ NGUYÊN của pipeline cổng cũ (thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai/attach: OCR → LLM gán nhãn
-catalog + documentName); CCCD không phải thành phần hồ sơ → bỏ qua kèm cảnh báo như cổng cũ.
+catalog + documentName).
 
 Bước 2 "Thành phần hồ sơ hệ thống" của cổng mới (crawl 29/10/2026, UBND phường) là CÙNG bảng 2 dòng như cổng cũ, cổng
 TÍCH SẴN cả 2, KHÔNG còn danh sách "Giấy tờ khác":
@@ -9,7 +9,7 @@ TÍCH SẴN cả 2, KHÔNG còn danh sách "Giấy tờ khác":
    2 Giấy chứng nhận đã cấp (bản gốc)
 ⚠ Bản crawl ghi componentName dòng 2 là "scannerScan tệp tin…" (đọc nhầm ô nút); dò tên không ra thì lấy theo VỊ TRÍ
 dòng khi bảng đúng 2 dòng. Giấy tờ cổng cũ đưa xuống "Giấy tờ khác" (Giấy ủy quyền, văn bản rà soát, giấy tờ người đồng
-sử dụng…) → dòng Văn bản kiến nghị, giữ tên + cảnh báo. Không bỏ tệp nào ngoài CCCD.
+sử dụng…) và CCCD → dòng Văn bản kiến nghị, giữ tên + cảnh báo. Không bỏ tệp nào.
 
 Engine FE "attp-row" + untickUnplannedRows dùng chung với cho_thue_dat_thue_rung_igate_lao_cai.
 """
@@ -75,22 +75,19 @@ def build_plan_items(
         document_name = _goc._unique_document_name(detected.get("documentName") or fallback, used_names, fallback)
         base = {"fileName": file_name, "label": label, "documentName": document_name,
                 "source": "llm" if index in llm_types else "default"}
-        if label in catalog.SKIPPED_LABELS:
-            warnings.append(f"File '{file_name}' ({document_name}) không phải thành phần hồ sơ — đã bỏ qua.")
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
-            continue
-
+        # CCCD không có dòng trong catalog nên cũng về dòng Văn bản kiến nghị.
         position = catalog.row_for(label)
         row = (_row(position, rows) if position else None) or kien_nghi
         if not position:
             ngoai_bang.append(f"{file_name} → \"{document_name}\"")
         bytes_per_row[row[0]] = bytes_per_row.get(row[0], 0) + _goc._data_url_size(file.get("dataUrl", ""))
         attachments.append(_igate._item(index, file_name, document_name, row, label))
-        classified.append({**base, "target": "attp-row", "componentIndex": row[0]})
+        classified.append({**base, "target": "attp-row", "componentIndex": row[0],
+                           **({} if position else {"routedTo": "kien_nghi"})})
 
     if ngoai_bang:
         warnings.append(
-            "Giấy tờ ngoài 2 dòng của bảng (cổng cũ đưa xuống \"Giấy tờ khác\") đã tạm đính vào dòng Văn bản kiến nghị "
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã tạm đính vào dòng Văn bản kiến nghị "
             "(vẫn là tệp riêng, giữ tên) vì cổng mới không còn danh sách \"Giấy tờ khác\" — nếu cần tách riêng, cán bộ "
             f"dùng nút \"Thêm giấy tờ\" của cổng: {', '.join(ngoai_bang)}."
         )

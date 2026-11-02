@@ -2,9 +2,9 @@
 cổng DVC Đà Nẵng — Angular mat-table, engine FE `attp-row`).
 
 ENGINE TÁCH/GỘP (như dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn): OCR per-file có header "Trang n/m" → LLM gán
-KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định (chống chồng/thiếu trang) → GOM các đoạn cùng dòng thành
-MỘT file gộp (`sourceSegments` nhiều đoạn, giấy tờ chính trước, giấy tờ "đính kèm chung" sau). FE tự trích/gộp
-trang thành một PDF cho mỗi dòng.
+KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định (chống chồng/thiếu trang) → MỖI ĐOẠN một file riêng vào
+đúng dòng (ô upload attp-row là `multiple`; giấy tờ chính trước, giấy tờ "đính kèm chung" sau). Chỉ gửi
+`sourceSegments` (đúng 1 đoạn) khi đoạn là một phần file; đoạn phủ trọn file thì đính nguyên file.
 
 Bảng 9 dòng (thứ tự trên cổng; dòng 1 "Bản chính", còn lại "Bản sao"):
   [1] (1) Đơn Mẫu số 18                        ← don_mau_18 + đính kèm chung to_khai_thue (LPTB, SDĐPNN)
@@ -17,7 +17,8 @@ Bảng 9 dòng (thứ tự trên cổng; dòng 1 "Bản chính", còn lại "B�
   [8] (4) QĐ/VB chia, tách, hợp nhất, sáp nhập, chuyển đổi ← qd_to_chuc_lai (QĐ + biên bản họp HĐTV)
   [9] (4) QĐ phê duyệt điều chỉnh QHXD chi tiết ← qd_dieu_chinh_quy_hoach + nghia_vu_tai_chinh
 Chứng từ nghĩa vụ tài chính chỉ vào dòng 9 khi có QĐ điều chỉnh quy hoạch; không thì đính chung dòng 1.
-CCCD không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+CCCD / đoạn chưa rõ loại không có dòng → đính chung dòng 1, mỗi đoạn một file riêng; chỉ bỏ trang trắng trong
+tệp có chữ.
 """
 
 import base64
@@ -61,7 +62,7 @@ _ALLOWED = {
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG DUY NHẤT của dòng (FE khớp substring fold); componentIndex = STT dòng
 # (1-based) làm gợi ý. Dòng 4 và 9 cùng mở đầu "Quyết định phê duyệt" → dòng 4 dùng "phê duyệt quy hoạch", dòng 9
-# dùng "phê duyệt điều chỉnh quy hoạch". `types` = loại giấy tờ vào dòng, theo THỨ TỰ trong file gộp.
+# dùng "phê duyệt điều chỉnh quy hoạch". `types` = loại giấy tờ vào dòng, theo THỨ TỰ đính trên dòng.
 _ROWS: dict[int, dict[str, Any]] = {
     1: {
         "componentName": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 18",
@@ -120,6 +121,14 @@ _ROWS: dict[int, dict[str, Any]] = {
 }
 # Loại CHÍNH của từng dòng (loại đầu tiên); còn lại là "đính kèm chung".
 _MAIN_TYPES = {row["types"][0]: idx for idx, row in _ROWS.items()}
+# Tên mặc định của giấy "đính kèm chung" khi LLM không đặt tên (không lấy tên dòng: dòng là của giấy chính).
+_SHARED_NAMES = {
+    _TO_KHAI_THUE: "Tờ khai thuế",
+    _TAI_SAN: "Giấy tờ về tài sản gắn liền với đất",
+    _THE_CHAP: "Văn bản chấp thuận của bên nhận thế chấp",
+    _BANG_DKDN: "Bảng tình hình thay đổi đăng ký doanh nghiệp",
+    _NGHIA_VU_TC: "Chứng từ nghĩa vụ tài chính",
+}
 
 _PAGE_HEADER_RE = re.compile(
     r"(?im)^[\t ─-╿-]*(?:trang|page)\s+(\d+)\s*/\s*(\d+)[\t ─-╿-]*$"
@@ -350,13 +359,15 @@ def _rule_type(text: str) -> str:
 
 
 def _merge_adjacent(typed: list[tuple[dict, str]]) -> list[tuple[dict, str]]:
-    """Gộp các đoạn LIỀN KỀ cùng file + cùng loại (vd GCN bìa trang 1 + trang bổ sung trang 2-3) thành 1 đoạn."""
+    """Gộp các đoạn LIỀN KỀ cùng file + cùng loại (vd GCN bìa trang 1 + trang bổ sung trang 2-3) thành 1 đoạn.
+    CCCD / chưa rõ loại không gộp: hai đoạn liền nhau có thể là hai giấy khác nhau."""
     merged: list[tuple[dict, str]] = []
     for segment, doc_type in typed:
         if merged:
             prev_segment, prev_type = merged[-1]
             if (
-                doc_type == prev_type
+                doc_type not in (_CCCD, _OTHER)
+                and doc_type == prev_type
                 and prev_segment["fileIndex"] == segment["fileIndex"]
                 and prev_segment["pageTo"] + 1 == segment["pageFrom"]
             ):
@@ -396,20 +407,26 @@ def build_plan_items(
 
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    blank_pages: list[str] = []
+    extra: list[tuple[dict, str]] = []
     by_row: dict[int, list[tuple[dict, str]]] = {}
 
     for segment, doc_type in typed:
         file = raw_files[segment["fileIndex"]]
         base = {"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
-        if doc_type == _CCCD:
-            classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
         row_idx = _row_of(doc_type, found)
         if row_idx is None:
-            skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-            classified.append({**base, "type": _OTHER, "target": "skip"})
+            seg_text = _segment_text(segment, page_text_by_file, full_text_by_file)
+            if doc_type != _CCCD and sum(ch.isalnum() for ch in seg_text) < 5 \
+                    and full_text_by_file.get(segment["fileIndex"], "").strip():
+                # Trang trắng (mặt sau không in) trong tệp có chữ: không đính.
+                blank_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
+                classified.append({**base, "type": _OTHER, "target": "skip", "reason": "trang trắng"})
+                continue
+            # CCCD / chưa rõ loại / không đọc được chữ → dòng 1, một file riêng cho đoạn này.
+            extra.append((segment, doc_type))
+            classified.append({**base, "componentIndex": 1, "routedTo": 1})
             continue
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx,
@@ -421,29 +438,59 @@ def build_plan_items(
         row = _ROWS[row_idx]
         order = {t: i for i, t in enumerate(row["types"])}
         parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
-        first_segment = parts[0][0]
-        base_name = (first_segment.get("documentName") if len(parts) == 1 else "") or row["documentName"]
-        document_name = _unique_name(base_name, used_names, row["documentName"])
-        first_file = raw_files[first_segment["fileIndex"]]
-        attachments.append({
-            "fileIndex": first_segment["fileIndex"],
-            "fileName": str(first_file.get("name") or f"file-{first_segment['fileIndex'] + 1}"),
+        for segment, doc_type in parts:
+            file_index = segment["fileIndex"]
+            default_name = row["documentName"] if _MAIN_TYPES.get(doc_type) == row_idx else \
+                _SHARED_NAMES.get(doc_type, row["documentName"])
+            item = {
+                "fileIndex": file_index,
+                "fileName": str(raw_files[file_index].get("name") or f"file-{file_index + 1}"),
+                # Tên khác nhau từng file: FE coi tệp trùng tên đã có trên dòng là đã đính.
+                "documentName": _unique_name(segment.get("documentName") or default_name, used_names, default_name),
+                "componentName": row["componentName"],
+                "componentIndex": row_idx,
+                "loaiBan": row["loaiBan"],
+                "target": "attp-row",
+                "needsAddComponent": False,
+                "detectedType": doc_type,
+                "includedTypes": [doc_type],
+            }
+            source = _source_segment(segment, file_meta[file_index]["pageCount"])
+            if source["pageIndexes"] is not None:  # đoạn chỉ là một phần file → FE cắt đúng trang đoạn này.
+                item["sourceSegments"] = [source]
+            attachments.append(item)
+
+    row1 = _ROWS[1]
+    extra_where: list[str] = []
+    for segment, doc_type in extra:
+        file_index = segment["fileIndex"]
+        file_name = str(raw_files[file_index].get("name") or f"file-{file_index + 1}")
+        # Tên LLM đặt cho đoạn, không có thì tên tệp gốc.
+        document_name = _unique_name(segment.get("documentName") or file_name, used_names, file_name)
+        item = {
+            "fileIndex": file_index,
+            "fileName": file_name,
             "documentName": document_name,
-            "componentName": row["componentName"],
-            "componentIndex": row_idx,
-            "loaiBan": row["loaiBan"],
+            "componentName": row1["componentName"],
+            "componentIndex": 1,
+            "loaiBan": row1["loaiBan"],
             "target": "attp-row",
             "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            # Mỗi dòng = MỘT file gộp: FE trích đúng trang từng đoạn rồi ghép theo thứ tự này.
-            "sourceSegments": [
-                _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"]) for segment, _ in parts
-            ],
-        })
-
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+            "detectedType": doc_type,
+            "includedTypes": [doc_type],
+        }
+        source = _source_segment(segment, file_meta[file_index]["pageCount"])
+        if source["pageIndexes"] is not None:  # đoạn con của PDF gộp → FE tách theo trang.
+            item["sourceSegments"] = [source]
+        attachments.append(item)
+        extra_where.append(f"{file_name} trang {segment['pageFrom']}-{segment['pageTo']}")
+    if extra_where:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{row1['componentName']}\": "
+            + "; ".join(extra_where) + "."
+        )
+    if blank_pages:
+        warnings.append("Đã bỏ trang trắng không đính kèm: " + "; ".join(blank_pages) + ".")
 
     if _DON18 not in found:
         warnings.append("Không tìm thấy Đơn đăng ký biến động Mẫu số 18 (dòng 1, bắt buộc) — vui lòng đính tay.")

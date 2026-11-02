@@ -3,8 +3,9 @@ táng (mã 3.000721, cổng DVC Đà Nẵng — Angular mat-table, engine FE `at
 
 Bảng có 3 dòng cố định (theo ảnh ánh xạ + Mapping_HoTroChiPhiVanChuyenHoaTang_DaNang.xlsx):
   index 0: Đơn đề nghị hỗ trợ chi phí vận chuyển ... theo Mẫu ban hành kèm theo NQ 75/2026/NQ-HĐND -> Bản chính
-  index 1: Quyết định hỗ trợ ... của Ủy ban nhân dân cấp xã -> văn bản KẾT QUẢ do UBND ban hành, KHÔNG đính
-           (gửi untickRows để FE bỏ tick nếu cổng tick sẵn).
+  index 1: Quyết định hỗ trợ ... của Ủy ban nhân dân cấp xã -> văn bản KẾT QUẢ do UBND ban hành, không đính vào
+           dòng này (gửi untickRows để FE bỏ tick nếu cổng tick sẵn); tệp người dân lỡ nộp kèm vẫn đính chung
+           dòng Đơn để không rớt tệp.
   index 2: Hợp đồng dịch vụ hỏa táng; biên bản giao nhận hũ đựng tro cốt -> Bản sao
 
 FILE GỘP KHÔNG TÁCH: người dân hay scan Đơn + Biên bản giao nhận + Hợp đồng vào MỘT PDF. Ảnh ánh xạ ghi rõ
@@ -13,7 +14,7 @@ mỗi file và planner phát một item cho MỖI dòng mà file đó có giấy
 FE gom nhóm theo componentName nên mỗi dòng nhận file riêng).
 
 Phân loại LLM-FIRST: không có rule keyword. Giấy tờ không có dòng riêng (Trích lục khai tử, CCCD, ủy quyền,
-không rõ loại) đính CHUNG vào dòng Đơn đề nghị để không rớt file, giữ documentName mô tả rõ.
+Quyết định hỗ trợ, không rõ loại) đính CHUNG vào dòng Đơn đề nghị để không rớt file, giữ documentName mô tả rõ.
 """
 
 import time
@@ -131,6 +132,7 @@ def build_plan_items(
     warnings: list[str] = []
     classified: list[dict] = []
     seen_types: set[str] = set()
+    extra_files: list[str] = []
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -138,21 +140,11 @@ def build_plan_items(
         seen_types.update(doc_types)
         source = "llm" if llm_types.get(index) else "unknown"
 
-        if doc_types == [_QUYET_DINH]:
-            classified.append({"fileName": file_name, "docTypes": doc_types, "source": source, "skipped": True})
-            warnings.append(
-                f"'{file_name}' là Quyết định hỗ trợ của UBND cấp xã (văn bản kết quả) — không đính kèm."
-            )
-            continue
-
         rows = sorted({_ROW_OF[t] for t in doc_types if t in _ROW_OF})
         if not rows:
-            # Chỉ có "other" (hoặc other + quyết định) -> không bỏ file: đính chung dòng Đơn, giữ tên gốc.
+            # Chỉ có "other"/Quyết định hỗ trợ (dòng kết quả bị bỏ tick) -> đính chung dòng Đơn, giữ tên gốc.
             rows = [0]
-            warnings.append(
-                f"Chưa nhận diện chắc loại giấy tờ cho '{file_name}' — tạm đính vào dòng Đơn đề nghị; cán bộ "
-                f"kiểm tra lại."
-            )
+            extra_files.append(file_name)
 
         for row_index in rows:
             row = _ROWS[row_index]
@@ -174,7 +166,14 @@ def build_plan_items(
             "docTypes": doc_types,
             "source": source,
             "componentIndexes": rows,
+            "routedTo": [_ROWS[i]["componentName"] for i in rows],
         })
+
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROW_DON}\": "
+            + ", ".join(extra_files)
+        )
 
     if _DON not in seen_types:
         warnings.append(

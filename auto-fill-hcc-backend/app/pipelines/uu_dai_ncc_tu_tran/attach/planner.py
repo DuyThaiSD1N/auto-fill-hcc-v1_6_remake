@@ -9,7 +9,7 @@ nào cũng có "Thêm giấy tờ").
 Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments``, cách làm như thủ tục di chuyển hồ sơ cùng cổng): LLM
 xếp loại TỪNG TRANG; mỗi giấy trong PDF gộp thành một tệp riêng chỉ gồm đúng các trang của nó (``sourceSegments``,
 extension cắt PDF, tên tệp = documentName), bỏ trang trắng. Các tệp cắt vẫn cùng vào ô Bản khai như chế độ thường.
-Chia trang lỗi / số trang OCR lệch PDF → tệp đó đính nguyên.
+Chia trang lỗi / số trang OCR lệch PDF / mọi trang đều trắng → tệp đó đính nguyên.
 """
 
 import re
@@ -238,7 +238,12 @@ def _split_file_items(file: dict, idx: int, pages: list[str], types: list[str]) 
     entry = {"fileName": file_name, "docType": ",".join(order) or _OTHER, "source": "llm-pages",
              "tachGiayTo": _page_runs(types, pages)}
     warning = ""
-    if not items or _OTHER in by_type:
+    if not items:
+        # Mọi trang đều trắng (OCR < _MIN_PAGE_CHARS) → đính NGUYÊN tệp vào ô Bản khai, không cắt trang.
+        items.append(_build_extra_item(file, idx, _OTHER))
+        entry["routedTo"] = items[0]["slotKey"]
+        warning = f"File '{file_name}' không đọc được chữ ở trang nào — đã đính nguyên tệp vào dòng Bản khai, cán bộ kiểm lại."
+    elif _OTHER in by_type:
         warning = f"Chưa xác định được loại giấy tờ của một số trang trong file '{file_name}' — đã đính vào dòng Bản khai, cán bộ kiểm lại."
     return items, warning, entry
 

@@ -10,7 +10,8 @@ Thủ tục chỉ có bước đính kèm. Bảng thành phần hồ sơ trên c
 Người dân hay scan nhiều mẫu vào chung một PDF, nên phân loại theo cả file. Nhiều file cùng một dòng
 thì gộp vào một PDF (`sourceFileIndexes`, file chứa mẫu chính đứng đầu). Một file gộp cả biên bản lẫn
 giấy đề nghị thì đính dòng 2; nếu không có file biên bản riêng thì đính thêm chính file đó vào dòng 1.
-Không bấm "Thêm thành phần hồ sơ": tài liệu ngoài hai nhóm trên bị bỏ qua kèm cảnh báo.
+Không bấm "Thêm thành phần hồ sơ": tài liệu ngoài hai nhóm trên đính RIÊNG từng file vào dòng 1 (không gộp)
+kèm cảnh báo; không bỏ file nào.
 """
 
 import re
@@ -241,13 +242,33 @@ def build_plan_items(
     row_1_indexes = {entry["idx"] for entry in row_1}
     row_2_indexes = {entry["idx"] for entry in row_2}
     classified: list[dict] = []
+    extra_files: list[str] = []
     for entry in resolved:
         rows = [row for row, indexes in ((1, row_1_indexes), (2, row_2_indexes)) if entry["idx"] in indexes]
         if not rows:
-            warnings.append(
-                f"Không xác định được giấy tờ thuộc 2 dòng hồ sơ tổ hòa giải cho file '{entry['fileName']}' — đã bỏ qua."
-            )
-            classified.append({"fileName": entry["fileName"], "type": _DOC_OTHER, "source": "unknown"})
+            # Không thuộc 2 nhóm → item riêng ở dòng 1, tên theo tiêu đề LLM đọc được, không có thì tên file.
+            title = (llm_types.get(entry["idx"]) or {}).get("title") or ""
+            document_name = _unique_document_name(title or entry["fileName"], used_names, "Tài liệu khác")
+            attachments.append({
+                "fileIndex": entry["idx"],
+                "fileName": entry["fileName"],
+                "documentName": document_name,
+                "componentName": _ROW_1_COMPONENT,
+                "target": "existing",
+                "componentIndex": 1,
+                "needsAddComponent": False,
+                "detectedType": _DOC_OTHER,
+            })
+            extra_files.append(entry["fileName"])
+            classified.append({
+                "fileName": entry["fileName"],
+                "type": _DOC_OTHER,
+                "target": "existing",
+                "componentIndex": 1,
+                "componentIndexes": [1],
+                "source": entry["source"],
+                "routedTo": 1,
+            })
             continue
         classified.append({
             "fileName": entry["fileName"],
@@ -258,6 +279,11 @@ def build_plan_items(
             "source": entry["source"],
         })
 
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Biên bản kiểm phiếu\": "
+            + ", ".join(extra_files) + "."
+        )
     return attachments, warnings, classified
 
 

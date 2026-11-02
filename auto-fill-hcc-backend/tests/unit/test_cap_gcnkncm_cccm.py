@@ -15,10 +15,10 @@ _BASE = {
     "NguoiNop_HoTen": "NGUYỄN VĂN A",
     "NguoiNop_NgaySinh": "10/08/1986",
     "NguoiNop_GioiTinh": "Nam",
-    "NguoiNop_SoDinhDanh": "049086009139",
+    "NguoiNop_SoDinhDanh": "001000000001",
     "NguoiNop_QuocTich": "Việt Nam",
     "NguoiNop_ThuongTru": {"tinh": "Thành phố Đà Nẵng", "xa": "Xã Thu Bồn", "diaChi": "Thôn 1"},
-    "NguoiNop_DienThoai": "0786348870",
+    "NguoiNop_DienThoai": "0900000001",
 }
 
 
@@ -27,9 +27,9 @@ def test_ca_nhan_contact_block_va_khoi_b():
     assert d["data[chonDoiTuong]"] == "Cá nhân"
     assert d["data[fullname]"] == "NGUYỄN VĂN A"
     assert d["data[birthday]"] == "10/08/1986"
-    assert d["data[identityNumber]"] == "049086009139"
+    assert d["data[identityNumber]"] == "001000000001"
     # SĐT vào ô "Số điện thoại" = data[phoneNumber] (KHÔNG phải ô "SĐT người được ủy quyền").
-    assert d["data[phoneNumber]"] == "0786348870"
+    assert d["data[phoneNumber]"] == "0900000001"
     assert "data[AuthorityApplicantPhoneNumber]" not in d
     assert d["data[nation]"] == "Việt Nam"
     assert d["data[province]"] == "Thành phố Đà Nẵng"
@@ -94,14 +94,19 @@ def test_attach_llm_first_routes_va_component_index():
     assert all(a["target"] == "attp-row" for a in attachments)
 
 
-def test_attach_cccd_skip_va_other_warn():
-    """LLM nói cccd → skip (nguồn điền); LLM không nhận ra (other) → cảnh báo, không đính."""
+def test_attach_cccd_va_other_dinh_chung_dong_don():
+    """CCCD/other không có dòng riêng → đính chung dòng Đơn (4), giữ tên file gốc, cảnh báo liệt kê tệp."""
     files = [{"name": "cccd.jpg", "type": "image/jpeg"}, {"name": "la.pdf", "type": "application/pdf"}]
     llm_types = {0: "cccd", 1: "other"}
     attachments, warnings, classified = planner.build_plan_items(files, [], llm_types)
-    assert attachments == []
-    assert any(c.get("skipped") for c in classified if c["fileName"] == "cccd.jpg")
-    assert warnings and "la.pdf" in warnings[0]
+    by = {a["fileName"]: a for a in attachments}
+    assert set(by) == {"cccd.jpg", "la.pdf"}
+    for name, doc_type in (("cccd.jpg", "cccd"), ("la.pdf", "other")):
+        assert by[name]["componentIndex"] == 4 and by[name]["componentName"] == "Đơn đề nghị theo quy định"
+        assert by[name]["target"] == "attp-row" and by[name]["detectedType"] == doc_type
+        assert by[name]["documentName"] == name
+    assert all(c.get("routedTo") == "don_de_nghi" and not c.get("skipped") for c in classified)
+    assert len(warnings) == 1 and "cccd.jpg" in warnings[0] and "la.pdf" in warnings[0]
 
 
 def test_registry_process_and_attach():

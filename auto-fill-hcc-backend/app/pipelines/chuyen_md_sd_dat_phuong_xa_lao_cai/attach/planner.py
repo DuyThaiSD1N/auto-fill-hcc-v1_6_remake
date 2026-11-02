@@ -5,7 +5,7 @@ LLM đọc OCR từng file → nhãn rút gọn (catalog.py). BE đổi nhãn th
     dòng rồi bơm tệp);
   - hoặc một dòng "Giấy tờ khác" (target=new, tên = documentName) cho giấy tờ không có dòng riêng: giấy uỷ
     quyền, hồ sơ nghĩa vụ tài chính, hồ sơ đo đạc, GCN đăng ký doanh nghiệp, thông báo kết quả, tài liệu khác.
-CCCD không phải thành phần hồ sơ → bỏ qua kèm cảnh báo.
+CCCD không có dòng riêng → cũng xuống "Giấy tờ khác" (giữ tên) kèm cảnh báo; không bỏ tệp nào.
 
 MỖI TỆP CHỈ VÀO MỘT DÒNG: hồ sơ mẫu của thủ tục này quét gộp cả cụm nghĩa vụ tài chính + đo đạc vào một PDF
 (14 trang, 6,33 MB) — vượt trần 6 MB của cổng nên planner loại từ đầu và báo lại để cán bộ tách tệp.
@@ -154,14 +154,14 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
-    unknown: list[str] = []
+    extra_files: list[str] = []
     for entry in entries:
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
         if entry["label"] in catalog.SKIPPED_LABELS:
-            warnings.append(
-                f"File '{entry['fileName']}' ({entry['documentName']}) không phải thành phần hồ sơ — đã bỏ qua."
-            )
-            classified.append({**base, "target": "skip", "reason": "not_a_component"})
+            # Không có dòng riêng → "Giấy tờ khác" để không rơi tệp.
+            attachments.append(_other_item(entry))
+            classified.append({**base, "target": "new", "routedTo": "giay_to_khac", "reason": "not_a_component"})
+            extra_files.append(entry["fileName"])
             continue
 
         position = catalog.row_for(entry["label"])
@@ -171,7 +171,7 @@ def build_plan_items(
             classified.append({**base, "target": "fixed-slot", "slotKey": item["slotKey"]})
         else:
             if entry["label"] == "khac":
-                unknown.append(entry["fileName"])
+                extra_files.append(entry["fileName"])
             attachments.append(_other_item(entry))
             classified.append({**base, "target": "new"})
 
@@ -187,10 +187,10 @@ def build_plan_items(
             f"\"{catalog.row_name(catalog.ROW_GCN)}\" sẽ để trống. Nếu Giấy chứng nhận nằm chung tệp với "
             "giấy tờ khác thì cán bộ tách riêng rồi đính bổ sung."
         )
-    if unknown:
+    if extra_files:
         warnings.append(
-            "Chưa nhận ra loại giấy tờ, đã tạm đưa xuống \"Giấy tờ khác\" để không bỏ sót — cán bộ kiểm tra "
-            f"lại: {', '.join(unknown)}."
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính vào \"Giấy tờ khác\" để không bỏ sót — cán bộ "
+            f"kiểm tra lại: {', '.join(extra_files)}."
         )
 
     return attachments, warnings, classified

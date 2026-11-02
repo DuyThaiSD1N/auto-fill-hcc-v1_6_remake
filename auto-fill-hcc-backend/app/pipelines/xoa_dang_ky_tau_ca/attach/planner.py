@@ -5,7 +5,8 @@ và upload file nên dùng engine FE ``attp-row``. CCCD riêng của người n�
 contract ``add-document-dialog`` để FE chọn đúng loại trong modal "Thêm giấy tờ", tạo dòng rồi upload.
 Danh sách option thật trên cổng không có mục phù hợp cho Hợp đồng mua bán, Lời chứng và GCN đăng ký
 cũ, nên các tài liệu chứng minh này được đính kèm cùng dòng Tờ khai Mẫu 10.ĐKT theo fallback đã duyệt.
-PDF gộp có Mẫu 10.ĐKT vẫn được đưa nguyên file vào dòng Tờ khai.
+PDF gộp có Mẫu 10.ĐKT vẫn được đưa nguyên file vào dòng Tờ khai. Giấy chưa rõ loại cũng đính chung dòng
+Tờ khai (giữ tên file gốc) + cảnh báo; không bỏ file nào.
 """
 
 import re
@@ -231,6 +232,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -270,9 +272,19 @@ def build_plan_items(
             })
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        # Không rõ loại → dòng Tờ khai (input multiple), giữ tên gốc vì không biết chắc là giấy gì.
+        item = _build_row_item(file, index, _TO_KHAI_10)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _TO_KHAI_10})
+        extra_files.append(file_name)
 
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+            f"\"{_ROWS[_TO_KHAI_10]['componentName']}\": " + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

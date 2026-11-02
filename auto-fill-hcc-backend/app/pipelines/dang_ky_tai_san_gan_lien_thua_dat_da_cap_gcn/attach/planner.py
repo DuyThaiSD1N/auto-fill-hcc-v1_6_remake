@@ -16,7 +16,8 @@ Bảng 8 dòng (loại bản theo cổng: dòng 1 "Bản chính", còn lại "B�
   [6] Văn bản chấp thuận gia hạn sở hữu nhà ở (nước ngoài) ← van_ban_gia_han
   [7] Mảnh trích đo bản đồ địa chính                    ← manh_trich_do
   [8] Văn bản về việc đại diện                          ← van_ban_dai_dien
-CCCD không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+CCCD / đoạn chưa rõ loại không có dòng → đính chung dòng 1 (Đơn), mỗi đoạn một file riêng; chỉ bỏ trang trắng trong
+tệp có chữ.
 """
 
 import base64
@@ -353,7 +354,8 @@ def build_plan_items(
     classified: list[dict] = []
     warnings: list[str] = []
     used_names: set[str] = set()
-    skipped_pages: list[str] = []
+    blank_pages: list[str] = []
+    extra_pages: list[str] = []
 
     for segment, doc_type in _merge_adjacent(typed):
         file_index = segment["fileIndex"]
@@ -363,17 +365,26 @@ def build_plan_items(
         base = {"fileIndex": file_index, "fileName": file.get("name"),
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
 
-        if doc_type == _CCCD:
-            classified.append({**base, "target": "skip", "reason": "CCCD không nằm trong thành phần hồ sơ"})
-            continue
-        if doc_type not in _ROWS:
-            skipped_pages.append(where)
-            classified.append({**base, "type": _OTHER, "target": "skip"})
+        seg_text = _segment_text(segment, page_text_by_file, full_text_by_file)
+        if doc_type not in _ROWS and doc_type != _CCCD and sum(ch.isalnum() for ch in seg_text) < 5 \
+                and full_text_by_file.get(file_index, "").strip():
+            # Trang trắng (mặt sau không in) trong tệp có chữ: không đính.
+            blank_pages.append(where)
+            classified.append({**base, "type": _OTHER, "target": "skip", "reason": "trang trắng"})
             continue
 
-        row = _ROWS[doc_type]
-        document_name = _unique_name(segment.get("documentName") or row["documentName"], used_names,
-                                     row["documentName"])
+        routed_to = None
+        if doc_type in _ROWS:
+            row = _ROWS[doc_type]
+            document_name = _unique_name(segment.get("documentName") or row["documentName"], used_names,
+                                         row["documentName"])
+        else:
+            # CCCD / chưa rõ loại / không đọc được chữ → đính chung dòng Đơn; tên LLM đặt, không có thì tên tệp gốc.
+            routed_to = _DON18
+            row = _ROWS[_DON18]
+            file_name = str(file.get("name") or f"file-{file_index + 1}")
+            document_name = _unique_name(segment.get("documentName") or file_name, used_names, file_name)
+            extra_pages.append(where)
         item = {
             "fileIndex": file_index,
             "fileName": str(file.get("name") or f"file-{file_index + 1}"),
@@ -389,10 +400,18 @@ def build_plan_items(
         if source["pageIndexes"] is not None:  # đoạn con của PDF gộp → FE tách theo trang.
             item["sourceSegments"] = [source]
         attachments.append(item)
-        classified.append({**base, "documentName": document_name, "componentIndex": row["componentIndex"]})
+        classified_item = {**base, "documentName": document_name, "componentIndex": row["componentIndex"]}
+        if routed_to:
+            classified_item["routedTo"] = routed_to
+        classified.append(classified_item)
 
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    if extra_pages:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON18]['componentName']}\": "
+            + "; ".join(extra_pages) + "."
+        )
+    if blank_pages:
+        warnings.append("Đã bỏ trang trắng không đính kèm: " + "; ".join(blank_pages) + ".")
 
     found = {item["detectedType"] for item in attachments}
     if _DON18 not in found:

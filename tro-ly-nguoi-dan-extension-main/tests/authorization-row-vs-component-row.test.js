@@ -54,6 +54,8 @@ function loadContext(extra = {}) {
     foldedNodeText: (el) => fold(el?.textContent),
     isVisible: () => true,
     findCopyCertificationAttachmentRow: () => null,
+    // Các ca ở đây chỉ xét nút chọn tệp; dòng đã có tệp (không còn nút) có test riêng.
+    findAttachmentRows: () => [],
     document: { querySelector: () => null, querySelectorAll: () => [] },
     ...extra,
   };

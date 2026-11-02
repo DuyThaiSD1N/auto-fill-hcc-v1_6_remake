@@ -5,9 +5,9 @@ Bảng 2 dòng:
   (1) Chứng nhận đăng ký xe ô tô … (kèm hợp đồng thuê / hợp đồng dịch vụ giữa thành viên và HTX nếu xe không
       thuộc sở hữu đơn vị KDVT) ← "1 Bản sao" — Chứng nhận đăng ký + hợp đồng (thường gộp 1 file).
   (2) Giấy đề nghị cấp (cấp lại) phù hiệu theo mẫu ← "1 Bản chính".
-GPKDVT / GCN đăng ký doanh nghiệp không có dòng ở bước 2 (GPKDVT đính trong tờ khai) → bỏ, kèm cảnh báo. CCCD
-chỉ để trích, KHÔNG đính. Phân loại **LLM-primary**; rule keyword chỉ DỰ PHÒNG. File chưa rõ → dòng (1) kèm
-cảnh báo.
+GPKDVT / GCN đăng ký doanh nghiệp / CCCD không có dòng ở bước 2 → đính chung dòng (2) Giấy đề nghị, giữ tên file
+gốc + cảnh báo (GPKDVT còn có ô riêng trong tờ khai). Phân loại **LLM-primary**; rule keyword chỉ DỰ PHÒNG. File
+chưa rõ → dòng (1) kèm cảnh báo.
 """
 
 import time
@@ -43,11 +43,12 @@ _ROWS: dict[str, dict[str, str]] = {
     },
 }
 _ROW_OF: dict[str, str] = {_XE: _XE, _DE_NGHI: _DE_NGHI}
+# Không có dòng riêng ở bước 2 → đính chung dòng Giấy đề nghị; giá trị = ghi chú thêm cho cán bộ (nếu có).
 _SKIP_DOCS: dict[str, str] = {
     _CCCD: "",
-    _GPKD: "là Giấy phép kinh doanh vận tải — bước 2 không có dòng riêng, vui lòng đính kèm tại ô 'Đính kèm "
-           "GPKDVT' trong tờ khai.",
-    _DKDN: "là GCN đăng ký doanh nghiệp/HTX — bước 2 không có dòng riêng, chỉ dùng để trích thông tin.",
+    _GPKD: "là Giấy phép kinh doanh vận tải — đã đính chung dòng 'Giấy đề nghị'; tờ khai còn ô 'Đính kèm GPKDVT' "
+           "nếu cần đính thêm ở đó.",
+    _DKDN: "",
 }
 _ALLOWED_DOC_TYPES = set(_ROW_OF) | set(_SKIP_DOCS) | {_OTHER}
 
@@ -147,6 +148,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_items: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -161,9 +164,15 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            if _SKIP_DOCS[doc_type]:
+        if doc_type in _SKIP_DOCS or doc_type == _OTHER:
+            # Không có dòng riêng hoặc chưa rõ loại → dòng Giấy đề nghị (dòng Đơn), giữ tên gốc để FE không coi
+            # là trùng tài liệu của dòng.
+            item = _build_row_item(file, idx, _DE_NGHI, doc_type)
+            item["documentName"] = file_name
+            extra_items.append(item)
+            extra_files.append(file_name)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DE_NGHI})
+            if _SKIP_DOCS.get(doc_type):
                 warnings.append(f"'{file_name}' {_SKIP_DOCS[doc_type]}")
             continue
 
@@ -173,18 +182,17 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "rowId": row_id, "source": source})
             continue
 
-        # Mặc định: file chưa rõ gần như luôn là giấy tờ xe → dòng (1), kèm cảnh báo để kiểm tra.
-        items.append(_build_row_item(file, idx, _XE, _OTHER))
-        classified.append({"fileName": file_name, "docType": _OTHER, "rowId": _XE, "source": f"{source}-default"})
-        warnings.append(
-            f"Không phân loại chắc chắn '{file_name}' — tạm đính dòng 'Chứng nhận đăng ký xe ô tô', vui lòng "
-            "kiểm tra."
-        )
-
-    if items and not any(it["componentName"] == _ROWS[_XE]["componentName"] for it in items):
+    if (items or extra_items) and not any(it["componentName"] == _ROWS[_XE]["componentName"] for it in items):
         warnings.append("Chưa có Chứng nhận đăng ký xe ô tô (thành phần bắt buộc).")
-    if items and not any(it["componentName"] == _ROWS[_DE_NGHI]["componentName"] for it in items):
+    if (items or extra_items) and not any(it["componentName"] == _ROWS[_DE_NGHI]["componentName"] for it in items):
         warnings.append("Chưa có Giấy đề nghị cấp (cấp lại) phù hiệu (thành phần bắt buộc).")
+    # Thêm SAU kiểm tra thiếu thành phần: giấy đính chung dòng (2) không thay được Giấy đề nghị.
+    items.extend(extra_items)
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DE_NGHI]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

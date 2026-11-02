@@ -4,6 +4,7 @@ Bước "Thành phần hồ sơ" có 2 ô cố định (STT1 Đơn Mẫu 16, STT
 "Thêm giấy tờ"/"Giấy tờ khác" cho các giấy tờ còn lại. Planner phân loại từng file rồi:
 - Đơn Mẫu 16 → fixed-slot 0; Bảng TQGC cũ → fixed-slot 1.
 - CCCD, Công văn UBND, Danh sách đề nghị → target "new" (đính vào "Giấy tờ khác").
+- Giấy chưa rõ loại → ô Đơn Mẫu 16 (fixed-slot 0), giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
 """
 
 import time
@@ -191,6 +192,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -209,9 +211,19 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
+        # Chưa rõ loại → ô Đơn Mẫu 16 (ô cố định luôn có, không phụ thuộc nút "Thêm giấy tờ"), giữ tên gốc.
+        item = _build_fixed_item(file, idx, _DON_MAU16)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown", "routedTo": _DON_MAU16})
+        extra_files.append(file_name)
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ chưa rõ loại đã đính chung dòng \"{_SLOT_BY_KEY[_DON_MAU16]['slotName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

@@ -286,7 +286,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     # Trần 6 MB tính cho TỪNG TỆP. Bản scan GCN cũ (khổ A3, quét màu) rất hay vượt — cổng chỉ báo lỗi
     # lúc bấm nộp nên phải nói sớm.
     valid_files: list[dict] = []
-    for file in raw_files:
+    original_indexes: list[int] = []
+    for raw_index, file in enumerate(raw_files):
         size = _data_url_size(file.get("dataUrl"))
         if size > _MAX_FILE_BYTES:
             errors.append(
@@ -295,6 +296,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             )
         else:
             valid_files.append(file)
+            original_indexes.append(raw_index)
 
     from app.services import ocr
 
@@ -322,6 +324,10 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_ms = int((time.monotonic() - started) * 1000)
 
     attachments, warnings, classified = build_plan_items(valid_files, llm_types)
+    # fileIndex do build_plan_items đánh theo valid_files; extension lấy tệp theo vị trí trong danh sách GỐC
+    # nên phải đổi lại, không thì tệp đứng sau một tệp quá cỡ bị đính nhầm sang tệp kế bên.
+    for item in attachments:
+        item["fileIndex"] = original_indexes[item["fileIndex"]]
     errors.extend(warnings)
     return {
         "attachments": attachments,

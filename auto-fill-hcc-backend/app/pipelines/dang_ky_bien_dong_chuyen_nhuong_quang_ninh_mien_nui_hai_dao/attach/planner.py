@@ -1,7 +1,8 @@
 """Lập kế hoạch đính kèm đăng ký biến động đất đai trên cổng DVC Quảng Ninh.
 
 Hàng 8 trong HTML thật chỉ là tiêu đề phân nhóm nên cố ý không có route. Mỗi file chỉ sinh một plan
-item; nhiều Giấy chứng nhận độc lập được phép cùng đi vào hàng "Giấy chứng nhận đã cấp".
+item; nhiều Giấy chứng nhận độc lập được phép cùng đi vào hàng "Giấy chứng nhận đã cấp". Giấy chưa rõ loại
+đính chung hàng Đơn Mẫu số 18.
 """
 
 import asyncio
@@ -265,6 +266,7 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -293,9 +295,27 @@ def build_plan_items(
             classified.append(classified_item)
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": "other", "source": source, "skipped": True})
+        # Chưa rõ loại / không đọc được chữ → đính chung hàng Đơn; giữ tên tệp gốc, detectedType giữ loại thật.
+        item = _build_item(file, index, "don_mau_18")
+        item["documentName"] = _wallet_label(file_name.rsplit(".", 1)[0])
+        item["detectedType"] = doc_type
+        attachments.append(item)
+        classified.append(
+            {
+                "fileName": file_name,
+                "docType": doc_type,
+                "source": source,
+                "componentIndex": item["componentIndex"],
+                "routedTo": "don_mau_18",
+            }
+        )
+        extra_files.append(file_name)
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROUTES['don_mau_18']['name']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return attachments, warnings, classified
 
 

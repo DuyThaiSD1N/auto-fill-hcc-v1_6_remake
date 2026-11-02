@@ -58,9 +58,10 @@ test("attach: engine Bắc Ninh phải mở tab 'Tải thành phần hồ sơ' t
 const vm = require("node:vm");
 const PFX = "_org_bn_hoso_noptructuyen_";
 
-function loadBacNinhEngine({ hasBlock = true } = {}) {
+function loadBacNinhEngine({ hasBlock = true, selected = "" } = {}) {
   const order = [];
-  let blockOpen = false;
+  // selected ≠ "": khối đã mở sẵn đúng loại đó (lượt điền trước / cán bộ chọn tay).
+  let blockOpen = selected !== "";
   const inputs = new Map();
   const input = (name) => {
     if (!inputs.has(name)) {
@@ -72,12 +73,22 @@ function loadBacNinhEngine({ hasBlock = true } = {}) {
     }
     return inputs.get(name);
   };
-  const checkbox = { checked: false, click() { this.checked = true; order.push("tick"); }, dispatchEvent() {} };
+  const checkbox = { checked: blockOpen, click() { this.checked = true; order.push("tick"); }, dispatchEvent() {} };
   const typeSelect = {
-    tagName: "SELECT", value: "", getAttribute: () => null,
+    tagName: "SELECT", value: selected, getAttribute: () => null,
     options: [{ textContent: "-- Chọn --", value: "" },
-      { textContent: "Cá nhân khác là Công dân Việt Nam", value: "2" }],
-    dispatchEvent() { if (this.value === "2") { blockOpen = true; order.push("chon-loai"); } },
+      { textContent: "Cá nhân khác là Công dân Việt Nam", value: "2" },
+      { textContent: "Người cao tuổi", value: "5" }],
+    dispatchEvent() {
+      // Cổng thật: MỖI change (kể cả chọn lại đúng loại) nạp lại khối bằng AJAX, đè form trống lên ô cũ.
+      if (blockOpen) {
+        setTimeout(() => {
+          for (const k of [...inputs.keys()]) if (k.startsWith(`${PFX}doiTuongKhac`)) inputs.delete(k);
+          order.push("nap-lai");
+        }, 50);
+      }
+      if (this.value === "2") { blockOpen = true; order.push("chon-loai"); }
+    },
   };
   const document = {
     querySelectorAll: () => [],
@@ -122,6 +133,24 @@ test("khối ủy quyền: điền đơn trước, tick ô bổ sung + chọn lo
   assert.equal(res.filled, 3);
   assert.deepEqual([...res.unmatched], []);
   assert.deepEqual([...res.errors], []);
+});
+
+test("khối ủy quyền đã mở đúng loại (điền lại): không chọn lại loại đối tượng để cổng khỏi nạp đè form trống", async () => {
+  const { H, order, inputs } = loadBacNinhEngine({ selected: "2" });
+  const res = await H.fillFormBacNinh(AUTH_FIELDS);
+  await new Promise((r) => setTimeout(r, 120));
+  assert.deepEqual(order, ["element_75701", "doiTuongKhachoTen"]);
+  assert.equal(inputs.get(`${PFX}doiTuongKhachoTen`).value, "Nguyễn Văn A");
+  assert.equal(res.filled, 3);
+});
+
+test("khối ủy quyền đang mở loại khác: chọn lại rồi chờ khối MỚI thay khối cũ mới điền", async () => {
+  const { H, order, inputs } = loadBacNinhEngine({ selected: "5" });
+  const res = await H.fillFormBacNinh(AUTH_FIELDS);
+  await new Promise((r) => setTimeout(r, 120));
+  assert.deepEqual(order, ["element_75701", "chon-loai", "nap-lai", "doiTuongKhachoTen"]);
+  assert.equal(inputs.get(`${PFX}doiTuongKhachoTen`).value, "Nguyễn Văn A");
+  assert.equal(res.filled, 3);
 });
 
 test("khối ủy quyền: trang không có khối → đơn vẫn điền, ô ủy quyền vào unmatched kèm lỗi", async () => {

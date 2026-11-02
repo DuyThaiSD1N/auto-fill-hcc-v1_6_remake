@@ -612,6 +612,29 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Bước 01: hỏi đối tượng mai táng phí (agencyChoice) rồi điền tỉnh/xã + đối tượng. Chỉ khi luồng 6 bước bật.
+        "agencyFillPlan": agency_plans.LIEN_THONG_KHAI_TU,
+        # Dẫn đủ 6 bước như liên thông khai sinh (chat/lien_thong.py). Bản extension cũ đã khai supportsLienThongFlow
+        # nhưng chưa điền được bước chọn cơ quan / ô cam đoan của khai tử → cần thêm cờ supportsLienThongKhaiTu.
+        # Bước 5 (template khaitu-b5 của cổng): giấy khai tử cổng khoá "Đến cơ quan giải quyết"; mai táng phí là ô
+        # chọn NHIỀU giá trị (bấm là cộng thêm, không thay) → chỉ hiển thị, không cho đổi trong thẻ.
+        "lienThongFlow": {
+            "capability": "supportsLienThongKhaiTu",
+            "agencyChoice": {
+                "name": "DtMaitangphi",
+                "options": [
+                    "Đối tượng được hưởng trợ cấp mai táng phí theo quy định của Luật BHXH",
+                    "Đối tượng hưởng mai táng phí theo Pháp lệnh ưu đãi người có công",
+                    "Đối tượng bảo trợ xã hội",
+                    "Đối tượng nhận trợ cấp khẩn cấp",
+                ],
+            },
+            "resultGroups": [
+                {"name": "DkktNkqHinhthuc", "label": "Đăng ký khai tử", "place": "DkktNoiTra"},
+                {"name": "QdhmtpNkqHinhthuc", "label": "Trợ cấp mai táng phí", "place": "MtpNkqTaicoquan",
+                 "fixed": True},
+            ],
+        },
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Căn cước công dân của người yêu cầu và người được khai tử nếu có (chỉ để đọc thông tin).\n"
@@ -1881,6 +1904,12 @@ PROCEDURES: list[dict] = [
         "maePortal": True,
         "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Dẫn đủ 4 bước bằng luồng chung chat/bxd như các thủ tục khác của cổng NN&MT; bản extension cũ chưa chạy
+        # bộ đọc Form.io của chat/bxd trên host này → cần cờ supportsBxdFlowMae.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
         "hasAttachmentStep": True,
         # Bảng thành phần hồ sơ 1 dòng nhận nhiều tệp (Đơn + chứng chỉ cũ + ảnh dồn chung).
         "hideRepeatableHint": True,
@@ -1940,12 +1969,20 @@ PROCEDURES: list[dict] = [
         "maePortal": True,
         "maeAgencyLevel": "ward",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng NN&MT cùng nền iGate với cổng Bộ Xây dựng (bước 3 tên "Thông tin phí, lệ phí" nhưng vẫn là ô hình thức
+        # nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd. Bản extension cũ khai
+        # supportsBxdFlow mà chưa chạy content/bxd/*.js trên host này → cần thêm cờ supportsBxdFlowMae.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
         "hasAttachmentStep": True,
         "requiredDocs": [
             {"key": "don_de_nghi", "name": "Đơn đề nghị hỗ trợ thiệt hại do dịch bệnh động vật (Mẫu số 2a/2b, "
              "Nghị định 116/2025/NĐ-CP) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            # Cổng chỉ có MỘT dòng (Đơn đề nghị); biên bản nếu có đính chung dòng đó → không bắt buộc.
             {"key": "bien_ban_tieu_huy", "name": "Biên bản tiêu hủy động vật, sản phẩm động vật (đủ các trang "
-             "chữ ký)", "icon": "📋", "sides": 1, "repeatable": True},
+             "chữ ký)", "icon": "📋", "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của chủ hộ (chỉ để điền, không đính kèm)", "icon": "🪪",
              "sides": 2, "optional": True, "repeatable": True},
             {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
@@ -2307,6 +2344,12 @@ PROCEDURES: list[dict] = [
         "maeAgencyLevel": "ward",
         # Wizard MAE: 1 Thông tin hồ sơ (kê khai Form.io) → 2 Thành phần hồ sơ → 3 → 4 Nộp hồ sơ.
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Dẫn đủ 4 bước bằng luồng chung chat/bxd như các thủ tục khác của cổng NN&MT; bản extension cũ chưa chạy
+        # bộ đọc Form.io của chat/bxd trên host này → cần cờ supportsBxdFlowMae.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
         "hasAttachmentStep": True,
         # Planner lõi: Đơn Phụ lục I và Thuyết minh Phụ lục II vào hai dòng attp-row cố định, CCCD
         # (gộp 2 mặt) đi "Thêm giấy tờ", giấy ĐKKD chỉ để điền form, giấy lạ dồn vào dòng Đơn (ô
@@ -5602,8 +5645,7 @@ PROCEDURES: list[dict] = [
         "hideRepeatableHint": True,
         # Khối "Thông tin trong trường hợp được ủy quyền" của thủ tục này điền NGƯỜI CAO TUỔI (loại đối tượng "Người
         # cao tuổi") khi có người nộp thay — cùng logic nút điền của auto-fill. Pipeline lõi chính là pipeline khối này.
-        "bacNinhAuthorizedPerson": {**_BN_AUTHORIZED_PERSON, "subjectOption": "Người cao tuổi",
-                                    "askLabel": "người cao tuổi"},
+        "bacNinhAuthorizedPerson": {**_BN_AUTHORIZED_PERSON, "subjectOption": "Người cao tuổi"},
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai đề nghị hưởng trợ cấp xã hội (Mẫu số 01) — đã kê "
              "khai, có xác nhận của UBND xã", "icon": "📄", "sides": 1, "repeatable": True},
@@ -6187,6 +6229,8 @@ PROCEDURES: list[dict] = [
             {"key": "anh", "name": "Ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
              "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "mode": "agent",
         "review": False,
@@ -6232,6 +6276,8 @@ PROCEDURES: list[dict] = [
              "sides": 1, "repeatable": True},
             {"key": "gcn_qsdd", "name": "Giấy chứng nhận quyền sử dụng đất (đủ trang, gồm trang những thay đổi)",
              "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
@@ -6265,6 +6311,9 @@ PROCEDURES: list[dict] = [
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Công Thương",
+        # Cổng Bộ Công Thương cùng stepper iGate 4 bước với cổng NN&MT (1 Thông tin hồ sơ = kê khai, 2 Thành phần hồ
+        # sơ): extension báo wizardStep trên host này → khai đúng bước, không thì BE hiểu theo mặc định tư pháp.
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6309,6 +6358,9 @@ PROCEDURES: list[dict] = [
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Công Thương",
+        # Cổng Bộ Công Thương cùng stepper iGate 4 bước với cổng NN&MT (1 Thông tin hồ sơ = kê khai, 2 Thành phần hồ
+        # sơ): extension báo wizardStep trên host này → khai đúng bước, không thì BE hiểu theo mặc định tư pháp.
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6316,6 +6368,8 @@ PROCEDURES: list[dict] = [
              "đã ký số)", "icon": "📄", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người đang đăng nhập nộp hồ sơ (nếu muốn điền khối tài "
              "khoản)", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "mode": "agent",
         "review": False,
@@ -6349,6 +6403,15 @@ PROCEDURES: list[dict] = [
         "icon": "☀️",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1695-894f-72b8-80a8-2fee368722be",
         "needsAgencySelect": True,
+        # Cổng Bộ Công Thương cùng stepper iGate 4 bước với cổng NN&MT (1 Thông tin hồ sơ = kê khai, 2 Thành phần hồ
+        # sơ, 3 Thông tin phí, lệ phí = hình thức nhận kết quả + cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng
+        # chung chat/bxd. Bản extension cũ chưa chạy bộ đọc Form.io của chat/bxd trên host này → cần cờ
+        # supportsBxdFlowMoit.
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMoit",
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6398,6 +6461,8 @@ PROCEDURES: list[dict] = [
              "repeatable": True},
             {"key": "cccd", "name": "Căn cước của người nộp hồ sơ (khi khác người dự tuyển)", "icon": "🪪",
              "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "mode": "agent",
         "review": False,
@@ -6506,6 +6571,12 @@ PROCEDURES: list[dict] = [
         "maePortal": True,
         "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Dẫn đủ 4 bước bằng luồng chung chat/bxd như các thủ tục khác của cổng NN&MT; bản extension cũ chưa chạy
+        # bộ đọc Form.io của chat/bxd trên host này → cần cờ supportsBxdFlowMae.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6519,6 +6590,8 @@ PROCEDURES: list[dict] = [
              "repeatable": True},
             {"key": "cccd", "name": "Căn cước của người đứng đơn, thêm căn cước người nộp nếu nộp thay (chỉ để "
              "điền)", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "mode": "agent",
         "review": False,
@@ -6575,6 +6648,8 @@ PROCEDURES: list[dict] = [
              "repeatable": True},
             {"key": "mau_khac", "name": "Mẫu 11.ĐKT, 12.ĐKT, 13.ĐKT (nếu thuộc trường hợp bắt buộc)", "icon": "📎",
              "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "mode": "agent",
         "review": False,
@@ -6624,6 +6699,8 @@ PROCEDURES: list[dict] = [
             {"key": "ly_lich", "name": "Phiếu lý lịch tư pháp số 1 + Sơ yếu lý lịch của người dự kiến làm chủ tịch",
              "icon": "👤", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
              "repeatable": True},
         ],
         "mode": "agent",
@@ -6677,6 +6754,8 @@ PROCEDURES: list[dict] = [
             {"key": "ly_lich", "name": "Sơ yếu lý lịch + Phiếu lý lịch tư pháp số 1 của nhân sự dự kiến Chủ tịch",
              "icon": "👤", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
              "repeatable": True},
         ],
         "mode": "agent",
@@ -6821,6 +6900,8 @@ PROCEDURES: list[dict] = [
              "không thuộc sở hữu cơ sở)", "icon": "🚗", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Căn cước của người nộp (chỉ để điền)", "icon": "🪪", "sides": 2,
              "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
         ],
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"

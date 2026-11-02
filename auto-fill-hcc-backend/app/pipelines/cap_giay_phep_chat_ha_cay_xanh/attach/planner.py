@@ -5,7 +5,8 @@ Bảng thành phần hồ sơ 2 dòng: (1) Đơn đề nghị (Mẫu 01) — loa
 xanh — loaiBan "Scan tệp tin". FE khớp dòng bằng componentName (substring fold).
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword + heuristic ảnh chỉ DỰ PHÒNG. CCCD và
-GCN QSDĐ không có dòng riêng → đính CHUNG dòng "Đơn đề nghị".
+GCN QSDĐ không có dòng riêng → đính CHUNG dòng "Đơn đề nghị"; giấy chưa rõ loại (không phải ảnh) cũng đính chung
+dòng này, giữ tên file gốc + cảnh báo.
 """
 
 import time
@@ -154,6 +155,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -182,9 +184,19 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": _ANH, "source": "photo-fallback"})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        # Không rõ loại → dòng Đơn, giữ tên gốc để FE không coi là trùng tài liệu của dòng.
+        item = _build_row_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

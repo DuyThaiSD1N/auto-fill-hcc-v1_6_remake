@@ -18,6 +18,7 @@ from app.account_settings import service as account_settings
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tracing
 from app.db.mongo import get_db
+from app.traces import repo as traces_repo
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
 from app.channels.handfree.procedure_registry import (
@@ -153,6 +154,22 @@ async def _run_bac_ninh_authorized(pipeline, files_by_role: dict, options: dict,
         fields.insert(0, {"name": "loaiDoiTuongKhac", "comp": "bn-doi-tuong-khac",
                           "value": res.get("authorizedSubject") or config["subjectOption"]})
     return {"fields": fields, "errors": list(res.get("errors") or [])}
+
+
+async def _run_bac_ninh_authorized_recorded(pipeline, files_by_role: dict, options: dict, config: dict,
+                                            conv_id: str, sid: str, procedure_key: str) -> dict:
+    """Lượt người ủy quyền thành một request riêng trên Monitor (purpose="authorized_person").
+
+    Gọi qua task con: recorder mới chỉ gắn vào context của task, không thế chỗ recorder lượt điền đơn.
+    """
+    rec = _start_recorder("autofill", conv_id, sid, procedure_key)
+    if rec is not None:
+        rec.meta.update(purpose="authorized_person", steps_only=True)
+    async with mon.span("pipeline", procedure=procedure_key):
+        extra = await _run_bac_ninh_authorized(pipeline, files_by_role, options, config)
+    _note_result(rec, extra)
+    _finish_recorder(rec, traces_repo.new_request_id())
+    return extra
 
 
 def _start_recorder(kind: str, conv_id: str, sid: str, procedure_key: str):
@@ -382,11 +399,14 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
                 # Thủ tục chỉ đính kèm (vd hỗ trợ người cao tuổi): pipeline lõi chính là pipeline khối ủy quyền.
                 result = await _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized)
             elif authorized:
-                # Hai lượt OCR/LLM độc lập trên cùng bộ giấy tờ → chạy song song cho đỡ chờ.
-                result, extra = await asyncio.gather(
-                    pipeline(files_by_role, options),
-                    _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized),
-                )
+                # Lượt đơn xong mới tới lượt ủy quyền: lượt sau trúng cache OCR và, với thủ tục hai lượt cùng
+                # prompt, dùng lại câu trả lời LLM (compact_agent llm_reuse) thay vì OCR/LLM trùng song song.
+                if rec is not None:
+                    rec.meta["purpose"] = "registration_form"
+                result = await pipeline(files_by_role, options)
+                extra = await asyncio.create_task(_run_bac_ninh_authorized_recorded(
+                    pipeline, files_by_role, options, authorized, conv_id, sid, procedure_key,
+                ))
                 result["fields"] = [*(result.get("fields") or []), *extra["fields"]]
                 result["errors"] = [*(result.get("errors") or []), *extra["errors"]]
             else:
@@ -470,10 +490,9 @@ async def run_bac_ninh_prefill(conv_id: str, sid: str, procedure_key: str) -> No
         caps = conv.get("client_capabilities") or {}
         t_pipe = time.monotonic()
         if config and caps.get("supportsBacNinhAuthorizedPerson") is True:
-            result, extra = await asyncio.gather(
-                pipeline(files_by_role, options),
-                _run_bac_ninh_authorized(pipeline, files_by_role, options, config),
-            )
+            # Tuần tự như run_process: lượt ủy quyền dùng lại OCR/LLM của lượt đơn.
+            result = await pipeline(files_by_role, options)
+            extra = await _run_bac_ninh_authorized(pipeline, files_by_role, options, config)
         else:
             result, extra = await pipeline(files_by_role, options), {"fields": [], "errors": []}
         pipe_ms = int((time.monotonic() - t_pipe) * 1000)

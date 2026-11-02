@@ -344,3 +344,72 @@ async def test_trang_chu_lien_thong_khong_mo_link_cho_thu_tuc_cong_khac():
     conv = _conv("guide_login", procedure_key="chung-thuc-ban-sao")
     r = await flow.handle_turn(conv, Intent("event", "page_status", {"loggedIn": True, "lienThongHome": True}))
     assert not r.actions
+
+
+# ── Liên thông khai tử: cùng luồng 6 bước, bước 1 hỏi đối tượng mai táng phí trước khi điền ──
+
+KT = "khai-tu-lien-thong"
+KT_CAPS = {**CAPS, "supportsLienThongKhaiTu": True}
+KT_AGENCY_PAGE = {"agencyBlock": True, "formKind": "", "lienThongStep": 1, "loggedIn": True}
+
+
+def _plan(reply):
+    return next(a["plan"] for a in reply.actions if a["type"] == "fill_agency_plan")
+
+
+async def test_khai_tu_hoi_doi_tuong_mai_tang_roi_moi_dien_buoc_chon_co_quan():
+    conv = _conv("guide_login", caps=KT_CAPS, procedure_key=KT)
+    ask = await _turn(conv, "event", "page_status", KT_AGENCY_PAGE)
+    assert "fill_agency_plan" not in _types(ask)
+    options = flow.get_procedure(KT)["lienThongFlow"]["agencyChoice"]["options"]
+    assert [c["label"] for c in ask.chips] == options
+    # page_status lặp lại trong lúc chờ trả lời → im, không hỏi lại.
+    again = await _turn(conv, "event", "page_status", KT_AGENCY_PAGE)
+    assert not again.display_md and not again.chips
+    picked = await _turn(conv, "action", "lt_agency_pick", {"value": options[2]})
+    plan = _plan(picked)
+    assert [step["name"] for step in plan] == ["CqdkktDiaChi", "DtMaitangphi", "CqmtpDiaChi"]
+    assert plan[1]["value"] == options[2]
+    assert plan[0]["value"] == plan[2]["value"] == {"tinh": "Tỉnh A", "xa": "Xã A"}
+    assert _sends(picked) == ["__action:lt_next"]
+    # Đã điền: page_status sau đó không điền lần hai.
+    later = await _turn(conv, "event", "page_status", KT_AGENCY_PAGE)
+    assert "fill_agency_plan" not in _types(later)
+
+
+async def test_khai_tu_lua_chon_khong_co_trong_danh_sach_thi_bo_qua():
+    conv = _conv("guide_login", caps=KT_CAPS, procedure_key=KT)
+    await _turn(conv, "event", "page_status", KT_AGENCY_PAGE)
+    r = await _turn(conv, "action", "lt_agency_pick", {"value": "Đối tượng khác"})
+    assert not r.actions and "agency_choice" not in conv["lien_thong"]
+
+
+async def test_khai_tu_ban_cu_chi_co_supportsLienThongFlow_thi_chon_tay_nhu_cu():
+    conv = _conv("guide_login", caps=CAPS, procedure_key=KT)
+    proc = flow.get_procedure(KT)
+    assert not lien_thong.enabled(conv, proc) and not field_review.active(conv, proc)
+    r = await _turn(conv, "event", "page_status", KT_AGENCY_PAGE)
+    assert "fill_agency_plan" not in _types(r) and not r.chips
+    assert r.display_md == vi.AGENCY_MANUAL_GUIDE["md"]
+
+
+def test_khai_tu_bo_sung_o_va_buoc_nhan_ket_qua():
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(KT)
+    assert field_review.active(_conv("filling", caps=KT_CAPS, procedure_key=KT), proc)
+    cfg = registry.get(KT)
+    assert cfg["required"] == () and cfg["noAsk"] == ("IsChungTuBhxh",)
+    assert cfg["copyQuantity"] == ("CapBanSao", "BanSaoSoluong")
+    rows = lien_thong.result_rows(proc["lienThongFlow"]["resultGroups"], [
+        {"name": "DkktNkqHinhthuc", "value": "Đến cơ quan giải quyết để nhận kết quả", "fixed": True, "place": "UBND"},
+        {"name": "QdhmtpNkqHinhthuc", "value": "Nhận trực tiếp", "options": ["Nhận trực tiếp", "Bưu điện"]},
+    ])
+    assert [(r["name"], r["fixed"], r["options"]) for r in rows] == [
+        ("DkktNkqHinhthuc", True, []), ("QdhmtpNkqHinhthuc", True, [])]
+
+
+def test_ho_so_moi_hoi_lai_doi_tuong():
+    conv = {"lien_thong": {"agency_choice": "x", "agency_asked": True, "at": 3}}
+    lien_thong.reset_agency(conv)
+    assert conv["lien_thong"] == {"at": 3}

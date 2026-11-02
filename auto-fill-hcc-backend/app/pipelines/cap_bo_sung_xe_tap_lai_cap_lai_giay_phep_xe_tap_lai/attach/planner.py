@@ -5,7 +5,8 @@ Bảng 2 dòng (đều "1 Bản chính"):
   (1) Danh sách đề nghị cấp giấy phép xe tập lái theo mẫu quy định_NĐ94.2026 ← DS đề nghị.
   (2) Đối với xe tập lái không thuộc quyền sở hữu của cơ sở đào tạo … Giấy tờ chứng minh quyền sử dụng hợp
       pháp ← HĐ thuê xe + GCN đăng ký xe + GCN kiểm định (thường gộp 1 file nhiều trang).
-Biên bản kiểm tra xe (DS nhắc "gửi kèm") không có dòng riêng → gộp dòng (1). CCCD chỉ để trích, KHÔNG đính.
+Biên bản kiểm tra xe (DS nhắc "gửi kèm") không có dòng riêng → gộp dòng (1). CCCD không có dòng riêng → đính
+chung dòng (1), giữ tên file gốc + cảnh báo.
 Phân loại **LLM-primary**; rule keyword chỉ DỰ PHÒNG. File chưa rõ → dòng (2) kèm cảnh báo.
 """
 
@@ -138,6 +139,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_items: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -152,8 +155,14 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
+        if doc_type in _SKIP_DOCS or doc_type == _OTHER:
+            # Không có dòng riêng hoặc chưa rõ loại → dòng (1) Danh sách đề nghị (dòng Đơn), giữ tên gốc để FE
+            # không coi là trùng tài liệu của dòng.
+            item = _build_row_item(file, idx, _DS, doc_type)
+            item["documentName"] = file_name
+            extra_items.append(item)
+            extra_files.append(file_name)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DS})
             continue
 
         if doc_type in _ROW_OF:
@@ -167,18 +176,17 @@ def build_plan_items(
                 )
             continue
 
-        # Mặc định: file chưa rõ gần như luôn là giấy tờ xe → dòng (2), kèm cảnh báo để kiểm tra.
-        items.append(_build_row_item(file, idx, _XE, _OTHER))
-        classified.append({"fileName": file_name, "docType": _OTHER, "rowId": _XE, "source": f"{source}-default"})
-        warnings.append(
-            f"Không phân loại chắc chắn '{file_name}' — tạm đính dòng 'Giấy tờ chứng minh quyền sử dụng hợp "
-            "pháp', vui lòng kiểm tra."
-        )
-
-    if items and not any(it["componentName"] == _ROWS[_DS]["componentName"] for it in items):
+    if (items or extra_items) and not any(it["componentName"] == _ROWS[_DS]["componentName"] for it in items):
         warnings.append("Chưa có file Danh sách đề nghị cấp giấy phép xe tập lái (thành phần bắt buộc).")
-    if items and not any(it["componentName"] == _ROWS[_XE]["componentName"] for it in items):
+    if (items or extra_items) and not any(it["componentName"] == _ROWS[_XE]["componentName"] for it in items):
         warnings.append("Chưa có giấy tờ chứng minh quyền sử dụng hợp pháp xe (HĐ thuê xe/GCN đăng ký/kiểm định).")
+    # Thêm SAU kiểm tra thiếu thành phần: CCCD đính chung dòng (1) không thay được Danh sách đề nghị.
+    items.extend(extra_items)
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DS]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

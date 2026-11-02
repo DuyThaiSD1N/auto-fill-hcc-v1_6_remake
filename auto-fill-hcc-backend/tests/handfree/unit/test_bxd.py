@@ -104,6 +104,11 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-chung-chi-hanh-nghe-duoc", ("ghiChu",)), ("cong-bo-co-so-du-dieu-kien-tiem-chung", ("ghiChu",)),
     # Cổng Bộ GD&ĐT (dvc.moet.gov.vn), cùng nền iGate.
     ("cap-ban-sao-van-bang-so-goc", ("tenHoSo",)), ("mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc", ("tenHoSo",)),
+    # Cổng Bộ Xây dựng, nộp tại Sở Xây dựng / UBND xã.
+    ("gia-han-giay-phep-xay-dung", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("tham-dinh-bcnckt", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
 ])
 def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_ask):
     from app.channels.handfree.chat.field_review import registry
@@ -114,6 +119,59 @@ def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_a
     assert bxd.enabled(conv, proc) and field_review.active(conv, proc)
     assert not bxd.enabled(_conv("filling", caps={"supportsFieldReview": True}, procedure_key=key), proc)
     assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == no_ask
+
+
+@pytest.mark.parametrize("key", [
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+    "cap-lai-chung-chi-hanh-nghe-thu-y",
+    "cap-gcn-attp-nong-lam-thuy-san",
+    "gia-han-chung-chi-hanh-nghe-thu-y",
+])
+def test_cong_nnmt_can_them_co_rieng_ban_cu_giu_luong_cu(key):
+    """Cổng NN&MT (dichvucongnnmt.mae.gov.vn): bản extension cũ đã khai supportsBxdFlow nhưng content/bxd/*.js chưa
+    chạy trên host này → thiếu supportsBxdFlowMae thì không bật luồng 4 bước, không bật bổ sung ô."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**old["client_capabilities"], "supportsBxdFlowMae": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == ("ghiChu",)
+
+
+def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu():
+    """Cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn): bản extension cũ chưa chạy content/bxd/*.js trên host này →
+    thiếu supportsBxdFlowMoit thì không bật luồng 4 bước, không bật bổ sung ô."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    key = "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha"
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", caps={**CAPS, "supportsBxdFlowMae": True}, procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**old["client_capabilities"], "supportsBxdFlowMoit": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    assert registry.get(key)["required"] == ()
+    assert registry.get(key)["noAsk"] == ("noidungyeucaugiaiquyet", "taxCode", "ownertaxCode")
+
+
+@pytest.mark.parametrize("key", [
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+    "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+])
+def test_cong_bo_cong_thuong_hieu_dung_buoc_iGate(key):
+    """Extension mới báo wizardStep trên host Bộ Công Thương: bước 1 là kê khai, bước 2 là đính kèm (không theo mặc
+    định tư pháp 1 chủ hồ sơ / 2 kê khai / 3 đính kèm). Bản cũ không báo bước → vẫn dựa formKind / bảng đính kèm."""
+    proc = flow.get_procedure(key)
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+    assert flow._resolve_page_docs_target(proc, {"formKind": "standard"}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"attachmentTarget": True}) == "attachment"
 
 
 @pytest.mark.parametrize("key", ["xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat"])
@@ -305,3 +363,11 @@ def test_luong_4_buoc_bat_thi_tat_doan_nhan_ket_qua_cua_guided_steps_cu():
     old_caps = {"supportsGuidedSteps": True, "supportsResultMethod": True, "supportsIgateResultStep": True}
     assert guided_steps.result_flow_enabled(_conv("done", caps=old_caps, procedure_key=key), proc)
     assert not guided_steps.result_flow_enabled(_conv("done", caps={**old_caps, **CAPS}, procedure_key=key), proc)
+
+
+def test_dong_dinh_kem_so_0_noi_ten_dong_khong_noi_stt_0():
+    """Planner để componentIndex 0 (dòng duy nhất, FE khớp theo tên) → câu báo nói tên dòng, không "STT 0"."""
+    line = flow._attachment_plan_line({"fileName": "don.pdf", "componentIndex": 0, "target": "attp-row",
+                                       "componentName": "Đơn đề nghị hỗ trợ theo từng loại hình cơ sở sản xuất"})
+    assert line == "- **don.pdf** → Đơn đề nghị hỗ trợ theo từng loại hình cơ sở sản xuất"
+    assert flow._attachment_plan_line({"fileName": "x.pdf", "componentIndex": 2}) == "- **x.pdf** → STT 2"

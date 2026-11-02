@@ -6,8 +6,8 @@ Bảng thành phần hồ sơ có đúng 1 dòng, "1 Bản chính":
      104/2016/NĐ-CP ngày 01/7/2016.
 
 Tờ Thông báo là giấy tờ chính. Tờ trình và Danh sách cơ sở đi kèm (hay scan chung một PDF với Thông báo)
-cũng thuộc bộ văn bản thông báo → đính vào CÙNG dòng. CCCD chỉ dùng ở bước thông tin → bỏ qua. Giấy tờ
-không xác định → KHÔNG đính bừa, chỉ cảnh báo.
+cũng thuộc bộ văn bản thông báo → đính vào CÙNG dòng. CCCD và giấy tờ không xác định cũng đính vào dòng duy
+nhất này, giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG.
 """
@@ -108,6 +108,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -121,19 +122,12 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type not in _ATTACH_TYPES:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            if doc_type == _OTHER:
-                warnings.append(
-                    f"Không xác định được file '{file_name}' thuộc Thành phần hồ sơ — chưa đính kèm, vui lòng "
-                    "đính tay nếu cần."
-                )
-            continue
-
+        extra = doc_type not in _ATTACH_TYPES
         items.append({
             "fileIndex": idx,
             "fileName": file_name,
-            "documentName": _DOCUMENT_NAMES[doc_type],
+            # Không có tên chuẩn (CCCD / chưa rõ loại) → giữ tên gốc.
+            "documentName": file_name if extra else _DOCUMENT_NAMES[doc_type],
             "componentName": _ROW["componentName"],
             "componentIndex": _ROW["componentIndex"],
             "loaiBan": _ROW["loaiBan"],
@@ -141,7 +135,17 @@ def build_plan_items(
             "needsAddComponent": False,
             "detectedType": doc_type,
         })
-        classified.append({"fileName": file_name, "docType": doc_type, "source": source})
+        if extra:
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _THONG_BAO})
+            extra_files.append(file_name)
+        else:
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
+
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROW['componentName']}\": "
+            + ", ".join(extra_files) + "."
+        )
 
     # Dòng duy nhất nhận NHIỀU file: FE chống trùng theo documentName, trùng tên chuẩn là file sau bị coi như
     # đã đính → khi có hơn 1 file thì giữ TÊN GỐC cho từng file.

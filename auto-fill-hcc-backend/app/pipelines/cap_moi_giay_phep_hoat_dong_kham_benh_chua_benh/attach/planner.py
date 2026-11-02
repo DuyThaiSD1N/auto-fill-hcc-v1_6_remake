@@ -23,8 +23,8 @@ Phân loại THUẦN LLM, mỗi tệp một lượt gọi (xem prompt). Một t�
 danh mục kỹ thuật + giấy chứng nhận CME) được gắn nhiều loại.
 ⚑ MỖI TỆP ĐÚNG MỘT DÒNG: tệp đính vào dòng ĐẦU TIÊN (theo thứ tự bảng) nhận một trong các loại của nó; các dòng
 sau KHÔNG nhân bản lại tệp đó (cổng coi là đính kèm trùng lặp).
-⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other) hoặc lượt gọi lỗi → đính vào dòng 5 (giấy tờ chứng minh),
-giữ tên tệp gốc. CCCD không có dòng riêng → bỏ qua.
+⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other), lượt gọi lỗi, hoặc CCCD (không có dòng riêng) → đính vào dòng 5
+(giấy tờ chứng minh), giữ tên tệp gốc.
 """
 
 import asyncio
@@ -86,7 +86,7 @@ _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 4, "componentName": "của người phụ trách bộ phận chuyên môn của cơ sở",
      "loaiBan": _BAN_SAO, "docTypes": []},
     {"componentIndex": 5, "componentName": "Bản kê khai cơ sở vật chất, danh mục thiết bị y tế",
-     "loaiBan": _BAN_CHINH, "docTypes": [_KEKHAI, _VANBANG, _CHUNGCHI, _CHUNGMINH, _OTHER]},
+     "loaiBan": _BAN_CHINH, "docTypes": [_KEKHAI, _VANBANG, _CHUNGCHI, _CHUNGMINH, _OTHER, _CCCD]},
     {"componentIndex": 6, "componentName": "Danh sách ghi rõ họ tên, số giấy phép hành nghề của từng người",
      "loaiBan": _BAN_CHINH, "docTypes": [_DSHN]},
     {"componentIndex": 7, "componentName": "Văn bản do cấp có thẩm quyền phê duyệt quy định về chức năng",
@@ -169,9 +169,9 @@ def _target_row(doc_types: list[str]) -> int | None:
 
 
 def _document_name(file_name: str, doc_type: str, same_type_count: int) -> str:
-    # Tệp lạ giữ TÊN GỐC để cán bộ nhận ra; nhiều tệp cùng loại (vd 2 chứng chỉ đào tạo) thêm tên gốc để
-    # hai tệp trong cùng dòng không mang cùng một tên.
-    if doc_type == _OTHER:
+    # Tệp lạ / CCCD (không có tên chuẩn) giữ TÊN GỐC để cán bộ nhận ra; nhiều tệp cùng loại (vd 2 chứng chỉ đào
+    # tạo) thêm tên gốc để hai tệp trong cùng dòng không mang cùng một tên.
+    if doc_type not in _DOC_NAMES:
         return file_name
     base = _DOC_NAMES[doc_type]
     return f"{base} ({PurePath(file_name).stem})" if same_type_count > 1 else base
@@ -197,15 +197,13 @@ def build_plan_items(
             "docTypes": doc_types,
             "source": "llm" if idx in llm_types else "fallback",
         }
-        if doc_types == [_CCCD]:
-            entry["skipped"] = True
-        else:
-            for doc_type in doc_types:
-                by_type.setdefault(doc_type, []).append(idx)
-            target_row = _target_row(doc_types)
-            entry["rows"] = [target_row] if target_row is not None else []
-        if doc_types == [_OTHER]:
+        for doc_type in doc_types:
+            by_type.setdefault(doc_type, []).append(idx)
+        target_row = _target_row(doc_types)
+        entry["rows"] = [target_row] if target_row is not None else []
+        if doc_types in ([_OTHER], [_CCCD]):
             entry["fallbackRow"] = _CHUNGMINH
+            entry["routedTo"] = _CHUNGMINH
         classified.append(entry)
 
     items: list[dict] = []
@@ -231,11 +229,11 @@ def build_plan_items(
                     "detectedType": doc_type,
                 })
 
-    fallback = [names[idx] for idx in by_type.get(_OTHER, [])]
+    fallback = [names[idx] for idx in sorted(by_type.get(_OTHER, []) + by_type.get(_CCCD, []))]
     if fallback:
         warnings.append(
-            "Chưa nhận ra loại giấy tờ, đã đính kèm chung vào dòng Bản kê khai Mẫu 08 (giấy tờ chứng minh) để "
-            f"không bỏ sót — cán bộ kiểm tra lại: {', '.join(fallback)}."
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng Bản kê khai Mẫu 08 (giấy tờ chứng "
+            f"minh) để không bỏ sót — cán bộ kiểm tra lại: {', '.join(fallback)}."
         )
     return items, warnings, classified
 

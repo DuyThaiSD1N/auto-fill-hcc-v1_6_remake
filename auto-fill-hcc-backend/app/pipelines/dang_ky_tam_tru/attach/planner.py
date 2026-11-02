@@ -6,7 +6,8 @@ MỘT nhóm. Ba trường hợp trợ lý xử lý (prompt.py chọn, luật ch�
   consented (1) không thuộc sở hữu, được chủ hộ & chủ sở hữu đồng ý
                                              — Tờ khai | Quan hệ nhân thân | Điểm b, c khoản 2 Điều 20 | + Thêm mới GCN
   rented    (2) do thuê, mượn, ở nhờ         — Tờ khai | Hợp đồng cho thuê/mượn/ở nhờ | + Thêm mới GCN
-CCCD không có dòng (cổng lấy từ CSDL dân cư) → không đính.
+CCCD (cổng không có dòng riêng), giấy không có dòng trong nhóm đã chọn và giấy chưa rõ loại → đính chung dòng
+Tờ khai của nhóm (cổng nhận nhiều tệp một dòng) + cảnh báo; không bỏ tệp nào.
 
 Plan item target "bca-row" do content/attach-core.js (attachFilesByBcaPlan) thi hành: mở nhóm theo
 `groupIndex`/`groupLabel`, tìm dòng có chữ `rowKey`, hoặc bấm "+ Thêm mới" khi `newRow` rồi ghi tên dòng.
@@ -112,16 +113,19 @@ def rule_case(kinds: list[str]) -> str:
 
 def _item(file: dict, index: int, kind: str, group: dict, row: tuple[str, str] | None) -> dict:
     new_row = row is None
+    file_name = str(file.get("name") or f"file-{index + 1}")
+    # Giấy chưa có tên chuẩn (CCCD/không rõ loại) → giữ tên tệp gốc; FE lọc ký tự cổng cấm khi đổi tên tệp.
+    name = _DOCUMENT_NAMES.get(kind, file_name)
     return {
         "fileIndex": index,
-        "fileName": str(file.get("name") or f"file-{index + 1}"),
-        "documentName": _DOCUMENT_NAMES[kind],
+        "fileName": file_name,
+        "documentName": name,
         "componentName": GCN_NEW_ROW_NAME if new_row else row[0],
         "target": "bca-row",
         "needsAddComponent": new_row,
         "newRow": new_row,
         "rowKey": "" if new_row else row[1],
-        "detectedType": _DOCUMENT_NAMES[kind],
+        "detectedType": _DOCUMENT_NAMES.get(kind, kind or OTHER),
         **group,
     }
 
@@ -132,18 +136,22 @@ def build_plan_items(files: list[dict], kinds: list[str], case: str) -> tuple[li
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
     for index, (file, kind) in enumerate(zip(files, kinds)):
         name = str(file.get("name") or f"file-{index + 1}")
-        classified.append({"fileName": name, "docType": kind or OTHER})
-        if kind == CCCD:
-            continue  # cổng không có dòng CCCD — thông tin lấy từ CSDL quốc gia về dân cư
         if kind in rows:
             items.append(_item(file, index, kind, group, rows[kind]))
-        elif kind in _DOCUMENT_NAMES:
-            warnings.append(f"File '{name}' ({_DOCUMENT_NAMES[kind]}) không có dòng trong nhóm "
-                            f"\"{group['groupLabel']}\" — bỏ qua, vui lòng kiểm tra lại.")
-        else:
-            warnings.append(f"Không xác định được loại giấy tờ cho file '{name}' — bỏ qua, vui lòng đính kèm thủ công.")
+            classified.append({"fileName": name, "docType": kind or OTHER})
+            continue
+        # CCCD (cổng không có dòng), giấy không có dòng trong nhóm, không rõ loại → dòng Tờ khai của nhóm.
+        items.append(_item(file, index, kind, group, rows[TO_KHAI]))
+        classified.append({"fileName": name, "docType": kind or OTHER, "routedTo": TO_KHAI})
+        extra_files.append(name)
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{rows[TO_KHAI][0]}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

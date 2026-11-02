@@ -8,7 +8,8 @@ Bảng của cổng chỉ có HAI dòng cố định (đều 1 Bản chính):
 GCN QSDĐ không có dòng → tạo dòng 3 bằng nút "+ Thêm giấy tờ" (`add-document-dialog`, 1 Bản sao); modal không
 tạo được thì FE ĐÍNH CHUNG vào dòng Đơn (`fallbackComponentName`).
 
-Phân loại LLM-primary trên OCR vài trang đầu; rule keyword chỉ dự phòng. Tệp không rõ loại → bỏ qua + cảnh báo.
+Phân loại LLM-primary trên OCR vài trang đầu; rule keyword chỉ dự phòng. Tệp không rõ loại → đính chung dòng Đơn
+(sau Đơn/CCCD/ủy quyền), giữ tên file gốc + cảnh báo.
 """
 
 import re
@@ -159,6 +160,7 @@ def build_plan_items(
     texts = texts or {}
     llm_types = llm_types or {}
     picked: list[tuple[int, str, str]] = []
+    unknown: list[tuple[int, str]] = []
     warnings: list[str] = []
     classified: list[dict] = []
 
@@ -176,8 +178,8 @@ def build_plan_items(
             picked.append((idx, file_name, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        unknown.append((idx, file_name))
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
 
     items: list[dict] = []
     counts: dict[str, int] = {}
@@ -187,6 +189,16 @@ def build_plan_items(
         if counts[doc_type] > 1:
             name = f"{name} {counts[doc_type]}"
         items.append(_build_item(idx, file_name, doc_type, name))
+    # Không rõ loại → cuối dòng Đơn (đính kèm chung), giữ tên gốc để FE không coi là trùng tài liệu của dòng.
+    for idx, file_name in unknown:
+        item = _build_item(idx, file_name, _DON, file_name)
+        item["detectedType"] = _OTHER
+        items.append(item)
+    if unknown:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROW_DON['componentName']}\": "
+            + ", ".join(name for _, name in unknown)
+        )
 
     found = {doc_type for _, _, doc_type in picked}
     if _DON not in found:

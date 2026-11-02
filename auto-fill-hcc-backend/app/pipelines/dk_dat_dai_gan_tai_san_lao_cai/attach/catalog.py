@@ -123,7 +123,7 @@ LABELS: list[tuple[str, str, str]] = [
     ("khac", "Tài liệu kèm theo", "Giấy tờ khác hoặc không xác định được loại"),
 ]
 
-# CCCD không phải thành phần hồ sơ của thủ tục → không đính kèm.
+# CCCD không có dòng riêng trong bảng → planner đính vào dòng hứng chung, không bỏ tệp.
 SKIPPED_LABELS = {"cccd"}
 
 # Giấy tờ hay bị QUÉT GỘP vào tệp Đơn đăng ký (hồ sơ mẫu HS01, HS03 đều một tệp cho cả bộ): không có tệp

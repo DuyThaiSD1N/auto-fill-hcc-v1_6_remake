@@ -3,7 +3,8 @@
 Bảng 4 dòng (mat-checkbox + rdo_File Bản chính/Bản sao + input file) → engine FE `attp-row`. componentName =
 đoạn text đặc trưng của dòng (FE khớp substring đã fold dấu).
 ⚠ Dòng GCNKNCM/CCCM có NHÃN dạng dấu chấm trong DOM (không có text đặc trưng) → componentName best-effort
-+ componentIndex; CẦN VERIFY trên trang thật. CCCD chỉ là nguồn điền → bỏ qua.
++ componentIndex; CẦN VERIFY trên trang thật. CCCD và giấy chưa rõ loại không có dòng riêng → đính chung dòng
+Đơn đề nghị, giữ tên file gốc + cảnh báo.
 """
 
 import time
@@ -117,6 +118,7 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -128,12 +130,20 @@ def build_plan_items(
         if doc_type in _ROWS:
             attachments.append(_build_row_item(file, index, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-        elif doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
         else:
-            warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-            classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+            # Không có dòng riêng/không rõ loại → dòng Đơn, giữ tên gốc để FE không coi là trùng tài liệu của dòng.
+            item = _build_row_item(file, index, _DON)
+            item["documentName"] = file_name
+            item["detectedType"] = doc_type
+            attachments.append(item)
+            extra_files.append(file_name)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return attachments, warnings, classified
 
 

@@ -6,7 +6,8 @@ slotKeywords, tích checkbox dòng (tickRow) rồi bơm file vào input của d�
 
 Giấy chứng nhận của chủ đầu tư có trang 2 là "Sơ đồ thửa đất, tài sản gắn liền với đất": khi hồ sơ không có
 sơ đồ riêng, đính kèm lại chính file GCN vào dòng Sơ đồ (theo ghi chú file mapping) để thành phần đủ theo danh mục.
-Tài liệu không có dòng riêng (CCCD, không rõ loại) → bỏ qua kèm cảnh báo, không đoán dòng.
+Tài liệu không có dòng riêng (CCCD, không rõ loại) → đính chung ô Đơn đăng ký của nhánh (vẫn là tệp riêng, giữ
+tên) kèm cảnh báo; không bỏ tệp nào.
 """
 
 import re
@@ -146,17 +147,24 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # Bảng không có dòng "giấy tờ khác" → tệp không có dòng riêng vào ô Đơn của nhánh để không rơi tệp.
+    don_slot = catalog.slot(branch, "don_dang_ky")
+    extra_files: list[str] = []
     for entry in entries:
         slot = catalog.slot(branch, entry["label"])
         if not slot:
-            warnings.append(
-                f"File '{entry['fileName']}' ({entry['documentName']}) không có dòng thành phần hồ sơ tương ứng "
-                "— đã bỏ qua."
-            )
-            classified.append({**_classified(entry), "target": "skip", "reason": "no_component_row"})
+            attachments.append(_plan_item(entry, don_slot, entry["documentName"]))
+            classified.append({**_classified(entry), "target": "fixed-slot", "slotKey": don_slot["slotKey"],
+                               "routedTo": "don_dang_ky", "reason": "no_component_row"})
+            extra_files.append(entry["fileName"])
             continue
         attachments.append(_plan_item(entry, slot, entry["documentName"]))
         classified.append({**_classified(entry), "target": "fixed-slot", "slotKey": slot["slotKey"]})
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{don_slot['slotName']}\": "
+            + ", ".join(extra_files) + "."
+        )
 
     # Sơ đồ nằm ở trang 2 GCN của chủ đầu tư → đính lại chính file GCN vào dòng Sơ đồ khi không có sơ đồ riêng.
     if not any(entry["label"] == "so_do" for entry in entries):

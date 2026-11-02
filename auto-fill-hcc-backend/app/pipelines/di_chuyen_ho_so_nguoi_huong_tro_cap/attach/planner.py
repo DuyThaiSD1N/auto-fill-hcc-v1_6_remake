@@ -7,15 +7,16 @@
   slot 1  Đơn đề nghị theo Mẫu số 27 Phụ lục I NĐ 131/2021/NĐ-CP (1 Bản chính)          ← don_mau_27
 
 Giấy tờ nguồn khác (Bản khai thân nhân Mẫu 05, Giấy chứng nhận GĐ liệt sĩ, Giấy khai sinh, Bằng Tổ quốc
-ghi công, Phiếu báo di chuyển hồ sơ...) KHÔNG có ô cố định riêng → BỎ QUA (skipped), KHÔNG route "new".
+ghi công, Phiếu báo di chuyển hồ sơ...) và giấy chưa rõ loại KHÔNG có ô cố định riêng → đính chung ô Đơn Mẫu 27
+(FE gom nhiều tệp cùng slotKey vào một ô), giữ tên tệp gốc + cảnh báo; KHÔNG route "new".
 LLM phân loại MỌI tệp; luật dò chữ (`_rule_doc_type`) chỉ dự phòng cho tệp LLM không trả lời, không đè kết luận
 đính được của LLM. Ngoại lệ là tệp GỘP nhiều trang mà LLM xếp loại không có ô (other / giấy nguồn khác): dò tiêu đề
 từng trang, có trang là Đơn Mẫu 27 / CCCD / CT07 thì đính cả tệp vào ô đó (`_combined_slot_type`, luật 5 của prompt).
 
 Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments``, cách làm như thủ tục Form.io iGate Lào Cai): LLM xếp
 loại TỪNG TRANG; mỗi loại có ô nhận đúng các trang của nó qua ``sourceSegments`` (extension cắt PDF), bỏ trang trắng.
-Trang thuộc giấy không có ô vẫn bỏ qua — cổng MOHA không có dòng "Giấy tờ khác". Chia trang lỗi / số trang OCR lệch
-PDF → tệp đó đính nguyên như chế độ thường.
+Trang thuộc giấy không có ô vẫn không cắt riêng; tệp không ra mục nào thì đính NGUYÊN tệp vào ô Đơn. Chia trang lỗi /
+số trang OCR lệch PDF → tệp đó đính nguyên như chế độ thường.
 """
 
 import base64
@@ -68,7 +69,7 @@ _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 # CCCD và Xác nhận cư trú CT07 cùng vào dòng CCCD ("chọn 1 hoặc đính kèm cả 2", ưu tiên CCCD).
 _ROUTE_TO_SLOT = {_DON: _DON, _CCCD: _CCCD, _CU_TRU: _CCCD}
-# Giấy tờ nguồn KHÁC không có ô cố định → bỏ qua.
+# Giấy tờ nguồn KHÁC không có ô cố định → đính chung ô Đơn.
 _SKIP_DOCS = {_BAN_KHAI, _KHAI_SINH, _GCN_GD_LS, _TQGC, _PHIEU_BAO}
 _ALLOWED_DOC_TYPES = set(_ROUTE_TO_SLOT) | _SKIP_DOCS | {_OTHER}
 
@@ -272,7 +273,8 @@ def _page_runs(types: list[str], pages: list[str]) -> list[dict]:
 
 
 def _split_file_items(file: dict, idx: int, pages: list[str], types: list[str]) -> tuple[list[dict], str, dict]:
-    """Tệp đã xếp loại theo trang → mỗi loại có ô (Đơn / CCCD / CT07) một mục chỉ gồm đúng các trang của nó."""
+    """Tệp đã xếp loại theo trang → mỗi loại có ô (Đơn / CCCD / CT07) một mục chỉ gồm đúng các trang của nó.
+    Phần tử thứ 2 = tên tệp khi phải đính nguyên tệp vào ô Đơn (để gom vào cảnh báo chung), còn lại ""."""
     file_name = str(file.get("name") or f"file-{idx + 1}")
     by_type: dict[str, list[int]] = {}
     for page, doc_type in enumerate(types):
@@ -291,10 +293,13 @@ def _split_file_items(file: dict, idx: int, pages: list[str], types: list[str]) 
              "source": "llm-pages", "tachGiayTo": _page_runs(types, pages)}
     warning = ""
     if not items:
-        if by_type and set(by_type) <= _SKIP_DOCS:
-            entry["skipped"] = True
-        else:
-            warning = f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công."
+        # Không trang nào thuộc giấy có ô (giấy nguồn khác / chưa rõ / toàn trang trắng) → đính NGUYÊN tệp vào ô Đơn.
+        item = _build_fixed_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = ",".join(by_type) or _OTHER
+        items.append(item)
+        entry["routedTo"] = _DON
+        warning = file_name
     return items, warning, entry
 
 
@@ -310,14 +315,15 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
         if idx in page_types:
-            split_items, warning, entry = _split_file_items(file, idx, split_pages(text), page_types[idx])
+            split_items, extra_name, entry = _split_file_items(file, idx, split_pages(text), page_types[idx])
             items.extend(split_items)
-            warnings.extend([warning] if warning else [])
+            extra_files.extend([extra_name] if extra_name else [])
             classified.append(entry)
             continue
         if idx in llm_types:
@@ -338,13 +344,19 @@ def build_plan_items(
             items.append(_build_fixed_item(file, idx, slot_key))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
+        # Giấy nguồn khác / chưa rõ loại → ô Đơn, giữ tên gốc.
+        item = _build_fixed_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = doc_type
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
+        extra_files.append(file_name)
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
-
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_SLOT_BY_KEY[_DON]['slotName']}\": "
+            + ", ".join(extra_files) + "."
+        )
     return items, warnings, classified
 
 

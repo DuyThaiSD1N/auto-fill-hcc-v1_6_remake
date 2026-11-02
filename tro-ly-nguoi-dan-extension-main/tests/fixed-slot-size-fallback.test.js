@@ -23,8 +23,8 @@ test("thành công = tên tệp hiện thật (landed), KHÔNG phải vắng toa
   assert.match(body, /let landed = false, sizeError = "";/);
   assert.match(body, /const deadline = Date\.now\(\) \+ 7000;/);
   assert.match(body, /if \(!ok \|\| !landed\)[\s\S]{0,220}?markAttachmentResult\(markTarget, false\)/);
-  // Chỉ tô xanh ở nhánh CUỐI, sau khi đã có bằng chứng dương.
-  assert.match(body, /markAttachmentResult\(markTarget, true\);\s*\n\s*return \{ found: true, ok: true \}/);
+  // Chỉ tô xanh ở nhánh CUỐI, sau khi đã có bằng chứng dương (hoặc khi mọi tệp đã nằm sẵn trên dòng).
+  assert.match(body, /markAttachmentResult\(markTarget, true\);\s*\n\s*return \{ found: true, ok: true, attached: pendingNames, skipped \}/);
   // Không còn coi "vắng toast" là đủ để kết luận thành công.
   assert.doesNotMatch(body, /const sizeError = \(ok && !landed\) \? await waitPortalSizeLimitError/);
 });

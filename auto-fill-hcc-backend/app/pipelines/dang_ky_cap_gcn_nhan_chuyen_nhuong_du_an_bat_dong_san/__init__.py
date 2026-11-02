@@ -9,8 +9,8 @@ ngược từ link kê khai ra pipeline. Mapping theo "Mapping_DKCapGCN_nhan_chu
 Bước 1 là Form.io (data[...]) CÙNG khối "Thông tin chung" với các thủ tục đất đai Đà Nẵng khác → engine dom-*
 của extension, không phải sửa FE. Ô "Nội dung yêu cầu giải quyết" cổng điền sẵn → GIỮ NGUYÊN (theo mapping).
 
-Bước 2 là bảng attp-row 11 dòng, mỗi ô chỉ nhận MỘT tệp → mọi trang của một dòng được ghép thành một PDF
-(`sourceSegments`, kể cả trang lấy từ nhiều file — vd Hợp đồng mua bán + Văn bản sửa đổi bổ sung). Dòng 8
+Bước 2 là bảng attp-row 11 dòng, ô upload `multiple` → mỗi giấy một tệp riêng trên dòng (vd Hợp đồng mua bán
+và Văn bản sửa đổi bổ sung là hai tệp); giấy nằm trong file gộp thì cắt trang qua `sourceSegments`. Dòng 8
 (trùng tên dòng 4) và dòng 11 (bản "nếu có" của dòng 7) đính LẠI cùng tệp; dòng 1, 6, 9, 10 để trống khi hồ
 sơ không có. GCN của chủ đầu tư và tệp chứng từ tài chính là "Bản sao", còn lại "Bản chính".
 

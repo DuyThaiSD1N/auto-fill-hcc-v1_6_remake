@@ -16,7 +16,7 @@ MỘT lần ở dòng 1 — các dòng khác đã nằm trong file chung, không
 
 Tờ khai thuế/lệ phí trước bạ, hóa đơn, giấy nộp tiền, đơn cam kết, công văn, giấy tiếp nhận hồ sơ, văn bản thỏa
 thuận hộ gia đình/vợ chồng không có dòng riêng → đính CHUNG dòng 1 sau Đơn (giữ nguyên từng tệp) và cảnh báo.
-CCCD chỉ đối chiếu → bỏ qua. Phân loại LLM-primary, rule keyword dự phòng.
+CCCD và tệp không đọc được chữ cũng đính chung dòng 1. Phân loại LLM-primary, rule keyword dự phòng.
 """
 
 import base64
@@ -72,14 +72,14 @@ _ROWS: dict[str, dict[str, Any]] = {
 for _r in _ROWS.values():
     _r["loaiBan"] = _LOAI_BAN
 
-# Không có dòng riêng → đính CHUNG dòng Đơn.
-_TO_DON_ROW = {_THOA_THUAN, _OTHER}
-_SKIP_DOCS = {_CCCD}
-_ALLOWED_DOC_TYPES = set(_ROWS) | _TO_DON_ROW | _SKIP_DOCS
+# Không có dòng riêng / chưa rõ loại → đính CHUNG dòng Đơn.
+_TO_DON_ROW = {_THOA_THUAN, _CCCD, _OTHER}
+_ALLOWED_DOC_TYPES = set(_ROWS) | _TO_DON_ROW
 
 _DISPLAY = {
     _THOA_THUAN: "văn bản thỏa thuận hộ gia đình/vợ chồng",
-    _OTHER: "giấy tờ không có dòng riêng",
+    _CCCD: "giấy tờ tùy thân",
+    _OTHER: "giấy tờ không có dòng riêng hoặc chưa rõ loại",
 }
 
 
@@ -232,15 +232,10 @@ def build_plan_items(
             doc_type, source = llm_type, "llm"
         elif rule_type:
             doc_type, source = rule_type, "rule"
-        elif text.strip():
-            # Đọc được chữ nhưng không thuộc dòng nào (tờ khai, hóa đơn…) → đính chung dòng Đơn.
-            doc_type, source = _OTHER, "llm" if llm_type == _OTHER else "unknown"
         else:
-            doc_type, source = "", "unknown"
+            # Không thuộc dòng nào (tờ khai, hóa đơn…) hoặc không đọc được chữ → đính chung dòng Đơn.
+            doc_type, source = _OTHER, "llm" if llm_type == _OTHER else "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
@@ -252,14 +247,12 @@ def build_plan_items(
                     "đồng, văn bản thi hành án…) đã nằm trong file chung, không đính lại ở dòng riêng."
                 )
             continue
-        if doc_type in _TO_DON_ROW:
-            items.append(_build_row_item(file, idx, _DON, doc_type))
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "row": _DON})
-            shared.append(f"{file_name} ({_DISPLAY[doc_type]})")
-            continue
-
-        warnings.append(f"Không đọc được nội dung file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        item = _build_row_item(file, idx, _DON, doc_type)
+        # Giữ tên gốc: trùng tên chuẩn của Đơn thì FE coi là đã đính khi bấm đính lần sau.
+        item["documentName"] = file_name
+        items.append(item)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
+        shared.append(f"{file_name} ({_DISPLAY[doc_type]})")
 
     if shared:
         warnings.append(

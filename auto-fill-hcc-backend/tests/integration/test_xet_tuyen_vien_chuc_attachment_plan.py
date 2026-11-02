@@ -9,7 +9,7 @@ def _file(name: str) -> FileItem:
     return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
 
 
-async def test_xet_tuyen_vien_chuc_attach_maps_phieu_to_fixed_slot_and_skips_cccd(monkeypatch):
+async def test_xet_tuyen_vien_chuc_attach_maps_phieu_to_fixed_slot_and_cccd_shares_phieu_slot(monkeypatch):
     async def fake_ocr_per_file(files):
         return [
             {
@@ -18,7 +18,7 @@ async def test_xet_tuyen_vien_chuc_attach_maps_phieu_to_fixed_slot_and_skips_ccc
             },
             {
                 "name": "cccd.pdf",
-                "text": "CĂN CƯỚC CÔNG DÂN\nSố: 040203015844",
+                "text": "CĂN CƯỚC CÔNG DÂN\nSố: 001000000001",
             },
         ]
 
@@ -36,14 +36,20 @@ async def test_xet_tuyen_vien_chuc_attach_maps_phieu_to_fixed_slot_and_skips_ccc
     res = await xet_tuyen_attach.plan([_file("phieu.pdf"), _file("cccd.pdf")], {}, None)
 
     items = res["attachments"]
-    assert len(items) == 1
+    assert len(items) == 2
     item = items[0]
     assert item["fileName"] == "phieu.pdf"
     assert item["target"] == "fixed-slot"
     assert item["slotIndex"] == 0
     assert item["slotKey"] == "phieu_dang_ky_du_tuyen"
     assert "Phiếu đăng ký dự tuyển" in item["slotName"]
-    assert any("giấy tờ tùy thân" in err for err in res["errors"])
+    cccd = items[1]
+    assert cccd["fileName"] == "cccd.pdf"
+    assert cccd["target"] == "fixed-slot"
+    assert cccd["slotIndex"] == 0
+    assert cccd["documentName"] == "cccd.pdf"
+    assert cccd["detectedType"] == "other"
+    assert any("đã đính chung dòng" in err and "cccd.pdf" in err for err in res["errors"])
 
 
 async def test_xet_tuyen_vien_chuc_attach_rule_fallback_when_llm_fails(monkeypatch):

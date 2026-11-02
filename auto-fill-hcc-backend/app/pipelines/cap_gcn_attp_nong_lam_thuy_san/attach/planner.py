@@ -1,7 +1,7 @@
 """Lập kế hoạch đính kèm hồ sơ ATTP trên cổng MAE.
 
 Hai dòng Phụ lục I/II có sẵn trong bảng Angular nên dùng engine ``attp-row``.
-CCCD không có dòng cố định nên dùng modal "Thêm giấy tờ". Giấy đăng ký kinh doanh và giấy khác đính chung
+CCCD không có dòng cố định nên dùng modal "Thêm giấy tờ" (mỗi tệp một item, không gộp PDF). Giấy đăng ký kinh doanh và giấy khác đính chung
 dòng Đơn (Phụ lục I) — cán bộ hay scan gộp GCN ĐKKD với giấy khám sức khỏe, bỏ cả tệp là mất giấy.
 """
 
@@ -128,25 +128,23 @@ def _build_row_item(
     }
 
 
-def _build_cccd_item(cccd_group: list[tuple[int, dict]]) -> dict:
-    """1 item CCCD cho modal 'Thêm giấy tờ'. Nếu ≥2 file (2 MẶT CCCD) → gộp thành 1 PDF qua
-    sourceFileIndexes (FE applyMergeGroups.mergeToPdf, tệp gộp mang tên documentName)."""
-    first_index, first_file = cccd_group[0]
-    first_name = str(first_file.get("name") or f"file-{first_index + 1}")
-    item = {
-        "fileIndex": first_index,
-        "fileName": first_name,
-        "documentName": _CCCD_LABEL,
-        "componentName": _CCCD_COMPONENT,
-        "loaiBan": _LOAI_BAN,
-        "quantity": 1,
-        "target": "add-document-dialog",
-        "needsAddComponent": True,
-        "detectedType": _CCCD,
-    }
-    if len(cccd_group) > 1:
-        item["sourceFileIndexes"] = [idx for idx, _ in cccd_group]
-    return item
+def _build_cccd_items(cccd_group: list[tuple[int, dict]]) -> list[dict]:
+    """Mỗi tệp CCCD một item cho modal 'Thêm giấy tờ' — KHÔNG gộp PDF (tệp có thể của nhiều người). FE tạo
+    dòng một lần theo componentName rồi engine attp-row gắn nhiều tệp vào cùng dòng."""
+    items: list[dict] = []
+    for position, (index, file) in enumerate(cccd_group, start=1):
+        items.append({
+            "fileIndex": index,
+            "fileName": str(file.get("name") or f"file-{index + 1}"),
+            "documentName": _CCCD_LABEL if position == 1 else f"{_CCCD_LABEL} {position}",
+            "componentName": _CCCD_COMPONENT,
+            "loaiBan": _LOAI_BAN,
+            "quantity": 1,
+            "target": "add-document-dialog",
+            "needsAddComponent": True,
+            "detectedType": _CCCD,
+        })
+    return items
 
 
 def build_plan_items(
@@ -159,7 +157,7 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
-    cccd_group: list[tuple[int, dict]] = []   # gom mọi file CCCD để gộp 2 mặt thành 1 PDF
+    cccd_group: list[tuple[int, dict]] = []
     # Hai tệp cùng loại vào cùng một dòng phải khác tên để cán bộ phân biệt trên cổng.
     name_counts: dict[str, int] = {}
 
@@ -193,9 +191,7 @@ def build_plan_items(
             attachments.append(_build_row_item(file, index, _DON, detected_type=doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
 
-    # 2 mặt CCCD (hoặc nhiều ảnh CCCD lẻ) → gộp thành 1 PDF rồi vào modal "Thêm giấy tờ".
-    if cccd_group:
-        attachments.append(_build_cccd_item(cccd_group))
+    attachments.extend(_build_cccd_items(cccd_group))
 
     return attachments, warnings, classified
 

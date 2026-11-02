@@ -1314,6 +1314,16 @@ RATE_INVITE = {
     "tts": "Dạ, nộp hồ sơ thành công. Công dân chạm một dòng để đánh giá giúp em ạ.",
 }
 
+# Đính tách nhiều tab: tab gốc nộp xong mà còn tab tách chưa nộp → chưa mời đánh giá.
+SPLIT_SUBMIT_WAITING = {
+    "md": (
+        "✓ Đã nộp **{done}/{total} hồ sơ**. Còn **{left} tab** chưa nộp — công dân nộp nốt ở "
+        "các tab đó, xong em mời đánh giá ạ.\n\n"
+        "Đã nộp hết rồi thì bấm **Đã nộp hết, đánh giá** ạ."
+    ),
+    "tts": "Dạ, em ghi nhận {done} trên {total} hồ sơ đã nộp. Công dân nộp nốt các tab còn lại ạ.",
+}
+
 PHONE_SUBSCRIBED = {
     "md": "✓ Đã lưu số **{phone}**. Có tiến độ mới em nhắn ngay ạ.",
     "tts": "Dạ, em đã lưu số. Có tiến độ em sẽ nhắn ạ.",
@@ -1933,6 +1943,13 @@ LT_RESULT_CHIP = "📬 Chọn cách nhận kết quả ▶"
 LT_BACK_CHIP = "✏️ Quay lại sửa tờ khai"
 LT_RETRY_CHIP = "🔁 Thử chuyển bước lại"
 LT_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+# Liên thông khai tử, bước 1: ô "Đối tượng hưởng trợ cấp mai táng phí" quyết định khối mai táng phí + cơ quan giải quyết.
+LT_KT_AGENCY_ASK = {
+    "md": ("Trước khi chọn cơ quan thực hiện, công dân cho em biết **người mất thuộc đối tượng hưởng trợ cấp mai táng "
+           "phí nào** ạ? Công dân bấm một nút bên dưới hoặc nói tên đối tượng."),
+    "tts": "Công dân cho em biết người mất thuộc đối tượng hưởng trợ cấp mai táng phí nào ạ?",
+}
+
 LT_AGENCY_FILLING = {
     "md": ("Em đang chọn **cơ quan thực hiện** theo nơi ở **{ward}, {province}**. Công dân rà lại rồi bấm "
            "**Sang bước Kê khai** hoặc nói **“bước tiếp theo”** ạ."),

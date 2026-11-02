@@ -158,10 +158,9 @@ def test_nhom_theo_van_ban_can_cu():
             assert all(i["target"] == "attp-row" and i["untickUnplannedRows"] is True for i in items)
 
 
-def test_nhom_3_khong_co_trich_do_va_cccd_bo_qua():
+def test_nhom_3_trich_do_va_cccd_vao_dong_don():
     labels = ("don_dang_ky", "vb_cho_phep_tai_san_cong", "manh_trich_do", "cccd")
     items, warnings, _, group, _ = planner.build_plan_items(_files(4), _llm(*labels), "", _ROWS)
     assert group == "3"
-    assert [i["componentIndex"] for i in items] == [13, 15, 13]
-    assert any("Thêm giấy tờ" in w and "t2.pdf" in w for w in warnings)
-    assert any("CCCD" in w and "t3.pdf" in w for w in warnings)
+    assert [i["componentIndex"] for i in items] == [13, 15, 13, 13]
+    assert any("Thêm giấy tờ" in w and "t2.pdf" in w and "t3.pdf" in w for w in warnings)

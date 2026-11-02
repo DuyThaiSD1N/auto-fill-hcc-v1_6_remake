@@ -146,10 +146,9 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     assert by_name["Bản cam ket xây nhà 2026.pdf"]["componentIndex"] == 16
 
 
-async def test_cap_giay_phep_xay_dung_khong_doan_theo_ten_file_khi_ocr_rong(monkeypatch):
-    """OCR rỗng + LLM trả "other" → BỎ QUA kèm cảnh báo, KHÔNG suy loại giấy tờ từ TÊN FILE.
-    (Test này trước đây kỳ vọng có fallback theo tên file — cơ chế đó đã bỏ vì đoán theo tên rất dễ
-    sai; giữ nguyên kỳ vọng cũ thì test fail vĩnh viễn.)"""
+async def test_cap_giay_phep_xay_dung_ocr_rong_dinh_chung_o_don_khong_doan_theo_ten_file(monkeypatch):
+    """OCR rỗng + LLM trả "other" → KHÔNG suy loại giấy tờ từ TÊN FILE (không vào ô đất STT 13) nhưng cũng
+    không bỏ tệp: đính chung ô Đơn của khối (STT 12) kèm cảnh báo."""
     async def fake_ocr_per_file(files):
         return [{"name": f["name"], "text": "", "provider": "tiengnoi"} for f in files]
 
@@ -161,8 +160,11 @@ async def test_cap_giay_phep_xay_dung_khong_doan_theo_ten_file_khi_ocr_rong(monk
 
     res = await planner.plan([_file("Sổ đỏ 1.jpg", "image/jpeg")], {}, None)
 
-    assert res["attachments"] == []
-    assert any("Sổ đỏ 1.jpg" in err for err in res["errors"])
+    [item] = res["attachments"]
+    assert item["target"] == "fixed-slot" and item["componentIndex"] == 12 and item["slotIndex"] == 11
+    assert item["detectedType"] == "other"
+    assert res["extracted"]["classified"][0]["routedTo"] == "don"
+    assert any("Sổ đỏ 1.jpg" in err and "đính chung" in err for err in res["errors"])
 
 
 def test_cap_giay_phep_xay_dung_registry_has_process_and_attach():

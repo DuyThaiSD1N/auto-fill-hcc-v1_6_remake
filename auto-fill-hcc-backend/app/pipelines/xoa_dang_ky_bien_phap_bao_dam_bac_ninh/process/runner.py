@@ -21,6 +21,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         compact_field_fallback=apply_ocr_fallback,
+        llm_reuse="use" if str((options or {}).get("purpose") or "") == "authorized_person" else "save",
     )
     res["fields"] = mapper.enrich(res["fields"], options)
     return res

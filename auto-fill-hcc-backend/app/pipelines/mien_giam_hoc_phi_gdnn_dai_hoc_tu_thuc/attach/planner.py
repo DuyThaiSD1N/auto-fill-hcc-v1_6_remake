@@ -1,14 +1,15 @@
 """Đính kèm "Thành phần hồ sơ" cho "Đề nghị miễn, giảm học phí trong cơ sở GDNN, GDĐH tư thục…" (mã 1.014335, cổng
 DVC Bộ GD&ĐT dvc.moet.gov.vn — Angular mat-table, engine FE `attp-row`).
 
-Bảng của cổng có HAI dòng cố định (đều 1 Bản chính). Theo mapping đính kèm, MỖI dòng nhận MỘT file PDF gộp
-(`sourceFileIndexes` theo đúng thứ tự trang, FE gộp bằng pdf-lib):
+Bảng của cổng có HAI dòng cố định (đều 1 Bản chính). Dòng attp-row nhận nhiều tệp (FE gom item cùng componentName
+vào một lần set files) → MỖI tệp một item riêng, xếp theo thứ tự của mapping đính kèm:
   1. "Bản sao chứng thực … giấy tờ chứng minh thuộc đối tượng miễn, giảm học phí …" — Giấy xác nhận của trường (mẫu
      riêng) → Giấy xác nhận Phụ lục V → giấy tờ đối tượng khác → CCCD → Giấy khai sinh → Bằng tốt nghiệp.
   2. "Đơn đề nghị chi trả tiền miễn giảm học phí theo mẫu tại Phụ lục IV …" — Đơn PL IV → Dự toán PL VI.
-Giấy tiếp nhận hồ sơ và hẹn trả kết quả là phiếu cơ quan cấp SAU khi nộp → không đính.
+Giấy tiếp nhận hồ sơ và hẹn trả kết quả (phiếu cơ quan cấp) không thuộc dòng nào → item riêng ở dòng 1 + cảnh báo;
+không bỏ file nào.
 
-Phân loại LLM-primary trên OCR vài trang đầu; rule keyword chỉ dự phòng. Tệp chưa rõ loại → gộp cuối dòng 1 (dòng
+Phân loại LLM-primary trên OCR vài trang đầu; rule keyword chỉ dự phòng. Tệp chưa rõ loại → item cuối dòng 1 (dòng
 giấy tờ chứng minh nhận mọi giấy tờ bổ trợ) + cảnh báo.
 """
 
@@ -39,7 +40,7 @@ _BANG = "bang_tot_nghiep"
 _PHIEU_TN = "phieu_tiep_nhan"
 _OTHER = "other"
 
-# componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold). documentName = tên file PDF gộp (<= 50 ký tự).
+# componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold).
 _ROW_CHUNG_MINH = {
     "componentName": "giấy tờ chứng minh thuộc đối tượng miễn, giảm học phí",
     "loaiBan": "Bản chính",
@@ -51,12 +52,24 @@ _ROW_DON = {
     "documentName": "Đơn đề nghị chi trả miễn, giảm học phí (PL IV)",
 }
 
-# Thứ tự trang trong file gộp của từng dòng (theo mapping đính kèm).
+# Thứ tự tệp trong từng dòng (theo mapping đính kèm).
 _ROW_ORDER: list[tuple[dict, tuple[str, ...]]] = [
     (_ROW_CHUNG_MINH, (_GXN_TRUONG, _GXN_PL5, _DOI_TUONG, _CCCD, _KHAI_SINH, _BANG, _OTHER)),
     (_ROW_DON, (_DON, _DU_TOAN)),
 ]
 _ROW_TYPES = {t for _, types in _ROW_ORDER for t in types}
+# Tên từng tệp trên dòng (<= 50 ký tự): FE coi tệp trùng tên đã có trên dòng là đã đính → mỗi item một tên.
+_TYPE_NAMES = {
+    _DON: "Đơn đề nghị chi trả miễn, giảm học phí PL IV",
+    _DU_TOAN: "Dự toán kinh phí cấp bù miễn, giảm học phí PL VI",
+    _GXN_TRUONG: "Giấy xác nhận của trường",
+    _GXN_PL5: "Giấy xác nhận Phụ lục V",
+    _DOI_TUONG: "Giấy tờ chứng minh đối tượng miễn, giảm học phí",
+    _CCCD: "Căn cước công dân",
+    _KHAI_SINH: "Giấy khai sinh",
+    _BANG: "Bằng tốt nghiệp",
+    _OTHER: "Giấy tờ kèm theo hồ sơ",
+}
 _ALLOWED_DOC_TYPES = _ROW_TYPES | {_PHIEU_TN}
 
 _PHU_LUC_V = re.compile(r"\bphu luc v\b")
@@ -160,6 +173,7 @@ def build_plan_items(
     picked: dict[str, list[int]] = {}
     warnings: list[str] = []
     classified: list[dict] = []
+    extra: list[int] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -174,41 +188,59 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
 
         if doc_type == _PHIEU_TN:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            warnings.append(f"'{file_name}' là Giấy tiếp nhận hồ sơ (phiếu cơ quan cấp sau khi nộp) — không đính kèm.")
+            extra.append(idx)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": "chung_minh"})
             continue
         if doc_type == _OTHER:
-            # Ảnh chụp gần như không chữ thường là trang bìa Bằng tốt nghiệp; còn lại gộp cuối dòng giấy tờ chứng minh.
+            # Ảnh chụp gần như không chữ thường là trang bìa Bằng tốt nghiệp; còn lại đính cuối dòng giấy tờ chứng minh.
             if not _is_docx(file) and _is_photo_like(text):
                 doc_type, source = _BANG, "photo-fallback"
             else:
-                warnings.append(f"Không phân loại chắc chắn '{file_name}' — tạm gộp vào dòng giấy tờ chứng minh đối "
+                warnings.append(f"Không phân loại chắc chắn '{file_name}' — tạm đính vào dòng giấy tờ chứng minh đối "
                                 "tượng, vui lòng kiểm tra.")
         picked.setdefault(doc_type, []).append(idx)
         classified.append({"fileName": file_name, "docType": doc_type, "source": source})
 
     items: list[dict] = []
+    used_names = {str(files[idx].get("name") or f"file-{idx + 1}") for idx in extra}
     for row, order in _ROW_ORDER:
-        indexes = [idx for doc_type in order for idx in picked.get(doc_type, [])]
-        if not indexes:
-            continue
-        first = indexes[0]
-        types = [doc_type for doc_type in order if picked.get(doc_type)]
+        for doc_type in order:
+            for idx in picked.get(doc_type, []):
+                name, n = _TYPE_NAMES[doc_type], 2
+                while name in used_names:
+                    name, n = f"{_TYPE_NAMES[doc_type][:46]} {n}", n + 1
+                used_names.add(name)
+                items.append({
+                    "fileIndex": idx,
+                    "fileName": str(files[idx].get("name") or f"file-{idx + 1}"),
+                    "documentName": name,
+                    "componentName": row["componentName"],
+                    "loaiBan": row["loaiBan"],
+                    "target": "attp-row",
+                    # Cổng tick sẵn mọi dòng → dòng không đính bị bắt buộc khi chuyển bước; FE bỏ tick trước khi đính.
+                    "untickUnplannedRows": True,
+                    "needsAddComponent": False,
+                    "detectedType": doc_type,
+                })
+    # Phiếu tiếp nhận: item riêng ở dòng 1, giữ tên gốc.
+    for idx in extra:
+        file_name = str(files[idx].get("name") or f"file-{idx + 1}")
         items.append({
-            "fileIndex": first,
-            # Gộp MỌI tệp của dòng thành MỘT PDF theo đúng thứ tự trang (FE: applyMergeGroups).
-            "sourceFileIndexes": indexes,
-            "fileName": str(files[first].get("name") or f"file-{first + 1}"),
-            "documentName": row["documentName"],
-            "componentName": row["componentName"],
-            "loaiBan": row["loaiBan"],
+            "fileIndex": idx,
+            "fileName": file_name,
+            "documentName": file_name,
+            "componentName": _ROW_CHUNG_MINH["componentName"],
+            "loaiBan": _ROW_CHUNG_MINH["loaiBan"],
             "target": "attp-row",
-            # Cổng tick sẵn mọi dòng → dòng không đính bị bắt buộc khi chuyển bước; FE bỏ tick trước khi đính.
             "untickUnplannedRows": True,
             "needsAddComponent": False,
-            "detectedType": types[0],
-            "detectedTypes": types,
+            "detectedType": _PHIEU_TN,
         })
+    if extra:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Giấy tờ chứng minh đối tượng\": "
+            + ", ".join(str(files[idx].get("name") or f"file-{idx + 1}") for idx in extra) + "."
+        )
 
     if not picked.get(_DON):
         warnings.append("Chưa có Đơn đề nghị chi trả tiền miễn, giảm học phí (Phụ lục IV) — thành phần hồ sơ bắt buộc.")

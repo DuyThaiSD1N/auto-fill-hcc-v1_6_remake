@@ -58,28 +58,29 @@ def test_other_dinh_chung_vao_hang_to_khai():
     assert classified["so-yeu-ly-lich.pdf"]["routedTo"] == "don_de_nghi"
 
 
-def test_hai_mat_cccd_gop_thanh_mot():
+def test_hai_mat_cccd_moi_tep_mot_item_khong_gop():
     files = [
         {"name": "cccd-truoc.jpg", "type": "image/jpeg"},
         {"name": "cccd-sau.jpg", "type": "image/jpeg"},
     ]
     ocr = [
-        {"name": "cccd-truoc.jpg", "text": "CĂN CƯỚC CÔNG DÂN Số 048079005662 Họ và tên PHẠM VĂN TUẤN"},
+        {"name": "cccd-truoc.jpg", "text": "CĂN CƯỚC CÔNG DÂN Số 001000000001 Họ và tên NGUYEN VAN A"},
         {"name": "cccd-sau.jpg", "text": "CĂN CƯỚC CÔNG DÂN Cục Cảnh sát QLHC về TTXH nơi thường trú"},
     ]
     attachments, warnings, _, _ = _by_file(files, ocr)
     assert warnings == []
     cccd = [a for a in attachments if a["detectedType"] == "cccd"]
-    # 2 mặt → GỘP 1 item duy nhất với sourceFileIndexes.
-    assert len(cccd) == 1
-    assert cccd[0]["sourceFileIndexes"] == [0, 1]
+    # Không gộp PDF: mỗi mặt một item cùng dòng "Thêm giấy tờ", tên khác nhau.
+    assert [a["fileIndex"] for a in cccd] == [0, 1]
+    assert all("sourceFileIndexes" not in a for a in cccd)
+    assert [a["documentName"] for a in cccd] == ["Căn cước công dân", "Căn cước công dân 2"]
     assert cccd[0]["target"] == "add-document-dialog"
     assert cccd[0]["documentName"] == "Căn cước công dân"   # tệp gộp 2 mặt mang tên theo loại
 
 
 def test_mot_cccd_khong_gop():
     files = [{"name": "cccd.pdf", "type": "application/pdf"}]
-    ocr = [{"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN Số 048079005662 nơi thường trú"}]
+    ocr = [{"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN Số 001000000001 nơi thường trú"}]
     attachments, warnings, _, _ = _by_file(files, ocr)
     cccd = [a for a in attachments if a["detectedType"] == "cccd"]
     assert len(cccd) == 1

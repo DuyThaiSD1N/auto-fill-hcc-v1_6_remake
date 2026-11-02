@@ -52,7 +52,7 @@ CATALOG: list[tuple[str, int, int, list[str], str, str]] = [
      "Sơ đồ nhà/tài sản gắn liền với đất, sơ đồ thửa đất vẽ RIÊNG thành một tài liệu"),
 ]
 
-# Không có dòng riêng trong bảng → bỏ qua, báo người dùng.
+# Không có dòng riêng trong bảng → planner đính chung ô Đơn của nhánh, kèm cảnh báo.
 UNSLOTTED: list[tuple[str, str, str]] = [
     ("cccd", "Căn cước công dân", "CCCD/CMND/thẻ căn cước/hộ chiếu của bất kỳ ai"),
     ("khac", "Tài liệu khác", "Giấy tờ khác hoặc không xác định được loại"),

@@ -143,7 +143,7 @@ def test_mau_16_groups_applicant_identity_with_application_in_row_8():
     assert attachments[0]["slotKey"] == "dinh_chinh_lc_18_application"
 
 
-def test_build_plan_stops_when_both_application_versions_exist():
+def test_build_plan_attaches_all_with_11dk_group_when_both_application_versions_exist():
     files = [_raw("don-11.pdf", 0), _raw("don-18.pdf", 1), _raw("gcn.pdf", 2)]
     ocr = [
         {"name": "don-11.pdf", "text": "Mẫu số 11/ĐK\nĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI"},
@@ -153,14 +153,16 @@ def test_build_plan_stops_when_both_application_versions_exist():
 
     attachments, errors, classified, branch, source = planner.build_plan_items(files, ocr)
 
-    assert not attachments
-    assert branch == ""
+    assert len(attachments) == 3
+    assert {item["fileName"]: item["slotIndex"] for item in attachments} == {
+        "don-11.pdf": 3, "don-18.pdf": 3, "gcn.pdf": 0,
+    }
+    assert branch == "11dk"
     assert source == "conflict"
     assert any("đồng thời" in error for error in errors)
-    assert all(row["reason"] == "branch_conflict" for row in classified)
 
 
-def test_build_plan_does_not_route_authorized_representative_identity():
+def test_build_plan_routes_authorized_representative_identity_with_authorization():
     identity = "CĂN CƯỚC CÔNG DÂN\nSố: 012345678901"
     authorization = (
         "GIẤY ỦY QUYỀN\nI. BÊN ỦY QUYỀN\nSố CCCD: 111111111111\n"
@@ -176,24 +178,23 @@ def test_build_plan_does_not_route_authorized_representative_identity():
 
     attachments, errors, classified, _, _ = planner.build_plan_items(files, ocr)
 
-    assert {item["slotIndex"] for item in attachments} == {2, 3}
-    assert any("người được ủy quyền" in error for error in errors)
-    skipped = next(row for row in classified if row["fileName"] == "cccd-dai-dien.pdf")
-    assert skipped["reason"] == "authorized_representative_identity"
+    assert {item["fileName"]: item["slotIndex"] for item in attachments} == {
+        "cccd-dai-dien.pdf": 2, "uy-quyen.pdf": 2, "don.pdf": 3,
+    }
 
 
-def test_build_plan_skips_unknown_instead_of_defaulting_to_error_proof():
+def test_build_plan_routes_unknown_to_application_row_not_error_proof():
     files = [_raw("bien-lai.pdf", 0)]
     ocr = [{"name": "bien-lai.pdf", "text": "BIÊN LAI THU TIỀN\nSố tiền: 100.000 đồng"}]
     llm = {0: {"type": "other", "title": ""}}
 
     attachments, errors, classified, branch, source = planner.build_plan_items(files, ocr, llm)
 
-    assert not attachments
+    assert [item["slotIndex"] for item in attachments] == [3]
+    assert attachments[0]["documentName"] == "bien-lai"
     assert branch == "11dk"
     assert source == "default"
-    assert any("đã bỏ qua" in error for error in errors)
-    assert classified[0]["reason"] == "unknown_document_type"
+    assert any("dòng Đơn" in error for error in errors)
 
 
 async def test_plan_uses_llm_only_for_unresolved_documents(monkeypatch):
@@ -259,9 +260,11 @@ async def test_plan_keeps_confident_rules_when_llm_fails(monkeypatch):
 
     result = await planner.plan([_file("don.pdf"), _file("gcn.pdf"), _file("mo.pdf")])
 
-    assert {item["slotIndex"] for item in result["attachments"]} == {0, 3}
+    assert {item["fileName"]: item["slotIndex"] for item in result["attachments"]} == {
+        "don.pdf": 3, "gcn.pdf": 0, "mo.pdf": 3,
+    }
     assert any("attachment_agent" in error for error in result["errors"])
-    assert any("mo.pdf" in error and "bỏ qua" in error for error in result["errors"])
+    assert any("mo.pdf" in error and "dòng Đơn" in error for error in result["errors"])
 
 
 async def test_plan_rejects_file_over_six_megabytes(monkeypatch):

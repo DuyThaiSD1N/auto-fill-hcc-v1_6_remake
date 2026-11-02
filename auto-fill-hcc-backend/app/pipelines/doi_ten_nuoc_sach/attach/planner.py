@@ -1,4 +1,9 @@
-"""Đính kèm cho thủ tục chuyển đổi tên hợp đồng nước sạch."""
+"""Đính kèm cho thủ tục chuyển đổi tên hợp đồng nước sạch.
+
+Giấy chưa rõ loại (other) không có ô riêng → đính chung ô Đơn đang có trong lô (Đơn có xác nhận trước, rồi Đơn
+theo mẫu; lô chưa có Đơn → ô Đơn có xác nhận, ô Đơn đầu tiên trên form), giữ tên tệp gốc + cảnh báo; không bỏ
+tệp nào.
+"""
 
 import time
 from typing import Any
@@ -272,7 +277,9 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
+    resolved: list[tuple[str, str]] = []
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
@@ -281,6 +288,17 @@ def build_plan_items(
         doc_type = llm_type if llm_type in _ALLOWED_DOC_TYPES and llm_type != _OTHER else rule_type
         if not doc_type:
             doc_type = llm_type if llm_type in _ALLOWED_DOC_TYPES else _OTHER
+        resolved.append((doc_type, llm_type))
+    present = {t for t, _ in resolved}
+    fallback_type = (
+        _TEMPLATE_APPLICATION
+        if _TEMPLATE_APPLICATION in present and _CONFIRMED_APPLICATION not in present
+        else _CONFIRMED_APPLICATION
+    )
+
+    for idx, file in enumerate(files):
+        file_name = str(file.get("name") or f"file-{idx + 1}")
+        doc_type, llm_type = resolved[idx]
 
         if doc_type == _IDENTITY:
             items.append(_build_identity_item(file, idx))
@@ -299,9 +317,24 @@ def build_plan_items(
             })
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
+        # Không rõ loại → ô Đơn, giữ tên tệp gốc (không biết chắc là giấy gì).
+        item = _build_fixed_item(file, idx, fallback_type)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({
+            "fileName": file_name,
+            "docType": _OTHER,
+            "source": "unknown",
+            "routedTo": _SLOT_BY_DOC_TYPE[fallback_type]["slotKey"],
+        })
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
+            f"\"{_SLOT_BY_DOC_TYPE[fallback_type]['slotName']}\": " + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

@@ -7,7 +7,8 @@ Bảng CÓ 2 DÒNG (cả 2 mặc định "Bản chính"):
   [2] "Văn bản đề nghị cấp phép sử dụng tạm thời lòng đường, vỉa hè" — nhận Đơn/Văn bản đề nghị.
 
 componentName lấy đoạn text ĐẶC TRƯNG (2 dòng có leading khác nhau "Phương án"/"Văn bản đề nghị" nên không
-lồng nhau) + componentIndex để chắc chắn. CCCD/GCN ĐKDN/cam kết/hợp đồng → other → bỏ qua (không có dòng).
+lồng nhau) + componentIndex để chắc chắn. CCCD/GCN ĐKDN/cam kết/hợp đồng → other → không có dòng riêng, đính
+chung dòng [2] Văn bản đề nghị, giữ tên file gốc + cảnh báo.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG.
 """
@@ -117,6 +118,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -135,8 +137,14 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        # other = giấy tờ chỉ trích thông tin (CCCD/GCN ĐKDN/cam kết/hợp đồng) → bỏ qua, KHÔNG cảnh báo.
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        # other (CCCD/GCN ĐKDN/cam kết/hợp đồng/không rõ) → dòng Văn bản đề nghị, giữ tên gốc để FE không coi là
+        # trùng tài liệu của dòng.
+        item = _build_row_item(file, idx, _VAN_BAN)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _VAN_BAN})
 
     # Cả 2 dòng đều bắt buộc: dòng trống là hồ sơ THIẾU thật (vd công dân không nộp phương án) —
     # trước đây kế hoạch vẫn báo xong mà không ai biết phải bổ sung.
@@ -147,6 +155,11 @@ def build_plan_items(
                 f"Chưa có tệp nào cho dòng '{row['componentName']}' — công dân cần bổ sung giấy tờ này."
             )
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_VAN_BAN]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

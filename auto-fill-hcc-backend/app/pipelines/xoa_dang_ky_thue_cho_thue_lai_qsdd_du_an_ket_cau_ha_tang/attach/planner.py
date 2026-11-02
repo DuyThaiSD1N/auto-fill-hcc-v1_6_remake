@@ -12,8 +12,8 @@ QUY TẮC (theo ảnh ánh xạ đính kèm): KHÔNG tách trang. Mỗi file đi
     coi như đã đính chung, không tải lại).
   - File không có Đơn → theo loại chính: GCN → 2, văn bản đại diện → 3, văn bản xóa thuê → 4.
   - CCCD / giấy tờ khác không có dòng riêng → đính chung dòng 1.
-Ô upload mỗi dòng chỉ nhận MỘT tệp → nhiều file cùng dòng được ghép NGUYÊN VẸN thành một PDF qua
-`sourceSegments` (pageIndexes=None, FE applyMergeGroups), file có Đơn đứng đầu.
+Ô upload mỗi dòng là `multiple` → nhiều file cùng dòng đi thành nhiều tệp riêng (không ghép, không
+`sourceSegments`), file có Đơn đứng đầu.
 
 Phân loại LLM-primary theo từng file (loại chính + mọi loại có trong file); rule OCR chỉ vá khi LLM lỗi.
 """
@@ -57,6 +57,9 @@ _ROWS: dict[int, dict[str, Any]] = {
                     "documentName": "Văn bản về việc xóa cho thuê quyền sử dụng đất"},
 }
 _ROW_BY_TYPE = {_DON: _ROW_DON, _GCN: _ROW_GCN, _DAI_DIEN: _ROW_DAI_DIEN, _XOA_THUE: _ROW_XOA_THUE}
+# Tên tài liệu của file theo loại chính (file có Đơn dùng tên dòng 1); loại lạ → tên file.
+_FILE_NAMES = {_GCN: "Giấy chứng nhận đã cấp", _DAI_DIEN: "Văn bản về việc đại diện",
+               _XOA_THUE: "Văn bản về việc xóa cho thuê quyền sử dụng đất", _CCCD: "Căn cước công dân"}
 _TYPE_LABELS = {
     _GCN: "Giấy chứng nhận đã cấp",
     _XOA_THUE: "Văn bản về việc xóa cho thuê (hợp đồng chấm dứt hợp đồng thuê)",
@@ -130,7 +133,7 @@ def build_plan_items(
     texts: dict[int, str],
     llm_types: dict[int, dict] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
-    """Gom file nguyên vẹn vào dòng. Trả (attachments, messages, classified)."""
+    """Mỗi file nguyên vẹn một tệp vào đúng dòng. Trả (attachments, messages, classified)."""
     llm_types = llm_types or {}
     messages: list[str] = []
     classified: list[dict] = []
@@ -161,29 +164,38 @@ def build_plan_items(
             messages.append(f"Tệp '{file_name}' không có dòng riêng trên cổng — đã đính chung ở dòng 1 (Đơn).")
 
     attachments: list[dict] = []
+    used_names: set[str] = set()
     for row in sorted(by_row):
         indexes = by_row[row]
-        if row == _ROW_DON:  # file có Đơn đứng đầu PDF ghép.
+        if row == _ROW_DON:  # file có Đơn đứng đầu dòng.
             indexes = sorted(indexes, key=lambda i: (_DON not in contains_by_file[i], i))
         spec = _ROWS[row]
-        first = indexes[0]
-        doc_name = spec["documentName"]
-        if row == _ROW_DON and any(_XOA_THUE in contains_by_file[i] for i in indexes):
-            doc_name = "Đơn đăng ký biến động và văn bản chấm dứt thuê"
-        item = {
-            "fileIndex": first,
-            "fileName": str(files[first].get("name") or f"file-{first + 1}"),
-            "documentName": normalize_document_name(doc_name, spec["documentName"]),
-            "componentName": spec["componentName"],
-            "componentIndex": spec["componentIndex"],
-            "loaiBan": spec["loaiBan"],
-            "target": "attp-row",
-            "needsAddComponent": False,
-            "detectedType": next(c["docType"] for c in classified if c["fileIndex"] == first),
-        }
-        if len(indexes) > 1:  # ô chỉ nhận một tệp → ghép NGUYÊN các file thành một PDF, không cắt trang.
-            item["sourceSegments"] = [{"fileIndex": i, "pageIndexes": None} for i in indexes]
-        attachments.append(item)
+        for idx in indexes:
+            file_name = str(files[idx].get("name") or f"file-{idx + 1}")
+            main = next(c["docType"] for c in classified if c["fileIndex"] == idx)
+            if _DON in contains_by_file[idx]:
+                doc_name = "Đơn đăng ký biến động và văn bản chấm dứt thuê" if _XOA_THUE in contains_by_file[idx] \
+                    else spec["documentName"]
+            else:
+                doc_name = _FILE_NAMES.get(main) or file_name
+            doc_name = normalize_document_name(doc_name, spec["documentName"])
+            # Tên khác nhau từng file: FE coi tệp trùng tên đã có trên dòng là đã đính.
+            base, n = doc_name, 2
+            while _fold(doc_name) in used_names:
+                doc_name = f"{base[:45].strip()} {n}"
+                n += 1
+            used_names.add(_fold(doc_name))
+            attachments.append({
+                "fileIndex": idx,
+                "fileName": file_name,
+                "documentName": doc_name,
+                "componentName": spec["componentName"],
+                "componentIndex": spec["componentIndex"],
+                "loaiBan": spec["loaiBan"],
+                "target": "attp-row",
+                "needsAddComponent": False,
+                "detectedType": main,
+            })
 
     if not files:
         return attachments, messages, classified

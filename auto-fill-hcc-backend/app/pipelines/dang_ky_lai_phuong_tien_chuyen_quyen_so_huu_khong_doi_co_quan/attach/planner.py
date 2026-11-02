@@ -1,19 +1,20 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Đăng ký lại phương tiện ... chuyển quyền sở hữu" (1.004002, Angular
 mat-table, engine FE `attp-row`).
 
-ENGINE TÁCH/GỘP (như cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san): OCR per-file có header "Trang n/m" → LLM gán
-KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn cùng dòng thành MỘT file gộp (`sourceSegments`)
-theo thứ tự cố định. Hồ sơ hay là MỘT PDF gộp cả bộ giấy tờ.
+ENGINE TÁCH ĐOẠN (như cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san): OCR per-file có header "Trang n/m" → LLM
+gán KHOẢNG TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI ĐOẠN (một giấy liền trang trong một tệp) là một item
+riêng của dòng (dòng attp-row nhận nhiều tệp), theo thứ tự cố định; đoạn chỉ là một phần tệp thì gửi `sourceSegments`
+để FE cắt trang. Hồ sơ hay là MỘT PDF chứa cả bộ giấy tờ.
 
 Bảng 4 dòng (theo ảnh ánh xạ của thủ tục):
   1. Biên lai nộp lệ phí trước bạ                ← Giấy nộp tiền NSNN (Bản chính)
   2. GCN an toàn kỹ thuật và BVMT còn hiệu lực    ← GCN ATKT&BVMT (Bản chính; bản sao chứng thực → Bản sao)
-  3. Hợp đồng mua bán / quyết định điều chuyển... ← GỘP: Hợp đồng + lời chứng → Hóa đơn GTGT → GCN đăng ký PT cũ
-                                                   (Bản sao — hợp đồng nộp là bản sao chứng thực)
-  4. Đơn đề nghị đăng ký lại PT thủy nội địa      ← GỘP: Đơn Mẫu 07 → Đơn xóa đăng ký Mẫu 10 (chỉ có Bản chính)
+  3. Hợp đồng mua bán / quyết định điều chuyển... ← Hợp đồng + lời chứng, Hóa đơn GTGT, GCN đăng ký PT cũ
+                                                   (mỗi giấy một tệp; Bản sao — hợp đồng nộp là bản sao chứng thực)
+  4. Đơn đề nghị đăng ký lại PT thủy nội địa      ← Đơn Mẫu 07, Đơn xóa đăng ký Mẫu 10 (mỗi đơn một tệp; chỉ có Bản chính)
 GCN đăng ký cũ, hóa đơn, Đơn Mẫu 10 không có dòng riêng → đính chung dòng 3 / 4 thay vì "Thêm giấy tờ". Dòng 1, 2 chỉ
-áp dụng phương tiện thuộc diện nộp lệ phí trước bạ / đăng kiểm — không có giấy thì gửi `untickRows` bỏ tick. CCCD
-chỉ dùng ở bước điền thông tin.
+áp dụng phương tiện thuộc diện nộp lệ phí trước bạ / đăng kiểm — không có giấy thì gửi `untickRows` bỏ tick. CCCD và
+đoạn chưa rõ loại không có dòng → MỖI ĐOẠN một tệp riêng đính chung dòng 4 (Đơn), kèm cảnh báo.
 """
 
 import re
@@ -54,8 +55,8 @@ _BIEN_LAI = "bien_lai_le_phi"
 _CCCD = "cccd"
 _OTHER = "other"
 _ALLOWED = {_DON_07, _DON_10, _GCN_DK, _GCN_ATKT, _HOP_DONG, _HOA_DON, _BIEN_LAI, _CCCD, _OTHER}
-# Loại không có dòng trên bảng → bỏ qua, không cảnh báo.
-_NO_ROW = {_CCCD}
+# CCCD/đoạn chưa rõ loại không có dòng riêng → đính chung dòng Đơn.
+_FALLBACK_ROW = 4
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold); componentIndex = STT dòng (1-based).
 _ROWS: dict[int, dict[str, str]] = {
@@ -69,7 +70,7 @@ _ROWS: dict[int, dict[str, str]] = {
         "documentName": "Đơn đề nghị đăng ký lại, đơn xóa đăng ký", "loaiBan": "Bản chính"},
 }
 _ROUTE = {_BIEN_LAI: 1, _GCN_ATKT: 2, _HOP_DONG: 3, _HOA_DON: 3, _GCN_DK: 3, _DON_07: 4, _DON_10: 4}
-# Thứ tự ghép các loại trong CÙNG một file gộp (theo ảnh ánh xạ).
+# Thứ tự các item trong CÙNG một dòng (theo ảnh ánh xạ).
 _ORDER = [_DON_07, _DON_10, _BIEN_LAI, _GCN_ATKT, _HOP_DONG, _HOA_DON, _GCN_DK]
 # Dòng chỉ áp dụng cho một số phương tiện → không có giấy thì bỏ tick, chỉ nhắc.
 _CONDITIONAL_ROWS = {
@@ -222,7 +223,8 @@ def build_plan_items(
 
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    extra_pages: list[str] = []
+    extra_parts: list[tuple[dict, str]] = []
     by_row: dict[int, list[tuple[dict, str]]] = {}
 
     for segment, doc_type in typed:
@@ -231,9 +233,9 @@ def build_plan_items(
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
         row_idx = _ROUTE.get(doc_type)
         if row_idx is None:
-            if doc_type not in _NO_ROW:
-                skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-            classified.append({**base, "target": "skip"})
+            extra_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
+            extra_parts.append((segment, doc_type))
+            classified.append({**base, "componentIndex": _FALLBACK_ROW, "routedTo": _FALLBACK_ROW})
             continue
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx})
@@ -241,31 +243,42 @@ def build_plan_items(
     order = {t: i for i, t in enumerate(_ORDER)}
     attachments: list[dict] = []
     used_names: set[str] = set()
+
+    def segment_item(segment: dict, doc_type: str, base_name: str, row: dict) -> dict:
+        """Một giấy = một file riêng (dòng attp-row nhận nhiều file); chỉ cắt trang khi giấy chiếm một phần file."""
+        page_count = file_meta[segment["fileIndex"]]["pageCount"]
+        source = _source_segment(segment, page_count)
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}"),
+            "documentName": _unique_name(base_name.replace("/", "-"), used_names, row["documentName"]),
+            "componentName": row["componentName"],
+            "loaiBan": row["loaiBan"],
+            "target": "attp-row",
+            "needsAddComponent": False,
+            "detectedType": doc_type,
+            "includedTypes": [doc_type],
+        }
+        if source["pageIndexes"] is not None and source["pageIndexes"] != list(range(page_count)):
+            item["sourceSegments"] = [source]
+        return item
+
     for row_idx in sorted(by_row):
         row = _ROWS[row_idx]
         parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
-        first_segment = parts[0][0]
-        base_name = (first_segment.get("documentName") if len(parts) == 1 else "") or row["documentName"]
-        document_name = _unique_name(base_name.replace("/", "-"), used_names, row["documentName"])
-        loai_ban = row["loaiBan"]
-        if row_idx == 2 and _certified(" ".join(_segment_text(s, pages_by_file) for s, _ in parts)):
-            loai_ban = "Bản sao"
-        first_file = raw_files[first_segment["fileIndex"]]
+        for segment, doc_type in parts:
+            item = segment_item(segment, doc_type, segment.get("documentName") or row["documentName"], row)
+            if row_idx == 2 and _certified(_segment_text(segment, pages_by_file)):
+                item["loaiBan"] = "Bản sao"
+            attachments.append({**item, "componentIndex": row_idx})
+
+    # Đoạn không có dòng riêng: mỗi đoạn một tệp riêng ở dòng Đơn. Giữ tên LLM đặt, không có thì tên file gốc.
+    fallback_row = _ROWS[_FALLBACK_ROW]
+    for segment, doc_type in extra_parts:
+        file_name = str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}")
         attachments.append({
-            "fileIndex": first_segment["fileIndex"],
-            "fileName": str(first_file.get("name") or f"file-{first_segment['fileIndex'] + 1}"),
-            "documentName": document_name,
-            "componentName": row["componentName"],
-            "componentIndex": row_idx,
-            "loaiBan": loai_ban,
-            "target": "attp-row",
-            "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            # Mỗi dòng = MỘT file gộp: FE trích đúng trang từng đoạn rồi ghép theo thứ tự này.
-            "sourceSegments": [
-                _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"]) for segment, _ in parts
-            ],
+            **segment_item(segment, doc_type, segment.get("documentName") or file_name, fallback_row),
+            "componentIndex": _FALLBACK_ROW,
         })
 
     # Dòng 1, 2 chỉ áp dụng một số phương tiện — cổng tick sẵn thì bỏ tick khi hồ sơ không có giấy.
@@ -282,8 +295,9 @@ def build_plan_items(
             warnings.append(f"Hồ sơ không có {label} — đã bỏ tick dòng {row_idx}; bổ sung nếu phương tiện thuộc diện.")
     if _HOP_DONG in found and _GCN_DK not in found:
         warnings.append("Chưa thấy Giấy chứng nhận đăng ký phương tiện cũ trong hồ sơ — cần nộp kèm để đăng ký lại.")
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+    if extra_pages:
+        warnings.append(f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{fallback_row['componentName']}\": "
+                        + "; ".join(extra_pages))
     return attachments, classified, warnings
 
 

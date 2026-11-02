@@ -5,7 +5,8 @@ Bảng thành phần hồ sơ:
   STT2 - Giấy chứng nhận quyền sở hữu/quyền sử dụng hoặc giấy tờ thay thế đối với tài sản.
   CCCD/giấy tờ tùy thân chỉ thêm mới thành phần hồ sơ khi không có file dự thảo di chúc để gộp.
 
-Tài liệu ngoài ba nhóm trên bị bỏ qua kèm cảnh báo để người dùng xử lý thủ công.
+Tài liệu ngoài ba nhóm trên đính RIÊNG từng file vào STT1 (dòng Dự thảo di chúc, không gộp) kèm cảnh báo;
+không bỏ file nào.
 """
 
 import re
@@ -254,6 +255,7 @@ def build_plan_items(
     warnings: list[str] = []
     classified: list[dict] = []
     resolved: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -311,8 +313,30 @@ def build_plan_items(
 
         item = _build_item(file, idx, doc_type, title, used_names, source_indexes)
         if not item:
-            warnings.append(f"Không xác định được giấy tờ thuộc 2 dòng hồ sơ di chúc cho file '{file_name}' — đã bỏ qua.")
-            classified.append({"fileName": file_name, "type": _DOC_OTHER, "source": "unknown"})
+            # Không thuộc nhóm nào → item riêng ở STT1, tên theo tiêu đề LLM đọc được (không có thì tên chung).
+            document_name = _unique_document_name(_label_for_type(_DOC_OTHER, title), used_names,
+                                                  _label_for_type(_DOC_OTHER))
+            attachments.append({
+                "fileIndex": idx,
+                "sourceFileIndexes": [idx],
+                "fileName": file_name,
+                "documentName": document_name,
+                "componentName": _ROW_1_COMPONENT,
+                "target": "existing",
+                "componentIndex": 1,
+                "needsAddComponent": False,
+                "detectedType": document_name,
+            })
+            extra_files.append(file_name)
+            classified.append({
+                "fileName": file_name,
+                "type": _DOC_OTHER,
+                "title": document_name,
+                "target": "existing",
+                "componentIndex": 1,
+                "routedTo": 1,
+                "source": "llm" if llm_type else "unknown",
+            })
             continue
 
         attachments.append(item)
@@ -325,6 +349,11 @@ def build_plan_items(
             "source": "rule" if rule_type else ("llm" if llm_type else "default"),
         })
 
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Dự thảo di chúc\": "
+            + ", ".join(extra_files) + "."
+        )
     return attachments, warnings, classified
 
 

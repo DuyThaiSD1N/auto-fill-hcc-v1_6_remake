@@ -9,13 +9,13 @@ def _file(name: str) -> FileItem:
     return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
 
 
-async def test_khuyet_tat_attach_maps_three_fixed_slots_and_skips_cccd(monkeypatch):
+async def test_khuyet_tat_attach_maps_three_fixed_slots_and_cccd_to_application_slot(monkeypatch):
     async def fake_ocr_per_file(files):
         return [
             {"name": "don.pdf", "text": "ĐƠN ĐỀ NGHỊ XÁC ĐỊNH MỨC ĐỘ KHUYẾT TẬT VÀ CẤP GIẤY XÁC NHẬN KHUYẾT TẬT\nMẫu số 01"},
             {"name": "benh-an.pdf", "text": "TÓM TẮT BỆNH ÁN\nBệnh viện đa khoa\nChẩn đoán và điều trị"},
             {"name": "ket-luan.pdf", "text": "KẾT LUẬN CỦA HỘI ĐỒNG GIÁM ĐỊNH Y KHOA\nKhả năng tự phục vụ, suy giảm khả năng lao động"},
-            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 012084000160"},
+            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 001000000001"},
         ]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
@@ -38,7 +38,7 @@ async def test_khuyet_tat_attach_maps_three_fixed_slots_and_skips_cccd(monkeypat
     )
 
     items = res["attachments"]
-    assert len(items) == 3
+    assert len(items) == 4
     by_file = {item["fileName"]: item for item in items}
     assert by_file["benh-an.pdf"]["target"] == "fixed-slot"
     assert by_file["benh-an.pdf"]["slotIndex"] == 0
@@ -47,8 +47,10 @@ async def test_khuyet_tat_attach_maps_three_fixed_slots_and_skips_cccd(monkeypat
     assert by_file["ket-luan.pdf"]["slotKey"] == "medical_assessment_conclusion"
     assert by_file["don.pdf"]["slotIndex"] == 3
     assert by_file["don.pdf"]["slotKey"] == "disability_application_form"
-    assert "cccd.pdf" not in by_file
-    assert any("giấy tờ tùy thân" in err for err in res["errors"])
+    assert by_file["cccd.pdf"]["slotKey"] == "disability_application_form"
+    assert by_file["cccd.pdf"]["detectedType"] == "cccd"
+    assert by_file["cccd.pdf"]["documentName"] == "cccd.pdf"
+    assert any("đính chung" in err and "cccd.pdf" in err for err in res["errors"])
 
 
 async def test_khuyet_tat_attach_rule_fallback_when_llm_fails(monkeypatch):

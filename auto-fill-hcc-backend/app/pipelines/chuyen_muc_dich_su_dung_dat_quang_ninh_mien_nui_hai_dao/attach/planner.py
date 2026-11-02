@@ -1,7 +1,8 @@
 """Lập kế hoạch đính kèm hồ sơ chuyển mục đích/hình thức/thời hạn đất tại Quảng Ninh.
 
 Ba hàng 2, 6 và 14 trong HTML là tiêu đề nhóm, không nhận file. GCN và trích lục xuất hiện ở nhiều
-nhánh nên chỉ được định tuyến sau khi xác định nhánh từ chính loại đơn trong cùng hồ sơ.
+nhánh nên chỉ được định tuyến sau khi xác định nhánh từ chính loại đơn trong cùng hồ sơ. Giấy chưa rõ loại, hoặc
+GCN/trích lục không có hàng trong nhánh, đính chung hàng Đơn của nhánh (chưa rõ nhánh → hàng Đơn chuyển mục đích).
 """
 
 import asyncio
@@ -26,6 +27,9 @@ _BRANCH_BY_APPLICATION = {
     "don_gia_han": "gia_han",
     "don_dieu_chinh_thoi_han_du_an": "dieu_chinh_thoi_han_du_an",
 }
+_APPLICATION_BY_BRANCH = {branch: doc_type for doc_type, branch in _BRANCH_BY_APPLICATION.items()}
+# Chưa xác định được nhánh → hàng Đơn của nhánh chính của thủ tục (chuyển mục đích).
+_DEFAULT_APPLICATION = "don_chuyen_muc_dich"
 
 # Extension dùng componentIndex 1-based. Các hàng 2, 6, 14 là tiêu đề nhóm nhưng vẫn có nút chọn
 # file trong DOM, vì vậy chúng vẫn phải được tính khi xác định chỉ số hàng.
@@ -276,6 +280,8 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
+    application = _APPLICATION_BY_BRANCH.get(branch, _DEFAULT_APPLICATION)
 
     for index, (file, (doc_type, source)) in enumerate(zip(files, resolved, strict=True)):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -297,21 +303,12 @@ def build_plan_items(
         elif route:
             item = _build_item(file, index, doc_type, route)
         else:
-            if doc_type in {"gcn", "trich_luc_ban_do_dia_chinh"} and not branch:
-                reason = "không xác định được nhánh hồ sơ từ loại đơn"
-            elif doc_type in {"gcn", "trich_luc_ban_do_dia_chinh"}:
-                reason = f"loại giấy tờ không có hàng phù hợp trong nhánh {branch}"
-            else:
-                reason = "không xác định được loại giấy tờ"
-            warnings.append(f"File '{file_name}': {reason} — vui lòng đính kèm thủ công.")
-            classified.append({
-                "fileName": file_name,
-                "docType": doc_type,
-                "source": source,
-                "branch": branch or None,
-                "skipped": True,
-            })
-            continue
+            # Chưa rõ loại / GCN-trích lục không có hàng trong nhánh → hàng Đơn của nhánh; giữ tên tệp gốc,
+            # detectedType giữ loại thật.
+            item = _build_item(file, index, application, _ROUTES[application])
+            item["documentName"] = _wallet_label(file_name.rsplit(".", 1)[0])
+            item["detectedType"] = doc_type
+            extra_files.append(file_name)
 
         attachments.append(item)
         classified_item = {
@@ -323,7 +320,16 @@ def build_plan_items(
         }
         if "componentIndex" in item:
             classified_item["componentIndex"] = item["componentIndex"]
+        if doc_type != _AUTHORIZATION and not route:
+            classified_item["routedTo"] = application
         classified.append(classified_item)
+
+    if extra_files:
+        note = "" if branch else " (chưa xác định được nhánh hồ sơ từ loại đơn — kiểm tra lại hàng)"
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROUTES[application]['name']}\"{note}: "
+            + ", ".join(extra_files) + "."
+        )
 
     return attachments, warnings, classified, branch
 

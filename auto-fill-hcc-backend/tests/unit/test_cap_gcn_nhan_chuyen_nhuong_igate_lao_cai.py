@@ -151,7 +151,9 @@ def test_dinh_kem_nhanh_b_mac_dinh():
     for rows in (_ROWS, None):
         items, warnings, _, branch = planner.build_plan_items(files, [], _llm(*labels), "", rows)
         assert branch == "b"
-        assert [i["componentIndex"] for i in items] == [9, 10, 11, 12, 14]
+        # CCCD (t5) không có dòng riêng → chung dòng Đơn của nhánh b (dòng 9).
+        assert [i["componentIndex"] for i in items] == [9, 10, 11, 12, 14, 9]
+        assert items[-1]["detectedType"] == "cccd"
         assert all(i["target"] == "attp-row" and i["untickUnplannedRows"] is True for i in items)
         assert any("t5.pdf" in w for w in warnings)
 

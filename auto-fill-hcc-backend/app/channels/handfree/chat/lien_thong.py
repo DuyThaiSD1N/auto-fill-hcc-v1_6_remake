@@ -27,7 +27,7 @@ CAPABILITY = field_review.LIEN_THONG_CAPABILITY
 AGENCY, DECLARATION, REVIEW, ATTACHMENT, RESULT, DONE = 1, 2, 3, 4, 5, 6
 SUBMIT_SEND = "__action:lt_submit"
 _COMMANDS = {"lt_next", "lt_back", "lt_step_report", "lt_result_report", "lt_result_pick", "lt_submit",
-             "lt_submit_report"}
+             "lt_submit_report", "lt_agency_pick"}
 _MAX_TEXT = 160
 _MAX_OPTIONS = 8
 
@@ -38,7 +38,7 @@ def is_active(proc: dict | None) -> bool:
 
 def enabled(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    return is_active(proc) and caps.get(CAPABILITY) is True and (conv.get("lang") or "vi") != "hmong"
+    return is_active(proc) and field_review.lien_thong_supported(caps, proc) and (conv.get("lang") or "vi") != "hmong"
 
 
 def _st(conv: dict) -> dict:
@@ -84,6 +84,62 @@ def _result_groups(proc: dict | None) -> list[dict]:
 
 
 # ── Bước 1: chọn cơ quan ──
+
+def _agency_choice(proc: dict | None) -> dict:
+    return ((proc or {}).get("lienThongFlow") or {}).get("agencyChoice") or {}
+
+
+def agency_plan(conv: dict, proc: dict | None, plan: list) -> list | None:
+    """Kế hoạch điền bước 1 khi thủ tục cần hỏi công dân trước (agencyChoice). None = phải hỏi trước (hoặc đã hỏi,
+    đang chờ trả lời); list rỗng = luồng không bật → dặn chọn tay như bản cũ. Thủ tục không hỏi → giữ nguyên plan."""
+    choice = _agency_choice(proc)
+    if not plan or not choice:
+        return plan
+    if not enabled(conv, proc):
+        return []
+    picked = _st(conv).get("agency_choice")
+    if not picked:
+        return None
+    return [{**step, "value": picked} if step.get("value") == "{agency_choice}" else step for step in plan]
+
+
+def reset_agency(conv: dict) -> None:
+    """Hồ sơ mới: câu trả lời bước 1 của hồ sơ trước không được dùng lại."""
+    st = conv.get("lien_thong")
+    if isinstance(st, dict):
+        st.pop("agency_choice", None)
+        st.pop("agency_asked", None)
+
+
+def agency_ask(conv: dict, proc: dict | None):
+    """Hỏi đối tượng mai táng phí (một lần mỗi lần mở trang chọn cơ quan) bằng nút — mỗi nút là nhãn của cổng."""
+    st = _st(conv)
+    if st.get("agency_asked"):
+        return _reply()
+    st["agency_asked"] = True
+    st["at"] = AGENCY
+    r = _reply(_say(vi.LT_KT_AGENCY_ASK))
+    r.chips = [{"label": o, "send": "__action:lt_agency_pick:" + json.dumps({"value": o}, ensure_ascii=False)}
+               for o in _agency_choice(proc).get("options") or []]
+    return r
+
+
+def _agency_pick(conv: dict, proc: dict | None, payload: dict):
+    from app.channels.handfree.chat import flow
+
+    value = str(payload.get("value") or "")
+    if value not in (_agency_choice(proc).get("options") or []):
+        return _reply()
+    _st(conv)["agency_choice"] = value
+    loc = conv.get("location") or {}
+    plan = agency_plan(conv, proc, flow._resolve_agency_plan((proc or {}).get("agencyFillPlan"), loc))
+    if not plan:
+        return _reply()
+    flow._say_once(conv, "agency_fill")
+    r = _reply()
+    r.actions = [{"type": "fill_agency_plan", "plan": plan}]
+    return agency_reply(conv, proc, r)
+
 
 def agency_reply(conv: dict, proc: dict | None, reply):
     """Trợ lý vừa điền khối chọn cơ quan: câu có nút sang Kê khai (bước chờ công dân → không thẻ tiến trình)."""
@@ -248,7 +304,8 @@ def result_rows(configs: list[dict], groups) -> list[dict]:
         if not got or got.get("present") is False:
             continue
         options = [_clean(o, 80) for o in got.get("options") or [] if _clean(o, 80)][:_MAX_OPTIONS]
-        fixed = bool(got.get("fixed")) or not options
+        # cfg.fixed: ô chọn nhiều giá trị (bấm là cộng thêm, không thay) → chỉ hiển thị.
+        fixed = bool(got.get("fixed")) or bool(cfg.get("fixed")) or not options
         rows.append({"name": cfg["name"], "label": str(cfg.get("label") or cfg["name"]),
                      "value": _clean(got.get("value"), 80), "place": _clean(got.get("place"), 120),
                      "fixed": fixed, "options": [] if fixed else options})
@@ -369,6 +426,8 @@ def handle(conv: dict, proc: dict | None, intent):
         return _result_report(conv, proc, payload)
     if intent.value == "lt_result_pick":
         return _result_pick(conv, proc, payload)
+    if intent.value == "lt_agency_pick":
+        return _agency_pick(conv, proc, payload)
     if intent.value == "lt_submit":
         return _submit_reply(conv)
     return _submit_report(payload)

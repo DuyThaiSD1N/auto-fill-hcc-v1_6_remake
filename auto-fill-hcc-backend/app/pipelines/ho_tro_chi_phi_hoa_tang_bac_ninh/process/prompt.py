@@ -16,7 +16,8 @@ UyQuyen_CoBienBan chỉ được trả true khi OCR thực sự có Biên bản/
 - Người đứng ra hỏa táng: CCCD đúng người và mục II của Đơn; Biên bản ủy quyền/Hợp đồng/Hóa đơn chỉ đối chiếu.
 - Người ủy quyền: Biên bản/Văn bản ủy quyền; CCCD đúng họ tên và số định danh chỉ dùng bổ sung.
 Nếu người đứng ra hỏa táng và bên ủy quyền có cùng họ tên + CCCD thì vẫn trả ở hai nhóm tương ứng;
-mapper sẽ định tuyến theo nút người dùng bấm. Không bịa email, ngày cấp, nơi cấp hay số điện thoại.
+mapper sẽ định tuyến theo nút người dùng bấm. Không bịa email, ngày sinh, giới tính, ngày cấp, nơi cấp hay số
+điện thoại: giấy không ghi thông tin đó cho ĐÚNG người thì bỏ trống, không mượn ngày/số của người khác hay dòng khác.
 
 NguoiChet_DiaChiThuongTru và NguoiDungRa_DiaChiThuongTru là CHUỖI địa chỉ đầy đủ để điền textarea.
 NguoiUyQuyen_ThuongTru mới là object địa chỉ phục vụ dropdown Tỉnh/Xã của khối ủy quyền.

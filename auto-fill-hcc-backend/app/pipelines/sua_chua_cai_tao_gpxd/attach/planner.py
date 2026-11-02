@@ -2,7 +2,7 @@
 Angular mat-table, engine FE `attp-row`).
 
 FE khớp dòng bằng componentName substring fold, tick + chọn loaiBan + set file. Phân loại **LLM-primary**;
-rule keyword chỉ DỰ PHÒNG. CCCD/ủy quyền/chứng chỉ → other (bỏ qua).
+rule keyword chỉ DỰ PHÒNG. CCCD/ủy quyền/chứng chỉ → other → đính chung dòng Đơn, giữ tên file gốc + cảnh báo.
 """
 
 import re
@@ -146,6 +146,7 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -163,9 +164,19 @@ def build_plan_items(
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        # Không rõ loại → dòng Đơn, giữ tên gốc để FE không coi là trùng tài liệu của dòng.
+        item = _build_row_item(file, idx, _DON)
+        item["documentName"] = file_name
+        item["detectedType"] = _OTHER
+        items.append(item)
+        extra_files.append(file_name)
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
 
+    if extra_files:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROWS[_DON]['componentName']}\": "
+            + ", ".join(extra_files)
+        )
     return items, warnings, classified
 
 

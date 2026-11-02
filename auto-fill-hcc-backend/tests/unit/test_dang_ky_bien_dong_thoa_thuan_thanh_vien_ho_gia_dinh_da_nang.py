@@ -233,10 +233,11 @@ def test_tach_rieng_tung_giay_to_vao_dung_dong_dau():
     items, warnings, cls = _plan(texts)
     rows = {it["fileName"]: it["componentIndex"] for it in items}
     assert rows == {"f0.pdf": 1, "f1.pdf": 3, "f2.pdf": 5, "f3.pdf": 6, "f4.pdf": 12, "f5.pdf": 1,
-                    "f7.pdf": 2, "f8.pdf": 1}
-    assert cls[6]["skipped"] is True                     # CCCD không đính
-    shared = [w for w in warnings if w.startswith("Dòng 1 đính kèm chung 2 tệp")]
-    assert shared and "f5.pdf" in shared[0] and "f8.pdf" in shared[0]
+                    "f6.pdf": 1, "f7.pdf": 2, "f8.pdf": 1}
+    assert cls[6]["routedTo"] == "don_bien_dong"          # CCCD đính chung dòng Đơn
+    assert items[6]["detectedType"] == "cccd"
+    shared = [w for w in warnings if w.startswith("Dòng 1 đính kèm chung 3 tệp")]
+    assert shared and all(n in shared[0] for n in ("f5.pdf", "f6.pdf", "f8.pdf"))
     # Dòng trùng (8-11) không bao giờ được chọn; componentName của các dòng chính khác nhau từng đôi.
     assert {it["componentIndex"] for it in items} <= {1, 2, 3, 4, 5, 6, 7, 12}
     names = [r["componentName"] for r in P._ROWS.values()]
@@ -262,10 +263,12 @@ def test_llm_bao_other_thi_rule_quyet():
     assert items[0]["componentIndex"] == 3 and cls[0]["source"] == "rule"
 
 
-def test_khong_doc_duoc_thi_canh_bao_dinh_tay():
-    items, warnings, _ = _plan([""])
-    assert items == []
-    assert any("đính kèm thủ công" in w for w in warnings)
+def test_khong_doc_duoc_van_dinh_chung_dong_don():
+    items, warnings, cls = _plan([""])
+    assert [it["componentIndex"] for it in items] == [1]
+    assert items[0]["detectedType"] == "other"
+    assert cls[0]["routedTo"] == "don_bien_dong"
+    assert any(w.startswith("Dòng 1 đính kèm chung 1 tệp") and "f0.pdf" in w for w in warnings)
 
 
 def _pdf_data_url(pages: int) -> str:

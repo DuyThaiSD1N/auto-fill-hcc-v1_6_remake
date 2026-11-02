@@ -10,17 +10,17 @@ from app.procedures.ke_khai_links import KE_KHAI_LINKS, with_ke_khai_detect_urls
 KEY = "gia-han-giay-phep-xay-dung"
 
 _HAI_VO_CHONG = {
-    "Applicant_HoTen": "Trần Văn Bình",
+    "Applicant_HoTen": "NGUYEN VAN A",
     "Applicant_NgaySinh": "12/04/1975",
-    "Applicant_SoDinhDanh": "068075000111",
+    "Applicant_SoDinhDanh": "001075000001",
     "Applicant_NgayCap": "10/10/2022",
     "Applicant_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
     "Applicant_DienThoai": "0900111222",
     "Applicant_NoiCuTru": {"tinh": "Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt", "diaChi": "12 Đường Mẫu"},
     "Don_KinhGui": "UBND phường Lâm Viên - Đà Lạt",
     "ChuDauTu_Loai": "Chủ hộ",
-    "ChuHo_HoTen": "Trần Văn Bình - Lê Thị Hoa",
-    "ChuHo_SoDinhDanh": "068075000111 - 068176000222",
+    "ChuHo_HoTen": "NGUYEN VAN A - TRAN THI B",
+    "ChuHo_SoDinhDanh": "001075000001 - 001176000002",
     "ChuHo_DienThoai": "0900111222",
     "Dat_DiaDiemXayDung": {"tinh": "Lâm Đồng", "xa": "Phường Lâm Viên - Đà Lạt"},
     "Dat_LoDatSo": "AB 123456",
@@ -33,7 +33,7 @@ _HAI_VO_CHONG = {
     "GPXD_NoiDung": "Nhà cấp III, diện tích XD tầng trệt: 80 m²; tổng diện tích sàn: 320 m²",
     "GiaHan_LyDo": "Gia hạn giấy phép",
     "CongTrinh_ThoiGianDuKienHoanThanh": "12 tháng",
-    "Don_NguoiKy": "Lê Thị Hoa - Trần Văn Bình",
+    "Don_NguoiKy": "TRAN THI B - NGUYEN VAN A",
 }
 
 
@@ -70,16 +70,16 @@ def test_ca_nhan_hai_vo_chong_dien_du_to_don_gia_han():
     by, _, warnings = _run(_HAI_VO_CHONG)
     # Người nộp = MỘT người (người đứng đầu), chủ hộ = cả hai.
     assert _val(by, "data[chonDoiTuong]") == "Cá nhân"
-    assert _val(by, "data[fullname]") == "Trần Văn Bình"
-    assert _val(by, "data[identityNumber]") == "068075000111"
+    assert _val(by, "data[fullname]") == "NGUYEN VAN A"
+    assert _val(by, "data[identityNumber]") == "001075000001"
     assert _val(by, "data[birthday]") == "12/04/1975"
     assert _val(by, "data[gender]") == "Nam"
     assert _val(by, "data[province]", 0) == "Tỉnh Lâm Đồng"
     assert _val(by, "data[district]", 0) == "Phường Xuân Hương - Đà Lạt"
     assert _val(by, "data[recipient]") == "UBND phường Lâm Viên - Đà Lạt"
     assert _val(by, "data[loaiHinhChuDauTu]") == "chuHo"
-    assert _val(by, "data[tenChuHo]") == "Trần Văn Bình - Lê Thị Hoa"
-    assert _val(by, "data[soDinhDanhChuHo]") == "068075000111 - 068176000222"
+    assert _val(by, "data[tenChuHo]") == "NGUYEN VAN A - TRAN THI B"
+    assert _val(by, "data[soDinhDanhChuHo]") == "001075000001 - 001176000002"
     # Địa điểm xây dựng: ô 'đường' nhận tờ bản đồ khi thửa đất không có tên đường.
     assert _val(by, "data[lotNumber]") == "AB 123456"
     assert _val(by, "data[landArea]") == "150.5"
@@ -96,7 +96,7 @@ def test_ca_nhan_hai_vo_chong_dien_du_to_don_gia_han():
     assert _val(by, "data[estimatedCompletionMonths]") == "12"
     assert by[("data[commitment]", None)] == {"name": "data[commitment]", "comp": "dom-checkbox", "value": True}
     assert _val(by, "data[tinhthanhqwaasa]") == "Tỉnh Lâm Đồng"
-    assert _val(by, "data[KyGhiRoHoTen]") == "Lê Thị Hoa - Trần Văn Bình"
+    assert _val(by, "data[KyGhiRoHoTen]") == "TRAN THI B - NGUYEN VAN A"
     assert _val(by, "data[tenHoSo]") == "Gia hạn Giấy phép xây dựng số 15/GPXD"
     assert not warnings
 
@@ -121,8 +121,8 @@ def test_loai_de_nghi_dung_truoc_ly_do_va_radio_truoc_o_chu_ho():
 def test_thieu_applicant_lay_nguoi_dung_dau_cua_chu_ho():
     values = {k: v for k, v in _HAI_VO_CHONG.items() if not k.startswith("Applicant_")}
     by, _, _ = _run(values)
-    assert _val(by, "data[fullname]") == "Trần Văn Bình"
-    assert _val(by, "data[identityNumber]") == "068075000111"
+    assert _val(by, "data[fullname]") == "NGUYEN VAN A"
+    assert _val(by, "data[identityNumber]") == "001075000001"
     # Không có ngày sinh/ngày cấp → tô đỏ, không bịa.
     assert by[("data[birthday]", None)]["comp"] == "dom-expect"
     assert by[("data[identityDate]", None)]["comp"] == "dom-expect"
@@ -141,7 +141,7 @@ def test_khac_tai_khoan_dang_nhap_thi_khong_ghi_khoi_nguoi_nop():
     options = {"formContext": {"applicantFullname": "Người Khác", "applicantIdentityNumber": "001090000009"}}
     by, _, _ = _run(_HAI_VO_CHONG, options)
     assert ("data[fullname]", None) not in by
-    assert _val(by, "data[tenChuHo]") == "Trần Văn Bình - Lê Thị Hoa"
+    assert _val(by, "data[tenChuHo]") == "NGUYEN VAN A - TRAN THI B"
     assert _val(by, "data[existingPermitNumber]") == "15/GPXD"
 
 
@@ -168,11 +168,12 @@ def test_dinh_kem_ba_muc_don_cccd_gop_dong_1_gcn_qua_them_giay_to():
     llm = {0: "cccd", 1: "don_gia_han", 2: "gpxd_da_cap", 3: "giay_to_dat_dai", 4: "other"}
     items, warnings, classified = planner.build_plan_items(files, {}, llm)
     by_file = {item["fileName"]: item for item in items}
-    assert set(by_file) == {"cccd.jpg", "don.pdf", "gpxd.pdf", "gcn.pdf"}
+    assert set(by_file) == {"cccd.jpg", "don.pdf", "gpxd.pdf", "gcn.pdf", "la.pdf"}
 
     don_row = "Đơn đề nghị gia hạn giấy phép xây dựng theo Mẫu số 2"
-    # Dòng 1 đính chung, Đơn đứng TRƯỚC CCCD.
-    assert [i["fileName"] for i in items if i["componentName"] == don_row] == ["don.pdf", "cccd.jpg"]
+    # Dòng 1 đính chung, Đơn đứng TRƯỚC CCCD; tệp không rõ loại đứng cuối, giữ tên file gốc.
+    assert [i["fileName"] for i in items if i["componentName"] == don_row] == ["don.pdf", "cccd.jpg", "la.pdf"]
+    assert by_file["la.pdf"]["detectedType"] == "other" and by_file["la.pdf"]["documentName"] == "la.pdf"
     assert by_file["cccd.jpg"]["target"] == "attp-row" and by_file["cccd.jpg"]["loaiBan"] == "Bản chính"
     assert by_file["gpxd.pdf"]["componentName"] == "Bản chính giấy phép xây dựng đã được cấp"
     gcn = by_file["gcn.pdf"]
@@ -181,8 +182,8 @@ def test_dinh_kem_ba_muc_don_cccd_gop_dong_1_gcn_qua_them_giay_to():
     assert gcn["fallbackComponentName"] == don_row
     assert all(item["untickUnplannedRows"] for item in items)
     assert all(len(item["documentName"]) <= 50 for item in items)
-    assert {c["fileName"] for c in classified if c.get("skipped")} == {"la.pdf"}
-    assert any("la.pdf" in w for w in warnings)
+    assert not any(c.get("skipped") for c in classified)
+    assert any("la.pdf" in w and "đính chung" in w for w in warnings)
     assert not any("bắt buộc" in w for w in warnings)
 
 
@@ -190,7 +191,7 @@ def test_dinh_kem_rule_du_phong_khi_khong_co_llm():
     files = [{"name": n} for n in ("a.pdf", "b.pdf", "c.pdf", "d.jpg", "e.pdf", "f.jpg")]
     texts = {
         0: "Phụ lục II - Mẫu số 02 ĐƠN ĐỀ NGHỊ ĐIỀU CHỈNH/GIA HẠN/CẤP LẠI GIẤY PHÉP XÂY DỰNG Kính gửi",
-        1: "ỦY BAN NHÂN DÂN PHƯỜNG MẪU GIẤY PHÉP XÂY DỰNG Số: 15/GPXD Cấp cho: ông Trần Văn Bình "
+        1: "ỦY BAN NHÂN DÂN PHƯỜNG MẪU GIẤY PHÉP XÂY DỰNG Số: 15/GPXD Cấp cho: ông NGUYEN VAN A "
            "Giấy chứng nhận quyền sử dụng đất số AB 123456",
         2: "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT, QUYỀN SỞ HỮU NHÀ Ở VÀ TÀI SẢN KHÁC GẮN LIỀN VỚI ĐẤT",
         3: "CĂN CƯỚC CÔNG DÂN Citizen Identity Card Số / No.",
@@ -201,7 +202,7 @@ def test_dinh_kem_rule_du_phong_khi_khong_co_llm():
     types = {item["fileName"]: item["detectedType"] for item in items}
     assert types == {
         "a.pdf": "don_gia_han", "b.pdf": "gpxd_da_cap", "c.pdf": "giay_to_dat_dai",
-        "d.jpg": "cccd", "e.pdf": "giay_uy_quyen",
+        "d.jpg": "cccd", "e.pdf": "giay_uy_quyen", "f.jpg": "other",
     }
     assert any("f.jpg" in w for w in warnings)
 

@@ -260,29 +260,35 @@ def test_moi_field_mapper_phat_deu_co_trong_ui_va_prompt_dung_field_hop_le():
         assert name in ALLOWED and name in EXTRA_RULES
 
 
-def test_dinh_kem_gop_moi_dong_thanh_mot_pdf_dung_thu_tu_bo_phieu_tiep_nhan():
+def test_dinh_kem_moi_tep_mot_item_dung_thu_tu_dong_phieu_tiep_nhan_item_rieng_dong_1():
     names = ("don.jpg", "cccd.jpg", "gxn_pl5.jpg", "phieu_tn.jpg", "gxn_truong.jpg", "khai_sinh.jpg",
              "bang_bia.jpg", "du_toan.jpg", "bang_trong.jpg")
     files = [{"name": n} for n in names]
     llm = {0: "don_pl4", 1: "cccd", 2: "gxn_pl5", 3: "phieu_tiep_nhan", 4: "gxn_truong", 5: "giay_khai_sinh",
            7: "du_toan_pl6", 8: "bang_tot_nghiep"}
     items, warnings, classified = planner.build_plan_items(files, {}, llm)
-    assert len(items) == 2
-    row1, row2 = items
-    assert row1["componentName"] == "giấy tờ chứng minh thuộc đối tượng miễn, giảm học phí"
+    assert len(items) == len(names)
+    row1_name = "giấy tờ chứng minh thuộc đối tượng miễn, giảm học phí"
+    row2_name = "Đơn đề nghị chi trả tiền miễn giảm học phí theo mẫu tại Phụ lục IV"
+    row1 = [item for item in items if item["componentName"] == row1_name and item["detectedType"] != "phieu_tiep_nhan"]
+    row2 = [item for item in items if item["componentName"] == row2_name]
     # GXN trường → GXN PL V → CCCD → Giấy KS → Bằng (bìa ảnh không chữ + trang trong).
-    assert [names[i] for i in row1["sourceFileIndexes"]] == [
+    assert [names[item["fileIndex"]] for item in row1] == [
         "gxn_truong.jpg", "gxn_pl5.jpg", "cccd.jpg", "khai_sinh.jpg", "bang_bia.jpg", "bang_trong.jpg",
     ]
-    assert row1["fileIndex"] == row1["sourceFileIndexes"][0]
-    assert row2["componentName"] == "Đơn đề nghị chi trả tiền miễn giảm học phí theo mẫu tại Phụ lục IV"
-    assert [names[i] for i in row2["sourceFileIndexes"]] == ["don.jpg", "du_toan.jpg"]
+    assert [names[item["fileIndex"]] for item in row2] == ["don.jpg", "du_toan.jpg"]
     for item in items:
+        assert "sourceFileIndexes" not in item and "sourceSegments" not in item
         assert item["target"] == "attp-row" and item["loaiBan"] == "Bản chính"
         assert item["untickUnplannedRows"] is True
         assert len(item["documentName"]) <= 50
-    assert {c["fileName"] for c in classified if c.get("skipped")} == {"phieu_tn.jpg"}
-    assert any("phieu_tn.jpg" in w for w in warnings)
+    assert len({item["documentName"] for item in items}) == len(items)
+    # Phiếu tiếp nhận không bị bỏ: item riêng ở dòng 1.
+    phieu = next(item for item in items if item["detectedType"] == "phieu_tiep_nhan")
+    assert phieu["fileIndex"] == 3 and phieu["componentName"] == row1_name
+    assert phieu["documentName"] == "phieu_tn.jpg"
+    assert not any(c.get("skipped") for c in classified)
+    assert any("phieu_tn.jpg" in w and "đính chung dòng" in w for w in warnings)
     assert not any("bắt buộc" in w for w in warnings)
 
 
@@ -304,11 +310,12 @@ def test_dinh_kem_rule_du_phong_khi_khong_co_llm():
         "0.pdf": "don_pl4", "1.pdf": "du_toan_pl6", "2.pdf": "gxn_pl5", "3.pdf": "gxn_truong",
         "4.pdf": "giay_khai_sinh", "5.pdf": "phieu_tiep_nhan", "6.pdf": "cccd",
     }
-    assert [i["sourceFileIndexes"] for i in items] == [[3, 2, 6, 4], [0, 1]]
+    assert [i["fileIndex"] for i in items] == [3, 2, 6, 4, 0, 1, 5]
+    assert not any(i.get("sourceFileIndexes") for i in items)
 
 
 def test_dinh_kem_canh_bao_thieu_don_va_giay_chung_minh():
     items, warnings, _ = planner.build_plan_items([{"name": "cccd.jpg"}], {}, {0: "cccd"})
-    assert [i["sourceFileIndexes"] for i in items] == [[0]]
+    assert [(i["fileIndex"], i.get("sourceFileIndexes")) for i in items] == [(0, None)]
     assert any("Phụ lục IV" in w and "bắt buộc" in w for w in warnings)
     assert any("giấy tờ chứng minh" in w and "bắt buộc" in w for w in warnings)

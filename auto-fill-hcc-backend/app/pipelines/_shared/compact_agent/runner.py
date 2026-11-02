@@ -4,12 +4,15 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import mimetypes
 import time
 import zipfile
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 
 from app.config import settings
+from app.db.mongo import get_db
 from app.monitor import recorder as mon
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines._shared.documents import join_ocr_documents
@@ -20,6 +23,12 @@ _COMPACT_AGENT_MAX_TOKENS = 1800
 _DATE_COMPS = {"x-date", "x-date-text", "date"}
 _DOCX_TYPES = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
 _DOCX_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+# Hai lượt khác mục đích (vd điền đơn và khối người ủy quyền Bắc Ninh) gửi cùng một prompt, chỉ mapper khác →
+# lượt sau dùng lại câu trả lời LLM của lượt trước. Khoá theo nội dung prompt nên đổi giấy/OCR/prompt là trượt;
+# câu trả lời chứa dữ liệu cá nhân nên chỉ giữ ngắn (TTL cùng hạn, app/db/indexes.py).
+_LLM_REUSE_MAX_AGE = timedelta(minutes=30)
+
+logger = logging.getLogger(__name__)
 
 
 def flatten(files_by_role: dict[str, list[dict]]) -> list[dict]:
@@ -140,6 +149,37 @@ def _extract_docx_images(file: dict) -> list[dict]:
         return []
 
 
+def _llm_reuse_key(messages: list[dict], max_tokens: int) -> str:
+    payload = json.dumps([messages, max_tokens, settings.agent_reasoning], ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+async def _reused_llm_raw(key: str) -> str | None:
+    try:
+        doc = await get_db().llm_reuse.find_one({"_id": key})
+    except Exception as e:  # noqa: BLE001 - không đọc được thì gọi LLM như thường
+        logger.warning("Đọc câu trả lời LLM dùng lại lỗi: %r", e)
+        return None
+    at = (doc or {}).get("at")
+    if not isinstance(at, datetime):
+        return None
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) - at > _LLM_REUSE_MAX_AGE:
+        return None
+    raw = doc.get("raw")
+    return raw if isinstance(raw, str) else None
+
+
+async def _remember_llm_raw(key: str, raw: str) -> None:
+    try:
+        await get_db().llm_reuse.replace_one(
+            {"_id": key}, {"_id": key, "raw": raw, "at": datetime.now(timezone.utc)}, upsert=True,
+        )
+    except Exception as e:  # noqa: BLE001 - lưu hỏng chỉ mất phần dùng lại
+        logger.warning("Lưu câu trả lời LLM để dùng lại lỗi: %r", e)
+
+
 def validate(raw_fields, allowed: set[str], comp_by_name: dict[str, str],
              aliases: dict[str, list[str]] | None = None,
              dropped: list[dict] | None = None) -> list[dict]:
@@ -198,7 +238,10 @@ async def run(
     system_prompt_builder=None,
     user_content_builder=None,
     ocr_fn=None,
+    llm_reuse: str | None = None,
 ) -> dict:
+    """``llm_reuse``: "save" lưu câu trả lời LLM để lượt khác cùng prompt dùng lại; "use" có sẵn thì dùng lại
+    (không có thì gọi LLM và lưu như "save"); None không đụng tới."""
     errors: list[str] = []
     files = flatten(files_by_role)
 
@@ -295,12 +338,20 @@ async def run(
             {"role": "user", "content": user_content},
         ]
         try:
-            raw = await client.chat(
-                messages,
-                max_tokens=max_tokens,
-                enable_thinking=settings.agent_reasoning,
-            )
-            parsed = client.extract_json_block(raw)
+            reuse_key = _llm_reuse_key(messages, max_tokens) if llm_reuse else None
+            raw = await _reused_llm_raw(reuse_key) if llm_reuse == "use" else None
+            if raw is not None:
+                mon.flag("llm_reused")
+                parsed = client.extract_json_block(raw)
+            else:
+                raw = await client.chat(
+                    messages,
+                    max_tokens=max_tokens,
+                    enable_thinking=settings.agent_reasoning,
+                )
+                parsed = client.extract_json_block(raw)
+                if reuse_key:
+                    await _remember_llm_raw(reuse_key, raw)
             llm_output = parsed
             raw_fields = parsed.get("fields")
             if compact_field_fallback:

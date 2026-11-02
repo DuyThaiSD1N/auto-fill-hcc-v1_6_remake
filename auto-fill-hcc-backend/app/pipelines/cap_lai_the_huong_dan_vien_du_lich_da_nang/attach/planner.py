@@ -10,7 +10,8 @@ tự input file trên trang):
 
 Dòng 0 là ô DUY NHẤT nhận bản sao giấy tờ kèm theo → chứng chỉ nghiệp vụ, văn bằng, thẻ HDV cũ, GCN cập
 nhật kiến thức và giấy tờ lạ đều đính CHUNG vào đây (không bỏ sót tệp), kèm nội dung ô "Mô tả" trong cảnh
-báo (engine chưa điền được modal Mô tả). CCCD KHÔNG có dòng: chỉ dùng nhập eform, không đính.
+báo (engine chưa điền được modal Mô tả). CCCD không có dòng riêng → cũng đính chung dòng 0 (tệp/đoạn trang
+CCCD thành item riêng, giữ tên tệp gốc) + cảnh báo; không bỏ tệp nào.
 
 ⚑ Hồ sơ hay nộp NHẦM bộ cấp mới gộp trong MỘT PDF (Đơn Mẫu 04 tr.1–2 + chứng chỉ nghiệp vụ tr.3–4 + văn
 bằng tr.5). OCR có header "Trang i/N" → phân loại TỪNG TRANG rồi gom các trang liền nhau cùng dòng thành một
@@ -101,6 +102,7 @@ _DISPLAY = {
     _T_VAN_BANG: "Bằng tốt nghiệp",
     _T_GCN: "Giấy chứng nhận đã qua khóa cập nhật kiến thức cho hướng dẫn viên du lịch",
     _T_ANH: "Ảnh chân dung màu 3cm x 4cm",
+    _T_CCCD: "Căn cước công dân",
 }
 _ALLOWED = set(_ROUTES) | {_T_CCCD, _T_OTHER}
 
@@ -194,6 +196,7 @@ def _resolve_pages(page_types: list[str | None]) -> list[str]:
 
 
 def _slot_of(doc_type: str) -> int | None:
+    # Trang CCCD gom thành đoạn riêng (không nhập vào đoạn giấy tờ liền kề) để thành item riêng ở dòng 0.
     if doc_type == _T_CCCD:
         return None
     return _ROUTES.get(doc_type, _SLOT_GIAY_TO)
@@ -290,19 +293,18 @@ def build_plan_items(
     tren_dong: dict[int, list[tuple[str, list[str]]]] = {s: [] for s in _SLOT_NAMES}
     chon_tren_dong: dict[int, list[str | None]] = {s: [] for s in _SLOT_NAMES}
     co_trong_ho_so: set[str] = set()
-    cccd_bo_qua: list[str] = []
+    dinh_chung: list[str] = []
 
     for piece in _pieces(files, llm_types or {}, page_types or {}):
         types = piece["types"]
         routable = [t for t in types if t in _ROUTES]
         base = {"fileName": piece["fileName"], "pages": piece["pages"], "docType": types[0],
                 "alsoTypes": types[1:], "source": piece["source"]}
-        if not routable and _T_CCCD in types:
-            cccd_bo_qua.append(piece["label"])
-            co_trong_ho_so.add(_T_CCCD)
-            classified.append({**base, "assignedType": _T_CCCD, "slotIndex": None, "target": "skip"})
-            continue
         if not routable:
+            # CCCD/giấy lạ không có dòng riêng → dòng 0, giữ tên tệp gốc (không biết chắc là giấy gì).
+            if _T_CCCD in types:
+                co_trong_ho_so.add(_T_CCCD)
+            dinh_chung.append(piece["label"])
             chon, slot = None, _SLOT_GIAY_TO
             document_name = piece["fileName"] if piece["pages"] is None else (
                 f"{piece['fileName']} ({_page_label(piece['pages'])})"
@@ -319,7 +321,8 @@ def build_plan_items(
                                  piece["pages"]))
         tren_dong[slot].append((piece["label"], types))
         chon_tren_dong[slot].append(chon)
-        classified.append({**base, "assignedType": chon, "slotIndex": slot})
+        classified.append({**base, "assignedType": chon, "slotIndex": slot,
+                           **({} if routable else {"routedTo": _SLOT_KEYS[slot]})})
 
     # ---- Dòng 2: Đơn ----
     so_don = sum(1 for c in chon_tren_dong[_SLOT_DON] if c in (_T_DON_LAI, _T_DON_MOI))
@@ -348,12 +351,11 @@ def build_plan_items(
             "ảnh) rồi đính lại."
         )
 
-    # ---- CCCD: không có dòng trong bảng ----
-    if cccd_bo_qua:
+    # ---- CCCD / giấy chưa rõ loại: không có dòng riêng ----
+    if dinh_chung:
         warnings.append(
-            "Không đính kèm CCCD (" + "; ".join(cccd_bo_qua) + ") — bảng thành phần hồ sơ không có dòng CCCD, "
-            "chỉ dùng để nhập eform. Nếu cấp lại để thay đổi thông tin trên thẻ (vd đổi số định danh) thì cán "
-            "bộ tự đính CCCD vào dòng 1 (giấy tờ liên quan đến nội dung thay đổi)."
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_SLOT_SHORT[_SLOT_GIAY_TO]}\": "
+            + ", ".join(dinh_chung)
         )
 
     # ---- Mô tả cho dòng nhận nhiều tệp, tệp không đúng loại hoặc tệp scan gộp ----

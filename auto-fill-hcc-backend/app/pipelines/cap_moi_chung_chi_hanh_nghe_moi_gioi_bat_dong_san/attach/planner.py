@@ -1,9 +1,10 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Cấp mới chứng chỉ hành nghề môi giới bất động sản" (1.012906, Angular
 mat-table, engine FE `attp-row`).
 
-ENGINE TÁCH/GỘP (như bao_cao_to_chuc_dai_hoi_hoi_cap_tinh): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG TRANG
-+ loại cho từng đoạn → hậu xử lý tất định → GOM các đoạn cùng dòng thành MỘT file gộp (`sourceSegments`). Hồ sơ hay
-là một PDF gộp Đơn (trang 1) + CCCD 2 mặt (trang 2) → mỗi trang về đúng dòng của nó.
+ENGINE TÁCH ĐOẠN (như bao_cao_to_chuc_dai_hoi_hoi_cap_tinh): OCR per-file có header "Trang n/m" → LLM gán KHOẢNG
+TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI ĐOẠN (một giấy liền trang trong một tệp) là một item riêng của
+dòng (dòng attp-row nhận nhiều tệp); đoạn chỉ là một phần tệp thì gửi `sourceSegments` để FE cắt trang. Hồ sơ hay là
+một PDF gộp Đơn (trang 1) + CCCD 2 mặt (trang 2) → mỗi trang về đúng dòng của nó.
 
 Bảng 6 dòng:
   1. Bằng tốt nghiệp THPT trở lên (Bản sao)          4. Chứng chỉ do nước ngoài cấp + bản dịch (Bản sao)
@@ -11,7 +12,7 @@ Bảng 6 dòng:
   3. Đơn đăng ký dự thi có dán ảnh 4x6 (Bản chính)  6. 02 ảnh 4x6 + 02 phong bì dán tem (Bản chính)
 Không có ảnh rời → dòng 6 đính CHUNG trang đơn (ảnh dán trên đơn). Không có chứng chỉ nước ngoài → gửi `untickRows`
 để FE bỏ tick dòng 4 (chỉ áp dụng người nước ngoài / người có chứng chỉ nước ngoài). Chứng chỉ cũ trong nước, giấy tờ
-của tổ chức không có dòng → bỏ qua (chỉ dùng ở bước điền thông tin).
+của tổ chức, đoạn chưa rõ loại không có dòng → MỖI ĐOẠN một tệp riêng đính chung dòng 3 (Đơn), kèm cảnh báo.
 """
 
 import re
@@ -52,8 +53,8 @@ _CC_CU = "chung_chi_cu"
 _TO_CHUC = "giay_to_to_chuc"
 _OTHER = "other"
 _ALLOWED = {_DON, _CCCD, _BANG, _GCN, _NUOC_NGOAI, _ANH, _CC_CU, _TO_CHUC, _OTHER}
-# Loại không có dòng trên bảng → bỏ qua.
-_NO_ROW = {_CC_CU, _TO_CHUC}
+# Loại không có dòng riêng trên bảng (chứng chỉ cũ, giấy tờ tổ chức, chưa rõ) → đính chung dòng Đơn.
+_FALLBACK_ROW = 3
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold); componentIndex = STT dòng (1-based).
 # ⚠ Dòng 3 cũng chứa "ảnh mầu cỡ 4x6cm chụp trong thời gian 06 tháng" → dòng 6 khớp theo cụm "phong bì".
@@ -72,7 +73,7 @@ _ROWS: dict[int, dict[str, str]] = {
         "documentName": "Ảnh 4x6", "loaiBan": "Bản chính"},
 }
 _ROUTE = {_BANG: 1, _CCCD: 2, _DON: 3, _NUOC_NGOAI: 4, _GCN: 5, _ANH: 6}
-# Thứ tự ghép các loại trong CÙNG một file gộp.
+# Thứ tự các item trong CÙNG một dòng.
 _ORDER = [_DON, _ANH, _CCCD, _BANG, _GCN, _NUOC_NGOAI]
 
 _REQUIRED = [
@@ -233,7 +234,8 @@ def build_plan_items(
 
     classified: list[dict] = []
     warnings: list[str] = []
-    skipped_pages: list[str] = []
+    extra_pages: list[str] = []
+    extra_parts: list[tuple[dict, str]] = []
     by_row: dict[int, list[tuple[dict, str]]] = {}
 
     for segment, doc_type in typed:
@@ -242,9 +244,9 @@ def build_plan_items(
                 "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
         row_idx = _ROUTE.get(doc_type)
         if row_idx is None:
-            if doc_type not in _NO_ROW:
-                skipped_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-            classified.append({**base, "target": "skip"})
+            extra_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
+            extra_parts.append((segment, doc_type))
+            classified.append({**base, "componentIndex": _FALLBACK_ROW, "routedTo": _FALLBACK_ROW})
             continue
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx})
@@ -263,31 +265,42 @@ def build_plan_items(
     order = {t: i for i, t in enumerate(_ORDER)}
     attachments: list[dict] = []
     used_names: set[str] = set()
-    for row_idx in sorted(by_row):
-        row = _ROWS[row_idx]
-        parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
-        first_segment = parts[0][0]
-        single = len(parts) == 1 and not (anh_from_don and row_idx == 6)
-        base_name = (first_segment.get("documentName") if single else "") or row["documentName"]
-        if anh_from_don and row_idx == 6:
-            base_name = "Ảnh 4x6 dán trên đơn"
-        document_name = _unique_name(base_name.replace("/", "-"), used_names, row["documentName"])
-        first_file = raw_files[first_segment["fileIndex"]]
-        attachments.append({
-            "fileIndex": first_segment["fileIndex"],
-            "fileName": str(first_file.get("name") or f"file-{first_segment['fileIndex'] + 1}"),
-            "documentName": document_name,
+
+    def segment_item(segment: dict, doc_type: str, base_name: str, row: dict) -> dict:
+        """Một giấy = một file riêng (dòng attp-row nhận nhiều file); chỉ cắt trang khi giấy chiếm một phần file."""
+        page_count = file_meta[segment["fileIndex"]]["pageCount"]
+        source = _source_segment(segment, page_count)
+        item = {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}"),
+            "documentName": _unique_name(base_name.replace("/", "-"), used_names, row["documentName"]),
             "componentName": row["componentName"],
-            "componentIndex": row_idx,
             "loaiBan": row["loaiBan"],
             "target": "attp-row",
             "needsAddComponent": False,
-            "detectedType": parts[0][1],
-            "includedTypes": [doc_type for _, doc_type in parts],
-            # Mỗi dòng = MỘT file gộp: FE trích đúng trang từng đoạn rồi ghép theo thứ tự này.
-            "sourceSegments": [
-                _source_segment(segment, file_meta[segment["fileIndex"]]["pageCount"]) for segment, _ in parts
-            ],
+            "detectedType": doc_type,
+            "includedTypes": [doc_type],
+        }
+        if source["pageIndexes"] is not None and source["pageIndexes"] != list(range(page_count)):
+            item["sourceSegments"] = [source]
+        return item
+
+    for row_idx in sorted(by_row):
+        row = _ROWS[row_idx]
+        parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
+        for segment, doc_type in parts:
+            base_name = segment.get("documentName") or row["documentName"]
+            if anh_from_don and row_idx == 6:
+                base_name = "Ảnh 4x6 dán trên đơn"
+            attachments.append({**segment_item(segment, doc_type, base_name, row), "componentIndex": row_idx})
+
+    # Đoạn không có dòng riêng: mỗi đoạn một tệp riêng ở dòng Đơn. Giữ tên LLM đặt, không có thì tên file gốc.
+    fallback_row = _ROWS[_FALLBACK_ROW]
+    for segment, doc_type in extra_parts:
+        file_name = str(raw_files[segment["fileIndex"]].get("name") or f"file-{segment['fileIndex'] + 1}")
+        attachments.append({
+            **segment_item(segment, doc_type, segment.get("documentName") or file_name, fallback_row),
+            "componentIndex": _FALLBACK_ROW,
         })
 
     # Dòng 4 chỉ dành cho người có chứng chỉ do nước ngoài cấp — cổng tick sẵn thì bỏ tick.
@@ -312,10 +325,11 @@ def build_plan_items(
         warnings.append("Bản CCCD trong hồ sơ chưa thấy dấu chứng thực — dòng 2 yêu cầu bản sao chứng thực (hoặc bản "
                         "sao kèm bản chính để đối chiếu).")
     if _CC_CU in found:
-        warnings.append("Hồ sơ có chứng chỉ hành nghề môi giới BĐS đã cấp — bảng thành phần không có dòng riêng, dùng "
-                        "'Thêm giấy tờ' nếu cần nộp kèm.")
-    if skipped_pages:
-        warnings.append("Không xác định được loại giấy tờ (bỏ qua, đính thủ công nếu cần): " + "; ".join(skipped_pages))
+        warnings.append("Hồ sơ có chứng chỉ hành nghề môi giới BĐS đã cấp — bảng thành phần không có dòng riêng, đã "
+                        "đính chung dòng 3 (Đơn).")
+    if extra_pages:
+        warnings.append(f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{fallback_row['componentName']}\": "
+                        + "; ".join(extra_pages))
     return attachments, classified, warnings
 
 

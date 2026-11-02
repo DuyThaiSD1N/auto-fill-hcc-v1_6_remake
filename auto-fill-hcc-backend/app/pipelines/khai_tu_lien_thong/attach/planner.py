@@ -3,8 +3,8 @@
 Bảng thành phần hồ sơ trên cổng (ảnh BA "Anh_xa_giay_to_dinh_kem_Buoc4"):
   Dòng 1 (bắt buộc): Bản chụp Giấy báo tử hoặc giấy tờ thay thế Giấy báo tử.
   Dòng 2: Chứng cứ thay thế — chỉ dùng khi đăng ký cho người chết đã lâu, KHÔNG có dòng 1.
-Tờ khai không có dòng riêng; BA chỉ định đính CÙNG dòng với giấy chứng minh sự kiện chết. CCCD
-không có dòng nào ở bước này (chỉ xuất trình khi nhận kết quả) nên không đính.
+Tờ khai không có dòng riêng; BA chỉ định đính CÙNG dòng với giấy chứng minh sự kiện chết. CCCD và
+giấy chưa rõ loại không có dòng riêng nên cũng đính chung dòng đó (không bỏ tệp nào).
 
 Cổng cho đính nhiều tệp rời vào một dòng (xem khai_sinh_lien_thong.attach.planner), nên mỗi tệp là
 một item `repeatUpload`; giấy báo tử đứng trước để nếu cổng chỉ giữ một tệp thì đó là giấy báo tử.
@@ -37,6 +37,7 @@ _DOCUMENT_LABELS = {
     _DOC_DEATH_NOTICE: "Giấy báo tử",
     _DOC_DEATH_EVENT_PROOF: "Giấy tờ chứng minh sự kiện chết",
     _DOC_DECLARATION: "Tờ khai đăng ký khai tử",
+    _DOC_IDENTITY: "Căn cước công dân",
 }
 
 _DEATH_NOTICE_SLOT = {
@@ -175,33 +176,41 @@ async def plan_khai_tu_lien_thong_attachments(
     proofs = indices_of(_DOC_DEATH_EVENT_PROOF)
     declarations = indices_of(_DOC_DECLARATION)
 
-    # Dòng 2 chỉ dùng khi không có giấy báo tử: có dòng 1 thì chứng cứ thay thế bị bỏ qua.
+    # Dòng 2 chỉ dùng khi không có giấy báo tử. Không có cả hai thì vẫn dùng dòng 1 (bắt buộc) để không
+    # bỏ tệp nào.
     if notices:
         slot, main = _DEATH_NOTICE_SLOT, notices
     elif proofs:
         slot, main = _DEATH_EVENT_PROOF_SLOT, proofs
     else:
-        slot, main = None, []
+        slot, main = _DEATH_NOTICE_SLOT, []
         errors.append(
             "Không tìm thấy Giấy báo tử (hoặc giấy tờ thay thế/chứng cứ chứng minh sự kiện chết) "
             "trong các file đã tải lên."
         )
+    # Giấy không có dòng riêng (CCCD, giấy chưa rõ loại, chứng cứ thay thế khi đã có giấy báo tử) đính
+    # chung dòng chính, đứng sau giấy chính và tờ khai.
+    extras = [i for i in range(len(raw_files)) if i not in main and i not in declarations]
+    if extras:
+        errors.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"" + slot["slotName"] + "\": "
+            + ", ".join(raw_files[i]["name"] for i in extras)
+        )
 
     attachments: list[dict] = []
-    if slot:
-        for idx in (*main, *declarations):
-            label = _DOCUMENT_LABELS[final_types[idx]]
-            attachments.append({
-                "fileIndex": idx,
-                "fileName": raw_files[idx]["name"],
-                "documentName": label,
-                "componentName": slot["slotName"],
-                "target": "fixed-slot",
-                **slot,
-                "needsAddComponent": False,
-                "repeatUpload": True,
-                "detectedType": label,
-            })
+    for idx in (*main, *declarations, *extras):
+        label = _DOCUMENT_LABELS.get(final_types[idx]) or raw_files[idx]["name"]
+        attachments.append({
+            "fileIndex": idx,
+            "fileName": raw_files[idx]["name"],
+            "documentName": label,
+            "componentName": slot["slotName"],
+            "target": "fixed-slot",
+            **slot,
+            "needsAddComponent": False,
+            "repeatUpload": True,
+            "detectedType": label,
+        })
 
     attached = {item["fileIndex"] for item in attachments}
     skipped = [raw_files[i]["name"] for i in range(len(raw_files)) if i not in attached]

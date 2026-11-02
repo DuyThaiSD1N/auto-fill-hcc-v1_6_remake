@@ -308,6 +308,75 @@ function compress(file) {{
   }});
 }}
 
+// PDF trên 10 MB: thay ảnh quét JPEG cạnh dài trên 2400 px bằng bản 2000 px JPEG 0.85. OCR chỉ đọc trang ở
+// ~200 DPI nên chữ không lệch hơn mức OCR tự dao động; tệp này cũng là bản đính lên cổng (~240 DPI trên A4, vẫn
+// rõ). Ảnh không phải JPEG, CMYK, có mặt nạ giữ nguyên; lỗi bất kỳ → gửi bản gốc.
+const PDF_SHRINK_MIN_BYTES = 10 * 1024 * 1024;
+
+function shrinkJpeg(bytes) {{
+  return new Promise((resolve) => {{
+    const url = URL.createObjectURL(new Blob([bytes], {{ type: "image/jpeg" }}));
+    const img = new Image();
+    img.onload = () => {{
+      URL.revokeObjectURL(url);
+      const edge = Math.max(img.width, img.height);
+      if (edge <= 2400) return resolve(null);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * 2000 / edge); c.height = Math.round(img.height * 2000 / edge);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => resolve(b ? {{ blob: b, width: c.width, height: c.height }} : null), "image/jpeg", 0.85);
+    }};
+    img.onerror = () => {{ URL.revokeObjectURL(url); resolve(null); }};
+    img.src = url;
+  }});
+}}
+
+function replaceableImage(dict) {{
+  const {{ PDFName, PDFArray }} = window.PDFLib;
+  const N = (n) => PDFName.of(n);
+  if (dict.lookup(N("Subtype")) !== N("Image")) return false;
+  const f = dict.lookup(N("Filter"));
+  if (!(f === N("DCTDecode") || (f instanceof PDFArray && f.size() === 1 && f.lookup(0) === N("DCTDecode")))) return false;
+  if (["SMask", "Mask", "Decode", "ImageMask", "DecodeParms"].some(k => dict.has(N(k)))) return false;
+  const w = dict.lookup(N("Width")), h = dict.lookup(N("Height"));
+  if (!w || !h || Math.max(w.asNumber(), h.asNumber()) <= 2400) return false;
+  const cs = dict.lookup(N("ColorSpace"));
+  if (cs === N("DeviceRGB") || cs === N("DeviceGray")) return true;
+  if (cs instanceof PDFArray && cs.lookup(0) === N("ICCBased")) {{
+    const n = cs.lookup(1) && cs.lookup(1).dict && cs.lookup(1).dict.lookup(N("N"));
+    return !!n && (n.asNumber() === 1 || n.asNumber() === 3);
+  }}
+  return false;
+}}
+
+async function shrinkPdf(file) {{
+  if (file.size <= PDF_SHRINK_MIN_BYTES) return file;
+  try {{
+    await loadPdfLib();
+    const {{ PDFDocument, PDFName, PDFNumber, PDFRawStream }} = window.PDFLib;
+    const pdf = await PDFDocument.load(new Uint8Array(await file.arrayBuffer()), {{ updateMetadata: false }});
+    let changed = false;
+    // Từng ảnh một: điện thoại ít RAM, giải mã song song vài ảnh quét 3–4 nghìn px dễ treo trang.
+    for (const [ref, obj] of pdf.context.enumerateIndirectObjects()) {{
+      if (!(obj instanceof PDFRawStream) || !replaceableImage(obj.dict)) continue;
+      const res = await shrinkJpeg(obj.contents);
+      if (!res) continue;
+      obj.dict.set(PDFName.of("Width"), PDFNumber.of(res.width));
+      obj.dict.set(PDFName.of("Height"), PDFNumber.of(res.height));
+      obj.dict.set(PDFName.of("BitsPerComponent"), PDFNumber.of(8));
+      obj.dict.set(PDFName.of("ColorSpace"), PDFName.of("DeviceRGB"));
+      pdf.context.assign(ref, PDFRawStream.of(obj.dict, new Uint8Array(await res.blob.arrayBuffer())));
+      changed = true;
+    }}
+    if (!changed) return file;
+    const out = new Blob([await pdf.save()], {{ type: "application/pdf" }});
+    return out.size < file.size ? out : file;
+  }} catch (e) {{
+    console.warn("[TLND] nén PDF lỗi, gửi bản gốc:", e);
+    return file;
+  }}
+}}
+
 async function upload(files, hint) {{
   if (!files.length) return false;
   activeUploads += 1;
@@ -319,7 +388,7 @@ async function upload(files, hint) {{
     const fd = new FormData();
     for (const f of files) {{
       const isPdf = f.type === "application/pdf" || /[.]pdf$/i.test(f.name || "");
-      fd.append("files", isPdf ? f : await compress(f), f.name || (isPdf ? "tai-lieu.pdf" : "anh.jpg"));
+      fd.append("files", isPdf ? await shrinkPdf(f) : await compress(f), f.name || (isPdf ? "tai-lieu.pdf" : "anh.jpg"));
     }}
     if (hint) fd.append("doc_key", hint);
     // THỬ LẠI khi lỗi MẠNG hoặc lỗi máy chủ (5xx). Trước đây hỏng một lần là tệp mất luôn —

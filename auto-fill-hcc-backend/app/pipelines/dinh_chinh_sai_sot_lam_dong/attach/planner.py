@@ -9,6 +9,7 @@ bảng thành phần hồ sơ có các dòng cố định, FE bơm file theo V�
   [1] "Văn bản về việc ủy quyền…"            ← Giấy ủy quyền (chỉ khi nộp qua người đại diện).
   [2] "Đơn đăng ký biến động… Mẫu số 18"     ← Đơn Mẫu 18 + CCCD.
   [3] "- Bản gốc Giấy chứng nhận đã cấp."    ← nộp trực tiếp một cửa, KHÔNG scan đính kèm.
+Giấy chưa rõ loại (other/skip) → đính chung dòng [2] Đơn Mẫu 18, mỗi tệp một item, giữ tiêu đề LLM hoặc tên tệp gốc.
 """
 
 import re
@@ -315,18 +316,41 @@ def build_plan_items(
                 "source": entry["source"],
             })
 
+    # Chưa rõ loại → dòng Đơn Mẫu 18; tên = tiêu đề LLM, không có thì tên tệp gốc; detectedType giữ loại thật.
+    slot = _SLOT_BY_KEY[_SLOT_APPLICATION]
     for entry in skipped_entries:
-        warnings.append(
-            f"Không xác định được dòng thành phần hồ sơ cho file '{entry['fileName']}' — đã bỏ qua."
-        )
+        idx = entry["idx"]
+        title = normalize_document_name(entry.get("title", ""), "") if entry.get("title") else ""
+        document_name = title or normalize_document_name(entry["fileName"], _LABELS[_DOC_OTHER])
+        attachments.append({
+            "fileIndex": idx,
+            "fileName": entry["fileName"],
+            "documentName": document_name,
+            "componentName": slot["slotName"],
+            "target": "fixed-slot",
+            "componentIndex": slot["componentIndex"],
+            "needsAddComponent": False,
+            "detectedType": entry["docType"],
+            "slotKey": slot["slotKey"],
+            "slotIndex": slot["slotIndex"],
+            "slotName": slot["slotName"],
+        })
         classified.append({
             "fileName": entry["fileName"],
             "docType": entry["docType"],
-            "documentName": _label_for_type(entry["docType"], entry.get("title", "")),
-            "target": "skip",
-            "componentIndex": None,
+            "documentName": document_name,
+            "target": "fixed-slot",
+            "componentIndex": slot["componentIndex"],
+            "slotKey": slot["slotKey"],
+            "slotIndex": slot["slotIndex"],
             "source": entry["source"],
+            "routedTo": _SLOT_APPLICATION,
         })
+    if skipped_entries:
+        warnings.append(
+            f"Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"{_ROW_APPLICATION}\": "
+            + ", ".join(e["fileName"] for e in skipped_entries) + "."
+        )
 
     return attachments, warnings, classified
 

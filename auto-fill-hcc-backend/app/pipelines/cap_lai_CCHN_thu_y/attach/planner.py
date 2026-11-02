@@ -5,11 +5,11 @@ Bảng thành phần hồ sơ có 1 dòng cố định: "Đơn đăng ký cấp 
 rdo_File "1 Bản chính / 1 Bản sao" và cột đính kèm có "Scan tệp tin" / "Chọn tệp tin". FE khớp dòng bằng
 componentName (substring fold), tick checkbox + chọn loaiBan "Bản chính" + set file.
 
-Vì form CHỈ có 1 ô đính kèm, mọi giấy tờ trừ CCCD đều vào dòng này (ô upload nhận nhiều file): Đơn
-03.HNTY giữ tên chuẩn, Chứng chỉ hành nghề cũ / ảnh 4x6 / giấy tờ khác giữ TÊN GỐC để khỏi trùng tên.
+Vì form CHỈ có 1 ô đính kèm, mọi giấy tờ kể cả CCCD đều vào dòng này (ô upload nhận nhiều file): Đơn
+03.HNTY giữ tên chuẩn, Chứng chỉ hành nghề cũ / ảnh 4x6 tên theo loại, CCCD / giấy tờ khác giữ TÊN GỐC.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. CCCD KHÔNG có dòng
-riêng (chỉ dùng ở bước thông tin) → bỏ qua.
+riêng → đính chung dòng Đơn + cảnh báo; không bỏ file nào.
 """
 
 import time
@@ -45,7 +45,7 @@ _EXTRA_LABELS: dict[str, str] = {
     _CCHN_CU: "Chứng chỉ hành nghề thú y đã cấp",
     _ANH_THE: "Ảnh chân dung 4x6",
 }
-# CCCD chỉ dùng đối chiếu ở bước thông tin, KHÔNG có dòng riêng trên bảng → bỏ qua.
+# CCCD KHÔNG có dòng riêng trên bảng → đính chung dòng Đơn, giữ tên gốc.
 _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_CCHN_CU, _ANH_THE, _OTHER}
 
@@ -140,6 +140,7 @@ def build_plan_items(
     classified: list[dict] = []
     # Mọi tệp vào cùng MỘT dòng: hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
     name_counts: dict[str, int] = {}
+    extra_files: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -158,12 +159,8 @@ def build_plan_items(
         else:
             doc_type, source = _OTHER, "unknown"
 
-        if doc_type in _SKIP_DOCS:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
-            continue
-
-        # Form chỉ có 1 dòng "Đơn đăng ký cấp lại" (ô upload nhận NHIỀU file) → mọi giấy tờ còn lại vào
-        # dòng này. Đơn → tên chuẩn Mẫu 03.HNTY; chứng chỉ cũ/ảnh 4x6 → tên theo loại; giấy tờ khác → giữ TÊN GỐC.
+        # Form chỉ có 1 dòng "Đơn đăng ký cấp lại" (ô upload nhận NHIỀU file) → mọi giấy tờ vào dòng này.
+        # Đơn → tên chuẩn Mẫu 03.HNTY; chứng chỉ cũ/ảnh 4x6 → tên theo loại; CCCD/giấy tờ khác → giữ TÊN GỐC.
         if doc_type == _DON:
             document_name = _ROWS[_DON]["documentName"]
         elif doc_type in _EXTRA_LABELS:
@@ -174,12 +171,17 @@ def build_plan_items(
         else:
             document_name = file_name
         items.append(_build_row_item(file, idx, doc_type, document_name))
-        classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-        if doc_type == _OTHER:
-            warnings.append(
-                f"Không xác định được loại giấy tờ cho file '{file_name}' — đã đính vào dòng "
-                "'Đơn đăng ký cấp lại', vui lòng kiểm tra lại."
-            )
+        if doc_type in _SKIP_DOCS or doc_type == _OTHER:
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _DON})
+            extra_files.append(file_name)
+        else:
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
+
+    if extra_files:
+        warnings.append(
+            "Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng \"Đơn đăng ký cấp lại\": "
+            + ", ".join(extra_files) + "."
+        )
 
     if not any(item["detectedType"] == _DON for item in items):
         warnings.append(

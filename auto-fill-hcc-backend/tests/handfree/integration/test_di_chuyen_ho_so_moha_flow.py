@@ -51,7 +51,7 @@ async def test_buoc_b_dien_luon_khong_hoi_truong_hop():
     r = await flow.handle_turn(conv, intents.Intent("event", "page_status", {"maeAgencyBlock": True}))
     assert conv["state"] != "choose_variant", "hộp thoại không có trường hợp giải quyết thì không hỏi"
     action = next(a for a in r.actions if a["type"] == "fill_mae_agency")
-    assert action["province"] == "Tỉnh Cao Bằng"
+    assert action["province"] == "Cao Bằng", "ô Tỉnh của cổng bộ khớp theo tên trần"
     assert action["agency"] == "Sở Nội vụ"
     assert action["variant"] == ""
     # Đúng câu đã chốt: nêu UBND tỉnh + Sở Nội vụ + trang Thông tin hồ sơ, không nhắc "trường hợp".

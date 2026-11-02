@@ -155,10 +155,10 @@ _CT01 = ("TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\n10. Nội dung đề nghị
          "Hợp đồng cho thuê phòng trọ; nhà, đất thuộc Giấy chứng nhận quyền sử dụng đất số AB 123456")
 _HOP_DONG = "HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ\nBÊN CHO THUÊ (Bên A)\nBÊN THUÊ (Bên B)"
 _GCN = "GIẤY CHỨNG NHẬN\nQUYỀN SỬ DỤNG ĐẤT\nQUYỀN SỞ HỮU NHÀ Ở VÀ TÀI SẢN KHÁC GẮN LIỀN VỚI ĐẤT"
-_CCCD = "CĂN CƯỚC CÔNG DÂN\nSố / No.: 001198012345"
+_CCCD = "CĂN CƯỚC CÔNG DÂN\nSố / No.: 001000000001"
 
 
-_KHAI_SINH = "GIẤY KHAI SINH\nHọ, chữ đệm, tên: TRẦN VĂN AN\nHọ, chữ đệm, tên người mẹ: LÊ THỊ HOA"
+_KHAI_SINH = "GIẤY KHAI SINH\nHọ, chữ đệm, tên: NGUYEN VAN A\nHọ, chữ đệm, tên người mẹ: NGUYEN THI B"
 
 
 def _plan(*texts, llm=None):
@@ -176,16 +176,19 @@ def test_to_khai_nhac_hop_dong_va_gcn_van_la_to_khai():
     assert planner.doc_type(_CT01) == planner.TO_KHAI
 
 
-def test_llm_loi_co_hop_dong_thue_thi_nhom_thue_muon_o_nho_gcn_vao_dong_them_moi_bo_cccd():
+def test_llm_loi_co_hop_dong_thue_thi_nhom_thue_muon_o_nho_gcn_vao_dong_them_moi_cccd_vao_dong_to_khai():
     items, warnings, case, source = _plan(_CT01, _HOP_DONG, _GCN, _CCCD)
-    assert (case, source) == ("rented", "rule") and not warnings
+    assert (case, source) == ("rented", "rule")
     assert {i["groupIndex"] for i in items} == {2}
     assert [(i["fileIndex"], i["target"], i["newRow"], i["rowKey"]) for i in items] == [
         (0, "bca-row", False, "to khai thay doi thong tin cu tru"),
         (1, "bca-row", False, "hop dong cho thue"),
         (2, "bca-row", True, ""),
+        (3, "bca-row", False, "to khai thay doi thong tin cu tru"),
     ]
     assert items[2]["componentName"].startswith("Giấy chứng nhận quyền sử dụng đất")
+    assert items[3]["documentName"] == "f3.pdf"
+    assert len(warnings) == 1 and "đã đính chung dòng" in warnings[0] and "f3.pdf" in warnings[0]
 
 
 def test_llm_loi_khong_hop_dong_ma_co_gcn_thi_nhom_so_huu_cua_minh():
@@ -209,11 +212,27 @@ def test_llm_loi_khong_hop_dong_co_giay_khai_sinh_thi_duoc_dong_y():
     assert case == "consented"
 
 
-def test_llm_tra_loai_la_thi_file_do_theo_luat_chu_giay_khong_co_dong_thi_canh_bao():
+def test_llm_tra_loai_la_thi_file_do_theo_luat_chu_giay_khong_co_dong_thi_vao_dong_to_khai_va_canh_bao():
     llm = {"case": "rented", "documents": [{"index": 0, "docType": "bang_lai"}, {"index": 1, "docType": "quan_he"}]}
     items, warnings, case, _ = _plan(_CT01, _KHAI_SINH, llm=llm)
-    assert case == "rented" and [i["rowKey"] for i in items] == ["to khai thay doi thong tin cu tru"]
-    assert len(warnings) == 1 and "không có dòng" in warnings[0]
+    assert case == "rented" and [i["rowKey"] for i in items] == [
+        "to khai thay doi thong tin cu tru", "to khai thay doi thong tin cu tru"]
+    assert items[1]["documentName"] == "Giấy tờ chứng minh quan hệ nhân thân"
+    assert len(warnings) == 1 and "đã đính chung dòng" in warnings[0] and "f1.pdf" in warnings[0]
+
+
+def test_giay_la_va_cccd_deu_co_item_o_dong_to_khai():
+    llm = {"case": "owned", "documents": [
+        {"index": 0, "docType": "to_khai"}, {"index": 1, "docType": "other"}, {"index": 2, "docType": "cccd"}]}
+    items, warnings, case, _ = _plan(_CT01, "VĂN BẢN KHÁC", _CCCD, llm=llm)
+    assert case == "owned"
+    assert [(i["fileIndex"], i["groupIndex"], i["rowKey"]) for i in items] == [
+        (0, 0, "to khai thay doi thong tin cu tru"),
+        (1, 0, "to khai thay doi thong tin cu tru"),
+        (2, 0, "to khai thay doi thong tin cu tru"),
+    ]
+    assert [i["documentName"] for i in items[1:]] == ["f1.pdf", "f2.pdf"]
+    assert "f1.pdf, f2.pdf" in warnings[0]
 
 
 def test_ten_giay_to_dung_lam_ten_tep_khong_co_ky_tu_cong_cam():

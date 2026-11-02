@@ -9,7 +9,7 @@ FE khớp dòng bằng componentName (substring fold), tick checkbox + chọn lo
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. Giấy phép cũ, CCCD và
 giấy tờ khác không có dòng riêng → đính CHUNG vào dòng Đơn có trong cùng lượt (giữ tên tệp gốc), không bỏ
-tệp nào; lượt không có Đơn thì cảnh báo để cán bộ đính tay.
+tệp nào; lượt không có Đơn thì đính vào dòng 1 và cảnh báo.
 """
 
 import time
@@ -164,8 +164,11 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
         typed.append((idx, file, file_name, doc_type, source))
 
-    # Bảng chỉ có 2 dòng Đơn (nộp 1 trong 2): tệp không phải Đơn đi kèm dòng Đơn đầu tiên của lượt.
+    # Bảng chỉ có 2 dòng Đơn (nộp 1 trong 2): tệp không phải Đơn đi kèm dòng Đơn đầu tiên của lượt. Lượt
+    # không có Đơn vẫn đính vào dòng 1 (cấp mới) để không bỏ tệp; cán bộ chuyển dòng nếu là cấp lại.
     don_row = next((doc_type for *_, doc_type, _src in typed if doc_type in _ROWS), None)
+    no_don = don_row is None
+    don_row = don_row or _CAP_MOI
     stray: list[str] = []
     # Các tệp đi kèm cùng một dòng Đơn: hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
     name_counts: dict[str, int] = {}
@@ -173,7 +176,7 @@ def build_plan_items(
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-        elif don_row:
+        else:
             document_name = _EXTRA_LABELS.get(doc_type, "")
             if document_name:
                 name_counts[document_name] = name_counts.get(document_name, 0) + 1
@@ -181,14 +184,13 @@ def build_plan_items(
                     document_name = f"{document_name} {name_counts[document_name]}"
             items.append(_build_row_item(file, idx, don_row, detected_type=doc_type, document_name=document_name))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": don_row})
-        else:
-            stray.append(file_name)
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
+            if no_don:
+                stray.append(file_name)
 
     if stray:
         warnings.append(
-            "Không thấy Đơn đề nghị (Mẫu 04.KT / 05.KT) trong các tệp nên chưa biết đính vào dòng nào: "
-            + ", ".join(stray) + " — vui lòng đính kèm thủ công."
+            "Không thấy Đơn đề nghị (Mẫu 04.KT / 05.KT) trong các tệp — đã đính vào dòng 1 (Mẫu 04.KT): "
+            + ", ".join(stray) + ". Hồ sơ cấp lại thì cán bộ chuyển sang dòng Mẫu 05.KT."
         )
 
     return items, warnings, classified

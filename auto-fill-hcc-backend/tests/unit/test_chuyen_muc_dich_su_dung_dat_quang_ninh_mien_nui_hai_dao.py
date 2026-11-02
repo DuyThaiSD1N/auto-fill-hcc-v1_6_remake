@@ -51,16 +51,42 @@ def test_shared_certificate_and_extract_are_routed_by_application_branch():
     assert [item["componentIndex"] for item in project_duration[0]] == [15, 17]
 
 
-def test_ambiguous_certificate_without_application_is_skipped_instead_of_guessed():
+def test_ambiguous_certificate_without_application_goes_to_default_application_row_not_guessed_gcn_row():
     files = [{"name": "gcn.pdf", "type": "application/pdf"}]
     ocr = [{"name": "gcn.pdf", "text": "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT"}]
 
     attachments, warnings, classified, branch = planner.build_plan_items(files, ocr)
 
-    assert attachments == []
+    # Không đoán hàng GCN của nhánh nào; tệp vẫn được đính ở hàng Đơn của nhánh mặc định.
     assert branch == ""
-    assert "không xác định được nhánh hồ sơ" in warnings[0]
-    assert classified[0]["skipped"] is True
+    assert len(attachments) == 1
+    assert attachments[0]["componentIndex"] == 3
+    assert attachments[0]["target"] == "existing"
+    assert attachments[0]["detectedType"] == "gcn"
+    assert attachments[0]["documentName"] == "gcn"
+    assert "chưa xác định được nhánh hồ sơ" in warnings[0] and "gcn.pdf" in warnings[0]
+    assert classified[0]["routedTo"] == "don_chuyen_muc_dich"
+
+
+def test_unknown_and_identity_files_go_to_application_row_of_branch():
+    files = [
+        {"name": "don.pdf", "type": "application/pdf"},
+        {"name": "la.pdf", "type": "application/pdf"},
+        {"name": "cccd.jpg", "type": "image/jpeg"},
+    ]
+    ocr = [
+        {"name": "don.pdf", "text": "ĐƠN ĐỀ NGHỊ GIA HẠN SỬ DỤNG ĐẤT Mẫu số 23"},
+        {"name": "la.pdf", "text": "TÀI LIỆU KHÔNG XÁC ĐỊNH"},
+        {"name": "cccd.jpg", "text": "CĂN CƯỚC CÔNG DÂN NGUYEN VAN A 001000000001"},
+    ]
+
+    attachments, warnings, classified, branch = planner.build_plan_items(files, ocr, {0: "don_gia_han", 1: "other"})
+
+    assert branch == "gia_han"
+    assert [item["componentIndex"] for item in attachments] == [11, 11, 11]
+    assert [item["detectedType"] for item in attachments] == ["don_gia_han", "other", "other"]
+    assert all(item["target"] == "existing" for item in attachments)
+    assert len(warnings) == 1 and "la.pdf" in warnings[0] and "cccd.jpg" in warnings[0]
 
 
 def test_group_headings_have_no_routes_and_tax_rows_are_distinct():
