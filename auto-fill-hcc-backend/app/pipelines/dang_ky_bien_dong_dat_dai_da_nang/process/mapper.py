@@ -72,7 +72,7 @@ def _province_label(value: Any) -> str | None:
         return None
     bare = _strip_admin_prefix(text)
     folded = _fold(bare)
-    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
+    city_markers = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh"}
     return f"{'Thành phố' if folded in city_markers else 'Tỉnh'} {bare}"
 
 

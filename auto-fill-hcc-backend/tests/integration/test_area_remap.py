@@ -120,7 +120,61 @@ def test_bac_ninh_old_village_renamed_to_to_dan_pho_in_detail():
     assert dia_chi("Song Liễu", "Thôn Đồng Ngư") == "Tổ dân phố Đồng Ngư"
 
 
+def test_lai_chau_muong_kim_old_ban_renamed_in_detail():
+    def dia_chi(xa, chi_tiet):
+        return area_remap.remap_area({"tinh": "Lai Châu", "xa": xa, "diaChi": chi_tiet})["diaChi"]
+
+    assert dia_chi("Mường Kim", "Bản Ngã Ba") == "Bản Chiềng Ban"
+    assert dia_chi("Xã Mường Kim", "Bản Chiềng Ban 2") == "Bản Nà Dân"
+    assert dia_chi("Mường Kim", "Bản Chiềng Ban 1") == "Bản Chiềng Ban"
+    assert dia_chi("Mường Kim", "Thôn Mường 2") == "Bản Mường"
+    assert dia_chi("Mường Kim", "BẢN CÁP NA 3") == "BẢN Cáp Na"
+    # Xã cũ Tà Mung / Pha Mu cũng về Xã Mường Kim rồi mới đổi bản.
+    assert dia_chi("Tà Mung", "Bản Nậm Pắt") == "Bản Tà Mung"
+    assert dia_chi("Pha Mu", "Bản Chít") == "Bản Pha Mu"
+    # Bản không sắp xếp giữ nguyên, "Chít" bên trong không bị đổi.
+    assert dia_chi("Mường Kim", "Bản Hua Chít") == "Bản Hua Chít"
+    assert dia_chi("Mường Kim", "Bản Pá Chít Tấu") == "Bản Pá Chít Tấu"
+    assert dia_chi("Mường Kim", "Bản Mường, xã Mường Kim") == "Bản Mường, xã Mường Kim"
+
+
 def test_village_rename_only_inside_its_ward():
     result = area_remap.remap_area({"tinh": "Bắc Ninh", "xa": "Trí Quả", "diaChi": "Thôn Thanh Bình"})
     assert result["xa"] == "Phường Trí Quả"
     assert result["diaChi"] == "Thôn Thanh Bình"
+
+
+def test_quang_ninh_ten_trung_xa_phuong_theo_nhan():
+    def xa(ten):
+        return area_remap.remap_area({"tinh": "Tỉnh Quảng Ninh", "xa": ten, "diaChi": ""})["xa"]
+
+    # Phường Hạ Long mới (NQ 1679 khoản 43) không bị nhầm với xã Hạ Long cũ của Vân Đồn.
+    assert xa("Phường Hạ Long") == "Phường Hạ Long"
+    assert xa("Hạ Long") == "Phường Hạ Long"
+    assert xa("Xã Hạ Long") == "Đặc khu Vân Đồn"
+    assert xa("Phường Hải Hòa") == "Phường Móng Cái 1"
+    assert xa("Phường Bắc Sơn") == "Phường Vàng Danh"
+    assert xa("Xã Bắc Sơn") == "Xã Hải Sơn"
+    assert xa("Phường Thanh Sơn") == "Phường Uông Bí"
+    assert xa("Xã Thanh Sơn") == "Xã Ba Chẽ"
+    # Tên trần trùng ở hai đơn vị khác đích: không đoán.
+    assert xa("Bắc Sơn") == "Bắc Sơn"
+
+
+def test_quang_ninh_don_vi_nhap_truoc_2025():
+    def xa(ten):
+        return area_remap.remap_area({"tinh": "Quảng Ninh", "xa": ten, "diaChi": ""})["xa"]
+
+    # NQ 837/NQ-UBTVQH14 (1/1/2020)
+    assert xa("Xã Phú Hải") == "Xã Quảng Hà"
+    assert xa("Quảng Thắng") == "Xã Quảng Hà"
+    assert xa("Tình Húc") == "Xã Bình Liêu"
+    assert xa("Thị trấn Trới") == "Phường Hoành Bồ"
+    # NQ 1199/NQ-UBTVQH15 (1/11/2024)
+    assert xa("Minh Cầm") == "Xã Lương Minh"
+    assert xa("Tân Việt") == "Phường An Sinh"
+    assert xa("Phường Hòa Lạc") == "Phường Móng Cái 1"
+    assert xa("Yết Kiêu") == "Phường Hồng Gai"
+    # Nhập vào đơn vị sau đó bị chia 2 nơi: để nguyên, cán bộ tự chọn.
+    assert xa("Cẩm Hải") == "Cẩm Hải"
+    assert xa("Điền Công") == "Điền Công"

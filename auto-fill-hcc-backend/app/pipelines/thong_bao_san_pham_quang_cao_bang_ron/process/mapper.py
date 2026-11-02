@@ -70,7 +70,7 @@ def _province_label(value: Any) -> str | None:
     if _fold(text).startswith("thanh pho "):
         return text
     bare = _strip_admin_prefix(text)
-    city = _fold(bare) in {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
+    city = _fold(bare) in {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh"}
     return f"{'Thành phố' if city else 'Tỉnh'} {bare}"
 
 

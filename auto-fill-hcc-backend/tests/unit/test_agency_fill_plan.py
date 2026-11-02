@@ -149,7 +149,7 @@ def test_quang_ninh_dang_nhap_rieng_cong_tinh():
     conv = _qn_conv()
     r = flow._guide_login_on_page(  # noqa: SLF001
         conv, proc, conv["location"], {"provinceLoginDialog": True, "loginPage": True, "provinceRows": 2})
-    assert "tỉnh Quảng Ninh" in r.display_md and "Đăng nhập bằng VNeID" in r.display_md
+    assert "thành phố Quảng Ninh" in r.display_md and "Đăng nhập bằng VNeID" in r.display_md
     assert r.actions == [{"type": "collapse_after_tts"}]
 
 

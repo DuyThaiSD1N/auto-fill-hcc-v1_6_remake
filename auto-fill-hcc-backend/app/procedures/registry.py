@@ -5033,9 +5033,14 @@ PROCEDURES: list[dict] = [
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
         # → mục này PHẢI đứng trước.
         # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 vẫn là bảng 2 dòng của cổng cũ, nhưng không còn "Giấy tờ khác".
+        # Cổng có 2 trang nộp cùng mã 1.115687 (crawl 29/10 UBND phường …951a0, crawl 02/11 UBND xã …951dc): cùng form
+        # bước 1, cùng bảng 2 dòng → chung một mục.
         "detect": {
             "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
-            "urlIncludes": ["apply-online/6aa4cc510ac3ff7a288951a0", "matthc=1.115687", "madvc=1.115687."],
+            "urlIncludes": [
+                "apply-online/6aa4cc510ac3ff7a288951a0", "apply-online/6aa4cc520ac3ff7a288951dc",
+                "matthc=1.115687", "madvc=1.115687.",
+            ],
             "headingDisabled": True,
         },
         "label": (

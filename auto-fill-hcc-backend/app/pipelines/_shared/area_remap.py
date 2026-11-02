@@ -546,8 +546,9 @@ def _fold_province(text: str) -> str:
 # Thành phố trực thuộc trung ương (sau sắp xếp 2025): nhãn đúng là "Thành phố X", tỉnh còn lại "Tỉnh X".
 # Nhiều cổng Form.io chọn option theo ĐÚNG chuỗi nhãn → "Tỉnh Đà Nẵng" sẽ TRƯỢT option "Thành phố Đà Nẵng".
 # Bắc Ninh: cổng DVC đã đổi option sang "Thành phố Bắc Ninh" (khớp danh mục locations).
+# Quảng Ninh: Thành phố Quảng Ninh trực thuộc TW từ 01/9/2026 (NQ 36/2026/QH16), danh mục đã đổi.
 _CENTRAL_CITIES = frozenset({
-    "ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh",
+    "ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh",
 })
 
 
@@ -567,8 +568,8 @@ def province_label(value: object) -> Optional[str]:
 
 # 9 TP trực thuộc TW từ 20/9/2026: thêm Đồng Nai (30/4/2026), Quảng Ninh + Bắc Ninh (NQ 24/8/2026).
 # Tạm chỉ dùng cho hộ tịch (kết hôn, khai sinh, khai tử) qua city_province*; _CENTRAL_CITIES ở trên
-# chưa đổi vì province_label() đang phục vụ mọi thủ tục khác.
-_CITY_PROVINCES_2026 = _CENTRAL_CITIES | {"dong nai", "quang ninh"}
+# đã có Bắc Ninh, Quảng Ninh, còn thiếu Đồng Nai vì province_label() đang phục vụ mọi thủ tục khác.
+_CITY_PROVINCES_2026 = _CENTRAL_CITIES | {"dong nai"}
 
 
 def city_province(value: object) -> object:
@@ -1181,6 +1182,12 @@ _CITY_TO_PROVINCE: dict[str, str] = {
     "bac ninh":      "Bắc Ninh",
     "thanh pho bac ninh": "Bắc Ninh",
     "tu son":        "Bắc Ninh",
+    # Quảng Ninh: các thành phố thuộc tỉnh cũ. KHÔNG khóa "quang ninh": "Tỉnh Quảng Ninh" phải giữ
+    # tiền tố để city_province() đổi ra "Thành phố Quảng Ninh" cho ô tỉnh eForm hộ tịch.
+    "ha long":       "Quảng Ninh",
+    "cam pha":       "Quảng Ninh",
+    "uong bi":       "Quảng Ninh",
+    "mong cai":      "Quảng Ninh",
     # Bắc Giang
     "bac giang":     "Bắc Giang",
 }
@@ -1481,12 +1488,51 @@ _TO_DAN_PHO_MOI: dict[tuple[str, str], tuple[str, dict[str, str]]] = {
         "Mãn Xá Tây": "Mãn Xá",
         "Đồng Ngư": "Đồng Ngư",
     }),
+    # Xã Mường Kim (xã cũ Mường Kim, Tà Mung, Tà Hừa, Pha Mu -- Than Uyên), NQ 21/NQ-HĐND ngày
+    # 24/6/2026, vận hành từ 01/7/2026. Sáu bản không sắp xếp vẫn liệt kê để tên dài khớp trọn:
+    # thiếu "Hua Chít", "Pá Chít Tấu" thì "Chít" bên trong bị đổi thành "Pha Mu".
+    ("Lai Châu", "Xã Mường Kim"): ("Bản", {
+        "Ngã Ba": "Chiềng Ban",
+        "Chiềng Ban 1": "Chiềng Ban",
+        "Chiềng Ban 2": "Nà Dân",
+        "Hàng": "Thẩm Phé",
+        "Là 1": "Là",
+        "Là 2": "Là",
+        "Mường 1": "Mường",
+        "Mường 2": "Mường",
+        "Nà Then": "Nà Khương",
+        "Khiết": "Nà Khương",
+        "Vi": "Chát",
+        "Nà Hày": "Chát",
+        "Lun 1": "Lun",
+        "Lun 2": "Lun",
+        "Xoong": "Pá Liềng",
+        "Khá": "Pá Liềng",
+        "Nậm Pắt": "Tà Mung",
+        "Hô Ta": "Tà Mung",
+        "Đán Tọ": "Tu San",
+        "Nậm Mở": "Tu San",
+        "Pu Cay": "Pha Mu",
+        "Chít": "Pha Mu",
+        "Huổi Bắc": "Pha Mu",
+        "Pá Khôm": "Khì",
+        "Cáp Na 1": "Cáp Na",
+        "Cáp Na 2": "Cáp Na",
+        "Cáp Na 3": "Cáp Na",
+        "Noong Ma": "Noong Ỏ",
+        "Lướt": "Lướt",
+        "Nà É": "Nà É",
+        "Nà Đình": "Nà Đình",
+        "Hua Chít": "Hua Chít",
+        "Pá Khoang": "Pá Khoang",
+        "Pá Chít Tấu": "Pá Chít Tấu",
+    }),
 }
 
 # Tiền tố đơn vị dưới xã đứng ngay trước tên ("TDP.Ngọc Tỉnh", "Khu phố Ngọc Lâm").
-_TO_DAN_PHO_PREFIX = r"thôn|xóm|làng|tổ\s+dân\s+phố|tdp|khu\s+phố|kp|khu\s+dân\s+cư|kdc"
+_TO_DAN_PHO_PREFIX = r"thôn|xóm|làng|bản|tổ\s+dân\s+phố|tdp|khu\s+phố|kp|khu\s+dân\s+cư|kdc"
 # Cách viết đã đúng loại đơn vị -> giữ nguyên ("TDP Ngọc Tỉnh" ra "TDP Liễu Khê").
-_TIEN_TO_CUNG_LOAI: dict[str, set[str]] = {"Tổ dân phố": {"tổ dân phố", "tdp"}}
+_TIEN_TO_CUNG_LOAI: dict[str, set[str]] = {"Tổ dân phố": {"tổ dân phố", "tdp"}, "Bản": {"bản"}}
 
 
 def _thon_key(text: str) -> str:

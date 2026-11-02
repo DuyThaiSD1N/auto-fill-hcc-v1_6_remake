@@ -86,6 +86,7 @@ def _province_label(value) -> str:
         "can tho",
         "hue",
         "bac ninh",
+        "quang ninh",
     }:
         return f"Thành phố {_strip_admin_prefix(text)}"
     return f"Tỉnh {_strip_admin_prefix(text)}"

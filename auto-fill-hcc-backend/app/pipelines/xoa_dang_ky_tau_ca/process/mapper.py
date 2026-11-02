@@ -67,7 +67,7 @@ def _province_label(value: Any) -> str | None:
             return re.sub(r"^TP\.?\s+", "Thành phố ", text, flags=re.IGNORECASE)
         return text
     folded = _fold(_strip_admin_prefix(text))
-    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
+    cities = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh"}
     return f"{'Thành phố' if folded in cities else 'Tỉnh'} {_strip_admin_prefix(text)}"
 
 

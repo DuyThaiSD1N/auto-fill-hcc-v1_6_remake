@@ -117,6 +117,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-02, sau khi đổi Thành phố Quảng Ninh (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`13 failed, 3535 passed, 40 skipped, 5 errors`. Chỉ còn đỏ môi trường (4 heic + 9 v2 422); 2 đỏ `test_dang_ky_hanh_nghe.py`
+attach của bản 2026-11-01 đã hết.
+
 Baseline ngày 2026-11-01, sau commit kéo BE thai_dev 2cd2bfe (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `15 failed, 3393 passed, 40 skipped, 5 errors`. Vẫn 4 heic; v2 422 thành 9 (BE kéo về thêm 2 test v2 sha256/409 — cùng lỗi
 môi trường fastapi/python-multipart); thêm 2 đỏ `tests/integration/test_dang_ky_hanh_nghe.py` attach (đến từ bản BE kéo về,

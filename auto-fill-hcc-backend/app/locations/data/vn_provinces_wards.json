@@ -7323,11 +7323,11 @@
       "code": "22",
       "name": "Quảng Ninh",
       "name_en": "Quang Ninh",
-      "full_name": "Tỉnh Quảng Ninh",
-      "full_name_en": "Quang Ninh Province",
+      "full_name": "Thành phố Quảng Ninh",
+      "full_name_en": "Quang Ninh City",
       "code_name": "quang_ninh",
-      "type": "Tỉnh",
-      "type_en": "Province",
+      "type": "Thành phố",
+      "type_en": "City",
       "wards_count": 54,
       "wards": [
         {
@@ -7681,7 +7681,7 @@
           "type_en": "Commune"
         },
         {
-          "code": "06978",
+          "code": "06970",
           "name": "Ba Chẽ",
           "name_en": "Ba Che",
           "full_name": "Xã Ba Chẽ",

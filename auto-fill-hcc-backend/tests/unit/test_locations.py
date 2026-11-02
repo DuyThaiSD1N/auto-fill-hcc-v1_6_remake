@@ -62,3 +62,22 @@ def test_ten_cu_tinh_bac_ninh_van_nhan_dien_sau_khi_len_thanh_pho():
     assert "Tỉnh Bắc Ninh" in province_name_variants("Thành phố Bắc Ninh")
     assert province_label("Tỉnh Bắc Ninh") == "Thành phố Bắc Ninh"
     assert province_label("Lạng Sơn") == "Tỉnh Lạng Sơn"
+
+
+def test_ten_cu_tinh_quang_ninh_van_nhan_dien_sau_khi_len_thanh_pho():
+    # Thành phố Quảng Ninh trực thuộc TW từ 01/9/2026 (NQ 36/2026/QH16), giữ nguyên 54 đơn vị cấp xã.
+    from app.locations.catalog import names_by_code, province_name_variants
+    from app.locations.lookup import location_for
+    from app.pipelines._shared.area_remap import province_label
+
+    assert province_by_slug("quangninh")["text"] == "Thành phố Quảng Ninh"
+    assert len(WARDS_BY_SLUG["quangninh"]["communes"]) == 54
+    assert canonical_location("Tỉnh Quảng Ninh", "Đặc khu Cô Tô") == (
+        "Thành phố Quảng Ninh", "Đặc khu Cô Tô",
+    )
+    assert location_for("Tỉnh Quảng Ninh", "Phường Hạ Long")["province"] == "Thành phố Quảng Ninh"
+    assert "Tỉnh Quảng Ninh" in province_name_variants("Thành phố Quảng Ninh")
+    assert province_label("Tỉnh Quảng Ninh") == "Thành phố Quảng Ninh"
+    assert province_label("Quảng Ninh") == "Thành phố Quảng Ninh"
+    # Mã Xã Ba Chẽ theo danh mục DVHCVN là 06970 (bản cũ ghi nhầm 06978).
+    assert names_by_code("22", "06970") == ("Thành phố Quảng Ninh", "Xã Ba Chẽ")

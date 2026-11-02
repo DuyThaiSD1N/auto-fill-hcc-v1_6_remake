@@ -81,6 +81,7 @@ def _province_label(value: Any) -> str | None:
         # Huế trở thành thành phố trực thuộc TW từ 01/01/2025
         "hue",
         "bac ninh",
+        "quang ninh",
     }
     bare = _fold(_strip_admin_prefix(text))
     is_city = bare in city_set or folded in city_set

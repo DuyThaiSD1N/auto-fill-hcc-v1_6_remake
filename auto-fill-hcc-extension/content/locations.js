@@ -97,6 +97,12 @@ class LocationManager {
             prov = this.provinces.find(p => p.name === name);
         }
 
+        // Tỉnh đã lên thành phố (Bắc Ninh, Quảng Ninh): tài khoản cũ vẫn lưu "Tỉnh X"
+        if (!prov) {
+            const bare = name.replace(/^(Tỉnh|Thành phố)\s+/i, '');
+            prov = this.provinces.find(p => p.name === bare);
+        }
+
         return prov || null;
     }
 

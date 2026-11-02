@@ -323,4 +323,40 @@
 
   H.fillFormLiz = fillFormLiz;
   H.readLizField = readLizField;
+
+  // Lần đầu mở link nộp hồ sơ (/nop-ho-so?MaTTHC=…&vneid=1, DVCQG chuyển sang) khi chưa đăng nhập: cổng đẩy sang
+  // VNeID, xác thực xong lại đưa về TRANG CHỦ chứ không quay lại link → phải back rồi vào lại lần 2. Nhớ link trong
+  // sessionStorage của tab; về trang chủ mà đã đăng nhập thì mở lại đúng link (≤2 lần, trong 10 phút). Vào được trang
+  // nộp khi đã đăng nhập thì xoá. Đăng nhập = có "current-account-user" như cổng tự kiểm.
+  (function returnToApplyAfterLogin() {
+    if (location.hostname !== "dichvucong.bvhttdl.gov.vn" || window.top !== window) return;
+    const KEY = "hcc_bvh_return_url";
+    const TTL_MS = 10 * 60 * 1000;
+    const loggedIn = () => [localStorage, sessionStorage].some((st) => {
+      try {
+        const v = JSON.parse(st.getItem("current-account-user") || "null");
+        return !!v && typeof v === "object" && !Array.isArray(v);
+      } catch (_) { return false; }
+    });
+    const load = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (_) { return null; } };
+    const save = (v) => { try { v ? sessionStorage.setItem(KEY, JSON.stringify(v)) : sessionStorage.removeItem(KEY); } catch (_) { } };
+    let last = "";
+    const tick = () => {
+      if (location.href === last) return;
+      last = location.href;
+      const path = location.pathname.replace(/\/+$/, "");
+      const saved = load();
+      if (path === "/nop-ho-so" && /[?&]MaTTHC(DP)?=/i.test(location.search)) {
+        if (loggedIn()) return save(null);
+        return save({ url: location.href, t: Date.now(), n: saved && saved.url === location.href ? saved.n || 0 : 0 });
+      }
+      if ((path === "" || path === "/trang-chu") && saved && loggedIn()
+        && Date.now() - saved.t < TTL_MS && (saved.n || 0) < 2) {
+        save({ ...saved, n: (saved.n || 0) + 1 });
+        location.replace(saved.url);
+      }
+    };
+    tick();
+    setInterval(tick, 500); // SPA Angular đổi route bằng pushState, không có sự kiện
+  })();
 })();

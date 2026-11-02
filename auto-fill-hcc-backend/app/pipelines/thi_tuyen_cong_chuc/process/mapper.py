@@ -75,6 +75,7 @@ def _province_label(value: Any) -> str | None:
         "tp ho chi minh",
         "hue",
         "bac ninh",
+        "quang ninh",
     }
     return f"{'Thành phố' if folded in city_markers else 'Tỉnh'} {_strip_admin_prefix(text)}"
 

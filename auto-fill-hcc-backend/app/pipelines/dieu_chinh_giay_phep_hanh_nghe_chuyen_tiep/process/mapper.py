@@ -23,7 +23,7 @@ from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.process.schema import UI_COMP_BY_NAME
 
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh"}
 _ADMIN_PREFIX = re.compile(
     r"^(tỉnh|thành phố|t\.\s*p\.?|tp\.?|xã|phường|thị trấn|tt\.?|đặc khu)\s+",
     re.IGNORECASE,

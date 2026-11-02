@@ -24,7 +24,7 @@ from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_moi_giay_phep_hoat_dong_kham_benh_chua_benh.process.schema import UI_COMP_BY_NAME
 
 _TRUONG_HOP_MAC_DINH = "Cấp mới giấy phép hoạt động cơ sở khám bệnh, chữa bệnh"
-_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh"}
+_CITY_MARKERS = {"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh", "quang ninh"}
 _ADMIN_PREFIX = re.compile(
     r"^(tỉnh|thành phố|t\.\s*p\.?|tp\.?|xã|phường|thị trấn|tt\.?|đặc khu)\s+",
     re.IGNORECASE,

@@ -167,7 +167,8 @@ def test_province_upgraded_to_city_uses_city_label():
                                                       "xa": "Phường Trấn Biên", "diaChi": "Tổ 2"}}
     out = _by_name(mapper.enrich(_fields(vo, chong, {**_HOSO, "KetHonCu_TinhDangKy": "Tỉnh Quảng Ninh",
                                                      "KetHonCu_XaDangKy": "Phường Bãi Cháy"})))
-    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["tinh"] == "Thành phố Quảng Ninh"
+    # Danh mục đã ghi "Thành phố Quảng Ninh" (như Bắc Ninh, Đồng Nai) → remap trả tên trần.
+    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["tinh"] in {"Quảng Ninh", "Thành phố Quảng Ninh"}
     assert out["NoiCuTru_BenNam_TrongNuoc"]["value"]["tinh"] in {"Đồng Nai", "Thành phố Đồng Nai"}
-    assert out["noiDangKyTruocDay_filter"]["value"] == "Thành phố Quảng Ninh"
+    assert out["noiDangKyTruocDay_filter"]["value"] in {"Quảng Ninh", "Thành phố Quảng Ninh"}
     assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["xa"] == "Phường Bãi Cháy"

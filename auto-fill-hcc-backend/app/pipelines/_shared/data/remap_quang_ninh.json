@@ -58,7 +58,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Hải Hòa",
+        "xa_cu": "Xã Hải Hòa",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Xã Hải Hòa",
         "ghi_chu": "một phần diện tích tự nhiên"
@@ -165,7 +165,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Hải Hòa",
+        "xa_cu": "Xã Hải Hòa",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Xã Hải Lạng",
         "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Hải Hòa"
@@ -211,7 +211,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Thanh Sơn",
+        "xa_cu": "Xã Thanh Sơn",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Xã Ba Chẽ"
     },
@@ -410,7 +410,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Bắc Sơn",
+        "xa_cu": "Xã Bắc Sơn",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Xã Hải Sơn"
     },
@@ -593,7 +593,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Bắc Sơn",
+        "xa_cu": "Phường Bắc Sơn",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Phường Vàng Danh",
         "ghi_chu": "phường"
@@ -626,7 +626,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Thanh Sơn",
+        "xa_cu": "Phường Thanh Sơn",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Phường Uông Bí",
         "ghi_chu": "phường"
@@ -890,6 +890,13 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hạ Long",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hạ Long",
+        "ghi_chu": "tên trần không nhãn: phường Hạ Long mới (khoản 43); xã Hạ Long cũ của Vân Đồn khóa \"Xã Hạ Long\""
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
         "xa_cu": "Hồng Hà",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Phường Hạ Long"
@@ -1022,7 +1029,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Hải Hòa",
+        "xa_cu": "Phường Hải Hòa",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Phường Móng Cái 1",
         "ghi_chu": "phường"
@@ -1114,7 +1121,7 @@
     },
     {
         "tinh_cu": "Quảng Ninh",
-        "xa_cu": "Hạ Long",
+        "xa_cu": "Xã Hạ Long",
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Đặc khu Vân Đồn",
         "ghi_chu": "xã"
@@ -1175,5 +1182,138 @@
         "tinh_moi": "Quảng Ninh",
         "xa_moi": "Xã Cái Chiên",
         "ghi_chu": "giữ nguyên, không sắp xếp"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phú Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "Nhập 1/1/2020 vào thị trấn Quảng Hà (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Trung",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "Nhập 1/1/2020 vào thị trấn Quảng Hà (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Điền",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "Nhập 1/1/2020 vào thị trấn Quảng Hà (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Thắng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "Nhập 1/1/2020 vào xã Quảng Minh (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tiến Tới",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đường Hoa",
+        "ghi_chu": "Nhập 1/1/2020 vào xã Đường Hoa (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Lợi",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Tân",
+        "ghi_chu": "Nhập 1/1/2020 vào xã Quảng Tân (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tình Húc",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Bình Liêu",
+        "ghi_chu": "Nhập 1/1/2020 vào thị trấn Bình Liêu (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trới",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoành Bồ",
+        "ghi_chu": "Thị trấn Trới thành phường Hoành Bồ 1/1/2020 (NQ 837/NQ-UBTVQH14)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Thành",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "Nhập 1/1/2020 vào xã Đại Dực (NQ 837/NQ-UBTVQH14); Đại Dực chia 2 nơi"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Thành",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đông Ngũ",
+        "ghi_chu": "Nhập 1/1/2020 vào xã Đại Dực (NQ 837/NQ-UBTVQH14); Đại Dực chia 2 nơi"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Điền Công",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Vàng Danh",
+        "ghi_chu": "Nhập 1/1/2020 vào phường Trưng Vương (NQ 837/NQ-UBTVQH14); Trưng Vương chia 2 nơi"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Điền Công",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Uông Bí",
+        "ghi_chu": "Nhập 1/1/2020 vào phường Trưng Vương (NQ 837/NQ-UBTVQH14); Trưng Vương chia 2 nơi"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Minh Cầm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lương Minh",
+        "ghi_chu": "Nhập 1/11/2024 vào xã Lương Minh (NQ 1199/NQ-UBTVQH15)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Lương Mông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lương Minh",
+        "ghi_chu": "Nhập 1/11/2024 vào xã Lương Minh (NQ 1199/NQ-UBTVQH15)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tân Việt",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường An Sinh",
+        "ghi_chu": "Nhập 1/11/2024 vào xã Việt Dân (NQ 1199/NQ-UBTVQH15)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hòa Lạc",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1",
+        "ghi_chu": "Nhập 1/11/2024 vào phường Trần Phú (NQ 1199/NQ-UBTVQH15)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yết Kiêu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hồng Gai",
+        "ghi_chu": "Nhập 1/11/2024 vào phường Trần Hưng Đạo (NQ 1199/NQ-UBTVQH15)"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Hòa",
+        "ghi_chu": "Nhập 1/11/2024 vào xã Hải Hòa (Cẩm Phả) (NQ 1199/NQ-UBTVQH15); Hải Hòa chia 2 nơi"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Lạng",
+        "ghi_chu": "Nhập 1/11/2024 vào xã Hải Hòa (Cẩm Phả) (NQ 1199/NQ-UBTVQH15); Hải Hòa chia 2 nơi"
     }
 ]

@@ -36,13 +36,19 @@ class PopupLocationManager {
         return this.wardsBySlug[slug] || null;
     }
 
-    /** Tìm tỉnh theo tên đầy đủ ("Tỉnh Lâm Đồng"), nhãn hiển thị hoặc tên ngắn ("Lâm Đồng"). */
+    /**
+     * Tìm tỉnh theo tên đầy đủ ("Tỉnh Lâm Đồng"), nhãn hiển thị hoặc tên ngắn ("Lâm Đồng").
+     * Tỉnh đã lên thành phố (Bắc Ninh, Quảng Ninh) thì tài khoản cũ vẫn lưu "Tỉnh X": so tên trần
+     * sau khi bỏ tiền tố loại đơn vị, như find_province() bên BE.
+     */
     findProvince(provinceName) {
         const name = String(provinceName || '').trim();
         if (!name) return null;
+        const bare = name.replace(/^(Tỉnh|Thành phố)\s+/i, '');
         return this.provinces.find(p => p.text === name)
             || this.provinces.find(p => p.label === name)
             || this.provinces.find(p => p.name === name)
+            || this.provinces.find(p => p.name === bare)
             || null;
     }
 
