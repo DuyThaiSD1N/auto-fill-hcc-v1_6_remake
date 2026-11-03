@@ -1,4 +1,4 @@
-"""[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp GCN lần đầu (1.013978).
+"""[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp GCN lần đầu (1.115583, trước là 1.013978).
 
 Khóa hai phần vừa bổ sung:
   - process: 3 ô địa chỉ BẮT BUỘC (*) + các ô liên hệ trước đây bị thiếu, và thứ tự ưu tiên nguồn
@@ -321,6 +321,64 @@ def test_registry_entry_has_attachment_step_and_both_pipelines():
     # uploadHint phải nhắc ràng buộc dung lượng của cổng.
     assert "6 MB" in procedure["uploadHint"]
     assert "Mẫu số 13" in procedure["uploadHint"]
+
+
+def test_detect_theo_ma_moi_1115583_khong_doi_chu_lai_chau():
+    """Cổng mới: URL .../tiep-nhan-online/...?sid=<phiên> không mang mã, đầu trang in "1.115583 - <tên>"."""
+    detect = get_procedure(KEY)["detect"]
+
+    assert detect["urlScope"] == ["laichau.gov.vn"]
+    assert "1.115583" in detect["textIncludes"]
+    assert "lai châu" not in [phrase.lower() for phrase in detect["textIncludes"]]
+    assert detect["textPriority"] is True
+    # Bản dành cho TỔ CHỨC cùng cổng ("dang-ky-dat-dai-lan-dau") không có cụm đối tượng này.
+    assert any("hộ gia đình, cá nhân, cộng đồng dân cư" in phrase for phrase in detect["textIncludes"])
+
+
+# Crawl bước 2 + bước 3 form 1.115583 ngày 03/11/2026.
+_CRAWL_1115583_FIELDS = [
+    "CongDan_tenCongDan", "CongDan_tenCoQuanToChuc", "CongDan_maSoThueNguoiNop", "CongDan_ngaySinhCongDan",
+    "CongDan_gioiTinhCongDan", "CongDan_danTocCongDan", "CongDan_soCmnd", "CongDan_ngayCapCmnd",
+    "CongDan_noiCapCmnd", "CongDan_maTinhThanh", "CongDan_maPhuongXa", "CongDan_diaChi", "CongDan_diDong",
+    "CongDan_maTinhCapCMND", "CongDan_maDMQuocGia", "CongDan_diaChiNuocNgoai", "CongDan_fax", "CongDan_email",
+    "CongDan_website", "CongDan_soGCNGP", "CongDan_ngayCapGCNGP", "CongDan_noiCapGCNGP", "CongDan_soCCCD",
+    "CongDan_noiOHienTai", "CongDan_diaChiThuongTru",
+]
+_CRAWL_1115583_ROW_PREFIXES = [
+    "Mẫu số 13. Đơn đăng ký đất đai",
+    "Thông báo xác nhận kết quả đăng ký đất đai",
+    "Hợp đồng hoặc văn bản thỏa thuận hoặc quyết định của Tòa án",
+    "Văn bản xác định các thành viên có chung quyền sử dụng đất",
+    "Sơ đồ hoặc bản trích lục bản đồ địa chính",
+    "Quyết định xử phạt vi phạm hành chính trong lĩnh vực đất đai; chứng từ nộp phạt",
+    "Chứng từ thực hiện nghĩa vụ tài chính",
+    "Giấy tờ về việc chuyển quyền sử dụng đất, quyền sở hữu tài sản",
+    "Giấy xác nhận của cơ quan có chức năng quản lý về xây dựng cấp huyện",
+    "Giấy tờ về việc nhận thừa kế quyền sử dụng đất theo quy định của pháp luật về dân sự (Bản sao công chứng)",
+    "Một trong các loại giấy tờ quy định tại Điều 137, khoản 1, khoản 5 Điều 148",
+    "Giấy tờ về việc chuyển quyền sử dụng đất và Giấy chứng nhận đã cấp cho phần diện tích tăng thêm",
+    "Giấy tờ về việc nhận thừa kế quyền sử dụng đất theo quy định của pháp luật về dân sự đối với trường hợp",
+    "Giấy tờ về giao đất không đúng thẩm quyền",
+    "Giấy tờ liên quan đến xử phạt vi phạm hành chính",
+    "Hồ sơ thiết kế xây dựng công trình",
+    "Văn bản thỏa thuận về việc cấp chung một Giấy chứng nhận",
+    "Văn bản về việc đại diện theo quy định của pháp luật về dân sự",
+    "Một trong các loại giấy tờ quy định tại Điều 137, khoản 4, khoản 5 Điều 148",
+    "Giấy tờ về việc nhận thừa kế quyền sử dụng đất theo quy định của pháp luật về dân sự và giấy tờ",
+]
+
+
+def test_form_moi_1115583_buoc_nguoi_nop_trung_bo_o_cu():
+    assert set(_CRAWL_1115583_FIELDS) <= set(UI_COMP_BY_NAME)
+    for name in ("CongDan_gioiTinhCongDan", "CongDan_danTocCongDan", "CongDan_maTinhThanh",
+                 "CongDan_maPhuongXa", "CongDan_maTinhCapCMND", "CongDan_maDMQuocGia"):
+        assert UI_COMP_BY_NAME[name] == "dom-select"
+
+
+def test_form_moi_1115583_bang_dinh_kem_20_dong_cung_thu_tu():
+    assert len(planner.SLOTS) == len(_CRAWL_1115583_ROW_PREFIXES) == 20
+    for slot, prefix in zip(planner.SLOTS, _CRAWL_1115583_ROW_PREFIXES):
+        assert slot["slotName"].startswith(prefix), (slot["slotIndex"], slot["slotName"])
 
 
 # --------------------------------------------------------------------------------------

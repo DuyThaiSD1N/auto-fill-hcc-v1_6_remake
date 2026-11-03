@@ -1,4 +1,8 @@
-"""Đính kèm cho [Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp GCN lần đầu (1.013978).
+"""Đính kèm cho [Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp GCN lần đầu (1.115583, trước là 1.013978).
+
+Mã mới 1.115583 (03/11/2026): crawl bước 3 trên cổng ra ĐÚNG 20 dòng dưới đây, nguyên văn và cùng thứ tự,
+4 input "giấy tờ khác" (_fcHoSoOnline_giayToKhac_file_1..3, _fcfileGiayToKhac) vẫn nằm sau bảng; bước 2
+vẫn là bộ ô CongDan_* cũ → pipeline giữ nguyên, chỉ đổi nhận diện ở registry.
 
 Cổng dichvucong.laichau.gov.vn — eForm Lai Châu, bước 3 "Thông tin hồ sơ" là BẢNG 20 DÒNG cố định,
 mỗi dòng một loại giấy tờ kèm sẵn một ``input[type=file]``. Đây là cùng khuôn với thủ tục

@@ -4981,10 +4981,20 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai",
-        "detect": {"urlScope": ["laichau.gov.vn"], "textIncludes": [
-            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
-            "lai châu",
-        ], "headingDisabled": True},
+        # Mã mới 1.115583 (link DVCQG ở ke_khai_links "Lai Châu - …"). Bấm "Nộp trực tuyến" ra trang SPA
+        # dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/…?sid=<phiên> — URL không mang mã, nhưng khối
+        # "thu-tuc-da-chon" ở đầu trang in "1.115583 - <tên thủ tục>" → khớp MÃ + cụm đối tượng (bản tổ chức
+        # "dang-ky-dat-dai-lan-dau" không có cụm này). Bỏ dấu tỉnh "lai châu": chữ đó có thể nằm ngoài 6.000 ký
+        # tự extension thu, urlScope đã khoá host.
+        "detect": {
+            "urlScope": ["laichau.gov.vn"],
+            "textIncludes": [
+                "1.115583",
+                "lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
         "label": "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
         "mode": "agent",
         "hasAttachmentStep": True,

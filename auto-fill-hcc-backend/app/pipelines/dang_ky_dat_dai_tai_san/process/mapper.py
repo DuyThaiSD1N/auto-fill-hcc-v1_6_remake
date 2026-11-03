@@ -1,4 +1,4 @@
-"""Map compact source facts to standard DOM UI fields for procedure 1.013978."""
+"""Map compact source facts to standard DOM UI fields for procedure 1.115583 (formerly 1.013978)."""
 
 import re
 

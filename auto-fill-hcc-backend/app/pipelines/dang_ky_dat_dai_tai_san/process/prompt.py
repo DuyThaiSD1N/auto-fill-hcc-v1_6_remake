@@ -1,4 +1,4 @@
-"""Procedure-specific compact prompt rules for procedure 1.013978."""
+"""Procedure-specific compact prompt rules for procedure 1.115583 (formerly 1.013978)."""
 
 EXTRA_RULES = """Đầu vào thường gồm Đơn đăng ký đất đai, tài sản gắn liền với đất do người dân lập (Mẫu số 13, Mẫu số 15, danh sách người sử dụng chung Mẫu số 13a...), CCCD/CMND của người nộp hồ sơ, sơ đồ/bản trích lục/mảnh trích đo thửa đất và Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất.
 

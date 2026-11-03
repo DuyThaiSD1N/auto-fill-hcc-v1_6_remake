@@ -1644,10 +1644,26 @@
       "autoConfirm": true
     },
     {
-      "key": "dang-ky-dat-dai-lan-dau-lai-chau",
+      "key": "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai",
       "code": "1.115583",
-      "label": "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "label": "Lai Châu - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f36d6-3b80-76db-b702-3c16cbf30bb6",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-sai-sot",
+      "code": "1.115585",
+      "label": "Lai Châu - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3a4c-17a2-7781-ac41-7b27763dc866",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau",
+      "code": "2.002862",
+      "label": "Lai Châu - Hỗ trợ chi phí mai táng đối với người dân tộc thiểu số trên địa bàn tỉnh Lai Châu giai đoạn 2025-2030",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d9016-e181-753d-880e-69a6d964af86",
       "needsAgencySelect": true,
       "autoConfirm": true
     },

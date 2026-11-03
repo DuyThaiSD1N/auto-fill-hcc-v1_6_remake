@@ -1,4 +1,4 @@
-"""Compact agent pipeline for procedure 1.013978."""
+"""Compact agent pipeline for procedure 1.115583 (formerly 1.013978)."""
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.dang_ky_dat_dai_tai_san.process import mapper

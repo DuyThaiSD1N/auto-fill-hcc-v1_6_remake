@@ -1,4 +1,4 @@
-"""Compact schema for procedure 1.013978.
+"""Compact schema for procedure 1.115583 (formerly 1.013978).
 
 The LLM returns only OCR-derived source facts from CCCD/CMND and land-use
 certificate documents. UI fields and deterministic defaults are derived in
