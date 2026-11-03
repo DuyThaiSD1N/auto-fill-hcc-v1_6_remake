@@ -259,8 +259,14 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.001822) — "ntawv tso cai ua haujlwm" (chứng chỉ hành nghề), "kho" (sửa,
     # tu bổ) đã có; TỪ MỚI "chaw keeb kwm" (di tích).
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": "Ntawv tso cai ua haujlwm kho chaw keeb kwm",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.002003, cấp lại) — ghép từ bản cấp mới ngay trên + "muab … dua tshiab"
+    # (cấp lại) như cấp lại GCN ATTP.
+    "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": "Muab ntawv tso cai ua haujlwm kho chaw keeb kwm dua tshiab",
     "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Công Thương 2.000591, cấp lần đầu) — ghép từ đã có: "muab" (cấp), "chaw ua zaub
+    # mov huv si" (cơ sở ATTP), "lag luam" (thương mại → phân biệt với bản Bộ Y tế / NN&MT).
+    "cap-gcn-attp-cong-thuong": "Muab ntawv lees paub chaw ua zaub mov huv si (lag luam)",
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": "Kho, ntxiv kev txo nqi khoom muag",
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": "Tshaj tawm txuas hluav taws xob hnub ci saum ru tsev",
     "xet-tuyen-vien-chuc": "Xaiv neeg ua haujlwm pej xeem",

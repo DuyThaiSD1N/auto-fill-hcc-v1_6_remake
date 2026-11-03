@@ -499,14 +499,18 @@ def test_registered_procedures_use_their_declared_flow_family():
     # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
     # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
     moit = {"cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+            "cap-gcn-attp-cong-thuong",
             "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
             "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha"}
+    moit_agency_page = {"thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "cap-gcn-attp-cong-thuong"}
     for key, dept in (
         ("thong-bao-san-pham-quang-cao-bang-ron", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham", "Sở Công Thương"),
+        ("cap-gcn-attp-cong-thuong", "Sở Công Thương"),
         ("thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "Sở Công Thương"),
         ("chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh", "Sở Nội vụ"),
         ("bao-cao-to-chuc-dai-hoi-hoi-cap-tinh", "Sở Nội vụ"),
@@ -516,9 +520,8 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert so_level.get("flowProfile") is None and so_level["needsAgencySelect"] is True, key
         assert so_level["agencyProvinceOnly"] is True and so_level["agencySoFirst"] is True, key
         assert so_level["agencyDeptLabel"] == dept, key
-        # Khuyến mại: cổng Bộ Công Thương còn trang "Cơ quan thực hiện" (Tỉnh → Sở tự điền → Đồng ý).
-        assert so_level.get("maePortal") is (True if key == "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai"
-                                             else None), key
+        # Khuyến mại, cấp GCN ATTP: cổng Bộ Công Thương còn trang "Cơ quan thực hiện" (Tỉnh → Sở tự điền → Đồng ý).
+        assert so_level.get("maePortal") is (True if key in moit_agency_page else None), key
         assert so_level.get("wizard") == (mae_fishing["wizard"] if key in moit else None), key
     # DVCQG chọn đủ Tỉnh + Xã, không gạt "Sở", không wizard iGate.
     for key in ("thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha", "xet-tuyen-vien-chuc", "xet-tuyen-cong-chuc",
@@ -656,7 +659,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # lái, phù hiệu xe), NN&MT (gia hạn CCHN thú y, xóa đăng ký tàu cá), cấp xã (điện mặt trời mái nhà, xét tuyển
     # viên chức, xét tuyển / thi tuyển công chức, xác nhận diện tích nhà ở đăng ký thường trú).
     # +1 cổng Bộ VHTTDL chọn Sở "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" (1.001822).
-    assert len(procedures) == 127
+    # +1 Sở Công Thương "cap-gcn-attp-cong-thuong" (2.000591, cấp GCN ATTP lần đầu).
+    # +1 cổng Bộ VHTTDL chọn Sở "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" (1.002003).
+    assert len(procedures) == 129
 
     for procedure in procedures:
         key = procedure["key"]

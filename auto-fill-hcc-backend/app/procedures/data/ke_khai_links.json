@@ -2254,6 +2254,24 @@
       "autoConfirm": true
     },
     {
+      "key": "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+      "code": "1.002003",
+      "label": "Thủ tục cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b5a1-72a9-a768-957fc952b946",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-trich-luc-sao-ho-so-nguoi-co-cong",
+      "code": "1.010828",
+      "label": "Cấp trích lục hoặc sao hồ sơ người có công với cách mạng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d4-71f5-b93e-c6c57d772177",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-tam-tru",
       "code": "1.004194",
       "label": "Đăng ký tạm trú",

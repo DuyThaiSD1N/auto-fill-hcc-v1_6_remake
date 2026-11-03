@@ -79,6 +79,15 @@ def test_to_khai_nguoi_nop_la_nguoi_dai_dien_bo_qua_tai_khoan():
     assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
 
 
+def test_to_khai_nguoi_dai_dien_khong_ngay_sinh_thi_xoa_trong():
+    muc_ii = {k: v for k, v in _MUC_II.items() if k != "Ndd_NgaySinh"}
+    out = mapper.enrich(_fields(_MUC_I, muc_ii), {**_TO_KHAI, **_TK_NKT})
+    birthday = [f for f in out if f["name"] == "data[birthday]"]
+    assert len(birthday) == 1
+    assert birthday[0]["value"] == "" and birthday[0]["clear"] is True and birthday[0]["markEmpty"] is True
+    assert _values(out)["data[fullname]"] == "Nguyễn Văn Cha"
+
+
 def test_to_khai_muc_ii_trong_thi_nguoi_khuyet_tat_tu_nop():
     out = mapper.enrich(_fields(_MUC_I), _TO_KHAI)
     d = _values(out)

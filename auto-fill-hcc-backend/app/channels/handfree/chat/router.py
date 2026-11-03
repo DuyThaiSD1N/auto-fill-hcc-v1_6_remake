@@ -9,6 +9,7 @@ tỉnh/xã → conversation mới auto-chọn nơi làm thủ tục. Rate-limit 
 import logging
 import re
 import time
+import unicodedata
 from collections import defaultdict
 from copy import deepcopy
 
@@ -106,6 +107,47 @@ def _clean_attachment_context(raw: dict[str, object]) -> dict[str, object]:
     if raw.get("hasFileControl") is True:
         result["hasFileControl"] = True
     return result
+
+
+# Ô Phần I (người nộp) extension đọc làm mốc chủ tài khoản — xem collectFormContext ở fill-core.js.
+_APPLICANT_FILL_FIELDS = {
+    "data[fullname]", "data[identityNumber]", "HoVaTenC", "NYC_HoVaTen",
+    "SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan",
+}
+
+
+def _applicant_key(value: object) -> str:
+    text = re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(value or ""))).strip().casefold()
+    compact = text.replace(" ", "")
+    return compact if compact.isdigit() else text
+
+
+def _remember_filled_applicant(conv: dict) -> set[str]:
+    """Họ tên/số định danh Phần I do CHÍNH pipeline đã điền trong phiên. "Điền lại thông tin" xoá
+    conv["fields"] nên ghi dồn sang khoá riêng, sống theo phiên."""
+    filled = [str(v) for v in conv.get("filled_applicant") or []]
+    for field in conv.get("fields") or []:
+        if isinstance(field, dict) and field.get("name") in _APPLICANT_FILL_FIELDS:
+            key = _applicant_key(field.get("value"))
+            if key and key not in filled:
+                filled.append(key)
+    conv["filled_applicant"] = filled[-20:]
+    return set(filled)
+
+
+def _keeps_account_anchor(conv: dict, incoming: dict) -> bool:
+    """Phần I trên DOM chỉ là giá trị lượt điền trước ghi vào (vd chủ văn bằng), không phải chủ tài khoản
+    VNeID → giữ mốc cũ. Không giữ thì lượt "Điền lại" tưởng chủ tài khoản là chủ hồ sơ, tick "Người nộp là
+    chủ hồ sơ" và cổng đổ đè nhân thân tài khoản xuống ô "Sinh ngày" của Phiếu."""
+    filled = _remember_filled_applicant(conv)
+    prev = conv.get("form_context") or {}
+
+    def echoed(ctx: dict) -> bool:
+        key = _applicant_key(ctx.get("applicantIdentityNumber")) or _applicant_key(ctx.get("applicantFullname"))
+        return bool(key) and key in filled
+
+    has_prev = bool(prev.get("applicantIdentityNumber") or prev.get("applicantFullname"))
+    return has_prev and echoed(incoming) and not echoed(prev)
 
 
 def _bounded_int(value: object, default: int = 0) -> int:
@@ -345,7 +387,7 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
     # đúng formContext như API /process của Auto-fill. Chỉ lưu các khóa ngắn mà pipeline sử dụng.
     raw_form_context = (req.client_context.form_context if req.client_context else {}) or {}
     if raw_form_context:
-        conv["form_context"] = {
+        applicant = {
             "applicantFullname": str(raw_form_context.get("applicantFullname") or "")[:200],
             "applicantIdentityNumber": str(raw_form_context.get("applicantIdentityNumber") or "")[:30],
             "applicantBirthday": str(raw_form_context.get("applicantBirthday") or "")[:20],
@@ -356,9 +398,14 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         }
         address = raw_form_context.get("applicantAddress")
         if isinstance(address, dict):
-            conv["form_context"]["applicantAddress"] = {
+            applicant["applicantAddress"] = {
                 key: str(address.get(key) or "")[:200] for key in ("tinh", "xa", "diaChi")
             }
+        if _keeps_account_anchor(conv, applicant):
+            applicant = {k: v for k, v in conv["form_context"].items() if k.startswith("applicant")}
+        conv["form_context"] = applicant
+    else:
+        _remember_filled_applicant(conv)
     # Mẫu điện tử ĐANG MỞ (khai sinh / nhận cha, mẹ, con) chỉ đúng cho chính lượt này: tờ khai đóng
     # thì không frame nào trả formContext → phải xoá, không được giữ mẫu cũ như mỏ neo người yêu cầu.
     form_variant = str(raw_form_context.get("formVariant") or "")[:40]

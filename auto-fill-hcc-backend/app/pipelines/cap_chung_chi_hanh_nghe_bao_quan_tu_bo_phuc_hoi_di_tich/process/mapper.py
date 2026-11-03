@@ -206,39 +206,32 @@ def _het_han(value: Any, today: date) -> list[str]:
     return out
 
 
-def enrich(
-    fields: list[dict], options: dict | None = None, today: date | None = None,
+def _put(out: list[dict], section: str, label: str, value, comp_by_ui: dict, aliases_by_ui: dict) -> None:
+    if value in (None, "", {}, []):
+        return
+    comp = comp_by_ui.get((section, label))
+    if not comp:
+        return
+    item = {"name": label, "comp": comp, "value": value, "section": section}
+    aliases = aliases_by_ui.get((section, label))
+    if aliases:
+        item["aliases"] = aliases
+    out.append(item)
+
+
+def nguoi_nop_fields(
+    ho_ten: str | None, identity: str | None, ngay_sinh: str | None, ngay_cap: str | None, noi_cap: str | None,
+    phone: str | None, email: str | None, hanh_chinh: str | None, chi_tiet: str | None, options: dict | None,
 ) -> tuple[list[dict], list[str]]:
-    values = _by_name(fields)
+    """Khối "Thông tin người nộp hồ sơ" / "Thông tin người ủy quyền" theo mốc tài khoản — thủ tục cấp lại
+    (1.002003) cùng trang liz dùng lại nguyên khối này."""
     out: list[dict] = []
     warnings: list[str] = []
 
     def put(section: str, label: str, value) -> None:
-        if value in (None, "", {}, []):
-            return
-        comp = COMP_BY_UI.get((section, label))
-        if not comp:
-            return
-        item = {"name": label, "comp": comp, "value": value, "section": section}
-        aliases = ALIASES_BY_UI.get((section, label))
-        if aliases:
-            item["aliases"] = aliases
-        out.append(item)
+        _put(out, section, label, value, COMP_BY_UI, ALIASES_BY_UI)
 
-    ho_ten = _text(values.get("NguoiDeNghi_HoTen"))
     ho_ten_hoa = ho_ten.upper() if ho_ten else None
-    raw_identity = _digits(values.get("NguoiDeNghi_SoDinhDanh"))
-    identity = _identity(raw_identity)
-    ngay_sinh = _date(values.get("NguoiDeNghi_NgaySinh"))
-    ngay_cap = _date(values.get("NguoiDeNghi_NgayCap"))
-    noi_cap = _issuer(values.get("NguoiDeNghi_NoiCap"))
-    phone = _phone(values.get("NguoiDeNghi_DienThoai"))
-    email = _email(values.get("NguoiDeNghi_Email"))
-    area = _area(values.get("NguoiDeNghi_DiaChiHienNay"))
-    hanh_chinh = _admin_select(area)
-    chi_tiet = _text(area.get("diaChi")) if area else None
-    lien_he = _text(values.get("NguoiDeNghi_DiaChiLienHe"))
-
     ctx = (options or {}).get("formContext") or {}
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("fullname"))
     ctx_identity = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
@@ -296,6 +289,33 @@ def enrich(
             f"Không điền khối \"Thông tin người nộp hồ sơ\" / \"Thông tin người ủy quyền\" vì {ly_do} — chỉ điền Đơn "
             "Mẫu 51. Nộp thay thì cán bộ tự tích \"Thông tin người ủy quyền\" và nhập người đề nghị."
         )
+    return out, warnings
+
+
+def enrich(
+    fields: list[dict], options: dict | None = None, today: date | None = None,
+) -> tuple[list[dict], list[str]]:
+    values = _by_name(fields)
+
+    def put(section: str, label: str, value) -> None:
+        _put(out, section, label, value, COMP_BY_UI, ALIASES_BY_UI)
+
+    ho_ten = _text(values.get("NguoiDeNghi_HoTen"))
+    ho_ten_hoa = ho_ten.upper() if ho_ten else None
+    raw_identity = _digits(values.get("NguoiDeNghi_SoDinhDanh"))
+    identity = _identity(raw_identity)
+    ngay_sinh = _date(values.get("NguoiDeNghi_NgaySinh"))
+    ngay_cap = _date(values.get("NguoiDeNghi_NgayCap"))
+    noi_cap = _issuer(values.get("NguoiDeNghi_NoiCap"))
+    area = _area(values.get("NguoiDeNghi_DiaChiHienNay"))
+    chi_tiet = _text(area.get("diaChi")) if area else None
+    lien_he = _text(values.get("NguoiDeNghi_DiaChiLienHe"))
+
+    out, warnings = nguoi_nop_fields(
+        ho_ten, identity, ngay_sinh, ngay_cap, noi_cap,
+        _phone(values.get("NguoiDeNghi_DienThoai")), _email(values.get("NguoiDeNghi_Email")),
+        _admin_select(area), chi_tiet, options,
+    )
 
     # ---- Đơn Mẫu 51 ----
     so_dinh_danh = identity

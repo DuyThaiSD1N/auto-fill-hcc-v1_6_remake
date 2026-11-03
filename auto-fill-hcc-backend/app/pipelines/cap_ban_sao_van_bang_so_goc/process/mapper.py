@@ -215,17 +215,23 @@ def _remap(area: dict, ocr_text: str = "") -> dict:
             retry = remap_area(dict(base), huyen_hint=ocr_hint) or {}
             if retry.get("xa"):
                 out = retry
-    return out
+            hint = ocr_hint
+    # Giữ huyện cũ để _current_ward làm phương án cuối khi tên xã không khớp danh mục. Khoá riêng "huyenCu":
+    # _text không đọc → không lọt huyện cũ vào ô địa chỉ liên hệ.
+    return {**out, "huyenCu": hint} if hint else out
 
 
 _XA_IN_TEXT = re.compile(r"\b(?:xã|phường|thị\s+trấn)\s+((?:[^\W\d_]+[ \t]*){1,4})", re.IGNORECASE)
 
 
-def _current_ward(tinh: str | None, xa: str | None, ocr_text: str = "") -> tuple[str | None, bool]:
+def _current_ward(tinh: str | None, xa: str | None, ocr_text: str = "",
+                  huyen: str | None = None) -> tuple[str | None, bool]:
     """(tên phường/xã chọn được trên cổng, có phải PHỎNG ĐOÁN không). Xã không có trong danh mục hiện
     hành (vd viết tay 'Trung Thuần' OCR ra 'Trung Thiên') → option không khớp, ô Phường/Xã đỏ và cổng
     xoá luôn ô Tỉnh. Gỡ theo thứ tự: lệch đúng 1 ký tự (near_match_ward) → tên xã CÙNG TỈNH được nhắc
-    nguyên văn ở chỗ khác trong hồ sơ (dòng chứng thực/địa điểm lập giấy) và gần giống tên đọc được.
+    nguyên văn ở chỗ khác trong hồ sơ (dòng chứng thực/địa điểm lập giấy) và gần giống tên đọc được →
+    xã mới mang tên HUYỆN CŨ (CCCD 'Đơn Thượng, Hạ Hòa, Phú Thọ' → 'Xã Hạ Hòa'; ô Phường/Xã của cổng là
+    danh sách chung cả tỉnh nên chọn được).
     Không gỡ được → bỏ trống (giữ ô Tỉnh), không giao tên chết cho extension."""
     tinh_bare = _strip_admin_prefix(tinh or "")
     if not xa or not tinh_bare or is_current_area(tinh_bare, xa):
@@ -245,6 +251,9 @@ def _current_ward(tinh: str | None, xa: str | None, ocr_text: str = "") -> tuple
     close = {w for w in found if SequenceMatcher(None, target, _fold(_strip_admin_prefix(w))).ratio() >= 0.75}
     if len(close) == 1:
         return close.pop(), True
+    by_huyen = canonical_ward(tinh_bare, _strip_admin_prefix(huyen)) if huyen else None
+    if by_huyen:
+        return by_huyen, True
     return None, False
 
 
@@ -547,7 +556,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     chu_tt = _remap((_area(chu["tt"]) if chu_cccd_valid else {}) or vb_tt
                     or _owner_addr_from_authorization(ocr_text, anchor), ocr_text)
     chu_tinh = _province_label(chu_tt.get("tinh") or chu_tt.get("tinhThanh"))
-    chu_xa, chu_xa_guess = _current_ward(chu_tinh, _text(chu_tt.get("xa") or chu_tt.get("phuong")), ocr_text)
+    chu_xa, chu_xa_guess = _current_ward(chu_tinh, _text(chu_tt.get("xa") or chu_tt.get("phuong")), ocr_text,
+                                         _text(chu_tt.get("huyenCu")))
     chu_diachi = _text(chu_tt.get("diaChi") or chu_tt.get("chiTiet"))
     # Loại giấy tờ theo ĐỘ DÀI số định danh (12→CCCD, 9→CMND), KHÔNG tin nhãn form; nơi cấp suy theo đó.
     chu_loai_gt = _id_doc_type_by_len(chu_id) or _text(values.get("VanBang_LoaiGiayTo")) or ""
@@ -579,7 +589,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         p_loai = _id_doc_type_by_len(pid) or "Căn cước công dân"
         add("data[idIssuePlace]", _issue_place(noicap, p_loai, ngaycap))
         p_tinh = _province_label(tt.get("tinh") or tt.get("tinhThanh"))
-        p_xa, p_xa_guess = _current_ward(p_tinh, _text(tt.get("xa") or tt.get("phuong")), ocr_text)
+        p_xa, p_xa_guess = _current_ward(p_tinh, _text(tt.get("xa") or tt.get("phuong")), ocr_text,
+                                         _text(tt.get("huyenCu")))
         add("data[province]", p_tinh)
         add("data[district]", p_xa, default=p_xa_guess)
         add("data[address]", _text(tt.get("diaChi") or tt.get("chiTiet")))
@@ -622,7 +633,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         # Thường trú người được ủy quyền; giấy không ghi thì theo thường trú chủ hồ sơ trong hồ sơ.
         p_tt = _remap(_area(proxy["tt"]) or {}, ocr_text) or chu_tt
         p_tinh = _province_label(p_tt.get("tinh") or p_tt.get("tinhThanh"))
-        p_xa, p_xa_guess = _current_ward(p_tinh, _text(p_tt.get("xa") or p_tt.get("phuong")), ocr_text)
+        p_xa, p_xa_guess = _current_ward(p_tinh, _text(p_tt.get("xa") or p_tt.get("phuong")), ocr_text,
+                                         _text(p_tt.get("huyenCu")))
         add("data[province]", p_tinh)
         add("data[district]", p_xa, default=p_xa_guess)
         add("data[address]", _text(p_tt.get("diaChi") or p_tt.get("chiTiet")))

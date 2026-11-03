@@ -104,3 +104,11 @@ test("vòng điền và các vòng retry/điền lại đều dò theo khối", 
     assert.match(fnSource(name), /const root = standardScopeRoot\(f\);/, name);
   }
 });
+
+test("ô ngày flatpickr chọn trên lịch, không dựa vào el._flatpickr (isolated world không thấy)", () => {
+  // Gõ "11/10/2010" vào ô ngày Form.io bị cổng đọc kiểu Mỹ rồi đổi thành 20/10/2011.
+  const fill = fnSource("fillStandardDate");
+  assert.match(fill, /pickFlatpickrCalendarDate\(el, dateObj\)/);
+  assert.doesNotMatch(fill, /_flatpickr/);
+  assert.doesNotMatch(fnSource("fillFormStandard"), /\._flatpickr/);
+});

@@ -576,6 +576,12 @@ from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.attach im
 from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.process import run as cchn_luat_su_process
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cchn_di_tich_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import run as cchn_di_tich_process
+from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cap_lai_cchn_di_tich_attach
+from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import (
+    run as cap_lai_cchn_di_tich_process,
+)
+from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.attach import plan as trich_luc_ho_so_ncc_attach
+from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.process import run as trich_luc_ho_so_ncc_process
 
 PROCEDURES: list[dict] = [
     {
@@ -4526,6 +4532,8 @@ PROCEDURES: list[dict] = [
         "label": "[Tỉnh Bắc Ninh] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm": tệp scan gộp cả bộ → tách từng giấy theo trang rồi mới phân loại.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -6976,6 +6984,35 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-trich-luc-sao-ho-so-nguoi-co-cong",
+        # Mã TTHC 1.010828, nộp tại SỞ Nội vụ (ke_khai_links đặt selectSo) — key TRÙNG ke_khai_links. Cổng Bộ Nội vụ
+        # dichvucongbnv.moha.gov.vn, Form.io cùng họ field với 1.010814 nhưng KHÔNG có mẫu khai đơn: Phần I người
+        # nộp khoá họ tên/ngày sinh/CCCD theo tài khoản, Phần II chủ hồ sơ, bảng "Hồ sơ kèm theo gồm". URL SPA không
+        # mang mã → nhận theo tên thủ tục; không khai urlScope để URL kê khai DVCQG vẫn khớp.
+        "detect": {
+            "textIncludes": ["cấp trích lục hoặc sao hồ sơ người có công"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp trích lục hoặc sao hồ sơ người có công với cách mạng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị hoặc văn bản đề nghị cấp trích lục hoặc sao hồ sơ người có công đã ký — số điện thoại, "
+            "nơi thường trú; đối chiếu nhân thân.\n"
+            "2. CCCD của người làm đơn — họ tên, ngày sinh, giới tính, số/ngày/nơi cấp, nơi cư trú (ưu tiên hơn Đơn).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Ô họ tên, ngày sinh, số CCCD của người nộp cổng lấy theo tài khoản (không sửa được). Người làm đơn trùng "
+            "tài khoản thì tích 'Người nộp hồ sơ là chủ hồ sơ' và điền giới tính, ngày cấp, nơi cấp, địa chỉ, SĐT; nộp "
+            "thay thì chỉ điền 'Thông tin chủ hồ sơ'.\n"
+            "Bước đính kèm: form chỉ có 1 dòng — Đơn đề nghị và CCCD đính CHUNG dòng 1 (giữ nguyên từng tệp, không "
+            "tách trang)."
+        ),
+    },
+    {
         "key": "tro-cap-xa-hoi-hang-thang",
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # checkbox (engine attp-row như ATTP). URL SPA là ObjectId không có MaTTHC → detect theo cụm tên.
@@ -9208,6 +9245,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        # Mã TTHC 1.002003 (QT-10), nộp tại Sở VHTTDL tỉnh — cùng cổng, cùng trang liz với bản cấp mới 1.001822 ngay
+        # trên. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp
+        # /nop-ho-so?MaTTHC=1.002003 của cổng Bộ VHTTDL (engine content/fill-liz.js).
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["matthc=1.002003", "019d2bfd-b5a1-72a9-a768-957fc952b946"],
+        },
+        "label": "Thủ tục cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "mode": "agent",
+        # Bảng 3 dòng (Đơn Mẫu 51 / bổ sung nội dung hành nghề / ảnh 4x6), dò dòng theo chữ như bản cấp mới.
+        "hasAttachmentStep": True,
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đơn đề nghị cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số 51, NĐ "
+            "308/2025/NĐ-CP) — nguồn chính để điền.\n"
+            "2. Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích đã được cấp.\n"
+            "3. Ít nhất 02 ảnh màu 4 cm x 6 cm.\n"
+            "4. Nếu có: bản sao văn bằng, chứng chỉ bồi dưỡng, CCHN xây dựng (trường hợp bổ sung nội dung hành nghề); "
+            "CCCD của người đề nghị (chỉ để điền).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Tài khoản đăng nhập trùng CCCD người đề nghị → điền khối 'Thông tin người nộp hồ sơ'; khác (nộp thay) → "
+            "tự tích 'Thông tin người ủy quyền'. Điền khối đơn cấp lại (số, ngày cấp chứng chỉ cũ, lý do) và trình độ, "
+            "kinh nghiệm ở khối Mẫu 51; lý do hết hạn không có ô riêng → ghi vào 'Ghi chú'.\n"
+            "Đính kèm: Đơn → dòng (1); chứng chỉ đã cấp + văn bằng/chứng chỉ khác → tạm CHUNG dòng (2); ảnh → dòng "
+            "(3).\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết chịu trách nhiệm trước pháp luật…', chưa tích "
+            "thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
         # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
         # đề nghị + thời hạn.
@@ -9529,6 +9601,8 @@ _PIPELINE = {
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
+    "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_process,
+    "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -9811,6 +9885,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_attach,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_attach,
+    "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_attach,
+    "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

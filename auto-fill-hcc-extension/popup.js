@@ -4827,6 +4827,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dinh-chinh-sai-sot-lam-dong" ||
       cfg.key === "giai-quyet-che-do-khang-chien" ||
       cfg.key === "di-chuyen-ho-so-nguoi-huong-tro-cap" ||
+      // [Bộ Nội vụ] 1.010828 trích lục/sao hồ sơ NCC: Phần I khoá theo tài khoản → mốc quyết định tự nộp (tích "Người
+      // nộp là chủ hồ sơ", điền Phần I) hay nộp thay; thiếu mốc là BE luôn coi tự nộp.
+      cfg.key === "cap-trich-luc-sao-ho-so-nguoi-co-cong" ||
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
       cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
@@ -4981,6 +4984,8 @@ ocrBtn.addEventListener("click", async () => {
       // [Bộ VHTTDL] 1.001822 (CCHN bảo quản, tu bổ, phục hồi di tích): mốc tài khoản quyết định tự nộp (điền khối
       // người nộp) hay nộp thay (tích "Thông tin người ủy quyền"); thiếu mốc là BE chỉ điền Đơn Mẫu 51.
       cfg.key === "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" ||
+      // [Bộ VHTTDL] 1.002003 (cấp lại CCHN di tích): cùng trang, cùng contract người nộp với 1.001822.
+      cfg.key === "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||

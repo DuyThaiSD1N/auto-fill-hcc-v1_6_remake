@@ -169,6 +169,7 @@ def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu():
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+    "cap-gcn-attp-cong-thuong",
 ])
 def test_cong_bo_cong_thuong_hieu_dung_buoc_iGate(key):
     """Extension mới báo wizardStep trên host Bộ Công Thương: bước 1 là kê khai, bước 2 là đính kèm (không theo mặc

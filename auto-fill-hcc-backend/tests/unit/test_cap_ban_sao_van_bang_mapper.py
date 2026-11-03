@@ -1,5 +1,6 @@
 """Cấp bản sao văn bằng từ sổ gốc — panel 'Phieu' form MỚI (thay panel Thongtincanhan cũ)."""
 
+from app.channels.handfree.chat.router import _keeps_account_anchor
 from app.pipelines.cap_ban_sao_van_bang_so_goc.process import mapper
 
 _VALUES = {  # trích từ trace thật (Nguyễn Anh Quân)
@@ -131,3 +132,38 @@ def test_co_nguoi_nop_thay_khong_tick():
     got, _ = _map(v, {"applicantFullname": "TRẦN VĂN MẪU", "applicantIdentityNumber": "001203001234"})
     assert "data[isOwnerDossier]" not in got
     assert got["data[fullname]"] == "PHẠM VĂN NỘP"
+
+
+def test_dien_lai_khong_lay_phan_i_vua_dien_lam_moc_tai_khoan():
+    # Lượt 1 ghi chủ văn bằng vào Phần I; lượt "Điền lại" extension đọc lại chính Phần I đó làm formContext.
+    # Router phải giữ mốc tài khoản cũ, không thì mapper tick "Người nộp là chủ hồ sơ" và cổng đổ đè "Sinh ngày".
+    tai_khoan = {"applicantFullname": "LÊ THỊ CÁN BỘ", "applicantIdentityNumber": "001190000111"}
+    luot_1, _ = _map(_TU_NOP, tai_khoan)
+    assert "data[isOwnerDossier]" not in luot_1
+    conv = {"form_context": dict(tai_khoan),
+            "fields": [{"name": k, "value": v} for k, v in luot_1.items()]}
+    doc_lai = {"applicantFullname": luot_1["data[fullname]"], "applicantIdentityNumber": luot_1["data[identityNumber]"]}
+    assert _keeps_account_anchor(conv, doc_lai)
+    conv["fields"] = []  # "Điền lại thông tin" xoá fields — vẫn nhớ giá trị đã điền
+    assert _keeps_account_anchor(conv, doc_lai)
+    # Tài khoản thật đổi người (không phải giá trị mình điền) → nhận mốc mới.
+    assert not _keeps_account_anchor(conv, {"applicantFullname": "ĐỖ VĂN KHÁC", "applicantIdentityNumber": "001190000222"})
+
+
+def test_tai_khoan_that_la_chu_van_bang_van_nhan_moc_moi():
+    conv = {"form_context": {}, "fields": []}
+    assert not _keeps_account_anchor(conv, {"applicantFullname": "TRẦN VĂN MẪU", "applicantIdentityNumber": "001203001234"})
+
+
+def test_xa_doc_sai_khong_khop_danh_muc_lay_xa_mang_ten_huyen_cu():
+    # CCCD "Khu 2, Đơn Thượng, Hạ Hòa, Phú Thọ": OCR đọc sai tên xã (thật là Đan Thượng) → không khớp danh mục.
+    # Ô Phường/Xã của cổng là danh sách chung cả tỉnh → chọn xã mới mang tên huyện cũ, đánh dấu phỏng đoán.
+    tt = {"quocGia": "Việt Nam", "tinh": "Phú Thọ", "huyen": "Hạ Hòa", "xa": "Đơn Thượng", "diaChi": "Khu 2"}
+    v = dict(_TU_NOP, VanBang_ThuongTru=tt, ChuHoSo_ThuongTru=tt, VanBang_DienThoai="0900000000")
+    fields, _ = mapper.enrich([{"name": k, "value": x} for k, x in v.items()], {"formContext": {}})
+    by_name = {f["name"]: f for f in fields}
+    for name in ("data[district]", "data[ownerDistrict]"):
+        assert by_name[name]["value"] == "Xã Hạ Hòa"
+        assert by_name[name].get("default") is True
+    assert by_name["data[ownerProvince]"]["value"] == "Tỉnh Phú Thọ"
+    assert "Hạ Hòa" not in (by_name.get("data[lienhe]", {}).get("value") or "")

@@ -264,7 +264,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             unlock = {"enableInput": True}
             add("data[isOwnerDossierCheck]", self_submit)
             add("data[fullname]", submitter["name"], extra=unlock)
-            add("data[birthday]", submitter["birthday"])
+            if submitter["birthday"]:
+                add("data[birthday]", submitter["birthday"])
+            else:
+                # Cổng đổ sẵn ngày sinh tài khoản VNeID, không phải của người nộp theo tờ khai → xoá + tô đỏ.
+                out.append({"name": "data[birthday]", "comp": UI_COMP_BY_NAME["data[birthday]"], "value": "",
+                            "clear": True, "markEmpty": True, **unlock})
+                seen.add("data[birthday]")
             add("data[gender]", submitter["gender"])
             add("data[identityNumber]", submitter["identity"], extra=unlock)
             add("data[identityDate]", submitter["identityDate"])

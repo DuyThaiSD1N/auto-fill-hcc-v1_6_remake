@@ -6353,6 +6353,59 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        # Mã TTHC 1.002003 (QT-10), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với bản cấp mới 1.001822 ngay
+        # trên: nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.002003. ke_khai_links đặt
+        # selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.002003",
+                "019d2bfd-b5a1-72a9-a768-957fc952b946",
+            ],
+        },
+        "label": "Thủ tục cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "shortLabel": "Cấp lại chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "subtitle": "Chứng chỉ tu bổ di tích hết hạn, hỏng, mất hoặc cần bổ sung nội dung",
+        "icon": "🏛️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b5a1-72a9-a768-957fc952b946",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số "
+             "51)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "chung_chi_da_cap", "name": "Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích đã được cấp",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "Ít nhất 02 ảnh màu 4x6", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Bản sao văn bằng, chứng chỉ (trường hợp bổ sung nội dung hành nghề)",
+             "icon": "🎓", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số 51) — nguồn chính "
+            "để điền.\n"
+            "2. Chứng chỉ hành nghề đã được cấp.\n"
+            "3. Ít nhất 02 ảnh màu 4x6.\n"
+            "4. Nếu có: bản sao văn bằng, chứng chỉ (khi bổ sung nội dung hành nghề); căn cước của người đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tài khoản trùng căn cước người đề nghị thì điền khối người nộp; nộp thay thì điền khối 'Thông tin người "
+            "ủy quyền'.\n"
+            "Bước đính kèm: Đơn → dòng 1; chứng chỉ đã cấp + văn bằng, chứng chỉ khác → dòng 2; ảnh → dòng 3."
+        ),
+    },
+    {
         "key": "gia-han-giay-phep-xay-dung",
         "flowProfile": "xay-dung",
         # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
@@ -6438,6 +6491,70 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: giấy đăng ký doanh nghiệp / địa điểm kinh doanh, bản thuyết minh cơ sở vật chất, giấy xác "
             "nhận tập huấn an toàn thực phẩm, giấy xác nhận đủ sức khỏe, giấy ủy quyền.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-gcn-attp-cong-thuong",
+        # Mã TTHC 2.000591, bản CẤP LẦN ĐẦU của thủ tục cấp lại ngay trên — cùng cổng Bộ Công Thương, cùng cách chọn
+        # cơ quan (ke_khai selectSo → Sở Công Thương). Key TRÙNG lõi và ke_khai_links → process/attach tự nối. Tiêu đề
+        # chỉ khác bản cấp lại chữ "lại" → khai uuid + textPriority. maePortal chỉ chạy khi extension báo trang "Cơ
+        # quan thực hiện" (maeAgencyBlock) như bản khuyến mại; không có ô "Trường hợp giải quyết".
+        "detect": {
+            "urlScope": ["dichvucong-tthc.moit.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bf8-330c-77dd-8058-19a40f5959f5"],
+            "textIncludes": [
+                "Cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "2.000591",
+        "label": "Cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
+        "shortLabel": "Cấp giấy chứng nhận an toàn thực phẩm (Sở Công Thương)",
+        "subtitle": "Cơ sở sản xuất, kinh doanh thực phẩm xin cấp giấy chứng nhận lần đầu",
+        "icon": "🍱",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-330c-77dd-8058-19a40f5959f5",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Công Thương",
+        "maePortal": True,
+        "maeNoProcess": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bảng thành phần hồ sơ 5 dòng cố định (planner lõi attp-row: Đơn 01a / Thuyết minh / GCN ĐKKD / tập huấn /
+        # sức khỏe); căn cước, giấy ủy quyền đính chung dòng Đơn.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm (Mẫu số 01a) "
+             "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "thuyet_minh", "name": "Bản thuyết minh về cơ sở vật chất, trang thiết bị, dụng cụ (Mẫu 02a/02b)",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "dkkd", "name": "Bản sao Giấy chứng nhận đăng ký kinh doanh / doanh nghiệp / hộ kinh doanh",
+             "icon": "🏪", "sides": 1, "repeatable": True},
+            {"key": "tap_huan", "name": "Giấy xác nhận đã được tập huấn kiến thức về an toàn thực phẩm", "icon": "📋",
+             "sides": 1, "repeatable": True},
+            {"key": "suc_khoe", "name": "Danh sách tổng hợp / giấy xác nhận đủ sức khỏe của chủ cơ sở và người trực "
+             "tiếp sản xuất, kinh doanh", "icon": "🩺", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp hồ sơ, thêm giấy ủy quyền nếu nộp thay",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm (Mẫu số 01a), đã ký — nguồn "
+            "chính để điền.\n"
+            "2. Bản thuyết minh về cơ sở vật chất, trang thiết bị, dụng cụ (Mẫu 02a/02b).\n"
+            "3. Giấy chứng nhận đăng ký kinh doanh / doanh nghiệp / hộ kinh doanh — tên cơ sở, mã số, địa chỉ, ngành "
+            "nghề.\n"
+            "4. Giấy xác nhận đã tập huấn kiến thức an toàn thực phẩm; danh sách / giấy xác nhận đủ sức khỏe.\n"
+            "5. Căn cước của người nộp hồ sơ; nộp thay thì thêm giấy ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn / Thuyết minh / Giấy đăng ký kinh doanh / Giấy tập huấn / Danh sách sức khỏe vào 5 "
+            "dòng tương ứng; căn cước, giấy ủy quyền đính chung dòng Đơn."
         ),
     },
     {
