@@ -3,6 +3,25 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.26.4",
+    date: "2/11/2026",
+    items: [
+      "Đính kèm lại: dòng đã có tệp vẫn được nhận ra đúng thứ tự, chỉ gắn tệp chưa có trên dòng và báo số tệp bỏ qua; mục \"Giấy tờ khác\" (iGate) không thêm dòng trùng.",
+      "Bắc Ninh: điền lại khối người được ủy quyền không làm cổng nạp đè form trống; đổi loại đối tượng thì chờ khối mới hiện ra rồi mới điền.",
+    ],
+  },
+  {
+    version: "1.26",
+    date: "2/11/2026",
+    items: [
+      "Tệp quét lớn (trên 10 MB) được nén trước khi gửi đọc giấy tờ, mạng chậm vẫn gửi nhanh; tệp đính lên cổng vẫn là bản gốc.",
+      "Bấm điền/đính kèm lại không phải tải lại tệp đã gửi ở lượt trước, đỡ chờ lâu ở bước đính kèm.",
+      "Đính kèm tách nhiều tab: nộp xong một tab thì báo \"Đã nộp X/N hồ sơ\", nộp đủ các tab mới hỏi đánh giá.",
+      "Trợ cấp thờ cúng liệt sĩ và trợ cấp khi người có công từ trần: bật \"Có tách hồ sơ khi đính kèm\" thì tệp PDF gộp được tách thành từng giấy tờ riêng, bỏ trang trắng.",
+      "Mã hỗ trợ nằm cùng hàng nút ở chân panel, không bị thủ tục dài đẩy khuất.",
+    ],
+  },
+  {
     version: "1.25.10",
     date: "29/10/2026",
     items: [

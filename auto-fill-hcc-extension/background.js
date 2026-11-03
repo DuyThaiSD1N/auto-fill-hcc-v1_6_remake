@@ -223,6 +223,7 @@ async function openNextSplitQueueItemUnlocked() {
         await chrome.storage.local.set({
           ["autofill_session_" + tab.id]: { dossierId: item.dossierId },
         });
+        await addSplitSubmitMember(item.dossierId, tab.id);
       }
       if (!await setPendingMap(pendingMap)) throw new Error("Không lưu được bundle đính kèm cho tab kế tiếp.");
 
@@ -298,6 +299,7 @@ async function finishSplitQueueTabUnlocked(tabId, result = {}) {
 // Dọn state theo tab khi tab đóng (key panel + session lưu theo tabId, tránh tồn đọng storage).
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   try {
+    void noteSplitTabClosed(tabId);
     chrome.storage.local.remove([
       "autofill_panel_open_" + tabId,
       "autofill_session_" + tabId,
@@ -343,6 +345,58 @@ async function markRatingPending(dossierId, tabId) {
     [RATING_PENDING_KEY]: { dossierId, tabId: tabId ?? null, at: Date.now() },
   });
   return true;
+}
+
+// Đính tách nhiều tab: mọi tab dùng CHUNG khóa hồ sơ nên cờ đánh giá phải chờ đủ số TAB đã bấm
+// nộp — hỏi ở cú bấm đầu là hỏi khi các tab khác còn chưa nộp. Đếm theo tab: một tab bấm lại
+// nhiều lần vẫn là một hồ sơ. Tab của lượt tách đóng mà chưa nộp → bỏ hồ sơ đó, trừ khỏi tổng.
+// Hồ sơ không có sổ (không tách) → hỏi ngay ở cú bấm như cũ.
+const SPLIT_SUBMIT_KEY = "autofill_split_submit";
+
+async function startSplitSubmitBook(items, originTabId, total) {
+  const dossierId = String(items.find((it) => it?.dossierId)?.dossierId || "");
+  await mutateSubmitStore(SPLIT_SUBMIT_KEY, () => (dossierId && total > 1
+    ? { dossierId, originTabId, total, members: originTabId ? [originTabId] : [], tabs: [], closed: [],
+      done: 0, expected: total, released: false, at: Date.now() }
+    : null));
+}
+
+async function addSplitSubmitMember(dossierId, tabId) {
+  await mutateSubmitStore(SPLIT_SUBMIT_KEY, (book) => {
+    if (book && !book.released && book.dossierId === dossierId && !book.members.includes(tabId)) {
+      book.members.push(tabId);
+    }
+    return book || null;
+  });
+}
+
+// null = không có lượt tách đang chờ khớp `match` → để luồng cũ quyết.
+async function updateSplitSubmitBook(match, change) {
+  let out = null;
+  await mutateSubmitStore(SPLIT_SUBMIT_KEY, (book) => {
+    if (!book || book.released || !match(book)) return book || null;
+    change(book);
+    book.done = book.tabs.length;
+    book.expected = Math.max(1, book.done, book.total - book.closed.length);
+    if (book.done >= book.expected) book.released = true;
+    out = { dossierId: book.dossierId, originTabId: book.originTabId, done: book.done,
+      total: book.expected, complete: book.released };
+    return book;
+  });
+  return out;
+}
+
+async function noteSplitTabClosed(tabId) {
+  const split = await updateSplitSubmitBook(
+    (book) => book.members.includes(tabId) && !book.tabs.includes(tabId) && !book.closed.includes(tabId),
+    (book) => { book.closed.push(tabId); });
+  if (!split?.complete) return;
+  // Tab đóng là tab cuối còn chờ → các tab còn lại đã nộp hết. Hỏi ở tab gốc (panel nào dựng
+  // lại trước cũng đọc được cờ ở storage).
+  await markRatingPending(split.dossierId, split.originTabId);
+  try {
+    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId: split.originTabId, dossierId: split.dossierId });
+  } catch (_) { /* panel chưa dựng → cờ ở storage lo tiếp */ }
 }
 
 // ── Gửi mốc nộp lên BE: hàng đợi bền + làm mới token ──
@@ -517,9 +571,16 @@ async function afterDossierSubmitted(tabId, dossierId) {
   // Bấm nộp = coi như đã nộp. Không chờ cổng báo "thành công": câu chữ đó khác nhau theo cổng
   // và chỉ thu thập được bằng cách nộp hồ sơ thật, nên chờ nó là không bao giờ hỏi được ở
   // phần lớn cổng. Đổi lại: có thể hỏi cả khi cổng báo thiếu giấy tờ — chấp nhận.
-  await markRatingPending(dossierId, tabId);
+  const split = await updateSplitSubmitBook((book) => book.dossierId === dossierId, (book) => {
+    if (!book.tabs.includes(tabId)) book.tabs.push(tabId);
+  });
+  const waiting = split && !split.complete;
+  if (!waiting) await markRatingPending(dossierId, tabId);
   try {
-    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId, dossierId });
+    await chrome.runtime.sendMessage({
+      action: "dossierSubmitted", tabId, dossierId,
+      ...(waiting ? { splitSubmit: { done: split.done, total: split.total } } : {}),
+    });
   } catch (_) { /* panel chưa dựng lại sau điều hướng → cờ ở storage lo tiếp */ }
 }
 
@@ -716,6 +777,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             runId: String(msg.runId || `split-${Date.now()}`),
           };
           const total = Math.max(Number(msg.totalBundles) || 0, items.length + (waitForTabId ? 1 : 0));
+          await startSplitSubmitBook(items, Number(msg.originTabId) || null, total);
           const initialCompleted = Math.max(0, Math.min(total, Number(msg.initialCompleted) || 0));
           const initialSucceeded = Math.max(0, Math.min(initialCompleted, Number(msg.initialSucceeded) || 0));
           if (!await setSplitAttachProgress({
@@ -814,6 +876,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
       });
       sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+  // Nút "Đã nộp hết, đánh giá": cú bấm của tab còn lại bị lọt (Enter, nút lạ) → cán bộ tự chốt.
+  if (msg?.action === "splitSubmitRelease") {
+    (async () => {
+      let dossierId = "";
+      await mutateSubmitStore(SPLIT_SUBMIT_KEY, (book) => {
+        if (book && !book.released && book.tabs.length) {
+          book.released = true;
+          dossierId = book.dossierId;
+        }
+        return book || null;
+      });
+      if (dossierId) await markRatingPending(dossierId, sender?.tab?.id);
+      sendResponse({ ok: !!dossierId });
     })();
     return true;
   }

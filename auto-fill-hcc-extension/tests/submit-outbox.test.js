@@ -89,7 +89,8 @@ test("popup vừa làm mới trước (refresh của ta bị từ chối) → d�
 });
 
 test("mất mạng → mốc nằm lại hàng đợi + hẹn giờ gửi lại, lần sau gửi được", async () => {
-  const h = harness({ responses: ["network", "network"] });
+  // Mỗi lượt gửi thử cả BE chính lẫn phụ; lượt đầu có thể đã xong trước settle → lượt kế cũng phải mất mạng.
+  const h = harness({ responses: ["network", "network", "network", "network"] });
   await h.api.reportDossierSubmitClick(7, "h", "", "c1", Date.now());
   await settle(h);
   assert.equal(outbox(h).length, 1);
@@ -100,7 +101,7 @@ test("mất mạng → mốc nằm lại hàng đợi + hẹn giờ gửi lại,
 });
 
 test("fetch không ném với 401 — trước đây vẫn tưởng đã ghi; giờ còn trong hàng đợi", async () => {
-  const h = harness({ responses: [{ status: 401 }] }); // refresh hỏng, storage không có token mới
+  const h = harness({ responses: [{ status: 401 }, { status: 401 }] }); // refresh hỏng, storage không có token mới
   await h.api.reportDossierSubmitClick(7, "h", "", "c1", Date.now());
   await settle(h);
   assert.equal(outbox(h).length, 1);

@@ -24,23 +24,79 @@ function dataUrlToBlob(dataUrl, fallbackType) {
 
 // Dựng multipart cho /api/v2/process — DÙNG CHUNG cho fill (điền) và attach (đính kèm).
 // Field khớp app/v2/router.py: action, procedure, options(JSON), fileMetadata(JSON), files[] (binary).
-// Metadata per-file phải có name/type/role để BE dựng lại FileItem lõi v1.
-function buildV2ProcessForm(action, body) {
+// Metadata per-file phải có name/type/role để BE dựng lại FileItem lõi v1. Tệp có trong `stored`
+// chỉ gửi mã sha256 (metadata.stored), không kèm binary.
+function buildV2ProcessForm(action, body, blobs, stored) {
   const form = new FormData();
   form.append("action", action);
   form.append("procedure", (body && body.procedure) || "");
   form.append("options", JSON.stringify((body && body.options) || {}));
   const files = body && Array.isArray(body.files) ? body.files : [];
-  const fileMetadata = files.map((f) => ({
+  const fileMetadata = files.map((f, i) => ({
     name: (f && f.name) || "file",
     type: (f && f.type) || "application/octet-stream",
     role: (f && f.role) || "doc",
+    ...(stored && stored[i] ? { stored: stored[i] } : {}),
   }));
   form.append("fileMetadata", JSON.stringify(fileMetadata));
-  for (const f of files) {
-    form.append("files", dataUrlToBlob(f && f.dataUrl, f && f.type), (f && f.name) || "file");
-  }
+  files.forEach((f, i) => {
+    if (stored && stored[i]) return;
+    const blob = blobs ? blobs[i] : dataUrlToBlob(f && f.dataUrl, f && f.type);
+    form.append("files", blob, (f && f.name) || "file");
+  });
   return form;
+}
+
+// sha256 các tệp máy chủ đã lưu ở lượt điền/đính trước (BE trả fileRefs): lượt sau chỉ gửi mã thay
+// vì đẩy lại cả tệp — mạng chậm mất cả phút cho tệp vài chục MB ở bước đính kèm.
+const serverFileHashes = new Set();
+
+async function sha256Hex(blob) {
+  if (!globalThis.crypto || !globalThis.crypto.subtle) return "";
+  try {
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  } catch (_) {
+    return "";
+  }
+}
+
+// Bước điền gửi bản nén (lib/nenTep.js) cho tệp rất nặng. Bước đính gửi bản gốc: planner đính kèm kiểm
+// trần dung lượng cổng theo đúng tệp BE nhận, trong khi tệp đính lên cổng là bản gốc. Nhớ bản nén theo tệp
+// gốc: lượt điền lại (vd nút người ủy quyền) gửi đúng bản cũ → BE nhận ra tệp đã lưu, trúng cache OCR.
+const shrunkUploads = new Map();
+
+async function blobForUpload(action, f) {
+  const blob = dataUrlToBlob(f && f.dataUrl, f && f.type);
+  if (action !== "fill" || typeof NenTep === "undefined" || blob.size <= NenTep.MIN_BYTES) return blob;
+  if (!shrunkUploads.has(f.dataUrl)) {
+    shrunkUploads.set(f.dataUrl, NenTep.forUpload(blob));
+    if (shrunkUploads.size > 8) shrunkUploads.delete(shrunkUploads.keys().next().value);
+  }
+  return shrunkUploads.get(f.dataUrl);
+}
+
+async function postV2Process(action, body) {
+  const files = body && Array.isArray(body.files) ? body.files : [];
+  const blobs = await Promise.all(files.map((f) => blobForUpload(action, f)));
+  const hashes = await Promise.all(blobs.map(sha256Hex));
+  const stored = hashes.map((h) => (h && serverFileHashes.has(h) ? h : ""));
+  const send = (refs) => apiJson("/api/v2/process", {
+    method: "POST",
+    body: buildV2ProcessForm(action, body, blobs, refs),
+  });
+  let res;
+  try {
+    res = await send(stored.some(Boolean) ? stored : null);
+  } catch (err) {
+    // Máy chủ không còn tệp (đã chuyển kho / backend dự phòng bản cũ) → gửi lại đầy đủ.
+    const code = err && err.data && err.data.error;
+    if (!stored.some(Boolean) || !["STORED_FILE_MISSING", "BAD_FILE_METADATA"].includes(code)) throw err;
+    serverFileHashes.clear();
+    res = await send(null);
+  }
+  if (res && res.fileRefs) hashes.forEach((h) => h && serverFileHashes.add(h));
+  return res;
 }
 
 // Các endpoint BE gói sẵn cho popup dùng.
@@ -83,7 +139,7 @@ const api = {
   process(body) {
     // v2 multipart (action=fill): binary đi thẳng, không base64-JSON phình payload. Dùng chung
     // endpoint với attach; BE tái dùng lõi v1 nên kết quả (fields/extracted/...) giữ nguyên.
-    return apiJson("/api/v2/process", { method: "POST", body: buildV2ProcessForm("fill", body) });
+    return postV2Process("fill", body);
   },
 
   // Ảnh HEIC → JPG (BE đổi; Chrome không giải mã được HEIC). BE trả JSON có dataUrl vì backendFetch đọc mọi
@@ -110,10 +166,7 @@ const api = {
         attachSupports: ["attp-row", "fixed-slot", "add-document-dialog", "fixed-slot+add-document-dialog"],
       },
     };
-    return apiJson("/api/v2/process", {
-      method: "POST",
-      body: buildV2ProcessForm("attach", merged),
-    });
+    return postV2Process("attach", merged);
   },
 
   // Case FE tự đính file: chỉ gửi JSON metadata để BE tạo trace/mã hỗ trợ.

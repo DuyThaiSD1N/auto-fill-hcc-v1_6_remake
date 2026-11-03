@@ -83,6 +83,7 @@ const requestModeSelect = document.getElementById("requestMode");
 const requestModeLabel = document.querySelector('label[for="requestMode"]');
 const statusEl = document.getElementById("status");
 const statusDetailsToggle = document.getElementById("statusDetailsToggle");
+const splitSubmitDoneBtn = document.getElementById("splitSubmitDoneBtn");
 const statusDetailsEl = document.getElementById("statusDetails");
 const reviewCardEl = document.getElementById("reviewCard");
 const supportCodeBtn = document.getElementById("supportCode");
@@ -331,6 +332,8 @@ if (statusDetailsToggle && statusDetailsEl) {
 // setStatus nhận input là Error (ưu tiên map theo MÃ lỗi BE) hoặc string; lỗi luôn được rút gọn an toàn.
 function setStatus(input, type, details = []) {
   setStatusDetails(details);
+  // Nút thoát chỉ đi kèm đúng dòng "Đã nộp X/N hồ sơ" — trạng thái khác thay chỗ thì ẩn theo.
+  if (splitSubmitDoneBtn) splitSubmitDoneBtn.hidden = true;
   if (type === "err") {
     const code = (typeof errorSupportCode === "function") ? errorSupportCode(input) : null;
     if (code) showSupportCode(code);
@@ -4342,6 +4345,8 @@ let RATING_CARD = null;
 const RATING_PENDING_KEY = "autofill_rating_pending";
 const RATING_DONE_KEY = "autofill_rating_done";
 const RATING_DONE_MAX = 200;
+// Sổ đếm tab của lượt đính tách — background ghi (SPLIT_SUBMIT_KEY), sửa thì sửa cả hai.
+const SPLIT_SUBMIT_KEY = "autofill_split_submit";
 // Mặt cười theo mức: 5 → 1. Vẽ bằng SVG thay vì emoji để cùng nét trên mọi máy cán bộ.
 const RATING_FACE_COLOR = { 5: "#12a06a", 4: "#4aa96c", 3: "#c79a2b", 2: "#d97036", 1: "#cf4b3f" };
 function ratingFaceSvg(v) {
@@ -4492,6 +4497,29 @@ function openRating(dossierId) {
   renderRatingView();
 }
 
+/** Đính tách nhiều tab: tab này đã nộp mà tab khác chưa → báo tiến độ thay vì hỏi đánh giá, kèm
+ *  nút thoát cho khi cú bấm ở tab còn lại bị lọt. `progress` thiếu (panel vừa dựng lại sau điều
+ *  hướng) thì đọc sổ ở storage. */
+async function showSplitSubmitNotice(progress) {
+  if (!splitSubmitDoneBtn || !RATING_CARD) return;
+  let p = progress;
+  if (!p) {
+    const book = (await chrome.storage.local.get(SPLIT_SUBMIT_KEY))?.[SPLIT_SUBMIT_KEY];
+    if (!book || book.released || !book.tabs?.includes(EMBEDDED_TAB_ID)) return;
+    p = { done: book.done, total: book.expected };
+  }
+  await restoreRatingEnabled();
+  if (!ratingEnabled) return;
+  setStatus(`Đã nộp ${p.done}/${p.total} hồ sơ. Nộp nốt các tab còn lại, xong sẽ hỏi đánh giá.`, "ok");
+  splitSubmitDoneBtn.hidden = false;
+}
+
+splitSubmitDoneBtn?.addEventListener("click", async () => {
+  setStatus("");
+  await sendToBackground({ action: "splitSubmitRelease" });
+  await resumePendingRating();
+});
+
 /** Đọc cờ ở storage rồi mở màn đánh giá. Gọi lúc panel dựng xong — bấm nộp thường kéo theo
  *  điều hướng/postback làm panel nạp lại, nên cờ ở storage mới là đường sống sót, không phải
  *  message runtime (message đó bắn lúc panel còn chưa tồn tại). */
@@ -4501,7 +4529,10 @@ async function resumePendingRating() {
     const store = await chrome.storage.local.get([RATING_PENDING_KEY, RATING_DONE_KEY]);
     const pending = store?.[RATING_PENDING_KEY];
     const dossierId = String(pending?.dossierId || "").trim();
-    if (!dossierId) return;
+    if (!dossierId) {
+      await showSplitSubmitNotice();
+      return;
+    }
     const done = Array.isArray(store?.[RATING_DONE_KEY]) ? store[RATING_DONE_KEY] : [];
     if (done.includes(dossierId)) return;
     // Cờ quá cũ (cán bộ đóng trình duyệt rồi mở lại hôm sau) thì bỏ — hỏi lúc đó là vô nghĩa.
@@ -6445,7 +6476,8 @@ async function initDestSection() {
       dossierSubmitted = true;
       // Panel còn sống → mở màn đánh giá ngay. Trang điều hướng làm panel nạp lại thì message
       // này mất, nhưng cờ ở storage vẫn còn và resumePendingRating() sẽ mở.
-      void resumePendingRating();
+      if (msg.splitSubmit) void showSplitSubmitNotice(msg.splitSubmit);
+      else void resumePendingRating();
     }
   });
 }

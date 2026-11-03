@@ -320,19 +320,29 @@
       `input[type="checkbox"][name="${PFX}boSungDoituongKhac"]`,
     );
     if (!checkbox) return { error: "Không thấy khối Thông tin trong trường hợp được ủy quyền." };
-    setChecked(checkbox);
     const typeSelect = document.querySelector(`select[name="${PFX}loaiDoiTuongKhac"]`);
-    if (!typeSelect || !(await fillSelect2ByTextAsync(typeSelect, optionText))) {
-      return { error: `Không chọn được đối tượng ủy quyền "${optionText}".` };
-    }
-    // Đổi loại đối tượng khiến Liferay nạp khối chi tiết bằng AJAX. Chờ ô đầu tiên xuất hiện trước
-    // khi fill để tránh trạng thái nút đã bấm nhưng toàn bộ field bị unmatched.
-    for (let i = 0; i < 15; i++) {
-      if (document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) break;
-      await sleep(200);
-    }
-    if (!document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) {
-      return { error: "Cổng chưa tải xong khối thông tin người được ủy quyền. Vui lòng bấm lại." };
+    if (!typeSelect) return { error: `Không chọn được đối tượng ủy quyền "${optionText}".` };
+    // Mỗi change của ô loại đối tượng (kể cả chọn lại đúng loại đang chọn) và tick ô bổ sung khi đã có loại đều
+    // khiến cổng nạp lại khối chi tiết bằng AJAX rồi đè form trống lên. Khối đã mở đúng loại → điền thẳng.
+    const nameSel = `[name="${PFX}doiTuongKhachoTen"]`;
+    const oldName = document.querySelector(nameSel);
+    const current = [...typeSelect.options].find((o) => o.value === typeSelect.value);
+    const sameType = !!current && fold(current.textContent) === fold(optionText);
+    if (!(checkbox.checked && oldName && sameType)) {
+      const tickLoads = !checkbox.checked && sameType;
+      setChecked(checkbox);
+      if (!tickLoads && !(await fillSelect2ByTextAsync(typeSelect, optionText))) {
+        return { error: `Không chọn được đối tượng ủy quyền "${optionText}".` };
+      }
+      // Chờ ô họ tên của khối MỚI (khác ô cũ sắp bị đè) rồi mới điền, tránh điền vào form AJAX sẽ thay.
+      const loaded = () => {
+        const el = document.querySelector(nameSel);
+        return !!el && el !== oldName;
+      };
+      for (let i = 0; i < 15 && !loaded(); i++) await sleep(200);
+      if (!loaded()) {
+        return { error: "Cổng chưa tải xong khối thông tin người được ủy quyền. Vui lòng bấm lại." };
+      }
     }
     return fillFormBacNinh(fields);
   }
