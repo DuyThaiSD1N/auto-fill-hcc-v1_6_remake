@@ -107,6 +107,25 @@ _TU_PHAP_ATTACH_GUIDED_STEPS = {
     ],
 }
 
+
+# Cổng Bộ VHTTDL (form liz, trang nộp một trang) — xem lizFlow ở entry thủ tục. commitLabel = nhãn ô cam kết NGUYÊN VĂN
+# trên trang (extension khớp theo chữ, ô không có id). Hai cách nhận kết quả = ô "Đề nghị nhận kết quả bản giấy tại nhà
+# qua Bưu chính công ích (VNPost)" bỏ tích / tích (extension gạt theo postOffice, không khớp nhãn dưới đây).
+_LIZ_FLOW = {
+    "commitLabel": ("Tôi cam kết chịu trách nhiệm trước pháp luật về tính hợp pháp, chính xác của các giấy tờ có trong "
+                    "hồ sơ và cung cấp đầy đủ thông tin có liên quan"),
+}
+_LIZ_GUIDED_STEPS = {
+    "enabled": False,
+    "submitLabel": "Lưu và nộp hồ sơ",
+    "resultMethods": [
+        {"key": "counter", "label": "Nhận kết quả tại bộ phận một cửa", "icon": "🏢",
+         "desc": "Không nhận qua bưu điện, đến bộ phận một cửa lấy kết quả.", "default": True},
+        {"key": "postal", "label": "Nhận kết quả bản giấy tại nhà qua bưu điện (VNPost)", "icon": "📮",
+         "desc": "Bưu điện chuyển kết quả tới địa chỉ người nhận.", "needsInput": True},
+    ],
+}
+
 PROCEDURES: list[dict] = [
     {
         "key": "khai-sinh-dang-ky",
@@ -1735,6 +1754,12 @@ PROCEDURES: list[dict] = [
         # (đính kèm), bước 3 = phí/captcha, bước 4 = nộp. Không có bước "chủ hồ sơ" riêng
         # (ownerStep=5 là giá trị không bao giờ khớp — FE chỉ phát wizardStep 1-4).
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng NN&MT iGate (stepper 4 bước, tờ khai Form.io) → dẫn đủ 4 bước bằng luồng chung chat/bxd; cần cờ riêng
+        # vì bản extension cũ chưa chạy content/bxd/*.js trên host này.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -4316,6 +4341,10 @@ PROCEDURES: list[dict] = [
         # kê khai. Danh sách phương tiện (Phần III) nạp từ hồ sơ xe của tài khoản → người dân tự
         # bấm "Thêm xe"; extension chỉ điền Phần I/II và tick dòng đính kèm.
         "flowProfile": "xay-dung",
+        # Cổng Bộ Xây dựng iGate (stepper 4 bước, tờ khai Form.io) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "label": "Cấp, cấp lại Giấy phép liên vận giữa Việt Nam và Lào",
         "shortLabel": "Giấy phép liên vận Việt Nam - Lào",
         "subtitle": "Cấp mới / cấp lại giấy phép liên vận cho xe đi Lào",
@@ -4463,6 +4492,10 @@ PROCEDURES: list[dict] = [
         # ("gia-han-luu-hanh-phuong-tien-lao-tai-viet-nam") nên uuid + mã phải khai tay ở đây; ke_khai khai
         # selectSo → agencyProvinceOnly + agencySoFirst như liên vận Việt – Lào.
         "flowProfile": "xay-dung",
+        # Cổng Bộ Xây dựng iGate (stepper 4 bước, tờ khai Form.io) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
         "detect": {
             "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
             "urlIncludes": [
@@ -6121,6 +6154,12 @@ PROCEDURES: list[dict] = [
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        # Trang nộp MỘT TRANG (form liz + Thành phần hồ sơ + ô cam kết + ô VNPost + nút "Lưu và nộp hồ sơ"): extension
+        # khai supportsLizFlow thì đi luồng trang một trang (chat/tu_phap_moi.py) — một nút điền + đính, bổ sung ô
+        # trống, Tiếp tục = tích ô cam kết (nút nộp của cổng chỉ mở sau khi tích) + hỏi bưu điện, rồi nộp. Bản cũ đi
+        # luồng chung như trước.
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6218,6 +6257,12 @@ PROCEDURES: list[dict] = [
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        # Trang nộp MỘT TRANG (form liz + Thành phần hồ sơ + ô cam kết + ô VNPost + nút "Lưu và nộp hồ sơ"): extension
+        # khai supportsLizFlow thì đi luồng trang một trang (chat/tu_phap_moi.py) — một nút điền + đính, bổ sung ô
+        # trống, Tiếp tục = tích ô cam kết (nút nộp của cổng chỉ mở sau khi tích) + hỏi bưu điện, rồi nộp. Bản cũ đi
+        # luồng chung như trước.
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6359,6 +6404,11 @@ PROCEDURES: list[dict] = [
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Công Thương",
+        # Sang cổng bộ còn trang "Cơ quan thực hiện" form#ngSelectAgencyForm1 (cùng component Bộ Nội vụ): chọn Tỉnh
+        # thì cổng tự điền Sở Công Thương → bấm "Đồng ý và tiếp tục" = nhánh maePortal. Không có ô "Trường hợp giải
+        # quyết" nên không khai variants; maeNoProcess báo extension khỏi chờ ô đó.
+        "maePortal": True,
+        "maeNoProcess": True,
         # Cổng Bộ Công Thương cùng stepper iGate 4 bước với cổng NN&MT (1 Thông tin hồ sơ = kê khai, 2 Thành phần hồ
         # sơ): extension báo wizardStep trên host này → khai đúng bước, không thì BE hiểu theo mặc định tư pháp.
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},

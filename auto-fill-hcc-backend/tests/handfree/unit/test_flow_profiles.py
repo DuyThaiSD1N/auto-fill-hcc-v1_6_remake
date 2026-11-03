@@ -515,7 +515,9 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert so_level.get("flowProfile") is None and so_level["needsAgencySelect"] is True, key
         assert so_level["agencyProvinceOnly"] is True and so_level["agencySoFirst"] is True, key
         assert so_level["agencyDeptLabel"] == dept, key
-        assert "maePortal" not in so_level, key
+        # Khuyến mại: cổng Bộ Công Thương còn trang "Cơ quan thực hiện" (Tỉnh → Sở tự điền → Đồng ý).
+        assert so_level.get("maePortal") is (True if key == "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai"
+                                             else None), key
         assert so_level.get("wizard") == (mae_fishing["wizard"] if key in moit else None), key
     # DVCQG chọn đủ Tỉnh + Xã, không gạt "Sở", không wizard iGate.
     for key in ("thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha", "xet-tuyen-vien-chuc", "xet-tuyen-cong-chuc",

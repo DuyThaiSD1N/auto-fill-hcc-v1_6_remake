@@ -259,6 +259,36 @@
     return "ok";
   }
 
+  // Nhãn chính trước, rồi từng alias — vẫn trong đúng section (nhãn cổng in khác bản mapping 1–2 chữ).
+  function locateField(index, f) {
+    for (const label of [f.name, ...(Array.isArray(f.aliases) ? f.aliases : [])]) {
+      const mf = findField(index, f.section || "", label);
+      if (mf) return mf;
+    }
+    return f.after ? findFieldAfter(index, f) : null;
+  }
+
+  // Ảnh chụp form (content/form-snapshot): đọc lại ô theo đúng cách tìm ô lúc điền.
+  function readLizField(f) {
+    if (f.comp === "liz-checkbox") {
+      const input = findLizCheckbox(f.name, f.option, f.aliases)?.querySelector("input[type=checkbox]");
+      return input ? input.checked : null;
+    }
+    const mf = locateField(buildIndex(), f);
+    if (!mf) return null;
+    if (f.comp === "liz-select") {
+      return String(mf.querySelector(".mat-select-value-text, .mat-mdc-select-value-text")?.textContent || "").trim();
+    }
+    return String(inputOf(mf)?.value || "").trim();
+  }
+
+  // Điền đúng MỘT mat-form-field đã tìm sẵn (content/liz/field-review.js, content/liz/one-page.js): ô chọn qua overlay
+  // (có ô lọc thì gõ lọc), ô chữ / ngày gõ thẳng.
+  async function fillLizFieldElement(matField, value) {
+    if (matField.querySelector("mat-select")) return fillLizSelect(matField, value);
+    return fillLizText(matField, value);
+  }
+
   async function fillFormLiz(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
@@ -276,13 +306,7 @@
         }
         continue;
       }
-      // Nhãn chính trước, rồi từng alias — vẫn trong đúng section (nhãn cổng in khác bản mapping 1–2 chữ).
-      let mf = null;
-      for (const label of [f.name, ...(Array.isArray(f.aliases) ? f.aliases : [])]) {
-        mf = findField(index, f.section || "", label);
-        if (mf) break;
-      }
-      if (!mf && f.after) mf = findFieldAfter(index, f);
+      const mf = locateField(index, f);
       if (!mf) {
         result.notFound.push(f.name);
         console.warn(`[AutoFill-LIZ] Không thấy ô (section="${f.section}", label="${f.name}")`);
@@ -305,6 +329,8 @@
   }
 
   H.fillFormLiz = fillFormLiz;
+  H.readLizField = readLizField;
+  H.fillLizFieldElement = fillLizFieldElement;
 
   // Lần đầu mở link nộp hồ sơ (/nop-ho-so?MaTTHC=…&vneid=1, DVCQG chuyển sang) khi chưa đăng nhập: cổng đẩy sang
   // VNeID, xác thực xong lại đưa về TRANG CHỦ chứ không quay lại link → công dân phải back rồi vào lại lần 2. Nhớ link

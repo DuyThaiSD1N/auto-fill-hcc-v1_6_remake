@@ -175,6 +175,9 @@
     // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
     // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.
     supportsBacNinhTabFlow: true,
+    // Trang nộp một trang của cổng Bộ VHTTDL (form liz): bổ sung ô (content/liz/field-review.js), tích ô cam kết, gạt
+    // ô VNPost + điền người nhận, bấm Lưu và nộp hồ sơ (content/liz/one-page.js). Thiếu cờ → BE giữ luồng chung.
+    supportsLizFlow: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -1463,9 +1466,10 @@
     if (moved) await verifyPortalState(); // đẩy trạng thái trang lên ngay để bước đính kèm chạy liền
   }
 
-  async function runGuidedSubmit() {
+  async function runGuidedSubmit(a) {
     setStatus("Đang gửi hồ sơ…");
-    const res = await sendToContent({ action: "guidedSubmit" });
+    // Cổng liz: nhãn ô cam kết để engine tích lại trước khi bấm (nút nộp của cổng chỉ mở sau khi tích).
+    const res = await sendToContent({ action: "guidedSubmit", commitLabel: a?.commitLabel || "" });
     setStatus("");
     // Nộp được hay không do chính cổng trả lời (màn xác nhận / event submitted). Ở đây chỉ
     // báo cú bấm có ăn không: không bấm được, hoặc cổng nháy toast báo thiếu.
@@ -1484,6 +1488,9 @@
     const res = await sendToContent({
       action: "selectResultMethod", label: a.label || "", allLabels: a.allLabels || [],
       needsInput: !!a.needsInput,
+      // Cổng liz: tích ô cam kết + trạng thái cần có của ô VNPost (không có = engine không đụng ô đó).
+      commitLabel: a.commitLabel || "",
+      ...(typeof a.postOffice === "boolean" ? { postOffice: a.postOffice } : {}),
     });
     setStatus("");
     await ask(`__action:result_method_report:${JSON.stringify({
@@ -1493,6 +1500,7 @@
       filled: Array.isArray(res?.filled) ? res.filled : [],
       missing: Array.isArray(res?.missing) ? res.missing : [],
       error: res?.error || "",
+      ...(typeof res?.commit === "boolean" ? { commit: res.commit } : {}),
     })}`, "system");
   }
 
@@ -5056,7 +5064,7 @@
         const expect = Number(a.expectStep) || 0;
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
-        setTimeout(() => { void runGuidedSubmit(); }, 0);
+        setTimeout(() => { void runGuidedSubmit(a); }, 0);
       } else if (a.type === "open_eform") {
         setTimeout(() => { void runOpenEform(a); }, 0);
       } else if (a.type === "declaration_preview") {
@@ -5341,6 +5349,8 @@
           // Hộp thoại Bộ Xây dựng: nhãn NGUYÊN VĂN công dân đã chọn trên thẻ mae_dialog_choice.
           agencyExact: a.agencyExact || "",
           processExact: a.processExact || "",
+          // Trang chọn cơ quan không có ô "Trường hợp giải quyết" → engine khỏi chờ ô đó.
+          noProcess: a.noProcess === true,
         });
         if (res?.ok) {
           setStatus("Đã chọn cơ quan và trường hợp xong ✓");

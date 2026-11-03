@@ -331,3 +331,25 @@ def test_hkd_nut_nop_la_INPUT_khong_phai_button():
         src = (root / ext / "content.js").read_text("utf-8")
         assert 'input[type="submit"]' in src, ext
         assert 'tagName === "INPUT" ? el.value' in src, ext
+
+
+def test_ve_chon_thu_tuc_khong_xoa_ten_thu_tuc_cua_ho_so_da_lam(monkeypatch):
+    """Nói "làm thủ tục khác" sau khi đã điền/nộp: phiên về chọn thủ tục (procedure_key None) nhưng vẫn sync hồ sơ cũ
+    → không được ghi đè procedure/procedure_label thành rỗng (dòng nhật ký hiện "—")."""
+    from app.dossiers import repo
+    from app.channels.handfree.chat import router
+    calls = []
+
+    class FakeCol:
+        async def update_one(self, flt, update, upsert=False):
+            calls.append(update["$set"])
+
+    class FakeDb:
+        dossiers = FakeCol()
+    monkeypatch.setattr(repo, "get_db", lambda: FakeDb())
+    conv = _conv(dossier_started_at=datetime(2026, 11, 2, 7, 0, tzinfo=timezone.utc), trace_request_id="req_x")
+    asyncio.run(router._sync_dossier(conv, persist=False))
+    assert calls[-1]["procedure"] == "khai-sinh-dang-ky" and calls[-1]["procedure_label"]
+    flow._reset_for_new_procedure(conv)
+    asyncio.run(router._sync_dossier(conv, persist=False))
+    assert "procedure" not in calls[-1] and "procedure_label" not in calls[-1]

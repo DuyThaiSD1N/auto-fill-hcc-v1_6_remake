@@ -20,6 +20,9 @@ Cổng liên thông (form Angular, chat/lien_thong.py) cần thêm cờ supports
 (tờ khai Form.io, chat/bxd) cần cờ supportsBxdFlow (content/bxd/field-review-formio.js): bước kế tiếp là "Thành phần
 hồ sơ". Cổng Bắc Ninh (4 tab cùng trang, chat/bac_ninh.py) cần cờ supportsBacNinhTabFlow
 (content/bacninh/field-review.js): bước kế tiếp là tab sau (khối ủy quyền → Nhập đơn đăng ký → Thành phần hồ sơ).
+Cổng Bộ VHTTDL (form liz, registry lizFlow) cũng là trang một trang (chat/tu_phap_moi.py) nhưng đọc ô bằng
+content/liz/field-review.js → cần cờ supportsLizFlow thay cho supportsFieldReviewSurvey; đủ ô thì bước kế tiếp là
+[Tiếp tục] (tích cam kết, hỏi bưu điện).
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -37,6 +40,7 @@ FLOW_V2_CAPABILITY = "supportsFlowV2"
 LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
 BXD_CAPABILITY = "supportsBxdFlow"
 BAC_NINH_CAPABILITY = "supportsBacNinhTabFlow"
+LIZ_CAPABILITY = "supportsLizFlow"
 OTHER_TEXT_CAPABILITY = "supportsFieldReviewOtherText"
 NESTED_CAPABILITY = "supportsFieldReviewNested"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
@@ -66,7 +70,12 @@ def config(proc: dict | None) -> dict | None:
 
 
 def single_page(proc: dict | None) -> bool:
-    return (proc or {}).get("flowProfile") == "tu-phap-moi"
+    return (proc or {}).get("flowProfile") == "tu-phap-moi" or liz(proc)
+
+
+def liz(proc: dict | None) -> bool:
+    """Cổng Bộ VHTTDL (form liz, một trang): đủ ô bắt buộc → Tiếp tục (tích cam kết, hỏi bưu điện) → nộp."""
+    return bool((proc or {}).get("lizFlow"))
 
 
 def lien_thong(proc: dict | None) -> bool:
@@ -103,7 +112,9 @@ def active(conv: dict, proc: dict | None) -> bool:
     return (
         config(proc) is not None
         and caps.get(CAPABILITY) is True
-        and (not single_page(proc) or caps.get(SURVEY_CAPABILITY) is True)
+        and (not single_page(proc) or liz(proc) or caps.get(SURVEY_CAPABILITY) is True)
+        # Ô liz chỉ content/liz/field-review.js đọc được.
+        and (not liz(proc) or caps.get(LIZ_CAPABILITY) is True)
         # Extension chỉ có bộ đọc eForm / SurveyJS không đọc được form Angular của cổng liên thông.
         and (not lien_thong(proc) or lien_thong_supported(caps, proc))
         # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
@@ -275,6 +286,9 @@ def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
                     optional_hint_tts=vi.FLOW2_OPTIONAL_HINT["tts"] if optional else "")
     label = str((guided_steps.default_result_method(proc) or {}).get("label") or "")
     done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
+    if liz(proc):
+        # Đã qua câu hỏi bưu điện (ô người nhận vừa hỏi xong) → nút còn lại là nộp; chưa thì Tiếp tục.
+        return _say(vi.LIZ_READY_SUBMIT if st.get("liz_result_step") else vi.LIZ_READY, done=done)
     return _say(vi.FLOW2_READY if label else vi.FLOW2_READY_NO_DEFAULT, done=done, label=label)
 
 
@@ -290,7 +304,7 @@ def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, st
         return md, tts, next_chips(conv, proc, keep)
     if stats["optional"] and not _wizard_form(proc):
         st["ready_said"] = True
-        md, tts = _say(vi.FLOW2_OPTIONAL_ONLY, **stats)
+        md, tts = _say(vi.LIZ_OPTIONAL_ONLY if liz(proc) else vi.FLOW2_OPTIONAL_ONLY, **stats)
         return md, tts, [{**_start_chip(), "solid": False}, *keep]
     md, tts = _ready(proc, st)
     return md, tts, next_chips(conv, proc, keep)

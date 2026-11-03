@@ -86,7 +86,7 @@ test("báo kết quả chạy NGOÀI runActions, không gọi ask() lồng trong
   const code = block[1].replace(/\/\/.*/g, ""); // chú thích có nhắc "ask()" để giải thích bẫy
   assert.doesNotMatch(code, /\bask\(/, "runActions không được gọi ask() trực tiếp");
   assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedNext\(phase, expect\); \}, 0\)/);
-  assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedSubmit\(\); \}, 0\)/);
+  assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedSubmit\(a?\); \}, 0\)/);
 });
 
 test("không bao giờ có hai nút chuyển bước sống cùng lúc", () => {

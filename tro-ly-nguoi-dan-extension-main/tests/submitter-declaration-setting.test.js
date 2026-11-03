@@ -37,7 +37,7 @@ const fillCore = stripComments(fs.readFileSync(path.join(root, "content/fill-cor
 const enableFn = slice(fillCore, "function enableStandardFieldInputs", "\n}\n");
 assert.match(enableFn, /node\.removeAttribute\("disabled"\)/);
 assert.match(slice(fillCore, "async function fillFormStandard", "try {"),
-  /if \(f\.enableInput\) enableStandardFieldInputs\(f, candidates, occurrence\);/,
+  /if \(f\.enableInput\) enableStandardFieldInputs\(f, candidates, occurrence(, root)?\);/,
   "phải bỏ khoá TRƯỚC khi điền ô");
 
 // Field `clear` (vd ngày sinh tài khoản VNeID khi tờ khai không có ngày sinh đầy đủ): xoá trắng + tô đỏ, và bước
@@ -45,7 +45,7 @@ assert.match(slice(fillCore, "async function fillFormStandard", "try {"),
 const loop = slice(fillCore, "async function fillFormStandard", "async function reapplyEmptyStandardTextFields");
 assert.match(loop, /f\.clear \? clearStandardDate\(el\)/);
 assert.match(loop, /if \(f\.clear\) ok = clearStandardInput\(el\);/);
-assert.match(loop, /if \(ok && f\.clear\) markStandardCleared\(f, candidates, occurrence\);/);
+assert.match(loop, /if \(ok && f\.clear\) markStandardCleared\(f, candidates, occurrence(, root)?\);/);
 assert.match(slice(fillCore, "async function reapplyEmptyStandardTextFields", "\n}\n"), /!f\.clear/);
 
 console.log("submitter declaration setting (handfree) passed");

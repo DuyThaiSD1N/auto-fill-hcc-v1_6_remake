@@ -610,7 +610,17 @@ function pickStandardControl(elements, occurrence = null) {
   return pool.find((el) => !el.disabled) || pool[0] || null;
 }
 
-function collectStandardInputs(names) {
+function standardById(root, id) {
+  if (!id) return null;
+  if (root === document) return document.getElementById(id);
+  try {
+    return root.querySelector(`#${CSS.escape(id)}`);
+  } catch (e) {
+    return null;
+  }
+}
+
+function collectStandardInputs(names, root = document) {
   const candidates = standardNameVariants(names);
   const found = [];
   const add = (el) => {
@@ -618,55 +628,55 @@ function collectStandardInputs(names) {
   };
   for (const n of candidates) {
     const escaped = CSS.escape(n);
-    document.querySelectorAll(`input[name="${escaped}"], textarea[name="${escaped}"]`).forEach(add);
+    root.querySelectorAll(`input[name="${escaped}"], textarea[name="${escaped}"]`).forEach(add);
   }
   for (const n of candidates) {
     const base = n.startsWith("CongDan_") ? n.slice("CongDan_".length) : n;
-    add(document.getElementById("_fc" + base));
-    add(document.getElementById(base));
+    add(standardById(root, "_fc" + base));
+    add(standardById(root, base));
   }
   const wanted = new Set(candidates.map((n) => String(n).toLowerCase()));
-  Array.from(document.querySelectorAll("input[name], textarea[name]")).forEach((node) => {
+  Array.from(root.querySelectorAll("input[name], textarea[name]")).forEach((node) => {
     if (wanted.has(String(node.getAttribute("name") || "").toLowerCase())) add(node);
   });
   return found;
 }
 
-function findStandardInput(names, occurrence = null) {
-  return pickStandardControl(collectStandardInputs(names), occurrence);
+function findStandardInput(names, occurrence = null, root = document) {
+  return pickStandardControl(collectStandardInputs(names, root), occurrence);
 }
 
-function findStandardInputForField(field, candidates, occurrence = null) {
-  return findStandardInput(candidates, occurrence) || findStandardDatagridFallbackInput(field);
+function findStandardInputForField(field, candidates, occurrence = null, root = document) {
+  return findStandardInput(candidates, occurrence, root) || findStandardDatagridFallbackInput(field);
 }
 
-function collectStandardSelects(names) {
+function collectStandardSelects(names, root = document) {
   const candidates = standardNameVariants(names);
   const found = [];
   const add = (el) => {
     if (el && el.tagName?.toLowerCase?.() === "select" && !found.includes(el)) found.push(el);
   };
   for (const n of candidates) {
-    document.querySelectorAll(`select[name="${CSS.escape(n)}"]`).forEach(add);
+    root.querySelectorAll(`select[name="${CSS.escape(n)}"]`).forEach(add);
   }
   for (const n of candidates) {
     const base = n.startsWith("CongDan_") ? n.slice("CongDan_".length) : n;
-    add(document.getElementById("_fc" + base));
-    add(document.getElementById(base));
+    add(standardById(root, "_fc" + base));
+    add(standardById(root, base));
   }
   const wanted = new Set(candidates.map((n) => String(n).toLowerCase()));
-  Array.from(document.querySelectorAll("select[name]")).forEach((node) => {
+  Array.from(root.querySelectorAll("select[name]")).forEach((node) => {
     if (wanted.has(String(node.getAttribute("name") || "").toLowerCase())) add(node);
   });
   return found;
 }
 
-function findStandardSelect(names, occurrence = null) {
-  return pickStandardControl(collectStandardSelects(names), occurrence);
+function findStandardSelect(names, occurrence = null, root = document) {
+  return pickStandardControl(collectStandardSelects(names, root), occurrence);
 }
 
-function findStandardSelects(names, occurrence = null) {
-  const found = collectStandardSelects(names).filter(standardControlVisible);
+function findStandardSelects(names, occurrence = null, root = document) {
+  const found = collectStandardSelects(names, root).filter(standardControlVisible);
   const explicitOccurrence = standardOccurrence(occurrence);
   if (explicitOccurrence !== null) {
     const selected = found[explicitOccurrence];
@@ -675,30 +685,30 @@ function findStandardSelects(names, occurrence = null) {
   return found;
 }
 
-function findStandardCheckbox(names, optionValue = null) {
+function findStandardCheckbox(names, optionValue = null, root = document) {
   const candidates = standardNameVariants(names);
   const wantedOption = optionValue == null ? "" : String(optionValue);
   for (const n of candidates) {
     const selector = `input[type="checkbox"][name="${CSS.escape(n)}"]`;
     const el = wantedOption
-      ? Array.from(document.querySelectorAll(selector)).find((node) => String(node.value) === wantedOption)
-      : document.querySelector(selector);
+      ? Array.from(root.querySelectorAll(selector)).find((node) => String(node.value) === wantedOption)
+      : root.querySelector(selector);
     if (el) return el;
   }
   const wanted = new Set(candidates.map((n) => String(n).toLowerCase()));
-  return Array.from(document.querySelectorAll('input[type="checkbox"][name]')).find((node) =>
+  return Array.from(root.querySelectorAll('input[type="checkbox"][name]')).find((node) =>
     wanted.has(String(node.getAttribute("name") || "").toLowerCase()) &&
     (!wantedOption || String(node.value) === wantedOption)
   ) || null;
 }
 
-function findStandardRadio(names) {
+function findStandardRadio(names, root = document) {
   const candidates = standardNameVariants(names);
   for (const n of candidates) {
-    const el = document.querySelector(`input[type="radio"][name="${CSS.escape(n)}"]`);
+    const el = root.querySelector(`input[type="radio"][name="${CSS.escape(n)}"]`);
     if (el) return el;
   }
-  return Array.from(document.querySelectorAll('input[type="radio"][name]')).find((node) =>
+  return Array.from(root.querySelectorAll('input[type="radio"][name]')).find((node) =>
     candidates.some((name) => formioRadioNameMatches(node.getAttribute("name"), name))
   ) || null;
 }
@@ -860,7 +870,8 @@ function isAreaSelectName(name) {
   // change_owner_type_idfld: ô "Lý do thay đổi thông tin chủ hộ kinh doanh" (HkdOnline) là select con
   //   cascade theo "Loại đăng ký thay đổi" (CHANGE_OWNER_TYPE_TITLE_IDFld) — danh sách lý do nạp lại
   //   SAU khi đổi Loại, không nhận area-select thì thử 1 lần rồi bỏ, hụt mất "Khác" dù giá trị đúng.
-  return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld/.test(String(name || "").toLowerCase());
+  // diachihoatdong][tinhthanh|xaphuong: Tỉnh/Phường-xã của đơn vị KDVT (Bộ XD, cấp phù hiệu).
+  return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)/.test(String(name || "").toLowerCase());
 }
 
 function isAreaSelectField(f) {
@@ -1090,12 +1101,12 @@ function fillStandardSelect(el, value) {
   return true;
 }
 
-async function fillStandardSelectAny(el, value, names = [], occurrence = null, deadline = 0) {
+async function fillStandardSelectAny(el, value, names = [], occurrence = null, deadline = 0, root = document) {
   const isAreaSelect = names.some(isAreaSelectName) || isAreaSelectName(el?.name);
   if (isAreaSelect && !deadline) deadline = Date.now() + STANDARD_AREA_FIELD_BUDGET_MS;
   if (!el && names.length) {
     el = await waitForStandardSelect(
-      () => findStandardSelect(names, occurrence),
+      () => findStandardSelect(names, occurrence, root),
       isAreaSelect ? 3000 : 2500,
       100,
       deadline
@@ -1108,7 +1119,7 @@ async function fillStandardSelectAny(el, value, names = [], occurrence = null, d
     : { settled: false, hasValue: false };
   if (initialOptionState.settled && !initialOptionState.hasValue) return false;
   const enabled = await waitForStandardSelect(() => {
-    const current = el || (names.length ? findStandardSelect(names, occurrence) : null);
+    const current = el || (names.length ? findStandardSelect(names, occurrence, root) : null);
     const group = standardMarkTarget(current);
     const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
     if (!current.disabled && (
@@ -1132,14 +1143,14 @@ async function fillStandardSelectAny(el, value, names = [], occurrence = null, d
   return fillStandardSelect(el, value);
 }
 
-async function fillStandardSelectAll(names, value, occurrence = null, deadline = 0) {
+async function fillStandardSelectAll(names, value, occurrence = null, deadline = 0, root = document) {
   const isAreaSelect = names.some(isAreaSelectName);
   if (isAreaSelect && !deadline) deadline = Date.now() + STANDARD_AREA_FIELD_BUDGET_MS;
   let filledAny = false;
   for (const delay of [0, 250, 600, 1200]) {
     if (standardSelectBudgetLeft(deadline) <= 0) break;
     if (delay && !await sleepForStandardSelect(delay, deadline)) break;
-    const selects = findStandardSelects(names, occurrence);
+    const selects = findStandardSelects(names, occurrence, root);
     if (!selects.length) continue;
 
     const states = selects.map((sel) => standardSelectOptionState(sel, value, names));
@@ -1156,11 +1167,11 @@ async function fillStandardSelectAll(names, value, occurrence = null, deadline =
       }
       const state = standardSelectOptionState(sel, value, names);
       if (isAreaSelect && state.settled && !state.hasValue) continue;
-      if (await fillStandardSelectAny(sel, value, names, occurrence, deadline)) filledAny = true;
+      if (await fillStandardSelectAny(sel, value, names, occurrence, deadline, root)) filledAny = true;
       await sleepForStandardSelect(120, deadline);
     }
 
-    const latest = findStandardSelects(names, occurrence);
+    const latest = findStandardSelects(names, occurrence, root);
     if (latest.length && latest.every((sel) => currentStandardSelectMatches(sel, value))) {
       return true;
     }
@@ -1418,8 +1429,8 @@ function clearStandardInput(el) {
   return !String(el.value || "").trim();
 }
 
-function markStandardCleared(f, candidates, occurrence) {
-  const el = findStandardInputForField(f, candidates, occurrence) || findStandardSelect(candidates, occurrence);
+function markStandardCleared(f, candidates, occurrence, root = document) {
+  const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
   const target = standardMarkTarget(el);
   if (!target?.classList) return;
   target.classList.remove("autofill-filled");
@@ -1429,8 +1440,8 @@ function markStandardCleared(f, candidates, occurrence) {
 // Field `enableInput`: ô cổng khoá (disabled) theo tài khoản VNeID nhưng người nộp theo tờ khai là người
 // khác → bỏ disabled ở MỌI input của component (ô ngày Form.io = input ẩn flatpickr + ô hiển thị) rồi
 // mới ghi, để cán bộ còn sửa được khi OCR sai. Bản copy của auto-fill-hcc-extension/content.js.
-function enableStandardFieldInputs(f, candidates, occurrence) {
-  const el = findStandardInputForField(f, candidates, occurrence) || findStandardSelect(candidates, occurrence);
+function enableStandardFieldInputs(f, candidates, occurrence, root = document) {
+  const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
   const group = el?.closest?.(".formio-component") || standardMarkTarget(el);
   const inputs = group?.querySelectorAll ? Array.from(group.querySelectorAll("input, select, textarea")) : [];
   if (el && !inputs.includes(el)) inputs.push(el);
@@ -1442,24 +1453,318 @@ function enableStandardFieldInputs(f, candidates, occurrence) {
   }
 }
 
+// comp "dom-click": NÚT Form.io mở panel nhập liệu (vd "Thêm phương tiện" của cổng Bộ Xây dựng, thủ tục cấp
+// phù hiệu) — phải bấm TRƯỚC các ô trong panel (BE phát field này ngay trước các ô đó). f.buttonKey = key
+// component (wrapper .formio-component-<key>); f.waitName = một ô trong panel: đã hiện thì KHÔNG bấm lại (điền
+// lần 2 không đóng/mở panel), bấm xong chờ ô đó render rồi mới điền tiếp.
+// Nút này là CÔNG TẮC (bấm lần nữa là đóng panel) → mỗi lượt chỉ MỘT cú click, và chỉ bấm lại khi panel
+// vẫn chưa mở sau khi chờ đủ. Nút trong khối Thẩm định render trễ → chờ nút xuất hiện + hết disabled.
+// Không có waitName (vd nút "Thêm" đưa xe trong panel vào danh sách, BE phát SAU các ô panel) → bấm một lần.
+// f.skipIfListed = chữ định danh bản ghi (vd biển số xe): đã có trong một ô bảng trên trang (bản ghi đã thêm
+// ở lượt điền trước) → vòng điền bỏ nút + các ô cùng panel, không thêm trùng (xem fillFormStandard).
+// Bản copy của auto-fill-hcc-extension/content.js.
+function standardListHasText(text) {
+  const want = norm(text);
+  if (!want) return false;
+  return Array.from(document.querySelectorAll("table td")).some((td) => norm(td.textContent) === want);
+}
+
+// Khối cha của panel mà nút dom-click phục vụ: theo ô chờ (nút mở panel) hoặc theo chính tên nút (nút "Thêm"
+// nằm trong panel).
+function standardClickPanelPrefix(f) {
+  return String(f.waitName || f.name || "").replace(/\[[^\]]*\]$/, "");
+}
+
+async function clickStandardButton(f, candidates) {
+  // Panel coi là ĐÃ MỞ khi ô chờ hiện, HOẶC bất kỳ ô nào cùng khối cha của nó (data[A][B][x] → data[A][B])
+  // hiện ra — phòng tên ô chờ lệch so với form thật mà bấm lần 2 lại đóng mất panel.
+  const panelPrefix = String(f.waitName || "").replace(/\[[^\]]*\]$/, "");
+  const panelReady = () => {
+    if (!f.waitName) return null;
+    const el = document.querySelector(`[name="${CSS.escape(f.waitName)}"]`);
+    if (el && standardControlVisible(el)) return el;
+    if (!panelPrefix.includes("[")) return null;
+    return Array.from(document.querySelectorAll(`[name^="${CSS.escape(panelPrefix)}["]`))
+      .find(standardControlVisible) || null;
+  };
+  const findButton = () => {
+    const btn = candidates.map((n) => document.querySelector(`button[name="${CSS.escape(n)}"]`)).find(Boolean) ||
+      (f.buttonKey ? document.querySelector(`.formio-component-${CSS.escape(f.buttonKey)} button`) : null);
+    return btn && !btn.disabled ? btn : null;
+  };
+  if (panelReady()) return true;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const btn = findButton() || await waitFor(findButton, 2000, 100);
+    if (!btn) {
+      console.warn(`[AutoFill-STD] Không thấy nút ${f.name} (lần ${attempt}).`);
+      return false;
+    }
+    try { btn.scrollIntoView({ block: "center" }); } catch (_) { /* ignore */ }
+    await sleep(150);
+    // Chuỗi sự kiện chuột như thao tác tay; click() cuối là cú click DUY NHẤT (không bắn thêm "click").
+    ["pointerover", "mouseover", "pointerdown", "mousedown", "pointerup", "mouseup"].forEach((type) => {
+      try { btn.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window })); } catch (_) { /* ignore */ }
+    });
+    btn.click();
+    if (!f.waitName) { await sleep(400); return true; }
+    if (await waitFor(panelReady, 3000, 100)) {
+      // Choices/flatpickr trong panel dựng sau input một nhịp.
+      await sleep(300);
+      console.log(`[AutoFill-STD] Đã bấm ${f.name} — panel mở (lần ${attempt}).`);
+      return true;
+    }
+    console.warn(`[AutoFill-STD] Bấm ${f.name} lần ${attempt} nhưng panel chưa mở${attempt < 2 ? " → bấm lại" : ""}.`);
+  }
+  return false;
+}
+
+// "scope" = CSS selector của KHỐI chứa ô, giới hạn vùng dò DOM cho đúng MỘT ô.
+//
+// Cổng DVCQG dựng nhiều khối trên CÙNG một trang bằng các form Form.io riêng nên field-key lặp lại:
+// data[birthday] vừa là ngày sinh người nộp hồ sơ (cổng tự đổ tài khoản VNeID đang đăng nhập), vừa là
+// ngày sinh trong tờ đơn — hai ô đó là HAI NGƯỜI khác nhau khi nộp thay. Không giới hạn vùng dò thì
+// querySelector luôn trúng ô ĐẦU TIÊN theo thứ tự tài liệu, tức khối người nộp.
+//
+// "scopeAway" = tên ô CHỈ có ở KHỐI CẤM (khối người nộp). Selector scope có thể trỏ vào panel BỌC cả khối
+// cấm — lúc đó querySelector vẫn trúng ô của khối cấm. Khai scopeAway để phát hiện vùng dò còn quá rộng.
+//
+// "scopeNear" = tên một ô CÙNG KHỐI với ô đang điền nhưng KHÔNG trùng tên với khối cấm. Dùng làm neo để
+// leo ngược lên đúng khối.
+//
+// Trả về: document (không khai scope) | Element (khối cần dò) | null (không tách được → BỎ ô).
+// Bản copy của auto-fill-hcc-extension/content.js.
+function standardScopeRoot(field) {
+  const selector = String(field?.scope || "").trim();
+  const away = standardScopeAwayNames(field);
+  let root = document;
+  if (selector) {
+    try {
+      root = document.querySelector(selector);
+    } catch (e) {
+      // Selector hỏng → KHÔNG được rơi về cả trang: dò cả trang là ghi đè thẳng lên khối cấm.
+      console.warn(`[AutoFill-STD] scope không hợp lệ "${selector}" → bỏ ô ${field?.name}:`, e);
+      return null;
+    }
+  }
+  if (!away.length) return root;
+  // Vùng dò không chứa khối cấm (hoặc trang này không render khối cấm) → đã đủ hẹp.
+  if (root && !standardScopeHasControl(root, away)) return root;
+  const narrowed = standardAnchoredScopeRoot(field?.scopeNear, away);
+  if (narrowed) return narrowed;
+  // Thà bỏ trống cho cán bộ điền tay còn hơn ghi đè nhân thân người khác vào khối cấm.
+  console.warn(`[AutoFill-STD] ${field?.name}: không tách được vùng dò khỏi khối "${away.join(", ")}" → bỏ ô.`);
+  return null;
+}
+
+function standardScopeAwayNames(field) {
+  const raw = field?.scopeAway;
+  return (Array.isArray(raw) ? raw : [raw]).map((name) => String(name ?? "").trim()).filter(Boolean);
+}
+
+function standardScopeHasControl(root, names) {
+  if (!root) return false;
+  // Dò theo cùng bộ biến thể tên mà vòng điền dùng: khối người nộp do Angular dựng mang name TRẦN, còn BE gửi
+  // khoá Form.io "data[...]" — so nguyên văn thì không thấy mốc, vùng dò tưởng đã đủ hẹp.
+  return standardNameVariants(names).some((name) => {
+    try {
+      return !!root.querySelector(`[name="${CSS.escape(name)}"]`);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+// Khối cần dò = tổ tiên CAO NHẤT của ô neo mà vẫn CHƯA chứa khối cấm.
+function standardAnchoredScopeRoot(near, away) {
+  const anchorName = String(near ?? "").trim();
+  if (!anchorName || !away.length) return null;
+  let anchor = null;
+  try {
+    anchor = document.querySelector(`[name="${CSS.escape(anchorName)}"]`);
+  } catch (e) {
+    anchor = null;
+  }
+  let node = anchor?.parentElement || null;
+  let root = null;
+  while (node && node !== document.body && node !== document.documentElement) {
+    if (standardScopeHasControl(node, away)) break;
+    root = node;
+    node = node.parentElement;
+  }
+  return root;
+}
+
+// ---- KHỐI NHÂN THÂN CẤM GHI (vd "Thông tin người nộp hồ sơ" = tài khoản VNeID đang đăng nhập) ----
+// BE không phát ô nào của khối này nên MỌI giá trị của ta xuất hiện ở đó đều là ghi đè ngoài ý muốn (vùng
+// dò trượt, vòng điền lại, hoặc cổng tự sao chép sang). Chụp giá trị khối cấm TRƯỚC khi điền, xong xuôi ô
+// nào đổi thành ĐÚNG dữ liệu ta vừa ghi thì trả lại giá trị cũ. Giá trị lạ (do cổng tự đổi) không đụng tới.
+// Khối cấm nhận từ payload: mốc scopeAway nào KHÔNG phải ô dữ liệu ta sẽ điền thì chỉ có ở khối cấm.
+const STANDARD_DATA_COMPS = new Set(["dom-input", "dom-date", "dom-datetime", "dom-select", "raw"]);
+
+function standardUnscopedDataNames(fields) {
+  const names = new Set();
+  for (const f of fields || []) {
+    // Ô khai scope dùng chung field-key với khối cấm → không phải mốc. Checkbox/radio không phải ô nhân thân.
+    if (f?.scope || f?.scopeNear || !STANDARD_DATA_COMPS.has(f?.comp)) continue;
+    for (const n of fieldCandidates(f)) names.add(String(n));
+  }
+  return names;
+}
+
+function standardForbiddenRoots(fields) {
+  const allowed = standardUnscopedDataNames(fields);
+  const guards = new Set();
+  for (const f of fields || []) {
+    for (const name of standardScopeAwayNames(f)) {
+      if (!allowed.has(name)) guards.add(name);
+    }
+  }
+  const stop = Array.from(allowed);
+  const roots = [];
+  for (const guard of guards) {
+    let marker = null;
+    try {
+      marker = document.querySelector(`[name="${CSS.escape(guard)}"]`);
+    } catch (e) {
+      marker = null;
+    }
+    if (!marker) continue;
+    let node = marker.parentElement;
+    let root = null;
+    while (node && node !== document.body && node !== document.documentElement) {
+      if (stop.length && standardScopeHasControl(node, stop)) break;
+      root = node;
+      node = node.parentElement;
+    }
+    if (root && !roots.includes(root)) roots.push(root);
+  }
+  return roots;
+}
+
+function standardInsideForbidden(roots, node) {
+  if (!node || node === document) return false;
+  return (roots || []).some((root) => root === node || (root.contains && root.contains(node)));
+}
+
+function standardControlText(el) {
+  if (!el) return "";
+  if (String(el.tagName || "").toLowerCase() === "select") {
+    const option = el.options ? el.options[el.selectedIndex] : null;
+    return String((option && option.text) ?? el.value ?? "");
+  }
+  return String(el.value ?? "");
+}
+
+function snapshotStandardControls(roots) {
+  const snapshot = [];
+  for (const root of roots || []) {
+    const controls = root.querySelectorAll ? root.querySelectorAll("input, textarea, select") : [];
+    Array.from(controls).forEach((el) => {
+      snapshot.push({ el, value: el.value, text: standardControlText(el) });
+    });
+  }
+  return snapshot;
+}
+
+// Khoá so khớp "giá trị này là của ta": bỏ dấu, bỏ khoảng trắng.
+function standardValueKey(value) {
+  return foldChoiceText(String(value ?? "")).replace(/\s+/g, "");
+}
+
+function standardWrittenValueKeys(fields) {
+  const keys = new Set();
+  const add = (value) => {
+    if (value === true || value === false || value === null || value === undefined) return;
+    const key = standardValueKey(value);
+    if (key.length >= 2) keys.add(key);
+  };
+  for (const f of fields || []) {
+    const value = f?.value;
+    if (value && typeof value === "object") Object.values(value).forEach(add);
+    else add(value);
+  }
+  return keys;
+}
+
+function restoreStandardForbidden(snapshot, writtenKeys) {
+  const reverted = [];
+  for (const item of snapshot || []) {
+    const el = item?.el;
+    if (!el || el.isConnected === false) continue;
+    const now = standardControlText(el);
+    if (now === item.text) continue;
+    if (!writtenKeys.has(standardValueKey(now))) continue;
+    try {
+      el.value = item.value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (e) {
+      continue;
+    }
+    const target = standardMarkTarget(el);
+    if (target && target.classList) target.classList.remove("autofill-filled");
+    reverted.push(el.name || el.id || "(?)");
+  }
+  return reverted;
+}
+
+// Vùng dò của ô khai scope, CÓ CHỜ khối render: khối tờ đơn do Form.io dựng trễ hơn khối đầu trang, không
+// chờ thì ô của tờ đơn bị bỏ trắng oan.
+async function standardScopeRootWaiting(field) {
+  const root = standardScopeRoot(field);
+  if (root || !field?.scope) return root;
+  return await waitFor(() => standardScopeRoot(field), 3000, 100);
+}
+
 async function fillFormStandard(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
   await ensureStandardDatagridRows(fields);
+  // Chụp khối nhân thân cấm ghi TRƯỚC khi điền ô nào (xem standardForbiddenRoots).
+  const forbiddenRoots = standardForbiddenRoots(fields);
+  const forbiddenSnapshot = snapshotStandardControls(forbiddenRoots);
   const result = { filled: 0, notFound: [], errors: [] };
   const areaDeadlines = new Map();
   const failedFieldKeys = new Set();
   const orderedFields = orderStandardFields(fields);
+  // Panel có bản ghi đã nằm trong danh sách (xem standardListHasText) → bỏ nút mở/thêm và các ô của panel.
+  const listedPanels = new Set(fields
+    .filter((f) => f.comp === "dom-click" && f.skipIfListed && standardListHasText(f.skipIfListed))
+    .map(standardClickPanelPrefix)
+    .filter((prefix) => prefix.includes("[")));
+  if (listedPanels.size) {
+    console.log(`[AutoFill-STD] Bản ghi đã có trong danh sách → không thêm lại: ${Array.from(listedPanels).join(", ")}`);
+  }
+  const inListedPanel = (f) => (f.comp === "dom-click" && listedPanels.has(standardClickPanelPrefix(f))) ||
+    Array.from(listedPanels).some((prefix) => String(f.name || "").startsWith(`${prefix}[`));
 
   for (const f of orderedFields) {
+    if (inListedPanel(f)) {
+      result.filled++;
+      continue;
+    }
+    // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound. Khối render TRỄ → chờ khối.
+    let root = await standardScopeRootWaiting(f);
+    // Chốt chặn cuối: vùng dò của ô khai scope lại nằm trong khối cấm ghi → BỎ ô, thà để trống còn hơn ghép
+    // nhân thân người trong hồ sơ vào khối của tài khoản đang đăng nhập.
+    if (f.scope && standardInsideForbidden(forbiddenRoots, root)) {
+      console.warn(`[AutoFill-STD] ${f.name}: vùng dò rơi vào khối cấm ghi → bỏ ô.`);
+      root = null;
+    }
+    if (f.scope || f.scopeAway) {
+      console.log(
+        `[AutoFill-STD] scope ${f.name} → "${f.scope || "(theo ô neo)"}": ${root === document ? "dò cả trang" : root ? "thấy khối" : "KHÔNG tách được khối, bỏ qua ô"}`,
+      );
+    }
+    if (!root) continue;
     const candidates = fieldCandidates(f);
     const occurrence = standardOccurrence(f.occurrence);
-    if (f.enableInput) enableStandardFieldInputs(f, candidates, occurrence);
+    if (f.enableInput) enableStandardFieldInputs(f, candidates, occurrence, root);
     // comp "dom-expect": ô extension CHỊU TRÁCH NHIỆM điền nhưng BE không có dữ liệu → KHÔNG điền, chỉ
     // TÔ ĐỎ nếu ô đang trống (để user biết cần điền tay), kể cả khi form không đánh dấu ô đó bắt buộc.
     // Không tính vào filled/notFound.
     if (f.comp === "dom-expect") {
-      const el = findStandardInputForField(f, candidates, occurrence) || findStandardSelect(candidates, occurrence);
+      const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
       if (el && isStandardEmptyControl(el)) markUnfilled(standardMarkTarget(el));
       continue;
     }
@@ -1471,24 +1776,30 @@ async function fillFormStandard(fields) {
       let ok = false;
       if (f.comp === "dom-vehicle-add") {
         ok = await fillVehicleAddRows(f, candidates);
+      } else if (f.comp === "dom-click") {
+        ok = await clickStandardButton(f, candidates);
       } else if (f.comp === "dom-checkbox") {
-        const el = findStandardCheckbox(candidates, f.optionValue);
+        const el = findStandardCheckbox(candidates, f.optionValue, root);
         ok = await fillStandardCheckbox(el, f.value);
       } else if (f.comp === "dom-radio") {
         // Radio có thể render ĐỘNG sau khi chọn radio cha (vd bảng dạng khuyết tật: chọn nhóm "Có" thì
         // Angular mới bật các radio con) → chờ như dom-input/date, tránh bỏ sót mục con render trễ.
-        const el = findStandardRadio(candidates) || await waitFor(() => findStandardRadio(candidates), 1500, 80);
+        const el = findStandardRadio(candidates, root) || await waitFor(() => findStandardRadio(candidates, root), 1500, 80);
         ok = await fillStandardRadio(el, f.value);
       } else if (f.comp === "dom-select") {
         if (isAreaSelectField(f)) {
           const deadline = standardFieldDeadline(areaDeadlines, f);
-          ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline);
+          ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
+        } else if (f.searchOnce) {
+          const el = findStandardSelect(candidates, occurrence, root)
+            || await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100);
+          ok = !!el && await fillChoicesSearchOnce(el, f.value);
         } else {
-          const el = findStandardSelect(candidates, occurrence);
-          ok = await fillStandardSelectAny(el, f.value, candidates, occurrence);
+          const el = findStandardSelect(candidates, occurrence, root);
+          ok = await fillStandardSelectAny(el, f.value, candidates, occurrence, 0, root);
         }
       } else if (f.comp === "dom-date" || f.comp === "dom-datetime") {
-        const el = findStandardInputForField(f, candidates, occurrence) || await waitFor(() => findStandardInputForField(f, candidates, occurrence), 1000, 80);
+        const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
         // Ô flatpickr trong panel render ĐỘNG: instance _flatpickr gắn TRỄ (có thể ở input ẩn HOẶC ô
         // hiển thị trong cùng component) → chờ đến khi có instance để dùng setDate (điền đủ ẩn+hiển thị,
         // format-agnostic). Nếu chờ theo mỗi el._flatpickr sẽ hụt vì instance nằm ở ô khác → dò RỘNG.
@@ -1501,17 +1812,17 @@ async function fillFormStandard(fields) {
         // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. setDate (khi có instance) đúng cho cả hai.
         ok = f.clear ? clearStandardDate(el) : fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
       } else if (f.comp === "dom-input" || f.comp === "raw") {
-        const el = findStandardInputForField(f, candidates, occurrence) || await waitFor(() => findStandardInputForField(f, candidates, occurrence), 1000, 80);
+        const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
         const postbackAddressInput = isPostbackAddressField(f);
         if (f.clear) ok = clearStandardInput(el);
         else ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
       } else {
-        const input = findStandardInputForField(f, candidates, occurrence);
+        const input = findStandardInputForField(f, candidates, occurrence, root);
         if (input) ok = fillStandardInput(input, f.value);
-        else ok = await fillStandardSelectAny(findStandardSelect(candidates, occurrence), f.value, candidates, occurrence);
+        else ok = await fillStandardSelectAny(findStandardSelect(candidates, occurrence, root), f.value, candidates, occurrence, 0, root);
       }
 
-      if (ok && f.clear) markStandardCleared(f, candidates, occurrence);
+      if (ok && f.clear) markStandardCleared(f, candidates, occurrence, root);
       if (ok) result.filled++;
       else {
         failedFieldKeys.add(standardFieldIdentity(f));
@@ -1529,6 +1840,11 @@ async function fillFormStandard(fields) {
   await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
   await reapplyEmptyStandardTextFields(fields);
   await reapplyOwnerDossierCopy(fields);
+  // Trả lại khối cấm ghi trước khi tô đỏ, để ô vừa hoàn nguyên được đánh dấu đúng là đang trống.
+  const reverted = restoreStandardForbidden(forbiddenSnapshot, standardWrittenValueKeys(fields));
+  if (reverted.length) {
+    console.warn(`[AutoFill-STD] Hoàn nguyên khối không được ghi đè: ${reverted.join(", ")}`);
+  }
   await settleBcaDatepickers(fields);
   markAllStandardEmptyFieldsRed();
   markStandardDefaultsYellow(fields);
@@ -1542,8 +1858,10 @@ async function fillFormStandard(fields) {
 function markStandardDefaultsYellow(fields) {
   for (const f of fields || []) {
     if (!f?.default || f.clear) continue;
+    const root = standardScopeRoot(f);
+    if (!root) continue;
     const candidates = fieldCandidates(f);
-    const target = standardMarkTarget(findStandardSelect(candidates) || findStandardInputForField(f, candidates));
+    const target = standardMarkTarget(findStandardSelect(candidates, null, root) || findStandardInputForField(f, candidates, null, root));
     if (!target?.classList?.contains("autofill-filled")) continue;
     target.classList.remove("autofill-filled");
     target.classList.add("autofill-default");
@@ -1582,16 +1900,21 @@ async function retryStandardAreaSelects(fields, result, deadlines, failedFieldKe
   if (!pending.length) return;
 
   for (const f of pending) {
+    // Vòng retry cũng phải tôn trọng scope: không thì select của tờ đơn rơi vào ô ĐẦU TIÊN trên trang (khối
+    // người nộp hồ sơ).
+    const root = standardScopeRoot(f);
+    if (!root) continue;
     const deadline = standardFieldDeadline(deadlines, f);
     if (standardSelectBudgetLeft(deadline) <= 0) continue;
-    const state = areaSelectOptionState(f);
+    const state = areaSelectOptionState(f, root);
     if (state.settled && !state.hasValue) continue;
     try {
       const ok = await fillStandardSelectAll(
         fieldCandidates(f),
         f.value,
         standardOccurrence(f.occurrence),
-        deadline
+        deadline,
+        root
       );
       if (ok) {
         result.filled++;
@@ -1612,7 +1935,9 @@ async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
   const deadlines = new Map();
 
   const isStable = (f) => {
-    const selects = findStandardSelects(fieldCandidates(f), standardOccurrence(f.occurrence));
+    const root = standardScopeRoot(f);
+    if (!root) return true; // Ô bị scope loại khỏi trang này → không có gì để ổn định.
+    const selects = findStandardSelects(fieldCandidates(f), standardOccurrence(f.occurrence), root);
     return selects.length && selects.every((sel) => currentStandardSelectMatches(sel, f.value));
   };
 
@@ -1622,14 +1947,16 @@ async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
     if (targets.every(isStable)) return;
     await sleep(delay);
     for (const f of targets) {
+      const root = standardScopeRoot(f);
+      if (!root) continue;
       const candidates = fieldCandidates(f);
       const occurrence = standardOccurrence(f.occurrence);
-      const selects = findStandardSelects(candidates, occurrence);
+      const selects = findStandardSelects(candidates, occurrence, root);
       const matches = selects.length && selects.every((sel) => currentStandardSelectMatches(sel, f.value));
       if (matches) continue;
       try {
         const deadline = standardFieldDeadline(deadlines, f, STANDARD_AREA_STABILIZE_BUDGET_MS);
-        await fillStandardSelectAll(candidates, f.value, occurrence, deadline);
+        await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
       } catch (e) {
         console.warn(`[AutoFill-STD] Stabilize lỗi ${f.name}:`, e);
       }
@@ -1644,15 +1971,24 @@ async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
 async function reapplyEmptyStandardTextFields(fields) {
   const SIMPLE = new Set(["dom-input", "dom-date", "dom-datetime", "raw"]);
   // Field `clear` CỐ Ý để trống — điền lại chuỗi rỗng chỉ làm markFilled tô xanh đè lên màu đỏ.
-  const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f) && !f.clear);
+  // Nút dom-click KHÔNG có waitName (vd "Thêm" của panel phương tiện) đã chốt panel vào danh sách → form xoá
+  // trắng các ô panel; điền lại là đổ nhân bản xe vừa thêm vào panel. Bỏ các ô cùng khối cha với nút đó.
+  const committed = fields
+    .filter((f) => f.comp === "dom-click" && !f.waitName)
+    .map(standardClickPanelPrefix)
+    .filter((prefix) => prefix.includes("["));
+  const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f) && !f.clear)
+    .filter((f) => !committed.some((prefix) => String(f.name || "").startsWith(`${prefix}[`)));
   if (!targets.length) return;
 
   for (const delay of [250, 600, 1000]) {
     await sleep(delay);
     let refilled = 0;
     for (const f of targets) {
+      const root = standardScopeRoot(f);
+      if (!root) continue;
       const candidates = fieldCandidates(f);
-      const el = findStandardInputForField(f, candidates, standardOccurrence(f.occurrence));
+      const el = findStandardInputForField(f, candidates, standardOccurrence(f.occurrence), root);
       if (!el || el.disabled) continue;
       if (String(el.value || "").trim()) continue; // còn giá trị → bỏ qua
       // Ô "Số nhà" nằm trong khối địa chỉ: điền không commit để khỏi kích hoạt postback mới.
@@ -1836,6 +2172,87 @@ async function sleepForStandardSelect(delay, deadline = 0) {
   if (allowed <= 0) return false;
   await sleep(allowed);
   return allowed >= delay;
+}
+
+function choicesSelectedItems(choices) {
+  return Array.from(choices?.querySelectorAll?.(
+    ".choices__list--single .choices__item, .choices__list--multiple .choices__item",
+  ) || []).filter((item) => !isPlaceholderText(choiceDisplayText(item)));
+}
+
+async function nudgeChoicesSearchLeadingSpace(search, text, choices, before, deadline = 0) {
+  if (!search || search.disabled || standardSelectBudgetLeft(deadline) <= 0) return false;
+  if (typeof search.focus === "function") search.focus();
+  try { search.setSelectionRange?.(0, 0); } catch { /* ignore */ }
+  dispatchKeyboardEvent(search, "keydown", " ");
+  dispatchKeyboardEvent(search, "keypress", " ");
+  dispatchInputEvent(search, "beforeinput", { data: " ", inputType: "insertText" });
+  setInputValueDirect(search, " " + String(text ?? "").replace(/^\s+/, ""));
+  try { search.setSelectionRange?.(1, 1); } catch { /* ignore */ }
+  dispatchInputEvent(search, "input", { data: " ", inputType: "insertText" });
+  dispatchKeyboardEvent(search, "keyup", " ");
+  search.dispatchEvent(new Event("change", { bubbles: true }));
+  // Nguồn tìm từ xa trả chậm hơn search client-side → chờ lâu hơn.
+  return !!await waitForStandardSelect(() => {
+    const after = choicesListSignature(choices);
+    return after !== before || choicesHasNoChoices(choices) ? true : null;
+  }, 1500, 80, deadline);
+}
+
+// BE gắn f.searchOnce cho ô Choices tìm TỪ XA mà mở/gõ lại nhiều lần là HỎNG (cổng Bộ XD cấp phù hiệu: Màu
+// sơn, Loại phương tiện… — mỗi lượt mở lại không chọn gì là ô render sang mã id '63d…'). Chỉ MỘT lượt đúng
+// thao tác tay: mở ô → gõ chữ → thêm MỘT dấu cách vào đầu → chờ kết quả → bấm chọn. Không thấy option thì
+// đóng dropdown để trống cho cán bộ; KHÔNG thử từ khác. Bản copy của auto-fill-hcc-extension/content.js.
+async function fillChoicesSearchOnce(select, value) {
+  const group = standardMarkTarget(select);
+  const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+  const raw = String(value ?? "").trim();
+  if (!choices || !raw || choices.classList.contains("is-disabled")) return false;
+  const isSelected = () => choicesSelectedItems(choices).some((item) =>
+    choiceMatches({ textContent: choiceDisplayText(item), getAttribute: () => "" }, raw));
+  if (isSelected()) {
+    markFilled(group);
+    return true;
+  }
+
+  const opener = choices.querySelector(".choices__inner, [role='combobox']") || choices;
+  if (!choicesDropdownOpen(choices)) {
+    if (typeof opener.focus === "function") opener.focus();
+    ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) => dispatchChoiceMouse(opener, type));
+    await waitFor(() => choicesDropdownOpen(choices), 800, 40);
+  }
+  const search = await waitFor(() => {
+    const input = choices.querySelector(".choices__input--cloned");
+    return input && !input.disabled ? input : null;
+  }, 800, 40);
+  if (!search) return false;
+
+  if (typeof search.focus === "function") search.focus();
+  dispatchInputEvent(search, "beforeinput", { data: raw, inputType: "insertText" });
+  setInputValueDirect(search, raw);
+  dispatchInputEvent(search, "input", { data: raw, inputType: "insertText" });
+  await sleep(80);
+  await nudgeChoicesSearchLeadingSpace(search, raw, choices, choicesListSignature(choices));
+
+  const target = await waitFor(() => bestChoiceOption(choicesVisibleOptions(choices), raw), 3000, 100);
+  if (!target) {
+    dispatchKeyboardEvent(search, "keydown", "Escape");
+    console.warn(`[AutoFill-STD] ${select.name}: không thấy option "${raw}" sau một lượt tìm → để trống.`);
+    return false;
+  }
+  if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "nearest" });
+  const clickTarget = target.querySelector("span") || target;
+  ["mouseover", "mousemove", "pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) =>
+    dispatchChoiceMouse(clickTarget, type));
+  let selected = await waitFor(isSelected, 500, 60);
+  if (!selected) {
+    // Cùng MỘT option đang được highlight — Enter chỉ xác nhận lựa chọn, không mở/tìm lại.
+    dispatchKeyboardEvent(search, "keydown", "Enter");
+    dispatchKeyboardEvent(search, "keyup", "Enter");
+    selected = await waitFor(isSelected, 500, 60);
+  }
+  if (selected) markFilled(group);
+  return !!selected;
 }
 
 async function writeChoicesSearch(search, raw, choices, deadline = 0, select = null) {
@@ -2113,9 +2530,9 @@ function orderStandardFields(fields) {
   ];
 }
 
-function areaSelectOptionState(f) {
+function areaSelectOptionState(f, root = document) {
   const candidates = fieldCandidates(f);
-  const selects = findStandardSelects(candidates, standardOccurrence(f.occurrence));
+  const selects = findStandardSelects(candidates, standardOccurrence(f.occurrence), root);
   if (!selects.length || String(f.value ?? "") === "") return { loaded: false, settled: false, hasValue: false };
   const states = selects.map((select) => standardSelectOptionState(select, f.value, candidates));
   const settled = states.every((state) => state.settled);

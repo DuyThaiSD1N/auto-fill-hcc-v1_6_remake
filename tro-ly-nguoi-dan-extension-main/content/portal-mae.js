@@ -269,7 +269,7 @@
   }
 
   async function fillMaeAgency({
-    province, agency, ward, agencyLevel, variant, variantMatch, variantAvoid, agencyExact, processExact,
+    province, agency, ward, agencyLevel, variant, variantMatch, variantAvoid, agencyExact, processExact, noProcess,
   }) {
     const form = await waitFor(maeForm, 6000);
     if (!form) return { error: "Không thấy form chọn cơ quan trên trang." };
@@ -353,14 +353,18 @@
     const agencySel = await waitFor(() => matSelect("agency"), 5000);
     if (!agencySel) return { error: "Không thấy ô chọn Sở/Ban ngành." };
     const wantAgency = fold(agency || "Sở Nông nghiệp và Môi trường") || "so nong nghiep va moi truong";
+    // noProcess (cổng Bộ Công Thương): chọn Tỉnh thì cổng tự điền Sở vào ô chọn NHIỀU → chờ cổng điền xong, mở ô
+    // sớm rồi bấm option thì có thể bỏ chọn đúng Sở cổng vừa điền.
+    if (noProcess) await waitFor(() => matSelectValue(agencySel).includes(wantAgency), 3000);
     if (!matSelectValue(agencySel).includes(wantAgency)) {
       const res = await pickMatOption(agencySel, (text) => text.includes(wantAgency),
         agency || "Sở Nông nghiệp và Môi trường", { timeout: 9000 });
       if (res.error) return { error: `Sở/Ban ngành: ${res.error}` };
     }
 
-    // 4) Trường hợp giải quyết theo variant người dân đã chọn.
-    const processRes = await pickProcedureProcess(
+    // 4) Trường hợp giải quyết theo variant người dân đã chọn. BE báo trang không có ô này (noProcess) → khỏi
+    //    chờ ô hiện (pickProcedureProcess chờ tới 9s mới bỏ qua).
+    const processRes = noProcess ? { ok: true, skipped: true } : await pickProcedureProcess(
       fold(variantMatch), fold(variantAvoid),
       variant === "cap_lai" ? "Cấp lại" : "Cấp mới",
     );
@@ -391,6 +395,7 @@
       variantAvoid: msg.variantAvoid || "",
       agencyExact: msg.agencyExact || "",
       processExact: msg.processExact || "",
+      noProcess: msg.noProcess === true,
     })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: String(e?.message || e) }));

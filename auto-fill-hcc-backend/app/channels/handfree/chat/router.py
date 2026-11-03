@@ -274,7 +274,7 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         # Luồng tự động trang hộ tịch mới: sidebar được báo "đã nộp" (toast) ở MỌI bước. Cổng khác
         # vẫn chỉ báo ở bước cuối — BE các bước khác không hiểu tín hiệu này.
         "submit_anywhere": bool(
-            flow.tpm.is_active(get_procedure(conv.get("procedure_key") or ""))
+            flow.tpm.is_active(get_procedure(conv.get("procedure_key") or ""), conv)
             and flow.tpm.auto_flow(conv)
         ),
         # Cổng liên thông: sidebar báo bước đang mở (lienThongStep) ở mọi state để trợ lý dẫn tiếp cả khi

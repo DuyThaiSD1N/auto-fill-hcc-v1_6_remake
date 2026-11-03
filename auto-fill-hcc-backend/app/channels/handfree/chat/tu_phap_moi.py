@@ -17,6 +17,10 @@ Luồng bản 2 (field_review.flow_v2 — extension khai thêm supportsFlowV2): 
     nhận tệp → thẻ tiến trình (bóc tách → điền → đính kèm, cập nhật tại chỗ theo mốc thật)
     → kết quả điền → kết quả đính kèm → kết luận: còn ô bắt buộc thì chỉ mời bổ sung; đủ thì
     hiện [Chọn hình thức nhận kết quả] [Lưu và nộp hồ sơ].
+
+Cổng Bộ VHTTDL (form liz, registry `lizFlow`) cũng là trang nộp một trang nên đi chung luồng này, chỉ khi extension khai
+supportsLizFlow (bản cũ đi luồng chung điền → đính → tự nộp như trước). Chặng cuối khác: [Tiếp tục] → extension tích ô
+cam kết (nút nộp của cổng chỉ mở sau khi tích) → hỏi có nhận kết quả qua bưu điện (ô VNPost) → [Lưu và nộp hồ sơ].
 """
 
 import re
@@ -32,6 +36,7 @@ CAPABILITY = "supportsTuPhapMoi"
 # nút trong khung chat, hoặc lưới đỡ toast "Gửi hồ sơ thành công") ở bước nào cũng sang phần sau
 # nộp. Extension cũ không khai cờ này → đi nguyên luồng bấm-từng-chặng bên dưới.
 AUTO_CAPABILITY = "supportsTpmAutoFlow"
+LIZ_CAPABILITY = "supportsLizFlow"
 ADJUST_BOTH_LABEL = "✅ Đủ giấy tờ — điền & đính kèm lại"
 
 
@@ -85,8 +90,23 @@ def fill_started_reply(conv: dict, proc: dict | None, reply):
     return r
 
 
-def is_active(proc: dict | None) -> bool:
-    return bool(proc and proc.get("flowProfile") == PROFILE)
+def liz(proc: dict | None) -> bool:
+    return bool((proc or {}).get("lizFlow"))
+
+
+def liz_supported(conv: dict | None) -> bool:
+    # Câu của chặng cuối liz chỉ có bản tiếng Việt → chế độ Mông giữ luồng chung.
+    conv = conv or {}
+    return ((conv.get("client_capabilities") or {}).get(LIZ_CAPABILITY) is True
+            and (conv.get("lang") or "vi") != "hmong")
+
+
+def is_active(proc: dict | None, conv: dict | None = None) -> bool:
+    if not proc:
+        return False
+    if proc.get("flowProfile") == PROFILE:
+        return True
+    return liz(proc) and liz_supported(conv)
 
 
 def supported(conv: dict) -> bool:
@@ -133,16 +153,20 @@ def _retry_attach_chip() -> dict:
     return {"label": "🔁 Đính kèm lại", "send": "__action:tpm_attach"}
 
 
-def _final_chips() -> list[dict]:
-    """Sau khi điền + đính: 3 nút sửa nhỏ, 2 nút đi tiếp to (cách nhận kết quả, nộp)."""
+def _liz_next_cta() -> dict:
+    return {"label": vi.LIZ_NEXT_CTA, "send": "__action:tpm_result_method", "solid": True, "cta": True}
+
+
+def _final_chips(proc: dict | None = None) -> list[dict]:
+    """Sau khi điền + đính: 3 nút sửa nhỏ, 2 nút đi tiếp to (cách nhận kết quả, nộp). Cổng liz: một nút Tiếp tục
+    (tích cam kết rồi hỏi bưu điện), nút nộp chỉ hiện sau câu hỏi đó."""
     from app.channels.handfree.chat import flow
 
     return [
         flow._supplement_documents_chip(),
         {"label": "🔁 Điền lại", "send": "__action:refill"},
         {"label": "📎 Đính kèm lại", "send": "__action:tpm_attach"},
-        _result_cta(),
-        _submit_cta(),
+        *([_liz_next_cta()] if liz(proc) else [_result_cta(), _submit_cta()]),
     ]
 
 
@@ -210,7 +234,7 @@ async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict, review=None
         conv["state"] = "done"
         r = flow.Reply(*flow._fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"],
                                   missing_note=missing_note, note=vi.TPM_SUBMIT_HINT))
-        r.chips = _final_chips()
+        r.chips = _final_chips(proc)
         field_review.decorate_single_page_fill(conv, proc, r, review, offer=True)
         return r
     conv["state"] = "attaching"
@@ -257,7 +281,7 @@ async def _v2_fill_report_reply(conv: dict, rep: dict, proc: dict, review: dict)
         # "Điền lại": giấy tờ trên trang giữ nguyên → thẻ 2 bước xong, kết luận ngay.
         conv["tpm_auto_attach"] = True
         conv["state"] = "done"
-        md, tts, chips = field_review.conclusion(conv, proc, _final_chips())
+        md, tts, chips = field_review.conclusion(conv, proc, _final_chips(proc))
         r.actions = [steps_action(active=2, done=True), {"type": "trail_message", "md": md}]
         r.tts_text += tts
         r.chips = chips
@@ -335,7 +359,7 @@ def _v2_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int, e
     else:
         plan_list = "\n".join(flow._attachment_plan_line(p) for p in (conv.get("attach_plan") or [])[:10])
         r = flow.Reply(*_v2_say(vi.FLOW2_ATTACH_RESULT, attached=attached, plan_list=plan_list))
-    md, tts, chips = field_review.conclusion(conv, proc, _final_chips())
+    md, tts, chips = field_review.conclusion(conv, proc, _final_chips(proc))
     r.actions = [steps_action(active=2, done=not errors, failed=bool(errors)), {"type": "trail_message", "md": md}]
     r.tts_text += tts
     r.chips = chips
@@ -355,7 +379,7 @@ def _auto_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int,
     else:
         template = vi.TPM_AUTO_ALL_EXIST if attached == 0 and skipped > 0 else vi.TPM_AUTO_ATTACH_DONE
         r = flow.Reply(*flow._fmt(template, attached=attached, note=note, label=label))
-    r.chips = _final_chips()
+    r.chips = _final_chips(proc)
     field_review.offer_after_attach(conv, proc, r)
     return r
 
@@ -381,16 +405,44 @@ def _attach_done_reply(conv: dict, payload: dict):
     return r
 
 
+def _liz_page_action(proc: dict, action: dict | None, key: str = "") -> dict | None:
+    """Cổng liz: mỗi lệnh chặng cuối kèm nhãn ô cam kết (extension tích trước — nút nộp của cổng chỉ mở sau khi tích)
+    và, với lệnh chọn cách nhận, trạng thái cần có của ô "nhận kết quả qua bưu chính" (VNPost)."""
+    if not action or not liz(proc):
+        return action
+    extra = {"commitLabel": str((proc.get("lizFlow") or {}).get("commitLabel") or "")}
+    if action.get("type") == "select_result_method":
+        extra["postOffice"] = key == "postal"
+    return {**action, **extra}
+
+
 def _result_card_action(conv: dict, proc: dict, key: str) -> tuple[dict, list]:
     conv["result_method"] = key
-    action = guided.select_result_method_action(proc, key)
+    action = _liz_page_action(proc, guided.select_result_method_action(proc, key), key)
     return guided.result_methods_card(proc, key), [action] if action else []
+
+
+def _liz_result_step_reply(conv: dict, proc: dict):
+    """Cổng liz bấm Tiếp tục: tích ô cam kết + giữ cách nhận đang chọn (mặc định không qua bưu điện), hỏi có nhận qua
+    bưu điện không. Bấm lại sau khi đã chọn bưu điện thì không được bỏ tích ô VNPost."""
+    from app.channels.handfree.chat import flow
+
+    key = conv.get("result_method") or str((guided.default_result_method(proc) or {}).get("key") or "")
+    card, actions = _result_card_action(conv, proc, key)
+    conv.setdefault("field_review", {})["liz_result_step"] = True
+    r = flow.Reply(*_v2_say(vi.LIZ_RESULT_ASK))
+    r.cards = [card]
+    r.actions = actions
+    r.chips = [_submit_cta()]
+    return r
 
 
 def _result_step_reply(conv: dict, proc: dict):
     """Chọn sẵn cách đầu (cổng cũng để sẵn cách này) rồi hiện thẻ 3 cách để công dân đổi."""
     from app.channels.handfree.chat import flow
 
+    if liz(proc):
+        return _liz_result_step_reply(conv, proc)
     method = guided.default_result_method(proc) or {}
     card, actions = _result_card_action(conv, proc, str(method.get("key") or ""))
     r = flow.Reply(*flow._fmt(vi.TPM_RESULT_PICK, label=str(method.get("label") or ""),
@@ -425,6 +477,9 @@ def _result_method_report_reply(conv: dict, proc: dict, payload: dict):
     label = str(method.get("label") or "")
     if not payload.get("ok"):
         r = flow.Reply(*flow._fmt(vi.TPM_RESULT_FAILED, label=label))
+    elif liz(proc) and payload.get("commit") is False:
+        # Nút nộp của cổng liz chỉ mở sau khi tích ô cam kết → báo trước mọi chuyện khác.
+        r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_FAILED, label=label))
     else:
         missing = _missing_labels(payload)
         filled = [str(x).strip() for x in (payload.get("filled") or []) if str(x).strip()]
@@ -447,6 +502,10 @@ def _result_method_report_reply(conv: dict, proc: dict, payload: dict):
     # Gắn lại thẻ ở lượt CÓ CHỮ: lượt bấm chọn là Reply rỗng nên không vào last_reply.
     r.cards = [guided.result_methods_card(proc, key)]
     r.chips = [_submit_cta()]
+    if liz(proc) and payload.get("ok") and _missing_labels(payload):
+        # Ô người nhận không có nguồn trên tờ khai (vd số điện thoại) → hỏi từng ô; hỏi xong hiện lại nút nộp.
+        conv.setdefault("field_review", {})["chips"] = [_submit_cta()]
+        r.chips = [*field_review.start_chips(conv, proc, [_submit_cta()]), _submit_cta()]
     return r
 
 
@@ -462,7 +521,7 @@ def _submit_report_reply(conv: dict, proc: dict, payload: dict):
     if missing:
         text = flow._join_owner_labels(missing[:8])
         r = flow.Reply(*flow._fmt(vi.TPM_SUBMIT_MISSING, missing_note=text, missing_tts=text))
-        r.chips = [*field_review.start_chips(conv, proc, _final_chips()), _submit_cta()]
+        r.chips = [*field_review.start_chips(conv, proc, _final_chips(proc)), _submit_cta()]
         return r
     if message:
         r = flow.Reply(*flow._fmt(vi.TPM_SUBMIT_BLOCKED, portal_message=message))
@@ -540,7 +599,7 @@ async def handle(conv: dict, proc: dict, intent: Intent):
             return _result_method_report_reply(conv, proc, payload)
         if intent.kind == "action" and intent.value == "tpm_submit":
             r = flow.Reply()
-            r.actions = [guided.submit_action(proc)]
+            r.actions = [_liz_page_action(proc, guided.submit_action(proc))]
             return r
         if intent.kind == "action" and intent.value == "guided_submit_report":
             return _submit_report_reply(conv, proc, payload)
@@ -589,7 +648,7 @@ async def _handle_auto(conv: dict, proc: dict, intent: Intent):
         return r
     if state == "done" and intent.kind not in {"event", "action"}:
         r = flow.Reply(*flow._fmt(vi.TPM_DONE_REMIND))
-        r.chips = field_review.next_chips(conv, proc, _final_chips())
+        r.chips = field_review.next_chips(conv, proc, _final_chips(proc))
         return r
     return None
 

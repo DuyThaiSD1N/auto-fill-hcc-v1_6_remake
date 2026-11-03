@@ -82,3 +82,10 @@ test("runAttachPlan gate theo attach_step BE gửi (MAE bước 2, tư pháp m�
   assert.ok(sidebar.includes("pre.wizardStep !== attachStep"),
     "so sánh bước hiện tại với attachStep, không hardcode 3");
 });
+
+test("noProcess: trang chọn cơ quan không có ô Trường hợp giải quyết thì không chờ ô đó", () => {
+  assert.ok(sidebar.includes("noProcess: a.noProcess === true"), "sidebar phải chuyển cờ noProcess của BE xuống content");
+  assert.ok(portalMae.includes("noProcess: msg.noProcess === true"), "handler fillMaeAgency phải nhận noProcess");
+  assert.ok(/const processRes = noProcess \? \{ ok: true, skipped: true \} : await pickProcedureProcess\(/.test(portalMae),
+    "noProcess phải bỏ qua pickProcedureProcess (chờ tới 9s)");
+});

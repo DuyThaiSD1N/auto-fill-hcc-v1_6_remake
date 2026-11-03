@@ -204,6 +204,22 @@ def test_thu_tuc_di_chuyen_ho_so_giu_nguyen_nhanh_so(key):
         province="Tỉnh Quảng Ngãi", agency="Sở Nội vụ")
 
 
+def test_khuyen_mai_cong_bo_cong_thuong_chon_tinh_roi_dong_y():
+    """Trang "Cơ quan thực hiện" cổng Bộ Công Thương: chọn Tỉnh, cổng tự điền Sở Công Thương (engine thấy đã khớp
+    thì không mở ô Sở), không có Trường hợp giải quyết → báo noProcess để engine khỏi chờ ô đó."""
+    key = "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai"
+    loc = {"province": "Tỉnh Quảng Trị", "ward": "Phường Đông Hà"}
+    r = flow._variant_fill_agency_reply(_conv(OLD_CLIENT, key), _proc(key), loc)
+    assert r.actions == [{"type": "fill_mae_agency", "province": "Quảng Trị", "agency": "Sở Công Thương",
+                          "variant": "", "variantMatch": "", "variantAvoid": "", "noProcess": True}]
+    assert r.display_md == vi.AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE["md"].format(
+        province="Tỉnh Quảng Trị", agency="Sở Công Thương")
+    # Trang MAE vẫn có ô Trường hợp giải quyết (cổng tự chọn sẵn) → không được bỏ qua.
+    tau_ca = flow._variant_fill_agency_reply(_conv(OLD_CLIENT, "cap-gcn-dang-ky-tau-ca"),
+                                             _proc("cap-gcn-dang-ky-tau-ca"), loc)
+    assert "noProcess" not in tau_ca.actions[0]
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])
 

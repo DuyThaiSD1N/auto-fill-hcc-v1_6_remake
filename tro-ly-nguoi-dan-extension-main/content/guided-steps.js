@@ -216,6 +216,8 @@
     // Trang nộp một trang (Cổng DVC quốc gia) do content/tu-phap-moi.js soát ô rồi mới bấm nộp;
     // khớp chữ "nop ho so" ở đây sẽ bấm thẳng "Lưu và nộp hồ sơ" khi chưa soát.
     if (window.__TLND__?.isSurveyDossierPage?.()) return;
+    // Trang nộp liz (cổng Bộ VHTTDL): content/liz/one-page.js tích cam kết + soát ô rồi mới bấm nộp.
+    if (submit && window.__TLND__?.isLizOnePage?.()) return;
     const button = submit
       ? findButton(SUBMIT_SELECTORS, SUBMIT_TEXTS)
       : stepperNextButton() || findButton(NEXT_SELECTORS, NEXT_TEXTS);

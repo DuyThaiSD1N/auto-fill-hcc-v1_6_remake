@@ -109,6 +109,11 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("tham-dinh-bcnckt", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("gia-han-luu-hanh-phuong-tien-lao", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    # Bảng phương tiện chọn từ hồ sơ xe của tài khoản: không hỏi từng cột.
+    ("cap-giay-phep-lien-van-viet-lao", ("tenHoSo", "AuthorityApplicantPhoneNumber", "LoaiPhuongTien", "BienSoXe",
+                                         "MauSon", "NienHanSuDung", "HinhThucHoatDong", "CuaKhau", "NhanHieu",
+                                         "NamSanXuat", "SoChoNgoi", "SoKhung", "NgayCap", "NgayHetHan", "SoMay")),
 ])
 def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_ask):
     from app.channels.handfree.chat.field_review import registry
@@ -126,6 +131,7 @@ def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_a
     "cap-lai-chung-chi-hanh-nghe-thu-y",
     "cap-gcn-attp-nong-lam-thuy-san",
     "gia-han-chung-chi-hanh-nghe-thu-y",
+    "cap-giay-phep-khai-thac-thuy-san",
 ])
 def test_cong_nnmt_can_them_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng NN&MT (dichvucongnnmt.mae.gov.vn): bản extension cũ đã khai supportsBxdFlow nhưng content/bxd/*.js chưa

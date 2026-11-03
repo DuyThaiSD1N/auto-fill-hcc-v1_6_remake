@@ -87,6 +87,8 @@ function hasAttachmentTarget() {
   if (globalThis.location?.hostname === "dichvucong.dancuquocgia.gov.vn"
     && document.querySelector('[id^="tphs_new_"]')) return true;
   if (findCopyCertificationAttachmentRow()) return true;
+  // Cổng Bộ VHTTDL (liz): input file trong <app-upload-flie-multi>, nút upload là icon (không chữ "Chọn tệp").
+  if (document.querySelector('app-upload-flie-multi input[type="file"]')) return true;
   // Mọi dòng đã có tệp thì cổng tư pháp không còn nút chọn tệp nào, nhưng vẫn là bảng thành phần hồ
   // sơ: đính kèm lại phải tới được engine để bỏ qua tệp đã có, không im lặng.
   if (findAttachmentRows().length) return true;

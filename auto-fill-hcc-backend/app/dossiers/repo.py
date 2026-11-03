@@ -55,12 +55,15 @@ async def upsert_started(
         "user_id": user_id,
         "username": username,
         "name": name,
-        "procedure": procedure,
-        "procedure_label": procedure_label,
         "province": province,
         "ward": ward,
         "updated_at": _now(),
     }
+    # Handfree đưa phiên về chọn thủ tục (nói "làm thủ tục khác", đổi thủ tục giữa chừng) thì procedure_key rỗng
+    # nhưng hồ sơ đã có việc thật vẫn được sync → ghi đè None là hồ sơ đã nộp mất tên thủ tục.
+    if procedure:
+        changes["procedure"] = procedure
+        changes["procedure_label"] = procedure_label
     # Tên công dân chỉ ghi khi trích được. Lượt đính kèm nhiều khi không đọc ra tên; ghi đè
     # vô điều kiện sẽ XOÁ mất tên mà lượt quét trước đã lấy đúng.
     if (applicant_name or "").strip():

@@ -1899,6 +1899,36 @@ FLOW2_READY_NO_DEFAULT = {
 }
 FLOW2_DONE_ATTACHED = "điền và đính kèm đủ"
 FLOW2_DONE_FILLED = "điền đủ"
+# ── Cổng Bộ VHTTDL (form liz, một trang, chat/tu_phap_moi.py): chặng cuối Tiếp tục → tích cam kết → hỏi bưu điện →
+# nộp. Luồng này tắt ở chế độ Mông nên chỉ có bản tiếng Việt. ──
+LIZ_NEXT_CTA = "➡️ Tiếp tục"
+LIZ_OPTIONAL_ONLY = {
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc, còn **{optional} ô không bắt buộc** để trống.\n\nCông dân muốn bổ sung thì "
+           "bấm **Bổ sung các thông tin còn thiếu**; không thì bấm **Tiếp tục** ạ."),
+    "tts": (" Tờ khai đã đủ các ô bắt buộc, còn {optional} ô không bắt buộc để trống. Công dân muốn bổ sung thì bấm Bổ "
+            "sung các thông tin còn thiếu, không thì bấm Tiếp tục ạ."),
+}
+LIZ_READY = {
+    "md": "✓ Công dân đã {done} các thông tin bắt buộc.\n\nCông dân bấm **Tiếp tục** để sang bước nộp hồ sơ ạ.",
+    "tts": " Công dân đã {done} các thông tin bắt buộc. Công dân bấm Tiếp tục để sang bước nộp hồ sơ ạ.",
+}
+LIZ_READY_SUBMIT = {
+    "md": "✓ Đã đủ thông tin người nhận.\n\nCông dân kiểm tra lại rồi bấm **Lưu và nộp hồ sơ** ạ.",
+    "tts": " Đã đủ thông tin người nhận. Công dân kiểm tra lại rồi bấm Lưu và nộp hồ sơ ạ.",
+}
+LIZ_RESULT_ASK = {
+    "md": ("✓ Em tích ô **Tôi cam kết chịu trách nhiệm trước pháp luật…** trên trang.\n\nCông dân có muốn **nhận kết "
+           "quả bản giấy tại nhà qua bưu điện (VNPost)** không ạ? Em đang để nhận tại bộ phận một cửa; muốn qua bưu "
+           "điện thì bấm thẻ 📮 bên dưới. Xong bấm **Lưu và nộp hồ sơ** ạ."),
+    "tts": ("Dạ em tích ô cam kết trên trang. Công dân có muốn nhận kết quả bản giấy tại nhà qua bưu điện không ạ? "
+            "Muốn qua bưu điện thì bấm thẻ bưu điện bên dưới, xong bấm Lưu và nộp hồ sơ ạ."),
+}
+LIZ_COMMIT_FAILED = {
+    "md": ("✓ Đã chọn **{label}**.\n\n⚠️ Em chưa tích được ô **Tôi cam kết chịu trách nhiệm trước pháp luật…** — công "
+           "dân tích giúp ô đó trên trang (nút nộp của cổng chỉ mở sau khi tích) rồi bấm **Lưu và nộp hồ sơ** ạ."),
+    "tts": ("Dạ em đã chọn {label} nhưng chưa tích được ô cam kết. Công dân tích giúp ô cam kết trên trang rồi bấm Lưu "
+            "và nộp hồ sơ ạ."),
+}
 # Hỏi xong vòng bổ sung mà vẫn còn ô bắt buộc trống: chưa có nút đi tiếp.
 FLOW2_REVIEW_MISSING = {
     "md": ("{lead_md}Tờ khai còn **{required} ô bắt buộc** công dân cần điền. Công dân điền thẳng vào tờ khai, hoặc bấm "

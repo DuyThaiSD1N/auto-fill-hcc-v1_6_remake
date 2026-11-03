@@ -683,7 +683,12 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add(f"{_DV}[HoatDongKinhDoanh][LoaiHinhKinhDoanh]", _loai_hinh_kd(loai_phu_hieu))
 
     # ===== Phần V: THẨM ĐỊNH =====
-    add("data[ThamDinh][SoLuongNopLai]", _digits(values.get("DeNghi_SoLuongNopLai")))
+    # Giấy đề nghị hay ghi cả câu ("Không nộp lại", "Không có phù hiệu nộp lại") — không có chữ số mà mở đầu
+    # bằng "không" thì là 0; ô của cổng chỉ nhận số.
+    nop_lai = _text(values.get("DeNghi_SoLuongNopLai"))
+    if nop_lai and not re.search(r"\d", nop_lai) and _fold(nop_lai).startswith("khong"):
+        nop_lai = "0"
+    add("data[ThamDinh][SoLuongNopLai]", _digits(nop_lai))
     add("data[ThamDinh][DeNghiDuocCap]", _text(values.get("DeNghi_DuocCap")))
 
     # ===== Phần VI-VII: PHƯƠNG TIỆN (panel "Thêm phương tiện", xe đầu tiên) =====

@@ -512,7 +512,7 @@ def _docs_done_label(target: str) -> str:
 def _docs_done_label_for_conv(conv: dict) -> str:
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
-        if (tpm.is_active(get_procedure(conv.get("procedure_key") or ""))
+        if (tpm.is_active(get_procedure(conv.get("procedure_key") or ""), conv)
                 and tpm.auto_flow(conv)):
             return tpm.ADJUST_BOTH_LABEL
         return _DOCUMENT_ADJUSTMENT_LABELS[adjustment_target]
@@ -1328,7 +1328,7 @@ async def _handle_turn_inner(
         return _procedure_unclear(conv, intent.payload.get("candidates") or [])
     if intent.kind == "event" and intent.value == "submit_clicked":
         r = _record_submit_click(conv, intent.payload)
-        if tpm.is_active(current_proc) and tpm.auto_flow(conv):
+        if tpm.is_active(current_proc, conv) and tpm.auto_flow(conv):
             conv["state"] = "done"  # bấm nộp = đã nộp, ở bước nào cũng vậy
         if split_submit.note_click(conv, intent.payload):
             return await _split_submit_released(conv, current_proc)
@@ -1341,7 +1341,7 @@ async def _handle_turn_inner(
         if split_submit.release(conv):
             return await _split_submit_released(conv, current_proc)
         return Reply()
-    if tpm.is_active(current_proc) and tpm.auto_flow(conv):
+    if tpm.is_active(current_proc, conv) and tpm.auto_flow(conv):
         if intent.kind == "event" and intent.value == "submitted":
             held = split_submit.hold(conv, intent.payload)
             if held:
@@ -1416,7 +1416,7 @@ async def _handle_turn_inner(
         # ngay sau đánh giá, không chờ cổng xác nhận.
         return _logout_choice_reply(arm_timer=bool(
             conv.get("submitted_completed")
-            or (tpm.is_active(current_proc) and tpm.auto_flow(conv))
+            or (tpm.is_active(current_proc, conv) and tpm.auto_flow(conv))
         ))
 
     # Chọn "đăng xuất" / "nộp thêm hồ sơ" — Ở TẦNG TOÀN CỤC (như rate/rate_skip). 2 nút này hiện
@@ -1453,7 +1453,7 @@ async def _handle_turn_inner(
     if intent.kind == "ask_question":
         return _answer_question(conv, intent.value, intent.payload.get("procedure_key"))
 
-    if tpm.is_active(current_proc) and state in ("attaching", "done"):
+    if tpm.is_active(current_proc, conv) and state in ("attaching", "done"):
         # Trang nộp một trang: đính kèm / nhận kết quả / nộp do nút trong khung chat điều phối.
         tpm_reply = await tpm.handle(conv, current_proc, intent)
         if tpm_reply is not None:
@@ -1834,7 +1834,7 @@ def _doi_ma_thu_tuc_reply(conv: dict, proc: dict, page_url: str) -> Reply | None
 
 
 def _start_guide_login(conv: dict) -> Reply:
-    if tpm.is_active(get_procedure(conv.get("procedure_key") or "")) and not tpm.supported(conv):
+    if tpm.is_active(get_procedure(conv.get("procedure_key") or ""), conv) and not tpm.supported(conv):
         # Engine cũ không điền/đính được trang nộp một trang — dẫn vào là công dân kẹt giữa chừng.
         return tpm.update_required_reply(conv)
     conv["state"] = "guide_login"
@@ -2130,6 +2130,9 @@ def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
                   "variant": variant.get("key") or "",
                   "variantMatch": variant.get("portalMatch") or "",
                   "variantAvoid": variant.get("portalAvoid") or ""}]
+    if proc.get("maeNoProcess"):
+        # Trang chọn cơ quan không có ô "Trường hợp giải quyết" → engine khỏi chờ ô đó rồi mới bấm Đồng ý.
+        r.actions[0]["noProcess"] = True
     return r
 
 
@@ -3374,7 +3377,7 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         # (hoặc ngược lại) vì SPA còn giữ DOM của bước trước. Cổng 2-tab cùng trang
         # (samePageAttach) thì trang LUÔN đúng cho cả hai bước — bỏ chốt chặn nhầm trang.
         if (captured_now and page_bound and target != adjustment_target
-                and not proc.get("samePageAttach") and not tpm.is_active(proc)):
+                and not proc.get("samePageAttach") and not tpm.is_active(proc, conv)):
             conv["docs_target"] = adjustment_target
             conv["owner_phase"] = False
             conv["pipeline_status"] = (
@@ -3507,8 +3510,8 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
                       if conv.get("attach_mode") in ("merge", "split") else {})
     # samePageAttach: bảng đính kèm Bắc Ninh không đọc được qua collectAttachmentContext chung
     # (DOM checkbox + input file riêng) mà planner cũng không cần — chạy planner ngay.
-    if proc.get("samePageAttach") or tpm.is_active(proc) or not _wait_for_attachment_context(conv):
-        if tpm.is_active(proc):
+    if proc.get("samePageAttach") or tpm.is_active(proc, conv) or not _wait_for_attachment_context(conv):
+        if tpm.is_active(proc, conv):
             # Lượt điều chỉnh sau khi đã đính: đính lại toàn bộ ngay khi có kế hoạch mới.
             conv["tpm_attach_requested"] = True
         conv["attachment_plan_started"] = True
@@ -3770,7 +3773,7 @@ def _fill_fields_reply(conv: dict) -> Reply:
     if conv.get("trace_request_id"):
         r.actions[0]["formSnapshot"] = form_snapshot_config(conv["trace_request_id"])
     proc = get_procedure(conv.get("procedure_key") or "")
-    if tpm.is_active(proc):
+    if tpm.is_active(proc, conv):
         r.actions[0]["toolAccount"] = tpm.tool_account(conv)
     review = field_review.fill_action_extra(conv, proc)
     if review:
@@ -4516,7 +4519,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # Không đổi state: pipeline kê khai vẫn phải nhận fields_ready/fill_report. Khi xong,
         # auto_attach_after_fill sẽ chuyển sang attaching và watcher chờ đúng bước 3.
         return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
-    tpm_auto = tpm.is_active(proc) and tpm.auto_flow(conv)
+    tpm_auto = tpm.is_active(proc, conv) and tpm.auto_flow(conv)
     if intent.kind == "event" and intent.value == "fields_ready":
         if tpm_auto:
             tpm.on_fields_ready(conv)
@@ -4538,7 +4541,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                "notFound": list(intent.payload.get("notFound") or []),
                "errors": list(intent.payload.get("errors") or [])}
         conv["fill_report"] = rep
-        if tpm.is_active(proc):
+        if tpm.is_active(proc, conv):
             return await tpm.fill_report_reply(conv, rep, intent.payload.get("review"))
         if conv.get("eform_flow") and _eforms(proc):
             eform_reply = await _eform_fill_report(conv, proc, rep)
@@ -5166,7 +5169,7 @@ def _split_submit_wait_reply(conv: dict) -> Reply:
 
 async def _split_submit_released(conv: dict, proc: dict | None) -> Reply:
     """Đủ hồ sơ tách (hoặc cán bộ bấm "Đã nộp hết") → chạy tiếp nhánh nộp thành công đã giữ lại."""
-    if tpm.is_active(proc) and tpm.auto_flow(conv):
+    if tpm.is_active(proc, conv) and tpm.auto_flow(conv):
         return tpm.on_submitted(conv)
     return await _handle_done(conv, Intent(kind="event", value="submitted"))
 
