@@ -65,8 +65,10 @@ def test_detect_khong_lan_voi_ban_danh_cho_to_chuc():
 def test_detect_khong_lan_voi_thu_tuc_lan_dau_tinh_khac():
     """Mã thủ tục là thứ phân biệt Lào Cai với Lâm Đồng/Ninh Bình/Đà Nẵng (tên gần như trùng)."""
     entry = _entry()
+    # Mục cổng iGate mới của CHÍNH thủ tục này (Lào Cai) cũng khai mã 1.115689 — không phải bản tỉnh khác.
     khac_tinh = [p for p in public_list()
-                 if p["key"] != _KEY and "lan-dau" in p["key"] and "dang-ky-dat-dai" in p["key"]]
+                 if p["key"] != _KEY and "lan-dau" in p["key"] and "dang-ky-dat-dai" in p["key"]
+                 and not p["key"].startswith("dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai")]
     assert khac_tinh, "phải còn các thủ tục lần đầu của tỉnh khác để đối chiếu"
     for other in khac_tinh:
         assert "1.115689" not in str(other.get("detect")), other["key"]

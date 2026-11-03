@@ -90,16 +90,18 @@ def test_nhan_dien_cong_test_chinh_thuc_va_cong_cu():
             "?agency=6aa0dc61ea2136132881f57b&process=6ac0bd65de4a9904f4595520")
     assert _popup_match(form) == _KEY + "-test"
     assert _popup_match(form, _BODY) == _KEY + "-test"
-    # Trang nộp thứ hai cùng mã (UBND xã, crawl 02/11/2026).
-    xa = ("https://dichvucongtest.laocai.gov.vn/vi/padsvc/apply-online/6aa4cc520ac3ff7a288951dc"
-          "?agency=6aa0dc61ea2136132881f57f&process=6ac0bd66de4a9904f459553e")
-    assert _popup_match(xa) == _KEY + "-test"
-    assert _popup_match(xa.replace("dichvucongtest.", "dichvucong."), _BODY) == _KEY
     chon ="https://dichvucong.laocai.gov.vn/vi/nps/apply?MaTTHC=1.115687&MaDVC=1.115687.01"
     assert _popup_match(chon) == _KEY
     assert _popup_match(chon, _BODY) == _KEY
     cu = "https://dichvucong.laocai.gov.vn/dich-vu-cong/tiep-nhan-online/nhap-thong-tin-ho-so?sid=1"
     assert _popup_match(cu, _BODY) == _CU
+
+
+def test_trang_nop_id_chua_khai_van_ve_muc_cong_moi():
+    """Cùng mã mở ở xã/phường khác ra id apply-online khác → khớp theo tên thủ tục, KHÔNG rơi về mục eForm cũ."""
+    for host, key in (("dichvucongtest", _KEY + "-test"), ("dichvucong", _KEY)):
+        url = f"https://{host}.laocai.gov.vn/vi/padsvc/apply-online/6aa4ccffffffffffffffffff?agency=x"
+        assert _popup_match(url, _BODY) == key
 
 
 def test_nguoi_duoc_uy_quyen_nop():

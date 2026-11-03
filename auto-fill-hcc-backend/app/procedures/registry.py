@@ -300,6 +300,26 @@ from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.attach im
 from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.process import (
     run as thu_hoi_gcn_cap_lan_dau_lao_cai_process,
 )
+from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai.attach import (
+    plan as dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_attach,
+)
+from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai.process import (
+    run as dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_process,
+)
+from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn_igate_lao_cai.attach import (
+    plan as tang_cho_qsdd_nha_nuoc_igate_lao_cai_attach,
+)
+from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn_igate_lao_cai.process import (
+    run as tang_cho_qsdd_nha_nuoc_igate_lao_cai_process,
+)
+from app.pipelines.dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_igate_lao_cai.attach import (
+    plan as dien_tich_tang_them_igate_lao_cai_attach,
+)
+from app.pipelines.dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_igate_lao_cai.process import (
+    run as dien_tich_tang_them_igate_lao_cai_process,
+)
+from app.pipelines.dk_dat_dai_gan_tai_san_igate_lao_cai.attach import plan as dk_dat_dai_igate_lao_cai_attach
+from app.pipelines.dk_dat_dai_gan_tai_san_igate_lao_cai.process import run as dk_dat_dai_igate_lao_cai_process
 from app.pipelines.thu_hoi_gcn_igate_lao_cai.attach import plan as thu_hoi_gcn_igate_lao_cai_attach
 from app.pipelines.thu_hoi_gcn_igate_lao_cai.process import run as thu_hoi_gcn_igate_lao_cai_process
 from app.pipelines.thu_hoi_gcn_cap_sai_bac_ninh.process import run as thu_hoi_gcn_cap_sai_bac_ninh_process
@@ -3232,6 +3252,44 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai",
+        # 1.115689 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
+        # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
+        # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm tên + textPriority chép từ mục cũ (id apply-online
+        # mỗi xã/phường một khác). Mục cũ khai urlIncludes "1.115689" (khớp cả URL nền mới) → mục này PHẢI đứng trước.
+        # Bước 1 cùng form "FORM NGUOI NOP" (ghi chú hồ sơ cũ dồn vào ô Ghi chú); bước 2 là bảng phẳng 26 dòng = 3 nhóm
+        # a/b/c của cổng cũ bỏ dòng tiêu đề, không còn "Giấy tờ khác".
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6aa4ccdf0ac3ff7a28895989", "matthc=1.115689", "madvc=1.115689."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] (Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng "
+            "dân cư, người gốc Việt Nam định cư ở nước ngoài"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 21 kèm QĐ 47/2026/QĐ-UBND).\n"
+            "2. Giấy tờ về quyền sử dụng đất theo Điều 137 Luật Đất đai, giấy tờ thừa kế/chuyển quyền (nếu có).\n"
+            "3. Mảnh trích đo bản đồ địa chính thửa đất (nếu có), văn bản xác định thành viên hộ gia đình, chứng từ nghĩa "
+            "vụ tài chính, văn bản ủy quyền khi nộp thay.\n"
+            "4. Đã có Thông báo xác nhận kết quả đăng ký đất đai thì nộp Đơn + Thông báo đó.\n"
+            "5. CCCD người đi nộp và chủ hồ sơ (để đọc nhân thân).\n"
+            "⚠ Bảng 26 dòng gồm 3 nhóm: 1–16 hộ gia đình, cá nhân; 17–24 người gốc Việt Nam định cư ở nước ngoài; 25–26 "
+            "đã có Thông báo xác nhận kết quả đăng ký. Cổng TÍCH SẴN cả 26 — trợ lý chỉ tích dòng có tệp của nhóm phù "
+            "hợp. Giấy tờ không có dòng riêng đính chung dòng Đơn (vẫn là tệp riêng). MỖI DÒNG KHÔNG QUÁ 6 MB.\n"
+            "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — phải đăng nhập đúng "
+            "tài khoản NGƯỜI ĐI NỘP. Ô 'Ghi chú' trợ lý ghi thông tin thửa đất/ghi chú hồ sơ. Trợ lý KHÔNG tích "
+            "\"Người nộp hồ sơ là chủ hồ sơ\"."
+        ),
+    },
+    {
         "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai",
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
         # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cả tỉnh nên chỉ khai host ở
@@ -3747,6 +3805,42 @@ PROCEDURES: list[dict] = [
             "sơ\" chỉ sao chép Nơi "
             "cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ — hệ thống vì vậy luôn điền "
             "đầy đủ cả khối chủ hồ sơ, cán bộ không cần tick."
+        ),
+    },
+    {
+        "key": "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai",
+        # 1.115690 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai":
+        # urlScope "<host>/vi/", mã TTHC + id apply-online; mục "<key>-test" sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm
+        # tên + textPriority chép từ mục cũ (id apply-online mỗi xã/phường một khác) → mục này PHẢI đứng trước mục cũ.
+        # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 có đúng MỘT dòng (Văn bản tặng cho/biên bản họp), không còn "Giấy tờ
+        # khác" như cổng cũ.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6aa4cd22be4ea839f303aa09", "matthc=1.115690", "madvc=1.115690."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] (Cấp phường/xã) Tặng cho quyền sử dụng đất cho Nhà nước hoặc cộng đồng dân cư hoặc "
+            "mở rộng đường giao thông đối với trường hợp thửa đất chưa được cấp Giấy chứng nhận"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Hồ sơ HIẾN ĐẤT LÀM ĐƯỜNG. Giấy tờ cần tải lên:\n"
+            "1. Văn bản tặng cho quyền sử dụng đất (đơn hiến đất) hoặc biên bản họp với đại diện thôn/tổ dân phố — nguồn "
+            "tên, CCCD, địa chỉ, số điện thoại chủ hồ sơ.\n"
+            "2. Giấy ủy quyền có công chứng — nguồn nhân thân của NGƯỜI ĐI NỘP (người được ủy quyền).\n"
+            "3. Giấy chứng nhận quyền sử dụng đất của thửa đất gốc, chụp ĐỦ cả trang chỉnh lý và trang biến động.\n"
+            "Có thể bổ sung CCCD, sơ đồ/trích đo thửa đất, văn bản của UBND nếu hồ sơ có.\n"
+            "⚠ Bước thành phần hồ sơ của cổng mới chỉ có MỘT dòng (Văn bản tặng cho/biên bản họp) → trợ lý đính mọi tệp "
+            "vào dòng đó, mỗi tệp vẫn là tệp riêng kèm tên mô tả; cần tách riêng thì dùng nút \"Thêm giấy tờ\". Cổng "
+            "giới hạn 6 MB mỗi tệp.\n"
+            "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — nộp thay theo ủy quyền "
+            "thì phải đăng nhập đúng tài khoản người được ủy quyền. Trợ lý KHÔNG tích \"Người nộp hồ sơ là chủ hồ sơ\".\n"
+            "⚠ Giấy tờ thường chỉ ghi NĂM SINH và không ghi giới tính — trợ lý để trống thay vì bịa; giới tính chỉ suy "
+            "từ số CCCD 12 số."
         ),
     },
     {
@@ -5033,14 +5127,9 @@ PROCEDURES: list[dict] = [
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
         # → mục này PHẢI đứng trước.
         # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 vẫn là bảng 2 dòng của cổng cũ, nhưng không còn "Giấy tờ khác".
-        # Cổng có 2 trang nộp cùng mã 1.115687 (crawl 29/10 UBND phường …951a0, crawl 02/11 UBND xã …951dc): cùng form
-        # bước 1, cùng bảng 2 dòng → chung một mục.
         "detect": {
             "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
-            "urlIncludes": [
-                "apply-online/6aa4cc510ac3ff7a288951a0", "apply-online/6aa4cc520ac3ff7a288951dc",
-                "matthc=1.115687", "madvc=1.115687.",
-            ],
+            "urlIncludes": ["apply-online/6aa4cc510ac3ff7a288951a0", "matthc=1.115687", "madvc=1.115687."],
             "headingDisabled": True,
         },
         "label": (
@@ -5119,6 +5208,42 @@ PROCEDURES: list[dict] = [
             "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè.\n"
             "Lưu ý số liệu hay lệch giữa các giấy tờ (số thửa, số CCCD, năm sinh ghi trên Giấy chứng nhận cũ) "
             "— cán bộ rà lại Đơn trước khi ký số và nộp."
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai",
+        # 1.115688 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
+        # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
+        # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
+        # → mục này PHẢI đứng trước.
+        # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 là bảng 8 dòng cố định (cổng mới bỏ "Giấy tờ khác").
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6aa4cca70ac3ff7a288953f4", "matthc=1.115688", "madvc=1.115688."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] (Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 21; bản cũ Mẫu số 15) kèm Danh sách Mẫu 15a/15b "
+            "nếu có.\n"
+            "2. Trích lục/mảnh trích đo bản đồ địa chính thửa đất.\n"
+            "3. Hồ sơ TỔ CHỨC: Báo cáo kết quả rà soát hiện trạng sử dụng đất (Mẫu 21d), Quyết định thành lập, Quyết "
+            "định phê duyệt phương án sử dụng đất. Hồ sơ cá nhân: giấy tờ theo Điều 137 Luật Đất đai, giấy tờ thừa kế.\n"
+            "4. Nếu có: chứng từ nghĩa vụ tài chính, hồ sơ thiết kế/nghiệm thu công trình, Giấy ủy quyền.\n"
+            "5. CCCD người đi nộp và chủ hồ sơ (để đọc nhân thân).\n"
+            "⚠ Bảng 8 dòng, cổng TÍCH SẴN cả 8 — trợ lý bỏ chọn rồi chỉ tích dòng có tệp. Giấy tờ không có dòng riêng "
+            "đính chung dòng Đơn (vẫn là tệp riêng); muốn tách thì dùng nút \"Thêm giấy tờ\". MỖI DÒNG KHÔNG QUÁ 6 MB.\n"
+            "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — phải đăng nhập đúng "
+            "tài khoản NGƯỜI ĐI NỘP. Chủ hồ sơ = người sử dụng đất ở mục 1 Đơn. Trợ lý KHÔNG tích \"Người nộp hồ sơ là "
+            "chủ hồ sơ\"."
         ),
     },
     {
@@ -5729,6 +5854,45 @@ PROCEDURES: list[dict] = [
             "bộ đề nghị tách tệp nếu nơi tiếp nhận yêu cầu. Dòng 'Mảnh trích đo' thường không có trong "
             "hồ sơ dân nộp; trợ lý nhắc chứ không tự tích.\n"
             "Ô 'Về việc' (*) ở bước Thành phần hồ sơ do cổng điền sẵn tên thủ tục — trợ lý KHÔNG ghi đè."
+        ),
+    },
+    {
+        "key": "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai",
+        # 1.115693 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai":
+        # urlScope "<host>/vi/", mã TTHC + id apply-online; mục "<key>-test" sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm
+        # tên chép từ mục cũ (id apply-online mỗi xã/phường một khác) → mục này PHẢI đứng trước mục cũ.
+        # Bước 1 cùng form "FORM NGUOI NOP"; bước 2 là bảng 5 dòng (Đơn Mẫu 24, GCN, giấy tờ diện tích tăng thêm, trích
+        # đo, văn bản đại diện), không còn "Giấy tờ khác" như cổng cũ.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6ac0bc719cc3f47fa68ce1ce", "matthc=1.115693", "madvc=1.115693."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] (Cấp phường/xã) Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng "
+            "thêm do thay đổi ranh giới so với giấy chứng nhận đã cấp đối với trường hợp thửa đất gốc đã có Giấy chứng "
+            "nhận, phần diện tích đất tăng thêm chưa được cấp Giấy chứng nhận"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục dùng cho phần diện tích tăng thêm CHƯA ĐƯỢC CẤP giấy cho ai — chứng minh bằng biên bản xác nhận "
+            "ranh giới với các hộ giáp ranh, KHÔNG phải bằng hợp đồng mua bán (mua lại một phần thửa là 1.115694).\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24 kèm QĐ 47/2026/QĐ-UBND).\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp cho thửa đất GỐC.\n"
+            "3. Phiếu đo đạc chỉnh lý / mảnh trích đo kèm Bản mô tả ranh giới, mốc giới thửa đất.\n"
+            "4. Biên bản xác nhận ranh giới, mốc giới và hiện trạng sử dụng đất (giấy tờ chứng minh phần diện tích tăng "
+            "thêm).\n"
+            "5. Giấy ủy quyền/văn bản về việc đại diện nếu nộp thay.\n"
+            "6. Tờ khai thuế, lệ phí; CCCD của chủ hồ sơ và người nộp (để đọc nhân thân).\n"
+            "⚠ Bảng thành phần hồ sơ có 5 dòng, cổng TÍCH SẴN cả 5 — trợ lý chỉ tích dòng có tệp. Giấy tờ không có dòng "
+            "riêng (tờ khai thuế, CCCD, giấy cam kết chữ ký…) đính chung dòng Đơn (vẫn là tệp riêng); cần tách riêng "
+            "thì dùng nút \"Thêm giấy tờ\". Cổng giới hạn 6 MB mỗi tệp.\n"
+            "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — nộp thay theo ủy quyền "
+            "thì phải đăng nhập đúng tài khoản người được ủy quyền. Trợ lý KHÔNG tích \"Người nộp hồ sơ là chủ hồ sơ\"."
         ),
     },
     {
@@ -9001,15 +9165,26 @@ _IGATE_LAO_CAI = {
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004",
     "dinh-chinh-gcn-da-cap-igate-lao-cai": "dinh-chinh-gcn-da-cap-lao-cai",
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc",
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai",
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai": "tang-cho-qsdd-nha-nuoc-chua-cap-gcn",
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai":
+        "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi",
 }
 for _key, _cu in _IGATE_LAO_CAI.items():
     _goc = next(p for p in PROCEDURES if p["key"] == _key)
     # Mục cũ có textPriority (popup xét TRƯỚC bước URL) với urlScope rộng "laocai.gov.vn"/"dichvucong.laocai.gov.vn"
     # → trang nền mới in tên/mã thủ tục là mục cũ cướp. Chép đúng cụm đó sang mục iGate (urlScope "/vi/"): cùng điểm
     # thì popup giữ mục đứng TRƯỚC, tức mục iGate; ở eForm cũ (/dich-vu-cong/…) mục iGate không qua được urlScope.
+    # Mục cũ không có textPriority vẫn có thể có textIncludes (bước 3 popup, khớp tên thủ tục trong trang): trang nộp
+    # nền mới mang id apply-online CHƯA khai (cùng mã TTHC mở ở xã/phường khác ra id khác) không qua được bước URL → rơi
+    # xuống bước 3 và mục cũ (urlScope "laocai.gov.vn") cướp, điền ô CongDan_* không có trên form mới. Chép cụm đó sang
+    # mục iGate: cùng điểm thì popup giữ mục đứng TRƯỚC (mục iGate).
     _cu_detect = next(p for p in PROCEDURES if p["key"] == _cu)["detect"]
+    if _cu_detect.get("textIncludes"):
+        _goc["detect"] = {**_goc["detect"], "textIncludes": list(_cu_detect["textIncludes"])}
     if _cu_detect.get("textPriority"):
-        _goc["detect"] = {**_goc["detect"], "textIncludes": list(_cu_detect["textIncludes"]), "textPriority": True}
+        _goc["detect"] = {**_goc["detect"], "textPriority": True}
     # Bản CỔNG TEST: chép nguyên mục cổng chính thức (cùng pipeline, cùng hướng dẫn), chỉ đổi host nhận diện sang
     # dichvucongtest.laocai.gov.vn và thêm " - test" cuối nhãn để cán bộ thấy đang ở cổng thử.
     PROCEDURES.insert(PROCEDURES.index(_goc) + 1, {
@@ -9052,6 +9227,12 @@ _PIPELINE = {
     "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai-test": dang_ky_bien_dong_chia_tach_to_chuc_igate_lao_cai_process,
     "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_process,
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_process,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai-test": dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_process,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai": tang_cho_qsdd_nha_nuoc_igate_lao_cai_process,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai-test": tang_cho_qsdd_nha_nuoc_igate_lao_cai_process,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai": dien_tich_tang_them_igate_lao_cai_process,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai-test": dien_tich_tang_them_igate_lao_cai_process,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "dinh-chinh-gcn-da-cap-igate-lao-cai": dinh_chinh_gcn_da_cap_igate_lao_cai_process,
     "dinh-chinh-gcn-da-cap-igate-lao-cai-test": dinh_chinh_gcn_da_cap_igate_lao_cai_process,
@@ -9144,6 +9325,8 @@ _PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": thu_hoi_gcn_igate_lao_cai_process,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test": thu_hoi_gcn_igate_lao_cai_process,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_process,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai": dk_dat_dai_igate_lao_cai_process,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai-test": dk_dat_dai_igate_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai": chuyen_doi_md_sd_dat_igate_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai-test": chuyen_doi_md_sd_dat_igate_lao_cai_process,
@@ -9276,6 +9459,8 @@ _ATTACH_PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai": thu_hoi_gcn_igate_lao_cai_attach,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test": thu_hoi_gcn_igate_lao_cai_attach,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_attach,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai": dk_dat_dai_igate_lao_cai_attach,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai-test": dk_dat_dai_igate_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai": chuyen_doi_md_sd_dat_igate_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-igate-lao-cai-test": chuyen_doi_md_sd_dat_igate_lao_cai_attach,
@@ -9357,6 +9542,12 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai-test": dang_ky_bien_dong_chia_tach_to_chuc_igate_lao_cai_attach,
     "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach,
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_attach,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai-test": dang_ky_dat_dai_lan_dau_ho_gia_dinh_igate_lao_cai_attach,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai": tang_cho_qsdd_nha_nuoc_igate_lao_cai_attach,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai-test": tang_cho_qsdd_nha_nuoc_igate_lao_cai_attach,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai": dien_tich_tang_them_igate_lao_cai_attach,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai-test": dien_tich_tang_them_igate_lao_cai_attach,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "dinh-chinh-gcn-da-cap-igate-lao-cai": dinh_chinh_gcn_da_cap_igate_lao_cai_attach,
     "dinh-chinh-gcn-da-cap-igate-lao-cai-test": dinh_chinh_gcn_da_cap_igate_lao_cai_attach,

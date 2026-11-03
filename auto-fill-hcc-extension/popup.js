@@ -4963,6 +4963,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai-test" ||
       // [Lào Cai] 1.115688 (đăng ký đất đai lần đầu cho tổ chức): cùng contract mốc tài khoản với 1.115687.
       cfg.key === "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc" ||
+      // [Lào Cai - cổng iGate mới] 1.115688: mốc tài khoản chọn đúng người nộp giữa người đại diện tổ chức / bên được
+      // ủy quyền.
+      cfg.key === "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai" ||
+      cfg.key === "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai-test" ||
       // [Lào Cai] 1.115666 / 1.115670 / 1.115686 / 1.115689: cổng xác thực Họ tên/Số Căn cước/Ngày sinh
       // khối người nộp với CSDLQG dân cư → chế độ theo tài khoản cần mốc để chỉ lấy nhân thân của chính
       // người đang đăng nhập.
@@ -4980,6 +4984,15 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dinh-chinh-gcn-da-cap-igate-lao-cai" ||
       cfg.key === "dinh-chinh-gcn-da-cap-igate-lao-cai-test" ||
       cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai" ||
+      // [Lào Cai - cổng iGate mới] 1.115689: mốc tài khoản chọn đúng người nộp giữa chủ hồ sơ / bên được ủy quyền.
+      cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai" ||
+      cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai-test" ||
+      // [Lào Cai - cổng iGate mới] 1.115690: mốc tài khoản chọn đúng người nộp giữa người tặng cho / người được ủy quyền.
+      cfg.key === "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai" ||
+      cfg.key === "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai-test" ||
+      // [Lào Cai - cổng iGate mới] 1.115693: mốc tài khoản chọn đúng người nộp giữa chủ hồ sơ / người được ủy quyền.
+      cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai" ||
+      cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai-test" ||
       // [Lào Cai] 1.011441 / 1.011442 (đăng ký / đăng ký thay đổi biện pháp bảo đảm): người đi nộp hay là
       // cán bộ ngân hàng/quỹ tín dụng theo Giấy giới thiệu, khác người yêu cầu đăng ký → chế độ theo tài
       // khoản cần mốc để chỉ lấy nhân thân của chính người đăng nhập.
