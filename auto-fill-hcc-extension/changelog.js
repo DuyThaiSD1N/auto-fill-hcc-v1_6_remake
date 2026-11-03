@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.26.5",
+    date: "3/11/2026",
+    items: [
+      "Thêm thủ tục cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (cổng Bộ VHTTDL): tự nhận biết tự nộp hay nộp thay theo tài khoản đăng nhập.",
+    ],
+  },
+  {
     version: "1.26.4",
     date: "2/11/2026",
     items: [

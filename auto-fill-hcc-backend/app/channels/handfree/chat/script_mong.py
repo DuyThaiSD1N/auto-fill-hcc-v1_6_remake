@@ -256,6 +256,9 @@ PROCEDURE_HMONG = {
     "thong-bao-san-pham-quang-cao-bang-ron": "Tshaj tawm kev tshaj tawm khoom muag",
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": "Ntawv tso cai luam ntawv tsis yog lag luam",
     "cap-the-huong-dan-vien-du-lich-noi-dia": "Daim npav neeg coj kev mus ncig (hauv teb chaws)",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.001822) — "ntawv tso cai ua haujlwm" (chứng chỉ hành nghề), "kho" (sửa,
+    # tu bổ) đã có; TỪ MỚI "chaw keeb kwm" (di tích).
+    "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": "Ntawv tso cai ua haujlwm kho chaw keeb kwm",
     "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": "Kho, ntxiv kev txo nqi khoom muag",

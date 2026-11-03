@@ -6296,6 +6296,63 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        # Mã TTHC 1.001822 (QT-09), cổng Bộ VHTTDL (liz-*) như thủ tục quảng cáo băng-rôn: nhận diện CẢ trang chi tiết
+        # DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.001822 sau khi bấm "Nộp trực tuyến". ke_khai_links đặt selectSo
+        # → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.001822",
+                "019d2bfd-b558-70ee-a2f5-fb4c232b41dd",
+            ],
+        },
+        "label": "Thủ tục cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "shortLabel": "Cấp chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "subtitle": "Kiến trúc sư, kỹ sư xin chứng chỉ hành nghề tu bổ di tích",
+        "icon": "🏛️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b558-70ee-a2f5-fb4c232b41dd",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        # Trang nộp MỘT TRANG (form liz + Thành phần hồ sơ + ô cam kết + ô VNPost + nút "Lưu và nộp hồ sơ") → luồng
+        # trang một trang (chat/tu_phap_moi.py) như quảng cáo băng-rôn.
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số 51)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "chung_chi_hanh_nghe", "name": "Chứng chỉ hành nghề hoạt động xây dựng / kiến trúc (bản sao chứng "
+             "thực)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Bằng tốt nghiệp đại học (bản sao chứng thực)", "icon": "🎓", "sides": 1,
+             "repeatable": True},
+            {"key": "anh", "name": "Ít nhất 02 ảnh màu 4x6", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "boi_duong", "name": "Chứng chỉ bồi dưỡng kiến thức bảo quản, tu bổ, phục hồi di tích (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số 51) — nguồn chính để "
+            "điền.\n"
+            "2. Bản sao chứng thực Chứng chỉ hành nghề hoạt động xây dựng / kiến trúc và bằng tốt nghiệp đại học.\n"
+            "3. Ít nhất 02 ảnh màu 4x6.\n"
+            "4. Nếu có: chứng chỉ bồi dưỡng kiến thức bảo quản, tu bổ, phục hồi di tích; căn cước của người đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tài khoản trùng căn cước người đề nghị thì điền khối người nộp; nộp thay thì điền khối 'Thông tin người "
+            "ủy quyền'.\n"
+            "Bước đính kèm: Đơn → dòng 1; chứng chỉ hành nghề + bằng + chứng chỉ bồi dưỡng → dòng 2; ảnh → dòng 3."
+        ),
+    },
+    {
         "key": "gia-han-giay-phep-xay-dung",
         "flowProfile": "xay-dung",
         # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
@@ -6338,8 +6395,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
-        # Mã TTHC 2.000535, cổng Bộ Công Thương (bảng attp-row). ke_khai_links ghi key khác
-        # ("cap-lai-gcn-attp-so-cong-thuong") → khai tay uuid + mã; ke_khai khai selectSo → Sở Công Thương.
+        # Mã TTHC 2.000535, cổng Bộ Công Thương (bảng attp-row). Key TRÙNG lõi và ke_khai_links; uuid + mã
+        # vẫn khai tay ở đây; ke_khai khai selectSo → Sở Công Thương.
         "detect": {
             "textIncludes": [
                 "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",

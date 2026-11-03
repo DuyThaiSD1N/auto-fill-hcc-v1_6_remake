@@ -4978,6 +4978,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-doi-the-huong-dan-vien-du-lich-da-nang" ||
       // [Đà Nẵng · Bộ VHTTDL] 1.004614 (cấp lại thẻ HDV): cùng cổng, cùng contract.
       cfg.key === "cap-lai-the-huong-dan-vien-du-lich-da-nang" ||
+      // [Bộ VHTTDL] 1.001822 (CCHN bảo quản, tu bổ, phục hồi di tích): mốc tài khoản quyết định tự nộp (điền khối
+      // người nộp) hay nộp thay (tích "Thông tin người ủy quyền"); thiếu mốc là BE chỉ điền Đơn Mẫu 51.
+      cfg.key === "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||

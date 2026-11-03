@@ -62,6 +62,11 @@ _QUAN_HE_ALIASES = {
 _SELF = "Bản thân"
 _OTHER = "Khác"
 
+# Nhãn khối giấy tờ tùy thân in trên giấy hộ tịch ("Giấy CMND/Giấy tờ hợp lệ thay thế", "Giấy tờ tùy thân"):
+# dòng "Số:" ngay dưới là số thẻ của vợ/chồng/người đi khai, không phải số đăng ký.
+_ID_LABEL_RE = re.compile(r"cmnd|cccd|can cuoc|chung minh|giay to tuy than|giay to hop le|dinh danh")
+_ID_LOOKAHEAD_LINES = 3
+
 # Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ; số 12 chữ số của trẻ là số định danh, không phải
 # số giấy tờ tùy thân.
 _CAN_CUOC_MIN_AGE = 14
@@ -134,6 +139,20 @@ def _card_not_recipient(number, birth, gender, issue_date, event: str, event_dat
         return True
     issued, died = _date_key(issue_date), _date_key(event_date)
     return event == "death" and bool(issued and died) and issued > died
+
+
+def _id_card_numbers(values: dict, options: dict) -> set[str]:
+    """Số CMND/CCCD có trong hồ sơ: của người được cấp, của tài khoản nộp, và số đứng ngay dưới nhãn giấy tờ
+    tùy thân trên giấy (CMND của người vợ trên giấy kết hôn không lọt vào field nào nhưng vẫn là số thẻ)."""
+    found = {_digits(values.get("NguoiDuocCap_SoGiayTo")), _digits(values.get("NguoiDuocCap_SoDinhDanh")),
+             requester_context(options)[1]}
+    lines = [line for line in str(options.get("_ocr_text") or "").splitlines() if line.strip()]
+    for index, line in enumerate(lines):
+        if not _ID_LABEL_RE.search(_fold(line)):
+            continue
+        for near in lines[index:index + _ID_LOOKAHEAD_LINES]:
+            found.update(n for n in map(_digits, re.findall(r"\d[\d .]{7,}\d", near)) if len(n) in (9, 12))
+    return {n for n in found if len(n) in (9, 12)}
 
 
 def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
@@ -347,7 +366,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenLoaiViecYeuCau", _EVENT_TO_OPTION.get(event))
     add("citizenHoSo_CoQuanDangKy", values.get("GiayTo_CoQuanDangKy"))
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
-    add("citizencauhoi3", values.get("GiayTo_So"))
+    # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
+    # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.
+    registration_no = values.get("GiayTo_So")
+    if _digits(registration_no) in _id_card_numbers(values, options):
+        warnings.append("Số đăng ký đọc ra trùng số CMND/CCCD trong hồ sơ — đã bỏ trống, cán bộ nhập ô Số đăng ký "
+                        "theo dòng \"Số:\" ở đầu giấy hộ tịch.")
+        registration_no = ""
+    add("citizencauhoi3", registration_no)
     add("citizencauhoi4", values.get("GiayTo_QuyenSo"))
     add("citizencauhoi5", values.get("GiayTo_NgayDangKy"))
     quantity = _digits(values.get("SoLuongBanSao"))

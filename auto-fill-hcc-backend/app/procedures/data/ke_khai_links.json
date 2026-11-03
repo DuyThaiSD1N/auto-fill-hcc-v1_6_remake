@@ -1156,10 +1156,19 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-lai-gcn-attp-so-cong-thuong",
+      "key": "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
       "code": "2.000535",
-      "label": "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm do Sở Công Thương/Sở An toàn thực phẩm/Ban Quản lý an toàn thực phẩm thực hiện",
+      "label": "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-32f5-71a9-8925-3524dc3d03fd",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gcn-attp-cong-thuong",
+      "code": "2.000591",
+      "label": "Cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-330c-77dd-8058-19a40f5959f5",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
@@ -2011,6 +2020,7 @@
       "label": "Điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1d9a-76c9-8537-4e29900dec8a",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -2230,6 +2240,15 @@
       "code": "1.000688",
       "label": "Cấp Chứng chỉ hành nghề luật sư đối với người được miễn đào tạo nghề luật sư, miễn tập sự hành nghề luật sư",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faa-71b6-96ab-51618971aa7f",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+      "code": "1.001822",
+      "label": "Thủ tục cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b558-70ee-a2f5-fb4c232b41dd",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true

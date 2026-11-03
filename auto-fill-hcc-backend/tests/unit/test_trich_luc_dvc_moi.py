@@ -396,3 +396,100 @@ def test_noi_cu_tru_xa_khong_chon_duoc_thi_bo_trong_va_bao():
     assert area["citizenField38"]["value"] == "Số 1, Xã Khongcothat"
     assert area["citizenField38"].get("default") is True
     assert any("Phường/Xã" in w for w in warnings)
+
+
+# Giấy chứng nhận kết hôn mẫu cũ: ô "Số:" góc trên viết tay OCR không ra chữ số, LLM vớ dòng "Số:" của khối CMND.
+_OCR_GIAY_KET_HON = """Mẫu TP/HT-1999-B.2
+Số: ...M.......
+Quyển số:...01...
+GIẤY CHỨNG NHẬN KẾT HÔN
+Họ và tên chồng: TRAN VAN C
+Giấy CMND/Giấy tờ hợp lệ thay thế(3): ....
+
+Số: 123456789
+Cấp tại: Công an tỉnh Lâm Đồng
+Họ và tên vợ: LE THI D
+Giấy CMND/Giấy tờ hợp lệ thay thế(3): ....
+
+Số: 987654321
+Cấp tại: Công an tỉnh Lâm Đồng"""
+_CHONG = {"NguoiDuocCap_HoTen": "Tran Van C", "NguoiDuocCap_NgaySinh": "10/04/1975", "NguoiDuocCap_GioiTinh": "Nam",
+          "NguoiDuocCap_LoaiGiayTo": "CMND", "NguoiDuocCap_SoGiayTo": "123456789", "NguoiDuocCap_NgayCap": "10/01/1991",
+          "NguoiDuocCap_NoiCap": "Công an tỉnh Lâm Đồng", "GiayTo_LoaiSuKien": "marriage",
+          "GiayTo_TenGiayTo": "Giấy chứng nhận kết hôn", "GiayTo_CoQuanDangKy": "UBND Phường X"}
+
+
+def _enrich_ket_hon(values: dict):
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    return mapper.enrich(fields, {"formContext": ACCOUNT, "_ocr_text": _OCR_GIAY_KET_HON,
+                                  "_reasoning_context": _context("Không xác định", event="kết hôn")})
+
+
+@pytest.mark.parametrize("so", ["123456789", "987654321"])
+def test_so_dang_ky_trung_so_cmnd_thi_bo_trong(so):
+    out, warnings = _enrich_ket_hon({**_CHONG, "GiayTo_So": so})
+    by = {f["name"]: f["value"] for f in out}
+    assert "citizencauhoi3" not in by
+    assert by["citizenNDK_SoGiayToTuyThan"] == "123456789"
+    assert any("trùng số CMND/CCCD" in w for w in warnings)
+
+
+def test_so_dang_ky_that_van_giu():
+    out, warnings = _enrich_ket_hon({**_CHONG, "GiayTo_So": "111"})
+    assert {f["name"]: f["value"] for f in out}["citizencauhoi3"] == "111"
+    assert not any("trùng số CMND/CCCD" in w for w in warnings)
+
+
+def _run_with_vision(monkeypatch, fields: list[dict], vision_reply: str):
+    from app.pipelines.trich_luc_dvc_moi.process import runner as tl_runner
+
+    calls = []
+
+    async def fake_shared_run(*_args, **_kwargs):
+        return {"fields": [dict(f) for f in fields], "reasoning_context": _context("Không xác định", event="kết hôn"),
+                "ocr_text": _OCR_GIAY_KET_HON}
+
+    async def fake_chat(messages, **_kwargs):
+        calls.append(messages)
+        return {"content": vision_reply, "usage": {}}
+
+    monkeypatch.setattr(tl_runner.runner, "run", fake_shared_run)
+    monkeypatch.setattr(tl_runner, "_page_images", lambda files: [b"jpeg"])
+    monkeypatch.setattr(tl_runner.ocr_qwen, "chat", fake_chat)
+    res = asyncio.run(tl_runner.run({"doc": [{"name": "a.pdf", "type": "application/pdf", "dataUrl": "data:,"}]},
+                                    {"formContext": ACCOUNT}))
+    return res, calls
+
+
+def _compact(values: dict) -> list[dict]:
+    return [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+
+
+def test_thieu_ngay_dang_ky_thi_qwen_doc_anh_bu(monkeypatch):
+    res, calls = _run_with_vision(monkeypatch, _compact(_CHONG), '{"ngay_dang_ky": "25/11/2005"}')
+    by = {f["name"]: f["value"] for f in res["fields"]}
+    assert len(calls) == 1
+    assert by["citizencauhoi5"] == "25/11/2005"
+    assert res["extracted"]["visionPatched"] == ["GiayTo_NgayDangKy"]
+
+
+def test_da_co_ngay_dang_ky_thi_khong_goi_qwen(monkeypatch):
+    res, calls = _run_with_vision(monkeypatch, _compact({**_CHONG, "GiayTo_NgayDangKy": "01/02/2003"}),
+                                  '{"ngay_dang_ky": "25/11/2005"}')
+    assert calls == []
+    assert {f["name"]: f["value"] for f in res["fields"]}["citizencauhoi5"] == "01/02/2003"
+
+
+def test_khong_thay_giay_ho_tich_thi_khong_goi_qwen(monkeypatch):
+    values = {k: v for k, v in _CHONG.items() if not k.startswith("GiayTo_")}
+    _, calls = _run_with_vision(monkeypatch, _compact(values), '{"ngay_dang_ky": "25/11/2005"}')
+    assert calls == []
+
+
+@pytest.mark.parametrize("reply", ['{"ngay_dang_ky": "10/01/1991"}', '{"ngay_dang_ky": "01/01/1960"}',
+                                   '{"ngay_dang_ky": "31/02/2005"}', '{"ngay_dang_ky": ""}', "không đọc được"])
+def test_ngay_qwen_doc_khong_hop_ly_thi_bo(monkeypatch, reply):
+    # Trùng ngày cấp CMND, trước ngày sinh, ngày không có thật, trống, trả lời không phải JSON.
+    res, calls = _run_with_vision(monkeypatch, _compact(_CHONG), reply)
+    assert len(calls) == 1
+    assert "citizencauhoi5" not in {f["name"] for f in res["fields"]}

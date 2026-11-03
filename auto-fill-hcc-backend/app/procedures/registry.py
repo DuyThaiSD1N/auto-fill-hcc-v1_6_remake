@@ -362,6 +362,12 @@ from app.pipelines.ho_tro_mai_tang.attach import plan as ho_tro_mai_tang_attach
 from app.pipelines.ho_tro_mai_tang.process import run as ho_tro_mai_tang_process
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.attach import plan as ho_tro_mai_tang_huu_tri_xa_hoi_attach
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process import run as ho_tro_mai_tang_huu_tri_xa_hoi_process
+from app.pipelines.ho_tro_mai_tang_dan_toc_thieu_so_lai_chau.attach import (
+    plan as ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_attach,
+)
+from app.pipelines.ho_tro_mai_tang_dan_toc_thieu_so_lai_chau.process import (
+    run as ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_process,
+)
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import plan as dieu_chinh_huu_tri_xa_hoi_attach
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process import run as dieu_chinh_huu_tri_xa_hoi_process
 from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_thong_attach
@@ -568,6 +574,8 @@ from app.pipelines.dang_ky_noi_quy_lao_dong.attach import plan as dang_ky_noi_qu
 from app.pipelines.dang_ky_noi_quy_lao_dong.process import run as dang_ky_noi_quy_lao_dong_process
 from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.attach import plan as cchn_luat_su_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.process import run as cchn_luat_su_process
+from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cchn_di_tich_attach
+from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import run as cchn_di_tich_process
 
 PROCEDURES: list[dict] = [
     {
@@ -6491,6 +6499,37 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau",
+        # 2.002862 (NQ 53/2025/NQ-HĐND Lai Châu), key TRÙNG ke_khai_links. Trang nộp là SPA
+        # dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/…?sid=<phiên>, URL không mang mã → nhận theo
+        # cụm tên thủ tục (textIncludes đòi ĐỦ mọi cụm nên không ghép thêm mã, phòng trang không in mã);
+        # urlScope khoá host, textPriority để thắng rule chung của các thủ tục mai táng khác.
+        "detect": {
+            "urlScope": ["laichau.gov.vn"],
+            "textIncludes": ["mai táng đối với người dân tộc thiểu số trên địa bàn tỉnh Lai Châu"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Hỗ trợ chi phí mai táng đối với người dân tộc thiểu số trên địa bàn tỉnh Lai Châu "
+        "giai đoạn 2025-2030",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người nộp = người đứng ra tổ chức mai táng):\n"
+            "1. CCCD/thẻ căn cước của người nộp.\n"
+            "2. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 01).\n"
+            "3. Biên bản xác nhận việc mai táng (Mẫu số 02) — Mẫu 01 và Mẫu 02 có thể chung một file Word.\n"
+            "4. Trích lục khai tử của người chết.\n"
+            "5. Giấy chứng nhận hộ nghèo/hộ cận nghèo (dân tộc người nộp lấy từ đây khi thẻ căn cước mới "
+            "không in dân tộc).\n"
+            "6. Nếu hỏa táng: Giấy xác nhận của cơ sở hỏa táng.\n"
+            "Bước đính kèm: hệ thống tích và đính đúng 5 dòng thành phần hồ sơ; file gộp Mẫu 01 + Mẫu 02 đính "
+            "nguyên file vào cả dòng Biên bản và dòng Tờ khai; CCCD vào \"Giấy tờ khác\". Mỗi tệp KHÔNG QUÁ 6 MB."
+        ),
+    },
+    {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
         # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
@@ -9132,6 +9171,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        # Mã TTHC 1.001822 (QT-09), nộp tại Sở VHTTDL tỉnh. Key TRÙNG ke_khai_links (selectSo) nên URL trang chi
+        # tiết DVCQG + matthc=/madvc=1.001822 được ghép tự động; khai lại ở đây như thủ tục quảng cáo băng-rôn để
+        # nhận diện ở CẢ trang DVCQG lẫn trang nộp /nop-ho-so?MaTTHC=1.001822 của cổng Bộ VHTTDL (liz-*, engine
+        # content/fill-liz.js). Lần đầu mở link nộp khi chưa đăng nhập, cổng đẩy sang VNeID rồi về trang chủ —
+        # fill-liz.js tự mở lại link (returnToApplyAfterLogin, áp mọi /nop-ho-so?MaTTHC= của host này).
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["matthc=1.001822", "019d2bfd-b558-70ee-a2f5-fb4c232b41dd"],
+        },
+        "label": "Thủ tục cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích",
+        "mode": "agent",
+        # Bảng 3 dòng (Đơn Mẫu 51 / bản sao CCHN + bằng / ảnh 4x6), mỗi dòng một <app-upload-flie-multi> → engine
+        # fixed-slot dò dòng theo chữ (sectionHeader + slotKeywords).
+        "hasAttachmentStep": True,
+        # Form và bảng đính kèm CHUNG một trang → nút quét điền xong tự đính kèm luôn cùng bộ file.
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đơn đề nghị cấp Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (Mẫu số 51, NĐ 308/2025/NĐ-CP) "
+            "— nguồn chính để điền.\n"
+            "2. Bản sao chứng thực Chứng chỉ hành nghề hoạt động xây dựng / kiến trúc và bằng tốt nghiệp đại học.\n"
+            "3. Ít nhất 02 ảnh màu 4 cm x 6 cm.\n"
+            "4. Nếu có: chứng chỉ bồi dưỡng kiến thức bảo quản, tu bổ, phục hồi di tích; CCCD của người đề nghị (chỉ "
+            "để điền).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Tài khoản đăng nhập trùng CCCD người đề nghị → điền khối 'Thông tin người nộp hồ sơ'; khác (nộp thay) → "
+            "tự tích 'Thông tin người ủy quyền' và điền người đề nghị vào đó. Đơn Mẫu 51 luôn được điền.\n"
+            "Đính kèm: Đơn → dòng (1); CCHN + bằng đại học + chứng chỉ bồi dưỡng → CHUNG dòng (2); ảnh → dòng (3).\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết chịu trách nhiệm trước pháp luật…', chưa tích "
+            "thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
         # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
         # đề nghị + thời hạn.
@@ -9362,6 +9438,7 @@ _PIPELINE = {
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
+    "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
@@ -9451,6 +9528,7 @@ _PIPELINE = {
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
+    "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -9615,6 +9693,7 @@ _ATTACH_PIPELINE = {
     "ho-tro-mai-tang": ho_tro_mai_tang_attach,
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_attach,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_attach,
+    "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,
@@ -9731,6 +9810,7 @@ _ATTACH_PIPELINE = {
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_attach,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_attach,
+    "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}
