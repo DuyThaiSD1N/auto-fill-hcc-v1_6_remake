@@ -182,9 +182,10 @@ QUY TẮC TRÍCH XUẤT:
     "TP Phan Thiết" → tinh="Bình Thuận".
     "TP Tam Kỳ" → tinh="Quảng Nam".
     Các thành phố trực thuộc trung ương (Hà Nội, TP HCM, Đà Nẵng, Cần Thơ, Hải Phòng, Huế) vẫn trả đúng tên đó.
-  + xa CHỈ trả phần tên riêng của phường/xã/đặc khu, KHÔNG kèm tiền tố "Phường", "P.", "P", "Xã",
-    "Thị trấn", "Đặc khu".
-    Ví dụ: "Xã Nam Ban Lâm Hà" -> xa="Nam Ban Lâm Hà".
+  + Cách CHÉP tên trong xa (nguồn địa chỉ vẫn theo mô tả từng field): chép nguyên văn tên phường/xã như nguồn
+    ghi, có tiền tố "Phường/Xã/P." thì cứ giữ (hệ thống tự bỏ). KHÔNG tự cắt chữ nào: tên phường/xã có thể bắt
+    đầu bằng chữ giống tiền tố ("Phương…", "Phúc…", "Phù…"), nguồn ghi chữ thường hoặc thiếu dấu thì đó vẫn là
+    một phần tên riêng.
 - Thue_DiaChiNhanThongBao (địa chỉ nhận thông báo thuế): SO SÁNH THEO NGỮ NGHĨA với địa chỉ trụ sở hộ kinh doanh (TruSo_DiaChi).
   + Nếu là CÙNG MỘT NƠI — kể cả khi viết hơi khác, thiếu/thừa chữ, sai chính tả hay nhiễu do OCR (vd "Tổ 11 Đoàn Kết" ≈ "Số 11, P. Đoàn Kết") — thì ĐỂ TRỐNG field này (hệ thống sẽ tự chọn "Giống địa chỉ trụ sở chính").
   + Trên giấy, mục 5.1 thường ghi "chỉ kê khai nếu khác địa chỉ trụ sở": nếu mục này bỏ trống thì coi như GIỐNG, để trống field.

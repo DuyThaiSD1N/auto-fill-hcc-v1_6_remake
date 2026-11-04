@@ -6,7 +6,7 @@ A_ID = "001190000001"
 B_ID = "001185000002"
 ACCOUNT = {
     "applicantFullname": "NGUYỄN THỊ AN", "applicantIdentityNumber": A_ID,
-    "applicantBirthday": "5/3/1990", "applicantGender": "Nữ", "applicantEthnicity": "Tày",
+    "applicantBirthday": "5/3/1990", "applicantGender": "Nữ", "applicantEthnicity": "Kinh",
     "applicantIdDate": "10/04/2021", "applicantIdIssuer": "CỤC TRƯỞNG CỤC CẢNH SÁT QLHC VỀ TTXH",
     "applicantAddress": {"tinh": "Lạng Sơn", "xa": "Phường Đông Kinh", "diaChi": "Tổ 3"},
 }
@@ -45,7 +45,7 @@ def test_self_case_fills_both_sections_from_account():
         assert ui[f"HoVaTen{suffix}"] == "NGUYỄN THỊ AN"
         assert ui[f"NgaySinh{suffix}"] == "05/03/1990"
         assert ui[f"NgayCapDD{suffix}"] == "10/04/2021"
-    assert ui["DanTocC1"] == "Tày" and ui["GioiTinhC1"] == "Nữ"
+    assert ui["DanTocC1"] == "Kinh" and ui["GioiTinhC1"] == "Nữ"
     assert ui["nxnNoiCuTru_TrongNuoc"]["tinh"] == "Lạng Sơn"
     assert ui["nycNoiCuTru_TrongNuoc"]["diaChi"] == "Tổ 3"
 
@@ -68,7 +68,7 @@ def test_relative_declares_for_account_holder_only_section_two_changes():
     }, ACCOUNT)
     assert ui["HoVaTenC"] == "TRẦN VĂN BÌNH" and ui["SoDinhDanhC"] == B_ID
     assert ui["quanhevoinguoiduocxacminh"] == "2"
-    assert ui["HoVaTenC1"] == "NGUYỄN THỊ AN" and ui["DanTocC1"] == "Tày"
+    assert ui["HoVaTenC1"] == "NGUYỄN THỊ AN" and ui["DanTocC1"] == "Kinh"
 
 
 def test_block_without_id_needs_same_name_and_birthday():
@@ -106,10 +106,12 @@ def test_handwritten_id_off_by_two_digits_matches_by_exact_name_and_birthday():
 def test_account_ethnicity_and_gender_codes_are_decoded():
     ctx = account_context({"formContext": {"applicantFullname": "A", "applicantEthnicity": "1545",
                                            "applicantGender": "2"}})
-    assert ctx["DanToc"] == "Tày" and ctx["GioiTinh"] == "Nữ"
+    assert "DanToc" not in ctx and ctx["GioiTinh"] == "Nữ"
     ctx = account_context({"formContext": {"applicantEthnicity": "63001", "applicantGender": "1"}})
     assert ctx["DanToc"] == "Kinh" and ctx["GioiTinh"] == "Nam"
-    assert account_context({"formContext": {"applicantEthnicity": "Thái"}})["DanToc"] == "Thái"
+    assert account_context({"formContext": {"applicantEthnicity": "64505"}})["DanToc"] == "Kinh"
+    for value in ("1514", "1541", "1516", "Thái"):
+        assert "DanToc" not in account_context({"formContext": {"applicantEthnicity": value}})
 
 
 def test_account_address_codes_from_portal_are_decoded():

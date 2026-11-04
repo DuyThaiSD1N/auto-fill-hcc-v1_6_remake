@@ -184,3 +184,48 @@ async def submitted_daily_counts(
         for row in rows
         if row["_id"].get("day")
     ]
+
+
+async def rating_counts(
+    *,
+    user_ids: list[str] | None,
+    date_from: datetime,
+    date_to: datetime,
+) -> list[dict]:
+    """[{userId, level, rated, count}] — hồ sơ ĐÃ NỘP lần đầu trong khoảng, chia theo phiếu đánh giá.
+
+    Một document = một hồ sơ = tối đa một phiếu, KỂ CẢ ba thủ tục chứng thực nộp nhiều bản: phiếu
+    gắn vào hồ sơ chứ không gắn vào từng lần bấm nộp, nên đếm theo lần nộp thì các bản thứ hai
+    trở đi thành "không đánh giá" oan và tỷ lệ không còn cộng đủ 100%.
+
+    Gộp cả hai trải nghiệm (không lọc `experience`): Auto Fill và Handfree dùng chung một phiếu.
+    `rated` = document có cụm `rating` (đã chấm mức hoặc bấm bỏ qua); `level` None khi bỏ qua.
+    """
+    ids = _unique_ids(user_ids)
+    if ids is not None and not ids:
+        return []
+    pipeline = [
+        {"$match": _match(ids, date_from, None)},
+        _FIRST_SUBMIT,
+        {"$match": {"_first_submit": {"$gte": date_from, "$lt": date_to}}},
+        {
+            "$group": {
+                "_id": {
+                    "userId": {"$ifNull": ["$user_id", "—"]},
+                    "level": "$rating.level",
+                    "rated": {"$eq": [{"$type": "$rating"}, "object"]},
+                },
+                "count": {"$sum": 1},
+            }
+        },
+    ]
+    rows = await get_db().dossiers.aggregate(pipeline, allowDiskUse=True).to_list(length=100000)
+    return [
+        {
+            "userId": str(row["_id"]["userId"]),
+            "level": row["_id"].get("level"),
+            "rated": bool(row["_id"].get("rated")),
+            "count": int(row.get("count") or 0),
+        }
+        for row in rows
+    ]

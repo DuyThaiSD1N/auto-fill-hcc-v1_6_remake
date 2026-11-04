@@ -25,9 +25,11 @@ from app.dashboard.combine import (
     merge_daily,
     merge_procedures,
 )
+from app.dashboard import ratings as dashboard_ratings
 from app.dashboard.export import build_dashboard_workbook, export_filename
 from app.dashboard.scope import resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
+from app.dossiers import stats as dossier_stats
 from app.reports.integration import unit_key
 from app.stats import cutover
 from app.traces.date_range import parse_stats_range
@@ -248,6 +250,47 @@ async def logs(
         "total": result["total"],
         "page": page,
         "pageSize": pageSize,
+    }
+
+
+@router.get("/ratings")
+async def ratings(
+    user: dict = Depends(require_dashboard),
+    dateFrom: str | None = Query(None),
+    dateTo: str | None = Query(None),
+    unit: str | None = Query(None),
+):
+    """Phiếu đánh giá của công dân trên hồ sơ ĐÃ NỘP trong kỳ (cả Auto Fill lẫn Handfree).
+
+    Tổng phần trên theo đơn vị đang lọc; `units[]` luôn cho toàn phạm vi (giống `/summary`) và chỉ
+    gồm đơn vị có hồ sơ đã nộp. Tài khoản xã/phường không xem được đơn vị khác → `units` rỗng.
+    """
+    resolved = await resolve_dashboard_scope(user)
+    date_from, date_to = _range(dateFrom, dateTo)
+    all_units = resolved["units"]
+    all_ids = [u["unitId"] for u in all_units]
+    ids, selected = _resolve_user_ids(resolved, unit)
+    # Hồ sơ của tổ dân phố tính vào xã cha, như mọi con số khác của bảng thống kê.
+    rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), all_ids)
+    rows = await dossier_stats.rating_counts(
+        user_ids=rollup.expand(all_ids), date_from=date_from, date_to=date_to,
+    )
+    per_unit: dict[str, dict[str, int]] = {}
+    dashboard_ratings.add_rows(per_unit, rows, rollup.unit)
+
+    units = []
+    if resolved["canViewUnits"]:
+        for u in all_units:
+            row = dashboard_ratings.summarize(per_unit.get(u["unitId"]))
+            if row["submitted"]:
+                units.append({"unitId": u["unitId"], "name": u["name"], "xa": u.get("xa"), **row})
+        units.sort(key=lambda r: (-r["rated"], -r["submitted"], r["xa"] or "", r["name"] or ""))
+    return {
+        "scope": _scope_summary(resolved),
+        "selected": selected,
+        "range": {"from": dateFrom, "to": dateTo},
+        **dashboard_ratings.summarize(dashboard_ratings.merge(per_unit, ids)),
+        "units": units,
     }
 
 

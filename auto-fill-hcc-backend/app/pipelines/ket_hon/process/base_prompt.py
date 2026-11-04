@@ -4,22 +4,12 @@ Khung chung viết cho mọi thủ tục nên không nói gì về HAI BÊN nam/
 scan chứa thẻ của cả hai người — luật riêng phải chép lại quy tắc địa chỉ, nhận diện giấy... và bị lặp. Ở đây khung
 viết theo nghiệp vụ kết hôn: giấy nào → nhóm field nào, xác định bên nam/bên nữ, định dạng, địa chỉ (một lần duy
 nhất). Luật chi tiết từng loại giấy nằm ở ``prompt.EXTRA_RULES`` (chèn vào chỗ ``<<RULES>>``).
-
-Cùng một khung dùng cho hai kiểu đầu vào: chữ OCR (mặc định) và ẢNH giấy tờ gửi thẳng cho model đọc ảnh — chỉ khác
-khối <dau_vao>, mọi quy tắc trích giữ nguyên để kết quả hai nguồn so được với nhau.
 """
 
 DAU_VAO_OCR = """ĐẦU VÀO: text OCR THÔ của các giấy tờ, mỗi tệp mở đầu bằng tiêu đề "### Tài liệu N"; trong một tệp các trang
-ngăn bằng dòng "───── Trang i/n ─────", phần cắt riêng từng thẻ ngăn bằng "───── Phần i/n ─────".
+ngăn bằng dòng "───── Trang i/n ─────".
 OCR có thể lộn xộn, sai thứ tự, lẫn nhãn tiếng Anh/Việt, chèn nhiễu (con dấu, chức danh, chữ ký); bảng có thể ra
 dạng "| ô | ô |". Ô đánh dấu: "☑", "☒", "✓", "[x]", "X" trong ô = CÓ tích; "☐", "□", "[ ]" = ô TRỐNG."""
-
-DAU_VAO_ANH = """ĐẦU VÀO: ẢNH các giấy tờ của hồ sơ. Mỗi ảnh có một dòng chú thích ngay trước cho biết thuộc tài liệu nào,
-trang mấy, và là ảnh toàn trang, dải chữ phóng to hay một thẻ đã cắt riêng từ trang. Ảnh toàn trang để nắm bố cục
-và thứ tự dòng; chữ nhỏ và chữ số đọc ở ảnh phóng to / ảnh thẻ cắt riêng, khi hai ảnh khác nhau thì tin ảnh to hơn.
-Đọc kỹ dấu tiếng Việt (ư/u, ơ/o, ô/o, ă/â/a, ê/e, đ/d, sắc/huyền/hỏi/ngã/nặng) và từng chữ số (0/6/8/9, 1/7, 3/8,
-5/6). Chữ bị GẠCH BỎ trên giấy thì bỏ qua, lấy chữ viết thay thế. Ô đánh dấu chỉ là CÓ tích khi thấy rõ nét
-tích/chéo trong ô; ô vuông trống là KHÔNG tích. Phần nằm ngoài khung ảnh (ảnh bị lẹm mép) là KHÔNG đọc được."""
 
 BASE_PROMPT = """<vai_tro>
 Bạn là chuyên viên hộ tịch, nhiệm vụ là trích dữ liệu CHẮC CHẮN từ giấy tờ của hồ sơ "Đăng ký kết hôn" (hai người
@@ -169,9 +159,9 @@ def _render_fields(fields: list[dict]) -> str:
     return "\n".join(f'- "{f["name"]}": {f["desc"]}' for f in fields)
 
 
-def build_system_prompt(fields: list[dict], extra_rules: str = "", dau_vao: str = DAU_VAO_OCR) -> str:
-    """Khung kết hôn + field + luật từng loại giấy. ``dau_vao``: DAU_VAO_OCR (chữ OCR) hoặc DAU_VAO_ANH (ảnh)."""
+def build_system_prompt(fields: list[dict], extra_rules: str = "") -> str:
+    """Khung kết hôn + field + luật từng loại giấy."""
     return (BASE_PROMPT
-            .replace("<<DAU_VAO>>", dau_vao)
+            .replace("<<DAU_VAO>>", DAU_VAO_OCR)
             .replace("<<FIELDS>>", _render_fields(fields))
             .replace("<<RULES>>", (extra_rules or "").strip()))

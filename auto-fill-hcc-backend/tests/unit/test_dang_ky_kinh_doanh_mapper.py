@@ -42,6 +42,19 @@ def test_clean_ward_removes_common_prefixes_for_hkdonline_options():
     assert _clean_ward("Đặc khu Phú Quý") == "Phú Quý"
 
 
+def test_clean_ward_khong_cat_chu_dau_ten_xa_tran():
+    # Tên trần bắt đầu bằng "Ph"/"P": không được coi chữ đầu là tiền tố viết tắt.
+    assert _clean_ward("phúc lợi") == "phúc lợi"
+    assert _clean_ward("Phù Khê") == "Phù Khê"
+    assert _clean_ward("Pá Tần") == "Pá Tần"
+    assert _clean_ward("TT Chờ") == "Chờ"
+    # "Phương" là tên riêng của phường Phương Liễu, OCR hay đọc thành tiền tố "Phường".
+    assert _clean_ward("Phường Liễu") == "Phương Liễu"
+    assert _clean_ward("phuong lieu") == "Phương Liễu"
+    assert _clean_ward("Phường Phương Liễu") == "Phương Liễu"
+    assert mapper._addr({"tinh": "Bắc Ninh", "xa": "phương liễu", "diaChi": "Tổ dân phố 1"})["xa"] == "Phương Liễu"
+
+
 def test_clean_business_code_requires_four_contiguous_digits():
     assert _clean_business_code("56 10") == "5610"
     assert _clean_business_code("56.10") == "5610"

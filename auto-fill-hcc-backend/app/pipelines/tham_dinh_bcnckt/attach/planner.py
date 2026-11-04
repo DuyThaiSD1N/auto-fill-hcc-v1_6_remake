@@ -1,10 +1,11 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Thẩm định BCNCKT đầu tư xây dựng" (cổng DVC Bộ Xây dựng
 dvc.moc.gov.vn — Angular mat-table, engine FE `attp-row`, CÙNG cổng #113/#76/#91).
 
-Bảng có 19 dòng, PHẦN LỚN "(nếu có)"/điều kiện (sửa chữa, vốn công, điều chỉnh, vi phạm, BIM). Chỉ classify
-vào 8 dòng CÓ THẬT phổ biến; các dòng còn lại (kể cả QĐ điều chỉnh quy hoạch dòng 18 — dễ nhầm dòng 9) →
-other → đính chung dòng Tờ trình, giữ tên file gốc + cảnh báo. FE khớp dòng bằng componentName substring fold
-(không dùng componentIndex vì thứ tự DOM ≠ thứ tự hiển thị).
+Bảng theo NĐ 217/2026 có 15 dòng, PHẦN LỚN "(nếu có)"/điều kiện (đường sắt, tổng mức đầu tư, vi phạm, sửa chữa,
+điều chỉnh, BIM). Chỉ classify vào 7 dòng CÓ THẬT phổ biến; QĐ ĐTM và danh sách nhà thầu không còn dòng riêng →
+đính chung dòng Tờ trình kèm tên giấy; các dòng còn lại → other → đính chung dòng Tờ trình, giữ tên file gốc +
+cảnh báo. FE khớp dòng bằng componentName substring fold (không dùng componentIndex vì thứ tự DOM ≠ thứ tự hiển
+thị); componentName chọn đoạn có mặt ở cả tên dòng cũ lẫn tên dòng theo NĐ 217/2026.
 
 Phân loại **LLM-primary**: LLM đọc OCR quyết định; rule keyword chỉ DỰ PHÒNG.
 """
@@ -26,24 +27,20 @@ _CHU_TRUONG = "chu_truong"
 _DAU_NOI = "dau_noi"
 _NHA_THAU = "nha_thau"
 _QUY_HOACH = "quy_hoach"
-_KHAO_SAT = "khao_sat_thiet_ke"
+_KHAO_SAT = "khao_sat"
+_BAO_CAO_NCKT = "bao_cao_nckt"
 _GP_DAU_TU = "gp_dau_tu"
 _OTHER = "other"
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold). loaiBan theo cột "Loại bản".
 _ROWS: dict[str, dict[str, str]] = {
     _TO_TRINH: {
-        "componentName": "Tờ trình thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng",
+        "componentName": "Tờ trình thẩm định",
         "loaiBan": "Bản chính",
         "documentName": "Tờ trình thẩm định BCNCKT đầu tư xây dựng (Mẫu số 01)",
     },
-    _MOI_TRUONG: {
-        "componentName": "phê duyệt kết quả thẩm định báo cáo đánh giá tác động môi trường",
-        "loaiBan": "Bản sao",
-        "documentName": "QĐ phê duyệt ĐTM / Giấy phép môi trường",
-    },
     _CHU_TRUONG: {
-        "componentName": "Văn bản về chủ trương đầu tư xây dựng công trình",
+        "componentName": "Văn bản về chủ trương đầu tư xây dựng",
         "loaiBan": "Bản sao",
         "documentName": "Văn bản chủ trương đầu tư xây dựng công trình",
     },
@@ -52,20 +49,21 @@ _ROWS: dict[str, dict[str, str]] = {
         "loaiBan": "Bản sao",
         "documentName": "Văn bản thỏa thuận đấu nối hạ tầng kỹ thuật / độ cao công trình",
     },
-    _NHA_THAU: {
-        "componentName": "Danh sách các nhà thầu kèm theo mã số chứng chỉ năng lực",
-        "loaiBan": "Bản sao",
-        "documentName": "Danh sách nhà thầu kèm mã số chứng chỉ năng lực/hành nghề",
-    },
     _QUY_HOACH: {
-        "componentName": "bản đồ, bản vẽ kèm theo (nếu có) của quy hoạch sử dụng làm căn cứ lập dự án",
+        "componentName": "của quy hoạch sử dụng làm căn cứ lập dự án",
         "loaiBan": "Bản sao",
         "documentName": "QĐ phê duyệt quy hoạch + bản đồ/bản vẽ (căn cứ lập dự án)",
     },
     _KHAO_SAT: {
         "componentName": "Hồ sơ khảo sát xây dựng được phê duyệt",
         "loaiBan": "Bản sao",
-        "documentName": "Hồ sơ khảo sát XD + thuyết minh BCNCKT + thiết kế cơ sở",
+        "documentName": "Hồ sơ khảo sát xây dựng được phê duyệt",
+    },
+    _BAO_CAO_NCKT: {
+        # Cổng có 2 dòng gần trùng tên (8 và 15) — đoạn này khớp cả hai, FE đính dòng khớp đầu tiên.
+        "componentName": "gồm thuyết minh và hồ sơ thiết kế xây dựng",
+        "loaiBan": "Bản chính",
+        "documentName": "Báo cáo nghiên cứu khả thi và thẩm tra thiết kế",
     },
     _GP_DAU_TU: {
         "componentName": "Giấy phép đầu tư, Giấy chứng nhận ưu đãi đầu tư",
@@ -73,7 +71,12 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Giấy phép/Giấy chứng nhận đầu tư",
     },
 }
-_ALLOWED_DOC_TYPES = set(_ROWS) | {_OTHER}
+# Loại giấy cổng không còn dòng riêng → đính chung dòng Tờ trình nhưng giữ tên giấy.
+_NO_ROW_NAMES: dict[str, str] = {
+    _MOI_TRUONG: "QĐ phê duyệt ĐTM / Giấy phép môi trường",
+    _NHA_THAU: "Danh sách nhà thầu kèm mã số chứng chỉ năng lực/hành nghề",
+}
+_ALLOWED_DOC_TYPES = set(_ROWS) | set(_NO_ROW_NAMES) | {_OTHER}
 
 
 def _rule_doc_type(text: str) -> str:
@@ -91,7 +94,9 @@ def _rule_doc_type(text: str) -> str:
         return _DAU_NOI
     if "danh sach" in h and "nha thau" in h and "chung chi" in h:
         return _NHA_THAU
-    if "khao sat xay dung" in h and ("thiet ke co so" in h or "thuyet minh" in h):
+    if "thuyet minh" in h and "bao cao nghien cuu kha thi" in h:
+        return _BAO_CAO_NCKT
+    if "khao sat" in h and ("dia chat" in h or "ho so khao sat" in h or "ket qua khao sat" in h):
         return _KHAO_SAT
     if "quy hoach" in h and ("1/500" in h or "chi tiet xay dung" in h or "phe duyet" in h):
         return _QUY_HOACH
@@ -116,8 +121,10 @@ def _normalize_doc_type(value: str) -> str:
         return _NHA_THAU
     if "quy hoach" in text:
         return _QUY_HOACH
-    if "khao sat" in text or "thiet ke" in text:
+    if "khao sat" in text:
         return _KHAO_SAT
+    if "nghien cuu kha thi" in text or "thiet ke" in text or "tham tra" in text:
+        return _BAO_CAO_NCKT
     if "dau tu" in text:
         return _GP_DAU_TU
     return value if value in _ALLOWED_DOC_TYPES else _OTHER
@@ -176,7 +183,7 @@ def build_plan_items(
         text = str(by_name.get(file_name, {}).get("text") or "")
         llm_type = llm_types.get(idx, "")
         rule_type = _rule_doc_type(text)
-        if llm_type in _ROWS:
+        if llm_type in _ROWS or llm_type in _NO_ROW_NAMES:
             doc_type, source = llm_type, "llm"
         elif rule_type:
             doc_type, source = rule_type, "rule"
@@ -186,6 +193,14 @@ def build_plan_items(
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
+            continue
+        if doc_type in _NO_ROW_NAMES:
+            item = _build_row_item(file, idx, _TO_TRINH)
+            item["documentName"] = _NO_ROW_NAMES[doc_type]
+            item["detectedType"] = doc_type
+            items.append(item)
+            extra_files.append(file_name)
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": _TO_TRINH})
             continue
         # other (CCCD/ủy quyền/nội bộ, dòng điều kiện hiếm, không rõ) → dòng Tờ trình, giữ tên gốc để FE không
         # coi là trùng tài liệu của dòng.

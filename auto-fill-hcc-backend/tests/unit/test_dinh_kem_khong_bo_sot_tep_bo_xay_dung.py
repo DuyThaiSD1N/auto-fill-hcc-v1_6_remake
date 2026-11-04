@@ -55,8 +55,7 @@ _FLAT = [
      "Đơn đề nghị điều chỉnh, gia hạn, cấp lại giấy phép xây dựng"),
     (sua_chua, "don_gpxd", "other", "other", "Đơn đề nghị cấp giấy phép xây dựng theo Mẫu số 01",
      "Đơn đề nghị cấp giấy phép xây dựng theo Mẫu số 01"),
-    (tham_dinh, "to_trinh", "other", "other", "Tờ trình thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng",
-     "Tờ trình thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng"),
+    (tham_dinh, "to_trinh", "other", "other", "Tờ trình thẩm định", "Tờ trình thẩm định"),
     (xoa_dang_ky, "don_de_nghi", "cccd", "other", "Đơn đề nghị xóa đăng ký phương tiện thủy nội địa",
      "Đơn đề nghị xóa đăng ký phương tiện thủy nội địa"),
 ]

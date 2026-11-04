@@ -76,12 +76,18 @@ def _clean_ward(value: Any) -> str:
     text = _compact_text(value)
     if not text:
         return ""
+    # Phường Phương Liễu (Bắc Ninh) hay được viết tay tắt "phương liễu", OCR lại đọc thành "Phường Liễu": chữ
+    # "Phương" là tên riêng, không phải tiền tố — cắt đi thì còn "Liễu", không khớp option nào.
+    if _fold_vi(text) == "phuong lieu":
+        return "Phương Liễu"
 
     # Form HkdOnline tự có tiền tố trong option ("Phường ...", "Xã ...").
     # Mapper chỉ trả phần tên riêng để FE hiện tại match được cả option có/không có tiền tố.
     text = re.sub(r"\s*[-–—‐‑]+\s*", " - ", text).strip()
     text = re.sub(
-        r"^\s*(?:phường|phuong|ph\.?|xã|xa|thị\s+trấn|thi\s+tran|đặc\s+khu|dac\s+khu|tt\.?|p\s*\.?)\s*",
+        # Tiền tố phải kết thúc bằng khoảng trắng hoặc dấu chấm — không thì cắt nhầm chữ đầu của chính tên
+        # xã khi LLM trả tên trần ("phương liễu" → "ương liễu").
+        r"^\s*(?:(?:phường|phuong|xã|xa|thị\s+trấn|thi\s+tran|đặc\s+khu|dac\s+khu)\s+|(?:ph|p|tt)(?:\s*\.\s*|\s+))",
         "",
         text,
         flags=re.IGNORECASE,

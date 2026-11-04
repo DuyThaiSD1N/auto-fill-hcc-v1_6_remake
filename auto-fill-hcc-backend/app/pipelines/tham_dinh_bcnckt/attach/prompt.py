@@ -24,7 +24,8 @@ dựng". Đọc OCR_TEXT của từng file và xếp vào đúng MỘT loại gi
 - dau_noi
 - nha_thau
 - quy_hoach
-- khao_sat_thiet_ke
+- khao_sat
+- bao_cao_nckt
 - gp_dau_tu
 - other
 </allowed_types>
@@ -41,8 +42,10 @@ dựng". Đọc OCR_TEXT của từng file và xếp vào đúng MỘT loại gi
   chứng chỉ hành nghề của các chủ nhiệm/chủ trì.
 - quy_hoach: Quyết định phê duyệt QUY HOẠCH (chi tiết 1/500, quy hoạch xây dựng) + bản đồ/bản vẽ kèm theo,
   dùng làm căn cứ lập/điều chỉnh dự án.
-- khao_sat_thiet_ke: HỒ SƠ KHẢO SÁT xây dựng được phê duyệt; THUYẾT MINH Báo cáo nghiên cứu khả thi;
-  THIẾT KẾ CƠ SỞ (bản vẽ + thuyết minh); báo cáo kết quả thẩm tra thiết kế cơ sở.
+- khao_sat: HỒ SƠ KHẢO SÁT xây dựng được phê duyệt — báo cáo kết quả khảo sát (địa chất, địa hình…), nhiệm vụ/
+  phương án khảo sát, quyết định phê duyệt hồ sơ khảo sát.
+- bao_cao_nckt: BÁO CÁO NGHIÊN CỨU KHẢ THI — thuyết minh dự án, hồ sơ thiết kế xây dựng lập trong BCNCKT (thiết
+  kế cơ sở: bản vẽ + thuyết minh); báo cáo kết quả THẨM TRA thiết kế xây dựng (Mẫu số 02).
 - gp_dau_tu: GIẤY PHÉP ĐẦU TƯ / Giấy chứng nhận đầu tư / Giấy chứng nhận đăng ký đầu tư / Quyết định phê
   duyệt kết quả trúng đấu giá/đấu thầu dự án.
 - other: giấy tờ khác (CCCD, giấy ủy quyền, hồ sơ nội bộ...) hoặc không đủ bằng chứng → other (bỏ qua).
@@ -52,9 +55,10 @@ dựng". Đọc OCR_TEXT của từng file và xếp vào đúng MỘT loại gi
 {"documents":[{"index":0,"docType":"to_trinh"}]}
 </output_contract>
 
-<reminder>Phân biệt Tờ trình (to_trinh) với Hồ sơ khảo sát/thiết kế (khao_sat_thiet_ke) — cả hai đều nhắc
-"Báo cáo nghiên cứu khả thi" nhưng Tờ trình là văn bản TRÌNH thẩm định, còn hồ sơ khảo sát/thiết kế là bản
-vẽ + thuyết minh kỹ thuật. CCCD/ủy quyền → other.</reminder>
+<reminder>Phân biệt Tờ trình (to_trinh) với Báo cáo nghiên cứu khả thi (bao_cao_nckt) — cả hai đều nhắc
+"Báo cáo nghiên cứu khả thi" nhưng Tờ trình là văn bản TRÌNH thẩm định, còn bao_cao_nckt là chính thuyết minh +
+bản vẽ thiết kế / báo cáo thẩm tra. Hồ sơ khảo sát (khao_sat) chỉ là kết quả khảo sát hiện trường, không phải
+thuyết minh dự án. CCCD/ủy quyền → other.</reminder>
 """.strip()
 
 

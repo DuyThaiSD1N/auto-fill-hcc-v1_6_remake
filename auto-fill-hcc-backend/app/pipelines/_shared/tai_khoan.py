@@ -176,7 +176,11 @@ def account_context(options: dict | None) -> dict:
         elif key == "GioiTinh":
             text = _gender_label(_catalog_label(text, "moj_eform_gioi_tinh.json"))
         elif key == "DanToc":
-            text = _catalog_label(text, "moj_eform_dan_toc.json")
+            # Bảng mã dân tộc chưa khớp danh mục cổng dùng cho dữ liệu tài khoản: ngoài Kinh, nhiều mã dịch ra sai
+            # dân tộc (1514 → "Hoa", 1541 → "Sán Chay"). Chỉ tin Kinh; dân tộc khác để giấy tờ quyết.
+            if not fold(_catalog_label(text, "moj_eform_dan_toc.json")).startswith("kinh"):
+                continue
+            text = "Kinh"
         elif key == "NoiCap":
             continue
         if text:

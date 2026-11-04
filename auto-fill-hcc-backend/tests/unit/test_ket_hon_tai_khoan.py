@@ -26,7 +26,7 @@ _ACCOUNT_NAM = {"formContext": {
     "applicantIdentityNumber": "012086005221",
     "applicantBirthday": "01/01/1986",
     "applicantGender": "Nam",
-    "applicantEthnicity": "Tày",
+    "applicantEthnicity": "63001",
     "applicantIdDate": "16/01/2022",
     "applicantIdIssuer": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
     "applicantAddress": {"tinh": "Lai Châu", "xa": "Đoàn Kết", "diaChi": "Số 5"},
@@ -53,12 +53,20 @@ def test_ben_nam_trung_tai_khoan_ghi_de_toan_bo(mapper):
     assert out["HoTenBenNam"] == "TRẦN VĂN ÂN"
     assert out["SoDinhDanh_BenNam"] == out["SoGiayToDinhDanh_BenNam"] == "012086005221"
     assert out["NgayCapDD_BenNam"] == "16/01/2022"
-    assert out["DanTocBenNam"] == "Tày"
+    assert out["DanTocBenNam"] == "Kinh"
     assert out["NoiCuTru_BenNam"] == "1"
     assert out["NoiCuTru_BenNam_TrongNuoc"]["diaChi"] == "Số 5"
     # Bên nữ không đụng.
     assert out["HoTenBenNu"] == "LÊ THỊ BÌNH"
     assert out["NgayCapDD_BenNu"] == "16/03/2024"
+
+
+@pytest.mark.parametrize("mapper", MAPPERS)
+def test_dan_toc_tai_khoan_khac_kinh_khong_dien(mapper):
+    account = {"formContext": {**_ACCOUNT_NAM["formContext"], "applicantEthnicity": "1514"}}
+    out = _values(mapper.enrich(_fields(_NAM, _NU, mapper=mapper), account))
+    assert "DanTocBenNam" not in out
+    assert out["HoTenBenNam"] == "TRẦN VĂN ÂN"
 
 
 @pytest.mark.parametrize("mapper", MAPPERS)
