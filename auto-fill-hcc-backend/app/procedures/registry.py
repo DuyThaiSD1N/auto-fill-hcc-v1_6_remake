@@ -148,6 +148,10 @@ from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang.process_ilis i
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.process import run as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_process
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.process_vbdlis import run as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_vbdlis_process
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.attach import plan as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach
+from app.pipelines.dang_ky_dat_dai_lan_dau_tuyen_quang.process import run as dang_ky_dat_dai_lan_dau_tuyen_quang_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_tuyen_quang.process_ilis import run as dang_ky_dat_dai_lan_dau_tuyen_quang_ilis_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_tuyen_quang.process_vbdlis import run as dang_ky_dat_dai_lan_dau_tuyen_quang_vbdlis_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_tuyen_quang.attach import plan as dang_ky_dat_dai_lan_dau_tuyen_quang_attach
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.process import run as xac_dinh_lai_dien_tich_dat_o_quang_ngai_process
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.attach import plan as xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach
 from app.pipelines.dinh_chinh_sai_sot_quang_ngai.process import run as dinh_chinh_sai_sot_quang_ngai_process
@@ -2546,6 +2550,115 @@ PROCEDURES: list[dict] = [
             "ủy quyền nếu có giấy ủy quyền); người đồng sử dụng ghi vào ô Ghi chú.\n"
             "Đính kèm giống quy trình thường: Đơn -> dòng 2 (kèm giấy ủy quyền, CCCD), Giấy chứng nhận -> dòng 4; dòng 11 "
             "trùng dòng 8 nên không đính.\n"
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-tuyen-quang",
+        # Mã TTHC 1.013978, key trùng ke_khai_links.json. Đi từ link kê khai DVCQG (chọn Tỉnh + Phường/Xã) sang cổng tỉnh
+        # iGate Tuyên Quang. Tên thủ tục trùng bản Quảng Ngãi/Ninh Bình/Khánh Hòa nên urlScope theo tên miền tỉnh là chốt
+        # chặn chống tráo. Cổng có ba quy trình, mỗi quy trình một form: entry này là quy trình "5 bước 20 ngày"; iLis và
+        # VBDLIS là hai entry ngay dưới (tên quy trình in ở tiêu đề thủ tục).
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu "
+            "tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở "
+            "nước ngoài"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 19) đã ký, kèm tờ khai lệ phí trước bạ, tờ khai thuế "
+            "thu nhập cá nhân nếu có — dùng để điền người nộp, chủ hồ sơ, điện thoại, địa chỉ.\n"
+            "2. Giấy tờ nguồn gốc đất: hợp đồng/giấy chuyển nhượng, tặng cho có chữ ký hai bên; giấy tờ theo Điều 137; giấy "
+            "tờ thừa kế; giấy khai sinh của người sử dụng đất (ngày sinh, giới tính).\n"
+            "3. Phiếu xác nhận kết quả đo đạc, bản mô tả ranh giới, mảnh trích đo địa chính.\n"
+            "4. CCCD của người sử dụng đất (nếu có) — để điền ngày cấp, nơi cấp.\n"
+            "5. Nếu nộp thay: văn bản đại diện/ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR. Có cả bản thường và bản ký số "
+            "của cùng một tệp (vd DON.pdf + DON.signed.pdf) thì chỉ đọc và đính bản ký số.\n"
+            "Đính kèm: bảng có sẵn 20 dòng; mỗi file đính NGUYÊN KHỐI vào dòng của giấy chính trong file (file Đơn -> dòng "
+            "16, giấy chuyển quyền -> dòng 4, trích đo -> dòng 10). Dòng 18/19/20 trùng dòng 6/11/13 nên không dùng; dòng "
+            "17 (Thông báo xác nhận kết quả) do cơ quan phát hành sau. Ô Bản chính/Bản sao do cán bộ tự chọn.\n"
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-tuyen-quang-ilis",
+        # Cùng thủ tục 1.013978 và cùng link kê khai với entry trên, nhưng người dân chọn quy trình "iLis cấp xã - 30 ngày"
+        # thì cổng ra form người nộp / thửa đất / chủ hồ sơ / thông tin chi tiết (xem pipeline process_ilis). Trang iLis
+        # khớp thêm cụm "iLis" nên tổng dài hơn và thắng entry quy trình 5 bước. Bảng đính kèm giống nhau nên dùng chung.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu",
+                "iLis",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu "
+            "tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở "
+            "nước ngoài (quy trình iLis)"
+        ),
+        # Form khác của CÙNG thủ tục: popup (sameProcedureFamily) cho tự nhận diện từ form gốc (chọn qua link kê khai)
+        # sang form này mà không xoá giấy tờ đã tải lên.
+        "formVariantOf": "dang-ky-dat-dai-lan-dau-tuyen-quang",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên giống quy trình 5 bước: Đơn đăng ký đất đai (Mẫu số 19) kèm tờ khai, giấy tờ nguồn gốc "
+            "đất, phiếu đo đạc/mảnh trích đo, CCCD người sử dụng đất (nếu có), văn bản ủy quyền nếu nộp thay.\n"
+            "Người nộp và chủ hồ sơ điền cùng một người khi không có ủy quyền; khối thửa đất lấy tỉnh, phường/xã của thửa "
+            "đất; khối thông tin chi tiết (giấy phép) để trống vì cấp lần đầu.\n"
+            "Đính kèm giống quy trình 5 bước: Đơn -> dòng 16, giấy chuyển quyền -> dòng 4, trích đo -> dòng 10.\n"
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-tuyen-quang-vbdlis",
+        # Cùng thủ tục 1.013978, quy trình "VBDLIS 20 ngày" (tiêu đề dạng "1.013978_VBDLIS_20"): form thông tin chung +
+        # địa chỉ thửa đất có số thửa, số tờ (xem pipeline process_vbdlis). Trang VBDLIS khớp thêm cụm "VBDLIS" nên thắng
+        # entry quy trình 5 bước. Bảng đính kèm giống nhau nên dùng chung.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu",
+                "VBDLIS",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu "
+            "tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở "
+            "nước ngoài (quy trình VBDLIS)"
+        ),
+        "formVariantOf": "dang-ky-dat-dai-lan-dau-tuyen-quang",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên giống quy trình 5 bước: Đơn đăng ký đất đai (Mẫu số 19) kèm tờ khai, giấy tờ nguồn gốc "
+            "đất, phiếu đo đạc/mảnh trích đo, CCCD người sử dụng đất (nếu có), văn bản ủy quyền nếu nộp thay.\n"
+            "Ô 'Thông tin chủ hồ sơ' lấy người sử dụng đất đứng Đơn; các ô cá nhân còn lại là của người nộp (bên được ủy "
+            "quyền nếu có); 'Nội dung yêu cầu giải quyết' lấy các ý đã đánh dấu ở mục 4 của Đơn; số thửa, số tờ, địa chỉ "
+            "thửa đất lấy từ Đơn và tờ khai.\n"
+            "Đính kèm giống quy trình 5 bước: Đơn -> dòng 16, giấy chuyển quyền -> dòng 4, trích đo -> dòng 10.\n"
         ),
     },
     {
@@ -9709,6 +9822,9 @@ _PIPELINE = {
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_ilis_process,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_process,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang-vbdlis": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_vbdlis_process,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang": dang_ky_dat_dai_lan_dau_tuyen_quang_process,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang-ilis": dang_ky_dat_dai_lan_dau_tuyen_quang_ilis_process,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang-vbdlis": dang_ky_dat_dai_lan_dau_tuyen_quang_vbdlis_process,
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
@@ -9960,6 +10076,9 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang-vbdlis": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang": dang_ky_dat_dai_lan_dau_tuyen_quang_attach,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang-ilis": dang_ky_dat_dai_lan_dau_tuyen_quang_attach,
+    "dang-ky-dat-dai-lan-dau-tuyen-quang-vbdlis": dang_ky_dat_dai_lan_dau_tuyen_quang_attach,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": xac_dinh_lai_dien_tich_dat_o_igate_lao_cai_attach,

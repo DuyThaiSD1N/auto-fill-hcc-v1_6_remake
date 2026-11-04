@@ -1656,6 +1656,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-dat-dai-lan-dau-tuyen-quang",
+      "code": "1.013978",
+      "label": "Tuyên Quang - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
       "code": "1.012817",
       "label": "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
