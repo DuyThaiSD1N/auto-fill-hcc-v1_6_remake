@@ -369,6 +369,9 @@ def test_each_key_runs_its_own_form_and_skips_unsigned_copies(monkeypatch):
     assert "data[district]" in base and "data[ownerFullname]" not in base
     assert "data[village2]" in ilis and "data[gender1]" in ilis
     assert "data[SoThuTuThua]" in vbdlis and "data[village2]" not in vbdlis
+    # Trợ lý: công dân chọn quy trình ở hộp thoại → options.quyTrinh → key gốc điền đúng form như key biến thể.
+    assert _values(asyncio.run(get_pipeline(_KEY)(files, {"quyTrinh": "ilis"}))["fields"]) == ilis
+    assert _values(asyncio.run(get_pipeline(_KEY)(files, {"quyTrinh": "vbdlis"}))["fields"]) == vbdlis
 
 
 # --------------------------------------------------------------------------------------
@@ -417,3 +420,27 @@ def test_ke_khai_link_shares_registry_key():
     assert len(links) == 1
     assert links[0]["code"] == "1.013978"
     assert links[0]["label"] == get_procedure(_KEY)["label"]
+
+
+def test_tro_ly_chi_tai_khoan_tuyen_quang_dung_pipeline_loi():
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+
+    procedure = handfree.get_procedure(_KEY)
+    core = get_procedure(_KEY)
+    link = next(link for link in KE_KHAI_LINKS if link["key"] == _KEY)
+    assert "Tuyên Quang - " + procedure["label"] == core["label"]
+    assert "Tuyên Quang" not in procedure["shortLabel"]
+    assert procedure["detect"] == core["detect"]
+    assert procedure["keKhaiUrl"] == link["url"]
+    assert handfree.procedure_code(procedure) == "1.013978"
+    assert handfree.is_allowed_in_province(procedure, "tuyenquang")
+    assert not handfree.is_allowed_in_province(procedure, "khanhhoa")
+    assert handfree.get_pipeline(_KEY) is get_pipeline(_KEY)
+    assert handfree.get_attach_pipeline(_KEY) is get_attach_pipeline(_KEY)
+    assert PROCEDURE_HMONG[_KEY]
+    # Hộp thoại "Chọn trường hợp giải quyết": nhãn quy trình đọc từ cổng → tuỳ chọn pipeline.
+    for label, options in (("5 bước 20 ngày", {}), ("iLis cấp xã - 30 ngày", {"quyTrinh": "ilis"}),
+                           ("1.013978_VBDLIS_20", {"quyTrinh": "vbdlis"})):
+        conv = {"mae_dialog_options": {"process": {"options": [label], "current": label}}}
+        assert handfree.case_pipeline_options(procedure, conv) == options, label

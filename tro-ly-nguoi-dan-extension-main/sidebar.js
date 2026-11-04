@@ -174,6 +174,9 @@
     // Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn): content.js báo bước đang mở, content/bxd
     // chạy trên host này (bản cũ không báo bước, không chạy ở đây).
     supportsBxdFlowMoit: true,
+    // Cổng tỉnh Tuyên Quang (dichvucong.tuyenquang.gov.vn, nền iGate): content.js đọc hộp thoại "Chọn trường hợp giải
+    // quyết" + bước stepper trên host này, content/bxd chạy ở đây (bản cũ không) → BE mới bật luồng 4 bước.
+    supportsBxdFlowTuyenQuang: true,
     // Cổng Bắc Ninh (trang nộp hồ sơ 4 tab cùng trang): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng
     // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
     // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.
@@ -2191,9 +2194,16 @@
     const list = document.getElementById("svc-slist");
     if (!list) return;
     const ql = foldVi(query).trim();
+    // Gõ vài từ không liền nhau trong tên ("đăng ký đất đai lần đầu" ↔ "Đăng ký đất đai, …, lần đầu") vẫn ra: dòng nào
+    // có ĐỦ mọi từ (tên ngắn + mô tả + tên đầy đủ) là khớp.
+    const words = ql.split(/\s+/).filter(Boolean);
+    const hasAllWords = (it) => {
+      const text = [it.title, it.subtitle, it.label].map(foldVi).join(" ");
+      return words.every((w) => text.includes(w));
+    };
     const subset = serviceSheetItems.filter((it) => !ql || foldVi(it.title).includes(ql)
       || foldVi(it.subtitle).includes(ql) || foldVi(it.label).includes(ql)
-      || codeMatches(it.code, query));
+      || codeMatches(it.code, query) || hasAllWords(it));
     list.innerHTML = "";
     if (!subset.length) {
       const none = document.createElement("div");

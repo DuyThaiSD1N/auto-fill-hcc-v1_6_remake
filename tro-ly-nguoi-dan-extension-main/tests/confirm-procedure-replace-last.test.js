@@ -54,3 +54,24 @@ test("QR hướng dẫn lấy từ action procedure_guide của BE — FE không
   // runActions không báo "action chưa hỗ trợ" cho thẻ đã vẽ ở renderReply.
   assert.match(sidebar, /a\.type === "procedure_guide"\) \{/);
 });
+
+test("ô tìm thủ tục (Xem tất cả): gõ vài từ không liền nhau trong tên vẫn ra — đủ mọi từ là khớp", () => {
+  // Chạy đúng đoạn lọc của renderServiceSheetList (foldVi + điều kiện subset), mã TTHC tắt để chỉ thử phần chữ.
+  const fold = sidebar.slice(sidebar.indexOf("function foldVi(s) {"), sidebar.indexOf("function pickProcedure(it)"));
+  const start = sidebar.indexOf("const ql = foldVi(query).trim();");
+  const end = sidebar.indexOf("list.innerHTML", start);
+  assert.ok(start > 0 && end > start);
+  const filter = new Function("serviceSheetItems", "query",
+    `${fold}\nconst codeMatches = () => false;\n${sidebar.slice(start, end)}\nreturn subset.map((it) => it.key);`);
+  const items = [
+    { key: "tq", title: "Đăng ký đất đai, cấp Giấy chứng nhận quyền sử dụng đất lần đầu",
+      subtitle: "Kê khai đăng ký đất đai tại Tuyên Quang",
+      label: "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận … lần đầu đối với hộ gia đình, cá nhân" },
+    { key: "ks", title: "Đăng ký khai sinh", subtitle: "", label: "" },
+  ];
+  assert.deepEqual(filter(items, "đăng ký đất đai lần đầu"), ["tq"]);
+  assert.deepEqual(filter(items, "Tuyên Quang"), ["tq"]);
+  assert.deepEqual(filter(items, "đăng ký"), ["tq", "ks"]);
+  assert.deepEqual(filter(items, "khai sinh lần đầu"), []);
+  assert.deepEqual(filter(items, ""), ["tq", "ks"]);
+});

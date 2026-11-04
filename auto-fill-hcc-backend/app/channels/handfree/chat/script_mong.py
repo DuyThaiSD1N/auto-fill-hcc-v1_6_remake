@@ -69,6 +69,10 @@ PROCEDURE_HMONG = {
     "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
     "dang-ky-dat-dai-lan-dau-khanh-hoa": "Cuv npe av, muab daim ntawv av thawj zaug (Khánh Hòa)",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": "Hloov daim av (Khánh Hòa)",
+    # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
+    "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": "Hloov daim av (Tuyên Quang)",
     # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
     "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).

@@ -83,6 +83,13 @@ test("runAttachPlan gate theo attach_step BE gửi (MAE bước 2, tư pháp m�
     "so sánh bước hiện tại với attachStep, không hardcode 3");
 });
 
+test("trường hợp giải quyết: token tránh nhiều cụm nối \"|\" (quy trình thường cổng Tuyên Quang tránh cả iLis lẫn VBDLIS)", () => {
+  assert.ok(portalMae.includes('const avoids = String(variantAvoid || "").split("|").map((t) => t.trim()).filter(Boolean);'));
+  assert.ok(portalMae.includes("if (avoids.some((t) => text.includes(t))) return false;"));
+  assert.ok(portalMae.includes("return avoids.length > 0;"));
+  assert.ok(!/text\.includes\(variantAvoid\)/.test(portalMae), "không so cả chuỗi token tránh như một cụm");
+});
+
 test("noProcess: trang chọn cơ quan không có ô Trường hợp giải quyết thì không chờ ô đó", () => {
   assert.ok(sidebar.includes("noProcess: a.noProcess === true"), "sidebar phải chuyển cờ noProcess của BE xuống content");
   assert.ok(portalMae.includes("noProcess: msg.noProcess === true"), "handler fillMaeAgency phải nhận noProcess");

@@ -23,6 +23,18 @@ _GPXD_NEW_CASE_OPTIONS = [
     {"match": "", "options": {"constructionVariant": "cong_trinh"}},
 ]
 
+# Cổng iGate Tuyên Quang: mỗi quy trình ở ô "Trường hợp giải quyết" ra một FORM bước 1 khác nhau. Tên quy trình có cụm
+# "iLis" / "VBDLIS" (vd "iLis cấp xã - 30 ngày", "1.013978_VBDLIS_20") → options.quyTrinh, pipeline lõi của key gốc tự
+# chạy đúng form đó; quy trình còn lại ("5 bước 20 ngày"...) là form gốc.
+_TQ_CASE_ILIS = {"match": "ilis", "options": {"quyTrinh": "ilis"}}
+_TQ_CASE_VBDLIS = {"match": "vbdlis", "options": {"quyTrinh": "vbdlis"}}
+_TQ_CASE_DEFAULT = {"match": "", "options": {}}
+# Stepper 4 bước iGate như cổng Bộ Xây dựng; cờ riêng vì bản extension cũ chưa chạy content/bxd/*.js trên host này.
+_TQ_BXD_FLOW = {
+    "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+    "capability": "supportsBxdFlowTuyenQuang",
+}
+
 # Cổng Bắc Ninh (Liferay): khối "Thông tin trong trường hợp được ủy quyền" (doiTuongKhac*). Công dân chọn
 # đối tượng thực hiện có ủy quyền → run_process chạy thêm pipeline purpose="authorized_person" (cùng logic
 # nút "Điền thông tin người ủy quyền" của auto-fill) và ghép vào lệnh điền; extension tick ô bổ sung, chọn
@@ -6243,6 +6255,197 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Bước đính kèm: Giấy chứng nhận → dòng 13, Đơn đề nghị → dòng 14, giấy ủy quyền/giấy giới thiệu thêm dòng "
             "qua 'Thêm giấy tờ' (không thêm được thì đính chung dòng 14)."
+        ),
+    },
+    # ── Thủ tục đất đai cổng iGate Tuyên Quang (04/11/2026) ──
+    # Key TRÙNG lõi → process/attach tự nối; detect y hệt entry gốc của lõi (urlScope tuyenquang.gov.vn — tên thủ tục trùng
+    # bản tỉnh khác); label = label lõi bỏ "Tuyên Quang - ". ke_khai_links không khai provinceOnlyAgency / selectSo →
+    # DVCQG chọn đủ Tỉnh + Phường/Xã của tài khoản. "Nộp trực tuyến" sang cổng iGate tỉnh (cùng nền Bộ Xây dựng): hộp
+    # thoại "Chọn trường hợp giải quyết" rồi stepper 4 bước → luồng chung "xay-dung": trợ lý đọc lựa chọn của hộp thoại,
+    # hỏi công dân, chọn hộ và bấm Đồng ý. Mỗi quy trình một FORM: quy trình đã chọn → caseOptions → options.quyTrinh →
+    # pipeline lõi của key gốc điền đúng form iLis / VBDLIS. variants là đường dự phòng khi extension không đọc được
+    # hộp thoại (portalAvoid nhiều cụm nối "|"). Tên quy trình lấy theo file mapping — chưa chạy thử trên cổng thật.
+    {
+        "key": "dang-ky-dat-dai-lan-dau-tuyen-quang",
+        "provinceOnly": ["tuyenquang"],  # đặc thù Tuyên Quang: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013978. Ba quy trình: "5 bước 20 ngày" (form gốc), "iLis cấp xã - 30 ngày", "VBDLIS 20 ngày". Bảng
+        # đính kèm 20 dòng chung, mỗi file đính nguyên khối vào dòng của giấy chính trong file.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản "
+            "gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp Giấy chứng nhận quyền sử dụng đất lần đầu",
+        "subtitle": "Kê khai đăng ký đất đai và xin cấp Giấy chứng nhận quyền sử dụng đất lần đầu tại Tuyên Quang",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Tuyên Quang",
+        "bxdFlow": _TQ_BXD_FLOW,
+        "caseOptions": [_TQ_CASE_ILIS, _TQ_CASE_VBDLIS, _TQ_CASE_DEFAULT],
+        "variants": {
+            "equalChips": True,
+            "options": [
+                {"key": "nam_buoc", "label": "Quy trình 5 bước (20 ngày)", "chip": "📄 Quy trình 5 bước",
+                 "portalAvoid": "ilis|vbdlis", "desc": "tờ khai người nộp, không có ô thửa đất"},
+                {"key": "ilis", "label": "Quy trình iLis cấp xã (30 ngày)", "chip": "🗂️ Quy trình iLis cấp xã",
+                 "portalMatch": "ilis", "desc": "tờ khai tách người nộp, thửa đất, chủ hồ sơ",
+                 "pipelineOptions": {"quyTrinh": "ilis"}},
+                {"key": "vbdlis", "label": "Quy trình VBDLIS (20 ngày)", "chip": "🗺️ Quy trình VBDLIS",
+                 "portalMatch": "vbdlis", "desc": "tờ khai có số thửa, số tờ bản đồ, địa chỉ thửa đất",
+                 "pipelineOptions": {"quyTrinh": "vbdlis"}},
+            ],
+        },
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 19) — đã kê khai, ký; kèm "
+             "tờ khai lệ phí trước bạ, thuế thu nhập cá nhân (nếu có)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "nguon_goc", "name": "Giấy tờ về nguồn gốc đất (hợp đồng, giấy chuyển nhượng, tặng cho có chữ ký "
+             "hai bên; giấy tờ theo Điều 137; giấy tờ thừa kế)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Phiếu xác nhận kết quả đo đạc, bản mô tả ranh giới, mảnh trích đo địa chính "
+             "thửa đất", "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân hoặc giấy khai sinh của người sử dụng đất (nếu có)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền (nếu nộp thay), văn bản xác định thành viên hộ gia đình hoặc "
+             "giấy tờ khác", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 19) đã kê khai, ký — nguồn chính điền người "
+            "nộp, chủ hồ sơ, điện thoại, địa chỉ, nội dung đề nghị, số thửa, số tờ; kèm tờ khai lệ phí trước bạ, thuế "
+            "thu nhập cá nhân (nếu có).\n"
+            "2. Giấy tờ về nguồn gốc đất: hợp đồng/giấy chuyển nhượng, tặng cho có chữ ký hai bên; giấy tờ theo Điều "
+            "137; giấy tờ thừa kế.\n"
+            "3. Phiếu xác nhận kết quả đo đạc, bản mô tả ranh giới, mảnh trích đo địa chính.\n"
+            "4. Căn cước công dân hoặc giấy khai sinh của người sử dụng đất (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Có cả bản thường và bản ký số "
+            "của cùng một tệp thì chỉ đọc và đính bản ký số.\n"
+            "Bước đính kèm: mỗi file đính nguyên khối vào dòng của giấy chính trong file (Đơn → dòng 16, giấy "
+            "chuyển quyền → dòng 4, trích đo → dòng 10)."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
+        "provinceOnly": ["tuyenquang"],  # đặc thù Tuyên Quang: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012796. Hai quy trình: quy trình thường (form gốc) và "iLis cấp xã" (form người nộp / thửa đất / chủ
+        # hồ sơ / Giấy chứng nhận). Bảng đính kèm 8 dòng chung, dòng 5/6/7 lặp dòng 1/2/3.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": ["Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "subtitle": "Sửa thông tin sai trên Giấy chứng nhận quyền sử dụng đất đã cấp tại Tuyên Quang",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Tuyên Quang",
+        "bxdFlow": _TQ_BXD_FLOW,
+        "caseOptions": [_TQ_CASE_ILIS, _TQ_CASE_DEFAULT],
+        "variants": {
+            "equalChips": True,
+            "options": [
+                {"key": "thuong", "label": "Quy trình thường", "chip": "📄 Quy trình thường",
+                 "portalAvoid": "ilis", "desc": "tờ khai người nộp, kèm người ủy quyền nếu có"},
+                {"key": "ilis", "label": "Quy trình iLis cấp xã", "chip": "🗂️ Quy trình iLis cấp xã",
+                 "portalMatch": "ilis", "desc": "tờ khai tách người nộp, thửa đất, chủ hồ sơ, Giấy chứng nhận",
+                 "pipelineOptions": {"quyTrinh": "ilis"}},
+            ],
+        },
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18 hoặc Mẫu số "
+             "11/ĐK) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp cần đính chính (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, trích lục kết hôn, hợp đồng, "
+             "quyết định…)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người bị sai thông tin (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18 hoặc Mẫu số 11/ĐK) đã ký — nguồn "
+            "chính điền nội dung đính chính, số điện thoại.\n"
+            "2. Giấy chứng nhận đã cấp cần đính chính.\n"
+            "3. Giấy tờ chứng minh sai sót: CCCD của người bị sai thông tin, giấy khai sinh, trích lục kết hôn, hợp "
+            "đồng chuyển nhượng, quyết định hoặc giấy xác nhận liên quan.\n"
+            "4. Nếu nộp thay: văn bản về việc ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Giấy chứng nhận → dòng 1; giấy tờ chứng minh sai sót + CCCD → dòng 2 (Bản sao); văn bản ủy "
+            "quyền → dòng 3; Đơn Mẫu số 11/ĐK → dòng 4; Đơn Mẫu số 18 → dòng 8. File gộp có Đơn đính nguyên một lần ở "
+            "dòng Đơn."
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+        "provinceOnly": ["tuyenquang"],  # đặc thù Tuyên Quang: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013949. Hai quy trình: quy trình thường (form gốc) và "VBDLIS 25 ngày" (form thông tin chung + địa chỉ
+        # thửa đất). Bảng đính kèm 14 dòng chung, dòng 11 trùng dòng 8.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không "
+                "đấu giá quyền sử dụng đất",
+                "gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu "
+            "giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao "
+            "đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao "
+            "rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "shortLabel": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất",
+        "subtitle": "Xin giao đất, thuê đất, chuyển mục đích hoặc gia hạn sử dụng đất tại Tuyên Quang",
+        "icon": "🏞️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Tuyên Quang",
+        "bxdFlow": _TQ_BXD_FLOW,
+        "caseOptions": [_TQ_CASE_VBDLIS, _TQ_CASE_DEFAULT],
+        "variants": {
+            "equalChips": True,
+            "options": [
+                {"key": "thuong", "label": "Quy trình thường", "chip": "📄 Quy trình thường",
+                 "portalAvoid": "vbdlis", "desc": "tờ khai người nộp, kèm người ủy quyền nếu có"},
+                {"key": "vbdlis", "label": "Quy trình VBDLIS", "chip": "🗺️ Quy trình VBDLIS",
+                 "portalMatch": "vbdlis", "desc": "tờ khai có số thửa, số tờ bản đồ, địa chỉ thửa đất",
+                 "pipelineOptions": {"quyTrinh": "vbdlis"}},
+            ],
+        },
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị giao đất, cho thuê đất, chuyển mục đích sử dụng đất (Mẫu số 01) hoặc đơn "
+             "gia hạn (Mẫu số 04) — đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền (kèm lời chứng thực) nếu nộp thay, giấy tờ dự án/phương án nếu "
+             "có", "icon": "✍️", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đề nghị giao đất/cho thuê đất/chuyển mục đích sử dụng đất (Mẫu số 01) hoặc đơn gia hạn (Mẫu số 04) "
+            "đã ký — nội dung đề nghị, số điện thoại, thửa đất, người đồng sử dụng.\n"
+            "2. Giấy chứng nhận đã cấp (đủ các trang) — số, số vào sổ, ngày cấp, số thửa, số tờ.\n"
+            "3. Căn cước công dân của người đề nghị (nếu có); nếu nộp thay: giấy ủy quyền kèm lời chứng thực.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn Mẫu số 01 → dòng 2 (giấy ủy quyền, CCCD đính chung dòng này); Giấy chứng nhận → dòng "
+            "4; hồ sơ gia hạn: Đơn Mẫu số 04 → dòng 14, Giấy chứng nhận → dòng 13."
         ),
     },
     # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──

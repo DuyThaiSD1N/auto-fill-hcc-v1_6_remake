@@ -184,6 +184,36 @@ def test_cong_bo_cong_thuong_hieu_dung_buoc_iGate(key):
     assert flow._resolve_page_docs_target(proc, {"attachmentTarget": True}) == "attachment"
 
 
+_TUYEN_QUANG = [
+    "dang-ky-dat-dai-lan-dau-tuyen-quang",
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+]
+
+
+@pytest.mark.parametrize("key", _TUYEN_QUANG)
+def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
+    """Cổng tỉnh Tuyên Quang (dichvucong.tuyenquang.gov.vn, nền iGate): bản extension cũ chưa đọc bước stepper / chưa
+    chạy content/bxd/*.js trên host này → thiếu supportsBxdFlowTuyenQuang thì không bật luồng 4 bước, không bổ sung ô."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", caps={**CAPS, "supportsBxdFlowMae": True, "supportsBxdFlowMoit": True}, procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**old["client_capabilities"], "supportsBxdFlowTuyenQuang": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    config = registry.get(key)
+    assert config["required"] == ()
+    # Ô ghi chú, tên hồ sơ, tổ chức và khối người ủy quyền không hỏi công dân; ô cá nhân vẫn hỏi.
+    assert {"tenHoSo", "fullname1", "agency1", "Hovaten"} <= set(config["noAsk"])
+    assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
+    # Bước 1 là kê khai, bước 2 là đính kèm (stepper iGate), không theo mặc định tư pháp.
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
 @pytest.mark.parametrize("key", ["xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat"])
 def test_khuyet_tat_cung_luong_4_buoc_khong_hoi_bang_dang_va_muc_do_khuyet_tat(key):
     from app.channels.handfree.chat.field_review import registry

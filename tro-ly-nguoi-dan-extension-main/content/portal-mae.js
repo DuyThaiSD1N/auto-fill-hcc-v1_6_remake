@@ -131,14 +131,16 @@
     const current = matSelectValue(sel);
     // Tên option đổi theo tỉnh: "Trường hợp 1: Cấp mới..." nhưng cũng có "TH1 - Cấp Giấy
     // phép..." (KHÔNG chứa "cấp mới") → cấp mới nhận bằng LOẠI TRỪ token cần tránh ("cap lai");
-    // cấp lại bắt buộc chứa "cap lai".
+    // cấp lại bắt buộc chứa "cap lai". Token tránh có thể là nhiều cụm nối "|" (quy trình thường
+    // của cổng Tuyên Quang tránh cả "ilis" lẫn "vbdlis").
+    const avoids = String(variantAvoid || "").split("|").map((t) => t.trim()).filter(Boolean);
     const good = (text) => {
       // Thủ tục không khai trường hợp nào (hộp thoại Bộ Xây dựng, BE không gửi token) → giữ
       // lựa chọn cổng đang để; chưa có thì lấy option đầu như chính cổng vẫn làm.
-      if (!variantMatch && !variantAvoid) return true;
-      if (variantAvoid && text.includes(variantAvoid)) return false;
+      if (!variantMatch && !avoids.length) return true;
+      if (avoids.some((t) => text.includes(t))) return false;
       if (variantMatch && text.includes(variantMatch)) return true;
-      return !!variantAvoid; // có token tránh (cap_moi) → option "sạch" là hợp lệ
+      return avoids.length > 0; // có token tránh (cap_moi) → option "sạch" là hợp lệ
     };
     if (current && good(current)) return { ok: true, kept: true };
     const res = await pickMatOption(sel, good, variantLabel || variantMatch || "trường hợp");

@@ -93,14 +93,17 @@ test("đổi hình thức nhận kết quả: chọn lựa chọn khớp NGUYÊN
 
 test("cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT, Bộ NN&MT cùng nền iGate: chạy cùng luồng, ô bắt buộc đánh dấu trên nhãn label.field-required", () => {
   for (const src of [portal, review]) {
-    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn",\s*"dichvucongnnmt\.mae\.gov\.vn", "dichvucong-tthc\.moit\.gov\.vn"\];/);
+    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn",\s*"dichvucongnnmt\.mae\.gov\.vn", "dichvucong-tthc\.moit\.gov\.vn", "dichvucong\.tuyenquang\.gov\.vn"\];/);
   }
   assert.match(portal, /!HOSTS\.includes\(location\.hostname\)/);
   // Bản cũ đã khai supportsBxdFlow mà chưa chạy trên cổng NN&MT → BE gác host này bằng cờ riêng.
   assert.match(sidebar, /supportsBxdFlowMae: true/);
   // Cổng Bộ Công Thương: content.js báo bước stepper trên host này + cờ riêng supportsBxdFlowMoit.
-  assert.match(content, /const maeHost = \[[^\]]*"dichvucong-tthc\.moit\.gov\.vn"\]\.includes\(location\.hostname\)/);
+  assert.match(content, /const maeHost = \[[^\]]*"dichvucong-tthc\.moit\.gov\.vn"[^\]]*\]\.includes\(location\.hostname\)/);
   assert.match(sidebar, /supportsBxdFlowMoit: true/);
+  // Cổng tỉnh Tuyên Quang: hộp thoại "Chọn trường hợp giải quyết" + stepper trên host này, cờ riêng supportsBxdFlowTuyenQuang.
+  assert.match(content, /const maeHost = \[[^\]]*"dichvucong\.tuyenquang\.gov\.vn"\]\.includes\(location\.hostname\)/);
+  assert.match(sidebar, /supportsBxdFlowTuyenQuang: true/);
   assert.match(review, /comp\.querySelector\(":scope > label\.field-required"\)/);
 });
 

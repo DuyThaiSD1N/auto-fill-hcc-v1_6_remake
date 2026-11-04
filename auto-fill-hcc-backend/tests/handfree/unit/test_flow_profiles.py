@@ -498,6 +498,26 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert host in local["detect"]["urlScope"], key
         assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
 
+    # Cổng iGate Tuyên Quang: khóa tỉnh, DVCQG chọn đủ Tỉnh + Xã, rồi luồng chung "xay-dung" (hộp thoại "Chọn trường hợp
+    # giải quyết" đọc từ cổng + stepper 4 bước). Mỗi quy trình một form → caseOptions ép form iLis/VBDLIS cho pipeline.
+    for key, forms in (
+        ("dang-ky-dat-dai-lan-dau-tuyen-quang", {"ilis", "vbdlis"}),
+        ("dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang", {"ilis"}),
+        ("giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang", {"vbdlis"}),
+    ):
+        tuyen_quang = procedures.pop(key)
+        assert tuyen_quang["provinceOnly"] == ["tuyenquang"], key
+        assert tuyen_quang["flowProfile"] == "xay-dung" and tuyen_quang["maePortal"] is True, key
+        assert tuyen_quang["maeDialogChoice"] == {"enabled": True}, key
+        assert tuyen_quang["needsAgencySelect"] is True and tuyen_quang["agencyProvince"] == "Tuyên Quang", key
+        assert "agencyProvinceOnly" not in tuyen_quang and "agencySoFirst" not in tuyen_quang, key
+        assert tuyen_quang["detect"]["urlScope"] == ["tuyenquang.gov.vn"], key
+        assert tuyen_quang["bxdFlow"]["capability"] == "supportsBxdFlowTuyenQuang", key
+        assert {rule["options"].get("quyTrinh") for rule in tuyen_quang["caseOptions"]} - {None} == forms, key
+        assert tuyen_quang["caseOptions"][-1] == {"match": "", "options": {}}, key
+        assert is_allowed_in_province(tuyen_quang, "tuyenquang"), key
+        assert not is_allowed_in_province(tuyen_quang, "khanhhoa"), key
+
     # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
     # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
     moit = {"cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
@@ -667,7 +687,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ VHTTDL chọn Sở "to-chuc-bieu-dien-nghe-thuat" (1.009397).
     # +2 cổng iGate Khánh Hòa "dang-ky-dat-dai-lan-dau-khanh-hoa" (1.013978), "giao-thue-chuyen-muc-dich-dat-khanh-hoa"
     # (1.013949).
-    assert len(procedures) == 132
+    # +3 cổng iGate Tuyên Quang "dang-ky-dat-dai-lan-dau-tuyen-quang" (1.013978),
+    # "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang" (1.012796),
+    # "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang" (1.013949).
+    assert len(procedures) == 135
 
     for procedure in procedures:
         key = procedure["key"]

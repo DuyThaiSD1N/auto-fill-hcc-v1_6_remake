@@ -1,7 +1,8 @@
-"""Compact-agent process pipeline cho đăng ký đất đai lần đầu (Tuyên Quang) — form "5 bước 20 ngày".
+"""Compact-agent process pipeline cho đăng ký đất đai lần đầu (Tuyên Quang) — form "5 bước 20 ngày" + chọn form.
 
-``extract`` (OCR + LLM ra facts chung) dùng chung cho form iLis / VBDLIS; extension tự nhận diện form theo tiêu đề
-trang rồi gọi thẳng key ``-ilis`` / ``-vbdlis``.
+Trợ lý người dân: công dân chọn quy trình ở hộp thoại "Chọn trường hợp giải quyết" → registry trợ lý (caseOptions)
+gửi ``options.quyTrinh`` = "ilis" / "vbdlis" → chạy form của quy trình đó. Auto Fill không gửi khóa này: extension tự
+nhận diện form theo tiêu đề trang rồi gọi thẳng key ``-ilis`` / ``-vbdlis``.
 
 Bộ hồ sơ hay có cả bản thường lẫn bản đã ký số của cùng một tệp ("DON.pdf" + "DON.signed.pdf", ảnh scan giống hệt):
 chỉ đọc bản ký số (OCR gấp đôi dễ quá timeout 100s của extension). PDF lớn OCR song song theo phần như đăng ký biến
@@ -104,6 +105,15 @@ async def extract(files_by_role: dict[str, list[dict]], options: dict) -> dict:
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    quy_trinh = str((options or {}).get("quyTrinh") or "")
+    if quy_trinh == "ilis":
+        from ..process_ilis.runner import run as run_ilis
+
+        return await run_ilis(files_by_role, options)
+    if quy_trinh == "vbdlis":
+        from ..process_vbdlis.runner import run as run_vbdlis
+
+        return await run_vbdlis(files_by_role, options)
     result = await extract(files_by_role, options)
     result["fields"], warnings = mapper.enrich(result["fields"], options)
     if warnings:

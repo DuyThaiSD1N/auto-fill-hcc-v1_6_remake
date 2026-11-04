@@ -1743,8 +1743,10 @@
       // "Chọn trường hợp giải quyết" = CÙNG form#ngSelectAgencyForm (agency + procedureProcess)
       // với hộp thoại Bộ Xây dựng.
       // Cổng Bộ Công Thương cùng stepper iGate (không có trang chọn nơi và loại) → chỉ cần đọc bước đang mở.
+      // Cổng tỉnh Tuyên Quang cùng nền iGate: hộp thoại "Chọn trường hợp giải quyết" (mỗi quy trình một form) + stepper.
       const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
-        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucong-tthc.moit.gov.vn"].includes(location.hostname);
+        "dichvucongbnv.moha.gov.vn", "dichvucongbyt.moh.gov.vn", "dichvucong-tthc.moit.gov.vn",
+        "dichvucong.tuyenquang.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
       // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
