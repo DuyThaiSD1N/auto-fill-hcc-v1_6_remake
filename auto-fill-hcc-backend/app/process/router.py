@@ -30,6 +30,9 @@ from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
+from app.pipelines.ho_tro_mai_tang.process.mapper import (
+    with_account_process_options as with_mai_tang_account_process_options,
+)
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
@@ -88,6 +91,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_mai_tang_htxh_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Phường Nha Trang: hỗ trợ mai táng bảo trợ xã hội lấy người đề nghị trên tờ khai làm chủ hồ sơ.
+        prepared.pipeline_options = with_mai_tang_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_hkd_account_process_options(

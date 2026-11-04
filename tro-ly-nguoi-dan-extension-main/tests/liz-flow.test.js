@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
@@ -76,4 +77,93 @@ test("guided-steps.js không bấm thẳng nút nộp trên trang liz (one-page.
 test("trang liz có bảng thành phần hồ sơ (input file trong app-upload-flie-multi) → nhận là trang đính kèm", () => {
   const gate = attachCore.slice(attachCore.indexOf("function hasAttachmentTarget()"));
   assert.match(gate.slice(0, 1500), /app-upload-flie-multi input\[type="file"\]/);
+});
+
+// Đính kèm lại trên trang liz: chạy THẬT clearPreviousAttachments của attach-core.js trên bảng giả. Mỗi tệp đã đính là
+// <span><span class="file_name">…</span><div>…<button class="warn"><i class="fas fa-trash-alt"></i></button></div></span>.
+function lizClearPage({ rows, confirm = false, stuck = [] }) {
+  const src = read("content/attach-core.js");
+  const from = src.indexOf("const LIZ_DIALOGS");
+  const to = src.indexOf("\n// ===== Cổng DVC Bộ Công an", from);
+  assert.ok(from >= 0 && to > from, "không cắt được đoạn gỡ tệp liz");
+  const clicks = [];
+  const dialogs = [];
+  const trs = rows.map(({ upload = true, files = [] }) => {
+    const row = { upload, names: [] };
+    row.querySelector = (sel) => (sel === "app-upload-flie-multi" && row.upload ? {} : null);
+    row.querySelectorAll = (sel) => (sel === ".file_name" ? [...row.names] : []);
+    for (const file of files) {
+      const name = { file };
+      const remove = () => { row.names = row.names.filter((n) => n !== name); };
+      const button = {
+        disabled: false,
+        click() {
+          clicks.push(file);
+          if (stuck.includes(file)) return;
+          if (confirm) dialogs.push({ yes: { click() { dialogs.length = 0; remove(); } } });
+          else remove();
+        },
+      };
+      const icon = { closest: (sel) => (sel === "button" ? button : null) };
+      name.parentElement = { querySelector: (sel) => (sel === "i.fa-trash-alt, i.fa-trash" ? icon : null) };
+      row.names.push(name);
+    }
+    return row;
+  });
+  const ctx = {
+    console: { log() {} },
+    document: {
+      querySelector: (sel) => (sel === "app-upload-flie-multi" && trs.some((r) => r.upload) ? {} : null),
+      querySelectorAll: (sel) => (sel === "tr" ? trs : [...dialogs]),
+    },
+    isVisible: () => true,
+    sleep: async () => {},
+    waitFor: async (fn) => {
+      for (let i = 0; i < 5; i++) {
+        const value = fn();
+        if (value) return value;
+        await null;
+      }
+      return fn();
+    },
+    findButtonByText: (dialog, labels) => (labels.includes("Đồng ý") ? dialog.yes : null),
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${src.slice(from, to)}\nthis.clearPreviousAttachments = clearPreviousAttachments;`, ctx);
+  const left = () => trs.map((row) => row.names.map((n) => n.file));
+  return { clear: ctx.clearPreviousAttachments, left, clicks, dialogs };
+}
+
+test("đính kèm lại liz: bấm thùng rác gỡ mọi tệp trong bảng thành phần, bảng khác không đụng", async () => {
+  const page = lizClearPage({ rows: [
+    { files: ["Ma-ket.pdf", "Ma-ket 2.pdf"] },
+    { files: ["Ban phoi canh.pdf"] },
+    { upload: false, files: ["Tep ngoai bang.pdf"] },
+  ] });
+  const res = await page.clear();
+  assert.equal(res.removedFiles, 3);
+  assert.deepEqual(page.left(), [[], [], ["Tep ngoai bang.pdf"]]);
+  assert.ok(!page.clicks.includes("Tep ngoai bang.pdf"));
+});
+
+test("đính kèm lại liz: cổng hỏi lại trước khi xoá → bấm Đồng ý trên hộp mới mọc", async () => {
+  const page = lizClearPage({ confirm: true, rows: [{ files: ["Thong bao.pdf", "Thong bao 2.pdf"] }] });
+  const res = await page.clear();
+  assert.equal(res.removedFiles, 2);
+  assert.deepEqual(page.left(), [[]]);
+  assert.equal(page.dialogs.length, 0);
+});
+
+test("đính kèm lại liz: tệp cổng không cho xoá thì bỏ qua, không lặp, vẫn gỡ tệp còn lại", async () => {
+  const page = lizClearPage({ stuck: ["Khoa.pdf"], rows: [{ files: ["Khoa.pdf", "Gỡ được.pdf"] }] });
+  const res = await page.clear();
+  assert.equal(res.removedFiles, 1);
+  assert.deepEqual(page.left(), [["Khoa.pdf"]]);
+  assert.equal(page.clicks.filter((f) => f === "Khoa.pdf").length, 1);
+});
+
+test("nút xoá tệp liz nhận theo icon thùng rác, không phải class warn (nút mdc-button cạnh nó cũng là warn)", () => {
+  const fn = attachCore.slice(attachCore.indexOf("function lizAttachedFiles()"));
+  assert.match(fn.slice(0, 600), /querySelector\("i\.fa-trash-alt, i\.fa-trash"\)\?\.closest\("button"\)/);
+  assert.match(attachCore, /async function clearPreviousAttachments\(\) \{\s*if \(isLizAttachPage\(\)\) return await clearLizAttachedFiles\(\);/);
 });

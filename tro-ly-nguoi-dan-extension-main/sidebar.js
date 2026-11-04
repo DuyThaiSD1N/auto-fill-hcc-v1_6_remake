@@ -116,6 +116,9 @@
     // Bấm "Nộp trực tuyến" ở đúng thẻ theo chữ BE gửi (portal-dvc.js::clickNopTrucTuyenByCard).
     // Thiếu cờ → BE dặn công dân chọn tay thay vì để engine cũ bấm thẻ đầu (cấp Sở).
     supportsAgencyCard: true,
+    // Gạt "Sở" xong chọn đúng cơ quan theo tên BE gửi (soAgency, portal-dvc.js::pickSoAgency) thay vì giữ Sở cổng
+    // điền sẵn. Thiếu cờ → BE dặn công dân chọn tay.
+    supportsSoAgency: true,
     // Chặng cổng tỉnh của thủ tục đặc thù (vd Quảng Ninh): bấm "Nộp hồ sơ" đúng dòng bảng thủ tục
     // (portal-dvc.js::pickProvinceRow) + chọn cơ quan theo tên ở mọi ô modal Thông tin chung. Thiếu cờ → BE dặn chọn tay.
     supportsProvincePortal: true,
@@ -5196,6 +5199,8 @@
           ward: a.ward,
           // Cổng bộ ngành (GD&ĐT...): chuyển toggle "Sở" (không chọn sở cụ thể) rồi Đồng ý.
           soMode: a.soMode === true,
+          // Gạt "Sở" xong chọn lại đúng cơ quan này ở ô thứ hai (vd Chi cục ATTP Đà Nẵng); rỗng = giữ Sở điền sẵn.
+          soAgency: a.soAgency || "",
           // Trang kết quả nhiều thẻ mà thẻ đầu là cấp Sở: bấm "Nộp trực tuyến" ở thẻ có chữ này.
           cardIncludes: a.cardIncludes || "",
         });

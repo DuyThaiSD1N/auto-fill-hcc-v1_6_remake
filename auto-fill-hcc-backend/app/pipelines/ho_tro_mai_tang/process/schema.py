@@ -117,6 +117,24 @@ FIELDS += [
     },
 ]
 
+# Cờ requesterAsOwner (phường Nha Trang): ChuHoSo_* là NGƯỜI ĐỀ NGHỊ (người khai) và là chủ hồ sơ trên cổng.
+# Cùng tên field, chỉ đổi mô tả nguồn: mục 1 Mẫu số 02/03 là nguồn chính, mục 3.1 cùng người chỉ bổ sung.
+_REQUESTER_OWNER_DESC = {
+    "ChuHoSo_HoTen": 'Họ tên NGƯỜI ĐỀ NGHỊ (người khai): mục 1 "Thông tin người đề nghị" Mẫu số 02/03, mục II.2.a Mẫu số 04. Không lấy họ tên người chết.',
+    "ChuHoSo_NgaySinh": "Ngày sinh người đề nghị, dd/mm/yyyy; mục 1 Mẫu số 03 không có ô này nên lấy mục 3.1 khi cùng người (trùng họ tên hoặc số định danh) hoặc CCCD đúng người.",
+    "ChuHoSo_GioiTinh": 'Giới tính người đề nghị, "Nam" hoặc "Nữ" theo ô "Nam/Nữ" mục 3.1 cùng người hoặc CCCD đúng người; không suy từ tên hoặc quan hệ.',
+    "ChuHoSo_SoDinhDanh": "Số CMND/CCCD/số định danh của người đề nghị ở mục 1 (Mẫu số 04: mục II.2); chỉ giữ chữ số.",
+    "ChuHoSo_NgayCap": "Ngày cấp giấy tờ định danh của người đề nghị ở mục 1 (Mẫu số 04: mục II.2), dd/mm/yyyy.",
+    "ChuHoSo_NoiCap": "Nơi cấp giấy tờ định danh của người đề nghị ở mục 1 (Mẫu số 04: mục II.2); không lấy chữ trên logo/dấu.",
+    "ChuHoSo_NoiCuTru": 'Dòng "Nơi cư trú" của người đề nghị tại mục 1 Mẫu số 02/03 (Mẫu số 04: mục II.2), object {quocGia,tinh,xa,chiTietDuoiXa}; không lấy xã/tỉnh của mục 3.1. Mục 1 không có dòng này mới lấy "Địa chỉ nơi cư trú" mục 3.1 cùng người.',
+    "ChuHoSo_DienThoai": "Số điện thoại người đề nghị; mục 1 không ghi thì lấy mục 3.1 khi cùng người.",
+    "ChuHoSo_QuocTich": "Quốc tịch người đề nghị khi giấy tờ của đúng người ghi rõ.",
+}
+REQUESTER_OWNER_FIELDS: list[dict] = [
+    {**field, "desc": _REQUESTER_OWNER_DESC.get(field["name"], field["desc"])}
+    for field in FIELDS
+]
+
 ALLOWED = {field["name"] for field in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 

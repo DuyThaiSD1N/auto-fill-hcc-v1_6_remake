@@ -44,6 +44,40 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+# Cấu hình theo tài khoản: phường Nha Trang (Khánh Hòa) khai NGƯỜI ĐỀ NGHỊ trên tờ khai làm chủ hồ sơ thay vì
+# người chết. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được.
+PROCEDURE_KEYS = ("ho-tro-mai-tang", "ho-tro-mai-tang-1116910")
+REQUESTER_AS_OWNER_OPTION = "requesterAsOwner"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_requester_owner(options: dict | None) -> bool:
+    return (options or {}).get(REQUESTER_AS_OWNER_OPTION) is True
+
+
+def is_khanh_hoa_nha_trang(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Nha Trang, tỉnh Khánh Hòa (ĐÚNG tên phường, không gồm Bắc/Nam/Tây Nha Trang)."""
+    if not user:
+        return False
+    tinh = _norm_text(user.get("tinh"))
+    xa = _norm_text(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "khanh hoa" in tinh and xa == "nha trang"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ requesterAsOwner do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(REQUESTER_AS_OWNER_OPTION, None)
+    if procedure in PROCEDURE_KEYS and is_khanh_hoa_nha_trang(user):
+        result[REQUESTER_AS_OWNER_OPTION] = True
+    return result
+
+
 def _strip_admin_prefix(value) -> str:
     text = str(value or "").strip()
     return re.sub(
@@ -177,7 +211,7 @@ def enrich(
     fields: list[dict],
     options: dict | None = None,
 ) -> tuple[list[dict], list[str]]:
-    """Khối chủ hồ sơ = người chết (mọi tài khoản), không bao giờ tick "Người nộp là chủ hồ sơ".
+    """Khối chủ hồ sơ = người chết (trừ cờ requesterAsOwner), không bao giờ tick "Người nộp là chủ hồ sơ".
 
     Người đứng ra mai táng (ChuHoSo_*) hoặc NguoiNop_* chỉ vào khối người nộp khi khớp mỏ neo UI;
     toggle owner_as_submitter thì lấy thẳng người đứng ra mai táng làm người nộp.
@@ -203,6 +237,9 @@ def enrich(
 
     if not deceased and not organizer and not requester:
         return out, ["Không bóc tách được người chết hoặc người nộp từ tài liệu hợp lệ."]
+
+    if is_requester_owner(options):
+        return out, _fill_requester_owner(add, organizer, requester, deceased, context, options)
 
     add("data[isOwnerDossierCheck]", False)
 
@@ -232,6 +269,58 @@ def enrich(
     else:
         warnings.append("Không đọc được thông tin người chết để điền chủ hồ sơ.")
     return out, warnings
+
+
+def _fill_requester_owner(
+    add,
+    owner: Person | None,
+    requester: Person | None,
+    deceased: Person | None,
+    context: dict,
+    options: dict | None,
+) -> list[str]:
+    """Cờ requesterAsOwner (phường Nha Trang): khối chủ hồ sơ = người đề nghị trên tờ khai (ChuHoSo_*).
+
+    Người đề nghị cũng là người nộp (khớp mỏ neo UI, hoặc toggle owner_as_submitter) thì tick "Người nộp là
+    chủ hồ sơ"; NguoiNop_* khác người khớp UI thì vào khối người nộp, chủ hồ sơ vẫn là người đề nghị.
+    """
+    warnings: list[str] = []
+    # Người chết không bao giờ là chủ hồ sơ/người nộp ở cấu hình này, kể cả khi LLM lỡ trộn vai.
+    if owner and deceased and _same_person(owner, deceased):
+        owner = None
+
+    submitter: Person | None = None
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        submitter = owner or requester
+    elif owner and _matches_applicant(owner, context):
+        submitter = owner
+    elif requester and _matches_applicant(requester, context):
+        submitter = requester
+    elif _has_applicant_anchor(context):
+        anchor = context.get("applicant_identity") or context.get("applicant_name")
+        warnings.append(
+            "Không xác định được người nộp khớp thông tin trên form "
+            f"({anchor}); không điền phần người nộp."
+        )
+    if submitter and deceased and _same_person(submitter, deceased):
+        submitter = None
+
+    if owner and submitter and _same_person(owner, submitter):
+        add("data[isOwnerDossierCheck]", True)
+        _add_requester(add, owner)
+        # Portal tự sao chép hầu hết field khi tick nhưng bỏ sót ngày sinh chủ hồ sơ, nên phát riêng sau
+        # khối người nộp (như mai táng hưu trí xã hội).
+        add("data[ownerBirthday]", owner.birthday)
+        return warnings
+
+    add("data[isOwnerDossierCheck]", False)
+    if submitter:
+        _add_requester(add, submitter)
+    if owner:
+        _add_owner(add, owner)
+    else:
+        warnings.append("Không đọc được người đề nghị trên tờ khai để điền chủ hồ sơ.")
+    return warnings
 
 
 def _add_requester(add, person: Person) -> None:

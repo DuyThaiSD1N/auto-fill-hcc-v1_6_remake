@@ -242,7 +242,7 @@ const api = {
   // Kèm token khi đã đăng nhập: BE bỏ thủ tục riêng của tỉnh khác (provinceOnly) theo tỉnh tài
   // khoản. Chưa đăng nhập thì gọi trơn, BE trả đủ danh mục.
   keKhaiLinks() {
-    return apiJson("/api/v1/procedures/ke-khai-links"); // { links: [{key, label, url, needsAgencySelect, provinceOnlyAgency, selectSo, selectSoProvinces, submitCardIncludes, submitCardIndex, provincePortalFlow, autoConfirm, provinceOnly}] }
+    return apiJson("/api/v1/procedures/ke-khai-links"); // { links: [{key, label, url, needsAgencySelect, provinceOnlyAgency, selectSo, selectSoProvinces, soAgencyByProvince, submitCardIncludes, submitCardIndex, provincePortalFlow, autoConfirm, provinceOnly}] }
   },
 
   // Rà soát bbox: đọc lại sources (field → vùng ảnh) đã chụp lúc process. null nếu chưa có / hết hạn.

@@ -53,6 +53,7 @@
    */
   function areaLabel(arm) {
     if (!arm) return "";
+    if (arm.soAgency) return `${arm.soAgency}, ${arm.province}`;
     return arm.provinceOnly ? String(arm.province || "") : `${arm.ward}, ${arm.province}`;
   }
 
@@ -535,6 +536,76 @@
     return true;
   }
 
+  /**
+   * Nút x của ô đã có giá trị (<input> kèm nút x): tìm trong khung NHỎ NHẤT chỉ chứa đúng ô này — leo
+   * thêm bậc nữa là vớ nút x của ô Tỉnh bên cạnh, xoá nhầm tỉnh.
+   */
+  function clearButtonOf(control, card) {
+    let node = control?.parentElement || null;
+    for (let depth = 0; node && node !== card && depth < 4; depth += 1) {
+      if (comboControls(node).length > 1) break;
+      const clear = Array.from(node.querySelectorAll('button, [role="button"]'))
+        .filter(visible)
+        .find((el) => el !== control && el.getAttribute("aria-haspopup") !== "listbox");
+      if (clear) return clear;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  /**
+   * Tick "Sở" xong cổng điền sẵn Sở ĐẦU danh sách ở ô thứ hai. Thủ tục khai `soAgencyByProvince` (popup chốt
+   * theo tỉnh thành arm.soAgency, vd Đà Nẵng 2.000591 → "Chi cục An toàn thực phẩm thành phố") thì chọn lại
+   * đúng cơ quan đó. Khớp theo CHỨA chuỗi đã fold: nhãn trên cổng dài hơn (thêm tên tỉnh), ô hiển thị bị cắt.
+   */
+  async function pickSoAgency(card, wanted) {
+    const want = fold(wanted);
+    const control = () => comboControls(card)[1] || null;
+    const done = () => fold(controlValue(control())).includes(want);
+    const findTarget = () => (optionNodes() || []).find((node) => fold(node.textContent).includes(want)) || null;
+
+    // Cổng nạp danh sách Sở rồi mới điền sẵn option đầu: chọn trước nhịp đó là bị nó đè lại.
+    await waitFor(() => control() && !isPlaceholder(control()), 4000, 150);
+    if (!control()) {
+      console.warn("[AgencySelect] không thấy ô chọn Sở");
+      return false;
+    }
+    if (done()) {
+      console.log("[AgencySelect] cơ quan đã đúng sẵn:", wanted);
+      return true;
+    }
+
+    realClick(control());
+    let opened = await waitFor(openListbox, 1500, 150);
+    if (!opened && control()?.tagName === "INPUT") {
+      // Bấm vào ô đã có giá trị không mở danh sách → bấm x cho ô về dạng nút chọn rồi mở lại.
+      const clear = clearButtonOf(control(), card);
+      if (clear) {
+        realClick(clear);
+        await waitFor(() => isPlaceholder(control()), 3000, 150);
+        realClick(control());
+        opened = await waitFor(openListbox, 4000, 150);
+      }
+    }
+    if (!opened) {
+      console.warn("[AgencySelect] không mở được danh sách Sở");
+      return false;
+    }
+
+    let target = await waitFor(findTarget, 1200, 150);
+    if (!target && typeIntoSearch(wanted)) target = await waitFor(findTarget, 3000, 150);
+    if (!target) {
+      console.warn("[AgencySelect] không thấy cơ quan", wanted, "trong:",
+        (optionNodes() || []).map((node) => String(node.textContent || "").trim()).slice(0, 10));
+      realClick(control());   // đóng dropdown, trả trang về nguyên trạng
+      return false;
+    }
+    realClick(target);
+    const ok = await waitFor(done, 3000, 150);
+    console.log("[AgencySelect]", ok ? "đã chọn cơ quan:" : "click xong nhưng ô chưa đổi:", wanted);
+    return !!ok;
+  }
+
   async function run() {
     const arm = await readArm();
     if (!arm) return;
@@ -570,6 +641,11 @@
       if (!await pickRadioAndFirstSo(card)) {
         await clearArm();
         return void toast("Không tự chọn được Sở — mời chọn tay.", "warning");
+      }
+      // Tỉnh tiếp nhận ở cơ quan khác Sở cổng điền sẵn (soAgencyByProvince) → chọn lại đúng cơ quan đó.
+      if (arm.soAgency && !await pickSoAgency(card, arm.soAgency)) {
+        await clearArm();
+        return void toast(`Không tự chọn được "${arm.soAgency}" — mời chọn tay rồi bấm "Nộp hồ sơ".`, "warning");
       }
     } else if (!arm.provinceOnly) {
       // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.

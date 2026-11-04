@@ -3,6 +3,18 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.26.9",
+    date: "4/11/2026",
+    items: [
+      "Tuyên Quang: thêm thủ tục đính chính Giấy chứng nhận đã cấp lần đầu có sai sót (1.012796) và giao đất, cho thuê đất, chuyển mục đích sử dụng đất, gia hạn sử dụng đất (1.013949); chọn quy trình VBDLIS hoặc iLis trên cổng vẫn giữ giấy tờ đã tải lên.",
+      "Ô cổng tự chọn sẵn theo tài khoản đăng nhập (giới tính, tỉnh...) mà giấy tờ không có thông tin: xoá trắng và tô đỏ để cán bộ nhập tay.",
+      "Cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm (2.000591) tại Đà Nẵng: tích Sở xong tự chọn Chi cục An toàn thực phẩm thành phố.",
+      "Hỗ trợ chi phí mai táng đối tượng bảo trợ xã hội, phường Nha Trang: chủ hồ sơ là người đề nghị trên tờ khai.",
+      "Đăng ký cấp Giấy chứng nhận nhận chuyển nhượng dự án bất động sản (Đà Nẵng): chỉ tách file theo trang khi bật \"Có tách hồ sơ khi đính kèm\".",
+      "Phường Đắk Bla: để trống ô mô tả ngành nghề, địa chỉ nhận kết quả là nơi nhận trực tiếp của phường.",
+    ],
+  },
+  {
     version: "1.26.7",
     date: "4/11/2026",
     items: [

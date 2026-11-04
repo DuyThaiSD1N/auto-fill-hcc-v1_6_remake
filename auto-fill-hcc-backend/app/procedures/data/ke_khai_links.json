@@ -1171,6 +1171,9 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-330c-77dd-8058-19a40f5959f5",
       "needsAgencySelect": true,
       "selectSo": true,
+      "soAgencyByProvince": {
+        "danang": "Chi cục An toàn thực phẩm thành phố"
+      },
       "autoConfirm": true
     },
     {
@@ -2303,6 +2306,22 @@
       "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194&TT=TAMTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA",
       "needsAgencySelect": false,
       "autoConfirm": false
+    },
+    {
+      "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
+      "code": "1.012796",
+      "label": "Tuyên Quang - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+      "code": "1.013949",
+      "label": "Tuyên Quang - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

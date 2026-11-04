@@ -64,3 +64,21 @@ QUY TẮC FIELD:
   không lặp xã/huyện/tỉnh.
 - Không trả field UI như data[fullname], data[ownerFullname], data[isOwnerDossierCheck], email, fax, ghi chú.
 - Không tạo field không có bằng chứng OCR."""
+
+
+# Nối sau EXTRA_RULES khi tài khoản bật cờ requesterAsOwner (phường Nha Trang).
+REQUESTER_OWNER_RULES = """
+
+CẤU HÌNH TÀI KHOẢN: NGƯỜI ĐỀ NGHỊ LÀ CHỦ HỒ SƠ TRÊN CỔNG
+- Cấu hình này thay mục tiêu ở trên: ChuHoSo_* = NGƯỜI ĐỀ NGHỊ (người khai) trên tờ khai và là CHỦ HỒ SƠ
+  trên cổng; NguoiMat_* vẫn trích để phân biệt vai trò nhưng không phải chủ hồ sơ.
+- Mẫu số 02/03: nguồn chính của ChuHoSo_* là mục 1 "Thông tin người đề nghị" (họ tên, số định danh, ngày
+  cấp, nơi cấp, nơi cư trú). Mục 1 KHÔNG có ngày sinh, giới tính, số điện thoại: mục 3.1 "cá nhân, thân
+  nhân đứng ra tổ chức mai táng" CÙNG NGƯỜI (trùng họ tên hoặc số định danh) thì BẮT BUỘC lấy
+  ChuHoSo_NgaySinh, ChuHoSo_GioiTinh ("Nam/Nữ: Nam" -> "Nam"), ChuHoSo_DienThoai từ mục 3.1; khác người thì
+  bỏ qua mục 3.1. Giá trị mục 1 và mục 3.1 khác nhau thì giữ giá trị mục 1.
+- ChuHoSo_NoiCuTru BẮT BUỘC lấy dòng "Nơi cư trú" của mục 1 (cả xã/phường lẫn tỉnh), dù mục 3.1 ghi địa chỉ
+  khác hoặc đầy đủ hơn; không ghép xã/phường, tỉnh của mục 3.1 vào. Mục 1 không ghi tỉnh thì để trống tinh.
+  Chỉ khi mục 1 không có dòng "Nơi cư trú" mới lấy "Địa chỉ nơi cư trú" mục 3.1 cùng người.
+- Mẫu số 04: người đề nghị là hộ gia đình, cá nhân đứng ra mai táng tại mục II.2 như trên.
+- Không đưa người chết (mục 2 Mẫu số 02/03, mục I Mẫu số 04) vào ChuHoSo_*."""

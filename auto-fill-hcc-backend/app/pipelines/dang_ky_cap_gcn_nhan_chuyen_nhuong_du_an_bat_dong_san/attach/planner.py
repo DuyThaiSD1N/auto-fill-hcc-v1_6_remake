@@ -25,6 +25,10 @@ khớp DUY NHẤT dòng 11 (đuôi "(nếu có)").
 ENGINE TÁCH TRANG copy từ dinh_chinh_gcn_da_cap_da_nang: OCR per-file có header "Trang n/m" → LLM gán KHOẢNG
 TRANG + loại → hậu xử lý tất định (chống chồng/thiếu trang) → rule OCR vá đoạn LLM không xếp được → gom theo
 dòng. Trang trắng đi theo giấy tờ đứng TRƯỚC nó trong cùng file.
+
+Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments`` là boolean true) mới cắt trang như trên. TẮT /
+extension cũ không gửi cờ → MỖI TỆP đính NGUYÊN một lần vào dòng của giấy tờ chính đầu tiên trong tệp (tệp gộp cả
+bộ thường mở đầu bằng Đơn → dòng 2), không sinh sourceSegments.
 """
 
 import base64
@@ -37,6 +41,8 @@ import fitz
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared.documents import join_ocr_documents
+# Cờ bật/tắt tách dùng chung với các thủ tục khác (không gắn với giấy tờ HKD).
+from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
 from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -337,14 +343,25 @@ def _continues(group: list[dict], row: int, group_row: int, seg: dict) -> bool:
     return bool(seg.get("fallback")) or seg["type"] not in (_NHAN_THAN, _OTHER)
 
 
+def _whole_file(segments: list[dict], page_count: int) -> dict:
+    """Không tách: cả tệp thành MỘT đoạn mang loại của giấy tờ có dòng riêng đứng đầu tệp (CCCD/khác mở đầu
+    không kéo tệp gộp về dòng 7); tệp không có giấy chính → giấy đầu tiên có nội dung."""
+    content = [s for s in segments if s["type"] != _BLANK]
+    main = [s for s in content if s["type"] in _ROW_BY_TYPE]
+    head = (main or content or segments)[0]
+    return {**head, "pageFrom": 1, "pageTo": page_count}
+
+
 def build_attachments(
     segments: list[dict],
     raw_files: list[dict],
     file_meta: dict[int, dict],
     page_text_by_file: dict[int, dict[int, str]],
     full_text_by_file: dict[int, str],
+    split: bool = True,
 ) -> tuple[list[dict], list[dict], list[str]]:
-    """Đoạn đã kiểm tra → kế hoạch attp-row (mỗi giấy một tệp). Trả (attachments, classified, errors)."""
+    """Đoạn đã kiểm tra → kế hoạch attp-row. ``split`` → mỗi giấy một tệp (cắt trang); không → mỗi tệp đính
+    nguyên. Trả (attachments, classified, errors)."""
     resolved: dict[int, list[dict]] = {}
     prev_type: dict[int, str] = {}
     for segment in segments:
@@ -356,6 +373,10 @@ def build_attachments(
         if doc_type != _BLANK:
             prev_type[file_index] = doc_type
         resolved.setdefault(file_index, []).append({**segment, "type": doc_type})
+    # Cảnh báo thiếu giấy xét MỌI giấy đã nhận ra, kể cả giấy nằm trong tệp gộp đính nguyên.
+    all_types = {s["type"] for segs in resolved.values() for s in segs}
+    if not split:
+        resolved = {fi: [_whole_file(segs, file_meta[fi]["pageCount"])] for fi, segs in resolved.items()}
 
     by_row: dict[int, list[list[dict]]] = {}
     classified: list[dict] = []
@@ -414,7 +435,6 @@ def build_attachments(
             } for item in row_items)
 
     errors: list[str] = []
-    all_types = {c["type"] for c in classified}
     if attachments:
         missing = [label for t, label in (
             (_DON18, "Đơn đăng ký biến động Mẫu số 18 (dòng 2)"),
@@ -447,7 +467,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
-    _ = options or {}
+    split = split_requested(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_pairs = [(i, f) for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES]
@@ -487,7 +507,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
 
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
     attachments, classified, plan_errors = build_attachments(
-        segments, raw_files, file_meta, page_text_by_file, full_text_by_file
+        segments, raw_files, file_meta, page_text_by_file, full_text_by_file, split=split
     )
     errors.extend(plan_errors)
 
@@ -505,6 +525,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "llmDocuments": [raw_files[d["fileIndex"]]["name"] for d in llm_docs],
             "sessionId": (session or {}).get("request_id"),
             "classified": classified,
+            "attachmentMode": "split_documents" if split else "preserve_files",
         },
         "ocr_text": join_ocr_documents(indexed_ocr),
         "llm_output": {"documents": raw_segments},

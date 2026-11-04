@@ -2552,12 +2552,60 @@ async function clearAddedAttachmentRows() {
   return removed;
 }
 
+// Cổng Bộ VHTTDL (liz): mỗi tệp đã đính trong dòng có <app-upload-flie-multi> là
+// <span><span class="file_name" title="…">…</span><div>[Ký số][Download][…]<button class="warn"><i class="fas fa-trash-alt">
+// </i></button></div></span>. Cổng nhận thêm bản trùng chứ không thay tệp → đính kèm lại mà không bấm thùng rác thì
+// mỗi dòng mang hai bản. Nút "warn btn primary mdc-button" đứng cạnh KHÔNG phải nút xoá — nhận theo icon thùng rác.
+const LIZ_DIALOGS = 'mat-dialog-container, .mat-mdc-dialog-container, .swal2-popup, [role="dialog"], [role="alertdialog"]';
+
+function isLizAttachPage() {
+  return !!document.querySelector("app-upload-flie-multi");
+}
+
+function lizAttachedFiles() {
+  return Array.from(document.querySelectorAll("tr"))
+    .filter((row) => row.querySelector("app-upload-flie-multi"))
+    .flatMap((row) => Array.from(row.querySelectorAll(".file_name")))
+    .map((name) => {
+      const entry = name.parentElement;
+      return { entry, button: entry?.querySelector("i.fa-trash-alt, i.fa-trash")?.closest("button") || null };
+    })
+    .filter(({ entry, button }) => entry && button && isVisible(button) && !button.disabled);
+}
+
+async function clearLizAttachedFiles() {
+  let removedFiles = 0;
+  const failed = new Set();
+  for (let guard = 0; guard < 40; guard++) {
+    const files = lizAttachedFiles();
+    const target = files.find(({ entry }) => !failed.has(entry));
+    if (!target) break;
+    const dialogsBefore = new Set(Array.from(document.querySelectorAll(LIZ_DIALOGS)).filter(isVisible));
+    target.button.click();
+    // Cổng xoá xong thì bớt một tệp (Angular có thể vẽ lại cả danh sách → đếm, không bám node cũ).
+    const gone = () => lizAttachedFiles().length < files.length;
+    // Có cổng hỏi lại trước khi xoá (hộp Material / SweetAlert) → chỉ bấm hộp MỚI mọc sau cú bấm.
+    const dialog = await waitFor(() => Array.from(document.querySelectorAll(LIZ_DIALOGS))
+      .find((d) => isVisible(d) && !dialogsBefore.has(d)) || (gone() ? "gone" : null), 2000, 100);
+    if (dialog && dialog !== "gone") {
+      const yes = findButtonByText(dialog, ["Xác nhận", "Đồng ý", "Xóa", "Có", "OK"]);
+      if (yes) { yes.click(); await sleep(300); }
+    }
+    if (await waitFor(gone, 4000, 100)) removedFiles++;
+    else failed.add(target.entry); // không xoá được → bỏ qua tệp này, tránh lặp vô hạn
+  }
+  console.log("[TLND-Attach] gỡ tệp lượt trước (liz)", { removedFiles, failed: failed.size });
+  return { removedRows: 0, removedFiles };
+}
+
 // Đính kèm LẠI trên cùng hồ sơ (đổi gộp/tách, điều chỉnh giấy tờ): gỡ sạch tệp của lượt trước rồi
 // mới đính theo kế hoạch mới — giữ tệp cũ thì đổi gộp ↔ tách vẫn ra bảng của lượt trước.
 //  - dòng thêm từ "Thêm thành phần hồ sơ" → bấm thùng rác (xóa cả dòng);
-//  - dòng có sẵn trong form → bấm X trên tên tệp (dòng giữ nguyên, chỉ bỏ tệp).
+//  - dòng có sẵn trong form → bấm X trên tên tệp (dòng giữ nguyên, chỉ bỏ tệp);
+//  - cổng Bộ VHTTDL (liz) → bấm thùng rác trên từng tệp (clearLizAttachedFiles).
 // Dòng không có X (vd Tờ khai do cổng tự sinh ở STT1) và dòng giấy ủy quyền thì không đụng tới.
 async function clearPreviousAttachments() {
+  if (isLizAttachPage()) return await clearLizAttachedFiles();
   const removedRows = await clearAddedAttachmentRows();
   let removedFiles = 0;
   const failed = new Set();

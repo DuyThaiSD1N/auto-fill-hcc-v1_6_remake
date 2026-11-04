@@ -67,6 +67,8 @@ PROCEDURE_HMONG = {
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": "Nyiaj pab tsheb thauj neeg tuag mus hlawv (Đà Nẵng)",
     "dang-ky-lap-dat-su-dung-nuoc-sach": "Cuv npe txuas dej huv thiab ntsuas dej (Lai Châu)",
     "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
+    "dang-ky-dat-dai-lan-dau-khanh-hoa": "Cuv npe av, muab daim ntawv av thawj zaug (Khánh Hòa)",
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa": "Hloov daim av (Khánh Hòa)",
     # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
     "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
@@ -664,6 +666,15 @@ AGENCY_CARD_MANUAL_GUIDE = {
 AGENCY_CARD_MISSING = {
     "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
     "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
+}
+
+# BẢN NHÁP ghép từ chữ đã có (kos lub thawv = tích ô, hauv qab = bên dưới, los yog = hoặc, qhov chaw ua = cơ quan
+# thực hiện) — chờ người bản ngữ soát. Tên cơ quan là chữ Việt nên lời đọc không nhúng {agency}.
+SO_AGENCY_MANUAL_GUIDE = {
+    "md": ("Pej xeem xaiv {province}, kos lub thawv Sở, ces xaiv {agency} hauv qab, ces nias Nộp hồ sơ "
+           "(los yog Đồng ý), ces nias Nộp trực tuyến."),
+    "tts": ("Pej xeem xaiv xeev, kos lub thawv Sở, ces xaiv qhov chaw ua hauv qab, ces nias Nộp hồ sơ, "
+            "ces nias Nộp trực tuyến."),
 }
 
 # BẢN NHÁP chờ anh Dư soát — chặng cổng tỉnh (Quảng Ninh), ghép từ câu đã có (nkag VNeID, xaiv tsis tau, nias kiag).

@@ -63,14 +63,20 @@ test("fill-core đồng bộ engine standard từ auto-fill: đủ mảnh cho c�
   assert.match(fillCore, /const norm = \(s\) => \(s \|\| ""\)\.normalize\("NFC"\)/);
 });
 
-test("portal-dvc: soMode CHỈ gạt toggle Sở rồi Đồng ý — không chọn sở trong combo", () => {
+test("portal-dvc: soMode gạt toggle Sở rồi Đồng ý — chỉ chọn sở trong combo khi BE gửi soAgency", () => {
   assert.ok(portalDvc.includes("async function switchToSoToggle"));
   // Toggle khớp text fold ĐÚNG "so" (không match từ dài hơn).
   assert.ok(portalDvc.includes('fold(el.textContent) === "so"'));
   // "Cái đầu tiên" = kết quả đầu của DANH SÁCH sau Đồng ý (clickNopTrucTuyen),
-  // KHÔNG phải option đầu của dropdown Sở → cấm mọi bước chọn combo trong nhánh soMode.
+  // KHÔNG phải option đầu của dropdown Sở → cấm chọn option đầu trong nhánh soMode.
   assert.ok(!portalDvc.includes("pickComboFirst"));
-  assert.ok(/if \(soMode\) \{[\s\S]{0,400}switchToSoToggle\(block\)[\s\S]{0,200}\} else \{/.test(portalDvc));
+  assert.ok(/if \(soMode\) \{[\s\S]{0,400}switchToSoToggle\(block\)[\s\S]{0,400}\} else \{/.test(portalDvc));
+  // Tỉnh có cơ quan tiếp nhận riêng (agencySoByProvince, vd Chi cục ATTP Đà Nẵng): chọn THEO TÊN BE gửi,
+  // không gửi thì giữ Sở cổng điền sẵn như cũ.
+  assert.match(portalDvc, /soAgency \? await pickSoAgency\(block, soAgency\) : null/);
+  assert.ok(portalDvc.includes("soAgency: msg.soAgency || \"\""));
+  assert.ok(sidebar.includes("soAgency: a.soAgency || \"\""));
+  assert.match(sidebar, /supportsSoAgency:\s*true/);
   // Nhánh cũ (chọn xã) giữ nguyên cho các thủ tục tư pháp đang phát hành; tên xã qua portalAgencyWard
   // (tên xã cổng chưa cập nhật sau sáp nhập).
   assert.match(portalDvc, /await pickCombo\(combos\[1\], portalAgencyWard\(province, ward\),\s*\{ force: true, timeout: 8000 \}\)/);

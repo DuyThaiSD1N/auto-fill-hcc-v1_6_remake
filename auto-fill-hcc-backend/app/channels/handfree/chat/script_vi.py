@@ -367,6 +367,19 @@ AGENCY_CARD_MANUAL_GUIDE = {
     ),
 }
 
+# Gạt "Sở" xong cổng điền sẵn Sở đầu danh sách, nhưng tỉnh này tiếp nhận ở cơ quan khác (agencySoByProvince).
+# Bản trợ lý chưa biết chọn cơ quan theo tên → dặn công dân chọn tay, không để nó nộp vào Sở điền sẵn.
+SO_AGENCY_MANUAL_GUIDE = {
+    "md": (
+        "Công dân chọn **{province}** → tích **Sở** → ở ô bên dưới chọn **{agency}** → bấm **Nộp hồ sơ** "
+        "(hoặc **Đồng ý**) rồi **Nộp trực tuyến** ạ."
+    ),
+    "tts": (
+        "Dạ, công dân chọn {province}, tích ô Sở, rồi ở ô bên dưới chọn {agency}. "
+        "Xong bấm Nộp hồ sơ, rồi Nộp trực tuyến ạ."
+    ),
+}
+
 # Đã chọn xong tỉnh/xã + Đồng ý nhưng không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
 # Chặng cổng tỉnh (registry provincePortalFlow, vd Quảng Ninh): sau "Nộp trực tuyến" cổng quốc gia ném sang cổng
 # tỉnh — bảng thủ tục, đăng nhập VNeID riêng của cổng tỉnh, modal "Thông tin chung".

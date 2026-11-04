@@ -14,12 +14,19 @@ const sandbox = { workProcedureKey: "", selectedProcedureKey: "" };
 vm.runInNewContext(`
   let workProcedureKey = "";
   let selectedProcedureKey = "";
+  let PROCEDURES = [
+    { key: "procedure-a" },
+    { key: "procedure-a-vbdlis", formVariantOf: "procedure-a" },
+    { key: "procedure-b" },
+  ];
   ${popupSource.slice(resetStart, resetEnd)}
   globalThis.check = (workKey, selectedKey, nextKey) => {
     workProcedureKey = workKey;
     selectedProcedureKey = selectedKey;
     return shouldResetProcedureWork(nextKey);
   };
+  globalThis.preserve = (previousKey, nextKey) =>
+    shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, "auto", 3, false);
 `, sandbox);
 
 // Reload/chuyển bước cùng thủ tục phải giữ file.
@@ -32,6 +39,13 @@ assert.equal(sandbox.check("", "", "procedure-a"), false);
 assert.equal(sandbox.check("procedure-a", "procedure-a", "procedure-b"), true);
 // Màn chọn chung làm selection rỗng vẫn phải nhớ file thuộc A.
 assert.equal(sandbox.check("procedure-a", "", "procedure-b"), true);
+// Hai form của cùng thủ tục (formVariantOf): đi từ link kê khai form gốc sang trang quy trình VBDLIS là CÙNG hồ sơ →
+// tự nhận diện được và giữ file; thủ tục khác vẫn bị chặn khi đang có file.
+assert.equal(sandbox.check("procedure-a", "procedure-a", "procedure-a-vbdlis"), false);
+assert.equal(sandbox.check("procedure-a-vbdlis", "procedure-a-vbdlis", "procedure-a"), false);
+assert.equal(sandbox.preserve("procedure-a", "procedure-a-vbdlis"), false);
+assert.equal(sandbox.preserve("procedure-a", "procedure-b"), true);
+assert.equal(sandbox.check("procedure-a-vbdlis", "procedure-a-vbdlis", "procedure-b"), true);
 
 assert.match(
   popupSource,

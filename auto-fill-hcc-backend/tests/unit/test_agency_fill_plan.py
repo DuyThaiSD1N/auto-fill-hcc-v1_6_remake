@@ -153,6 +153,66 @@ def test_quang_ninh_dang_nhap_rieng_cong_tinh():
     assert r.actions == [{"type": "collapse_after_tts"}]
 
 
+# ── Gạt "Sở" xong chọn đúng cơ quan theo tỉnh (soAgencyByProvince) — cùng bảng ke_khai_links với Auto Fill ──
+_ATTP_CT = "cap-gcn-attp-cong-thuong"
+_CHI_CUC_ATTP = "Chi cục An toàn thực phẩm thành phố"
+_DN_LOC = {"province": "Thành phố Đà Nẵng", "province_slug": "danang", "ward": "Phường Hải Châu"}
+
+
+def _so_conv(loc, so_agency=True):
+    from app.channels.handfree.chat import store
+
+    conv = store.new_conversation(location=dict(loc))
+    conv["procedure_key"] = _ATTP_CT
+    conv["client_capabilities"] = {"supportsSoAgency": True} if so_agency else {"supportsAgencyCard": True}
+    return conv
+
+
+def test_attp_cong_thuong_da_nang_cung_bang_voi_auto_fill():
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    link = next(l for l in KE_KHAI_LINKS if l.get("code") == "2.000591")
+    assert link["key"] == _ATTP_CT and link["selectSo"] is True
+    assert link["soAgencyByProvince"] == {"danang": _CHI_CUC_ATTP}
+    assert _handfree(_ATTP_CT)["agencySoByProvince"] == link["soAgencyByProvince"]
+    # Bản cấp lại (2.000535) không khai → giữ Sở cổng điền sẵn.
+    assert "agencySoByProvince" not in _handfree("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham")
+
+
+def test_attp_cong_thuong_da_nang_gat_so_roi_chon_chi_cuc():
+    from app.channels.handfree.chat import flow
+
+    conv = _so_conv(_DN_LOC)
+    proc = flow.get_procedure(_ATTP_CT)
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"agencyBlock": True})  # noqa: SLF001
+    assert r.actions == [{"type": "select_agency", "province": "Thành phố Đà Nẵng", "ward": "",
+                          "soMode": True, "soAgency": _CHI_CUC_ATTP}]
+    # Câu dặn khi chọn hỏng / màn đăng nhập đọc đúng tên cơ quan, không phải "Sở Công Thương".
+    assert flow._agency_ward_display(proc, conv["location"]) == _CHI_CUC_ATTP  # noqa: SLF001
+
+
+def test_attp_cong_thuong_tinh_khac_giu_so_dien_san():
+    from app.channels.handfree.chat import flow
+
+    conv = _so_conv({"province": "Tỉnh Lai Châu", "province_slug": "laichau", "ward": "Phường Tân Phong"})
+    proc = flow.get_procedure(_ATTP_CT)
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"agencyBlock": True})  # noqa: SLF001
+    assert r.actions == [{"type": "select_agency", "province": "Tỉnh Lai Châu", "ward": "", "soMode": True}]
+    assert flow._agency_ward_display(proc, conv["location"]) == "Sở Công Thương"  # noqa: SLF001
+
+
+def test_attp_cong_thuong_da_nang_extension_cu_dan_chon_tay():
+    """Engine cũ chỉ gạt "Sở" rồi nộp vào Sở cổng điền sẵn → không bắn lệnh, dặn chọn Chi cục."""
+    from app.channels.handfree.chat import flow
+
+    conv = _so_conv(_DN_LOC, so_agency=False)
+    proc = flow.get_procedure(_ATTP_CT)
+    r = flow._guide_login_on_page(conv, proc, conv["location"], {"agencyBlock": True})  # noqa: SLF001
+    assert r.actions == [] and _CHI_CUC_ATTP in r.display_md and "Sở" in r.display_md
+    again = flow._guide_login_on_page(conv, proc, conv["location"], {"agencyBlock": True})  # noqa: SLF001
+    assert again.actions == [] and not again.display_md
+
+
 def test_quang_ninh_xa_co_dinh_dac_khu_co_to():
     """agencyWard (ke_khai_links): DVCQG chọn Đặc khu Cô Tô thay vì xã của tài khoản."""
     from app.channels.handfree.chat import flow

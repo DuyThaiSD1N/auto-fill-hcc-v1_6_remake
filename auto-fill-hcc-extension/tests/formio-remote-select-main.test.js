@@ -74,14 +74,14 @@ function setup({ dataSrc = "url", server = [], initial = [], multiple = false, c
   const context = { window, document, CustomEvent, Event, InputEvent, DOMParser, CSS: { escape: (s) => s }, setTimeout, clearTimeout, console };
   vm.runInNewContext(mainSource, context);
 
-  const request = (value) => new Promise((resolve) => {
+  const request = (value, extra = {}) => new Promise((resolve) => {
     const requestId = `r${Math.random()}`;
     select.requestId = requestId;
     document.addEventListener(RESULT, (ev) => {
       const data = JSON.parse(ev.detail);
       if (data.requestId === requestId) resolve(data);
     });
-    document.dispatchEvent(new CustomEvent(REQUEST, { detail: JSON.stringify({ requestId, value }) }));
+    document.dispatchEvent(new CustomEvent(REQUEST, { detail: JSON.stringify({ requestId, value, ...extra }) }));
   });
   return { comp, attrs, request, select };
 }
@@ -306,6 +306,25 @@ test("nguồn từ xa nhưng select nhiều / nguồn lạ → handled=false", a
     assert.equal(res.handled, false);
     assert.equal(comp.searches.length, 0);
   }
+});
+
+test("clear: bỏ chọn bằng setValue rỗng của component (cổng chọn sẵn theo tài khoản, vd Giới tính Nam)", async () => {
+  const { comp, request } = setup({ dataSrc: "values" });
+  comp.shown = "Nam";
+  comp.dataValue = "nam";
+  comp.emptyValue = "";
+  const res = await request("", { clear: true });
+  assert.equal(res.handled, true);
+  assert.equal(res.ok, true);
+  assert.deepEqual(comp.setCalls, [""]);
+  assert.equal(comp.searches.length, 0);
+});
+
+test("content.js: field clear của ô chọn đi clearStandardSelect; vòng tỉnh/xã bỏ qua field clear", () => {
+  assert.match(contentSource, /f\.comp === "dom-select" && f\.clear\) \{\s*ok = await clearStandardSelect\(/);
+  assert.match(contentSource, /fillFormioRemoteSelectViaMain\(select, "", \{ clear: true \}\)/);
+  assert.match(contentSource, /isAreaSelectField\(f\) && !f\.clear && failedFieldKeys\.has/);
+  assert.match(contentSource, /isAreaSelectField\(f\) && !f\.clear && !failedFieldKeys\.has/);
 });
 
 test("content.js hỏi cầu nối TRƯỚC đường searchOnce/DOM, trừ ô Tỉnh/Xã", () => {

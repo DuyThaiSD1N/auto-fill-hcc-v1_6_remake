@@ -985,7 +985,7 @@
   }
 
   // Ô mô tả từng dòng ngành nghề điền cho mọi địa bàn, TRỪ địa bàn popup.js bật cờ
-  // skipBusinessLineDescription (tài khoản phường Yên Bái — Lào Cai): để trống ô, chỉ giữ tên ngành
+  // skipBusinessLineDescription (tài khoản phường Yên Bái — Lào Cai, phường Đắk Bla): để trống ô, chỉ giữ tên ngành
   // chính thức cổng tự hiện theo mã VSIC. popup.js quyết định tài khoản nào bật cờ; ở đây chỉ tuân theo.
   function fillBusinessLineDescriptions(nn, defaults) {
     if (defaults && defaults.skipBusinessLineDescription) {

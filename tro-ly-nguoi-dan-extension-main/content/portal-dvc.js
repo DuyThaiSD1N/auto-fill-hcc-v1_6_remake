@@ -730,6 +730,67 @@
     return { ok: true };
   }
 
+  // Ô chọn của khối cơ quan, dò TƯƠI theo thứ tự: chọn rồi thì cổng thay <button> bằng <input value> kèm nút x
+  // (Auto Fill content/agency-select.js đã gặp) → giữ node cũ là cầm rác.
+  const AGENCY_COMBO = 'button[aria-haspopup="listbox"], input:not([type="radio"]):not([type="checkbox"])';
+  const agencyCombos = (scope) => Array.from(scope.querySelectorAll(AGENCY_COMBO)).filter(isVisible);
+  const agencyComboValue = (el) => (!el ? "" : el.tagName === "INPUT" ? String(el.value || "").trim() : comboValue(el));
+
+  // Nút x của ô đã có giá trị: khung NHỎ NHẤT chỉ chứa đúng ô này — leo quá là vớ nút x của ô Tỉnh bên cạnh.
+  function agencyClearButton(control, block) {
+    let node = control?.parentElement || null;
+    for (let depth = 0; node && node !== block && depth < 4; depth += 1) {
+      if (agencyCombos(node).length > 1) break;
+      const clear = Array.from(node.querySelectorAll('button, [role="button"]'))
+        .find((el) => el !== control && isVisible(el) && el.getAttribute("aria-haspopup") !== "listbox");
+      if (clear) return clear;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // Gạt "Sở" xong cổng điền sẵn Sở ĐẦU danh sách ở ô thứ hai. BE gửi soAgency (agencySoByProvince, vd Đà Nẵng
+  // 2.000591 → "Chi cục An toàn thực phẩm thành phố") thì chọn lại đúng cơ quan đó, khớp theo CHỨA chuỗi vì nhãn
+  // cổng dài hơn (thêm tên tỉnh). Không khớp thì báo lỗi, KHÔNG để Sở điền sẵn đi tiếp (nộp nhầm cơ quan).
+  async function pickSoAgency(block, target) {
+    const wanted = fold(target);
+    const control = () => agencyCombos(block)[1] || null;
+    const done = () => fold(agencyComboValue(control())).includes(wanted);
+    const placeholder = () => /^[-\s]*(chon|$)/.test(fold(agencyComboValue(control())));
+    let roots = [];
+    const find = () => optionCandidates(roots).find((el) => fold(el.textContent).includes(wanted)) || null;
+
+    // Cổng nạp danh sách Sở rồi mới điền sẵn option đầu: chọn trước nhịp đó là bị nó đè lại.
+    await waitFor(() => control() && !placeholder(), 4000);
+    if (!control()) return { error: "Không thấy ô chọn Sở sau khi tích Sở." };
+    if (done()) return { ok: true, kept: true };
+
+    roots = await openAndCollect(control(), 1500);
+    let opt = await waitFor(find, 1200);
+    if (!opt && control()?.tagName === "INPUT") {
+      // Bấm vào ô đã có giá trị không ra danh sách đủ → bấm x cho ô về dạng nút chọn rồi mở lại.
+      const clear = agencyClearButton(control(), block);
+      if (clear) {
+        document.body.click();
+        clickLikeUser(clear);
+        await waitFor(placeholder, 3000);
+        if (control()) roots = await openAndCollect(control());
+        opt = await waitFor(find, 1500);
+      }
+    }
+    if (!opt && typeIntoSearch(roots, target)) opt = await waitFor(find, 3000, 250);
+    if (!opt) {
+      const seen = optionCandidates(roots).slice(0, 10).map((el) => el.textContent.trim()).filter(Boolean);
+      document.body.click(); // đóng dropdown cho sạch
+      return { error: `Không thấy "${target}" trong danh sách Sở. Thấy: ${seen.join(" | ").slice(0, 200) || "(trống)"}` };
+    }
+    const clickable = opt.closest('[role="option"], li, button') || opt;
+    try { clickable.scrollIntoView({ block: "nearest" }); } catch (_) {}
+    clickLikeUser(clickable);
+    if (!await waitFor(done, 3000)) return { error: `Đã bấm "${target}" nhưng ô Sở chưa đổi.` };
+    return { ok: true };
+  }
+
   // Sau "Đồng ý" trang hiện danh sách cơ quan/dịch vụ → tự bấm luôn "Nộp trực tuyến",
   // không dừng giữa chừng bắt người dân bấm.
   async function clickNopTrucTuyen() {
@@ -792,7 +853,7 @@
     return { ok: true, cards: all.length };
   }
 
-  async function selectAgency({ province, ward, soMode = false, cardIncludes = "" }) {
+  async function selectAgency({ province, ward, soMode = false, soAgency = "", cardIncludes = "" }) {
     const block = await waitFor(agencyBlock, 6000);
     if (!block) return { error: 'Không thấy khối "Chọn cơ quan thực hiện" trên trang.' };
 
@@ -809,6 +870,9 @@
       // (kết quả đầu tiên của danh sách sau Đồng ý mới là Sở chuyên ngành cần nộp).
       const toggle = await switchToSoToggle(block);
       if (toggle.error) return toggle;
+      // Riêng tỉnh BE gửi soAgency: chọn lại đúng cơ quan đó thay cho Sở cổng điền sẵn.
+      const so = soAgency ? await pickSoAgency(block, soAgency) : null;
+      if (so?.error) return so;
     } else {
       // XÃ: danh sách nạp async → chờ dài hơn. ward RỖNG thì pickCombo tự bỏ qua
       // (thủ tục bộ ngành chỉ cần tỉnh).
@@ -853,6 +917,7 @@
       province: msg.province || "",
       ward: msg.ward || "",
       soMode: msg.soMode === true,
+      soAgency: msg.soAgency || "",
       cardIncludes: msg.cardIncludes || "",
     })
       .then(sendResponse)

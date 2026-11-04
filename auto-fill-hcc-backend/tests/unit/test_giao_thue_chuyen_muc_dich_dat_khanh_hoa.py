@@ -312,3 +312,24 @@ def test_ke_khai_link_shares_registry_key():
     assert len(links) == 1
     assert links[0]["code"] == "1.013949"
     assert links[0]["label"].startswith("Khánh Hòa - ")
+
+
+def test_tro_ly_chi_tai_khoan_khanh_hoa_dung_pipeline_loi():
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+
+    procedure = handfree.get_procedure(_KEY)
+    core = get_procedure(_KEY)
+    link = next(link for link in KE_KHAI_LINKS if link["key"] == _KEY)
+    assert "Khánh Hòa - " + procedure["label"] == core["label"]
+    assert "Khánh Hòa" not in procedure["shortLabel"]
+    assert procedure["detect"] == core["detect"]
+    assert procedure["keKhaiUrl"] == link["url"]
+    assert handfree.procedure_code(procedure) == "1.013949"
+    assert procedure["agencyProvince"] == "Khánh Hòa"
+    assert "agencyProvinceOnly" not in procedure and "agencySoFirst" not in procedure
+    assert handfree.is_allowed_in_province(procedure, "khanhhoa")
+    assert not handfree.is_allowed_in_province(procedure, "tuyenquang")
+    assert handfree.get_pipeline(_KEY) is get_pipeline(_KEY)
+    assert handfree.get_attach_pipeline(_KEY) is get_attach_pipeline(_KEY)
+    assert PROCEDURE_HMONG[_KEY]

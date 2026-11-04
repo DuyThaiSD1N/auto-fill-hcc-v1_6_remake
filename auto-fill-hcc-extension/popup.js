@@ -814,16 +814,24 @@ function isHaiChauDaNangUser(user) {
   return isDaNangBusinessUser(user) && normalizeProcedureSearch(user?.xa).includes("hai chau");
 }
 
-// ===== Nghiệp vụ riêng phường Đắk Bla — tỉnh Lâm Đồng (chỉ áp cho tài khoản của địa bàn này) =====
-// Ô "Lý do giải thể" (trang Chấm dứt hoạt động) LUÔN là câu cố định, bất kể Thông báo chấm dứt
-// trong hồ sơ ghi lý do gì — kể cả khi backend không đọc được lý do nào.
+// ===== Nghiệp vụ riêng phường Đắk Bla (chỉ áp cho tài khoản của địa bàn này) =====
+// 1. Ô "Lý do giải thể" (trang Chấm dứt hoạt động) LUÔN là câu cố định, bất kể Thông báo chấm dứt
+//    trong hồ sơ ghi lý do gì — kể cả khi backend không đọc được lý do nào.
+// 2. Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng
+//    ngành — giống phường Yên Bái, chỉ giữ tên ngành chính thức cổng tự hiện theo mã VSIC.
+// 3. Ô "Địa chỉ nhận kết quả" (trang Người nộp hồ sơ) LUÔN là địa chỉ nhận trực tiếp của phường, cho
+//    MỌI thủ tục hộ kinh doanh — giống phường Hải Châu.
 const DAK_BLA_DISSOLUTION_REASON = "Hộ kinh doanh không hiệu quả";
+const DAK_BLA_POSTAL_ADDRESS = "Nhận trực tiếp tại 54 Đặng Tiến Đông, Phường ĐăkBla, Tỉnh Quảng Ngãi";
 
-/** Tài khoản phường Đắk Bla — tỉnh Lâm Đồng (/auth/me trả `xa` + `tinh`). */
-function isDakBlaLamDongUser(user) {
-  // Phải khớp CẢ phường lẫn tỉnh: chỉ địa bàn này mới ghi đè lý do giải thể.
-  return normalizeProcedureSearch(user?.tinh).includes("lam dong")
-    && normalizeProcedureSearch(user?.xa).includes("dak bla");
+/** Tài khoản phường Đắk Bla (/auth/me trả `xa` + `tinh`). */
+function isDakBlaUser(user) {
+  // Phải khớp CẢ phường lẫn tỉnh. Phường thuộc Tỉnh Quảng Ngãi (Kon Tum cũ) theo danh mục hành chính,
+  // nhưng tài khoản test cũ đặt Tỉnh Lâm Đồng → nhận cả hai. Tên phường bỏ khoảng trắng khi so
+  // ("Đăk Bla" / "Đắk Bla" / "ĐăkBla").
+  const tinh = normalizeProcedureSearch(user?.tinh);
+  return (tinh.includes("quang ngai") || tinh.includes("lam dong"))
+    && normalizeProcedureSearch(user?.xa).replace(/\s+/g, "").includes("dakbla");
 }
 
 // ===== Nghiệp vụ riêng tỉnh Lâm Đồng (trừ xã Đơn Dương) =====
@@ -870,7 +878,11 @@ function buildBusinessDefaults(user) {
     // Bước đính kèm của "Đăng ký hộ kinh doanh": tên tệp tải lên cổng KHÔNG dấu tiếng Việt.
     defaults.asciiAttachmentFileNames = true;
   }
-  if (isDakBlaLamDongUser(user)) defaults.dissolutionReason = DAK_BLA_DISSOLUTION_REASON;
+  if (isDakBlaUser(user)) {
+    defaults.dissolutionReason = DAK_BLA_DISSOLUTION_REASON;
+    defaults.skipBusinessLineDescription = true;
+    defaults.postalServiceAddress = DAK_BLA_POSTAL_ADDRESS;
+  }
   return Object.keys(defaults).length ? defaults : null;
 }
 
@@ -1068,7 +1080,15 @@ function closeDossier(reason) {
 
 function shouldResetProcedureWork(nextKey) {
   const previousKey = workProcedureKey || selectedProcedureKey;
-  return !!(previousKey && nextKey && previousKey !== nextKey);
+  return !!(previousKey && nextKey && previousKey !== nextKey && !sameProcedureFamily(previousKey, nextKey));
+}
+
+// Hai FORM của cùng một thủ tục (vd quy trình VBDLIS / iLis trên cổng iGate Tuyên Quang): BE khai `formVariantOf` =
+// key form gốc. Đi từ link kê khai (form gốc) sang trang của quy trình kia vẫn là CÙNG hồ sơ, cùng giấy tờ → được tự
+// nhận diện sang form đúng mà không xoá file.
+function sameProcedureFamily(a, b) {
+  const root = (key) => PROCEDURES.find((p) => p.key === key)?.formVariantOf || key;
+  return !!a && !!b && root(a) === root(b);
 }
 
 function shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, source, fileCount, confirmedNavigation = false) {
@@ -1081,6 +1101,7 @@ function shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, source, f
     && !!previousKey
     && !!nextKey
     && previousKey !== nextKey
+    && !sameProcedureFamily(previousKey, nextKey)
     && Number(fileCount || 0) > 0;
 }
 
@@ -5851,6 +5872,18 @@ function selectSoFor(link) {
 }
 
 /**
+ * Cơ quan phải chọn ở ô thứ hai sau khi tick "Sở", theo TỈNH đang chọn.
+ *
+ * `soAgencyByProvince` = {slug tỉnh: tên cơ quan} — vd Đà Nẵng 2.000591 nộp ở "Chi cục An toàn thực
+ * phẩm thành phố", không phải Sở cổng tự điền sẵn. Tỉnh vắng trong bảng trả "" = giữ Sở điền sẵn như cũ.
+ */
+function soAgencyFor(link) {
+  if (!selectSoFor(link)) return "";
+  const byProvince = link?.soAgencyByProvince || {};
+  return String(byProvince[agencyLocationFor(link).provinceSlug] || "").trim();
+}
+
+/**
  * Chuỗi chốt thẻ "Nộp trực tuyến" phải bấm cho ĐỊA BÀN đang chọn.
  *
  * `submitCardIncludesByWard` = {tên xã: chuỗi} — vd Đà Nẵng ra nhiều thẻ "Chi nhánh VPĐKĐĐ Khu vực N",
@@ -5877,7 +5910,10 @@ function agencyAreaLabel(link) {
   const area = agencyLocationFor(link);
   const prov = provinceLabel(area.province);
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
-  if (selectSoFor(link)) return `Sở của ${prov}`;
+  if (selectSoFor(link)) {
+    const soAgency = soAgencyFor(link);
+    return soAgency ? `${soAgency}, ${prov}` : `Sở của ${prov}`;
+  }
   if (agencyProvinceOnly(link)) return prov;
   return `${area.ward}, ${prov}`;
 }
@@ -6116,6 +6152,8 @@ async function openKeKhaiPage() {
         // Thủ tục cấp Sở: tick radio "Sở" rồi chọn option đầu tiên trong dropdown thay vì chọn Phường/Xã.
         // Cờ chốt theo TỈNH đang chọn (xem selectSoFor) nên phải tính ở đây, không đọc thẳng link.
         selectSo: selectSoFor(link),
+        // Tick Sở xong chọn lại đúng cơ quan này ở ô thứ hai (rỗng = giữ Sở cổng điền sẵn). Chốt theo TỈNH.
+        soAgency: soAgencyFor(link),
         // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
         // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu". Chốt theo XÃ đang chọn (xem submitCardIncludesFor).
         submitCardIncludes: submitCardIncludesFor(link),

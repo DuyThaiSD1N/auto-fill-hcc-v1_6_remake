@@ -142,6 +142,12 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process import run as dang_
 from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.attach import plan as dang_ky_dat_dai_lan_dau_khanh_hoa_attach
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_khanh_hoa.process import run as giao_thue_chuyen_muc_dich_dat_khanh_hoa_process
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_khanh_hoa.attach import plan as giao_thue_chuyen_muc_dich_dat_khanh_hoa_attach
+from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang.process import run as dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_process
+from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang.attach import plan as dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach
+from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang.process_ilis import run as dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_ilis_process
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.process import run as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_process
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.process_vbdlis import run as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_vbdlis_process
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang.attach import plan as giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.process import run as xac_dinh_lai_dien_tich_dat_o_quang_ngai_process
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.attach import plan as xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach
 from app.pipelines.dinh_chinh_sai_sot_quang_ngai.process import run as dinh_chinh_sai_sot_quang_ngai_process
@@ -2390,6 +2396,156 @@ PROCEDURES: list[dict] = [
             "Đính kèm: bảng có sẵn 15 dòng; mỗi file đính NGUYÊN KHỐI: Giấy chứng nhận -> dòng 13, Đơn đề nghị -> dòng "
             "14, giấy ủy quyền/giấy giới thiệu -> nút 'Thêm giấy tờ' (không thêm được dòng thì đính chung dòng 14). "
             "Ô Bản chính/Bản sao ở các dòng có sẵn do cán bộ tự chọn.\n"
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
+        # Mã TTHC 1.012796. Đi từ link kê khai DVCQG (ke_khai_links cùng key, chọn Tỉnh + Phường/Xã) sang cổng tỉnh
+        # iGate Tuyên Quang. Tên thủ tục trùng các bản Lai Châu/Lâm Đồng/Quảng Ngãi/Ninh Bình/Lào Cai/Đà Nẵng nên
+        # urlScope theo tên miền tỉnh là chốt chặn duy nhất chống tráo; khớp mọi host con của tuyenquang.gov.vn.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": ["Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Tuyên Quang - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments) chọn chế độ tách / không tách.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18 hoặc Mẫu số 11/ĐK) đã ký — dùng "
+            "để điền nội dung đính chính và số điện thoại.\n"
+            "2. Giấy chứng nhận đã cấp cần đính chính.\n"
+            "3. Giấy tờ chứng minh sai sót: CCCD của người bị sai thông tin, giấy khai sinh, trích lục kết hôn, hợp "
+            "đồng chuyển nhượng/chuyển dịch, quyết định hoặc giấy xác nhận liên quan.\n"
+            "4. Nếu nộp thay: văn bản về việc ủy quyền theo quy định của pháp luật về dân sự.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: bảng có 8 dòng, dòng 5/6/7 lặp dòng 1/2/3 nên không đính. Dòng theo loại giấy: Giấy chứng nhận "
+            "-> 1; giấy tờ chứng minh sai sót + CCCD -> 2 (chọn Bản sao); văn bản ủy quyền -> 3; Đơn Mẫu số 11/ĐK -> 4; "
+            "Đơn Mẫu số 18 -> 8. Không tách (mặc định): mỗi file đính NGUYÊN FILE một lần vào dòng của giấy chính "
+            "(file gộp có Đơn -> dòng 8). Bật 'Có tách hồ sơ khi đính kèm': mỗi giấy cắt thành tệp riêng vào dòng "
+            "của nó.\n"
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis",
+        # Cùng thủ tục 1.012796 và cùng link kê khai với entry trên, nhưng người dân chọn quy trình "iLis cấp xã" thì
+        # cổng ra FORM 2 (người nộp / thửa đất / chủ hồ sơ / thông tin chi tiết — xem pipeline process_ilis). Tên quy
+        # trình in ở tiêu đề thủ tục: thêm cụm "iLis" nên trang iLis khớp đủ hai cụm, tổng dài hơn và thắng entry form 1;
+        # trang form 1 thiếu "iLis" nên entry này không khớp. Bảng đính kèm giống form 1 nên dùng chung planner.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": ["Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót", "iLis"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Tuyên Quang - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót (quy trình iLis)",
+        # Form khác của CÙNG thủ tục: popup (sameProcedureFamily) cho tự nhận diện từ form gốc (chọn qua link kê khai)
+        # sang form này mà không xoá giấy tờ đã tải lên.
+        "formVariantOf": "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18 hoặc Mẫu số 11/ĐK) đã ký — người kê "
+            "khai đầu tiên là người nộp, người ký đơn là chủ hồ sơ; dùng để điền điện thoại, địa chỉ, nội dung đính chính.\n"
+            "2. Giấy chứng nhận đã cấp cần đính chính — số, ngày cấp, cơ quan cấp và địa chỉ thửa đất.\n"
+            "3. Giấy tờ chứng minh sai sót: CCCD của người bị sai thông tin, giấy khai sinh, trích lục kết hôn, hợp "
+            "đồng chuyển nhượng/chuyển dịch, quyết định hoặc giấy xác nhận liên quan.\n"
+            "4. CCCD của người nộp (nếu có) — để điền ngày cấp, nơi cấp.\n"
+            "5. Nếu nộp thay: văn bản về việc ủy quyền theo quy định của pháp luật về dân sự.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm giống quy trình thường: dòng 5/6/7 lặp dòng 1/2/3 nên không đính; không tách thì file gộp có Đơn "
+            "-> dòng 8; bật 'Có tách hồ sơ khi đính kèm' thì mỗi giấy cắt thành tệp riêng vào dòng của nó.\n"
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+        # Mã TTHC 1.013949, key trùng ke_khai_links.json. Đi từ link kê khai DVCQG sang cổng tỉnh iGate Tuyên Quang. Tên
+        # thủ tục trùng bản Ninh Bình/Quảng Ngãi/Khánh Hòa nên urlScope theo tên miền tỉnh là chốt chặn chống tráo; cụm
+        # "gia hạn sử dụng đất…" tách khỏi thủ tục giao đất 1.013823. Quy trình VBDLIS ra form khác: entry ngay dưới.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không "
+                "đấu giá quyền sử dụng đất",
+                "gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất "
+            "không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường "
+            "hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất "
+            "và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đề nghị giao đất/cho thuê đất/chuyển mục đích sử dụng đất (Mẫu số 01) hoặc đơn gia hạn (Mẫu số 04) "
+            "đã ký — nội dung đề nghị, số điện thoại, thửa đất, người đồng sử dụng.\n"
+            "2. Giấy chứng nhận đã cấp (đủ các trang) — số, số vào sổ, ngày cấp, số thửa, số tờ.\n"
+            "3. Nếu nộp thay: giấy ủy quyền kèm lời chứng thực — người nộp, CCCD, ngày cấp, nơi cấp, hộ khẩu thường trú.\n"
+            "4. CCCD của người nộp (nếu có) — để điền ngày sinh đầy đủ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: bảng có 14 dòng, dòng 11 trùng dòng 8 nên không đính. Đơn Mẫu số 01 -> dòng 2 (giấy ủy quyền, CCCD "
+            "đính chung dòng này); Giấy chứng nhận -> dòng 4; giấy tờ dự án/phương án -> dòng riêng; hồ sơ gia hạn: Đơn "
+            "Mẫu số 04 -> dòng 14, Giấy chứng nhận -> dòng 13. Không tách (mặc định): mỗi file đính nguyên một lần vào "
+            "dòng của giấy chính. Bật 'Có tách hồ sơ khi đính kèm': mỗi giấy cắt thành tệp riêng vào dòng của nó.\n"
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang-vbdlis",
+        # Cùng thủ tục 1.013949 và cùng link kê khai với entry trên, nhưng người dân chọn quy trình "VBDLIS" thì cổng ra
+        # FORM 2 (Thông tin chủ hồ sơ / Ghi chú / Nội dung yêu cầu / Địa chỉ thửa đất — xem pipeline process_vbdlis). Tên
+        # quy trình in ở tiêu đề thủ tục: thêm cụm "VBDLIS" nên trang VBDLIS khớp đủ ba cụm, tổng dài hơn và thắng entry
+        # form 1; trang form 1 thiếu "VBDLIS" nên entry này không khớp. Bảng đính kèm giống form 1 nên dùng chung planner.
+        "detect": {
+            "urlScope": ["tuyenquang.gov.vn"],
+            "textIncludes": [
+                "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không "
+                "đấu giá quyền sử dụng đất",
+                "gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+                "VBDLIS",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất "
+            "không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường "
+            "hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất "
+            "và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất (quy trình "
+            "VBDLIS)"
+        ),
+        # Form khác của CÙNG thủ tục: popup (sameProcedureFamily) cho tự nhận diện từ form gốc (chọn qua link kê khai)
+        # sang form này mà không xoá giấy tờ đã tải lên.
+        "formVariantOf": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên giống quy trình thường: Đơn đề nghị (Mẫu số 01 hoặc 04), Giấy chứng nhận đã cấp, giấy ủy "
+            "quyền kèm lời chứng thực nếu nộp thay, CCCD người nộp (nếu có).\n"
+            "Ô 'Thông tin chủ hồ sơ' lấy người đề nghị đứng đầu trên Đơn; các ô cá nhân còn lại là của người nộp (bên được "
+            "ủy quyền nếu có giấy ủy quyền); người đồng sử dụng ghi vào ô Ghi chú.\n"
+            "Đính kèm giống quy trình thường: Đơn -> dòng 2 (kèm giấy ủy quyền, CCCD), Giấy chứng nhận -> dòng 4; dòng 11 "
+            "trùng dòng 8 nên không đính.\n"
         ),
     },
     {
@@ -6521,7 +6677,8 @@ PROCEDURES: list[dict] = [
         "key": "ho-tro-mai-tang",
         # Dùng mã TTHC 1.116910 (DVCQG /thu-tuc-hanh-chinh/01a0f66e-…), bỏ mã cũ 1.001731. Entry
         # "ho-tro-mai-tang-1116910" ngay dưới cùng mã, cùng pipeline ho_tro_mai_tang (giữ cho key trợ lý).
-        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT (mọi tài khoản); người đứng ra mai táng là người nộp.
+        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT; người đứng ra mai táng là người nộp. Riêng phường Nha Trang
+        # (cờ requesterAsOwner, ho_tro_mai_tang/process/mapper.py): chủ hồ sơ = người đề nghị trên tờ khai.
         "detect": {
             "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],
@@ -8256,8 +8413,8 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san",
         # Mã TTHC 1.012787. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, field-key TRÙNG KHÍT dang-ky-bien-dong-dat-
         # dai-da-nang (panel "Thông tin chung"). Attach attp-row 11 dòng (dòng trùng + 1 dòng không tên →
-        # componentIndex), hồ sơ thường 1 PDF gộp → tách theo trang. urlScope khoá host: CÙNG tên thủ tục với
-        # bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai).
+        # componentIndex), hồ sơ thường 1 PDF gộp → tách theo trang khi bật cài đặt. urlScope khoá host: CÙNG tên
+        # thủ tục với bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai).
         # Key trùng ke_khai_links.json (trước đây "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang");
         # mapping theo "Mapping_DKCapGCN_nhan_chuyen_nhuong_DuAnBDS_DaNang.xlsx" + ảnh ánh xạ đính kèm.
         "detect": {
@@ -8276,8 +8433,12 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy một
+        # tệp vào dòng của nó; TẮT/bản cũ → mỗi tệp đính nguyên vào dòng của giấy tờ chính đầu tiên trong tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
-            "Giấy tờ cần tải lên (nhiều file hoặc MỘT file scan gộp — hệ thống tự tách theo trang):\n"
+            "Giấy tờ cần tải lên (nhiều file, hoặc MỘT file scan gộp và bật \"Có tách hồ sơ khi đính kèm\" trong "
+            "Cài đặt để tách theo trang):\n"
             "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — cả bản chủ đầu tư "
             "ký lẫn bản người nhận chuyển nhượng ký.\n"
             "2. Hợp đồng mua bán / chuyển nhượng với chủ đầu tư + MỌI văn bản sửa đổi, bổ sung hợp đồng.\n"
@@ -9544,6 +9705,10 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_process,
     "dang-ky-dat-dai-lan-dau-khanh-hoa": dang_ky_dat_dai_lan_dau_khanh_hoa_process,
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": giao_thue_chuyen_muc_dich_dat_khanh_hoa_process,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_process,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_ilis_process,
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_process,
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang-vbdlis": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_vbdlis_process,
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
@@ -9791,6 +9956,10 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_attach,
     "dang-ky-dat-dai-lan-dau-khanh-hoa": dang_ky_dat_dai_lan_dau_khanh_hoa_attach,
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": giao_thue_chuyen_muc_dich_dat_khanh_hoa_attach,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach,
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach,
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang-vbdlis": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": xac_dinh_lai_dien_tich_dat_o_igate_lao_cai_attach,

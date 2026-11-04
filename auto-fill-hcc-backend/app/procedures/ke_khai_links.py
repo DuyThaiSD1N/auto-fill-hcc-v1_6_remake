@@ -15,6 +15,12 @@ từ /locations/catalog = `code_name` bỏ dấu gạch dưới) — cùng một
 cấp xã, bật tràn cả nước là hồ sơ đi lạc cơ quan tiếp nhận. Extension chốt cờ theo tỉnh đang chọn
 ở popup.js:selectSoFor.
 
+`soAgencyByProvince`: tick "Sở" xong cổng tự điền sẵn Sở ĐẦU danh sách ở ô thứ hai — tỉnh nào tiếp nhận ở
+cơ quan khác thì khai `{"danang": "Chi cục An toàn thực phẩm thành phố"}` (slug như `selectSoProvinces`),
+trợ lý chọn lại đúng option CHỨA chuỗi đó (nhãn cổng dài hơn, có thêm tên tỉnh). Tỉnh không có trong bảng
+giữ Sở cổng điền sẵn. Extension chốt theo tỉnh đang chọn ở popup.js:soAgencyFor; trợ lý người dân đọc cùng
+bảng (procedure_registry → agencySoByProvince).
+
 `agencyWard`: Phường/Xã CỐ ĐỊNH phải chọn ở khối "Chọn cơ quan thực hiện", thay cho xã đang lưu
 ở popup (vd "Đặc khu Cô Tô" cho các thủ tục Quảng Ninh chỉ nộp qua đặc khu). Chỉ dùng cùng thủ tục
 đặc thù của một tỉnh (nhãn "Tỉnh - …"), vì tỉnh được ép theo tiền tố nhãn ở popup.js:agencyLocationFor.

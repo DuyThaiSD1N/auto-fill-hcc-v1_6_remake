@@ -488,6 +488,8 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang", "danang", "dichvucong.danang.gov.vn"),
         ("dang-ky-lap-dat-su-dung-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
         ("chuyen-doi-ten-hop-dong-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
+        ("dang-ky-dat-dai-lan-dau-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
+        ("giao-thue-chuyen-muc-dich-dat-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
@@ -663,7 +665,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 Sở Công Thương "cap-gcn-attp-cong-thuong" (2.000591, cấp GCN ATTP lần đầu).
     # +1 cổng Bộ VHTTDL chọn Sở "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" (1.002003).
     # +1 cổng Bộ VHTTDL chọn Sở "to-chuc-bieu-dien-nghe-thuat" (1.009397).
-    assert len(procedures) == 130
+    # +2 cổng iGate Khánh Hòa "dang-ky-dat-dai-lan-dau-khanh-hoa" (1.013978), "giao-thue-chuyen-muc-dich-dat-khanh-hoa"
+    # (1.013949).
+    assert len(procedures) == 132
 
     for procedure in procedures:
         key = procedure["key"]

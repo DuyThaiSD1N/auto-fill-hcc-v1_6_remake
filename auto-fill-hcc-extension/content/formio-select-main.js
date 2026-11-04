@@ -461,6 +461,23 @@
     return applyValue(comp, el, option.value, optionText(option));
   }
 
+  // Bỏ chọn (BE gửi cờ clear: cổng điền sẵn giá trị theo tài khoản đăng nhập, vd Giới tính "Nam", mà giấy tờ không
+  // có nguồn để thay) → setValue giá trị rỗng của chính component để Form.io và Choices cùng xoá.
+  async function clearSelect(el) {
+    const comp = findComponent(el);
+    if (!comp) return { handled: false, reason: "no-component" };
+    if (comp.disabled) return { handled: false, reason: "disabled" };
+    if (typeof comp.setValue !== "function") return { handled: false, reason: "no-api" };
+    try {
+      comp.setValue(comp.emptyValue ?? "", { modified: true });
+    } catch (error) {
+      console.warn("[AutoFill-Formio] setValue rỗng lỗi:", comp.key, error);
+      return { handled: false, reason: "set-failed" };
+    }
+    const ok = !!await waitFor(() => !displayedLabel(el), 1500);
+    return { handled: true, ok, reason: ok ? "" : "not-cleared" };
+  }
+
   async function handleRequest(event) {
     let requestId = "";
     let result;
@@ -470,7 +487,8 @@
       const el = requestId
         ? document.querySelector(`[${TARGET_ATTR}="${CSS.escape(requestId)}"]`)
         : null;
-      result = el ? await fillSelect(el, payload.value) : { handled: false, reason: "no-element" };
+      if (!el) result = { handled: false, reason: "no-element" };
+      else result = payload.clear ? await clearSelect(el) : await fillSelect(el, payload.value);
     } catch (error) {
       result = { handled: false, reason: "error", error: String(error?.message || error) };
     }

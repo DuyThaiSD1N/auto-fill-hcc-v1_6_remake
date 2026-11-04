@@ -222,6 +222,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) trên trang kết quả
         # DVCQG. Extension cũ luôn bấm thẻ đầu (cấp Sở) → không khai cờ thì BE dặn chọn tay.
         "supportsAgencyCard": raw.get("supportsAgencyCard") is True,
+        # Biết gạt "Sở" rồi chọn đúng cơ quan theo TÊN ở ô thứ hai (soAgency, vd Chi cục ATTP Đà Nẵng). Extension cũ
+        # chỉ gạt rồi giữ Sở cổng điền sẵn → không khai cờ thì BE dặn chọn tay.
+        "supportsSoAgency": raw.get("supportsSoAgency") is True,
         # Biết đi chặng CỔNG TỈNH của thủ tục đặc thù (provincePortalFlow, vd Quảng Ninh): bấm "Nộp hồ sơ" đúng dòng
         # bảng thủ tục (pick_province_row) và chọn Cơ quan thực hiện trong modal "Thông tin chung" theo TÊN ở mọi ô.
         # Client cũ không khai → BE dặn công dân bấm/chọn tay, không bấm Xác nhận hộ (dễ nộp nhầm cơ quan).

@@ -26,7 +26,7 @@
   // Các cờ này mô tả TRANG DVC (khối chọn cơ quan, thẻ "Nộp trực tuyến", modal xác nhận) — trang đó
   // là của thủ tục cầu nên phải lấy theo link cầu.
   const TRUONG_TRANG_DVC = [
-    "needsAgencySelect", "provinceOnlyAgency", "selectSo", "selectSoProvinces",
+    "needsAgencySelect", "provinceOnlyAgency", "selectSo", "selectSoProvinces", "soAgencyByProvince",
     "submitCardIncludes", "submitCardIncludesByWard", "submitCardIndex", "autoConfirm",
   ];
 

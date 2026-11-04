@@ -117,3 +117,49 @@ def test_cau_da_du_o_noi_dung_buoc_Tiep_tuc():
 def test_cau_hinh_bo_sung_o(key):
     cfg = field_review.config(get_procedure(key))
     assert cfg["required"] and "receipt_name" in cfg["noAsk"] and "cccd_tu_van" in cfg["noAsk"]
+
+
+# Page context thật của trang /nop-ho-so liz lúc chốt giấy tờ: form và bảng Thành phần hồ sơ chung trang nên
+# attachmentTarget luôn dương.
+LIZ_PAGE = {"formKind": "liz", "wizardStep": 0, "declarationTarget": False, "attachmentTarget": True,
+            "pageContextCaptured": True}
+
+
+def _docs_complete(monkeypatch, caps, key):
+    from app.channels.handfree.chat import flow, pipeline_runner
+
+    calls = []
+
+    async def fake_run_process(*_a, **_k):
+        calls.append("process")
+
+    async def fake_run_attach(*_a, **_k):
+        calls.append("attach")
+
+    monkeypatch.setattr(pipeline_runner, "run_process", fake_run_process)
+    monkeypatch.setattr(pipeline_runner, "run_attach", fake_run_attach)
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: asyncio.ensure_future(coro))
+    conv = _conv(caps, key, state="collecting_docs", upload_session_id="",
+                 client_capabilities={**caps, "supportsPageBoundDocsComplete": True})
+
+    async def run():
+        r = await flow._docs_complete(conv, dict(LIZ_PAGE))
+        await asyncio.sleep(0)
+        return r
+
+    return conv, asyncio.run(run()), calls
+
+
+@pytest.mark.parametrize("key", LIZ_KEYS)
+def test_chot_giay_to_tren_trang_liz_thi_dien_truoc_roi_moi_dinh_kem(monkeypatch, key):
+    from app.channels.handfree.chat import flow
+
+    conv, _, calls = _docs_complete(monkeypatch, NEW, key)
+    assert conv["docs_target"] == "declaration" and conv["state"] == "filling"
+    assert calls == ["process"], "chưa điền đã đính kèm"
+    assert flow._docs_done_label_for_conv(conv) != flow._docs_done_label("attachment")
+
+
+def test_extension_chua_khai_supportsLizFlow_giu_luong_chung(monkeypatch):
+    conv, _, calls = _docs_complete(monkeypatch, CURRENT, LIZ_KEYS[1])
+    assert conv["docs_target"] == "attachment" and calls == ["attach"]

@@ -32,6 +32,7 @@ from app.channels.handfree.chat import tu_phap_v2
 from app.channels.handfree.chat.intents import Intent, fold
 from app.locations.catalog import (
     PROVINCES,
+    find_province,
     handfree_agency_ward,
     portal_agency_province,
     portal_agency_ward,
@@ -458,6 +459,10 @@ def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | Non
     if target == "attachment" and conv is not None and _eform_pending(conv, proc):
         # Tờ khai điện tử mở từ chính bảng Thành phần hồ sơ: giấy tờ nhận ở bước này trước hết để
         # điền tờ khai, công dân đi tiếp sang đính kèm thì mới là target attachment.
+        return "declaration"
+    if target == "attachment" and conv is not None and tpm.liz(proc) and tpm.is_active(proc, conv):
+        # Cổng Bộ VHTTDL (liz): form và bảng Thành phần hồ sơ CHUNG một trang nên trang luôn báo attachmentTarget.
+        # Giấy tờ chốt ở đây phải điền trước — luồng trang một trang tự đính kèm ngay sau khi điền xong.
         return "declaration"
     return target
 
@@ -1787,8 +1792,18 @@ def _agency_ward_display(proc: dict, loc: dict) -> str:
     """Tên "cấp xã" đọc trong các câu chọn cơ quan: thủ tục chỉ chọn tỉnh (cổng bộ ngành)
     thì đọc tên Sở chuyên ngành thay vì xã."""
     if proc.get("agencyProvinceOnly"):
-        return str(proc.get("agencyDeptLabel") or "Sở chuyên ngành")
+        return _so_agency(proc, loc) or str(proc.get("agencyDeptLabel") or "Sở chuyên ngành")
     return proc.get("agencyWard") or loc.get("ward") or ""
+
+
+def _so_agency(proc: dict, loc: dict) -> str:
+    """Cơ quan chọn ở ô thứ hai sau khi gạt "Sở", theo TỈNH chọn ở khối cơ quan (agencySoByProvince — cùng bảng
+    soAgencyByProvince của Auto Fill). Rỗng = giữ Sở cổng điền sẵn như cũ."""
+    by_province = proc.get("agencySoByProvince") or {}
+    if not by_province or not proc.get("agencySoFirst"):
+        return ""
+    found = find_province(_agency_province(proc, loc)) or province_by_slug(str(loc.get("province_slug") or ""))
+    return str(by_province.get(found["slug"]) or "") if found else ""
 
 
 def _portal_ward(loc: dict) -> str:
@@ -2029,6 +2044,11 @@ def _supports_mae_ward_agency(conv: dict) -> bool:
 def _supports_agency_card(conv: dict) -> bool:
     """Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) thay vì thẻ đầu."""
     return (conv.get("client_capabilities") or {}).get("supportsAgencyCard") is True
+
+
+def _supports_so_agency(conv: dict) -> bool:
+    """Biết gạt "Sở" rồi chọn ĐÚNG cơ quan theo tên ở ô thứ hai (soAgency) thay vì giữ Sở cổng điền sẵn."""
+    return (conv.get("client_capabilities") or {}).get("supportsSoAgency") is True
 
 
 def _supports_province_portal(conv: dict) -> bool:
@@ -2829,6 +2849,16 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
                   "province": portal_agency_province(_agency_province(proc, loc)), "ward": ward}
         if proc.get("agencySoFirst"):
             action["soMode"] = True
+            so_agency = _so_agency(proc, loc)
+            if so_agency:
+                # Tỉnh tiếp nhận ở cơ quan khác Sở cổng điền sẵn (vd Đà Nẵng 2.000591 → Chi cục ATTP). Engine cũ
+                # trên chợ chỉ gạt "Sở" rồi nộp vào Sở điền sẵn → KHÔNG bắn lệnh cho nó, dặn chọn tay.
+                if not _supports_so_agency(conv):
+                    if _say_once(conv, "so_agency_manual"):
+                        return Reply(*_fmt(vi.SO_AGENCY_MANUAL_GUIDE,
+                                           province=action["province"], agency=so_agency))
+                    return Reply()
+                action["soAgency"] = so_agency
         card = str(proc.get("agencyCardIncludes") or "")
         if card:
             # Trang kết quả ra nhiều thẻ, thẻ đầu là cấp Sở. Engine cũ trên chợ chỉ biết bấm thẻ

@@ -7074,8 +7074,9 @@
   const FORMIO_SELECT_READY_ATTR = "data-hcc-formio-select-ready";
   const FORMIO_SELECT_TARGET_ATTR = "data-hcc-formio-select-target";
 
-  async function fillFormioRemoteSelectViaMain(select, value) {
-    if (!select?.closest?.(".formio-component") || !String(value ?? "").trim()) return { handled: false };
+  // clear=true: bỏ chọn (setValue rỗng của component) thay vì chọn option — xem clearStandardSelect.
+  async function fillFormioRemoteSelectViaMain(select, value, { clear = false } = {}) {
+    if (!select?.closest?.(".formio-component") || (!clear && !String(value ?? "").trim())) return { handled: false };
     if (document.documentElement?.getAttribute(FORMIO_SELECT_READY_ATTR) !== "1") {
       console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io (MAIN world) chưa nạp → đường DOM.`);
       return { handled: false, reason: "bridge-not-ready" };
@@ -7101,12 +7102,14 @@
         }, 23000);
         document.addEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
         document.dispatchEvent(new CustomEvent(FORMIO_SELECT_REQUEST_EVENT, {
-          detail: JSON.stringify({ requestId, value: String(value) }),
+          detail: JSON.stringify({ requestId, value: String(value ?? ""), clear }),
         }));
       });
       const ms = Date.now() - startedAt;
       if (!result.handled) {
         console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io bỏ qua (${result.reason || "?"}, ${ms}ms) → đường DOM.`, result);
+      } else if (clear) {
+        console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io bỏ chọn (${result.ok ? "xong" : result.reason}, ${ms}ms).`);
       } else if (result.ok) {
         markFilled(standardMarkTarget(select));
         console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io chọn "${result.label || value}" (${ms}ms).`);
@@ -7119,6 +7122,22 @@
     }
   }
 
+  // Field có cờ clear cho ô chọn (BE không có dữ liệu cho ô mà cổng đã chọn sẵn theo tài khoản, vd Giới tính "Nam",
+  // Tỉnh thửa đất "Tỉnh Tuyên Quang") → BỎ CHỌN. Ưu tiên cầu nối MAIN world; không có thì bấm nút xoá (×) của
+  // Choices nếu ô cho phép.
+  async function clearStandardSelect(select) {
+    if (!select) return false;
+    if (isStandardEmptyControl(select)) return true;
+    const viaMain = await fillFormioRemoteSelectViaMain(select, "", { clear: true });
+    if (viaMain?.handled) return !!viaMain.ok;
+    const btn = standardMarkTarget(select)?.querySelector?.(
+      ".choices__list--single .choices__button, .choices__list--single [data-button]"
+    );
+    if (!btn) return false;
+    ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) => dispatchChoiceMouse(btn, type));
+    await sleep(200);
+    return isStandardEmptyControl(select);
+  }
 
   // BE gắn f.searchOnce cho ô Choices tìm TỪ XA mà mở/gõ lại nhiều lần là HỎNG (cổng Bộ XD cấp phù hiệu: Màu
   // sơn, Loại phương tiện… — mỗi lượt mở lại không chọn gì là ô render sang mã id '63d…'). Chỉ MỘT lượt đúng
@@ -8116,6 +8135,8 @@
           // Angular mới bật các radio con) → chờ như dom-input/date, tránh bỏ sót mục con render trễ.
           const el = findStandardRadio(candidates, root) || await waitFor(() => findStandardRadio(candidates, root), 1500, 80);
           ok = await fillStandardRadio(el, f.value);
+        } else if (f.comp === "dom-select" && f.clear) {
+          ok = await clearStandardSelect(findStandardSelect(candidates, occurrence, root));
         } else if (f.comp === "dom-select") {
           // Ô Tỉnh/Xã giữ luồng cascade + ngân sách riêng. Select nhiều cũng hỏi cầu nối (danh sách nạp sẵn);
           // cầu nối bỏ qua thì về fillStandardMultiSelect như cũ.
@@ -8210,7 +8231,7 @@
   }
 
   async function retryStandardAreaSelects(fields, result, deadlines, failedFieldKeys) {
-    const pending = fields.filter((f) => isAreaSelectField(f) && failedFieldKeys.has(standardFieldIdentity(f)));
+    const pending = fields.filter((f) => isAreaSelectField(f) && !f.clear && failedFieldKeys.has(standardFieldIdentity(f)));
     if (!pending.length) return;
 
     for (const f of pending) {
@@ -8284,7 +8305,7 @@
 
   async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
     const targets = fields.filter((f) =>
-      isAreaSelectField(f) && !failedFieldKeys.has(standardFieldIdentity(f))
+      isAreaSelectField(f) && !f.clear && !failedFieldKeys.has(standardFieldIdentity(f))
     );
     if (!targets.length) return;
     const deadlines = new Map();
