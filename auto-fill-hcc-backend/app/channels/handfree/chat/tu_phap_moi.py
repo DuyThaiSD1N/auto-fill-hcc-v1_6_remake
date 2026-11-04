@@ -25,6 +25,7 @@ cam kết (nút nộp của cổng chỉ mở sau khi tích) → hỏi có nhậ
 
 import re
 
+from app.channels.handfree.chat import attach_files
 from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_vi as vi
@@ -577,17 +578,19 @@ async def handle(conv: dict, proc: dict, intent: Intent):
         if intent.kind == "action" and intent.value == "attach_report":
             # Đường cũ lo phần sổ sách (khóa action, trace, state); câu và nút theo trang một trang.
             r = await flow._handle_attaching(conv, intent)
+            # Thẻ kết quả theo từng tệp (supportsAttachFileReport); nút đính lại của trang một trang giữ như cũ.
+            files = attach_files.parse(conv, payload)
             if conv.get("attach_done"):
-                return _attach_done_reply(conv, payload)
+                return attach_files.apply(_attach_done_reply(conv, payload), files, hint=vi.ATTACH_FILES_HINT_AGAIN)
             if conv.get("attach_action_in_progress"):
                 return r  # report trễ của lượt cũ — đường cũ đã bỏ qua
             errors = [str(e) for e in (payload.get("errors") or []) if e]
             r = flow.Reply(*flow._fmt(vi.TPM_ATTACH_NONE,
-                                      error_note=f": *{errors[0]}*" if errors else ""))
+                                      error_note=f": *{errors[0]}*" if errors and not files else ""))
             r.chips = [_retry_attach_chip(), flow._supplement_documents_chip()]
             if _v2(conv, proc):
                 r.actions = [steps_action(active=2, failed=True)]
-            return r
+            return attach_files.apply(r, files)
         return None
 
     if state == "done":

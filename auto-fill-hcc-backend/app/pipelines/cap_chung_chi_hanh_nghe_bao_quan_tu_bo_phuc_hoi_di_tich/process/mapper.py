@@ -318,11 +318,9 @@ def enrich(
     )
 
     # ---- Đơn Mẫu 51 ----
-    so_dinh_danh = identity
-    if identity:
-        so_dinh_danh += (f" cấp ngày {ngay_cap}" if ngay_cap else "") + (f" do {noi_cap} cấp" if noi_cap else "")
+    # Số định danh điền số trần như bản cấp lại — không ghép "cấp ngày … do … cấp".
     put(S_DON, LABEL_HO_TEN, ho_ten_hoa)
-    put(S_DON, LABEL_SO_DINH_DANH, so_dinh_danh)
+    put(S_DON, LABEL_SO_DINH_DANH, identity)
     put(S_DON, LABEL_NGAY_SINH, ngay_sinh)
     put(S_DON, LABEL_DIA_CHI_LIEN_HE, lien_he or ", ".join(
         p for p in (chi_tiet, _commune_label(area.get("xa")) if area else None,

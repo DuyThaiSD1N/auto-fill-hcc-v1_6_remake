@@ -148,13 +148,16 @@ def test_cong_nnmt_can_them_co_rieng_ban_cu_giu_luong_cu(key):
     assert registry.get(key)["required"] == () and registry.get(key)["noAsk"] == ("ghiChu",)
 
 
-def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu():
+@pytest.mark.parametrize("key", [
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+])
+def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn): bản extension cũ chưa chạy content/bxd/*.js trên host này →
     thiếu supportsBxdFlowMoit thì không bật luồng 4 bước, không bật bổ sung ô."""
     from app.channels.handfree.chat import tu_phap_v2
     from app.channels.handfree.chat.field_review import registry
 
-    key = "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha"
     proc = flow.get_procedure(key)
     assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
     old = _conv("filling", caps={**CAPS, "supportsBxdFlowMae": True}, procedure_key=key)

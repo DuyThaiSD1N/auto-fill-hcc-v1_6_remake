@@ -11,6 +11,10 @@ khỏi chủ hồ sơ). Nếu LLM gán nhầm, mapper HOÁN ĐỔI theo khớp t
 - Phần VIII: nội dung kê khai của CHỦ VĂN BẰNG theo Phiếu BM04.
 Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) chỉ tick khi chủ tài khoản VNeID (formContext) cùng tên +
 số định danh (lệch ≤2 chữ số) với chủ văn bằng và không có người thứ 2 → Phần I giữ nguyên dữ liệu VNeID.
+⚑ Cài đặt "Lấy người nộp theo tờ khai" (`options.submitterMode="owner_as_submitter"`): bỏ mốc tài khoản —
+  có giấy ủy quyền → bên được ủy quyền như thường; không thì người nộp = CHỦ VĂN BẰNG (người đứng Phiếu), ghi
+  đủ Phần I kể cả họ tên (tài khoản chính là chủ → giữ họ tên/ngày sinh VNeID) rồi MỚI tích "Người nộp là chủ
+  hồ sơ" (tích là cổng chép Phần I xuống và khoá chủ hồ sơ), bỏ qua CCCD tên khác. Tổ chức → giữ luồng thường.
 """
 
 from __future__ import annotations
@@ -314,11 +318,14 @@ _UY_QUYEN = re.compile(rf"(?:GIẤY|HỢP\s+ĐỒNG|VĂN\s+BẢN)\s+{_UY}|BÊN\s
 # Phiếu đề nghị: "Tên tôi là: …" rồi vài dòng sau là ngày sinh + số giấy tờ của CHỦ văn bằng. Mẫu mới (TT
 # 10/2026) ghi "Số định danh cá nhân", mẫu cũ "Số chứng minh nhân dân/Hộ chiếu". CHỈ đọc trong khối ngay sau
 # "Tên tôi là" — CCCD gắn chip mới cũng in "Số định danh cá nhân", có thể là thẻ của người nộp thay/cán bộ.
-_PHIEU_TEN_TOI = re.compile(r"t[êe]n\s+t[ôo]i\s+l[àa]\s*:\s*([^\n]*)", re.IGNORECASE)
+# Đơn tự soạn hay viết "Tôi tên là (viết chữ in hoa): …".
+_PHIEU_TEN_TOI = re.compile(r"(?:t[êe]n\s+t[ôo]i|t[ôo]i\s+t[êe]n)\s+l[àa](?:\s*\([^)\n]*\))?\s*:\s*([^\n]*)",
+                            re.IGNORECASE)
 _PHIEU_SINH_NGAY = re.compile(r"sinh\s+ngày\s*:?\s*(\d{1,2}\s*[/.\-]\s*\d{1,2}\s*[/.\-]\s*\d{4})", re.IGNORECASE)
 _PHIEU_SO_GIAY_TO = re.compile(r"(?:số\s+định\s+danh(?:\s+cá\s+nhân)?|số\s+(?:chứng\s+minh\s+nhân\s+dân|cmnd|"
                                r"cccd|căn\s+cước)[^:\n]*)\s*:?\s*([\d .]{9,20})", re.IGNORECASE)
 _PHIEU_LIEN_HE = re.compile(r"(?:số\s+)?điện\s+thoại[^:\n]*:\s*([^\n]*)", re.IGNORECASE)
+_PHIEU_DIA_CHI_LIEN_LAC = re.compile(r"địa\s+chỉ\s+liên\s+(?:lạc|hệ)[^:\n]*:\s*([^\n]*)", re.IGNORECASE)
 
 
 def _phieu_owner(ocr_text: str) -> dict:
@@ -334,11 +341,13 @@ def _phieu_owner(ocr_text: str) -> dict:
     digits = re.sub(r"\D+", "", so.group(1)) if so else ""
     lien_he = _PHIEU_LIEN_HE.search(text[head.end():head.end() + 2500])
     phone = re.search(r"(?<!\d)0\d{9}(?!\d)", re.sub(r"(?<=\d)[ .](?=\d)", "", lien_he.group(1))) if lien_he else None
+    dia_chi = _PHIEU_DIA_CHI_LIEN_LAC.search(text[head.end():head.end() + 2500])
     return {
         "name": (_text(name) or "").upper() or None,
         "dob": _date(re.sub(r"\s+", "", dob.group(1)).replace(".", "/")) if dob else None,
         "id": digits if len(digits) in (9, 12) else None,
         "phone": phone.group(0) if phone else None,
+        "lienLac": _split_address(_text(dia_chi.group(1)) or "") if dia_chi else {},
     }
 
 
@@ -558,6 +567,11 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     chu_tinh = _province_label(chu_tt.get("tinh") or chu_tt.get("tinhThanh"))
     chu_xa, chu_xa_guess = _current_ward(chu_tinh, _text(chu_tt.get("xa") or chu_tt.get("phuong")), ocr_text,
                                          _text(chu_tt.get("huyenCu")))
+    if not chu_tinh and phieu.get("lienLac", {}).get("tinh"):
+        # Chủ không có CCCD/thường trú, đơn chỉ ghi "Địa chỉ liên lạc" (LLM hay xếp nhầm vào địa chỉ dự thi) →
+        # chỉ lấy TỈNH (quy đổi tỉnh sáp nhập); xã/chi tiết viết tay hay sai, để cán bộ nhập.
+        chu_tinh = _province_label(_remap({"tinh": phieu["lienLac"]["tinh"]}).get("tinh"))
+        chu_tt = {**chu_tt, "tinh": chu_tinh}  # Phần I theo chủ văn bằng cũng nhận tỉnh này.
     chu_diachi = _text(chu_tt.get("diaChi") or chu_tt.get("chiTiet"))
     # Loại giấy tờ theo ĐỘ DÀI số định danh (12→CCCD, 9→CMND), KHÔNG tin nhãn form; nơi cấp suy theo đó.
     chu_loai_gt = _id_doc_type_by_len(chu_id) or _text(values.get("VanBang_LoaiGiayTo")) or ""
@@ -607,7 +621,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
                 and not (nop["id"] and chu_id and nop["id"] == chu_id))
     # CCCD của chính chủ văn bằng (khớp tên) — chủ tự đi nộp.
     chu_cccd = not is_org and chu_cccd_valid and bool(chu["id"])
-    if account_is_owner:
+    # Cài đặt "Lấy người nộp theo tờ khai": người nộp = chủ văn bằng đứng Phiếu, không xét tài khoản/CCCD tên khác.
+    theo_to_khai = (str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+                    and not is_org and bool(chu_name or chu_id))
+    if account_is_owner and not theo_to_khai:
         check("data[isOwnerDossier]", True)
     elif proxy:
         add("data[fullname]", proxy["name"].upper())
@@ -641,6 +658,22 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         # Giấy ủy quyền hiếm khi ghi SĐT bên được ủy quyền → dùng SĐT liên hệ của hồ sơ (đơn/phiếu).
         add("data[phoneNumber]", proxy["phone"] or chu_phone, default=not proxy["phone"])
         add("data[email]", proxy["email"])
+    elif theo_to_khai:
+        # Tích "Người nộp là chủ hồ sơ" thì cổng chép Phần I xuống chủ hồ sơ rồi KHOÁ khối đó → Phần I phải đủ
+        # (SĐT, tỉnh, địa chỉ…) trước khi tích; extension tự xếp ô tích sau cùng. Tài khoản chính là chủ văn
+        # bằng → giữ họ tên/ngày sinh VNeID, chỉ điền phần còn trống.
+        _fill_phan_i(None if account_is_owner else chu_name, chu_id, chu_gender,
+                     None if account_is_owner else chu_dob, chu_ngaycap,
+                     chu["noicap"] if chu_cccd_valid else None, chu_tt, chu_phone,
+                     chu["email"] if chu_cccd_valid else None)
+        check("data[isOwnerDossier]", True)
+        if nop_cccd:
+            warnings.append(f"Hồ sơ có CCCD của {nop['name'] or nop['id']} (khác chủ văn bằng) nhưng đang bật "
+                            "\"Lấy người nộp theo tờ khai\" — Phần I ghi theo chủ văn bằng.")
+        if (ctx_name or ctx_id) and not (_same_name(ctx_name, chu_name) or (ctx_id and ctx_id == chu_id)):
+            warnings.append(f"Đang bật \"Lấy người nộp theo tờ khai\": Phần I ghi theo chủ văn bằng "
+                            f"({chu_name or chu_id}), khác tài khoản đăng nhập ({ctx_name or ctx_id}) — kiểm tra "
+                            "lại trước khi nộp.")
     elif nop_cccd:
         # CCCD người nộp thay/cán bộ — SĐT/địa chỉ chủ hồ sơ KHÔNG dùng cho người này.
         if nop["id"] and len(nop["id"]) not in (9, 12):

@@ -262,6 +262,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.002003, cấp lại) — ghép từ bản cấp mới ngay trên + "muab … dua tshiab"
     # (cấp lại) như cấp lại GCN ATTP.
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": "Muab ntawv tso cai ua haujlwm kho chaw keeb kwm dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.009397) — "npaj" (tổ chức, chuẩn bị) đã có; TỪ MỚI "ua yeeb yam" (biểu
+    # diễn nghệ thuật).
+    "to-chuc-bieu-dien-nghe-thuat": "Npaj ua yeeb yam",
     "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
     # BẢN NHÁP chờ anh Dư soát (Bộ Công Thương 2.000591, cấp lần đầu) — ghép từ đã có: "muab" (cấp), "chaw ua zaub

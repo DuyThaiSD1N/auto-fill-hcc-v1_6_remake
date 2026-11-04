@@ -138,6 +138,10 @@ from app.pipelines.giao_thue_chuyen_muc_dich_dat_quang_ngai.process import run a
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_quang_ngai.attach import plan as giao_thue_chuyen_muc_dich_dat_quang_ngai_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_quang_ngai.process import run as dang_ky_dat_dai_lan_dau_quang_ngai_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_quang_ngai.attach import plan as dang_ky_dat_dai_lan_dau_quang_ngai_attach
+from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process import run as dang_ky_dat_dai_lan_dau_khanh_hoa_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.attach import plan as dang_ky_dat_dai_lan_dau_khanh_hoa_attach
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_khanh_hoa.process import run as giao_thue_chuyen_muc_dich_dat_khanh_hoa_process
+from app.pipelines.giao_thue_chuyen_muc_dich_dat_khanh_hoa.attach import plan as giao_thue_chuyen_muc_dich_dat_khanh_hoa_attach
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.process import run as xac_dinh_lai_dien_tich_dat_o_quang_ngai_process
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_quang_ngai.attach import plan as xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach
 from app.pipelines.dinh_chinh_sai_sot_quang_ngai.process import run as dinh_chinh_sai_sot_quang_ngai_process
@@ -580,6 +584,8 @@ from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.a
 from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import (
     run as cap_lai_cchn_di_tich_process,
 )
+from app.pipelines.to_chuc_bieu_dien_nghe_thuat.attach import plan as bieu_dien_nghe_thuat_attach
+from app.pipelines.to_chuc_bieu_dien_nghe_thuat.process import run as bieu_dien_nghe_thuat_process
 from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.attach import plan as trich_luc_ho_so_ncc_attach
 from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.process import run as trich_luc_ho_so_ncc_process
 
@@ -2036,11 +2042,13 @@ PROCEDURES: list[dict] = [
         # ke_khai_links.json (key trùng). Cụm tên có chữ "Thủ tục" đứng trước: trang thẻ NỘI ĐỊA cũng in
         # nhãn "…trường hợp cấp thẻ hướng dẫn viên du lịch tại điểm" (ô Tên điểm du lịch) nhưng không có
         # "thủ tục cấp thẻ … tại điểm", nên không nhận nhầm sang nhau.
+        # Nhãn KHÔNG mang tiền tố "[Đà Nẵng]": tiền tố đó khoá thủ tục cho tài khoản Đà Nẵng (provinceOnly
+        # suy từ nhãn), trong khi cổng Bộ VHTTDL dùng chung cả nước — tài khoản tỉnh nào cũng phải tìm thấy.
         "detect": {
             "textIncludes": ["thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm"],
             "headingDisabled": True,
         },
-        "label": "[Đà Nẵng] Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
+        "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
         "mode": "agent",
         # Bảng 2 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..1
         # (thứ tự DOM: Đơn Mẫu 06, ảnh chân dung). Chứng chỉ/văn bằng/giấy tờ khác đính CHUNG dòng Đơn.
@@ -2075,11 +2083,12 @@ PROCEDURES: list[dict] = [
         # content/fill-liz.js), nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-113). matthc=1.001432 được ghép
         # tự động từ ke_khai_links.json (key trùng). Cụm tên có chữ "đổi" chen giữa "cấp" và "thẻ" nên không
         # trùng cụm của thẻ nội địa ("cấp thẻ hướng dẫn viên du lịch nội địa") hay trang cấp lại (1.004614).
+        # Nhãn không mang tiền tố tỉnh để mọi tài khoản đều thấy (xem thẻ tại điểm ở trên).
         "detect": {
             "textIncludes": ["cấp đổi thẻ hướng dẫn viên du lịch quốc tế"],
             "headingDisabled": True,
         },
-        "label": "[Đà Nẵng] Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
+        "label": "Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
         "mode": "agent",
         # Bảng 4 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..3
         # (thứ tự DOM: GCN khóa cập nhật kiến thức, thẻ HDV đã cấp, Đơn Mẫu 05, ảnh chân dung).
@@ -2117,11 +2126,12 @@ PROCEDURES: list[dict] = [
         # tự động từ ke_khai_links.json (key trùng). Cụm tên lấy từ ô Thủ tục ("QT-122 - Thủ tục cấp lại thẻ
         # hướng dẫn viên du lịch"): chữ "lại" chen giữa "cấp" và "thẻ" nên không trùng cụm của thẻ nội địa,
         # tại điểm hay cấp đổi; nhãn "Lý do đề nghị cấp đổi/cấp lại thẻ" không có chữ "thủ tục" đứng trước.
+        # Nhãn không mang tiền tố tỉnh để mọi tài khoản đều thấy (xem thẻ tại điểm ở trên).
         "detect": {
             "textIncludes": ["thủ tục cấp lại thẻ hướng dẫn viên du lịch"],
             "headingDisabled": True,
         },
-        "label": "[Đà Nẵng] Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
+        "label": "Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
         "mode": "agent",
         # Bảng 3 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..2
         # (thứ tự DOM: bản sao giấy tờ liên quan nội dung thay đổi, Đơn Mẫu 05, ảnh chân dung).
@@ -2299,6 +2309,87 @@ PROCEDURES: list[dict] = [
             "đính. CCCD và giấy xác nhận số định danh đính chung tại dòng 1 (Đơn đăng ký); tờ khai "
             "thuế/lệ phí trước bạ đính tại dòng 13 (Chứng từ nghĩa vụ tài chính). Ô Bản chính/Bản sao "
             "do cán bộ tự chọn.\n"
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-khanh-hoa",
+        # Mã TTHC 1.013978. Đi từ link kê khai DVCQG (ke_khai_links cùng key, chọn Tỉnh + Phường/Xã) sang cổng
+        # tỉnh iGate Khánh Hòa. Tên thủ tục trùng các bản Quảng Ngãi/Ninh Bình/Đà Nẵng nên urlScope theo tên miền
+        # tỉnh là chốt chặn duy nhất chống tráo; khớp mọi host con của khanhhoa.gov.vn. Form ba khối người nộp/chủ
+        # hồ sơ/thửa đất, bảng đính kèm 20 dòng thứ tự riêng (xem pipeline dang_ky_dat_dai_lan_dau_khanh_hoa).
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Khánh Hòa - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+            "quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người "
+            "gốc Việt Nam định cư ở nước ngoài"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 19) đã ký, kèm tờ khai lệ phí trước bạ, tờ "
+            "khai thuế thu nhập cá nhân nếu có — dùng để điền người nộp, chủ hồ sơ, số thửa, số tờ, địa chỉ thửa "
+            "đất.\n"
+            "2. Giấy tờ nguồn gốc đất: hợp đồng/giấy chuyển nhượng, tặng cho có chữ ký hai bên; giấy tờ theo Điều "
+            "137; giấy tờ thừa kế.\n"
+            "3. Phiếu xác nhận kết quả đo đạc, bản mô tả ranh giới, mảnh trích đo địa chính.\n"
+            "4. CCCD/giấy khai sinh của người sử dụng đất (nếu có) — để điền ngày cấp, nơi cấp.\n"
+            "5. Nếu nộp thay: văn bản đại diện/ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: bảng có sẵn 20 dòng; mỗi file đính NGUYÊN KHỐI vào dòng của giấy chính trong file (file Đơn "
+            "-> dòng 19, giấy chuyển quyền -> dòng 1, trích đo -> dòng 8). Dòng 15/16/17 trùng dòng 14/7/11 nên "
+            "không dùng; dòng 20 (Thông báo xác nhận kết quả) do cơ quan phát hành sau. Ô Bản chính/Bản sao do "
+            "cán bộ tự chọn.\n"
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+        # Mã TTHC 1.013949. Đi từ link kê khai DVCQG (ke_khai_links cùng key, chọn Tỉnh + Phường/Xã) sang cổng tỉnh
+        # iGate Khánh Hòa; form cùng template ba khối với dang-ky-dat-dai-lan-dau-khanh-hoa. Tên thủ tục trùng bản
+        # Quảng Ngãi/Ninh Bình nên chốt urlScope theo tên miền tỉnh; cụm "gia hạn sử dụng đất khi hết thời hạn" tách
+        # khỏi thủ tục giao đất 1.013823 (không có gia hạn).
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": [
+                "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không "
+                "đấu giá quyền sử dụng đất",
+                "gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Khánh Hòa - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất "
+            "không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường "
+            "hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất "
+            "và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đề nghị giao đất/thuê đất/chuyển mục đích sử dụng đất (Mẫu số 06) đã ký — dùng để điền nội dung "
+            "yêu cầu, số điện thoại người đề nghị, địa điểm thửa đất.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang) — chủ hồ sơ, số thửa, số tờ, địa chỉ thửa đất.\n"
+            "3. Nếu nộp thay: giấy ủy quyền (kèm lời chứng), giấy giới thiệu — người nộp, CCCD, ngày cấp, nơi thường "
+            "trú của người được ủy quyền.\n"
+            "4. CCCD của người đề nghị (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: bảng có sẵn 15 dòng; mỗi file đính NGUYÊN KHỐI: Giấy chứng nhận -> dòng 13, Đơn đề nghị -> dòng "
+            "14, giấy ủy quyền/giấy giới thiệu -> nút 'Thêm giấy tờ' (không thêm được dòng thì đính chung dòng 14). "
+            "Ô Bản chính/Bản sao ở các dòng có sẵn do cán bộ tự chọn.\n"
         ),
     },
     {
@@ -8689,8 +8780,9 @@ PROCEDURES: list[dict] = [
             "3. Bản photo văn bằng / bằng tốt nghiệp cần cấp bản sao.\n"
             "4. Nếu người KHÁC yêu cầu thay: tải kèm giấy ủy quyền hoặc giấy tờ chứng minh quan hệ.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Extension điền Phần thông tin người nộp (theo tài khoản), chủ hồ sơ và nội dung kê khai theo "
-            "Phiếu BM04. Nút 'Người nộp là chủ hồ sơ' để nguyên (không tự tích).\n"
+            "Extension điền Phần thông tin người nộp (theo tài khoản; bật cài đặt 'Lấy người nộp theo tờ khai' thì "
+            "theo chủ văn bằng rồi tích 'Người nộp là chủ hồ sơ' sau cùng, có giấy ủy quyền thì theo bên được ủy "
+            "quyền), chủ hồ sơ và nội dung kê khai theo Phiếu BM04.\n"
             "Bước đính kèm: Phiếu BM04, bản photo văn bằng và CCCD cùng đính dòng 'Đơn đề nghị' (Bản chính); "
             "giấy ủy quyền/chứng minh quan hệ đính dòng riêng."
         ),
@@ -9280,6 +9372,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "to-chuc-bieu-dien-nghe-thuat",
+        # Mã TTHC 1.009397 (NĐ 144/2020/NĐ-CP), nộp tại Sở VHTTDL tỉnh — cùng cổng Bộ VHTTDL (liz-*, engine
+        # content/fill-liz.js) với CCHN di tích ngay trên. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi
+        # tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.009397.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["matthc=1.009397", "019d2bfd-e44a-7705-a455-6f7239cfe9de"],
+        },
+        "label": "Thủ tục tổ chức biểu diễn nghệ thuật",
+        "mode": "agent",
+        # Bảng 2 dòng (a) Văn bản đề nghị / b) Kịch bản, danh mục tác phẩm), dò dòng theo chữ như CCHN di tích.
+        "hasAttachmentStep": True,
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm (mỗi giấy tờ một file, hệ thống KHÔNG tách trang):\n"
+            "1. Văn bản đề nghị tổ chức biểu diễn nghệ thuật (Mẫu số 02, NĐ 144/2020/NĐ-CP) — nguồn chính để điền.\n"
+            "2. Kịch bản, danh mục tác phẩm gắn với tác giả, người chịu trách nhiệm chính về nội dung chương trình "
+            "(tác phẩm nước ngoài kèm bản dịch tiếng Việt có chứng thực).\n"
+            "3. Nếu có: Giấy chứng nhận đăng ký doanh nghiệp (điền mã số, trụ sở của tổ chức), giấy tiếp nhận/chấp "
+            "thuận địa điểm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Khối 'Thông tin người nộp hồ sơ' giữ thông tin tài khoản; tổ chức đề nghị được điền vào khối 'Thông tin "
+            "người ủy quyền' (tự tích khi đọc được tên + mã số doanh nghiệp).\n"
+            "Đính kèm: Văn bản đề nghị + GCN đăng ký doanh nghiệp + giấy tiếp nhận địa điểm → dòng a); Kịch bản → "
+            "dòng b).\n"
+            "⚠ Ô 'Cơ quan giải quyết' cổng khoá theo link nộp — kiểm tra đúng Sở ghi ở 'Kính gửi'. Sau khi điền xong "
+            "phải tự tích ô cam kết 'Tôi cam kết chịu trách nhiệm trước pháp luật…', chưa tích thì nút 'Lưu và nộp "
+            "hồ sơ' bị khoá."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
         # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
         # đề nghị + thời hạn.
@@ -9416,6 +9542,8 @@ _PIPELINE = {
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_process,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_process,
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_process,
+    "dang-ky-dat-dai-lan-dau-khanh-hoa": dang_ky_dat_dai_lan_dau_khanh_hoa_process,
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa": giao_thue_chuyen_muc_dich_dat_khanh_hoa_process,
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
@@ -9602,6 +9730,7 @@ _PIPELINE = {
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_process,
+    "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_process,
     "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_process,
 }
 
@@ -9660,6 +9789,8 @@ _ATTACH_PIPELINE = {
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_attach,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_attach,
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_attach,
+    "dang-ky-dat-dai-lan-dau-khanh-hoa": dang_ky_dat_dai_lan_dau_khanh_hoa_attach,
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa": giao_thue_chuyen_muc_dich_dat_khanh_hoa_attach,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_attach,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": xac_dinh_lai_dien_tich_dat_o_igate_lao_cai_attach,
@@ -9886,6 +10017,7 @@ _ATTACH_PIPELINE = {
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_attach,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_attach,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_attach,
+    "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_attach,
     "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_attach,
 }
 

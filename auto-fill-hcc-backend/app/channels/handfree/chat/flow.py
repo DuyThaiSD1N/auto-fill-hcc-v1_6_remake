@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit, urlunsplit
 
+from app.channels.handfree.chat import attach_files
 from app.channels.handfree.chat import consent as consent_log
 from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import bac_ninh
@@ -773,7 +774,9 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
             action["resultMethod"] = result_action
     # Hồ sơ này đã có tệp do lượt đính kèm trước đính vào (đổi gộp/tách, điều chỉnh giấy tờ, Đính kèm lại):
     # extension gỡ tệp lượt trước rồi mới đính, không để bảng lẫn tệp cũ với kế hoạch mới.
-    if conv.get("attach_has_files"):
+    # Đính lại riêng tệp lỗi: KHÔNG gỡ tệp đã lên — engine tự bỏ qua tệp đã có trên trang, chỉ đính tệp còn thiếu.
+    keep_existing = conv.pop("attach_keep_existing", False)
+    if conv.get("attach_has_files") and not keep_existing:
         action["clearExisting"] = True
     dispatch_id = _begin_attach_action(conv)
     if dispatch_id:
@@ -4998,6 +5001,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         return Reply()  # trang chưa tới bước đính kèm → im lặng chờ
     if intent.kind == "action" and intent.value == "attach_report":
         # FE báo kết quả đính THẬT trên trang → hoàn thành (bước nộp cuối người dân tự bấm).
+        files = attach_files.parse(conv, intent.payload)
+        attach_files.ensure_errors(intent.payload, files)
         attached = int(intent.payload.get("attached") or 0)
         skipped = int(intent.payload.get("skipped") or 0)
         errors = [str(e) for e in (intent.payload.get("errors") or []) if e]
@@ -5022,13 +5027,15 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             # tiếp. Đổi sang đường thoát thật (sửa giấy tờ → lập kế hoạch mới) và khoá luôn nhánh
             # tự phát lệnh của watcher trang, nếu không cặp "thử → lỗi" tự sinh mãi.
             conv["attach_fail_streak"] = int(conv.get("attach_fail_streak") or 0) + 1
-            note = f": *{errors[0]}*" if errors else ""
+            # Có danh sách tệp lỗi (thẻ attach_files) thì không lặp câu lỗi kỹ thuật vào câu chính.
+            note = f": *{errors[0]}*" if errors and not files else ""
             repeated = conv["attach_fail_streak"] >= 2
             r = Reply(*_fmt(vi.ATTACH_NONE_REPEAT if repeated else vi.ATTACH_NONE, error_note=note))
             r.chips = [{"label": "🔁 Đính kèm lại", "send": "__event:attach_ready", "solid": not repeated}]
             if repeated:
                 r.chips.insert(0, {**_supplement_documents_chip(), "solid": True})
-            return tu_phap_v2.attach_failed_reply(conv, get_procedure(conv.get("procedure_key") or ""), r)
+            r = tu_phap_v2.attach_failed_reply(conv, get_procedure(conv.get("procedure_key") or ""), r)
+            return attach_files.apply(r, files)
         conv["attach_fail_streak"] = 0
         conv["attach_done"] = True
         conv["state"] = "done"
@@ -5103,6 +5110,12 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
+        # Đính tách nhiều tab: đính lại sẽ mở lại cả loạt hồ sơ → chỉ đính 1 tab mới có nút đính lại riêng tệp lỗi.
+        split_mode = conv.get("attach_mode") == "split"
+        r = attach_files.apply(
+            r, files, retry=not split_mode,
+            hint=vi.ATTACH_FILES_HINT_SPLIT if split_mode else vi.ATTACH_FILES_HINT_RETRY,
+        )
         # Không bắt công dân bấm thêm nút hoàn thành. state=done bật watcher; khi cổng báo
         # nộp thành công, event submitted sẽ hiển thị lời chốt rồi tự về màn bắt đầu.
         return r
@@ -5203,6 +5216,21 @@ def _logout_choice_reply(arm_timer: bool = True) -> Reply:
     return r
 
 
+def _retry_failed_attach(conv: dict) -> Reply:
+    """Nút "Đính lại các tệp lỗi": phát lại kế hoạch đang có mà không gỡ tệp đã lên — engine bỏ qua tệp đã nằm trên
+    trang nên chỉ tệp còn thiếu được đính. Đính tách nhiều tab không có nút này (đính lại là mở lại cả loạt hồ sơ)."""
+    plan = conv.get("attach_plan") or []
+    if (not plan or conv.get("attach_mode") == "split" or conv.get("attach_action_in_progress")
+            or conv.get("submitted_completed")):
+        return Reply()
+    conv["state"] = "attaching"
+    conv["attach_done"] = False
+    conv["attach_keep_existing"] = True
+    r = Reply(*attach_files.retry_say())
+    r.actions = [_attach_plan_action(conv, plan)]
+    return tu_phap_v2.attach_plan_reply(conv, get_procedure(conv.get("procedure_key") or ""), r)
+
+
 async def _handle_done(conv: dict, intent: Intent) -> Reply:
     """Cổng báo nộp thành công: (đánh giá nếu client hỗ trợ →) chờ cán bộ chọn đăng xuất/giữ phiên."""
     if intent.kind == "action" and intent.value == "add_documents":
@@ -5213,6 +5241,8 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         # còn lại và extension tự bỏ qua file trùng đã có trên cổng.
         return await _start_documents_adjustment(conv, "attachment")
 
+    if intent.kind == "action" and intent.value == attach_files.RETRY_ACTION:
+        return _retry_failed_attach(conv)
     if intent.kind == "action" and intent.value == "tick_commit":
         return _tick_commit(conv)
     if intent.kind == "event" and intent.value == "commit_result":

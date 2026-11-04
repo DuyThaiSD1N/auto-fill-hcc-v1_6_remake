@@ -117,3 +117,24 @@ def test_mobile_page_nen_pdf_tren_10mb_truoc_khi_gui():
     assert "Math.max(w.asNumber(), h.asNumber()) <= 2400" in html
     assert "img.width * 2000 / edge" in html and '"image/jpeg", 0.85' in html
     assert "return out.size < file.size ? out : file;" in html
+
+
+def test_hai_trang_mobile_thu_scanic_goc_chinh_roi_du_phong_roi_moi_ve_local(monkeypatch):
+    from app.config import settings
+    from app.upload_session.mobile_page import render_mobile_page as render_autofill
+
+    monkeypatch.setattr(settings, "scanic_enabled", True)
+    monkeypatch.setattr(settings, "scanic_base_url", "https://chinh.test/")
+    monkeypatch.setattr(settings, "scanic_base_url_fallback", "https://phong.test")
+    for render in (render_mobile_page, render_autofill):
+        html = render("HS-TEST-SCANIC")
+        assert "const SCANIC_ON = true;" in html
+        assert "const SCANIC_BASES = ['https://chinh.test', 'https://phong.test'];" in html
+        assert "loadScanic(i + 1)" in html and "setTimeout(next, 6000)" in html
+        assert 'apiUrl: base + "/api"' in html
+        assert html.index("for (const base of bases)") < html.index("return openScanner();")
+
+    # Dự phòng chỉ đi kèm gốc chính: để trống gốc chính vẫn là công tắc tắt scanic như cũ.
+    monkeypatch.setattr(settings, "scanic_base_url", "")
+    for render in (render_mobile_page, render_autofill):
+        assert "const SCANIC_ON = false;" in render("HS-TEST-SCANIC")

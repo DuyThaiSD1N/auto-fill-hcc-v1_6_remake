@@ -3,6 +3,24 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.26.7",
+    date: "4/11/2026",
+    items: [
+      "Thêm thủ tục tổ chức biểu diễn nghệ thuật (cổng Bộ VHTTDL): điền theo văn bản đề nghị, nhận biết tài khoản đăng nhập có phải tổ chức đề nghị hay không.",
+      "Khánh Hòa: thêm thủ tục đăng ký đất đai, cấp Giấy chứng nhận lần đầu (1.013978) và giao đất, cho thuê đất, chuyển mục đích sử dụng đất (1.013949).",
+      "Cấp thẻ hướng dẫn viên du lịch tại điểm, cấp đổi và cấp lại thẻ hướng dẫn viên: dùng được cho tài khoản mọi tỉnh.",
+      "Cấp bản sao văn bằng từ sổ gốc: bật \"Lấy người nộp theo tờ khai\" thì người nộp ghi theo chủ văn bằng.",
+    ],
+  },
+  {
+    version: "1.26.6",
+    date: "3/11/2026",
+    items: [
+      "Thêm thủ tục cấp trích lục hoặc sao hồ sơ người có công với cách mạng (cổng Bộ Nội vụ): điền theo đơn đề nghị và CCCD, nhận biết tự nộp hay nộp thay theo tài khoản đăng nhập.",
+      "Thêm thủ tục cấp lại Chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (cổng Bộ VHTTDL).",
+    ],
+  },
+  {
     version: "1.26.5",
     date: "3/11/2026",
     items: [

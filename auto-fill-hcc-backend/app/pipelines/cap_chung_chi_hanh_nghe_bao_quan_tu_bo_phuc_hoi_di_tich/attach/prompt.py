@@ -34,7 +34,8 @@ don_de_nghi | cchn_xay_dung | cchn_kien_truc | van_bang | chung_chi_boi_duong | 
   bảng điểm đi kèm.
 - chung_chi_boi_duong: CHỨNG CHỈ BỒI DƯỠNG / chứng nhận hoàn thành chương trình bồi dưỡng kiến thức bảo quản,
   tu bổ, phục hồi di tích — "Đã hoàn thành chương trình Bồi dưỡng…", "Số vào sổ cấp chứng chỉ".
-- anh_the: ẢNH CHÂN DUNG 4x6 của người đề nghị — tệp gần như KHÔNG có chữ.
+- anh_the: ẢNH CHÂN DUNG 4x6 của người đề nghị — tệp gần như KHÔNG có chữ; tệp ký số chỉ có dấu chữ ký ("Ký
+  bởi/Ký hiệu: …", "Ngày ký: …", giờ ký, vài chữ rời của tên cơ quan) mà không có tiêu đề giấy tờ cũng là anh_the.
 - cccd: Căn cước / Căn cước công dân / CMND (mặt trước, mặt sau).
 - other: giấy tờ khác.
 </type_guide>

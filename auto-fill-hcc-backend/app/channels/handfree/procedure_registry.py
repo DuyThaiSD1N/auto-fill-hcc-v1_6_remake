@@ -6406,6 +6406,55 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "to-chuc-bieu-dien-nghe-thuat",
+        # Mã TTHC 1.009397 (NĐ 144/2020/NĐ-CP), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với CCHN di tích
+        # ngay trên: nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.009397. ke_khai_links
+        # đặt selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.009397",
+                "019d2bfd-e44a-7705-a455-6f7239cfe9de",
+            ],
+        },
+        "label": "Thủ tục tổ chức biểu diễn nghệ thuật",
+        "shortLabel": "Tổ chức biểu diễn nghệ thuật",
+        "subtitle": "Công ty, đơn vị nghệ thuật xin tổ chức chương trình biểu diễn",
+        "icon": "🎭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-e44a-7705-a455-6f7239cfe9de",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "van_ban_de_nghi", "name": "Văn bản đề nghị tổ chức biểu diễn nghệ thuật (Mẫu số 02)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "kich_ban", "name": "Kịch bản, danh mục tác phẩm gắn với tác giả, người chịu trách nhiệm chính về "
+             "nội dung", "icon": "🎼", "sides": 1, "repeatable": True},
+            {"key": "gcn_dkdn", "name": "Giấy chứng nhận đăng ký doanh nghiệp (nếu có)", "icon": "🏢", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "giay_tiep_nhan", "name": "Giấy tiếp nhận / chấp thuận địa điểm biểu diễn (nếu có)", "icon": "📍",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị tổ chức biểu diễn nghệ thuật (Mẫu số 02) — nguồn chính để điền.\n"
+            "2. Kịch bản, danh mục tác phẩm gắn với tác giả, người chịu trách nhiệm chính về nội dung.\n"
+            "3. Nếu có: Giấy chứng nhận đăng ký doanh nghiệp, giấy tiếp nhận địa điểm biểu diễn.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tổ chức đề nghị được điền vào khối 'Thông tin người ủy quyền'.\n"
+            "Bước đính kèm: Văn bản đề nghị + giấy tờ kèm theo → dòng 1; Kịch bản → dòng 2."
+        ),
+    },
+    {
         "key": "gia-han-giay-phep-xay-dung",
         "flowProfile": "xay-dung",
         # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
@@ -6586,6 +6635,12 @@ PROCEDURES: list[dict] = [
         # Cổng Bộ Công Thương cùng stepper iGate 4 bước với cổng NN&MT (1 Thông tin hồ sơ = kê khai, 2 Thành phần hồ
         # sơ): extension báo wizardStep trên host này → khai đúng bước, không thì BE hiểu theo mặc định tư pháp.
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Dẫn đủ 4 bước (bổ sung ô → Thành phần hồ sơ → hình thức nhận kết quả → nộp) bằng luồng chung chat/bxd như
+        # thủ tục điện mặt trời mái nhà cùng cổng; bản extension cũ chưa đọc Form.io trên host này → cờ riêng.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMoit",
+        },
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -7937,6 +7992,33 @@ _HUONG_DAN_DRIVE_ID = {
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": "1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV",
     "sua-chua-cai-tao-gpxd-cong-trinh": "1MbZYhrbrfMNsx-edOgsi-Add6BFHpSUV",
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": "1-KXJ_zW4hn6cFoo2jHj4gASsfPqGZQl3",
+    "ho-tro-mai-tang-huu-tri-xa-hoi": "1GDoz34QhFI0mZxz6DxTSaU6_hD--Z9cA",
+    "khai-sinh-ket-hop-nhan-cha-me-con": "1-4NCHDIL3KsYk3kiH2B-Xrb2RT7B_SV4",
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": "1Jvj6RVyw83klTWHRsAd-T-F0nNwphjEu",
+    "khai-tu-lien-thong": "1ObCm2c2aH-sottJ3cP3UF_ZVIgnxFlvg",
+    "cap-lai-chung-chi-hanh-nghe-thu-y": "1wIThquCWO04dMsjeYrrcthN7m6W3eWdZ",
+    "cap-gcn-attp-nong-lam-thuy-san": "10umD5SFiBICTv8UHhjtOpek4ej7fwpgP",
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": "133r-yPbvsIS_EkyFRhndszCMruJdgqro",
+    "gia-han-giay-phep-xay-dung": "11XSVJ3DqZM3xS8kydbstt6rV6jc4pwFj",
+    "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": "14Dp3Pli0LsMQtLR9s7xDEYkZqYutAmpD",
+    "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": "1VFWUcWo4Pnt0Hsgrjo2O3I6EjSIdOjWS",
+    "dang-ky-bien-phap-bao-dam-bac-ninh": "1KqOohCb11PSnrdn6P2Mgzc0Z_VGGPmX_",
+    "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "1FaqOgduTY9jWAs451OunYRu4Z99KZIYZ",
+    "dang-ky-bien-dong-thoa-thuan-bac-ninh": "1zTl3Js7W0Ri6Td2QXIZPTWoaZGnJ8Gws",
+    "dang-ky-bien-dong-dat-dai-bac-ninh": "108-0a8trlUmIIZuBqLmqXyJWMNyURRZx",
+    "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": "108-0a8trlUmIIZuBqLmqXyJWMNyURRZx",
+    "ho-tro-chi-phi-hoa-tang-bac-ninh": "1ql6VHXFI8p3ia3qBmglHJD148Voys4u0",
+    "ho-tro-nguoi-cao-tuoi-bac-ninh": "1j3prF7eQQdxmPn9TKQ2CyEg3a9wTbqC_",
+    "dinh-chinh-gcn-da-cap-bac-ninh": "1d1CmmcR7a2HuGbaI8Co2iG9BKv3a1ohE",
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": "1k3TnymmUiY532Qfuy2Erw0KGraUd10ah",
+    "dinh-chinh-sai-sot-bac-ninh": "1YZPRNi7p5nPfbvishwF3OkbGyDcaISec",
+    "tach-hop-thua-dat-bac-ninh": "13NIfvl9S0H0VS2ECX-p7pvt-TQrpblQ6",
+    "cap-doi-gcn-bac-ninh": "1EgMqWXq9pNIVf4yDr8jbUsTcu80m3zTc",
+    # Sheet tổng hợp ghi tráo link hai dòng này; gắn theo tên video.
+    "dang-ky-dat-dai-lan-dau-bac-ninh": "1EYa2OVeEAf2Gmlb7LKG1xpMwsIRJxc8L",
+    "giao-thue-chuyen-muc-dich-dat-bac-ninh": "1kC_hPsAnMiFA_3roT2jEZMh-HnKK27E1",
+    "thu-hoi-gcn-cap-sai-bac-ninh": "14mVZlc66NzxOv-hogmR8R8WS99g6-eXk",
+    "dang-ky-nha-o-xa-hoi-bac-ninh": "18ORgS2a2_rgONFrBkBh83XDuCsatwJ9s",
 }
 
 _QN_LINKS_BY_CODE = {

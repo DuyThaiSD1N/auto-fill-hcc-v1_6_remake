@@ -2745,3 +2745,39 @@ OR_SAVE_FAILED = {
            "**Xác nhận** giúp em, hoặc bỏ qua và bấm nút dưới ạ."),
     "tts": "Dạ, em chưa lưu được. Công dân tự tick ô lưu thông tin trên trang rồi bấm xác nhận, hoặc bấm nút bên dưới ạ.",
 }
+
+# ── Kết quả đính kèm theo từng tệp (chat/attach_files.py, extension khai supportsAttachFileReport) ──
+# Chỉ bản tiếng Việt: chế độ tiếng Mông giữ câu báo cũ (attach_files.enabled tắt khi lang=hmong).
+ATTACH_FILES_DONE = {
+    "md": "✅ Đã đính kèm thành công **{attached}/{total} tệp** vào hồ sơ.",
+    "tts": "Dạ, em đã đính kèm được {attached} trên {total} tệp. Còn {failed} tệp chưa đính được, công dân xem danh sách "
+           "bên dưới ạ.",
+}
+ATTACH_FILES_FAILED_TITLE = "❗ Có {failed} tệp chưa đính kèm được:"
+ATTACH_FILES_HINT_RETRY = ("Công dân bấm **🔁 Đính lại các tệp lỗi** — tệp đã đính em giữ nguyên, hoặc tự đính các tệp "
+                           "này trên trang ạ.")
+ATTACH_FILES_HINT_AGAIN = "Công dân bấm **Đính kèm lại** để em thử lần nữa, hoặc tự đính các tệp này trên trang ạ."
+ATTACH_FILES_HINT_SPLIT = "Công dân mở đúng hồ sơ ở tab tương ứng và tự đính các tệp này ạ."
+ATTACH_FILES_CARD = {
+    "viewAttachedLabel": "📄 Xem các tệp đã đính kèm",
+    "attachedListTitle": "Tệp đã đính kèm thành công",
+    "failedListTitle": "Tệp chưa đính kèm được",
+    "viewAllLabel": "Xem tất cả",
+    "dossierLabel": "Hồ sơ",
+    "countUnit": "tệp",
+    "maxLines": 5,
+}
+# Nhóm lý do do extension xếp từ lỗi kỹ thuật — người dân chỉ thấy câu dưới đây, không thấy mã lỗi.
+ATTACH_FILES_REASONS = {
+    "too_large": "Tệp vượt dung lượng cổng cho phép",
+    "corrupt": "Tệp bị hỏng, không mở được",
+    "portal": "Cổng chưa nhận tệp, vui lòng thử lại",
+    "network": "Mạng chập, chưa gửi được",
+    "no_slot": "Chưa tìm thấy mục phù hợp trên cổng",
+    "other": "Chưa đính kèm được, vui lòng thử lại",
+}
+ATTACH_FILES_RETRY_LABEL = "🔁 Đính lại các tệp lỗi"
+ATTACH_FILES_RETRY = {
+    "md": "📎 Em đính lại các tệp còn lỗi, tệp đã có trên hồ sơ em giữ nguyên ạ.",
+    "tts": "Dạ, em đính lại các tệp còn lỗi ạ.",
+}

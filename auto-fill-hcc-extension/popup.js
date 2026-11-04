@@ -4986,6 +4986,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" ||
       // [Bộ VHTTDL] 1.002003 (cấp lại CCHN di tích): cùng trang, cùng contract người nộp với 1.001822.
       cfg.key === "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" ||
+      // [Bộ VHTTDL] 1.009397 (tổ chức biểu diễn nghệ thuật): tài khoản đăng nhập trùng tên/mã số tổ chức đề nghị thì
+      // BE không tích "Thông tin người ủy quyền"; thiếu mốc là BE luôn tích khi đọc được tên + mã số.
+      cfg.key === "to-chuc-bieu-dien-nghe-thuat" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||

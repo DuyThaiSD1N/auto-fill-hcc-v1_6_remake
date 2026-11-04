@@ -164,10 +164,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "Chưa có TÊN ĐIỂM DU LỊCH — ô cốt lõi của thẻ hướng dẫn viên tại điểm. Đơn không ghi tên điểm cụ "
             "thể (dòng 'Hướng dẫn ghi' in sẵn không tính); cán bộ hỏi người đề nghị rồi nhập tay."
         )
-    co_quan = _text(values.get("Don_CoQuanNhan"))
-    if co_quan and "da nang" not in _fold(co_quan):
-        warnings.append(
-            f"Đơn gửi \"{co_quan}\" — thủ tục này nộp về Sở Văn hóa, Thể thao và Du lịch TP Đà Nẵng. Kiểm tra "
-            "lại nơi tiếp nhận."
-        )
+    # Không đối chiếu dòng "Kính gửi" với Đà Nẵng nữa: thủ tục mở cho tài khoản mọi tỉnh, hồ sơ nộp về
+    # Sở VHTTDL của tỉnh đó (giống thẻ nội địa).
     return out, warnings

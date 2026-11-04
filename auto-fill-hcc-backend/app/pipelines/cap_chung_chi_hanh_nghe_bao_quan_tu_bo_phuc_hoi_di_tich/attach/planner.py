@@ -17,7 +17,8 @@ ngoài bảng, engine fixed-slot không với tới, chưa có DOM để làm) �
 xếp vào đây"), không để sót tệp (trace req_ddac8c0e0653). CCCD chỉ dùng để điền, không thuộc thành phần hồ sơ →
 không đính. Tệp chưa nhận ra loại → dòng (2) kèm cảnh báo.
 
-⚑ ẢNH 4x6 không có chữ nên OCR rỗng → nhận tất định (tệp ảnh/PDF gần như không có chữ), không chờ LLM.
+⚑ ẢNH 4x6 không có chữ nên OCR rỗng → nhận tất định (tệp ảnh/PDF gần như không có chữ, không tính dấu chữ ký
+số), không chờ LLM.
 """
 
 import asyncio
@@ -89,6 +90,13 @@ _SLOT_GIAY_TO_LA = _SLOT_BAN_SAO
 
 # Tệp ảnh/PDF có ít hơn ngần này ký tự chữ-số sau OCR coi như ảnh chân dung (ảnh 4x6 không có chữ).
 _PHOTO_MAX_TEXT_CHARS = 30
+# PDF ảnh đã ký số: OCR chỉ đọc ra dấu chữ ký ("Ký bởi/Ký hiệu: …", "Ngày ký: …", giờ ký) cùng vài mảnh tên cơ
+# quan vỡ chữ — bỏ các dòng đó rồi đếm phần còn lại với ngưỡng nới cho mảnh tên cơ quan (có ảnh 4x6
+# ký số ra ~100 ký tự → xếp nhầm dòng 2). Giấy tờ ký số thật có hàng trăm ký tự nên không lọt.
+_SIGNED_PHOTO_MAX_TEXT_CHARS = 60
+_SIGNATURE_LINE_RE = re.compile(
+    r"^(ky boi|ky hieu|ngay ky|ky ngay|thoi gian ky|signed by)\b|\d{1,2}:\d{2}(:\d{2})?|\d{1,2}[-/]\d{1,2}[-/]\d{4}"
+)
 
 
 def _fold(value: Any) -> str:
@@ -110,7 +118,10 @@ def _looks_like_photo(file: dict, text: str) -> bool:
     kind = str(file.get("type") or "").lower()
     if not (kind.startswith("image/") or kind == "application/pdf"):
         return False
-    return len(re.sub(r"[\W_]+", "", text or "")) < _PHOTO_MAX_TEXT_CHARS
+    all_lines = (text or "").splitlines()
+    lines = [line for line in all_lines if not _SIGNATURE_LINE_RE.search(_fold(line))]
+    limit = _SIGNED_PHOTO_MAX_TEXT_CHARS if len(lines) < len(all_lines) else _PHOTO_MAX_TEXT_CHARS
+    return len(re.sub(r"[\W_]+", "", "".join(lines))) < limit
 
 
 async def _classify_one(document: dict[str, Any]) -> tuple[int, str]:

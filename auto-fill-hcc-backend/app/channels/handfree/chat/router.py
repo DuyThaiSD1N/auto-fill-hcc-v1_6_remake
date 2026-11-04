@@ -275,6 +275,11 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,
+        # Trang nộp một trang của cổng Bộ VHTTDL (form liz, chat/tu_phap_moi.py): bổ sung ô, tích ô cam kết, gạt VNPost,
+        # bấm Lưu và nộp hồ sơ.
+        "supportsLizFlow": raw.get("supportsLizFlow") is True,
+        # Báo kết quả đính kèm theo từng tệp + vẽ thẻ attach_files (chat/attach_files.py).
+        "supportsAttachFileReport": raw.get("supportsAttachFileReport") is True,
     }
 
 

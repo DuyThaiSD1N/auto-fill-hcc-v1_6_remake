@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     # local là fallback tự động. Để TRỐNG base = tắt hosted, dùng local (đặt qua env SCANIC_BASE_URL).
     # scanic_enabled=false = kill-switch ép local kể cả khi base đã set (khỏi build lại FE/extension).
     scanic_base_url: str = ""
+    # Gốc scanic dự phòng: gốc chính không nạp được widget / mở widget lỗi → thử gốc này trước khi
+    # rơi về scanner local. Chỉ có tác dụng khi scanic_base_url đã set.
+    scanic_base_url_fallback: str = ""
     scanic_enabled: bool = True
 
     # Bật dần channel Handfree sau khi staging đã qua test; Auto Fill không phụ thuộc cờ này.

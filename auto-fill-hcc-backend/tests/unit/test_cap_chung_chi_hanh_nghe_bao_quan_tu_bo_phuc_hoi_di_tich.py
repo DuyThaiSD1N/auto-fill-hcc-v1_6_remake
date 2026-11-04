@@ -97,9 +97,7 @@ def test_tu_nop_dien_khoi_nguoi_nop_va_don_mau_51():
     assert not any(f["comp"] == "liz-checkbox" for f in fields)
     assert not any(f["section"] == S_UQ for f in fields)
     assert ui[(S_DON, LABEL_HO_TEN)] == "TRẦN VĂN MẪU"
-    assert ui[(S_DON, LABEL_SO_DINH_DANH)] == (
-        "001080000123 cấp ngày 10/10/2021 do Cục Cảnh sát quản lý hành chính về trật tự xã hội cấp"
-    )
+    assert ui[(S_DON, LABEL_SO_DINH_DANH)] == "001080000123", "số trần, không ghép ngày cấp/nơi cấp"
     assert ui[(S_DON, "Địa chỉ liên hệ")].endswith("(Nay là: Tổ 2, phường Cam Đường, tỉnh Lào Cai)")
     assert ui[(S_DON, LABEL_TRINH_DO)] == "Trường Đại học Mẫu – ngành: Kiến trúc"
     assert ui[(S_DON, LABEL_KINH_NGHIEM)].startswith("a. Công trình: Đền Mẫu A.")
@@ -198,6 +196,16 @@ def test_thieu_anh_va_tep_la_vao_dong_ban_sao_kem_canh_bao():
 def test_anh_khong_chu_nhan_tat_dinh():
     assert planner._looks_like_photo({"type": "image/jpeg"}, "  ")
     assert not planner._looks_like_photo({"type": "image/jpeg"}, "ĐƠN ĐỀ NGHỊ CẤP CHỨNG CHỈ HÀNH NGHỀ BẢO QUẢN")
+
+
+def test_anh_pdf_ky_so_chi_co_dau_chu_ky_van_la_anh():
+    text = "Ký hiệu: Nguyễn Văn Mẫu\nHỌC PHỔ THÔNG VÀ\nNHÂN DÂN TỈNH\nNĂM 2026\nNgày ký: 05-05-2026\n13:48:41 - 07:00"
+    assert planner._looks_like_photo({"type": "application/pdf"}, text)
+    don = (
+        "Ký bởi: Nguyễn Văn Mẫu\nĐƠN ĐỀ NGHỊ CẤP CHỨNG CHỈ HÀNH NGHỀ BẢO QUẢN, TU BỔ, PHỤC HỒI DI TÍCH\n"
+        "Kính gửi: Giám đốc Sở Văn hóa, Thể thao và Du lịch"
+    )
+    assert not planner._looks_like_photo({"type": "application/pdf"}, don)
 
 
 def test_slot_keywords_moi_dong_mot_cum_rieng():

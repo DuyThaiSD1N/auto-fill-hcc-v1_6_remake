@@ -508,6 +508,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("to-chuc-bieu-dien-nghe-thuat", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham", "Sở Công Thương"),
         ("cap-gcn-attp-cong-thuong", "Sở Công Thương"),
@@ -661,7 +662,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ VHTTDL chọn Sở "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" (1.001822).
     # +1 Sở Công Thương "cap-gcn-attp-cong-thuong" (2.000591, cấp GCN ATTP lần đầu).
     # +1 cổng Bộ VHTTDL chọn Sở "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich" (1.002003).
-    assert len(procedures) == 129
+    # +1 cổng Bộ VHTTDL chọn Sở "to-chuc-bieu-dien-nghe-thuat" (1.009397).
+    assert len(procedures) == 130
 
     for procedure in procedures:
         key = procedure["key"]

@@ -1,6 +1,6 @@
 """Compact agent process pipeline cho "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc" (cổng DVC Bộ GD&ĐT).
 
-Chỉ trích nhân thân chủ văn bằng + nội dung kê khai; người nộp lấy từ tài khoản (formContext). Xem mapper."""
+Chỉ trích nhân thân chủ văn bằng + nội dung kê khai; người nộp lấy từ tài khoản (formContext), bật "Lấy người nộp theo tờ khai" thì theo chủ văn bằng. Xem mapper."""
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.cap_ban_sao_van_bang_so_goc.process import mapper

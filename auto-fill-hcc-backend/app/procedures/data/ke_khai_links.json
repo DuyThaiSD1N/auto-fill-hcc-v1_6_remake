@@ -1645,6 +1645,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-dat-dai-lan-dau-khanh-hoa",
+      "code": "1.013978",
+      "label": "Khánh Hòa - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
       "code": "1.012817",
       "label": "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
@@ -2125,7 +2133,7 @@
     {
       "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
       "code": "1.004614",
-      "label": "Đà Nẵng - Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
+      "label": "Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa0-f695-75df-8834-aa4c22e41529",
       "needsAgencySelect": true,
       "selectSo": true,
@@ -2134,7 +2142,7 @@
     {
       "key": "cap-doi-the-huong-dan-vien-du-lich-da-nang",
       "code": "1.001432",
-      "label": "Đà Nẵng - Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
+      "label": "Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90c7-0901-71cb-ab99-2f6e20b9ce08",
       "needsAgencySelect": true,
       "selectSo": true,
@@ -2143,7 +2151,7 @@
     {
       "key": "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
       "code": "1.001440",
-      "label": "Đà Nẵng - Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
+      "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b526-75c8-a04d-beec224973cf",
       "needsAgencySelect": true,
       "selectSo": true,
@@ -2163,6 +2171,14 @@
       "code": "1.013314",
       "label": "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+      "code": "1.013949",
+      "label": "Khánh Hòa - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -2267,6 +2283,15 @@
       "code": "1.010828",
       "label": "Cấp trích lục hoặc sao hồ sơ người có công với cách mạng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d4-71f5-b93e-c6c57d772177",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "to-chuc-bieu-dien-nghe-thuat",
+      "code": "1.009397",
+      "label": "Thủ tục tổ chức biểu diễn nghệ thuật",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-e44a-7705-a455-6f7239cfe9de",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true

@@ -16,8 +16,10 @@ def render_mobile_page(sid: str) -> str:
     from app.config import settings
 
     # Bộ quét CHÍNH = scanic hosted khi bật cờ + có base; ngược lại scanner local (fallback).
-    scanic_base = (settings.scanic_base_url or "").rstrip("/")
-    scanic_on = "true" if (settings.scanic_enabled and scanic_base) else "false"
+    # Gốc dự phòng đứng sau gốc chính; trang thử lần lượt từng gốc rồi mới về scanner local.
+    scanic_bases = list(dict.fromkeys(
+        b.rstrip("/") for b in (settings.scanic_base_url, settings.scanic_base_url_fallback) if b))
+    scanic_on = "true" if (settings.scanic_enabled and settings.scanic_base_url) else "false"
     return f"""<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -146,7 +148,7 @@ def render_mobile_page(sid: str) -> str:
 <script>
 const SID = {sid!r};
 const SCANIC_ON = {scanic_on};          // bộ quét CHÍNH = scanic hosted của Trường
-const SCANIC_BASE = {scanic_base!r};    // gốc scanic (vd https://scanic.tiengnoi.vn); rỗng = tắt
+const SCANIC_BASES = {scanic_bases!r};  // gốc scanic: chính trước, dự phòng sau; rỗng = tắt
 const UPLOAD_TOKEN = new URLSearchParams(location.hash.slice(1)).get("token") || "";
 const $ = (id) => document.getElementById(id);
 let staged = [];   // {{ id, file, url, isPdf }} — tài liệu ĐANG CHỜ, chưa gửi
@@ -591,24 +593,35 @@ let scanicSeq = 0;            // mỗi lượt quét = 1 clientRef riêng → kh
 let scanicCollecting = false; // chỉ gom sự kiện enhanced trong lúc đang mở widget
 const scanicEnh = new Map();  // id ảnh -> Blob đã ENHANCE (từ sự kiện)
 
-// Nạp scanic-cam.js 1 lần (chỉ khi bật + HTTPS). ?t= phá cache CDN. Timeout 6s → coi như không có.
-function loadScanic() {{
-  if (!SCANIC_ON || !SCANIC_BASE || !window.isSecureContext) return;
+let scanicBase = "";          // gốc đã nạp được widget
+let scanicCam = null;         // giữ đúng bản widget đã đăng ký listener (gốc chậm nạp xong sau vẫn ghi đè window.ScanicCam)
+
+// Nạp scanic-cam.js 1 lần (chỉ khi bật + HTTPS). ?t= phá cache CDN. Gốc lỗi hoặc quá 6s chưa có widget
+// → thử gốc kế tiếp (dự phòng); hết gốc → coi như không có, nút Scan dùng bộ quét local.
+function loadScanic(i = 0) {{
+  if (!SCANIC_ON || i >= SCANIC_BASES.length || !window.isSecureContext) return;
+  const base = SCANIC_BASES[i];
+  let settled = false;
+  const next = () => {{ if (!settled) {{ settled = true; loadScanic(i + 1); }} }};
   const s = document.createElement("script");
-  s.src = SCANIC_BASE + "/embed/scanic-cam.js?t=" + Date.now();
+  s.src = base + "/embed/scanic-cam.js?t=" + Date.now();
   s.onload = () => {{
-    if (!window.ScanicCam) return;
+    if (settled) return;
+    if (!window.ScanicCam) return next();
+    settled = true;
+    scanicCam = window.ScanicCam;
+    scanicBase = base;
     scanReady = true;
     // Đăng ký TRƯỚC open(): enhanced thường tới SAU khi bấm Xong. Gom theo id ảnh, giữ thứ tự trang.
     try {{
-      window.ScanicCam.listener({{
+      scanicCam.listener({{
         enhanced: (e) => {{ if (scanicCollecting && e && e.blob && e.id) scanicEnh.set(e.id, e.blob); }},
       }});
     }} catch (_) {{}}
   }};
-  s.onerror = () => {{ scanReady = false; }};
+  s.onerror = next;
   document.head.appendChild(s);
-  setTimeout(() => {{ if (!window.ScanicCam) scanReady = false; }}, 6000);
+  setTimeout(next, 6000);
 }}
 
 // PRIMARY: mở widget Trường → chờ ảnh enhanced → gộp 1 PDF → vào khay chờ gửi (giữ nguyên send()/WS).
@@ -617,13 +630,21 @@ async function openScanicWidget() {{
   const ref = SID + "-" + scanicSeq;   // phiên scanic riêng cho lượt quét này
   scanicEnh.clear();
   scanicCollecting = true;
-  let images = [];
-  try {{
-    const res = await window.ScanicCam.open({{ apiUrl: SCANIC_BASE + "/api", clientRef: ref }});
-    images = (res && res.images) || [];
-  }} catch (e) {{
+  // Widget nạp từ gốc chính mà mở lỗi → thử API gốc dự phòng một lần; hết gốc mới về bộ quét local.
+  const bases = scanicBase === SCANIC_BASES[0] ? SCANIC_BASES : [scanicBase];
+  let images = null;
+  for (const base of bases) {{
+    try {{
+      const res = await scanicCam.open({{ apiUrl: base + "/api", clientRef: ref }});
+      images = (res && res.images) || [];
+      break;
+    }} catch (e) {{
+      console.warn("[scan] scanic mở lỗi tại " + base, e);
+    }}
+  }}
+  if (images === null) {{
     scanicCollecting = false;
-    console.warn("[scan] scanic mở lỗi → dùng bộ quét local", e);
+    console.warn("[scan] scanic lỗi ở mọi gốc → dùng bộ quét local");
     return openScanner();               // fallback ngay
   }}
   if (!images.length) {{ scanicCollecting = false; return; }}  // bấm Xong mà chưa chụp
@@ -650,7 +671,7 @@ async function openScanicWidget() {{
 
 // Bấm Scan: có scanic hosted sẵn sàng → dùng CHÍNH; ngược lại → scanner local (fallback).
 $("scanBtn").addEventListener("click", () => {{
-  if (scanReady && window.ScanicCam) openScanicWidget();
+  if (scanReady && scanicCam) openScanicWidget();
   else openScanner();
 }});
 $("scanShot").addEventListener("click", takeShot);

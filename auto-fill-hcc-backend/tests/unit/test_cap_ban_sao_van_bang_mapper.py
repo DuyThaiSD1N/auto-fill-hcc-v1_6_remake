@@ -167,3 +167,107 @@ def test_xa_doc_sai_khong_khop_danh_muc_lay_xa_mang_ten_huyen_cu():
         assert by_name[name].get("default") is True
     assert by_name["data[ownerProvince]"]["value"] == "Tỉnh Phú Thọ"
     assert "Hạ Hòa" not in (by_name.get("data[lienhe]", {}).get("value") or "")
+
+
+# Cài đặt "Lấy người nộp theo tờ khai" (dữ liệu bịa): cán bộ đăng nhập tài khoản của mình, Phần I theo chủ văn bằng.
+_THEO_TO_KHAI = {"submitterMode": "owner_as_submitter",
+                 "formContext": {"applicantFullname": "LÊ THỊ CÁN BỘ", "applicantIdentityNumber": "001190000111"}}
+_TU_NOP_DU = dict(_TU_NOP, ChuHoSo_NgayCap="10/10/2022", VanBang_DienThoai="0900000001",
+                  ChuHoSo_ThuongTru={"quocGia": "Việt Nam", "tinh": "Phú Thọ", "xa": "Hạ Hòa", "diaChi": "Khu 2"})
+
+
+def _map_opts(values, options):
+    out, warnings = mapper.enrich([{"name": k, "value": v} for k, v in values.items()], options)
+    return {f["name"]: f for f in out}, warnings
+
+
+def test_theo_to_khai_phan_i_la_chu_van_bang_du_ho_ten():
+    got, warnings = _map_opts(_TU_NOP_DU, _THEO_TO_KHAI)
+    assert got["data[fullname]"]["value"] == "TRẦN VĂN MẪU"
+    assert got["data[identityNumber]"]["value"] == "001203001234"
+    assert got["data[birthday]"]["value"] == "01/02/2003"
+    assert got["data[identityDate]"]["value"] == "10/10/2022"
+    assert got["data[province]"]["value"] == "Tỉnh Phú Thọ"
+    assert got["data[phoneNumber]"]["value"] == "0900000001"
+    assert got["data[isOwnerDossier]"]["value"] is True
+    names = list(got)
+    assert names.index("data[isOwnerDossier]") > names.index("data[phoneNumber]")  # điền Phần I rồi mới tích
+    assert got["data[ownerFullname]"]["value"] == "TRẦN VĂN MẪU"
+    assert any("Lấy người nộp theo tờ khai" in w and "LÊ THỊ CÁN BỘ" in w for w in warnings)
+
+
+def test_tat_cai_dat_tai_khoan_khac_khong_ghi_phan_i():
+    got, _ = _map_opts({k: v for k, v in _TU_NOP.items() if not k.startswith("ChuHoSo_")},
+                       {"formContext": _THEO_TO_KHAI["formContext"]})
+    assert "data[fullname]" not in got and "data[identityNumber]" not in got
+
+
+def test_theo_to_khai_thieu_ngay_cap_thi_xoa_gia_tri_tai_khoan():
+    got, _ = _map_opts({k: v for k, v in _TU_NOP.items() if not k.startswith("ChuHoSo_")}, _THEO_TO_KHAI)
+    assert got["data[fullname]"]["value"] == "TRẦN VĂN MẪU"
+    assert got["data[identityDate]"].get("clear") is True
+
+
+def test_theo_to_khai_bo_qua_cccd_ten_khac():
+    v = dict(_TU_NOP_DU, NguoiNop_HoTen="PHẠM VĂN NỘP", NguoiNop_SoGiayTo="002199005678")
+    got, warnings = _map_opts(v, _THEO_TO_KHAI)
+    assert got["data[fullname]"]["value"] == "TRẦN VĂN MẪU"
+    assert got["data[identityNumber]"]["value"] == "001203001234"
+    assert any("PHẠM VĂN NỘP" in w and "Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+def test_theo_to_khai_tai_khoan_la_chu_van_bang_dien_du_phan_i_roi_moi_tich():
+    # Tích trước thì cổng chép Phần I còn trống SĐT/tỉnh xuống chủ hồ sơ rồi khoá → phải điền Phần I trước.
+    opts = {"submitterMode": "owner_as_submitter",
+            "formContext": {"applicantFullname": "Trần Văn Mẫu", "applicantIdentityNumber": "001203001234"}}
+    got, warnings = _map_opts(_TU_NOP_DU, opts)
+    assert got["data[isOwnerDossier]"]["value"] is True
+    assert "data[fullname]" not in got and "data[birthday]" not in got  # giữ VNeID
+    assert got["data[phoneNumber]"]["value"] == "0900000001"
+    assert got["data[province]"]["value"] == "Tỉnh Phú Thọ"
+    assert got["data[identityDate]"]["value"] == "10/10/2022"
+    names = list(got)
+    assert names.index("data[isOwnerDossier]") > names.index("data[province]")
+    assert not any("Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+def test_theo_to_khai_co_uy_quyen_van_lay_ben_duoc_uy_quyen():
+    v = dict(_TU_NOP_DU, NguoiNop_HoTen="PHẠM VĂN NỘP", NguoiNop_SoGiayTo="002199005678")
+    got, _ = mapper.enrich([{"name": k, "value": x} for k, x in v.items()], _THEO_TO_KHAI,
+                           ocr_text="GIẤY ỦY QUYỀN\nBÊN ĐƯỢC ỦY QUYỀN: Phạm Văn Nộp")
+    by_name = {f["name"]: f["value"] for f in got}
+    assert by_name["data[fullname]"] == "PHẠM VĂN NỘP"
+
+
+def test_khong_co_thuong_tru_lay_tinh_tu_dia_chi_lien_lac_tren_don():
+    # Đơn tự soạn (dữ liệu bịa): "Tôi tên là (viết chữ in hoa):", chỉ có "Địa chỉ liên lạc khi cần"; LLM xếp nhầm
+    # dòng này vào địa chỉ dự thi, CCCD tải lên là của người khác → chủ hồ sơ vẫn có ô Tỉnh, không đoán xã.
+    ocr = ("Kính gửi: Giám đốc Sở Giáo dục và Đào tạo Khánh Hòa\n"
+           "Tôi tên là (viết chữ in hoa): TRẦN VĂN MẪU\nSinh ngày 01 tháng 02 năm 1980\n"
+           "Điện thoại: 0900000001\nĐịa chỉ liên lạc khi cần: Thôn Mẫu - Xã Bịa Đặt - Ninh Thuận\n")
+    v = {"VanBang_HoTen": "TRẦN VĂN MẪU", "VanBang_DiaChiDuThi": "Thôn Mẫu - Xã Bịa Đặt - Ninh Thuận",
+         "ChuHoSo_HoTen": "PHẠM VĂN NỘP", "ChuHoSo_SoGiayTo": "002199005678",
+         "ChuHoSo_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Phường Từ Liêm", "diaChi": "Số 1"}}
+    fields, _ = mapper.enrich([{"name": k, "value": x} for k, x in v.items()], {"formContext": {}}, ocr_text=ocr)
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[ownerProvince]"] == "Tỉnh Khánh Hòa"  # Ninh Thuận đã nhập vào Khánh Hòa
+    assert "data[ownerDistrict]" not in got and "data[ownerAddress]" not in got
+    assert got["data[province]"] == "Thành phố Hà Nội"  # Phần I vẫn theo CCCD người nộp
+
+
+def test_toi_ten_la_viet_chu_in_hoa_lam_neo():
+    p = mapper._phieu_owner("Tôi tên là (viết chữ in hoa): TRẦN VĂN MẪU\nSinh ngày: 01/02/1980\n")
+    assert p["name"] == "TRẦN VĂN MẪU" and p["dob"] == "01/02/1980"
+
+
+def test_theo_to_khai_phan_i_cung_lay_tinh_tu_dia_chi_lien_lac():
+    ocr = ("Tôi tên là (viết chữ in hoa): TRẦN VĂN MẪU\nSinh ngày 01 tháng 02 năm 1980\n"
+           "Địa chỉ liên lạc khi cần: Thôn Mẫu - Xã Bịa Đặt - Khánh Hòa\n")
+    v = {"VanBang_HoTen": "TRẦN VĂN MẪU", "VanBang_SoGiayTo": "001080001234",
+         "ChuHoSo_HoTen": "PHẠM VĂN NỘP", "ChuHoSo_SoGiayTo": "002199005678",
+         "ChuHoSo_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Phường Từ Liêm", "diaChi": "Số 1"}}
+    fields, _ = mapper.enrich([{"name": k, "value": x} for k, x in v.items()], _THEO_TO_KHAI, ocr_text=ocr)
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[fullname]"] == "TRẦN VĂN MẪU"
+    assert got["data[province]"] == "Tỉnh Khánh Hòa" and got["data[ownerProvince]"] == "Tỉnh Khánh Hòa"
+    assert "data[district]" not in got and "data[ownerDistrict]" not in got

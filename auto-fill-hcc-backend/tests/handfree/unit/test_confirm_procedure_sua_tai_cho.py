@@ -99,12 +99,14 @@ def test_thu_tuc_khong_co_huong_dan_hoac_man_chao_cu_khong_co_qr():
     assert not _guide(flow._to_confirm_procedure(conv, "khai-sinh-da-co-ho-so"))
 
 
-def test_bang_huong_dan_du_70_thu_tuc():
+def test_bang_huong_dan_du_96_thu_tuc():
     from app.channels.handfree.procedure_registry import PROCEDURES
 
     keys = {p["key"] for p in PROCEDURES if p.get("guideUrl")}
-    assert len(keys) == 70
-    assert {"khai-sinh-dang-ky-lai", "ket-hon", "chung-thuc-ban-sao", "sua-chua-cai-tao-gpxd-cong-trinh"} <= keys
+    assert len(keys) == 96
+    assert {"khai-sinh-dang-ky-lai", "ket-hon", "chung-thuc-ban-sao", "sua-chua-cai-tao-gpxd-cong-trinh",
+            "khai-tu-lien-thong", "dang-ky-bien-dong-dat-dai-bac-ninh",
+            "dang-ky-bien-dong-chuyen-nhuong-bac-ninh"} <= keys
 
 
 # ── Tầng router: history phải khớp màn hình ──

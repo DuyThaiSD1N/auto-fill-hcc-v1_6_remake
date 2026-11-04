@@ -224,11 +224,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "Thẻ đã được cấp là thẻ hướng dẫn viên du lịch TẠI ĐIỂM — thủ tục cấp đổi này chỉ áp dụng cho thẻ "
             "QUỐC TẾ và NỘI ĐỊA. Kiểm tra lại thủ tục trước khi nộp."
         )
-    co_quan = _text(values.get("Don_CoQuanNhan"))
-    # Dòng in sẵn "Sở Du lịch/Sở VHTTDL tỉnh/thành phố …." chưa ghi tỉnh không phải nơi gửi khác.
-    if co_quan and "da nang" not in _fold(co_quan) and "tinh/thanh pho" not in _fold(co_quan):
-        warnings.append(
-            f"Đơn gửi \"{co_quan}\" — thủ tục này nộp về Sở Văn hóa, Thể thao và Du lịch TP Đà Nẵng. Kiểm tra "
-            "lại nơi tiếp nhận."
-        )
+    # Không đối chiếu dòng "Kính gửi" với Đà Nẵng nữa: thủ tục mở cho tài khoản mọi tỉnh, hồ sơ nộp về
+    # Sở VHTTDL của tỉnh đó (giống thẻ nội địa).
     return out, warnings
