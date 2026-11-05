@@ -18,6 +18,12 @@ import type {
   UserListFilters,
   UserListResp,
   UserUpdateBody,
+  AsrSettingsBody,
+  ProviderVoicesResp,
+  TtsSettingsBody,
+  Voice,
+  VoicePatchBody,
+  VoiceSettings,
 } from "./types";
 
 // Dev dùng proxy của Vite nên base rỗng. Prod set VITE_API_BASE (vd https://api...).
@@ -423,4 +429,55 @@ export function listDossiers(q: DossierQuery, signal?: AbortSignal): Promise<Dos
 
 export function getDossier(id: string): Promise<DossierDetail> {
   return request<DossierDetail>(`/api/v1/dossiers/${encodeURIComponent(id)}`);
+}
+
+// --- Giọng nói (admin) ---
+export function getVoiceSettings(signal?: AbortSignal): Promise<VoiceSettings> {
+  return request<VoiceSettings>(`/api/v1/admin/voice/settings`, { signal });
+}
+
+export function updateTtsSettings(body: TtsSettingsBody): Promise<VoiceSettings> {
+  return request<VoiceSettings>(`/api/v1/admin/voice/settings/tts`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateAsrSettings(body: AsrSettingsBody): Promise<VoiceSettings> {
+  return request<VoiceSettings>(`/api/v1/admin/voice/settings/asr`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function listVoices(signal?: AbortSignal): Promise<{ voices: Voice[] }> {
+  return request<{ voices: Voice[] }>(`/api/v1/admin/voice/voices`, { signal });
+}
+
+export function createVoice(body: Voice): Promise<Voice> {
+  return request<Voice>(`/api/v1/admin/voice/voices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateVoice(voiceId: string, body: VoicePatchBody): Promise<Voice> {
+  return request<Voice>(`/api/v1/admin/voice/voices/${encodeURIComponent(voiceId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteVoice(voiceId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/v1/admin/voice/voices/${encodeURIComponent(voiceId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function getProviderVoices(): Promise<ProviderVoicesResp> {
+  return request<ProviderVoicesResp>(`/api/v1/admin/voice/voices/provider`);
 }

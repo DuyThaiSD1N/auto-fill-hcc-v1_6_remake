@@ -13,6 +13,7 @@ from contextlib import ExitStack
 import logging
 from pathlib import Path
 import re
+import time
 from typing import BinaryIO
 
 import fitz
@@ -57,8 +58,15 @@ def _open_input(f: dict, stack: ExitStack) -> tuple[str, bytes | BinaryIO, str]:
     return (f.get("name") or resolved_path.name or "file", handle, mime)
 
 
-def _ocr_targets() -> list[tuple[str, str, str]]:
-    """Endpoint OCR theo thứ tự ưu tiên: (base_url, api_key, tag). Fallback chỉ khi có cấu hình.
+# Máy OCR vừa lỗi (không với tới, quá trần, HTTP 5xx) bị xếp SAU trong khoảng này: một máy chết thì
+# các request kế tiếp đi thẳng máy còn lại thay vì mất 10 s (không với tới) hay cả trần chờ (treo) cho
+# mỗi phần. Không loại hẳn — cả hai cùng lỗi vẫn thử đủ theo thứ tự gốc.
+_DOWN_FOR_S = 300
+_down_until: dict[str, float] = {}
+
+
+def _ocr_targets(*, prefer_fallback: bool = False) -> list[tuple[str, str, str]]:
+    """Endpoint OCR theo thứ tự thử: (base_url, api_key, tag). Fallback chỉ khi có cấu hình.
 
     Key backup trống → kế thừa key chính (server dự phòng thường dùng chung khóa xác thực).
     """
@@ -69,7 +77,10 @@ def _ocr_targets() -> list[tuple[str, str, str]]:
             settings.fallback_ocr_tiengnoi_api_key or settings.ocr_tiengnoi_api_key,
             "fallback",
         ))
-    return targets
+    if prefer_fallback:
+        targets.reverse()
+    now = time.monotonic()
+    return sorted(targets, key=lambda target: _down_until.get(target[0], 0) > now)
 
 
 # Máy OCR không với tới (tailnet rớt) phải bỏ qua nhanh để kịp sang máy còn lại.
@@ -124,10 +135,11 @@ async def _post(
     *,
     include_tokens: bool = False,
     timeout_s: float | None = None,
+    prefer_fallback: bool = False,
 ) -> dict:
     """POST OCR với fallback: thử server chính, lỗi thì seek(0) rồi thử server dự phòng."""
     last_exc: Exception | None = None
-    for idx, (base_url, api_key, tag) in enumerate(_ocr_targets()):
+    for idx, (base_url, api_key, tag) in enumerate(_ocr_targets(prefer_fallback=prefer_fallback)):
         if idx > 0:
             _rewind(decoded)
         try:
@@ -136,12 +148,14 @@ async def _post(
                     decoded, max_tokens, include_tokens=include_tokens,
                     base_url=base_url, api_key=api_key, timeout_s=timeout_s,
                 )
+            _down_until.pop(base_url, None)
             if tag != "primary":
                 mon.flag("ocr_fallback")
                 logger.warning("OCR %s [%s] OK sau khi server chính lỗi", tag, base_url)
             return data
         except Exception as e:  # noqa: BLE001
             last_exc = e
+            _down_until[base_url] = time.monotonic() + _DOWN_FOR_S
             logger.warning("OCR %s lỗi [%s]: %r", tag, type(e).__name__, e)
     raise last_exc if last_exc else RuntimeError("Không có endpoint OCR nào khả dụng")
 
@@ -185,8 +199,10 @@ _GROUP_MIN_PAGES = 9
 _SPLIT_MIN_PAGES = 6
 _MAX_PARTS = 8
 _PAGE_HEADER = "───── Trang {page}/{total} ─────"
-# Trần chờ theo số trang của từng request: bình thường ~1,0–1,3 s/trang nên dư 3–4 lần; một phần
-# treo sang máy dự phòng sớm thay vì giữ cả hồ sơ tới trần cấu hình.
+# Trần chờ theo số trang: bình thường ~1,0–1,3 s/trang nên dư 3–4 lần; request treo sang máy dự phòng
+# sớm thay vì giữ cả hồ sơ tới trần cấu hình. Các phần gửi song song chia nhau cùng một gateway nên
+# phần nào cũng về gần lúc cả lượt xong → trần tính theo TỔNG trang của lượt, không theo từng phần
+# (tính theo phần thì bản quét nặng ~3 s/trang làm mọi phần cùng quá trần, mất trang).
 _TIMEOUT_BASE_S = 30
 _TIMEOUT_PER_PAGE_S = 3
 
@@ -263,10 +279,13 @@ def _merge_parts(parts: list[tuple[int, dict | None]]) -> dict | None:
     if len(parts) == 1:
         return parts[0][1]
     pages: list[dict] = []
+    missing: list[str] = []
     for count, res in parts:
         got = (res or {}).get("pages") if isinstance((res or {}).get("pages"), list) else None
         if res is None or got is None:
             got = [{"ok": False, "text": ""}] * count
+            first = len(pages) + 1
+            missing.append(str(first) if count == 1 else f"{first}–{first + count - 1}")
         pages.extend(got)
     total = len(pages)
     pages = [{**page, "index": i} for i, page in enumerate(pages)]
@@ -277,7 +296,12 @@ def _merge_parts(parts: list[tuple[int, dict | None]]) -> dict | None:
         "text": "\n\n".join(
             f"{_PAGE_HEADER.format(page=i + 1, total=total)}\n{page.get('text') or ''}" for i, page in enumerate(pages)
         ),
-        "error": next((res.get("error") for _c, res in parts if res and res.get("error")), None),
+        # Phần mất hẳn phải mang lỗi: tệp có lỗi không vào cache OCR và lộ ra trong trace, không thì bấm
+        # lại vẫn nhận nguyên bản thiếu trang từ cache.
+        "error": "; ".join(filter(None, [
+            f"OCR thiếu trang {', '.join(missing)}" if missing else "",
+            next((res.get("error") for _c, res in parts if res and res.get("error")), None),
+        ])) or None,
     }
 
 
@@ -289,35 +313,34 @@ async def _post_groups(
     include_tokens: bool,
     pages: list[int],
 ) -> list[dict | None]:
-    """Kết quả theo đúng thứ tự tệp; tệp OCR báo lỗi (thường một trang vLLM lỗi) gửi lại riêng một lần.
+    """Kết quả theo đúng thứ tự tệp; tệp OCR báo lỗi hoặc nhóm hỏng ở mọi máy gửi lại chung một lần.
 
-    Nhóm hỏng ở cả máy chính lẫn dự phòng chỉ mất phần của nhóm đó (không gửi lại lần nữa vì đã thử
-    đủ hai máy); chỉ khi mọi nhóm hỏng mới ném lỗi như gửi một request.
+    Lần gửi lại ít trang hơn cả lượt nên thường kịp dù lượt đầu quá trần vì gateway bận, và thử máy
+    dự phòng TRƯỚC: máy chính trả HTTP 200 mà trang lỗi (vLLM hỏng) thì không sang dự phòng ở lượt đầu.
+    Chỉ khi mọi nhóm hỏng mới ném lỗi như gửi một request.
     """
+    timeout_s = _timeout_for(sum(pages))
     datas = await asyncio.gather(*(
-        _post([decoded[i] for i in group], max_tokens, include_tokens=include_tokens,
-              timeout_s=_timeout_for(sum(pages[i] for i in group)))
+        _post([decoded[i] for i in group], max_tokens, include_tokens=include_tokens, timeout_s=timeout_s)
         for group in groups
     ), return_exceptions=True)
     if all(isinstance(data, BaseException) for data in datas):
         raise datas[0]
     results: list[dict | None] = [None] * len(decoded)
-    crashed: set[int] = set()
     for group, data in zip(groups, datas):
         if isinstance(data, BaseException):
             logger.warning("OCR nhóm %d tệp hỏng ở mọi máy: %r", len(group), data)
-            crashed.update(group)
             continue
         for index, res in zip(group, data.get("results") or []):
             results[index] = res
-    failed = [i for i, res in enumerate(results)
-              if i not in crashed and (res is None or res.get("ok") is False)]
-    if failed and len(failed) < len(results):
+    failed = [i for i, res in enumerate(results) if res is None or res.get("ok") is False]
+    if failed:
         mon.flag("ocr_retry")
         _rewind([decoded[i] for i in failed])
         try:
             data = await _post([decoded[i] for i in failed], max_tokens, include_tokens=include_tokens,
-                               timeout_s=_timeout_for(sum(pages[i] for i in failed)))
+                               timeout_s=timeout_s,  # gateway có thể còn bận phần bị bỏ dở ở lượt đầu
+                               prefer_fallback=True)
         except Exception as e:  # noqa: BLE001 - giữ kết quả lần đầu
             logger.warning("OCR gửi lại %d tệp lỗi: %r", len(failed), e)
             return results

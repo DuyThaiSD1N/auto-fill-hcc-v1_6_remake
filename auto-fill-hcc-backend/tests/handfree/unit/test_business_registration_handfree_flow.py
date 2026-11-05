@@ -296,7 +296,7 @@ async def test_combined_pipeline_broadcasts_only_after_process_and_attach(monkey
     monkeypatch.setattr(pipeline_runner, "get_procedure", lambda _key: {"label": "HKD"})
 
     async def process(_files, options):
-        assert options == {"allPages": True}
+        assert options == {"allPages": True, "returnFacts": True}  # facts thô cho trợ lý hộ KD hỏi bổ sung
         return {"fields": [], "pages": {"hinh-thuc-dang-ky": []}, "extracted": {}, "stats": {}}
 
     async def attach(_files, _options, session=None):

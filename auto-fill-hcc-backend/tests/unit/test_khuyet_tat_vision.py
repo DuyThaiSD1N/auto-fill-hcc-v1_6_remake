@@ -44,6 +44,7 @@ def _run(monkeypatch, section_iii):
 
     monkeypatch.setattr(kt_runner.runner, "run", fake_compact)
     monkeypatch.setattr(kt_runner.vision, "read_section_iii", fake_vision)
+    monkeypatch.setattr(kt_runner.vision, "ENABLED", True)
     res = asyncio.run(kt_runner.run({"doc": []}, {}))
     return {f["name"]: f["value"] for f in res["fields"]}
 
@@ -143,5 +144,21 @@ def test_suy_bien_hai_lan_thi_bo_va_canh_bao(monkeypatch):
 
     monkeypatch.setattr(kt_runner.runner, "run", fake_compact)
     monkeypatch.setattr(kt_runner.vision, "read_section_iii", fake_vision)
+    monkeypatch.setattr(kt_runner.vision, "ENABLED", True)
     res = asyncio.run(kt_runner.run({"doc": []}, {}))
     assert vision.SECTION_III_WARNING in res["errors"]
+
+
+def test_tat_vision_chi_chay_ocr_llm_khong_canh_bao(monkeypatch):
+    async def fake_compact(files_by_role, **kwargs):
+        return {"fields": [dict(f) for f in _LLM_FIELDS], "errors": []}
+
+    async def fake_vision(files):
+        raise AssertionError("không được gọi Qwen khi tắt")
+
+    monkeypatch.setattr(kt_runner.runner, "run", fake_compact)
+    monkeypatch.setattr(kt_runner.vision, "read_section_iii", fake_vision)
+    monkeypatch.setattr(kt_runner.vision, "ENABLED", False)
+    res = asyncio.run(kt_runner.run({"doc": []}, {}))
+    assert vision.SECTION_III_WARNING not in res["errors"]
+    assert {f["name"]: f["value"] for f in res["fields"]}["data[khuyetTat1Obj][khuyetTatRadio1]"] == "co"

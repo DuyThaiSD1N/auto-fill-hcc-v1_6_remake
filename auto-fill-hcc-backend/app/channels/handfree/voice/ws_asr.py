@@ -25,6 +25,7 @@ import grpc
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.config import settings
+from app.channels.handfree.voice import store
 from app.channels.handfree.voice import streaming_voice_pb2 as pb2
 from app.channels.handfree.voice import streaming_voice_pb2_grpc as pb2_grpc
 from app.channels.handfree.voice.access import authenticate_voice_websocket
@@ -60,17 +61,18 @@ async def _request_gen(queue: asyncio.Queue):
         yield pb2.VoiceRequest(byte_buff=item)
 
 
-def _grpc_metadata(rate: str) -> list[tuple[str, str]]:
-    # Khớp client mẫu speech_code/client_grpc.py + ws-asr.ts (nhánh tiếng Việt).
+def _grpc_metadata(rate: str, cfg: dict) -> list[tuple[str, str]]:
+    # Khớp client mẫu speech_code/client_grpc.py + ws-asr.ts (nhánh tiếng Việt). Ba ngưỡng thời gian do web quản trị
+    # chỉnh (voice/store.py, thiếu thì env); token chỉ ở env.
     return [
         ("token", settings.asr_grpc_token),
         ("id", f"tlnd_{int(time.time())}"),
         ("channels", "1"),
         ("rate", rate),
         ("format", "S16LE"),
-        ("silence_timeout", str(settings.asr_silence_timeout)),
-        ("speech_timeout", str(settings.asr_speech_timeout)),
-        ("speech_max", str(settings.asr_speech_max)),
+        ("silence_timeout", str(cfg["silenceTimeout"])),
+        ("speech_timeout", str(cfg["speechTimeout"])),
+        ("speech_max", str(cfg["speechMax"])),
     ]
 
 
@@ -80,7 +82,8 @@ async def ws_asr(ws: WebSocket):
     if not user:
         return
     await ws.accept(subprotocol=subprotocol)
-    if not settings.asr_grpc_uri or not settings.asr_grpc_token:
+    cfg = await store.asr()
+    if not cfg["grpcUri"] or not settings.asr_grpc_token:
         logger.error("[asr] thiếu cấu hình ASR_GRPC_URI / ASR_GRPC_TOKEN")
         await ws.send_json({"type": "error", "message": _CLIENT_ERROR})
         await ws.close()
@@ -93,9 +96,9 @@ async def ws_asr(ws: WebSocket):
         # lang="hmong" → server ASR tiếng Mông riêng (ASR_GRPC_URI_HMONG, vd :9113);
         # chưa cấu hình thì rơi về server tiếng Việt để không chết phiên.
         grpc_uri = _grpc_target(
-            settings.asr_grpc_uri_hmong
-            if lang == "hmong" and settings.asr_grpc_uri_hmong
-            else settings.asr_grpc_uri
+            cfg["grpcUriHmong"]
+            if lang == "hmong" and cfg["grpcUriHmong"]
+            else cfg["grpcUri"]
         )
         if grpc_uri not in channels:
             channels[grpc_uri] = grpc.aio.insecure_channel(grpc_uri)
@@ -177,12 +180,12 @@ async def ws_asr(ws: WebSocket):
                     continue  # bản cũ: một WS chỉ một lượt
                 # Lượt cũ còn dở (FE bấm lại giữa chừng) → bỏ, mở lượt mới trên cùng kênh.
                 await _end_turn(wait=False)
-                rate = str(parsed.get("rate") or settings.asr_rate)
+                rate = str(parsed.get("rate") or cfg["rate"])
                 lang = str(parsed.get("lang") or "vi").lower()
                 turn_id = parsed.get("turn")
                 stub = pb2_grpc.StreamVoiceStub(_channel_for(lang))
                 queue: asyncio.Queue = asyncio.Queue()
-                call = stub.SendVoice(_request_gen(queue), metadata=_grpc_metadata(rate))
+                call = stub.SendVoice(_request_gen(queue), metadata=_grpc_metadata(rate, cfg))
                 turn = {"queue": queue, "task": asyncio.create_task(_forward(call, turn_id, queue))}
                 logger.info("[asr] gRPC turn opened (lang=%s rate=%s turn=%s)", lang, rate, turn_id)
             elif kind == "warm":

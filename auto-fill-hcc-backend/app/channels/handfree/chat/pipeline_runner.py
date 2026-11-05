@@ -566,13 +566,15 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
         # Thành lập mới: dựng đủ 8 trang. Thay đổi nội dung (page="__change__"): pipeline
         # so "hiện tại vs đề nghị" rồi chỉ dựng trang cần sửa + businessFlow (khóa tra cứu).
         workflow = str(proc.get("businessWorkflow") or "create")
-        process_options = {"allPages": True} if workflow == "create" else {"page": f"__{workflow}__"}
+        process_options = ({"allPages": True, "returnFacts": True} if workflow == "create"
+                           else {"page": f"__{workflow}__"})
         t_process = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):
             process_result = await pipeline({"": raw_files}, process_options)
             if rec is not None:
                 rec.close_gap("agent_end", "post.mapper")
         process_ms = int((time.monotonic() - t_process) * 1000)
+        business_facts = process_result.pop("facts", None)
         _note_result(rec, process_result)
 
         # Lượt đính kèm là một trace riêng (kind=attach) → recorder riêng, mốc 0 = lúc bắt đầu lập kế hoạch.
@@ -588,6 +590,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
         pages = process_result.get("pages") or {}
         conv["fields"] = process_result.get("fields", [])
         conv["business_pages"] = pages
+        conv["business_facts"] = business_facts or []  # trợ lý hộ kinh doanh hỏi bổ sung mục thiếu từ đây
         conv["business_flow"] = process_result.get("businessFlow") or {}
         conv["extracted"] = process_result.get("extracted", {})
         conv["attach_plan"] = attach_result.get("attachments", [])

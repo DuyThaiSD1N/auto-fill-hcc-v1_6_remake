@@ -2794,3 +2794,170 @@ ATTACH_FILES_RETRY = {
     "md": "📎 Em đính lại các tệp còn lỗi, tệp đã có trên hồ sơ em giữ nguyên ạ.",
     "tts": "Dạ, em đính lại các tệp còn lỗi ạ.",
 }
+
+# ── Trợ lý hộ kinh doanh (chat/hkd_tro_ly): thành lập hộ kinh doanh bằng hỏi đáp, đi theo từng khối trên cổng ──
+# Luồng chỉ chạy tiếng Việt (tắt ở chế độ Mông) nên chưa có twin trong script_mong.
+HKD_NO_DOCS_LABEL = "🗣️ Tôi không có tờ khai, giấy tờ — làm cùng trợ lý"
+HKD_START = {
+    "md": ("Dạ, em sẽ đi lần lượt từng khối trên trang, trỏ vào từng ô và hỏi; công dân trả lời bằng lời nói hoặc gõ, "
+           "em điền ngay. Câu nào không bắt buộc, không muốn trả lời cứ nói \"bỏ qua\" ạ.\n\n"),
+    "tts": "Dạ, em sẽ đi lần lượt từng khối trên trang, hỏi đến ô nào em điền ngay ô đó ạ. ",
+}
+HKD_REVIEW_START = {
+    "md": "Em đã đọc giấy tờ. Em đi lần lượt từng khối, điền sẵn từ giấy và chỉ hỏi những ô còn thiếu ạ.\n\n",
+    "tts": "Dạ, em đã đọc giấy tờ. Em đi lần lượt từng khối và chỉ hỏi những ô còn thiếu ạ. ",
+}
+HKD_BLOCK_OPEN = {"md": "📂 **{label}**\n\n", "tts": "Khối {label}. "}
+HKD_BLOCK_SAVING = {"md": "💾 Em đang lưu khối **{label}**, công dân chưa bấm gì trên trang ạ.",
+                    "tts": "Em đang lưu khối {label}, công dân chưa bấm gì trên trang ạ."}
+HKD_BLOCK_SAVED = {"md": "✓ Đã lưu khối **{label}**.\n\n", "tts": "Đã lưu khối {label}. "}
+HKD_BLOCK_CONFIRM = {
+    "md": ("Khối **{label}** em đã điền:\n\n{rows}\n\nĐúng thì bấm **Lưu khối này**; sai chỗ nào cứ nói, ví dụ "
+           "\"sửa số điện thoại thành …\", em sửa ngay ạ."),
+    "tts": "Em đã điền xong khối {label}. Công dân xem lại trên trang, đúng thì bấm Lưu khối này, sai chỗ nào cứ nói ạ.",
+}
+HKD_BLOCK_SAVE_LABEL = "✅ Lưu khối này"
+HKD_BLOCK_SAVE_FAILED = {
+    "md": "⚠️ Khối **{label}** chưa lưu được ({error}). Công dân bấm **Lưu lại** hoặc tự bấm Lưu trên trang ạ.",
+    "tts": "Khối {label} chưa lưu được. Công dân bấm Lưu lại hoặc tự bấm Lưu trên trang ạ.",
+}
+HKD_BLOCK_RETRY_LABEL = "🔁 Lưu lại"
+HKD_BLOCK_OPEN_FAILED = {
+    "md": "Em chưa mở được khối **{label}**. Công dân bấm vào **{label}** ở menu bên trái trang giúp em ạ.",
+    "tts": "Em chưa mở được khối {label}. Công dân bấm vào khối đó ở menu bên trái trang giúp em ạ.",
+}
+HKD_DONE = {
+    "md": ("✓ Đã điền và lưu đủ các khối dữ liệu{attached}. Công dân rà lại trên trang, rồi tự bấm **Chuẩn bị** → "
+           "**Nộp hồ sơ vào Cơ quan ĐKKD** ạ."),
+    "tts": "Dạ, em đã điền và lưu đủ các khối dữ liệu. Công dân rà lại, rồi tự bấm Chuẩn bị và Nộp hồ sơ ạ.",
+}
+HKD_DONE_ATTACHED = ", đính kèm {n} tệp"
+HKD_BLOCK_LABELS = {
+    "hinh-thuc-dang-ky": "Hình thức đăng ký", "dia-chi": "Địa chỉ", "nganh-nghe-kinh-doanh": "Ngành nghề kinh doanh",
+    "ten-ho-kinh-doanh": "Tên hộ kinh doanh", "chu-ho-kinh-doanh": "Thông tin về chủ hộ kinh doanh",
+    "thong-tin-ve-thanh-vien": "Thông tin về thành viên", "thong-tin-ve-von": "Thông tin về vốn",
+    "thong-tin-ve-thue": "Thông tin về thuế", "nguoi-nop-ho-so": "Người nộp hồ sơ",
+    "thong-tin-uy-quyen": "Thông tin Ủy quyền",
+}
+HKD_QUESTIONS = {
+    "nganh": {"md": "Công dân **kinh doanh gì** ạ? Ví dụ bán mặt hàng gì, mở quán gì hay làm dịch vụ gì.",
+              "tts": "Công dân kinh doanh gì ạ? Ví dụ bán mặt hàng gì, mở quán gì hay làm dịch vụ gì."},
+    "nganh_chon": {"md": "Với **{hoat_dong}**, em thấy có thể là một trong các ngành dưới đây. Công dân chọn giúp em ạ.",
+                   "tts": "Với {hoat_dong}, em thấy có vài ngành phù hợp. Công dân chọn giúp em ngành đúng nhất ạ."},
+    "nganh_ro": {"md": ("Hoạt động **{hoat_dong}** em chưa tìm được mã ngành. Công dân nói rõ hơn bán gì, làm gì, "
+                        "hoặc bấm bỏ hoạt động này ạ."),
+                 "tts": "Hoạt động {hoat_dong} em chưa tìm được mã ngành. Công dân nói rõ hơn, hoặc bỏ hoạt động này ạ."},
+    "nganh_chinh": {"md": "Công dân đăng ký **{n} ngành**. Ngành nào là **ngành kinh doanh chính** ạ?",
+                    "tts": "Công dân đăng ký {n} ngành. Ngành nào là ngành kinh doanh chính ạ?"},
+    "dia_chi_kd": {"md": "**Địa chỉ kinh doanh** ở đâu ạ? Công dân nói số nhà, đường hoặc thôn xóm, và xã phường.",
+                   "tts": "Địa chỉ kinh doanh ở đâu ạ? Công dân nói số nhà, đường hoặc thôn xóm, và xã phường."},
+    "dien_thoai": {"md": "**Số điện thoại** liên hệ của hộ kinh doanh là số nào ạ?",
+                   "tts": "Số điện thoại liên hệ của hộ kinh doanh là số nào ạ?"},
+    "email": {"md": "Hộ kinh doanh có **email** không ạ? Không có thì nói \"không có\".",
+              "tts": "Hộ kinh doanh có email không ạ? Không có thì nói không có."},
+    "fax": {"md": "Có số **fax** không ạ? Không có thì nói \"không có\".",
+            "tts": "Có số fax không ạ? Không có thì nói không có."},
+    "website": {"md": "Có **website** không ạ? Không có thì nói \"không có\".",
+                "tts": "Có website không ạ? Không có thì nói không có."},
+    "khong_kd_tru_so": {"md": "Hộ có **kinh doanh ngay tại địa chỉ** vừa khai không ạ? (Ví dụ chỉ bán hàng lưu động thì "
+                                "trả lời không.)",
+                        "tts": "Hộ có kinh doanh ngay tại địa chỉ vừa khai không ạ?"},
+    "ten_ho": {"md": "**Tên hộ kinh doanh** là gì ạ? Giấy chứng nhận sẽ ghi \"HỘ KINH DOANH\" kèm tên này.",
+               "tts": "Tên hộ kinh doanh là gì ạ?"},
+    "ten_nuoc_ngoai": {"md": "Có **tên bằng tiếng nước ngoài** không ạ? Không có thì nói \"không có\".",
+                       "tts": "Có tên bằng tiếng nước ngoài không ạ? Không có thì nói không có."},
+    "ten_viet_tat": {"md": "Có **tên viết tắt** không ạ? Không có thì nói \"không có\".",
+                     "tts": "Có tên viết tắt không ạ? Không có thì nói không có."},
+    "von": {"md": "**Vốn kinh doanh** bao nhiêu tiền ạ?", "tts": "Vốn kinh doanh bao nhiêu tiền ạ?"},
+    "ngay_bat_dau": {"md": "Dự kiến **bắt đầu kinh doanh từ ngày nào** ạ?",
+                     "tts": "Dự kiến bắt đầu kinh doanh từ ngày nào ạ?"},
+    "so_lao_dong": {"md": "Dự kiến có **bao nhiêu người lao động**, tính cả chủ hộ ạ?",
+                    "tts": "Dự kiến có bao nhiêu người lao động, tính cả chủ hộ ạ?"},
+    "dia_chi_thue": {"md": "Địa chỉ **nhận thông báo thuế** có giống địa chỉ kinh doanh không ạ?",
+                     "tts": "Địa chỉ nhận thông báo thuế có giống địa chỉ kinh doanh không ạ?"},
+    "dia_chi_thue_khac": {"md": "Địa chỉ **nhận thông báo thuế** ở đâu ạ?",
+                          "tts": "Địa chỉ nhận thông báo thuế ở đâu ạ?"},
+    "chu_ho_la_ban": {"md": "Công dân có phải là **chủ hộ kinh doanh** (người đứng tên hộ) không ạ?",
+                      "tts": "Công dân có phải là chủ hộ kinh doanh, người đứng tên hộ, không ạ?"},
+    "chu_ho_ho_ten": {"md": "**Họ tên chủ hộ** là gì ạ?", "tts": "Họ tên chủ hộ là gì ạ?"},
+    "chu_ho_gioi_tinh": {"md": "Chủ hộ là **nam hay nữ** ạ?", "tts": "Chủ hộ là nam hay nữ ạ?"},
+    "chu_ho_ngay_sinh": {"md": "**Ngày sinh** của chủ hộ ạ?", "tts": "Ngày sinh của chủ hộ ạ?"},
+    "chu_ho_so_dinh_danh": {"md": "**Số định danh cá nhân** của chủ hộ (12 số trên căn cước) ạ?",
+                            "tts": "Số định danh cá nhân của chủ hộ, mười hai số trên căn cước, ạ?"},
+    "noi_o": {"md": ("**Nơi ở hiện tại** của chủ hộ ở đâu ạ? Trùng địa chỉ kinh doanh thì nói \"giống địa chỉ "
+                     "kinh doanh\"."),
+              "tts": "Nơi ở hiện tại của chủ hộ ở đâu ạ? Trùng địa chỉ kinh doanh thì nói giống địa chỉ kinh doanh."},
+    "chu_the": {"md": ("Hộ kinh doanh do **một mình** chủ hộ thành lập, hay **các thành viên hộ gia đình** cùng thành "
+                       "lập ạ?"),
+                "tts": "Hộ kinh doanh do một mình chủ hộ thành lập, hay các thành viên hộ gia đình cùng thành lập ạ?"},
+    "tv_ho_ten": {"md": "**Thành viên thứ {i}** (ngoài chủ hộ): họ tên là gì ạ?",
+                  "tts": "Thành viên thứ {i}, ngoài chủ hộ, họ tên là gì ạ?"},
+    "tv_gioi_tinh": {"md": "{name} là **nam hay nữ** ạ?", "tts": "{name} là nam hay nữ ạ?"},
+    "tv_ngay_sinh": {"md": "**Ngày sinh** của {name} ạ?", "tts": "Ngày sinh của {name} ạ?"},
+    "tv_so_dinh_danh": {"md": "**Số định danh cá nhân** của {name} (12 số) ạ?",
+                        "tts": "Số định danh cá nhân của {name}, mười hai số, ạ?"},
+    "tv_noi_o": {"md": "**Nơi ở hiện tại** của {name} ạ? Ở cùng chủ hộ thì nói \"giống chủ hộ\".",
+                 "tts": "Nơi ở hiện tại của {name} ạ? Ở cùng chủ hộ thì nói giống chủ hộ."},
+    "tv_them": {"md": "Còn **thành viên nào khác** trong hộ gia đình cùng thành lập không ạ?",
+                "tts": "Còn thành viên nào khác trong hộ gia đình cùng thành lập không ạ?"},
+}
+HKD_LABELS = {
+    "nganh": "Ngành nghề", "ten_ho": "Tên hộ kinh doanh", "ten_nuoc_ngoai": "Tên tiếng nước ngoài",
+    "ten_viet_tat": "Tên viết tắt", "dia_chi_kd": "Địa chỉ kinh doanh", "dien_thoai": "Điện thoại", "email": "Email",
+    "fax": "Fax", "website": "Website", "khong_kd_tru_so": "Kinh doanh tại địa chỉ này", "von": "Vốn kinh doanh",
+    "ngay_bat_dau": "Ngày bắt đầu kinh doanh", "so_lao_dong": "Số lao động", "dia_chi_thue": "Nhận thông báo thuế",
+    "dia_chi_thue_khac": "Địa chỉ nhận thông báo thuế", "chu_ho_la_ban": "Chủ hộ", "chu_ho_ho_ten": "Họ tên chủ hộ",
+    "chu_ho_gioi_tinh": "Giới tính", "chu_ho_ngay_sinh": "Ngày sinh", "chu_ho_so_dinh_danh": "Số định danh",
+    "noi_o": "Nơi ở hiện tại", "chu_the": "Chủ thể thành lập", "thanh_vien": "Thành viên",
+    "tv_ho_ten": "Họ tên", "tv_gioi_tinh": "Giới tính", "tv_ngay_sinh": "Ngày sinh", "tv_so_dinh_danh": "Số định danh",
+    "tv_noi_o": "Nơi ở", "tv_them": "Thêm thành viên", "chi_tiet": "chi tiết",
+}
+HKD_VALUE_TEXT = {
+    "account_owner": "người đang đăng nhập (cổng tự sao chép họ tên, ngày sinh, số định danh)",
+    "other_person": "người khác (khai nhân thân bên dưới)",
+    "same_head_office": "giống địa chỉ kinh doanh",
+    "same_owner": "giống nơi ở chủ hộ",
+    "other_address": "địa chỉ khác",
+    "individual": "cá nhân",
+    "household": "các thành viên hộ gia đình",
+    "skipped": "bỏ qua",
+    "main": " (ngành chính)",
+    "from_docs": "Các ô còn lại em điền theo giấy tờ.",
+}
+# Nghĩa của mục cho LLM hiểu câu trả lời (câu có/không phải nói rõ true là gì — nhãn hiển thị ngắn dễ bị hiểu ngược).
+HKD_PROMPT_LABELS = {
+    "dia_chi_thue": "Địa chỉ nhận thông báo thuế có GIỐNG địa chỉ kinh doanh không (true = giống, false = địa chỉ khác)",
+    "chu_ho_la_ban": "Công dân có phải là chủ hộ kinh doanh không (true = đúng là chủ hộ)",
+    "khong_kd_tru_so": "Hộ có kinh doanh ngay tại địa chỉ kinh doanh đã khai không (true = có)",
+    "noi_o": "Nơi ở hiện tại của CHỦ HỘ",
+    "tv_ho_ten": "Họ tên thành viên đang khai", "tv_gioi_tinh": "Giới tính thành viên đang khai",
+    "tv_ngay_sinh": "Ngày sinh thành viên đang khai", "tv_so_dinh_danh": "Số định danh thành viên đang khai",
+    "tv_noi_o": "Nơi ở hiện tại của thành viên đang khai (ở cùng chủ hộ → \"giong\")",
+    "tv_them": "Còn thành viên khác nữa không (true = còn)",
+}
+HKD_NOTED = {"md": "✓ {label}: **{value}**\n\n", "tts": "Em ghi {label}: {value_tts}. "}
+HKD_UNCLEAR = {"md": "Em chưa nghe rõ ạ. ", "tts": "Em chưa nghe rõ ạ. "}
+HKD_DIGITS_WRONG = {
+    "md": "Em nghe được **{n} số** ({digits}), chưa đúng dạng {what}. Công dân đọc lại giúp em ạ. ",
+    "tts": "Em mới nghe được {n} số, chưa đúng dạng {what}. Công dân đọc lại giúp em ạ. ",
+}
+HKD_DIGITS_WHAT = {"phone": "số điện thoại", "id12": "số định danh mười hai số"}
+HKD_REQUIRED = {"md": "Thông tin này cổng bắt buộc nên em chưa bỏ qua được ạ. ",
+                "tts": "Thông tin này cổng bắt buộc nên em chưa bỏ qua được ạ. "}
+HKD_NGANH_FAILED = {
+    "md": "Em chưa tra được mã ngành, công dân nói lại rõ hơn giúp em ạ.",
+    "tts": "Em chưa tra được mã ngành, công dân nói lại rõ hơn giúp em ạ.",
+}
+HKD_PAUSED = {"md": "Dạ, em tạm dừng hỏi. Khi nào sẵn sàng công dân bấm **Hỏi tiếp** ạ.",
+              "tts": "Dạ, em tạm dừng hỏi. Khi nào sẵn sàng công dân bấm Hỏi tiếp ạ."}
+HKD_RESUME_LABEL = "▶️ Hỏi tiếp"
+HKD_YES_LABEL = "Có"
+HKD_NO_LABEL = "Không"
+HKD_SKIP_LABEL = "⏭️ Bỏ qua"
+HKD_DROP_ACTIVITY_LABEL = "🗑️ Bỏ hoạt động này"
+HKD_INDIVIDUAL_LABEL = "Một mình chủ hộ"
+HKD_HOUSEHOLD_LABEL = "Các thành viên hộ gia đình"
+HKD_SAME_HEAD_OFFICE_LABEL = "Giống địa chỉ kinh doanh"
+HKD_SAME_OWNER_LABEL = "Giống nơi ở chủ hộ"
+HKD_MALE_LABEL = "Nam"
+HKD_FEMALE_LABEL = "Nữ"

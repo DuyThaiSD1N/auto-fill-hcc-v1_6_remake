@@ -34,14 +34,14 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         context_builder=_owner_only_context if owner_mode else _requester_context,
         max_tokens=2200,
-    ), vision.read_section_iii(runner.flatten(files_by_role)))
+    ), vision.read_section_iii(runner.flatten(files_by_role)) if vision.ENABLED else asyncio.sleep(0))
     if section_iii is not None:
         # Bảng tích viết tay: kết quả đọc ảnh thay hẳn phần LLM bóc từ OCR văn bản (kể cả khi rỗng —
         # đơn cấp đổi được bỏ trống Mục III).
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
             {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
         ]
-    else:
+    elif vision.ENABLED:
         # Kết quả dự phòng từ OCR văn bản hay mất cột Có/Không của bảng tích.
         res.setdefault("errors", []).append(vision.SECTION_III_WARNING)
     res["fields"] = mapper.enrich(res["fields"], options)

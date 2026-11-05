@@ -2767,3 +2767,101 @@ a:focus-visible,
   color: var(--muted);
   font-size: 12px;
 }
+
+/* ---------- Giọng nói ---------- */
+.voice-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.voice-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.voice-grid input,
+.voice-grid select {
+  min-height: 42px;
+  color: var(--text);
+}
+.voice-grid small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.voice-wide {
+  grid-column: 1 / -1;
+}
+.voice-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 18px 0 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.voice-info dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.voice-info dd {
+  margin: 2px 0 0;
+}
+.voice-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+.voice-list-head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.voice-provider {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.voice-provider p {
+  margin: 0 0 8px;
+}
+.voice-provider ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.voice-provider li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.voice-provider li .ghost {
+  margin-left: auto;
+}
+.voice-toggle {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+@media (max-width: 680px) {
+  .voice-grid {
+    grid-template-columns: 1fr;
+  }
+  .voice-grid input,
+  .voice-grid select {
+    font-size: 16px;
+  }
+}

@@ -21,6 +21,7 @@ from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import bac_ninh
 from app.channels.handfree.chat import bxd
 from app.channels.handfree.chat import guided_steps as guided
+from app.channels.handfree.chat import hkd_tro_ly
 from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import owner_review
 from app.channels.handfree.chat import script_mong as mong
@@ -1201,6 +1202,10 @@ async def _handle_turn_inner(
         r = await _handle_turn_inner(conv, rerouted, client_page_context)
         r.actions = [*review_reply.actions, *r.actions]
         return r
+    # Thành lập hộ kinh doanh bằng hỏi đáp (không tờ khai / bổ sung mục thiếu): lệnh + câu trả lời của vòng hỏi.
+    hkd_reply = await hkd_tro_ly.handle(conv, current_proc, intent)
+    if hkd_reply is not None:
+        return hkd_reply
     lien_thong_reply = lien_thong.handle(conv, current_proc, intent)
     if lien_thong_reply is not None:
         return lien_thong_reply
@@ -2591,6 +2596,7 @@ def _consent_card(conv: dict) -> dict:
         "documents": documents,
         "legal_md": vi.CONSENT_LEGAL_MD,
         **card_text,
+        **hkd_tro_ly.consent_card_extra(conv, proc),
     }
     if hmong:
         # Bản Mông chỉ HỖ TRỢ HIỂU — bản tiếng Việt vẫn là bản pháp lý chính (toàn văn
@@ -2666,6 +2672,9 @@ def _to_ask_doc_method(conv: dict, intro: tuple[str, str] | None = None) -> Repl
                    procedure=_proc_label(conv), doc_list=md_list, doc_list_tts=tts_list)
     r = Reply(md, tts)
     r.cards = [_doc_options_card()]
+    no_docs = hkd_tro_ly.no_docs_chip(conv, proc)
+    if no_docs:
+        r.chips = [no_docs]
     return _with_eform_preopen(conv, proc, r)
 
 
@@ -2703,6 +2712,9 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     # vừa nói đã được ghi nhận. Extension cũ bỏ qua action lạ.
     verbal_action = ({"type": "consent_verbal", "accepted": accepted}
                      if method == "verbal" else None)
+    if accepted and intent.payload.get("noDocs") is True and hkd_tro_ly.active(conv, proc):
+        # Nút "không có tờ khai, giấy tờ" trên thẻ đồng ý: đồng ý xong đi thẳng vào hỏi đáp.
+        return await hkd_tro_ly.start_no_docs(conv)
     if accepted:
         intro = _fmt(vi.CONSENT_ACCEPTED, log_id=entry["_id"],
                      time=entry["at_display"], version=entry["version"])
@@ -4523,6 +4535,11 @@ async def _handle_business_report(conv: dict, payload: dict) -> Reply:
 async def _handle_filling(conv: dict, intent: Intent) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if _is_business_flow(proc):
+        if hkd_tro_ly.needs_review(conv, proc):
+            # Đọc giấy tờ xong: hỏi các mục còn thiếu TRƯỚC khi phát lệnh điền (không thiếu gì → điền luôn).
+            review = await hkd_tro_ly.start_review(conv)
+            if review is not None:
+                return review
         if intent.kind == "event" and intent.value == "business_ready":
             return _business_ready_reply(conv)
         if intent.kind == "event" and intent.value == "business_retry":

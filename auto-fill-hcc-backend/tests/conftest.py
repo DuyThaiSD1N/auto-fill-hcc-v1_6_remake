@@ -51,3 +51,13 @@ def _khong_co_to_dan_pho(monkeypatch):
         return {}
 
     monkeypatch.setattr(tdp_rollup, "load_tdp_parents", _none)
+
+
+@pytest.fixture(autouse=True)
+def _ocr_khong_nho_may_loi_giua_cac_test():
+    """ocr_tiengnoi nhớ máy OCR vừa lỗi vài phút; không xoá thì test sau thấy thứ tự máy lệch."""
+    from app.services import ocr_tiengnoi
+
+    ocr_tiengnoi._down_until.clear()
+    yield
+    ocr_tiengnoi._down_until.clear()

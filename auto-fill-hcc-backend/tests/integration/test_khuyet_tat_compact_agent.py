@@ -288,8 +288,9 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     assert d["data[mucDoKhuyetTatObj][mucDoRadio4]"] == "CTG"
     assert d["data[mucDoKhuyetTatObj][mucDoRadio8]"] == "KTHD"
     assert d["data[mucDoKhuyetTatObj][mucDoRadio10]"] == "CTG"
-    # Không đọc được ảnh Mục III → giữ bảng từ OCR + LLM, kèm cảnh báo cho cán bộ soát lại.
-    assert res["errors"] == [vision.SECTION_III_WARNING]
+    # Không đọc được ảnh Mục III → giữ bảng từ OCR + LLM, kèm cảnh báo cho cán bộ soát lại;
+    # tắt hẳn bước đọc ảnh (vision.ENABLED=False) thì không có lượt đọc nào để cảnh báo.
+    assert res["errors"] == ([vision.SECTION_III_WARNING] if vision.ENABLED else [])
 
 
 def test_khuyet_tat_compact_prompt_contract():

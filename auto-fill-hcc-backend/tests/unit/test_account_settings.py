@@ -48,25 +48,33 @@ def make_client(monkeypatch):
 
 def test_tai_khoan_chua_luu_nhan_mac_dinh_doi_ten(make_client):
     c, _ = make_client({"username": "a"})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False}
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False,
+                                                        "fontScale": 1.0, "ttsVoiceVi": "",
+                                                        "ttsVoiceHmong": "", "ttsTempo": None}
 
 
 def test_gia_tri_da_luu_duoc_tra_ve(make_client):
     c, _ = make_client({"username": "a", "account_settings": {"renameAttachmentFiles": False}})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False}
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False,
+                                                        "fontScale": 1.0, "ttsVoiceVi": "",
+                                                        "ttsVoiceHmong": "", "ttsTempo": None}
 
 
 def test_patch_ghi_dung_khoa_va_tra_ve_ban_day_du(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"renameAttachmentFiles": False})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False}
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False,
+                                                        "fontScale": 1.0, "ttsVoiceVi": "",
+                                                        "ttsVoiceHmong": "", "ttsTempo": None}
     assert users.calls == [{"$set": {"account_settings.renameAttachmentFiles": False}}]
 
 
 def test_patch_khoa_la_bi_bo_qua(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"role": "admin", "xyz": 1})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False}
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False,
+                                                        "fontScale": 1.0, "ttsVoiceVi": "",
+                                                        "ttsVoiceHmong": "", "ttsTempo": None}
     assert users.calls == [], "không có khoá hợp lệ thì không ghi DB"
 
 
@@ -82,3 +90,33 @@ def test_lay_nguoi_nop_theo_to_khai_mac_dinh_tat_va_luu_duoc(make_client):
     r = c.patch("/api/v1/account/settings", json={"submitterFromDeclaration": True})
     assert r.status_code == 200 and r.json()["submitterFromDeclaration"] is True
     assert users.calls == [{"$set": {"account_settings.submitterFromDeclaration": True}}]
+
+
+def test_co_chu_mac_dinh_100_phan_tram_va_luu_duoc(make_client):
+    c, users = make_client({"username": "a"})
+    assert c.get("/api/v1/account/settings").json()["fontScale"] == 1.0
+    r = c.patch("/api/v1/account/settings", json={"fontScale": 1.15})
+    assert r.status_code == 200 and r.json()["fontScale"] == 1.15
+    assert users.calls == [{"$set": {"account_settings.fontScale": 1.15}}]
+
+
+@pytest.mark.parametrize("value", [0.5, 0.85, 1.35, 3, "to"])
+def test_co_chu_ngoai_khoang_90_130_bi_tu_choi(make_client, value):
+    """Ngoài khoảng này khung Trợ lý 400px vỡ bố cục (quá to) hoặc chữ phụ dưới 10px (quá nhỏ)."""
+    c, users = make_client({"username": "a"})
+    r = c.patch("/api/v1/account/settings", json={"fontScale": value})
+    assert r.status_code == 422 and users.calls == []
+
+
+def test_giong_va_toc_do_doc_mac_dinh_rong_va_luu_duoc(make_client):
+    c, users = make_client({"username": "a"})
+    got = c.get("/api/v1/account/settings").json()
+    assert got["ttsVoiceVi"] == "" and got["ttsVoiceHmong"] == "" and got["ttsTempo"] is None
+    r = c.patch("/api/v1/account/settings", json={"ttsVoiceVi": "thanhtruc-south", "ttsTempo": 1.1})
+    assert r.status_code == 200 and r.json()["ttsVoiceVi"] == "thanhtruc-south" and r.json()["ttsTempo"] == 1.1
+
+
+@pytest.mark.parametrize("body", [{"ttsVoiceVi": "x y"}, {"ttsVoiceVi": "a\"b"}, {"ttsTempo": 3}])
+def test_giong_toc_do_sai_bi_tu_choi(make_client, body):
+    c, users = make_client({"username": "a"})
+    assert c.patch("/api/v1/account/settings", json=body).status_code == 422 and users.calls == []

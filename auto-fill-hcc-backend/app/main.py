@@ -28,6 +28,7 @@ from app.process.router import router as process_router
 from app.review.router import router as review_router
 from app.reports.router import router as reports_router
 from app.dashboard.router import router as dashboard_router
+from app.bug_reports.router import router as bug_reports_router
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
 from app.upload_session.ws import relay_events_forever
@@ -108,6 +109,7 @@ app.include_router(dossiers_router)  # mốc bấm nộp của Auto Fill (Handfr
 app.include_router(form_snapshots_router)
 app.include_router(traces_router)
 app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)
+app.include_router(bug_reports_router)  # báo lỗi trên web thống kê
 app.include_router(reports_router)
 app.include_router(users_router)
 app.include_router(locations_router)
@@ -128,6 +130,7 @@ if settings.handfree_enabled:
         router as handfree_document_router,
     )
     from app.channels.handfree.voice.router import router as handfree_voice_router
+    from app.channels.handfree.voice.admin_router import router as handfree_voice_admin_router
     from app.channels.handfree.voice.ws_asr import router as handfree_asr_router
     from app.channels.handfree.voice.ws_tts import router as handfree_tts_router
 
@@ -136,6 +139,7 @@ if settings.handfree_enabled:
     app.include_router(handfree_document_router)
     app.include_router(handfree_mobile_router)
     app.include_router(handfree_voice_router)
+    app.include_router(handfree_voice_admin_router)  # tab Giọng nói của web quản trị (admin)
     app.include_router(handfree_asr_router)
     app.include_router(handfree_tts_router)
 

@@ -224,8 +224,8 @@ def test_tts_voice_theo_lang(monkeypatch):
     # ws_tts chọn giọng qua catalog.resolve_voice (máy quầy chưa chọn → mặc định env theo lang).
     assert catalog.resolve_voice("vi", "") == "phuongnhi-north"
     assert catalog.resolve_voice("hmong", "") == "xi"
-    assert '"voiceId": "xi"' in _config_frame("hmong", catalog.resolve_voice("hmong", ""))
-    assert '"voiceId": "phuongnhi-north"' in _config_frame("vi", catalog.resolve_voice("vi", ""))
+    assert '"voiceId": "xi"' in _config_frame(catalog.resolve_voice("hmong", ""), 1.0, 0, 16000)
+    assert '"voiceId": "phuongnhi-north"' in _config_frame(catalog.resolve_voice("vi", ""), 1.0, 0, 16000)
 
 
 def test_first_greet_di_qua_boc_ngon_ngu():

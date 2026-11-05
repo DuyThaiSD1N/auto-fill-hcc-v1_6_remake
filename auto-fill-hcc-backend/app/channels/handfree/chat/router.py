@@ -16,7 +16,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, field_review, flow, intents, owner_review, store
+from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, store, xung_ho
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.archive.config import archive_settings
@@ -273,6 +273,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsBxdFlow": raw.get("supportsBxdFlow") is True,
         # Luồng 4 bước trên cổng NN&MT (dichvucongnnmt.mae.gov.vn) — thủ tục khai bxdFlow.capability.
         "supportsBxdFlowMae": raw.get("supportsBxdFlowMae") is True,
+        # Thành lập hộ kinh doanh bằng hỏi đáp (chat/hkd_tro_ly): thẻ đồng ý có nút "không có tờ khai", extension biết
+        # sao chép tài khoản vào trang chủ hộ, điền thành viên hộ gia đình, lưu khối Thông tin Ủy quyền.
+        "supportsHkdTroLy": raw.get("supportsHkdTroLy") is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.
         "supportsBxdFlowMoit": raw.get("supportsBxdFlowMoit") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
@@ -345,7 +348,11 @@ def _last_reply_for_restore(conv: dict) -> dict | None:
     last_reply = conv.get("last_reply")
     if not isinstance(last_reply, dict):
         return None
+    # Phiên lưu trước khi đổi xưng hô còn "em" trong last_reply → đổi lại lúc khôi phục.
     restored = deepcopy(last_reply)
+    for key in ("display_md", "tts_text"):
+        if isinstance(restored.get(key), str) and (key == "display_md" or restored.get("tts_lang") != "hmong"):
+            restored[key] = xung_ho.text(restored[key])
     restored["cards"] = [
         flow._location_card(conv) if card.get("kind") == "location_picker" else card  # noqa: SLF001
         for card in restored.get("cards", [])
@@ -356,6 +363,8 @@ def _last_reply_for_restore(conv: dict) -> dict | None:
     for chip in restored.get("chips", []):
         if isinstance(chip, dict) and chip.get("send") == "__action:docs_done":
             chip["label"] = flow._docs_done_label_for_conv(conv)  # noqa: SLF001
+    restored["chips"] = xung_ho.ui(restored.get("chips") or [])
+    restored["cards"] = xung_ho.ui(restored.get("cards") or [])
     return restored
 
 
@@ -471,6 +480,9 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         # LLM riêng (biết nhãn ô, danh sách lựa chọn), không qua bộ phân loại ý định chung.
         if intent is None and field_review.asking(conv) and message and not message.startswith("__"):
             intent = intents.Intent("action", "field_review_answer", {"text": message})
+        # Đang hỏi đáp thành lập hộ kinh doanh: câu gõ/nói là câu trả lời, LLM riêng của vòng hỏi tự hiểu.
+        if intent is None and hkd_tro_ly.asking(conv) and message and not message.startswith("__"):
+            intent = intents.Intent("action", "hkd_answer", {"text": message})
         # Cùng lối với vòng bổ sung tờ khai, cho các ô còn trống ở bước Thông tin chủ hồ sơ.
         if intent is None and owner_review.asking(conv) and message and not message.startswith("__"):
             intent = intents.Intent("action", "owner_review_answer", {"text": message})
@@ -498,6 +510,8 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             client_url=str(req.client_context.url or "")[:2000] if req.client_context else "",
         )
     flow.update_voice_options(conv, reply)
+    # Trợ lý tự xưng "tôi" — đổi ở đầu ra, câu thoại gốc trong script_vi vẫn viết "em" (chat/xung_ho.py).
+    xung_ho.reply(reply)
 
     payload = _serialize(conv, reply)
     # Reply RỖNG (bot im lặng chờ trang) → không lưu history, không đè last_reply —

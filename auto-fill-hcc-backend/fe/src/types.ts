@@ -310,3 +310,66 @@ export interface DossierListResp {
   page: number;
   pageSize: number;
 }
+
+// --- Giọng nói (admin) ---
+export interface TtsSettings {
+  wsUrl: string;
+  wsUrlHmong: string;
+  defaultTempo: number;
+  pitch: number;
+  tempoMin: number;
+  tempoMax: number;
+  fallbackVoiceVi: string;
+  fallbackVoiceHmong: string;
+  apiKeyConfigured: boolean;
+}
+
+export interface AsrSettings {
+  grpcUri: string;
+  grpcUriHmong: string;
+  rate: number;
+  silenceTimeout: number;
+  speechTimeout: number;
+  speechMax: number;
+  tokenConfigured: boolean;
+}
+
+export interface VoiceSettings {
+  tts: TtsSettings;
+  asr: AsrSettings;
+}
+
+export type TtsSettingsBody = Partial<
+  Pick<TtsSettings, "wsUrl" | "wsUrlHmong" | "defaultTempo" | "pitch" | "tempoMin" | "tempoMax">
+>;
+export type AsrSettingsBody = Partial<
+  Pick<AsrSettings, "grpcUri" | "grpcUriHmong" | "rate" | "silenceTimeout" | "speechTimeout" | "speechMax">
+>;
+
+export type VoiceGender = "nam" | "nu" | "";
+export type VoiceRegion = "bac" | "trung" | "nam" | "";
+
+export interface Voice {
+  voiceId: string;
+  name: string;
+  gender: VoiceGender;
+  region: VoiceRegion;
+  ethnicity: string;
+  sampleRate: number;
+  enabled: boolean;
+}
+
+export type VoicePatchBody = Partial<Omit<Voice, "voiceId">>;
+
+export interface ProviderVoice {
+  id: string;
+  samplingRate: number | null;
+  inTable: boolean;
+  suggestedRegion: VoiceRegion;
+}
+
+export interface ProviderVoicesResp {
+  ok: boolean;
+  error?: string;
+  voices: ProviderVoice[];
+}

@@ -24,7 +24,7 @@ def _schedule(frame: str) -> list[int]:
 def test_khuc_dau_du_dai_de_khong_cat_giua_cum_tu():
     """Cụm từ hành chính tiếng Việt thường 20–40 ký tự ("Giấy tờ cần chứng thực bản sao" là 30).
     Khúc 20 ký tự thì gần như chắc chắn cắt giữa cụm."""
-    lengths = _schedule(_config_frame("vi", "phuongnhi-north"))
+    lengths = _schedule(_config_frame("phuongnhi-north", 1.0, 0, 16000))
     assert lengths, "thiếu lịch gom ký tự → máy đọc tự quyết, mất kiểm soát nhịp nghỉ"
     # 250 = p90 của 133 câu trong script_vi + dư — 98% câu gọn trong MỘT khúc, không còn biên
     # nào để rơi vào giữa cụm từ. Hạ xuống dưới p90 là lại có câu bị cắt.
@@ -33,14 +33,14 @@ def test_khuc_dau_du_dai_de_khong_cat_giua_cum_tu():
 
 def test_khuc_sau_khong_ngan_hon_khuc_dau():
     """Lịch phải không giảm. Khúc sau ngắn hơn khúc đầu là càng đọc càng vụn."""
-    lengths = _schedule(_config_frame("vi", "phuongnhi-north"))
+    lengths = _schedule(_config_frame("phuongnhi-north", 1.0, 0, 16000))
     assert lengths[-1] > lengths[0]
     assert lengths == sorted(lengths), f"lịch phải tăng dần, đang là {lengths}"
 
 
 def test_tieng_mong_dung_cung_lich():
     """Tiếng Mông có thể ở server khác nhưng nhịp đọc là cùng một vấn đề."""
-    assert _schedule(_config_frame("hmong", "vuado")) == _schedule(_config_frame("vi", "x"))
+    assert _schedule(_config_frame("vuado", 1.0, 0, 16000)) == _schedule(_config_frame("x", 1.0, 0, 16000))
 
 
 @pytest.mark.parametrize("value, expected", [

@@ -187,3 +187,9 @@ async def ensure_indexes() -> None:
     await db.consent_logs.create_index("log_id")
     await db.consent_logs.create_index([("user_id", 1), ("created_at", -1)])
     await db.consent_logs.create_index([("experience", 1), ("created_at", -1)])
+    # Báo lỗi trên web thống kê: mỗi vai trò lọc theo một khóa (người gửi / đơn vị / tỉnh / trạng thái).
+    await db.bug_reports.create_index("code", unique=True)
+    await db.bug_reports.create_index([("user_id", 1), ("created_at", -1)])
+    await db.bug_reports.create_index([("unit_id", 1), ("created_at", -1)])
+    await db.bug_reports.create_index([("province", 1), ("created_at", -1)])
+    await db.bug_reports.create_index([("status", 1), ("created_at", -1)])

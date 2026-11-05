@@ -19,6 +19,9 @@ from app.services.ocr_tiengnoi import _open_input
 
 logger = logging.getLogger(__name__)
 
+# Tạm tắt đọc ảnh bằng Qwen: runner chỉ chạy OCR + LLM. Bật lại = True.
+ENABLED = False
+
 # Cạnh dài 1600px đủ thấy dấu tích viết tay; trang A4 ~1.8k token ảnh.
 _MAX_SIDE_PX = 1600
 _JPEG_QUALITY = 85

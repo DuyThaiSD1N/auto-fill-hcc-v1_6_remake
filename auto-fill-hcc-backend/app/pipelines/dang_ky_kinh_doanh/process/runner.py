@@ -46,6 +46,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     if opts.get("allPages") or str(page).lower() in _ALL_PAGES:
         res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date)
         res["fields"] = res["pages"].get(DEFAULT_PAGE, [])
+        if opts.get("returnFacts"):
+            # Handfree (trợ lý hộ kinh doanh) cần facts thô để hỏi bổ sung mục thiếu rồi map lại; API core không gửi cờ này.
+            res["facts"] = compact
         res.setdefault("extracted", {})["page"] = "__all__"
         return res
 

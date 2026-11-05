@@ -15,6 +15,14 @@ DEFAULTS: dict[str, object] = {
     "renameAttachmentFiles": True,
     # Handfree: lấy người nộp theo tờ khai (bỏ so khớp tài khoản đăng nhập) → options.submitterMode của pipeline.
     "submitterFromDeclaration": False,
+    # Handfree: tỉ lệ cỡ chữ của khung Trợ lý (extension phóng cả khung). Khoảng 0.9–1.3 do router chặn: nhỏ hơn thì
+    # chữ phụ dưới 10px khó đọc, lớn hơn thì khung 400px còn chưa tới 310px, các khối rộng bị vỡ.
+    "fontScale": 1.0,
+    # Handfree: giọng đọc + tốc độ cán bộ chọn. Rỗng / null = theo mặc định ở web quản trị (tab Giọng nói), giọng không
+    # còn trong bảng thì BE dùng giọng dự phòng (voice/store.py) — lưu ở đây không cần kiểm lại.
+    "ttsVoiceVi": "",
+    "ttsVoiceHmong": "",
+    "ttsTempo": None,
 }
 
 

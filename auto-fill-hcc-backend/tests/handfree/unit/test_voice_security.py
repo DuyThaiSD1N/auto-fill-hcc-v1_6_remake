@@ -3,9 +3,13 @@ from unittest.mock import AsyncMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.channels.handfree.voice import access, router
+from app.channels.handfree.voice import access, router, store
 from app.core.deps import require_auth
 from app.core.errors import AppError, app_error_handler
+
+
+def _no_db():
+    raise RuntimeError("không có Mongo trong test")
 
 
 class _VoiceWebSocket:
@@ -25,6 +29,9 @@ def test_voice_config_bat_buoc_dang_nhap(monkeypatch):
     assert client.get("/api/v1/voice/config").status_code == 401
 
     app.dependency_overrides[require_auth] = lambda: {"id": "u1"}
+    # Cấu hình giọng đọc từ DB (voice/store.py): không có Mongo thì đi thẳng nhánh env, khỏi chờ hết hạn kết nối.
+    monkeypatch.setattr(store, "get_db", _no_db)
+    store.clear_cache()
     monkeypatch.setattr(router.settings, "asr_grpc_uri", "127.0.0.1:9112")
     monkeypatch.setattr(router.settings, "asr_grpc_token", "")
     monkeypatch.setattr(router.settings, "tts_ws_url", "ws://127.0.0.1:8767")
