@@ -171,7 +171,8 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Phường Vạn Thạnh",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Phường Nha Trang"
+        "xa_moi": "Phường Nha Trang",
+        "huyen_cu": "Nha Trang"
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -196,6 +197,42 @@
         "xa_cu": "Phường Phước Hòa",
         "tinh_moi": "Khánh Hòa",
         "xa_moi": "Phường Nha Trang"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Xương Huân",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Nha Trang",
+        "ghi_chu": "Nhập vào phường Vạn Thạnh 1/11/2024 (NQ 1196)"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Vạn Thắng",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Nha Trang",
+        "huyen_cu": "Nha Trang",
+        "ghi_chu": "Nhập vào phường Vạn Thạnh 1/11/2024 (NQ 1196)"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Phước Tiến",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Nha Trang",
+        "ghi_chu": "Nhập vào phường Tân Tiến 1/11/2024 (NQ 1196)"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Phước Tân",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Nha Trang",
+        "ghi_chu": "Nhập vào phường Tân Tiến 1/11/2024 (NQ 1196)"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Tân Lập",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Nha Trang",
+        "ghi_chu": "Nhập vào phường Tân Tiến 1/11/2024 (NQ 1196)"
     },
     {
         "tinh_cu": "Ninh Thuận",
@@ -258,6 +295,27 @@
         "xa_moi": "Phường Phan Rang"
     },
     {
+        "tinh_cu": "Ninh Thuận",
+        "xa_cu": "Phường Mỹ Hương",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Phan Rang",
+        "ghi_chu": "Nhập vào phường Kinh Dinh 1/11/2024 (NQ 1198)"
+    },
+    {
+        "tinh_cu": "Ninh Thuận",
+        "xa_cu": "Phường Tấn Tài",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Phan Rang",
+        "ghi_chu": "Nhập vào phường Kinh Dinh 1/11/2024 (NQ 1198)"
+    },
+    {
+        "tinh_cu": "Ninh Thuận",
+        "xa_cu": "Phường Thanh Sơn",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Phan Rang",
+        "ghi_chu": "Nhập vào phường Phủ Hà 1/11/2024 (NQ 1198)"
+    },
+    {
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Phường Ngọc Hiệp",
         "tinh_moi": "Khánh Hòa",
@@ -294,6 +352,13 @@
         "xa_moi": "Phường Tây Nha Trang"
     },
     {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Phường Phương Sơn",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Tây Nha Trang",
+        "ghi_chu": "Nhập vào phường Phương Sài 1/11/2024 (NQ 1196)"
+    },
+    {
         "tinh_cu": "Ninh Thuận",
         "xa_cu": "Phường Đô Vinh",
         "tinh_moi": "Khánh Hòa",
@@ -327,7 +392,8 @@
         "tinh_cu": "Ninh Thuận",
         "xa_cu": "Phường Đông Hải",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Phường Đông Hải"
+        "xa_moi": "Phường Đông Hải",
+        "chinh": true
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -351,7 +417,15 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Ninh Phước",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Phường Đông Ninh Hòa"
+        "xa_moi": "Phường Đông Ninh Hòa",
+        "huyen_cu": "Ninh Hòa"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Xã Ninh Vân",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Phường Đông Ninh Hòa",
+        "ghi_chu": "Nhập vào xã Ninh Phước 1/11/2024 (NQ 1196)"
     },
     {
         "tinh_cu": "Ninh Thuận",
@@ -435,7 +509,8 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Ninh Sơn",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Bắc Ninh Hòa"
+        "xa_moi": "Xã Bắc Ninh Hòa",
+        "huyen_cu": "Ninh Hòa"
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -453,13 +528,15 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Cam An Bắc",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Cam An"
+        "xa_moi": "Xã Cam An",
+        "chinh": true
     },
     {
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Cam An Nam",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Cam An"
+        "xa_moi": "Xã Cam An",
+        "chinh": true
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -471,13 +548,15 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Cam Hiệp Bắc",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Cam Hiệp"
+        "xa_moi": "Xã Cam Hiệp",
+        "chinh": true
     },
     {
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Cam Hiệp Nam",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Cam Hiệp"
+        "xa_moi": "Xã Cam Hiệp",
+        "chinh": true
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -616,6 +695,20 @@
         "xa_cu": "Xã Diên Lâm",
         "tinh_moi": "Khánh Hòa",
         "xa_moi": "Xã Diên Lâm"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Xã Diên Đồng",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Xã Diên Lâm",
+        "ghi_chu": "Nhập vào xã Xuân Đồng 1/11/2024 (NQ 1196)"
+    },
+    {
+        "tinh_cu": "Khánh Hòa",
+        "xa_cu": "Xã Diên Xuân",
+        "tinh_moi": "Khánh Hòa",
+        "xa_moi": "Xã Diên Lâm",
+        "ghi_chu": "Nhập vào xã Xuân Đồng 1/11/2024 (NQ 1196)"
     },
     {
         "tinh_cu": "Khánh Hòa",
@@ -1155,7 +1248,8 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Vạn Thắng",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Vạn Thắng"
+        "xa_moi": "Xã Vạn Thắng",
+        "huyen_cu": "Vạn Ninh"
     },
     {
         "tinh_cu": "Ninh Thuận",
@@ -1197,7 +1291,8 @@
         "tinh_cu": "Khánh Hòa",
         "xa_cu": "Xã Vạn Thạnh",
         "tinh_moi": "Khánh Hòa",
-        "xa_moi": "Xã Đại Lãnh"
+        "xa_moi": "Xã Đại Lãnh",
+        "huyen_cu": "Vạn Ninh"
     },
     {
         "tinh_cu": "Khánh Hòa",

@@ -70,6 +70,14 @@ def test_khong_con_cho_trong_nao_khac():
     assert found <= {"province", "ward"}, f"chỗ trống chưa ai thay: {found - {'province', 'ward'}}"
 
 
+def test_an_toan_thuc_pham_bo_y_te_chon_radio_so():
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    link = next(item for item in KE_KHAI_LINKS if item.get("code") == "1.013855")
+    assert link["selectSo"] is True
+    assert link["submitCardIncludes"] == "Cơ quan thực hiện: Sở Y tế"
+
+
 # ── Chặng cổng tỉnh Quảng Ninh (provincePortalFlow) — trợ lý dùng CHUNG cấu hình ke_khai_links với Auto Fill ──
 _QN_LOC = {"province": "Tỉnh Quảng Ninh", "province_slug": "quangninh", "ward": "Phường Hạ Long"}
 

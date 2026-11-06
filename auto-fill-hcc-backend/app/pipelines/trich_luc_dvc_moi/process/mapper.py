@@ -67,6 +67,12 @@ _OTHER = "Khác"
 _ID_LABEL_RE = re.compile(r"cmnd|cccd|can cuoc|chung minh|giay to tuy than|giay to hop le|dinh danh")
 _ID_LOOKAHEAD_LINES = 3
 
+# Trích lục khai tử/khai sinh in hai dòng "Số:": số trích lục đầu giấy ("27/TLKT-BS", "2575/2026/TLKT-BS") và
+# "Số: <n> ngày ..." dưới nơi đăng ký. Ô Số đăng ký lấy số đầu giấy; LLM hay vớ dòng dưới rồi tự ghép năm, mà
+# siết prompt thì các giấy khác mất luôn phần năm → chốt ở đây.
+_EXTRACT_NO_RE = re.compile(r"(?<![\d/])(\d{1,6}(?:\s*/\s*\d{4})?\s*/\s*TLK([TS])(?:\s*-\s*[A-Z]{1,3})?)\b")
+_EXTRACT_CODE_EVENT = {"T": "death", "S": "birth"}
+
 # Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ; số 12 chữ số của trẻ là số định danh, không phải
 # số giấy tờ tùy thân.
 _CAN_CUOC_MIN_AGE = 14
@@ -153,6 +159,16 @@ def _id_card_numbers(values: dict, options: dict) -> set[str]:
         for near in lines[index:index + _ID_LOOKAHEAD_LINES]:
             found.update(n for n in map(_digits, re.findall(r"\d[\d .]{7,}\d", near)) if len(n) in (9, 12))
     return {n for n in found if len(n) in (9, 12)}
+
+
+def _extract_number(event: str, ocr_text: str) -> str:
+    """Số in đầu trích lục đúng loại cần cấp. Hồ sơ có tờ khai thì số theo tờ khai; nhiều số khác nhau (trích lục
+    của nhiều người) thì không biết của ai → trả rỗng để giữ số lượt trích đọc ra."""
+    if "to khai" in _fold(ocr_text):
+        return ""
+    found = {re.sub(r"\s+", "", match[1]) for match in _EXTRACT_NO_RE.finditer(ocr_text)
+             if _EXTRACT_CODE_EVENT[match[2]] == event}
+    return found.pop() if len(found) == 1 else ""
 
 
 def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
@@ -368,7 +384,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
     # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
     # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.
-    registration_no = values.get("GiayTo_So")
+    registration_no = _extract_number(event, str(options.get("_ocr_text") or "")) or values.get("GiayTo_So")
     if _digits(registration_no) in _id_card_numbers(values, options):
         warnings.append("Số đăng ký đọc ra trùng số CMND/CCCD trong hồ sơ — đã bỏ trống, cán bộ nhập ô Số đăng ký "
                         "theo dòng \"Số:\" ở đầu giấy hộ tịch.")

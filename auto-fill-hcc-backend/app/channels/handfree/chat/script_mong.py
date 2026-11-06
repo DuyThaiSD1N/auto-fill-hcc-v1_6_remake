@@ -137,6 +137,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký mua/thuê/thuê mua nhà ở xã hội 1.014632); ghép từ
     # "cho-thue-thue-mua-nha-o-xa-hoi" đã có trong file, thêm "yuav" (mua) đứng trước.
     "dang-ky-nha-o-xa-hoi-bac-ninh": "Cuv npe yuav / xauj tsev nyob pab pej xeem (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Tuyên Quang — đăng ký mua/thuê/thuê mua nhà ở xã hội 1.014632).
+    "dang-ky-nha-o-xa-hoi-tuyen-quang": "Cuv npe yuav / xauj tsev nyob pab pej xeem (Tuyên Quang)",
     # BẢN NHÁP chờ anh Dư soát — 14 thẻ Quảng Ninh (01/11): ghép y như thẻ Bắc Ninh cùng loại. TỪ MỚI: "ntsuas av"
     # (đo đạc đất), "tsev" + "saum" (nhà trên đất), "tus tswv" (chủ), "suav nyiaj" (tính tiền), "ploj" (mất),
     # "tsis tas thov" (không phải xin).
@@ -287,6 +289,10 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.009397) — "npaj" (tổ chức, chuẩn bị) đã có; TỪ MỚI "ua yeeb yam" (biểu
     # diễn nghệ thuật).
     "to-chuc-bieu-dien-nghe-thuat": "Npaj ua yeeb yam",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.004605) — "neeg coj kev mus ncig" (hướng dẫn viên du lịch), "ntawv lees
+    # paub" (giấy chứng nhận), "kawm" (học) đã có; TỪ MỚI "kev paub tshiab" (kiến thức mới = cập nhật kiến thức).
+    "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich":
+        "Ntawv lees paub kawm kev paub tshiab rau neeg coj kev mus ncig",
     "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
     # BẢN NHÁP chờ anh Dư soát (Bộ Công Thương 2.000591, cấp lần đầu) — ghép từ đã có: "muab" (cấp), "chaw ua zaub

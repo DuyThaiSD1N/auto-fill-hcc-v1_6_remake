@@ -440,6 +440,70 @@ def test_so_dang_ky_that_van_giu():
     assert not any("trùng số CMND/CCCD" in w for w in warnings)
 
 
+# Trích lục (bản sao) mẫu in: số trích lục đầu giấy + dòng "Số: <n> ngày ..." dưới nơi đăng ký.
+_OCR_TRICH_LUC_KHAI_TU = """UBND PHƯỜNG X
+Số: 27/TLKT-BS
+Phường X, ngày 02 tháng 3 năm 2021
+TRÍCH LỤC KHAI TỬ
+(BẢN SAO)
+Họ, chữ đệm, tên: TRAN THI B
+Đã được đăng ký khai tử tại: UBND phường X
+Số: 9 ngày 02 tháng 3 năm 2021
+Thực hiện trích lục từ: Sổ đăng ký khai tử"""
+_OCR_TO_KHAI = """TỜ KHAI
+CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH
+Đã đăng ký tại: UBND phường X ngày 02 tháng 3 năm 2021 số 9 Quyển số: 01"""
+_KHAI_TU = {**SUBJECT, "GiayTo_LoaiSuKien": "death", "GiayTo_TenGiayTo": "Trích lục khai tử",
+            "GiayTo_NgayDangKy": "02/03/2021"}
+
+
+def _so_dang_ky(values: dict, ocr: str, event="khai tử") -> str:
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_ocr_text": ocr,
+                                    "_reasoning_context": _context("Không xác định", event=event)})
+    return {f["name"]: f["value"] for f in out}.get("citizencauhoi3", "")
+
+
+@pytest.mark.parametrize("llm_value", ["9/2021", "9", "9 ngày 02/03/2021", ""])
+def test_so_dang_ky_trich_luc_lay_so_dau_giay(llm_value):
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": llm_value}, _OCR_TRICH_LUC_KHAI_TU) == "27/TLKT-BS"
+
+
+@pytest.mark.parametrize("line,expected", [
+    ("Số: 32 /TLKT-BS", "32/TLKT-BS"),
+    ("Số: 35/TLKT", "35/TLKT"),
+    ("Số: 2575/2026/TLKT-BS Phường X, ngày 05 tháng 10 năm 2026", "2575/2026/TLKT-BS"),
+])
+def test_so_dang_ky_trich_luc_cac_dang_in(line, expected):
+    ocr = _OCR_TRICH_LUC_KHAI_TU.replace("Số: 27/TLKT-BS", line)
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == expected
+
+
+def test_so_dang_ky_trich_luc_khai_sinh():
+    ocr = "Số: 64 /TLKS-BS\nTRÍCH LỤC KHAI SINH\nĐăng ký khai sinh tại: UBND phường X\nSố: 140 ngày: 17/4/2013"
+    assert _so_dang_ky({**SUBJECT, "GiayTo_So": "140/2013"}, ocr, event="khai sinh") == "64/TLKS-BS"
+
+
+def test_ho_so_co_to_khai_thi_so_theo_to_khai():
+    ocr = _OCR_TO_KHAI + "\n" + _OCR_TRICH_LUC_KHAI_TU
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == "9/2021"
+
+
+def test_trich_luc_khac_loai_khong_lay_so_dau_giay():
+    assert _so_dang_ky({**SUBJECT, "GiayTo_So": "12/1990"}, _OCR_TRICH_LUC_KHAI_TU, event="khai sinh") == "12/1990"
+
+
+def test_nhieu_trich_luc_cung_loai_giu_so_luot_trich():
+    ocr = _OCR_TRICH_LUC_KHAI_TU + "\n" + _OCR_TRICH_LUC_KHAI_TU.replace("27/TLKT-BS", "28/TLKT-BS")
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == "9/2021"
+
+
+def test_ma_trich_luc_khac_khong_thay_so_dang_ky():
+    # Trích lục cải chính: số đầu giấy là của việc cải chính, không phải số đăng ký gốc.
+    ocr = "Số: 452/2026/TLCCHT\nTRÍCH LỤC\nSố: 385 ngày 06/06/1985"
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "385/1985"}, ocr) == "385/1985"
+
+
 def _run_with_vision(monkeypatch, fields: list[dict], vision_reply: str):
     from app.pipelines.trich_luc_dvc_moi.process import runner as tl_runner
 

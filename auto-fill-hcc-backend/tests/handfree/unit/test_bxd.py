@@ -81,6 +81,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", ("tenHoSo",)),
     ("cap-phep-long-duong-via-he", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("cho-thue-thue-mua-nha-o-xa-hoi", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("dang-ky-nha-o-xa-hoi-tuyen-quang", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("cap-giay-phep-chat-ha-cay-xanh", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("chap-thuan-dau-noi-tam", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
@@ -364,6 +365,20 @@ async def test_sang_buoc_nhan_ket_qua_thi_doc_lua_chon_tren_trang_va_hien_the():
     pick = await _turn(conv, "action", "bxd_result_pick", {"name": "receivingKind",
                                                            "value": "Nhận qua dịch vụ bưu chính"})
     assert pick.actions[0]["type"] == "bxd_result_set"
+    # Đổi cách nhận xong vẫn nhắc tích ô cam đoan (nguyên văn) + nhập mã xác nhận — câu cuối trước khi nộp.
+    changed = await _turn(conv, "action", "bxd_result_report",
+                          {"groups": RECEIVING, "changed": {"name": "receivingKind", "value": "Nhận qua dịch vụ bưu chính",
+                                                            "ok": True}})
+    assert changed.display_md.startswith("✓ Đã đổi **Hình thức nhận kết quả** sang **Nhận qua dịch vụ bưu chính**.")
+    assert _trails(changed) == [vi.BXD_SUBMIT_GUIDE["md"]]
+    assert "đúng sự thật và đồng ý chịu trách nhiệm trước pháp luật về lời khai trên" in vi.BXD_SUBMIT_GUIDE["md"]
+    assert "**Mã xác nhận**" in vi.BXD_SUBMIT_GUIDE["md"]
+    assert "nhập mã xác nhận" in changed.tts_text
+    assert _sends(changed) == [bxd.SUBMIT_SEND]
+    failed = await _turn(conv, "action", "bxd_result_report",
+                         {"groups": RECEIVING, "changed": {"name": "receivingKind", "value": "Nhận qua dịch vụ bưu chính",
+                                                           "ok": False}})
+    assert _trails(failed) == [vi.BXD_SUBMIT_GUIDE["md"]]
 
 
 async def test_bam_nut_nop_thi_bam_nop_ho_so_ngay_noi_thi_hoi_xac_nhan():

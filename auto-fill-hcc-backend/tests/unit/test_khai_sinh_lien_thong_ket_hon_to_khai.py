@@ -1,6 +1,9 @@
 """Khai sinh liên thông: thông tin giấy chứng nhận kết hôn chép trên dòng in sẵn của TỜ KHAI (hồ sơ không kèm giấy
 kết hôn thật) vẫn phải điền; giấy kết hôn thật thì thắng tờ khai."""
-from app.pipelines.khai_sinh_lien_thong.process.mapper import enrich
+import pytest
+
+from app.pipelines.khai_sinh_lien_thong.process.mapper import _QUOC_TICH_ALIASES, _foreign_nationality, enrich
+from app.pipelines.khai_sinh_lien_thong.process.schema import QUOC_TICH_QUOC_GIA
 
 
 def _gcn(values: dict) -> dict:
@@ -123,6 +126,187 @@ def test_cha_da_co_tu_nguon_khac_ma_khac_ten_thi_khong_lay_ben_chong():
                     "GcnKetHon_Chong_NgaySinh": "06/02/1985"})
     assert out["ChaHoTen"] == "LÊ VĂN BÌNH"
     assert "ChaNgaySinh" not in out
+
+
+# ── Cha/mẹ là người nước ngoài ──
+# OCR giấy kết hôn hai cột: mỗi dòng gộp cả hai bên, cột đầu là vợ.
+_OCR_CHONG_NUOC_NGOAI = """===== Kết hôn.pdf (tiengnoi) =====
+Số: 12/2026
+GIẤY CHỨNG NHẬN KẾT HÔN
+Họ, chữ đệm, tên vợ: Họ, chữ đệm, tên chồng:
+TRẦN THỊ MAI TRAN JOHN
+Ngày, tháng, năm sinh: 07/05/1990 Ngày, tháng, năm sinh: 06/02/1985
+Dân tộc: Kinh Dân tộc: Kinh
+Quốc tịch: Việt Nam Quốc tịch: Canada
+Nơi cư trú: 1 Đường A, phường B, tỉnh C Nơi cư trú: Unit 9, 100 Sample Road, Toronto, Ontario, Ca-na-đa (Canadian)
+Giấy tờ tùy thân: Thẻ căn cước công dân số 001190000001, Cục CS QLHC về trật tự xã hội cấp ngày 01/02/2021 Giấy tờ tùy thân: Hộ chiếu số X1234567, Cơ quan có thẩm quyền của Canada cấp ngày 03/04/2025
+Nơi đăng ký kết hôn: Ủy ban nhân dân phường B, tỉnh C
+"""
+_LLM_BO_SOT_QUOC_TICH = {"ThongTinMe_HoTen": "Trần Thị Mai", "ThongTinMe_SoDinhDanh": "001190000001",
+                         "ThongTinMe_DanToc": "Kinh", "ThongTinMe_NoiCuTru": {"tinh": "Khánh Hòa", "xa": "Nha Trang"},
+                         "GcnKetHon_So": "12/2026", "GcnKetHon_Vo_HoTen": "TRẦN THỊ MAI",
+                         "GcnKetHon_Vo_SoGiayTo": "001190000001", "GcnKetHon_Chong_HoTen": "TRAN JOHN",
+                         "GcnKetHon_Chong_NgaySinh": "06/02/1985", "GcnKetHon_Chong_SoGiayTo": "X1234567",
+                         "GcnKetHon_Chong_DanToc": "Kinh"}
+
+
+def _enrich_ocr(values: dict, ocr_text: str) -> list[dict]:
+    return enrich([{"name": k, "value": v} for k, v in values.items()], ocr_text=ocr_text)
+
+
+def _values(fields: list[dict]) -> dict:
+    return {f["name"]: f.get("value") for f in fields}
+
+
+def test_llm_bo_sot_quoc_tich_van_doc_duoc_cha_nguoi_nuoc_ngoai_tu_ocr_giay_ket_hon():
+    out = _values(_enrich_ocr(_LLM_BO_SOT_QUOC_TICH, _OCR_CHONG_NUOC_NGOAI))
+    assert out["ChaMaQuocTich"] == "Ca-na-đa (Canadian)"
+    assert out["ChaMaDanToc"] == "Khác"
+    assert out["ChaDantocKhac"] == "Ca-na-đa (Canadian)"
+    assert (out["ChaHo"], out["ChaTen"]) == ("TRAN", "JOHN")
+    assert out["ChaHoChieuSo"] == "X1234567"
+    assert out["ChaHoChieuNgayCap"] == "03/04/2025"
+    assert out["ChaHoChieuNoiCap"] == "Cơ quan có thẩm quyền của Canada"
+    # Ô Quốc gia bị cổng khoá nên tên nước nằm lại trong địa chỉ.
+    assert out["ChaDiaChi"] == {"diaChi": "Unit 9, 100 Sample Road, Toronto, Ontario, Ca-na-đa (Canadian)"}
+    # Mẹ vẫn là người Việt.
+    assert out["MeMaQuocTich"] == "Việt Nam"
+    assert out["MeMaDanToc"] == "Kinh"
+    assert out["MeSoGiayTo"] == "001190000001"
+    assert "MeHoChieuSo" not in out
+
+
+def test_cha_nuoc_ngoai_khong_gui_o_cong_go_hoac_khoa():
+    out = _values(_enrich_ocr(_LLM_BO_SOT_QUOC_TICH, _OCR_CHONG_NUOC_NGOAI))
+    # Cổng gỡ ô Số định danh; xoá trắng và khoá Loại cư trú, Quốc gia → gửi chỉ ra "không điền được".
+    assert not {"ChaSoGiayTo", "ChaLoaiCuTru", "ChaMaQuocGia"} & set(out)
+
+
+def test_cha_nuoc_ngoai_quoc_tich_phai_dien_truoc_cac_o_con_lai():
+    names = [f["name"] for f in _enrich_ocr(_LLM_BO_SOT_QUOC_TICH, _OCR_CHONG_NUOC_NGOAI)]
+    assert names.index("ChaMaQuocTich") < names.index("ChaMaDanToc") < names.index("ChaDantocKhac")
+    for later in ("ChaHo", "ChaHoChieuSo", "ChaHoChieuNgayCap", "ChaHoChieuNoiCap", "ChaDiaChi"):
+        assert names.index("ChaMaQuocTich") < names.index(later)
+
+
+def test_cac_o_ho_chieu_di_duong_dien_thuong_dung_loai_o():
+    fields = {f["name"]: f for f in _enrich_ocr(_LLM_BO_SOT_QUOC_TICH, _OCR_CHONG_NUOC_NGOAI)}
+    assert fields["ChaHoChieuSo"]["comp"] == "text"
+    assert fields["ChaHoChieuNgayCap"]["comp"] == "date"
+    assert fields["ChaHoChieuNoiCap"]["comp"] == "text"
+
+
+def test_llm_tra_quoc_tich_va_ho_chieu_thi_ocr_khong_de():
+    out = _values(_enrich_ocr({**_LLM_BO_SOT_QUOC_TICH, "ThongTinBo_QuocTich": "Ca-na-đa",
+                               "ThongTinBo_NgayCapHoChieu": "05/06/2024", "ThongTinBo_NoiCapHoChieu": "Cơ quan B"},
+                              _OCR_CHONG_NUOC_NGOAI))
+    assert out["ChaHoChieuSo"] == "X1234567"
+    assert out["ChaHoChieuNgayCap"] == "05/06/2024"
+    assert out["ChaHoChieuNoiCap"] == "Cơ quan B"
+
+
+def test_me_nguoi_nuoc_ngoai_cu_tru_tai_viet_nam_giu_dia_chi_viet_nam():
+    out = _by_name({"ThongTinMe_HoTen": "KIM MINA", "ThongTinMe_SoDinhDanh": "M12345678",
+                    "ThongTinMe_QuocTich": "Hàn Quốc", "ThongTinMe_NgayCapHoChieu": "1/2/2024",
+                    "ThongTinMe_NoiCuTru": {"tinh": "Khánh Hòa", "xa": "Nha Trang", "diaChi": "Số 1"},
+                    "ThongTinMe_NoiCuTruNuocNgoai": "Số 1, phường Nha Trang, tỉnh Khánh Hòa"})
+    assert out["MeMaQuocTich"] == "Hàn Quốc (South Korean)"
+    assert out["MeDantocKhac"] == "Hàn Quốc (South Korean)"
+    assert out["MeHoChieuSo"] == "M12345678"
+    assert out["MeHoChieuNgayCap"] == "01/02/2024"
+    assert "MeSoGiayTo" not in out and "MeLoaiCuTru" not in out and "MeMaQuocGia" not in out
+    assert out["MeDiaChi"]["xa"].endswith("Nha Trang")
+
+
+def test_nguoi_nuoc_ngoai_khong_co_dia_chi_thi_khong_gui_dia_chi():
+    out = _by_name({"ThongTinBo_HoTen": "JOHN SMITH", "ThongTinBo_QuocTich": "Hoa Kỳ"})
+    assert out["ChaMaQuocTich"] == "Hoa Kỳ (American)"
+    assert "ChaDiaChi" not in out
+
+
+def test_dia_chi_nuoc_ngoai_khong_ghi_ten_nuoc_giu_nguyen_dong():
+    out = _by_name({"ThongTinBo_HoTen": "JOHN SMITH", "ThongTinBo_QuocTich": "Mỹ",
+                    "ThongTinBo_NoiCuTruNuocNgoai": "12 Main Street, Houston, Texas"})
+    assert out["ChaDiaChi"] == {"diaChi": "12 Main Street, Houston, Texas"}
+
+
+def test_ben_chong_tren_giay_ket_hon_la_nguoi_khac_thi_khong_nhan_quoc_tich():
+    out = _values(_enrich_ocr({"ThongTinBo_HoTen": "LÊ VĂN BÌNH", "ThongTinBo_SoDinhDanh": "001085000009",
+                               "GcnKetHon_Chong_HoTen": "TRAN JOHN", "GcnKetHon_Chong_SoGiayTo": "X1234567"},
+                              _OCR_CHONG_NUOC_NGOAI))
+    assert out["ChaMaQuocTich"] == "Việt Nam"
+    assert out["ChaSoGiayTo"] == "001085000009"
+    assert "ChaHoChieuSo" not in out
+
+
+def test_giay_ket_hon_cot_chong_dung_truoc_khong_gan_nham_ben():
+    ocr = _OCR_CHONG_NUOC_NGOAI.replace("tên vợ: Họ, chữ đệm, tên chồng:", "tên chồng: Họ, chữ đệm, tên vợ:")
+    out = _values(_enrich_ocr({"ThongTinBo_HoTen": "TRAN JOHN", "GcnKetHon_Chong_HoTen": "TRAN JOHN",
+                               "ThongTinMe_HoTen": "TRẦN THỊ MAI", "GcnKetHon_Vo_HoTen": "TRẦN THỊ MAI"}, ocr))
+    assert out["ChaMaQuocTich"] == "Việt Nam"
+    assert out["MeMaQuocTich"] == "Ca-na-đa (Canadian)"
+
+
+def test_nguoi_viet_hai_ben_khong_doi_gi():
+    ocr = _OCR_CHONG_NUOC_NGOAI.replace("Quốc tịch: Canada", "Quốc tịch: Việt Nam")
+    out = _values(_enrich_ocr({"ThongTinBo_HoTen": "TRAN JOHN", "GcnKetHon_Chong_HoTen": "TRAN JOHN",
+                               "ThongTinBo_DanToc": "Kinh"}, ocr))
+    assert out["ChaMaQuocTich"] == "Việt Nam"
+    assert out["ChaMaDanToc"] == "Kinh"
+    assert out["ChaLoaiCuTru"] == "Thường trú" and out["ChaMaQuocGia"] == "Việt Nam"
+    assert "ChaHoChieuSo" not in out and "ChaDantocKhac" not in out
+
+
+def test_dan_toc_con_theo_me_khi_cha_nguoi_nuoc_ngoai():
+    out = _by_name({"Gcs_NgaySinhCon": "01/01/2026", "Tk_HoTenCon": "TRAN AN", "ThongTinBo_HoTen": "TRAN JOHN",
+                    "ThongTinBo_QuocTich": "Canada", "ThongTinBo_DanToc": "Canada",
+                    "ThongTinMe_HoTen": "LÒ THỊ MAI", "ThongTinMe_DanToc": "Thái"})
+    assert out["MaDanToc"] == "Thái"
+
+
+def test_que_quan_con_theo_me_khi_cha_nguoi_nuoc_ngoai():
+    out = _by_name({"ThongTinBo_HoTen": "TRAN JOHN", "ThongTinBo_QuocTich": "Canada",
+                    "Tk_NoiCuTruCha": {"tinh": "Ontario", "xa": "Toronto"},
+                    "ThongTinMe_HoTen": "TRẦN THỊ MAI", "ThongTinMe_QueQuan": {"tinh": "Khánh Hòa"}})
+    assert out["QqDiaChi"]["tinh"] == "Khánh Hòa"
+    khong_co_que_me = _by_name({"ThongTinBo_HoTen": "TRAN JOHN", "ThongTinBo_QuocTich": "Canada",
+                                "Tk_NoiCuTruCha": {"tinh": "Ontario", "xa": "Toronto"},
+                                "ThongTinMe_HoTen": "TRẦN THỊ MAI"})
+    assert "QqDiaChi" not in khong_co_que_me
+
+
+@pytest.mark.parametrize("raw,quoc_tich,quoc_gia", [
+    ("Canada", "Ca-na-đa (Canadian)", "Canađa"),
+    ("Ca-na-đa (Canadian)", "Ca-na-đa (Canadian)", "Canađa"),
+    ("Canadian", "Ca-na-đa (Canadian)", "Canađa"),
+    ("Hoa Kỳ", "Hoa Kỳ (American)", "Hợp chủng quốc Hoa Kỳ"),
+    ("USA", "Hoa Kỳ (American)", "Hợp chủng quốc Hoa Kỳ"),
+    ("Hợp chủng quốc Hoa Kỳ", "Hoa Kỳ (American)", "Hợp chủng quốc Hoa Kỳ"),
+    ("Hàn Quốc", "Hàn Quốc (South Korean)", "Cộng hòa Hàn Quốc"),
+    ("Cộng hòa Pháp", "Pháp (French)", "Cộng hòa Pháp"),
+    ("Úc", "Ô-xtrây-li-a (Australian)", "Ôxtrâylia"),
+    ("Đài Loan", "Trung Quốc (Đài Loan)", "ĐàI Loan, một tỉnh của Trung Quốc"),
+    ("Trung Quốc", "Trung Quốc", "Cộng hòa nhân dân Trung Hoa"),
+    ("Chinese", "Trung Quốc", "Cộng hòa nhân dân Trung Hoa"),
+    ("Nhật Bản", "Nhật Bản (Japanese)", "Nhật"),
+    ("Germany", "Đức (German)", "Cộng hòa Liên bang Đức"),
+])
+def test_ten_nuoc_quy_ve_dung_nhan_hai_o_cua_cong(raw, quoc_tich, quoc_gia):
+    assert _foreign_nationality(raw) == quoc_tich
+    assert QUOC_TICH_QUOC_GIA[quoc_tich] == quoc_gia
+
+
+@pytest.mark.parametrize("raw", ["", None, "Việt Nam", "VIỆT NAM", "Vietnam", "Vietnamese", "Việt Nam."])
+def test_nguoi_viet_khong_tinh_la_nguoi_nuoc_ngoai(raw):
+    assert _foreign_nationality(raw) == ""
+
+
+def test_nuoc_khong_co_trong_danh_muc_giu_chu_tren_giay():
+    assert _foreign_nationality("Wakanda") == "Wakanda"
+
+
+def test_alias_quoc_tich_tro_dung_nhan_co_trong_danh_muc():
+    assert set(_QUOC_TICH_ALIASES.values()) <= set(QUOC_TICH_QUOC_GIA)
 
 
 def test_benh_vien_co_trong_bang_lay_xa_theo_bang_de_xa_ocr_doc_sai():

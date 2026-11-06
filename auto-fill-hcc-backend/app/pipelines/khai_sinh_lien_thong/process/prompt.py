@@ -102,6 +102,15 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh"; "Trung"/"Trung Hoa" → "Hoa"; "C ho"/"K ho"/"Kho" → "Cơ Ho".
 - **QUAN TRỌNG VỀ DÂN TỘC KHÔNG KHỚP**: Nếu dân tộc OCR đọc được KHÔNG KHỚP với bất kỳ tên chuẩn nào trong danh sách trên (ví dụ: "Cil", "Cill" và các tên dân tộc hiếm/không rõ), BẮT BUỘC phải TRẢ VỀ GIÁ TRỊ GỐC CHÍNH XÁC như OCR đọc được. TUYỆT ĐỐI KHÔNG tự ý suy luận hoặc đổi sang dân tộc khác (như "Kinh"). Ví dụ: OCR đọc "Cil" → trả "Cil" (KHÔNG đổi thành "Kinh" hay bất kỳ tên nào khác).
 
+# ═══ E1. CHA/MẸ LÀ NGƯỜI NƯỚC NGOÀI ═══
+- GIẤY CHỨNG NHẬN KẾT HÔN in hai cột, OCR hay gộp hai bên vào một dòng: "Quốc tịch: Việt Nam Quốc tịch: Ca-na-đa" → cột đầu là VỢ (Việt Nam), cột sau là CHỒNG (Ca-na-đa). Các dòng "Nơi cư trú", "Giấy tờ tùy thân" cũng theo thứ tự đó.
+- Bên nào quốc tịch KHÁC Việt Nam → BẮT BUỘC trả ThongTinBo_QuocTich/ThongTinMe_QuocTich, chép đúng chữ trên giấy, KỂ CẢ khi họ tên viết kiểu Việt hoặc dòng dân tộc ghi "Kinh". Quốc tịch đọc trên giấy, không suy từ họ tên.
+- Người nước ngoài đó, tách dòng "Giấy tờ tùy thân: Hộ chiếu số X, <cơ quan> cấp ngày D":
+  + ThongTinBo_SoDinhDanh/ThongTinMe_SoDinhDanh = X, giữ cả chữ cái;
+  + *_NgayCapHoChieu = D (dd/mm/yyyy); *_NoiCapHoChieu = <cơ quan>.
+- Người nước ngoài cư trú Ở NƯỚC NGOÀI: *_NoiCuTruNuocNgoai = NGUYÊN dòng "Nơi cư trú" (một chuỗi); KHÔNG trả ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru/Tk_NoiCuTruCha/Tk_NoiCuTruMe và KHÔNG ép địa chỉ nước ngoài vào {tinh,xa,chiTietDuoiXa}. Cư trú tại Việt Nam thì tách như người Việt (mục F), bỏ *_NoiCuTruNuocNgoai.
+- Quốc tịch Việt Nam → bỏ *_NgayCapHoChieu, *_NoiCapHoChieu, *_NoiCuTruNuocNgoai.
+
 # ═══ F. TÁCH ĐỊA CHỈ (Tk_QueQuanCon, ThongTinBo_NoiCuTru, ThongTinMe_NoiCuTru, ThongTinBo_QueQuan, ThongTinMe_QueQuan — object {tinh,xa,chiTietDuoiXa}) ═══
 Địa chỉ hành chính 2 cấp XÃ/PHƯỜNG/THỊ TRẤN → TỈNH/THÀNH PHỐ:
 - xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại đơn vị (Xã/Phường/Thị trấn). Vd: "Xã Tả Lèng" → xa="Tả Lèng". tinh = tên tỉnh/thành phố.

@@ -553,8 +553,10 @@
   //   1.001822: cấp chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (cổng Bộ VHTTDL).
   //   1.002003: cấp lại chứng chỉ hành nghề bảo quản, tu bổ, phục hồi di tích (cổng Bộ VHTTDL).
   //   1.009397: tổ chức biểu diễn nghệ thuật (cổng Bộ VHTTDL).
+  //   1.004605: cấp GCN khóa cập nhật kiến thức cho hướng dẫn viên du lịch (cổng Bộ VHTTDL).
   const NO_FLOW_MA_TTHC = new Set([
     "1.004623", "1.001440", "1.001432", "1.004614", "1.004650", "1.001822", "1.002003", "1.009397",
+    "1.004605",
   ]);
 
   /** Đúng trang nộp hồ sơ của một mã TTHC — chỗ cán bộ TRÔNG ĐỢI trợ lý làm việc. */

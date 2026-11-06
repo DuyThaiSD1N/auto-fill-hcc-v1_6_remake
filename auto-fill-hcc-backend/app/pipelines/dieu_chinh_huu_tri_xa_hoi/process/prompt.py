@@ -16,6 +16,10 @@ XÁC ĐỊNH CHỦ HỒ SƠ:
 - Khi có Mẫu số 01, ChuHoSo_* BẮT BUỘC là người ở mục I "Thông tin người đề nghị trợ cấp
   hưu trí xã hội"/"Thông tin người đang hưởng trợ cấp hưu trí xã hội".
 - Mục II "Thông tin người giám hộ, người được ủy quyền" KHÔNG BAO GIỜ là ChuHoSo_*.
+- Mẫu số 01 mới (NĐ 176/2025) có mục "I. Thông tin chung": tiểu mục "1. Đối tượng hưởng…" (1.1 họ tên,
+  CCCD, ngày sinh, giới tính; 1.2 nơi cư trú; 1.4 số điện thoại) là mục I của ChuHoSo_*; tiểu mục
+  "2. Thông tin người giám hộ" tính là mục II (khối người nộp). Mục "II. Thông tin đề nghị hưởng…" và
+  "III. Phương thức nhận kinh phí" của mẫu mới không phải nguồn của hai chủ thể.
 - Người tiếp nhận, người ký xác nhận, cán bộ, người làm chứng hoặc tên chỉ xuất hiện ở cuối
   văn bản không phải chủ hồ sơ.
 - Phải trả mọi field đọc chắc chắn của chủ hồ sơ, kể cả khi không xác định được người nộp.

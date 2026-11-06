@@ -37,8 +37,25 @@ def _matches_anchor(text: str, name: str, identity: str) -> bool:
     return name_matches if name else identity_matches
 
 
+def _extract_new_form_sections(text: str, start: re.Match) -> tuple[str, str]:
+    """Mẫu số 01 NĐ 176/2025: "I. Thông tin chung" gồm "1. Đối tượng hưởng…" (chủ hồ sơ)
+    và "2. Thông tin người giám hộ" (tương đương mục II mẫu cũ); dừng ở "II. Thông tin đề nghị…"."""
+    tail = text[start.start():]
+    end_match = re.search(r"(?mi)^\s*II[.\s]+Thông tin", tail)
+    if end_match:
+        tail = tail[:end_match.start()]
+    split = re.split(r"(?mi)^\s*2[.)]\s*(?=Thông tin người)", tail, maxsplit=1)
+    # Bỏ danh sách chính sách đang hưởng (1.6) cho gọn, như cắt mục 7 ở mẫu cũ.
+    section_one = re.split(r"(?m)^\s*1\.6\b", split[0], maxsplit=1)[0].strip()
+    section_two = ("2. " + split[1]).strip() if len(split) > 1 else ""
+    return section_one, section_two
+
+
 def _extract_form_sections(text: str) -> tuple[str, str]:
     """Tách mục I/II để agent không phải tự tìm vai trò trong toàn văn bản."""
+    new_form_match = re.search(r"(?mi)^\s*I[.\s]+Thông tin chung", text)
+    if new_form_match:
+        return _extract_new_form_sections(text, new_form_match)
     section_one_match = re.search(
         r"(?mi)^\s*I[.\s]+Thông tin người",
         text,
@@ -72,9 +89,10 @@ def _extract_form_sections(text: str) -> tuple[str, str]:
 
 def _owner_contact_scope(section_one: str) -> str:
     """Chỉ lặp lại các dòng liên hệ; không làm lệch ưu tiên định danh về tờ khai."""
+    # Mẫu cũ: 4/5/6 (nơi cư trú, địa chỉ liên lạc, điện thoại); mẫu NĐ 176/2025: 1.2/1.3/1.4.
     matches = list(
         re.finditer(
-            r"(?ms)^\s*[456][.)]\s*.*?(?=^\s*\d+[.)]\s*|\Z)",
+            r"(?ms)^\s*(?:[456][.)]|1\.[234][.)]?)\s*.*?(?=^\s*\d+[.)]\s*|\Z)",
             section_one,
         )
     )

@@ -110,7 +110,7 @@ def test_khoi_de_nghi_dien_theo_van_ban():
     ui = _ui(fields)
     assert ui[(S_DN, LABEL_TEN_CT)] == "Đêm nhạc Mẫu - Hòa tấu (Thời lượng: 90 phút)"
     assert ui[(S_DN, LABEL_DIA_DIEM)] == _DIA_DIEM
-    assert ui[(S_DN, LABEL_THOI_GIAN)] == "05/12/2026", "ô ngày chỉ nhận một ngày → ngày đầu"
+    assert ui[(S_DN, LABEL_THOI_GIAN)] == "06/12/2026", "ô ngày chỉ nhận một ngày → ngày muộn nhất"
     assert ui[(S_DN, LABEL_DUYET_THOI_GIAN)] == "05/12/2026"
     assert ui[(S_DN, LABEL_DUYET_DIA_DIEM)].startswith("Nhà Văn hóa Mẫu")
     assert ui[(S_DN, LABEL_NGUOI_CHIU_TN)] == "Ông: Lê Văn Mẫu - Chức vụ: Giám đốc"
@@ -118,7 +118,7 @@ def test_khoi_de_nghi_dien_theo_van_ban():
     assert ui[(S_DN, LABEL_TAI_LIEU)] == (
         "Nội dung chương trình biểu diễn, Giấy đăng ký kinh doanh; Giấy tiếp nhận Nhà Văn hóa Mẫu"
     )
-    assert any("có 2 ngày" in w and "05/12/2026" in w for w in warnings)
+    assert any("có 2 ngày" in w and "ngày muộn nhất 06/12/2026" in w for w in warnings)
     assert not any("Kịch bản ghi thời gian" in w for w in warnings), "06/12 nằm trong các ngày của văn bản"
     assert any("Tỉnh Mẫu" in w and "Cơ quan giải quyết" in w for w in warnings)
 
@@ -172,6 +172,17 @@ def test_doc_ngay_nhieu_dang():
     assert mapper._dates("Lúc16h00 đến 18h20 ngày 20/11/2026") == ["20/11/2026"]
     assert mapper._dates("ngày 20 và 21 tháng 11 năm 2026") == ["20/11/2026", "21/11/2026"]
     assert mapper._dates("tháng 11 năm 2026") == []
+
+
+def test_thoi_gian_to_chuc_lay_ngay_muon_nhat():
+    for text, expected in (
+        ("Từ 20h00 – 21h20 ngày 20, 21 tháng 11 năm 2026", "21/11/2026"),
+        ("ngày 31/12/2026 và ngày 01/01/2027", "01/01/2027"),
+        ("ngày 15/02/2027, ngày 30/01/2027", "15/02/2027"),
+    ):
+        fields, warnings = mapper.enrich(_facts(DeNghi_ThoiGian=text, KichBan_ThoiGian=None), {})
+        assert _ui(fields)[(S_DN, LABEL_THOI_GIAN)] == expected, text
+        assert any(f"ngày muộn nhất {expected}" in w for w in warnings)
 
 
 def test_moi_field_emit_co_trong_ui_fields():

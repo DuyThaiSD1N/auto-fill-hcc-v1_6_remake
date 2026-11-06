@@ -6,8 +6,9 @@ import unicodedata
 from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
+from app.pipelines._shared.foreign_id import is_foreign
 from app.pipelines._shared.hospital_lookup import hospital_area, lookup_hospital
-from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
+from app.pipelines.khai_sinh_lien_thong.process.schema import QUOC_TICH_QUOC_GIA, STATIC_DEFAULTS, UI_COMP_BY_NAME
 
 
 # Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
@@ -532,13 +533,191 @@ def _nyc_candidates(values: dict, cha_noi_cu_tru, me_noi_cu_tru, ocr_text: str =
     return out
 
 
-def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
+# ── Cha/mẹ là người nước ngoài ──
+# Tên nước nhãn của cổng không suy ra được: tên tiếng Anh và tên quen gọi. Còn lại tra thẳng theo danh mục.
+_QUOC_TICH_ALIASES = {
+    "vietnamese": "Việt Nam",
+    "my": "Hoa Kỳ (American)",
+    "us": "Hoa Kỳ (American)",
+    "usa": "Hoa Kỳ (American)",
+    "america": "Hoa Kỳ (American)",
+    "unitedstates": "Hoa Kỳ (American)",
+    "unitedstatesofamerica": "Hoa Kỳ (American)",
+    "uc": "Ô-xtrây-li-a (Australian)",
+    "australia": "Ô-xtrây-li-a (Australian)",
+    "uk": "Anh (British)",
+    "britain": "Anh (British)",
+    "greatbritain": "Anh (British)",
+    "england": "Anh (British)",
+    "unitedkingdom": "Anh (British)",
+    "korea": "Hàn Quốc (South Korean)",
+    "korean": "Hàn Quốc (South Korean)",
+    "southkorea": "Hàn Quốc (South Korean)",
+    "republicofkorea": "Hàn Quốc (South Korean)",
+    "northkorea": "Triều Tiên (North Korean)",
+    "japan": "Nhật Bản (Japanese)",
+    "nhat": "Nhật Bản (Japanese)",
+    "china": "Trung Quốc",
+    "chinese": "Trung Quốc",
+    "trunghoa": "Trung Quốc",
+    "taiwan": "Trung Quốc (Đài Loan)",
+    "macao": "Trung Quốc (Ma-cao) (Macau, Chinese)",
+    "germany": "Đức (German)",
+    "france": "Pháp (French)",
+    "russia": "Nga (Russian)",
+    "russianfederation": "Nga (Russian)",
+    "italy": "I-ta-li-a (Italian)",
+    "spain": "Tây Ban Nha (Spanish)",
+    "netherlands": "Hà Lan (Dutch)",
+    "holland": "Hà Lan (Dutch)",
+    "belgium": "Bỉ (Belgian)",
+    "switzerland": "Thụy Sĩ (Swiss)",
+    "sweden": "Thụy Điển (Swedish)",
+    "norway": "Na Uy (Norwegian)",
+    "denmark": "Đan Mạch (Danis)",
+    "finland": "Phần Lan (Finnish)",
+    "poland": "Ba Lan (Polish)",
+    "austria": "Áo (Austrian)",
+    "ireland": "Ai len (Irish)",
+    "czechrepublic": "Séc (Czech)",
+    "czechia": "Séc (Czech)",
+    "ukraine": "U-crai-na (Ukrainian)",
+    "turkey": "Thổ Nhĩ Kỳ (Turkish)",
+    "india": "Ấn Độ (Indian)",
+    "laos": "Lào (Laotian)",
+    "cambodia": "Căm-pu-chia (Cambodian)",
+    "thailand": "Thái Lan (Thai)",
+    "singapore": "Xinh-ga-po (Singaporean)",
+    "malaysia": "Ma-lai-xi-a (Malaysian)",
+    "indonesia": "In-đô-nê-xi-a (Indonesian)",
+    "philippines": "Phi-líp-pin (Filipino)",
+    "myanmar": "Mi-an-ma (Burmese)",
+    "mexico": "Mê-hi-cô (Mexican)",
+    "brazil": "Bra-xin (Brazilian)",
+    "southafrica": "Nam Phi (South African)",
+    # Nhãn của cổng lấy "Nigerian" cho Ni-giê, nhưng đó là người Ni-giê-ri-a.
+    "nigeria": "Ni-giê-ri-a (Nigierian)",
+    "nigerian": "Ni-giê-ri-a (Nigierian)",
+}
+
+
+def _nation_key(value) -> str:
+    """'Cộng hòa Pháp'/'Pháp' → 'phap', 'Ca-na-đa'/'Canađa'/'Canada' → 'canada': chỉ còn chữ và số, bỏ danh xưng nhà nước."""
+    folded = re.sub(r"^(cong hoa lien bang|cong hoa|lien bang|vuong quoc|hop chung quoc|nha nuoc)\s+", "", _fold(value))
+    return re.sub(r"[^a-z0-9]", "", folded)
+
+
+def _nation_index() -> dict[str, str]:
+    """Mọi cách gọi một nước → nhãn ô Quốc tịch: tên, tên trong ngoặc, nhãn ô Quốc gia."""
+    index = dict(_QUOC_TICH_ALIASES)
+    for quoc_tich, quoc_gia in QUOC_TICH_QUOC_GIA.items():
+        for part in (quoc_tich, quoc_gia, *re.split(r"[()/,]", quoc_tich)):
+            key = _nation_key(part)
+            if key:
+                index.setdefault(key, quoc_tich)
+    return index
+
+
+_NATION_INDEX = _nation_index()
+
+
+def _nation_label(value) -> str:
+    """Tên nước/quốc tịch đọc trên giấy → nhãn ô Quốc tịch của cổng; không nhận ra → rỗng."""
+    text = str(value or "")
+    for part in (text, *re.split(r"[()/,]", text)):
+        label = _NATION_INDEX.get(_nation_key(part))
+        if label:
+            return label
+    return ""
+
+
+def _foreign_nationality(value) -> str:
+    """Nhãn quốc tịch của người nước ngoài; người Việt hoặc giấy không ghi → rỗng.
+
+    Nước không có trong danh mục thì giữ chữ trên giấy: extension báo không chọn được, cán bộ chọn tay."""
+    text = " ".join(str(value or "").split()).strip(" .,;")
+    if not is_foreign(text):
+        return ""
+    label = _nation_label(text) or text
+    return "" if label == "Việt Nam" else label
+
+
+_VN_ADDRESS = re.compile(r"\b(tỉnh|thành phố|tp|phường|xã|thị trấn)\b", re.IGNORECASE)
+
+
+def _abroad_address(value) -> str:
+    """Dòng nơi cư trú nếu ở nước ngoài; người nước ngoài cư trú tại Việt Nam → rỗng.
+
+    Giữ nguyên cả tên nước: ô Quốc gia bị cổng khoá nên ô Chi tiết là chỗ duy nhất còn ghi được nước cư trú."""
+    text = " ".join(str(value or "").split()).strip(" .,;")
+    nuoc = _nation_label(text.rsplit(",", 1)[-1])
+    if nuoc == "Việt Nam" or (not nuoc and _VN_ADDRESS.search(text)):
+        return ""
+    return text
+
+
+# Giấy kết hôn in hai cột nên OCR gộp hai bên vào một dòng: "Quốc tịch: Việt Nam Quốc tịch: Ca-na-đa". Tiêu đề IN HOA để
+# không nhầm dòng "Thông tin về Giấy chứng nhận kết hôn" trên tờ khai.
+_GCN_BLOCK = re.compile(r"GIẤY CHỨNG NHẬN KẾT HÔN(.*?)(?:Nơi đăng ký kết hôn|\n=====|\Z)", re.DOTALL)
+_PASSPORT = re.compile(
+    r"(?i:hộ chiếu)\s*(?i:số)?\s*:?\s*([A-Z0-9]{6,})[\s,;.]*(.*?)\s*(?i:(?:cấp\s+)?ngày(?:\s+cấp)?)\s*:?\s*"
+    r"(\d{1,2}/\d{1,2}/\d{4})"
+)
+
+
+def _marriage_columns(block: str, label: str) -> list[str]:
+    """Giá trị của một nhãn in ở cả hai cột, theo thứ tự trên giấy."""
+    found = re.findall(rf"{label}\s*:\s*([^\n|]*?)\s*(?={label}\s*:|\||$)", block, flags=re.IGNORECASE | re.MULTILINE)
+    return [value.strip(" .,;") for value in found]
+
+
+def _marriage_sides(ocr_text: str) -> dict:
+    """Đọc thẳng GIẤY KẾT HÔN trong OCR: {"Vo": {...}, "Chong": {...}} gồm QuocTich, GiayTo, NoiCuTru.
+
+    LLM hay bỏ sót quốc tịch của bên nước ngoài dù OCR đọc rõ; mục này là nguồn bù. Thiếu một cột thì không biết
+    giá trị thuộc bên nào → bỏ cả nhãn đó."""
+    match = _GCN_BLOCK.search(str(ocr_text or ""))
+    if not match:
+        return {}
+    block = match.group(1)
+    vo = re.search(r"\bvợ\b|bên nữ", block, re.IGNORECASE)
+    chong = re.search(r"\bchồng\b|bên nam", block, re.IGNORECASE)
+    first, second = ("Chong", "Vo") if vo and chong and chong.start() < vo.start() else ("Vo", "Chong")
+    sides: dict = {"Vo": {}, "Chong": {}}
+    for key, label in (("QuocTich", "Quốc tịch"), ("GiayTo", "Giấy tờ tùy thân"), ("NoiCuTru", "Nơi cư trú")):
+        columns = _marriage_columns(block, label)
+        if len(columns) == 2:
+            sides[first][key], sides[second][key] = columns
+    return sides
+
+
+def _fill_foreign_facts(values: dict, role: str, facts: dict) -> None:
+    """Bù quốc tịch, hộ chiếu, nơi cư trú của người nước ngoài từ giấy kết hôn; ô LLM đã trả thì giữ."""
+    quoc_tich = facts.get("QuocTich")
+    if quoc_tich and not _foreign_nationality(values.get(f"{role}_QuocTich")):
+        values[f"{role}_QuocTich"] = quoc_tich
+    if not _foreign_nationality(values.get(f"{role}_QuocTich")):
+        return
+    passport = _PASSPORT.search(facts.get("GiayTo") or "")
+    if passport:
+        so, noi_cap, ngay_cap = passport.groups()
+        values.setdefault(f"{role}_SoDinhDanh", so)
+        values.setdefault(f"{role}_NgayCapHoChieu", ngay_cap)
+        if noi_cap:
+            values.setdefault(f"{role}_NoiCapHoChieu", noi_cap)
+    if facts.get("NoiCuTru"):
+        values.setdefault(f"{role}_NoiCuTruNuocNgoai", facts["NoiCuTru"])
+
+
+def _fill_from_marriage_cert(values: dict, role: str, side: str, facts: dict | None = None) -> None:
     """Bù thông tin cha/mẹ từ bên tương ứng trên GIẤY KẾT HÔN khi đúng là một người.
 
     Đúng người = trùng số giấy tờ, hoặc trùng họ tên (bỏ dấu/hoa thường). Vai trò chưa có danh tính
     từ nguồn nào khác (vd hồ sơ không kèm CCCD cha, giấy chứng sinh không ghi cha) → nhận luôn bên
     tương ứng trên giấy kết hôn. Chỉ bù ô còn trống; riêng ngày sinh chỉ có năm (giấy chứng sinh hay
     ghi "1990") được thay bằng ngày đầy đủ cùng năm.
+
+    facts: bên này đọc thẳng từ OCR (xem _marriage_sides), dùng bù thông tin người nước ngoài.
     """
     gcn = {key: values.get(f"GcnKetHon_{side}_{key}") for key in ("HoTen", "NgaySinh", "SoGiayTo", "DanToc")}
     gcn_id = _digits(gcn["SoGiayTo"])
@@ -568,6 +747,7 @@ def _fill_from_marriage_cert(values: dict, role: str, side: str) -> None:
         )
     if gcn["DanToc"] and not values.get(f"{role}_DanToc"):
         values[f"{role}_DanToc"] = gcn["DanToc"]
+    _fill_foreign_facts(values, role, facts or {})
 
 
 def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "") -> list[dict]:
@@ -591,8 +771,12 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         values["ThongTinBo_HoTen"] = _align_father_surname(
             values["ThongTinBo_HoTen"], values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon")
         )
-    _fill_from_marriage_cert(values, "ThongTinMe", "Vo")
-    _fill_from_marriage_cert(values, "ThongTinBo", "Chong")
+    marriage_sides = _marriage_sides(ocr_text)
+    _fill_from_marriage_cert(values, "ThongTinMe", "Vo", marriage_sides.get("Vo"))
+    _fill_from_marriage_cert(values, "ThongTinBo", "Chong", marriage_sides.get("Chong"))
+    # Nhãn quốc tịch của cha/mẹ người nước ngoài; rỗng = người Việt.
+    me_quoc_tich = _foreign_nationality(values.get("ThongTinMe_QuocTich"))
+    cha_quoc_tich = _foreign_nationality(values.get("ThongTinBo_QuocTich"))
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -613,6 +797,31 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         add(f"{prefix}Ho" if prefix else "Ho", ho)
         add(f"{prefix}ChuDem" if prefix else "ChuDem", chu_dem)
         add(f"{prefix}Ten" if prefix else "Ten", ten)
+
+    # Quốc tịch khác Việt Nam, cổng tự (changeChaMaQuocTich/changeMeMaQuocTich trong bundle của cổng):
+    #  - đặt Dân tộc mã 55 rồi khoá, ghi Dân tộc khác = tên quốc tịch;
+    #  - xoá trắng, bỏ bắt buộc và KHOÁ Loại cư trú + Quốc gia → gửi hai ô này chỉ ra "không điền được";
+    #  - gỡ ô Số định danh, hiện ba ô bắt buộc <Khoi>HoChieuSo / HoChieuNgayCap / HoChieuNoiCap.
+    def add_nationality(prefix: str, quoc_tich: str, dan_toc) -> None:
+        """Quốc tịch đi TRƯỚC mọi ô của khối vì nó quyết định các ô còn lại. Dropdown dân tộc đi trước ô DantocKhac."""
+        add(f"{prefix}MaQuocTich", quoc_tich or "Việt Nam")
+        select, khac = ("Khác", quoc_tich) if quoc_tich else _ethnicity_for_form(dan_toc)
+        add(f"{prefix}MaDanToc", select)
+        add(f"{prefix}DantocKhac", khac)
+
+    def add_identity(prefix: str, role: str, quoc_tich: str) -> None:
+        if not quoc_tich:
+            add(f"{prefix}SoGiayTo", values.get(f"{role}_SoDinhDanh"))
+            return
+        add(f"{prefix}HoChieuSo", values.get(f"{role}_SoDinhDanh"))
+        add(f"{prefix}HoChieuNgayCap", _dmy(values.get(f"{role}_NgayCapHoChieu")))
+        add(f"{prefix}HoChieuNoiCap", values.get(f"{role}_NoiCapHoChieu"))
+
+    def add_residence(prefix: str, quoc_tich: str, noi_cu_tru, dia_chi_nuoc_ngoai: str) -> None:
+        if not quoc_tich:
+            add(f"{prefix}LoaiCuTru", "Thường trú")
+            add(f"{prefix}MaQuocGia", "Việt Nam")
+        add(f"{prefix}DiaChi", {"diaChi": dia_chi_nuoc_ngoai} if dia_chi_nuoc_ngoai else noi_cu_tru)
 
     child_name = _clean_child_name(
         values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon"),
@@ -640,6 +849,13 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         or _area(values.get("Gcs_NoiThuongTruMe"))
     )
     cha_noi_cu_tru = _area(values.get("Tk_NoiCuTruCha")) or _area(values.get("ThongTinBo_NoiCuTru"))
+    # Cư trú ở nước ngoài: địa chỉ không tách được tỉnh/xã Việt Nam, đi riêng qua add_residence.
+    me_dia_chi_nn = _abroad_address(values.get("ThongTinMe_NoiCuTruNuocNgoai")) if me_quoc_tich else ""
+    cha_dia_chi_nn = _abroad_address(values.get("ThongTinBo_NoiCuTruNuocNgoai")) if cha_quoc_tich else ""
+    if me_dia_chi_nn:
+        me_noi_cu_tru = None
+    if cha_dia_chi_nn:
+        cha_noi_cu_tru = None
 
     # Ngoại lệ Lâm Đồng dùng ở HAI nơi: dân tộc con (trong khối has_child) và quê quán con
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
@@ -668,11 +884,12 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         #  6) Con mang họ mẹ → theo dân tộc mẹ.
         #  7) Chỉ có dân tộc cha (không biết dân tộc mẹ) → theo dân tộc cha.
         #  8) Chỉ có dân tộc mẹ (không biết dân tộc cha) → theo dân tộc mẹ.
+        #  Cha/mẹ người nước ngoài không có dân tộc trong danh mục → con chỉ suy theo người còn lại.
         dan_toc_con = values.get("Tk_DanTocCon") or values.get("Gcs_DanTocCon")
         dan_toc_suy_luan = False
         if not dan_toc_con:
-            dt_cha = values.get("ThongTinBo_DanToc")
-            dt_me = values.get("ThongTinMe_DanToc")
+            dt_cha = "" if cha_quoc_tich else values.get("ThongTinBo_DanToc")
+            dt_me = "" if me_quoc_tich else values.get("ThongTinMe_DanToc")
             ho_con = _fold(_first_token(child_name))
             ho_cha = _fold(_first_token(values.get("ThongTinBo_HoTen")))
             ho_me = _fold(_first_token(values.get("ThongTinMe_HoTen")))
@@ -714,32 +931,22 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         add("NsDiaChi", ns_area)
 
     if has_mother:
+        add_nationality("Me", me_quoc_tich, values.get("ThongTinMe_DanToc"))
         add_name("Me", values.get("ThongTinMe_HoTen"))
         add("MeNgaySinh", values.get("ThongTinMe_NgaySinh"))
-        add("MeSoGiayTo", values.get("ThongTinMe_SoDinhDanh"))
-        dan_toc_me_select, dan_toc_me_khac = _ethnicity_for_form(values.get("ThongTinMe_DanToc"))
-        add("MeMaDanToc", dan_toc_me_select)
-        add("MeDantocKhac", dan_toc_me_khac)
-        add("MeMaQuocTich", values.get("ThongTinMe_QuocTich") or "Việt Nam")
-        add("MeLoaiCuTru", "Thường trú")
-        add("MeMaQuocGia", "Việt Nam")
+        add_identity("Me", "ThongTinMe", me_quoc_tich)
         # Nơi cư trú mẹ: TỜ KHAI trước, rồi ThongTinMe_NoiCuTru (CCCD đứng đầu), cuối cùng giấy chứng sinh.
-        add("MeDiaChi", me_noi_cu_tru)
+        add_residence("Me", me_quoc_tich, me_noi_cu_tru, me_dia_chi_nn)
 
     if has_father:
+        add_nationality("Cha", cha_quoc_tich, values.get("ThongTinBo_DanToc"))
         add_name("Cha", values.get("ThongTinBo_HoTen"))
         # Form liên thông dùng 1 ô họ tên gộp (ChaHoTen); form cũ dùng 3 ô tách ở trên.
         add("ChaHoTen", _upper_name(values.get("ThongTinBo_HoTen")))
         add("ChaNgaySinh", values.get("ThongTinBo_NgaySinh"))
-        add("ChaSoGiayTo", values.get("ThongTinBo_SoDinhDanh"))
-        dan_toc_cha_select, dan_toc_cha_khac = _ethnicity_for_form(values.get("ThongTinBo_DanToc"))
-        add("ChaMaDanToc", dan_toc_cha_select)
-        add("ChaDantocKhac", dan_toc_cha_khac)
-        add("ChaMaQuocTich", values.get("ThongTinBo_QuocTich") or "Việt Nam")
-        add("ChaLoaiCuTru", "Thường trú")
-        add("ChaMaQuocGia", "Việt Nam")
+        add_identity("Cha", "ThongTinBo", cha_quoc_tich)
         # Nơi cư trú cha: TỜ KHAI trước, rồi mới tới nguồn khác (ThongTinBo_NoiCuTru — CCCD đứng đầu).
-        add("ChaDiaChi", cha_noi_cu_tru)
+        add_residence("Cha", cha_quoc_tich, cha_noi_cu_tru, cha_dia_chi_nn)
 
     # Quê quán CON (QqDiaChi) — lấy theo thứ tự ưu tiên:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
@@ -749,6 +956,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     #     quê quán con = quê cha.
     #  NGOẠI LỆ LÂM ĐỒNG: nếu nơi sinh con (NsDiaChi) có tỉnh = "Lâm Đồng", lấy QUÊ QUÁN MẸ
     #     thay vì cha (theo quy định địa phương); tuyệt đối không dùng nơi cư trú mẹ thay thế.
+    #  CHA NGƯỜI NƯỚC NGOÀI: cũng lấy QUÊ QUÁN MẸ — địa chỉ của cha không phải đơn vị hành chính Việt Nam.
     #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
 
@@ -758,14 +966,14 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     else:
         # is_lam_dong tính ở đầu hàm — NGOÀI khối has_child, vì nhánh này chạy cả khi hồ sơ
         # chưa có thông tin con.
-        if is_lam_dong and has_mother:
+        if (is_lam_dong or cha_quoc_tich) and has_mother:
             # Lâm Đồng lấy đúng QUÊ QUÁN MẸ. Không có field này thì để trống; nơi cư trú là một
             # khái niệm khác và không được dùng làm fallback cho quê quán của con.
             que_quan_me = _area(values.get("ThongTinMe_QueQuan"))
             if que_quan_me:
                 add("QqMaQuocGia", "Việt Nam")
                 add("QqDiaChi", que_quan_me)
-        else:
+        elif not cha_quoc_tich:
             # Trường hợp thông thường: lấy quê quán từ CHA
             que_quan_cha = (
                 _area(values.get("ThongTinBo_QueQuan"))

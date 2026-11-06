@@ -624,7 +624,8 @@
       "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
       "needsAgencySelect": true,
-      "submitCardIncludes": "Cơ quan thực hiện: UBND",
+      "selectSo": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Sở Y tế",
       "autoConfirm": true
     },
     {
@@ -1450,6 +1451,14 @@
       "key": "dang-ky-nha-o-xa-hoi-bac-ninh",
       "code": "1.014632",
       "label": "[Tỉnh Bắc Ninh] Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân tự xây dựng hoặc cải tạo, sửa chữa nhà ở",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-nha-o-xa-hoi-tuyen-quang",
+      "code": "1.014632",
+      "label": "Tuyên Quang - Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân tự xây dựng hoặc cải tạo, sửa chữa nhà ở",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -2628,6 +2637,15 @@
       "code": "1.013818",
       "label": "Đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e7f-77f8-ba74-3f3328ddfa7c",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich",
+      "code": "1.004605",
+      "label": "Thủ tục cấp Giấy chứng nhận khóa cập nhật kiến thức cho hướng dẫn viên du lịch nội địa và hướng dẫn viên du lịch quốc tế",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-d4aa-756f-b5fc-8a172aa4633a",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true

@@ -75,6 +75,15 @@ def test_danh_sach_dua_llm_khong_co_key():
     assert "khai-sinh-dang-ky" not in text and "[1] " in text
 
 
+def test_noxh_tuyen_quang_chi_hien_voi_tai_khoan_tuyen_quang():
+    from app.channels.handfree.chat.procedure_picker import prompt
+
+    key = "dang-ky-nha-o-xa-hoi-tuyen-quang"
+    assert key in {item["key"] for item in procedures_for("tuyenquang")}
+    assert key not in {item["key"] for item in procedures_for("laichau")}
+    assert any("tuyên quang" in hint.lower() for hint in prompt.PROCEDURE_HINTS[key])
+
+
 def test_danh_sach_dua_llm_khong_de_chung_thuc_chu_ky_o_dong_cuoi():
     """Thẻ màn chào đẩy chứng thực chữ ký xuống cuối; ở dòng cuối model đọc nhầm sang dòng trên
     (Bắc Ninh: "chứng thực chữ ký" [101] → 100 = đăng ký tạm trú) → danh sách LLM theo thứ tự khai báo."""

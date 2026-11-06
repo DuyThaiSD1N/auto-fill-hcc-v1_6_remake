@@ -11,9 +11,9 @@ Quảng Ngãi cùng mã; componentName lấy theo tên dòng đã đối chiếu
   index 5  (STT6)  : "Một trong các loại giấy tờ sau" (nhóm đầu tư)          -> giay_to_dau_tu_tong_hop
   index 6-8 (STT7-9): Phương án sử dụng đất (tổ chức kinh tế / đất thu hồi / công ty nông, lâm nghiệp)
   index 9  (STT10) : TRÙNG dòng STT6                                         -> BỎ
-  index 10 (STT11) : GCN cho trường hợp gia hạn                              -> BỎ (GCN chỉ đính dòng 13, theo ánh xạ)
+  index 10 (STT11) : "Một trong các giấy tờ sau: + Bản sao một trong các GCN" -> gcn
   index 11 (STT12) : Đơn đề nghị gia hạn sử dụng đất                         -> don_gia_han
-  index 12 (STT13) : Giấy chứng nhận/giấy tờ Điều 137/quyết định giao đất    -> gcn
+  index 12 (STT13) : Giấy chứng nhận/giấy tờ Điều 137/quyết định giao đất    -> BỎ (GCN chỉ đính dòng 11, 06/11/2026)
   index 13 (STT14) : Đơn đề nghị giao đất/thuê đất/chuyển mục đích ...       -> don_de_nghi (+ CCCD, tờ khai, đơn khác)
   index 14 (STT15) : TRÙNG dòng STT4                                         -> BỎ
   "+ Thêm giấy tờ"  : Giấy ủy quyền, giấy giới thiệu                          -> authorization (modal, dự phòng dòng 14)
@@ -120,9 +120,14 @@ _ROUTES: dict[str, dict[str, Any]] = {
         "documentName": "Đơn đề nghị gia hạn sử dụng đất",
     },
     _GCN: {
-        # Ánh xạ hồ sơ: GCN chỉ đính dòng 13, KHÔNG đính trùng dòng 11 (dòng 11 dành cho hồ sơ gia hạn).
-        "index": 12,
-        "name": "Một trong các giấy chứng nhận quy định tại khoản 21 Điều 3, khoản 3 Điều 256 Luật Đất đai",
+        # GCN chỉ đính dòng 11 (yêu cầu 06/11/2026), KHÔNG đính dòng 13. Tên lấy cụm "Bản sao một trong các giấy chứng
+        # nhận…" chỉ dòng 11 có: đầu dòng "Một trong các giấy tờ sau" sát chữ "Một trong các loại giấy tờ sau" của dòng
+        # 6/10, còn dòng 13 mở bằng "Một trong các giấy chứng nhận quy định tại…" không có chữ "Bản sao".
+        "index": 10,
+        "name": (
+            "Bản sao một trong các giấy chứng nhận: Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền "
+            "với đất"
+        ),
         "documentName": "Giấy chứng nhận quyền sử dụng đất",
     },
     _DON_DE_NGHI: {

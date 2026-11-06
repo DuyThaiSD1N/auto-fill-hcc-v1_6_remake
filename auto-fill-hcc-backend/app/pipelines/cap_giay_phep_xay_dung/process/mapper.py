@@ -340,11 +340,13 @@ def _number(value: Any) -> str | None:
 
 
 def _identity(value: Any) -> str | None:
+    """Chỉ nhận số định danh/CCCD 12 chữ số hoặc CMND cũ 9 chữ số. Đơn không ghi CCCD thì LLM hay lấy số
+    điện thoại (10–11 số, đầu 0) điền vào → loại, để trống ô định danh thay vì điền nhầm SĐT."""
     text = _text(value)
     if not text:
         return None
     digits = re.sub(r"\D+", "", text)
-    return digits or None
+    return digits if len(digits) in (9, 12) else None
 
 
 def _ma_so_doanh_nghiep(value: Any) -> str | None:

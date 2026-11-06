@@ -5275,6 +5275,10 @@ ocrBtn.addEventListener("click", async () => {
       // [Bộ VHTTDL] 1.009397 (tổ chức biểu diễn nghệ thuật): tài khoản đăng nhập trùng tên/mã số tổ chức đề nghị thì
       // BE không tích "Thông tin người ủy quyền"; thiếu mốc là BE luôn tích khi đọc được tên + mã số.
       cfg.key === "to-chuc-bieu-dien-nghe-thuat" ||
+      // [Bộ VHTTDL] 1.004605 (GCN khóa cập nhật kiến thức HDV): cùng contract với CCHN di tích 1.001822 — mốc tài khoản
+      // (CCCD, hoặc họ tên khi đơn chưa có số thật) quyết định tự nộp (điền khối người nộp) hay nộp thay (tích "Thông tin
+      // người ủy quyền"); thiếu mốc là BE chỉ điền khối đơn đề nghị.
+      cfg.key === "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||

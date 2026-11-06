@@ -14,7 +14,8 @@ FIELDS: list[dict] = [
     {"name": "Applicant_NamSinh", "desc": "Năm sinh người nộp nếu chỉ đọc được năm."},
     {"name": "Applicant_GioiTinh", "desc": 'Giới tính người nộp: "Nam" hoặc "Nữ".'},
     {"name": "Applicant_SoDinhDanh", "desc": "Số CCCD/CMND/định danh NGƯỜI NỘP (người đại diện/được ủy quyền "
-        "nếu có ủy quyền; KHÁC số của chủ đầu tư/chủ hộ)."},
+        "nếu có ủy quyền; KHÁC số của chủ đầu tư/chủ hộ). Chỉ số CCCD 12 số/CMND 9 số; KHÔNG lấy số điện "
+        "thoại; giấy tờ không ghi thì bỏ trống."},
     {"name": "Applicant_NgayCap", "desc": "Ngày cấp CCCD/CMND của NGƯỜI NỘP (cùng người với Applicant_SoDinhDanh), "
         "dd/mm/yyyy. Nếu đơn không ghi, LẤY từ Giấy ủy quyền — dòng CCCD của 'Bên được ủy quyền' ('Căn cước "
         "công dân số … cấp ngày <ngày> tại <nơi>'). ĐỪNG bỏ trống khi giấy ủy quyền có ghi."},
@@ -34,7 +35,8 @@ FIELDS: list[dict] = [
     {"name": "ChuDauTu_Loai", "desc": 'Loại chủ đầu tư: "Chủ hộ" nếu cá nhân/hộ gia đình; "Chủ đầu tư" nếu tổ chức.'},
     {"name": "ChuHo_HoTen", "desc": "Tên CHỦ ĐẦU TƯ/CHỦ HỘ cá nhân (mục 'thông tin về chủ đầu tư/chủ hộ' trong "
         "đơn) — người ĐỨNG TÊN công trình. KHÁC người đại diện/được ủy quyền (đó là Applicant_HoTen)."},
-    {"name": "ChuHo_SoDinhDanh", "desc": "Số định danh/CCCD của CHỦ ĐẦU TƯ/CHỦ HỘ (KHÁC người nộp/đại diện)."},
+    {"name": "ChuHo_SoDinhDanh", "desc": "Số định danh/CCCD của CHỦ ĐẦU TƯ/CHỦ HỘ (KHÁC người nộp/đại diện). "
+        "Chỉ số CCCD 12 số/CMND 9 số; KHÔNG lấy số điện thoại; đơn không ghi thì bỏ trống."},
     {"name": "ChuHo_DienThoai", "desc": "Số điện thoại của CHỦ ĐẦU TƯ/CHỦ HỘ (ở mục thông tin chủ đầu tư)."},
     {"name": "ChuDauTu_DanhSach", "desc": "Mảng MỌI cá nhân đứng tên chủ đầu tư/chủ hộ ở mục 1 Đơn — đơn ghi nhiều "
         "người (vd 'Ông … và bà …') thì đủ từng người. Mỗi phần tử {hoTen, soDinhDanh} chép đúng đơn; thiếu số thì "

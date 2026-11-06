@@ -7,8 +7,8 @@ Nơi cấp/Số điện thoại/Địa chỉ…" LẶP giữa khối người n�
   - Khối "Thông tin người ủy quyền" = tổ chức đề nghị: tích khi đọc được tên + mã số doanh nghiệp đủ 10 số. Ô bắt
     buộc còn trống (SĐT, địa chỉ chi tiết — văn bản đề nghị không ghi) thì cảnh báo nhập tay. Tài khoản đăng nhập
     chính là tổ chức (trùng mã số/tên) thì không tích.
-  - Khối đề nghị: luôn điền theo Văn bản đề nghị, thiếu mục thì bù từ Kịch bản. Ô ngày chỉ nhận MỘT ngày → điền ngày
-    đầu, nhiều ngày thì cảnh báo.
+  - Khối đề nghị: luôn điền theo Văn bản đề nghị, thiếu mục thì bù từ Kịch bản. Ô "Thời gian tổ chức" chỉ nhận MỘT
+    ngày → điền ngày MUỘN NHẤT ("ngày 20, 21 tháng 11" → 21/11), nhiều ngày thì cảnh báo.
 Khối biên lai không điền (nhập một ô phải đủ cả 5, hồ sơ không có SĐT/email).
 """
 
@@ -120,6 +120,11 @@ def _email(value: Any) -> str | None:
 def _date(value: Any) -> str | None:
     found = _dates(value)
     return found[0] if found else None
+
+
+def _latest(days: list[str]) -> str | None:
+    """Ngày muộn nhất trong các ngày dd/mm/yyyy (so theo năm, tháng, ngày — không theo thứ tự xuất hiện)."""
+    return max(days, key=lambda day: (day[6:], day[3:5], day[:2])) if days else None
 
 
 def _strip_admin_prefix(value: Any) -> str:
@@ -266,7 +271,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     put(LABEL_DUYET_THOI_GIAN, _date(values.get("DeNghi_DuyetThoiGian")))
     put(LABEL_DUYET_DIA_DIEM, _text(values.get("DeNghi_DuyetDiaDiem")))
     put(LABEL_NGUOI_CHIU_TN, _text(values.get("DeNghi_NguoiChiuTrachNhiem")))
-    put(LABEL_THOI_GIAN, ngay[0] if ngay else None)
+    put(LABEL_THOI_GIAN, _latest(ngay))
     put(LABEL_LIEN_KET, _none_text(values.get("DeNghi_LienKet")))
     put(LABEL_TON_VINH, _none_text(values.get("DeNghi_TonVinh")))
     put(LABEL_TAI_LIEU, tai_lieu)
@@ -275,7 +280,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if len(ngay) > 1:
         warnings.append(
             f"Thời gian tổ chức \"{vb_thoi_gian or kb_thoi_gian}\" có {len(ngay)} ngày nhưng ô \"Thời gian tổ chức\" "
-            f"chỉ nhận một ngày — đã điền ngày đầu {ngay[0]}, cán bộ kiểm tra lại."
+            f"chỉ nhận một ngày — đã điền ngày muộn nhất {_latest(ngay)}, cán bộ kiểm tra lại."
         )
     if vb_ngay and kb_ngay and not set(kb_ngay) <= set(vb_ngay):
         warnings.append(

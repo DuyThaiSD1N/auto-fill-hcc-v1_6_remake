@@ -168,6 +168,15 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert moc_housing["maePortal"] is True
     assert moc_housing["wizard"]["declarationStep"] == 1
     assert moc_housing["wizard"]["attachmentStep"] == 2
+    tq_noxh = procedures.pop("dang-ky-nha-o-xa-hoi-tuyen-quang")
+    assert tq_noxh["provinceOnly"] == ["tuyenquang"]
+    assert tq_noxh["flowProfile"] == "xay-dung"
+    assert tq_noxh["needsAgencySelect"] is True
+    assert tq_noxh["hasAttachmentStep"] is True
+    assert len(tq_noxh["requiredDocs"]) == 7
+    from app.channels.handfree.chat.procedure_picker.agent import procedures_for
+    assert "dang-ky-nha-o-xa-hoi-tuyen-quang" in {item["key"] for item in procedures_for("tuyenquang")}
+    assert "dang-ky-nha-o-xa-hoi-tuyen-quang" not in {item["key"] for item in procedures_for("laichau")}
     # Bộ Y tế (trợ cấp hưu trí xã hội): CÙNG wizard iGate 1 kê khai / 2 đính kèm, nhưng bước
     # chọn cơ quan lại giống tư pháp — DVCQG chọn ĐỦ Tỉnh + Xã rồi vào thẳng trang kê khai,
     # KHÔNG gạt toggle "Sở". Đây là điểm phân biệt với ba cổng bộ ở trên.
@@ -220,12 +229,13 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in byt_pension
     assert byt_pension["wizard"]["declarationStep"] == 1
     assert byt_pension["wizard"]["attachmentStep"] == 2
-    # ATTP Bộ Y tế: cùng khung với hưu trí, chỉ khác phải bấm ĐÚNG thẻ UBND ở trang kết quả DVCQG
-    # (chi tiết ở test_agency_card_dvcqg.py).
+    # ATTP Bộ Y tế: chuyển radio DVCQG sang Sở rồi chọn đúng thẻ Sở Y tế ở trang kết quả.
     byt_food_safety = procedures.pop("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham")
     assert byt_food_safety.get("flowProfile") is None
     assert byt_food_safety["wizard"] == byt_pension["wizard"]
-    assert byt_food_safety["agencyCardIncludes"] == "Cơ quan thực hiện: UBND"
+    assert byt_food_safety["agencyProvinceOnly"] is True
+    assert byt_food_safety["agencySoFirst"] is True
+    assert byt_food_safety["agencyCardIncludes"] == "Cơ quan thực hiện: Sở Y tế"
     assert byt_food_safety["hideRepeatableHint"] is True
     assert len(byt_food_safety["shortLabel"]) >= 30
     # Cổng Bộ Y tế nộp tại SỞ Y tế (dược 1.014104, đăng ký hành nghề 1.012275, điều chỉnh GPHN chuyển
@@ -554,6 +564,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("to-chuc-bieu-dien-nghe-thuat", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham", "Sở Công Thương"),
         ("cap-gcn-attp-cong-thuong", "Sở Công Thương"),
@@ -720,7 +731,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng iGate Khánh Hòa "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa" (1.013831).
     # +1 cổng iGate Khánh Hòa "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa" (1.013995, luồng "xay-dung").
     # +1 cổng iGate Khánh Hòa "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa" (1.013947, luồng "xay-dung").
-    assert len(procedures) == 141
+    # +1 cổng Bộ Xây dựng "dang-ky-nha-o-xa-hoi-tuyen-quang" (1.014632): điền 2 form + đính kèm 7 dòng.
+    # +1 cổng Bộ VHTTDL chọn Sở "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich" (1.004605).
+    assert len(procedures) == 143
 
     for procedure in procedures:
         key = procedure["key"]

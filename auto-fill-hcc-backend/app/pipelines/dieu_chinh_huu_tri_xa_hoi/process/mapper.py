@@ -173,6 +173,42 @@ def _section(text: str, start_pattern: str, end_pattern: str | None) -> str:
     return tail[:start.end() - start.start() + end.start()]
 
 
+# Mẫu số 01 NĐ 176/2025: "I. Thông tin chung" gồm "1. Đối tượng hưởng…" (chủ hồ sơ) và
+# "2. Thông tin người giám hộ" (khối người nộp, như mục II mẫu cũ); "II. Thông tin đề nghị
+# hưởng…" trở đi là phần chính sách, có người khác (cha/mẹ, người nhận tiền).
+_NEW_FORM_OWNER_START = r"(?m)^\s*I[.\s]+Thông tin chung"
+_NEW_FORM_REQUESTER_START = r"(?m)^\s*2[.)]\s*Thông tin người"
+_NEW_FORM_SECTION_TWO = r"(?m)^\s*II[.\s]+Thông tin"
+
+
+def _form_owner_section(chunk: str) -> str:
+    if re.search(_NEW_FORM_OWNER_START, chunk, flags=re.IGNORECASE):
+        return _section(
+            chunk,
+            _NEW_FORM_OWNER_START,
+            r"(?m)^\s*(?:2[.)]\s*Thông tin người|II[.\s]+Thông tin)",
+        )
+    return _section(
+        chunk,
+        r"(?m)^\s*I[.\s]+Thông tin người",
+        r"(?m)^\s*II[.\s]+Thông tin người",
+    )
+
+
+def _form_requester_section(chunk: str) -> str:
+    if re.search(_NEW_FORM_OWNER_START, chunk, flags=re.IGNORECASE):
+        return _section(
+            chunk,
+            _NEW_FORM_REQUESTER_START,
+            _NEW_FORM_SECTION_TWO,
+        )
+    return _section(
+        chunk,
+        r"(?m)^\s*II[.\s]+Thông tin người",
+        None,
+    )
+
+
 def _person_evidence_scope(
     ocr_text: str,
     prefix: str,
@@ -197,11 +233,7 @@ def _person_evidence_scope(
             scopes.append(chunk)
 
         if is_form_01 and prefix == "ChuHoSo":
-            section = _section(
-                chunk,
-                r"(?m)^\s*I[.\s]+Thông tin người",
-                r"(?m)^\s*II[.\s]+Thông tin người",
-            )
+            section = _form_owner_section(chunk)
             # CCCD chính thức có thể sửa số/ngày sinh khai lệch tại mục I.
             # Khi LLM đã chọn số CCCD, vẫn giữ mục I làm bằng chứng cho địa chỉ
             # và điện thoại nếu họ tên chủ hồ sơ khớp chính xác.
@@ -215,11 +247,7 @@ def _person_evidence_scope(
             ):
                 scopes.append(section)
         elif is_form_01 and prefix == "NguoiNop":
-            section = _section(
-                chunk,
-                r"(?m)^\s*II[.\s]+Thông tin người",
-                None,
-            )
+            section = _form_requester_section(chunk)
             if section and _contains_person(section, name, identity):
                 scopes.append(section)
         elif not is_form_01 and not is_identity_card:
@@ -277,7 +305,13 @@ def _issuer_with_evidence(
         return "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
     is_new_identity_card = "can cuoc" in normalized_scope and not is_citizen_id
-    if is_new_identity_card and "bo cong an" in normalized_scope:
+    # Có cả dòng Cục Cảnh sát (tờ khai/giấy ủy quyền ghi nơi cấp CCCD cũ) thì "Bộ Công an" có thể là
+    # của người kia trong cùng giấy ủy quyền → không ép, để giá trị LLM tự chứng minh bằng OCR.
+    if (
+        is_new_identity_card
+        and "bo cong an" in normalized_scope
+        and not has_police_department
+    ):
         return "Bộ Công an"
 
     return _text_with_evidence(value, evidence_scope, has_ocr)

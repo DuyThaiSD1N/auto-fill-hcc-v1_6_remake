@@ -2165,11 +2165,16 @@ BXD_RESULT_READING = {
     "md": "📬 Đây là bước **Hình thức nhận kết quả**. Tôi đang đọc các cách nhận trên trang ạ…",
     "tts": "Đây là bước hình thức nhận kết quả. Tôi đang đọc các cách nhận trên trang ạ.",
 }
+# Lời cam đoan + mã xác nhận là việc của CHÍNH công dân: trợ lý nhắc nguyên văn ô cần tích, không tích / gõ hộ. Nói cả
+# lúc đọc cách nhận lần đầu lẫn sau mỗi lần đổi cách nhận (câu cuối cùng trước khi nộp).
 BXD_SUBMIT_GUIDE = {
-    "md": ("Cuối cùng công dân tích ô **Tôi chắc chắn…**, nhập **mã xác nhận** (chữ trong ảnh) rồi bấm **Nộp hồ sơ** "
-           "trên trang, hoặc bấm nút **Nộp hồ sơ** bên dưới để tôi bấm giúp ạ."),
-    "tts": (" Cuối cùng công dân tích ô Tôi chắc chắn, nhập mã xác nhận trong ảnh, rồi bấm Nộp hồ sơ trên trang, hoặc "
-            "bấm nút Nộp hồ sơ để tôi bấm giúp ạ."),
+    "md": ("Cuối cùng công dân tích ô **“Tôi chắc chắn rằng các thông tin khai báo trên là đúng sự thật và đồng ý chịu "
+           "trách nhiệm trước pháp luật về lời khai trên”**, nhập **Mã xác nhận** theo chữ trong ảnh bên cạnh (khó đọc "
+           "thì bấm nút làm mới cạnh ảnh để lấy mã khác), rồi bấm **Nộp hồ sơ** trên trang, hoặc bấm nút **Nộp hồ sơ** "
+           "bên dưới để tôi bấm giúp ạ."),
+    "tts": (" Cuối cùng công dân tích ô Tôi chắc chắn rằng các thông tin khai báo trên là đúng sự thật và đồng ý chịu "
+            "trách nhiệm trước pháp luật về lời khai trên, nhập mã xác nhận theo chữ trong ảnh, rồi bấm Nộp hồ sơ trên "
+            "trang, hoặc bấm nút Nộp hồ sơ để tôi bấm giúp ạ."),
 }
 BXD_MISSING_CAM_DOAN = "tích ô Tôi chắc chắn…"
 BXD_MISSING_CAPTCHA = "nhập mã xác nhận"

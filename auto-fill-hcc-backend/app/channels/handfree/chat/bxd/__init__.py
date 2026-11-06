@@ -209,6 +209,8 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         return r
     changed = payload.get("changed") if isinstance(payload.get("changed"), dict) else None
     card = lien_thong.result_card(rows, "bxd_result_pick")
+    # Nhắc tích ô cam đoan + nhập mã xác nhận: cả lần đọc đầu lẫn sau mỗi lần đổi cách nhận (câu cuối trước khi nộp).
+    guide_md, guide_tts = _say(vi.BXD_SUBMIT_GUIDE)
     if changed:
         label = next((row["label"] for row in rows if row["name"] == changed.get("name")), "")
         value = _clean(changed.get("value"), 80)
@@ -222,10 +224,11 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
             md, tts = _say(vi.LT_RESULT_FAILED, label=label, value=value)
         r = _reply((md, tts))
         r.cards = [card]
+        r.actions = [{"type": "trail_message", "md": guide_md}]
+        r.tts_text += guide_tts
         r.chips = [_submit_chip()]
         return r
     r = _reply(lien_thong.result_summary(rows))
-    guide_md, guide_tts = _say(vi.BXD_SUBMIT_GUIDE)
     r.cards = [card]
     r.actions = [{"type": "trail_message", "md": guide_md}]
     r.tts_text += guide_tts

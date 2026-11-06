@@ -407,6 +407,57 @@ def test_giay_uy_quyen_ngoi_thu_nhat_doc_ben_uy_quyen_bo_dong_diem_chi():
     assert reason._grantor_person([{"name": "uy_quyen.pdf", "text": chi_ky}]) is None
 
 
+# Giấy ủy quyền công chứng viết ngôi thứ nhất: không có mục "Bên được ủy quyền", phần nội dung lại mở
+# bằng câu "Người được uỷ quyền được quyền thay mặt ... để :" rồi gạch đầu dòng việc được ủy quyền.
+_GIAY_UY_QUYEN_TOI_UY_QUYEN_CHO = """CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+GIẤY ỦY QUYỀN
+Tôi là:
+Bà : TRẦN THỊ MAI
+Sinh ngày : 01/01/1980
+Căn cước công dân số : 001.180.000.011 cấp ngày 10/05/2021
+Nơi cư trú : Thôn Đông, Phường Lâm Viên - Đà Lạt, tỉnh Lâm Đồng
+Bằng giấy này, tôi ủy quyền cho:
+Ông : LÊ VĂN BÌNH
+Sinh ngày : 02/03/1990
+Căn cước số : 001.090.000.024 cấp ngày 20/05/2025
+Quốc tịch : Việt Nam
+Nơi cư trú : Thôn Tây, Phường Xuân Hương - Đà Lạt, tỉnh Lâm Đồng
+Nội dung ủy quyền:
+Người được uỷ quyền được quyền thay mặt và nhân danh tôi liên hệ với các cơ quan có thẩm quyền để :
+- Nộp hộ và nhận hộ hồ sơ xin cấp lại Giấy khai sinh, trích lục khai sinh ;
+- Nộp và nhận hồ sơ trên dịch vụ công đối với các công việc nêu trên ;
+Người ủy quyền
+Trần Thị Mai
+"""
+
+
+def test_giay_uy_quyen_ngoi_thu_nhat_khong_lay_dong_noi_dung_lam_ho_ten_nguoi_yeu_cau():
+    docs = [{"name": "uy_quyen.pdf", "text": _GIAY_UY_QUYEN_TOI_UY_QUYEN_CHO}]
+    person = reason._authorized_person(docs)
+    assert (person["name"], person["id"], person["birth"], person["issue_date"]) == (
+        "LÊ VĂN BÌNH", "001090000024", "02/03/1990", "20/05/2025")
+    assert "Xuân Hương" in person["residence"]
+
+    fields = {"Subject_FullName": "TRẦN THỊ MAI", "Subject_IdNumber": "001180000011",
+              "Authorized_SourceDocumentTitle": "GIẤY ỦY QUYỀN", "Authorized_FullName": "LÊ VĂN BÌNH",
+              "Authorized_IdNumber": "001090000024"}
+    context = reason._render_authorized(docs) + (
+        "<to_khai_dang_ky_lai>\nCó tờ khai đăng ký lại khai sinh: Không\n</to_khai_dang_ky_lai>")
+    out = mapper.enrich([{"name": k, "value": v} for k, v in fields.items()], {"_reasoning_context": context})
+    v = {f["name"]: f["value"] for f in out}
+    assert (v["QuanHe"], v["HoVaTenC"], v["SoDinhDanhC"]) == ("Khac", "LÊ VĂN BÌNH", "001090000024")
+
+
+def test_cau_nguoi_duoc_uy_quyen_duoc_quyen_khong_phai_dong_mo_muc():
+    # Chỉ còn câu nội dung, không có nhân thân bên được ủy quyền → không đọc ra ai (để agent quyết).
+    noi_dung = ("GIẤY ỦY QUYỀN\nNgười được uỷ quyền được quyền thay mặt và nhân danh tôi để :\n"
+                "- Nộp hộ và nhận hộ hồ sơ xin cấp lại Giấy khai sinh, trích lục khai sinh ;\n")
+    assert reason._authorized_person([{"name": "uy_quyen.pdf", "text": noi_dung}]) is None
+    # Dòng mở mục thật vẫn đọc được, kể cả có chú thích trong ngoặc.
+    muc = "GIẤY ỦY QUYỀN\nBÊN ĐƯỢC ỦY QUYỀN (sau đây gọi là Bên B):\nÔng: Lê Văn Bình\nCCCD số 001090000024\n"
+    assert reason._authorized_person([{"name": "uy_quyen.pdf", "text": muc}])["name"] == "Lê Văn Bình"
+
+
 def test_cha_me_khong_co_so_thi_xoa_o_so_va_chon_san_cccd():
     v = _loai_khai_sinh({"Subject_FullName": "Trần Văn An", "Mother_FullName": "Trần Thị Hoa",
                          "Father_FullName": "Trần Văn Cường"})

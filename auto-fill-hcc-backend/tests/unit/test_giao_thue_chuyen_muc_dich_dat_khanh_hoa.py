@@ -85,13 +85,13 @@ def _values(fields: list[dict]) -> dict:
 # ĐÍNH KÈM (attp-row 15 dòng + nút Thêm giấy tờ)
 # --------------------------------------------------------------------------------------
 def test_sample_bundle_routes_like_attachment_mapping():
-    """Ánh xạ hồ sơ: Đơn -> dòng 14, GCN -> dòng 13 (không trùng dòng 11), file ủy quyền -> Thêm giấy tờ."""
+    """Ánh xạ hồ sơ: Đơn -> dòng 14, GCN -> dòng 11 (không đính dòng 13), file ủy quyền -> Thêm giấy tờ."""
     attachments, warnings, _classified = planner.build_plan_items(
         _files(["don.pdf", "gcn.pdf", "uq.pdf"]), None,
         {0: ["don_de_nghi"], 1: ["gcn"], 2: ["authorization"]},
     )
     assert warnings == []
-    assert [item["componentIndex"] for item in attachments[:2]] == [_DON_INDEX, 12]
+    assert [item["componentIndex"] for item in attachments[:2]] == [_DON_INDEX, 10]
     assert all(item["target"] == "attp-row" and "loaiBan" not in item for item in attachments[:2])
     uq = attachments[2]
     assert uq["target"] == "add-document-dialog" and uq["needsAddComponent"] is True
@@ -108,9 +108,30 @@ def test_component_name_first_matches_its_own_row():
     assert fold(planner._DON_DE_NGHI_NAME) == rows[_DON_INDEX]
 
 
-def test_duplicate_and_gia_han_gcn_rows_never_used():
+def test_duplicate_rows_and_row_13_never_used():
     used = {route["index"] for route in planner._ROUTES.values()}
-    assert not used & {9, 10, 14}
+    assert not used & {9, 12, 14}
+
+
+def _fe_find_row(component_name: str, component_index: int) -> int:
+    """Mô phỏng findAttachmentRowByComponent của FE: thử rows[componentIndex - 1], tên khớp hai chiều thì lấy, không
+    thì dòng khớp tên đầu tiên."""
+    want = fold(component_name)
+
+    def matches(row: str) -> bool:
+        text = fold(row)
+        return want in text or text in want
+
+    if component_index and matches(_ROWS[component_index - 1]):
+        return component_index - 1
+    return next(index for index, row in enumerate(_ROWS) if matches(row))
+
+
+def test_gcn_lands_on_row_11_not_row_13_on_frontend():
+    attachments, _warnings, _classified = planner.build_plan_items(_files(["gcn.pdf"]), None, {0: ["gcn"]})
+    item = attachments[0]
+    assert _fe_find_row(item["componentName"], item["componentIndex"]) == 10
+    assert item["documentName"] == "Giấy chứng nhận quyền sử dụng đất"
 
 
 def test_bundle_file_stays_whole_on_highest_priority_place():
@@ -120,7 +141,7 @@ def test_bundle_file_stays_whole_on_highest_priority_place():
     assert attachments[0]["componentIndex"] == _DON_INDEX
     assert classified[0]["docTypes"] == ["authorization", "gcn", "don_de_nghi", "identity"]
     assert len(warnings) == 1
-    assert "dòng 13" in warnings[0] and "Thêm giấy tờ" in warnings[0] and "nhân thân" not in warnings[0]
+    assert "dòng 11" in warnings[0] and "Thêm giấy tờ" in warnings[0] and "nhân thân" not in warnings[0]
 
 
 def test_authorization_bundle_with_identity_goes_to_add_dialog_without_warning():
@@ -159,7 +180,7 @@ def test_plan_parses_llm_doc_type_lists(monkeypatch):
     result = asyncio.run(planner.plan(files))
 
     assert [item["target"] for item in result["attachments"]] == ["attp-row", "add-document-dialog"]
-    assert result["attachments"][0]["componentIndex"] == 12
+    assert result["attachments"][0]["componentIndex"] == 10
 
 
 # --------------------------------------------------------------------------------------

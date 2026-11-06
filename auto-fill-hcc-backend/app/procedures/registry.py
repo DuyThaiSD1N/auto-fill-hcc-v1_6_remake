@@ -378,6 +378,8 @@ from app.pipelines.ho_tro_chi_phi_van_chuyen_nguoi_tu_vong_den_co_so_hoa_tang.at
 from app.pipelines.ho_tro_chi_phi_van_chuyen_nguoi_tu_vong_den_co_so_hoa_tang.process import run as ho_tro_cp_van_chuyen_hoa_tang_process
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.attach import plan as dang_ky_nha_o_xa_hoi_bac_ninh_attach
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.process import run as dang_ky_nha_o_xa_hoi_bac_ninh_process
+from app.pipelines.dang_ky_nha_o_xa_hoi_tuyen_quang.attach import plan as dang_ky_nha_o_xa_hoi_tuyen_quang_attach
+from app.pipelines.dang_ky_nha_o_xa_hoi_tuyen_quang.process import run as dang_ky_nha_o_xa_hoi_tuyen_quang_process
 from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ninh_attach
 from app.pipelines.cap_hoc_tap_bac_ninh.process import run as cap_hoc_tap_bac_ninh_process
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.process import run as dinh_chinh_gcn_dn_process
@@ -621,6 +623,12 @@ from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.p
 )
 from app.pipelines.to_chuc_bieu_dien_nghe_thuat.attach import plan as bieu_dien_nghe_thuat_attach
 from app.pipelines.to_chuc_bieu_dien_nghe_thuat.process import run as bieu_dien_nghe_thuat_process
+from app.pipelines.cap_giay_chung_nhan_khoa_cap_nhat_kien_thuc_huong_dan_vien_du_lich.attach import (
+    plan as khoa_cap_nhat_hdv_attach,
+)
+from app.pipelines.cap_giay_chung_nhan_khoa_cap_nhat_kien_thuc_huong_dan_vien_du_lich.process import (
+    run as khoa_cap_nhat_hdv_process,
+)
 from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.attach import plan as trich_luc_ho_so_ncc_attach
 from app.pipelines.cap_trich_luc_sao_ho_so_nguoi_co_cong.process import run as trich_luc_ho_so_ncc_process
 
@@ -9109,6 +9117,33 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-nha-o-xa-hoi-tuyen-quang",
+        # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn (1.014632), Form.io + attach attp-row. Hai form:
+        # thông tin người nộp và giấy xác nhận điều kiện nhà ở; key lấy theo sheet Mapping NOXH - Bộ Xây dựng.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "urlIncludes": ["maThuTuc=1.014632"],
+            "textIncludes": ["vay vốn để hộ gia đình, cá nhân tự xây dựng hoặc cải tạo, sửa chữa nhà ở"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tuyên Quang - Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân "
+            "tự xây dựng hoặc cải tạo, sửa chữa nhà ở"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Hồ sơ thường gồm Giấy xác nhận về điều kiện nhà ở (Mẫu số 02; trường hợp có nhà nhưng dưới "
+            "15 m² sàn/người dùng Mẫu số 03), Giấy chứng nhận quyền sử dụng đất, CCCD, CT07, giấy tờ hôn "
+            "nhân và giấy tờ chứng minh đối tượng/thu nhập hoặc vay vốn. Hệ thống đọc người kê khai ở "
+            "Mẫu 02/03 để điền thông tin người nộp và các phần trên tờ khai. Bước đính kèm phân loại giấy "
+            "tờ theo từng dòng hồ sơ; file gộp có thể được đính vào nhiều dòng, không tự tách file."
+        ),
+    },
+    {
         "key": "tham-dinh-bcnckt",
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io + attach attp-row (CÙNG cổng #113/#76/#91). Form
         # PHỨC TẠP (~70 field): người nộp + doanh nghiệp/chủ đầu tư + dự án + 4 container quy hoạch/phê
@@ -9895,6 +9930,42 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich",
+        # Mã TTHC 1.004605 (QT-123), nộp tại Sở VHTTDL tỉnh — cùng cổng Bộ VHTTDL (liz-*, engine content/fill-liz.js)
+        # với thẻ HDV nội địa 1.004623. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn
+        # trang nộp /nop-ho-so?MaTTHC=1.004605.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["matthc=1.004605", "019d2bfd-d4aa-756f-b5fc-8a172aa4633a"],
+        },
+        "label": (
+            "Thủ tục cấp Giấy chứng nhận khóa cập nhật kiến thức cho hướng dẫn viên du lịch nội địa và hướng dẫn viên "
+            "du lịch quốc tế"
+        ),
+        "mode": "agent",
+        # Bảng 1 dòng (Đăng ký tham dự khóa — Mẫu số 06), dò dòng theo chữ như CCHN di tích.
+        "hasAttachmentStep": True,
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đăng ký tham dự khóa cập nhật kiến thức cho hướng dẫn viên du lịch (Mẫu số 06, Thông tư "
+            "04/2024/TT-BVHTTDL) đã ký — nguồn chính để điền và là thành phần hồ sơ duy nhất.\n"
+            "2. Nếu có: CCCD, thẻ hướng dẫn viên du lịch của người đăng ký (chỉ để điền, không đính).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Tài khoản đăng nhập là chính người đăng ký (trùng số CCCD; đơn chưa có số thật thì trùng họ tên) → điền "
+            "khối 'Thông tin người nộp hồ sơ'; khác người (nộp thay) → tự tích 'Thông tin người ủy quyền' và điền người "
+            "đăng ký vào đó. Khối 'Thông tin đơn đề nghị' (loại thẻ, giới tính, thẻ HDV đã được cấp, thông báo mở khóa, "
+            "ngày bắt đầu – kết thúc) luôn được điền.\n"
+            "Đính kèm: Đơn Mẫu 06 → dòng (1), nguyên file.\n"
+            "⚠ Ô 'Cơ quan giải quyết' cổng khoá theo link nộp — kiểm tra đúng Sở ghi ở 'Kính gửi'. Sau khi điền xong "
+            "phải tự tích ô cam kết 'Tôi cam kết chịu trách nhiệm trước pháp luật…', chưa tích thì nút 'Lưu và nộp "
+            "hồ sơ' bị khoá."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
         # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
         # đề nghị + thời hạn.
@@ -10074,6 +10145,7 @@ _PIPELINE = {
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_process,
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": ho_tro_cp_van_chuyen_hoa_tang_process,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_process,
+    "dang-ky-nha-o-xa-hoi-tuyen-quang": dang_ky_nha_o_xa_hoi_tuyen_quang_process,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_process,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_process,
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_process,
@@ -10234,6 +10306,7 @@ _PIPELINE = {
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_process,
     "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_process,
+    "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": khoa_cap_nhat_hdv_process,
     "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_process,
 }
 
@@ -10385,6 +10458,7 @@ _ATTACH_PIPELINE = {
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_attach,
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": ho_tro_cp_van_chuyen_hoa_tang_attach,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_attach,
+    "dang-ky-nha-o-xa-hoi-tuyen-quang": dang_ky_nha_o_xa_hoi_tuyen_quang_attach,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_attach,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_attach,
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_attach,
@@ -10535,6 +10609,7 @@ _ATTACH_PIPELINE = {
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_attach,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_attach,
     "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_attach,
+    "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": khoa_cap_nhat_hdv_attach,
     "cap-trich-luc-sao-ho-so-nguoi-co-cong": trich_luc_ho_so_ncc_attach,
 }
 

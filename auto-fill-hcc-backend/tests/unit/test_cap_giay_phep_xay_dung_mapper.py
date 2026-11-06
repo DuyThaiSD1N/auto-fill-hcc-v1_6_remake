@@ -633,6 +633,22 @@ def test_to_chuc_nguoi_dai_dien_tu_di_nop():
     assert d["data[soDienThoaiNguoiDaiDien]"] == "0902000002"
 
 
+def test_don_chi_ghi_sdt_khong_dien_sdt_vao_o_so_dinh_danh():
+    # Đơn mẫu chủ hộ chỉ ghi "Số điện thoại", không có CCCD → LLM chép SĐT sang Applicant_SoDinhDanh.
+    khong_cccd = {**_CHU_HO, "id": _CHU_HO["sdt"]}
+    out, _ = mapper.enrich(
+        _nguoi_nop(khong_cccd) + _chu_ho({**_CHU_HO, "id": ""}) + _cong_trinh(), _dang_nhap(_DUOC_UY_QUYEN))
+    d = _values(out)
+
+    assert d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[soDienThoaiChuHo]"] == "0901000001"
+    assert "data[soDinhDanhChuHo]" not in d
+    # Số định danh hợp lệ (12 số CCCD, 9 số CMND cũ) vẫn giữ nguyên.
+    assert mapper._identity("0010 9000 0001") == "001090000001"
+    assert mapper._identity("012345678") == "012345678"
+    assert mapper._identity("0901000001") is None
+
+
 def test_truong_hop_cong_dan_chon_ep_nhanh_form_cong_trinh():
     from app.channels.handfree.chat.flow import _variant_chips
     from app.channels.handfree.procedure_registry import (

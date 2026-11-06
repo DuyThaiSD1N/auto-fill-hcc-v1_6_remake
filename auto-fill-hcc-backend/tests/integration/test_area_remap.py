@@ -304,3 +304,42 @@ def test_tinh_moi_kem_huyen_cu_cua_tinh_cu_khac():
 
 def test_tinh_cu_ten_trung_khong_huyen_van_doi_tinh_moi():
     assert _dia_chi("Thái Bình", "Xã Minh Tân") == ("Hưng Yên", "")
+
+
+def test_khanh_hoa_xa_chia_hai_noi():
+    # NQ 1667 khoản 18/20/21: một phần vào xã Cam Lâm, phần còn lại vào Cam Hiệp / Cam An.
+    assert _dia_chi("Khánh Hòa", "Xã Cam Hiệp Bắc") == ("Khánh Hòa", "Xã Cam Hiệp")
+    assert _dia_chi("Khánh Hòa", "Cam Hiệp Nam") == ("Khánh Hòa", "Xã Cam Hiệp")
+    assert _dia_chi("Khánh Hòa", "Xã Cam An Bắc") == ("Khánh Hòa", "Xã Cam An")
+    assert _dia_chi("Ninh Thuận", "Phường Đông Hải") == ("Khánh Hòa", "Phường Đông Hải")
+    # Cam Hòa chia 3 nơi (khoản 18, 19, 20): không đoán.
+    assert _dia_chi("Khánh Hòa", "Xã Cam Hòa") == ("Khánh Hòa", "Xã Cam Hòa")
+
+
+def test_khanh_hoa_ninh_thuan_don_vi_nhap_2024():
+    # NQ 1196/NQ-UBTVQH15 (1/11/2024): Phước Tiến, Phước Tân, Tân Lập → Tân Tiến → (2025) Nha Trang.
+    assert _dia_chi("Khánh Hòa", "Phường Phước Tiến") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Phường Phước Tân") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Phường Xương Huân") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Phường Phương Sơn") == ("Khánh Hòa", "Phường Tây Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Xã Ninh Vân") == ("Khánh Hòa", "Phường Đông Ninh Hòa")
+    assert _dia_chi("Khánh Hòa", "Diên Xuân") == ("Khánh Hòa", "Xã Diên Lâm")
+    # Xã cùng tên của Bác Ái (Ninh Thuận cũ) vẫn theo nhãn.
+    assert _dia_chi("Khánh Hòa", "Xã Phước Tiến") == ("Khánh Hòa", "Xã Bác Ái")
+    assert _dia_chi("Khánh Hòa", "Xã Phước Tân") == ("Khánh Hòa", "Xã Bác Ái Tây")
+    # NQ 1198/NQ-UBTVQH15 (1/11/2024): Mỹ Hương, Tấn Tài, Thanh Sơn → Kinh Dinh/Phủ Hà → (2025) Phan Rang.
+    assert _dia_chi("Ninh Thuận", "Phường Tấn Tài") == ("Khánh Hòa", "Phường Phan Rang")
+    assert _dia_chi("Ninh Thuận", "Mỹ Hương") == ("Khánh Hòa", "Phường Phan Rang")
+    assert _dia_chi("Khánh Hòa", "Phường Thanh Sơn") == ("Khánh Hòa", "Phường Phan Rang")
+    assert _dia_chi("Khánh Hòa", "Xã Thành Sơn") == ("Khánh Hòa", "Xã Tây Khánh Sơn")
+
+
+def test_khanh_hoa_ten_trung_phuong_nha_trang_xa_van_ninh():
+    assert _dia_chi("Khánh Hòa", "Phường Vạn Thắng") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Xã Vạn Thắng") == ("Khánh Hòa", "Xã Vạn Thắng")
+    assert _dia_chi("Khánh Hòa", "Phường Vạn Thạnh") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Xã Vạn Thạnh") == ("Khánh Hòa", "Xã Đại Lãnh")
+    # Tên trần: cần huyện, thiếu thì để trống.
+    assert _dia_chi("Khánh Hòa", "Vạn Thạnh", huyen="Vạn Ninh") == ("Khánh Hòa", "Xã Đại Lãnh")
+    assert _dia_chi("Khánh Hòa", "Vạn Thạnh", dia_chi="Tổ 2, TP Nha Trang") == ("Khánh Hòa", "Phường Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Vạn Thạnh") == ("Khánh Hòa", "")

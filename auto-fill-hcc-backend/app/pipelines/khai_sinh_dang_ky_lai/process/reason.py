@@ -813,11 +813,16 @@ def _cut_at(value, stops: tuple[str, ...]) -> str:
 _AUTHORIZED_TAG = "nguoi_duoc_uy_quyen"
 _AUTHORIZED_BASIS = 'Mục "Bên được ủy quyền" trên giấy ủy quyền, Python đọc trực tiếp OCR.'
 
+# Sau nhãn mục chỉ được là chú thích trong ngoặc ("(Bên B)", "(sau đây gọi là Bên B)") rồi dấu ":"
+# kèm dữ liệu, hoặc hết dòng. Câu văn mở đầu bằng nhãn ("Người được uỷ quyền được quyền thay mặt ...
+# để:") nằm trong phần nội dung ủy quyền, KHÔNG phải dòng mở mục: bắt nhầm thì dòng kế tiếp
+# ("- Nộp hộ và nhận hộ hồ sơ ...") bị đọc thành họ tên người yêu cầu.
+_HEADER_TAIL = r"\s*(?:\([^)]*\))?\)?\s*(?:[:.\-–]\s*(.*))?$"
 # Dòng MỞ mục người được ủy quyền. Neo đầu dòng để không bắt nhầm câu cam kết "... giữa bên ủy
 # quyền và bên được ủy quyền" hay dòng chữ ký "BÊN ỦY QUYỀN   BÊN ĐƯỢC ỦY QUYỀN".
 _AUTHORIZED_HEADER_RE = re.compile(
     r"^(?:[ivx]+\s*[.)/]\s*|\d+\s*[.)/]\s*|[a-d]\s*[.)]\s*|[-+*•]\s*)?(?:ben\s+b\s*[(:-]?\s*)?"
-    r"(?:ben|nguoi)\s+(?:duoc|nhan)\s+uy\s+quyen\b\s*(?:\(\s*ben\s+b\s*\))?\)?\s*:?\s*(.*)$"
+    r"(?:ben|nguoi)\s+(?:duoc|nhan)\s+uy\s+quyen\b" + _HEADER_TAIL
 )
 # Dòng mở mục khác → hết mục người được ủy quyền.
 _AUTHORIZED_BLOCK_END_RE = re.compile(
@@ -825,6 +830,19 @@ _AUTHORIZED_BLOCK_END_RE = re.compile(
     r"^(?:ben\s+uy\s+quyen|nguoi\s+uy\s+quyen|noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket)\b|"
     r"^[─━\-]{3,}\s*trang\b"
 )
+# Giấy ủy quyền viết ngôi thứ nhất, không có mục "Bên được ủy quyền": "Tôi là: ... Bằng giấy này, tôi
+# ủy quyền cho: Ông: ... Nội dung ủy quyền: ...". Nhân thân bên được ủy quyền nằm từ dòng "tôi ủy quyền
+# cho" tới dòng nội dung/phạm vi ủy quyền. Cần chữ "tôi"/"nay" đứng ngay trước để không bắt câu chú
+# thích "Trường hợp người yêu cầu ủy quyền cho người khác ..." của tờ khai.
+_FIRST_PERSON_AUTHORIZED_RE = re.compile(
+    r"^(?:.*[\s,.;:])?(?:toi|nay|chung\s+toi)\s+(?:xin\s+|dong\s+y\s+)?uy\s+quyen\s+cho\b"
+)
+_FIRST_PERSON_AUTHORIZED_END_RE = re.compile(
+    r"^(?:noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket|(?:ben|nguoi)\s+(?:(?:duoc|nhan)\s+)?uy\s+quyen)\b|"
+    r"^[─━\-]{3,}\s*trang\b"
+)
+# Họ tên người Việt dài nhất cỡ "Công Tằng Tôn Nữ Thị Kim Hoa"; dài hơn là câu văn đọc nhầm.
+_MAX_NAME_WORDS = 8
 _AUTHORIZED_NAME_LABEL_RE = re.compile(
     r"^[-+*•]?\s*(?:ong\s*/\s*ba|ong\s*\(\s*ba\s*\)|ong|ba|anh|chi|"
     r"ho\s*,?\s*(?:va\s+)?(?:chu\s*dem\s*,?\s*(?:va\s+)?)?ten|ten)\s*:"
@@ -892,8 +910,9 @@ def _authorized_person_from_lines(block: list[str]) -> dict:
     id_match = _AUTHORIZED_ID_RE.search(joined)
     birth_match = _AUTHORIZED_BIRTH_RE.search(joined)
     issue_match = _AUTHORIZED_ISSUE_DATE_RE.search(joined)
-    # Họ tên phải có ít nhất hai tiếng chữ cái — dòng trống "Ông/bà: ......" không phải họ tên.
-    if len(re.findall(r"[^\W\d_]{1,}", name)) < 2:
+    # Họ tên phải có ít nhất hai tiếng chữ cái — dòng trống "Ông/bà: ......" không phải họ tên;
+    # quá dài là câu văn (vd dòng nội dung ủy quyền) chứ không phải họ tên.
+    if not 2 <= len(re.findall(r"[^\W\d_]{1,}", name)) <= _MAX_NAME_WORDS:
         name = ""
     return {
         "name": re.sub(r"\s+", " ", name).strip(" .,;:-"),
@@ -911,9 +930,13 @@ def _authorized_person(documents: list[dict]) -> dict | None:
         text = str(document.get("text") or "")
         if "uy quyen" not in _fold(text):
             continue
-        person = _authorized_person_from_lines(_authorized_block_lines(text))
-        if person["name"] or person["id"]:
-            return {**person, "source": document.get("name") or "(không tên)"}
+        for header_re, end_re in (
+            (_AUTHORIZED_HEADER_RE, _AUTHORIZED_BLOCK_END_RE),
+            (_FIRST_PERSON_AUTHORIZED_RE, _FIRST_PERSON_AUTHORIZED_END_RE),
+        ):
+            person = _authorized_person_from_lines(_authorized_block_lines(text, header_re, end_re))
+            if person["name"] or person["id"]:
+                return {**person, "source": document.get("name") or "(không tên)"}
     return None
 
 
@@ -963,8 +986,7 @@ _GRANTOR_BASIS = 'Mục "Bên ủy quyền" trên giấy ủy quyền, Python đ
 # dòng chữ ký "BÊN ỦY QUYỀN   BÊN ĐƯỢC ỦY QUYỀN").
 _GRANTOR_HEADER_RE = re.compile(
     r"^(?:[ivx]+\s*[.)/]\s*|\d+\s*[.)/]\s*|[a-d]\s*[.)]\s*|[-+*•]\s*)?(?:ben\s+a\s*[(:-]?\s*)?"
-    r"(?:ben|nguoi)\s+uy\s+quyen\b(?!.*\b(?:duoc|nhan)\s+uy\s+quyen)(?!\s*va\b)"
-    r"\s*(?:\(\s*ben\s+a\s*\))?\)?\s*:?\s*(.*)$"
+    r"(?:ben|nguoi)\s+uy\s+quyen\b(?!.*\b(?:duoc|nhan)\s+uy\s+quyen)(?!\s*va\b)" + _HEADER_TAIL
 )
 # Dòng mở mục khác → hết mục bên ủy quyền.
 _GRANTOR_BLOCK_END_RE = re.compile(

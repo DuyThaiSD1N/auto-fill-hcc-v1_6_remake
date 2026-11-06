@@ -557,3 +557,125 @@ def test_so_dien_thoai_chi_giu_chu_so_ca_khi_co_va_khong_co_ocr():
     fields, _ = mapper.enrich(_fields(values), {"submitterMode": "owner_as_submitter", "_ocr_text": ocr})
     data = {f["name"]: f["value"] for f in fields}
     assert data["data[phoneNumber]"] == "0367000001"
+
+
+# Mẫu số 01 NĐ 176/2025: "I. Thông tin chung" → "1. Đối tượng hưởng" (chủ hồ sơ) +
+# "2. Thông tin người giám hộ"; giới tính + SĐT chỉ có trên tờ khai, giấy ủy quyền không có.
+_TO_KHAI_MAU_MOI = """Mẫu số 01
+TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI, TRỢ CẤP HƯU TRÍ XÃ HỘI
+☑ Người cao tuổi đề nghị hưởng trợ cấp hưu trí xã hội khai mục I, mục II.2 và mục III.
+I. Thông tin chung
+1. Đối tượng hưởng trợ cấp xã hội, trợ cấp hưu trí xã hội
+1.1. Họ và tên: Trần Thị Mẫu
+Số căn cước/Số định danh cá nhân: 056150000111 ngày cấp 01/02/2022
+Nơi cấp: Cục trưởng cục cảnh sát quản lý hành chính về trật tự xã hội
+Ngày sinh: 03/04/1950 Giới tính: Nữ Dân tộc: Kinh
+1.2. Nơi cư trú: 12 Lê Lợi, Nha Trang - Khánh Hòa
+1.3. Nơi ở hiện nay (Ghi cụ thể): 12 Lê Lợi - Nha Trang - KH
+1.4. Số điện thoại: 0905111222
+1.5. Thẻ BHYT: □ Không ☑ Có
+1.6. Chính sách đang hưởng hằng tháng (nếu có):
+□ Lương hưu (Mức 0 đồng/tháng. Hưởng từ tháng / )
+2. Thông tin người giám hộ
+2.1. Họ và tên: Lê Văn Giám
+Số căn cước/Số định danh cá nhân: 056085000222 ngày cấp 10/05/2025
+Nơi cấp: Bộ Công an
+Ngày sinh: 07/08/1985 Giới tính: Nam Dân tộc: Kinh
+2.2. Nơi cư trú: 12 Lê Lợi - Nha Trang - Khánh Hòa
+
+───── Trang 2/4 ─────
+2.4. Số điện thoại:...0905333444....
+2.5. Mối quan hệ với người đề nghị hưởng chính sách: con trai
+II. Thông tin đề nghị hưởng trợ cấp xã hội, trợ cấp hưu trí xã hội
+- Ngày sinh: .... / .... / .... Giới tính: .... Dân tộc: ....
+III. Phương thức nhận kinh phí trợ cấp
+- Họ và tên: Lê Văn Giám
+- Ngày sinh: 07/08/1985 Giới tính: Nữ Dân tộc: Kinh"""
+
+_GIAY_UY_QUYEN = """GIẤY ỦY QUYỀN
+I. NGƯỜI ỦY QUYỀN:
+Tôi tên là : Trần Thị Mẫu - Sinh ngày 03/04/1950
+Số CCCD : 056150000111 cấp ngày 01/02/2022 tại Cục cảnh sát quản lý hành chính về trật tự xã hội.
+II. NGƯỜI ĐƯỢC ỦY QUYỀN:
+Ông : Lê Văn Giám - Sinh ngày 07/08/1985
+Số căn cước: 056085000222 cấp ngày 10/05/2025 tại Bộ công an."""
+
+_OCR_MAU_MOI = _GIAY_UY_QUYEN + "\n\n---\n\n" + _TO_KHAI_MAU_MOI
+
+_CHU_HO_SO_MAU_MOI = {
+    "ChuHoSo_HoTen": "Trần Thị Mẫu",
+    "ChuHoSo_SoDinhDanh": "056150000111",
+    "ChuHoSo_NgaySinh": "03/04/1950",
+    "ChuHoSo_GioiTinh": "Nữ",
+    "ChuHoSo_DienThoai": "0905111222",
+    "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+}
+_NGUOI_NOP_MAU_MOI = {
+    "NguoiNop_HoTen": "Lê Văn Giám",
+    "NguoiNop_SoDinhDanh": "056085000222",
+    "NguoiNop_GioiTinh": "Nam",
+    "NguoiNop_DienThoai": "0905333444",
+    "NguoiNop_NoiCap": "Bộ Công an",
+}
+
+
+def test_mau_moi_owner_mode_dien_gioi_tinh_va_sdt_nguoi_nop():
+    fields, _ = mapper.enrich(
+        _fields(_CHU_HO_SO_MAU_MOI),
+        {"submitterMode": "owner_as_submitter", "_ocr_text": _OCR_MAU_MOI},
+    )
+    data = {f["name"]: f["value"] for f in fields}
+    assert data["data[fullname]"] == "Trần Thị Mẫu"
+    assert data["data[gender]"] == "Nữ"
+    assert data["data[phoneNumber]"] == "0905111222"
+
+
+def test_mau_moi_nguoi_nop_khong_khop_van_dien_gioi_tinh_sdt_chu_ho_so():
+    data, warnings = _run(
+        {**_CHU_HO_SO_MAU_MOI, **_NGUOI_NOP_MAU_MOI},
+        {**_context("Người Khác", "001200000999"), "_ocr_text": _OCR_MAU_MOI},
+    )
+    assert data["data[isOwnerDossierCheck]"] is False
+    assert data["data[ownerGender]"] == "Nữ"
+    assert data["data[ownerPhoneNumber]"] == "0905111222"
+    # Giấy ủy quyền có "Số căn cước … tại Bộ công an" của người được ủy quyền: không ép nơi cấp chủ hồ sơ.
+    assert data["data[ownerIdIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert "data[fullname]" not in data
+    assert warnings
+
+
+def test_mau_moi_nguoi_giam_ho_khop_ui_lay_gioi_tinh_sdt_dung_khoi_2():
+    data, warnings = _run(
+        {**_CHU_HO_SO_MAU_MOI, **_NGUOI_NOP_MAU_MOI},
+        {**_context("Lê Văn Giám", "056085000222"), "_ocr_text": _OCR_MAU_MOI},
+    )
+    assert data["data[fullname]"] == "Lê Văn Giám"
+    assert data["data[gender]"] == "Nam"
+    assert data["data[phoneNumber]"] == "0905333444"
+    assert data["data[idIssuePlace]"] == "Bộ Công an"
+    assert data["data[ownerGender]"] == "Nữ"
+    assert data["data[ownerPhoneNumber]"] == "0905111222"
+    assert not warnings
+
+    # Giới tính "Nữ" ở mục III (người nhận tiền) không được tính là bằng chứng của người giám hộ.
+    data, _ = _run(
+        {**_CHU_HO_SO_MAU_MOI, **_NGUOI_NOP_MAU_MOI, "NguoiNop_GioiTinh": "Nữ"},
+        {**_context("Lê Văn Giám", "056085000222"), "_ocr_text": _OCR_MAU_MOI},
+    )
+    assert "data[gender]" not in data
+
+
+def test_mau_moi_requester_context_khoanh_khoi_giam_ho_va_lien_he_chu_ho_so():
+    context = asyncio.run(
+        runner._requester_context(
+            [{"text": _GIAY_UY_QUYEN}, {"text": _TO_KHAI_MAU_MOI}],
+            _context("Lê Văn Giám", "056085000222"),
+        )
+    )
+    assert 'document="2" section="II"' in context
+    assert "2.4. Số điện thoại:...0905333444" in context
+    assert "<owner_primary_ocr>" in context
+    assert "1.2. Nơi cư trú: 12 Lê Lợi, Nha Trang - Khánh Hòa" in context
+    assert "1.4. Số điện thoại: 0905111222" in context
+    assert "Phương thức nhận kinh phí" not in context
+    assert "Lương hưu" not in context

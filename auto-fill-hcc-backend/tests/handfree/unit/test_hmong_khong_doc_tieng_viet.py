@@ -100,7 +100,7 @@ _VIET_PLACEHOLDERS = {"documents_md", "documents_tts", "options_md", "options_tt
                       "label",
                       # Tên ô checklist (registry requiredDocs[].name) trong câu hướng dẫn scan.
                       "doc_name",
-                      # Chữ trên thẻ kết quả DVCQG ("Cơ quan thực hiện: UBND") — registry.
+                      # Chữ trên thẻ kết quả DVCQG ("Cơ quan thực hiện: Sở Y tế") — registry.
                       "card",
                       "portal_message"}
 

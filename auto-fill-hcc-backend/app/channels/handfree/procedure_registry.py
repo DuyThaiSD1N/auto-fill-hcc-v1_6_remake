@@ -2403,13 +2403,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
-        # Cổng Bộ Y tế, CÙNG khung với "dieu-chinh-huu-tri-xa-hoi" ngay trên: DVCQG chọn ĐỦ Tỉnh +
-        # Xã rồi vào THẲNG trang kê khai (không có hộp thoại chọn cơ quan trong cổng), wizard iGate
-        # 1 Thông tin hồ sơ → 2 Thành phần hồ sơ → 3 Hình thức nhận kết quả → 4 Nộp hồ sơ.
-        # KHÁC hưu trí ở trang kết quả DVCQG: thủ tục do CẢ Sở Y tế lẫn UBND xã tiếp nhận nên ra
-        # NHIỀU thẻ, thẻ đầu là cấp Sở — bấm "thẻ đầu" như mọi thủ tục khác là nộp nhầm cơ quan.
-        # agencyCardIncludes chốt đúng thẻ UBND (cùng chuỗi Auto Fill đang dùng, ke_khai_links
-        # submitCardIncludes).
+        # Ở khối "Chọn cơ quan thực hiện" trên DVCQG, chọn Tỉnh rồi chuyển radio Phường/Xã sang Sở.
+        # Kết quả có cả thẻ Sở Y tế và UBND xã; chốt thẻ Sở Y tế ở bước Nộp trực tuyến.
         "detect": {
             "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
             # KHÔNG khai id apply-online/<id>: snapshot là của một tài khoản cụ thể, id đó đổi
@@ -2431,7 +2426,9 @@ PROCEDURES: list[dict] = [
         "icon": "🍲",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
         "needsAgencySelect": True,
-        "agencyCardIncludes": "Cơ quan thực hiện: UBND",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyCardIncludes": "Cơ quan thực hiện: Sở Y tế",
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
         # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng (stepper 4 bước, tờ khai Form.io, bước 3 receivingKind +
         # cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
@@ -6381,7 +6378,7 @@ PROCEDURES: list[dict] = [
             "3. Căn cước công dân của người đề nghị (nếu có).\n"
             "4. Nếu nộp thay: giấy ủy quyền (kèm lời chứng), giấy giới thiệu.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
-            "Bước đính kèm: Giấy chứng nhận → dòng 13, Đơn đề nghị → dòng 14, giấy ủy quyền/giấy giới thiệu thêm dòng "
+            "Bước đính kèm: Giấy chứng nhận → dòng 11, Đơn đề nghị → dòng 14, giấy ủy quyền/giấy giới thiệu thêm dòng "
             "qua 'Thêm giấy tờ' (không thêm được thì đính chung dòng 14)."
         ),
     },
@@ -7130,6 +7127,57 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich",
+        # Mã TTHC 1.004605 (QT-123), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với thẻ HDV nội địa / CCHN di
+        # tích ở trên: nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.004605. ke_khai_links
+        # đặt selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.004605",
+                "019d2bfd-d4aa-756f-b5fc-8a172aa4633a",
+            ],
+        },
+        "label": (
+            "Thủ tục cấp Giấy chứng nhận khóa cập nhật kiến thức cho hướng dẫn viên du lịch nội địa và hướng dẫn viên "
+            "du lịch quốc tế"
+        ),
+        "shortLabel": "Cấp giấy chứng nhận khóa cập nhật kiến thức hướng dẫn viên du lịch",
+        "subtitle": "Hướng dẫn viên đã có thẻ đăng ký học lớp cập nhật kiến thức",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-d4aa-756f-b5fc-8a172aa4633a",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đăng ký tham dự khóa cập nhật kiến thức cho hướng dẫn viên du lịch (Mẫu số 06)",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đăng ký (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "the_hdv", "name": "Thẻ hướng dẫn viên du lịch đã được cấp (chỉ để điền)", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đăng ký tham dự khóa cập nhật kiến thức cho hướng dẫn viên du lịch (Mẫu số 06) đã ký — nguồn chính để "
+            "điền.\n"
+            "2. Nếu có: căn cước, thẻ hướng dẫn viên của người đăng ký — chỉ để điền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tài khoản trùng người đăng ký (căn cước, hoặc họ tên khi đơn chưa có số thật) thì điền khối người nộp; nộp "
+            "thay thì điền khối 'Thông tin người ủy quyền'.\n"
+            "Bước đính kèm: Đơn → dòng 1."
+        ),
+    },
+    {
         "key": "gia-han-giay-phep-xay-dung",
         "flowProfile": "xay-dung",
         # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
@@ -7776,6 +7824,62 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại và tách trang theo nội dung.\n"
             "Bước đính kèm: Tờ trình dòng 1; Biên bản + danh sách dòng 3; Nghị quyết dòng 5; Chương trình hoạt động "
             "dòng 6; dòng đổi tên, Điều lệ, lý lịch chỉ đính khi có giấy tờ."
+        ),
+    },
+    {
+        "key": "dang-ky-nha-o-xa-hoi-tuyen-quang",
+        "provinceOnly": ["tuyenquang"],
+        # TTHC 1.014632 trên cổng Bộ Xây dựng (Form.io, 2 form kê khai + bảng attp-row 7 dòng).
+        # Cấu hình riêng Tuyên Quang; cùng mã với luồng Bắc Ninh nhưng khác cổng và pipeline.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "urlIncludes": ["maThuTuc=1.014632", "019d2bfe-985c-732b-822b-460f2199467e"],
+            "textIncludes": ["vay vốn để hộ gia đình, cá nhân tự xây dựng hoặc cải tạo, sửa chữa nhà ở"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân tự xây dựng "
+            "hoặc cải tạo, sửa chữa nhà ở"
+        ),
+        "shortLabel": "Đăng ký nhà ở xã hội",
+        "subtitle": "Xác nhận điều kiện nhà ở để mua, thuê mua, thuê nhà ở xã hội hoặc vay vốn tại Tuyên Quang",
+        "icon": "🏘️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
+        "flowProfile": "xay-dung",
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "needsAgencySelect": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "mau_05", "name": "Giấy tờ chứng minh điều kiện về thu nhập", "icon": "💰",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "mau_01", "name": "Giấy tờ chứng minh đối tượng được hưởng chính sách hỗ trợ về nhà ở xã hội",
+             "icon": "📄", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "doi_tuong_thu_nhap", "name": "Giấy tờ chứng minh đối tượng, thu nhập", "icon": "📑",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "vay_von_tin_dung", "name": "Giấy tờ chứng minh điều kiện vay vốn tại tổ chức tín dụng",
+             "icon": "🏦", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "vay_von_ngan_hang_csxh",
+             "name": "Giấy tờ chứng minh điều kiện vay vốn qua Ngân hàng Chính sách xã hội",
+             "icon": "🏦", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "mau_03", "name": "Giấy tờ chứng minh điều kiện nhà ở (có nhà dưới 15 m² sàn/người)",
+             "icon": "🏠", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "mau_02", "name": "Giấy tờ chứng minh điều kiện về nhà ở (Mẫu số 02)", "icon": "🏠",
+             "sides": 1, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Hồ sơ thường là một PDF gộp gồm Giấy xác nhận điều kiện nhà ở (Mẫu 02 hoặc Mẫu 03), Giấy "
+            "chứng nhận quyền sử dụng đất, CCCD, CT07, giấy tờ hôn nhân và giấy tờ chứng minh đối tượng/"
+            "thu nhập hoặc vay vốn. Hệ thống đọc người kê khai trên mẫu để điền thông tin người nộp và "
+            "các phần trên tờ khai. Tệp có thể được đính vào nhiều dòng; không tự tách file. "
+            "Dòng Mẫu 02/03 nhận thêm giấy tờ nhà đất, cư trú, căn cước và hôn nhân đi kèm."
         ),
     },
     {

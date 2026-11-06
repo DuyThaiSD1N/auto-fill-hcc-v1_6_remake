@@ -150,6 +150,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đăng ký kiểm tra kết quả tập sự hành nghề công chứng", "đăng ký thi tập sự công chứng",
         "hoàn thành tập sự công chứng muốn dự kiểm tra", "nộp hồ sơ dự kiểm tra tập sự công chứng",
         "đăng ký dự kỳ kiểm tra công chứng viên tập sự"],
+    # Hướng dẫn viên ĐÃ CÓ THẺ (nội địa/quốc tế) đăng ký học lớp cập nhật kiến thức do Sở VHTTDL mở theo thông báo —
+    # KHÁC cấp thẻ hướng dẫn viên lần đầu (chưa có thẻ) và cấp đổi/cấp lại thẻ (thẻ hết hạn, mất, hỏng).
+    "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": [
+        "đăng ký khóa cập nhật kiến thức hướng dẫn viên du lịch", "học lớp cập nhật kiến thức hướng dẫn viên",
+        "hướng dẫn viên đăng ký lớp bồi dưỡng cập nhật kiến thức",
+        "xin giấy chứng nhận khóa cập nhật kiến thức du lịch",
+        "đăng ký tham dự khóa cập nhật kiến thức theo thông báo của Sở"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -478,6 +485,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                       "xin giấy xác nhận điều kiện nhà ở để mua nhà xã hội",
                                       "vay vốn tự xây hoặc sửa chữa nhà ở theo chính sách nhà ở xã hội",
                                       "đăng ký nhà ở xã hội ở bắc ninh"],
+    "dang-ky-nha-o-xa-hoi-tuyen-quang": ["đăng ký mua nhà ở xã hội ở tuyên quang",
+                                         "đăng ký thuê mua nhà ở xã hội tại tuyên quang",
+                                         "xin giấy xác nhận điều kiện nhà ở ở tuyên quang",
+                                         "vay vốn tự xây hoặc sửa chữa nhà ở xã hội ở tuyên quang",
+                                         "đăng ký nhà ở xã hội tuyên quang"],
     # "Đăng ký lại" = sổ hộ tịch GỐC ở cơ quan đã mất/hư hỏng; sổ còn mà chỉ cần bản sao là trích lục.
     "khai-sinh-dang-ky-lai": ["đăng ký lại khai sinh", "mất giấy khai sinh muốn làm lại", "làm lại giấy khai sinh",
                               "khai sinh lại vì sổ hộ tịch gốc bị mất",
@@ -650,12 +662,12 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   SẢN (KHÁC hẳn chứng thực bản sao một tờ giấy); "công chứng BẢN DỊCH", "chứng thực chữ ký NGƯỜI
   DỊCH", "dịch thuật công chứng" = chứng thực chữ ký NGƯỜI DỊCH (KHÁC chứng thực chữ ký thường — cái
   đó là chữ ký của chính người yêu cầu).
-- HAI thủ tục NHÀ Ở XÃ HỘI (khi danh sách có cả hai): "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước
-  đầu tư" = THUÊ hoặc THUÊ MUA căn nhà ở xã hội do NHÀ NƯỚC xây bằng vốn đầu tư công; bản Bắc Ninh "Đăng
-  ký mua, thuê mua, thuê nhà ở xã hội, vay vốn…" = xin XÁC NHẬN ĐIỀU KIỆN nhà ở để MUA / thuê mua / thuê
-  nhà ở xã hội (thường của dự án), hoặc VAY VỐN tự xây, sửa nhà. Nói rõ nhà của Nhà nước / vốn đầu tư
-  công → bản Bộ Xây dựng; nói mua nhà xã hội của dự án, xin giấy xác nhận điều kiện nhà ở hoặc vay vốn
-  → bản Bắc Ninh; chỉ nói chung "đăng ký / thuê nhà ở xã hội" → unclear với cả hai.
+- HAI nhóm thủ tục NHÀ Ở XÃ HỘI: "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư" = THUÊ hoặc
+  THUÊ MUA căn nhà do NHÀ NƯỚC xây bằng vốn đầu tư công; nhóm "Đăng ký mua, thuê mua, thuê nhà ở xã hội,
+  vay vốn…" = xin XÁC NHẬN ĐIỀU KIỆN nhà ở để mua/thuê nhà dự án hoặc vay vốn tự xây, sửa nhà. Nói rõ
+  nhà vốn đầu tư công → thủ tục "Cho thuê…"; nói mua/thuê nhà dự án, xin giấy xác nhận hoặc vay vốn →
+  chọn thủ tục đăng ký nhà ở xã hội đúng tỉnh (Bắc Ninh hoặc Tuyên Quang). Chỉ nói chung "đăng ký /
+  thuê nhà ở xã hội" mà không rõ địa bàn hoặc loại thủ tục → hỏi lại.
 - HAI thủ tục "Đăng ký biến động … chuyển nhượng, thừa kế, tặng cho, góp vốn …; cho thuê, cho thuê lại …"
   (khi danh sách có cả hai, Bắc Ninh): bản tên dài có "chuyển đổi quyền sử dụng đất nông nghiệp" và "mua
   bán nhà ở có thời hạn" là thủ tục HIỆN HÀNH → nói tên/nghiệp vụ (sang tên, chuyển nhượng, thừa kế, tặng
