@@ -226,10 +226,12 @@ def test_ho_tro_mai_tang_prompt_keeps_output_compact():
 
 
 def test_registry_uses_ho_tro_mai_tang_process_pipeline():
-    proc = get_procedure("ho-tro-mai-tang")
+    proc = get_procedure("ho-tro-mai-tang-1116910")
 
-    assert get_pipeline("ho-tro-mai-tang") is agent.run
+    assert get_pipeline("ho-tro-mai-tang-1116910") is agent.run
+    assert get_attach_pipeline("ho-tro-mai-tang-1116910") is not None
     assert proc["mode"] == "agent"
+    # Tên KHÔNG mang tiền tố tỉnh: báo cáo hồ sơ trợ lý mọi tỉnh tra tên qua entry này.
     assert proc["label"] == "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"
     # Đã chuyển sang mã 1.116910, bỏ mã cũ 1.001731.
     assert proc["detect"]["urlIncludes"] == ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"]
@@ -241,30 +243,32 @@ def test_registry_uses_ho_tro_mai_tang_process_pipeline():
 def test_ke_khai_link_ho_tro_mai_tang_dung_ma_1116910():
     from app.procedures.ke_khai_links import KE_KHAI_LINKS
 
-    link = next(item for item in KE_KHAI_LINKS if item["key"] == "ho-tro-mai-tang")
-    assert link["code"] == "1.116910"
-    assert link["url"] == "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79"
+    links = [item for item in KE_KHAI_LINKS if item.get("code") == "1.116910"]
+    assert [link["key"] for link in links] == ["ho-tro-mai-tang-1116910"]
+    assert links[0]["label"] == "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"
+    assert links[0]["url"] == "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f66e-63a3-749a-a9d8-2dcbeda6af79"
 
 
-def test_ma_1116910_dung_chung_pipeline_ho_tro_mai_tang():
+def test_ma_1116910_chi_con_mot_entry_dung_ca_nuoc():
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS, link_province_slugs, procedure_province_slugs
+
+    # Entry trùng "ho-tro-mai-tang" đã gộp vào "ho-tro-mai-tang-1116910" (5/11/2026).
+    assert get_procedure("ho-tro-mai-tang") is None
+    assert get_pipeline("ho-tro-mai-tang") is None
     proc = get_procedure("ho-tro-mai-tang-1116910")
-
-    assert get_pipeline("ho-tro-mai-tang-1116910") is agent.run
-    assert get_attach_pipeline("ho-tro-mai-tang-1116910") is get_attach_pipeline("ho-tro-mai-tang")
-    assert proc["label"] == "[Tỉnh Ninh Bình] Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"
-    assert "maThuTuc=1.116910" in proc["detect"]["urlIncludes"]
-    # Cùng tên và cùng mã với "ho-tro-mai-tang" → phải kèm mã để thắng khi khớp theo chữ trên trang.
-    assert proc["detect"]["textIncludes"] == ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội", "1.116910"]
-    assert proc["uploadHint"] == get_procedure("ho-tro-mai-tang")["uploadHint"]
+    # Không còn khoá Ninh Bình: Auto Fill tỉnh nào cũng thấy.
+    assert procedure_province_slugs(proc) == []
+    link = next(item for item in KE_KHAI_LINKS if item["key"] == "ho-tro-mai-tang-1116910")
+    assert link_province_slugs(link, {proc["key"]: proc}) == []
 
 
 def test_registry_uses_independent_pipeline_for_ho_tro_mai_tang_huu_tri_xa_hoi():
     proc = get_procedure("ho-tro-mai-tang-huu-tri-xa-hoi")
 
     assert get_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is huu_tri_agent.run
-    assert get_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is not get_pipeline("ho-tro-mai-tang")
+    assert get_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is not get_pipeline("ho-tro-mai-tang-1116910")
     assert get_attach_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is huu_tri_attach
-    assert get_attach_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is not get_attach_pipeline("ho-tro-mai-tang")
+    assert get_attach_pipeline("ho-tro-mai-tang-huu-tri-xa-hoi") is not get_attach_pipeline("ho-tro-mai-tang-1116910")
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
     assert proc["label"] == "Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội"

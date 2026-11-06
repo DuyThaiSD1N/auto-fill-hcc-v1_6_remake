@@ -20,7 +20,7 @@ import unicodedata
 from dataclasses import dataclass, field
 
 from app.channels.handfree.chat import procedure_picker, store
-from app.channels.handfree.procedure_registry import procedure_code, public_list
+from app.channels.handfree.procedure_registry import is_allowed_in_province, procedure_code, public_list
 from app.services.llm.client import chat as llm_chat
 
 _CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
@@ -480,11 +480,18 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     conv = conv or {}
 
     # Gõ/nói đúng MÃ TTHC (vd "1.013225", "mã 1.013225") → chọn thẳng thủ tục, không qua LLM.
+    # Một mã có thể có nhiều bản tỉnh (1.013978: Khánh Hòa + Tuyên Quang, mỗi bản khóa tỉnh riêng) → ưu tiên bản
+    # tài khoản được làm; lấy khớp đầu tiên của cả danh sách thì tài khoản Tuyên Quang dính bản Khánh Hòa và bị
+    # báo "chỉ làm được ở Khánh Hòa". Bản riêng của đúng tỉnh tài khoản đứng trước bản dùng chung cả nước. Không bản
+    # nào mở cho tỉnh này mới rơi về khớp đầu (flow báo khóa tỉnh).
     code_match = _CODE_ONLY_RE.match(fold(text))
     if code_match:
-        for procedure in public_list():
-            if procedure_code(procedure) == code_match.group(1):
-                return Intent("pick_procedure", procedure["key"])
+        account_slug = str((conv.get("auth_user") or {}).get("province_slug") or "")
+        matches = [p for p in public_list() if procedure_code(p) == code_match.group(1)]
+        allowed = [p for p in matches if is_allowed_in_province(p, account_slug)]
+        allowed.sort(key=lambda p: account_slug not in (p.get("provinceOnly") or []))
+        if allowed or matches:
+            return Intent("pick_procedure", (allowed or matches)[0]["key"])
 
     # (2) Màn chào / vừa gợi ý thủ tục: gần như mọi câu là chọn thủ tục → agent chọn thủ tục trước,
     # chỉ câu không nói về thủ tục mới sang bộ phân loại (1 lượt LLM cho trường hợp thường gặp).

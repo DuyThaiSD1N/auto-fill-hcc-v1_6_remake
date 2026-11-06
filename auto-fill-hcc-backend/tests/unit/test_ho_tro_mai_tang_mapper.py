@@ -209,24 +209,25 @@ def _run_nha_trang(values: dict, form_context: dict | None = None, mode: str | N
 
 def test_with_account_process_options_chi_bat_cho_phuong_nha_trang():
     nha_trang = {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}
-    for procedure in ("ho-tro-mai-tang", "ho-tro-mai-tang-1116910"):
-        assert mapper.with_account_process_options({}, nha_trang, procedure)[mapper.REQUESTER_AS_OWNER_OPTION] is True
-    assert mapper.with_account_process_options({}, {"tinh": "Khánh Hoà", "xa": "Nha Trang"}, "ho-tro-mai-tang")[
+    assert mapper.with_account_process_options({}, nha_trang, "ho-tro-mai-tang-1116910")[
         mapper.REQUESTER_AS_OWNER_OPTION
     ] is True
+    assert mapper.with_account_process_options(
+        {}, {"tinh": "Khánh Hoà", "xa": "Nha Trang"}, "ho-tro-mai-tang-1116910"
+    )[mapper.REQUESTER_AS_OWNER_OPTION] is True
     for user in (
         {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"},
         {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
         {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Nha Trang"},
         None,
     ):
-        assert mapper.REQUESTER_AS_OWNER_OPTION not in mapper.with_account_process_options({}, user, "ho-tro-mai-tang")
+        assert mapper.REQUESTER_AS_OWNER_OPTION not in mapper.with_account_process_options({}, user, "ho-tro-mai-tang-1116910")
     assert mapper.REQUESTER_AS_OWNER_OPTION not in mapper.with_account_process_options(
         {}, nha_trang, "ho-tro-mai-tang-huu-tri-xa-hoi"
     )
     # Client tự gửi cờ cũng bị gỡ khi tài khoản không phải phường Nha Trang.
     assert mapper.REQUESTER_AS_OWNER_OPTION not in mapper.with_account_process_options(
-        {mapper.REQUESTER_AS_OWNER_OPTION: True}, {"tinh": "Đà Nẵng", "xa": "Hải Châu"}, "ho-tro-mai-tang"
+        {mapper.REQUESTER_AS_OWNER_OPTION: True}, {"tinh": "Đà Nẵng", "xa": "Hải Châu"}, "ho-tro-mai-tang-1116910"
     )
 
 

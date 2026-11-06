@@ -110,6 +110,23 @@ def test_trang_nop_id_chua_khai_van_ve_muc_cong_moi():
         assert _popup_match(url, _BODY) == key
 
 
+def test_trang_nop_that_khong_in_ma_tthc():
+    """Trang nộp nền mới chỉ in "Lào Cai - <tên thủ tục>", không có 1.115689 → vẫn nhận diện, kể cả id chưa khai."""
+    body = _BODY.removeprefix("1.115689 - ") + " UBND Phường Lào Cai Một phần THÔNG TIN NGƯỜI NỘP HỒ SƠ"
+    that = ("https://dichvucongtest.laocai.gov.vn/vi/padsvc/apply-online/6aa4ccdb0ac3ff7a288958d5"
+            "?agency=6aa0e037ea2136132881f63f8&process=6ac0bd289cc3f47fa68ce7b9&showEdit=0")
+    assert _popup_match(that) == _KEY + "-test"
+    assert _popup_match(that, body) == _KEY + "-test"
+    for host, key in (("dichvucongtest", _KEY + "-test"), ("dichvucong", _KEY)):
+        url = f"https://{host}.laocai.gov.vn/vi/padsvc/apply-online/6aa4ccffffffffffffffffff?agency=x"
+        assert _popup_match(url, body) == key
+    # Trang thủ tục dành cho TỔ CHỨC không bị cướp.
+    to_chuc = body.replace("hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+                           "tổ chức đang sử dụng đất")
+    url = "https://dichvucongtest.laocai.gov.vn/vi/padsvc/apply-online/6aa4ccffffffffffffffffff?agency=x"
+    assert _popup_match(url, to_chuc) != _KEY + "-test"
+
+
 def test_nguoi_duoc_uy_quyen_nop_va_ghi_chu():
     fields, _ = mapper.enrich(_FACTS, _ctx("HOÀNG THỊ V", _UQ))
     values = _values(fields)

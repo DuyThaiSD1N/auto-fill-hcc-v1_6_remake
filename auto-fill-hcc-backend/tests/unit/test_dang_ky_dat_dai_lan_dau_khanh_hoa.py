@@ -279,9 +279,10 @@ def test_authorized_submitter_never_borrows_owner_facts():
     assert values["data[fullname]"] == "Lê Văn An"
     assert values["data[identityNumber]"] == "001090012345"
     assert values["data[address]"] == "12 Lê Lợi"
-    # Người nộp không có điện thoại/ngày sinh riêng -> để trống, không lấy của chủ hồ sơ.
-    assert "data[phoneNumber]" not in values
-    assert "data[birthday]" not in values
+    # Người nộp không có điện thoại/ngày sinh riêng -> trả về TRỐNG (xoá giá trị cổng đổ theo tài khoản), không lấy
+    # của chủ hồ sơ.
+    assert values["data[phoneNumber]"] == values["data[birthday]"] == ""
+    assert {item["name"] for item in fields if item.get("markEmpty")} >= {"data[phoneNumber]", "data[birthday]"}
     assert values["data[ownerFullname]"] == "Trần Thị Bình"
     assert values["data[ownerPhoneNumber]"] == "0912345678"
     assert values["data[ownerAddress]"] == "Tổ dân phố 3"
@@ -297,10 +298,11 @@ def test_parcel_block_only_from_parcel_facts():
     assert values["data[village2]"] == "Phường Nam Nha Trang"
     assert values["data[nation2]"] == "Việt Nam"
 
+    # Không có nguồn thửa đất: không mượn nơi cư trú — ô chữ trả về TRỐNG, ô chọn không đụng tới.
     fields, _warnings = mapper.enrich(_facts(**_OWNER))
-    names = {item["name"] for item in fields}
-    assert not names & {"data[diaChiThuaDat]", "data[province2]", "data[village2]", "data[nation2]",
-                        "data[SoThuaDat]", "data[SoToBanDo]"}
+    values = _values(fields)
+    assert values["data[diaChiThuaDat]"] == values["data[SoThuaDat]"] == values["data[SoToBanDo]"] == ""
+    assert not set(values) & {"data[province2]", "data[village2]", "data[nation2]"}
 
 
 def test_year_only_birthday_and_province_only_address_dropped():
@@ -309,8 +311,10 @@ def test_year_only_birthday_and_province_only_address_dropped():
         ChuHoSo_NgaySinh="1975",
         ChuHoSo_DiaChi={"tinh": "Khánh Hòa"},
     ))
-    names = {item["name"] for item in fields}
-    assert not names & {"data[birthday]", "data[ownerBirthday]", "data[province]", "data[province1]"}
+    values = _values(fields)
+    # Chỉ có năm sinh -> ngày sinh trả về TRỐNG (không ghi năm trơn); chỉ có tỉnh -> bỏ cả cụm địa chỉ.
+    assert values["data[birthday]"] == values["data[ownerBirthday]"] == ""
+    assert not set(values) & {"data[province]", "data[province1]"}
 
 
 def test_organization_owner_and_missing_owner_warning():

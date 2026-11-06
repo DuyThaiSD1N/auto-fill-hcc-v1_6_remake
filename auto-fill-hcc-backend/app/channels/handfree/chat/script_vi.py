@@ -357,12 +357,12 @@ AGENCY_SELECT_FAILED = {
 # nó bấm thẻ đầu.
 AGENCY_CARD_MANUAL_GUIDE = {
     "md": (
-        "Công dân chọn **{ward}, {province}** → **Đồng ý** → bấm **Nộp trực tuyến** ở thẻ có dòng "
+        "Công dân chọn **{area}** → **Đồng ý** → bấm **Nộp trực tuyến** ở thẻ có dòng "
         "**{card}** ạ.\n\n"
         "⚠️ Không bấm thẻ đầu tiên (thẻ của Sở)."
     ),
     "tts": (
-        "Dạ, công dân chọn {ward}, {province}, bấm Đồng ý. "
+        "Dạ, công dân chọn {area}, bấm Đồng ý. "
         "Rồi bấm Nộp trực tuyến ở thẻ có dòng {card}, không bấm thẻ đầu tiên ạ."
     ),
 }

@@ -345,7 +345,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san",
                           "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                           "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
-                          "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat"):
+                          "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+                          "hoa-giai-tranh-chap-dat-dai"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -490,11 +491,17 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("chuyen-doi-ten-hop-dong-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
         ("dang-ky-dat-dai-lan-dau-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
         ("giao-thue-chuyen-muc-dich-dat-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
+        ("cap-doi-gcn-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
+        ("dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
         assert local.get("flowProfile") is None and local["needsAgencySelect"] is True, key
-        assert "agencyProvinceOnly" not in local and "agencySoFirst" not in local, key
+        # Cấp đổi GCN (1.012783) + đăng ký biến động (1.013831) Khánh Hòa: DVCQG chỉ chọn Tỉnh (ke_khai_links
+        # provinceOnlyAgency), không chọn Xã.
+        assert bool(local.get("agencyProvinceOnly")) == (
+            key in ("cap-doi-gcn-khanh-hoa", "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa")), key
+        assert "agencySoFirst" not in local, key
         assert host in local["detect"]["urlScope"], key
         assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
 
@@ -517,6 +524,22 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert tuyen_quang["caseOptions"][-1] == {"match": "", "options": {}}, key
         assert is_allowed_in_province(tuyen_quang, "tuyenquang"), key
         assert not is_allowed_in_province(tuyen_quang, "khanhhoa"), key
+
+    # Cổng iGate Khánh Hòa 1.013995 / 1.013947: DVCQG chỉ chọn Tỉnh + thẻ Chi nhánh VPĐK theo xã như cấp đổi GCN, rồi
+    # luồng chung "xay-dung" (trang "Chọn trường hợp giải quyết" đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình.
+    for key in ("dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+                "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"):
+        kh = procedures.pop(key)
+        assert kh["provinceOnly"] == ["khanhhoa"], key
+        assert kh["flowProfile"] == "xay-dung" and kh["maePortal"] is True, key
+        assert kh["maeDialogChoice"] == {"enabled": True}, key
+        assert kh["needsAgencySelect"] is True and kh["agencyProvinceOnly"] is True, key
+        assert kh["agencyProvince"] == "Khánh Hòa" and "agencySoFirst" not in kh, key
+        assert kh["agencyCardIncludesByWard"]["Phường Nam Nha Trang"] == "Chi nhánh Văn phòng Đăng ký đất đai Nha Trang"
+        assert kh["detect"]["urlScope"] == ["khanhhoa.gov.vn"], key
+        assert kh["bxdFlow"]["capability"] == "supportsBxdFlowKhanhHoa", key
+        assert not any(rule["options"].get("quyTrinh") for rule in kh.get("caseOptions") or []), key
+        assert is_allowed_in_province(kh, "khanhhoa") and not is_allowed_in_province(kh, "tuyenquang"), key
 
     # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
     # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
@@ -592,6 +615,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         "chung-thuc-phan-chia-di-san",
         "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-tu-choi-nhan-di-san",
         "chung-thuc-di-chuc", "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai",
+        "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
     }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
@@ -690,7 +714,13 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +3 cổng iGate Tuyên Quang "dang-ky-dat-dai-lan-dau-tuyen-quang" (1.013978),
     # "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang" (1.012796),
     # "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang" (1.013949).
-    assert len(procedures) == 135
+    # +1 cổng Bộ NN&MT cấp xã "hoa-giai-tranh-chap-dat-dai" (1.012812).
+    # +1 attach-only tư pháp chọn Sở "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung" (1.013818).
+    # +1 cổng iGate Khánh Hòa "cap-doi-gcn-khanh-hoa" (1.012783).
+    # +1 cổng iGate Khánh Hòa "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa" (1.013831).
+    # +1 cổng iGate Khánh Hòa "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa" (1.013995, luồng "xay-dung").
+    # +1 cổng iGate Khánh Hòa "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa" (1.013947, luồng "xay-dung").
+    assert len(procedures) == 141
 
     for procedure in procedures:
         key = procedure["key"]

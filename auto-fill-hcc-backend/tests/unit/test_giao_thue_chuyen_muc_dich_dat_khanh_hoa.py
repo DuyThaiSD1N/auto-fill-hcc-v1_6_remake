@@ -201,8 +201,8 @@ def test_authorized_submitter_fills_part_one_from_submitter_only():
     assert values["data[identityAgency_text]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert (values["data[province]"], values["data[village]"], values["data[address]"]) == (
         "Tỉnh Gia Lai", "Xã Bình Hiệp", "Thôn B")
-    # Số ở Đơn mục 3 là của người đề nghị: không gán cho người nộp, chỉ cảnh báo cán bộ nhập.
-    assert "data[phoneNumber]" not in values
+    # Số ở Đơn mục 3 là của người đề nghị: không gán cho người nộp — trả về TRỐNG + cảnh báo cán bộ nhập.
+    assert values["data[phoneNumber]"] == ""
     assert any("Số điện thoại người nộp" in warning for warning in warnings)
     assert values["data[ownerFullname]"] == "Trần Thị Bình"
     assert values["data[ownerPhoneNumber]"] == "0912345678"

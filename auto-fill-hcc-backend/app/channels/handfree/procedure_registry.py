@@ -34,6 +34,17 @@ _TQ_BXD_FLOW = {
     "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
     "capability": "supportsBxdFlowTuyenQuang",
 }
+# Cổng iGate Khánh Hòa (dichvucong.khanhhoa.gov.vn): trang nps/apply "Chọn trường hợp giải quyết" + stepper 4 bước như
+# Tuyên Quang; cờ riêng vì bản extension cũ chưa đọc trang đó / chưa chạy content/bxd/*.js trên host này. 1.013995 ra 4
+# quy trình cùng một form: nhóm 2.x "đăng ký thay đổi về tài sản" chỉ đổi câu nội dung mặc định khi Đơn không ghi.
+_KH_BXD_FLOW = {
+    "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+    "capability": "supportsBxdFlowKhanhHoa",
+}
+_KH_TAI_SAN_CASE_OPTIONS = [
+    {"match": "dang ky thay doi ve tai san", "options": {"truongHop": "thay_doi"}},
+    {"match": "", "options": {}},
+]
 
 # Cổng Bắc Ninh (Liferay): khối "Thông tin trong trường hợp được ủy quyền" (doiTuongKhac*). Công dân chọn
 # đối tượng thực hiện có ủy quyền → run_process chạy thêm pipeline purpose="authorized_person" (cùng logic
@@ -1724,6 +1735,62 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
+        # Mã TTHC 1.013818 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Chọn cơ quan cấp Sở y như
+        # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực tuyến" kết
+        # quả ĐẦU TIÊN); phần còn lại là attach-only như "bau-to-truong-to-hoa-giai": không điền tờ khai, toàn trình
+        # _TU_PHAP_ATTACH_GUIDED_STEPS. Planner lõi xếp file vào 3 dòng cố định, mỗi file đính nguyên khối.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-7e7f-77f8-ba74-3f3328ddfa7c",
+                "maThuTuc=1.013818",
+            ],
+            "textIncludes": ["đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng",
+        "shortLabel": "Đăng ký kiểm tra kết quả tập sự công chứng",
+        "subtitle": "Người tập sự công chứng đăng ký dự kỳ kiểm tra kết quả tập sự (Sở Tư pháp)",
+        "icon": "📜",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e7f-77f8-ba74-3f3328ddfa7c",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        "infoModalFields": [
+            {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"},
+            {"label": "Thủ tục", "value": "kiểm tra kết quả tập sự hành nghề công chứng"},
+            {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
+        ],
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
+        # Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc tải lên; planner lõi tự phân loại lại theo OCR lúc
+        # đính. Chứng từ nộp phí để optional: thiếu thì dòng 2 để trống kèm cảnh báo, không chặn người dân.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "quyet_dinh", "name": "Quyết định công nhận hoàn thành tập sự hành nghề công chứng (bản chính "
+             "hoặc bản sao có chứng thực)", "icon": "📃", "sides": 1, "repeatable": True},
+            {"key": "nop_phi", "name": "Biên lai / chứng từ nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công "
+             "chứng", "icon": "🧾", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "giay_dang_ky", "name": "Giấy đăng ký tham dự kiểm tra kết quả tập sự (Mẫu TP-TSCC-10) đã ký",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi giấy tờ một tệp, hệ thống KHÔNG tách trang):\n"
+            "1. Quyết định công nhận hoàn thành tập sự hành nghề công chứng (bản chính hoặc bản sao có chứng thực).\n"
+            "2. Biên lai / chứng từ nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công chứng.\n"
+            "3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) đã ký.\n"
+            "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; Giấy đăng ký → dòng 3. Mỗi tệp "
+            "đính nguyên khối; giấy khác thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
         "key": "cap-giay-phep-khai-thac-thuy-san",
         # Mở dần theo tỉnh thí điểm: Đà Nẵng, rồi Quảng Trị (danh mục TTHC cấp tỉnh thí điểm trợ lý, 02/11).
         "provinceOnly": ["danang", "quangtri"],
@@ -2040,6 +2107,67 @@ PROCEDURES: list[dict] = [
             "dịch bệnh + số con, khối lượng của từng biên bản.\n"
             "Bước Thành phần hồ sơ: Đơn đề nghị + các biên bản tiêu hủy gộp thành một tệp ở dòng 'Đơn đề nghị' "
             "(Bản chính), Đơn đứng trước; căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "hoa-giai-tranh-chap-dat-dai",
+        # Mã TTHC 1.012812, UBND CẤP XÃ: DVCQG chọn đủ Tỉnh + Phường/Xã rồi sang cổng ngành NN&MT — cùng khuôn cấp xã
+        # với "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" (maePortal + maeAgencyLevel "ward", wizard 4 bước).
+        # Key TRÙNG lõi và ke_khai_links → process/attach tự nối: Form.io Phần I/II + Ghi chú = nội dung Đơn, bảng
+        # attp-row 2 dòng (giấy tờ sử dụng đất = Bản sao, Đơn = Bản chính), mỗi file đính nguyên khối.
+        "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.012812",
+                "019d2bfa-76e6-7468-b6f2-3d412e902b88",
+            ],
+            "textIncludes": ["hòa giải tranh chấp đất đai"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hòa giải tranh chấp đất đai",
+        "shortLabel": "Hòa giải tranh chấp đất đai tại UBND xã/phường",
+        "subtitle": "Người dân xin UBND xã/phường hòa giải tranh chấp ranh giới, quyền sử dụng đất",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-3d412e902b88",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMae",
+        },
+        "hasAttachmentStep": True,
+        "requiredDocs": [
+            {"key": "don_yeu_cau", "name": "Đơn yêu cầu hòa giải tranh chấp đất đai — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            # Cổng không đánh dấu bắt buộc ở dòng giấy tờ → không chặn người dân chưa có đủ giấy.
+            {"key": "giay_to_dat", "name": "Giấy tờ liên quan đến việc sử dụng đất (giấy chuyển nhượng, sổ đỏ, hợp "
+             "đồng ủy quyền, bản mô tả ranh giới, phiếu đo đạc…)", "icon": "📋", "sides": 1, "optional": True,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người viết đơn", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp — hệ thống KHÔNG tách trang):\n"
+            "1. Đơn yêu cầu hòa giải tranh chấp đất đai, đã ký — nguồn chính về người yêu cầu (họ tên, ngày sinh, "
+            "số căn cước, địa chỉ, số điện thoại); nội dung đơn được chép vào ô Ghi chú.\n"
+            "2. Các giấy tờ liên quan đến việc sử dụng đất: giấy chuyển nhượng, hợp đồng ủy quyền, thông báo thuế "
+            "đất, sổ hộ khẩu, bản mô tả ranh giới, phiếu đo đạc, mảnh trích đo, bản vẽ thửa đất.\n"
+            "3. Nếu có: căn cước của người viết đơn — để điền giới tính, nơi cấp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Người viết đơn trùng tài "
+            "khoản đăng nhập thì trợ lý điền phần người nộp và tích 'Người nộp hồ sơ là chủ hồ sơ'; nộp thay thì giữ "
+            "phần người nộp theo tài khoản, điền người viết đơn ở phần chủ hồ sơ. Bật cài đặt 'Lấy người nộp theo tờ "
+            "khai' thì phần người nộp luôn ghi theo người viết đơn.\n"
+            "Bước Thành phần hồ sơ: giấy tờ sử dụng đất → dòng 1 (Bản sao); Đơn yêu cầu hòa giải → dòng 2 (Bản "
+            "chính). Mỗi file đính nguyên khối."
         ),
     },
     {
@@ -3823,8 +3951,8 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang-1116910",
-        # Mã TTHC 1.116910, thay mã cũ 1.001731 (entry Auto Fill "ho-tro-mai-tang" cũng đã sang mã này;
-        # cả hai key dùng chung pipeline ho_tro_mai_tang: chủ hồ sơ = người chết). CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
+        # Mã TTHC 1.116910, thay mã cũ 1.001731. CÙNG key với Auto Fill (5/11/2026 đã gỡ entry trùng "ho-tro-mai-tang"
+        # và tiền tố "[Tỉnh Ninh Bình]" ở registry lõi); pipeline ho_tro_mai_tang: chủ hồ sơ = người chết. CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
         # (bảo trợ xã hội thay vì người hưởng trợ cấp hưu trí xã hội). Bảng thành phần hồ sơ cũng
         # chỉ một dòng Tờ khai → hideRepeatableHint.
         "detect": {
@@ -6257,6 +6385,230 @@ PROCEDURES: list[dict] = [
             "qua 'Thêm giấy tờ' (không thêm được thì đính chung dòng 14)."
         ),
     },
+    {
+        "key": "cap-doi-gcn-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012783 (05/11/2026), cùng template ba khối với hai thủ tục ngay trên; một form cho cả hai quy trình
+        # 1.012783-1.1 / -1.2 nên không cần caseOptions. Bảng đính kèm 4 dòng; văn bản ủy quyền thêm qua "Thêm giấy tờ".
+        # Khác hai thủ tục trên: ke_khai_links khai provinceOnlyAgency (KHÔNG selectSo) → DVCQG chỉ chọn Tỉnh Khánh Hòa,
+        # bỏ ô Phường/Xã, không agencySoFirst. Trang kết quả ra thẻ VPĐK tỉnh rồi từng Chi nhánh VPĐK đất đai theo huyện
+        # cũ → bấm thẻ chi nhánh của xã tài khoản (agencyCardIncludesByWard, lấy từ submitCardIncludesByWard ở cuối file).
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+        "shortLabel": "Cấp đổi Giấy chứng nhận quyền sử dụng đất",
+        "subtitle": "Đổi Giấy chứng nhận quyền sử dụng đất cũ, rách, hư hỏng sang Giấy chứng nhận mới tại Khánh Hòa",
+        "icon": "🔄",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Khánh Hòa",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp (đủ các trang, kèm trang bổ sung)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo bản đồ địa chính thửa đất (nếu đo đạc lại)", "icon": "📐",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã kê khai, ký — người sử dụng "
+            "đất, số căn cước, địa chỉ, điện thoại, nội dung biến động.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp (đủ các trang, kèm trang bổ sung) — số thửa, số tờ, địa chỉ thửa đất.\n"
+            "3. Mảnh trích đo bản đồ địa chính thửa đất (nếu đo đạc lại).\n"
+            "4. Căn cước công dân của người sử dụng đất (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Giấy chứng nhận → dòng 1, mảnh trích đo → dòng 3, Đơn → dòng 4; văn bản ủy quyền thêm dòng "
+            "qua 'Thêm giấy tờ' (không thêm được thì đính chung dòng 4)."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013831 (05/11/2026), cùng template ba khối và cùng cách chọn cơ quan với cấp đổi GCN ngay trên:
+        # ke_khai_links khai provinceOnlyAgency → DVCQG chỉ chọn Tỉnh; thẻ Chi nhánh VPĐK đất đai theo xã lấy từ
+        # submitCardIncludesByWard (agencyCardIncludesByWard gắn ở cuối file). Bảng đính kèm 13 dòng; tờ khai thuế, giấy
+        # nộp tiền/quyết định xử phạt thêm dòng qua "Thêm giấy tờ".
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": [
+                "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển "
+                "đổi",
+                "chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi "
+            "quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài "
+            "sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ "
+            "tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo "
+            "hình thức thuê đất trả tiền hàng năm"
+        ),
+        "shortLabel": "Đăng ký biến động chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất",
+        "subtitle": "Đăng ký sang tên khi nhận chuyển nhượng, tặng cho, thừa kế quyền sử dụng đất tại Khánh Hòa",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Khánh Hòa",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp (đủ các trang, kèm trang bổ sung)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng chuyển nhượng/tặng cho hoặc văn bản phân chia, khai nhận di sản thừa "
+             "kế (có công chứng)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai lệ phí trước bạ, tờ khai thuế thu nhập cá nhân", "icon": "🧾",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "trich_do", "name": "Phiếu đo đạc chỉnh lý / mảnh trích đo thửa đất (nếu có)", "icon": "📐",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nhận chuyển quyền (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền (nếu nộp thay), giấy nộp tiền hoặc giấy tờ khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã kê khai, ký.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp (kèm trang bổ sung).\n"
+            "3. Hợp đồng chuyển nhượng/tặng cho hoặc văn bản thỏa thuận, khai nhận, phân chia di sản thừa kế.\n"
+            "4. Tờ khai lệ phí trước bạ, thuế thu nhập cá nhân; phiếu đo đạc chỉnh lý (nếu có); căn cước công dân; "
+            "nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: phiếu đo đạc → dòng 1, Giấy chứng nhận → dòng 3, hợp đồng/văn bản thừa kế → dòng 4, Đơn → "
+            "dòng 7, ủy quyền → dòng 10; tờ khai thuế và giấy nộp tiền thêm dòng qua 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013995 (05/11/2026), cùng template ba khối và cùng cách chọn cơ quan với cấp đổi GCN Khánh Hòa:
+        # ke_khai_links khai provinceOnlyAgency → DVCQG chỉ chọn Tỉnh; thẻ Chi nhánh VPĐK đất đai theo xã lấy từ
+        # submitCardIncludesByWard (agencyCardIncludesByWard gắn ở cuối file). Khác 4 thủ tục Khánh Hòa trên: cổng mở trang
+        # "Chọn trường hợp giải quyết" (Đơn vị thực hiện + 4 quy trình 1.013995-1.1/1.2/2.1/2.2) → luồng chung "xay-dung":
+        # trợ lý đọc các lựa chọn của trang, hỏi công dân, chọn hộ và bấm Đồng ý; ô Đơn vị thực hiện có nhiều chi nhánh
+        # thì giữ chi nhánh của xã tài khoản (flow._narrow_mae_agency). Bảng đính kèm 8 dòng; tờ khai lệ phí trước bạ,
+        # giấy nộp tiền, CCCD thêm dòng qua "Thêm giấy tờ". Trang nps/apply Khánh Hòa SUY cùng form#ngSelectAgencyForm
+        # với cổng Bộ Y tế — chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận hoặc đăng ký thay đổi về tài sản gắn liền "
+            "với đất so với nội dung đã đăng ký, gia hạn thời hạn sở hữu nhà ở của tổ chức nước ngoài, cá nhân nước ngoài "
+            "theo quy định của pháp luật về nhà ở nội dung đã đăng ký"
+        ),
+        "shortLabel": "Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận",
+        "subtitle": "Đăng ký bổ sung hoặc thay đổi nhà ở, công trình trên thửa đất đã có Giấy chứng nhận tại Khánh Hòa",
+        "icon": "🏠",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-868b-77ba-8cfe-b3af7e63b81a",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
+        "caseOptions": _KH_TAI_SAN_CASE_OPTIONS,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "giay_phep", "name": "Giấy phép xây dựng kèm hồ sơ thiết kế, bản vẽ (hoặc giấy tờ khác về quyền sở "
+             "hữu nhà ở, công trình)", "icon": "🏗️", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai lệ phí trước bạ, giấy nộp tiền vào ngân sách nhà nước", "icon": "🧾",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng tên (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã kê khai, ký — người đứng tên, số "
+            "căn cước, địa chỉ, điện thoại, nội dung biến động.\n"
+            "2. Giấy chứng nhận đã cấp (đủ các trang).\n"
+            "3. Giấy phép xây dựng kèm hồ sơ thiết kế, bản vẽ (hoặc giấy tờ khác về quyền sở hữu nhà ở, công trình).\n"
+            "4. Tờ khai lệ phí trước bạ, giấy nộp tiền vào ngân sách nhà nước (nếu có); căn cước công dân; nếu nộp thay: "
+            "văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn → dòng 1, văn bản ủy quyền → dòng 3, Giấy chứng nhận → dòng 6, giấy phép xây dựng kèm bản "
+            "vẽ → dòng 7 (sơ đồ nhà trong bộ bản vẽ không tải lại ở dòng 5); tờ khai lệ phí trước bạ, giấy nộp tiền, căn "
+            "cước thêm dòng qua 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013947 (05/11/2026), cùng cách đi như đăng ký tài sản 1.013995 ngay trên: DVCQG chỉ chọn Tỉnh + thẻ Chi
+        # nhánh VPĐK đất đai theo xã (agencyCardIncludesByWard), trang "Chọn trường hợp giải quyết" của cổng (quy trình
+        # 1.013947-1.1…, cùng một form) → luồng chung "xay-dung" đọc lựa chọn, hỏi công dân, chọn hộ. Bảng đính kèm 2 dòng:
+        # Đơn → dòng 1, Giấy chứng nhận + Phiếu đo đạc → cùng dòng 2.
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["Xác nhận tiếp tục sử dụng đất nông nghiệp"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "subtitle": "Xin xác nhận lại thời hạn sử dụng đất nông nghiệp đã hết hạn ghi trên Giấy chứng nhận tại Khánh Hòa",
+        "icon": "🌾",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8677-74ff-8111-ee0c889b713f",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn xin xác nhận lại thời hạn sử dụng đất nông nghiệp (Mẫu số 09) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (đủ các trang, kèm trang bổ sung)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "trich_do", "name": "Phiếu đo đạc chỉnh lý thửa đất / mảnh trích đo (nếu có)", "icon": "📐",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn xin xác nhận lại thời hạn sử dụng đất nông nghiệp (Mẫu số 09) đã kê khai, ký — người sử dụng đất, "
+            "ngày sinh, số căn cước, địa chỉ liên hệ, điện thoại, nội dung đề nghị.\n"
+            "2. Giấy chứng nhận đã cấp (đủ các trang, kèm trang bổ sung).\n"
+            "3. Phiếu đo đạc chỉnh lý thửa đất / mảnh trích đo (nếu có).\n"
+            "4. Căn cước công dân (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn → dòng 1, Giấy chứng nhận và Phiếu đo đạc → cùng dòng 2; văn bản ủy quyền, căn cước thêm "
+            "dòng qua 'Thêm giấy tờ'."
+        ),
+    },
     # ── Thủ tục đất đai cổng iGate Tuyên Quang (04/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối; detect y hệt entry gốc của lõi (urlScope tuyenquang.gov.vn — tên thủ tục trùng
     # bản tỉnh khác); label = label lõi bỏ "Tuyên Quang - ". ke_khai_links không khai provinceOnlyAgency / selectSo →
@@ -8354,6 +8706,12 @@ _SO_AGENCY_BY_KEY = {
     str(_link["key"]): _link["soAgencyByProvince"] for _link in core_ke_khai_links.KE_KHAI_LINKS
     if _link.get("key") and _link.get("soAgencyByProvince")
 }
+# Thẻ "Nộp trực tuyến" phải bấm theo XÃ của tài khoản — lấy THẲNG từ ke_khai_links (submitCardIncludesByWard), cùng
+# nguồn với Auto Fill: vd Khánh Hòa 1.012783 ra thẻ VPĐK tỉnh + từng Chi nhánh VPĐK đất đai, xã nào vào chi nhánh nấy.
+_CARD_BY_WARD_BY_KEY = {
+    str(_link["key"]): _link["submitCardIncludesByWard"] for _link in core_ke_khai_links.KE_KHAI_LINKS
+    if _link.get("key") and _link.get("submitCardIncludesByWard")
+}
 
 for _procedure in PROCEDURES:
     if (_BYT_HOST in ((_procedure.get("detect") or {}).get("urlScope") or [])
@@ -8379,6 +8737,8 @@ for _procedure in PROCEDURES:
         )
     if _procedure.get("agencySoFirst") and _procedure["key"] in _SO_AGENCY_BY_KEY:
         _procedure.setdefault("agencySoByProvince", deepcopy(_SO_AGENCY_BY_KEY[_procedure["key"]]))
+    if _procedure["key"] in _CARD_BY_WARD_BY_KEY:
+        _procedure.setdefault("agencyCardIncludesByWard", deepcopy(_CARD_BY_WARD_BY_KEY[_procedure["key"]]))
     if _procedure["key"] in _HUONG_DAN_DRIVE_ID:
         _procedure["guideUrl"] = _HUONG_DAN_DRIVE_URL.format(_HUONG_DAN_DRIVE_ID[_procedure["key"]])
 

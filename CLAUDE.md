@@ -111,6 +111,39 @@ KHÔNG theo `BACKEND_URL` của `.env`. Đăng nhập bằng tài khoản nào t
 ghi trace như lượt thật của tài khoản ấy. Bước điền luôn gửi `options.freshOcr=true` → BE bỏ đọc cache OCR (vẫn ghi),
 lần nào cũng OCR mới; bước đính kèm vẫn dùng cache như extension.
 
+## Thêm thủ tục mới
+
+### Tên folder pipeline theo key trong ke_khai_links.json
+
+Mỗi khi làm pipeline cho thủ tục mới, key thủ tục trong `app/procedures/registry.py` phải TRÙNG `key` đã khai ở
+`app/procedures/data/ke_khai_links.json`, và tên folder pipeline là đúng key đó đổi `-` thành `_`. Ví dụ link
+`hoa-giai-tranh-chap-dat-dai` → folder `app/pipelines/hoa_giai_tranh_chap_dat_dai/`, test
+`tests/unit/test_hoa_giai_tranh_chap_dat_dai.py`. Thủ tục chưa có link thì thêm link vào `ke_khai_links.json`
+trước, chốt key ở đó rồi mới đặt tên folder. Không tự đặt tên folder khác key (kiểu viết tắt, đổi thứ tự chữ).
+
+### Làm thủ tục mới thì đưa lên cả trợ lý người dân (tro-ly-nguoi-dan)
+
+Không cần người dùng nhắc: làm xong pipeline lõi (Auto Fill) thì đưa luôn thủ tục đó lên trợ lý, cùng key. Chép theo
+một thủ tục ĐÃ chạy trên trợ lý ở cùng cổng, cùng cấp cơ quan (vd cổng NN&MT cấp xã → `ho-tro-co-so-san-xuat-thiet-hai-
+dich-benh-dong-vat`; iGate tỉnh → bản Khánh Hòa/Tuyên Quang). Các chỗ phải khai (đều trong `auto-fill-hcc-backend/`):
+
+1. `app/channels/handfree/procedure_registry.py`: entry cùng key với lõi (`detect`, `label`, `shortLabel`,
+   `subtitle`, `icon`, `keKhaiUrl` = url trong ke_khai_links, cờ chọn cơ quan, `wizard`, `bxdFlow` nếu là cổng iGate
+   các bộ, `requiredDocs`, `uploadHint`). Thủ tục riêng của tỉnh thì thêm `provinceOnly`.
+2. `app/channels/handfree/chat/procedure_picker/prompt.py`: câu người dân hay nói để agent chọn đúng thủ tục, kèm
+   chú thích phân biệt với thủ tục dễ nhầm.
+3. `app/channels/handfree/chat/script_mong.py`: tên tiếng Mông, ghi "BẢN NHÁP chờ anh Dư soát".
+4. Cổng iGate các bộ (bxdFlow): thêm `app/pipelines/<folder>/handfree/__init__.py` + `field_review.py`
+   (`PROCEDURE_KEYS`, `REQUIRED = ()`, `NO_ASK`) — ngoại lệ được phép của quy tắc không thêm file mới.
+5. Test: `tests/handfree/unit/test_flow_profiles.py` (số đếm + dòng ghi chú, khối kiểm khuôn cấp cơ quan), các danh
+   sách key ở `test_field_review.py`, `test_bxd.py`, `test_mae_agency_cap_xa.py`… theo khuôn đã chép; thêm một test
+   trợ lý vào file test của pipeline. Chạy riêng từng file test handfree đã sửa (cả cây `tests/handfree` có lỗi
+   collect sẵn).
+
+Extension trợ lý (`tro-ly-nguoi-dan-extension-main/`) chỉ phải sửa khi thủ tục nằm trên cổng/host trợ lý chưa chạy:
+thêm host vào `maeHost` (content.js) và `HOSTS` (content/bxd/portal.js, field-review-formio.js), kèm cờ capability
+riêng. Chỉ đẩy lên thai_dev khi người dùng yêu cầu.
+
 ## Test
 
 Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree` lỗi collect sẵn, bỏ qua.

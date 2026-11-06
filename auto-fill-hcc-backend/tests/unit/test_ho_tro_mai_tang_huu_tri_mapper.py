@@ -227,7 +227,7 @@ def test_nghia_hung_account_sets_clear_email_flag_only_for_this_procedure():
     assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options(
         {mapper.CLEAR_EMAIL_OPTION: True}, other, key
     )
-    assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options({}, nghia_hung, "ho-tro-mai-tang")
+    assert mapper.CLEAR_EMAIL_OPTION not in mapper.with_account_process_options({}, nghia_hung, "ho-tro-mai-tang-1116910")
 
 
 def test_binh_chuong_account_sets_deceased_as_owner_flag_only_for_this_procedure():
@@ -239,7 +239,7 @@ def test_binh_chuong_account_sets_deceased_as_owner_flag_only_for_this_procedure
         assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options(
             {mapper.DECEASED_AS_OWNER_OPTION: True}, other, key
         )
-    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, binh_chuong, "ho-tro-mai-tang")
+    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, binh_chuong, "ho-tro-mai-tang-1116910")
 
 
 def test_clear_email_flag_emits_clear_after_requester_block():

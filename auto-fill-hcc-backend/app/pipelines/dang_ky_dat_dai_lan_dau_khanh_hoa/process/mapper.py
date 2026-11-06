@@ -8,6 +8,8 @@ Ba khối tách riêng (xem schema.py):
 - Phần III thửa đất   -> data[diaChiThuaDat]/SoThuaDat/SoToBanDo/province2/village2/nation2.
 Không có văn bản ủy quyền (tên người nộp trùng chủ hồ sơ) thì hai vai là MỘT người: thuộc tính thiếu ở vai này
 được lấy từ vai kia. Có ủy quyền thì mỗi khối chỉ dùng facts của đúng vai, không mượn chéo.
+Ô chữ/ngày giấy tờ không có dữ liệu thì trả về TRỐNG (clear_blank_fields), không bỏ qua — dùng chung cho cả 5 thủ tục
+Khánh Hòa cùng template.
 """
 
 from __future__ import annotations
@@ -107,6 +109,43 @@ def _ward(area: dict) -> str | None:
     return canonical_ward(area.get("tinh"), xa) or xa
 
 
+# Mọi ô CHỮ / NGÀY của ba khối (dùng chung cho 5 thủ tục Khánh Hòa cùng template). Giấy tờ không có dữ liệu thì TRẢ VỀ
+# TRỐNG (clear) chứ không bỏ qua: Phần I cổng đổ sẵn theo tài khoản đăng nhập (ngày sinh, CCCD… của người khác khi nộp
+# thay), để nguyên là ghép thông tin hai người vào một khối. Ô chọn Tỉnh/Phường-xã không xoá: cổng chỉ để sẵn Tỉnh Khánh
+# Hòa (mặc định của cổng, không theo tài khoản), Phường/xã để trống; engine trợ lý cũng chưa bỏ chọn được ô Choices.
+BLANK_PART_ONE = ("data[fullname]", "data[phoneNumber]", "data[birthday]", "data[email]", "data[identityNumber]",
+                  "data[identityDate]", "data[identityAgency_text]", "data[address]")
+BLANK_PART_TWO = ("data[ownerFullname]", "data[ownerPhoneNumber]", "data[ownerBirthday]", "data[ownerEmail]",
+                  "data[ownerIdentityNumber]", "data[ownerIdentityDate]", "data[ownerIdentityAgency]", "data[ownerAddress]")
+BLANK_PART_THREE = ("data[diaChiThuaDat]", "data[SoThuaDat]", "data[SoToBanDo]")
+# Ô có dấu bắt buộc trên form: trả trống thì tô đỏ (markEmpty) để cán bộ nhập.
+REQUIRED_BLANK = ("data[fullname]", "data[phoneNumber]", "data[birthday]", "data[identityNumber]", "data[ownerFullname]",
+                  "data[ownerPhoneNumber]", "data[ownerBirthday]", "data[ownerIdentityNumber]")
+
+
+def account_is_applicant(options: dict | None, identity: Any) -> bool:
+    """Tài khoản đăng nhập CHÍNH LÀ người nộp (extension gửi formContext, số định danh trùng) → Phần I cổng đổ sẵn đúng
+    người, ô giấy tờ thiếu giữ giá trị cổng thay vì xoá."""
+    context = (options or {}).get("formContext") or {}
+    account = _identity(context.get("applicantIdentityNumber") or context.get("identityNumber"))
+    return bool(account and identity and account == _identity(identity))
+
+
+def clear_blank_fields(out: list[dict], seen: set[str], options: dict | None, applicant_identity: Any) -> bool:
+    """Trả mọi ô chữ/ngày còn thiếu của ba khối về TRỐNG (clear; ô bắt buộc tô đỏ). Trả True khi giữ Phần I của cổng
+    (tài khoản là người nộp)."""
+    keep_part_one = account_is_applicant(options, applicant_identity)
+    for name in BLANK_PART_ONE + BLANK_PART_TWO + BLANK_PART_THREE:
+        if name in seen or (keep_part_one and name in BLANK_PART_ONE):
+            continue
+        item = {"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True}
+        if name in REQUIRED_BLANK:
+            item["markEmpty"] = True
+        out.append(item)
+        seen.add(name)
+    return keep_part_one
+
+
 def _is_to_chuc(loai: Any, name: Any) -> bool:
     folded = _fold(loai)
     if "to chuc" in folded:
@@ -117,7 +156,6 @@ def _is_to_chuc(loai: Any, name: Any) -> bool:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    del options
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
@@ -207,4 +245,5 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[nation2]", parcel_area.get("quocGia") or "Việt Nam", default=True)
         add("data[village2]", parcel_ward)
 
+    clear_blank_fields(out, seen, options, applicant_val("SoDinhDanh"))
     return out, warnings

@@ -119,6 +119,60 @@ def test_tach_giay_to_loi_llm_dinh_nguyen_tep(monkeypatch):
     assert res["attachments"][0]["componentIndex"] == 3
 
 
+def _plan_ten_trung(monkeypatch, docs, options):
+    """Ba trang, LLM đặt tên theo ``docs``; trả documentName/componentName của kế hoạch và classified."""
+    async def fake_chat(messages, *_a, **_k):
+        if messages[0]["content"] == prompt.SPLIT_SYSTEM_PROMPT:
+            return json.dumps({"tep": [{"fileIndex": 0, "trangDau": [1, 2, 3]}]})
+        return json.dumps({"documents": docs})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_theo_preset)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(name="bo-ho-so.pdf", type="application/pdf", dataUrl=_pdf_ba_trang(), role="")]
+    return asyncio.run(attach.plan(files, options))
+
+
+def test_tach_giay_to_ten_trung_danh_so_tu_1(monkeypatch):
+    docs = [
+        {"index": 0, "type": "commitment", "title": "Bản cam đoan"},
+        {"index": 1, "type": "personal_document", "title": "Giấy chứng nhận kết hôn"},
+        {"index": 2, "type": "personal_document", "title": "Giấy chứng nhận kết hôn"},
+    ]
+    res = _plan_ten_trung(monkeypatch, docs, {"splitDocuments": True, "supportsSourceSegments": True})
+    names = [a["documentName"] for a in res["attachments"]]
+    assert names == ["Bản cam đoan", "Giấy chứng nhận kết hôn 1", "Giấy chứng nhận kết hôn 2"]
+    assert [a["detectedType"] for a in res["attachments"]] == names
+    assert [c["documentName"] for c in res["extracted"]["classified"]] == names
+    assert all("_ten_goc" not in a for a in res["attachments"])
+
+    # Thành phần mới (tờ khai giấy): tên dòng mới cũng phải đánh số theo, không thì cổng coi là "đã có".
+    docs = [
+        {"index": 0, "type": "paper_declaration", "title": ""},
+        {"index": 1, "type": "paper_declaration", "title": ""},
+        {"index": 2, "type": "commitment", "title": "Bản cam đoan"},
+    ]
+    res = _plan_ten_trung(monkeypatch, docs, {"splitDocuments": True, "supportsSourceSegments": True})
+    moi = [(a["documentName"], a["componentName"]) for a in res["attachments"] if a["target"] == "new"]
+    assert moi == [("Tờ khai đăng ký 1", "Tờ khai đăng ký 1"), ("Tờ khai đăng ký 2", "Tờ khai đăng ký 2")]
+
+
+def test_khong_tach_ten_trung_giu_cach_dat_cu(monkeypatch):
+    async def fake_chat(*_a, **_k):
+        return json.dumps({"documents": [
+            {"index": 0, "type": "personal_document", "title": "Giấy chứng nhận kết hôn"},
+            {"index": 1, "type": "personal_document", "title": "Giấy chứng nhận kết hôn"},
+        ]})
+
+    async def fake_ocr(files, *_a, **_k):
+        return [{"name": f["name"], "text": "GIẤY CHỨNG NHẬN KẾT HÔN"} for f in files]
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(name=f"kh{i}.pdf", type="application/pdf", dataUrl=f"data:,{i}", role="") for i in (1, 2)]
+    res = asyncio.run(attach.plan(files, {}))
+    assert [a["documentName"] for a in res["attachments"]] == ["Giấy chứng nhận kết hôn", "Giấy chứng nhận kết hôn 2"]
+
+
 def test_registry_bat_tach_giay_to():
     from app.channels.handfree.procedure_registry import get_procedure as hf_get
     from app.procedures.registry import get_procedure

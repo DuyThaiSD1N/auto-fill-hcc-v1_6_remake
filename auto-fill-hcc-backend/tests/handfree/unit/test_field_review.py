@@ -746,7 +746,10 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "to-chuc-bieu-dien-nghe-thuat",
                                      "dang-ky-dat-dai-lan-dau-tuyen-quang",
                                      "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang",
-                                     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang"}
+                                     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
+                                     "hoa-giai-tranh-chap-dat-dai",
+                                     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+                                     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

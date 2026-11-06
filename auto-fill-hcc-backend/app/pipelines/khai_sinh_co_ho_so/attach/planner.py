@@ -196,6 +196,45 @@ def _unique_label(base: str, used: set[str]) -> str:
     return candidate
 
 
+def _danh_so_ten_trung(attachments: list[dict], classified: list[dict]) -> None:
+    """Tách giấy tờ: các giấy CÙNG TÊN được đánh số từ 1 ("Căn cước công dân 1", "Căn cước công dân 2").
+
+    Tên file tải lên cổng chính là documentName (extension đặt tên PDF cắt ra theo nó). Chạy SAU khi ghép
+    hai mặt CCCD để mặt sau đã gộp không chiếm một số. Tên không trùng giữ nguyên, không gắn số.
+    """
+    so_lan: dict[str, int] = {}
+    for item in attachments:
+        key = _fold(item["_ten_goc"])
+        so_lan[key] = so_lan.get(key, 0) + 1
+    da_dem: dict[str, int] = {}
+    used: set[str] = set()
+    ten_theo_tep: dict[int, str] = {}
+    for item in attachments:
+        base = item["_ten_goc"]
+        key = _fold(base)
+        if so_lan[key] > 1:
+            while True:
+                da_dem[key] = da_dem.get(key, 0) + 1
+                name = f"{base} {da_dem[key]}"
+                if _fold(name) not in used:
+                    break
+            used.add(_fold(name))
+        else:
+            name = _unique_label(base, used)
+        item["documentName"] = item["detectedType"] = name
+        if item.get("target") == "new":
+            item["componentName"] = name
+        for ref in item.get("sourceFileIndexes") or [item["fileIndex"]]:
+            ten_theo_tep[int(ref)] = name
+    for entry in classified:
+        name = ten_theo_tep.get(int(entry["fileIndex"]))
+        if name is None:
+            continue
+        entry["documentName"] = name
+        if entry.get("target") == "new":
+            entry["componentName"] = name
+
+
 def _fallback_type(doc_type: str, text: str) -> str:
     """LLM để 'other' nhưng OCR đủ bằng chứng → kéo về đúng loại.
 
@@ -215,8 +254,14 @@ async def _plan_theo_tep(
     files: list[FileItem],
     options: dict | None = None,
     session: dict | None = None,
+    *,
+    danh_so_tu_1: bool = False,
 ) -> dict:
-    """Phân loại NGUYÊN từng tệp vào dòng thành phần hồ sơ."""
+    """Phân loại NGUYÊN từng tệp vào dòng thành phần hồ sơ.
+
+    ``danh_so_tu_1`` (chế độ tách giấy tờ): giấy trùng tên đánh số " 1", " 2"… thay vì giữ tên trơn cho
+    giấy đầu và " 2", " 3" cho giấy sau.
+    """
     _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
@@ -273,11 +318,10 @@ async def _plan_theo_tep(
                 # gắn tên thì đọc như CCCD của một người.
                 is_card = any(k in _fold(label) for k in ("can cuoc", "chung minh", "ho chieu"))
                 person = _extract_person_name(text) if is_card and _is_cccd_text(text) else ""
-                document_name = _unique_label(f"{label} {person}".strip() if person else label, used_labels)
+                base_name = f"{label} {person}".strip() if person else label
             else:
-                document_name = _unique_label(
-                    detected.get("title") or _DOC_LABEL.get(doc_type, "Tài liệu"), used_labels
-                )
+                base_name = detected.get("title") or _DOC_LABEL.get(doc_type, "Tài liệu")
+            document_name = _unique_label(base_name, used_labels)
             item = {
                 "fileIndex": idx,
                 "fileName": file["name"],
@@ -287,6 +331,7 @@ async def _plan_theo_tep(
                 "componentIndex": comp_index,
                 "needsAddComponent": False,
                 "detectedType": document_name,
+                "_ten_goc": base_name,
             }
         else:
             # paper_declaration / other: không thuộc ô nào có sẵn. KHÔNG đính vào STT 1 (mẫu điện tử
@@ -306,6 +351,7 @@ async def _plan_theo_tep(
                 "componentIndex": None,
                 "needsAddComponent": True,
                 "detectedType": component_name,
+                "_ten_goc": label,
             }
 
         # Chỉ giấy tờ cá nhân mới được ghép 2 mặt. Tờ khai/bản cam đoan cũng in "Số định danh cá nhân"
@@ -334,6 +380,10 @@ async def _plan_theo_tep(
         },
         identity_indexes,
     )
+    if danh_so_tu_1:
+        _danh_so_ten_trung(attachments, classified)
+    for item in attachments:
+        item.pop("_ten_goc", None)
 
     return {
         "attachments": attachments,
@@ -432,7 +482,7 @@ async def _plan_tach_giay_to(
     segments = tach.build_segments(raw_files, texts, starts)
     virtual = [FileItem(**segment["file"]) for segment in segments]
     with ocr.preset_texts({seg["file"]["dataUrl"]: seg["text"] for seg in segments if seg["text"]}):
-        result = await _plan_theo_tep(virtual, options, session)
+        result = await _plan_theo_tep(virtual, options, session, danh_so_tu_1=True)
 
     result["attachments"] = [_ve_tep_goc(item, segments) for item in result.get("attachments") or []]
     extracted = dict(result.get("extracted") or {})

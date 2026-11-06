@@ -126,6 +126,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "bau-to-truong-to-hoa-giai": ["bầu tổ trưởng tổ hòa giải", "công nhận tổ trưởng tổ hòa giải",
                                   "đề nghị công nhận tổ trưởng hòa giải ở thôn",
                                   "nộp biên bản bầu tổ trưởng tổ hòa giải"],
+    # Người dân có TRANH CHẤP ĐẤT với người khác (lấn ranh, chồng lấn, ai có quyền sử dụng) xin UBND xã/phường hòa
+    # giải — KHÁC bầu tổ trưởng tổ hòa giải ngay trên (việc của thôn) và trợ giúp pháp lý (xin luật sư).
+    "hoa-giai-tranh-chap-dat-dai": ["hòa giải tranh chấp đất đai", "tranh chấp đất với hàng xóm",
+                                    "nhà bên cạnh lấn ranh giới đất", "chồng lấn ranh giới thửa đất",
+                                    "xin xã hòa giải tranh chấp đất", "làm đơn tranh chấp đất đai"],
     # Người dân xin luật sư/trợ giúp viên MIỄN PHÍ (hộ nghèo, khuyết tật, người bị buộc tội…) —
     # KHÁC hòa giải tranh chấp và chứng thực.
     "yeu-cau-tro-giup-phap-ly": ["trợ giúp pháp lý", "yêu cầu trợ giúp pháp lý",
@@ -139,6 +144,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "miễn đào tạo nghề luật sư, miễn tập sự",
         "nguyên thẩm phán, kiểm sát viên xin hành nghề luật sư",
         "nghỉ hưu muốn làm luật sư"],
+    # Người ĐANG/VỪA tập sự hành nghề CÔNG CHỨNG (đã có quyết định hoàn thành tập sự) đăng ký dự kỳ kiểm tra — KHÁC
+    # chứng chỉ luật sư ngay trên và các thủ tục chứng thực (người dân xin chứng thực giấy tờ).
+    "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": [
+        "đăng ký kiểm tra kết quả tập sự hành nghề công chứng", "đăng ký thi tập sự công chứng",
+        "hoàn thành tập sự công chứng muốn dự kiểm tra", "nộp hồ sơ dự kiểm tra tập sự công chứng",
+        "đăng ký dự kỳ kiểm tra công chứng viên tập sự"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -403,6 +414,30 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-doi-gcn-bac-ninh": ["cấp đổi sổ đỏ", "đổi sổ đỏ cũ sang mẫu mới", "sổ đỏ bị rách, nhòe, hư hỏng",
                              "đổi sổ đỏ sau khi đo đạc lại diện tích", "cấp đổi giấy chứng nhận quyền sử dụng đất",
                              "cấp đổi sổ hồng ở bắc ninh"],
+    # Bản Khánh Hòa (provinceOnly) của cùng nghiệp vụ: một tài khoản không thấy cả hai. Vẫn ĐỔI sổ đã có — KHÁC đăng ký
+    # đất đai lần đầu (chưa có sổ) và đăng ký biến động chuyển nhượng (sang tên người khác).
+    "cap-doi-gcn-khanh-hoa": ["cấp đổi sổ đỏ", "đổi sổ đỏ cũ sang sổ mới", "sổ đỏ bị rách, nhòe, hư hỏng",
+                              "đổi lại sổ mới", "cấp đổi giấy chứng nhận quyền sử dụng đất",
+                              "cấp đổi sổ đỏ ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly) của đăng ký biến động chuyển nhượng/thừa kế/tặng cho: SANG TÊN cho người khác — KHÁC
+    # cấp đổi ngay trên (giữ nguyên chủ, chỉ đổi sổ). Một tài khoản không thấy bản Bắc Ninh cùng nghiệp vụ.
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": [
+        "sang tên sổ đỏ khi mua bán đất", "chuyển nhượng quyền sử dụng đất", "nhận thừa kế đất đai",
+        "bố mẹ tặng cho đất cho con", "góp vốn bằng quyền sử dụng đất",
+        "đăng ký biến động chuyển nhượng, thừa kế, tặng cho ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly): đất ĐÃ có sổ, nay ghi thêm NHÀ/CÔNG TRÌNH mới xây (hoặc sửa thông tin nhà đã ghi) vào
+    # sổ — KHÁC cấp đổi (chỉ đổi sổ, không thêm tài sản), đăng ký biến động (sang tên) và đăng ký đất đai lần đầu (chưa có
+    # sổ).
+    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": [
+        "đăng ký nhà mới xây vào sổ đỏ", "bổ sung tài sản gắn liền với đất", "ghi thêm nhà vào sổ hồng",
+        "xây nhà xong muốn cập nhật nhà lên sổ đỏ", "đăng ký thay đổi nhà ở, công trình đã ghi trên sổ",
+        "đăng ký tài sản gắn liền với thửa đất đã được cấp giấy chứng nhận ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly): đất NÔNG NGHIỆP trên sổ đã HẾT HẠN sử dụng, xin xác nhận được dùng tiếp — KHÁC cấp đổi
+    # (đổi sổ) và giao/thuê đất, gia hạn đất dự án (giao-thue-chuyen-muc-dich-dat-khanh-hoa).
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": [
+        "đất nông nghiệp trên sổ đỏ hết hạn sử dụng", "xin xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "gia hạn đất trồng cây hàng năm hết thời hạn", "xác nhận lại thời hạn sử dụng đất nông nghiệp",
+        "xác nhận tiếp tục sử dụng đất nông nghiệp ở khánh hòa"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",

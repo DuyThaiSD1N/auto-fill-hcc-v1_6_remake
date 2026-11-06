@@ -271,3 +271,15 @@ def test_theo_to_khai_phan_i_cung_lay_tinh_tu_dia_chi_lien_lac():
     assert got["data[fullname]"] == "TRẦN VĂN MẪU"
     assert got["data[province]"] == "Tỉnh Khánh Hòa" and got["data[ownerProvince]"] == "Tỉnh Khánh Hòa"
     assert "data[district]" not in got and "data[ownerDistrict]" not in got
+
+
+def test_dia_chi_lien_lac_ghi_tinh_viet_tat():
+    # Đơn viết tay ghi tỉnh viết tắt "KH" (dữ liệu bịa) → ô Tỉnh ra "Tỉnh Khánh Hòa", không ra "Tỉnh KH".
+    ocr = ("Tôi tên là (viết chữ in hoa): TRẦN VĂN MẪU\nSinh ngày 01 tháng 02 năm 1980\n"
+           "Địa chỉ liên lạc khi cần: Thôn Mẫu - Xã Bịa Đặt - KH\n")
+    v = {"VanBang_HoTen": "TRẦN VĂN MẪU", "VanBang_SoGiayTo": "001080001234",
+         "ChuHoSo_HoTen": "PHẠM VĂN NỘP", "ChuHoSo_SoGiayTo": "002199005678",
+         "ChuHoSo_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Phường Từ Liêm", "diaChi": "Số 1"}}
+    fields, _ = mapper.enrich([{"name": k, "value": x} for k, x in v.items()], _THEO_TO_KHAI, ocr_text=ocr)
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[province]"] == "Tỉnh Khánh Hòa" and got["data[ownerProvince]"] == "Tỉnh Khánh Hòa"

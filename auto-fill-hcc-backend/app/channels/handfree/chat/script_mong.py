@@ -69,10 +69,23 @@ PROCEDURE_HMONG = {
     "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
     "dang-ky-dat-dai-lan-dau-khanh-hoa": "Cuv npe av, muab daim ntawv av thawj zaug (Khánh Hòa)",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": "Hloov daim av (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
+    "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": "Cuv npe hloov daim av, muag daim av (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký), "tsev" (nhà, như thẻ môi giới "muag av tsev"), "daim av" (thửa đất)
+    # đã có; TỪ MỚI: "ntawm" (trên, thuộc).
+    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": "Cuv npe tsev ntawm daim av (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — "daim av" (thửa đất) đã có; TỪ MỚI: "teb" (ruộng/đất nông nghiệp), "siv ntxiv" (dùng
+    # tiếp), "lees paub" (xác nhận, như "ntawv lees paub").
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": "Lees paub siv ntxiv daim av teb (Khánh Hòa)",
     # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
     "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": "Hloov daim av (Tuyên Quang)",
+    # BẢN NHÁP chờ anh Dư soát — "sib haum xeeb" (hòa giải, như thẻ tổ hòa giải) và "av" (đất) đã có; TỪ MỚI
+    # "sib cav" (tranh chấp), "txog" (về).
+    "hoa-giai-tranh-chap-dat-dai": "Sib haum xeeb kev sib cav txog av",
     # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
     "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
@@ -173,6 +186,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("daim ntawv", "kev cai lij choj"); "kws lij
     # choj" (luật sư) là TỪ MỚI.
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": "Daim ntawv tso cai ua kws lij choj",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) và "lees paub" (chứng thực/công chứng) đã có; TỪ MỚI "xeem"
+    # (kiểm tra), "kawm ua haujlwm" (tập sự).
+    "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": "Cuv npe xeem kev kawm ua haujlwm lees paub",
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có; "tsis yog" (không phải) để tách khỏi bản CTV.
@@ -663,7 +679,7 @@ AGENCY_SELECT_FAILED = {
 # Nợ dịch: câu Việt còn nói "đúng thẻ có dòng {card}, thẻ đầu là của Sở" — chưa có bản dịch câu
 # đó; tên thẻ là chữ Việt nên không được nhúng placeholder vào đây. Tạm ghép từ câu có sẵn.
 AGENCY_CARD_MANUAL_GUIDE = {
-    "md": "Pej xeem xaiv {ward}, {province} kiag ces nias Đồng ý, ces nias Nộp trực tuyến.",
+    "md": "Pej xeem xaiv {area} kiag ces nias Đồng ý, ces nias Nộp trực tuyến.",
     "tts": "Pej xeem xaiv kiag ces nias pom zoo, ces nias Nộp trực tuyến.",
 }
 

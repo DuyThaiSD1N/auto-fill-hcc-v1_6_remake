@@ -61,6 +61,12 @@ _REMAP_NOSPACE: dict[tuple[str, str], dict[str, str]] = {}
 # th\u00ec kh\u00f4ng c\u00f3 \u1edf \u0111\u00e2y -> h\u00e0nh vi gi\u1eef nguy\u00ean nh\u01b0 c\u0169, kh\u00f4ng \u0111\u1ee5ng v\u00e0o x\u00e3 h\u1ee3p l\u1ec7 ch\u01b0a c\u1ea7n remap.
 _TINH_ONLY: dict[str, str] = {}
 
+# fold(tinh MOI) -> {fold(tinh CU)}: moi tinh cu da nhap vao tinh moi do ("hung yen" -> {"hung yen",
+# "thai binh"}). Giay to ghi TINH MOI ma xa con ten CU cua mot tinh cu KHAC thi cac bang khoa theo tinh
+# cu tra truot (vd "Tuyên Quang" + "Thị trấn Yên Phú" -- thi tran cu cua Ha Giang): bang nay cho biet
+# phai tra them o tinh cu nao.
+_OLD_PROVINCES_BY_NEW: dict[str, set[str]] = {}
+
 # fold(tinh_cu) -> ten tinh cu nguyen van trong bang remap ("Bắc Giang", "Hà Nam"). Lam kho tu vung
 # cho correct_area(): giay to cu ghi tinh cu, OCR doc sai chinh ta thi phai sua ve DUNG ten tinh cu
 # do roi de remap_area() doi sang tinh moi nhu thuong le.
@@ -117,6 +123,8 @@ _REMAP_EXACT: dict[tuple[str, str, str], dict[str, str]] = {}
 # Khoa (tinh, nhan, ten) co don vi cu ton tai, KE CA khi khong chon duoc dich -- de khong lui ve
 # khoa khong nhan cho mot ten co nhan da biet la mo ho.
 _REMAP_EXACT_SEEN: set[tuple[str, str, str]] = set()
+# (tinh, ten) cua _REMAP_EXACT_SEEN, bo nhan: tinh cu nay co don vi cu ten do (nhan nao cung duoc).
+_REMAP_EXACT_NAMES: set[tuple[str, str]] = set()
 
 
 _UNIT_PREFIX_RE = re.compile(
@@ -323,6 +331,7 @@ def _load_remap_files() -> None:
             if not tinh_cu or not xa_cu:
                 continue
             _OLD_PROVINCE_NAMES.setdefault(_fold(tinh_cu), tinh_cu)
+            _OLD_PROVINCES_BY_NEW.setdefault(_fold(entry.get("tinh_moi") or tinh_cu), set()).add(_fold(tinh_cu))
             key = (_fold(tinh_cu), _fold(xa_cu))
             mapping = {
                 "tinh": entry.get("tinh_moi") or tinh_cu,
@@ -420,6 +429,7 @@ def _load_remap_files() -> None:
         dests = {(m["tinh"], m["xa"]) for m in resolved if m}
         unit = resolved[0] if len(dests) == 1 and all(resolved) else None
         _REMAP_EXACT_SEEN.add((tinh_key, label, ten))
+        _REMAP_EXACT_NAMES.add((tinh_key, ten))
         if unit and label:
             _REMAP_EXACT[(tinh_key, label, ten)] = unit
         by_name.setdefault((tinh_key, ten), []).append(unit)
@@ -1025,10 +1035,22 @@ def _ward_vocab(tinh: str) -> dict[str, frozenset]:
             if key:
                 out.setdefault(key, set()).add((name, target))
 
+    # Tinh MOI: xa cu cua MOI tinh cu da nhap vao deu la ten co that ("Tân Hòa" cua Thai Binh khi giay
+    # to ghi "Hưng Yên"). Thieu thi ten do bi "sua" sang xa cu lech mot chu ("Tân Học") roi ra xa khac.
+    # Dich lay theo bang tra nguoc (tinh moi, xa cu); mo ho -> None, chi tinh la co that.
+    tinh_cu_khac = {p for n in names for p in _other_old_provinces(_fold(n))}
     for key, xa_cu in _OLD_WARD_NAMES.items():
         if _fold_province(key[0]) in provs:
             mapping = _REMAP.get(key)
             offer(xa_cu, mapping["xa"] if mapping else None)
+        elif key[0] in tinh_cu_khac:
+            for prov in provs:
+                rev = (prov, _fold_accent(xa_cu))
+                if rev in _REMAP_BY_NEW_PROVINCE or rev in _REMAP_BY_NEW_PROVINCE_AMBIGUOUS:
+                    offer(xa_cu, None if rev in _REMAP_BY_NEW_PROVINCE_AMBIGUOUS else _REMAP_BY_NEW_PROVINCE[rev])
+                    break
+            else:
+                offer(xa_cu, None)
     for tinh_moi, xa_cu, xa_moi in _REMAP_SOURCE_ENTRIES:
         key = (_fold_province(tinh_moi), _fold_accent(xa_cu))
         if key[0] in provs:
@@ -1052,6 +1074,8 @@ def _ward_exists(tinh: str, xa: str) -> bool:
     folds = {_fold(n) for n in names}
     provs = {_fold_province(n) for n in names}
     xa_fold, xa_acc = _fold(xa), _fold_accent(xa)
+    # Tinh moi: xa cu cua cac tinh cu da nhap vao cung la ten co that (xem _ward_vocab).
+    folds |= {p for f in set(folds) for p in _other_old_provinces(f)}
     return (
         any((f, xa_fold) in _OLD_WARD_NAMES for f in folds)
         or any((p, xa_acc) in _REMAP_BY_NEW_PROVINCE for p in provs)
@@ -1252,6 +1276,90 @@ def _remap_exact(tinh_folded: str, xa: str) -> Optional[dict[str, str]]:
     return _REMAP_EXACT.get((tinh_folded, "", ten))
 
 
+def _other_old_provinces(tinh_folded: str) -> list[str]:
+    """Cac tinh CU khac (khong tinh chinh no) da nhap vao tinh moi nay. Tinh khong phai tinh moi -> []."""
+    return sorted(p for p in _OLD_PROVINCES_BY_NEW.get(tinh_folded, ()) if p != tinh_folded)
+
+
+def _remap_other_old_provinces(
+    tinh_folded: str, xa: str, dia_chi: str
+) -> tuple[Optional[dict[str, str]], bool]:
+    """Ten xa CO NHAN ma tinh moi khong co don vi cu nao cung nhan -> tra DUNG nhan o cac tinh cu khac.
+
+    Giay to ghi tinh MOI, xa la ten cu cua tinh cu KHAC: "Tuyên Quang" + "Thị trấn Yên Phú" (thi tran
+    cu Bac Me, Ha Giang). _remap_exact() tren tinh moi thay nhan "thi tran" khong khop don vi nao nen
+    lui ve so moi nhan va ra "Xã Yên Phú" (xa cu cua Tuyen Quang, Ham Yen) -- mot xa KHAC. Nhan ghi
+    tren giay to la can cu: tra don vi dung nhan do o cac tinh cu da nhap vao.
+
+    Khong tinh cu nao co don vi dung nhan (bang ghi ten tran "Đồng Sơn", hoac nhan tren giay to lech
+    nhan trong bang) thi so moi nhan -- nhu _remap_exact() trong mot tinh -- nhung CHI KHI chinh tinh
+    nay khong co don vi cu nao ten do: co thi de cac buoc duoi xu ly nhu cu (tinh moi trung ten tinh cu,
+    giay to ghi "Hưng Yên" van co the la Hung Yen cu). Ten so CO dau: "Việt Hùng" (Thai Binh) khong
+    phai "Việt Hưng" (Hung Yen) du chung khoa _REMAP.
+
+    Tra (mapping, co_don_vi): co_don_vi=True khi it nhat mot tinh cu khac co don vi ten do. Co don vi
+    ma khong ra duoc MOT dich (ten trung o nhieu huyen, nhieu tinh cu) thi thu ten huyen trong diaChi,
+    van khong ra -> (None, True): de trong xa thay vi tra ten cu (chet) hay doan sang don vi khac.
+    """
+    label = _unit_label(xa)
+    ten = _fold_accent(xa)
+    others = _other_old_provinces(tinh_folded)
+    if not ten or not others:
+        return None, False
+    if label and (tinh_folded, label, ten) in _REMAP_EXACT_SEEN:
+        return None, False
+    xa_fold = _fold(xa)
+    found = [(p, label) for p in others if (p, label, ten) in _REMAP_EXACT_SEEN] if label else []
+    if not found:
+        # Bang ghi huyen trong ngoac ("Tân Hà (Lâm Hà)") khong vao _REMAP_EXACT_NAMES -> xet ca _DISTRICTS_BY_WARD.
+        # Ten trung mot xa HIEN HANH (khac nhan) cung de cac buoc duoi: khong co nhan khop lam can cu thi
+        # xa moi giu ten cu van la dich hop ly nhat, nhu truoc.
+        if (
+            (tinh_folded, ten) in _REMAP_EXACT_NAMES
+            or (tinh_folded, xa_fold) in _DISTRICTS_BY_WARD
+            or canonical_ward(tinh_folded, xa)
+        ):
+            return None, False
+        # _DISTRICTS_BY_WARD khoa khong dau -> chi nhan khi co cach viet cu TRUNG DAU ("Tân Hưng (huyện Ba
+        # Tri)" khong phai "Tân Hùng").
+        found = [
+            (p, "") for p in others
+            if (p, ten) in _REMAP_EXACT_NAMES
+            or (
+                (p, xa_fold) in _DISTRICTS_BY_WARD
+                and any(_fold_accent(s) == ten for s in _OLD_WARD_SPELLINGS.get((p, xa_fold), ()))
+            )
+        ]
+    if not found:
+        return None, False
+    dests: dict[tuple[str, str], dict[str, str]] = {}
+    for p, nhan in found:
+        mapping = _REMAP_EXACT.get((p, nhan, ten))
+        if mapping:
+            dests[(mapping["tinh"], mapping["xa"])] = mapping
+            continue
+        # Don vi chi nam trong bang co huyen ("Tân Hưng (huyện Ba Tri)"): moi huyen cung MOT dich thi lay.
+        by_district = {
+            (m["tinh"], m["xa"]): m for m in (_DISTRICTS_BY_WARD.get((p, xa_fold)) or {}).values()
+        }
+        if len(by_district) != 1:
+            dests = {}
+            break
+        dests.update(by_district)
+    if len(dests) == 1:
+        return next(iter(dests.values())), True
+    dia_folded = _fold(dia_chi)
+    hits = {
+        (m["tinh"], m["xa"]): m
+        for p, _ in found
+        for district, m in (_DISTRICTS_BY_WARD.get((p, xa_fold)) or {}).items()
+        if district and re.search(rf"(?<![a-z0-9]){re.escape(district)}(?![a-z0-9])", dia_folded)
+    }
+    if len(hits) == 1:
+        return next(iter(hits.values())), True
+    return None, True
+
+
 @lru_cache(maxsize=1024)
 def _remap_area_cached(
     tinh: str,
@@ -1261,7 +1369,8 @@ def _remap_area_cached(
     huyen: str = "",
 ) -> tuple[str, str, str]:
     """Cached version of remap logic. Returns (tinh_moi, xa_moi, dia_chi_moi)."""
-    # Chặn viết tắt tỉnh (LA, LD, LĐ, L.D...) → xóa xa để tránh điền sai.
+    # Viết tắt tỉnh remap_area() chưa đổi được ra tên đầy đủ (lạ, hoặc "QN" không kèm xã) → xóa xa để
+    # tránh điền sai.
     if tinh:
         letters_only = re.sub(r"[^a-z0-9]", "", _fold(tinh))
         if len(letters_only) <= 2:
@@ -1310,6 +1419,18 @@ def _remap_area_cached(
         )
         if mapping_huyen:
             return (mapping_huyen["tinh"], mapping_huyen["xa"], dia_chi)
+        # Tinh MOI + huyen cu cua mot tinh cu KHAC da nhap vao ("Hưng Yên" + "Minh Tân" + "Đông Hưng"
+        # -- Dong Hung la huyen cu cua Thai Binh). Bang 3 khoa khoa theo tinh cu nen tra them o do;
+        # dung MOT dich moi nhan.
+        hits_huyen = {
+            (m["tinh"], m["xa"]): m
+            for p in _other_old_provinces(tinh_folded)
+            for m in [_REMAP_BY_DISTRICT.get((p, _fold(xa_expanded), _fold_district(huyen)))]
+            if m
+        }
+        if len(hits_huyen) == 1:
+            mapping_huyen = next(iter(hits_huyen.values()))
+            return (mapping_huyen["tinh"], mapping_huyen["xa"], dia_chi)
 
     # Buoc 1b2: bang 2 khoa bo qua ten nay (nhieu don vi cu chung khoa fold, hoac xa cu bi chia) ->
     # tra theo DUNG don vi cu. CCCD Ha Noi ghi "Phú La, Hà Đông": xa cu chia cho Duong Noi va Kien
@@ -1324,6 +1445,11 @@ def _remap_area_cached(
     else:
         dang_hien_hanh = is_current_area(tinh, xa_expanded)
     if xa_expanded and not dang_hien_hanh:
+        mapping_khac, co_don_vi_khac = _remap_other_old_provinces(tinh_folded, xa_expanded, dia_chi)
+        if mapping_khac:
+            return (mapping_khac["tinh"], mapping_khac["xa"], dia_chi)
+        if co_don_vi_khac:
+            return (tinh, "", dia_chi)
         mapping_exact = _remap_exact(tinh_folded, xa_expanded)
         if not mapping_exact and tinh_goc_folded != tinh_folded:
             mapping_exact = _remap_exact(tinh_goc_folded, xa_expanded)
@@ -1347,7 +1473,10 @@ def _remap_area_cached(
             if len(hits) == 1:
                 tinh_hit, xa_hit = next(iter(hits))
                 return (tinh_hit, xa_hit, dia_chi)
-            return (tinh, "", dia_chi)
+            # Xa de trong nhung TINH phai la tinh MOI: giu "Thái Bình"/"Hà Giang" (tinh cu, khong con
+            # trong danh muc) thi o Tinh tren cong cung bo trong theo.
+            tinh_dich = {t for t, _ in destinations}
+            return (next(iter(tinh_dich)) if len(tinh_dich) == 1 else tinh, "", dia_chi)
 
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
@@ -1588,6 +1717,91 @@ def _remap_thon(tinh: object, xa: object, dia_chi: object) -> object:
 _build_thon_index()  # chay 1 lan luc import
 
 
+# ---------------------------------------------------------------------------
+# VIET TAT TEN TINH nguoi dan ghi tay tren don: "KH" = Khanh Hoa, "Q.Ngai", "TT-Hue", "BR-VT".
+# Truoc day tinh <= 2 ky tu bi chan het (giu nguyen "KH", xoa xa) -> mapper ghep ra "Tinh KH", o Tinh
+# tren cong khong chon duoc option nao.
+#
+# Khoa sinh TU DONG tu ten moi tinh (hien hanh + tinh cu trong bang sap nhap) theo hai kieu viet tat
+# hay gap: chu cai dau moi tieng ("KH", "BRVT", "TTH") va chu cai dau cac tieng truoc + nguyen tieng
+# cuoi ("K.Hòa", "Q.Ngãi", "TT Huế"). Them vai thanh pho hay bi viet tat dung cho ten tinh: "ĐL" la
+# Da Lat hay Dak Lak thi phai co ten xa moi chon duoc, khong doan liem la Dak Lak.
+# Mot khoa ung nhieu tinh ("QN": Quang Ninh / Quang Nam / Quang Ngai) -> ten xa chi co o DUNG MOT tinh
+# thi chon tinh do; cac tinh cung ve mot tinh MOI sau sap nhap ("NT": Ninh Thuan / Nha Trang -> Khanh
+# Hoa) thi lay tinh moi; con lai de nguyen nhu cu, khong doan.
+# ---------------------------------------------------------------------------
+_ABBREV_CITIES = {
+    "Đà Lạt": "Lâm Đồng",
+    "Bảo Lộc": "Lâm Đồng",
+    "Nha Trang": "Khánh Hòa",
+    "Buôn Ma Thuột": "Đắk Lắk",
+    "Vũng Tàu": "Bà Rịa - Vũng Tàu",
+}
+_ABBREV_GLUED_PREFIX_RE = re.compile(r"^(tinh|thanhpho|tp)")
+_VIET_NAM_FOLDS = frozenset({"", "viet nam", "vietnam", "vn"})
+
+
+def _abbrev_keys(name: str) -> set[str]:
+    """Hai kieu viet tat cua mot ten tinh nhieu tieng, dang khoa _province_key()."""
+    words = re.findall(r"[a-z0-9]+", _fold_province(name))
+    if len(words) < 2:
+        return set()
+    initials = "".join(word[0] for word in words)
+    return {initials, initials[:-1] + words[-1]}
+
+
+@lru_cache(maxsize=1)
+def _province_abbrevs() -> dict[str, tuple[str, ...]]:
+    """Khoa viet tat -> cac tinh no co the la (ten tinh cu hoac hien hanh, remap_area doi tiep)."""
+    provinces: dict[str, str] = {}
+    for name in list(_CURRENT_PROVINCES.values()) + list(_OLD_PROVINCE_NAMES.values()):
+        provinces.setdefault(_fold_province(name), name)  # "TP. Hồ Chí Minh" cu = "Hồ Chí Minh" hien hanh
+    sources = [(name, name) for name in provinces.values()] + list(_ABBREV_CITIES.items())
+    # Khoa trung ten THAT (tinh, thanh pho) thi khong phai viet tat -- de cac buoc tra cuu khac lo.
+    real = {_province_key(name) for name in provinces.values()}
+    real |= {re.sub(r"[^a-z0-9]+", "", city) for city in _CITY_TO_PROVINCE}
+    out: dict[str, dict[str, str]] = {}
+    for written, province in sources:
+        for key in _abbrev_keys(written):
+            if key not in real:
+                out.setdefault(key, {}).setdefault(_fold_province(province), province)
+    return {key: tuple(sorted(found.values())) for key, found in out.items()}
+
+
+def _abbrev_backed(tinh: str, xa: str) -> bool:
+    """Ten xa co that o tinh nay -- tinh cu thi tinh ca xa cua tinh moi no da nhap vao."""
+    if _ward_exists(tinh, xa):
+        return True
+    tinh_moi = _TINH_ONLY.get(_fold(tinh))
+    return bool(tinh_moi) and _fold_province(tinh_moi) != _fold_province(tinh) and _ward_exists(tinh_moi, xa)
+
+
+def _province_from_abbrev(tinh: object, xa: object = "") -> Optional[str]:
+    """Ten tinh day du khi o tinh la viet tat ("KH" -> "Khánh Hòa"). Khong phai viet tat / khong chac -> None.
+
+    Tra ten tinh CU neu viet tat la cua tinh cu ("LA" -> "Long An"): remap_area doi sang tinh moi va
+    tra xa theo dung tinh cu, chinh xac hon tra thang tinh moi.
+    """
+    key = _province_key(tinh)
+    if not key:
+        return None
+    table = _province_abbrevs()
+    candidates = table.get(key) or table.get(_ABBREV_GLUED_PREFIX_RE.sub("", key))  # "TP.HCM", "Tỉnh.KH"
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    ward = str(xa or "").strip()
+    if ward:
+        backed = [name for name in candidates if _abbrev_backed(name, ward)]
+        if len(backed) == 1:
+            return backed[0]
+    news = {_fold_province(_TINH_ONLY.get(_fold(name)) or name) for name in candidates}
+    if len(news) == 1:
+        return _TINH_ONLY.get(_fold(candidates[0])) or candidates[0]
+    return None
+
+
 def _canonical_tinh(value: object) -> str:
     """Chi sua cach viet ten tinh khi no KHONG phai mot cach viet hop le cua danh muc.
 
@@ -1621,7 +1835,9 @@ def remap_area(
     Buoc 2: neu (tinh, xa) co trong bang sap nhap -> thay bang ten don vi moi.
     Buoc 3 (fallback A): neu xa khong khop, thu dung diaChi lam xa de lookup.
     Buoc 4 (fallback B): scan tung token trong xa hoac diaChi de tim xa hop le.
-    Neu tinh la viet tat qua ngan (< 3 ky tu: LA, LD, LĐ...) -> xoa xa tranh dien sai.
+    Tinh viet tat ("KH", "LĐ", "Q.Ngãi", "BR-VT") duoc doi ra ten day du TRUOC moi buoc (xem
+    _province_from_abbrev). Viet tat <= 2 ky tu khong doi duoc (la, hoac mo ho ma ten xa khong go duoc,
+    vd "QN" khong kem xa) -> giu nguyen tinh, xoa xa tranh dien sai.
     Neu khong co entry nao -> giu nguyen (pass-through).
     correct_spelling (mac dinh BAT): truoc moi buoc tren, sua loi chinh ta OCR o tinh/xa (xem
     correct_area()). Truyen False de tat cho pipeline nao can giu nguyen ten doc duoc.
@@ -1632,7 +1848,12 @@ def remap_area(
     # Dua ten tinh ve dung cach viet trong danh muc TRUOC moi buoc tra cuu: cac bang ben duoi deu
     # fold bo tien to nen ket qua tra cuu khong doi, nhung gia tri DI RA thi het "TP "/"Tinh " -- do
     # moi la thu cong dung de chon option.
-    tinh_raw: str = _canonical_tinh(area.get("tinh"))
+    # Viet tat ten tinh tren don ("KH", "Q.Ngãi") -> ten day du. Dia chi nuoc ngoai thi khong dung vao:
+    # "TQ" o do la Trung Quoc chu khong phai Tuyen Quang.
+    tinh_goc = area.get("tinh")
+    if _fold(area.get("quocGia") or "") in _VIET_NAM_FOLDS:
+        tinh_goc = _province_from_abbrev(tinh_goc, area.get("xa")) or tinh_goc
+    tinh_raw: str = _canonical_tinh(tinh_goc)
     xa_raw:   str = area.get("xa")   or ""
     dia_raw:  str = area.get("diaChi") or ""
     # "huyen"/"quanHuyen" la khoa GOI Y, khong phai o tren bieu mau (dia chi hien hanh chi con 2
@@ -1834,6 +2055,7 @@ def reload() -> None:
     _REMAP.clear()
     _REMAP_NOSPACE.clear()
     _TINH_ONLY.clear()
+    _OLD_PROVINCES_BY_NEW.clear()
     _OLD_PROVINCE_NAMES.clear()
     _OLD_WARD_NAMES.clear()
     _OLD_WARD_SPELLINGS.clear()
@@ -1841,6 +2063,7 @@ def reload() -> None:
     _DISTRICTS_BY_WARD.clear()
     _REMAP_EXACT.clear()
     _REMAP_EXACT_SEEN.clear()
+    _REMAP_EXACT_NAMES.clear()
     _REMAP_SOURCE_ENTRIES.clear()
     _load_remap_files()
     _CURRENT_WARD_NOSPACE.clear()
@@ -1864,5 +2087,6 @@ def reload() -> None:
     _remap_area_cached.cache_clear()
     _ward_candidates.cache_clear()
     _province_vocab.cache_clear()
+    _province_abbrevs.cache_clear()
     _ward_vocab.cache_clear()
     _correct_area_cached.cache_clear()

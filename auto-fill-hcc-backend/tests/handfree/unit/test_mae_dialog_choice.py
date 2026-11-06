@@ -158,6 +158,32 @@ def test_tuyen_quang_hien_tren_man_chao_o_tim_kiem_va_bo_chon_loi_noi_dung_tinh(
         assert items[TQ_DAT_DAI]["label"].startswith("Đăng ký đất đai, tài sản gắn liền với đất")
 
 
+@pytest.mark.parametrize("slug, code, expect", [
+    ("tuyenquang", "1.013978", TQ_DAT_DAI),
+    ("khanhhoa", "1.013978", "dang-ky-dat-dai-lan-dau-khanh-hoa"),
+    ("tuyenquang", "mã 1.013949", TQ_GIAO_DAT),
+    ("khanhhoa", "1.013949", "giao-thue-chuyen-muc-dich-dat-khanh-hoa"),
+])
+async def test_go_ma_tthc_co_ban_nhieu_tinh_thi_chon_ban_cua_tinh_tai_khoan(slug, code, expect):
+    """1.013978 / 1.013949 có cả bản Khánh Hòa lẫn Tuyên Quang (mỗi bản khóa tỉnh riêng): tài khoản Tuyên Quang gõ mã phải
+    vào bản Tuyên Quang, không dính bản Khánh Hòa đứng trước rồi bị báo "chỉ làm được ở Tỉnh Khánh Hòa"."""
+    from app.channels.handfree.chat import intents
+
+    conv = store.new_conversation()
+    conv["auth_user"] = {"id": "u1", "province_slug": slug}
+    intent = await intents.resolve(code, "greet", conv)
+    assert (intent.kind, intent.value) == ("pick_procedure", expect)
+
+
+async def test_go_ma_tthc_tinh_khong_co_ban_nao_van_bao_khoa_tinh():
+    from app.channels.handfree.chat import intents
+
+    conv = store.new_conversation()
+    conv["auth_user"] = {"id": "u1", "province_slug": "laichau"}
+    intent = await intents.resolve("1.013978", "greet", conv)
+    assert intent.kind == "pick_procedure" and flow.get_procedure(intent.value)["provinceOnly"] != ["laichau"]
+
+
 async def test_tuyen_quang_doc_hop_thoai_hoi_cong_dan_roi_chon_dung_quy_trinh_va_form():
     conv = _tq_conv(TQ_DAT_DAI)
     reply = await flow.handle_turn(conv, Intent("event", "page_status",
@@ -256,3 +282,57 @@ async def test_tuyen_quang_run_process_dien_dung_form_cua_quy_trinh_da_chon(monk
     assert conv["pipeline_status"] == "fields_ready", conv.get("pipeline_error")
     names = {item["name"] for item in conv["fields"] if not item.get("clear")}
     assert expect <= names and absent not in names
+
+
+# ── Cổng iGate Khánh Hòa 1.013995: trang nps/apply "Chọn trường hợp giải quyết" (Đơn vị thực hiện + 4 quy trình) ──
+KH_TAI_SAN = "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa"
+KH_NHA_TRANG = "Chi nhánh Văn phòng Đăng ký đất đai Nha Trang"
+KH_CAM_RANH = "Chi nhánh Văn phòng Đăng ký đất đai Cam Ranh"
+KH_CASES = (
+    "1.013995-1.1 Đối với trường hợp đăng ký quyền sở hữu tài sản gắn liền với thửa đất đã cấp Giấy chứng nhận - Đối "
+    "với trường hợp còn lại",
+    "1.013995-1.2 Đối với trường hợp đăng ký quyền sở hữu tài sản gắn liền với thửa đất đã cấp Giấy chứng nhận - Đối "
+    "với xã miền núi, hải đảo",
+    "1.013995-2.1 Đối với trường hợp đăng ký thay đổi về tài sản gắn liền với đất so với nội dung đã đăng ký - Đối với "
+    "trường hợp còn lại",
+    "1.013995-2.2 Đối với trường hợp đăng ký thay đổi về tài sản gắn liền với đất so với nội dung đã đăng ký - Đối với "
+    "xã miền núi, hải đảo",
+)
+
+
+def _kh_conv(ward="Phường Nam Nha Trang"):
+    conv = _sua_chua_conv(KH_TAI_SAN)
+    conv["auth_user"] = {"id": "u1", "province_slug": "khanhhoa"}
+    conv["location"] = {"province": "Tỉnh Khánh Hòa", "province_slug": "khanhhoa", "ward": ward}
+    return conv
+
+
+def _kh_ctx(agencies, current):
+    return {"maeAgencyBlock": True,
+            "maeDialogOptions": {"agency": {"options": list(agencies), "current": current},
+                                 "process": {"options": list(KH_CASES), "current": KH_CASES[0]}}}
+
+
+async def test_khanh_hoa_hoi_truong_hop_giu_chi_nhanh_cua_xa_roi_chon_ho():
+    """Ô Đơn vị thực hiện liệt kê nhiều chi nhánh VPĐK: giữ chi nhánh của xã tài khoản (đã chọn ở DVCQG), chỉ hỏi 4
+    trường hợp giải quyết; chọn quy trình 2.x thì pipeline biết là đăng ký thay đổi về tài sản."""
+    conv = _kh_conv()
+    reply = await flow.handle_turn(conv, Intent("event", "page_status", _kh_ctx((KH_CAM_RANH, KH_NHA_TRANG), KH_CAM_RANH)))
+    assert conv["state"] == "choose_mae_dialog"
+    (group,) = reply.cards[0]["groups"]
+    assert group["key"] == "process" and [o["label"] for o in group["options"]] == list(KH_CASES)
+    proc = flow.get_procedure(KH_TAI_SAN)
+    assert case_pipeline_options(proc, conv) == {}
+
+    picked = await flow.handle_turn(conv, Intent("action", "set_mae_dialog", {"process": 2}))
+    action = next(a for a in picked.actions if a["type"] == "fill_mae_agency")
+    assert (action["agencyExact"], action["processExact"]) == (KH_NHA_TRANG, KH_CASES[2])
+    assert case_pipeline_options(proc, conv) == {"truongHop": "thay_doi"}
+
+
+def test_khanh_hoa_don_vi_khong_khop_chi_nhanh_cua_xa_thi_van_hoi():
+    conv = _kh_conv()
+    odd = ("Văn phòng Đăng ký đất đai tỉnh Khánh Hòa", "Trung tâm phục vụ hành chính công")
+    flow._mae_dialog_on_page(conv, _kh_ctx(odd, odd[0]), flow.get_procedure(KH_TAI_SAN))
+    assert conv["state"] == "choose_mae_dialog"
+    assert conv["mae_dialog_options"]["agency"]["options"] == list(odd)

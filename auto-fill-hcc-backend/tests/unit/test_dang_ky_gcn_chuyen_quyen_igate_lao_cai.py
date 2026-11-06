@@ -3,6 +3,8 @@
 Dữ liệu trong file đều là ví dụ bịa.
 """
 
+import re
+
 import pytest
 
 from app.pipelines.dang_ky_gcn_chuyen_quyen_igate_lao_cai.attach import planner
@@ -105,7 +107,13 @@ def test_muc_igate_khong_bi_muc_cu_cuop_bang_text_priority(key):
         moi = next(p for p in PROCEDURES if p["key"] == k)["detect"]
         assert keys.index(k) < keys.index(_IGATE_LAO_CAI[key])
         if cu.get("textPriority"):
-            assert moi.get("textPriority") and moi["textIncludes"] == cu["textIncludes"]
+            assert moi.get("textPriority")
+            if moi["textIncludes"] != cu["textIncludes"]:
+                # Mục iGate tự khai cụm (trang nền mới không in mã TTHC): giữ mọi cụm chữ của mục cũ trừ mã và
+                # tổng độ dài lớn hơn → trang có in mã thì mục iGate vẫn thắng.
+                chu = {ph for ph in cu["textIncludes"] if not re.fullmatch(r"\d\.\d{6}", ph)}
+                assert chu <= set(moi["textIncludes"])
+                assert sum(map(len, moi["textIncludes"])) > sum(map(len, cu["textIncludes"]))
             assert all(s.endswith("/vi/") for s in moi["urlScope"])
 
 

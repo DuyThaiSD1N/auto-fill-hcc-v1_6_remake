@@ -291,7 +291,8 @@ async def test_khong_nut_luu_khi_con_thieu_da_luu_hoac_client_chua_co_engine():
 TOAN_TRINH = ("chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san", "chung-thuc-phan-chia-di-san",
               "chung-thuc-tu-choi-nhan-di-san", "chung-thuc-di-chuc",
               "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-chu-ky-nguoi-dich-ctv",
-              "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai", "chung-thuc-chu-ky-nguoi-dich-khong-ctv")
+              "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai", "chung-thuc-chu-ky-nguoi-dich-khong-ctv",
+              "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung")
 
 
 @pytest.mark.parametrize("key", TOAN_TRINH)

@@ -177,6 +177,9 @@
     // Cổng tỉnh Tuyên Quang (dichvucong.tuyenquang.gov.vn, nền iGate): content.js đọc hộp thoại "Chọn trường hợp giải
     // quyết" + bước stepper trên host này, content/bxd chạy ở đây (bản cũ không) → BE mới bật luồng 4 bước.
     supportsBxdFlowTuyenQuang: true,
+    // Cổng tỉnh Khánh Hòa (dichvucong.khanhhoa.gov.vn, nền iGate): content.js đọc trang nps/apply "Chọn trường hợp giải
+    // quyết" + bước stepper trên host này, content/bxd chạy ở đây (bản cũ không) → BE mới bật luồng 4 bước.
+    supportsBxdFlowKhanhHoa: true,
     // Cổng Bắc Ninh (trang nộp hồ sơ 4 tab cùng trang): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng
     // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
     // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.
@@ -676,6 +679,12 @@
   let completionLogoutGeneration = 0;
   let chatBootStarted = false;
   let chatBootFinished = false;
+  // Tài khoản quầy mà khung chat đang hiện (phiên + danh sách thủ tục đã lọc theo tỉnh của nó).
+  let chatAccountId = "";
+  function currentAccountId() {
+    const u = window.tlndAuth?.user;
+    return String(u?.id || u?.username || "");
+  }
 
   function completionChoiceButtons() {
     return Array.from(document.querySelectorAll(".chips.logout-choice .chip"));
@@ -5496,7 +5505,10 @@
       bumpScanWatermark();
       disconnectScanAgent();
       // Lý do kết thúc đi kèm để BE đóng sổ hồ sơ dở dang đúng nguyên nhân.
-      await api.deleteConversation(reason || "manual");
+      // Đổi tài khoản: token đang cầm là của tài khoản MỚI, BE từ chối xoá phiên của tài khoản
+      // cũ (403) → chỉ bỏ con trỏ, phiên cũ để TTL 24h tự dọn.
+      if (reason === "account_switch") api.conversationId = null;
+      else await api.deleteConversation(reason || "manual");
       await clearJourney();
       await writeActiveSplit(null);
       $messages.innerHTML = "";
@@ -6202,6 +6214,7 @@
   async function bootChat() {
     if (chatBootStarted) return;
     chatBootStarted = true;
+    chatAccountId = currentAccountId();
     // Chuyển trang dựng lại content script → nạp lại luật nhận nút nộp NGAY, không chờ hồ sơ mới.
     void restoreSubmitWatch();
     try {
@@ -6804,6 +6817,10 @@
     setLoginNotice("");
     try {
       await window.tlndAuth.login(u, p);
+      // Đăng nhập lại CÙNG tài khoản (token hết hạn) thì giữ phiên đang dở. Đổi sang tài khoản
+      // KHÁC thì phiên + danh sách thủ tục đang hiện vẫn của tài khoản trước (lọc provinceOnly
+      // theo tỉnh tài khoản đó, lượt chat sau còn bị BE trả 403) → dọn về màn bắt đầu.
+      const accountSwitched = chatBootStarted && !!chatAccountId && currentAccountId() !== chatAccountId;
       if (CAN_REMEMBER_LOGIN && $rememberLogin.checked) {
         try {
           await window.RememberedLoginStore.save(u, p);
@@ -6823,6 +6840,11 @@
       if (!BASE_URL) BASE_URL = await window.tlndBaseUrl();
       window.HCC_BASE_URL = BASE_URL;
       void loadVoiceConfig(); // /voice/config cần token → mới gọi được từ lúc này
+      if (accountSwitched) {
+        chatAccountId = currentAccountId();
+        closeServiceSheet(); // sheet "Tất cả thủ tục" mở dở vẫn cầm danh sách của tài khoản trước
+        await returnToStart("account_switch");
+      }
       bootChat();
     } catch (err) {
       const invalidRememberedLogin = rememberedLoginLoaded

@@ -47,7 +47,7 @@ def _norm_identity(value: str | None) -> str:
 # Cấu hình theo tài khoản: phường Nha Trang (Khánh Hòa) khai NGƯỜI ĐỀ NGHỊ trên tờ khai làm chủ hồ sơ thay vì
 # người chết. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được.
-PROCEDURE_KEYS = ("ho-tro-mai-tang", "ho-tro-mai-tang-1116910")
+PROCEDURE_KEYS = ("ho-tro-mai-tang-1116910",)
 REQUESTER_AS_OWNER_OPTION = "requesterAsOwner"
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 

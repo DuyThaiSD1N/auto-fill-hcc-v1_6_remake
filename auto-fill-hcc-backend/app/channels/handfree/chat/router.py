@@ -278,6 +278,10 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsHkdTroLy": raw.get("supportsHkdTroLy") is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.
         "supportsBxdFlowMoit": raw.get("supportsBxdFlowMoit") is True,
+        # Luồng 4 bước trên cổng tỉnh iGate Tuyên Quang / Khánh Hòa (trang "Chọn trường hợp giải quyết" + stepper, content/
+        # bxd chạy trên host đó) — thủ tục khai bxdFlow.capability. Thiếu ở whitelist thì cờ bị lọc, luồng không bao giờ bật.
+        "supportsBxdFlowTuyenQuang": raw.get("supportsBxdFlowTuyenQuang") is True,
+        "supportsBxdFlowKhanhHoa": raw.get("supportsBxdFlowKhanhHoa") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,

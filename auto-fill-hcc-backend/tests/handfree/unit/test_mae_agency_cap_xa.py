@@ -22,7 +22,8 @@ LOC = {"province": "Tỉnh Quảng Ngãi", "ward": "Phường Nghĩa Lộ"}
 WARD_KEYS = ["uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si", "cap-gcn-attp-nong-lam-thuy-san",
              "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
              "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
-             "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat"]
+             "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+             "hoa-giai-tranh-chap-dat-dai"]
 # Host cổng bộ + mã nhận diện trên cổng bộ + uuid DVCQG của từng thủ tục: uuid CHỈ có trên
 # dichvucong.gov.vn, mã/id SPA chỉ có trên cổng bộ → urlScope thiếu một host là nửa số urlIncludes
 # thành vô dụng (urlScope gate theo OR). ATTP nông lâm thủy sản (Bộ NN&MT) không có mã trên URL
@@ -49,6 +50,8 @@ WARD_URL_IDS = {
                                     "019d2bfb-2b25-777d-a825-2823012ce7ec"),
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ("dichvucongnnmt.mae.gov.vn", "MaTTHC=1.013997",
                                                            "019d2bfa-8686-732b-b2d5-e6a422f1b242"),
+    "hoa-giai-tranh-chap-dat-dai": ("dichvucongnnmt.mae.gov.vn", "MaTTHC=1.012812",
+                                    "019d2bfa-76e6-7468-b6f2-3d412e902b88"),
 }
 
 

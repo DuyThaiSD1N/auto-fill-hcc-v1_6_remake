@@ -1811,6 +1811,18 @@ def _so_agency(proc: dict, loc: dict) -> str:
     return str(by_province.get(found["slug"]) or "") if found else ""
 
 
+def _agency_card(proc: dict, loc: dict) -> str:
+    """Chuỗi chốt thẻ "Nộp trực tuyến" cho XÃ của tài khoản (agencyCardIncludesByWard — cùng bảng
+    submitCardIncludesByWard của Auto Fill), xã vắng trong bảng thì theo agencyCardIncludes. So tên đã fold dấu
+    nên "Ninh Hoà" (dấu cũ) vẫn khớp "Ninh Hòa"."""
+    ward = fold(loc.get("ward") or "")
+    if ward:
+        for name, card in (proc.get("agencyCardIncludesByWard") or {}).items():
+            if fold(name) == ward:
+                return str(card or "")
+    return str(proc.get("agencyCardIncludes") or "")
+
+
 def _portal_ward(loc: dict) -> str:
     """Tên xã để CHỌN trên khối cơ quan của cổng khi cổng chưa cập nhật tên xã — lấy theo bảng
     ngoại lệ của catalog. Câu đọc cho công dân vẫn dùng loc["ward"] như cũ."""
@@ -2310,6 +2322,23 @@ def _narrow_mae_process(options: dict, proc: dict) -> dict:
     return {**options, "process": {"options": kept, "current": current}}
 
 
+def _narrow_mae_agency(options: dict, proc: dict, loc: dict) -> dict:
+    """Thủ tục chốt thẻ "Nộp trực tuyến" theo XÃ (agencyCardIncludesByWard, vd Khánh Hòa: Chi nhánh VPĐK đất đai theo xã):
+    ô "Đơn vị thực hiện" của trang chọn trường hợp mà liệt kê nhiều chi nhánh thì chỉ giữ chi nhánh của xã tài khoản — đã
+    chọn ở DVCQG, khỏi hỏi lại. Không lựa chọn nào khớp (cổng ghi tên khác) → giữ nguyên, hỏi công dân như cũ."""
+    group = options.get("agency") or {}
+    card = fold(_agency_card(proc, loc)) if proc.get("agencyCardIncludesByWard") else ""
+    if not group or not card:
+        return options
+    kept = [label for label in group["options"] if card in fold(label)]
+    if not kept:
+        return options
+    current = group.get("current") or ""
+    if fold(current) not in {fold(label) for label in kept}:
+        current = kept[0]
+    return {**options, "agency": {"options": kept, "current": current}}
+
+
 def _mae_dialog_pending(options: dict) -> list[str]:
     """Các ô cần hỏi công dân: chỉ ô có từ 2 lựa chọn."""
     return [key for key, _t, _a in _MAE_DIALOG_GROUPS
@@ -2441,7 +2470,8 @@ def _mae_dialog_fill_reply(conv: dict) -> Reply:
 
 def _mae_dialog_on_page(conv: dict, ctx: dict, proc: dict | None = None) -> Reply | None:
     """Hộp thoại đang mở và FE đã đọc được lựa chọn → hỏi hoặc tự chọn. None = để đường cũ lo."""
-    options = _narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc or {})
+    options = _narrow_mae_agency(_narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc or {}),
+                                 proc or {}, conv.get("location") or {})
     if not options:
         return None
     if "mae_agency_fill" in (conv.get("milestones") or []):
@@ -2476,7 +2506,8 @@ def _mae_dialog_reappeared(conv: dict, proc: dict, ctx: dict) -> Reply | None:
     if not _say_once(conv, "mae_agency_fill"):
         return Reply()
     if _mae_dialog_choice_on(conv, proc):
-        options = _narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc)
+        options = _narrow_mae_agency(_narrow_mae_process(_clean_mae_dialog_options(ctx.get("maeDialogOptions")), proc),
+                                     proc, conv.get("location") or {})
         if options:
             conv["mae_dialog_options"] = options
             if _mae_dialog_pending(options) and not conv.get("mae_dialog_choice"):
@@ -2871,14 +2902,15 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
                                            province=action["province"], agency=so_agency))
                     return Reply()
                 action["soAgency"] = so_agency
-        card = str(proc.get("agencyCardIncludes") or "")
+        card = _agency_card(proc, loc)
         if card:
             # Trang kết quả ra nhiều thẻ, thẻ đầu là cấp Sở. Engine cũ trên chợ chỉ biết bấm thẻ
             # đầu → KHÔNG bắn lệnh cho nó (nộp nhầm cơ quan mà không ai hay), dặn chọn tay.
             if not _supports_agency_card(conv):
                 if _say_once(conv, "agency_card_manual"):
-                    return Reply(*_fmt(vi.AGENCY_CARD_MANUAL_GUIDE, ward=ward,
-                                       province=action["province"], card=card))
+                    # Thủ tục chỉ chọn tỉnh (agencyProvinceOnly, vd cấp đổi GCN Khánh Hòa): ward rỗng → chỉ đọc tỉnh.
+                    area = f"{ward}, {action['province']}" if ward else action["province"]
+                    return Reply(*_fmt(vi.AGENCY_CARD_MANUAL_GUIDE, area=area, card=card))
                 return Reply()
             action["cardIncludes"] = card
         conv["agency_dispatched_at"] = now
@@ -3217,7 +3249,7 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
         # Tỉnh/xã + Đồng ý đã xong, chỉ không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
         # KHÔNG lùi về thẻ đầu (thẻ đầu là cấp Sở) — dặn công dân bấm đúng thẻ.
         return Reply(*_fmt(vi.AGENCY_CARD_MISSING,
-                           card=str(proc.get("agencyCardIncludes") or "cơ quan đúng")))
+                           card=_agency_card(proc, loc) or "cơ quan đúng"))
     if intent.kind == "event" and intent.value == "province_row_failed":
         # Bảng cổng tỉnh không có dòng khớp (hoặc thiếu dòng theo vị trí): KHÔNG bấm dòng khác — mở nhầm biến thể
         # thủ tục (đồng bằng thay vì miền núi) là sai cả hồ sơ. Dặn công dân bấm đúng dòng.

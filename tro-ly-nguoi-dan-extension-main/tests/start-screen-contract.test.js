@@ -20,6 +20,18 @@ test("màn bắt đầu đứng trước conversation", () => {
   assert.match(sidebar, /async function bootChat\(\)[\s\S]*?showStartScreen\(\);[\s\S]*?finally \{[\s\S]*?chatBootFinished = true/);
 });
 
+test("đăng nhập tài khoản KHÁC trong cùng khung thì bỏ phiên + danh sách thủ tục của tài khoản trước", () => {
+  // bootChat chỉ chạy một lần: đăng nhập lại cùng tài khoản (token hết hạn) giữ phiên dở. Đổi tài khoản mà
+  // không dọn thì sheet "Tất cả thủ tục" vẫn lọc provinceOnly theo tỉnh tài khoản cũ (KH tìm ra bản Tuyên Quang).
+  assert.match(sidebar, /async function bootChat\(\) \{\s*if \(chatBootStarted\) return;\s*chatBootStarted = true;\s*chatAccountId = currentAccountId\(\);/);
+  const loginAt = sidebar.indexOf("await window.tlndAuth.login(u, p)");
+  const block = sidebar.slice(loginAt, sidebar.indexOf("} catch (err) {", loginAt));
+  assert.match(block, /const accountSwitched = chatBootStarted && !!chatAccountId && currentAccountId\(\) !== chatAccountId;/);
+  assert.match(block, /if \(accountSwitched\) \{[\s\S]*?closeServiceSheet\(\);[\s\S]*?await returnToStart\("account_switch"\);\s*\}\s*bootChat\(\);/);
+  // Token mới không có quyền với phiên cũ (BE 403) → chỉ bỏ con trỏ, không gọi DELETE.
+  assert.match(sidebar, /if \(reason === "account_switch"\) api\.conversationId = null;\s*else await api\.deleteConversation\(reason \|\| "manual"\);/);
+});
+
 test("ba bước mở đầu là nhãn hướng dẫn, không mang hình thức nút", () => {
   assert.match(html, /<b aria-hidden="true">01<\/b>/);
   assert.match(css, /\.start-steps li \{[\s\S]*background: transparent; border: 0; border-radius: 0;[\s\S]*box-shadow: none;/);

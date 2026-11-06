@@ -313,25 +313,26 @@
     },
     {
         "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Thị trấn Tân Yên (huyện Hàm Yên)",
+        "xa_cu": "Thị trấn Tân Yên",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Hàm Yên"
     },
     {
         "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Xã Tân Thành (huyện Hàm Yên)",
+        "xa_cu": "Xã Tân Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hàm Yên",
+        "huyen_cu": "Hàm Yên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bằng Cốc",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Hàm Yên"
     },
     {
         "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Xã Bằng Cốc (huyện Hàm Yên)",
-        "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Hàm Yên"
-    },
-    {
-        "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Xã Nhân Mục (huyện Hàm Yên)",
+        "xa_cu": "Xã Nhân Mục",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Hàm Yên"
     },
@@ -417,17 +418,19 @@
         "tinh_cu": "Tuyên Quang",
         "xa_cu": "Xã Thái Bình",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Thái Bình"
+        "xa_moi": "Xã Thái Bình",
+        "ghi_chu": "Một phần của xã Thái Bình (NQ 1684/NQ-UBTVQH15 khoản 28)"
     },
     {
         "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Xã Tân Tiến (huyện Yên Sơn)",
+        "xa_cu": "Xã Tân Tiến",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Tân Long"
+        "xa_moi": "Xã Tân Long",
+        "huyen_cu": "Yên Sơn"
     },
     {
         "tinh_cu": "Tuyên Quang",
-        "xa_cu": "Xã Tân Long (huyện Yên Sơn)",
+        "xa_cu": "Xã Tân Long",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Tân Long"
     },
@@ -679,6 +682,22 @@
     },
     {
         "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hồng Lạc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Sơn",
+        "huyen_cu": "Sơn Dương",
+        "ghi_chu": "Nhập vào xã Hồng Sơn (NQ 1106/NQ-UBTVQH15, từ 01/9/2024); xã Hồng Sơn giữ nguyên qua NQ 1684"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Vân Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Sơn",
+        "huyen_cu": "Sơn Dương",
+        "ghi_chu": "Nhập vào xã Hồng Sơn (NQ 1106/NQ-UBTVQH15, từ 01/9/2024); xã Hồng Sơn giữ nguyên qua NQ 1684"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
         "xa_cu": "Xã Đồng Quý",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Đông Thọ"
@@ -715,31 +734,32 @@
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Thị trấn Đồng Văn (huyện Đồng Văn)",
+        "xa_cu": "Thị trấn Đồng Văn",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Đồng Văn"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tả Lủng (huyện Đồng Văn)",
+        "xa_cu": "Xã Tả Lủng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn",
+        "huyen_cu": "Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Phìn",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Đồng Văn"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tả Phìn (huyện Đồng Văn)",
+        "xa_cu": "Xã Thài Phìn Tủng",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Đồng Văn"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Thài Phìn Tủng (huyện Đồng Văn)",
-        "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Đồng Văn"
-    },
-    {
-        "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Pải Lủng (huyện Đồng Văn)",
+        "xa_cu": "Xã Pải Lủng",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Đồng Văn"
     },
@@ -847,25 +867,26 @@
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Thị trấn Mèo Vạc (huyện Mèo Vạc)",
+        "xa_cu": "Thị trấn Mèo Vạc",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Mèo Vạc"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tả Lủng (huyện Mèo Vạc)",
+        "xa_cu": "Xã Tả Lủng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mèo Vạc",
+        "huyen_cu": "Mèo Vạc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Giàng Chu Phìn",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Mèo Vạc"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Giàng Chu Phìn (huyện Mèo Vạc)",
-        "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Mèo Vạc"
-    },
-    {
-        "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Pả Vi (huyện Mèo Vạc)",
+        "xa_cu": "Xã Pả Vi",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Mèo Vạc"
     },
@@ -1161,7 +1182,8 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Xã Yên Định",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Minh Ngọc"
+        "xa_moi": "Xã Minh Ngọc",
+        "ghi_chu": "Một phần của xã Yên Định (NQ 1684/NQ-UBTVQH15 khoản 69)"
     },
     {
         "tinh_cu": "Hà Giang",
@@ -1173,7 +1195,9 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Xã Yên Định",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Ngọc Đường"
+        "xa_moi": "Xã Ngọc Đường",
+        "chinh": true,
+        "ghi_chu": "Phần còn lại của xã Yên Định (NQ 1684/NQ-UBTVQH15 khoản 70)"
     },
     {
         "tinh_cu": "Hà Giang",
@@ -1275,7 +1299,8 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Xã Việt Lâm",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Vị Xuyên"
+        "xa_moi": "Xã Vị Xuyên",
+        "ghi_chu": "Một phần của xã Việt Lâm (NQ 1684/NQ-UBTVQH15 khoản 76)"
     },
     {
         "tinh_cu": "Hà Giang",
@@ -1287,23 +1312,25 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Xã Việt Lâm",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Việt Lâm"
+        "xa_moi": "Xã Việt Lâm",
+        "ghi_chu": "Phần còn lại của xã Việt Lâm (NQ 1684/NQ-UBTVQH15 khoản 77)"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tân Thành (huyện Bắc Quang)",
+        "xa_cu": "Xã Tân Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Quang",
+        "huyen_cu": "Bắc Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Lập",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Tân Quang"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tân Lập (huyện Bắc Quang)",
-        "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Tân Quang"
-    },
-    {
-        "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tân Quang (huyện Bắc Quang)",
+        "xa_cu": "Xã Tân Quang",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Tân Quang"
     },
@@ -1555,19 +1582,20 @@
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Tân Tiến (huyện Hoàng Su Phì)",
+        "xa_cu": "Xã Tân Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Tiến",
+        "huyen_cu": "Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Nhùng",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Tân Tiến"
     },
     {
         "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Bản Nhùng (huyện Hoàng Su Phì)",
-        "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Xã Tân Tiến"
-    },
-    {
-        "tinh_cu": "Hà Giang",
-        "xa_cu": "Xã Túng Sán (huyện Hoàng Su Phì)",
+        "xa_cu": "Xã Túng Sán",
         "tinh_moi": "Tuyên Quang",
         "xa_moi": "Xã Tân Tiến"
     },
@@ -1773,7 +1801,8 @@
         "tinh_cu": "Tuyên Quang",
         "xa_cu": "Xã Kim Phú",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Phường Mỹ Lâm"
+        "xa_moi": "Phường Mỹ Lâm",
+        "ghi_chu": "Một phần của xã Kim Phú (NQ 1684/NQ-UBTVQH15 khoản 105)"
     },
     {
         "tinh_cu": "Tuyên Quang",
@@ -1815,7 +1844,9 @@
         "tinh_cu": "Tuyên Quang",
         "xa_cu": "Xã Kim Phú",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Phường Minh Xuân"
+        "xa_moi": "Phường Minh Xuân",
+        "chinh": true,
+        "ghi_chu": "Phần còn lại của xã Kim Phú (NQ 1684/NQ-UBTVQH15 khoản 106)"
     },
     {
         "tinh_cu": "Tuyên Quang",
@@ -1833,7 +1864,8 @@
         "tinh_cu": "Tuyên Quang",
         "xa_cu": "Xã Thái Bình",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Phường Nông Tiến"
+        "xa_moi": "Phường Nông Tiến",
+        "ghi_chu": "Phần còn lại của xã Thái Bình (NQ 1684/NQ-UBTVQH15 khoản 107)"
     },
     {
         "tinh_cu": "Tuyên Quang",
@@ -1899,7 +1931,8 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Phường Hà Giang 1"
+        "xa_moi": "Phường Hà Giang 1",
+        "ghi_chu": "Một phần của phường Quang Trung (NQ 1684/NQ-UBTVQH15 khoản 110)"
     },
     {
         "tinh_cu": "Hà Giang",
@@ -1923,7 +1956,9 @@
         "tinh_cu": "Hà Giang",
         "xa_cu": "Phường Quang Trung",
         "tinh_moi": "Tuyên Quang",
-        "xa_moi": "Phường Hà Giang 2"
+        "xa_moi": "Phường Hà Giang 2",
+        "chinh": true,
+        "ghi_chu": "Phần còn lại của phường Quang Trung (NQ 1684/NQ-UBTVQH15 khoản 111)"
     },
     {
         "tinh_cu": "Hà Giang",

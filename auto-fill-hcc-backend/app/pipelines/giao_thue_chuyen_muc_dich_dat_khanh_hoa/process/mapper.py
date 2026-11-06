@@ -27,6 +27,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _province,
     _text,
     _ward,
+    clear_blank_fields,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -45,7 +46,6 @@ def _parcel_text(value: Any) -> str | None:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    del options
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
@@ -148,4 +148,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[nation2]", parcel_area.get("quocGia") or "Việt Nam", default=True)
         add("data[village2]", parcel_ward)
 
+    # Ô chữ/ngày giấy tờ không có -> trả về TRỐNG, không để dữ liệu cổng đổ sẵn theo tài khoản (mapper gốc Khánh Hòa).
+    clear_blank_fields(out, seen, options, applicant_val("SoDinhDanh"))
     return out, warnings
