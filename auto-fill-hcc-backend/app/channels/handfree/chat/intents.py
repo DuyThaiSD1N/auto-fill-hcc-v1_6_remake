@@ -109,6 +109,14 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "KHÔNG đồng ý cho xử lý dữ liệu / muốn tự nhập tay"},
         {"kind": "action", "value": "consent_agree",
          "desc": "đồng ý cho Trợ lý đọc giấy tờ và tự động điền (khẳng định tường minh)"},
+        # Thành lập hộ kinh doanh bằng hỏi đáp (chat/hkd_tro_ly): lời nói thay cho nút "không có tờ khai".
+        {"kind": "action", "value": "consent_no_docs", "only": "hkd",
+         "desc": "KHÔNG CÓ tờ khai / giấy tờ và muốn làm cùng trợ lý — trợ lý hỏi, công dân khai bằng lời (đây là "
+                 "ĐỒNG Ý cho xử lý thông tin, KHÔNG phải từ chối)"},
+    ],
+    "ask_doc_method": [
+        {"kind": "action", "value": "hkd_no_docs", "only": "hkd",
+         "desc": "KHÔNG CÓ tờ khai / giấy tờ, muốn trợ lý hỏi để khai bằng lời"},
     ],
     "qr_waiting": [
         {"kind": "action", "value": "reshow_qr",
@@ -292,8 +300,18 @@ def resolve_logout_choice(message: str) -> str | None:
     return None
 
 
-def _state_action_block(state: str) -> str:
-    entries = _GLOBAL_INTENTS + _STATE_INTENTS.get(state, [])
+def _state_entries(state: str, conv: dict | None) -> list[dict]:
+    """Ý định của state; mục "only": "hkd" (lối vào không giấy tờ) chỉ mở khi luồng hỏi đáp hộ kinh doanh bật lối đó."""
+    hkd_on = False
+    if conv and any(e.get("only") == "hkd" for e in _STATE_INTENTS.get(state, [])):
+        from app.channels.handfree.chat import hkd_tro_ly
+        from app.channels.handfree.procedure_registry import get_procedure
+        hkd_on = hkd_tro_ly.no_docs_on(conv, get_procedure(conv.get("procedure_key") or ""))
+    return _GLOBAL_INTENTS + [e for e in _STATE_INTENTS.get(state, []) if e.get("only") != "hkd" or hkd_on]
+
+
+def _state_action_block(state: str, conv: dict | None = None) -> str:
+    entries = _state_entries(state, conv)
     if not entries:
         return ' (bước này không có state_action nào → đừng dùng kind "state_action")'
     return "\n" + "\n".join(f'  + "{e["value"]}": người dân {e["desc"]}' for e in entries)
@@ -425,7 +443,7 @@ async def _classify(text: str, state: str, conv: dict) -> Intent:
         raw = await llm_chat(
             [
                 {"role": "system", "content": _LLM_SYSTEM.format(
-                    state=state, state_actions=_state_action_block(state),
+                    state=state, state_actions=_state_action_block(state, conv),
                     doc_methods=_doc_method_block(), buttons=_buttons_block(buttons))},
                 *store.recent_dialogue(conv, _CLASSIFIER_HISTORY_TURNS),
                 {"role": "user", "content": text[:500]},
@@ -437,7 +455,7 @@ async def _classify(text: str, state: str, conv: dict) -> Intent:
         data = json.loads(m.group(0)) if m else {}
         kind = str(data.get("kind", "unknown"))
         value = str(data.get("value", ""))
-        state_values = {e["value"] for e in _GLOBAL_INTENTS + _STATE_INTENTS.get(state, [])}
+        state_values = {e["value"] for e in _state_entries(state, conv)}
         if kind in state_values:
             # Model nhỏ đôi khi ghi thẳng tên hành động vào "kind" ({"kind":"confirm_review"}).
             kind, value = "state_action", kind
@@ -453,8 +471,7 @@ async def _classify(text: str, state: str, conv: dict) -> Intent:
             return Intent("pick_doc_method", value) if value in _DOC_METHODS else _free_text_unknown()
         if kind == "state_action":
             # Chỉ chấp nhận value có trong bảng của state — không cho bịa lệnh.
-            entry = next((e for e in _GLOBAL_INTENTS + _STATE_INTENTS.get(state, [])
-                          if e["value"] == value), None)
+            entry = next((e for e in _state_entries(state, conv) if e["value"] == value), None)
             return Intent(entry["kind"], entry["value"]) if entry else _free_text_unknown()
         if kind == "confirm":
             return Intent("confirm")

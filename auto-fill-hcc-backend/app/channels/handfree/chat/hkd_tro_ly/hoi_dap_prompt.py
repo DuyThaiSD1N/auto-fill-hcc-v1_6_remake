@@ -21,12 +21,19 @@ Quy tắc:
   "khong_ro": không hiểu được.
 - Câu trả lời ngắn / không nêu rõ tên mục khác ("có", "giống", "giống địa chỉ kinh doanh", một con số…) là câu trả lời
   cho MỤC ĐANG HỎI. Chỉ ghi mục khác khi công dân nói rõ đúng thông tin của mục đó.
+- Công dân SỬA mục đã có giá trị ("không phải …", "sai rồi, là …", "… cơ") → ghi lại mục đó với giá trị MỚI đúng
+  chữ công dân vừa nói (sửa một phần địa chỉ thì ghi lại đầy đủ phần đó). "giong" chỉ dùng cho mục có ghi "cho phép
+  giống".
 - Chỉ ghi điều công dân THỰC SỰ nói. Không đoán, không bịa. Không chắc thì bỏ mục đó ra.
 - Dạng giá trị:
   * chu: chuỗi đúng như công dân nói (tên hộ kinh doanh viết hoa chữ cái đầu mỗi từ).
   * diachi: {{"tinh": "<tỉnh/thành phố>", "xa": "<xã/phường, không kèm chữ Xã/Phường>",
-    "chiTietDuoiXa": "<số nhà, đường, thôn, xóm, tổ...>"}}. Công dân không nói tỉnh thì dùng tỉnh của quầy; không nói
-    xã/phường thì để "xa" rỗng. Mục cho phép "giống …" mà công dân nói giống thì ghi chuỗi "giong".
+    "chiTietDuoiXa": "<số nhà, đường, thôn, xóm, tổ...>"}}. Trợ lý hỏi lần lượt tỉnh → xã/phường → số nhà, thôn:
+    CHỈ ghi phần công dân thực sự nói, phần không nói để "" — công dân không nói TÊN tỉnh/thành phố thì "tinh" = "",
+    kể cả khi xã/phường đó thuộc tỉnh của quầy (trợ lý sẽ hỏi tỉnh). Câu trả lời ngắn là phần đang được hỏi: đang hỏi
+    tỉnh/thành phố → "tinh"; đang hỏi xã/phường → "xa"; đang hỏi số nhà, đường, thôn, tổ → "chiTietDuoiXa". Nói cả
+    địa chỉ một lần thì ghi đủ các phần. Object địa chỉ luôn nằm dưới mã mục ("<mã mục>": {{...}}), kể cả khi chỉ có
+    một phần. Mục cho phép "giống …" mà công dân nói giống thì ghi chuỗi "giong".
   * so: dãy chữ số liền (đổi số đọc bằng chữ sang chữ số, giữ đúng thứ tự, không thêm bớt).
   * tien: số nguyên đơn vị đồng ("năm mươi triệu" → 50000000, "1 tỷ 2" → 1200000000).
   * ngay: dd/mm/yyyy, hiểu cả "mùng 1 tháng sau", "đầu tháng 12" dựa vào hôm nay.
@@ -40,3 +47,16 @@ Quy tắc:
 """
 
 USER = 'CÔNG DÂN: "{text}"'
+
+
+PICK_SYSTEM = """Trợ lý một cửa vừa hỏi công dân (lời nói qua nhận dạng giọng nói nên có thể sai chính tả, số đọc bằng chữ):
+"{question}"
+
+Các lựa chọn đang hiện trên màn hình (số thứ tự — nội dung):
+{options}
+
+Công dân chọn lựa chọn nào? Họ có thể nói số thứ tự ("ngành một", "cái đầu tiên", "cái thứ hai"), đọc mã số bằng chữ
+từng chữ số, nói tên hoặc phần chi tiết (có thể nghe sai vài âm). Chỉ chọn khi khớp rõ MỘT lựa chọn.
+
+Trả ĐÚNG MỘT object JSON: {{"chon": <số thứ tự hoặc null>, "doiDanhSach": <true nếu công dân muốn THÊM / BỎ / ĐỔI
+mục trong danh sách thay vì chọn, ngược lại false>}}"""

@@ -643,7 +643,7 @@ async def _handle_auto(conv: dict, proc: dict, intent: Intent):
         r = await flow._start_documents_adjustment(
             conv, "declaration",
             finish_action=ADJUST_BOTH_LABEL.removeprefix("✅ "),
-            finish_detail=("em sẽ điền lại tờ khai rồi đính kèm lại; chỉ cần làm một việc thì "
+            finish_detail=("tôi sẽ điền lại tờ khai rồi đính kèm lại; chỉ cần làm một việc thì "
                            "công dân bấm nút nhỏ tương ứng"),
         )
         if conv.get("supplementing_documents") and r.chips:

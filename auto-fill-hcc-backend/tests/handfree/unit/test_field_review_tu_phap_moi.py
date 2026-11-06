@@ -80,7 +80,7 @@ def test_extension_chi_co_co_eform_thi_trang_mot_trang_giu_nguyen():
 async def test_dien_xong_dang_lap_ke_hoach_thi_bao_so_o_chua_moi_bo_sung(spawned):
     conv = _conv("filling", pipeline_status="running", attachment_plan_started=True)
     reply = await _turn(conv, "action", "fill_report", {"filled": 20, "notFound": [], "review": REVIEW})
-    assert any("Đính kèm xong em mời công dân bổ sung" in md for md in _trails(reply))
+    assert any("Đính kèm xong tôi mời công dân bổ sung" in md for md in _trails(reply))
     assert "__action:field_review_start" not in _sends(reply)
     assert "__action:field_review_preview" not in _sends(reply)
 
@@ -184,7 +184,7 @@ async def test_lua_chon_dai_khong_liet_ke_khong_doc_khong_hien_nut(spawned):
     await _turn(conv, "action", "field_review_start")
     reply = await _turn(conv, "event", "field_review_focus", {"field": _field(
         "citizenTinhtranghonnhan__1761724625529", "Tình trạng hôn nhân", "select", options=status), "stats": REVIEW})
-    assert "Ô **Tình trạng hôn nhân**" in reply.display_md and "Công dân nói hoặc gõ giúp em ạ." in reply.display_md
+    assert "Ô **Tình trạng hôn nhân**" in reply.display_md and "Công dân nói hoặc gõ giúp tôi ạ." in reply.display_md
     assert not any(o in reply.display_md + reply.tts_text for o in status)
     assert _sends(reply) == ["__action:field_review_skip", "__action:field_review_stop"]
     # Câu trả lời vẫn được khớp vào danh sách của ô.
@@ -206,8 +206,8 @@ async def test_o_quoc_gia_chi_moi_noi_hoac_go_ten_nuoc(spawned):
     reply = await _turn(conv, "event", "field_review_focus", {"field": _field(
         "citizenField32__1761724625529", "Quốc gia", "select", options=["Lào", "Việt Nam", "Pháp", "Anh", "Nhật Bản",
                                                                          "Hàn Quốc", "Đức"]), "stats": REVIEW})
-    assert reply.display_md.endswith("\n\nCông dân nói hoặc gõ tên nước giúp em ạ.")
-    assert reply.tts_text.endswith("Công dân nói hoặc gõ tên nước giúp em ạ.")
+    assert reply.display_md.endswith("\n\nCông dân nói hoặc gõ tên nước giúp tôi ạ.")
+    assert reply.tts_text.endswith("Công dân nói hoặc gõ tên nước giúp tôi ạ.")
     assert "hay nước khác" not in reply.display_md + reply.tts_text
     assert "Nước khác thì" not in reply.display_md + reply.tts_text
 

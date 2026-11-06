@@ -786,7 +786,7 @@
     if (detected.stage === "confirm") {
       if (!String(detected.confirmedType || "").includes("thanh lap moi")) {
         return void failCreateWorkflow(
-          "Bước xác nhận không hiển thị Thành lập mới hộ kinh doanh nên em không bấm Bắt đầu."
+          "Bước xác nhận không hiển thị Thành lập mới hộ kinh doanh nên tôi không bấm Bắt đầu."
         );
       }
       const begin = document.getElementById("ctl00_C_myWizard_FinishNavigationTemplateContainerID_FinishButton");
@@ -833,7 +833,7 @@
       await setFillAllState(st);
       // Vừa qua trọn wizard vào "Khối dữ liệu": báo rồi NGHỈ ~5 giây cho trang ổn định
       // (và người dân kịp nghe) trước khi bắt đầu điền các khối cần sửa.
-      H.setRunProgressText("Đã vào Khối dữ liệu ✓ Em bắt đầu điền các khối cần sửa sau ít giây…");
+      H.setRunProgressText("Đã vào Khối dữ liệu ✓ Tôi bắt đầu điền các khối cần sửa sau ít giây…");
       await sleep(5000);
       return void stepFillAll();
     }
@@ -2947,7 +2947,7 @@
         }
         await setAttachAllState(st);
         closeAttachModal({ refreshList: savedAny });
-        H.setRunProgressText("Chưa khai đủ loại tài liệu, em đang thử lại…\n(đừng thao tác tới khi xong)");
+        H.setRunProgressText("Chưa khai đủ loại tài liệu, tôi đang thử lại…\n(đừng thao tác tới khi xong)");
         return void setTimeout(stepAttachAll, 1000);
       }
 
@@ -3105,7 +3105,7 @@
         st.forceDeclareRecovery = true;
         st.declareTries = 0;
         await setAttachAllState(st);
-        H.setRunProgressText(`Sidebar chưa hiển thị loại tài liệu. Em đang kiểm tra và khai lại (lần ${recoveryRound}/${ATTACH_DECLARE_RECOVERY_LIMIT})…\n(đừng thao tác tới khi xong)`);
+        H.setRunProgressText(`Sidebar chưa hiển thị loại tài liệu. Tôi đang kiểm tra và khai lại (lần ${recoveryRound}/${ATTACH_DECLARE_RECOVERY_LIMIT})…\n(đừng thao tác tới khi xong)`);
         return void setTimeout(stepAttachAll, 700);
       }
       await setAttachAllState(st);

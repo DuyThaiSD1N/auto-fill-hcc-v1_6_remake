@@ -91,7 +91,7 @@ def test_du_lieu_dien_ve_thi_im_lang_va_tat_chu_giai_cu():
 async def test_con_o_bat_buoc_thi_bo_sung_la_nut_chinh_xem_truoc_nho():
     conv = _conv("filling")
     reply = await _turn(conv, "action", "fill_report", {"filled": 27, "notFound": [], "review": MISSING})
-    assert reply.display_md.startswith("🟩 Em đã điền **33 ô** vào tờ khai.")
+    assert reply.display_md.startswith("🟩 Tôi đã điền **33 ô** vào tờ khai.")
     assert "27" not in reply.display_md and "Công dân rà lại, ô nào sai" not in reply.display_md
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 2, "done": True}]
     (trail,) = _trails(reply)
@@ -128,8 +128,8 @@ async def test_du_o_bat_buoc_con_o_khong_bat_buoc_thi_bo_sung_la_nut_phu():
 async def test_thu_tuc_chua_co_vong_bo_sung_o_van_co_khung_moi_buoc_tiep_nhu_cu():
     conv = _conv("filling", key="dang-ky-cham-dut-giam-ho")
     reply = await _turn(conv, "action", "fill_report", {"filled": 12, "notFound": [], "review": None})
-    assert reply.display_md.startswith("🟩 Em đã điền **12 ô** vào tờ khai.")
-    assert "🟨 **1 ô** em điền mặc định" in reply.display_md
+    assert reply.display_md.startswith("🟩 Tôi đã điền **12 ô** vào tờ khai.")
+    assert "🟨 **1 ô** tôi điền mặc định" in reply.display_md
     (trail,) = _trails(reply)
     assert trail == vi.WAIT_ATTACHMENT_PAGE["md"].strip()
     assert _sends(reply) == SMALL
@@ -198,7 +198,7 @@ async def test_dinh_xong_thi_ket_qua_dinh_kem_va_buoc_tiep():
     conv = _conv("attaching", flow2_card="attach", docs_target="attachment",
                  attach_plan=[{"fileName": "cccd.pdf", "componentIndex": 1}], attach_action_in_progress=True)
     reply = await _turn(conv, "action", "attach_report", {"attached": 1, "skipped": 0, "errors": []})
-    assert reply.display_md.startswith("📎 Em đã đính kèm **1 tệp**:")
+    assert reply.display_md.startswith("📎 Tôi đã đính kèm **1 tệp**:")
     assert "**cccd.pdf** → STT 1" in reply.display_md
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 1, "done": True}]
     (trail,) = _trails(reply)
@@ -227,7 +227,7 @@ async def test_dien_lai_dung_the_chang_dien_moi():
 async def test_thieu_co_thi_giu_bao_cao_dien_cu():
     conv = _conv("filling", caps={"supportsFieldReview": True})
     reply = await _turn(conv, "action", "fill_report", {"filled": 27, "notFound": [], "review": MISSING})
-    assert "Em điền được **27 ô**" in reply.display_md
+    assert "Tôi điền được **27 ô**" in reply.display_md
     assert not _steps(reply)
 
 
@@ -301,7 +301,7 @@ async def _ask_then_proceed(monkeypatch, required):
 async def test_con_o_bat_buoc_ma_doi_xem_truoc_thi_bao_va_hoi_tiep_o_dang_do(monkeypatch):
     conv, reply = await _ask_then_proceed(monkeypatch, required=2)
     assert reply.display_md.startswith("Tờ khai còn **2 ô bắt buộc** chưa có thông tin nên cổng chưa cho xem trước ạ.")
-    assert "Em hỏi tiếp ô **Số định danh cá nhân**" in reply.display_md
+    assert "Tôi hỏi tiếp ô **Số định danh cá nhân**" in reply.display_md
     assert not any(a.get("type") == "declaration_preview" for a in reply.actions)
     assert {"type": "listen_after_tts"} in reply.actions
     assert field_review.asking(conv)
@@ -342,7 +342,7 @@ async def test_het_o_bat_buoc_sang_o_khong_bat_buoc_thi_bao_mot_lan_va_co_nut_xe
     no_red = {"filled": 34, "optional": 2, "required": 0}
     first = await _turn(conv, "event", "field_review_focus", {"field": _orange(), "stats": no_red})
     leads = [a["md"] for a in first.actions if a.get("type") == "lead_message"]
-    assert any(md.startswith("✓ Đã đủ các ô bắt buộc. Em hỏi tiếp **2 ô không bắt buộc**") for md in leads)
+    assert any(md.startswith("✓ Đã đủ các ô bắt buộc. Tôi hỏi tiếp **2 ô không bắt buộc**") for md in leads)
     assert not _preview(first).get("cta")  # cỡ thường như các nút của câu hỏi
     assert "__action:field_review_skip" in _sends(first)
     second = await _turn(conv, "event", "field_review_focus",

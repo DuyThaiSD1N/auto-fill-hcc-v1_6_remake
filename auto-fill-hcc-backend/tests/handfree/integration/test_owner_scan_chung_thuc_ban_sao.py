@@ -319,9 +319,9 @@ def test_loi_bot_doc_dung_danh_sach_cua_buoc_va_noi_ro_dung_lam_gi():
     docs = service.docs_for_conversation(_conv(docs_target="owner"))
     md, tts = flow._doc_list(proc_obj, docs)
     assert "Căn cước công dân của chủ hồ sơ" in md
-    assert "để em điền thông tin chủ hồ sơ" in md
+    assert "để tôi điền thông tin chủ hồ sơ" in md
     assert "để đính kèm vào Thành phần hồ sơ ở bước sau" in md
-    assert "để em điền thông tin chủ hồ sơ" in tts, "lời đọc cũng phải nêu mục đích"
+    assert "để tôi điền thông tin chủ hồ sơ" in tts, "lời đọc cũng phải nêu mục đích"
 
 
 def test_thu_tuc_khac_khong_bi_them_chu_vao_danh_sach_giay_to():
@@ -503,7 +503,7 @@ async def test_khong_co_loi_hoi_cu_thi_khong_bao_fe_xoa_gi(monkeypatch):
     conv = _collecting()
     conv["history"] = [
         {"role": "bot", "text": "Đã vào bước Thông tin chủ hồ sơ ✓ …", "state": "ask_doc_method"},
-        {"role": "bot", "text": "Em đã nhận giấy tờ ạ.", "state": "collecting_docs"},
+        {"role": "bot", "text": "Tôi đã nhận giấy tờ ạ.", "state": "collecting_docs"},
     ]
     r = await _jump_to_attach(conv)
 

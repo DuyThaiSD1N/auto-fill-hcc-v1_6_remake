@@ -98,7 +98,7 @@ def render_mobile_page(sid: str) -> str:
 <body>
 <div class="hd">Tải ảnh giấy tờ<div class="u">Phiên {sid[:8]}…</div></div>
 <div class="bd">
-  <div class="voice">📷 <span>Bà con chụp/chọn nhiều ảnh hoặc chọn tệp PDF, xem lại cho đủ rồi bấm <b>Gửi</b> ạ. Chụp rõ chữ, đủ 4 góc giúp em nhé.</span></div>
+  <div class="voice">📷 <span>Bà con chụp/chọn nhiều ảnh hoặc chọn tệp PDF, xem lại cho đủ rồi bấm <b>Gửi</b> ạ. Chụp rõ chữ, đủ 4 góc giúp tôi nhé.</span></div>
   <div class="row2">
     <button class="btn" id="camBtn">📸 Chụp ảnh</button>
     <button class="btn alt" id="galBtn">🖼️ Chọn ảnh</button>
@@ -310,7 +310,7 @@ async function sendWithRetry(s, progress) {{
     }});
     if (r.ok || (r.status >= 400 && r.status < 500)) return r;
     if (attempt < MAX_TRIES) {{
-      $("stat").textContent = `⏳ ${{r.detail}} — em đang gửi lại "${{s.file.name || "tài liệu"}}" (${{attempt}}/${{MAX_TRIES - 1}})…`;
+      $("stat").textContent = `⏳ ${{r.detail}} — tôi đang gửi lại "${{s.file.name || "tài liệu"}}" (${{attempt}}/${{MAX_TRIES - 1}})…`;
       await new Promise((ok) => setTimeout(ok, 1500 * attempt));
     }}
   }}
@@ -379,7 +379,7 @@ async function send() {{
   keepAwake(false);
   renderStaged();
   $("stat").textContent = failed.length
-    ? `⚠️ Đã gửi ${{done}}/${{items.length}} tài liệu. ${{failed.length}} tài liệu chưa gửi được (${{failed[0].err}}) — vẫn còn trong khay, bà con bấm Gửi lại giúp em.`
+    ? `⚠️ Đã gửi ${{done}}/${{items.length}} tài liệu. ${{failed.length}} tài liệu chưa gửi được (${{failed[0].err}}) — vẫn còn trong khay, bà con bấm Gửi lại giúp tôi.`
     : "✅ Đã gửi! Bà con gửi thêm hoặc quay lại máy tính ạ.";
 }}
 

@@ -31,14 +31,15 @@ Quy tắc phân loại:
 4. Còn phân vân giữa vài mã → "chac": false, "ma" gồm 2–3 mã hợp nhất, mã hợp nhất đứng trước.
 5. Lời kể quá chung để chọn mã (vd chỉ nói "buôn bán", "làm dịch vụ") → "hoiLai" hỏi đúng chỗ còn thiếu (bán mặt hàng
    gì, bán cho ai, làm dịch vụ gì); các hoạt động đã rõ vẫn ghi vào "nganh".
-6. Ngành chính: người dân nói rõ ngành nào là chính, hoặc chỉ có một hoạt động → "chinh" là mã đó (khi đã chắc).
-   Nhiều hoạt động mà người dân chưa nói ngành chính → "chinh": "".
-7. DANH SÁCH ĐANG CÓ là các ngành đã ghi trước đó. Người dân bổ sung, bỏ, sửa ngành thì "nganh" là danh sách SAU KHI
-   đổi (giữ nguyên các dòng không bị nhắc tới, kể cả mã và "chac" của chúng).
+6. Ngành chính: CHỈ khi người dân nói rõ ngành nào là chính ("… là chính", "chủ yếu là …") → "chinh" là mã đó (khi đã
+   chắc). Không tự chọn, kể cả khi chỉ có một hoạt động → "chinh": "".
+7. DANH SÁCH ĐANG CÓ là các ngành đã ghi trước đó. "nganh" là danh sách SAU KHI đổi: GIỮ NGUYÊN mọi dòng không bị nhắc
+   tới (cả mã, "chac", "chiTiet"), THÊM dòng mới người dân kể. CHỈ BỎ một dòng khi người dân nói rõ bỏ / xoá / không
+   kinh doanh hoạt động đó nữa — câu "cái này không phải ngành chính" chỉ đổi ngành chính, KHÔNG bỏ dòng.
 8. Không bịa mã. Không có mã nào phù hợp thì "ma": [] và "chac": false.
-9. "chiTiet": cụm ngắn ghi cụ thể món hàng/dịch vụ người dân làm, để cán bộ đọc là biết hộ làm gì dưới mã chuẩn —
-   bắt đầu bằng động từ, viết hoa chữ đầu, bỏ từ thừa ("tôi", "mở", "khoảng"); chỉ dùng điều người dân nói
-   (vd lời kể "tôi mở quán phở bò" → "Bán phở bò").
+9. "chiTiet": chính "hoatDong" viết gọn lại — ĐÚNG LỜI người dân, bắt đầu bằng động từ, viết hoa chữ đầu, bỏ từ thừa
+   ("tôi", "mở", "thêm", "nữa", "khoảng"). KHÔNG dùng tên ngành, KHÔNG chép câu trong nội dung ngành (vd "tôi mở quán
+   phở bò" → "Bán phở bò"; "thêm bán rau nữa" → "Bán rau"). Dòng đã có trong DANH SÁCH ĐANG CÓ: chép nguyên "chiTiet" cũ.
 
 DANH MỤC (mã — tên ngành cấp 4):
 {catalog}"""

@@ -96,6 +96,14 @@ const asrToForm = (a: AsrSettings): AsrForm => ({
   speechMax: String(a.speechMax ?? ""),
 });
 
+type VoiceTab = "tts" | "asr" | "voices";
+
+const VOICE_TABS: { key: VoiceTab; label: string }[] = [
+  { key: "tts", label: "Cấu hình đọc (TTS)" },
+  { key: "asr", label: "Cấu hình nghe (ASR)" },
+  { key: "voices", label: "Danh sách giọng" },
+];
+
 // Ô số để trống → không gửi khoá đó, BE giữ giá trị đang lưu.
 function num(value: string): number | undefined {
   const v = value.trim();
@@ -126,6 +134,7 @@ export default function Voice({ user, onLogout, view, onNavigate }: Props) {
   const [saving, setSaving] = useState(false);
   const [provider, setProvider] = useState<ProviderVoicesResp | null>(null);
   const [providerLoading, setProviderLoading] = useState(false);
+  const [tab, setTab] = useState<VoiceTab>("tts");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -320,329 +329,350 @@ export default function Voice({ user, onLogout, view, onNavigate }: Props) {
 
       {loadError && <div className="error bar">{loadError}</div>}
 
-      <div className="voice-sections">
-        <form className="report-card" onSubmit={saveTts}>
-          <div className="report-section-head">
-            <div>
-              <h2>Cấu hình đọc (TTS)</h2>
-              <p>Máy chủ chuyển chữ thành giọng nói cho trợ lý.</p>
-            </div>
-          </div>
-          {!ttsForm || !tts ? (
-            <p className="muted">{loadError ? "—" : "Đang tải…"}</p>
-          ) : (
-            <>
-              <div className="voice-grid">
-                <label className="voice-wide">
-                  Địa chỉ máy chủ đọc
-                  <input
-                    value={ttsForm.wsUrl}
-                    onChange={(e) => setTtsForm({ ...ttsForm, wsUrl: e.target.value })}
-                    placeholder="wss://…"
-                  />
-                </label>
-                <label className="voice-wide">
-                  Địa chỉ máy chủ đọc tiếng Mông
-                  <input
-                    value={ttsForm.wsUrlHmong}
-                    onChange={(e) => setTtsForm({ ...ttsForm, wsUrlHmong: e.target.value })}
-                    placeholder="wss://…"
-                  />
-                  <small>Để trống = dùng chung.</small>
-                </label>
-                <label>
-                  Tốc độ mặc định
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0.5"
-                    max="2"
-                    value={ttsForm.defaultTempo}
-                    onChange={(e) => setTtsForm({ ...ttsForm, defaultTempo: e.target.value })}
-                  />
-                  <small>Từ 0.5 đến 2.0, nằm trong khoảng nhỏ nhất – lớn nhất.</small>
-                </label>
-                <label>
-                  Cao độ (pitch)
-                  <input
-                    type="number"
-                    step="1"
-                    min="-99"
-                    max="100"
-                    value={ttsForm.pitch}
-                    onChange={(e) => setTtsForm({ ...ttsForm, pitch: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Tốc độ nhỏ nhất cán bộ được chọn
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0.5"
-                    max="2"
-                    value={ttsForm.tempoMin}
-                    onChange={(e) => setTtsForm({ ...ttsForm, tempoMin: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Tốc độ lớn nhất cán bộ được chọn
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0.5"
-                    max="2"
-                    value={ttsForm.tempoMax}
-                    onChange={(e) => setTtsForm({ ...ttsForm, tempoMax: e.target.value })}
-                  />
-                </label>
+      <div className="report-layout-tabs voice-tabs" role="tablist" aria-label="Phần cấu hình giọng nói">
+        {VOICE_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            className={tab === t.key ? "active" : ""}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="voice-sections" role="tabpanel">
+        {tab === "tts" && (
+          <form className="report-card" onSubmit={saveTts}>
+            <div className="report-section-head">
+              <div>
+                <h2>Cấu hình đọc (TTS)</h2>
+                <p>Máy chủ chuyển chữ thành giọng nói cho trợ lý.</p>
               </div>
+            </div>
+            {!ttsForm || !tts ? (
+              <p className="muted">{loadError ? "—" : "Đang tải…"}</p>
+            ) : (
+              <>
+                <div className="voice-grid">
+                  <label className="voice-wide">
+                    Địa chỉ máy chủ đọc
+                    <input
+                      value={ttsForm.wsUrl}
+                      onChange={(e) => setTtsForm({ ...ttsForm, wsUrl: e.target.value })}
+                      placeholder="wss://…"
+                    />
+                  </label>
+                  <label className="voice-wide">
+                    Địa chỉ máy chủ đọc tiếng Mông
+                    <input
+                      value={ttsForm.wsUrlHmong}
+                      onChange={(e) => setTtsForm({ ...ttsForm, wsUrlHmong: e.target.value })}
+                      placeholder="wss://…"
+                    />
+                    <small>Để trống = dùng chung.</small>
+                  </label>
+                  <label>
+                    Tốc độ mặc định
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="2"
+                      value={ttsForm.defaultTempo}
+                      onChange={(e) => setTtsForm({ ...ttsForm, defaultTempo: e.target.value })}
+                    />
+                    <small>Từ 0.5 đến 2.0, nằm trong khoảng nhỏ nhất – lớn nhất.</small>
+                  </label>
+                  <label>
+                    Cao độ (pitch)
+                    <input
+                      type="number"
+                      step="1"
+                      min="-99"
+                      max="100"
+                      value={ttsForm.pitch}
+                      onChange={(e) => setTtsForm({ ...ttsForm, pitch: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Tốc độ nhỏ nhất cán bộ được chọn
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="2"
+                      value={ttsForm.tempoMin}
+                      onChange={(e) => setTtsForm({ ...ttsForm, tempoMin: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Tốc độ lớn nhất cán bộ được chọn
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="2"
+                      value={ttsForm.tempoMax}
+                      onChange={(e) => setTtsForm({ ...ttsForm, tempoMax: e.target.value })}
+                    />
+                  </label>
+                </div>
 
-              <dl className="voice-info">
-                <div>
-                  <dt>Giọng dự phòng tiếng Việt</dt>
-                  <dd className="mono">{tts.fallbackVoiceVi || "—"}</dd>
-                </div>
-                <div>
-                  <dt>Giọng dự phòng tiếng Mông</dt>
-                  <dd className="mono">{tts.fallbackVoiceHmong || "—"}</dd>
-                </div>
-                <div>
-                  <dt>Khoá dịch vụ</dt>
-                  <dd>
-                    <span className={`badge ${tts.apiKeyConfigured ? "ok" : "warn"}`}>
-                      {tts.apiKeyConfigured ? "Đã cấu hình" : "Chưa cấu hình"}
-                    </span>{" "}
-                    <span className="muted">(env)</span>
-                  </dd>
-                </div>
-              </dl>
-              <p className="form-hint">
-                Giọng dự phòng cấu hình ở env TTS_VOICE / TTS_VOICE_HMONG, dùng khi cán bộ chưa chọn
-                hoặc giọng đã chọn lỗi.
-              </p>
+                <dl className="voice-info">
+                  <div>
+                    <dt>Giọng dự phòng tiếng Việt</dt>
+                    <dd className="mono">{tts.fallbackVoiceVi || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Giọng dự phòng tiếng Mông</dt>
+                    <dd className="mono">{tts.fallbackVoiceHmong || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Khoá dịch vụ</dt>
+                    <dd>
+                      <span className={`badge ${tts.apiKeyConfigured ? "ok" : "warn"}`}>
+                        {tts.apiKeyConfigured ? "Đã cấu hình" : "Chưa cấu hình"}
+                      </span>{" "}
+                      <span className="muted">(env)</span>
+                    </dd>
+                  </div>
+                </dl>
+                <p className="form-hint">
+                  Giọng dự phòng cấu hình ở env TTS_VOICE / TTS_VOICE_HMONG, dùng khi cán bộ chưa chọn
+                  hoặc giọng đã chọn lỗi.
+                </p>
 
-              <div className="voice-actions report-feedback" aria-live="polite">
-                <button className="btn-primary" type="submit" disabled={ttsSaving}>
-                  {ttsSaving ? "Đang lưu…" : "Lưu cấu hình đọc"}
+                <div className="voice-actions report-feedback" aria-live="polite">
+                  <button className="btn-primary" type="submit" disabled={ttsSaving}>
+                    {ttsSaving ? "Đang lưu…" : "Lưu cấu hình đọc"}
+                  </button>
+                  {ttsMsg && <div className={ttsMsg.ok ? "success" : "error"}>{ttsMsg.text}</div>}
+                </div>
+              </>
+            )}
+          </form>
+        )}
+
+        {tab === "asr" && (
+          <form className="report-card" onSubmit={saveAsr}>
+            <div className="report-section-head">
+              <div>
+                <h2>Cấu hình nghe (ASR)</h2>
+                <p>Máy chủ nhận dạng giọng nói của người dân.</p>
+              </div>
+            </div>
+            {!asrForm || !asr ? (
+              <p className="muted">{loadError ? "—" : "Đang tải…"}</p>
+            ) : (
+              <>
+                <div className="voice-grid">
+                  <label className="voice-wide">
+                    Địa chỉ máy chủ nghe
+                    <input
+                      value={asrForm.grpcUri}
+                      onChange={(e) => setAsrForm({ ...asrForm, grpcUri: e.target.value })}
+                    />
+                  </label>
+                  <label className="voice-wide">
+                    Địa chỉ máy chủ nghe tiếng Mông
+                    <input
+                      value={asrForm.grpcUriHmong}
+                      onChange={(e) => setAsrForm({ ...asrForm, grpcUriHmong: e.target.value })}
+                    />
+                    <small>Để trống = dùng chung.</small>
+                  </label>
+                  <label>
+                    Tần số thu âm
+                    <select
+                      value={asrForm.rate}
+                      onChange={(e) => setAsrForm({ ...asrForm, rate: e.target.value })}
+                    >
+                      <option value="16000">16000 Hz</option>
+                      <option value="8000">8000 Hz</option>
+                    </select>
+                  </label>
+                  <label>
+                    silence_timeout (giây)
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="60"
+                      value={asrForm.silenceTimeout}
+                      onChange={(e) => setAsrForm({ ...asrForm, silenceTimeout: e.target.value })}
+                    />
+                    <small>Số giây im lặng tối đa trước khi bắt đầu nói (1–60).</small>
+                  </label>
+                  <label>
+                    speech_timeout (giây)
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.3"
+                      max="10"
+                      value={asrForm.speechTimeout}
+                      onChange={(e) => setAsrForm({ ...asrForm, speechTimeout: e.target.value })}
+                    />
+                    <small>Số giây ngừng nói thì coi là nói xong (0.3–10).</small>
+                  </label>
+                  <label>
+                    speech_max (giây)
+                    <input
+                      type="number"
+                      step="1"
+                      min="5"
+                      max="120"
+                      value={asrForm.speechMax}
+                      onChange={(e) => setAsrForm({ ...asrForm, speechMax: e.target.value })}
+                    />
+                    <small>Thời lượng tối đa một lượt nói (5–120).</small>
+                  </label>
+                </div>
+
+                <dl className="voice-info">
+                  <div>
+                    <dt>Token</dt>
+                    <dd>
+                      <span className={`badge ${asr.tokenConfigured ? "ok" : "warn"}`}>
+                        {asr.tokenConfigured ? "Đã cấu hình" : "Chưa cấu hình"}
+                      </span>{" "}
+                      <span className="muted">(env)</span>
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="voice-actions report-feedback" aria-live="polite">
+                  <button className="btn-primary" type="submit" disabled={asrSaving}>
+                    {asrSaving ? "Đang lưu…" : "Lưu cấu hình nghe"}
+                  </button>
+                  {asrMsg && <div className={asrMsg.ok ? "success" : "error"}>{asrMsg.text}</div>}
+                </div>
+              </>
+            )}
+          </form>
+        )}
+
+        {tab === "voices" && (
+          <section className="report-card">
+            <div className="report-section-head voice-list-head">
+              <div>
+                <h2>Danh sách giọng</h2>
+                <p>Giọng đang bật sẽ hiện cho cán bộ chọn. Giọng có dân tộc H'Mông dùng khi đọc tiếng Mông.</p>
+              </div>
+              <div className="row-actions">
+                <button className="ghost" onClick={() => void fetchProvider()} disabled={providerLoading}>
+                  {providerLoading ? "Đang lấy…" : "Lấy danh sách từ máy chủ giọng"}
                 </button>
-                {ttsMsg && <div className={ttsMsg.ok ? "success" : "error"}>{ttsMsg.text}</div>}
-              </div>
-            </>
-          )}
-        </form>
-
-        <form className="report-card" onSubmit={saveAsr}>
-          <div className="report-section-head">
-            <div>
-              <h2>Cấu hình nghe (ASR)</h2>
-              <p>Máy chủ nhận dạng giọng nói của người dân.</p>
-            </div>
-          </div>
-          {!asrForm || !asr ? (
-            <p className="muted">{loadError ? "—" : "Đang tải…"}</p>
-          ) : (
-            <>
-              <div className="voice-grid">
-                <label className="voice-wide">
-                  Địa chỉ máy chủ nghe
-                  <input
-                    value={asrForm.grpcUri}
-                    onChange={(e) => setAsrForm({ ...asrForm, grpcUri: e.target.value })}
-                  />
-                </label>
-                <label className="voice-wide">
-                  Địa chỉ máy chủ nghe tiếng Mông
-                  <input
-                    value={asrForm.grpcUriHmong}
-                    onChange={(e) => setAsrForm({ ...asrForm, grpcUriHmong: e.target.value })}
-                  />
-                  <small>Để trống = dùng chung.</small>
-                </label>
-                <label>
-                  Tần số thu âm
-                  <select
-                    value={asrForm.rate}
-                    onChange={(e) => setAsrForm({ ...asrForm, rate: e.target.value })}
-                  >
-                    <option value="16000">16000 Hz</option>
-                    <option value="8000">8000 Hz</option>
-                  </select>
-                </label>
-                <label>
-                  silence_timeout (giây)
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    max="60"
-                    value={asrForm.silenceTimeout}
-                    onChange={(e) => setAsrForm({ ...asrForm, silenceTimeout: e.target.value })}
-                  />
-                  <small>Số giây im lặng tối đa trước khi bắt đầu nói (1–60).</small>
-                </label>
-                <label>
-                  speech_timeout (giây)
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.3"
-                    max="10"
-                    value={asrForm.speechTimeout}
-                    onChange={(e) => setAsrForm({ ...asrForm, speechTimeout: e.target.value })}
-                  />
-                  <small>Số giây ngừng nói thì coi là nói xong (0.3–10).</small>
-                </label>
-                <label>
-                  speech_max (giây)
-                  <input
-                    type="number"
-                    step="1"
-                    min="5"
-                    max="120"
-                    value={asrForm.speechMax}
-                    onChange={(e) => setAsrForm({ ...asrForm, speechMax: e.target.value })}
-                  />
-                  <small>Thời lượng tối đa một lượt nói (5–120).</small>
-                </label>
-              </div>
-
-              <dl className="voice-info">
-                <div>
-                  <dt>Token</dt>
-                  <dd>
-                    <span className={`badge ${asr.tokenConfigured ? "ok" : "warn"}`}>
-                      {asr.tokenConfigured ? "Đã cấu hình" : "Chưa cấu hình"}
-                    </span>{" "}
-                    <span className="muted">(env)</span>
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="voice-actions report-feedback" aria-live="polite">
-                <button className="btn-primary" type="submit" disabled={asrSaving}>
-                  {asrSaving ? "Đang lưu…" : "Lưu cấu hình nghe"}
+                <button className="btn-primary" onClick={() => openCreate()}>
+                  + Thêm giọng
                 </button>
-                {asrMsg && <div className={asrMsg.ok ? "success" : "error"}>{asrMsg.text}</div>}
               </div>
-            </>
-          )}
-        </form>
-
-        <section className="report-card">
-          <div className="report-section-head voice-list-head">
-            <div>
-              <h2>Danh sách giọng</h2>
-              <p>Giọng đang bật sẽ hiện cho cán bộ chọn. Giọng có dân tộc H'Mông dùng khi đọc tiếng Mông.</p>
             </div>
-            <div className="row-actions">
-              <button className="ghost" onClick={() => void fetchProvider()} disabled={providerLoading}>
-                {providerLoading ? "Đang lấy…" : "Lấy danh sách từ máy chủ giọng"}
-              </button>
-              <button className="btn-primary" onClick={() => openCreate()}>
-                + Thêm giọng
-              </button>
-            </div>
-          </div>
 
-          {provider && (
-            <div className="voice-provider">
-              {!provider.ok ? (
-                <div className="error">{provider.error || "Không lấy được danh sách từ máy chủ giọng."}</div>
-              ) : suggestions.length === 0 ? (
-                <p className="muted">Mọi giọng trên máy chủ giọng đã có trong danh sách.</p>
-              ) : (
-                <>
-                  <p className="muted">Giọng trên máy chủ chưa có trong danh sách:</p>
-                  <ul>
-                    {suggestions.map((p) => (
-                      <li key={p.id}>
-                        <span className="mono">{p.id}</span>
-                        {p.samplingRate ? <span className="muted"> · {p.samplingRate} Hz</span> : null}
-                        <button
-                          className="ghost sm"
-                          onClick={() =>
-                            openCreate({
-                              voiceId: p.id,
-                              region: p.suggestedRegion,
-                            })
-                          }
-                        >
-                          Thêm
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          )}
-
-          {voicesError && <div className="error bar">{voicesError}</div>}
-
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Mã giọng</th>
-                  <th>Tên giọng</th>
-                  <th>Giới tính</th>
-                  <th>Vùng miền</th>
-                  <th>Dân tộc</th>
-                  <th className="center">Tần số (Hz)</th>
-                  <th className="center">Bật</th>
-                  <th className="center">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {voicesLoading && (
-                  <tr>
-                    <td colSpan={8} className="center muted">Đang tải…</td>
-                  </tr>
-                )}
-                {!voicesLoading && voices.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="center muted">Chưa có giọng nào</td>
-                  </tr>
-                )}
-                {!voicesLoading &&
-                  voices.map((v) => (
-                    <tr key={v.voiceId}>
-                      <td className="mono">{v.voiceId}</td>
-                      <td>{v.name || <span className="muted">—</span>}</td>
-                      <td>{GENDER_LABEL[v.gender] ?? "—"}</td>
-                      <td>{REGION_LABEL[v.region] ?? "—"}</td>
-                      <td>{v.ethnicity || <span className="muted">—</span>}</td>
-                      <td className="center">{v.sampleRate}</td>
-                      <td className="center">
-                        <input
-                          type="checkbox"
-                          className="voice-toggle"
-                          checked={v.enabled}
-                          disabled={busyRow === v.voiceId}
-                          aria-label={v.enabled ? "Tắt giọng" : "Bật giọng"}
-                          onChange={() => void toggleEnabled(v)}
-                        />
-                      </td>
-                      <td className="center">
-                        <div className="row-actions">
-                          <button className="ghost sm" onClick={() => openEdit(v)}>
-                            Sửa
-                          </button>
+            {provider && (
+              <div className="voice-provider">
+                {!provider.ok ? (
+                  <div className="error">{provider.error || "Không lấy được danh sách từ máy chủ giọng."}</div>
+                ) : suggestions.length === 0 ? (
+                  <p className="muted">Mọi giọng trên máy chủ giọng đã có trong danh sách.</p>
+                ) : (
+                  <>
+                    <p className="muted">Giọng trên máy chủ chưa có trong danh sách:</p>
+                    <ul>
+                      {suggestions.map((p) => (
+                        <li key={p.id}>
+                          <span className="mono">{p.id}</span>
+                          {p.samplingRate ? <span className="muted"> · {p.samplingRate} Hz</span> : null}
                           <button
-                            className="ghost sm danger"
-                            disabled={busyRow === v.voiceId}
-                            onClick={() => void removeVoice(v)}
+                            className="ghost sm"
+                            onClick={() =>
+                              openCreate({
+                                voiceId: p.id,
+                                region: p.suggestedRegion,
+                              })
+                            }
                           >
-                            Xoá
+                            Thêm
                           </button>
-                        </div>
-                      </td>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
+            {voicesError && <div className="error bar">{voicesError}</div>}
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mã giọng</th>
+                    <th>Tên giọng</th>
+                    <th>Giới tính</th>
+                    <th>Vùng miền</th>
+                    <th>Dân tộc</th>
+                    <th className="center">Tần số (Hz)</th>
+                    <th className="center">Bật</th>
+                    <th className="center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {voicesLoading && (
+                    <tr>
+                      <td colSpan={8} className="center muted">Đang tải…</td>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  )}
+                  {!voicesLoading && voices.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="center muted">Chưa có giọng nào</td>
+                    </tr>
+                  )}
+                  {!voicesLoading &&
+                    voices.map((v) => (
+                      <tr key={v.voiceId}>
+                        <td className="mono">{v.voiceId}</td>
+                        <td>{v.name || <span className="muted">—</span>}</td>
+                        <td>{GENDER_LABEL[v.gender] ?? "—"}</td>
+                        <td>{REGION_LABEL[v.region] ?? "—"}</td>
+                        <td>{v.ethnicity || <span className="muted">—</span>}</td>
+                        <td className="center">{v.sampleRate}</td>
+                        <td className="center">
+                          <input
+                            type="checkbox"
+                            className="voice-toggle"
+                            checked={v.enabled}
+                            disabled={busyRow === v.voiceId}
+                            aria-label={v.enabled ? "Tắt giọng" : "Bật giọng"}
+                            onChange={() => void toggleEnabled(v)}
+                          />
+                        </td>
+                        <td className="center">
+                          <div className="row-actions">
+                            <button className="ghost sm" onClick={() => openEdit(v)}>
+                              Sửa
+                            </button>
+                            <button
+                              className="ghost sm danger"
+                              disabled={busyRow === v.voiceId}
+                              onClick={() => void removeVoice(v)}
+                            >
+                              Xoá
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </div>
 
       {form && (

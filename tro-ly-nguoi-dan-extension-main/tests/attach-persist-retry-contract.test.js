@@ -56,7 +56,7 @@ test("hỏng một tệp KHÔNG chặn các tệp còn lại", () => {
 });
 
 test("báo lỗi theo TỪNG tệp, không nuốt", () => {
-  assert.match(attach, /for \(const \{ index \} of queue\)[\s\S]{0,200}?errors\.push\(message\)/);
+  assert.match(attach, /for \(const \{ (?:item, )?index \} of queue\)[\s\S]{0,200}?errors\.push\(message\)/);
   // Lý do thật từ toast của cổng (vd "Upload failed: 500") phải vào được lỗi trả về.
   // Đọc qua newPortalUploadError (so với mốc chụp trước lượt) chứ không đọc toast trần —
   // xem tests/attach-fast-fail-contract.test.js.

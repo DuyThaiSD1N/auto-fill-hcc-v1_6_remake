@@ -18,6 +18,8 @@
 /* overflow:hidden — body không bao giờ tự sinh scrollbar/khoảng trắng ngoài .bot;
    nền body = nền khung chat để nếu có khe hở 1px cũng không lộ màu lạ. */
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+/* Cỡ chữ theo tài khoản (Cài đặt → Cỡ chữ, 90–130%): phóng cả khung, bố cục tự co theo bề rộng còn lại. */
+body { zoom: var(--ui-scale, 1); }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--ink);
@@ -29,7 +31,7 @@ body {
    dvh bám đúng viewport thật của iframe.
    ⚠️ Khung tổng dùng class .tlnd-app, KHÔNG dùng ".bot": bubble trợ lý mang class "msg bot"
    sẽ khớp nhầm selector .bot và bị ép height 100dvh. */
-.tlnd-app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.tlnd-app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); }
 
 button { font-family: inherit; }
 :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 6px; }
@@ -129,6 +131,10 @@ button { font-family: inherit; }
 .bot-h .tb.active { background: #fff; color: var(--teal-d); }
 .bot-h .tb .tbi { font-size: 15px; line-height: 1; }
 .bot-h .tb[hidden] { display: none; }
+/* Cỡ chữ lớn (≥115%): khung còn ~308–348px — bỏ biểu tượng, thu đệm để 3 nút vẫn nằm một hàng thay vì tách hai hàng
+   ăn mất chỗ của khung chat. */
+html[data-ui-scale="lg"] .bot-h .tb { padding: 6px 6px; gap: 0; }
+html[data-ui-scale="lg"] .bot-h .tb .tbi { display: none; }
 
 /* ── Thanh tiếng Mông (Hmong) — chỉ hiện với tài khoản Lai Châu ── */
 .lang-bar {
@@ -352,6 +358,38 @@ body.start-mode .bot-f { display: none; }
 .settings-switch.on { background: var(--teal); }
 .settings-switch:disabled { opacity: .45; cursor: not-allowed; }
 .settings-switch.on .settings-switch-knob { transform: translateX(20px); }
+/* Cỡ chữ: thanh trượt giữa hai chữ A nhỏ/to + số %, chữ mẫu đổi theo lúc kéo. */
+.font-scale-control { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.font-scale-a { flex: 0 0 auto; color: var(--navy); font-weight: 750; line-height: 1; }
+.font-scale-a.small { font-size: 11px; }
+.font-scale-a.big { font-size: 18px; }
+.font-scale-range { flex: 1; min-width: 0; margin: 0; accent-color: var(--teal); cursor: pointer; }
+.font-scale-range:disabled { opacity: .45; cursor: not-allowed; }
+.font-scale-value {
+  flex: 0 0 auto; min-width: 42px; text-align: right;
+  color: var(--teal-d); font-size: 12.5px; font-weight: 750; font-variant-numeric: tabular-nums;
+}
+/* Giọng đọc: ô chọn giọng (danh sách dài do web quản trị cấp) + thanh tốc độ (dùng chung khuôn thanh cỡ chữ). */
+.voice-select {
+  width: 100%; margin-top: 10px; padding: 9px 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.voice-select[hidden] { display: none; }
+.voice-select:disabled { opacity: .55; cursor: not-allowed; }
+.voice-tempo-label { flex: 0 0 auto; color: var(--navy); font-size: 12.5px; font-weight: 700; }
+.voice-try {
+  margin-top: 10px; padding: 7px 14px;
+  border: 1px solid #9fd3c1; border-radius: 999px; background: #fff;
+  color: var(--teal-d); font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.voice-try:hover { background: #f1faf6; }
+.voice-try[hidden] { display: none; }
+.font-scale-sample {
+  margin: 10px 0 0; padding: 9px 11px;
+  border: 1px dashed #bcd9cb; border-radius: 10px; background: #f6fbf8;
+  color: var(--ink); line-height: 1.45; overflow-wrap: anywhere;
+}
 .settings-seg {
   display: flex; gap: 6px; margin-top: 10px;
   padding: 4px; border: 1px solid var(--line); border-radius: 12px;
@@ -1030,6 +1068,27 @@ body.settings-mode .bot-f { display: none; }
   border: 1px solid #f2c2bd; border-radius: 8px;
   background: #fef0ef; color: #b42318; font-size: 11px;
 }
+
+/* ── Kết quả đính kèm theo từng tệp (thẻ attach_files) ── */
+.attach-files-actions { display: flex; align-self: flex-start; margin: -2px 0 2px; }
+.attach-files-btn {
+  border: 1px solid #9fd3c1; border-radius: 999px; cursor: pointer;
+  padding: 6px 12px; background: #fff; color: var(--teal-d);
+  font-size: 11.5px; font-weight: 700;
+}
+.attach-files-btn:hover { background: #f1faf6; }
+.attach-files-btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.msg.bot.err { background: #fef4f3; border-color: #f2c2bd; border-left-color: #d92d20; }
+.attach-files-title { color: #b42318; font-weight: 750; }
+.attach-files-list { margin: 6px 0 0; padding-left: 18px; overflow-wrap: anywhere; }
+.attach-files-list li + li { margin-top: 3px; }
+.attach-files-failed .attach-files-btn { margin-top: 8px; border-color: #f2c2bd; color: #b42318; }
+.attach-files-failed .attach-files-btn:hover { background: #fee7e7; }
+.attach-files-hint { margin-top: 8px; }
+.attach-files-hint p { margin: 0; }
+.file-list-icon.err { background: #fee7e7; }
+.attach-list-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.attach-list-reason { color: #b42318; font-size: 10.5px; }
 
 /* ── Card QR (thay inline style cũ) ── */
 .qr-card {

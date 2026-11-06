@@ -145,7 +145,7 @@
   H.setFillAllProgress = async function setFillAllProgress(step, total, label) {
     if (businessRunCancelled || businessRunFinalizing) return;
     touchBusinessActivity();
-    const text = `Đang điền khối ${step}/${total}${label ? " — " + label : ""}\nCông dân chưa thao tác trên trang giúp em ạ.`;
+    const text = `Đang điền khối ${step}/${total}${label ? " — " + label : ""}\nCông dân chưa thao tác trên trang giúp tôi ạ.`;
     progressWrite = progressWrite.then(async () => {
       if (businessRunCancelled || businessRunFinalizing) return;
       const run = await storageGet(RUN_KEY);

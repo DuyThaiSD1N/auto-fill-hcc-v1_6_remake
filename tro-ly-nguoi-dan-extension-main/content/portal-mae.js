@@ -328,7 +328,7 @@
       const wardSel = await waitFor(() => matSelect("agency"), 5000);
       if (!wardSel) return { error: "Không thấy ô chọn Phường/Xã." };
       const wantWard = fold(ward);
-      if (!wantWard) return { error: "Tài khoản chưa gắn phường/xã nên em chưa biết chọn ô nào." };
+      if (!wantWard) return { error: "Tài khoản chưa gắn phường/xã nên tôi chưa biết chọn ô nào." };
       if (!matSelectValue(wardSel).includes(wantWard)) {
         // Option ghi đủ "Phường Nghĩa Lộ"/"Xã An Thạnh"; tên từ tài khoản có thể thiếu tiền tố
         // → khớp hai chiều như ô Tỉnh.

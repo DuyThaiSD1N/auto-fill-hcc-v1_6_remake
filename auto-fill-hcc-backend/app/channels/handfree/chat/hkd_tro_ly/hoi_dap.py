@@ -2,11 +2,12 @@
 
 LLM nhận cả danh sách mục nên một câu nói ghi được nhiều mục cùng lúc, sửa được mục đã trả lời trước đó. Kiểm dạng là
 tất định: số điện thoại / số định danh sai độ dài thì không ghi mà hỏi lại kèm số đã nghe; ngày phải là ngày thật;
-địa chỉ phải có xã/phường.
+địa chỉ ghi từng phần (tỉnh, xã, số nhà) nghe được.
 """
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -41,16 +42,31 @@ def _phone_ok(digits: str) -> bool:
     return (len(digits) == 10 and digits.startswith("0")) or (len(digits) == 11 and digits.startswith("02"))
 
 
-def _clean_address(value, allow_same: bool):
+def _fold_char(c: str) -> str:
+    return unicodedata.normalize("NFD", c.replace("đ", "d").replace("Đ", "D"))[0].lower()
+
+
+def _with_accents(part: str, text: str) -> str:
+    """Model hay trả phần địa chỉ KHÔNG DẤU ("so 10 duong mau") hoặc viết thường hết ("liên chiểu") → lấy lại đúng đoạn
+    đó trong lời công dân (gấp từng ký tự nên vị trí khớp 1-1). Chỉ chép lại chữ công dân đã nói, không đoán."""
+    if not part or not (part.isascii() or part == part.lower()) or not text or text.isascii():
+        return part
+    source = re.sub(r"\s+", " ", text)
+    i = "".join(_fold_char(c) for c in source).find("".join(_fold_char(c) for c in part))
+    return source[i:i + len(part)] if i >= 0 else part
+
+
+def _clean_address(value, allow_same: bool, text: str = ""):
     if allow_same and isinstance(value, str) and value.strip().lower().startswith("giong"):
         return "giong"
     if not isinstance(value, dict):
         return None
     # llm/client.py đổi khoá "chiTietDuoiXa" của model về "diaChi" (quy ước code/mapper) — nhận cả hai.
     value = {**value, "diaChi": value.get("diaChi") or value.get("chiTietDuoiXa")}
-    out = {k: re.sub(r"\s+", " ", str(value.get(k) or "")).strip()[:300] for k in ("tinh", "xa", "diaChi")}
-    if not out["xa"]:
-        return None
+    out = {k: _with_accents(re.sub(r"\s+", " ", str(value.get(k) or "")).strip()[:300], text)
+           for k in ("tinh", "xa", "diaChi")}
+    if not any(out.values()):
+        return None  # hỏi lần lượt tỉnh → xã → số nhà: một phần cũng ghi, phần còn thiếu hỏi tiếp
     out["quocGia"] = "Việt Nam"
     return out
 
@@ -70,7 +86,7 @@ def check(kind: str, raw, text: str, asking: bool, allow_same: bool = False):
         value = re.sub(r"\s+", "", str(raw or "")).lower()
         return (value if _EMAIL.match(value) else None), ""
     if kind == "address":
-        return _clean_address(raw, allow_same), ""
+        return _clean_address(raw, allow_same, text), ""
     if kind == "money":
         digits = re.sub(r"\D", "", str(raw or ""))
         return (int(digits) if digits and int(digits) > 0 else None), ""
@@ -130,7 +146,13 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
     out = Parsed(action if action in ACTIONS else "khong_ro",
                  nganh_text=re.sub(r"\s+", " ", str(data.get("nganhMoTa") or "")).strip()[:600])
     kinds = {s["key"]: s for s in slots}
-    for key, raw_value in (data.get("giaTri") or {}).items():
+    given = data.get("giaTri") if isinstance(data.get("giaTri"), dict) else {}
+    if kinds.get(asking, {}).get("kind") == "address" and asking not in given:
+        # Câu trả lời ngắn cho một phần địa chỉ ("Tân An") model hay ghi {"xa": …} ngay ở giaTri, quên bọc trong mã mục.
+        loose = {k: given.pop(k) for k in ("tinh", "xa", "diaChi", "chiTietDuoiXa") if k in given}
+        if loose:
+            given[asking] = loose
+    for key, raw_value in given.items():
         spec = kinds.get(key)
         if not spec:
             continue
@@ -146,3 +168,23 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
     if out.values and out.action in ("khong_ro", "nhac_lai"):
         out.action = "tra_loi"
     return out
+
+
+async def pick(text: str, question: str, options: list[str]) -> tuple[int | None, bool]:
+    """Công dân chọn một dòng trong danh sách đang hiện (vd ngành chính) → (chỉ số 0.., muốn đổi danh sách)."""
+    system = prompt.PICK_SYSTEM.format(question=question,
+                                       options="\n".join(f"{i} — {o}" for i, o in enumerate(options, 1)))
+    try:
+        raw = await llm_chat([{"role": "system", "content": system},
+                              {"role": "user", "content": prompt.USER.format(text=str(text or "")[:600])}],
+                             temperature=0.0, max_tokens=80, purpose="hkd_chon")
+        m = re.search(r"\{[\s\S]*\}", raw or "")
+        data = json.loads(m.group(0)) if m else {}
+    except Exception as e:  # noqa: BLE001 — LLM best-effort, hỏi lại
+        logger.warning("[hkd_hoi_dap] LLM chọn lỗi: %s", e)
+        return None, False
+    if not isinstance(data, dict):
+        return None, False
+    choice = data.get("chon")
+    index = choice - 1 if isinstance(choice, int) and 1 <= choice <= len(options) else None
+    return index, data.get("doiDanhSach") is True

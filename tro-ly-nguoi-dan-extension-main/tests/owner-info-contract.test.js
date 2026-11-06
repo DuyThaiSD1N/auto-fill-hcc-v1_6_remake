@@ -105,7 +105,7 @@ test("owner fill trả tên trường để backend nói rõ mục đã xong và
 
 test("pipeline chủ hồ sơ giữ 4 bước, còn kê khai chỉ hiện một dòng", () => {
   assert.match(sidebar, /const PIPE_STAGES = \[/);
-  assert.match(sidebar, /showPipelineCard\("Em đang đọc và bóc tách giấy tờ[^\n]+true\)/);
+  assert.match(sidebar, /showPipelineCard\("Tôi đang đọc và bóc tách giấy tờ[^\n]+true\)/);
   assert.match(sidebar, /Bóc tách thông tin và điền biểu mẫu/);
   assert.match(sidebar, /showPipelineCard\("Bóc tách thông tin và điền biểu mẫu", false\)/);
   for (const ownerLabel of [

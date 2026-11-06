@@ -413,19 +413,19 @@ async function upload(files, hint) {{
       }}
       lastDetail = r ? `máy chủ báo lỗi ${{r.status}}` : "mất mạng";
       if (attempt < MAX_TRIES) {{
-        $("stat").textContent = `⏳ ${{lastDetail}} — em đang gửi lại (${{attempt}}/${{MAX_TRIES - 1}})…`;
+        $("stat").textContent = `⏳ ${{lastDetail}} — tôi đang gửi lại (${{attempt}}/${{MAX_TRIES - 1}})…`;
         await new Promise((ok) => setTimeout(ok, 1500 * attempt));
       }}
     }}
     if (!r || !r.ok) {{
-      $("stat").textContent = `⚠️ Chưa gửi được tệp (${{lastDetail}}) — công dân chụp lại giúp em nhé.`;
+      $("stat").textContent = `⚠️ Chưa gửi được tệp (${{lastDetail}}) — công dân chụp lại giúp tôi nhé.`;
       return false;
     }}
     const data = await r.json();
     render(data.progress, {{ source: "upload" }});
     const unknown = (data.accepted || []).filter(a => !a.doc_key);
     $("unknowns").innerHTML = unknown.length
-      ? `<div class="warn">⚠️ ${{unknown.length}} tệp chưa nhận ra loại giấy tờ — công dân chụp lại rõ hơn, đủ 4 góc giúp em nhé.</div>`
+      ? `<div class="warn">⚠️ ${{unknown.length}} tệp chưa nhận ra loại giấy tờ — công dân chụp lại rõ hơn, đủ 4 góc giúp tôi nhé.</div>`
       : "";
     succeeded = true;
     return true;

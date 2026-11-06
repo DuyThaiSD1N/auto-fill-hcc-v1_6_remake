@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="02/11/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="06/11/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -43,7 +43,7 @@
       <!-- Thanh hành động: nút CÓ CHỮ để người dân biết ngay (không cần rê chuột) -->
       <div class="tbar">
         <button id="handsfree-btn" class="tb" type="button"
-                title="Chế độ rảnh tay: em tự đọc và tự nghe">
+                title="Chế độ rảnh tay: tôi tự đọc và tự nghe">
           <span class="tbi">🎙️</span><span class="tbl">Rảnh tay</span><span class="tbl-hm hm-only">Tsis siv tes</span>
         </button>
         <button id="tts-btn" class="tb" type="button" title="Bật/tắt đọc âm thanh">
@@ -219,16 +219,43 @@
           <p class="settings-row-status" id="panel-mode-status" role="status" aria-live="polite"></p>
         </div>
 
-        <!-- GIỌNG ĐỌC: danh mục do BE cấp (/api/v1/voice/config → voices), nên thêm/bớt giọng
-             KHÔNG phải phát hành lại extension. Cả dòng TỰ ẨN khi ngôn ngữ chỉ có một giọng —
-             bày một ô chọn duy nhất bấm vào không đổi gì là làm cán bộ tưởng hỏng. -->
+        <!-- CỠ CHỮ: lưu theo tài khoản (BE account_settings.fontScale). Kéo chỉ đổi chữ mẫu; thả tay mới áp cho cả
+             khung và lưu — phóng cả khung ngay lúc kéo thì thanh trượt chạy khỏi con trỏ. -->
+        <div class="settings-row" id="font-scale-card">
+          <div class="settings-copy">
+            <label id="font-scale-label" for="font-scale-range">Cỡ chữ</label><span
+              class="settings-chip">Tài khoản</span>
+            <p id="font-scale-description">Kéo để đổi cỡ chữ của khung Trợ lý, thả tay là áp dụng.</p>
+          </div>
+          <div class="font-scale-control">
+            <span class="font-scale-a small" aria-hidden="true">A</span>
+            <input id="font-scale-range" class="font-scale-range" type="range" min="90" max="130" step="5" value="100"
+                   aria-labelledby="font-scale-label" aria-describedby="font-scale-description font-scale-value"
+                   disabled>
+            <span class="font-scale-a big" aria-hidden="true">A</span>
+            <output id="font-scale-value" class="font-scale-value" for="font-scale-range">100%</output>
+          </div>
+          <p class="font-scale-sample" id="font-scale-sample">Chữ mẫu: Công dân đưa giấy tờ, tôi điền giúp ạ.</p>
+          <p class="settings-row-status" id="font-scale-status" role="status" aria-live="polite"></p>
+        </div>
+        <!-- GIỌNG ĐỌC: danh sách giọng do web quản trị cấp (/api/v1/voice/config → voiceOptions), nên thêm/bớt giọng
+             KHÔNG phải phát hành lại extension. Giọng + tốc độ lưu theo tài khoản. Ô chọn giọng tự ẩn khi ngôn ngữ chỉ có
+             một giọng — bày một lựa chọn duy nhất bấm vào không đổi gì là làm cán bộ tưởng hỏng. -->
         <div class="settings-row" id="voice-card" hidden>
           <div class="settings-copy">
-            <label id="voice-label">Giọng đọc</label>
-            <p id="voice-description">Áp dụng từ câu đọc tiếp theo.</p>
+            <label id="voice-label" for="voice-select">Giọng đọc</label><span
+              class="settings-chip">Tài khoản</span>
+            <p id="voice-description">Chọn giọng và tốc độ đọc, áp dụng từ câu đọc tiếp theo.</p>
           </div>
-          <div class="settings-seg" id="voice-group" role="radiogroup"
-               aria-labelledby="voice-label" aria-describedby="voice-description"></div>
+          <select id="voice-select" class="voice-select" aria-labelledby="voice-label"
+                  aria-describedby="voice-description" disabled></select>
+          <div class="font-scale-control voice-tempo">
+            <span class="voice-tempo-label" id="voice-tempo-label">Tốc độ</span>
+            <input id="voice-tempo-range" class="font-scale-range" type="range" min="80" max="130" step="5" value="100"
+                   aria-labelledby="voice-tempo-label" aria-describedby="voice-tempo-value" disabled>
+            <output id="voice-tempo-value" class="font-scale-value" for="voice-tempo-range">1.00×</output>
+          </div>
+          <button id="voice-try-btn" class="voice-try" type="button">Nghe thử</button>
           <p class="settings-row-status" id="voice-status" role="status" aria-live="polite"></p>
         </div>
       </div>
@@ -241,7 +268,7 @@
       <h1 id="start-title">Sẵn sàng hỗ trợ công dân</h1>
       <p class="start-hm hm-only">Npaj pab pej xeem ua ntaub ntawv nom tswv</p>
       <p class="start-intro">
-        Em hỗ trợ chọn thủ tục, đọc giấy tờ, điền biểu mẫu và đính kèm hồ sơ.
+        Tôi hỗ trợ chọn thủ tục, đọc giấy tờ, điền biểu mẫu và đính kèm hồ sơ.
         Công dân kiểm tra lại thông tin trước khi nộp nhé.
       </p>
       <ol class="start-steps" aria-label="Các bước hỗ trợ">

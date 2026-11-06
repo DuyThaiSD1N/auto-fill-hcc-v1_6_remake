@@ -19,7 +19,7 @@ def _conv(state: str, **extra) -> dict:
 def test_the_xin_phep_khong_doc_danh_sach_giay_to_khong_bao_tich_o():
     r = flow._to_consent(_conv("form_reached"))
     assert DOC not in r.tts_text and "tích" not in r.tts_text
-    assert "Em chỉ đọc các giấy tờ trên màn hình" in r.tts_text
+    assert "Tôi chỉ đọc các giấy tờ trên màn hình" in r.tts_text
     assert "bấm Đồng ý và tự động điền ạ." in r.tts_text
     assert "tích đủ **2 ô** (nếu chưa tích sẵn)" in r.display_md
 
@@ -29,7 +29,7 @@ def test_hoi_cach_gui_chu_du_danh_sach_loi_doc_chi_tro_xuong():
                                 intro=flow._fmt(vi.CONSENT_ACCEPTED, log_id="TLND-X", time="t", version="1.3"))
     assert DOC in r.display_md
     assert DOC not in r.tts_text
-    assert r.tts_text == ("Dạ, em đã ghi nhận. Giấy tờ cần chuẩn bị có ở bên dưới. "
+    assert r.tts_text == ("Dạ, tôi đã ghi nhận. Giấy tờ cần chuẩn bị có ở bên dưới. "
                           "Công dân muốn chụp bằng điện thoại, hay quét tại quầy ạ?")
 
 
@@ -46,8 +46,8 @@ async def test_sao_co_thi_doc_lai_loi_luot_truoc_khong_chong_hai_lan():
     conv = _conv("ask_doc_method", last_reply={"display_md": "…", "tts_text": "Công dân muốn gửi cách nào ạ?",
                                                "chips": chips, "cards": [{"kind": "doc_options"}]})
     r = flow._repeat_last_reply(conv)
-    assert r.display_md == "Dạ, em nhắc lại ạ."
-    assert r.tts_text == "Dạ, em nhắc lại ạ. Công dân muốn gửi cách nào ạ?"
+    assert r.display_md == "Dạ, tôi nhắc lại ạ."
+    assert r.tts_text == "Dạ, tôi nhắc lại ạ. Công dân muốn gửi cách nào ạ?"
     assert r.chips == chips and not r.cards  # thẻ cũ vẫn trên màn hình, gắn lại là vẽ trùng
     conv["last_reply"]["tts_text"] = r.tts_text
     assert flow._repeat_last_reply(conv).tts_text == r.tts_text

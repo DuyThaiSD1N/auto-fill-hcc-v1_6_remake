@@ -16,13 +16,15 @@ test("4 nhóm theo đúng thứ tự: nhận giấy → đính kèm → điền 
   const titles = [...screen.matchAll(/<h2 class="settings-group-title">([^<]+)<\/h2>/g)].map((m) => m[1]);
   assert.deepEqual(titles, ["Nhận giấy tờ", "Đính kèm hồ sơ", "Điền tờ khai", "Hiển thị &amp; giọng đọc"]);
   const order = ["prefer-scan-switch", "attach-split-switch", "rename-files-switch", "attach-mode-group",
-    "submitter-declaration-switch", "panel-mode-group", "voice-group"].map((id) => screen.indexOf(`id="${id}"`));
+    "submitter-declaration-switch", "panel-mode-group", "voice-select"].map((id) => screen.indexOf(`id="${id}"`));
   assert.ok(order.every((pos, i) => pos > 0 && (i === 0 || pos > order[i - 1])));
 });
 
-test("chỉ hai mục lưu theo tài khoản mang nhãn Tài khoản", () => {
+test("chỉ bốn mục lưu theo tài khoản mang nhãn Tài khoản", () => {
   const chips = [...screen.matchAll(/class="settings-chip">Tài khoản</g)];
-  assert.equal(chips.length, 2);
+  assert.equal(chips.length, 4);
+  assert.match(screen, /id="voice-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
+  assert.match(screen, /id="font-scale-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
   assert.match(screen, /id="rename-files-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
   assert.match(screen, /id="submitter-declaration-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
 });
@@ -34,7 +36,9 @@ test("nút chọn không dùng emoji (hiển thị khác nhau giữa các máy q
     assert.doesNotMatch(btn, /\p{Extended_Pictographic}/u, id);
   }
   assert.doesNotMatch(sidebar, /v\.gender === "nam" \? "👨" : "👩"/);
-  assert.match(sidebar, /name\.textContent = v\.label;/);
+  assert.match(sidebar, /opt\.textContent = voiceOptionText\(v\);/);
+  const tryBtn = screen.slice(screen.indexOf('id="voice-try-btn"'), screen.indexOf("</button>", screen.indexOf('id="voice-try-btn"')));
+  assert.doesNotMatch(tryBtn, /\p{Extended_Pictographic}/u);
 });
 
 test("mỗi dòng có chỗ báo riêng; bỏ dòng báo chung cuối trang", () => {

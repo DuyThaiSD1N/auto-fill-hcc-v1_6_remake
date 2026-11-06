@@ -64,6 +64,39 @@
   // "Lấy người nộp theo tờ khai" — chỉ BE dùng (đọc từ tài khoản khi chạy pipeline), extension chỉ bật/tắt.
   let submitterFromDeclaration = false;
   let accountSettingsLoaded = false;
+  // Cỡ chữ theo tài khoản: phóng CẢ khung bằng zoom (bố cục tự co theo bề rộng còn lại, như phóng to trang).
+  // 0.9–1.3 (BE chặn cùng khoảng): nhỏ hơn thì chữ phụ 10.5px còn dưới 10px; lớn hơn thì khung 400px chỉ còn
+  // chưa tới 310px — các khối rộng ~310px (nút màn bắt đầu, thẻ QR) bị vỡ.
+  const FONT_SCALE_MIN = 0.9;
+  const FONT_SCALE_MAX = 1.3;
+  let fontScale = 1;
+  let fontScalePending = null; // cỡ vừa thả tay, đang lưu — thanh trượt giữ nguyên chỗ, không nhảy về cỡ cũ
+  const clampFontScale = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 1;
+    return Math.round(Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, n)) * 20) / 20;
+  };
+  // Khung phải cao đúng cửa sổ khi phóng: px trong vùng zoom bị nhân theo tỉ lệ nên chia lại; vh thì tuỳ bản Chrome có
+  // nhân hay không nên không dùng. Cỡ 100% giữ 100dvh như cũ.
+  function fitAppHeight() {
+    const root = document.documentElement;
+    if (fontScale === 1) root.style.removeProperty("--app-h");
+    else root.style.setProperty("--app-h", `${window.innerHeight / fontScale}px`);
+  }
+  function applyFontScale(value) {
+    fontScale = clampFontScale(value);
+    document.documentElement.style.setProperty("--ui-scale", String(fontScale));
+    // Cỡ lớn: vài hàng nút ngang được phép xuống dòng (sidebar.css, html[data-ui-scale="lg"]).
+    document.documentElement.dataset.uiScale = fontScale >= 1.15 ? "lg" : "";
+    fitAppHeight();
+  }
+  window.addEventListener("resize", fitAppHeight);
+  // Áp ngay bản sao lần trước để khung không nháy cỡ 100% rồi mới phóng khi BE trả cài đặt.
+  chrome.storage.local.get([ACCOUNT_SETTINGS_KEY], (res) => {
+    if (!chrome.runtime.lastError && res?.[ACCOUNT_SETTINGS_KEY]?.fontScale != null) {
+      applyFontScale(res[ACCOUNT_SETTINGS_KEY].fontScale);
+    }
+  });
   // Reply đang render có phải LIVE (không phải khôi phục phiên noTts) — để renderDocOptions chỉ
   // TỰ chọn Scan khi là lượt thật, khôi phục phiên thì không tự bấm lại.
   let renderingLiveReply = true;
@@ -187,6 +220,9 @@
     // Trang nộp một trang của cổng Bộ VHTTDL (form liz): bổ sung ô (content/liz/field-review.js), tích ô cam kết, gạt
     // ô VNPost + điền người nhận, bấm Lưu và nộp hồ sơ (content/liz/one-page.js). Thiếu cờ → BE giữ luồng chung.
     supportsLizFlow: true,
+    // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
+    // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
+    supportsAttachFileReport: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -478,7 +514,7 @@
   // Cổng trả lỗi khi đính kèm, engine đang hoãn tệp để thử lại → nói cho công dân biết đang chờ gì,
   // không thì họ tưởng máy treo. Câu cục bộ (không qua BE) vì phải báo NGAY giữa lượt đính kèm.
   // Chặn lặp 30s: chứng thực tách N tab mỗi tab tự báo một lần, không được đọc N lần liền.
-  const ATTACH_RETRY_TEXT = "Dạ dịch vụ công đang lỗi, công dân chờ chút em đính kèm lại ạ.";
+  const ATTACH_RETRY_TEXT = "Dạ dịch vụ công đang lỗi, công dân chờ chút tôi đính kèm lại ạ.";
   let attachRetrySaidAt = 0;
   chrome.runtime.onMessage.addListener((msg, sender) => {
     let mine = false;
@@ -562,7 +598,7 @@
       } catch (e) {
         if (!retry || !isTransientAskError(e) || Date.now() >= deadline) throw e;
         attempt += 1;
-        setStatus("⚠️ Máy chủ đang khởi động lại, em đang thử lại…", true);
+        setStatus("⚠️ Máy chủ đang khởi động lại, tôi đang thử lại…", true);
         await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** (attempt - 1), 5000)));
       }
     }
@@ -648,7 +684,7 @@
       setStatus(`⚠️ Trợ lý chưa trả lời được: ${viError(e)}`, true);
       setTimeout(() => setStatus(""), 5000);
       if ((source === "system" || source === "chip") && isTransientAskError(e)) {
-        addBotMd("⚠️ Máy chủ chưa phản hồi, em chưa làm tiếp được. Bấm **Thử lại** khi máy chủ đã chạy lại ạ.");
+        addBotMd("⚠️ Máy chủ chưa phản hồi, tôi chưa làm tiếp được. Bấm **Thử lại** khi máy chủ đã chạy lại ạ.");
         renderChips([{ label: "🔁 Thử lại", send: message, solid: true }]);
       }
     } finally {
@@ -716,7 +752,7 @@
     await writeCompletionLogoutState(null);
     if (notify) {
       setCompletionChoiceDisabled(true);
-      setStatus("Đã phát hiện công dân đăng xuất thủ công — em đã hủy bộ đếm tự động đăng xuất.");
+      setStatus("Đã phát hiện công dân đăng xuất thủ công — tôi đã hủy bộ đếm tự động đăng xuất.");
       setTimeout(() => setStatus(""), 5000);
     }
     console.info("[TLND] kết thúc chờ đăng xuất", { reason });
@@ -905,6 +941,9 @@
       (d.actions || []).filter((a) => a.type === "lead_message" && a.md).forEach((a) => addBotMd(String(a.md)));
     }
     const $botBubble = (d.display_md && !duplicateLogoutChoice) ? addBotMd(d.display_md) : null;
+    // Kết quả đính kèm theo từng tệp: nút xem + khung tệp lỗi phải đứng sát câu "Đã đính kèm x/y tệp", trước câu
+    // bước tiếp theo.
+    if (!duplicateLogoutChoice) (d.cards || []).filter((c) => c.kind === "attach_files").forEach(renderAttachFiles);
     // Bong bóng phụ đứng SAU câu chính, trước nút (vd báo điền xong → số ô trống → bước tiếp theo).
     if (!duplicateLogoutChoice) {
       (d.actions || []).filter((a) => a.type === "trail_message" && a.md).forEach((a) => addBotMd(String(a.md)));
@@ -1020,7 +1059,7 @@
         $docsDoneChip = b;
         if (!docsReceived) {
           b.disabled = true;
-          b.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+          b.title = "Công dân tải giấy tờ lên trước, tôi mới xử lý được ạ";
         }
       }
       b.addEventListener("click", () => {
@@ -1796,8 +1835,143 @@
     }, 3500);
   }
 
+  // ── Thẻ kết quả đính kèm theo từng tệp (attach_files, supportsAttachFileReport) ──
+  // Câu chữ do BE gửi trong thẻ; extension chỉ ghép "Hồ sơ N — tên gốc (tên đổi) — lý do". Tên tệp đặt bằng
+  // textContent: tên do công dân đặt có thể chứa ký tự markdown/HTML.
+  function attachFileLine(card, f, { withReason = true } = {}) {
+    const dossier = f?.dossier ? `${card.dossierLabel || "Hồ sơ"} ${f.dossier} — ` : "";
+    const renamed = f?.renamed ? ` (${f.renamed})` : "";
+    const reason = withReason && f?.reason ? ` — ${f.reason}` : "";
+    return `${dossier}${f?.name || ""}${renamed}${reason}`;
+  }
+
+  function attachFilesButton(label, onClick) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "attach-files-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", () => onClick(btn));
+    return btn;
+  }
+
+  let attachListScrim = null;
+  let attachListReturnFocus = null;
+  function closeAttachFileList() {
+    if (!attachListScrim) return;
+    attachListScrim.remove();
+    attachListScrim = null;
+    if (attachListReturnFocus?.isConnected) attachListReturnFocus.focus();
+    attachListReturnFocus = null;
+  }
+
+  // Dùng lại khuôn bảng "Giấy tờ đã nhận" (file-list-*) nhưng là bảng riêng: bảng kia gắn với phiên tải tệp.
+  function openAttachFileList(card, items, failed, trigger) {
+    closeAttachFileList();
+    attachListReturnFocus = trigger || document.activeElement;
+    const scrim = document.createElement("div");
+    scrim.className = "file-list-scrim attach-list-scrim";
+    const dialog = document.createElement("section");
+    dialog.className = "file-list-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.tabIndex = -1;
+    const head = document.createElement("header");
+    head.className = "file-list-head";
+    const heading = document.createElement("div");
+    heading.className = "file-list-heading";
+    const icon = document.createElement("span");
+    icon.className = "file-list-icon" + (failed ? " err" : "");
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = failed ? "❗" : "✅";
+    const titles = document.createElement("div");
+    const h2 = document.createElement("h2");
+    h2.textContent = (failed ? card.failedListTitle : card.attachedListTitle) || "";
+    const summary = document.createElement("p");
+    summary.textContent = `${items.length} ${card.countUnit || "tệp"}`;
+    titles.append(h2, summary);
+    heading.append(icon, titles);
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "file-list-close";
+    close.setAttribute("aria-label", "Đóng danh sách tệp");
+    close.textContent = "✕";
+    close.addEventListener("click", closeAttachFileList);
+    head.append(heading, close);
+    const body = document.createElement("div");
+    body.className = "file-list-body";
+    for (const f of items) {
+      const row = document.createElement("div");
+      row.className = "file-list-row attach-list-row";
+      const kind = document.createElement("span");
+      kind.className = "file-kind";
+      kind.setAttribute("aria-hidden", "true");
+      kind.textContent = failed ? "❗" : "📄";
+      const text = document.createElement("div");
+      text.className = "attach-list-text";
+      const name = document.createElement("div");
+      name.className = "file-list-name";
+      name.textContent = attachFileLine(card, f, { withReason: false });
+      text.appendChild(name);
+      if (failed && f?.reason) {
+        const reason = document.createElement("div");
+        reason.className = "attach-list-reason";
+        reason.textContent = f.reason;
+        text.appendChild(reason);
+      }
+      row.append(kind, text);
+      body.appendChild(row);
+    }
+    dialog.append(head, body);
+    scrim.appendChild(dialog);
+    scrim.addEventListener("click", (event) => { if (event.target === scrim) closeAttachFileList(); });
+    scrim.addEventListener("keydown", (event) => { if (event.key === "Escape") closeAttachFileList(); });
+    document.body.appendChild(scrim);
+    attachListScrim = scrim;
+    dialog.focus();
+  }
+
+  // Box 1 là bong bóng chính của lượt (BE); thẻ thêm nút xem tệp đã đính ngay dưới nó, rồi box 2 liệt kê tệp lỗi.
+  function renderAttachFiles(card) {
+    const attached = Array.isArray(card.attached) ? card.attached : [];
+    const failed = Array.isArray(card.failed) ? card.failed : [];
+    const max = Number(card.maxLines) || 5;
+    if (attached.length && card.viewAttachedLabel) {
+      const row = document.createElement("div");
+      row.className = "attach-files-actions";
+      row.appendChild(attachFilesButton(`${card.viewAttachedLabel} (${attached.length})`,
+        (btn) => openAttachFileList(card, attached, false, btn)));
+      addNode(row);
+    }
+    if (!failed.length) return;
+    const box = document.createElement("div");
+    box.className = "msg bot err attach-files-failed";
+    const title = document.createElement("div");
+    title.className = "attach-files-title";
+    title.textContent = card.failedTitle || "";
+    const list = document.createElement("ul");
+    list.className = "attach-files-list";
+    for (const f of failed.slice(0, max)) {
+      const li = document.createElement("li");
+      li.textContent = attachFileLine(card, f);
+      list.appendChild(li);
+    }
+    box.append(title, list);
+    if (failed.length > max && card.viewAllLabel) {
+      box.appendChild(attachFilesButton(`${card.viewAllLabel} (${failed.length})`,
+        (btn) => openAttachFileList(card, failed, true, btn)));
+    }
+    if (card.failedHint) {
+      const hint = document.createElement("div");
+      hint.className = "attach-files-hint";
+      hint.innerHTML = window.renderMarkdown(String(card.failedHint));
+      box.appendChild(hint);
+    }
+    addNode(box);
+  }
+
   // ── Cards (docs/03 §2.1) ──
   function renderCard(card) {
+    if (card.kind === "attach_files") return; // vẽ ngay sau bong bóng chính trong renderReply
     if (card.kind === "service_list") return renderServiceList(card);
     if (card.kind === "location_picker") return renderLocationPicker(card);
     if (card.kind === "doc_options") return renderDocOptions(card);
@@ -1998,11 +2172,11 @@
           ? `<i class="cn-hm">${window.escapeHtml(hm.checks[i])}</i>` : ""}</span></label>`).join("");
     el.innerHTML = `
       <span class="cbadge">🔒 Xác nhận trên Trợ lý nhân dân</span>
-      <div class="ctitle">Cho phép em đọc giấy tờ và tự động điền biểu mẫu</div>
+      <div class="ctitle">Cho phép tôi đọc giấy tờ và tự động điền biểu mẫu</div>
       ${hmDiv(hm?.title, "ctitle-hm")}
       <div class="ctext">${window.renderMarkdown(card.intro_md || "")}${hmDiv(hm?.intro_md)}</div>
       <div class="cdocs-box">
-        <div class="clist-t">📋 Giấy tờ em sẽ đọc — ${window.escapeHtml(card.procedure || "thủ tục này")}${hm?.docs_title
+        <div class="clist-t">📋 Giấy tờ tôi sẽ đọc — ${window.escapeHtml(card.procedure || "thủ tục này")}${hm?.docs_title
           ? ` <i class="cn-hm">${window.escapeHtml(hm.docs_title)}</i>` : ""}</div>
         <div class="cdocs">${docs}</div>
       </div>
@@ -2438,7 +2612,7 @@
       const el = document.createElement("div");
       el.className = "doc-auto-scan";
       const hasQr = options.includes("qr");
-      el.innerHTML = `<span>⚙️ Theo cài đặt, em dùng <b>Scan tại quầy</b> ạ.</span>${
+      el.innerHTML = `<span>⚙️ Theo cài đặt, tôi dùng <b>Scan tại quầy</b> ạ.</span>${
         hasQr ? '<button type="button" class="doc-auto-qr" data-qr="1">📱 Đổi sang chụp điện thoại (QR)</button>' : ""}`;
       if (hasQr) el.querySelector("[data-qr]")?.addEventListener("click", () => {
         addUserText("Đổi sang chụp điện thoại (QR)");
@@ -2736,7 +2910,7 @@
       a.type === "fill_fields" || a.type === "fill_owner_fields");
     if ((st === "owner_filling" || st === "filling") && prev !== st && !willFill) {
       if (st === "owner_filling") {
-        showPipelineCard("Em đang đọc và bóc tách giấy tờ — công dân chờ em chút ạ…", true);
+        showPipelineCard("Tôi đang đọc và bóc tách giấy tờ — công dân chờ tôi chút ạ…", true);
       } else {
         showPipelineCard("Bóc tách thông tin và điền biểu mẫu", false);
       }
@@ -3375,7 +3549,7 @@
       await loadUploadSessionFiles();
     } catch (error) {
       if (sid === uploadSid && activeFileGroup) {
-        setFileListError(error?.message || "Không xóa được tệp. Công dân thử lại giúp em ạ.");
+        setFileListError(error?.message || "Không xóa được tệp. Công dân thử lại giúp tôi ạ.");
       }
     } finally {
       deletingFileIds.delete(file.fid);
@@ -3507,7 +3681,7 @@
       if (data?.progress && source === "picker") announceFilesReceived(data.progress);
       if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
       const unknown = (data?.accepted || []).filter((a) => !a.doc_key).length;
-      if (unknown) addBotMd(`⚠️ **${unknown} tệp** em chưa nhận ra loại — công dân scan lại rõ hơn hoặc cứ bấm "Đã đưa đủ" để em xử lý phần nhận được ạ.`);
+      if (unknown) addBotMd(`⚠️ **${unknown} tệp** tôi chưa nhận ra loại — công dân scan lại rõ hơn hoặc cứ bấm "Đã đưa đủ" để tôi xử lý phần nhận được ạ.`);
       // Scan tại quầy (BE bật auto_run): đợt tệp đã tải + PHÂN LOẠI xong ngay trong request
       // này → tự chốt như bấm "Đã đưa đủ" (submitDocsComplete kèm page context để BE chọn
       // đúng bước: điền chủ hồ sơ / điền tờ khai / đính kèm). Guard theo state nên đợt tệp
@@ -3516,7 +3690,7 @@
       const sessionFiles = Number(data?.progress?.files_count) || 0;
       if (source !== "scan" && source !== "reuse" && uploadSid && uploadSid === uploadAutoRunSid
           && lastState === "collecting_docs" && sessionFiles > 0) {
-        setStatus("⏳ Đã nhận đợt tệp — em xử lý luôn ạ…");
+        setStatus("⏳ Đã nhận đợt tệp — tôi xử lý luôn ạ…");
         // __action:docs_done = đúng lệnh của nút "Đã đưa đủ" (BE chốt phiên rồi chạy pipeline).
         void submitDocsComplete("__action:docs_done", "system");
       }
@@ -3656,7 +3830,7 @@
     body: "Công dân đặt giấy lên máy scan **theo hướng dẫn trong hình** rồi ấn nút **Scan** ạ.",
     alt: "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan",
     zoom: "🔍 Bấm để xem hình to",
-    note: "Chỉ đặt **từng tờ một** — máy tự kéo giấy vào. Xong hết thì bấm **\"Đã đưa đủ\"** giúp em.",
+    note: "Chỉ đặt **từng tờ một** — máy tự kéo giấy vào. Xong hết thì bấm **\"Đã đưa đủ\"** giúp tôi.",
   };
 
   // Escape TRƯỚC rồi mới đổi **…** thành <b> — chữ do BE cấp không chèn được thẻ vào panel.
@@ -3713,13 +3887,13 @@
   // BE chưa cấp scanFeedback (server cũ) thì vẫn phải có chữ. Bản dự phòng CHỈ tiếng Việt:
   // không nhúng bản Mông ở đây để lời thoại Mông chỉ có một nguồn duy nhất (script_mong.py).
   const SCAN_FEEDBACK_FALLBACK = {
-    md: "🖨️ Em đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
-      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
-      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.",
-    tts: "Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan,"
-      + " em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ.",
-    ttsMore: "Em đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp"
-      + " vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ.",
+    md: "🖨️ Tôi đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
+      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — tôi tự nhận ạ.\n"
+      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để tôi bắt đầu xử lý ạ.",
+    tts: "Tôi đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan,"
+      + " tôi sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ.",
+    ttsMore: "Tôi đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp"
+      + " vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để tôi thực hiện xử lý ạ.",
   };
 
   function renderScanFeedback() {
@@ -3775,7 +3949,7 @@
       try { stopReplyTts(); } catch (_) { /* ignore */ }
       // Câu chỉ có tiếng Việt → đọc giọng Việt (giọng đi theo ngôn ngữ của chữ, không theo chế độ).
       const lang = "vi";
-      window.__hccTTS?.speak?.(`Em đã nhận ${filesAnnouncedCount} tệp mà công dân gửi lên nhé.`, lang);
+      window.__hccTTS?.speak?.(`Tôi đã nhận ${filesAnnouncedCount} tệp mà công dân gửi lên nhé.`, lang);
     }, 800);
   }
 
@@ -3797,7 +3971,7 @@
     // da_ket_noi: KHÔNG hiện dòng "đang theo dõi" (thẻ hướng dẫn + thông báo mỗi tệp đã lo).
     // Chỉ hiện khi cần cán bộ thao tác: chưa chọn thư mục quét.
     const text = state === "chua_chon_thu_muc"
-      ? "🖨️ Máy quét chưa chọn thư mục lưu ảnh — mở agent ở khay hệ thống chọn giúp em ạ."
+      ? "🖨️ Máy quét chưa chọn thư mục lưu ảnh — mở agent ở khay hệ thống chọn giúp tôi ạ."
       : "";
     $scanStatus.textContent = text;
     $scanStatus.hidden = !text;
@@ -3971,7 +4145,7 @@
     if ($docsDoneChip) {
       $docsDoneChip.disabled = !gotAny;
       if (gotAny) $docsDoneChip.removeAttribute("title");
-      else $docsDoneChip.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+      else $docsDoneChip.title = "Công dân tải giấy tờ lên trước, tôi mới xử lý được ạ";
     }
     // Card danh sách giấy tờ (thay/đặt dưới card QR) — kiểu .doc-row prototype.
     let wrap = document.getElementById("doc-progress-card");
@@ -4089,7 +4263,7 @@
     docsReceived = false;
     if ($docsDoneChip) {
       $docsDoneChip.disabled = true;
-      $docsDoneChip.title = "Công dân tải giấy tờ lên trước, em mới xử lý được ạ";
+      $docsDoneChip.title = "Công dân tải giấy tờ lên trước, tôi mới xử lý được ạ";
     }
     stopUploadSubscription();
     const generation = uploadWsGeneration;
@@ -4199,7 +4373,7 @@
       };
       ws.onerror = () => {
         reconnectStatusShown = true;
-        setStatus("⚠️ Mất kết nối tiến trình giấy tờ, em đang tự nối lại…", true);
+        setStatus("⚠️ Mất kết nối tiến trình giấy tờ, tôi đang tự nối lại…", true);
       };
       ws.onclose = () => {
         if (uploadWs === ws) uploadWs = null;
@@ -4347,7 +4521,7 @@
     }
     throw new Error(
       `Không đọc được tệp "${f?.name || "giấy tờ"}" (đã thử lấy lại từ hệ thống nhiều lần). `
-      + `Công dân vui lòng quét hoặc chọn lại tệp này rồi bấm đính kèm lại giúp em ạ.`
+      + `Công dân vui lòng quét hoặc chọn lại tệp này rồi bấm đính kèm lại giúp tôi ạ.`
     );
   }
 
@@ -4398,15 +4572,15 @@
     if (/notfound|no such file|not found/.test(low))
       return "Một tệp giấy tờ không còn tìm thấy trên máy. Công dân vui lòng quét/chọn lại tệp rồi đính kèm lại ạ.";
     if (/network|failed to fetch|load failed|http [45]\d\d|timeout|timed out/.test(low))
-      return "Mất kết nối khi lấy giấy tờ từ hệ thống. Công dân kiểm tra mạng rồi bấm đính kèm lại giúp em ạ.";
+      return "Mất kết nối khi lấy giấy tờ từ hệ thống. Công dân kiểm tra mạng rồi bấm đính kèm lại giúp tôi ạ.";
     if (/quota|memory|allocation/.test(low))
-      return "Giấy tờ quá lớn nên máy xử lý chưa xong. Công dân thử đính lại từng tệp giúp em ạ.";
-    return "Chưa đính được giấy tờ do sự cố kỹ thuật. Công dân vui lòng bấm đính kèm lại giúp em ạ.";
+      return "Giấy tờ quá lớn nên máy xử lý chưa xong. Công dân thử đính lại từng tệp giúp tôi ạ.";
+    return "Chưa đính được giấy tờ do sự cố kỹ thuật. Công dân vui lòng bấm đính kèm lại giúp tôi ạ.";
   }
 
   /** Lỗi kỹ thuật (câu tiếng Anh của trình duyệt, mã HTTP) → câu tiếng Việt ngắn, nói rõ việc cần làm. Câu đã là
    *  tiếng Việt (máy chủ hoặc mình tự ném) thì giữ nguyên; câu gốc chưa dịch được vẫn ghi console để tra. */
-  function viError(e, fallback = "Có sự cố kỹ thuật. Công dân thử lại giúp em ạ.") {
+  function viError(e, fallback = "Có sự cố kỹ thuật. Công dân thử lại giúp tôi ạ.") {
     const raw = String(e?.message ?? e ?? "").trim();
     if (raw && /[^\x00-\x7F]/.test(raw)) return raw;
     const low = `${e?.name || ""} ${raw}`.toLowerCase();
@@ -4415,7 +4589,7 @@
     if (/failed to fetch|networkerror|network error|load failed|err_internet|err_network/.test(low))
       return "Mất kết nối mạng. Kiểm tra mạng của máy rồi thử lại ạ.";
     const status = Number((low.match(/http (\d{3})/) || [])[1]) || 0;
-    if (status === 401 || status === 403) return "Phiên đăng nhập đã hết hạn. Cán bộ đăng nhập lại giúp em ạ.";
+    if (status === 401 || status === 403) return "Phiên đăng nhập đã hết hạn. Cán bộ đăng nhập lại giúp tôi ạ.";
     if (status === 413) return "Tệp quá lớn, máy chủ không nhận. Công dân scan lại nhẹ hơn hoặc chia nhỏ tệp ạ.";
     if (status >= 500) return "Máy chủ đang bận hoặc gặp sự cố. Thử lại sau ít phút ạ.";
     if (raw) console.warn("[TLND] lỗi chưa có câu tiếng Việt:", e?.name || "", raw);
@@ -4431,8 +4605,8 @@
       return "Micro đang bị ứng dụng khác dùng (Zalo, Zoom…) hoặc bị lỗi. Tắt ứng dụng đó rồi bấm mic lại ạ.";
     if (name === "OverconstrainedError")
       return "Micro của máy không dùng được. Chọn micro khác trong cài đặt âm thanh của máy ạ.";
-    if (name === "AbortError") return "Micro bị ngắt giữa chừng. Bấm mic lại giúp em ạ.";
-    return viError({ name, message: raw }, "Chưa bật được giọng nói. Bấm mic lại, hoặc gõ chữ giúp em ạ.");
+    if (name === "AbortError") return "Micro bị ngắt giữa chừng. Bấm mic lại giúp tôi ạ.";
+    return viError({ name, message: raw }, "Chưa bật được giọng nói. Bấm mic lại, hoặc gõ chữ giúp tôi ạ.");
   }
 
   // Dựng payload theo hợp đồng BE: sourceSegments trích đúng trang; sourceFileIndexes là
@@ -4480,7 +4654,13 @@
       }
       const newIndex = outFiles.length;
       outFiles.push(file);
-      const rewritten = { ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex] };
+      // Tên tệp công dân đưa lên: tệp gửi cổng có thể đã đổi tên (ảnh → PDF, gộp nhiều tệp) nên báo cáo theo tệp cần
+      // giữ tên gốc để cán bộ nhận ra tệp nào.
+      const sourceNames = (segments ? segments.map((s) => files[Number(s?.fileIndex)]) : sources)
+        .map((f) => f?.name).filter(Boolean);
+      const rewritten = {
+        ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex], sourceNames: [...new Set(sourceNames)],
+      };
       delete rewritten.sourceSegments;
       outAtts.push(rewritten);
     }
@@ -4685,13 +4865,104 @@
     };
   }
 
-  function splitQueueReport(status, dispatchId = "") {
+  // ── Báo cáo đính kèm theo từng tệp (supportsAttachFileReport) ──
+  // BE chỉ nhận NHÓM lý do (khóa) rồi tự ghi câu cho người dân; câu lỗi kỹ thuật của engine không ra tới màn hình.
+  // Khớp chữ có dấu: câu lỗi do engine và cổng viết bằng tiếng Việt có dấu.
+  function attachFailReason(text) {
+    const raw = String(text || "");
+    if (/dung lượng|vượt quá|quá lớn|\bMB\b|\b413\b/i.test(raw)) return "too_large";
+    if (/không đọc được|bị hỏng|notreadable|could not be read|định dạng/i.test(raw)) return "corrupt";
+    if (/mạng|kết nối|timeout|timed out|failed to fetch|\b50[0-4]\b|máy chủ/i.test(raw)) return "network";
+    if (/không tìm thấy (dòng|thành phần|ô|input|nút)|không mở được|không có ô upload|chưa thấy bảng|không thấy dòng/i
+      .test(raw)) return "no_slot";
+    if (/cổng chưa|cổng báo|chưa ghi nhận|chưa tải xong|không gắn được/i.test(raw)) return "portal";
+    return "other";
+  }
+
+  const foldFileName = (name) => String(name || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/đ/gi, "d").toLowerCase().replace(/\.[a-z0-9]{2,5}$/, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+  // Một dòng kế hoạch → tên tệp gốc (nhiều tệp gộp thì nối bằng dấu phẩy) + tên giấy tờ đặt trên cổng.
+  function planFileEntry(item, files) {
+    const names = (Array.isArray(item?.sourceNames) && item.sourceNames.length
+      ? item.sourceNames : [files?.[item?.fileIndex]?.name || item?.fileName]).filter(Boolean);
+    const name = [...new Set(names)].join(", ");
+    const renamed = String(item?.documentName || "").trim();
+    return {
+      name: name || renamed,
+      renamed: renamed && foldFileName(renamed) !== foldFileName(name) ? renamed : "",
+    };
+  }
+
+  // Kết quả engine đính 1 tab → { attached, failed }. Engine ví giấy tờ trả failedFiles theo fileIndex; engine khác
+  // chỉ trả tên tệp đã lên trang → đối chiếu tên. Không đủ dữ liệu để biết tệp nào hỏng thì trả null (BE giữ câu cũ).
+  function attachFileOutcome(attachments, files, res) {
+    const rows = (attachments || []).filter((item) => item && !item.virtualCopy)
+      .map((item) => ({ item, entry: planFileEntry(item, files) }));
+    if (!rows.length) return null;
+    const errorText = !res ? "chưa thấy bảng Thành phần hồ sơ" : [res.error, ...(res.errors || [])].filter(Boolean).join("; ");
+    const failedAt = new Map();
+    if (Array.isArray(res?.failedFiles)) {
+      res.failedFiles.forEach((f) => failedAt.set(Number(f?.fileIndex), String(f?.error || errorText)));
+    } else if (res && !errorText) {
+      // Không lỗi nào → mọi tệp đã lên (hoặc đã có sẵn trên hồ sơ).
+    } else if (!res || Array.isArray(res.fileNames) || Array.isArray(res.skippedNames)) {
+      const landed = [...(res?.fileNames || []), ...(res?.skippedNames || [])].map(foldFileName).filter((s) => s.length >= 3);
+      const hit = (name) => {
+        const n = foldFileName(name);
+        return n.length >= 3 && landed.some((l) => l.includes(n) || n.includes(l));
+      };
+      for (const { item, entry } of rows) {
+        const candidates = [entry.renamed, files?.[item.fileIndex]?.name, ...String(entry.name).split(", ")];
+        if (!candidates.some(hit)) failedAt.set(Number(item.fileIndex), errorText);
+      }
+    } else {
+      return null;
+    }
+    const out = { attached: [], failed: [] };
+    for (const { item, entry } of rows.slice(0, 200)) {
+      if (failedAt.has(Number(item.fileIndex))) {
+        out.failed.push({ ...entry, reason: attachFailReason(failedAt.get(Number(item.fileIndex))) });
+      } else {
+        out.attached.push(entry);
+      }
+    }
+    return out;
+  }
+
+  // Đa tab: mỗi hồ sơ (ordinal) là một bộ tệp. Hồ sơ hỏng → mọi tệp của hồ sơ đó vào danh sách lỗi.
+  function splitDossierFiles(bundles) {
+    return (bundles || []).map((bundle, index) => ({
+      ordinal: index + 1,
+      entries: (bundle.attachments || []).filter((item) => item && !item.virtualCopy)
+        .map((item) => planFileEntry(item, bundle.files)),
+    }));
+  }
+
+  function splitFileOutcome(dossierFiles, results, fallbackError = "") {
+    if (!Array.isArray(dossierFiles) || !dossierFiles.length) return null;
+    const many = dossierFiles.length > 1;
+    const out = { attached: [], failed: [] };
+    for (const dossier of dossierFiles) {
+      const result = (results || []).find((r) => Number(r?.ordinal) === Number(dossier.ordinal));
+      for (const entry of dossier.entries || []) {
+        const row = { ...entry, ...(many ? { dossier: dossier.ordinal } : {}) };
+        if (result?.ok) out.attached.push(row);
+        else out.failed.push({ ...row, reason: attachFailReason(result?.error || result?.code || fallbackError) });
+      }
+    }
+    return out;
+  }
+
+  function splitQueueReport(status, dispatchId = "", dossierFiles = null) {
     const errors = (status?.results || [])
       .filter((item) => !item?.ok)
       .map((item) => `Hồ sơ ${item.ordinal || "?"}: ${item.error || item.code || "đính kèm thất bại"}`);
+    const files = splitFileOutcome(dossierFiles, status?.results);
     return {
       attached: Number(status?.succeeded) || 0,
       errors,
+      ...(files ? { files } : {}),
       mode: "split",
       queueId: status?.queueId || "",
       dossiersTotal: Number(status?.total) || 0,
@@ -4740,8 +5011,10 @@
           markActivity();
           setStatus("");
           // Chỉ báo backend sau khi TOÀN BỘ tab terminal; đây là điểm khác với popup auto-fill.
+          const dossierFiles = (await readActiveSplit())?.dossierFiles || null;
           const acknowledged = await ask(
-            `__action:attach_report:${JSON.stringify(splitQueueReport(status, monitor.dispatchId))}`, "system"
+            `__action:attach_report:${JSON.stringify(splitQueueReport(status, monitor.dispatchId, dossierFiles))}`,
+            "system"
           );
           if (!acknowledged) {
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -4761,9 +5034,11 @@
         if (Date.now() > deadline || missingCount >= 10) {
           setStatus("");
           await sendToBackground({ action: "abandonSplitAttachQueue", queueId });
+          const lostFiles = splitFileOutcome((await readActiveSplit())?.dossierFiles, [], "mất kết nối");
           const acknowledged = await ask(`__action:attach_report:${JSON.stringify({
             attached: 0,
             errors: ["Không còn đọc được trạng thái hàng đợi tách hồ sơ."],
+            ...(lostFiles ? { files: lostFiles } : {}),
             mode: "split",
             queueId,
             dossiersTotal: totalHint,
@@ -4793,19 +5068,22 @@
     // Nói rõ tệp bị bỏ ngay tại chỗ: BE chỉ biết những tệp CHÍNH NÓ loại, còn tệp rơi ở đây là
     // phần BE bản cũ vẫn gửi sang. Không đọc thành tiếng — không phải việc công dân phải xử lý.
     if (built.skippedNames?.length) {
-      addBotMd(`⚠️ Em bỏ qua ${built.skippedNames.length} tệp chưa xếp được vào hồ sơ nào: `
-        + built.skippedNames.join(", ") + ". Các hồ sơ còn lại em đính bình thường ạ.");
+      addBotMd(`⚠️ Tôi bỏ qua ${built.skippedNames.length} tệp chưa xếp được vào hồ sơ nào: `
+        + built.skippedNames.join(", ") + ". Các hồ sơ còn lại tôi đính bình thường ạ.");
     }
     const bundles = built.bundles || [];
     if (!bundles.length) return { report: { attached: 0, errors: ["Không có tài liệu để tách hồ sơ."], mode: "split" } };
+    const dossierFiles = splitDossierFiles(bundles);
+    // Hỏng trước khi đính được hồ sơ nào → mọi tệp vào danh sách lỗi cùng một lý do.
+    const failAll = (error) => {
+      const files = splitFileOutcome(dossierFiles, [], error);
+      return { report: { attached: 0, errors: [error], mode: "split", ...(files ? { files } : {}) } };
+    };
 
     const prepared = await sendToBackground({ action: "prepareSplitAttachQueue" });
-    if (prepared?.error) return { report: { attached: 0, errors: [prepared.error], mode: "split" } };
+    if (prepared?.error) return failAll(prepared.error);
     const urlRes = await sendToContent({ action: "getDossierUrl" });
-    if (!urlRes?.url) {
-      return { report: { attached: 0,
-        errors: [urlRes?.error || "Không lấy được URL để mở hồ sơ mới."], mode: "split" } };
-    }
+    if (!urlRes?.url) return failAll(urlRes?.error || "Không lấy được URL để mở hồ sơ mới.");
 
     const queueId = `split-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
     const first = bundles[0];
@@ -4839,8 +5117,10 @@
         recoveryCode: firstRes.code,
       });
       if (staged?.error) {
+        const files = splitFileOutcome(dossierFiles, [], staged.error);
         return { report: { attached: 0, errors: [staged.error], mode: "split",
-          dossiersTotal: bundles.length, dossiersSucceeded: 0, dossiersFailed: bundles.length } };
+          dossiersTotal: bundles.length, dossiersSucceeded: 0, dossiersFailed: bundles.length,
+          ...(files ? { files } : {}) } };
       }
     } else {
       initialResults.push({
@@ -4854,7 +5134,11 @@
     // Một tài liệu, thao tác trực tiếp đã terminal → không cần dựng queue.
     if (!rest.length && !needsRecovery) {
       const ok = initialResults[0]?.ok;
+      // Một hồ sơ = đính 1 tab: engine biết tệp nào hỏng thì báo đúng tệp đó.
+      const files = attachFileOutcome(first.attachments, first.files, firstRes)
+        || splitFileOutcome(dossierFiles, initialResults);
       return { report: {
+        ...(files ? { files } : {}),
         attached: ok ? 1 : 0,
         errors: ok ? [] : [initialResults[0]?.error || "Đính kèm thất bại."],
         mode: "split",
@@ -4886,10 +5170,13 @@
       itemsStorageKey: SPLIT_STAGE_KEY,
     });
     try { await chrome.storage.local.remove(SPLIT_STAGE_KEY); } catch (_) { /* background cũng dọn */ }
-    if (started?.error) return { report: { attached: 0, errors: [started.error], mode: "split" } };
+    if (started?.error) {
+      const files = splitFileOutcome(dossierFiles, initialResults, started.error);
+      return { report: { attached: 0, errors: [started.error], mode: "split", ...(files ? { files } : {}) } };
+    }
 
     await writeActiveSplit({
-      queueId, total: bundles.length, ts: Date.now(), dispatch_id: a.dispatch_id || "",
+      queueId, total: bundles.length, ts: Date.now(), dispatch_id: a.dispatch_id || "", dossierFiles,
     });
     monitorSplitQueue(queueId, bundles.length, a.dispatch_id || ""); // chạy nền, giữ lease qua nhiều tab
     if (needsRecovery) {
@@ -4978,7 +5265,9 @@
         clearExisting: a.clearExisting === true,
       });
       setStatus("");
+      const fileOutcome = attachFileOutcome(sendAttachments, files, res);
       const report = {
+        ...(fileOutcome ? { files: fileOutcome } : {}),
         attached: res?.attached ?? res?.results?.filter?.((x) => x?.ok)?.length ?? 0,
         // Lượt bổ sung gửi lại toàn bộ danh sách còn lại. attach-core tự bỏ qua những
         // file đã có trên cổng; báo số skip để backend không hiểu nhầm "0 file mới" là lỗi.
@@ -5294,14 +5583,14 @@
           if (infoModalTries <= 3) sendPageStatus();
           else {
             setStatus(a.infoFields
-              ? "⚠️ Công dân chọn nốt các ô trong Thông tin chung rồi bấm Xác nhận giúp em ạ."
-              : "⚠️ Công dân chọn Đối tượng thực hiện rồi bấm Xác nhận giúp em ạ.", true);
+              ? "⚠️ Công dân chọn nốt các ô trong Thông tin chung rồi bấm Xác nhận giúp tôi ạ."
+              : "⚠️ Công dân chọn Đối tượng thực hiện rồi bấm Xác nhận giúp tôi ạ.", true);
             setTimeout(() => setStatus(""), 5000);
           }
         } else if (infoModalTries <= 3) {
           sendPageStatus();
         } else {
-          setStatus("⚠️ Công dân bấm nút Xác nhận trên trang giúp em ạ.", true);
+          setStatus("⚠️ Công dân bấm nút Xác nhận trên trang giúp tôi ạ.", true);
           setTimeout(() => setStatus(""), 4000);
         }
       } else if (a.type === "attach_plan" && Array.isArray(a.attachments)) {
@@ -5471,7 +5760,7 @@
     const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
     if (!navigation?.ok) {
       console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
-      setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+      setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp tôi ạ.", true);
     }
   }
 
@@ -5545,7 +5834,7 @@
         const homeNav = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
         if (!homeNav?.ok) {
           console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", homeNav);
-          setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+          setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp tôi ạ.", true);
         }
       }
     } catch (error) {
@@ -5674,12 +5963,18 @@
   let voiceCfgLoaded = false; // chưa fetch xong /voice/config thì KHÔNG được reset switch
   let hmongRestoredConv = ""; // đã tự khôi phục cho conversation nào (chống gửi lặp)
   const LANG_KEY = "tlnd_lang";
-  // Giọng đọc máy quầy đã chọn, THEO TỪNG NGÔN NGỮ: { vi: "...", hmong: "..." }. Lưu theo máy
-  // (không theo phiên) giống tlnd_lang — phiên mới/reload vẫn giữ đúng giọng cán bộ quen nghe.
-  const VOICE_KEY = "tlnd_voice";
+  // Giọng đọc + tốc độ cán bộ chọn, THEO TỪNG NGÔN NGỮ: { vi: "...", hmong: "..." }. Lưu theo TÀI KHOẢN (BE
+  // account_settings.ttsVoiceVi / ttsVoiceHmong / ttsTempo) — đổi máy vẫn giữ; rỗng = giọng mặc định.
   let voiceChoice = {};
+  let voiceTempo = null; // null = tốc độ mặc định của web quản trị
   const $voiceCard = document.getElementById("voice-card");
-  const $voiceGroup = document.getElementById("voice-group");
+  const $voiceSelect = document.getElementById("voice-select");
+  const $voiceTempoRange = document.getElementById("voice-tempo-range");
+  const $voiceTempoValue = document.getElementById("voice-tempo-value");
+  const $voiceTryBtn = document.getElementById("voice-try-btn");
+  const VOICE_GENDER = { nam: "Nam", nu: "Nữ" };
+  const VOICE_REGION = { bac: "Miền Bắc", trung: "Miền Trung", nam: "Miền Nam" };
+  const VOICE_TRY_TEXT = "Dạ, tôi chào công dân. Đây là giọng đọc và tốc độ đang chọn ạ.";
   const $langBar = document.getElementById("lang-bar");
   const $langSwitch = document.getElementById("lang-switch");
   const $langState = document.getElementById("lang-state");
@@ -5703,51 +5998,77 @@
   }
 
   // ── Giọng đọc ──
-  // Danh mục do BE cấp (/voice/config → voices) nên thêm giọng KHÔNG phải phát hành lại
-  // extension. Ẩn cả thẻ khi ngôn ngữ chỉ có MỘT giọng: bày một ô chọn duy nhất bấm vào
-  // không đổi gì là làm cán bộ tưởng hỏng.
+  // Danh sách do web quản trị cấp (/voice/config → voiceOptions; BE cũ chỉ có voices) nên thêm giọng KHÔNG phải phát
+  // hành lại extension. Ô chọn giọng ẩn khi ngôn ngữ chỉ có MỘT giọng: bày một lựa chọn duy nhất bấm vào không đổi gì là
+  // làm cán bộ tưởng hỏng; thanh tốc độ vẫn hiện.
+  function voiceOptionsFor(lang) {
+    const table = (voiceCfg?.voiceOptions || {})[lang];
+    if (Array.isArray(table)) return table;
+    return ((voiceCfg?.voices || {})[lang] || []).map((v) => ({ id: v.id, name: v.label, gender: v.gender || "" }));
+  }
+
+  function voiceOptionText(v) {
+    return [v.name || v.id, VOICE_GENDER[v.gender], VOICE_REGION[v.region], v.ethnicity].filter(Boolean).join(" · ");
+  }
+
+  function voiceTempoRange() {
+    const t = voiceCfg?.tempo || {};
+    return { min: Number(t.min) || 0.8, max: Number(t.max) || 1.3, def: Number(t.default) || 1 };
+  }
+
   function renderVoiceSettings() {
-    if (!$voiceCard || !$voiceGroup) return;
-    const list = (voiceCfg?.voices || {})[voiceLang] || [];
-    $voiceCard.hidden = list.length < 2;
-    if ($voiceCard.hidden) { $voiceGroup.replaceChildren(); return; }
+    if (!$voiceCard || !$voiceSelect) return;
+    $voiceCard.hidden = !voiceCfg?.tts;
+    if ($voiceCard.hidden) return;
+    const list = voiceOptionsFor(voiceLang);
     const current = voiceChoice[voiceLang] || (voiceCfg?.defaultVoice || {})[voiceLang] || "";
-    $voiceGroup.replaceChildren(...list.map((v) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.setAttribute("role", "radio");
-      btn.setAttribute("aria-checked", String(v.id === current));
-      // aria-checked chỉ trình đọc màn hình nghe được. Ô đang chọn phải TÔ bằng .on như mọi
-      // .settings-seg khác, nếu không cán bộ nhìn hai ô giống hệt nhau, bấm rồi cũng không
-      // biết đã đổi chưa.
-      btn.classList.toggle("on", v.id === current);
-      const name = document.createElement("b");
-      name.textContent = v.label;
-      btn.append(name);
-      btn.addEventListener("click", () => saveVoice(v.id));
-      return btn;
+    $voiceSelect.hidden = list.length < 2;
+    $voiceSelect.replaceChildren(...list.map((v) => {
+      const opt = document.createElement("option");
+      opt.value = v.id;
+      opt.textContent = voiceOptionText(v);
+      opt.selected = v.id === current;
+      return opt;
     }));
+    $voiceSelect.disabled = !accountSettingsLoaded;
+    if ($voiceTempoRange) {
+      const { min, max, def } = voiceTempoRange();
+      $voiceTempoRange.min = String(Math.round(min * 100));
+      $voiceTempoRange.max = String(Math.round(max * 100));
+      $voiceTempoRange.value = String(Math.round(Math.min(max, Math.max(min, voiceTempo ?? def)) * 100));
+      $voiceTempoRange.disabled = !accountSettingsLoaded;
+      showVoiceTempo(Number($voiceTempoRange.value));
+    }
+    // Câu nghe thử là tiếng Việt — chế độ tiếng Mông không được đọc câu Việt.
+    if ($voiceTryBtn) $voiceTryBtn.hidden = voiceLang === "hmong";
   }
 
-  function saveVoice(id) {
-    voiceChoice = { ...voiceChoice, [voiceLang]: id };
-    renderVoiceSettings();
-    window.__hccTTS?.setVoice?.(voiceChoice);
-    chrome.storage?.local.set({ [VOICE_KEY]: voiceChoice }, () => {
-      if (chrome.runtime.lastError) {
-        announceSettingFailed("voice-status", () => saveVoice(id));
-        return;
-      }
-      announceSettingSaved("voice-status");
-    });
+  function showVoiceTempo(percent) {
+    if ($voiceTempoValue) $voiceTempoValue.textContent = `${(percent / 100).toFixed(2)}×`;
   }
 
-  chrome.storage?.local.get([VOICE_KEY], (res) => {
-    if (chrome.runtime.lastError) return;
-    const saved = res?.[VOICE_KEY];
-    if (saved && typeof saved === "object") voiceChoice = saved;
+  function applyVoiceSettings(settings) {
+    voiceChoice = { vi: settings?.ttsVoiceVi || "", hmong: settings?.ttsVoiceHmong || "" };
+    const tempo = Number(settings?.ttsTempo);
+    voiceTempo = settings?.ttsTempo != null && Number.isFinite(tempo) ? tempo : null;
     window.__hccTTS?.setVoice?.(voiceChoice);
-    renderVoiceSettings();
+    window.__hccTTS?.setTempo?.(voiceTempo);
+  }
+
+  $voiceSelect?.addEventListener("change", () => {
+    markActivity();
+    const key = voiceLang === "hmong" ? "ttsVoiceHmong" : "ttsVoiceVi";
+    void saveAccountSetting({ [key]: $voiceSelect.value }, "voice-status");
+  });
+  $voiceTempoRange?.addEventListener("input", () => showVoiceTempo(Number($voiceTempoRange.value) || 100));
+  $voiceTempoRange?.addEventListener("change", () => {
+    markActivity();
+    void saveAccountSetting({ ttsTempo: (Number($voiceTempoRange.value) || 100) / 100 }, "voice-status");
+  });
+  $voiceTryBtn?.addEventListener("click", () => {
+    markActivity();
+    stopReplyTts();
+    window.__hccTTS?.speak?.(VOICE_TRY_TEXT, "vi");
   });
 
   function updateLangBar() {
@@ -6029,7 +6350,7 @@
         else if (msg.state === "stopped") setMicUI(false);
       } else if (msg.event === "error") {
         setMicUI(false);
-        setStatus("⚠️ Không ghi được ý kiến — công dân gõ giúp em nhé.", true);
+        setStatus("⚠️ Không ghi được ý kiến — công dân gõ giúp tôi nhé.", true);
         setTimeout(() => setStatus(""), 3000);
       }
       return;
@@ -6042,7 +6363,7 @@
       } else if (msg.state === "stopped") {
         // Mic màn bắt đầu đóng mà chưa có câu nào → nhắc nói lại (câu đã nghe được thì nhánh final đã xử lý).
         if (startByVoice && $startHeard && ($startHeard.hidden || $startHeard.classList.contains("partial"))) {
-          showStartHeard("Em chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp em ạ.", "miss");
+          showStartHeard("Tôi chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp tôi ạ.", "miss");
         }
         startByVoice = false;
         micByHand = false;
@@ -6064,7 +6385,7 @@
       if (startByVoice) {
         startByVoice = false;
         setMicUI(false);
-        showStartHeard(text || "Em chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp em ạ.", text ? "final" : "miss");
+        showStartHeard(text || "Tôi chưa nghe rõ, công dân bấm nút trên rồi nói lại giúp tôi ạ.", text ? "final" : "miss");
         if (text) {
           // Chọn nói ở màn bắt đầu = chọn chế độ rảnh tay: bật sẵn, chỉ tắt khi công dân tự tắt. Chưa mở mic
           // ngay — trợ lý đọc xong câu trả lời đầu thì listenWhenQuiet / ensureMic tự mở.
@@ -6334,6 +6655,9 @@
   const $preferScanSwitch = document.getElementById("prefer-scan-switch");
   const $renameFilesSwitch = document.getElementById("rename-files-switch");
   const $submitterDeclarationSwitch = document.getElementById("submitter-declaration-switch");
+  const $fontScaleRange = document.getElementById("font-scale-range");
+  const $fontScaleValue = document.getElementById("font-scale-value");
+  const $fontScaleSample = document.getElementById("font-scale-sample");
   const $attachModeMerge = document.getElementById("attach-mode-merge");
   const $attachModeSplit = document.getElementById("attach-mode-split");
   const $panelModePush = document.getElementById("panel-mode-push");
@@ -6401,7 +6725,7 @@
       if (announce) setLoginNotice("Đã xóa thông tin đăng nhập được ghi nhớ.", "ok");
     } catch (error) {
       console.warn("[TLND-Login] Không xóa được thông tin đăng nhập đã nhớ:", error);
-      if (announce) setLoginNotice("Chưa xóa được thông tin đã nhớ. Công dân thử lại giúp em ạ.");
+      if (announce) setLoginNotice("Chưa xóa được thông tin đã nhớ. Công dân thử lại giúp tôi ạ.");
     }
   }
 
@@ -6489,15 +6813,34 @@
     $submitterDeclarationSwitch.disabled = !accountSettingsLoaded;
   }
 
+  function renderFontScaleSetting() {
+    if (!$fontScaleRange) return;
+    const percent = Math.round((fontScalePending ?? fontScale) * 100);
+    $fontScaleRange.value = String(percent);
+    showFontScalePreview(percent);
+    $fontScaleRange.disabled = !accountSettingsLoaded;
+  }
+
+  // Chữ mẫu thể hiện đúng cỡ SẼ thấy: nó đang nằm trong vùng đã phóng theo cỡ hiện tại nên chia lại.
+  function showFontScalePreview(percent) {
+    if ($fontScaleValue) $fontScaleValue.textContent = `${percent}%`;
+    if ($fontScaleSample) $fontScaleSample.style.fontSize = `${(13.5 * percent) / 100 / fontScale}px`;
+  }
+
   function renderAccountSettings() {
     renderRenameFilesSetting();
     renderSubmitterDeclarationSetting();
+    renderFontScaleSetting();
+    renderVoiceSettings();
   }
 
   function storeAccountSettings(settings) {
     renameAttachmentFiles = settings?.renameAttachmentFiles !== false;
     // BE cũ chưa có khoá này → coi như tắt (người nộp theo tài khoản, hành vi cũ).
     submitterFromDeclaration = settings?.submitterFromDeclaration === true;
+    // BE cũ chưa có khoá này → 100%.
+    applyFontScale(settings?.fontScale ?? 1);
+    applyVoiceSettings(settings);
     accountSettingsLoaded = true;
     renderAccountSettings();
     return new Promise((resolve) => {
@@ -6508,7 +6851,7 @@
     });
   }
 
-  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status"];
+  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status", "font-scale-status", "voice-status"];
 
   // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc và nói rõ lý do kèm
   // Thử lại — công tắc mờ không chữ thì cán bộ tưởng hỏng.
@@ -6533,6 +6876,8 @@
   function forgetAccountSettings() {
     renameAttachmentFiles = true;
     submitterFromDeclaration = false;
+    applyFontScale(1);
+    applyVoiceSettings({});
     accountSettingsLoaded = false;
     renderAccountSettings();
     chrome.storage.local.remove([ACCOUNT_SETTINGS_KEY], () => { void chrome.runtime.lastError; });
@@ -6729,6 +7074,18 @@
   $submitterDeclarationSwitch?.addEventListener("click", () => {
     markActivity();
     void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration }, "submitter-declaration-status");
+  });
+  // Kéo: chỉ đổi chữ mẫu + %. Thả tay (change): lưu theo tài khoản, lưu xong cả khung phóng theo.
+  $fontScaleRange?.addEventListener("input", () => showFontScalePreview(Number($fontScaleRange.value) || 100));
+  $fontScaleRange?.addEventListener("change", () => {
+    markActivity();
+    const next = clampFontScale((Number($fontScaleRange.value) || 100) / 100);
+    if (next === fontScale) return;
+    fontScalePending = next;
+    void saveAccountSetting({ fontScale: next }, "font-scale-status").finally(() => {
+      fontScalePending = null;
+      renderFontScaleSetting();
+    });
   });
   $attachSplitSwitch?.addEventListener("click", () => {
     markActivity();

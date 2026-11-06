@@ -40,7 +40,7 @@ test("màn bắt đầu hiện lời công dân đang nói: partial nhạt, fina
   const html = fs.readFileSync(path.join(root, "sidebar.html"), "utf8");
   assert.match(html, /<p id="start-heard" class="start-heard" aria-live="polite" hidden><\/p>/);
   assert.match(sidebar, /if \(startByVoice\) showStartHeard\(msg\.text \|\| "", "partial"\);/);
-  assert.match(sidebar, /showStartHeard\(text \|\| "Em chưa nghe rõ[^"]*", text \? "final" : "miss"\);/);
+  assert.match(sidebar, /showStartHeard\(text \|\| "Tôi chưa nghe rõ[^"]*", text \? "final" : "miss"\);/);
 });
 
 test("màn bắt đầu: không tự mở mic ngầm; nút mic chỉ tắt khi chính nó đang nghe; về màn bắt đầu thì tắt Rảnh tay", () => {

@@ -160,7 +160,7 @@ def _clean(data: dict, viewed: set[str]) -> KetQua:
         out.nganh.append(Nganh(hoat_dong, codes, chac, chi_tiet))
     chinh = re.sub(r"\D", "", str(data.get("chinh") or ""))
     sure = [n.ma[0] for n in out.nganh if n.chac]
-    out.chinh = chinh if chinh in sure else (sure[0] if len(out.nganh) == 1 and sure else "")
+    out.chinh = chinh if chinh in sure else ""  # ngành chính chỉ khi người dân nói rõ — không tự chọn
     return out
 
 

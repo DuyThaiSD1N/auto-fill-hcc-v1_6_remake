@@ -1988,6 +1988,13 @@ tbody tr:last-child td {
     grid-template-columns: 1fr 1fr;
     width: 100%;
   }
+  .voice-tabs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .voice-tabs button {
+    min-width: 0;
+    padding: 8px 6px;
+  }
   .report-date-grid input,
   .report-mode button,
   .account-picker-actions .ghost {

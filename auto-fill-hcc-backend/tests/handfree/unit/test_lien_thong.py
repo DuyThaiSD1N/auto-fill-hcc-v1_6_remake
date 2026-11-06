@@ -269,7 +269,7 @@ async def test_doi_khong_duoc_thi_nho_chon_tay():
     reply = await _turn(conv, "action", "lt_result_report",
                         {"groups": GROUPS, "changed": {"name": "DkttNkqHinhThuc",
                                                        "value": "Đến cơ quan giải quyết để nhận kết quả.", "ok": False}})
-    assert reply.display_md.startswith("⚠️ Em chưa đổi được **Đăng ký thường trú**")
+    assert reply.display_md.startswith("⚠️ Tôi chưa đổi được **Đăng ký thường trú**")
 
 
 # ── Bước 5 → 6: nộp ──

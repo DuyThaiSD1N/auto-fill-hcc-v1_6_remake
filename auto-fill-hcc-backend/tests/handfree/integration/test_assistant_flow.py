@@ -869,8 +869,8 @@ async def test_ket_hon_owner_roi_ke_khai_roi_tu_dinh_kem(monkeypatch):
     monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
     r = await _turn(conv, '__event:page_status:{"wizardStep":2,"loggedIn":true}')
     assert conv["state"] == "filling" and len(process_calls) == 1
-    assert r.display_md == "Giờ em **điền tờ khai** giúp công dân ạ."
-    assert r.tts_text == "Giờ em điền tờ khai ạ."
+    assert r.display_md == "Giờ tôi **điền tờ khai** giúp công dân ạ."
+    assert r.tts_text == "Giờ tôi điền tờ khai ạ."
 
     conv["fields"] = [{"name": "HoTenBenNam", "comp": "x-input", "value": "VŨ ĐÌNH THIẾT"}]
     await _turn(conv, "__event:fields_ready")
@@ -940,7 +940,7 @@ async def test_owner_fill_report_noi_ro_ten_truong_con_thieu():
     )
     assert r.display_md == (
         "✓ Đã điền **ngày cấp, nơi cấp và địa chỉ**.\n\n"
-        "Còn thiếu **số điện thoại**, công dân vui lòng tự điền giúp em.\n\n"
+        "Còn thiếu **số điện thoại**, công dân vui lòng tự điền giúp tôi.\n\n"
         "Công dân kiểm tra → bấm **Bước tiếp theo** ạ."
     )
     assert "2 mục" not in r.display_md and "1 mục" not in r.display_md
@@ -1806,9 +1806,9 @@ async def test_bat_dau_tu_ke_khai_tu_dong_noi_tiep_dinh_kem_cung_phien(monkeypat
     assert any(chip.get("send") == "__action:refill" for chip in r.chips)
     assert any(chip.get("send") == "__action:add_documents" for chip in r.chips)
     assert "Thành phần hồ sơ" in r.display_md
-    assert "em tự đính kèm" in r.display_md
+    assert "tôi tự đính kèm" in r.display_md
     assert "bấm **Đính kèm giấy tờ**" not in r.display_md
-    assert "em sẽ tự đính kèm" in r.tts_text
+    assert "tôi sẽ tự đính kèm" in r.tts_text
     assert calls == [("process", "HS-DIRECT-DECLARATION")]
 
     r = await _turn(

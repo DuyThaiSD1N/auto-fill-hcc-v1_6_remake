@@ -31,7 +31,7 @@ test("engine change: nhận stage home, stopAtStage, delay ~5s khi vào Khối d
   assert.match(engine, /function detectBusinessChangeStage\(\) \{[\s\S]{0,900}stage: "home"/);
   assert.ok(engine.includes("st.stopAtStage && detected.stage === st.stopAtStage"));
   // Câu bắt đầu + nghỉ ~5 giây trước khi điền các khối (yêu cầu nghiệp vụ 09/09).
-  assert.match(engine, /Em bắt đầu điền các khối cần sửa[\s\S]{0,200}await sleep\(5000\)/);
+  assert.match(engine, /Tôi bắt đầu điền các khối cần sửa[\s\S]{0,200}await sleep\(5000\)/);
   // Owner-probe + chốt lại địa chỉ thuế đã được đồng bộ từ auto-fill.
   assert.ok(engine.includes("function handleOwnerProbe"));
   assert.ok(engine.includes("function taxWantsSameAsHeadOffice"));

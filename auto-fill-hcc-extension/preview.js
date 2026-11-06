@@ -26,6 +26,30 @@ function baoLoi(chu) {
   noiDungEl.appendChild(d);
 }
 
+// Ảnh → blob URL của PDF 1 trang A4; "" khi thiếu thư viện / định dạng chưa chuyển được (webp, gif…).
+// Trang A4 (ảnh ngang thì trang ngang), ảnh co vừa trong lề và căn giữa, vẫn nhúng nguyên ảnh gốc nên in ra vẫn nét.
+// Không dùng trang to bằng số điểm ảnh như bước đính kèm: ảnh điện thoại ~3000×4000 thành trang khổ hơn 1 m, Chrome in
+// mặc định theo kích thước thật nên tờ A4 chỉ lấy được góc trên bên trái.
+const A4_LE = 24; // pt
+async function anhSangPdf(dataUrl, name, loai) {
+  if (typeof PdfConvert === "undefined" || !window.PDFLib || !PdfConvert.isImage(loai, name)) return "";
+  try {
+    const { PDFDocument, PageSizes } = window.PDFLib;
+    const pdf = await PDFDocument.create({ updateMetadata: false });
+    const img = await PdfConvert._embedImage(pdf, PdfConvert._dataUrlToBytes(dataUrl), dataUrl, name, loai);
+    const [rong, cao] = img.width > img.height ? [PageSizes.A4[1], PageSizes.A4[0]] : PageSizes.A4;
+    // Không phóng ảnh nhỏ (ảnh quét cỡ thẻ) lên kín trang — phóng là mờ.
+    const tiLe = Math.min((rong - 2 * A4_LE) / img.width, (cao - 2 * A4_LE) / img.height, 1);
+    const w = img.width * tiLe;
+    const h = img.height * tiLe;
+    pdf.addPage([rong, cao]).drawImage(img, { x: (rong - w) / 2, y: (cao - h) / 2, width: w, height: h });
+    return URL.createObjectURL(new Blob([await pdf.save()], { type: "application/pdf" }));
+  } catch (e) {
+    console.warn("[Preview] Không chuyển được ảnh sang PDF, hiện ảnh gốc:", e);
+    return "";
+  }
+}
+
 async function ve({ name, mime, dataUrl, ghim }) {
   tenEl.textContent = name || "";
   tenEl.title = name || "";
@@ -64,10 +88,27 @@ async function ve({ name, mime, dataUrl, ghim }) {
     f.src = blobUrlHienTai + "#navpanes=0";
     noiDungEl.appendChild(f);
   } else if (loai.startsWith("image/")) {
-    const img = document.createElement("img");
-    img.src = blobUrlHienTai;
-    img.alt = name || "";
-    noiDungEl.appendChild(img);
+    // Ảnh (chụp điện thoại, quét) → PDF ngay lúc xem, giữ nguyên chất lượng: trình xem PDF của Chrome có nút tải
+    // xuống nên cán bộ tải được bản PDF. Tệp gốc trong danh sách vẫn là ảnh (đọc thông tin dùng ảnh gốc).
+    baoLoi("Đang mở…");
+    const pdfUrl = await anhSangPdf(dataUrl, name, loai);
+    if (vanTayHienTai !== vanTay) {            // đã chuyển sang xem tệp khác trong lúc chuyển
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      return;
+    }
+    noiDungEl.textContent = "";
+    if (pdfUrl) {
+      URL.revokeObjectURL(blobUrlHienTai);
+      blobUrlHienTai = pdfUrl;
+      const f = document.createElement("iframe");
+      f.src = pdfUrl + "#navpanes=0";
+      noiDungEl.appendChild(f);
+    } else {
+      const img = document.createElement("img"); // chuyển lỗi (ảnh lạ) → hiện ảnh như cũ
+      img.src = blobUrlHienTai;
+      img.alt = name || "";
+      noiDungEl.appendChild(img);
+    }
   } else {
     // .docx và các loại khác: trình duyệt không xem được, nói thẳng thay vì hiện khung trắng.
     baoLoi(`Không xem trước được định dạng này (${loai || "không rõ"}).`);

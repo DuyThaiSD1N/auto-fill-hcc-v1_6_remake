@@ -3,6 +3,18 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27",
+    date: "6/11/2026",
+    items: [
+      "Khánh Hòa: thêm thủ tục cấp đổi Giấy chứng nhận; đăng ký biến động khi chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất; đăng ký tài sản gắn liền với thửa đất đã cấp Giấy chứng nhận; xác nhận tiếp tục sử dụng đất nông nghiệp.",
+      "Tuyên Quang: thêm thủ tục đăng ký đất đai, cấp Giấy chứng nhận lần đầu cho hộ gia đình, cá nhân (quy trình VBDLIS và iLis).",
+      "Thêm thủ tục hòa giải tranh chấp đất đai và đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng.",
+      "Hưng Yên, Tuyên Quang: giấy tờ ghi tỉnh mới nhưng xã cũ của tỉnh đã sáp nhập vẫn chọn đúng xã/phường.",
+      "Đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân (1.004772): khi tách giấy tờ, các giấy cùng loại được đánh số (Căn cước công dân 1, 2...).",
+      "Thông báo của trợ lý xưng \"tôi\" thay cho \"em\".",
+    ],
+  },
+  {
     version: "1.26.9",
     date: "4/11/2026",
     items: [

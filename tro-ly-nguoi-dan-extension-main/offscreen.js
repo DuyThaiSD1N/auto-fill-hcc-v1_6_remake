@@ -180,7 +180,8 @@ function ttsPlayOne(item) {
         const float32 = new Float32Array(sampleCount);
         const view = new DataView(bytes.buffer);
         for (let i = 0; i < sampleCount; i++) float32[i] = view.getInt16(i * 2, true) / 32768;
-        const buffer = ctx.createBuffer(1, float32.length, 16000);
+        // Tần số theo từng khung (giọng 22050 / 24000 Hz…); Web Audio tự chuyển về tần số của ctx.
+        const buffer = ctx.createBuffer(1, float32.length, Number(data.sample_rate) || 16000);
         buffer.getChannelData(0).set(float32);
         const source = ctx.createBufferSource();
         source.buffer = buffer;

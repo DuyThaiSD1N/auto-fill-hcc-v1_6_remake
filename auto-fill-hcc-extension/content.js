@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "4/11";
+  const APP_RELEASE_DATE = "6/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -4884,6 +4884,9 @@
       // Tệp KHÔNG đính được nhưng kế hoạch cho phép bỏ qua (Lào Cai) — khác skippedNames (= đã có sẵn).
       const failedNames = [];
       const errors = [];
+      // Tệp hỏng thật theo fileIndex của payload — popup dựng danh sách từng tệp (tên gốc, lý do) từ đây.
+      const failedFiles = [];
+      let fixedFailed = false;
       let errorCode = null;
       const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
       let remainingAttachments = allAttachments;
@@ -5065,6 +5068,8 @@
         skippedNames.push(...(fixedResult.skippedNames || []));
         failedNames.push(...(fixedResult.failedNames || []));
         if (fixedResult.error) errors.push(fixedResult.error);
+        // Lỗi ô cố định chỉ có nhãn ô, không gắn được với tệp → popup đối chiếu theo tên tệp đã lên trang.
+        if (fixedResult.error || fixedResult.failedNames?.length) fixedFailed = true;
         if (!normalItems.length) {
           if (errors.length) {
             return {
@@ -5115,7 +5120,7 @@
       const announceRetry = (round) => {
         if (retryAnnounced || round >= MAX_ROUNDS) return;
         retryAnnounced = true;
-        showPageToast("Dịch vụ công đang lỗi — em đang đính kèm lại, vui lòng chờ chút…", "warn");
+        showPageToast("Dịch vụ công đang lỗi — tôi đang đính kèm lại, vui lòng chờ chút…", "warn");
       };
 
       for (let round = 1; round <= MAX_ROUNDS && queue.length && !splitAbort; round++) {
@@ -5135,6 +5140,7 @@
           if (!payloadFile) {
             // Thiếu file trong payload là lỗi dữ liệu, thử lại vòng sau cũng vậy → báo luôn.
             errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
+            failedFiles.push({ fileIndex: item.fileIndex, error: "Không đọc được tệp." });
             continue;
           }
           console.log("[AutoFill-AttachPlan] attaching", {
@@ -5175,6 +5181,7 @@
               // Kế hoạch cho phép bỏ qua (Lào Cai): không thử lại, không chặn các tệp khác.
               console.warn("[AutoFill-AttachPlan] bỏ qua tệp Giấy tờ khác", result.error);
               failedNames.push(item.documentName || payloadFile.name);
+              failedFiles.push({ fileIndex: item.fileIndex, error: result.error });
               continue;
             }
             if (result?.error) {
@@ -5195,6 +5202,7 @@
             // Cổng iGate VNPT không có luồng "ví giấy tờ": rơi xuống đó chỉ bấm lung tung (mở hộp thoại file).
             console.warn("[AutoFill-AttachPlan] không có mục Giấy tờ khác → bỏ qua", item.documentName);
             failedNames.push(item.documentName || payloadFile.name);
+            failedFiles.push({ fileIndex: item.fileIndex, error: "Không tìm thấy mục Giấy tờ khác." });
             continue;
           }
 
@@ -5273,10 +5281,12 @@
 
       // Hết lượt mà còn hoãn = hỏng thật. Báo TỪNG tệp để cán bộ biết phải đính tay ô nào,
       // thay vì một câu lỗi chung rồi im lặng bỏ qua phần còn lại như trước.
-      for (const { index } of queue) {
+      for (const { item, index } of queue) {
         const message = lastErrorByIndex.get(index);
         if (message) errors.push(message);
+        failedFiles.push({ fileIndex: item.fileIndex, error: message || "" });
       }
+      const fileReport = fixedFailed ? {} : { failedFiles };
 
       // Lượt chốt: đánh số các dòng thành phần thêm mới trùng tên (vd bản dịch CTV nhiều dòng →
       // "… 2", "… 3"…). No-op với thủ tục không có ô tên editable hoặc tên đã khác nhau.
@@ -5291,6 +5301,7 @@
           skipped: skippedNames.length,
           fileNames: attachedNames,
           skippedNames,
+          ...fileReport,
         };
       }
       if (!attachedNames.length && failedNames.length) {
@@ -5301,6 +5312,7 @@
           fileNames: [],
           skippedNames,
           failedNames,
+          ...fileReport,
         };
       }
       return {
@@ -5311,6 +5323,7 @@
         skipped: skippedNames.length,
         fileNames: attachedNames,
         skippedNames,
+        ...fileReport,
       };
     } catch (e) {
       console.warn("[AutoFill-Attach] Lỗi đính kèm file theo plan:", e);

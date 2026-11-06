@@ -181,6 +181,18 @@
           aria-controls="statusDetails" hidden>Xem chi tiết</button>
         <button id="splitSubmitDoneBtn" class="status-details-toggle" type="button" hidden>Đã nộp hết, đánh giá</button>
         <div id="statusDetails" class="status-details" role="region" aria-label="Chi tiết kết quả xử lý" hidden></div>
+        <!-- Kết quả đính kèm theo từng tệp: dòng đỏ tóm tắt tệp lỗi; danh sách đầy đủ chỉ mở khi bấm (panel thấp). -->
+        <div id="attachResult" class="attach-result" hidden>
+          <ul id="attachResultFailed" class="attach-result-failed" hidden></ul>
+          <div class="attach-result-actions">
+            <button id="attachResultToggle" class="status-details-toggle" type="button" aria-expanded="false"
+              aria-controls="attachResultList">Xem chi tiết</button>
+            <button id="attachRetryBtn" class="status-details-toggle attach-retry-btn" type="button" hidden>🔁 Đính lại
+              các tệp lỗi</button>
+          </div>
+          <div id="attachResultList" class="attach-result-list" role="region" aria-label="Danh sách tệp đính kèm"
+            hidden></div>
+        </div>
       </div>
     <section id="reviewCard" class="review-card" hidden></section>
     </div><!-- /view-main -->

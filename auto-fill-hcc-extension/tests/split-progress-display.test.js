@@ -50,7 +50,7 @@ assert.deepEqual(
 
 assert.match(
   popup,
-  /async function clearSplitProgressForCurrentTab\(\)[\s\S]*?progress\.originTabId[\s\S]*?chrome\.storage\.local\.remove\(SPLIT_ATTACH_PROGRESS_KEY\)/,
+  /async function clearSplitProgressForCurrentTab\(\)[\s\S]*?progress\.originTabId[\s\S]*?chrome\.storage\.local\.remove\(\[?SPLIT_ATTACH_PROGRESS_KEY/,
   "Chỉ được xóa tiến độ split thuộc đúng tab hiện tại",
 );
 assert.match(

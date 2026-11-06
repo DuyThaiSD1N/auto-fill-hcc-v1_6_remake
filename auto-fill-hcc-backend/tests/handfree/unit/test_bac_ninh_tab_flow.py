@@ -262,7 +262,7 @@ def test_vong_bo_sung_di_tiep_la_tab_sau():
     conv = _conv("reviewing", bac_ninh={"phase": "authorized", "at": 1})
     field_review.begin(conv, {"filled": 3, "optional": 0, "required": 0})
     md, _, chips = field_review.conclusion(conv, _proc(), [])
-    assert md.startswith("✓ Em đã điền xong phần này") and chips[0]["send"] == "__action:bn_next"
+    assert md.startswith("✓ Tôi đã điền xong phần này") and chips[0]["send"] == "__action:bn_next"
     st = conv["field_review"]
     st.update(running=True, current={"label": "Số điện thoại"})
     r = field_review._proceed(conv, _proc(), st)

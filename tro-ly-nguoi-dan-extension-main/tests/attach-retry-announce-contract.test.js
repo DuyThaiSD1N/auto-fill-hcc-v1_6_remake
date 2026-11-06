@@ -18,7 +18,7 @@ test("engine báo MỘT lần mỗi lượt, chỉ khi tệp còn lượt thử 
 });
 
 test("sidebar đọc đúng câu, chỉ cho tab của mình (trực tiếp hoặc tab tách qua relay), chặn lặp", () => {
-  assert.match(sidebar, /Dạ dịch vụ công đang lỗi, công dân chờ chút em đính kèm lại ạ\./);
+  assert.match(sidebar, /Dạ dịch vụ công đang lỗi, công dân chờ chút tôi đính kèm lại ạ\./);
   assert.match(sidebar, /msg\?\.__tlnd === "attachRetrying"\) mine = String\(sender\?\.tab\?\.id \|\| ""\) === String\(TAB_ID\)/);
   assert.match(sidebar, /msg\?\.__tlnd === "attachRetryingRelay"\) mine = String\(msg\.originTabId \|\| ""\) === String\(TAB_ID\)/);
   assert.match(sidebar, /Date\.now\(\) - attachRetrySaidAt < 30000/);

@@ -173,6 +173,10 @@ async function recordSplitAttachProgressResult(state, result = {}, ordinal = nul
     completed: Math.min(Number(current.total) || 0, (Number(current.completed) || 0) + 1),
     succeeded: (Number(current.succeeded) || 0) + (ok ? 1 : 0),
     failed: (Number(current.failed) || 0) + (ok ? 0 : 1),
+    // Hồ sơ hỏng theo số thứ tự — popup ghép với danh sách tệp của từng hồ sơ để báo đúng tệp nào chưa đính.
+    failures: ok ? (current.failures || []) : [...(current.failures || []), {
+      ordinal: Number(ordinal) || null, code: result.code || null, error: result.error || null,
+    }].slice(-100),
     activeOrdinal: null,
     lastResult: {
       ordinal: Number(ordinal) || null,

@@ -317,7 +317,7 @@ test("Đính kèm tự khai lại loại khi sidebar HkdOnline chưa dựng CtlA
   assert.match(source, /closeAttachModal\(\{ refreshList: true \}\)/);
   assert.match(source, /st\.forceDeclareRecovery = true/);
   assert.match(source, /st\.declared = \[\]/);
-  assert.match(source, /Sidebar chưa hiển thị loại tài liệu\. Em đang kiểm tra và khai lại/);
+  assert.match(source, /Sidebar chưa hiển thị loại tài liệu\. Tôi đang kiểm tra và khai lại/);
   assert.doesNotMatch(source, /✓ Đã khai loại\. Hãy bấm 1 mục trong danh sách/);
 });
 

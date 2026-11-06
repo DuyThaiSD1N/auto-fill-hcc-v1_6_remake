@@ -3,7 +3,8 @@
 Chỉ trả SỐ LIỆU TỔNG HỢP (không PII/OCR). Phạm vi LUÔN khóa theo token qua app/dashboard/scope.py:
 HCC xã/tỉnh xem chính mình (1 đơn vị); tài khoản Tỉnh (province_admin) xem mọi HCC xã/tỉnh cùng
 tỉnh; admin xem toàn hệ thống. Endpoint KHÔNG nhận tỉnh/xã/userId tùy ý từ client — tham số `unit`
-chỉ được chấp nhận nếu nằm trong phạm vi đã phân giải.
+chỉ được chấp nhận nếu nằm trong phạm vi đã phân giải; `province` chỉ thu hẹp phạm vi của admin
+toàn hệ thống (tài khoản khác gửi lên thì bỏ qua).
 
 Số liệu = TỔNG hai hệ Auto Fill + Handfree (Handfree best-effort, xem app/dashboard/combine.py).
 `/summary` trả luôn `units[]` (bảng Theo đơn vị) để mỗi lần tải chỉ gọi Handfree một lần.
@@ -27,7 +28,7 @@ from app.dashboard.combine import (
 )
 from app.dashboard import ratings as dashboard_ratings
 from app.dashboard.export import build_dashboard_workbook, export_filename
-from app.dashboard.scope import resolve_dashboard_scope
+from app.dashboard.scope import narrow_to_province, province_options, resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
 from app.dossiers import stats as dossier_stats
 from app.reports.integration import unit_key
@@ -53,6 +54,10 @@ def _scope_summary(scope: dict) -> dict:
     }
 
 
+async def _resolve(user: dict, province: str | None) -> dict:
+    return narrow_to_province(await resolve_dashboard_scope(user), province)
+
+
 def _range(dateFrom: str | None, dateTo: str | None) -> tuple[datetime, datetime]:
     start, end = parse_stats_range(dateFrom, dateTo)
     date_from = start or _EPOCH
@@ -71,10 +76,17 @@ def _resolve_user_ids(scope: dict, unit: str | None) -> tuple[list[str], dict | 
 
 
 @router.get("/scope")
-async def scope(user: dict = Depends(require_dashboard)):
-    """Phạm vi + danh sách đơn vị (dựng bộ chọn đơn vị). Không kèm số liệu → không gọi Handfree."""
-    resolved = await resolve_dashboard_scope(user)
-    return {**_scope_summary(resolved), "units": resolved["units"]}
+async def scope(user: dict = Depends(require_dashboard), province: str | None = Query(None)):
+    """Phạm vi + danh sách đơn vị (dựng bộ chọn đơn vị). Không kèm số liệu → không gọi Handfree.
+
+    Admin toàn hệ thống nhận thêm `provinces` (luôn đủ mọi tỉnh, kể cả khi đang lọc một tỉnh).
+    """
+    full = await resolve_dashboard_scope(user)
+    resolved = narrow_to_province(full, province)
+    body = {**_scope_summary(resolved), "units": resolved["units"]}
+    if full["scopeKind"] == "all":
+        body["provinces"] = province_options(full["units"])
+    return body
 
 
 @router.get("/summary")
@@ -83,8 +95,9 @@ async def summary(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
+    province: str | None = Query(None),
 ):
-    resolved = await resolve_dashboard_scope(user)
+    resolved = await _resolve(user, province)
     date_from, date_to = _range(dateFrom, dateTo)
     all_units = resolved["units"]
     all_ids = [u["unitId"] for u in all_units]
@@ -195,6 +208,7 @@ async def logs(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
+    province: str | None = Query(None),
     status: Literal["all", "submitted", "unsubmitted"] = Query("all"),
     source: Literal["all", "autofill", "handfree"] = Query("all"),
     page: int = Query(1, ge=1),
@@ -211,7 +225,7 @@ async def logs(
     phần Trợ lý người dân, trong khi KPI ngay phía trên lại cộng cả hai — cùng một màn hình
     mà hai con số không khớp nhau.
     """
-    resolved = await resolve_dashboard_scope(user)
+    resolved = await _resolve(user, province)
     date_from, date_to = _range(dateFrom, dateTo)
     ids, _selected = _resolve_user_ids(resolved, unit)
     unit_by_id = {u["unitId"]: u for u in resolved["units"]}
@@ -259,13 +273,14 @@ async def ratings(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
+    province: str | None = Query(None),
 ):
     """Phiếu đánh giá của công dân trên hồ sơ ĐÃ NỘP trong kỳ (cả Auto Fill lẫn Handfree).
 
     Tổng phần trên theo đơn vị đang lọc; `units[]` luôn cho toàn phạm vi (giống `/summary`) và chỉ
     gồm đơn vị có hồ sơ đã nộp. Tài khoản xã/phường không xem được đơn vị khác → `units` rỗng.
     """
-    resolved = await resolve_dashboard_scope(user)
+    resolved = await _resolve(user, province)
     date_from, date_to = _range(dateFrom, dateTo)
     all_units = resolved["units"]
     all_ids = [u["unitId"] for u in all_units]
@@ -300,13 +315,14 @@ async def export(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
+    province: str | None = Query(None),
 ):
     """Xuất Excel thống kê từ dữ liệu đã gộp AF+HF. Tỉnh: 4 sheet (kèm Theo đơn vị); xã/phường: 3 sheet.
 
     Nhật ký hồ sơ (cả Auto Fill lẫn Handfree) đưa vào sheet cuối. Ghi log mỗi lượt xuất để
     phục vụ audit.
     """
-    data = await summary(user=user, dateFrom=dateFrom, dateTo=dateTo, unit=unit)
+    data = await summary(user=user, dateFrom=dateFrom, dateTo=dateTo, unit=unit, province=province)
 
     # Nhật ký hồ sơ cho sheet cuối: lấy theo đúng phạm vi đang xuất (đơn vị đang chọn hoặc toàn bộ).
     units = data.get("units") or []
@@ -342,8 +358,9 @@ async def export(
     content = build_dashboard_workbook(data, logs)
     filename = export_filename(data)
     logger.info(
-        "Xuất Excel dashboard: user=%s role=%s scope=%s unit=%s log_rows=%s",
-        user.get("id"), user.get("role"), data["scope"]["scopeKind"], unit or "all", len(logs),
+        "Xuất Excel dashboard: user=%s role=%s scope=%s province=%s unit=%s log_rows=%s",
+        user.get("id"), user.get("role"), data["scope"]["scopeKind"], data["scope"]["province"],
+        unit or "all", len(logs),
     )
     quoted = urllib.parse.quote(filename)
     return StreamingResponse(

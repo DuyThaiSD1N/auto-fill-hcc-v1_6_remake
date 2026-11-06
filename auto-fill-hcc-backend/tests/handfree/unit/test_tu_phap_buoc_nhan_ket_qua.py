@@ -204,7 +204,7 @@ async def test_bo_y_te_buoc_3_chon_san_truc_tuyen_va_nhac_cam_doan_ma_xac_nhan()
     assert "Đăng ký nhận kết quả tại nhà" in postal.display_md and "Mã xác nhận" in postal.display_md
     assert not postal.chips
     failed = await flow.handle_turn(conv, Intent("action", "result_method_report", {"method": "direct", "ok": False}))
-    assert "Em chưa chọn được **Nhận trực tiếp**" in failed.display_md and "gạt" not in failed.display_md
+    assert "Tôi chưa chọn được **Nhận trực tiếp**" in failed.display_md and "gạt" not in failed.display_md
 
 
 async def test_bo_y_te_cong_dan_tu_bam_tiep_tuc_cung_duoc_dan_buoc_3():

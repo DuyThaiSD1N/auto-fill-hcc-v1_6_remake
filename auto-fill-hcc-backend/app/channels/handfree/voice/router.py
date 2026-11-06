@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends
 
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
-from app.channels.handfree.chat import xung_ho
 from app.channels.handfree.chat.intents import fold
 from app.channels.handfree.voice import catalog, store
 from app.config import settings
@@ -66,12 +65,11 @@ async def voice_config(user: dict = Depends(require_auth)):
         # nhưng chữ vẫn phát từ đây để bản Mông nằm cùng chỗ với lời thoại còn lại — thêm câu
         # hay sửa bản dịch KHÔNG phải phát hành lại extension.
         "scanFeedback": {
-            # Trợ lý tự xưng "tôi" (chat/xung_ho.py) — bản Mông là bản dịch riêng, không đổi.
-            lang: (mong.SCAN_FEEDBACK if lang == "hmong" else xung_ho.strings(vi.SCAN_FEEDBACK))
+            lang: (mong.SCAN_FEEDBACK if lang == "hmong" else vi.SCAN_FEEDBACK)
             for lang in langs
         },
         "scanGuide": {
-            lang: (mong.SCAN_GUIDE if lang == "hmong" else xung_ho.strings(vi.SCAN_GUIDE))
+            lang: (mong.SCAN_GUIDE if lang == "hmong" else vi.SCAN_GUIDE)
             for lang in langs
         },
         # Chuyển bước: đọc hết câu đang đọc rồi mới đọc câu mới, thay vì cắt ngang.

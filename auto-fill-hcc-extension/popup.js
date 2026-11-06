@@ -85,6 +85,13 @@ const statusEl = document.getElementById("status");
 const statusDetailsToggle = document.getElementById("statusDetailsToggle");
 const splitSubmitDoneBtn = document.getElementById("splitSubmitDoneBtn");
 const statusDetailsEl = document.getElementById("statusDetails");
+const attachResultEl = document.getElementById("attachResult");
+const attachResultFailedEl = document.getElementById("attachResultFailed");
+const attachResultToggle = document.getElementById("attachResultToggle");
+const attachResultListEl = document.getElementById("attachResultList");
+const attachRetryBtn = document.getElementById("attachRetryBtn");
+// Khai ngay cạnh tham chiếu DOM: setStatus (gọi từ rất sớm) đọc biến này qua hideAttachResult.
+let attachRetryContext = null;
 const reviewCardEl = document.getElementById("reviewCard");
 const supportCodeBtn = document.getElementById("supportCode");
 const supportCodeValueEl = document.getElementById("supportCodeValue");
@@ -182,6 +189,8 @@ const SCAN_RECENT_SUGGEST_KEY = "autofill_scan_recent_suggest";
 // Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
 const SPLIT_ATTACH_PROGRESS_KEY = "autofill_split_attach_progress";
+// Danh sách tệp theo từng hồ sơ của lượt tách đang chạy — popup đóng/mở lại giữa chừng vẫn báo được đúng tệp lỗi.
+const SPLIT_ATTACH_FILES_KEY = "autofill_split_attach_files";
 const SPLIT_MODE_PROCEDURES = new Set(["chung-thuc-ban-sao", "chung-thuc-chu-ky"]);
 const SPLIT_RELOADABLE_WALLET_CODES = new Set([
   "wallet-stale-modal",
@@ -332,6 +341,7 @@ if (statusDetailsToggle && statusDetailsEl) {
 // setStatus nhận input là Error (ưu tiên map theo MÃ lỗi BE) hoặc string; lỗi luôn được rút gọn an toàn.
 function setStatus(input, type, details = []) {
   setStatusDetails(details);
+  hideAttachResult();
   // Nút thoát chỉ đi kèm đúng dòng "Đã nộp X/N hồ sơ" — trạng thái khác thay chỗ thì ẩn theo.
   if (splitSubmitDoneBtn) splitSubmitDoneBtn.hidden = true;
   if (type === "err") {
@@ -343,6 +353,116 @@ function setStatus(input, type, details = []) {
   }
   statusEl.className = "status" + (type ? " " + type : "");
   statusEl.setAttribute("role", type === "err" ? "alert" : "status");
+}
+
+// ── Khối kết quả đính kèm theo từng tệp ──
+// Panel thấp: chỉ hiện dòng đỏ tóm tắt + tối đa ATTACH_FAILED_PREVIEW tệp lỗi; danh sách đủ (tệp lỗi, tệp đã đính,
+// lưu ý khác) nằm sau "Xem chi tiết", cuộn trong khung. Gọi SAU setStatus (setStatus ẩn khối này).
+const ATTACH_FAILED_PREVIEW = 3;
+
+function attachFileLine(f, withReason = true) {
+  const dossier = f?.dossier ? `Hồ sơ ${f.dossier} — ` : "";
+  const renamed = f?.renamed ? ` (${f.renamed})` : "";
+  const reason = withReason && f?.reason
+    ? ` — ${ATTACH_FAIL_REASON_TEXT[f.reason] || ATTACH_FAIL_REASON_TEXT.other}` : "";
+  return `${dossier}${f?.name || ""}${renamed}${reason}`;
+}
+
+function attachSummaryMessage(outcome) {
+  const attached = outcome.attached.length;
+  const total = attached + outcome.failed.length;
+  return attached ? `Đã đính kèm thành công ${attached}/${total} tệp vào hồ sơ.` : "Chưa đính kèm được tệp nào vào hồ sơ.";
+}
+
+function hideAttachResult() {
+  if (!attachResultEl) return;
+  attachResultEl.hidden = true;
+  attachRetryContext = null;
+}
+
+function appendAttachSection(title, tone, lines) {
+  if (!lines.length) return;
+  const h = document.createElement("h3");
+  h.className = tone;
+  h.textContent = title;
+  const list = document.createElement("ul");
+  for (const line of lines) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    list.appendChild(li);
+  }
+  attachResultListEl.append(h, list);
+}
+
+// retry = { procedure, files } khi đính 1 tab (đính lại riêng tệp lỗi); đa tab không có nút này.
+function renderAttachResult(outcome, retry = null, notes = []) {
+  if (!attachResultEl || !outcome) return;
+  const failed = outcome.failed || [];
+  attachRetryContext = retry && failed.length ? { ...retry, outcome } : null;
+  attachResultFailedEl.textContent = "";
+  attachResultFailedEl.hidden = !failed.length;
+  if (failed.length) {
+    const head = document.createElement("li");
+    head.className = "attach-result-head";
+    head.textContent = `❗ Có ${failed.length} tệp chưa đính kèm được:`;
+    attachResultFailedEl.appendChild(head);
+    for (const f of failed.slice(0, ATTACH_FAILED_PREVIEW)) {
+      const li = document.createElement("li");
+      li.textContent = attachFileLine(f);
+      attachResultFailedEl.appendChild(li);
+    }
+    if (failed.length > ATTACH_FAILED_PREVIEW) {
+      const more = document.createElement("li");
+      more.textContent = `… và ${failed.length - ATTACH_FAILED_PREVIEW} tệp khác (bấm Xem chi tiết)`;
+      attachResultFailedEl.appendChild(more);
+    }
+  }
+  attachResultListEl.textContent = "";
+  appendAttachSection(`Chưa đính kèm được (${failed.length})`, "err", failed.map((f) => attachFileLine(f)));
+  appendAttachSection(`Đã đính kèm thành công (${outcome.attached.length})`, "ok",
+    outcome.attached.map((f) => attachFileLine(f, false)));
+  appendAttachSection("Lưu ý khác", "", [...new Set((notes || []).map((n) => String(n || "").trim()).filter(Boolean))]);
+  attachResultListEl.hidden = true;
+  attachResultToggle.textContent = "Xem chi tiết";
+  attachResultToggle.setAttribute("aria-expanded", "false");
+  attachRetryBtn.hidden = !attachRetryContext;
+  attachResultEl.hidden = false;
+  postPanelHeight();
+}
+
+if (attachResultToggle && attachResultListEl) {
+  attachResultToggle.addEventListener("click", () => {
+    const expanded = attachResultToggle.getAttribute("aria-expanded") === "true";
+    attachResultToggle.setAttribute("aria-expanded", String(!expanded));
+    attachResultToggle.textContent = expanded ? "Xem chi tiết" : "Ẩn chi tiết";
+    attachResultListEl.hidden = expanded;
+    postPanelHeight();
+  });
+}
+
+// Đính lại riêng tệp lỗi: gửi lại đúng các dòng kế hoạch còn lỗi (engine tự bỏ qua tệp đã nằm trên trang), tệp đã
+// đính giữ nguyên. Không gọi lại BE lập kế hoạch.
+if (attachRetryBtn) {
+  attachRetryBtn.addEventListener("click", async () => {
+    const ctx = attachRetryContext;
+    if (!ctx) return;
+    const failedItems = ctx.outcome.failed.map((f) => f.item).filter(Boolean);
+    if (!failedItems.length) return;
+    attachRetryBtn.disabled = true;
+    try {
+      setStatus("Đang đính lại các tệp lỗi...", "info");
+      const res = await sendAttachPlan(ctx.procedure, ctx.files, failedItems, "merge");
+      const retried = attachFileOutcome(failedItems, ctx.files, res) || { attached: [], failed: ctx.outcome.failed };
+      const merged = { attached: [...ctx.outcome.attached, ...retried.attached], failed: retried.failed };
+      setStatus(attachSummaryMessage(merged), merged.failed.length ? "warn" : "ok");
+      renderAttachResult(merged, { procedure: ctx.procedure, files: ctx.files });
+    } catch (e) {
+      console.warn("[AutoFill-Attach] Đính lại tệp lỗi:", e);
+      setStatus("Chưa đính lại được. Vui lòng thử lại.", "err");
+    } finally {
+      attachRetryBtn.disabled = false;
+    }
+  });
 }
 
 function splitProgressPresentation(progress) {
@@ -391,7 +511,18 @@ function renderSplitProgress(progress) {
   if (!presentation) return false;
   activeSplitRunId = progress.runId || activeSplitRunId;
   setStatus(presentation.message, presentation.type);
+  if (progress.status === "completed") void renderSplitAttachFiles(progress);
   return true;
+}
+
+async function renderSplitAttachFiles(progress) {
+  try {
+    const stored = (await chrome.storage.local.get(SPLIT_ATTACH_FILES_KEY))?.[SPLIT_ATTACH_FILES_KEY];
+    if (!stored || stored.runId !== progress.runId) return;
+    const outcome = splitFileOutcome(stored.dossierFiles, progress.failures);
+    // Trạng thái khác đã thay chỗ trong lúc đọc storage → không vẽ đè.
+    if (outcome && activeSplitRunId === progress.runId) renderAttachResult(outcome);
+  } catch (_) { /* thiếu danh sách tệp → giữ câu tóm tắt số hồ sơ */ }
 }
 
 async function restoreSplitProgressStatus() {
@@ -417,7 +548,7 @@ async function clearSplitProgressForCurrentTab() {
     // Key tiến độ dùng chung cho extension. Chỉ xóa banner do đúng tab/phiên này tạo ra,
     // không làm mất trạng thái hàng đợi đang hiển thị ở tab hồ sơ khác.
     if (!progress || Number(progress.originTabId) !== Number(tabId)) return false;
-    await chrome.storage.local.remove(SPLIT_ATTACH_PROGRESS_KEY);
+    await chrome.storage.local.remove([SPLIT_ATTACH_PROGRESS_KEY, SPLIT_ATTACH_FILES_KEY]);
     return true;
   } catch (_) {
     return false;
@@ -2904,7 +3035,7 @@ async function pullPhoneFiles(list) {
       const res = await api.fetchUploadFileDataUrl(sid, f.fid);
       if (!res || !res.dataUrl) {
         console.warn("[AutoFill] Không kéo được tệp từ điện thoại:", f.name || f.fid);
-        setQrStatus("⚠️ Đang tải tài liệu từ điện thoại chậm/lỗi — em thử lại…");
+        setQrStatus("⚠️ Đang tải tài liệu từ điện thoại chậm/lỗi — tôi thử lại…");
         continue; // để dành cho lượt poll sau
       }
       pulledFids.add(f.fid);
@@ -3667,11 +3798,112 @@ async function applyMergeGroups(payloadFiles, attachments) {
     }
     const newIndex = outFiles.length;
     outFiles.push(file);
-    const rewritten = { ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex] };
+    // Tên tệp cán bộ chọn: tệp gửi cổng có thể đã gộp/tách thành PDF tên khác — danh sách kết quả từng tệp
+    // phải ghi tên gốc để cán bộ nhận ra.
+    const sourceNames = (segments ? segments.map((s) => payloadFiles[Number(s?.fileIndex)]) : sources)
+      .map((f) => f?.name).filter(Boolean);
+    const rewritten = {
+      ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex], sourceNames: [...new Set(sourceNames)],
+    };
     delete rewritten.sourceSegments;
     outAtts.push(rewritten);
   }
   return { files: outFiles, attachments: outAtts };
+}
+
+// ── Kết quả đính kèm theo từng tệp ──
+// Câu lỗi kỹ thuật của engine (tiếng Việt có dấu) xếp về 6 nhóm; cán bộ chỉ thấy câu dễ hiểu bên dưới.
+const ATTACH_FAIL_REASON_TEXT = {
+  too_large: "Tệp vượt dung lượng cổng cho phép",
+  corrupt: "Tệp bị hỏng, không mở được",
+  portal: "Cổng chưa nhận tệp, vui lòng thử lại",
+  network: "Mạng chập, chưa gửi được",
+  no_slot: "Chưa tìm thấy mục phù hợp trên cổng",
+  other: "Chưa đính kèm được, vui lòng thử lại",
+};
+
+function attachFailReason(text) {
+  const raw = String(text || "");
+  if (/dung lượng|vượt quá|quá lớn|\bMB\b|\b413\b/i.test(raw)) return "too_large";
+  if (/không đọc được|bị hỏng|notreadable|could not be read|định dạng/i.test(raw)) return "corrupt";
+  if (/mạng|kết nối|timeout|timed out|failed to fetch|\b50[0-4]\b|máy chủ/i.test(raw)) return "network";
+  if (/không tìm thấy (dòng|thành phần|ô|input|nút|mục)|không mở được|không có ô upload|chưa thấy bảng|không thấy dòng/i
+    .test(raw)) return "no_slot";
+  if (/cổng chưa|cổng báo|chưa ghi nhận|chưa tải xong|không gắn được|không thêm được/i.test(raw)) return "portal";
+  return "other";
+}
+
+const foldFileName = (name) => String(name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/đ/gi, "d").toLowerCase().replace(/\.[a-z0-9]{2,5}$/, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+// Một dòng kế hoạch → tên tệp gốc (nhiều tệp gộp thì nối dấu phẩy) + tên giấy tờ đặt trên cổng.
+function planFileEntry(item, files) {
+  const names = (Array.isArray(item?.sourceNames) && item.sourceNames.length
+    ? item.sourceNames : [files?.[item?.fileIndex]?.name || item?.fileName]).filter(Boolean);
+  const name = [...new Set(names)].join(", ");
+  const renamed = String(item?.documentName || "").trim();
+  return { name: name || renamed, renamed: renamed && foldFileName(renamed) !== foldFileName(name) ? renamed : "" };
+}
+
+// Kết quả engine 1 tab → { attached, failed }. Engine ví giấy tờ trả failedFiles theo fileIndex; engine khác chỉ trả
+// tên tệp đã lên trang → đối chiếu tên. Không đủ dữ liệu để biết tệp nào hỏng → null (giữ câu báo cũ).
+function attachFileOutcome(attachments, files, res) {
+  const rows = (attachments || []).filter((item) => item && !item.virtualCopy)
+    .map((item) => ({ item, entry: planFileEntry(item, files) }));
+  if (!rows.length) return null;
+  const errorText = !res ? "chưa thấy bảng Thành phần hồ sơ" : [res.error, ...(res.errors || [])].filter(Boolean).join("; ");
+  const failedAt = new Map();
+  if (Array.isArray(res?.failedFiles)) {
+    res.failedFiles.forEach((f) => failedAt.set(Number(f?.fileIndex), String(f?.error || errorText)));
+  } else if (res && !errorText) {
+    // Không lỗi nào → mọi tệp đã lên (hoặc đã có sẵn trên hồ sơ).
+  } else if (!res || Array.isArray(res.fileNames) || Array.isArray(res.skippedNames)) {
+    const landed = [...(res?.fileNames || []), ...(res?.skippedNames || [])].map(foldFileName).filter((x) => x.length >= 3);
+    const hit = (name) => {
+      const n = foldFileName(name);
+      return n.length >= 3 && landed.some((l) => l.includes(n) || n.includes(l));
+    };
+    for (const { item, entry } of rows) {
+      const candidates = [entry.renamed, files?.[item.fileIndex]?.name, ...String(entry.name).split(", ")];
+      if (!candidates.some(hit)) failedAt.set(Number(item.fileIndex), errorText);
+    }
+  } else {
+    return null;
+  }
+  const out = { attached: [], failed: [] };
+  for (const { item, entry } of rows.slice(0, 200)) {
+    if (failedAt.has(Number(item.fileIndex))) {
+      out.failed.push({ ...entry, reason: attachFailReason(failedAt.get(Number(item.fileIndex))), item });
+    } else {
+      out.attached.push(entry);
+    }
+  }
+  return out;
+}
+
+// Đa tab: mỗi hồ sơ (ordinal) là một bộ tệp; hồ sơ hỏng → mọi tệp của hồ sơ đó vào danh sách lỗi.
+function splitDossierFiles(bundles) {
+  return (bundles || []).map((bundle, index) => ({
+    ordinal: index + 1,
+    entries: (bundle.planItems || []).filter((item) => item && !item.virtualCopy)
+      .map((item) => planFileEntry(item, bundle.files)),
+  }));
+}
+
+// failures = [{ordinal, error}] (background ghi theo từng tab); hồ sơ không có trong failures là đã đính xong.
+function splitFileOutcome(dossierFiles, failures) {
+  if (!Array.isArray(dossierFiles) || !dossierFiles.length) return null;
+  const many = dossierFiles.length > 1;
+  const out = { attached: [], failed: [] };
+  for (const dossier of dossierFiles) {
+    const failure = (failures || []).find((f) => Number(f?.ordinal) === Number(dossier.ordinal));
+    for (const entry of dossier.entries || []) {
+      const row = { ...entry, ...(many ? { dossier: dossier.ordinal } : {}) };
+      if (failure) out.failed.push({ ...row, reason: attachFailReason(failure.error || failure.code) });
+      else out.attached.push(row);
+    }
+  }
+  return out;
 }
 
 // Đăng ký hộ kinh doanh (cổng HkdOnline): luồng đính kèm nhiều postback → giao content chạy state machine.
@@ -3716,6 +3948,26 @@ function planItemSourceIndexes(item) {
   if (segmentIndexes.length) return [...new Set(segmentIndexes)];
   if (Array.isArray(item?.sourceFileIndexes) && item.sourceFileIndexes.length) return item.sourceFileIndexes;
   return [item?.fileIndex];
+}
+
+// Gửi kế hoạch đính kèm xuống trang. File lớn (hợp đồng vài chục MB) → tổng payload base64 vượt giới hạn 64MiB của
+// tabs.sendMessage → chuyển file qua chrome.storage.local (unlimitedStorage), chỉ gửi KEY; content.js đọc lại rồi xoá.
+async function sendAttachPlan(procedure, files, attachments, mode) {
+  const approxBytes = files.reduce((s, f) => s + String(f?.dataUrl || "").length, 0);
+  let attachMsg = { action: "attachFilesByPlan", procedure, files, attachments, mode };
+  let attachFilesKey = "";
+  if (approxBytes > 45 * 1024 * 1024) {
+    attachFilesKey = "__af_attach_files_" + Date.now();
+    try {
+      await chrome.storage.local.set({ [attachFilesKey]: { files } });
+      attachMsg = { action: "attachFilesByPlan", procedure, attachments, mode, filesStorageKey: attachFilesKey };
+    } catch (e) {
+      attachFilesKey = ""; // ghi storage lỗi → gửi trực tiếp (có thể vẫn vượt nhưng còn cơ hội)
+    }
+  }
+  const res = await sendToContent(attachMsg);
+  if (attachFilesKey) { try { await chrome.storage.local.remove(attachFilesKey); } catch (e) { /* ignore */ } }
+  return res;
 }
 
 async function runAttachmentPlanForCurrentFiles(options = {}) {
@@ -3824,24 +4076,15 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   }
 
   setStatus("Đang đính kèm file vào hồ sơ...", "info");
-  // File lớn (hợp đồng vài chục MB) → tổng payload base64 vượt giới hạn 64MiB của tabs.sendMessage.
-  // Chuyển file qua chrome.storage.local (permission unlimitedStorage — KHÔNG dính giới hạn message),
-  // chỉ gửi KEY kèm kế hoạch; content.js đọc lại rồi xoá key.
   const attachMode = attachSplitMode && isSplitEligibleProcedure() ? "split" : "merge";
-  const approxBytes = sendFiles.reduce((s, f) => s + String(f?.dataUrl || "").length, 0);
-  let attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, files: sendFiles, attachments: sendAttachments, mode: attachMode };
-  let attachFilesKey = "";
-  if (approxBytes > 45 * 1024 * 1024) {
-    attachFilesKey = "__af_attach_files_" + Date.now();
-    try {
-      await chrome.storage.local.set({ [attachFilesKey]: { files: sendFiles } });
-      attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, attachments: sendAttachments, mode: attachMode, filesStorageKey: attachFilesKey };
-    } catch (e) {
-      attachFilesKey = ""; // ghi storage lỗi → gửi trực tiếp (có thể vẫn vượt nhưng còn cơ hội)
-    }
+  const attachRes = await sendAttachPlan(cfg.key, sendFiles, sendAttachments, attachMode);
+  // Danh sách từng tệp (tên gốc, tên đổi, lý do dễ hiểu) thay cho câu lỗi kỹ thuật của engine.
+  const attachFiles = attachFileOutcome(sendAttachments, sendFiles, attachRes);
+  const attachRetry = { procedure: cfg.key, files: sendFiles };
+  if (attachRes?.error && attachFiles?.failed.length) {
+    return { ok: true, warn: true, message: attachSummaryMessage(attachFiles), attachFiles, attachRetry,
+      requestId: planRes.requestId, details: planRes.errors || [] };
   }
-  const attachRes = await sendToContent(attachMsg);
-  if (attachFilesKey) { try { await chrome.storage.local.remove(attachFilesKey); } catch (e) { /* ignore */ } }
   // Kèm mã hỗ trợ (BE đã tạo trace dù đính kèm phía trang lỗi) để cán bộ báo lỗi có mã tra.
   if (attachRes?.error) return { ...attachRes, requestId: planRes.requestId };
 
@@ -3867,7 +4110,10 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   let msg = hasRecomposedDocuments
     ? `Đã tải lên ${uploadedCount} file, ${transformLabel} ${sendFiles.length} nhóm hồ sơ; đã đính kèm ${attachedCount}/${sendFiles.length} nhóm.`
     : `Đã đính kèm ${attachedCount}/${sendFiles.length} file vào hồ sơ.`;
-  if (hasRecomposedDocuments) {
+  // Có danh sách từng tệp → câu chính chỉ còn tóm tắt; tên tệp, tệp đã có, tệp lỗi nằm trong khối "Xem chi tiết".
+  if (attachFiles) {
+    msg = attachSummaryMessage(attachFiles);
+  } else if (hasRecomposedDocuments) {
     // Liệt kê từng nhóm gồm những file gốc nào theo contract TRƯỚC khi FE tách/gộp PDF.
     const groupLines = (rawAttachments || [])
       .map((a) => {
@@ -3880,10 +4126,10 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   } else if (names) {
     msg += `\n${names}`;
   }
-  if (skippedCount) msg += `\nBỏ qua ${skippedCount} file đã có trong hồ sơ.`;
-  if (skippedNames) msg += `\nĐã có: ${skippedNames}`;
+  if (skippedCount && !attachFiles) msg += `\nBỏ qua ${skippedCount} file đã có trong hồ sơ.`;
+  if (skippedNames && !attachFiles) msg += `\nĐã có: ${skippedNames}`;
   const failedNames = (attachRes?.failedNames || []).join(", ");
-  if (failedNames) msg += `\nKhông đính kèm được, đã bỏ qua: ${failedNames}`;
+  if (failedNames && !attachFiles) msg += `\nKhông đính kèm được, đã bỏ qua: ${failedNames}`;
   // Tệp BỊ LOẠI TỪ ĐẦU: planner bỏ tệp vượt trần dung lượng của cổng (Lào Cai 6 MB) TRƯỚC khi OCR nên
   // nó không có mặt trong kế hoạch, và số "đã đính kèm x/x" vẫn đẹp. Trước đây chỉ ghi console →
   // cán bộ đọc "Đã đính kèm 9/9 file" rồi bấm nộp, trong khi hồ sơ thiếu hẳn Giấy chứng nhận.
@@ -3916,19 +4162,21 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   // vào dòng khác) — tệp đã lên nhưng cán bộ còn việc phải làm tay.
   const attachNotes = (attachRes?.notes || []).filter(Boolean);
   if (attachNotes.length) msg += `\n⚠ ${attachNotes.join("\n⚠ ")}`;
-  const warn = attachedCount < sendFiles.length || droppedNames.length > 0 || attachNotes.length > 0;
+  const warn = attachedCount < sendFiles.length || droppedNames.length > 0 || attachNotes.length > 0
+    || !!attachFiles?.failed.length;
   // errors[] của ENGINE đính kèm nói rõ dòng nào trượt ("Không khớp thành phần …", "Chỉ lên được 0/1
   // tệp …"). Trước đây bị nuốt hoàn toàn nên cán bộ thấy "đã đính kèm" mà hồ sơ vẫn thiếu.
   const attachErrors = (attachRes?.errors || []).filter(Boolean);
   if (attachErrors.length) {
     console.warn("[AutoFill-Attach] Lỗi khi gắn file vào trang:", attachErrors);
-    if (warn) msg += `\nChưa xong: ${attachErrors.join("; ")}`;
+    if (warn && !attachFiles) msg += `\nChưa xong: ${attachErrors.join("; ")}`;
   }
   const toastMessage = warn
     ? "Đã xử lý xong bước đính kèm. Vui lòng rà soát hồ sơ."
     : "Đã đính kèm xong hồ sơ.";
   await showPageToast(toastMessage, warn ? "warn" : "success");
-  return { ok: true, message: msg, warn, requestId: planRes.requestId, details: planRes.errors || [] };
+  return { ok: true, message: msg, warn, requestId: planRes.requestId, details: planRes.errors || [],
+    ...(attachFiles ? { attachFiles, attachRetry } : {}) };
 }
 
 // Lấy plan item của BE cho file thứ `origIndex`, rồi đổi sang vị trí của file trong bundle gửi cho tab.
@@ -4197,6 +4445,7 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   if (!bundles.length) return { error: "Không có tài liệu để tách hồ sơ." };
   const firstBundle = bundles[0];
   const rest = bundles.slice(1);
+  const dossierFiles = splitDossierFiles(bundles);
   const originTabId = await getTargetTabId();
   splitProgressOriginTabId = originTabId || splitProgressOriginTabId;
   activeSplitRunId = null;
@@ -4220,7 +4469,15 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   });
   let currentTabRecovery = null;
   if (firstRes?.error) {
-    if (!SPLIT_RELOADABLE_WALLET_CODES.has(String(firstRes.code || ""))) return firstRes;
+    if (!SPLIT_RELOADABLE_WALLET_CODES.has(String(firstRes.code || ""))) {
+      // Một hồ sơ duy nhất = như đính 1 tab: báo đúng tệp lỗi thay cho câu lỗi kỹ thuật.
+      const files = !rest.length ? attachFileOutcome(firstBundle.planItems, firstBundle.files, firstRes) : null;
+      if (files?.failed.length) {
+        return { ok: true, warn: true, message: attachSummaryMessage(files), attachFiles: files,
+          requestId: planRes?.requestId };
+      }
+      return firstRes;
+    }
     const tabId = await getTargetTabId();
     const staged = await sendToBackground({
       action: "stageDossierTabAttach",
@@ -4255,6 +4512,7 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
     try {
       await chrome.storage.local.set({
         [SPLIT_ATTACH_QUEUE_STAGE_KEY]: { items: queueItems, stagedAt: Date.now() },
+        [SPLIT_ATTACH_FILES_KEY]: { runId: splitRunId, dossierFiles },
       });
       // Chỉ gửi key nhẹ qua runtime message; tuyệt đối không nhét dataUrl của cả queue vào message.
       queueRes = await sendToBackground({
@@ -4313,12 +4571,16 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   }
   if (planRes?.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   if (!currentTabRecovery) await showPageToast("Đã đính kèm xong hồ sơ hiện tại.", "success");
+  // Một hồ sơ duy nhất đã xong ngay tại tab này → kèm danh sách tệp để xem chi tiết như đính 1 tab.
+  const singleFiles = !splitRunId && !currentTabRecovery
+    ? attachFileOutcome(firstBundle.planItems, firstBundle.files, firstRes) : null;
   return {
     ok: true,
-    message: msg,
-    warn: msgType === "warn",
+    message: singleFiles ? attachSummaryMessage(singleFiles) : msg,
+    warn: msgType === "warn" || !!singleFiles?.failed.length,
     inProgress: msgType === "info",
     requestId: planRes?.requestId,
+    ...(singleFiles ? { attachFiles: singleFiles } : {}),
   };
 }
 
@@ -4803,7 +5065,10 @@ ocrBtn.addEventListener("click", async () => {
       const attachRes = await runAttachmentPlanForCurrentFiles(options);
       showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
-      else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"), attachRes.details);
+      else if (attachRes.attachFiles) {
+        setStatus(attachRes.message, attachRes.warn ? "warn" : "ok");
+        renderAttachResult(attachRes.attachFiles, attachRes.attachRetry, attachRes.details);
+      } else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"), attachRes.details);
       return;
     }
 
@@ -5320,6 +5585,9 @@ if (attachStepBtn) {
       if (res?.error) {
         console.warn("[Popup] Attach step failed", res);
         setStatus(res.error, "err");
+      } else if (res.attachFiles) {
+        setStatus(res.message, res.warn ? "warn" : "ok");
+        renderAttachResult(res.attachFiles, res.attachRetry, res.details);
       } else {
         setStatus(res.message, res.warn ? "warn" : "ok", res.details);
       }
@@ -5387,7 +5655,9 @@ async function attachAfterFill(fillOutcome, sessionId) {
     return;
   }
   const type = fillOutcome.partial || res.warn ? "warn" : (res.inProgress ? "info" : "ok");
-  setStatus(`${fillOutcome.message} ${res.message || ""}`.trim(), type, details);
+  // Có danh sách từng tệp: một nút "Xem chi tiết" duy nhất — lưu ý của bước điền gộp vào khối đó.
+  setStatus(`${fillOutcome.message} ${res.message || ""}`.trim(), type, res.attachFiles ? [] : details);
+  if (res.attachFiles) renderAttachResult(res.attachFiles, res.attachRetry, details);
 }
 
 async function dispatchFill(allFields, errors, page = null, requestId = "") {

@@ -805,6 +805,68 @@ input, select, textarea { font-family: inherit; }
 .status-details-toggle[hidden] {
   display: none;
 }
+/* Kết quả đính kèm theo từng tệp — danh sách dài cuộn trong khung, không đẩy panel cao quá màn hình. */
+.attach-result[hidden],
+.attach-result-failed[hidden],
+.attach-result-list[hidden] {
+  display: none !important;
+}
+.attach-result-failed {
+  margin: 4px 0 0;
+  padding: 6px 8px 6px 22px;
+  border: 1px solid #f2c2bd;
+  border-radius: 5px;
+  background: #fef4f3;
+  color: #b42318;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.attach-result-failed .attach-result-head {
+  margin-left: -14px;
+  list-style: none;
+  font-weight: 700;
+}
+.attach-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attach-retry-btn {
+  border-color: #f2c2bd;
+  background: #fff7f6;
+  color: #b42318;
+}
+.attach-retry-btn:hover {
+  border-color: #e99b9b;
+  background: #fee7e7;
+  color: #9b1c12;
+}
+.attach-result-list {
+  max-height: 200px;
+  margin-top: 4px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 5px;
+  background: #f8fafc;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.attach-result-list h3 {
+  margin: 4px 0 2px;
+  font-size: 11.5px;
+}
+.attach-result-list h3.err { color: #b42318; }
+.attach-result-list h3.ok { color: #2e7d32; }
+.attach-result-list ul {
+  margin: 0 0 4px;
+  padding-left: 17px;
+}
+.attach-result-list .attach-result-reason {
+  color: #b42318;
+}
 .status-details ul {
   margin: 0;
   padding-left: 17px;

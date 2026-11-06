@@ -3,11 +3,13 @@
 Ba mức phạm vi:
   - unit     : phường/xã tự xem CHÍNH mình (role commune / tài khoản có tỉnh+xã).
   - province : tài khoản Tỉnh (role province_admin) xem MỌI phường/xã cùng tỉnh.
-  - all      : admin xem toàn hệ thống (hoặc admin có tỉnh → bó về đúng tỉnh đó).
+  - all      : admin xem toàn hệ thống (hoặc admin có tỉnh → bó về đúng tỉnh đó). Admin toàn hệ
+               thống được lọc thêm một tỉnh (narrow_to_province) — chỉ thu hẹp, không mở rộng.
 
 Đơn vị = một tài khoản có `xa` (mỗi phường/xã một tài khoản xử lý hồ sơ). Khớp tỉnh bằng
 province_name đã chuẩn hóa + fold dấu để chịu "Thành phố Đà Nẵng" ↔ "Đà Nẵng".
 """
+from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.reports.integration import fold, province_name
 from app.users.roles import (
@@ -88,3 +90,26 @@ async def resolve_dashboard_scope(user: dict) -> dict:
         "self": self_unit,
         "units": [self_unit],
     }
+
+
+def province_options(units: list[dict]) -> list[dict]:
+    """Các tỉnh có đơn vị trong phạm vi (dựng ô chọn tỉnh). Gộp theo tên đã fold dấu."""
+    groups: dict[str, dict] = {}
+    for unit in units:
+        name = province_name(unit.get("tinh"))
+        if not name:
+            continue
+        group = groups.setdefault(fold(name), {"name": name, "unitCount": 0})
+        group["unitCount"] += 1
+    return sorted(groups.values(), key=lambda g: fold(g["name"]))
+
+
+def narrow_to_province(scope: dict, province: str | None) -> dict:
+    """Bó phạm vi admin toàn hệ thống về một tỉnh. Phạm vi xã/tỉnh đã khóa theo token → bỏ qua tham số."""
+    if not province or province == "all" or scope["scopeKind"] != "all":
+        return scope
+    target = fold(province_name(province))
+    units = [u for u in scope["units"] if fold(province_name(u.get("tinh"))) == target]
+    if not units:
+        raise AppError("PROVINCE_OUT_OF_SCOPE", "Tỉnh không có đơn vị nào trong phạm vi tài khoản.", 403)
+    return {**scope, "province": province_name(units[0]["tinh"]), "units": units}

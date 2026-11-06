@@ -39,7 +39,7 @@ _QUEUE_END = object()  # sentinel kết thúc stream gửi lên gRPC
 # Lỗi gửi về extension LUÔN là câu cố định: chi tiết gRPC/server ASR chứa địa chỉ dịch vụ nội bộ
 # (vd "address lookup failed for http://<ip>:<port>") và sẽ hiện nguyên văn trên sidebar công dân.
 # Chi tiết thật chỉ ghi log máy chủ.
-_CLIENT_ERROR = "Dịch vụ nhận giọng nói đang gặp sự cố, công dân thử lại sau hoặc gõ chữ giúp em ạ."
+_CLIENT_ERROR = "Dịch vụ nhận giọng nói đang gặp sự cố, công dân thử lại sau hoặc gõ chữ giúp tôi ạ."
 
 
 def _grpc_target(uri: str) -> str:

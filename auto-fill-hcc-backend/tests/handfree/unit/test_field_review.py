@@ -103,7 +103,7 @@ async def test_con_o_trong_thi_co_nut_bo_sung_va_so_o():
     assert _sends(reply)[0] == "__action:field_review_start"
     assert reply.chips[0]["label"] == vi.FR_CHIP
     # Mỗi bong bóng một thông tin: kết quả điền → số ô trống + mời bổ sung → bước tiếp theo.
-    assert reply.display_md.startswith("Em điền được **30 ô**")
+    assert reply.display_md.startswith("Tôi điền được **30 ô**")
     assert "Kiểm tra xong" not in reply.display_md
     stats_md, next_md = _trails(reply)
     assert "🟧 **5** ô không bắt buộc" in stats_md and "🟥 **1** ô bắt buộc" in stats_md
@@ -168,9 +168,9 @@ async def test_tra_loi_thi_dien_dung_o_roi_hoi_o_ke(monkeypatch):
     assert _lead(asked) == "✓ Đã điền **Dân tộc** · *Người mẹ của người được khai sinh*: Kinh"
     # Cùng phần với ô vừa hỏi → không nhắc lại tên phần, chỉ "Tiếp theo đến ô …".
     assert asked.display_md.startswith("Tiếp theo đến:\n\n📝 Ô **Số định danh cá nhân**")
-    assert asked.tts_text.startswith("Dạ em đã điền xong. Tiếp theo đến ô Số định danh cá nhân. ")
+    assert asked.tts_text.startswith("Dạ tôi đã điền xong. Tiếp theo đến ô Số định danh cá nhân. ")
     assert "nói hoặc gõ" in asked.tts_text
-    assert "Em hỏi lần lượt" not in asked.display_md  # lời mở đầu chỉ ở ô đầu tiên
+    assert "Tôi hỏi lần lượt" not in asked.display_md  # lời mở đầu chỉ ở ô đầu tiên
     assert "__action:field_review_back" in _sends(asked)
 
 
@@ -231,7 +231,7 @@ async def test_het_o_trong_thi_ket_thuc_va_tra_lai_nut_cu():
     await _start_and_focus(conv)
     done = await _turn(conv, "event", "field_review_focus",
                        {"field": None, "stats": {"filled": 46, "optional": 0, "required": 0}})
-    assert "Em đã hỏi hết các ô còn trống" in done.display_md
+    assert "Tôi đã hỏi hết các ô còn trống" in done.display_md
     assert _types(done) == ["field_review_stop"]
     assert "__action:field_review_start" not in _sends(done)
     assert "__action:refill" in _sends(done)
@@ -251,7 +251,7 @@ async def test_dung_bo_sung():
     conv = _conv()
     await _start_and_focus(conv)
     reply = await _turn(conv, "action", "field_review_stop")
-    assert "em dừng hỏi" in reply.display_md
+    assert "tôi dừng hỏi" in reply.display_md
     assert _types(reply) == ["field_review_stop"]
     late = await _turn(conv, "event", "field_review_focus", {"field": FIELD, "stats": STATS})
     assert not late.display_md and not late.actions  # sự kiện về muộn của vòng đã dừng
@@ -422,9 +422,9 @@ async def test_so_dien_thoai_thieu_so_thi_noi_ro_nghe_duoc_may_so(monkeypatch):
     await _ask(conv, field)
     _answer(monkeypatch, "unclear", "096405552")
     reply = await _turn(conv, "action", "field_review_answer", {"text": "không chín sáu bốn không năm năm hai"})
-    assert "Em nghe được **9 số** (096405552), ô **Số Điện thoại** cần đủ **10 số** ạ." in reply.display_md
-    assert reply.tts_text == ("Dạ em mới nghe được 9 số, ô Số Điện thoại cần đủ 10 số. "
-                              "Công dân đọc lại chậm từng số giúp em ạ.")
+    assert "Tôi nghe được **9 số** (096405552), ô **Số Điện thoại** cần đủ **10 số** ạ." in reply.display_md
+    assert reply.tts_text == ("Dạ tôi mới nghe được 9 số, ô Số Điện thoại cần đủ 10 số. "
+                              "Công dân đọc lại chậm từng số giúp tôi ạ.")
     assert "apply" not in str(reply.actions)
 
 
@@ -472,7 +472,7 @@ async def test_o_quoc_gia_hoi_viet_nam_hay_nuoc_khac():
     conv = _conv()
     countries = [f"Nước {i}" for i in range(50)] + ["Việt Nam"]
     asked = await _ask(conv, {**FIELD, "key": "q", "label": "Quốc gia nơi cư trú của cha:", "options": countries})
-    assert "Công dân nói hoặc gõ tên nước giúp em ạ." in asked.tts_text
+    assert "Công dân nói hoặc gõ tên nước giúp tôi ạ." in asked.tts_text
     assert [c["label"] for c in asked.chips][0] == "Việt Nam"
 
 
@@ -656,7 +656,7 @@ async def test_ket_hon_o_chung_hai_ben_hoi_khong_kem_ten_phan(monkeypatch):
     done = await _turn(conv, "event", "field_review_focus",
                        {"applied": {"key": "CapBanSao", "ok": True}, "field": None, "stats": STATS})
     assert _lead(done) == "✓ Đã điền **Đề nghị cấp bản sao**: Có"
-    assert done.tts_text.startswith("Dạ em đã điền xong. ")
+    assert done.tts_text.startswith("Dạ tôi đã điền xong. ")
 
 
 async def test_o_tich_mot_lua_chon_van_co_nut_chon():
@@ -936,7 +936,7 @@ async def test_quay_lai_khong_nhac_tiep_theo_den_phan(monkeypatch):
                         {"field": {**WARD_OK, "value": "Xã 3"}, "stats": STATS})
     assert _lead(asked) == "↩️ Quay lại ô **Phường/Xã** để sửa."
     assert asked.display_md.startswith("📝 🟥 Ô **Phường/Xã**") and "Tiếp theo" not in asked.display_md
-    assert asked.tts_text == "Dạ em quay lại ô Phường hoặc Xã để công dân sửa. Công dân nói hoặc gõ giúp em ạ."
+    assert asked.tts_text == "Dạ tôi quay lại ô Phường hoặc Xã để công dân sửa. Công dân nói hoặc gõ giúp tôi ạ."
 
 
 async def test_quay_lai_dung_o_cong_dan_neu_ten_ke_ca_o_da_bo_qua(monkeypatch):

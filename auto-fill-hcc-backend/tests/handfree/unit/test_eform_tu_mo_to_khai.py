@@ -33,7 +33,7 @@ async def test_nhan_du_giay_thi_tu_mo_dung_dong_to_khai():
     r = await flow._eform_start(conv, get_procedure(KEY), files_count=4)
     assert r.actions == [{"type": "open_eform", "row": 5, "label": "Đơn xin nhận con nuôi",
                           "variant": "adoption_application"}]
-    assert "Em đang mở" in r.display_md and "Khai tờ khai" not in r.display_md, "không bắt công dân tự bấm"
+    assert "Tôi đang mở" in r.display_md and "Khai tờ khai" not in r.display_md, "không bắt công dân tự bấm"
 
 
 async def test_ban_cu_khong_co_co_thi_giu_cau_bao_tu_bam():

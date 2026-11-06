@@ -111,7 +111,7 @@ function loadCompanion({ resultMethod, replies }) {
 test("khung phụ gạt ở bước 4, gửi onlyIfUnset, và chỉ gạt MỘT lần", async () => {
   const { gatSanKetQua, sent } = loadCompanion({ resultMethod: LENH, replies: [{ ok: true, missing: [] }] });
   const bao = await gatSanKetQua(4);
-  assert.match(bao, /Em đã chọn sẵn \*\*Nhận kết quả bản giấy có đóng dấu\*\*/);
+  assert.match(bao, /Tôi đã chọn sẵn \*\*Nhận kết quả bản giấy có đóng dấu\*\*/);
   assert.equal(sent.length, 1);
   assert.equal(sent[0].action, "selectResultMethod");
   assert.equal(sent[0].onlyIfUnset, true);
@@ -130,11 +130,11 @@ test("khung phụ không gạt trước bước 4, và không gạt khi BE khôn
 
 test("trang chưa dựng xong công tắc → hỏi lại; vẫn hỏng thì báo và cho lượt sau thử lại", async () => {
   const slow = loadCompanion({ resultMethod: LENH, replies: [null, { ok: true, missing: [] }] });
-  assert.match(await slow.gatSanKetQua(4), /Em đã chọn sẵn/);
+  assert.match(await slow.gatSanKetQua(4), /Tôi đã chọn sẵn/);
   assert.equal(slow.sent.length, 2);
   const fail = loadCompanion({ resultMethod: LENH, replies: [null, null, null, null, { ok: true }] });
   assert.match(await fail.gatSanKetQua(4), /chưa chọn sẵn được/);
-  assert.match(await fail.gatSanKetQua(4), /Em đã chọn sẵn/, "hỏng thì lượt vẽ sau được thử lại");
+  assert.match(await fail.gatSanKetQua(4), /Tôi đã chọn sẵn/, "hỏng thì lượt vẽ sau được thử lại");
 });
 
 test("công dân đã tự chọn → khung phụ im lặng", async () => {
@@ -189,7 +189,7 @@ test("bấm cách khác → gạt đúng công tắc, KHÔNG onlyIfUnset, đổi
   assert.notEqual(c.sent[0].onlyIfUnset, true, "lựa chọn chủ động phải tắt được cái đang bật");
   assert.equal(c.state.ketQuaDangChon, "online");
   assert.equal(c.state.daGatKetQua, true, "đã chọn chủ động thì lượt vẽ sau không tự gạt đè");
-  assert.match(c.state.loiVuaRoi, /Em đã chọn \*\*Nhận kết quả trực tuyến\*\* trên trang/);
+  assert.match(c.state.loiVuaRoi, /Tôi đã chọn \*\*Nhận kết quả trực tuyến\*\* trên trang/);
   assert.equal(c.veCount, 1);
 });
 

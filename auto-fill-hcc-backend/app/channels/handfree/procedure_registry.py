@@ -1088,7 +1088,7 @@ PROCEDURES: list[dict] = [
             "ownerStepDocs": [
                 {"key": "cccd_chu_ho_so", "name": "Căn cước công dân của chủ hồ sơ",
                  "icon": "🪪", "sides": 1,
-                 "purpose": "để em điền thông tin chủ hồ sơ",
+                 "purpose": "để tôi điền thông tin chủ hồ sơ",
                  # Công dân chọn chứng thực luôn thẻ này → nó thành giấy đem đi chứng thực,
                  # phải chuyển sang ô dưới đây để còn hiện trên checklist ở bước sau.
                  "certifiedInto": "khac"},
@@ -1100,10 +1100,10 @@ PROCEDURES: list[dict] = [
             "authorizationStepDocs": [
                 {"key": "cccd_chu_ho_so", "name": "Căn cước công dân của người nộp hồ sơ",
                  "icon": "🪪", "sides": 1,
-                 "purpose": "để em điền thông tin người nộp hồ sơ",
+                 "purpose": "để tôi điền thông tin người nộp hồ sơ",
                  "certifiedInto": "khac"},
                 {"key": "giay_uy_quyen", "name": "Giấy ủy quyền", "icon": "📝", "sides": 1,
-                 "purpose": "để em điền thông tin ủy quyền và đính kèm vào hồ sơ luôn"},
+                 "purpose": "để tôi điền thông tin ủy quyền và đính kèm vào hồ sơ luôn"},
             ],
             # Bước Thông tin nhận kết quả: cổng để CẢ BA công tắc tắt, không có mặc định nào.
             # `label` phải đúng NGUYÊN VĂN chữ trên cổng — FE khớp công tắc theo nhãn đã fold

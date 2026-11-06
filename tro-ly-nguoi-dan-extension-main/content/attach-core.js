@@ -2878,6 +2878,9 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     const attachedNames = [];
     const skippedNames = [];
     const errors = [];
+    // Tệp hỏng thật theo fileIndex của payload — sidebar dựng báo cáo theo từng tệp (supportsAttachFileReport).
+    const failedFiles = [];
+    let fixedFailed = false;
     let terminalCode = null;
     const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
 
@@ -2913,7 +2916,7 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
       const fixedResult = await attachFilesByFixedSlot(payloadFiles, fixedItems);
       attachedNames.push(...(fixedResult.fileNames || []));
       skippedNames.push(...(fixedResult.skippedNames || []));
-      if (fixedResult.error) errors.push(fixedResult.error);
+      if (fixedResult.error) { errors.push(fixedResult.error); fixedFailed = true; }
       if (!normalItems.length) {
         if (errors.length) {
           return {
@@ -2985,6 +2988,7 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
         const payloadFile = payloadForPlanItem(payloadFiles, item, i);
         if (!payloadFile) {
           errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
+          failedFiles.push({ fileIndex: item.fileIndex, error: "Không đọc được tệp." });
           continue;
         }
         console.log("[AutoFill-AttachPlan] attaching", {
@@ -3096,9 +3100,10 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     }
 
     // Hết lượt mà còn hoãn = hỏng thật. Báo TỪNG tệp để cán bộ biết đính tay ô nào.
-    for (const { index } of queue) {
+    for (const { item, index } of queue) {
       const message = lastErrorByIndex.get(index);
       if (message) errors.push(message);
+      failedFiles.push({ fileIndex: item.fileIndex, error: message || "" });
     }
 
     if (errors.length) {
@@ -3109,6 +3114,8 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
         skipped: skippedNames.length,
         fileNames: attachedNames,
         skippedNames,
+        // Lỗi của nhánh ô cố định không gắn được với tệp nào → để sidebar đối chiếu theo tên tệp đã lên trang.
+        ...(fixedFailed ? {} : { failedFiles }),
       };
     }
     return {

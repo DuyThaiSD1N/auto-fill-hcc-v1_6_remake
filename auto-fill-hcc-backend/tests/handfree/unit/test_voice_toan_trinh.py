@@ -167,7 +167,7 @@ async def test_noi_nop_ho_so_thi_hoi_xac_nhan_roi_moi_nop():
     conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
     asked = await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
     assert asked.display_md == ("Công dân chắc chắn **nộp hồ sơ** chứ ạ? Nói **Có** hoặc bấm **Lưu và nộp hồ sơ** để "
-                                "em nộp ạ.")
+                                "tôi nộp ạ.")
     assert not any(a.get("type") == "guided_submit" for a in asked.actions)
     assert asked.chips[0]["send"] == '__action:tpm_submit:{"voiceConfirmed":true}'
     # Sự kiện nền xen giữa không làm mất câu hỏi xác nhận.
@@ -183,7 +183,7 @@ async def test_noi_khong_thi_chua_nop_va_giu_nut():
     conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
     await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
     reply = await flow.handle_turn(conv, Intent("deny"))
-    assert reply.display_md.startswith("Dạ, em chưa nộp.") and "**Lưu và nộp hồ sơ**" in reply.display_md
+    assert reply.display_md.startswith("Dạ, tôi chưa nộp.") and "**Lưu và nộp hồ sơ**" in reply.display_md
     assert reply.chips == [chip] and not reply.actions
 
 

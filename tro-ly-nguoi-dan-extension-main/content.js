@@ -763,7 +763,7 @@
     if (/—\s*home\b/i.test(raw)) detail = "Đang mở trang đăng ký hộ kinh doanh";
     else if (/—\s*select-registration\b/i.test(raw)) detail = "Đang chọn Thành lập mới hộ kinh doanh";
     else if (/—\s*confirm\b/i.test(raw)) detail = "Đang xác nhận và mở trang kê khai";
-    if (!detail) detail = "Công dân chờ em xử lý hồ sơ ạ.";
+    if (!detail) detail = "Công dân chờ tôi xử lý hồ sơ ạ.";
 
     return {
       text: raw,
@@ -840,7 +840,7 @@
             </svg>
             <div class="copy">
               <p class="title" id="title">Đang tự động mở trang kê khai</p>
-              <p class="detail" id="detail" aria-live="polite">Công dân chờ em xử lý hồ sơ ạ.</p>
+              <p class="detail" id="detail" aria-live="polite">Công dân chờ tôi xử lý hồ sơ ạ.</p>
             </div>
           </div>
           <div class="meta"><span id="phase">Hồ sơ hộ kinh doanh</span><span class="step" id="step"></span></div>
@@ -860,7 +860,7 @@
       cancel.disabled = true;
       cancel.textContent = "Đang dừng…";
       shadow.getElementById("title").textContent = "Đang dừng tiến trình";
-      shadow.getElementById("detail").textContent = "Em đang dừng ở bước an toàn gần nhất ạ.";
+      shadow.getElementById("detail").textContent = "Tôi đang dừng ở bước an toàn gần nhất ạ.";
       if (typeof H.cancelBusinessRegistrationRun === "function") {
         await H.cancelBusinessRegistrationRun();
         return;

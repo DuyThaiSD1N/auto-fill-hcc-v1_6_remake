@@ -104,6 +104,13 @@
     _voiceByLang = map && typeof map === "object" ? map : {};
   }
 
+  // Tốc độ đọc cán bộ chọn (cài đặt tài khoản); null = theo mặc định của web quản trị. BE ép vào khoảng cho phép.
+  let _tempo = null;
+  function setTempo(value) {
+    const n = Number(value);
+    _tempo = value != null && Number.isFinite(n) && n > 0 ? n : null;
+  }
+
   function ttsWsUrl(lang) {
     const base = window.HCC_BASE_URL || "https://demo-trolyao-hcc.vnekyc.vn";
     const u = new URL(base);
@@ -113,6 +120,9 @@
     // BE lọc qua allowlist (voice/catalog.py) nên id sai/cũ chỉ rơi về mặc định, không vỡ tiếng.
     const voice = _voiceByLang[lang || "vi"];
     if (voice) params.set("voice", voice);
+    if (_tempo != null) params.set("tempo", String(_tempo));
+    // offscreen.js phát theo sample_rate của từng khung âm thanh → BE được trả đúng tần số riêng của giọng.
+    params.set("sr", "1");
     u.search = `?${params.toString()}`;
     return u.toString();
   }
@@ -188,5 +198,5 @@
     try { cb(); } catch (_) { /* nuốt lỗi callback */ }
   });
 
-  window.__hccTTS = { speak, stop, setMuted, setVoice, isSpeaking };
+  window.__hccTTS = { speak, stop, setMuted, setVoice, setTempo, isSpeaking };
 })();

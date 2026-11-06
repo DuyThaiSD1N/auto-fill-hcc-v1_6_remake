@@ -965,7 +965,7 @@ _VOICE_BLOCKED_SENDS = {
 # nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
 # nhận chưa có bản dịch).
 _VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND,
-                        bac_ninh.SUBMIT_SEND}
+                        bac_ninh.SUBMIT_SEND, hkd_tro_ly.SUBMIT_SEND}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
@@ -2715,7 +2715,11 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     accepted: bool | None = None
     method, checks, prechecked = "chip", [], False
-    if intent.kind == "action" and intent.value == "consent":
+    no_docs = intent.kind == "action" and intent.payload.get("noDocs") is True
+    if intent.kind == "action" and intent.value == "consent_no_docs":
+        # Nói "không có tờ khai, làm cùng trợ lý" = đồng ý bằng lời + vào hỏi đáp (luồng hộ kinh doanh).
+        accepted, method, checks, no_docs = True, "verbal", [True, True], True
+    elif intent.kind == "action" and intent.value == "consent":
         accepted = bool(intent.payload.get("accepted"))
         checks = list(intent.payload.get("checks") or [])
         prechecked = intent.payload.get("prechecked") is True
@@ -2743,9 +2747,12 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     # vừa nói đã được ghi nhận. Extension cũ bỏ qua action lạ.
     verbal_action = ({"type": "consent_verbal", "accepted": accepted}
                      if method == "verbal" else None)
-    if accepted and intent.payload.get("noDocs") is True and hkd_tro_ly.active(conv, proc):
-        # Nút "không có tờ khai, giấy tờ" trên thẻ đồng ý: đồng ý xong đi thẳng vào hỏi đáp.
-        return await hkd_tro_ly.start_no_docs(conv)
+    if accepted and no_docs and hkd_tro_ly.no_docs_on(conv, proc):
+        # Nút / lời nói "không có tờ khai, giấy tờ": đồng ý xong đi thẳng vào hỏi đáp.
+        r = await hkd_tro_ly.start_no_docs(conv)
+        if verbal_action:
+            r.actions = [verbal_action, *r.actions]
+        return r
     if accepted:
         intro = _fmt(vi.CONSENT_ACCEPTED, log_id=entry["_id"],
                      time=entry["at_display"], version=entry["version"])
@@ -3710,11 +3717,11 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
                 else vi.ATTACH_SUPPLEMENT_SESSION_EXPIRED)
     finish_action = finish_action or _DOCUMENT_ADJUSTMENT_LABELS[target].removeprefix("✅ ")
     finish_detail = finish_detail or (
-        "em sẽ đọc lại toàn bộ danh sách giấy tờ và điền lại tờ khai"
+        "tôi sẽ đọc lại toàn bộ danh sách giấy tờ và điền lại tờ khai"
         if target == "declaration"
-        else "em sẽ đọc lại giấy tờ và điền lại thông tin chủ hồ sơ"
+        else "tôi sẽ đọc lại giấy tờ và điền lại thông tin chủ hồ sơ"
         if target == "owner"
-        else "em sẽ kiểm tra toàn bộ danh sách còn lại và tự bỏ qua những tệp đã có trên hồ sơ"
+        else "tôi sẽ kiểm tra toàn bộ danh sách còn lại và tự bỏ qua những tệp đã có trên hồ sơ"
     )
     r = Reply(*_fmt(
         template,
@@ -4329,11 +4336,11 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
         attach_action = await _authorization_attach_action(conv, proc_owner)
         missing_text = _join_owner_labels(missing)
         missing_note = (
-            f"\n\nCòn thiếu **{missing_text}**, công dân vui lòng tự điền giúp em."
+            f"\n\nCòn thiếu **{missing_text}**, công dân vui lòng tự điền giúp tôi."
             if missing else ""
         )
         missing_tts = (
-            f" Còn thiếu {missing_text}, công dân vui lòng tự điền giúp em."
+            f" Còn thiếu {missing_text}, công dân vui lòng tự điền giúp tôi."
             if missing else ""
         )
         note, chips = _owner_step_follow_up(conv, proc_owner)

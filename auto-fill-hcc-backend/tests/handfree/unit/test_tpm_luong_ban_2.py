@@ -122,11 +122,11 @@ def test_du_lieu_dien_ve_thi_im_lang_the_sang_buoc_dien_va_tat_chu_giai_cu():
 async def test_ket_qua_dien_chi_mot_con_so_la_so_o_xanh_tren_cong():
     conv = _conv("filling", pipeline_status="running", attachment_plan_started=True)
     reply = await _turn(conv, "action", "fill_report", {"filled": 20, "notFound": ["Nơi cấp"], "review": MISSING})
-    assert reply.display_md.startswith("🟩 Em đã điền **13 ô** vào tờ khai.")
+    assert reply.display_md.startswith("🟩 Tôi đã điền **13 ô** vào tờ khai.")
     assert "20" not in reply.display_md
-    assert "🟨 **1 ô** em điền mặc định" in reply.display_md
+    assert "🟨 **1 ô** tôi điền mặc định" in reply.display_md
     assert "⚠️ **1 ô** chưa khớp được trên tờ khai: Nơi cấp." in reply.display_md
-    assert reply.tts_text.startswith("Dạ em đã điền 13 ô vào tờ khai.")
+    assert reply.tts_text.startswith("Dạ tôi đã điền 13 ô vào tờ khai.")
     # Đang đính kèm: chưa kết luận, chưa có nút.
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 2}]
     assert not reply.chips and not _trails(reply)
@@ -153,7 +153,7 @@ async def test_ke_hoach_ve_sau_thi_chi_phat_lenh_dinh():
 
 async def test_con_o_bat_buoc_thi_chi_moi_bo_sung_chua_co_nut_di_tiep():
     conv, reply = await _filled_and_attached(MISSING)
-    assert reply.display_md.startswith("📎 Em đã đính kèm **1 tệp**:")
+    assert reply.display_md.startswith("📎 Tôi đã đính kèm **1 tệp**:")
     assert "cccd.pdf" in reply.display_md and "rà soát lại các tệp đã đính" in reply.display_md
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 2, "done": True}]
     (trail,) = _trails(reply)
@@ -189,7 +189,7 @@ async def test_khong_dinh_duoc_tep_nao_thi_the_bao_loi_va_chua_ket_luan():
 
 async def test_dinh_loi_mot_phan_thi_bao_loi_va_khong_khang_dinh_da_dinh_du():
     conv, reply = await _filled_and_attached(FULL, errors=["Tệp cccd.pdf quá lớn"])
-    assert reply.display_md.startswith("⚠️ Em đính được **1 tệp**, còn lỗi:")
+    assert reply.display_md.startswith("⚠️ Tôi đính được **1 tệp**, còn lỗi:")
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 2, "failed": True}]
     (trail,) = _trails(reply)
     assert trail.startswith("✓ Công dân đã điền đủ các thông tin bắt buộc.")
@@ -235,7 +235,7 @@ async def test_hoi_xong_van_con_o_bat_buoc_thi_bao_so_o_chua_co_nut_di_tiep():
     await _turn(conv, "action", "field_review_start")
     reply = await _turn(conv, "event", "field_review_focus",
                         {"field": None, "stats": {"filled": 15, "optional": 0, "required": 2}})
-    assert reply.display_md.startswith("✓ Em đã hỏi hết các ô còn trống. Tờ khai còn **2 ô bắt buộc** công dân cần điền.")
+    assert reply.display_md.startswith("✓ Tôi đã hỏi hết các ô còn trống. Tờ khai còn **2 ô bắt buộc** công dân cần điền.")
     assert _sends(reply) == ["__action:field_review_start", *SMALL]
 
 
@@ -243,7 +243,7 @@ async def test_dung_hoi_ma_con_o_bat_buoc_cung_chua_co_nut_di_tiep():
     conv, _ = await _filled_and_attached(MISSING)
     await _turn(conv, "action", "field_review_start")
     reply = await _turn(conv, "action", "field_review_stop")
-    assert reply.display_md.startswith("Dạ, em dừng hỏi. Tờ khai còn **4 ô bắt buộc**")
+    assert reply.display_md.startswith("Dạ, tôi dừng hỏi. Tờ khai còn **4 ô bắt buộc**")
     assert not set(NEXT) & set(_sends(reply))
 
 
@@ -273,7 +273,7 @@ async def test_dien_lai_the_hai_buoc_roi_ket_luan_ngay():
     assert reply.display_md == vi.FLOW2_REFILL["md"]
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 0, "steps": list(vi.FLOW2_STEPS[:2])}]
     reply = await _turn(conv, "action", "fill_report", {"filled": 20, "notFound": [], "review": FULL})
-    assert reply.display_md.startswith("🟩 Em đã điền **17 ô**")
+    assert reply.display_md.startswith("🟩 Tôi đã điền **17 ô**")
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 2, "done": True}]
     (trail,) = _trails(reply)
     assert trail.startswith("✓ Công dân đã điền và đính kèm đủ")

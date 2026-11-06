@@ -128,15 +128,15 @@
     if (res?.ok) {
       ketQuaDangChon = String(lenh.method || "");
       const thieu = Array.isArray(res.missing) && res.missing.length
-        ? ` Công dân điền giúp em: ${res.missing.map((m) => `**${m}**`).join(", ")}.` : "";
+        ? ` Công dân điền giúp tôi: ${res.missing.map((m) => `**${m}**`).join(", ")}.` : "";
       const doiCach = (lenh.options || []).length
         ? "chọn ở danh sách bên dưới" : "gạt lại trên trang";
-      return `✅ Em đã chọn sẵn **${lenh.label}** cho hồ sơ này.${thieu} Muốn nhận cách khác thì `
+      return `✅ Tôi đã chọn sẵn **${lenh.label}** cho hồ sơ này.${thieu} Muốn nhận cách khác thì `
         + `công dân ${doiCach}, rồi bấm nút **Gửi hồ sơ** ạ.`;
     }
     daGatKetQua = false; // cho lượt vẽ sau thử lại
-    return `⚠️ Em chưa chọn sẵn được cách nhận kết quả${res?.error ? `: *${res.error}*` : ""}. `
-      + `Công dân gạt **${lenh.label}** trên trang giúp em, rồi bấm nút **Gửi hồ sơ** bên dưới ạ.`;
+    return `⚠️ Tôi chưa chọn sẵn được cách nhận kết quả${res?.error ? `: *${res.error}*` : ""}. `
+      + `Công dân gạt **${lenh.label}** trên trang giúp tôi, rồi bấm nút **Gửi hồ sơ** bên dưới ạ.`;
   }
 
   function keyTheoNhan(nhan) {
@@ -144,24 +144,24 @@
     return opt ? opt.key : "";
   }
 
-  const NHAC_GUI = "\n\nCông dân kiểm tra thông tin, nếu đã ổn thì bấm **Gửi hồ sơ** để em nộp "
+  const NHAC_GUI = "\n\nCông dân kiểm tra thông tin, nếu đã ổn thì bấm **Gửi hồ sơ** để tôi nộp "
     + "hồ sơ ạ.";
 
   // Câu báo sau khi đổi cách — cùng lời với hồ sơ chính (GUIDED_RESULT_* ở BE) để hai nơi
   // không nói hai kiểu.
   function baoDoiKetQua(opt, res) {
     if (!res?.ok) {
-      return `⚠️ Em chưa gạt được công tắc **${opt.label}** trên trang. Công dân gạt giúp em `
+      return `⚠️ Tôi chưa gạt được công tắc **${opt.label}** trên trang. Công dân gạt giúp tôi `
         + "ngay trên trang rồi bấm **Gửi hồ sơ** ạ.";
     }
-    const daChon = `✅ Em đã chọn **${opt.label}** trên trang.`;
+    const daChon = `✅ Tôi đã chọn **${opt.label}** trên trang.`;
     const thieu = Array.isArray(res.missing) ? res.missing : [];
     if (thieu.length) {
-      return `${daChon}\n\nTrang còn thiếu **${thieu.join(", ")}** — công dân điền nốt giúp em ạ.`;
+      return `${daChon}\n\nTrang còn thiếu **${thieu.join(", ")}** — công dân điền nốt giúp tôi ạ.`;
     }
     if (opt.needsInput) {
       return `${daChon}\n\nCách này cần thêm thông tin người nhận — công dân điền trực tiếp `
-        + "trên trang giúp em nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ." + NHAC_GUI;
+        + "trên trang giúp tôi nhé, tôi không điền hộ địa chỉ hay tên người nhận đâu ạ." + NHAC_GUI;
     }
     return daChon + NHAC_GUI;
   }
@@ -247,8 +247,8 @@
         if (choTrang) btn.textContent = "⏳ Đang chờ trang chuyển bước…";
         const buocSau = choTrang ? await choSangBuoc(step) : step;
         if (!res?.clicked) {
-          loiVuaRoi = "⚠️ Em chưa bấm được nút trên trang. Công dân cuộn xuống cuối trang bấm "
-            + `**${tenNutTrang}** giúp em ạ.`;
+          loiVuaRoi = "⚠️ Tôi chưa bấm được nút trên trang. Công dân cuộn xuống cuối trang bấm "
+            + `**${tenNutTrang}** giúp tôi ạ.`;
         } else if (res.message) {
           // Đọc NGUYÊN VĂN lời cổng: toast tự tắt sau vài giây, không đọc lại thì công dân chỉ
           // thấy "bấm mà không có gì xảy ra".
@@ -256,15 +256,15 @@
         } else if (laGui) {
           // Nói đúng việc đã làm là BẤM. Cổng báo nộp thành công bằng chính khung toast đó,
           // mà engine cố tình bỏ qua lời "thành công" nên ở đây không có căn cứ khẳng định hơn.
-          loiVuaRoi = "✅ Em đã bấm **Gửi hồ sơ** cho hồ sơ ở tab này rồi ạ.";
+          loiVuaRoi = "✅ Tôi đã bấm **Gửi hồ sơ** cho hồ sơ ở tab này rồi ạ.";
         } else if (buocSau > step) {
           loiVuaRoi = theHoSo?.resultMethod?.label
             ? "✅ Đã sang bước **Thông tin nhận kết quả**."
             : "✅ Đã sang bước **Thông tin nhận kết quả**. Công dân chọn cách nhận kết "
-              + "quả trên trang rồi bấm nút bên dưới để em gửi hồ sơ này ạ.";
+              + "quả trên trang rồi bấm nút bên dưới để tôi gửi hồ sơ này ạ.";
         } else {
-          loiVuaRoi = "⚠️ Em bấm rồi mà trang chưa chuyển bước và cũng không báo gì. Công dân "
-            + "rà lại các ô còn thiếu trên trang giúp em, rồi bấm lại nút bên dưới ạ.";
+          loiVuaRoi = "⚠️ Tôi bấm rồi mà trang chưa chuyển bước và cũng không báo gì. Công dân "
+            + "rà lại các ô còn thiếu trên trang giúp tôi, rồi bấm lại nút bên dưới ạ.";
         }
         await ve();
       })();
@@ -304,9 +304,9 @@
     const ten = theHoSo?.label ? `**${theHoSo.label}**` : "giấy tờ của hồ sơ này";
     // Không đọc được thanh bước thì không có nút để chỉ vào — chỉ đường thủ công cho chắc.
     const viec = step
-      ? "công dân kiểm tra lại rồi bấm nút bên dưới, em làm tiếp cho hồ sơ này ạ."
+      ? "công dân kiểm tra lại rồi bấm nút bên dưới, tôi làm tiếp cho hồ sơ này ạ."
       : "công dân kiểm tra lại rồi bấm **Bước tiếp theo / Gửi hồ sơ** ở cuối trang ạ.";
-    return `✅ Tab này là **hồ sơ riêng** cho ${ten} — phần đính kèm em lo ở đây, ${viec}`;
+    return `✅ Tab này là **hồ sơ riêng** cho ${ten} — phần đính kèm tôi lo ở đây, ${viec}`;
   }
 
   async function ve() {
@@ -330,11 +330,11 @@
         else themBot(h.text);
       });
       if (!conv) {
-        themBot("ℹ️ Em chưa đọc lại được cuộc trò chuyện ở hồ sơ chính, nhưng tab này vẫn dùng "
+        themBot("ℹ️ Tôi chưa đọc lại được cuộc trò chuyện ở hồ sơ chính, nhưng tab này vẫn dùng "
           + "bình thường ạ.");
       }
       themBot(loiNoiCuaTabNay(step));
-      themBot("💬 Công dân muốn hỏi gì thì quay về **hồ sơ chính** nhé — em trả lời ở bên đó ạ.");
+      themBot("💬 Công dân muốn hỏi gì thì quay về **hồ sơ chính** nhé — tôi trả lời ở bên đó ạ.");
       if (loiVuaRoi) { themBot(loiVuaRoi); loiVuaRoi = ""; }
       if (baoGatKetQua) themBot(baoGatKetQua);
       veCardKetQua(step);

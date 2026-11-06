@@ -58,7 +58,7 @@ test("mỗi tệp về: thông báo TEXT trên danh sách + VOICE; nút Đã đ�
   assert.match(sidebar, /function renderScanFeedback\(\)/);
   // Chữ giờ do BE cấp (/voice/config → scanFeedback) để có bản Mông; bản dưới đây chỉ là
   // dự phòng khi gặp server cũ, nên số tệp là {count} chứ không còn nội suy ${n}.
-  assert.match(sidebar, /Em đã nhận \*\*\{count\} tệp\*\* giấy tờ từ máy quét/);  // text tổng số tệp
+  assert.match(sidebar, /Tôi đã nhận \*\*\{count\} tệp\*\* giấy tờ từ máy quét/);  // text tổng số tệp
   assert.match(sidebar, /đặt tiếp tờ nữa/);                                       // còn thì đặt tiếp
   assert.match(sidebar, /Đã đưa đủ giấy tờ/);                                     // đủ thì bấm
   // Vẫn đọc thành tiếng, nhưng giọng đi theo ngôn ngữ CỦA CHỮ (xem scan-feedback-hmong).

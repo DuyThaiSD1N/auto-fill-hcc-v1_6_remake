@@ -29,7 +29,7 @@ test("vòng thử-lại-tại-chỗ cũ phải biến mất", () => {
 });
 
 test("báo lỗi theo TỪNG tệp, không nuốt phần còn lại", () => {
-  assert.match(content, /for \(const \{ index \} of queue\)[\s\S]{0,220}?errors\.push\(message\)/);
+  assert.match(content, /for \(const \{ (?:item, )?index \} of queue\)[\s\S]{0,220}?errors\.push\(message\)/);
 });
 
 test("chế độ tách hồ sơ vẫn dừng ngay khi ví React treo", () => {
