@@ -557,3 +557,68 @@ def test_ngay_qwen_doc_khong_hop_ly_thi_bo(monkeypatch, reply):
     res, calls = _run_with_vision(monkeypatch, _compact(_CHONG), reply)
     assert len(calls) == 1
     assert "citizencauhoi5" not in {f["name"] for f in res["fields"]}
+
+
+# Trích lục khai tử chỉ in "Nơi chết", không có dòng cư trú. _KHAI_TU mang sẵn nơi cư trú Số 1, Phường Xuân Hương.
+_DONG_DANG_KY = "Đã được đăng ký khai tử tại"
+_DONG_NOI_CHET = "Nơi chết: Số 1, phường Xuân Hương, tỉnh Lâm Đồng"
+_OCR_NOI_CHET = _OCR_TRICH_LUC_KHAI_TU.replace(_DONG_DANG_KY, f"{_DONG_NOI_CHET}\n{_DONG_DANG_KY}")
+_DONG_CU_TRU = "Nơi cư trú cuối cùng: Số 1, phường Xuân Hương, tỉnh Lâm Đồng"
+
+
+def _enrich_khai_tu(ocr: str, values=_KHAI_TU, event="khai tử"):
+    return mapper.enrich(_compact(values), {"formContext": ACCOUNT, "_ocr_text": ocr,
+                                            "_reasoning_context": _context("Không xác định", event=event)})
+
+
+@pytest.mark.parametrize("ocr", [
+    _OCR_NOI_CHET,
+    _OCR_NOI_CHET.replace("phường Xuân Hương,", "phường Xuân\nHương,"),  # OCR xuống dòng giữa địa chỉ
+    _OCR_NOI_CHET + "\n\n---\n\n===== cccd.jpg =====\nNơi thường trú: Số 9, phường Y, tỉnh Z",  # CCCD người thân
+])
+def test_khai_tu_noi_chet_khong_phai_noi_cu_tru(ocr):
+    out, warnings = _enrich_khai_tu(ocr)
+    by = {f["name"]: f["value"] for f in out}
+    assert not _area_fields(out)
+    assert by["citizenNDK_Noicutru"] == "1" and by["citizenField21"] == "Việt Nam"
+    assert any("Phường/Xã" in w for w in warnings)
+
+
+@pytest.mark.parametrize("ocr", [
+    _OCR_NOI_CHET.replace(_DONG_NOI_CHET, f"{_DONG_CU_TRU}\n{_DONG_NOI_CHET}"),  # cư trú trùng nơi chết
+    _OCR_NOI_CHET.replace(_DONG_NOI_CHET, f"{_DONG_CU_TRU}\nNơi chết: Bệnh viện A, tỉnh Lâm Đồng"),
+])
+def test_khai_tu_co_dong_cu_tru_thi_giu_noi_cu_tru(ocr):
+    out, _ = _enrich_khai_tu(ocr)
+    area = _area_fields(out)
+    assert area["citizenNDK_PhuongXa"]["value"] == "Phường Xuân Hương" and area["citizenField38"]["value"] == "Số 1"
+
+
+def test_khai_sinh_co_dong_noi_chet_van_giu_noi_cu_tru():
+    out, _ = _enrich_khai_tu(_OCR_NOI_CHET, SUBJECT, "khai sinh")
+    assert _area_fields(out)["citizenNDK_PhuongXa"]["value"] == "Phường Xuân Hương"
+
+
+def _co_quan_dang_ky(ocr: str, llm_value="UBND phường X") -> str:
+    out, _ = _enrich_khai_tu(ocr, {**_KHAI_TU, "GiayTo_CoQuanDangKy": llm_value})
+    return {f["name"]: f["value"] for f in out}["citizenHoSo_CoQuanDangKy"]
+
+
+_OCR_CO_QUAN_DU = _OCR_TRICH_LUC_KHAI_TU.replace("tại: UBND phường X", "tại: UBND phường X, thành phố Y, tỉnh Z")
+
+
+@pytest.mark.parametrize("ocr", [
+    _OCR_CO_QUAN_DU,
+    _OCR_CO_QUAN_DU.replace("thành phố Y, ", "thành phố Y,\n"),  # xuống dòng, không nuốt dòng "Số: ..." ngay dưới
+    f"{_DONG_DANG_KY}: UBND phường X, thành phố Y, tỉnh Z\n\n---\n\n===== cccd.jpg =====\nHọ và tên: A",  # cuối tệp
+])
+def test_khai_tu_co_quan_dang_ky_lay_nguyen_dong(ocr):
+    assert _co_quan_dang_ky(ocr) == "UBND phường X, thành phố Y, tỉnh Z"
+
+
+@pytest.mark.parametrize("ocr", [
+    _OCR_TO_KHAI + "\n" + _OCR_CO_QUAN_DU,
+    _OCR_CO_QUAN_DU + "\n" + _OCR_CO_QUAN_DU.replace("phường X,", "phường W,"),
+])
+def test_co_to_khai_hoac_nhieu_noi_dang_ky_giu_gia_tri_luot_trich(ocr):
+    assert _co_quan_dang_ky(ocr) == "UBND phường X"

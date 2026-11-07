@@ -73,6 +73,8 @@ _ID_LOOKAHEAD_LINES = 3
 _EXTRACT_NO_RE = re.compile(r"(?<![\d/])(\d{1,6}(?:\s*/\s*\d{4})?\s*/\s*TLK([TS])(?:\s*-\s*[A-Z]{1,3})?)\b")
 _EXTRACT_CODE_EVENT = {"T": "death", "S": "birth"}
 
+_RESIDENCE_LABEL_RE = re.compile(r"\b(cu tru|thuong tru|tam tru)\b")
+
 # Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ; số 12 chữ số của trẻ là số định danh, không phải
 # số giấy tờ tùy thân.
 _CAN_CUOC_MIN_AGE = 14
@@ -168,6 +170,45 @@ def _extract_number(event: str, ocr_text: str) -> str:
         return ""
     found = {re.sub(r"\s+", "", match[1]) for match in _EXTRACT_NO_RE.finditer(ocr_text)
              if _EXTRACT_CODE_EVENT[match[2]] == event}
+    return found.pop() if len(found) == 1 else ""
+
+
+def _labeled_text(lines: list[str], index: int) -> str:
+    """Dòng có nhãn, nối thêm dòng kế nếu dòng đó không có nhãn riêng: giấy và OCR có thể xuống dòng giữa địa chỉ.
+    "---" là vạch ngăn giữa các tệp OCR, không phải phần tiếp của dòng."""
+    following = lines[index + 1].strip() if index + 1 < len(lines) else ""
+    if not following or ":" in following or following == "---":
+        return lines[index]
+    return f"{lines[index]} {following}"
+
+
+def _copied_from_death_place(value, ocr_text: str) -> bool:
+    """Trích lục khai tử chỉ in "Nơi chết", không có dòng cư trú; LLM hay chép địa chỉ đó sang nơi cư trú. Địa chỉ
+    có thật dưới một nhãn cư trú (kể cả trùng nơi chết) thì vẫn giữ."""
+    if not isinstance(value, dict):
+        return False
+    parts = [re.sub(r"^(phuong|xa|thi tran)\s+", "", _fold(part))
+             for key in ("diaChi", "xa") for part in str(value.get(key) or "").split(",")]
+    parts = [part for part in parts if part]
+    if not parts:
+        return False
+    lines = [line for line in ocr_text.splitlines() if line.strip()]
+    labeled = [(_fold(line), _fold(_labeled_text(lines, index))) for index, line in enumerate(lines)]
+    in_death_place = any("noi chet" in line and all(part in text for part in parts) for line, text in labeled)
+    in_residence = any(_RESIDENCE_LABEL_RE.search(line) and all(part in text for part in parts)
+                       for line, text in labeled)
+    return in_death_place and not in_residence
+
+
+def _death_registrar(ocr_text: str) -> str:
+    """Nguyên dòng "Đã được đăng ký khai tử tại": LLM lúc chép đủ lúc cắt mất huyện/tỉnh. Có tờ khai thì theo tờ khai;
+    nhiều nơi khác nhau (trích lục của nhiều người) thì không biết của ai → trả rỗng để giữ giá trị lượt trích."""
+    if "to khai" in _fold(ocr_text):
+        return ""
+    lines = [line for line in ocr_text.splitlines() if line.strip()]
+    found = {re.sub(r"\s+", " ", _labeled_text(lines, index).partition(":")[2]).strip()
+             for index, line in enumerate(lines) if _fold(line).startswith("da duoc dang ky khai tu tai")}
+    found.discard("")
     return found.pop() if len(found) == 1 else ""
 
 
@@ -289,6 +330,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
     context = str(options.get("_reasoning_context") or "")
+    ocr_text = str(options.get("_ocr_text") or "")
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
@@ -366,7 +408,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
         # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
         add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
-        area = _area(values.get("NguoiDuocCap_NoiCuTru"), str(options.get("_ocr_text") or ""))
+        raw_area = values.get("NguoiDuocCap_NoiCuTru")
+        # Nơi chết không phải nơi cư trú: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
+        if event == "death" and _copied_from_death_place(raw_area, ocr_text):
+            area = {"quocGia": raw_area.get("quocGia") or "Việt Nam"}
+        else:
+            area = _area(raw_area, ocr_text)
         if area:
             add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
             # Radio "Trong nước" phải chọn trước: bốn ô địa chỉ chỉ hiện sau khi chọn.
@@ -380,11 +427,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                                 "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
 
     add("citizenLoaiViecYeuCau", _EVENT_TO_OPTION.get(event))
-    add("citizenHoSo_CoQuanDangKy", values.get("GiayTo_CoQuanDangKy"))
+    registrar = values.get("GiayTo_CoQuanDangKy")
+    if registrar and event == "death":
+        registrar = _death_registrar(ocr_text) or registrar
+    add("citizenHoSo_CoQuanDangKy", registrar)
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
     # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
     # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.
-    registration_no = _extract_number(event, str(options.get("_ocr_text") or "")) or values.get("GiayTo_So")
+    registration_no = _extract_number(event, ocr_text) or values.get("GiayTo_So")
     if _digits(registration_no) in _id_card_numbers(values, options):
         warnings.append("Số đăng ký đọc ra trùng số CMND/CCCD trong hồ sơ — đã bỏ trống, cán bộ nhập ô Số đăng ký "
                         "theo dòng \"Số:\" ở đầu giấy hộ tịch.")
