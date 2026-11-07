@@ -1,0 +1,23 @@
+# Web tự động kiểm thử (cổng 12008) — project compose riêng, không nằm trong compose.prod.yml của backend.
+# Nối vào mạng autofill_hcc_net có sẵn của stack backend để gọi app:12005, nên phải bật stack backend trước.
+name: auto-test-hcc
+
+services:
+  test-fe:
+    build: ./web
+    image: auto-test-hcc-web:latest
+    environment:
+      - BACKEND_URL=${TEST_BACKEND_URL:-http://app:12005}
+      - AGENT_URL=${AGENT_URL:-http://host.docker.internal:12009}
+    ports:
+      - "12008:12008"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - autofill
+
+networks:
+  autofill:
+    external: true
+    name: autofill_hcc_net

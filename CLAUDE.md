@@ -1,10 +1,11 @@
 # auto-fill-hcc
 
-Monorepo 3 phần:
+Monorepo 4 phần:
 
 - `auto-fill-hcc-backend/` — FastAPI + các pipeline thủ tục hành chính, chạy bằng Docker.
 - `auto-fill-hcc-extension/` — extension Chrome điền form, trỏ về `http://localhost:12005`.
 - `tro-ly-nguoi-dan-extension-main/` — extension trợ lý người dân.
+- `auto-test-hcc/` — web Agent tự sửa + dịch vụ agent, tách riêng khỏi backend (xem mục Web Agent tự sửa).
 
 ## BẮT BUỘC: sửa xong code backend là deploy Docker ngay
 
@@ -71,9 +72,9 @@ Chọn service để build theo chỗ đã sửa:
 | --- | --- |
 | `app/`, `scripts/`, `requirements.txt`, `Dockerfile` | `up -d --build --remove-orphans app` |
 | `fe/` | `up -d --build fe` |
-| `monitor-fe/` | `up -d --build monitor-fe test-fe` (web Kiểm thử build từ cùng thư mục) |
+| `monitor-fe/` | `up -d --build monitor-fe` |
 
-Sửa file trong hai thư mục extension thì KHÔNG cần đụng Docker.
+Sửa file trong hai thư mục extension thì KHÔNG cần đụng Docker. Sửa `auto-test-hcc/` thì không build backend (xem mục Web Agent tự sửa).
 
 ## TUYỆT ĐỐI dùng compose.prod.yml
 
@@ -88,7 +89,8 @@ web trace trả 502. Phần hướng dẫn Docker trong `auto-fill-hcc-backend/R
 | Backend API | 12005 |
 | Web quản lý (fe) | 12006 |
 | Web Monitor (monitor-fe) | 12007 |
-| Web Kiểm thử (test-fe) | 12008 |
+| Web Agent tự sửa (test-fe) | 12008 |
+| Dịch vụ agent (chạy trên host, chỉ nghe 127.0.0.1) | 12009 |
 | Mongo | 12004 |
 
 ## Deploy sang server khác
@@ -102,14 +104,18 @@ TARGET=user@server-dich ./scripts/deploy_to_server.sh
 Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào server đích chạy
 `cd /opt/autofill-hcc && ./server_up.sh` thì mới thực sự lên.
 
-## Web Kiểm thử (test-fe, cổng 12008)
+## Web Agent tự sửa (auto-test-hcc, cổng 12008)
 
-Một thủ tục × tối đa 5 bộ tài liệu × tối đa 5 lần chạy, gọi `/api/v2/process` y như extension rồi chấm bằng engine
-mô phỏng form của Monitor và so field giữa các lần. Mã nằm trong `monitor-fe` (`lab.html`, `src/lab/`), danh sách thủ
-tục ở `src/lab/procedures.ts`. Service gọi backend local theo `TEST_BACKEND_URL` (mặc định `http://app:12005`),
-KHÔNG theo `BACKEND_URL` của `.env`. Đăng nhập bằng tài khoản nào thì điền theo xã/tỉnh tài khoản đó; các lượt chạy
-ghi trace như lượt thật của tài khoản ấy. Bước điền luôn gửi `options.freshOcr=true` → BE bỏ đọc cache OCR (vẫn ghi),
-lần nào cũng OCR mới; bước đính kèm vẫn dùng cache như extension.
+Tách riêng khỏi backend theo yêu cầu người dùng, mã nằm ở `auto-test-hcc/`, ĐỪNG đưa lại vào `monitor-fe`. Compose riêng, nối vào
+mạng `autofill_hcc_net`, nên `docker compose` của phần này dùng `-f auto-test-hcc/compose.yml` chứ không phải `compose.prod.yml`.
+Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto-test-hcc/KE-HOACH.md`, team F19 cài máy mới theo `auto-test-hcc/HUONG-DAN-F19.md`.
+
+- Chỉ super_admin. Nhận mã req + mô tả lỗi; hội đồng agent họp, trọng tài quyết định; lỗi OCR thì bỏ qua và báo cáo; lỗi code thì sửa
+  BE hoặc extension, chạy test và build, chạy lại 5 lần để chấm. Bản sửa đạt nằm trong thư mục làm việc, chưa commit.
+- Giấy tờ chỉ lấy từ req nội bộ trong Mongo local. Mỗi lần chạy phải OCR mới: dịch vụ tự xoá cache OCR của đúng các tệp trong req rồi
+  kiểm lại `trace_steps.ocr[].cache`, không cần cờ trong BE.
+- Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền
+  5 lần, chấm trên giá trị đọc từ form. Bot KHÔNG được nộp hồ sơ: không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
 
 ## Thêm thủ tục mới
 

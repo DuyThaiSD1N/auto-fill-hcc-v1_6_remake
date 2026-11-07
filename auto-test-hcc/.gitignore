@@ -1,0 +1,7 @@
+# Hồ sơ chứng cứ chứa giấy tờ thật của người dân: tuyệt đối không commit.
+runs/
+# Phiên đăng nhập VNeID của cửa sổ bot.
+.profile/
+__pycache__/
+*.pyc
+.pytest_cache/

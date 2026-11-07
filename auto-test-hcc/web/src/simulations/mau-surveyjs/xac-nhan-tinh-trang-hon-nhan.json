@@ -1,0 +1,266 @@
+{
+  "source": "dichvucong.gov.vn/nop-ho-so?formalityId=019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9",
+  "title": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
+  "capturedAt": "2026-10-13T00:00:00.000Z",
+  "note": "CHƯA có ảnh chụp trang thật: bố cục dựng theo thứ tự ô + mã option trong app/pipelines/xac_nhan_tthn_dvc_moi/process/schema.py (mẫu ThongTinNguoiNopXacNhanTtHonNhanGopCatalog) và kiểu trình bày của các biểu mẫu cùng cổng. Ô tên bắt đầu \"~\" là ô BE không gửi, chưa chụp được tên thật. Bảng thành phần theo 3 dòng cố định của attach/dinh_kem_khong_tach/planner.py.",
+  "sections": [
+    {
+      "title": "",
+      "frame": "box",
+      "rows": [
+        { "fields": [
+          { "name": "~kinhGui", "kind": "text", "label": "KÍNH GỬI", "inlineLabel": true,
+            "auto": "extension điền \"UBND <phường/xã của tài khoản trợ lý>\" khi ô còn trống" }
+        ] }
+      ]
+    },
+    {
+      "title": "THÔNG TIN NGƯỜI NỘP",
+      "rows": [
+        { "fields": [
+          { "name": "~nguoiNop_HoTen", "kind": "text", "label": "Họ, chữ đệm, tên", "required": true, "readonly": true },
+          { "name": "~nguoiNop_SoDinhDanh", "kind": "text", "label": "Số định danh cá nhân", "required": true, "readonly": true },
+          { "name": "~nguoiNop_NgaySinh", "kind": "date", "label": "Ngày Sinh", "readonly": true },
+          { "name": "citizenPhone", "kind": "text", "label": "Số điện thoại", "required": true }
+        ] },
+        { "fields": [
+          { "name": "~nguoiNop_LoaiGiayTo", "kind": "dropdown", "label": "Loại Giấy tờ tùy thân", "required": true, "readonly": true },
+          { "name": "~nguoiNop_SoGiayTo", "kind": "text", "label": "Số giấy tờ tùy thân", "readonly": true },
+          { "name": "~nguoiNop_NoiCap", "kind": "text", "label": "Nơi cấp", "required": true, "readonly": true },
+          { "name": "~nguoiNop_NgayCap", "kind": "date", "label": "Ngày cấp", "required": true, "readonly": true },
+          { "name": "~nguoiNop_LoaiCuTru", "kind": "dropdown", "label": "Loại cư trú", "prefilled": true,
+            "options": [["1", "Thường trú"], ["2", "Tạm trú"], ["3", "Nơi ở hiện tại"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNycNoicutru", "kind": "radio", "label": "", "span": 4,
+            "options": [["1", "Trong nước"], ["2", "Khác"]] }
+        ] },
+        { "fields": [
+          { "name": "~nguoiNop_QuocGia", "kind": "dropdown", "label": "Quốc gia nơi cư trú", "required": true, "prefilled": true,
+            "visibleIf": { "citizenNycNoicutru": ["1"] } },
+          { "name": "~nguoiNop_Tinh", "kind": "dropdown", "label": "Nơi cư trú Tỉnh/ Thành phố", "required": true, "readonly": true,
+            "visibleIf": { "citizenNycNoicutru": ["1"] } },
+          { "name": "~nguoiNop_Xa", "kind": "dropdown", "label": "Nơi cư trú Phường/ Xã", "required": true, "readonly": true,
+            "visibleIf": { "citizenNycNoicutru": ["1"] } },
+          { "name": "~nguoiNop_DiaChi", "kind": "text", "label": "Địa chỉ chi tiết", "readonly": true,
+            "visibleIf": { "citizenNycNoicutru": ["1"] } }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan", "kind": "radio", "span": 4, "required": true,
+            "label": "Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân",
+            "options": [["1", "Bản thân"], ["2", "Khác"]] }
+        ] },
+        { "fields": [
+          { "name": "citizenField13", "kind": "text", "label": "Mối quan hệ khác", "required": true,
+            "visibleIf": { "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan": ["2"] } }
+        ] }
+      ]
+    },
+    {
+      "title": "NGƯỜI ĐƯỢC CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN",
+      "rows": [
+        { "fields": [
+          { "name": "citizenNDKHochudemtenngdccap", "kind": "text", "label": "Họ, chữ đệm, tên", "required": true },
+          { "name": "citizenNDKNgaythangnamsinh", "kind": "date", "label": "Ngày, tháng, năm sinh", "required": true },
+          { "name": "citizenNDKSoDinhDanh", "kind": "text", "label": "Số định danh cá nhân", "required": true,
+            "pattern": "^\\d{12}$", "patternHint": "đúng 12 chữ số" }
+        ] },
+        { "fields": [
+          { "name": "citizenNDKGioitinh", "kind": "dropdown", "label": "Giới tính", "options": [["1", "Nam"], ["2", "Nữ"]] },
+          { "name": "citizenNDKDantoc", "kind": "dropdown", "label": "Dân tộc", "options": [
+            ["01", "Kinh"], ["02", "Tày"], ["03", "Thái"], ["04", "Hoa"], ["05", "Khơ-me"], ["06", "Mường"], ["07", "Nùng"],
+            ["08", "H'Mông"], ["09", "Dao"], ["10", "Gia-rai"], ["11", "Ngái"], ["12", "Ê-đê"], ["13", "Ba na"],
+            ["14", "Xơ-Đăng"], ["15", "Sán Chay"], ["16", "Cơ-ho"], ["17", "Chăm"], ["18", "Sán Dìu"], ["19", "Hrê"],
+            ["20", "Mnông"], ["21", "Ra-glai"], ["22", "Xtiêng"], ["23", "Bru-Vân Kiều"], ["24", "Thổ"], ["25", "Giáy"],
+            ["26", "Cơ-tu"], ["27", "Giẻ Triêng"], ["28", "Mạ"], ["29", "Khơ-mú"], ["30", "Co"], ["31", "Tà-ôi"],
+            ["32", "Chơ-ro"], ["33", "Kháng"], ["34", "Xinh-mun"], ["35", "Hà Nhì"], ["36", "Chu ru"], ["37", "Lào"],
+            ["38", "La Chí"], ["39", "La Ha"], ["40", "Phù Lá"], ["41", "La Hủ"], ["42", "Lự"], ["43", "Lô Lô"],
+            ["44", "Chứt"], ["45", "Mảng"], ["46", "Pà Thẻn"], ["47", "Cơ Lao"], ["48", "Cống"], ["49", "Bố Y"],
+            ["50", "Si La"], ["51", "Pu Péo"], ["52", "Brâu"], ["53", "Ơ Đu"], ["54", "Rơ măm"], ["55", "Người nước ngoài"],
+            ["56", "Không rõ"]] },
+          { "name": "citizenField20", "kind": "dropdown", "label": "Quốc tịch" }
+        ] },
+        { "fields": [
+          { "name": "citizenNDKLoaigiayto", "kind": "dropdown", "label": "Loại Giấy tờ tùy thân", "options": [
+            ["2", "Chứng minh nhân dân"], ["3", "Giấy chứng minh sĩ quan quân đội nhân dân Việt Nam"],
+            ["4", "Giấy chứng minh công an nhân dân"], ["5", "Căn cước công dân"], ["6", "Hộ chiếu"], ["7", "Sổ hộ khẩu"],
+            ["8", "Các loại giấy tờ tùy thân khác"], ["9", "Thẻ căn cước"], ["10", "Giấy chứng nhận căn cước"]] },
+          { "name": "citizenNDKSogiaytotuythan", "kind": "text", "label": "Số giấy tờ tùy thân" },
+          { "name": "citizenNDKNgaycap", "kind": "date", "label": "Ngày cấp" },
+          { "name": "citizenNDKNocap", "kind": "text", "label": "Nơi cấp" }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNDKLoaicutru", "kind": "dropdown", "label": "Loại cư trú", "span": 2,
+            "options": [["1", "Thường trú"], ["2", "Tạm trú"], ["3", "Nơi ở hiện tại"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "citizenNDKnoicutru", "kind": "radio", "span": 4, "label": "Nơi cư trú",
+            "options": [["1", "Trong nước"], ["2", "Khác"]] }
+        ] },
+        { "cols": 4, "fields": [
+          { "name": "~citizenNDKQG_TrongNuoc", "kind": "dropdown", "label": "Quốc gia", "readonly": true,
+            "visibleIf": { "citizenNDKnoicutru": ["1"] } },
+          { "name": "citizenNDKTinh_ThTru", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "citizenNDKXa_ThTru", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "citizenNDKTinh_ThTru",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "citizenNDKDiaChi_ThTru", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["1"] } },
+          { "name": "~citizenNDKTinh_TamTru", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "~citizenNDKXa_TamTru", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "~citizenNDKTinh_TamTru",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "~citizenNDKDiaChi_TamTru", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["2"] } },
+          { "name": "~citizenNDKTinh_OHienTai", "kind": "dropdown", "label": "Tỉnh/Thành phố", "catalog": "provinces",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "~citizenNDKXa_OHienTai", "kind": "dropdown", "label": "Phường/Xã", "catalog": "wards", "parent": "~citizenNDKTinh_OHienTai",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "~citizenNDKDiaChi_OHienTai", "kind": "text", "label": "Địa chỉ chi tiết",
+            "visibleIf": { "citizenNDKnoicutru": ["1"], "citizenNDKLoaicutru": ["3"] } },
+          { "name": "citizenNDKQG_Khac", "kind": "dropdown", "label": "Quốc gia",
+            "visibleIf": { "citizenNDKnoicutru": ["2"] } },
+          { "name": "citizenNDKDiachi_Khac", "kind": "text", "label": "Địa chỉ",
+            "visibleIf": { "citizenNDKnoicutru": ["2"] } }
+        ] }
+      ]
+    },
+    {
+      "title": "TÌNH TRẠNG HÔN NHÂN",
+      "rows": [
+        { "fields": [
+          { "name": "citizenTinhtranghonnhan", "kind": "dropdown", "label": "Tình trạng hôn nhân", "required": true, "options": [
+            ["1", "Hiện tại chưa đăng ký kết hôn với ai"],
+            ["2", "Hiện tại đang có vợ/chồng"],
+            ["3", "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai"],
+            ["4", "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai"],
+            ["5", "Từ ngày… tháng… năm… đến ngày… tháng… năm … chưa đăng ký kết hôn với ai; hiện tại đang có vợ/chồng"],
+            ["6", "Khác - nếu không thuộc các trường hợp ở trên"]] }
+        ] },
+        { "fields": [
+          { "name": "citizenHovatencuavochongnguoicoyeucauxacnhantinhtranghonnhan", "kind": "text", "required": true,
+            "label": "Họ và tên của vợ/chồng người có yêu cầu xác nhận tình trạng hôn nhân",
+            "visibleIf": { "citizenTinhtranghonnhan": ["2"] } },
+          { "name": "citizenField40", "kind": "text", "label": "Số giấy chứng nhận kết hôn",
+            "visibleIf": { "citizenTinhtranghonnhan": ["2"] } },
+          { "name": "citizenField41", "kind": "date", "label": "Ngày cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["2"] } },
+          { "name": "citizenField42", "kind": "text", "label": "Cơ quan cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["2"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenSoBananQuyetdinhlyhon", "kind": "text", "label": "Số Bản án/Quyết định ly hôn",
+            "visibleIf": { "citizenTinhtranghonnhan": ["3"] } },
+          { "name": "citizenField46", "kind": "date", "label": "Ngày cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["3"] } },
+          { "name": "citizenField47", "kind": "text", "label": "Cơ quan cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["3"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenSogiaychungtuTrichluckhaituBanan", "kind": "text",
+            "label": "Số giấy chứng tử/Trích lục khai tử/Bản án",
+            "visibleIf": { "citizenTinhtranghonnhan": ["4"] } },
+          { "name": "citizenField50", "kind": "date", "label": "Ngày cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["4"] } },
+          { "name": "citizenField51", "kind": "text", "label": "Cơ quan cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["4"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenField56", "kind": "date", "label": "Từ ngày", "required": true,
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } },
+          { "name": "citizenField57", "kind": "date", "label": "Đến ngày", "required": true,
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } },
+          { "name": "citizenField531", "kind": "text", "label": "Họ và tên vợ/chồng", "required": true,
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenField54", "kind": "text", "label": "Số giấy chứng nhận kết hôn",
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } },
+          { "name": "citizenField55", "kind": "date", "label": "Ngày cấp",
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } },
+          { "name": "citizenField53", "kind": "text", "label": "Cơ quan cấp giấy chứng nhận kết hôn",
+            "visibleIf": { "citizenTinhtranghonnhan": ["5"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenField59", "kind": "text", "label": "Nội dung tình trạng hôn nhân", "required": true,
+            "visibleIf": { "citizenTinhtranghonnhan": ["6"] } }
+        ] }
+      ]
+    },
+    {
+      "title": "MỤC ĐÍCH SỬ DỤNG",
+      "rows": [
+        { "fields": [
+          { "name": "citizenField60", "kind": "dropdown", "label": "Mục đích sử dụng Giấy xác nhận tình trạng hôn nhân",
+            "required": true, "options": [
+            ["1", "Để đăng ký kết hôn tại Cơ quan đại diện Việt Nam ở nước ngoài"],
+            ["2", "Để đăng ký kết hôn tại cơ quan có thẩm quyền của nước ngoài"],
+            ["3", "Sử dụng vào mục đích khác"]] }
+        ] },
+        { "fields": [
+          { "name": "citizenField69", "kind": "text", "label": "Nhập mục đích", "required": true,
+            "visibleIf": { "citizenField60": ["3"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenHochudemtendaiienncngoai", "kind": "text", "label": "Họ, chữ đệm, tên người dự định kết hôn",
+            "required": true, "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidienngaysinh", "kind": "date", "label": "Ngày, tháng, năm sinh",
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidienquoctich", "kind": "dropdown", "label": "Quốc tịch",
+            "visibleIf": { "citizenField60": ["1", "2"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenDaidiengiaytotuythan", "kind": "dropdown", "label": "Loại Giấy tờ tùy thân", "options": [
+            ["2", "Chứng minh nhân dân"], ["3", "Giấy chứng minh sĩ quan quân đội nhân dân Việt Nam"],
+            ["4", "Giấy chứng minh công an nhân dân"], ["5", "Căn cước công dân"], ["6", "Hộ chiếu"], ["7", "Sổ hộ khẩu"],
+            ["8", "Các loại giấy tờ tùy thân khác"], ["9", "Thẻ căn cước"], ["10", "Giấy chứng nhận căn cước"]],
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidiensogiayto", "kind": "text", "label": "Số giấy tờ tùy thân",
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidienngaycap", "kind": "date", "label": "Ngày cấp",
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidiencoquancap", "kind": "text", "label": "Cơ quan cấp",
+            "visibleIf": { "citizenField60": ["1", "2"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenDaidiendiachi", "kind": "text", "label": "Nơi cư trú",
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenNoidudinhdangkykethon", "kind": "text", "label": "Nơi dự định đăng ký kết hôn",
+            "visibleIf": { "citizenField60": ["1", "2"] } },
+          { "name": "citizenDaidienquocgia", "kind": "dropdown", "label": "Quốc gia",
+            "visibleIf": { "citizenField60": ["1", "2"] } }
+        ] },
+        { "fields": [
+          { "name": "citizenField70", "kind": "text", "label": "Số lượng bản sao (điền 0 nếu không cần)",
+            "required": true, "pattern": "^\\d+$", "patternHint": "số nguyên" }
+        ] }
+      ]
+    },
+    {
+      "title": "ĐỊA ĐIỂM, NGÀY LẬP TỜ KHAI",
+      "rows": [
+        { "fields": [
+          { "name": "~tai", "kind": "dropdown", "label": "Tại",
+            "auto": "extension chọn tỉnh/thành của tài khoản trợ lý khi ô còn trống" },
+          { "name": "~ngayLap", "kind": "text", "label": "Ngày", "prefilled": true },
+          { "name": "~thangLap", "kind": "text", "label": "Tháng", "prefilled": true },
+          { "name": "~namLap", "kind": "text", "label": "năm", "prefilled": true }
+        ] }
+      ]
+    },
+    {
+      "title": "",
+      "frame": "box",
+      "rows": [
+        { "cols": 3, "fields": [
+          { "name": "~hinhThucNhanKetQua", "kind": "dropdown", "label": "Hình thức nhận kết quả", "prefilled": true }
+        ] }
+      ]
+    }
+  ],
+  "components": [
+    { "name": "- Trường hợp cá nhân yêu cầu cấp lại Giấy xác nhận tình trạng hôn nhân để sử dụng vào mục đích khác hoặc do Giấy xác nhận tình trạng hôn nhân đã hết thời hạn sử dụng thì phải nộp lại Giấy xác nhận tình trạng hôn nhân đã được cấp trước đó.", "banChinh": 1, "banSao": 0 },
+    { "name": "- Trường hợp người yêu cầu xác nhận tình trạng hôn nhân đã có vợ, chồng nhưng đã ly hôn hoặc người vợ hoặc chồng đã chết thì phải xuất trình hoặc nộp giấy tờ hợp lệ để chứng minh.", "banChinh": 1, "banSao": 0 },
+    { "name": "- Văn bản ủy quyền theo quy định của pháp luật trong trường hợp ủy quyền thực hiện việc cấp Giấy xác nhận tình trạng hôn nhân. Trường hợp người được ủy quyền là ông, bà, cha, mẹ, con, vợ, chồng, anh, chị, em ruột của người ủy quyền thì văn bản ủy quyền không phải chứng thực.", "banChinh": 1, "banSao": 0 }
+  ]
+}

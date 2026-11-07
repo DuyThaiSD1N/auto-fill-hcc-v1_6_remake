@@ -1,0 +1,1636 @@
+{
+ "source": "dichvucong.gov.vn/nop-ho-so (Thủ tục đăng ký khai sinh — 1.001193)",
+ "title": "Thủ tục đăng ký khai sinh",
+ "capturedAt": "2026-10-13T00:00:00.000Z",
+ "note": "Dựng lại theo ảnh chụp trang thật; tên câu hỏi theo app/pipelines/khai_sinh_dvc_moi/process/schema.py. Ô tên bắt đầu \"~\" là ô BE không gửi, chưa chụp được tên thật. Danh mục dân tộc / loại giấy tờ dùng chung với khai tử; Loại đăng ký, Loại khai sinh theo các giá trị BE gửi.",
+ "sections": [
+  {
+   "title": "",
+   "frame": "box",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "~kinhGui",
+       "kind": "text",
+       "label": "KÍNH GỬI",
+       "inlineLabel": true,
+       "auto": "extension điền \"UBND <phường/xã của tài khoản trợ lý>\" khi ô còn trống"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "THÔNG TIN NGƯỜI NỘP",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "~nguoiNop_HoTen",
+       "kind": "text",
+       "label": "Họ, chữ đệm, tên",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_SoDinhDanh",
+       "kind": "text",
+       "label": "Số định danh cá nhân",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_NgaySinh",
+       "kind": "date",
+       "label": "Ngày Sinh",
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_SoDienThoai",
+       "kind": "text",
+       "label": "Số điện thoại",
+       "required": true
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~nguoiNop_LoaiGiayTo",
+       "kind": "dropdown",
+       "label": "Loại Giấy tờ tùy thân",
+       "required": true,
+       "readonly": true,
+       "span": 2
+      },
+      {
+       "name": "~nguoiNop_SoGiayTo",
+       "kind": "text",
+       "label": "Số giấy tờ tùy thân",
+       "readonly": true,
+       "span": 2
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "~nguoiNop_NoiCap",
+       "kind": "text",
+       "label": "Nơi cấp",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_NgayCap",
+       "kind": "date",
+       "label": "Ngày cấp",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_LoaiCuTru",
+       "kind": "dropdown",
+       "label": "Loại cư trú",
+       "prefilled": true,
+       "options": [
+        [
+         "1",
+         "Thường trú"
+        ],
+        [
+         "2",
+         "Tạm trú"
+        ],
+        [
+         "3",
+         "Nơi ở hiện tại"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~nguoiNop_NoiCuTru",
+       "kind": "radio",
+       "label": "Nơi cư trú:",
+       "inlineLabel": true,
+       "prefilled": true,
+       "span": 4,
+       "options": [
+        [
+         "1",
+         "Trong nước"
+        ],
+        [
+         "2",
+         "Khác"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "~nguoiNop_QuocGia",
+       "kind": "dropdown",
+       "label": "Quốc gia nơi cư trú của người yêu cầu",
+       "prefilled": true
+      },
+      {
+       "name": "~nguoiNop_Tinh",
+       "kind": "dropdown",
+       "label": "Nơi cư trú Tỉnh/ Thành phố",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_Xa",
+       "kind": "dropdown",
+       "label": "Nơi cư trú Xã/Phường",
+       "required": true,
+       "readonly": true
+      },
+      {
+       "name": "~nguoiNop_DiaChi",
+       "kind": "text",
+       "label": "Nơi cư trú địa chỉ chi tiết",
+       "required": true,
+       "readonly": true
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "citizenQuanhevoinguoiduockhaisinh",
+       "kind": "radio",
+       "label": "Quan hệ với người được khai sinh:",
+       "inlineLabel": true,
+       "required": true,
+       "span": 4,
+       "options": [
+        [
+         "1",
+         "Khác"
+        ],
+        [
+         "2",
+         "Cha"
+        ],
+        [
+         "3",
+         "Mẹ"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenField62",
+       "kind": "text",
+       "label": "Quan hệ khác",
+       "visibleIf": {
+        "citizenQuanhevoinguoiduockhaisinh": [
+         "1"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "citizenHoVaTen_NgdcKS",
+       "kind": "text",
+       "label": "Họ, chữ đệm, tên",
+       "required": true
+      },
+      {
+       "name": "citizenNgaythangnamsinh_NgdcKS",
+       "kind": "date",
+       "label": "Ngày, tháng, năm sinh",
+       "required": true
+      },
+      {
+       "name": "~ngaySinhBangChu",
+       "kind": "text",
+       "label": "Ngày tháng năm sinh ghi bằng chữ"
+      },
+      {
+       "name": "citizenGioitinh_NgdcKS",
+       "kind": "dropdown",
+       "label": "Giới tính",
+       "required": true,
+       "options": [
+        [
+         "1",
+         "Nam"
+        ],
+        [
+         "2",
+         "Nữ"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenQuoctich_NgdcKS",
+       "kind": "dropdown",
+       "label": "Quốc tịch",
+       "required": true
+      },
+      {
+       "name": "citizenDanToc_NgdcKS",
+       "kind": "dropdown",
+       "label": "Dân tộc",
+       "options": [
+        [
+         "1",
+         "Kinh"
+        ],
+        [
+         "2",
+         "Tày"
+        ],
+        [
+         "3",
+         "Thái"
+        ],
+        [
+         "4",
+         "Hoa"
+        ],
+        [
+         "5",
+         "Khơ-me"
+        ],
+        [
+         "6",
+         "Mường"
+        ],
+        [
+         "7",
+         "Nùng"
+        ],
+        [
+         "8",
+         "H'Mông"
+        ],
+        [
+         "9",
+         "Dao"
+        ],
+        [
+         "10",
+         "Gia-rai"
+        ],
+        [
+         "11",
+         "Ngái"
+        ],
+        [
+         "12",
+         "Ê-đê"
+        ],
+        [
+         "13",
+         "Ba na"
+        ],
+        [
+         "14",
+         "Xơ-Đăng"
+        ],
+        [
+         "15",
+         "Sán Chay"
+        ],
+        [
+         "16",
+         "Cơ-ho"
+        ],
+        [
+         "17",
+         "Chăm"
+        ],
+        [
+         "18",
+         "Sán Dìu"
+        ],
+        [
+         "19",
+         "Hrê"
+        ],
+        [
+         "20",
+         "Mnông"
+        ],
+        [
+         "21",
+         "Ra-glai"
+        ],
+        [
+         "22",
+         "Xtiêng"
+        ],
+        [
+         "23",
+         "Bru-Vân Kiều"
+        ],
+        [
+         "24",
+         "Thổ"
+        ],
+        [
+         "25",
+         "Giáy"
+        ],
+        [
+         "26",
+         "Cơ-tu"
+        ],
+        [
+         "27",
+         "Giẻ Triêng"
+        ],
+        [
+         "28",
+         "Mạ"
+        ],
+        [
+         "29",
+         "Khơ-mú"
+        ],
+        [
+         "30",
+         "Co"
+        ],
+        [
+         "31",
+         "Tà-ôi"
+        ],
+        [
+         "32",
+         "Chơ-ro"
+        ],
+        [
+         "33",
+         "Kháng"
+        ],
+        [
+         "34",
+         "Xinh-mun"
+        ],
+        [
+         "35",
+         "Hà Nhì"
+        ],
+        [
+         "36",
+         "Chu ru"
+        ],
+        [
+         "37",
+         "Lào"
+        ],
+        [
+         "38",
+         "La Chí"
+        ],
+        [
+         "39",
+         "La Ha"
+        ],
+        [
+         "40",
+         "Phù Lá"
+        ],
+        [
+         "41",
+         "La Hủ"
+        ],
+        [
+         "42",
+         "Lự"
+        ],
+        [
+         "43",
+         "Lô Lô"
+        ],
+        [
+         "44",
+         "Chứt"
+        ],
+        [
+         "45",
+         "Mảng"
+        ],
+        [
+         "46",
+         "Pà Thẻn"
+        ],
+        [
+         "47",
+         "Cơ Lao"
+        ],
+        [
+         "48",
+         "Cống"
+        ],
+        [
+         "49",
+         "Bố Y"
+        ],
+        [
+         "50",
+         "Si La"
+        ],
+        [
+         "51",
+         "Pu Péo"
+        ],
+        [
+         "52",
+         "Brâu"
+        ],
+        [
+         "53",
+         "Ơ Đu"
+        ],
+        [
+         "54",
+         "Rơ măm"
+        ],
+        [
+         "55",
+         "Người nước ngoài"
+        ],
+        [
+         "56",
+         "Không rõ"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenLoaiDangKy",
+       "kind": "dropdown",
+       "label": "Loại đăng ký",
+       "required": true,
+       "options": [
+        [
+         "1",
+         "Đăng ký đúng hạn"
+        ],
+        [
+         "2",
+         "Đăng ký quá hạn"
+        ],
+        [
+         "3",
+         "Đăng ký cho người đã có hồ sơ, giấy tờ cá nhân"
+        ]
+       ]
+      },
+      {
+       "name": "citizenLoaikhaisinh_NgdcKS",
+       "kind": "dropdown",
+       "label": "Loại khai sinh",
+       "required": true,
+       "options": [
+        [
+         "1",
+         "Đã xác định được cả cha lẫn mẹ"
+        ],
+        [
+         "2",
+         "Chưa xác định được mẹ"
+        ],
+        [
+         "3",
+         "Chưa xác định được cha"
+        ],
+        [
+         "4",
+         "Chưa xác định được cả cha lẫn mẹ"
+        ],
+        [
+         "5",
+         "Trẻ bị bỏ rơi"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "citizenNoisinhnks",
+       "kind": "radio",
+       "label": "Nơi sinh:",
+       "inlineLabel": true,
+       "span": 4,
+       "options": [
+        [
+         "1",
+         "Trong nước"
+        ],
+        [
+         "2",
+         "Khác"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~noiSinh_QuocGia",
+       "kind": "dropdown",
+       "label": "Quốc gia",
+       "options": [
+        [
+         "VN",
+         "Việt Nam"
+        ]
+       ],
+       "visibleIf": {
+        "citizenNoisinhnks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~noiSinh_Tinh",
+       "kind": "dropdown",
+       "label": "Tỉnh/Thành phố",
+       "catalog": "provinces",
+       "visibleIf": {
+        "citizenNoisinhnks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~noiSinh_Xa",
+       "kind": "dropdown",
+       "label": "Phường/Xã",
+       "catalog": "wards",
+       "parent": "~noiSinh_Tinh",
+       "visibleIf": {
+        "citizenNoisinhnks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~noiSinh_DiaChi",
+       "kind": "text",
+       "label": "Địa chỉ chi tiết",
+       "visibleIf": {
+        "citizenNoisinhnks": [
+         "1"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "citizenQuequannks",
+       "kind": "radio",
+       "label": "Quê quán:",
+       "inlineLabel": true,
+       "span": 4,
+       "options": [
+        [
+         "1",
+         "Trong nước"
+        ],
+        [
+         "2",
+         "Khác"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~queQuan_QuocGia",
+       "kind": "dropdown",
+       "label": "Quốc gia",
+       "options": [
+        [
+         "VN",
+         "Việt Nam"
+        ]
+       ],
+       "visibleIf": {
+        "citizenQuequannks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~queQuan_Tinh",
+       "kind": "dropdown",
+       "label": "Tỉnh/Thành phố",
+       "catalog": "provinces",
+       "visibleIf": {
+        "citizenQuequannks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~queQuan_Xa",
+       "kind": "dropdown",
+       "label": "Phường/Xã",
+       "catalog": "wards",
+       "parent": "~queQuan_Tinh",
+       "visibleIf": {
+        "citizenQuequannks": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~queQuan_DiaChi",
+       "kind": "text",
+       "label": "Địa chỉ chi tiết",
+       "visibleIf": {
+        "citizenQuequannks": [
+         "1"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "THÔNG TIN MẸ CỦA NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "citizenNDK_HoVaTen",
+       "kind": "text",
+       "label": "Họ, chữ đệm, tên"
+      },
+      {
+       "name": "citizenNDK_SoDinhDanh",
+       "kind": "text",
+       "label": "Số định danh cá nhân",
+       "pattern": "^\\d{12}$",
+       "patternHint": "đúng 12 chữ số"
+      },
+      {
+       "name": "citizenNDK_NgaySinh",
+       "kind": "date",
+       "label": "Ngày, tháng, năm sinh"
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenQuoctich_me",
+       "kind": "dropdown",
+       "label": "Quốc Tịch"
+      },
+      {
+       "name": "citizenDanToc_me",
+       "kind": "dropdown",
+       "label": "Dân tộc",
+       "options": [
+        [
+         "1",
+         "Kinh"
+        ],
+        [
+         "2",
+         "Tày"
+        ],
+        [
+         "3",
+         "Thái"
+        ],
+        [
+         "4",
+         "Hoa"
+        ],
+        [
+         "5",
+         "Khơ-me"
+        ],
+        [
+         "6",
+         "Mường"
+        ],
+        [
+         "7",
+         "Nùng"
+        ],
+        [
+         "8",
+         "H'Mông"
+        ],
+        [
+         "9",
+         "Dao"
+        ],
+        [
+         "10",
+         "Gia-rai"
+        ],
+        [
+         "11",
+         "Ngái"
+        ],
+        [
+         "12",
+         "Ê-đê"
+        ],
+        [
+         "13",
+         "Ba na"
+        ],
+        [
+         "14",
+         "Xơ-Đăng"
+        ],
+        [
+         "15",
+         "Sán Chay"
+        ],
+        [
+         "16",
+         "Cơ-ho"
+        ],
+        [
+         "17",
+         "Chăm"
+        ],
+        [
+         "18",
+         "Sán Dìu"
+        ],
+        [
+         "19",
+         "Hrê"
+        ],
+        [
+         "20",
+         "Mnông"
+        ],
+        [
+         "21",
+         "Ra-glai"
+        ],
+        [
+         "22",
+         "Xtiêng"
+        ],
+        [
+         "23",
+         "Bru-Vân Kiều"
+        ],
+        [
+         "24",
+         "Thổ"
+        ],
+        [
+         "25",
+         "Giáy"
+        ],
+        [
+         "26",
+         "Cơ-tu"
+        ],
+        [
+         "27",
+         "Giẻ Triêng"
+        ],
+        [
+         "28",
+         "Mạ"
+        ],
+        [
+         "29",
+         "Khơ-mú"
+        ],
+        [
+         "30",
+         "Co"
+        ],
+        [
+         "31",
+         "Tà-ôi"
+        ],
+        [
+         "32",
+         "Chơ-ro"
+        ],
+        [
+         "33",
+         "Kháng"
+        ],
+        [
+         "34",
+         "Xinh-mun"
+        ],
+        [
+         "35",
+         "Hà Nhì"
+        ],
+        [
+         "36",
+         "Chu ru"
+        ],
+        [
+         "37",
+         "Lào"
+        ],
+        [
+         "38",
+         "La Chí"
+        ],
+        [
+         "39",
+         "La Ha"
+        ],
+        [
+         "40",
+         "Phù Lá"
+        ],
+        [
+         "41",
+         "La Hủ"
+        ],
+        [
+         "42",
+         "Lự"
+        ],
+        [
+         "43",
+         "Lô Lô"
+        ],
+        [
+         "44",
+         "Chứt"
+        ],
+        [
+         "45",
+         "Mảng"
+        ],
+        [
+         "46",
+         "Pà Thẻn"
+        ],
+        [
+         "47",
+         "Cơ Lao"
+        ],
+        [
+         "48",
+         "Cống"
+        ],
+        [
+         "49",
+         "Bố Y"
+        ],
+        [
+         "50",
+         "Si La"
+        ],
+        [
+         "51",
+         "Pu Péo"
+        ],
+        [
+         "52",
+         "Brâu"
+        ],
+        [
+         "53",
+         "Ơ Đu"
+        ],
+        [
+         "54",
+         "Rơ măm"
+        ],
+        [
+         "55",
+         "Người nước ngoài"
+        ],
+        [
+         "56",
+         "Không rõ"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenLoaiGiaytotuythan_me",
+       "kind": "dropdown",
+       "label": "Loại Giấy tờ tùy thân",
+       "options": [
+        [
+         "1",
+         "Chứng minh nhân dân"
+        ],
+        [
+         "2",
+         "Giấy chứng minh sĩ quan quân đội nhân dân Việt Nam"
+        ],
+        [
+         "3",
+         "Giấy chứng minh công an nhân dân"
+        ],
+        [
+         "4",
+         "Căn cước công dân"
+        ],
+        [
+         "5",
+         "Hộ chiếu"
+        ],
+        [
+         "6",
+         "Sổ hộ khẩu"
+        ],
+        [
+         "7",
+         "Các loại giấy tờ tùy thân khác"
+        ],
+        [
+         "8",
+         "Thẻ căn cước"
+        ],
+        [
+         "9",
+         "Giấy chứng nhận căn cước"
+        ]
+       ]
+      },
+      {
+       "name": "citizenSoGiayToTuyThan_me",
+       "kind": "text",
+       "label": "Số giấy tờ tùy thân"
+      },
+      {
+       "name": "citizenNgaythangnamcap__me",
+       "kind": "date",
+       "label": "Ngày, tháng, năm cấp"
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenCoquancap_me",
+       "kind": "text",
+       "label": "Cơ quan cấp"
+      },
+      {
+       "name": "citizenMeLoaicutru",
+       "kind": "dropdown",
+       "label": "Loại cư trú",
+       "options": [
+        [
+         "1",
+         "Thường trú"
+        ],
+        [
+         "2",
+         "Tạm trú"
+        ],
+        [
+         "3",
+         "Nơi ở hiện tại"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "citizenMeNoicutru",
+       "kind": "radio",
+       "label": "Nơi cư trú của mẹ (nơi thường trú/nơi tạm trú/nơi đang sinh sống):",
+       "options": [
+        [
+         "1",
+         "Trong nước"
+        ],
+        [
+         "2",
+         "Khác"
+        ]
+       ],
+       "span": 4
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~me_QuocGia",
+       "kind": "dropdown",
+       "label": "Quốc gia",
+       "options": [
+        [
+         "VN",
+         "Việt Nam"
+        ]
+       ],
+       "visibleIf": {
+        "citizenMeNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~me_Tinh",
+       "kind": "dropdown",
+       "label": "Tỉnh/Thành phố",
+       "catalog": "provinces",
+       "visibleIf": {
+        "citizenMeNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~me_Xa",
+       "kind": "dropdown",
+       "label": "Phường/Xã",
+       "catalog": "wards",
+       "parent": "~me_Tinh",
+       "visibleIf": {
+        "citizenMeNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~me_DiaChi",
+       "kind": "text",
+       "label": "Địa chỉ chi tiết",
+       "visibleIf": {
+        "citizenMeNoicutru": [
+         "1"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "THÔNG TIN CHA CỦA NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "citizenNDK_HoVaTenCha",
+       "kind": "text",
+       "label": "Họ, chữ đệm, tên"
+      },
+      {
+       "name": "citizenNDK_SoDinhDanhCha",
+       "kind": "text",
+       "label": "Số định danh cá nhân",
+       "pattern": "^\\d{12}$",
+       "patternHint": "đúng 12 chữ số"
+      },
+      {
+       "name": "citizenNDK_NgaySinhCha",
+       "kind": "date",
+       "label": "Ngày, tháng, năm sinh"
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenQuoctich_cha",
+       "kind": "dropdown",
+       "label": "Quốc Tịch"
+      },
+      {
+       "name": "citizenDanToc_cha",
+       "kind": "dropdown",
+       "label": "Dân tộc",
+       "options": [
+        [
+         "1",
+         "Kinh"
+        ],
+        [
+         "2",
+         "Tày"
+        ],
+        [
+         "3",
+         "Thái"
+        ],
+        [
+         "4",
+         "Hoa"
+        ],
+        [
+         "5",
+         "Khơ-me"
+        ],
+        [
+         "6",
+         "Mường"
+        ],
+        [
+         "7",
+         "Nùng"
+        ],
+        [
+         "8",
+         "H'Mông"
+        ],
+        [
+         "9",
+         "Dao"
+        ],
+        [
+         "10",
+         "Gia-rai"
+        ],
+        [
+         "11",
+         "Ngái"
+        ],
+        [
+         "12",
+         "Ê-đê"
+        ],
+        [
+         "13",
+         "Ba na"
+        ],
+        [
+         "14",
+         "Xơ-Đăng"
+        ],
+        [
+         "15",
+         "Sán Chay"
+        ],
+        [
+         "16",
+         "Cơ-ho"
+        ],
+        [
+         "17",
+         "Chăm"
+        ],
+        [
+         "18",
+         "Sán Dìu"
+        ],
+        [
+         "19",
+         "Hrê"
+        ],
+        [
+         "20",
+         "Mnông"
+        ],
+        [
+         "21",
+         "Ra-glai"
+        ],
+        [
+         "22",
+         "Xtiêng"
+        ],
+        [
+         "23",
+         "Bru-Vân Kiều"
+        ],
+        [
+         "24",
+         "Thổ"
+        ],
+        [
+         "25",
+         "Giáy"
+        ],
+        [
+         "26",
+         "Cơ-tu"
+        ],
+        [
+         "27",
+         "Giẻ Triêng"
+        ],
+        [
+         "28",
+         "Mạ"
+        ],
+        [
+         "29",
+         "Khơ-mú"
+        ],
+        [
+         "30",
+         "Co"
+        ],
+        [
+         "31",
+         "Tà-ôi"
+        ],
+        [
+         "32",
+         "Chơ-ro"
+        ],
+        [
+         "33",
+         "Kháng"
+        ],
+        [
+         "34",
+         "Xinh-mun"
+        ],
+        [
+         "35",
+         "Hà Nhì"
+        ],
+        [
+         "36",
+         "Chu ru"
+        ],
+        [
+         "37",
+         "Lào"
+        ],
+        [
+         "38",
+         "La Chí"
+        ],
+        [
+         "39",
+         "La Ha"
+        ],
+        [
+         "40",
+         "Phù Lá"
+        ],
+        [
+         "41",
+         "La Hủ"
+        ],
+        [
+         "42",
+         "Lự"
+        ],
+        [
+         "43",
+         "Lô Lô"
+        ],
+        [
+         "44",
+         "Chứt"
+        ],
+        [
+         "45",
+         "Mảng"
+        ],
+        [
+         "46",
+         "Pà Thẻn"
+        ],
+        [
+         "47",
+         "Cơ Lao"
+        ],
+        [
+         "48",
+         "Cống"
+        ],
+        [
+         "49",
+         "Bố Y"
+        ],
+        [
+         "50",
+         "Si La"
+        ],
+        [
+         "51",
+         "Pu Péo"
+        ],
+        [
+         "52",
+         "Brâu"
+        ],
+        [
+         "53",
+         "Ơ Đu"
+        ],
+        [
+         "54",
+         "Rơ măm"
+        ],
+        [
+         "55",
+         "Người nước ngoài"
+        ],
+        [
+         "56",
+         "Không rõ"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenField24",
+       "kind": "dropdown",
+       "label": "Loại Giấy tờ tùy thân",
+       "options": [
+        [
+         "1",
+         "Chứng minh nhân dân"
+        ],
+        [
+         "2",
+         "Giấy chứng minh sĩ quan quân đội nhân dân Việt Nam"
+        ],
+        [
+         "3",
+         "Giấy chứng minh công an nhân dân"
+        ],
+        [
+         "4",
+         "Căn cước công dân"
+        ],
+        [
+         "5",
+         "Hộ chiếu"
+        ],
+        [
+         "6",
+         "Sổ hộ khẩu"
+        ],
+        [
+         "7",
+         "Các loại giấy tờ tùy thân khác"
+        ],
+        [
+         "8",
+         "Thẻ căn cước"
+        ],
+        [
+         "9",
+         "Giấy chứng nhận căn cước"
+        ]
+       ]
+      },
+      {
+       "name": "citizenSoGiayToTuyThan_cha",
+       "kind": "text",
+       "label": "Số giấy tờ tùy thân"
+      },
+      {
+       "name": "citizenNgaythangnamcap__cha",
+       "kind": "date",
+       "label": "Ngày, tháng, năm cấp"
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenCoquancap_cha",
+       "kind": "text",
+       "label": "Cơ quan cấp"
+      },
+      {
+       "name": "citizenChaLoaicutru",
+       "kind": "dropdown",
+       "label": "Loại cư trú",
+       "options": [
+        [
+         "1",
+         "Thường trú"
+        ],
+        [
+         "2",
+         "Tạm trú"
+        ],
+        [
+         "3",
+         "Nơi ở hiện tại"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "citizenChaNoicutru",
+       "kind": "radio",
+       "label": "NƠI CƯ TRÚ CỦA CHA (NƠI THƯỜNG TRÚ/NƠI TẠM TRÚ/NƠI ĐANG SINH SỐNG):",
+       "options": [
+        [
+         "1",
+         "Trong nước"
+        ],
+        [
+         "2",
+         "Khác"
+        ]
+       ],
+       "span": 4
+      }
+     ]
+    },
+    {
+     "cols": 4,
+     "fields": [
+      {
+       "name": "~cha_QuocGia",
+       "kind": "dropdown",
+       "label": "Quốc gia",
+       "options": [
+        [
+         "VN",
+         "Việt Nam"
+        ]
+       ],
+       "visibleIf": {
+        "citizenChaNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~cha_Tinh",
+       "kind": "dropdown",
+       "label": "Tỉnh/Thành phố",
+       "catalog": "provinces",
+       "visibleIf": {
+        "citizenChaNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~cha_Xa",
+       "kind": "dropdown",
+       "label": "Phường/Xã",
+       "catalog": "wards",
+       "parent": "~cha_Tinh",
+       "visibleIf": {
+        "citizenChaNoicutru": [
+         "1"
+        ]
+       }
+      },
+      {
+       "name": "~cha_DiaChi",
+       "kind": "text",
+       "label": "Địa chỉ chi tiết",
+       "visibleIf": {
+        "citizenChaNoicutru": [
+         "1"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "fields": [
+      {
+       "name": "citizenSoluongbansao",
+       "kind": "text",
+       "label": "Số lượng bản sao (điền 0 nếu không cần)",
+       "required": true,
+       "pattern": "^\\d+$",
+       "patternHint": "số nguyên"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "ĐỊA ĐIỂM, NGÀY LẬP TỜ KHAI",
+   "rows": [
+    {
+     "fields": [
+      {
+       "name": "~tai",
+       "kind": "dropdown",
+       "label": "Tại",
+       "auto": "extension chọn tỉnh/thành của tài khoản trợ lý khi ô còn trống"
+      },
+      {
+       "name": "~ngayLap",
+       "kind": "text",
+       "label": "Ngày",
+       "prefilled": true
+      },
+      {
+       "name": "~thangLap",
+       "kind": "text",
+       "label": "Tháng",
+       "prefilled": true
+      },
+      {
+       "name": "~namLap",
+       "kind": "text",
+       "label": "năm",
+       "prefilled": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "",
+   "frame": "box",
+   "rows": [
+    {
+     "cols": 3,
+     "fields": [
+      {
+       "name": "~hinhThucNhanKetQua",
+       "kind": "dropdown",
+       "label": "Hình thức nhận kết quả",
+       "prefilled": true
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "components": [
+  {
+   "name": "- Giấy chứng sinh; trường hợp không có Giấy chứng sinh thì nộp văn bản của người làm chứng xác nhận về việc sinh; nếu không có người làm chứng thì phải có giấy cam đoan về việc sinh.",
+   "banChinh": 1,
+   "banSao": 0
+  },
+  {
+   "name": "- Trường hợp khai sinh cho trẻ em sinh ra do mang thai hộ phải có văn bản xác nhận của cơ sở y tế đã thực hiện kỹ thuật hỗ trợ sinh sản cho việc mang thai hộ.",
+   "banChinh": 1,
+   "banSao": 0
+  },
+  {
+   "name": "- Trường hợp trẻ em bị bỏ rơi thì phải có biên bản về việc trẻ bị bỏ rơi do cơ quan có thẩm quyền lập.",
+   "banChinh": 1,
+   "banSao": 0
+  },
+  {
+   "name": "- Văn bản ủy quyền (được chứng thực) theo quy định của pháp luật trong trường hợp ủy quyền thực hiện việc đăng ký khai sinh. Trường hợp người được ủy quyền là ông, bà, cha, mẹ, con, vợ, chồng, anh, chị, em ruột của người ủy quyền thì văn bản ủy quyền không phải chứng thực.",
+   "banChinh": 1,
+   "banSao": 0
+  }
+ ]
+}
