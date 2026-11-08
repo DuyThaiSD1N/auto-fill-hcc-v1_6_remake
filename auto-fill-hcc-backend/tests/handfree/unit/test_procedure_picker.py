@@ -91,25 +91,50 @@ def test_danh_sach_dua_llm_khong_de_chung_thuc_chu_ky_o_dong_cuoi():
         assert procedures_for(slug)[-1]["key"] not in _PUBLIC_TRAILING_KEYS, slug
 
 
-async def test_so_lech_dong_thi_lay_theo_ten(llm):
+async def test_so_lech_dong_ben_canh_thi_hoi_lai_ca_hai(llm):
     _, replies = llm
     conv = _conv("bacninh")
-    keys = [p["key"] for p in procedures_for("bacninh")]
     n = _id("chung-thuc-chu-ky", "bacninh")
+    keys = [p["key"] for p in procedures_for("bacninh")]
     ten = "Chứng thực chữ ký trong các giấy tờ, văn bản"
 
-    # Đọc đúng thủ tục nhưng trả số của dòng ngay trên → theo tên.
+    # Số của dòng ngay trên, tên của dòng đúng → không đoán, hỏi lại giữa hai dòng.
     replies["picker"].append(json.dumps({"result": "pick", "id": n - 1, "ten": ten, "candidates": []}))
-    assert (await agent.pick("chứng thực chữ ký", conv)).key == "chung-thuc-chu-ky"
+    res = await agent.pick("chứng thực chữ ký", conv)
+    assert (res.result, res.key, res.candidates) == ("unclear", "", [keys[n - 2], "chung-thuc-chu-ky"])
 
     # Số đúng + tên đúng (model hay chép kèm "[n]") → giữ nguyên.
     replies["picker"].append(json.dumps({"result": "pick", "id": n, "ten": f"[{n}] {ten}", "candidates": []}))
     assert (await agent.pick("chứng thực chữ ký", conv)).key == "chung-thuc-chu-ky"
 
-    # Tên không khớp dòng nào → hỏi lại chứ không mở thủ tục theo số.
-    replies["picker"].append(json.dumps({"result": "pick", "id": n - 1, "ten": "Cấp phép bay flycam", "candidates": []}))
-    res = await agent.pick("xin phép bay flycam", conv)
-    assert (res.result, res.key, res.candidates) == ("unclear", "", [keys[n - 2]])
+
+async def test_ten_chep_sai_khong_de_so_dung(llm):
+    """Model chọn đúng số nhưng chép "ten" bịa / chép tên một dòng xa → vẫn theo số."""
+    _, replies = llm
+    key = "cap-giay-phep-khai-thac-thuy-san"
+    for slug in ("quangtri", "danang"):
+        conv = _conv(slug)
+        first = procedures_for(slug)[0]["label"]
+        for ten in ("Cấp lại, điều chỉnh Giấy phép", first):
+            replies["picker"].append(json.dumps({"result": "pick", "id": _id(key, slug), "ten": ten, "candidates": []}))
+            res = await agent.pick("cấp lại giấy phép khai thác thủy sản", conv)
+            assert (res.result, res.key) == ("pick", key), (slug, ten)
+
+
+async def test_doc_lai_goi_y_thi_chon_khong_hoi_lai(llm):
+    """Đã gợi ý thủ tục X (prompt ghi số của X), công dân đọc lại → chọn X dù "ten" lệch sang dòng cạnh."""
+    _, replies = llm
+    key = "cap-giay-phep-khai-thac-thuy-san"
+    keys = [p["key"] for p in procedures_for("quangtri")]
+    n = _id(key, "quangtri")
+    neighbour = procedures_for("quangtri")[n]["label"]
+    replies["picker"].append(json.dumps({"result": "pick", "id": n, "ten": neighbour, "candidates": []}))
+    res = await agent.pick("giấy phép khai thác thủy sản", _conv("quangtri", candidates=[key]))
+    assert (res.result, res.key) == ("pick", key)
+    # Chưa gợi ý thì cùng câu trả đó → hỏi lại giữa hai dòng cạnh nhau.
+    replies["picker"].append(json.dumps({"result": "pick", "id": n, "ten": neighbour, "candidates": []}))
+    res = await agent.pick("cấp lại giấy phép khai thác thủy sản", _conv("quangtri"))
+    assert (res.result, res.candidates) == ("unclear", [key, keys[n]])
 
 
 async def test_goi_y_chi_giu_so_trong_danh_sach_toi_da_3_khong_trung(llm):

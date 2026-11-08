@@ -1502,6 +1502,28 @@ function standardListHasText(text) {
   return Array.from(document.querySelectorAll("table td")).some((td) => norm(td.textContent) === want);
 }
 
+// f.removeListed = bản ghi trợ lý đã thêm ở lượt điền TRƯỚC mà bộ giấy mới không còn (BE ghi nhớ theo phiên) →
+// bấm nút xoá của chính dòng đó trên cổng trước khi thêm bản ghi mới, không thì "Điền lại" sau khi điều chỉnh
+// giấy tờ để lại xe của bộ giấy cũ trong danh sách. Nút xoá dòng của cổng Bộ Xây dựng: data-dsp-action="delete"
+// (cổng nghe click trên khung bảng rồi tự vẽ lại) — dò cả nút đỏ / nút "×" phòng cổng khác.
+async function removeStandardListedRows(fields) {
+  const texts = fields.flatMap((f) => (f.comp === "dom-click" && Array.isArray(f.removeListed) ? f.removeListed : []));
+  for (const text of new Set(texts.map(norm).filter(Boolean))) {
+    const rowOf = () => Array.from(document.querySelectorAll("table tr"))
+      .find((tr) => Array.from(tr.querySelectorAll("td")).some((td) => norm(td.textContent) === text));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const row = rowOf();
+      if (!row) break;
+      const btn = row.querySelector('[data-dsp-action="delete"]')
+        || Array.from(row.querySelectorAll("button")).find((b) => b.classList.contains("btn-danger") || /^(×|x[oó]a)$/i.test(norm(b.textContent)));
+      if (!btn) { console.warn(`[AutoFill-STD] Không thấy nút xoá dòng "${text}"`); break; }
+      btn.click();
+      await waitFor(() => !rowOf(), 2000, 100);
+    }
+    console.log(`[AutoFill-STD] Xoá bản ghi lượt điền trước "${text}": ${rowOf() ? "chưa xoá được" : "đã xoá"}`);
+  }
+}
+
 // Khối cha của panel mà nút dom-click phục vụ: theo ô chờ (nút mở panel) hoặc theo chính tên nút (nút "Thêm"
 // nằm trong panel).
 function standardClickPanelPrefix(f) {
@@ -1760,6 +1782,7 @@ async function fillFormStandard(fields) {
   const areaDeadlines = new Map();
   const failedFieldKeys = new Set();
   const orderedFields = orderStandardFields(fields);
+  await removeStandardListedRows(fields);
   // Panel có bản ghi đã nằm trong danh sách (xem standardListHasText) → bỏ nút mở/thêm và các ô của panel.
   const listedPanels = new Set(fields
     .filter((f) => f.comp === "dom-click" && f.skipIfListed && standardListHasText(f.skipIfListed))

@@ -25,7 +25,8 @@
   const textOf = (el) => String(el?.textContent || "").replace(/\s+/g, " ").trim();
   const isPlaceholder = (text) => {
     const t = fold(text).replace(/[▲▼▾▿]/g, "").trim();
-    return !t || /^-+\s*chon\s*-+$/.test(t) || t === "vui long chon du lieu";
+    // Dropdown rỗng (cổng chưa nạp danh sách xã) hiện dòng "Không tìm thấy kết quả" — không phải lựa chọn.
+    return !t || /^-+\s*chon\s*-+$/.test(t) || t === "vui long chon du lieu" || t.startsWith("khong tim thay");
   };
   const visible = (el) => !!el && el.getClientRects().length > 0;
 
@@ -69,6 +70,19 @@
       text = `${n.textContent || ""} ${text}`;
     }
     return text.replace(/\s+/g, " ").trim();
+  }
+
+  // Cổng bọc riêng một ô trong thẻ nội dòng (<span><x-input …></span>), nhãn "(6) Số định danh cá nhân:" nằm NGOÀI
+  // thẻ bọc → trong thẻ bọc không có chữ đứng trước; đọc tiếp chữ trước thẻ bọc. Thiếu bước này nhãn rỗng và ô bị
+  // ghép nhãn ô liền trước ("Quốc tịch"), LLM hiểu câu trả lời theo nhãn sai. Chỉ leo qua thẻ bọc chứa đúng một ô.
+  const INLINE_WRAPPER = /^(SPAN|LABEL|FONT|B|STRONG|I|EM)$/;
+  function slotLabel(node) {
+    let label = labelBefore(node);
+    for (let n = node; !label && INLINE_WRAPPER.test(n.parentElement?.tagName || "")
+      && n.parentElement.querySelectorAll(SLOT_SELECTOR).length === 1; n = n.parentElement) {
+      label = labelBefore(n.parentElement);
+    }
+    return label;
   }
 
   // Nhãn của ô con trong khối địa chỉ: <label>/<span> chữ gần nhất phía trước (bỏ span giá trị ẩn).
@@ -209,7 +223,7 @@
   }
 
   function simpleSlot(c, name, tag) {
-    const base = { key: name, name, comp: tag, label: labelBefore(c),
+    const base = { key: name, name, comp: tag, label: slotLabel(c),
       marker: !!c.querySelector(".validate-hiden") };
     if (tag === "x-input" || tag === "x-input-number") {
       const input = c.querySelector("input");
@@ -250,8 +264,11 @@
     return null;
   }
 
+  // Tiêu đề phần: "<b>I. Thông tin bên nữ</b>" (mẫu cũ) hoặc "<span class="sec-title">Thông tin bên nữ</span>" kèm huy
+  // hiệu số La Mã riêng (mẫu mới).
   function headings() {
-    return [...document.querySelectorAll("strong, b")].filter((el) => /^[IVXLC]+\s*[.)]/.test(textOf(el)));
+    return [...document.querySelectorAll("strong, b, .sec-title")]
+      .filter((el) => el.classList.contains("sec-title") || /^[IVXLC]+\s*[.)]/.test(textOf(el)));
   }
 
   function sectionOf(box, list) {
@@ -463,7 +480,7 @@
   }
 
   // Ô tích phạm vi đứng trên khối địa chỉ (tìm ngược lên tối đa 5 cấp, bỏ ô tích nằm trong chính khối).
-  async function toggleScope(area) {
+  function scopeOf(area) {
     let node = area?.parentElement;
     for (let level = 0; node && level < 5; level += 1, node = node.parentElement) {
       for (const group of node.querySelectorAll("x-radio")) {
@@ -473,14 +490,71 @@
         const current = boxes.find((b) => b.checked);
         const other = boxes.find((b) => b !== current);
         if (!current || !other || !boxes.some((b) => labelOf(b).includes("trong nuoc"))) continue;
-        await tick(other);
-        await sleep(400);
-        await tick(current);
-        await sleep(600);
-        return true;
+        return { group, current, other, domestic: labelOf(current).includes("trong nuoc") };
       }
     }
+    return null;
+  }
+
+  async function toggleScope(area) {
+    const scope = scopeOf(area);
+    if (!scope) return false;
+    await tick(scope.other);
+    await sleep(400);
+    await tick(scope.current);
+    await sleep(600);
+    return true;
+  }
+
+  // ── Nơi cư trú "Trong nước" → Quốc gia Việt Nam ──
+  // "Trong nước" nghĩa là ở Việt Nam: tích xong thì chọn luôn Quốc gia = Việt Nam cho khối địa chỉ cổng vừa dựng (cổng
+  // có lúc để trống ô này). Cổng hay dựng hỏng khối — danh sách Quốc gia rỗng, chọn không ăn — thì tick lại ô phạm vi
+  // cho cổng dựng lại khối rồi chọn lại, tối đa hai lần.
+
+  const HOME_COUNTRY = "Việt Nam";
+
+  async function homeCountry(group) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      let area = null;
+      for (let waited = 0; waited <= 2000 && !area; waited += 150) {
+        area = [...document.querySelectorAll("x-select-area")]
+          .find((a) => a.querySelector('[id^="custom-select-"]') && scopeOf(a)?.group === group) || null;
+        if (!area) await sleep(150);
+      }
+      if (!area) return false;
+      const name = area.getAttribute("name");
+      const country = () => slots().find((s) => s.name === name && s.role === "quocGia");
+      if (!country()) return true;
+      if (fold(country().value()) === fold(HOME_COUNTRY)) return true;
+      if ((await readOptions(country())).length) {
+        await fillArea(name, { ...areaData(name), quocGia: HOME_COUNTRY });
+        await sleep(300);
+        if (fold(country()?.value() || "") === fold(HOME_COUNTRY)) return true;
+      }
+      if (attempt === 2 || !(await toggleScope(area))) return false;
+    }
     return false;
+  }
+
+  async function afterScope(slot, value) {
+    if (slot.kind !== "radio" || !fold(String(value || "")).includes("trong nuoc")) return;
+    const group = document.querySelector(`x-radio[name="${CSS.escape(slot.name)}"]`);
+    if (group) await homeCountry(group);
+  }
+
+  // Danh sách Tỉnh / Quốc gia rỗng trong khối "Trong nước": cổng dựng hỏng khối → tick lại ô phạm vi, chọn lại Việt Nam.
+  async function rebuiltOptions(slot) {
+    const scope = scopeOf(slot.area);
+    if (!scope?.domestic) return [];
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const fresh = slots().find((s) => s.key === slot.key);
+      if (!fresh || !(await toggleScope(fresh.area))) break;
+      await homeCountry(scope.group);
+      const again = slots().find((s) => s.key === slot.key);
+      const options = again ? await readOptions(again) : [];
+      if (options.length) return options;
+    }
+    return [];
   }
 
   async function wardOptions(name) {
@@ -582,6 +656,7 @@
       const ok = target
         ? (await applyValue(target, slots(), String(msg.apply.value ?? ""))) && (await applyExtra(msg.apply.extra))
         : false;
+      if (ok) await afterScope(target, msg.apply.value);
       applied = { key: msg.apply.key, ok };
       // Điền không được thì không hỏi lại ô đó ngay ở lượt này (BE cũng ghi vào danh sách bỏ qua).
       if (!ok) skip.add(msg.apply.key);
@@ -592,8 +667,13 @@
     let slot = (msg.focus && list.find((s) => s.key === msg.focus))
       || (msg.requiredFirst && list.find((s) => !s.value() && s.required && !skip.has(s.key)))
       || list.find((s) => !s.value() && !skip.has(s.key));
-    if (!slot) { unfocus(); return { ok: true, applied, field: null, stats }; }
+    if (!slot) { unfocus(); return { ok: true, applied, field: null, stats, ...catalogOf(msg, list) }; }
     let options = await readOptions(slot);
+    if (!options.length && (slot.role === "tinh" || slot.role === "quocGia") && slot.area) {
+      options = await rebuiltOptions(slot);
+      ({ list, stats } = markAll(msg.required));
+      slot = list.find((s) => s.key === slot.key) || slot;
+    }
     let province = "";
     if (!options.length && slot.role === "xa" && areaData(slot.name).tinh) {
       options = await wardOptions(slot.name);
@@ -605,7 +685,16 @@
     await focusSlot(slot);
     return {
       ok: true, applied, field: publicField(slot, options, sectionOf(slot.box, headings()), province), stats,
+      ...catalogOf(msg, list),
     };
+  }
+
+  // BE vòng bổ sung bản 2 xin cả danh sách ô (msg.catalog) để hiểu "sửa ô X", "sửa nhiều ô": nhãn, phần, giá trị hiện
+  // có. Danh sách lựa chọn của ô chọn chỉ đọc được khi mở dropdown → không gửi ở đây (BE đưa con trỏ tới ô đó khi cần).
+  function catalogOf(msg, list) {
+    if (!msg?.catalog) return {};
+    const heads = headings();
+    return { catalog: list.map((s) => publicField(s, s.kind === "radio" ? (s.options || []) : [], sectionOf(s.box, heads))) };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

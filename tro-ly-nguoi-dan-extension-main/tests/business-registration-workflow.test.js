@@ -126,18 +126,21 @@ test("đăng ký mới điền chủ hộ thẳng từ giấy đề nghị, khô
     source.indexOf("async function handleOwnerPage"),
     source.indexOf("async function handleCopyPersonPage")
   );
-  assert.doesNotMatch(ownerHandler, /btnIS_SIGNER/);
+  // Hồ sơ có tờ khai: không sao chép tài khoản. Chỉ trợ lý hộ kinh doanh (BE gửi __copyAccount, chủ hộ = người đăng
+  // nhập) mới bấm nút sao chép, và khi đó không xoá các ô nhân thân BE không gửi.
+  assert.match(ownerHandler, /const copyAccount = fields\.some\(\(f\) => f\.name === "__copyAccount" && f\.value\)/);
+  assert.match(ownerHandler, /if \(copyAccount && [^\n]*\) \{[\s\S]*?btnIS_SIGNER/);
   assert.match(ownerHandler, /st\.workflow === "change"[\s\S]*?handleChangeOwnerPage/);
   assert.match(ownerHandler, /fillFormStandard\(structural\)/);
   assert.match(ownerHandler, /fillAddressCascade\(address\)/);
   assert.match(ownerHandler, /clickSaveDetectReload\(saveBtn\)/);
-  assert.equal((ownerHandler.match(/applyOwnerFromDossier\(fields\)/g) || []).length, 2);
+  assert.equal((ownerHandler.match(/applyOwnerFromDossier\(fields, copyAccount\)/g) || []).length, 2);
   assert.ok(
-    ownerHandler.indexOf("applyOwnerFromDossier(fields)")
+    ownerHandler.indexOf("applyOwnerFromDossier(fields, copyAccount)")
       < ownerHandler.indexOf("fillAddressCascade(address)")
   );
   assert.ok(
-    ownerHandler.lastIndexOf("applyOwnerFromDossier(fields)")
+    ownerHandler.lastIndexOf("applyOwnerFromDossier(fields, copyAccount)")
       > ownerHandler.indexOf("fillAddressCascade(address)")
   );
 

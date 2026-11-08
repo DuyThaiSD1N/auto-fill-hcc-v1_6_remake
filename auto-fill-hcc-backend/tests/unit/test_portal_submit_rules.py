@@ -312,6 +312,45 @@ def test_lien_thong_nhan_duoc_man_ket_qua_that():
     assert re.match(rule["urlPattern"], "/#/ke-khai/2.000987")
 
 
+# ── HkdOnline: nộp xong quay về trang Khối dữ liệu, chỉ đổi trạng thái + cấp số hồ sơ ─────
+_HKD_HOST = "hokinhdoanh.dkkd.gov.vn"
+_HKD_DOC = "/HkdOnline/Forms/APP/DW_DOCUMENTEdit.aspx"
+
+
+def _hkd_success(path: str, text: str) -> bool:
+    rule = PORTAL_SUBMIT[_HKD_HOST]
+    page = _fold_like_extension(text)
+    return bool(re.search(rule["urlPattern"], path)) and any(
+        all(p in page for p in group) for group in rule["successText"])
+
+
+def test_hkd_nhan_man_khoi_du_lieu_sau_khi_nop():
+    """Chữ trang Khối dữ liệu ngay sau khi bấm Nộp (ảnh quầy 06/11, số hồ sơ thay bằng số giả)."""
+    text = ("Thông tin về hồ sơ Hình thức đăng ký:\tThành lập mới hộ kinh doanh "
+            "Trạng thái hồ sơ:\tĐang nộp\nSố hồ sơ:\tOH-0000000/26 Chuẩn bị Xóa hồ sơ Trở về")
+    assert _hkd_success(_HKD_DOC, text)
+
+
+def test_hkd_khong_nhan_khi_ho_so_moi_luu():
+    """Trước khi nộp: cùng trang, trạng thái "Đã lưu", số hồ sơ trống (khớp snapshot ConfirmPrepare)."""
+    text = "Trạng thái hồ sơ : Đã lưu Số hồ sơ : Chuẩn bị Xóa hồ sơ Trở về"
+    assert not _hkd_success(_HKD_DOC, text)
+    assert not _hkd_success("/HkdOnline/Forms/APP/ConfirmPrepare.aspx", text)
+
+
+def test_hkd_khong_nhan_ngoai_khoi_du_lieu_va_trang_xac_nhan():
+    """Danh sách hồ sơ có thể liệt kê hồ sơ "Đang nộp" cũ — không được tính là vừa nộp."""
+    text = "Danh sách hồ sơ đăng ký Số hồ sơ Trạng thái hồ sơ Đang nộp"
+    assert not _hkd_success("/HkdOnline/Forms/APP/DW_DOCUMENTListing.aspx", text)
+
+
+def test_hkd_nut_trang_khoi_du_lieu_khong_bi_tinh_la_nop():
+    assert not _matches(_HKD_HOST, _HKD_DOC, element_id="ctl00_C_btnAccept", label="Chuẩn bị")
+    for label in ["Xóa hồ sơ", "Trở về"]:
+        assert not _matches(_HKD_HOST, _HKD_DOC, label=label)
+    assert _matches(_HKD_HOST, "/HkdOnline/Forms/APP/ConfirmPrepare.aspx", element_id="ctl00_C_BtnSave")
+
+
 # ── Cổng DVC quốc gia, trang nộp một trang (/nop-ho-so) của các thủ tục hộ tịch mới ──────────
 _DVCQG_HOST = "dichvucong.gov.vn"
 _DVCQG_NEW_DIR = pathlib.Path(__file__).resolve().parents[3] / "html mới"

@@ -340,8 +340,295 @@
     return { ok: true, cancelled: true };
   };
 
+  // ── Trợ lý hộ kinh doanh: BE đi từng khối — mở khối, trỏ ô đang hỏi, điền ngay ô vừa trả lời. Lưu khối vẫn qua
+  //    startBusinessRegistration (máy điền chạy đúng một trang). ──
+  const HKD_FOCUS_ATTR = "data-tlnd-hkd-focus";
+  // Nhớ khối đang mở ở chrome.storage, KHÔNG ở sessionStorage: jquery.dirrty.js của cổng xoá sạch sessionStorage mỗi
+  // lần gửi form (postback bấm menu) → cờ mất, không ai báo đã tới khối.
+  const HKD_OPEN_KEY = "tlnd_hkd_open_block";
+  const HKD_OPEN_TTL_MS = 60000;
+
+  // Trang reload sau khi bấm menu: đúng khối đang chờ → báo sidebar (iframe có thể chưa dựng xong → gửi lại tới khi xác nhận).
+  async function hkdReportArrival() {
+    const saved = await storageGet(HKD_OPEN_KEY);
+    const pending = saved && Date.now() - Number(saved.at || 0) < HKD_OPEN_TTL_MS ? String(saved.page || "") : "";
+    if (!pending || H.detectBusinessPageKey?.().pageKey !== pending) return;
+    await storageRemove(HKD_OPEN_KEY);
+    let tries = 0;
+    console.log("[HKD] đã tới khối", pending, "→ báo sidebar");
+    // Sidebar dựng lại sau reload có thể mất vài chục giây (khôi phục phiên) → gửi lại tới ~40 s.
+    const send = () => {
+      tries += 1;
+      try {
+        chrome.runtime.sendMessage({ type: "hkdArrived", page: pending, accountName: hkdAccountName() }, (res) => {
+          void chrome.runtime.lastError;
+          if (res?.ok) console.log("[HKD] sidebar đã nhận báo tới khối", pending, "lần", tries);
+          else if (tries < 60) setTimeout(send, 700);
+        });
+      } catch (e) { if (tries < 60) setTimeout(send, 700); }
+    };
+    send();
+  }
+
+  async function hkdOpenBlock(page) {
+    if (H.detectBusinessPageKey?.().pageKey === page) return { ok: true, here: true, accountName: hkdAccountName() };
+    const label = H.businessPageLabel?.(page) || "";
+    const menu = document.querySelectorAll("#ctl00_C_BLCtl_CtlList a, .left-menu a");
+    // Chỉ coi là "không có khối" khi menu đã dựng đủ mà thiếu link (khối Ủy quyền / Thành viên chỉ có khi cần).
+    if (menu.length >= 5 && !H.findBusinessPageLink?.(label)) return { ok: true, missing: true };
+    await storageSet(HKD_OPEN_KEY, { page, at: Date.now() });  // ghi xong mới postback (trang rời đi có thể cắt lệnh ghi)
+    return { ok: !!H.goToBusinessPageByKey?.(page), navigating: true };
+  }
+
+  function hkdFocus(names) {
+    document.querySelectorAll(`[${HKD_FOCUS_ATTR}]`).forEach((el) => {
+      el.style.outline = el.getAttribute(HKD_FOCUS_ATTR) === "-" ? "" : el.getAttribute(HKD_FOCUS_ATTR);
+      el.style.outlineOffset = "";
+      el.removeAttribute(HKD_FOCUS_ATTR);
+    });
+    let first = null;
+    for (const name of names || []) {
+      for (const el of document.querySelectorAll(`[name="${CSS.escape(name)}"]`)) {
+        // Ô chọn xã bọc combobox jQuery (select ẩn) / radio nhỏ → tô khung bao quanh cho dễ thấy.
+        const target = el.type === "radio" || el.type === "checkbox" || !el.offsetParent
+          ? (el.closest("td, span, label") || el.parentElement || el) : el;
+        if (!target.hasAttribute(HKD_FOCUS_ATTR)) target.setAttribute(HKD_FOCUS_ATTR, target.style.outline || "-");
+        target.style.outline = "3px solid #0a9f78";
+        target.style.outlineOffset = "2px";
+        first = first || target;
+      }
+    }
+    if (first) first.scrollIntoView({ block: "center", behavior: "smooth" });
+    return { ok: true, found: !!first };
+  }
+
+  // Nút "Sao chép thông tin đăng ký tài khoản" (khối chủ hộ và khối người nộp) là submit thường, ngoài UpdatePanel
+  // → cả trang reload, lời đáp cho sidebar mất. Nhớ yêu cầu ở chrome.storage, trang mới tải xong mới đọc kết quả và
+  // báo sidebar hkdCopied. Khối người nộp còn so nhân thân vừa sao chép với chủ hộ BE gửi (trùng số định danh HOẶC
+  // họ tên = chủ hộ tự nộp); không có chủ hộ để so → sameAsOwner null, BE tự quyết.
+  const HKD_COPY_KEY = "tlnd_hkd_copy_account";
+  const hkdRead = (id) => String(document.getElementById(id)?.value
+    || document.getElementById(`${id}_Vw`)?.textContent || "").replace(/\s+/g, " ").trim();
+  const HKD_COPY = {
+    "chu-ho-kinh-doanh": {
+      btn: "ctl00$C$OWN_PCtl$btnIS_SIGNER",
+      ready: () => !!hkdRead("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld"),
+    },
+    "nguoi-nop-ho-so": {
+      btn: "ctl00$C$btnIS_SIGNER",
+      ready: () => !!hkdRead("ctl00_C_PERSCtl_FULL_NAMEFld")
+        && !!(hkdRead("ctl00_C_PERSCtl_PHONEFld") || hkdRead("ctl00_C_PERSCtl_EMAILFld")),
+    },
+  };
+  // Tên người đăng nhập ở góc trên mọi trang HkdOnline — BE dùng để hỏi "chủ hộ có phải là … không".
+  const hkdAccountName = () => String(document.getElementById("ctl00_LV2_LblFullNameValue")?.textContent || "")
+    .replace(/\s+/g, " ").trim();
+
+  async function hkdCopyAccount(page, owner) {
+    const cfg = HKD_COPY[page];
+    const btn = document.querySelector(`[name="${cfg.btn}"]`);
+    if (btn && !cfg.ready()) {
+      await storageSet(HKD_COPY_KEY, { page, owner, at: Date.now() });
+      try { btn.click(); } catch (e) { /* ignore */ }
+      await H.waitFor?.(cfg.ready, 8000, 250);
+      if (!cfg.ready()) return { ok: true, reloading: true };  // trang reload → hkdReportCopy báo sau
+      await storageRemove(HKD_COPY_KEY);
+    }
+    return hkdCopyResult(page, owner);
+  }
+
+  async function hkdReportCopy() {
+    const saved = await storageGet(HKD_COPY_KEY);
+    if (!saved || !HKD_COPY[saved.page] || Date.now() - Number(saved.at || 0) > HKD_OPEN_TTL_MS) return;
+    if (H.detectBusinessPageKey?.().pageKey !== saved.page) return;
+    await storageRemove(HKD_COPY_KEY);
+    await H.waitFor?.(HKD_COPY[saved.page].ready, 5000, 250);
+    const res = hkdCopyResult(saved.page, saved.owner || null);
+    let tries = 0;
+    const send = () => {
+      tries += 1;
+      try {
+        chrome.runtime.sendMessage({ type: "hkdCopied", page: saved.page, copied: res.copied,
+          same: res.sameAsOwner }, (ack) => {
+          void chrome.runtime.lastError;
+          if (!ack?.ok && tries < 60) setTimeout(send, 700);
+        });
+      } catch (e) { if (tries < 60) setTimeout(send, 700); }
+    };
+    send();
+  }
+
+  function hkdCopyResult(page, owner) {
+    const fold = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d")
+      .toLowerCase().replace(/\s+/g, " ").trim();
+    const copied = HKD_COPY[page].ready();
+    let same = null;
+    if (page === "nguoi-nop-ho-so") {
+      const id = hkdRead("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+      const name = fold(hkdRead("ctl00_C_PERSCtl_FULL_NAMEFld"));
+      const ownerId = String(owner?.soDinhDanh || "").replace(/\D/g, "");
+      const ownerName = fold(owner?.hoTen);
+      // Hai bên cùng có số định danh thì CHỈ so số: trùng họ tên khác số là hai người, coi là một sẽ
+      // ghép nơi ở chủ hộ sang người nộp. Thiếu số ở một bên mới phải dựa vào họ tên.
+      if (copied && id && ownerId) same = id === ownerId;
+      else if (copied && name && ownerName) same = name === ownerName;
+    }
+    console.log("[HKD]", page, "— sao chép tài khoản:", copied, "| trùng chủ hộ:", same);
+    return { ok: true, copied, sameAsOwner: same };
+  }
+
+  // "Kiểm tra trùng tên" của cổng là AJAX (HOUSEHOLDName.aspx/GetExistName[F]) đổ HTML vào hộp thoại jQuery — gọi thẳng
+  // API đó để đọc được kết quả. HTML trả về chỉ phân tích bằng DOMParser (không chạy script, không tải ảnh).
+  async function hkdCheckName(kind, name) {
+    const type = String(document.getElementById("hdHOUSEHOLDType")?.value || "HH").trim();
+    const foreign = kind === "f";
+    try {
+      const res = await fetch(`/HkdOnline/Forms/APP/HOUSEHOLDName.aspx/${foreign ? "GetExistNameF" : "GetExistName"}`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ [foreign ? "name_f" : "name"]: `${String(name || "").toUpperCase()}::${type}` }),
+      });
+      const data = await res.json();
+      const doc = new DOMParser().parseFromString(String(data?.d || ""), "text/html");
+      const names = [...doc.querySelectorAll("tr")].map((tr) => [...tr.cells].map((c) => c.textContent.trim()))
+        .filter((cells) => cells.length >= 2 && /^\d+$/.test(cells[0])).map((cells) => cells[1]);
+      const text = String(doc.body?.textContent || "").replace(/\s+/g, " ").trim();
+      console.log("[HKD] kiểm trùng tên:", names.length, "tên trong danh sách");
+      return { ok: res.ok && !!text, text: text.slice(0, 600), names: names.slice(0, 50) };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  }
+
+  // Bước "Chuẩn bị": Khối dữ liệu → nút Chuẩn bị (ctl00$C$btnAccept). Cả hai lần bấm đều reload trang → nhớ bước ở
+  // chrome.storage; tải xong đọc kết quả: sang Trang xác nhận (có nút Nộp ctl00$C$BtnSave) = xong, còn lỗi thì cổng
+  // liệt kê trong khung notificationPanel ("(Tên khối) Nội dung lỗi"). KHÔNG bao giờ bấm nút Nộp.
+  const HKD_PREP_KEY = "tlnd_hkd_prepare";
+  const hkdAcceptBtn = () => document.querySelector('[name="ctl00$C$btnAccept"]');
+
+  async function hkdPrepare() {
+    if (hkdAcceptBtn()) {
+      await storageSet(HKD_PREP_KEY, { step: "result", at: Date.now() });
+      hkdAcceptBtn().click();
+      return { ok: true, navigating: true };
+    }
+    const link = document.querySelector('a[title="Document edit"]')
+      || [...document.querySelectorAll("a")].find((a) => (a.textContent || "").trim() === "Khối dữ liệu");
+    if (!link) return { ok: false, errors: ["Không thấy nút Chuẩn bị / mục Khối dữ liệu trên trang"] };
+    await storageSet(HKD_PREP_KEY, { step: "accept", at: Date.now() });
+    link.click();
+    return { ok: true, navigating: true };
+  }
+
+  async function hkdReportPrepare() {
+    const saved = await storageGet(HKD_PREP_KEY);
+    if (!saved || Date.now() - Number(saved.at || 0) > HKD_OPEN_TTL_MS) return;
+    if (saved.step === "accept" && hkdAcceptBtn()) {
+      await storageSet(HKD_PREP_KEY, { step: "result", at: Date.now() });
+      hkdAcceptBtn().click();
+      return;
+    }
+    await storageRemove(HKD_PREP_KEY);
+    const ok = !!document.querySelector('[name="ctl00$C$BtnSave"]');
+    const errors = ok ? [] : [...document.querySelectorAll('.notificationPanel a[id$="_TextLink"]')]
+      .map((a) => (a.textContent || "").replace(/\s+/g, " ").trim()).filter(Boolean);
+    console.log("[HKD] chuẩn bị hồ sơ:", ok ? "sang Trang xác nhận" : `${errors.length} lỗi`);
+    let tries = 0;
+    const send = () => {
+      tries += 1;
+      try {
+        chrome.runtime.sendMessage({ type: "hkdPrepared", ok, errors: errors.slice(0, 20) }, (ack) => {
+          void chrome.runtime.lastError;
+          if (!ack?.ok && tries < 60) setTimeout(send, 700);
+        });
+      } catch (e) { if (tries < 60) setTimeout(send, 700); }
+    };
+    send();
+  }
+
+  // Khối người (chủ hộ / người nộp) đã Lưu thì cổng hiện ở chế độ XEM: nơi ở chỉ là chữ, không có ô chọn. Phải tích
+  // "Sửa đổi dữ liệu" (…$PERSCtl$PERSONChange, postback reload) mới sửa được → nhớ các ô cần điền, tích, tải xong điền
+  // tiếp (hkdResumeFill).
+  const HKD_REFILL_KEY = "tlnd_hkd_refill";
+
+  async function hkdEnableEdit(fields) {
+    const addr = fields.find((f) => /\$PERSCtl\$ADDRCCtl\$/.test(f?.name || ""));
+    if (!addr) return false;
+    const el = document.querySelector(`[name="${addr.name}"]`);
+    if (el && !el.disabled) return false;
+    const prefix = addr.name.slice(0, addr.name.indexOf("ADDRCCtl$"));
+    const box = document.querySelector(`[name="${prefix}PERSONChange"]`);
+    if (!box || box.checked) return false;
+    await storageSet(HKD_REFILL_KEY, { fields, page: H.detectBusinessPageKey?.().pageKey || "", at: Date.now() });
+    console.log("[HKD] khối đã lưu ở chế độ xem → tích Sửa đổi dữ liệu rồi điền tiếp");
+    box.click();
+    return true;
+  }
+
+  async function hkdResumeFill() {
+    const saved = await storageGet(HKD_REFILL_KEY);
+    if (!saved || Date.now() - Number(saved.at || 0) > HKD_OPEN_TTL_MS) return;
+    if (saved.page && H.detectBusinessPageKey?.().pageKey !== saved.page) return;
+    await storageRemove(HKD_REFILL_KEY);
+    await hkdFill(saved.fields || []);
+  }
+
+  async function hkdFill(fields) {
+    const list = Array.isArray(fields) ? fields : [];
+    const submitter = list.find((f) => f?.name === "__copySubmitter");
+    if (submitter) return hkdCopyAccount("nguoi-nop-ho-so", submitter.value?.owner || null);
+    if (list.some((f) => f?.name === "__copyAccount" && f.value)) {
+      const res = await hkdCopyAccount("chu-ho-kinh-doanh", null);
+      if (res.reloading) return res;
+      if (list.every((f) => /^__/.test(f?.name || ""))) return res;  // chỉ sao chép → báo BE để hỏi tiếp
+    }
+    const real = list.filter((f) => f && !/^__/.test(f.name || ""));
+    if (await hkdEnableEdit(real)) return { ok: true, reloading: true };
+    const address = real.filter((f) => /\$ADDRC?Ctl\$/.test(f.name || ""));
+    const rest = real.filter((f) => !address.includes(f));
+    // Radio cấu trúc (loại chủ thể, địa chỉ nhận thông báo thuế) trước khối địa chỉ: cổng dựng lại khối theo radio.
+    try { if (rest.length) await H.fillFormStandard(rest); } catch (e) { /* ignore */ }
+    try { if (address.length) await H.fillAddressCascade?.(address); } catch (e) { /* ignore */ }
+    return { ok: true };
+  }
+
+  // Nút "Nộp hồ sơ" của trợ lý (công dân bấm / nói rồi xác nhận): bấm nút Nộp trên Trang xác nhận. Cổng tự hỏi
+  // confirm() "Bạn có chắc chắn…" — để nguyên cho công dân bấm OK; luật nhận nộp (BtnSave) ghi cú bấm như bấm tay.
+  function hkdSubmit() {
+    const btn = document.querySelector('[name="ctl00$C$BtnSave"]');
+    if (!btn) return { ok: false };
+    btn.click();
+    return { ok: true };
+  }
+
   if (IS_TOP_FRAME) {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      if (msg?.action === "hkdSubmit") {
+        // Trả lời TRƯỚC khi bấm: confirm() của cổng chặn trang tới khi công dân bấm OK / Cancel.
+        const btn = document.querySelector('[name="ctl00$C$BtnSave"]');
+        sendResponse({ ok: !!btn });
+        if (btn) setTimeout(hkdSubmit, 50);
+        return false;
+      }
+      if (msg?.action === "hkdOpenBlock") {
+        hkdOpenBlock(String(msg.page || "")).catch((e) => ({ error: String(e?.message || e) })).then(sendResponse);
+        return true;
+      }
+      if (msg?.action === "hkdFocus") {
+        sendResponse(hkdFocus(msg.names));
+        return false;
+      }
+      if (msg?.action === "hkdPrepare") {
+        hkdPrepare().then(sendResponse);
+        return true;
+      }
+      if (msg?.action === "hkdCheckName") {
+        hkdCheckName(msg.kind, msg.name).then(sendResponse);
+        return true;
+      }
+      if (msg?.action === "hkdFill") {
+        hkdFill(msg.fields).catch((e) => ({ error: String(e?.message || e) })).then(sendResponse);
+        return true;
+      }
       if (msg?.action === "prepareBusinessRegistration") {
         // Exception phải trả về dạng {error} — reject âm thầm làm sidebar báo mù
         // "Trang HkdOnline chưa nhận lệnh tự điền" và luồng đứng im.
@@ -385,6 +672,10 @@
 
     // Mỗi full postback tạo content context mới; tự nhặt state đã persist và chạy tiếp.
     if (isBusinessHost()) {
+      setTimeout(hkdReportArrival, 400);
+      setTimeout(hkdReportCopy, 450);
+      setTimeout(hkdReportPrepare, 500);
+      setTimeout(hkdResumeFill, 600);
       setTimeout(async () => {
         touchBusinessActivity();
         const fillState = await H.getFillAllState?.();

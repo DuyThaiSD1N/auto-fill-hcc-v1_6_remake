@@ -1,0 +1,1673 @@
+{
+ "forms": {
+  "ket_hon": [
+   {
+    "key": "HoTenBenNu",
+    "label": "Họ, chữ đệm, tên",
+    "where": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "TRẦN THỊ HOA",
+    "required": true,
+    "part": "Thông tin bên nữ"
+   },
+   {
+    "key": "NgaySinhBenNu",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nữ",
+    "kind": "date",
+    "value": "05/09/2004",
+    "required": true,
+    "part": "Thông tin bên nữ"
+   },
+   {
+    "key": "DanTocBenNu",
+    "label": "Dân tộc",
+    "where": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "Kinh",
+    "required": true,
+    "part": "Thông tin bên nữ"
+   },
+   {
+    "key": "NoiCuTru_BenNu_TrongNuoc#diaChi",
+    "label": "Số nhà, đường phố, thôn, xóm",
+    "where": "Nơi cư trú",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "Xóm 3",
+    "required": true,
+    "role": "diaChi"
+   },
+   {
+    "key": "HoTenBenNam",
+    "label": "Họ, chữ đệm, tên",
+    "where": "Thông tin bên nam",
+    "kind": "text",
+    "value": "NGUYỄN VĂN AN",
+    "required": true,
+    "part": "Thông tin bên nam"
+   },
+   {
+    "key": "NgaySinhBenNam",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nam",
+    "kind": "date",
+    "value": "11/02/2003",
+    "required": true,
+    "part": "Thông tin bên nam"
+   },
+   {
+    "key": "DanTocBenNam",
+    "label": "Dân tộc",
+    "where": "Thông tin bên nam",
+    "kind": "select",
+    "value": "",
+    "required": true,
+    "part": "Thông tin bên nam"
+   },
+   {
+    "key": "SoDinhDanhBenNam",
+    "label": "Số định danh cá nhân",
+    "where": "Thông tin bên nam",
+    "kind": "text",
+    "value": "",
+    "required": true,
+    "part": "Thông tin bên nam"
+   },
+   {
+    "key": "NgayCapBenNam",
+    "label": "Ngày cấp",
+    "where": "Thông tin bên nam",
+    "kind": "date",
+    "value": "",
+    "required": true,
+    "part": "Thông tin bên nam"
+   },
+   {
+    "key": "NoiCapBenNam",
+    "label": "Cơ quan cấp",
+    "where": "Thông tin bên nam",
+    "part": "Thông tin bên nam",
+    "kind": "text",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "NoiCuTru_BenNam_TrongNuoc#diaChi",
+    "label": "Số nhà, đường phố, thôn, xóm",
+    "where": "Nơi cư trú",
+    "part": "Thông tin bên nam",
+    "kind": "text",
+    "value": "",
+    "required": true,
+    "role": "diaChi"
+   }
+  ],
+  "lien_he": [
+   {
+    "key": "DienThoai",
+    "label": "Điện thoại",
+    "where": "Thông tin liên hệ",
+    "kind": "text",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "Email",
+    "label": "Email",
+    "where": "Thông tin liên hệ",
+    "kind": "text",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "Website",
+    "label": "Website",
+    "where": "Thông tin liên hệ",
+    "kind": "text",
+    "value": "",
+    "required": false
+   }
+  ],
+  "ket_hon_cum": [
+   {
+    "key": "HoTenBenNu",
+    "label": "Họ, chữ đệm, tên",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "TRẦN THỊ HOA",
+    "required": true
+   },
+   {
+    "key": "NgaySinhBenNu",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "date",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "DanTocBenNu",
+    "label": "Dân tộc",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "QuocTichBenNu",
+    "label": "Quốc tịch",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "SoDinhDanh_BenNu",
+    "label": "Số định danh cá nhân",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "LoaiGiayToDinhDanh_BenNu",
+    "label": "Giấy tờ tùy thân",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "SoGiayToDinhDanh_BenNu",
+    "label": "Giấy tờ tùy thân – Số",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "NgayCapDD_BenNu",
+    "label": "Ngày cấp",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "date",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "NoiCapDD_BenNu",
+    "label": "Cơ quan cấp",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "NoiCuTru_BenNu",
+    "label": "Nơi cư trú (nơi thường trú/nơi tạm trú/nơi đang sinh sống)",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "radio",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "NoiCuTru_BenNu_TrongNuoc#tinh",
+    "label": "Tỉnh/Thành phố",
+    "where": "Nơi cư trú",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": true,
+    "role": "tinh"
+   },
+   {
+    "key": "NoiCuTru_BenNu_TrongNuoc#xa",
+    "label": "Xã/Phường",
+    "where": "Nơi cư trú",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": true,
+    "role": "xa"
+   },
+   {
+    "key": "NoiCuTru_BenNu_TrongNuoc#diaChi",
+    "label": "Địa chỉ",
+    "where": "Nơi cư trú",
+    "part": "Thông tin bên nữ",
+    "kind": "text",
+    "value": "",
+    "required": true,
+    "role": "diaChi"
+   },
+   {
+    "key": "SoLanKetHon_BenNu",
+    "label": "Kết hôn lần thứ mấy",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "number",
+    "value": "",
+    "required": false
+   },
+   {
+    "key": "LoaiTinhTrangHonNhan_BenNu",
+    "label": "Tình trạng hôn nhân",
+    "where": "Thông tin bên nữ",
+    "part": "Thông tin bên nữ",
+    "kind": "select",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "NgaySinhBenNam",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nam",
+    "part": "Thông tin bên nam",
+    "kind": "date",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "LoaiTinhTrangHonNhan_BenNam",
+    "label": "Tình trạng hôn nhân",
+    "where": "Thông tin bên nam",
+    "part": "Thông tin bên nam",
+    "kind": "select",
+    "value": "",
+    "required": true
+   },
+   {
+    "key": "loaiDangKy",
+    "label": "Loại đăng ký",
+    "where": "",
+    "part": "Thông tin bên nam",
+    "kind": "radio",
+    "value": "",
+    "required": false
+   }
+  ]
+ },
+ "logs": {
+  "vua_dien_ngay_sinh": [
+   {
+    "key": "NgaySinhBenNam",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nam",
+    "old": "",
+    "new": "11/02/2003"
+   }
+  ],
+  "vua_sua_ngay_sinh": [
+   {
+    "key": "NgaySinhBenNam",
+    "label": "Ngày, tháng, năm sinh",
+    "where": "Thông tin bên nam",
+    "old": "11/02/2003",
+    "new": "12/02/2003"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "N01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "mười bảy không sáu năm hai không hai lăm",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "17/06/2025"
+    }
+   }
+  },
+  {
+   "id": "N02",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "một bảy không sáu hai không hai lăm",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "17/06/2025"
+    }
+   }
+  },
+  {
+   "id": "N03",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày mười bảy tháng sáu năm hai không hai lăm",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "17/06/2025"
+    }
+   }
+  },
+  {
+   "id": "N04",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "17/6/2025",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "17/06/2025"
+    }
+   }
+  },
+  {
+   "id": "N05",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ờ mùng năm tháng ba năm hai nghìn hai mươi tư",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "05/03/2024"
+    }
+   }
+  },
+  {
+   "id": "N06",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày ba tháng tư",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "ask"
+    }
+   }
+  },
+  {
+   "id": "N07",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "hai không hai lăm",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon",
+     "hoi_ro"
+    ],
+    "values": {
+     "NgayCapBenNam": "ask"
+    }
+   }
+  },
+  {
+   "id": "N08",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "11 tháng hai hai không không ba",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "11/02/2003"
+    }
+   }
+  },
+  {
+   "id": "N09",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày mười bảy tháng sáu năm bảy tám",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon",
+     "hoi_ro"
+    ],
+    "values": {
+     "NgayCapBenNam": "ask"
+    }
+   }
+  },
+  {
+   "id": "S01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "log": "vua_dien_ngay_sinh",
+   "text": "à không, ngày sinh là mười hai tháng hai chứ",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNam"
+    ],
+    "values": {
+     "NgaySinhBenNam": "12/02/2003"
+    }
+   }
+  },
+  {
+   "id": "S02",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "log": "vua_dien_ngay_sinh",
+   "text": "sai rồi",
+   "expect": {
+    "quyet_dinh": [
+     "di_toi",
+     "hoi_ro"
+    ],
+    "toi": [
+     "NgaySinhBenNam"
+    ]
+   }
+  },
+  {
+   "id": "S03",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "log": "vua_dien_ngay_sinh",
+   "text": "không phải, là mười ba tháng hai",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNam"
+    ],
+    "values": {
+     "NgaySinhBenNam": "13/02/2003"
+    }
+   }
+  },
+  {
+   "id": "S04",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "sửa tên chồng thành nguyễn văn bình",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "HoTenBenNam"
+    ],
+    "values": {
+     "HoTenBenNam": "NGUYỄN VĂN BÌNH"
+    }
+   }
+  },
+  {
+   "id": "S05",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "sửa tên chú rể thành nguyễn văn bình với ngày sinh thành ba tháng tư năm hai nghìn",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "HoTenBenNam",
+     "NgaySinhBenNam"
+    ],
+    "values": {
+     "HoTenBenNam": "NGUYỄN VĂN BÌNH",
+     "NgaySinhBenNam": "03/04/2000"
+    }
+   }
+  },
+  {
+   "id": "S06",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "tôi muốn sửa lại thông tin bên nam đang sai",
+   "expect": {
+    "quyet_dinh": [
+     "di_toi",
+     "hoi_ro"
+    ]
+   }
+  },
+  {
+   "id": "S07",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày sinh của vợ sai, là mười lăm tháng chín năm hai nghìn linh tư",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "15/09/2004"
+    }
+   }
+  },
+  {
+   "id": "S08",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày cấp mười bảy tháng sáu hai không hai lăm, mà tên chồng viết sai, là nguyễn văn bình",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam",
+     "HoTenBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "17/06/2025",
+     "HoTenBenNam": "NGUYỄN VĂN BÌNH"
+    }
+   }
+  },
+  {
+   "id": "S09",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "sửa ngày sinh",
+   "expect": {
+    "quyet_dinh": [
+     "di_toi",
+     "hoi_ro"
+    ]
+   }
+  },
+  {
+   "id": "S10",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "log": "vua_sua_ngay_sinh",
+   "text": "thôi để như cũ đi",
+   "expect": {
+    "quyet_dinh": [
+     "khoi_phuc"
+    ],
+    "toi": [
+     "NgaySinhBenNam"
+    ]
+   }
+  },
+  {
+   "id": "S11",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "dân tộc của chồng là tày",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DanTocBenNam"
+    ]
+   }
+  },
+  {
+   "id": "X01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "confirm": [
+    {
+     "key": "NgaySinhBenNam",
+     "label": "Ngày, tháng, năm sinh",
+     "where": "Thông tin bên nam",
+     "shown": "12/02/2003"
+    }
+   ],
+   "text": "đúng rồi",
+   "expect": {
+    "quyet_dinh": [
+     "xac_nhan"
+    ]
+   }
+  },
+  {
+   "id": "X02",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "confirm": [
+    {
+     "key": "NgaySinhBenNam",
+     "label": "Ngày, tháng, năm sinh",
+     "where": "Thông tin bên nam",
+     "shown": "12/02/2003"
+    }
+   ],
+   "text": "không phải",
+   "expect": {
+    "quyet_dinh": [
+     "tu_choi"
+    ]
+   }
+  },
+  {
+   "id": "X03",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "log": "vua_dien_ngay_sinh",
+   "confirm": [
+    {
+     "key": "NgaySinhBenNam",
+     "label": "Ngày, tháng, năm sinh",
+     "where": "Thông tin bên nam",
+     "shown": "12/02/2003"
+    }
+   ],
+   "text": "không, mười ba tháng hai",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNam"
+    ],
+    "values": {
+     "NgaySinhBenNam": "13/02/2003"
+    }
+   }
+  },
+  {
+   "id": "X04",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "confirm": [
+    {
+     "key": "NgaySinhBenNam",
+     "label": "Ngày, tháng, năm sinh",
+     "where": "Thông tin bên nam",
+     "shown": "12/02/2003"
+    }
+   ],
+   "text": "ừ chuẩn rồi điền đi",
+   "expect": {
+    "quyet_dinh": [
+     "xac_nhan"
+    ]
+   }
+  },
+  {
+   "id": "L01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "tôi không nhớ ngày cấp",
+   "expect": {
+    "quyet_dinh": [
+     "bo_qua"
+    ]
+   }
+  },
+  {
+   "id": "L02",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "thôi đủ rồi để tôi tự điền",
+   "expect": {
+    "quyet_dinh": [
+     "dung"
+    ]
+   }
+  },
+  {
+   "id": "L03",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "xem trước tờ khai đi",
+   "expect": {
+    "quyet_dinh": [
+     "sang_buoc_sau"
+    ]
+   }
+  },
+  {
+   "id": "L04",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "chụp lại cái căn cước giúp tôi",
+   "expect": {
+    "quyet_dinh": [
+     "lenh_khac"
+    ]
+   }
+  },
+  {
+   "id": "L05",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "nói lại đi",
+   "expect": {
+    "quyet_dinh": [
+     "nhac_lai"
+    ]
+   }
+  },
+  {
+   "id": "L06",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ô nào cơ",
+   "expect": {
+    "quyet_dinh": [
+     "nhac_lai"
+    ]
+   }
+  },
+  {
+   "id": "L07",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "anh ơi ra lấy hộ em cái xe với",
+   "expect": {
+    "quyet_dinh": [
+     "hoi_ro"
+    ]
+   }
+  },
+  {
+   "id": "L08",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "sang thành phần hồ sơ luôn",
+   "expect": {
+    "quyet_dinh": [
+     "sang_buoc_sau"
+    ]
+   }
+  },
+  {
+   "id": "L09",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "tôi muốn thêm giấy tờ",
+   "expect": {
+    "quyet_dinh": [
+     "lenh_khac"
+    ]
+   }
+  },
+  {
+   "id": "G01",
+   "form": "ket_hon",
+   "current": "SoDinhDanhBenNam",
+   "text": "không không một không chín năm không một hai ba bốn năm",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "SoDinhDanhBenNam"
+    ],
+    "values": {
+     "SoDinhDanhBenNam": "001095012345"
+    }
+   }
+  },
+  {
+   "id": "G02",
+   "form": "ket_hon",
+   "current": "DanTocBenNam",
+   "options": {
+    "DanTocBenNam": [
+     "Kinh",
+     "Tày",
+     "Thái",
+     "Mường",
+     "Khơ Me",
+     "Hoa",
+     "Nùng",
+     "H'Mông",
+     "Dao"
+    ]
+   },
+   "text": "dân tộc kinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DanTocBenNam"
+    ],
+    "values": {
+     "DanTocBenNam": "Kinh"
+    }
+   }
+  },
+  {
+   "id": "G03",
+   "form": "ket_hon",
+   "current": "DanTocBenNam",
+   "options": {
+    "DanTocBenNam": [
+     "Kinh",
+     "Tày",
+     "Thái",
+     "Mường",
+     "Khơ Me",
+     "Hoa",
+     "Nùng",
+     "H'Mông",
+     "Dao"
+    ]
+   },
+   "text": "người tày",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DanTocBenNam"
+    ],
+    "values": {
+     "DanTocBenNam": "Tày"
+    }
+   }
+  },
+  {
+   "id": "G04",
+   "form": "ket_hon",
+   "current": "DanTocBenNam",
+   "options": {
+    "DanTocBenNam": [
+     "Kinh",
+     "Tày",
+     "Thái",
+     "Mường",
+     "Khơ Me",
+     "Hoa",
+     "Nùng",
+     "H'Mông",
+     "Dao"
+    ]
+   },
+   "text": "mông",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DanTocBenNam"
+    ],
+    "values": {
+     "DanTocBenNam": "H'Mông"
+    }
+   }
+  },
+  {
+   "id": "E01",
+   "form": "lien_he",
+   "current": "Email",
+   "text": "nguyễn văn an a còng gmail chấm com",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "Email"
+    ],
+    "values": {
+     "Email": "nguyenvanan@gmail.com"
+    }
+   }
+  },
+  {
+   "id": "E02",
+   "form": "lien_he",
+   "current": "Website",
+   "fill": {
+    "Email": "cu@gmail.com"
+   },
+   "text": "ờ tôi muốn sửa gmail thành hoàng đức minh a còng gmail chấm com",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "Email"
+    ],
+    "values": {
+     "Email": "hoangducminh@gmail.com"
+    }
+   }
+  },
+  {
+   "id": "E03",
+   "form": "lien_he",
+   "current": "Website",
+   "text": "an phát chấm vê en",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "Website"
+    ],
+    "values": {
+     "Website": "anphat.vn"
+    }
+   }
+  },
+  {
+   "id": "E04",
+   "form": "lien_he",
+   "current": "DienThoai",
+   "text": "không chín ba tám một hai ba bốn năm sáu",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DienThoai"
+    ],
+    "values": {
+     "DienThoai": "0938123456"
+    }
+   }
+  },
+  {
+   "id": "E05",
+   "form": "lien_he",
+   "current": "Email",
+   "text": "tôi không có email",
+   "expect": {
+    "quyet_dinh": [
+     "bo_qua"
+    ]
+   }
+  },
+  {
+   "id": "E06",
+   "form": "lien_he",
+   "current": "DienThoai",
+   "text": "không chín ba tám, một hai ba, bốn năm sáu",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DienThoai"
+    ],
+    "values": {
+     "DienThoai": "0938123456"
+    }
+   }
+  },
+  {
+   "id": "T01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "thread": [
+    "ờ bạn kém hàng xóm của việt nam ấy là xóm phan long thành",
+    "ý là cái địa chỉ ấy xóm ở bên nam hay là xóm long thành"
+   ],
+   "history": [
+    {
+     "role": "bot",
+     "text": "Tiếp theo đến ô Ngày cấp. Công dân nói hoặc gõ giúp tôi ạ."
+    },
+    {
+     "role": "user",
+     "text": "ờ bạn kém hàng xóm của việt nam ấy là xóm phan long thành"
+    },
+    {
+     "role": "bot",
+     "text": "Tôi chưa rõ ý công dân ạ. Công dân nói lại giúp tôi."
+    },
+    {
+     "role": "user",
+     "text": "ý là cái địa chỉ ấy xóm ở bên nam hay là xóm long thành"
+    },
+    {
+     "role": "bot",
+     "text": "Công dân muốn điền địa chỉ cho bên nam hay bên nữ ạ?"
+    }
+   ],
+   "text": "bên nam",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNam_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNam_TrongNuoc#diaChi": "Xóm Phan Long Thành"
+    }
+   }
+  },
+  {
+   "id": "T02",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "địa chỉ bên nam là xóm phan long thành",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNam_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNam_TrongNuoc#diaChi": "Xóm Phan Long Thành"
+    }
+   }
+  },
+  {
+   "id": "T03",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "thread": [
+    "tôi muốn sửa địa chỉ"
+   ],
+   "history": [
+    {
+     "role": "user",
+     "text": "tôi muốn sửa địa chỉ"
+    },
+    {
+     "role": "bot",
+     "text": "Công dân muốn sửa địa chỉ của bên nam hay bên nữ ạ?"
+    }
+   ],
+   "text": "của chồng, là xóm phan long thành",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNam_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNam_TrongNuoc#diaChi": "Xóm Phan Long Thành"
+    }
+   }
+  },
+  {
+   "id": "U01",
+   "form": "ket_hon",
+   "current": "NgayCapBenNam",
+   "text": "ngày cấp là ngày mùng hai tháng bảy năm hai không hai mốt tại cục cảnh sát ờ về quản lý trật tự hành chính xã hội",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgayCapBenNam",
+     "NoiCapBenNam"
+    ],
+    "values": {
+     "NgayCapBenNam": "02/07/2021",
+     "NoiCapBenNam": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    }
+   }
+  },
+  {
+   "id": "U02",
+   "form": "ket_hon",
+   "current": "NoiCapBenNam",
+   "history": [
+    {
+     "role": "bot",
+     "text": "Tiếp theo đến ô Ngày cấp. Công dân nói hoặc gõ giúp tôi ạ."
+    },
+    {
+     "role": "user",
+     "text": "ngày cấp là ngày mùng hai tháng bảy năm hai không hai mốt tại cục cảnh sát ờ về quản lý trật tự hành chính xã hội"
+    },
+    {
+     "role": "bot",
+     "text": "Tiếp theo đến ô Cơ quan cấp. Công dân nói hoặc gõ giúp tôi ạ."
+    }
+   ],
+   "text": "tôi nói ở trên rồi đây",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCapBenNam"
+    ],
+    "values": {
+     "NoiCapBenNam": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    }
+   }
+  },
+  {
+   "id": "U03",
+   "form": "ket_hon",
+   "current": "NoiCapBenNam",
+   "text": "cục cảnh sát quản lý trật tự",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCapBenNam"
+    ],
+    "values": {
+     "NoiCapBenNam": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    }
+   }
+  },
+  {
+   "id": "C01",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "căn cước công dân số không ba tám không chín năm không không một hai ba bốn cấp ngày mười hai tháng ba năm hai không hai mốt",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "SoDinhDanh_BenNu",
+     "LoaiGiayToDinhDanh_BenNu",
+     "SoGiayToDinhDanh_BenNu",
+     "NgayCapDD_BenNu"
+    ],
+    "values": {
+     "SoDinhDanh_BenNu": "038095001234",
+     "SoGiayToDinhDanh_BenNu": "038095001234",
+     "NgayCapDD_BenNu": "12/03/2021"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C02",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "cục cảnh sát quản lý hành chính về trật tự xã hội cấp ngày hai tháng bảy năm hai không hai mốt",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCapDD_BenNu",
+     "NgayCapDD_BenNu"
+    ],
+    "values": {
+     "NgayCapDD_BenNu": "02/07/2021",
+     "NoiCapDD_BenNu": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C03",
+   "group_title": "Nhân thân",
+   "group": [
+    "NgaySinhBenNu",
+    "DanTocBenNu",
+    "QuocTichBenNu"
+   ],
+   "current": "NgaySinhBenNu",
+   "text": "sinh ngày mười một tháng hai năm hai không không ba, dân tộc kinh, quốc tịch việt nam",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu",
+     "DanTocBenNu",
+     "QuocTichBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "11/02/2003",
+     "DanTocBenNu": "Kinh",
+     "QuocTichBenNu": "Việt Nam"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C04",
+   "group_title": "Nhân thân",
+   "group": [
+    "NgaySinhBenNu",
+    "DanTocBenNu",
+    "QuocTichBenNu"
+   ],
+   "current": "NgaySinhBenNu",
+   "text": "mười một tháng hai năm hai không không ba, người kinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu",
+     "DanTocBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "11/02/2003",
+     "DanTocBenNu": "Kinh"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C05",
+   "current": "NgaySinhBenNu",
+   "text": "ngày sinh mười một tháng hai năm hai không không ba, dân tộc kinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu",
+     "DanTocBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "11/02/2003",
+     "DanTocBenNu": "Kinh"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C06",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "căn cước số không ba tám không chín năm không không một hai ba bốn, à dân tộc tôi là kinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "SoDinhDanh_BenNu",
+     "LoaiGiayToDinhDanh_BenNu",
+     "SoGiayToDinhDanh_BenNu",
+     "DanTocBenNu"
+    ],
+    "values": {
+     "SoGiayToDinhDanh_BenNu": "038095001234",
+     "DanTocBenNu": "Kinh"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C07",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "giấy khai sinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "LoaiGiayToDinhDanh_BenNu"
+    ]
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C08",
+   "group_title": "Nơi cư trú",
+   "group": [
+    "NoiCuTru_BenNu_TrongNuoc#tinh",
+    "NoiCuTru_BenNu_TrongNuoc#xa",
+    "NoiCuTru_BenNu_TrongNuoc#diaChi"
+   ],
+   "current": "NoiCuTru_BenNu_TrongNuoc#tinh",
+   "text": "xóm long thành xã tam hợp tỉnh nghệ an",
+   "options": {
+    "NoiCuTru_BenNu_TrongNuoc#tinh": [
+     "Tỉnh Nghệ An",
+     "Thành phố Hà Nội",
+     "Tỉnh Hà Tĩnh"
+    ]
+   },
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNu_TrongNuoc#tinh",
+     "NoiCuTru_BenNu_TrongNuoc#xa",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNu_TrongNuoc#tinh": "Tỉnh Nghệ An",
+     "NoiCuTru_BenNu_TrongNuoc#xa": "Tam Hợp",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi": "Xóm Long Thành"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C09",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "tôi không có giấy tờ gì cả",
+   "expect": {
+    "quyet_dinh": [
+     "bo_qua"
+    ]
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C10",
+   "group_title": "Hôn nhân",
+   "group": [
+    "SoLanKetHon_BenNu",
+    "LoaiTinhTrangHonNhan_BenNu"
+   ],
+   "current": "SoLanKetHon_BenNu",
+   "text": "lần đầu, trước giờ chưa kết hôn bao giờ",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "SoLanKetHon_BenNu",
+     "LoaiTinhTrangHonNhan_BenNu"
+    ],
+    "values": {
+     "SoLanKetHon_BenNu": "1"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C11",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "ngày sinh của chồng là ba tháng tư năm hai nghìn",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNam"
+    ],
+    "values": {
+     "NgaySinhBenNam": "03/04/2000"
+    }
+   },
+   "form": "ket_hon_cum"
+  },
+  {
+   "id": "C12",
+   "form": "ket_hon_cum",
+   "group_title": "Nhân thân",
+   "group": [
+    "NgaySinhBenNu",
+    "DanTocBenNu",
+    "QuocTichBenNu"
+   ],
+   "current": "NgaySinhBenNu",
+   "text": "ờ ngày không ba không năm hai không không ba liên tục kinh quốc tịch việt nam",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu",
+     "DanTocBenNu",
+     "QuocTichBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "03/05/2003",
+     "DanTocBenNu": "Kinh",
+     "QuocTichBenNu": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "C13",
+   "form": "ket_hon_cum",
+   "group_title": "Nơi cư trú",
+   "group": [
+    "NoiCuTru_BenNu_TrongNuoc#tinh",
+    "NoiCuTru_BenNu_TrongNuoc#xa",
+    "NoiCuTru_BenNu_TrongNuoc#diaChi"
+   ],
+   "current": "NoiCuTru_BenNu_TrongNuoc#tinh",
+   "options": {
+    "NoiCuTru_BenNu_TrongNuoc#tinh": [
+     "Tỉnh Nghệ An",
+     "Thành phố Hà Nội",
+     "Tỉnh Hà Tĩnh"
+    ]
+   },
+   "text": "thì ở tôi ở xóm không đồng thắng xóm đồng thắng nhá xã tam hợp tỉnh nghệ an",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNu_TrongNuoc#tinh",
+     "NoiCuTru_BenNu_TrongNuoc#xa",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNu_TrongNuoc#tinh": "Tỉnh Nghệ An",
+     "NoiCuTru_BenNu_TrongNuoc#xa": "Tam Hợp",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi": "Xóm Đồng Thắng"
+    }
+   }
+  },
+  {
+   "id": "C14",
+   "form": "ket_hon_cum",
+   "group_title": "Nhân thân",
+   "group": [
+    "NgaySinhBenNu",
+    "DanTocBenNu",
+    "QuocTichBenNu"
+   ],
+   "current": "NgaySinhBenNu",
+   "text": "không ba không năm hai không không ba dân tộc kinh",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NgaySinhBenNu",
+     "DanTocBenNu"
+    ],
+    "values": {
+     "NgaySinhBenNu": "03/05/2003",
+     "DanTocBenNu": "Kinh"
+    }
+   }
+  },
+  {
+   "id": "C15",
+   "form": "ket_hon_cum",
+   "group_title": "Giấy tờ tùy thân",
+   "group": [
+    "SoDinhDanh_BenNu",
+    "LoaiGiayToDinhDanh_BenNu",
+    "SoGiayToDinhDanh_BenNu",
+    "NgayCapDD_BenNu",
+    "NoiCapDD_BenNu"
+   ],
+   "current": "SoDinhDanh_BenNu",
+   "text": "ờ không bốn không hai không ba không một năm tám bốn bốn",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "SoDinhDanh_BenNu"
+    ],
+    "values": {
+     "SoDinhDanh_BenNu": "040203015844"
+    }
+   }
+  },
+  {
+   "id": "C16",
+   "form": "ket_hon_cum",
+   "group_title": "Nơi cư trú",
+   "group": [
+    "NoiCuTru_BenNu_TrongNuoc#tinh",
+    "NoiCuTru_BenNu_TrongNuoc#xa",
+    "NoiCuTru_BenNu_TrongNuoc#diaChi"
+   ],
+   "current": "NoiCuTru_BenNu_TrongNuoc#tinh",
+   "options": {
+    "NoiCuTru_BenNu_TrongNuoc#tinh": [
+     "Tỉnh Nghệ An",
+     "Thành phố Hà Nội",
+     "Tỉnh Hà Tĩnh"
+    ]
+   },
+   "text": "tôi ở xóm long thành xã tam hợp tỉnh nghệ an",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNu_TrongNuoc#tinh",
+     "NoiCuTru_BenNu_TrongNuoc#xa",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNu_TrongNuoc#tinh": "Tỉnh Nghệ An",
+     "NoiCuTru_BenNu_TrongNuoc#xa": "Tam Hợp",
+     "NoiCuTru_BenNu_TrongNuoc#diaChi": "Xóm Long Thành"
+    }
+   }
+  },
+  {
+   "id": "C17",
+   "form": "ket_hon_cum",
+   "current": "NoiCuTru_BenNu_TrongNuoc#diaChi",
+   "text": "xóm long thành",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNu_TrongNuoc#diaChi"
+    ],
+    "values": {
+     "NoiCuTru_BenNu_TrongNuoc#diaChi": "Xóm Long Thành"
+    }
+   }
+  },
+  {
+   "id": "C18",
+   "form": "ket_hon_cum",
+   "current": "loaiDangKy",
+   "options": {
+    "loaiDangKy": [
+     "Đăng ký lần đầu"
+    ]
+   },
+   "text": "không không đăng ký lần đầu đâu",
+   "expect": {
+    "quyet_dinh": [
+     "bo_qua"
+    ]
+   }
+  },
+  {
+   "id": "C19",
+   "form": "ket_hon_cum",
+   "current": "loaiDangKy",
+   "options": {
+    "loaiDangKy": [
+     "Đăng ký lần đầu"
+    ]
+   },
+   "history": [
+    {
+     "role": "bot",
+     "text": "Tiếp theo đến ô Loại đăng ký. Công dân bấm chọn bên dưới, hoặc nói / gõ giúp tôi ạ."
+    }
+   ],
+   "text": "ý là chuyển qua loại đăng ký là không đăng ký lần đầu",
+   "expect": {
+    "quyet_dinh": [
+     "bo_qua"
+    ]
+   }
+  }
+ ]
+}

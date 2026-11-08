@@ -1,0 +1,792 @@
+{
+ "cases": [
+  {
+   "id": "H01",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "bắc ninh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "tinh": "Bắc Ninh"
+     }
+    }
+   }
+  },
+  {
+   "id": "H02",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "phường kinh bắc",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "xa": "Kinh Bắc"
+     }
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H03",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "số năm đường lý thái tổ",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "diaChi": "Lý Thái Tổ"
+     }
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H04",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "số mười phố trần phú phường đông ngàn tỉnh bắc ninh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "tinh": "Bắc Ninh",
+      "xa": "Đông Ngàn",
+      "diaChi": "Trần Phú"
+     }
+    }
+   }
+  },
+  {
+   "id": "H05",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "tân an",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "xa": "Tân An"
+     }
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H06",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "ở phường kinh bắc",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "tinh": "",
+      "xa": "Kinh Bắc"
+     }
+    }
+   }
+  },
+  {
+   "id": "H07",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "không chín một hai ba bốn năm sáu bảy tám",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0912345678"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H08",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "số điện thoại của tôi là không chín tám bảy sáu năm bốn ba hai một",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0987654321"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H09",
+   "page": "dia-chi",
+   "field": "email",
+   "text": "nguyễn an a còng gờ meo chấm com",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "email": "nguyenan@gmail.com"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   }
+  },
+  {
+   "id": "H10",
+   "page": "dia-chi",
+   "field": "email",
+   "text": "không có email đâu",
+   "expect": {
+    "action": [
+     "bo_qua"
+    ]
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   }
+  },
+  {
+   "id": "H11",
+   "page": "dia-chi",
+   "field": "website",
+   "text": "an phát chấm vê en",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "website": "anphat.vn"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email",
+    "fax"
+   ]
+  },
+  {
+   "id": "H12",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "năm mươi triệu",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "von": 50000000
+    }
+   }
+  },
+  {
+   "id": "H13",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "vốn khoảng một tỷ hai",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "von": 1200000000
+    }
+   }
+  },
+  {
+   "id": "H14",
+   "page": "thong-tin-ve-thue",
+   "field": "ngay_bat_dau",
+   "text": "mùng một tháng sau",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "ngay_bat_dau": "__next_month_1__"
+    }
+   },
+   "values": {
+    "dia_chi_thue": true
+   }
+  },
+  {
+   "id": "H15",
+   "page": "thong-tin-ve-thue",
+   "field": "so_lao_dong",
+   "text": "ba người",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "so_lao_dong": 3
+    }
+   },
+   "values": {
+    "dia_chi_thue": true
+   }
+  },
+  {
+   "id": "H16",
+   "page": "thong-tin-ve-thue",
+   "field": "dia_chi_thue",
+   "text": "giống địa chỉ kinh doanh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_thue": true
+    }
+   }
+  },
+  {
+   "id": "H17",
+   "page": "chu-ho-kinh-doanh",
+   "field": "noi_o",
+   "text": "giống địa chỉ kinh doanh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "noi_o": "giong"
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan",
+    "chu_ho_la_ban": true
+   }
+  },
+  {
+   "id": "H18",
+   "page": "chu-ho-kinh-doanh",
+   "field": "chu_ho_la_ban",
+   "text": "đúng rồi chính là tôi",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "chu_ho_la_ban": true
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan"
+   }
+  },
+  {
+   "id": "H19",
+   "page": "chu-ho-kinh-doanh",
+   "field": "chu_ho_gioi_tinh",
+   "text": "con gái",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "chu_ho_gioi_tinh": "Nữ"
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan",
+    "chu_ho_la_ban": false,
+    "chu_ho_ho_ten": "Trần Thị Hoa"
+   }
+  },
+  {
+   "id": "H20",
+   "page": "chu-ho-kinh-doanh",
+   "field": "chu_the",
+   "text": "cả nhà cùng đứng tên",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "chu_the": "ho_gia_dinh"
+    }
+   }
+  },
+  {
+   "id": "H21",
+   "page": "ten-ho-kinh-doanh",
+   "field": "ten_ho",
+   "text": "hộ kinh doanh phở thìn",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "ten_ho": "Phở Thìn"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   }
+  },
+  {
+   "id": "H22",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "không chín một hai ba bốn năm sáu bảy tám, email là an a còng gờ meo chấm com",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0912345678",
+     "email": "an@gmail.com"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H23",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "không chín một hai ba bốn năm sáu bảy tám, vốn thì năm mươi triệu",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0912345678",
+     "von": 50000000
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H24",
+   "page": "ten-ho-kinh-doanh",
+   "field": "ten_ho",
+   "text": "à sửa số điện thoại thành không chín tám bảy sáu năm bốn ba hai một",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0987654321"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email",
+    "fax",
+    "website",
+    "khong_kd_tru_so"
+   ]
+  },
+  {
+   "id": "H25",
+   "page": "dia-chi",
+   "field": "__xac_nhan__",
+   "text": "đúng rồi lưu đi",
+   "expect": {
+    "action": [
+     "dong_y"
+    ]
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email",
+    "fax",
+    "website",
+    "khong_kd_tru_so"
+   ]
+  },
+  {
+   "id": "H26",
+   "page": "dia-chi",
+   "field": "__xac_nhan__",
+   "text": "đúng nhưng số điện thoại là không chín tám bảy sáu năm bốn ba hai một",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0987654321"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email",
+    "fax",
+    "website",
+    "khong_kd_tru_so"
+   ]
+  },
+  {
+   "id": "H27",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "để tôi nghỉ chút đã",
+   "expect": {
+    "action": [
+     "tam_dung"
+    ]
+   }
+  },
+  {
+   "id": "H28",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "hỏi gì cơ",
+   "expect": {
+    "action": [
+     "nhac_lai"
+    ]
+   }
+  },
+  {
+   "id": "H29",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "à mà tôi mở quán bán phở bò nhé",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "nganh": true
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    }
+   }
+  },
+  {
+   "id": "H30",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "cho tôi chụp lại căn cước",
+   "expect": {
+    "action": [
+     "lenh_khac"
+    ]
+   }
+  },
+  {
+   "id": "H31",
+   "page": "dia-chi",
+   "field": "dien_thoai",
+   "text": "không phải, là không chín tám bảy sáu năm bốn ba hai một",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dien_thoai": "0987654321"
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   }
+  },
+  {
+   "id": "H32",
+   "page": "chu-ho-kinh-doanh",
+   "field": "chu_ho_so_dinh_danh",
+   "text": "không bốn không hai không ba không một năm tám bốn bốn",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "chu_ho_so_dinh_danh": "040203015844"
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan",
+    "chu_ho_la_ban": false,
+    "chu_ho_ho_ten": "Trần Thị Hoa",
+    "chu_ho_gioi_tinh": "Nữ",
+    "chu_ho_ngay_sinh": "03/05/2003"
+   }
+  },
+  {
+   "id": "H33",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "alo alo nghe rõ không",
+   "expect": {
+    "action": [
+     "hoi_ro",
+     "khong_ro",
+     "nhac_lai"
+    ]
+   }
+  },
+  {
+   "id": "H34",
+   "page": "dia-chi",
+   "field": "khong_kd_tru_so",
+   "text": "có kinh doanh ngay đó luôn",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "khong_kd_tru_so": true
+    }
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email",
+    "fax",
+    "website"
+   ]
+  },
+  {
+   "id": "H35",
+   "page": "dia-chi",
+   "field": "fax",
+   "text": "không có fax",
+   "expect": {
+    "action": [
+     "bo_qua"
+    ]
+   },
+   "values": {
+    "dia_chi_kd": {
+     "tinh": "Tỉnh Bắc Ninh",
+     "xa": "Kinh Bắc",
+     "diaChi": "Số 5 Đường Lý Thái Tổ",
+     "quocGia": "Việt Nam"
+    },
+    "dien_thoai": "0912345678"
+   },
+   "skipped": [
+    "email"
+   ]
+  },
+  {
+   "id": "H36",
+   "page": "thong-tin-ve-thue",
+   "field": "dia_chi_thue",
+   "text": "khác, nhận ở chỗ khác",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_thue": false
+    }
+   }
+  },
+  {
+   "id": "H37",
+   "page": "chu-ho-kinh-doanh",
+   "field": "chu_ho_ho_ten",
+   "text": "trần thị hoa",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "chu_ho_ho_ten": "Trần Thị Hoa"
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan",
+    "chu_ho_la_ban": false
+   }
+  },
+  {
+   "id": "H38",
+   "page": "thong-tin-ve-von",
+   "field": "von",
+   "text": "tôi nói ở trên rồi mà",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "von": 200000000
+    }
+   },
+   "history": [
+    {
+     "role": "bot",
+     "text": "Đã vào khối Thông tin về vốn."
+    },
+    {
+     "role": "user",
+     "text": "vốn của tôi là hai trăm triệu"
+    },
+    {
+     "role": "bot",
+     "text": "Vốn kinh doanh của hộ là bao nhiêu ạ?"
+    }
+   ]
+  },
+  {
+   "id": "H39",
+   "page": "dia-chi",
+   "field": "dia_chi_kd",
+   "text": "nghệ an, à không, bắc ninh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "dia_chi_kd": {
+      "tinh": "Bắc Ninh"
+     }
+    }
+   }
+  },
+  {
+   "id": "H40",
+   "page": "chu-ho-kinh-doanh",
+   "field": "noi_o",
+   "text": "thôn đông xã tam sơn tỉnh bắc ninh",
+   "expect": {
+    "action": [
+     "tra_loi"
+    ],
+    "values": {
+     "noi_o": {
+      "tinh": "Bắc Ninh",
+      "xa": "Tam Sơn",
+      "diaChi": "Đông"
+     }
+    }
+   },
+   "values": {
+    "chu_the": "ca_nhan",
+    "chu_ho_la_ban": true
+   }
+  }
+ ]
+}

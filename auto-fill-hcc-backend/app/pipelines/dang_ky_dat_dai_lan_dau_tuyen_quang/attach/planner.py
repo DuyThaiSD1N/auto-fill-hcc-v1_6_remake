@@ -193,6 +193,8 @@ def _item(file_index: int, file_name: str, row: int, document_name: str, doc_typ
         "componentName": _ROW_NAMES[row],
         "componentIndex": row,
         "target": "attp-row",
+        # Cổng iGate Tuyên Quang tick sẵn mọi dòng thành phần → FE bỏ tick hết trước khi đính, chỉ dòng có tệp được tick lại.
+        "untickUnplannedRows": True,
         "needsAddComponent": False,
         "detectedType": doc_type,
     }

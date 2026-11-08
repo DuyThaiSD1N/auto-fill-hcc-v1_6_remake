@@ -30,8 +30,12 @@ _UYQUYEN = "uy_quyen"
 _OTHER = "other"
 
 # componentName = đoạn text nguyên văn ĐẶC TRƯNG của dòng thành phần hồ sơ trên trang (FE fold + substring).
-_DON_COMPONENT = "Đơn đề nghị cấp bản sao văn bằng, chứng chỉ, trong đó cung cấp"
-_UYQUYEN_COMPONENT = "phải xuất trình giấy ủy quyền"
+# Mỗi Sở cấu hình bảng riêng: mẫu cũ "Đơn đề nghị cấp bản sao văn bằng, chứng chỉ, trong đó cung cấp…" / "…phải xuất
+# trình giấy ủy quyền…"; mẫu Thông tư 10/2026 (Sở Quảng Trị) "Phiếu đề nghị cấp bản sao từ sổ gốc (Phụ lục VI…)" /
+# "…người đại diện theo ủy quyền… thì phải có giấy ủy quyền…" → chọn cụm có ở CẢ HAI mẫu và chỉ khớp đúng một dòng
+# (các dòng khác viết "người yêu cầu cấp bản sao").
+_DON_COMPONENT = "đề nghị cấp bản sao"
+_UYQUYEN_COMPONENT = "người đại diện theo ủy quyền"
 
 _ROWS: dict[str, dict[str, str]] = {
     # Dòng (1) — cả Phiếu BM04, bản photo văn bằng, CCCD đều gom vào đây (Bản chính).

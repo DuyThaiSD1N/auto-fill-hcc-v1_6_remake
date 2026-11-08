@@ -150,6 +150,15 @@ def test_tax_address_missing_treated_as_same():
     assert has_addr is False
 
 
+def test_tax_address_va_tru_so_deu_trong_thi_khong_tu_chon_giong():
+    """"Giống trụ sở" chỉ tự chọn khi trụ sở có địa chỉ — cả hai trống thì không đụng ô (trợ lý hỏi / cán bộ chọn)."""
+    for fields in ([{"name": "Thue_DienThoai", "value": "0974455009"}],
+                   [{"name": "TruSo_DiaChi", "value": {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": ""}},
+                    {"name": "Thue_DiaChiNhanThongBao", "value": {}}]):
+        radio, has_addr, _ = _tax_fields(mapper.enrich(fields, page="thong-tin-ve-thue"))
+        assert radio is None and has_addr is False
+
+
 def test_tax_address_different_picks_khac_radio_and_fills_address():
     fields = [
         {"name": "TruSo_DiaChi", "value": _HQ},

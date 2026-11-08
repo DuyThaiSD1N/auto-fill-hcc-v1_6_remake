@@ -2541,6 +2541,11 @@ FR_CONFIRM_FAILED = {
     "md": "⚠️ Trang chưa chuyển sang Thành phần hồ sơ{message}. Công dân bấm thử lại giúp tôi ạ.",
     "tts": "Trang chưa chuyển sang thành phần hồ sơ. Công dân bấm thử lại giúp tôi ạ.",
 }
+# Nút / câu nói lệnh của vòng hỏi từng ô tới khi vòng đã dừng.
+FR_LOOP_ENDED = {
+    "md": "Vòng hỏi bổ sung đã dừng ạ. Công dân bấm **Bổ sung các thông tin còn thiếu** để tôi hỏi tiếp các ô còn trống.",
+    "tts": "Dạ vòng hỏi bổ sung đã dừng. Công dân bấm Bổ sung các thông tin còn thiếu để tôi hỏi tiếp ạ.",
+}
 FR_PREVIEW_CLOSED = {
     "md": "Dạ tôi đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai{review_md}, xong bấm **Xem trước tờ khai** ạ.",
     "tts": "Dạ tôi đã đóng bản xem trước. Công dân sửa trực tiếp trên tờ khai{review_tts}, rồi bấm xem trước tờ khai ạ.",
@@ -2668,6 +2673,46 @@ FR_NO_BACK = {
 FR_UNCLEAR = {
     "md": "Tôi chưa nghe rõ ạ. Công dân nói lại **{label}**{hint} giúp tôi.",
     "tts": "Dạ tôi chưa nghe rõ. Công dân nói lại ô {label_tts} giúp tôi ạ.",
+}
+# ── Vòng bổ sung bản 2 (agent điều phối + agent chuyên môn) — chỉ chạy tiếng Việt ──
+# Đọc lại giá trị vừa điền ngay trong lời nói để công dân nghe thấy và sửa được liền ("sai rồi, là …").
+# Chỉ hiện, không đọc: cả lượt điền đọc một câu FR2_APPLIED_DONE.
+FR2_APPLIED = {"md": "✓ Đã điền **{label}**{where_md}: {value}", "tts": ""}
+FR2_CONFIRM = {
+    "md": "Tôi nghe là:\n{lines_md}\n\nĐúng không ạ?",
+    "tts": "Tôi nghe là {lines_tts}. Đúng không ạ?",
+}
+# Một câu có ô nghe được và ô còn thiếu: đọc lại phần đã nghe (chưa điền) kèm câu hỏi phần còn thiếu.
+FR2_HEARD_ASK = {
+    "md": "Tôi nghe là:\n{lines_md}\n\n{question_md}",
+    "tts": "Tôi nghe là {lines_tts}. {question_tts}",
+}
+FR2_CONFIRM_LINE_MD = "- **{label}**{where_md}: {value}"
+FR2_COPY_COUNT_LABEL = "Số lượng bản sao"
+# Tới ô mà công dân đã nói trước thông tin (lúc trả lời ô khác): gợi ý giá trị đã nghe, chờ xác nhận.
+FR2_SUGGEST = {
+    "md": "💡 Tôi thấy công dân đã nói thông tin là \"**{value}**\", đúng không ạ?",
+    "tts": "Tôi thấy công dân đã nói thông tin là {value_tts}, đúng không ạ?",
+}
+# Đọc một lần sau cả lượt điền thay cho đọc lại từng ô (màn hình vẫn hiện từng ô kèm giá trị).
+FR2_APPLIED_DONE = {"md": "", "tts": "Đã điền xong. "}
+FR2_CONFIRM_YES_CHIP = "✓ Đúng rồi"
+FR2_CONFIRM_NO_CHIP = "✗ Chưa đúng"
+FR2_SAY_AGAIN = {
+    "md": "Dạ, công dân nói lại **{label}** giúp tôi ạ.",
+    "tts": "Dạ, công dân nói lại {label_tts} giúp tôi ạ.",
+}
+FR2_UNCLEAR = {
+    "md": "Tôi chưa rõ ý công dân ạ. Công dân nói lại giúp tôi, hoặc bấm nút bên dưới.",
+    "tts": "Dạ tôi chưa rõ ý. Công dân nói lại giúp tôi ạ.",
+}
+FR2_RESTORE_EMPTY = {
+    "md": "Ô **{label}** trước đó còn trống. Công dân nói giá trị đúng, hoặc sửa thẳng trên tờ khai giúp tôi ạ.",
+    "tts": "Ô {label_tts} trước đó còn trống. Công dân nói giá trị đúng giúp tôi ạ.",
+}
+FR2_CHOICE_MISSING = {
+    "md": "Tôi chưa thấy lựa chọn công dân nói trong danh sách của ô **{label}**. Công dân nói lại giúp tôi ạ.",
+    "tts": "Tôi chưa thấy lựa chọn đó trong danh sách của ô {label_tts}. Công dân nói lại giúp tôi ạ.",
 }
 # Ô số (điện thoại, số định danh, số giấy tờ): nghe được dãy số nhưng thiếu / thừa chữ số.
 FR_DIGITS_SHORT = {
@@ -2988,6 +3033,13 @@ HKD_PREPARE_ERRORS = {
            "sửa và Lưu, rồi bấm **Chuẩn bị lại** ạ."),
     "tts": ("Cổng chưa cho chuẩn bị, còn {n} lỗi, công dân xem trên màn hình. Sửa xong thì bấm Chuẩn bị lại ạ."),
 }
+HKD_PREPARE_FIX = {
+    "md": ("⚠️ Cổng chưa cho chuẩn bị, còn **{n} lỗi**:\n\n{rows}\n\nTôi mở lại khối **{blocks}** để hỏi lại các ô bị "
+           "lỗi ạ.{other}"),
+    "tts": ("Cổng chưa cho chuẩn bị, còn {n} lỗi, công dân xem trên màn hình. Tôi mở lại khối {blocks} để hỏi lại các "
+            "ô bị lỗi ạ."),
+}
+HKD_PREPARE_FIX_OTHER = " Lỗi còn lại công dân sửa trực tiếp trên trang rồi Lưu, xong tôi chuẩn bị lại ạ."
 HKD_PREPARE_UNKNOWN = "Tôi chưa đọc được kết quả trên trang, công dân xem phần Thông tin về hồ sơ giúp tôi"
 HKD_PREPARE_RETRY_LABEL = "🔁 Chuẩn bị lại"
 HKD_BLOCK_LABELS = {
@@ -3118,7 +3170,13 @@ HKD_PROMPT_LABELS = {
     "tv_noi_o": "Nơi ở hiện tại của thành viên đang khai (ở cùng chủ hộ → \"giong\")",
     "tv_them": "Còn thành viên khác nữa không (true = còn)",
 }
-HKD_NOTED = {"md": "✓ {label}: **{value}**\n\n", "tts": "Tôi ghi {label}: {value_tts}. "}
+# Hiện từng mục đã ghi kèm giá trị, chỉ đọc một câu ngắn (nhiều mục cùng lượt gộp thành một câu — xem hkd _join).
+HKD_NOTED = {"md": "✓ {label}: **{value}**\n\n", "tts": "Đã ghi xong. "}
+# Mục thuộc khối khác: khối đã lưu → lưu lại sau khối đang làm; khối chưa tới → tới đó điền sẵn.
+HKD_EDIT_SAVED_BLOCK = {"md": "_(khối **{label}** đã lưu — tôi sẽ lưu lại khối đó sau khối này)_\n\n",
+                        "tts": "Tôi sẽ lưu lại khối {label} sau khối này. "}
+HKD_NOTED_LATER = {"md": "_(thuộc khối **{label}** — tới khối đó tôi điền sẵn)_\n\n", "tts": ""}
+HKD_RESAVE = {"md": "Lưu lại khối **{label}** với thông tin vừa sửa.\n\n", "tts": "Tôi lưu lại khối {label}. "}
 HKD_UNCLEAR = {"md": "Tôi chưa nghe rõ ạ. ", "tts": "Tôi chưa nghe rõ ạ. "}
 HKD_DIGITS_WRONG = {
     "md": "Tôi nghe được **{n} số** ({digits}), chưa đúng dạng {what}. Công dân đọc lại giúp tôi ạ. ",
@@ -3144,3 +3202,50 @@ HKD_SAME_HEAD_OFFICE_LABEL = "Giống địa chỉ kinh doanh"
 HKD_SAME_OWNER_LABEL = "Giống nơi ở chủ hộ"
 HKD_MALE_LABEL = "Nam"
 HKD_FEMALE_LABEL = "Nữ"
+
+# ── Khôi phục hồ sơ đang làm dở (chat/resume/) ──
+RESUME_OFFER = {
+    "md": ("📂 Tài khoản này có hồ sơ **{procedure}** của công dân **{citizen}** đang làm dở, dừng lúc **{stopped_at}**"
+           " ({progress}). Hồ sơ còn được giữ thêm **{minutes} phút**.\n\n"
+           "Công dân muốn **khôi phục hồ sơ dở** hay **làm mới hoàn toàn** ạ?"),
+    "tts": ("Tài khoản này có hồ sơ {procedure} của công dân {citizen} đang làm dở. "
+            "Công dân muốn khôi phục hồ sơ dở hay làm mới hoàn toàn ạ?"),
+}
+RESUME_CITIZEN_UNKNOWN = "chưa rõ tên"
+RESUME_PROGRESS = {
+    "docs": "đã nhận giấy tờ",
+    "owner": "đã điền chủ hồ sơ",
+    "declaration": "đã điền tờ khai",
+    "attach": "đã lập kế hoạch đính kèm",
+}
+RESUME_ACCEPT_LABEL = "🔁 Khôi phục hồ sơ dở"
+RESUME_DECLINE_LABEL = "🆕 Làm mới hoàn toàn"
+RESUME_ACCEPTED = {
+    "md": ("✓ Tôi khôi phục hồ sơ dở. Công dân vẫn đi lần lượt từng bước trên cổng; tới bước nào tôi đưa lại "
+           "dữ liệu đã làm của bước đó ạ."),
+    "tts": "Dạ, tôi khôi phục hồ sơ dở. Tới bước nào tôi đưa lại dữ liệu đã làm của bước đó ạ.",
+}
+RESUME_EXPIRED = {
+    "md": "Hồ sơ dở đã hết thời gian giữ nên tôi làm mới từ đầu ạ.",
+    "tts": "Hồ sơ dở đã hết thời gian giữ nên tôi làm mới từ đầu ạ.",
+}
+RESUME_DOCS_RESTORED = {
+    "md": "🔁 Đã khôi phục **{files_count} tệp** giấy tờ của hồ sơ dở — công dân không cần đưa lại giấy tờ ạ.",
+    "tts": "Tôi đã khôi phục {files_count} tệp giấy tờ của hồ sơ dở.",
+}
+RESUME_DOCS_GONE = {
+    "md": "Giấy tờ của hồ sơ dở không còn nữa nên tôi nhận giấy tờ lại từ đầu ạ.",
+    "tts": "Giấy tờ của hồ sơ dở không còn nữa nên tôi nhận giấy tờ lại từ đầu ạ.",
+}
+RESUME_OTHER_CITIZEN = {
+    "md": "⚠️ Công dân đang đăng nhập không phải người của hồ sơ dở, nên tôi không khôi phục mà làm mới từ đầu ạ.",
+    "tts": "Công dân đang đăng nhập không phải người của hồ sơ dở, nên tôi làm mới từ đầu ạ.",
+}
+RESUME_STEP_REPLAYED = {
+    "owner": {"md": "🔁 Tôi điền lại thông tin chủ hồ sơ như lần trước (ô cổng đã có sẵn thì giữ nguyên) ạ.",
+              "tts": "Tôi điền lại thông tin chủ hồ sơ như lần trước ạ."},
+    "declaration": {"md": "🔁 Tôi điền lại tờ khai đúng như lần trước, ưu tiên phần cán bộ đã sửa ạ.",
+                    "tts": "Tôi điền lại tờ khai đúng như lần trước ạ."},
+    "attach": {"md": "🔁 Tôi dùng lại kế hoạch đính kèm của lần trước ạ.",
+               "tts": "Tôi dùng lại kế hoạch đính kèm của lần trước ạ."},
+}

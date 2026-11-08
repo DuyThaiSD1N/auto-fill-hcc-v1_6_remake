@@ -812,6 +812,25 @@
    "expect": {
     "pick": "khai-sinh-da-co-ho-so"
    }
+  },
+  {
+   "id": "G04",
+   "group": "khoa_tinh",
+   "province": "quangtri",
+   "text": "cấp lại giấy phép khai thác thủy sản",
+   "expect": {
+    "pick": "cap-giay-phep-khai-thac-thuy-san"
+   }
+  },
+  {
+   "id": "G05",
+   "group": "khoa_tinh",
+   "province": "danang",
+   "candidates_shown": ["cap-giay-phep-khai-thac-thuy-san"],
+   "text": "giấy phép khai thác thủy sản",
+   "expect": {
+    "pick": "cap-giay-phep-khai-thac-thuy-san"
+   }
   }
  ]
 }

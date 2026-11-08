@@ -145,6 +145,8 @@ def test_sample_three_files_follow_attachment_mapping():
     )
     assert [(item["fileIndex"], item["componentIndex"]) for item in attachments] == [(0, 2), (1, 4), (2, 2)]
     assert {item["loaiBan"] for item in attachments} == {"Bản chính"}
+    # Cổng iGate Tuyên Quang tick sẵn mọi dòng → FE bỏ tick hết, chỉ tick lại dòng có tệp.
+    assert all(item["untickUnplannedRows"] is True for item in attachments)
     assert [item["documentName"] for item in attachments] == [
         "Đơn đề nghị giao đất, cho thuê đất, chuyển mục đích sử dụng đất (Mẫu số 01)",
         "Giấy chứng nhận quyền sử dụng đất", "Giấy ủy quyền"]
@@ -284,6 +286,7 @@ def test_split_plan_cuts_real_pdf_pages(monkeypatch):
 
     assert [(item["componentIndex"], item["sourceSegments"]) for item in result["attachments"]] == [
         (2, [{"fileIndex": 0, "pageIndexes": [0]}]), (4, [{"fileIndex": 0, "pageIndexes": [1, 2]}])]
+    assert all(item["untickUnplannedRows"] is True for item in result["attachments"])
 
 
 def test_split_falls_back_to_no_split_mode(monkeypatch):

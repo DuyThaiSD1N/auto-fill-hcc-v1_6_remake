@@ -30,7 +30,7 @@ import re
 from contextvars import ContextVar
 
 from app.channels.handfree.chat import script_vi as vi
-from app.channels.handfree.chat.field_review import agent, registry
+from app.channels.handfree.chat.field_review import agent, registry, v2
 from app.channels.handfree.chat import intents
 from app.channels.handfree.chat.intents import Intent, fold
 
@@ -46,10 +46,13 @@ NESTED_CAPABILITY = "supportsFieldReviewNested"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
              "field_review_answer", "field_review_pick", "field_review_reload", "field_review_owner_next",
              "field_review_preview", "field_review_preview_report", "field_review_preview_close",
-             "field_review_confirm", "field_review_confirm_report"}
+             "field_review_confirm", "field_review_confirm_report", *v2.COMMANDS}
 # Đang ở Kê khai mà công dân nói "xong rồi / xem trước / đính kèm đi" → bước kế tiếp là Xem trước → Xác nhận
 # trên cổng (không có lệnh nào khác đưa được sang Thành phần hồ sơ).
 _NEXT_STEP_INTENTS = {("action", "confirm_review"), ("action", "request_attach")}
+# Lệnh của chính vòng hỏi từng ô: nói / bấm ra lúc đang hỏi thì xử lý trong vòng; tới khi vòng đã dừng thì mời bổ sung lại.
+_IN_LOOP = {"field_review_skip", "field_review_back", "field_review_stop", "field_review_pick", "field_review_reload",
+            "field_review_v2_yes", "field_review_v2_no"}
 # Pha riêng cho cú bấm "Bước tiếp theo" ở bước chủ hồ sơ (dùng lại engine guided_click_next của extension)
 # để báo cáo quay về đây, không lẫn với luồng dẫn từng bước (guided_steps) của thủ tục khác.
 OWNER_PHASE = "field_review_owner"
@@ -122,7 +125,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         # Ô eForm / khối ủy quyền của cổng Bắc Ninh chỉ bộ đọc content/bacninh/field-review.js đọc được.
         and (not bac_ninh(proc) or caps.get(BAC_NINH_CAPABILITY) is True)
         # Tờ khai có khối lồng (khối mẹ / cha nuôi): bản đọc eForm cũ tách khối như khối địa chỉ → hỏi sai ô.
-        and (not (config(proc) or {}).get("nested") or caps.get(NESTED_CAPABILITY) is True)
+        and (not (config(proc) or {}).get("nested") or caps.get(NESTED_CAPABILITY) is True
+             or (config(proc) or {}).get("nestedOptional") is True)
         and (conv.get("lang") or "vi") != "hmong"
     )
 
@@ -446,8 +450,10 @@ _FORMAT_HINT = re.compile(r"\s*\(\s*(?:dd|mm|yyyy|yy|hh)\b[^)]*\)", re.IGNORECAS
 
 
 def _label(text) -> str:
-    # Nhãn tờ khai có số thứ tự "(14)" và dấu ":" cuối — đọc lên chỉ gây rối.
+    # Nhãn tờ khai có số thứ tự "(14)", dấu sao ô bắt buộc ("Giấy tờ tùy thân * – Số") và dấu ":" cuối — đọc lên chỉ
+    # gây rối, dấu sao còn làm vỡ chữ đậm markdown.
     text = _FORMAT_HINT.sub("", re.sub(r"^\(\s*\d+\s*\)\s*", "", _clean(text)))
+    text = re.sub(r"\s*\*(?=\s*(?:[:–-]|$))", "", text)
     return text.rstrip(" :").strip()
 
 
@@ -485,6 +491,8 @@ def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] =
     return {
         "key": _clean(raw.get("key"), 200),
         "name": _clean(raw.get("name"), 200),
+        # Vai của ô trong khối địa chỉ (quocGia / tinh / xa / diaChi): bản 2 gom cả khối thành một cụm hỏi.
+        "role": raw.get("role") if raw.get("role") in {"quocGia", "tinh", "xa", "diaChi"} else "",
         # Ô Đề nghị cấp bản sao: câu trả lời có thể kèm số bản cho ô số lượng hiện ra sau khi chọn Có.
         "copy_choice": bool(copy_pair) and raw.get("name") == copy_pair[0],
         "label": label,
@@ -508,8 +516,16 @@ def _next_action(proc: dict | None, st: dict, apply: dict | None = None, focus: 
         action["requiredFirst"] = True  # luồng bản 2: hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc
     if apply:
         action["apply"] = apply
+    planned = ""
+    if not focus and st.get("v2"):
+        # Bản 2 tự chọn ô kế tiếp theo cụm (hỏi liền các ô cùng cụm) thay cho thứ tự từng ô của extension.
+        focus = planned = v2.planned_focus(proc, st, (apply or {}).get("key"))
     if focus:
         action["focus"] = focus  # quay lại đúng ô này dù ô đã có giá trị (sửa ô vừa điền)
+    if st.get("v2"):
+        st["focus_sent"] = {"key": focus, "planned": bool(planned)}
+    if st.get("v2"):
+        action["catalog"] = True  # bản 2: xin cả danh sách ô trên tờ khai (extension cũ bỏ qua khoá này)
     return action
 
 
@@ -725,11 +741,17 @@ async def reroute(conv: dict, text: str) -> bool:
     return True
 
 
-async def _reroute(conv: dict, st: dict, text: str):
+async def _reroute(conv: dict, proc: dict | None, st: dict, text: str):
     from app.channels.handfree.chat.flow import Reply
 
     if not await reroute(conv, text):
         return None
+    own = take_reroute()
+    if own is not None and own.kind == "action" and own.value in _IN_LOOP:
+        # Bộ phân loại ra đúng nút của vòng này (Bỏ qua / Sửa ô vừa điền / Dừng…): làm ngay trong vòng. Dừng vòng rồi
+        # mới giao lệnh thì handle() thấy vòng đã tắt, trả rỗng → vòng chết im lặng, các nút còn trên màn hình đều vô hiệu.
+        return await handle(conv, proc, own)
+    _REROUTE.set(own)
     st.update(running=False, current=None)
     r = Reply()
     r.actions = [{"type": "field_review_stop"}]
@@ -739,10 +761,14 @@ async def _reroute(conv: dict, st: dict, text: str):
 async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     from app.channels.handfree.chat.flow import Reply
 
+    if v2.enabled(conv, proc):
+        handled = await v2.answer(conv, proc, st, text)
+        if handled is not None:
+            return handled
     field = st["current"]
     answer = await agent.interpret(text, field, _visited_before(st))
     if answer.action == "command":
-        rerouted = await _reroute(conv, st, text)
+        rerouted = await _reroute(conv, proc, st, text)
         if rerouted is not None:
             return rerouted
     if answer.action == "skip":
@@ -890,12 +916,16 @@ async def handle(conv: dict, proc: dict | None, intent):
     if intent.value == "field_review_start":
         st.update(running=True, current=None, skip=[], intro=True, visited=[], single_page=single_page(proc),
                   asked_where="", required_first=flow_v2(conv, proc), phase_chips=[])
-        for key in ("pending", "skipped_label", "back_label", "last", "optional_said"):
+        for key in ("pending", "skipped_label", "back_label", "last", "optional_said", *v2.STATE_KEYS):
             st.pop(key, None)
+        if v2.enabled(conv, proc):
+            st["v2"] = True
         r = Reply()
         r.actions = [_next_action(proc, st)]
         return r
     if not st.get("running"):
+        if intent.kind == "action" and intent.value in _IN_LOOP:
+            return _ended_reply(conv, proc, st)
         return Reply()  # sự kiện về muộn của vòng đã dừng
     if intent.value == "field_review_stop":
         return _finish_reply(conv, proc, stopped=True)
@@ -905,6 +935,8 @@ async def handle(conv: dict, proc: dict | None, intent):
         return _back(proc, st) if st.get("current") else Reply()
     if intent.value == "field_review_reload":
         return _reload(proc, st) if st.get("current") else Reply()
+    if intent.value in v2.COMMANDS:
+        return v2.confirm_chip(proc, st, intent.value == v2.YES)
     if intent.value == "field_review_pick":
         # Bấm nút lựa chọn: giá trị đã đúng nguyên văn một dòng của ô → điền thẳng, không qua LLM.
         value = str((intent.payload or {}).get("value") or "")
@@ -926,6 +958,9 @@ async def handle(conv: dict, proc: dict | None, intent):
     other = _other_text(conv, proc).get(field["name"]) if field is not None else None
     if other and other[0] in field["options"]:
         field["other"] = {"option": other[0], "name": other[1]}
+    handled = await v2.on_focus(conv, proc, st, payload, field)
+    if handled is not None:
+        return handled
     carry = st.pop("copy_carry", None)
     if carry and field is not None:
         filled = _fill_copy_quantity(proc, st, field, carry, payload.get("applied"))
@@ -1040,6 +1075,16 @@ def _preview_step(proc: dict | None, st: dict, intent):
     message = _clean(payload.get("message"), 200)
     r = Reply(*_say(vi.FR_CONFIRM_FAILED, message=f": *{message}*" if message else ""))
     r.chips = confirm_chips
+    return r
+
+
+def _ended_reply(conv: dict, proc: dict | None, st: dict):
+    """Nút / câu nói lệnh của vòng hỏi (Bỏ qua, Sửa ô vừa điền, Dừng…) tới khi vòng đã dừng: báo rõ và mời bổ sung
+    lại, không im lặng (công dân tưởng trợ lý không hiểu)."""
+    from app.channels.handfree.chat.flow import Reply
+
+    r = Reply(*_say(vi.FR_LOOP_ENDED))
+    r.chips = [_start_chip(), *([] if single_page(proc) else [_preview_chip()]), *_small_chips(st.get("chips") or [])]
     return r
 
 

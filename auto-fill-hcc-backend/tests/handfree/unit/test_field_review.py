@@ -622,13 +622,16 @@ async def test_dang_nhap_that_van_nhac_dang_nhap():
 KH_REQUIRED = ["HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
                "LoaiTinhTrangHonNhan_BenNu", "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam",
                "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam"]
+# Khối chi tiết tình trạng hôn nhân (ly hôn, đã chết…) là khối lồng: extension tách từng ô con.
+KH_NESTED = ["voTinhTrangHonNhan5", "voTinhTrangHonNhan6", "TTHN_DaChet_BenNu", "TTHN_LyHon_BenNu",
+             "chongTinhTrangHonNhan5", "chongTinhTrangHonNhan6", "TTHN_DaChet_BenNam", "TTHN_LyHon_BenNam"]
 
 
 def test_ket_hon_bat_bo_sung_voi_o_bat_buoc_cua_hai_ben():
     conv = _conv(procedure_key="ket-hon")
     conv["fields"] = [{"name": "HoTenBenNu", "comp": "x-input", "value": "A"}]
     reply = flow._fill_fields_reply(conv)
-    assert reply.actions[0]["fieldReview"] == {"required": KH_REQUIRED}
+    assert reply.actions[0]["fieldReview"] == {"required": KH_REQUIRED, "nested": KH_NESTED}
 
 
 async def test_ket_hon_o_tinh_noi_cu_tru_neu_ro_cua_vo_hay_chong():
@@ -792,8 +795,9 @@ async def test_bam_tai_lai_thi_ve_dung_o_xa_de_chon_lai_tinh():
     conv = _conv(procedure_key="ket-hon")
     await _ask(conv, WARD)
     reply = await _turn(conv, "action", "field_review_reload")
-    assert reply.actions == [{"type": "field_review_next", "required": KH_REQUIRED, "skip": [],
-                              "focus": "NoiCuTru_BenNu_TrongNuoc#xa"}]
+    # Kết hôn bật vòng bổ sung bản 2 → lệnh xin kèm cả danh sách ô (catalog).
+    assert reply.actions == [{"type": "field_review_next", "required": KH_REQUIRED, "skip": [], "nested": KH_NESTED,
+                              "focus": "NoiCuTru_BenNu_TrongNuoc#xa", "catalog": True}]
     # Lần này cổng nạp được → hỏi bình thường với danh sách xã.
     ok = {**WARD, "optionsFailed": False, "province": "", "options": [f"Xã {i}" for i in range(30)]}
     asked = await _turn(conv, "event", "field_review_focus", {"field": ok, "stats": STATS})
@@ -1100,3 +1104,37 @@ def test_sang_buoc_dien_to_khai_cho_dung_buoc_cong_nhay_toi(key, step):
 
     r = field_review._owner_step(get_procedure(key), Intent("action", "field_review_owner_next", {}))
     assert r.actions == [{"type": "guided_click_next", "phase": field_review.OWNER_PHASE, "expectStep": step}]
+
+
+# ── Câu nói ra lệnh của chính vòng hỏi (lỗi thật: vòng chết im lặng, các nút còn trên màn hình đều vô hiệu) ──
+
+async def test_bo_phan_loai_ra_nut_cua_vong_thi_lam_trong_vong_khong_tat_vong(monkeypatch):
+    conv = _conv()
+    await _start_and_focus(conv)
+    _answer(monkeypatch, "value", "Kinh")
+    await _turn(conv, "action", "field_review_answer", {"text": "kinh"})
+    nxt = {**FIELD, "key": "SoDinhDanhMe", "name": "SoDinhDanhMe", "kind": "text", "label": "Số định danh:",
+           "options": []}
+    await _turn(conv, "event", "field_review_focus",
+                {"applied": {"key": "DanTocMeKS", "ok": True}, "field": nxt, "stats": STATS})
+    # Agent cũ chỉ thấy một ô → "command"; bộ phân loại của bước khớp nút "Sửa ô vừa điền".
+    _answer(monkeypatch, "command")
+    monkeypatch.setattr(field_review.intents, "resolve", AsyncMock(
+        return_value=Intent("action", "field_review_back", {"_voice_button": "__action:field_review_back"})))
+    reply = await _turn(conv, "action", "field_review_answer", {"text": "tôi muốn sửa tên bên nam"})
+    assert conv["field_review"]["running"] is True
+    assert reply.actions[0]["type"] == "field_review_next" and reply.actions[0]["focus"] == "DanTocMeKS"
+    assert field_review.take_reroute() is None
+
+
+async def test_nut_cua_vong_toi_khi_vong_da_dung_thi_moi_bo_sung_lai():
+    conv = _conv()
+    await _start_and_focus(conv)
+    await _turn(conv, "action", "field_review_stop")
+    for command in ("field_review_skip", "field_review_back", "field_review_stop"):
+        reply = await _turn(conv, "action", command)
+        assert "Vòng hỏi bổ sung đã dừng" in reply.display_md, command
+        assert "__action:field_review_start" in _sends(reply)
+    # Sự kiện về muộn của vòng đã dừng vẫn im lặng.
+    late = await _turn(conv, "event", "field_review_focus", {"field": FIELD, "stats": STATS})
+    assert not late.display_md

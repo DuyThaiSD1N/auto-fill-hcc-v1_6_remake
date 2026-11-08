@@ -24,6 +24,7 @@ from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import hkd_tro_ly
 from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import owner_review
+from app.channels.handfree.chat import resume
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import split_submit
@@ -116,6 +117,43 @@ def _business_defaults(conv: dict) -> dict | None:
             "luật hiện hành và các điều kiện kinh doanh đối với ngành nghề có điều kiện)"
         )
     return defaults or None
+
+
+def _business_attachments(conv: dict) -> list:
+    """Kế hoạch đính kèm gửi cho máy điền HkdOnline, bỏ tệp đã đính ở lượt trước (theo fid của phiên).
+
+    Đính lại sau "Điều chỉnh giấy tờ": trang tải tệp của cổng không tự bỏ tệp trùng, gửi lại cả phiên là đính hai
+    lần. Ghi các fid gửi đi lượt này; chỉ chốt là "đã đính" khi cổng báo xong (_business_attach_commit)."""
+    plan = conv.get("attach_plan") or []
+    fids = conv.get("attach_plan_fids") or []
+    done = set(conv.get("business_attached_fids") or [])
+
+    def fid(item):
+        index = item.get("fileIndex")
+        return fids[index] if isinstance(index, int) and 0 <= index < len(fids) else ""
+
+    items = [item for item in plan if not (fid(item) and fid(item) in done)]
+    conv["business_sent_fids"] = list(dict.fromkeys(f for f in map(fid, items) if f))
+    return items
+
+
+def _business_attach_commit(conv: dict) -> None:
+    sent = conv.pop("business_sent_fids", None) or []
+    conv["business_attached_fids"] = list(dict.fromkeys([*(conv.get("business_attached_fids") or []), *sent]))
+
+
+def _business_redo_ok(proc: dict | None) -> bool:
+    """Điều chỉnh giấy tờ / điền lại sau khi xong: chỉ thành lập mới — máy điền chạy lại ngay trên hồ sơ nháp đang mở.
+    Luồng thay đổi / tạm ngừng / chấm dứt phải tra cứu lại hộ kinh doanh từ đầu, chạy lại dễ mở thêm hồ sơ khác."""
+    return str((proc or {}).get("businessWorkflow") or "") == "create"
+
+
+def _business_done_chips(proc: dict | None) -> list:
+    """Điền + đính xong (luồng tờ khai): như thủ tục khác — điều chỉnh giấy tờ (đọc lại, điền lại, đính tệp mới) hoặc
+    điền lại các khối từ dữ liệu đã có."""
+    if not _business_redo_ok(proc):
+        return []
+    return [_supplement_documents_chip(), {"label": "🔁 Điền lại", "send": "__action:business_refill"}]
 
 
 def _is_signature_identity_plan_item(item: dict) -> bool:
@@ -428,6 +466,7 @@ _DOCUMENT_ADJUSTMENT_LABELS = {
     "declaration": "✅ Hoàn tất điều chỉnh, điền lại tờ khai",
     "attachment": "✅ Hoàn tất điều chỉnh, đính kèm lại",
     "owner": "✅ Hoàn tất điều chỉnh, điền lại thông tin chủ hồ sơ",
+    "business": "✅ Hoàn tất điều chỉnh, điền và đính kèm lại",
 }
 
 
@@ -906,6 +945,9 @@ async def handle_turn(
     # không phải truyền conv xuống từng chỗ dựng câu.
     _TURN_LANG.set(conv.get("lang") or "vi")
     _TURN_HMONG_TTS.set(False)
+    resume_reply = await resume.before_turn(conv, intent)
+    if resume_reply is not None:
+        return resume_reply
     voice_send = ""
     if isinstance(intent.payload, dict) and "_voice_button" in intent.payload:
         voice_send = str(intent.payload.pop("_voice_button") or "")
@@ -939,6 +981,7 @@ async def handle_turn(
         r.actions = [{"type": "press_chip", "send": voice_send}]
         return r
     reply = await _handle_turn_inner(conv, intent, client_page_context, client_url)
+    reply = await resume.after_turn(conv, intent, reply, client_page_context)
     field_review.finalize(conv, intent, reply)
     owner_review.finalize(conv, intent)
     _lock_docs_chips(conv, intent, reply)
@@ -1205,7 +1248,11 @@ async def _handle_turn_inner(
     # Thành lập hộ kinh doanh bằng hỏi đáp (không tờ khai / bổ sung mục thiếu): lệnh + câu trả lời của vòng hỏi.
     hkd_reply = await hkd_tro_ly.handle(conv, current_proc, intent)
     if hkd_reply is not None:
-        return hkd_reply
+        rerouted = field_review.take_reroute()
+        if rerouted is None:
+            return hkd_reply
+        # Đang hỏi một mục mà công dân ra lệnh khác của bước (điều chỉnh giấy tờ, điền lại…) → chạy lệnh đó luôn.
+        return await _handle_turn_inner(conv, rerouted, client_page_context)
     lien_thong_reply = lien_thong.handle(conv, current_proc, intent)
     if lien_thong_reply is not None:
         return lien_thong_reply
@@ -3438,6 +3485,23 @@ async def _handle_ask_doc_method(conv: dict, intent: Intent) -> Reply:
     return r
 
 
+async def _ask_docs_again(conv: dict) -> Reply:
+    """Phiên chưa có tệp nào thì không có gì để đọc/điền/đính: câu nói bị nghe nhầm thành "xong rồi"
+    hay nút chốt bấm sớm đều chỉ quay lại bước gửi giấy tờ. Nút chốt đã khoá phiên trước khi tới đây
+    (phiên khoá thì điện thoại tải lên bị 409) nên mở lại phiên."""
+    sid = conv.get("upload_session_id") or ""
+    if sid:
+        await up_store.set_complete(sid, False)
+    state = conv.get("state")
+    if state == "qr_waiting":
+        return await _handle_qr_waiting(conv, Intent("unknown"))
+    if state == "collecting_docs":
+        return await _handle_collecting_docs(conv, Intent("unknown"))
+    r = Reply(*_fmt(vi.ASK_DOC_METHOD_AGAIN))
+    r.cards = [_doc_options_card()]
+    return r
+
+
 async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     """Chốt giấy tờ → chạy đúng nghiệp vụ của trang hiện tại.
 
@@ -3515,6 +3579,8 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     received, total = prog.get("received", 0), prog.get("total", 0)
     # Nhánh câu (đủ/thiếu) theo giấy BẮT BUỘC; nhưng SỐ HIỂN THỊ là TỔNG tệp (cả tuỳ chọn).
     files_count = prog.get("files_count", received)
+    if not files_count:
+        return await _ask_docs_again(conv)
     dispatch_key = f'{conv.get("upload_session_id") or ""}:{target}'
     if conv.get("pipeline_status") == "running" and conv.get("docs_dispatch_key") == dispatch_key:
         return Reply()  # WebSocket complete và nút bấm có thể tới sát nhau.
@@ -3705,6 +3771,13 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
         conv["owner_info_done"] = False
         conv["owner_fields"] = []
         conv.pop("owner_review", None)
+    if target == "business":
+        # Đọc lại giấy tờ rồi điền lại các khối HkdOnline; trợ lý hỏi đáp (nếu bật) chạy lại vòng bổ sung theo giấy mới.
+        conv.pop("hkd", None)
+        conv["hkd_checked"] = False
+        conv["business_action_started"] = False
+        conv["business_result"] = None
+        conv.pop("business_refill_only", None)
     if target == "declaration":
         # Kết quả cũ chỉ dùng để hiển thị form hiện tại. Lượt chốt sau phải tạo trace mới
         # và nhận fields mới từ OCR/LLM, không được phát lại cache cũ.
@@ -3721,6 +3794,8 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
         if target == "declaration"
         else "tôi sẽ đọc lại giấy tờ và điền lại thông tin chủ hồ sơ"
         if target == "owner"
+        else "tôi sẽ đọc lại giấy tờ, điền lại các khối dữ liệu và chỉ đính thêm tệp mới"
+        if target == "business"
         else "tôi sẽ kiểm tra toàn bộ danh sách còn lại và tự bỏ qua những tệp đã có trên hồ sơ"
     )
     r = Reply(*_fmt(
@@ -3849,11 +3924,56 @@ def attach_skipped_note(conv: dict) -> str:
     return "\n\n⚠️ ".join(items[:_SKIPPED_NOTE_ITEMS])
 
 
+# Ô gõ / ô ngày Form.io mà extension xoá được (clear) — ô chọn, ô lưới không có đường xoá.
+_REFILL_CLEARABLE_COMPS = {"dom-input", "dom-date", "dom-datetime"}
+
+
+def _with_refill_cleanup(conv: dict, fields: list) -> list:
+    """Điền lại sau khi điều chỉnh giấy tờ chỉ GHI ĐÈ ô có giá trị mới: ô bộ giấy cũ có mà bộ mới không có vẫn giữ giá
+    trị cũ, xe trợ lý đã thêm vào danh sách vẫn nằm đó → tờ khai lẫn dữ liệu hai bộ giấy. Ghi nhớ những gì CHÍNH trợ lý
+    điền ở lượt trước (conv["filled_before"], sống theo phiên vì "Điền lại" xoá conv["fields"]) rồi:
+      - ô gõ / ô ngày lượt trước có, lượt này không có → phát lệnh xoá (clear, extension đã hỗ trợ);
+      - bản ghi trợ lý đã thêm vào danh sách (skipIfListed, vd biển số xe) mà lượt này không còn → removeListed để
+        extension bấm nút xoá dòng của cổng. Bản extension chưa biết khoá này thì bỏ qua, giữ hành vi cũ.
+    Ô của panel thêm bản ghi (cùng tiền tố với nút dom-click) không xoá: panel đóng sau khi thêm."""
+    key = conv.get("procedure_key") or ""
+    before = conv.get("filled_before") or {}
+    if before.get("procedure") != key:
+        before = {}
+    items = [f for f in fields if isinstance(f, dict) and f.get("name")]
+    clicks = [f for f in items if f.get("comp") == "dom-click"]
+    panels = tuple(dict.fromkeys([
+        *(str(p) for p in before.get("panels") or []),
+        *(re.sub(r"\[[^\]]*\]$", "", str(f.get("waitName") or f["name"])) + "[" for f in clicks),
+    ]))
+    listed_now = [str(f["skipIfListed"]) for f in clicks if f.get("skipIfListed")]
+    listed_before = [str(v) for v in before.get("listed") or []]
+    out = []
+    for f in fields:
+        stale = [v for v in listed_before if v not in listed_now]
+        if isinstance(f, dict) and f.get("comp") == "dom-click" and f.get("skipIfListed") and stale:
+            f = {**f, "removeListed": stale}
+        out.append(f)
+    names_now = {f["name"] for f in items}
+    for name, comp in (before.get("names") or {}).items():
+        if name not in names_now and comp in _REFILL_CLEARABLE_COMPS and not name.startswith(panels):
+            out.append({"name": name, "comp": comp, "value": "", "clear": True})
+    conv["filled_before"] = {
+        "procedure": key,
+        "names": {f["name"]: f.get("comp") for f in items
+                  if f.get("comp") in _REFILL_CLEARABLE_COMPS and not f.get("clear") and f.get("value") not in (None, "")},
+        "listed": list(dict.fromkeys([*listed_before, *listed_now]))[-20:],
+        "panels": list(panels),
+    }
+    return out
+
+
 def _fill_fields_reply(conv: dict) -> Reply:
     fields = conv.get("fields") or []
     conv["fields_dispatched"] = True  # lượt đồng bộ sau khi nối lại không phát lệnh điền lần hai
     r = Reply(*_fmt(vi.FILL_READY, count=len(fields)))
-    r.actions = [{"type": "fill_fields", "fields": fields}]  # hợp đồng CŨ nguyên xi (docs/00 §4)
+    # hợp đồng CŨ nguyên xi (docs/00 §4); thêm lệnh dọn dữ liệu của lượt điền trước khi điền lại
+    r.actions = [{"type": "fill_fields", "fields": _with_refill_cleanup(conv, fields)}]
     if conv.get("trace_request_id"):
         r.actions[0]["formSnapshot"] = form_snapshot_config(conv["trace_request_id"])
     proc = get_procedure(conv.get("procedure_key") or "")
@@ -4457,7 +4577,8 @@ def _business_ready_reply(conv: dict) -> Reply:
     r.actions = [{
         "type": "start_business_registration",
         "pages": pages,
-        "attachments": conv.get("attach_plan") or [],
+        # "Điền lại" chỉ điền lại các khối, tệp đã đính giữ nguyên trên hồ sơ.
+        "attachments": [] if conv.get("business_refill_only") else _business_attachments(conv),
         "session_id": conv.get("upload_session_id") or "",
         "businessDefaults": _business_defaults(conv),
         # Luồng thay đổi: FE cần businessFlow (khóa tra cứu hộ KD, loại thay đổi, thứ tự
@@ -4543,12 +4664,19 @@ async def _handle_business_report(conv: dict, payload: dict) -> Reply:
     if report["ok"]:
         conv["attach_done"] = True
         conv["state"] = "done"
-        return Reply(*_fmt(
+        _business_attach_commit(conv)
+        conv.pop("business_refill_only", None)
+        _clear_documents_adjustment(conv)
+        # Lượt điền lại / điều chỉnh chỉ đính tệp mới → số tệp trên hồ sơ cộng dồn các lượt.
+        conv["business_attached_count"] = int(conv.get("business_attached_count") or 0) + report["attached"]
+        r = Reply(*_fmt(
             vi.BUSINESS_DONE,
             filled_pages=report["filledPages"] or len(conv.get("business_pages") or {}),
             total_pages=report["totalPages"],
-            attached=report["attached"],
+            attached=conv["business_attached_count"],
         ))
+        r.chips = _business_done_chips(get_procedure(conv.get("procedure_key") or ""))
+        return r
 
     conv["business_action_started"] = False
     # Sau khi dừng/lỗi phải đóng trạng thái tự chạy. Watcher vẫn tiếp tục gửi page_status
@@ -5317,6 +5445,22 @@ def _retry_failed_attach(conv: dict) -> Reply:
     return tu_phap_v2.attach_plan_reply(conv, get_procedure(conv.get("procedure_key") or ""), r)
 
 
+def _business_refill(conv: dict) -> Reply:
+    """Nút "Điền lại" (luồng tờ khai HkdOnline): chạy lại máy điền với dữ liệu đã đọc, không đọc lại giấy, không đính
+    lại tệp. Luồng hỏi đáp có câu trả lời ngoài giấy tờ (business_pages không có) nên không áp dụng."""
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if conv.get("submitted_completed"):
+        return Reply(*_fmt(vi.ATTACH_SUPPLEMENT_AFTER_SUBMIT))
+    if not _business_redo_ok(proc) or not conv.get("business_pages") or conv.get("hkd"):
+        return Reply()
+    conv["state"] = "filling"
+    conv["pipeline_status"] = "business_ready"
+    conv["business_action_started"] = False
+    conv["business_result"] = None
+    conv["business_refill_only"] = True
+    return _business_ready_reply(conv)
+
+
 async def _handle_done(conv: dict, intent: Intent) -> Reply:
     """Cổng báo nộp thành công: (đánh giá nếu client hỗ trợ →) chờ cán bộ chọn đăng xuất/giữ phiên."""
     if intent.kind == "action" and intent.value == "add_documents":
@@ -5325,7 +5469,12 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
 
         # Mở lại CHÍNH phiên cũ: modal vẫn thấy đủ file; planner đọc toàn bộ danh sách
         # còn lại và extension tự bỏ qua file trùng đã có trên cổng.
-        return await _start_documents_adjustment(conv, "attachment")
+        # HkdOnline: điền + đính chạy chung một máy → lượt điều chỉnh đọc lại giấy, điền lại cả hồ sơ.
+        proc = get_procedure(conv.get("procedure_key") or "") or {}
+        return await _start_documents_adjustment(conv, "business" if _business_redo_ok(proc) else "attachment")
+
+    if intent.kind == "action" and intent.value == "business_refill":
+        return _business_refill(conv)
 
     if intent.kind == "action" and intent.value == attach_files.RETRY_ACTION:
         return _retry_failed_attach(conv)

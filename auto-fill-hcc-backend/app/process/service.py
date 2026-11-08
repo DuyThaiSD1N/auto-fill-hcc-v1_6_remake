@@ -12,6 +12,7 @@ from app.config import settings
 from app.core.errors import AppError
 from app.monitor import recorder as mon
 from app.pipelines._shared.formatting import normalize_ui_dates
+from app.pipelines._shared.locked_submitter import unlock_locked_submitter
 from app.process.schemas import ProcessReq
 from app.services import ocr
 
@@ -128,4 +129,5 @@ async def execute_process(prepared: PreparedProcess) -> dict:
     if isinstance(result, dict):
         with mon.span("post.dates"):
             normalize_ui_dates(result.get("fields"))
+        unlock_locked_submitter(result.get("fields"))
     return result

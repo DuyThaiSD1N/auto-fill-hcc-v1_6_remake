@@ -27,6 +27,10 @@ def _conv(**kw):
     return base
 
 
+async def _one_file(_sid):
+    return {"received": 1, "total": 1, "files_count": 1}
+
+
 def _capture_run_attach(monkeypatch):
     calls = {}
 
@@ -35,6 +39,7 @@ def _capture_run_attach(monkeypatch):
 
     monkeypatch.setattr(pipeline_runner, "run_attach", fake_run_attach)
     monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: asyncio.ensure_future(coro))
+    monkeypatch.setattr(flow.upload_service, "progress_of", _one_file)
     return calls
 
 
@@ -211,3 +216,32 @@ async def test_cau_khong_ro_o_buoc_gom_giay_to_van_giu_nut_chot():
     conv = _conv(doc_method="qr", upload_session_id="sid-1")
     r = await flow._handle_collecting_docs(conv, flow.Intent("unknown"))
     assert "__action:docs_done" in [c["send"] for c in r.chips]
+
+
+async def test_chua_co_tep_nao_thi_khong_chay_pipeline_ma_hoi_lai_buoc_gui_giay_to(monkeypatch):
+    """Đang chờ quét QR, chưa có tệp: câu nói bị hiểu thành "đã đủ giấy tờ" không được chạy bóc tách 0 tệp —
+    hiện lại mã QR và mở lại phiên đã bị nút chốt khoá."""
+    spawned, reopened = [], []
+
+    async def no_files(_sid):
+        return {"received": 0, "total": 2, "files_count": 0}
+
+    async def fake_complete(_sid):
+        pass
+
+    async def fake_set_complete(sid, value):
+        reopened.append((sid, value))
+
+    monkeypatch.setattr(flow.upload_service, "progress_of", no_files)
+    monkeypatch.setattr(flow.upload_service, "complete_session", fake_complete)
+    monkeypatch.setattr(flow.upload_service, "show_qr_action", lambda sid: {"type": "show_qr", "session_id": sid})
+    monkeypatch.setattr(flow.up_store, "set_complete", fake_set_complete)
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: (spawned.append(coro), coro.close()))
+    conv = {"_id": "t-no-files", "state": "qr_waiting", "history": [], "doc_method": "qr",
+            "procedure_key": "dang-ky-kinh-doanh", "upload_session_id": "sid-0"}
+    for intent in (flow.Intent("action", "docs_done"), flow.Intent("event", "docs_complete")):
+        r = await flow._handle_qr_waiting(conv, intent)
+        assert not spawned and conv["state"] == "qr_waiting"
+        assert conv.get("pipeline_status") != "running"
+        assert r.actions and r.actions[0]["type"] == "show_qr"
+    assert reopened == [("sid-0", False), ("sid-0", False)]

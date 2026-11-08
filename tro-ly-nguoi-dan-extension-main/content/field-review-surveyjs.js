@@ -119,6 +119,13 @@
     };
   }
 
+  // BE vòng bổ sung bản 2 xin cả danh sách ô (msg.catalog) để hiểu "sửa ô X", "sửa nhiều ô": nhãn, phần, giá trị hiện
+  // có. Chỉ lựa chọn đã có sẵn (không mở dropdown) — BE đưa con trỏ tới ô chọn khi cần đọc danh sách.
+  function catalogOf(msg, list) {
+    if (!msg?.catalog) return {};
+    return { catalog: list.map((q) => publicField(q, q.kind === "radio" ? q.options || [] : [], "")) };
+  }
+
   async function next(msg) {
     const skip = new Set(Array.isArray(msg.skip) ? msg.skip : []);
     let applied = null;
@@ -145,7 +152,7 @@
     const q = (msg.focus && list.find((x) => x.name === msg.focus))
       || (msg.requiredFirst && list.find((x) => !x.value && x.required && !skip.has(x.name)))
       || list.find((x) => !x.value && !skip.has(x.name));
-    if (!q) { unfocus(); return { ok: true, applied, field: null, stats }; }
+    if (!q) { unfocus(); return { ok: true, applied, field: null, stats, ...catalogOf(msg, list) }; }
     let options = q.kind === "radio" ? q.options || [] : [];
     let province = "";
     if (q.kind === "select") {
@@ -154,7 +161,7 @@
       if (!options.length) province = String(res?.province || "");
     }
     await focusQuestion(q);
-    return { ok: true, applied, field: publicField(q, options, province), stats };
+    return { ok: true, applied, field: publicField(q, options, province), stats, ...catalogOf(msg, list) };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

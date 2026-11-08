@@ -389,18 +389,24 @@ def _has_address(value: Any) -> bool:
     return any(address.get(key) for key in ("tinh", "xa", "diaChi"))
 
 
+def _has_addr(value: Any) -> bool:
+    """Có ít nhất một phần địa chỉ (tỉnh / xã / chi tiết) — _addr luôn điền sẵn quốc gia nên không dùng thẳng được."""
+    addr = _addr(value)
+    return any(addr.get(k) for k in ("tinh", "xa", "diaChi"))
+
+
 def _same_address(a: Any, b: Any) -> bool:
     """Địa chỉ nhận thông báo thuế có trùng địa chỉ trụ sở không.
 
-    - Không kê khai địa chỉ thuế riêng (rỗng) → coi như giống trụ sở.
+    - Không kê khai địa chỉ thuế riêng (rỗng) → coi như giống trụ sở, NHƯNG chỉ khi trụ sở có địa chỉ: trụ sở cũng
+      trống thì "giống trụ sở" là giống một địa chỉ rỗng → không tự chọn (để trống cho trợ lý hỏi / cán bộ chọn).
     - Có kê khai → so khớp tỉnh + xã + diaChi (đã chuẩn hóa). Lệch một phần → coi là khác
       (an toàn hơn: thà điền địa chỉ còn hơn bỏ sót).
     """
-    aa = _addr(a)
-    if not aa:
-        return True
-    bb = _addr(b)
-    if not bb:
+    if not _has_addr(a):
+        return _has_addr(b)
+    aa, bb = _addr(a), _addr(b)
+    if not _has_addr(b):
         return False
     return all(_fold_vi(aa.get(k)) == _fold_vi(bb.get(k)) for k in ("tinh", "xa", "diaChi"))
 
@@ -575,10 +581,11 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
         #   chính" (value "1"), KHÔNG điền khối địa chỉ (form sẽ tự ẩn).
         # - Khác → radio "Địa chỉ khác" (value "0", form check sẵn) + điền khối địa chỉ.
         # Điện thoại/email luôn điền bình thường ở dưới.
+        # - Cả địa chỉ thuế lẫn trụ sở đều trống → không chọn ô nào.
         tax_addr = values.get("Thue_DiaChiNhanThongBao")
         if _same_address(tax_addr, values.get("TruSo_DiaChi")):
             add("ctl00$C$UC_DW_TAXEditCtl$REP_RECV_ADDR_TYPEFld", "dom-radio", "1")
-        else:
+        elif _has_addr(tax_addr):
             add("ctl00$C$UC_DW_TAXEditCtl$REP_RECV_ADDR_TYPEFld", "dom-radio", "0")
             add_address("ctl00$C$UC_DW_TAXEditCtl$ADDRCtl", tax_addr)
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld", "dom-input", _clean_phone(values.get("Thue_DienThoai")))

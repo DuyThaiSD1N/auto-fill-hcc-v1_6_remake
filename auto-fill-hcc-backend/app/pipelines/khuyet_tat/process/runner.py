@@ -5,7 +5,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.khuyet_tat.process import mapper, vision
+from app.pipelines.khuyet_tat.process import mapper, muc_do, vision
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
 from app.pipelines.khuyet_tat.process.schema import (
     ALIASES,
@@ -100,6 +100,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    levels_tasks: list = []
     # Mục III đọc thẳng từ ảnh song song với OCR + LLM; luôn chờ cả hai xong.
     res, section_iii = await asyncio.gather(runner.run(
         files_by_role,
@@ -109,9 +110,12 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_owner_only_context if owner_mode else _requester_context,
+        context_builder=muc_do.context_with_levels(
+            _owner_only_context if owner_mode else _requester_context, levels_tasks
+        ),
         max_tokens=2200,
     ), vision.read_section_iii(runner.flatten(files_by_role)) if vision.ENABLED else asyncio.sleep(0))
+    await muc_do.apply_levels(res, levels_tasks)
     if section_iii is not None:
         # Bảng tích ✓ viết tay: kết quả đọc ảnh thay hẳn phần LLM bóc từ OCR văn bản (kể cả khi rỗng).
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [

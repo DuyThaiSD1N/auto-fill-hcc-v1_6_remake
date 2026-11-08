@@ -17,8 +17,9 @@ Quy tắc:
 - "tra_loi": công dân trả lời mục đang hỏi và/hoặc nói thêm, sửa lại mục khác — ghi MỌI mục nghe được vào "giaTri".
 - "bo_qua": công dân KHÔNG CÓ thông tin của mục đang hỏi hoặc không muốn trả lời ("không có", "không có email",
   "bỏ qua") — khi đó KHÔNG ghi mục đó vào "giaTri"; "tam_dung": muốn tạm dừng, nghỉ, để lúc khác; "nhac_lai": muốn
-  nghe lại câu hỏi; "dong_y": đồng ý với bảng tóm tắt, xác nhận đúng, cho điền vào hồ sơ ("đúng rồi", "điền đi");
-  "khong_ro": không hiểu được.
+  nghe lại câu hỏi; "dong_y": đồng ý với bảng tóm tắt, xác nhận đúng, cho điền / lưu vào hồ sơ và sang phần sau
+  ("đúng rồi", "điền đi", "lưu khối này", "lưu đi", "tiếp đi") — chỉ đồng ý thì KHÔNG chép lại giá trị hiện có vào
+  "giaTri"; "khong_ro": không hiểu được.
 - Câu trả lời ngắn / không nêu rõ tên mục khác ("có", "giống", "giống địa chỉ kinh doanh", một con số…) là câu trả lời
   cho MỤC ĐANG HỎI. Chỉ ghi mục khác khi công dân nói rõ đúng thông tin của mục đó.
 - Công dân SỬA mục đã có giá trị ("không phải …", "sai rồi, là …", "… cơ") → ghi lại mục đó với giá trị MỚI đúng
@@ -47,6 +48,20 @@ Quy tắc:
 """
 
 USER = 'CÔNG DÂN: "{text}"'
+# Câu hỏi của bước xác nhận khối (bảng tóm tắt + nút Lưu khối này) — thiếu câu hỏi thì model không biết "lưu" là đồng ý.
+CONFIRM_QUESTION = ("Trợ lý vừa đọc bảng tóm tắt khối đã điền: công dân xem lại, đúng thì lưu khối này để sang khối kế "
+                    "tiếp; sai chỗ nào thì nói để sửa.")
+
+
+ERROR_SYSTEM = """Cổng đăng ký hộ kinh doanh vừa từ chối bước Chuẩn bị hồ sơ với một lỗi thuộc khối "{block}" (nội dung
+lỗi ở tin nhắn của người dùng). Các mục trợ lý hỏi được trong khối này (mã mục — ý nghĩa):
+{slots}
+
+Lỗi nói tới mục nào (ô bị thiếu hoặc sai trên cổng)? Một phần của địa chỉ (tỉnh, phường/xã, số nhà) thuộc mục địa chỉ
+tương ứng. Chỉ chọn mục khớp rõ với nội dung lỗi; lỗi không nói tới mục nào trong danh sách thì trả danh sách rỗng.
+
+Trả ĐÚNG MỘT object JSON: {{"mucLoi": ["<mã mục>", ...]}}"""
+ERROR_USER = 'LỖI CỦA CỔNG: "{error}"'
 
 
 PICK_SYSTEM = """Trợ lý một cửa vừa hỏi công dân (lời nói qua nhận dạng giọng nói nên có thể sai chính tả, số đọc bằng chữ):

@@ -94,7 +94,7 @@ def test_khuyet_tat_rejects_requester_details_when_ocr_identity_mismatches_ui():
         {"name": "NguoiNop_HoTen", "value": "VŨ ĐÌNH THIẾT"},
         {"name": "NguoiNop_SoDinhDanh", "value": "999999999999"},
         {"name": "NguoiNop_NgaySinh", "value": "26/04/2003"},
-        {"name": "NguoiNop_GioiTinh", "value": "Nam"},
+        {"name": "NguoiNop_GioiTinh", "value": "Nữ"},
         {"name": "ChuHoSo_HoTen", "value": "BÙI THỊ YẾN NGỌC"},
         {"name": "ChuHoSo_SoDinhDanh", "value": "051197014913"},
     ], {
@@ -108,7 +108,8 @@ def test_khuyet_tat_rejects_requester_details_when_ocr_identity_mismatches_ui():
     assert values["data[fullname]"] == "VŨ ĐÌNH THIẾT"
     assert values["data[identityNumber]"] == "040203015844"
     assert "data[birthday]" not in values
-    assert "data[gender]" not in values
+    # Giới tính OCR sai người ("Nữ") không được bù; chỉ suy từ số định danh tài khoản (chữ số thứ 4 chẵn → Nam).
+    assert values["data[gender]"] == "Nam"
 
 
 def test_khuyet_tat_representative_owner_is_not_copied_to_disabled_person():

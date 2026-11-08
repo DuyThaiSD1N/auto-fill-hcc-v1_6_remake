@@ -71,7 +71,7 @@ test("bắt được toast cổng báo thiếu (mount động, tự tắt sau v�
 });
 
 test("xác nhận trang chuyển bước THẬT bằng số bước, không tin mỗi cú bấm", () => {
-  const fn = sidebar.match(/async function runGuidedNext\(phase, expect\) \{([\s\S]*?)\n  \}/);
+  const fn = sidebar.match(/async function runGuidedNext\(phase, expect, ownerFields = null\) \{([\s\S]*?)\n  \}/);
   assert.ok(fn, "thiếu runGuidedNext");
   assert.match(fn[1], /getPageContext/);
   assert.match(fn[1], /wizardStep === expect/);
@@ -85,7 +85,7 @@ test("báo kết quả chạy NGOÀI runActions, không gọi ask() lồng trong
   assert.ok(block, "thiếu handler guided_click_next");
   const code = block[1].replace(/\/\/.*/g, ""); // chú thích có nhắc "ask()" để giải thích bẫy
   assert.doesNotMatch(code, /\bask\(/, "runActions không được gọi ask() trực tiếp");
-  assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedNext\(phase, expect\); \}, 0\)/);
+  assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedNext\(phase, expect, ownerFields\); \}, 0\)/);
   assert.match(block[1], /setTimeout\(\(\) => \{ void runGuidedSubmit\(a?\); \}, 0\)/);
 });
 
@@ -130,7 +130,7 @@ test("giảm chuyển động tắt được cả ba nút, kể cả vệt sáng
 });
 
 test("bấm Bước tiếp theo: cổng quay tải lâu mà không báo chặn thì chờ tiếp, không báo 'chưa chuyển bước' sau 3,6 giây", () => {
-  const fn = sidebar.match(/async function runGuidedNext\(phase, expect\) \{([\s\S]*?)\n  \}/);
+  const fn = sidebar.match(/async function runGuidedNext\(phase, expect, ownerFields = null\) \{([\s\S]*?)\n  \}/);
   assert.ok(fn, "thiếu runGuidedNext");
   assert.match(sidebar, /const GUIDED_NEXT_WAIT_MS = (\d+);/);
   assert.ok(Number(sidebar.match(/const GUIDED_NEXT_WAIT_MS = (\d+);/)[1]) >= 10000);

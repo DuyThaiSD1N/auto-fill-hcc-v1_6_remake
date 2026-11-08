@@ -16,7 +16,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, store
+from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, resume, store
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.archive.config import archive_settings
@@ -279,6 +279,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsHkdCheckName": raw.get("supportsHkdCheckName") is True,
         "supportsHkdPrepare": raw.get("supportsHkdPrepare") is True,
         "supportsHkdSubmit": raw.get("supportsHkdSubmit") is True,
+        # Khôi phục hồ sơ đang làm dở khi phiên bị gián đoạn (chat/resume/).
+        resume.CAPABILITY: raw.get(resume.CAPABILITY) is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.
         "supportsBxdFlowMoit": raw.get("supportsBxdFlowMoit") is True,
         # Luồng 4 bước trên cổng tỉnh iGate Tuyên Quang / Khánh Hòa (trang "Chọn trường hợp giải quyết" + stepper, content/
@@ -529,6 +531,7 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         }
     await store.save(conv)
     await _sync_dossier(conv)
+    await resume.checkpoint(conv)
 
     if (settings.llm_debug and not archive_settings.enabled):
         logger.info("[assistant] %s src=%s state=%s msg=%r", conv["_id"], req.source, conv["state"], message[:120])
@@ -666,6 +669,7 @@ async def record_submit_click(conv_id: str, body: SubmitClickBody, user: dict = 
     await _sync_dossier(conv, persist=False)
     await get_db().conversations.update_one(
         {"_id": conv_id}, {"$set": {k: conv[k] for k in _SUBMIT_FIELDS if k in conv}})
+    await resume.discard(conv)
     return {"ok": True}
 
 
@@ -679,6 +683,8 @@ async def delete_conversation(conv_id: str, reason: str = "", user: dict = Depen
     # closed_at cho biết bỏ dở lúc nào. `reason` do FE bản mới gửi (manual/idle/dvc-home/
     # continue); bản cũ không gửi thì để rỗng.
     await dossiers_repo.mark_closed(conv_id, reason)
+    # Hết giờ chờ / cổng văng về trang chủ: giữ hồ sơ dở 30 phút để lượt sau khôi phục; lý do khác thì bỏ.
+    await resume.on_close(conv_id, reason)
     await get_db().conversations.delete_one({
         "_id": conv_id,
         "auth_user.id": str(user.get("id") or ""),

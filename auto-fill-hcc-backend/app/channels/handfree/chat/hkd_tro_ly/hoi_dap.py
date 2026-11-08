@@ -21,10 +21,51 @@ logger = logging.getLogger(__name__)
 ACTIONS = {"tra_loi", "bo_qua", "tam_dung", "nhac_lai", "dong_y", "khong_ro"}
 # Dạng giá trị trong prompt cho từng loại mục.
 _KIND_FORMAT = {
-    "text": "chu", "email": "chu", "address": "diachi", "phone": "so", "id12": "so", "money": "tien",
+    # website: model chép nguyên văn lời đọc ("… chấm …"), spoken_website đổi sang tên miền.
+    "text": "chu", "email": "chu", "website": "chu", "address": "diachi", "phone": "so", "id12": "so", "money": "tien",
     "date": "ngay", "int": "nguyen", "yesno": "coKhong", "gender": "gioiTinh", "chu_the": "chuThe",
 }
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$")
+_WEBSITE = re.compile(r"^(?:https?://)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:/\S*)?$")
+# Tên chữ cái công dân đọc khi đánh vần phần đuôi / tên viết tắt (kiểu Việt và kiểu Anh), đã gấp dấu.
+_LETTER_NAMES = {
+    "a": "a", "be": "b", "bo": "b", "bi": "b", "xe": "c", "se": "c", "si": "c", "xi": "c", "de": "d", "di": "d",
+    "do": "d", "e": "e", "ep": "f", "ef": "f", "go": "g", "ge": "g", "hat": "h", "hech": "h", "ho": "h", "i": "i",
+    "ai": "i", "gi": "j", "giay": "j", "jay": "j", "ca": "k", "ka": "k", "kay": "k", "lo": "l", "el": "l", "eo": "l",
+    "mo": "m", "em": "m", "no": "n", "en": "n", "o": "o", "ou": "o", "au": "o", "pe": "p", "pi": "p", "quy": "q",
+    "kiu": "q", "ro": "r", "er": "r", "et": "s", "es": "s", "te": "t", "ti": "t", "u": "u", "iu": "u", "ve": "v",
+    "vi": "v", "ich": "x", "ex": "x", "goai": "y", "oai": "y", "det": "z", "zet": "z",
+}
+_LETTER_PHRASES = [("dap bo liu", "w"), ("dap liu", "w"), ("ve kep", "w"), ("vi kep", "w"), ("en lo", "l"),
+                   ("em mo", "m"), ("en no", "n"), ("e ro", "r"), ("i dai", "y"), ("i gret", "y")]
+
+
+def spoken_website(text: str) -> str:
+    """Lời đọc địa chỉ web → tên miền. Mỗi tiếng "chấm" (hoặc dấu ".") ngăn một phần; phần chỉ gồm tên chữ cái
+    (đánh vần đuôi như io, vn) ghép thành chữ cái, phần là từ thì viết liền bỏ dấu. Tách theo "chấm" CÓ DẤU vì gấp dấu
+    thì trùng "chăm" trong tên. Model nhỏ hay đổi sai tên chữ cái nên phần này làm tất định, như đọc chữ số."""
+    parts = []
+    for part in re.split(r"\s*(?:\bchấm\b|\.)\s*", unicodedata.normalize("NFC", text.strip()), flags=re.IGNORECASE):
+        words = re.sub(r"[^a-z0-9/:\-\s]", "", fold(part))
+        for phrase, letter in _LETTER_PHRASES:
+            words = re.sub(rf"\b{phrase}\b", f"#{letter}", words)
+        tokens = words.split()
+        if tokens and all(t.startswith("#") or t in _LETTER_NAMES for t in tokens):
+            parts.append("".join(t[1:] if t.startswith("#") else _LETTER_NAMES[t] for t in tokens))
+        else:
+            parts.append("".join(t.lstrip("#") for t in tokens))
+    return ".".join(parts)
+
+
+def _web_span(text: str) -> str:
+    """Đoạn đọc địa chỉ web trong câu trả lời: từ sau lời dẫn ("…, web của tôi là") tới hết, bỏ tiếng đệm cuối câu
+    ("ạ", "nhé" — "ạ" gấp dấu trùng tên chữ "a"). Không có "chấm"/"." thì không phải lời đọc địa chỉ."""
+    text = re.sub(r"(?:[\s,.!?]*\b(?:ạ|nhé|nha|nhá|em|chị|anh|đấy|đó)\b)+[\s.!?]*$", "", str(text or "").strip(),
+                  flags=re.IGNORECASE)
+    m = re.search(r"\bchấm\b|\.", text, flags=re.IGNORECASE)
+    if not m:
+        return ""
+    return re.split(r",|\blà\b", text[:m.start()], flags=re.IGNORECASE)[-1] + text[m.start():]
 # Model đôi khi ghi câu có/không bằng chữ (vd "giong" cho câu "có giống … không") → quy về true/false.
 _YES = {"true", "co", "dung", "phai", "giong", "yes"}
 _NO = {"false", "khong", "khong phai", "khac", "no"}
@@ -85,6 +126,9 @@ def check(kind: str, raw, text: str, asking: bool, allow_same: bool = False):
     if kind == "email":
         value = re.sub(r"\s+", "", str(raw or "")).lower()
         return (value if _EMAIL.match(value) else None), ""
+    if kind == "website":
+        value = spoken_website(str(raw or ""))
+        return (value if _WEBSITE.match(value) else None), ""
     if kind == "address":
         return _clean_address(raw, allow_same, text), ""
     if kind == "money":
@@ -152,6 +196,11 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
         loose = {k: given.pop(k) for k in ("tinh", "xa", "diaChi", "chiTietDuoiXa") if k in given}
         if loose:
             given[asking] = loose
+    if kinds.get(asking, {}).get("kind") == "website" and out.action not in ("bo_qua", "tam_dung", "dong_y"):
+        # Model nhỏ hay ghép sai / bỏ lời đánh vần địa chỉ web → đọc thẳng từ lời công dân (như chữ số điện thoại).
+        heard = spoken_website(_web_span(text))
+        if _WEBSITE.match(heard):
+            given[asking] = heard
     for key, raw_value in given.items():
         spec = kinds.get(key)
         if not spec:
@@ -168,6 +217,25 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
     if out.values and out.action in ("khong_ro", "nhac_lai"):
         out.action = "tra_loi"
     return out
+
+
+async def error_slots(error: str, block: str, slots: list[dict]) -> list[str]:
+    """Lỗi cổng trả khi Chuẩn bị (vd "Phường/Xã … của người nộp hồ sơ là bắt buộc") → mã mục cần hỏi lại trong khối."""
+    system = prompt.ERROR_SYSTEM.format(block=block, slots="\n".join(f"{s['key']} — {s['label']}" for s in slots))
+    try:
+        raw = await llm_chat([{"role": "system", "content": system},
+                              {"role": "user", "content": prompt.ERROR_USER.format(error=str(error or "")[:400])}],
+                             temperature=0.0, max_tokens=80, purpose="hkd_loi_chuan_bi")
+        m = re.search(r"\{[\s\S]*\}", raw or "")
+        data = json.loads(m.group(0)) if m else {}
+    except Exception as e:  # noqa: BLE001 — LLM best-effort: không ánh xạ được thì công dân sửa trên trang như cũ
+        logger.warning("[hkd_hoi_dap] LLM đọc lỗi chuẩn bị lỗi: %s", e)
+        return []
+    keys = data.get("mucLoi") if isinstance(data, dict) else None
+    allowed = {s["key"] for s in slots}
+    if not isinstance(keys, list):
+        return []
+    return list(dict.fromkeys(k for k in keys if isinstance(k, str) and k in allowed))
 
 
 async def pick(text: str, question: str, options: list[str]) -> tuple[int | None, bool]:

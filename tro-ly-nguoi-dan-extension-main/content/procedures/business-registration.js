@@ -25,7 +25,13 @@
     "tam-ngung-hoat-dong": "Tạm ngừng kinh doanh",
     "thong-tin-de-nghi-cap-lai": "Thông tin đề nghị cấp lại GCN/GXNTĐ",
     "nguoi-nop-ho-so": "Người nộp hồ sơ",
+    // Hai khối cổng chỉ thêm vào menu khi cần (chủ thể = các thành viên hộ gia đình / người nộp = người được ủy quyền);
+    // BE (trợ lý hộ kinh doanh) đưa vào pageOrder.
+    "thong-tin-ve-thanh-vien": "Thông tin về thành viên",
+    "thong-tin-uy-quyen": "Thông tin Ủy quyền",
   };
+  const MEMBERS_PAGE_KEY = "thong-tin-ve-thanh-vien";
+  const AUTH_PAGE_KEY = "thong-tin-uy-quyen";
   const BUSINESS_CREATE_STEP_DELAY_MS = 2500;
 
   function currentBusinessPageLabel() {
@@ -1553,7 +1559,9 @@
   const COPY_PERSON_CFG = {
     "nguoi-nop-ho-so": {
       copyBtn: 'input[name="ctl00$C$btnIS_SIGNER"], #ctl00_C_btnIS_SIGNER',
-      nameFilled: () => !!((document.getElementById("ctl00_C_PERSCtl_FULL_NAMEFld_Vw") || {}).textContent || "").trim(),
+      // Chế độ xem: tên ở span _Vw; đã tích "Sửa đổi dữ liệu": tên nằm trong ô nhập — nhận cả hai, không thì máy điền
+      // tưởng chưa sao chép, bấm sao chép lại và cổng nạp lại dữ liệu tài khoản (mất nơi ở vừa điền).
+      nameFilled: () => !!readPersonControlRaw("ctl00_C_PERSCtl_FULL_NAMEFld"),
       addrMatch: /\$C\$PERSCtl\$ADDRCCtl/,
       requireCopiedContact: true,
       readPhone: () => readAcctContact("ctl00_C_PERSCtl_PHONEFld"),
@@ -1580,9 +1588,11 @@
     { pattern: /URLFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_URLFld" },
   ];
 
-  function applyOwnerFromDossier(fields) {
+  function applyOwnerFromDossier(fields, keepMissing = false) {
     for (const { pattern, id, radioName } of OWNER_PERSON_FIELDS) {
       const source = fields.find((f) => pattern.test(f.name || ""));
+      // Nhân thân vừa sao chép từ tài khoản (__copyAccount): chỉ ghi ô BE có gửi, không xoá ô còn lại.
+      if (keepMissing && !source) continue;
       const value = source ? String(source.value ?? "") : "";
       if (radioName) { setGenderRadio(radioName, value); continue; }
       const el = document.getElementById(id);
@@ -1621,8 +1631,23 @@
       await sleep(300);
     }
 
+    // 1b. Chủ hộ là chính người đăng nhập (trợ lý hộ kinh doanh, không có tờ khai): nhân thân lấy bằng nút "Sao chép
+    //     thông tin đăng ký tài khoản" (khớp CSDL dân cư) — BE không gửi họ tên/ngày sinh/số định danh.
+    const copyAccount = fields.some((f) => f.name === "__copyAccount" && f.value);
+    const ownerNameFilled = () => !!norm(document.getElementById("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld")?.value || "");
+    if (copyAccount && !ownerNameFilled() && (st.copyTries || 0) < 3) {
+      const copyBtn = document.querySelector('[name="ctl00$C$OWN_PCtl$btnIS_SIGNER"]');
+      if (copyBtn) {
+        st.copyTries = (st.copyTries || 0) + 1;
+        await setFillAllState(st);
+        console.log("[FillAll] chủ hộ — bấm Sao chép thông tin đăng ký tài khoản");
+        try { copyBtn.click(); } catch (e) { /* ignore */ }
+        if (!(await waitFor(ownerNameFilled, 7000, 250))) return; // postback chưa xong → xử lý ở lần nạp kế
+      }
+    }
+
     // 2. Nhân thân + liên hệ chủ hộ theo đơn.
-    applyOwnerFromDossier(fields);
+    applyOwnerFromDossier(fields, copyAccount);
 
     // 3. Địa chỉ cá nhân của chủ hộ: cascade quốc gia → tỉnh → xã → số nhà.
     const address = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
@@ -1631,7 +1656,7 @@
     // 4. Mỗi postback của cascade địa chỉ đều render lại khối nhân thân → ghi lại ngay trước khi Lưu,
     //    sau khi form đã yên (máy yếu: postback cuối của cascade có thể chưa về).
     await waitBusinessFormQuiet();
-    applyOwnerFromDossier(fields);
+    applyOwnerFromDossier(fields, copyAccount);
 
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
@@ -2300,6 +2325,12 @@
       return backendAddrFields;
     }
 
+    // Luồng hỏi đáp (không tờ khai): nơi ở người nộp thay do công dân trả lời, BE gửi ở plan.other.
+    const fromAnswer = applicantAddressFields(plan.other);
+    if (fromAnswer.length) {
+      console.log("[FillAll] người nộp khác chủ hộ → nơi ở công dân đã khai:", JSON.stringify(plan.other));
+      return fromAnswer;
+    }
     const fromIdentity = applicantAddressFields(identityCard && identityCard.diaChi);
     if (fromIdentity.length) {
       console.log("[FillAll] người nộp khác chủ hộ → địa chỉ trên CCCD:", JSON.stringify(identityCard.diaChi));
@@ -2379,6 +2410,71 @@
         console.log("[FillAll] địa chỉ số nhà:", sf.value);
       }
     }
+  }
+
+  /** Trang "Thông tin về thành viên" (chủ thể = các thành viên hộ gia đình): danh sách DW_MEMBER_VWListing.aspx +
+   *  nút "Tạo mới" → form InformationOfMembers.aspx (tiền tố MEM_PCtl). BE gửi __members = [danh sách field của từng
+   *  thành viên ngoài chủ hộ]; thành viên đã có trong danh sách (khớp số định danh) thì bỏ qua — chạy lại không tạo trùng. */
+  function memberIdsOnListing() {
+    const text = Array.from(document.querySelectorAll("table tr")).map((r) => r.textContent || "").join(" ");
+    return text.match(/\b\d{12}\b/g) || [];
+  }
+
+  async function handleMembersPage(st) {
+    const raw = ((st.pages && st.pages[MEMBERS_PAGE_KEY]) || []).find((f) => f.name === "__members");
+    const members = raw && Array.isArray(raw.value) ? raw.value : [];
+    const idOf = (fields) => String((fields.find((f) => /PERS_DOC_NOFld$/.test(f.name || "")) || {}).value || "");
+    const backToListing = () => {
+      const back = document.querySelector('[name="ctl00$C$btnBack"]');
+      if (back) { try { back.click(); return true; } catch (e) { /* ignore */ } }
+      return false;
+    };
+    // Trần đếm: mỗi thành viên tối đa vài nhịp (danh sách → form → lưu → danh sách) — không bao giờ lặp vô hạn.
+    st.memberTries = (st.memberTries || 0) + 1;
+    if (st.memberTries > members.length * 4 + 4) return void advanceFillAll(st);
+    await setFillAllState(st);
+
+    if (/InformationOfMembers\.aspx$/i.test(window.location?.pathname || "")) {
+      const fields = members[st.memberIndex];
+      if (st.phase === "member-saved" || !fields) {
+        // Lưu xong mà cổng vẫn ở form (không tự về danh sách) → bấm Trở về.
+        st.phase = "fill";
+        await setFillAllState(st);
+        if (!backToListing()) return void advanceFillAll(st);
+        return;
+      }
+      const address = fields.filter((f) => /ADDRCCtl/.test(f.name || ""));
+      const person = fields.filter((f) => !/ADDRCCtl/.test(f.name || ""));
+      try { await fillFormStandard(person); } catch (e) { /* ignore */ }
+      try { await fillAddressCascade(address); } catch (e) { /* ignore */ }
+      // Postback của cascade địa chỉ dựng lại khối nhân thân → ghi lại trước khi Lưu.
+      try { await fillFormStandard(person); } catch (e) { /* ignore */ }
+      const saveBtn = findBusinessSaveButton();
+      if (!saveBtn) return void advanceFillAll(st);
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+      st.phase = "member-saved";
+      await setFillAllState(st);
+      if (await clickSaveDetectReload(saveBtn)) return;
+      // Không reload = cổng chặn (thiếu ô bắt buộc) → bỏ thành viên này, quay về danh sách làm người kế.
+      st.memberSkip = [...(st.memberSkip || []), st.memberIndex];
+      st.phase = "fill";
+      await setFillAllState(st);
+      if (!backToListing()) return void advanceFillAll(st);
+      return;
+    }
+
+    st.phase = "fill";
+    const existing = memberIdsOnListing();
+    const next = members.findIndex((fields, i) => !(st.memberSkip || []).includes(i)
+      && !(idOf(fields) && existing.includes(idOf(fields))));
+    if (next < 0) return void advanceFillAll(st);
+    st.memberIndex = next;
+    await setFillAllState(st);
+    const btnNew = document.querySelector('[name="ctl00$C$btnNew"]');
+    if (!btnNew) return void advanceFillAll(st);
+    console.log("[FillAll] thành viên hộ gia đình — tạo mới", next + 1, "/", members.length);
+    if (await clickSaveDetectReload(btnNew)) return;
+    return void advanceFillAll(st);
   }
 
   async function handleAddressCascadePage(st, targetKey) {
@@ -2514,6 +2610,7 @@
     st.nnAdds = 0; st.nnAddTries = {}; st.nnSkippedAddCodes = []; st.nnSkip = [];
     st.nnMainDone = false; st.nnDescriptionsDone = false; st.nnBusinessActDefaultDone = false;
     st.nnRemoveTries = 0; st.nnTextDone = false; st.taxPhase = ""; st.copyTries = 0;
+    st.memberTries = 0; st.memberSkip = []; st.memberIndex = -1;
     st.ownerEnableTries = 0; st.ownerTypeVerifyTries = 0; st.saveVerifyTries = 0;
     await setFillAllState(st);
     if (st.step >= st.order.length) {
@@ -2575,6 +2672,19 @@
       return void advanceFillAll(st);
     }
 
+    // Trang thành viên gồm danh sách + form tạo mới (breadcrumb form chưa chắc trùng nhãn menu) → nhận theo đường dẫn,
+    // không để nhánh điều hướng chung kéo đi giữa lúc đang nhập một thành viên.
+    if (targetKey === MEMBERS_PAGE_KEY
+      && /\/(DW_MEMBER_VWListing|InformationOfMembers)\.aspx$/i.test(window.location?.pathname || "")) {
+      return void handleMembersPage(st);
+    }
+
+    // Khối "Thông tin Ủy quyền" chỉ có khi người nộp là người được ủy quyền → menu không có thì bỏ qua ngay.
+    if (targetKey === AUTH_PAGE_KEY && _det.pageKey !== targetKey
+      && !findBusinessPageLink(BUSINESS_PAGE_LABELS[targetKey])) {
+      return void advanceFillAll(st);
+    }
+
     // Chưa đúng trang mục tiêu → điều hướng tới (postback reload). Có chặn vòng lặp: quá 3 lần không
     // tới được trang thì bỏ qua trang đó (tránh kẹt vô hạn khi breadcrumb không nhận diện được).
     const { pageKey } = detectBusinessPageKey();
@@ -2598,9 +2708,24 @@
       return void handleReissuePage(st);
     }
 
-    // Trang CHỦ HỘ: điền thẳng từ giấy đề nghị, không bấm "Sao chép thông tin đăng ký tài khoản".
+    // Trang CHỦ HỘ: điền thẳng từ giấy đề nghị; chỉ bấm "Sao chép thông tin đăng ký tài khoản" khi BE gửi __copyAccount.
     if (targetKey === "chu-ho-kinh-doanh") {
       return void handleOwnerPage(st);
+    }
+
+    if (targetKey === MEMBERS_PAGE_KEY) {
+      return void handleMembersPage(st);
+    }
+
+    // Khối "Thông tin Ủy quyền": không có ô nhập (cổng tự hiện người được ủy quyền + người ký) — chỉ cần Lưu.
+    if (targetKey === AUTH_PAGE_KEY) {
+      const authSave = findBusinessSaveButton();
+      if (!authSave) return void advanceFillAll(st);
+      try { authSave.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+      st.phase = "saving";
+      await setFillAllState(st);
+      if (await clickSaveDetectReload(authSave)) return;
+      return void advanceFillAll(st);
     }
 
     // Trang NGƯỜI NỘP có nút "Sao chép thông tin đăng ký tài khoản": khối này giữ nhân thân +
@@ -3386,6 +3511,11 @@
   }
 
   H.detectBusinessPageKey = detectBusinessPageKey;
+  // Trợ lý hộ kinh doanh (adapter hkdOpenBlock / hkdFill): mở khối theo menu, chọn địa chỉ tỉnh → xã → số nhà.
+  H.goToBusinessPageByKey = goToBusinessPageByKey;
+  H.findBusinessPageLink = findBusinessPageLink;
+  H.businessPageLabel = (key) => BUSINESS_PAGE_LABELS[key] || "";
+  H.fillAddressCascade = fillAddressCascade;
   H.detectBusinessChangeStage = detectBusinessChangeStage;
   H.detectBusinessCreateStage = detectBusinessCreateStage;
   // Cho adapter chèn "lượt chốt địa chỉ thuế" cuối order (hồ sơ kê "giống trụ sở chính").

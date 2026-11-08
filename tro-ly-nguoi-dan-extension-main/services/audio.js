@@ -55,12 +55,13 @@
   }
 
   class MicCapture {
-    // opts: { rate?, onPcm(ArrayBuffer), onState(state), onError({name,message}) }
+    // opts: { rate?, onPcm(ArrayBuffer), onState(state), onError({name,message}), onLost() }
     constructor(opts = {}) {
       this.rate = opts.rate || DEFAULT_RATE;
       this.onPcm = opts.onPcm || function () {};
       this.onState = opts.onState || function () {};
       this.onError = opts.onError || function () {};
+      this.onLost = opts.onLost || function () {};
       this._gen = 0;
       this._ctx = null;
       this._stream = null;
@@ -69,8 +70,10 @@
       this._gain = null;
     }
 
+    // Luồng mic bị ngắt (track ended) thì AudioContext vẫn chạy và đẩy khung im lặng → không còn là mic dùng được.
     get active() {
-      return !!this._processor;
+      const track = this._stream && this._stream.getAudioTracks()[0];
+      return !!this._processor && !!track && track.readyState === "live";
     }
 
     _setState(s) {
@@ -107,6 +110,16 @@
           return false;
         }
         this._stream = stream;
+        // Ngủ máy, rút tai nghe, đổi thiết bị, thu hồi quyền… làm hệ điều hành/trình duyệt ngắt luồng mic mà không lỗi
+        // nào nổi lên → báo để phiên giữ sẵn xin mic mới.
+        const track = stream.getAudioTracks()[0];
+        if (track) {
+          const lost = () => {
+            if (this._gen === gen) this.onLost();
+          };
+          track.addEventListener("ended", lost);
+          track.addEventListener("mute", lost);
+        }
 
         let ctx;
         try {

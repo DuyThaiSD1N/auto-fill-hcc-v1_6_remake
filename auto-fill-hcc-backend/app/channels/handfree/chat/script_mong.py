@@ -392,6 +392,8 @@ CHIP_HMONG = {
     "✅ Hoàn tất điều chỉnh, đính kèm lại": "Kho tiav lawm, muab tso dua",
     # Ghép "Kho tiav lawm," + "Sau dua tus tswv" (Điền lại thông tin chủ hồ sơ) — cần người dịch soát.
     "✅ Hoàn tất điều chỉnh, điền lại thông tin chủ hồ sơ": "Kho tiav lawm, sau dua tus tswv",
+    # Ghép "Kho tiav lawm," + "Sau dua" (Điền lại) + "muab tso dua" (Đính kèm lại) — cần người dịch soát.
+    "✅ Hoàn tất điều chỉnh, điền và đính kèm lại": "Kho tiav lawm, sau dua, muab tso dua",
 }
 
 # ── Card CONSENT (xin phép xử lý dữ liệu) — bản Mông chỉ HỖ TRỢ HIỂU, bản tiếng Việt

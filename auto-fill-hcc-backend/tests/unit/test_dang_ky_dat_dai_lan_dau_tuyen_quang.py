@@ -121,6 +121,8 @@ def test_sample_bundle_follows_attachment_mapping():
         ("DON.signed.pdf", 16), ("GIAY TO.signed.pdf", 4), ("TD.signed.pdf", 10)]
     assert all(item["target"] == "attp-row" and "sourceSegments" not in item and "loaiBan" not in item
                for item in attachments)
+    # Cổng iGate Tuyên Quang tick sẵn mọi dòng → FE bỏ tick hết, chỉ tick lại dòng có tệp.
+    assert all(item["untickUnplannedRows"] is True for item in attachments)
     assert [item["docType"] for item in classified].count("duplicate") == 3
     twins = [w for w in warnings if "trùng bản ký số" in w]
     assert len(twins) == 3 and "'DON.pdf' trùng bản ký số 'DON.signed.pdf'" in twins[0]

@@ -74,8 +74,9 @@ def test_to_khai_nguoi_nop_la_nguoi_dai_dien_bo_qua_tai_khoan():
     assert d["data[phoneNumber]"] == "0900000002"
     locked = {f["name"]: f.get("enableInput") for f in out if f["name"] in ("data[fullname]", "data[identityNumber]")}
     assert locked == {"data[fullname]": True, "data[identityNumber]": True}
-    # Mục II không ghi giới tính/nơi cấp → để trống, không bịa.
-    assert "data[gender]" not in d and "data[idIssuePlace]" not in d
+    # Mục II không ghi giới tính → suy từ số định danh người đại diện (chữ số thứ 4: chẵn → Nam); nơi cấp không có
+    # nguồn → để trống, không bịa.
+    assert d["data[gender]"] == "Nam" and "data[idIssuePlace]" not in d
     assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
 
 
@@ -101,3 +102,33 @@ def test_to_khai_khong_dua_moc_tai_khoan_vao_prompt():
     ctx = asyncio.run(runner._owner_only_context([{"text": "CCCD 001080000002"}], {**_TO_KHAI, **_TK_DAI_DIEN}))
     assert 'result="missing_ui_anchor"' in ctx
     assert "001080000002" not in ctx and "NGUYỄN VĂN CHA" not in ctx
+
+
+def test_ngay_sinh_chi_co_nam_khong_ghi_de_o_ngay_sinh():
+    """LLM hay suy năm sinh từ số CCCD ("1980") — ô ngày cổng cần đủ ngày/tháng/năm, ghi năm trần làm sai ngày tài
+    khoản đổ sẵn → bỏ (cả hai chế độ người nộp)."""
+    nguoi_nop = {"NguoiNop_HoTen": "Nguyễn Văn Cha", "NguoiNop_SoDinhDanh": "001080000002", "NguoiNop_NgaySinh": "1980"}
+    d = _values(mapper.enrich(_fields(_MUC_I, _MUC_II, nguoi_nop), _TK_DAI_DIEN))
+    assert "data[birthday]" not in d
+    d = _values(mapper.enrich(_fields(_MUC_I, {**_MUC_II, "Ndd_NgaySinh": "1980"}), _TO_KHAI))
+    assert d.get("data[birthday]", "") == ""
+
+
+def test_ho_ten_nguoi_dai_dien_theo_tai_khoan_khi_cung_so_dinh_danh():
+    """Chữ viết tay mục II hay mất dấu khi OCR; người đại diện cùng số định danh với tài khoản đang nộp → họ tên tài
+    khoản. Khác số thì giữ nguyên chữ trên đơn."""
+    d = _values(mapper.enrich(_fields(_MUC_I, {**_MUC_II, "Ndd_HoTen": "Nguyễn Văn Cha Mất Dấu"}), _TK_DAI_DIEN))
+    assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA"
+    d = _values(mapper.enrich(_fields(_MUC_I, {**_MUC_II, "Ndd_HoTen": "Nguyễn Văn Cha Mất Dấu"}), _TK_NKT))
+    assert d["data[NddHoTen]"] == "Nguyễn Văn Cha Mất Dấu"
+
+
+def test_gioi_tinh_nguoi_nop_suy_tu_so_dinh_danh_khi_giay_khong_ghi():
+    """Theo tài khoản: giấy không ghi giới tính người nộp → suy từ số định danh tài khoản (chữ số thứ 4 lẻ → Nữ)."""
+    tk = {"formContext": {"applicantFullname": "NGUYỄN THỊ MẸ", "applicantIdentityNumber": "001190000003"}}
+    d = _values(mapper.enrich(_fields(_MUC_I), tk))
+    assert d["data[gender]"] == "Nữ"
+    # Giấy ghi rõ giới tính đúng người → theo giấy.
+    nguoi_nop = {"NguoiNop_HoTen": "Nguyễn Thị Mẹ", "NguoiNop_SoDinhDanh": "001190000003", "NguoiNop_GioiTinh": "Nam"}
+    d = _values(mapper.enrich(_fields(_MUC_I, nguoi_nop), tk))
+    assert d["data[gender]"] == "Nam"

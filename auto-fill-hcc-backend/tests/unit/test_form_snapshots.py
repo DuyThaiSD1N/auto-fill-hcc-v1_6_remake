@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta, timezone
 
 import mongomock
 import pytest
@@ -6,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.archive.config import archive_settings
+from app.channels.handfree.chat.resume import store as resume_store
 from app.core.deps import require_auth
 from app.core.errors import AppError, app_error_handler
 from app.form_snapshots import relay
@@ -32,6 +34,9 @@ class _AsyncColl:
     async def insert_one(self, doc):
         return self._c.insert_one(doc)
 
+    async def update_one(self, *a, **kw):
+        return self._c.update_one(*a, **kw)
+
 
 class _Db:
     def __init__(self):
@@ -40,11 +45,15 @@ class _Db:
     def __getattr__(self, name):
         return _AsyncColl(self.raw[name])
 
+    def __getitem__(self, name):
+        return _AsyncColl(self.raw[name])
+
 
 @pytest.fixture()
 def db(monkeypatch):
     fake = _Db()
     monkeypatch.setattr(relay, "get_db", lambda: fake)
+    monkeypatch.setattr(resume_store, "get_db", lambda: fake)
     monkeypatch.setattr(archive_settings, "vault_url", "http://vault.test")
     return fake
 
@@ -85,6 +94,20 @@ def test_chuyen_sang_kho_kem_request_id(client, db):
     assert bundle["snapshot"]["fields"][1]["value"] == {"tinh": "T", "xa": "X"}
     assert bundle["snapshot"]["fields"][0]["label"] == "Họ và tên" and bundle["snapshot"]["fields"][0]["pos"] == 412
     assert bundle["created_at"].startswith("2025-10-26")
+
+
+def test_ho_so_do_giu_ban_chup_moi_nhat_ke_ca_khi_luot_dien_da_bi_don(client, db):
+    """Hồ sơ khôi phục điền lại bằng request cũ — process_requests có thể đã bị archiver dọn."""
+    c, sent = client
+    now = datetime.now(timezone.utc)
+    db.raw.dossier_resume.insert_one({"_id": "cv1", "user_id": "u1", "steps": {"declaration": {"request_id": "req_abc"}},
+                                      "expires_at": now + timedelta(minutes=10)})
+    assert c.post("/api/v1/form-snapshots", json=BODY).status_code == 200
+    assert sent == [], "không có lượt điền thì không gửi kho"
+    snap = db.raw.dossier_resume.find_one({"_id": "cv1"})["declaration_snapshot"]
+    assert snap["request_id"] == "req_abc" and snap["fields"][0]["value"] == "A"
+    c.post("/api/v1/form-snapshots", json={**BODY, "at": BODY["at"] - 1000, "fields": [{"name": "x", "value": "cũ"}]})
+    assert db.raw.dossier_resume.find_one({"_id": "cv1"})["declaration_snapshot"]["fields"][0]["value"] == "A"
 
 
 def test_tu_choi_gia_tri_qua_dai(client, db):

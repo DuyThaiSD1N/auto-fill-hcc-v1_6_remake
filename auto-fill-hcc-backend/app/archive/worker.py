@@ -375,6 +375,9 @@ class Archiver:
                 conv = await self.db.conversations.find_one({"_id": conv_id}, {"updated_at": 1})
                 if conv and _utc(conv.get("updated_at")) >= self.scrub_cutoff:
                     continue
+            if doc.get("experience") == "handfree" and await self.db.dossier_resume.count_documents(
+                    {"upload_session_id": doc["_id"], "expires_at": {"$gt": self.now}}, limit=1):
+                continue  # hồ sơ dở còn chờ khôi phục (chat/resume/store.py) — tệp phải còn để nạp lại
             anchor = _utc(doc.get("updated_at") or doc.get("created_at"))
             if doc.get("experience") == "autofill" and doc.get("expires_at"):
                 anchor = _utc(doc["expires_at"]) - timedelta(minutes=archive_settings.archive_after_minutes)

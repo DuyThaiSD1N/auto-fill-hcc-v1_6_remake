@@ -288,6 +288,16 @@ async def set_owner_hint(sid: str, owner_hint: dict) -> dict | None:
     )
 
 
+async def rebind_conversation(sid: str, conversation_id: str) -> None:
+    """Khôi phục hồ sơ dở sang hội thoại mới: phiên giấy tờ cũ theo hội thoại mới (quyền thêm tệp, hạn dọn)."""
+    if not sid:
+        return
+    await get_db().upload_sessions.update_one(
+        {"_id": sid},
+        {"$set": {"conversation_id": conversation_id, "updated_at": _now()}},
+    )
+
+
 async def reopen_for_supplement(sid: str) -> dict | None:
     """Mở lại phiên đã chốt để thêm/xóa tệp; chỉ chốt lại khi người dùng bấm hoàn tất."""
     if not sid:

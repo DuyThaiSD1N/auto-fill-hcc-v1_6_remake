@@ -81,6 +81,23 @@ def _identity(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+def _full_date(value) -> str | None:
+    """Ô ngày sinh cổng cần đủ ngày/tháng/năm: chỉ có năm (LLM hay suy năm từ số CCCD) là ghi đè sai ngày tài
+    khoản đổ sẵn → bỏ."""
+    text = str(value or "").strip()
+    return text if re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", text) else None
+
+
+def _gender_from_identity(identity: str | None) -> str | None:
+    """Chữ số thứ 4 của số định danh 12 số mã hóa thế kỷ + giới tính: chẵn → Nam, lẻ → Nữ (TT 59/2021/TT-BCA).
+
+    Đơn Mẫu số 01 không có dòng giới tính người đại diện, hồ sơ thường không kèm CCCD của người này → đây là nguồn
+    giới tính còn lại."""
+    if not identity or len(identity) != 12 or not identity.isdigit():
+        return None
+    return "Nam" if int(identity[3]) % 2 == 0 else "Nữ"
+
+
 def _same_person(context_name, context_identity, owner_name, owner_identity) -> bool:
     """Chỉ coi hai vai trùng khi mọi mỏ neo UI đang có đều khớp chủ hồ sơ."""
     ctx_name = _norm_text(context_name)
@@ -264,14 +281,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             unlock = {"enableInput": True}
             add("data[isOwnerDossierCheck]", self_submit)
             add("data[fullname]", submitter["name"], extra=unlock)
-            if submitter["birthday"]:
-                add("data[birthday]", submitter["birthday"])
+            if _full_date(submitter["birthday"]):
+                add("data[birthday]", _full_date(submitter["birthday"]))
             else:
                 # Cổng đổ sẵn ngày sinh tài khoản VNeID, không phải của người nộp theo tờ khai → xoá + tô đỏ.
                 out.append({"name": "data[birthday]", "comp": UI_COMP_BY_NAME["data[birthday]"], "value": "",
                             "clear": True, "markEmpty": True, **unlock})
                 seen.add("data[birthday]")
-            add("data[gender]", submitter["gender"])
+            add("data[gender]", submitter["gender"] or _gender_from_identity(submitter["identity"]))
             add("data[identityNumber]", submitter["identity"], extra=unlock)
             add("data[identityDate]", submitter["identityDate"])
             add("data[idIssuePlace]", submitter["issuer"])
@@ -291,7 +308,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None))
         add("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None))
     if requester_matches_applicant and not theo_to_khai:
-        add("data[birthday]", values.get("NguoiNop_NgaySinh"))
+        add("data[birthday]", _full_date(values.get("NguoiNop_NgaySinh")))
         add("data[gender]", values.get("NguoiNop_GioiTinh"))
         add("data[identityDate]", values.get("NguoiNop_NgayCap"))
         add("data[idIssuePlace]", values.get("NguoiNop_NoiCap"))
@@ -300,6 +317,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("data[district]", requester_area.get("xa"))
             add("data[address]", requester_area.get("diaChi"))
         add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
+    if not theo_to_khai:
+        # Giấy tờ không ghi giới tính người nộp → suy từ số định danh tài khoản (mỏ neo UI có thẩm quyền).
+        add("data[gender]", _gender_from_identity(applicant_identity))
 
     if owner_present:
         # Luôn phát Chủ hồ sơ tường minh, kể cả tự nộp. Một số Form.io không copy
@@ -364,8 +384,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("data[NktNOHTMaXa]", nkt_now.get("xa"))
         add("data[NktNOHTDiaChi]", nkt_now.get("diaChi"))
 
-    # II. Người đại diện hợp pháp.
-    add("data[NddHoTen]", values.get("Ndd_HoTen"))
+    # II. Người đại diện hợp pháp. Cùng số định danh với tài khoản VNeID đang nộp → họ tên theo tài khoản (chữ viết
+    # tay mục II hay mất dấu khi OCR).
+    ndd_is_applicant = bool(applicant_identity) and _identity(values.get("Ndd_SoDinhDanh")) == applicant_identity
+    add("data[NddHoTen]", (applicant_name if ndd_is_applicant else None) or values.get("Ndd_HoTen"))
     add("data[NddSoDinhdanh]", values.get("Ndd_SoDinhDanh"))
     add("data[NddQuanheNkt]", _relation(values.get("Ndd_QuanHe")))
     add("data[NddSodienthoai]", phone)
@@ -379,24 +401,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     categories = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_DanhMuc"))}
     details = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_ChiTiet"))}
     categories.update(code.split("_", 1)[0] for code in details if "_" in code)
-    # "Không" chỉ có từ lượt đọc ảnh. Radio con chỉ hiện khi nhóm cha "Có" → nhóm không "Có" thì chỉ
-    # tích "Không" ở dòng nhóm; dòng con "Không" chỉ phát trong nhóm "Có".
-    no_codes = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_Khong"))}
-    for code in sorted(categories):
-        name = DISABILITY_RADIO_FIELDS.get(code)
-        if name:
-            add(name, "co")
-    for code in sorted(details):
-        name = DISABILITY_RADIO_FIELDS.get(code)
-        if name:
-            add(name, "co")
-    for code in sorted(no_codes - categories - details):
-        parent = code.split("_", 1)[0]
-        if ("_" in code) != (parent in categories):
-            continue
-        name = DISABILITY_RADIO_FIELDS.get(code)
-        if name:
-            add(name, "khong")
+    # Đơn có ít nhất một dòng "Có" thì mọi radio đang hiện phải có giá trị: nhóm không "Có" → "Không" ở dòng
+    # nhóm (radio con ẩn, không tích); nhóm "Có" → dòng con không "Có" (trống hoặc "Không") tích "Không".
+    # Không dòng nào "Có" (Mục III bỏ trống) → không tích gì.
+    if categories:
+        for code, name in sorted(DISABILITY_RADIO_FIELDS.items()):
+            if "_" not in code:
+                add(name, "co" if code in categories else "khong")
+        for code, name in sorted(DISABILITY_RADIO_FIELDS.items()):
+            if "_" in code and code.split("_", 1)[0] in categories:
+                add(name, "co" if code in details else "khong")
 
     muc_do = values.get("MucDo_HoatDong")
     if isinstance(muc_do, dict):

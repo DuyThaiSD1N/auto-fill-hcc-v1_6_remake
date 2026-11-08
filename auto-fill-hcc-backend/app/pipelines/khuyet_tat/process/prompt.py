@@ -100,6 +100,14 @@ Giá trị hợp lệ:
 - KTHD = Không thực hiện được.
 - KXD = Không xác định được.
 Chỉ trả dòng có ô được đánh dấu rõ. Không lấy dấu gạch/chữ ở phần hướng dẫn làm đáp án.
+Ô đầu bảng kẻ chéo "Mức độ thực hiện / Các hoạt động" là MỘT ô tiêu đề, không phải cột đánh dấu; OCR hay tách
+nó thành hai cột nên hàng tiêu đề có nhiều cột hơn hàng dữ liệu → KHÔNG gióng dấu X theo vị trí cột của hàng tiêu đề.
+Mỗi dòng hoạt động chỉ có đúng 4 ô đánh dấu nằm sau tên hoạt động, theo thứ tự trái → phải: THD, CTG, KTHD, KXD.
+Với từng dòng, tách các ô sau tên hoạt động (bỏ ô rỗng thừa sau dấu "|" cuối dòng), lấy 4 ô CUỐI, dấu X nằm ở ô thứ
+mấy trong 4 ô đó thì là mức tương ứng (ô 1 = THD, ô 2 = CTG, ô 3 = KTHD, ô 4 = KXD). Làm riêng từng dòng, không
+chép mức của dòng trên xuống dòng dưới. Mẫu hình dạng dòng OCR:
+"| <tên hoạt động> | X | | | |" → THD; "| <tên hoạt động> | | X | | |" → CTG;
+"| <tên hoạt động> | | | X | |" → KTHD; "| <tên hoạt động> | | | | X |" → KXD.
 Các dòng tương ứng:
 1 đi lại; 2 ăn uống; 3 tiểu tiện/đại tiện; 4 vệ sinh cá nhân; 5 mặc/cởi quần áo;
 6 nghe và hiểu; 7 diễn đạt ý muốn; 8 làm việc gia đình/lao động/sản xuất; 9 giao tiếp xã hội;

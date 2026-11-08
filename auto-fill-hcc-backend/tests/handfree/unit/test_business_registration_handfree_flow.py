@@ -313,6 +313,7 @@ async def test_combined_pipeline_broadcasts_only_after_process_and_attach(monkey
 
     assert conv["pipeline_status"] == "business_ready"
     assert conv["attach_plan"][0]["category"] == "BUSREGFRM"
+    assert conv["attach_plan_fids"] == ["f1"], "fileIndex → fid để lượt điều chỉnh chỉ đính tệp mới"
     assert events == [{"type": "business_ready", "pages": 1, "attachments": 1}]
 
 
@@ -342,3 +343,83 @@ async def test_attach_planner_keeps_duplicate_file_names_separate(monkeypatch):
 
     assert [item["fileIndex"] for item in result["attachments"]] == [0, 1]
     assert [item["category"] for item in result["attachments"]] == ["BUSREGFRM", "CPID"]
+
+
+# ── Điền + đính xong: điều chỉnh giấy tờ / điền lại như thủ tục khác ─────────────────────────────
+
+async def _done_business(monkeypatch, **extra):
+    from app.channels.handfree.chat import tracing
+    monkeypatch.setattr(tracing, "set_report", AsyncMock())
+    conv = _conversation(
+        state="filling", pipeline_status="business_ready",
+        business_pages={"hinh-thuc-dang-ky": [{"name": "x", "value": "N"}]},
+        attach_plan=[{"fileIndex": 0, "category": "BUSREGFRM"}, {"fileIndex": 1, "category": "OTHERS"}],
+        attach_plan_fids=["f1", "f2"], **extra,
+    )
+    first = flow._business_ready_reply(conv)
+    assert len(first.actions[0]["attachments"]) == 2
+    reply = await flow._handle_business_report(conv, {"ok": True, "filledPages": 8, "totalPages": 8, "attached": 2})
+    return conv, reply
+
+
+@pytest.mark.asyncio
+async def test_xong_co_nut_dieu_chinh_giay_to_va_dien_lai(monkeypatch):
+    conv, reply = await _done_business(monkeypatch)
+    sends = [c["send"] for c in reply.chips]
+    assert sends == ["__action:add_documents", "__action:business_refill"]
+    assert conv["business_attached_fids"] == ["f1", "f2"] and "đính **2 tệp**" in reply.display_md
+
+
+@pytest.mark.asyncio
+async def test_dien_lai_chi_dien_cac_khoi_khong_dinh_lai(monkeypatch):
+    conv, _ = await _done_business(monkeypatch)
+    r = await flow._handle_done(conv, Intent("action", "business_refill"))
+    action = r.actions[0]
+    assert action["type"] == "start_business_registration" and action["attachments"] == []
+    assert action["pages"] == conv["business_pages"] and conv["state"] == "filling"
+    r = await flow._handle_business_report(conv, {"ok": True, "filledPages": 8, "totalPages": 8, "attached": 0})
+    assert "đính **2 tệp**" in r.display_md, "tệp đã đính vẫn trên hồ sơ"
+    assert "business_refill_only" not in conv
+
+
+@pytest.mark.asyncio
+async def test_dien_lai_sau_khi_nop_thi_tu_choi(monkeypatch):
+    conv, _ = await _done_business(monkeypatch)
+    conv["submitted_completed"] = True
+    r = await flow._handle_done(conv, Intent("action", "business_refill"))
+    assert not r.actions and "nộp thành công" in r.display_md
+
+
+@pytest.mark.asyncio
+async def test_dieu_chinh_giay_to_doc_lai_dien_lai_chi_dinh_tep_moi(monkeypatch):
+    conv, _ = await _done_business(monkeypatch, hkd={"phase": "done"}, hkd_checked=True)
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", AsyncMock(return_value={"_id": "HS-BUSINESS"}))
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", AsyncMock())
+    r = await flow._handle_done(conv, Intent("action", "add_documents"))
+    assert conv["documents_adjustment_target"] == "business" and conv["state"] == "ask_doc_method"
+    assert r.chips[0]["label"] == "✅ Hoàn tất điều chỉnh, điền và đính kèm lại"
+    assert "hkd" not in conv and conv["hkd_checked"] is False, "trợ lý hỏi đáp chạy lại theo giấy mới"
+    # Đọc lại giấy xong: phiên có thêm tệp f3 (f2 bị bỏ) → chỉ đính f3.
+    conv.update(state="filling", pipeline_status="business_ready",
+                attach_plan=[{"fileIndex": 0, "category": "BUSREGFRM"}, {"fileIndex": 1, "category": "OTHERS"}],
+                attach_plan_fids=["f1", "f3"])
+    r = flow._business_ready_reply(conv)
+    assert r.actions[0]["attachments"] == [{"fileIndex": 1, "category": "OTHERS"}]
+    r = await flow._handle_business_report(conv, {"ok": True, "filledPages": 8, "totalPages": 8, "attached": 1})
+    assert conv["business_attached_fids"] == ["f1", "f2", "f3"] and "đính **3 tệp**" in r.display_md
+    assert not conv.get("supplementing_documents"), "xong lượt điều chỉnh"
+
+
+def test_nhan_mong_cho_nut_hoan_tat_dieu_chinh_ho_kinh_doanh():
+    from app.channels.handfree.chat import script_mong
+    labels = [v for v in vars(script_mong).values() if isinstance(v, dict)]
+    assert any("✅ Hoàn tất điều chỉnh, điền và đính kèm lại" in d for d in labels)
+
+
+@pytest.mark.asyncio
+async def test_thu_tuc_hkd_khac_thanh_lap_khong_co_nut_dien_lai(monkeypatch):
+    """Thay đổi nội dung phải tra cứu lại hộ kinh doanh từ đầu → không mở điều chỉnh / điền lại kiểu thành lập."""
+    conv, reply = await _done_business(monkeypatch, procedure_key="dang-ky-thay-doi-noi-dung-ho-kinh-doanh")
+    assert reply.chips == []
+    r = await flow._handle_done(conv, Intent("action", "business_refill"))
+    assert not r.actions

@@ -7,8 +7,9 @@ khác (thủ tục đó không có trong danh sách nên coi như không nhận 
 Danh sách đưa LLM theo thứ tự KHAI BÁO trong registry, không theo thứ tự thẻ màn chào: màn chào
 đẩy chứng thực chữ ký xuống dòng cuối, và ở dòng cuối model hay đọc nhầm sang dòng ngay trên
 (Bắc Ninh 101 thủ tục: "chứng thực chữ ký" [101] → trả 100 = đăng ký tạm trú, cả tên lẫn số).
-LLM chép kèm "ten" (đầu tên thủ tục của số đã chọn) để bắt lỗi đếm lệch số: tên không khớp số →
-lấy dòng khớp tên, không chắc → hỏi lại.
+LLM chép kèm "ten" (đầu tên thủ tục của số đã chọn) để bắt lỗi đếm lệch số sang dòng BÊN CẠNH:
+tên trỏ dòng ±1 khác số → hỏi lại giữa hai dòng. Tên chỉ để đối chiếu, không đè số: model hay chép
+tên sai (không khớp dòng nào, hoặc khớp một dòng xa) dù số đúng → vẫn theo số.
 """
 import json
 import logging
@@ -65,31 +66,25 @@ def _name_matches(name: str, proc: dict) -> bool:
     return bool(label) and (name in label or label in name)
 
 
-def _checked_key(value, name, procedures: list[dict]) -> tuple[str, list[str]]:
+def _checked_key(value, name, procedures: list[dict], shown: set[str] = frozenset()) -> tuple[str, list[str]]:
     """(key, candidates) sau khi đối chiếu số với "ten" LLM chép.
 
-    Thiếu "ten" → tin số như cũ. Số khớp tên → giữ. Lệch → dòng khớp tên gần số nhất (lỗi đếm lệch
-    thường chỉ ±1); không có dòng khớp hoặc khớp nhiều dòng xa nhau → key rỗng + gợi ý để hỏi lại.
+    Số là kết quả chính. Đổi/hỏi lại CHỈ khi tên khớp dòng ngay cạnh số mà không khớp dòng của số
+    (đếm lệch ±1) → key rỗng + hai dòng đó để hỏi lại công dân. Số thuộc gợi ý lượt trước (`shown`,
+    prompt ghi kèm số từng gợi ý nên không phải đếm) → giữ.
     """
     keys = [p["key"] for p in procedures]
     key = _key_at(value, keys)
     name = _norm(name)
-    if len(name) < 4:
+    if not key or key in shown or len(name) < 4 or _name_matches(name, procedures[keys.index(key)]):
         return key, []
-    if key and _name_matches(name, procedures[keys.index(key)]):
+    n = keys.index(key) + 1
+    near = [m for m in (n - 1, n + 1) if 1 <= m <= len(keys) and _name_matches(name, procedures[m - 1])]
+    if not near:
+        logger.info("[procedure_picker] số %s, tên %r không khớp dòng cạnh → theo số", value, name)
         return key, []
-    matched = [n for n, p in enumerate(procedures, 1) if _name_matches(name, p)]
-    try:
-        n = int(str(value).strip().strip("[]"))
-    except (TypeError, ValueError):
-        n = 0
-    near = [m for m in matched if abs(m - n) <= 1]
-    fixed = near if len(near) == 1 else matched if len(matched) == 1 else []
-    if fixed:
-        logger.info("[procedure_picker] số %s lệch tên %r → lấy [%s] %s", value, name, fixed[0], keys[fixed[0] - 1])
-        return keys[fixed[0] - 1], []
-    logger.warning("[procedure_picker] số %s không khớp tên %r → hỏi lại", value, name)
-    return "", list(dict.fromkeys([*(keys[m - 1] for m in matched), *([key] if key else [])]))
+    logger.warning("[procedure_picker] số %s nhưng tên %r khớp dòng cạnh %s → hỏi lại", value, name, near)
+    return "", [key, *(keys[m - 1] for m in near)]
 
 
 async def pick(message: str, conv: dict | None) -> PickResult:
@@ -112,7 +107,7 @@ async def pick(message: str, conv: dict | None) -> PickResult:
         return PickResult("error")
 
     result = str(data.get("result") or "")
-    key, name_candidates = _checked_key(data.get("id"), data.get("ten"), procedures)
+    key, name_candidates = _checked_key(data.get("id"), data.get("ten"), procedures, {p["key"] for _, p in shown})
     raw_candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
     candidates = [k for k in dict.fromkeys(_key_at(c, keys) for c in raw_candidates) if k]
     candidates = candidates[:_MAX_CANDIDATES]
@@ -122,7 +117,7 @@ async def pick(message: str, conv: dict | None) -> PickResult:
         if key:
             return PickResult(result, key, [])
         if name_candidates and result == "pick":
-            # Số và tên trỏ hai thủ tục khác nhau: không đoán, hỏi lại công dân giữa các dòng đó.
+            # Số và tên trỏ hai dòng cạnh nhau: không đoán, hỏi lại công dân giữa hai dòng đó.
             return PickResult("unclear", "", name_candidates[:_MAX_CANDIDATES])
         # Số ngoài danh sách: hỏi thì vẫn trả lời chung, chọn thì quay về gợi ý.
         return PickResult("ask_about", "", []) if result == "ask_about" else PickResult("unclear", "", candidates)

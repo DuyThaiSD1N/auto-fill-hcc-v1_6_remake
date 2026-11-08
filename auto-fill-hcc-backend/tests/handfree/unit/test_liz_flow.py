@@ -139,6 +139,11 @@ def _docs_complete(monkeypatch, caps, key):
     monkeypatch.setattr(pipeline_runner, "run_process", fake_run_process)
     monkeypatch.setattr(pipeline_runner, "run_attach", fake_run_attach)
     monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: asyncio.ensure_future(coro))
+
+    async def one_file(_sid):
+        return {"received": 1, "total": 1, "files_count": 1}
+
+    monkeypatch.setattr(flow.upload_service, "progress_of", one_file)
     conv = _conv(caps, key, state="collecting_docs", upload_session_id="",
                  client_capabilities={**caps, "supportsPageBoundDocsComplete": True})
 

@@ -179,3 +179,95 @@ test("khối lồng (mẹ / cha nuôi): tách từng ô con, dropdown không tê
   assert.match(review, /textDateNames\.has\(slot\.name\)\) \{ slot\.kind = "date"; slot\.partialDate = true; \}/);
   assert.match(sidebar, /supportsFieldReviewNested: true/);
 });
+
+// Cổng bọc ô Số định danh trong <span> riêng, nhãn nằm ngoài span: nhãn đọc rỗng thì slots() ghép nhãn ô liền trước
+// ("Quốc tịch") → trợ lý hỏi "Ô Quốc tịch" ở ô Số định danh và LLM hiểu câu trả lời thành tên nước.
+test("ô bọc trong <span> riêng: đọc nhãn trước thẻ bọc, không mượn nhãn ô trước", () => {
+  const pick = (re) => { const m = review.match(re); assert.ok(m, String(re)); return m[0]; };
+  const src = pick(/function labelBefore\(node\) \{[\s\S]*?\n  \}\n/)
+    + pick(/const INLINE_WRAPPER = [\s\S]*?function slotLabel\(node\) \{[\s\S]*?\n  \}\n/);
+  const Node = { ELEMENT_NODE: 1 };
+  const text = (t) => ({ nodeType: 3, textContent: t });
+  const el = (tagName, attrs, children = []) => {
+    const node = { nodeType: 1, tagName, attrs, children, classList: { contains: () => false } };
+    const all = () => children.filter((c) => c.nodeType === 1).flatMap((c) => [c, ...c.all()]);
+    Object.assign(node, {
+      all,
+      get textContent() { return children.map((c) => c.textContent).join(""); },
+      querySelector: (sel) => (sel === "[name]" ? all().find((c) => c.attrs.name) || null : null),
+      querySelectorAll: () => all().filter((c) => /^X-/.test(c.tagName) && c.attrs.name),
+    });
+    children.forEach((c, i) => { c.parentElement = node; c.previousSibling = children[i - 1] || null; });
+    return node;
+  };
+  const quocTich = el("X-SELECT", { name: "QuocTichBenNu" });
+  const soDinhDanh = el("X-INPUT", { name: "SoDinhDanh_BenNu" });
+  const hoTen = el("X-INPUT", { name: "HoTenBenNu" });
+  el("P", {}, [text("(5) Quốc tịch "), quocTich, text(" (6) Số định danh cá nhân: "), el("SPAN", {}, [soDinhDanh])]);
+  el("P", {}, [text("(2) Họ, chữ đệm, tên: "), el("SPAN", {}, [hoTen, el("X-INPUT", { name: "Khac" })])]);
+  const slotLabel = new Function("Node", "SLOT_SELECTOR", `${src}; return slotLabel;`)(Node, "x-*");
+  assert.equal(slotLabel(soDinhDanh), "(6) Số định danh cá nhân:");
+  assert.equal(slotLabel(quocTich), "(5) Quốc tịch");
+  assert.equal(slotLabel(hoTen), "", "thẻ bọc chứa nhiều ô: không leo ra, tránh lấy nhầm chữ của ô khác");
+  assert.match(review, /label: slotLabel\(c\)/);
+});
+
+// Vòng bổ sung bản 2 (BE): agent điều phối cần cả danh sách ô để hiểu "sửa tên bên nam", "sửa nhiều ô" — extension chỉ
+// gửi khi BE xin (msg.catalog), BE cũ không xin thì phản hồi giữ nguyên.
+test("BE xin catalog thì trả kèm danh sách ô (cả khi hết ô trống), không xin thì không", () => {
+  const pick = (re) => { const m = review.match(re); assert.ok(m, String(re)); return m[0]; };
+  const src = pick(/function catalogOf\(msg, list\) \{[\s\S]*?\n  \}\n/);
+  const slots = [
+    { key: "HoTenBenNam", kind: "text", box: "a", value: () => "NGUYEN VAN A" },
+    { key: "DanTocBenNam", kind: "radio", options: ["Kinh", "Khác"], box: "b", value: () => "" },
+  ];
+  const publicField = (s, options, section) => ({ key: s.key, options, section, value: s.value() });
+  const catalogOf = new Function("headings", "sectionOf", "publicField", `${src}; return catalogOf;`)(
+    () => [], () => "II. Bên nam", publicField);
+  assert.deepEqual(catalogOf({}, slots), {});
+  const out = catalogOf({ catalog: true }, slots).catalog;
+  assert.equal(out.length, 2);
+  assert.deepEqual(out[1].options, ["Kinh", "Khác"]);
+  assert.equal(out[0].value, "NGUYEN VAN A");
+  assert.match(review, /field: publicField\(slot, options, sectionOf\(slot\.box, headings\(\)\), province\), stats,\s*\.\.\.catalogOf\(msg, list\)/);
+  assert.match(review, /field: null, stats, \.\.\.catalogOf\(msg, list\)/);
+});
+
+test("cả 6 bộ đọc ô (eForm, SurveyJS, Angular, BXD, Bắc Ninh, liz) trả catalog khi BE xin", () => {
+  const files = ["content/field-review.js", "content/field-review-surveyjs.js", "content/field-review-angular.js",
+    "content/bxd/field-review-formio.js", "content/bacninh/field-review.js", "content/liz/field-review.js"];
+  for (const file of files) {
+    const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+    assert.match(src, /function catalogOf\(msg, list\) \{\s*if \(!msg\?\.catalog\) return \{\};/, file);
+    assert.match(src, /field: null, stats, \.\.\.catalogOf\(msg, list\) \}/, `${file}: hết ô trống vẫn gửi catalog`);
+    assert.equal((src.match(/\.\.\.catalogOf\(msg, list\)/g) || []).length, 2, file);
+  }
+});
+
+// Tích "Trong nước" xong cổng dựng khối địa chỉ, có lúc để trống / dựng hỏng ô Quốc gia: chọn luôn Việt Nam, danh sách
+// rỗng thì tick lại ô phạm vi rồi chọn lại; ô Tỉnh / Quốc gia rỗng lúc hỏi cũng dựng lại khối.
+test("điền \"Trong nước\" thì chọn Quốc gia Việt Nam, danh sách rỗng thì tick lại ô phạm vi", () => {
+  assert.match(review, /if \(ok\) await afterScope\(target, msg\.apply\.value\);/);
+  assert.match(review, /function afterScope\(slot, value\) \{\s*if \(slot\.kind !== "radio" \|\| !fold\(String\(value \|\| ""\)\)\.includes\("trong nuoc"\)\) return;/);
+  assert.match(review, /const HOME_COUNTRY = "Việt Nam";/);
+  const home = review.match(/async function homeCountry\(group\) \{[\s\S]*?\n  \}\n/)[0];
+  assert.match(home, /fillArea\(name, \{ \.\.\.areaData\(name\), quocGia: HOME_COUNTRY \}\)/);
+  assert.match(home, /toggleScope\(area\)/);
+  assert.match(review, /slot\.role === "tinh" \|\| slot\.role === "quocGia"\) && slot\.area\) \{\s*options = await rebuiltOptions\(slot\);/);
+});
+
+// Dropdown Xã rỗng hiện "Không tìm thấy kết quả": phải coi là rỗng để chạy bước chọn tỉnh khác rồi chọn lại.
+test("dòng \"Không tìm thấy kết quả\" không phải lựa chọn", () => {
+  assert.match(review, /t\.startsWith\("khong tim thay"\)/);
+  const src = review.match(/const fold = [\s\S]*?const isPlaceholder = \(text\) => \{[\s\S]*?\n  \};/)[0];
+  const isPlaceholder = new Function(`${src}; return isPlaceholder;`)();
+  assert.equal(isPlaceholder("Không tìm thấy kết quả"), true);
+  assert.equal(isPlaceholder("Xã Tam Hợp"), false);
+});
+
+// Mẫu eForm mới: tiêu đề phần là <span class="sec-title">Thông tin bên nữ</span> (huy hiệu "I" tách riêng) — không nhận
+// thì mọi ô mất tên phần, BE hiện "Tờ khai".
+test("nhận tiêu đề phần cả mẫu cũ (<b>I. …</b>) lẫn mẫu mới (.sec-title)", () => {
+  assert.match(review, /document\.querySelectorAll\("strong, b, \.sec-title"\)/);
+  assert.match(review, /el\.classList\.contains\("sec-title"\) \|\| \/\^\[IVXLC\]\+/);
+});

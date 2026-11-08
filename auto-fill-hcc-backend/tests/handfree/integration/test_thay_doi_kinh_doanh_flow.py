@@ -86,8 +86,8 @@ async def test_runner_dung_options_change_va_luu_business_flow(monkeypatch):
     monkeypatch.setattr(pipeline_runner.conv_store, "get", fake_get)
     monkeypatch.setattr(pipeline_runner.conv_store, "save", fake_save)
     monkeypatch.setattr(pipeline_runner.up_store, "get", fake_up_get)
-    monkeypatch.setattr(pipeline_runner, "_session_files",
-                        lambda sess: [{"name": "a.jpg", "type": "image/jpeg", "dataUrl": "data:,x", "role": ""}])
+    monkeypatch.setattr(pipeline_runner, "_session_files_with_fids",
+                        lambda sess: ([{"name": "a.jpg", "type": "image/jpeg", "dataUrl": "data:,x", "role": ""}], ["f1"]))
 
     async def fake_trace(*args, **kwargs):
         return "trace-1"

@@ -26,6 +26,9 @@ def _no_db(monkeypatch):
     async def no_user(conv, sess):
         return None
     monkeypatch.setattr(pipeline_runner, "_load_owner_user", no_user)
+    # Test luồng khối giả lập cách hiểu một lượt (hoi_dap.interpret); hai lớp agent có test riêng
+    # (test_hkd_agents.py) — không để test này gọi LLM thật.
+    monkeypatch.setattr(hkd.agents, "ENABLED", False)
 
 
 def _fake_lookup(monkeypatch, rows, chinh="", hoi_lai=""):
@@ -660,6 +663,16 @@ async def test_co_giay_chu_ho_tu_nop_ma_giay_khong_co_noi_o_thi_hoi_noi_o_nguoi_
     assert nop["__applicantAddress"]["self"]["xa"] == "Bắc Giang" and nop["ctl00$C$PERS_SUBGroup"].startswith("Người có")
 
 
+async def test_dia_chi_thue_chi_coi_la_xong_khi_luot_dien_theo_giay_da_chon_o():
+    no_head = [f for f in _DOCS_FULL if f["name"] not in ("TruSo_DiaChi", "Thue_DiaChiNhanThongBao")]
+    conv = _conv(business_facts=no_head, pipeline_status="business_ready")
+    await hkd.start_review(conv)
+    assert "dia_chi_thue" in hkd._missing_items(conv["hkd"], "thong-tin-ve-thue"), "giấy không có trụ sở → hỏi"
+    conv = _conv(business_facts=_DOCS_FULL, pipeline_status="business_ready")
+    await hkd.start_review(conv)
+    assert "dia_chi_thue" not in hkd._missing_items(conv["hkd"], "thong-tin-ve-thue"), "đã chọn Giống trụ sở"
+
+
 async def test_dia_chi_tren_giay_thieu_xa_thi_hoi_lai_tu_tinh():
     docs = [f for f in _DOCS_FULL if f["name"] != "TruSo_DiaChi"] + [
         {"name": "TruSo_DiaChi", "value": {"tinh": "Cần Thơ", "xa": "", "diaChi": ""}}]
@@ -684,7 +697,10 @@ async def test_nguoi_nop_la_chu_ho_dien_ngay_noi_o_chu_ho_roi_cho_xac_nhan_luu(m
     assert not any(a["type"] == "start_business_registration" for a in r.actions)
 
 
-async def test_luu_du_khoi_moi_chuan_bi_loi_thi_doc_loi_xong_thi_nut_nop():
+async def test_luu_du_khoi_moi_chuan_bi_loi_thi_doc_loi_xong_thi_nut_nop(monkeypatch):
+    async def no_slots(error, block, slots):
+        return []
+    monkeypatch.setattr(hoi_dap, "error_slots", no_slots)  # lỗi không quy về ô nào → công dân sửa trên trang
     conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.PREPARE_CAPABILITY: True, hkd.SUBMIT_CAPABILITY: True})
     conv["hkd"] = await hkd._base_state(conv, "khong_giay")
     r = hkd._finish(conv, ("", ""))
@@ -704,6 +720,43 @@ async def test_luu_du_khoi_moi_chuan_bi_loi_thi_doc_loi_xong_thi_nut_nop():
     assert r.chips == [hkd._submit_chip()], "không bấm được → nút Nộp lại"
 
 
+async def test_chuan_bi_loi_tu_mo_dung_khoi_hoi_lai_o_loi_roi_moi_chuan_bi_lai(monkeypatch):
+    answers = {**_ANSWERS, "nguoi_nop_noi_o": {"tinh": "Bắc Ninh", "xa": "Bắc Giang", "diaChi": "Tổ Mão Trì",
+                                                "quocGia": "Việt Nam"}}
+    _fake_answers(monkeypatch, answers)
+    seen = []
+
+    async def fake_slots(error, block, slots):
+        seen.append(block)
+        return ["nguoi_nop_noi_o"] if block == "Người nộp hồ sơ" else []
+    monkeypatch.setattr(hoi_dap, "error_slots", fake_slots)
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.PREPARE_CAPABILITY: True},
+                 business_facts=_DOCS_FULL, pipeline_status="business_ready")
+    await hkd.start_review(conv)
+    await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True}))
+    st = conv["hkd"]
+    st.update(copied=True, submitter_owner=True)  # chủ hộ tự nộp, nơi ở người nộp lấy từ nơi ở chủ hộ
+    hkd._finish(conv, ("", ""))
+    await hkd.handle(conv, PROC, Intent("action", "hkd_prepare"))
+    errors = ["(Người nộp hồ sơ) Phường/Xã trong địa chỉ liên hệ của người nộp hồ sơ là bắt buộc",
+              "(Ngành nghề kinh doanh) Chưa chọn ngành chính"]
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_prepared", {"ok": False, "errors": errors}))
+    assert seen == ["Người nộp hồ sơ"], "khối danh sách (ngành) không đưa LLM — công dân sửa trên trang"
+    assert "mở lại khối **Người nộp hồ sơ**" in r.display_md and vi.HKD_PREPARE_FIX_OTHER in r.display_md
+    assert r.actions == [hkd._open_action("nguoi-nop-ho-so")], "chỉ mở khối có lỗi"
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_arrived", {"page": "nguoi-nop-ho-so"}))
+    assert st["field"] == "nguoi_nop_noi_o", "hỏi lại dù nơi ở chủ hộ đã đủ (cổng không nhận)"
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "tổ mão trì phường bắc giang bắc ninh"}))
+    assert st["phase"] == "confirm"
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_save"))
+    save = next(a for a in r.actions if a["type"] == "start_business_registration")
+    nop = {f["name"]: f["value"] for f in save["pages"]["nguoi-nop-ho-so"]}
+    assert nop["ctl00$C$PERSCtl$ADDRCCtl$WARD_IDFld"] == "Bắc Giang"
+    r = await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True}))
+    assert st["phase"] == "ready_prepare" and r.chips[0]["send"] == "__action:hkd_prepare"
+    assert "fix" not in st and "fix_keys" not in st
+
+
 def test_noi_nop_ho_so_bang_loi_phai_hoi_xac_nhan():
     from app.channels.handfree.chat import flow
     assert hkd.SUBMIT_SEND in flow._VOICE_CONFIRM_SENDS
@@ -716,14 +769,19 @@ async def test_extension_chua_khai_chuan_bi_thi_ket_thuc_nhu_cu():
     assert not r.actions and conv["state"] == "done"
 
 
-async def test_tam_tat_loi_vao_khong_giay_to_luon_phai_dua_giay(monkeypatch):
+def test_loi_vao_khong_giay_to_mo_cho_moi_quay():
+    assert hkd.NO_DOCS_ENABLED is True
+    assert hkd.consent_card_extra(_conv(), PROC) == {"no_docs_label": vi.HKD_NO_DOCS_LABEL}
+
+
+async def test_tat_cong_tac_thi_an_loi_vao_khong_giay_to_luon_phai_dua_giay(monkeypatch):
     from app.channels.handfree.chat import consent as consent_log
     from app.channels.handfree.chat import flow, intents
 
     async def persist(entry):
         return None
     monkeypatch.setattr(consent_log, "persist", persist)
-    assert hkd.NO_DOCS_ENABLED is False
+    monkeypatch.setattr(hkd, "NO_DOCS_ENABLED", False)
     conv = _conv(procedure_key="dang-ky-kinh-doanh")
     assert hkd.consent_card_extra(conv, PROC) == {} and hkd.no_docs_chip(conv, PROC) is None, "không còn nút"
     assert "consent_no_docs" not in [e["value"] for e in intents._state_entries("consent", conv)], "không còn ý định"
@@ -733,3 +791,56 @@ async def test_tam_tat_loi_vao_khong_giay_to_luon_phai_dua_giay(monkeypatch):
     await flow._handle_consent(conv, Intent("action", "consent", {"accepted": True, "checks": [True, True],
                                                                   "noDocs": True}))
     assert "hkd" not in conv and conv["consent"]["accepted"] is True, "thẻ cũ gửi noDocs → đồng ý bình thường, đi tải giấy"
+
+
+async def test_noi_luu_khoi_ma_model_chep_lai_gia_tri_dang_co_van_luu(monkeypatch):
+    questions = []
+
+    async def fake(text, asking, question, slots, values, location):
+        questions.append((asking, question))
+        return hoi_dap.Parsed("dong_y", {"dien_thoai": values.get("dien_thoai")})
+    monkeypatch.setattr(hoi_dap, "interpret", fake)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("dia-chi"), phase="confirm", field=hkd._CONFIRM,
+                       asked=True)
+    conv["hkd"]["values"]["dien_thoai"] = "0900000000"
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "Lưu khối này"}))
+    assert conv["hkd"]["phase"] == "saving"
+    assert any(a["type"] == "start_business_registration" for a in r.actions)
+    assert questions[0] == ("tom_tat", hoi_dap.prompt.CONFIRM_QUESTION), "model phải biết đang hỏi lưu khối"
+
+
+async def test_xac_nhan_khoi_ma_sua_gia_tri_thi_khong_luu(monkeypatch):
+    async def fake(text, asking, question, slots, values, location):
+        return hoi_dap.Parsed("dong_y", {"dien_thoai": "0911111111"})
+    monkeypatch.setattr(hoi_dap, "interpret", fake)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("dia-chi"), phase="confirm", field=hkd._CONFIRM,
+                       asked=True)
+    conv["hkd"]["values"]["dien_thoai"] = "0900000000"
+    await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "sửa số điện thoại"}))
+    assert conv["hkd"]["phase"] != "saving" and conv["hkd"]["values"]["dien_thoai"] == "0911111111"
+
+
+def test_website_ghi_dang_ten_mien_khong_ghi_nguyen_loi_noi():
+    assert hoi_dap.check("website", "Kỷnguyênmới.IO", "", True) == ("kynguyenmoi.io", "")
+    assert hoi_dap.check("website", "abc.com.vn/gioi-thieu", "", True) == ("abc.com.vn/gioi-thieu", "")
+    assert hoi_dap.check("website", "kỷ nguyên mới chấm ai ô", "", True) == ("kynguyenmoi.io", "")
+    assert hoi_dap.check("website", "thông tin xã chấm vê en", "", True) == ("thongtinxa.vn", "")
+    assert hoi_dap.check("website", "chăm sóc nhà chấm com chấm vê en", "", True) == ("chamsocnha.com.vn", "")
+    assert hoi_dap.check("website", "kỷ nguyên mới", "", True) == (None, ""), "thiếu đuôi thì hỏi lại"
+    assert hkd._SLOTS["website"]["kind"] == "website"
+
+
+async def test_doc_website_bang_loi_doc_thang_tu_cau_noi_khi_model_ghep_sai(monkeypatch):
+    async def fake_chat(messages, **kw):
+        return '{"hanhDong": "khong_ro", "giaTri": {}}'
+    monkeypatch.setattr(hoi_dap, "llm_chat", fake_chat)
+    slots = [{"key": "website", "label": "Website", "kind": "website"}]
+    for text, want in [("trang web là kỷ nguyên mới chấm ai ô ạ", "kynguyenmoi.io"),
+                       ("có, web của tôi là thông tin xã chấm vê en nhé", "thongtinxa.vn")]:
+        parsed = await hoi_dap.interpret(text, "website", "", slots, {}, "")
+        assert parsed.values == {"website": want} and parsed.action == "tra_loi"
+

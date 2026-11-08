@@ -266,6 +266,13 @@
     slot.box.classList.add(ASKING);
   }
 
+  // BE vòng bổ sung bản 2 xin cả danh sách ô (msg.catalog) để hiểu "sửa ô X", "sửa nhiều ô": nhãn, phần, giá trị hiện
+  // có. Chỉ lựa chọn đã có sẵn (không mở dropdown) — BE đưa con trỏ tới ô chọn khi cần đọc danh sách.
+  function catalogOf(msg, list) {
+    if (!msg?.catalog) return {};
+    return { catalog: list.map(publicField) };
+  }
+
   async function next(msg) {
     const skip = new Set(Array.isArray(msg.skip) ? msg.skip : []);
     let applied = null;
@@ -282,9 +289,9 @@
     const slot = (msg.focus && list.find((s) => s.key === msg.focus || s.name === msg.focus))
       || (msg.requiredFirst && list.find((s) => s.required && askable(s)))
       || list.find(askable);
-    if (!slot) { unfocus(); return { ok: true, applied, field: null, stats }; }
+    if (!slot) { unfocus(); return { ok: true, applied, field: null, stats, ...catalogOf(msg, list) }; }
     await focusSlot(slot);
-    return { ok: true, applied, field: publicField(slot), stats };
+    return { ok: true, applied, field: publicField(slot), stats, ...catalogOf(msg, list) };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

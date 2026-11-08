@@ -162,3 +162,64 @@ def test_tat_vision_chi_chay_ocr_llm_khong_canh_bao(monkeypatch):
     res = asyncio.run(kt_runner.run({"doc": []}, {}))
     assert vision.SECTION_III_WARNING not in res["errors"]
     assert {f["name"]: f["value"] for f in res["fields"]}["data[khuyetTat1Obj][khuyetTatRadio1]"] == "co"
+
+
+def _enrich_iii(danh_muc, chi_tiet):
+    from app.pipelines.khuyet_tat.process import mapper
+
+    fields = [{"name": "KhuyetTat_DanhMuc", "value": danh_muc}, {"name": "KhuyetTat_ChiTiet", "value": chi_tiet}]
+    return {f["name"]: f["value"] for f in mapper.enrich(fields, {}) if "khuyetTat" in f["name"]}
+
+
+def test_nhom_co_thi_dong_con_trong_tich_khong_nhom_khong_thi_chi_tich_dong_nhom():
+    d = _enrich_iii(["kt1", "kt6"], ["kt1_4", "kt5_2"])
+    # Dòng con "Có" kéo nhóm cha thành "Có".
+    assert d["data[khuyetTat5Obj][khuyetTatRadio]"] == "co"
+    assert d["data[khuyetTat5Obj][khuyetTatRadio2]"] == "co"
+    assert d["data[khuyetTat5Obj][khuyetTatRadio1]"] == "khong"
+    assert d["data[khuyetTat1Obj][khuyetTatRadio4]"] == "co"
+    assert d["data[khuyetTat1Obj][khuyetTatRadio1]"] == "khong"
+    # Nhóm "Có" mà không dòng con nào "Có" → mọi dòng con "Không".
+    assert [d[f"data[khuyetTat6Obj][khuyetTatRadio{i}]"] for i in (1, 2, 3)] == ["khong"] * 3
+    # Nhóm không "Có": dòng nhóm "Không", dòng con không tích.
+    assert d["data[khuyetTat2Obj][khuyetTatRadio]"] == "khong"
+    assert "data[khuyetTat2Obj][khuyetTatRadio1]" not in d
+
+
+def test_muc_iii_bo_trong_thi_khong_tich_gi():
+    assert _enrich_iii([], []) == {}
+
+
+def test_luot_muc_do_lay_muc_tu_4_o_da_chep(monkeypatch):
+    import json
+
+    from app.pipelines.khuyet_tat.process import muc_do
+
+    rows = [
+        {"so": "1", "o_danh_dau": ["", "X", "", ""], "muc": "THD"},  # "muc" lệch với ô đã chép → tin ô
+        {"so": "3", "o_danh_dau": ["", "", "", "X"], "muc": "KXD"},
+        {"so": "4", "o_danh_dau": ["X", "", "X", ""], "muc": "THD"},  # 2 ô có dấu → bỏ
+        {"so": "5", "o_danh_dau": ["", "X", ""], "muc": "CTG"},  # vỡ dòng → bỏ
+    ]
+
+    async def fake_chat(messages, **kwargs):
+        assert not kwargs.get("enable_thinking")
+        return json.dumps({"dong": rows})
+
+    monkeypatch.setattr(muc_do.client, "chat", fake_chat)
+    out = asyncio.run(muc_do.read_activity_levels([{"text": "bảng"}]))
+    assert out == {"1": "CTG", "3": "KXD"}
+
+
+def test_luot_muc_do_thay_ket_qua_luot_chinh():
+    from app.pipelines.khuyet_tat.process import muc_do
+
+    async def levels():
+        return {"1": "CTG"}
+
+    async def go():
+        res = {"fields": [{"name": "MucDo_HoatDong", "comp": "raw", "value": {"1": "THD", "2": "THD"}}]}
+        await muc_do.apply_levels(res, [asyncio.create_task(levels())])
+        return res
+
+    assert asyncio.run(go())["fields"] == [{"name": "MucDo_HoatDong", "comp": "raw", "value": {"1": "CTG"}}]

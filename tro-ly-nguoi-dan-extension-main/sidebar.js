@@ -220,9 +220,22 @@
     // Trang nộp một trang của cổng Bộ VHTTDL (form liz): bổ sung ô (content/liz/field-review.js), tích ô cam kết, gạt
     // ô VNPost + điền người nhận, bấm Lưu và nộp hồ sơ (content/liz/one-page.js). Thiếu cờ → BE giữ luồng chung.
     supportsLizFlow: true,
+    // Thành lập hộ kinh doanh bằng hỏi đáp: thẻ đồng ý có nút "không có tờ khai, giấy tờ" (card.no_docs_label), trang chủ
+    // hộ bấm "Sao chép thông tin đăng ký tài khoản" khi BE gửi __copyAccount, điền trang Thông tin về thành viên, lưu khối
+    // Thông tin Ủy quyền (content/procedures/business-registration.js). Thiếu cờ → BE giữ luồng tải tờ khai.
+    supportsHkdTroLy: true,
+    // Luồng hộ kinh doanh: biết gọi "Kiểm tra trùng tên" của cổng và báo hkd_name_checked.
+    supportsHkdCheckName: true,
+    // Luồng hộ kinh doanh: lưu đủ khối thì bấm "Chuẩn bị" (Khối dữ liệu → Chuẩn bị), báo hkd_prepared (lỗi / xong).
+    supportsHkdPrepare: true,
+    // Luồng hộ kinh doanh: nút "Nộp hồ sơ" — bấm nút Nộp trên Trang xác nhận (cổng tự hỏi xác nhận).
+    supportsHkdSubmit: true,
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,
+    // Khôi phục hồ sơ đang làm dở sau khi phiên bị gián đoạn (tắt máy, cổng văng ra): BE gợi ý khi chọn lại đúng
+    // thủ tục, rồi đưa lại giấy tờ + dữ liệu từng bước bằng các lệnh sẵn có. Thiếu cờ → BE giữ luồng làm mới.
+    supportsResume: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -581,6 +594,10 @@
   let pendingReturnReason = "";
   let pendingReturnProcedure = "";
   const pendingQueue = [];
+  // Trợ lý hộ kinh doanh: thao tác trên trang (mở khối, trỏ ô, điền ô vừa trả lời) chạy nối đuôi ở nền, KHÔNG giữ
+  // busy — chọn tỉnh/xã chờ cổng nạp danh sách, sao chép tài khoản reload cả trang; giữ busy thì câu công dân gõ ngay
+  // sau câu hỏi bị submitText bỏ qua. Lưu khối chờ chuỗi này xong mới chạy máy điền.
+  let hkdChain = Promise.resolve();
   // BE khởi động lại (deploy, vài giây tới vài chục giây): lệnh hệ thống / cú bấm nút gửi đúng lúc đó mà bỏ luôn
   // là hội thoại đứng im (BE không biết đã điền / đã đính xong). Thử lại tới khi BE lên lại, tối đa 90 giây. Câu
   // gõ / nói tự do không thử lại — công dân nói lại được. Hết hạn mà chưa vào được: nút "Thử lại".
@@ -707,6 +724,7 @@
   }
 
   let lastState = "";
+  const DOCS_DONE_STATES = new Set(["filling", "reviewing", "attaching", "choosing_attach_mode", "done"]);
   let lastReplyData = null; // reply gần nhất — dùng để đọc lại câu chào khi bật rảnh tay ở màn chào
   let replyTtsInFlight = 0;
   let completionReturnTimer = null;
@@ -963,6 +981,7 @@
     // Câu hỏi cần công dân trả lời ngay (vd hỏi từng ô còn trống): đọc xong tự mở mic MỘT lượt,
     // kể cả khi không bật Rảnh tay. Riêng màn chọn thủ tục (câu chào): chỉ mở mic khi đang Rảnh tay — bấm
     // "Bắt đầu làm thủ tục" là chọn bằng tay; bắt đầu bằng giọng nói thì Rảnh tay đã bật nên mic vẫn mở.
+    if (!opts?.noTts) updateHkdBusy(d);
     const listenAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "listen_after_tts")
       && !(d.state === "greet" && !handsfree);
     const willSpeak = !duplicateLogoutChoice && !!d.tts_text && voiceCfg.tts && !ttsMuted;
@@ -1307,6 +1326,7 @@
       provinceLoginDialog: !!c.provinceLoginDialog,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
+      businessPageKey: c.businessPageKey || "",
       businessProcedureHint: c.businessProcedureHint || "",
       businessActive: !!c.businessActive,
       businessResult: c.businessResult || null,
@@ -1367,8 +1387,11 @@
   // runActions là tự khoá: cờ busy của lượt ngoài chưa tắt nên lượt mới chỉ xếp hàng chờ.
   const GUIDED_NEXT_BLOCKED_MS = 3600;
   const GUIDED_NEXT_WAIT_MS = 15000;
-  async function runGuidedNext(phase, expect) {
+  async function runGuidedNext(phase, expect, ownerFields = null) {
     setStatus("Đang chuyển bước trên trang…");
+    // Khôi phục hồ sơ dở: BE nhờ đọc các ô chủ hồ sơ (bản cán bộ đã sửa tay) NGAY trước khi bấm — sang bước sau là
+    // form không còn để đọc.
+    const owner = ownerFields ? await sendToContent({ action: "readOwnerFields", fields: ownerFields }) : null;
     // Bấm và dò song song: engine content còn rình toast vài giây, chờ nó xong mới dò thì
     // trường hợp THÀNH CÔNG (đa số) cũng phải chờ đủ chừng ấy.
     const press = sendToContent({ action: "guidedClickNext" });
@@ -1394,6 +1417,7 @@
     setStatus("");
     await ask(`__action:guided_step_report:${JSON.stringify({
       phase, ok: moved, message: res?.message || "", wizardStep,
+      ...(owner ? { ownerFields: owner.values || {} } : {}),
     })}`, "system");
     // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
     // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
@@ -1763,7 +1787,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.bnAgency || ""}|${ctx.bnAccountForm ? 1 : 0}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessPageKey || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.bnAgency || ""}|${ctx.bnAccountForm ? 1 : 0}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -2198,11 +2222,17 @@
           ? `<span class="chip-hm">${window.escapeHtml(hm.decline_label)}</span>` : ""}</button>
         <button type="button" class="chip solid caccept" disabled>${window.escapeHtml(card.accept_label || "Đồng ý và tự động điền")}${hm?.accept_label
           ? `<span class="chip-hm">${window.escapeHtml(hm.accept_label)}</span>` : ""}</button>
+        ${card.no_docs_label ? `<button type="button" class="chip cnodocs" disabled>${window.escapeHtml(card.no_docs_label)}</button>` : ""}
       </div>
       <div class="cver">Sự đồng ý được ghi nhật ký, công dân rút lại được bất cứ lúc nào.${hmDiv(hm?.ver_note)}</div>`;
     const boxes = [...el.querySelectorAll('input[type="checkbox"]')];
     const $accept = el.querySelector(".caccept");
-    const sync = () => { $accept.disabled = !boxes.every((b) => b.checked); };
+    const $noDocs = el.querySelector(".cnodocs");
+    // Nút "không có tờ khai" cũng là đồng ý xử lý dữ liệu (công dân sẽ khai thông tin bằng lời) → cùng điều kiện tích ô.
+    const sync = () => {
+      $accept.disabled = !boxes.every((b) => b.checked);
+      if ($noDocs) $noDocs.disabled = $accept.disabled;
+    };
     boxes.forEach((b) => b.addEventListener("change", sync));
     // Hai ô cam kết tích sẵn để công dân chỉ cần bấm "Đồng ý"; vẫn bỏ tích được (nút Đồng ý khoá lại).
     // Báo `prechecked` để biên bản ghi đúng là ô được tích sẵn, không phải công dân tự tích.
@@ -2211,16 +2241,17 @@
       boxes.forEach((b) => { b.checked = true; });
       sync();
     });
-    const finish = (accepted, label, labelHmong) => {
+    const finish = (accepted, label, labelHmong, noDocs = false) => {
       el.querySelectorAll("button, input").forEach((x) => { x.disabled = true; });
       addUserText(label, labelHmong);
       ask(`__action:consent:${JSON.stringify({
-        accepted, checks: boxes.map((b) => b.checked), prechecked: true,
+        accepted, checks: boxes.map((b) => b.checked), prechecked: true, ...(noDocs ? { noDocs: true } : {}),
       })}`, "chip", label);
     };
     const viLabel = (btn, fallback) => btn.childNodes[0]?.textContent?.trim() || fallback;
     $accept.addEventListener("click", () => finish(true, viLabel($accept, "Đồng ý và tự động điền"),
       card.hmong?.accept_label));
+    if ($noDocs) $noDocs.addEventListener("click", () => finish(true, card.no_docs_label, null, true));
     const $decline = el.querySelector(".cdecline");
     $decline.addEventListener("click", () => finish(false, viLabel($decline, "Không đồng ý · Tự nhập"),
       card.hmong?.decline_label));
@@ -2283,14 +2314,18 @@
     });
     el.appendChild(grid);
 
-    // Nút NÓI to, hiện ngay bước chọn thủ tục cho người dân dễ thấy (mockup). Dùng chung
-    // hành vi với nút mic ở footer: bấm là bật/tắt nghe; server tắt ASR thì tự báo toast.
+    // Nút NÓI to, hiện ngay bước chọn thủ tục cho người dân dễ thấy (mockup). Bấm = chọn nói cả phiên: bật rảnh tay
+    // rồi mở nghe ngay (không đọc lại câu chào như nút Rảnh tay). Đang nghe thì giữ nguyên, không tắt mic.
+    // Server tắt ASR → để nút mic footer tự báo toast.
     const voiceBtn = document.createElement("button");
     voiceBtn.type = "button";
     voiceBtn.className = "svc-voice";
     voiceBtn.innerHTML = `<span class="svc-voice-ic">🎤</span>
       <span class="svc-voice-tx">Hoặc bấm vào đây rồi <b>NÓI</b> tên thủ tục</span>`;
-    voiceBtn.addEventListener("click", () => { $micBtn?.click(); });
+    voiceBtn.addEventListener("click", () => {
+      if (voiceCfg.asr && !handsfree) setHandsfree(true, { listen: false });
+      if (!voiceListening) $micBtn?.click();
+    });
     el.appendChild(voiceBtn);
 
     // Thanh mở danh sách đầy đủ (có ô tìm kiếm) — chỉ hiện khi còn thủ tục ngoài các ô.
@@ -2906,6 +2941,8 @@
     if (st === "collecting_docs" || st === "qr_waiting") failStepsCard();
     // Luồng có thẻ nhiều bước (BE gửi pipeline_steps): không dựng thêm card một dòng.
     if ((d.actions || []).some((a) => a.type === "pipeline_steps")) return;
+    // Trợ lý hộ kinh doanh đi từng khối (hkd_*): hỏi đáp tại chỗ, không có pha "đang bóc tách" để chờ.
+    if ((d.actions || []).some((a) => String(a.type || "").startsWith("hkd_"))) return;
     const willFill = (d.actions || []).some((a) =>
       a.type === "fill_fields" || a.type === "fill_owner_fields");
     if ((st === "owner_filling" || st === "filling") && prev !== st && !willFill) {
@@ -4149,6 +4186,9 @@
     }
     // Card danh sách giấy tờ (thay/đặt dưới card QR) — kiểu .doc-row prototype.
     let wrap = document.getElementById("doc-progress-card");
+    // Đã qua bước nhận giấy mà chưa có card = sidebar vừa dựng lại sau khi trang reload (hộ kinh doanh reload sau mỗi
+    // khối) và kênh tải tệp gửi lại tiến độ → không vẽ lại card giữa lúc điền / bổ sung thông tin.
+    if (!wrap && DOCS_DONE_STATES.has(lastState)) return;
     if (!wrap) {
       wrap = document.createElement("div");
       wrap.id = "doc-progress-card";
@@ -5318,6 +5358,49 @@
         // ask() còn busy tới khi runActions kết thúc. Chạy ở lượt event-loop kế tiếp để
         // page_status không bị xếp hàng rồi chờ ngược chính request hiện tại.
         setTimeout(() => { void verifyPortalState(); }, 0);
+      } else if (a.type === "hkd_open_block" || a.type === "hkd_focus" || a.type === "hkd_fill") {
+        // Trợ lý hộ kinh doanh: mở khối / trỏ ô đang hỏi / điền ngay ô vừa trả lời. Đã đứng đúng khối (hoặc khối không có
+        // trong menu) thì báo BE ngay; phải bấm menu thì trang reload và watcher báo page_status kèm businessPageKey.
+        hkdChain = hkdChain.then(async () => {
+          const res = await sendToContent({
+            action: { hkd_open_block: "hkdOpenBlock", hkd_focus: "hkdFocus", hkd_fill: "hkdFill" }[a.type],
+            page: a.page || "", names: a.names || [], fields: a.fields || [],
+          }).catch(() => null);
+          if (a.type === "hkd_fill" && res && "copied" in res) {
+            // Khối chủ hộ / người nộp: báo BE đã sao chép tài khoản (người nộp: kèm có trùng chủ hộ không).
+            setTimeout(() => ask(`__event:hkd_copied:${JSON.stringify({
+              page: a.page, copied: !!res.copied, same: typeof res.sameAsOwner === "boolean" ? res.sameAsOwner : null,
+            })}`, "system"), 0);
+          }
+          if (a.type === "hkd_open_block" && (res?.here || res?.missing)) {
+            setTimeout(() => ask(`__event:hkd_arrived:${JSON.stringify({
+              page: a.page, ...(res.missing ? { missing: true } : {}),
+              ...(res.accountName ? { accountName: res.accountName } : {}),
+            })}`, "system"), 0);
+          }
+        }).catch(() => {});
+      } else if (a.type === "hkd_prepare") {
+        hkdChain = hkdChain.then(async () => {
+          const res = await sendToContent({ action: "hkdPrepare" }).catch(() => null);
+          // Bấm được thì trang reload, kết quả về qua hkdPrepared; không bấm được thì báo lỗi ngay.
+          if (res && res.ok === false) {
+            setTimeout(() => ask(`__event:hkd_prepared:${JSON.stringify({ ok: false, errors: res.errors || [] })}`,
+              "system"), 0);
+          }
+        }).catch(() => {});
+      } else if (a.type === "hkd_submit") {
+        hkdChain = hkdChain.then(async () => {
+          const res = await sendToContent({ action: "hkdSubmit" }).catch(() => null);
+          if (!res?.ok) setTimeout(() => ask("__event:hkd_submit_failed", "system"), 0);
+        }).catch(() => {});
+      } else if (a.type === "hkd_check_name") {
+        hkdChain = hkdChain.then(async () => {
+          const res = await sendToContent({ action: "hkdCheckName", kind: a.kind || "vi", name: a.name || "" })
+            .catch(() => null);
+          setTimeout(() => ask(`__event:hkd_name_checked:${JSON.stringify({
+            slot: a.slot, name: a.name, ok: !!res?.ok, text: res?.text || "", names: res?.names || [],
+          })}`, "system"), 0);
+        }).catch(() => {});
       } else if (a.type === "prepare_business_registration") {
         setStatus(a.workflow === "reissue"
           ? "Đang mở luồng Cấp lại Giấy chứng nhận hộ kinh doanh…"
@@ -5334,6 +5417,7 @@
           addBotMd(`⚠️ ${res.error}`);
         }
       } else if (a.type === "start_business_registration" && a.pages) {
+        await hkdChain;  // ô vừa điền ngay (hỏi đáp hộ kinh doanh) phải xong trước khi máy điền lưu khối
         pipeDone();
         setStatus("Đang chuẩn bị các khối dữ liệu và giấy tờ đính kèm…");
         try {
@@ -5373,7 +5457,8 @@
         // ngoài lại đang chờ chính runActions → khoá cứng, bot im luôn sau khi bấm nút.
         const phase = a.phase || "";
         const expect = Number(a.expectStep) || 0;
-        setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
+        const ownerFields = Array.isArray(a.readOwnerFields) ? a.readOwnerFields : null;
+        setTimeout(() => { void runGuidedNext(phase, expect, ownerFields); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(a); }, 0);
       } else if (a.type === "open_eform") {
@@ -6202,11 +6287,31 @@
     startVoice();
   }
   // Bot đang thao tác trên trang (và ~2 giây sau lệnh cuối, trang còn đang đổi) hoặc đang đọc giấy tờ.
+  // Lượt mở / lưu khối HkdOnline (trợ lý hộ kinh doanh, máy điền tờ khai): bot đang thao tác trên trang qua nhiều lần
+  // reload → rảnh tay không mở mic tới khi có câu hỏi mới. Nhớ qua reload bằng sessionStorage của iframe (trần 3 phút).
+  const HKD_BUSY_KEY = "tlnd_hkd_busy";
+  function updateHkdBusy(d) {
+    const types = (d.actions || []).map((a) => a.type);
+    let busy = null;
+    if (types.includes("hkd_open_block") || types.includes("start_business_registration")) busy = true;
+    if (types.includes("hkd_focus") || (d.chips || []).length || d.state === "done") busy = false;
+    if (busy === null) return;
+    try {
+      if (busy) sessionStorage.setItem(HKD_BUSY_KEY, String(Date.now()));
+      else sessionStorage.removeItem(HKD_BUSY_KEY);
+    } catch (e) { /* ignore */ }
+  }
+  function hkdBusy() {
+    try {
+      const at = Number(sessionStorage.getItem(HKD_BUSY_KEY) || 0);
+      return !!at && Date.now() - at < 180000;
+    } catch (e) { return false; }
+  }
   function botWorking() {
     // $steps: thẻ tiến trình nhiều bước (luồng bản 2) — đang chạy là đang đọc giấy tờ / điền / đính, công dân chưa
     // cần nói gì; mic mở lúc này chỉ thu tiếng ồn thành lượt mới, lượt đó cắt luôn câu bot đang đọc.
     return pageWorkInFlight > 0 || Date.now() - pageWorkEndedAt < 2000 || (!!$pipe && !pipeFinished)
-      || $steps?.dataset.state === "running";
+      || $steps?.dataset.state === "running" || hkdBusy();
   }
   // Câu "Em đang đọc giấy tờ…" tới ngay trước dữ liệu điền (giấy tờ đã đọc sẵn thì gần như liền nhau): cho câu đọc
   // xong rồi mới điền, tối đa vài giây, để công dân nghe được bot đang làm gì trước khi trang đổi.
@@ -6285,6 +6390,42 @@
     });
   }
 
+  // Trợ lý hộ kinh doanh: bấm menu mở khối làm trang reload (iframe dựng lại, watcher có thể chưa chạy) → adapter báo đã
+  // tới khối và gửi lại tới khi có xác nhận; chờ khôi phục chat rồi báo BE.
+  // Bước "Chuẩn bị" reload trang → adapter đọc kết quả (lỗi / Trang xác nhận) sau khi tải xong rồi báo.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type !== "hkdPrepared") return;
+    sendResponse({ ok: true });
+    void (async () => {
+      if (!(await waitForChatBoot(30000))) return;
+      markActivity();
+      ask(`__event:hkd_prepared:${JSON.stringify({ ok: msg.ok === true, errors: msg.errors || [] })}`, "system");
+    })();
+  });
+  // Khối người nộp: nút "Sao chép thông tin đăng ký tài khoản" reload cả trang → adapter báo kết quả sau khi tải xong.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type !== "hkdCopied" || !msg.page) return;
+    sendResponse({ ok: true });
+    void (async () => {
+      if (!(await waitForChatBoot(30000))) return;
+      markActivity();
+      ask(`__event:hkd_copied:${JSON.stringify({
+        page: msg.page, copied: !!msg.copied, same: typeof msg.same === "boolean" ? msg.same : null,
+      })}`, "system");
+    })();
+  });
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type !== "hkdArrived" || !msg.page) return;
+    sendResponse({ ok: true });
+    void (async () => {
+      if (!(await waitForChatBoot(30000))) { console.warn("[HKD] chưa khôi phục được chat để báo tới khối", msg.page); return; }
+      markActivity();
+      console.log("[HKD] báo BE đã tới khối", msg.page);
+      ask(`__event:hkd_arrived:${JSON.stringify({
+        page: msg.page, ...(msg.accountName ? { accountName: msg.accountName } : {}),
+      })}`, "system");
+    })();
+  });
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === "businessProgress") {
       markActivity();

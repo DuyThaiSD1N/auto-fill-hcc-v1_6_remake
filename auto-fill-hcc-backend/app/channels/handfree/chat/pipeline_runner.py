@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from app.account_settings import service as account_settings
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tracing
+from app.channels.handfree.chat.resume import replay as resume_replay
 from app.db.mongo import get_db
 from app.traces import repo as traces_repo
 from app.monitor import persist as monitor_persist
@@ -63,6 +64,7 @@ from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.
 )
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.pipelines._shared.lao_cai_tach_giay_to import always_split, plan_with_split
+from app.pipelines._shared.locked_submitter import unlock_locked_submitter
 from app.pipelines._shared.lao_cai_tach_giay_to import with_account_attach_options as with_cam_duong_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
@@ -318,6 +320,8 @@ def _tracked(kind: str):
     def wrap(fn):
         @functools.wraps(fn)
         async def run(conv_id: str, *args, **kwargs):
+            if resume_replay.skip_pipeline(kind):
+                return None  # khôi phục hồ sơ dở: lượt chat đã nạp kết quả lưu của bước này
             beat = asyncio.create_task(_heartbeat(conv_id, kind))
             try:
                 return await fn(conv_id, *args, **kwargs)
@@ -433,7 +437,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         conv = await conv_store.get(conv_id)
         if not conv:
             return
-        conv["fields"] = result.get("fields", [])
+        conv["fields"] = unlock_locked_submitter(result.get("fields", []))
         conv["extracted"] = result.get("extracted", {})
         conv["pipeline_status"] = "fields_ready"
         conv["pipeline_error"] = ""
@@ -559,7 +563,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
             attach_fn = get_attach_pipeline(procedure_key)
             if not sess or not proc or not pipeline or not attach_fn:
                 raise RuntimeError("Thiếu phiên/thủ tục/pipeline hộ kinh doanh.")
-            raw_files = _session_files(sess)
+            raw_files, fids = _session_files_with_fids(sess)
         if not raw_files:
             raise RuntimeError("Phiên không còn file nào.")
 
@@ -594,6 +598,8 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
         conv["business_flow"] = process_result.get("businessFlow") or {}
         conv["extracted"] = process_result.get("extracted", {})
         conv["attach_plan"] = attach_result.get("attachments", [])
+        # fileIndex → fid: lượt điều chỉnh giấy tờ chỉ đính tệp chưa có trên hồ sơ (flow._business_attachments).
+        conv["attach_plan_fids"] = fids
         # Kế hoạch lập theo cài đặt tách giấy tờ nào (cùng khóa với run_attach).
         conv["attach_plan_split_documents"] = (attach_options or {}).get("splitDocuments") is True
         conv["attach_errors"] = attach_result.get("errors", [])

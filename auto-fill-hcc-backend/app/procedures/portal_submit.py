@@ -118,10 +118,17 @@ PORTAL_SUBMIT: dict[str, dict] = {
     # Nút là <input type="submit"> — không phải <button>/<a> — và nhãn nằm ở value.
     # LƯU Ý: nút này bung confirm() của trình duyệt. Ta bắt ở pha capture nên vẫn ghi kể cả khi
     # cán bộ bấm Cancel → đếm THỪA ở cổng này. Chấp nhận: bấm rồi huỷ là chuyện hiếm.
+    # Nộp xong cổng quay về trang tổng quan "Khối dữ liệu" (DW_DOCUMENTEdit.aspx): không có câu
+    # "nộp hồ sơ thành công", chỉ đổi "Trạng thái hồ sơ" từ "Đã lưu" sang "Đang nộp" và cấp
+    # "Số hồ sơ" (OH-…). urlPattern mở thêm trang đó để successText dò được — trang Khối dữ liệu
+    # chỉ có nút Chuẩn bị / Xóa hồ sơ / Trở về, không mang id hay nhãn nút nộp nên cú bấm không
+    # khớp thừa ở đây. Thiếu successText thì sidebar không bao giờ nhận "đã nộp": không hỏi đánh
+    # giá, không hiện nút đăng xuất.
     "hokinhdoanh.dkkd.gov.vn": {
-        "urlPattern": r"^/HkdOnline/Forms/APP/ConfirmPrepare\.aspx$",
+        "urlPattern": r"^/HkdOnline/Forms/APP/(?:ConfirmPrepare|DW_DOCUMENTEdit)\.aspx$",
         "buttonIds": ["ctl00_C_BtnSave"],
         "buttonText": ["nop ho so vao co quan dkkd"],
+        "successText": [["trang thai ho so", "dang nop", "so ho so"]],
     },
     # Bộ VHTTDL — nền RIÊNG (Angular Material liz-*), KHÔNG phải Form.io: không có captcha, và
     # pathname /nop-ho-so dùng chung cho mọi bước (bước nằm ở query + stepper) nên URL không tách

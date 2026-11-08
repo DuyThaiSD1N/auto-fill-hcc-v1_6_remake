@@ -15,7 +15,7 @@ from app.pipelines.doi_cap_lai_giay_xac_nhan_khuyet_tat.process.schema import (
     COMPACT_COMP_BY_NAME,
     FIELDS,
 )
-from app.pipelines.khuyet_tat.process import vision
+from app.pipelines.khuyet_tat.process import muc_do, vision
 from app.pipelines.khuyet_tat.process.runner import (
     _owner_only_context,
     _requester_context,
@@ -24,6 +24,7 @@ from app.pipelines.khuyet_tat.process.runner import (
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    levels_tasks: list = []
     res, section_iii = await asyncio.gather(runner.run(
         files_by_role,
         fields=FIELDS,
@@ -32,9 +33,12 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_owner_only_context if owner_mode else _requester_context,
+        context_builder=muc_do.context_with_levels(
+            _owner_only_context if owner_mode else _requester_context, levels_tasks
+        ),
         max_tokens=2200,
     ), vision.read_section_iii(runner.flatten(files_by_role)) if vision.ENABLED else asyncio.sleep(0))
+    await muc_do.apply_levels(res, levels_tasks)
     if section_iii is not None:
         # Bảng tích viết tay: kết quả đọc ảnh thay hẳn phần LLM bóc từ OCR văn bản (kể cả khi rỗng —
         # đơn cấp đổi được bỏ trống Mục III).

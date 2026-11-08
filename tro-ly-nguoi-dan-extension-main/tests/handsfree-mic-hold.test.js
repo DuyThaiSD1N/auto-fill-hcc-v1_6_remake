@@ -47,17 +47,19 @@ test("mọi đường tự mở mic đều xét micHeld; đang nghe mà vào bư
 // Chạy thật botWorking: thẻ tiến trình nhiều bước (luồng bản 2) đang chạy = bot đang làm → mic không tự mở.
 function botWorking(vars) {
   const src = sidebar.match(/function botWorking\(\) \{[\s\S]*?\n  \}/)[0];
-  const names = ["pageWorkInFlight", "pageWorkEndedAt", "$pipe", "pipeFinished", "$steps"];
+  const names = ["pageWorkInFlight", "pageWorkEndedAt", "$pipe", "pipeFinished", "$steps", "hkdBusy"];
   // eslint-disable-next-line no-new-func
   return new Function(...names, `${src}; return botWorking();`)(...names.map((n) => vars[n]));
 }
-const idle = { pageWorkInFlight: 0, pageWorkEndedAt: 0, $pipe: null, pipeFinished: true, $steps: null };
+const idle = { pageWorkInFlight: 0, pageWorkEndedAt: 0, $pipe: null, pipeFinished: true, $steps: null,
+  hkdBusy: () => false };
 
 test("rảnh tay: thẻ 'Đang xử lý hồ sơ' đang chạy thì mic nghỉ, xong / lỗi thì mở lại", () => {
   assert.equal(botWorking(idle), false);
   assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "running" } } }), true);
   assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "done" } } }), false);
   assert.equal(botWorking({ ...idle, $steps: { dataset: { state: "failed" } } }), false);
+  assert.equal(botWorking({ ...idle, hkdBusy: () => true }), true, "đang mở / lưu khối HkdOnline");
 });
 
 test("luồng bản 2: điền tờ khai chờ câu 'đang đọc giấy tờ' đọc xong (có giới hạn); câu 'đã nhận N tệp' không cắt ngang", () => {

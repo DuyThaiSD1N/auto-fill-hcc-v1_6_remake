@@ -27,7 +27,7 @@ CONTEXT_FIELDS: list[dict] = [
 FIELDS: list[dict] = [
     # Người nộp: chỉ trích từ tài liệu đã được Python khoanh bằng tên + CCCD UI.
     {"name": "NguoiNop_HoTen", "desc": "Họ tên NGƯỜI NỘP HỒ SƠ từ đúng giấy tờ đã khớp các mỏ neo đang có trong formContext UI."},
-    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy; ưu tiên mặt trước CCCD đúng người."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy; ưu tiên mặt trước CCCD đúng người. Giấy tờ không ghi đủ ngày/tháng/năm thì bỏ; không suy năm sinh từ số CCCD."},
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người nộp: "Nam" hoặc "Nữ" theo đúng giấy tờ; không suy từ họ tên.'},
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người nộp; phải khớp số định danh trong formContext UI."},
     {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND người nộp, dd/mm/yyyy; lấy từ mặt sau cùng thẻ đúng người."},

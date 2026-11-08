@@ -10,7 +10,10 @@ hoạt tra cứu CSDL của cổng: điền xong chờ cổng đổ dữ liệu 
 ``OTHER_TEXT`` ({ô tích: (lựa chọn "Khác", tên ô ghi chữ đi kèm)} — ô ghi chữ cổng chỉ dựng sau khi tích "Khác" và không
 nằm trong danh sách hỏi: công dân nói một giá trị ngoài các lựa chọn thì tích "Khác" rồi ghi đúng lời đó vào ô đi kèm),
 ``NESTED`` (tên khối x-select-area chứa thông tin một người — ô con không có thẻ x-* riêng: extension tách từng ô con,
-ô chọn không tên mang khóa "<khối>#<nhãn>"; cần extension có cờ supportsFieldReviewNested).
+ô chọn không tên mang khóa "<khối>#<nhãn>"; cần extension có cờ supportsFieldReviewNested, trừ khi khai thêm
+``NESTED_OPTIONAL = True``: bản đọc cũ coi cả khối là một ô vẫn dùng được).
+Vòng bổ sung bản 2 (``FIELD_REVIEW_V2 = True``) thêm ``VOCABULARY`` (cách người dân gọi các phần) và ``GROUPS`` (cụm ô hỏi
+liền nhau, hỏi gộp một câu; khối địa chỉ tự là một cụm).
 Thủ tục không có file này thì không bật vòng bổ sung. Lỗi cấu hình hoặc trùng key được phát hiện ngay lúc khởi động.
 """
 from importlib import import_module
@@ -48,6 +51,12 @@ def _discover() -> dict[str, dict]:
         nested = _names(module_name, getattr(module, "NESTED", ()), "NESTED")
         if nested:
             config["nested"] = nested
+        # Khối lồng không bắt buộc extension mới: bản đọc cũ coi cả khối là một ô (hỏi ô đầu) vẫn chạy được.
+        nested_optional = getattr(module, "NESTED_OPTIONAL", False)
+        if not isinstance(nested_optional, bool):
+            raise RuntimeError(f"{module_name}.NESTED_OPTIONAL phải là True/False")
+        if nested_optional:
+            config["nestedOptional"] = True
         copy_quantity = _names(module_name, getattr(module, "COPY_QUANTITY", ()), "COPY_QUANTITY")
         if copy_quantity:
             if len(copy_quantity) != 2:
@@ -61,6 +70,30 @@ def _discover() -> dict[str, dict]:
             raise RuntimeError(f"{module_name}.OTHER_TEXT phải là {{ô tích: (lựa chọn Khác, ô ghi chữ)}}")
         if other_text:
             config["otherText"] = {k: tuple(v) for k, v in other_text.items()}
+        # Vòng bổ sung bản 2 (agent điều phối + agent chuyên môn) bật theo từng thủ tục.
+        v2 = getattr(module, "FIELD_REVIEW_V2", False)
+        if not isinstance(v2, bool):
+            raise RuntimeError(f"{module_name}.FIELD_REVIEW_V2 phải là True/False")
+        if v2:
+            config["v2"] = True
+        # Vòng bổ sung bản 2: cách người dân gọi các phần / người của thủ tục, nạp vào prompt agent điều phối.
+        vocabulary = getattr(module, "VOCABULARY", "")
+        if not isinstance(vocabulary, str):
+            raise RuntimeError(f"{module_name}.VOCABULARY phải là chuỗi")
+        if vocabulary.strip():
+            config["vocabulary"] = vocabulary.strip()
+        # Vòng bổ sung bản 2: cụm ô hỏi liền nhau, hỏi gộp một câu — ((tên cụm, (tên ô, …)), …).
+        groups = getattr(module, "GROUPS", ())
+        if not isinstance(groups, (list, tuple)) or not all(
+            isinstance(g, (list, tuple)) and len(g) == 2 and isinstance(g[0], str) and g[0].strip()
+            and _names(module_name, g[1], "GROUPS") for g in groups
+        ):
+            raise RuntimeError(f"{module_name}.GROUPS phải là ((tên cụm, (tên ô, …)), …)")
+        names = [name for _, members in groups for name in members]
+        if len(names) != len(set(names)):
+            raise RuntimeError(f"{module_name}.GROUPS có ô nằm trong hai cụm")
+        if groups:
+            config["groups"] = tuple((title.strip(), tuple(members)) for title, members in groups)
         for raw_key in procedure_keys:
             procedure_key = str(raw_key or "").strip()
             if not procedure_key:

@@ -107,6 +107,15 @@ def test_sample_bundle_goes_whole_once_to_don_row():
     assert len(warnings) == 1 and "dòng 8" in warnings[0] and "dòng 1, 2" in warnings[0]
 
 
+def test_untick_rows_without_files_like_bxd():
+    """Cổng iGate Tuyên Quang tick sẵn mọi dòng → mọi mục kế hoạch (cả hai chế độ) mang untickUnplannedRows để FE bỏ
+    tick hết rồi chỉ tick lại dòng có tệp."""
+    attachments, _w, _c = planner.build_plan_items(
+        _files(["don.pdf", "gcn.pdf"]), None, {0: ["don_mau_11"], 1: ["land_certificate"]})
+    assert attachments and all(item["untickUnplannedRows"] is True for item in attachments)
+    assert tach._item(0, "don.pdf", 4, "Đơn", "don_mau_11", None)["untickUnplannedRows"] is True
+
+
 def test_component_name_resolves_to_its_own_row_on_fe():
     assert sorted(planner._ROWS) == [1, 2, 3, 4, 8]  # dòng 5/6/7 lặp dòng 1/2/3, không đính
     for row, route in planner._ROWS.items():

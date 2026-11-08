@@ -154,6 +154,11 @@ async def ensure_indexes() -> None:
     await _ensure_ttl(db, "bac_ninh_prefill", "at", archive_settings.archive_after_minutes * 60 + archive_grace)
     # Câu trả lời LLM để lượt khác cùng prompt dùng lại (compact_agent/runner.py) — runner chỉ đọc bản dưới 30 phút.
     await _ensure_ttl(db, "llm_reuse", "at", 30 * 60)
+    # Hồ sơ handfree đang làm dở chờ khôi phục (chat/resume/store.py): bản ghi tự mang expires_at.
+    await _ensure_ttl(db, "dossier_resume", "expires_at", 0)
+    await db.dossier_resume.create_index([("user_id", 1), ("procedure_key", 1), ("last_activity_at", -1)])
+    await db.dossier_resume.create_index("upload_session_id")
+    await db.dossier_resume.create_index("steps.declaration.request_id")
     # Nhịp tim tác vụ nền handfree: tác vụ chết giữa chừng (BE khởi động lại) để lại bản ghi → tự dọn sau 1 ngày.
     await _ensure_ttl(db, "pipeline_heartbeats", "at", 24 * 3600)
     # Nhật ký đăng nhập / làm mới token (app/auth/audit.py) — tra "vì sao bị đá ra", giữ 30 ngày.

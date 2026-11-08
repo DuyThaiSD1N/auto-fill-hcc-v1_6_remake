@@ -32,7 +32,10 @@ function load() {
     }
     async ensureRunning() { return true; }
     stop() { this.active = false; }
-    pcm() { this.opts.onPcm(new ArrayBuffer(4)); }
+    // Mic thật luôn có nhiễu nền (mẫu khác 0); khung toàn 0 = luồng mic đã bị ngắt.
+    pcm() { this.opts.onPcm(new Int16Array([120, -80]).buffer); }
+    silent() { this.opts.onPcm(new ArrayBuffer(4)); }
+    lose() { this.active = false; this.opts.onLost && this.opts.onLost(); }
   }
   const window = { MicCapture: FakeMic, micSupported: () => true, hccWsBase: () => "wss://be" };
   const ctx = { window, WebSocket: FakeWS, console, setTimeout, clearTimeout, setInterval, clearInterval };
@@ -67,6 +70,7 @@ test("bấm mic nhiều lượt: chỉ gửi start(turn) trên WS cũ, không m�
   const s = session(env, ev);
   await s.warm(); const ws = env.sockets[0]; ws.open();
   for (const turn of [1, 2]) {
+    env.mics[0].pcm();
     await s.arm("vi"); await tick();
     const start = ws.json().filter((m) => m.type === "start").pop();
     assert.equal(start.turn, turn);
@@ -85,6 +89,7 @@ test("transcript của lượt cũ trả về muộn không lọt sang lượt m
   const env = load(); const ev = [];
   const s = session(env, ev);
   await s.warm(); const ws = env.sockets[0]; ws.open();
+  env.mics[0].pcm();
   await s.arm("vi"); await tick();
   s.disarm();
   assert.equal(ws.json().pop().type, "cancel");
@@ -117,4 +122,75 @@ test("service worker không đóng offscreen sau final của phiên giữ sẵn;
   assert.match(sb, /setInterval\(\(\) => \{ void warmVoice\(\); \}, ASR_WARM_BEAT_MS\)/);
   assert.match(off, /const WARM_LEASE_MS = \d+;/);
   assert.match(off, /if \(warm\) warm\.disarm\(\);/);
+});
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("mic giữ sẵn chỉ ra khung im lặng (luồng bị ngắt ngầm): bấm mic tự xin mic mới, âm thanh lúc chờ được gửi bù", async () => {
+  const env = load(); const ev = [];
+  const s = session(env, ev);
+  await s.warm(); const ws = env.sockets[0]; ws.open();
+  env.mics[0].silent(); env.mics[0].silent();
+  await wait(5);
+  const arming = s.arm("vi"); await tick();
+  assert.equal(env.mics.length, 2, "mic chết phải được thay bằng mic mới");
+  assert.ok(!ev.some(([k, v]) => k === "state" && v === "listening"), "chưa thấy tiếng thật thì chưa báo Đang nghe");
+  env.mics[1].pcm();
+  await arming;
+  const sent = ws.sent.slice(ws.sent.findIndex((d) => typeof d === "string" && JSON.parse(d).type === "start"));
+  assert.equal(JSON.parse(sent[0]).type, "start");
+  assert.equal(typeof sent[1], "object", "khung thu trong lúc kiểm mic được gửi ngay sau start");
+  assert.ok(ev.some(([k, v]) => k === "state" && v === "listening"));
+  s.cool();
+});
+
+test("luồng mic bị ngắt lúc rảnh (track ended/muted): tự xin mic mới, không báo lỗi", async () => {
+  const env = load(); const ev = [];
+  const s = session(env, ev);
+  await s.warm(); env.sockets[0].open();
+  env.mics[0].lose(); await tick();
+  assert.equal(env.mics.length, 2);
+  assert.equal(env.mics[1].active, true);
+  assert.ok(!ev.some(([k]) => k === "error"));
+  s.cool();
+});
+
+test("mic không thu được tiếng nào: dựng lại một lần rồi báo lỗi rõ, không bao giờ hiện Đang nghe", async () => {
+  const env = load(); const ev = [];
+  const s = session(env, ev);
+  await s.warm(); env.sockets[0].open();
+  await s.arm("vi");
+  assert.equal(env.mics.length, 2, "dựng lại mic đúng một lần");
+  assert.ok(ev.some(([k, v]) => k === "error" && v === "MicSilentError"));
+  assert.ok(!ev.some(([k, v]) => k === "state" && v === "listening"));
+  assert.ok(!env.sockets[0].json().some((m) => m.type === "start"), "không mở lượt khi mic không có tiếng");
+  s.cool();
+});
+
+test("WS nối lại xong trước khi mic xác nhận: chưa gửi start; mic có tiếng mới mở lượt, đúng một lần", async () => {
+  const env = load(); const ev = [];
+  const s = session(env, ev);
+  await s.warm(); const ws = env.sockets[0];
+  const arming = s.arm("vi"); await tick();
+  ws.open();
+  assert.ok(!ws.json().some((m) => m.type === "start"));
+  env.mics[0].pcm();
+  await arming;
+  assert.equal(ws.json().filter((m) => m.type === "start").length, 1);
+  s.cool();
+});
+
+test("đang nghe mà mic chỉ còn khung im lặng: tự dựng lại mic, lượt nói giữ nguyên", async () => {
+  const env = load(); const ev = [];
+  const s = session(env, ev);
+  await s.warm(); const ws = env.sockets[0]; ws.open();
+  env.mics[0].pcm();
+  await s.arm("vi"); await tick();
+  assert.ok(ev.some(([k, v]) => k === "state" && v === "listening"));
+  for (let i = 0; i < 4; i++) { env.mics[0].silent(); await wait(450); }
+  assert.equal(env.mics.length, 2, "mic chết giữa lượt được thay");
+  assert.ok(!ev.some(([k]) => k === "error"));
+  env.mics[1].pcm();
+  assert.ok(ws.bins() > 0);
+  s.cool();
 });

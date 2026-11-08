@@ -31,7 +31,8 @@ def test_lenh_dien_kem_khoi_long_va_o_nam_sinh():
 
 def test_thu_tuc_khac_khong_gui_khoi_long():
     extra = field_review.fill_action_extra(
-        {"procedure_key": "ket-hon", "client_capabilities": {"supportsFieldReview": True}}, get_procedure("ket-hon"))
+        {"procedure_key": "khai-sinh-dang-ky-lai", "client_capabilities": {"supportsFieldReview": True}},
+        get_procedure("khai-sinh-dang-ky-lai"))
     assert "nested" not in extra
 
 

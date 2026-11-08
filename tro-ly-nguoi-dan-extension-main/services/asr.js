@@ -183,7 +183,23 @@
   const WARM_PING_MS = 20000; // proxy cắt WS im lặng ~60 giây → ping, BE đáp pong
   const WARM_RECONNECT_MS = [1000, 2000, 5000, 10000];
   const ARM_OPEN_WAIT_MS = 4000; // bấm mic mà WS chưa nối lại kịp → báo lỗi như lượt cũ, không treo "Đang nghe…"
-  const ARM_PCM_WATCH_MS = 1500; // đã vào lượt mà chưa có khung âm thanh nào → AudioContext treo, dựng lại mic
+  const ARM_PCM_WATCH_MS = 1500; // đang nghe mà 1,5 giây không có khung / toàn khung im lặng → mic chết, dựng lại
+  // Mic thật luôn có nhiễu nền nên mẫu khác 0; khung toàn số 0 chỉ đến từ luồng mic đã bị ngắt.
+  const MIC_SOUND_FRESH_MS = 1000; // mic giữ sẵn có tiếng trong 1 giây gần nhất → mở lượt ngay, không thêm độ trễ
+  const MIC_VERIFY_MS = 1200; // mic vừa mở / dựng lại: chờ khung có tiếng tối đa chừng này
+  const MIC_SILENT_DEAD_MS = 3000; // lúc rảnh: khung vẫn tới mà toàn im lặng quá lâu → mic chết
+  const MIC_MAX_REBUILD = 2; // số lần dựng lại mic trong một lượt trước khi báo lỗi
+  const PENDING_MAX = 8; // ~2 giây âm thanh thu trong lúc chờ mở lượt, gửi bù khi lượt mở
+  const MIC_SILENT_ERROR = {
+    name: "MicSilentError",
+    message: "Không thu được âm thanh từ micro. Kiểm tra micro của máy rồi bấm mic lại giúp tôi ạ.",
+  };
+
+  function hasSound(ab) {
+    const samples = new Int16Array(ab, 0, ab.byteLength >> 1);
+    for (let i = 0; i < samples.length; i++) if (samples[i] !== 0) return true;
+    return false;
+  }
 
   class AsrWarmSession {
     // opts: như AsrSession.
@@ -205,6 +221,11 @@
       this._sentStart = false;
       this._lastText = "";
       this._lastPcmAt = 0;
+      this._lastSoundAt = 0;
+      this._micReady = false;
+      this._pending = [];
+      this._listenAt = 0;
+      this._rebuilds = 0;
       this._retry = 0;
       this._retryTimer = null;
       this._pingTimer = null;
@@ -232,8 +253,14 @@
     }
 
     _ensureMic() {
-      if (this._mic && this._mic.active) return Promise.resolve(true);
       if (this._micStarting) return this._micStarting;
+      if (this._mic && this._mic.active && this._lastPcmAt - this._lastSoundAt <= MIC_SILENT_DEAD_MS) {
+        return Promise.resolve(true);
+      }
+      if (this._mic) {
+        console.warn("[TLND-ASR] mic giữ sẵn đã bị ngắt / chỉ thu im lặng → xin mic mới");
+        this._dropMic();
+      }
       if (!window.MicCapture || !window.micSupported || !window.micSupported()) {
         if (this._armed) {
           this.onError({ name: "NotSupportedError", message: "Trình duyệt không hỗ trợ thu âm." });
@@ -244,9 +271,19 @@
       const mic = new window.MicCapture({
         rate: this.rate,
         onPcm: (ab) => {
-          this._lastPcmAt = Date.now();
+          if (this._mic !== mic) return;
+          const now = Date.now();
+          this._lastPcmAt = now;
+          if (hasSound(ab)) this._lastSoundAt = now;
+          if (!this._armed) return;
           const ws = this._ws;
-          if (this._armed && this._sentStart && ws && ws.readyState === WebSocket.OPEN) ws.send(ab);
+          if (this._sentStart) {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(ab);
+          } else {
+            // Đang chờ kiểm mic / nối WS: giữ lại để công dân nói ngay khi bấm cũng không mất chữ đầu.
+            this._pending.push(ab);
+            if (this._pending.length > PENDING_MAX) this._pending.shift();
+          }
         },
         onError: (err) => {
           if (this._mic === mic) this._mic = null;
@@ -255,7 +292,15 @@
           this.onError(err);
           this._disarm("error");
         },
+        onLost: () => {
+          if (this._mic !== mic) return;
+          console.warn("[TLND-ASR] luồng mic bị ngắt → xin mic mới");
+          this._dropMic();
+          if (!this._cooled) void this._ensureMic();
+        },
       });
+      this._lastPcmAt = 0;
+      this._lastSoundAt = 0;
       this._mic = mic;
       this._micStarting = mic.start().finally(() => { this._micStarting = null; });
       return this._micStarting;
@@ -284,7 +329,8 @@
         this._pingTimer = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
         }, WARM_PING_MS);
-        if (this._armed && !this._sentStart) this._sendStart();
+        // Chỉ mở lượt khi mic đã xác nhận có tiếng thật — WS nối lại xong trước mic thì arm() tự gửi start sau.
+        if (this._armed && this._micReady && !this._sentStart) this._sendStart();
       };
       ws.onmessage = (evt) => {
         if (this._ws === ws) this._onMessage(evt);
@@ -318,40 +364,103 @@
       const turn = this._turn;
       this._armed = true;
       this._sentStart = false;
+      this._micReady = false;
+      this._pending = [];
+      this._rebuilds = 0;
       this._lastText = "";
       this._setState("connecting");
       this._connect();
       clearTimeout(this._armTimer);
       this._armTimer = setTimeout(() => {
         if (this._armed && this._turn === turn && !this._sentStart) {
-          this.onError({ name: "WsError", message: "Không kết nối được dịch vụ nhận giọng nói." });
+          // Mic chưa xác nhận được (xin mic treo) khác với mic xong mà WS chưa nối: báo đúng chỗ hỏng.
+          this.onError(this._micReady
+            ? { name: "WsError", message: "Không kết nối được dịch vụ nhận giọng nói." }
+            : MIC_SILENT_ERROR);
           this._disarm("error");
         }
       }, ARM_OPEN_WAIT_MS);
-      let micOk = await this._ensureMic();
-      // Mic hỏng lúc giữ sẵn (lỗi bị nuốt vì chưa ai bấm, vd chưa cấp quyền) → mở lại lúc đã có lượt để báo đúng lỗi.
-      if (!micOk && this._armed && this._turn === turn) micOk = await this._ensureMic();
-      if (!this._armed || this._turn !== turn || !micOk) return;
-      await this._mic?.ensureRunning?.();
-      if (!this._armed || this._turn !== turn) return;
+      if (!(await this._readyMic(turn))) return;
       if (this._ws && this._ws.readyState === WebSocket.OPEN && !this._sentStart) this._sendStart();
+    }
+
+    // Lượt chỉ được mở khi mic đang thu tiếng thật: mic giữ sẵn có thể đã bị ngắt ngầm (track ended/muted, chỉ ra khung
+    // im lặng) mà vẫn trông như đang chạy. Không thấy tiếng → dựng lại mic một lần; vẫn không có → báo lỗi.
+    async _readyMic(turn) {
+      const live = () => this._armed && this._turn === turn;
+      const armedAt = Date.now();
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) this._dropMic();
+        let micOk = await this._ensureMic();
+        // Mic hỏng lúc giữ sẵn (lỗi bị nuốt vì chưa ai bấm, vd chưa cấp quyền) → mở lại lúc đã có lượt để báo đúng lỗi.
+        if (!micOk && live()) micOk = await this._ensureMic();
+        if (!live()) return false;
+        if (!micOk) break;
+        await this._mic?.ensureRunning?.();
+        if (!live()) return false;
+        if (this._lastSoundAt >= Date.now() - MIC_SOUND_FRESH_MS
+            || (await this._waitSound(turn, armedAt, MIC_VERIFY_MS))) {
+          this._micReady = true;
+          return true;
+        }
+        if (!live()) return false;
+        console.warn("[TLND-ASR] mic không thu được tiếng thật → dựng lại mic");
+      }
+      this.onError(MIC_SILENT_ERROR);
+      this._disarm("error");
+      return false;
+    }
+
+    async _waitSound(turn, since, ms) {
+      const until = Date.now() + ms;
+      while (this._armed && this._turn === turn && Date.now() < until) {
+        if (this._lastSoundAt >= since) return true;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      return this._lastSoundAt >= since;
+    }
+
+    _dropMic() {
+      if (this._mic) this._mic.stop();
+      this._mic = null;
+      this._lastPcmAt = 0;
+      this._lastSoundAt = 0;
     }
 
     _sendStart() {
       const turn = this._turn;
-      this._ws.send(JSON.stringify({ type: "start", lang: this.lang, rate: this.rate, turn }));
+      const ws = this._ws;
+      ws.send(JSON.stringify({ type: "start", lang: this.lang, rate: this.rate, turn }));
+      for (const ab of this._pending) ws.send(ab);
+      this._pending = [];
       this._sentStart = true;
       clearTimeout(this._armTimer);
       this._setState("listening");
-      const startedAt = Date.now();
-      clearTimeout(this._watchTimer);
-      this._watchTimer = setTimeout(() => {
-        if (!this._armed || this._turn !== turn || this._lastPcmAt >= startedAt) return;
-        console.warn("[TLND-ASR] mic giữ sẵn không có âm thanh → dựng lại mic");
-        if (this._mic) this._mic.stop();
-        this._mic = null;
-        void this._ensureMic();
-      }, ARM_PCM_WATCH_MS);
+      this._listenAt = Date.now();
+      clearInterval(this._watchTimer);
+      this._watchTimer = setInterval(() => this._watchMic(turn), 500);
+    }
+
+    // Đang nghe: mic bị ngắt giữa lượt (không còn khung, hoặc chỉ còn khung im lặng) → dựng lại, lượt nói giữ nguyên.
+    _watchMic(turn) {
+      if (!this._armed || this._turn !== turn) {
+        clearInterval(this._watchTimer);
+        return;
+      }
+      if (this._micStarting) return;
+      const now = Date.now();
+      const since = Math.max(this._listenAt, this._lastSoundAt);
+      if (this._mic && this._mic.active && now - since <= ARM_PCM_WATCH_MS) return;
+      if (this._rebuilds >= MIC_MAX_REBUILD) {
+        this.onError(MIC_SILENT_ERROR);
+        this._disarm("error");
+        return;
+      }
+      this._rebuilds += 1;
+      console.warn("[TLND-ASR] mic đang nghe không còn tiếng thật → dựng lại mic");
+      this._dropMic();
+      this._listenAt = now;
+      void this._ensureMic();
     }
 
     _onMessage(evt) {
@@ -388,9 +497,11 @@
 
     _disarm(state) {
       clearTimeout(this._armTimer);
-      clearTimeout(this._watchTimer);
+      clearInterval(this._watchTimer);
       this._armed = false;
       this._sentStart = false;
+      this._micReady = false;
+      this._pending = [];
       if (state) this._setState(state);
     }
 

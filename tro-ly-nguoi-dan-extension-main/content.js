@@ -1882,6 +1882,10 @@
       const businessProcedureHint = businessHost && window.__TLND__
         && typeof window.__TLND__.detectBusinessProcedureHint === "function"
         ? window.__TLND__.detectBusinessProcedureHint() : "";
+      // Khối dữ liệu đang mở (vd "dia-chi") — trợ lý hộ kinh doanh đi từng khối, chờ đúng khối mới hỏi.
+      const businessPageKey = businessHost && window.__TLND__
+        && typeof window.__TLND__.detectBusinessPageKey === "function"
+        ? (window.__TLND__.detectBusinessPageKey().pageKey || "") : "";
       sendResponse({
         ok: true,
         url: location.href,
@@ -1943,6 +1947,7 @@
         // control/metadata cổng để quyết định bootstrap hay bắt đầu nhận giấy tờ.
         businessHost,
         businessStage,
+        businessPageKey,
         businessProcedureHint,
         // Chỉ tin đúng câu xác nhận nộp/gửi hồ sơ của cổng. Không ghép hai cụm chung
         // "thành công" + "mã hồ sơ" vì chúng có thể cùng xuất hiện ở màn tra cứu khác.
