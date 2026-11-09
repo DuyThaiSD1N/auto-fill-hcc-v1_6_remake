@@ -366,17 +366,64 @@ def test_khong_chay_lai_truoc_thi_cham_tren_luot_goc(world):
     assert "replay:reproduce" not in world.calls
 
 
-def test_trot_ca_ba_vong_thi_hoan_tac_va_tra_stack(world):
+def test_trot_ca_ba_vong_thi_de_lai_code_vong_cuoi_cho_nguoi_xem(world):
     world.after_runs = [[BAD] * 5]
-    world.fix_edits = [lambda: world.edit("x = 2\n"), lambda: world.edit("x = 3\n"), lambda: world.edit("x = 4\n")]
+    seen = []
+    world.fix_edits = [lambda: world.edit("x = 2\n"), lambda: (seen.append(world.code()), world.edit("x = 3\n"))[1],
+                       lambda: (seen.append(world.code()), world.edit("x = 4\n"))[1]]
     job, orch = start()
     orch.run()
     assert job.data["outcome"] == "need_human"
-    assert world.code() == "x = 1\n"
+    # Mỗi vòng vẫn làm lại từ code gốc; hết vòng thì code của vòng cuối được đặt lại cho người xem.
+    assert seen == ["x = 1\n", "x = 1\n"] and world.code() == "x = 4\n"
     assert len(job.data["rounds"]) == 3
-    # 3 lần build bản sửa + 1 lần build trả về code gốc.
-    assert world.deploys == 4 and job.data["stackDirty"] is False
-    assert job.data["fix"] is None
+    # 3 lần build bản sửa + 1 lần build trả về code gốc; bản để lại không được build.
+    assert world.deploys == 4 and job.data["stackDirty"] is False and world.calls[-1] == "deploy"
+    fix = job.data["fix"]
+    assert fix["unverified"] is True and fix["round"] == 3 and "+x = 4" in fix["patch"]
+    assert fix["files"][0]["path"] == "auto-fill-hcc-backend/app/a.py"
+    assert job.data["rounds"][2]["result"]["kept"] is True and "kept" not in job.data["rounds"][0]["result"]
+    assert "Code của vòng 3 vẫn để trong thư mục làm việc" in job.data["report"]["reason"]
+
+
+def test_code_de_lai_hoan_tac_duoc(world):
+    world.after_runs = [[BAD] * 5]
+    job, orch = start(rounds=1)
+    orch.run()
+    assert world.code() == "x = 2\n"
+    orchestrator.revert_fix(job)
+    assert world.code() == "x = 1\n" and job.data["fix"]["reverted"]
+
+
+def test_vong_cuoi_khong_viet_code_thi_de_lai_code_vong_truoc(world):
+    world.after_runs = [[BAD] * 5]
+    world.decisions = [
+        {"decision": "fix_code", "cause": "mapper", "reason": "r", "plan": PLAN, "acceptance": [CHECK]},
+        {"decision": "fix_code", "cause": "mapper", "reason": "r", "plan": PLAN, "acceptance": [{**CHECK, "field": "khongTonTai"}]},
+    ]
+    job, orch = start(rounds=2)
+    orch.run()
+    assert job.data["outcome"] == "need_human" and world.code() == "x = 2\n" and job.data["fix"]["round"] == 1
+
+
+def test_code_nguoi_duyet_bac_thi_khong_de_lai(world, reviewer):
+    reviewer["verdicts"] = [{"decision": "retry", "note": "sai chỗ"}]
+    world.decisions = [
+        {"decision": "fix_code", "cause": "mapper", "reason": "r", "plan": PLAN, "acceptance": [CHECK]},
+        {"decision": "fix_code", "cause": "mapper", "reason": "r", "plan": PLAN, "acceptance": [{**CHECK, "field": "khongTonTai"}]},
+    ]
+    job, orch = start(rounds=2)
+    orch.run()
+    assert job.data["outcome"] == "need_human" and world.code() == "x = 1\n" and job.data["fix"] is None
+    assert "Không có code nào để lại" in job.data["report"]["reason"]
+
+
+def test_patch_lo_du_lieu_that_thi_khong_de_lai(world):
+    world.fix_edits = [lambda: world.edit('ma = "req_test"\n')]
+    job, orch = start(rounds=1)
+    orch.run()
+    assert job.data["outcome"] == "need_human" and world.code() == "x = 1\n" and job.data["fix"] is None
+    assert any("dữ liệu thật" in w for w in job.data["warnings"])
 
 
 def test_vong_sau_duoc_biet_lan_truoc_that_bai_vi_sao(world, monkeypatch):
@@ -450,7 +497,8 @@ def test_vuot_so_lan_va_thi_truot_vong_khong_build(world):
     job, orch = start(rounds=1)
     orch.run()
     assert job.data["outcome"] == "need_human"
-    assert world.deploys == 0 and world.code() == "x = 1\n"
+    # Test đỏ nên chưa từng build; code vẫn để lại cho người xem.
+    assert world.deploys == 0 and world.code() == "x = 2\n" and job.data["fix"]["unverified"] is True
 
 
 def test_patch_chua_du_lieu_that_bi_tra_lai(world):
@@ -475,7 +523,7 @@ def test_hoi_quy_field_khac_lam_truot_vong(world):
     orch.run()
     assert job.data["outcome"] == "need_human"
     assert job.data["rounds"][0]["retest"]["regressions"][0]["field"] == "hoTen"
-    assert world.code() == "x = 1\n"
+    assert world.code() == "x = 2\n" and job.data["fix"]["unverified"] is True
 
 
 def test_build_loi_thi_truot_vong_va_hoan_tac(world):
@@ -711,7 +759,7 @@ def test_tren_cong_be_dung_ma_form_trong_thi_khong_duoc_coi_la_dat(world, monkey
     orch.run()
     assert job.data["outcome"] == "need_human"
     assert job.data["reproduce"]["formGaps"][0]["field"] == "gioiTinh"
-    assert world.code() == "x = 1\n"
+    assert world.code() == "x = 2\n"
 
 
 def test_sua_extension_chay_test_extension_khong_build_backend(world, monkeypatch):
@@ -761,12 +809,23 @@ def test_test_extension_moi_do_thi_tra_lai_agent(world, monkeypatch):
 
 
 def test_hoan_tac_extension_cung_danh_dau_nap_lai(world, monkeypatch):
+    seen = []
+    world.after_runs = [[BAD] * 5, [GOOD] * 5]
+    world.fix_edits = [lambda: world.edit_ext("const a = 2;\n"), lambda: (seen.append(world.ext_code()), world.edit_ext("const a = 3;\n"))[1]]
+    job, orch, _ = portal_job(monkeypatch, world)
+    job.data["settings"]["maxRounds"] = 2
+    orch.run()
+    assert job.data["outcome"] == "fixed" and seen == ["const a = 1;\n"]
+    assert orch.portal_state["extensionStale"] is True
+
+
+def test_het_vong_sua_extension_de_lai_code_extension(world, monkeypatch):
     world.after_runs = [[BAD] * 5]
     world.fix_edits = [lambda: world.edit_ext("const a = 2;\n")]
     job, orch, _ = portal_job(monkeypatch, world)
     orch.run()
-    assert job.data["outcome"] == "need_human"
-    assert world.ext_code() == "const a = 1;\n"
+    assert job.data["outcome"] == "need_human" and world.ext_code() == "const a = 2;\n"
+    assert job.data["fix"]["files"][0]["path"] == "auto-fill-hcc-extension/content/fill.js"
     assert orch.portal_state["extensionStale"] is True
 
 

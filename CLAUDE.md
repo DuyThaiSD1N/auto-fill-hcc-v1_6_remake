@@ -112,7 +112,8 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
 
 - Chỉ super_admin. Nhận mã req + mô tả lỗi; hội đồng agent họp, trọng tài quyết định; lỗi OCR thì bỏ qua và báo cáo; lỗi code thì sửa
   BE hoặc extension, chạy test, rồi DỪNG CHỜ NGƯỜI DUYỆT patch trên web (đồng ý / làm lại theo góp ý / dừng); có đồng ý mới build và
-  chạy lại 5 lần để chấm. Không thêm cờ bỏ qua bước duyệt. Bản sửa đạt nằm trong thư mục làm việc, chưa commit.
+  chạy lại 5 lần để chấm. Không thêm cờ bỏ qua bước duyệt. Bản sửa đạt nằm trong thư mục làm việc, chưa commit. Hết vòng mà
+  chưa đạt (Cần người xem) thì để lại code của vòng trượt gần nhất cho người xem, không build, có nút hoàn tác.
 - Giấy tờ chỉ lấy từ req nội bộ trong Mongo local. Mỗi lần chạy phải OCR mới: dịch vụ tự xoá cache OCR của đúng các tệp trong req rồi
   kiểm lại `trace_steps.ocr[].cache`, không cần cờ trong BE.
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền

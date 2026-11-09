@@ -176,6 +176,8 @@ class Orchestrator:
         self.pre_runs: list[dict] = []
         self.touched: list[str] = []
         self.denied: list[str] = []
+        # Code của vòng trượt gần nhất (đã hoàn tác để vòng sau làm lại từ code gốc): hết vòng mà chưa đạt thì đặt lại cho người xem.
+        self.kept: dict | None = None
         self.portal_state: dict = {}
         self.budget = JOB_BUDGET_USD
 
@@ -232,7 +234,16 @@ class Orchestrator:
                     return self._finish("fixed", decision.get("reason", ""))
             except NotApproved as reason:
                 return self._finish("not_approved", str(reason))
-        self._finish("need_human", "Đã thử hết số vòng cho phép mà chưa đạt. Mọi thay đổi đã được hoàn tác, xem lý do từng vòng ở trên.")
+        # Build trả stack về code gốc TRƯỚC khi đặt lại code để người xem: bản này chưa qua chạy kiểm, không được lên Docker.
+        self._restore_stack()
+        kept = self._keep_last_fix()
+        reason = "Đã thử hết số vòng cho phép mà chưa đạt, xem lý do từng vòng ở trên."
+        if kept:
+            reason += (f" Code của vòng {kept} vẫn để trong thư mục làm việc cho người xem, chưa build lên Docker. "
+                       "Không dùng thì bấm Hoàn tác bản sửa.")
+        else:
+            reason += " Không có code nào để lại, mọi thay đổi đã được hoàn tác."
+        self._finish("need_human", reason)
 
     def _stage(self, name: str, text: str | None = None) -> None:
         if self.job.cancel.is_set():
@@ -590,7 +601,8 @@ class Orchestrator:
                 problem = note
             else:
                 problem = "Người duyệt không đồng ý bản sửa" + (f": {note}" if note else ".")
-            self._round_failed(round_, decision, problem, reviewer_note=note if verdict["decision"] == RETRY else None)
+            # Code người duyệt đã bác thì không để lại, kể cả khi job kết thúc ở Cần người xem.
+            self._round_failed(round_, decision, problem, reviewer_note=note if verdict["decision"] == RETRY else None, keep=False)
             if verdict["decision"] == RETRY:
                 return False
             raise NotApproved(problem + " Code đã trả về như trước khi sửa.")
@@ -761,10 +773,14 @@ class Orchestrator:
 
     def _round_failed(
         self, round_: dict, decision: dict, problem: str, evaluation: dict | None = None, regressions: list | None = None,
-        reviewer_note: str | None = None,
+        reviewer_note: str | None = None, keep: bool = True,
     ) -> bool:
         job = self.job
         job.log(f"Vòng {round_['n']} không đạt: {problem[:300]}", level="warn")
+        if keep and self.guard.taken and self.touched:
+            changes, _ = self.guard.changes(self.touched, self.on_portal)
+            if changes:
+                self.kept = {"round": round_["n"], "changes": changes, "summary": (round_.get("fix") or {}).get("summary")}
         patch = (round_.get("fix") or {}).get("patch") or ""
         failed_rows = [
             {"check": r["check"], "values": [c["value"] for c in r["cells"]]}
@@ -786,6 +802,48 @@ class Orchestrator:
         job.save()
         self._rollback()
         return False
+
+    def _keep_last_fix(self) -> int | None:
+        """Hết vòng mà chưa đạt: đặt lại code của vòng trượt gần nhất cho người xem thay vì xoá hết, ghi như một bản sửa
+        để nút Hoàn tác bản sửa dùng được. Không build. Không đặt lại nếu patch lộ dữ liệu thật của hồ sơ, hoặc file đã
+        bị ai đó sửa sau khi vòng đó hoàn tác. Trả số vòng đã để lại."""
+        kept = self.kept
+        if not kept:
+            return None
+        job = self.job
+        changes = kept["changes"]
+        patch = codeguard.make_patch(changes)
+        if codeguard.leaked_terms(patch, codeguard.private_terms(self.case["fields"], job.data["requestId"])):
+            self._warn(f"Không để lại code của vòng {kept['round']}: patch chứa dữ liệu thật của hồ sơ.")
+            return None
+        moved = [c.rel for c in changes if _read(codeguard.REPO / c.rel) != c.before]
+        if moved:
+            self._warn(f"Không để lại code của vòng {kept['round']}: file đã đổi sau khi hoàn tác ({', '.join(moved)}).")
+            return None
+        for change in changes:
+            target = codeguard.REPO / change.rel
+            if change.after is None:
+                codeguard.remove_created(target)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(change.after)
+        records = self.guard.keep_preimages(changes)
+        (job.dir / "fix.patch").write_text(patch, encoding="utf-8")
+        with job.lock:
+            job.data["fix"] = {"files": records, "patch": patch, "summary": kept["summary"], "reverted": False,
+                               "unverified": True, "round": kept["round"]}
+            for round_ in job.data["rounds"]:
+                if round_["n"] == kept["round"] and round_.get("result"):
+                    round_["result"]["kept"] = True
+        job.save()
+        job.log(f"Để lại code của vòng {kept['round']} ({len(records)} file) cho người xem, chưa build.", level="warn")
+        if codeguard.touches_extension(changes):
+            self.portal_state["extensionStale"] = True
+        return kept["round"]
+
+
+def _read(path: Path) -> bytes | None:
+    return path.read_bytes() if path.is_file() else None
 
 
 def revert_fix(job: Job) -> None:

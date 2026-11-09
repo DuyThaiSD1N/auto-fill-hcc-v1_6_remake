@@ -109,7 +109,8 @@ export interface Round {
   approval?: ApprovalResult | null;
   deploy: { ok: boolean; step?: string | null; ps?: string; health?: string } | null;
   retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number; formGaps?: FormGap[] } | null;
-  result: { ok: boolean; reason?: string } | null;
+  /** kept: hết vòng mà chưa đạt, code của vòng này được để lại trong thư mục làm việc cho người xem. */
+  result: { ok: boolean; reason?: string; kept?: boolean } | null;
 }
 
 /** approve: build + chạy kiểm; retry: hoàn tác, vòng sau làm lại theo góp ý; reject: hoàn tác và kết thúc. */
@@ -169,7 +170,11 @@ export interface Job {
   case: Partial<RequestInfo>;
   reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; formGaps?: FormGap[]; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean }[] } | null;
   rounds: Round[];
-  fix: { files: FileRecord[]; patch: string; summary?: string; reverted: boolean; reverting?: boolean; revertedFiles?: string[]; keptFiles?: string[] } | null;
+  /** unverified: code của vòng chưa đạt, để lại cho người xem (Cần người xem), chưa build lên Docker. */
+  fix: {
+    files: FileRecord[]; patch: string; summary?: string; reverted: boolean; reverting?: boolean; revertedFiles?: string[]; keptFiles?: string[];
+    unverified?: boolean; round?: number;
+  } | null;
   report: { outcome: Outcome; headline: string; reason: string; finishedAt: string } | null;
   cost: { usd: number; calls: number };
   events: { t: string; level: string; who: string | null; text: string }[];

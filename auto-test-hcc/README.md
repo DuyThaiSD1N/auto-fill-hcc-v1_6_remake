@@ -39,6 +39,13 @@ mất phần này.
 - Người duyệt sửa tay file trong lúc chờ thì mã build theo nội dung trên đĩa, giữ patch lúc duyệt ở `fix.approvedPatch` và cảnh báo.
 - Không thêm cờ bỏ qua bước duyệt. Job "Thêm thủ tục mới" chưa có bước này.
 
+## Hết vòng mà chưa đạt (Cần người xem)
+
+- Mỗi vòng trượt vẫn hoàn tác để vòng sau làm lại từ code gốc, nhưng `_round_failed` giữ lại thay đổi của vòng đó trong
+  `self.kept`. Hết vòng thì `_keep_last_fix` build trả Docker về code gốc trước, rồi đặt lại code của vòng trượt gần nhất và
+  ghi `job.fix` với `unverified: true` để nút Hoàn tác bản sửa dùng được. Không build bản này.
+- Không đặt lại khi: người duyệt đã bác vòng đó (`keep=False`), patch lộ dữ liệu thật của hồ sơ, hoặc file đã bị sửa sau khi hoàn tác.
+
 ## Job "Thêm thủ tục mới"
 
 - Web gửi một request multipart `/agent-api/dev/jobs`: ô `meta` là JSON thông tin thủ tục, tệp theo 3 nhóm `mapping`, `attach`, `samples`.

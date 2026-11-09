@@ -133,7 +133,7 @@ Code nằm trong thư mục làm việc, chưa commit; không giữ thì bấm *
 | Bỏ qua: lỗi OCR | Chữ trên giấy khác chữ OCR đọc ra | Không |
 | Chỉ báo cáo | Lỗi do cổng, giấy tờ thiếu, không phải lỗi, hoặc chưa đủ bằng chứng | Không |
 | Không tái hiện | Code hiện tại đã đạt 5/5 | Không |
-| Cần người xem | Hết số vòng mà chưa đạt | Không, đã tự hoàn tác |
+| Cần người xem | Hết số vòng mà chưa đạt | Có: code của vòng trượt gần nhất để lại cho người xem, chưa build lên Docker; không dùng thì bấm Hoàn tác bản sửa. Code người duyệt đã bác hoặc lộ dữ liệu thật thì không để lại |
 | Không được duyệt | Người duyệt bấm dừng, hoặc quá 60 phút không ai duyệt | Không, đã tự hoàn tác |
 
 ### Duyệt bản sửa
@@ -216,6 +216,7 @@ Nhật ký job có dòng "Request ghi lên cổng trong đợt này", liệt kê
 | E3 | Lỗi OCR thật | Bỏ qua, nêu trên giấy ghi gì và OCR ra gì, không đổi code | Chưa |
 | E4 | Mô tả một lỗi không có thật | Không tái hiện hoặc Chỉ báo cáo, không đổi code | Chưa |
 | E5 | Bản sửa trượt | Tự hoàn tác, họp lại với lý do thất bại | Đạt, bằng test tự động |
+| E5b | Trượt hết số vòng (Cần người xem) | Code của vòng cuối còn trong thư mục làm việc, có cảnh báo "CHƯA ĐẠT", Docker vẫn chạy code gốc, bấm Hoàn tác bản sửa thì về như cũ | Đạt, bằng test tự động |
 | E6 | Bấm Hoàn tác bản sửa sau khi xong | File về như cũ, build lại nếu đổi BE | Đạt, bằng test tự động |
 | E7 | Bấm Dừng khi agent đang sửa | Code về như cũ | Đạt, bằng test tự động |
 | E8 | Bản sửa qua test | Dừng ở khung duyệt, chưa build Docker, chưa nạp extension | Đạt, bằng test tự động |

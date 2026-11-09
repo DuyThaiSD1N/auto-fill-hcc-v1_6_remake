@@ -37,6 +37,8 @@ _DENY_EDIT = [
     "auto-fill-hcc-extension/background/form-snapshot.js",
     "tro-ly-nguoi-dan-extension-main/api/config.js",
     "tro-ly-nguoi-dan-extension-main/manifest.json",
+    "tro-ly-nguoi-dan-extension-main/content/form-snapshot/**",
+    "tro-ly-nguoi-dan-extension-main/lib/formSnapshotOutbox.js",
 ]
 # Tool ghi file: sửa lỗi chỉ Edit (không tạo file mới); thêm thủ tục mới thì phải Write được thư mục pipeline mới.
 _WRITE_TOOLS = ("Edit", "Write")

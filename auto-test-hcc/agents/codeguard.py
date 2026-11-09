@@ -19,7 +19,7 @@ from config import REPO
 
 BE_DIR = "auto-fill-hcc-backend"
 EXT_DIR = "auto-fill-hcc-extension"
-# Extension trợ lý: chỉ job "Thêm thủ tục mới" có bật đưa lên trợ lý mới được sửa.
+# Extension trợ lý: sửa được khi job thêm thủ tục bật đưa lên trợ lý, hoặc job sửa lỗi điền bằng trợ lý / sửa cho cả 2.
 TROLY_DIR = "tro-ly-nguoi-dan-extension-main"
 BE_SCOPES = (f"{BE_DIR}/app", f"{BE_DIR}/tests")
 FORBIDDEN = (
@@ -30,7 +30,10 @@ FORBIDDEN = (
     f"{TROLY_DIR}/manifest.json",
 )
 # Bộ đọc form chính là thước đo kết quả: agent sửa được nó thì có thể làm phép chấm đạt giả.
-FORBIDDEN_DIRS = (f"{EXT_DIR}/content/form-snapshot/", f"{EXT_DIR}/background/form-snapshot.js")
+FORBIDDEN_DIRS = (
+    f"{EXT_DIR}/content/form-snapshot/", f"{EXT_DIR}/background/form-snapshot.js",
+    f"{TROLY_DIR}/content/form-snapshot/", f"{TROLY_DIR}/lib/formSnapshotOutbox.js",
+)
 _SKIP = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", "node_modules", ".git")
 
 
@@ -74,6 +77,15 @@ def touches_extension(changes: list[Change]) -> bool:
 
 def touches_troly(changes: list[Change]) -> bool:
     return any(c.rel.startswith(f"{TROLY_DIR}/") for c in changes)
+
+
+def touches_handfree(changes: list[Change]) -> bool:
+    """Phần backend riêng của trợ lý (kênh handfree, field_review của pipeline, test handfree): đổi thì chạy tests/handfree."""
+    return any(
+        c.rel.startswith((f"{BE_DIR}/app/channels/handfree/", f"{BE_DIR}/tests/handfree/"))
+        or (c.rel.startswith(f"{BE_DIR}/app/pipelines/") and "/handfree/" in c.rel)
+        for c in changes
+    )
 
 
 def sha(data: bytes | None) -> str | None:

@@ -488,7 +488,10 @@ function RoundView({ job, round, single }: { job: Job; round: Round; single: boo
         </div>
       ) : null}
       {round.result && !round.result.ok ? (
-        <p className="at-failed"><b>Vòng này không đạt, đã hoàn tác.</b> {round.result.reason}</p>
+        <p className="at-failed">
+          <b>{round.result.kept ? "Vòng này không đạt. Code của vòng này được để lại cho người xem." : "Vòng này không đạt, đã hoàn tác."}</b>
+          {" "}{round.result.reason}
+        </p>
       ) : null}
     </section>
   );
@@ -626,7 +629,14 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
         </div>
       ) : null}
       {job.fix && !job.fix.reverted && !job.fix.reverting ? (
-        <p className="muted at-note">Bản sửa đang nằm trong thư mục làm việc và chưa commit: {job.fix.files.map((f) => f.path).join(", ")}. Hãy xem lại rồi tự commit.</p>
+        job.fix.unverified ? (
+          <p className="at-warn">
+            <Icon name="alert" size={14} /> Code của vòng {job.fix.round} CHƯA ĐẠT khi kiểm, được để lại trong thư mục làm việc để bạn xem tiếp, chưa build
+            lên Docker: {job.fix.files.map((f) => f.path).join(", ")}. Không dùng thì bấm Hoàn tác bản sửa.
+          </p>
+        ) : (
+          <p className="muted at-note">Bản sửa đang nằm trong thư mục làm việc và chưa commit: {job.fix.files.map((f) => f.path).join(", ")}. Hãy xem lại rồi tự commit.</p>
+        )
       ) : null}
       {job.warnings.map((w) => <p key={w} className="at-warn"><Icon name="alert" size={14} /> {w}</p>)}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
