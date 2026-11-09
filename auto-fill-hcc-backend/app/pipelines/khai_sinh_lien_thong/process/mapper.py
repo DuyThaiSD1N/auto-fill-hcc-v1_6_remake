@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from datetime import date, timedelta
 
 from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
@@ -13,13 +14,15 @@ from app.pipelines.khai_sinh_lien_thong.process.schema import QUOC_TICH_QUOC_GIA
 
 # Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
 # "Thông tin cấp thẻ BHYT" luôn chọn giám hộ trên thẻ = mẹ và nơi KCB ban đầu = Bệnh viện Sản - Nhi tỉnh Lâm
-# Đồng. Phường Hải Châu (Đà Nẵng) chỉ chọn giám hộ trên thẻ = mẹ, nơi KCB để cán bộ tự chọn.
+# Đồng. Phường Hải Châu (Đà Nẵng) và Phường Nha Trang (Khánh Hòa) chỉ chọn giám hộ trên thẻ = mẹ, nơi
+# KCB để cán bộ tự chọn.
 # Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không
 # tự bật được cho xã khác.
 PROCEDURE_KEY = "khai-sinh-dang-ky"
 DA_LAT_BHYT_OPTION = "daLatBhytDefaults"
 HAI_CHAU_BHYT_OPTION = "haiChauBhytDefaults"
+NHA_TRANG_BHYT_OPTION = "nhaTrangBhytDefaults"
 _DA_LAT_WARDS = {"xuan huong", "lam vien", "cam ly", "lang biang"}
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 # ng-select Nơi KCB: extension gõ chuỗi này vào ô tìm rồi chọn option CHỨA nó.
@@ -53,15 +56,24 @@ def is_hai_chau_bhyt_ward(user: dict | None) -> bool:
     return "da nang" in tinh and xa == "hai chau"
 
 
+def is_nha_trang_bhyt_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc ĐÚNG Phường Nha Trang, tỉnh Khánh Hòa (Bắc/Nam/Tây Nha Trang không tính)."""
+    tinh, xa = _account_area(user)
+    return "khanh hoa" in tinh and xa == "nha trang"
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu) do server quyết theo tài khoản."""
+    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu, Nha Trang) do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(DA_LAT_BHYT_OPTION, None)
     result.pop(HAI_CHAU_BHYT_OPTION, None)
+    result.pop(NHA_TRANG_BHYT_OPTION, None)
     if procedure == PROCEDURE_KEY and is_da_lat_bhyt_ward(user):
         result[DA_LAT_BHYT_OPTION] = True
     if procedure == PROCEDURE_KEY and is_hai_chau_bhyt_ward(user):
         result[HAI_CHAU_BHYT_OPTION] = True
+    if procedure == PROCEDURE_KEY and is_nha_trang_bhyt_ward(user):
+        result[NHA_TRANG_BHYT_OPTION] = True
     return result
 
 
@@ -380,6 +392,36 @@ def _gender(value) -> str:
     if folded.startswith("nu") or folded == "female":
         return "Nữ"
     return ""
+
+
+# Tờ CT01 (thay đổi thông tin cư trú) nộp kèm khai sinh liên thông: người ở mục 1 DƯỚI 6 TUỔI chính là
+# người được khai sinh. Giấy chứng sinh hay ghi "chưa đặt tên" và không có tờ khai khai sinh → tên con
+# chỉ còn ở CT01. Người lớn hơn (cha/mẹ tự kê khai cho mình) không được coi là con.
+_CT01_CHILD_MAX_AGE = 6
+
+
+def _ct01_child(values: dict, today: date | None = None) -> dict:
+    """{HoTen, NgaySinh, GioiTinh} của người ở mục 1 CT01 khi người đó dưới 6 tuổi; không thì {}."""
+    m = re.fullmatch(r"\s*(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})\s*", str(values.get("Ct01_NgaySinh") or ""))
+    if not m:
+        return {}
+    try:
+        birth = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    except ValueError:
+        return {}
+    today = today or date.today()
+    # Lệch múi giờ server (UTC) có thể khiến trẻ sinh trong ngày trông như sinh "ngày mai" → nới 1 ngày.
+    if birth > today + timedelta(days=1):
+        return {}
+    day = 28 if (birth.month, birth.day) == (2, 29) else birth.day
+    if today >= date(birth.year + _CT01_CHILD_MAX_AGE, birth.month, day):
+        return {}
+    name = _clean_child_name(values.get("Ct01_HoTen"), values.get("ThongTinMe_HoTen"))
+    # Tên trùng cha/chủ hộ = LLM chép nhầm người lớn vào mục 1 → bỏ tên, vẫn giữ ngày sinh/giới tính.
+    if name and _fold(name) in {_fold(values.get("ThongTinBo_HoTen")), _fold(values.get("Ct01_ChuHoHoTen"))}:
+        name = ""
+    out = {"HoTen": name, "NgaySinh": birth.strftime("%d/%m/%Y"), "GioiTinh": _gender(values.get("Ct01_GioiTinh"))}
+    return {k: v for k, v in out.items() if v}
 
 
 def _nyc_person(vai_tro: str, ten, cccd, gioi_tinh, ngay_cap, noi_cap, noi_cu_tru) -> dict:
@@ -763,17 +805,28 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         "ThongTinMe_HoTen",
         "CccdNam_HoTen",
         "CccdNu_HoTen",
+        "Ct01_HoTen",
         "Ct01_ChuHoHoTen",
     ):
         if name_field in values:
             values[name_field] = _upper_name(values[name_field])
+    # Người mục 1 CT01 dưới 6 tuổi = người được khai sinh. Tên con: tờ khai > CT01 > giấy chứng sinh
+    # (tên trên giấy chứng sinh chỉ là "dự định đặt", CT01 kê khai cùng lúc khai sinh nên mới hơn).
+    def pick_child_name() -> str:
+        for raw in (values.get("Tk_HoTenCon"), _ct01_child(values).get("HoTen"), values.get("Gcs_HoTenCon")):
+            name = _clean_child_name(raw, values.get("ThongTinMe_HoTen"))
+            if name:
+                return name
+        return ""
+
     if values.get("ThongTinBo_HoTen"):
-        values["ThongTinBo_HoTen"] = _align_father_surname(
-            values["ThongTinBo_HoTen"], values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon")
-        )
+        values["ThongTinBo_HoTen"] = _align_father_surname(values["ThongTinBo_HoTen"], pick_child_name())
     marriage_sides = _marriage_sides(ocr_text)
     _fill_from_marriage_cert(values, "ThongTinMe", "Vo", marriage_sides.get("Vo"))
     _fill_from_marriage_cert(values, "ThongTinBo", "Chong", marriage_sides.get("Chong"))
+    # Tính sau khi bù cha/mẹ từ giấy kết hôn: chặn tên con trùng tên mẹ/cha cần tên đã bù.
+    ct01_child = _ct01_child(values)
+    child_name = pick_child_name()
     # Nhãn quốc tịch của cha/mẹ người nước ngoài; rỗng = người Việt.
     me_quoc_tich = _foreign_nationality(values.get("ThongTinMe_QuocTich"))
     cha_quoc_tich = _foreign_nationality(values.get("ThongTinBo_QuocTich"))
@@ -823,11 +876,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
             add(f"{prefix}MaQuocGia", "Việt Nam")
         add(f"{prefix}DiaChi", {"diaChi": dia_chi_nuoc_ngoai} if dia_chi_nuoc_ngoai else noi_cu_tru)
 
-    child_name = _clean_child_name(
-        values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon"),
-        values.get("ThongTinMe_HoTen"),
-    )
-    has_child = bool(child_name) or any(
+    has_child = bool(child_name) or bool(ct01_child) or any(
         name in values
         for name in (
             "Tk_NgaySinhCon",
@@ -871,8 +920,8 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         # Thông tin con nói chung ưu tiên TỜ KHAI. RIÊNG NGÀY SINH ưu tiên GIẤY CHỨNG SINH:
         # đó là bản ghi y tế gốc của sự kiện sinh; con số ngày người khai gõ tay ở tờ khai hay
         # lệch/typo so với ngày sinh thực (vd tờ khai ghi số "28" nhưng chữ + chứng sinh là "20").
-        add("NgaySinh", values.get("Gcs_NgaySinhCon") or values.get("Tk_NgaySinhCon"))
-        add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon"))
+        add("NgaySinh", values.get("Gcs_NgaySinhCon") or values.get("Tk_NgaySinhCon") or ct01_child.get("NgaySinh"))
+        add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon") or ct01_child.get("GioiTinh"))
         
         # ns_area / is_lam_dong đã tính TRƯỚC khối này (xem chú thích ở trên).
         # Dân tộc con: ưu tiên tờ khai, rồi giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
@@ -1089,8 +1138,8 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     if options.get(DA_LAT_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
         add("CskcbbdMa", DA_LAT_NOI_KCB, default=True)
-    # Phường Hải Châu - Đà Nẵng: chỉ giám hộ trên thẻ BHYT = mẹ.
-    if options.get(HAI_CHAU_BHYT_OPTION):
+    # Phường Hải Châu - Đà Nẵng và Phường Nha Trang - Khánh Hòa: chỉ giám hộ trên thẻ BHYT = mẹ.
+    if options.get(HAI_CHAU_BHYT_OPTION) or options.get(NHA_TRANG_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
 
     for default in STATIC_DEFAULTS:

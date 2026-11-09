@@ -328,6 +328,45 @@ def test_ten_chung_chung_khong_khop_benh_vien_nao():
     assert lookup_hospital("Bệnh viện đa khoa tỉnh") is None
 
 
+def test_benh_vien_ninh_thuan_cu_ra_xa_moi_cua_khanh_hoa():
+    # Giấy trước 1/7/2025 ghi tỉnh Ninh Thuận, OCR đọc sai xã → xã theo bảng bv_khanh_hoa.json.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Ninh Thuận", "xa": "Phường Văn Hai", "diaChi": "Bệnh viện Đa khoa tỉnh Ninh Thuận"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Ninh Chử"
+    assert out["NsDiaChi"]["tinh"] == "Khánh Hòa"
+
+
+def test_benh_vien_khanh_hoa_ten_cu_ten_moi_va_viet_tat():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Khánh Hòa, 19 Yersin")["xa"] == "Phường Nha Trang"
+    assert lookup_hospital("Bệnh viện Đa khoa Khánh Hoà")["xa"] == "Phường Nha Trang"
+    assert lookup_hospital("BVĐKKV Ninh Hòa")["xa"] == "Phường Ninh Hòa"
+    assert lookup_hospital("Bệnh viện Đa khoa Ninh Thuận cơ sở 2")["xa"] == "Phường Đô Vinh"
+    # TTYT cấp huyện thành TTYT khu vực từ 1/7/2025; TTYT Ninh Hòa ở Ninh Diêm, khác xã với BVĐKKV Ninh Hòa.
+    assert lookup_hospital("Trung tâm Y tế huyện Cam Lâm")["xa"] == "Xã Cam Lâm"
+    assert lookup_hospital("TTYTKV Cam Lâm")["xa"] == "Xã Cam Lâm"
+    assert lookup_hospital("TTYT TX Ninh Hòa")["xa"] == "Phường Đông Ninh Hòa"
+    assert lookup_hospital("TTYT TP Phan Rang Tháp Chàm")["xa"] == "Phường Phan Rang"
+    assert lookup_hospital("Bệnh viện Ninh Hòa", "Khánh Hòa") is None
+
+
+def test_bang_benh_vien_khanh_hoa_khong_keo_benh_vien_tinh_khac():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    assert lookup_hospital("Bệnh viện Đa khoa Sài Gòn", "Thành phố Hồ Chí Minh") is None
+    assert lookup_hospital("Bệnh viện Đa khoa Tâm Trí", "Tỉnh Đồng Tháp") is None
+    assert lookup_hospital("Trung tâm Y tế huyện Hàm Thuận Bắc", "Tỉnh Lâm Đồng") is None
+
+
+def test_bang_benh_vien_khanh_hoa_chi_dung_xa_hien_hanh():
+    import json
+    from pathlib import Path
+
+    from app.pipelines._shared.area_remap import is_current_area
+    import app.pipelines._shared.hospital_lookup as hl
+    rows = json.loads((Path(hl.__file__).parent / "data_bv" / "bv_khanh_hoa.json").read_text(encoding="utf-8"))
+    assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
+
+
 def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():
     out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
         "tinh": "Hà Nội", "xa": "Phường Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}})

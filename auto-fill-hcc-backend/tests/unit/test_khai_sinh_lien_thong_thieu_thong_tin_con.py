@@ -116,6 +116,92 @@ def test_khong_co_noi_de_nghi_dktt_thi_khong_phat_o():
     assert "DkttDiaChi" not in out
 
 
+# ── Người mục 1 tờ CT01 dưới 6 tuổi = người được khai sinh ──
+def _ngay(days_ago: int) -> str:
+    from datetime import date, timedelta
+    return (date.today() - timedelta(days=days_ago)).strftime("%d/%m/%Y")
+
+
+def test_ct01_tre_duoi_6_tuoi_la_nguoi_duoc_khai_sinh_khi_chung_sinh_chua_dat_ten():
+    out = _by_name({
+        "Gcs_HoTenCon": "CHƯA ĐẶT TÊN", "Gcs_GioiTinhCon": "Nữ", "Gcs_NgaySinhCon": _ngay(30),
+        "ThongTinMe_HoTen": "Trần Thị Mẹ", "ThongTinBo_HoTen": "Nguyễn Văn Bố",
+        "Ct01_HoTen": "Nguyễn Thị Bé", "Ct01_NgaySinh": _ngay(30), "Ct01_GioiTinh": "Nữ",
+        "Ct01_ChuHoHoTen": "Lê Thị Chủ",
+    })
+    assert (out["Ho"], out["ChuDem"], out["Ten"]) == ("NGUYỄN", "THỊ", "BÉ")
+    assert out["DkttChuHo"] == "LÊ THỊ CHỦ"
+
+
+def test_ct01_tre_duoi_6_tuoi_bu_ca_ngay_sinh_gioi_tinh_khi_khong_co_giay_chung_sinh():
+    out = _by_name({"ThongTinMe_HoTen": "Trần Thị Mẹ",
+                    "Ct01_HoTen": "Nguyễn Văn Bé", "Ct01_NgaySinh": _ngay(400).replace("/", "-"),
+                    "Ct01_GioiTinh": "Nam"})
+    assert (out["Ho"], out["ChuDem"], out["Ten"]) == ("NGUYỄN", "VĂN", "BÉ")
+    assert out["NgaySinh"] == _ngay(400) and out["GioiTinh"] == "Nam"
+
+
+def test_ct01_ten_thang_ten_du_dinh_tren_giay_chung_sinh_nhung_thua_to_khai():
+    base = {"Gcs_HoTenCon": "Nguyễn Văn Dự", "Ct01_HoTen": "Nguyễn Văn Chốt", "Ct01_NgaySinh": _ngay(10)}
+    assert _by_name(base)["Ten"] == "CHỐT"
+    assert _by_name({**base, "Tk_HoTenCon": "Nguyễn Văn Khai"})["Ten"] == "KHAI"
+
+
+def test_ct01_nguoi_tu_6_tuoi_tro_len_khong_phai_tre_khai_sinh():
+    out = _by_name({"Gcs_GioiTinhCon": "Nữ", "Ct01_HoTen": "Trần Thị Mẹ", "Ct01_NgaySinh": "23/06/2000"})
+    assert "Ten" not in out
+    # Vừa tròn 6 tuổi cũng không tính.
+    from datetime import date
+    today = date.today()
+    sixth = (today.replace(year=today.year - 6) if (today.month, today.day) != (2, 29)
+             else today.replace(year=today.year - 6, day=28))
+    out = _by_name({"Gcs_GioiTinhCon": "Nữ", "Ct01_HoTen": "Nguyễn Văn Lớn",
+                    "Ct01_NgaySinh": sixth.strftime("%d/%m/%Y")})
+    assert "Ten" not in out
+
+
+def test_ct01_khong_co_ngay_sinh_hoac_ten_trung_nguoi_lon_thi_khong_lay():
+    assert "Ten" not in _by_name({"Gcs_GioiTinhCon": "Nữ", "Ct01_HoTen": "Nguyễn Văn Bé"})
+    for adult in ({"ThongTinMe_HoTen": "Trần Thị Mẹ"}, {"ThongTinBo_HoTen": "Trần Thị Mẹ"},
+                  {"Ct01_ChuHoHoTen": "Trần Thị Mẹ"}):
+        out = _by_name({**adult, "Gcs_GioiTinhCon": "Nữ", "Ct01_HoTen": "Trần Thị Mẹ", "Ct01_NgaySinh": _ngay(5)})
+        assert "Ten" not in out
+
+
+# ── Giám hộ trên thẻ BHYT = mẹ theo tài khoản ──
+def test_phuong_nha_trang_giam_ho_tren_the_bhyt_la_me():
+    from app.pipelines.khai_sinh_lien_thong.process import mapper
+
+    nha_trang = {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}
+    options = mapper.with_account_process_options({}, nha_trang, mapper.PROCEDURE_KEY)
+    assert options[mapper.NHA_TRANG_BHYT_OPTION] is True
+    out = enrich([{"name": "ThongTinMe_HoTen", "value": "Trần Thị Mẹ"}], options)
+    giam_ho = next(f for f in out if f["name"] == "NguoiGiamHo")
+    assert giam_ho["value"] == "Thông tin mẹ" and giam_ho.get("default") is True
+    assert "CskcbbdMa" not in {f["name"] for f in out}  # nơi KCB để cán bộ tự chọn
+
+
+def test_bhyt_me_chi_bat_dung_phuong_nha_trang():
+    from app.pipelines.khai_sinh_lien_thong.process import mapper
+
+    for user in ({"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"},
+                 {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
+                 {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Tây Nha Trang"},
+                 {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, None):
+        options = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
+        assert mapper.NHA_TRANG_BHYT_OPTION not in options
+        assert _by_name_opts(options)["NguoiGiamHo"] == "Thông tin cha"
+    # Client tự gửi cờ cũng bị server gỡ; thủ tục khác không bật.
+    assert mapper.NHA_TRANG_BHYT_OPTION not in mapper.with_account_process_options(
+        {mapper.NHA_TRANG_BHYT_OPTION: True}, {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, mapper.PROCEDURE_KEY)
+    assert mapper.NHA_TRANG_BHYT_OPTION not in mapper.with_account_process_options(
+        {}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}, "khai-tu")
+
+
+def _by_name_opts(options: dict) -> dict:
+    return {f["name"]: f.get("value") for f in enrich([{"name": "ThongTinMe_HoTen", "value": "Trần Thị Mẹ"}], options)}
+
+
 # ── Khối "Thông tin người yêu cầu": BE gửi mọi người trong giấy tờ, extension chọn theo CCCD/tên ──
 def _nyc(values: dict) -> list[dict]:
     return (_by_name(values).get("NycBuThieu") or {}).get("nguoi") or []

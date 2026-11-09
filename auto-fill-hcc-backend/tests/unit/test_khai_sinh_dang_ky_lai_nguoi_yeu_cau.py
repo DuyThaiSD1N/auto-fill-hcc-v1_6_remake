@@ -492,3 +492,87 @@ def test_benh_vien_ghi_tat_chi_khop_khi_cung_tinh_va_duy_nhat():
     assert lookup_hospital("Bệnh viện Hoàn Mỹ", "Thành phố Đà Nẵng") is None
     # Từ riêng khớp nhiều bệnh viện ("Đà Lạt") → không đoán.
     assert lookup_hospital("Bệnh viện Đà Lạt") is None
+
+
+# Hồ sơ không tờ khai: người được đăng ký lại (con, 1960) ủy quyền cho người nhà trẻ hơn (1985) đi nộp,
+# cha đã mất nên không có thẻ. Ba thẻ con/mẹ/người đi nộp khớp luật "người trẻ nhất là con".
+def _giay_uy_quyen_cho(ten, ngay, so):
+    return ("GIẤY ỦY QUYỀN\nI. BÊN ỦY QUYỀN:\nHọ tên: Lê Văn An Năm sinh: 1/2/1960...\n"
+            "Địa chỉ: Thôn Đông, Xã A\nSố CMND/CCCD số: 0010 6000 0031 cấp ngày: 10/01/2025\n"
+            f"II. BÊN ĐƯỢC ỦY QUYỀN:\nHọ tên: {ten} Năm sinh: {ngay}...\nĐịa chỉ: Thôn Tây, Xã A\n"
+            f"Số CMND/CCCD số: {so} cấp ngày: 10/7/2021\n"
+            "III. NỘI DUNG ỦY QUYỀN:\n- Nộp hồ sơ đăng ký lại khai sinh cho bên ủy quyền.\n")
+
+
+def _ho_so_uy_quyen_nguoi_tre(uy_quyen=_giay_uy_quyen_cho("Lê Thị Chi", "5/6/1985", "001185000033")):
+    pages = [
+        "KẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN\nHọ và tên công dân: LÊ VĂN AN\n"
+        "Cha của công dân | LÊ VĂN BÌNH\nMẹ của công dân | NGUYỄN THỊ DUNG\n",
+        _the("001060000031", "LÊ VĂN AN", "01/02/1960", "Nam"),
+        _the("001140000032", "NGUYỄN THỊ DUNG", "03/04/1940", "Nữ"),
+        _the("001185000033", "LÊ THỊ CHI", "05/06/1985", "Nữ"),
+    ] + ([uy_quyen] if uy_quyen else [])
+    text = "\n".join(f"───── Trang {i}/{len(pages)} ─────\n{body}" for i, body in enumerate(pages, start=1))
+    return [{"name": "ho_so.pdf", "text": text}]
+
+
+_RAW_UY_QUYEN_NGUOI_TRE = """<nguoi_yeu_cau>
+Họ tên: LÊ THỊ CHI
+Số CCCD/CMND: 001185000033
+Ngày sinh: 05/06/1985
+Giới tính: Nữ
+Vai trò đồng thời: khác
+</nguoi_yeu_cau>
+<con>
+Họ tên: LÊ VĂN AN
+Số CCCD/CMND: 001060000031
+Ngày sinh: 01/02/1960
+Giới tính: Nam
+Trạng thái: còn sống
+</con>
+<me>
+Họ tên: NGUYỄN THỊ DUNG
+Số CCCD/CMND: 001140000032
+Ngày sinh: 03/04/1940
+Giới tính: Nữ
+Trạng thái: còn sống
+</me>
+<cha>
+Họ tên: LÊ VĂN BÌNH
+Số CCCD/CMND: Không xác định
+Ngày sinh: Không xác định
+Giới tính: Nam
+Trạng thái: đã chết
+</cha>
+<quan_he_nguoi_yeu_cau>
+Kết luận: khác
+</quan_he_nguoi_yeu_cau>
+"""
+
+
+def test_nguoi_duoc_uy_quyen_tre_nhat_khong_bi_luat_the_he_xep_lam_con():
+    context = reason._render_context(_RAW_UY_QUYEN_NGUOI_TRE, {}, _ho_so_uy_quyen_nguoi_tre())
+    con, cha = reason._section(context, "con"), reason._section(context, "cha")
+    assert reason._role_name(con) == "LÊ VĂN AN" and "LÊ THỊ CHI" not in con
+    assert reason._role_name(cha) == "LÊ VĂN BÌNH" and "001060000031" not in cha
+    assert reason._role_name(reason._section(context, "me")) == "NGUYỄN THỊ DUNG"
+
+
+def test_so_cccd_tren_giay_uy_quyen_lech_van_nhan_ra_nguoi_duoc_uy_quyen_theo_ten_va_nam_sinh():
+    docs = _ho_so_uy_quyen_nguoi_tre(_giay_uy_quyen_cho("Lê Thị Chi", "5/6/1985", "001185000038"))
+    assert reason._override_family_by_generation({}, docs) == {}
+    context = reason._render_context(_RAW_UY_QUYEN_NGUOI_TRE, {}, docs)
+    assert reason._role_name(reason._section(context, "con")) == "LÊ VĂN AN"
+
+
+def test_khong_co_giay_uy_quyen_luat_the_he_van_chot_nguoi_tre_nhat_lam_con():
+    family = reason._override_family_by_generation({}, _ho_so_uy_quyen_nguoi_tre(uy_quyen=""))
+    assert reason._role_name(family["con"]) == "LÊ THỊ CHI"
+    assert reason._role_name(family["cha"]) == "LÊ VĂN AN"
+
+
+def test_ben_duoc_uy_quyen_la_me_luat_the_he_van_chot_du_con_cha_me():
+    docs = _ho_so_uy_quyen_nguoi_tre(_giay_uy_quyen_cho("Nguyễn Thị Dung", "3/4/1940", "001140000032"))
+    family = reason._override_family_by_generation({}, docs)
+    assert [reason._role_name(family[tag]) for tag in ("con", "cha", "me")] == [
+        "LÊ THỊ CHI", "LÊ VĂN AN", "NGUYỄN THỊ DUNG"]

@@ -99,6 +99,10 @@ FIELDS: list[dict] = [
              "không tự mặc định."},
 
     # Tờ khai thay đổi thông tin cư trú (mẫu CT01) — CHỈ khi hồ sơ có tài liệu này (xem mục J).
+    # Mục 1-3 là người có thay đổi cư trú; dưới 6 tuổi thì mapper coi là chính người được khai sinh.
+    {"name": "Ct01_HoTen", "desc": "Họ tên ở mục 1 'Họ, chữ đệm và tên' ĐẦU tờ CT01 (người có thay đổi thông tin cư trú, KHÔNG phải chủ hộ mục 7, KHÔNG phải người kê khai ký cuối tờ). Chép nguyên, kể cả khi là tên trẻ sơ sinh. Chỉ trả khi có giấy CT01."},
+    {"name": "Ct01_NgaySinh", "desc": "Ngày, tháng, năm sinh ở mục 2 tờ CT01 (của người ở mục 1), dd/mm/yyyy. Chỉ trả khi có giấy CT01."},
+    {"name": "Ct01_GioiTinh", "desc": 'Giới tính ở mục 3 tờ CT01 (của người ở mục 1): "Nam" hoặc "Nữ". Chỉ trả khi có giấy CT01.'},
     {"name": "Ct01_ChuHoHoTen", "desc": "Họ tên CHỦ HỘ trên TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01), mục 7 'Họ, chữ đệm và tên chủ hộ'. KHÔNG lấy mục 1 (người kê khai/đứa trẻ). Chỉ trả khi có giấy CT01."},
     {"name": "Ct01_ChuHoSoDinhDanh", "desc": "Số định danh cá nhân của CHỦ HỘ trên CT01, mục 9, 12 số. KHÔNG nhầm với số định danh người kê khai (mục 4)."},
     {"name": "Ct01_QuanHeVoiChuHo", "desc": "Mối quan hệ của người được khai sinh với chủ hộ trên CT01, mục 8 (vd 'Con đẻ', 'Cháu ngoại', 'Cháu nội')."},
@@ -112,7 +116,7 @@ COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
 for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_GcnKetHon_NgayCap", "Tk_NgaySinhCon",
               "GcnKetHon_Vo_NgaySinh", "GcnKetHon_Chong_NgaySinh", "Tk_NguoiYeuCau_NgayCap",
               "ThongTinBo_NgayCapCccd", "ThongTinMe_NgayCapCccd", "NguoiKhac_NgayCapCccd",
-              "ThongTinBo_NgayCapHoChieu", "ThongTinMe_NgayCapHoChieu"):
+              "ThongTinBo_NgayCapHoChieu", "ThongTinMe_NgayCapHoChieu", "Ct01_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "date"
 for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru", "Gcs_NoiThuongTruMe", "Tk_NoiCuTruCha", "Tk_NoiCuTruMe", "Ct01_NoiDeNghiDktt",
               "Tk_NguoiYeuCau_NoiCuTru", "NguoiKhac_NoiCuTru"):

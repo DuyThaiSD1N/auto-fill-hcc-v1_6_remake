@@ -1,0 +1,407 @@
+[
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Khánh Hòa",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Khánh Hòa",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Yersin Nha Trang",
+        "xa": "Phường Nam Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "BVĐKKV Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Ninh Hòa",
+        "xa": "Phường Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "BVĐKKV Ninh Hòa",
+        "xa": "Phường Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền và Phục hồi chức năng tỉnh Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền và Phục hồi chức năng Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Phổi Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi tỉnh Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Da liễu tỉnh Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Da liễu Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Chuyên khoa Tâm thần tỉnh Khánh Hòa",
+        "xa": "Xã Diên Thọ",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Chuyên khoa Tâm thần Khánh Hòa",
+        "xa": "Xã Diên Thọ",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Bệnh Nhiệt đới tỉnh Khánh Hòa",
+        "xa": "Xã Diên Khánh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Bệnh Nhiệt đới Khánh Hòa",
+        "xa": "Xã Diên Khánh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Ung bướu tỉnh Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Ung bướu Khánh Hòa",
+        "xa": "Phường Bắc Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Ninh Thuận",
+        "xa": "Phường Ninh Chử",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Ninh Thuận",
+        "xa": "Phường Ninh Chử",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Ninh Thuận cơ sở 2",
+        "xa": "Phường Đô Vinh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Ninh Thuận cơ sở 2",
+        "xa": "Phường Đô Vinh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Mắt tỉnh Ninh Thuận",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Mắt Ninh Thuận",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Phổi Ninh Thuận",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi Ninh Thuận",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi tỉnh Ninh Thuận",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Da liễu - Tâm thần Ninh Thuận",
+        "xa": "Phường Bảo An",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện Quân y 87",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Bệnh viện 22-12",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Nha Trang",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Nha Trang",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Nha Trang",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Nha Trang",
+        "xa": "Phường Nha Trang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Cam Ranh",
+        "xa": "Phường Cam Ranh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Ninh Hòa",
+        "xa": "Phường Đông Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Ninh Hòa",
+        "xa": "Phường Đông Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Ninh Hòa",
+        "xa": "Phường Đông Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế TX Ninh Hòa",
+        "xa": "Phường Đông Ninh Hòa",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Diên Khánh",
+        "xa": "Xã Diên Khánh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Diên Khánh",
+        "xa": "Xã Diên Khánh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Diên Khánh",
+        "xa": "Xã Diên Khánh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Cam Lâm",
+        "xa": "Xã Cam Lâm",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cam Lâm",
+        "xa": "Xã Cam Lâm",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Cam Lâm",
+        "xa": "Xã Cam Lâm",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Vạn Ninh",
+        "xa": "Xã Vạn Ninh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Vạn Ninh",
+        "xa": "Xã Vạn Ninh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Vạn Ninh",
+        "xa": "Xã Vạn Ninh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Khánh Vĩnh",
+        "xa": "Xã Khánh Vĩnh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Khánh Vĩnh",
+        "xa": "Xã Khánh Vĩnh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Khánh Vĩnh",
+        "xa": "Xã Khánh Vĩnh",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Khánh Sơn",
+        "xa": "Xã Đông Khánh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Khánh Sơn",
+        "xa": "Xã Đông Khánh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Khánh Sơn",
+        "xa": "Xã Đông Khánh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Phan Rang - Tháp Chàm",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Phan Rang - Tháp Chàm",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Phan Rang - Tháp Chàm",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Phan Rang - Tháp Chàm",
+        "xa": "Phường Phan Rang",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bác Ái",
+        "xa": "Xã Bác Ái Đông",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Bác Ái",
+        "xa": "Xã Bác Ái Đông",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Bác Ái",
+        "xa": "Xã Bác Ái Đông",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Ninh Sơn",
+        "xa": "Xã Ninh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Ninh Sơn",
+        "xa": "Xã Ninh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Ninh Sơn",
+        "xa": "Xã Ninh Sơn",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Thuận Nam",
+        "xa": "Xã Thuận Nam",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Thuận Nam",
+        "xa": "Xã Thuận Nam",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Thuận Nam",
+        "xa": "Xã Thuận Nam",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Ninh Phước",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Ninh Phước",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Ninh Phước",
+        "xa": "Xã Ninh Phước",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Ninh Hải",
+        "xa": "Phường Ninh Chử",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Ninh Hải",
+        "xa": "Phường Ninh Chử",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Ninh Hải",
+        "xa": "Phường Ninh Chử",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Thuận Bắc",
+        "xa": "Xã Thuận Bắc",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Thuận Bắc",
+        "xa": "Xã Thuận Bắc",
+        "tinh": "Tỉnh Khánh Hòa"
+    },
+    {
+        "ten": "Trung tâm Y tế Thuận Bắc",
+        "xa": "Xã Thuận Bắc",
+        "tinh": "Tỉnh Khánh Hòa"
+    }
+]

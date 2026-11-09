@@ -164,8 +164,11 @@ Dùng để bù khối "Thông tin người yêu cầu" khi cổng không đổ 
 
 # ═══ J. TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01) — Ct01_* ═══
 - CHỈ trích khi hồ sơ CÓ tài liệu tiêu đề "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ" (mẫu CT01). Không có → để TRỐNG toàn bộ Ct01_*.
-- Đây là thông tin CHỦ HỘ nơi trẻ đăng ký thường trú, KHÁC người kê khai:
-  + Ct01_ChuHoHoTen = mục 7 "Họ, chữ đệm và tên chủ hộ". TUYỆT ĐỐI KHÔNG lấy mục 1 "Họ, chữ đệm và tên" (đó là NGƯỜI ĐƯỢC KHAI SINH/người kê khai).
+- Người có thay đổi thông tin cư trú (mục 1-3 ĐẦU tờ) — thường chính là ĐỨA TRẺ đang khai sinh, hệ thống tự xét tuổi:
+  + Ct01_HoTen = mục 1 "Họ, chữ đệm và tên"; Ct01_NgaySinh = mục 2 "Ngày, tháng, năm sinh" (dd/mm/yyyy); Ct01_GioiTinh = mục 3 "Giới tính" ("Nam"/"Nữ").
+  + Chép đúng người ở mục 1, KHÔNG thay bằng chủ hộ (mục 7) hay người kê khai ký cuối tờ. Giấy chứng sinh ghi "chưa đặt tên" thì tên con thường chỉ có ở đây → vẫn phải trả Ct01_HoTen.
+- Thông tin CHỦ HỘ nơi trẻ đăng ký thường trú, KHÁC người ở mục 1:
+  + Ct01_ChuHoHoTen = mục 7 "Họ, chữ đệm và tên chủ hộ". TUYỆT ĐỐI KHÔNG lấy mục 1 "Họ, chữ đệm và tên" (đó là người có thay đổi cư trú → Ct01_HoTen).
   + Ct01_ChuHoSoDinhDanh = mục 9 "Số định danh cá nhân của chủ hộ" (12 số). KHÔNG nhầm với mục 4 (số định danh người kê khai).
   + Ct01_QuanHeVoiChuHo = mục 8 "Mối quan hệ với chủ hộ" (vd "Con đẻ", "Cháu ngoại", "Cháu nội").
   + Ct01_NoiDeNghiDktt = địa chỉ nơi đăng ký thường trú ghi trong mục "Nội dung đề nghị" (vd "Đăng ký thường trú tại 12 Đường A, phường B, tỉnh C" → {tinh:"C", xa:"B", chiTietDuoiXa:"12 Đường A"}). Tách theo mục F: chiTietDuoiXa CHỈ là phần đứng TRƯỚC phường/xã, không kèm chữ "tại"/"Đăng ký thường trú".

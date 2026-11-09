@@ -1579,6 +1579,35 @@ def _family_from_documents(
     return {"con": child, "cha": father, "me": mother}
 
 
+def _authorized_identity(documents: list[dict]) -> dict | None:
+    """Người được ủy quyền theo shape `_same_document_person` cần (id, name, year); None nếu không có."""
+    person = _authorized_person(documents)
+    if not person:
+        return None
+    # Giấy ủy quyền chỉ ghi "birth" dạng chữ; thiếu khoá year thì phép khớp tên + năm luôn trượt.
+    return {"id": person["id"], "name": person["name"], "year": _year_of(person["birth"])}
+
+
+def _child_is_authorized(family: dict | None, documents: list[dict]) -> bool:
+    """Người con suy theo thế hệ chính là người ĐƯỢC ỦY QUYỀN đi nộp hồ sơ.
+
+    Người được ủy quyền đi nộp hộ thì không thể là người được đăng ký lại khai sinh. Hồ sơ không tờ
+    khai kèm thẻ của người đi nộp trẻ hơn cả nhà: luật "người trẻ nhất là con" xếp người đó vào
+    <con>, đẩy người được đăng ký lại sang <cha> rồi đè lên phân vai đúng của agent.
+    """
+    child = (family or {}).get("con")
+    authorized = _authorized_identity(documents) if child else None
+    if not authorized:
+        return False
+    if _same_document_person(authorized, child):
+        return True
+    # Số CCCD viết tay trên giấy ủy quyền hay bị OCR đọc lệch một hai chữ số; khi đó hai số cùng 12
+    # chữ số mà khác nhau nên phép so số ở trên trả False → khớp dự phòng theo tên + năm sinh.
+    return bool(authorized["year"]) and authorized["year"] == child.get("year") and _names_align(
+        authorized["name"], child.get("name")
+    )
+
+
 def _override_family_by_generation(
     sections: dict[str, str],
     documents: list[dict],
@@ -1605,7 +1634,8 @@ def _override_family_by_generation(
     family = _family_from_documents(documents, strict=True) or (
         applicant_card and _family_from_documents(documents, strict=True, exclude=applicant_card)
     )
-    if not family:
+    # Luật thế hệ xếp người được ủy quyền làm con → không đủ căn cứ đè, giữ phân vai của agent.
+    if not family or _child_is_authorized(family, documents):
         return sections
     result = dict(sections)
     for tag, person in family.items():
@@ -1630,7 +1660,7 @@ def _repair_family_by_generation(
     # Ưu tiên nhân thân được Python đọc trực tiếp từ từng tài liệu. Nhờ vậy raw
     # reason dài/bị cụt vẫn không làm mất người trẻ nhất hoặc nhầm giấy khai tử.
     family = _family_from_documents(documents)
-    if family:
+    if family and not _child_is_authorized(family, documents):
         return {
             tag: _as_family_section(person["section"], _GENERATION_BASIS)
             for tag, person in family.items()
@@ -1669,7 +1699,7 @@ def _repair_family_by_generation(
     ordered = sorted(candidates.values(), key=lambda item: item["year"])
     youngest = ordered[-1]
     older = ordered[:-1]
-    if _is_dead(youngest):
+    if _is_dead(youngest) or _child_is_authorized({"con": youngest}, documents):
         return sections
     if youngest["year"] - max(item["year"] for item in older) < 15:
         return sections
@@ -1826,7 +1856,10 @@ def _repair_family_by_lineage(
     if len(pairs) != 1:
         return sections
     child, father = pairs[0]
-    basis = "Không có tờ khai; cặp duy nhất cùng họ, cha là nam hơn con ít nhất 15 tuổi."
+    # Cặp dòng họ duy nhất lại lấy người được ủy quyền làm con → đó là người đi nộp, không chốt.
+    if _child_is_authorized({"con": child}, documents):
+        return sections
+    basis ="Không có tờ khai; cặp duy nhất cùng họ, cha là nam hơn con ít nhất 15 tuổi."
     repaired = {
         **sections,
         "con": _as_family_section(child["section"], basis),
