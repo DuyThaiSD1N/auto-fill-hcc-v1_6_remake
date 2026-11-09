@@ -26,9 +26,11 @@ mất phần này.
 | `verify.py` | Test BE, test extension, build Docker, healthz |
 | `evidence.py` | Gom chứng cứ của req từ Mongo local |
 | `replay.py` | Đăng nhập backend, xoá cache OCR, chế độ Chỉ gọi backend |
-| `devjob.py` | Job "Thêm thủ tục mới": nhận tệp kéo thả, chuyển Excel/Word sang chữ, thêm link `ke_khai_links.json`, cho agent làm pipeline, kiểm chứng, chạy thử file mẫu |
 
-## Duyệt bản sửa (job sửa lỗi)
+Job "Thêm thủ tục mới" (`devjob.py`, tab cùng tên trên web) đã gỡ ngày 2026-11-09. Job cũ loại này trong `runs/` vẫn nằm trên đĩa
+nhưng dịch vụ không nạp lên web.
+
+## Duyệt bản sửa
 
 - Bản sửa qua test thì `Orchestrator._await_approval` dừng ở giai đoạn `approve` và ghi `job.approval` (vòng, file, `canRetry`,
   `timeoutMin`). Chưa build Docker, chưa đánh dấu nạp lại extension. Web hiện khung duyệt và gọi
@@ -37,7 +39,7 @@ mất phần này.
   (bắt buộc có góp ý, vòng cuối không cho). `reject` hoặc quá `AUTOTEST_APPROVAL_TIMEOUT_MIN` (60) phút: hoàn tác, kết luận `not_approved`.
 - API từ chối khi `round` không khớp vòng đang chờ, để trang cũ không duyệt nhầm patch của vòng sau. Ai duyệt ghi ở `rounds[].approval.by`.
 - Người duyệt sửa tay file trong lúc chờ thì mã build theo nội dung trên đĩa, giữ patch lúc duyệt ở `fix.approvedPatch` và cảnh báo.
-- Không thêm cờ bỏ qua bước duyệt. Job "Thêm thủ tục mới" chưa có bước này.
+- Không thêm cờ bỏ qua bước duyệt.
 
 ## Hết vòng mà chưa đạt (Cần người xem)
 
@@ -45,25 +47,6 @@ mất phần này.
   `self.kept`. Hết vòng thì `_keep_last_fix` build trả Docker về code gốc trước, rồi đặt lại code của vòng trượt gần nhất và
   ghi `job.fix` với `unverified: true` để nút Hoàn tác bản sửa dùng được. Không build bản này.
 - Không đặt lại khi: người duyệt đã bác vòng đó (`keep=False`), patch lộ dữ liệu thật của hồ sơ, hoặc file đã bị sửa sau khi hoàn tác.
-
-## Job "Thêm thủ tục mới"
-
-- Web gửi một request multipart `/agent-api/dev/jobs`: ô `meta` là JSON thông tin thủ tục, tệp theo 3 nhóm `mapping`, `attach`, `samples`.
-  nginx của test-fe cho `/agent-api/` nhận tới 250 MB.
-- Link kê khai do mã thêm (`json.dumps(indent=2)` ra đúng định dạng file), không để agent tự viết. Link nằm trong danh sách file job đã chạm,
-  nên dừng hay bấm hoàn tác đều gỡ luôn.
-- Agent đã viết code rồi mới lỗi (hết `DEV_MAX_REPAIRS` lần, sửa ngoài phạm vi, agent chết, chạy thử lỗi) thì để yên code đó cho người
-  xem (`_keep_dev_code`, người dùng yêu cầu 2026-11-09): ghi `job.fix` với `unverified: true` để nút Hoàn tác thủ tục dùng được, không
-  build bản này (stack đã nhận thì build lại về code cũ rồi đặt code agent trở lại). Chỉ bấm Dừng mới hoàn tác ngay. Patch lộ dữ liệu
-  thật của file mẫu thì vẫn hoàn tác.
-- Agent con chạy với `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`: cwd là repo nên nó dùng chung thư mục memory `~/.claude/projects/<repo>/memory`
-  với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó là "sửa ngoài phạm vi" và job dừng (job 1.115590 ngày 2026-11-09).
-- Agent được `Write` (tạo thư mục pipeline mới), sửa extension Auto Fill, và extension trợ lý khi bật đưa lên trợ lý. Hoàn tác file tạo
-  mới thì dọn luôn thư mục chỉ còn rỗng hoặc `__pycache__`.
-- Đạt khi: có thư mục `app/pipelines/<key đổi - thành _>/` và `tests/unit/test_<thư mục>.py`, test pipeline xanh, không có test mới đỏ ở
-  backend, extension, `tests/handfree` (khi bật trợ lý), build + healthz được, chạy thử file mẫu ra ít nhất một ô có giá trị, patch không
-  chứa dữ liệu thật của file mẫu. Chưa đạt thì trả lỗi lại cho agent (`DEV_MAX_REPAIRS` lần).
-- Biến môi trường: `AUTOTEST_DEV_TIMEOUT_MIN` (60), `AUTOTEST_DEV_AGENT_BUDGET_USD` (25), `AUTOTEST_DEV_JOB_BUDGET_USD` (60).
 
 ## Quy tắc khi sửa
 
@@ -74,6 +57,8 @@ mất phần này.
   lệnh gọi, nối mà ngồi chờ thì request của trang bị treo.
 - `togglePanel` là công tắc: panel thu nhỏ thành `#autofill-hcc-bubble` thì phải bấm bong bóng, toggle là đóng mất.
 - Không tự ký token bằng secret của backend. Chạy lại dùng `/auth/login` với mật khẩu người dùng nhập, chỉ giữ trong RAM.
+- Agent con chạy với `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`: cwd là repo nên nó dùng chung thư mục memory `~/.claude/projects/<repo>/memory`
+  với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó là "sửa ngoài phạm vi" và job dừng (job 1.115590 ngày 2026-11-09).
 
 ## Test
 

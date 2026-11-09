@@ -3,10 +3,8 @@ import { ApiError } from "../../api";
 import Icon from "../../components/Icon";
 import { Spinner } from "../../components/Status";
 import { formatDateTime } from "../../format";
-import { agentApi, errorText, serviceDown, type JobKind, type JobSummary, type RequestInfo, type RunMode } from "./api";
-import DevJobDetail from "./DevJobDetail";
+import { agentApi, errorText, serviceDown, type JobSummary, type RequestInfo, type RunMode } from "./api";
 import JobDetail, { OutcomeTag, StatusTag } from "./JobDetail";
-import NewProcedure from "./NewProcedure";
 
 const LIST_POLL_MS = 4000;
 
@@ -22,9 +20,9 @@ function ServiceNotice({ message }: { message: string }) {
   );
 }
 
-function StartForm({ onCreated, initialRequestId = "" }: { onCreated: (id: string) => void; initialRequestId?: string }) {
-  const [requestId, setRequestId] = useState(initialRequestId);
-  const [description, setDescription] = useState(initialRequestId ? "Kiểm thử thủ tục vừa làm trên cổng thật: các ô có điền đúng như kết quả chạy thử không" : "");
+function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
+  const [requestId, setRequestId] = useState("");
+  const [description, setDescription] = useState("");
   const [info, setInfo] = useState<RequestInfo | null>(null);
   const [lookupError, setLookupError] = useState("");
   const [looking, setLooking] = useState(false);
@@ -58,11 +56,6 @@ function StartForm({ onCreated, initialRequestId = "" }: { onCreated: (id: strin
       setLooking(false);
     }
   }, []);
-
-  // Mở từ nút "Kiểm thử trên cổng thật" của job thêm thủ tục: tra luôn req chạy thử.
-  useEffect(() => {
-    if (initialRequestId) void lookup(initialRequestId);
-  }, [initialRequestId, lookup]);
 
   const ready = !!info && !info.missingFiles.length && description.trim().length >= 5 && !!username.trim() && !!password && !sending;
 
@@ -205,16 +198,16 @@ function StartForm({ onCreated, initialRequestId = "" }: { onCreated: (id: strin
   );
 }
 
-function JobList({ jobs, onOpen }: { jobs: JobSummary[]; onOpen: (id: string, kind: JobKind) => void }) {
+function JobList({ jobs, onOpen }: { jobs: JobSummary[]; onOpen: (id: string) => void }) {
   if (!jobs.length) return <p className="faint at-empty">Chưa có ca nào.</p>;
   return (
     <div className="table-wrap panel">
       <table className="mini-table at-jobs">
         <thead>
           <tr>
-            <th>Mã req / key</th>
+            <th>Mã req</th>
             <th>Thủ tục</th>
-            <th>Mô tả</th>
+            <th>Lỗi người dùng báo</th>
             <th>Kết quả</th>
             <th className="at-num">Vòng</th>
             <th className="at-num">Chi phí</th>
@@ -224,13 +217,10 @@ function JobList({ jobs, onOpen }: { jobs: JobSummary[]; onOpen: (id: string, ki
         <tbody>
           {jobs.map((job) => (
             <tr key={job.id}>
-              <td>
-                <button className="at-link mono" type="button" onClick={() => onOpen(job.id, job.kind ?? "fix")}>{job.requestId}</button>
-                {job.kind === "dev" ? <span className="at-tag at-tag--plain dv-kind">Thêm thủ tục</span> : null}
-              </td>
+              <td><button className="at-link mono" type="button" onClick={() => onOpen(job.id)}>{job.requestId}</button></td>
               <td className="at-clip" title={job.label}>{job.label}</td>
               <td className="at-clip" title={job.description}>{job.description}</td>
-              <td>{job.outcome ? <OutcomeTag outcome={job.outcome} /> : <StatusTag status={job.status} stage={job.stage} kind={job.kind} />}</td>
+              <td>{job.outcome ? <OutcomeTag outcome={job.outcome} /> : <StatusTag status={job.status} stage={job.stage} />}</td>
               <td className="at-num num">{job.rounds}</td>
               <td className="at-num num">${job.cost.usd.toFixed(2)}</td>
               <td className="num faint">{formatDateTime(job.createdAt)}</td>
@@ -246,9 +236,7 @@ export default function AutoTest() {
   const [jobs, setJobs] = useState<JobSummary[] | null>(null);
   const [listError, setListError] = useState("");
   const [blocked, setBlocked] = useState(false);
-  const [open, setOpen] = useState<{ id: string; kind: JobKind } | null>(null);
-  const [mode, setMode] = useState<JobKind>("fix");
-  const [prefill, setPrefill] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     agentApi.list().then((data) => {
@@ -269,40 +257,20 @@ export default function AutoTest() {
     return () => window.clearInterval(timer);
   }, [open, refresh]);
 
-  if (open) {
-    return (
-      <section className="at" aria-label="Agent tự sửa">
-        {open.kind === "dev" ? (
-          <DevJobDetail
-            id={open.id}
-            onBack={() => setOpen(null)}
-            onTestPortal={(requestId) => { setPrefill(requestId); setMode("fix"); setOpen(null); }}
-          />
-        ) : <JobDetail id={open.id} onBack={() => setOpen(null)} />}
-      </section>
-    );
-  }
-
   return (
     <section className="at" aria-label="Agent tự sửa">
-      {listError ? <ServiceNotice message={listError} /> : null}
-      {blocked ? null : (
+      {open ? <JobDetail id={open} onBack={() => setOpen(null)} /> : (
         <>
-          <div className="tabs dv-modes" role="tablist" aria-label="Loại việc">
-            <button type="button" role="tab" aria-selected={mode === "fix"} onClick={() => setMode("fix")}>Sửa lỗi một ca</button>
-            <button type="button" role="tab" aria-selected={mode === "dev"} onClick={() => setMode("dev")}>Thêm thủ tục mới</button>
-          </div>
-          {mode === "fix"
-            ? <StartForm key={prefill} initialRequestId={prefill} onCreated={(id) => setOpen({ id, kind: "fix" })} />
-            : <NewProcedure onCreated={(id) => setOpen({ id, kind: "dev" })} />}
+          {listError ? <ServiceNotice message={listError} /> : null}
+          {blocked ? null : <StartForm onCreated={setOpen} />}
+          {jobs ? (
+            <div className="at-list">
+              <h2 className="section-title">Các ca đã xử lý</h2>
+              <JobList jobs={jobs} onOpen={setOpen} />
+            </div>
+          ) : null}
         </>
       )}
-      {jobs ? (
-        <div className="at-list">
-          <h2 className="section-title">Các việc đã giao</h2>
-          <JobList jobs={jobs} onOpen={(id, kind) => setOpen({ id, kind })} />
-        </div>
-      ) : null}
     </section>
   );
 }

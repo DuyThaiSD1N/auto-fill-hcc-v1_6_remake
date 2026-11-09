@@ -40,8 +40,6 @@ _DENY_EDIT = [
     "tro-ly-nguoi-dan-extension-main/content/form-snapshot/**",
     "tro-ly-nguoi-dan-extension-main/lib/formSnapshotOutbox.js",
 ]
-# Tool ghi file: sửa lỗi chỉ Edit (không tạo file mới); thêm thủ tục mới thì phải Write được thư mục pipeline mới.
-_WRITE_TOOLS = ("Edit", "Write")
 _KEEP_ENV = {"CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"}
 
 
@@ -100,24 +98,19 @@ def run_agent(
     edit_extension: bool = False,
     resume: str | None = None,
     touched: list[str] | None = None,
-    write: bool = False,
     edit_troly: bool = False,
-    budget: float | None = None,
 ) -> AgentResult:
-    """``touched`` nhận đường dẫn ngay khi agent Edit/Write, để dù agent chết giữa chừng vẫn biết file nào phải hoàn tác.
+    """``touched`` nhận đường dẫn ngay khi agent Edit, để dù agent chết giữa chừng vẫn biết file nào phải hoàn tác.
 
-    ``write``: cho tạo file mới (job thêm thủ tục). ``edit_troly``: cho sửa extension trợ lý.
+    Agent chỉ có Edit, không có Write: không tạo được file mới. ``edit_troly``: cho sửa extension trợ lý.
     """
     claude = available()
     if not claude:
         raise AgentError("Không tìm thấy lệnh claude trên máy")
-    writers = _WRITE_TOOLS if write else _WRITE_TOOLS[:1]
-    tools = [*READ_TOOLS, *writers] if can_edit else READ_TOOLS
+    tools = [*READ_TOOLS, "Edit"] if can_edit else READ_TOOLS
     paths = [*_BE_SCOPE, *(_EXT_SCOPE if edit_extension else []), *(_TROLY_SCOPE if edit_troly else [])]
-    scope = [f"{tool}({path})" for tool in writers for path in paths]
-    allowed = [*READ_TOOLS, *scope] if can_edit else READ_TOOLS
-    deny_edit = [f"{tool}({path})" for tool in writers for path in _DENY_EDIT]
-    denied = [*_DENY_READ, *deny_edit] if can_edit else _DENY_READ
+    allowed = [*READ_TOOLS, *(f"Edit({path})" for path in paths)] if can_edit else READ_TOOLS
+    denied = [*_DENY_READ, *(f"Edit({path})" for path in _DENY_EDIT)] if can_edit else _DENY_READ
     cmd = [
         claude, "-p",
         "--model", model,
@@ -131,7 +124,7 @@ def run_agent(
         "--strict-mcp-config",
         "--setting-sources", "project",
         "--disable-slash-commands",
-        "--max-budget-usd", str(budget or AGENT_BUDGET_USD),
+        "--max-budget-usd", str(AGENT_BUDGET_USD),
         "--json-schema", json.dumps(schema, ensure_ascii=False),
         "--append-system-prompt", system,
     ]
@@ -181,7 +174,7 @@ def run_agent(
         if event.get("type") == "assistant":
             for block in (event.get("message") or {}).get("content") or []:
                 if block.get("type") == "tool_use" and block.get("name") != "StructuredOutput":
-                    if touched is not None and block.get("name") in _WRITE_TOOLS and (block.get("input") or {}).get("file_path"):
+                    if touched is not None and block.get("name") == "Edit" and (block.get("input") or {}).get("file_path"):
                         touched.append(block["input"]["file_path"])
                     on_event(_brief(block))
         elif event.get("type") == "result":

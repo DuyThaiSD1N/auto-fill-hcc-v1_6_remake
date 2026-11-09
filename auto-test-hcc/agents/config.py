@@ -46,15 +46,6 @@ APPROVAL_TIMEOUT_S = int(os.environ.get("AUTOTEST_APPROVAL_TIMEOUT_MIN", "60")) 
 REPLAY_CONCURRENCY = 2
 REPLAY_TIMEOUT_S = 300
 
-# Job "Thêm thủ tục mới": agent viết cả một pipeline (process + attach + registry + test, có thể cả trợ lý) nên
-# cần lâu và tốn hơn hẳn một lượt sửa lỗi.
-DEV_TIMEOUT_S = int(os.environ.get("AUTOTEST_DEV_TIMEOUT_MIN", "60")) * 60
-DEV_AGENT_BUDGET_USD = float(os.environ.get("AUTOTEST_DEV_AGENT_BUDGET_USD", "25"))
-DEV_JOB_BUDGET_USD = float(os.environ.get("AUTOTEST_DEV_JOB_BUDGET_USD", "60"))
-DEV_MAX_REPAIRS = 3
-DEV_FILE_MAX_MB = 40
-DEV_TOTAL_MAX_MB = 200
-
 
 @lru_cache(maxsize=1)
 def backend_env() -> dict[str, str]:

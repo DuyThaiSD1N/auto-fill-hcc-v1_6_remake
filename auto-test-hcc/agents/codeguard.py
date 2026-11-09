@@ -19,7 +19,7 @@ from config import REPO
 
 BE_DIR = "auto-fill-hcc-backend"
 EXT_DIR = "auto-fill-hcc-extension"
-# Extension trợ lý: sửa được khi job thêm thủ tục bật đưa lên trợ lý, hoặc job sửa lỗi điền bằng trợ lý / sửa cho cả 2.
+# Extension trợ lý: chỉ sửa được khi job bật phạm vi trợ lý (Guard(troly=True)), vd job sửa lỗi điền bằng trợ lý / sửa cho cả 2.
 TROLY_DIR = "tro-ly-nguoi-dan-extension-main"
 BE_SCOPES = (f"{BE_DIR}/app", f"{BE_DIR}/tests")
 FORBIDDEN = (

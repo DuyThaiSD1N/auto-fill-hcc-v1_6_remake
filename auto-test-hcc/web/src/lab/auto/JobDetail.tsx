@@ -44,28 +44,14 @@ const DECISIONS: Record<Decision["decision"], string> = {
   report_only: "Không sửa, chỉ báo cáo",
 };
 
-export const OUTCOMES: Record<Outcome, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
+const OUTCOMES: Record<Outcome, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
   fixed: { label: "Đã sửa", tone: "ok" },
   skipped_ocr: { label: "Bỏ qua: lỗi OCR", tone: "warn" },
   report_only: { label: "Chỉ báo cáo", tone: "plain" },
   not_reproduced: { label: "Không tái hiện", tone: "plain" },
   need_human: { label: "Cần người xem", tone: "bad" },
   not_approved: { label: "Không được duyệt", tone: "warn" },
-  built: { label: "Đã làm xong", tone: "ok" },
-  dev_failed: { label: "Chưa làm xong", tone: "bad" },
 };
-
-/** Các bước của job "Thêm thủ tục mới" (agents/devjob.py). */
-export const DEV_STAGES: { key: string; label: string }[] = [
-  { key: "inputs", label: "Tài liệu" },
-  { key: "baseline", label: "Đo test" },
-  { key: "link", label: "Link kê khai" },
-  { key: "build", label: "Agent viết" },
-  { key: "test", label: "Test" },
-  { key: "deploy", label: "Build" },
-  { key: "smoke", label: "Chạy thử" },
-  { key: "report", label: "Kết luận" },
-];
 
 const STANCES: Record<NonNullable<Opinion["stance"]>, string> = { agree: "Đồng ý", partly: "Đồng ý một phần", disagree: "Phản đối" };
 
@@ -91,10 +77,10 @@ export function OutcomeTag({ outcome }: { outcome: Outcome }) {
   return <span className={`at-tag at-tag--${item.tone}`}>{item.label}</span>;
 }
 
-export function StatusTag({ status, stage, kind }: { status: Job["status"]; stage: string; kind?: string }) {
-  if (status === "running" && stage === "approve" && kind !== "dev") return <span className="at-tag at-tag--warn">Chờ bạn duyệt bản sửa</span>;
+export function StatusTag({ status, stage }: { status: Job["status"]; stage: string }) {
+  if (status === "running" && stage === "approve") return <span className="at-tag at-tag--warn">Chờ bạn duyệt bản sửa</span>;
   const tone = status === "failed" ? "bad" : "plain";
-  const name = (kind === "dev" ? DEV_STAGES : STAGES).find((s) => s.key === stage)?.label;
+  const name = STAGES.find((s) => s.key === stage)?.label;
   return <span className={`at-tag at-tag--${tone}`}>{STATUS_LABEL[status]}{status === "running" && name ? `: ${name}` : ""}</span>;
 }
 
@@ -364,9 +350,9 @@ function DecisionCard({ decision }: { decision: Decision }) {
   );
 }
 
-export function Patch({ patch, open = true }: { patch: string; open?: boolean }) {
+function Patch({ patch }: { patch: string }) {
   return (
-    <details className="at-more" open={open}>
+    <details className="at-more" open>
       <summary>Patch</summary>
       <div className="at-patch__bar"><CopyButton text={patch} label="Chép patch" /></div>
       <pre className="at-patch">
@@ -409,7 +395,7 @@ function SuiteCheck({ name, result }: { name: string; result: FullTests }) {
   );
 }
 
-export function Checks({ round }: { round: Pick<Round, "tests" | "deploy"> & { tests: (Round["tests"] & { troly?: ExtensionTests; handfree?: FullTests }) | null } }) {
+function Checks({ round }: { round: Pick<Round, "tests" | "deploy"> & { tests: (Round["tests"] & { troly?: ExtensionTests; handfree?: FullTests }) | null } }) {
   const { tests, deploy } = round;
   const full = tests?.full;
   const extension = tests?.extension;
@@ -512,7 +498,7 @@ function FieldsTab({ job }: { job: Job }) {
   return <Results key={batch.id} batch={batch} />;
 }
 
-export function LogTab({ job }: { job: Pick<Job, "events"> }) {
+function LogTab({ job }: { job: Job }) {
   return (
     <ol className="at-log">
       {[...job.events].reverse().map((event, i) => (

@@ -116,7 +116,7 @@ function Shell({ user, onLogout }: { user: LabUser; onLogout: () => void }) {
     <div className="lab-shell">
       <header className="lab-top">
         <Brand />
-        <span className="lab-top__title">Agent sửa ca lỗi và làm thủ tục mới, hệ thống tự test, build và kiểm tra lại</span>
+        <span className="lab-top__title">Hội đồng agent phân tích ca lỗi, trọng tài quyết định, sửa code rồi kiểm tra lại trên cổng thật</span>
         <div className="topbar__right">
           <button className="btn btn--icon btn--ghost" type="button" onClick={toggle} aria-label={dark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"}>
             <Icon name={dark ? "sun" : "moon"} size={16} />

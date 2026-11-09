@@ -15,13 +15,12 @@ import time
 
 import httpx
 import uvicorn
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 import browser
 import claude_runner
-import devjob
 import evidence
 import replay
 from config import BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS
@@ -68,7 +67,11 @@ class Service:
         self.busy: str | None = None
         RUNS.mkdir(parents=True, exist_ok=True)
         for path in sorted(RUNS.glob("at_*/job.json")):
-            job = Job(json.loads(path.read_text(encoding="utf-8")))
+            data = json.loads(path.read_text(encoding="utf-8"))
+            # Job "Thêm thủ tục mới" cũ: chức năng đã gỡ (2026-11-09), dữ liệu để nguyên trên đĩa, không nạp lên web.
+            if data.get("kind") == "dev":
+                continue
+            job = Job(data)
             self.jobs[job.data["id"]] = job
             if job.data["status"] in ("queued", "running"):
                 self.tasks.put(("recover", job.data["id"]))
@@ -84,8 +87,7 @@ class Service:
                     if job.cancel.is_set():
                         job.update(status="stopped")
                     else:
-                        runner = devjob.DevOrchestrator if job.data.get("kind") == "dev" else Orchestrator
-                        runner(job, self.secrets[job_id]).run()
+                        Orchestrator(job, self.secrets[job_id]).run()
                 elif kind == "revert":
                     revert_fix(job)
                 else:
@@ -185,102 +187,6 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
     service.secrets[job_id] = {"username": body.replayUsername, "password": body.replayPassword}
     service.tasks.put(("run", job_id))
     return job.view()
-
-
-class DevProcedure(BaseModel):
-    key: str = Field(min_length=3, max_length=100)
-    code: str = Field("", max_length=20)
-    label: str = Field(min_length=5, max_length=300)
-    url: str = Field("", max_length=500)
-    newLink: bool = True
-    needsAgencySelect: bool = True
-    provinceOnlyAgency: bool = False
-    selectSo: bool = False
-    autoConfirm: bool = True
-    linkNotes: str = Field("", max_length=3000)
-
-
-class DevRequest(BaseModel):
-    procedure: DevProcedure
-    notes: str = Field("", max_length=6000)
-    troLy: bool = True
-    replayUsername: str = Field(min_length=1, max_length=200)
-    replayPassword: str = Field(min_length=1, max_length=200)
-
-
-@app.get("/agent-api/dev/links")
-def dev_link_check(key: str = "", code: str = "", _: dict = Depends(require_operator)) -> dict:
-    """Web gọi khi gõ key/mã: key đã có thì dùng lại link, mã trùng thủ tục khác thì cảnh báo."""
-    return devjob.link_check(key.strip(), code.strip())
-
-
-@app.post("/agent-api/dev/jobs")
-def create_dev_job(
-    meta: str = Form(...),
-    mapping: list[UploadFile] = File(default=[]),
-    attach: list[UploadFile] = File(default=[]),
-    samples: list[UploadFile] = File(default=[]),
-    user: dict = Depends(require_operator),
-) -> dict:
-    """Một request multipart: thông tin thủ tục (JSON trong ô meta) + tệp kéo thả theo 3 nhóm."""
-    try:
-        body = DevRequest.model_validate_json(meta)
-    except ValidationError as reason:
-        raise HTTPException(400, "Thông tin thủ tục chưa đúng: " + "; ".join(
-            f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in reason.errors())) from reason
-    procedure = {**body.procedure.model_dump(), "key": body.procedure.key.strip(), "label": body.procedure.label.strip(),
-                 "code": body.procedure.code.strip(), "url": body.procedure.url.strip()}
-    problems = devjob.validate_procedure(procedure)
-    if problems:
-        raise HTTPException(400, " ".join(problems))
-    files = [(group, f.filename or "tep", f.file.read()) for group, items in (("mapping", mapping), ("attach", attach), ("samples", samples)) for f in items]
-    if not files:
-        raise HTTPException(400, "Chưa có tệp nào: kéo thả ít nhất file Excel mapping hoặc file mẫu.")
-    for group, name, data in files:
-        try:
-            devjob.check_upload(group, name, len(data))
-        except devjob.InputError as reason:
-            raise HTTPException(400, str(reason)) from reason
-    if not claude_runner.available():
-        raise HTTPException(503, "Máy chưa có lệnh claude.")
-    try:
-        account = replay.login(body.replayUsername, body.replayPassword)["user"]
-    except replay.LoginError as reason:
-        raise HTTPException(400, str(reason)) from reason
-    check = devjob.link_check(procedure["key"], procedure["code"])
-    warnings = []
-    if check["sameCode"]:
-        warnings.append("Mã thủ tục này đã có ở: " + ", ".join(f"{i['key']} ({i['label']})" for i in check["sameCode"])
-                        + ". Kiểm tra lại có làm trùng không.")
-    if check["pipelineExists"]:
-        warnings.append(f"Thư mục pipeline {check['folder']} đã có sẵn: agent sẽ sửa trên đó.")
-    try:
-        job = devjob.create_job(
-            procedure=procedure, notes=body.notes.strip(), created_by=user.get("username", ""),
-            settings={"troLy": body.troLy, "replayAccount": body.replayUsername,
-                      "account": {k: account.get(k) for k in ("username", "xa", "tinh")}},
-            files=files, warnings=warnings,
-        )
-    except devjob.InputError as reason:
-        raise HTTPException(400, str(reason)) from reason
-    job_id = job.data["id"]
-    service.jobs[job_id] = job
-    service.secrets[job_id] = {"username": body.replayUsername, "password": body.replayPassword}
-    service.tasks.put(("run", job_id))
-    return job.view()
-
-
-@app.get("/agent-api/jobs/{job_id}/inputs/{name}")
-def get_input(job_id: str, name: str, _: dict = Depends(require_operator)) -> FileResponse:
-    """Xem lại tệp đã gửi cho job thêm thủ tục (ảnh ánh xạ, bản chữ của Excel)."""
-    job = service.get(job_id)
-    item = next((i for i in job.data.get("inputs") or [] if i["name"] == name), None)
-    if not item:
-        raise HTTPException(404, "Không có tệp này")
-    path = devjob.REPO / item["path"]
-    if not path.is_file() or job.dir not in path.parents:
-        raise HTTPException(404, "Tệp không còn")
-    return FileResponse(path, media_type=devjob._mime(path.name), filename=path.name)
 
 
 @app.get("/agent-api/jobs")
