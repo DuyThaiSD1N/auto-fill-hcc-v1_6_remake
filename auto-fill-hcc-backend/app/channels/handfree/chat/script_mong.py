@@ -315,6 +315,10 @@ PROCEDURE_HMONG = {
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": "Daim npav tsheb thauj lag luam (muab tshiab / muab dua)",
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru":
         "Lees paub qhov loj ntawm tsev nyob kom cuv npe nyob mus ib txhis",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký), "daim ntawv av" (giấy chứng nhận đất), "daim av" (thửa đất),
+    # "siv" (sử dụng) đã có; TỪ MỚI: "tag nrho" (toàn bộ).
+    "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
+        "Cuv npe, muab daim ntawv av rau tag nrho daim av siv (Lai Châu)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

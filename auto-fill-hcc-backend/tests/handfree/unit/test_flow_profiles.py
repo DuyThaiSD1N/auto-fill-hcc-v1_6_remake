@@ -499,6 +499,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang", "danang", "dichvucong.danang.gov.vn"),
         ("dang-ky-lap-dat-su-dung-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
         ("chuyen-doi-ten-hop-dong-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
+        ("dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("dang-ky-dat-dai-lan-dau-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
         ("giao-thue-chuyen-muc-dich-dat-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
         ("cap-doi-gcn-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
@@ -733,7 +734,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng iGate Khánh Hòa "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa" (1.013947, luồng "xay-dung").
     # +1 cổng Bộ Xây dựng "dang-ky-nha-o-xa-hoi-tuyen-quang" (1.014632): điền 2 form + đính kèm 7 dòng.
     # +1 cổng Bộ VHTTDL chọn Sở "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich" (1.004605).
-    assert len(procedures) == 143
+    # +1 cổng Lai Châu "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau" (1.115590).
+    assert len(procedures) == 144
 
     for procedure in procedures:
         key = procedure["key"]

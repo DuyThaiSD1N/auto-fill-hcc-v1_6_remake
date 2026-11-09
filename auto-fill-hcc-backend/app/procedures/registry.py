@@ -404,6 +404,12 @@ from app.pipelines.ho_tro_mai_tang_dan_toc_thieu_so_lai_chau.attach import (
 from app.pipelines.ho_tro_mai_tang_dan_toc_thieu_so_lai_chau.process import (
     run as ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_process,
 )
+from app.pipelines.dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau.attach import (
+    plan as dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
+)
+from app.pipelines.dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau.process import (
+    run as dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_process,
+)
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import plan as dieu_chinh_huu_tri_xa_hoi_attach
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process import run as dieu_chinh_huu_tri_xa_hoi_process
 from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_thong_attach
@@ -7063,6 +7069,39 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau",
+        # 1.115590, key TRÙNG ke_khai_links. Trang nộp là SPA dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/
+        # …?sid=<phiên>, URL không mang mã → nhận theo cụm tên thủ tục (không ghép mã: textIncludes đòi ĐỦ mọi cụm,
+        # phòng trang không in mã). urlScope khoá host vì Quảng Ninh/Lâm Đồng có thủ tục khoản 2 Điều 24 gần trùng tên;
+        # textPriority để thắng rule đất đai chung.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "toàn bộ diện tích đất đang sử dụng theo quy định tại điểm b và điểm c khoản 2 Điều 24",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Đăng ký, cấp Giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng theo quy định "
+        "tại điểm b và điểm c khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người nộp = người sử dụng đất đứng tên trên Đơn):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 16) — có thể scan chung một file "
+            "với Giấy ủy quyền.\n"
+            "2. Giấy chứng nhận đã cấp (bản gốc), chụp đủ cả trang \"Những thay đổi sau khi cấp giấy chứng nhận\".\n"
+            "3. Mảnh trích đo bản đồ địa chính / Phiếu đo đạc chỉnh lý thửa đất.\n"
+            "4. Nếu nộp qua người đại diện: Giấy ủy quyền / văn bản về việc đại diện.\n"
+            "5. Nếu có: giấy tờ chứng minh phần diện tích tăng thêm; CCCD của người sử dụng đất.\n"
+            "Bước đính kèm: hệ thống tích và đính đúng 5 dòng thành phần hồ sơ; file chung Đơn + Giấy ủy quyền đính "
+            "nguyên file vào cả dòng Đơn và dòng Văn bản đại diện; CCCD vào \"Giấy tờ khác\". Dân tộc không có trên "
+            "giấy tờ nên phải tự chọn. Mỗi tệp KHÔNG QUÁ 6 MB."
+        ),
+    },
+    {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
         # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
@@ -10213,6 +10252,8 @@ _PIPELINE = {
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_process,
+    "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
+        dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
@@ -10488,6 +10529,8 @@ _ATTACH_PIPELINE = {
     "ho-tro-mai-tang-1116910": ho_tro_mai_tang_attach,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_attach,
     "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_attach,
+    "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
+        dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,

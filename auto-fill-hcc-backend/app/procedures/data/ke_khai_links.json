@@ -2649,6 +2649,14 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau",
+      "code": "1.115590",
+      "label": "Lai Châu - Đăng ký, cấp Giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng theo quy định tại điểm b và điểm c khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bb9-231f-777d-a094-d8cfaff2f00d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

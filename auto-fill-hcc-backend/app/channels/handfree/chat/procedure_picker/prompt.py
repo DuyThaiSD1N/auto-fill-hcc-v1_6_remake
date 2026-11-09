@@ -574,6 +574,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "chuyen-doi-ten-hop-dong-nuoc-sach": ["đổi tên hợp đồng nước sạch", "sang tên đồng hồ nước",
                                           "mua nhà muốn đổi tên hợp đồng cấp nước",
                                           "chuyển tên chủ hợp đồng dịch vụ cấp nước"],
+    # Đất Lai Châu ĐÃ có sổ đỏ, đo lại thấy DIỆN TÍCH TĂNG THÊM / ranh giới khác giấy đã cấp → cấp giấy cho toàn bộ
+    # diện tích đang dùng. KHÁC đính chính sổ (sai thông tin trên giấy) và cấp sổ lần đầu (chưa có giấy nào).
+    "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau": [
+        "đo lại đất thấy diện tích tăng thêm muốn cấp sổ đỏ", "cấp sổ đỏ cho phần đất tăng thêm",
+        "đất thực tế rộng hơn sổ đỏ", "ranh giới thửa đất thay đổi so với sổ đỏ đã cấp",
+        "cấp giấy chứng nhận cho toàn bộ diện tích đất đang sử dụng",
+    ],
 }
 
 

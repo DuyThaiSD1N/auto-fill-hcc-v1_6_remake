@@ -6262,6 +6262,61 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        "key": "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115590, cùng cổng dichvucong.laichau.gov.vn và cùng khuôn với hai thẻ nước sạch ngay trên (DVCQG
+        # chọn đủ Tỉnh + Phường/Xã, không wizard). Detect y hệt lõi; label = label lõi bỏ "[Lai Châu] ". Đính kèm
+        # fixed-slot 5 dòng theo tên, CCCD vào "Giấy tờ khác". Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "toàn bộ diện tích đất đang sử dụng theo quy định tại điểm b và điểm c khoản 2 Điều 24",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký, cấp Giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng theo quy định tại điểm b và điểm "
+            "c khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP"
+        ),
+        "shortLabel": "Đăng ký, cấp Giấy chứng nhận cho toàn bộ diện tích đất đang sử dụng",
+        "subtitle": "Cấp Giấy chứng nhận khi diện tích thửa đất tăng thêm do thay đổi ranh giới so với giấy đã cấp",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bb9-231f-777d-a094-d8cfaff2f00d",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 16) — đã kê "
+             "khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (bản gốc), đủ trang những thay đổi sau khi cấp",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo bản đồ địa chính / Phiếu đo đạc chỉnh lý thửa đất",
+             "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền / văn bản về việc đại diện (nếu nộp qua người đại diện)",
+             "icon": "✍️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ chứng minh phần diện tích tăng thêm, căn cước công dân (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 16) — nguồn chính điền người nộp; có "
+            "thể scan chung một file với Giấy ủy quyền.\n"
+            "2. Giấy chứng nhận đã cấp (bản gốc), chụp đủ trang những thay đổi sau khi cấp.\n"
+            "3. Mảnh trích đo bản đồ địa chính / Phiếu đo đạc chỉnh lý thửa đất.\n"
+            "4. Nếu nộp qua người đại diện: Giấy ủy quyền.\n"
+            "5. Nếu có: giấy tờ chứng minh phần diện tích tăng thêm; căn cước công dân của người sử dụng đất.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn → dòng 1, Giấy chứng nhận → dòng 2, Giấy ủy quyền → dòng 3 (file chung Đơn + ủy quyền "
+            "đính vào cả dòng 1 và dòng 3), trích đo → dòng 4."
+        ),
+    },
     # ── Thủ tục đất đai cổng iGate Khánh Hòa (04/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối; detect y hệt lõi (urlScope khanhhoa.gov.vn — tên thủ tục trùng bản tỉnh
     # khác); label = label lõi bỏ "Khánh Hòa - " (như Bắc Ninh). ke_khai_links không khai provinceOnlyAgency / selectSo
