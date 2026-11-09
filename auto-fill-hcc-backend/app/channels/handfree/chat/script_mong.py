@@ -330,6 +330,8 @@ PROCEDURE_HMONG = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": "Hloov daim av (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có: "muab" (cấp/giao), "xauj" (thuê), "daim av" (thửa đất).
     "giao-dat-cho-thue-dat-lai-chau": "Muab daim av, xauj daim av (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Quảng Ninh ("dua tshiab vim ploj"), không thêm từ mới.
+    "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": "Muab daim ntawv av dua tshiab vim ploj (Lai Châu)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

@@ -418,6 +418,12 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process import 
 )
 from app.pipelines.giao_dat_cho_thue_dat_lai_chau.attach import plan as giao_dat_cho_thue_dat_lai_chau_attach
 from app.pipelines.giao_dat_cho_thue_dat_lai_chau.process import run as giao_dat_cho_thue_dat_lai_chau_process
+from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_lai_chau.attach import (
+    plan as cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
+)
+from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_lai_chau.process import (
+    run as cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_process,
+)
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import plan as dieu_chinh_huu_tri_xa_hoi_attach
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process import run as dieu_chinh_huu_tri_xa_hoi_process
 from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_thong_attach
@@ -7183,6 +7189,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau",
+        # 1.115557, key TRÙNG ke_khai_links (nhãn link "Lai Châu - …" khoá tài khoản Lai Châu; selectSo → DVCQG tích
+        # "Sở"). Trang nộp là SPA dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/…?sid=<phiên>, URL không mang
+        # mã; khối "thu-tuc-da-chon" in "<mã> - <tên thủ tục>" → khớp MÃ + tên như 1.115578 (tên trùng bản Quảng Ninh
+        # 1.115849 / Lâm Đồng 1.012786 / quốc gia 1.115465, mã tách các bản). urlScope khoá host; textPriority thắng rule
+        # chung. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115557",
+                "cấp lại giấy chứng nhận do bị mất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Cấp lại Giấy chứng nhận do bị mất",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người nộp = người viết Đơn, mục I Mẫu số 16):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 16) — đủ 2 trang, đã ký; nhiều người "
+            "cùng sử dụng đất thì kèm Bảng 16a.\n"
+            "2. Bản sao Giấy chứng nhận đã cấp / trang sổ địa chính của thửa đất (nếu có).\n"
+            "3. CCCD/thẻ căn cước của người viết đơn (ngày sinh, ngày cấp chỉ có trên thẻ).\n"
+            "4. Nếu có: Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu số 03a), Đơn xin xác nhận lại thời hạn sử "
+            "dụng đất nông nghiệp (Mẫu số 09), mảnh trích đo bản đồ địa chính (khi cần đo lại thửa đất).\n"
+            "Có thể scan CHUNG mọi giấy vào một file (Mẫu 16 đứng đầu). Bước đính kèm: file chung đính NGUYÊN vào dòng "
+            "Mẫu số 16 và dòng Giấy chứng nhận đã cấp (tải 2 bản giống nhau thì mỗi dòng một bản); mảnh trích đo → "
+            "dòng 3; giấy lẻ khác vào \"Giấy tờ khác\". Dân tộc không có trên giấy tờ nên phải tự chọn. Mỗi tệp KHÔNG "
+            "QUÁ 6 MB."
+        ),
+    },
+    {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
         # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
@@ -10396,6 +10437,7 @@ _PIPELINE = {
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_process,
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_process,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_process,
+    "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
@@ -10677,6 +10719,7 @@ _ATTACH_PIPELINE = {
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
+    "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,

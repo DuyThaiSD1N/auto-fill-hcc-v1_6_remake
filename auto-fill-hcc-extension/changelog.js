@@ -3,6 +3,19 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.1",
+    date: "9/11/2026",
+    items: [
+      "Lai Châu: thêm thủ tục chuyển mục đích sử dụng đất, gia hạn sử dụng đất đối với các xã miền núi, biên giới (1.115578); giao đất, cho thuê đất, giao rừng, cho thuê rừng (1.115577); đăng ký, cấp Giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng theo khoản 2 Điều 24 Nghị định 101/2024/NĐ-CP (1.115590).",
+      "Thêm thủ tục tiếp nhận đối tượng cần bảo vệ khẩn cấp (1.116908) và tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn (1.116907) vào cơ sở trợ giúp xã hội: đối tượng là chủ hồ sơ, người giám hộ là người nộp.",
+      "Thêm thủ tục cấp Giấy chứng nhận khóa cập nhật kiến thức cho hướng dẫn viên du lịch (1.004605) và đăng ký mua, thuê mua, thuê nhà ở xã hội tại Tuyên Quang (1.014632).",
+      "Đổi Tỉnh xong, ô Phường/Xã chờ cổng nạp xong danh sách xã của tỉnh mới rồi mới chọn, không còn bị bỏ trống.",
+      "Khai sinh liên thông: cha/mẹ quốc tịch nước ngoài điền số hộ chiếu, ngày cấp, nơi cấp; phường Song Liễu chỉ đính kèm Giấy chứng sinh; phường Nha Trang ghi người giám hộ trên thẻ BHYT là mẹ. Đăng ký lại khai sinh: người được ủy quyền đi nộp không bị nhận nhầm là người được khai sinh.",
+      "Trích lục hộ tịch: số đăng ký lấy đúng số in trên giấy; trích lục khai tử không lấy nơi chết làm nơi cư trú, ô cơ quan đăng ký giữ đủ tên.",
+      "Khánh Hòa: giấy tờ ghi xã/phường cũ trước sáp nhập vẫn chọn đúng xã/phường mới; nơi sinh là bệnh viện trong tỉnh chọn đúng xã/phường; xác định mức độ khuyết tật ghi sẵn ô Ghi chú.",
+    ],
+  },
+  {
     version: "1.27",
     date: "6/11/2026",
     items: [

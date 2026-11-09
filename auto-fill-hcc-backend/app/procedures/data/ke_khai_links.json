@@ -2689,6 +2689,15 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3667-f9e9-77a9-be11-1079162144e9",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau",
+      "code": "1.115557",
+      "label": "Lai Châu - Cấp lại Giấy chứng nhận do bị mất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f2202-879c-7798-a85f-dc5e276efcf0",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }

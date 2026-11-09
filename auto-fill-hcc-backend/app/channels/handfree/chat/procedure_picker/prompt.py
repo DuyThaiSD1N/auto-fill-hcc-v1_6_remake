@@ -617,6 +617,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "cho thuê đất", "giao đất giao rừng", "thuê đất thuê rừng", "ban quản lý dự án xin giao đất",
         "giao đất cho thuê đất ở lai châu",
     ],
+    # Lai Châu: sổ đỏ (giấy chứng nhận) đã cấp nay BỊ MẤT → xin cấp lại. KHÁC đính chính sổ (sổ còn nhưng ghi sai) và
+    # cấp sổ cho phần diện tích tăng thêm (sổ còn, đo lại thấy rộng hơn).
+    "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": [
+        "mất sổ đỏ", "làm lại sổ đỏ bị mất", "cấp lại giấy chứng nhận quyền sử dụng đất bị mất",
+        "đánh mất bìa đỏ muốn xin cấp lại", "sổ đỏ bị thất lạc", "cấp lại sổ đỏ ở lai châu",
+    ],
 }
 
 

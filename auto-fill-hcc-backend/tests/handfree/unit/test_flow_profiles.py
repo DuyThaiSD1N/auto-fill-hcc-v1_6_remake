@@ -544,6 +544,13 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert "agencySoFirst" not in local, key
         assert host in local["detect"]["urlScope"], key
         assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
+    # Cổng Lai Châu nộp tại SỞ (ke_khai_links selectSo): DVCQG chọn Tỉnh Lai Châu, gạt "Sở", thẻ đầu.
+    lai_chau_so = procedures.pop("cap-lai-giay-chung-nhan-do-bi-mat-lai-chau")
+    assert lai_chau_so["provinceOnly"] == ["laichau"] and lai_chau_so.get("flowProfile") is None
+    assert lai_chau_so["needsAgencySelect"] is True and lai_chau_so["agencyProvince"] == "Lai Châu"
+    assert lai_chau_so["agencyProvinceOnly"] is True and lai_chau_so["agencySoFirst"] is True
+    assert "dichvucong.laichau.gov.vn" in lai_chau_so["detect"]["urlScope"]
+    assert is_allowed_in_province(lai_chau_so, "laichau") and not is_allowed_in_province(lai_chau_so, "bacninh")
 
     # Cổng iGate Tuyên Quang: khóa tỉnh, DVCQG chọn đủ Tỉnh + Xã, rồi luồng chung "xay-dung" (hộp thoại "Chọn trường hợp
     # giải quyết" đọc từ cổng + stepper 4 bước). Mỗi quy trình một form → caseOptions ép form iLis/VBDLIS cho pipeline.
@@ -777,9 +784,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Lai Châu "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau" (1.115590).
     # +1 cổng Lai Châu "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau" (1.115578).
     # +1 cổng Lai Châu "giao-dat-cho-thue-dat-lai-chau" (1.115577).
+    # +1 cổng Lai Châu chọn Sở "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau" (1.115557).
     # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi" (1.116908).
     # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi" (1.116907).
-    assert len(procedures) == 148
+    assert len(procedures) == 149
 
     for procedure in procedures:
         key = procedure["key"]

@@ -6550,6 +6550,63 @@ PROCEDURES: list[dict] = [
             "căn cước vào \"Giấy tờ khác\"."
         ),
     },
+    {
+        "key": "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115557, cùng cổng dichvucong.laichau.gov.vn và cùng luồng với thẻ 1.115578 (trang chọn trường hợp →
+        # nút cam "Đồng ý và tiếp tục" → bước Lệ phí). KHÁC các thẻ Lai Châu trên: nộp tại SỞ (ke_khai_links selectSo) →
+        # DVCQG chọn Tỉnh Lai Châu, gạt "Sở", bấm "Nộp trực tuyến" thẻ đầu — agencyProvinceOnly + agencySoFirst như
+        # cấp lại GCN Quảng Ninh. Detect y hệt lõi; label = label lõi bỏ "[Lai Châu] ". Đính kèm fixed-slot: file scan
+        # chung đính nguyên vào dòng Mẫu 16 + dòng Giấy chứng nhận đã cấp. Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115557",
+                "cấp lại giấy chứng nhận do bị mất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại Giấy chứng nhận do bị mất",
+        "shortLabel": "Cấp lại Giấy chứng nhận do bị mất",
+        "subtitle": "Xin cấp lại giấy chứng nhận quyền sử dụng đất khi bị mất",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f2202-879c-7798-a85f-dc5e276efcf0",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Lai Châu",
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        "hasAttachmentStep": True,
+        "laiChauFeeStep": _LC_FEE_STEP,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 16) — đã kê khai, ký; có thể scan chung "
+             "mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản sao Giấy chứng nhận đã cấp / trang sổ địa chính (nếu có)", "icon": "📜",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người viết đơn", "icon": "🪪", "sides": 2,
+             "optional": True},
+            {"key": "kem_theo", "name": "Giấy tờ kèm theo khác: Bảng 16a, Phiếu xóa đăng ký thế chấp (Mẫu 03a), Đơn "
+             "xác nhận lại thời hạn đất nông nghiệp (Mẫu 09), mảnh trích đo", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 16) — nguồn chính điền người nộp, địa chỉ, số điện thoại.\n"
+            "2. Bản sao Giấy chứng nhận đã cấp / trang sổ địa chính của thửa đất (nếu có).\n"
+            "3. Căn cước công dân của người viết đơn (ngày sinh, ngày cấp chỉ có trên thẻ).\n"
+            "4. Nếu có: Bảng 16a, Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu 03a), Đơn xin xác nhận lại thời hạn "
+            "sử dụng đất nông nghiệp (Mẫu 09), mảnh trích đo bản đồ địa chính.\n"
+            "Có thể scan chung mọi giấy vào một file, Mẫu 16 đứng đầu. Hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: file chung → dòng Mẫu số 16 và dòng Giấy chứng nhận đã cấp; mảnh trích đo → dòng 3; giấy "
+            "lẻ khác vào \"Giấy tờ khác\". Tệp trên 6 MB được nén lại trước khi đính."
+        ),
+    },
     # ── Thủ tục đất đai cổng iGate Khánh Hòa (04/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối; detect y hệt lõi (urlScope khanhhoa.gov.vn — tên thủ tục trùng bản tỉnh
     # khác); label = label lõi bỏ "Khánh Hòa - " (như Bắc Ninh). ke_khai_links không khai provinceOnlyAgency / selectSo
