@@ -363,6 +363,27 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "nhận nuôi dưỡng trẻ mồ côi tại nhà, xin hỗ trợ kinh phí",
         "hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng hằng tháng",
         "tờ khai trợ cấp xã hội mẫu số 01 mới"],
+    # Đưa người cần bảo vệ KHẨN CẤP (nạn nhân bạo lực gia đình, bị xâm hại, bị mua bán, trẻ bị bỏ rơi, người lang
+    # thang) VÀO cơ sở trợ giúp xã hội (mã 1.116908). Khác thủ tục trên: không xin trợ cấp hay nhận nuôi tại nhà
+    # mà đưa đối tượng vào trung tâm/cơ sở. Cụm "vào trung tâm bảo trợ xã hội" trơn để LLM đọc cả câu, vì thủ tục
+    # anh em 1.116907 (đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn) cũng đưa người vào cơ sở.
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi": [
+        "tiếp nhận đối tượng cần bảo vệ khẩn cấp",
+        "đưa nạn nhân bạo lực gia đình vào cơ sở trợ giúp xã hội",
+        "đưa trẻ bị bỏ rơi vào trung tâm công tác xã hội",
+        "gửi người lang thang vào cơ sở bảo trợ khẩn cấp",
+        "nạn nhân bị mua bán cần nơi tạm lánh tại cơ sở trợ giúp xã hội",
+        "tờ khai mẫu số 04 chăm sóc nuôi dưỡng tại cơ sở khẩn cấp"],
+    # Đưa đối tượng BẢO TRỢ xã hội có hoàn cảnh đặc biệt khó khăn (trẻ mồ côi không nơi nương tựa, người già neo
+    # đơn, người khuyết tật nặng không người chăm sóc, người nhiễm HIV) VÀO cơ sở trợ giúp xã hội (mã 1.116907).
+    # Khác thủ tục ngay trên: không khẩn cấp (không bạo lực, bỏ rơi, mua bán); khác trợ cấp hằng tháng: không xin
+    # tiền hay nhận nuôi tại nhà mà vào ở hẳn trung tâm.
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi": [
+        "tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn",
+        "xin cho người già neo đơn vào trung tâm bảo trợ xã hội",
+        "đưa trẻ mồ côi không nơi nương tựa vào cơ sở nuôi dưỡng",
+        "người khuyết tật nặng không ai chăm sóc xin vào trung tâm",
+        "xin vào ở cơ sở trợ giúp xã hội vì hoàn cảnh khó khăn"],
     # Sinh viên trường NGHỀ / ĐẠI HỌC TƯ THỤC thuộc diện chính sách xin miễn, giảm học phí. Cụm "học phí" là dấu
     # hiệu riêng, không đụng bản sao văn bằng ngay dưới.
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": ["miễn giảm học phí đại học tư thục", "xin miễn học phí cho con học cao đẳng",
@@ -580,6 +601,21 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đo lại đất thấy diện tích tăng thêm muốn cấp sổ đỏ", "cấp sổ đỏ cho phần đất tăng thêm",
         "đất thực tế rộng hơn sổ đỏ", "ranh giới thửa đất thay đổi so với sổ đỏ đã cấp",
         "cấp giấy chứng nhận cho toàn bộ diện tích đất đang sử dụng",
+    ],
+    # Đất Lai Châu ĐÃ có sổ đỏ, muốn ĐỔI MỤC ĐÍCH (đất trồng cây/vườn lên đất ở), đổi hình thức hoặc gia hạn thời hạn
+    # sử dụng — phải xin phép, nộp Đơn Mẫu 02. KHÁC cấp giấy cho phần diện tích tăng thêm (đo lại thấy rộng hơn sổ) và
+    # đính chính sổ (sổ ghi sai).
+    "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": [
+        "chuyển mục đích sử dụng đất", "chuyển đất vườn lên đất ở", "chuyển đất nông nghiệp sang đất ở",
+        "xin chuyển đất trồng cây hàng năm sang đất ở nông thôn", "gia hạn sử dụng đất khi hết hạn",
+        "chuyển hình thức sử dụng đất", "chuyển mục đích sử dụng đất ở lai châu",
+    ],
+    # Lai Châu: xin Nhà nước GIAO đất / CHO THUÊ đất mới (thường cho dự án, đất Nhà nước đã thu hồi), kể cả giao rừng,
+    # thuê rừng. KHÁC chuyển mục đích (đổi mục đích đất đang dùng) và cấp sổ đỏ (đất đã sử dụng).
+    "giao-dat-cho-thue-dat-lai-chau": [
+        "xin giao đất để làm dự án", "giao đất không thu tiền sử dụng đất cho dự án", "xin thuê đất làm dự án",
+        "cho thuê đất", "giao đất giao rừng", "thuê đất thuê rừng", "ban quản lý dự án xin giao đất",
+        "giao đất cho thuê đất ở lai châu",
     ],
 }
 

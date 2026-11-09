@@ -156,6 +156,8 @@ BYT = [
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
     "ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "tro-cap-xa-hoi-hang-thang",
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi",
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi",
 ]
 BYT_CLIENT = {**CLIENT, "supportsIgateResultStep": True}
 

@@ -410,6 +410,14 @@ from app.pipelines.dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai
 from app.pipelines.dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau.process import (
     run as dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_process,
 )
+from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.attach import (
+    plan as chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
+)
+from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process import (
+    run as chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_process,
+)
+from app.pipelines.giao_dat_cho_thue_dat_lai_chau.attach import plan as giao_dat_cho_thue_dat_lai_chau_attach
+from app.pipelines.giao_dat_cho_thue_dat_lai_chau.process import run as giao_dat_cho_thue_dat_lai_chau_process
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import plan as dieu_chinh_huu_tri_xa_hoi_attach
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process import run as dieu_chinh_huu_tri_xa_hoi_process
 from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_thong_attach
@@ -610,6 +618,10 @@ from app.pipelines.yeu_cau_tro_giup_phap_ly.attach import plan as yeu_cau_tro_gi
 from app.pipelines.yeu_cau_tro_giup_phap_ly.process import run as yeu_cau_tro_giup_phap_ly_process
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.attach import plan as tcxh_nd335_attach
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process import run as tcxh_nd335_process
+from app.pipelines.tiep_nhan_doi_tuong_can_bao_ve_khan_cap_vao_co_so_tro_giup_xa_hoi.attach import plan as tiep_nhan_khan_cap_attach
+from app.pipelines.tiep_nhan_doi_tuong_can_bao_ve_khan_cap_vao_co_so_tro_giup_xa_hoi.process import run as tiep_nhan_khan_cap_process
+from app.pipelines.tiep_nhan_doi_tuong_bao_tro_xa_hoi_co_hoan_canh_dac_biet_kho_khan_vao_co_so_tro_giup_xa_hoi.attach import plan as tiep_nhan_btxh_kho_khan_attach
+from app.pipelines.tiep_nhan_doi_tuong_bao_tro_xa_hoi_co_hoan_canh_dac_biet_kho_khan_vao_co_so_tro_giup_xa_hoi.process import run as tiep_nhan_btxh_kho_khan_process
 from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.attach import plan as dien_mat_troi_mai_nha_attach
 from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.process import run as dien_mat_troi_mai_nha_process
 from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.attach import plan as mien_giam_hoc_phi_gdnn_attach
@@ -7102,6 +7114,75 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau",
+        # 1.115578, key TRÙNG ke_khai_links. Trang nộp là SPA dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/
+        # nhap-thong-tin-nguoi-nop-ho-so?sid=<phiên>, URL không mang mã. Khối "thu-tuc-da-chon" in "1.115578 - Chuyển mục
+        # đích sử dụng đất; … của dự án đầu tư" — KHÔNG in đuôi "(Đối với các xã miền núi, biên giới…)" (thử cổng thật
+        # 09/11) → khớp MÃ + cụm tên như 1.115583 (mã tách bản này khỏi bản chuyển mục đích thường cùng tên). urlScope
+        # khoá host vì Lào Cai/Lâm Đồng/Quảng Ninh có thủ tục cùng tên; textPriority để thắng rule chung.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115578",
+                "chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết "
+        "thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Đối với các xã miền núi, biên giới; "
+        "đảo; vùng có điều kiện kinh tế - xã hội khó khăn; vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người nộp = người đề nghị ở mục 1 của Đơn):\n"
+            "1. Đơn đề nghị chuyển mục đích sử dụng đất (Mẫu số 02) — đủ 2 trang, đã ký.\n"
+            "2. Bản trích lục bản đồ địa chính hoặc trích đo bản đồ địa chính thửa đất.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất (bản gốc), chụp đủ cả trang bổ sung/\"Nội dung thay đổi\" — hoặc "
+            "quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất.\n"
+            "4. CCCD/thẻ căn cước của người đề nghị (ngày sinh, ngày cấp chỉ có trên thẻ).\n"
+            "Bước đính kèm: hệ thống tích và đính đúng 3 dòng thành phần hồ sơ theo TÊN giấy tờ (Đơn → dòng Mẫu số 02, "
+            "trích lục → dòng trích lục, Giấy chứng nhận → dòng khoản 21 Điều 3), mỗi file đính nguyên không tách; "
+            "CCCD vào \"Giấy tờ khác\". Dân tộc không có trên giấy tờ nên phải tự chọn. Mỗi tệp KHÔNG QUÁ 6 MB."
+        ),
+    },
+    {
+        "key": "giao-dat-cho-thue-dat-lai-chau",
+        # 1.115577, key TRÙNG ke_khai_links. Trang nộp là SPA dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-online/
+        # …?sid=<phiên>, URL không mang mã; khối "thu-tuc-da-chon" in "1.115577 - <tên thủ tục>" → khớp MÃ + cụm tên như
+        # 1.115578 (tên trùng bản Lào Cai 1.115650, mã tách hai bản). urlScope khoá host; textPriority thắng rule chung.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115577",
+                "giao đất, cho thuê đất đối với trường hợp giao đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử "
+        "dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và trường hợp giao đất, cho thuê "
+        "đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất "
+        "và cho thuê rừng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người đề nghị = tổ chức/cá nhân ở mục 1 của Đơn):\n"
+            "1. Đơn đề nghị giao đất, cho thuê đất (Mẫu số 01) — đủ 2 trang, đã ký, đóng dấu.\n"
+            "2. Văn bản phê duyệt dự án đầu tư / quyết định chủ trương đầu tư.\n"
+            "3. Tài liệu gửi kèm Đơn: văn bản xác nhận hoàn thành bồi thường, giải phóng mặt bằng; biên bản chỉnh lý "
+            "giấy chứng nhận; biểu tổng hợp diện tích; trích đo bản đồ địa chính khu đất; quyết định thu hồi đất.\n"
+            "4. Nếu có: căn cước của người đi nộp (để điền các ô cá nhân).\n"
+            "Bước đính kèm: Đơn và mọi tài liệu gửi kèm Đơn đính CHUNG vào dòng Mẫu số 01 (Đơn đứng đầu), quyết định "
+            "chủ trương / phê duyệt dự án đính chung vào dòng \"Văn bản phê duyệt dự án đầu tư\"; căn cước vào \"Giấy tờ "
+            "khác\". Mỗi tệp KHÔNG QUÁ 6 MB — trích đo bản đồ quét màu thường nặng hơn, hãy nén trước khi tải lên."
+        ),
+    },
+    {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
         # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
@@ -9690,6 +9771,65 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi",
+        # Mã TTHC 1.116908 (NĐ 335/2026/NĐ-CP) — key TRÙNG ke_khai_links.json. Cổng Bộ Y tế
+        # dichvucongbyt.moh.gov.vn, cùng form Form.io với 1.116909 + bảng thành phần hồ sơ 2 dòng (attp-row).
+        # URL SPA là ObjectId không mang mã → nhận theo cụm tên; "cần bảo vệ khẩn cấp" không có ở thủ tục anh em
+        # 1.116907 ("đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn") dù hai bên chung Tờ khai Mẫu số 04.
+        "detect": {
+            "textIncludes": ["Tiếp nhận đối tượng cần bảo vệ khẩn cấp"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Tiếp nhận đối tượng cần bảo vệ khẩn cấp vào cơ sở trợ giúp xã hội",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội (Mẫu số 04 — NĐ 335/2026/NĐ-CP) — "
+            "nguồn chính.\n"
+            "2. CCCD/thẻ căn cước của đối tượng và của người giám hộ (nếu có).\n"
+            "3. Biên bản tiếp nhận có chữ ký người phát hiện, chính quyền/công an cấp xã, đại diện cơ sở trợ giúp "
+            "xã hội.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đối tượng cần bảo vệ khẩn cấp là chủ hồ sơ; người giám hộ (mục II tờ khai) điền vào Phần người nộp, "
+            "extension BỎ TÍCH ô 'Người nộp là chủ hồ sơ'. Đối tượng không có SĐT thì dùng SĐT người giám hộ; nhóm "
+            "đối tượng và nơi ở hiện nay ghi vào ô Ghi chú.\n"
+            "Bước thành phần hồ sơ: Tờ khai Mẫu 04 vào dòng 1, Biên bản tiếp nhận vào dòng 2 (scan chung một tệp thì "
+            "đính tệp đó ở cả hai dòng). CCCD không có dòng đính kèm, chỉ dùng để điền bước 1."
+        ),
+    },
+    {
+        "key": "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi",
+        # Mã TTHC 1.116907 (NĐ 335/2026/NĐ-CP) — key TRÙNG ke_khai_links.json. CÙNG cổng, form và Tờ khai Mẫu số 04
+        # với 1.116908 ngay trên (pipeline gọi lại bản đó); bảng thành phần hồ sơ CHỈ dòng tờ khai. Nhận theo cụm
+        # tên; "bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn" không có trong nhãn 1.116908/1.116909/1.116910.
+        "detect": {
+            "textIncludes": ["Tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn vào cơ sở trợ giúp xã hội",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội (Mẫu số 04 — NĐ 335/2026/NĐ-CP) — "
+            "nguồn chính.\n"
+            "2. CCCD/thẻ căn cước của đối tượng và của người giám hộ (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đối tượng bảo trợ xã hội là chủ hồ sơ; người giám hộ (mục II tờ khai) điền vào Phần người nộp, "
+            "extension BỎ TÍCH ô 'Người nộp là chủ hồ sơ'. Đối tượng không có SĐT thì dùng SĐT người giám hộ; nhóm "
+            "đối tượng và nơi ở hiện nay ghi vào ô Ghi chú.\n"
+            "Bước thành phần hồ sơ: chỉ một dòng Tờ khai Mẫu 04. CCCD và giấy tờ khác không có dòng đính kèm, chỉ "
+            "dùng để điền bước 1."
+        ),
+    },
+    {
         "key": "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
         # Mã TTHC 1.115377 (NĐ 58/2025 sửa đổi bởi NĐ 243/2026) — key TRÙNG ke_khai_links.json và tên package.
         # Cổng một cửa Bộ Công Thương (Form.io + bảng đính kèm attp-row, cùng engine 2.001474), tiếp nhận ở UBND
@@ -10254,6 +10394,8 @@ _PIPELINE = {
     "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_process,
     "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_process,
+    "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_process,
+    "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
@@ -10340,6 +10482,8 @@ _PIPELINE = {
     "hoa-giai-tranh-chap-dat-dai": hoa_giai_tranh_chap_dat_dai_process,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi": tiep_nhan_khan_cap_process,
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi": tiep_nhan_btxh_kho_khan_process,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
@@ -10531,6 +10675,8 @@ _ATTACH_PIPELINE = {
     "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": ho_tro_mai_tang_dan_toc_thieu_so_lai_chau_attach,
     "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
+    "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
+    "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,
@@ -10644,6 +10790,8 @@ _ATTACH_PIPELINE = {
     "hoa-giai-tranh-chap-dat-dai": hoa_giai_tranh_chap_dat_dai_attach,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi": tiep_nhan_khan_cap_attach,
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi": tiep_nhan_btxh_kho_khan_attach,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_attach,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,

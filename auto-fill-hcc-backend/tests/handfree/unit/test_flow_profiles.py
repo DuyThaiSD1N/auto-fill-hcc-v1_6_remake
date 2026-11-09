@@ -286,6 +286,40 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert phrase not in other["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
     assert byt_allowance_335["shortLabel"] != byt_allowance["shortLabel"]
     assert len(byt_allowance_335["shortLabel"]) >= 30
+    # Tiếp nhận đối tượng cần bảo vệ khẩn cấp (1.116908, NĐ 335): cùng khung 1.116909, bảng 2 dòng (Tờ khai
+    # Mẫu 04 / Biên bản tiếp nhận) nên không dồn tệp; dấu hiệu nhận trang không trùng hai thủ tục trợ cấp.
+    byt_emergency = procedures.pop("tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi")
+    assert byt_emergency.get("flowProfile") is None
+    assert byt_emergency["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in byt_emergency and "agencySoFirst" not in byt_emergency
+    assert byt_emergency["wizard"] == byt_allowance_335["wizard"]
+    assert byt_emergency["bxdFlow"] == byt_allowance_335["bxdFlow"]
+    assert byt_emergency["hasAttachmentStep"] is True
+    assert "hideRepeatableHint" not in byt_emergency
+    assert byt_emergency["detect"]["urlScope"] == ["dichvucongbyt.moh.gov.vn"]
+    assert byt_emergency["detect"]["urlIncludes"][0] == "maThuTuc=1.116908"
+    phrase = byt_emergency["detect"]["textIncludes"][0].lower()
+    assert phrase in byt_emergency["label"].lower()
+    for other in (byt_allowance, byt_allowance_335):
+        assert phrase not in other["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
+    assert len(byt_emergency["shortLabel"]) >= 30
+    # Tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn (1.116907): cùng form + Tờ khai Mẫu 04 với
+    # 1.116908, bảng một dòng tờ khai; hai bên nhận trang bằng cụm không trùng nhãn bên kia.
+    byt_hardship = procedures.pop("tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi")
+    assert byt_hardship.get("flowProfile") is None
+    assert byt_hardship["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in byt_hardship and "agencySoFirst" not in byt_hardship
+    assert byt_hardship["wizard"] == byt_emergency["wizard"]
+    assert byt_hardship["bxdFlow"] == byt_emergency["bxdFlow"]
+    assert byt_hardship["hasAttachmentStep"] is True
+    assert byt_hardship["detect"]["urlScope"] == ["dichvucongbyt.moh.gov.vn"]
+    assert byt_hardship["detect"]["urlIncludes"][0] == "maThuTuc=1.116907"
+    for marker, other in ((byt_hardship, byt_emergency), (byt_emergency, byt_hardship)):
+        marker_phrase = marker["detect"]["textIncludes"][0].lower()
+        assert marker_phrase in marker["label"].lower()
+        assert marker_phrase not in other["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
+    assert byt_hardship["shortLabel"] != byt_emergency["shortLabel"]
+    assert len(byt_hardship["shortLabel"]) >= 30
     # Hỗ trợ mai táng: cùng khung hưu trí, bảng CHỈ MỘT DÒNG nên vẫn dồn tệp (hideRepeatableHint).
     byt_funeral = procedures.pop("ho-tro-mai-tang-huu-tri-xa-hoi")
     assert byt_funeral.get("flowProfile") is None
@@ -500,18 +534,13 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("dang-ky-lap-dat-su-dung-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
         ("chuyen-doi-ten-hop-dong-nuoc-sach", "laichau", "dichvucong.laichau.gov.vn"),
         ("dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
-        ("dang-ky-dat-dai-lan-dau-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
-        ("giao-thue-chuyen-muc-dich-dat-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
-        ("cap-doi-gcn-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
-        ("dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa", "khanhhoa", "khanhhoa.gov.vn"),
+        ("chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
+        ("giao-dat-cho-thue-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
         assert local.get("flowProfile") is None and local["needsAgencySelect"] is True, key
-        # Cấp đổi GCN (1.012783) + đăng ký biến động (1.013831) Khánh Hòa: DVCQG chỉ chọn Tỉnh (ke_khai_links
-        # provinceOnlyAgency), không chọn Xã.
-        assert bool(local.get("agencyProvinceOnly")) == (
-            key in ("cap-doi-gcn-khanh-hoa", "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa")), key
+        assert not local.get("agencyProvinceOnly"), key
         assert "agencySoFirst" not in local, key
         assert host in local["detect"]["urlScope"], key
         assert is_allowed_in_province(local, slug) and not is_allowed_in_province(local, "bacninh"), key
@@ -536,17 +565,28 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert is_allowed_in_province(tuyen_quang, "tuyenquang"), key
         assert not is_allowed_in_province(tuyen_quang, "khanhhoa"), key
 
-    # Cổng iGate Khánh Hòa 1.013995 / 1.013947: DVCQG chỉ chọn Tỉnh + thẻ Chi nhánh VPĐK theo xã như cấp đổi GCN, rồi
-    # luồng chung "xay-dung" (trang "Chọn trường hợp giải quyết" đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình.
-    for key in ("dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+    # Cổng iGate Khánh Hòa: cả 6 thủ tục đi luồng chung "xay-dung" như Tuyên Quang (trang "Chọn trường hợp giải quyết"
+    # đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình. 1.013978 / 1.013949: DVCQG chọn đủ Tỉnh + Xã; 4 thủ
+    # tục còn lại: DVCQG chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency) + thẻ Chi nhánh VPĐK theo xã.
+    kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa")
+    for key in (*kh_ward_level,
+                "cap-doi-gcn-khanh-hoa",
+                "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
+                "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
                 "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"):
         kh = procedures.pop(key)
         assert kh["provinceOnly"] == ["khanhhoa"], key
         assert kh["flowProfile"] == "xay-dung" and kh["maePortal"] is True, key
         assert kh["maeDialogChoice"] == {"enabled": True}, key
-        assert kh["needsAgencySelect"] is True and kh["agencyProvinceOnly"] is True, key
-        assert kh["agencyProvince"] == "Khánh Hòa" and "agencySoFirst" not in kh, key
-        assert kh["agencyCardIncludesByWard"]["Phường Nam Nha Trang"] == "Chi nhánh Văn phòng Đăng ký đất đai Nha Trang"
+        assert kh["wizard"] == {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4}, key
+        assert kh["needsAgencySelect"] is True and kh["agencyProvince"] == "Khánh Hòa", key
+        assert "agencySoFirst" not in kh, key
+        if key in kh_ward_level:
+            assert "agencyProvinceOnly" not in kh and "agencyCardIncludesByWard" not in kh, key
+        else:
+            assert kh["agencyProvinceOnly"] is True, key
+            assert kh["agencyCardIncludesByWard"]["Phường Nam Nha Trang"] == (
+                "Chi nhánh Văn phòng Đăng ký đất đai Nha Trang"), key
         assert kh["detect"]["urlScope"] == ["khanhhoa.gov.vn"], key
         assert kh["bxdFlow"]["capability"] == "supportsBxdFlowKhanhHoa", key
         assert not any(rule["options"].get("quyTrinh") for rule in kh.get("caseOptions") or []), key
@@ -735,7 +775,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Xây dựng "dang-ky-nha-o-xa-hoi-tuyen-quang" (1.014632): điền 2 form + đính kèm 7 dòng.
     # +1 cổng Bộ VHTTDL chọn Sở "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich" (1.004605).
     # +1 cổng Lai Châu "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau" (1.115590).
-    assert len(procedures) == 144
+    # +1 cổng Lai Châu "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau" (1.115578).
+    # +1 cổng Lai Châu "giao-dat-cho-thue-dat-lai-chau" (1.115577).
+    # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi" (1.116908).
+    # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi" (1.116907).
+    assert len(procedures) == 148
 
     for procedure in procedures:
         key = procedure["key"]

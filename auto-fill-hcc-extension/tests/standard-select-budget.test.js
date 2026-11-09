@@ -43,3 +43,56 @@ assert.equal(sandbox.deadline(budgets, second), 11_200);
 assert.equal(budgets.size, 2);
 
 console.log("standard select budget: independent name + occurrence deadlines passed");
+
+// Đổi Tỉnh xong, ô Xã còn danh sách tỉnh CŨ (cổng Lai Châu nạp lại bằng AJAX) → coi là đang nạp, không dừng sớm.
+assert.match(source, /const awaitingCascade = plainNativeSource && standardSelectAwaitingCascade\(select\);/);
+assert.match(source, /states\.every\(\(state\) => state\.awaitingCascade && !state\.hasValue\)/);
+assert.match(source, /const cascade = snapshotStandardAreaCascade\(candidates, occurrence, root\);/);
+assert.match(source, /if \(ok\) commitStandardAreaCascade\(cascade\);/);
+
+const cascadeStart = source.indexOf("  const STANDARD_AREA_CASCADE_RELOAD_MS");
+const cascadeEnd = source.indexOf("  function isPostbackAddressField(f)", cascadeStart);
+assert.ok(cascadeStart >= 0 && cascadeEnd > cascadeStart, "Không tách được helper chờ danh sách xã nạp lại");
+
+const fakeSelect = (name, values) => ({ name, id: "", value: values[0], options: values.map((value) => ({ value })) });
+const tinh = fakeSelect("CongDan_maTinhThanh", ["01", "12"]);
+const xa = fakeSelect("CongDan_maPhuongXa", ["hn1", "hn2", "hn3"]);
+const hoTen = fakeSelect("CongDan_gioiTinhCongDan", ["0", "1"]);
+let clock = 50_000;
+const cascadeBox = {
+  Date: { now: () => clock },
+  Map,
+  document: { querySelectorAll: () => [tinh, xa, hoTen] },
+  findStandardSelects: (names) => [tinh, xa, hoTen].filter((sel) => names.includes(sel.name)),
+  isAreaSelectName: (name) => /matinh|maphuongxa/.test(String(name || "").toLowerCase()),
+};
+vm.runInNewContext(`
+  ${source.slice(cascadeStart, cascadeEnd)}
+  globalThis.snap = snapshotStandardAreaCascade;
+  globalThis.commit = commitStandardAreaCascade;
+  globalThis.awaiting = standardSelectAwaitingCascade;
+`, cascadeBox);
+
+// Chọn lại đúng tỉnh đang có → không đánh dấu gì.
+cascadeBox.commit(cascadeBox.snap(["CongDan_maTinhThanh"], null, null));
+assert.equal(cascadeBox.awaiting(xa), false);
+
+// Đổi Hà Nội → Lai Châu: ô Xã còn danh sách Hà Nội là ĐANG NẠP; ô không thuộc địa bàn không bị đụng.
+const snapshot = cascadeBox.snap(["CongDan_maTinhThanh"], null, null);
+tinh.value = "12";
+cascadeBox.commit(snapshot);
+assert.equal(cascadeBox.awaiting(xa), true);
+assert.equal(cascadeBox.awaiting(tinh), false);
+assert.equal(cascadeBox.awaiting(hoTen), false);
+
+// Cổng nạp xong danh sách Lai Châu → hết chờ, quay về luật "đã ổn định" như cũ.
+xa.options = ["lc1", "lc2"].map((value) => ({ value }));
+assert.equal(cascadeBox.awaiting(xa), false);
+
+// Cổng không bao giờ nạp lại → hết hạn chờ thì cũng thôi.
+xa.options = ["hn1", "hn2", "hn3"].map((value) => ({ value }));
+assert.equal(cascadeBox.awaiting(xa), true);
+clock += 8_001;
+assert.equal(cascadeBox.awaiting(xa), false);
+
+console.log("standard select cascade: ward list of the old province waits for reload passed");

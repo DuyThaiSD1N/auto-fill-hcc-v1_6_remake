@@ -217,6 +217,10 @@
     // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
     // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.
     supportsBacNinhTabFlow: true,
+    // Cổng Lai Châu (mỗi bước một trang "Bước N - …"): báo bước (lcStep), bấm "Đồng ý và tiếp tục", ở bước Lệ phí hồ sơ
+    // đọc / chọn hình thức nhận kết quả + mức lệ phí, lấy địa chỉ người nộp (content/laichau/portal.js). Thiếu cờ → BE
+    // giữ câu "tự bấm nộp" cũ.
+    supportsLaiChauFeeStep: true,
     // Trang nộp một trang của cổng Bộ VHTTDL (form liz): bổ sung ô (content/liz/field-review.js), tích ô cam kết, gạt
     // ô VNPost + điền người nhận, bấm Lưu và nộp hồ sơ (content/liz/one-page.js). Thiếu cờ → BE giữ luồng chung.
     supportsLizFlow: true,
@@ -1227,6 +1231,8 @@
       wizardStep: Number(ctx?.wizardStep) || 0,
       // Lệnh nói "bước tiếp theo" ở cổng Bắc Ninh đi theo tab đang mở.
       bnTab: Number(ctx?.bnTab) || 0,
+      // Cổng Lai Châu: bước của trang (tiêu đề "Bước N - …") cho lệnh nói "bước tiếp theo".
+      lcStep: Number(ctx?.lcStep) || 0,
       formKind: String(ctx?.formKind || ""),
       declarationTarget: !!ctx?.declarationTarget,
       attachmentTarget: !!ctx?.attachmentTarget,
@@ -1315,6 +1321,8 @@
       attachmentTarget: !!c.attachmentTarget,
       // Cổng Bắc Ninh: tab đang mở của trang nộp hồ sơ 4 tab (0 = không phải trang đó).
       bnTab: Number(c.bnTab) || 0,
+      // Cổng Lai Châu: bước của trang nộp hồ sơ (tiêu đề "Bước N - …", 0 = không phải trang đó).
+      lcStep: Number(c.lcStep) || 0,
       bnAgency: String(c.bnAgency || ""),
       bnAccountForm: !!c.bnAccountForm,
       // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
@@ -1702,6 +1710,30 @@
     await ask(`__action:bxd_result_report:${JSON.stringify(report)}`, "system");
   }
 
+  // ── Cổng Lai Châu (mỗi bước một trang): bước Lệ phí hồ sơ + nút "Đồng ý và tiếp tục" ──
+  async function runLcResult(a) {
+    const set = a.type === "lc_result_set";
+    setStatus(set ? "Đang chọn trên trang…" : "Đang đọc cách nhận kết quả và mức lệ phí…");
+    const res = await sendToContent(set
+      ? { action: "lcResultSet", name: a.name, value: a.value, groups: a.groups || [] }
+      : { action: "lcResultScan", groups: a.groups || [] });
+    setStatus("");
+    const report = { groups: res?.groups || [], missing: res?.missing || [], prepared: res?.prepared || [] };
+    if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
+    await ask(`__action:lc_result_report:${JSON.stringify(report)}`, "system");
+  }
+
+  // Bấm hợp lệ thì cổng tải trang mới (sidebar tải lại theo, watcher báo bước mới) → chỉ báo BE khi bị chặn.
+  async function runLcNext() {
+    setStatus("Đang bấm Đồng ý và tiếp tục…");
+    const res = await sendToContent({ action: "lcNext" });
+    setStatus("");
+    if (res?.clicked && !res?.message) return;
+    await ask(`__action:lc_step_report:${JSON.stringify({
+      clicked: !!res?.clicked, message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
   async function runBxdSubmit() {
     setStatus("Đang nộp hồ sơ…");
     const res = await sendToContent({ action: "bxdSubmit" });
@@ -1827,7 +1859,8 @@
       // dẫn tiếp từ bước mới (xem lại tờ khai, nhận kết quả…), kể cả khi đã đính kèm xong (state done).
       const familyStep = lastReplyData?.lien_thong ? Number(ctx.lienThongStep) || 0
         : lastReplyData?.bxd ? Number(ctx.wizardStep) || 0
-          : lastReplyData?.bac_ninh ? Number(ctx.bnTab) || 0 : 0;
+          : lastReplyData?.lai_chau ? Number(ctx.lcStep) || 0
+            : lastReplyData?.bac_ninh ? Number(ctx.bnTab) || 0 : 0;
       const stepMoved = !!familyStep && familyStep !== lastFamilyStep;
       if (stepMoved && !watcherPageStatusInFlight) {
         lastFamilyStep = familyStep;
@@ -5540,6 +5573,10 @@
         setTimeout(() => { void runBxdResult(a); }, 0);
       } else if (a.type === "bxd_submit") {
         setTimeout(() => { void runBxdSubmit(); }, 0);
+      } else if (a.type === "lc_result_scan" || a.type === "lc_result_set") {
+        setTimeout(() => { void runLcResult(a); }, 0);
+      } else if (a.type === "lc_next") {
+        setTimeout(() => { void runLcNext(); }, 0);
       } else if (a.type === "bn_tab") {
         setTimeout(() => { void runBnTab(a); }, 0);
       } else if (a.type === "bn_account_save") {

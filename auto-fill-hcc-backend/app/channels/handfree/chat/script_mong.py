@@ -202,6 +202,13 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("nyiaj pab pej xeem", "saib xyuas", "txhua hli").
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang":
         "Nyiaj pab pej xeem thiab txais saib xyuas, yug txhua hli",
+    # BẢN NHÁP chờ anh Dư soát — ghép "txais" (nhận), "tiv thaiv" (bảo vệ), "chaw" (cơ sở), "saib xyuas, yug" (chăm
+    # sóc, nuôi dưỡng) đã có; TỪ MỚI "ceev" (khẩn cấp).
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi":
+        "Txais neeg xav tau kev tiv thaiv ceev mus saib xyuas, yug ntawm chaw pab pej xeem",
+    # BẢN NHÁP chờ anh Dư soát — ghép như bản ngay trên; TỪ MỚI "nyob nyuaj heev" (sống rất khó khăn).
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi":
+        "Txais neeg nyob nyuaj heev mus saib xyuas, yug ntawm chaw pab pej xeem",
     "ho-tro-mai-tang-1116910": "Nyiaj pab faus neeg tuag",
     "ho-tro-mai-tang-huu-tri-xa-hoi": "Nyiaj pab faus neeg tau nyiaj laus pab pej xeem",
     "dieu-chinh-huu-tri-xa-hoi": "Kho nyiaj laus pab pej xeem",
@@ -319,6 +326,10 @@ PROCEDURE_HMONG = {
     # "siv" (sử dụng) đã có; TỪ MỚI: "tag nrho" (toàn bộ).
     "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
         "Cuv npe, muab daim ntawv av rau tag nrho daim av siv (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — ghép y như thẻ chuyển mục đích Quảng Ninh/Bắc Ninh ("Hloov daim av"), không thêm từ mới.
+    "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": "Hloov daim av (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có: "muab" (cấp/giao), "xauj" (thuê), "daim av" (thửa đất).
+    "giao-dat-cho-thue-dat-lai-chau": "Muab daim av, xauj daim av (Lai Châu)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

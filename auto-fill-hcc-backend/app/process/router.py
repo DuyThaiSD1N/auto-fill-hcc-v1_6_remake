@@ -30,6 +30,9 @@ from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
+from app.pipelines.khuyet_tat.process.mapper import (
+    with_account_process_options as with_khuyet_tat_account_process_options,
+)
 from app.pipelines.ho_tro_mai_tang.process.mapper import (
     with_account_process_options as with_mai_tang_account_process_options,
 )
@@ -120,6 +123,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # Xã Nghĩa Hưng: giao/thuê/chuyển mục đích đất Ninh Bình lấy chủ hồ sơ đứng luôn phần người nộp.
         prepared.pipeline_options = with_giao_dat_ninh_binh_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Tỉnh Khánh Hòa: xác định mức độ khuyết tật ghi sẵn ô Ghi chú bằng câu cố định.
+        prepared.pipeline_options = with_khuyet_tat_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

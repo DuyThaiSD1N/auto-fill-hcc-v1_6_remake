@@ -138,6 +138,8 @@ UI_COMP_BY_NAME = {
     "data[ownerAddress]": "dom-input",
     "data[ownerPhoneNumber]": "dom-input",
     "data[ownerNation]": "dom-select",
+    # Ô tự do; chỉ phát khi tài khoản Khánh Hòa (mapper.with_account_process_options).
+    "data[ghiChu]": "dom-input",
 
     # Nội dung đề nghị.
     "data[chonNoiDungDeNghi][]": "dom-checkbox",

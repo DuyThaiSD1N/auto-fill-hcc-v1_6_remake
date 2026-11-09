@@ -12,6 +12,28 @@ from app.pipelines.khuyet_tat.process.schema import (
 
 _VALID_MUC_DO = {"THD", "CTG", "KTHD", "KXD"}
 
+# Cấu hình theo tài khoản: tỉnh Khánh Hòa ghi sẵn ô "Ghi chú" (data[ghiChu]) bằng câu cố định; nơi khác để cổng/cán
+# bộ tự ghi. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được.
+# Chỉ thủ tục 1.001699: "Đổi, cấp lại Giấy xác nhận khuyết tật" dùng chung mapper này nhưng không nhận cờ.
+PROCEDURE_KEYS = ("xac-dinh-muc-do-khuyet-tat",)
+KHANH_HOA_GHI_CHU_OPTION = "khanhHoaGhiChu"
+KHANH_HOA_GHI_CHU = "Xác định mức độ khuyết tật và cấp giấy xác nhận khuyết tật"
+
+
+def is_khanh_hoa(user: dict | None) -> bool:
+    """True khi tài khoản thuộc tỉnh Khánh Hòa (mọi xã/phường; "Hòa"/"Hoà" đều khớp)."""
+    return bool(user) and "khanh hoa" in _norm_text(user.get("tinh"))
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ ghi chú Khánh Hòa do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(KHANH_HOA_GHI_CHU_OPTION, None)
+    if procedure in PROCEDURE_KEYS and is_khanh_hoa(user):
+        result[KHANH_HOA_GHI_CHU_OPTION] = True
+    return result
+
 
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
@@ -336,6 +358,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("data[ownerAddress]", owner_area.get("diaChi"))
         add("data[ownerPhoneNumber]", _phone(owner["phone"]))
         add("data[ownerNation]", owner["nation"] or "Việt Nam")
+
+    # Phát sau checkbox chủ hồ sơ: đổi checkbox thì cổng copy/reset khối chủ hồ sơ.
+    if (options or {}).get(KHANH_HOA_GHI_CHU_OPTION) is True:
+        add("data[ghiChu]", KHANH_HOA_GHI_CHU)
 
     phone = _phone(values.get("Ndd_SoDienThoai"))
 

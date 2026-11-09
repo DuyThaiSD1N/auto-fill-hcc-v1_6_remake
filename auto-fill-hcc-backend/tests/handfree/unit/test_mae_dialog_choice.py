@@ -336,3 +336,30 @@ def test_khanh_hoa_don_vi_khong_khop_chi_nhanh_cua_xa_thi_van_hoi():
     flow._mae_dialog_on_page(conv, _kh_ctx(odd, odd[0]), flow.get_procedure(KH_TAI_SAN))
     assert conv["state"] == "choose_mae_dialog"
     assert conv["mae_dialog_options"]["agency"]["options"] == list(odd)
+
+
+@pytest.mark.parametrize("key, code", [
+    ("dang-ky-dat-dai-lan-dau-khanh-hoa", "1.013978"),
+    ("giao-thue-chuyen-muc-dich-dat-khanh-hoa", "1.013949"),
+    ("cap-doi-gcn-khanh-hoa", "1.012783"),
+    ("dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa", "1.013831"),
+])
+async def test_khanh_hoa_4_thu_tuc_dau_cung_hoi_truong_hop_giai_quyet_roi_chon_ho(key, code):
+    """4 thủ tục Khánh Hòa đầu từng khai wizard thường (không maePortal) → trợ lý bỏ qua trang "Chọn trường hợp giải
+    quyết". Nay đọc trang, hỏi công dân khi có nhiều quy trình, chọn hộ đúng nhãn và bấm Đồng ý; một form mọi quy trình
+    nên pipeline không nhận options ép form."""
+    conv = _kh_conv()
+    conv["procedure_key"] = key
+    cases = (f"{code}-1.1 Đối với trường hợp còn lại", f"{code}-1.2 Đối với xã miền núi, hải đảo")
+    ctx = {"maeAgencyBlock": True,
+           "maeDialogOptions": {"agency": {"options": [KH_NHA_TRANG], "current": KH_NHA_TRANG},
+                                "process": {"options": list(cases), "current": cases[0]}}}
+    reply = await flow.handle_turn(conv, Intent("event", "page_status", ctx))
+    assert conv["state"] == "choose_mae_dialog"
+    (group,) = reply.cards[0]["groups"]
+    assert group["key"] == "process" and [o["label"] for o in group["options"]] == list(cases)
+
+    picked = await flow.handle_turn(conv, Intent("action", "set_mae_dialog", {"process": 1}))
+    action = next(a for a in picked.actions if a["type"] == "fill_mae_agency")
+    assert (action["agencyExact"], action["processExact"]) == (KH_NHA_TRANG, cases[1])
+    assert case_pipeline_options(flow.get_procedure(key), conv) == {}

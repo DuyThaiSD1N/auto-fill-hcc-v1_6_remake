@@ -22,6 +22,7 @@ from app.channels.handfree.chat import bac_ninh
 from app.channels.handfree.chat import bxd
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import hkd_tro_ly
+from app.channels.handfree.chat import lai_chau
 from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import owner_review
 from app.channels.handfree.chat import resume
@@ -1262,6 +1263,9 @@ async def _handle_turn_inner(
     bac_ninh_reply = bac_ninh.handle(conv, current_proc, intent)
     if bac_ninh_reply is not None:
         return bac_ninh_reply
+    lai_chau_reply = lai_chau.handle(conv, current_proc, intent)
+    if lai_chau_reply is not None:
+        return lai_chau_reply
     # Vòng hỏi bổ sung ô còn trống ở bước Thông tin chủ hồ sơ (quét sớm).
     owner_review_reply = await owner_review.handle(conv, current_proc, intent)
     if owner_review_reply is not None:
@@ -4159,7 +4163,8 @@ def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> I
 
     family_intent = (lien_thong.voice_intent(conv, message, page_context)
                      or bxd.voice_intent(conv, message, page_context)
-                     or bac_ninh.voice_intent(conv, message, page_context))
+                     or bac_ninh.voice_intent(conv, message, page_context)
+                     or lai_chau.voice_intent(conv, message, page_context))
     if family_intent is not None:
         return family_intent
     proc = get_procedure(conv.get("procedure_key") or "") or {}
@@ -4813,7 +4818,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                                               auto_wait_attachment))
         if v2 is not None:
             _clear_documents_adjustment(conv)
-            return v2
+            # Cổng Lai Châu: thêm nút cam "Đồng ý và tiếp tục" (trợ lý bấm sang Thành phần hồ sơ).
+            return lai_chau.fill_report_reply(conv, proc, v2)
         # Vòng bổ sung tách câu đuôi (bước tiếp theo) thành bong bóng riêng sau bong bóng số ô trống.
         reviewing = field_review.reviewing_fill(conv, proc, intent.payload.get("review"))
         r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
@@ -4831,7 +4837,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                        {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip()]
         field_review.decorate_fill_report(conv, proc, r, intent.payload.get("review"), tail)
-        return r
+        return lai_chau.fill_report_reply(conv, proc, r)
     # Đang chạy pipeline mà user hỏi/gõ → trấn an.
     return Reply(*_fmt(vi.STILL_READING_DOCUMENTS))
 
@@ -5321,6 +5327,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                                       split=conv.get("attach_mode") == "split")
         elif bac_ninh.enabled(conv, proc_done):
             r = bac_ninh.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors)
+        elif lai_chau.enabled(conv, proc_done):
+            r = lai_chau.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors)
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")

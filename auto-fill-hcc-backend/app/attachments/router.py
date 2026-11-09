@@ -20,7 +20,7 @@ from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
 from app.process import requests_repo
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
-from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
+from app.pipelines.khai_sinh_lien_thong.attach.planner import with_khai_sinh_attach_options
 from app.pipelines.cap_giay_phep_xay_dung.attach.planner import (
     with_account_attach_options as with_gpxd_attach_options,
 )
@@ -241,10 +241,10 @@ async def _prepare_attach(body: AttachmentPlanReq, user: dict):
         taken_names.add(f.name)
 
     # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN, phường Đông Hà chỉ đính ủy quyền TTHN,
-    # phường Nghĩa Lộ bỏ Tờ khai khai sinh)
+    # phường Nghĩa Lộ bỏ Tờ khai khai sinh, phường Song Liễu chỉ đính Giấy chứng sinh)
     # do server đặt từ `user`, không nhận từ client.
     options = with_account_attach_options(body.options, user, body.procedure)
-    options = with_nghia_lo_attach_options(options, user, body.procedure)
+    options = with_khai_sinh_attach_options(options, user, body.procedure)
     options = with_gpxd_attach_options(options, user, body.procedure)
     options = with_cam_duong_attach_options(options, user, body.procedure)
 

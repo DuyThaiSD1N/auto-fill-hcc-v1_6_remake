@@ -10,10 +10,14 @@ vị trí (slotIndex 0 = chứng sinh, slotIndex 1 = tờ khai cư trú). Các g
 giấy kết hôn…) KHÔNG bị bỏ qua và KHÔNG gộp thành 1 PDF: mỗi tệp là một item repeatUpload cùng
 trỏ ô STT1 để FE đính NHIỀU TỆP RỜI vào cùng hàng giấy chứng sinh (trang cho phép nhiều tệp/hàng).
 
-Cấu hình theo tài khoản: phường Nghĩa Lộ (Quảng Ngãi) KHÔNG đính Tờ khai đăng ký khai sinh; các
-giấy tờ khác vẫn đính như thường. Planner không biết tài khoản nên router (Auto Fill) và
-pipeline_runner (Handfree) gọi ``with_nghia_lo_attach_options`` để server tự đặt cờ
-``omitBirthDeclaration``. Tài khoản khác: không có cờ, hành vi giữ y hệt.
+Cấu hình theo tài khoản (planner không biết tài khoản nên router (Auto Fill) và pipeline_runner
+(Handfree) gọi ``with_khai_sinh_attach_options`` để server tự đặt cờ, client không gửi được):
+  - phường Nghĩa Lộ (Quảng Ngãi) — cờ ``omitBirthDeclaration``: KHÔNG đính Tờ khai đăng ký khai
+    sinh; các giấy tờ khác vẫn đính như thường.
+  - phường Song Liễu (Bắc Ninh) — cờ ``onlyBirthProof``: CHỈ đính Giấy chứng sinh (hoặc văn bản
+    người làm chứng / giấy cam đoan về việc sinh) vào STT1; tờ khai khai sinh, tờ khai cư trú
+    CT01, CCCD, giấy kết hôn… vẫn dùng để OCR điền form nhưng không đính.
+Tài khoản khác: không có cờ, hành vi giữ y hệt.
 
 Nén tệp trên 2 MB như 4 thủ tục Cổng DVC quốc gia mới (dùng chung ``shrink_oversized`` của
 cai_chinh_dvc_moi): bản nén trả ở ``replaceFiles`` để extension đính thay bản gốc; OCR vẫn đọc bản gốc.
@@ -46,8 +50,23 @@ def _fold(value: str) -> str:
 PROCEDURE_KEY = "khai-sinh-dang-ky"
 OMIT_BIRTH_DECLARATION_OPTION = "omitBirthDeclaration"
 OMITTED_DECLARATION_NOTE = "Không đính kèm Tờ khai đăng ký khai sinh theo cấu hình phường Nghĩa Lộ"
+ONLY_BIRTH_PROOF_OPTION = "onlyBirthProof"
+ONLY_BIRTH_PROOF_NOTE = "Chỉ đính kèm Giấy chứng sinh theo cấu hình phường Song Liễu, không đính"
 
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def _account_area(user: dict | None) -> tuple[str, str]:
+    """(tỉnh, xã) của tài khoản đã bỏ dấu; xã bỏ tiền tố Xã/Phường/Thị trấn."""
+    if not user:
+        return "", ""
+    tinh = _fold(user.get("tinh") or "")
+    xa = _fold(user.get("xa") or "")
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return tinh, xa
 
 
 def is_quang_ngai_nghia_lo(user: dict | None) -> bool:
@@ -55,23 +74,30 @@ def is_quang_ngai_nghia_lo(user: dict | None) -> bool:
 
     Lào Cai cũng có Phường Nghĩa Lộ nên bắt buộc khớp tỉnh; xã khớp ĐÚNG tên sau khi bỏ tiền tố.
     """
-    if not user:
-        return False
-    tinh = _fold(user.get("tinh") or "")
-    xa = _fold(user.get("xa") or "")
-    for prefix in _WARD_PREFIXES:
-        if xa.startswith(prefix):
-            xa = xa[len(prefix):].strip()
-            break
+    tinh, xa = _account_area(user)
     return "quang ngai" in tinh and xa == "nghia lo"
 
 
-def with_nghia_lo_attach_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ bỏ Tờ khai khai sinh do server quyết theo tài khoản."""
+def is_bac_ninh_song_lieu(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Song Liễu, tỉnh Bắc Ninh (khớp cả tỉnh, xã đúng tên)."""
+    tinh, xa = _account_area(user)
+    return "bac ninh" in tinh and xa == "song lieu"
+
+
+def with_khai_sinh_attach_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với các cờ đính kèm khai sinh do server quyết theo tài khoản.
+
+    Luôn gỡ cờ client gửi lên trước: chỉ tài khoản đúng địa bàn mới có cờ.
+    """
     result = dict(options or {})
     result.pop(OMIT_BIRTH_DECLARATION_OPTION, None)
-    if procedure == PROCEDURE_KEY and is_quang_ngai_nghia_lo(user):
+    result.pop(ONLY_BIRTH_PROOF_OPTION, None)
+    if procedure != PROCEDURE_KEY:
+        return result
+    if is_quang_ngai_nghia_lo(user):
         result[OMIT_BIRTH_DECLARATION_OPTION] = True
+    if is_bac_ninh_song_lieu(user):
+        result[ONLY_BIRTH_PROOF_OPTION] = True
     return result
 
 
@@ -84,14 +110,22 @@ def _is_birth_declaration_text(text: str) -> bool:
     return bool(re.search(r"to khai dang k[yi] khai sinh", _fold(text)))
 
 
+# Mấy ô chỉ có trên mẫu giấy chứng sinh — còn lại khi OCR mất tiêu đề "GIẤY CHỨNG SINH" (nhất là
+# bản scan ghép nhiều giấy). Tờ khai đăng ký khai sinh không có các ô này.
+_BIRTH_FORM_MARKERS = ("ma so gcs", "nguoi do de", "so con trong lan sinh")
+
+
+def _has_birth_form_markers(text: str) -> bool:
+    folded = _fold(text)
+    return any(marker in folded for marker in _BIRTH_FORM_MARKERS)
+
+
 def _is_birth_proof_text(text: str) -> bool:
     """Rule fallback khi LLM lỗi/không chắc: nhận diện giấy chứng sinh / người làm chứng / cam đoan."""
     folded = _fold(text)
     if "chung sinh" in folded:  # "giấy chứng sinh"
         return True
-    # OCR hay làm mất tiêu đề "GIẤY CHỨNG SINH" (nhất là bản scan ghép nhiều giấy); mấy ô sau chỉ
-    # có trên mẫu giấy chứng sinh.
-    if "ma so gcs" in folded or "nguoi do de" in folded or "so con trong lan sinh" in folded:
+    if _has_birth_form_markers(text):
         return True
     if "lam chung" in folded and "sinh" in folded:  # văn bản người làm chứng xác nhận việc sinh
         return True
@@ -205,6 +239,7 @@ async def plan_khai_sinh_attachments(
     session: dict | None = None,
 ) -> dict:
     omit_declaration = (options or {}).get(OMIT_BIRTH_DECLARATION_OPTION) is True
+    only_birth_proof = (options or {}).get(ONLY_BIRTH_PROOF_OPTION) is True
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -249,6 +284,11 @@ async def plan_khai_sinh_attachments(
         if omit_declaration and _is_birth_declaration_text(text):
             final_types[idx] = _DOC_DECLARATION
             classification_sources[idx] = "rule_omit_declaration"
+        elif only_birth_proof and _is_birth_declaration_text(text) and not _has_birth_form_markers(text):
+            # Tờ khai có câu "cam đoan ... khai sinh" nên rule chứng sinh nhận nhầm → chỉ đính nó khi
+            # là tệp ghép có trang giấy chứng sinh thật (còn ô của mẫu chứng sinh).
+            final_types[idx] = _DOC_OTHER
+            classification_sources[idx] = "rule_declaration_other"
         elif _is_birth_proof_text(text):
             final_types[idx] = _DOC_BIRTH
             classification_sources[idx] = "rule_fallback" if llm_type != _DOC_BIRTH else "llm"
@@ -289,6 +329,16 @@ async def plan_khai_sinh_attachments(
         i for i in range(len(raw_files))
         if i not in birth_indices and i not in residence_indices and i not in declaration_indices
     ]
+    # Song Liễu (cờ onlyBirthProof): chỉ giấy chứng sinh vào STT1. Giấy tờ khác và tờ khai cư trú
+    # không đính (vẫn đã dùng để OCR điền form); chưa có chứng sinh thì không đính gì.
+    only_omitted_indices: list[int] = []
+    if only_birth_proof:
+        only_omitted_indices = sorted(other_indices + residence_indices)
+        other_indices, residence_indices = [], []
+        if only_omitted_indices:
+            errors.append(
+                f"{ONLY_BIRTH_PROOF_NOTE}: " + ", ".join(raw_files[i]["name"] for i in only_omitted_indices)
+            )
     stt1_indices = birth_indices + other_indices
     for idx in stt1_indices:  # chứng sinh trước, rồi các giấy tờ khác
         f = raw_files[idx]
@@ -343,6 +393,7 @@ async def plan_khai_sinh_attachments(
     matched = set(birth_indices) | set(residence_indices)
     matched.update(other_indices)
     matched.update(declaration_indices)  # đã có ghi chú riêng, không báo "bỏ qua"
+    matched.update(only_omitted_indices)  # như trên (cấu hình Song Liễu)
     skipped_names = [rf["name"] for i, rf in enumerate(raw_files) if i not in matched]
     if skipped_names:
         errors.append(
@@ -373,6 +424,7 @@ async def plan_khai_sinh_attachments(
             "residenceForm": raw_files[residence_index]["name"] if residence_index is not None else None,
             "skipped": skipped_names,
             "omittedDeclarations": [raw_files[i]["name"] for i in declaration_indices],
+            "onlyBirthProofOmitted": [raw_files[i]["name"] for i in only_omitted_indices],
             "shrunk": [
                 {"fileName": r["name"], "originalBytes": r["originalBytes"], "bytes": r["bytes"], "level": r["level"]}
                 for r in replace_files.values()

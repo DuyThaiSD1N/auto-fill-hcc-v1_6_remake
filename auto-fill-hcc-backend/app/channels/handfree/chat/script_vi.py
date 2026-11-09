@@ -2192,6 +2192,89 @@ BXD_SUBMIT_FAILED = {
     "tts": ("Dạ hồ sơ chưa nộp được. Công dân kiểm tra lại mã xác nhận, nếu cần bấm làm mới để lấy mã khác, rồi bấm "
             "Nộp hồ sơ lại ạ."),
 }
+# ── Cổng Lai Châu (eForm Nth, mỗi bước một trang, chat/lai_chau.py): trang chọn trường hợp, nút "Đồng ý và tiếp tục",
+# bước "Lệ phí hồ sơ" sau khi đính kèm ──
+LC_CONTINUE_CHIP = "Đồng ý và tiếp tục ▶"
+LC_RETRY_CHIP = "🔁 Bấm Đồng ý và tiếp tục lại"
+LC_SUMMARY = {
+    "md": "📋 **Trên trang đang chọn:**\n{lines_md}",
+    "tts": "Dạ trên trang đang chọn: {lines_tts}.",
+}
+LC_SUMMARY_LINE = "- **{label}**: {value}"
+LC_CASE_READING = {
+    "md": "📋 Đây là trang **Chọn trường hợp hồ sơ**. Tôi đang đọc các trường hợp giải quyết trên trang ạ…",
+    "tts": "Đây là trang chọn trường hợp hồ sơ. Tôi đang đọc các trường hợp giải quyết trên trang ạ.",
+}
+LC_CASE_UNREAD = {
+    "md": ("⚠️ Tôi chưa đọc được ô **Trường hợp giải quyết** trên trang, công dân chọn tay rồi bấm **Đồng ý và tiếp "
+           "tục** giúp tôi ạ."),
+    "tts": "Dạ tôi chưa đọc được ô trường hợp giải quyết, công dân chọn tay rồi bấm Đồng ý và tiếp tục giúp tôi ạ.",
+}
+LC_CASE_AUTO = {
+    "md": "\n\n📌 Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",
+    "tts": " Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",
+}
+LC_CASE_ASK = {
+    "md": ("Công dân chọn **Trường hợp giải quyết** đúng hồ sơ của mình ở thẻ trên (cổng bắt buộc chọn), rồi bấm "
+           "**Đồng ý và tiếp tục** ạ."),
+    "tts": " Công dân chọn trường hợp giải quyết đúng hồ sơ của mình ở thẻ trên, rồi bấm Đồng ý và tiếp tục ạ.",
+}
+LC_CASE_GUIDE = {
+    "md": ("Muốn đổi thì bấm lựa chọn khác trên thẻ; xong thì bấm **Đồng ý và tiếp tục**, sang trang **Thông tin người "
+           "nộp** tôi nhận giấy tờ để điền ạ."),
+    "tts": (" Muốn đổi thì bấm lựa chọn khác trên thẻ, xong thì bấm Đồng ý và tiếp tục, sang trang thông tin người nộp "
+            "tôi nhận giấy tờ để điền ạ."),
+}
+LC_ATTACH_NEXT = {
+    "md": ("Tiếp theo là bước **Lệ phí hồ sơ**: công dân bấm **Đồng ý và tiếp tục** bên dưới (hoặc nói **“bước tiếp "
+           "theo”**), tôi bấm nút đó trên trang rồi chọn giúp cách nhận kết quả và mức lệ phí ạ."),
+    "tts": (" Tiếp theo là bước lệ phí hồ sơ, công dân bấm Đồng ý và tiếp tục bên dưới hoặc nói bước tiếp theo, tôi bấm "
+            "nút đó trên trang rồi chọn giúp cách nhận kết quả và mức lệ phí ạ."),
+}
+LC_MOVING = {
+    "md": "Dạ tôi bấm **Đồng ý và tiếp tục** trên trang, chờ cổng mở bước sau ạ…",
+    "tts": "Dạ tôi bấm Đồng ý và tiếp tục trên trang, chờ cổng mở bước sau ạ.",
+}
+LC_BLOCKED = {
+    "md": ("⚠️ Cổng **chưa cho đi tiếp**{message}.\n\nCông dân xem ô báo đỏ trên trang, sửa xong bấm nút dưới để tôi "
+           "bấm lại ạ."),
+    "tts": "Dạ cổng chưa cho đi tiếp. Công dân xem ô báo đỏ trên trang, sửa xong bấm nút để tôi bấm lại ạ.",
+}
+LC_RESULT_READING = {
+    "md": "💰 Đây là bước **Lệ phí hồ sơ**. Tôi đang đọc cách nhận kết quả và mức lệ phí trên trang ạ…",
+    "tts": "Đây là bước lệ phí hồ sơ. Tôi đang đọc cách nhận kết quả và mức lệ phí trên trang ạ.",
+}
+LC_RESULT_UNREAD = {
+    "md": ("⚠️ Tôi chưa đọc được ô **Hình thức nhận kết quả** và **Mức lệ phí** trên trang, công dân chọn tay rồi bấm "
+           "**Đồng ý và tiếp tục** giúp tôi ạ."),
+    "tts": "Dạ tôi chưa đọc được các ô trên trang, công dân chọn tay rồi bấm Đồng ý và tiếp tục giúp tôi ạ.",
+}
+LC_ADDRESS_PULLED = {
+    "md": "\n\n📍 Tôi đã lấy **địa chỉ nhận kết quả** theo địa chỉ người nộp ở bước trước.",
+    "tts": " Tôi đã lấy địa chỉ nhận kết quả theo địa chỉ người nộp.",
+}
+LC_FEE_AUTO = {
+    "md": "\n\n💵 Cổng chỉ có một mức lệ phí nên tôi đã chọn sẵn.",
+    "tts": " Cổng chỉ có một mức lệ phí nên tôi đã chọn sẵn.",
+}
+LC_MISSING = {
+    "md": "\n\n✍️ Còn trống: **{fields}**, công dân điền trên trang giúp tôi ạ.",
+    "tts": " Còn trống {fields}, công dân điền trên trang giúp tôi ạ.",
+}
+LC_FEE_ASK = {
+    "md": ("Công dân chọn **Mức lệ phí** đúng trường hợp của mình ở thẻ trên (cổng bắt buộc chọn), rồi bấm "
+           "**Đồng ý và tiếp tục** ạ."),
+    "tts": " Công dân chọn mức lệ phí đúng trường hợp của mình ở thẻ trên, rồi bấm Đồng ý và tiếp tục ạ.",
+}
+LC_CONTINUE_GUIDE = {
+    "md": "Muốn đổi thì bấm lựa chọn khác trên thẻ; xong thì bấm **Đồng ý và tiếp tục** ạ.",
+    "tts": " Muốn đổi thì bấm lựa chọn khác trên thẻ, xong thì bấm Đồng ý và tiếp tục ạ.",
+}
+LC_AFTER_FEE = {
+    "md": ("✅ Đã qua bước **Lệ phí hồ sơ**. Công dân rà lại toàn bộ thông tin trên trang này rồi **tự bấm nộp hồ sơ** "
+           "ạ."),
+    "tts": "Dạ đã qua bước lệ phí hồ sơ. Công dân rà lại toàn bộ thông tin trên trang rồi tự bấm nộp hồ sơ ạ.",
+}
 # ── Cổng Bắc Ninh (Liferay, 4 tab cùng trang, chat/bac_ninh.py): câu hỏi điền người ủy quyền ở tab Chọn cơ quan tiếp
 # nhận, nút + lệnh nói "bước tiếp theo" chuyển tab, nơi nhận kết quả, nút Nộp hồ sơ. Chỉ bản tiếng Việt: luồng tắt ở
 # chế độ Mông. Thẻ nơi nhận kết quả dùng chung khuôn result_methods. ──

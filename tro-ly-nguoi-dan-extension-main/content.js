@@ -1926,6 +1926,9 @@
         // Cổng Bắc Ninh: tab đang mở của trang nộp hồ sơ 4 tab cùng trang (content/bacninh/tab-flow.js), 0 = không phải.
         bnTab: (window.__TLND__ && typeof window.__TLND__.bacNinhTab === "function")
           ? window.__TLND__.bacNinhTab() : 0,
+        // Cổng Lai Châu: bước của trang nộp hồ sơ đọc từ tiêu đề "Bước N - …" (content/laichau/portal.js), 0 = không phải.
+        lcStep: (window.__TLND__ && typeof window.__TLND__.laiChauStep === "function")
+          ? window.__TLND__.laiChauStep() : 0,
         // Cổng Bắc Ninh: trang hoàn thiện thông tin tài khoản (người làm lần đầu) trước trang thủ tục.
         bnAccountForm: !!(window.__TLND__ && typeof window.__TLND__.bacNinhAccountForm === "function"
           && window.__TLND__.bacNinhAccountForm()),

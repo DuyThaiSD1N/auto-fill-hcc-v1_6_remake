@@ -375,3 +375,146 @@ async def test_khai_sinh_nen_tep_tren_2mb_tra_replace_files(monkeypatch):
     assert by_index[1]["fileName"] == "cccd-me.pdf"
     assert res["extracted"]["shrunk"][0]["originalBytes"] == 2_100_000
     assert not [e for e in res["errors"] if "nén" in e]
+
+
+_SONG_LIEU = {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Song Liễu"}
+_ONLY = khai_sinh.ONLY_BIRTH_PROOF_OPTION
+
+
+def test_song_lieu_bat_co_chi_dinh_giay_chung_sinh_theo_tai_khoan():
+    key = khai_sinh.PROCEDURE_KEY
+    assert khai_sinh.with_khai_sinh_attach_options({}, _SONG_LIEU, key) == {_ONLY: True}
+    # Viết không dấu / không tiền tố vẫn nhận.
+    assert khai_sinh.with_khai_sinh_attach_options({}, {"tinh": "Bac Ninh", "xa": "Song Lieu"}, key)[_ONLY] is True
+    # Client không tự bật được; tỉnh khác, xã khác tên gần giống, thủ tục khác → không có cờ.
+    assert _ONLY not in khai_sinh.with_khai_sinh_attach_options(
+        {_ONLY: True}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}, key)
+    assert _ONLY not in khai_sinh.with_khai_sinh_attach_options({}, {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Song Liễu"}, key)
+    assert _ONLY not in khai_sinh.with_khai_sinh_attach_options({}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Xã Song Liễu Mới"}, key)
+    assert _ONLY not in khai_sinh.with_khai_sinh_attach_options({}, _SONG_LIEU, "khai-sinh-dang-ky-thuong")
+    assert _ONLY not in khai_sinh.with_khai_sinh_attach_options({}, None, key)
+
+
+def test_nghia_lo_van_chi_bo_to_khai_khong_bat_co_song_lieu():
+    opts = khai_sinh.with_khai_sinh_attach_options(
+        {}, {"tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Nghĩa Lộ"}, khai_sinh.PROCEDURE_KEY)
+    assert opts == {khai_sinh.OMIT_BIRTH_DECLARATION_OPTION: True}
+
+
+def test_router_va_tro_ly_deu_goi_cau_hinh_khai_sinh_theo_tai_khoan():
+    """Auto Fill (router đính kèm) và trợ lý (pipeline_runner) cùng đặt cờ từ tài khoản server."""
+    import inspect
+
+    from app.attachments import router as attach_router
+    from app.channels.handfree.chat import pipeline_runner
+
+    assert "with_khai_sinh_attach_options(options, user, body.procedure)" in inspect.getsource(attach_router)
+    assert "with_khai_sinh_attach_options(attach_options, owner_user, procedure_key)" in inspect.getsource(
+        pipeline_runner)
+
+
+_TO_KHAI_KHAI_SINH = (
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nTỜ KHAI ĐĂNG KÝ KHAI SINH\nKính gửi: UBND phường\n"
+    "Họ, chữ đệm, tên người yêu cầu: NGUYỄN VĂN A\nĐề nghị cơ quan đăng ký khai sinh cho người dưới đây\n"
+    "Tôi cam đoan nội dung đề nghị đăng ký khai sinh trên đây là đúng sự thật"
+)
+
+
+async def test_song_lieu_chi_dinh_giay_chung_sinh_vao_stt1(monkeypatch):
+    """Cờ onlyBirthProof: chỉ giấy chứng sinh lên STT1; tờ khai khai sinh, CT01, CCCD, kết hôn không đính,
+    không báo "Bỏ qua file" mà ghi chú theo cấu hình."""
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "cccd-me.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên: NGUYỄN THỊ B"},
+            {"name": "to-khai.pdf", "text": _TO_KHAI_KHAI_SINH},
+            {"name": "chung-sinh.pdf", "text": "GIẤY CHỨNG SINH\nĐã sinh con vào lúc 08 giờ"},
+            {"name": "ct01.pdf", "text": "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\nMẫu CT01"},
+            {"name": "ket-hon.pdf", "text": "GIẤY CHỨNG NHẬN KẾT HÔN\nHọ, chữ đệm, tên vợ: NGUYỄN THỊ B"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        # LLM nhận nhầm tờ khai là chứng sinh — rule vẫn phải giữ tờ khai ngoài ô.
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "other"},
+            {"index": 1, "docType": "birth_proof"},
+            {"index": 2, "docType": "birth_proof"},
+            {"index": 3, "docType": "residence_form"},
+            {"index": 4, "docType": "other"},
+        ]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    names = ("cccd-me.pdf", "to-khai.pdf", "chung-sinh.pdf", "ct01.pdf", "ket-hon.pdf")
+    res = await khai_sinh.plan_khai_sinh_attachments([_file(n) for n in names], {_ONLY: True}, _session())
+
+    items = res["attachments"]
+    assert [(it["fileName"], it["slotIndex"]) for it in items] == [("chung-sinh.pdf", 0)]
+    assert "fallbackSlotIndex" not in items[0]
+    assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
+    assert res["extracted"]["onlyBirthProofOmitted"] == ["cccd-me.pdf", "to-khai.pdf", "ct01.pdf", "ket-hon.pdf"]
+    assert res["extracted"]["skipped"] == []
+    assert [e for e in res["errors"] if e.startswith(khai_sinh.ONLY_BIRTH_PROOF_NOTE)] == [
+        f"{khai_sinh.ONLY_BIRTH_PROOF_NOTE}: cccd-me.pdf, to-khai.pdf, ct01.pdf, ket-hon.pdf"
+    ]
+    assert not [e for e in res["errors"] if e.startswith("Bỏ qua file")]
+    # Mọi tệp vẫn có trong classified → extension không báo "chưa vào hồ sơ" vì vượt dung lượng.
+    assert [c["fileName"] for c in res["extracted"]["classified"]] == list(names)
+
+
+async def test_song_lieu_tep_ghep_to_khai_va_chung_sinh_van_dinh(monkeypatch):
+    """Tệp ghép tờ khai + trang giấy chứng sinh (còn ô mẫu GCS) → vẫn là giấy chứng sinh, vẫn đính."""
+    async def fake_ocr_per_file(files):
+        return [{"name": "ghep.pdf", "text": _TO_KHAI_KHAI_SINH + "\n" + _GHEP_KET_HON_CHUNG_SINH}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "docType": "other"}]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments([_file("ghep.pdf")], {_ONLY: True}, _session())
+
+    assert [(it["fileName"], it["slotIndex"]) for it in res["attachments"]] == [("ghep.pdf", 0)]
+    assert res["extracted"]["onlyBirthProofOmitted"] == []
+
+
+async def test_song_lieu_khong_co_chung_sinh_thi_khong_dinh_gi(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
+            {"name": "to-khai.pdf", "text": _TO_KHAI_KHAI_SINH},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "docType": "other"}, {"index": 1, "docType": "other"}]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments(
+        [_file("cccd-bo.pdf"), _file("to-khai.pdf")], {_ONLY: True}, _session())
+
+    assert res["attachments"] == []
+    assert res["extracted"]["birthProof"] is None
+    assert res["extracted"]["onlyBirthProofOmitted"] == ["cccd-bo.pdf", "to-khai.pdf"]
+    assert any(e.startswith("Không tìm thấy giấy chứng sinh") for e in res["errors"])
+    assert not any("đã đính các giấy tờ khác" in e for e in res["errors"])
+
+
+async def test_khong_co_co_thi_to_khai_va_giay_khac_van_dinh_nhu_cu(monkeypatch):
+    """Tài khoản khác (không cờ): tờ khai khai sinh + CCCD vẫn lên STT1 như trước."""
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "chung-sinh.pdf", "text": "GIẤY CHỨNG SINH"},
+            {"name": "to-khai.pdf", "text": _TO_KHAI_KHAI_SINH},
+            {"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": i, "docType": "other"} for i in range(3)]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments(
+        [_file("chung-sinh.pdf"), _file("to-khai.pdf"), _file("cccd-bo.pdf")], {}, _session())
+
+    assert sorted(it["fileName"] for it in res["attachments"]) == ["cccd-bo.pdf", "chung-sinh.pdf", "to-khai.pdf"]
+    assert res["extracted"]["onlyBirthProofOmitted"] == []

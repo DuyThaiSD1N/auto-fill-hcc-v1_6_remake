@@ -1093,6 +1093,22 @@
       "autoConfirm": true
     },
     {
+      "key": "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi",
+      "code": "1.116908",
+      "label": "Tiếp nhận đối tượng cần bảo vệ khẩn cấp vào cơ sở trợ giúp xã hội",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f65f-4713-7199-9b0c-d57f794ef14d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi",
+      "code": "1.116907",
+      "label": "Tiếp nhận đối tượng bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn vào cơ sở trợ giúp xã hội",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f653-8729-706c-9cc8-c3234469d7cf",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-moi-chung-chi-hanh-nghe-xay-dung",
       "code": "1.013237",
       "label": "Cấp mới chứng chỉ hành nghề hoạt động xây dựng",
@@ -2655,6 +2671,22 @@
       "code": "1.115590",
       "label": "Lai Châu - Đăng ký, cấp Giấy chứng nhận đối với toàn bộ diện tích đất đang sử dụng theo quy định tại điểm b và điểm c khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bb9-231f-777d-a094-d8cfaff2f00d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau",
+      "code": "1.115578",
+      "label": "Lai Châu - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Đối với các xã miền núi, biên giới; đảo; vùng có điều kiện kinh tế - xã hội khó khăn; vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3675-adb4-70cc-b5e2-3d7a14ebde22",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-dat-cho-thue-dat-lai-chau",
+      "code": "1.115577",
+      "label": "Lai Châu - Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3667-f9e9-77a9-be11-1079162144e9",
       "needsAgencySelect": true,
       "autoConfirm": true
     }

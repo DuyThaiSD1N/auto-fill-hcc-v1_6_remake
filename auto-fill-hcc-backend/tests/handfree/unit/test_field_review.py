@@ -706,6 +706,8 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "sua-chua-cai-tao-gpxd-cong-trinh",
                                      "dang-ky-cham-dut-giam-ho", "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
                                      "dieu-chinh-huu-tri-xa-hoi", "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+                                     "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi",
+                                     "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi",
                                      "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang-1116910",
                                      "di-chuyen-ho-so-nguoi-huong-tro-cap", "tro-cap-tho-cung-liet-si",
                                      "uu-dai-ncc-tu-tran", "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
@@ -754,7 +756,10 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang",
                                      "hoa-giai-tranh-chap-dat-dai",
                                      "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
-                                     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"}
+                                     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+                                     "dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+                                     "cap-doi-gcn-khanh-hoa",
+                                     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

@@ -52,12 +52,15 @@ from app.pipelines.giao_thue_chuyen_muc_dich_dat_ninh_binh.process.mapper import
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import (
     with_account_process_options as with_khai_sinh_dang_ky_lai_account_process_options,
 )
-from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
+from app.pipelines.khai_sinh_lien_thong.attach.planner import with_khai_sinh_attach_options
 from app.pipelines.cap_giay_phep_xay_dung.attach.planner import (
     with_account_attach_options as with_gpxd_attach_options,
 )
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
+)
+from app.pipelines.khuyet_tat.process.mapper import (
+    with_account_process_options as with_khuyet_tat_account_process_options,
 )
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.mapper import (
     with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
@@ -384,6 +387,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_khai_sinh_lien_thong_account_process_options(options, owner_user, procedure_key)
             options = with_tro_cap_nhan_cham_soc_account_process_options(options, owner_user, procedure_key)
             options = with_giao_dat_ninh_binh_account_process_options(options, owner_user, procedure_key)
+            options = with_khuyet_tat_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"
@@ -764,11 +768,11 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
                 if f.get("doc_key") in owner_keys
             ]
         # Tài khoản chủ phiên quyết các cấu hình theo xã (STT1 ảo Hải Châu, bỏ Tờ khai Nghĩa Hưng,
-        # bỏ Tờ khai khai sinh Nghĩa Lộ).
+        # bỏ Tờ khai khai sinh Nghĩa Lộ, chỉ đính Giấy chứng sinh Song Liễu).
         with mon.span("pre.prepare"):
             owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
             attach_options = with_account_attach_options(attach_options, owner_user, procedure_key)
-            attach_options = with_nghia_lo_attach_options(attach_options, owner_user, procedure_key)
+            attach_options = with_khai_sinh_attach_options(attach_options, owner_user, procedure_key)
             attach_options = with_gpxd_attach_options(attach_options, owner_user, procedure_key)
             attach_options = with_cam_duong_attach_options(attach_options, owner_user, procedure_key)
             # Cam Đường luôn tách giấy tờ — chỉ khi extension có engine cắt trang (sourceSegments).

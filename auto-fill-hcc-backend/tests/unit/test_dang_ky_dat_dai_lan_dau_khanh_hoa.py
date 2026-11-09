@@ -363,6 +363,14 @@ def test_tro_ly_chi_tai_khoan_khanh_hoa_dung_pipeline_loi():
     assert procedure["detect"] == core["detect"]
     assert procedure["keKhaiUrl"] == link["url"]
     assert handfree.procedure_code(procedure) == "1.013978"
+    # Luồng chung "xay-dung" + bxdFlow như Tuyên Quang (09/11/2026): đọc trang "Chọn trường hợp giải quyết", bổ sung ô,
+    # nút sang Thành phần hồ sơ / Hình thức nhận kết quả, nộp hồ sơ.
+    from app.channels.handfree.chat.field_review import registry as field_review_registry
+
+    assert procedure["flowProfile"] == "xay-dung" and procedure["maePortal"] is True
+    assert procedure["maeDialogChoice"] == {"enabled": True}
+    assert procedure["bxdFlow"]["capability"] == "supportsBxdFlowKhanhHoa"
+    assert field_review_registry.get(_KEY)["required"] == ()
     assert procedure["agencyProvince"] == "Khánh Hòa"
     assert "agencyProvinceOnly" not in procedure and "agencySoFirst" not in procedure
     assert handfree.is_allowed_in_province(procedure, "khanhhoa")

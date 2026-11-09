@@ -911,6 +911,39 @@ function isAreaSelectField(f) {
   return f?.comp === "dom-select" && fieldCandidates(f).some(isAreaSelectName);
 }
 
+// Đổi Tỉnh xong, ô Phường/Xã con VẪN GIỮ danh sách của tỉnh CŨ tới khi AJAX của cổng về (eForm Nth Lai Châu:
+// CongDan_maPhuongXa nạp lại theo #maTinhThanh). Danh sách cũ là select thường đã có option nên bị coi "đã ổn định,
+// không có giá trị" → dừng sớm, hụt xã (9/11, 1.115578 "Xã Phong Thổ"). Chụp dấu option của các ô địa bàn khác TRƯỚC
+// khi chọn Tỉnh; Tỉnh đổi giá trị thì ô nào còn y nguyên danh sách cũ trong STANDARD_AREA_CASCADE_RELOAD_MS được coi
+// là ĐANG NẠP. Cùng cách với Auto Fill (content.js).
+const STANDARD_AREA_CASCADE_RELOAD_MS = 8000;
+let standardAreaCascade = null;
+
+function standardSelectOptionsFingerprint(select) {
+  const values = Array.from(select?.options || []).map((o) => o.value);
+  return `${values.length}:${values.slice(0, 5).join(",")}:${values.slice(-3).join(",")}`;
+}
+
+function snapshotStandardAreaCascade(names, occurrence, root) {
+  const own = findStandardSelects(names, occurrence, root);
+  const stale = new Map();
+  document.querySelectorAll("select").forEach((sel) => {
+    if (!own.includes(sel) && isAreaSelectName(sel.name || sel.id)) stale.set(sel, standardSelectOptionsFingerprint(sel));
+  });
+  return { own, values: own.map((sel) => sel.value), stale };
+}
+
+function commitStandardAreaCascade(snapshot) {
+  if (!snapshot?.own.some((sel, i) => sel.value !== snapshot.values[i])) return;
+  standardAreaCascade = { until: Date.now() + STANDARD_AREA_CASCADE_RELOAD_MS, stale: snapshot.stale };
+}
+
+function standardSelectAwaitingCascade(select) {
+  const cascade = standardAreaCascade;
+  if (!cascade || Date.now() > cascade.until || !cascade.stale.has(select)) return false;
+  return cascade.stale.get(select) === standardSelectOptionsFingerprint(select);
+}
+
 function isPostbackAddressField(f) {
   return fieldCandidates(f).some(isAreaSelectName);
 }
@@ -1180,13 +1213,21 @@ async function fillStandardSelectAll(names, value, occurrence = null, deadline =
   const isAreaSelect = names.some(isAreaSelectName);
   if (isAreaSelect && !deadline) deadline = Date.now() + STANDARD_AREA_FIELD_BUDGET_MS;
   let filledAny = false;
-  for (const delay of [0, 250, 600, 1200]) {
+  const delays = [0, 250, 600, 1200];
+  for (let round = 0; round < delays.length; round++) {
+    const delay = delays[round];
     if (standardSelectBudgetLeft(deadline) <= 0) break;
     if (delay && !await sleepForStandardSelect(delay, deadline)) break;
     const selects = findStandardSelects(names, occurrence, root);
     if (!selects.length) continue;
 
     const states = selects.map((sel) => standardSelectOptionState(sel, value, names));
+    // Còn danh sách của tỉnh cũ: CHƯA chọn (khớp lỏng trên danh sách cũ là chọn nhầm), chờ thêm lượt trong ngân sách
+    // của ô cho tới khi cổng nạp xong danh sách mới.
+    if (isAreaSelect && states.every((state) => state.awaitingCascade && !state.hasValue)) {
+      if (round === delays.length - 1) delays.push(400);
+      continue;
+    }
     if (isAreaSelect && states.every((state) => state.settled && !state.hasValue)) {
       console.warn(`[AutoFill-STD] Dừng sớm select "${names[0]}"="${value}" — danh sách đã ổn định và không có giá trị.`);
       break;
@@ -1845,7 +1886,9 @@ async function fillFormStandard(fields) {
       } else if (f.comp === "dom-select") {
         if (isAreaSelectField(f)) {
           const deadline = standardFieldDeadline(areaDeadlines, f);
+          const cascade = snapshotStandardAreaCascade(candidates, occurrence, root);
           ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
+          if (ok) commitStandardAreaCascade(cascade);
         } else if (f.searchOnce) {
           const el = findStandardSelect(candidates, occurrence, root)
             || await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100);
@@ -2562,7 +2605,13 @@ function standardSelectOptionState(select, value, names = []) {
     choices?.getAttribute?.("aria-busy") === "true" ||
     choices?.querySelector?.('[aria-busy="true"], .is-loading, .spinner-border, .loading')
   );
-  return { settled: !loading && (staticSource || plainNativeSource || searchedEmpty), hasValue };
+  // Select thường còn danh sách của tỉnh cũ (vừa đổi Tỉnh) → đang nạp, chưa kết luận "không có giá trị".
+  const awaitingCascade = plainNativeSource && standardSelectAwaitingCascade(select);
+  return {
+    settled: !loading && !awaitingCascade && (staticSource || plainNativeSource || searchedEmpty),
+    hasValue,
+    awaitingCascade,
+  };
 }
 
 function standardCheckboxWantsTrue(field) {

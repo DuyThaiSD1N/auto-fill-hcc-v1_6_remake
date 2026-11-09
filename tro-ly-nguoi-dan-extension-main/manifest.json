@@ -99,6 +99,7 @@
         "content/lien-thong.js",
         "content/bxd/portal.js",
         "content/bxd/field-review-formio.js",
+        "content/laichau/portal.js",
         "content/liz/field-review.js",
         "content/liz/one-page.js",
         "content/business-registration-adapter.js",

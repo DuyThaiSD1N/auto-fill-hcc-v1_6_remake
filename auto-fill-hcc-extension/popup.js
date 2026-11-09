@@ -5118,6 +5118,11 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-trich-luc-sao-ho-so-nguoi-co-cong" ||
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
+      // [Bộ Y tế] 1.116908 tiếp nhận đối tượng cần bảo vệ khẩn cấp: Họ tên + CCCD Phần I khoá theo tài khoản → mốc
+      // chọn người giám hộ hay đối tượng khớp tài khoản; cài đặt "Lấy người nộp theo tờ khai" bật thì BE bỏ mốc.
+      cfg.key === "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi" ||
+      // [Bộ Y tế] 1.116907: cùng form + cùng pipeline với 1.116908.
+      cfg.key === "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi" ||
       cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||

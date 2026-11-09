@@ -132,3 +132,23 @@ def test_gioi_tinh_nguoi_nop_suy_tu_so_dinh_danh_khi_giay_khong_ghi():
     nguoi_nop = {"NguoiNop_HoTen": "Nguyễn Thị Mẹ", "NguoiNop_SoDinhDanh": "001190000003", "NguoiNop_GioiTinh": "Nam"}
     d = _values(mapper.enrich(_fields(_MUC_I, nguoi_nop), tk))
     assert d["data[gender]"] == "Nam"
+
+
+def test_khanh_hoa_ghi_chu_co_dinh_theo_tai_khoan():
+    """Tài khoản tỉnh Khánh Hòa: server bật cờ, mapper ghi ô Ghi chú bằng câu cố định. Tỉnh khác, thủ tục đổi/cấp lại
+    dùng chung mapper, hay client tự gửi cờ đều không ghi."""
+    kh = {"tinh": "Tỉnh Khánh Hoà", "xa": "Phường Giả"}
+    opts = mapper.with_account_process_options(_TK_NKT, kh, "xac-dinh-muc-do-khuyet-tat")
+    assert opts["khanhHoaGhiChu"] is True and opts["formContext"] == _TK_NKT["formContext"]
+    d = _values(mapper.enrich(_fields(_MUC_I), opts))
+    assert d["data[ghiChu]"] == "Xác định mức độ khuyết tật và cấp giấy xác nhận khuyết tật"
+
+    gia = {**_TK_NKT, "khanhHoaGhiChu": True}
+    for user, procedure in (
+        ({"tinh": "Thành phố Đà Nẵng", "xa": "Phường Giả"}, "xac-dinh-muc-do-khuyet-tat"),
+        (kh, "doi-cap-lai-giay-xac-nhan-khuyet-tat"),
+        (None, "xac-dinh-muc-do-khuyet-tat"),
+    ):
+        opts = mapper.with_account_process_options(gia, user, procedure)
+        assert "khanhHoaGhiChu" not in opts
+        assert "data[ghiChu]" not in _values(mapper.enrich(_fields(_MUC_I), opts))

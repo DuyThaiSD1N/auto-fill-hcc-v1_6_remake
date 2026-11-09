@@ -290,6 +290,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,
+        # Cổng Lai Châu (chat/lai_chau.py): báo bước trang (lcStep), bấm "Đồng ý và tiếp tục", chọn hình thức nhận kết quả
+        # + mức lệ phí ở bước Lệ phí hồ sơ.
+        flow.lai_chau.CAPABILITY: raw.get(flow.lai_chau.CAPABILITY) is True,
         # Trang nộp một trang của cổng Bộ VHTTDL (form liz, chat/tu_phap_moi.py): bổ sung ô, tích ô cam kết, gạt VNPost,
         # bấm Lưu và nộp hồ sơ.
         "supportsLizFlow": raw.get("supportsLizFlow") is True,
@@ -349,6 +352,9 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         "bxd": flow.bxd.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
         # Cổng Bắc Ninh: sidebar báo tab đang mở (bnTab) ở mọi state, kể cả sau đính kèm.
         "bac_ninh": flow.bac_ninh.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
+        # Cổng Lai Châu (mỗi bước một trang): sidebar báo bước đọc từ tiêu đề trang (lcStep) ở mọi state đang theo dõi,
+        # để trợ lý dẫn bước Lệ phí hồ sơ cả khi công dân tự bấm "Đồng ý và tiếp tục".
+        "lai_chau": flow.lai_chau.enabled(conv, get_procedure(conv.get("procedure_key") or "")),
     }
 
 
@@ -368,6 +374,9 @@ def _last_reply_for_restore(conv: dict) -> dict | None:
     for chip in restored.get("chips", []):
         if isinstance(chip, dict) and chip.get("send") == "__action:docs_done":
             chip["label"] = flow._docs_done_label_for_conv(conv)  # noqa: SLF001
+    # Cổng Lai Châu tải hẳn trang mới ở MỖI bước → sidebar dựng lại từ last_reply (không mang cờ luồng của _serialize).
+    # Thiếu cờ thì watcher không báo bước mới (lcStep) ở state done → trợ lý đứng im ở trang Lệ phí (09/11).
+    restored["lai_chau"] = flow.lai_chau.enabled(conv, get_procedure(conv.get("procedure_key") or ""))
     return restored
 
 

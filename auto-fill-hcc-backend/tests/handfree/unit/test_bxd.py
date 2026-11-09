@@ -89,6 +89,8 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham", ("ghiChu",)),
     ("dieu-chinh-huu-tri-xa-hoi", ("ghiChu",)),
     ("thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang", ("ghiChu",)),
+    ("tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi", ("ghiChu",)),
+    ("tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi", ("ghiChu",)),
     ("ho-tro-mai-tang-huu-tri-xa-hoi", ("ghiChu",)), ("ho-tro-mai-tang-1116910", ("ghiChu",)),
     # Cổng Bộ Nội vụ (bước 3 tên "Thông tin bổ sung").
     ("di-chuyen-ho-so-nguoi-huong-tro-cap", ("ghiChu",)), ("tro-cap-tho-cung-liet-si", ("ghiChu",)),
@@ -217,6 +219,10 @@ def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
 
 
 @pytest.mark.parametrize("key", [
+    "dang-ky-dat-dai-lan-dau-khanh-hoa",
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+    "cap-doi-gcn-khanh-hoa",
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
 ])
@@ -237,6 +243,41 @@ def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
+_KH_CAPS = {**CAPS, "supportsBxdFlowKhanhHoa": True}
+
+
+@pytest.mark.parametrize("key", [
+    "dang-ky-dat-dai-lan-dau-khanh-hoa",
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+    "cap-doi-gcn-khanh-hoa",
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
+])
+async def test_cong_khanh_hoa_dan_du_4_buoc_bo_sung_o_sang_thanh_phan_nhan_ket_qua_nop(key):
+    """4 thủ tục Khánh Hòa đầu (09/11/2026) từng khai wizard thường: điền xong không có vòng bổ sung ô, không nút "Sang
+    Thành phần hồ sơ", đính xong không nút sang "Hình thức nhận kết quả", bước nhận kết quả không đọc lựa chọn, không nút
+    "Nộp hồ sơ". Nay cùng luồng 4 bước với Tuyên Quang."""
+    filled = _conv("filling", caps=_KH_CAPS, procedure_key=key, flow2_card="fill")
+    missing = await _turn(filled, "action", "fill_report", {"filled": 20, "notFound": [], "review": MISSING})
+    assert _sends(missing)[:2] == ["__action:field_review_start", "__action:bxd_next"]
+    full = await _turn(_conv("filling", caps=_KH_CAPS, procedure_key=key, flow2_card="fill"), "action", "fill_report",
+                       {"filled": 25, "notFound": [], "review": FULL})
+    assert full.chips[0] == {"label": vi.BXD_ATTACH_CHIP, "send": "__action:bxd_next", "solid": True, "cta": True}
+
+    attaching = _conv("attaching", caps=_KH_CAPS, procedure_key=key, docs_target="attachment", bxd={"at": 2},
+                      flow2_card="attach", attach_plan=[{"fileName": "don.pdf", "componentIndex": 1}],
+                      attach_action_in_progress=True)
+    attached = await _turn(attaching, "action", "attach_report", {"attached": 1, "skipped": 0, "errors": []})
+    assert attached.chips[-1] == {"label": vi.BXD_RESULT_CHIP, "send": "__action:bxd_next", "solid": True, "cta": True}
+    assert (await _turn(attaching, "action", "bxd_next")).actions == [{"type": "bxd_next", "expect": 3}]
+
+    done = _conv("done", caps=_KH_CAPS, procedure_key=key, bxd={"at": 2})
+    scan = next(a for a in (await _page(done, 3)).actions if a["type"] == "bxd_result_scan")
+    assert scan["groups"] == [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}]
+    report = await _turn(done, "action", "bxd_result_report", {"groups": RECEIVING})
+    assert report.cards and _sends(report) == [bxd.SUBMIT_SEND]
+    assert (await _turn(done, "action", "bxd_submit")).actions == [{"type": "bxd_submit"}]
 
 
 def test_co_cong_tinh_igate_qua_duoc_whitelist_cua_router():
