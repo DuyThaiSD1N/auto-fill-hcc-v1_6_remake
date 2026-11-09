@@ -233,6 +233,9 @@
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,
+    // Wizard tư pháp: bấm nút "Quay lại" của cổng (guided_click_back) và đếm lại ô tờ khai khi lùi về Kê khai
+    // (step_back_scan) để BE điền lại / mời bổ sung. Thiếu cờ → BE không theo khi trang lùi bước.
+    supportsStepBack: true,
     // Khôi phục hồ sơ đang làm dở sau khi phiên bị gián đoạn (tắt máy, cổng văng ra): BE gợi ý khi chọn lại đúng
     // thủ tục, rồi đưa lại giấy tờ + dữ liệu từng bước bằng các lệnh sẵn có. Thiếu cờ → BE giữ luồng làm mới.
     supportsResume: true,
@@ -1422,6 +1425,32 @@
     // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
     // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
     if (moved && (phase === "owner" || phase === "field_review_owner")) await verifyPortalState();
+  }
+
+  // Bấm nút "Quay lại" của cổng. Trang lùi bước thì watcher báo page_status như khi công dân tự bấm → BE lùi state theo.
+  async function runGuidedBack() {
+    setStatus("Đang quay lại bước trước…");
+    const res = await sendToContent({ action: "guidedClickBack" });
+    setStatus("");
+    if (!res?.clicked) await ask("__event:step_back_failed", "system");
+  }
+
+  // Lùi về Kê khai: tờ khai nằm trong iframe cổng dựng lại mất vài giây (dữ liệu đổ vào sau khung) → chờ có tờ khai,
+  // đếm 2 lần cách nhau để lấy số ô sau khi cổng đổ xong, rồi báo BE (trống → BE điền lại, còn → mời bổ sung).
+  const STEP_BACK_SCAN_WAIT_MS = 20000;
+  async function runStepBackScan(a) {
+    const mark = () => sendToContent({ ...(a.fieldReview || {}), action: "fieldReviewMark" });
+    const started = Date.now();
+    let marked = null;
+    while (!marked?.stats && Date.now() - started < STEP_BACK_SCAN_WAIT_MS) {
+      await new Promise((r) => setTimeout(r, 1000));
+      marked = await mark();
+    }
+    if (marked?.stats) {
+      await new Promise((r) => setTimeout(r, 2000));
+      marked = (await mark()) || marked;
+    }
+    await ask(`__event:step_back_form:${JSON.stringify({ stats: marked?.stats || null })}`, "system");
   }
 
   // Tờ khai trong bảng Thành phần hồ sơ: bấm "Khai tờ khai" ở đúng dòng, chờ ĐÚNG mẫu đó mở ra (cổng dựng tờ khai mất
@@ -5459,6 +5488,11 @@
         const expect = Number(a.expectStep) || 0;
         const ownerFields = Array.isArray(a.readOwnerFields) ? a.readOwnerFields : null;
         setTimeout(() => { void runGuidedNext(phase, expect, ownerFields); }, 0);
+      } else if (a.type === "guided_click_back") {
+        // Như guided_click_next: hoãn khỏi lượt hiện tại để ask() lồng bên trong không khoá cứng sidebar.
+        setTimeout(() => { void runGuidedBack(); }, 0);
+      } else if (a.type === "step_back_scan") {
+        setTimeout(() => { void runStepBackScan(a); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(a); }, 0);
       } else if (a.type === "open_eform") {

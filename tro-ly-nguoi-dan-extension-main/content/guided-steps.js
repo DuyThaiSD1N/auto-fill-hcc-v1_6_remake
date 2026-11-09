@@ -210,6 +210,55 @@
     sendResponse({ ok: true, clicked: true });
   });
 
+  // Nút "Quay lại" của wizard tư pháp: bước 1, 2, 4 có data-e2e="btn-back"; bước 3 là nút trơn chữ "Quay lại" đứng cạnh
+  // "Bước tiếp theo" (#nop-thu-tuc-b-3) — khớp đúng nguyên chữ để không bấm nhầm nút khác.
+  // Trang có thể có nhiều nút quay lại đang hiện (nút của khung trang đưa về đầu hồ sơ) → lấy nút nằm CẠNH nút đi tiếp
+  // của bước đang mở: leo dần từ nút đi tiếp, khối cha gần nhất có nút quay lại là thanh nút của bước đó.
+  const STEP_ACTION_SELECTORS = ["#nop-thu-tuc-b-3", "#nop-thu-tuc-b-3-uy-quyen", 'button[id^="kt_buoc-tiep-theo"]',
+                                 "#xem-truoc-to-khai", "#kt_gui-ho-so", 'button[data-e2e="btn-next"]'];
+  const isBackButton = (el) => isVisible(el)
+    && (el.getAttribute("data-e2e") === "btn-back" || fold(el.textContent) === "quay lai");
+  function stepBackButton() {
+    const anchor = STEP_ACTION_SELECTORS
+      .map((selector) => Array.from(document.querySelectorAll(selector)).find(isVisible))
+      .find(Boolean);
+    for (let box = anchor?.parentElement; box && box !== document.body; box = box.parentElement) {
+      const back = Array.from(box.querySelectorAll("button")).find(isBackButton);
+      if (back) return back;
+    }
+    return null;
+  }
+
+  function findBackButton() {
+    const beside = stepBackButton();
+    if (beside) return beside;
+    const byE2e = Array.from(document.querySelectorAll('button[data-e2e="btn-back"]')).find(isVisible);
+    if (byE2e) return byE2e;
+    return Array.from(document.querySelectorAll("button"))
+      .find((el) => isVisible(el) && fold(el.textContent) === "quay lai") || null;
+  }
+
+  // Cổng vẽ bước trước ngay trong lúc xử lý cú bấm → lệnh tới lần nữa sẽ trúng nút quay lại của bước đó và lùi 2 bước.
+  const BACK_COOLDOWN_MS = 3000;
+  let lastBackAt = 0;
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "guidedClickBack") return;
+    const button = findBackButton();
+    // Frame không có nút thì IM để frame đúng trả lời (content script chạy ở mọi frame).
+    if (!button) return;
+    if (button.disabled) {
+      sendResponse({ ok: false, clicked: false });
+      return;
+    }
+    if (Date.now() - lastBackAt < BACK_COOLDOWN_MS) {
+      sendResponse({ ok: true, clicked: true });
+      return;
+    }
+    lastBackAt = Date.now();
+    clickLikeUser(button);
+    sendResponse({ ok: true, clicked: true });
+  });
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const submit = msg?.action === "guidedSubmit";
     if (msg?.action !== "guidedClickNext" && !submit) return;

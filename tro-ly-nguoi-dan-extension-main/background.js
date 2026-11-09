@@ -58,6 +58,16 @@ async function moPanelTheoIcon(tab) {
     func: () => {
       document.getElementById("tro-ly-nguoi-dan-panel")?.remove();
       document.getElementById("tro-ly-nguoi-dan-bubble")?.remove();
+      // Style bù lệch còn sót = bản cũ đã đẩy trang rồi chết mà không trả lề (bản cũ gỡ panel trước
+      // khi nạp lại không trả lề). Trả lề ở đây, không thì content.js mới lưu nhầm 400px làm lề gốc.
+      const tw = document.getElementById("tro-ly-nguoi-dan-tw-translate-override");
+      if (tw) {
+        tw.remove();
+        const de = document.documentElement;
+        de.style.marginRight = "";
+        de.style.overflowX = "";
+        de.style.transition = "";
+      }
     },
   });
   const target = { tabId: tab.id, allFrames: !!cs.all_frames };

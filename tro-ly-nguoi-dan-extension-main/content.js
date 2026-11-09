@@ -1591,6 +1591,9 @@
         try {
           document.getElementById(PANEL_ID)?.remove();
           document.getElementById(BUBBLE_ID)?.remove();
+          // Chỉ gỡ khung mà giữ lề đẩy trang thì còn lại một cột trắng 400px không có gì để bấm.
+          restoreSidebarPushLayout();
+          removeTranslateOverrideStyle();
         } catch (e) { /* ignore */ }
       }
       sendResponse?.({ ok: true });

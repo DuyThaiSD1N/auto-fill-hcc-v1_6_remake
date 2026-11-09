@@ -37,7 +37,10 @@ function taoSandbox({ guiLoi = [], tiemLoi = null } = {}) {
   const sandbox = {
     URL,
     console: { warn() {}, info() {}, log() {} },
-    document: { getElementById: (id) => ({ remove: () => daGo.push(id) }) },
+    document: {
+      getElementById: (id) => ({ remove: () => daGo.push(id) }),
+      documentElement: { style: { marginRight: "400px", overflowX: "hidden", transition: "margin-right .3s" } },
+    },
     chrome: {
       runtime: { getManifest: () => manifest },
       tabs: {
@@ -100,7 +103,10 @@ const MO_COI = "Could not establish connection. Receiving end does not exist.";
   ok("mo coi: thu tu goi", b.goi.map((g) => g.ham).join(",") === "sendMessage,executeScript,insertCSS,executeScript,sendMessage");
   const don = b.goi[1];
   ok("mo coi: buoc don chay o khung tren cung", don && typeof don.func === "function" && !don.files && don.target.tabId === 9 && !don.target.allFrames);
-  ok("mo coi: go dung panel + launcher mo coi", JSON.stringify(b.daGo) === JSON.stringify(["tro-ly-nguoi-dan-panel", "tro-ly-nguoi-dan-bubble"]));
+  ok("mo coi: go dung panel + launcher + style bu lech mo coi", JSON.stringify(b.daGo) === JSON.stringify(["tro-ly-nguoi-dan-panel", "tro-ly-nguoi-dan-bubble", "tro-ly-nguoi-dan-tw-translate-override"]));
+  // Bản mồ côi đã đẩy trang mà không trả lề → trả lề trước khi content.js mới lưu lề gốc.
+  const deB = b.sandbox.document.documentElement.style;
+  ok("mo coi: tra le day trang", deB.marginRight === "" && deB.overflowX === "" && deB.transition === "");
   const tiem = b.goi[3];
   ok("mo coi: tiem dung danh sach + thu tu manifest", JSON.stringify(tiem && tiem.files) === JSON.stringify(CS.js));
   ok("mo coi: tiem moi frame theo all_frames", tiem && tiem.target.tabId === 9 && tiem.target.allFrames === !!CS.all_frames);
