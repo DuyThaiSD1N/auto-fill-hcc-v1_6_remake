@@ -341,7 +341,11 @@ def _filled(value) -> bool:
 
 
 class DevOrchestrator(Orchestrator):
-    """Dùng lại vòng đời của Orchestrator (dừng, lỗi, hoàn tác, build lại), thay phần giữa bằng luồng làm thủ tục."""
+    """Dùng lại vòng đời của Orchestrator (dừng, lỗi, hoàn tác, build lại), thay phần giữa bằng luồng làm thủ tục.
+
+    Khác job sửa lỗi: agent đã viết code rồi mới lỗi (kiểm không đạt, sửa ngoài phạm vi, agent chết...) thì để yên code đó
+    cho người xem, không hoàn tác (người dùng yêu cầu 2026-11-09). Chỉ bấm Dừng mới hoàn tác.
+    """
 
     def __init__(self, job: Job, credentials: dict):
         super().__init__(job, credentials)
@@ -350,6 +354,60 @@ class DevOrchestrator(Orchestrator):
         self.budget = DEV_JOB_BUDGET_USD
         self.proc = job.data["procedure"]
         self.folder = pipeline_folder(self.proc["key"])
+        self.sample_terms: set[str] = set()  # dữ liệu thật thấy khi chạy thử file mẫu, để quét patch trước khi để lại
+
+    def _cleanup(self) -> None:
+        if not self.job.cancel.is_set():
+            try:
+                if self._keep_dev_code():
+                    return
+            except Exception as reason:  # noqa: BLE001
+                self._warn(f"Không để lại được code cho người xem ({reason}), hoàn tác như cũ.")
+        super()._cleanup()
+
+    def _keep_dev_code(self) -> list[str]:
+        """Để code agent đã viết nằm nguyên trong thư mục làm việc, ghi như bản sửa để nút Hoàn tác thủ tục dùng được.
+        Không build bản này: stack Docker đã nhận nó thì build lại về code cũ rồi mới đặt code agent trở lại (như Cần người
+        xem của job sửa lỗi). Không để lại nếu patch lộ dữ liệu thật của file mẫu. Trả các file đã để lại."""
+        if not self.guard.taken or not self.touched:
+            return []
+        job = self.job
+        changes, _ = self.guard.changes(self.touched, True)
+        if not changes:
+            return []
+        patch = codeguard.make_patch(changes)
+        leaks = codeguard.leaked_terms(patch, self.sample_terms)
+        if leaks:
+            self._warn(f"Không để lại code: patch chứa dữ liệu thật của file mẫu ({len(leaks)} chuỗi), đã hoàn tác.")
+            return []
+        if job.data.get("stackDirty"):
+            self.guard.restore(changes)
+            try:
+                self._restore_stack()
+            except Exception as reason:  # noqa: BLE001 — build lỗi vẫn phải đặt code agent trở lại
+                self._warn(f"Build lại backend về code cũ bị lỗi ({reason}): Docker có thể vẫn chạy bản agent build lần kiểm gần nhất.")
+            finally:
+                for change in changes:
+                    target = codeguard.REPO / change.rel
+                    if change.after is None:
+                        codeguard.remove_created(target)
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(change.after)
+        records = self.guard.keep_preimages(changes)
+        (job.dir / "fix.patch").write_text(patch, encoding="utf-8")
+        attempts = job.data.get("attempts") or []
+        summary = ((attempts[-1].get("output") or {}).get("summary")) if attempts else None
+        self.touched = []
+        with job.lock:
+            job.data["fix"] = {"files": records, "patch": patch, "summary": summary, "reverted": False, "unverified": True}
+            job.data["touched"] = []
+        job.save()
+        if not self.sample_terms:
+            self._warn("Chưa chạy thử được file mẫu nên chưa quét dữ liệu thật trong patch: soát lại trước khi commit.")
+        job.log(f"Để lại {len(records)} file agent đã viết cho người xem, chưa build. Không dùng thì bấm Hoàn tác thủ tục.",
+                level="warn")
+        return [c.rel for c in changes]
 
     @property
     def on_portal(self) -> bool:
@@ -444,8 +502,12 @@ class DevOrchestrator(Orchestrator):
             self._stage("build", f"Trả lỗi lại cho agent sửa tiếp (lần {repair + 1}/{DEV_MAX_REPAIRS})…")
             result = self._ask_developer(f"Hệ thống kiểm tra báo lỗi:\n\n{problem}\n\nHãy sửa tiếp cho đạt.", resume=session)
             session = result.session_id or session
-        self._rollback()
-        self._finish("dev_failed", f"Đã cho agent sửa {DEV_MAX_REPAIRS} lần mà chưa đạt. Lỗi cuối: {problem[:600]}")
+        kept = self._keep_dev_code()
+        if not kept:
+            self._rollback()
+        tail = (f" Code agent đã viết ({len(kept)} file) vẫn để trong thư mục làm việc cho người xem, chưa build lên Docker. "
+                "Không dùng thì bấm Hoàn tác thủ tục.") if kept else " Mọi thay đổi đã hoàn tác."
+        self._finish("dev_failed", f"Đã cho agent sửa {DEV_MAX_REPAIRS} lần mà chưa đạt. Lỗi cuối: {problem[:600]}{tail}")
 
     def _verify(self, attempt: dict, output: dict, before: dict) -> str | None:
         """Trả mô tả lỗi để agent sửa tiếp, None nếu đạt hết: phạm vi, test, build, chạy thử, quét dữ liệu thật."""
@@ -528,6 +590,7 @@ class DevOrchestrator(Orchestrator):
                 return f"Build hoặc healthz lỗi ở bước {deployed.get('step')}: {deployed.get('output', deployed.get('health', ''))[-800:]}"
 
         problem, fields = self._smoke(attempt)
+        self.sample_terms |= private_terms(fields)
         if problem:
             return problem
         leaks = codeguard.leaked_terms(patch, private_terms(fields))

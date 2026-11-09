@@ -48,7 +48,7 @@ HEADLINES = {
     "not_approved": "Bản sửa không được duyệt, mọi thay đổi đã hoàn tác",
     # Job "Thêm thủ tục mới" (devjob.py)
     "built": "Đã làm xong thủ tục: test, build và chạy thử file mẫu đều đạt",
-    "dev_failed": "Chưa làm xong thủ tục, mọi thay đổi đã hoàn tác",
+    "dev_failed": "Chưa làm xong thủ tục",  # code để lại hay đã hoàn tác: ghi ở reason
 }
 
 

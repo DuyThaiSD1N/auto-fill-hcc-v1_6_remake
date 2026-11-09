@@ -338,25 +338,45 @@ def test_sai_ten_thu_muc_pipeline_thi_tra_lai_agent(world):
     assert "đổi - thành _" in job.data["attempts"][0]["problem"] and job.data["outcome"] == "built"
 
 
-def test_khong_dat_sau_so_lan_cho_phep_thi_hoan_tac_sach(world, monkeypatch):
+def test_khong_dat_sau_so_lan_cho_phep_thi_de_yen_code_cho_nguoi_xem(world, monkeypatch):
+    # Người dùng (2026-11-09): dev xong mà lỗi thì để yên, không hoàn tác; nút Hoàn tác thủ tục vẫn gỡ sạch được.
     monkeypatch.setattr(devjob, "DEV_MAX_REPAIRS", 1)
     world.pipeline_ok = [False, False]
     job, orch = start(world)
     orch.run()
     assert job.data["outcome"] == "dev_failed" and job.data["status"] == "done"
+    assert "vẫn để trong thư mục làm việc" in job.data["report"]["reason"]
+    assert KEY in [l["key"] for l in world.links()]
+    assert (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists()
+    assert job.data["fix"]["unverified"] and not job.data["fix"]["reverted"] and world.deploys == 0
+    orchestrator.revert_fix(job)
     assert [l["key"] for l in world.links()] == ["ket-hon"]
     assert not (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists()
     assert (world.be / "app/procedures/registry.py").read_text(encoding="utf-8") == "PROCEDURES = ['ket-hon']\n"
-    assert job.data["fix"] is None and world.deploys == 0
 
 
-def test_build_roi_truot_thi_build_lai_ve_code_cu(world, monkeypatch):
+def test_build_roi_truot_thi_build_lai_ve_code_cu_va_van_de_code(world, monkeypatch):
     monkeypatch.setattr(devjob, "DEV_MAX_REPAIRS", 0)
     world.smokes = [SMOKE_EMPTY]
     job, orch = start(world)
     orch.run()
     assert job.data["outcome"] == "dev_failed"
-    assert world.deploys == 2 and not job.data["stackDirty"]  # build bản mới để chạy thử, rồi build lại sau hoàn tác
+    assert world.deploys == 2 and not job.data["stackDirty"]  # build bản mới để chạy thử, rồi build lại về code cũ
+    assert (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists() and KEY in [l["key"] for l in world.links()]
+
+
+def test_lo_du_lieu_that_khi_het_luot_thi_van_hoan_tac(world, monkeypatch):
+    monkeypatch.setattr(devjob, "DEV_MAX_REPAIRS", 0)
+
+    def leaky():
+        return [*world.write_pipeline(), world.write(f"auto-fill-hcc-backend/tests/unit/test_{FOLDER}.py",
+                                                     "def test():\n    assert map_id('001090012345')\n")]
+
+    world.plans = [leaky]
+    job, orch = start(world)
+    orch.run()
+    assert job.data["outcome"] == "dev_failed" and "Mọi thay đổi đã hoàn tác" in job.data["report"]["reason"]
+    assert job.data["fix"] is None and not (world.be / f"app/pipelines/{FOLDER}").exists()
 
 
 def test_du_lieu_that_cua_file_mau_lot_vao_code_thi_tra_lai(world):
@@ -371,7 +391,7 @@ def test_du_lieu_that_cua_file_mau_lot_vao_code_thi_tra_lai(world):
     assert job.data["outcome"] == "built"
 
 
-def test_sua_ngoai_pham_vi_thi_dung_va_hoan_tac(world):
+def test_sua_ngoai_pham_vi_thi_dung_va_de_yen_code_trong_pham_vi(world):
     def outside():
         return [*world.write_pipeline(), world.write("auto-fill-hcc-backend/compose.prod.yml", "x\n")]
 
@@ -379,8 +399,9 @@ def test_sua_ngoai_pham_vi_thi_dung_va_hoan_tac(world):
     job, orch = start(world)
     orch.run()
     assert job.data["status"] == "failed" and "ngoài phạm vi" in job.data["error"]
-    assert [l["key"] for l in world.links()] == ["ket-hon"]
-    assert not (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists()
+    assert KEY in [l["key"] for l in world.links()]
+    assert (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists()
+    assert "auto-fill-hcc-backend/compose.prod.yml" not in {f["path"] for f in job.data["fix"]["files"]}
 
 
 def test_dung_giua_chung_thi_hoan_tac(world):
@@ -407,7 +428,7 @@ def test_dua_len_tro_ly_thi_chay_ca_test_tro_ly_va_hoan_tac_duoc_extension_tro_l
 
 def test_khong_dua_len_tro_ly_thi_khong_duoc_sua_extension_tro_ly(world):
     """Ngoài đời lệnh claude đã từ chối ghi; nếu lọt qua thì codeguard dừng job và nêu tên file để người xem (như job sửa lỗi),
-    còn phần trong phạm vi vẫn được hoàn tác."""
+    còn phần trong phạm vi để yên cho người xem, bấm Hoàn tác thủ tục mới gỡ."""
     def with_troly():
         return [*world.write_pipeline(), world.write("tro-ly-nguoi-dan-extension-main/sidebar.js", "const b = 2;\n")]
 
@@ -416,6 +437,8 @@ def test_khong_dua_len_tro_ly_thi_khong_duoc_sua_extension_tro_ly(world):
     orch.run()
     assert job.data["status"] == "failed" and "ngoài phạm vi" in job.data["error"] and "sidebar.js" in job.data["error"]
     assert not world.edit_troly
+    assert (world.be / f"app/pipelines/{FOLDER}").exists() and KEY in [l["key"] for l in world.links()]
+    orchestrator.revert_fix(job)
     assert not (world.be / f"app/pipelines/{FOLDER}").exists() and [l["key"] for l in world.links()] == ["ket-hon"]
 
 
@@ -444,3 +467,13 @@ def test_khoi_phuc_sau_khi_dich_vu_tat_giua_chung(world):
     orchestrator.recover_interrupted(job)
     assert not (world.be / f"app/pipelines/{FOLDER}/__init__.py").exists()
     assert (world.repo / "tro-ly-nguoi-dan-extension-main/sidebar.js").read_text(encoding="utf-8") == "const b = 1;\n"
+
+
+def test_agent_con_tat_auto_memory_ke_ca_khi_cha_dat_bien_claude(monkeypatch):
+    # Agent chạy với cwd = repo dùng chung thư mục memory với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó
+    # là "sửa ngoài phạm vi" → job dừng. Biến CLAUDE* của tiến trình cha bị lọc nên cờ phải đặt lại sau khi lọc.
+    monkeypatch.setenv("CLAUDE_CODE_DISABLE_AUTO_MEMORY", "0")
+    monkeypatch.setenv("CLAUDECODE", "1")
+    env = claude_runner._child_env()
+    assert env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] == "1"
+    assert "CLAUDECODE" not in env

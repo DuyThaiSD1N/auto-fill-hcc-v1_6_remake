@@ -51,7 +51,13 @@ mất phần này.
 - Web gửi một request multipart `/agent-api/dev/jobs`: ô `meta` là JSON thông tin thủ tục, tệp theo 3 nhóm `mapping`, `attach`, `samples`.
   nginx của test-fe cho `/agent-api/` nhận tới 250 MB.
 - Link kê khai do mã thêm (`json.dumps(indent=2)` ra đúng định dạng file), không để agent tự viết. Link nằm trong danh sách file job đã chạm,
-  nên dừng, trượt hay bấm hoàn tác đều gỡ luôn.
+  nên dừng hay bấm hoàn tác đều gỡ luôn.
+- Agent đã viết code rồi mới lỗi (hết `DEV_MAX_REPAIRS` lần, sửa ngoài phạm vi, agent chết, chạy thử lỗi) thì để yên code đó cho người
+  xem (`_keep_dev_code`, người dùng yêu cầu 2026-11-09): ghi `job.fix` với `unverified: true` để nút Hoàn tác thủ tục dùng được, không
+  build bản này (stack đã nhận thì build lại về code cũ rồi đặt code agent trở lại). Chỉ bấm Dừng mới hoàn tác ngay. Patch lộ dữ liệu
+  thật của file mẫu thì vẫn hoàn tác.
+- Agent con chạy với `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`: cwd là repo nên nó dùng chung thư mục memory `~/.claude/projects/<repo>/memory`
+  với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó là "sửa ngoài phạm vi" và job dừng (job 1.115590 ngày 2026-11-09).
 - Agent được `Write` (tạo thư mục pipeline mới), sửa extension Auto Fill, và extension trợ lý khi bật đưa lên trợ lý. Hoàn tác file tạo
   mới thì dọn luôn thư mục chỉ còn rỗng hoặc `__pycache__`.
 - Đạt khi: có thư mục `app/pipelines/<key đổi - thành _>/` và `tests/unit/test_<thư mục>.py`, test pipeline xanh, không có test mới đỏ ở

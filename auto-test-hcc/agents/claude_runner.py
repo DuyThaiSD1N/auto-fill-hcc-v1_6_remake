@@ -63,8 +63,14 @@ def available() -> str | None:
 
 
 def _child_env() -> dict:
-    """Bỏ biến phiên Claude Code của tiến trình cha, kẻo dịch vụ khởi động từ một phiên khác bị coi là lồng nhau."""
-    return {k: v for k, v in os.environ.items() if not ((k.startswith("CLAUDE") or k == "AI_AGENT") and k not in _KEEP_ENV)}
+    """Bỏ biến phiên Claude Code của tiến trình cha, kẻo dịch vụ khởi động từ một phiên khác bị coi là lồng nhau.
+
+    Tắt auto-memory: agent chạy với cwd = repo nên dùng chung thư mục memory ~/.claude/projects/<repo>/memory với
+    phiên Claude Code của người dùng, tự ghi ghi nhớ vào đó → codeguard báo "sửa ngoài phạm vi" và dừng job.
+    """
+    env = {k: v for k, v in os.environ.items() if not ((k.startswith("CLAUDE") or k == "AI_AGENT") and k not in _KEEP_ENV)}
+    env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
+    return env
 
 
 def _kill(proc: subprocess.Popen) -> None:
