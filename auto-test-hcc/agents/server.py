@@ -327,6 +327,33 @@ def job_ready(job_id: str, _: dict = Depends(require_operator)) -> dict:
     return job.view()
 
 
+class Approval(BaseModel):
+    round: int = Field(ge=1)
+    decision: Literal["approve", "retry", "reject"]
+    note: str = Field("", max_length=3000)
+
+
+@app.post("/agent-api/jobs/{job_id}/approval")
+def approve_fix(job_id: str, body: Approval, user: dict = Depends(require_operator)) -> dict:
+    """Người vận hành duyệt bản sửa đã qua test. Chỉ sau bước này mã mới build Docker, nạp extension và chạy kiểm."""
+    job = service.get(job_id)
+    note = body.note.strip()
+    with job.lock:
+        pending = job.data.get("approval")
+        if not pending or job.decided.is_set():
+            raise HTTPException(409, "Job không chờ duyệt bản sửa nào")
+        # Bấm trên trang cũ đang hiện patch của vòng trước thì không được duyệt nhầm patch của vòng sau.
+        if pending["round"] != body.round:
+            raise HTTPException(409, f"Khung duyệt đã sang vòng {pending['round']}: tải lại trang và xem patch mới")
+        if body.decision == "retry" and not pending.get("canRetry"):
+            raise HTTPException(400, "Đây là vòng cuối, không còn vòng để làm lại: chọn đồng ý hoặc dừng.")
+        if body.decision == "retry" and not note:
+            raise HTTPException(400, "Làm lại thì cần ghi góp ý để hội đồng biết phải sửa khác đi thế nào.")
+        job.verdict = {"decision": body.decision, "note": note, "by": user.get("username", "")}
+        job.decided.set()
+    return job.view()
+
+
 @app.post("/agent-api/jobs/{job_id}/stop")
 def stop_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
     job = service.get(job_id)

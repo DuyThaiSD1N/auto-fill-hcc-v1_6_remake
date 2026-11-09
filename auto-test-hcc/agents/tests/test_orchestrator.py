@@ -1,5 +1,7 @@
 """Kịch bản đầu-cuối của máy trạng thái với agent/backend giả. Cái được kiểm là luồng và các chốt chặn."""
+import importlib
 import json
+import sys
 import threading
 import time as time_module
 from pathlib import Path
@@ -146,12 +148,46 @@ def world(tmp_path, monkeypatch):
     return world
 
 
+REVIEWER = {"verdicts": [], "seen": []}
+
+
+@pytest.fixture(autouse=True)
+def reviewer():
+    """Người duyệt giả: thấy khung duyệt thì bấm theo REVIEWER["verdicts"], hết danh sách thì đồng ý."""
+    REVIEWER["verdicts"] = []
+    REVIEWER["seen"] = []
+    return REVIEWER
+
+
+def answer_approvals(job):
+    def loop():
+        answered = None
+        deadline = time_module.monotonic() + 30
+        while job.data["status"] not in ("done", "failed", "stopped") and time_module.monotonic() < deadline:
+            pending = job.data.get("approval")
+            if pending and pending["round"] != answered and not job.decided.is_set():
+                answered = pending["round"]
+                REVIEWER["seen"].append(dict(pending))
+                verdict = REVIEWER["verdicts"].pop(0) if REVIEWER["verdicts"] else {"decision": "approve", "note": ""}
+                if callable(verdict):
+                    verdict = verdict(job)
+                if verdict is None:  # không bấm gì: để hết giờ hoặc để kịch bản tự bấm Dừng
+                    continue
+                with job.lock:
+                    job.verdict = {"by": "nguoi-duyet", **verdict}
+                    job.decided.set()
+            time_module.sleep(0.01)
+
+    threading.Thread(target=loop, daemon=True).start()
+
+
 def start(reproduce=True, rounds=3, runs=5):
     job = Job.create(
         request_id="req_test", description="ô giới tính bị trống", created_by="t",
         settings={"runs": runs, "maxRounds": rounds, "reproduce": reproduce, "replayAccount": "u"},
         preview={"label": "Thủ tục"}, warnings=[],
     )
+    answer_approvals(job)
     return job, Orchestrator(job, {"username": "u", "password": "mat-khau"})
 
 
@@ -179,6 +215,123 @@ def test_loi_mapper_hop_sua_kiem_thu_dat(world):
     assert data["fix"]["files"][0]["path"] == "auto-fill-hcc-backend/app/a.py" and "+x = 2" in data["fix"]["patch"]
     assert data["rounds"][0]["retest"]["evaluation"]["allPass"]
     assert not (job.dir / "snapshot").exists()
+
+
+def test_ban_sua_qua_test_phai_cho_duyet_roi_moi_build(world, reviewer):
+    def look(job):
+        world.calls.append("approval")
+        assert world.code() == "x = 2\n" and world.deploys == 0
+        assert job.data["stage"] == "approve" and job.data["status"] == "running"
+        return {"decision": "approve", "note": ""}
+
+    reviewer["verdicts"] = [look]
+    job, orch = start()
+    orch.run()
+    order = ["fixer", "pipeline-tests", "full-tests", "approval", "deploy", "replay:round1"]
+    assert [c for c in world.calls if c in order] == order
+    assert job.data["outcome"] == "fixed" and job.data["approval"] is None
+    assert reviewer["seen"][0]["files"] == ["auto-fill-hcc-backend/app/a.py"] and reviewer["seen"][0]["canRetry"] is True
+    assert job.data["rounds"][0]["approval"]["decision"] == "approve" and job.data["rounds"][0]["approval"]["by"] == "nguoi-duyet"
+
+
+def test_khong_dong_y_lam_lai_thi_hoi_dong_doc_gop_y(world, reviewer, monkeypatch):
+    seen = []
+    real = world.run_agent
+
+    def spy(**kwargs):
+        seen.append(kwargs["prompt"])
+        return real(**kwargs)
+
+    monkeypatch.setattr(claude_runner, "run_agent", spy)
+    reviewer["verdicts"] = [{"decision": "retry", "note": "Đừng sửa mapper chung, khoanh theo riêng thủ tục này"}]
+    world.fix_edits = [lambda: world.edit("x = 2\n"), lambda: world.edit("x = 3\n")]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed" and world.code() == "x = 3\n"
+    # Vòng 1 không được duyệt nên không build lần nào; chỉ build bản của vòng 2.
+    assert world.deploys == 1 and "replay:round1" not in world.calls and "replay:round2" in world.calls
+    first = job.data["rounds"][0]
+    assert first["result"]["ok"] is False and "Người duyệt không đồng ý" in first["result"]["reason"]
+    later = [p for p in seen if "<reviewer_note" in p]
+    assert later and "khoanh theo riêng thủ tục này" in later[0]
+
+
+def test_khong_dong_y_dung_thi_hoan_tac_khong_build(world, reviewer):
+    reviewer["verdicts"] = [{"decision": "reject", "note": "sai hướng"}]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "not_approved" and job.data["status"] == "done"
+    assert "sai hướng" in job.data["report"]["reason"]
+    assert world.code() == "x = 1\n" and world.deploys == 0 and job.data["fix"] is None
+    assert len(job.data["rounds"]) == 1 and "replay:round1" not in world.calls
+
+
+def test_vong_cuoi_khong_cho_lam_lai(world, reviewer):
+    job, orch = start(rounds=1)
+    orch.run()
+    assert reviewer["seen"][0]["canRetry"] is False
+
+
+def test_het_gio_khong_ai_duyet_thi_hoan_tac_va_ket_thuc(world, reviewer, monkeypatch):
+    monkeypatch.setattr(orchestrator, "APPROVAL_TIMEOUT_S", 0)
+    reviewer["verdicts"] = [lambda job: None]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "not_approved" and "không có ai duyệt" in job.data["report"]["reason"]
+    assert world.code() == "x = 1\n" and world.deploys == 0 and job.data["approval"] is None
+    assert job.data["rounds"][0]["approval"]["timeout"] is True
+
+
+def test_dung_khi_dang_cho_duyet_thi_hoan_tac(world, reviewer):
+    reviewer["verdicts"] = [lambda job: job.cancel.set()]
+    job, orch = start()
+    orch.run()
+    assert job.data["status"] == "stopped" and job.data["approval"] is None
+    assert world.code() == "x = 1\n" and world.deploys == 0
+
+
+def test_sua_tay_luc_cho_duyet_thi_build_theo_noi_dung_tren_dia(world, reviewer):
+    def tweak(job):
+        world.edit("x = 5\n")
+        return {"decision": "approve", "note": ""}
+
+    reviewer["verdicts"] = [tweak]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed" and world.code() == "x = 5\n"
+    fix = job.data["rounds"][0]["fix"]
+    assert "+x = 5" in fix["patch"] and "+x = 2" in fix["approvedPatch"] and "+x = 5" in job.data["fix"]["patch"]
+    assert any("đã đổi sau lúc duyệt" in w for w in job.data["warnings"])
+
+
+def test_api_duyet_chan_bam_nham(world, monkeypatch, tmp_path):
+    import config
+    from fastapi.testclient import TestClient
+
+    # server.py dựng Service ngay lúc import và đọc runs/: trỏ sang thư mục tạm kẻo khôi phục nhầm job thật.
+    monkeypatch.setattr(config, "RUNS", tmp_path / "server-runs")
+    sys.modules.pop("server", None)
+    try:
+        server = importlib.import_module("server")
+        server.app.dependency_overrides[server.require_operator] = lambda: {"username": "duyet-vien", "role": "super_admin"}
+        client = TestClient(server.app)
+        job = Job.create(request_id="req_test", description="ô trống", created_by="t", settings={"maxRounds": 3}, preview={}, warnings=[])
+        server.service.jobs[job.data["id"]] = job
+        url = f"/agent-api/jobs/{job.data['id']}/approval"
+        assert client.post(url, json={"round": 1, "decision": "approve"}).status_code == 409  # không chờ duyệt gì
+        job.update(approval={"round": 2, "since": "t", "files": [], "canRetry": False, "timeoutMin": 60})
+        assert client.post(url, json={"round": 1, "decision": "approve"}).status_code == 409  # bấm trên trang của vòng trước
+        assert client.post(url, json={"round": 2, "decision": "retry", "note": "x"}).status_code == 400  # vòng cuối
+        assert client.post(url, json={"round": 2, "decision": "lam-bua"}).status_code == 422
+        job.data["approval"]["canRetry"] = True
+        assert client.post(url, json={"round": 2, "decision": "retry", "note": "   "}).status_code == 400  # làm lại phải có góp ý
+        assert not job.decided.is_set()
+        response = client.post(url, json={"round": 2, "decision": "retry", "note": " khoanh lại theo thủ tục "})
+        assert response.status_code == 200 and job.decided.is_set()
+        assert job.verdict == {"decision": "retry", "note": "khoanh lại theo thủ tục", "by": "duyet-vien"}
+        assert client.post(url, json={"round": 2, "decision": "approve"}).status_code == 409  # đã bấm rồi
+    finally:
+        sys.modules.pop("server", None)
 
 
 def test_giu_ban_sua_roi_hoan_tac_duoc(world):
@@ -502,6 +655,7 @@ def portal_job(monkeypatch, world, on_wait=None, logged_in=lambda: False, enter_
             time_module.sleep(0.01)
 
     threading.Thread(target=press_ready, daemon=True).start()
+    answer_approvals(job)
     return job, Orchestrator(job, {"username": "u", "password": "mat-khau"}), calls
 
 
@@ -570,6 +724,16 @@ def test_sua_extension_chay_test_extension_khong_build_backend(world, monkeypatc
     assert "pipeline-tests" not in world.calls and "full-tests" not in world.calls and world.deploys == 0
     assert world.ext_code() == "const a = 2;\n"
     assert job.data["rounds"][0]["tests"]["extension"]["ok"]
+
+
+def test_sua_extension_chua_duyet_thi_chua_nap_lai(world, monkeypatch, reviewer):
+    world.fix_edits = [lambda: world.edit_ext("const a = 2;\n")]
+    stale = []
+    reviewer["verdicts"] = [lambda job: (stale.append(orch.portal_state.get("extensionStale")), {"decision": "reject", "note": ""})[1]]
+    job, orch, calls = portal_job(monkeypatch, world)
+    orch.run()
+    assert stale == [None] and job.data["outcome"] == "not_approved"
+    assert "portal:round1" not in calls and world.ext_code() == "const a = 1;\n"
 
 
 def test_sua_extension_danh_dau_de_nap_lai_truoc_khi_chay_kiem(world, monkeypatch):

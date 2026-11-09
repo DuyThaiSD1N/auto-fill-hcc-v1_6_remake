@@ -106,9 +106,30 @@ export interface Round {
   precheck?: Evaluation;
   fix: { summary: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
   tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests } | null;
+  approval?: ApprovalResult | null;
   deploy: { ok: boolean; step?: string | null; ps?: string; health?: string } | null;
   retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number; formGaps?: FormGap[] } | null;
   result: { ok: boolean; reason?: string } | null;
+}
+
+/** approve: build + chạy kiểm; retry: hoàn tác, vòng sau làm lại theo góp ý; reject: hoàn tác và kết thúc. */
+export type Verdict = "approve" | "retry" | "reject";
+
+export interface ApprovalResult {
+  decision: Verdict;
+  note?: string;
+  by?: string;
+  at?: string;
+  timeout?: boolean;
+}
+
+/** Bản sửa đã qua test, đang chờ người duyệt trước khi build Docker và nạp extension. */
+export interface PendingApproval {
+  round: number;
+  since: string;
+  files: string[];
+  canRetry: boolean;
+  timeoutMin: number;
 }
 
 export interface FileRecord {
@@ -139,6 +160,7 @@ export interface Job {
   createdBy: string;
   settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode };
   human: { message: string; button: string; since: string } | null;
+  approval?: PendingApproval | null;
   status: "queued" | "running" | "done" | "failed" | "stopped";
   stage: string;
   outcome: Outcome | null;
@@ -155,7 +177,7 @@ export interface Job {
 
 export type RunMode = "portal" | "api";
 
-export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human" | "built" | "dev_failed";
+export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human" | "not_approved" | "built" | "dev_failed";
 
 export type JobKind = "fix" | "dev";
 
@@ -206,6 +228,8 @@ export const agentApi = {
   stop: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/stop`, { method: "POST" }),
   revert: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/revert`, { method: "POST" }),
   ready: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/ready`, { method: "POST" }),
+  approve: (id: string, body: { round: number; decision: Verdict; note: string }) =>
+    request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/approval`, json(body)),
 };
 
 // ---- Job "Thêm thủ tục mới" (agents/devjob.py) ------------------------------------------------------------------

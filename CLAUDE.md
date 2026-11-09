@@ -111,7 +111,8 @@ mạng `autofill_hcc_net`, nên `docker compose` của phần này dùng `-f aut
 Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto-test-hcc/KE-HOACH.md`, team F19 cài máy mới theo `auto-test-hcc/HUONG-DAN-F19.md`.
 
 - Chỉ super_admin. Nhận mã req + mô tả lỗi; hội đồng agent họp, trọng tài quyết định; lỗi OCR thì bỏ qua và báo cáo; lỗi code thì sửa
-  BE hoặc extension, chạy test và build, chạy lại 5 lần để chấm. Bản sửa đạt nằm trong thư mục làm việc, chưa commit.
+  BE hoặc extension, chạy test, rồi DỪNG CHỜ NGƯỜI DUYỆT patch trên web (đồng ý / làm lại theo góp ý / dừng); có đồng ý mới build và
+  chạy lại 5 lần để chấm. Không thêm cờ bỏ qua bước duyệt. Bản sửa đạt nằm trong thư mục làm việc, chưa commit.
 - Giấy tờ chỉ lấy từ req nội bộ trong Mongo local. Mỗi lần chạy phải OCR mới: dịch vụ tự xoá cache OCR của đúng các tệp trong req rồi
   kiểm lại `trace_steps.ocr[].cache`, không cần cờ trong BE.
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền

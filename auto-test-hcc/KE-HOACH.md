@@ -1,6 +1,6 @@
 # Kế hoạch kiểm thử web Agent tự sửa
 
-Tài liệu cho đội tester, cập nhật ngày 7/11/2026. Đọc xong có thể tự chạy một ca và biết cần kiểm tra gì.
+Tài liệu cho đội tester, cập nhật ngày 9/11/2026. Đọc xong có thể tự chạy một ca và biết cần kiểm tra gì.
 
 ## 1. Web này làm gì
 
@@ -9,10 +9,11 @@ Khi một ô điền sai trên cổng dịch vụ công, người dùng nhập m
 1. Chạy lại đúng lỗi đó 5 lần trên cổng thật để xem lỗi có lặp lại không.
 2. Các agent AI phân tích và tranh luận. Một agent trọng tài quyết định.
 3. Lỗi do OCR đọc sai thì báo cáo và bỏ qua, vì OCR sai thì code không thể biết chữ đúng.
-4. Lỗi do code thì sửa ở backend (BE) hoặc extension (FE), chạy test, rồi chạy lại 5 lần trên cổng.
-5. Đạt cả 5 lần thì giữ bản sửa, chưa commit. Không đạt thì tự hoàn tác và họp lại, tối đa 3 vòng.
+4. Lỗi do code thì sửa ở backend (BE) hoặc extension (FE) và chạy test.
+5. Test qua thì **dừng chờ người duyệt**: người chạy đọc patch rồi bấm đồng ý thì mới build Docker, nạp extension và chạy lại 5 lần trên cổng.
+6. Đạt cả 5 lần thì giữ bản sửa, chưa commit. Không đạt thì tự hoàn tác và họp lại, tối đa 3 vòng.
 
-Trong suốt ca, người chạy chỉ làm một việc: **đăng nhập VNeID**.
+Trong suốt ca, người chạy làm hai việc: **đăng nhập VNeID** và **duyệt bản sửa** trước khi build.
 
 ### Ca thật đầu tiên
 
@@ -118,7 +119,9 @@ Code nằm trong thư mục làm việc, chưa commit; không giữ thì bấm *
 | Hội đồng phân tích và phản biện | Agent | Các thẻ ý kiến |
 | Trọng tài quyết định | Agent | Thẻ Trọng tài |
 | Sửa code | Agent | Thẻ Sửa code, patch |
-| Test và build | Hệ thống | Danh sách kiểm tra |
+| Test | Hệ thống | Danh sách kiểm tra |
+| Duyệt bản sửa | **Tester** | Khung vàng "Chờ bạn duyệt bản sửa": patch, kết quả test, 3 nút |
+| Build Docker, nạp extension | Hệ thống | Dòng Docker trong danh sách kiểm tra |
 | Điền lại 5 lần | Bot | Bảng tiêu chí × lần, ảnh cổng |
 | Kết luận | Hệ thống | Khung kết luận |
 
@@ -131,6 +134,19 @@ Code nằm trong thư mục làm việc, chưa commit; không giữ thì bấm *
 | Chỉ báo cáo | Lỗi do cổng, giấy tờ thiếu, không phải lỗi, hoặc chưa đủ bằng chứng | Không |
 | Không tái hiện | Code hiện tại đã đạt 5/5 | Không |
 | Cần người xem | Hết số vòng mà chưa đạt | Không, đã tự hoàn tác |
+| Không được duyệt | Người duyệt bấm dừng, hoặc quá 60 phút không ai duyệt | Không, đã tự hoàn tác |
+
+### Duyệt bản sửa
+
+Khi khung vàng **Chờ bạn duyệt bản sửa** hiện, code agent viết đã nằm trong thư mục làm việc và test đã qua, nhưng chưa build Docker và chưa nạp vào extension. Đọc patch rồi chọn:
+
+| Nút | Hệ thống làm gì |
+| --- | --- |
+| Đồng ý, build và chạy kiểm | Build Docker (nếu đổi BE), nạp extension (nếu đổi FE), chạy lại 5 lần để chấm |
+| Không đồng ý, làm lại theo góp ý | Hoàn tác, hội đồng họp lại ở vòng sau và đọc góp ý. Phải ghi góp ý; vòng cuối thì nút này tắt |
+| Không đồng ý, dừng | Hoàn tác và kết thúc với kết luận Không được duyệt |
+
+Quá 60 phút không ai bấm thì tự hoàn tác và kết thúc, vì cả hàng đợi đang chờ ca này. Trong lúc chờ có thể sửa tay các file trong patch: hệ thống build đúng nội dung trên đĩa và ghi cảnh báo patch đã đổi.
 
 Đạt hay không do máy chấm trên **giá trị đọc từ form trên cổng**, không phải giá trị backend trả. Backend đúng mà form trống vẫn tính là trượt.
 
@@ -202,6 +218,11 @@ Nhật ký job có dòng "Request ghi lên cổng trong đợt này", liệt kê
 | E5 | Bản sửa trượt | Tự hoàn tác, họp lại với lý do thất bại | Đạt, bằng test tự động |
 | E6 | Bấm Hoàn tác bản sửa sau khi xong | File về như cũ, build lại nếu đổi BE | Đạt, bằng test tự động |
 | E7 | Bấm Dừng khi agent đang sửa | Code về như cũ | Đạt, bằng test tự động |
+| E8 | Bản sửa qua test | Dừng ở khung duyệt, chưa build Docker, chưa nạp extension | Đạt, bằng test tự động |
+| E9 | Ghi góp ý, bấm Không đồng ý, làm lại | Hoàn tác, vòng sau hội đồng nhận góp ý, vòng trước không build | Đạt, bằng test tự động |
+| E10 | Bấm Không đồng ý, dừng | Kết luận Không được duyệt, code về như cũ, không build | Đạt, bằng test tự động |
+| E11 | Để quá 60 phút không duyệt | Tự hoàn tác, kết luận Không được duyệt | Đạt, bằng test tự động |
+| E12 | Mở job trên hai tab, duyệt ở tab cũ sau khi đã sang vòng sau | Báo khung duyệt đã sang vòng khác, không duyệt nhầm | Đạt, bằng test tự động |
 
 Sau mỗi ca kiểm tra `git status`: ca không đổi code thì không có file nào trong `auto-fill-hcc-backend/` hay `auto-fill-hcc-extension/` bị đổi. Ca Đã sửa thì chỉ có đúng các file trong patch.
 

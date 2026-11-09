@@ -28,6 +28,17 @@ mất phần này.
 | `replay.py` | Đăng nhập backend, xoá cache OCR, chế độ Chỉ gọi backend |
 | `devjob.py` | Job "Thêm thủ tục mới": nhận tệp kéo thả, chuyển Excel/Word sang chữ, thêm link `ke_khai_links.json`, cho agent làm pipeline, kiểm chứng, chạy thử file mẫu |
 
+## Duyệt bản sửa (job sửa lỗi)
+
+- Bản sửa qua test thì `Orchestrator._await_approval` dừng ở giai đoạn `approve` và ghi `job.approval` (vòng, file, `canRetry`,
+  `timeoutMin`). Chưa build Docker, chưa đánh dấu nạp lại extension. Web hiện khung duyệt và gọi
+  `POST /agent-api/jobs/{id}/approval` với `{round, decision: approve | retry | reject, note}`.
+- `approve`: build, nạp extension, chạy kiểm. `retry`: hoàn tác, góp ý vào `attempts[].gop_y_nguoi_duyet`, hội đồng đọc ở vòng sau
+  (bắt buộc có góp ý, vòng cuối không cho). `reject` hoặc quá `AUTOTEST_APPROVAL_TIMEOUT_MIN` (60) phút: hoàn tác, kết luận `not_approved`.
+- API từ chối khi `round` không khớp vòng đang chờ, để trang cũ không duyệt nhầm patch của vòng sau. Ai duyệt ghi ở `rounds[].approval.by`.
+- Người duyệt sửa tay file trong lúc chờ thì mã build theo nội dung trên đĩa, giữ patch lúc duyệt ở `fix.approvedPatch` và cảnh báo.
+- Không thêm cờ bỏ qua bước duyệt. Job "Thêm thủ tục mới" chưa có bước này.
+
 ## Job "Thêm thủ tục mới"
 
 - Web gửi một request multipart `/agent-api/dev/jobs`: ô `meta` là JSON thông tin thủ tục, tệp theo 3 nhóm `mapping`, `attach`, `samples`.

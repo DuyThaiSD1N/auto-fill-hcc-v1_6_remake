@@ -1,7 +1,9 @@
-"""Máy trạng thái của một job: thu thập → chạy lại → họp → trọng tài → sửa → test → build → chạy lại → kết luận.
+"""Máy trạng thái của một job: thu thập → chạy lại → họp → trọng tài → sửa → test → NGƯỜI DUYỆT → build → chạy lại → kết luận.
 
 Phân vai: agent phân tích và viết code; mọi việc quyết định kết quả (chạy test, build, chấm 5 lần, hoàn tác) do mã
 ở đây làm. Trọng tài chỉ đề ra tiêu chí, đạt hay không là do scoring.py chấm trên output thật của backend.
+Code agent viết chỉ được build lên Docker và nạp vào extension sau khi người vận hành đọc patch và bấm đồng ý
+(_await_approval). Không có cờ bỏ qua bước duyệt.
 """
 from __future__ import annotations
 
@@ -25,7 +27,7 @@ import roles
 import scoring
 import verify
 from claude_runner import AgentError, AgentResult
-from config import AGENT_TIMEOUT_S, FIXER_TIMEOUT_S, JOB_BUDGET_USD, MAX_REPAIRS, RUNS
+from config import AGENT_TIMEOUT_S, APPROVAL_TIMEOUT_S, FIXER_TIMEOUT_S, JOB_BUDGET_USD, MAX_REPAIRS, RUNS
 from verify import Stopped
 
 _EVENT_LIMIT = 500
@@ -43,6 +45,7 @@ HEADLINES = {
     "report_only": "Không sửa code, chỉ báo cáo",
     "not_reproduced": "Không tái hiện được lỗi với code hiện tại",
     "need_human": "Chưa sửa được, cần người xem",
+    "not_approved": "Bản sửa không được duyệt, mọi thay đổi đã hoàn tác",
     # Job "Thêm thủ tục mới" (devjob.py)
     "built": "Đã làm xong thủ tục: test, build và chạy thử file mẫu đều đạt",
     "dev_failed": "Chưa làm xong thủ tục, mọi thay đổi đã hoàn tác",
@@ -51,6 +54,15 @@ HEADLINES = {
 
 class JobError(Exception):
     pass
+
+
+class NotApproved(Exception):
+    """Người duyệt bấm dừng hoặc quá giờ không ai duyệt: hoàn tác rồi kết thúc job, không sang vòng sau."""
+
+
+# Quyết định của người duyệt (POST /agent-api/jobs/{id}/approval).
+APPROVE, RETRY, REJECT = "approve", "retry", "reject"
+VERDICTS = (APPROVE, RETRY, REJECT)
 
 
 def now() -> str:
@@ -66,6 +78,8 @@ class Job:
         self.lock = threading.RLock()
         self.cancel = threading.Event()
         self.ready = threading.Event()  # người dùng bấm "Đã tới tờ khai" trên web
+        self.decided = threading.Event()  # người duyệt đã bấm một nút ở khung duyệt bản sửa
+        self.verdict: dict | None = None
         self._saved_at = 0.0
 
     @classmethod
@@ -84,6 +98,7 @@ class Job:
             "error": None,
             "warnings": warnings,
             "human": None,
+            "approval": None,
             "case": preview,
             "reproduce": None,
             "rounds": [],
@@ -212,8 +227,11 @@ class Orchestrator:
                     f"Tiêu chí của trọng tài đã đạt {precheck['passed']}/{precheck['total']} lần với code hiện tại, nên không sửa gì. "
                     "Lỗi có thể đã được sửa từ sau lượt gốc, hoặc chỉ thỉnh thoảng mới xảy ra.",
                 )
-            if self._attempt(round_, decision):
-                return self._finish("fixed", decision.get("reason", ""))
+            try:
+                if self._attempt(round_, decision):
+                    return self._finish("fixed", decision.get("reason", ""))
+            except NotApproved as reason:
+                return self._finish("not_approved", str(reason))
         self._finish("need_human", "Đã thử hết số vòng cho phép mà chưa đạt. Mọi thay đổi đã được hoàn tác, xem lý do từng vòng ở trên.")
 
     def _stage(self, name: str, text: str | None = None) -> None:
@@ -398,7 +416,7 @@ class Orchestrator:
 
     def _new_round(self, number: int) -> dict:
         round_ = {"n": number, "opinions": [], "reviews": [], "debate": None, "decision": None, "fix": None,
-                  "tests": None, "deploy": None, "retest": None, "result": None}
+                  "tests": None, "approval": None, "deploy": None, "retest": None, "result": None}
         with self.job.lock:
             self.job.data["rounds"].append(round_)
         self.job.save()
@@ -565,6 +583,18 @@ class Orchestrator:
             job.save()
 
         changes, _ = self.guard.changes(self.touched, self.on_portal)
+        verdict = self._await_approval(round_, changes)
+        if verdict["decision"] != APPROVE:
+            note = verdict.get("note") or ""
+            if verdict.get("timeout"):
+                problem = note
+            else:
+                problem = "Người duyệt không đồng ý bản sửa" + (f": {note}" if note else ".")
+            self._round_failed(round_, decision, problem, reviewer_note=note if verdict["decision"] == RETRY else None)
+            if verdict["decision"] == RETRY:
+                return False
+            raise NotApproved(problem + " Code đã trả về như trước khi sửa.")
+        changes = self._changes_after_approval(round_)
         if codeguard.touches_extension(changes):
             self.portal_state["extensionStale"] = True  # lượt chạy kiểm sau đây nạp lại trước khi điền
         # stackDirty: vòng trước đã build bản sửa nay bị hoàn tác, nên dù vòng này chỉ đổi test vẫn phải build lại.
@@ -578,6 +608,52 @@ class Orchestrator:
             if not deployed["ok"]:
                 return self._round_failed(round_, decision, f"Build hoặc healthz lỗi ở bước {deployed.get('step')}: {deployed.get('output', deployed.get('health', ''))[-500:]}")
         return self._retest(round_, decision, changes)
+
+    def _await_approval(self, round_: dict, changes: list[codeguard.Change]) -> dict:
+        """Bản sửa đã qua test nhưng chưa build, chưa nạp extension: dừng lại chờ người đọc patch và bấm duyệt."""
+        job = self.job
+        self._stage("approve", "Bản sửa đã qua test. Chờ người duyệt đọc patch, chưa build Docker, chưa nạp extension…")
+        with job.lock:
+            job.verdict = None
+            job.decided.clear()
+        job.update(approval={
+            "round": round_["n"], "since": now(), "files": [c.rel for c in changes],
+            "canRetry": round_["n"] < self.settings["maxRounds"], "timeoutMin": APPROVAL_TIMEOUT_S // 60,
+        })
+        job.log(f"Chờ duyệt bản sửa vòng {round_['n']} ({len(changes)} file).", level="warn")
+        deadline = time.monotonic() + APPROVAL_TIMEOUT_S
+        verdict: dict | None = None
+        try:
+            while verdict is None:
+                if job.cancel.is_set():
+                    raise Stopped()
+                if time.monotonic() > deadline:
+                    verdict = {"decision": REJECT, "timeout": True,
+                               "note": f"Quá {APPROVAL_TIMEOUT_S // 60} phút không có ai duyệt bản sửa."}
+                elif job.decided.wait(1):
+                    with job.lock:
+                        verdict = dict(job.verdict or {})
+        finally:
+            job.update(approval=None)
+        if verdict.get("decision") not in VERDICTS:
+            verdict["decision"] = REJECT
+        verdict["at"] = now()
+        with job.lock:
+            round_["approval"] = verdict
+        job.save()
+        said = {APPROVE: "đồng ý, build và chạy kiểm", RETRY: "không đồng ý, làm lại theo góp ý", REJECT: "không đồng ý, dừng"}
+        job.log(said[verdict["decision"]] + (f" · {verdict['note']}" if verdict.get("note") else ""), who=verdict.get("by") or "Người duyệt")
+        return verdict
+
+    def _changes_after_approval(self, round_: dict) -> list[codeguard.Change]:
+        """Lúc chờ duyệt người vận hành có thể sửa tay file agent đã sửa: build đúng nội dung đang có trên đĩa và ghi lại patch."""
+        changes, _ = self.guard.changes(self.touched, self.on_portal)
+        patch = codeguard.make_patch(changes)
+        if patch != round_["fix"].get("patch"):
+            with self.job.lock:
+                round_["fix"].update(approvedPatch=round_["fix"].get("patch"), patch=patch, files=[c.rel for c in changes])
+            self._warn("File của bản sửa đã đổi sau lúc duyệt (có sửa tay?): build theo nội dung hiện tại trên đĩa, patch đã cập nhật.")
+        return changes
 
     def _check_code(self, round_: dict, output: dict, before: dict) -> str | None:
         """Backend theo đúng thứ tự trong CLAUDE.md, extension chạy cả bộ test của nó. Trả về mô tả lỗi để agent sửa tiếp,
@@ -683,7 +759,10 @@ class Orchestrator:
         job.save()
         return True
 
-    def _round_failed(self, round_: dict, decision: dict, problem: str, evaluation: dict | None = None, regressions: list | None = None) -> bool:
+    def _round_failed(
+        self, round_: dict, decision: dict, problem: str, evaluation: dict | None = None, regressions: list | None = None,
+        reviewer_note: str | None = None,
+    ) -> bool:
         job = self.job
         job.log(f"Vòng {round_['n']} không đạt: {problem[:300]}", level="warn")
         patch = (round_.get("fix") or {}).get("patch") or ""
@@ -691,14 +770,17 @@ class Orchestrator:
             {"check": r["check"], "values": [c["value"] for c in r["cells"]]}
             for r in (evaluation or {}).get("rows", []) if not all(c["ok"] for c in r["cells"])
         ]
-        self.attempts.append({
+        attempt = {
             "vong": round_["n"],
             "ke_hoach": decision.get("plan"),
             "patch": patch[:8000],
             "ly_do_that_bai": problem[:3000],
             "tieu_chi_truot": failed_rows,
             "hoi_quy": regressions or [],
-        })
+        }
+        if reviewer_note:
+            attempt["gop_y_nguoi_duyet"] = reviewer_note[:3000]
+        self.attempts.append(attempt)
         with job.lock:
             round_["result"] = {"ok": False, "reason": problem[:1500]}
         job.save()
@@ -738,4 +820,4 @@ def recover_interrupted(job: Job) -> None:
         job.log("Khởi động lại: build lại backend về code trước khi sửa…", level="warn")
         verify.deploy(threading.Event())
     guard.discard_snapshot()
-    job.update(status="failed", error="Dịch vụ agent bị tắt giữa chừng.", touched=[], stackDirty=False)
+    job.update(status="failed", error="Dịch vụ agent bị tắt giữa chừng.", touched=[], stackDirty=False, approval=None)

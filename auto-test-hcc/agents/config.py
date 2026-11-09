@@ -39,6 +39,9 @@ DEFAULT_ROUNDS = 3
 MAX_ROUNDS = 3
 # Số lần agent sửa được phép vá lại khi test đỏ, trong cùng một vòng.
 MAX_REPAIRS = 2
+# Bản sửa qua test xong phải có người bấm duyệt mới được build/nạp extension. Quá giờ không ai duyệt thì hoàn tác và
+# kết thúc: luồng worker chỉ có một, không được giữ hàng đợi mãi; phiên VNeID của bot cũng chỉ sống khoảng 1 giờ.
+APPROVAL_TIMEOUT_S = int(os.environ.get("AUTOTEST_APPROVAL_TIMEOUT_MIN", "60")) * 60
 # Số lượt gọi /api/v2/process cùng lúc, giống web Kiểm thử: đủ nhanh mà không dồn tải OCR/LLM.
 REPLAY_CONCURRENCY = 2
 REPLAY_TIMEOUT_S = 300

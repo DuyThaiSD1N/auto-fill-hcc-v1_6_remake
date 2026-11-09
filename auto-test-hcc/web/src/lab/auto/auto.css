@@ -136,6 +136,62 @@
   flex-shrink: 0;
 }
 
+/* Khung duyệt bản sửa: cùng màu với khung chờ người, nhưng xếp dọc vì có patch và ô góp ý. */
+.at-approve {
+  display: grid;
+  /* minmax(0, 1fr): patch và đường dẫn file dài không được kéo khung rộng quá màn (điện thoại tràn ngang). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  font-size: 13.5px;
+}
+
+.at-approve strong {
+  color: var(--warn);
+}
+
+.at-approve p {
+  margin: 2px 0 0;
+  max-width: 80ch;
+}
+
+.at-approve__summary {
+  font-weight: 500;
+}
+
+.at-approve .at-refs,
+.at-approve .at-checks {
+  overflow-wrap: anywhere;
+}
+
+.at-approve .at-patch {
+  max-height: 420px;
+}
+
+.at-approve__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.at-verdict {
+  margin: 0;
+  font-size: 13px;
+}
+
+.at-verdict.is-approve b {
+  color: var(--ok);
+}
+
+.at-verdict.is-retry b,
+.at-verdict.is-reject b {
+  color: var(--warn);
+}
+
 .at-shots {
   display: flex;
   flex-wrap: wrap;

@@ -7,8 +7,8 @@ import type { Batch } from "../engine";
 import Results from "../Results";
 import {
   agentApi, errorText, loadShot, toBatch,
-  type Check, type Decision, type Evaluation, type ExtensionTests, type FormGap, type FullTests, type Job, type Opinion, type Outcome,
-  type Round, type RunBrief,
+  type ApprovalResult, type Check, type Decision, type Evaluation, type ExtensionTests, type FormGap, type FullTests, type Job, type Opinion,
+  type Outcome, type Round, type RunBrief, type Verdict,
 } from "./api";
 
 const POLL_MS = 2000;
@@ -21,6 +21,7 @@ const STAGES: { key: string; label: string; visited: (job: Job) => boolean }[] =
   { key: "arbiter", label: "Trọng tài", visited: (j) => j.rounds.some((r) => r.decision) },
   { key: "fix", label: "Sửa", visited: (j) => j.rounds.some((r) => r.fix) },
   { key: "test", label: "Test", visited: (j) => j.rounds.some((r) => r.tests) },
+  { key: "approve", label: "Duyệt", visited: (j) => j.rounds.some((r) => r.approval) },
   { key: "deploy", label: "Build", visited: (j) => j.rounds.some((r) => r.deploy) },
   { key: "retest", label: "Chạy kiểm", visited: (j) => j.rounds.some((r) => r.retest) },
   { key: "report", label: "Kết luận", visited: (j) => !!j.report },
@@ -49,6 +50,7 @@ export const OUTCOMES: Record<Outcome, { label: string; tone: "ok" | "warn" | "b
   report_only: { label: "Chỉ báo cáo", tone: "plain" },
   not_reproduced: { label: "Không tái hiện", tone: "plain" },
   need_human: { label: "Cần người xem", tone: "bad" },
+  not_approved: { label: "Không được duyệt", tone: "warn" },
   built: { label: "Đã làm xong", tone: "ok" },
   dev_failed: { label: "Chưa làm xong", tone: "bad" },
 };
@@ -90,6 +92,7 @@ export function OutcomeTag({ outcome }: { outcome: Outcome }) {
 }
 
 export function StatusTag({ status, stage, kind }: { status: Job["status"]; stage: string; kind?: string }) {
+  if (status === "running" && stage === "approve" && kind !== "dev") return <span className="at-tag at-tag--warn">Chờ bạn duyệt bản sửa</span>;
   const tone = status === "failed" ? "bad" : "plain";
   const name = (kind === "dev" ? DEV_STAGES : STAGES).find((s) => s.key === stage)?.label;
   return <span className={`at-tag at-tag--${tone}`}>{STATUS_LABEL[status]}{status === "running" && name ? `: ${name}` : ""}</span>;
@@ -126,6 +129,84 @@ function HumanWait({ job, onReady, busy }: { job: Job; onReady: () => void; busy
       </div>
       <button className="btn btn--primary" type="button" disabled={busy} onClick={onReady}>{job.human.button}</button>
     </div>
+  );
+}
+
+/** Bản sửa đã qua test nhưng chưa build, chưa nạp extension: phải có người đọc patch và bấm một trong ba nút. */
+function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (decision: Verdict, note: string) => void }) {
+  const [note, setNote] = useState("");
+  const pending = job.approval;
+  if (!pending || job.status !== "running") return null;
+  const round = job.rounds.find((r) => r.n === pending.round);
+  const deadline = new Date(new Date(pending.since).getTime() + pending.timeoutMin * 60_000).toISOString();
+  const text = note.trim();
+  return (
+    <section className="at-approve" role="alert" aria-label="Duyệt bản sửa">
+      <div>
+        <strong>Chờ bạn duyệt bản sửa{job.rounds.length > 1 ? ` vòng ${pending.round}` : ""}</strong>
+        <p>
+          Agent đã sửa xong và test đã qua. Code đang nằm trong thư mục làm việc, chưa build Docker, chưa nạp vào extension. Bạn đồng ý
+          thì hệ thống mới build rồi chạy lại {job.settings.runs} lần để chấm.
+        </p>
+        <p className="faint">Quá {formatClock(deadline)} không ai duyệt thì tự hoàn tác và kết thúc job.</p>
+      </div>
+      {round?.fix?.summary ? <p className="at-approve__summary">{round.fix.summary}</p> : null}
+      <p className="mono at-refs">{pending.files.join("  ")}</p>
+      {round ? <Checks round={round} /> : null}
+      {round?.fix?.patch ? <Patch patch={round.fix.patch} /> : null}
+      <label className="field">
+        <span>Góp ý cho hội đồng (bắt buộc khi chọn làm lại)</span>
+        <textarea
+          className="input at-textarea"
+          rows={3}
+          maxLength={3000}
+          placeholder="Ví dụ: đừng sửa engine điền chung, khoanh theo riêng thủ tục này"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </label>
+      <div className="at-approve__actions">
+        <button className="btn btn--primary" type="button" disabled={busy} onClick={() => onDecide("approve", text)}>
+          <Icon name="check" size={14} /> Đồng ý, build và chạy kiểm
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy || !pending.canRetry || !text}
+          title={!pending.canRetry ? "Đây là vòng cuối" : !text ? "Ghi góp ý trước" : undefined}
+          onClick={() => onDecide("retry", text)}
+        >
+          <Icon name="refresh" size={14} /> Không đồng ý, làm lại theo góp ý
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy}
+          onClick={() => { if (window.confirm("Hoàn tác bản sửa này và kết thúc job?")) onDecide("reject", text); }}
+        >
+          <Icon name="x" size={14} /> Không đồng ý, dừng
+        </button>
+      </div>
+      {!pending.canRetry ? <p className="faint">Đây là vòng cuối nên không còn lượt làm lại.</p> : null}
+    </section>
+  );
+}
+
+const VERDICT_LABEL: Record<Verdict, string> = {
+  approve: "Người duyệt đồng ý",
+  retry: "Người duyệt không đồng ý, cho làm lại",
+  reject: "Người duyệt không đồng ý, dừng",
+};
+
+function ApprovalNote({ approval }: { approval: ApprovalResult }) {
+  const label = approval.timeout ? "Hết giờ, không ai duyệt" : VERDICT_LABEL[approval.decision];
+  return (
+    <p className={`at-verdict is-${approval.decision}`}>
+      <b>{label}</b>
+      {approval.by ? <span className="faint"> · {approval.by}</span> : null}
+      {approval.at ? <span className="faint num"> · {formatClock(approval.at)}</span> : null}
+      {approval.note && !approval.timeout ? <span>: {approval.note}</span> : null}
+    </p>
   );
 }
 
@@ -387,6 +468,7 @@ function RoundView({ job, round, single }: { job: Job; round: Round; single: boo
         </article>
       ) : null}
       <Checks round={round} />
+      {round.approval ? <ApprovalNote approval={round.approval} /> : null}
       {retest ? (
         <div className="at-retest">
           <h3 className="section-title">Chạy lại với bản sửa <RunDots runs={retest.runs} total={retest.total} /></h3>
@@ -527,6 +609,15 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
       ) : null}
       {/* Dịch vụ gỡ trạng thái chờ ở nhịp sau: ẩn ngay kẻo người dùng bấm lần nữa khi tưởng chưa nhận. */}
       <HumanWait job={job} busy={acting} onReady={() => void act(async () => ({ ...(await agentApi.ready(job.id)), human: null }))} />
+      <ApprovalBox
+        key={job.approval?.round ?? 0}
+        job={job}
+        busy={acting}
+        onDecide={(decision, note) => void act(async () => ({
+          ...(await agentApi.approve(job.id, { round: job.approval?.round ?? 0, decision, note })),
+          approval: null,
+        }))}
+      />
       <Banner job={job} />
       {job.fix?.reverted ? (
         <div className="at-banner at-banner--plain">
