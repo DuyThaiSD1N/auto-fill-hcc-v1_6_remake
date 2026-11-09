@@ -25,16 +25,21 @@ from verify import Stopped
 READ_TOOLS = ["Read", "Grep", "Glob"]
 # .env có secret; data/ là giấy tờ của mọi người dân, agent chỉ được đọc bản sao của đúng ca này.
 _DENY_READ = ["Read(**/.env)", "Read(**/.env.*)", "Read(auto-fill-hcc-backend/data/**)", "Read(auto-test-hcc/.profile/**)"]
-_BE_SCOPE = ["Edit(auto-fill-hcc-backend/app/**)", "Edit(auto-fill-hcc-backend/tests/**)"]
-_EXT_SCOPE = ["Edit(auto-fill-hcc-extension/**)"]
+_BE_SCOPE = ["auto-fill-hcc-backend/app/**", "auto-fill-hcc-backend/tests/**"]
+_EXT_SCOPE = ["auto-fill-hcc-extension/**"]
+_TROLY_SCOPE = ["tro-ly-nguoi-dan-extension-main/**"]
 # Cùng danh sách với codeguard.FORBIDDEN: chặn ở đây là từ chối ngay, codeguard là lớp kiểm lại sau khi sửa.
 _DENY_EDIT = [
-    "Edit(auto-fill-hcc-backend/tests/conftest.py)",
-    "Edit(auto-fill-hcc-extension/api/config.js)",
-    "Edit(auto-fill-hcc-extension/manifest.json)",
-    "Edit(auto-fill-hcc-extension/content/form-snapshot/**)",
-    "Edit(auto-fill-hcc-extension/background/form-snapshot.js)",
+    "auto-fill-hcc-backend/tests/conftest.py",
+    "auto-fill-hcc-extension/api/config.js",
+    "auto-fill-hcc-extension/manifest.json",
+    "auto-fill-hcc-extension/content/form-snapshot/**",
+    "auto-fill-hcc-extension/background/form-snapshot.js",
+    "tro-ly-nguoi-dan-extension-main/api/config.js",
+    "tro-ly-nguoi-dan-extension-main/manifest.json",
 ]
+# Tool ghi file: sửa lỗi chỉ Edit (không tạo file mới); thêm thủ tục mới thì phải Write được thư mục pipeline mới.
+_WRITE_TOOLS = ("Edit", "Write")
 _KEEP_ENV = {"CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"}
 
 
@@ -87,15 +92,24 @@ def run_agent(
     edit_extension: bool = False,
     resume: str | None = None,
     touched: list[str] | None = None,
+    write: bool = False,
+    edit_troly: bool = False,
+    budget: float | None = None,
 ) -> AgentResult:
-    """``touched`` nhận đường dẫn ngay khi agent Edit, để dù agent chết giữa chừng vẫn biết file nào phải hoàn tác."""
+    """``touched`` nhận đường dẫn ngay khi agent Edit/Write, để dù agent chết giữa chừng vẫn biết file nào phải hoàn tác.
+
+    ``write``: cho tạo file mới (job thêm thủ tục). ``edit_troly``: cho sửa extension trợ lý.
+    """
     claude = available()
     if not claude:
         raise AgentError("Không tìm thấy lệnh claude trên máy")
-    tools = [*READ_TOOLS, "Edit"] if can_edit else READ_TOOLS
-    scope = [*_BE_SCOPE, *(_EXT_SCOPE if edit_extension else [])]
+    writers = _WRITE_TOOLS if write else _WRITE_TOOLS[:1]
+    tools = [*READ_TOOLS, *writers] if can_edit else READ_TOOLS
+    paths = [*_BE_SCOPE, *(_EXT_SCOPE if edit_extension else []), *(_TROLY_SCOPE if edit_troly else [])]
+    scope = [f"{tool}({path})" for tool in writers for path in paths]
     allowed = [*READ_TOOLS, *scope] if can_edit else READ_TOOLS
-    denied = [*_DENY_READ, *_DENY_EDIT] if can_edit else _DENY_READ
+    deny_edit = [f"{tool}({path})" for tool in writers for path in _DENY_EDIT]
+    denied = [*_DENY_READ, *deny_edit] if can_edit else _DENY_READ
     cmd = [
         claude, "-p",
         "--model", model,
@@ -109,7 +123,7 @@ def run_agent(
         "--strict-mcp-config",
         "--setting-sources", "project",
         "--disable-slash-commands",
-        "--max-budget-usd", str(AGENT_BUDGET_USD),
+        "--max-budget-usd", str(budget or AGENT_BUDGET_USD),
         "--json-schema", json.dumps(schema, ensure_ascii=False),
         "--append-system-prompt", system,
     ]
@@ -159,7 +173,7 @@ def run_agent(
         if event.get("type") == "assistant":
             for block in (event.get("message") or {}).get("content") or []:
                 if block.get("type") == "tool_use" and block.get("name") != "StructuredOutput":
-                    if touched is not None and block.get("name") == "Edit" and (block.get("input") or {}).get("file_path"):
+                    if touched is not None and block.get("name") in _WRITE_TOOLS and (block.get("input") or {}).get("file_path"):
                         touched.append(block["input"]["file_path"])
                     on_event(_brief(block))
         elif event.get("type") == "result":

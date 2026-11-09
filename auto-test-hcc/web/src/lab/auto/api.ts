@@ -155,10 +155,13 @@ export interface Job {
 
 export type RunMode = "portal" | "api";
 
-export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human";
+export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human" | "built" | "dev_failed";
+
+export type JobKind = "fix" | "dev";
 
 export interface JobSummary {
   id: string;
+  kind?: JobKind;
   requestId: string;
   label?: string;
   description: string;
@@ -204,6 +207,128 @@ export const agentApi = {
   revert: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/revert`, { method: "POST" }),
   ready: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/ready`, { method: "POST" }),
 };
+
+// ---- Job "Thêm thủ tục mới" (agents/devjob.py) ------------------------------------------------------------------
+
+export type InputGroup = "mapping" | "attach" | "samples";
+
+export interface DevInput {
+  group: InputGroup;
+  name: string;
+  path: string;
+  size: number;
+  source?: string;
+}
+
+export interface LinkEntry {
+  key: string;
+  code?: string;
+  label: string;
+  url: string;
+  needsAgencySelect?: boolean;
+  autoConfirm?: boolean;
+  selectSo?: boolean;
+  provinceOnlyAgency?: boolean;
+  [flag: string]: unknown;
+}
+
+export interface DevProcedure {
+  key: string;
+  code: string;
+  label: string;
+  url: string;
+  newLink: boolean;
+  needsAgencySelect: boolean;
+  provinceOnlyAgency: boolean;
+  selectSo: boolean;
+  autoConfirm: boolean;
+  linkNotes: string;
+}
+
+export interface DevOutput {
+  summary: string;
+  pipelineFolder: string;
+  changedFiles: string[];
+  testFiles: string[];
+  assumptions: string[];
+  questions: string[];
+  troLy?: string;
+  notes?: string;
+}
+
+export interface DevSmoke {
+  status: "ok" | "partial" | "error";
+  ms?: number;
+  requestId?: string;
+  error?: string;
+  total: number;
+  filled: number;
+  errors: unknown[];
+  fields: { name: string; value: string }[];
+}
+
+export type DevTests = NonNullable<Round["tests"]> & { troly?: ExtensionTests; handfree?: FullTests };
+
+export interface DevAttempt {
+  n: number;
+  output: DevOutput;
+  cost: number;
+  files: string[];
+  patch: string;
+  tests: DevTests | null;
+  deploy: Round["deploy"];
+  smoke: DevSmoke | null;
+  problem: string | null;
+}
+
+export interface DevJob extends Omit<Job, "settings" | "kind"> {
+  kind: "dev";
+  settings: { troLy: boolean; replayAccount: string; account?: { username?: string; xa?: string | null; tinh?: string | null } };
+  procedure: DevProcedure;
+  inputs: DevInput[];
+  link: { added: boolean; entry: LinkEntry } | null;
+  attempts: DevAttempt[];
+}
+
+export interface LinkCheck {
+  key: string;
+  keyValid: boolean;
+  keyExists: boolean;
+  entry: LinkEntry | null;
+  sameCode: { key: string; label: string }[];
+  pipelineExists: boolean;
+  folder: string;
+}
+
+export interface NewDevJob {
+  procedure: DevProcedure;
+  notes: string;
+  troLy: boolean;
+  replayUsername: string;
+  replayPassword: string;
+}
+
+export const devApi = {
+  check: (key: string, code: string) =>
+    request<LinkCheck>(`/agent-api/dev/links?key=${encodeURIComponent(key)}&code=${encodeURIComponent(code)}`),
+  /** Một request multipart: thông tin thủ tục trong ô meta, tệp theo đúng nhóm. */
+  create: (body: NewDevJob, files: { group: InputGroup; file: File }[]) => {
+    const form = new FormData();
+    form.append("meta", JSON.stringify(body));
+    files.forEach(({ group, file }) => form.append(group, file, file.name));
+    return request<DevJob>("/agent-api/dev/jobs", { method: "POST", body: form });
+  },
+  get: (id: string) => request<DevJob>(`/agent-api/jobs/${encodeURIComponent(id)}`),
+};
+
+/** Tệp đã gửi cho job (ảnh ánh xạ, bản chữ Excel): cần Bearer token nên tải về thành blob. */
+export async function loadInput(id: string, name: string): Promise<string> {
+  const response = await fetch(`/agent-api/jobs/${encodeURIComponent(id)}/inputs/${encodeURIComponent(name)}`, {
+    headers: { Authorization: `Bearer ${labSession.access}` },
+  });
+  if (!response.ok) throw new ApiError(response.status, "Không tải được tệp.");
+  return URL.createObjectURL(await response.blob());
+}
 
 /** Ảnh cần Bearer token nên không gắn thẳng vào <img src>. */
 export async function loadShot(id: string, phase: string, n: number): Promise<string> {

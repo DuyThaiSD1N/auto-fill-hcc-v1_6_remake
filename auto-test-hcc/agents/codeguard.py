@@ -19,11 +19,15 @@ from config import REPO
 
 BE_DIR = "auto-fill-hcc-backend"
 EXT_DIR = "auto-fill-hcc-extension"
+# Extension trợ lý: chỉ job "Thêm thủ tục mới" có bật đưa lên trợ lý mới được sửa.
+TROLY_DIR = "tro-ly-nguoi-dan-extension-main"
 BE_SCOPES = (f"{BE_DIR}/app", f"{BE_DIR}/tests")
 FORBIDDEN = (
     f"{BE_DIR}/tests/conftest.py",  # bản BE dán đè sẽ ghi lại, và nó là chốt chặn mạng của cả bộ test
     f"{EXT_DIR}/api/config.js",  # đổi là extension trỏ sang server khác
     f"{EXT_DIR}/manifest.json",  # thêm quyền hay host là việc người phải quyết
+    f"{TROLY_DIR}/api/config.js",
+    f"{TROLY_DIR}/manifest.json",
 )
 # Bộ đọc form chính là thước đo kết quả: agent sửa được nó thì có thể làm phép chấm đạt giả.
 FORBIDDEN_DIRS = (f"{EXT_DIR}/content/form-snapshot/", f"{EXT_DIR}/background/form-snapshot.js")
@@ -47,10 +51,12 @@ def to_rel(path: str) -> str | None:
         return None
 
 
-def in_scope(rel: str | None, extension: bool = True) -> bool:
+def in_scope(rel: str | None, extension: bool = True, troly: bool = False) -> bool:
     if not rel or rel in FORBIDDEN or rel.startswith(FORBIDDEN_DIRS):
         return False
     roots = (*BE_SCOPES, EXT_DIR) if extension else BE_SCOPES
+    if troly:
+        roots = (*roots, TROLY_DIR)
     return any(rel.startswith(f"{root}/") for root in roots)
 
 
@@ -66,14 +72,40 @@ def touches_extension(changes: list[Change]) -> bool:
     return any(c.rel.startswith(f"{EXT_DIR}/") for c in changes)
 
 
+def touches_troly(changes: list[Change]) -> bool:
+    return any(c.rel.startswith(f"{TROLY_DIR}/") for c in changes)
+
+
 def sha(data: bytes | None) -> str | None:
     return None if data is None else hashlib.sha256(data).hexdigest()
 
 
+_SCOPE_ROOTS = (*BE_SCOPES, EXT_DIR, TROLY_DIR)
+
+
+def remove_created(target: Path) -> None:
+    """Xoá file agent tạo, rồi dọn thư mục cha chỉ còn rỗng hoặc __pycache__ (test, build đã import thì có pycache).
+
+    Không dọn thì thư mục pipeline rỗng nằm lại: job sau tưởng pipeline đã có. Dừng ở gốc phạm vi, không bao giờ xoá nó.
+    """
+    target.unlink(missing_ok=True)
+    roots = {(REPO / root).resolve() for root in _SCOPE_ROOTS}
+    folder = target.parent
+    while True:
+        resolved = folder.resolve()
+        if resolved in roots or REPO.resolve() not in resolved.parents or not folder.is_dir():
+            return
+        if any(p.name != "__pycache__" for p in folder.iterdir()):
+            return
+        shutil.rmtree(folder, ignore_errors=True)
+        folder = folder.parent
+
+
 class Guard:
-    def __init__(self, job_dir: Path):
+    def __init__(self, job_dir: Path, troly: bool = False):
         self.snapshot = job_dir / "snapshot"
         self.preimage = job_dir / "preimage"
+        self.troly = troly
 
     @property
     def taken(self) -> bool:
@@ -82,7 +114,7 @@ class Guard:
     def take(self) -> None:
         if self.taken:
             return
-        for scope in (*BE_SCOPES, EXT_DIR):
+        for scope in (*BE_SCOPES, EXT_DIR, *((TROLY_DIR,) if self.troly else ())):
             if (REPO / scope).is_dir():
                 shutil.copytree(REPO / scope, self.snapshot / scope, ignore=_SKIP)
 
@@ -92,7 +124,7 @@ class Guard:
         outside: list[str] = []
         for path in sorted(set(touched)):
             rel = to_rel(path)
-            if not in_scope(rel, extension):
+            if not in_scope(rel, extension, self.troly):
                 outside.append(path)
                 continue
             old, new = self.snapshot / rel, REPO / rel
@@ -106,7 +138,7 @@ class Guard:
         for change in changes:
             target = REPO / change.rel
             if change.before is None:
-                target.unlink(missing_ok=True)
+                remove_created(target)
             else:
                 target.write_bytes(change.before)
 
@@ -136,7 +168,7 @@ class Guard:
                 skipped.append(rel)
                 continue
             if record.get("created"):
-                target.unlink(missing_ok=True)
+                remove_created(target)
             else:
                 target.write_bytes((self.preimage / rel).read_bytes())
             reverted.append(rel)

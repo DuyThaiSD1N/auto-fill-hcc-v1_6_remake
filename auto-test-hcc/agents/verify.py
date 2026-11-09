@@ -154,12 +154,15 @@ def compare(before: dict, after: dict) -> dict:
     }
 
 
-def extension_tests(cancel: threading.Event) -> dict:
-    """Extension không có test runner: chạy từng file bằng node, đếm cả tests/*.test.js và tests/test-*.js."""
-    files = sorted({*(EXT / "tests").glob("*.test.js"), *(EXT / "tests").glob("test-*.js")})
+def extension_tests(cancel: threading.Event, root: Path = EXT) -> dict:
+    """Extension không có test runner: chạy từng file bằng node, đếm cả tests/*.test.js và tests/test-*.js.
+
+    ``root`` = EXT (Auto Fill) hoặc TROLY (trợ lý), hai extension cùng kiểu bộ test.
+    """
+    files = sorted({*(root / "tests").glob("*.test.js"), *(root / "tests").glob("test-*.js")})
 
     def one(path: Path) -> str | None:
-        code, _ = run(["node", str(path)], EXT, 180, cancel, _pytest_env())
+        code, _ = run(["node", str(path)], root, 180, cancel, _pytest_env())
         return None if code == 0 else path.name
 
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -167,15 +170,43 @@ def extension_tests(cancel: threading.Event) -> dict:
     return {"total": len(files), "failed": failed}
 
 
-def extension_baseline(cancel: threading.Event) -> dict:
+def extension_baseline(cancel: threading.Event, root: Path = EXT) -> dict:
     """Bộ test extension nhiều test khớp regex trên source nên có thể đỏ sẵn: so trước/sau, không đòi về 0."""
     cache = RUNS / "_baseline"
     cache.mkdir(parents=True, exist_ok=True)
-    path = cache / f"ext-{tree_key(EXT, ('.',))}.json"
+    prefix = "ext" if root == EXT else "troly"
+    path = cache / f"{prefix}-{tree_key(root, ('.',))}.json"
     if path.is_file():
         return json.loads(path.read_text(encoding="utf-8"))
-    result = extension_tests(cancel)
+    result = extension_tests(cancel, root)
     path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
+    return result
+
+
+# Cây tests/handfree (trợ lý) lỗi collect sẵn trên máy local (thiếu protobuf cho ASR): chạy riêng, so trước/sau như cây chính.
+_HANDFREE_ARGS = [
+    "tests/handfree/unit", "tests/handfree/integration", "-q", "--continue-on-collection-errors",
+    "-p", "no:cacheprovider", "-p", "win_socketpair", "--tb=native", "-rfE",
+]
+
+
+def handfree_tests(cancel: threading.Event) -> dict:
+    code, output = run([sys.executable, "-m", "pytest", *_HANDFREE_ARGS], BE, 1200, cancel, _pytest_env())
+    parsed = parse_pytest(output)
+    if code not in (0, 1) or not parsed["passed"]:
+        return {**parsed, "broken": True, "tail": output[-3000:]}
+    return parsed
+
+
+def handfree_baseline(cancel: threading.Event) -> dict:
+    cache = RUNS / "_baseline"
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / f"hf-{tree_key()}.json"
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    result = handfree_tests(cancel)
+    if not result.get("broken"):
+        path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
     return result
 
 

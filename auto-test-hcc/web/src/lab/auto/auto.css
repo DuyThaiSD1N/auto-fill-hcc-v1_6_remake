@@ -674,3 +674,259 @@
     padding-inline: 16px;
   }
 }
+
+/* ---- Thêm thủ tục mới -------------------------------------------------------------------------------------------- */
+
+.dv-modes {
+  margin-bottom: 12px;
+}
+
+.dv-form {
+  gap: 18px;
+}
+
+.dv-section {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.dv-section legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.dv-switch {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.dv-switch label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dv-switch label.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dv-switch input {
+  margin: 0;
+}
+
+.dv-grid {
+  display: grid;
+  /* Mã thủ tục ngắn (1.013831), key dài và là ô hay phải sửa cho gọn: để key rộng. */
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dv-wide {
+  grid-column: 1 / -1;
+}
+
+.dv-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 20px;
+  font-size: 12.5px;
+}
+
+.dv-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.dv-drop {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 22px 16px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dv-drop:hover,
+.dv-drop:focus-visible,
+.dv-drop.is-hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.dv-drop strong {
+  color: var(--ink);
+}
+
+.dv-rejected {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.dv-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dv-group {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.dv-group header p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.dv-empty {
+  margin: 0;
+  font-size: 12px;
+}
+
+.dv-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.dv-file__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dv-file__move {
+  height: 26px;
+  padding: 0 4px;
+  font-size: 12px;
+  max-width: 130px;
+}
+
+.dv-kind {
+  margin-left: 6px;
+}
+
+.dv-assume {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.dv-assume b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warn);
+}
+
+.dv-assume ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.dv-assume--ask {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dv-assume--ask b {
+  color: var(--accent);
+}
+
+.dv-smoke {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.dv-smoke.is-bad {
+  border-color: var(--bad);
+}
+
+.dv-smoke__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dv-smoke__errors {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 12.5px;
+}
+
+.dv-entry {
+  max-height: 260px;
+}
+
+.dv-inputs {
+  display: grid;
+  gap: 14px;
+}
+
+.dv-input-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.dv-input-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .dv-grid,
+  .dv-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dv-file {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .dv-file__move {
+    grid-column: 2 / -1;
+    max-width: none;
+  }
+}

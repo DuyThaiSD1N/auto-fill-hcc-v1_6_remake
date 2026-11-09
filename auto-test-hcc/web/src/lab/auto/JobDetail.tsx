@@ -7,7 +7,8 @@ import type { Batch } from "../engine";
 import Results from "../Results";
 import {
   agentApi, errorText, loadShot, toBatch,
-  type Check, type Decision, type Evaluation, type FormGap, type Job, type Opinion, type Outcome, type Round, type RunBrief,
+  type Check, type Decision, type Evaluation, type ExtensionTests, type FormGap, type FullTests, type Job, type Opinion, type Outcome,
+  type Round, type RunBrief,
 } from "./api";
 
 const POLL_MS = 2000;
@@ -42,13 +43,27 @@ const DECISIONS: Record<Decision["decision"], string> = {
   report_only: "Không sửa, chỉ báo cáo",
 };
 
-const OUTCOMES: Record<Outcome, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
+export const OUTCOMES: Record<Outcome, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
   fixed: { label: "Đã sửa", tone: "ok" },
   skipped_ocr: { label: "Bỏ qua: lỗi OCR", tone: "warn" },
   report_only: { label: "Chỉ báo cáo", tone: "plain" },
   not_reproduced: { label: "Không tái hiện", tone: "plain" },
   need_human: { label: "Cần người xem", tone: "bad" },
+  built: { label: "Đã làm xong", tone: "ok" },
+  dev_failed: { label: "Chưa làm xong", tone: "bad" },
 };
+
+/** Các bước của job "Thêm thủ tục mới" (agents/devjob.py). */
+export const DEV_STAGES: { key: string; label: string }[] = [
+  { key: "inputs", label: "Tài liệu" },
+  { key: "baseline", label: "Đo test" },
+  { key: "link", label: "Link kê khai" },
+  { key: "build", label: "Agent viết" },
+  { key: "test", label: "Test" },
+  { key: "deploy", label: "Build" },
+  { key: "smoke", label: "Chạy thử" },
+  { key: "report", label: "Kết luận" },
+];
 
 const STANCES: Record<NonNullable<Opinion["stance"]>, string> = { agree: "Đồng ý", partly: "Đồng ý một phần", disagree: "Phản đối" };
 
@@ -74,9 +89,9 @@ export function OutcomeTag({ outcome }: { outcome: Outcome }) {
   return <span className={`at-tag at-tag--${item.tone}`}>{item.label}</span>;
 }
 
-export function StatusTag({ status, stage }: { status: Job["status"]; stage: string }) {
+export function StatusTag({ status, stage, kind }: { status: Job["status"]; stage: string; kind?: string }) {
   const tone = status === "failed" ? "bad" : "plain";
-  const name = STAGES.find((s) => s.key === stage)?.label;
+  const name = (kind === "dev" ? DEV_STAGES : STAGES).find((s) => s.key === stage)?.label;
   return <span className={`at-tag at-tag--${tone}`}>{STATUS_LABEL[status]}{status === "running" && name ? `: ${name}` : ""}</span>;
 }
 
@@ -268,9 +283,9 @@ function DecisionCard({ decision }: { decision: Decision }) {
   );
 }
 
-function Patch({ patch }: { patch: string }) {
+export function Patch({ patch, open = true }: { patch: string; open?: boolean }) {
   return (
-    <details className="at-more" open>
+    <details className="at-more" open={open}>
       <summary>Patch</summary>
       <div className="at-patch__bar"><CopyButton text={patch} label="Chép patch" /></div>
       <pre className="at-patch">
@@ -293,33 +308,43 @@ function RunDots({ runs, total }: { runs: RunBrief[]; total: number }) {
   );
 }
 
-function Checks({ round }: { round: Round }) {
+function ExtensionCheck({ name, result }: { name: string; result: ExtensionTests }) {
+  return (
+    <li className={result.ok ? "" : "is-bad"}>
+      <b>{name}</b> {result.failed}/{result.total} file đỏ
+      <span className="faint"> (trước khi sửa: {result.failedBefore} đỏ)</span>
+      {result.new.length ? <ul>{result.new.map((t) => <li key={t} className="mono">{t}</li>)}</ul> : <span className="faint"> · không có file mới đỏ</span>}
+    </li>
+  );
+}
+
+function SuiteCheck({ name, result }: { name: string; result: FullTests }) {
+  return (
+    <li className={result.ok ? "" : "is-bad"}>
+      <b>{name}</b> {result.after.failed} failed, {result.after.passed} passed, {result.after.errors} errors
+      <span className="faint"> (trước khi sửa: {result.before.failed} failed, {result.before.passed} passed)</span>
+      {result.new.length ? <ul>{result.new.map((t) => <li key={t} className="mono">{t}</li>)}</ul> : <span className="faint"> · không có test mới đỏ</span>}
+    </li>
+  );
+}
+
+export function Checks({ round }: { round: Pick<Round, "tests" | "deploy"> & { tests: (Round["tests"] & { troly?: ExtensionTests; handfree?: FullTests }) | null } }) {
   const { tests, deploy } = round;
   const full = tests?.full;
   const extension = tests?.extension;
   if (!tests && !deploy) return null;
   return (
     <ul className="at-checks">
-      {extension ? (
-        <li className={extension.ok ? "" : "is-bad"}>
-          <b>Test extension</b> {extension.failed}/{extension.total} file đỏ
-          <span className="faint"> (trước khi sửa: {extension.failedBefore} đỏ)</span>
-          {extension.new.length ? <ul>{extension.new.map((t) => <li key={t} className="mono">{t}</li>)}</ul> : <span className="faint"> · không có file mới đỏ</span>}
-        </li>
-      ) : null}
+      {extension ? <ExtensionCheck name="Test extension Auto Fill" result={extension} /> : null}
+      {tests?.troly ? <ExtensionCheck name="Test extension trợ lý" result={tests.troly} /> : null}
       {tests?.pipeline ? (
         <li className={tests.pipeline.ok || tests.pipeline.skipped ? "" : "is-bad"}>
           <b>Test pipeline</b> {tests.pipeline.summary}
           {tests.pipeline.files?.length ? <span className="mono faint"> {tests.pipeline.files.join(" ")}</span> : null}
         </li>
       ) : null}
-      {full ? (
-        <li className={full.ok ? "" : "is-bad"}>
-          <b>Toàn bộ test</b> {full.after.failed} failed, {full.after.passed} passed, {full.after.errors} errors
-          <span className="faint"> (trước khi sửa: {full.before.failed} failed, {full.before.passed} passed)</span>
-          {full.new.length ? <ul>{full.new.map((t) => <li key={t} className="mono">{t}</li>)}</ul> : <span className="faint"> · không có test mới đỏ</span>}
-        </li>
-      ) : null}
+      {full ? <SuiteCheck name="Toàn bộ test" result={full} /> : null}
+      {tests?.handfree ? <SuiteCheck name="Test trợ lý (tests/handfree)" result={tests.handfree} /> : null}
       {deploy ? (
         <li className={deploy.ok ? "" : "is-bad"}>
           <b>Docker</b> {deploy.ok ? (deploy.ps || "đã Up") : `lỗi ở bước ${deploy.step}`}
@@ -402,7 +427,7 @@ function FieldsTab({ job }: { job: Job }) {
   return <Results key={batch.id} batch={batch} />;
 }
 
-function LogTab({ job }: { job: Job }) {
+export function LogTab({ job }: { job: Pick<Job, "events"> }) {
   return (
     <ol className="at-log">
       {[...job.events].reverse().map((event, i) => (

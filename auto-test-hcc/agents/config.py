@@ -12,6 +12,7 @@ BE = REPO / "auto-fill-hcc-backend"
 RUNS = ROOT / "runs"
 SUPPORT = AGENTS_DIR / "support"
 EXT = REPO / "auto-fill-hcc-extension"
+TROLY = REPO / "tro-ly-nguoi-dan-extension-main"
 # Profile Chromium của bot: giữ phiên VNeID qua các lần chạy, đã gitignore, agent bị chặn đọc.
 PROFILE = ROOT / ".profile"
 CDP_PORT = int(os.environ.get("AUTOTEST_CDP_PORT", "9339"))
@@ -41,6 +42,15 @@ MAX_REPAIRS = 2
 # Số lượt gọi /api/v2/process cùng lúc, giống web Kiểm thử: đủ nhanh mà không dồn tải OCR/LLM.
 REPLAY_CONCURRENCY = 2
 REPLAY_TIMEOUT_S = 300
+
+# Job "Thêm thủ tục mới": agent viết cả một pipeline (process + attach + registry + test, có thể cả trợ lý) nên
+# cần lâu và tốn hơn hẳn một lượt sửa lỗi.
+DEV_TIMEOUT_S = int(os.environ.get("AUTOTEST_DEV_TIMEOUT_MIN", "60")) * 60
+DEV_AGENT_BUDGET_USD = float(os.environ.get("AUTOTEST_DEV_AGENT_BUDGET_USD", "25"))
+DEV_JOB_BUDGET_USD = float(os.environ.get("AUTOTEST_DEV_JOB_BUDGET_USD", "60"))
+DEV_MAX_REPAIRS = 3
+DEV_FILE_MAX_MB = 40
+DEV_TOTAL_MAX_MB = 200
 
 
 @lru_cache(maxsize=1)

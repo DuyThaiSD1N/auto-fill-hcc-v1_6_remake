@@ -26,6 +26,20 @@ mất phần này.
 | `verify.py` | Test BE, test extension, build Docker, healthz |
 | `evidence.py` | Gom chứng cứ của req từ Mongo local |
 | `replay.py` | Đăng nhập backend, xoá cache OCR, chế độ Chỉ gọi backend |
+| `devjob.py` | Job "Thêm thủ tục mới": nhận tệp kéo thả, chuyển Excel/Word sang chữ, thêm link `ke_khai_links.json`, cho agent làm pipeline, kiểm chứng, chạy thử file mẫu |
+
+## Job "Thêm thủ tục mới"
+
+- Web gửi một request multipart `/agent-api/dev/jobs`: ô `meta` là JSON thông tin thủ tục, tệp theo 3 nhóm `mapping`, `attach`, `samples`.
+  nginx của test-fe cho `/agent-api/` nhận tới 250 MB.
+- Link kê khai do mã thêm (`json.dumps(indent=2)` ra đúng định dạng file), không để agent tự viết. Link nằm trong danh sách file job đã chạm,
+  nên dừng, trượt hay bấm hoàn tác đều gỡ luôn.
+- Agent được `Write` (tạo thư mục pipeline mới), sửa extension Auto Fill, và extension trợ lý khi bật đưa lên trợ lý. Hoàn tác file tạo
+  mới thì dọn luôn thư mục chỉ còn rỗng hoặc `__pycache__`.
+- Đạt khi: có thư mục `app/pipelines/<key đổi - thành _>/` và `tests/unit/test_<thư mục>.py`, test pipeline xanh, không có test mới đỏ ở
+  backend, extension, `tests/handfree` (khi bật trợ lý), build + healthz được, chạy thử file mẫu ra ít nhất một ô có giá trị, patch không
+  chứa dữ liệu thật của file mẫu. Chưa đạt thì trả lỗi lại cho agent (`DEV_MAX_REPAIRS` lần).
+- Biến môi trường: `AUTOTEST_DEV_TIMEOUT_MIN` (60), `AUTOTEST_DEV_AGENT_BUDGET_USD` (25), `AUTOTEST_DEV_JOB_BUDGET_USD` (60).
 
 ## Quy tắc khi sửa
 

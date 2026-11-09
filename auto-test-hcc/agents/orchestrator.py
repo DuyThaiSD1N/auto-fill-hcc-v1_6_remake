@@ -43,6 +43,9 @@ HEADLINES = {
     "report_only": "Không sửa code, chỉ báo cáo",
     "not_reproduced": "Không tái hiện được lỗi với code hiện tại",
     "need_human": "Chưa sửa được, cần người xem",
+    # Job "Thêm thủ tục mới" (devjob.py)
+    "built": "Đã làm xong thủ tục: test, build và chạy thử file mẫu đều đạt",
+    "dev_failed": "Chưa làm xong thủ tục, mọi thay đổi đã hoàn tác",
 }
 
 
@@ -105,6 +108,7 @@ class Job:
             case = data.get("case") or {}
             return {
                 "id": data["id"],
+                "kind": data.get("kind", "fix"),
                 "requestId": data["requestId"],
                 "label": case.get("label"),
                 "description": data["description"],
@@ -112,7 +116,7 @@ class Job:
                 "stage": data["stage"],
                 "outcome": data["outcome"],
                 "createdAt": data["createdAt"],
-                "rounds": len(data["rounds"]),
+                "rounds": len(data["rounds"]) or len(data.get("attempts") or []),
                 "cost": data["cost"],
             }
 
@@ -158,6 +162,7 @@ class Orchestrator:
         self.touched: list[str] = []
         self.denied: list[str] = []
         self.portal_state: dict = {}
+        self.budget = JOB_BUDGET_USD
 
     # ---- vòng đời ------------------------------------------------------------------------------------------
 
@@ -399,7 +404,11 @@ class Orchestrator:
         self.job.save()
         return round_
 
-    def _agent(self, who: str, kind: str, system: str, prompt: str, schema: dict, *, can_edit: bool = False, resume: str | None = None) -> AgentResult:
+    def _agent(
+        self, who: str, kind: str, system: str, prompt: str, schema: dict, *,
+        can_edit: bool = False, resume: str | None = None, timeout: int | None = None, **extra,
+    ) -> AgentResult:
+        """``extra`` chuyển thẳng cho claude_runner (write, edit_troly, budget) — job thêm thủ tục cần quyền rộng hơn."""
         model, effort = roles.model_for(kind)
 
         def on_event(text: str) -> None:
@@ -412,11 +421,12 @@ class Orchestrator:
             try:
                 result = claude_runner.run_agent(
                     model=model, effort=effort, system=system, prompt=prompt, schema=schema,
-                    timeout=FIXER_TIMEOUT_S if can_edit else AGENT_TIMEOUT_S,
+                    timeout=timeout or (FIXER_TIMEOUT_S if can_edit else AGENT_TIMEOUT_S),
                     cancel=self.job.cancel, on_event=on_event, can_edit=can_edit, resume=resume,
                     # Chỉ gọi backend thì extension không chạy, sửa extension là không kiểm chứng được.
                     edit_extension=can_edit and self.on_portal,
                     touched=self.touched if can_edit else None,
+                    **extra,
                 )
                 break
             except AgentError as reason:
@@ -429,8 +439,8 @@ class Orchestrator:
             cost["calls"] += 1
             spent = cost["usd"]
         self.job.save()
-        if spent > JOB_BUDGET_USD:
-            raise JobError(f"Job đã tiêu {spent:.2f} USD, vượt trần {JOB_BUDGET_USD:.0f} USD")
+        if spent > self.budget:
+            raise JobError(f"Job đã tiêu {spent:.2f} USD, vượt trần {self.budget:.0f} USD")
         return result
 
     def _ask(self, role: str, label: str, system: str, prompt: str, schema: dict, resume: str | None = None) -> dict:
@@ -718,7 +728,7 @@ def revert_fix(job: Job) -> None:
 
 def recover_interrupted(job: Job) -> None:
     """Dịch vụ bị tắt khi job đang chạy: hoàn tác phần sửa dở từ ảnh chụp, rồi build lại nếu stack đã nhận bản đó."""
-    guard = codeguard.Guard(job.dir)
+    guard = codeguard.Guard(job.dir, troly=job.data.get("kind") == "dev" and bool(job.data["settings"].get("troLy")))
     touched = job.data.get("touched") or []
     if guard.taken and touched:
         changes, _ = guard.changes(touched)

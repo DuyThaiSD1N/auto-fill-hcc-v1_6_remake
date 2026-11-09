@@ -116,6 +116,9 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
   kiểm lại `trace_steps.ocr[].cache`, không cần cờ trong BE.
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền
   5 lần, chấm trên giá trị đọc từ form. Bot KHÔNG được nộp hồ sơ: không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
+- Tab "Thêm thủ tục mới" (`agents/devjob.py`): người dùng nhập link kê khai, kéo thả Excel mapping + ảnh ánh xạ đính kèm + file mẫu;
+  mã thêm link, agent làm pipeline theo mục "Thêm thủ tục mới" ở dưới, mã chạy test, build, chạy thử file mẫu. Prompt agent ở `roles.py`
+  (DEV_SYSTEM): đổi quy trình thêm thủ tục trong file này thì xem lại prompt đó.
 
 ## Thêm thủ tục mới
 

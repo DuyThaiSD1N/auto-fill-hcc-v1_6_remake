@@ -91,6 +91,21 @@ Từ lúc bot tới tờ khai đến lúc kết thúc, **đừng thao tác trên
 
 Bot kẹt thì web hiện khung vàng ghi rõ cần làm gì. Làm trên cửa sổ bot rồi bấm nút trong khung, bot chạy tiếp.
 
+### Thêm thủ tục mới
+
+Tab **Thêm thủ tục mới** thay cho việc dán đường dẫn file vào Claude trong VS Code.
+
+1. **Link kê khai**: nhập tên, mã, URL trang thủ tục trên cổng. Key tự gợi ý từ tên, sửa cho gọn. Tích các cờ chọn cơ quan, tích Sở,
+   chỉ chọn Tỉnh, tự Xác nhận; điều kiện khác ghi vào ô Điều kiện đặc biệt. Thủ tục đã có link thì chọn **Dùng link có sẵn** và gõ key.
+2. **Tài liệu**: kéo thả tất cả vào một chỗ. Excel tự vào nhóm mapping, PDF và Word vào file mẫu, ảnh vào ánh xạ đính kèm; xếp sai thì
+   đổi nhóm ở từng tệp. Ảnh chụp màn hình dán thẳng bằng Ctrl+V.
+3. Ghi yêu cầu thêm nếu có, chọn có đưa lên trợ lý không, nhập tài khoản backend đúng tỉnh của thủ tục, bấm **Bắt đầu làm thủ tục**.
+
+Hệ thống thêm link vào `ke_khai_links.json`, agent làm pipeline điền và đính kèm theo CLAUDE.md, rồi hệ thống chạy test, build Docker
+và chạy thử trên file mẫu qua backend. Chưa đạt thì trả lỗi lại cho agent, tối đa 3 lần; vẫn chưa đạt thì hoàn tác sạch, kể cả link.
+Đạt thì đọc kỹ khung **Agent tự suy ra, cần kiểm**, rồi bấm **Kiểm thử trên cổng thật** để chạy req vừa chạy thử qua luồng 5 lần ở trên.
+Code nằm trong thư mục làm việc, chưa commit; không giữ thì bấm **Hoàn tác thủ tục**.
+
 ## 4. Luồng chi tiết
 
 | Bước | Ai làm | Trên web thấy gì |
@@ -190,6 +205,20 @@ Nhật ký job có dòng "Request ghi lên cổng trong đợt này", liệt kê
 
 Sau mỗi ca kiểm tra `git status`: ca không đổi code thì không có file nào trong `auto-fill-hcc-backend/` hay `auto-fill-hcc-extension/` bị đổi. Ca Đã sửa thì chỉ có đúng các file trong patch.
 
+### F. Thêm thủ tục mới
+
+| Mã | Làm gì | Mong đợi | Trạng thái |
+| --- | --- | --- | --- |
+| F1 | Kéo thả Excel, ảnh, PDF cùng lúc vào vùng chung | Tự xếp đúng 3 nhóm, đổi nhóm được | Chưa |
+| F2 | Dán ảnh chụp màn hình bằng Ctrl+V | Ảnh vào nhóm ánh xạ đính kèm | Chưa |
+| F3 | Thả tệp .xls, .exe, tệp quá 40 MB | Báo lý do, không nhận | Chưa |
+| F4 | Key trùng link đã có / mã trùng thủ tục khác | Báo trùng, gợi ý dùng link có sẵn / cảnh báo mã | Chưa |
+| F5 | Làm một thủ tục thật có đủ mapping, ảnh, file mẫu | Đã làm xong, chạy thử ra ô có giá trị, có req | Chưa |
+| F6 | Bấm Dừng khi agent đang viết | Code và link kê khai về như cũ, không còn thư mục pipeline rỗng | Đạt, bằng test tự động |
+| F7 | Agent không đạt sau 3 lần | Hoàn tác sạch, build lại backend | Đạt, bằng test tự động |
+| F8 | Bấm Hoàn tác thủ tục sau khi xong | Gỡ link, xoá file tạo mới, build lại | Đạt, bằng test tự động |
+| F9 | Từ job xong bấm Kiểm thử trên cổng thật | Mở tab sửa lỗi, điền sẵn req chạy thử | Chưa |
+
 ## 6. Báo lỗi
 
 Mỗi lỗi ghi: mã kịch bản, mã job (thư mục trong `auto-test-hcc/runs/`), mã req, bước đang ở, tab Nhật ký, ảnh màn hình. Không dán CCCD, họ tên hay ảnh giấy tờ vào hệ thống báo lỗi ngoài công ty. Thư mục `runs/` và `.profile/` chứa dữ liệu nhạy cảm, không commit, không gửi đi.
@@ -214,6 +243,7 @@ Mỗi lỗi ghi: mã kịch bản, mã job (thư mục trong `auto-test-hcc/runs
 | Lỗi thật trên cổng, hội đồng tranh luận nhiều, sửa hai chỗ | 5,40 USD | 17 phút |
 | Lỗi rõ ràng, sửa trong một vòng | khoảng 2,6 USD | khoảng 10 phút |
 | Dừng ở bước trọng tài | khoảng 1,9 USD | khoảng 3 phút |
+| Thêm thủ tục mới | chưa đo; trần 25 USD mỗi lượt agent, 60 USD cả job | agent tối đa 60 phút mỗi lượt |
 
 ## 9. Việc tiếp theo
 

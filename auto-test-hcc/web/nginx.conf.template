@@ -23,6 +23,8 @@ server {
 
     # Dịch vụ agent chạy trên máy host (cần claude, repo, docker) nên không nằm trong mạng compose.
     location /agent-api/ {
+        # Job "Thêm thủ tục mới" gửi Excel, ảnh, PDF mẫu trong một request; mặc định nginx chỉ nhận 1 MB (413).
+        client_max_body_size 250m;
         set $agent "${AGENT_URL}";
         proxy_pass $agent$request_uri;
         proxy_set_header Host $host;

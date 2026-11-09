@@ -148,3 +148,39 @@ def test_patch_lo_du_lieu_that_bi_bat(line):
 def test_dong_bi_xoa_va_du_lieu_bia_khong_tinh():
     patch = '--- a/x\n+++ b/x\n-    ten = "Trần Thị Mẫu"\n+    ten = "Nguyễn Văn Bịa"\n+    so = "000000000000"[:3]\n'
     assert leaked_terms(patch, private_terms(FIELDS, "req_abc123")) == []
+
+
+def test_hoan_tac_file_moi_don_ca_thu_muc_rong_va_pycache(tree, tmp_path):
+    """Thư mục pipeline rỗng còn lại thì job sau tưởng pipeline đã có."""
+    guard = Guard(tmp_path / "job")
+    guard.take()
+    created = tree / "app/pipelines/thu_tuc_moi/process/mapper.py"
+    created.parent.mkdir(parents=True)
+    created.write_text("x = 1\n", encoding="utf-8")
+    (created.parent / "__pycache__").mkdir()
+    (created.parent / "__pycache__/mapper.cpython-311.pyc").write_bytes(b"pyc")
+    keep = tree / "app/pipelines/da_co"
+    keep.mkdir()
+    changes, _ = guard.changes([str(created)])
+    guard.restore(changes)
+    assert not (tree / "app/pipelines/thu_tuc_moi").exists()
+    assert keep.is_dir() and (tree / "app").is_dir()  # không đụng thư mục khác, không xoá gốc phạm vi
+
+
+def test_hoan_tac_khong_xoa_thu_muc_con_file_khac(tree, tmp_path):
+    folder = tree / "app/pipelines/chung"
+    folder.mkdir(parents=True)
+    (folder / "co_san.py").write_text("y = 1\n", encoding="utf-8")
+    guard = Guard(tmp_path / "job")
+    guard.take()
+    (folder / "moi.py").write_text("z = 1\n", encoding="utf-8")
+    changes, _ = guard.changes([str(folder / "moi.py")])
+    guard.restore(changes)
+    assert not (folder / "moi.py").exists() and (folder / "co_san.py").exists()
+
+
+def test_tro_ly_chi_trong_pham_vi_khi_bat(tree):
+    troly = to_rel(str(tree.parent / "tro-ly-nguoi-dan-extension-main/sidebar.js"))
+    assert not in_scope(troly) and in_scope(troly, troly=True)
+    assert not in_scope(to_rel(str(tree.parent / "tro-ly-nguoi-dan-extension-main/api/config.js")), troly=True)
+    assert not in_scope(to_rel(str(tree.parent / "tro-ly-nguoi-dan-extension-main/manifest.json")), troly=True)
