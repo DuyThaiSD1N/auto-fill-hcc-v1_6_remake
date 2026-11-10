@@ -24,6 +24,11 @@ def preset_texts(texts_by_data_url: dict[str, str]):
     finally:
         _preset_texts.reset(token)
 
+
+def preset_text(data_url: str) -> str | None:
+    """Chữ nạp sẵn của đúng tệp này (planner cắt trang trước khi gửi OCR thì dataUrl đổi, phải tra trước)."""
+    return (_preset_texts.get() or {}).get(data_url or "")
+
 _PAGE_SEPARATOR_RE = re.compile(
     r"(?im)^[\s\u2500-\u257f-]*(?:trang|page)\s+\d+\s*/\s*\d+[\s\u2500-\u257f-]*$"
 )

@@ -27,6 +27,15 @@ _ALLOWED_TYPES = {
 
 Pipeline = Callable[[dict[str, list[dict]], dict], Awaitable[dict]]
 
+# Thủ tục nhận dữ liệu NHẬP TAY thay cho giấy tờ (khoá trong options): có khoá này thì lượt không tệp vẫn hợp lệ,
+# pipeline map thẳng không OCR. dang-ky-kinh-doanh: tờ khai soạn trên tab của Auto Fill (giay_de_nghi).
+_FORM_INPUT_OPTION = {"dang-ky-kinh-doanh": "giayDeNghi"}
+
+
+def has_form_input(body: ProcessReq) -> bool:
+    key = _FORM_INPUT_OPTION.get(body.procedure)
+    return bool(key) and isinstance((body.options or {}).get(key), dict)
+
 
 @dataclass(slots=True)
 class PreparedProcess:
@@ -61,7 +70,7 @@ def prepare_process(
 ) -> PreparedProcess:
     if not proc or not pipeline:
         raise AppError("UNKNOWN_PROCEDURE", f"Thủ tục không hợp lệ: {body.procedure}", 400)
-    if not body.files:
+    if not body.files and not has_form_input(body):
         raise AppError("NO_FILES", "Không có file nào", 400)
 
     max_file = settings.max_file_size_mb * 1024 * 1024

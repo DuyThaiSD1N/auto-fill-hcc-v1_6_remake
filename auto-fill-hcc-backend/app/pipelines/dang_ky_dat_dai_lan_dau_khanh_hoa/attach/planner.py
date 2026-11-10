@@ -25,7 +25,8 @@ componentName là đoạn chữ đặc trưng của cột "Tên giấy tờ" (FE
   index 18 (STT19): Đơn đăng ký đất đai, tài sản gắn liền với đất          -> don_dang_ky (+ CCCD, giấy khai sinh)
   index 19 (STT20): Thông báo xác nhận kết quả đăng ký đất đai             -> KHÔNG route (cơ quan phát hành sau)
 
-MỖI FILE ĐÍNH NGUYÊN KHỐI, KHÔNG TÁCH TRANG (theo ánh xạ hồ sơ của thủ tục): file Đơn gộp kèm tờ khai lệ phí trước
+MẶC ĐỊNH MỖI FILE ĐÍNH NGUYÊN KHỐI, KHÔNG TÁCH TRANG (theo ánh xạ hồ sơ của thủ tục; bật "Có tách hồ sơ khi đính
+kèm" thì tách — xem plan_theo_cai_dat_tach): file Đơn gộp kèm tờ khai lệ phí trước
 bạ + tờ khai thuế TNCN đính nguyên ở dòng Đơn; file gộp hợp đồng chuyển nhượng + đơn xin làm nhà cũ + giấy khai
 sinh đính nguyên ở dòng giấy tờ chuyển quyền. LLM liệt kê MỌI loại giấy có trong file, planner chọn dòng theo
 _PRIORITY (tất định) rồi cảnh báo những giấy có dòng riêng mà nằm chung file, để cán bộ biết không đính lại.
@@ -40,6 +41,8 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
+from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
+from app.pipelines._shared.lao_cai_tach_giay_to import plan_with_split
 from app.process.schemas import FileItem
 from app.services.llm import client
 from app.services.pdf_utils import trim_files_for_classify
@@ -331,7 +334,9 @@ def build_plan_items(
 
 
 async def _ocr_for_classify(files: list[dict]) -> list[dict]:
-    """Chữ OCR để phân loại: đủ trang nếu bước điền đã OCR đúng file đó (cache), không thì vài trang đầu."""
+    """Chữ OCR để phân loại: đủ trang nếu bước điền đã OCR đúng file đó (cache), không thì vài trang đầu.
+
+    Đoạn trang do bộ tách giấy tờ cắt ra đã có chữ nạp sẵn (ocr.preset_texts) → dùng luôn, không OCR lần hai."""
     from app.services import ocr, ocr_cache
 
     keys = [ocr_cache.content_key(item.get("dataUrl") or "") for item in files]
@@ -339,6 +344,10 @@ async def _ocr_for_classify(files: list[dict]) -> list[dict]:
     results: list[dict | None] = []
     misses: list[dict] = []
     for item, key in zip(files, keys):
+        preset = ocr.preset_text(item.get("dataUrl") or "")
+        if preset and preset.strip():
+            results.append({"name": item.get("name"), "type": item.get("type"), "text": preset, "provider": "tiengnoi"})
+            continue
         hit = cached.get(key) if key else None
         text = str((hit or {}).get("text") or "")
         if hit and hit.get("provider") == "tiengnoi" and text.strip():
@@ -350,7 +359,24 @@ async def _ocr_for_classify(files: list[dict]) -> list[dict]:
     return [item if item is not None else next(fresh) for item in results]
 
 
+async def plan_theo_cai_dat_tach(plan_fn, files: list[FileItem], options: dict | None = None,
+                                 session: dict | None = None) -> dict:
+    """Chung cho 7 thủ tục đất đai iGate Khánh Hòa.
+
+    Cài đặt "Có tách hồ sơ khi đính kèm" (``options.splitDocuments`` là boolean true, engine cắt được trang) → OCR
+    tệp gốc, LLM chỉ ra trang mở giấy mới, cắt PDF gộp thành từng giấy rồi chạy ``plan_fn`` trên các giấy đã cắt
+    (mỗi giấy vào dòng của nó, extension cắt trang theo ``sourceSegments``). Không bật → đính nguyên tệp như cũ.
+    """
+    if split_requested(options):
+        return await plan_with_split(plan_fn, files, options, session)
+    return await plan_fn(files, options, session)
+
+
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    return await plan_theo_cai_dat_tach(_plan_theo_tep, files, options, session)
+
+
+async def _plan_theo_tep(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     del options
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
     ocr_files = [item for item in raw_files if item.get("type") in _OCR_TYPES]

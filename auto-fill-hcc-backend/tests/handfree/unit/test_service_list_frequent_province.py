@@ -70,9 +70,13 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
     counts = {slug: len(_card_keys(slug)) for slug in registry._TINH_THEO_DOI}
     assert counts == {
         # +5 ngày 10/11 (thẻ HDV tại điểm / cấp đổi / cấp lại, khuyến mại may rủi, xóa đăng ký phương tiện thủy).
-        "laichau": 113, "bacninh": 117, "lamdong": 103, "danang": 110, "quangninh": 114, "ninhbinh": 103,
+        # +2 mọi tỉnh 10/11: thẻ HDV quốc tế + 1.013997 hỗ trợ thiệt hại dịch bệnh động vật (user mở cho tất cả tỉnh).
+        # Bắc Ninh +1 ngày 10/11: cấp lại GCN do bị mất 1.115465 (STT 50, provinceOnly bacninh).
+        "laichau": 115, "bacninh": 120, "lamdong": 105, "danang": 112, "quangninh": 116, "ninhbinh": 105,
         # Khánh Hòa +4 theo bảng 11:55 (STT 41/93/190/207 lên "Hoàn thiện phần mềm") +1 liên thông khai tử (user mở).
-        "quangngai": 104, "laocai": 103, "quangtri": 104, "khanhhoa": 106, "tuyenquang": 102,
+        # Tuyên Quang +1 liên thông khai tử (user mở liên thông cho tất cả tỉnh 10/11).
+        # Khánh Hòa +1 ngày 10/11: đính chính GCN đã cấp 1.012790 (STT 103, provinceOnly khanhhoa).
+        "quangngai": 106, "laocai": 105, "quangtri": 106, "khanhhoa": 109, "tuyenquang": 105,
     }
 
 
@@ -81,12 +85,14 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     assert "dang-ky-dat-dai-lan-dau-khanh-hoa" in kh          # STT 44: Khánh Hòa hoàn thiện
     assert "cap-doi-gcn-khanh-hoa" in kh                       # STT 93: Khánh Hòa hoàn thiện (bảng 11:55)
     assert "khai-tu-lien-thong" in kh                          # STT 110: user mở cho Khánh Hòa
-    assert "khai-tu-lien-thong" not in _card_keys("tuyenquang")  # STT 110: Tuyên Quang chưa cập nhật
+    assert "khai-tu-lien-thong" in _card_keys("tuyenquang")    # STT 110: user mở liên thông cho tất cả tỉnh
     assert "cap-gcn-dang-ky-tau-ca" not in kh                  # STT 118: Khánh Hòa chưa cập nhật
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng
     assert "cap-phep-long-duong-via-he" not in _card_keys("laichau")
     assert "cap-gcn-dang-ky-tau-ca" not in _card_keys("bacninh")  # STT 118: Bắc Ninh Pending
     assert "hoa-giai-tranh-chap-dat-dai" not in _card_keys("lamdong")  # không có trong bảng
+    # 1.013997: user mở cho tất cả tỉnh 10/11
+    assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # Bảng không mở khóa provinceOnly: bản Bắc Ninh ghi _TAT_CA vẫn không lọt sang tỉnh khác.
     assert "tach-hop-thua-dat-bac-ninh" in _card_keys("bacninh")
     assert "tach-hop-thua-dat-bac-ninh" not in _card_keys("laichau")

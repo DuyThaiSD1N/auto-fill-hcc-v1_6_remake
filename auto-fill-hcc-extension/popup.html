@@ -133,6 +133,16 @@
             title="Ẩn">×</button>
           <p id="uploadHint" class="hint-text"></p>
         </div>
+        <button id="giayDeNghiHkdBtn" type="button" class="secondary-btn" hidden
+          title="Mở tab soạn Giấy đề nghị đăng ký hộ kinh doanh (Mẫu số 1): tải mẫu, tự điền, in cho công dân ký">📝 Tạo tờ khai
+          đăng ký hộ kinh doanh</button>
+        <div id="toKhaiHkdNote" class="to-khai-hkd-note" hidden role="status">
+          <label class="checkbox-row">
+            <input id="toKhaiHkdUse" type="checkbox" checked>
+            <span>Điền theo tờ khai đã nhập: <b id="toKhaiHkdName"></b> — không cần quét tờ khai</span>
+          </label>
+          <button id="toKhaiHkdOpen" type="button" class="link-like">Mở tờ khai</button>
+        </div>
         <label for="requestMode">Người yêu cầu là</label>
         <select id="requestMode">
           <option value="self">Bản thân</option>
@@ -327,6 +337,7 @@
   <script src="api/client.js"></script>
   <script src="api/endpoints.js"></script>
   <script src="api/account-settings.js"></script>
+  <script src="lib/giayDeNghiHkd.js"></script>
   <script src="changelog.js"></script>
   <!-- Dữ liệu tỉnh/xã + link kê khai phải nạp TRƯỚC popup.js (popup.js đọc window.* ngay khi chạy). -->
   <script src="popup-locations.js"></script>

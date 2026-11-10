@@ -511,6 +511,16 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert not bn_dinh_chinh_476.get("agencySoFirst")
     assert bn_dinh_chinh_476["provinceOnly"] == ["bacninh"]
     assert "wizard" not in bn_dinh_chinh_476 and "maePortal" not in bn_dinh_chinh_476
+    # 1.115465 cấp lại GCN do bị mất: như 1.115476 (chỉ chọn Tỉnh, không gạt "Sở") + khối ủy quyền = chủ hồ sơ.
+    bn_cap_lai = procedures.pop("cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh")
+    assert bn_cap_lai.get("flowProfile") is None
+    assert bn_cap_lai["samePageAttach"] is True
+    assert bn_cap_lai["agencyProvince"] == "Bắc Ninh"
+    assert bn_cap_lai["agencyProvinceOnly"] is True
+    assert not bn_cap_lai.get("agencySoFirst")
+    assert bn_cap_lai["provinceOnly"] == ["bacninh"]
+    assert bn_cap_lai["bacNinhAuthorizedPerson"]["subjectOption"] == "Cá nhân khác là Công dân Việt Nam"
+    assert "wizard" not in bn_cap_lai and "maePortal" not in bn_cap_lai
 
     # Đăng ký tạm trú (Cổng DVC Bộ Công an): một trang, đính kèm cùng trang, hỏi trước khi đính.
     bca_tam_tru = procedures.pop("dang-ky-tam-tru")
@@ -574,15 +584,16 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert is_allowed_in_province(tuyen_quang, "tuyenquang"), key
         assert not is_allowed_in_province(tuyen_quang, "khanhhoa"), key
 
-    # Cổng iGate Khánh Hòa: cả 6 thủ tục đi luồng chung "xay-dung" như Tuyên Quang (trang "Chọn trường hợp giải quyết"
-    # đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình. 1.013978 / 1.013949: DVCQG chọn đủ Tỉnh + Xã; 4 thủ
+    # Cổng iGate Khánh Hòa: cả 7 thủ tục đi luồng chung "xay-dung" như Tuyên Quang (trang "Chọn trường hợp giải quyết"
+    # đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình. 1.013978 / 1.013949: DVCQG chọn đủ Tỉnh + Xã; 5 thủ
     # tục còn lại: DVCQG chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency) + thẻ Chi nhánh VPĐK theo xã.
     kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa")
     for key in (*kh_ward_level,
                 "cap-doi-gcn-khanh-hoa",
                 "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
                 "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
-                "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"):
+                "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+                "dinh-chinh-gcn-da-cap-khanh-hoa"):
         kh = procedures.pop(key)
         assert kh["provinceOnly"] == ["khanhhoa"], key
         assert kh["flowProfile"] == "xay-dung" and kh["maePortal"] is True, key
@@ -618,6 +629,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("to-chuc-bieu-dien-nghe-thuat", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-the-huong-dan-vien-du-lich-quoc-te", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-tai-diem-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-doi-the-huong-dan-vien-du-lich-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-the-huong-dan-vien-du-lich-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
@@ -799,7 +811,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # cấp đổi "cap-doi-the-huong-dan-vien-du-lich-da-nang" (1.001432), cấp lại "cap-lai-the-huong-dan-vien-du-lich-da-nang"
     # (1.004614); +1 Sở Công Thương "dang-ky-khuyen-mai-may-rui-mot-tinh" (2.000004); +1 cổng Bộ Xây dựng
     # "xoa-dang-ky-phuong-tien-thuy" (2.001659).
-    assert len(procedures) == 154
+    # +1 cổng Bộ VHTTDL chọn Sở (10/11): thẻ HDV quốc tế "cap-the-huong-dan-vien-du-lich-quoc-te" (1.004628).
+    # +1 cổng Bắc Ninh (10/11) "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh" (1.115465).
+    # +1 cổng iGate Khánh Hòa (10/11) "dinh-chinh-gcn-da-cap-khanh-hoa" (1.012790, luồng "xay-dung").
+    assert len(procedures) == 157
 
     for procedure in procedures:
         key = procedure["key"]
@@ -816,7 +831,8 @@ def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
     # đó, không diễn đạt lại ("Cấp đổi sổ đỏ") và không gắn "(Bắc Ninh)".
     core_label = {procedure["key"]: procedure["label"] for procedure in core_registry.PROCEDURES}
     bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
-    assert len(bac_ninh) == 16  # +1 "dinh-chinh-gcn-da-cap-1115476-bac-ninh" (cùng thủ tục, khác trường hợp)
+    # +1 "dinh-chinh-gcn-da-cap-1115476-bac-ninh" (cùng thủ tục, khác trường hợp); +1 "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh".
+    assert len(bac_ninh) == 17
     for procedure in bac_ninh:
         assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
         short = procedure.get("shortLabel", "")

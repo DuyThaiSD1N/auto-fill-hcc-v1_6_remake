@@ -5413,6 +5413,59 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115465, cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18, 4 tab cùng trang). Chép thẻ 1.115476 ở
+        # trên: ke_khai_links chỉ provinceOnlyAgency (không selectSo) → chọn Tỉnh, không agencySoFirst. KHÁC thẻ đó: cổng
+        # chọn sẵn chi nhánh VPĐKĐĐ không theo nơi có đất (mapping 10/11/2026 sẵn "Yên Thế" cho hồ sơ Bắc Giang) → để
+        # mặc định hỏi cơ quan tiếp nhận; khối ủy quyền = chủ hồ sơ (pipeline lượt purpose="authorized_person"). Key TRÙNG
+        # lõi. Detect y hệt lõi; KHÔNG textIncludes vì tên trùng thẻ Lai Châu / Quảng Ninh. Chưa chạy cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115465"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp lại Giấy chứng nhận do bị mất",
+        "shortLabel": "Cấp lại Giấy chứng nhận do bị mất",
+        "subtitle": "Mã 1.115465 · Xin cấp lại giấy chứng nhận quyền sử dụng đất bị mất tại Bắc Ninh",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12ab-b75f-749c-a476-a987bee58f48",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → tệp scan chung thành từng giấy riêng.
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký; có thể scan chung "
+             "mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "trinh_bao", "name": "Đơn trình báo mất giấy chứng nhận / Bản cam kết (ghi số vào sổ, số phát "
+             "hành của giấy bị mất)", "icon": "📝", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, giấy xác nhận tình trạng hôn nhân hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Khối "Thông tin trong trường hợp được ủy quyền" = chủ hồ sơ (người đứng Đơn), loại "Cá nhân khác là Công dân
+        # Việt Nam" — pipeline lượt purpose="authorized_person".
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể scan chung một file, Đơn Mẫu 18 đứng đầu):\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Đơn trình báo về việc mất giấy chứng nhận và/hoặc Bản cam kết.\n"
+            "3. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "4. Nếu có: giấy xác nhận tình trạng hôn nhân, mảnh trích đo bản đồ địa chính.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         "key": "dang-ky-bien-dong-thoa-thuan-bac-ninh",
         "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
         # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
@@ -5806,6 +5859,9 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        # Khối "Thông tin trong trường hợp được ủy quyền" = bên ủy quyền (chủ hồ sơ) trên Giấy ủy quyền,
+        # loại "Cá nhân khác là Công dân Việt Nam" — pipeline lượt purpose="authorized_person".
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
@@ -6661,6 +6717,9 @@ PROCEDURES: list[dict] = [
     # cho mọi quy trình → không cần caseOptions ép form.
     {
         "key": "dang-ky-dat-dai-lan-dau-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.013978. Bảng đính kèm 20 dòng, mỗi file đính nguyên khối vào dòng của giấy chính trong file.
         "detect": {
@@ -6712,6 +6771,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.013949, cùng template ba khối với đăng ký đất đai lần đầu ngay trên. Bảng đính kèm 15 dòng; giấy ủy
         # quyền / giấy giới thiệu thêm dòng qua "Thêm giấy tờ".
@@ -6763,6 +6825,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-doi-gcn-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.012783 (05/11/2026), cùng template ba khối với hai thủ tục ngay trên; một form cho cả hai quy trình
         # 1.012783-1.1 / -1.2 nên không cần caseOptions. Bảng đính kèm 4 dòng; văn bản ủy quyền thêm qua "Thêm giấy tờ".
@@ -6810,6 +6875,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.013831 (05/11/2026), cùng template ba khối và cùng cách chọn cơ quan với cấp đổi GCN ngay trên:
         # ke_khai_links khai provinceOnlyAgency → DVCQG chỉ chọn Tỉnh; thẻ Chi nhánh VPĐK đất đai theo xã lấy từ
@@ -6871,6 +6939,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.013995 (05/11/2026), cùng template ba khối và cùng cách chọn cơ quan với cấp đổi GCN Khánh Hòa:
         # ke_khai_links khai provinceOnlyAgency → DVCQG chỉ chọn Tỉnh; thẻ Chi nhánh VPĐK đất đai theo xã lấy từ
@@ -6930,6 +7001,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
         "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.013947 (05/11/2026), cùng cách đi như đăng ký tài sản 1.013995 ngay trên: DVCQG chỉ chọn Tỉnh + thẻ Chi
         # nhánh VPĐK đất đai theo xã (agencyCardIncludesByWard), trang "Chọn trường hợp giải quyết" của cổng (quy trình
@@ -6971,6 +7045,56 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Bước đính kèm: Đơn → dòng 1, Giấy chứng nhận và Phiếu đo đạc → cùng dòng 2; văn bản ủy quyền, căn cước thêm "
             "dòng qua 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy vào
+        # dòng của nó (planner.plan_theo_cai_dat_tach); TẮT → đính nguyên tệp như cũ.
+        "supportsSplitDocuments": True,
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012790 (10/11/2026), chép theo cấp đổi GCN Khánh Hòa (cùng template ba khối, cùng cách chọn cơ quan):
+        # ke_khai_links khai provinceOnlyAgency → DVCQG chỉ chọn Tỉnh; thẻ Chi nhánh VPĐK đất đai theo xã lấy từ
+        # submitCardIncludesByWard (agencyCardIncludesByWard gắn ở cuối file). Một form cho quy trình 1.012790-1.1 nên không
+        # cần caseOptions. Bảng đính kèm 3 dòng (GCN đính cả dòng 1 lẫn dòng 2); Đơn Mẫu 27 thêm qua "Thêm giấy tờ".
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["1.012790", "Đính chính Giấy chứng nhận đã cấp"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp",
+        "subtitle": "Sửa thông tin ghi sai hoặc đã thay đổi (tên, số giấy tờ, địa chỉ, thửa đất) trên Giấy chứng nhận đã "
+        "cấp tại Khánh Hòa",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 27) — ghi nội dung "
+             "đính chính, đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "cu_tru", "name": "Giấy xác nhận thông tin về cư trú / giấy tờ chứng minh thông tin đúng (nếu có)",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 27) đã ký — người sử dụng đất, số căn "
+            "cước, địa chỉ, điện thoại, nội dung đính chính.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp (đủ các trang) — số thửa, số tờ, địa chỉ thửa đất, thông tin bị sai.\n"
+            "3. Căn cước công dân, Giấy xác nhận thông tin về cư trú hoặc giấy tờ khác chứng minh thông tin đúng.\n"
+            "4. Nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Giấy chứng nhận → dòng 1 và dòng 2, căn cước/giấy xác nhận cư trú → dòng 2, văn bản ủy quyền → "
+            "dòng 3 (không có thì bỏ tick), Đơn thêm dòng qua 'Thêm giấy tờ'."
         ),
     },
     # ── Thủ tục đất đai cổng iGate Tuyên Quang (04/11/2026) ──
@@ -7332,6 +7456,64 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi căn cước tài khoản trùng căn cước trên đơn.\n"
             "Bước đính kèm: Đơn → dòng 1; văn bằng + chứng chỉ → dòng 2; ảnh → dòng 3."
+        ),
+    },
+    {
+        "key": "cap-the-huong-dan-vien-du-lich-quoc-te",
+        # Mã TTHC 1.004628 (QT-120), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với thẻ HDV nội địa ở trên: nhận
+        # diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.004628. ke_khai_links đặt selectSo →
+        # DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry. Cổng bộ dùng chung cả
+        # nước nên không provinceOnly.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.004628",
+                "019d7fa8-0b23-732b-a247-5012a7de5171",
+            ],
+        },
+        "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch quốc tế",
+        "shortLabel": "Cấp thẻ hướng dẫn viên du lịch quốc tế",
+        "subtitle": "Xin thẻ hướng dẫn viên dẫn khách du lịch quốc tế",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa8-0b23-732b-a247-5012a7de5171",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp thẻ hướng dẫn viên du lịch quốc tế (Mẫu số 04)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "ngoai_ngu", "name": "Chứng chỉ ngoại ngữ còn hạn (từ bậc 4/B2) hoặc bằng tốt nghiệp chuyên ngành "
+             "ngoại ngữ", "icon": "🌐", "sides": 1, "repeatable": True},
+            {"key": "van_bang", "name": "Bằng tốt nghiệp cao đẳng trở lên (bản sao chứng thực)", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_chi", "name": "Chứng chỉ nghiệp vụ hướng dẫn du lịch quốc tế (khi văn bằng không thuộc "
+             "chuyên ngành hướng dẫn du lịch)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "anh", "name": "Ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp thẻ hướng dẫn viên du lịch quốc tế (Mẫu số 04) — nguồn chính để điền.\n"
+            "2. Chứng chỉ ngoại ngữ còn hạn từ bậc 4/B2 (IELTS, VSTEP, HSK…) hoặc bằng tốt nghiệp chuyên ngành ngoại "
+            "ngữ.\n"
+            "3. Bản sao chứng thực bằng tốt nghiệp cao đẳng trở lên; văn bằng không thuộc chuyên ngành hướng dẫn du "
+            "lịch thì kèm chứng chỉ nghiệp vụ hướng dẫn du lịch quốc tế.\n"
+            "4. Ảnh chân dung màu 3x4.\n"
+            "5. Nếu có: căn cước của người đề nghị — để bổ sung ngày cấp, nơi cấp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Tài khoản là chính người đề nghị thì điền khối 'Thông tin người nộp hồ sơ'; khác người thì tích 'Thông tin "
+            "người ủy quyền' và điền người đề nghị vào đó.\n"
+            "Bước đính kèm: ảnh → dòng 1; Đơn → dòng 2; ngoại ngữ → dòng 3; văn bằng + chứng chỉ nghiệp vụ → dòng 4."
         ),
     },
     {
@@ -9506,8 +9688,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "khai-sinh-dang-ky-lai": _TAT_CA,
     "khai-sinh-da-co-ho-so": _TAT_CA,
     "khai-tu": _TAT_CA,
-    # STT 110: Tuyên Quang Chưa cập nhật. Khánh Hòa bảng vẫn ghi Chưa cập nhật nhưng user mở 10/11/2026.
-    "khai-tu-lien-thong": _TAT_CA - {"tuyenquang"},
+    # STT 110: bảng ghi Khánh Hòa/Tuyên Quang Chưa cập nhật nhưng user mở liên thông cho tất cả tỉnh 10/11/2026.
+    "khai-tu-lien-thong": _TAT_CA,
     "khai-tu-dang-ky-lai": _TAT_CA,
     "dang-ky-nhan-cha-me-con": _TAT_CA,
     "khai-sinh-ket-hop-nhan-cha-me-con": _TAT_CA,
@@ -9537,7 +9719,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # STT 122: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
     "cap-van-ban-chap-thuan-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
     "cap-lai-chung-chi-hanh-nghe-thu-y": _TAT_CA,
-    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": frozenset(),  # không có trong bảng
+    # 1.013997: không có trong bảng nhưng user mở cho tất cả tỉnh 10/11/2026.
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": _TAT_CA,
     "hoa-giai-tranh-chap-dat-dai": frozenset(),  # không có trong bảng
     "cap-ban-sao-van-bang-so-goc": _TAT_CA,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": _TAT_CA,
@@ -9614,18 +9797,21 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
+    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": _TAT_CA,  # STT 50
     "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
     "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": _TAT_CA,  # STT 41 + STT 208
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": _TAT_CA,  # STT 190
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": _TAT_CA,  # STT 207
+    "dinh-chinh-gcn-da-cap-khanh-hoa": _TAT_CA,  # STT 103 (như dinh-chinh-gcn-da-cap-bac-ninh)
     "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,
+    "cap-the-huong-dan-vien-du-lich-quoc-te": _TAT_CA,  # 1.004628 — cổng Bộ VHTTDL dùng chung toàn quốc (user 10/11)
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "to-chuc-bieu-dien-nghe-thuat": _TAT_CA,

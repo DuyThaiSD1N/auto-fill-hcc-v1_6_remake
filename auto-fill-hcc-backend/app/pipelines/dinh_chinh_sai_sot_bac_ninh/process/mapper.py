@@ -6,6 +6,7 @@ người nhận kết quả = chính người đứng đơn (dùng lại Cccd_*/
 
 import re
 
+from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import schema as S
 
 # Chấm giữ chỗ của mẫu in ("Mã số thuế: ....") và gạch dài ngăn cấp hành chính ("– xã X –").
@@ -103,3 +104,42 @@ def enrich(fields: list[dict]) -> list[dict]:
     add(S.N_DIACHI, dia_chi)
 
     return out
+
+
+def enrich_authorized(fields: list[dict]) -> tuple[list[dict], list[str]]:
+    """purpose="authorized_person": khối "Thông tin trong trường hợp được ủy quyền" (doiTuongKhac*).
+
+    Khối này = NGƯỜI ỦY QUYỀN = CHỦ HỒ SƠ (bên A của Giấy ủy quyền), KHÔNG phải người được ủy quyền (người
+    đó chính là tài khoản đang nộp). Extension tự tick ô bổ sung + chọn loại "Cá nhân khác là Công dân Việt
+    Nam" trước khi điền. Tỉnh/phường là select2 cascade → phát Tỉnh trước Phường.
+    """
+    v = _by_name(fields)
+    name = _text(v.get("ChuHoSo_HoTen"))
+    ident = _digits(v.get("ChuHoSo_SoDinhDanh"))
+    out: list[dict] = []
+
+    def add(field: str, value, comp: str = "bn-input") -> None:
+        value = _text(value)
+        if value:
+            out.append({"name": field, "comp": comp, "value": value})
+
+    gioi_tinh = _text(v.get("ChuHoSo_GioiTinh"))
+    add("doiTuongKhachoTen", name)
+    add("doiTuongKhacgioiTinhId", gioi_tinh if gioi_tinh in ("Nam", "Nữ") else None, "bn-select")
+    add("doiTuongKhacsoDinhDanh", ident)
+    add("doiTuongKhacngayCap", v.get("ChuHoSo_NgayCap"))
+    noi_cap = _text(v.get("ChuHoSo_NoiCap"))
+    add("doiTuongKhacnoiCap", normalize_issuer(noi_cap) if noi_cap else None)
+    add("doiTuongKhacngaySinh", v.get("ChuHoSo_NgaySinh"))
+    add("doiTuongKhacemail", v.get("ChuHoSo_Email"))
+    add("doiTuongKhacsoDienThoai", _digits(v.get("ChuHoSo_DienThoai")))
+    tt = v.get("ChuHoSo_ThuongTru")
+    if isinstance(tt, dict):
+        tt = {**tt, "diaChi": tt.get("diaChi") or tt.get("chiTietDuoiXa")}
+        add("doiTuongKhactinhThanhId", tt.get("tinh"), "bn-select")
+        add("doiTuongKhacphuongXaId", tt.get("xa") or tt.get("phuong"), "bn-select")
+    add("doiTuongKhacdiaChiChiTiet", _flatten_address(tt))
+
+    if not name or not ident:
+        return [], ["Chưa bóc tách đủ họ tên và CCCD của người ủy quyền (chủ hồ sơ) từ Giấy ủy quyền/CCCD."]
+    return out, []

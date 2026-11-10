@@ -157,6 +157,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "hướng dẫn viên đăng ký lớp bồi dưỡng cập nhật kiến thức",
         "xin giấy chứng nhận khóa cập nhật kiến thức du lịch",
         "đăng ký tham dự khóa cập nhật kiến thức theo thông báo của Sở"],
+    # Chưa có thẻ, xin thẻ hướng dẫn viên QUỐC TẾ lần đầu (dẫn khách nước ngoài, cần chứng chỉ ngoại ngữ) — KHÁC thẻ nội
+    # địa, thẻ tại điểm và cấp đổi/cấp lại thẻ đã có.
+    "cap-the-huong-dan-vien-du-lich-quoc-te": [
+        "cấp thẻ hướng dẫn viên du lịch quốc tế", "xin thẻ hướng dẫn viên quốc tế",
+        "làm hướng dẫn viên dẫn khách nước ngoài cần thẻ", "có IELTS muốn làm hướng dẫn viên quốc tế",
+        "thẻ HDV quốc tế lần đầu"],
     # Thẻ hướng dẫn viên TẠI ĐIỂM (chỉ dẫn khách trong một khu, điểm du lịch) — KHÁC thẻ nội địa / quốc tế. Cụm "tại
     # điểm" hoặc tên khu, điểm du lịch là dấu hiệu riêng.
     "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": [
@@ -480,6 +486,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đất nông nghiệp trên sổ đỏ hết hạn sử dụng", "xin xác nhận tiếp tục sử dụng đất nông nghiệp",
         "gia hạn đất trồng cây hàng năm hết thời hạn", "xác nhận lại thời hạn sử dụng đất nông nghiệp",
         "xác nhận tiếp tục sử dụng đất nông nghiệp ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly) của đính chính GCN đã cấp: GIỮ sổ cũ, chỉ sửa thông tin ghi sai/đã đổi (CMND sang
+    # CCCD, địa chỉ sau sắp xếp, sai tên, sai nguồn gốc) — KHÁC cấp đổi (đổi sang sổ mới do rách, hỏng) và đăng ký biến
+    # động (sang tên người khác).
+    "dinh-chinh-gcn-da-cap-khanh-hoa": [
+        "đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ", "sổ đỏ ghi sai tên, sai năm sinh",
+        "cập nhật số căn cước thay chứng minh thư trên sổ đỏ", "sổ đỏ ghi sai nguồn gốc sử dụng đất",
+        "đính chính sổ đỏ ở khánh hòa"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",
@@ -648,6 +661,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": [
         "mất sổ đỏ", "làm lại sổ đỏ bị mất", "cấp lại giấy chứng nhận quyền sử dụng đất bị mất",
         "đánh mất bìa đỏ muốn xin cấp lại", "sổ đỏ bị thất lạc", "cấp lại sổ đỏ ở lai châu",
+    ],
+    # Bắc Ninh (provinceOnly) của cùng nghiệp vụ 1.115465: sổ đỏ đã cấp BỊ MẤT → xin cấp lại. KHÁC cấp đổi (sổ còn, rách
+    # nát/mẫu cũ), đính chính (sổ còn nhưng ghi sai) và thu hồi GCN cấp sai.
+    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": [
+        "mất sổ đỏ", "làm lại sổ đỏ bị mất", "cấp lại giấy chứng nhận quyền sử dụng đất bị mất",
+        "đánh mất sổ hồng muốn xin cấp lại", "sổ đỏ bị thất lạc đã trình báo", "cấp lại sổ đỏ ở bắc ninh",
     ],
 }
 

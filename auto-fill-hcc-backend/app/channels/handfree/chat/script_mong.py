@@ -79,6 +79,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "daim av" (thửa đất) đã có; TỪ MỚI: "teb" (ruộng/đất nông nghiệp), "siv ntxiv" (dùng
     # tiếp), "lees paub" (xác nhận, như "ntawv lees paub").
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": "Lees paub siv ntxiv daim av teb (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ đính chính GCN đã cấp Bắc Ninh ("kho daim ntawv av"), đổi tên tỉnh.
+    "dinh-chinh-gcn-da-cap-khanh-hoa": "Kho daim ntawv av (Khánh Hòa)",
     # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
     "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",
@@ -287,6 +289,8 @@ PROCEDURE_HMONG = {
     "thong-bao-san-pham-quang-cao-bang-ron": "Tshaj tawm kev tshaj tawm khoom muag",
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": "Ntawv tso cai luam ntawv tsis yog lag luam",
     "cap-the-huong-dan-vien-du-lich-noi-dia": "Daim npav neeg coj kev mus ncig (hauv teb chaws)",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.004628) — ghép từ bản nội địa ngay trên; TỪ MỚI "thoob ntiaj teb" (quốc tế).
+    "cap-the-huong-dan-vien-du-lich-quoc-te": "Daim npav neeg coj kev mus ncig (thoob ntiaj teb)",
     # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.001822) — "ntawv tso cai ua haujlwm" (chứng chỉ hành nghề), "kho" (sửa,
     # tu bổ) đã có; TỪ MỚI "chaw keeb kwm" (di tích).
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": "Ntawv tso cai ua haujlwm kho chaw keeb kwm",
@@ -342,6 +346,8 @@ PROCEDURE_HMONG = {
     "giao-dat-cho-thue-dat-lai-chau": "Muab daim av, xauj daim av (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Quảng Ninh ("dua tshiab vim ploj"), không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": "Muab daim ntawv av dua tshiab vim ploj (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Lai Châu, chỉ đổi tên tỉnh, không thêm từ mới.
+    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": "Muab daim ntawv av dua tshiab vim ploj (Bắc Ninh)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

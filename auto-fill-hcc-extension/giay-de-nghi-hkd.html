@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tờ khai đăng ký hộ kinh doanh</title>
+  <link rel="stylesheet" href="giay-de-nghi-hkd.css">
+</head>
+<body>
+  <div class="ws">
+    <header class="ws-top">
+      <div class="ws-id">
+        <span class="ws-id-icon" aria-hidden="true">📝</span>
+        <div>
+          <h1>Tờ khai đăng ký hộ kinh doanh</h1>
+          <p>Mẫu số 1, Phụ lục II, Thông tư 68/2025/TT-BTC</p>
+        </div>
+      </div>
+      <div class="ws-top-actions">
+        <button class="save-btn" id="saveBtn" type="button"
+          title="Kiểm tra ô nhập, cập nhật bản xem trước và chuyển tờ khai cho Auto Fill (Ctrl+S)">💾 Lưu</button>
+        <button class="ghost-btn" id="blankWord" type="button"
+          title="Tải đúng mẫu chưa điền gì, để in viết tay hoặc mở bằng Word tự điền">Tải mẫu trống</button>
+        <button class="ghost-btn" id="resetAll" type="button">Xóa hết, làm lại</button>
+        <button class="ghost-btn" id="closeTab" type="button">Đóng</button>
+      </div>
+    </header>
+
+    <div class="gate" id="authGate" hidden>
+      <div class="panel">
+        <h2 class="panel-title">Chưa đăng nhập</h2>
+        <p class="panel-sub">Mở Trợ lý nhân dân trên trang dịch vụ công, đăng nhập tài khoản của quầy, rồi mở lại
+          "Tạo tờ khai đăng ký hộ kinh doanh".</p>
+      </div>
+    </div>
+
+    <main class="ws-body" id="wsBody">
+      <form class="ws-form" id="form" novalidate autocomplete="off">
+        <p class="lead">Ô nào để trống thì giấy in ra giữ dòng chấm để công dân viết tay. Chỉ tải mẫu trắng thì bấm
+          <b>Tải mẫu trống</b> ở góc trên.</p>
+        <p class="autofill-state" id="autoFillState" role="status" data-ready="false"></p>
+
+        <section class="panel">
+          <h2 class="panel-title">Đầu giấy</h2>
+          <div class="fields two">
+            <div class="field"><label for="diaDanh">Địa danh</label><input id="diaDanh" data-f="diaDanh" maxlength="120"></div>
+            <div class="field"><label for="ngayLap">Ngày lập</label><input id="ngayLap" data-f="ngayLap" data-kind="ngay" placeholder="ngày/tháng/năm" maxlength="10"><small class="err"></small></div>
+            <div class="field wide"><label for="kinhGui">Kính gửi (Cơ quan đăng ký kinh doanh cấp xã)</label><input id="kinhGui" data-f="kinhGui" maxlength="200"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Chủ hộ kinh doanh</h2>
+          <div class="fields two">
+            <div class="field wide"><label for="hoTen">Họ và tên</label><input id="hoTen" data-f="hoTen" data-kind="hoa" maxlength="120"><small class="err"></small></div>
+            <div class="field"><label for="ngaySinh">Sinh ngày</label><input id="ngaySinh" data-f="ngaySinh" data-kind="ngayQuaKhu" placeholder="ngày/tháng/năm" maxlength="10"><small class="err"></small></div>
+            <div class="field"><label for="gioiTinh">Giới tính</label>
+              <select id="gioiTinh" data-f="gioiTinh"><option value=""></option><option>Nam</option><option>Nữ</option></select></div>
+            <div class="field wide"><label for="soDinhDanh">Số định danh cá nhân</label><input id="soDinhDanh" data-f="soDinhDanh" data-kind="dinhDanh" inputmode="numeric" maxlength="20"><small class="err"></small></div>
+            <div class="field"><label for="dienThoai">Điện thoại (nếu có)</label><input id="dienThoai" data-f="dienThoai" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
+            <div class="field"><label for="email">Thư điện tử (nếu có)</label><input id="email" data-f="email" data-kind="email" inputmode="email" maxlength="120"><small class="err"></small></div>
+          </div>
+          <details class="more">
+            <summary>Kê khai thêm khi kết nối Cơ sở dữ liệu dân cư bị gián đoạn</summary>
+            <div class="fields two">
+              <div class="field"><label for="danToc">Dân tộc</label><input id="danToc" data-f="danToc" maxlength="60"></div>
+              <div class="field"><label for="quocTich">Quốc tịch</label><input id="quocTich" data-f="quocTich" maxlength="60"></div>
+            </div>
+            <h3 class="sub-title">Nơi thường trú</h3>
+            <div class="fields two">
+              <div class="field wide"><label for="ttChiTiet">Số nhà, đường phố, tổ/xóm/ấp/thôn</label><input id="ttChiTiet" data-f="thuongTru.chiTiet" maxlength="300"></div>
+              <div class="field"><label for="ttXa">Xã/Phường/Đặc khu</label><input id="ttXa" data-f="thuongTru.xa" maxlength="120"></div>
+              <div class="field"><label for="ttTinh">Tỉnh/Thành phố</label><input id="ttTinh" data-f="thuongTru.tinh" maxlength="120"></div>
+            </div>
+            <h3 class="sub-title">Nơi ở hiện tại <button class="link-btn" type="button" data-copy="thuongTru>noiO">Giống nơi thường trú</button></h3>
+            <div class="fields two">
+              <div class="field wide"><label for="noChiTiet">Số nhà, đường phố, tổ/xóm/ấp/thôn</label><input id="noChiTiet" data-f="noiO.chiTiet" maxlength="300"></div>
+              <div class="field"><label for="noXa">Xã/Phường/Đặc khu</label><input id="noXa" data-f="noiO.xa" maxlength="120"></div>
+              <div class="field"><label for="noTinh">Tỉnh/Thành phố</label><input id="noTinh" data-f="noiO.tinh" maxlength="120"></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">1. Tên hộ kinh doanh</h2>
+          <div class="fields two">
+            <div class="field wide"><label for="tenViet">Tên viết bằng tiếng Việt</label><input id="tenViet" data-f="tenViet" data-kind="hoa" maxlength="200"><small class="err"></small></div>
+            <div class="field"><label for="tenNuocNgoai">Tên tiếng nước ngoài (nếu có)</label><input id="tenNuocNgoai" data-f="tenNuocNgoai" maxlength="200"></div>
+            <div class="field"><label for="tenVietTat">Tên viết tắt (nếu có)</label><input id="tenVietTat" data-f="tenVietTat" maxlength="120"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">2. Trụ sở của hộ kinh doanh</h2>
+          <div class="fields two">
+            <div class="field wide"><label for="tsChiTiet">Số nhà, đường phố, tổ/xóm/ấp/thôn</label><input id="tsChiTiet" data-f="truSo.chiTiet" maxlength="300"></div>
+            <div class="field"><label for="tsXa">Xã/Phường/Đặc khu</label><input id="tsXa" data-f="truSo.xa" maxlength="120"></div>
+            <div class="field"><label for="tsTinh">Tỉnh/Thành phố</label><input id="tsTinh" data-f="truSo.tinh" maxlength="120"></div>
+            <div class="field"><label for="tsDienThoai">Điện thoại</label><input id="tsDienThoai" data-f="truSoDienThoai" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
+            <div class="field"><label for="tsFax">Fax (nếu có)</label><input id="tsFax" data-f="truSoFax" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
+            <div class="field"><label for="tsEmail">Thư điện tử (nếu có)</label><input id="tsEmail" data-f="truSoEmail" data-kind="email" inputmode="email" maxlength="120"><small class="err"></small></div>
+            <div class="field"><label for="tsWebsite">Website (nếu có)</label><input id="tsWebsite" data-f="truSoWebsite" maxlength="120"></div>
+          </div>
+          <label class="check-line"><input type="checkbox" id="khongTruSo" data-f="khongKinhDoanhTaiTruSo">
+            Không kinh doanh tại trụ sở (hộ kinh doanh không có địa điểm kinh doanh cố định)</label>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">3. Ngành, nghề kinh doanh</h2>
+          <p class="panel-sub">Gõ mã ngành rồi chọn trong danh sách, tên ngành tự điền (sửa thêm được, vd ghi chi tiết).
+            Ngành chính phải có mã cấp bốn; ngành khác ghi tự do, không cần mã.</p>
+          <div class="rows" id="nganhRows"></div>
+          <button class="link-btn add-row" id="addNganh" type="button">+ Thêm ngành, nghề</button>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">4. Vốn kinh doanh</h2>
+          <div class="fields two">
+            <div class="field"><label for="vonSo">Tổng số, bằng số (đồng)</label><input id="vonSo" inputmode="numeric" maxlength="24"></div>
+            <div class="field wide"><label for="vonChu">Bằng chữ (tự đọc theo số, sửa được)</label><input id="vonChu" maxlength="250"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">5. Thông tin đăng ký thuế</h2>
+          <details class="more">
+            <summary>5.1. Địa chỉ nhận thông báo thuế (chỉ kê khai nếu khác địa chỉ trụ sở)</summary>
+            <div class="fields two">
+              <div class="field wide"><label for="thChiTiet">Số nhà, đường phố, tổ/xóm/ấp/thôn</label><input id="thChiTiet" data-f="thueDiaChi.chiTiet" maxlength="300"></div>
+              <div class="field"><label for="thXa">Xã/Phường/Đặc khu</label><input id="thXa" data-f="thueDiaChi.xa" maxlength="120"></div>
+              <div class="field"><label for="thTinh">Tỉnh/Thành phố</label><input id="thTinh" data-f="thueDiaChi.tinh" maxlength="120"></div>
+              <div class="field"><label for="thDienThoai">Điện thoại (nếu có)</label><input id="thDienThoai" data-f="thueDienThoai" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
+              <div class="field"><label for="thEmail">Thư điện tử (nếu có)</label><input id="thEmail" data-f="thueEmail" data-kind="email" inputmode="email" maxlength="120"><small class="err"></small></div>
+            </div>
+          </details>
+          <div class="fields two">
+            <div class="field"><label for="ngayBatDau">5.2. Ngày bắt đầu hoạt động</label><input id="ngayBatDau" data-f="ngayBatDau" data-kind="ngay" placeholder="ngày/tháng/năm" maxlength="10"><small class="err"></small></div>
+            <div class="field"><label for="soLaoDong">5.3. Tổng số lao động (dự kiến)</label><input id="soLaoDong" data-f="soLaoDong" data-kind="laoDong" inputmode="numeric" maxlength="20"><small class="err"></small></div>
+          </div>
+          <fieldset class="choice">
+            <legend>5.4. Phương pháp tính thuế GTGT</legend>
+            <label><input type="radio" name="phuongPhapThue" value="ke_khai"> Phương pháp kê khai</label>
+            <label><input type="radio" name="phuongPhapThue" value="khoan"> Phương pháp khoán</label>
+            <button class="link-btn" type="button" data-clear="phuongPhapThue">Bỏ chọn</button>
+          </fieldset>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">6. Chủ thể thành lập hộ kinh doanh</h2>
+          <fieldset class="choice">
+            <legend class="sr-only">Chủ thể thành lập</legend>
+            <label><input type="radio" name="chuThe" value="ca_nhan"> Cá nhân</label>
+            <label><input type="radio" name="chuThe" value="ho_gia_dinh"> Các thành viên hộ gia đình</label>
+            <button class="link-btn" type="button" data-clear="chuThe">Bỏ chọn</button>
+          </fieldset>
+          <div id="thanhVienBox" hidden>
+            <h2 class="panel-title gap-top">7. Thành viên hộ gia đình đăng ký hộ kinh doanh</h2>
+            <p class="panel-sub">Phải kê khai cả chủ hộ trong bảng này. Đã có số định danh thì quốc tịch, dân tộc, nơi thường
+              trú, nơi ở hiện tại không bắt buộc, trừ khi kết nối dữ liệu dân cư bị gián đoạn.</p>
+            <div class="rows" id="thanhVienRows"></div>
+            <div class="row-actions">
+              <button class="link-btn add-row" id="addChuHo" type="button">+ Lấy chủ hộ vào bảng</button>
+              <button class="link-btn add-row" id="addThanhVien" type="button">+ Thêm thành viên</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="note note-teal">Trước khi in nhắc công dân kiểm tra lại, <b>chủ hộ ký trực tiếp</b> vào cuối giấy; hộ gia
+          đình thì các thành viên cùng ký ở cột Chữ ký. Auto Fill điền cổng theo bản đã bấm <b>Lưu</b>; dữ liệu
+          không lưu xuống máy, đóng tab là mất. Muốn Auto Fill điền được địa chỉ chủ hộ trên cổng thì kê khai nơi thường
+          trú hoặc nơi ở hiện tại.</div>
+        <div class="actions">
+          <button class="btn btn-primary" id="printBtn" type="button">In tờ khai</button>
+          <button class="btn btn-gold" id="downloadWord" type="button">Tải file Word</button>
+          <button class="btn btn-quiet" id="downloadPdf" type="button">Tải file PDF</button>
+        </div>
+      </form>
+
+      <aside class="ws-preview">
+        <div class="preview-bar"><h3>Bản xem trước</h3><span id="previewState">Khổ A4, bấm Lưu để cập nhật</span></div>
+        <iframe class="sheet" id="preview" title="Bản xem trước tờ khai đăng ký hộ kinh doanh"></iframe>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/client.js"></script>
+  <script src="lib/giayDeNghiHkd.js"></script>
+  <script src="giay-de-nghi-hkd.js"></script>
+</body>
+</html>

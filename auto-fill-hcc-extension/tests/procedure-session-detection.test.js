@@ -64,13 +64,23 @@ assert.match(
 );
 assert.match(
   popupSource,
-  /async function selectProcedure\(key, \{ source = "manual"[^}]*\} = \{\}\)[\s\S]*?if \(source === "manual"\) \{\s*manualProcedureOverride = true;\s*procedureAutoDetected = false;/,
-  "Chọn từ dropdown phải chuyển sang chế độ thủ công",
+  /async function selectProcedure\(key, \{ source = "manual"[^}]*\} = \{\}\)[\s\S]*?if \(source === "manual"\) \{\s*\/\/[^\n]*\n\s*if \(isProcedureLocked\(\)\) \{[\s\S]*?return[^\n]*\n\s*\}\s*manualProcedureOverride = true;\s*procedureAutoDetected = false;/,
+  "Chọn tay phải bị chặn khi đã tự nhận diện, còn lại chuyển sang chế độ thủ công",
 );
 assert.match(
   popupSource,
-  /function openProcedureDropdown\(\) \{\s*if \(!procedureDropdown\) return;/,
-  "Ô thủ tục phải mở được kể cả khi vừa tự nhận diện",
+  /function isProcedureLocked\(\) \{\s*return procedureAutoDetected && !!selectedProcedureConfig\(\);/,
+  "Khóa ô thủ tục khi đã tự nhận diện được thủ tục",
+);
+assert.match(
+  popupSource,
+  /function openProcedureDropdown\(\) \{\s*if \(!procedureDropdown\) return;\s*if \(isProcedureLocked\(\)\) return;/,
+  "Ô thủ tục không được mở khi đã tự nhận diện",
+);
+assert.match(
+  popupSource,
+  /procedureTrigger\.disabled = locked;/,
+  "Trigger thủ tục phải disabled khi đã tự nhận diện",
 );
 assert.match(
   popupSource,

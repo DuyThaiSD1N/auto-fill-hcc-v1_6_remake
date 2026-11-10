@@ -67,6 +67,36 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 COMPACT_COMP_BY_NAME["Cccd_NgayCap"] = "x-date"
 
+# ---- purpose="authorized_person": khối "Thông tin trong trường hợp được ủy quyền" (doiTuongKhac*) ----
+# Nút "Điền thông tin người ủy quyền" (Auto Fill) / câu hỏi ủy quyền ở tab 1 (trợ lý), loại đối tượng
+# "Cá nhân khác là Công dân Việt Nam". Khối này = NGƯỜI ỦY QUYỀN = CHỦ HỒ SƠ (người sử dụng đất, bên A của
+# Giấy ủy quyền), KHÔNG phải người được ủy quyền (người đi nộp thay — chính là tài khoản đang nộp).
+FIELDS_UYQUYEN: list[dict] = [
+    {"name": "ChuHoSo_HoTen",
+     "desc": 'Họ tên BÊN ỦY QUYỀN (bên A, "Bên ủy quyền") trong Giấy/Văn bản ủy quyền = người sử dụng đất. '
+             "Không có giấy ủy quyền thì lấy người đứng Đơn Mẫu 18 (dòng Tên) / CCCD người đó. Chỉ họ tên, "
+             "không kèm Ông/Bà, năm sinh. TUYỆT ĐỐI KHÔNG lấy BÊN ĐƯỢC ỦY QUYỀN (bên B, người đi nộp thay)."},
+    {"name": "ChuHoSo_GioiTinh", "desc": '"Nam"/"Nữ" của bên ủy quyền, CHỈ khi giấy tờ ghi rõ (CCCD) hoặc '
+             'ghi "Ông"/"Bà" riêng (không phải "Ông, bà:" in sẵn). Không rõ → bỏ.'},
+    {"name": "ChuHoSo_SoDinhDanh", "desc": "Số CCCD/định danh của bên ủy quyền, chỉ chữ số."},
+    {"name": "ChuHoSo_NgaySinh", "desc": "Ngày sinh bên ủy quyền, dd/mm/yyyy."},
+    {"name": "ChuHoSo_NgayCap", "desc": "Ngày cấp CCCD của bên ủy quyền, dd/mm/yyyy. Bỏ nếu không có."},
+    {"name": "ChuHoSo_NoiCap",
+     "desc": 'Nơi cấp CCCD của bên ủy quyền ("Cục Cảnh sát QLHC về TTXH" → "Cục Cảnh sát quản lý hành chính '
+             'về trật tự xã hội"; thẻ căn cước mới "BỘ CÔNG AN" → "Bộ Công an"). Bỏ nếu không có.'},
+    {"name": "ChuHoSo_ThuongTru",
+     "desc": "Nơi thường trú bên ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}: tinh=tỉnh/thành, xa=phường/"
+             "xã, chiTietDuoiXa=thôn/tổ dân phố/số nhà. Ưu tiên dòng ĐẦY ĐỦ nhất của đúng người đó (lời chứng "
+             "thực ghi 'Tổ dân phố X, phường Y, …' đầy đủ hơn dòng viết tắt 'X - Y - Bắc Ninh')."},
+    {"name": "ChuHoSo_DienThoai", "desc": "SĐT bên ủy quyền nếu giấy tờ ghi rõ. Chỉ chữ số."},
+    {"name": "ChuHoSo_Email", "desc": "Email bên ủy quyền nếu giấy tờ ghi rõ; thường không có → bỏ."},
+]
+ALLOWED_UYQUYEN = {f["name"] for f in FIELDS_UYQUYEN}
+COMPACT_COMP_UYQUYEN = {name: "x-input" for name in ALLOWED_UYQUYEN}
+for _name in ("ChuHoSo_NgaySinh", "ChuHoSo_NgayCap"):
+    COMPACT_COMP_UYQUYEN[_name] = "x-date"
+COMPACT_COMP_UYQUYEN["ChuHoSo_ThuongTru"] = "x-select-area"
+
 # ---- UI thân đơn Mẫu 18 (element_*) — khớp CLASS eform-element-<Key>, name = KEY (crawl 27/09/2026) ----
 K_KINHGUI = "KinhGui"
 K_TEN = "Ten2"

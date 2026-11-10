@@ -38,6 +38,70 @@ const settingsBtn = document.getElementById("settingsBtn");
 settingsBtn?.addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("settings.html") });
 });
+// Tờ khai đăng ký hộ kinh doanh: chỉ thủ tục này có. Mở TAB RIÊNG vì form + bản xem trước A4 không vừa panel.
+const GIAY_DE_NGHI_HKD_KEY = "dang-ky-kinh-doanh";
+const giayDeNghiHkdBtn = document.getElementById("giayDeNghiHkdBtn");
+giayDeNghiHkdBtn?.addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("giay-de-nghi-hkd.html") });
+});
+// Tab tờ khai ghi tờ khai đang soạn vào chrome.storage.session (lib/giayDeNghiHkd.js). Có tờ khai thì nút điền 8
+// trang gửi thẳng tờ khai lên BE (options.giayDeNghi), BE map ra các trang KHÔNG OCR; tệp chỉ còn dùng để đính kèm.
+const toKhaiHkdNote = document.getElementById("toKhaiHkdNote");
+const toKhaiHkdUse = document.getElementById("toKhaiHkdUse");
+const toKhaiHkdName = document.getElementById("toKhaiHkdName");
+const toKhaiHkdOpen = document.getElementById("toKhaiHkdOpen");
+const TO_KHAI_HKD_KEY = window.HccGiayDeNghiHkd?.KHOA_AUTO_FILL || "hccToKhaiHkd";
+let toKhaiHkdRecord = null;
+
+// Tờ khai còn dùng được: có bản ghi và tab soạn còn mở. Tab đã đóng (pagehide không kịp xoá) thì xoá luôn ở đây,
+// để hồ sơ sau không điền nhầm tờ khai của người trước.
+async function readToKhaiHkd() {
+  const store = chrome.storage?.session;
+  if (!store) return null;
+  let rec = null;
+  try { rec = (await store.get(TO_KHAI_HKD_KEY))?.[TO_KHAI_HKD_KEY] || null; } catch (_) { return null; }
+  if (!rec?.data) return null;
+  if (rec.tabId != null) {
+    try { await chrome.tabs.get(Number(rec.tabId)); } catch (_) {
+      try { await store.remove(TO_KHAI_HKD_KEY); } catch (_) { /* bỏ qua */ }
+      return null;
+    }
+  }
+  return rec;
+}
+
+async function renderToKhaiHkdNote() {
+  if (!toKhaiHkdNote) return;
+  const cfg = currentConfig();
+  const rec = cfg?.key === GIAY_DE_NGHI_HKD_KEY ? await readToKhaiHkd() : null;
+  // Tờ khai của tab khác (hồ sơ khác) → mặc định dùng lại, dù cán bộ đã bỏ tích cho tờ khai trước.
+  if (rec && rec.tabId !== toKhaiHkdRecord?.tabId && toKhaiHkdUse) toKhaiHkdUse.checked = true;
+  toKhaiHkdRecord = rec;
+  toKhaiHkdNote.hidden = !rec;
+  if (rec && toKhaiHkdName) toKhaiHkdName.textContent = rec.ten || "";
+  postPanelHeight();
+}
+
+// Tờ khai dùng cho lượt điền này (null = quét giấy như cũ). Chỉ luồng thành lập mới trên HkdOnline.
+async function toKhaiHkdForFill(cfg) {
+  if (cfg?.key !== GIAY_DE_NGHI_HKD_KEY || cfg.businessWorkflow || cfg.enterprisePortal) return null;
+  if (toKhaiHkdUse && !toKhaiHkdUse.checked) return null;
+  const rec = await readToKhaiHkd();
+  return rec?.data ? rec : null;
+}
+
+toKhaiHkdOpen?.addEventListener("click", async () => {
+  const tabId = Number(toKhaiHkdRecord?.tabId);
+  try {
+    const tab = await chrome.tabs.update(tabId, { active: true });
+    if (tab?.windowId != null) await chrome.windows?.update(tab.windowId, { focused: true });
+  } catch (_) {
+    void renderToKhaiHkdNote();
+  }
+});
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "session" && changes[TO_KHAI_HKD_KEY]) void renderToKhaiHkdNote();
+});
 const reportBtn = document.getElementById("reportBtn");
 // Nút "Xem báo cáo" (footer) mở trang thống kê của đơn vị và ĐĂNG NHẬP SẴN bằng tài khoản đang
 // dùng ở extension: token đi qua FRAGMENT (#hcc=...) — fragment không gửi lên server nên không lọt
@@ -122,6 +186,18 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     subjectOption: "Cá nhân khác là Công dân Việt Nam",
     sourceLabel: "người được ủy quyền",
     missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
+  }],
+  // 1.115446 — Đính chính GCN lần đầu có sai sót: khối điền = bên ủy quyền (chủ hồ sơ) trên Giấy ủy quyền.
+  ["dinh-chinh-sai-sot-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người ủy quyền",
+    missingFilesMessage: "Chưa có Giấy/Văn bản ủy quyền để đọc thông tin người ủy quyền.",
+  }],
+  // 1.115465 — Cấp lại GCN do bị mất: khối điền = chủ hồ sơ (người đứng Đơn Mẫu 18), đọc từ Đơn + CCCD.
+  ["cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người ủy quyền (chủ hồ sơ)",
+    missingFilesMessage: "Chưa có Đơn Mẫu 18 hoặc CCCD để đọc thông tin chủ hồ sơ.",
   }],
 ]);
 const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
@@ -1146,11 +1222,18 @@ function renderProcedureResults(query = procedureSearchQuery) {
     procedureTrigger.title = selected ? prefix + selected.label : "";
   }
 
-  // Tự nhận diện chỉ là trạng thái hiển thị; trigger luôn bấm được để cán bộ sửa khi detect sai.
+  // Đã tự nhận diện được thủ tục theo trang → KHÓA ô chọn, cán bộ không đổi tay được nữa.
+  // Mở khóa khi trang không còn khớp (clearAutoDetectedSelection) hoặc chuyển URL / Hồ sơ mới.
+  const locked = isProcedureLocked();
   if (procedureTrigger) {
-    procedureTrigger.disabled = false;
-    procedureTrigger.classList.remove("locked");
-    procedureTrigger.setAttribute("aria-disabled", "false");
+    procedureTrigger.disabled = locked;
+    procedureTrigger.classList.toggle("locked", locked);
+    procedureTrigger.setAttribute("aria-disabled", locked ? "true" : "false");
+    if (locked && procedureTrigger.title) procedureTrigger.title += " (đã khóa theo trang đang mở)";
+  }
+  if (locked && procedureDropdown && !procedureDropdown.hidden) {
+    procedureDropdown.hidden = true;
+    procedureTrigger?.setAttribute("aria-expanded", "false");
   }
   procedureResults.innerHTML = "";
   const visible = getVisibleProcedures(query);
@@ -1264,10 +1347,19 @@ function resetProcedureWorkState() {
   setStatus("", "");
 }
 
+function isProcedureLocked() {
+  return procedureAutoDetected && !!selectedProcedureConfig();
+}
+
 async function selectProcedure(key, { source = "manual", confirmedNavigation = false } = {}) {
   const next = PROCEDURES.find((p) => p.key === key) || PROCEDURES[0];
   if (!next) return;
   if (source === "manual") {
+    // Thủ tục đã tự nhận diện theo trang thì không cho chọn tay đè lên.
+    if (isProcedureLocked()) {
+      renderProcedureResults();
+      return next.key === selectedProcedureKey ? true : false;
+    }
     manualProcedureOverride = true;
     procedureAutoDetected = false;
   }
@@ -1447,6 +1539,7 @@ function isProcedureDropdownOpen() {
 }
 function openProcedureDropdown() {
   if (!procedureDropdown) return;
+  if (isProcedureLocked()) return;
   procedureDropdown.hidden = false;
   procedureTrigger?.setAttribute("aria-expanded", "true");
   procedureSearchQuery = "";
@@ -1557,6 +1650,14 @@ function enterpriseEntityCodeOf(procedure) {
     || enterpriseEntityCode(procedure?.enterpriseEntityLabel || "");
 }
 
+// Trang chủ cổng hộ kinh doanh: /, /HkdOnline/, /HkdOnline/Default.aspx (kèm query/hash).
+function isHkdOnlineHomeUrl(url) {
+  const m = String(url || "").toLowerCase().match(/^https?:\/\/([^/?#]+)([^?#]*)/);
+  if (!m || !m[1].includes("hokinhdoanh.dkkd.gov.vn")) return false;
+  const path = m[2].replace(/\/+$/, "");
+  return path === "" || path === "/hkdonline" || path === "/hkdonline/default.aspx" || path === "/default.aspx";
+}
+
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
@@ -1627,6 +1728,10 @@ function detectProcedureKeyFromSignals(signals) {
     // Registration.aspx chỉ liệt kê các loại đăng ký. Text của các option không chứng minh
     // người dùng đã chọn loại nào, kể cả khi popup vừa khôi phục một thủ tục từ session cũ.
     if (hint === "choice") return "";
+    // Trang chủ HkdOnline (Default.aspx) dùng chung cho mọi loại đăng ký HKD (thành lập, thay đổi,
+    // chấm dứt, tạm ngừng, cấp lại) → KHÔNG nhận diện, kể cả lựa chọn cũ của phiên trước. Nếu rơi
+    // xuống rule domain bên dưới sẽ tự chọn + khóa "thành lập", cán bộ không chọn được thủ tục khác.
+    if (isHkdOnlineHomeUrl(url)) return "";
     // Trang phụ/đính kèm không còn marker wizard: giữ loại HKD đã chọn qua phiên popup.
     if (selected && (selected.key === createProcedure?.key || selected.businessWorkflow)) {
       return selected.key;
@@ -2537,6 +2642,8 @@ function applyFormUI() {
   if (uploadHintEl) uploadHintEl.textContent = cfg.uploadHint || "";
   if (uploadHintToggle) uploadHintToggle.hidden = !cfg.uploadHint;
   setUploadHintOpen(false);
+  if (giayDeNghiHkdBtn) giayDeNghiHkdBtn.hidden = cfg.key !== GIAY_DE_NGHI_HKD_KEY;
+  void renderToKhaiHkdNote();
   if (uploadLabel) {
     uploadLabel.textContent = isAttachMode() ? "+ Thêm tệp đính kèm" : "+ Thêm file ảnh/PDF/DOCX";
   }
@@ -5275,6 +5382,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): khối "Thông tin người nộp hồ sơ" chỉ được điền khi CCCD
       // tài khoản TRÙNG CCCD trên đơn; thiếu mốc là BE bỏ trống khối đó, chỉ điền phần cấp thẻ.
       cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
+      // [Bộ VHTTDL] 1.004628 (thẻ HDV quốc tế): cùng contract với 1.004605 — mốc tài khoản quyết định tự nộp (điền
+      // khối người nộp) hay nộp thay (tích "Thông tin người ủy quyền"); thiếu mốc là BE chỉ điền khối cấp thẻ.
+      cfg.key === "cap-the-huong-dan-vien-du-lich-quoc-te" ||
       // [Đà Nẵng · Bộ VHTTDL] 1.001440 (thẻ HDV tại điểm): cùng cổng, cùng contract với 1.004623.
       cfg.key === "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang" ||
       // [Đà Nẵng · Bộ VHTTDL] 1.001432 (cấp đổi thẻ HDV quốc tế/nội địa): cùng cổng, cùng contract.
@@ -5447,11 +5557,16 @@ if (fillAllBtn) {
         return;
       }
       const payloadFiles = buildPayloadFiles();
-      if (!payloadFiles.length) {
-        setStatus("Chưa có file để quét.", "err");
+      const toKhai = await toKhaiHkdForFill(cfg);
+      if (!payloadFiles.length && !toKhai) {
+        setStatus(cfg.key === GIAY_DE_NGHI_HKD_KEY
+          ? "Chưa có file để quét. Có thể bấm \"📝 Tạo tờ khai đăng ký hộ kinh doanh\" để nhập tờ khai, Auto Fill điền theo đó."
+          : "Chưa có file để quét.", "err");
         return;
       }
       const options = { page: "__all__", allPages: true };
+      // Tờ khai đã nhập thay cho bước đọc giấy: BE map thẳng, không gửi tệp ở lượt điền (tệp vẫn đính kèm bên dưới).
+      if (toKhai) options.giayDeNghi = toKhai.data;
       const isAmendmentWorkflow = !!cfg.businessWorkflow;
       if (isAmendmentWorkflow) {
         const detected = await sendToContent({ action: "detectBusinessChangeStage" });
@@ -5465,9 +5580,9 @@ if (fillAllBtn) {
         options.page = `__${cfg.businessWorkflow}__`;
       }
 
-      setStatus(" Đang phân tích tài liệu...", "info");
+      setStatus(toKhai ? "Đang lấy thông tin từ tờ khai đã nhập..." : " Đang phân tích tài liệu...", "info");
       options.dossierId = ensureDossierId();
-      const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
+      const res = await api.process({ procedure: cfg.key, options, files: toKhai ? [] : payloadFiles });
       console.log("[BE fill-all]", { extracted: res.extracted, stats: res.stats });
       businessFillSupportCode = String(res.requestId || res.sessionId || "").trim();
       showSupportCode(businessFillSupportCode);
@@ -5495,7 +5610,7 @@ if (fillAllBtn) {
 
       // Gộp bước đính kèm: lấy kế hoạch đính kèm cho CÙNG bộ file để tự đính kèm sau khi điền xong 8 trang.
       let attachPayload = null;
-      try {
+      if (payloadFiles.length) try {
         setStatus("Đang phân tích & phân loại tài liệu đính kèm...", "info");
         const attachFiles = await toPdfForAttach(payloadFiles);
         const attachOptions = cfg.supportsSplitDocuments ? { splitDocuments: !!attachSplitDocuments } : {};

@@ -1352,3 +1352,28 @@ input, select, textarea { font-family: inherit; }
 .rt-thanks-face svg{ width:100%; height:100%; display:block; }
 .rt-thanks-tt{ font-size:14px; font-weight:800; color:#193a72; }
 .rt-thanks-sub{ margin-top:4px; font-size:11.5px; color:#5d6b7d; }
+
+/* Tờ khai đăng ký hộ kinh doanh đã nhập ở tab riêng: Auto Fill điền thẳng theo tờ khai, không quét. */
+.to-khai-hkd-note {
+  margin: 6px 0;
+  padding: 7px 9px;
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.to-khai-hkd-note .checkbox-row { margin: 0; align-items: flex-start; }
+.to-khai-hkd-note .checkbox-row input { margin-top: 2px; }
+.to-khai-hkd-note .link-like {
+  margin: 4px 0 0 20px;
+  padding: 0;
+  width: auto;
+  border: 0;
+  background: none;
+  color: #1b5e20;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.to-khai-hkd-note .link-like:hover { background: none; color: #0d3d12; }

@@ -228,6 +228,7 @@ def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+    "dinh-chinh-gcn-da-cap-khanh-hoa",
 ])
 def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Khánh Hòa (dichvucong.khanhhoa.gov.vn, nền iGate): bản extension cũ chưa đọc trang chọn trường hợp /

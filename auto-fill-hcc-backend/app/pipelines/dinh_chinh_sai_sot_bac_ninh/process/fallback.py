@@ -81,3 +81,21 @@ def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
                 fields["Don_NoiDungBienDong"] = nd
 
     return fields
+
+
+# Danh xưng RIÊNG đứng trước họ tên ("Ông Nguyễn Văn A"); dòng in sẵn "Ông, bà:" / "Ông/bà:" không tính.
+_DANH_XUNG_RE = re.compile(r"(?:^|[\s:.])(?:Ông|Bà)\s+[A-ZÀ-ỸĐ]")
+
+
+def apply_authorized_fallback(raw_fields, documents: list[dict]) -> dict:
+    """Lượt authorized_person: bỏ giới tính khi không giấy tờ nào ghi rõ.
+
+    Giấy ủy quyền mẫu chỉ in "Ông, bà:" → LLM hay đoán giới tính theo tên. Chỉ giữ khi OCR có "Giới tính"
+    (CCCD, giấy khai sinh) hoặc danh xưng riêng "Ông …"/"Bà …".
+    """
+    fields = _as_dict(raw_fields)
+    if fields.get("ChuHoSo_GioiTinh"):
+        text = "\n".join(d.get("text") or "" for d in documents)
+        if "giới tính" not in text.lower() and not _DANH_XUNG_RE.search(text):
+            fields.pop("ChuHoSo_GioiTinh", None)
+    return fields

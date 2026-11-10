@@ -342,3 +342,100 @@ def test_tro_ly_noi_ten_chuyen_nhuong_cho_thue_ve_ma_1_115468():
     assert moi["shortLabel"].endswith("góp vốn; cho thuê, cho thuê lại")
     assert moi["subtitle"].startswith("Mã 1.115468") and cu["subtitle"].startswith("Mã cũ 1.013831")
     assert "chỉ chọn khi câu nói rõ mã 1.013831" in picker.SYSTEM
+
+
+# --------------------------------------------------------------------------------------
+# Đính chính GCN lần đầu có sai sót (1.115446, dinh_chinh_sai_sot_bac_ninh) — dùng chung khối ủy quyền
+# "Cá nhân khác là Công dân Việt Nam": doiTuongKhac* = BÊN ỦY QUYỀN (bên A Giấy ủy quyền) = chủ hồ sơ.
+# --------------------------------------------------------------------------------------
+_DC_KEY = "dinh-chinh-sai-sot-bac-ninh"
+# Hồ sơ bịa: chỉ có Giấy ủy quyền (bên A ủy quyền cho bên B đi nộp).
+_DC_UQ = {
+    "ChuHoSo_HoTen": "Trần Văn An",
+    "ChuHoSo_SoDinhDanh": "027060001111",
+    "ChuHoSo_NgaySinh": "01/02/1960",
+    "ChuHoSo_NgayCap": "18/12/2021",
+    "ChuHoSo_NoiCap": "Cục Cảnh sát QLHC về TT.XH",
+    "ChuHoSo_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Phường Y",
+                          "chiTietDuoiXa": "Tổ dân phố X"},
+}
+
+
+def _dc_map(d: dict) -> tuple[dict, list[str]]:
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import mapper as dc_mapper
+
+    mapped, warnings = dc_mapper.enrich_authorized(_fields(d))
+    return {f["name"]: (f["comp"], f["value"]) for f in mapped}, warnings
+
+
+def test_dinh_chinh_sai_sot_khoi_uy_quyen_la_ben_uy_quyen():
+    got, warnings = _dc_map(_DC_UQ)
+    assert warnings == []
+    assert got["doiTuongKhachoTen"] == ("bn-input", "Trần Văn An")
+    assert got["doiTuongKhacsoDinhDanh"] == ("bn-input", "027060001111")
+    assert got["doiTuongKhacngaySinh"] == ("bn-input", "01/02/1960")
+    assert got["doiTuongKhacngayCap"] == ("bn-input", "18/12/2021")
+    # Nơi cấp viết tắt → tên cơ quan chuẩn.
+    assert got["doiTuongKhacnoiCap"] == ("bn-input", "Cục Cảnh sát quản lý hành chính về trật tự xã hội")
+    assert got["doiTuongKhactinhThanhId"] == ("bn-select", "Bắc Ninh")
+    assert got["doiTuongKhacphuongXaId"] == ("bn-select", "Phường Y")
+    # Ô "Địa chỉ" (bắt buộc) ghép đủ tổ dân phố + phường + tỉnh, kể cả khi LLM trả khoá chiTietDuoiXa.
+    assert got["doiTuongKhacdiaChiChiTiet"] == ("bn-input", "Tổ dân phố X, Phường Y, Bắc Ninh")
+    # Tỉnh phát trước Phường (select2 cascade).
+    names = list(got)
+    assert names.index("doiTuongKhactinhThanhId") < names.index("doiTuongKhacphuongXaId")
+    # Giấy ủy quyền chỉ in "Ông, bà:" → không có giới tính → không phát ô giới tính.
+    assert "doiTuongKhacgioiTinhId" not in got
+    # Không lẫn ô đơn Mẫu 18 / người nhận kết quả.
+    assert not [n for n in got if not n.startswith("doiTuongKhac")]
+
+
+def test_dinh_chinh_sai_sot_khoi_uy_quyen_thieu_ten_cccd_thi_bo():
+    got, warnings = _dc_map({"ChuHoSo_HoTen": "Trần Văn An"})
+    assert got == {} and warnings and "ủy quyền" in warnings[0]
+
+
+async def test_dinh_chinh_sai_sot_runner_tach_theo_purpose(monkeypatch):
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import runner as dc_runner
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import schema as dc_schema
+
+    seen = []
+
+    async def fake_run(files_by_role, **kw):
+        seen.append(kw)
+        if kw["allowed"] == dc_schema.ALLOWED_UYQUYEN:
+            return {"fields": _fields(_DC_UQ), "errors": []}
+        return {"fields": [{"name": "Don_DiaChi", "value": "Tổ dân phố X, phường Y, tỉnh Bắc Ninh"}], "errors": []}
+
+    monkeypatch.setattr(dc_runner.runner, "run", fake_run)
+    auth = await dc_runner.run({}, {"purpose": "authorized_person"})
+    don = await dc_runner.run({}, {})
+    # Lượt ủy quyền: schema + fallback riêng (không chạy fallback đơn); lượt đơn giữ nguyên như cũ.
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import fallback as dc_fallback
+
+    assert seen[0]["fields"] is dc_schema.FIELDS_UYQUYEN
+    assert seen[0]["compact_field_fallback"] is dc_fallback.apply_authorized_fallback
+    assert seen[1]["fields"] is dc_schema.FIELDS
+    assert seen[1]["compact_field_fallback"] is dc_fallback.apply_ocr_fallback
+    assert {f["name"] for f in auth["fields"]} >= {"doiTuongKhachoTen", "doiTuongKhacsoDinhDanh"}
+    assert {f["name"] for f in don["fields"]} == {dc_schema.K_DIACHI, dc_schema.N_DIACHI}
+
+
+def test_dinh_chinh_sai_sot_tro_ly_hoi_khoi_uy_quyen():
+    from app.channels.handfree.procedure_registry import get_procedure as get_tl
+
+    tl = get_tl(_DC_KEY)
+    assert tl["bacNinhAuthorizedPerson"]["subjectOption"] == "Cá nhân khác là Công dân Việt Nam"
+    assert tl["bacNinhAuthorizedAsk"] is True
+
+
+def test_dinh_chinh_sai_sot_uy_quyen_khong_doan_gioi_tinh_theo_ten():
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process.fallback import apply_authorized_fallback
+
+    raw = {"ChuHoSo_HoTen": "Trần Văn An", "ChuHoSo_GioiTinh": "Nam"}
+    # Giấy ủy quyền chỉ in sẵn "Ông, bà:" / lời chứng "Ông/bà:" → bỏ giới tính LLM đoán theo tên.
+    mau = "1.BÊN ỦY QUYỀN: (bên A)\nÔng, bà: Trần Văn An Ngày sinh: 01/02/1960\n1. Ông/bà: TRẦN VĂN AN"
+    assert "ChuHoSo_GioiTinh" not in apply_authorized_fallback(raw, [{"text": mau}])
+    # Có CCCD ghi giới tính, hoặc danh xưng riêng "Ông …" → giữ.
+    assert apply_authorized_fallback(raw, [{"text": mau}, {"text": "Giới tính / Sex: Nam"}])["ChuHoSo_GioiTinh"] == "Nam"
+    assert apply_authorized_fallback(raw, [{"text": "Bên ủy quyền: Ông Trần Văn An"}])["ChuHoSo_GioiTinh"] == "Nam"

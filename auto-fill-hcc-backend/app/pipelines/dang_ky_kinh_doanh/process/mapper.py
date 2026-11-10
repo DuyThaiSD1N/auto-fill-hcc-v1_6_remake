@@ -45,6 +45,69 @@ def with_account_process_options(options: dict | None, user: dict | None, proced
     return result
 
 
+# Tờ khai cán bộ nhập trên tab "Tờ khai đăng ký hộ kinh doanh" (giay_de_nghi) đi kèm options dưới khoá này:
+# runner map thẳng ra facts, KHÔNG OCR/LLM. Dữ liệu đã đúng ô nên không cần đoán như khi đọc giấy.
+TO_KHAI_OPTION = "giayDeNghi"
+_PHUONG_PHAP_THUE = {"ke_khai": "Phương pháp kê khai", "khoan": "Phương pháp khoán"}
+
+
+def _to_khai_addr(value: Any) -> dict[str, str] | None:
+    """Địa chỉ ba ô của tờ khai {chiTiet, xa, tinh} → dạng facts {quocGia, tinh, xa, diaChi}; trống cả ba → None."""
+    value = value if isinstance(value, dict) else {}
+    parts = {key: _compact_text(value.get(key)) for key in ("chiTiet", "xa", "tinh")}
+    if not any(parts.values()):
+        return None
+    return {"quocGia": "Việt Nam", "tinh": parts["tinh"], "xa": parts["xa"], "diaChi": parts["chiTiet"]}
+
+
+def facts_from_to_khai(form: dict[str, Any]) -> list[dict]:
+    """Tờ khai đã nhập (GiayDeNghi.model_dump()) → facts cùng tên với LLM trả, để enrich/enrich_all dùng chung.
+
+    Chủ hộ là người nộp: tờ khai không có khối người nộp thay. Thành viên hộ gia đình KHÔNG vào danh sách
+    nhân thân — đủ hai người là mapper coi như có người nộp thay.
+    """
+    text = lambda key: _compact_text(form.get(key))  # noqa: E731
+    chu_ho_dia_chi = _to_khai_addr(form.get("noiO")) or _to_khai_addr(form.get("thuongTru"))
+    nganh = [
+        {"ma": _compact_text(row.get("ma")), "ten": _compact_text(row.get("ten")), "chinh": bool(row.get("chinh"))}
+        for row in form.get("nganh") or []
+        if isinstance(row, dict) and (_compact_text(row.get("ten")) or _compact_text(row.get("ma")))
+    ]
+    values: dict[str, Any] = {
+        "HinhThucDangKy": "Thành lập mới",
+        "HoKinhDoanh_Ten": text("tenViet"),
+        "HoKinhDoanh_TenNuocNgoai": text("tenNuocNgoai"),
+        "HoKinhDoanh_TenVietTat": text("tenVietTat"),
+        "TruSo_DiaChi": _to_khai_addr(form.get("truSo")),
+        "TruSo_DienThoai": text("truSoDienThoai"),
+        "TruSo_Email": text("truSoEmail"),
+        "TruSo_Fax": text("truSoFax"),
+        "TruSo_Website": text("truSoWebsite"),
+        "NganhNghe_DanhSach": nganh,
+        "ChuHo_HoTen": text("hoTen"),
+        "ChuHo_GioiTinh": text("gioiTinh"),
+        "ChuHo_NgaySinh": text("ngaySinh"),
+        "ChuHo_SoDinhDanh": re.sub(r"\D", "", text("soDinhDanh")),
+        "ChuHo_DiaChi": chu_ho_dia_chi,
+        "ChuHo_DienThoai": text("dienThoai"),
+        "ChuHo_Email": text("email"),
+        "Von_SoTien": text("vonKinhDoanh"),
+        "Thue_DiaChiNhanThongBao": _to_khai_addr(form.get("thueDiaChi")),
+        "Thue_DienThoai": text("thueDienThoai"),
+        "Thue_Email": text("thueEmail"),
+        "Thue_NgayBatDau": text("ngayBatDau"),
+        "Thue_SoLaoDong": text("soLaoDong"),
+        "Thue_PhuongPhapTinh": _PHUONG_PHAP_THUE.get(text("phuongPhapThue"), ""),
+    }
+    if values["ChuHo_HoTen"] or values["ChuHo_SoDinhDanh"]:
+        # Extension đối chiếu danh sách này với tài khoản đăng nhập ở trang Người nộp hồ sơ, như thẻ đọc từ CCCD.
+        values["Cccd_DanhSach"] = [{
+            "hoTen": values["ChuHo_HoTen"], "gioiTinh": values["ChuHo_GioiTinh"], "ngaySinh": values["ChuHo_NgaySinh"],
+            "soDinhDanh": values["ChuHo_SoDinhDanh"], "diaChi": chu_ho_dia_chi or {},
+        }]
+    return [{"name": name, "value": value} for name, value in values.items() if value not in (None, "", {}, [])]
+
+
 def _by_name(fields: list[dict]) -> dict[str, Any]:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 

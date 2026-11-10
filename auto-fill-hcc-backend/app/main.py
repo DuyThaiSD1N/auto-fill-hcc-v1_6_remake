@@ -23,6 +23,7 @@ from app.image_convert.router import router as image_convert_router
 from app.locations.router import router as locations_router
 from app.monitor.recorder import set_origin as set_monitor_origin
 from app.monitor.router import router as monitor_router
+from app.pipelines.dang_ky_kinh_doanh.giay_de_nghi.router import router as giay_de_nghi_hkd_router
 from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
@@ -119,6 +120,7 @@ app.include_router(upload_ws_router)
 app.include_router(consent_router)
 app.include_router(consents_router)
 app.include_router(v2_router)
+app.include_router(giay_de_nghi_hkd_router)  # tờ khai đăng ký hộ kinh doanh: tab riêng của Auto Fill
 
 # Handfree là một channel bổ sung trên cùng core procedure/process/attach. Feature flag chỉ
 # đóng/mở entrypoint hội thoại và mobile riêng; toàn bộ API Auto Fill phía trên không đổi.

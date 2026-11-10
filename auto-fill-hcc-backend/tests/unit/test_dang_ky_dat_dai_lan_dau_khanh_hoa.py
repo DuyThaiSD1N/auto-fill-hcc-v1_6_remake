@@ -378,3 +378,113 @@ def test_tro_ly_chi_tai_khoan_khanh_hoa_dung_pipeline_loi():
     assert handfree.get_pipeline(_KEY) is get_pipeline(_KEY)
     assert handfree.get_attach_pipeline(_KEY) is get_attach_pipeline(_KEY)
     assert PROCEDURE_HMONG[_KEY]
+
+
+# --------------------------------------------------------------------------------------
+# CÀI ĐẶT "CÓ TÁCH HỒ SƠ KHI ĐÍNH KÈM" — chung 7 thủ tục đất đai iGate Khánh Hòa
+# --------------------------------------------------------------------------------------
+_KHANH_HOA_KEYS = (
+    "dang-ky-dat-dai-lan-dau-khanh-hoa",
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+    "cap-doi-gcn-khanh-hoa",
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
+    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
+    "dinh-chinh-gcn-da-cap-khanh-hoa",
+)
+
+
+def _pdf_item(name: str, pages: int):
+    import base64
+
+    import fitz
+
+    from app.process.schemas import FileItem
+
+    doc = fitz.open()
+    for n in range(pages):
+        doc.new_page().insert_text((72, 72), f"page {n + 1}")
+    data = base64.b64encode(doc.tobytes()).decode("ascii")
+    doc.close()
+    return FileItem(name=name, type="application/pdf", dataUrl=f"data:application/pdf;base64,{data}", role="")
+
+
+def test_bay_thu_tuc_khanh_hoa_bat_cai_dat_tach_ca_auto_fill_lan_tro_ly():
+    from app.channels.handfree import procedure_registry as handfree
+
+    for key in _KHANH_HOA_KEYS:
+        assert get_procedure(key)["supportsSplitDocuments"] is True, key
+        assert handfree.get_procedure(key)["supportsSplitDocuments"] is True, key
+
+
+def test_bay_thu_tuc_khanh_hoa_chi_tach_khi_bat_cai_dat(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_split(plan_fn, files, options=None, session=None):
+        calls.append("tach")
+        return {"attachments": [], "errors": []}
+
+    async def fake_ocr(files):
+        calls.append("nguyen-tep")
+        return []
+
+    monkeypatch.setattr(planner, "plan_with_split", fake_split)
+    for key in _KHANH_HOA_KEYS:
+        module = __import__(get_attach_pipeline(key).__module__, fromlist=["_ocr_for_classify"])
+        monkeypatch.setattr(module, "_ocr_for_classify", fake_ocr)
+        attach = get_attach_pipeline(key)
+        for options, expected in (
+            ({"splitDocuments": True}, "tach"),
+            ({"splitDocuments": False}, "nguyen-tep"),
+            (None, "nguyen-tep"),
+            # Trợ lý bản cũ không cắt được trang → không tách dù cán bộ bật.
+            ({"splitDocuments": True, "supportsSourceSegments": False}, "nguyen-tep"),
+        ):
+            calls.clear()
+            asyncio.run(attach([_pdf_item("a.pdf", 1)], options))
+            assert calls == [expected], (key, options)
+
+
+def test_tep_gop_tach_tung_giay_vao_dung_dong_ocr_mot_lan(monkeypatch):
+    import json
+
+    from app.pipelines._shared import lao_cai_tach_giay_to as tach
+    from app.services import ocr, ocr_cache
+
+    texts = "\n".join(
+        f"───── Trang {n + 1}/3 ─────\n{page}" for n, page in enumerate(
+            ["ĐƠN ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT", "tiếp theo đơn, chữ ký người viết đơn",
+             "MẢNH TRÍCH ĐO BẢN ĐỒ ĐỊA CHÍNH THỬA ĐẤT"])
+    )
+    sent: list[list[str]] = []
+
+    async def fake_ocr(files, *, classify):
+        sent.append([f["name"] for f in files])
+        return [{"name": f["name"], "type": f["type"], "text": texts, "provider": "tiengnoi"} for f in files]
+
+    async def fake_chat(messages, **_):
+        if messages[0]["content"] == tach.SYSTEM_PROMPT:
+            return json.dumps({"tep": [{"fileIndex": 0, "giayTo": [{"trangDau": 1, "ten": "Đơn đăng ký"},
+                                                                   {"trangDau": 3, "ten": "Mảnh trích đo"}]}]})
+        user = messages[1]["content"]
+        assert "MẢNH TRÍCH ĐO" in user and "ĐƠN ĐĂNG KÝ" in user  # phân loại đọc chữ nạp sẵn của từng giấy
+        return '{"documents":[{"index":0,"docTypes":["don_dang_ky"]},{"index":1,"docTypes":["manh_trich_do"]}]}'
+
+    async def no_cache(keys):
+        return {}
+
+    monkeypatch.setattr(ocr, "_ocr_per_file", fake_ocr)
+    monkeypatch.setattr(ocr_cache, "get_many", no_cache)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+    result = asyncio.run(planner.plan([_pdf_item("ho_so.pdf", 3)], {"splitDocuments": True}))
+
+    # OCR tệp gốc đúng một lượt; bước phân loại dùng lại chữ của từng đoạn, không OCR lần hai.
+    assert sent == [["ho_so.pdf"]]
+    items = result["attachments"]
+    assert [(i["componentIndex"], i["target"]) for i in items] == [(_DON_INDEX, "attp-row"), (7, "attp-row")]
+    assert [i["sourceSegments"] for i in items] == [
+        [{"fileIndex": 0, "pageIndexes": [0, 1]}],
+        [{"fileIndex": 0, "pageIndexes": [2]}],
+    ]
+    assert all(i["fileIndex"] == 0 for i in items)

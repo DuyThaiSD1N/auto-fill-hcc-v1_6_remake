@@ -27,7 +27,11 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
-from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.attach.planner import _LLM_TEXT_MAX_CHARS, _ocr_for_classify
+from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.attach.planner import (
+    _LLM_TEXT_MAX_CHARS,
+    _ocr_for_classify,
+    plan_theo_cai_dat_tach,
+)
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -288,7 +292,7 @@ def build_plan_items(
     return attachments, warnings, classified
 
 
-async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+async def _plan_theo_tep(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     del options
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
     ocr_files = [item for item in raw_files if item.get("type") in _OCR_TYPES]
@@ -330,3 +334,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "stats": {"ocr_latency_ms": ocr_ms, "llm_latency_ms": llm_ms, "total_latency_ms": ocr_ms + llm_ms},
         "errors": errors,
     }
+
+
+async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    """Bật "Có tách hồ sơ khi đính kèm" → PDF gộp cắt từng giấy rồi mới xếp dòng (plan_theo_cai_dat_tach)."""
+    return await plan_theo_cai_dat_tach(_plan_theo_tep, files, options, session)

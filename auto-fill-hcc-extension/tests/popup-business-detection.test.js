@@ -65,6 +65,25 @@ assert.equal(detect(""), "dang-ky-thay-doi-noi-dung-ho-kinh-doanh");
 sandbox.selectedKey = "";
 assert.equal(detect(""), "dang-ky-kinh-doanh");
 
+// Trang chủ HkdOnline dùng chung mọi loại đăng ký HKD → không nhận diện, kể cả lựa chọn cũ.
+const detectHome = (url) => sandbox.detect({ url, bodyText: "", headings: [], businessProcedureHint: "" });
+for (const home of [
+  "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+  "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/default.aspx?x=1",
+  "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/",
+  "https://hokinhdoanh.dkkd.gov.vn/",
+]) {
+  sandbox.selectedKey = "";
+  assert.equal(detectHome(home), "", home);
+  sandbox.selectedKey = "dang-ky-kinh-doanh";
+  assert.equal(detectHome(home), "", home);
+}
+sandbox.selectedKey = "";
+assert.equal(
+  detectHome("https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Forms/APP/DW_DOCUMENTEdit.aspx?h=1"),
+  "dang-ky-kinh-doanh",
+);
+
 assert.match(source, /async function enterBusinessProcedureChoiceMode\(\)/);
 assert.match(source, /businessProcedureHint === "choice"[\s\S]*?enterBusinessProcedureChoiceMode\(\)/);
 assert.ok(

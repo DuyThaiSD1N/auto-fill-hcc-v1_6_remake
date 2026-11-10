@@ -335,7 +335,7 @@ async def plan_with_split(plan_fn, files: list[FileItem], options: dict | None =
         if pages_by_file:
             starts = await _segment(pages_by_file)
     except Exception as exc:  # noqa: BLE001 — chia giấy hỏng thì planner chạy trên tệp gốc
-        errors.append(f"Tách giấy tờ (Cam Đường): {exc} — đính nguyên tệp.")
+        errors.append(f"Tách giấy tờ: {exc} — đính nguyên tệp.")
     split_ms = int((time.monotonic() - started) * 1000)
 
     segments = build_segments(raw_files, texts, starts)

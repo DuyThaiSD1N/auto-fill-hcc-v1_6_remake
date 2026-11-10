@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.5",
+    date: "10/11/2026",
+    items: [
+      "Thêm thủ tục cấp lại Giấy chứng nhận do bị mất tại Bắc Ninh (1.115465), đính chính Giấy chứng nhận đã cấp tại Khánh Hòa (1.012790) và cấp thẻ hướng dẫn viên du lịch quốc tế (1.004628).",
+      "Đăng ký hộ kinh doanh: nút \"Tạo tờ khai đăng ký hộ kinh doanh\" mở tab soạn Giấy đề nghị (Mẫu số 1) để in cho công dân ký; đã có tờ khai thì điền thẳng các trang theo tờ khai, không cần quét lại.",
+      "Đính chính Giấy chứng nhận lần đầu có sai sót tại Bắc Ninh (1.115446): khối thông tin trường hợp được ủy quyền điền theo người ủy quyền (chủ hồ sơ).",
+      "Thủ tục đất đai Khánh Hòa: bật \"Có tách hồ sơ khi đính kèm\" thì tệp PDF gộp được tách thành từng giấy trước khi đính kèm vào đúng dòng.",
+      "Đã tự nhận diện được thủ tục theo trang thì khóa ô chọn thủ tục, tránh đổi nhầm.",
+    ],
+  },
+  {
     version: "1.27.4",
     date: "10/11/2026",
     items: [
