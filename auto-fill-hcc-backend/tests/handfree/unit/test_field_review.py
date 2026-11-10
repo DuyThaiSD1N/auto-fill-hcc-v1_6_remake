@@ -139,9 +139,9 @@ async def test_bam_bo_sung_thi_nho_extension_tim_o_trong_dau_tien():
 async def test_hoi_o_dau_tien_kem_loi_mo_dau_va_tu_mo_mic():
     conv = _conv()
     _, asked = await _start_and_focus(conv)
-    # Lời mở đầu là bong bóng riêng; câu hỏi mở đầu "Đầu tiên là phần …".
+    # Lời mở đầu là bong bóng riêng; câu hỏi một dòng "Đầu tiên là Ô: <ô> (<phần>)".
     assert _leads(asked) == [vi.FR_START["md"]]
-    assert asked.display_md.startswith("Đầu tiên là phần **Người mẹ của người được khai sinh**")
+    assert asked.display_md.startswith("Đầu tiên là Ô: **Dân tộc** (Người mẹ của người được khai sinh)")
     assert "**Dân tộc**" in asked.display_md
     assert "Người mẹ của người được khai sinh" in asked.display_md
     assert "(15)" not in asked.display_md
@@ -167,7 +167,7 @@ async def test_tra_loi_thi_dien_dung_o_roi_hoi_o_ke(monkeypatch):
     # Hai bong bóng: kết quả ô trước ở trên, câu hỏi ô kế tiếp ở dưới; lời đọc nối liền.
     assert _lead(asked) == "✓ Đã điền **Dân tộc** · *Người mẹ của người được khai sinh*: Kinh"
     # Cùng phần với ô vừa hỏi → không nhắc lại tên phần, chỉ "Tiếp theo đến ô …".
-    assert asked.display_md.startswith("Tiếp theo đến:\n\n📝 Ô **Số định danh cá nhân**")
+    assert asked.display_md.startswith("Tiếp theo đến Ô: **Số định danh cá nhân** (Người mẹ của người được khai sinh)")
     assert asked.tts_text.startswith("Dạ tôi đã điền xong. Tiếp theo đến ô Số định danh cá nhân. ")
     assert "nói hoặc gõ" in asked.tts_text
     assert "Tôi hỏi lần lượt" not in asked.display_md  # lời mở đầu chỉ ở ô đầu tiên
@@ -180,12 +180,12 @@ async def test_sang_phan_khac_moi_nhac_ten_phan(monkeypatch):
     other = {**FIELD, "key": "HoTenCha", "name": "HoTenCha", "kind": "text", "label": "Họ, chữ đệm, tên:",
              "section": "Thông tin người cha", "options": []}
     asked = await _turn(conv, "event", "field_review_focus", {"field": other, "stats": STATS})
-    assert asked.display_md.startswith("Tiếp theo đến phần **Người cha**")
+    assert asked.display_md.startswith("Tiếp theo đến Ô: **Họ, chữ đệm, tên** (Người cha)")
     assert asked.tts_text.startswith("Tiếp theo đến phần Người cha, ô Họ chữ đệm tên.")
     # Bấm "Bổ sung…" lại từ đầu → ô đầu vòng mới luôn có tên phần.
     await _turn(conv, "action", "field_review_start")
     asked = await _turn(conv, "event", "field_review_focus", {"field": other, "stats": STATS})
-    assert "Đầu tiên là phần **Người cha**" in asked.display_md
+    assert "Đầu tiên là Ô: **Họ, chữ đệm, tên** (Người cha)" in asked.display_md
 
 
 async def test_dien_hong_thi_bao_dien_tay_va_khong_hoi_lai(monkeypatch):
@@ -619,9 +619,17 @@ async def test_dang_nhap_that_van_nhac_dang_nhap():
 # ── Đăng ký kết hôn ──
 
 # Ô chọn nơi cư trú (Trong nước / Khác) cũng bắt buộc: chưa tích thì khối trong nước chưa hiện, cổng chặn Xem trước.
-KH_REQUIRED = ["HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
-               "LoaiTinhTrangHonNhan_BenNu", "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam",
+KH_REQUIRED = ["HoTenBenNu", "DanTocBenNu", "SoDinhDanh_BenNu", "LoaiGiayToDinhDanh_BenNu", "SoGiayToDinhDanh_BenNu",
+               "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc", "LoaiTinhTrangHonNhan_BenNu",
+               "HoTenBenNam", "DanTocBenNam", "SoDinhDanh_BenNam", "LoaiGiayToDinhDanh_BenNam", "SoGiayToDinhDanh_BenNam",
                "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam"]
+# Kết hôn (trong nước / nước ngoài) bắt buộc thêm số lần kết hôn; đăng ký lại kết hôn thì không.
+KH_ORDER = [*KH_REQUIRED[:8], "SoLanKetHon_BenNu", *KH_REQUIRED[8:], "SoLanKetHon_BenNam"]
+# Ô con của khối chi tiết tình trạng hôn nhân: bắt buộc khi khối hiện ra (thủ tục có khai khối lồng).
+KH_MARRIAGE_DETAIL = [name for side in ("BenNu", "BenNam")
+                      for name in (f"TuNgay_{side}", f"DenNgay_{side}", f"NhapMoTaTinhTrangHonNhan_{side}",
+                                   f"{side}_SoBanAn", f"{side}_NgayQD", f"{side}_CoQuanCap", f"{side}_SoBanAn1",
+                                   f"{side}_NgayQD1", f"{side}_CoQuanCap1")]
 # Khối chi tiết tình trạng hôn nhân (ly hôn, đã chết…) là khối lồng: extension tách từng ô con.
 KH_NESTED = ["voTinhTrangHonNhan5", "voTinhTrangHonNhan6", "TTHN_DaChet_BenNu", "TTHN_LyHon_BenNu",
              "chongTinhTrangHonNhan5", "chongTinhTrangHonNhan6", "TTHN_DaChet_BenNam", "TTHN_LyHon_BenNam"]
@@ -631,7 +639,7 @@ def test_ket_hon_bat_bo_sung_voi_o_bat_buoc_cua_hai_ben():
     conv = _conv(procedure_key="ket-hon")
     conv["fields"] = [{"name": "HoTenBenNu", "comp": "x-input", "value": "A"}]
     reply = flow._fill_fields_reply(conv)
-    assert reply.actions[0]["fieldReview"] == {"required": KH_REQUIRED, "nested": KH_NESTED}
+    assert reply.actions[0]["fieldReview"] == {"required": KH_ORDER + KH_MARRIAGE_DETAIL, "nested": KH_NESTED}
 
 
 async def test_ket_hon_o_tinh_noi_cu_tru_neu_ro_cua_vo_hay_chong():
@@ -640,8 +648,7 @@ async def test_ket_hon_o_tinh_noi_cu_tru_neu_ro_cua_vo_hay_chong():
                               "role": "tinh", "kind": "select", "label": "Tỉnh/Thành phố:",
                               "group": "Quốc gia nơi cư trú của vợ:", "section": "I. Thông tin bên nữ",
                               "required": True, "options": [f"Tỉnh {i}" for i in range(30)]})
-    assert asked.display_md.startswith("Đầu tiên là phần **Nơi cư trú của vợ**")
-    assert "🟥 Ô **Tỉnh/Thành phố**" in asked.display_md
+    assert asked.display_md.startswith("Đầu tiên là Ô: **Tỉnh/Thành phố** (Nơi cư trú của vợ)")
 
 
 async def test_ket_hon_o_chung_hai_ben_hoi_khong_kem_ten_phan(monkeypatch):
@@ -651,7 +658,7 @@ async def test_ket_hon_o_chung_hai_ben_hoi_khong_kem_ten_phan(monkeypatch):
              "label": "(20) Đề nghị cấp bản sao:", "group": "", "section": "II. Thông tin bên nam",
              "required": False, "options": ["Có", "Không"]}
     asked = await _ask(conv, field)
-    assert asked.display_md.startswith("Đầu tiên là:\n\n📝 Ô **Đề nghị cấp bản sao**")
+    assert asked.display_md.startswith("Đầu tiên là Ô: **Đề nghị cấp bản sao**\n\n")
     assert "Đầu tiên là ô Đề nghị cấp bản sao. Công dân chọn Có hoặc Không ạ." in asked.tts_text
     assert "Bên nam" not in asked.display_md and "Bên nam" not in asked.tts_text
     _answer(monkeypatch, "value", "Có")
@@ -769,7 +776,9 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")
-    assert registry.get("dang-ky-lai-ket-hon")["required"] == registry.get("ket-hon")["required"]
+    assert list(registry.get("ket-hon")["required"]) == KH_ORDER + KH_MARRIAGE_DETAIL
+    # Đăng ký lại kết hôn chưa khai khối lồng (khối chi tiết là một ô) → không có ô con trong danh sách.
+    assert list(registry.get("dang-ky-lai-ket-hon")["required"]) == KH_REQUIRED
     # Khối "đăng ký kết hôn trước đây" là thông tin chung, nằm dưới tiêu đề Bên nam → hỏi không kèm tên phần.
     assert {"noiDangKyTruocDay", "ngayDangKyTruocDay", "soDangKyTruocDay", "quyenDangKyTruocDay"} <= set(
         registry.get("dang-ky-lai-ket-hon")["noSection"])
@@ -807,7 +816,7 @@ async def test_bam_tai_lai_thi_ve_dung_o_xa_de_chon_lai_tinh():
     await _ask(conv, WARD)
     reply = await _turn(conv, "action", "field_review_reload")
     # Kết hôn bật vòng bổ sung bản 2 → lệnh xin kèm cả danh sách ô (catalog).
-    assert reply.actions == [{"type": "field_review_next", "required": KH_REQUIRED, "skip": [], "nested": KH_NESTED,
+    assert reply.actions == [{"type": "field_review_next", "required": KH_ORDER + KH_MARRIAGE_DETAIL, "skip": [], "nested": KH_NESTED,
                               "focus": "NoiCuTru_BenNu_TrongNuoc#xa", "catalog": True}]
     # Lần này cổng nạp được → hỏi bình thường với danh sách xã.
     ok = {**WARD, "optionsFailed": False, "province": "", "options": [f"Xã {i}" for i in range(30)]}
@@ -894,7 +903,7 @@ async def test_noi_co_khong_kem_so_thi_hoi_so_luong_nhu_cu(monkeypatch):
     asked = await _turn(conv, "event", "field_review_focus",
                         {"applied": {"key": "CapBanSao", "ok": True}, "field": COPY_COUNT, "stats": STATS})
     assert _lead(asked) == "✓ Đã điền **Đề nghị cấp bản sao**: Có"
-    assert "Ô **Số lượng bản sao**" in asked.display_md
+    assert "Ô: **Số lượng bản sao**" in asked.display_md
 
 
 async def test_dien_so_luong_hong_thi_bao_va_khong_bo_qua_o_so_luong(monkeypatch):
@@ -918,7 +927,7 @@ async def test_o_so_luong_khong_hien_thi_hoi_tiep_nhu_thuong(monkeypatch):
     asked = await _turn(conv, "event", "field_review_focus",
                         {"applied": {"key": "CapBanSao", "ok": True}, "field": FIELD, "stats": STATS})
     assert _lead(asked) == "✓ Đã điền **Đề nghị cấp bản sao**: Có"
-    assert "Ô **Dân tộc**" in asked.display_md and "copy_carry" not in conv["field_review"]
+    assert "Ô: **Dân tộc**" in asked.display_md and "copy_carry" not in conv["field_review"]
 
 
 async def test_nut_vong_bo_sung_co_mau_theo_nghia():
@@ -952,8 +961,10 @@ async def test_quay_lai_khong_nhac_tiep_theo_den_phan(monkeypatch):
     asked = await _turn(conv, "event", "field_review_focus",
                         {"field": {**WARD_OK, "value": "Xã 3"}, "stats": STATS})
     assert _lead(asked) == "↩️ Quay lại ô **Phường/Xã** để sửa."
-    assert asked.display_md.startswith("📝 🟥 Ô **Phường/Xã**") and "Tiếp theo" not in asked.display_md
-    assert asked.tts_text == "Dạ tôi quay lại ô Phường hoặc Xã để công dân sửa. Công dân nói hoặc gõ giúp tôi ạ."
+    assert asked.display_md.startswith("Ô: **Phường/Xã** (Nơi cư trú của vợ)") and "Tiếp theo" not in asked.display_md
+    # Ô gõ chữ đầu vòng đã nhắc cách trả lời → không nhắc lại.
+    assert asked.tts_text.strip() == "Dạ tôi quay lại ô Phường hoặc Xã để công dân sửa."
+    assert "nói hoặc gõ" not in asked.display_md
 
 
 async def test_quay_lai_dung_o_cong_dan_neu_ten_ke_ca_o_da_bo_qua(monkeypatch):
@@ -1087,10 +1098,13 @@ async def test_dang_hoi_o_noi_dieu_chinh_giay_to_thi_dung_hoi_va_chay_lenh(monke
     monkeypatch.setattr(flow, "_start_documents_adjustment", adjust)
     reply = await _turn(conv, "action", "field_review_answer", {"text": "điều chỉnh giấy tờ"})
     assert seen["text"] == "điều chỉnh giấy tờ"
-    assert seen["target"] == "declaration", "chạy đúng lệnh Điều chỉnh giấy tờ của bước"
-    assert reply.display_md == "điều chỉnh giấy tờ"
+    # Lệnh xoá việc đã làm ra từ lời nói → hỏi xác nhận trước (bảng chính sách), vòng hỏi đã dừng.
+    assert "target" not in seen and "Điều chỉnh giấy tờ" in reply.display_md and "đúng không ạ" in reply.display_md
     assert _types(reply)[0] == "field_review_stop", "tắt tô ô của vòng hỏi"
     assert not conv["field_review"]["running"]
+    reply = await _turn(conv, "confirm", "", {})
+    assert seen["target"] == "declaration", "xác nhận xong mới chạy đúng lệnh Điều chỉnh giấy tờ của bước"
+    assert reply.display_md == "điều chỉnh giấy tờ"
 
 
 async def test_lenh_khong_ro_viec_gi_thi_hoi_lai_o_nhu_cu(monkeypatch):

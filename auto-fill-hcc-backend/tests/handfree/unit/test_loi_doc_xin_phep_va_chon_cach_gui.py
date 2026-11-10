@@ -59,4 +59,5 @@ def test_chua_co_luot_nao_thi_bao_chua_hieu():
 
 def test_y_dinh_noi_lai_co_o_moi_buoc_va_prompt_tach_khoi_cau_hoi_thong_tin():
     assert any(e["value"] == "repeat" for e in intents._GLOBAL_INTENTS)
-    assert '"sao cơ", "gì cơ", "hả") KHÔNG phải ask_question → state_action "repeat"' in intents._LLM_SYSTEM
+    from app.channels.handfree.chat.cach_noi import lop1
+    assert '"nhac_lai": chưa nghe rõ, muốn trợ lý nói lại ("sao cơ", "gì cơ"' in lop1.SYSTEM

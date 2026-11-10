@@ -32,14 +32,14 @@ def _no_db(monkeypatch):
 
 
 def _fake_lookup(monkeypatch, rows, chinh="", hoi_lai=""):
-    async def fake(text, current=None):
+    async def fake(text, current=None, history=""):
         return nganh_nghe.KetQua(nganh=[nganh_nghe.Nganh(*r) for r in rows], chinh=chinh, hoi_lai=hoi_lai)
     monkeypatch.setattr(nganh_nghe, "tra_cuu", fake)
 
 
 def _fake_answers(monkeypatch, answers: dict):
     """Mục đang hỏi → giá trị trả lời (LLM giả). Bảng xác nhận khối → đồng ý."""
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         if asking == "tom_tat":
             return hoi_dap.Parsed("dong_y")
         value = answers.get(asking, "__unclear__")
@@ -211,7 +211,7 @@ async def test_so_dinh_danh_sai_do_dai_thi_hoi_lai(monkeypatch):
     conv["hkd"] = await hkd._base_state(conv, "khong_giay")
     conv["hkd"].update(block=4, phase="ask", field="chu_ho_so_dinh_danh", values={"chu_ho_la_ban": False})
 
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         return hoi_dap.Parsed("tra_loi", bad_digits={"chu_ho_so_dinh_danh": "00109000"})
     monkeypatch.setattr(hoi_dap, "interpret", fake)
     r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "không không một ..."}))
@@ -400,7 +400,7 @@ async def test_noi_khong_co_to_khai_o_buoc_dong_y_la_dong_y_va_vao_hoi_dap(monke
 async def test_them_nganh_thu_hai_roi_bat_buoc_hoi_nganh_chinh(monkeypatch):
     calls = []
 
-    async def fake_lookup(text, current=None):
+    async def fake_lookup(text, current=None, history=""):
         calls.append([r["ma"] for r in current or []])
         rows = [nganh_nghe.Nganh(**{"hoat_dong": r["hoatDong"], "ma": r["ma"], "chac": r["chac"],
                                      "chi_tiet": r.get("chiTiet", "")}) for r in current or []]
@@ -408,7 +408,7 @@ async def test_them_nganh_thu_hai_roi_bat_buoc_hoi_nganh_chinh(monkeypatch):
         return nganh_nghe.KetQua(nganh=rows)
     monkeypatch.setattr(nganh_nghe, "tra_cuu", fake_lookup)
 
-    async def fake_interpret(text, asking, question, slots, values, location):
+    async def fake_interpret(text, asking, question, slots, values, location, history=None):
         return hoi_dap.Parsed("tra_loi", nganh_text="bán rau")
     monkeypatch.setattr(hoi_dap, "interpret", fake_interpret)
     conv = _conv()
@@ -435,7 +435,7 @@ async def test_them_nganh_thu_hai_roi_bat_buoc_hoi_nganh_chinh(monkeypatch):
 
 
 async def test_llm_khong_quyet_duoc_cau_khong_co_o_o_bo_qua_duoc_thi_bo_qua(monkeypatch):
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         return hoi_dap.Parsed("khong_ro")
     monkeypatch.setattr(hoi_dap, "interpret", fake)
     conv = _conv()
@@ -453,7 +453,7 @@ async def test_dia_chi_hoi_lan_luot_tinh_xa_so_nha_dien_ngay_tung_phan(monkeypat
                   {"tinh": "", "xa": "", "diaChi": "Số 12 đường 3/2"}])
     questions = []
 
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         questions.append(question)
         return hoi_dap.Parsed("tra_loi", {asking: hoi_dap.check("address", next(parts), "", True)[0]})
     monkeypatch.setattr(hoi_dap, "interpret", fake)
@@ -572,11 +572,11 @@ async def test_moi_cau_hoi_kem_lenh_tro_o_de_mic_ranh_tay_mo_lai(monkeypatch):
 
 
 async def test_chon_nganh_chinh_trong_danh_sach_khong_tra_ma_lai(monkeypatch):
-    async def fake_pick(text, question, options):
+    async def fake_pick(text, question, options, history=None):
         return (1, False) if "năm sáu" in text else (None, "thêm" in text)
     looked = []
 
-    async def fake_lookup(text, current=None):
+    async def fake_lookup(text, current=None, history=""):
         looked.append(text)
         return nganh_nghe.KetQua(nganh=[nganh_nghe.Nganh(r["hoatDong"], r["ma"], r["chac"], r.get("chiTiet", ""))
                                         for r in current or []])
@@ -796,7 +796,7 @@ async def test_tat_cong_tac_thi_an_loi_vao_khong_giay_to_luon_phai_dua_giay(monk
 async def test_noi_luu_khoi_ma_model_chep_lai_gia_tri_dang_co_van_luu(monkeypatch):
     questions = []
 
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         questions.append((asking, question))
         return hoi_dap.Parsed("dong_y", {"dien_thoai": values.get("dien_thoai")})
     monkeypatch.setattr(hoi_dap, "interpret", fake)
@@ -812,7 +812,7 @@ async def test_noi_luu_khoi_ma_model_chep_lai_gia_tri_dang_co_van_luu(monkeypatc
 
 
 async def test_xac_nhan_khoi_ma_sua_gia_tri_thi_khong_luu(monkeypatch):
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         return hoi_dap.Parsed("dong_y", {"dien_thoai": "0911111111"})
     monkeypatch.setattr(hoi_dap, "interpret", fake)
     conv = _conv()
@@ -844,3 +844,196 @@ async def test_doc_website_bang_loi_doc_thang_tu_cau_noi_khi_model_ghep_sai(monk
         parsed = await hoi_dap.interpret(text, "website", "", slots, {}, "")
         assert parsed.values == {"website": want} and parsed.action == "tra_loi"
 
+
+
+@pytest.mark.parametrize("llm_out", ['{"hanhDong": "khong_ro", "giaTri": {}}', "__loi__"])
+async def test_so_dien_thoai_doc_thang_khi_llm_khong_tra_hoac_loi(monkeypatch, llm_out):
+    async def fake_chat(messages, **kw):
+        if llm_out == "__loi__":
+            raise TimeoutError("llm")
+        return llm_out
+    monkeypatch.setattr(hoi_dap, "llm_chat", fake_chat)
+    slots = [{"key": "dien_thoai", "label": "Điện thoại", "kind": "phone"}]
+    parsed = await hoi_dap.interpret("số không chín một hai ba bốn năm sáu bảy tám", "dien_thoai", "", slots, {}, "")
+    assert parsed.values == {"dien_thoai": "0912345678"} and parsed.action == "tra_loi"
+    parsed = await hoi_dap.interpret("không có", "dien_thoai", "", slots, {}, "")
+    assert parsed.values == {} and not parsed.bad_digits, "\"không\" một mình không thành số 0"
+
+
+async def test_ket_qua_kiem_trung_ten_khong_ve_thi_cau_noi_van_vao_vong_hoi(monkeypatch):
+    """Đang chờ extension báo kiểm trùng tên nước ngoài mà kết quả không về: câu nói vẫn thuộc vòng hỏi, "bỏ qua" bỏ
+    đúng mục tên đó và xoá ô đã điền — không rơi sang bộ phân loại chung rồi lặp "chưa hiểu ý"."""
+    async def fake(text, asking, question, slots, values, location, history=None):
+        return hoi_dap.Parsed("bo_qua")
+    monkeypatch.setattr(hoi_dap, "interpret", fake)
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("ten-ho-kinh-doanh"), phase="ask", field="ten_nuoc_ngoai",
+                       asked=True)
+    conv["hkd"]["values"].update(ten_ho="__x__")
+    conv["hkd"]["name_check"] = {"ten_ho": {"name": "__X__", "count": 0, "names": [], "exact": 0}}
+    conv["hkd"]["values"]["ten_nuoc_ngoai"] = "Foreign Name"
+    r = hkd._ask_next(conv)
+    assert conv["hkd"]["phase"] == "check_name" and any(a["type"] == "hkd_check_name" for a in r.actions)
+    assert hkd.asking(conv), "đang chờ kiểm trùng tên vẫn nhận câu nói"
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "thôi bỏ qua"}))
+    st = conv["hkd"]
+    assert st["phase"] != "check_name" and "ten_nuoc_ngoai" in st["skipped"] and "ten_nuoc_ngoai" not in st["values"]
+    cleared = [f for a in r.actions if a["type"] == "hkd_fill" for f in a["fields"]]
+    assert cleared and all(f["value"] == "" for f in cleared)
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {"slot": "ten_nuoc_ngoai", "ok": True}))
+    assert not r.display_md, "kết quả về muộn bị bỏ qua"
+
+
+def _nganh_state(conv, rows, **kw):
+    st = conv["hkd"]
+    st.update(block=hkd._blocks(st).index("nganh-nghe-kinh-doanh"), asked=True, **kw)
+    st["nganh"] = [{"hoatDong": d, "ma": [m], "chac": True, "chiTiet": d} for m, d in rows]
+    return st
+
+
+_ROWS = [("6219", "Lập trình máy tính"), ("6039", "Tiktoker"), ("8559", "Dạy lập trình online")]
+
+
+async def test_agent_tra_ma_tra_thieu_dong_thi_giu_nganh_da_chot_chi_bo_ma_ghi_ro(monkeypatch):
+    async def fake(text, current=None, history=""):
+        assert "HỘI" not in history or history  # lịch sử được truyền (chuỗi)
+        only = nganh_nghe.Nganh("Dạy lập trình online", ["8559"], True, "Dạy lập trình online")
+        return nganh_nghe.KetQua(nganh=[only], chinh="8559", bo=["6039"] if "bỏ" in text else [])
+    monkeypatch.setattr(nganh_nghe, "tra_cuu", fake)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = _nganh_state(conv, _ROWS)
+    await hkd._lookup(st, "dạy lập trình online là ngành chính", conv)
+    assert sorted(r["ma"][0] for r in st["nganh"]) == ["6039", "6219", "8559"] and st["chinh"] == "8559"
+    await hkd._lookup(st, "bỏ tiktoker đi", conv)
+    assert sorted(r["ma"][0] for r in st["nganh"]) == ["6219", "8559"], "chỉ mã agent ghi rõ trong 'bo' mới bị bỏ"
+
+
+async def test_the_thoi_va_noi_nganh_chinh_thi_chon_trong_danh_sach_khong_tra_ma_lai(monkeypatch):
+    async def fake_interpret(text, asking, question, slots, values, location, history=None):
+        return hoi_dap.Parsed("tra_loi", {"nganh_them": False}, nganh_text="dạy lập trình online là ngành chính")
+
+    async def fake_pick(text, question, options, history=None):
+        return next(i for i, o in enumerate(options) if o.startswith("8559")), False
+
+    async def no_lookup(*a, **k):
+        raise AssertionError("không được tra mã lại")
+    monkeypatch.setattr(hoi_dap, "interpret", fake_interpret)
+    monkeypatch.setattr(hoi_dap, "pick", fake_pick)
+    monkeypatch.setattr(nganh_nghe, "tra_cuu", no_lookup)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = _nganh_state(conv, _ROWS, phase="ask", field="nganh_them")
+    await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "thế thôi, dạy lập trình online là chính"}))
+    assert st["chinh"] == "8559" and st["nganh_done"] and len(st["nganh"]) == 3
+
+
+async def test_dien_len_trang_cau_khong_ro_thi_hoi_lai_khong_tra_ma_va_khong_in_hai_lan(monkeypatch):
+    questions = []
+
+    async def fake_interpret(text, asking, question, slots, values, location, history=None):
+        questions.append(question)
+        return hoi_dap.Parsed("khong_ro")
+
+    async def no_lookup(*a, **k):
+        raise AssertionError("câu không rõ không được đem đi tra mã")
+    monkeypatch.setattr(hoi_dap, "interpret", fake_interpret)
+    monkeypatch.setattr(nganh_nghe, "tra_cuu", no_lookup)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = _nganh_state(conv, _ROWS, chinh="8559", nganh_done=True)
+    r = hkd._ask_next(conv, hkd._noted_nganh(st))
+    assert st["phase"] == "confirm_list" and r.display_md.count("6039") == 1, "danh sách chỉ in một lần"
+    await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "ok rồi"}))
+    assert questions[-1] == hoi_dap.prompt.LIST_CONFIRM_QUESTION and len(st["nganh"]) == 3
+
+
+async def test_mot_ma_chua_chac_thi_hoi_xac_nhan_noi_dung_la_nhan(monkeypatch):
+    async def fake_pick(text, question, options, history=None):
+        return 0, False
+    monkeypatch.setattr(hoi_dap, "pick", fake_pick)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = _nganh_state(conv, _ROWS[:1], phase="ask", field="nganh_chon")
+    st["nganh"].append({"hoatDong": "Tiktoker", "ma": ["6039"], "chac": False, "chiTiet": "Tiktoker"})
+    md, _ = hkd._question(st, "nganh_chon")
+    assert "hợp nhất là ngành **6039" in md and "một trong các ngành" not in md
+    assert hkd._chips(st, "nganh_chon")[0]["label"].startswith("✓ Đúng: 6039")
+    await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "đúng rồi đó"}))
+    assert all(r["chac"] for r in st["nganh"])
+
+
+async def test_luot_mo_dau_doc_xong_moi_luu_khoi_1_cac_khoi_sau_khong_cho():
+    conv = _conv()
+    r = await hkd.start_no_docs(conv)
+    save = next(a for a in r.actions if a["type"] == "start_business_registration")
+    assert save.get("waitTts") is True, "câu giới thiệu dài → extension đọc xong mới lưu khối 1"
+    assert save.get("hkd") is True, "lưu khối của vòng hỏi đáp: sidebar không dựng thẻ bóc tách giấy tờ"
+    r = await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True}))
+    assert all(not a.get("waitTts") for a in r.actions)
+
+
+async def test_dien_len_trang_noi_dong_y_ma_model_chep_nganh_tu_lich_su_van_dien(monkeypatch):
+    """Model có hội thoại trước hay chép lời kể ngành cũ vào nganhMoTa của câu "đúng rồi điền đi" → không được coi là
+    sửa danh sách (từng lặp hiện lại danh sách mãi)."""
+    async def fake_chat(messages, **kw):
+        return '{"hanhDong": "dong_y", "giaTri": {}, "nganhMoTa": "làm tiktoker với dạy học online"}'
+
+    async def no_lookup(*a, **k):
+        raise AssertionError("câu đồng ý không được đem đi tra mã")
+    monkeypatch.setattr(hoi_dap, "llm_chat", fake_chat)
+    monkeypatch.setattr(nganh_nghe, "tra_cuu", no_lookup)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = _nganh_state(conv, _ROWS[1:], chinh="8559", nganh_done=True)
+    hkd._ask_next(conv)
+    assert st["phase"] == "confirm_list"
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "đúng rồi điền đi"}))
+    assert st["phase"] == "saving" and any(a["type"] == "start_business_registration" for a in r.actions)
+
+
+def test_loi_ke_nganh_phai_nam_trong_cau_cong_dan_vua_noi():
+    assert not hoi_dap.grounded("Dạy học online, Làm tiktoker", "đúng rồi điền đi")
+    assert hoi_dap.grounded("bỏ tiktoker đi", "ừ bỏ tiktoker đi em")
+    assert hoi_dap.grounded("Bán phở", "tôi mở quán phở")
+
+
+async def test_doc_so_sai_do_dai_chi_moi_doc_lai_khong_lap_cau_hoi(monkeypatch):
+    async def fake(text, asking, question, slots, values, location, history=None):
+        return hoi_dap.Parsed("tra_loi", bad_digits={"dien_thoai": "09000000000"})
+    monkeypatch.setattr(hoi_dap, "interpret", fake)
+    monkeypatch.setattr(hkd.agents, "ENABLED", False)
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("dia-chi"), phase="ask", field="dien_thoai", asked=True)
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "không chín ..."}))
+    assert "đọc lại giúp tôi" in r.display_md
+    assert vi.HKD_QUESTIONS["dien_thoai"]["md"] not in r.display_md, "không nối lại nguyên câu hỏi"
+    assert conv["hkd"]["field"] == "dien_thoai" and any(a["type"] == "hkd_focus" for a in r.actions)
+
+
+async def test_dien_thoai_email_cua_ho_khong_tu_chep_sang_chu_ho_va_thue():
+    conv = _conv()
+    st = await hkd._base_state(conv, "khong_giay")
+    st["values"].update(dien_thoai="0900000000", email="a@b.vn")
+    names = {f["name"] for p in ("chu-ho-kinh-doanh", "thong-tin-ve-thue") for f in hkd.page_fields(st, p)
+             if f.get("value")}
+    assert not any(n.endswith(("REP_RECEIVER_PHONEFld", "REP_RECEIVER_EMAILFld")) for n in names)
+    assert not any("OWN_PCtl" in n and ("PHONE" in n or "EMAIL" in n) for n in names)
+
+
+async def test_luu_khoi_thue_chon_giong_tru_so_gui_trang_thue_hai_lan_de_dao_radio():
+    conv = _conv()
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    st = conv["hkd"]
+    st.update(block=hkd._blocks(st).index("thong-tin-ve-thue"), phase="confirm", field=hkd._CONFIRM, asked=True)
+    st["values"]["dia_chi_kd"] = {"tinh": "Thành phố A", "xa": "B", "diaChi": "Số 1", "quocGia": "Việt Nam"}
+    st["values"]["dia_chi_thue"] = True
+    save = next(a for a in hkd._save(conv).actions if a["type"] == "start_business_registration")
+    assert save["businessFlow"]["pageOrder"] == ["thong-tin-ve-thue", "thong-tin-ve-thue"]
+    st.update(phase="confirm")
+    st["values"].update(dia_chi_thue=False, dia_chi_thue_khac={"tinh": "C", "xa": "D", "diaChi": "Số 2",
+                                                               "quocGia": "Việt Nam"})
+    save = next(a for a in hkd._save(conv).actions if a["type"] == "start_business_registration")
+    assert save["businessFlow"]["pageOrder"] == ["thong-tin-ve-thue"]

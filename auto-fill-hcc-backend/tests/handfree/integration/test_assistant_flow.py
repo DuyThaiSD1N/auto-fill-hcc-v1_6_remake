@@ -686,8 +686,8 @@ async def test_resolve_llm_nhan_intent_yeu_cau_dinh_kem_o_trang_ke_khai(monkeypa
     resolved = await resolve("đính kèm đi", state)
 
     assert (resolved.kind, resolved.value) == ("action", "request_attach")
-    assert '"request_attach"' in captured["system"]
-    assert "CHƯA xác nhận đã rà soát form" in captured["system"]
+    # Phân biệt "đính kèm đi" với "đã đưa đủ giấy" nằm ở mô tả lệnh của bước đưa vào prompt lớp 1.
+    assert '"request_attach": công dân' in captured["system"] and "<lenh_cua_buoc>" in captured["system"]
 
 
 @pytest.mark.asyncio
@@ -709,17 +709,12 @@ async def test_resolve_llm_nhan_intent_dieu_chinh_giay_to_o_ke_khai(monkeypatch,
     assert '"add_documents"' in captured["system"]
 
 
-def test_prompt_doc_method_co_mo_ta_va_chong_chup_scan():
-    """Prompt phải mô tả rõ 3 cách + chốt "chụp"→qr; thiếu là LLM lại nhầm chụp≈scan."""
-    s = intents._LLM_SYSTEM.format(
-        state="ask_doc_method",
-        state_actions=intents._state_action_block("ask_doc_method"),
-        doc_methods=intents._doc_method_block(),
-        buttons=intents._buttons_block([]),
-    )
-    for meth in ("qr", "scan"):
-        assert f'"{meth}" =' in s, f"prompt thiếu mô tả doc method {meth}"
-    assert "ĐIỆN THOẠI" in s and 'LUÔN là "qr"' in s  # chống nhầm chụp→scan
+def test_prompt_lop1_mo_ta_cach_gui_va_chong_nham_chup_scan():
+    """Prompt lớp 1 phải mô tả rõ 2 cách gửi + chốt "chụp"→qr; thiếu là LLM lại nhầm chụp≈scan."""
+    from app.channels.handfree.chat.cach_noi import lop1
+
+    s = lop1.SYSTEM
+    assert '"qr" = chụp bằng điện thoại' in s and '"scan" = scan / quét tại quầy' in s and 'Chữ "chụp" LUÔN' in s
     # "profile" (Lấy dữ liệu đã lưu) đang ẨN → LLM không được gợi ý cách này nữa.
     assert '"profile"' not in s and "dữ liệu đã lưu" not in s.lower()
 

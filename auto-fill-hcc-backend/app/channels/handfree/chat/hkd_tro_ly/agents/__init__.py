@@ -33,6 +33,12 @@ class Understood:
 async def understand(catalog: list[dict], current: dict, thread: list[str], conv: dict, text: str) -> Understood:
     decision = await coordinator.decide(catalog, current, thread, conv, text)
     kind = decision.kind
+    if kind == "dong_y" and not current.get("confirm"):
+        slot = next((c for c in catalog if c.get("key") == current.get("key")), None)
+        if slot and slot.get("kind") == "yesno":
+            # Đồng ý chỉ có nghĩa "lưu khối" ở bảng tóm tắt; đang hỏi mục có/không thì "đúng rồi" là câu trả lời của
+            # mục đó — giao agent chuyên môn đọc giá trị thay vì rơi về "chưa nghe rõ".
+            decision.targets, kind = [slot], "tra_loi"
     if kind in {"dong_y", "bo_qua", "tam_dung", "nhac_lai", "lenh_khac"}:
         return Understood(kind)
     if kind == "hoi_ro":

@@ -12,6 +12,7 @@ Cách làm — mỗi lượt trả ĐÚNG MỘT object JSON, không viết gì k
     "nganh": [{{"hoatDong": "<hoạt động đúng như người dân nói>", "ma": ["<mã>", ...], "chac": true|false,
                "chiTiet": "<ghi vào ô chi tiết của ngành>"}}],
     "chinh": "<mã ngành chính hoặc chuỗi rỗng>",
+    "bo": ["<mã của dòng người dân nói rõ bỏ>", ...],
     "hoiLai": "<một câu hỏi ngắn cho người dân, hoặc chuỗi rỗng>"}}
 
 Quy tắc phân loại:
@@ -35,7 +36,12 @@ Quy tắc phân loại:
    chắc). Không tự chọn, kể cả khi chỉ có một hoạt động → "chinh": "".
 7. DANH SÁCH ĐANG CÓ là các ngành đã ghi trước đó. "nganh" là danh sách SAU KHI đổi: GIỮ NGUYÊN mọi dòng không bị nhắc
    tới (cả mã, "chac", "chiTiet"), THÊM dòng mới người dân kể. CHỈ BỎ một dòng khi người dân nói rõ bỏ / xoá / không
-   kinh doanh hoạt động đó nữa — câu "cái này không phải ngành chính" chỉ đổi ngành chính, KHÔNG bỏ dòng.
+   kinh doanh hoạt động đó nữa — khi đó ghi mã của dòng đó vào "bo" (không có thì "bo": []). Câu chỉ nói ngành nào là
+   chính ("… là ngành chính"), "thế thôi", "đúng rồi" KHÔNG bỏ dòng nào. Câu "cái này không phải ngành chính" chỉ đổi
+   ngành chính, KHÔNG bỏ dòng.
+10. HỘI THOẠI GẦN ĐÂY giúp hiểu lời người dân: "các ngành trên", "ba ngành ấy", hoạt động đã kể ở lượt trước. Hoạt động
+   người dân đã xác nhận một mã ở lượt trước (trợ lý đã ghi "✓ Ngành nghề: <mã> … — chi tiết: <hoạt động>") mà nay nhắc
+   lại / thêm lại → dùng lại ĐÚNG mã đó, "chac": true, không tra lại sang mã khác.
 8. Không bịa mã. Không có mã nào phù hợp thì "ma": [] và "chac": false.
 9. "chiTiet": chính "hoatDong" viết gọn lại — ĐÚNG LỜI người dân, bắt đầu bằng động từ, viết hoa chữ đầu, bỏ từ thừa
    ("tôi", "mở", "thêm", "nữa", "khoảng"). KHÔNG dùng tên ngành, KHÔNG chép câu trong nội dung ngành (vd "tôi mở quán
@@ -44,7 +50,10 @@ Quy tắc phân loại:
 DANH MỤC (mã — tên ngành cấp 4):
 {catalog}"""
 
-USER = """DANH SÁCH ĐANG CÓ: {current}
+USER = """HỘI THOẠI GẦN ĐÂY:
+{history}
+
+DANH SÁCH ĐANG CÓ: {current}
 LỜI NGƯỜI DÂN: "{text}"
 """
 

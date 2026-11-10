@@ -79,6 +79,69 @@ class Parsed:
     nganh_text: str = ""
 
 
+_DIGIT_WORDS = {"khong": 0, "mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5, "lam": 5, "sau": 6, "bay": 7,
+                "tam": 8, "chin": 9}
+_DATE_FILLER = {"ngay", "mung", "mong", "sinh", "la", "a", "da", "thi", "o", "u"}
+
+
+def _spoken_number(words: list[str]) -> int | None:
+    """Số đọc bằng chữ (đã fold): theo hàng ("hai nghìn không trăm linh hai") hoặc từng chữ số ("hai không không hai")."""
+    if len(words) == 1 and words[0].isdigit():
+        return int(words[0])
+    if not words or any(w not in _DIGIT_WORDS and w not in ("muoi", "tram", "nghin", "ngan", "linh", "le")
+                        for w in words):
+        return None
+    if not any(w in ("muoi", "tram", "nghin", "ngan") for w in words):
+        return int("".join(str(_DIGIT_WORDS[w]) for w in words))
+    total, group, pending = 0, 0, None
+    for w in words:
+        if w in _DIGIT_WORDS:
+            if pending is not None:
+                return None
+            pending = _DIGIT_WORDS[w]
+        elif w == "muoi":  # fold làm "mười" / "mươi" trùng nhau: đứng đầu = mười (10), sau chữ số = hàng chục
+            group += (1 if pending is None else pending) * 10
+            pending = None
+        elif w == "tram":
+            group += (1 if pending is None else pending) * 100
+            pending = None
+        elif w in ("nghin", "ngan"):
+            total += ((group + (pending or 0)) or 1) * 1000
+            group, pending = 0, None
+    return total + group + (pending or 0)
+
+
+def spoken_date(text: str) -> tuple[int, int, int] | None:
+    """Ngày đọc theo thứ tự ngày → "tháng" → "năm" → (ngày, tháng, năm 4 số). Chỉ trả khi tách được đúng MỘT cách (chữ
+    "năm" vừa là mốc vừa là số 5); không chắc → None. Chỉ để đưa agent đối chiếu, không thay giá trị agent đọc."""
+    words = [w for w in re.sub(r"[^\w\s]", " ", fold(str(text or ""))).split() if w not in _DATE_FILLER]
+    if len(words) == 8 and all(w in _DIGIT_WORDS for w in words):
+        # Đọc liền tám chữ số ngày-tháng-năm ("một bảy không sáu hai không hai lăm") — chỉ một cách tách.
+        digits = "".join(str(_DIGIT_WORDS[w]) for w in words)
+        day, month, year = int(digits[:2]), int(digits[2:4]), int(digits[4:])
+        return (day, month, year) if 1 <= day <= 31 and 1 <= month <= 12 and year >= 1000 else None
+    if words.count("thang") != 1:
+        return None
+    at = words.index("thang")
+    day, rest = _spoken_number(words[:at]), words[at + 1:]
+    found = set()
+    for j, w in enumerate(rest):
+        if w != "nam":
+            continue
+        month, year = _spoken_number(rest[:j]), _spoken_number(rest[j + 1:])
+        if day and 1 <= day <= 31 and month and 1 <= month <= 12 and year and 1000 <= year <= 9999:
+            found.add((day, month, year))
+    return found.pop() if len(found) == 1 else None
+
+
+def grounded(said: str, source: str) -> bool:
+    """Lời kể ngành model trả phải lấy từ câu công dân vừa nói: model có hội thoại trước nên hay chép danh sách ngành
+    trợ lý vừa đọc vào, biến câu "đúng rồi, điền đi" thành lời kể ngành mới. Cho lệch vài tiếng (model sửa chính tả)."""
+    words = fold(said).split()
+    have = set(fold(source).split())
+    return bool(words) and sum(w in have for w in words) * 2 >= len(words)
+
+
 def _phone_ok(digits: str) -> bool:
     return (len(digits) == 10 and digits.startswith("0")) or (len(digits) == 11 and digits.startswith("02"))
 
@@ -166,8 +229,9 @@ def _value_text(value) -> str:
 
 
 async def interpret(text: str, asking: str, question: str, slots: list[dict], values: dict,
-                    location: str) -> Parsed:
-    """slots: [{key, label, kind, same?}] các mục đang mở để ghi; values: giá trị hiện có theo mục."""
+                    location: str, history: list[dict] | None = None) -> Parsed:
+    """slots: [{key, label, kind, same?}] các mục đang mở để ghi; values: giá trị hiện có theo mục; history: các lượt
+    hội thoại trước (store.recent_dialogue) để hiểu câu nối tiếp / sửa lại."""
     lines = []
     for s in slots:
         same = " (cho phép \"giống\")" if s.get("same") else ""
@@ -176,19 +240,21 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
     system = prompt.SYSTEM.format(today=date.today().strftime("%d/%m/%Y"), location=location or "(không rõ)",
                                   asking=asking, question=question, slots="\n".join(lines))
     try:
-        raw = await llm_chat([{"role": "system", "content": system},
+        raw = await llm_chat([{"role": "system", "content": system}, *(history or []),
                               {"role": "user", "content": prompt.USER.format(text=str(text or "")[:600])}],
                              temperature=0.0, max_tokens=400, purpose="hkd_hoi_dap")
         m = re.search(r"\{[\s\S]*\}", raw or "")
         data = json.loads(m.group(0)) if m else {}
     except Exception as e:  # noqa: BLE001 — LLM best-effort, vòng hỏi phải sống tiếp
         logger.warning("[hkd_hoi_dap] LLM lỗi: %s", e)
-        return Parsed("khong_ro")
+        data = {}
     if not isinstance(data, dict):
-        return Parsed("khong_ro")
+        data = {}  # vẫn đi tiếp: số / địa chỉ web đọc thẳng từ lời công dân là dự phòng khi LLM không trả gì
     action = str(data.get("hanhDong") or "")
     out = Parsed(action if action in ACTIONS else "khong_ro",
                  nganh_text=re.sub(r"\s+", " ", str(data.get("nganhMoTa") or "")).strip()[:600])
+    if out.nganh_text and not grounded(out.nganh_text, text):
+        out.nganh_text = ""
     kinds = {s["key"]: s for s in slots}
     given = data.get("giaTri") if isinstance(data.get("giaTri"), dict) else {}
     if kinds.get(asking, {}).get("kind") == "address" and asking not in given:
@@ -196,6 +262,12 @@ async def interpret(text: str, asking: str, question: str, slots: list[dict], va
         loose = {k: given.pop(k) for k in ("tinh", "xa", "diaChi", "chiTietDuoiXa") if k in given}
         if loose:
             given[asking] = loose
+    if (kinds.get(asking, {}).get("kind") in ("phone", "id12") and asking not in given
+            and out.action not in ("bo_qua", "tam_dung", "dong_y")):
+        # LLM lỗi / không trả mục đang hỏi dù công dân đọc dãy số → dùng dãy chữ số công dân đọc (check kiểm độ dài).
+        heard = spoken_digits(text)
+        if len(heard) >= 8:
+            given[asking] = heard
     if kinds.get(asking, {}).get("kind") == "website" and out.action not in ("bo_qua", "tam_dung", "dong_y"):
         # Model nhỏ hay ghép sai / bỏ lời đánh vần địa chỉ web → đọc thẳng từ lời công dân (như chữ số điện thoại).
         heard = spoken_website(_web_span(text))
@@ -238,12 +310,13 @@ async def error_slots(error: str, block: str, slots: list[dict]) -> list[str]:
     return list(dict.fromkeys(k for k in keys if isinstance(k, str) and k in allowed))
 
 
-async def pick(text: str, question: str, options: list[str]) -> tuple[int | None, bool]:
+async def pick(text: str, question: str, options: list[str], history: list[dict] | None = None
+               ) -> tuple[int | None, bool]:
     """Công dân chọn một dòng trong danh sách đang hiện (vd ngành chính) → (chỉ số 0.., muốn đổi danh sách)."""
     system = prompt.PICK_SYSTEM.format(question=question,
                                        options="\n".join(f"{i} — {o}" for i, o in enumerate(options, 1)))
     try:
-        raw = await llm_chat([{"role": "system", "content": system},
+        raw = await llm_chat([{"role": "system", "content": system}, *(history or []),
                               {"role": "user", "content": prompt.USER.format(text=str(text or "")[:600])}],
                              temperature=0.0, max_tokens=80, purpose="hkd_chon")
         m = re.search(r"\{[\s\S]*\}", raw or "")

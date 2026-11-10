@@ -230,7 +230,8 @@ def test_nhan_dien_giong_noi_dang_xuat_khi_dang_cho_chon():
     from app.channels.handfree.chat.intents import resolve_logout_choice as R
     assert R("đăng xuất") == "logout_citizen"
     assert R("Có, hãy đăng xuất") == "logout_citizen"
-    assert R("có") == "logout_citizen"
+    # Lời đáp chung ("có", "ok", "xong rồi") không phải chọn đăng xuất: bảng chính sách hỏi lại hai lựa chọn.
+    assert R("có") is None and R("ok") is None and R("xong rồi") is None
     assert R("đăng xuất tài khoản") == "logout_citizen"
     assert R("không, nộp thêm hồ sơ") == "continue_dossiers"
     assert R("nộp thêm") == "continue_dossiers"

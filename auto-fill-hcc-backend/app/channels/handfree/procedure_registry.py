@@ -2421,8 +2421,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
-        # Ở khối "Chọn cơ quan thực hiện" trên DVCQG, chọn Tỉnh rồi chuyển radio Phường/Xã sang Sở.
-        # Kết quả có cả thẻ Sở Y tế và UBND xã; chốt thẻ Sở Y tế ở bước Nộp trực tuyến.
+        # Cả Sở Y tế lẫn UBND xã cùng tiếp nhận: kết quả DVCQG ra nhiều thẻ, thẻ đầu là cấp Sở → chốt thẻ theo chữ.
+        # Cấp nộp theo tài khoản (app/procedures/agency_level.py): HCC tỉnh → Sở (chỉ chọn Tỉnh, gạt Phường/Xã sang
+        # Sở); tài khoản khác có xã → UBND xã đó (chọn Tỉnh + Xã); chưa có xã → Sở.
         "detect": {
             "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
             # KHÔNG khai id apply-online/<id>: snapshot là của một tài khoản cụ thể, id đó đổi
@@ -2444,9 +2445,12 @@ PROCEDURES: list[dict] = [
         "icon": "🍲",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
         "needsAgencySelect": True,
-        "agencyProvinceOnly": True,
-        "agencySoFirst": True,
-        "agencyCardIncludes": "Cơ quan thực hiện: Sở Y tế",
+        "agencyLevelByAccount": {
+            "xa": {"agencyProvinceOnly": False, "agencySoFirst": False,
+                   "agencyCardIncludes": "Cơ quan thực hiện: UBND"},
+            "so": {"agencyProvinceOnly": True, "agencySoFirst": True,
+                   "agencyCardIncludes": "Cơ quan thực hiện: Sở Y tế"},
+        },
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
         # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng (stepper 4 bước, tờ khai Form.io, bước 3 receivingKind +
         # cam đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.

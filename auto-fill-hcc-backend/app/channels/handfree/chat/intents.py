@@ -1,7 +1,8 @@
 """Hiểu ý định người dân trong ngữ cảnh state hiện tại (docs/03a §3).
 
-Mọi ý định nói/gõ tự do đều do **LLM** quyết, KHÔNG dùng khớp từ khóa. Chỉ 2 thứ giữ tất định
-vì là giao thức/đã chắc chắn: lệnh máy `__action:*`/`__event:*` (chip/watcher) và số điện thoại.
+Mọi ý định nói/gõ tự do đều do **LLM** quyết (cach_noi/: lớp 1 cách nói + độ chắc → lớp kiểm tất định chỉ hạ độ chắc →
+lớp 2 theo họ cổng), KHÔNG dùng lưới từ khóa, không có từ điển trước LLM. Chỉ 2 thứ giữ tất định vì là giao thức/đã chắc chắn: lệnh máy
+`__action:*`/`__event:*` (chip/watcher) và số điện thoại.
 
 Hai agent LLM tách riêng:
   - agent CHỌN THỦ TỤC (procedure_picker/) — mang danh sách thủ tục của tỉnh, đọc vài lượt hội
@@ -19,9 +20,9 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from app.channels.handfree.chat import procedure_picker, store
+from app.channels.handfree.chat import procedure_picker
 from app.channels.handfree.procedure_registry import is_visible_in_province, procedure_code, public_list
-from app.services.llm.client import chat as llm_chat
+from app.services.llm.client import chat as llm_chat  # cach_noi/ gọi qua intents.llm_chat: một chỗ patch cho test
 
 _CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
 
@@ -45,22 +46,6 @@ def fold(s: str) -> str:
 
 # "profile" (Lấy dữ liệu đã lưu) tạm ẨN khỏi UI + LLM (xem _doc_options_card). Để bật lại: thêm
 # "profile" vào set này + mô tả tương ứng vào _DOC_METHOD_DESC.
-_DOC_METHODS = {"qr", "scan"}
-
-# Mô tả các cách cung cấp giấy tờ cho LLM. BẮT BUỘC vì tên value trần (qr/scan) khiến LLM đoán mò:
-# "chụp bằng điện thoại" bị hiểu "chụp"≈"scan" → chọn nhầm scan. Thứ tự KHỚP card
-# (_doc_options_card: qr, scan) nên "cách 1/2" cũng suy ra được.
-_DOC_METHOD_DESC: dict[str, str] = {
-    "qr": 'dùng ĐIỆN THOẠI chụp/gửi ảnh giấy tờ (quét mã QR). Câu như "chụp bằng điện thoại", '
-          '"chụp ảnh", "quét mã", "dùng điện thoại", "cách 1", "cái đầu".',
-    "scan": 'dùng MÁY TÍNH tại quầy: đã có sẵn ảnh/PDF/tệp trong máy hoặc scan bản cứng rồi chọn '
-            'tệp. Câu như "scan tại quầy", "tải tệp lên", "chọn file trong máy", "upload", "cách 2".',
-}
-
-
-def _doc_method_block() -> str:
-    return "\n" + "\n".join(f'    · "{k}" = {v}' for k, v in _DOC_METHOD_DESC.items())
-
 # ── Bảng ý định NÓI/GÕ theo state — nguồn CHÂN LÝ cho value + mô tả (LLM dịch câu về value).
 # LLM chỉ được trả value liệt kê ở đây; parse xong validate lại, không cho bịa lệnh.
 # delete_data CỐ TÌNH vắng mặt: lệnh xóa dữ liệu chỉ đi qua chip bấm tường minh.
@@ -150,6 +135,9 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn đính kèm/chuyển sang đính kèm ngay khi vẫn đang ở trang kê khai"},
     ],
     "reviewing": [
+        {"kind": "action", "value": "step_back", "only": "step_back",
+         "desc": "muốn QUAY LẠI BƯỚC / TRANG TRƯỚC trên cổng (bấm nút Quay lại của cổng), vd đang ở thành phần hồ sơ muốn "
+                 "về kê khai, tờ khai để sửa — không phải quay lại ô trước"},
         {"kind": "action", "value": "confirm_review",
          "desc": "xác nhận rõ đã rà soát và form đã đúng/chuẩn, cho đính kèm giấy tờ"},
         {"kind": "action", "value": "request_attach",
@@ -160,6 +148,9 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn xem, thêm hoặc xóa giấy tờ rồi điền lại tờ khai"},
     ],
     "attaching": [
+        {"kind": "action", "value": "step_back", "only": "step_back",
+         "desc": "muốn QUAY LẠI BƯỚC / TRANG TRƯỚC trên cổng (bấm nút Quay lại của cổng), vd đang ở thành phần hồ sơ muốn "
+                 "về kê khai, tờ khai để sửa — không phải quay lại ô trước"},
         {"kind": "action", "value": "request_attach",
          "desc": "giục đính kèm giấy tờ hoặc hỏi chuyển qua phần đính kèm"},
         {"kind": "action", "value": "refill",
@@ -174,6 +165,9 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn mỗi tài liệu là một hồ sơ riêng / tách thành nhiều hồ sơ"},
     ],
     "done": [
+        {"kind": "action", "value": "step_back", "only": "step_back",
+         "desc": "muốn QUAY LẠI BƯỚC / TRANG TRƯỚC trên cổng (bấm nút Quay lại của cổng), vd đang ở thành phần hồ sơ muốn "
+                 "về kê khai, tờ khai để sửa — không phải quay lại ô trước"},
         # save_profile tạm ẨN cùng option "Lấy dữ liệu đã lưu" (nút Lưu hồ sơ đã gỡ khỏi done).
         # KHÔNG có "đã nộp" bằng lời: event submitted chấm mốc NỘP HỒ SƠ cho thống kê, một câu "nộp
         # đi" bị hiểu nhầm là đếm sai. Mốc nộp chỉ lấy từ cú bấm nút nộp / trang thành công của cổng.
@@ -252,9 +246,10 @@ def _resolve_machine(message: str) -> Intent | None:
         payload = {}
         if raw:
             try:
-                payload = json.loads(raw)
+                parsed = json.loads(raw)
             except (ValueError, TypeError):
-                payload = {"value": raw}
+                parsed = raw
+            payload = parsed if isinstance(parsed, dict) else {"value": parsed}
         return Intent("action", name, payload)
 
     # Số điện thoại đọc/gõ (done: đăng ký thông báo; ask_doc_method: tra profile) — regex trích,
@@ -288,95 +283,25 @@ def resolve_logout_choice(message: str) -> str | None:
         "nop them", "khong", "chua", "o lai", "tiep tuc", "lam tiep", "con ho so", "them ho so", "van lam",
     )):
         return "continue_dossiers"
-    # Đồng ý đăng xuất / kết thúc.
-    if any(k in t for k in (
-        "dang xuat", "dang xuat tai khoan", "thoat", "log out", "logout", "ket thuc", "xong roi", "roi di",
-        "dong y", "dung vay", "dung roi",
-    )):
-        return "logout_citizen"
-    # "Có"/"ừ"/"vâng" đứng một mình = đồng ý (đang trả lời đúng câu hỏi đăng xuất).
-    if t in ("co", "co a", "co.", "u", "um", "vang", "vang a", "ok, dang xuat", "ok"):
+    # Chỉ câu nói RÕ đăng xuất / thoát. Lời đáp chung ("ok", "xong rồi", "đúng rồi", "có") không phải chọn đăng xuất —
+    # bảng chính sách hỏi lại hai lựa chọn.
+    if any(k in t for k in ("dang xuat", "thoat tai khoan", "log out", "logout", "thoat ra", "ket thuc phien")):
         return "logout_citizen"
     return None
 
 
 def _state_entries(state: str, conv: dict | None) -> list[dict]:
-    """Ý định của state; mục "only": "hkd" (lối vào không giấy tờ) chỉ mở khi luồng hỏi đáp hộ kinh doanh bật lối đó."""
-    hkd_on = False
-    if conv and any(e.get("only") == "hkd" for e in _STATE_INTENTS.get(state, [])):
-        from app.channels.handfree.chat import hkd_tro_ly
+    """Ý định của state; mục "only": "hkd" (lối vào không giấy tờ) chỉ mở khi luồng hỏi đáp hộ kinh doanh bật lối đó,
+    "only": "step_back" (quay lại bước trước) chỉ khi extension bấm được nút Quay lại của wizard tư pháp."""
+    entries = _STATE_INTENTS.get(state, [])
+    on = {"": True, "hkd": False, "step_back": False}
+    if conv and any(e.get("only") for e in entries):
+        from app.channels.handfree.chat import hkd_tro_ly, step_back
         from app.channels.handfree.procedure_registry import get_procedure
-        hkd_on = hkd_tro_ly.no_docs_on(conv, get_procedure(conv.get("procedure_key") or ""))
-    return _GLOBAL_INTENTS + [e for e in _STATE_INTENTS.get(state, []) if e.get("only") != "hkd" or hkd_on]
-
-
-def _state_action_block(state: str, conv: dict | None = None) -> str:
-    entries = _state_entries(state, conv)
-    if not entries:
-        return ' (bước này không có state_action nào → đừng dùng kind "state_action")'
-    return "\n" + "\n".join(f'  + "{e["value"]}": người dân {e["desc"]}' for e in entries)
-
-
-_LLM_SYSTEM = """Bạn là bộ phân loại ý định cho trợ lý thủ tục hành chính công Việt Nam.
-Người dân đang ở bước "{state}". Đọc câu MỚI NHẤT của họ (các lượt trước chỉ là ngữ cảnh) và trả
-DUY NHẤT một JSON:
-{{"kind": "<button|procedure|pick_doc_method|state_action|confirm|deny|ask_question|unknown>", "value": "<xem dưới>"}}
-
-- button: câu của người dân làm ĐÚNG việc của một NÚT ĐANG HIỆN trên màn hình (nói thay cho bấm
-  nút) → value = SỐ của nút đó trong danh sách NÚT ĐANG HIỆN. Ưu tiên button hơn mọi kind khác khi
-  câu khớp rõ một nút; không khớp rõ nút nào → xét các kind dưới.{buttons}
-  NÚT LÀM LẠI / XOÁ VIỆC ĐÃ LÀM (điền lại thông tin, điều chỉnh / thêm / xoá giấy tờ, hoàn tất điều chỉnh
-  và điền lại tờ khai, dừng bổ sung): CHỈ chọn khi câu NÓI RÕ đúng việc đó ("điền lại đi", "tôi muốn thêm
-  giấy tờ", "sửa giấy tờ", "điền lại tờ khai"). Câu xác nhận chung chung ("được rồi", "đúng rồi", "ok",
-  "xong rồi", "ừ") KHÔNG BAO GIỜ là các nút này — bấm nhầm là mất phần công dân vừa điền → dùng confirm.
-  Quy tắc trên CHỈ cho nút làm lại / xoá. NÚT ĐI TIẾP ("Xong, sang bước…", "Bước tiếp theo") mà trợ lý vừa mời
-  công dân kiểm tra thông tin rồi bấm: câu "đúng rồi", "thông tin đã đúng", "đúng hết rồi", "ok sang đi" là
-  chọn nút đi tiếp đó (button).
-
-- procedure: người dân muốn LÀM hoặc ĐỔI SANG một thủ tục hành chính (nêu tên hoặc mô tả thủ tục,
-  kể cả nói tắt, sai chính tả) → value = "" (một agent khác sẽ xác định đúng thủ tục). Chỉ dùng
-  khi câu thể hiện MUỐN LÀM thủ tục; hỏi thông tin về thủ tục → ask_question.
-- pick_doc_method: khi người dân CHỌN hoặc ĐỔI cách cung cấp giấy tờ — kể cả đang ở bước chụp/quét QR
-  mà muốn ĐỔI sang cách kia (vd đang QR nói "scan đi", đang scan nói "chụp bằng điện thoại") →
-  value là MỘT trong:{doc_methods}
-  CHÚ Ý QUAN TRỌNG: "chụp"/"chụp ảnh"/"chụp bằng điện thoại"/"dùng điện thoại" LUÔN là "qr"
-  (KHÔNG phải "scan" — dù chữ "chụp" nghĩa gần "quét"). "scan"/"tải tệp"/"chọn file" mới là "scan".
-- state_action: hành động của bước hiện tại → value là MỘT trong:{state_actions}
-  Tại bước collecting_docs/filling/reviewing/attaching: câu chỉ nói "đính kèm đi", "chuyển qua
-  đính kèm" mà CHƯA xác nhận đã rà soát form → request_attach; KHÔNG coi là docs_complete.
-  Chỉ dùng confirm_review khi người dân nói rõ form đã đúng/đã rà soát xong/chuẩn rồi.
-- confirm / deny: đồng ý / từ chối câu trợ lý vừa hỏi → value = "". Câu trả lời có/không mà màn
-  hình đang có NÚT tương ứng (vd "không cần chứng thực" ↔ nút "Không chứng thực") → dùng button.
-  Ở bước confirm_procedure: "không phải" rồi nêu NƠI hoặc NGƯỜI khác → state_action change_place,
-  KHÔNG phải deny; deny chỉ khi công dân không muốn làm THỦ TỤC này.
-  Ở bước consent: "đồng ý", "đồng ý tất cả", "đồng ý hết", "chọn tất cả" là ĐỒNG Ý cho xử lý dữ
-  liệu (consent_agree / nút đồng ý).
-  Trợ lý vừa HỎI LẠI cho chắc trước một việc không rút lại được (vd "Công dân chắc chắn nộp hồ sơ chứ ạ?"):
-  "có", "có nộp đi", "nộp đi", "chắc chắn", "đồng ý" → confirm; "không", "chưa", "khoan đã", "đợi chút", "để
-  xem lại", "thôi" → deny. Câu lưỡng lự / hoãn lại là deny, KHÔNG phải state_action (điền lại, thêm giấy tờ…).
-- ask_question: hỏi thông tin (lệ phí, thời gian, giấy tờ cần...) → value = câu hỏi rút gọn. Câu hỏi lại vì
-  chưa nghe rõ ("sao cơ", "gì cơ", "hả") KHÔNG phải ask_question → state_action "repeat".
-- unknown: không xếp được → value = "".
-
-Câu có thể đến từ NHẬN GIỌNG NÓI: có thể không dấu, sai chính tả, nghe nhầm âm gần giống — hiểu
-theo nghĩa gần nhất KHI câu còn đọc ra được ý (từ ba tiếng trở lên, hoặc có từ khớp rõ một nút / một việc).
-Câu chỉ MỘT HAI tiếng thì KHÔNG suy âm gần giống: phải là ĐÚNG NGUYÊN một lời đáp quen dùng mới tính; một tiếng
-chỉ na ná lời đáp (khác dấu, khác vần) là tiếng ồn → unknown.
-CÂU CỤT / KHÔNG RÕ NGHĨA: nhận giọng nói hay bắt nhầm tiếng ồn, tiếng nói chuyện xung quanh thành một vài âm
-rời không thành ý (một hai tiếng lẻ không phải lời đáp, không gắn được với nút hay bước nào). Câu như vậy → unknown,
-TUYỆT ĐỐI không đoán thành button / confirm / state_action — nút và lệnh sẽ bấm thật trên cổng (mở xem trước,
-điền lại, sang bước, nộp) hoặc xoá việc đã làm. Chỉ những lời đáp ngắn quen dùng mới là confirm / deny: "ừ", "ờ",
-"vâng", "dạ", "ok", "được", "đúng", "có" / "không", "chưa".
-
-LƯU Ý: câu có "chưa"/"không"/"chưa được" là PHỦ ĐỊNH — KHÔNG coi là hành động đã-xong
-(vd "chưa đăng nhập được" KHÔNG phải sso_success). Chỉ trả JSON, không giải thích.
-
-Câu của người dân CÓ THỂ là TIẾNG MÔNG (Hmong, chữ RPA — vd "kuv xav cuv npe yug me nyuam" =
-tôi muốn đăng ký khai sinh → procedure; "thaij duab xov tooj" = chụp bằng điện thoại → "qr";
-"pom zoo"/"yog" = đồng ý; "tsis yog"/"tsis pom zoo" = từ chối). Hiểu nghĩa rồi phân loại y như câu
-tiếng Việt."""
-
-_CLASSIFIER_HISTORY_TURNS = 4
+        proc = get_procedure(conv.get("procedure_key") or "")
+        on["hkd"] = any(e.get("only") == "hkd" for e in entries) and hkd_tro_ly.no_docs_on(conv, proc)
+        on["step_back"] = step_back.enabled(conv, proc)
+    return _GLOBAL_INTENTS + [e for e in entries if on.get(e.get("only") or "", False)]
 
 
 def _free_text_unknown() -> Intent:
@@ -406,23 +331,6 @@ def voice_buttons(conv: dict, state: str) -> list[dict]:
     return [item for item in stored.get("items") or [] if isinstance(item, dict) and item.get("send")]
 
 
-def _buttons_block(buttons: list[dict]) -> str:
-    if not buttons:
-        return '\n  (bước này không có nút nào → đừng dùng kind "button")'
-    lines = []
-    for n, b in enumerate(buttons, 1):
-        desc = f" — {b['desc']}" if b.get("desc") else ""
-        lines.append(f"    [{n}] {b.get('label') or ''}{desc}")
-    return "\n  NÚT ĐANG HIỆN:\n" + "\n".join(lines)
-
-
-def _as_index(value) -> int:
-    try:
-        return int(str(value).strip().strip("[]"))
-    except (TypeError, ValueError):
-        return 0
-
-
 def _button_intent(button: dict) -> Intent | None:
     """Nút được chọn bằng lời → đúng lệnh máy của nút đó (đi qua cùng code như khi bấm)."""
     intent = _resolve_machine(str(button.get("send") or ""))
@@ -437,52 +345,10 @@ def _button_intent(button: dict) -> Intent | None:
 
 
 async def _classify(text: str, state: str, conv: dict) -> Intent:
-    """Bộ phân loại ý định của bước đang làm (1 lượt LLM, không mang danh sách thủ tục)."""
-    buttons = voice_buttons(conv, state)
-    try:
-        raw = await llm_chat(
-            [
-                {"role": "system", "content": _LLM_SYSTEM.format(
-                    state=state, state_actions=_state_action_block(state, conv),
-                    doc_methods=_doc_method_block(), buttons=_buttons_block(buttons))},
-                *store.recent_dialogue(conv, _CLASSIFIER_HISTORY_TURNS),
-                {"role": "user", "content": text[:500]},
-            ],
-            temperature=0.0,
-            max_tokens=120,
-        )
-        m = re.search(r"\{[\s\S]*\}", raw or "")
-        data = json.loads(m.group(0)) if m else {}
-        kind = str(data.get("kind", "unknown"))
-        value = str(data.get("value", ""))
-        state_values = {e["value"] for e in _state_entries(state, conv)}
-        if kind in state_values:
-            # Model nhỏ đôi khi ghi thẳng tên hành động vào "kind" ({"kind":"confirm_review"}).
-            kind, value = "state_action", kind
+    """Câu tự do → Intent qua các lớp (cach_noi/): lớp 1 cách nói + độ chắc → kiểm → lớp 2 theo họ cổng; ≤ 2 lượt LLM."""
+    from app.channels.handfree.chat import cach_noi
 
-        if kind == "button":
-            n = _as_index(value)
-            button = buttons[n - 1] if 1 <= n <= len(buttons) else None
-            picked = _button_intent(button) if button else None
-            return picked or _free_text_unknown()
-        if kind == "procedure":
-            return Intent("procedure")
-        if kind == "pick_doc_method":
-            return Intent("pick_doc_method", value) if value in _DOC_METHODS else _free_text_unknown()
-        if kind == "state_action":
-            # Chỉ chấp nhận value có trong bảng của state — không cho bịa lệnh.
-            entry = next((e for e in _state_entries(state, conv) if e["value"] == value), None)
-            return Intent(entry["kind"], entry["value"]) if entry else _free_text_unknown()
-        if kind == "confirm":
-            return Intent("confirm")
-        if kind == "deny":
-            return Intent("deny")
-        if kind == "ask_question":
-            return Intent("ask_question", value or text)
-    except Exception as e:  # noqa: BLE001 — LLM là best-effort, flow phải sống tiếp
-        logger.warning("[intents] LLM phân loại lỗi: %s", e)
-
-    return _free_text_unknown()
+    return await cach_noi.classify(text, state, conv)
 
 
 async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
@@ -523,10 +389,24 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     # làm / đối tượng mới hỏi agent nơi làm.
     intent = await _classify(text, state, conv)
     if intent.kind == "procedure":
-        return await _pick_procedure(text, conv) or _free_text_unknown()
+        return _with_meta(await _pick_procedure(text, conv) or _free_text_unknown(), intent)
     if intent.kind == "action" and intent.value == "change_place":
-        return await _pick_place(text, conv)
+        return _with_meta(await _pick_place(text, conv), intent)
+    if intent.kind == "action" and intent.value == "new_procedure" and (intent.payload or {}).get("cach_noi") == "huy":
+        # "không, tôi muốn làm khai tử": câu bỏ thủ tục có nêu tên thủ tục mới → chọn thẳng thủ tục đó thay vì chỉ huỷ.
+        picked = await _pick_procedure(text, conv)
+        if picked is not None and picked.kind == "pick_procedure":
+            return _with_meta(picked, intent)
     return intent
+
+
+def _with_meta(picked: Intent, source: Intent) -> Intent:
+    """Agent chọn thủ tục / nơi làm là lượt LLM thứ hai: giữ nhãn cách nói của lớp 1 và cộng lượt để đo."""
+    meta = {k: v for k, v in (source.payload or {}).items() if k in ("_voice", "cach_noi", "do_chac", "y_chinh", "ms")}
+    if meta:
+        meta["llm_calls"] = int((source.payload or {}).get("llm_calls") or 0) + 1
+    picked.payload = {**meta, **(picked.payload or {})}
+    return picked
 
 
 async def _pick_place(text: str, conv: dict) -> Intent:

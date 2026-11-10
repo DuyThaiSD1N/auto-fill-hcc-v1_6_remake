@@ -5,14 +5,20 @@ Cùng eForm với đăng ký kết hôn (chỉ không có ô số nhà / tổ d�
 
 PROCEDURE_KEYS = ("ket-hon-nuoc-ngoai",)
 
-# Theo chấm đỏ của eForm sau "Xem trước". Mỗi bên: họ tên, dân tộc, loại giấy tờ, ô chọn nơi cư trú (Trong nước /
-# Khác), khối nơi cư trú trong nước, tình trạng hôn nhân. Khối trong nước chỉ hiện sau khi tích "Trong nước" — thiếu ô
-# chọn thì lúc chưa tích không còn ô bắt buộc nào ở dòng nơi cư trú, ô bị tô cam rồi cổng chặn Xem trước.
+# Theo chấm đỏ của eForm sau "Xem trước", thêm số định danh + số giấy tờ. Mỗi bên: họ tên, dân tộc, số định danh, loại
+# giấy tờ, số giấy tờ, ô chọn nơi cư trú (Trong nước / Khác), khối nơi cư trú trong nước, tình trạng hôn nhân, số lần
+# kết hôn (cổng không đánh sao nhưng tờ khai thiếu thì vô nghĩa). Khối trong nước chỉ hiện sau khi tích "Trong nước"
+# — thiếu ô chọn thì lúc chưa tích không còn ô bắt buộc nào ở dòng nơi cư trú, ô bị tô cam rồi cổng chặn Xem trước.
 REQUIRED = (
-    "HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
-    "LoaiTinhTrangHonNhan_BenNu",
-    "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam", "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc",
-    "LoaiTinhTrangHonNhan_BenNam",
+    "HoTenBenNu", "DanTocBenNu", "SoDinhDanh_BenNu", "LoaiGiayToDinhDanh_BenNu", "SoGiayToDinhDanh_BenNu",
+    "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc", "LoaiTinhTrangHonNhan_BenNu", "SoLanKetHon_BenNu",
+    "HoTenBenNam", "DanTocBenNam", "SoDinhDanh_BenNam", "LoaiGiayToDinhDanh_BenNam", "SoGiayToDinhDanh_BenNam",
+    "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam", "SoLanKetHon_BenNam",
+    # Ô con của khối chi tiết tình trạng hôn nhân (khối 5: từ ngày / đến ngày; khối 6: mô tả; ly hôn; góa): cổng không
+    # đánh sao nhưng tờ khai thiếu thì vô nghĩa. Extension chỉ đếm ô đang hiện → chỉ bắt buộc khi chọn đúng tình trạng.
+    *(name for side in ("BenNu", "BenNam")
+      for name in (f"TuNgay_{side}", f"DenNgay_{side}", f"NhapMoTaTinhTrangHonNhan_{side}", f"{side}_SoBanAn",
+                   f"{side}_NgayQD", f"{side}_CoQuanCap", f"{side}_SoBanAn1", f"{side}_NgayQD1", f"{side}_CoQuanCap1")),
 )
 
 # Yêu cầu chung của hai bên nhưng nằm dưới tiêu đề "II. Thông tin bên nam" → hỏi không kèm tên phần.

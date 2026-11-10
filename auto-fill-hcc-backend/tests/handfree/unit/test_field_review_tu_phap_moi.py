@@ -184,7 +184,7 @@ async def test_lua_chon_dai_khong_liet_ke_khong_doc_khong_hien_nut(spawned):
     await _turn(conv, "action", "field_review_start")
     reply = await _turn(conv, "event", "field_review_focus", {"field": _field(
         "citizenTinhtranghonnhan__1761724625529", "Tình trạng hôn nhân", "select", options=status), "stats": REVIEW})
-    assert "Ô **Tình trạng hôn nhân**" in reply.display_md and "Công dân nói hoặc gõ giúp tôi ạ." in reply.display_md
+    assert "Ô: **Tình trạng hôn nhân**" in reply.display_md and "Công dân nói hoặc gõ giúp tôi ạ." in reply.display_md
     assert not any(o in reply.display_md + reply.tts_text for o in status)
     assert _sends(reply) == ["__action:field_review_skip", "__action:field_review_stop"]
     # Câu trả lời vẫn được khớp vào danh sách của ô.

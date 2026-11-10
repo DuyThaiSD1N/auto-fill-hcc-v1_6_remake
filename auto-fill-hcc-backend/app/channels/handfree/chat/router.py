@@ -13,10 +13,11 @@ import unicodedata
 from collections import defaultdict
 from copy import deepcopy
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, resume, store
+from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, resume, step_back, store
+from app.channels.handfree.chat.hkd_tro_ly import to_khai as hkd_to_khai
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
 from app.archive.config import archive_settings
@@ -212,6 +213,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # supportsGuidedSteps: bản khai guided steps mà chưa có engine sẽ nhận action lạ rồi
         # im lặng, công dân ngồi chờ một cú bấm không bao giờ xảy ra.
         "supportsResultMethod": raw.get("supportsResultMethod") is True,
+        # Báo lại lời cổng nháy ở toast cảnh báo / lỗi (sự kiện portal_alert). Thiếu cờ → BE bỏ qua như cũ.
+        "supportsPortalAlert": raw.get("supportsPortalAlert") is True,
         # Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước Hình thức nhận kết quả + chọn ô receivingKind
         # (guidedSteps.capability). Extension cũ không khai → giữ câu "tự bấm Nộp hồ sơ".
         "supportsIgateResultStep": raw.get("supportsIgateResultStep") is True,
@@ -279,6 +282,7 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsHkdCheckName": raw.get("supportsHkdCheckName") is True,
         "supportsHkdPrepare": raw.get("supportsHkdPrepare") is True,
         "supportsHkdSubmit": raw.get("supportsHkdSubmit") is True,
+        "supportsHkdDeclarationDocx": raw.get("supportsHkdDeclarationDocx") is True,
         # Khôi phục hồ sơ đang làm dở khi phiên bị gián đoạn (chat/resume/).
         resume.CAPABILITY: raw.get(resume.CAPABILITY) is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.
@@ -301,6 +305,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsLizCommitSelf": raw.get("supportsLizCommitSelf") is True,
         # Báo kết quả đính kèm theo từng tệp + vẽ thẻ attach_files (chat/attach_files.py).
         "supportsAttachFileReport": raw.get("supportsAttachFileReport") is True,
+        # Wizard tư pháp: bấm nút Quay lại của cổng (guided_click_back), kiểm tờ khai khi lùi về Kê khai
+        # (step_back_scan) — chat/step_back.py.
+        step_back.CAPABILITY: raw.get(step_back.CAPABILITY) is True,
     }
 
 
@@ -413,6 +420,8 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         # theo tài khoản, giống Auto Fill.
         "tinh": str(user.get("tinh") or ""),
         "xa": str(user.get("xa") or ""),
+        # Cấp tài khoản (HCC tỉnh/xã…) — chọn nộp Sở hay UBND xã cho thủ tục khai agencyLevelByAccount.
+        "role": str(user.get("role") or ""),
     }
 
     # Giữ mỏ neo người yêu cầu trong conversation để lượt "Đã đưa đủ" chạy nền vẫn nhận được
@@ -517,6 +526,10 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             )
         if intent is None:
             intent = await intents.resolve(message, conv.get("state", "greet"), conv)
+            if (intent.payload or {}).get("cach_noi"):
+                logger.info("[cach_noi] %s state=%s nhan=%s chac=%s llm=%s ms=%s → %s:%s", conv["_id"], conv.get("state"),
+                            intent.payload.get("cach_noi"), intent.payload.get("do_chac"), intent.payload.get("llm_calls"),
+                            intent.payload.get("ms"), intent.kind, intent.value)
         reply = await flow.handle_turn(
             conv,
             intent,
@@ -702,6 +715,18 @@ async def delete_conversation(conv_id: str, reason: str = "", user: dict = Depen
         "auth_user.id": str(user.get("id") or ""),
     })
     return {"ok": True}
+
+
+@router.get("/conversations/{conv_id}/hkd-to-khai.docx")
+async def hkd_to_khai_docx(conv_id: str, user: dict = Depends(require_auth)):
+    """Tờ khai bản giấy (Mẫu số 1) của luồng hỏi đáp thành lập hộ kinh doanh không giấy tờ — dựng mỗi lần tải, không
+    lưu file."""
+    conv = await access.get_owned_conversation(conv_id, user)
+    if (conv.get("hkd") or {}).get("mode") != "khong_giay":
+        raise HTTPException(status_code=404, detail="Hội thoại này không có tờ khai hộ kinh doanh để tải.")
+    content = hkd_to_khai.to_docx(hkd_tro_ly.to_khai_data(conv))
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    headers={"Content-Disposition": 'attachment; filename="giay-de-nghi-dang-ky-ho-kinh-doanh.docx"'})
 
 
 @router.get("/conversations/{conv_id}")

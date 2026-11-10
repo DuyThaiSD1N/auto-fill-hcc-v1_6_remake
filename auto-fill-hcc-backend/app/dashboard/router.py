@@ -26,6 +26,7 @@ from app.dashboard.combine import (
     merge_daily,
     merge_procedures,
 )
+from app.dashboard import procedures as dashboard_procedures
 from app.dashboard import ratings as dashboard_ratings
 from app.dashboard.export import build_dashboard_workbook, export_filename
 from app.dashboard.scope import narrow_to_province, province_options, resolve_dashboard_scope
@@ -87,6 +88,12 @@ async def scope(user: dict = Depends(require_dashboard), province: str | None = 
     if full["scopeKind"] == "all":
         body["provinces"] = province_options(full["units"])
     return body
+
+
+@router.get("/procedures")
+async def procedures(user: dict = Depends(require_dashboard)):
+    """Danh mục thủ tục của Trợ lý (handfree): dùng chung + riêng của tỉnh tài khoản; admin xem hết."""
+    return dashboard_procedures.catalog(await resolve_dashboard_scope(user))
 
 
 @router.get("/summary")

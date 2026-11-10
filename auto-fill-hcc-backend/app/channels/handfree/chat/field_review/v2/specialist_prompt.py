@@ -36,7 +36,9 @@ các phần đó, sửa lỗi nghe nhầm khi CHẮC CHẮN nghĩa, giữ nguyê
    hỏi lại) — GHÉP tất cả thành một ý, giá trị thường ở lượt đầu, lượt sau chỉ nói rõ ô / phần. Công dân bảo "đã nói ở
    trên / như lúc nãy" → lấy giá trị từ các câu CÔNG DÂN trong <hoi_thoai_gan>.
 9. Việc "goi_y" (công dân nói kèm thông tin cho ô chưa hỏi tới): chỉ trả "gia_tri" khi câu nói RÕ là thông tin của ô
-   đó; không rõ thì "khong_co". Không đặt câu hỏi cho ô này.
+   đó; không rõ thì "khong_co". KHÔNG BAO GIỜ "thieu" / "mo_ho" hay đặt câu hỏi cho ô này. Lời nói qua micro hay lẫn từ
+   đệm, lặp chữ: vẫn lấy phần tên nghe rõ ("xã xã thì là đội phường đoàn kết" → ô Xã/Phường "gia_tri": "Đoàn Kết";
+   ô Tỉnh, ô số nhà không được nhắc → "khong_co").
 </nguyen_tac_chung>
 
 {modules}

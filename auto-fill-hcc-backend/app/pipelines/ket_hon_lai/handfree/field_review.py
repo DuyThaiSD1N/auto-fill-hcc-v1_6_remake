@@ -6,14 +6,15 @@ không đánh dấu bắt buộc nên hỏi như ô không bắt buộc) → cù
 
 PROCEDURE_KEYS = ("dang-ky-lai-ket-hon",)
 
-# Theo chấm đỏ của eForm sau "Xem trước". Mỗi bên: họ tên, dân tộc, loại giấy tờ, ô chọn nơi cư trú (Trong nước /
-# Khác), khối nơi cư trú trong nước, tình trạng hôn nhân. Khối trong nước chỉ hiện sau khi tích "Trong nước" — thiếu ô
-# chọn thì lúc chưa tích không còn ô bắt buộc nào ở dòng nơi cư trú, ô bị tô cam rồi cổng chặn Xem trước.
+# Theo chấm đỏ của eForm sau "Xem trước", thêm số định danh + số giấy tờ. Mỗi bên: họ tên, dân tộc, số định danh, loại
+# giấy tờ, số giấy tờ, ô chọn nơi cư trú (Trong nước / Khác), khối nơi cư trú trong nước, tình trạng hôn nhân. Khối
+# trong nước chỉ hiện sau khi tích "Trong nước" — thiếu ô chọn thì lúc chưa tích không còn ô bắt buộc nào ở dòng nơi cư
+# trú, ô bị tô cam rồi cổng chặn Xem trước.
 REQUIRED = (
-    "HoTenBenNu", "DanTocBenNu", "LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc",
-    "LoaiTinhTrangHonNhan_BenNu",
-    "HoTenBenNam", "DanTocBenNam", "LoaiGiayToDinhDanh_BenNam", "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc",
-    "LoaiTinhTrangHonNhan_BenNam",
+    "HoTenBenNu", "DanTocBenNu", "SoDinhDanh_BenNu", "LoaiGiayToDinhDanh_BenNu", "SoGiayToDinhDanh_BenNu",
+    "NoiCuTru_BenNu", "NoiCuTru_BenNu_TrongNuoc", "LoaiTinhTrangHonNhan_BenNu",
+    "HoTenBenNam", "DanTocBenNam", "SoDinhDanh_BenNam", "LoaiGiayToDinhDanh_BenNam", "SoGiayToDinhDanh_BenNam",
+    "NoiCuTru_BenNam", "NoiCuTru_BenNam_TrongNuoc", "LoaiTinhTrangHonNhan_BenNam",
 )
 
 # Yêu cầu chung của hai bên nhưng nằm dưới tiêu đề "II. Thông tin bên nam" → hỏi không kèm tên phần: loại đăng ký,

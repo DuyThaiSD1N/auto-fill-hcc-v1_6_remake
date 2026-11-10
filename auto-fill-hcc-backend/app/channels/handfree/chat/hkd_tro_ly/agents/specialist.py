@@ -56,6 +56,12 @@ def _slot_line(slot: dict, current: dict, text: str) -> str:
         nxt = (today.year + 1, 1) if today.month == 12 else (today.year, today.month + 1)
         lines.append(f"   hôm nay {today:%d/%m/%Y}; \"tháng sau\" = tháng {nxt[1]:02d}/{nxt[0]}; \"năm sau\" = "
                      f"{today.year + 1}")
+        heard = hoi_dap.spoken_date(text)
+        if heard:
+            # Model nhỏ tách đúng ba phần nhưng đổi chữ ra số sai (năm bị kéo theo giá trị cũ / năm nay) → đưa sẵn bản đổi
+            # tất định để đối chiếu, như dãy chữ số điện thoại; agent vẫn là bên quyết giá trị.
+            lines.append(f"   lời đọc ngày đã đổi sẵn (hệ thống đổi để đối chiếu): ngày {heard[0]:02d} · tháng "
+                         f"{heard[1]:02d} · năm {heard[2]}")
     digits = _DIGITS.get(slot.get("kind"))
     if digits:
         heard = hoi_dap.spoken_digits(text)
@@ -96,7 +102,7 @@ def parse(raw: str) -> dict[str, dict]:
     return out
 
 
-def _judge(slot: dict, result: dict, text: str, current: dict) -> tuple[Outcome | None, str]:
+def _judge(slot: dict, result: dict, text: str, current: dict, first: bool = True) -> tuple[Outcome | None, str]:
     """→ (kết quả, lỗi kiểm tra). Lỗi ≠ "" thì chưa có kết quả, agent đọc lại."""
     kind = result.get("ket_qua")
     asking = slot.get("key") == current.get("key")
@@ -108,6 +114,12 @@ def _judge(slot: dict, result: dict, text: str, current: dict) -> tuple[Outcome 
             if hoi_dap._WEBSITE.match(heard):
                 raw = heard
         value, bad = hoi_dap.check(slot["kind"], raw, text, asking, bool(slot.get("same")))
+        heard = hoi_dap.spoken_date(text) if slot.get("kind") == "date" and first else None
+        if value is not None and heard and value != "%02d/%02d/%04d" % heard:
+            # Lệch bản đổi tất định của lời đọc ngày → agent đọc lại một lần; lần đọc lại agent vẫn là bên quyết.
+            return None, (f"bạn ghi {value} nhưng lời đọc ngày đổi ra {'%02d/%02d/%04d' % heard} (năm đọc theo đúng "
+                          f"thứ tự: {' '.join(str(heard[2]))}) — đọc lại từng phần ngày / tháng / năm của CÂU VỪA NÓI, "
+                          f"không lấy phần nào từ giá trị cũ, ghi \"doc\" đủ \"= dd\", \"= mm\", \"= yyyy\"")
         if value is not None:
             return Outcome(slot, "ok", value), ""
         if bad:
@@ -153,7 +165,7 @@ async def solve(assigned: list[dict], current: dict, text: str, thread: list[str
         second = await _call(again, current, text, thread, conv, retry)
         for slot in again:
             outcome, _ = _judge(slot, second.get(slot["code"]) or second.get(slot["key"]) or {"ket_qua": "khong_co"},
-                                text, current)
+                                text, current, first=False)
             outcomes[slot["code"]] = outcome or held.get(slot["code"]) or Outcome(slot, "ask")
     result = [outcomes[s["code"]] for s in assigned]
     logger.info("[hkd.agents] chuyên môn: %s", [(o.slot.get("key"), o.kind) for o in result])

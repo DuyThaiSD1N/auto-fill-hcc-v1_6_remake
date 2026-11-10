@@ -632,8 +632,10 @@
       "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
       "needsAgencySelect": true,
-      "selectSo": true,
-      "submitCardIncludes": "Cơ quan thực hiện: Sở Y tế",
+      "agencyLevelByAccount": {
+        "xa": {"selectSo": false, "submitCardIncludes": "Cơ quan thực hiện: UBND"},
+        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Y tế"}
+      },
       "autoConfirm": true
     },
     {

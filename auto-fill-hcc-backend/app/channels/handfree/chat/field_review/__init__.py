@@ -235,7 +235,7 @@ def _stats(raw) -> dict:
 
 
 def _start_chip() -> dict:
-    return {"label": vi.FR_CHIP, "send": "__action:field_review_start", "solid": True}
+    return {"label": vi.FR_CHIP, "send": "__action:field_review_start", "solid": True, "desc": vi.FR_CHIP_DESC}
 
 
 def _preview_chip() -> dict:
@@ -633,7 +633,8 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
         head = vi.FR_HEAD if field["where"] and not same_part else vi.FR_HEAD_NO_PART
     head_md, head_tts = _say(head, lead=word, where=field["where"], where_tts=_tts(field["where"]),
                              label_tts=_tts(field["label"]))
-    kw = dict(badge="🟥 " if field["required"] else "", label=field["label"], current_md=current,
+    where_md = vi.FR_WHERE_MD.format(where=field["where"]) if field["where"] else ""
+    kw = dict(where_md=where_md, label=field["label"], current_md=current,
               head_md=head_md, head_tts=head_tts, label_tts=_tts(field["label"]))
     if field.get("province"):
         r = Reply(*_say(vi.FR_ASK_WARDS_FAILED, province=field["province"], province_tts=_tts(field["province"]),
@@ -654,7 +655,9 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
     elif options and _country_field(field):
         ask_md, ask_tts = _say(vi.FR_ASK_COUNTRY, **kw)
     else:
-        ask_md, ask_tts = _say(vi.FR_ASK, **kw)
+        how_md, how_tts = ("", "") if st.get("told_how") else _say(vi.FR_ASK_HOW)
+        st["told_how"] = True
+        ask_md, ask_tts = _say(vi.FR_ASK, how_md=how_md, how_tts=how_tts, **kw)
     r = Reply(ask_md, ask_tts)
     r.actions = [{"type": "listen_after_tts"}]
     _with_lead(r, lead, _say(vi.FR_START) if first else ("", ""))
@@ -780,9 +783,11 @@ def take_reroute() -> Intent | None:
 async def reroute(conv: dict, text: str) -> bool:
     """Câu không trả lời ô mà ra lệnh khác (vòng hỏi tờ khai lẫn vòng hỏi chủ hồ sơ): bộ phân loại ý định của bước
     hiểu ra việc thì giao việc đó cho flow (True — bên gọi dừng vòng hỏi của mình); không ra việc gì thì False."""
+    from app.channels.handfree.chat import cach_noi
+
     intent = await intents.resolve(text, conv.get("state", "greet"), conv)
-    if intent.kind in {"unknown", "procedure_unclear"}:
-        return False
+    if not cach_noi.la_lenh(intent):
+        return False   # không rõ / lời đáp trống / chưa chắc: vòng hỏi tự hỏi lại, không dừng vòng vì một câu nhiễu
     _REROUTE.set(intent)
     return True
 
@@ -961,11 +966,13 @@ async def handle(conv: dict, proc: dict | None, intent):
         return _preview_step(proc, st, intent)
     if intent.value == "field_review_start":
         st.update(running=True, current=None, skip=[], intro=True, visited=[], single_page=single_page(proc),
-                  asked_where="", required_first=flow_v2(conv, proc), phase_chips=[])
+                  asked_where="", required_first=flow_v2(conv, proc), phase_chips=[], told_how=False)
         for key in ("pending", "skipped_label", "back_label", "last", "optional_said", *v2.STATE_KEYS):
             st.pop(key, None)
         if v2.enabled(conv, proc):
             st["v2"] = True
+            # Bắt đầu khi đã đủ ô bắt buộc (bấm "Bổ sung ô còn thiếu") = công dân muốn điền ô không bắt buộc.
+            st["optional_go"] = not (st.get("stats") or {}).get("required")
         r = Reply()
         r.actions = [_next_action(proc, st)]
         return r

@@ -599,6 +599,127 @@
    }
   },
   {
+   "id": "RS5",
+   "state": "reviewing",
+   "procedure": "ket-hon",
+   "buttons": [
+    {
+     "label": "📝 Bổ sung các thông tin còn thiếu",
+     "send": "__action:field_review_start",
+     "desc": "sửa / chỉnh / bổ sung thông tin trên tờ khai, sửa lại tờ khai, hỏi và điền từng ô"
+    },
+    {
+     "label": "👁 Xem trước tờ khai",
+     "send": "__action:field_review_preview"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "ok sửa đi sửa thông tin giúp tôi",
+   "expect": {
+    "any": [
+     "send:__action:field_review_start"
+    ]
+   }
+  },
+  {
+   "id": "RS6",
+   "state": "reviewing",
+   "procedure": "ket-hon",
+   "buttons": [
+    {
+     "label": "📝 Bổ sung các thông tin còn thiếu",
+     "send": "__action:field_review_start",
+     "desc": "sửa / chỉnh / bổ sung thông tin trên tờ khai, sửa lại tờ khai, hỏi và điền từng ô"
+    },
+    {
+     "label": "👁 Xem trước tờ khai",
+     "send": "__action:field_review_preview"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "sửa lại tờ khai cho tôi",
+   "expect": {
+    "any": [
+     "send:__action:field_review_start"
+    ]
+   }
+  },
+  {
+   "id": "RS7",
+   "state": "reviewing",
+   "procedure": "ket-hon",
+   "buttons": [
+    {
+     "label": "📝 Bổ sung các thông tin còn thiếu",
+     "send": "__action:field_review_start",
+     "desc": "sửa / chỉnh / bổ sung thông tin trên tờ khai, sửa lại tờ khai, hỏi và điền từng ô"
+    },
+    {
+     "label": "👁 Xem trước tờ khai",
+     "send": "__action:field_review_preview"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "tên vợ bị sai, sửa giúp",
+   "expect": {
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "RS8",
+   "state": "reviewing",
+   "procedure": "ket-hon",
+   "buttons": [
+    {
+     "label": "📝 Bổ sung các thông tin còn thiếu",
+     "send": "__action:field_review_start",
+     "desc": "sửa / chỉnh / bổ sung thông tin trên tờ khai, sửa lại tờ khai, hỏi và điền từng ô"
+    },
+    {
+     "label": "👁 Xem trước tờ khai",
+     "send": "__action:field_review_preview"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "điền lại từ đầu đi",
+   "expect": {
+    "any": [
+     "send:__action:refill",
+     "action:refill"
+    ]
+   }
+  },
+  {
    "id": "KQ1",
    "state": "done",
    "procedure": "chung-thuc-ban-sao",

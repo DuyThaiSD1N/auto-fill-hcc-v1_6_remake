@@ -351,6 +351,44 @@ def test_hkd_nut_trang_khoi_du_lieu_khong_bi_tinh_la_nop():
     assert _matches(_HKD_HOST, "/HkdOnline/Forms/APP/ConfirmPrepare.aspx", element_id="ctl00_C_BtnSave")
 
 
+# ── Bắc Ninh: nộp xong chuyển sang trang chi tiết hồ sơ đã nộp, không có câu "thành công" ────
+_BN_HOST = "dichvucong.bacninh.gov.vn"
+
+
+def _bn_success(path: str, text: str) -> bool:
+    rule = PORTAL_SUBMIT[_BN_HOST]
+    page = _fold_like_extension(text)
+    return bool(re.search(rule["urlPattern"], path)) and any(
+        all(p in page for p in group) for group in rule["successText"])
+
+
+def test_bac_ninh_nhan_trang_ho_so_da_nop():
+    """Nhãn trang chi tiết sau khi bấm Nộp hồ sơ (ảnh quầy, giá trị thay bằng số giả)."""
+    text = ("Thông tin chi tiết Trực tuyến Tên thủ tục hành chính: 0.000000 - Thủ tục A "
+            "Mã hồ sơ: H00.00.00.00-000000-0000 Mã biên nhận: H00.00.00.00-000000-0000 "
+            "Ngày nộp hồ sơ: 01/01/2000 00:00:00 Loại tài khoản: Công dân Ngày hẹn trả:")
+    assert _bn_success("/web/guest/ho-so-da-nop", text)
+
+
+def test_bac_ninh_trang_dien_don_khong_bi_tinh_la_da_nop():
+    path = _SNAPSHOT_DIR / "kt bắc ninh" / "kt bắc ninh.html"
+    if not path.exists():
+        pytest.skip("thiếu snapshot màn cuối Bắc Ninh")
+    raw = re.sub(r"<script.*?</script>|<style.*?</style>", "", path.read_text(encoding="utf-8", errors="ignore"),
+                 flags=re.S)
+    assert not _bn_success("/web/guest/eform", re.sub(r"<[^>]+>", " ", raw))
+
+
+def test_bac_ninh_chi_tin_trang_da_nop_khi_da_bat_cu_bam():
+    """Trang ho-so-da-nop cũng là màn xem hồ sơ cũ → BE phải chờ cú bấm nút nộp."""
+    from app.procedures.portal_submit import needs_submit_click
+
+    assert needs_submit_click([_BN_HOST])
+    assert not needs_submit_click(["dichvucongnganhtuphap.moj.gov.vn", _HKD_HOST])
+    assert not _matches(_BN_HOST, "/web/guest/ho-so-da-nop", label="Hồ sơ đã nộp")
+    assert _matches(_BN_HOST, "/web/guest/eform", element_id="_org_bn_hoso_noptructuyen_nopTrucTuyen")
+
+
 # ── Cổng DVC quốc gia, trang nộp một trang (/nop-ho-so) của các thủ tục hộ tịch mới ──────────
 _DVCQG_HOST = "dichvucong.gov.vn"
 _DVCQG_NEW_DIR = pathlib.Path(__file__).resolve().parents[3] / "html mới"

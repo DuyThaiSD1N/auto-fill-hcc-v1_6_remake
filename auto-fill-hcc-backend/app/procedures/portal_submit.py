@@ -108,10 +108,16 @@ PORTAL_SUBMIT: dict[str, dict] = {
     },
     # Bắc Ninh (Liferay portlet). Cả 4 tab nằm sẵn trong DOM, chỉ ẩn/hiện — nhưng ta bắt CLICK
     # nên tab ẩn không bấm được, không cần gác thêm bước.
+    # Nộp xong cổng chuyển sang trang chi tiết /web/guest/ho-so-da-nop: không có câu "nộp hồ sơ thành
+    # công", chỉ có Mã hồ sơ / Mã biên nhận / Ngày nộp hồ sơ / Ngày hẹn trả → urlPattern mở thêm trang đó
+    # để successText dò được. Trang này cũng là màn xem chi tiết hồ sơ CŨ (menu "Hồ sơ đã nộp") nên chữ
+    # trên trang không chứng minh vừa nộp: needsSubmitClick buộc BE chỉ tin khi đã bắt được cú bấm nút nộp.
     "dichvucong.bacninh.gov.vn": {
-        "urlPattern": r"^/web/guest/eform$",
+        "urlPattern": r"^/web/guest/(?:eform|ho-so-da-nop)$",
         "buttonIds": ["_org_bn_hoso_noptructuyen_nopTrucTuyen"],
         "buttonText": ["nop ho so"],
+        "successText": [["ma bien nhan", "ngay nop ho so"]],
+        "needsSubmitClick": True,
     },
     # Đăng ký hộ kinh doanh (HkdOnline, ASP.NET WebForms). Mỗi bước là MỘT trang .aspx riêng
     # nên pathname đủ khoá bước cuối: ConfirmPrepare.aspx chỉ xuất hiện ở màn xác nhận nộp.
@@ -184,5 +190,7 @@ def portal_submit_rules() -> dict[str, dict]:
 
 def needs_submit_click(hosts) -> bool:
     """Cổng Form.io dựng sẵn panel bước 4 ("Nộp hồ sơ thành công", đang ẩn) ngay từ bước đầu → chữ thành công
-    dò được trong DOM KHÔNG chứng minh đã nộp; chỉ tin khi đã bắt được cú bấm nút nộp."""
-    return any(PORTAL_SUBMIT.get(str(h or "").lower()) is _FORMIO for h in hosts or ())
+    dò được trong DOM KHÔNG chứng minh đã nộp; chỉ tin khi đã bắt được cú bấm nút nộp. Cổng khai needsSubmitClick
+    (màn kết quả trùng màn xem hồ sơ cũ) cũng vậy."""
+    rules = [PORTAL_SUBMIT.get(str(h or "").lower()) for h in hosts or ()]
+    return any(rule is _FORMIO or (rule or {}).get("needsSubmitClick") for rule in rules)

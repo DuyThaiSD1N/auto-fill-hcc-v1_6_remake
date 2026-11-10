@@ -45,6 +45,7 @@ class Nganh:
 class KetQua:
     nganh: list[Nganh] = field(default_factory=list)
     chinh: str = ""
+    bo: list[str] = field(default_factory=list)  # mã người dân nói rõ bỏ — chỉ các mã này được rời danh sách
     hoi_lai: str = ""
     error: str = ""
     steps: list[dict] = field(default_factory=list)
@@ -161,6 +162,8 @@ def _clean(data: dict, viewed: set[str]) -> KetQua:
     chinh = re.sub(r"\D", "", str(data.get("chinh") or ""))
     sure = [n.ma[0] for n in out.nganh if n.chac]
     out.chinh = chinh if chinh in sure else ""  # ngành chính chỉ khi người dân nói rõ — không tự chọn
+    out.bo = [c for c in (re.sub(r"\D", "", str(x)) for x in (data.get("bo") or [])
+                          if isinstance(data.get("bo"), list)) if c]
     return out
 
 
@@ -172,11 +175,12 @@ def _current_text(current: list[dict] | None) -> str:
     return "\n" + "\n".join(rows) if rows else "(trống)"
 
 
-async def tra_cuu(text: str, current: list[dict] | None = None) -> KetQua:
-    """Lời người dân kể ngành nghề (+ danh sách đang có) → danh sách ngành sau khi cập nhật."""
+async def tra_cuu(text: str, current: list[dict] | None = None, history: str = "") -> KetQua:
+    """Lời người dân kể ngành nghề (+ danh sách đang có, hội thoại gần) → danh sách ngành sau khi cập nhật."""
     messages = [
         {"role": "system", "content": prompt.SYSTEM.format(catalog=_catalog_text())},
-        {"role": "user", "content": prompt.USER.format(current=_current_text(current), text=str(text or "")[:600])},
+        {"role": "user", "content": prompt.USER.format(history=history or "(chưa có)", current=_current_text(current),
+                                                       text=str(text or "")[:600])},
     ]
     # Mã của danh sách đang có đã được kiểm ở lượt trước → giữ "chắc" khi model giữ nguyên dòng đó.
     viewed: set[str] = {r["ma"][0] for r in current or [] if r.get("chac") and r.get("ma")}

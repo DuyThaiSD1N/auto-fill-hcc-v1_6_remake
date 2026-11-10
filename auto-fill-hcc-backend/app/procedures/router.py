@@ -13,6 +13,7 @@ from app.procedures.ke_khai_links import (
     with_province_only,
 )
 from app.form_snapshots.step_rules import portal_step_rules
+from app.procedures.agency_level import with_agency_level
 from app.procedures.portal_submit import portal_submit_rules
 from app.procedures.registry import public_list
 
@@ -57,8 +58,11 @@ async def procedures(user: dict = Depends(require_auth)):
 # thủ tục riêng của tỉnh theo tài khoản như /procedures; extension nạp lại sau khi đăng nhập.
 @router.get("/procedures/ke-khai-links")
 async def ke_khai_links(user: dict | None = Depends(_optional_user)):
+    # Thủ tục "Sở hoặc UBND xã" (agencyLevelByAccount): trải sẵn nhánh theo tài khoản vào selectSo /
+    # submitCardIncludes cho Auto Fill bản cũ chỉ đọc các trường đó; bản mới tự chọn lại theo xã đang chọn trên popup.
     if user is None:
-        return {"links": KE_KHAI_LINKS}
+        return {"links": [with_agency_level(link, "", "") for link in KE_KHAI_LINKS]}
     by_key = {str(p.get("key") or ""): p for p in public_list()}
     links = with_province_only(KE_KHAI_LINKS, lambda link: link_province_slugs(link, by_key))
+    links = [with_agency_level(link, user.get("role"), user.get("xa")) for link in links]
     return {"links": visible_in_province(links, account_province_slug(user))}

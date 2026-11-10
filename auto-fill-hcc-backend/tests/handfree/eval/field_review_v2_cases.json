@@ -1668,6 +1668,84 @@
      "bo_qua"
     ]
    }
+  },
+  {
+   "id": "G05",
+   "form": "ket_hon_cum",
+   "current": "DanTocBenNu",
+   "options": {
+    "DanTocBenNu": [
+     "Kinh",
+     "Tày",
+     "Thái",
+     "Mường",
+     "H'Mông",
+     "Dao"
+    ]
+   },
+   "history": [
+    {
+     "role": "bot",
+     "text": "Đầu tiên là Ô: Dân tộc (Bên nữ). Công dân nói hoặc gõ giúp tôi ạ."
+    }
+   ],
+   "text": "dân tộc kinh xã xã thì là đội phường đoàn kết",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "DanTocBenNu"
+    ],
+    "values": {
+     "DanTocBenNu": "Kinh",
+     "NoiCuTru_BenNu_TrongNuoc#xa": "Đoàn Kết"
+    }
+   },
+   "_ghi_chu": "nói gộp ô danh sách chưa mở: ô Xã/Phường phải được gợi ý giá trị, không hỏi lại"
+  },
+  {
+   "id": "U04",
+   "form": "ket_hon_cum",
+   "current": "NoiCuTru_BenNu_TrongNuoc#xa",
+   "fill": {
+    "DanTocBenNu": "Kinh"
+   },
+   "options": {
+    "NoiCuTru_BenNu_TrongNuoc#xa": [
+     "Phường Đoàn Kết",
+     "Phường Tân Phong",
+     "Phường Quyết Thắng",
+     "Xã Mường So",
+     "Xã Khun Há"
+    ]
+   },
+   "history": [
+    {
+     "role": "bot",
+     "text": "Đầu tiên là Ô: Dân tộc (Bên nữ). Công dân nói hoặc gõ giúp tôi ạ."
+    },
+    {
+     "role": "user",
+     "text": "dân tộc kinh xã xã thì là đội phường đoàn kết"
+    },
+    {
+     "role": "bot",
+     "text": "✓ Đã điền Dân tộc · Bên nữ: Kinh\n\nTiếp theo đến Ô: Phường/Xã (Nơi cư trú của vợ)"
+    }
+   ],
+   "text": "ở trên rồi đó",
+   "expect": {
+    "quyet_dinh": [
+     "chuyen_mon"
+    ],
+    "o": [
+     "NoiCuTru_BenNu_TrongNuoc#xa"
+    ],
+    "values": {
+     "NoiCuTru_BenNu_TrongNuoc#xa": "Phường Đoàn Kết"
+    }
+   }
   }
  ]
 }

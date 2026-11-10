@@ -58,7 +58,8 @@ async def _run(data: dict, case: dict, vocabulary: str) -> tuple[bool, str, floa
         outcomes = await specialist.solve(assigned, case["text"], conv, st)
         got = {o.field["key"]: (o.checked.value if o.kind == "ok" else "ask" if o.kind == "ask" else "none")
                for o in outcomes}
-        detail += " " + json.dumps(got, ensure_ascii=False)
+        unsure = [o.field["key"] for o in outcomes if o.kind == "ok" and o.confirm]
+        detail += " " + json.dumps(got, ensure_ascii=False) + (f" · chưa chắc (đọc lại): {unsure}" if unsure else "")
         from app.channels.handfree.chat.field_review.v2 import _match_option
         for key, want in exp["values"].items():
             # Ô tỉnh / xã: "Xã Tam Hợp" và "Tam Hợp" khớp cùng một dòng danh sách lúc điền.

@@ -182,7 +182,7 @@ async def test_xac_nhan_bang_loi_noi_va_noi_sai_thi_hoi_lai_o_do(llm):
 
 # ── Nhiều ô một câu ──
 
-async def test_sua_nhieu_o_mot_cau_mot_luot_chuyen_mon_roi_dien_lan_luot(llm):
+async def test_sua_nhieu_o_mot_cau_mot_luot_chuyen_mon_chac_chan_thi_dien_luon_lan_luot(llm):
     conv = _conv()
     await _start(conv, field=ISSUE, catalog=[NAME, BIRTH, ISSUE])
     name, birth = _code(conv, "HoTenBenNam"), _code(conv, "NgaySinhBenNam")
@@ -191,9 +191,8 @@ async def test_sua_nhieu_o_mot_cau_mot_luot_chuyen_mon_roi_dien_lan_luot(llm):
               {"ma": birth, "ket_qua": "gia_tri", "gia_tri": "03/04/2000"})
     reply = await _say(conv, "sửa tên thành nguyễn văn bình với ngày sinh thành ba tháng tư năm hai nghìn")
     assert len(llm.user_prompts("field_review_specialist")) == 1  # một lượt cho cả hai ô
-    assert "NGUYỄN VĂN BÌNH" in reply.display_md and "03/04/2000" in reply.display_md
-    first = await _turn(conv, "action", "field_review_v2_yes")
-    assert _next(first)["apply"]["key"] == "HoTenBenNam" and _next(first)["focus"] == "NgaySinhBenNam"
+    assert not conv["field_review"].get("confirm")  # agent chắc chắn → không đọc lại chờ xác nhận
+    assert _next(reply)["apply"]["key"] == "HoTenBenNam" and _next(reply)["focus"] == "NgaySinhBenNam"
     second = await _turn(conv, "event", "field_review_focus",
                          {"applied": {"key": "HoTenBenNam", "ok": True}, "field": BIRTH, "stats": STATS})
     assert _next(second)["apply"]["key"] == "NgaySinhBenNam" and _next(second)["focus"] == "NgayCapBenNam"
@@ -324,9 +323,9 @@ async def test_dieu_phoi_loi_thi_lui_ve_luong_cu(monkeypatch):
 
 # ── Ngữ cảnh đưa cho agent điều phối ──
 
-async def test_ngu_canh_co_ban_do_to_khai_tu_vung_va_5_luot_hoi_thoai(llm):
+async def test_ngu_canh_co_ban_do_to_khai_tu_vung_va_10_luot_hoi_thoai(llm):
     conv = _conv()
-    for i in range(7):
+    for i in range(12):
         store.push_history(conv, "bot", f"câu hỏi {i}")
         store.push_history(conv, "user", f"trả lời {i}")
     await _start(conv, field=ISSUE, catalog=[NAME, BIRTH, ISSUE])
@@ -335,7 +334,7 @@ async def test_ngu_canh_co_ban_do_to_khai_tu_vung_va_5_luot_hoi_thoai(llm):
     prompt = llm.user_prompts("field_review_coordinator")[0]
     assert "## Bên nam" in prompt and "o1 · Họ, chữ đệm, tên · chữ · NGUYEN VAN A" in prompt
     assert "chú rể" in prompt  # từ vựng của thủ tục kết hôn
-    assert "trả lời 6" in prompt and "trả lời 1" not in prompt  # đúng 5 lượt gần nhất
+    assert "trả lời 11" in prompt and "trả lời 6" in prompt and "trả lời 0" not in prompt  # 10 lượt gần nhất (trước: 5)
     assert "<cau_moi>ô nào cơ</cau_moi>" in prompt
 
 
@@ -425,6 +424,44 @@ async def test_noi_truoc_thong_tin_o_sau_thi_toi_o_do_goi_y_va_dung_roi_la_dien(
     assert _next(yes)["apply"] == {"key": "NoiCapBenNam", "value": CCCD_ISSUER}
 
 
+WARD = {"key": "NoiCuTru_BenNu_TrongNuoc#xa", "name": "NoiCuTru_BenNu_TrongNuoc#xa", "role": "xa", "kind": "select",
+        "label": "Phường/Xã:", "group": "Nơi cư trú", "section": "III. Thông tin bên nữ", "required": True, "options": []}
+ETHNIC_F = {**ETHNIC, "key": "DanTocBenNu", "name": "DanTocBenNu", "section": "III. Thông tin bên nữ",
+            "options": ["Kinh", "Tày", "Thái"]}
+
+
+async def test_noi_kem_phuong_xa_khi_hoi_o_khac_thi_toi_o_danh_sach_do_goi_y_roi_khop_danh_sach_that(llm):
+    conv = _conv()
+    await _start(conv, field=ETHNIC_F, catalog=[NAME, ETHNIC_F, WARD])
+    ethnic, ward = _code(conv, "DanTocBenNu"), _code(conv, "NoiCuTru_BenNu_TrongNuoc#xa")
+    llm.plan("chuyen_mon", o=[{"ma": ethnic, "viec": "tra_loi"}], o_goi_y=[ward])
+    llm.value({"ma": ethnic, "ket_qua": "gia_tri", "gia_tri": "Kinh", "lua_chon": 1},
+              {"ma": ward, "ket_qua": "gia_tri", "gia_tri": "Phường Đoàn Kết", "lua_chon": 0})
+    reply = await _say(conv, "dân tộc kinh xã xã thì là đội phường đoàn kết")
+    assert ward in llm.user_prompts("field_review_specialist")[-1], "ô danh sách chưa mở vẫn được giao việc gợi ý"
+    assert _next(reply)["apply"] == {"key": "DanTocBenNu", "value": "Kinh"}
+    asked = await _turn(conv, "event", "field_review_focus",
+                        {"applied": {"key": "DanTocBenNu", "ok": True}, "field": WARD, "stats": STATS})
+    assert "Phường Đoàn Kết" in asked.display_md and "đúng không" in asked.display_md
+    yes = await _turn(conv, "action", "field_review_v2_yes")
+    assert _next(yes)["focus"] == "NoiCuTru_BenNu_TrongNuoc#xa" and "apply" not in _next(yes)  # mở danh sách rồi mới khớp
+    opened = await _turn(conv, "event", "field_review_focus",
+                         {"field": {**WARD, "options": ["Phường Đoàn Kết", "Phường Tân Phong"]}, "stats": STATS})
+    assert _next(opened)["apply"] == {"key": "NoiCuTru_BenNu_TrongNuoc#xa", "value": "Phường Đoàn Kết"}
+
+
+async def test_o_danh_sach_mo_ra_ma_trong_thi_noi_ro_khong_lap_cau_hoi(llm):
+    conv = _conv()
+    await _start(conv, field=ETHNIC_F, catalog=[NAME, ETHNIC_F, WARD])
+    ward = _code(conv, "NoiCuTru_BenNu_TrongNuoc#xa")
+    llm.plan("chuyen_mon", o=[{"ma": ward, "viec": "tra_loi"}])
+    llm.value({"ma": ward, "ket_qua": "gia_tri", "gia_tri": "Phường Đoàn Kết", "lua_chon": 0})
+    await _say(conv, "phường đoàn kết")
+    opened = await _turn(conv, "event", "field_review_focus", {"field": {**WARD, "options": []}, "stats": STATS})
+    assert "chưa tải được" in opened.display_md and "Phường Đoàn Kết" in opened.display_md
+    assert any(c["send"] == "__action:field_review_skip" for c in opened.chips)
+
+
 async def test_tra_loi_tung_mau_khi_tro_ly_hoi_lai_thi_ghep_ca_mach(llm):
     conv = _conv()
     await _start(conv, field=ISSUE, catalog=[NAME, BIRTH, ISSUE])
@@ -485,18 +522,35 @@ MARRIAGE = _nu("LoaiTinhTrangHonNhan_BenNu", "Tình trạng hôn nhân:", kind="
 ID_CARD = [ID_NO, DOC_KIND, DOC_NO, DOC_DATE, DOC_BY]
 
 
-def test_thu_tu_hoi_xong_ca_cum_roi_moi_sang_cum_sau():
+def test_thu_tu_hoi_o_bat_buoc_truoc_o_khong_bat_buoc_de_sau():
     cfg = field_review.config({"key": PROC})
     catalog = [field_review._field(f) for f in [*ID_CARD, SCOPE, MARRIAGE]]
     st = {"required_first": True}
-    # Cụm đầu tiên còn ô bắt buộc là giấy tờ → hỏi từ ô đầu cụm (số định danh, không bắt buộc) chứ không nhảy qua.
-    assert v2.groups.next_key(catalog, cfg, st) == "SoDinhDanh_BenNu"
+    # Còn ô bắt buộc: bỏ qua ô không bắt buộc đầu cụm (số định danh), hỏi ô bắt buộc đầu tiên.
+    assert v2.groups.next_key(catalog, cfg, st) == "LoaiGiayToDinhDanh_BenNu"
     st["group_anchor"] = v2.groups.group_id(catalog[1], cfg["groups"])
-    # Đang dở cụm giấy tờ: hỏi tiếp số giấy, ngày cấp… trước ô bắt buộc nơi cư trú.
-    assert v2.groups.next_key(catalog, cfg, st, ("SoDinhDanh_BenNu", "LoaiGiayToDinhDanh_BenNu")) == \
-        "SoGiayToDinhDanh_BenNu"
-    st["skip"] = [f["key"] for f in catalog[:5]]
-    assert v2.groups.next_key(catalog, cfg, st) == "NoiCuTru_BenNu"
+    # Đang dở cụm giấy tờ nhưng các ô còn lại của cụm không bắt buộc → sang ô bắt buộc kế tiếp.
+    assert v2.groups.next_key(catalog, cfg, st, ("LoaiGiayToDinhDanh_BenNu",)) == "NoiCuTru_BenNu"
+    # Hết ô bắt buộc: tới ô không bắt buộc, vẫn hỏi nốt cụm đang dở.
+    assert v2.groups.next_key(catalog, cfg, st, ("LoaiGiayToDinhDanh_BenNu", "NoiCuTru_BenNu",
+                                                  "LoaiTinhTrangHonNhan_BenNu")) == "SoDinhDanh_BenNu"
+
+
+async def test_du_o_bat_buoc_thi_dung_hoi_bao_con_o_khong_bat_buoc_kem_nut_di_tiep(llm):
+    conv = _conv()
+    done = [ID_NO, {**DOC_KIND, "value": "Căn cước"}, DOC_NO, DOC_DATE, DOC_BY, {**MARRIAGE, "value": "Chưa kết hôn"}]
+    await _start(conv, field=ID_NO, catalog=done)
+    stats = {"filled": 30, "required": 0, "optional": 4}
+    reply = await _turn(conv, "event", "field_review_focus", {"field": DOC_NO, "stats": stats})
+    assert any(a.get("type") == "field_review_stop" for a in reply.actions)
+    assert conv["field_review"]["running"] is False
+    assert any(c.get("send") == "__action:field_review_start" for c in reply.chips)  # bổ sung ô không bắt buộc
+    start = await _turn(conv, "action", "field_review_start")
+    assert conv["field_review"]["optional_go"] is True
+    asked = await _turn(conv, "event", "field_review_focus", {"field": DOC_NO, "stats": stats})
+    if not asked.display_md:
+        asked = await _turn(conv, "event", "field_review_focus", {"field": DOC_NO, "stats": stats})
+    assert "Số" in asked.display_md and conv["field_review"]["current"]["key"] == "SoGiayToDinhDanh_BenNu"
 
 
 async def test_hoi_tung_o_nhung_dieu_phoi_biet_ca_cum_de_dien_khi_cong_dan_noi_gop(llm):
@@ -511,7 +565,7 @@ async def test_hoi_tung_o_nhung_dieu_phoi_biet_ca_cum_de_dien_khi_cong_dan_noi_g
     assert 'thuộc CỤM "Giấy tờ tùy thân"' in prompt and "Cơ quan cấp" in prompt
 
 
-async def test_tra_loi_cum_mot_cau_xac_nhan_mot_lan_roi_dien_lan_luot(llm):
+async def test_tra_loi_cum_mot_cau_chac_chan_thi_dien_luon_lan_luot(llm):
     conv = _conv()
     await _start(conv, field=ID_NO, catalog=[*ID_CARD, MARRIAGE])
     no, doc_no, date = (_code(conv, k) for k in ("SoDinhDanh_BenNu", "SoGiayToDinhDanh_BenNu", "NgayCapDD_BenNu"))
@@ -523,9 +577,8 @@ async def test_tra_loi_cum_mot_cau_xac_nhan_mot_lan_roi_dien_lan_luot(llm):
     reply = await _say(conv, "căn cước số không không một không chín năm không không không không không một "
                              "cấp ngày hai tháng bảy năm hai không hai mốt")
     assert len(llm.user_prompts("field_review_coordinator")) == 1  # câu không nêu tên ô vẫn trong cụm → không quyết lại
-    assert "Tôi nghe là" in reply.display_md and reply.display_md.count("001095000001") == 2
-    yes = await _turn(conv, "action", "field_review_v2_yes")
-    assert _next(yes)["apply"]["key"] == "SoDinhDanh_BenNu" and _next(yes)["focus"] == "SoGiayToDinhDanh_BenNu"
+    assert "Tôi nghe là" not in reply.display_md and not conv["field_review"].get("confirm")
+    assert _next(reply)["apply"]["key"] == "SoDinhDanh_BenNu" and _next(reply)["focus"] == "SoGiayToDinhDanh_BenNu"
 
 
 async def test_khong_neu_ten_ma_ghi_de_o_da_co_gia_tri_ngoai_cum_thi_dieu_phoi_quyet_lai(llm):
@@ -537,7 +590,7 @@ async def test_khong_neu_ten_ma_ghi_de_o_da_co_gia_tri_ngoai_cum_thi_dieu_phoi_q
     assert "ĐÃ CÓ giá trị" in llm.user_prompts("field_review_coordinator")[-1]
 
 
-async def test_khong_neu_ten_ma_dien_o_trong_ngoai_cum_thi_khong_quyet_lai_ma_cho_xac_nhan(llm):
+async def test_khong_neu_ten_ma_dien_o_trong_ngoai_cum_thi_khong_quyet_lai_ma_dien_luon(llm):
     conv = _conv()
     await _start(conv, field=ID_NO, catalog=[*ID_CARD, MARRIAGE])
     no, marriage = _code(conv, "SoDinhDanh_BenNu"), _code(conv, "LoaiTinhTrangHonNhan_BenNu")
@@ -546,7 +599,7 @@ async def test_khong_neu_ten_ma_dien_o_trong_ngoai_cum_thi_khong_quyet_lai_ma_ch
               {"ma": marriage, "ket_qua": "gia_tri", "gia_tri": "Chưa đăng ký kết hôn"})
     reply = await _say(conv, "không không một không chín năm không không không không không một, chưa kết hôn")
     assert len(llm.user_prompts("field_review_coordinator")) == 1
-    assert "Tôi nghe là" in reply.display_md  # hai ô → công dân xác nhận trước khi điền
+    assert _next(reply)["apply"]["key"] == "SoDinhDanh_BenNu"  # agent chắc chắn → điền luôn cả hai ô
 
 
 async def test_khong_co_ca_cum_thi_bo_qua_cac_o_dieu_phoi_neu(llm):
@@ -578,7 +631,7 @@ async def test_tich_trong_nuoc_xong_khoi_dia_chi_hien_ra_thi_chuyen_con_tro_ve_k
     assert "Đã điền" in _leads(asked)[0] and "Tỉnh/Thành phố" in asked.display_md
 
 
-async def test_noi_du_tinh_xa_dia_chi_xac_nhan_roi_dien_tung_tang(llm):
+async def test_noi_du_tinh_xa_dia_chi_chac_chan_thi_dien_luon_tung_tang(llm):
     conv = _conv()
     await _start(conv, field=PROVINCE, catalog=[PROVINCE, WARD, DETAIL, MARRIAGE])
     p, w, d = (_code(conv, f["key"]) for f in (PROVINCE, WARD, DETAIL))
@@ -589,9 +642,7 @@ async def test_noi_du_tinh_xa_dia_chi_xac_nhan_roi_dien_tung_tang(llm):
               {"ma": d, "ket_qua": "gia_tri", "gia_tri": "Xóm Long Thành"})
     asked_province = {**PROVINCE, "options": ["Tỉnh Nghệ An", "Thành phố Hà Nội"]}
     conv["field_review"]["current"]["options"] = asked_province["options"]
-    reply = await _say(conv, "xóm long thành xã tam hợp tỉnh nghệ an")
-    assert "Tỉnh Nghệ An" in reply.display_md and "Tam Hợp" in reply.display_md and "Xóm Long Thành" in reply.display_md
-    yes = await _turn(conv, "action", "field_review_v2_yes")
+    yes = await _say(conv, "xóm long thành xã tam hợp tỉnh nghệ an")
     assert _next(yes)["apply"] == {"key": f"{AREA}#tinh", "value": "Tỉnh Nghệ An"}
     assert _next(yes)["focus"] == f"{AREA}#xa"  # xã chỉ có danh sách sau khi chọn tỉnh
     ward = await _turn(conv, "event", "field_review_focus",
@@ -684,7 +735,7 @@ BIRTH_NU = _nu("NgaySinhBenNu", "Ngày, tháng, năm sinh:", kind="date")
 ETHNIC_NU = _nu("DanTocBenNu", "Dân tộc:", kind="select", required=True)
 
 
-async def test_mot_cau_co_o_nghe_duoc_va_o_chua_ro_thi_chua_dien_gi_ma_hoi_tiep_roi_gop_xac_nhan(llm):
+async def test_mot_cau_co_o_nghe_duoc_va_o_chua_ro_thi_dien_o_chac_roi_hoi_o_chua_ro(llm):
     conv = _conv()
     await _start(conv, field=BIRTH_NU, catalog=[BIRTH_NU, ETHNIC_NU, MARRIAGE])
     birth, ethnic = _code(conv, "NgaySinhBenNu"), _code(conv, "DanTocBenNu")
@@ -692,15 +743,14 @@ async def test_mot_cau_co_o_nghe_duoc_va_o_chua_ro_thi_chua_dien_gi_ma_hoi_tiep_
     llm.value({"ma": birth, "ket_qua": "mo_ho", "cau_hoi": "Công dân nói lại ngày sinh giúp tôi ạ?"},
               {"ma": ethnic, "ket_qua": "gia_tri", "gia_tri": "Kinh"})
     first = await _say(conv, "ngày sinh gì đó dân tộc kinh")
-    assert not any(a.get("type") == "field_review_next" for a in first.actions)  # chưa điền dân tộc lẻ
-    assert "Kinh" in first.display_md and "nói lại ngày sinh" in first.display_md
-    llm.plan("chuyen_mon", o=[{"ma": birth, "viec": "tra_loi"}], co_gia_tri=True)
-    llm.value({"ma": birth, "ket_qua": "gia_tri", "gia_tri": "03/05/2003"})
-    second = await _say(conv, "không ba không năm hai không không ba")
-    assert "Kinh" in second.display_md and "03/05/2003" in second.display_md and "Đúng không" in second.display_md
-    yes = await _turn(conv, "action", "field_review_v2_yes")
-    assert _next(yes)["focus"] == "DanTocBenNu" and "apply" not in _next(yes)  # ô danh sách: mở ra khớp rồi điền
-    assert [it["key"] for it in conv["field_review"]["queue"]] == ["NgaySinhBenNu"]
+    assert _next(first)["focus"] == "DanTocBenNu" and "apply" not in _next(first)  # ô danh sách: mở ra khớp rồi điền
+    ethnic_open = await _turn(conv, "event", "field_review_focus",
+                              {"field": {**ETHNIC_NU, "options": ["Kinh", "Tày"]}, "stats": STATS})
+    assert _next(ethnic_open)["apply"] == {"key": "DanTocBenNu", "value": "Kinh"}
+    assert _next(ethnic_open)["focus"] == "NgaySinhBenNu"  # điền xong ô chắc → về ô còn chưa rõ
+    asked = await _turn(conv, "event", "field_review_focus",
+                        {"applied": {"key": "DanTocBenNu", "ok": True}, "field": BIRTH_NU, "stats": STATS})
+    assert "Kinh" in _leads(asked)[0] and "nói lại ngày sinh" in asked.display_md
 
 
 async def test_dang_cho_xac_nhan_ma_noi_them_o_thi_gop_khong_bo_o_dang_cho(llm):
@@ -709,10 +759,11 @@ async def test_dang_cho_xac_nhan_ma_noi_them_o_thi_gop_khong_bo_o_dang_cho(llm):
     conv["field_review"]["current"]["options"] = ["Tỉnh Nghệ An"]
     p, w, d = (_code(conv, f["key"]) for f in (PROVINCE, WARD, DETAIL))
     llm.plan("chuyen_mon", o=[{"ma": p, "viec": "tra_loi"}, {"ma": w, "viec": "tra_loi"}], co_gia_tri=True)
-    llm.value({"ma": p, "ket_qua": "gia_tri", "lua_chon": 1}, {"ma": w, "ket_qua": "gia_tri", "gia_tri": "Tam Hợp"})
+    llm.value({"ma": p, "ket_qua": "gia_tri", "lua_chon": 1, "can_xac_nhan": True},
+              {"ma": w, "ket_qua": "gia_tri", "gia_tri": "Tam Hợp", "can_xac_nhan": True})
     await _say(conv, "xã tam hợp tỉnh nghệ an")
     llm.plan("chuyen_mon", o=[{"ma": d, "viec": "tra_loi"}], co_gia_tri=True)
-    llm.value({"ma": d, "ket_qua": "gia_tri", "gia_tri": "Xóm Long Thành"})
+    llm.value({"ma": d, "ket_qua": "gia_tri", "gia_tri": "Xóm Long Thành", "can_xac_nhan": True})
     more = await _say(conv, "xóm long thành nữa bạn ạ")
     for value in ("Tỉnh Nghệ An", "Tam Hợp", "Xóm Long Thành"):
         assert value in more.display_md
@@ -761,3 +812,20 @@ async def test_o_tich_mot_lua_chon_noi_khong_thi_de_trong_va_hoi_o_ke_tiep(llm):
     reply = await _say(conv, "không đăng ký lần đầu")
     assert "loaiDangKy" in conv["field_review"]["skip"] and "chưa rõ" not in reply.display_md
     assert _next(reply)["focus"] == "NgayCapBenNam"
+
+
+async def test_mot_cau_co_o_chac_va_o_agent_chua_chac_thi_dien_o_chac_roi_doc_lai_o_chua_chac(llm):
+    conv = _conv()
+    await _start(conv, field=ISSUE, catalog=[NAME, BIRTH, ISSUE])
+    name, birth = _code(conv, "HoTenBenNam"), _code(conv, "NgaySinhBenNam")
+    llm.plan("chuyen_mon", o=[{"ma": name, "viec": "sua"}, {"ma": birth, "viec": "sua"}])
+    llm.value({"ma": name, "ket_qua": "gia_tri", "gia_tri": "HỜ MÍ DẾNH", "can_xac_nhan": True},
+              {"ma": birth, "ket_qua": "gia_tri", "gia_tri": "03/04/2000"})
+    reply = await _say(conv, "tên là hờ mí dếnh ngày sinh ba tháng tư năm hai nghìn")
+    assert _next(reply)["apply"]["key"] == "NgaySinhBenNam" and _next(reply)["focus"] == "HoTenBenNam"
+    asked = await _turn(conv, "event", "field_review_focus",
+                        {"applied": {"key": "NgaySinhBenNam", "ok": True}, "field": NAME, "stats": STATS})
+    assert "HỜ MÍ DẾNH" in asked.display_md and "Đúng không" in asked.display_md
+    assert any(c["send"] == "__action:field_review_v2_yes" for c in asked.chips)
+    yes = await _turn(conv, "action", "field_review_v2_yes")
+    assert _next(yes)["apply"] == {"key": "HoTenBenNam", "value": "HỜ MÍ DẾNH"}

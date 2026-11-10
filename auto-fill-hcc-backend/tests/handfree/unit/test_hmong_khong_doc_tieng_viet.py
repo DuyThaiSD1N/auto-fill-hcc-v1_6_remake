@@ -69,6 +69,8 @@ _NOT_REACHABLE_IN_HMONG = {
     "PROFILE_SAVED", "LANG_OFF",
     # Nộp hồ sơ bằng lời chỉ bật ở tiếng Việt (chế độ Mông nút nộp không vào danh sách nói được).
     "VOICE_SUBMIT_CONFIRM", "VOICE_SUBMIT_CANCELLED",
+    # Bỏ điều chỉnh giấy tờ khi nói "đi tiếp" chỉ tới được từ bảng chính sách cách nói (cach_noi/policy, chỉ tiếng Việt).
+    "CN_DIEU_CHINH_HUY",
 }
 
 

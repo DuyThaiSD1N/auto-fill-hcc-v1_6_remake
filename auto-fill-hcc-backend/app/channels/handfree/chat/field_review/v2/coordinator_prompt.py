@@ -97,7 +97,8 @@ Chọn đúng MỘT:
   hay bên nữ nữa), không lặp lại đúng câu hỏi trợ lý vừa hỏi.
 - "o_goi_y": các ô còn TRỐNG NGOÀI ô / cụm đang hỏi mà câu nói có thông tin rõ ràng cho ô đó nhưng công dân KHÔNG nêu
   tên ô (nêu tên thì đã là "tra_loi"). Trợ lý sẽ gợi ý giá trị khi tới ô đó. CHỈ ghi ô có phần lời nói dành cho nó —
-  ô trống mà câu không nhắc tới thì KHÔNG ghi. Không có thì để [].
+  ô trống mà câu không nhắc tới thì KHÔNG ghi (nói kèm "phường Đoàn Kết" → chỉ ô Xã/Phường, không ghi ô Tỉnh hay Số
+  nhà). Ô danh sách (chọn trong danh sách) cũng gợi ý được. Không có thì để [].
 - Không trả lời thay agent chuyên môn: không ghi giá trị vào output.
 </nguyen_tac>
 

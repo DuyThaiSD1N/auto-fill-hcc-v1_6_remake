@@ -34,11 +34,13 @@ def _open(catalog: list[dict], skip: set) -> list[dict]:
 
 
 def next_key(catalog: list[dict], proc_config: dict | None, st: dict, done: tuple = ()) -> str:
-    """Ô nên hỏi kế tiếp theo thứ tự trên trang: đang dở cụm nào thì hỏi nốt cụm đó; hỏi ô bắt buộc trước (luồng bản 2)
-    thì tới cụm đầu tiên còn ô bắt buộc trống — hỏi cả các ô không bắt buộc của cụm đó cho liền mạch (loại giấy tờ, số,
-    ngày cấp, cơ quan cấp); hết thì ô trống đầu tiên. `done`: ô đang được điền trong cùng lệnh, coi như đã có giá trị."""
+    """Ô nên hỏi kế tiếp theo thứ tự trên trang: đang dở cụm nào thì hỏi nốt cụm đó. Hỏi ô bắt buộc trước (luồng bản 2):
+    còn ô bắt buộc trống thì CHỈ hỏi ô bắt buộc (cụm đầu tiên còn ô bắt buộc trước) — ô không bắt buộc để sau, công dân
+    tự chọn điền tiếp; hết thì ô trống đầu tiên. `done`: ô đang được điền trong cùng lệnh, coi như đã có giá trị."""
     groups = _configured(proc_config)
     pending = _open(catalog, {*(st.get("skip") or []), *done})
+    if st.get("required_first") and any(f.get("required") for f in pending):
+        pending = [f for f in pending if f.get("required")]
     if not pending:
         return ""
     anchor = st.get("group_anchor")
@@ -46,11 +48,6 @@ def next_key(catalog: list[dict], proc_config: dict | None, st: dict, done: tupl
         same = [f for f in pending if group_id(f, groups) == anchor]
         if same:
             return same[0]["key"]
-    if st.get("required_first"):
-        first_required = next((f for f in pending if f.get("required")), None)
-        if first_required:
-            gid = group_id(first_required, groups)
-            return next(f for f in pending if group_id(f, groups) == gid)["key"]
     return pending[0]["key"]
 
 

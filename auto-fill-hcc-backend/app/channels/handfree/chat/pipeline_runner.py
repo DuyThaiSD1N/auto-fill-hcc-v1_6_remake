@@ -841,6 +841,55 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         _finish_recorder(rec, error_request_id)
 
 
+async def run_hkd_attach(conv_id: str, sid: str, procedure_key: str, attach_options: dict | None = None) -> None:
+    """Thành lập hộ kinh doanh không giấy tờ: công dân gửi giấy tờ (gồm tờ khai bản giấy đã ký) để ĐÍNH KÈM — chỉ lập
+    kế hoạch đính kèm, không đọc giấy để điền. Xong → conv.attach_plan + WS ``business_ready`` (luồng hỏi đáp đính)."""
+    rec = _start_recorder("attach", conv_id, sid, procedure_key)
+    try:
+        with mon.span("pre.load"):
+            sess = await up_store.get(sid)
+            attach_fn = get_attach_pipeline(procedure_key)
+            if not sess or not attach_fn:
+                raise RuntimeError("Thiếu phiên hoặc pipeline đính kèm.")
+            raw_files, fids = _session_files_with_fids(sess)
+        if not raw_files:
+            raise RuntimeError("Phiên không còn file nào.")
+        file_items = [FileItem(**item) for item in raw_files]
+        async with mon.span("post.plan", procedure=procedure_key):
+            result = await attach_fn(file_items, attach_options or {}, session=None)
+        _note_result(rec, result)
+        conv = await conv_store.get(conv_id)
+        if not conv:
+            return
+        conv["attach_plan"] = result.get("attachments", [])
+        conv["attach_plan_fids"] = fids
+        conv["attach_errors"] = result.get("errors", [])
+        conv["pipeline_status"] = "hkd_attach_ready"
+        conv["pipeline_error"] = ""
+        if rec is not None:
+            rec.output("plan", conv["attach_plan"])
+            rec.output("extracted", result.get("extracted"))
+        with mon.span("persist.db"):
+            conv["attach_trace_request_id"] = await tracing.record_attach(
+                conv, procedure_key, get_procedure(procedure_key) or {}, raw_files, result, rec=rec)
+            await conv_store.save(conv)
+        await broadcast(sid, {"type": "business_ready", "pages": 0, "attachments": len(conv["attach_plan"])})
+        _finish_recorder(rec, conv["attach_trace_request_id"])
+        logger.info("[pipeline] HKD đính giấy tờ (%s): %d mục", conv_id, len(conv["attach_plan"]))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("[pipeline] HKD đính giấy tờ lỗi (%s)", conv_id)
+        _fail_recorder(rec, e)
+        conv = await conv_store.get(conv_id)
+        error_request_id = None
+        if conv:
+            conv["pipeline_status"] = "error"
+            conv["pipeline_error"] = str(e)[:300]
+            await conv_store.save(conv)
+            error_request_id = await tracing.record_error(conv, procedure_key, "attach", str(e), rec=rec)
+        await broadcast(sid, {"type": "pipeline_error", "message": str(e)[:200]})
+        _finish_recorder(rec, error_request_id)
+
+
 def spawn(coro) -> None:
     """Chạy nền trong event loop hiện tại (uvicorn) — flow không chờ pipeline."""
     task = asyncio.create_task(coro)

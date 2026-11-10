@@ -1,7 +1,7 @@
 """Ngữ cảnh cho hai agent của trợ lý hộ kinh doanh: bản đồ các khối và mục, mục đang hỏi, hội thoại gần."""
 from app.channels.handfree.chat import store
 
-DIALOGUE_TURNS = 5      # cặp lượt (trợ lý + công dân) đưa cho agent điều phối
+DIALOGUE_TURNS = 10     # cặp lượt (trợ lý + công dân) đưa cho agent điều phối — đủ thấy giá trị vừa đọc lại để sửa
 SPECIALIST_TURNS = 10   # agent chuyên môn: đủ xa để lấy lại giá trị công dân "đã nói ở trên"
 _STATUS = {"dang_mo": "ĐANG MỞ", "da_luu": "đã lưu", "sap_toi": "chưa tới"}
 

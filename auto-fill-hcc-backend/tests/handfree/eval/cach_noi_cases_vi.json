@@ -1,0 +1,2584 @@
+{
+ "_mo_ta": "Bộ câu đo hiểu câu nói 3 lớp (chat/cach_noi). Chạy: .venv/bin/python -m tests.handfree.eval.eval_cach_noi. Mỗi câu: state, nut (preset nút đang hiện), bot (câu trợ lý vừa nói), text, expect {cach_noi: nhãn chấp nhận, any/not: kết quả cuối (send:<lệnh nút> | <kind> | <kind>:<value>), max_calls}. Không dữ liệu thật. Tiền tố id: XN xác nhận · TC từ chối · DT đi tiếp · QL quay lại · LL làm lại · HU huỷ · KB không biết · HN hỏi ngược · NL ngoài luồng · VN vô nghĩa/tạp âm · NH nhắc lại · TT thủ tục · CG cách gửi · TL chọn đúng nút · NN câu dài nhiều ý / nhiễu.",
+ "nut": {
+  "rv": [
+   {
+    "label": "📝 Bổ sung các thông tin còn thiếu",
+    "send": "__action:field_review_start",
+    "desc": "sửa / chỉnh / bổ sung thông tin trên tờ khai, sửa lại tờ khai, hỏi và điền từng ô"
+   },
+   {
+    "label": "👁 Xem trước tờ khai",
+    "send": "__action:field_review_preview",
+    "chip": {
+     "label": "👁 Xem trước tờ khai",
+     "send": "__action:field_review_preview",
+     "cta": true
+    }
+   },
+   {
+    "label": "🔁 Điền lại thông tin",
+    "send": "__action:refill"
+   },
+   {
+    "label": "🗂️ Điều chỉnh giấy tờ",
+    "send": "__action:add_documents"
+   }
+  ],
+  "pv": [
+   {
+    "label": "Xác nhận, sang Thành phần hồ sơ →",
+    "send": "__action:field_review_confirm",
+    "chip": {
+     "label": "Xác nhận, sang Thành phần hồ sơ →",
+     "send": "__action:field_review_confirm",
+     "cta": true
+    }
+   },
+   {
+    "label": "✏️ Sửa lại tờ khai",
+    "send": "__action:field_review_preview_close",
+    "chip": {
+     "label": "✏️ Sửa lại tờ khai",
+     "send": "__action:field_review_preview_close",
+     "tone": "back"
+    }
+   }
+  ],
+  "dc": [
+   {
+    "label": "✅ Hoàn tất điều chỉnh, điền lại tờ khai",
+    "send": "__action:docs_done"
+   }
+  ],
+  "gg": [
+   {
+    "label": "✅ Đã đưa đủ giấy tờ, điền tờ khai đi",
+    "send": "__action:docs_done"
+   }
+  ],
+  "qr": [
+   {
+    "label": "📱 Mở lại màn hình điện thoại",
+    "send": "__action:reshow_qr"
+   },
+   {
+    "label": "✅ Đã đưa đủ giấy tờ, điền tờ khai đi",
+    "send": "__action:docs_done"
+   },
+   {
+    "label": "🖨️ Đổi sang Scan tại quầy",
+    "send": "__action:switch_scan"
+   }
+  ],
+  "tp": [
+   {
+    "label": "Xong, sang bước nhận kết quả →",
+    "send": "__action:guided_next",
+    "phase": "attachment",
+    "chip": {
+     "label": "Xong, sang bước nhận kết quả →",
+     "send": "__action:guided_next",
+     "cta": true
+    }
+   }
+  ],
+  "nk": [
+   {
+    "label": "Nhận kết quả bản giấy có đóng dấu",
+    "send": "__action:select_result_method:{\"index\":0}"
+   },
+   {
+    "label": "Nhận kết quả trực tuyến",
+    "send": "__action:select_result_method:{\"index\":1}"
+   },
+   {
+    "label": "Dịch vụ bưu chính công ích",
+    "send": "__action:select_result_method:{\"index\":2}"
+   }
+  ],
+  "ch": [
+   {
+    "label": "Xong, sang bước điền tờ khai →",
+    "send": "__action:field_review_owner_next",
+    "chip": {
+     "label": "Xong, sang bước điền tờ khai →",
+     "send": "__action:field_review_owner_next",
+     "cta": true
+    }
+   },
+   {
+    "label": "🔁 Điền lại thông tin chủ hồ sơ",
+    "send": "__action:retry_owner_fill"
+   }
+  ],
+  "cs": [
+   {
+    "label": "Đồng ý cho xử lý dữ liệu và tự động điền",
+    "send": "__action:consent_agree"
+   },
+   {
+    "label": "Không đồng ý, tự nhập",
+    "send": "__action:consent_decline"
+   }
+  ],
+  "xn": [
+   {
+    "label": "Đồng ý",
+    "send": "__action:goto_login"
+   },
+   {
+    "label": "Chọn thủ tục khác",
+    "send": "__action:new_procedure"
+   }
+  ],
+  "lo": [
+   {
+    "label": "🚪 Đăng xuất",
+    "send": "__action:logout_citizen"
+   },
+   {
+    "label": "📄 Nộp thêm hồ sơ",
+    "send": "__action:continue_dossiers"
+   }
+  ],
+  "dg": [
+   {
+    "label": "Rất hài lòng",
+    "send": "__action:rate:{\"level\": 5}"
+   },
+   {
+    "label": "Hài lòng",
+    "send": "__action:rate:{\"level\": 4}"
+   },
+   {
+    "label": "Bình thường",
+    "send": "__action:rate:{\"level\": 3}"
+   },
+   {
+    "label": "Chưa hài lòng",
+    "send": "__action:rate:{\"level\": 2}"
+   },
+   {
+    "label": "Không hài lòng",
+    "send": "__action:rate:{\"level\": 1}"
+   }
+  ],
+  "none": []
+ },
+ "cases": [
+  {
+   "id": "XN01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ừ",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "XN02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "Vâng ạ",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "XN03",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp. Công dân rà lại lần cuối rồi tự bấm Nộp hồ sơ.",
+   "text": "ok",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "XN04",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "ờ được rồi đấy",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "not": [
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "XN05",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp. Công dân rà soát lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "đúng rồi đấy",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "tra_loi",
+     "di_tiep"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "XN06",
+   "state": "owner_waiting_next",
+   "nut": "ch",
+   "bot": "Thông tin chủ hồ sơ đã đủ. Công dân đọc lại rồi bấm Xong, sang bước điền tờ khai.",
+   "text": "thông tin đúng hết rồi",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "tra_loi"
+    ],
+    "not": [
+     "send:__action:retry_owner_fill"
+    ]
+   }
+  },
+  {
+   "id": "XN07",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi đọc giấy tờ và tự điền không ạ?",
+   "text": "đồng ý",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "XN08",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi đọc giấy tờ không ạ?",
+   "text": "đồng ý hết, chọn tất cả đi",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "tra_loi"
+    ],
+    "any": [
+     "confirm",
+     "send:__action:consent_agree"
+    ],
+    "not": [
+     "send:__action:consent_decline"
+    ]
+   }
+  },
+  {
+   "id": "XN09",
+   "state": "confirm_procedure",
+   "nut": "xn",
+   "bot": "Công dân làm Đăng ký kết hôn tại Phường Phương Liễu, cho bản thân — đúng không ạ?",
+   "text": "đúng rồi",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan"
+    ],
+    "any": [
+     "confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "XN10",
+   "state": "confirm_procedure",
+   "nut": "xn",
+   "bot": "Công dân làm Đăng ký kết hôn tại Phường Phương Liễu — đúng không ạ?",
+   "text": "chuẩn luôn, làm đi",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "confirm",
+     "send:__action:goto_login",
+     "cach_noi:di_tiep"
+    ],
+    "not": [
+     "send:__action:new_procedure"
+    ]
+   }
+  },
+  {
+   "id": "XN11",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "xong rồi",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "di_tiep"
+    ],
+    "not": [
+     "send:__action:logout_citizen"
+    ]
+   }
+  },
+  {
+   "id": "TC01",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi đọc giấy tờ không ạ?",
+   "text": "không",
+   "expect": {
+    "cach_noi": [
+     "tu_choi"
+    ],
+    "any": [
+     "deny"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TC02",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "không đồng ý đâu, để tôi tự nhập",
+   "expect": {
+    "cach_noi": [
+     "tu_choi",
+     "tra_loi"
+    ],
+    "any": [
+     "deny",
+     "send:__action:consent_decline"
+    ],
+    "not": [
+     "send:__action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "TC03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô. Công dân kiểm tra lại giúp tôi.",
+   "text": "chưa, để tôi xem đã",
+   "expect": {
+    "cach_noi": [
+     "tu_choi"
+    ],
+    "any": [
+     "deny"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:field_review_preview"
+    ]
+   }
+  },
+  {
+   "id": "TC04",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "khoan đã",
+   "expect": {
+    "cach_noi": [
+     "tu_choi"
+    ],
+    "any": [
+     "deny"
+    ],
+    "not": [
+     "send:__action:logout_citizen"
+    ]
+   }
+  },
+  {
+   "id": "TC05",
+   "state": "confirm_procedure",
+   "nut": "xn",
+   "bot": "Công dân làm Đăng ký kết hôn — đúng không ạ?",
+   "text": "không phải",
+   "expect": {
+    "cach_noi": [
+     "tu_choi"
+    ],
+    "any": [
+     "deny"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "DT01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "chuyển sang bước tiếp theo",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi"
+    ],
+    "any": [
+     "cach_noi:di_tiep",
+     "send:__action:field_review_preview"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill",
+     "send:__action:field_review_start"
+    ]
+   }
+  },
+  {
+   "id": "DT02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "xong rồi, tiếp đi",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi",
+     "xac_nhan"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "DT03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "bước tiếp theo đi em",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "DT04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "sang thành phần hồ sơ",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "DT05",
+   "state": "collecting_docs",
+   "nut": "dc",
+   "bot": "Tôi đã mở lại danh sách giấy tờ. Xong thì bấm Hoàn tất điều chỉnh, điền lại tờ khai.",
+   "text": "chuyển sang bước",
+   "expect": {
+    "cach_noi": [
+     "di_tiep"
+    ],
+    "any": [
+     "cach_noi:di_tiep",
+     "send:__action:docs_done"
+    ],
+    "_ghi_chu": "docs_done bằng lời khi đang điều chỉnh → flow hỏi xác nhận"
+   }
+  },
+  {
+   "id": "DT06",
+   "state": "collecting_docs",
+   "nut": "gg",
+   "bot": "Công dân đặt giấy lên máy quét. Xong hết bấm Đã đưa đủ giấy tờ.",
+   "text": "đủ rồi em xử lý đi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "send:__action:docs_done",
+     "event:docs_complete",
+     "action:docs_done",
+     "cach_noi:di_tiep"
+    ]
+   }
+  },
+  {
+   "id": "DT07",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "sang bước nhận kết quả",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "send:__action:guided_next",
+     "cach_noi:di_tiep"
+    ]
+   }
+  },
+  {
+   "id": "DT08",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "ok tiếp tục",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "DT09",
+   "state": "owner_waiting_next",
+   "nut": "ch",
+   "bot": "Thông tin chủ hồ sơ đã đủ.",
+   "text": "sang bước tiếp đi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "send:__action:field_review_owner_next",
+     "cach_noi:di_tiep"
+    ],
+    "not": [
+     "send:__action:retry_owner_fill"
+    ]
+   }
+  },
+  {
+   "id": "DT10",
+   "state": "reviewing",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ.",
+   "text": "tiếp tục đi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "DT11",
+   "state": "filling",
+   "nut": "none",
+   "bot": "Em đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ.",
+   "text": "nhanh lên, sang bước tiếp đi",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "ngoai_luong",
+     "xac_nhan"
+    ],
+    "any": [
+     "cach_noi:di_tiep",
+     "cach_noi:ngoai_luong",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "DT12",
+   "state": "guide_login",
+   "nut": "none",
+   "bot": "Công dân mở app VNeID quét mã QR trên màn hình ạ.",
+   "text": "xong rồi, sang bước điền tờ khai",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "event:sso_success",
+     "cach_noi:di_tiep",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "QL01",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "quay lại bước trước",
+   "expect": {
+    "cach_noi": [
+     "quay_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "action:step_back",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "QL02",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "cho tôi về lại tờ khai sửa tí",
+   "expect": {
+    "cach_noi": [
+     "quay_lai",
+     "tra_loi",
+     "lam_lai"
+    ],
+    "any": [
+     "action:step_back",
+     "cach_noi:quay_lai",
+     "action:refill",
+     "cach_noi:lam_lai"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "QL03",
+   "state": "reviewing",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại.",
+   "text": "quay lại sửa tờ khai",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "quay_lai",
+     "lam_lai"
+    ],
+    "any": [
+     "send:__action:field_review_preview_close",
+     "cach_noi:quay_lai",
+     "action:step_back",
+     "send:__action:field_review_start",
+     "cach_noi:lam_lai"
+    ],
+    "not": [
+     "send:__action:field_review_confirm"
+    ]
+   }
+  },
+  {
+   "id": "QL04",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "lùi lại bước trước",
+   "expect": {
+    "cach_noi": [
+     "quay_lai"
+    ],
+    "any": [
+     "action:step_back",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:select_result_method:{\"index\":0}"
+    ]
+   }
+  },
+  {
+   "id": "QL05",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "quay lại",
+   "expect": {
+    "cach_noi": [
+     "quay_lai"
+    ],
+    "any": [
+     "cach_noi:quay_lai"
+    ]
+   }
+  },
+  {
+   "id": "LL01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "điền sai hết rồi, điền lại từ đầu đi",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "action:refill",
+     "send:__action:refill"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:field_review_preview"
+    ]
+   }
+  },
+  {
+   "id": "LL02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "tôi quên chưa đưa giấy khai sinh, thêm vào",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "action:add_documents",
+     "send:__action:add_documents"
+    ],
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "LL03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "chụp lại cái căn cước",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi",
+     "cach_gui"
+    ],
+    "any": [
+     "action:add_documents",
+     "send:__action:add_documents",
+     "cach_noi:lam_lai",
+     "pick_doc_method:qr"
+    ],
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "LL04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "làm lại đi",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "cach_noi:lam_lai",
+     "action:refill",
+     "send:__action:refill"
+    ],
+    "not": [
+     "send:__action:field_review_preview"
+    ]
+   }
+  },
+  {
+   "id": "LL05",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "tên vợ bị sai, sửa giúp tôi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai"
+    ],
+    "any": [
+     "send:__action:field_review_start"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "LL06",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "sửa lại tờ khai cho tôi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai",
+     "quay_lai"
+    ],
+    "any": [
+     "send:__action:field_review_start",
+     "cach_noi:lam_lai"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "LL07",
+   "state": "owner_waiting_next",
+   "nut": "ch",
+   "bot": "Thông tin chủ hồ sơ đã đủ.",
+   "text": "điền lại phần chủ hồ sơ đi",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:retry_owner_fill",
+     "action:retry_owner_fill"
+    ],
+    "not": [
+     "send:__action:field_review_owner_next"
+    ]
+   }
+  },
+  {
+   "id": "LL08",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "bổ sung thêm giấy tờ nữa",
+   "expect": {
+    "cach_noi": [
+     "lam_lai",
+     "tra_loi"
+    ],
+    "any": [
+     "action:add_documents",
+     "cach_noi:lam_lai"
+    ]
+   }
+  },
+  {
+   "id": "LL09",
+   "state": "qr_waiting",
+   "nut": "qr",
+   "bot": "Công dân mở app chụp giấy tờ ạ.",
+   "text": "cho tôi chụp lại, ảnh mờ quá",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai",
+     "cach_gui"
+    ],
+    "any": [
+     "send:__action:reshow_qr",
+     "action:reshow_qr",
+     "pick_doc_method:qr",
+     "cach_noi:lam_lai"
+    ]
+   }
+  },
+  {
+   "id": "HU01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "thôi không làm nữa",
+   "expect": {
+    "cach_noi": [
+     "huy"
+    ],
+    "any": [
+     "action:new_procedure"
+    ]
+   }
+  },
+  {
+   "id": "HU02",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "huỷ hồ sơ này đi, làm cái khác",
+   "expect": {
+    "cach_noi": [
+     "huy",
+     "thu_tuc"
+    ],
+    "any": [
+     "action:new_procedure",
+     "pick_procedure",
+     "procedure_unclear"
+    ]
+   }
+  },
+  {
+   "id": "HU03",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "thôi bỏ đi, không làm thủ tục này nữa",
+   "expect": {
+    "cach_noi": [
+     "huy",
+     "tu_choi"
+    ],
+    "any": [
+     "action:new_procedure",
+     "deny"
+    ]
+   }
+  },
+  {
+   "id": "HU04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "ừ nhưng mà thôi làm cái khác",
+   "expect": {
+    "cach_noi": [
+     "huy",
+     "thu_tuc"
+    ],
+    "any": [
+     "action:new_procedure",
+     "pick_procedure",
+     "procedure_unclear"
+    ],
+    "not": [
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "KB01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "giờ tôi phải làm gì tiếp",
+   "expect": {
+    "cach_noi": [
+     "khong_biet",
+     "hoi_nguoc"
+    ],
+    "any": [
+     "cach_noi:khong_biet",
+     "ask_question"
+    ]
+   }
+  },
+  {
+   "id": "KB02",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "tôi không biết chọn cái nào",
+   "expect": {
+    "cach_noi": [
+     "khong_biet",
+     "hoi_nguoc"
+    ],
+    "any": [
+     "cach_noi:khong_biet",
+     "ask_question"
+    ],
+    "not": [
+     "send:__action:select_result_method:{\"index\":0}"
+    ]
+   }
+  },
+  {
+   "id": "KB03",
+   "state": "ask_doc_method",
+   "nut": "none",
+   "bot": "Công dân gửi giấy tờ bằng điện thoại hay scan tại quầy ạ?",
+   "text": "chịu, không rõ",
+   "expect": {
+    "cach_noi": [
+     "khong_biet"
+    ],
+    "any": [
+     "cach_noi:khong_biet"
+    ],
+    "not": [
+     "pick_doc_method:qr",
+     "pick_doc_method:scan"
+    ]
+   }
+  },
+  {
+   "id": "KB04",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "không biết nữa",
+   "expect": {
+    "cach_noi": [
+     "khong_biet",
+     "vo_nghia"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "HN01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "kết hôn cần những giấy tờ gì",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc"
+    ],
+    "any": [
+     "ask_question"
+    ]
+   }
+  },
+  {
+   "id": "HN02",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "bao lâu thì có kết quả",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc"
+    ],
+    "any": [
+     "ask_question"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "HN03",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "đồng ý cái này để làm gì",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc"
+    ],
+    "any": [
+     "ask_question"
+    ],
+    "not": [
+     "confirm",
+     "send:__action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "HN04",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "nhận qua bưu điện có mất phí không",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc"
+    ],
+    "any": [
+     "ask_question"
+    ],
+    "not": [
+     "send:__action:select_result_method:{\"index\":2}"
+    ]
+   }
+  },
+  {
+   "id": "HN05",
+   "state": "greet",
+   "nut": "none",
+   "bot": "Công dân chọn thủ tục bên dưới ạ.",
+   "text": "lệ phí đăng ký kết hôn bao nhiêu",
+   "expect": {
+    "any": [
+     "ask_question"
+    ]
+   }
+  },
+  {
+   "id": "NL01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "hôm nay trời nóng nhỉ",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong"
+    ],
+    "any": [
+     "cach_noi:ngoai_luong"
+    ]
+   }
+  },
+  {
+   "id": "NL02",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "ngáo à",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia"
+    ],
+    "any": [
+     "cach_noi:ngoai_luong",
+     "unknown"
+    ],
+    "not": [
+     "action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "NL03",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "tổ chức chuyển giao bên thẩm định hồ sơ",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "hoi_nguoc",
+     "khong_ro"
+    ],
+    "not": [
+     "action:add_documents",
+     "action:refill"
+    ]
+   }
+  },
+  {
+   "id": "NL04",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "bạn là người hay máy đấy",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong"
+    ],
+    "any": [
+     "cach_noi:ngoai_luong"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "NL05",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "anh ơi cho em mượn cái bút",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia"
+    ],
+    "not": [
+     "confirm",
+     "deny",
+     "send:__action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "NL06",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "giá vàng hôm nay bao nhiêu",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "hoi_nguoc"
+    ],
+    "any": [
+     "cach_noi:ngoai_luong",
+     "ask_question"
+    ],
+    "_ghi_chu": "hỏi ngoài thủ tục → FAQ từ chối lịch sự"
+   }
+  },
+  {
+   "id": "VN01",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "từ khi bây giờ",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "ngoai_luong",
+     "khong_ro"
+    ],
+    "any": [
+     "unknown",
+     "cach_noi:ngoai_luong"
+    ],
+    "not": [
+     "action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "VN02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "ờ… à…",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia"
+    ],
+    "any": [
+     "unknown"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "VN03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "để để để",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia"
+    ],
+    "any": [
+     "unknown"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "VN04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "cái kia cái",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "any": [
+     "unknown"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents",
+     "send:__action:field_review_preview"
+    ]
+   }
+  },
+  {
+   "id": "VN05",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "xem",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "tra_loi"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "VN06",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "đồng",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "not": [
+     "confirm",
+     "send:__action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "VN07",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "giấy",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "not": [
+     "send:__action:select_result_method:{\"index\":0}"
+    ]
+   }
+  },
+  {
+   "id": "VN08",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "asdf qwer",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "any": [
+     "unknown"
+    ]
+   }
+  },
+  {
+   "id": "VN09",
+   "state": "collecting_docs",
+   "nut": "dc",
+   "bot": "Tôi đã mở lại danh sách giấy tờ.",
+   "text": "nó nó nó cái",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "not": [
+     "send:__action:docs_done"
+    ]
+   }
+  },
+  {
+   "id": "VN10",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "ừm",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia"
+    ],
+    "any": [
+     "unknown"
+    ],
+    "not": [
+     "send:__action:logout_citizen"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "NH01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "sao cơ",
+   "expect": {
+    "cach_noi": [
+     "nhac_lai"
+    ],
+    "any": [
+     "action:repeat"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "NH02",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "em vừa nói gì thế, không nghe rõ",
+   "expect": {
+    "cach_noi": [
+     "nhac_lai"
+    ],
+    "any": [
+     "action:repeat"
+    ],
+    "not": [
+     "confirm",
+     "deny"
+    ]
+   }
+  },
+  {
+   "id": "NH03",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "đọc lại các lựa chọn giúp tôi",
+   "expect": {
+    "cach_noi": [
+     "nhac_lai",
+     "hoi_nguoc"
+    ],
+    "any": [
+     "action:repeat",
+     "ask_question"
+    ]
+   }
+  },
+  {
+   "id": "TT01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "tôi muốn làm đăng ký khai sinh cơ",
+   "expect": {
+    "cach_noi": [
+     "thu_tuc"
+    ],
+    "any": [
+     "pick_procedure",
+     "procedure_unclear",
+     "action:new_procedure"
+    ]
+   }
+  },
+  {
+   "id": "TT02",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "làm thêm cái chứng thực bản sao",
+   "expect": {
+    "cach_noi": [
+     "thu_tuc",
+     "tra_loi",
+     "huy"
+    ],
+    "any": [
+     "pick_procedure",
+     "procedure_unclear",
+     "send:__action:continue_dossiers"
+    ]
+   }
+  },
+  {
+   "id": "TT03",
+   "state": "greet",
+   "nut": "none",
+   "bot": "Công dân chọn thủ tục bên dưới ạ.",
+   "text": "đăng ký kết hôn",
+   "expect": {
+    "any": [
+     "pick_procedure",
+     "procedure_unclear"
+    ]
+   }
+  },
+  {
+   "id": "TT04",
+   "state": "greet",
+   "nut": "none",
+   "bot": "Công dân chọn thủ tục bên dưới ạ.",
+   "text": "chào em",
+   "expect": {
+    "cach_noi": [
+     "xa_giao",
+     "ngoai_luong",
+     "vo_nghia"
+    ],
+    "not": [
+     "confirm",
+     "pick_procedure"
+    ]
+   }
+  },
+  {
+   "id": "CG01",
+   "state": "ask_doc_method",
+   "nut": "none",
+   "bot": "Công dân gửi giấy tờ bằng điện thoại hay scan tại quầy ạ?",
+   "text": "chụp bằng điện thoại",
+   "expect": {
+    "cach_noi": [
+     "cach_gui"
+    ],
+    "any": [
+     "pick_doc_method:qr"
+    ]
+   }
+  },
+  {
+   "id": "CG02",
+   "state": "ask_doc_method",
+   "nut": "none",
+   "bot": "Công dân gửi giấy tờ bằng điện thoại hay scan tại quầy ạ?",
+   "text": "scan tại quầy đi",
+   "expect": {
+    "cach_noi": [
+     "cach_gui"
+    ],
+    "any": [
+     "pick_doc_method:scan"
+    ]
+   }
+  },
+  {
+   "id": "CG03",
+   "state": "ask_doc_method",
+   "nut": "none",
+   "bot": "Công dân gửi giấy tờ bằng điện thoại hay scan tại quầy ạ?",
+   "text": "cách một",
+   "expect": {
+    "cach_noi": [
+     "cach_gui"
+    ],
+    "any": [
+     "pick_doc_method:qr"
+    ]
+   }
+  },
+  {
+   "id": "CG04",
+   "state": "qr_waiting",
+   "nut": "qr",
+   "bot": "Công dân mở app chụp giấy tờ ạ.",
+   "text": "thôi đổi sang scan đi",
+   "expect": {
+    "cach_noi": [
+     "cach_gui",
+     "tra_loi"
+    ],
+    "any": [
+     "pick_doc_method:scan",
+     "send:__action:switch_scan"
+    ]
+   }
+  },
+  {
+   "id": "CG05",
+   "state": "ask_doc_method",
+   "nut": "none",
+   "bot": "Công dân gửi giấy tờ bằng điện thoại hay scan tại quầy ạ?",
+   "text": "tôi có sẵn file trong máy rồi",
+   "expect": {
+    "cach_noi": [
+     "cach_gui"
+    ],
+    "any": [
+     "pick_doc_method:scan"
+    ]
+   }
+  },
+  {
+   "id": "TL01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "cho tôi xem trước tờ khai",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:field_review_preview"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TL02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "bổ sung các thông tin còn thiếu",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:field_review_start"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TL03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô.",
+   "text": "ok sửa đi, sửa thông tin giúp tôi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai"
+    ],
+    "any": [
+     "send:__action:field_review_start"
+    ],
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "TL04",
+   "state": "qr_waiting",
+   "nut": "qr",
+   "bot": "Công dân mở app chụp giấy tờ ạ.",
+   "text": "không quét được mã",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:reshow_qr",
+     "action:reshow_qr"
+    ]
+   }
+  },
+  {
+   "id": "TL05",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "nhận bản giấy có đóng dấu",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:select_result_method:{\"index\":0}"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TL06",
+   "state": "done",
+   "nut": "nk",
+   "bot": "Công dân chọn cách nhận kết quả ạ.",
+   "text": "gửi qua bưu điện cho tôi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:select_result_method:{\"index\":2}"
+    ]
+   }
+  },
+  {
+   "id": "TL07",
+   "state": "done",
+   "nut": "dg",
+   "bot": "Công dân đánh giá trải nghiệm hôm nay giúp tôi ạ.",
+   "text": "rất hài lòng",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:rate:{\"level\": 5}"
+    ],
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "TL08",
+   "state": "done",
+   "nut": "dg",
+   "bot": "Công dân đánh giá trải nghiệm hôm nay giúp tôi ạ.",
+   "text": "cũng bình thường thôi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:rate:{\"level\": 3}"
+    ]
+   }
+  },
+  {
+   "id": "TL09",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "nộp thêm cái nữa",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:continue_dossiers"
+    ]
+   }
+  },
+  {
+   "id": "TL10",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "thoát ra đi, xong rồi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:logout_citizen",
+     "confirm"
+    ],
+    "_ghi_chu": "router bắt 'thoát ra' tất định trước LLM khi đang hỏi đăng xuất"
+   }
+  },
+  {
+   "id": "TL11",
+   "state": "confirm_procedure",
+   "nut": "xn",
+   "bot": "Công dân làm Đăng ký kết hôn tại Phường Phương Liễu — đúng không ạ?",
+   "text": "chọn thủ tục khác",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "huy",
+     "thu_tuc"
+    ],
+    "any": [
+     "send:__action:new_procedure",
+     "action:new_procedure"
+    ]
+   }
+  },
+  {
+   "id": "TL12",
+   "state": "owner_waiting_next",
+   "nut": "ch",
+   "bot": "Thông tin chủ hồ sơ đã đủ.",
+   "text": "xong, sang bước điền tờ khai",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "send:__action:field_review_owner_next",
+     "cach_noi:di_tiep"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TL13",
+   "state": "reviewing",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại.",
+   "text": "đúng rồi, xác nhận sang thành phần hồ sơ",
+   "expect": {
+    "cach_noi": [
+     "tra_loi"
+    ],
+    "any": [
+     "send:__action:field_review_confirm"
+    ],
+    "max_calls": 1
+   }
+  },
+  {
+   "id": "TL14",
+   "state": "collecting_docs",
+   "nut": "dc",
+   "bot": "Tôi đã mở lại danh sách giấy tờ.",
+   "text": "hoàn tất điều chỉnh, điền lại tờ khai đi",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai"
+    ],
+    "any": [
+     "send:__action:docs_done",
+     "action:docs_done"
+    ]
+   }
+  },
+  {
+   "id": "NN01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "xử lý công việc không phải đi thêm đây để để để để cho người ta giá trị cho mình biết là cần phải làm gì nữa chuyển sang bước tiếp theo",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi",
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill",
+     "send:__action:field_review_start"
+    ]
+   }
+  },
+  {
+   "id": "NN02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "ờ dạ vâng là em muốn là cái tên của vợ nó sai ấy chị sửa giúp em với",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai"
+    ],
+    "any": [
+     "send:__action:field_review_start"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "NN03",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "anh ơi anh ra ngoài kia chờ em tí xong rồi sang bước tiếp theo đi",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi",
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "not": [
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "NN04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "đúng rồi mà này cần nộp thêm giấy gì nữa không",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc",
+     "xac_nhan"
+    ],
+    "any": [
+     "ask_question",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "NN05",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "xem chước tờ khai",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep"
+    ],
+    "any": [
+     "send:__action:field_review_preview",
+     "cach_noi:di_tiep"
+    ]
+   }
+  },
+  {
+   "id": "NN06",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "buoc tiep theo di",
+   "expect": {
+    "cach_noi": [
+     "di_tiep",
+     "tra_loi"
+    ],
+    "not": [
+     "send:__action:add_documents",
+     "send:__action:refill"
+    ]
+   }
+  },
+  {
+   "id": "NN07",
+   "state": "collecting_docs",
+   "nut": "dc",
+   "bot": "Tôi đã mở lại danh sách giấy tờ.",
+   "text": "ờ thôi được rồi điền lại đi em",
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "lam_lai",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:docs_done",
+     "action:docs_done",
+     "cach_noi:di_tiep",
+     "cach_noi:lam_lai",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "NN08",
+   "state": "done",
+   "nut": "none",
+   "bot": "Đã đính 11 tệp.",
+   "text": "ok à mà cho tôi hỏi bao giờ có kết quả",
+   "expect": {
+    "cach_noi": [
+     "hoi_nguoc"
+    ],
+    "any": [
+     "ask_question"
+    ],
+    "not": [
+     "action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "NN09",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý không ạ?",
+   "text": "ờ thì cũng được thôi đồng ý",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "tra_loi"
+    ],
+    "any": [
+     "confirm",
+     "send:__action:consent_agree"
+    ],
+    "not": [
+     "send:__action:consent_decline"
+    ]
+   }
+  },
+  {
+   "id": "NN10",
+   "state": "attaching",
+   "nut": "tp",
+   "bot": "Em đã đính kèm 2 tệp.",
+   "text": "này này con kia đừng có nghịch nữa",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia"
+    ],
+    "not": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "NN11",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai.",
+   "text": "điền lại đi mà không không thôi khoan để tôi xem đã",
+   "expect": {
+    "cach_noi": [
+     "tu_choi",
+     "lam_lai",
+     "khong_ro"
+    ],
+    "any": [
+     "deny",
+     "cach_noi:lam_lai",
+     "action:refill",
+     "unknown"
+    ],
+    "not": [
+     "send:__action:field_review_preview"
+    ]
+   }
+  },
+  {
+   "id": "NN12",
+   "state": "done",
+   "nut": "lo",
+   "bot": "Công dân muốn đăng xuất hay nộp thêm hồ sơ ạ?",
+   "text": "ok được rồi cảm ơn em",
+   "expect": {
+    "cach_noi": [
+     "xac_nhan",
+     "xa_giao"
+    ],
+    "not": [
+     "send:__action:logout_citizen",
+     "send:__action:continue_dossiers"
+    ]
+   }
+  },
+  {
+   "id": "BL01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "à giờ thì",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ờ thế là",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL03",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "rồi cái đó là",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ừ thì cái này nó",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL05",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "thế thì bây giờ",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL06",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "à giờ thì",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL07",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "xong rồi thì là",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL08",
+   "state": "collecting_docs",
+   "nut": "gg",
+   "bot": "Công dân đưa giấy tờ để tôi scan. Đủ rồi thì nói Đã đưa đủ giấy tờ.",
+   "text": "ờ cái đó thì",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL09",
+   "state": "collecting_docs",
+   "nut": "gg",
+   "bot": "Công dân đưa giấy tờ để tôi scan. Đủ rồi thì nói Đã đưa đủ giấy tờ.",
+   "text": "để tôi để tôi",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL10",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi xử lý dữ liệu cá nhân để điền hồ sơ không ạ?",
+   "text": "à ừ thì",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL11",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi xử lý dữ liệu cá nhân để điền hồ sơ không ạ?",
+   "text": "đồng",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL12",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "tiếp tiếp cái cái",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "BL13",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "cái mà cái đấy ấy",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND01",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "con ơi đừng nghịch, ngồi im mẹ làm cái này đã",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND02",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "alo ừ tao đang ở xã đây tí nữa về, ừ ừ thôi nhé",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND03",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "chị ơi cho em hỏi quầy số ba ở đâu ạ em tìm mãi không thấy",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND04",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ờ ờ anh cứ để đấy em ra ngay à mà cái này nó cứ thế nào ấy",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet",
+     "ngoai_luong"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND05",
+   "state": "collecting_docs",
+   "nut": "gg",
+   "bot": "Công dân đưa giấy tờ để tôi scan. Đủ rồi thì nói Đã đưa đủ giấy tờ.",
+   "text": "này này đưa cái túi đây cho tôi, giấy tờ để trong túi ấy, ờ ờ",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao",
+     "khong_biet",
+     "lam_lai"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND06",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "mẹ ơi con đói, ừ tí nữa xong mẹ mua cho, ngồi yên",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND07",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ờ thì xem à mà thôi",
+   "expect": {
+    "cach_noi": [
+     "tu_choi",
+     "vo_nghia",
+     "khong_ro",
+     "xac_nhan"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND08",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "cái gì mà điền với chả điền lắm thế không biết nữa",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet",
+     "ngoai_luong",
+     "hoi_nguoc",
+     "lam_lai"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND09",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "bác ơi bác đứng lùi ra cho cháu một tí, ừ đấy đấy",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND10",
+   "state": "consent",
+   "nut": "cs",
+   "bot": "Công dân có đồng ý cho tôi xử lý dữ liệu cá nhân để điền hồ sơ không ạ?",
+   "text": "ờ ờ cái đấy à ừ thì để tôi hỏi con tôi đã nó bảo sao thì tôi làm thế",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "di_tiep",
+     "xac_nhan",
+     "tu_choi",
+     "khong_biet",
+     "ngoai_luong"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND11",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "ừ ừ ừ ừ ờ ờ à à",
+   "expect": {
+    "cach_noi": [
+     "vo_nghia",
+     "khong_ro",
+     "xac_nhan"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND12",
+   "state": "attaching",
+   "nut": "dc",
+   "bot": "Em đã đính kèm 3 tệp vào thành phần hồ sơ. Công dân kiểm tra lại rồi bấm Xong, sang bước nhận kết quả.",
+   "text": "xong chưa con ơi về thôi muộn rồi bố mẹ chờ ngoài kia kìa",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao",
+     "di_tiep",
+     "hoi_nguoc"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  },
+  {
+   "id": "ND13",
+   "state": "reviewing",
+   "nut": "rv",
+   "bot": "Tôi đã điền 33 ô vào tờ khai. 4 ô điền mặc định, công dân kiểm tra lại giúp tôi.",
+   "text": "này cô kia, cô làm nhanh lên cho người ta còn về, lề mề quá",
+   "expect": {
+    "cach_noi": [
+     "ngoai_luong",
+     "vo_nghia",
+     "khong_ro",
+     "xa_giao",
+     "di_tiep"
+    ],
+    "khong_bam": true,
+    "max_calls": 2
+   }
+  }
+ ]
+}

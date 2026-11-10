@@ -10,7 +10,7 @@ from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_ty
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 
-from .reason import QUAN_HE_OPTIONS, labeled_value, requester_context, section
+from .reason import QUAN_HE_OPTIONS, labeled_value, name_match, requester_context, section
 from .schema import UI_COMP_BY_NAME
 
 # Nhãn option "Loại trích lục bản sao cần cấp" giữ theo eForm hộ tịch; extension khớp gần đúng
@@ -288,17 +288,86 @@ def _event_type(values: dict, context: str) -> str:
     return _EVENT_FROM_REASON.get(reason_event, "")
 
 
+def _near_id(a: str, b: str) -> bool:
+    # Lệch 1 chữ số mới coi là OCR đọc nhầm: số định danh người thân cùng tỉnh / cùng năm sinh lệch từ 2 chữ số.
+    return len(a) == len(b) and sum(x != y for x, y in zip(a, b)) <= 1
+
+
+# Vai người nộp do phân vai khai → nhãn được phép; dòng căn cứ của các vai này phải chứa tên / số người nộp.
+_ROLE_LABELS = {
+    "cha": {"Bố đẻ", "Bố nuôi"}, "me": {"Mẹ đẻ", "Mẹ nuôi"}, "vo": {"Vợ"}, "chong": {"Chồng"},
+    "con": {"Con đẻ", "Con nuôi"},
+}
+# Vai mà dòng căn cứ là chính dòng "Quan hệ với ..." (người nộp đã được đối chiếu ở dòng khác) → nhãn nào cũng được.
+_ROLE_ANY_LABEL = ("nguoi yeu cau to khai", "nguoi di khai co dong quan he")
+_MIN_QUOTE_CHARS = 6
+
+
+def _alnum(value) -> str:
+    return re.sub(r"[^0-9a-z]+", "", _fold(value))
+
+
+def _stated_relation(block: str, ocr_text: str) -> str:
+    """Dòng căn cứ phân vai chép là dòng "Quan hệ với ...: X" có thật trong OCR và X quy được về một nhãn → nhãn đó."""
+    quote = labeled_value(block, "Dòng giấy ghi quan hệ").strip(" \"'“”")
+    if "quan he" not in _fold(quote) or ":" not in quote:
+        return ""
+    # Dòng "Quan hệ với ..." là của người đi khai / người yêu cầu: chỉ dùng khi phân vai đã nhận người đó là người nộp.
+    role = _fold(labeled_value(block, "Vai người nộp trên giấy"))
+    if role not in _ROLE_ANY_LABEL and role not in _ROLE_LABELS:
+        return ""
+    if _fold(labeled_value(block, "Đối chiếu với người nộp")).startswith("khac nguoi"):
+        return ""
+    if ocr_text and _alnum(quote) not in _alnum(ocr_text):
+        return ""
+    option = _quan_he_option(quote.rsplit(":", 1)[1])
+    return option if option not in ("", _OTHER) else ""
+
+
+def _relation_evidence_ok(block: str, relation: str, account_name: str, account_id: str, ocr_text: str) -> bool:
+    """Kiểm căn cứ phân vai tự khai cho nhãn quan hệ: dòng chép phải có thật trong OCR, vai phải khớp nhãn, và
+    với vai cha / mẹ / vợ / chồng / con thì dòng đó phải ghi tên (lệch ≤1 ký tự) hoặc số của người nộp."""
+    role = _fold(labeled_value(block, "Vai người nộp trên giấy"))
+    quote = labeled_value(block, "Dòng giấy ghi quan hệ").strip(" \"'“”")
+    if len(_alnum(quote)) < _MIN_QUOTE_CHARS or (ocr_text and _alnum(quote) not in _alnum(ocr_text)):
+        return False
+    if role in _ROLE_ANY_LABEL:
+        return True
+    if relation not in _ROLE_LABELS.get(role, ()):
+        return False
+    digits = _digits(quote)
+    id_on_line = bool(account_id) and any(
+        _near_id(account_id, digits[i:i + len(account_id)]) for i in range(0, len(digits) - len(account_id) + 1))
+    return bool(name_match(account_name, quote)) or id_on_line
+
+
 def _relation(values: dict, context: str, options: dict | None, event: str) -> tuple[str, str, str]:
     """(nhãn quan hệ, quan hệ khác, cảnh báo). Số định danh hai phía quyết định "Bản thân"."""
     account_name, account_id = requester_context(options)
     subject = section(context, "nguoi_duoc_cap")
-    subject_id = _digits(values.get("NguoiDuocCap_SoDinhDanh")) or _digits(labeled_value(subject, "Số định danh"))
-    subject_name = values.get("NguoiDuocCap_HoTen") or labeled_value(subject, "Họ tên")
+    # Người được cấp lấy theo phân vai trước: lượt trích hay chép thẻ của người nộp vào khối người được cấp.
+    reason_name = labeled_value(subject, "Họ tên")
+    reason_id = _digits(labeled_value(subject, "Số định danh"))
+    extracted_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
+    subject_id = reason_id or extracted_id
+    subject_name = reason_name or values.get("NguoiDuocCap_HoTen")
+    same_name = bool(account_name) and _fold(account_name) == _fold(subject_name)
     deceased = event == "death" or _fold(labeled_value(subject, "Trạng thái")) == "da chet"
 
     block = section(context, "quan_he")
     relation = _quan_he_option(labeled_value(block, "Kết luận"))
     other = labeled_value(block, "Quan hệ khác")
+    # Nhãn chi tiết phải có căn cứ kiểm được trên giấy; không đạt là suy đoán (vai người đi khai, cùng họ...)
+    # → về nhánh "Khác". Phân vai bản cũ không khai vai thì giữ nguyên.
+    has_role_line = re.search(r"(?im)^[ \t]*Vai người nộp trên giấy[ \t]*:", block or "")
+    if has_role_line and relation != _SELF and (relation or other):
+        ocr_text = str((options or {}).get("_ocr_text") or "")
+        stated = _stated_relation(block, ocr_text)
+        if stated:
+            # Căn cứ là dòng "Quan hệ với ...: X" chép từ giấy → nhãn theo chính chữ X (LLM hay đảo chiều quan hệ).
+            relation, other = stated, ""
+        elif not _relation_evidence_ok(block, relation, account_name, account_id, ocr_text):
+            relation, other = "", ""
     # Phân vai hay để "Khác" + "Mẹ" thay vì nhãn "Mẹ đẻ" của danh mục → quy về nhãn. Và có lúc đã đối chiếu người
     # yêu cầu tờ khai là "cùng người" với người nộp mà vẫn kết luận "Không xác định" → dùng chính kết quả đối chiếu
     # đó cùng quan hệ nó chép từ tờ khai.
@@ -312,11 +381,20 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
         relation = _quan_he_option(declared) or _OTHER
         other = declared if relation == _OTHER and _quan_he_option(declared) != _OTHER else other
 
-    if account_id and subject_id and account_id == subject_id and not deceased:
+    # Trích lục kết hôn là giấy chung của hai vợ chồng: người nộp là vợ / chồng trên giấy thì chính là người được cấp.
+    if event == "marriage" and relation in ("Vợ", "Chồng"):
+        return _SELF, "", ""
+    # Số trùng tài khoản chỉ tự chốt "Bản thân" khi cùng tên tài khoản (khác tên là thẻ người nộp bị ghép sang
+    # người khác), và số của lượt trích chỉ dùng khi phân vai đã xác định được người được cấp (hoặc không chạy):
+    # hồ sơ chỉ có CCCD người nộp thì phân vai để trống mà lượt trích vẫn chép thẻ đó vào.
+    subject_known = bool(reason_name) or not subject
+    if account_id and not deceased and same_name and (
+            account_id == reason_id or (account_id == extracted_id and subject_known)):
         return _SELF, "", ""
     if relation == _SELF:
-        same_name = bool(account_name) and _fold(account_name) == _fold(subject_name)
-        if deceased or (account_id and subject_id) or not same_name:
+        # Phân vai đã đối chiếu người (số lệch 1 chữ số do OCR / viết tay vẫn là cùng người).
+        id_matches = bool(account_id and subject_id) and _near_id(account_id, subject_id)
+        if deceased or (account_id and subject_id and not id_matches) or not (id_matches or same_name):
             return _OTHER, "", ("Phân vai kết luận \"Bản thân\" nhưng người nộp không khớp người được cấp — đã "
                                 "chọn \"Khác\", cán bộ kiểm tra lại ô Quan hệ.")
     # Cổng không cho để trống ô Quan hệ: không xác định được thì chọn "Khác".
@@ -351,6 +429,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         values = {k: v for k, v in values.items() if k not in _GIAY_TO_DETAIL_KEYS}
         warnings.append("Thông tin đăng ký hộ tịch đọc ra thuộc giấy khác loại tờ khai yêu cầu — đã bỏ trống, "
                         "cán bộ nhập số, ngày, nơi đăng ký theo tờ khai.")
+    # Phân vai không xác định được người được cấp (vd hồ sơ chỉ có CCCD người nộp) mà lượt trích vẫn điền khối
+    # NguoiDuocCap_* → đó là thẻ của người nộp chép sang, không phải người được cấp.
+    subject_block = section(context, "nguoi_duoc_cap")
+    if subject_block and not labeled_value(subject_block, "Họ tên"):
+        values = {k: v for k, v in values.items() if not k.startswith("NguoiDuocCap_")}
     # Quan hệ phải chốt TRƯỚC: chọn "Bản thân" thì cổng tự đổ khối người được cấp từ người nộp,
     # chọn khác thì cổng dựng lại khối đó — điền nhân thân trước sẽ bị xóa.
     relation, other, warning = _relation(values, context, options, event)

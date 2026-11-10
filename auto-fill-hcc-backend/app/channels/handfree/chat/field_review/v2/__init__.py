@@ -26,7 +26,7 @@ COMMANDS = {YES, NO}
 # Trạng thái riêng của bản 2 trong conv["field_review"], xoá khi bắt đầu vòng mới.
 STATE_KEYS = ("v2", "queue", "inflight", "matching", "ask_override", "return_key", "confirm", "log", "partial",
               "catalog", "v2_leads", "last_text", "thread", "suggest", "specialist_thread", "group", "group_anchor",
-              "focus_sent", "redirected", "v2_done", "held")
+              "focus_sent", "redirected", "v2_done", "held", "optional_go")
 _THREAD_KEEP = 4
 _LOG_KEEP = 10
 _MAX_CATALOG = 200
@@ -78,6 +78,21 @@ def _applied_lead(item: dict) -> tuple[str, str]:
 def _join(leads: list[tuple[str, str]]) -> tuple[str, str]:
     leads = [lead for lead in leads if lead and (lead[0] or lead[1])]
     return "\n\n".join(md for md, _ in leads if md), "".join(tts for _, tts in leads)
+
+
+def _lines_md(items: list[dict]) -> str:
+    return "\n".join(vi.FR2_CONFIRM_LINE_MD.format(label=it["label"], where_md=_where_md(it), value=it["shown"])
+                     for it in items)
+
+
+def _lines_tts(items: list[dict]) -> str:
+    return ", ".join(f"{_fr()._tts(it['label'])} là {value_tts(it['shown'])}" for it in items)
+
+
+def _confirm_chips(st: dict) -> list[dict]:
+    return [{"label": vi.FR2_CONFIRM_YES_CHIP, "send": f"__action:{YES}", "solid": True},
+            {"label": vi.FR2_CONFIRM_NO_CHIP, "send": f"__action:{NO}", "tone": "back"},
+            *[c for c in _fr()._chips(st) if c.get("tone") in {"skip", "stop"}]]
 
 
 def _ask(st: dict, md: str, tts: str):
@@ -180,11 +195,12 @@ def _after_specialist(conv: dict, proc: dict | None, st: dict, outcomes: list):
         st["return_key"] = current_key
     # Ô đang chờ xác nhận trước câu này (công dân nói thêm / sửa một ô): giữ lại, gộp vào lượt đọc lại sau.
     items = [it for it in st.pop("held", None) or [] if it.get("key") not in handled]
+    sure = []
     for o in oks:
         for it in _item(o.field, o.checked, fr._copy_pair(proc)):
             if it.get("match"):
                 it.update(text=st.get("last_text", ""), job=o.job)  # khớp danh sách sau: agent cần lại nguyên câu nói
-            items.append(it)
+            (items if o.confirm else sure).append(it)
     if asks:
         ask = asks[0]
         label = ask.field.get("label") or ""
@@ -194,15 +210,29 @@ def _after_specialist(conv: dict, proc: dict | None, st: dict, outcomes: list):
         st.setdefault("partial", {})[ask.field["key"]] = st.get("last_text", "")
         # Còn thiếu / mơ hồ: mạch làm rõ chưa xong → lượt sau điều phối và chuyên môn còn thấy các câu đã nói.
         st["thread"] = [*(st.get("specialist_thread") or []), st.get("last_text", "")][-_THREAD_KEEP:]
-    lines_md = "\n".join(vi.FR2_CONFIRM_LINE_MD.format(label=it["label"], where_md=_where_md(it), value=it["shown"])
-                         for it in items)
-    lines_tts = ", ".join(f"{fr._tts(it['label'])} là {value_tts(it['shown'])}" for it in items)
-    chips = [{"label": vi.FR2_CONFIRM_YES_CHIP, "send": f"__action:{YES}", "solid": True},
-             {"label": vi.FR2_CONFIRM_NO_CHIP, "send": f"__action:{NO}", "tone": "back"},
-             *[c for c in fr._chips(st) if c.get("tone") in {"skip", "stop"}]]
-    if items and asks:
-        # Một câu có ô nghe được và ô còn thiếu / chưa rõ: chưa điền gì — đọc lại phần đã nghe kèm câu hỏi phần còn
-        # thiếu; công dân nói tiếp thì gộp cả vào một lượt xác nhận (không điền lẻ một ô rồi hỏi ô kia).
+    if sure and (items or asks):
+        # Ô chắc chắn điền ngay; ô agent chưa chắc / còn thiếu hỏi SAU khi điền xong (câu hỏi gắn vào ô đó qua
+        # ask_override, lệnh điền đưa con trỏ tới ô đó).
+        st.setdefault("queue", []).extend(sure)
+        if asks:
+            override = st["ask_override"]
+            if items:
+                st["confirm"] = {"items": items}
+                md, tts = fr._say(vi.FR2_HEARD_ASK, lines_md=_lines_md(items), lines_tts=_lines_tts(items),
+                                  question_md=override["md"], question_tts=override["tts"])
+                override.update(md=md, tts=tts, confirm=True)
+        else:
+            st["confirm"] = {"items": items}
+            md, tts = fr._say(vi.FR2_CONFIRM, lines_md=_lines_md(items), lines_tts=_lines_tts(items))
+            st["ask_override"] = {"key": items[0]["key"], "md": md, "tts": tts, "confirm": True}
+        return _dispatch(proc, st)
+    unsure = bool(items)
+    items = [*items, *sure]
+    lines_md, lines_tts = _lines_md(items), _lines_tts(items)
+    chips = _confirm_chips(st)
+    if unsure and asks:
+        # Ô agent chưa chắc kèm ô còn thiếu: đọc lại ô chưa chắc kèm câu hỏi phần còn thiếu; công dân nói tiếp thì
+        # gộp cả vào một lượt xác nhận.
         st["confirm"] = {"items": items}
         override = st["ask_override"]
         r = _reply(*fr._say(vi.FR2_HEARD_ASK, lines_md=lines_md, lines_tts=lines_tts, question_md=override["md"],
@@ -210,9 +240,9 @@ def _after_specialist(conv: dict, proc: dict | None, st: dict, outcomes: list):
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = chips
         return r
-    # Một câu ra từ hai ô trở lên → đọc lại cả danh sách, công dân xác nhận một lần rồi mới điền.
-    need_confirm = any(o.confirm for o in oks) or len(items) >= 2
-    if items and need_confirm:
+    # Chỉ đọc lại khi agent chuyên môn chưa chắc (sửa nghe nhầm đáng kể, tên lạ, ghép giá trị cũ…); chắc chắn thì
+    # điền luôn, kể cả một câu ra nhiều ô.
+    if unsure:
         st["confirm"] = {"items": items}
         r = _reply(*fr._say(vi.FR2_CONFIRM, lines_md=lines_md, lines_tts=lines_tts))
         r.actions = [{"type": "listen_after_tts"}]
@@ -244,15 +274,17 @@ async def _specialist(conv: dict, proc: dict | None, st: dict, targets: list[tup
     tới lúc điền mới khớp với danh sách thật) để công dân xác nhận một lần cho cả câu. Ô công dân nói trước thông tin
     (chưa hỏi tới) đi kèm cùng lượt với việc "goi_y": giá trị chỉ được giữ lại để gợi ý khi tới ô đó, không điền ngay."""
     handled_keys = {f.get("key") for f, _ in targets}
-    extra = [(f, "goi_y") for f in suggest or [] if f.get("key") not in handled_keys and not f.get("value")
-             and f.get("kind") != "select"]
+    extra = [(f, "goi_y") for f in suggest or [] if f.get("key") not in handled_keys and not f.get("value")]
     st["last_text"] = text
     outcomes = await specialist.solve([*targets, *extra], text, conv, st)
     kept = st.setdefault("suggest", {})
     copy_pair = _fr()._copy_pair(proc)
     for o in outcomes:
         if o.job == "goi_y" and o.kind == "ok":
-            kept[o.field["key"]] = _item(o.field, o.checked, copy_pair)[0]
+            item = _item(o.field, o.checked, copy_pair)[0]
+            if item.get("match"):
+                item["text"] = text  # ô danh sách chưa mở: tới ô mới khớp với danh sách thật, agent cần lại nguyên câu
+            kept[o.field["key"]] = item
     return _after_specialist(conv, proc, st, [o for o in outcomes if o.job != "goi_y"])
 
 
@@ -420,6 +452,15 @@ async def on_focus(conv: dict, proc: dict | None, st: dict, payload: dict, field
         return _dispatch(proc, st)
     override = st.get("ask_override")
     own = bool(override and field is not None and override["key"] == field["key"])
+    stats = st.get("stats") or {}
+    if (field is not None and not own and not field.get("required") and not stats.get("required")
+            and not st.get("optional_go")):
+        # Đã đủ ô bắt buộc: dừng hỏi, báo còn ô không bắt buộc kèm nút đi tiếp / nút bổ sung (công dân bấm bổ sung thì
+        # vòng mới hỏi tiếp ô không bắt buộc).
+        st.pop("ask_override", None)
+        done = [fr._say(vi.FR2_APPLIED_DONE)] if st.pop("v2_done", False) else []
+        lead = _join([fr._outcome_lead(st, applied), *st.pop("v2_leads", []), *done])
+        return fr._finish_reply(conv, proc, stopped=False, lead=lead)
     if field is not None and not own:
         moved = _redirect(proc, st, field, applied)
         if moved is not None:
@@ -451,6 +492,8 @@ async def on_focus(conv: dict, proc: dict | None, st: dict, payload: dict, field
     if own:
         st.pop("ask_override", None)
         r = _ask(st, override["md"], override["tts"])
+        if override.get("confirm") and st.get("confirm"):
+            r.chips = _confirm_chips(st)
     elif suggestion:
         st.pop("ask_override", None)
         r = _suggest_reply(st, suggestion)
@@ -472,8 +515,14 @@ async def _resolve(conv: dict, proc: dict | None, st: dict, item: dict, field: d
     visited = [v for v in st.get("visited") or [] if v.get("key") != field["key"]]
     st["visited"] = [*visited, {"key": field["key"], "label": field["label"], "where": field["where"]}]
     if not field.get("options"):
-        # Cổng không nạp được danh sách (xã sau khi chọn tỉnh): hỏi như luồng cũ, kèm nút tải lại.
-        return fr._with_lead(fr._ask_reply(st), _join(st.pop("v2_leads", [])))
+        if field.get("province"):
+            # Cổng không nạp được danh sách xã sau khi chọn tỉnh: câu hỏi của luồng cũ đã nói rõ kèm nút tải lại.
+            return fr._with_lead(fr._ask_reply(st), _join(st.pop("v2_leads", [])))
+        # Danh sách trống mà cổng không báo lỗi: nói rõ vì sao chưa chọn được, không lặp lại nguyên câu hỏi.
+        label = field.get("label") or ""
+        r = _ask(st, *fr._say(vi.FR2_LIST_NOT_LOADED, label=label, label_tts=fr._tts(label), value=item.get("shown")
+                              or item.get("value") or "", value_tts=value_tts(item.get("shown") or item.get("value") or "")))
+        return fr._with_lead(r, _join(st.pop("v2_leads", [])))
     st["last_text"] = item.get("text") or ""
     try:
         outcomes = await specialist.solve([(dict(field, code="o1"), item.get("job") or "tra_loi")], st["last_text"],

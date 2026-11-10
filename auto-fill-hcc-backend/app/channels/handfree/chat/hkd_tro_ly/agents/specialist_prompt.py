@@ -22,6 +22,9 @@ Câu nói đến từ NHẬN DẠNG GIỌNG NÓI: có thể không dấu, sai d�
    nhớ / không muốn khai mục này: "không có email", "không có fax") | "khong_co" (câu không nhắc tới mục này).
 5. Giá trị có thể nằm ở câu TRƯỚC: <cau_cong_dan> có thể là chuỗi nhiều lượt — GHÉP thành một ý. Công dân bảo "đã nói
    ở trên / như lúc nãy" → lấy giá trị từ các câu CÔNG DÂN trong <hoi_thoai_gan>.
+   Câu nói SỬA giá trị trợ lý vừa đọc lại trong <hoi_thoai_gan> (dòng "✓ <tên mục>: …"): đối chiếu câu công dân đã nói
+   lúc đầu, giá trị trợ lý đã ghi và câu sửa để biết phần nào bị nghe sai → trả giá trị ĐẦY ĐỦ đã sửa: thay hẳn phần
+   sai bằng phần công dân nói lại (không nối thêm vào giá trị cũ), giữ nguyên các phần công dân không sửa.
 6. "cau_hoi" tiếng Việt ngắn (dưới 25 từ), trợ lý xưng "tôi", gọi "công dân", có "ạ".
 </nguyen_tac_chung>
 
@@ -66,6 +69,9 @@ MODULES = {
 - Công dân KHÔNG nói tên tỉnh / thành phố → "tinh": "" (kể cả khi xã đó quen thuộc) — trợ lý sẽ hỏi tỉnh.
 - Nghe được MỘT phần địa chỉ (chỉ xã, chỉ tỉnh, chỉ thôn) vẫn là "ket_qua": "gia_tri" với phần đó — KHÔNG dùng
   "thieu" cho mục địa chỉ; trợ lý tự hỏi tiếp phần còn thiếu.
+- Số nhà / ngõ / ngách / tổ đọc bằng chữ → đổi thành SỐ theo giá trị, viết liền: "linh" / "lẻ" là chữ số 0 ở hàng chục
+  ("một linh ba" = 103, "hai lẻ năm" = 205), "mười ba" = 13, "một trăm linh ba" = 103. Không tách thành từng chữ số
+  rời ("1 3").
 - Thôn / xóm / tổ / ấp / bản là ĐỦ cho "chiTietDuoiXa", không hỏi thêm số nhà, đường.
 - Mục ghi "nhận giống" mà công dân nói giống ("giống địa chỉ kinh doanh", "ở cùng chủ hộ", "như trên") → "gia_tri":
   "giong".
@@ -95,8 +101,18 @@ MODULES = {
 - "gia_tri" là số nguyên viết bằng chữ số ("năm người" → 5, "chục người" → "mo_ho" hỏi số cụ thể).
 </loai_so_nguyen>""",
     "ngay": """<loai_ngay>
-- "gia_tri" dạng dd/mm/yyyy. Thứ tự tiếng Việt NGÀY → THÁNG → NĂM. Năm đọc từng chữ số ("hai không hai sáu" → 2026)
-  hoặc theo hàng ("hai nghìn không trăm hai mươi sáu" → 2026).
+- "gia_tri" dạng dd/mm/yyyy. Thứ tự tiếng Việt NGÀY → THÁNG → NĂM.
+- Tách lời nói thành 3 phần theo các chữ mốc "ngày" / "mùng" / "mồng", "tháng", "năm" (hoặc "sinh năm"), công dân có thể
+  nói năm trước. "doc" ghi đủ 3 phần rồi mới ghép: "ngày <lời> = dd · tháng <lời> = mm · năm <lời> = yyyy".
+- Ngày, tháng đọc theo giá trị: "mùng năm" = 05, "mười lăm" = 15, "hai mươi" = 20, "hai mươi mốt" = 21, "ba mươi" = 30;
+  "tháng tư" = 04, "tháng mười hai" = 12.
+- Năm: đọc từng chữ số ("hai không hai sáu" = 2026, "một chín tám bảy" = 1987, "không" là chữ số 0) hoặc theo hàng
+  ("hai nghìn" = 2000, "hai nghìn không trăm linh hai" / "hai nghìn lẻ hai" = 2002, "một nghìn chín trăm chín mươi" =
+  1990). Chỉ nói hai số cuối ("năm chín mươi", "chín lăm") → năm gần nhất đã qua (19xx hoặc 20xx).
+- Không có chữ "tháng" / "năm" ngăn cách và tách được hai cách ra hai ngày khác nhau → "mo_ho", "cau_hoi" nêu các khả
+  năng.
+- Công dân đọc lại ĐỦ ngày tháng năm (kể cả khi đang sửa ngày trợ lý đã ghi) → lấy NGUYÊN ngày vừa đọc, không giữ phần
+  nào của giá trị cũ; chỉ khi công dân nói riêng một phần ("sai năm, năm hai không không hai") mới giữ các phần còn lại.
 - Ngày tương đối tính theo hôm nay: "mai" → ngày mai; "mùng một tháng sau" → ngày 1 của tháng kế tiếp; "đầu tháng
   mười hai" → 01/12 của năm gần nhất chưa qua; "tuần sau" → "mo_ho" (hỏi ngày cụ thể).
 </loai_ngay>""",

@@ -3,7 +3,8 @@ from dataclasses import dataclass, field as dc_field
 
 from app.channels.handfree.chat import store
 
-DIALOGUE_TURNS = 5          # lượt hội thoại (mỗi lượt = câu trợ lý + câu công dân) đưa cho agent điều phối
+DIALOGUE_TURNS = 10         # lượt hội thoại (mỗi lượt = câu trợ lý + câu công dân) đưa cho agent điều phối — đủ thấy câu
+                            # công dân nói gộp nhiều ô từ mấy lượt trước ("ở trên rồi đó")
 SPECIALIST_TURNS = 10       # agent chuyên môn: đủ xa để lấy lại giá trị công dân "đã nói ở trên"
 LOG_SHOWN = 5
 _MAX_FIELDS = 200

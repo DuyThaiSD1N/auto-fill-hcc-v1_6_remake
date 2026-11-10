@@ -79,8 +79,8 @@ def test_detect_phrases_and_ui_keys_exist_in_snapshot():
 
 
 def test_self_by_identity_skips_subject_block():
-    out, warnings = _enrich({**SUBJECT, "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]},
-                            _context("Mẹ đẻ"))
+    context = _context("Mẹ đẻ", subject_id=ACCOUNT["applicantIdentityNumber"]).replace("TRAN THI B", "NGUYEN VAN A")
+    out, warnings = _enrich({**SUBJECT, "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}, context)
     names = _names(out)
     assert names[0] == "citizenQuanhe"
     assert out[0]["value"] == "Bản thân"
@@ -246,6 +246,122 @@ def test_reason_hint_marks_documents_with_account_id():
     docs = [{"name": "a", "text": "Số 001 090 000 001"}, {"name": "b", "text": "khác"}]
     content = reason._build_user_content(docs, {"formContext": ACCOUNT})
     assert "Tài liệu chứa đúng số định danh này: 1." in content
+
+
+def test_reason_hint_so_lech_va_dong_ho_ten_tai_khoan():
+    docs = [
+        {"name": "a", "text": "Họ, chữ đệm, tên người cha: NGUYỄN VĂN A\nSố: 001090000007"},
+        {"name": "b", "text": "Họ tên: Nguyen Van Anh\nSố: 001090000001"},
+    ]
+    content = reason._build_user_content(docs, {"formContext": ACCOUNT})
+    assert "Tài liệu chứa đúng số định danh này: 2." in content
+    assert "Tài liệu chứa số lệch 1–2 chữ số so với số này: 1." in content
+    # "Nguyen Van Anh" không phải "Nguyen Van A": khớp nguyên từ.
+    assert 'tài liệu 1: "Họ, chữ đệm, tên người cha: NGUYỄN VĂN A"' in content
+    assert "tài liệu 2:" not in content
+
+
+def _context_khong_xac_dinh_nguoi_duoc_cap():
+    return ("<phan_vai_da_xac_dinh>\n<nguoi_duoc_cap>\nKhông xác định\n</nguoi_duoc_cap>\n"
+            "<giay_to_ho_tich>\nLoại trích lục cần cấp: không xác định\n</giay_to_ho_tich>\n"
+            "<quan_he>\nĐối chiếu với người nộp: không xác định\nDòng giấy ghi quan hệ: không có\n"
+            "Kết luận: Không xác định\n</quan_he>\n</phan_vai_da_xac_dinh>")
+
+
+def test_chi_co_the_nguoi_nop_khong_ra_ban_than_va_bo_khoi_nguoi_duoc_cap():
+    values = {"NguoiDuocCap_HoTen": "Nguyen Van A", "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"],
+              "NguoiDuocCap_SoGiayTo": ACCOUNT["applicantIdentityNumber"], "NguoiDuocCap_NgaySinh": "01/01/1990",
+              "NguoiDuocCap_GioiTinh": "Nam"}
+    out, warnings = _enrich(values, _context_khong_xac_dinh_nguoi_duoc_cap())
+    by = {f["name"]: f for f in out}
+    assert by["citizenQuanhe"]["value"] == "Khác" and by["citizenQuanhe"].get("default") is True
+    assert not [n for n in by if n.startswith("citizenNDK_") or n in ("citizenField13", "citizenField32")]
+    assert warnings
+
+
+def test_so_luot_trich_trung_tai_khoan_nhung_khac_ten_giu_quan_he_phan_vai():
+    # Lượt trích chép số giấy tờ tùy thân của người đi khai (= người nộp) sang người được cấp.
+    out, _ = _enrich({**SUBJECT, "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}, _context("Mẹ đẻ"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhe"] == "Mẹ đẻ"
+    assert by.get("citizenNDK_SoDinhDanh") != ACCOUNT["applicantIdentityNumber"]
+
+
+def test_so_luot_trich_trung_tai_khoan_cung_ten_la_ban_than():
+    values = {**SUBJECT, "NguoiDuocCap_HoTen": "Nguyễn Văn A",
+              "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}
+    context = _context("Không xác định").replace("Họ tên: TRAN THI B", "Họ tên: NGUYỄN VĂN A")
+    out, _ = _enrich(values, context)
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Bản thân"
+
+
+def test_phan_vai_ban_than_so_lech_mot_chu_so_van_la_ban_than():
+    out, _ = _enrich(SUBJECT, _context("Bản thân", subject_id="001090000007"))
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Bản thân"
+
+
+_OCR_KHAI_SINH = ("Họ, chữ đệm, tên: TRẦN THỊ B\nHọ, chữ đệm, tên người mẹ: NGUYỄN VĂN A\n"
+                  "Họ, chữ đệm, tên người đi khai sinh: NGUYỄN VĂN A\nQuan hệ với người được khai sinh: Mẹ")
+
+
+def _enrich_evidence(relation, role, quote, ocr=_OCR_KHAI_SINH, event="khai sinh", account=ACCOUNT):
+    context = _context(relation, event=event).replace(
+        "Kết luận:", f"Vai người nộp trên giấy: {role}\nDòng giấy ghi quan hệ: {quote}\nKết luận:")
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in SUBJECT.items()]
+    out, _ = mapper.enrich(fields, {"formContext": account, "_reasoning_context": context, "_ocr_text": ocr})
+    return {f["name"]: f["value"] for f in out}["citizenQuanhe"]
+
+
+@pytest.mark.parametrize("relation,role,quote,expected", [
+    ("Mẹ đẻ", "mẹ", "Họ, chữ đệm, tên người mẹ: NGUYỄN VĂN A", "Mẹ đẻ"),
+    ("Mẹ đẻ", "không có", "không có", "Khác"),
+    # Dòng chép không có trong OCR (diễn giải) → không phải căn cứ.
+    ("Mẹ đẻ", "mẹ", "Giấy khai sinh tài liệu 1: người mẹ = người nộp", "Khác"),
+    # Vai không khớp nhãn: người mẹ trên giấy không thể là "Bố đẻ".
+    ("Bố đẻ", "mẹ", "Họ, chữ đệm, tên người mẹ: NGUYỄN VĂN A", "Khác"),
+    # Vai người đi khai không kèm dòng quan hệ → chỉ là người làm thủ tục.
+    ("Mẹ đẻ", "người đi khai", "Họ, chữ đệm, tên người đi khai sinh: NGUYỄN VĂN A", "Khác"),
+    ("Mẹ đẻ", "người đi khai có dòng quan hệ", "Quan hệ với người được khai sinh: Mẹ", "Mẹ đẻ"),
+    # Dòng vai cha / mẹ phải ghi chính tên người nộp.
+    ("Mẹ đẻ", "mẹ", "Họ, chữ đệm, tên: TRẦN THỊ B", "Khác"),
+    # Căn cứ là dòng "Quan hệ với ...: X" → nhãn theo X, kể cả khi LLM đảo chiều nhãn.
+    ("Con đẻ", "người đi khai có dòng quan hệ", "Quan hệ với người được khai sinh: Mẹ", "Mẹ đẻ"),
+    ("Mẹ đẻ", "người đi khai", "Quan hệ với người được khai sinh: Mẹ", "Khác"),
+])
+def test_nhan_chi_tiet_phai_co_can_cu_kiem_duoc(relation, role, quote, expected):
+    assert _enrich_evidence(relation, role, quote) == expected
+
+
+def test_can_cu_ten_nguoi_nop_lech_mot_ky_tu_do_ocr_van_nhan():
+    account = {"applicantFullname": "NGUYỄN THỊ HOÀNG ANH", "applicantIdentityNumber": "001190000009"}
+    ocr = "Họ, chữ đệm, tên người mẹ: NGUYỄN THỊ HOÀNG AN"
+    assert _enrich_evidence("Mẹ đẻ", "mẹ", ocr, ocr=ocr, account=account) == "Mẹ đẻ"
+
+
+@pytest.mark.parametrize("relation", ["Vợ", "Chồng"])
+def test_trich_luc_ket_hon_nguoi_nop_la_vo_chong_thi_ban_than(relation):
+    out, _ = _enrich({**SUBJECT, "GiayTo_LoaiSuKien": "marriage"}, _context(relation, event="kết hôn"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhe"] == "Bản thân"
+    assert not [n for n in by if n.startswith("citizenNDK_")]
+
+
+def test_khai_tu_vo_chong_van_giu_nhan():
+    values = {**SUBJECT, "GiayTo_LoaiSuKien": "death"}
+    out, _ = _enrich(values, _context("Vợ", status="đã chết", event="khai tử"))
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Vợ"
+
+
+@pytest.mark.parametrize("name,line,expected", [
+    ("Nguyễn Văn A", "Họ tên mẹ: NGUYEN VAN A", "exact"),
+    ("Nguyễn Văn A", "Họ tên: Nguyễn Văn An", ""),
+    ("Nguyễn Trinh Hương", "Người vợ: Nguyễn Trinh Hưng", "near"),
+    ("Nguyễn Minh Nhã", "Người đi khai tử: Nguyễn Nhã", ""),
+    ("Nguyễn Thị Ưa", "Họ và tên Nguyễn Thị Ưu", "near"),
+    ("Nguyễn Văn An", "Họ tên: Nguyễn Văn Anh", ""),
+])
+def test_name_match(name, line, expected):
+    assert reason.name_match(name, line) == expected
 
 
 def test_attach_plan_puts_every_file_on_the_single_row():

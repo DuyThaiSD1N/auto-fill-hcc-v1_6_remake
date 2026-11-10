@@ -8,6 +8,7 @@ Bước 3 làm THẬT: greet → confirm_procedure → guide_login → ask_doc_m
 import asyncio
 import json
 import logging
+from copy import deepcopy
 import re
 import uuid
 from contextvars import ContextVar
@@ -26,6 +27,9 @@ from app.channels.handfree.chat import lai_chau
 from app.channels.handfree.chat import lien_thong
 from app.channels.handfree.chat import owner_review
 from app.channels.handfree.chat import resume
+from app.channels.handfree.chat import portal_alert
+from app.channels.handfree.chat import step_back
+from app.channels.handfree.chat.cach_noi import policy as cn_policy
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import split_submit
@@ -48,6 +52,7 @@ from app.channels.handfree.procedure_registry import (
     is_visible_in_province, portal_submit_rules, procedure_code, public_list, public_list_for,
 )
 from app.channels.handfree.profiles import service as profile_service
+from app.procedures.agency_level import with_agency_level
 from app.procedures.portal_submit import needs_submit_click
 from app.form_snapshots.step_rules import form_snapshot_config
 from app.channels.handfree.documents import service as upload_service
@@ -557,6 +562,8 @@ def _docs_done_label(target: str) -> str:
 
 
 def _docs_done_label_for_conv(conv: dict) -> str:
+    if hkd_tro_ly.attaching_docs(conv):
+        return vi.HKD_ATTACH_DOCS_DONE_LABEL
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
         if (tpm.is_active(get_procedure(conv.get("procedure_key") or ""), conv)
@@ -585,6 +592,33 @@ def _clear_documents_adjustment(conv: dict) -> None:
     conv["supplementing_documents"] = False
     conv["supplement_reuse_session"] = False
     conv["documents_adjustment_target"] = ""
+    conv.pop("documents_adjustment_return", None)
+
+
+# Những gì _start_documents_adjustment ghi đè — chụp lại để "giữ nguyên tờ khai" trả về đúng bước đang dở.
+_ADJUSTMENT_KEYS = ("state", "doc_method", "docs_target", "documents_adjustment_target", "docs_dispatch_key", "owner_phase",
+                    "auto_attach_after_fill", "main_processing_started", "attachment_plan_started", "attach_plan",
+                    "attach_errors", "attach_fail_streak", "attach_trace_request_id", "attach_done", "pipeline_status",
+                    "pipeline_error", "awaiting_events", "supplementing_documents", "supplement_reuse_session",
+                    "owner_info_done", "owner_fields", "owner_review", "hkd", "hkd_checked", "business_action_started",
+                    "business_result", "business_refill_only", "fields", "fill_report", "trace_request_id",
+                    "attach_action_in_progress", "attach_action_dispatch_id", "attach_action_lease_until")
+
+
+async def _cancel_documents_adjustment(conv: dict) -> Reply:
+    """Bỏ lượt điều chỉnh giấy tờ, không đọc lại / điền lại: trả conv về đúng như trước khi bấm Điều chỉnh giấy tờ
+    (bước, kết quả điền, kế hoạch đính), chốt lại phiên giấy tờ đã mở ra, và hiện lại nút của bước đó."""
+    sid = str(conv.get("upload_session_id") or "")
+    if sid and conv.get("supplement_reuse_session"):
+        await upload_service.complete_session(sid)   # phiên được mở lại để thêm / bớt tệp → đóng lại như trước
+    back = conv.get("documents_adjustment_return") or {}
+    for key, value in (back.get("conv") or {}).items():
+        conv[key] = value
+    chips = back.get("chips") or []
+    _clear_documents_adjustment(conv)
+    r = Reply(*_fmt(vi.CN_DIEU_CHINH_HUY))
+    r.chips = [dict(c) for c in chips]
+    return r
 
 
 def _update_docs_done_action(target: str, *, adjustment_target: str = "") -> dict:
@@ -961,15 +995,26 @@ async def handle_turn(
         voice_send = voice_send.removesuffix(_VOICE_CONFIRMED)
     if voice_send in _VOICE_CONFIRM_SENDS:
         return _voice_submit_confirm(conv, voice_send)
+    # Nút làm lại / xoá việc đã làm chọn bằng lời (bảng chính sách): hỏi xác nhận như nút nộp.
+    if voice_send and cn_policy.confirm_needed(conv, voice_send):
+        return cn_policy.voice_confirm(conv, voice_send)
     if isinstance(pending_submit, dict) and intent.kind in {"confirm", "deny"}:
         chip = dict(pending_submit.get("chip") or {})
         if intent.kind == "deny":
+            if pending_submit.get("kind") == "lam_lai":
+                return cn_policy.keep_reply(conv, pending_submit)
             r = Reply(*_fmt(vi.VOICE_SUBMIT_CANCELLED, label=_chip_name(chip)))
             r.chips = [chip]
             return r
         send = str(pending_submit.get("send") or "")
         voice_send = send + _VOICE_CONFIRMED
         intent = Intent("action", send.removeprefix("__action:"), {"voiceConfirmed": True})
+    elif (intent.kind == "action" and (intent.payload or {}).get("_voice") and not intent.payload.get("voiceConfirmed")
+            and cn_policy.confirm_needed(conv, f"__action:{intent.value}")):
+        # Lệnh của bước (không qua nút) ra từ lời nói, vd "điền lại đi" → refill.
+        return cn_policy.voice_confirm(conv, f"__action:{intent.value}")
+    if intent.kind == "action" and intent.value == "cn_giu_nguyen":
+        return cn_policy.keep_reply(conv, pending_submit if isinstance(pending_submit, dict) else None)
     if intent.kind == "event" and intent.value == "pipeline_resync":
         resync = await _resync_intent(conv)
         if resync is None:
@@ -981,11 +1026,15 @@ async def handle_turn(
         r = Reply()
         r.actions = [{"type": "press_chip", "send": voice_send}]
         return r
-    reply = await _handle_turn_inner(conv, intent, client_page_context, client_url)
+    # Bảng chính sách theo (bước × cách nói): câu không hiểu / ngoài luồng / đi tiếp / quay lại / làm lại / xác nhận trống.
+    reply = await cn_policy.intercept(conv, intent, client_page_context)
+    if reply is None:
+        reply = await _handle_turn_inner(conv, intent, client_page_context, client_url)
     reply = await resume.after_turn(conv, intent, reply, client_page_context)
     field_review.finalize(conv, intent, reply)
     owner_review.finalize(conv, intent)
     _lock_docs_chips(conv, intent, reply)
+    cn_policy.finalize(conv, intent, reply)
     if free_text and not (reply.display_md or reply.chips or reply.cards or reply.actions):
         # Công dân đã gõ/nói mà bước hiện tại không có phản hồi → nói rõ là chưa hiểu.
         reply = not_understood_reply(conv)
@@ -1211,6 +1260,9 @@ async def _handle_turn_inner(
 ) -> Reply:
     state = conv.get("state", "greet")
     current_proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if intent.kind == cn_policy.KIND:
+        # Bảng chính sách không nhận (chế độ Mông, bước có thẻ hỏi) → xử lý như câu gõ/nói không hiểu.
+        intent = Intent("unknown", payload={"free_text": True, **(intent.payload or {})})
 
     # (A) Ý định TOÀN CỤC — xử trước mọi state (docs/03a: nói tên thủ tục là nhảy, không bắt tuần tự).
     # Chủ thể dữ liệu VNeID (CCCD/tên content đọc từ cổng) đến theo page_status BẤT KỂ state →
@@ -1235,6 +1287,14 @@ async def _handle_turn_inner(
         doi_ma = _doi_ma_thu_tuc_reply(conv, current_proc, client_url)
         if doi_ma is not None:
             return doi_ma
+    # Lời cổng nháy ở toast khi công dân tự bấm trên cổng: nói lại, không đổi bước.
+    alert_reply = portal_alert.handle(conv, intent)
+    if alert_reply is not None:
+        return alert_reply
+    # Quay lại bước trước của wizard tư pháp: lệnh bấm Quay lại + kết quả kiểm tờ khai sau khi lùi về Kê khai.
+    back_reply = step_back.handle(conv, current_proc, intent)
+    if back_reply is not None:
+        return back_reply
     # Vòng bổ sung ô còn trống trên tờ khai: lệnh/sự kiện riêng, không phụ thuộc state.
     review_reply = await field_review.handle(conv, current_proc, intent)
     if review_reply is not None:
@@ -1243,7 +1303,12 @@ async def _handle_turn_inner(
             return review_reply
         # Đang hỏi ô mà công dân ra lệnh khác của bước ("điều chỉnh giấy tờ"…): vòng hỏi đã dừng → chạy lệnh đó
         # luôn trong lượt này, kèm lệnh tắt tô ô của vòng hỏi.
-        r = await _handle_turn_inner(conv, rerouted, client_page_context)
+        if rerouted.kind == "action" and cn_policy.confirm_needed(conv, f"__action:{rerouted.value}"):
+            r = cn_policy.voice_confirm(conv, f"__action:{rerouted.value}")
+        else:
+            r = await cn_policy.intercept(conv, rerouted, client_page_context)
+            if r is None:
+                r = await _handle_turn_inner(conv, rerouted, client_page_context)
         r.actions = [*review_reply.actions, *r.actions]
         return r
     # Thành lập hộ kinh doanh bằng hỏi đáp (không tờ khai / bổ sung mục thiếu): lệnh + câu trả lời của vòng hỏi.
@@ -1325,6 +1390,10 @@ async def _handle_turn_inner(
             conv, current_proc, event_page_context,
         )
         docs_target_changed = docs_target_changed or event_target_changed
+        # Trang lùi bước wizard sau khi đã điền (công dân bấm Quay lại trên web / trợ lý bấm hộ) → state lùi theo.
+        back_reply = step_back.on_page(conv, current_proc, event_page_context)
+        if back_reply is not None:
+            return back_reply
         # Trong lúc nhận giấy tờ, SPA có thể đổi bước mà không reload. Chỉ cập nhật nhãn nút,
         # không chạy pipeline và không sinh thêm bubble; lúc chốt FE vẫn gửi context mới nhất.
         if docs_target_changed and state in ("ask_doc_method", "qr_waiting", "collecting_docs"):
@@ -1858,6 +1927,13 @@ def _variant_option(proc: dict, key: str) -> dict:
     return options[0] if options else {}
 
 
+def _agency_level_proc(conv: dict, proc: dict) -> dict:
+    """Thủ tục "Sở hoặc UBND xã" (agencyLevelByAccount): gộp nhánh theo vai trò tài khoản + xã đang chọn, để mọi bước
+    chọn cơ quan phía sau (câu dẫn, select_agency, thẻ cần bấm) đọc đúng một cấu hình."""
+    loc = conv.get("location") or {}
+    return with_agency_level(proc, (conv.get("auth_user") or {}).get("role"), proc.get("agencyWard") or loc.get("ward"))
+
+
 def _agency_ward_display(proc: dict, loc: dict) -> str:
     """Tên "cấp xã" đọc trong các câu chọn cơ quan: thủ tục chỉ chọn tỉnh (cổng bộ ngành)
     thì đọc tên Sở chuyên ngành thay vì xã."""
@@ -1968,7 +2044,7 @@ def _start_guide_login(conv: dict) -> Reply:
     conv["business_result"] = None
     conv["business_prepare_started"] = False
     conv["business_action_started"] = False
-    proc = get_procedure(conv["procedure_key"]) or {}
+    proc = _agency_level_proc(conv, get_procedure(conv["procedure_key"]) or {})
     url = proc.get("keKhaiUrl", "")
     loc = conv.get("location") or {}
     if url and proc.get("bcaPortal"):
@@ -3274,7 +3350,7 @@ def _bca_agency_result(conv: dict, payload: dict) -> Reply:
 
 def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     loc = conv.get("location") or {}
-    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    proc = _agency_level_proc(conv, get_procedure(conv.get("procedure_key") or "") or {})
     if intent.kind == "event" and intent.value == "page_status":
         return _guide_login_on_page(conv, proc, loc, intent.payload)
     if proc.get("bcaPortal"):
@@ -3527,6 +3603,9 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     """
     from app.channels.handfree.chat import pipeline_runner
 
+    if hkd_tro_ly.attaching_docs(conv):
+        return await hkd_tro_ly.attach_docs_complete(conv)
+
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     attach_only = proc.get("mode") == "attach"
     # Extension mới phải buộc thao tác vào đúng trang. Nếu DOM chưa sẵn sàng thì giữ nguyên
@@ -3754,6 +3833,11 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
     if target not in _DOCUMENT_ADJUSTMENT_LABELS:
         return Reply(*_fmt(vi.DOCS_TARGET_UNKNOWN))
 
+    if not conv.get("supplementing_documents"):
+        conv["documents_adjustment_return"] = {
+            "conv": deepcopy({k: conv.get(k) for k in _ADJUSTMENT_KEYS}),
+            "chips": deepcopy((conv.get("last_reply") or {}).get("chips") or []),
+        }
     sid = str(conv.get("upload_session_id") or "")
     session = await up_store.reopen_for_supplement(sid) if sid else None
     if not session:

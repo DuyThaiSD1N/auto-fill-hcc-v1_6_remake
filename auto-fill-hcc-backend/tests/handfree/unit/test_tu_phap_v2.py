@@ -308,6 +308,7 @@ async def test_con_o_bat_buoc_ma_doi_xem_truoc_thi_bao_va_hoi_tiep_o_dang_do(mon
 
 
 async def test_chi_con_o_khong_bat_buoc_ma_doi_xem_truoc_thi_mo_xem_truoc_luon(monkeypatch):
+    _no_agents(monkeypatch)
     conv, reply = await _ask_then_proceed(monkeypatch, required=0)
     types = [a.get("type") for a in reply.actions]
     assert types[0] == "field_review_stop" and "declaration_preview" in types
@@ -316,6 +317,18 @@ async def test_chi_con_o_khong_bat_buoc_ma_doi_xem_truoc_thi_mo_xem_truoc_luon(m
 
 
 # ── Hỏi ô bắt buộc trước, tới ô không bắt buộc thì có nút Xem trước ──
+
+def _no_agents(monkeypatch):
+    """Thủ tục tư pháp chưa bật hai agent (FIELD_REVIEW_V2): hết ô bắt buộc vẫn hỏi tiếp ô không bắt buộc."""
+    monkeypatch.setattr(field_review.v2, "enabled", lambda conv, proc: False)
+
+
+async def test_hai_agent_het_o_bat_buoc_thi_dung_hoi_cho_cong_dan_chon_xem_truoc_hay_bo_sung():
+    conv, _ = await _started()
+    reply = await _turn(conv, "event", "field_review_focus",
+                        {"field": _orange(), "stats": {"filled": 34, "optional": 2, "required": 0}})
+    assert "field_review_stop" in [a.get("type") for a in reply.actions] and not field_review.asking(conv)
+    assert _preview(reply).get("cta") and "__action:field_review_start" in _sends(reply)
 
 def _orange(key="GhiChu", label="Ghi chú:"):
     return {"key": key, "name": key, "role": "", "kind": "text", "label": label, "group": "",
@@ -337,7 +350,8 @@ async def test_luong_ban_2_nho_extension_hoi_o_bat_buoc_truoc():
     assert "requiredFirst" not in start.actions[0]
 
 
-async def test_het_o_bat_buoc_sang_o_khong_bat_buoc_thi_bao_mot_lan_va_co_nut_xem_truoc():
+async def test_het_o_bat_buoc_sang_o_khong_bat_buoc_thi_bao_mot_lan_va_co_nut_xem_truoc(monkeypatch):
+    _no_agents(monkeypatch)
     conv, _ = await _started()
     no_red = {"filled": 34, "optional": 2, "required": 0}
     first = await _turn(conv, "event", "field_review_focus", {"field": _orange(), "stats": no_red})
@@ -357,7 +371,8 @@ async def test_o_khong_bat_buoc_ma_con_o_bat_buoc_bi_bo_qua_thi_chua_co_nut_xem_
     assert "__action:field_review_preview" not in _sends(reply)
 
 
-async def test_bam_xem_truoc_giua_vong_hoi_thi_dung_hoi_va_mo_xem_truoc():
+async def test_bam_xem_truoc_giua_vong_hoi_thi_dung_hoi_va_mo_xem_truoc(monkeypatch):
+    _no_agents(monkeypatch)
     conv, _ = await _started()
     await _turn(conv, "event", "field_review_focus",
                 {"field": _orange(), "stats": {"filled": 34, "optional": 2, "required": 0}})

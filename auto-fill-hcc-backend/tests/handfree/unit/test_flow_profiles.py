@@ -235,9 +235,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     byt_food_safety = procedures.pop("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham")
     assert byt_food_safety.get("flowProfile") is None
     assert byt_food_safety["wizard"] == byt_pension["wizard"]
-    assert byt_food_safety["agencyProvinceOnly"] is True
-    assert byt_food_safety["agencySoFirst"] is True
-    assert byt_food_safety["agencyCardIncludes"] == "Cơ quan thực hiện: Sở Y tế"
+    # Sở hay UBND xã theo tài khoản — chi tiết ở test_agency_card_dvcqg.py.
+    assert byt_food_safety["agencyLevelByAccount"]["so"]["agencyCardIncludes"] == "Cơ quan thực hiện: Sở Y tế"
+    assert byt_food_safety["agencyLevelByAccount"]["xa"]["agencyCardIncludes"] == "Cơ quan thực hiện: UBND"
     assert byt_food_safety["hideRepeatableHint"] is True
     assert len(byt_food_safety["shortLabel"]) >= 30
     # Cổng Bộ Y tế nộp tại SỞ Y tế (dược 1.014104, đăng ký hành nghề 1.012275, điều chỉnh GPHN chuyển

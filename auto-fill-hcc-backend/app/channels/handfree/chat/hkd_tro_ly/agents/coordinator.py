@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field as dc_field
 
 from app.channels.handfree.chat import store
+from app.channels.handfree.chat.hkd_tro_ly import hoi_dap
 from app.channels.handfree.chat.hkd_tro_ly.agents import context, coordinator_prompt as prompt
 from app.channels.handfree.chat.intents import fold
 from app.services.llm.client import chat as llm_chat
@@ -109,6 +110,10 @@ async def decide(catalog: list[dict], current: dict, thread: list[str], conv: di
     msgs = messages(catalog, current, thread, conv, text)
     raw = await llm_chat(msgs, temperature=0.0, max_tokens=400, purpose="hkd_coordinator")
     decision = parse(raw, by_code)
+    if decision.nganh_text and not hoi_dap.grounded(decision.nganh_text, " ".join([*thread, str(text or "")])):
+        decision.nganh_text = ""  # chép từ hội thoại cũ / danh sách trợ lý đọc, không phải lời công dân vừa nói
+        if decision.kind == "nganh":
+            decision.kind = "hoi_ro"
     problem = inconsistency(decision, conv)
     if problem:
         logger.info("[hkd.agents] điều phối quyết lại: %s", problem)

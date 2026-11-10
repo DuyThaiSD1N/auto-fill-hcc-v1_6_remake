@@ -160,7 +160,7 @@ async def test_ke_viec_kinh_doanh_o_khoi_khac_thi_agent_nganh_tra_luon(llm, monk
     await _at(conv, "dia-chi", "dien_thoai", dia_chi_kd=ADDR)
     seen = []
 
-    async def fake(text, current=None):
+    async def fake(text, current=None, history=""):
         seen.append(text)
         return nganh_nghe.KetQua(nganh=[nganh_nghe.Nganh("bán phở", ["5610"], True, "Bán phở bò")])
     monkeypatch.setattr(nganh_nghe, "tra_cuu", fake)
@@ -192,7 +192,7 @@ async def test_dieu_phoi_loi_thi_lui_ve_cach_hieu_mot_luot(monkeypatch):
         raise RuntimeError("LLM sập")
     monkeypatch.setattr(coordinator, "llm_chat", broken)
 
-    async def fake(text, asking, question, slots, values, location):
+    async def fake(text, asking, question, slots, values, location, history=None):
         return hoi_dap.Parsed("tra_loi", {"von": 70000000})
     monkeypatch.setattr(hoi_dap, "interpret", fake)
     await _say(conv, "bảy mươi triệu")
@@ -212,3 +212,88 @@ async def test_cong_dan_noi_khong_co_muc_dang_hoi_thi_bo_qua(llm):
     llm.value({"ma": email, "ket_qua": "bo_qua"})
     await _say(conv, "không có email đâu")
     assert "email" in conv["hkd"]["skipped"]
+
+
+_OWNER = "chu-ho-kinh-doanh"
+
+
+async def test_dung_roi_o_cau_co_khong_la_tra_loi_muc_dang_hoi_khong_phai_chua_nghe_ro(llm):
+    conv = _conv()
+    st = await _at(conv, "thong-tin-ve-thue", "dia_chi_thue", dia_chi_kd=ADDR, chu_the="ca_nhan")
+    llm.plan("dong_y", co_gia_tri=True)  # model hiểu "đúng rồi" là đồng ý chung
+    llm.value({"ma": _code(conv, "dia_chi_thue"), "ket_qua": "gia_tri", "gia_tri": True})
+    reply = await _say(conv, "đúng rồi")
+    assert st["values"]["dia_chi_thue"] is True
+    assert vi.HKD_UNCLEAR["md"].strip() not in reply.display_md
+    assert len(llm.prompts("hkd_specialist")) == 1  # agent chuyên môn đọc giá trị, không tự gán True
+
+
+async def test_bang_tom_tat_noi_lai_gia_tri_dang_co_thi_doc_lai_khong_bao_chua_nghe_ro(llm):
+    conv = _conv()
+    st = await _at(conv, _OWNER, hkd._CONFIRM, dia_chi_kd=ADDR, chu_the="ho_gia_dinh", chu_ho_la_ban=True,
+                   noi_o="giong")
+    st["owner_copied"] = True
+    code = _code(conv, "chu_the")
+    llm.plan("tra_loi", o=[{"ma": code}], ten_muc_duoc_neu="chủ thể thành lập", co_gia_tri=True)
+    llm.value({"ma": code, "ket_qua": "gia_tri", "gia_tri": "ho_gia_dinh"})
+    reply = await _say(conv, "các thành viên hộ gia đình")
+    assert vi.HKD_UNCLEAR["md"].strip() not in reply.display_md
+    assert "Chủ thể thành lập" in reply.display_md and st["field"] == hkd._CONFIRM
+
+
+async def test_bang_tom_tat_hoi_lai_muc_can_sua_co_nut_cua_muc_do(llm):
+    conv = _conv()
+    st = await _at(conv, _OWNER, hkd._CONFIRM, dia_chi_kd=ADDR, chu_the="ca_nhan", chu_ho_la_ban=True, noi_o="giong")
+    st["owner_copied"] = True
+    llm.plan("di_toi", toi=_code(conv, "chu_the"), cau_hoi="Chủ thể thành lập là ai ạ?")
+    reply = await _say(conv, "chủ thể thành lập")
+    sends = [c["send"] for c in reply.chips]
+    assert sends and all('"k":"chu_the"' in s for s in sends) and "__action:hkd_skip" not in sends
+    household = next(s for s in sends if "ho_gia_dinh" in s)
+    payload = json.loads(household.split("hkd_value:", 1)[1])
+    after = await hkd.handle(conv, PROC, Intent("action", "hkd_value", payload))
+    assert st["values"]["chu_the"] == "ho_gia_dinh" and st["field"] == hkd._CONFIRM
+    assert "các thành viên hộ gia đình" in after.display_md
+
+
+@pytest.mark.parametrize("said, want", [
+    ("hai mươi tháng hai năm hai không không hai", (20, 2, 2002)),
+    ("ngày hai mươi tháng hai năm hai nghìn không trăm linh hai", (20, 2, 2002)),
+    ("ngày mồng một tháng mười năm hai nghìn", (1, 10, 2000)),
+    ("mười lăm tháng mười hai năm một chín tám bảy", (15, 12, 1987)),
+    ("mùng năm tháng năm năm hai không không năm", (5, 5, 2005)),
+    ("ngày 20 tháng 2 năm 2002", (20, 2, 2002)),
+    ("một bảy không sáu hai không hai lăm", (17, 6, 2025)),   # tám chữ số đọc liền
+    ("hai mươi hai hai không không hai", None),        # không có mốc "tháng" / "năm": hai cách tách
+    ("mùng năm tháng sáu năm chín mươi", None),        # năm hai số: để agent đọc
+])
+def test_doi_loi_doc_ngay(said, want):
+    assert hoi_dap.spoken_date(said) == want
+
+
+async def test_ngay_lech_ban_doi_san_thi_agent_doc_lai_mot_lan(llm):
+    conv = _conv()
+    st = await _at(conv, _OWNER, hkd._CONFIRM, dia_chi_kd=ADDR, chu_the="ho_gia_dinh", chu_ho_la_ban=False,
+                   chu_ho_ho_ten="Nguyễn Văn B", chu_ho_gioi_tinh="Nam", chu_ho_ngay_sinh="20/02/2020",
+                   chu_ho_so_dinh_danh="001090000001", noi_o="giong")
+    code = _code(conv, "chu_ho_ngay_sinh")
+    llm.plan("tra_loi", o=[{"ma": code}], co_gia_tri=True)
+    llm.value({"ma": code, "ket_qua": "gia_tri", "gia_tri": "20/02/2022"})
+    llm.value({"ma": code, "ket_qua": "gia_tri", "gia_tri": "20/02/2002"})
+    await _say(conv, "hai mươi tháng hai năm hai không không hai")
+    assert st["values"]["chu_ho_ngay_sinh"] == "20/02/2002"
+    first, again = llm.prompts("hkd_specialist")
+    assert "ngày 20 · tháng 02 · năm 2002" in first and "2 0 0 2" in again
+
+
+async def test_bang_tom_tat_agent_hoi_lai_khong_kem_cau_thi_hoi_dung_muc_khong_doc_ca_bang(llm):
+    conv = _conv()
+    st = await _at(conv, _OWNER, hkd._CONFIRM, dia_chi_kd=ADDR, chu_the="ho_gia_dinh", chu_ho_la_ban=False,
+                   chu_ho_ho_ten="Nguyễn Văn B", chu_ho_gioi_tinh="Nam", chu_ho_ngay_sinh="20/02/2020",
+                   chu_ho_so_dinh_danh="001090000001", noi_o="giong")
+    code = _code(conv, "chu_ho_ngay_sinh")
+    llm.plan("tra_loi", o=[{"ma": code}], co_gia_tri=True)
+    llm.value({"ma": code, "ket_qua": "mo_ho", "gia_tri": "", "cau_hoi": ""})
+    reply = await _say(conv, "hai mươi hai hai không không hai")
+    assert vi.HKD_QUESTIONS["chu_ho_ngay_sinh"]["md"] in reply.display_md
+    assert "tôi đã điền" not in reply.display_md and st["values"]["chu_ho_ngay_sinh"] == "20/02/2020"
