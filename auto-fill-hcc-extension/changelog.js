@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.4",
+    date: "10/11/2026",
+    items: [
+      "Khánh Hòa: tài khoản Phường Bắc Nha Trang lập hộ kinh doanh để trống ô mô tả dưới tên ngành (chỉ giữ tên ngành cổng tự hiện theo mã), như Phường Yên Bái và Đắk Bla.",
+    ],
+  },
+  {
+    version: "1.27.3",
+    date: "10/11/2026",
+    items: [
+      "Tư pháp trên Cổng dịch vụ công quốc gia mới: nhập số điện thoại người nộp không còn làm mất giấy tờ tùy thân, ngày cấp, nơi cấp, nơi cư trú của người nộp — cổng xoá thì extension tự ghi lại.",
+    ],
+  },
+  {
     version: "1.27.2",
     date: "10/11/2026",
     items: [
