@@ -44,8 +44,8 @@ from app.locations.catalog import (
 from app.channels.handfree.notify import service as notify_service
 from app.channels.handfree.flow_profiles import FLOW_PROFILES
 from app.channels.handfree.procedure_registry import (
-    frequent_order, get_attach_pipeline, get_procedure, is_allowed_in_province,
-    portal_submit_rules, procedure_code, public_list, public_list_for,
+    frequent_order, get_attach_pipeline, get_procedure, is_allowed_in_province, is_ready_in_province,
+    is_visible_in_province, portal_submit_rules, procedure_code, public_list, public_list_for,
 )
 from app.channels.handfree.profiles import service as profile_service
 from app.procedures.portal_submit import needs_submit_click
@@ -1621,7 +1621,7 @@ def _procedure_unclear(conv: dict, keys: list) -> Reply:
     ("cái thứ hai", "người mất là người khuyết tật") với câu trước.
     """
     slug = _account_province_slug(conv)
-    procs = [p for k in keys if (p := get_procedure(str(k))) and is_allowed_in_province(p, slug)][:3]
+    procs = [p for k in keys if (p := get_procedure(str(k))) and is_visible_in_province(p, slug)][:3]
     if not procs:
         return _procedure_not_recognized(conv)
     conv["procedure_candidates"] = [p["key"] for p in procs]
@@ -1698,6 +1698,16 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
             procedure=proc.get("shortLabel") or proc["label"],
             provinces=only_names,
             province=loc.get("province") or "tỉnh khác",
+        ))
+        r.cards = [_service_list_card(conv)]
+        return r
+    # Đúng tỉnh nhưng tỉnh của tài khoản chưa "Hoàn thiện phần mềm" thủ tục này (bảng theo dõi) → cũng
+    # không mở, cùng choke point với khóa tỉnh để bấm ô / gọi tên / detect trang đều chặn như nhau.
+    if not is_ready_in_province(proc, account_slug):
+        r = Reply(*_fmt(
+            vi.PROCEDURE_NOT_READY_IN_PROVINCE,
+            procedure=proc.get("shortLabel") or proc["label"],
+            province=(province_by_slug(account_slug) or {}).get("text") or "tỉnh của công dân",
         ))
         r.cards = [_service_list_card(conv)]
         return r

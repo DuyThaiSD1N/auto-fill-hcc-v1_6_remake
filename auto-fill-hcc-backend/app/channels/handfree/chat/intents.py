@@ -20,7 +20,7 @@ import unicodedata
 from dataclasses import dataclass, field
 
 from app.channels.handfree.chat import procedure_picker, store
-from app.channels.handfree.procedure_registry import is_allowed_in_province, procedure_code, public_list
+from app.channels.handfree.procedure_registry import is_visible_in_province, procedure_code, public_list
 from app.services.llm.client import chat as llm_chat
 
 _CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
@@ -505,7 +505,7 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     if code_match:
         account_slug = str((conv.get("auth_user") or {}).get("province_slug") or "")
         matches = [p for p in public_list() if procedure_code(p) == code_match.group(1)]
-        allowed = [p for p in matches if is_allowed_in_province(p, account_slug)]
+        allowed = [p for p in matches if is_visible_in_province(p, account_slug)]
         allowed.sort(key=lambda p: account_slug not in (p.get("provinceOnly") or []))
         if allowed or matches:
             return Intent("pick_procedure", (allowed or matches)[0]["key"])

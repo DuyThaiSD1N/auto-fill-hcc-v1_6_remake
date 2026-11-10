@@ -9219,6 +9219,190 @@ _HOME_FREQUENT_KEYS = (
     "dang-ky-kinh-doanh",
 )
 
+# Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261110-1025.xlsx, xuất
+# 10/11/2026; "STT" ở chú thích = cột STT của bảng). Bảng có cột cho 11 tỉnh ở _TINH_THEO_DOI: tài khoản thuộc
+# một tỉnh trong đó chỉ thấy + gọi được thủ tục mà cột tỉnh ấy ghi "Hoàn thiện phần mềm" (Chưa cập nhật / Chưa
+# có / Đã BA / Pending đều ẩn). Tỉnh ngoài bảng hoặc tài khoản thiếu tỉnh → không lọc (như provinceOnly).
+# Lọc này CỘNG THÊM vào provinceOnly: bản riêng của tỉnh ghi _TAT_CA vẫn chỉ hiện ở tỉnh trong provinceOnly.
+# Key vắng bảng = chưa hoàn thiện ở cả 11 tỉnh → thủ tục mới đưa lên trợ lý phải thêm dòng ở đây mới hiện.
+_TINH_THEO_DOI = (
+    "laichau", "bacninh", "lamdong", "danang", "quangninh", "ninhbinh",
+    "quangngai", "laocai", "quangtri", "khanhhoa", "tuyenquang",
+)
+_TAT_CA = frozenset(_TINH_THEO_DOI)
+_HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
+    "khai-sinh-dang-ky": _TAT_CA,  # STT 10 (bảng ghi mã 2.000986)
+    "khai-sinh-dang-ky-thuong": _TAT_CA,
+    "ket-hon": _TAT_CA,
+    "dang-ky-giam-ho": _TAT_CA,
+    "dang-ky-cham-dut-giam-ho": _TAT_CA,
+    "trich-luc-ks": _TAT_CA,
+    "ket-hon-nuoc-ngoai": _TAT_CA,
+    "dang-ky-lai-ket-hon": _TAT_CA,
+    "khai-sinh-dang-ky-lai": _TAT_CA,
+    "khai-sinh-da-co-ho-so": _TAT_CA,
+    "khai-tu": _TAT_CA,
+    "khai-tu-lien-thong": _TAT_CA - {"khanhhoa", "tuyenquang"},  # STT 110: Khánh Hòa, Tuyên Quang Chưa cập nhật
+    "khai-tu-dang-ky-lai": _TAT_CA,
+    "dang-ky-nhan-cha-me-con": _TAT_CA,
+    "khai-sinh-ket-hop-nhan-cha-me-con": _TAT_CA,
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": _TAT_CA,
+    "thay-doi-cai-chinh-ho-tich": _TAT_CA,
+    "xac-nhan-tinh-trang-hon-nhan": _TAT_CA,
+    "xac-nhan-thong-tin-ho-tich": _TAT_CA,
+    "dang-ky-kinh-doanh": _TAT_CA,
+    "chung-thuc-ban-sao": _TAT_CA,
+    "chung-thuc-giao-dich-tai-san": _TAT_CA,
+    "chung-thuc-phan-chia-di-san": _TAT_CA,
+    "chung-thuc-tu-choi-nhan-di-san": _TAT_CA,
+    "chung-thuc-di-chuc": _TAT_CA,
+    "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": _TAT_CA,
+    # STT 155 ghi mã 2.000992 nhưng tên là bản "không phải CTV" → giữ cả hai bản
+    "chung-thuc-chu-ky-nguoi-dich-ctv": _TAT_CA,
+    "chung-thuc-chu-ky-nguoi-dich-khong-ctv": _TAT_CA,  # STT 155 (xem dòng trên)
+    "chung-thuc-chu-ky": _TAT_CA,
+    "cap-ban-sao-so-goc": _TAT_CA,
+    "bau-to-truong-to-hoa-giai": _TAT_CA,
+    "yeu-cau-tro-giup-phap-ly": _TAT_CA,
+    "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": _TAT_CA,
+    "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": _TAT_CA,
+    "cap-giay-phep-khai-thac-thuy-san": _TAT_CA,
+    # STT 118: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
+    "cap-gcn-dang-ky-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
+    # STT 122: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
+    "cap-van-ban-chap-thuan-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
+    "cap-lai-chung-chi-hanh-nghe-thu-y": _TAT_CA,
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": frozenset(),  # không có trong bảng
+    "hoa-giai-tranh-chap-dat-dai": frozenset(),  # không có trong bảng
+    "cap-ban-sao-van-bang-so-goc": _TAT_CA,
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": _TAT_CA,
+    "cho-thue-thue-mua-nha-o-xa-hoi": frozenset({"danang"}),  # STT 147: chỉ Đà Nẵng hoàn thiện
+    "dieu-chinh-huu-tri-xa-hoi": _TAT_CA,
+    "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": _TAT_CA,
+    "cap-gcn-attp-nong-lam-thuy-san": _TAT_CA,
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": _TAT_CA,
+    "dang-ky-hanh-nghe": _TAT_CA,
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA,
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA - {"tuyenquang"},  # STT 64: Tuyên Quang Chưa cập nhật
+    "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": _TAT_CA,
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": frozenset({"danang"}),  # STT 66: chỉ Đà Nẵng hoàn thiện
+    "dieu-chinh-giay-phep-hoat-dong-kcb": _TAT_CA,
+    "cap-chung-chi-hanh-nghe-duoc": frozenset({"danang"}),  # STT 67: chỉ Đà Nẵng hoàn thiện
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": _TAT_CA,
+    "di-chuyen-ho-so-nguoi-huong-tro-cap": frozenset({"danang"}),  # STT 124: chỉ Đà Nẵng hoàn thiện
+    "tro-cap-tho-cung-liet-si": _TAT_CA,
+    "cap-lai-to-quoc-ghi-cong": _TAT_CA,
+    "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong": _TAT_CA,
+    "bo-sung-than-nhan-liet-si": _TAT_CA,
+    "tham-vieng-mo-liet-si": _TAT_CA,
+    "giai-quyet-che-do-khang-chien": _TAT_CA,
+    "sua-doi-thong-tin-ho-so-nguoi-co-cong": _TAT_CA,
+    "mai-tang-dan-cong-hoa-tuyen": _TAT_CA,
+    "uu-dai-ncc-tu-tran": _TAT_CA,
+    "xac-dinh-muc-do-khuyet-tat": _TAT_CA,
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": _TAT_CA,
+    "ho-tro-mai-tang-1116910": _TAT_CA,  # STT 36 (bảng ghi mã cũ 1.001731)
+    "ho-tro-mai-tang-huu-tri-xa-hoi": _TAT_CA,
+    "tro-cap-xa-hoi-hang-thang": _TAT_CA,
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": _TAT_CA,
+    "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi": _TAT_CA,
+    "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi": _TAT_CA,
+    "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": _TAT_CA,
+    "dieu-chinh-giay-phep-xay-dung": _TAT_CA,
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": _TAT_CA,
+    "sua-chua-cai-tao-gpxd-cong-trinh": _TAT_CA,
+    "cung-cap-thong-tin-quy-hoach": frozenset({"laichau", "bacninh"}),  # STT 98: chỉ Lai Châu, Bắc Ninh hoàn thiện
+    "cap-phep-long-duong-via-he": frozenset({"danang"}),  # STT 138: chỉ Đà Nẵng hoàn thiện
+    "cap-giay-phep-lien-van-viet-lao": _TAT_CA,
+    "cap-giay-phep-chat-ha-cay-xanh": _TAT_CA,
+    "chap-thuan-dau-noi-tam": frozenset(),  # không có trong bảng
+    "gia-han-luu-hanh-phuong-tien-lao": _TAT_CA,
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": frozenset(),  # không có trong bảng
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": _TAT_CA,
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": _TAT_CA,
+    "cham-dut-hoat-dong-ho-kinh-doanh": _TAT_CA,
+    "tam-ngung-kinh-doanh": _TAT_CA,
+    "cap-lai-cap-doi-gcn-ho-kinh-doanh": _TAT_CA,  # STT 106 (2.000575)
+    "dang-ky-bien-phap-bao-dam-bac-ninh": _TAT_CA,
+    "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": _TAT_CA,
+    "dinh-chinh-gcn-da-cap-bac-ninh": _TAT_CA,  # STT 103
+    "dinh-chinh-gcn-da-cap-1115476-bac-ninh": _TAT_CA,  # STT 103
+    "dang-ky-bien-dong-thoa-thuan-bac-ninh": _TAT_CA,  # STT 48
+    "dang-ky-bien-dong-dat-dai-bac-ninh": _TAT_CA,
+    "tach-hop-thua-dat-bac-ninh": _TAT_CA,  # STT 102
+    "cap-doi-gcn-bac-ninh": _TAT_CA,  # STT 93
+    "dang-ky-dat-dai-lan-dau-bac-ninh": _TAT_CA,  # STT 44
+    "thu-hoi-gcn-cap-sai-bac-ninh": _TAT_CA,  # STT 101
+    "dinh-chinh-sai-sot-bac-ninh": _TAT_CA,  # STT 43
+    "giao-thue-chuyen-muc-dich-dat-bac-ninh": _TAT_CA,  # STT 99
+    "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": _TAT_CA,
+    "ho-tro-nguoi-cao-tuoi-bac-ninh": _TAT_CA,
+    "ho-tro-chi-phi-hoa-tang-bac-ninh": _TAT_CA,
+    "dang-ky-nha-o-xa-hoi-bac-ninh": _TAT_CA,
+    "dang-ky-tam-tru": frozenset(),  # không có trong bảng
+    "dang-ky-noi-quy-lao-dong": _TAT_CA,
+    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,
+    "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": _TAT_CA,
+    "dang-ky-lap-dat-su-dung-nuoc-sach": _TAT_CA,
+    "chuyen-doi-ten-hop-dong-nuoc-sach": _TAT_CA,
+    "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau": _TAT_CA,
+    "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
+    "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
+    "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
+    # STT 44 (dòng chung các tỉnh; STT 229 mã 1.013978 chỉ ghi Lâm Đồng)
+    "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,
+    "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
+    "cap-doi-gcn-khanh-hoa": frozenset(),  # STT 93: Khánh Hòa Chưa cập nhật
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": frozenset(),  # STT 41: Khánh Hòa Chưa cập nhật
+    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": frozenset(),  # STT 190: Khánh Hòa Chưa cập nhật
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": frozenset(),  # STT 207, 174: Khánh Hòa Chưa cập nhật
+    "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 (như bản Khánh Hòa)
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
+    "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,
+    "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
+    "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
+    "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,
+    "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
+    "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
+    "to-chuc-bieu-dien-nghe-thuat": _TAT_CA,
+    "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": _TAT_CA,
+    "gia-han-giay-phep-xay-dung": _TAT_CA,
+    "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": _TAT_CA,
+    "cap-gcn-attp-cong-thuong": _TAT_CA,
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": _TAT_CA,
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": frozenset(),  # không có trong bảng
+    "xet-tuyen-vien-chuc": frozenset({"laichau"}),  # STT 88: chỉ Lai Châu hoàn thiện
+    "xet-tuyen-cong-chuc": frozenset({"laichau"}),  # STT 80: chỉ Lai Châu hoàn thiện
+    "thi-tuyen-cong-chuc": frozenset({"laichau"}),  # STT 81: chỉ Lai Châu hoàn thiện
+    "gia-han-chung-chi-hanh-nghe-thu-y": _TAT_CA,
+    # STT 120: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
+    "xoa-dang-ky-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
+    "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": _TAT_CA,
+    "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": _TAT_CA,
+    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh": frozenset(),  # không có trong bảng
+    "dang-ky-nha-o-xa-hoi-tuyen-quang": _TAT_CA,
+    "tham-dinh-bcnckt": _TAT_CA,
+    "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": _TAT_CA,
+    "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": _TAT_CA,
+    # STT 197: chỉ Quảng Ngãi hoàn thiện
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": frozenset({"quangngai"}),
+    "dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "dang-ky-bien-dong-chuyen-nhuong-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "chuyen-muc-dich-su-dung-dat-quang-ninh-mien-nui-hai-dao": _TAT_CA,  # STT 154 (bảng ghi mã 1.115860)
+    "cap-doi-gcn-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "cap-doi-gcn-do-do-dac-khong-nvtc-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": _TAT_CA,
+    "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": frozenset(),  # STT 225: Quảng Ninh Chưa có
+    "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh": _TAT_CA,
+    "cap-lai-gcn-do-bi-mat-quang-ninh": _TAT_CA,
+    # STT 55: Quảng Ninh Chưa cập nhật
+    "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh": frozenset(),
+    "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": _TAT_CA,
+    "dang-ky-bien-phap-bao-dam-quang-ninh": frozenset(),  # STT 113: Quảng Ninh Chưa cập nhật
+}
+
 
 def get_procedure(key: str) -> dict | None:
     return _BY_KEY.get(key)
@@ -9312,6 +9496,11 @@ def _validate_profile_dispatch() -> None:
     for key in _HUONG_DAN_DRIVE_ID:
         if key not in _BY_KEY:
             raise RuntimeError(f"_HUONG_DAN_DRIVE_ID có key không tồn tại: {key}")
+    for key, slugs in _HOAN_THIEN_THEO_TINH.items():
+        if key not in _BY_KEY:
+            raise RuntimeError(f"_HOAN_THIEN_THEO_TINH có key không tồn tại: {key}")
+        if not slugs <= _TAT_CA:
+            raise RuntimeError(f"_HOAN_THIEN_THEO_TINH[{key}] có tỉnh ngoài _TINH_THEO_DOI: {sorted(slugs - _TAT_CA)}")
     for procedure in PROCEDURES:
         if not procedure.get("flowProfile"):
             continue
@@ -9360,6 +9549,24 @@ def is_allowed_in_province(proc: dict | None, province_slug: str | None) -> bool
     return province_slug in only
 
 
+def is_ready_in_province(proc: dict | None, province_slug: str | None) -> bool:
+    """Tỉnh `province_slug` đã "Hoàn thiện phần mềm" thủ tục này chưa (bảng _HOAN_THIEN_THEO_TINH).
+
+    Chỉ xét 11 tỉnh có cột trong bảng theo dõi; tỉnh khác / tài khoản thiếu tỉnh → True (không lọc,
+    như is_allowed_in_province). Key vắng bảng = chưa hoàn thiện ở cả 11 tỉnh.
+    """
+    if not proc:
+        return False
+    if province_slug not in _TINH_THEO_DOI:
+        return True
+    return province_slug in _HOAN_THIEN_THEO_TINH.get(proc["key"], frozenset())
+
+
+def is_visible_in_province(proc: dict | None, province_slug: str | None) -> bool:
+    """Tài khoản tỉnh `province_slug` thấy + gọi được thủ tục: đúng tỉnh (provinceOnly) VÀ tỉnh đã hoàn thiện."""
+    return is_allowed_in_province(proc, province_slug) and is_ready_in_province(proc, province_slug)
+
+
 def public_list_for(province_slug: str | None) -> list[dict]:
-    """public_list() đã lọc theo tỉnh account — thủ tục khóa tỉnh khác bị bỏ khỏi màn chào."""
-    return [p for p in public_list() if is_allowed_in_province(p, province_slug)]
+    """public_list() đã lọc theo tỉnh account — bỏ thủ tục khóa tỉnh khác + thủ tục tỉnh này chưa hoàn thiện."""
+    return [p for p in public_list() if is_visible_in_province(p, province_slug)]

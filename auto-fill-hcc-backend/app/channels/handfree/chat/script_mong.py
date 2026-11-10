@@ -1392,6 +1392,12 @@ PROCEDURE_PROVINCE_LOCKED = {
             "yam no. Pej xeem xaiv lwm yam hauv qab no."),
 }
 
+# BẢN NHÁP chờ anh Dư soát — ghép từ PROCEDURE_PROVINCE_LOCKED ở trên; "tseem ... tsis tau" = "vẫn chưa".
+PROCEDURE_NOT_READY_IN_PROVINCE = {
+    "md": "{procedure} tseem ua tsis tau nyob {province}. Pej xeem xaiv lwm yam hauv qab no.",
+    "tts": "{procedure} tseem ua tsis tau nyob {province}. Pej xeem xaiv lwm yam hauv qab no.",
+}
+
 RATE_INVITE = {
     "md": ("Pej xeem xa tau ntaub ntawv lawm. Ua ntej tas, pej xeem qhia kuv hnub no kuv pab "
            "zoo li cas? Nias ib qho xwb, tsis yuam."),

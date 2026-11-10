@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from app.channels.handfree.chat import store
 from app.channels.handfree.chat.procedure_picker import prompt
-from app.channels.handfree.procedure_registry import PROCEDURES, is_allowed_in_province
+from app.channels.handfree.procedure_registry import PROCEDURES, is_visible_in_province
 from app.services.llm.client import chat as llm_chat
 
 logger = logging.getLogger(__name__)
@@ -41,8 +41,9 @@ def _province_slug(conv: dict) -> str:
 
 
 def procedures_for(province_slug: str | None) -> list[dict]:
-    """Thủ tục của tỉnh theo thứ tự khai báo — số [n] trong prompt là vị trí trong danh sách này."""
-    return [p for p in PROCEDURES if is_allowed_in_province(p, province_slug)]
+    """Thủ tục của tỉnh (đúng tỉnh + đã hoàn thiện) theo thứ tự khai báo — số [n] trong prompt là vị trí
+    trong danh sách này."""
+    return [p for p in PROCEDURES if is_visible_in_province(p, province_slug)]
 
 
 def _key_at(value, keys: list[str]) -> str:

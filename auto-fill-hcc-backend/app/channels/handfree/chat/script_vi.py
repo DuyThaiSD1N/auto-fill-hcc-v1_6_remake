@@ -80,6 +80,12 @@ PROCEDURE_PROVINCE_LOCKED = {
     "tts": "Dạ, thủ tục này chỉ làm được ở {provinces}. Công dân chọn thủ tục khác ạ.",
 }
 
+# Tỉnh của tài khoản chưa "Hoàn thiện phần mềm" thủ tục này (bảng _HOAN_THIEN_THEO_TINH ở procedure_registry).
+PROCEDURE_NOT_READY_IN_PROVINCE = {
+    "md": "Dạ, **{procedure}** hiện chưa làm được ở **{province}** ạ. Công dân chọn thủ tục khác bên dưới.",
+    "tts": "Dạ, thủ tục này hiện chưa làm được ở {province}. Công dân chọn thủ tục khác ạ.",
+}
+
 GUIDE_LOGIN = {
     "md": "Nếu trang hiện mã đăng nhập: mở app **VNeID** → **Quét QR** → quét mã trên màn hình ạ.",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
