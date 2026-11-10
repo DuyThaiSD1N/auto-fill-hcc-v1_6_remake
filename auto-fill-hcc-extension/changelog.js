@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.2",
+    date: "10/11/2026",
+    items: [
+      "Khánh Hòa: cổng dịch vụ công đang lỗi ở Phường Bắc Nha Trang (hiện hai dòng trùng tên) — tài khoản Phường Bắc Nha Trang tự chọn dòng trên rồi chọn lại dòng dưới cho đúng cơ quan.",
+    ],
+  },
+  {
     version: "1.27.1",
     date: "9/11/2026",
     items: [

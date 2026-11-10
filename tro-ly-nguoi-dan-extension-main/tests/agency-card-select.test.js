@@ -110,6 +110,47 @@ test("listener + sidebar chuyển tiếp cardIncludes và báo riêng khi không
   assert.match(block.slice(0, 900), /code === "card_not_found"[\s\S]*__event:agency_card_missing/);
 });
 
+test("ô Phường/Xã ra hai dòng cùng tên: Bắc Nha Trang (Khánh Hòa) bấm dòng trên rồi dòng dưới, xã khác vẫn dòng đầu", () => {
+  const start = dvc.indexOf("const PORTAL_AGENCY_WARD_PICKS");
+  const end = dvc.indexOf("function typeIntoSearch", start);
+  assert.ok(start >= 0 && end > start, "không cắt được bảng dòng trùng tên + matchOption");
+  const ctx = { fold, isVisible: () => true };
+  vm.createContext(ctx);
+  vm.runInContext(
+    dvc.slice(start, end)
+      + "\nthis.matchOption = matchOption;\nthis.portalAgencyWardPicks = portalAgencyWardPicks;",
+    ctx,
+  );
+  const option = (text) => {
+    const node = { textContent: text, children: [], isConnected: true };
+    node.closest = () => node;
+    return node;
+  };
+  const panel = (options) => ({
+    textContent: options.map((o) => o.textContent).join(" "),
+    children: options,
+    isConnected: true,
+    querySelectorAll: () => options,
+  });
+
+  // Mảng tạo trong vm khác realm → so qua JSON.
+  const picks = (p, w) => JSON.stringify(ctx.portalAgencyWardPicks(p, w));
+  assert.equal(picks("Tỉnh Khánh Hòa", "Phường Bắc Nha Trang"), "[1,2]", "cổng lỗi: dòng trên trước, dòng dưới sau");
+  assert.equal(picks("Khánh Hòa", "Bắc Nha Trang"), "[1,2]");
+  assert.equal(picks("Tỉnh Khánh Hòa", "Phường Nha Trang"), "[1]");
+  assert.equal(picks("Tỉnh Bắc Ninh", "Phường Bắc Nha Trang"), "[1]");
+
+  const tren = option("Phường Bắc Nha Trang");
+  const duoi = option("Phường Bắc Nha Trang");
+  const roots = [panel([tren, duoi, option("Phường Nha Trang"), option("Phường Tây Nha Trang")])];
+  assert.equal(ctx.matchOption(roots, "Phường Bắc Nha Trang", 1), tren);
+  assert.equal(ctx.matchOption(roots, "Phường Bắc Nha Trang", 2), duoi);
+  assert.equal(ctx.matchOption(roots, "Phường Bắc Nha Trang"), tren, "không khai thì giữ dòng đầu như cũ");
+  // Cổng gộp còn một dòng → lấy dòng duy nhất, không báo không thấy.
+  const mot = option("Phường Bắc Nha Trang");
+  assert.equal(ctx.matchOption([panel([mot, option("Phường Nha Trang")])], "Phường Bắc Nha Trang", 2), mot);
+});
+
 test("thủ tục không khai thẻ giữ nguyên đường bấm thẻ đầu", () => {
   const code = strip(dvc);
   const sel = code.slice(code.indexOf("async function selectAgency"));

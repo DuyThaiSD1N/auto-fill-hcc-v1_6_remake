@@ -600,6 +600,20 @@
     return (aliases && aliases[fold(ward)]) || ward;
   }
 
+  // Ô Phường/Xã của khối "Chọn cơ quan thực hiện" có xã ra HAI dòng cùng tên và cổng lỗi ở xã đó: chọn thẳng dòng
+  // đúng không ăn. Khai các dòng phải bấm LẦN LƯỢT (vị trí trong danh sách, đếm từ 1), khoá theo tỉnh rồi tên xã
+  // trần. Cổng gộp còn một dòng thì mỗi lượt lấy dòng đó. Bản sao ở Auto Fill content/agency-select.js (WARD_PICKS).
+  const PORTAL_AGENCY_WARD_PICKS = {
+    // Phường Bắc Nha Trang: chọn dòng trên rồi chọn lại dòng dưới (10/11/2026).
+    "khanh hoa": { "bac nha trang": [1, 2] },
+  };
+
+  function portalAgencyWardPicks(province, ward) {
+    const provinceCore = fold(province).replace(/^(tinh|thanh pho)\s+/, "");
+    const wardCore = fold(ward).replace(/^(phuong|xa|thi tran|dac khu)\s+/, "");
+    return PORTAL_AGENCY_WARD_PICKS[provinceCore]?.[wardCore] || [1];
+  }
+
   function comboValue(btn) {
     const span = btn.querySelector("span");
     return span ? span.textContent.trim() : "";
@@ -650,11 +664,13 @@
     return out;
   }
 
-  function matchOption(roots, target) {
+  function matchOption(roots, target, occurrence = 1) {
     const wanted = fold(target);
     const cands = optionCandidates(roots);
     // CHÍNH XÁC → option chứa target → target chứa option ("UBND Phường Song Liễu" / "Song Liễu").
-    let hit = cands.find((el) => fold(el.textContent) === wanted);
+    // Nhiều dòng cùng tên: lấy dòng thứ `occurrence` (PORTAL_AGENCY_WARD_PICKS), ít dòng hơn thì dòng cuối.
+    const exact = cands.filter((el) => fold(el.textContent) === wanted);
+    let hit = exact[Math.min(occurrence, exact.length) - 1];
     if (!hit) hit = cands.find((el) => fold(el.textContent).includes(wanted));
     if (!hit) hit = cands.find((el) => {
       const t = fold(el.textContent);
@@ -682,7 +698,7 @@
 
   // force=true: LUÔN mở dropdown chọn lại dù giá trị hiển thị có vẻ đúng — text trên nút
   // có thể chỉ là giá trị nhớ từ phiên trước, React state chưa init → danh sách xã không nạp.
-  async function pickCombo(btn, target, { force = false, timeout = 4000 } = {}) {
+  async function pickCombo(btn, target, { force = false, timeout = 4000, occurrence = 1 } = {}) {
     if (!target) return { ok: true, skipped: true };
     if (!force && fold(comboValue(btn)) === fold(target)) return { ok: true, kept: true };
 
@@ -690,14 +706,14 @@
     let opt = null;
     const t0 = Date.now();
     while (Date.now() - t0 < timeout && !opt) {
-      opt = matchOption(roots, target);
+      opt = matchOption(roots, target, occurrence);
       if (!opt) await sleep(200);
     }
     if (!opt && typeIntoSearch(roots, target)) {
       const t1 = Date.now();
       while (Date.now() - t1 < 3000 && !opt) {
         await sleep(250);
-        opt = matchOption(roots, target);
+        opt = matchOption(roots, target, occurrence);
       }
     }
     if (!opt) {
@@ -876,9 +892,17 @@
     } else {
       // XÃ: danh sách nạp async → chờ dài hơn. ward RỖNG thì pickCombo tự bỏ qua
       // (thủ tục bộ ngành chỉ cần tỉnh).
-      const wardRes = await pickCombo(combos[1], portalAgencyWard(province, ward),
-        { force: true, timeout: 8000 });
-      if (!wardRes.ok) return { error: `Xã: ${wardRes.error}` };
+      // Xã cổng lỗi (PORTAL_AGENCY_WARD_PICKS) bấm lần lượt từng dòng, vd Bắc Nha Trang: dòng trên rồi dòng dưới.
+      const picks = portalAgencyWardPicks(province, ward);
+      for (let step = 0; step < picks.length; step += 1) {
+        // Chọn rồi thì cổng thay <button> bằng <input> → lượt sau dò lại ô, combos[1] cũ đã thành rác.
+        const wardCombo = step === 0 ? combos[1] : agencyCombos(block)[1];
+        if (!wardCombo) return { error: "Xã: không thấy ô Phường/Xã để chọn lại." };
+        const wardRes = await pickCombo(wardCombo, portalAgencyWard(province, ward),
+          { force: true, timeout: 8000, occurrence: picks[step] });
+        if (!wardRes.ok) return { error: `Xã: ${wardRes.error}` };
+        if (step < picks.length - 1) await sleep(600); // chờ cổng nhận lựa chọn rồi mới mở lại
+      }
     }
 
     // Nút chốt trong block: "Đồng ý" (chưa đăng nhập) HOẶC "Nộp hồ sơ" (đã đăng nhập).

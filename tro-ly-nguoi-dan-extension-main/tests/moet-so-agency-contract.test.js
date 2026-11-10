@@ -79,7 +79,9 @@ test("portal-dvc: soMode gạt toggle Sở rồi Đồng ý — chỉ chọn s�
   assert.match(sidebar, /supportsSoAgency:\s*true/);
   // Nhánh cũ (chọn xã) giữ nguyên cho các thủ tục tư pháp đang phát hành; tên xã qua portalAgencyWard
   // (tên xã cổng chưa cập nhật sau sáp nhập).
-  assert.match(portalDvc, /await pickCombo\(combos\[1\], portalAgencyWard\(province, ward\),\s*\{ force: true, timeout: 8000 \}\)/);
+  // Xã cổng lỗi ra hai dòng cùng tên (Bắc Nha Trang) bấm lần lượt các dòng theo portalAgencyWardPicks.
+  assert.match(portalDvc, /const wardCombo = step === 0 \? combos\[1\] : agencyCombos\(block\)\[1\];/);
+  assert.match(portalDvc, /await pickCombo\(wardCombo, portalAgencyWard\(province, ward\),\s*\{ force: true, timeout: 8000, occurrence: picks\[step\] \}\)/);
   // Listener truyền tham số mới.
   assert.ok(portalDvc.includes("soMode: msg.soMode === true"));
 });

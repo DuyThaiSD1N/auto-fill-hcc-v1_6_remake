@@ -164,11 +164,25 @@
     return direct.length ? direct : null;
   }
 
-  function matchOption(options, wanted) {
+  // Ô Phường/Xã có xã ra HAI dòng cùng tên và cổng lỗi ở xã đó: chọn thẳng dòng đúng không ăn. Khai các dòng phải
+  // bấm LẦN LƯỢT (vị trí trong danh sách, đếm từ 1), khoá theo tên tỉnh trần rồi tên xã trần. Cổng gộp còn một dòng
+  // thì mỗi lượt lấy dòng đó. Bản sao ở trợ lý content/portal-dvc.js (PORTAL_AGENCY_WARD_PICKS).
+  const WARD_PICKS = {
+    // Phường Bắc Nha Trang: chọn dòng trên rồi chọn lại dòng dưới (10/11/2026).
+    "khanh hoa": { "bac nha trang": [1, 2] },
+  };
+
+  function wardPicks(province, ward) {
+    return WARD_PICKS[foldArea(province)]?.[foldArea(ward)] || [1];
+  }
+
+  /** Nhiều dòng cùng tên: lấy dòng thứ `occurrence`, ít dòng hơn thì dòng cuối. */
+  function matchOption(options, wanted, occurrence = 1) {
     const exact = fold(wanted);
     const loose = foldArea(wanted);
-    return options.find((node) => fold(node.textContent) === exact)
-      || options.find((node) => foldArea(node.textContent) === loose)
+    const nth = (list) => list[Math.min(occurrence, list.length) - 1] || null;
+    return nth(options.filter((node) => fold(node.textContent) === exact))
+      || nth(options.filter((node) => foldArea(node.textContent) === loose))
       || null;
   }
 
@@ -190,7 +204,7 @@
     return true;
   }
 
-  async function pickCombo(card, index, wanted, label) {
+  async function pickCombo(card, index, wanted, label, occurrence = 1, force = false) {
     if (!wanted) return false;
     // Dò LẠI ô mỗi lần: React thay <button> bằng <input> sau khi chọn nên node cũ thành rác.
     const control = () => comboControls(card)[index] || null;
@@ -200,7 +214,8 @@
       console.warn("[AgencySelect] không thấy ô", label);
       return false;
     }
-    if (done()) {
+    // force (xã trùng tên phải bấm lần lượt): chữ trên ô đúng chưa chắc là đúng dòng → vẫn mở danh sách bấm.
+    if (done() && !force) {
       console.log("[AgencySelect]", label, "đã đúng sẵn:", wanted);
       return true;
     }
@@ -213,7 +228,7 @@
 
     const findTarget = () => {
       const options = optionNodes();
-      return options ? matchOption(options, wanted) : null;
+      return options ? matchOption(options, wanted, occurrence) : null;
     };
     let target = await waitFor(findTarget, 1200, 150);
     if (!target && typeIntoSearch(wanted)) {
@@ -227,7 +242,9 @@
 
     realClick(target);
     const ok = await waitFor(done, 3000, 150);
-    console.log("[AgencySelect]", label, ok ? "đã chọn:" : "click xong nhưng ô chưa đổi:", wanted);
+    // Bấm lần lượt: chữ trên ô đã đúng từ lượt trước nên `done` qua ngay — chờ cổng nhận lựa chọn rồi mới mở lại.
+    if (force) await sleep(600);
+    console.log("[AgencySelect]", label, ok ? `đã chọn (dòng ${occurrence}):` : "click xong nhưng ô chưa đổi:", wanted);
     return !!ok;
   }
 
@@ -650,9 +667,13 @@
     } else if (!arm.provinceOnly) {
       // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.
       await waitFor(() => !isPlaceholder(comboControls(card)[0]), 3000, 150);
-      if (!await pickCombo(card, 1, arm.ward, "Phường/Xã")) {
-        await clearArm();
-        return void toast("Không tự chọn được Phường/Xã — mời chọn tay.", "warning");
+      // Xã cổng lỗi (WARD_PICKS) bấm lần lượt từng dòng, vd Bắc Nha Trang: dòng trên rồi dòng dưới.
+      const picks = wardPicks(arm.province, arm.ward);
+      for (const occurrence of picks) {
+        if (!await pickCombo(card, 1, arm.ward, "Phường/Xã", occurrence, picks.length > 1)) {
+          await clearArm();
+          return void toast("Không tự chọn được Phường/Xã — mời chọn tay.", "warning");
+        }
       }
     }
 
