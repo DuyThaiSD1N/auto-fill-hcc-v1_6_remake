@@ -85,6 +85,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-giay-phep-chat-ha-cay-xanh", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("chap-thuan-dau-noi-tam", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("xoa-dang-ky-phuong-tien-thuy", ("tenHoSo", "AuthorityApplicantPhoneNumber", "nguoiDaiDien", "dongSoHuu")),
     # Cổng Bộ Y tế cùng nền iGate (stepper 4 bước, tờ khai Form.io) → cùng luồng.
     ("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham", ("ghiChu",)),
     ("dieu-chinh-huu-tri-xa-hoi", ("ghiChu",)),
@@ -155,6 +156,7 @@ def test_cong_nnmt_can_them_co_rieng_ban_cu_giu_luong_cu(key):
 @pytest.mark.parametrize("key", [
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+    "dang-ky-khuyen-mai-may-rui-mot-tinh",
 ])
 def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn): bản extension cũ chưa chạy content/bxd/*.js trên host này →
@@ -175,6 +177,7 @@ def test_cong_bo_cong_thuong_can_co_rieng_ban_cu_giu_luong_cu(key):
 @pytest.mark.parametrize("key", [
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+    "dang-ky-khuyen-mai-may-rui-mot-tinh",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
     "cap-gcn-attp-cong-thuong",
 ])

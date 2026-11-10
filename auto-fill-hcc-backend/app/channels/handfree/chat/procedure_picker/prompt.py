@@ -157,6 +157,20 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "hướng dẫn viên đăng ký lớp bồi dưỡng cập nhật kiến thức",
         "xin giấy chứng nhận khóa cập nhật kiến thức du lịch",
         "đăng ký tham dự khóa cập nhật kiến thức theo thông báo của Sở"],
+    # Thẻ hướng dẫn viên TẠI ĐIỂM (chỉ dẫn khách trong một khu, điểm du lịch) — KHÁC thẻ nội địa / quốc tế. Cụm "tại
+    # điểm" hoặc tên khu, điểm du lịch là dấu hiệu riêng.
+    "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": [
+        "cấp thẻ hướng dẫn viên du lịch tại điểm", "xin thẻ hướng dẫn viên tại điểm du lịch",
+        "làm thuyết minh viên ở khu du lịch cần thẻ", "hướng dẫn khách trong khu di tích cần thẻ gì"],
+    # Đã có thẻ hướng dẫn viên NỘI ĐỊA/QUỐC TẾ, thẻ sắp HẾT HẠN → cấp ĐỔI. KHÁC cấp lại (mất, hỏng, sai thông tin) và
+    # khác cấp thẻ lần đầu.
+    "cap-doi-the-huong-dan-vien-du-lich-da-nang": [
+        "cấp đổi thẻ hướng dẫn viên du lịch", "thẻ hướng dẫn viên sắp hết hạn",
+        "đổi thẻ hướng dẫn viên du lịch quốc tế", "gia hạn thẻ hướng dẫn viên du lịch"],
+    # Thẻ hướng dẫn viên bị MẤT, HỎNG hoặc cần THAY ĐỔI thông tin → cấp LẠI. KHÁC cấp đổi (thẻ hết hạn).
+    "cap-lai-the-huong-dan-vien-du-lich-da-nang": [
+        "cấp lại thẻ hướng dẫn viên du lịch", "mất thẻ hướng dẫn viên du lịch",
+        "thẻ hướng dẫn viên bị hỏng", "đổi thông tin trên thẻ hướng dẫn viên"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
@@ -564,6 +578,18 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "sang tên tàu thuyền", "mua lại sà lan cần đăng ký lại",
         "đăng ký lại phương tiện thủy nội địa", "chuyển quyền sở hữu phương tiện thủy",
         "đổi chủ tàu chở hàng đường sông",
+    ],
+    # XÓA đăng ký phương tiện THỦY nội địa (đã bán, hư hỏng, không dùng). KHÁC đăng ký lại khi đổi chủ ngay trên và
+    # xóa đăng ký tàu cá ("xoa-dang-ky-tau-ca", Bộ NN&MT).
+    "xoa-dang-ky-phuong-tien-thuy": [
+        "xóa đăng ký phương tiện thủy nội địa", "xóa đăng ký tàu thuyền chở hàng",
+        "sà lan hỏng không dùng nữa xin xóa đăng ký", "đã bán thuyền xin xóa tên đăng ký",
+    ],
+    # DOANH NGHIỆP đăng ký chương trình khuyến mại MAY RỦI (bốc thăm, quay số, cào trúng thưởng) trong 01 tỉnh với
+    # Sở Công Thương. KHÁC "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai" (sửa chương trình đã đăng ký).
+    "dang-ky-khuyen-mai-may-rui-mot-tinh": [
+        "đăng ký khuyến mại may rủi", "đăng ký chương trình bốc thăm trúng thưởng",
+        "công ty tổ chức quay số trúng thưởng cho khách", "đăng ký khuyến mại cào trúng thưởng với Sở Công Thương",
     ],
     # Xin chứng chỉ hành nghề MÔI GIỚI bất động sản (đăng ký thi sát hạch). Cụm "môi giới" là dấu hiệu riêng.
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": [

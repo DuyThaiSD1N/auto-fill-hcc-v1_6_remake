@@ -91,11 +91,17 @@ def test_procedure_endpoints_filter_by_account_province():
     links = {l["key"] for l in asyncio.run(ke_khai_links(bac_ninh))["links"]}
     assert {"chung-thuc-ban-sao", "ho-tro-chi-phi-hoa-tang-bac-ninh"} <= links
     assert "tach-thua-hop-thua-dat-quang-ninh" not in links
+    # 1.115446: Bắc Ninh có link riêng cùng key lõi; dòng "Quảng Ninh - …" cùng URL không lọt sang.
+    assert "dinh-chinh-sai-sot-bac-ninh" in links
+    assert "dinh-chinh-gcn-sai-sot" not in links
+    assert core["dinh-chinh-sai-sot-bac-ninh"]["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
+    assert "matthc=1.115446" in core["dinh-chinh-sai-sot-bac-ninh"]["detect"]["urlIncludes"]
     assert "tham-dinh-bcnckt" not in links
 
     quang_ninh_links = {l["key"] for l in asyncio.run(ke_khai_links({"tinh": "Tỉnh Quảng Ninh"}))["links"]}
     assert "tach-thua-hop-thua-dat-quang-ninh" in quang_ninh_links
     assert "ho-tro-chi-phi-hoa-tang-bac-ninh" not in quang_ninh_links
+    assert "dinh-chinh-sai-sot-bac-ninh" not in quang_ninh_links
 
     # Chưa đăng nhập (extension bản cũ gọi trơn) vẫn ra đủ danh mục.
     assert len(asyncio.run(ke_khai_links(None))["links"]) > len(links)

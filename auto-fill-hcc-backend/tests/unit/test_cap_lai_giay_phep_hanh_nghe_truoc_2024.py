@@ -1,10 +1,22 @@
-"""[Bộ Y tế] Cấp lại giấy phép hành nghề (cấp trước 01/01/2024) — 2 chế độ người nộp + đính kèm không bỏ tệp."""
+"""[Bộ Y tế] Cấp lại giấy phép hành nghề (cấp trước 01/01/2024) — 2 chế độ người nộp + đính kèm không bỏ tệp.
 
+Cuối file: cài đặt "Lấy người nộp theo tờ khai" ở 3 thủ tục hành nghề cá nhân cùng cổng (1.014092 CCHN dược,
+1.012289 cấp mới + 1.012292 điều chỉnh GPHN chuyển tiếp)."""
+
+import asyncio
 import re
 from pathlib import Path
 
+import pytest
+
+from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import mapper as cchn_duoc_mapper
+from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import runner as cchn_duoc_runner
 from app.pipelines.cap_lai_giay_phep_hanh_nghe_truoc_2024.attach import planner
 from app.pipelines.cap_lai_giay_phep_hanh_nghe_truoc_2024.process import mapper
+from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.process import mapper as cap_moi_mapper
+from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.process import runner as cap_moi_runner
+from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.process import mapper as dieu_chinh_mapper
+from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.process import runner as dieu_chinh_runner
 from app.procedures.registry import public_list
 
 _KEY = "cap-lai-giay-phep-hanh-nghe-truoc-2024"
@@ -158,3 +170,77 @@ def test_dong_dau_tien_khop_moi_component_la_dong_dung_loai_giay():
 def test_hai_loai_chung_mot_dong_dung_chung_component_de_engine_khong_ghi_de():
     """Engine gom theo componentName rồi set ô upload 1 lần — 2 tên khác nhau cùng trỏ 1 dòng thì ghi đè nhau."""
     assert planner._ROWS["suc_khoe"]["componentName"] == planner._ROWS["ket_qua_danh_gia"]["componentName"]
+
+
+# --- Cài đặt "Lấy người nộp theo tờ khai" ở các thủ tục hành nghề cá nhân cùng cổng (dữ liệu bịa) ---
+# (mapper, tiền tố chủ hồ sơ, runner, có phát tích "Người nộp là chủ hồ sơ" khi tự nộp không)
+_HANH_NGHE = {
+    "cchn-duoc-1.014092": (cchn_duoc_mapper, "NguoiDeNghi_", cchn_duoc_runner, False),
+    "cap-moi-gphn-1.012289": (cap_moi_mapper, "NguoiHanhNghe_", cap_moi_runner, False),
+    "dieu-chinh-gphn-1.012292": (dieu_chinh_mapper, "NguoiHanhNghe_", dieu_chinh_runner, True),
+}
+_THEO_TO_KHAI = {"submitterMode": "owner_as_submitter"}
+_CAN_BO = _account("LÊ THỊ CÁN BỘ", "001000000009")
+
+
+def _owner_as(prefix: str, **drop) -> dict:
+    return {k.replace("NguoiHanhNghe_", prefix): v for k, v in _OWNER.items() if k not in drop}
+
+
+def _run_full(mod, values, options):
+    fields, warnings = mod.enrich([{"name": k, "value": v} for k, v in values.items()], options)
+    return {f["name"]: f for f in fields}, warnings
+
+
+@pytest.mark.parametrize("case", list(_HANH_NGHE))
+def test_theo_to_khai_can_bo_dang_nhap_phan_mot_theo_nguoi_hanh_nghe(case):
+    mod, prefix, _, tick = _HANH_NGHE[case]
+    by, warnings = _run_full(mod, {**_owner_as(prefix), **_SUBMITTER}, {**_CAN_BO, **_THEO_TO_KHAI})
+    # Tự nộp: Phần I = chủ hồ sơ, ghi đè họ tên + CCCD tài khoản (cổng khoá theo VNeID → enableInput).
+    assert by["data[fullname]"]["value"] == "NGUYEN VAN A" and by["data[fullname]"].get("enableInput") is True
+    assert by["data[identityNumber]"]["value"] == "001000000001"
+    assert by["data[identityNumber]"].get("enableInput") is True
+    assert by["data[birthday]"]["value"] == "01/02/1990" and by["data[gender]"]["value"] == "Nam"
+    assert not any(k.startswith("data[owner") for k in by), "không mở Phần II"
+    if tick:
+        assert by["data[isOwnerDossierCheck]"]["value"] is True
+    else:
+        assert "data[isOwnerDossierCheck]" not in by, "giữ tích mặc định của cổng"
+    assert any("Lấy người nộp theo tờ khai" in w and "LÊ THỊ CÁN BỘ" in w for w in warnings)
+    assert any("TRAN THI B" in w and "Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+@pytest.mark.parametrize("case", list(_HANH_NGHE))
+def test_theo_to_khai_tai_khoan_la_nguoi_hanh_nghe_khong_mo_khoa_khong_canh_bao(case):
+    mod, prefix, _, _ = _HANH_NGHE[case]
+    by, warnings = _run_full(mod, _owner_as(prefix), {**_account("Nguyễn Văn A", "001000000001"), **_THEO_TO_KHAI})
+    assert not any(f.get("enableInput") for f in by.values())
+    assert by["data[birthday]"]["value"] == "01/02/1990"
+    assert not any("Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+@pytest.mark.parametrize("case", list(_HANH_NGHE))
+def test_theo_to_khai_giay_khong_co_ngay_sinh_thi_xoa_ngay_sinh_tai_khoan(case):
+    mod, prefix, _, _ = _HANH_NGHE[case]
+    owner = _owner_as(prefix, NguoiHanhNghe_NgaySinh=None)
+    by, _ = _run_full(mod, owner, {**_CAN_BO, **_THEO_TO_KHAI})
+    birthday = by["data[birthday]"]
+    assert birthday["value"] == "" and birthday.get("clear") is True and birthday.get("markEmpty") is True
+
+
+@pytest.mark.parametrize("case", list(_HANH_NGHE))
+def test_tat_cai_dat_tai_khoan_khac_van_la_nop_thay(case):
+    mod, prefix, _, _ = _HANH_NGHE[case]
+    by, warnings = _run_full(mod, _owner_as(prefix), _CAN_BO)
+    assert by["data[isOwnerDossierCheck]"]["value"] is False
+    assert by["data[ownerFullname]"]["value"] == "NGUYEN VAN A"
+    assert not any(f.get("enableInput") for f in by.values())
+    assert not any("Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+@pytest.mark.parametrize("case", list(_HANH_NGHE))
+def test_theo_to_khai_khong_dua_moc_tai_khoan_vao_prompt(case):
+    _, _, run_mod, _ = _HANH_NGHE[case]
+    docs = [{"text": "CĂN CƯỚC CÔNG DÂN số 001000000009 họ và tên LÊ THỊ CÁN BỘ"}]
+    assert asyncio.run(run_mod._submitter_context(docs, _CAN_BO))
+    assert asyncio.run(run_mod._submitter_context(docs, {**_CAN_BO, **_THEO_TO_KHAI})) == ""

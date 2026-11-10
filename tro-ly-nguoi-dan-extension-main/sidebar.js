@@ -224,6 +224,10 @@
     // Trang nộp một trang của cổng Bộ VHTTDL (form liz): bổ sung ô (content/liz/field-review.js), tích ô cam kết, gạt
     // ô VNPost + điền người nhận, bấm Lưu và nộp hồ sơ (content/liz/one-page.js). Thiếu cờ → BE giữ luồng chung.
     supportsLizFlow: true,
+    // Cổng Bộ VHTTDL: chặng ô cam kết riêng — nút cam "Tích ô cam kết" (action liz_commit_tick: trợ lý tích ô), theo dõi
+    // ô công dân tự tích (liz_commit_watch / liz_commit_check) → __action:liz_commit_report; nút nộp không tích hộ
+    // (commitSelf). Thiếu cờ → BE giữ nút Tiếp tục.
+    supportsLizCommitSelf: true,
     // Thành lập hộ kinh doanh bằng hỏi đáp: thẻ đồng ý có nút "không có tờ khai, giấy tờ" (card.no_docs_label), trang chủ
     // hộ bấm "Sao chép thông tin đăng ký tài khoản" khi BE gửi __copyAccount, điền trang Thông tin về thành viên, lưu khối
     // Thông tin Ủy quyền (content/procedures/business-registration.js). Thiếu cờ → BE giữ luồng tải tờ khai.
@@ -553,6 +557,14 @@
     if (msg?.__tlnd !== "fieldReviewStats" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
     if (!msg.stats || typeof msg.stats !== "object") return;
     ask(`__event:field_review_status:${JSON.stringify({ stats: msg.stats })}`, "system");
+  });
+
+  // Cổng liz: công dân vừa tích / bỏ tích ô cam kết trên trang (content/liz/one-page.js đang theo dõi ô) → BE báo bước
+  // nộp + hiện nút Lưu và nộp hồ sơ (hoặc rút nút khi bỏ tích).
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "lizCommitChanged" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    ask(`__action:liz_commit_report:${JSON.stringify({ source: "change", checked: !!msg.checked, found: true })}`,
+      "system");
   });
 
   function sendToBackground(payload) {
@@ -1583,8 +1595,11 @@
 
   async function runGuidedSubmit(a) {
     setStatus("Đang gửi hồ sơ…");
-    // Cổng liz: nhãn ô cam kết để engine tích lại trước khi bấm (nút nộp của cổng chỉ mở sau khi tích).
-    const res = await sendToContent({ action: "guidedSubmit", commitLabel: a?.commitLabel || "" });
+    // Cổng liz: nhãn ô cam kết để engine tích lại trước khi bấm (nút nộp của cổng chỉ mở sau khi tích); commitSelf =
+    // công dân tự tích → engine chỉ soát, chưa tích thì không bấm.
+    const res = await sendToContent({
+      action: "guidedSubmit", commitLabel: a?.commitLabel || "", commitSelf: !!a?.commitSelf,
+    });
     setStatus("");
     // Nộp được hay không do chính cổng trả lời (màn xác nhận / event submitted). Ở đây chỉ
     // báo cú bấm có ăn không: không bấm được, hoặc cổng nháy toast báo thiếu.
@@ -1592,6 +1607,27 @@
       ok: !!res?.clicked && !res?.message, message: res?.message || "",
       // Trang nộp một trang soát ô bắt buộc trước khi bấm: thiếu thì không bấm, trả danh sách ô.
       missing: Array.isArray(res?.missing) ? res.missing : [],
+      ...(typeof res?.commit === "boolean" ? { commit: res.commit } : {}),
+    })}`, "system");
+  }
+
+  // Cổng liz, chặng ô cam kết: "watch" = BE vừa dặn tích → theo dõi ô, chỉ báo khi ô đã tích sẵn; "manual" = công dân
+  // nói "tích rồi" → luôn báo trạng thái ô.
+  async function runLizCommitWatch(a, source) {
+    const res = await sendToContent({ action: "lizCommitWatch", commitLabel: a.commitLabel || "" });
+    if (source === "watch" && !res?.checked) return;
+    await ask(`__action:liz_commit_report:${JSON.stringify({
+      source, checked: !!res?.checked, found: !!res?.found,
+    })}`, "system");
+  }
+
+  // Công dân bấm nút cam "Tích ô cam kết" → trợ lý tích ô trên trang rồi báo BE (hiện nút Lưu và nộp hồ sơ).
+  async function runLizCommitTick(a) {
+    setStatus("Đang tích ô cam kết…");
+    const res = await sendToContent({ action: "lizCommitTick", commitLabel: a.commitLabel || "" });
+    setStatus("");
+    await ask(`__action:liz_commit_report:${JSON.stringify({
+      source: "tick", checked: !!res?.checked, found: !!res?.found,
     })}`, "system");
   }
 
@@ -5561,6 +5597,11 @@
         markConsentVerbal(!!a.accepted);
       } else if (a.type === "select_result_method") {
         setTimeout(() => { void runSelectResultMethod(a); }, 0);
+      } else if (a.type === "liz_commit_watch" || a.type === "liz_commit_check") {
+        const source = a.type === "liz_commit_watch" ? "watch" : "manual";
+        setTimeout(() => { void runLizCommitWatch(a, source); }, 0);
+      } else if (a.type === "liz_commit_tick") {
+        setTimeout(() => { void runLizCommitTick(a); }, 0);
       } else if (a.type === "lien_thong_next") {
         setTimeout(() => { void runLienThongMove(a); }, 0);
       } else if (a.type === "lien_thong_result_scan" || a.type === "lien_thong_result_set") {

@@ -1948,6 +1948,67 @@ LIZ_COMMIT_FAILED = {
     "tts": ("Dạ tôi đã chọn {label} nhưng chưa tích được ô cam kết. Công dân tích giúp ô cam kết trên trang rồi bấm Lưu "
             "và nộp hồ sơ ạ."),
 }
+# Ô cam kết cổng liz (extension khai supportsLizCommitSelf): điền + đính xong, trợ lý dặn cần tích ô cam kết + nút cam
+# "Tích ô cam kết" (bấm thì trợ lý tích ô trên trang; công dân tự tích trên trang cũng được, extension báo lại) → câu nhấn
+# Lưu và nộp hồ sơ + nút cam nộp. {commit} = nhãn ô cam kết nguyên văn (registry lizFlow.commitLabel).
+LIZ_COMMIT_CHIP = "☑️ Tích ô cam kết"
+_LIZ_COMMIT_HOW_MD = ("Để nộp hồ sơ cần tích ô **{commit}** ở cuối trang. Công dân bấm nút **Tích ô cam kết** bên dưới để "
+                      "tôi tích giúp ạ.")
+_LIZ_COMMIT_HOW_TTS = "Để nộp hồ sơ cần tích ô cam kết ở cuối trang, công dân bấm nút Tích ô cam kết để tôi tích giúp ạ."
+LIZ_COMMIT_ASK = {
+    "md": "✓ Công dân đã {done} các thông tin bắt buộc.\n\n" + _LIZ_COMMIT_HOW_MD,
+    "tts": " Công dân đã {done} các thông tin bắt buộc. " + _LIZ_COMMIT_HOW_TTS,
+}
+LIZ_COMMIT_OPTIONAL_ONLY = {
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc, còn **{optional} ô không bắt buộc** để trống; công dân muốn bổ sung thì bấm "
+           "**Bổ sung các thông tin còn thiếu**.\n\n" + _LIZ_COMMIT_HOW_MD),
+    "tts": " Tờ khai đã đủ các ô bắt buộc, còn {optional} ô không bắt buộc để trống. " + _LIZ_COMMIT_HOW_TTS,
+}
+# Đuôi câu "còn ô bắt buộc trống" (FLOW2_NEED_REQUIRED) của cổng liz: dặn tích ô cam kết luôn, không đợi đủ ô.
+LIZ_COMMIT_ALSO = {
+    "md": "\n\n" + _LIZ_COMMIT_HOW_MD,
+    "tts": " " + _LIZ_COMMIT_HOW_TTS,
+}
+LIZ_COMMIT_REMIND = {
+    "md": _LIZ_COMMIT_HOW_MD,
+    "tts": "Dạ " + _LIZ_COMMIT_HOW_TTS[0].lower() + _LIZ_COMMIT_HOW_TTS[1:],
+}
+# Ô cam kết đã được tích (trợ lý tích hoặc công dân tự tích): chỉ còn nút nộp. {required_note}: tờ khai còn ô bắt buộc trống.
+LIZ_COMMIT_OK = {
+    "md": "✓ Đã tích ô cam kết.\n\nCông dân nhấn **Lưu và nộp hồ sơ** để nộp hồ sơ ạ.{required_note}",
+    "tts": "Dạ đã tích ô cam kết. Công dân nhấn Lưu và nộp hồ sơ để nộp hồ sơ ạ.",
+}
+LIZ_COMMIT_REQUIRED_NOTE = "\n\n⚠️ Tờ khai còn **{required} ô bắt buộc** trống (tô đỏ) — công dân điền nốt trước khi nộp ạ."
+LIZ_COMMIT_READY_SUBMIT = {
+    "md": ("✓ Công dân đã {done} các thông tin bắt buộc và đã tích ô cam kết.\n\nCông dân nhấn **Lưu và nộp hồ sơ** để "
+           "nộp hồ sơ ạ."),
+    "tts": (" Công dân đã {done} các thông tin bắt buộc và đã tích ô cam kết. Công dân nhấn Lưu và nộp hồ sơ để nộp hồ "
+            "sơ ạ."),
+}
+LIZ_COMMIT_NOT_TICKED = {
+    "md": "⚠️ Ô **{commit}** chưa được tích.\n\nCông dân bấm nút **Tích ô cam kết** bên dưới để tôi tích giúp ạ.",
+    "tts": "Dạ ô cam kết chưa được tích. Công dân bấm nút Tích ô cam kết để tôi tích giúp ạ.",
+}
+LIZ_COMMIT_TICK_FAILED = {
+    "md": ("⚠️ Tôi chưa tích được ô **{commit}**. Công dân tích giúp ô đó ở cuối trang, hoặc bấm lại **Tích ô cam kết** "
+           "ạ."),
+    "tts": "Dạ tôi chưa tích được ô cam kết. Công dân tích giúp ô đó ở cuối trang, hoặc bấm lại nút Tích ô cam kết ạ.",
+}
+LIZ_COMMIT_UNTICKED = {
+    "md": ("⚠️ Ô **{commit}** vừa bị bỏ tích. Nút **Lưu và nộp hồ sơ** của cổng chỉ mở khi ô này được tích — công dân bấm "
+           "**Tích ô cam kết** để tôi tích lại ạ."),
+    "tts": "Dạ ô cam kết vừa bị bỏ tích. Công dân bấm nút Tích ô cam kết để tôi tích lại thì mới nộp được ạ.",
+}
+LIZ_COMMIT_NOT_FOUND = {
+    "md": ("Tôi chưa tìm thấy ô cam kết trên trang. Công dân tự tích ô **{commit}** ở cuối trang rồi nhấn **Lưu và nộp hồ "
+           "sơ** ạ."),
+    "tts": "Dạ tôi chưa tìm thấy ô cam kết. Công dân tự tích ô cam kết ở cuối trang rồi nhấn Lưu và nộp hồ sơ ạ.",
+}
+LIZ_SUBMIT_NEED_COMMIT = {
+    "md": ("⚠️ Chưa nộp: ô **{commit}** chưa được tích.\n\nCông dân bấm nút **Tích ô cam kết** bên dưới để tôi tích giúp, "
+           "rồi nhấn lại **Lưu và nộp hồ sơ** ạ."),
+    "tts": "Dạ chưa nộp được vì ô cam kết chưa được tích. Công dân bấm nút Tích ô cam kết để tôi tích giúp ạ.",
+}
 # Hỏi xong vòng bổ sung mà vẫn còn ô bắt buộc trống: chưa có nút đi tiếp.
 FLOW2_REVIEW_MISSING = {
     "md": ("{lead_md}Tờ khai còn **{required} ô bắt buộc** công dân cần điền. Công dân điền thẳng vào tờ khai, hoặc bấm "

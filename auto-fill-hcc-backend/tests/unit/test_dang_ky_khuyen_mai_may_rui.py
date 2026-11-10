@@ -183,3 +183,23 @@ def test_component_name_khop_dung_mot_dong_tren_snapshot():
     text = mapper._fold(re.sub(r"<[^>]+>", " ", html))
     for row in planner._ROWS.values():
         assert text.count(mapper._fold(row["componentName"])) == 1, row["componentName"]
+
+
+def test_len_tro_ly_cung_key_va_link_dvcqg():
+    """10/11: lên trợ lý cùng key lõi, link DVCQG thêm vào ke_khai_links (uuid tra từ API DVCQG), luồng 4 bước cổng Bộ
+    Công Thương như 2.001474."""
+    from app.channels.handfree.chat.field_review import registry as field_review_registry
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+    from app.channels.handfree.procedure_registry import PROCEDURES, procedure_code
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    uuid = "019d2bf8-1b67-7594-877d-bcc66b5f4fd8"
+    link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
+    assert link["code"] == "2.000004" and link["url"].endswith(uuid) and link["selectSo"] is True
+    handfree = next(p for p in PROCEDURES if p["key"] == KEY)
+    assert handfree["label"] == get_procedure(KEY)["label"] and procedure_code(handfree) == "2.000004"
+    assert handfree["keKhaiUrl"] == link["url"] and uuid in handfree["detect"]["urlIncludes"]
+    assert handfree["agencyDeptLabel"] == "Sở Công Thương" and handfree["bxdFlow"]["capability"] == "supportsBxdFlowMoit"
+    assert field_review_registry.get(KEY)["required"] == ()
+    assert PROCEDURE_HMONG[KEY] and PROCEDURE_HINTS[KEY]

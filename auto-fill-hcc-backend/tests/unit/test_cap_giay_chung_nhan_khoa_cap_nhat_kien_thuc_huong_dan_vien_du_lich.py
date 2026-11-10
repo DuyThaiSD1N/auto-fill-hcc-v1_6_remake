@@ -289,3 +289,25 @@ def test_extension_khai_ma_tthc_va_moc_tai_khoan():
     block = portal.read_text(encoding="utf-8").split("NO_FLOW_MA_TTHC = new Set(", 1)[1].split(")", 1)[0]
     assert '"1.004605"' in block
     assert f'cfg.key === "{_KEY}"' in popup.read_text(encoding="utf-8")
+
+
+def test_ba_the_hdv_cung_cong_bvhttdl_len_tro_ly():
+    """10/11: thẻ HDV tại điểm (1.001440), cấp đổi (1.001432), cấp lại (1.004614) cùng cổng liz với thủ tục này → lên trợ
+    lý cùng key lõi, nhận diện theo MaTTHC + uuid DVCQG của chính mình, không bắt nhầm sang nhau."""
+    uuids = {
+        "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": ("1.001440", "019d2bfd-b526-75c8-a04d-beec224973cf"),
+        "cap-doi-the-huong-dan-vien-du-lich-da-nang": ("1.001432", "019d90c7-0901-71cb-ab99-2f6e20b9ce08"),
+        "cap-lai-the-huong-dan-vien-du-lich-da-nang": ("1.004614", "019d7fa0-f695-75df-8834-aa4c22e41529"),
+    }
+    for key, (code, uuid) in uuids.items():
+        handfree = next(p for p in HANDFREE_PROCEDURES if p["key"] == key)
+        includes = [u.lower() for u in handfree["detect"]["urlIncludes"]]
+        assert f"matthc={code}" in includes and uuid in includes, key
+        others = [c for k, (c, _) in uuids.items() if k != key] + ["1.004605", "1.004623"]
+        assert not any(f"matthc={c}" in includes for c in others), key
+        assert handfree["label"] == registry.get_procedure(key)["label"], key
+        assert handfree["lizFlow"] and handfree["agencySoFirst"] is True, key
+        assert handfree["keKhaiUrl"].endswith(uuid), key
+        assert registry.get_pipeline(key) is not None and registry.get_attach_pipeline(key) is not None, key
+        assert field_review_registry.get(key) is not None, key
+        assert PROCEDURE_HMONG[key] and PROCEDURE_HINTS[key], key

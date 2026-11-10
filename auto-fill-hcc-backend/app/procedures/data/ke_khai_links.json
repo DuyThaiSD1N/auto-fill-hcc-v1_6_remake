@@ -495,6 +495,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dinh-chinh-sai-sot-bac-ninh",
+      "code": "1.115446",
+      "label": "[Tỉnh Bắc Ninh] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f10fb-9fa4-7462-9c30-f264a10e839b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot",
       "code": "1.012796",
       "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
@@ -1976,6 +1984,15 @@
       "code": "2.001474",
       "label": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-428e-76a8-a8e8-65eee3365b73",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-khuyen-mai-may-rui-mot-tinh",
+      "code": "2.000004",
+      "label": "Đăng ký hoạt động khuyến mại đối với chương trình khuyến mại mang tính may rủi thực hiện trên địa bàn 01 tỉnh, thành phố trực thuộc Trung ương",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-1b67-7594-877d-bcc66b5f4fd8",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true

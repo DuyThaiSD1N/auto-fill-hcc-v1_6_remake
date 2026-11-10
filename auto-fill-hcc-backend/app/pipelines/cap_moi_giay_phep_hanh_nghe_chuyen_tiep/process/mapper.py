@@ -13,6 +13,9 @@ hành nghề:
   - NỘP THAY (người nộp ≠ người hành nghề):
       Phần 1 = NGƯỜI NỘP: cổng đã đổ sẵn từ VNeID → KHÔNG điền gì vào Phần 1.
       BỎ TÍCH data[isOwnerDossierCheck]=False để mở Phần 2 → điền owner_* = người hành nghề (tường minh).
+⚑ Cài đặt "Lấy người nộp theo tờ khai" (`options.submitterMode="owner_as_submitter"`, Auto Fill + trợ lý): bỏ
+  mốc tài khoản, người nộp = người hành nghề đứng Đơn → luôn TỰ NỘP. Tài khoản khác người hành nghề thì ghi đè
+  họ tên + CCCD cổng đổ theo VNeID (kèm enableInput), giấy không có ngày sinh thì xoá ngày sinh của tài khoản.
 
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
 """
@@ -158,11 +161,19 @@ def _issuer(value: Any) -> str | None:
     return normalize_issuer(text) if text else None
 
 
+def _same_person(name_a: Any, id_a: Any, name_b: Any, id_b: Any) -> bool:
+    # Có số định danh cả hai phía thì số quyết; không thì so họ tên bỏ dấu.
+    if id_a and id_b:
+        return id_a == id_b
+    return bool(name_a and name_b and _fold(name_a) == _fold(name_b))
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
 
     # Ô Phần I cổng đã đổ sẵn từ tài khoản VNeID (bị khoá, nền xám) → KHÔNG điền đè. Phần I luôn là
     # tài khoản đăng nhập nên giá trị cổng là chuẩn, giá trị OCR (vd "HÀNG" thay "HẰNG") chỉ làm sai.
@@ -176,13 +187,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         if _text(ctx.get(ctx_key))
     }
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, extra: dict | None = None) -> None:
         if name in seen or name in portal_prefilled or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        out.append({"name": name, "comp": comp, "value": value, **(extra or {})})
+        seen.add(name)
+
+    def clear(name: str) -> None:
+        # Cổng đổ sẵn giá trị của tài khoản VNeID, không phải của người theo tờ khai → xoá trắng + tô đỏ.
+        if name in seen or name not in UI_COMP_BY_NAME:
+            return
+        out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True, "markEmpty": True})
         seen.add(name)
 
     def add_area(province_name, district_name, address_name, area) -> None:
@@ -223,15 +241,35 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     elif sub_name and name:
         is_nop_thay = _fold(sub_name) != _fold(name)
 
+    unlock: dict | None = None
+    if theo_to_khai:
+        # Cài đặt "Lấy người nộp theo tờ khai": người nộp = người hành nghề đứng Đơn, không xét tài khoản/CCCD
+        # người khác → luôn TỰ NỘP. Tài khoản chính là người hành nghề thì giữ ô cổng đã đổ (tránh OCR sai dấu).
+        is_nop_thay = False
+        account = bool(ctx_name or ctx_identity)
+        if (name or identity) and not (account and _same_person(name, identity, ctx_name, ctx_identity)):
+            portal_prefilled.clear()
+            unlock = {"enableInput": True}
+            if account:
+                warnings.append(f"Đang bật \"Lấy người nộp theo tờ khai\": Phần I ghi theo người hành nghề "
+                                f"({name or identity}), khác tài khoản đăng nhập ({ctx_name or ctx_identity}) — "
+                                "kiểm tra lại trước khi nộp.")
+        if (nop_ext_name or nop_ext_id) and not _same_person(name, identity, nop_ext_name, nop_ext_id):
+            warnings.append(f"Hồ sơ có CCCD của {nop_ext_name or nop_ext_id} (khác người hành nghề) nhưng đang bật "
+                            "\"Lấy người nộp theo tờ khai\" — Phần I ghi theo người hành nghề.")
+
     add("data[chonDoiTuong]", "Cá nhân")
 
     if not is_nop_thay:
         # === TỰ NỘP: Phần I = người hành nghề, GIỮ tích (cổng tự nhân bản Phần II). KHÔNG emit owner_*,
         # KHÔNG đụng data[isOwnerDossierCheck]. ===
-        add("data[fullname]", name)
-        add("data[birthday]", birthday)
+        add("data[fullname]", name, unlock)
+        if birthday or not unlock:
+            add("data[birthday]", birthday)
+        else:
+            clear("data[birthday]")
         add("data[gender]", gender)
-        add("data[identityNumber]", identity)
+        add("data[identityNumber]", identity, unlock)
         add("data[identityDate]", id_date)
         add("data[idIssuePlace]", issuer)
         add_area("data[province]", "data[district]", "data[address]", residence)

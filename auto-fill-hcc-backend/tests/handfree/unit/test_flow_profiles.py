@@ -202,7 +202,7 @@ def test_registered_procedures_use_their_declared_flow_family():
                 "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
                 "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh",
                 "chap-thuan-dau-noi-tam", "gia-han-luu-hanh-phuong-tien-lao",
-                "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+                "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", "xoa-dang-ky-phuong-tien-thuy",
                 "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "gia-han-giay-phep-xay-dung",
                 "tham-dinh-bcnckt", "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
                 "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai"):
@@ -218,8 +218,10 @@ def test_registered_procedures_use_their_declared_flow_family():
         moc_so = moc_by_key[key]
         assert moc_so["agencyProvinceOnly"] is True and moc_so["agencySoFirst"] is True, key
         assert moc_so["agencyDeptLabel"] == "Sở Xây dựng", key
-    moc_ward = moc_by_key["chap-thuan-dau-noi-tam"]
-    assert "agencyProvinceOnly" not in moc_ward and "agencySoFirst" not in moc_ward
+    # Xóa đăng ký phương tiện thủy (2.001659): ke_khai không selectSo (cổng ghi cả Sở Xây dựng lẫn UBND xã) → Tỉnh + Xã.
+    for key in ("chap-thuan-dau-noi-tam", "xoa-dang-ky-phuong-tien-thuy"):
+        moc_ward = moc_by_key[key]
+        assert "agencyProvinceOnly" not in moc_ward and "agencySoFirst" not in moc_ward, key
 
     byt_pension = procedures.pop("dieu-chinh-huu-tri-xa-hoi")
     assert byt_pension.get("flowProfile") is None
@@ -604,8 +606,10 @@ def test_registered_procedures_use_their_declared_flow_family():
     moit = {"cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
             "cap-gcn-attp-cong-thuong",
             "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+            "dang-ky-khuyen-mai-may-rui-mot-tinh",
             "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha"}
-    moit_agency_page = {"thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "cap-gcn-attp-cong-thuong"}
+    moit_agency_page = {"thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "cap-gcn-attp-cong-thuong",
+                        "dang-ky-khuyen-mai-may-rui-mot-tinh"}
     for key, dept in (
         ("thong-bao-san-pham-quang-cao-bang-ron", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh", "Sở Văn hóa, Thể thao và Du lịch"),
@@ -614,9 +618,13 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("to-chuc-bieu-dien-nghe-thuat", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-the-huong-dan-vien-du-lich-noi-dia", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-the-huong-dan-vien-du-lich-tai-diem-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-doi-the-huong-dan-vien-du-lich-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
+        ("cap-lai-the-huong-dan-vien-du-lich-da-nang", "Sở Văn hóa, Thể thao và Du lịch"),
         ("cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham", "Sở Công Thương"),
         ("cap-gcn-attp-cong-thuong", "Sở Công Thương"),
         ("thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai", "Sở Công Thương"),
+        ("dang-ky-khuyen-mai-may-rui-mot-tinh", "Sở Công Thương"),
         ("chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh", "Sở Nội vụ"),
         ("bao-cao-to-chuc-dai-hoi-hoi-cap-tinh", "Sở Nội vụ"),
         ("thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh", "Sở Nội vụ"),
@@ -787,7 +795,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Lai Châu chọn Sở "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau" (1.115557).
     # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi" (1.116908).
     # +1 cổng Bộ Y tế "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi" (1.116907).
-    assert len(procedures) == 149
+    # +3 cổng Bộ VHTTDL chọn Sở (10/11): thẻ HDV tại điểm "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang" (1.001440),
+    # cấp đổi "cap-doi-the-huong-dan-vien-du-lich-da-nang" (1.001432), cấp lại "cap-lai-the-huong-dan-vien-du-lich-da-nang"
+    # (1.004614); +1 Sở Công Thương "dang-ky-khuyen-mai-may-rui-mot-tinh" (2.000004); +1 cổng Bộ Xây dựng
+    # "xoa-dang-ky-phuong-tien-thuy" (2.001659).
+    assert len(procedures) == 154
 
     for procedure in procedures:
         key = procedure["key"]

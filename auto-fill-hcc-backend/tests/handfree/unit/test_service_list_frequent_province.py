@@ -69,17 +69,20 @@ def test_moi_thu_tuc_tro_ly_deu_co_dong_trong_bang_hoan_thien():
 def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
     counts = {slug: len(_card_keys(slug)) for slug in registry._TINH_THEO_DOI}
     assert counts == {
-        "laichau": 108, "bacninh": 112, "lamdong": 98, "danang": 105, "quangninh": 109, "ninhbinh": 98,
-        "quangngai": 99, "laocai": 98, "quangtri": 99, "khanhhoa": 96, "tuyenquang": 97,
+        # +5 ngày 10/11 (thẻ HDV tại điểm / cấp đổi / cấp lại, khuyến mại may rủi, xóa đăng ký phương tiện thủy).
+        "laichau": 113, "bacninh": 117, "lamdong": 103, "danang": 110, "quangninh": 114, "ninhbinh": 103,
+        # Khánh Hòa +4 theo bảng 11:55 (STT 41/93/190/207 lên "Hoàn thiện phần mềm") +1 liên thông khai tử (user mở).
+        "quangngai": 104, "laocai": 103, "quangtri": 104, "khanhhoa": 106, "tuyenquang": 102,
     }
 
 
 def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     kh = _card_keys("khanhhoa")
     assert "dang-ky-dat-dai-lan-dau-khanh-hoa" in kh          # STT 44: Khánh Hòa hoàn thiện
-    assert "cap-doi-gcn-khanh-hoa" not in kh                   # STT 93: Khánh Hòa chưa cập nhật
-    assert "khai-tu-lien-thong" not in kh                      # STT 110: Khánh Hòa chưa cập nhật
-    assert "khai-tu-lien-thong" in _card_keys("laichau")
+    assert "cap-doi-gcn-khanh-hoa" in kh                       # STT 93: Khánh Hòa hoàn thiện (bảng 11:55)
+    assert "khai-tu-lien-thong" in kh                          # STT 110: user mở cho Khánh Hòa
+    assert "khai-tu-lien-thong" not in _card_keys("tuyenquang")  # STT 110: Tuyên Quang chưa cập nhật
+    assert "cap-gcn-dang-ky-tau-ca" not in kh                  # STT 118: Khánh Hòa chưa cập nhật
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng
     assert "cap-phep-long-duong-via-he" not in _card_keys("laichau")
     assert "cap-gcn-dang-ky-tau-ca" not in _card_keys("bacninh")  # STT 118: Bắc Ninh Pending
@@ -99,13 +102,13 @@ def test_tinh_ngoai_bang_theo_doi_khong_loc_them():
 def test_agent_chon_thu_tuc_chi_thay_thu_tuc_da_hoan_thien():
     from app.channels.handfree.chat.procedure_picker.agent import procedures_for
     keys = {p["key"] for p in procedures_for("khanhhoa")}
-    assert "cap-doi-gcn-khanh-hoa" not in keys and "dang-ky-dat-dai-lan-dau-khanh-hoa" in keys
+    assert "cap-gcn-dang-ky-tau-ca" not in keys and "dang-ky-dat-dai-lan-dau-khanh-hoa" in keys
 
 
 def test_chon_thu_tuc_tinh_chua_hoan_thien_bi_chan():
     # Detect trang / gọi tên thủ tục chưa hoàn thiện ở tỉnh tài khoản → không mở, mời chọn thủ tục khác.
     conv = dict(_account("khanhhoa"), state="greet")
-    r = flow._to_confirm_procedure(conv, "cap-doi-gcn-khanh-hoa")
+    r = flow._to_confirm_procedure(conv, "cap-gcn-dang-ky-tau-ca")
     assert "chưa làm được" in r.display_md and "Khánh Hòa" in r.display_md
     assert conv.get("procedure_key") is None and conv["state"] == "greet"
     assert [c.get("kind") for c in r.cards] == [flow._service_list_card(conv).get("kind")]

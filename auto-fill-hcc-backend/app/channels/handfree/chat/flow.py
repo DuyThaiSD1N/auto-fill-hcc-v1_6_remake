@@ -1517,6 +1517,10 @@ async def _handle_turn_inner(
     if intent.kind == "ask_question":
         return _answer_question(conv, intent.value, intent.payload.get("procedure_key"))
 
+    if intent.kind == "action" and intent.value == "liz_commit_report" and state not in ("attaching", "done"):
+        # Cổng liz: công dân tích / bỏ tích ô cam kết lúc trợ lý chưa tới chặng nộp (vd đang điền lại) → im; tới lượt dặn
+        # tích, extension đọc lại ô.
+        return Reply()
     if tpm.is_active(current_proc, conv) and state in ("attaching", "done"):
         # Trang nộp một trang: đính kèm / nhận kết quả / nộp do nút trong khung chat điều phối.
         tpm_reply = await tpm.handle(conv, current_proc, intent)

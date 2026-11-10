@@ -77,6 +77,9 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
     Tài liệu khớp mốc thường là Đơn Mẫu 08 (tự nộp — đơn ghi đủ tên + số định danh) hoặc CCCD người nộp
     thay. Khối ngữ cảnh chỉ nói ai là người nộp; việc tự nộp hay nộp thay do mapper chốt bằng số định danh.
     """
+    # Cài đặt "Lấy người nộp theo tờ khai": bỏ mốc tài khoản, chỉ trích người hành nghề như tự nộp.
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        return ""
     context = (options or {}).get("formContext") or {}
     raw_name = context.get("applicantFullname") or context.get("ownerFullname") or context.get("fullname") or ""
     name = _norm_text(raw_name)

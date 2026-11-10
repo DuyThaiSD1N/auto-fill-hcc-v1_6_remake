@@ -4860,6 +4860,50 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xoa-dang-ky-phuong-tien-thuy",
+        # Mã TTHC 2.001659, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 1 dòng Đơn), cùng cổng
+        # và khuôn tờ khai với 1.004002 ngay trên. ke_khai_links ghi key khác ("xoa-dang-ky-phuong-tien") → khai tay
+        # uuid + mã. ke_khai không khai selectSo (DVCQG ghi cơ quan thực hiện cả Sở Xây dựng lẫn UBND cấp xã) → chọn
+        # đủ Tỉnh + Xã như Auto Fill, không agencyProvinceOnly/agencySoFirst.
+        "flowProfile": "xay-dung",
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=2.001659",
+                "019d2bfe-a039-75a8-85e4-a19d8132bb5d",
+            ],
+            "textIncludes": ["xóa đăng ký phương tiện thủy nội địa"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "2.001659",
+        "label": "Xóa đăng ký phương tiện thủy nội địa",
+        "shortLabel": "Xóa đăng ký phương tiện thủy",
+        "subtitle": "Tàu, thuyền, sà lan đã bán, hư hỏng hoặc không dùng nữa — xin xóa đăng ký",
+        "icon": "⛴️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-a039-75a8-85e4-a19d8132bb5d",
+        # Bảng thành phần hồ sơ 1 dòng (Đơn) → mọi tệp vào dòng đó; tắt hideRepeatableHint mà profile bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị xóa đăng ký phương tiện thủy nội địa (Mẫu số 10) — đã ký, đóng dấu",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ phương tiện (cá nhân) hoặc người nộp thay",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (của CHỦ PHƯƠNG TIỆN — người/tổ chức đề nghị xóa đăng ký):\n"
+            "1. Đơn đề nghị xóa đăng ký phương tiện thủy nội địa (Mẫu số 10), đã ký, đóng dấu — nguồn chính để điền.\n"
+            "2. Chủ phương tiện là cá nhân: căn cước của chủ phương tiện; người khác nộp thay: thêm căn cước người "
+            "nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: bảng chỉ có một dòng 'Đơn đề nghị xóa đăng ký phương tiện thủy nội địa' (Bản chính) — "
+            "Đơn và căn cước, giấy tờ khác đều đính vào dòng đó."
+        ),
+    },
+    {
         "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
         # Mã TTHC 1.012906, Sở Xây dựng (Form.io dom-* + attach attp-row 6 dòng, engine tách trang sourceSegments).
         # Key TRÙNG lõi và ke_khai_links → process/attach + URL tự nối. ke_khai khai selectSo → agencyProvinceOnly +
@@ -7501,6 +7545,160 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
+        # Mã TTHC 1.001440 (QT-115), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với thẻ HDV nội địa 1.004623:
+        # nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.001440. ke_khai_links đặt selectSo
+        # → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối qua core_registry. Nhãn không gắn tỉnh
+        # (cổng bộ dùng chung cả nước) dù key lõi có đuôi "-da-nang".
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.001440",
+                "019d2bfd-b526-75c8-a04d-beec224973cf",
+            ],
+        },
+        "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
+        "shortLabel": "Cấp thẻ hướng dẫn viên du lịch tại điểm",
+        "subtitle": "Xin thẻ hướng dẫn viên dẫn khách tại một khu, điểm du lịch",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b526-75c8-a04d-beec224973cf",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp thẻ hướng dẫn viên du lịch tại điểm (Mẫu số 06) — ghi tên điểm du "
+             "lịch", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "02 ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "chung_chi", "name": "Giấy chứng nhận / chứng chỉ nghiệp vụ hướng dẫn du lịch tại điểm, văn bằng "
+             "(nếu có)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp thẻ hướng dẫn viên du lịch tại điểm (Mẫu số 06) — nguồn chính để điền; đơn phải ghi "
+            "tên điểm du lịch.\n"
+            "2. 02 ảnh chân dung màu 3x4.\n"
+            "3. Nếu có: chứng chỉ nghiệp vụ hướng dẫn du lịch, văn bằng, căn cước của người đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi căn cước tài khoản trùng căn cước người đề nghị.\n"
+            "Bước đính kèm: Đơn + chứng chỉ, văn bằng → dòng 1; ảnh → dòng 2."
+        ),
+    },
+    {
+        "key": "cap-doi-the-huong-dan-vien-du-lich-da-nang",
+        # Mã TTHC 1.001432 (QT-113), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với thẻ HDV nội địa ở trên.
+        # ke_khai_links đặt selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.001432",
+                "019d90c7-0901-71cb-ab99-2f6e20b9ce08",
+            ],
+        },
+        "label": "Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
+        "shortLabel": "Cấp đổi thẻ hướng dẫn viên du lịch",
+        "subtitle": "Thẻ hướng dẫn viên nội địa, quốc tế sắp hết hạn cần đổi thẻ mới",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90c7-0901-71cb-ab99-2f6e20b9ce08",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp đổi thẻ hướng dẫn viên du lịch (Mẫu số 05)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "the_hdv", "name": "Thẻ hướng dẫn viên du lịch đã được cấp", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "gcn_cap_nhat", "name": "Giấy chứng nhận đã qua khóa cập nhật kiến thức hướng dẫn viên du lịch "
+             "(bản sao chứng thực)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "01 ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp đổi thẻ hướng dẫn viên du lịch (Mẫu số 05) — nguồn chính để điền: số thẻ, nơi cấp, "
+            "ngày cấp, loại thẻ, lý do.\n"
+            "2. Thẻ hướng dẫn viên du lịch đang có.\n"
+            "3. Bản sao chứng thực Giấy chứng nhận đã qua khóa cập nhật kiến thức.\n"
+            "4. 01 ảnh chân dung màu 3x4.\n"
+            "5. Nếu có: căn cước của người đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi căn cước tài khoản trùng căn cước người đề nghị.\n"
+            "Bước đính kèm: giấy chứng nhận cập nhật kiến thức → dòng 1; thẻ đã cấp → dòng 2; Đơn → dòng 3; ảnh → "
+            "dòng 4."
+        ),
+    },
+    {
+        "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+        # Mã TTHC 1.004614 (QT-122), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với cấp đổi ngay trên.
+        # ke_khai_links đặt selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối.
+        "detect": {
+            "urlScope": ["dichvucong.bvhttdl.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "matthc=1.004614",
+                "019d7fa0-f695-75df-8834-aa4c22e41529",
+            ],
+        },
+        "label": "Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
+        "shortLabel": "Cấp lại thẻ hướng dẫn viên du lịch",
+        "subtitle": "Thẻ hướng dẫn viên bị mất, hỏng hoặc cần thay đổi thông tin",
+        "icon": "🧭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa0-f695-75df-8834-aa4c22e41529",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Văn hóa, Thể thao và Du lịch",
+        "lizFlow": _LIZ_FLOW,
+        "guidedSteps": _LIZ_GUIDED_STEPS,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp lại thẻ hướng dẫn viên du lịch (Mẫu số 05)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "anh", "name": "01 ảnh chân dung màu 3x4", "icon": "🖼️", "sides": 1, "repeatable": True},
+            {"key": "giay_to_thay_doi", "name": "Bản sao chứng thực giấy tờ liên quan đến nội dung thay đổi (khi cấp "
+             "lại để thay đổi thông tin trên thẻ)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (chỉ để điền)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp lại thẻ hướng dẫn viên du lịch (Mẫu số 05) — nguồn chính để điền: số thẻ, nơi cấp, "
+            "ngày cấp, loại thẻ, lý do.\n"
+            "2. 01 ảnh chân dung màu 3x4.\n"
+            "3. Khi cấp lại để thay đổi thông tin trên thẻ: bản sao chứng thực giấy tờ liên quan đến nội dung thay "
+            "đổi.\n"
+            "4. Nếu có: căn cước của người đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi căn cước tài khoản trùng căn cước người đề nghị.\n"
+            "Bước đính kèm: giấy tờ thay đổi và giấy tờ khác → dòng 1; Đơn → dòng 2; ảnh → dòng 3. Căn cước không "
+            "đính."
+        ),
+    },
+    {
         "key": "gia-han-giay-phep-xay-dung",
         "flowProfile": "xay-dung",
         # Mã TTHC 1.013227, cổng Bộ Xây dựng — cùng stepper và ô receivingKind với điều chỉnh GPXD ngay trên, cấp xã
@@ -7708,6 +7906,72 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Bước đính kèm: mọi tệp đính vào dòng 'Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại', "
             "giữ nguyên tên tệp."
+        ),
+    },
+    {
+        "key": "dang-ky-khuyen-mai-may-rui-mot-tinh",
+        # Mã TTHC 2.000004, cùng cổng Bộ Công Thương + cùng khuôn với 2.001474 ngay trên (attp-row 3 dòng: Đăng ký /
+        # Thể lệ / Mẫu bằng chứng trúng thưởng). Key TRÙNG lõi và ke_khai_links (link thêm 10/11, uuid tra từ API DVCQG)
+        # → process/attach + URL tự nối; ke_khai khai selectSo.
+        "detect": {
+            "urlScope": ["dichvucong-tthc.moit.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["019d2bf8-1b67-7594-877d-bcc66b5f4fd8"],
+            "textIncludes": [
+                "2.000004",
+                "Đăng ký hoạt động khuyến mại đối với chương trình khuyến mại mang tính may rủi",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "code": "2.000004",
+        "label": (
+            "Đăng ký hoạt động khuyến mại đối với chương trình khuyến mại mang tính may rủi thực hiện trên địa bàn 01 "
+            "tỉnh, thành phố trực thuộc Trung ương"
+        ),
+        "shortLabel": "Đăng ký khuyến mại may rủi (bốc thăm, cào trúng thưởng)",
+        "subtitle": "Thương nhân đăng ký chương trình bốc thăm, quay số trúng thưởng trong tỉnh",
+        "icon": "🎁",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-1b67-7594-877d-bcc66b5f4fd8",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Công Thương",
+        # Cùng trang "Cơ quan thực hiện" + stepper iGate 4 bước + cờ riêng như 2.001474 ngay trên.
+        "maePortal": True,
+        "maeNoProcess": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+            "capability": "supportsBxdFlowMoit",
+        },
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "dang_ky", "name": "Đăng ký thực hiện khuyến mại (Mẫu số 02 ĐP, đã ký, đóng dấu)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "the_le", "name": "Thể lệ chương trình khuyến mại (Mẫu số 03 ĐP)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "mau_bang_chung", "name": "Mẫu bằng chứng xác định trúng thưởng (phiếu bốc thăm, thẻ cào…)",
+             "icon": "🎟️", "sides": 1, "repeatable": True},
+            {"key": "chat_luong", "name": "Giấy tờ về chất lượng hàng hóa dùng để khuyến mại (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đang đăng nhập nộp hồ sơ (nếu muốn điền khối tài "
+             "khoản)", "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đăng ký thực hiện khuyến mại (Mẫu số 02 ĐP, đã ký, đóng dấu) — nguồn chính để điền.\n"
+            "2. Thể lệ chương trình khuyến mại (Mẫu số 03 ĐP).\n"
+            "3. Mẫu bằng chứng xác định trúng thưởng (mẫu phiếu bốc thăm / thẻ cào).\n"
+            "4. Nếu có: giấy tờ về chất lượng hàng hóa dùng để khuyến mại.\n"
+            "5. Nếu muốn điền khối thông tin tài khoản: căn cước của chính người đang đăng nhập nộp hồ sơ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đăng ký / Thể lệ / Mẫu bằng chứng vào 3 dòng tương ứng; giấy tờ chất lượng hàng hóa và "
+            "giấy tờ khác đính chung dòng Đăng ký. Giữ nguyên tên tệp."
         ),
     },
     {
@@ -9219,7 +9483,7 @@ _HOME_FREQUENT_KEYS = (
     "dang-ky-kinh-doanh",
 )
 
-# Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261110-1025.xlsx, xuất
+# Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261110-1155.xlsx, xuất
 # 10/11/2026; "STT" ở chú thích = cột STT của bảng). Bảng có cột cho 11 tỉnh ở _TINH_THEO_DOI: tài khoản thuộc
 # một tỉnh trong đó chỉ thấy + gọi được thủ tục mà cột tỉnh ấy ghi "Hoàn thiện phần mềm" (Chưa cập nhật / Chưa
 # có / Đã BA / Pending đều ẩn). Tỉnh ngoài bảng hoặc tài khoản thiếu tỉnh → không lọc (như provinceOnly).
@@ -9242,7 +9506,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "khai-sinh-dang-ky-lai": _TAT_CA,
     "khai-sinh-da-co-ho-so": _TAT_CA,
     "khai-tu": _TAT_CA,
-    "khai-tu-lien-thong": _TAT_CA - {"khanhhoa", "tuyenquang"},  # STT 110: Khánh Hòa, Tuyên Quang Chưa cập nhật
+    # STT 110: Tuyên Quang Chưa cập nhật. Khánh Hòa bảng vẫn ghi Chưa cập nhật nhưng user mở 10/11/2026.
+    "khai-tu-lien-thong": _TAT_CA - {"tuyenquang"},
     "khai-tu-dang-ky-lai": _TAT_CA,
     "dang-ky-nhan-cha-me-con": _TAT_CA,
     "khai-sinh-ket-hop-nhan-cha-me-con": _TAT_CA,
@@ -9349,14 +9614,13 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
-    # STT 44 (dòng chung các tỉnh; STT 229 mã 1.013978 chỉ ghi Lâm Đồng)
-    "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,
+    "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
-    "cap-doi-gcn-khanh-hoa": frozenset(),  # STT 93: Khánh Hòa Chưa cập nhật
-    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": frozenset(),  # STT 41: Khánh Hòa Chưa cập nhật
-    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": frozenset(),  # STT 190: Khánh Hòa Chưa cập nhật
-    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": frozenset(),  # STT 207, 174: Khánh Hòa Chưa cập nhật
-    "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 (như bản Khánh Hòa)
+    "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
+    "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": _TAT_CA,  # STT 41 + STT 208
+    "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": _TAT_CA,  # STT 190
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": _TAT_CA,  # STT 207
+    "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
@@ -9366,6 +9630,11 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "to-chuc-bieu-dien-nghe-thuat": _TAT_CA,
     "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": _TAT_CA,
+    "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": _TAT_CA,  # STT 194 (1.001440)
+    "cap-doi-the-huong-dan-vien-du-lich-da-nang": _TAT_CA,  # STT 193 (1.001432)
+    "cap-lai-the-huong-dan-vien-du-lich-da-nang": _TAT_CA,  # STT 192 (1.004614)
+    "dang-ky-khuyen-mai-may-rui-mot-tinh": _TAT_CA,  # STT 195 (2.000004)
+    "xoa-dang-ky-phuong-tien-thuy": _TAT_CA,  # STT 126 (2.001659)
     "gia-han-giay-phep-xay-dung": _TAT_CA,
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": _TAT_CA,
     "cap-gcn-attp-cong-thuong": _TAT_CA,

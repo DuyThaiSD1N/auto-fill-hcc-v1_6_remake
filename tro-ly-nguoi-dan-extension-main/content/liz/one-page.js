@@ -3,7 +3,11 @@
 //   - selectResultMethod: tích ô cam kết (nút "Lưu và nộp hồ sơ" của cổng chỉ mở sau khi tích), gạt ô "Đề nghị nhận
 //     kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)" theo postOffice; tích thì cổng mọc khối người nhận
 //     (recipient_*) → điền theo khối "Thông tin người nộp hồ sơ", báo ô đã điền / ô bắt buộc còn trống;
-//   - guidedSubmit: tích lại ô cam kết, soát ô bắt buộc đang hiện, chờ nút nộp mở rồi bấm, đọc thông báo lỗi của cổng.
+//   - guidedSubmit: tích lại ô cam kết, soát ô bắt buộc đang hiện, chờ nút nộp mở rồi bấm, đọc thông báo lỗi của cổng;
+//   - chặng ô cam kết riêng (sidebar khai supportsLizCommitSelf):
+//       lizCommitWatch: đọc ô cam kết + theo dõi — công dân tự tích / bỏ tích thì báo sidebar (lizCommitChanged);
+//       lizCommitTick: công dân bấm nút cam "Tích ô cam kết" → cuộn tới ô rồi tích, trả trạng thái ô;
+//       guidedSubmit nhận commitSelf: không tích hộ, ô chưa tích thì không bấm nộp, trả commit=false.
 // Trang khác (DVCQG SurveyJS, cổng bộ iGate…) có engine riêng → ở đây im lặng.
 (() => {
   if (window.__TLND_LIZ_ONE_PAGE__) return;
@@ -48,6 +52,69 @@
     }
     return boxes.every((box) => box.checked);
   }
+
+  // ── Chặng ô cam kết ──
+  let commitWatch = ""; // nhãn ô cam kết đang theo dõi (BE gửi), rỗng = chưa theo dõi
+  let commitLast = null;
+  let commitTicking = false; // trợ lý đang tích theo nút cam → sự kiện change của chính cú bấm đó không báo lại
+
+  // Ô cam kết có thể hiện hai lần: chỉ xét ô đang hiện (không có thì xét hết), đủ mọi ô đã tích mới tính là đã tích.
+  function commitState(label) {
+    const all = commitBoxes(label);
+    const boxes = all.filter(shown).length ? all.filter(shown) : all;
+    const unticked = boxes.filter((box) => !box.checked);
+    return { found: boxes.length > 0, checked: boxes.length > 0 && !unticked.length, unticked: unticked[0] || null };
+  }
+
+  // Chỉ cuộn cho công dân thấy ô — không con trỏ, không dòng gợi ý (user 10/11: bỏ chữ nền xanh trên trang).
+  function showCommit(box) {
+    (box?.closest("label") || box)?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }
+
+  function watchCommit(msg) {
+    const label = String(msg.commitLabel || "");
+    if (!label) return { ok: false, found: false, checked: false };
+    commitWatch = label;
+    const state = commitState(label);
+    commitLast = state.checked;
+    return { ok: true, found: state.found, checked: state.checked };
+  }
+
+  async function tickCommitForCitizen(msg) {
+    const label = String(msg.commitLabel || "");
+    if (!label) return { ok: false, found: false, checked: false };
+    commitWatch = label;
+    const before = commitState(label);
+    if (before.found && !before.checked) {
+      showCommit(before.unticked);
+      commitTicking = true;
+      try {
+        await tickCommit(label);
+      } finally {
+        commitTicking = false;
+      }
+    }
+    const state = commitState(label);
+    commitLast = state.checked;
+    return { ok: true, found: state.found, checked: state.checked };
+  }
+
+  // Công dân tích / bỏ tích trên trang → báo sidebar một lần mỗi lần đổi (ô kia cùng model đổi theo sau một nhịp).
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!commitWatch || commitTicking || !ourPage() || target?.type !== "checkbox") return;
+    if (!commitBoxes(commitWatch).includes(target)) return;
+    setTimeout(() => {
+      if (commitTicking) return;
+      const state = commitState(commitWatch);
+      if (state.checked === commitLast) return;
+      commitLast = state.checked;
+      try {
+        chrome.runtime.sendMessage({ __tlnd: "lizCommitChanged", checked: state.checked },
+          () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload: bỏ lượt báo này */ }
+    }, 250);
+  }, true);
 
   const fieldOf = (control) => control?.closest("mat-form-field") || null;
   const valueOf = (mf) => {
@@ -148,7 +215,17 @@
   }
 
   async function submit(msg) {
-    const commit = msg.commitLabel ? await tickCommit(msg.commitLabel) : true;
+    if (msg.commitLabel && msg.commitSelf) {
+      // Chặng ô cam kết riêng: nộp không tích hộ — ô chưa tích thì không bấm, cuộn cho công dân thấy ô.
+      const state = commitState(msg.commitLabel);
+      commitWatch = msg.commitLabel;
+      commitLast = state.checked;
+      if (state.found && !state.checked) {
+        showCommit(state.unticked);
+        return { ok: false, clicked: false, commit: false, missing: [] };
+      }
+    }
+    const commit = msg.commitLabel && !msg.commitSelf ? await tickCommit(msg.commitLabel) : true;
     const missing = requiredEmpty();
     if (missing.length) return { ok: false, clicked: false, missing };
     const button = await waitFor(() => submitButton().find((b) => !b.disabled), 5000);
@@ -166,7 +243,18 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const action = String(msg?.action || "");
-    if (!["selectResultMethod", "guidedSubmit"].includes(action) || !ourPage()) return;
+    if (!["selectResultMethod", "guidedSubmit", "lizCommitWatch", "lizCommitTick"].includes(action) || !ourPage()) {
+      return;
+    }
+    if (action === "lizCommitWatch") {
+      sendResponse(watchCommit(msg));
+      return;
+    }
+    if (action === "lizCommitTick") {
+      tickCommitForCitizen(msg).then(sendResponse)
+        .catch((e) => sendResponse({ ok: false, found: false, checked: false, error: String(e?.message || e) }));
+      return true; // async
+    }
     const run = action === "selectResultMethod" ? selectResultMethod(msg) : submit(msg);
     run.then(sendResponse).catch((e) => sendResponse({ ok: false, clicked: false, error: String(e?.message || e) }));
     return true; // async

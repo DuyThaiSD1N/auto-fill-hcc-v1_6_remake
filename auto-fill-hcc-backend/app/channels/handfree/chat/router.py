@@ -296,6 +296,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Trang nộp một trang của cổng Bộ VHTTDL (form liz, chat/tu_phap_moi.py): bổ sung ô, tích ô cam kết, gạt VNPost,
         # bấm Lưu và nộp hồ sơ.
         "supportsLizFlow": raw.get("supportsLizFlow") is True,
+        # Cổng Bộ VHTTDL: chặng ô cam kết riêng — nút cam "Tích ô cam kết" (extension tích theo lệnh liz_commit_tick), báo
+        # khi ô được tích, nút nộp không tích hộ.
+        "supportsLizCommitSelf": raw.get("supportsLizCommitSelf") is True,
         # Báo kết quả đính kèm theo từng tệp + vẽ thẻ attach_files (chat/attach_files.py).
         "supportsAttachFileReport": raw.get("supportsAttachFileReport") is True,
     }

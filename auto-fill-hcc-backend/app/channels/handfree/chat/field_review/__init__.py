@@ -22,7 +22,9 @@ hồ sơ". Cổng Bắc Ninh (4 tab cùng trang, chat/bac_ninh.py) cần cờ su
 (content/bacninh/field-review.js): bước kế tiếp là tab sau (khối ủy quyền → Nhập đơn đăng ký → Thành phần hồ sơ).
 Cổng Bộ VHTTDL (form liz, registry lizFlow) cũng là trang một trang (chat/tu_phap_moi.py) nhưng đọc ô bằng
 content/liz/field-review.js → cần cờ supportsLizFlow thay cho supportsFieldReviewSurvey; đủ ô thì bước kế tiếp là
-[Tiếp tục] (tích cam kết, hỏi bưu điện).
+[Tiếp tục] (tích cam kết, hỏi bưu điện). Extension khai thêm supportsLizCommitSelf: điền + đính xong là dặn cần tích ô cam
+kết + nút cam "Tích ô cam kết" (trợ lý tích; extension theo dõi ô, báo lại khi ô được tích) rồi mới hiện nút Lưu và nộp hồ
+sơ (chat/tu_phap_moi.py).
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -41,6 +43,7 @@ LIEN_THONG_CAPABILITY = "supportsLienThongFlow"
 BXD_CAPABILITY = "supportsBxdFlow"
 BAC_NINH_CAPABILITY = "supportsBacNinhTabFlow"
 LIZ_CAPABILITY = "supportsLizFlow"
+LIZ_COMMIT_CAPABILITY = "supportsLizCommitSelf"
 OTHER_TEXT_CAPABILITY = "supportsFieldReviewOtherText"
 NESTED_CAPABILITY = "supportsFieldReviewNested"
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
@@ -79,6 +82,25 @@ def single_page(proc: dict | None) -> bool:
 def liz(proc: dict | None) -> bool:
     """Cổng Bộ VHTTDL (form liz, một trang): đủ ô bắt buộc → Tiếp tục (tích cam kết, hỏi bưu điện) → nộp."""
     return bool((proc or {}).get("lizFlow"))
+
+
+def liz_commit_self(conv: dict | None, proc: dict | None) -> bool:
+    """Cổng liz, chặng ô cam kết riêng: nút cam "Tích ô cam kết" (trợ lý tích khi công dân bấm), extension báo khi ô được
+    tích; nút nộp không tích hộ. Câu chỉ có bản tiếng Việt → chế độ Mông giữ luồng cũ."""
+    conv = conv or {}
+    caps = conv.get("client_capabilities") or {}
+    return (liz(proc) and caps.get(LIZ_CAPABILITY) is True and caps.get(LIZ_COMMIT_CAPABILITY) is True
+            and (conv.get("lang") or "vi") != "hmong")
+
+
+def liz_commit_label(proc: dict | None) -> str:
+    return str(((proc or {}).get("lizFlow") or {}).get("commitLabel") or "")
+
+
+def liz_commit_watch_action(proc: dict | None) -> dict:
+    """Extension theo dõi ô cam kết (không cuộn, không chỉ): công dân tự tích / bỏ tích trên trang thì báo lại
+    __action:liz_commit_report; ô đã tích sẵn thì báo ngay."""
+    return {"type": "liz_commit_watch", "commitLabel": liz_commit_label(proc)}
 
 
 def lien_thong(proc: dict | None) -> bool:
@@ -269,12 +291,16 @@ def next_chips(conv: dict, proc: dict | None, keep: list[dict]) -> list[dict]:
             return [_start_chip(), {**_go_chip(proc, conv), "solid": False}, *_small_chips(keep)]
         optional = [{**_start_chip(), "solid": False}] if stats.get("optional") else []
         return [{**_go_chip(proc, conv), "cta": True}, *optional, *_small_chips(keep)]
+    if stats.get("required") and liz_commit_self(conv, proc):
+        # Cổng liz, chặng ô cam kết: nút cam Tích ô cam kết / Lưu và nộp hồ sơ hiện luôn cả khi còn ô bắt buộc (user yêu
+        # cầu 10/11/2026) — cổng tự chặn nộp nếu thiếu, extension soát ô bắt buộc trước khi bấm.
+        return [_start_chip(), *(dict(c) for c in keep if c.get("cta")), *_small_chips(keep)]
     if stats.get("required"):
         return [_start_chip(), *_small_chips(keep)]
     return [dict(c) for c in keep]
 
 
-def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
+def _ready(proc: dict | None, st: dict, conv: dict | None = None) -> tuple[str, str]:
     from app.channels.handfree.chat import guided_steps
 
     st["ready_said"] = True
@@ -290,6 +316,11 @@ def _ready(proc: dict | None, st: dict) -> tuple[str, str]:
                     optional_hint_tts=vi.FLOW2_OPTIONAL_HINT["tts"] if optional else "")
     label = str((guided_steps.default_result_method(proc) or {}).get("label") or "")
     done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
+    if liz(proc) and liz_commit_self(conv, proc):
+        if st.get("liz_commit_ok"):
+            return _say(vi.LIZ_READY_SUBMIT if st.get("liz_result_step") else vi.LIZ_COMMIT_READY_SUBMIT, done=done)
+        _ask_commit(st)
+        return _say(vi.LIZ_COMMIT_ASK, done=done, commit=liz_commit_label(proc))
     if liz(proc):
         # Đã qua câu hỏi bưu điện (ô người nhận vừa hỏi xong) → nút còn lại là nộp; chưa thì Tiếp tục.
         return _say(vi.LIZ_READY_SUBMIT if st.get("liz_result_step") else vi.LIZ_READY, done=done)
@@ -305,13 +336,28 @@ def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, st
     if stats["required"]:
         st["ready_said"] = False
         md, tts = _say(vi.FLOW2_NEED_REQUIRED, **stats)
+        if liz_commit_self(conv, proc) and not st.get("liz_commit_ok"):
+            # Cổng liz: điền + đính xong là dặn tích ô cam kết luôn, không đợi đủ ô bắt buộc.
+            _ask_commit(st)
+            more_md, more_tts = _say(vi.LIZ_COMMIT_ALSO, commit=liz_commit_label(proc))
+            md, tts = md + more_md, tts + more_tts
         return md, tts, next_chips(conv, proc, keep)
-    if stats["optional"] and not _wizard_form(proc):
+    if stats["optional"] and not _wizard_form(proc) and not st.get("liz_commit_ok"):
         st["ready_said"] = True
-        md, tts = _say(vi.LIZ_OPTIONAL_ONLY if liz(proc) else vi.FLOW2_OPTIONAL_ONLY, **stats)
+        if liz_commit_self(conv, proc):
+            _ask_commit(st)
+            md, tts = _say(vi.LIZ_COMMIT_OPTIONAL_ONLY, commit=liz_commit_label(proc), **stats)
+        else:
+            md, tts = _say(vi.LIZ_OPTIONAL_ONLY if liz(proc) else vi.FLOW2_OPTIONAL_ONLY, **stats)
         return md, tts, [{**_start_chip(), "solid": False}, *keep]
-    md, tts = _ready(proc, st)
+    md, tts = _ready(proc, st, conv)
     return md, tts, next_chips(conv, proc, keep)
+
+
+def _ask_commit(st: dict) -> None:
+    """Vừa dặn cần tích ô cam kết (cổng liz): đang chờ ô được tích; finalize gắn lệnh theo dõi ô cho đúng lượt này."""
+    st["liz_commit_asked"] = True
+    st["liz_commit_point"] = True
 
 
 def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
@@ -343,7 +389,7 @@ def _status_reply(conv: dict, proc: dict | None, st: dict, payload: dict):
     st["stats"] = _stats(payload["stats"])
     if st["stats"]["required"] or st.get("ready_said") or not _waiting_ready(conv, proc, st):
         return Reply()
-    md, tts = _ready(proc, st)
+    md, tts = _ready(proc, st, conv)
     r = Reply(md, tts.strip())
     r.chips = next_chips(conv, proc, st["chips"])
     return r
@@ -629,7 +675,7 @@ def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[s
             r = Reply(*_say(vi.FLOW2_REVIEW_MISSING, required=stats["required"], lead_md=lead_md, lead_tts=lead_tts))
             r.chips = next_chips(conv, proc, keep)
         else:
-            md, tts = _ready(proc, st)
+            md, tts = _ready(proc, st, conv)
             r = Reply(md, tts.strip())
             r.chips = next_chips(conv, proc, keep)
         r.actions = [{"type": "field_review_stop"}]
@@ -1162,8 +1208,14 @@ def _owner_step(proc: dict | None, intent):
 
 def finalize(conv: dict, intent, reply) -> None:
     """Bấm nút khác / trang rời bước Kê khai giữa vòng hỏi → dừng vòng (flow cũ đã xử lý lượt đó) và
-    nhờ extension gỡ con trỏ, viền ô đang hỏi. Chạy SAU flow để docs_target đã theo trang mới."""
+    nhờ extension gỡ con trỏ, viền ô đang hỏi. Chạy SAU flow để docs_target đã theo trang mới.
+    Cổng liz: lượt vừa dặn tích ô cam kết (_ask_commit) thì kèm lệnh theo dõi ô — câu dặn nằm ở nhiều đường (kết luận
+    sau đính kèm, công dân tự gõ đủ ô, hỏi xong vòng bổ sung) nên gắn một chỗ ở đây."""
     st = conv.get("field_review") or {}
+    if st.pop("liz_commit_point", False):
+        from app.channels.handfree.procedure_registry import get_procedure
+
+        reply.actions = [*reply.actions, liz_commit_watch_action(get_procedure(conv.get("procedure_key") or ""))]
     if not st.get("running") or _ours(intent):
         return
     # Trang một trang không rời bước Kê khai: page_status chỉ là trang đổi DOM (ô mới hiện ra sau câu trả lời).

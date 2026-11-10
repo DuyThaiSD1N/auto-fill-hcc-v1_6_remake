@@ -158,3 +158,22 @@ def test_dang_ky_lai_cccd_va_doan_la_moi_doan_mot_item_o_dong_don():
     assert all(c.get("target") != "skip" for c in classified)
     assert any("tep1.pdf" in w and "tep2.pdf" in w and "đính chung" in w for w in warnings)
     AttachmentPlanResp.model_validate({"attachments": items})
+
+
+def test_xoa_dang_ky_phuong_tien_thuy_len_tro_ly():
+    """10/11: 2.001659 lên trợ lý cùng key lõi; ke_khai_links ghi key khác nên mã + uuid khai tay; chọn Tỉnh + Xã."""
+    from app.channels.handfree.chat.field_review import registry as field_review_registry
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+    from app.channels.handfree.procedure_registry import PROCEDURES, procedure_code
+    from app.procedures import registry
+
+    key = "xoa-dang-ky-phuong-tien-thuy"
+    handfree = next(p for p in PROCEDURES if p["key"] == key)
+    assert handfree["label"] == registry.get_procedure(key)["label"] and procedure_code(handfree) == "2.001659"
+    assert handfree["keKhaiUrl"].endswith("019d2bfe-a039-75a8-85e4-a19d8132bb5d")
+    assert handfree["flowProfile"] == "xay-dung" and "agencySoFirst" not in handfree
+    assert registry.get_pipeline(key) is not None and registry.get_attach_pipeline(key) is not None
+    assert field_review_registry.get(key)["noAsk"] == ("tenHoSo", "AuthorityApplicantPhoneNumber", "nguoiDaiDien",
+                                                       "dongSoHuu")
+    assert PROCEDURE_HMONG[key] and PROCEDURE_HINTS[key]

@@ -49,6 +49,9 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
     không có mỏ neo, LLM dễ vơ CCCD người nộp làm người đề nghị (chủ hồ sơ). Mỏ neo giúp LLM biết CCCD nào
     là của người nộp để trích NguoiNop_*; người đề nghị lấy từ Đơn Mẫu 02 / Phiếu LLTP / CCCD của họ.
     """
+    # Cài đặt "Lấy người nộp theo tờ khai": bỏ mốc tài khoản, chỉ trích người đề nghị như tự nộp.
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        return ""
     context = (options or {}).get("formContext") or {}
     raw_name = context.get("applicantFullname") or context.get("ownerFullname") or context.get("fullname") or ""
     name = _norm_text(raw_name)

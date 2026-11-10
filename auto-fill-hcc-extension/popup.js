@@ -987,6 +987,15 @@ function isYenBaiLaoCaiUser(user) {
     && normalizeProcedureSearch(user?.xa).includes("yen bai");
 }
 
+// ===== Nghiệp vụ riêng phường Bắc Nha Trang — tỉnh Khánh Hòa (chỉ áp cho tài khoản của địa bàn này) =====
+// Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng ngành —
+// giống phường Yên Bái. Phường Nha Trang / Nam Nha Trang / Tây Nha Trang vẫn điền ô mô tả như cũ.
+/** Tài khoản phường Bắc Nha Trang — tỉnh Khánh Hòa (/auth/me trả `xa` + `tinh`). */
+function isBacNhaTrangUser(user) {
+  return normalizeProcedureSearch(user?.tinh).includes("khanh hoa")
+    && normalizeProcedureSearch(user?.xa).includes("bac nha trang");
+}
+
 // ===== Nghiệp vụ riêng xã Bát Xát (chỉ áp cho tài khoản của địa bàn này) =====
 // Gợi ý tệp máy quét đã có sẵn trong thư mục (quét trước rồi mới mở trợ lý) — xem attemptScanRecentSuggest.
 /** Tài khoản xã Bát Xát (/auth/me trả `xa`). */
@@ -996,7 +1005,7 @@ function isBatXatUser(user) {
 
 function buildBusinessDefaults(user) {
   const defaults = {};
-  if (isYenBaiLaoCaiUser(user)) defaults.skipBusinessLineDescription = true;
+  if (isYenBaiLaoCaiUser(user) || isBacNhaTrangUser(user)) defaults.skipBusinessLineDescription = true;
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
   else if (isLamDongBusinessActUser(user)) defaults.businessActText = LAM_DONG_BUSINESS_ACT_TEXT;
   // Đà Nẵng: vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh",

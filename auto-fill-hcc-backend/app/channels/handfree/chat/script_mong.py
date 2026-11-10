@@ -300,6 +300,16 @@ PROCEDURE_HMONG = {
     # paub" (giấy chứng nhận), "kawm" (học) đã có; TỪ MỚI "kev paub tshiab" (kiến thức mới = cập nhật kiến thức).
     "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich":
         "Ntawv lees paub kawm kev paub tshiab rau neeg coj kev mus ncig",
+    # BẢN NHÁP chờ anh Dư soát (Bộ VHTTDL 1.001440, 1.001432, 1.004614) — ghép từ "daim npav neeg coj kev mus ncig"
+    # (thẻ hướng dẫn viên du lịch), "muab … dua tshiab" (cấp lại); TỪ MỚI "ib qho chaw" (tại một điểm), "pauv" (đổi).
+    "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": "Daim npav neeg coj kev mus ncig (ib qho chaw)",
+    "cap-doi-the-huong-dan-vien-du-lich-da-nang": "Pauv daim npav neeg coj kev mus ncig",
+    "cap-lai-the-huong-dan-vien-du-lich-da-nang": "Muab daim npav neeg coj kev mus ncig dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Công Thương 2.000004) — "cuv npe" (đăng ký), "kev txo nqi khoom muag" (khuyến mại)
+    # đã có; TỪ MỚI "rho xyaum hmoov" (may rủi, bốc thăm).
+    "dang-ky-khuyen-mai-may-rui-mot-tinh": "Cuv npe kev txo nqi khoom muag rho xyaum hmoov",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng 2.001659) — "rho npe" (xóa đăng ký), "nkoj" (tàu) đã có.
+    "xoa-dang-ky-phuong-tien-thuy": "Rho npe nkoj",
     "gia-han-giay-phep-xay-dung": "Ntxiv sij hawm rau ntawv tso cai ua tsev",
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": "Muab ntawv lees paub chaw ua zaub mov huv si dua tshiab",
     # BẢN NHÁP chờ anh Dư soát (Bộ Công Thương 2.000591, cấp lần đầu) — ghép từ đã có: "muab" (cấp), "chaw ua zaub

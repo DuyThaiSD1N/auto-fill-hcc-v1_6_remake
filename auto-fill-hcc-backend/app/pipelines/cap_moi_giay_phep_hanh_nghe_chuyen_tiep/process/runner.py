@@ -50,6 +50,9 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
     nào là của người nộp để trích NguoiNop_*; người hành nghề lấy từ Đơn Mẫu 08 / Sơ yếu lý lịch Mẫu 09 /
     CCCD của họ.
     """
+    # Cài đặt "Lấy người nộp theo tờ khai": bỏ mốc tài khoản, chỉ trích người hành nghề như tự nộp.
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        return ""
     context = (options or {}).get("formContext") or {}
     raw_name = context.get("applicantFullname") or context.get("ownerFullname") or context.get("fullname") or ""
     name = _norm_text(raw_name)

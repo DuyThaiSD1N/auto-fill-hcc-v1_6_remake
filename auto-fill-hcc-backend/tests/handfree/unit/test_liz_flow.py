@@ -12,7 +12,7 @@ from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import tu_phap_moi as tpm
 from app.channels.handfree.chat.intents import Intent
-from app.channels.handfree.procedure_registry import get_procedure
+from app.channels.handfree.procedure_registry import PROCEDURES, get_procedure
 
 LIZ_KEYS = ["cap-the-huong-dan-vien-du-lich-noi-dia", "thong-bao-san-pham-quang-cao-bang-ron"]
 # Bộ cờ extension handfree hiện tại khai (trừ supportsLizFlow).
@@ -168,3 +168,257 @@ def test_chot_giay_to_tren_trang_liz_thi_dien_truoc_roi_moi_dinh_kem(monkeypatch
 def test_extension_chua_khai_supportsLizFlow_giu_luong_chung(monkeypatch):
     conv, _, calls = _docs_complete(monkeypatch, CURRENT, LIZ_KEYS[1])
     assert conv["docs_target"] == "attachment" and calls == ["attach"]
+
+
+# ── Công dân TỰ tích ô cam kết (extension khai supportsLizCommitSelf, yêu cầu 10/11/2026) ──
+# Điền + đính xong, đủ ô bắt buộc → dặn tích ô cam kết + extension chỉ vào ô; ô được tích → "nhấn Lưu và nộp hồ sơ" + nút
+# cam. Extension không tích hộ ô cam kết nữa.
+ALL_LIZ_KEYS = [p["key"] for p in PROCEDURES if p.get("lizFlow")]
+SELF = {**NEW, "supportsLizCommitSelf": True}
+
+
+def _ready_conv(key, **kw):
+    """Phiên vừa đính xong, tờ khai đủ ô bắt buộc."""
+    return _conv(SELF, key, field_review={"stats": {"filled": 19, "optional": 0, "required": 0, "empty": 0}}, **kw)
+
+
+def _conclude(conv):
+    from app.channels.handfree.chat.flow import Reply
+
+    proc = get_procedure(conv["procedure_key"])
+    md, tts, chips = field_review.conclusion(conv, proc, tpm._final_chips(proc, conv))
+    r = Reply(md, tts)
+    r.chips = chips
+    field_review.finalize(conv, Intent("action", "attach_report", {}), r)
+    return r
+
+
+def _sends(r):
+    return [c["send"] for c in r.chips]
+
+
+def test_router_giu_co_supportsLizCommitSelf():
+    # Router lọc cờ theo danh sách trắng: thiếu dòng này thì cờ rơi mất, máy thật vẫn đi luồng Tiếp tục (lỗi 10/11).
+    from app.channels.handfree.chat.router import _clean_client_capabilities
+
+    assert _clean_client_capabilities(SELF)["supportsLizCommitSelf"] is True
+    assert _clean_client_capabilities(NEW)["supportsLizCommitSelf"] is False
+    kept = _clean_client_capabilities(SELF)
+    assert tpm.liz_commit_self(_conv(kept, LIZ_KEYS[0]), get_procedure(LIZ_KEYS[0]))
+
+
+def test_ap_dung_cho_moi_thu_tuc_cong_bo_vhttdl():
+    assert len(ALL_LIZ_KEYS) >= 6
+    for key in ALL_LIZ_KEYS:
+        proc = get_procedure(key)
+        assert tpm.liz_commit_self(_conv(SELF, key), proc), key
+        assert not tpm.liz_commit_self(_conv(NEW, key), proc), "extension cũ giữ luồng Tiếp tục"
+        assert not tpm.liz_commit_self(_conv(SELF, key, lang="hmong"), proc)
+    assert not tpm.liz_commit_self(_conv(SELF, "trich-luc-ks"), get_procedure("trich-luc-ks"))
+
+
+@pytest.mark.parametrize("key", ALL_LIZ_KEYS)
+def test_du_o_bat_buoc_thi_dan_tich_o_cam_ket_kem_nut_cam(key):
+    conv = _ready_conv(key)
+    r = _conclude(conv)
+    commit = get_procedure(key)["lizFlow"]["commitLabel"]
+    assert commit in r.display_md and "Tiếp tục" not in r.display_md and "Tích ô cam kết" in r.display_md
+    assert r.actions == [{"type": "liz_commit_watch", "commitLabel": commit}]
+    assert _sends(r)[-1] == "__action:liz_commit_tick"
+    assert r.chips[-1]["cta"] is True and r.chips[-1]["label"] == vi.LIZ_COMMIT_CHIP, "nút cam Tích ô cam kết"
+    assert "__action:tpm_submit" not in _sends(r) and "__action:tpm_result_method" not in _sends(r)
+    assert conv["field_review"]["liz_commit_asked"] and "liz_commit_point" not in conv["field_review"]
+
+
+@pytest.mark.parametrize("key", ALL_LIZ_KEYS)
+def test_con_o_bat_buoc_van_dan_tich_o_cam_ket_ngay_sau_dinh_kem(key):
+    # Ảnh user 10/11: "1 ô bắt buộc còn trống" mà không có bước tích → điền + đính xong là dặn tích luôn.
+    conv = _conv(SELF, key, field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
+    r = _conclude(conv)
+    commit = get_procedure(key)["lizFlow"]["commitLabel"]
+    assert "1 ô bắt buộc" in r.display_md and commit in r.display_md
+    assert r.actions == [{"type": "liz_commit_watch", "commitLabel": commit}]
+    assert _sends(r)[:2] == ["__action:field_review_start", "__action:liz_commit_tick"]
+    assert "__action:tpm_submit" not in _sends(r)
+
+
+def test_tich_xong_ma_con_o_bat_buoc_thi_van_hien_nut_nop_kem_nhac_dien_not():
+    conv = _conv(SELF, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True, "found": True})
+    assert "Lưu và nộp hồ sơ" in r.display_md and "1 ô bắt buộc" in r.display_md
+    assert _sends(r) == ["__action:tpm_submit"] and r.chips[0]["cta"] is True, "chỉ nút Lưu và nộp hồ sơ"
+    assert not r.cards
+    # Hỏi xong vòng bổ sung mà ô vẫn trống: nút nộp vẫn còn.
+    chips = field_review.next_chips(conv, get_procedure(LIZ_KEYS[0]), conv["field_review"]["chips"])
+    assert [c["send"] for c in chips][:2] == ["__action:field_review_start", "__action:tpm_submit"]
+
+
+def test_luong_tiep_tuc_cu_van_an_nut_di_tiep_khi_con_o_bat_buoc():
+    conv = _conv(NEW, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
+    r = _conclude(conv)
+    assert "cam kết" not in r.display_md and not r.actions
+    assert "__action:tpm_result_method" not in _sends(r) and "__action:field_review_start" in _sends(r)
+
+
+def test_cong_dan_tu_go_du_o_thi_dan_tich_o_cam_ket():
+    conv = _conv(SELF, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
+    _conclude(conv)
+    proc = get_procedure(LIZ_KEYS[0])
+    r = asyncio.run(field_review.handle(conv, proc, Intent("event", "field_review_status", {
+        "stats": {"filled": 20, "optional": 0, "required": 0}})))
+    field_review.finalize(conv, Intent("event", "field_review_status", {}), r)
+    assert "cam kết" in r.display_md and r.actions[-1]["type"] == "liz_commit_watch"
+    assert _sends(r)[-1] == "__action:liz_commit_tick"
+
+
+def test_con_o_khong_bat_buoc_thi_van_dan_tich_o_cam_ket():
+    conv = _conv(SELF, LIZ_KEYS[1], field_review={"stats": {"filled": 9, "optional": 2, "required": 0, "empty": 2}})
+    r = _conclude(conv)
+    assert "2 ô không bắt buộc" in r.display_md and "cam kết" in r.display_md
+    assert r.actions[-1]["type"] == "liz_commit_watch"
+    assert _sends(r)[0] == "__action:field_review_start" and _sends(r)[-1] == "__action:liz_commit_tick"
+
+
+@pytest.mark.parametrize("source", ["tick", "change", "watch", "manual"])
+def test_o_cam_ket_da_tich_thi_chi_con_nut_luu_va_nop(source):
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_report", {"source": source, "checked": True, "found": True})
+    assert "Lưu và nộp hồ sơ" in r.display_md and "Đã tích ô cam kết" in r.display_md
+    assert "nhận kết quả" not in r.display_md
+    assert r.chips == [tpm._submit_cta()] and r.chips[0]["cta"] is True and r.chips[0]["label"] == vi.TPM_SUBMIT_CTA
+    assert not r.cards, "user 10/11: bỏ thẻ cách nhận kết quả, chỉ nút Lưu và nộp hồ sơ"
+    assert not r.actions, "không gạt gì trên trang"
+    st = conv["field_review"]
+    assert st["liz_commit_ok"] and st["chips"][-1] == tpm._submit_cta()
+    assert _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True}).display_md == ""
+
+
+def test_tich_truoc_khi_tro_ly_dan_thi_im_den_luot_dan():
+    conv = _conv(SELF, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
+    r = _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True})
+    assert r.display_md == "" and not r.chips
+
+
+def test_bam_nut_cam_tich_o_cam_ket_thi_nho_extension_tich():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_tick")
+    assert r.display_md == ""
+    assert r.actions == [{"type": "liz_commit_tick",
+                          "commitLabel": get_procedure(LIZ_KEYS[0])["lizFlow"]["commitLabel"]}]
+
+
+def test_tich_khong_duoc_thi_dan_cong_dan_tich_tay_va_hien_lai_nut_cam():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_report", {"source": "tick", "checked": False, "found": True})
+    assert "chưa tích được" in r.display_md and _sends(r) == ["__action:liz_commit_tick"]
+    assert r.actions[0]["type"] == "liz_commit_watch", "công dân tích tay thì vẫn nhận ra"
+    gone = _turn(conv, "action", "liz_commit_report", {"source": "tick", "checked": False, "found": False})
+    assert _sends(gone) == ["__action:tpm_submit"], "không thấy ô thì không chặn công dân"
+
+
+def test_nut_toi_da_tich_cua_ban_truoc_van_doc_o():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_done")
+    assert r.actions == [{"type": "liz_commit_check",
+                          "commitLabel": get_procedure(LIZ_KEYS[0])["lizFlow"]["commitLabel"]}]
+    # Nói "tích rồi" lúc đang chờ cũng đọc lại ô trên trang.
+    assert _turn(conv, "free_text", "tích rồi").actions[0]["type"] == "liz_commit_check"
+
+
+def test_noi_tich_roi_ma_chua_tich_thi_hien_lai_nut_cam():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_report", {"source": "manual", "checked": False, "found": True})
+    assert "chưa được tích" in r.display_md and r.actions[0]["type"] == "liz_commit_watch"
+    assert _sends(r) == ["__action:liz_commit_tick"]
+    assert _turn(conv, "action", "liz_commit_report", {"source": "watch", "checked": False}).display_md == ""
+
+
+def test_bo_tich_sau_khi_da_bao_nop_thi_rut_nut_nop():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True})
+    r = _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": False})
+    assert "bỏ tích" in r.display_md and _sends(r) == ["__action:liz_commit_tick"]
+    assert conv["field_review"]["chips"][-1]["send"] == "__action:liz_commit_tick"
+
+
+def test_khong_tim_thay_o_cam_ket_thi_khong_chan_cong_dan():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    r = _turn(conv, "action", "liz_commit_report", {"source": "manual", "checked": False, "found": False})
+    assert _sends(r) == ["__action:tpm_submit"]
+
+
+def test_nop_khong_tich_ho_o_cam_ket():
+    key = LIZ_KEYS[0]
+    conv = _ready_conv(key)
+    r = _turn(conv, "action", "tpm_submit")
+    assert r.actions == [{"type": "guided_submit", "label": "Lưu và nộp hồ sơ",
+                          "commitLabel": get_procedure(key)["lizFlow"]["commitLabel"], "commitSelf": True}]
+    pick = _turn(conv, "action", "pick_result_method", {"method": "postal"})
+    assert pick.actions[0]["postOffice"] is True and "commitLabel" not in pick.actions[0]
+
+
+def test_nop_ma_o_cam_ket_chua_tich_thi_dan_tich():
+    conv = _ready_conv(LIZ_KEYS[1])
+    r = _turn(conv, "action", "guided_submit_report", {"ok": False, "commit": False, "missing": []})
+    assert "chưa được tích" in r.display_md and r.actions[0]["type"] == "liz_commit_watch"
+    assert _sends(r) == ["__action:liz_commit_tick"]
+
+
+def test_nut_Tiep_tuc_cu_khong_tich_ho():
+    conv = _ready_conv(LIZ_KEYS[0])
+    r = _turn(conv, "action", "tpm_result_method")
+    assert r.actions[0]["type"] == "liz_commit_watch" and "cam kết" in r.display_md
+    assert not any(a["type"] == "select_result_method" for a in r.actions)
+
+
+@pytest.mark.parametrize("required", [0, 1])
+def test_xuyen_luong_dien_dinh_dan_tich_roi_nut_nop(monkeypatch, required):
+    from unittest.mock import AsyncMock
+
+    from app.channels.handfree.chat import flow, pipeline_runner, store, tracing
+
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: coro.close() if hasattr(coro, "close") else None)
+    monkeypatch.setattr(tracing, "set_report", AsyncMock())
+    monkeypatch.setattr(flow.conv_store, "save", AsyncMock())
+    key = "to-chuc-bieu-dien-nghe-thuat"
+    conv = store.new_conversation()
+    conv.update({"procedure_key": key, "state": "filling", "client_capabilities": dict(SELF),
+                 "auth_user": {"id": "u1", "tinh": "Tỉnh A", "xa": "Xã B"}, "upload_session_id": "s1",
+                 "docs_target": "declaration", "fields": [{"name": "a", "value": "1"}],
+                 "pipeline_status": "running", "attachment_plan_started": True})
+
+    def turn(kind, value, payload=None):
+        return asyncio.run(flow.handle_turn(conv, Intent(kind, value, payload or {}), dict(LIZ_PAGE)))
+
+    early = turn("action", "liz_commit_report", {"source": "change", "checked": True})
+    assert early.display_md == "" and not early.chips, "đang điền: im, không nói 'đang đọc giấy tờ'"
+    turn("action", "fill_report", {"filled": 9, "notFound": [], "review": {"filled": 9, "optional": 0,
+                                                                           "required": required}})
+    conv.update(attach_plan=[{"fileName": "don.pdf", "slotName": "a) Văn bản đề nghị"}],
+                attach_action_in_progress=True)
+    attached = turn("action", "attach_report", {"attached": 1, "skipped": 0, "errors": []})
+    trails = " ".join(a.get("md", "") for a in attached.actions if a.get("type") == "trail_message")
+    assert get_procedure(key)["lizFlow"]["commitLabel"] in trails
+    assert attached.actions[-1]["type"] == "liz_commit_watch"
+    assert "__action:liz_commit_tick" in [c["send"] for c in attached.chips]
+    tick = turn("action", "liz_commit_tick")
+    assert tick.actions == [{"type": "liz_commit_tick", "commitLabel": get_procedure(key)["lizFlow"]["commitLabel"]}]
+    done = turn("action", "liz_commit_report", {"source": "tick", "checked": True, "found": True})
+    assert "Lưu và nộp hồ sơ" in done.display_md and done.chips == [tpm._submit_cta()] and not done.cards
+
+
+def test_da_tich_roi_hoi_xong_vong_bo_sung_thi_nut_nop():
+    conv = _ready_conv(LIZ_KEYS[0])
+    _conclude(conv)
+    _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True})
+    md, _ = field_review._ready(get_procedure(LIZ_KEYS[0]), conv["field_review"], conv)
+    assert "đã tích ô cam kết" in md and "Lưu và nộp hồ sơ" in md
+    assert "liz_commit_point" not in conv["field_review"]
