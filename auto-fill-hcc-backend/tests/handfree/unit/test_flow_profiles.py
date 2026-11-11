@@ -694,7 +694,6 @@ def test_registered_procedures_use_their_declared_flow_family():
         "chung-thuc-phan-chia-di-san",
         "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich", "chung-thuc-tu-choi-nhan-di-san",
         "chung-thuc-di-chuc", "cap-ban-sao-so-goc", "bau-to-truong-to-hoa-giai",
-        "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
     }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
@@ -794,7 +793,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang" (1.012796),
     # "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang" (1.013949).
     # +1 cổng Bộ NN&MT cấp xã "hoa-giai-tranh-chap-dat-dai" (1.012812).
-    # +1 attach-only tư pháp chọn Sở "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung" (1.013818).
+    # +1 tư pháp chọn Sở "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung" (1.013818; attach-only,
+    #    11/11/2026 chuyển sang điền eForm Mẫu TP-TSCC-10 như thủ tục luật sư).
     # +1 cổng iGate Khánh Hòa "cap-doi-gcn-khanh-hoa" (1.012783).
     # +1 cổng iGate Khánh Hòa "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa" (1.013831).
     # +1 cổng iGate Khánh Hòa "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa" (1.013995, luồng "xay-dung").

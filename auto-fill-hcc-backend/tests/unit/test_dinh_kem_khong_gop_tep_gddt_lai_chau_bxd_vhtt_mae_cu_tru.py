@@ -95,3 +95,47 @@ def test_dien_tich_nha_o_to_khai_va_gcn_hai_tep_thanh_hai_item():
         [{"fileIndex": 0, "pageIndexes": [0, 1]}], None, [{"fileIndex": 0, "pageIndexes": [2]}],
     ]
     assert {item["componentName"] for item in items} == {dien_tich_nha_o._TO_KHAI_ROW["componentName"]}
+
+
+def test_dien_tich_nha_o_tat_tach_moi_tep_dinh_nguyen():
+    files = _files("gpxd.pdf", "so_dat.pdf", "to_khai.pdf")
+    segments = [
+        {"fileIndex": 0, "pageFrom": 1, "pageTo": 2, "type": "other", "documentName": ""},
+        {"fileIndex": 1, "pageFrom": 1, "pageTo": 4, "type": "giay_chung_nhan", "documentName": ""},
+        {"fileIndex": 2, "pageFrom": 1, "pageTo": 1, "type": "to_khai", "documentName": ""},
+        {"fileIndex": 2, "pageFrom": 2, "pageTo": 3, "type": "giay_chung_nhan", "documentName": ""},
+    ]
+    meta = {
+        0: {"pageCount": 2, "pageBoundariesAvailable": True},
+        1: {"pageCount": 4, "pageBoundariesAvailable": True},
+        2: {"pageCount": 3, "pageBoundariesAvailable": True},
+    }
+    items, classified, warnings = dien_tich_nha_o.build_plan_items(files, segments, meta, {0: {}, 1: {}, 2: {}}, False)
+    _assert_tach_rieng(items, [0, 1, 2])
+    # Tệp có Tờ khai đứng trước, GCN sau, tệp không rõ loại cuối; không cắt trang.
+    assert [item["fileIndex"] for item in items] == [2, 1, 0]
+    assert [item["detectedType"] for item in items] == ["to_khai", "giay_chung_nhan", "other"]
+    assert all(not item.get("sourceSegments") for item in items)
+    assert items[0]["includedTypes"] == ["to_khai", "giay_chung_nhan"]
+    assert all(c["preservedFile"] for c in classified)
+    assert any("Đã tắt" in w and "to_khai.pdf" in w for w in warnings)
+    assert any("gpxd.pdf" in w for w in warnings)
+
+
+async def test_dien_tich_nha_o_plan_doc_cai_dat_tach(monkeypatch):
+    seen = []
+
+    def fake_build(raw_files, segments, file_meta, pages_by_file, split=True):
+        seen.append(split)
+        return [], [], []
+
+    async def fake_ocr(files):
+        return [{"text": ""} for _ in files]
+
+    monkeypatch.setattr(dien_tich_nha_o, "build_plan_items", fake_build)
+    monkeypatch.setattr(dien_tich_nha_o.ocr, "ocr_per_file", fake_ocr)
+    files = [FileItem(name="a.pdf", type="application/pdf", role="doc", dataUrl="data:application/pdf;base64,")]
+    await dien_tich_nha_o.plan(files, {})
+    await dien_tich_nha_o.plan(files, {"splitDocuments": True})
+    await dien_tich_nha_o.plan(files, {"splitDocuments": True, "supportsSourceSegments": False})
+    assert seen == [False, True, False]

@@ -1,4 +1,5 @@
-"""Pipeline "Đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng" (1.013818): chỉ đính kèm, 3 dòng cố định.
+"""Pipeline "Đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng" (1.013818): mapper eForm Mẫu TP-TSCC-10 +
+planner đính kèm 3 dòng cố định.
 
 Dữ liệu trong test là ví dụ bịa (tên, số giấy tờ, cơ quan) — không lấy từ hồ sơ thật.
 """
@@ -7,6 +8,12 @@ from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.
 from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.attach.planner import (
     build_plan_items,
     rule_types,
+)
+from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.process import runner as process_runner
+from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.process.mapper import enrich
+from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.process.schema import (
+    LAM_TAI_OPTIONS,
+    UI_COMP_BY_NAME,
 )
 from app.process.schemas import FileItem
 from app.procedures import registry
@@ -48,9 +55,10 @@ def test_registry_wires_key_from_ke_khai_links():
     assert link["needsAgencySelect"] is True and link["selectSo"] is True
     procedure = registry.get_procedure(_KEY)
     assert procedure["label"] == link["label"]
-    assert procedure["mode"] == "attach"
+    assert procedure["mode"] == "agent" and procedure["hasAttachmentStep"] is True
     assert "maThuTuc=1.013818" in procedure["detect"]["urlIncludes"]
     assert registry.get_attach_pipeline(_KEY) is planner.plan
+    assert registry.get_pipeline(_KEY) is process_runner.run
 
 
 def test_rule_types_giay_dang_ky_nhac_quyet_dinh_van_la_giay_dang_ky():
@@ -190,17 +198,260 @@ async def test_plan_llm_loi_van_giu_du_file(monkeypatch):
     assert sum("Cần bổ sung" in e for e in out["errors"]) == 3
 
 
-def test_tro_ly_cung_key_chon_so_va_attach_only():
-    from app.channels.handfree.procedure_registry import get_attach_pipeline, get_procedure
+def test_tro_ly_cung_key_chon_so_va_dien_to_khai():
+    from app.channels.handfree.chat.field_review import registry as field_review_registry
+    from app.channels.handfree.procedure_registry import get_attach_pipeline, get_pipeline, get_procedure
 
     link = next(item for item in KE_KHAI_LINKS if item["key"] == _KEY)
     proc = get_procedure(_KEY)
-    assert proc["mode"] == "attach" and proc["flowProfile"] == "tu-phap"
+    lawyer = get_procedure("cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su")
+    assert proc["mode"] == "agent" and proc["flowProfile"] == "tu-phap"
     assert proc["keKhaiUrl"] == link["url"]
     assert proc["agencyProvinceOnly"] is True and proc["agencySoFirst"] is True
     assert proc["agencyDeptLabel"] == "Sở Tư pháp"
-    assert proc["requiresConsent"] is False and proc["ownerInfo"]["enabled"] is False
-    assert proc["guidedSteps"] == get_procedure("bau-to-truong-to-hoa-giai")["guidedSteps"]
+    # Cùng luồng tờ khai eForm với thủ tục luật sư: chủ hồ sơ bật, không đi toàn trình attach-only.
+    assert proc["ownerInfo"]["enabled"] is True and proc["ownerInfo"] == lawyer["ownerInfo"]
+    assert proc.get("guidedSteps") == lawyer.get("guidedSteps")
+    assert proc.get("requiresConsent") == lawyer.get("requiresConsent")
     assert "maThuTuc=1.013818" in proc["detect"]["urlIncludes"]
-    assert [d["key"] for d in proc["requiredDocs"]] == ["quyet_dinh", "nop_phi", "giay_dang_ky", "khac"]
+    assert [d["key"] for d in proc["requiredDocs"]] == ["quyet_dinh", "nop_phi", "giay_dang_ky", "cccd", "khac"]
     assert get_attach_pipeline(_KEY) is registry.get_attach_pipeline(_KEY)
+    assert get_pipeline(_KEY) is registry.get_pipeline(_KEY)
+    required = field_review_registry.get(_KEY)["required"]
+    assert set(required) <= set(UI_COMP_BY_NAME)
+    assert {"HoVaTenC", "ToChucTapSu", "SoQuyetDinhCongNhan", "SoTuPhapCongNhan", "LamTai"} <= set(required)
+    assert "Email" not in required and "KyKiemTra" not in required
+
+
+# ---------------------------------------------------------------- Tờ khai eForm Mẫu TP-TSCC-10 (process/mapper.py)
+
+# Tên ô của eForm thật (crawl tokhaidientu.moj.gov.vn 11/11/2026), đúng loại control.
+EFORM_COMPS = {
+    "KyKiemTra": "x-input", "KinhGui": "x-input", "HoVaTenC": "x-input", "GioiTinhC": "x-select",
+    "NgaySinhC": "x-date", "LoaiGiayToDinhDanhC": "x-select", "SoDinhDanhC": "x-input", "NgayCapDDC": "x-date",
+    "NoiCapDDC": "x-input", "NO_SoNhaToDanPhoC": "x-input", "NO_TinhThanhC": "x-select", "NO_PhuongXaC": "x-select",
+    "SoDienThoai": "x-input", "Email": "x-input", "ToChucTapSu": "x-input", "CongChungVienHuongDan": "x-input",
+    "NgayBatDauTapSu": "x-date", "NgayKetThucTapSu": "x-date", "SoQuyetDinhCongNhan": "x-input",
+    "NgayQuyetDinhCongNhan": "x-date", "SoTuPhapCongNhan": "x-select", "DaTungThamDuKyKiemTra": "x-input",
+    "LamTai": "x-select", "Ngay": "x-input", "Thang": "x-input", "Nam": "x-input", "NguoiDeNghiKy": "x-input",
+}
+# Option thật của các dropdown (rút gọn những gì test cần).
+GENDER_OPTIONS = {"Nam", "Nữ"}
+ID_TYPE_OPTIONS = {
+    "Giấy khai sinh", "Giấy chứng nhận căn cước", "Chứng minh nhân dân",
+    "Giấy chứng minh sỹ quan quân đội nhân dân Việt Nam", "Giấy chứng minh công an nhân dân", "Căn cước công dân",
+    "Hộ chiếu", "Sổ hộ khẩu", "Các loại giấy tờ tùy thân khác", "Thẻ căn cước",
+}
+NEW_PROVINCE_OPTIONS = {
+    "Thành phố Bắc Ninh", "Thành phố Cần Thơ", "Thành phố Đà Nẵng", "Thành phố Đồng Nai", "Thành phố Hà Nội",
+    "Thành phố Hải Phòng", "Thành phố Hồ Chí Minh", "Thành phố Huế", "Thành phố Quảng Ninh", "Tỉnh An Giang",
+    "Tỉnh Cà Mau", "Tỉnh Cao Bằng", "Tỉnh Đắk Lắk", "Tỉnh Điện Biên", "Tỉnh Đồng Tháp", "Tỉnh Gia Lai", "Tỉnh Hà Tĩnh",
+    "Tỉnh Hưng Yên", "Tỉnh Khánh Hòa", "Tỉnh Lai Châu", "Tỉnh Lâm Đồng", "Tỉnh Lạng Sơn", "Tỉnh Lào Cai",
+    "Tỉnh Nghệ An", "Tỉnh Ninh Bình", "Tỉnh Phú Thọ", "Tỉnh Quảng Ngãi", "Tỉnh Quảng Trị", "Tỉnh Sơn La",
+    "Tỉnh Tây Ninh", "Tỉnh Thái Nguyên", "Tỉnh Thanh Hóa", "Tỉnh Tuyên Quang", "Tỉnh Vĩnh Long",
+}
+
+
+def _compact(**values) -> list[dict]:
+    return [{"name": name, "comp": "x-input", "value": value} for name, value in values.items()]
+
+
+def _ui(fields: list[dict]) -> dict:
+    return {f["name"]: f for f in fields}
+
+
+def _facts(**extra) -> list[dict]:
+    # Ví dụ bịa theo khuôn Giấy đăng ký + Quyết định công nhận.
+    base = dict(
+        KyKiemTra="lần thứ hai",
+        KinhGui="Bộ Tư pháp",
+        Ndn_HoTen="Nguyễn Thị An",
+        Ndn_GioiTinh="Nữ",
+        Ndn_NgaySinh="1/2/1990",
+        Ndn_SoDinhDanh="001 190 000 123",
+        Ndn_NgayCap="15/3/2021",
+        Ndn_NoiCap="Cục Cảnh sát Quản lý hành chính về trật tự xã hội (đối với thẻ căn cước công dân/thẻ căn cước)",
+        Ndn_NoiOHienTai={"quocGia": "Việt Nam", "tinh": "tỉnh Ninh Bình", "xa": "phường Hoa Lư",
+                         "chiTietDuoiXa": "Số 9 đường Trần Hưng Đạo"},
+        Ndn_DienThoai="0901.000.111",
+        Ndn_Email="an.nguyen@example.com",
+        TapSu_ToChuc="Văn phòng công chứng Bình An - Địa chỉ: Số 1 đường Lê Lợi, phường Hoa Lư, tỉnh Ninh Bình;",
+        TapSu_CongChungVien="Công chứng viên Trần Văn Bình; Thẻ công chứng viên số 01/CCV tháng 01/2020;",
+        TapSu_TuNgay="01/02/2025",
+        TapSu_DenNgay="01/02/2026",
+        TapSu_SoThang="12",
+        QD_CongNhan={"so": "Số: 12 / QĐ-STP", "ngay": "1/3/2026", "tinh": "Sở Tư pháp tỉnh Ninh Bình"},
+        DK_QuyetDinh={"so": "12/QĐ-STP", "ngay": "01/03/2026", "tinh": "Ninh Bình"},
+        DaTungThamDu="Chưa tham dự kỳ kiểm tra kết quả tập sự hành nghề công chứng nào;",
+        LamDon_NoiNgay={"diaDanh": "Ninh Bình", "ngay": "4/11/2026"},
+    )
+    base.update(extra)
+    return _compact(**base)
+
+
+def test_o_ui_dung_ten_va_loai_control_eform_that():
+    assert UI_COMP_BY_NAME == EFORM_COMPS
+    fields, _ = enrich(_facts(), {})
+    assert {f["name"] for f in fields} == set(EFORM_COMPS), "hồ sơ đủ giấy thì điền đủ mọi ô của eForm"
+    for field in fields:
+        assert field["comp"] == EFORM_COMPS[field["name"]]
+        assert field["value"] not in ("", None)
+
+
+def test_nhan_than_nguoi_tap_su():
+    fields, warnings = enrich(_facts(), {})
+    ui = _ui(fields)
+    assert ui["KyKiemTra"]["value"] == "lần thứ hai"
+    assert ui["KinhGui"]["value"] == "Bộ Tư pháp" and "default" not in ui["KinhGui"]
+    assert ui["HoVaTenC"]["value"] == "NGUYỄN THỊ AN"
+    assert ui["GioiTinhC"]["value"] == "Nữ" and ui["GioiTinhC"]["value"] in GENDER_OPTIONS
+    assert ui["NgaySinhC"]["value"] == "01/02/1990"
+    assert ui["SoDinhDanhC"]["value"] == "001190000123"
+    # CCCD cấp trước 01/7/2024: Căn cước công dân, nơi cấp Cục CSQLHC (bỏ phần hướng dẫn in nghiêng của mẫu).
+    assert ui["LoaiGiayToDinhDanhC"]["value"] == "Căn cước công dân"
+    assert ui["NgayCapDDC"]["value"] == "15/03/2021"
+    assert ui["NoiCapDDC"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert ui["NO_TinhThanhC"]["value"] == "Tỉnh Ninh Bình" and ui["NO_TinhThanhC"]["value"] in NEW_PROVINCE_OPTIONS
+    assert ui["NO_PhuongXaC"]["value"] == "Phường Hoa Lư"
+    assert ui["NO_SoNhaToDanPhoC"]["value"] == "Số 9 đường Trần Hưng Đạo"
+    assert ui["SoDienThoai"]["value"] == "0901000111"
+    assert ui["Email"]["value"] == "an.nguyen@example.com"
+    assert ui["NguoiDeNghiKy"]["value"] == "Nguyễn Thị An"
+    assert warnings == []
+
+
+def test_qua_trinh_tap_su_va_quyet_dinh_cong_nhan():
+    ui = _ui(enrich(_facts(), {})[0])
+    assert ui["ToChucTapSu"]["value"] == (
+        "Văn phòng công chứng Bình An - Địa chỉ: Số 1 đường Lê Lợi, phường Hoa Lư, tỉnh Ninh Bình")
+    assert ui["CongChungVienHuongDan"]["value"] == "Công chứng viên Trần Văn Bình; Thẻ công chứng viên số 01/CCV tháng 01/2020"
+    assert (ui["NgayBatDauTapSu"]["value"], ui["NgayKetThucTapSu"]["value"]) == ("01/02/2025", "01/02/2026")
+    assert ui["SoQuyetDinhCongNhan"]["value"] == "12/QĐ-STP"
+    assert ui["NgayQuyetDinhCongNhan"]["value"] == "01/03/2026"
+    assert ui["SoTuPhapCongNhan"]["value"] == "Tỉnh Ninh Bình"
+    assert ui["DaTungThamDuKyKiemTra"]["value"] == "Chưa tham dự kỳ kiểm tra kết quả tập sự hành nghề công chứng nào"
+
+
+def test_noi_ngay_lam_giay_chon_dung_option_lam_tai():
+    ui = _ui(enrich(_facts(), {})[0])
+    assert ui["LamTai"]["value"] == "Tỉnh Ninh Bình" and "default" not in ui["LamTai"]
+    assert (ui["Ngay"]["value"], ui["Thang"]["value"], ui["Nam"]["value"]) == ("04", "11", "2026")
+
+
+def test_lam_tai_danh_muc_cu_khac_danh_muc_tinh_moi():
+    # LamTai ghi "Tỉnh Bắc Ninh" / "Tỉnh Thành phố Huế", ô tỉnh nơi ở + Sở Tư pháp ghi "Thành phố ...".
+    cases = {"Bắc Ninh": ("Tỉnh Bắc Ninh", "Thành phố Bắc Ninh"), "TP. Huế": ("Tỉnh Thành phố Huế", "Thành phố Huế"),
+             "Cần Thơ": ("Tỉnh Thành phố Cần Thơ", "Thành phố Cần Thơ"), "Hà Nội": ("Thành phố Hà Nội", "Thành phố Hà Nội"),
+             "Quảng Ninh": ("Thành phố Quảng Ninh", "Thành phố Quảng Ninh")}
+    for place, (lam_tai, new_label) in cases.items():
+        ui = _ui(enrich(_facts(LamDon_NoiNgay={"diaDanh": place, "ngay": ""},
+                               QD_CongNhan={"so": "1/QĐ-STP", "ngay": "", "tinh": f"Sở Tư pháp {place}"}), {})[0])
+        assert ui["LamTai"]["value"] == lam_tai and lam_tai in LAM_TAI_OPTIONS, place
+        assert ui["SoTuPhapCongNhan"]["value"] == new_label and new_label in NEW_PROVINCE_OPTIONS, place
+        assert "Ngay" not in ui, "ngày làm giấy đọc không được thì để cổng giữ ngày hôm nay"
+
+
+def test_lam_tai_khong_doc_duoc_lay_tinh_noi_o_va_danh_dau_mac_dinh():
+    ui = _ui(enrich(_facts(LamDon_NoiNgay={"diaDanh": "", "ngay": "05/11/2026"}), {})[0])
+    assert ui["LamTai"]["value"] == "Tỉnh Ninh Bình" and ui["LamTai"]["default"] is True
+    assert ui["Ngay"]["value"] == "05"
+
+
+def test_moi_option_lam_tai_deu_doi_ra_tinh_moi():
+    for option in LAM_TAI_OPTIONS:
+        ui = _ui(enrich(_facts(LamDon_NoiNgay={"diaDanh": option}), {})[0])
+        assert ui["LamTai"]["value"] == option
+
+
+def test_the_can_cuoc_cap_sau_01_7_2024_do_bo_cong_an_cap():
+    ui = _ui(enrich(_facts(Ndn_NgayCap="10/08/2025", Ndn_NoiCap="Cục CSQLHC về TTXH",
+                           Ndn_LoaiGiayTo="Căn cước công dân"), {})[0])
+    assert ui["NoiCapDDC"]["value"] == "Bộ Công an"
+    assert ui["LoaiGiayToDinhDanhC"]["value"] == "Thẻ căn cước" and ui["LoaiGiayToDinhDanhC"]["value"] in ID_TYPE_OPTIONS
+
+
+def test_khong_doc_duoc_kinh_gui_dien_bo_tu_phap_mac_dinh():
+    ui = _ui(enrich(_facts(KinhGui=""), {})[0])
+    assert ui["KinhGui"]["value"] == "Bộ Tư pháp" and ui["KinhGui"]["default"] is True
+
+
+def test_ky_kiem_tra_bo_chu_in_san_cua_mau():
+    ui = _ui(enrich(_facts(KyKiemTra="(Kỳ kiểm tra kết quả tập sự hành nghề công chứng lần thứ hai)"), {})[0])
+    assert ui["KyKiemTra"]["value"] == "lần thứ hai"
+    assert "KyKiemTra" not in _ui(enrich(_facts(KyKiemTra=""), {})[0])
+
+
+def test_so_quyet_dinh_viet_tay_khong_doc_duoc_lay_theo_giay_dang_ky():
+    fields, warnings = enrich(_facts(QD_CongNhan={"so": "", "ngay": "01/03/2026", "tinh": "Ninh Bình"}), {})
+    ui = _ui(fields)
+    assert ui["SoQuyetDinhCongNhan"]["value"] == "12/QĐ-STP"
+    assert warnings == []
+
+
+def test_hai_nguon_quyet_dinh_lech_thi_canh_bao_va_theo_quyet_dinh():
+    fields, warnings = enrich(_facts(DK_QuyetDinh={"so": "21/QĐ-STP", "ngay": "02/03/2026", "tinh": "Ninh Bình"}), {})
+    ui = _ui(fields)
+    assert ui["SoQuyetDinhCongNhan"]["value"] == "12/QĐ-STP"
+    assert ui["NgayQuyetDinhCongNhan"]["value"] == "01/03/2026"
+    assert any("Số quyết định công nhận" in w and "21/QĐ-STP" in w for w in warnings)
+    assert any("Ngày quyết định công nhận" in w for w in warnings)
+
+
+def test_so_quyet_dinh_chi_khac_khoang_trang_khong_canh_bao():
+    _, warnings = enrich(_facts(DK_QuyetDinh={"so": "12 /QĐ-STP", "ngay": "01/03/2026", "tinh": "Ninh Bình"}), {})
+    assert warnings == []
+
+
+def test_thieu_ca_hai_nguon_quyet_dinh_thi_canh_bao_nhap_tay():
+    fields, warnings = enrich(_facts(QD_CongNhan={}, DK_QuyetDinh={}), {})
+    ui = _ui(fields)
+    assert "SoQuyetDinhCongNhan" not in ui and "SoTuPhapCongNhan" not in ui
+    assert any("Chưa đọc được số quyết định" in w for w in warnings)
+
+
+def test_thoi_gian_tap_su_sai_thu_tu_hoac_khac_12_thang_thi_canh_bao():
+    _, warnings = enrich(_facts(TapSu_TuNgay="01/02/2026", TapSu_DenNgay="01/02/2025"), {})
+    assert any("Thời gian tập sự" in w for w in warnings)
+    _, warnings = enrich(_facts(TapSu_SoThang="18"), {})
+    assert any("18 tháng" in w for w in warnings)
+
+
+def test_ngay_khong_day_du_thi_bo_trong():
+    ui = _ui(enrich(_facts(Ndn_NgaySinh="1990", TapSu_TuNgay="02/2025"), {})[0])
+    assert "NgaySinhC" not in ui and "NgayBatDauTapSu" not in ui
+
+
+def test_gioi_tinh_suy_tu_ong_ba_cua_quyet_dinh():
+    assert _ui(enrich(_facts(Ndn_GioiTinh="bà"), {})[0])["GioiTinhC"]["value"] == "Nữ"
+    assert _ui(enrich(_facts(Ndn_GioiTinh="Ông"), {})[0])["GioiTinhC"]["value"] == "Nam"
+
+
+def test_tai_khoan_khong_phai_nguoi_tap_su_thi_canh_bao():
+    _, warnings = enrich(_facts(), {"formContext": {"applicantFullname": "Lê Văn Cường"}})
+    assert any("không phải người tập sự" in w for w in warnings)
+    _, warnings = enrich(_facts(), {"formContext": {"applicantFullname": "NGUYỄN THỊ AN",
+                                                    "applicantIdentityNumber": "001190000123"}})
+    assert warnings == []
+
+
+def test_ho_so_rong_khong_bia_o_nao():
+    fields, warnings = enrich([], {})
+    # Chỉ dòng Kính gửi in sẵn "Bộ Tư pháp" của mẫu.
+    assert [(f["name"], f["value"]) for f in fields] == [("KinhGui", "Bộ Tư pháp")]
+    assert any("họ tên người tập sự" in w for w in warnings)
+
+
+async def test_run_noi_mapper_va_gop_canh_bao(monkeypatch):
+    captured = {}
+
+    async def fake_run(files_by_role, **kwargs):
+        captured.update(kwargs)
+        return {"fields": _facts(DK_QuyetDinh={"so": "99/QĐ-STP", "ngay": "01/03/2026", "tinh": "Ninh Bình"}),
+                "errors": ["ocr: chậm"]}
+
+    monkeypatch.setattr(process_runner.runner, "run", fake_run)
+    res = await process_runner.run({"": []}, {})
+    assert {f["name"] for f in res["fields"]} == set(EFORM_COMPS)
+    assert res["errors"][0] == "ocr: chậm" and any("99/QĐ-STP" in e for e in res["errors"][1:])
+    assert "QD_CongNhan" in captured["allowed"] and captured["comp_by_name"]["Ndn_NoiOHienTai"] == "x-select-area"
+    assert "Mẫu TP-TSCC-10" in captured["extra_rules"]

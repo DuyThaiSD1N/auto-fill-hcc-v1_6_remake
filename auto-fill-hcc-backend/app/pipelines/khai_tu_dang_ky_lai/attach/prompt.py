@@ -43,6 +43,7 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 <classification_hints>
 - OCR có "GIẤY CHỨNG TỬ", "TRÍCH LỤC KHAI TỬ", "GIẤY BÁO TỬ" thì chọn death_proof.
 - OCR có "LĂNG MỘ", "BIA MỘ", "TẠ THẾ", "TỪ TRẦN", hoặc thông tin sinh năm + năm mất/ngày mất thì chọn death_proof.
+- OCR có tiêu đề "VĂN BẢN XÁC NHẬN VỀ VIỆC CHẾT" / "GIẤY XÁC NHẬN VIỆC CHẾT" (của người làm chứng) thì chọn death_proof. Dòng "Số CCCD/Hộ chiếu" của người làm chứng trên giấy này KHÔNG làm nó thành identity.
 - OCR có "TỜ KHAI ĐĂNG KÝ LẠI KHAI TỬ" thì chọn paper_declaration, trừ khi file là hồ sơ gộp có thêm giấy chứng tử/trích lục/bia mộ rõ ràng; khi đó chọn death_proof theo critical rule 4.
 - OCR có "VĂN BẢN ỦY QUYỀN", "GIẤY ỦY QUYỀN", "BÊN ỦY QUYỀN", "BÊN ĐƯỢC ỦY QUYỀN" thì chọn authorization.
 - OCR có "CĂN CƯỚC CÔNG DÂN", "THẺ CĂN CƯỚC", "Số / No.", "Số định danh cá nhân", "IDVNM", "Citizen Identity Card" thì chọn identity nếu không có bằng chứng death_proof trong cùng file.

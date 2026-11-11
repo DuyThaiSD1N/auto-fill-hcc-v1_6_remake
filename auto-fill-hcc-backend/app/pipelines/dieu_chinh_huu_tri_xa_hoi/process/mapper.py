@@ -209,6 +209,24 @@ def _form_requester_section(chunk: str) -> str:
     )
 
 
+_MRZ_LINE = re.compile(r"(?m)^\s*I[D<]VNM[0-9A-Z<]*$")
+
+
+def _identity_back_side(chunk: str, normalized_chunk: str) -> bool:
+    """Mặt sau CCCD: không có chữ "Căn cước công dân", chỉ có ngày cấp + cơ quan cấp."""
+    return bool(
+        _MRZ_LINE.search(chunk)
+        or "dac diem nhan dang" in normalized_chunk
+        or "personal identification" in normalized_chunk
+    )
+
+
+def _mrz_identity(chunk: str) -> str | None:
+    """Số trong dòng MRZ dính liền (IDVNM + 9 số cuối + số kiểm tra + đủ 12 số)."""
+    lines = _MRZ_LINE.findall(chunk)
+    return "".join(re.sub(r"\D+", "", line) for line in lines) if lines else None
+
+
 def _person_evidence_scope(
     ocr_text: str,
     prefix: str,
@@ -217,6 +235,8 @@ def _person_evidence_scope(
 ) -> str:
     """Khoanh đúng CCCD hoặc mục I/II của chủ thể để chặn trộn field."""
     scopes: list[str] = []
+    normalized_identity = _norm_identity(identity)
+    previous_front_matched = False
     for chunk in _document_chunks(ocr_text):
         normalized_chunk = _norm_text(chunk)
         is_form_01 = (
@@ -228,9 +248,26 @@ def _person_evidence_scope(
             or "citizen identity card" in normalized_chunk
             or "identity card" in normalized_chunk
         )
+        is_back_side = (
+            not is_form_01
+            and not is_identity_card
+            and _identity_back_side(chunk, normalized_chunk)
+        )
+        front_matched = is_identity_card and _contains_person(chunk, name, identity)
 
-        if is_identity_card and _contains_person(chunk, name, identity):
+        if front_matched:
             scopes.append(chunk)
+
+        if is_back_side:
+            # Ngày cấp + nơi cấp CCCD chỉ in ở mặt sau. MRZ đọc được thì phải chứa đúng số
+            # CCCD; MRZ rơi thì chỉ nhận khi mặt sau nằm ngay sau mặt trước của chính người này.
+            mrz = _mrz_identity(chunk)
+            if mrz:
+                if normalized_identity and normalized_identity in mrz:
+                    scopes.append(chunk)
+            elif previous_front_matched:
+                scopes.append(chunk)
+        previous_front_matched = front_matched
 
         if is_form_01 and prefix == "ChuHoSo":
             section = _form_owner_section(chunk)
@@ -250,7 +287,7 @@ def _person_evidence_scope(
             section = _form_requester_section(chunk)
             if section and _contains_person(section, name, identity):
                 scopes.append(section)
-        elif not is_form_01 and not is_identity_card:
+        elif not is_form_01 and not is_identity_card and not is_back_side:
             # Tài liệu rời chỉ chứa một chủ thể vẫn là nguồn hợp lệ.
             if _contains_person(chunk, name, identity):
                 scopes.append(chunk)
@@ -314,7 +351,29 @@ def _issuer_with_evidence(
     ):
         return "Bộ Công an"
 
-    return _text_with_evidence(value, evidence_scope, has_ocr)
+    exact = _text_with_evidence(value, evidence_scope, has_ocr)
+    if exact:
+        return exact
+    if value and _police_department_issuer_line(evidence_scope):
+        return "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    return None
+
+
+_POLICE_DEPARTMENT_HINTS = ("qlhc", "quanlyhanhchinh", "csqlhc")
+
+
+def _police_department_issuer_line(evidence_scope: str) -> bool:
+    """Tờ khai hay viết tắt nơi cấp CCCD ("Cục CSQLHC về TT.XH", "Cục Cảnh sát QLHC về TTXH")
+    hoặc OCR đọc méo phần đuôi; LLM trả tên đầy đủ nên không khớp nguyên văn. Chỉ nhận khi
+    chính dòng "Nơi cấp" có chữ "Cục" + cụm quản lý hành chính."""
+    for tail in re.findall(r"(?im)n[ơo]i\s*c[ấa]p\s*[:.]?\s*(.+)$", str(evidence_scope or "")):
+        compact = _norm_text(tail).replace(" ", "")
+        # "csqlhc" đủ đặc trưng dù OCR đọc "Cục" thành "Cấp" ("…Cấp CSQL HC về TT XH").
+        if "csqlhc" in compact or (
+            "cuc" in compact and any(hint in compact for hint in _POLICE_DEPARTMENT_HINTS)
+        ):
+            return True
+    return False
 
 
 def _phone_with_evidence(

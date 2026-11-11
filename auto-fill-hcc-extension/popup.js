@@ -1072,6 +1072,18 @@ function isBacNhaTrangUser(user) {
     && normalizeProcedureSearch(user?.xa).includes("bac nha trang");
 }
 
+// ===== Nghiệp vụ riêng xã Đơn Dương — Lâm Đồng và phường Nam Nha Trang — Khánh Hòa =====
+// Trang Ngành nghề kinh doanh: ô mô tả (ô trắng dưới tên ngành) CHỈ ghi phần chữ trong ngoặc của tên
+// ngành hồ sơ, vd "Bán buôn ... động vật sống (Bán buôn nông lâm sản khác ...)" → "Bán buôn nông lâm sản
+// khác ...". Tên không có ngoặc (ngoài ngoặc vốn có trong tên chính thức cổng) thì không điền.
+/** Tài khoản xã Đơn Dương — Lâm Đồng hoặc phường Nam Nha Trang — Khánh Hòa (/auth/me trả `xa` + `tinh`). */
+function isBusinessLineParenOnlyUser(user) {
+  const tinh = normalizeProcedureSearch(user?.tinh);
+  const xa = normalizeProcedureSearch(user?.xa);
+  return (tinh.includes("lam dong") && xa.includes("don duong"))
+    || (tinh.includes("khanh hoa") && xa.includes("nam nha trang"));
+}
+
 // ===== Nghiệp vụ riêng xã Bát Xát (chỉ áp cho tài khoản của địa bàn này) =====
 // Gợi ý tệp máy quét đã có sẵn trong thư mục (quét trước rồi mới mở trợ lý) — xem attemptScanRecentSuggest.
 /** Tài khoản xã Bát Xát (/auth/me trả `xa`). */
@@ -1082,6 +1094,7 @@ function isBatXatUser(user) {
 function buildBusinessDefaults(user) {
   const defaults = {};
   if (isYenBaiLaoCaiUser(user) || isBacNhaTrangUser(user)) defaults.skipBusinessLineDescription = true;
+  else if (isBusinessLineParenOnlyUser(user)) defaults.businessLineDescriptionParenOnly = true;
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
   else if (isLamDongBusinessActUser(user)) defaults.businessActText = LAM_DONG_BUSINESS_ACT_TEXT;
   // Đà Nẵng: vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh",

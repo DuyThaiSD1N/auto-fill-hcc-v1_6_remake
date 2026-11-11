@@ -571,6 +571,17 @@ def test_khong_co_giay_uy_quyen_luat_the_he_van_chot_nguoi_tre_nhat_lam_con():
     assert reason._role_name(family["cha"]) == "LÊ VĂN AN"
 
 
+def test_co_quan_dang_ky_truoc_day_xa_hoa_lien_cu_ra_phuong_lien_chieu():
+    # Tờ khai ghi "UBND xã Hòa Liên, Hòa Vang, TP Đà Nẵng": NQ 1659 cho phần còn lại của Hòa Liên về Liên Chiểu.
+    for tinh, xa, huyen in (("Đà Nẵng", "Hòa Liên", "Hòa Vang"), ("Thành phố Đà Nẵng", "UBND xã Hòa Liên", "")):
+        _, commune, guessed = mapper._previous_registration_agency({
+            "PreviousRegistration_AgencyProvince": tinh,
+            "PreviousRegistration_AgencyCommune": xa,
+            "PreviousRegistration_AgencyDistrict": huyen,
+        })
+        assert (commune, guessed) == ("Phường Liên Chiểu", False)
+
+
 def test_ben_duoc_uy_quyen_la_me_luat_the_he_van_chot_du_con_cha_me():
     docs = _ho_so_uy_quyen_nguoi_tre(_giay_uy_quyen_cho("Nguyễn Thị Dung", "3/4/1940", "001140000032"))
     family = reason._override_family_by_generation({}, docs)

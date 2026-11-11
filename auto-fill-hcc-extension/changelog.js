@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.7",
+    date: "11/11/2026",
+    items: [
+      "Thẻ xác nhận đồng ý xử lý dữ liệu: thêm mục \"Xử lý tự động bằng trí tuệ nhân tạo (AI)\"; nội dung thẻ lấy từ hệ thống nên cập nhật không cần nâng phiên bản.",
+      "Thủ tục nộp tại Sở hoặc UBND xã: tài khoản Trung tâm phục vụ hành chính công tỉnh nộp Sở, tài khoản có xã nộp UBND xã đó.",
+      "Kiểm tra kết quả tập sự hành nghề công chứng (1.013818): tự điền Giấy đăng ký tham dự (Mẫu TP-TSCC-10) từ giấy tờ đã tải lên.",
+      "Trích lục hộ tịch, đăng ký khai sinh, thay đổi cải chính hộ tịch trên Cổng dịch vụ công quốc gia mới: nhận diện thủ tục ngay theo đường dẫn trang.",
+      "Hộ kinh doanh: tài khoản Xã Đơn Dương (Lâm Đồng) và Phường Nam Nha Trang (Khánh Hòa) chỉ ghi phần chữ trong ngoặc của tên ngành vào ô mô tả; tên ngành không có ngoặc thì để trống.",
+    ],
+  },
+  {
     version: "1.27.5",
     date: "10/11/2026",
     items: [

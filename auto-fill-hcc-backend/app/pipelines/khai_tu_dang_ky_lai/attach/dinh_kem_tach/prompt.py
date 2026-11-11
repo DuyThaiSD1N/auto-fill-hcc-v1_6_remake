@@ -26,7 +26,8 @@ phân loại từng giấy để xếp vào đúng dòng của bước Thành ph
 <allowed_types>
 - death_proof: CHỈ gồm Giấy chứng tử, Giấy báo tử, hoặc Trích lục khai tử (bản sao Giấy chứng tử trước đây được cấp
   hợp lệ). Không có 3 giấy trên thì mới nhận giấy tờ khác chứng minh sự kiện chết của NGƯỜI ĐÃ CHẾT (bia mộ / lăng
-  mộ, văn bản ghi "tạ thế" / "từ trần" / ngày mất / năm mất). KHÔNG bao giờ xếp Giấy khai sinh / khai sanh / giấy
+  mộ, văn bản ghi "tạ thế" / "từ trần" / ngày mất / năm mất, "Văn bản xác nhận về việc chết" của người làm chứng —
+  dòng "Số CCCD/Hộ chiếu" của người làm chứng không làm nó thành identity). KHÔNG bao giờ xếp Giấy khai sinh / khai sanh / giấy
   chứng sinh / bảo sanh vào đây.
 - authorization: văn bản ủy quyền / giấy ủy quyền thực hiện đăng ký lại khai tử.
 - paper_declaration: tờ khai đăng ký lại khai tử bản giấy — kể cả khi tờ khai có dòng "Đã chết vào lúc".

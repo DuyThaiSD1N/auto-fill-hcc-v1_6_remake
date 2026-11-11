@@ -244,6 +244,8 @@ PROCEDURES: list[dict] = [
         # thông (khai sinh + thường trú + BHYT trên cổng lienthong.dichvucong.gov.vn Angular).
         "key": "khai-sinh-dang-ky-thuong",
         "detect": {
+            # Detect giống hệt lõi (test_flow_profiles so bằng ==): formalityId khớp URL thì nhận ngay.
+            "urlIncludes": ["formalityId=019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": ["thủ tục đăng ký khai sinh", "người được đăng ký khai sinh"],
             "textPriority": True,
@@ -408,6 +410,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "trich-luc-ks",
         "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-867c-72db-b6a7-dcbd8c763807"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": [
                 "cấp bản sao trích lục hộ tịch, bản sao giấy khai sinh",
@@ -880,6 +883,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "thay-doi-cai-chinh-ho-tich",
         "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-671e-714b-8fd6-8230c82f7867"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": [
                 "thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
@@ -1759,8 +1763,9 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
         # Mã TTHC 1.013818 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Chọn cơ quan cấp Sở y như
         # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực tuyến" kết
-        # quả ĐẦU TIÊN); phần còn lại là attach-only như "bau-to-truong-to-hoa-giai": không điền tờ khai, toàn trình
-        # _TU_PHAP_ATTACH_GUIDED_STEPS. Planner lõi xếp file vào 3 dòng cố định, mỗi file đính nguyên khối.
+        # quả ĐẦU TIÊN). Từ 11/11/2026 bước Kê khai là eForm Mẫu TP-TSCC-10 (legacy x-*) nên chạy như thủ tục luật sư:
+        # mode agent, điền tờ khai từ Giấy đăng ký + Quyết định, ô còn trống hỏi bổ sung (handfree/field_review.py).
+        # Planner lõi xếp file vào 3 dòng cố định, mỗi file đính nguyên khối.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-7e7f-77f8-ba74-3f3328ddfa7c",
@@ -1783,9 +1788,6 @@ PROCEDURES: list[dict] = [
             {"label": "Thủ tục", "value": "kiểm tra kết quả tập sự hành nghề công chứng"},
             {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
         ],
-        "requiresConsent": False,
-        "ownerInfo": {"enabled": False},
-        "guidedSteps": deepcopy(_TU_PHAP_ATTACH_GUIDED_STEPS),
         # Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc tải lên; planner lõi tự phân loại lại theo OCR lúc
         # đính. Chứng từ nộp phí để optional: thiếu thì dòng 2 để trống kèm cảnh báo, không chặn người dân.
         "hideRepeatableHint": True,
@@ -1796,17 +1798,23 @@ PROCEDURES: list[dict] = [
              "chứng", "icon": "🧾", "sides": 1, "optional": True, "repeatable": True},
             {"key": "giay_dang_ky", "name": "Giấy đăng ký tham dự kiểm tra kết quả tập sự (Mẫu TP-TSCC-10) đã ký",
              "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người tập sự", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
             {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
              "sides": 1, "optional": True, "repeatable": True},
         ],
-        "mode": "attach",
+        "mode": "agent",
+        "review": False,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên (mỗi giấy tờ một tệp, hệ thống KHÔNG tách trang):\n"
             "1. Quyết định công nhận hoàn thành tập sự hành nghề công chứng (bản chính hoặc bản sao có chứng thực).\n"
             "2. Biên lai / chứng từ nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công chứng.\n"
-            "3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) đã ký.\n"
+            "3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) đã ký — nguồn "
+            "chính của tờ khai.\n"
+            "4. Căn cước (nếu có) để đối chiếu nhân thân.\n"
+            "Nên đăng nhập cổng bằng tài khoản VNeID của chính người tập sự. "
             "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; Giấy đăng ký → dòng 3. Mỗi tệp "
             "đính nguyên khối; giấy khác thêm thành phần hồ sơ mới."
         ),
@@ -8827,6 +8835,8 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        # Theo cài đặt "Có tách hồ sơ khi đính kèm" như registry lõi.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
             "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu (Mẫu số 02), đã ký — nguồn "

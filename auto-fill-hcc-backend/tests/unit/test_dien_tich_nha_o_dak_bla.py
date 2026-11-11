@@ -44,3 +44,17 @@ def test_co_chi_do_server_dat_va_chi_cho_dung_thu_tuc():
     assert mapper.TITLE_ONLY_OPTION not in mapper.with_account_process_options(
         {}, {"tinh": "Quảng Ngãi", "xa": "Đăk Bla"}, "thu-tuc-khac"
     )
+
+
+@pytest.mark.parametrize(("identity", "llm_gender", "expected"), [
+    ("001190000123", None, "Nữ"),   # giấy không kèm CCCD: suy từ chữ số thứ 4 của số định danh
+    ("001088000123", None, "Nam"),
+    ("001190000123", "Nam", "Nam"),  # LLM đọc được thì giữ
+    ("12345678", None, None),         # không đủ 12 số → không suy
+])
+def test_gioi_tinh_chu_ho_so_bu_tu_so_dinh_danh(identity, llm_gender, expected):
+    raw = [{"name": "ChuHoSo_HoTen", "value": "TRẦN THỊ B"}, {"name": "ChuHoSo_SoDinhDanh", "value": identity}]
+    if llm_gender:
+        raw.append({"name": "ChuHoSo_GioiTinh", "value": llm_gender})
+    fields, _ = mapper.enrich(raw, {})
+    assert {f["name"]: f["value"] for f in fields}.get("data[gender]") == expected

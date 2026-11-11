@@ -100,6 +100,21 @@ def _normalize_doc_type(value: str) -> str:
     return _DOC_OTHER
 
 
+# Tiêu đề "VĂN BẢN XÁC NHẬN VỀ VIỆC CHẾT (Của người làm chứng)": giấy chứng minh sự kiện chết khi không còn giấy
+# chứng tử → STT2. Giấy này in "Số CCCD/Hộ chiếu" của người làm chứng nên trước đây rule bắt nhầm thành CCCD.
+_DEATH_WITNESS_MARKERS = (
+    "xac nhan ve viec chet",
+    "xac nhan viec chet",
+    "xac nhan ve su kien chet",
+    "xac nhan su kien chet",
+)
+
+
+def _has_death_witness_title(text: str) -> bool:
+    haystack = fold(text)
+    return any(marker in haystack for marker in _DEATH_WITNESS_MARKERS)
+
+
 def _rule_doc_type(text: str) -> str:
     haystack = fold(text)
     if not haystack:
@@ -123,7 +138,7 @@ def _rule_doc_type(text: str) -> str:
             "chung minh su kien chet",
             "thong tin bia mo",
         )
-    ) or bool(re.search(r"\bsinh nam\b.*\b(ta the|mat|chet)\b", haystack))
+    ) or bool(re.search(r"\bsinh nam\b.*\b(ta the|mat|chet)\b", haystack)) or _has_death_witness_title(text)
     has_death_certificate = any(
         marker in haystack
         for marker in (
@@ -302,6 +317,11 @@ def build_plan_items(
         # nhầm tờ khai thành death_proof (tờ khai có dòng "Đã chết..." + tham chiếu "Trích lục khai tử số"),
         # khiến tờ khai và trích lục thật đụng cùng ô STT2 → FE bỏ qua 1 file.
         rule_override = rule_type in (_DOC_PAPER_DECLARATION, _DOC_IDENTITY)
+        # Văn bản xác nhận về việc chết có tiêu đề rõ → STT2 kể cả khi LLM xếp nhầm là CCCD (thấy "Số CCCD/Hộ
+        # chiếu" của người làm chứng) hoặc other.
+        if (rule_type == _DOC_DEATH_PROOF and llm_type in ("", _DOC_IDENTITY, _DOC_OTHER)
+                and _has_death_witness_title(text)):
+            rule_override = True
         if rule_override:
             doc_type = rule_type
         if doc_type not in _ALLOWED_DOC_TYPES:

@@ -66,6 +66,26 @@ def _identity(value: Any) -> str | None:
     return digits if len(digits) == 12 else None
 
 
+def _gender(value: Any) -> str | None:
+    folded = _fold(value)
+    if folded in ("nam", "male", "m"):
+        return "Nam"
+    if folded in ("nu", "female", "f"):
+        return "Nữ"
+    return None
+
+
+def _gender_from_identity(identity: str | None) -> str | None:
+    """Chữ số thứ 4 của số định danh 12 số mã hóa thế kỷ + giới tính: chẵn → Nam, lẻ → Nữ.
+
+    Hồ sơ hay chỉ có Tờ khai Mẫu 02 (không có mục giới tính) + Giấy chứng nhận, không kèm CCCD → LLM bỏ trống
+    giới tính dù số định danh đã có.
+    """
+    if not identity or len(identity) != 12 or not identity.isdigit():
+        return None
+    return "Nam" if int(identity[3]) % 2 == 0 else "Nữ"
+
+
 def _phone(value: Any) -> str | None:
     digits = re.sub(r"\D+", "", (_text(value) or "").upper().replace("O", "0"))
     if len(digits) == 9 and not digits.startswith("0"):
@@ -188,7 +208,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[ownerFullname]", owner_name)
     add("data[fullname]", applicant_name)
     add("data[birthday]", _date(values.get("ChuHoSo_NgaySinh")))
-    add("data[gender]", _text(values.get("ChuHoSo_GioiTinh")))
+    add("data[gender]", _gender(values.get("ChuHoSo_GioiTinh")) or _gender_from_identity(owner_id))
     add("data[identityNumber]", owner_id)
     add("data[identityDate]", _date(values.get("ChuHoSo_NgayCap")))
     issuer = _text(values.get("ChuHoSo_NoiCap"))

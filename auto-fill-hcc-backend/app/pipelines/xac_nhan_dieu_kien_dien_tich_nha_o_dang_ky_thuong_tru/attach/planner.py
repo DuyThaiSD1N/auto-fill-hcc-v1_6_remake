@@ -20,6 +20,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared.documents import join_ocr_documents
+from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
 from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach.planner import (
     _segment_text,
     _source_segment,
@@ -176,13 +177,89 @@ def _gcn_segment_with_cover_first(segment: dict, pages_by_file: dict[int, dict[i
     return {**segment, "pages": cover + [p for p in pages if p not in cover]}
 
 
+def _missing_warnings(found: set[str]) -> list[str]:
+    warnings: list[str] = []
+    if _TO_KHAI not in found:
+        warnings.append("Chưa có Tờ khai xác nhận tình trạng chỗ ở hợp pháp (Mẫu số 02) — cần bổ sung.")
+    if _GCN not in found and _GIAY_TO_CHO_O not in found:
+        warnings.append(
+            "Chưa thấy Giấy chứng nhận hoặc giấy tờ chứng minh chỗ ở hợp pháp — cần bổ sung."
+        )
+    return warnings
+
+
+def _whole_file_items(
+    raw_files: list[dict],
+    typed: list[tuple[dict, str]],
+) -> tuple[list[dict], list[dict], list[str]]:
+    """Tắt "Có tách hồ sơ khi đính kèm": mỗi tệp đính NGUYÊN một lần vào dòng Tờ khai, không cắt/đảo trang.
+    Tệp xếp theo loại giấy đứng đầu tệp (Tờ khai → Giấy chứng nhận → ...)."""
+    by_file: dict[int, list[tuple[dict, str]]] = {}
+    for segment, doc_type in typed:
+        by_file.setdefault(segment["fileIndex"], []).append((segment, doc_type))
+
+    def head_type(parts: list[tuple[dict, str]]) -> str:
+        known = [t for _, t in parts if t != _OTHER]
+        return min(known, key=_ORDER.index) if known else _OTHER
+
+    attachments: list[dict] = []
+    classified: list[dict] = []
+    used_names: set[str] = set()
+    mixed: list[str] = []
+    unknown: list[str] = []
+    for file_index in sorted(by_file, key=lambda i: (_ORDER.index(head_type(by_file[i])), i)):
+        parts = by_file[file_index]
+        head = head_type(parts)
+        file = raw_files[file_index]
+        file_name = str(file.get("name") or f"file-{file_index + 1}")
+        included: list[str] = []
+        for segment, doc_type in parts:
+            if doc_type not in included:
+                included.append(doc_type)
+            classified.append({"fileIndex": file_index, "fileName": file.get("name"),
+                               "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type,
+                               "componentIndex": _TO_KHAI_ROW["componentIndex"], "preservedFile": True})
+        base = _LABELS[head].replace("/", "-")
+        document_name, n = base, 2
+        while document_name in used_names:
+            document_name, n = f"{base[:46]} {n}", n + 1
+        used_names.add(document_name)
+        attachments.append({
+            "fileIndex": file_index,
+            "fileName": file_name,
+            "documentName": document_name,
+            "componentName": _TO_KHAI_ROW["componentName"],
+            "componentIndex": _TO_KHAI_ROW["componentIndex"],
+            "loaiBan": _TO_KHAI_ROW["loaiBan"],
+            "target": "attp-row",
+            "needsAddComponent": False,
+            "detectedType": head,
+            "includedTypes": included,
+        })
+        if len(included) > 1:
+            mixed.append(f"{file_name} ({', '.join(_LABELS[t] for t in included)})")
+        if head == _OTHER:
+            unknown.append(file_name)
+
+    warnings = _missing_warnings({doc_type for _, doc_type in typed})
+    if mixed:
+        warnings.append("Đã tắt \"Có tách hồ sơ khi đính kèm\": tệp gồm nhiều giấy tờ được đính nguyên, không tách "
+                        "trang — " + "; ".join(mixed) + ".")
+    if unknown:
+        warnings.append("Không xác định được loại giấy tờ, đã đính chung dòng Tờ khai (cán bộ kiểm tra lại): "
+                        + "; ".join(unknown))
+    return attachments, classified, warnings
+
+
 def build_plan_items(
     raw_files: list[dict],
     segments: list[dict],
     file_meta: dict[int, dict],
     pages_by_file: dict[int, dict[int, str]],
+    split: bool = True,
 ) -> tuple[list[dict], list[dict], list[str]]:
-    """Đoạn đã hợp lệ → (attachments, classified, warnings). Thuần tất định, không gọi OCR/LLM."""
+    """Đoạn đã hợp lệ → (attachments, classified, warnings). Thuần tất định, không gọi OCR/LLM.
+    ``split`` → mỗi giấy một item (cắt trang); không → mỗi tệp đính nguyên một lần."""
     typed: list[tuple[dict, str]] = []
     for segment in segments:
         doc_type = segment["type"]
@@ -191,6 +268,8 @@ def build_plan_items(
             doc_type = _rule_type(_segment_text(segment, pages_by_file))
         typed.append((segment, doc_type))
     typed = _merge_adjacent(typed)
+    if not split:
+        return _whole_file_items(raw_files, typed)
 
     classified: list[dict] = []
     warnings: list[str] = []
@@ -237,13 +316,7 @@ def build_plan_items(
         attachments.append(item)
 
     # --- Cảnh báo ---
-    found = {doc_type for _, doc_type in typed}
-    if _TO_KHAI not in found:
-        warnings.append("Chưa có Tờ khai xác nhận tình trạng chỗ ở hợp pháp (Mẫu số 02) — cần bổ sung.")
-    if _GCN not in found and _GIAY_TO_CHO_O not in found:
-        warnings.append(
-            "Chưa thấy Giấy chứng nhận hoặc giấy tờ chứng minh chỗ ở hợp pháp — cần bổ sung."
-        )
+    warnings.extend(_missing_warnings({doc_type for _, doc_type in typed}))
     if unknown_pages:
         warnings.append(
             "Không xác định được loại giấy tờ, đã đính chung dòng Tờ khai (cán bộ kiểm tra lại): "
@@ -269,7 +342,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
-    _ = options or {}
+    split = split_requested(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_pairs = [(i, f) for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES]
@@ -308,7 +381,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
-    attachments, classified, warnings = build_plan_items(raw_files, segments, file_meta, pages_by_file)
+    attachments, classified, warnings = build_plan_items(raw_files, segments, file_meta, pages_by_file, split)
     errors.extend(warnings)
 
     indexed_ocr = []

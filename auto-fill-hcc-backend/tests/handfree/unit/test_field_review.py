@@ -721,6 +721,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
                                      "cap-ban-sao-van-bang-so-goc", "dang-ky-hanh-nghe", "xac-nhan-thong-tin-ho-tich",
                                      "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su",
+                                     "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
                                      "dang-ky-nuoi-con-nuoi-trong-nuoc",
                                      "cap-moi-giay-phep-hanh-nghe-chuyen-tiep", "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
                                      "cap-lai-giay-phep-hanh-nghe-truoc-2024",

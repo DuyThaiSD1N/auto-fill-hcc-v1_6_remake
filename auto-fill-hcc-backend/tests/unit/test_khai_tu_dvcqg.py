@@ -86,6 +86,18 @@ def test_detect_text_unique_across_new_portal_forms():
             assert all(p in body for p in phrases) == (key == page), (key, page)
 
 
+def test_new_portal_forms_detect_by_formality_id():
+    # Thiếu formalityId thì popup chỉ nhận theo chữ trên form (chưa render là trượt) và không coi là "định danh
+    # mạnh" → đang giữ tệp của thủ tục khác thì bỏ qua, panel kẹt "Chưa có thủ tục nào được chọn".
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    for key in SNAPSHOTS:
+        detect = next(p for p in PROCEDURES if p["key"] == key)["detect"]
+        uuid = next(link["url"] for link in KE_KHAI_LINKS if link["key"] == key).rstrip("/").rsplit("/", 1)[1]
+        assert f"formalityId={uuid}" in detect["urlIncludes"], key
+        assert any("dichvucong.gov.vn/nop-ho-so" in scope for scope in detect["urlScope"]), key
+
+
 @pytest.mark.skipif(not SNAPSHOTS["khai-tu"].exists(), reason="thiếu snapshot cổng")
 def test_static_ui_keys_exist_in_snapshot():
     data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"',

@@ -101,6 +101,53 @@ async def test_khai_tu_dang_ky_lai_attach_combined_file_follows_llm_type_over_de
     assert item["needsAddComponent"] is True
 
 
+_VAN_BAN_XAC_NHAN_CHET = (
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n"
+    "VĂN BẢN XÁC NHẬN VỀ VIỆC CHẾT\n(Của người làm chứng)\n"
+    "1. NGƯỜI LÀM CHỨNG THỨ NHẤT:\n- Họ và tên: Trần Văn Bình Ngày, tháng, năm sinh: 01/01/1970\n"
+    "- Số CCCD/Hộ chiếu: 001070000001\n- Quan hệ với người chết: Hàng xóm\n"
+    "CHÚNG TÔI XIN XÁC NHẬN:\nÔng/Bà: Lê Thị Mai Sinh ngày: 1920\n"
+    "Đã chết vào hồi ... giờ, ngày 5 tháng 3 năm 2001\nNguyên nhân chết: Do tuổi già"
+)
+
+
+async def test_khai_tu_dang_ky_lai_van_ban_xac_nhan_chet_vao_dong_giay_chung_tu(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "xac-nhan-chet.pdf", "text": _VAN_BAN_XAC_NHAN_CHET},
+            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 001196000001\nHọ và tên / Full name:\nPHẠM THỊ HOA"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        # LLM xếp nhầm văn bản xác nhận là CCCD vì dòng "Số CCCD/Hộ chiếu" của người làm chứng.
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "identity", "documentName": "Căn cước công dân", "subjectName": ""},
+            {"index": 1, "docType": "identity", "documentName": "Căn cước công dân", "subjectName": "PHẠM THỊ HOA"},
+        ]})
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+
+    res = await planner.plan([_file("xac-nhan-chet.pdf"), _file("cccd.pdf")], {}, _session())
+    first, second = res["attachments"]
+
+    assert first["target"] == "existing"
+    assert first["componentIndex"] == 2
+    assert "Giấy chứng tử trước đây" in first["componentName"]
+    assert first["documentName"] == "Giấy tờ chứng minh sự kiện chết"
+    assert res["extracted"]["classified"][0]["docType"] == "death_proof"
+
+    assert second["target"] == "new"
+    assert second["componentName"] == "CCCD PHẠM THỊ HOA"
+
+
+def test_khai_tu_dang_ky_lai_rule_van_ban_xac_nhan_chet_khong_phai_cccd():
+    assert planner._rule_doc_type(_VAN_BAN_XAC_NHAN_CHET) == "death_proof"
+    # Tờ khai không có tiêu đề xác nhận việc chết vẫn là tờ khai.
+    assert planner._rule_doc_type("TỜ KHAI ĐĂNG KÝ LẠI KHAI TỬ\nĐã chết vào lúc: ngày 1 tháng 1 năm 2001") \
+        == "paper_declaration"
+
+
 def test_khai_tu_dang_ky_lai_registry_has_attachment_pipeline():
     proc = get_procedure("khai-tu-dang-ky-lai")
 

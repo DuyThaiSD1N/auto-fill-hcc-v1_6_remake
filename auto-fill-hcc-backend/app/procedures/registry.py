@@ -645,6 +645,9 @@ from app.pipelines.cap_chung_chi_hanh_nghe_luat_su_mien_dao_tao_tap_su.process i
 from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.attach import (
     plan as kiem_tra_tap_su_cong_chung_attach,
 )
+from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.process import (
+    run as kiem_tra_tap_su_cong_chung_process,
+)
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cchn_di_tich_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import run as cchn_di_tich_process
 from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cap_lai_cchn_di_tich_attach
@@ -1426,9 +1429,12 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "trich-luc-ks",
-        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId (đổi theo cơ
-        # quan) và trang không in mã TTHC → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người được cấp.
+        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): trang không in mã TTHC → khóa domain + tiêu đề
+        # biểu mẫu + tiêu đề khối người được cấp. formalityId = UUID trang thủ tục (cơ quan nằm ở departmentId), khớp
+        # URL thì nhận ngay cả khi form chưa render, và là "định danh mạnh" để popup được đổi sang thủ tục này khi
+        # đang giữ tệp của thủ tục khác (thiếu nó thì popup bỏ qua, panel kẹt "Chưa có thủ tục nào được chọn").
         "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-867c-72db-b6a7-dcbd8c763807"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": [
                 "cấp bản sao trích lục hộ tịch, bản sao giấy khai sinh",
@@ -1458,9 +1464,11 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thay-doi-cai-chinh-ho-tich",
-        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId, trang không in
-        # mã TTHC → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người có nội dung thay đổi.
+        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): trang không in mã TTHC → khóa domain + tiêu đề
+        # biểu mẫu + tiêu đề khối người có nội dung thay đổi. formalityId (UUID trang thủ tục) khớp URL thì nhận
+        # ngay — xem ghi chú ở trich-luc-ks.
         "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-671e-714b-8fd6-8230c82f7867"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": [
                 "thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
@@ -1492,8 +1500,10 @@ PROCEDURES: list[dict] = [
         "key": "khai-sinh-dang-ky-thuong",
         # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId, mã TTHC chỉ nằm trong
         # aria-label của panel (không vào innerText) → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người được
-        # khai sinh. "thủ tục đăng ký khai sinh" không trùng "đăng ký lại khai sinh".
+        # khai sinh. "thủ tục đăng ký khai sinh" không trùng "đăng ký lại khai sinh". formalityId (UUID trang thủ
+        # tục) khớp URL thì nhận ngay — xem ghi chú ở trich-luc-ks.
         "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7"],
             "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
             "textIncludes": ["thủ tục đăng ký khai sinh", "người được đăng ký khai sinh"],
             "textPriority": True,
@@ -9821,6 +9831,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → planner cắt trang theo từng giấy;
+        # TẮT/bản cũ → mỗi tệp đính nguyên một lần vào dòng Tờ khai.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
             "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu để đăng ký thường trú, "
@@ -10160,24 +10173,32 @@ PROCEDURES: list[dict] = [
     {
         "key": "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
         # Mã TTHC 1.013818 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Key TRÙNG ke_khai_links nên mã +
-        # URL kê khai được ghép tự động. Wizard tư pháp 4 bước như thủ tục luật sư ngay trên, nhưng CHỈ đính kèm: không
-        # điền ô nào, planner xếp file vào 3 dòng cố định của bước Thành phần hồ sơ (mỗi file nguyên khối).
+        # URL kê khai được ghép tự động. Wizard tư pháp 4 bước như thủ tục luật sư ngay trên: từ 11/11/2026 bước Kê khai
+        # là eForm "GIẤY ĐĂNG KÝ THAM DỰ KIỂM TRA KẾT QUẢ TẬP SỰ HÀNH NGHỀ CÔNG CHỨNG" Mẫu TP-TSCC-10
+        # (tokhaidientu.moj.gov.vn, engine legacy x-*) — xem process/; planner xếp file vào 3 dòng cố định của bước
+        # Thành phần hồ sơ (mỗi file nguyên khối).
         "detect": {
             "urlIncludes": ["maThuTuc=1.013818"],
             "textIncludes": ["đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng"],
             "headingDisabled": True,
         },
         "label": "Đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng",
-        "mode": "attach",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên (mỗi giấy tờ một file, hệ thống KHÔNG tách trang):\n"
             "1. Quyết định công nhận hoàn thành tập sự hành nghề công chứng (bản chính, bản sao có chứng thực hoặc bản "
-            "sao điện tử).\n"
+            "sao điện tử) — số, ngày quyết định và nhân thân người tập sự.\n"
             "2. Giấy tờ chứng minh đã nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công chứng (biên lai, giấy nộp "
             "tiền, chứng từ chuyển khoản).\n"
-            "3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) đã ký.\n"
+            "3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) đã ký — nguồn chính "
+            "của tờ khai (tổ chức tập sự, công chứng viên hướng dẫn, thời gian tập sự, nơi ở, điện thoại).\n"
+            "4. Căn cước (nếu có) để đối chiếu nhân thân.\n"
+            "Phần nhân thân cổng đổ theo tài khoản VNeID — nên đăng nhập bằng tài khoản của chính người tập sự; hệ "
+            "thống ghi đè theo giấy tờ và cảnh báo khi lệch.\n"
             "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; Giấy đăng ký → dòng 3. Mỗi file "
             "đính nguyên khối, nhiều file cùng dòng gộp một PDF; file chứa nhiều giấy thì đính nguyên file vào cả dòng "
             "còn thiếu. Căn cước hoặc giấy khác thêm thành phần hồ sơ mới. Dòng không có giấy để trống kèm cảnh báo "
@@ -10674,6 +10695,7 @@ _PIPELINE = {
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
+    "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": kiem_tra_tap_su_cong_chung_process,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_process,
     "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_process,

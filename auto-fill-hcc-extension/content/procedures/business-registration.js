@@ -984,13 +984,56 @@
     return extractedName;
   }
 
+  /** Các cụm trong ngoặc tròn CẤP NGOÀI CÙNG của chuỗi (ngoặc lồng giữ nguyên bên trong cụm). */
+  function topLevelParenGroups(value) {
+    const text = String(value || "");
+    const groups = [];
+    let depth = 0;
+    let start = -1;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      if (ch === "(") {
+        if (depth === 0) start = i + 1;
+        depth += 1;
+      } else if (ch === ")" && depth > 0) {
+        depth -= 1;
+        if (depth === 0 && start >= 0) {
+          groups.push(text.slice(start, i));
+          start = -1;
+        }
+      }
+    }
+    // Ngoặc mở không đóng (OCR rơi dấu ")" cuối dòng): lấy phần còn lại sau dấu "(".
+    if (depth > 0 && start >= 0) groups.push(text.slice(start));
+    return groups.map((g) => g.trim().replace(/\s+/g, " ")).filter(Boolean);
+  }
+
+  /**
+   * Cờ businessLineDescriptionParenOnly: ô mô tả CHỈ ghi phần chữ trong ngoặc của tên ngành hồ sơ.
+   * Ngoặc vốn thuộc tên chính thức cổng (vd "(trừ gỗ, tre, nứa)") không tính — đó không phải phần
+   * hồ sơ ghi thêm. Không còn cụm ngoặc nào thì trả "" (không điền).
+   */
+  function businessDescriptionParenText(officialName, extractedName) {
+    const officialFold = foldBusinessLineName(officialName);
+    const extra = topLevelParenGroups(extractedName).filter((g) => {
+      const fold = foldBusinessLineName(g);
+      return fold && !(officialFold && officialFold.includes(fold));
+    });
+    return extra.length ? capitalizeBusinessLineName(extra.join("; ")) : "";
+  }
+
   // Ô mô tả từng dòng ngành nghề điền cho mọi địa bàn, TRỪ địa bàn popup.js bật cờ
   // skipBusinessLineDescription (tài khoản phường Yên Bái — Lào Cai, phường Đắk Bla, phường Bắc Nha Trang — Khánh Hòa): để trống ô, chỉ giữ tên ngành
-  // chính thức cổng tự hiện theo mã VSIC. popup.js quyết định tài khoản nào bật cờ; ở đây chỉ tuân theo.
+  // chính thức cổng tự hiện theo mã VSIC. Cờ businessLineDescriptionParenOnly (xã Đơn Dương — Lâm Đồng,
+  // phường Nam Nha Trang — Khánh Hòa): ô chỉ ghi phần chữ trong ngoặc của tên ngành hồ sơ, không có
+  // ngoặc thì không điền. popup.js quyết định tài khoản nào bật cờ; ở đây chỉ tuân theo.
   function fillBusinessLineDescriptions(nn, defaults) {
     if (defaults && defaults.skipBusinessLineDescription) {
       console.log("[FillAll] ngành nghề: địa bàn không dùng ô mô tả từng dòng — bỏ trống.");
       return 0;
+    }
+    if (defaults && defaults.businessLineDescriptionParenOnly) {
+      return fillBusinessLineParenDescriptions(nn);
     }
     const nameByCode = getBusinessLineNameByCode(nn);
     let changed = 0;
@@ -1012,6 +1055,29 @@
       setNativeValue(desc, next, { typing: false, commit: true });
       changed += 1;
       console.log("[FillAll] mô tả ngành nghề:", { code, officialName, extractedName });
+    }
+    return changed;
+  }
+
+  function fillBusinessLineParenDescriptions(nn) {
+    const nameByCode = getBusinessLineNameByCode(nn);
+    let changed = 0;
+    for (const code of Object.keys(nameByCode)) {
+      const row = findBusinessRowByCode(code);
+      const desc = getBusinessRowDescription(row);
+      if (!row || !desc) continue;
+      const officialName = getBusinessRowOfficialName(row, code);
+      const parenText = businessDescriptionParenText(officialName, nameByCode[code]);
+      if (!parenText) {
+        console.log("[FillAll] mô tả ngành nghề: tên hồ sơ không có ngoặc — không điền.", { code });
+        continue;
+      }
+      // Ô chỉ chứa phần trong ngoặc: ghi đè nội dung khác (tên ngành đầy đủ cổng/lần chạy trước để lại).
+      const current = String(desc.value || "").trim();
+      if (foldBusinessLineName(current) === foldBusinessLineName(parenText)) continue;
+      setNativeValue(desc, parenText, { typing: false, commit: true });
+      changed += 1;
+      console.log("[FillAll] mô tả ngành nghề (trong ngoặc):", { code, officialName, parenText });
     }
     return changed;
   }

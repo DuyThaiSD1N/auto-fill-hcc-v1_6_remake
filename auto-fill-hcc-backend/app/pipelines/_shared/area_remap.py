@@ -1453,6 +1453,10 @@ def _remap_area_cached(
         mapping_exact = _remap_exact(tinh_folded, xa_expanded)
         if not mapping_exact and tinh_goc_folded != tinh_folded:
             mapping_exact = _remap_exact(tinh_goc_folded, xa_expanded)
+        # "Thành phố Đà Nẵng"/"TP Hà Nội": bang khoa theo ten tinh tran ("da nang") -> tra lai ten da bo
+        # tien to, khong thi xa cu bi chia co "chinh" (Hoa Lien, Cua Dong...) lot nguyen ten cu ra ngoai.
+        if not mapping_exact and tinh_for_lookup and tinh_for_lookup != tinh_folded:
+            mapping_exact = _remap_exact(tinh_for_lookup, xa_expanded)
         if mapping_exact:
             return (mapping_exact["tinh"], mapping_exact["xa"], dia_chi)
 

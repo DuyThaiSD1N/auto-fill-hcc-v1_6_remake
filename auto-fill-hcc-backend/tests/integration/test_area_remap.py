@@ -74,6 +74,20 @@ def test_ha_noi_split_ward_uses_remaining_part_destination():
     assert _ha_noi("Hà Cầu")["xa"] == "Phường Kiến Hưng"
 
 
+def test_xa_chia_hai_noi_tinh_ghi_kem_thanh_pho():
+    # Tỉnh ghi "Thành phố/TP ..." vẫn phải tra được đơn vị cũ có cờ "chinh".
+    assert area_remap.remap_area({"tinh": "Thành phố Hà Nội", "xa": "Phường Phú La"})["xa"] == "Phường Kiến Hưng"
+    assert area_remap.remap_area({"tinh": "TP Hà Nội", "xa": "Phú La"})["xa"] == "Phường Kiến Hưng"
+
+
+def test_da_nang_hoa_lien_phan_con_lai_ve_lien_chieu():
+    # NQ 1659 khoản 9-10: Hải Vân nhận một phần xã Hòa Liên, Liên Chiểu nhận phần còn lại.
+    for tinh in ("Đà Nẵng", "Thành phố Đà Nẵng", "TP Đà Nẵng"):
+        for xa in ("Hòa Liên", "Xã Hòa Liên"):
+            assert area_remap.remap_area({"tinh": tinh, "xa": xa})["xa"] == "Phường Liên Chiểu", (tinh, xa)
+    assert area_remap.remap_area({"tinh": "Đà Nẵng", "xa": "Hòa Hiệp Bắc"})["xa"] == "Phường Hải Vân"
+
+
 def test_ha_noi_same_fold_key_units_resolve_by_label_and_accent():
     assert _ha_noi("Phường Vạn Phúc")["xa"] == "Phường Hà Đông"
     assert _ha_noi("Xã Vạn Phúc")["xa"] == "Xã Nam Phù"

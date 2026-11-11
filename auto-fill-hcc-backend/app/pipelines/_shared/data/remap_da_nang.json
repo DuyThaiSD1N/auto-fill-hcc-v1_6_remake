@@ -267,6 +267,14 @@
         "xa_moi": "Phường Hải Vân"
     },
     {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Liên",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Liên Chiểu",
+        "chinh": true,
+        "ghi_chu": "NQ 1659 khoản 9-10: Hải Vân nhận một phần xã Hòa Liên, Liên Chiểu nhận phần còn lại"
+    },
+    {
         "tinh_cu": "Quảng Nam",
         "xa_cu": "Minh An",
         "tinh_moi": "Đà Nẵng",

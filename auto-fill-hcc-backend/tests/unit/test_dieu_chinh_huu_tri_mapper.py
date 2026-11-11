@@ -679,3 +679,151 @@ def test_mau_moi_requester_context_khoanh_khoi_giam_ho_va_lien_he_chu_ho_so():
     assert "1.4. Số điện thoại: 0905111222" in context
     assert "Phương thức nhận kinh phí" not in context
     assert "Lương hưu" not in context
+
+
+_OWNER_FORM_OCR = """Mẫu số 01
+TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI, TRỢ CẤP HƯU TRÍ XÃ HỘI
+I. Thông tin chung
+1. Đối tượng hưởng trợ cấp xã hội, trợ cấp hưu trí xã hội
+1.1. Họ và tên: NGƯỜI HƯỞNG B
+Số căn cước/Số định danh cá nhân: 012050000002, ngày cấp 01/02/2022
+Ngày sinh: 03/04/1948 Giới tính: Nam
+II. Thông tin đề nghị hưởng trợ cấp xã hội, trợ cấp hưu trí xã hội"""
+
+_REQUESTER_FRONT = """CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No : 001200000123
+Họ và tên / Full name
+NGƯỜI NỘP C
+Ngày sinh / Date of birth: 05/06/2000
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam"""
+
+_REQUESTER_BACK = """Đặc điểm nhận dạng / Personal identification
+Nốt ruồi dưới mắt phải
+Ngày, tháng, năm / Date, month, year 07/08/2021
+CỤC TRƯỞNG CỤC CẢNH SÁT
+QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI
+IDVNM2000001237001200000123<<9
+0006052M3006059VNM<<<<<<<<<<<<4"""
+
+
+def _nop_thay_values() -> dict:
+    return {
+        "ChuHoSo_HoTen": "NGƯỜI HƯỞNG B",
+        "ChuHoSo_SoDinhDanh": "012050000002",
+        "NguoiNop_HoTen": "NGƯỜI NỘP C",
+        "NguoiNop_SoDinhDanh": "001200000123",
+        "NguoiNop_NgayCap": "07/08/2021",
+        "NguoiNop_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    }
+
+
+def test_mat_sau_cccd_nguoi_nop_cho_ngay_cap_va_noi_cap():
+    data, _ = _run(
+        _nop_thay_values(),
+        {
+            **_context("Người Nộp C", "001200000123"),
+            "_ocr_text": "\n---\n".join(
+                [_REQUESTER_FRONT, _REQUESTER_BACK, _OWNER_FORM_OCR]
+            ),
+        },
+    )
+
+    assert data["data[isOwnerDossierCheck]"] is False
+    assert data["data[identityDate]"] == "07/08/2021"
+    assert data["data[idIssuePlace]"] == (
+        "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    )
+    assert "data[ownerIdentityDate]" not in data or (
+        data["data[ownerIdentityDate]"] != "07/08/2021"
+    )
+
+
+def test_mat_sau_cccd_mrz_nguoi_khac_khong_cho_ngay_cap():
+    back_nguoi_khac = _REQUESTER_BACK.replace(
+        "IDVNM2000001237001200000123<<9",
+        "IDVNM2000009997001200000999<<9",
+    )
+    data, _ = _run(
+        _nop_thay_values(),
+        {
+            **_context("Người Nộp C", "001200000123"),
+            "_ocr_text": "\n---\n".join(
+                [_REQUESTER_FRONT, back_nguoi_khac, _OWNER_FORM_OCR]
+            ),
+        },
+    )
+
+    assert "data[identityDate]" not in data
+    assert "data[idIssuePlace]" not in data
+
+
+def test_mat_sau_cccd_mrz_roi_nhan_khi_ngay_sau_mat_truoc():
+    back_khong_mrz = "\n".join(
+        line for line in _REQUESTER_BACK.splitlines()
+        if not line.startswith(("IDVNM", "0006"))
+    )
+    data, _ = _run(
+        _nop_thay_values(),
+        {
+            **_context("Người Nộp C", "001200000123"),
+            "_ocr_text": "\n---\n".join(
+                [_REQUESTER_FRONT, back_khong_mrz, _OWNER_FORM_OCR]
+            ),
+        },
+    )
+
+    assert data["data[identityDate]"] == "07/08/2021"
+
+
+def test_noi_cap_viet_tat_tren_to_khai_van_nhan_ten_day_du():
+    ocr = _OWNER_FORM_OCR.replace(
+        "Ngày sinh: 03/04/1948",
+        "Nơi cấp: Cục CSQLHC về TT.XH\nNgày sinh: 03/04/1948",
+    )
+    data, _ = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG B",
+            "ChuHoSo_SoDinhDanh": "012050000002",
+            "ChuHoSo_NgayCap": "01/02/2022",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        },
+        {"submitterMode": "owner_as_submitter", "_ocr_text": ocr},
+    )
+
+    assert data["data[identityDate]"] == "01/02/2022"
+    assert data["data[idIssuePlace]"] == (
+        "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    )
+
+
+def test_noi_cap_ocr_doc_cuc_thanh_cap_van_nhan_csqlhc():
+    ocr = _OWNER_FORM_OCR.replace(
+        "Ngày sinh: 03/04/1948",
+        "Nơi cấp: ...Cấp CSQL HC về TT XH\nNgày sinh: 03/04/1948",
+    )
+    data, _ = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG B",
+            "ChuHoSo_SoDinhDanh": "012050000002",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        },
+        {"submitterMode": "owner_as_submitter", "_ocr_text": ocr},
+    )
+
+    assert data["data[idIssuePlace]"] == (
+        "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    )
+
+
+def test_noi_cap_khong_co_dong_noi_cap_thi_khong_tu_dien():
+    data, _ = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG B",
+            "ChuHoSo_SoDinhDanh": "012050000002",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        },
+        {"submitterMode": "owner_as_submitter", "_ocr_text": _OWNER_FORM_OCR},
+    )
+
+    assert "data[idIssuePlace]" not in data
