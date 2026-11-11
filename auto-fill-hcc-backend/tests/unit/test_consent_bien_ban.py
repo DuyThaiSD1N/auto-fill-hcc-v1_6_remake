@@ -29,7 +29,8 @@ def _text(pdf: bytes) -> str:
     doc = fitz.open("pdf", pdf)
     # Chỉ vùng nội dung (bỏ số trang ở lề trên để câu vắt trang không bị chen số); Times New Roman trả gạch mềm cho "-".
     body = fitz.Rect(0, 20 * 72 / 25.4 - 6, doc[0].rect.width, doc[0].rect.height)
-    return _plain("".join(page.get_text(clip=body) for page in doc).replace("\xad", "-"))
+    # Times New Roman cũng dùng chung hình chữ cho "·" và U+2219 → chữ trích ra là U+2219.
+    return _plain("".join(page.get_text(clip=body) for page in doc).replace("\xad", "-").replace("∙", "·"))
 
 
 def _autofill(**kw) -> tuple[bytes, dict]:
@@ -161,3 +162,16 @@ async def test_handfree_persist_luu_ma_bam(tmp_path, monkeypatch):
     saved = (tmp_path / doc["pdf_path"]).read_bytes()
     assert doc["pdf_sha256"] == hashlib.sha256(saved).hexdigest() and doc["content_sha256"]
     assert doc["notice"]["purpose_md"] == vi.CONSENT_CARD_TEXT["purpose_md"]
+
+
+async def test_auto_fill_the_hien_hanh_do_be_cap_va_bien_ban_chep_dung():
+    from app.consent.router import consent_notice
+    data = await consent_notice(_user={})
+    assert data["version"] == texts.AUTOFILL_CURRENT_VERSION
+    notice = data["notice"]
+    assert len(notice["statements"]) == 2 and "{procedure}" in notice["intro"]
+    pdf, evidence = _autofill(version=data["version"], statements=list(notice["statements"]))
+    text = _text(pdf)
+    for part in (notice["scope"], notice["purpose"], *notice["automated"], *notice["statements"]):
+        assert _plain(part) in text, part[:40]
+    assert evidence["notice"]["automated"] == notice["automated"]

@@ -60,14 +60,14 @@ jobs:
     steps:
       - name: Đủ cấu hình Environment production
         env:
-          HAS_TS: ${{ secrets.TS_AUTHKEY != '' }}
+          HAS_NB: ${{ secrets.NETBIRD_SETUP_KEY != '' }}
           HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' }}
           HAS_KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS != '' }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
         run: |
           missing=()
-          [[ "$HAS_TS" == "true" ]] || missing+=("secret TS_AUTHKEY")
+          [[ "$HAS_NB" == "true" ]] || missing+=("secret NETBIRD_SETUP_KEY")
           [[ "$HAS_KEY" == "true" ]] || missing+=("secret DEPLOY_SSH_KEY")
           [[ "$HAS_KNOWN" == "true" ]] || missing+=("secret DEPLOY_KNOWN_HOSTS")
           [[ -n "$DEPLOY_USER" ]] || missing+=("variable DEPLOY_USER")
@@ -77,12 +77,28 @@ jobs:
             exit 1
           fi
 
-      # Server nằm trong mạng Tailscale (100.x): runner tham gia tạm bằng auth key ephemeral,
-      # xong job thì tự rời mạng.
-      - uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
-          hostname: github-deploy-${{ github.run_id }}
+      # Server nằm trong mạng NetBird: runner tham gia tạm bằng setup key EPHEMERAL (peer tự bị xoá
+      # khi offline), xong job máy runner bị huỷ là rời mạng. NETBIRD_MANAGEMENT_URL chỉ cần khi
+      # NetBird tự host; trống = NetBird cloud.
+      - name: Vào mạng NetBird
+        env:
+          NB_SETUP_KEY: ${{ secrets.NETBIRD_SETUP_KEY }}
+          NB_MGMT_URL: ${{ vars.NETBIRD_MANAGEMENT_URL }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          NB_HOSTNAME: github-deploy-${{ github.run_id }}
+        run: |
+          curl -fsSL https://pkgs.netbird.io/install.sh | SKIP_UI_APP=true sh
+          args=(--setup-key "$NB_SETUP_KEY" --hostname "$NB_HOSTNAME")
+          [[ -n "$NB_MGMT_URL" ]] && args+=(--management-url "$NB_MGMT_URL")
+          sudo netbird up "${args[@]}"
+          # Peer P2P cần vài giây để thông; chờ cổng 22 mở thay vì để ssh fail ngay.
+          for i in $(seq 1 30); do
+            timeout 3 bash -c "</dev/tcp/$DEPLOY_HOST/22" 2>/dev/null && { echo "Thông $DEPLOY_HOST:22 sau ${i} lần thử"; exit 0; }
+            sleep 2
+          done
+          sudo netbird status -d || true
+          echo "::error::Runner đã vào NetBird nhưng không tới được $DEPLOY_HOST:22 — kiểm Access Control (policy cho nhóm của setup key → server, cổng 22)."
+          exit 1
 
       # Khoá deploy bị ép chạy đúng server_deploy.sh (authorized_keys) → chỉ truyền được tag.
       # known_hosts cố định: không tự tin máy lạ.

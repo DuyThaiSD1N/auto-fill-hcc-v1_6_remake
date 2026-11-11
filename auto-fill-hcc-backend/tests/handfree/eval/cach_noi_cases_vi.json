@@ -1,5 +1,5 @@
 {
- "_mo_ta": "Bộ câu đo hiểu câu nói 3 lớp (chat/cach_noi). Chạy: .venv/bin/python -m tests.handfree.eval.eval_cach_noi. Mỗi câu: state, nut (preset nút đang hiện), bot (câu trợ lý vừa nói), text, expect {cach_noi: nhãn chấp nhận, any/not: kết quả cuối (send:<lệnh nút> | <kind> | <kind>:<value>), max_calls}. Không dữ liệu thật. Tiền tố id: XN xác nhận · TC từ chối · DT đi tiếp · QL quay lại · LL làm lại · HU huỷ · KB không biết · HN hỏi ngược · NL ngoài luồng · VN vô nghĩa/tạp âm · NH nhắc lại · TT thủ tục · CG cách gửi · TL chọn đúng nút · NN câu dài nhiều ý / nhiễu.",
+ "_mo_ta": "Bộ câu đo hiểu câu nói 3 lớp (chat/cach_noi). Chạy: .venv/bin/python -m tests.handfree.eval.eval_cach_noi. Mỗi câu: state, nut (preset nút đang hiện), bot (câu trợ lý vừa nói), text, expect {cach_noi: nhãn chấp nhận, any/not: kết quả cuối (send:<lệnh nút> | <kind> | <kind>:<value>), max_calls}. Không dữ liệu thật. Tiền tố id: XN xác nhận · TC từ chối · DT đi tiếp · QL quay lại · LL làm lại · HU huỷ · KB không biết · HN hỏi ngược · NL ngoài luồng · VN vô nghĩa/tạp âm · NH nhắc lại · TT thủ tục · CG cách gửi · TL chọn đúng nút · NN câu dài nhiều ý / nhiễu · XT kê khai xong / xem trước ở luồng tự đính (state attaching, trang còn Kê khai).",
  "nut": {
   "rv": [
    {
@@ -2578,6 +2578,458 @@
     ],
     "khong_bam": true,
     "max_calls": 2
+   }
+  },
+  {
+   "id": "XT01",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "đúng hết rồi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT02",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "đúng rồi đấy",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT03",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "ok rồi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT04",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "chuẩn rồi em",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT05",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "được rồi sang bước tiếp theo đi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT06",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "bước tiếp theo",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT07",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "đúng hết rồi, đính kèm đi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_confirm",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT08",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "quay lại tờ khai",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "quay_lai"
+    ],
+    "any": [
+     "send:__action:field_review_preview_close",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:field_review_confirm",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XT09",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "à sai một chỗ, sửa lại tí",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "quay_lai"
+    ],
+    "any": [
+     "send:__action:field_review_preview_close",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:field_review_confirm",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XT10",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "quay lại",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "quay_lai"
+    ],
+    "any": [
+     "send:__action:field_review_preview_close",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:field_review_confirm",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XT11",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "đóng cái này lại",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "quay_lai"
+    ],
+    "any": [
+     "send:__action:field_review_preview_close",
+     "cach_noi:quay_lai"
+    ],
+    "not": [
+     "send:__action:field_review_confirm",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XT12",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "ờ để tôi xem đã",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "not": [
+     "confirm",
+     "send:__action:field_review_confirm",
+     "send:__action:field_review_preview_close",
+     "action:field_review_confirm",
+     "action:field_review_preview_close"
+    ]
+   }
+  },
+  {
+   "id": "XT13",
+   "state": "attaching",
+   "nut": "pv",
+   "bot": "Tờ khai đang mở để công dân xem lại. Đúng hết rồi thì bấm Xác nhận, sang Thành phần hồ sơ, qua trang đó tôi tự đính kèm ạ. Cần sửa thì bấm Sửa lại tờ khai.",
+   "text": "ừm",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true,
+    "field_review": {
+     "preview_open": true
+    }
+   },
+   "expect": {
+    "khong_bam": true
+   }
+  },
+  {
+   "id": "XT14",
+   "state": "attaching",
+   "nut": "rv",
+   "bot": "Tờ khai đã đủ các ô bắt buộc, còn 1 ô không bắt buộc để trống. Công dân rà lại rồi bấm Xem trước tờ khai để tôi mở bản xem trước và xác nhận ạ.",
+   "text": "đúng hết rồi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_preview",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "XT15",
+   "state": "attaching",
+   "nut": "rv",
+   "bot": "Tờ khai đã đủ các ô bắt buộc, còn 1 ô không bắt buộc để trống. Công dân rà lại rồi bấm Xem trước tờ khai để tôi mở bản xem trước và xác nhận ạ.",
+   "text": "ok xem trước đi",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_preview",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "XT16",
+   "state": "attaching",
+   "nut": "rv",
+   "bot": "Tờ khai đã đủ các ô bắt buộc, còn 1 ô không bắt buộc để trống. Công dân rà lại rồi bấm Xem trước tờ khai để tôi mở bản xem trước và xác nhận ạ.",
+   "text": "được rồi đó",
+   "conv": {
+    "docs_target": "declaration",
+    "pipeline_status": "waiting_attachment_page",
+    "auto_attach_after_fill": true
+   },
+   "expect": {
+    "cach_noi": [
+     "tra_loi",
+     "di_tiep",
+     "xac_nhan"
+    ],
+    "any": [
+     "send:__action:field_review_preview",
+     "cach_noi:di_tiep",
+     "confirm"
+    ],
+    "not": [
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
    }
   }
  ]

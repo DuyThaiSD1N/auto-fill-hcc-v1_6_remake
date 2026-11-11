@@ -136,7 +136,11 @@ def _body_html(record: dict, digest: str) -> str:
             parts.extend(f'<p class="q">- {_rich(d)}</p>' for d in notice["documents"])
         for key in ("scope", "purpose"):
             if notice.get(key):
-                parts.append(f'<p class="q">{_rich(notice[key])}</p>')
+                # Thẻ handfree là markdown nhiều dòng (gạch đầu dòng) → mỗi dòng một đoạn như trên thẻ.
+                parts.extend(f'<p class="q">{_rich(line)}</p>' for line in notice[key].split("\n") if line.strip())
+        if notice.get("automated"):
+            parts.append(f'<p class="q">{_rich(notice.get("automated_title") or "")}</p>')
+            parts.extend(f'<p class="q">- {_rich(d)}</p>' for d in notice["automated"])
         parts.append("<p>Màn hình xác nhận có mục xem đầy đủ quyền, nghĩa vụ của chủ thể dữ liệu (toàn văn tại Mục IV "
                      "Biên bản này).</p>")
     else:

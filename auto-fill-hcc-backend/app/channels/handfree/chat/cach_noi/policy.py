@@ -5,12 +5,13 @@ Thay cho "đáy hàm" của các handler từng phát lại nguyên câu của b
 - ngoài luồng: từ chối lịch sự một lần, sau chỉ nhắc bước;
 - đi tiếp / quay lại / làm lại / huỷ: nghĩa cố định theo bước; việc xoá dữ liệu bằng lời phải xác nhận; đi tiếp / quay lại
   nghe chưa chắc (độ chắc "vua") → hỏi "có phải … không?" kèm đúng nút, không bấm;
-- xác nhận / từ chối trống (không có câu hỏi treo): nhắc việc của bước, không bấm gì.
+- xác nhận / từ chối trống (không có câu hỏi treo): nhắc việc của bước, không bấm gì; riêng bước trợ lý vừa mời rà lại
+  rồi bấm nút đi tiếp (chủ hồ sơ, tờ khai đã điền, xem trước, đã đính) thì "đúng rồi" = đi tiếp.
 Chỉ tiếng Việt: chế độ Mông đi luồng cũ (câu thoại chưa có bản dịch). Mọi câu qua flow._fmt(vi.CN_*).
 """
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import intents, script_vi as vi, step_back
-from app.channels.handfree.chat.cach_noi import KHONG_RO, KIND, LAM_LAI_SENDS, LOI, forward_button, lop1
+from app.channels.handfree.chat.cach_noi import KHONG_RO, KIND, LAM_LAI_SENDS, LOI, forward_button, ho_luong, lop1
 from app.channels.handfree.chat.intents import Intent
 
 DEM_KEY = "cach_noi_dem"          # {"khong_hieu": n, "ngoai_luong": n} — về 0 khi có cú bấm / câu hiểu được
@@ -77,12 +78,28 @@ def _nhom(conv: dict, proc: dict, page_context: dict | None) -> str:
         step = flow._docs_page_context(page_context)["wizardStep"] if page_context else 0
         if step and step == flow._wizard_step(proc, "resultStep", 4):
             return "nhan_ket_qua"
+    if ho_luong.o_ke_khai(state, conv):
+        return "ke_khai_xong"   # luồng tự đính: state "attaching" từ lúc điền xong nhưng trang còn ở Kê khai
     return _NHOM.get(state, "chao")
 
 
 def _xem_truoc(conv: dict) -> bool:
-    """Bản xem trước tờ khai đang mở: chỉ còn hai việc (Sửa lại tờ khai / Xác nhận sang Thành phần hồ sơ)."""
-    return conv.get("state") == "reviewing" and bool((conv.get("field_review") or {}).get("preview_open"))
+    return ho_luong.xem_truoc(conv.get("state", "greet"), conv)
+
+
+def _moi_ra_lai(conv: dict, proc: dict) -> bool:
+    """Trợ lý vừa mời rà lại rồi bấm nút đi tiếp của bước: chủ hồ sơ đã điền, tờ khai đã điền (vòng hỏi ô không đang
+    hỏi), bản xem trước đang mở, giấy đã đính xong. Ở đây "đúng rồi / đúng hết rồi" nghĩa là đi tiếp."""
+    from app.channels.handfree.chat import field_review
+    state = conv.get("state", "greet")
+    if state == "owner_waiting_next" or (state == "guide_login" and _owner_cta_showing(conv, proc)):
+        return True
+    if _xem_truoc(conv):
+        return True
+    if ho_luong.o_ke_khai(state, conv):
+        return field_review.flow_v2(conv, proc) and not field_review.asking(conv)
+    # Đã đính: chỉ khi nút sang bước nhận kết quả đang hiện — nút cta khác ở bước này có thể là nút nộp.
+    return state == "done" and not conv.get("submitted_completed") and _visible(conv, ("__action:guided_next",)) is not None
 
 
 def _xem_truoc_hoi(conv: dict):
@@ -212,14 +229,9 @@ async def _confirm_tron(conv: dict, proc: dict, page_context: dict | None, meta:
         return r
     if state == "filling" or state == "owner_filling":
         return None   # handler trấn an "đang đọc giấy tờ"
-    # Trợ lý vừa mời kiểm tra rồi bấm nút đi tiếp (chủ hồ sơ đã điền; bản xem trước đang mở): "đúng rồi" = bấm nút đó.
-    if (state == "owner_waiting_next" or (state == "guide_login" and _owner_cta_showing(conv, proc))
-            or (state == "reviewing" and (conv.get("field_review") or {}).get("preview_open"))):
-        item = _forward(conv)
-        if item:
-            picked = intents._button_intent(item)
-            if picked is not None:
-                return await _run(conv, picked, page_context, meta)
+    if _moi_ra_lai(conv, proc):
+        # Xác nhận chỉ sinh ra khi lớp 1 đã chắc → đi tiếp luôn, không hỏi "có phải … không" lần nữa.
+        return await _di_tiep(conv, proc, page_context, {**meta, "do_chac": "cao"})
     return _with_chips(_say(vi.CN_XAC_NHAN_TRON, _nhac(conv, proc, page_context)), conv)
 
 
@@ -266,7 +278,7 @@ async def _di_tiep(conv: dict, proc: dict, page_context: dict | None, meta: dict
         picked = intents._button_intent(item)
         if picked is not None:
             return await _run(conv, picked, page_context, meta)
-    if state == "reviewing" and field_review.flow_v2(conv, proc):
+    if ho_luong.o_ke_khai(state, conv) and field_review.flow_v2(conv, proc):
         required = ((conv.get("field_review") or {}).get("stats") or {}).get("required") or 0
         if required:
             r = _say(vi.CN_DI_TIEP_THIEU_O, required=required)

@@ -321,10 +321,81 @@ PREVIEW_CHIPS = [{"label": "Xác nhận, sang Thành phần hồ sơ →", "send
                  {"label": "✏️ Sửa lại tờ khai", "send": "__action:field_review_preview_close", "tone": "back"}]
 
 
-def _preview_conv():
-    conv = _conv(chips=PREVIEW_CHIPS)
+def _preview_conv(state="reviewing"):
+    conv = _conv(state, chips=PREVIEW_CHIPS)
     conv["field_review"]["preview_open"] = True
     return conv
+
+
+# Luồng tự đính sau khi điền (kết hôn…): điền xong là state "attaching" (chờ cổng sang Thành phần hồ sơ) dù trang còn ở
+# Kê khai — xem trước / kê khai xong phải hiểu y như state "reviewing".
+TU_DINH = {"pipeline_status": "waiting_attachment_page", "attachment_plan_started": False, "auto_attach_after_fill": True}
+
+
+async def test_tu_dinh_xem_truoc_dung_het_roi_la_xac_nhan_sang_thanh_phan_ho_so():
+    conv = _preview_conv("attaching")
+    conv.update(TU_DINH)
+    r = await flow.handle_turn(conv, Intent("confirm", payload={"_voice": True, "cach_noi": "xac_nhan", "do_chac": "cao"}),
+                               free_text=True)
+    assert any(a.get("type") == "declaration_confirm" for a in r.actions), r.display_md
+    assert "Giấy tờ đã đính kèm" not in r.display_md
+    for intent, action in ((_cn(lop1.DI_TIEP), "declaration_confirm"), (_cn(lop1.QUAY_LAI), "declaration_preview_close")):
+        conv = _preview_conv("attaching")
+        conv.update(TU_DINH)
+        r = await flow.handle_turn(conv, intent, free_text=True)
+        assert any(a.get("type") == action for a in r.actions), intent
+    conv = _preview_conv("attaching")
+    conv.update(TU_DINH)
+    r = await flow.handle_turn(conv, _cn(KHONG_RO), free_text=True)
+    assert r.display_md == vi.CN_XEM_TRUOC_HOI["md"] and not r.actions
+
+
+async def test_tu_dinh_ke_khai_xong_ok_la_xem_truoc_va_nhac_dung_buoc_ke_khai():
+    conv = _conv("attaching", **TU_DINH)
+    r = await flow.handle_turn(conv, Intent("confirm", payload={"_voice": True, "cach_noi": "xac_nhan", "do_chac": "cao"}),
+                               free_text=True)
+    assert any(a.get("type") == "declaration_preview" for a in r.actions), r.display_md
+    conv = _conv("attaching", **TU_DINH)
+    r = await flow.handle_turn(conv, _cn(lop1.KHONG_BIET), free_text=True)
+    assert vi.CN_NHAC_BUOC["ke_khai_xong"]["md"] in r.display_md and "Giấy tờ đã đính kèm" not in r.display_md
+    conv = _conv("attaching", chips=[], **TU_DINH)
+    conv["field_review"]["stats"]["required"] = 2
+    r = await flow.handle_turn(conv, _cn(lop1.DI_TIEP), free_text=True)
+    assert "2 ô bắt buộc" in r.display_md
+    # Vòng hỏi ô đang hỏi: "đúng rồi" không phải đi tiếp.
+    conv = _conv("attaching", **TU_DINH)
+    conv["field_review"]["current"] = {"key": "A", "label": "Ô A"}
+    assert policy._moi_ra_lai(conv, policy._proc(conv)) is False
+
+
+async def test_tu_dinh_lop_1_duoc_mo_ta_dung_buoc_ke_khai_va_xem_truoc(monkeypatch):
+    calls = _llm(monkeypatch, {"cach_noi": "xac_nhan", "do_chac": "cao", "viec": "đúng hết rồi"})
+    conv = _preview_conv("attaching")
+    conv.update(TU_DINH)
+    await classify("đúng hết rồi", "attaching", conv)
+    assert "XEM TRƯỚC tờ khai đang mở" in calls["systems"][0]
+    calls = _llm(monkeypatch, {"cach_noi": "xac_nhan", "do_chac": "cao", "viec": "đúng rồi"})
+    await classify("đúng rồi", "attaching", _conv("attaching", **TU_DINH))
+    assert "đã điền xong tờ khai" in calls["systems"][0] and "đang / vừa đính kèm" not in calls["systems"][0]
+    # Đã sang Thành phần hồ sơ (docs_target "attachment"): mô tả bước đính kèm như cũ.
+    calls = _llm(monkeypatch, {"cach_noi": "xac_nhan", "do_chac": "cao", "viec": "đúng rồi"})
+    await classify("đúng rồi", "attaching", _conv("attaching", docs_target="attachment"))
+    assert "đang / vừa đính kèm" in calls["systems"][0]
+
+
+async def test_da_dinh_ok_chi_sang_buoc_nhan_ket_qua_khi_nut_do_dang_hien():
+    conv = _conv("done", docs_target="attachment",
+                 chips=[{"label": "Xong, sang bước nhận kết quả →", "send": "__action:guided_next", "solid": True, "cta": True}])
+    conv["client_capabilities"]["supportsVoiceChips"] = True
+    r = await flow.handle_turn(conv, Intent("confirm", payload={"_voice": True, "cach_noi": "xac_nhan", "do_chac": "cao"}),
+                               free_text=True)
+    assert {"type": "press_chip", "send": "__action:guided_next"} in r.actions, r.display_md
+    # Nút cta ở bước này là nút nộp → "đúng rồi" không bao giờ bấm nó.
+    conv = _conv("done", docs_target="attachment",
+                 chips=[{"label": "Nộp hồ sơ", "send": "__action:tpm_submit", "solid": True, "cta": True}])
+    r = await flow.handle_turn(conv, Intent("confirm", payload={"_voice": True, "cach_noi": "xac_nhan", "do_chac": "cao"}),
+                               free_text=True)
+    assert r.display_md.startswith("Dạ. Giấy tờ đã đính kèm") and not r.actions
 
 
 async def test_xem_truoc_quay_lai_la_dong_xem_truoc_khong_lui_buoc_tren_cong():

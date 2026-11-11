@@ -1,5 +1,6 @@
 """API ghi nhận chấp thuận xử lý dữ liệu cá nhân (PDPL).
 
+GET /api/v1/consent/notice (require_auth) — nội dung thẻ xác nhận cho extension dựng (chỉ sửa chữ ở texts.py).
 POST /api/v1/consent (require_auth) — extension gọi khi người dùng bấm "Đồng ý": lưu bản ghi +
 file PDF bằng chứng. Chỉ khi trả 200 thì extension mới coi phiên là ĐÃ đồng ý (bằng chứng chắc
 chắn đã lưu). Mỗi phiên đồng ý 1 lần → 1 bản ghi.
@@ -7,7 +8,7 @@ chắn đã lưu). Mỗi phiên đồng ý 1 lần → 1 bản ghi.
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.consent import store
+from app.consent import store, texts
 from app.core.deps import require_auth
 from app.core.errors import AppError
 
@@ -26,6 +27,11 @@ class ConsentReq(BaseModel):
     # CCCD None khi cổng không lộ số định danh → consent gắn theo mã phiên; tên chỉ để đối chiếu.
     principalCccd: str | None = None
     principalName: str | None = None
+
+
+@router.get("/notice")
+async def consent_notice(_user: dict = Depends(require_auth)):
+    return texts.current_autofill_notice()
 
 
 @router.post("")

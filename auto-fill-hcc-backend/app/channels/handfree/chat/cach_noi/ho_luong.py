@@ -38,10 +38,23 @@ XEM_TRUOC = ("bản XEM TRƯỚC tờ khai đang mở trên cổng. Ở đây ch
              "rõ điền lại từ đầu theo giấy tờ). \"đúng rồi\", \"ok\", \"xác nhận\", \"tiếp\" là nút Xác nhận")
 
 
+def o_ke_khai(state: str, conv: dict | None) -> bool:
+    """Đã điền xong tờ khai, trang còn ở Kê khai. Luồng tự đính sau khi điền đặt state "attaching" ngay lúc điền xong
+    (chờ cổng sang Thành phần hồ sơ, docs_target vẫn "declaration") → không dựa riêng vào state "reviewing"."""
+    return state == "reviewing" or (state == "attaching" and (conv or {}).get("docs_target") == "declaration")
+
+
+def xem_truoc(state: str, conv: dict | None) -> bool:
+    """Bản xem trước tờ khai đang mở: chỉ còn hai việc (Sửa lại tờ khai / Xác nhận sang Thành phần hồ sơ)."""
+    return o_ke_khai(state, conv) and bool(((conv or {}).get("field_review") or {}).get("preview_open"))
+
+
 def mo_ta_buoc(state: str, conv: dict | None) -> str:
-    """Mô tả bước cho prompt; bước có ngữ cảnh con khác hẳn (xem trước đang mở) thì mô tả theo ngữ cảnh đó."""
-    if state == "reviewing" and ((conv or {}).get("field_review") or {}).get("preview_open"):
+    """Mô tả bước cho prompt; bước có ngữ cảnh con khác hẳn (xem trước đang mở, còn ở Kê khai) thì mô tả theo đó."""
+    if xem_truoc(state, conv):
         return XEM_TRUOC
+    if o_ke_khai(state, conv):
+        return MO_TA_BUOC["reviewing"]
     return MO_TA_BUOC.get(state, "bước khác")
 
 

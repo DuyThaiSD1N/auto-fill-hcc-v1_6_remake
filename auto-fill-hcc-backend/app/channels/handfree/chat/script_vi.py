@@ -761,7 +761,20 @@ CONSENT_CARD_TEXT = {
         "chuẩn bị tệp đính kèm; dữ liệu chỉ được **chia sẻ lên "
         "Cổng Dịch vụ công** để nộp hồ sơ theo yêu cầu của công dân. Hồ sơ đã xử lý "
         "(ảnh giấy tờ, kết quả đọc) được **lưu trên hệ thống** phục vụ đối soát và "
-        "hỗ trợ giải quyết thủ tục."
+        "hỗ trợ giải quyết thủ tục.\n\n"
+        "**Xử lý tự động bằng trí tuệ nhân tạo (AI):**\n"
+        "- Dữ liệu được xử lý trên hệ thống một cách tự động.\n"
+        "- **Nguyên tắc hoạt động:** Trợ lý dùng công nghệ nhận dạng chữ (OCR) để đọc giấy tờ công dân cung cấp. "
+        "Sau đó mô hình trí tuệ nhân tạo trích ra những thông tin biểu mẫu của thủ tục cần và tự điền sẵn vào "
+        "biểu mẫu trên Cổng Dịch vụ công. Trợ lý chỉ điền sẵn, không quyết định kết quả hồ sơ. Cán bộ và người "
+        "dân kiểm tra, sửa trước khi nộp; việc giải quyết hồ sơ do cơ quan có thẩm quyền thực hiện.\n"
+        "- **Ảnh hưởng đối với quyền và lợi ích hợp pháp của chủ thể dữ liệu:** việc xử lý tự động không làm "
+        "thay đổi quyền, lợi ích hợp pháp của công dân; kết quả đọc tự động có thể sai sót nên cần kiểm tra "
+        "trước khi nộp.\n"
+        "- **Quyền lựa chọn:** công dân có thể chọn dùng hoặc không dùng Trợ lý nhân dân; không dùng thì bấm "
+        "**Không đồng ý · Tự nhập** và tự nhập trên Cổng Dịch vụ công như bình thường.\n"
+        "- **Chỉnh sửa, ẩn danh, xoá dữ liệu:** công dân có quyền yêu cầu chỉnh sửa, ẩn danh hoặc xoá hồ sơ "
+        "nhận dạng của mình đã lưu trên hệ thống, kể cả lịch sử xử lý, bằng cách đề nghị cán bộ tiếp nhận."
     ),
     "checks": [
         "Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin được xử lý và mục đích nêu trên; "
@@ -784,7 +797,18 @@ CONSENT_ATTACH_CARD_TEXT = {
     ),
     "purpose_md": (
         "**Mục đích xử lý dữ liệu:** lưu tạm các tệp trong phiên làm thủ tục và tự động đính kèm "
-        "chúng lên Cổng Dịch vụ công theo yêu cầu của công dân; không trích xuất dữ liệu để điền biểu mẫu."
+        "chúng lên Cổng Dịch vụ công theo yêu cầu của công dân; không trích xuất dữ liệu để điền biểu mẫu.\n\n"
+        "**Xử lý tự động:**\n"
+        "- Dữ liệu được xử lý trên hệ thống một cách tự động.\n"
+        "- **Nguyên tắc hoạt động:** Trợ lý nhận các tệp công dân cung cấp và tự động đính kèm vào hồ sơ trên "
+        "Cổng Dịch vụ công; không đọc nội dung để điền biểu mẫu. Trợ lý không quyết định kết quả hồ sơ. Cán bộ và "
+        "người dân kiểm tra trước khi nộp; việc giải quyết hồ sơ do cơ quan có thẩm quyền thực hiện.\n"
+        "- **Ảnh hưởng đối với quyền và lợi ích hợp pháp của chủ thể dữ liệu:** việc xử lý tự động không làm "
+        "thay đổi quyền, lợi ích hợp pháp của công dân; cần kiểm tra tệp đã đính kèm trước khi nộp.\n"
+        "- **Quyền lựa chọn:** công dân có thể chọn dùng hoặc không dùng Trợ lý nhân dân; không dùng thì bấm "
+        "**Không đồng ý · Tự đính kèm** và tự đính kèm trên Cổng Dịch vụ công như bình thường.\n"
+        "- **Chỉnh sửa, ẩn danh, xoá dữ liệu:** công dân có quyền yêu cầu chỉnh sửa, ẩn danh hoặc xoá hồ sơ "
+        "nhận dạng của mình đã lưu trên hệ thống, kể cả lịch sử xử lý, bằng cách đề nghị cán bộ tiếp nhận."
     ),
     "checks": [
         "Tôi đã đọc, hiểu phạm vi giấy tờ và mục đích xử lý nêu trên; đồng ý cho Trợ lý nhân dân "
