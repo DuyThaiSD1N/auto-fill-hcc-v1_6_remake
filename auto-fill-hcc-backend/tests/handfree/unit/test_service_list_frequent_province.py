@@ -69,14 +69,10 @@ def test_moi_thu_tuc_tro_ly_deu_co_dong_trong_bang_hoan_thien():
 def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
     counts = {slug: len(_card_keys(slug)) for slug in registry._TINH_THEO_DOI}
     assert counts == {
-        # +5 ngày 10/11 (thẻ HDV tại điểm / cấp đổi / cấp lại, khuyến mại may rủi, xóa đăng ký phương tiện thủy).
-        # +2 mọi tỉnh 10/11: thẻ HDV quốc tế + 1.013997 hỗ trợ thiệt hại dịch bệnh động vật (user mở cho tất cả tỉnh).
-        # Bắc Ninh +1 ngày 10/11: cấp lại GCN do bị mất 1.115465 (STT 50, provinceOnly bacninh).
-        "laichau": 115, "bacninh": 120, "lamdong": 105, "danang": 112, "quangninh": 116, "ninhbinh": 105,
-        # Khánh Hòa +4 theo bảng 11:55 (STT 41/93/190/207 lên "Hoàn thiện phần mềm") +1 liên thông khai tử (user mở).
-        # Tuyên Quang +1 liên thông khai tử (user mở liên thông cho tất cả tỉnh 10/11).
-        # Khánh Hòa +1 ngày 10/11: đính chính GCN đã cấp 1.012790 (STT 103, provinceOnly khanhhoa).
-        "quangngai": 106, "laocai": 105, "quangtri": 106, "khanhhoa": 109, "tuyenquang": 105,
+        # Bảng thu-tuc-20261111-0856.xlsx (khớp Excel 100%, không còn ghi đè tay). Ẩn theo bảng: thẻ HDV quốc tế
+        # 1.004628 (vắng bảng), cấp lại GCN bị mất Bắc Ninh 1.115465 (STT 50), đính chính GCN Khánh Hòa 1.012790 (STT 103).
+        "laichau": 120, "bacninh": 124, "lamdong": 110, "danang": 117, "quangninh": 121, "ninhbinh": 110,
+        "quangngai": 111, "laocai": 110, "quangtri": 111, "khanhhoa": 115, "tuyenquang": 111,
     }
 
 
@@ -84,14 +80,16 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     kh = _card_keys("khanhhoa")
     assert "dang-ky-dat-dai-lan-dau-khanh-hoa" in kh          # STT 44: Khánh Hòa hoàn thiện
     assert "cap-doi-gcn-khanh-hoa" in kh                       # STT 93: Khánh Hòa hoàn thiện (bảng 11:55)
-    assert "khai-tu-lien-thong" in kh                          # STT 110: user mở cho Khánh Hòa
-    assert "khai-tu-lien-thong" in _card_keys("tuyenquang")    # STT 110: user mở liên thông cho tất cả tỉnh
+    assert "khai-tu-lien-thong" in kh                          # STT 110: Khánh Hòa hoàn thiện (bảng 11/11)
+    assert "khai-tu-lien-thong" in _card_keys("tuyenquang")    # STT 110: Tuyên Quang hoàn thiện (bảng 11/11)
+    assert "dinh-chinh-gcn-da-cap-khanh-hoa" not in kh         # STT 103: Khánh Hòa chưa cập nhật
     assert "cap-gcn-dang-ky-tau-ca" not in kh                  # STT 118: Khánh Hòa chưa cập nhật
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng
     assert "cap-phep-long-duong-via-he" not in _card_keys("laichau")
     assert "cap-gcn-dang-ky-tau-ca" not in _card_keys("bacninh")  # STT 118: Bắc Ninh Pending
-    assert "hoa-giai-tranh-chap-dat-dai" not in _card_keys("lamdong")  # không có trong bảng
-    # 1.013997: user mở cho tất cả tỉnh 10/11
+    assert "hoa-giai-tranh-chap-dat-dai" in _card_keys("lamdong")  # STT 231
+    assert "cap-the-huong-dan-vien-du-lich-quoc-te" not in _card_keys("lamdong")  # 1.004628 vắng bảng
+    # 1.013997: STT 230, cả 11 tỉnh
     assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # Bảng không mở khóa provinceOnly: bản Bắc Ninh ghi _TAT_CA vẫn không lọt sang tỉnh khác.
     assert "tach-hop-thua-dat-bac-ninh" in _card_keys("bacninh")

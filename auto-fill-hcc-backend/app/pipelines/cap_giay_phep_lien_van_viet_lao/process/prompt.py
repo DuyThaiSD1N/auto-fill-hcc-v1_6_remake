@@ -26,7 +26,9 @@ THÔNG TIN ĐỀ NGHỊ (từ Giấy đề nghị Mẫu Mucb):
   mất mát. Tiêu đề nhắc 'phi thương mại' / 'phục vụ công trình, dự án' → ptm_*, ngược lại tm_*.
 - DeNghi_KinhGui: dòng 'Kính gửi' — tên Sở Xây dựng Tỉnh/TP, chép nguyên văn.
 - DeNghi_Tai: địa danh ở dòng ký cuối ('<Địa danh>, ngày … tháng … năm …') — chỉ lấy tên tỉnh/thành phố.
-- DeNghi_MucDich: ô được tích ở mục 7 — 'Công vụ' / 'Cá nhân' / 'Hoạt động kinh doanh' / 'Mục đích khác'.
+- DeNghi_MucDich: ô được đánh dấu ở mục 'Mục đích chuyến đi' — 'Công vụ' / 'Cá nhân' / 'Hoạt động kinh doanh' /
+  'Mục đích khác'. CHỈ lấy khi văn bản OCR có dấu (X, ✓, ☑…) cạnh đúng nhãn; không thấy dấu → BỎ. TUYỆT ĐỐI KHÔNG suy
+  từ tiêu đề giấy (tiêu đề luôn có chữ 'hoạt động kinh doanh') hay loại xe.
 - DeNghi_PhuongTien: MẢNG JSON danh sách xe (mỗi xe 1 object: bienSo/trongTai/namSanXuat/nhanHieu/soKhung/
   soMay/soKhungDangKy/soMayDangKy/mauSon/hinhThucHoatDong/cuaKhau/tuNgay/denNgay/nienHan). Lấy từ Giấy chứng
   nhận đăng ký xe ô tô + Giấy đề nghị mục 4. Nếu tài khoản đã đăng ký xe thì cổng tự đổ dòng khi chọn biển số;

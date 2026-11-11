@@ -262,3 +262,42 @@ def test_khong_co_mat_sau_khop_mrz_thi_giu_ngay_cap_llm():
     by = {f["name"]: f["value"] for f in out}
     assert by["citizenNgaythangnamcap__me"] == "02/03/2021"
     assert by["citizenLoaiGiaytotuythan_me"] == "Căn cước công dân"
+
+
+# Hồ sơ chỉ có giấy chứng sinh + CCCD mẹ + CCCD cha (không tờ khai, không giấy kết hôn).
+_GCS = "GIẤY CHỨNG SINH\nHọ, chữ đệm, tên khai sinh của mẹ: NGUYỄN THỊ A\nSố ĐDCN/Hộ chiếu số: 001190000001\n"
+_CCCD_ME = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001190000001\nHọ và tên / Full name: NGUYỄN THỊ A\n"
+            "Ngày sinh / Date of birth: 01/01/1990\nGiới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam\n")
+_CCCD_CHA = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001088000002\nHọ và tên / Full name:\nTRẦN VĂN B\n"
+             "Ngày sinh / Date of birth: 01/01/1988\nGiới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam\n")
+_RAW_KHONG_CHA = (
+    "<con>\nHọ tên: Trần Văn C\nSố định danh:\n</con>\n<me>\nHọ tên: Nguyễn Thị A\nSố định danh: 001190000001\n</me>\n"
+    "<cha>\nHọ tên: Không xác định\nSố định danh:\n</cha>\n<quan_he>\nKết luận: Khác\n</quan_he>\n"
+    "<loai_khai_sinh>\nKết luận: Chưa xác định được cha\nĐã có hồ sơ, giấy tờ cá nhân: Không\n</loai_khai_sinh>"
+)
+_NGUOI_KHAC = {"applicantFullname": "LÊ VĂN D", "applicantIdentityNumber": "001080000009"}
+
+
+def _docs(*texts):
+    return [{"name": f"{i}.pdf", "text": t} for i, t in enumerate(texts)]
+
+
+def test_khong_to_khai_co_cccd_cha_thi_cha_theo_cccd():
+    ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": _NGUOI_KHAC}, _docs(_CCCD_CHA, _CCCD_ME, _GCS))
+    cha = reason.section(ctx, "cha")
+    assert reason.labeled_value(cha, "Họ tên") == "TRẦN VĂN B"
+    assert reason.labeled_value(cha, "Số định danh") == "001088000002"
+    loai = reason.section(ctx, "loai_khai_sinh")
+    assert reason.labeled_value(loai, "Kết luận") == "Đã xác định được cả cha lẫn mẹ"
+    assert reason.labeled_value(loai, "Đã có hồ sơ, giấy tờ cá nhân") == "Không"
+
+
+@pytest.mark.parametrize("extra, account", [
+    ("TỜ KHAI ĐĂNG KÝ KHAI SINH\nHọ, chữ đệm, tên người cha:\n", _NGUOI_KHAC),  # tờ khai để trống cha
+    ("", {"applicantFullname": "TRẦN VĂN B", "applicantIdentityNumber": "001088000002"}),  # thẻ nam là người nộp
+    ("GIẤY ỦY QUYỀN\nBên được ủy quyền: TRẦN VĂN B\n", _NGUOI_KHAC),  # tên nam có ở giấy khác
+])
+def test_khong_tu_gan_cha_khi_vai_khong_chac(extra, account):
+    ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": account}, _docs(_CCCD_CHA, _CCCD_ME, _GCS, extra))
+    assert reason.labeled_value(reason.section(ctx, "cha"), "Họ tên") == ""
+    assert reason.labeled_value(reason.section(ctx, "loai_khai_sinh"), "Kết luận") == "Chưa xác định được cha"

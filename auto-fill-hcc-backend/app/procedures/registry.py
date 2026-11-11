@@ -1320,6 +1320,9 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký giám hộ",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Bật "Có tách hồ sơ khi đính kèm" → PDF gộp tách theo trang (attach/dinh_kem_tach);
+        # client cũ hoặc không gửi option vẫn giữ nguyên từng file.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -9206,6 +9209,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy một
+        # tệp vào dòng của nó; TẮT/bản cũ → mỗi tệp đính nguyên một lần vào dòng của giấy tờ đầu tiên trong tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
             "1. Văn bản báo cáo tổ chức đại hội gửi Sở Nội vụ (thời gian, địa điểm, số đại biểu) + Nghị quyết Ban "

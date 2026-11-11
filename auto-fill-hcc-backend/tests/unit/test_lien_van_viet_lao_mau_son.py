@@ -115,3 +115,27 @@ def test_mapper_nguoi_nop_to_chuc_chon_doi_tuong_to_chuc():
     assert any("mã số thuế" in w for w in warnings)
     out, _ = mapper.enrich([{"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"}])
     assert {f["name"]: f["value"] for f in out}["data[chonDoiTuong]"] == "Cá nhân"
+
+
+def test_parse_muc_dich_chuan_hoa_nhan():
+    base = {"phuong_tien": []}
+    assert vision.parse({**base, "muc_dich": "b) Cá nhân"})["purpose"] == "Cá nhân"
+    assert vision.parse({**base, "muc_dich": "Mục đích khác"})["purpose"] == "Mục đích khác"
+    assert vision.parse({**base, "muc_dich": "X"})["purpose"] == ""
+    assert vision.parse(base)["purpose"] == ""
+
+
+def test_runner_muc_dich_doc_tu_anh_thang_llm_doan(monkeypatch):
+    # OCR làm rơi dấu X → LLM đoán "Hoạt động kinh doanh" theo tiêu đề giấy; ảnh thấy X ở ô Cá nhân.
+    fields = [{"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"},
+              {"name": "DeNghi_MucDich", "value": "Hoạt động kinh doanh"}]
+    d, errors = _run(monkeypatch, fields, _parsed(purpose="Cá nhân"))
+    assert d.get("data[panel_caNhanToChuc][mucdich_02]") is True
+    assert "data[panel_caNhanToChuc][mucdich_03]" not in d
+    assert not any("Mục đích chuyến đi" in e for e in errors)
+
+
+def test_khong_doc_duoc_muc_dich_thi_bo_trong_va_canh_bao(monkeypatch):
+    d, errors = _run(monkeypatch, [{"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"}], _parsed(purpose=""))
+    assert not any(k.startswith("data[panel_caNhanToChuc][mucdich_") for k in d)
+    assert any("Mục đích chuyến đi" in e for e in errors)

@@ -131,6 +131,8 @@ def test_dang_ky_giam_ho_attachment_registry():
     proc = get_procedure("dang-ky-giam-ho")
 
     assert proc["hasAttachmentStep"] is True
+    # Planner có nhánh dinh_kem_tach → bật cờ để extension gửi options.splitDocuments.
+    assert proc["supportsSplitDocuments"] is True
     assert get_attach_pipeline("dang-ky-giam-ho") is not None
 
 

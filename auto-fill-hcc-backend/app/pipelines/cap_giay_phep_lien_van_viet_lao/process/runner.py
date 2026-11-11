@@ -34,6 +34,9 @@ def _apply_vision(fields: list[dict], parsed: dict) -> list[str]:
         area["xa"] = re.sub(r"^\s*P\.\s*", "Phường ", re.sub(r"^\s*X\.\s*", "Xã ", area["xa"]))
         llm_area = by_name.get("NguoiNop_ThuongTru")
         _set(fields, "NguoiNop_ThuongTru", {**(llm_area if isinstance(llm_area, dict) else {}), **area})
+    if parsed.get("purpose"):
+        # Ảnh thấy dấu X trong ô; OCR văn bản làm rơi dấu nên LLM chỉ đoán.
+        _set(fields, "DeNghi_MucDich", parsed["purpose"])
     phone = parsed.get("phone") or ""
     if 9 <= len(phone) <= 11:
         llm_phone = re.sub(r"\D", "", str(by_name.get("NguoiNop_DienThoai") or ""))

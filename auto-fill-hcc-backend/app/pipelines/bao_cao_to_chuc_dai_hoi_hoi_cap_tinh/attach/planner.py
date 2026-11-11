@@ -18,6 +18,11 @@ BCH, mặc định nhiệm kỳ). Đều "Bản chính". Nhiều dòng trùng ch
 Dòng 18 ("các nội dung khác") không tự đính. CCCD, giấy không có dòng ở loại đại hội đang xét và đoạn chưa rõ loại
 → mỗi đoạn một item riêng ở dòng văn bản báo cáo của loại đại hội (15/5/10), giữ tên LLM đặt hoặc tên tệp gốc +
 cảnh báo; không bỏ đoạn nào.
+
+Cắt trang như trên CHỈ khi bật "Có tách hồ sơ khi đính kèm" (``options.splitDocuments`` là true). TẮT / extension cũ
+không gửi cờ → MỖI TỆP đính NGUYÊN một lần (không sourceSegments) vào dòng của giấy tờ đầu tiên trong tệp có dòng
+riêng ở loại đại hội đang xét (tệp gộp cả bộ thường mở đầu bằng văn bản báo cáo → dòng 15/5/10); cảnh báo thiếu giấy
+xét theo mọi giấy đã nhận ra trong tệp. Tên tệp tải lên do extension quyết theo cài đặt "Đổi tên tệp" của tài khoản.
 """
 
 import re
@@ -27,6 +32,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared.documents import join_ocr_documents
+from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.attach import prompt
 from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach.planner import (
     _page_subset,
@@ -339,13 +345,112 @@ def _mentions_schedule(page: str) -> bool:
     return "dia diem" in h or "thoi gian" in h
 
 
+def _case_warnings(case: str, case_known: bool) -> list[str]:
+    if not case_known:
+        return ["Không tìm thấy văn bản báo cáo / Nghị quyết BCH để xác định loại đại hội — đã đính theo trường hợp "
+                "đại hội nhiệm kỳ, kiểm tra lại."]
+    if case != _NHIEM_KY:
+        return [f"Hồ sơ báo cáo tổ chức {_CASE_LABEL[case]} — đã đính vào các dòng của trường hợp này."]
+    return []
+
+
+def _content_warnings(case: str, found: set[str]) -> list[str]:
+    warnings: list[str] = []
+    if case != _THANH_LAP and _Y_KIEN not in found:
+        warnings.append("Không thấy văn bản ý kiến đồng ý / cử cán bộ (dòng 14) — bắt buộc khi nhân sự dự kiến Ban "
+                        "chấp hành, Ban thường vụ là cán bộ, công chức, viên chức.")
+    if _SYLL in found and _LLTP not in found:
+        warnings.append("Chưa có Phiếu lý lịch tư pháp số 1 của nhân sự dự kiến Chủ tịch — cần bổ sung, trừ khi người "
+                        "đó là cán bộ, công chức, viên chức (kể cả đã nghỉ hưu) được cơ quan có thẩm quyền đồng ý "
+                        "bằng văn bản hoặc đang là Chủ tịch hội nhiệm kỳ hiện tại.")
+    return warnings
+
+
+def _whole_file_items(
+    raw_files: list[dict],
+    typed: list[tuple[dict, str]],
+    pages_by_file: dict[int, dict[int, str]],
+    case: str,
+    case_known: bool,
+) -> tuple[list[dict], list[dict], list[str], str]:
+    """Tắt tách hồ sơ: mỗi tệp đính NGUYÊN một lần, không cắt trang. Dòng = dòng của giấy tờ đầu tiên trong tệp có
+    dòng riêng ở loại đại hội này; tệp không có giấy nào như vậy → dòng văn bản báo cáo."""
+    found = {doc_type for _, doc_type in typed}
+    main_row = _ROUTE[_BAO_CAO][case]
+    by_file: dict[int, list[tuple[dict, str]]] = {}
+    for segment, doc_type in typed:
+        by_file.setdefault(segment["fileIndex"], []).append((segment, doc_type))
+
+    attachments: list[dict] = []
+    classified: list[dict] = []
+    used_names: set[str] = set()
+    placed: list[str] = []
+    # Dòng có nội dung trong hồ sơ (dù nằm chung một tệp đính ở dòng khác) → không báo "chưa có".
+    covered_rows: set[int] = set()
+    for file_index in sorted(by_file):
+        parts = by_file[file_index]
+        head_row = next((_ROUTE[t][case] for _, t in parts if case in _ROUTE.get(t, {})), main_row)
+        head_type = next((t for _, t in parts if case in _ROUTE.get(t, {})), parts[0][1])
+        row = _ROWS[head_row]
+        file = raw_files[file_index]
+        file_name = str(file.get("name") or f"file-{file_index + 1}")
+        included: list[str] = []
+        for segment, doc_type in parts:
+            if doc_type not in included:
+                included.append(doc_type)
+            own = _ROUTE.get(doc_type, {}).get(case)
+            if own is not None:
+                covered_rows.add(own)
+            classified.append({"fileIndex": file_index, "fileName": file.get("name"),
+                               "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type,
+                               "componentIndex": head_row, "preservedFile": True,
+                               **({"ownRow": own} if own is not None and own != head_row else {})})
+        attachments.append({
+            "fileIndex": file_index,
+            "fileName": file_name,
+            "documentName": _unique_name(row["documentName"].replace("/", "-"), used_names, row["documentName"]),
+            "componentName": row["componentName"],
+            "componentIndex": head_row,
+            "loaiBan": "Bản chính",
+            "target": "attp-row",
+            "needsAddComponent": False,
+            "detectedType": head_type,
+            "includedTypes": included,
+        })
+        other_rows = sorted({_ROUTE[t][case] for _, t in parts if case in _ROUTE.get(t, {})} - {head_row})
+        if other_rows:
+            placed.append(f"{file_name} → dòng {head_row} (trong tệp còn giấy của dòng "
+                          f"{', '.join(str(r) for r in other_rows)})")
+
+    du_kien_row = _ROUTE[_DU_KIEN][case]
+    if du_kien_row not in covered_rows and any(
+        _mentions_schedule(_segment_text(s, pages_by_file)) for s, t in typed if t == _BAO_CAO
+    ):
+        covered_rows.add(du_kien_row)
+
+    warnings = _case_warnings(case, case_known)
+    if placed:
+        warnings.append("Đã tắt \"Có tách hồ sơ khi đính kèm\": mỗi tệp đính nguyên một lần, không tách theo giấy tờ — "
+                        + "; ".join(placed) + ". Muốn mỗi giấy vào đúng dòng thì bật cài đặt này hoặc tải từng giấy "
+                        "thành tệp riêng.")
+    for row_idx, label in _REQUIRED[case]:
+        if row_idx not in covered_rows:
+            warnings.append(f"Chưa có {label} (dòng {row_idx}) — cần bổ sung.")
+    if case == _NHIEM_KY and 11 in covered_rows and _TAI_CHINH not in found:
+        warnings.append("Dòng 11 chưa có Báo cáo tài chính riêng của hội — cần bổ sung.")
+    warnings.extend(_content_warnings(case, found))
+    return attachments, classified, warnings, case
+
+
 def build_plan_items(
     raw_files: list[dict],
     segments: list[dict],
     file_meta: dict[int, dict],
     pages_by_file: dict[int, dict[int, str]],
+    split: bool = True,
 ) -> tuple[list[dict], list[dict], list[str], str]:
-    """Đoạn đã hợp lệ → (attachments, classified, warnings, loại đại hội). Thuần tất định, không gọi OCR/LLM."""
+    """Đoạn đã hợp lệ → (attachments, classified, warnings, loại đại hội). Thuần tất định, không gọi OCR/LLM.
+    ``split`` → mỗi giấy một item (cắt trang); không → mỗi tệp đính nguyên một lần."""
     typed: list[tuple[dict, str]] = []
     for segment in segments:
         doc_type = segment["type"]
@@ -356,6 +461,8 @@ def build_plan_items(
     typed = _merge_adjacent(_inherit_continuations(typed, pages_by_file))
     found = {doc_type for _, doc_type in typed}
     case, case_known = _case(typed, pages_by_file)
+    if not split:
+        return _whole_file_items(raw_files, typed, pages_by_file, case, case_known)
 
     classified: list[dict] = []
     warnings: list[str] = []
@@ -436,11 +543,7 @@ def build_plan_items(
         })
 
     # --- Cảnh báo ---
-    if not case_known:
-        warnings.append("Không tìm thấy văn bản báo cáo / Nghị quyết BCH để xác định loại đại hội — đã đính theo "
-                        "trường hợp đại hội nhiệm kỳ, kiểm tra lại.")
-    elif case != _NHIEM_KY:
-        warnings.append(f"Hồ sơ báo cáo tổ chức {_CASE_LABEL[case]} — đã đính vào các dòng của trường hợp này.")
+    warnings.extend(_case_warnings(case, case_known))
     if shared_pages:
         warnings.append("Giấy tờ không có dòng riêng hoặc chưa rõ loại đã đính chung dòng "
                         f"\"{main['componentName']}\" (dòng {main_row}): " + "; ".join(shared_pages))
@@ -453,13 +556,7 @@ def build_plan_items(
             warnings.append(f"Chưa có {label} (dòng {row_idx}) — cần bổ sung.")
     if case == _NHIEM_KY and 11 in by_row and _TAI_CHINH not in found:
         warnings.append("Dòng 11 chưa có Báo cáo tài chính riêng của hội — cần bổ sung.")
-    if case != _THANH_LAP and _Y_KIEN not in found:
-        warnings.append("Không thấy văn bản ý kiến đồng ý / cử cán bộ (dòng 14) — bắt buộc khi nhân sự dự kiến Ban "
-                        "chấp hành, Ban thường vụ là cán bộ, công chức, viên chức.")
-    if _SYLL in found and _LLTP not in found:
-        warnings.append("Chưa có Phiếu lý lịch tư pháp số 1 của nhân sự dự kiến Chủ tịch — cần bổ sung, trừ khi người "
-                        "đó là cán bộ, công chức, viên chức (kể cả đã nghỉ hưu) được cơ quan có thẩm quyền đồng ý "
-                        "bằng văn bản hoặc đang là Chủ tịch hội nhiệm kỳ hiện tại.")
+    warnings.extend(_content_warnings(case, found))
     return attachments, classified, warnings, case
 
 
@@ -480,7 +577,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
-    _ = options or {}
+    split = split_requested(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_pairs = [(i, f) for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES]
@@ -519,7 +616,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
-    attachments, classified, warnings, case = build_plan_items(raw_files, segments, file_meta, pages_by_file)
+    attachments, classified, warnings, case = build_plan_items(
+        raw_files, segments, file_meta, pages_by_file, split=split
+    )
     errors.extend(warnings)
 
     indexed_ocr = []
@@ -537,7 +636,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "sessionId": (session or {}).get("request_id"),
             "loaiDaiHoi": case,
             "classified": classified,
-            "rows": [{"componentIndex": k, **row} for k, row in _ROWS.items()],
+            "attachmentMode": "split_documents" if split else "preserve_files",
+            "rows":[{"componentIndex": k, **row} for k, row in _ROWS.items()],
         },
         "ocr_text": join_ocr_documents(indexed_ocr),
         "llm_output": {"documents": raw_segments},

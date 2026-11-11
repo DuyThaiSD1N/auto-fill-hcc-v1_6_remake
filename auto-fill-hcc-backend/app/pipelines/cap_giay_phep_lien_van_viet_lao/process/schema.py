@@ -50,7 +50,7 @@ FIELDS: list[dict] = [
         "Vd 'Sở Xây dựng thành phố Đà Nẵng'. Chép nguyên văn tên Sở."},
     {"name": "DeNghi_Tai", "desc": "Địa danh nơi lập/ký đơn — dòng ký cuối 'Tại … , ngày … tháng … năm …' hoặc "
         "'<Địa danh>, ngày …'. Chỉ lấy TÊN TỈNH/THÀNH PHỐ (vd 'Thành phố Đà Nẵng')."},
-    {"name": "DeNghi_MucDich", "desc": "Mục đích chuyến đi (mục 7 Giấy đề nghị) — MỘT trong: 'Công vụ' (a), "
+    {"name": "DeNghi_MucDich", "desc": "Mục đích chuyến đi (Giấy đề nghị) — MỘT trong: 'Công vụ' (a), "
         "'Cá nhân' (b), 'Hoạt động kinh doanh' (c), 'Mục đích khác' (d). Lấy ô được tích trên đơn."},
     {"name": "DeNghi_PhuongTien", "desc": "DANH SÁCH PHƯƠNG TIỆN xin cấp phép — trả về MẢNG JSON (mỗi xe 1 "
         "object). Lấy từ Giấy chứng nhận đăng ký xe ô tô + Giấy đề nghị mục 4 (bảng phương tiện). Mỗi object "

@@ -15,6 +15,7 @@ from contextlib import ExitStack
 import fitz  # PyMuPDF
 
 from app.monitor import recorder as mon
+from app.pipelines.cap_giay_phep_lien_van_viet_lao.process.mapper import _fold
 from app.services import ocr_qwen
 from app.services.llm.client import extract_json_block
 from app.services.ocr_tiengnoi import _open_input
@@ -49,16 +50,20 @@ A. GIẤY ĐỀ NGHỊ (mẫu có tiêu đề "GIẤY ĐỀ NGHỊ cấp, cấp 
    - "tuNgay"/"denNgay": chỉ khi ô thời gian ghi NGÀY cụ thể — ngày viết trước/dòng trên là "tuNgay", ngày viết
      sau/dòng dưới là "denNgay" (dd/mm/yyyy). Ô chỉ ghi số tháng → để "".
    - Chỉ trả hàng có dữ liệu; hàng chỉ có số thứ tự → bỏ.
+4. "muc_dich" — mục "Mục đích chuyến đi": mỗi phương án a) Công vụ, b) Cá nhân, c) Hoạt động kinh doanh, d) Mục đích
+   khác có MỘT ô vuông nằm NGAY BÊN PHẢI nhãn của nó (hai phương án có thể chung một hàng). Trả đúng nhãn của phương
+   án có ô được đánh dấu (X, ✓, gạch chéo, tô đen): "Công vụ" / "Cá nhân" / "Hoạt động kinh doanh" / "Mục đích khác".
+   Không ô nào đánh dấu → "". KHÔNG suy theo tiêu đề giấy hay loại xe.
 B. "giay_xe" — mỗi GIẤY CHỨNG NHẬN ĐĂNG KÝ XE (cà vẹt) và mỗi CHỨNG NHẬN KIỂM ĐỊNH (đăng kiểm) là 1 phần tử:
    biển số, "Số khung (Chassis N°)", "Số máy / Số động cơ (Engine N°)" — chữ IN trên giấy, chép đủ từng ký tự,
    bỏ khoảng trắng.
 
 Trả DUY NHẤT một JSON, không giải thích:
-{"dia_chi": {"tinh": "", "xa": ""}, "dien_thoai": "",
+{"dia_chi": {"tinh": "", "xa": ""}, "dien_thoai": "", "muc_dich": "",
  "phuong_tien": [{"bienSo": "", "trongTai": "", "namSanXuat": "", "nhanHieu": "", "soKhung": "", "soMay": "",
    "mauSon": "", "hinhThucHoatDong": "", "cuaKhau": "", "tuNgay": "", "denNgay": ""}],
  "giay_xe": [{"bienSo": "", "soKhung": "", "soMay": ""}]}
-Không thấy Giấy đề nghị → "dia_chi" rỗng, "dien_thoai": "", "phuong_tien": []. Không thấy giấy xe → "giay_xe": []."""
+Không thấy Giấy đề nghị → "dia_chi" rỗng, "dien_thoai": "", "muc_dich": "", "phuong_tien": []. Không thấy giấy xe → "giay_xe": []."""
 
 
 def _page_images(files: list[dict]) -> list[bytes]:
@@ -94,8 +99,18 @@ def _clean_rows(rows, keys: tuple[str, ...]) -> list[dict]:
     return out
 
 
+# Mục đích chuyến đi: OCR văn bản làm rơi dấu X trong ô kẻ → LLM đoán theo tiêu đề giấy ("…hoạt động kinh doanh…").
+_PURPOSES = (("cong vu", "Công vụ"), ("ca nhan", "Cá nhân"), ("kinh doanh", "Hoạt động kinh doanh"),
+             ("khac", "Mục đích khác"))
+
+
+def _purpose(value) -> str:
+    folded = _fold(value)
+    return next((label for key, label in _PURPOSES if key in folded), "") if folded else ""
+
+
 def parse(data: dict) -> dict | None:
-    """JSON model → {rows, certs, area, phone}. Thiếu khung → None (coi như không đọc được)."""
+    """JSON model → {rows, certs, area, phone, purpose}. Thiếu khung → None (coi như không đọc được)."""
     if not isinstance(data, dict) or not isinstance(data.get("phuong_tien"), list):
         return None
     area = data.get("dia_chi") if isinstance(data.get("dia_chi"), dict) else {}
@@ -105,6 +120,7 @@ def parse(data: dict) -> dict | None:
         "certs": _clean_rows(data.get("giay_xe"), CERT_KEYS),
         "area": {k: v for k, v in area.items() if v},
         "phone": re.sub(r"\D", "", str(data.get("dien_thoai") or "")),
+        "purpose": _purpose(data.get("muc_dich")),
     }
 
 

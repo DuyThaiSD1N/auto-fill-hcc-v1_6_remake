@@ -35,13 +35,17 @@ a. TỜ KHAI ĐĂNG KÝ KHAI SINH: người sau câu "Đề nghị cơ quan đă
    CHA "Không xác định" và loại khai sinh "Chưa xác định được cha", KHÔNG lấy cha từ giấy chứng sinh / bản cam đoan
    (tương tự mẹ). Quy tắc này CHỈ áp khi hồ sơ có tờ khai.
 b. GIẤY CHỨNG SINH: con là "Dự định đặt tên con" (tên có thể bị gạch sửa tay — lấy tên khớp tờ khai), mẹ là
-   người sinh; giấy chứng sinh KHÔNG có cha.
+   người sinh; giấy chứng sinh KHÔNG có dòng cha, nên KHÔNG phải căn cứ để kết luận "Chưa xác định được cha".
+   Hồ sơ không có tờ khai thì KHÔNG được ghi "Tờ khai để trống".
 c. GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ: chồng là CHA, vợ là MẸ. Hồ sơ KHÔNG có tờ khai mà có giấy kết hôn với VỢ trùng
    MẸ (người sinh trên giấy chứng sinh) → CHA = CHỒNG trên giấy kết hôn (con sinh trong thời kỳ hôn nhân), loại khai
    sinh "Đã xác định được cả cha lẫn mẹ". Giấy chứng sinh không ghi cha KHÔNG có nghĩa là chưa xác định được cha.
 d. Giấy cam đoan / văn bản người làm chứng về việc sinh; trích lục khai tử của cha/mẹ (người đó ĐÃ CHẾT).
 e. CCCD: gán vào đúng người có cùng họ tên / số định danh ở các giấy trên; không gán theo giới tính khi giấy tờ đã
    ghi rõ tên cha/mẹ. Người đi khai tử, người làm chứng, cán bộ ký không phải cha/mẹ/con.
+f. Hồ sơ KHÔNG có tờ khai, KHÔNG có giấy kết hôn mà có CCCD của một người NAM (không phải người nộp, không phải
+   người làm chứng / người đi khai tử) → người đó là CHA (người dân nộp CCCD của cha để khai phần cha), loại khai
+   sinh "Đã xác định được cả cha lẫn mẹ".
 
 QUAN HỆ (người nộp là gì CỦA CON):
 - Người nộp là MẸ → "Mẹ"; là CHA → "Cha". Đối chiếu người nộp với cha/mẹ: số trùng → cùng người. Giấy tờ cũ (giấy
@@ -163,10 +167,69 @@ def labeled_value(block: str, label: str) -> str:
     return "" if _fold(value) in {"", "...", "khong xac dinh", "khong co", "khong ro"} else value
 
 
-def _render_context(raw: str, options: dict | None) -> str:
+# Mặt trước thẻ: "Số / No.: <12 số>" rồi "Họ và tên / Full name:" (tên cùng dòng hoặc dòng kế) rồi "Giới tính / Sex".
+_CARD_NAME_RE = re.compile(r"full name[ \t]*:[ \t]*(?:\n[ \t]*)?([^\n]*)", re.IGNORECASE)
+_CARD_NUMBER_RE = re.compile(r"(?<!\d)(\d{12})(?!\d)")
+_CARD_SEX_RE = re.compile(r"(?:giới tính|sex)[ \t]*:[ \t]*(nam|nữ)", re.IGNORECASE)
+# Có các giấy này thì cha đã có nguồn rõ hơn (tờ khai, giấy kết hôn) hoặc thẻ nam có thể là người làm chứng / đi khai tử.
+_FATHER_SOURCE_MARKERS = ("to khai", "ket hon", "lam chung", "khai tu")
+
+
+def _male_cards(text: str) -> list[tuple[str, str]]:
+    """(họ tên, số định danh) của các mặt trước thẻ CCCD / căn cước ghi giới tính Nam."""
+    cards = []
+    for match in _CARD_NAME_RE.finditer(text):
+        name = match.group(1).strip()
+        numbers = _CARD_NUMBER_RE.findall(text[max(0, match.start() - 200):match.start()])
+        sex = _CARD_SEX_RE.search(text[match.end():match.end() + 250])
+        if name and numbers and sex and _fold(sex.group(1)) == "nam" and not _fold(name).startswith("ngay sinh"):
+            cards.append((name, numbers[-1]))
+    return cards
+
+
+def _father_from_male_card(blocks: dict, documents: list[dict] | None, options: dict | None) -> dict:
+    """Hồ sơ chỉ có giấy chứng sinh + CCCD (không tờ khai, không giấy kết hôn): giấy chứng sinh không có dòng cha nên
+    LLM hay kết luận "Chưa xác định được cha" dù có nộp CCCD của cha. Đúng MỘT thẻ nam không phải người nộp / mẹ /
+    con, tên không xuất hiện ở giấy khác → đó là cha."""
+    if not documents or labeled_value(blocks["cha"], "Họ tên") or not labeled_value(blocks["me"], "Họ tên"):
+        return blocks
+    co_ho_so = labeled_value(blocks["loai_khai_sinh"], "Đã có hồ sơ, giấy tờ cá nhân")
+    if _fold(co_ho_so) == "co":
+        return blocks  # người được khai sinh đã có CCCD: thẻ nam có thể là của chính người đó
+    texts = [str(document.get("text") or "") for document in documents]
+    folded = [_fold(text) for text in texts]
+    if any(marker in text for text in folded for marker in _FATHER_SOURCE_MARKERS):
+        return blocks
+    _, account_id = requester_context(options)
+    excluded_ids = {account_id} | {_digits(labeled_value(blocks[tag], "Số định danh")) for tag in ("me", "con")}
+    excluded_names = {_fold(labeled_value(blocks[tag], "Họ tên")) for tag in ("me", "con")} - {""}
+    candidates: dict[str, str] = {}
+    for index, text in enumerate(texts):
+        for name, number in _male_cards(text):
+            if number in excluded_ids or _fold(name) in excluded_names:
+                continue
+            if any(_fold(name) in other for other_index, other in enumerate(folded) if other_index != index):
+                return blocks  # tên có ở giấy khác (ủy quyền...) → vai không chắc, để nguyên phân vai của LLM
+            candidates[number] = name
+    if len(candidates) != 1:
+        return blocks
+    number, name = next(iter(candidates.items()))
+    return {
+        **blocks,
+        "cha": f"Họ tên: {name}\nSố định danh: {number}\nTrạng thái: còn sống\nNguồn: CCCD",
+        "loai_khai_sinh": (
+            "Kết luận: Đã xác định được cả cha lẫn mẹ\n"
+            f"Đã có hồ sơ, giấy tờ cá nhân: {co_ho_so or 'Không'}\n"
+            "Căn cứ: hồ sơ không có tờ khai, có CCCD của cha"
+        ),
+    }
+
+
+def _render_context(raw: str, options: dict | None, documents: list[dict] | None = None) -> str:
     blocks = {tag: section(raw, tag) for tag in _TAGS}
     if not any(blocks[tag] for tag in ("con", "me", "cha")):
         return ""
+    blocks = _father_from_male_card(blocks, documents, options)
     name, number = requester_context(options)
     body = "\n".join(f"<{tag}>\n{value or 'Không xác định'}\n</{tag}>" for tag, value in blocks.items())
     return (
@@ -193,4 +256,4 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options)
+    return _render_context(raw, options, documents)

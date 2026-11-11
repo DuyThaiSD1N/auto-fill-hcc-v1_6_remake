@@ -361,6 +361,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             add(f"{_PANEL}[mucdich_03]", True)
         else:
             add(f"{_PANEL}[mucdich_04]", True)  # Mục đích khác.
+    elif name:
+        warnings.append("Chưa đọc được ô đánh dấu ở Mục đích chuyến đi — vui lòng tích tay theo Giấy đề nghị.")
 
     # --- Phần III: danh sách phương tiện (comp riêng dom-vehicle-add) ---
     # FE: mỗi xe → nếu biển số CÓ trong ô "Chọn phương tiện" (BienSoXeData, nạp từ tài khoản) thì chọn +

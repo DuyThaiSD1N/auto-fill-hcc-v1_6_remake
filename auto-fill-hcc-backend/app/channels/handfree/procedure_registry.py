@@ -8538,6 +8538,9 @@ PROCEDURES: list[dict] = [
         "review": False,
         "roles": [],
         "useDangKyBy": False,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy một
+        # tệp vào dòng của nó; TẮT/bản cũ → mỗi tệp đính nguyên một lần vào dòng của giấy tờ đầu tiên trong tệp.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
             "1. Văn bản báo cáo tổ chức đại hội gửi Sở Nội vụ + Nghị quyết Ban chấp hành về việc tổ chức đại hội.\n"
@@ -9669,8 +9672,8 @@ _HOME_FREQUENT_KEYS = (
     "dang-ky-kinh-doanh",
 )
 
-# Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261110-1155.xlsx, xuất
-# 10/11/2026; "STT" ở chú thích = cột STT của bảng). Bảng có cột cho 11 tỉnh ở _TINH_THEO_DOI: tài khoản thuộc
+# Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261111-0856.xlsx, xuất
+# 11/11/2026; "STT" ở chú thích = cột STT của bảng). Bảng có cột cho 11 tỉnh ở _TINH_THEO_DOI: tài khoản thuộc
 # một tỉnh trong đó chỉ thấy + gọi được thủ tục mà cột tỉnh ấy ghi "Hoàn thiện phần mềm" (Chưa cập nhật / Chưa
 # có / Đã BA / Pending đều ẩn). Tỉnh ngoài bảng hoặc tài khoản thiếu tỉnh → không lọc (như provinceOnly).
 # Lọc này CỘNG THÊM vào provinceOnly: bản riêng của tỉnh ghi _TAT_CA vẫn chỉ hiện ở tỉnh trong provinceOnly.
@@ -9692,8 +9695,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "khai-sinh-dang-ky-lai": _TAT_CA,
     "khai-sinh-da-co-ho-so": _TAT_CA,
     "khai-tu": _TAT_CA,
-    # STT 110: bảng ghi Khánh Hòa/Tuyên Quang Chưa cập nhật nhưng user mở liên thông cho tất cả tỉnh 10/11/2026.
-    "khai-tu-lien-thong": _TAT_CA,
+    "khai-tu-lien-thong": _TAT_CA,  # STT 110
     "khai-tu-dang-ky-lai": _TAT_CA,
     "dang-ky-nhan-cha-me-con": _TAT_CA,
     "khai-sinh-ket-hop-nhan-cha-me-con": _TAT_CA,
@@ -9720,12 +9722,11 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-giay-phep-khai-thac-thuy-san": _TAT_CA,
     # STT 118: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
     "cap-gcn-dang-ky-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
-    # STT 122: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
-    "cap-van-ban-chap-thuan-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
+    # STT 122: Bắc Ninh Pending; Tuyên Quang Chưa cập nhật
+    "cap-van-ban-chap-thuan-tau-ca": _TAT_CA - {"bacninh", "tuyenquang"},
     "cap-lai-chung-chi-hanh-nghe-thu-y": _TAT_CA,
-    # 1.013997: không có trong bảng nhưng user mở cho tất cả tỉnh 10/11/2026.
-    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": _TAT_CA,
-    "hoa-giai-tranh-chap-dat-dai": frozenset(),  # không có trong bảng
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": _TAT_CA,  # STT 230
+    "hoa-giai-tranh-chap-dat-dai": _TAT_CA,  # STT 231
     "cap-ban-sao-van-bang-so-goc": _TAT_CA,
     "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": _TAT_CA,
     "cho-thue-thue-mua-nha-o-xa-hoi": frozenset({"danang"}),  # STT 147: chỉ Đà Nẵng hoàn thiện
@@ -9735,7 +9736,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": _TAT_CA,
     "dang-ky-hanh-nghe": _TAT_CA,
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA,
-    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA - {"tuyenquang"},  # STT 64: Tuyên Quang Chưa cập nhật
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA,  # STT 64
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": _TAT_CA,
     "cap-lai-giay-phep-hanh-nghe-truoc-2024": frozenset({"danang"}),  # STT 66: chỉ Đà Nẵng hoàn thiện
     "dieu-chinh-giay-phep-hoat-dong-kcb": _TAT_CA,
@@ -9767,9 +9768,9 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-phep-long-duong-via-he": frozenset({"danang"}),  # STT 138: chỉ Đà Nẵng hoàn thiện
     "cap-giay-phep-lien-van-viet-lao": _TAT_CA,
     "cap-giay-phep-chat-ha-cay-xanh": _TAT_CA,
-    "chap-thuan-dau-noi-tam": frozenset(),  # không có trong bảng
+    "chap-thuan-dau-noi-tam": _TAT_CA,  # STT 232
     "gia-han-luu-hanh-phuong-tien-lao": _TAT_CA,
-    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": frozenset(),  # không có trong bảng
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": _TAT_CA,  # STT 233
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": _TAT_CA,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": _TAT_CA,
     "cham-dut-hoat-dong-ho-kinh-doanh": _TAT_CA,
@@ -9791,7 +9792,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "ho-tro-nguoi-cao-tuoi-bac-ninh": _TAT_CA,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": _TAT_CA,
     "dang-ky-nha-o-xa-hoi-bac-ninh": _TAT_CA,
-    "dang-ky-tam-tru": frozenset(),  # không có trong bảng
+    "dang-ky-tam-tru": _TAT_CA,  # STT 234
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": _TAT_CA,
@@ -9801,21 +9802,21 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
-    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": _TAT_CA,  # STT 50
+    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset(),  # STT 50: Bắc Ninh Chưa cập nhật
     "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
     "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": _TAT_CA,  # STT 41 + STT 208
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": _TAT_CA,  # STT 190
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": _TAT_CA,  # STT 207
-    "dinh-chinh-gcn-da-cap-khanh-hoa": _TAT_CA,  # STT 103 (như dinh-chinh-gcn-da-cap-bac-ninh)
+    "dinh-chinh-gcn-da-cap-khanh-hoa": frozenset(),  # STT 103: Khánh Hòa Chưa cập nhật
     "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,
-    "cap-the-huong-dan-vien-du-lich-quoc-te": _TAT_CA,  # 1.004628 — cổng Bộ VHTTDL dùng chung toàn quốc (user 10/11)
+    "cap-the-huong-dan-vien-du-lich-quoc-te": frozenset(),  # 1.004628 không có trong bảng 11/11 (10/11 từng mở toàn quốc)
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "to-chuc-bieu-dien-nghe-thuat": _TAT_CA,
@@ -9829,16 +9830,16 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": _TAT_CA,
     "cap-gcn-attp-cong-thuong": _TAT_CA,
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": _TAT_CA,
-    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": frozenset(),  # không có trong bảng
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": _TAT_CA,  # STT 235
     "xet-tuyen-vien-chuc": frozenset({"laichau"}),  # STT 88: chỉ Lai Châu hoàn thiện
     "xet-tuyen-cong-chuc": frozenset({"laichau"}),  # STT 80: chỉ Lai Châu hoàn thiện
     "thi-tuyen-cong-chuc": frozenset({"laichau"}),  # STT 81: chỉ Lai Châu hoàn thiện
     "gia-han-chung-chi-hanh-nghe-thu-y": _TAT_CA,
-    # STT 120: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
-    "xoa-dang-ky-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
+    # STT 120: Bắc Ninh Pending; Tuyên Quang Chưa cập nhật
+    "xoa-dang-ky-tau-ca": _TAT_CA - {"bacninh", "tuyenquang"},
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": _TAT_CA,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": _TAT_CA,
-    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh": frozenset(),  # không có trong bảng
+    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh": _TAT_CA,  # STT 236
     "dang-ky-nha-o-xa-hoi-tuyen-quang": _TAT_CA,
     "tham-dinh-bcnckt": _TAT_CA,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": _TAT_CA,
