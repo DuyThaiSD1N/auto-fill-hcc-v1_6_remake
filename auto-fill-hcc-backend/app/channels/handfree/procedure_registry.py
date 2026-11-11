@@ -1149,6 +1149,9 @@ PROCEDURES: list[dict] = [
         "mode": "attach",
         "roles": [],
         "useDangKyBy": False,
+        # Planner tách theo trang khi máy quầy bật "tách giấy tờ" (flow chỉ gửi khi engine cắt được trang);
+        # mỗi đoạn trang thành một tệp, chế độ tách hồ sơ đưa mỗi tệp sang một tab.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Giấy tờ cần chứng thực bản sao (không giới hạn số lượng tệp).\n"

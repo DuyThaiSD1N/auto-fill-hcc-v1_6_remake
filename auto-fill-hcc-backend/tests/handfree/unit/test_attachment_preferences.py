@@ -53,7 +53,7 @@ def test_supported_procedure_receives_true_and_false_preferences():
 
 
 def test_unsupported_procedure_does_not_receive_split_documents_or_lose_split_mode():
-    conversation = _modern_conversation("chung-thuc-ban-sao", True)
+    conversation = _modern_conversation("cap-ban-sao-so-goc", True)
     options = _attachment_options(conversation, {"splitMode": True})
 
     assert "splitDocuments" not in options
@@ -80,7 +80,9 @@ def test_registry_enables_only_handfree_procedures_with_split_planners():
     }
 
     assert all(get_procedure(key).get("supportsSplitDocuments") is True for key in supported)
-    assert get_procedure("chung-thuc-ban-sao").get("supportsSplitDocuments") is not True
+    assert get_procedure("cap-ban-sao-so-goc").get("supportsSplitDocuments") is not True
+    # Bản sao: một file scan nhiều giấy được cắt theo trang, mỗi giấy một tệp/một tab.
+    assert get_procedure("chung-thuc-ban-sao").get("supportsSplitDocuments") is True
     # Chữ ký có nhánh tách trang + chia hồ sơ theo văn bản/CCCD; flow vẫn chỉ gửi khi engine cắt được trang.
     assert get_procedure("chung-thuc-chu-ky").get("supportsSplitDocuments") is True
 

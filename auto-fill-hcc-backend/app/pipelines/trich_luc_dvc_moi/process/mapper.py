@@ -240,12 +240,6 @@ def _area(value, ocr_text: str = ""):
     remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
     if not isinstance(remapped, dict):
         return area
-    # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
-    old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
-    new_ward = str(remapped.get("xa") or "")
-    detail = str(remapped.get("diaChi") or "").strip()
-    if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
-        remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
     # Không có tỉnh → tỉnh DUY NHẤT có xã tên này; lấy đủ nhãn danh mục ("Xã ...") để khớp option.
     if not remapped.get("tinh") and remapped.get("xa"):
         found = province_for_ward(remapped["xa"])

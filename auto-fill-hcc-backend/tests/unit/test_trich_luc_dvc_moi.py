@@ -738,3 +738,12 @@ def test_khai_tu_co_quan_dang_ky_lay_nguyen_dong(ocr):
 ])
 def test_co_to_khai_hoac_nhieu_noi_dang_ky_giu_gia_tri_luot_trich(ocr):
     assert _co_quan_dang_ky(ocr) == "UBND phường X"
+
+
+def test_noi_cu_tru_xa_cu_doi_sang_don_vi_moi_thi_chi_tiet_khong_kem_ten_xa_cu():
+    values = {**SUBJECT, "NguoiDuocCap_NoiCuTru": {"tinh": "Lâm Đồng", "huyen": "Đà Lạt", "xa": "Phường 9",
+                                                   "diaChi": "Số 1"}}
+    out, _ = _enrich(values, _context())
+    area = _area_fields(out)
+    assert area["citizenNDK_PhuongXa"]["value"] == "Phường Lâm Viên - Đà Lạt"
+    assert area["citizenField38"]["value"] == "Số 1"
