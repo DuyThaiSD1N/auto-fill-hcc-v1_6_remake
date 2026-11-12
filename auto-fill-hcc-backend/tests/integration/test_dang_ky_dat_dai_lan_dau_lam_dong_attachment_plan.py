@@ -169,3 +169,42 @@ def test_prompt_co_bay_va_rang_buoc_khong_bo_sot():
     # Prompt mô tả theo TÊN Ô, không hardcode số dòng (bảng đã đổi một lần rồi).
     assert "STT 19" not in SYSTEM_PROMPT
     assert "3 phần tử" in build_user_prompt([{"index": i, "text": ""} for i in range(3)])
+
+
+def test_dien_don_tu_nop_bam_nut_nguoi_nop_la_chu_ho_so():
+    """Phần điền (process mapper): tự nộp → điền Phần I + thửa đất, bấm data[BUTTON3] chép xuống Phần III. Dữ liệu bịa."""
+    from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.process import mapper
+
+    raw = [
+        {"name": "Nguoi_HoTen", "value": "Nguyễn Văn An"},
+        {"name": "Nguoi_SoDinhDanh", "value": "001090000001"},
+        {"name": "Nguoi_NgaySinh", "value": "01/02/1990"},
+        {"name": "Nguoi_GioiTinh", "value": "Nam"},
+        {"name": "Nguoi_DienThoai", "value": "0900000001"},
+        {"name": "Nguoi_ThuongTru", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt",
+                                              "chiTietDuoiXa": "Số 1 đường A"}},
+        {"name": "ThuaDat_DiaChi", "value": {"tinh": "Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}},
+    ]
+    fields, warnings = mapper.enrich(raw, {})
+    by_name = {f["name"]: f["value"] for f in fields}
+    assert by_name["data[fullname]"] == "Nguyễn Văn An"
+    assert by_name["data[identityNumber]"] == "001090000001"
+    assert by_name["data[phoneNumber]"] == "0900000001"
+    assert by_name["data[province2]"] and by_name["data[village2]"]
+    assert by_name["data[BUTTON3]"] is True and "data[ownerFullname]" not in by_name
+    assert not warnings
+
+
+def test_tro_ly_mo_rieng_lam_dong_cung_key_voi_loi():
+    """Trợ lý (12/11/2026): cùng key lõi → process/attach tự nối; chỉ tài khoản Lâm Đồng thấy; luồng iGate 4 bước."""
+    from app.channels.handfree import procedure_registry as handfree
+    from app.procedures import registry as core
+
+    key = "dang-ky-dat-dai-lan-dau-lam-dong"
+    proc = handfree.get_procedure(key)
+    assert handfree.get_pipeline(key) is core.get_pipeline(key)
+    assert handfree.get_attach_pipeline(key) is core.get_attach_pipeline(key) is planner.plan
+    assert proc["provinceOnly"] == ["lamdong"] and proc["bxdFlow"]["capability"] == "supportsBxdFlowLamDong"
+    assert "1.116360" in proc["detect"]["textIncludes"] and proc["detect"]["urlScope"] == ["lamdong.gov.vn"]
+    assert handfree.is_visible_in_province(proc, "lamdong")
+    assert not handfree.is_visible_in_province(proc, "khanhhoa")

@@ -291,6 +291,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # bxd chạy trên host đó) — thủ tục khai bxdFlow.capability. Thiếu ở whitelist thì cờ bị lọc, luồng không bao giờ bật.
         "supportsBxdFlowTuyenQuang": raw.get("supportsBxdFlowTuyenQuang") is True,
         "supportsBxdFlowKhanhHoa": raw.get("supportsBxdFlowKhanhHoa") is True,
+        # Cổng tỉnh iGate Lâm Đồng (dichvucong.lamdong.gov.vn) — cùng luồng 4 bước như Khánh Hòa.
+        "supportsBxdFlowLamDong": raw.get("supportsBxdFlowLamDong") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,

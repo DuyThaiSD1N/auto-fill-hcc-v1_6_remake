@@ -704,7 +704,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
 
     keys = {p["key"] for p in public_list()}
     assert set(registry._CONFIGS) == {"khai-sinh-dang-ky-lai", "ket-hon", "xac-nhan-tinh-trang-hon-nhan", "khai-tu",
-                                     "khai-sinh-dang-ky-thuong", "thay-doi-cai-chinh-ho-tich",
+                                     "khai-sinh-dang-ky-thuong", "khai-sinh-nuoc-ngoai", "thay-doi-cai-chinh-ho-tich",
                                      "trich-luc-ks", "dang-ky-lai-ket-hon", "ket-hon-nuoc-ngoai",
                                      "khai-tu-dang-ky-lai", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
                                      "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
@@ -773,7 +773,8 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
                                      "cap-doi-the-huong-dan-vien-du-lich-da-nang",
                                      "cap-lai-the-huong-dan-vien-du-lich-da-nang",
-                                     "dang-ky-khuyen-mai-may-rui-mot-tinh", "xoa-dang-ky-phuong-tien-thuy"}
+                                     "dang-ky-khuyen-mai-may-rui-mot-tinh", "xoa-dang-ky-phuong-tien-thuy",
+                                     "dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

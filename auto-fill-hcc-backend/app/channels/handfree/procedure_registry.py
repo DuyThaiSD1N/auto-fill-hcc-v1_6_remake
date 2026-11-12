@@ -45,6 +45,12 @@ _KH_TAI_SAN_CASE_OPTIONS = [
     {"match": "dang ky thay doi ve tai san", "options": {"truongHop": "thay_doi"}},
     {"match": "", "options": {}},
 ]
+# Cổng iGate Lâm Đồng (dichvucong.lamdong.gov.vn, Form.io apply-online): cùng nền stepper 4 bước như Tuyên Quang / Khánh
+# Hòa; cờ riêng vì bản extension cũ chưa đọc hộp thoại chọn trường hợp / chưa chạy content/bxd/*.js trên host này.
+_LD_BXD_FLOW = {
+    "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+    "capability": "supportsBxdFlowLamDong",
+}
 
 # Cổng Lai Châu (dichvucong.laichau.gov.vn, eForm Nth, mỗi bước một trang "Bước N - …"; chat/lai_chau.py, extension
 # content/laichau/portal.js, cờ supportsLaiChauFeeStep): trang "Trường hợp nộp hồ sơ" đọc / chọn caseGroups, nút cam
@@ -288,6 +294,51 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt cha/mẹ/con theo nội dung.\n"
             "Bước 3: hệ thống có thể đính giấy chứng sinh vào thành phần hồ sơ có sẵn, "
             "hoặc thêm thành phần CCCD bố/mẹ nếu cần."
+        ),
+    },
+    {
+        # Khai sinh có yếu tố nước ngoài (2.000528) — cùng trang nộp một trang SurveyJS với khai sinh 1.001193.
+        "key": "khai-sinh-nuoc-ngoai",
+        "detect": {
+            # Detect giống hệt lõi (test_flow_profiles so bằng ==).
+            "urlIncludes": ["formalityId=019d2bfd-8662-763f-927f-dc039ede198c"],
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai sinh có yếu tố nước ngoài", "người được đăng ký khai sinh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
+        "shortLabel": "Khai sinh có yếu tố nước ngoài",
+        "subtitle": "Cha hoặc mẹ là người nước ngoài, hoặc con sinh ở nước ngoài",
+        "icon": "🌏",
+        "flowProfile": "tu-phap-moi",
+        "supportsSplitDocuments": True,
+        # URL kê khai trong ke_khai_links.json (mã TTHC 2.000528).
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8662-763f-927f-dc039ede198c",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "chung_sinh", "name": "Giấy chứng sinh", "icon": "📃", "sides": 1, "repeatable": True},
+            {"key": "thoa_thuan_quoc_tich", "name": "Văn bản thỏa thuận lựa chọn quốc tịch cho con",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            # Khóa "cccd": bộ phân loại ảnh chỉ dồn thẻ CCCD vào ô có khóa bắt đầu bằng "cccd" (như 1.001193).
+            {"key": "cccd", "name": "CCCD, hộ chiếu của cha, mẹ (kèm bản dịch nếu là giấy nước ngoài)",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "ket_hon_cha_me", "name": "Giấy chứng nhận kết hôn của cha mẹ",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Các giấy tờ khác liên quan (tờ khai, kết quả ADN, giấy xác nhận quốc tịch)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng sinh của con.\n"
+            "2. Văn bản thỏa thuận của cha mẹ về việc lựa chọn quốc tịch cho con.\n"
+            "3. CCCD của cha/mẹ người Việt Nam; hộ chiếu / giấy tờ tùy thân của cha/mẹ người nước ngoài kèm bản dịch.\n"
+            "4. Giấy chứng nhận kết hôn của cha mẹ (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt cha/mẹ/con theo nội dung."
         ),
     },
     {
@@ -7303,6 +7354,111 @@ PROCEDURES: list[dict] = [
             "4; hồ sơ gia hạn: Đơn Mẫu số 04 → dòng 14, Giấy chứng nhận → dòng 13."
         ),
     },
+    # ── Thủ tục đất đai cổng iGate Lâm Đồng (12/11/2026) ──
+    # Key TRÙNG lõi → process/attach tự nối; detect y hệt lõi (urlScope lamdong.gov.vn + mã in trên trang: URL chỉ mang
+    # ObjectId theo phường, mã 1.116356 / 1.116360 là mã quốc gia); label = label lõi bỏ "[Tỉnh Lâm Đồng] ". Hai mã đều
+    # do UBND cấp xã giải quyết, ke_khai_links không khai provinceOnlyAgency / selectSo → DVCQG chọn đủ Tỉnh + Phường/Xã
+    # của tài khoản. "Nộp trực tuyến" sang cổng iGate tỉnh → luồng chung "xay-dung" + bxdFlow như Khánh Hòa. Đây là hai
+    # thủ tục đầu tiên của trợ lý trên cổng Lâm Đồng: hộp thoại/stepper suy theo cùng nền iGate, chưa chạy thử cổng thật.
+    {
+        "key": "dang-ky-dat-dai-lan-dau-lam-dong",
+        "provinceOnly": ["lamdong"],  # đặc thù Lâm Đồng: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.116360. Bảng đính kèm 20 dòng (QĐ 40/2026/QĐ-UBND), ô nhận nhiều tệp, không gộp PDF.
+        "detect": {
+            "urlScope": ["lamdong.gov.vn"],
+            "textIncludes": ["đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận", "1.116360"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản "
+            "gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp Giấy chứng nhận quyền sử dụng đất lần đầu",
+        "subtitle": "Kê khai đăng ký đất đai và xin cấp Giấy chứng nhận quyền sử dụng đất lần đầu tại Lâm Đồng",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff942-728b-7758-9aa7-bf989b67791a",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Lâm Đồng",
+        "bxdFlow": _LD_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Sơ đồ ranh giới, trích lục bản đồ địa chính, mảnh trích đo / đo đạc chỉnh lý, "
+             "bản mô tả ranh giới mốc giới", "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "nguon_goc", "name": "Giấy tờ về nguồn gốc đất (đơn xác nhận nguồn gốc, giấy xác nhận của UBND, "
+             "giấy tờ chuyển quyền, thừa kế…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hộ / người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy ủy quyền (nếu nộp thay), văn bản xác định thành viên có chung quyền sử dụng "
+             "đất của hộ, biên lai thuế/phí (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) đã kê khai, ký — nguồn chính điền người "
+            "nộp, thửa đất, chủ hồ sơ.\n"
+            "2. Sơ đồ ranh giới, trích lục bản đồ địa chính, mảnh trích đo / đo đạc chỉnh lý, bản mô tả ranh giới mốc "
+            "giới.\n"
+            "3. Giấy tờ về nguồn gốc đất (nếu có).\n"
+            "4. Căn cước công dân của chủ hộ; nếu nộp thay: giấy ủy quyền. Nếu có: văn bản xác định thành viên có chung "
+            "quyền sử dụng đất của hộ, biên lai thuế/phí.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm (mỗi giấy tờ là một tệp riêng, không gộp): Đơn + CCCD → dòng 19; giấy ủy quyền → dòng 18; "
+            "mảnh trích đo, trích lục, mô tả ranh giới → dòng 14; biên lai → dòng 16; giấy tờ nguồn gốc → dòng 1."
+        ),
+    },
+    {
+        "key": "dang-ky-dien-tich-tang-them-lam-dong",
+        "provinceOnly": ["lamdong"],  # đặc thù Lâm Đồng: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.116356. Bảng đính kèm 6 dòng (attp-row), mỗi tệp vào đúng một dòng, CCCD đi chung dòng Đơn Mẫu 18.
+        "detect": {
+            "urlScope": ["lamdong.gov.vn"],
+            "textIncludes": ["diện tích tăng thêm do thay đổi ranh giới so với giấy chứng nhận đã cấp", "1.116356"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi ranh giới so với Giấy "
+            "chứng nhận đã cấp; đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất "
+            "đối với toàn bộ diện tích đất đang sử dụng"
+        ),
+        "shortLabel": "Đăng ký, cấp Giấy chứng nhận cho diện tích đất tăng thêm",
+        "subtitle": "Xin cấp Giấy chứng nhận cho phần đất tăng thêm do thay đổi ranh giới tại Lâm Đồng",
+        "icon": "📐",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa35-8897-75ab-8df2-ad29f8212567",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Lâm Đồng",
+        "bxdFlow": _LD_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "tang_them", "name": "Giấy tờ chứng minh phần diện tích tăng thêm (bản mô tả ranh giới, mốc giới; "
+             "văn bản xác nhận không tranh chấp…)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo / mảnh đo đạc chỉnh lý bản đồ địa chính thửa đất", "icon": "🗺️",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền (nếu nộp thay), tờ khai thuế (nếu có)", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã kê khai, ký — nguồn chính điền "
+            "người nộp, thửa đất, chủ hồ sơ; nội dung biến động ghi vào ô Ghi chú.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp (dùng cho cả phần thông tin Giấy chứng nhận).\n"
+            "3. Giấy tờ chứng minh phần diện tích tăng thêm: bản mô tả ranh giới, mốc giới thửa đất, công văn công khai "
+            "ranh giới, văn bản xác nhận không có tranh chấp.\n"
+            "4. Mảnh trích đo / mảnh đo đạc chỉnh lý bản đồ địa chính thửa đất.\n"
+            "5. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền. Nếu có: tờ khai thuế.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: mỗi tệp vào đúng một dòng theo loại giấy chính của tệp (Đơn + CCCD → dòng 1, Giấy chứng "
+            "nhận → dòng 2, giấy tờ chứng minh tăng thêm → dòng 3, mảnh trích đo → dòng 4). Một tệp quét gộp cả mảnh "
+            "đo lẫn bản mô tả ranh giới chỉ vào một dòng — nên tách thành hai tệp."
+        ),
+    },
     # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối qua core_registry. Cờ chọn cơ quan theo ke_khai_links: selectSo →
     # agencyProvinceOnly + agencySoFirst; provinceOnlyAgency → agencyProvinceOnly (+ maePortal cổng NN&MT). Cổng Bộ
@@ -9699,6 +9855,7 @@ _TAT_CA = frozenset(_TINH_THEO_DOI)
 _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "khai-sinh-dang-ky": _TAT_CA,  # STT 10 (bảng ghi mã 2.000986)
     "khai-sinh-dang-ky-thuong": _TAT_CA,
+    "khai-sinh-nuoc-ngoai": _TAT_CA,  # 12/11/2026: chưa có trong bảng, người dùng chốt cả 11 tỉnh
     "ket-hon": _TAT_CA,
     "dang-ky-giam-ho": _TAT_CA,
     "dang-ky-cham-dut-giam-ho": _TAT_CA,
@@ -9815,21 +9972,24 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
-    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset(),  # STT 50: Bắc Ninh Chưa cập nhật
+    "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset({"bacninh"}),  # STT 50; 12/11/2026 người dùng mở cho Bắc Ninh
     "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
     "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
     "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa": _TAT_CA,  # STT 41 + STT 208
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": _TAT_CA,  # STT 190
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": _TAT_CA,  # STT 207
-    "dinh-chinh-gcn-da-cap-khanh-hoa": frozenset(),  # STT 103: Khánh Hòa Chưa cập nhật
+    "dinh-chinh-gcn-da-cap-khanh-hoa": frozenset({"khanhhoa"}),  # STT 103; 12/11/2026 người dùng mở cho Khánh Hòa
     "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,
+    # 12/11/2026: người dùng mở riêng cho Lâm Đồng (1.116360, 1.116356) — bản riêng tỉnh, provinceOnly ["lamdong"].
+    "dang-ky-dat-dai-lan-dau-lam-dong": frozenset({"lamdong"}),
+    "dang-ky-dien-tich-tang-them-lam-dong": frozenset({"lamdong"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,
-    "cap-the-huong-dan-vien-du-lich-quoc-te": frozenset(),  # 1.004628 không có trong bảng 11/11 (10/11 từng mở toàn quốc)
+    "cap-the-huong-dan-vien-du-lich-quoc-te": _TAT_CA,  # 1.004628 vắng bảng 11/11; 12/11/2026 người dùng mở lại toàn quốc
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": _TAT_CA,
     "to-chuc-bieu-dien-nghe-thuat": _TAT_CA,

@@ -470,6 +470,8 @@ from app.pipelines.cai_chinh_dvc_moi.attach import plan as cai_chinh_dvc_moi_att
 from app.pipelines.cai_chinh_dvc_moi.process import run as cai_chinh_dvc_moi_process
 from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_attach
 from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
+from app.pipelines.khai_sinh_nuoc_ngoai.attach import plan as khai_sinh_nuoc_ngoai_attach
+from app.pipelines.khai_sinh_nuoc_ngoai.process import run as khai_sinh_nuoc_ngoai_process
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach import plan as xac_nhan_tthn_dvc_moi_attach
 from app.pipelines.xac_nhan_tthn_dvc_moi.process import run as xac_nhan_tthn_dvc_moi_process
 from app.pipelines.xac_nhan_thong_tin_ho_tich.attach import plan as xac_nhan_thong_tin_ho_tich_attach
@@ -1530,6 +1532,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "khai-sinh-nuoc-ngoai",
+        # Mã 2.000528, Cổng DVC quốc gia bản mới (/nop-ho-so, SurveyJS) — cùng tờ khai điện tử với 1.001193. Tiêu đề
+        # "Thủ tục đăng ký khai sinh có yếu tố nước ngoài" CHỨA cụm nhận diện của 1.001193 → khai cả cụm dài: bước
+        # textPriority chọn rule có tổng độ dài cụm lớn nhất nên thủ tục này thắng trên trang của nó. formalityId
+        # (UUID trang thủ tục trong ke_khai_links) khớp URL thì nhận ngay.
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-8662-763f-927f-dc039ede198c"],
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai sinh có yếu tố nước ngoài", "người được đăng ký khai sinh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai sinh (nếu có), giấy chứng sinh.\n"
+            "2. Văn bản thỏa thuận của cha mẹ về việc lựa chọn quốc tịch cho con; giấy xác nhận quốc tịch của cơ "
+            "quan nước ngoài (nếu có).\n"
+            "3. Giấy chứng nhận kết hôn của cha mẹ; CCCD của cha/mẹ Việt Nam; hộ chiếu / giấy tờ tùy thân của cha/mẹ "
+            "người nước ngoài kèm bản dịch.\n"
+            "4. Nếu có: kết quả ADN, giấy tờ nước ngoài xác nhận việc sinh ở nước ngoài, văn bản ủy quyền.\n"
+            "Khối người nộp giữ nguyên theo tài khoản. Địa chỉ ở nước ngoài chọn 'Khác' + Quốc gia; người mang quốc "
+            "tịch nước ngoài chọn dân tộc 'Người nước ngoài'.\n"
+            "Đính kèm: giấy chứng sinh, văn bản thay giấy chứng sinh, giấy tờ sinh ở nước ngoài, thỏa thuận quốc tịch, "
+            "ủy quyền vào đúng dòng; giấy kết hôn, hộ chiếu, bản dịch, ADN đính chung dòng Giấy chứng sinh."
+        ),
+    },
+    {
         "key": "xac-nhan-thong-tin-ho-tich",
         # Mã TTHC 2.002516, nhóm hộ tịch, cổng dichvucongnganhtuphap.moj.gov.vn (link kê khai trên Cổng DVC
         # quốc gia chuyển sang sau khi chọn cơ quan). Pipeline trả HAI bộ ô: trang "Thông tin chủ hồ sơ"
@@ -1807,15 +1844,17 @@ PROCEDURES: list[dict] = [
         "key": "dinh-chinh-sai-sot-lam-dong",
         # Cổng dichvucong.lamdong.gov.vn (Form.io/Angular apply-online) — CÙNG nền tảng GPXD lamdong,
         # engine fill standard dom-*. URL chỉ có ObjectId THEO PHƯỜNG (đổi theo mỗi phường/xã) → KHÔNG
-        # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.115446.H36" (H36 = mã tỉnh
-        # Lâm Đồng, giống mọi phường). Mã H36 KHÔNG có ở trang Lai Châu (tiêu đề trùng) → tách được 2 tỉnh;
-        # tổng cụm dài hơn rule Lai Châu ("đính chính"+"sai sót") nên thắng điểm trên trang Lâm Đồng.
+        # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.116358" in trên trang. Mã
+        # này là mã quốc gia (cùng đợt 1.116356 / 1.116360 / 1.116365) nên urlScope Lâm Đồng là thứ tách
+        # khỏi trang Lai Châu cùng tiêu đề; tổng cụm dài hơn rule Lai Châu ("đính chính"+"sai sót") nên
+        # thắng điểm trên trang Lâm Đồng. Cụm "1.116358" khớp cả khi cổng in kèm hậu tố ".H36".
         # urlScope = cổng gate: chỉ tin text khi URL đúng cổng Lâm Đồng (URL chỉ có ObjectId theo
         # phường, không định danh thủ tục) → tránh dương tính giả nếu trang khác trùng cụm text.
         "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
             "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
-            # Mã đổi 1.012796 -> 1.115446 (thông báo 1283/TB-SNNMT ngày 04/8/2026), giống Bắc Ninh ở trên.
-            "1.115446.H36",
+            # Mã đổi 1.012796 -> 1.115446.H36 (thông báo 1283/TB-SNNMT ngày 04/8/2026) -> 1.116358
+            # (12/11/2026, link DVCQG 019ffa04-f009-766a-87ab-57516eae6c77). Cổng chỉ còn phát mã mới.
+            "1.116358",
         ]},
         "label": "[Tỉnh Lâm Đồng] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
@@ -1832,9 +1871,9 @@ PROCEDURES: list[dict] = [
             "Điền đơn (Form.io): Phần I Người nộp, Phần II Thửa đất, Phần III Chủ hồ sơ, Phần IV Chi tiết GCN "
             "(số phát hành, ngày cấp, đơn vị cấp, nơi cấp); nội dung đính chính vào ô Ghi chú.\n"
             "Nếu nộp qua người được ủy quyền: Phần I là người đại diện, Phần III là chủ hồ sơ (chủ GCN).\n"
-            "Đính kèm: GCN + Giấy khai sinh vào dòng 'Giấy tờ chứng minh sai sót'; Đơn Mẫu 18 + CCCD vào dòng "
-            "'Đơn đăng ký biến động Mẫu số 18'; Giấy ủy quyền (nếu có) vào dòng 'Văn bản ủy quyền'. Bản gốc "
-            "GCN nộp trực tiếp một cửa, không scan.\n"
+            "Đính kèm (4 dòng theo thứ tự trên cổng): Đơn Mẫu 18 + Bảng 18a + CCCD vào dòng 'Đơn đăng ký biến "
+            "động… Mẫu số 18'; GCN vào dòng 'Giấy chứng nhận đã cấp'; Giấy khai sinh vào dòng 'Giấy tờ chứng "
+            "minh sai sót'; Giấy ủy quyền (nếu có) vào dòng 'Văn bản về việc đại diện'.\n"
             "Tỉnh/Phường (3 khối địa chỉ) là select cascade Choices.js — extension tự chọn theo tên MỚI."
         ),
     },
@@ -10426,6 +10465,7 @@ del _key, _cu, _cu_detect, _goc
 # Map procedure key → hàm pipeline.run
 _PIPELINE = {
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_process,
+    "khai-sinh-nuoc-ngoai": khai_sinh_nuoc_ngoai_process,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_process,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_process,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_process,
@@ -10891,6 +10931,7 @@ _ATTACH_PIPELINE = {
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,
+    "khai-sinh-nuoc-ngoai": khai_sinh_nuoc_ngoai_attach,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_attach,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_attach,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_attach,

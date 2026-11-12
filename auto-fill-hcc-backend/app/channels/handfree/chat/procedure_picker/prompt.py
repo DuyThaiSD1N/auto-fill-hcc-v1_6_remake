@@ -17,6 +17,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                  "đăng ký khai sinh quá hạn",
                                  "khai sinh cho người đã lớn chưa từng đăng ký khai sinh",
                                  "khai sinh cho trẻ từ 6 tuổi trở lên"],
+    # Cha hoặc mẹ là người nước ngoài / con sinh ở nước ngoài. Cha mẹ CHƯA kết hôn mà cha nước ngoài nhận con
+    # cùng lúc khai sinh → "khai-sinh-ket-hop-nhan-cha-me-con"; cả cha mẹ người Việt sinh con trong nước → khai sinh thường.
+    "khai-sinh-nuoc-ngoai": ["khai sinh có yếu tố nước ngoài", "làm giấy khai sinh cho con có bố là người nước ngoài",
+                             "khai sinh cho con có mẹ là người nước ngoài", "con lai cần làm giấy khai sinh",
+                             "khai sinh cho con sinh ở nước ngoài về Việt Nam",
+                             "làm khai sinh và chọn quốc tịch nước ngoài cho con"],
     "ket-hon": ["đăng ký kết hôn trong nước", "làm giấy đăng ký kết hôn", "lấy giấy kết hôn", "cưới"],
     "khai-tu": ["làm giấy khai tử", "làm giấy chứng tử", "báo tử cho người nhà mới mất",
                 "người nhà mất cần đăng ký khai tử"],
@@ -493,6 +499,17 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ", "sổ đỏ ghi sai tên, sai năm sinh",
         "cập nhật số căn cước thay chứng minh thư trên sổ đỏ", "sổ đỏ ghi sai nguồn gốc sử dụng đất",
         "đính chính sổ đỏ ở khánh hòa"],
+    # Bản Lâm Đồng (provinceOnly): đất CHƯA có sổ, xin cấp lần đầu — KHÁC thẻ diện tích tăng thêm ngay dưới (đã có sổ,
+    # chỉ xin cấp cho phần đất tăng thêm do ranh giới thay đổi).
+    "dang-ky-dat-dai-lan-dau-lam-dong": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
+                                         "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
+                                         "đăng ký đất đai lần đầu", "cấp sổ đỏ lần đầu ở lâm đồng"],
+    # Bản Lâm Đồng (provinceOnly): ĐÃ có sổ nhưng đo lại thấy đất rộng hơn do ranh giới thay đổi, xin cấp sổ cho phần
+    # tăng thêm / cả thửa đang dùng — KHÁC đăng ký lần đầu (chưa có sổ) và tách/hợp thửa.
+    "dang-ky-dien-tich-tang-them-lam-dong": ["đo lại đất rộng hơn trên sổ đỏ", "diện tích đất tăng thêm so với sổ",
+                                             "xin cấp sổ cho phần đất tăng thêm", "ranh giới thửa đất thay đổi",
+                                             "cấp giấy chứng nhận cho toàn bộ diện tích đất đang sử dụng",
+                                             "đăng ký diện tích tăng thêm ở lâm đồng"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",

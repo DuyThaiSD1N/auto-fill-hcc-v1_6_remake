@@ -130,6 +130,22 @@ Mỗi khi làm pipeline cho thủ tục mới, key thủ tục trong `app/proced
 `tests/unit/test_hoa_giai_tranh_chap_dat_dai.py`. Thủ tục chưa có link thì thêm link vào `ke_khai_links.json`
 trước, chốt key ở đó rồi mới đặt tên folder. Không tự đặt tên folder khác key (kiểu viết tắt, đổi thứ tự chữ).
 
+### Thủ tục mới có đính kèm thì luôn hỗ trợ tách file
+
+Theo yêu cầu người dùng (12/11/2026): mọi thủ tục mới có bước đính kèm phải chạy được cả khi extension BẬT
+cài đặt "Tách giấy tờ", không cần người dùng nhắc. Cụ thể:
+
+1. Entry trong `app/procedures/registry.py` khai `"supportsSplitDocuments": True` (thiếu cờ thì planner luôn cắt
+   trang dù người dùng tắt cài đặt). Thủ tục đưa lên trợ lý thì entry trong `procedure_registry.py` cũng khai cờ này.
+2. Pipeline có `attach/planner.py` điều phối theo `options.splitDocuments is True` (chỉ boolean True mới tách; client
+   cũ / tắt tách đính nguyên tệp) giữa `attach/dinh_kem_tach/` và `attach/dinh_kem_khong_tach/`.
+3. Chế độ tách: LLM chia giấy theo trang trong MỘT lượt, mỗi giấy một mục có `sourceSegments`, không sót trang,
+   ghép hai mặt CCCD; OCR / LLM lỗi thì quay về chế độ không tách. Dùng lại hàm chia trang của một thủ tục cùng cổng
+   (vd `khai_sinh_dvc_moi/attach/dinh_kem_tach/planner.py` cho Cổng DVC quốc gia mới), chỉ viết riêng prompt và
+   bảng dòng.
+4. Test của pipeline có ca tách đúng dòng + không sót trang, ca tắt tách đính nguyên tệp, ca tách lỗi quay về
+   không tách. Mẫu: `tests/unit/test_khai_sinh_nuoc_ngoai.py` (2.000528).
+
 ### Làm thủ tục mới thì đưa lên cả trợ lý người dân (tro-ly-nguoi-dan)
 
 Không cần người dùng nhắc: làm xong pipeline lõi (Auto Fill) thì đưa luôn thủ tục đó lên trợ lý, cùng key. Chép theo

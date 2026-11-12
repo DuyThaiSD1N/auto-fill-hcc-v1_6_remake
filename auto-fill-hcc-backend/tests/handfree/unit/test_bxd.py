@@ -252,6 +252,28 @@ def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
 _KH_CAPS = {**CAPS, "supportsBxdFlowKhanhHoa": True}
 
 
+@pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"])
+def test_cong_lam_dong_can_co_rieng_ban_cu_giu_luong_cu(key):
+    """Cổng tỉnh Lâm Đồng (dichvucong.lamdong.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
+    này → thiếu supportsBxdFlowLamDong thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa không mở được)."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", caps=_KH_CAPS, procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**_KH_CAPS, "supportsBxdFlowLamDong": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    config = registry.get(key)
+    assert config["required"] == () and {"ghiChu", "organization"} <= set(config["noAsk"])
+    # data[district]/[district1] trên form Lâm Đồng là ô Phường/Xã → vẫn hỏi khi trống.
+    assert not {"district", "district1"} & set(config["noAsk"])
+    assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
 @pytest.mark.parametrize("key", [
     "dang-ky-dat-dai-lan-dau-khanh-hoa",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
@@ -293,6 +315,7 @@ def test_co_cong_tinh_igate_qua_duoc_whitelist_cua_router():
     caps = router._clean_client_capabilities({"supportsBxdFlowTuyenQuang": True, "supportsBxdFlowKhanhHoa": True})
     assert caps["supportsBxdFlowTuyenQuang"] is True and caps["supportsBxdFlowKhanhHoa"] is True
     assert router._clean_client_capabilities({})["supportsBxdFlowKhanhHoa"] is False
+    assert router._clean_client_capabilities({"supportsBxdFlowLamDong": True})["supportsBxdFlowLamDong"] is True
     capabilities = {(p.get("bxdFlow") or {}).get("capability") for p in PROCEDURES} - {None}
     assert capabilities <= set(router._clean_client_capabilities({}))
 

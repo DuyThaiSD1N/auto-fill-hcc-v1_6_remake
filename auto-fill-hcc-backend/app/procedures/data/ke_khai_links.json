@@ -73,6 +73,14 @@
       "autoConfirm": true
     },
     {
+      "key": "khai-sinh-nuoc-ngoai",
+      "code": "2.000528",
+      "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8662-763f-927f-dc039ede198c",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "khai-sinh-da-co-ho-so",
       "code": "1.004772",
       "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
@@ -1553,6 +1561,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dinh-chinh-sai-sot-lam-dong",
+      "code": "1.116358",
+      "label": "[Lâm Đồng] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa04-f009-766a-87ab-57516eae6c77",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-dat-dai-lan-dau-lam-dong",
       "code": "1.116360",
       "label": "[Lâm Đồng] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
@@ -1648,6 +1664,14 @@
       "code": "1.116365",
       "label": "[Lâm Đồng] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff5be-140f-7339-9894-7cf439618d59",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dien-tich-tang-them-lam-dong",
+      "code": "1.116356",
+      "label": "[Lâm Đồng] Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi ranh giới so với Giấy chứng nhận đã cấp; đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với toàn bộ diện tích đất đang sử dụng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa35-8897-75ab-8df2-ad29f8212567",
       "needsAgencySelect": true,
       "autoConfirm": true
     },

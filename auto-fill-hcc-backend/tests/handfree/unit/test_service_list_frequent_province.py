@@ -69,10 +69,12 @@ def test_moi_thu_tuc_tro_ly_deu_co_dong_trong_bang_hoan_thien():
 def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
     counts = {slug: len(_card_keys(slug)) for slug in registry._TINH_THEO_DOI}
     assert counts == {
-        # Bảng thu-tuc-20261111-0856.xlsx (khớp Excel 100%, không còn ghi đè tay). Ẩn theo bảng: thẻ HDV quốc tế
-        # 1.004628 (vắng bảng), cấp lại GCN bị mất Bắc Ninh 1.115465 (STT 50), đính chính GCN Khánh Hòa 1.012790 (STT 103).
-        "laichau": 120, "bacninh": 124, "lamdong": 110, "danang": 117, "quangninh": 121, "ninhbinh": 110,
-        "quangngai": 111, "laocai": 110, "quangtri": 111, "khanhhoa": 115, "tuyenquang": 111,
+        # Bảng thu-tuc-20261111-0856.xlsx (khớp Excel 100%, không còn ghi đè tay). 12/11 người dùng mở thêm cấp lại
+        # GCN bị mất Bắc Ninh 1.115465 (STT 50) cho Bắc Ninh, đính chính GCN Khánh Hòa 1.012790 (STT 103) cho Khánh Hòa.
+        # 12/11: +1 mọi tỉnh khai-sinh-nuoc-ngoai (_TAT_CA); Lâm Đồng +2 bản riêng 1.116360 / 1.116356;
+        # +1 mọi tỉnh thẻ HDV quốc tế 1.004628 (người dùng mở lại toàn quốc).
+        "laichau": 122, "bacninh": 127, "lamdong": 114, "danang": 119, "quangninh": 123, "ninhbinh": 112,
+        "quangngai": 113, "laocai": 112, "quangtri": 113, "khanhhoa": 118, "tuyenquang": 113,
     }
 
 
@@ -82,13 +84,18 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     assert "cap-doi-gcn-khanh-hoa" in kh                       # STT 93: Khánh Hòa hoàn thiện (bảng 11:55)
     assert "khai-tu-lien-thong" in kh                          # STT 110: Khánh Hòa hoàn thiện (bảng 11/11)
     assert "khai-tu-lien-thong" in _card_keys("tuyenquang")    # STT 110: Tuyên Quang hoàn thiện (bảng 11/11)
-    assert "dinh-chinh-gcn-da-cap-khanh-hoa" not in kh         # STT 103: Khánh Hòa chưa cập nhật
+    assert "dinh-chinh-gcn-da-cap-khanh-hoa" in kh             # STT 103: 12/11 người dùng mở cho Khánh Hòa
+    assert "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh" in _card_keys("bacninh")  # STT 50: 12/11 mở cho Bắc Ninh
     assert "cap-gcn-dang-ky-tau-ca" not in kh                  # STT 118: Khánh Hòa chưa cập nhật
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng
     assert "cap-phep-long-duong-via-he" not in _card_keys("laichau")
     assert "cap-gcn-dang-ky-tau-ca" not in _card_keys("bacninh")  # STT 118: Bắc Ninh Pending
     assert "hoa-giai-tranh-chap-dat-dai" in _card_keys("lamdong")  # STT 231
-    assert "cap-the-huong-dan-vien-du-lich-quoc-te" not in _card_keys("lamdong")  # 1.004628 vắng bảng
+    # 1.004628: vắng bảng 11/11, 12/11 người dùng mở lại cả 11 tỉnh.
+    assert all("cap-the-huong-dan-vien-du-lich-quoc-te" in _card_keys(s) for s in registry._TINH_THEO_DOI)
+    # 12/11: 1.116360 + 1.116356 bản Lâm Đồng mở riêng cho Lâm Đồng.
+    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"):
+        assert key in _card_keys("lamdong") and key not in _card_keys("khanhhoa"), key
     # 1.013997: STT 230, cả 11 tỉnh
     assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # Bảng không mở khóa provinceOnly: bản Bắc Ninh ghi _TAT_CA vẫn không lọt sang tỉnh khác.

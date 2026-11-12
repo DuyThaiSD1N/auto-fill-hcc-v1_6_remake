@@ -573,6 +573,26 @@ def test_detect_url_scope_isolates_from_same_named_procedures_in_other_provinces
     assert len(set(hosts)) == len(hosts)
 
 
+def test_lam_dong_doi_sang_ma_1_116358_va_link_moi():
+    """12/11/2026: bản Lâm Đồng đổi mã 1.115446.H36 -> 1.116358, link DVCQG riêng, chỉ tài khoản Lâm Đồng thấy."""
+    import asyncio
+
+    from app.procedures.router import ke_khai_links, procedures
+
+    key = "dinh-chinh-sai-sot-lam-dong"
+    url = "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa04-f009-766a-87ab-57516eae6c77"
+    detect = get_procedure(key)["detect"]
+    assert "1.116358" in detect["textIncludes"]
+    assert not any("1.115446" in phrase for phrase in detect["textIncludes"])
+
+    lam_dong = {"tinh": "Tỉnh Lâm Đồng"}
+    core = {p["key"]: p for p in asyncio.run(procedures(lam_dong))["procedures"]}
+    assert core[key]["provinceOnly"] == ["lamdong"] and url in core[key]["detect"]["urlIncludes"]
+    links = {l["key"]: l for l in asyncio.run(ke_khai_links(lam_dong))["links"]}
+    assert links[key]["code"] == "1.116358" and links[key]["url"] == url
+    assert key not in {l["key"] for l in asyncio.run(ke_khai_links({"tinh": "Tỉnh Lai Châu"}))["links"]}
+
+
 def test_detect_phrase_matches_only_this_procedure_label():
     """Cụm textIncludes phải nằm trong nhãn thủ tục này và KHÔNG nằm trong nhãn thủ tục Quảng Ngãi
     nào khác (nhãn thủ tục được in trên breadcrumb + ô 'Nội dung yêu cầu giải quyết' của trang đó)."""

@@ -4,12 +4,15 @@ Cổng Lâm Đồng (Form.io/Angular apply-online) — CÙNG nền tảng đính
 bảng thành phần hồ sơ có các dòng cố định, FE bơm file theo VỊ TRÍ (slotIndex) qua fallback
 (FIXED_SLOT_KEYWORDS không có entry cho thủ tục này nên không cần sửa extension).
 
-4 dòng trên form (thứ tự cố định):
-  [0] "Giấy tờ chứng minh sai sót…"          ← Giấy chứng nhận (ảnh phần sai) + Giấy khai sinh.
-  [1] "Văn bản về việc ủy quyền…"            ← Giấy ủy quyền (chỉ khi nộp qua người đại diện).
-  [2] "Đơn đăng ký biến động… Mẫu số 18"     ← Đơn Mẫu 18 + CCCD.
-  [3] "- Bản gốc Giấy chứng nhận đã cấp."    ← nộp trực tiếp một cửa, KHÔNG scan đính kèm.
-Giấy chưa rõ loại (other/skip) → đính chung dòng [2] Đơn Mẫu 18, mỗi tệp một item, giữ tiêu đề LLM hoặc tên tệp gốc.
+4 dòng trên form (thứ tự cố định, cổng đổi lại ngày 12/11/2026 khi lên mã 1.116358):
+  [0] "Đơn đăng ký biến động… Mẫu số 18 Phụ lục VI… QĐ 40/2026/QĐ-UBND" ← Đơn Mẫu 18 (+ Bảng 18a) + CCCD.
+  [1] "Giấy chứng nhận đã cấp, trừ trường hợp…"                         ← Giấy chứng nhận.
+  [2] "Giấy tờ chứng minh sai sót thông tin về thửa đất…"                ← Giấy khai sinh (dòng chứng minh
+      sai sót duy nhất còn trên form, kể cả khi sai thông tin người).
+  [3] "Văn bản về việc đại diện…"                                         ← Giấy ủy quyền (khi nộp qua người đại diện).
+Mỗi ô gửi kèm slotKeywords để extension khớp dòng theo chữ trước, slotIndex chỉ là dự phòng (bản cũ chỉ có
+slotIndex nên khi cổng đổi thứ tự dòng thì GCN rơi vào dòng Đơn, Đơn rơi vào dòng chứng minh).
+Giấy chưa rõ loại (other/skip) → đính chung dòng [0] Đơn Mẫu 18, mỗi tệp một item, giữ tiêu đề LLM hoặc tên tệp gốc.
 """
 
 import re
@@ -39,53 +42,81 @@ _ALLOWED_DOC_TYPES = {
     _DOC_AUTHORIZATION, _DOC_OTHER, _DOC_SKIP,
 }
 
-_PROOF_TYPES = {_DOC_LAND, _DOC_BIRTH}
+_LAND_TYPES = {_DOC_LAND}
+_PROOF_TYPES = {_DOC_BIRTH}
 _AUTH_TYPES = {_DOC_AUTHORIZATION}
 _APPLICATION_TYPES = {_DOC_APPLICATION, _DOC_IDENTITY}
+_ROUTED_TYPES = _LAND_TYPES | _PROOF_TYPES | _AUTH_TYPES | _APPLICATION_TYPES
 
 # LLM là bộ phân loại CHÍNH (đọc đủ OCR, nhận đúng bản chất giấy tờ). Rule chỉ DỰ PHÒNG khi LLM trả
 # other/lỗi. Các type "đáng tin" của LLM (mọi type định tuyến được, trừ other/skip) → dùng thẳng.
 _CONFIDENT_LLM_TYPES = {_DOC_LAND, _DOC_BIRTH, _DOC_APPLICATION, _DOC_IDENTITY, _DOC_AUTHORIZATION}
 
+_ROW_APPLICATION = (
+    "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất, Mẫu số 18 Phụ lục VI ban hành kèm theo Quyết "
+    "định số 40/2026/QĐ-UBND ngày 01/7/2026 của UBND tỉnh Lâm Đồng"
+)
+_ROW_LAND = (
+    "Giấy chứng nhận đã cấp, trừ trường hợp thực hiện quyết định hoặc bản án của Tòa án nhân dân, quyết định "
+    "thi hành án của cơ quan thi hành án đã có hiệu lực thi hành hoặc trường hợp đấu giá, giao quyền sử dụng "
+    "đất, tài sản gắn liền với đất theo yêu cầu của Tòa án, cơ quan thi hành án mà không thu hồi được Giấy "
+    "chứng nhận đã cấp"
+)
 _ROW_PROOF = (
-    "Giấy tờ chứng minh sai sót thông tin của người được cấp Giấy chứng nhận so với thông tin tại thời "
-    "điểm đề nghị đính chính hoặc sai sót thông tin về thửa đất, tài sản gắn liền với đất so với thông "
-    "tin trên Giấy chứng nhận đã cấp."
+    "Giấy tờ chứng minh sai sót thông tin về thửa đất, tài sản gắn liền với đất so với thông tin trên Giấy "
+    "chứng nhận đã cấp đối với trường hợp sai sót thông tin về thửa đất, tài sản gắn liền với đất"
 )
 _ROW_AUTH = (
-    "Văn bản về việc ủy quyền theo quy định của pháp luật về dân sự đối với trường hợp thực hiện thủ tục "
-    "thông qua người đại diện."
+    "Văn bản về việc đại diện theo quy định của pháp luật về dân sự đối với trường hợp thực hiện thủ tục đăng "
+    "ký đất đai, tài sản gắn liền với đất thông qua người đại diện"
 )
-_ROW_APPLICATION = "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 18"
 
+_SLOT_APPLICATION = "dinhchinh_ld_application"
+_SLOT_LAND = "dinhchinh_ld_land_certificate"
 _SLOT_PROOF = "dinhchinh_ld_proof"
 _SLOT_AUTH = "dinhchinh_ld_authorization"
-_SLOT_APPLICATION = "dinhchinh_ld_application"
 
+# slotKeywords (chữ đã bỏ dấu) phải RIÊNG từng dòng: dòng chứng minh sai sót cũng chứa "giấy chứng nhận đã
+# cấp" nên dòng GCN khớp theo vế "trừ trường hợp…/không thu hồi được".
 SLOTS: list[dict[str, Any]] = [
     {
-        "slotKey": _SLOT_PROOF,
+        "slotKey": _SLOT_APPLICATION,
         "slotIndex": 0,
         "componentIndex": 1,
-        "slotName": _ROW_PROOF,
-        "documentName": "Giấy tờ chứng minh sai sót",
-        "detectedType": "Giấy tờ chứng minh sai sót",
-    },
-    {
-        "slotKey": _SLOT_AUTH,
-        "slotIndex": 1,
-        "componentIndex": 2,
-        "slotName": _ROW_AUTH,
-        "documentName": "Văn bản ủy quyền",
-        "detectedType": "Văn bản ủy quyền",
-    },
-    {
-        "slotKey": _SLOT_APPLICATION,
-        "slotIndex": 2,
-        "componentIndex": 3,
         "slotName": _ROW_APPLICATION,
         "documentName": "Đơn đăng ký biến động Mẫu số 18",
         "detectedType": "Đơn đăng ký biến động Mẫu số 18",
+        "slotKeywords": ["don dang ky bien dong dat dai", "mau so 18 phu luc vi"],
+    },
+    {
+        "slotKey": _SLOT_LAND,
+        "slotIndex": 1,
+        "componentIndex": 2,
+        "slotName": _ROW_LAND,
+        "documentName": "Giấy chứng nhận đã cấp",
+        "detectedType": "Giấy chứng nhận đã cấp",
+        "slotKeywords": [
+            "giay chung nhan da cap, tru truong hop",
+            "khong thu hoi duoc giay chung nhan da cap",
+        ],
+    },
+    {
+        "slotKey": _SLOT_PROOF,
+        "slotIndex": 2,
+        "componentIndex": 3,
+        "slotName": _ROW_PROOF,
+        "documentName": "Giấy tờ chứng minh sai sót",
+        "detectedType": "Giấy tờ chứng minh sai sót",
+        "slotKeywords": ["giay to chung minh sai sot"],
+    },
+    {
+        "slotKey": _SLOT_AUTH,
+        "slotIndex": 3,
+        "componentIndex": 4,
+        "slotName": _ROW_AUTH,
+        "documentName": "Văn bản ủy quyền",
+        "detectedType": "Văn bản ủy quyền",
+        "slotKeywords": ["van ban ve viec dai dien", "thong qua nguoi dai dien", "van ban ve viec uy quyen"],
     },
 ]
 _SLOT_BY_KEY = {item["slotKey"]: item for item in SLOTS}
@@ -100,10 +131,10 @@ _LABELS = {
     _DOC_SKIP: "Bỏ qua",
 }
 
-# Trong 1 dòng: GCN trước khai sinh; Đơn trước CCCD.
+# Trong 1 dòng: Đơn trước CCCD.
 _GROUP_PRIORITY = {
     _DOC_LAND: 10,
-    _DOC_BIRTH: 20,
+    _DOC_BIRTH: 10,
     _DOC_APPLICATION: 10,
     _DOC_IDENTITY: 20,
     _DOC_AUTHORIZATION: 10,
@@ -149,7 +180,12 @@ def _rule_doc_type(text: str, file_name: str = "") -> str:
     # nộp kèm) → nếu check ủy quyền trước sẽ nhét nhầm ĐƠN vào ô ủy quyền. Tiêu đề "Mẫu số 18 / Đơn đăng ký
     # biến động đất đai" là dấu hiệu RIÊNG, KHÔNG xuất hiện trong Giấy ủy quyền thật (giấy ủy quyền chỉ nói
     # "đăng ký biến động VỀ thửa đất", không có "đơn"/"mẫu số 18").
-    if _has_any(haystack, ("don dang ky bien dong dat dai", "don dang ky bien dong", "dang ky bien dong dat dai", "mau so 18", "theo mau so 18")):
+    # Bảng 18a "Danh sách những người sử dụng đất…" là phụ lục của Đơn Mẫu 18; có chữ "người sử dụng đất"
+    # nên phải bắt ở đây, trước rule GCN.
+    if _has_any(haystack, (
+        "don dang ky bien dong dat dai", "don dang ky bien dong", "dang ky bien dong dat dai", "mau so 18",
+        "theo mau so 18", "bang 18a", "danh sach nhung nguoi su dung dat",
+    )):
         return _DOC_APPLICATION
     # Ủy quyền trước GCN/CCCD (tránh dính CCCD của bên được ủy quyền in kèm trong chính giấy ủy quyền).
     if _has_any(haystack, ("giay uy quyen", "van ban uy quyen", "hop dong uy quyen", "ben duoc uy quyen", "ben uy quyen")):
@@ -226,6 +262,8 @@ def _ordered_entries(entries: list[dict]) -> list[dict]:
 
 
 def _slot_key_for_type(doc_type: str) -> str:
+    if doc_type in _LAND_TYPES:
+        return _SLOT_LAND
     if doc_type in _PROOF_TYPES:
         return _SLOT_PROOF
     if doc_type in _AUTH_TYPES:
@@ -251,6 +289,7 @@ def _build_fixed_item(files: list[dict], entry: dict) -> dict:
         "slotKey": slot["slotKey"],
         "slotIndex": slot["slotIndex"],
         "slotName": slot["slotName"],
+        "slotKeywords": slot["slotKeywords"],
     }
 
 
@@ -284,22 +323,21 @@ def build_plan_items(
             "source": "llm" if llm_ok else ("rule" if rule_type else "default"),
         })
 
+    land_entries = [e for e in resolved if e["docType"] in _LAND_TYPES]
     proof_entries = [e for e in resolved if e["docType"] in _PROOF_TYPES]
     auth_entries = [e for e in resolved if e["docType"] in _AUTH_TYPES]
     application_entries = [e for e in resolved if e["docType"] in _APPLICATION_TYPES]
-    skipped_entries = [
-        e for e in resolved
-        if e["docType"] not in _PROOF_TYPES | _AUTH_TYPES | _APPLICATION_TYPES
-    ]
+    skipped_entries = [e for e in resolved if e["docType"] not in _ROUTED_TYPES]
 
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
 
     for entries, slot_key in (
+        (application_entries, _SLOT_APPLICATION),
+        (land_entries, _SLOT_LAND),
         (proof_entries, _SLOT_PROOF),
         (auth_entries, _SLOT_AUTH),
-        (application_entries, _SLOT_APPLICATION),
     ):
         slot = _SLOT_BY_KEY[slot_key]
         for entry in _ordered_entries(entries):
@@ -334,6 +372,7 @@ def build_plan_items(
             "slotKey": slot["slotKey"],
             "slotIndex": slot["slotIndex"],
             "slotName": slot["slotName"],
+            "slotKeywords": slot["slotKeywords"],
         })
         classified.append({
             "fileName": entry["fileName"],

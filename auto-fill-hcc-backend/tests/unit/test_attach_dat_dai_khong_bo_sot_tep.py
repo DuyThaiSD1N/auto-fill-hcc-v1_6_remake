@@ -167,3 +167,48 @@ def test_dinh_chinh_lam_dong_giay_la_va_cccd_vao_o_don():
     assert routed["la.pdf"]["documentName"] == "Bảng kê tài liệu"
     assert routed["bo-qua.pdf"]["documentName"] == "bo-qua"
     assert len(warnings) == 1 and "la.pdf" in warnings[0] and "bo-qua.pdf" in warnings[0]
+
+
+_GCN = "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT\nThửa đất số 1, tờ bản đồ số 2\nNGƯỜI SỬ DỤNG ĐẤT: NGUYEN VAN A"
+_DON_18 = "Mẫu số 18\nĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT\nIV. (2) Giấy ủy quyền"
+_BANG_18A = (
+    "Bảng 18a: Danh sách những người sử dụng đất, tài sản gắn liền với đất\n"
+    "| STT | Tên người sử dụng đất | Địa chỉ |\n| 1 | NGUYEN VAN A | Xã Bất Kỳ |"
+)
+_KHAI_SINH = "GIẤY KHAI SINH\nHọ tên: NGUYEN VAN A"
+_UY_QUYEN = "GIẤY ỦY QUYỀN\nBên ủy quyền: NGUYEN VAN A\nBên được ủy quyền: TRAN THI B"
+
+
+def test_dinh_chinh_lam_dong_dung_thu_tu_dong_moi_va_gui_tu_khoa():
+    """Cổng 1.116358 (12/11/2026): [0] Đơn Mẫu 18, [1] GCN đã cấp, [2] chứng minh sai sót, [3] đại diện."""
+    P = _planner("dinh_chinh_sai_sot_lam_dong")
+    files = [{"name": n} for n in ("gcn.pdf", "don.pdf", "bang18a.pdf", "ks.pdf", "uq.pdf", "cccd.jpg")]
+    ocr = [
+        {"name": "gcn.pdf", "text": _GCN}, {"name": "don.pdf", "text": _DON_18},
+        {"name": "bang18a.pdf", "text": _BANG_18A}, {"name": "ks.pdf", "text": _KHAI_SINH},
+        {"name": "uq.pdf", "text": _UY_QUYEN}, {"name": "cccd.jpg", "text": _CCCD},
+    ]
+    # LLM trả other cho Bảng 18a → rule phải nhận là phụ lục Đơn, không phải GCN.
+    llm = {0: {"type": "land_certificate"}, 1: {"type": "change_application"}, 2: {"type": "other"},
+           3: {"type": "birth_certificate"}, 4: {"type": "authorization"}, 5: {"type": "identity_document"}}
+    items, warnings, _ = P.build_plan_items(files, ocr, llm)
+
+    row = {it["fileName"]: (it["slotIndex"], it["componentIndex"]) for it in items}
+    assert row == {
+        "don.pdf": (0, 1), "bang18a.pdf": (0, 1), "cccd.jpg": (0, 1),
+        "gcn.pdf": (1, 2), "ks.pdf": (2, 3), "uq.pdf": (3, 4),
+    }
+    assert [it["fileName"] for it in items if it["slotIndex"] == 0] == ["don.pdf", "bang18a.pdf", "cccd.jpg"]
+    assert not warnings
+    assert all(it["slotKeywords"] for it in items)
+
+
+def test_dinh_chinh_lam_dong_tu_khoa_khop_dung_mot_dong_tren_cong():
+    """slotKeywords của từng ô chỉ khớp đúng một dòng trên bảng thật (chữ crawl ngày 12/11/2026, đã bỏ dấu)."""
+    from app.pipelines._shared import fold
+
+    P = _planner("dinh_chinh_sai_sot_lam_dong")
+    rows = [fold(slot["slotName"]) for slot in P.SLOTS]
+    for slot in P.SLOTS:
+        hits = [i for i, text in enumerate(rows) if any(kw in text for kw in slot["slotKeywords"])]
+        assert hits == [slot["slotIndex"]], slot["slotKey"]

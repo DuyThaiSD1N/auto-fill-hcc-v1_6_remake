@@ -15,7 +15,7 @@ TU_PHAP_CU = [
     "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-chu-ky",
 ]
 TU_PHAP_MOI = ["khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-               "xac-nhan-tinh-trang-hon-nhan"]
+               "xac-nhan-tinh-trang-hon-nhan", "khai-sinh-nuoc-ngoai"]
 CLIENT = {"supportsGuidedSteps": True, "supportsResultMethod": True}
 
 

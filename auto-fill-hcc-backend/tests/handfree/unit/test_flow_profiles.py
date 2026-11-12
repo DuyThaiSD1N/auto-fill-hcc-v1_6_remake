@@ -612,6 +612,20 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert not any(rule["options"].get("quyTrinh") for rule in kh.get("caseOptions") or []), key
         assert is_allowed_in_province(kh, "khanhhoa") and not is_allowed_in_province(kh, "tuyenquang"), key
 
+    # Cổng iGate Lâm Đồng (12/11): 1.116360 / 1.116356 do UBND cấp xã giải quyết → DVCQG chọn đủ Tỉnh + Xã, rồi luồng
+    # chung "xay-dung" như Khánh Hòa; cờ extension riêng supportsBxdFlowLamDong.
+    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"):
+        ld = procedures.pop(key)
+        assert ld["provinceOnly"] == ["lamdong"], key
+        assert ld["flowProfile"] == "xay-dung" and ld["maePortal"] is True, key
+        assert ld["maeDialogChoice"] == {"enabled": True}, key
+        assert ld["wizard"] == {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4}, key
+        assert ld["needsAgencySelect"] is True and ld["agencyProvince"] == "Lâm Đồng", key
+        assert "agencyProvinceOnly" not in ld and "agencySoFirst" not in ld, key
+        assert ld["detect"]["urlScope"] == ["lamdong.gov.vn"], key
+        assert ld["bxdFlow"]["capability"] == "supportsBxdFlowLamDong", key
+        assert is_allowed_in_province(ld, "lamdong") and not is_allowed_in_province(ld, "khanhhoa"), key
+
     # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
     # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
     moit = {"cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
@@ -661,7 +675,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
     for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-                "xac-nhan-tinh-trang-hon-nhan"):
+                "xac-nhan-tinh-trang-hon-nhan", "khai-sinh-nuoc-ngoai"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True
@@ -814,7 +828,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ VHTTDL chọn Sở (10/11): thẻ HDV quốc tế "cap-the-huong-dan-vien-du-lich-quoc-te" (1.004628).
     # +1 cổng Bắc Ninh (10/11) "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh" (1.115465).
     # +1 cổng iGate Khánh Hòa (10/11) "dinh-chinh-gcn-da-cap-khanh-hoa" (1.012790, luồng "xay-dung").
-    assert len(procedures) == 157
+    # +1 hộ tịch Cổng DVC quốc gia mới (12/11) "khai-sinh-nuoc-ngoai" (2.000528, luồng "tu-phap-moi").
+    # +2 cổng iGate Lâm Đồng (12/11) "dang-ky-dat-dai-lan-dau-lam-dong" (1.116360),
+    # "dang-ky-dien-tich-tang-them-lam-dong" (1.116356), luồng "xay-dung".
+    assert len(procedures) == 160
 
     for procedure in procedures:
         key = procedure["key"]

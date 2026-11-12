@@ -93,7 +93,7 @@ test("đổi hình thức nhận kết quả: chọn lựa chọn khớp NGUYÊN
 
 test("cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT, Bộ NN&MT cùng nền iGate: chạy cùng luồng, ô bắt buộc đánh dấu trên nhãn label.field-required", () => {
   for (const src of [portal, review]) {
-    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn",\s*"dichvucongnnmt\.mae\.gov\.vn", "dichvucong-tthc\.moit\.gov\.vn", "dichvucong\.tuyenquang\.gov\.vn",\s*"dichvucong\.khanhhoa\.gov\.vn"\];/);
+    assert.match(src, /const HOSTS = \["dvc\.moc\.gov\.vn", "dichvucongbyt\.moh\.gov\.vn", "dichvucongbnv\.moha\.gov\.vn", "dvc\.moet\.gov\.vn",\s*"dichvucongnnmt\.mae\.gov\.vn", "dichvucong-tthc\.moit\.gov\.vn", "dichvucong\.tuyenquang\.gov\.vn",\s*"dichvucong\.khanhhoa\.gov\.vn", "dichvucong\.lamdong\.gov\.vn"\];/);
   }
   assert.match(portal, /!HOSTS\.includes\(location\.hostname\)/);
   // Bản cũ đã khai supportsBxdFlow mà chưa chạy trên cổng NN&MT → BE gác host này bằng cờ riêng.
@@ -106,8 +106,11 @@ test("cổng Bộ Y tế, Bộ Nội vụ, Bộ GD&ĐT, Bộ NN&MT cùng nền i
   assert.match(sidebar, /supportsBxdFlowTuyenQuang: true/);
   // Cổng tỉnh Khánh Hòa: trang nps/apply "Chọn trường hợp giải quyết" + stepper trên host này, cờ riêng
   // supportsBxdFlowKhanhHoa.
-  assert.match(content, /const maeHost = \[[^\]]*"dichvucong\.khanhhoa\.gov\.vn"\]\.includes\(location\.hostname\)/);
+  assert.match(content, /const maeHost = \[[^\]]*"dichvucong\.khanhhoa\.gov\.vn"[^\]]*\]\.includes\(location\.hostname\)/);
   assert.match(sidebar, /supportsBxdFlowKhanhHoa: true/);
+  // Cổng tỉnh Lâm Đồng: hộp thoại chọn trường hợp + stepper trên host này, cờ riêng supportsBxdFlowLamDong.
+  assert.match(content, /const maeHost = \[[^\]]*"dichvucong\.lamdong\.gov\.vn"\]\.includes\(location\.hostname\)/);
+  assert.match(sidebar, /supportsBxdFlowLamDong: true/);
   assert.match(review, /comp\.querySelector\(":scope > label\.field-required"\)/);
 });
 

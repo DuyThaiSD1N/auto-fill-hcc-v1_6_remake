@@ -13,10 +13,11 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Đính ch�
 <critical_rules>
 1. Chỉ dựa vào OCR_TEXT. Không dùng tên file, thứ tự file, hoặc giả định bên ngoài.
 2. Mỗi tài liệu trả đúng một type trong allowed_types.
-3. Downstream gộp file vào 3 dòng có sẵn:
-   - Dòng "Giấy tờ chứng minh sai sót": Giấy chứng nhận QSDĐ + Giấy khai sinh (bằng chứng thông tin đúng/sai).
-   - Dòng "Văn bản ủy quyền": Giấy/Hợp đồng ủy quyền (chỉ khi nộp qua người đại diện).
-   - Dòng "Đơn đăng ký biến động Mẫu số 18": Đơn Mẫu 18 + CCCD kèm theo.
+3. Downstream gộp file vào 4 dòng có sẵn:
+   - Dòng "Đơn đăng ký biến động Mẫu số 18": Đơn Mẫu 18 (kể cả Bảng 18a kèm đơn) + CCCD kèm theo.
+   - Dòng "Giấy chứng nhận đã cấp": Giấy chứng nhận QSDĐ.
+   - Dòng "Giấy tờ chứng minh sai sót": Giấy khai sinh (bằng chứng thông tin đúng/sai).
+   - Dòng "Văn bản về việc đại diện": Giấy/Hợp đồng ủy quyền (chỉ khi nộp qua người đại diện).
 4. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
@@ -40,6 +41,8 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Đính ch�
 
 <classification_hints>
 - "ĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI", "Mẫu số 18" → change_application.
+- "Bảng 18a", "Danh sách những người sử dụng đất, tài sản gắn liền với đất" → change_application (phụ lục
+  của Đơn Mẫu 18, KHÔNG phải Giấy chứng nhận dù có chữ "người sử dụng đất").
 - "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT", "SỔ ĐỎ", "Số vào sổ cấp GCN", "thửa đất", "tờ bản đồ" → land_certificate.
 - "GIẤY KHAI SINH", "BẢN SAO GIẤY KHAI SINH", "TRÍCH LỤC KHAI SINH" → birth_certificate.
 - "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card", "Số định danh cá nhân", "CMND" → identity_document.

@@ -69,6 +69,10 @@ PROCEDURE_HMONG = {
     "chuyen-doi-ten-hop-dong-nuoc-sach": "Hloov npe hauv daim ntawv cog lus siv dej huv (Lai Châu)",
     "dang-ky-dat-dai-lan-dau-khanh-hoa": "Cuv npe av, muab daim ntawv av thawj zaug (Khánh Hòa)",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": "Hloov daim av (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký đất đai lần đầu Khánh Hòa, đổi tỉnh; diện tích tăng thêm: TỪ MỚI
+    # "loj ntxiv" (rộng thêm).
+    "dang-ky-dat-dai-lan-dau-lam-dong": "Cuv npe av, muab daim ntawv av thawj zaug (Lâm Đồng)",
+    "dang-ky-dien-tich-tang-them-lam-dong": "Cuv npe daim av loj ntxiv, muab daim ntawv av (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
     "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
@@ -161,6 +165,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có trong file (khai sinh thường, thay đổi cải chính
     # hộ tịch, cấp phép xây dựng nhà ở riêng lẻ, chấm dứt hộ kinh doanh).
     "khai-sinh-dang-ky-thuong": "Cuv npe yug me nyuam",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe yug me nyuam" (khai sinh) + "nrog neeg txawv teb chaws" (với người
+    # nước ngoài, như "ket-hon-nuoc-ngoai").
+    "khai-sinh-nuoc-ngoai": "Cuv npe yug me nyuam nrog neeg txawv teb chaws",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có (khai sinh + ntaub ntawv = giấy tờ).
     "khai-sinh-da-co-ho-so": "Cuv npe yug me nyuam rau tus neeg twb muaj ntaub ntawv",
     "thay-doi-cai-chinh-ho-tich": "Hloov / kho ntaub ntawv hộ tịch",
@@ -534,6 +541,8 @@ DOC_SLOT_HMONG = {
     "ket_hon_cha_me": "Ntawv kết hôn niam txiv",
     "giay_de_nghi": "Ntawv thov",
     "chung_sinh": "Ntawv chứng sinh",
+    # BẢN NHÁP chờ anh Dư soát — "rau me nyuam" (cho con) ghép từ chữ đã có; giữ thuật ngữ "thỏa thuận quốc tịch".
+    "thoa_thuan_quoc_tich": "Ntawv thỏa thuận quốc tịch rau me nyuam",
     "chung_minh_tthn": "Ntawv pov thawj hôn nhân",
     # BẢN NHÁP chờ anh Dư soát — "kuaj mob" (khám bệnh) là TỪ MỚI.
     "suc_khoe": "Ntawv kuaj mob (sức khỏe)",

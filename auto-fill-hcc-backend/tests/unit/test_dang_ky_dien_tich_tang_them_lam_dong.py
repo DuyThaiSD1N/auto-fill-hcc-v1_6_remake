@@ -394,3 +394,17 @@ def test_registry_wiring():
     assert "1.116356" in procedure["detect"]["textIncludes"]
     assert get_pipeline(_KEY) is not None
     assert get_attach_pipeline(_KEY) is not None
+
+
+def test_tro_ly_mo_rieng_lam_dong_cung_key_voi_loi():
+    """Trợ lý (12/11/2026): cùng key lõi → process/attach tự nối; chỉ tài khoản Lâm Đồng thấy; luồng iGate 4 bước."""
+    from app.channels.handfree import procedure_registry as handfree
+
+    proc = handfree.get_procedure(_KEY)
+    assert handfree.get_pipeline(_KEY) is get_pipeline(_KEY)
+    assert handfree.get_attach_pipeline(_KEY) is get_attach_pipeline(_KEY)
+    assert proc["provinceOnly"] == ["lamdong"] and proc["bxdFlow"]["capability"] == "supportsBxdFlowLamDong"
+    assert proc["keKhaiUrl"].endswith("019ffa35-8897-75ab-8df2-ad29f8212567")
+    assert "1.116356" in proc["detect"]["textIncludes"] and proc["detect"]["urlScope"] == ["lamdong.gov.vn"]
+    assert handfree.is_visible_in_province(proc, "lamdong")
+    assert not handfree.is_visible_in_province(proc, "khanhhoa")
