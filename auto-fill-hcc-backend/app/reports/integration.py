@@ -33,6 +33,14 @@ def unit_key(province: str | None, ward: str | None) -> str:
     return f"{fold(province_name(province))}::{fold(ward)}"
 
 
+def account_unit_key(province: str | None, ward: str | None, user_id: object) -> str:
+    """Khóa ghép số liệu Handfree của một tài khoản: đủ tỉnh + xã → dòng xã/phường (gộp tài khoản cùng xã); thiếu
+    (tài khoản HCC tỉnh không gán xã) → riêng tài khoản đó, như phần Auto Fill vốn đếm theo user_id."""
+    if province_name(province) and str(ward or "").strip():
+        return unit_key(province, ward)
+    return f"user::{user_id}"
+
+
 def canonical_procedure_id(key: str, entry: dict | None) -> str:
     code = ma_thu_tuc(entry)
     return f"tthc:{code}" if code and code != "—" else f"key:{key}"

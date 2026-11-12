@@ -1816,7 +1816,7 @@ PROCEDURES: list[dict] = [
         # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực tuyến" kết
         # quả ĐẦU TIÊN). Từ 11/11/2026 bước Kê khai là eForm Mẫu TP-TSCC-10 (legacy x-*) nên chạy như thủ tục luật sư:
         # mode agent, điền tờ khai từ Giấy đăng ký + Quyết định, ô còn trống hỏi bổ sung (handfree/field_review.py).
-        # Planner lõi xếp file vào 3 dòng cố định, mỗi file đính nguyên khối.
+        # Planner lõi xếp file vào dòng 1–2 (dòng 3 là tờ khai điện tử cổng tự sinh), mỗi file đính nguyên khối.
         "detect": {
             "urlIncludes": [
                 "019d2bfd-7e7f-77f8-ba74-3f3328ddfa7c",
@@ -1866,8 +1866,9 @@ PROCEDURES: list[dict] = [
             "chính của tờ khai.\n"
             "4. Căn cước (nếu có) để đối chiếu nhân thân.\n"
             "Nên đăng nhập cổng bằng tài khoản VNeID của chính người tập sự. "
-            "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; Giấy đăng ký → dòng 3. Mỗi tệp "
-            "đính nguyên khối; giấy khác thêm thành phần hồ sơ mới."
+            "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; dòng 3 là tờ khai điện tử cổng tự "
+            "sinh, Giấy đăng ký đã ký thêm thành phần hồ sơ mới. Mỗi tệp đính nguyên khối; giấy khác thêm thành phần "
+            "hồ sơ mới."
         ),
     },
     {

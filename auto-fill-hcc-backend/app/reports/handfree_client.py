@@ -7,7 +7,7 @@ from typing import Literal
 
 from app.core.errors import AppError
 from app.procedures.registry import PROCEDURES
-from app.reports.integration import canonical_procedure_id, province_name, unit_key
+from app.reports.integration import account_unit_key, canonical_procedure_id, province_name
 from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.reports.schemas import ExcelExportRequest
 from app.stats import cutover
@@ -22,12 +22,8 @@ def _units(accounts: list[dict]) -> tuple[list[dict], dict[str, str]]:
     for account in accounts:
         province = province_name(account.get("tinh"))
         ward = str(account.get("xa") or "").strip()
-        if not province or not ward:
-            # Tài khoản cấp tỉnh/legacy vẫn được xuất ở phần Auto Fill. Không có đủ
-            # tỉnh + xã thì không thể ghép an toàn vào một dòng Handfree cấp xã.
-            continue
-        key = unit_key(province, ward)
-        units.setdefault(key, {"unitKey": key, "province": province, "ward": ward})
+        key = account_unit_key(province, ward, account["_id"])
+        units.setdefault(key, {"unitKey": key, "province": province or None, "ward": ward or None})
         user_to_unit[str(account["_id"])] = key
     return list(units.values()), user_to_unit
 

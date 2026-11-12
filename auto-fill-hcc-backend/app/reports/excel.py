@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from app.procedures.registry import PROCEDURES
-from app.reports.integration import canonical_procedure_id, unit_key
+from app.reports.integration import account_unit_key, canonical_procedure_id
 from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.traces.date_range import VIETNAM_TZ
 
@@ -243,7 +243,7 @@ def build_excel(
     used_titles: set[str] = set()
     for account in accounts:
         account_id = str(account["_id"])
-        handfree_unit = handfree_units.get(unit_key(account.get("tinh"), account.get("xa")))
+        handfree_unit = handfree_units.get(account_unit_key(account.get("tinh"), account.get("xa"), account_id))
         _write_sheet(
             workbook,
             account=account,
@@ -327,10 +327,10 @@ def build_daily_excel(
     for index, account in enumerate(accounts, start=1):
         row = header_row + index
         account_id = str(account["_id"])
-        account_unit_key = unit_key(account.get("tinh"), account.get("xa"))
+        hf_key = account_unit_key(account.get("tinh"), account.get("xa"), account_id)
         day_values = [
             by_account_day.get((account_id, day.isoformat()), 0)
-            + handfree_by_unit_day.get((account_unit_key, day.isoformat()), 0)
+            + handfree_by_unit_day.get((hf_key, day.isoformat()), 0)
             for day in days
         ]
         values = [

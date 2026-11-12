@@ -4,7 +4,10 @@ Thủ tục chỉ có bước đính kèm. Bảng "Thành phần hồ sơ" trên
   1. Bản chính/bản sao có chứng thực/bản sao điện tử Quyết định công nhận hoàn thành tập sự      → decision
   2. Bản chính/bản sao có chứng thực/bản sao điện tử giấy tờ chứng minh đã nộp phí thẩm định tiêu
      chuẩn, điều kiện hành nghề công chứng                                                        → fee_receipt
-  3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10)           → registration
+  3. Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10) — dòng tờ khai điện tử: cổng
+     tự gắn "Tờ khai.pdf" từ bước Kê khai, không có nút chọn tệp → planner không xếp file vào dòng này.
+
+Giấy đăng ký đã ký tải lên → "Thêm thành phần hồ sơ" (giữ đủ file, không đẩy vào dòng 3 mà engine không đính được).
 
 Mỗi file đính NGUYÊN KHỐI, không tách trang. Nhiều file cùng một dòng thì gộp một PDF (``sourceFileIndexes``, theo thứ
 tự tải lên). Một file chứa nhiều giấy (vd Giấy đăng ký kèm biên lai) thuộc dòng của giấy CHÍNH (tiêu đề xuất hiện sớm
@@ -46,8 +49,6 @@ ROWS: tuple[tuple[int, str, str, str], ...] = (
     (1, DECISION, "Quyết định công nhận hoàn thành tập sự", "Quyết định công nhận hoàn thành tập sự"),
     (2, FEE_RECEIPT, "giấy tờ chứng minh đã nộp phí thẩm định tiêu chuẩn",
      "Chứng từ nộp phí thẩm định hành nghề công chứng"),
-    (3, REGISTRATION, "Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng",
-     "Giấy đăng ký tham dự kiểm tra kết quả tập sự"),
 )
 _ROW_TYPES = {doc_type for _, doc_type, _, _ in ROWS}
 
@@ -55,10 +56,13 @@ _ROW_TYPES = {doc_type for _, doc_type, _, _ in ROWS}
 _MISSING = {
     DECISION: "Quyết định công nhận hoàn thành tập sự hành nghề công chứng",
     FEE_RECEIPT: "giấy tờ chứng minh đã nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công chứng",
-    REGISTRATION: "Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng (Mẫu TP-TSCC-10)",
 }
 
-_EXTRA_LABELS = {IDENTITY: "Căn cước công dân", OTHER: "Tài liệu khác"}
+_EXTRA_LABELS = {
+    REGISTRATION: "Giấy đăng ký tham dự kiểm tra kết quả tập sự đã ký",
+    IDENTITY: "Căn cước công dân",
+    OTHER: "Tài liệu khác",
+}
 
 # Tiêu đề giấy (đã fold, bỏ dấu câu). Giấy đăng ký có câu "Đã được công nhận hoàn thành tập sự theo quyết định số …"
 # — không chứa cụm "quyet dinh cong nhan hoan thanh tap su" nên không bị nhận nhầm thành Quyết định.
@@ -204,6 +208,7 @@ def build_plan_items(
             rows_by_file[index].append(row)
 
     extra_files: list[str] = []
+    registration_files: list[str] = []
     for index in range(len(raw_files)):
         if main_type[index] in _ROW_TYPES:
             continue
@@ -224,7 +229,7 @@ def build_plan_items(
             "needsAddComponent": True,
             "detectedType": doc_type,
         })
-        extra_files.append(file_name(index))
+        (registration_files if doc_type == REGISTRATION else extra_files).append(file_name(index))
 
     classified = []
     for index in range(len(raw_files)):
@@ -244,6 +249,11 @@ def build_plan_items(
         warnings.append(
             "File chứa nhiều giấy được đính nguyên file vào cả dòng không có file riêng — "
             + "; ".join(shared_notes) + "."
+        )
+    if registration_files:
+        warnings.append(
+            "Dòng 3 là tờ khai điện tử do cổng tự sinh nên Giấy đăng ký đã ký được thêm thành phần hồ sơ mới: "
+            + ", ".join(registration_files) + "."
         )
     if extra_files:
         warnings.append(

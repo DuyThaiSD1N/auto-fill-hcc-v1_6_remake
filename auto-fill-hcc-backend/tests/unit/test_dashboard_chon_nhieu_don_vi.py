@@ -37,7 +37,7 @@ def fake_sources(monkeypatch):
                 "totalDossiers": sum(_COUNTS[u][0] for u in user_ids), "totalRequests": 0}
 
     async def hf_units(units, date_from, date_to, want_daily):
-        by_key = {dashboard_router.unit_key(u["tinh"], u["xa"]): {"procedures": [
+        by_key = {dashboard_router.account_unit_key(u["tinh"], u["xa"], u["unitId"]): {"procedures": [
             {"procedureKey": "khai_sinh", "label": "Khai sinh", "count": _COUNTS[u["unitId"]][1]}]} for u in units}
         return by_key, {}, True
 

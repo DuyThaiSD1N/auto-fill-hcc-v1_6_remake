@@ -74,10 +74,9 @@ async def fetch_handfree(
     accounts = [
         {"_id": u.get("unitId"), "tinh": u.get("tinh"), "xa": u.get("xa")}
         for u in units
-        if u.get("unitId") and u.get("xa")
+        if u.get("unitId")
     ]
     if not accounts:
-        # Không có đơn vị nào ghép được (không có xã) — không phải lỗi, chỉ là không có phần Handfree.
         return {}, {}, True
 
     body = _hf_body(date_from, date_to)
@@ -116,7 +115,7 @@ async def fetch_handfree_daily(units: list[dict], date_from: datetime, date_to: 
     accounts = [
         {"_id": u.get("unitId"), "tinh": u.get("tinh"), "xa": u.get("xa")}
         for u in units
-        if u.get("unitId") and u.get("xa")
+        if u.get("unitId")
     ]
     if not accounts:
         return {}

@@ -32,7 +32,7 @@ from app.dashboard.export import build_dashboard_workbook, export_filename
 from app.dashboard.scope import narrow_to_province, province_options, resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
 from app.dossiers import stats as dossier_stats
-from app.reports.integration import unit_key
+from app.reports.integration import account_unit_key
 from app.stats import cutover
 from app.traces.date_range import parse_stats_range
 from app.users import tdp_rollup
@@ -142,7 +142,7 @@ async def summary(
     )
 
     def _hf_key(u: dict) -> str:
-        return unit_key(u.get("tinh"), u.get("xa"))
+        return account_unit_key(u.get("tinh"), u.get("xa"), u.get("unitId"))
 
     # Bảng Theo đơn vị: gộp AF + HF từng đơn vị (đơn vị 0 hồ sơ vẫn liệt kê).
     unit_rows: list[dict] = []

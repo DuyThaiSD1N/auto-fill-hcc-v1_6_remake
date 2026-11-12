@@ -131,7 +131,8 @@ async def test_handfree_report_reads_shared_db_with_exact_experience(monkeypatch
         },
     ], body)
 
-    assert captured["user_ids"] == ["auto-1"]
+    # Tài khoản HCC tỉnh không gán xã vẫn được đếm — ghép theo chính tài khoản (như phần Auto Fill).
+    assert captured["user_ids"] == ["auto-1", "auto-province"]
     assert captured["experience"] == "handfree"
     assert captured["date_from"].isoformat() == "2026-08-17T17:00:00+00:00"
     assert captured["date_to"].isoformat() == "2026-08-18T17:00:00+00:00"
@@ -139,14 +140,18 @@ async def test_handfree_report_reads_shared_db_with_exact_experience(monkeypatch
     assert result["units"][0]["unitKey"] == "tinh ninh binh::xa nghia hung"
     assert result["units"][0]["matchedAccountCount"] == 1
     assert result["units"][0]["procedures"][0]["count"] == 3
+    assert result["units"][1]["unitKey"] == "user::auto-province"
+    assert result["units"][1]["procedures"] == []
 
 
 @pytest.mark.asyncio
-async def test_handfree_report_does_not_query_when_no_joinable_unit(monkeypatch):
-    async def fail_if_called(*args, **kwargs):
-        raise AssertionError("Không được gọi Handfree khi không có đơn vị đủ khóa ghép")
+async def test_handfree_report_dem_tai_khoan_tinh_khong_co_xa(monkeypatch):
+    """Tài khoản HCC tỉnh không gán xã làm hồ sơ bằng trợ lý → vẫn vào số liệu, khóa riêng theo tài khoản."""
+    async def fake_stats(*, user_ids, date_from, date_to, experience):
+        assert user_ids == ["auto-province"]
+        return {"wards": [{"userId": "auto-province", "procedures": [{"key": "ket-hon", "count": 1}]}]}
 
-    monkeypatch.setattr(handfree_client.traces_repo, "stats_by_user_ids", fail_if_called)
+    monkeypatch.setattr(handfree_client.traces_repo, "stats_by_user_ids", fake_stats)
     body = ExcelExportRequest(
         dateFrom="2026-08-18",
         dateTo="2026-08-18",
@@ -162,7 +167,8 @@ async def test_handfree_report_does_not_query_when_no_joinable_unit(monkeypatch)
         "tinh": "Ninh Bình",
     }], body)
 
-    assert result == {"source": "handfree", "units": []}
+    assert [u["unitKey"] for u in result["units"]] == ["user::auto-province"]
+    assert result["units"][0]["procedures"][0]["count"] == 1
 
 
 @pytest.mark.asyncio
@@ -240,3 +246,24 @@ def test_daily_excel_sums_auto_fill_and_handfree_by_unit_and_day():
     assert [sheet.cell(row=5, column=column).value for column in range(1, 6)] == [
         1, "Phường Bắc Giang", 62, 57, 119,
     ]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_dem_handfree_cua_don_vi_tinh_khong_co_xa(monkeypatch):
+    """Bảng thống kê: đơn vị HCC tỉnh (không gán xã) có hồ sơ trợ lý → khớp đúng khóa account_unit_key của đơn vị."""
+    from datetime import datetime, timezone
+
+    from app.dashboard import combine
+    from app.reports.integration import account_unit_key
+
+    async def fake_stats(*, user_ids, date_from, date_to, experience):
+        return {"wards": [{"userId": "u-tinh", "procedures": [{"key": "ket-hon", "count": 1}]}]}
+
+    monkeypatch.setattr(handfree_client.traces_repo, "stats_by_user_ids", fake_stats)
+    unit = {"unitId": "u-tinh", "name": "HCC tỉnh", "xa": None, "tinh": "Tỉnh Khánh Hòa"}
+    day = datetime(2026, 8, 18, tzinfo=timezone.utc)
+    by_key, _, ok = await combine.fetch_handfree([unit], day, day, want_daily=False)
+
+    assert ok
+    hf_unit = by_key[account_unit_key(unit["tinh"], unit["xa"], unit["unitId"])]
+    assert hf_unit["procedures"][0]["count"] == 1

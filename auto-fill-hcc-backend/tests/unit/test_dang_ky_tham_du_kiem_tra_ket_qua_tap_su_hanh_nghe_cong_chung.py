@@ -49,6 +49,10 @@ def _rows(items):
     return {item["componentIndex"]: item for item in items if item["target"] == "existing"}
 
 
+def _by_component(items):
+    return {item["componentIndex"]: item for item in items}
+
+
 def test_registry_wires_key_from_ke_khai_links():
     link = next(item for item in KE_KHAI_LINKS if item["key"] == _KEY)
     assert link["code"] == "1.013818"
@@ -73,28 +77,33 @@ def test_rule_types_giay_dang_ky_nhac_quyet_dinh_van_la_giay_dang_ky():
 def test_thieu_chung_tu_nop_phi_dong_2_de_trong_va_canh_bao():
     items, classified, warnings = build_plan_items(
         _files("qd.pdf", "dk.pdf"), {0: DECISION_TEXT, 1: REGISTRATION_TEXT}, {})
-    rows = _rows(items)
-    assert set(rows) == {1, 3} and len(items) == 2
-    assert rows[1]["fileIndex"] == 0 and rows[3]["fileIndex"] == 1
+    rows = _by_component(items)
+    assert set(rows) == {1, None} and len(items) == 2
+    assert rows[1]["fileIndex"] == 0 and rows[1]["needsAddComponent"] is False
     assert not any("sourceFileIndexes" in item for item in items)
     assert rows[1]["componentName"] == "Quyết định công nhận hoàn thành tập sự"
-    assert rows[3]["componentName"] == "Giấy đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng"
-    assert all(item["needsAddComponent"] is False for item in items)
+    # Dòng 3 là tờ khai điện tử cổng tự sinh (không có nút chọn tệp) → giấy đăng ký đã ký thêm thành phần mới,
+    # không được nằm trong kế hoạch dòng 3 (engine không đính được, từng rơi nhầm sang dòng 2).
+    registration = rows[None]
+    assert registration["fileIndex"] == 1
+    assert registration["target"] == "new" and registration["needsAddComponent"] is True
+    assert registration["documentName"] == "Giấy đăng ký tham dự kiểm tra kết quả tập sự đã ký"
     assert warnings == [
         "Hồ sơ đã gửi không có giấy tờ chứng minh đã nộp phí thẩm định tiêu chuẩn, điều kiện hành nghề công chứng "
-        "(dòng 2). Cần bổ sung."
+        "(dòng 2). Cần bổ sung.",
+        "Dòng 3 là tờ khai điện tử do cổng tự sinh nên Giấy đăng ký đã ký được thêm thành phần hồ sơ mới: dk.pdf.",
     ]
-    assert [c["componentIndexes"] for c in classified] == [[1], [3]]
+    assert [c["componentIndexes"] for c in classified] == [[1], []]
 
 
 def test_du_3_giay_khong_canh_bao():
     items, _, warnings = build_plan_items(
         _files("dk.pdf", "bl.jpg", "qd.pdf"), {0: REGISTRATION_TEXT, 1: RECEIPT_TEXT, 2: DECISION_TEXT}, {})
-    rows = _rows(items)
-    assert [rows[r]["fileIndex"] for r in (1, 2, 3)] == [2, 1, 0]
-    assert [item["componentIndex"] for item in items] == [1, 2, 3]
+    rows = _by_component(items)
+    assert [rows[r]["fileIndex"] for r in (1, 2, None)] == [2, 1, 0]
+    assert [item["componentIndex"] for item in items] == [1, 2, None]
     assert len({item["documentName"] for item in items}) == 3
-    assert warnings == []
+    assert not any("Cần bổ sung" in w for w in warnings)
 
 
 def test_nhieu_file_cung_dong_gop_mot_pdf_theo_thu_tu_tai_len():
@@ -108,9 +117,10 @@ def test_nhieu_file_cung_dong_gop_mot_pdf_theo_thu_tu_tai_len():
 def test_file_gop_dang_ky_kem_bien_lai_dinh_nguyen_file_vao_ca_dong_2():
     items, classified, warnings = build_plan_items(
         _files("qd.pdf", "dk_bl.pdf"), {0: DECISION_TEXT, 1: REGISTRATION_TEXT + " " + RECEIPT_TEXT}, {})
-    rows = _rows(items)
-    assert rows[2]["fileIndex"] == 1 and rows[3]["fileIndex"] == 1
-    assert classified[1]["type"] == "registration" and classified[1]["componentIndexes"] == [2, 3]
+    rows = _by_component(items)
+    assert rows[2]["fileIndex"] == 1 and rows[None]["fileIndex"] == 1
+    assert 3 not in rows
+    assert classified[1]["type"] == "registration" and classified[1]["componentIndexes"] == [2]
     assert any("dòng 2: dk_bl.pdf" in w for w in warnings)
     assert not any("Cần bổ sung" in w for w in warnings)
 
@@ -120,7 +130,7 @@ def test_file_gop_khong_dinh_lai_khi_dong_da_co_file_rieng():
         _files("dk_bl.pdf", "bl.jpg"), {0: REGISTRATION_TEXT + " " + RECEIPT_TEXT, 1: RECEIPT_TEXT}, {})
     rows = _rows(items)
     assert rows[2]["fileIndex"] == 1 and "sourceFileIndexes" not in rows[2]
-    assert classified[0]["componentIndexes"] == [3]
+    assert classified[0]["componentIndexes"] == []
     assert not any("nhiều giấy" in w for w in warnings)
 
 
@@ -175,8 +185,8 @@ async def test_plan_chi_hoi_llm_file_tieu_de_khong_nhan_ra(monkeypatch):
              for n in ("qd.pdf", "dk.pdf", "ck.jpg")]
     out = await planner.plan(files, {}, {"request_id": "req-test"})
     assert asked == [[2]]
-    assert [(a["componentIndex"], a["fileIndex"]) for a in out["attachments"]] == [(1, 0), (2, 2), (3, 1)]
-    assert out["errors"] == []
+    assert [(a["componentIndex"], a["fileIndex"]) for a in out["attachments"]] == [(1, 0), (2, 2), (None, 1)]
+    assert out["errors"] == ["Dòng 3 là tờ khai điện tử do cổng tự sinh nên Giấy đăng ký đã ký được thêm thành phần hồ sơ mới: dk.pdf."]
     assert out["extracted"]["llmDocuments"] == ["ck.jpg"]
     assert out["extracted"]["attachmentMode"] == "preserve_files"
 
@@ -195,7 +205,7 @@ async def test_plan_llm_loi_van_giu_du_file(monkeypatch):
     out = await planner.plan(files)
     assert [a["detectedType"] for a in out["attachments"]] == ["identity", "other"]
     assert any(e.startswith("attachment_agent:") for e in out["errors"])
-    assert sum("Cần bổ sung" in e for e in out["errors"]) == 3
+    assert sum("Cần bổ sung" in e for e in out["errors"]) == 2
 
 
 def test_tro_ly_cung_key_chon_so_va_dien_to_khai():

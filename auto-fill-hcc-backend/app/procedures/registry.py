@@ -10255,8 +10255,8 @@ PROCEDURES: list[dict] = [
         # Mã TTHC 1.013818 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Key TRÙNG ke_khai_links nên mã +
         # URL kê khai được ghép tự động. Wizard tư pháp 4 bước như thủ tục luật sư ngay trên: từ 11/11/2026 bước Kê khai
         # là eForm "GIẤY ĐĂNG KÝ THAM DỰ KIỂM TRA KẾT QUẢ TẬP SỰ HÀNH NGHỀ CÔNG CHỨNG" Mẫu TP-TSCC-10
-        # (tokhaidientu.moj.gov.vn, engine legacy x-*) — xem process/; planner xếp file vào 3 dòng cố định của bước
-        # Thành phần hồ sơ (mỗi file nguyên khối).
+        # (tokhaidientu.moj.gov.vn, engine legacy x-*) — xem process/; planner xếp file vào dòng 1–2 của bước Thành phần
+        # hồ sơ (dòng 3 là tờ khai điện tử cổng tự sinh, không có nút chọn tệp), mỗi file nguyên khối.
         "detect": {
             "urlIncludes": ["maThuTuc=1.013818"],
             "textIncludes": ["đăng ký tham dự kiểm tra kết quả tập sự hành nghề công chứng"],
@@ -10279,8 +10279,8 @@ PROCEDURES: list[dict] = [
             "4. Căn cước (nếu có) để đối chiếu nhân thân.\n"
             "Phần nhân thân cổng đổ theo tài khoản VNeID — nên đăng nhập bằng tài khoản của chính người tập sự; hệ "
             "thống ghi đè theo giấy tờ và cảnh báo khi lệch.\n"
-            "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; Giấy đăng ký → dòng 3. Mỗi file "
-            "đính nguyên khối, nhiều file cùng dòng gộp một PDF; file chứa nhiều giấy thì đính nguyên file vào cả dòng "
+            "Bước Thành phần hồ sơ: Quyết định → dòng 1; chứng từ nộp phí → dòng 2; dòng 3 là tờ khai điện tử cổng tự "
+            "sinh, Giấy đăng ký đã ký thêm thành phần hồ sơ mới. Mỗi file đính nguyên khối, nhiều file cùng dòng gộp một PDF; file chứa nhiều giấy thì đính nguyên file vào cả dòng "
             "còn thiếu. Căn cước hoặc giấy khác thêm thành phần hồ sơ mới. Dòng không có giấy để trống kèm cảnh báo "
             "cần bổ sung."
         ),
