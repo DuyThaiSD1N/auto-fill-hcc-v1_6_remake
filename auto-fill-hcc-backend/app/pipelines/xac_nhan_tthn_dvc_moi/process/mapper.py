@@ -14,7 +14,7 @@ from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.nationality import normalize_nationality
 from app.pipelines._shared.tai_khoan import account_context, date_key, matches_account
 
-from .reason import labeled_value, section
+from .reason import _is_death_doc, labeled_value, section
 from .schema import GIOI_TINH, LOAI_CU_TRU, LOAI_GIAY_TO, MUC_DICH, NOI_CU_TRU, QUAN_HE, TINH_TRANG, UI_COMP_BY_NAME
 
 _DATE_RE = re.compile(r"\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b")
@@ -210,6 +210,64 @@ def _status_code(value) -> str | None:
     return None
 
 
+_OCR_DOC_HEADER_RE = re.compile(r"^===== .* =====$", re.MULTILINE)
+_DEATH_TITLE_RE = re.compile(r"TRÍCH LỤC KHAI TỬ|GIẤY CHỨNG TỬ|GIẤY BÁO TỬ", re.IGNORECASE)
+_DEATH_NUMBER_RE = re.compile(r"\bSố\s*[:.]\s*(\d[\w/\-.]*\w)", re.IGNORECASE)
+_WORD_DATE_RE = re.compile(r"ngay\s*(\d{1,2})\s*thang\s*(\d{1,2})\s*nam\s*(\d{4})")
+_DEATH_NAME_RE = re.compile(r"^\s*Họ(?:,| và)?\s*(?:chữ đệm,?\s*)?(?:và\s*)?tên\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_DEATH_GENDER_RE = re.compile(r"gioi tinh\s*:\s*(nam|nu)\b")
+_AGENCY_RE = re.compile(r"^\s*(?:UBND|[ỦU]Y BAN NHÂN DÂN)\s+(.+)$", re.IGNORECASE | re.MULTILINE)
+_AGENCY_TAIL_RE = re.compile(r"\s+(?:CỘNG H[ÒO]A|CỘNG HOÀ|Độc lập)\b.*$", re.IGNORECASE)
+_UNIT_WORDS = ("Xã", "Phường", "Thị Trấn", "Đặc Khu", "Quận", "Huyện", "Thị Xã", "Thành Phố", "Tỉnh")
+
+
+def _death_agency(header: str) -> str:
+    match = _AGENCY_RE.search(header)
+    if not match:
+        return ""
+    rest = _AGENCY_TAIL_RE.sub("", match.group(1)).strip(" .,")
+    if not rest:
+        return ""
+    rest = rest.title() if rest.isupper() else rest
+    for unit in _UNIT_WORDS:
+        if rest.startswith(unit + " "):
+            rest = unit.lower() + rest[len(unit):]
+            break
+    return f"Ủy ban nhân dân {rest}"
+
+
+def _death_cert_from_ocr(ocr_text: str, values: dict) -> dict:
+    """LLM bỏ sót giấy khai tử khi giấy không ghi người chết là vợ/chồng (hồ sơ chỉ CCCD + trích lục khai tử): đọc
+    số / ngày / cơ quan ở ĐẦU giấy khai tử của người KHÁC người được cấp. Người chết cùng giới với người được cấp thì
+    không phải vợ/chồng → bỏ."""
+    subject_name = _fold(values.get("NguoiDuocCap_HoTen"))
+    subject_gender = _fold(values.get("NguoiDuocCap_GioiTinh"))
+    for text in _OCR_DOC_HEADER_RE.split(ocr_text or ""):
+        document = {"text": text}
+        if not text.strip() or not _is_death_doc(document):
+            continue
+        folded = _fold(text)
+        name = _DEATH_NAME_RE.search(text)
+        if subject_name and name and subject_name in _fold(name.group(1)):
+            continue
+        gender = _DEATH_GENDER_RE.search(folded)
+        if gender and subject_gender in ("nam", "nu") and gender.group(1) == subject_gender:
+            continue
+        # Tiêu đề giấy chia phần đầu (số, địa danh + ngày, cơ quan cấp) với phần thân (ngày chết, số đăng ký gốc).
+        title = _DEATH_TITLE_RE.search(text)
+        header = text[:title.start()] if title else "\n".join(text.splitlines()[:6])
+        number = _DEATH_NUMBER_RE.search(header)
+        date = _WORD_DATE_RE.search(_fold(header))
+        found = {
+            "DeathCert_Number": number.group(1) if number else "",
+            "DeathCert_Date": "/".join(date.groups()) if date else _full_date(header),
+            "DeathCert_Agency": _death_agency(header),
+        }
+        if found["DeathCert_Number"] or found["DeathCert_Date"]:
+            return found
+    return {}
+
+
 def _marital_status(values: dict) -> str | None:
     """Chốt mã option tình trạng hôn nhân từ mã tờ khai + giấy tờ ly hôn / khai tử / kết hôn."""
     divorce = [values.get(f"BanAn_{k}") or values.get(f"DivorceDecision_{k}") for k in ("Number", "Date", "Agency")]
@@ -347,6 +405,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             add("citizenNDKDiachi_Khac", residence.get("diaChi"))
 
     # Tình trạng hôn nhân: chọn option trước, vùng chi tiết chỉ hiện sau khi chọn.
+    if not any(values.get(f"DeathCert_{k}") for k in ("Number", "Date", "Agency")):
+        values.update(_death_cert_from_ocr(str(options.get("_ocr_text") or ""), values))
     status = _marital_status(values)
     if status:
         add_choice("citizenTinhtranghonnhan", TINH_TRANG, status)

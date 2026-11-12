@@ -148,5 +148,625 @@
         "ten": "Bệnh viện Đa khoa Bố Hạ",
         "xa": "Phường Bố Hạ",
         "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Bắc Ninh",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bắc Ninh",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sản Nhi tỉnh Bắc Ninh",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sản Nhi Bắc Ninh",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền và Phục hồi chức năng tỉnh Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi Bắc Ninh số 2",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi tỉnh Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Lao và Bệnh phổi tỉnh Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sức khỏe Tâm thần Bắc Ninh số 2",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sức khỏe Tâm thần Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần tỉnh Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần Bắc Ninh",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Mắt Bắc Ninh",
+        "xa": "Phường Hạp Lĩnh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Mắt tỉnh Bắc Ninh",
+        "xa": "Phường Hạp Lĩnh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Da liễu Bắc Ninh",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Da liễu tỉnh Bắc Ninh",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phong - Da liễu Bắc Ninh",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện 110",
+        "xa": "Phường Vũ Ninh",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Bắc Ninh",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Bắc Ninh",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Yên Phong",
+        "xa": "Phường Yên Phong",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Yên Phong",
+        "xa": "Phường Yên Phong",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Yên Phong",
+        "xa": "Phường Yên Phong",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Yên Phong",
+        "xa": "Phường Yên Phong",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tiên Du",
+        "xa": "Xã Liên Bão",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Tiên Du",
+        "xa": "Xã Liên Bão",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tiên Du",
+        "xa": "Xã Liên Bão",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Tiên Du",
+        "xa": "Xã Liên Bão",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thị xã Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thành phố Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Từ Sơn",
+        "xa": "Phường Đồng Nguyên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thị xã Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Quế Võ",
+        "xa": "Phường Quế Võ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thị xã Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Thuận Thành",
+        "xa": "Phường Thuận Thành",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Gia Bình",
+        "xa": "Phường Gia Bình",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Gia Bình",
+        "xa": "Phường Gia Bình",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Gia Bình",
+        "xa": "Phường Gia Bình",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Gia Bình",
+        "xa": "Phường Gia Bình",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lương Tài",
+        "xa": "Phường Lương Tài",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Lương Tài",
+        "xa": "Phường Lương Tài",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lương Tài",
+        "xa": "Phường Lương Tài",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Lương Tài",
+        "xa": "Phường Lương Tài",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Kinh Bắc",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Kinh Bắc 2",
+        "xa": "Phường Võ Cường",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Mắt Sông Cầu",
+        "xa": "Phường Kinh Bắc",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sản Nhi Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sản Nhi tỉnh Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền tỉnh Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phục hồi chức năng Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phục hồi chức năng tỉnh Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi Bắc Ninh số 1",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Phổi tỉnh Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Sức khỏe Tâm thần Bắc Ninh số 1",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần tỉnh Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Ung bướu Bắc Ninh",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Ung bướu Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Ung bướu tỉnh Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Nội tiết tỉnh Bắc Ninh",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Nội tiết Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Nội tiết tỉnh Bắc Giang",
+        "xa": "Phường Đa Mai",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Yên Dũng",
+        "xa": "Phường Yên Dũng",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Yên Dũng",
+        "xa": "Phường Yên Dũng",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Yên Dũng",
+        "xa": "Phường Yên Dũng",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Yên Dũng",
+        "xa": "Phường Yên Dũng",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lục Ngạn",
+        "xa": "Phường Chũ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Lục Ngạn",
+        "xa": "Phường Chũ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lục Ngạn",
+        "xa": "Phường Chũ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Lục Ngạn",
+        "xa": "Phường Chũ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Chũ",
+        "xa": "Phường Chũ",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lục Nam",
+        "xa": "Phường Lục Nam",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Lục Nam",
+        "xa": "Phường Lục Nam",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lục Nam",
+        "xa": "Phường Lục Nam",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Lục Nam",
+        "xa": "Phường Lục Nam",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lạng Giang",
+        "xa": "Phường Lạng Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Lạng Giang",
+        "xa": "Phường Lạng Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lạng Giang",
+        "xa": "Phường Lạng Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Lạng Giang",
+        "xa": "Phường Lạng Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tân Yên",
+        "xa": "Xã Tân Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Tân Yên",
+        "xa": "Xã Tân Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tân Yên",
+        "xa": "Xã Tân Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Tân Yên",
+        "xa": "Xã Tân Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thị xã Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Việt Yên",
+        "xa": "Phường Việt Yên",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hiệp Hòa",
+        "xa": "Phường Hiệp Hòa",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Hiệp Hòa",
+        "xa": "Phường Hiệp Hòa",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hiệp Hòa",
+        "xa": "Phường Hiệp Hòa",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Hiệp Hòa",
+        "xa": "Phường Hiệp Hòa",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Sơn Động",
+        "xa": "Xã Sơn Động",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Sơn Động",
+        "xa": "Xã Sơn Động",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Sơn Động",
+        "xa": "Xã Sơn Động",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Sơn Động",
+        "xa": "Xã Sơn Động",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Yên Thế",
+        "xa": "Xã Yên Thế",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Yên Thế",
+        "xa": "Xã Yên Thế",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Yên Thế",
+        "xa": "Xã Yên Thế",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Trung tâm Y tế Yên Thế",
+        "xa": "Xã Yên Thế",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền LanQ",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Mắt Quốc tế DND Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Hà Nội - Bắc Giang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Thành phố Bắc Ninh"
     }
 ]

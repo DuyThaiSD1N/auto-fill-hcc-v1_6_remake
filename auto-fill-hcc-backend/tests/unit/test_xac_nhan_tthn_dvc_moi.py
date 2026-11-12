@@ -286,6 +286,41 @@ def test_co_to_khai_thi_khong_can_thiep_nguoi_duoc_cap():
     assert "001150000004" in reason.section(out, "nguoi_duoc_cap")
 
 
+TRICH_LUC_KHAI_TU = (
+    "TỈNH BẮC NINH CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nUBND PHƯỜNG ĐÔNG MAI\n"
+    "Số: 25/TLKT Đông Mai, ngày 7 tháng 5 năm 2022\nTRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: TRẦN VĂN K\n"
+    "Ngày, tháng, năm sinh: 1/2/1970 Giới tính: Nam Dân tộc: Kinh\n"
+    "Đã chết vào lúc 8 giờ, ngày 01 tháng 5 năm 2022\nHọ, chữ đệm, tên người đi khai tử: Trần Văn L\n"
+)
+
+
+def _ocr(*docs: tuple[str, str]) -> str:
+    return "\n\n---\n\n".join(f"===== {name} (tiengnoi) =====\n{text}" for name, text in docs)
+
+
+def test_cccd_va_trich_luc_khai_tu_llm_bo_sot_thi_goa_theo_giay():
+    values = {**BASE, "NguoiDuocCap_HoTen": "Lê Thị M", "NguoiDuocCap_GioiTinh": "Nữ"}
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    ocr = _ocr(("a.jpg", TRICH_LUC_KHAI_TU), ("b.jpg", "CĂN CƯỚC CÔNG DÂN\nHọ và tên / Full name: LÊ THỊ M\n"))
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(), "_ocr_text": ocr})
+    v = {f["name"]: f for f in out}
+    assert v["citizenTinhtranghonnhan"]["code"] == "4"
+    assert v["citizenSogiaychungtuTrichluckhaituBanan"]["value"] == "25/TLKT"
+    assert v["citizenField50"]["value"] == "07/05/2022"
+    assert v["citizenField51"]["value"] == "Ủy ban nhân dân phường Đông Mai"
+
+
+def test_giay_khai_tu_cung_gioi_hoac_llm_da_tra_thi_khong_bu():
+    ocr = _ocr(("a.jpg", TRICH_LUC_KHAI_TU))
+    same_gender = {**BASE, "NguoiDuocCap_GioiTinh": "Nam"}
+    assert mapper._death_cert_from_ocr(ocr, same_gender) == {}
+    values = {**BASE, "NguoiDuocCap_GioiTinh": "Nữ", "TinhTrangHonNhan": "goa", "DeathCert_Number": "9/TLKT"}
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(), "_ocr_text": ocr})
+    v = {f["name"]: f for f in out}
+    assert v["citizenSogiaychungtuTrichluckhaituBanan"]["value"] == "9/TLKT" and "citizenField50" not in v
+
+
 CCCD_HAI_DONG = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001090000002\nHọ và tên / Full name:\nNGUYỄN VĂN B\n"
                  "Nơi thường trú / Place of residence: Xóm Mới\nKim Chân, Thành phố Bắc Ninh, Bắc Ninh\n")
 

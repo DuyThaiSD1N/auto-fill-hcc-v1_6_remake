@@ -165,8 +165,8 @@ def link_province_slugs(link: dict, procedures_by_key: dict[str, dict]) -> list[
     """Tỉnh của link kê khai: tiền tố nhãn link + tỉnh của thủ tục lõi cùng key.
 
     Nhãn link nhiều khi không ghi tỉnh dù thủ tục lõi đã khoá tỉnh (vd `dinh-chinh-sai-sot` Lai Châu),
-    nên phải gộp cả hai. Chiều ngược lại thì KHÔNG: `tham-dinh-bcnckt` nhãn link ghi Ninh Bình (link
-    ép chọn cơ quan Ninh Bình) nhưng pipeline lõi là cổng Bộ Xây dựng, tỉnh nào mở form cũng điền được.
+    nên phải gộp cả hai. Chiều ngược lại thì KHÔNG: thủ tục lõi cổng bộ ngành không khoá tỉnh, chỉ nhãn
+    link mới khoá (vd `tham-dinh-bcnckt` từng ghi "Ninh Bình - …"; 12/11/2026 bỏ tiền tố, mở toàn quốc).
     """
     if link.get("provinceOnly"):
         return sorted(link["provinceOnly"])

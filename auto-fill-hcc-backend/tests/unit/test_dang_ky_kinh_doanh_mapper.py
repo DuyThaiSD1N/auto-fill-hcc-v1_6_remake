@@ -213,3 +213,92 @@ def test_business_schema_and_prompt_only_define_three_phone_sources():
     assert "NguoiNop_DienThoai" not in names
     assert "CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ" in EXTRA_RULES
     assert "KHÔNG lấy liên hệ người nộp thay cho trụ sở, chủ hộ hoặc thuế" in EXTRA_RULES
+
+
+# ── Trụ sở / địa chỉ thuế bỏ trống tỉnh-xã: không giữ tỉnh/xã CCCD mà LLM tự thêm (12/11/2026) ──────
+def _ocr_don(tru_so_xa="....", tru_so_tinh="....", kinh_gui="Kính gửi: UBND phường Xuân Hương – Đà Lạt",
+             thue_xa="Xuân Hương", thue_tinh=""):
+    return "\n".join([
+        "Nơi thường trú / Place of residence: 12 Lê Lợi, Tân Lợi, BMT, Đắk Lắk",
+        kinh_gui,
+        "Mẫu số 1",
+        "Tôi là (ghi họ tên bằng chữ in hoa): NGUYỄN VĂN A",
+        "2. Trụ sở của hộ kinh doanh:",
+        "Số nhà/phòng, ngách/hẻm, ngõ/kiệt, đường/phố/đại lộ, tổ/xóm/ấp/thôn:",
+        "10 Đường Mẫu",
+        f"Xã/Phường/Đặc khu: {tru_so_xa}",
+        f"Tỉnh/Thành phố trực thuộc trung ương: {tru_so_tinh}",
+        "Điện thoại: 0900000001 Fax (nếu có): ....",
+        "3. Ngành, nghề kinh doanh:",
+        "5.1. Địa chỉ nhận thông báo thuế (chỉ kê khai nếu địa chỉ nhận thông báo thuế khác địa chỉ trụ sở):",
+        "Số nhà/phòng, ngách/hẻm, ngõ/kiệt, đường/phố/đại lộ, tổ/xóm/ap/thôn:",
+        "10 Đường Mẫu",
+        f"Xã/Phường/Đặc khu: {thue_xa}",
+        f"Tỉnh/Thành phố trực thuộc trung ương:{thue_tinh}",
+        "Điện thoại (nếu có): 0900000001 Thư điện tử (nếu có):",
+        "5.2. Ngày bắt đầu hoạt động: ……/……/……..",
+    ])
+
+
+def _llm_cop_tinh_cccd():
+    """LLM chép tỉnh/xã nơi thường trú trên CCCD vào trụ sở + thuế dù Đơn bỏ trống."""
+    cccd = {"quocGia": "Việt Nam", "tinh": "Đắk Lắk", "xa": "Tân Lợi", "diaChi": "10 Đường Mẫu"}
+    return [
+        {"name": "TruSo_DiaChi", "value": dict(cccd)},
+        {"name": "Thue_DiaChiNhanThongBao", "value": dict(cccd, xa="Xuân Hương")},
+        {"name": "ChuHo_DiaChi", "value": dict(cccd, diaChi="12 Lê Lợi")},
+    ]
+
+
+def _page_values(fields, page):
+    return {f["name"].split("$")[-1]: f["value"] for f in mapper.enrich(fields, page=page)}
+
+
+def test_tru_so_bo_trong_tinh_xa_lay_theo_kinh_gui_khong_lay_cccd():
+    fields = _llm_cop_tinh_cccd()
+    assert mapper.fix_addresses_from_ocr(fields, _ocr_don()) == ["TruSo_DiaChi", "Thue_DiaChiNhanThongBao"]
+
+    dia_chi = _page_values(fields, "dia-chi")
+    assert dia_chi["CITY_IDFld"] == "Lâm Đồng"
+    assert dia_chi["WARD_IDFld"] == "Xuân Hương - Đà Lạt"
+    assert dia_chi["STREET_NUMBERFld"] == "10 Đường Mẫu"
+    # 5.1 ghi "Xuân Hương" bỏ trống tỉnh → tỉnh theo trụ sở, ra cùng nơi → "Giống địa chỉ trụ sở".
+    thue = _page_values(fields, "thong-tin-ve-thue")
+    assert thue["REP_RECV_ADDR_TYPEFld"] == "1"
+    assert "CITY_IDFld" not in thue
+    # Địa chỉ chủ hộ (CCCD) không bị đụng.
+    chu_ho = _page_values(fields, "chu-ho-kinh-doanh")
+    assert chu_ho["CITY_IDFld"] == "Đắk Lắk"
+
+
+def test_don_ghi_du_tinh_xa_thi_giu_ket_qua_llm():
+    fields = _llm_cop_tinh_cccd()
+    ocr = _ocr_don(tru_so_xa="Tân Lợi", tru_so_tinh="Đắk Lắk", thue_xa="Xuân Hương", thue_tinh=" Đắk Lắk")
+    assert mapper.fix_addresses_from_ocr(fields, ocr) == []
+    assert fields[0]["value"]["tinh"] == "Đắk Lắk" and fields[0]["value"]["xa"] == "Tân Lợi"
+
+
+def test_tru_so_bo_trong_khong_co_kinh_gui_thi_de_trong_tinh_xa():
+    fields = _llm_cop_tinh_cccd()
+    mapper.fix_addresses_from_ocr(fields, _ocr_don(kinh_gui="Kính gửi: Cơ quan đăng ký kinh doanh"))
+    dia_chi = _page_values(fields, "dia-chi")
+    assert "CITY_IDFld" not in dia_chi and "WARD_IDFld" not in dia_chi
+    assert dia_chi["STREET_NUMBERFld"] == "10 Đường Mẫu"
+
+
+def test_kinh_gui_thi_xa_khong_bi_coi_la_ten_xa():
+    fields = _llm_cop_tinh_cccd()
+    mapper.fix_addresses_from_ocr(fields, _ocr_don(kinh_gui="Kính gửi: UBND thị xã Mẫu Sơn"))
+    assert fields[0]["value"]["tinh"] == "" and fields[0]["value"]["xa"] == ""
+
+
+def test_gia_tri_xa_viet_xuong_dong_duoi_nhan():
+    block = "Xã/Phường/Đặc khu:\nXuân Hương\nTỉnh/Thành phố trực thuộc trung ương:\nĐiện thoại: 0900000001"
+    assert mapper._ocr_line_value(block, mapper._OCR_WARD_LABEL) == "Xuân Hương"
+    assert mapper._ocr_line_value(block, mapper._OCR_PROVINCE_LABEL) == ""
+
+
+def test_khong_thay_khoi_tru_so_thi_khong_dung():
+    fields = _llm_cop_tinh_cccd()
+    assert mapper.fix_addresses_from_ocr(fields, "Giấy tờ khác không có mục trụ sở") == []
+    assert fields[0]["value"]["xa"] == "Tân Lợi"

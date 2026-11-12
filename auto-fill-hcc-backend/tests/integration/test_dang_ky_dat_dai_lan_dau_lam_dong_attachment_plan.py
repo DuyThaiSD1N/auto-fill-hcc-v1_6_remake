@@ -130,15 +130,69 @@ def test_llm_chet_van_dinh_du_file():
 
 
 def test_thuan_llm_khong_con_luoi_keyword():
-    """Planner không được đọc OCR để tự đoán loại — phân loại là việc của LLM."""
+    """Planner không tự đoán loại từ OCR — phân loại là việc của LLM; ngoại lệ duy nhất là tiêu đề Mẫu 15a/b/c."""
     for name in ("_rule_doc_type", "_looks_like_identity", "_has_any"):
         assert not hasattr(planner, name), f"{name} phải bị gỡ khỏi planner"
     src = inspect.getsource(planner.build_plan_items)
-    assert "ocr_results" in src and "_ = ocr_results" in src
+    assert "_danh_sach_kem_don" in src
     # OCR có nội dung dễ gây nhầm nhưng LLM đã xác định loại → planner phải nghe LLM.
     ocr = [{"name": "uy-quyen.pdf", "text": "GIẤY ỦY QUYỀN ... theo Mảnh trích đo địa chính số 497-2019"}]
     items, _, _ = planner.build_plan_items(_files(["uy-quyen.pdf"]), ocr, _llm("authorization"))
     assert items[0]["slotIndex"] == 17
+
+
+_TEN_15A = "Danh sách người cùng sử dụng đất Mẫu số 15a"
+# OCR bảng Mẫu 15a (dữ liệu bịa): bảng nhiều cột, có cột "Căn cước công dân" → LLM hay gọi nhầm CCCD.
+_OCR_15A = (
+    "───── Trang 1/1 ─────\nMẫu số 15a. Danh sách những người sử dụng đất, Sở chung thửa đất, "
+    "CĂN CƯỚC (Kèm theo: Giấy tờ pháp nhân, Cơ quan cấp) Ngày, tháng, năm cấp Số 001090000001 - "
+    "01-01-2020 Bộ công an Căn cước công dân (1) (2) (3) (4) (5)"
+)
+_OCR_DON = (
+    "───── Trang 1/2 ─────\nMẫu số 15. Đơn đăng ký đất đai, tài sản gắn liền với đất\n"
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n"
+    "ĐƠN ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT\nKính gửi: Ủy ban nhân dân Phường A.\n"
+    "1. Người sử dụng đất: (Trường hợp nhiều người cùng sử dụng đất thì kê khai theo Mẫu số 15a)"
+)
+
+
+def test_mau_15a_luon_mot_ten_du_llm_goi_cccd_hay_tai_lieu_khac():
+    """12/11/2026: cùng tệp Mẫu 15a, LLM lúc trả identity ("Căn cước công dân"), lúc other ("Tài liệu khác - …"),
+    lúc application với tên tự đặt → nay luôn một tên cố định, vào ô Đơn, không cảnh báo chưa nhận ra loại."""
+    names = ["don.pdf", "ds.pdf"]
+    ocr = [{"name": "don.pdf", "text": _OCR_DON}, {"name": "ds.pdf", "text": _OCR_15A}]
+    for llm_type, llm_name in (
+        ("identity", "Căn cước công dân"),
+        ("other", "Danh sách những người sử dụng đất Mẫu 15a"),
+        ("application", "Danh sách người sử dụng đất Mẫu 15a"),
+        ("", ""),
+    ):
+        llm = {0: {"type": "application", "documentName": "Đơn đăng ký đất đai Mẫu số 15"},
+               1: {"type": llm_type, "documentName": llm_name}}
+        items, warnings, classified = planner.build_plan_items(_files(names), ocr, llm)
+        ds = next(i for i in items if i["fileName"] == "ds.pdf")
+        assert ds["documentName"] == ds["detectedType"] == _TEN_15A, llm_type
+        assert ds["slotIndex"] == 18 and ds["slotKey"] == "g_application"
+        assert not any("Chưa nhận ra loại" in w for w in warnings), llm_type
+        assert next(c for c in classified if c["fileName"] == "ds.pdf")["docType"] == "application"
+        # Đơn mở đầu "Mẫu số 15." và chỉ nhắc 15a trong thân → giữ tên LLM, xếp trước bảng 15a.
+        don = next(i for i in items if i["fileName"] == "don.pdf")
+        assert don["documentName"] == "Đơn đăng ký đất đai Mẫu số 15"
+        assert [i["fileName"] for i in items] == ["don.pdf", "ds.pdf"]
+
+
+def test_don_mat_tieu_de_mau_15_nhac_15a_sau_kinh_gui_khong_bi_doi_ten():
+    text = _OCR_DON.replace("Mẫu số 15. Đơn đăng ký đất đai, tài sản gắn liền với đất\n", "")
+    assert planner._danh_sach_kem_don(text) is None
+    assert planner._danh_sach_kem_don(_OCR_DON) is None
+
+
+def test_nhan_tieu_de_mau_15b_15c_va_chu_hoa():
+    assert planner._danh_sach_kem_don("MẪU SỐ 15B. DANH SÁCH CÁC THỬA ĐẤT") == "b"
+    assert planner._danh_sach_kem_don("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nMẫu 15c Danh sách nhà ở") == "c"
+    assert planner._danh_sach_kem_don("Mẫu số 15 Bộ hồ sơ") is None
+    assert planner._danh_sach_kem_don("Mẫu số 150a") is None
+    assert planner._danh_sach_kem_don("") is None
 
 
 def test_slot_key_khong_trung_keyword_extension():
@@ -169,6 +223,10 @@ def test_prompt_co_bay_va_rang_buoc_khong_bo_sot():
     # Prompt mô tả theo TÊN Ô, không hardcode số dòng (bảng đã đổi một lần rồi).
     assert "STT 19" not in SYSTEM_PROMPT
     assert "3 phần tử" in build_user_prompt([{"index": i, "text": ""} for i in range(3)])
+    # Tên bảng kèm Đơn trong prompt trùng tên cố định của planner (LLM và planner ra cùng một tên).
+    for ten in planner._DANH_SACH_KEM_DON.values():
+        assert f'"{ten}"' in SYSTEM_PROMPT
+    assert "KHÔNG phải identity" in SYSTEM_PROMPT
 
 
 def test_dien_don_tu_nop_bam_nut_nguoi_nop_la_chu_ho_so():

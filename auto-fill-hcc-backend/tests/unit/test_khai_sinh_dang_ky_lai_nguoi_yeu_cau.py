@@ -218,13 +218,49 @@ _XUAN_HUONG = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - �
 _DECEASED = {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": "Đã chết"}
 
 
-def _run_deceased_parents(user):
+def _run_deceased_parents(user, *, raw=False, **extra):
     fields = {**_FIELDS, "Mother_FullName": "Nguyễn Thị Hoa", "Mother_ResidenceDomestic": _DECEASED,
-              "Father_FullName": "Trần Văn Cường", "Father_ResidenceDomestic": _DECEASED}
+              "Father_FullName": "Trần Văn Cường", "Father_ResidenceDomestic": _DECEASED, **extra}
     context = _CONTEXT.format(ten="Lê Văn Bình", so="001056000002", co="Có")
     options = mapper.with_account_process_options({"_reasoning_context": context}, user, "khai-sinh-dang-ky-lai")
     out = mapper.enrich([{"name": k, "value": v} for k, v in fields.items()], options)
+    if raw:
+        return {f["name"]: f for f in out}
     return {f["name"]: f["value"] for f in out}
+
+
+_GIAY_TO_CHA_ME = {
+    "Mother_IdNumber": "001160000021", "Mother_IdIssueDate": "25/08/2022",
+    "Mother_IdIssuer": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "Father_IdNumber": "001058000022", "Father_IdIssueDate": "10/05/2021",
+    "Father_IdIssuer": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+}
+_O_GIAY_TO = ("SoDinhDanh", "LoaiGiayToDinhDanh", "SoGiayToDinhDanh", "NgayCapDD", "NoiCapDD")
+
+
+def test_xuan_huong_cha_me_da_chet_bo_trong_cum_giay_to_tuy_than():
+    v = _run_deceased_parents(_XUAN_HUONG, raw=True, **_GIAY_TO_CHA_ME)
+    for prefix in ("Cha", "Me"):
+        for name in _O_GIAY_TO:
+            field = v[f"{name}{prefix}"]
+            assert field.get("clear") is True and field["value"] == "", f"{name}{prefix}"
+        # Phần còn lại của khối vẫn điền như trước.
+        assert v[f"HoTen{prefix}KS"]["value"]
+        assert v[f"{prefix}NoiCuTru_NuocNgoai"]["value"] == {"quocGia": "Việt Nam", "diaChi": "Đã chết"}
+
+
+def test_xuan_huong_chi_bo_giay_to_cua_nguoi_da_chet():
+    song = {"quocGia": "Việt Nam", "tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt", "diaChi": "Tổ 1"}
+    v = _run_deceased_parents(_XUAN_HUONG, raw=True, **_GIAY_TO_CHA_ME, Father_ResidenceDomestic=song)
+    assert v["SoDinhDanhCha"]["value"] == "001058000022" and not v["SoDinhDanhCha"].get("clear")
+    assert v["NgayCapDDCha"]["value"] == "10/05/2021"
+    assert v["SoDinhDanhMe"].get("clear") is True
+
+
+def test_noi_khac_cha_me_da_chet_van_dien_giay_to():
+    v = _run_deceased_parents({"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"}, **_GIAY_TO_CHA_ME)
+    assert v["SoDinhDanhMe"] == "001160000021"
+    assert v["NgayCapDDCha"] == "10/05/2021"
 
 
 def test_xuan_huong_cha_me_da_chet_chon_khong_co_thong_tin_va_viet_nam():

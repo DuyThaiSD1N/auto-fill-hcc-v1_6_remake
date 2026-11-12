@@ -76,6 +76,9 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
     ngày sinh. Số và ngày phải CÙNG một nguồn.
   + DeathCert_Agency = cơ quan cấp/ký chính tài liệu (khối "UBND XÃ ..."); "UBND" → "Ủy ban nhân dân".
 - Hồ sơ kèm giấy thật thì lấy theo giấy thật; tờ khai chỉ bù field giấy thật không đọc được.
+- Hồ sơ cấp Giấy XNTTHN kèm giấy khai tử của một người KHÁC người được cấp → đó là giấy khai tử của vợ/chồng, KỂ CẢ khi
+  giấy không ghi quan hệ: BẮT BUỘC trả DeathCert_* theo giấy đó; không có tờ khai / giấy XNTTHN cũ thì TinhTrangHonNhan
+  = "goa".
 </giay_khai_tu>
 
 <ban_an_ly_hon>

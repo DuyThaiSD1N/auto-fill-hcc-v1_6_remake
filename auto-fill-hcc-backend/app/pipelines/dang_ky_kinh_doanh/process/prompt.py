@@ -150,6 +150,9 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".
   + Thue_DiaChiNhanThongBao = địa chỉ ở mục 5.1 "Địa chỉ nhận thông báo thuế", chỉ điền khi khác trụ sở.
   Không thay thế qua lại giữa các loại địa chỉ này.
+  + Mục 2 chỉ ghi số nhà/đường, dòng Xã/Phường và Tỉnh để trống → xa lấy theo dòng "Kính gửi: UBND phường/xã ..."
+    ở đầu Giấy đề nghị (hộ kinh doanh đăng ký tại xã nơi đặt trụ sở), tinh là tỉnh của xã đó.
+    TUYỆT ĐỐI KHÔNG lấy tỉnh/xã nơi thường trú trên CCCD hay địa chỉ chủ hộ cho TruSo_DiaChi / Thue_DiaChiNhanThongBao.
 - Không bịa thông tin. Field nào OCR không đủ chắc chắn thì bỏ qua.
 - Nếu một người vừa là chủ hộ vừa là người ký/người nộp hồ sơ, có thể trả cả ChuHo_* và NguoiNop_* bằng cùng dữ liệu.
 - Nếu giấy chỉ có một địa chỉ cá nhân và không tách rõ trụ sở/chủ hộ/người nộp, ưu tiên gán địa chỉ đó cho chủ hộ; chỉ gán trụ sở khi OCR nằm gần nhãn "Địa chỉ trụ sở hộ kinh doanh".

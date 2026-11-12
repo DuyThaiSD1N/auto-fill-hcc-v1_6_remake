@@ -367,6 +367,35 @@ def test_bang_benh_vien_khanh_hoa_chi_dung_xa_hien_hanh():
     assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
 
 
+def test_benh_vien_bac_ninh_ten_cu_ten_moi_ca_hai_tinh_cu():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    # Ảnh 12/11: tỉnh "Thành phố Bắc Ninh", chi tiết "Bệnh viện đa khoa Yên Phong" mà ô xã để trống.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Thành phố Bắc Ninh", "xa": "", "diaChi": "Bệnh viện đa khoa Yên Phong"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Yên Phong"
+    # Ba đời tên tuyến huyện: BVĐK huyện (trước 2018) → TTYT huyện → BVĐK (từ 1/1/2026).
+    assert lookup_hospital("BVĐK huyện Yên Phong")["xa"] == "Phường Yên Phong"
+    assert lookup_hospital("TTYT huyện Tiên Du")["xa"] == "Xã Liên Bão"
+    assert lookup_hospital("Trung tâm Y tế thị xã Từ Sơn")["xa"] == "Phường Đồng Nguyên"
+    assert lookup_hospital("TTYT huyện Lục Ngạn")["xa"] == "Phường Chũ"
+    # Tuyến tỉnh: tên trước 1/7/2025 và tên "số 1" (Bắc Giang cũ) / "số 2" (Bắc Ninh cũ).
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Bắc Ninh")["xa"] == "Phường Võ Cường"
+    assert lookup_hospital("BVĐK tỉnh Bắc Giang")["xa"] == "Phường Bắc Giang"
+    assert lookup_hospital("Bệnh viện Sản Nhi Bắc Ninh")["xa"] == "Phường Võ Cường"
+    assert lookup_hospital("Bệnh viện Sản Nhi Bắc Ninh số 1")["xa"] == "Phường Bắc Giang"
+    assert lookup_hospital("BV Phổi Bắc Ninh số 1")["xa"] == "Phường Đa Mai"
+
+
+def test_bang_benh_vien_bac_ninh_chi_dung_xa_hien_hanh():
+    import json
+    from pathlib import Path
+
+    from app.pipelines._shared.area_remap import is_current_area
+    import app.pipelines._shared.hospital_lookup as hl
+    rows = json.loads((Path(hl.__file__).parent / "data_bv" / "bv_bac_ninh.json").read_text(encoding="utf-8"))
+    assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
+
+
 def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():
     out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
         "tinh": "Hà Nội", "xa": "Phường Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}})

@@ -75,7 +75,8 @@ def _fold(value: str) -> str:
 # luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
 PROCEDURE_KEY = "khai-sinh-dang-ky-lai"
 # Phường Xuân Hương (Lâm Đồng): cha/mẹ đã chết thì chọn sẵn Loại cư trú "Không có thông tin" và
-# Quốc gia nơi cư trú "Việt Nam" (nhánh "Khác"), ô Địa chỉ vẫn ghi "Đã chết". Nơi khác giữ như cũ.
+# Quốc gia nơi cư trú "Việt Nam" (nhánh "Khác"), ô Địa chỉ vẫn ghi "Đã chết", và bỏ trống cụm giấy tờ
+# tùy thân của người đã chết (12/11/2026). Nơi khác giữ như cũ.
 DECEASED_PARENT_NO_INFO_OPTION = "deceasedParentNoInfo"
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 
@@ -269,6 +270,17 @@ def _add_residence(add, prefix: str, residence, default: bool = False, no_info: 
     if residence:
         add(f"{prefix}NoiCuTru", "1", default)
         add(f"{prefix}NoiCuTru_TrongNuoc", residence, default)
+
+
+# Phường Xuân Hương (cờ deceasedParentNoInfo): cha/mẹ đã chết thì KHÔNG điền cụm giấy tờ tùy thân
+# (số định danh, loại giấy tờ, số giấy tờ, ngày cấp, cơ quan cấp) — xoá trắng cả ô cổng điền sẵn.
+_DECEASED_ID_DOC_FIELDS = ("SoDinhDanh", "LoaiGiayToDinhDanh", "SoGiayToDinhDanh", "NgayCapDD", "NoiCapDD")
+
+
+def _clear_deceased_id_doc(clear, prefix: str) -> None:
+    """Xoá cụm giấy tờ tùy thân của cha/mẹ đã chết (prefix = "Cha" | "Me"); clear() chặn add() sau đó."""
+    for name in _DECEASED_ID_DOC_FIELDS:
+        clear(f"{name}{prefix}")
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -1181,6 +1193,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     has_mother_info = any(key.startswith("Mother_") and values.get(key) for key in values)
     if has_mother_info:
         me_default = "Mother_FullName" in default_names
+        me_residence = _resolve_residence(values, "Mother", context)
+        if deceased_no_info and me_residence and _is_deceased_marker(me_residence):
+            _clear_deceased_id_doc(clear, "Me")
         # Ghi đè họ tên mẹ, nếu có
         if values.get("Mother_FullName"):
             add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
@@ -1204,13 +1219,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default or "Mother_BirthDateOrYear" in default_names)
         add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default or "Mother_Ethnicity" in default_names)
         add("QuocTichMeKS", _nationality(values.get("Mother_Nationality")), me_default)
-        _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default, deceased_no_info)
+        _add_residence(add, "Me", me_residence, me_default, deceased_no_info)
 
     # IV. Cha. LUÔN ghi đè thông tin cha lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
     # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Father_* nào.
     has_father_info = any(key.startswith("Father_") and values.get(key) for key in values)
     if has_father_info:
         cha_default = "Father_FullName" in default_names
+        cha_residence = _resolve_residence(values, "Father", context)
+        if deceased_no_info and cha_residence and _is_deceased_marker(cha_residence):
+            _clear_deceased_id_doc(clear, "Cha")
         # Ghi đè họ tên cha, nếu có
         if values.get("Father_FullName"):
             add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
@@ -1233,7 +1251,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default or "Father_BirthDateOrYear" in default_names)
         add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default or "Father_Ethnicity" in default_names)
         add("QuocTichChaKS", _nationality(values.get("Father_Nationality")), cha_default)
-        _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default, deceased_no_info)
+        _add_residence(add, "Cha", cha_residence, cha_default, deceased_no_info)
     elif has_subject:
         # Hồ sơ đọc được nhưng KHÔNG có thông tin cha: xoá trắng khối cha để không sót dữ liệu cổng
         # đã điền sẵn. Radio/ô địa chỉ extension không xoá được nên không gửi.

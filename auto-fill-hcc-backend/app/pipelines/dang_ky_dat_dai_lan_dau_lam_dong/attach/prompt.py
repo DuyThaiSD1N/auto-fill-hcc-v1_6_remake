@@ -1,6 +1,7 @@
 """Prompt phân loại đính kèm cho [Lâm Đồng] đăng ký đất đai cấp GCN lần đầu (1.116360).
 
-Phân loại THUẦN LLM — planner không còn lưới keyword nào, nên CHẤT LƯỢNG NẰM HẾT Ở ĐÂY.
+Phân loại bằng LLM — planner không còn lưới keyword nào (trừ tiêu đề Mẫu số 15a/15b/15c đầu tệp), nên
+CHẤT LƯỢNG NẰM HẾT Ở ĐÂY. Tên bảng 15a/15b/15c dưới đây phải trùng `_DANH_SACH_KEM_DON` của planner.
 """
 
 import json
@@ -46,6 +47,9 @@ map_extract | tax_receipt | origin_doc | other
   Dấu hiệu: tiêu đề "ĐƠN ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT", có mục "Kính gửi", các mục đánh số
   1. Người sử dụng đất… 2. Thửa đất đăng ký… 4. Đề nghị của người sử dụng đất.
   KHÁC "Đơn đăng ký BIẾN ĐỘNG" (Mẫu 18) và KHÁC "Giấy chứng nhận quyền sử dụng đất".
+  Bảng kèm Đơn cũng là application: Mẫu số 15a "Danh sách những người cùng sử dụng đất, cùng sở hữu
+  tài sản" (bảng nhiều cột: họ tên, năm sinh, giấy tờ nhân thân/Căn cước công dân, ngày cấp, cơ quan
+  cấp, địa chỉ…), Mẫu số 15b (danh sách các thửa đất), Mẫu số 15c (danh sách nhà ở, công trình).
 - identity: BẢN THÂN tài liệu là thẻ CCCD/CMND/Thẻ căn cước/Hộ chiếu (ảnh mặt trước/mặt sau).
 - authorization: Giấy ủy quyền / Hợp đồng ủy quyền / Văn bản ủy quyền — người này ủy quyền cho người
   khác thay mặt nộp hồ sơ, ký đơn, nhận kết quả. Dấu hiệu: "tôi ủy quyền cho", "người được ủy quyền",
@@ -81,7 +85,9 @@ thửa đất bằng câu "theo Mảnh trích đo địa chính số …, hệ t
 tọa độ, tỷ lệ, sơ đồ thửa).
 
 ⚑ BẪY 3 — NHẮC SỐ CĂN CƯỚC ≠ LÀ THẺ CĂN CƯỚC. Hầu hết văn bản đều ghi "Căn cước công dân số … cấp ngày
-…" của các bên. Chỉ trả identity khi tài liệu CHÍNH NÓ là thẻ/hộ chiếu.
+…" của các bên. Chỉ trả identity khi tài liệu CHÍNH NÓ là thẻ/hộ chiếu. Bảng Mẫu số 15a có cột
+"Căn cước công dân" và liệt kê số căn cước, cơ quan cấp (Bộ Công an…) của từng người — đó là DANH SÁCH
+kèm Đơn → application, KHÔNG phải identity, KHÔNG phải other.
 
 ⚑ BẪY 4 — TÀI SẢN RIÊNG ≠ NGUỒN GỐC ĐẤT. "Văn bản xác nhận về tài sản riêng" của vợ/chồng nói về việc
 thửa đất là tài sản riêng của ai; nó KHÔNG chứng minh nguồn gốc sử dụng đất → household_rights, KHÔNG
@@ -99,6 +105,10 @@ kèm theo.
 <document_name_rules>
 - documentName: tên tiếng Việt ngắn gọn ĐÚNG theo tiêu đề tài liệu (tối đa ~60 ký tự). Nhiều tài liệu
   cùng loại → đặt tên khác nhau để cán bộ phân biệt.
+- Bảng kèm Đơn dùng ĐÚNG tên cố định sau, không tự đặt kiểu khác:
+    · Mẫu số 15a → "Danh sách người cùng sử dụng đất Mẫu số 15a"
+    · Mẫu số 15b → "Danh sách các thửa đất Mẫu số 15b"
+    · Mẫu số 15c → "Danh sách nhà ở công trình xây dựng Mẫu số 15c"
 - OCR quá thiếu → documentName rỗng.
 </document_name_rules>
 

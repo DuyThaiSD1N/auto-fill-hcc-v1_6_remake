@@ -475,6 +475,10 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
         page_text_by_file[file_index] = {
             int(page.get("pageNumber") or 1): str(page.get("ocrText") or "") for page in pages
         }
+        if file_index not in ocr_by_index:
+            # Tệp không OCR (docx...): LLM chỉ thấy trang rỗng nên xếp blank_page và bỏ mất tệp.
+            # Không gửi LLM; _validated_segments bù đoạn "other" trọn tệp → đính nguyên tệp, giấy tờ mới.
+            continue
         llm_files.append({
             "fileIndex": file_index,
             "pageCount": page_count,
@@ -490,6 +494,12 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
         except Exception as exc:  # noqa: BLE001 - fallback phải giữ đủ file/trang
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
+    sent_indexes = {item["fileIndex"] for item in llm_files}
+    raw_segments = [
+        raw for raw in raw_segments
+        if not isinstance(raw, dict)
+        or _coerce_int(raw.get("fileIndex", raw.get("index"))) in sent_indexes
+    ]
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
 
     records: list[dict] = []

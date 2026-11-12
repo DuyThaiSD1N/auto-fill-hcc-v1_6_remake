@@ -73,6 +73,10 @@ async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
         extra_rules=EXTRA_RULES,
     )
     compact = res["fields"]
+    # Đơn bỏ trống tỉnh/xã của trụ sở / địa chỉ thuế → LLM hay lấy tỉnh/xã CCCD; đối chiếu lại với OCR.
+    fixed = mapper.fix_addresses_from_ocr(compact, res.get("ocr_text") or "")
+    if fixed:
+        res.setdefault("extracted", {})["addressFixed"] = fixed
     # OCR đọc hỏng (số định danh/điện thoại sai độ dài, bảng ngành vỡ, mất vốn) → Qwen đọc ảnh dự phòng, chỉ thay
     # trường hỏng. Hồ sơ đọc ổn không gọi thêm.
     broken = vision.broken_fields({f.get("name"): f.get("value") for f in compact}, res.get("ocr_text") or "")

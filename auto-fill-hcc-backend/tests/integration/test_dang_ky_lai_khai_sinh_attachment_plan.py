@@ -1030,6 +1030,46 @@ async def test_dang_ky_lai_khai_sinh_split_death_document_never_uses_birth_row(m
     assert result["extracted"]["classified"][0]["type"] == "death_document"
 
 
+async def test_dang_ky_lai_khai_sinh_split_keeps_docx_without_ocr(monkeypatch):
+    # Tệp docx không OCR được: trước đây LLM thấy trang rỗng → blank_page → bỏ mất tệp.
+    async def fake_ocr_per_file(files):
+        assert [file["name"] for file in files] == ["cccd.pdf"]
+        return [{"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên: NGUYỄN VĂN A"}]
+
+    seen_file_indexes = []
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        seen_file_indexes.append(messages[1]["content"])
+        return json.dumps({
+            "documents": [
+                {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity",
+                 "documentName": "CCCD", "subjectName": "Nguyễn Văn A"},
+                {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "blank_page",
+                 "documentName": "", "subjectName": ""},
+            ]
+        })
+
+    monkeypatch.setattr(split_planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(split_planner.client, "chat", fake_chat)
+
+    docx = FileItem(
+        name="cccd-bo.docx",
+        type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        dataUrl="data:application/octet-stream;base64,AAA",
+        role="doc",
+    )
+    result = await split_planner.plan([_file("cccd.pdf"), docx], {}, _session())
+
+    docx_items = [item for item in result["attachments"] if item["fileIndex"] == 1]
+    assert len(docx_items) == 1
+    assert docx_items[0]["target"] == "new"
+    assert docx_items[0]["needsAddComponent"] is True
+    assert "sourceSegments" not in docx_items[0]
+    classified = [item for item in result["extracted"]["classified"] if item["fileIndex"] == 1]
+    assert [item["target"] for item in classified] == ["new"]
+    assert all('"fileIndex": 1' not in prompt for prompt in seen_file_indexes)
+
+
 async def test_dang_ky_lai_khai_sinh_split_agency_confirmation_uses_row_4(monkeypatch):
     async def fake_ocr_per_file(files):
         return [{

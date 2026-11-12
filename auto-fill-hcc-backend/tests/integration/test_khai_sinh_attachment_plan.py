@@ -270,6 +270,98 @@ async def test_khai_sinh_attach_keeps_original_names_and_numbers_duplicates(monk
     assert all(it["slotName"] == "Giấy chứng sinh" for it in items)
 
 
+async def test_khai_sinh_attach_renames_messy_file_names(monkeypatch):
+    """Tên gốc có ký tự đặc biệt / chuỗi ngẫu nhiên cổng không nhận → đặt lại theo loại giấy, vẫn khác tên nhau."""
+    names = [
+        "att.x9Kq2LmZ_Pw7Rt3Vb8YnQ4.pdf",  # dấu chấm giữa tên + "_" (tên tệp tải từ Zalo)
+        "IMG_20261112_101010.pdf",
+        "Scan (1).pdf",
+        "image-5.pdf",                    # tên sạch → giữ nguyên
+        "Abc9xYz8Qw7Er6Ty5.pdf",          # chuỗi ngẫu nhiên không ký tự đặc biệt
+    ]
+
+    async def fake_ocr_per_file(files):
+        return [{"name": n, "text": ""} for n in names]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "other"},
+            {"index": 1, "docType": "birth_proof"},
+            {"index": 2, "docType": "other"},
+            {"index": 3, "docType": "other"},
+            {"index": 4, "docType": "residence_form"},
+        ]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+
+    res = await khai_sinh.plan_khai_sinh_attachments([_file(n) for n in names], {}, _session())
+    by_index = {it["fileIndex"]: it["documentName"] for it in res["attachments"]}
+
+    assert by_index == {
+        0: "Giấy tờ khác",
+        1: "Giấy chứng sinh",
+        2: "Giấy tờ khác 2",
+        3: "image-5",
+        4: "Tờ khai thay đổi thông tin cư trú",
+    }
+    # fileName vẫn là tên gốc để extension tìm đúng tệp người dùng tải lên.
+    assert {it["fileName"] for it in res["attachments"]} == set(names)
+
+
+def _noisy_pdf(seed: int, side: int = 1100) -> str:
+    """PDF một trang ảnh nhiễu màu (nén JPEG rất kém) ~1 MB — giống ảnh chụp điện thoại."""
+    import base64
+    import random
+
+    import pymupdf
+
+    samples = random.Random(seed).randbytes(side * side * 3)
+    pix = pymupdf.Pixmap(pymupdf.csRGB, side, side, samples, False)
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_image(page.rect, stream=pix.tobytes("jpeg", jpg_quality=90))
+    return "data:application/pdf;base64," + base64.b64encode(doc.tobytes()).decode()
+
+
+def test_chia_ngan_sach_dong_tep_nho_giu_nguyen_phan_du_cho_tep_lon():
+    # Tệp 1 nhỏ giữ nguyên; 2 tệp lớn chia phần còn lại, giấy chứng sinh (trọng số 2) gấp đôi.
+    shares = khai_sinh._slot_shares({0: 300, 1: 2_000, 2: 2_000}, {0: 1, 1: 2, 2: 1}, 1_500)
+    assert shares == {1: 800, 2: 400}
+    assert khai_sinh._slot_shares({0: 500, 1: 600}, {0: 1, 1: 1}, 2_000) == {}
+
+
+async def test_khai_sinh_nhieu_tep_cung_dong_nen_tong_duoi_2_6mb(monkeypatch):
+    """Req 12/11: 6 tệp ~1 MB cùng dòng chứng sinh → tổng ~6 MB, cổng chặn 2,6 MB/dòng."""
+    names = [f"giay-{i}.pdf" for i in range(6)]
+    files = [FileItem(name=n, type="application/pdf", dataUrl=_noisy_pdf(i), role="doc") for i, n in enumerate(names)]
+
+    async def fake_ocr_per_file(files):
+        return [{"name": n, "text": ""} for n in names]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": i, "docType": "birth_proof" if i == 0 else "other"}
+                                         for i in range(6)]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+
+    res = await khai_sinh.plan_khai_sinh_attachments(files, {}, _session())
+    replaced = res["replaceFiles"] or {}
+
+    def size(i):
+        if str(i) in replaced:
+            return replaced[str(i)]["bytes"]
+        return len(khai_sinh._decode(files[i].dataUrl))
+
+    assert sum(len(khai_sinh._decode(f.dataUrl)) for f in files) > 2_600_000
+    assert all(it["slotIndex"] == 0 for it in res["attachments"])
+    assert sum(size(i) for i in range(6)) <= khai_sinh.SLOT_BUDGET_BYTES
+    # Giấy chứng sinh giữ nét hơn (được phần lớn hơn) giấy tờ khác.
+    assert size(0) >= max(size(i) for i in range(1, 6))
+    assert not [e for e in res["errors"] if "vượt giới hạn" in e]
+
+
 def test_khai_sinh_procedure_has_attachment_step():
     proc = get_procedure("khai-sinh-dang-ky-thuong")
 

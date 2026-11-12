@@ -85,7 +85,7 @@ def test_procedure_endpoints_filter_by_account_province():
     assert core["dinh-chinh-sai-sot-bac-ninh"]["provinceOnly"] == ["bacninh"]
     assert "dang-ky-bien-dong-dat-dai-da-nang" not in core
     assert "cap-doi-gcn-quang-ninh-mien-nui-hai-dao" not in core
-    # Pipeline cổng Bộ Xây dựng dùng chung, dù link kê khai ghi Ninh Bình.
+    # Pipeline cổng Bộ Xây dựng dùng chung cả nước.
     assert "tham-dinh-bcnckt" in core
 
     links = {l["key"] for l in asyncio.run(ke_khai_links(bac_ninh))["links"]}
@@ -96,7 +96,8 @@ def test_procedure_endpoints_filter_by_account_province():
     assert "dinh-chinh-gcn-sai-sot" not in links
     assert core["dinh-chinh-sai-sot-bac-ninh"]["detect"]["urlScope"] == ["dichvucong.bacninh.gov.vn"]
     assert "matthc=1.115446" in core["dinh-chinh-sai-sot-bac-ninh"]["detect"]["urlIncludes"]
-    assert "tham-dinh-bcnckt" not in links
+    # 12/11/2026 người dùng mở 1.013239 toàn quốc: nhãn link bỏ tiền tố "Ninh Bình - ".
+    assert "tham-dinh-bcnckt" in links
 
     quang_ninh_links = {l["key"] for l in asyncio.run(ke_khai_links({"tinh": "Tỉnh Quảng Ninh"}))["links"]}
     assert "tach-thua-hop-thua-dat-quang-ninh" in quang_ninh_links

@@ -21,15 +21,24 @@ Tài khoản khác: không có cờ, hành vi giữ y hệt.
 
 Nén tệp trên 2 MB như 4 thủ tục Cổng DVC quốc gia mới (dùng chung ``shrink_oversized`` của
 cai_chinh_dvc_moi): bản nén trả ở ``replaceFiles`` để extension đính thay bản gốc; OCR vẫn đọc bản gốc.
+Cổng còn chặn TỔNG mỗi dòng 2,6 MB → ``_fit_slot_budget`` nén tiếp các tệp cùng dòng cho tổng lọt ngân sách.
 """
 import asyncio
+import base64
 import re
 import time
 import unicodedata
 from typing import Any
 
 from app.config import settings
-from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_merged, shrink_oversized
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import (
+    _SHRINK_LADDER,
+    _decode,
+    _level_label,
+    _render_pdf,
+    shrink_merged,
+    shrink_oversized,
+)
 from app.pipelines.khai_sinh_lien_thong.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -168,20 +177,42 @@ def _is_explicit_other_text(text: str) -> bool:
     return bool(is_identity_card or is_identity_paper or is_marriage_certificate)
 
 
-def _original_document_names(raw_files: list[dict]) -> dict[int, str]:
+# Tên tệp cổng liên thông nhận: chữ (kể cả có dấu), số, dấu cách, "-" (vd "image-5"). Dấu chấm giữa tên,
+# "_" và ký tự lạ khác thì cổng báo không cho ký tự đặc biệt (req 12/11: "att.i12b2EYU_TFdy…").
+_SAFE_STEM = re.compile(r"^[\w\s-]+$")
+
+
+def _is_messy_stem(stem: str) -> bool:
+    """Tên gốc có ký tự đặc biệt hoặc là chuỗi ngẫu nhiên (mã do Zalo/ứng dụng tự sinh) → phải đặt lại."""
+    if not stem or "_" in stem or not _SAFE_STEM.match(stem):
+        return True
+    for token in re.split(r"[\s-]+", stem):
+        has_digit = any(ch.isdigit() for ch in token)
+        has_alpha = any(ch.isalpha() for ch in token)
+        mixed_case = any(ch.isupper() for ch in token) and any(ch.islower() for ch in token)
+        if len(token) >= 20 or (len(token) >= 10 and has_digit and has_alpha and mixed_case):
+            return True
+    return False
+
+
+def _original_document_names(raw_files: list[dict], doc_types: dict[int, str] | None = None) -> dict[int, str]:
     """documentName = TÊN FILE GỐC cho mọi tệp, không đặt theo loại giấy.
 
     Extension (bật đổi tên) đặt tên tệp tải lên theo documentName; nhiều tệp cùng ô STT1 mà cùng
     nhãn "Giấy chứng sinh" thì cổng liên thông chặn trùng TÊN trong dsFile → chỉ giữ tệp đầu.
     Hai file gốc trùng tên cũng bị chặn như vậy nên tệp sau mới thêm số " 2", " 3".
     Bỏ đuôi ".pdf"/".jpg": extension tự gắn lại đuôi của tệp gốc khi tải lên.
+    Tên gốc linh tinh (ký tự đặc biệt, chuỗi ngẫu nhiên) cổng không nhận → đặt lại theo loại giấy.
     """
+    doc_types = doc_types or {}
     used: set[str] = set()
     names: dict[int, str] = {}
     for idx, f in enumerate(raw_files):
         original = str(f.get("name") or "").strip()
         dot = original.rfind(".")
-        stem = (original[:dot] if dot > 0 else original).strip() or f"file-{idx + 1}"
+        stem = (original[:dot] if dot > 0 else original).strip()
+        if _is_messy_stem(stem):
+            stem = _DOC_TYPE_NAMES.get(doc_types.get(idx, _DOC_OTHER), "Giấy tờ khác")
         name, n = stem, 2
         while _fold(name) in used:
             name = f"{stem} {n}"
@@ -196,6 +227,107 @@ _DOC_BIRTH = "birth_proof"
 _DOC_RESIDENCE = "residence_form"
 _DOC_OTHER = "other"
 _DOC_DECLARATION = "birth_declaration"  # chỉ gán khi có cờ omitBirthDeclaration
+
+# Tên đặt lại cho tệp có tên gốc linh tinh (xem _original_document_names).
+_DOC_TYPE_NAMES = {
+    _DOC_BIRTH: _BIRTH_PROOF_LABEL,
+    _DOC_RESIDENCE: "Tờ khai thay đổi thông tin cư trú",
+    _DOC_DECLARATION: "Tờ khai đăng ký khai sinh",
+    _DOC_OTHER: "Giấy tờ khác",
+}
+
+
+# Cổng liên thông chặn TỔNG dung lượng các tệp của MỘT dòng giấy tờ ("không được quá 2.6MB"); từng tệp dưới 2 MB
+# vẫn vỡ khi nhiều tệp cùng dòng (req 12/11: 6 tệp ~1 MB cùng dòng chứng sinh). Đích chừa biên cho cả cách tính
+# 2.600.000 byte lẫn 2,6 MiB.
+SLOT_BUDGET_BYTES = 2_400_000
+_BIRTH_WEIGHT = 2  # giấy chứng sinh được phần dung lượng gấp đôi giấy tờ khác: cán bộ cần đọc rõ nhất
+_SLOT_LADDER = _SHRINK_LADDER + [(85, 45, True)]  # thêm một nấc sàn cho dòng có nhiều tệp
+
+
+def _slot_shares(sizes: dict[int, int], weights: dict[int, int], budget: int) -> dict[int, int]:
+    """Chia ngân sách của một dòng kiểu "rót nước": tệp nhỏ hơn phần của nó giữ nguyên, phần dư dồn cho tệp lớn.
+
+    Trả {fileIndex: đích byte} chỉ cho các tệp phải nén; rỗng nếu tổng đã lọt ngân sách.
+    """
+    pending = set(sizes)
+    remaining = budget
+    while pending:
+        total_weight = sum(weights.get(i, 1) for i in pending)
+        fits = [i for i in pending if sizes[i] <= remaining * weights.get(i, 1) / total_weight]
+        if not fits:
+            return {i: int(remaining * weights.get(i, 1) / total_weight) for i in sorted(pending)}
+        for i in fits:
+            remaining -= sizes[i]
+            pending.discard(i)
+    return {}
+
+
+def _shrink_to_limit(file: dict, limit: int) -> dict:
+    """Vẽ lại tệp theo `_SLOT_LADDER` tới nấc đầu tiên lọt `limit`; hết thang thì lấy bản nhỏ nhất."""
+    raw = _decode(file["dataUrl"])
+    best, label = raw, ""
+    for dpi, quality, gray in _SLOT_LADDER:
+        out = _render_pdf(raw, dpi, quality, gray)
+        if len(out) < len(best):
+            best, label = out, _level_label(dpi, quality, gray)
+        if len(out) <= limit:
+            break
+    stem = (file["name"].rsplit(".", 1)[0] if "." in file["name"] else file["name"]) or "tai-lieu"
+    return {
+        "name": f"{stem}.pdf",
+        "type": "application/pdf",
+        "dataUrl": "data:application/pdf;base64," + base64.b64encode(best).decode(),
+        "originalBytes": len(raw),
+        "bytes": len(best),
+        "level": label,
+    }
+
+
+async def _fit_slot_budget(raw_files: list[dict], attachments: list[dict], replaced: dict[str, dict],
+                           errors: list[str]) -> None:
+    """Nén các tệp cùng một dòng cho tổng lọt `SLOT_BUDGET_BYTES`; bản nén ghi vào `replaced` (= replaceFiles)."""
+    def size(i: int) -> int:
+        entry = replaced.get(str(i))
+        if entry:
+            return entry["bytes"]
+        try:
+            return len(_decode(raw_files[i]["dataUrl"]))
+        except Exception:  # noqa: BLE001 — dataUrl hỏng: không nén được, coi như 0 để không chặn cả dòng
+            return 0
+
+    rows: dict[Any, list[dict]] = {}
+    for item in attachments:
+        rows.setdefault(item.get("slotIndex"), []).append(item)
+    for items in rows.values():
+        indexes = sorted({
+            it["fileIndex"] for it in items
+            if isinstance(it.get("fileIndex"), int) and 0 <= it["fileIndex"] < len(raw_files)
+            and raw_files[it["fileIndex"]].get("dataUrl")
+        })
+        sizes = {i: size(i) for i in indexes}
+        if sum(sizes.values()) <= SLOT_BUDGET_BYTES:
+            continue
+        birth = {it["fileIndex"] for it in items if it.get("detectedType") == _BIRTH_PROOF_LABEL}
+        weights = {i: _BIRTH_WEIGHT if i in birth else 1 for i in indexes}
+        shares = _slot_shares(sizes, weights, SLOT_BUDGET_BYTES)
+
+        async def one(i: int, limit: int) -> None:
+            try:
+                entry = await asyncio.to_thread(_shrink_to_limit, raw_files[i], limit)
+            except Exception as e:  # noqa: BLE001 — nén hỏng thì để nguyên, cổng tự báo nếu từ chối
+                errors.append(f"Không nén được {raw_files[i].get('name')}: {e}")
+                return
+            if entry["bytes"] < size(i):
+                replaced[str(i)] = entry
+
+        await asyncio.gather(*(one(i, limit) for i, limit in shares.items()))
+        total = sum(size(i) for i in indexes)
+        if total > SLOT_BUDGET_BYTES:
+            errors.append(
+                f"Dòng {items[0].get('slotName') or items[0].get('componentName')} nén hết mức vẫn "
+                f"{total / 1e6:.1f} MB, vượt giới hạn 2,6 MB của cổng; cần bớt giấy tờ đính kèm."
+            )
 
 
 async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
@@ -313,7 +445,7 @@ async def plan_khai_sinh_attachments(
     residence_index = residence_indices[0] if residence_indices else None
 
     attachments: list[dict] = []
-    document_names = _original_document_names(raw_files)
+    document_names = _original_document_names(raw_files, final_types)
     declaration_indices = [i for i in range(len(raw_files)) if final_types[i] == _DOC_DECLARATION]
     for idx in declaration_indices:
         errors.append(f"{OMITTED_DECLARATION_NOTE}: {raw_files[idx]['name']}")
@@ -402,6 +534,7 @@ async def plan_khai_sinh_attachments(
         )
 
     replace_files = await shrink_task
+    await _fit_slot_budget(raw_files, attachments, replace_files, errors)
     # Không có tệp ghép nên chỉ đổi fileName theo bản nén (ảnh → .pdf).
     await shrink_merged(raw_files, attachments, replace_files, errors)
 

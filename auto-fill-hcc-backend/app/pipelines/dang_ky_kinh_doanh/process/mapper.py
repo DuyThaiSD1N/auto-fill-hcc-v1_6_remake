@@ -474,6 +474,135 @@ def _same_address(a: Any, b: Any) -> bool:
     return all(_fold_vi(aa.get(k)) == _fold_vi(bb.get(k)) for k in ("tinh", "xa", "diaChi"))
 
 
+# ── Tỉnh/xã của TRỤ SỞ và ĐỊA CHỈ THUẾ đối chiếu lại với OCR Giấy đề nghị ──────────────────────────
+# Người dân hay chỉ ghi số nhà/đường ở mục "2. Trụ sở", bỏ trống dòng Xã/Phường và Tỉnh (đã ghi xã ở
+# dòng "Kính gửi: UBND phường ..."). LLM khi đó tự lấy tỉnh/xã nơi thường trú trên CCCD — trụ sở ở
+# Đà Lạt bị điền thành phường bên Đắk Lắk (12/11/2026). Mục 5.1 ghi xã mà bỏ trống tỉnh cũng vậy: LLM
+# ghép tỉnh của CCCD, remap ra một phường không liên quan. Prompt đã cấm mà LLM vẫn làm → chốt tất định.
+_OCR_BLANK = re.compile(r"^[\s.…_:·\-–]*$")
+_OCR_WARD_LABEL = re.compile(r"Xã\s*/\s*Phường[^:\n]*:", re.IGNORECASE)
+_OCR_PROVINCE_LABEL = re.compile(r"Tỉnh\s*/\s*Thành\s*phố[^:\n]*:", re.IGNORECASE)
+_OCR_ANY_LABEL = re.compile(r"^\s*(?:Số\s*nhà|Xã\s*/|Tỉnh\s*/|Điện\s*thoại|Thư\s*điện\s*tử|Fax|☐|\d+(?:\.\d+)*\.\s)",
+                            re.IGNORECASE)
+_TRU_SO_BLOCK = (re.compile(r"2\.\s*Trụ\s*sở", re.IGNORECASE),
+                 re.compile(r"\n\s*(?:Điện\s*thoại|3\.\s*Ngành)", re.IGNORECASE))
+_THUE_BLOCK = (re.compile(r"5\.1\.?\s*Địa\s*chỉ\s*nhận\s*thông\s*báo\s*thuế", re.IGNORECASE),
+               re.compile(r"\n\s*(?:Điện\s*thoại|5\.2)", re.IGNORECASE))
+_KINH_GUI_WARD = re.compile(
+    r"Kính\s*gửi\s*[:：.]?[^\n]{0,80}?(?<!thị )(?<!Thị )\b(?:phường|xã|đặc\s+khu)\s+([^\n,;(]+)", re.IGNORECASE)
+_CATALOG_WARD_TYPE = re.compile(r"^(?:Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
+
+
+def _ocr_block(ocr_text: str, bounds: tuple[re.Pattern, re.Pattern]) -> str | None:
+    start = bounds[0].search(ocr_text or "")
+    if not start:
+        return None
+    rest = ocr_text[start.end():]
+    end = bounds[1].search(rest)
+    return rest[: end.start()] if end else rest[:600]
+
+
+def _ocr_line_value(block: str, label: re.Pattern) -> str | None:
+    """Giá trị sau nhãn trong khối địa chỉ: None = không thấy nhãn (không kết luận), "" = để trống."""
+    match = label.search(block)
+    if not match:
+        return None
+    rest = block[match.end():]
+    same_line, _, after = rest.partition("\n")
+    if not _OCR_BLANK.match(same_line):
+        return _compact_text(same_line)
+    if same_line.strip():  # có chấm "....": ô trống thật
+        return ""
+    # Giá trị viết xuống dòng dưới nhãn (OCR hay tách) — trừ khi dòng dưới là nhãn khác hoặc chấm.
+    next_line = after.partition("\n")[0]
+    if not next_line.strip() or _OCR_BLANK.match(next_line) or _OCR_ANY_LABEL.match(next_line):
+        return ""
+    return _compact_text(next_line)
+
+
+def _catalog_ward(name: str, province_hint: str = "") -> tuple[str, str] | None:
+    """Tên xã (trần) → (tỉnh, xã) theo danh mục sau sáp nhập. Có gợi ý tỉnh thì tìm trong tỉnh đó trước;
+    không thì chỉ nhận khi CẢ NƯỚC có đúng một tỉnh có xã này. Khớp cả tên Lâm Đồng kiểu
+    "Xuân Hương - Đà Lạt" khi giấy chỉ ghi "Xuân Hương"."""
+    from app.locations.catalog import WARDS_BY_SLUG, find_province
+
+    wanted = _fold_vi(_clean_ward(name))
+    if not wanted:
+        return None
+
+    def matches(province: dict) -> list[str]:
+        out = []
+        for ward in province["communes"]:
+            bare = _CATALOG_WARD_TYPE.sub("", ward)
+            folded = _fold_vi(bare)
+            if folded == wanted or folded.startswith(wanted + " "):
+                out.append(bare)
+        # "Xuân Hương" khớp duy nhất "Xuân Hương - Đà Lạt"; khớp nhiều xã thì chỉ nhận tên trùng hẳn.
+        exact = [ward for ward in out if _fold_vi(ward) == wanted]
+        return exact or (out if len(out) == 1 else [])
+
+    hint = find_province(province_hint) if province_hint else None
+    if hint:
+        found = matches(WARDS_BY_SLUG[hint["slug"]])
+        if len(found) == 1:
+            return hint["name"], found[0]
+    hits = [(p, found) for p in WARDS_BY_SLUG.values() if (found := matches(p))]
+    if len(hits) == 1 and len(hits[0][1]) == 1:
+        province = find_province(hits[0][0]["province"])
+        return (province["name"] if province else hits[0][0]["province"]), hits[0][1][0]
+    return None
+
+
+def fix_addresses_from_ocr(fields: list[dict], ocr_text: str) -> list[str]:
+    """Sửa tại chỗ tỉnh/xã của TruSo_DiaChi + Thue_DiaChiNhanThongBao theo OCR Giấy đề nghị.
+
+    - Mục 2 bỏ trống CẢ xã lẫn tỉnh → không giữ tỉnh/xã LLM tự thêm; lấy xã ở dòng "Kính gửi: UBND
+      phường/xã ..." (hộ kinh doanh đăng ký tại xã nơi đặt trụ sở), tỉnh tra danh mục. Tra không ra
+      thì để trống cho cán bộ chọn — thà trống còn hơn điền tỉnh của CCCD.
+    - Ghi xã mà bỏ trống tỉnh → tỉnh tra danh mục theo xã (địa chỉ thuế ưu tiên tỉnh của trụ sở).
+    Trả tên field đã sửa (ghi vào extracted để soi trace). OCR không có khối/nhãn thì không đụng.
+    """
+    by_name = {f.get("name"): f for f in fields}
+    changed: list[str] = []
+
+    def apply(name: str, bounds, fallback_ward: str, province_hint: str, clear_blank: bool) -> None:
+        block = _ocr_block(ocr_text, bounds)
+        if block is None:
+            return
+        xa_ocr = _ocr_line_value(block, _OCR_WARD_LABEL)
+        tinh_ocr = _ocr_line_value(block, _OCR_PROVINCE_LABEL)
+        if xa_ocr is None or tinh_ocr is None or tinh_ocr:
+            return  # không thấy nhãn, hoặc giấy đã ghi tỉnh → giữ kết quả LLM
+        field = by_name.get(name)
+        value = field.get("value") if field else None
+        if not isinstance(value, dict):
+            return
+        if not xa_ocr and not clear_blank:
+            return  # địa chỉ thuế bỏ trống xã: prompt đã lo (giống trụ sở), không đoán thêm
+        ward = xa_ocr or fallback_ward
+        resolved = _catalog_ward(ward, province_hint) if ward else None
+        old = (_compact_text(value.get("tinh")), _compact_text(value.get("xa")))
+        if resolved:
+            new = resolved
+        elif xa_ocr:
+            return  # giấy ghi xã nhưng tra không ra tỉnh: giữ LLM (remap có thể biết tên cũ)
+        else:
+            new = ("", "")
+        if (_fold_vi(old[0]), _fold_vi(_clean_ward(old[1]))) == (_fold_vi(new[0]), _fold_vi(new[1])):
+            return
+        field["value"] = {**value, "tinh": new[0], "xa": new[1]}
+        changed.append(name)
+
+    kinh_gui = _KINH_GUI_WARD.search(ocr_text or "")
+    kinh_gui_ward = re.sub(r"\s*[-–—]\s*", " - ", _compact_text(kinh_gui.group(1))).strip(" .") if kinh_gui else ""
+    kinh_gui_place = _catalog_ward(kinh_gui_ward) if kinh_gui_ward else None
+    apply("TruSo_DiaChi", _TRU_SO_BLOCK, kinh_gui_ward, kinh_gui_place[0] if kinh_gui_place else "", True)
+    tru_so = (by_name.get("TruSo_DiaChi") or {}).get("value")
+    tru_so_tinh = _compact_text(tru_so.get("tinh")) if isinstance(tru_so, dict) else ""
+    apply("Thue_DiaChiNhanThongBao", _THUE_BLOCK, "", tru_so_tinh, False)
+    return changed
+
+
 def _business_line_text(values: dict[str, Any]) -> str:
     rows = values.get("NganhNghe_DanhSach")
     if isinstance(rows, list):

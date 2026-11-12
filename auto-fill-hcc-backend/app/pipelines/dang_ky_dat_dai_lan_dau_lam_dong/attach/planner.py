@@ -25,11 +25,15 @@ thẳng slotIndex. Nhờ vậy sửa được HOÀN TOÀN Ở BACKEND, không ph
 Giấy ủy quyền đi vào **STT 18 "Văn bản về việc đại diện theo quy định của pháp luật về dân sự…"** —
 KHÔNG chung ô với Đơn, cũng KHÔNG qua nút "+ Thêm giấy tờ": cổng có sẵn dòng dành riêng cho nó.
 
-Phân loại THUẦN LLM (không còn lưới keyword nào — xem prompt.py). Không nhận ra loại → "other" và vẫn
-đính vào ô Đơn: tuyệt đối không bỏ sót file nào.
+Phân loại bằng LLM (xem prompt.py). Không nhận ra loại → "other" và vẫn đính vào ô Đơn: tuyệt đối
+không bỏ sót file nào. NGOẠI LỆ DUY NHẤT: bảng kèm Đơn Mẫu số 15a/15b/15c (danh sách người cùng sử
+dụng đất / thửa đất / tài sản) nhận theo TIÊU ĐỀ ĐẦU TRANG OCR — bảng 15a có cột "Căn cước công dân",
+OCR ra lộn xộn nên LLM lúc gọi CCCD, lúc "Tài liệu khác", lúc danh sách (12/11/2026). Gặp tiêu đề đó
+thì luôn là application, tên cố định theo `_DANH_SACH_KEM_DON`.
 """
 import re
 import time
+import unicodedata
 from typing import Any
 
 from app.config import settings
@@ -130,6 +134,35 @@ _LABELS = {
 }
 
 
+# Bảng kèm Đơn Mẫu 15 → tên hiển thị cố định (không để LLM tự đặt mỗi lần một kiểu). Viết sẵn đúng
+# khuôn `normalize_document_name` (chỉ chữ/số/khoảng trắng/gạch, ≤ 50 ký tự) để không bị cắt.
+_DANH_SACH_KEM_DON = {
+    "a": "Danh sách người cùng sử dụng đất Mẫu số 15a",
+    "b": "Danh sách các thửa đất Mẫu số 15b",
+    "c": "Danh sách nhà ở công trình xây dựng Mẫu số 15c",
+}
+_PAGE_MARK_RE = re.compile(r"[─━=\-]{3,}\s*Trang\s*\d+\s*/\s*\d+\s*[─━=\-]{3,}", re.IGNORECASE)
+# Lần nhắc "Mẫu số 15…" ĐẦU TIÊN trong tệp. Đơn mở đầu "Mẫu số 15. Đơn đăng ký…" → không có a/b/c.
+_MAU_15_RE = re.compile(r"m[ẫâa]u\s*(?:s[ốô]\s*)?15([abc])?(?![0-9a-z])", re.IGNORECASE)
+_MAU_15_HEAD_CHARS = 200
+
+
+def _danh_sach_kem_don(text: str) -> str | None:
+    """Trả 'a'/'b'/'c' khi tiêu đề đầu tệp là Mẫu số 15a/15b/15c, ngược lại None.
+
+    Chỉ xét ~200 ký tự đầu (sau khi bỏ dòng "Trang i/N") và phải đứng trước "Kính gửi": thân Đơn Mẫu 15
+    cũng có câu "kê khai … theo Mẫu số 15a" nhưng nằm sau tiêu đề "Mẫu số 15." và sau "Kính gửi".
+    """
+    head = unicodedata.normalize("NFC", _PAGE_MARK_RE.sub(" ", text or ""))
+    head = re.sub(r"\s+", " ", head).strip()[:_MAU_15_HEAD_CHARS]
+    match = _MAU_15_RE.search(head)
+    if not match or not match.group(1):
+        return None
+    if re.search(r"k[íi]nh\s*g[ửu]i", head[: match.start()], re.IGNORECASE):
+        return None
+    return match.group(1).lower()
+
+
 def _truncate_text(text: str, limit: int = 3000) -> str:
     text = re.sub(r"\s+", " ", text or "").strip()
     return text if len(text) <= limit else text[:limit] + "..."
@@ -195,20 +228,27 @@ def build_plan_items(
     ocr_results: list[dict],
     llm_types: dict[int, dict[str, str]] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
-    _ = ocr_results  # OCR chỉ để nuôi LLM; planner KHÔNG tự đọc text để đoán loại.
     llm_types = llm_types or {}
+    ocr_text_by_name = {
+        str(r.get("name") or ""): str(r.get("text") or "") for r in (ocr_results or []) if r.get("name")
+    }
     resolved: list[dict] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         detected = llm_types.get(idx) or {}
-        # THUẦN LLM: không có lưới keyword nào tham gia quyết định. LLM im lặng/lỗi → "other" và file
-        # vẫn được đính (vào ô Đơn) kèm cảnh báo, thay vì bị bỏ rơi.
+        # LLM quyết định loại. LLM im lặng/lỗi → "other" và file vẫn được đính (vào ô Đơn) kèm cảnh báo,
+        # thay vì bị bỏ rơi.
         doc_type = _canonical_type(detected.get("type") or "")
+        title = detected.get("documentName", "")
+        source = "llm" if idx in llm_types else "default"
+        # Ngoại lệ duy nhất: tiêu đề đầu tệp là Mẫu số 15a/15b/15c → bảng kèm Đơn, tên cố định.
+        variant = _danh_sach_kem_don(ocr_text_by_name.get(file_name, ""))
+        if variant:
+            doc_type, title, source = _T_APPLICATION, _DANH_SACH_KEM_DON[variant], f"mau-15{variant}"
         resolved.append({
             "idx": idx, "fileName": file_name, "docType": doc_type,
-            "title": detected.get("documentName", ""),
-            "source": "llm" if idx in llm_types else "default",
+            "title": title, "source": source,
         })
 
     groups: dict[str, list[dict]] = {g: [] for g in _GROUPS}
