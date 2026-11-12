@@ -178,6 +178,11 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-12, sau khi kéo BE thai_dev 0d6416f8 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`15 failed, 4672 passed, 41 skipped, 7 errors`. 13 đỏ môi trường như cũ (4 heic + 9 v2 422) + 2 đỏ
+`tests/unit/test_dashboard_chon_nhieu_don_vi.py` (main thêm: `strftime` có chữ tiếng Việt vỡ locale trên Windows, trong Docker
+chạy đúng); lỗi collect thứ 7 là `tests/unit/test_dossier_idle_va_cu_bam_trung.py`, cũng thiếu `mongomock`.
+
 Baseline ngày 2026-11-05, sau khi kéo BE thai_dev 8a15b386 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `13 failed, 3866 passed, 40 skipped, 6 errors`. Vẫn đúng 13 đỏ môi trường (4 heic + 9 v2 422); lỗi collect thứ 6 là
 `tests/unit/test_bug_reports.py` (mới kéo về), cũng thiếu `mongomock` (image Docker cũng không có mongomock).
