@@ -374,6 +374,8 @@ from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.attach import plan as 
 from app.pipelines.dien_thong_tin_tai_khoan_bac_ninh.process import run as dien_tk_bac_ninh_process
 from app.pipelines.dang_ky_bien_phap_bao_dam_bac_ninh.process import run as dang_ky_bpbd_bac_ninh_process
 from app.pipelines.dang_ky_bien_phap_bao_dam_bac_ninh.attach import plan as dang_ky_bpbd_bac_ninh_attach
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_bac_ninh.process import run as dktd_bpbd_bac_ninh_process
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_bac_ninh.attach import plan as dktd_bpbd_bac_ninh_attach
 from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.attach import plan as ho_tro_nguoi_cao_tuoi_bac_ninh_attach
 from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.process import run as ho_tro_nguoi_cao_tuoi_bac_ninh_process
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.attach import plan as ho_tro_chi_phi_hoa_tang_bac_ninh_attach
@@ -5120,6 +5122,44 @@ PROCEDURES: list[dict] = [
             "đúng được).\n"
             "Đính kèm: Phiếu 01a→KQ003675, Hợp đồng bảo đảm→KQ003676, GCN gốc→KQ003684; CCCD/GCN ĐKDN/Giấy "
             "giới thiệu/khác→ô đính kèm bổ sung. Cơ quan tiếp nhận và Tỉnh/Xã khối ủy quyền là select — chọn tay."
+        ),
+    },
+    {
+        "key": "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
+        # Mã TTHC 1.011442, key TRÙNG ke_khai_links ("Bắc Ninh - …", selectSo). Cổng dichvucong.bacninh.gov.vn (Liferay
+        # + select2, engine fill-bacninh.js), trang nộp 4 tab cùng trang, eForm Phiếu Mẫu 02a (eformId 1556): ô khớp class
+        # eform-element-<Key>; lượt purpose="authorized_person" điền khối doiTuongKhac* = bên ủy quyền (thường ngân hàng
+        # cấp Giấy giới thiệu → "Doanh nghiệp"). urlScope khoá host: 1.011442 là mã QUỐC GIA (Đà Nẵng, Lào Cai có bản
+        # riêng). Mapping DOM + ảnh ánh xạ 12/11/2026, chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.011442"],
+        },
+        "label": "[Tỉnh Bắc Ninh] Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ": tệp scan chung cả bộ → mỗi giấy một mục (cắt trang) vào đúng dòng KQ; tắt → đính
+        # NGUYÊN tệp vào mọi dòng có giấy tương ứng (đúng ảnh ánh xạ).
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể scan CHUNG một tệp, Phiếu yêu cầu đứng đầu):\n"
+            "1. Phiếu yêu cầu đăng ký thay đổi nội dung biện pháp bảo đảm (Mẫu số 02a) đã ký, đóng dấu — nguồn chính "
+            "điền đơn.\n"
+            "2. Hợp đồng sửa đổi, bổ sung hợp đồng thế chấp (kèm lời chứng công chứng) / văn bản chuyển giao quyền đòi "
+            "nợ / văn bản khác làm căn cứ thay đổi (công văn, quyết định đổi tên, chấm dứt hoạt động…).\n"
+            "3. Giấy chứng nhận quyền sử dụng đất (bản gốc) kèm trang bổ sung.\n"
+            "4. Nếu nộp thay: Giấy giới thiệu / văn bản ủy quyền; nếu có: hợp đồng thế chấp gốc, GCN đăng ký doanh "
+            "nghiệp.\n"
+            "Điền đơn: nơi/ngày khai, Kính gửi, mục 1 (người yêu cầu + liên hệ), mục 2 (tên văn bản, thời điểm), mục 3 "
+            "nội dung thay đổi, mục 4–6 theo ô đánh dấu trên Phiếu. Ô 'Số' là ô số nguyên: số văn bản có chữ / '/' "
+            "chỉ ghi ở 'Tên văn bản'. Nút \"Điền thông tin người ủy quyền\": khối doiTuongKhac* = bên cấp Giấy giới thiệu.\n"
+            "Đính kèm: Phiếu 02a→KQ003703 (bản thứ hai→Bản sao), HĐ sửa đổi→KQ003704, chuyển giao quyền đòi nợ→"
+            "KQ003705, văn bản căn cứ khác→KQ003706, GCN→KQ003707, Giấy giới thiệu/ủy quyền→KQ003709, các trường hợp "
+            "(ii)–(vi)→KQ003710–KQ003714; HĐ thế chấp gốc/CCCD/khác→'File đính kèm khác'. KQ003708 (điểm b khoản 1 "
+            "Điều 18) không tự đính.\n"
+            "Để user tự làm: chọn cơ quan tiếp nhận (Chi nhánh VPĐKĐĐ nơi có đất)."
         ),
     },
     {
@@ -10605,6 +10645,7 @@ _PIPELINE = {
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": xoa_dk_bpbd_bac_ninh_process,
     "dien-thong-tin-tai-khoan-bac-ninh": dien_tk_bac_ninh_process,
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_process,
+    "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh": dktd_bpbd_bac_ninh_process,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_process,
@@ -10930,6 +10971,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-thoa-thuan-bac-ninh": dang_ky_bien_dong_thoa_thuan_bac_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": xoa_dk_bpbd_bac_ninh_attach,
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_attach,
+    "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh": dktd_bpbd_bac_ninh_attach,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-quang-ngai": ho_tro_chi_phi_hoa_tang_quang_ngai_attach,

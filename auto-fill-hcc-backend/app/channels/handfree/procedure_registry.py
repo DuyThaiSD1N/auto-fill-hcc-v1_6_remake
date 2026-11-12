@@ -5372,6 +5372,63 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.011442, cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 02a, 4 tab cùng trang). Chép thẻ anh em
+        # đăng ký (1.011441) / xóa (1.011443): ke_khai_links selectSo → DVCQG chọn Tỉnh Bắc Ninh + gạt "Sở", bấm thẻ
+        # đầu (agencySoFirst). Khối ủy quyền = bên cấp Giấy giới thiệu (thường ngân hàng → "Doanh nghiệp"; pipeline trả
+        # authorizedSubject khi đọc ra loại khác). Key TRÙNG lõi. Detect neo thêm tên thủ tục vì mã 1.011442 dùng chung
+        # trang hoàn thiện tài khoản /vneidsso (detect theo path). Chưa chạy cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.011442"],
+            "textIncludes": ["đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "shortLabel": "Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất",
+        "subtitle": "Mã 1.011442 · Đăng ký thay đổi nội dung thế chấp quyền sử dụng đất tại Bắc Ninh",
+        "icon": "🏦",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5b-760d-9c8b-955bb35491f2",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → tệp scan chung thành từng giấy riêng.
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Phiếu yêu cầu đăng ký thay đổi biện pháp bảo đảm (Mẫu 02a) — đã ký, đóng dấu; có "
+             "thể scan chung mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "van_ban_sua_doi", "name": "Hợp đồng sửa đổi, bổ sung hợp đồng thế chấp / văn bản căn cứ thay đổi",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (bản gốc, kèm trang bổ sung)",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "gioi_thieu", "name": "Giấy giới thiệu / văn bản ủy quyền (khi nộp thay)",
+             "icon": "✉️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Hợp đồng thế chấp gốc, căn cước hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "bacNinhAuthorizedPerson": {**_BN_AUTHORIZED_PERSON, "subjectOption": "Doanh nghiệp"},
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể scan chung một file, Phiếu yêu cầu đứng đầu):\n"
+            "1. Phiếu yêu cầu đăng ký thay đổi nội dung biện pháp bảo đảm (Mẫu số 02a) đã ký, đóng dấu — nguồn chính "
+            "điền đơn.\n"
+            "2. Hợp đồng sửa đổi, bổ sung hợp đồng thế chấp hoặc văn bản làm căn cứ thay đổi.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất (bản gốc) kèm trang bổ sung.\n"
+            "4. Nếu nộp thay: Giấy giới thiệu hoặc văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         "key": "dinh-chinh-gcn-da-cap-bac-ninh",
         "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
         # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
@@ -9997,6 +10054,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": _TAT_CA,  # STT 106 (2.000575)
     "dang-ky-bien-phap-bao-dam-bac-ninh": _TAT_CA,
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": _TAT_CA,
+    # 12/11/2026: 1.011442 Bắc Ninh chưa có trong bảng theo dõi — tạm mở cho Bắc Ninh, chờ người dùng chốt.
+    "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh": frozenset({"bacninh"}),
     "dinh-chinh-gcn-da-cap-bac-ninh": _TAT_CA,  # STT 103
     "dinh-chinh-gcn-da-cap-1115476-bac-ninh": _TAT_CA,  # STT 103
     "dang-ky-bien-dong-thoa-thuan-bac-ninh": _TAT_CA,  # STT 48

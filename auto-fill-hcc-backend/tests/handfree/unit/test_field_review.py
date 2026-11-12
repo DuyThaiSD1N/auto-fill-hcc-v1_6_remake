@@ -736,6 +736,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cap-giay-phep-chat-ha-cay-xanh", "chap-thuan-dau-noi-tam",
                                      "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
                                      "dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
+                                     "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
                                      "dinh-chinh-gcn-da-cap-bac-ninh", "dinh-chinh-gcn-da-cap-1115476-bac-ninh",
                                      "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh",
                                      "dang-ky-bien-dong-dat-dai-bac-ninh", "dang-ky-bien-dong-thoa-thuan-bac-ninh",

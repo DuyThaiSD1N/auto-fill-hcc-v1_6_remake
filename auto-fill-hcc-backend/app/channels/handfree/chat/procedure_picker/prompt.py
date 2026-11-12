@@ -443,6 +443,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                "giải chấp quyền sử dụng đất", "xóa thế chấp đất đai",
                                                "xóa đăng ký giao dịch bảo đảm",
                                                "giải chấp sổ đỏ ngân hàng"],
+    # Khác "đăng ký biện pháp bảo đảm" (thế chấp lần đầu) và "xóa đăng ký" (giải chấp): ở đây thế chấp ĐANG có, chỉ
+    # đổi nội dung (đổi tên/địa chỉ ngân hàng nhận thế chấp, sửa đổi hợp đồng thế chấp, rút bớt/bổ sung tài sản).
+    "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh": ["đăng ký thay đổi biện pháp bảo đảm",
+                                                    "thay đổi nội dung thế chấp sổ đỏ",
+                                                    "sửa đổi hợp đồng thế chấp đất",
+                                                    "ngân hàng đổi tên bên nhận thế chấp",
+                                                    "bổ sung, rút bớt tài sản thế chấp",
+                                                    "đăng ký thay đổi giao dịch bảo đảm đất đai ở bắc ninh"],
     "dinh-chinh-gcn-da-cap-bac-ninh": ["đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ",
                                        "sổ đỏ ghi sai tên", "sổ đỏ ghi sai ngày sinh, số căn cước",
                                        "đính chính sổ hồng", "sổ đỏ in sai thông tin ở bắc ninh"],

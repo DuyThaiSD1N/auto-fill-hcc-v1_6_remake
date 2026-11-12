@@ -73,7 +73,8 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # GCN bị mất Bắc Ninh 1.115465 (STT 50) cho Bắc Ninh, đính chính GCN Khánh Hòa 1.012790 (STT 103) cho Khánh Hòa.
         # 12/11: +1 mọi tỉnh khai-sinh-nuoc-ngoai (_TAT_CA); Lâm Đồng +2 bản riêng 1.116360 / 1.116356;
         # +1 mọi tỉnh thẻ HDV quốc tế 1.004628 (người dùng mở lại toàn quốc); Lâm Đồng +1 bản riêng 1.116366.
-        "laichau": 122, "bacninh": 127, "lamdong": 115, "danang": 119, "quangninh": 123, "ninhbinh": 112,
+        # Bắc Ninh +1 bản riêng 1.011442 (đăng ký thay đổi BPBĐ, chưa có trong bảng — tạm mở Bắc Ninh).
+        "laichau": 122, "bacninh": 128, "lamdong": 115, "danang": 119, "quangninh": 123, "ninhbinh": 112,
         "quangngai": 113, "laocai": 112, "quangtri": 113, "khanhhoa": 118, "tuyenquang": 113,
     }
 

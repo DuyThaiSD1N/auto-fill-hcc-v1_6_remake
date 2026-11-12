@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.10",
+    date: "12/11/2026",
+    items: [
+      "Thêm thủ tục đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất tại Bắc Ninh (1.011442): điền Phiếu yêu cầu Mẫu 02a, điền khối thông tin người ủy quyền (tự chọn đúng loại doanh nghiệp / tổ chức / cá nhân), đính kèm vào đúng thành phần hồ sơ — tệp scan chung cả bộ đính được cả khi bật hoặc tắt \"Có tách hồ sơ khi đính kèm\".",
+      "Nộp hồ sơ: một lần bấm Gửi hồ sơ không còn bị ghi thành nhiều mốc nộp khi trang được nạp lại tiện ích.",
+      "Ô ngày có lịch chọn: đang mở sẵn lịch của ô khác thì đóng lại trước khi chọn, ngày sinh không còn bị xoá trắng.",
+    ],
+  },
+  {
     version: "1.27.7",
     date: "11/11/2026",
     items: [

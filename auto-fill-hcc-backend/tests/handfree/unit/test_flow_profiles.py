@@ -521,6 +521,16 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bn_cap_lai["provinceOnly"] == ["bacninh"]
     assert bn_cap_lai["bacNinhAuthorizedPerson"]["subjectOption"] == "Cá nhân khác là Công dân Việt Nam"
     assert "wizard" not in bn_cap_lai and "maePortal" not in bn_cap_lai
+    # 1.011442 đăng ký thay đổi BPBĐ: như đăng ký / xóa (chọn Tỉnh + gạt "Sở"); khối ủy quyền mặc định "Doanh nghiệp"
+    # (ngân hàng cấp Giấy giới thiệu).
+    bn_thay_doi = procedures.pop("dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh")
+    assert bn_thay_doi.get("flowProfile") is None
+    assert bn_thay_doi["samePageAttach"] is True
+    assert bn_thay_doi["agencyProvince"] == "Bắc Ninh"
+    assert bn_thay_doi["agencyProvinceOnly"] is True and bn_thay_doi["agencySoFirst"] is True
+    assert bn_thay_doi["provinceOnly"] == ["bacninh"]
+    assert bn_thay_doi["bacNinhAuthorizedPerson"]["subjectOption"] == "Doanh nghiệp"
+    assert "wizard" not in bn_thay_doi and "maePortal" not in bn_thay_doi
 
     # Đăng ký tạm trú (Cổng DVC Bộ Công an): một trang, đính kèm cùng trang, hỏi trước khi đính.
     bca_tam_tru = procedures.pop("dang-ky-tam-tru")
@@ -833,7 +843,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +2 cổng iGate Lâm Đồng (12/11) "dang-ky-dat-dai-lan-dau-lam-dong" (1.116360),
     # "dang-ky-dien-tich-tang-them-lam-dong" (1.116356), luồng "xay-dung".
     # +1 cổng iGate Lâm Đồng (12/11) "giao-thue-dat-giao-rung-gia-han-su-dung-dat" (1.116366), luồng "xay-dung".
-    assert len(procedures) == 161
+    # +1 cổng Bắc Ninh (12/11) "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh" (1.011442).
+    assert len(procedures) == 162
 
     for procedure in procedures:
         key = procedure["key"]
@@ -851,7 +862,8 @@ def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
     core_label = {procedure["key"]: procedure["label"] for procedure in core_registry.PROCEDURES}
     bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
     # +1 "dinh-chinh-gcn-da-cap-1115476-bac-ninh" (cùng thủ tục, khác trường hợp); +1 "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh".
-    assert len(bac_ninh) == 17
+    # +1 "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh" (12/11).
+    assert len(bac_ninh) == 18
     for procedure in bac_ninh:
         assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
         short = procedure.get("shortLabel", "")

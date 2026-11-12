@@ -41,3 +41,5 @@ class ProcessResp(BaseModel):
     pages: dict[str, list[FieldOut]] | None = None
     # Metadata state machine HkdOnline (wizard tìm HKD + các trang thực sự cần sửa).
     businessFlow: dict[str, Any] | None = None
+    # Lượt purpose="authorized_person" cổng Bắc Ninh: loại "Người ủy quyền là:" pipeline đọc được (vd "Doanh nghiệp").
+    authorizedSubject: str | None = None

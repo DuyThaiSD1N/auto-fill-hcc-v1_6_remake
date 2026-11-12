@@ -199,11 +199,19 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     sourceLabel: "người ủy quyền (chủ hồ sơ)",
     missingFilesMessage: "Chưa có Đơn Mẫu 18 hoặc CCCD để đọc thông tin chủ hồ sơ.",
   }],
+  // 1.011442 — Đăng ký thay đổi BPBĐ: khối điền = bên cấp Giấy giới thiệu (thường ngân hàng → "Doanh nghiệp");
+  // BE đọc ra loại khác (Tổ chức / Cá nhân) thì trả authorizedSubject và nút dùng loại đó.
+  ["dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh", {
+    subjectOption: "Doanh nghiệp",
+    sourceLabel: "người ủy quyền (bên cấp Giấy giới thiệu)",
+    missingFilesMessage: "Chưa có Giấy giới thiệu / văn bản ủy quyền và Phiếu yêu cầu để đọc thông tin người ủy quyền.",
+  }],
 ]);
 const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
   "ho-tro-chi-phi-hoa-tang-bac-ninh",
   "dang-ky-bien-dong-dat-dai-bac-ninh",
   "dang-ky-bien-dong-thoa-thuan-bac-ninh",
+  "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
 ]);
 const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;
@@ -2789,7 +2797,8 @@ if (proxyFillBtn) {
       const fillRes = await sendToContent({
         action: "fillBacNinhAuthorizedPerson",
         procedure: cfg.key,
-        subjectOption: authorizedConfig.subjectOption,
+        // BE đọc được loại bên ủy quyền (doanh nghiệp / tổ chức / cá nhân) thì chọn đúng loại đó.
+        subjectOption: res.authorizedSubject || authorizedConfig.subjectOption,
         fields: res.fields,
       });
       if (fillRes?.error) throw new Error(fillRes.error);

@@ -170,6 +170,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         "errors": result.get("errors", []),
         "pages": result.get("pages"),
         "businessFlow": result.get("businessFlow"),
+        "authorizedSubject": result.get("authorizedSubject"),
     }
     if rec is not None:
         for err in result.get("errors") or []:

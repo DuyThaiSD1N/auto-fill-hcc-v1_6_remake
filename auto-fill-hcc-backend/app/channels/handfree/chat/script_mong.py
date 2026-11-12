@@ -106,6 +106,8 @@ PROCEDURE_HMONG = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": "Cuv npe siv daim av ua puav pheej (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — xóa đăng ký biện pháp bảo đảm/giải chấp đất).
     "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "Rho npe siv daim av ua puav pheej (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký THAY ĐỔI biện pháp bảo đảm); "hloov" = thay đổi, đã có trong file.
+    "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh": "Hloov npe siv daim av ua puav pheej (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đính chính GCN đã cấp); "kho" = sửa, đã có trong file.
     "dinh-chinh-gcn-da-cap-bac-ninh": "Kho daim ntawv av (Bắc Ninh)",
     "dinh-chinh-gcn-da-cap-1115476-bac-ninh": "Kho daim ntawv av (Bắc Ninh, 1.115476)",
