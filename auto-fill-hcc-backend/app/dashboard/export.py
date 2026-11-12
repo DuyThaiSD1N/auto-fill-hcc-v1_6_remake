@@ -61,6 +61,12 @@ def _scope_label(scope: dict) -> str:
     return self_unit.get("name") or self_unit.get("xa") or "Đơn vị của bạn"
 
 
+def _picked_ids(data: dict) -> set[str]:
+    """Đơn vị đã tick khi chọn từ 2 đơn vị trở lên; chọn 1 đơn vị giữ như cũ (bảng đủ mọi đơn vị)."""
+    chosen = data.get("selectedUnits") or []
+    return {u["unitId"] for u in chosen} if len(chosen) >= 2 else set()
+
+
 def _write_header(ws, row: int, headers: list[tuple[str, str, int]]) -> None:
     """headers = [(nhãn, align 'l'|'c'|'r', width)]; tô nền xanh + freeze dưới header."""
     for col, (label, align, width) in enumerate(headers, start=1):
@@ -102,8 +108,13 @@ def _sheet_overview(wb: Workbook, data: dict) -> None:
 
     now = datetime.now(timezone.utc)
     hf = "Auto Fill + Handfree" if sources.get("handfree") else "Auto Fill (chưa gộp Handfree)"
+    chosen = data.get("selectedUnits") or []
+    scope_text = _scope_label(scope)
+    if len(chosen) >= 2:
+        names = ", ".join(u.get("xa") or u.get("name") or "" for u in chosen)
+        scope_text = f"{len(chosen)} đơn vị đã chọn: {names}"
     meta = [
-        ("Phạm vi", _scope_label(scope)),
+        ("Phạm vi", scope_text),
         ("Kỳ báo cáo", _period_label(data.get("range") or {})),
         ("Nguồn số liệu", hf),
         ("Thời điểm xuất", _fmt_now(now)),
@@ -125,7 +136,11 @@ def _sheet_overview(wb: Workbook, data: dict) -> None:
     rows = [("Tổng hồ sơ tiếp nhận", kpis.get("dossiers", 0), True)]
     if scope.get("canViewUnits"):
         # Chỉ đếm đơn vị có hồ sơ trong kỳ — khớp màn hình, đơn vị 0 hồ sơ không đưa vào thống kê.
-        with_data = sum(1 for u in data.get("units") or [] if int(u.get("dossiers") or 0) > 0)
+        picked = _picked_ids(data)
+        with_data = sum(
+            1 for u in data.get("units") or []
+            if int(u.get("dossiers") or 0) > 0 and (not picked or u.get("unitId") in picked)
+        )
         rows.append(("Số đơn vị có số liệu", with_data, True))
     rows.append(("Loại thủ tục phát sinh", kpis.get("procedureTypes", 0), True))
     rows.append(("Thủ tục nhiều hồ sơ nhất", top.get("count", 0) if top else 0, True))
@@ -173,7 +188,11 @@ def _sheet_units(wb: Workbook, data: dict) -> None:
     ws = wb.create_sheet("Theo đơn vị")
     ws.sheet_view.showGridLines = False
     # Đơn vị 0 hồ sơ trong kỳ không đưa vào thống kê (khớp màn hình bảng thống kê).
-    units = [u for u in data.get("units") or [] if int(u.get("dossiers") or 0) > 0]
+    picked = _picked_ids(data)
+    units = [
+        u for u in data.get("units") or []
+        if int(u.get("dossiers") or 0) > 0 and (not picked or u.get("unitId") in picked)
+    ]
     _write_header(ws, 1, [
         ("STT", "c", 6),
         ("Đơn vị", "l", 34),
@@ -203,7 +222,10 @@ def _sheet_procedures(wb: Workbook, data: dict) -> None:
     ws = wb.create_sheet("Theo thủ tục")
     ws.sheet_view.showGridLines = False
     procs = data.get("byProcedure") or []
-    show_units = bool((data.get("scope") or {}).get("canViewUnits")) and not data.get("selected")
+    # "Đơn vị phát sinh" đếm trên toàn phạm vi → chỉ đúng khi không lọc đơn vị.
+    show_units = bool((data.get("scope") or {}).get("canViewUnits")) and not (
+        data.get("selected") or data.get("selectedUnits")
+    )
     headers = [("Hạng", "c", 6), ("Tên thủ tục", "l", 52), ("Số hồ sơ", "r", 13)]
     if show_units:
         headers.append(("Đơn vị phát sinh", "r", 16))
@@ -328,7 +350,10 @@ def build_dashboard_workbook(data: dict, logs: list[dict] | None = None) -> byte
 def export_filename(data: dict) -> str:
     scope = data.get("scope") or {}
     selected = data.get("selected") or {}
-    if selected:
+    chosen = data.get("selectedUnits") or []
+    if len(chosen) >= 2:
+        who = f"{len(chosen)}-don-vi"
+    elif selected:
         who = selected.get("name") or selected.get("xa") or "don-vi"
     else:
         who = _scope_label(scope)

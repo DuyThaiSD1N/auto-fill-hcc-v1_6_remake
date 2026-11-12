@@ -42,7 +42,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
-from app.pipelines._shared.lao_cai_tach_giay_to import plan_with_split
+from app.pipelines._shared.khanh_hoa_tach_giay_to import plan_with_split
 from app.process.schemas import FileItem
 from app.services.llm import client
 from app.services.pdf_utils import trim_files_for_classify

@@ -180,6 +180,10 @@ PORTAL_SUBMIT: dict[str, dict] = {
     # Lào Cai chuyển sang nền iGate mới (cổng cũ dichvucong.laocai.gov.vn là eForm khác, không dùng luật này).
     # Nút cuối chỉ dựng sau khi tích cam đoan: <button form="captchaForm" class="… btn_next">Tiếp tục</button>.
     "dichvucongtest.laocai.gov.vn": _FORMIO,    # nhãn nút cuối: "Tiếp tục"
+    # Khánh Hòa (các thủ tục đất đai cổng tỉnh): <button form="captchaForm" class="… btn_next">Đồng ý</button>.
+    "dichvucong.khanhhoa.gov.vn": _FORMIO,      # nhãn nút cuối: "Đồng ý"
+    # Tuyên Quang (các thủ tục đất đai cổng tỉnh) — cùng nền iGate, URL /vi/padsvc/apply-online/<id>.
+    "dichvucong.tuyenquang.gov.vn": _FORMIO,
 }
 
 

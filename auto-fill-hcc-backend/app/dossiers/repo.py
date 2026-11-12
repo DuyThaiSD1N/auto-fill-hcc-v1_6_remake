@@ -19,12 +19,47 @@ lệch với hai mốc gốc.
 """
 from datetime import datetime, timedelta, timezone
 
+from pymongo.errors import DuplicateKeyError
+
 from app.archive.config import archive_settings
 from app.db.mongo import get_db
+
+# Auto Fill: khóa hồ sơ sống theo tab tới lúc nộp / đổi thủ tục / phiên mới / đóng tab — không có hạn. Tab nằm chờ
+# (cổng treo, công dân về) rồi làm tiếp trên chính tab đó thì lượt mới dồn vào khóa cũ và "thời gian làm" cộng cả quãng
+# chờ. Lượt điền / đính kèm tới sau quãng rảnh dài hơn mốc này → hồ sơ cũ kết thúc (làm dở), lượt này mở hồ sơ mới.
+AUTOFILL_IDLE = timedelta(minutes=30)
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _utc(value: datetime) -> datetime:
+    # Motor trả datetime naive (giá trị UTC).
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+async def _end_idle_autofill(dossier_id: str) -> None:
+    """Hồ sơ Auto Fill chưa nộp mà rảnh quá AUTOFILL_IDLE: chuyển sang khóa lưu trữ `<khóa>~<mốc>` (đóng, lý do
+    "idle"), kéo theo các lượt trace của nó, rồi xoá khóa gốc để lượt hiện tại mở hồ sơ mới trên cùng khóa client.
+
+    Hồ sơ đã nộp không đụng: extension tự xoay khóa ở lượt sau lần nộp. Hai request song song cùng thấy hồ sơ rảnh thì
+    bản sao trùng _id bị bỏ qua, lệnh xoá có điều kiện `updated_at` nên chỉ chạy một lần.
+    """
+    db = get_db()
+    old = await db.dossiers.find_one({"_id": dossier_id, "experience": "autofill", "submit_clicked_at": None})
+    last = old.get("updated_at") if old else None
+    if not last or _now() - _utc(last) < AUTOFILL_IDLE:
+        return
+    archived_id = f"{dossier_id}~{int(_utc(last).timestamp())}"
+    try:
+        await db.dossiers.insert_one({**old, "_id": archived_id, "closed_at": _utc(last) + AUTOFILL_IDLE,
+                                      "close_reason": "idle"})
+    except DuplicateKeyError:
+        pass
+    await db.traces.update_many({"dossier_id": dossier_id, "created_at": {"$lte": last}},
+                                {"$set": {"dossier_id": archived_id}})
+    await db.dossiers.delete_one({"_id": dossier_id, "updated_at": last, "submit_clicked_at": None})
 
 
 async def upsert_started(
@@ -70,6 +105,11 @@ async def upsert_started(
         changes["applicant_name"] = applicant_name.strip()[:200]
         if archive_settings.enabled:
             changes["archive_pending"] = True
+    if experience == "autofill":
+        try:
+            await _end_idle_autofill(dossier_id)
+        except Exception:  # noqa: BLE001 — tách hồ sơ rảnh hỏng thì vẫn ghi lượt này như cũ
+            pass
     try:
         await get_db().dossiers.update_one(
             {"_id": dossier_id},
@@ -91,6 +131,11 @@ _TEXT_DEDUPE_WINDOW = timedelta(minutes=30)
 # client ngoài khoảng này là đồng hồ máy sai — dùng giờ server còn hơn ghi mốc vô nghĩa.
 _CLIENT_TIME_PAST = timedelta(days=7)
 _CLIENT_TIME_FUTURE = timedelta(minutes=5)
+# Auto Fill bản cũ: content script bị nạp lại vào cùng trang (popup nạp lại khi trang chưa trả lời) thì mỗi lần nạp thêm
+# một bộ nghe cú bấm → MỘT cú bấm tới thành nhiều sự kiện khác click_id, giờ bấm lệch nhau vài mili giây (cùng một lần
+# phát sự kiện click). Cửa sổ giữ hẹp để chỉ gộp các bản sao đó: chứng thực tách nhiều tab nộp mỗi tab một cú bấm thật,
+# phải chuyển tab rồi mới bấm — không làm kịp trong khoảng này.
+_SAME_CLICK_WINDOW = timedelta(milliseconds=500)
 
 
 def client_clicked_at(epoch_ms: object) -> datetime:
@@ -159,6 +204,11 @@ async def add_submit_event(
         query["user_id"] = owner_user_id
     if click_id:
         query["submit_events.id"] = {"$ne": click_id}
+    if source != "text":
+        query["submit_events"] = {"$not": {"$elemMatch": {
+            "at": {"$gte": clicked_at - _SAME_CLICK_WINDOW, "$lte": clicked_at + _SAME_CLICK_WINDOW},
+            "source": {"$ne": "text"},
+        }}}
     if source == "text" and text_dedupe_window:
         query["$or"] = [
             {"submit_clicked_at": None},

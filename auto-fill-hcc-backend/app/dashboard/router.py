@@ -66,14 +66,25 @@ def _range(dateFrom: str | None, dateTo: str | None) -> tuple[datetime, datetime
     return date_from, date_to
 
 
-def _resolve_user_ids(scope: dict, unit: str | None) -> tuple[list[str], dict | None]:
-    units = scope["units"]
-    if unit and unit != "all":
-        selected = next((u for u in units if u["unitId"] == unit), None)
-        if not selected:
-            raise AppError("UNIT_OUT_OF_SCOPE", "Đơn vị không thuộc phạm vi tài khoản.", 403)
-        return [selected["unitId"]], selected
-    return [u["unitId"] for u in units], None
+def _resolve_user_ids(scope: dict, unit: str | None) -> tuple[list[str], list[dict]]:
+    """Đơn vị đang lọc → (user_id cần đếm, đơn vị đã chọn; rỗng = toàn phạm vi).
+
+    `unit` là "all", một unitId, hoặc nhiều unitId cách nhau dấu phẩy (web chọn nhiều xã). Web
+    quản trị cũ và web thống kê bản cũ chỉ gửi một mã → chạy y như trước.
+    """
+    wanted = list(dict.fromkeys(x.strip() for x in (unit or "").split(",") if x.strip() and x.strip() != "all"))
+    if not wanted:
+        return [u["unitId"] for u in scope["units"]], []
+    by_id = {u["unitId"]: u for u in scope["units"]}
+    if any(x not in by_id for x in wanted):
+        raise AppError("UNIT_OUT_OF_SCOPE", "Đơn vị không thuộc phạm vi tài khoản.", 403)
+    chosen = [by_id[x] for x in wanted]
+    return [u["unitId"] for u in chosen], chosen
+
+
+def _selection(chosen: list[dict]) -> dict:
+    # `selected` giữ hợp đồng cũ (một đơn vị hoặc null); chọn từ 2 đơn vị thì đọc `selectedUnits`.
+    return {"selected": chosen[0] if len(chosen) == 1 else None, "selectedUnits": chosen}
 
 
 @router.get("/scope")
@@ -108,8 +119,8 @@ async def summary(
     date_from, date_to = _range(dateFrom, dateTo)
     all_units = resolved["units"]
     all_ids = [u["unitId"] for u in all_units]
-    ids, selected = _resolve_user_ids(resolved, unit)
-    sel_units = [selected] if selected else all_units
+    ids, chosen = _resolve_user_ids(resolved, unit)
+    sel_units = chosen or all_units
 
     # Auto Fill: MỘT aggregation cho toàn phạm vi → wards per-đơn-vị + procedures + total.
     # Qua app/stats/cutover.py: đến hết 14/9/2026 đếm theo cách cũ (suy từ trace), từ 15/9
@@ -127,7 +138,7 @@ async def summary(
 
     # Handfree: một lần gọi per-đơn-vị cho toàn phạm vi. Nếu KHÔNG lọc đơn vị thì lấy luôn theo ngày.
     hf_units_by_key, hf_daily_all, hf_ok = await fetch_handfree(
-        all_units, date_from, date_to, want_daily=selected is None
+        all_units, date_from, date_to, want_daily=not chosen
     )
 
     def _hf_key(u: dict) -> str:
@@ -159,10 +170,10 @@ async def summary(
         })
     unit_rows.sort(key=lambda r: (-r["dossiers"], (r["xa"] or ""), r["name"] or ""))
 
-    # Phần đang chọn (KPIs + Theo thủ tục): 1 đơn vị → lấy từ ward tương ứng; toàn phạm vi → tổng.
-    if selected:
-        af_procs_sel = (af_wards.get(selected["unitId"]) or {}).get("procedures") or []
-        af_requests = int((af_wards.get(selected["unitId"]) or {}).get("requests") or 0)
+    # Phần đang chọn (KPIs + Theo thủ tục): đơn vị đã chọn → cộng các ward tương ứng; toàn phạm vi → tổng.
+    if chosen:
+        af_procs_sel = [p for u in chosen for p in (af_wards.get(u["unitId"]) or {}).get("procedures") or []]
+        af_requests = sum(int((af_wards.get(u["unitId"]) or {}).get("requests") or 0) for u in chosen)
     else:
         af_procs_sel = af.get("procedures") or []
         af_requests = int(af.get("totalRequests") or 0)
@@ -187,12 +198,12 @@ async def summary(
         )
         if ids else []
     )
-    hf_daily = hf_daily_all if selected is None else await fetch_handfree_daily(sel_units, date_from, date_to)
+    hf_daily = await fetch_handfree_daily(sel_units, date_from, date_to) if chosen else hf_daily_all
     by_day = merge_daily(af_daily, hf_daily)
 
     return {
         "scope": _scope_summary(resolved),
-        "selected": selected,
+        **_selection(chosen),
         "range": {"from": dateFrom, "to": dateTo},
         "sources": {"autofill": True, "handfree": hf_ok},
         # Cách đếm hồ sơ đang áp cho khoảng đang xem (đổi mốc 15/9/2026) — FE hiện chú thích.
@@ -234,7 +245,7 @@ async def logs(
     """
     resolved = await _resolve(user, province)
     date_from, date_to = _range(dateFrom, dateTo)
-    ids, _selected = _resolve_user_ids(resolved, unit)
+    ids, _chosen = _resolve_user_ids(resolved, unit)
     unit_by_id = {u["unitId"]: u for u in resolved["units"]}
     # Hồ sơ của tổ dân phố thuộc xã cha: số liệu phía trên đã cộng dồn nên nhật ký cũng phải có.
     rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), ids)
@@ -291,7 +302,7 @@ async def ratings(
     date_from, date_to = _range(dateFrom, dateTo)
     all_units = resolved["units"]
     all_ids = [u["unitId"] for u in all_units]
-    ids, selected = _resolve_user_ids(resolved, unit)
+    ids, chosen = _resolve_user_ids(resolved, unit)
     # Hồ sơ của tổ dân phố tính vào xã cha, như mọi con số khác của bảng thống kê.
     rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), all_ids)
     rows = await dossier_stats.rating_counts(
@@ -309,7 +320,7 @@ async def ratings(
         units.sort(key=lambda r: (-r["rated"], -r["submitted"], r["xa"] or "", r["name"] or ""))
     return {
         "scope": _scope_summary(resolved),
-        "selected": selected,
+        **_selection(chosen),
         "range": {"from": dateFrom, "to": dateTo},
         **dashboard_ratings.summarize(dashboard_ratings.merge(per_unit, ids)),
         "units": units,
@@ -333,8 +344,8 @@ async def export(
 
     # Nhật ký hồ sơ cho sheet cuối: lấy theo đúng phạm vi đang xuất (đơn vị đang chọn hoặc toàn bộ).
     units = data.get("units") or []
-    selected = data.get("selected")
-    ids = [selected["unitId"]] if selected else [u["unitId"] for u in units]
+    chosen = data.get("selectedUnits") or []
+    ids = [u["unitId"] for u in chosen] or [u["unitId"] for u in units]
     date_from, date_to = _range(dateFrom, dateTo)
     unit_by_id = {u["unitId"]: u for u in units}
     rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), ids)

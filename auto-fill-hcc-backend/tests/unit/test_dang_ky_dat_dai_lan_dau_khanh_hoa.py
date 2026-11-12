@@ -448,7 +448,7 @@ def test_bay_thu_tuc_khanh_hoa_chi_tach_khi_bat_cai_dat(monkeypatch):
 def test_tep_gop_tach_tung_giay_vao_dung_dong_ocr_mot_lan(monkeypatch):
     import json
 
-    from app.pipelines._shared import lao_cai_tach_giay_to as tach
+    from app.pipelines._shared import khanh_hoa_tach_giay_to as tach
     from app.services import ocr, ocr_cache
 
     texts = "\n".join(
@@ -464,8 +464,9 @@ def test_tep_gop_tach_tung_giay_vao_dung_dong_ocr_mot_lan(monkeypatch):
 
     async def fake_chat(messages, **_):
         if messages[0]["content"] == tach.SYSTEM_PROMPT:
-            return json.dumps({"tep": [{"fileIndex": 0, "giayTo": [{"trangDau": 1, "ten": "Đơn đăng ký"},
-                                                                   {"trangDau": 3, "ten": "Mảnh trích đo"}]}]})
+            return json.dumps({"trang": [{"tep": 0, "trang": 1, "moGiay": True, "ten": "Đơn đăng ký"},
+                                         {"tep": 0, "trang": 2, "moGiay": False},
+                                         {"tep": 0, "trang": 3, "moGiay": True, "ten": "Mảnh trích đo"}]})
         user = messages[1]["content"]
         assert "MẢNH TRÍCH ĐO" in user and "ĐƠN ĐĂNG KÝ" in user  # phân loại đọc chữ nạp sẵn của từng giấy
         return '{"documents":[{"index":0,"docTypes":["don_dang_ky"]},{"index":1,"docTypes":["manh_trich_do"]}]}'
@@ -488,3 +489,33 @@ def test_tep_gop_tach_tung_giay_vao_dung_dong_ocr_mot_lan(monkeypatch):
         [{"fileIndex": 0, "pageIndexes": [2]}],
     ]
     assert all(i["fileIndex"] == 0 for i in items)
+
+
+def test_tach_giay_gop_trang_lien_nhau_cung_ten():
+    """Model đánh dấu mọi trang của một tờ khai là "mở giấy" (cùng tên) → vẫn là MỘT giấy, không cắt từng trang."""
+    from app.pipelines._shared import khanh_hoa_tach_giay_to as tach
+
+    pages = {0: ["a", "b", "c"], 1: ["x", "y"]}
+    data = {"trang": [
+        {"tep": 0, "trang": 1, "moGiay": True, "ten": "Tờ khai lệ phí trước bạ"},
+        {"tep": 0, "trang": 2, "moGiay": True, "ten": "Tờ khai lệ phí trước bạ"},
+        {"tep": 0, "trang": 3, "moGiay": True, "ten": "TỜ KHAI LỆ PHÍ TRƯỚC BẠ"},
+        {"tep": 1, "trang": 1, "moGiay": True, "ten": "CCCD người A"},
+        {"tep": 1, "trang": 2, "moGiay": True, "ten": "CCCD người B"},
+    ]}
+    assert tach._page_starts(data, pages) == {
+        0: [(0, "Tờ khai lệ phí trước bạ")],
+        1: [(0, "CCCD người A"), (1, "CCCD người B")],
+    }
+
+
+def test_tach_giay_trang_noi_tiep_va_trang_ngoai_tep():
+    from app.pipelines._shared import khanh_hoa_tach_giay_to as tach
+
+    data = {"trang": [
+        {"tep": 0, "trang": 1, "moGiay": False, "ten": "Đơn"},  # trang 1 luôn mở giấy
+        {"tep": 0, "trang": 2, "moGiay": False},
+        {"tep": 0, "trang": 9, "moGiay": True, "ten": "Ngoài tệp"},
+        {"tep": 5, "trang": 1, "moGiay": True, "ten": "Tệp không có"},
+    ]}
+    assert tach._page_starts(data, {0: ["a", "b"]}) == {0: [(0, "Đơn")]}

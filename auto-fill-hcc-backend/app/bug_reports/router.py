@@ -2,7 +2,7 @@
 
 Quyền LUÔN phân giải từ token qua phạm vi thống kê (app/dashboard/scope.py) — không nhận
 tỉnh/xã/userId từ client:
-  - phường/xã (reporter): gửi lỗi, xem/xoá lỗi của chính mình (đủ nội dung + ảnh);
+  - phường/xã (reporter): gửi lỗi, xem/xoá lỗi của chính mình (đủ nội dung + ảnh + video);
   - Tỉnh (viewer): chỉ xem danh sách lỗi các xã trong tỉnh — mã, tên, thủ tục, đơn vị, trạng thái;
   - admin (manager): xem, sửa tên/nội dung, đổi trạng thái mọi lỗi.
 """
@@ -11,11 +11,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.bug_reports import images, repo, rules
+from app.bug_reports import images, repo, rules, videos
 from app.core.deps import require_dashboard
 from app.core.errors import AppError
 from app.dashboard.scope import resolve_dashboard_scope
@@ -158,12 +158,44 @@ async def list_reports(
     }
 
 
+class VideoUploadStart(BaseModel):
+    size: int
+
+
+@router.post("/video-uploads")
+async def start_video_upload(body: VideoUploadStart, user: dict = Depends(require_dashboard)):
+    """Mở phiên tải video từng phần; báo quá dung lượng ngay, trước khi gửi byte nào."""
+    ctx = await _context(user)
+    _require(ctx, rules.REPORTER)
+    return videos.start(ctx.user_id, body.size)
+
+
+@router.put("/video-uploads/{upload_id}")
+async def put_video_chunk(
+    upload_id: str,
+    request: Request,
+    offset: int = Query(..., ge=0),
+    user: dict = Depends(require_dashboard),
+):
+    """Thân request là byte thô của một phần video (≤ videos.CHUNK_BYTES)."""
+    ctx = await _context(user)
+    _require(ctx, rules.REPORTER)
+    chunk = bytearray()
+    async for part in request.stream():
+        chunk.extend(part)
+        if len(chunk) > videos.CHUNK_BYTES:
+            raise AppError("BUG_VIDEO_CHUNK_INVALID", "Phần video gửi lên không hợp lệ, hãy gửi lại.", 400)
+    return {"received": videos.append(upload_id, ctx.user_id, offset, bytes(chunk))}
+
+
 @router.post("")
 async def create_report(
     user: dict = Depends(require_dashboard),
     text: str = Form(""),
     dossierId: str | None = Form(None),
     files: list[UploadFile] | None = File(None),
+    # Mã phiên tải video (POST /video-uploads). Web bản cũ không gửi → lỗi không có video như trước.
+    videoUpload: str | None = Form(None),
 ):
     ctx = await _context(user)
     _require(ctx, rules.REPORTER)
@@ -173,13 +205,14 @@ async def create_report(
         raise AppError("BUG_TEXT_TOO_LONG", f"Nội dung tối đa {rules.MAX_TEXT} ký tự.", 400)
     if len(uploads) > rules.MAX_IMAGES:
         raise AppError("BUG_TOO_MANY_IMAGES", f"Mỗi báo lỗi đính kèm tối đa {rules.MAX_IMAGES} ảnh.", 400)
-    if not text and not uploads:
-        raise AppError("BUG_EMPTY", "Hãy nhập mô tả lỗi hoặc đính kèm ảnh.", 400)
+    if not text and not uploads and not videoUpload:
+        raise AppError("BUG_EMPTY", "Hãy nhập mô tả lỗi hoặc đính kèm ảnh, video.", 400)
 
     checked = []
     for upload in uploads:
         raw = await upload.read(images.MAX_BYTES + 1)
         checked.append((raw, *images.inspect(raw)))
+    video = videos.claim(videoUpload, ctx.user_id) if videoUpload else None
 
     links = await tdp_rollup.load_tdp_parents()
     dossier = None
@@ -204,10 +237,13 @@ async def create_report(
     at = repo.now()
     try:
         saved = images.save_all(str(report_id), checked)
+        saved_video = videos.attach(video, str(report_id)) if video else None
         doc = {
             "_id": report_id,
             "code": code,
-            "title": rules.make_title(text, dossier and dossier["procedure_label"]),
+            "title": rules.make_title(
+                text, dossier and dossier["procedure_label"], video_only=bool(video) and not checked,
+            ),
             "text": text,
             "status": "new",
             "user_id": ctx.user_id,
@@ -217,6 +253,7 @@ async def create_report(
             "province": province_name(self_unit.get("tinh")) or None,
             "dossier": dossier,
             "images": saved,
+            "video": saved_video,
             "log": [{"at": at, **ctx.actor(), "action": "create"}],
             "created_at": at,
             "updated_at": at,
@@ -306,5 +343,21 @@ async def get_image(report_id: str, index: int, user: dict = Depends(require_das
     return FileResponse(
         images.absolute_path(saved[index]["path"]),
         media_type=saved[index].get("type") or "image/jpeg",
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
+
+
+@router.get("/{report_id}/video")
+async def get_video(report_id: str, user: dict = Depends(require_dashboard)):
+    ctx = await _context(user)
+    _require(ctx, rules.REPORTER, rules.MANAGER)
+    doc = await _owned_or_managed(ctx, report_id)
+    video = doc.get("video") or {}
+    if not video.get("path"):
+        raise AppError("BUG_VIDEO_NOT_FOUND", "Không tìm thấy video.", 404)
+    # FileResponse tự trả Range (206) → trình phát tua được mà không phải tải lại từ đầu.
+    return FileResponse(
+        images.absolute_path(video["path"]),
+        media_type=video.get("type") or "video/mp4",
         headers={"Cache-Control": "private, max-age=86400"},
     )

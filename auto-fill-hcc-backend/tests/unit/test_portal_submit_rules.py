@@ -66,6 +66,8 @@ _FORMIO_HOSTS = [
     "dvc.moet.gov.vn",
     "dichvucong-tthc.moit.gov.vn",
     "dichvucongtest.laocai.gov.vn",
+    "dichvucong.khanhhoa.gov.vn",
+    "dichvucong.tuyenquang.gov.vn",
 ]
 
 

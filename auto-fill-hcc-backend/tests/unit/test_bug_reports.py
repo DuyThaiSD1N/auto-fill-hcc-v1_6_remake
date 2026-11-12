@@ -1,5 +1,6 @@
-"""Báo lỗi trên web thống kê: quyền theo vai trò, mã lỗi, ảnh, xoá mềm, nhật ký xử lý."""
+"""Báo lỗi trên web thống kê: quyền theo vai trò, mã lỗi, ảnh, video, xoá mềm, nhật ký xử lý."""
 import io
+import os
 from datetime import datetime, timezone
 
 import mongomock
@@ -8,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from app.bug_reports import repo, rules
+from app.bug_reports import repo, rules, videos
 from app.bug_reports import router as bug_router
 from app.config import settings
 from app.core.deps import require_dashboard
@@ -300,3 +301,120 @@ def test_so_tren_menu_theo_vai_tro(as_user):
         "access": "reporter", "total": 2, "open": 1, "new": 1}
     assert as_user(PROVINCE).get("/api/v1/bug-reports/summary").json()["access"] == "viewer"
     assert as_user(ADMIN).get("/api/v1/bug-reports/summary").json()["new"] == 1
+
+
+# ── Video: tải từng phần vào phiên tạm, gửi lỗi kèm mã phiên ──
+
+_MP4 = b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00" + b"x" * 30
+_MOV = b"\x00\x00\x00\x14ftypqt  \x00\x00\x00\x00" + b"y" * 10
+_WEBM = b"\x1a\x45\xdf\xa3" + b"z" * 20
+
+
+@pytest.fixture()
+def small_chunks(monkeypatch):
+    monkeypatch.setattr(videos, "CHUNK_BYTES", 16)
+
+
+def _upload(client, raw, chunk=16):
+    start = client.post("/api/v1/bug-reports/video-uploads", json={"size": len(raw)})
+    assert start.status_code == 200, start.text
+    upload_id = start.json()["uploadId"]
+    for offset in range(0, len(raw), chunk):
+        res = client.put(f"/api/v1/bug-reports/video-uploads/{upload_id}", params={"offset": offset},
+                         content=raw[offset:offset + chunk])
+        assert res.status_code == 200, res.text
+    return upload_id
+
+
+def _send_video(client, upload_id, text=""):
+    return client.post("/api/v1/bug-reports", data={"text": text, "videoUpload": upload_id})
+
+
+def test_gui_loi_chi_kem_video_tai_tung_phan(as_user, small_chunks, tmp_path):
+    client = as_user(WARD_A)
+    res = _send_video(client, _upload(client, _MP4))
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["title"] == "Lỗi kèm video"
+    assert body["video"] == {"type": "video/mp4", "size": len(_MP4)}
+    got = client.get(f"/api/v1/bug-reports/{body['id']}/video")
+    assert got.status_code == 200 and got.content == _MP4 and got.headers["content-type"] == "video/mp4"
+    # Trình phát tua video bằng Range.
+    part = client.get(f"/api/v1/bug-reports/{body['id']}/video", headers={"Range": "bytes=4-7"})
+    assert part.status_code == 206 and part.content == b"ftyp"
+    assert as_user(ADMIN).get(f"/api/v1/bug-reports/{body['id']}/video").status_code == 200
+    assert as_user(PROVINCE).get(f"/api/v1/bug-reports/{body['id']}/video").status_code == 403
+    assert as_user(WARD_B).get(f"/api/v1/bug-reports/{body['id']}/video").status_code == 404
+    # Phiên tạm đã dọn sau khi gắn vào lỗi.
+    assert os.listdir(tmp_path / "bug_reports" / "_uploads") == []
+
+
+@pytest.mark.parametrize("raw,media", [(_MOV, "video/quicktime"), (_WEBM, "video/webm")])
+def test_nhan_dang_mov_webm_theo_noi_dung(as_user, small_chunks, raw, media):
+    client = as_user(WARD_A)
+    body = _send_video(client, _upload(client, raw), text="Lỗi khi nộp").json()
+    assert body["video"]["type"] == media
+    assert body["title"] == "Lỗi khi nộp"
+
+
+def test_gui_lai_dung_phan_cu_khong_nhan_doi(as_user, small_chunks):
+    client = as_user(WARD_A)
+    upload_id = client.post("/api/v1/bug-reports/video-uploads", json={"size": len(_MP4)}).json()["uploadId"]
+    url = f"/api/v1/bug-reports/video-uploads/{upload_id}"
+    assert client.put(url, params={"offset": 0}, content=_MP4[:16]).json() == {"received": 16}
+    assert client.put(url, params={"offset": 0}, content=_MP4[:16]).json() == {"received": 16}
+    assert client.put(url, params={"offset": 32}, content=_MP4[32:48]).status_code == 409
+    for offset in range(16, len(_MP4), 16):
+        client.put(url, params={"offset": offset}, content=_MP4[offset:offset + 16])
+    assert _send_video(client, upload_id).json()["video"]["size"] == len(_MP4)
+
+
+def test_video_qua_200mb_bao_loi_ngay_khi_mo_phien(as_user):
+    res = as_user(WARD_A).post("/api/v1/bug-reports/video-uploads", json={"size": videos.MAX_BYTES + 1})
+    assert res.status_code == 413
+    assert res.json()["error"] == "BUG_VIDEO_TOO_LARGE"
+    assert "dung lượng nhỏ hơn" in res.json()["message"]
+
+
+def test_phan_vuot_dung_luong_khai_bao_bi_tu_choi(as_user, small_chunks):
+    client = as_user(WARD_A)
+    upload_id = client.post("/api/v1/bug-reports/video-uploads", json={"size": 10}).json()["uploadId"]
+    res = client.put(f"/api/v1/bug-reports/video-uploads/{upload_id}", params={"offset": 0}, content=b"x" * 16)
+    assert res.json()["error"] == "BUG_VIDEO_TOO_LARGE"
+
+
+@pytest.mark.parametrize("case,error", [
+    ("not-video", "BUG_VIDEO_INVALID"),
+    ("incomplete", "BUG_VIDEO_INCOMPLETE"),
+    ("other-user", "BUG_VIDEO_UPLOAD_NOT_FOUND"),
+    ("bad-id", "BUG_VIDEO_UPLOAD_NOT_FOUND"),
+])
+def test_tu_choi_video_sai(as_user, db, small_chunks, case, error):
+    client = as_user(WARD_A)
+    if case == "not-video":
+        upload_id = _upload(client, b"day khong phai video")
+    elif case == "incomplete":
+        upload_id = client.post("/api/v1/bug-reports/video-uploads", json={"size": len(_MP4)}).json()["uploadId"]
+        client.put(f"/api/v1/bug-reports/video-uploads/{upload_id}", params={"offset": 0}, content=_MP4[:16])
+    elif case == "other-user":
+        upload_id = _upload(client, _MP4)
+        client = as_user(WARD_B)
+    else:
+        upload_id = "../../etc"
+    res = _send_video(client, upload_id)
+    assert res.status_code in (400, 404)
+    assert res.json()["error"] == error
+    assert db.raw.bug_reports.count_documents({}) == 0
+
+
+def test_tinh_khong_tai_video_len_duoc(as_user):
+    res = as_user(PROVINCE).post("/api/v1/bug-reports/video-uploads", json={"size": 100})
+    assert res.status_code == 403
+
+
+def test_tinh_khong_thay_video_trong_danh_sach(as_user, small_chunks):
+    client = as_user(WARD_A)
+    _send_video(client, _upload(client, _MP4))
+    item = as_user(PROVINCE).get("/api/v1/bug-reports").json()["items"][0]
+    assert "video" not in item
+    assert as_user(WARD_A).get("/api/v1/bug-reports").json()["items"][0]["video"]["type"] == "video/mp4"

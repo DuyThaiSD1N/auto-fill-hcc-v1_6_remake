@@ -83,10 +83,13 @@ async def test_hai_cu_bam_khac_nhau_van_la_hai_su_kien(db):
 
 
 async def test_khong_click_id_giu_hanh_vi_cu(db):
-    """Extension cũ trên chợ không gửi mã → mỗi request là một sự kiện như trước."""
+    """Extension cũ trên chợ không gửi mã → mỗi cú bấm thật (cách nhau ≥ 3 giây, content script đã chặn bấm dồn) là
+    một sự kiện như trước; hai bản sao cùng giờ bấm (bộ nghe cú bấm bị nạp trùng) chỉ là một."""
     _dossier(db)
     await repo.add_submit_event(dossier_id="d1", clicked_at=_T0)
     await repo.add_submit_event(dossier_id="d1", clicked_at=_T0)
+    assert len(_events(db)) == 1
+    await repo.add_submit_event(dossier_id="d1", clicked_at=_T0 + timedelta(seconds=5))
     assert len(_events(db)) == 2
 
 

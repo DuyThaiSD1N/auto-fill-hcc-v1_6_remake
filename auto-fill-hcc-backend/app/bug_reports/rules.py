@@ -10,8 +10,8 @@ MAX_TITLE = 200
 _TITLE_CUT = 70
 
 # Ba vai trò, phân giải từ token qua phạm vi thống kê (app/dashboard/scope.py):
-#   reporter : phường/xã — gửi lỗi, xem đủ lỗi của CHÍNH mình (gồm nội dung + ảnh).
-#   viewer   : tài khoản Tỉnh — chỉ xem danh sách lỗi các xã trong tỉnh, không nội dung/ảnh.
+#   reporter : phường/xã — gửi lỗi, xem đủ lỗi của CHÍNH mình (gồm nội dung + ảnh + video).
+#   viewer   : tài khoản Tỉnh — chỉ xem danh sách lỗi các xã trong tỉnh, không nội dung/ảnh/video.
 #   manager  : admin — xem, sửa, đổi trạng thái mọi lỗi.
 REPORTER, VIEWER, MANAGER = "reporter", "viewer", "manager"
 
@@ -43,7 +43,7 @@ def format_code(prefix: str, seq: int) -> str:
     return f"{prefix}-{seq:02d}"
 
 
-def make_title(text: str, procedure_label: str | None) -> str:
+def make_title(text: str, procedure_label: str | None, *, video_only: bool = False) -> str:
     """Câu đầu của nội dung làm tên lỗi; admin sửa lại được trong bảng chi tiết."""
     first = re.split(r"[.!?\n]", text or "", maxsplit=1)[0].strip()
     if first:
@@ -51,7 +51,9 @@ def make_title(text: str, procedure_label: str | None) -> str:
             return first
         cut = first[:_TITLE_CUT]
         return (cut.rsplit(" ", 1)[0] if " " in cut else cut) + "..."
-    return f"Lỗi thủ tục {procedure_label}" if procedure_label else "Lỗi kèm ảnh"
+    if procedure_label:
+        return f"Lỗi thủ tục {procedure_label}"
+    return "Lỗi kèm video" if video_only else "Lỗi kèm ảnh"
 
 
 def iso(value):
@@ -74,6 +76,11 @@ def _dossier(doc: dict) -> dict | None:
     }
 
 
+def _video(doc: dict) -> dict | None:
+    video = doc.get("video")
+    return {"type": video.get("type"), "size": video.get("size")} if video else None
+
+
 def serialize(doc: dict, access: str) -> dict:
     """Trường trả về theo vai trò — cắt ở backend, giao diện không tự ẩn."""
     dossier = _dossier(doc)
@@ -91,6 +98,7 @@ def serialize(doc: dict, access: str) -> dict:
     item.update({
         "text": doc.get("text") or "",
         "imageCount": len(doc.get("images") or []),
+        "video": _video(doc),
         "dossier": dossier,
         "updatedAt": iso(doc.get("updated_at")),
     })
