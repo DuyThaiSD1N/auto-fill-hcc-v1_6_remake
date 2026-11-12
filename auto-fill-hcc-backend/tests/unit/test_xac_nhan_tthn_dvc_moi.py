@@ -36,15 +36,41 @@ def _enrich(values: dict, context: str = "", account=ACCOUNT):
     return {f["name"]: f for f in out}, warnings
 
 
-def test_ban_than_tra_cuu_dan_cu_va_dia_chi():
-    v, warnings = _enrich(BASE, _context())
+def test_ban_than_khoi_nguoi_duoc_cap_lay_theo_tai_khoan():
+    # Tờ khai viết tay: OCR lệch tên, ngày sinh, số định danh, địa chỉ; tài khoản (cổng đổ theo định danh) mới chuẩn.
+    account = {"applicantFullname": "Nguyễn Văn Bình", "applicantIdentityNumber": "001090000002",
+               "applicantBirthday": "05/03/1990", "applicantGender": "Nam", "applicantIdDate": "02/07/2021",
+               "applicantAddress": {"tinh": "Hà Nội", "xa": "Phường Hoàn Kiếm", "diaChi": "Số 9"}}
+    paper = {"NguoiDuocCap_HoTen": "Nguyễn Văn Binh", "NguoiDuocCap_NgaySinh": "06/03/1990",
+             "NguoiDuocCap_SoDinhDanh": "001090000082", "NguoiDuocCap_SoGiayTo": "001090000082",
+             "NguoiDuocCap_NgayCap": "02/07/2027", "NguoiDuocCap_DanToc": "Tày",
+             "NguoiDuocCap_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Phường Hoàn Kiếm", "diaChi": "Số 1"}}
+    v, warnings = _enrich(paper, _context(), account)
     assert (v["citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"]["code"], warnings) == ("1", [])
+    assert v["citizenNDKHochudemtenngdccap"]["value"] == "NGUYỄN VĂN BÌNH"
+    assert v["citizenNDKNgaythangnamsinh"]["code"] == "1990-03-05"
+    assert v["citizenNDKSoDinhDanh"]["value"] == "001090000002" and v["citizenNDKSogiaytotuythan"]["value"] == "001090000002"
+    assert v["citizenNDKNgaycap"]["code"] == "2021-07-02" and v["citizenNDKDiaChi_ThTru"]["value"] == "Số 9"
+    # Ô tài khoản không gửi (dân tộc) thì vẫn theo giấy.
+    assert v["citizenNDKDantoc"]["value"] == "Tày"
+    assert v["citizenNycNoicutru"]["code"] == "1" and v["citizenNycNoicutru"]["default"] is True
+
+
+def test_ban_than_tai_khoan_chi_co_ten_khong_dau_va_so_thi_cac_o_khac_theo_giay():
+    # Bản extension cũ chỉ gửi họ tên + số: tên không dấu không đè tên có dấu trên giấy, các ô khác theo giấy.
+    v, _ = _enrich(BASE, _context())
+    assert v["citizenNDKHochudemtenngdccap"]["value"] == "NGUYỄN VĂN B"
+    assert v["citizenNDKNgaythangnamsinh"]["code"] == "1990-03-05" and v["citizenNDKSoDinhDanh"]["value"] == "001090000002"
+    assert all(v[n].get("lookup") for n in
+               ("citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh", "citizenNDKSoDinhDanh"))
+
+
+def test_nguoi_khac_tra_cuu_dan_cu_va_dia_chi():
+    v, _ = _enrich(BASE, _context(relation="Con"))
     assert v["citizenNDKNgaythangnamsinh"]["code"] == "1990-03-05"
     assert all(v[n].get("lookup") for n in
                ("citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh", "citizenNDKSoDinhDanh"))
     assert v["citizenNDKnoicutru"]["code"] == "1" and v["citizenNDKLoaicutru"]["default"] is True
-    assert "citizenField13" not in v
-    assert v["citizenNycNoicutru"]["code"] == "1" and v["citizenNycNoicutru"]["default"] is True
 
 
 def test_quan_he_khac_ghi_o_moi_quan_he():
@@ -163,7 +189,7 @@ def test_tu_khai_tren_to_khai_nhung_nguoi_nop_khac_thi_quan_he_khac():
 def test_cong_tra_khong_ra_thi_van_dien_gioi_tinh_giay_to_theo_giay():
     v, _ = _enrich({**BASE, "NguoiDuocCap_GioiTinh": "Nữ", "NguoiDuocCap_DanToc": "Kinh",
                     "NguoiDuocCap_SoGiayTo": "001090000002", "NguoiDuocCap_NgayCap": "02/07/2021",
-                    "NguoiDuocCap_NoiCap": "Cục CS QLHC về TTXH"}, _context())
+                    "NguoiDuocCap_NoiCap": "Cục CS QLHC về TTXH"}, _context(relation="Con"))
     assert v["citizenNDKGioitinh"]["code"] == "2" and v["citizenNDKDantoc"]["value"] == "Kinh"
     assert (v["citizenField20"]["code"], v["citizenField20"]["default"]) == ("VN", True)
     assert v["citizenNDKLoaigiayto"]["code"] in ("5", "9") and v["citizenNDKSogiaytotuythan"]["value"] == "001090000002"
@@ -174,9 +200,9 @@ def test_cong_tra_khong_ra_thi_van_dien_gioi_tinh_giay_to_theo_giay():
 
 
 def test_dan_toc_lay_tu_giay_to_khac_khi_to_khai_khong_ghi():
-    v, _ = _enrich({**BASE, "GiayToKhac_DanToc": "Tày"}, _context())
+    v, _ = _enrich({**BASE, "GiayToKhac_DanToc": "Tày"}, _context(relation="Con"))
     assert v["citizenNDKDantoc"]["value"] == "Tày"
-    v, _ = _enrich({**BASE, "NguoiDuocCap_DanToc": "Kinh", "GiayToKhac_DanToc": "Tày"}, _context())
+    v, _ = _enrich({**BASE, "NguoiDuocCap_DanToc": "Kinh", "GiayToKhac_DanToc": "Tày"}, _context(relation="Con"))
     assert v["citizenNDKDantoc"]["value"] == "Kinh"
 
 
@@ -327,7 +353,8 @@ CCCD_HAI_DONG = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001090000002\nHọ và t�
 
 def _enrich_ocr(residence: dict, ocr_text: str):
     fields = [{"name": k, "comp": "x-input", "value": v} for k, v in {**BASE, "NguoiDuocCap_NoiCuTru": residence}.items()]
-    out, warnings = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(),
+    # Khối địa chỉ người được cấp chỉ điền khi người nộp KHÔNG phải chính họ.
+    out, warnings = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(relation="Con"),
                                            "_ocr_text": ocr_text})
     return {f["name"]: f for f in out}, warnings
 
@@ -351,4 +378,112 @@ def test_xa_cu_doc_dung_van_remap_nhu_cu():
     v, _ = _enrich_ocr({"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Kim Chân", "diaChi": "Xóm Mới"},
                        CCCD_HAI_DONG)
     assert v["citizenNDKXa_ThTru"]["value"] == "Phường Vũ Ninh"
-    assert v["citizenNDKDiaChi_ThTru"]["value"] == "Xóm Mới, Kim Chân"
+    # Ô chi tiết chỉ chứa phần dưới xã: không ghép tên xã cũ đã quy đổi.
+    assert v["citizenNDKDiaChi_ThTru"]["value"] == "Xóm Mới"
+
+
+# --- Phân vai: mỏ neo do mã đối chiếu + các nhánh dự phòng -------------------------------------------------------
+
+TO_KHAI_CON_NOP = {"name": "to_khai.pdf", "text": (
+    "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN\n"
+    "Họ, chữ đệm, tên người yêu cầu: NGUYỄN VĂN B\n"
+    "Ngày, tháng, năm sinh: 05/03/1990\n"
+    "Giấy tờ tùy thân: (3) Căn cước số/CCCD số...001090000082....do\n"
+    "Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân: Con đẻ\n"
+    "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây:\n"
+    "Họ, chữ đệm, tên: TRẦN THỊ D\nNgày, tháng, năm sinh: 01/02/1950\n")}
+QD_LY_HON = {"name": "qd.pdf", "text": "TÒA ÁN NHÂN DÂN HUYỆN TÂN LẬP\nQUYẾT ĐỊNH CÔNG NHẬN THUẬN TÌNH LY HÔN\n"
+                                         "Anh Nguyễn Văn B và chị Lê Thị C thuận tình ly hôn."}
+
+
+def _raw(name="Không xác định", number="Không xác định", relation="Không xác định", birthday="Không xác định"):
+    return (f"<nguoi_duoc_cap>\nHọ tên: {name}\nSố định danh: {number}\nNgày sinh: {birthday}\nNguồn: x\n"
+            f"Căn cứ phân vai: y\n</nguoi_duoc_cap>\n<quan_he>\nKết luận: {relation}\nCăn cứ: z\n</quan_he>")
+
+
+def test_ma_doi_chieu_nguoi_yeu_cau_tren_to_khai_voi_tai_khoan():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    options = {"formContext": ACCOUNT}
+    # Số trên tờ khai viết tay lệch một chữ số, họ tên trùng → vẫn là chủ tài khoản.
+    assert reason.declaration_requester([TO_KHAI_CON_NOP])["relation"] == "Con đẻ"
+    assert reason.requester_is_account([TO_KHAI_CON_NOP], options) is True
+    hints = reason._document_hints([TO_KHAI_CON_NOP], options)
+    assert "LÀ chủ tài khoản" in hints and 'tờ khai: "Con đẻ"' in hints
+    other = {"formContext": {"applicantFullname": "LÊ VĂN E", "applicantIdentityNumber": "001080000009"}}
+    assert reason.requester_is_account([TO_KHAI_CON_NOP], other) is False
+    assert reason.requester_is_account([CCCD_SONG], options) is None
+
+
+@pytest.mark.parametrize("model_relation", ["Không xác định", "Mẹ"])
+def test_nguoi_yeu_cau_la_chu_tai_khoan_thi_quan_he_chep_dong_cua_to_khai(model_relation):
+    # Model bỏ trống hoặc đảo chiều ("Mẹ" là vai của người được cấp) → mã chép đúng chữ của tờ khai.
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    out = reason._render_context(_raw("TRẦN THỊ D", "001150000004", model_relation), {"formContext": ACCOUNT},
+                                 [TO_KHAI_CON_NOP])
+    assert reason.labeled_value(reason.section(out, "quan_he"), "Kết luận") == "Con đẻ"
+    # Người khác nộp hộ bằng tài khoản của mình: dòng quan hệ trên tờ khai không phải của người nộp.
+    other = {"formContext": {"applicantFullname": "LÊ VĂN E", "applicantIdentityNumber": "001080000009"}}
+    out = reason._render_context(_raw("TRẦN THỊ D", "001150000004"), other, [TO_KHAI_CON_NOP])
+    assert reason.labeled_value(reason.section(out, "quan_he"), "Kết luận") == ""
+
+
+def test_khong_chon_duoc_ai_va_khong_co_the_cua_nguoi_khac_thi_nguoi_duoc_cap_la_chu_tai_khoan():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    options = {"formContext": ACCOUNT}
+    for docs in ([QD_LY_HON], [KHAI_TU], [QD_LY_HON, CCCD_SONG]):   # thẻ của chính chủ tài khoản không cản
+        out = reason._render_context(_raw(), options, docs)
+        subject = reason.section(out, "nguoi_duoc_cap")
+        assert reason.labeled_value(subject, "Họ tên") == "NGUYEN VAN B"
+        assert "tài khoản người nộp" in reason.labeled_value(subject, "Nguồn")
+        assert reason.labeled_value(reason.section(out, "quan_he"), "Kết luận") == "Bản thân"
+    # Có thẻ của người khác, hoặc có tờ khai: không biết ai xin giấy → giữ "Không xác định".
+    other_card = {"name": "the.jpg", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 001185000007\nHọ và tên: LÊ THỊ C"}
+    for docs in ([QD_LY_HON, other_card], [TO_KHAI_CON_NOP]):
+        out = reason._render_context(_raw(), options, docs)
+        assert reason.labeled_value(reason.section(out, "nguoi_duoc_cap"), "Họ tên") == ""
+
+
+@pytest.mark.parametrize("relation,number,birthday,docs,dropped", [
+    ("Người được ủy quyền", "001150000004", "01/02/1950", [CCCD_SONG], True),          # không có văn bản ủy quyền
+    ("Người được ủy quyền", "001150000004", "01/02/1950",
+     [{"name": "uq.pdf", "text": "GIẤY ỦY QUYỀN\nBên ủy quyền: TRẦN THỊ D"}], False),
+    ("Người khác", "001150000004", "01/02/1950", [CCCD_SONG], True),                   # nhãn tự đặt
+    ("Vợ", "001150000004", "01/02/1950", [CCCD_SONG], True),                           # chủ tài khoản là nam
+    ("Chồng", "001190000004", "01/02/1990", [CCCD_SONG], False),
+    ("Cha", "001150000004", "01/02/1950", [CCCD_SONG], True),                          # "cha" mà sinh sau 40 năm
+    ("Con", "001150000004", "01/02/1950", [CCCD_SONG], False),
+])
+def test_quan_he_model_viet_ma_khong_co_can_cu_thi_bo(relation, number, birthday, docs, dropped):
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import reason
+
+    out = reason._render_context(_raw("TRẦN THỊ D", number, relation, birthday), {"formContext": ACCOUNT}, docs)
+    assert (reason.labeled_value(reason.section(out, "quan_he"), "Kết luận") == "") is dropped
+
+
+def test_trung_du_so_dinh_danh_la_ban_than_du_ocr_doc_lech_ho():
+    values = {"NguoiDuocCap_HoTen": "NGUYỄN VĂN B", "NguoiDuocCap_SoDinhDanh": "001090000002"}
+    account = {"applicantFullname": "NGÔ VĂN B", "applicantIdentityNumber": "001090000002"}
+    code, other, _, _ = mapper._relation(values, _context(), {"formContext": account})
+    assert (code, other) == ("1", "")
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("121/2021/QĐST-HNGD", "121/2021/QĐST-HNGĐ"),
+    ("125/2022/QDST-HNGĐ", "125/2022/QĐST-HNGĐ"),
+    ("97/2012/QĐ/HN-GDST", "97/2012/QĐ/HN-GĐST"),
+    ("57 /2016/QĐST-HNGĐ", "57/2016/QĐST-HNGĐ"),
+    ("12/2020/QĐDS-ST", "12/2020/QĐDS-ST"),          # "DS" là dân sự, không đổi
+])
+def test_so_quyet_dinh_ly_hon_chuan_chu_d(raw, expected):
+    assert mapper._court_code(raw) == expected
+
+
+def test_ma_khac_ma_ho_so_chi_co_giay_khai_tu_thi_chon_vo_chong_da_chet():
+    assert mapper._marital_status({"TinhTrangHonNhan": "khac", "DeathCert_Number": "12/2020"}) == "4"
+    assert mapper._marital_status({"TinhTrangHonNhan": "khac", "BanAn_Number": "5/2019/QĐST-HNGĐ"}) == "3"
+    # Có cả giấy kết hôn hiện tại, hoặc không có giấy nào: giữ mã lượt trích.
+    assert mapper._marital_status({"TinhTrangHonNhan": "khac", "DeathCert_Number": "12/2020", "Marriage_Number": "3"}) == "6"
+    assert mapper._marital_status({"TinhTrangHonNhan": "khac"}) == "6"

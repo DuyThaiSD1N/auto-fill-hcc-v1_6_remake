@@ -3,7 +3,7 @@ import re
 import unicodedata
 from datetime import timezone
 
-STATUSES = ("new", "doing", "done")
+STATUSES = ("new", "doing", "done", "notbug")
 MAX_IMAGES = 10
 MAX_TEXT = 4000
 MAX_TITLE = 200

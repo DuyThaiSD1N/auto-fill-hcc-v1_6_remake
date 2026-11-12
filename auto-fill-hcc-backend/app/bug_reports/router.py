@@ -107,21 +107,32 @@ async def recent_dossiers(user: dict = Depends(require_dashboard)):
     ]}
 
 
+NO_PROCEDURE = "_none"
+
+
 @router.get("")
 async def list_reports(
     user: dict = Depends(require_dashboard),
-    status: Literal["all", "new", "doing", "done"] = Query("all"),
+    status: Literal["all", "new", "doing", "done", "notbug"] = Query("all"),
     q: str | None = Query(None, max_length=200),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     province: str | None = Query(None, max_length=200),
+    procedure: str | None = Query(None, max_length=300),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=200),
 ):
     ctx = await _context(user)
     base = ctx.base_query()
     # Lọc tỉnh chỉ dành cho admin; tài khoản Tỉnh đã bị khoá về tỉnh mình ở base_query.
-    scoped = {**base, "province": province} if province and ctx.access == rules.MANAGER else base
+    in_province = {**base, "province": province} if province and ctx.access == rules.MANAGER else base
+    # Lọc theo tên thủ tục lưu trên lỗi (đúng chữ hiện ở cột Thủ tục); NO_PROCEDURE = lỗi không gắn hồ sơ.
+    # Dùng $and vì `$or` của ô tìm kiếm được gắn sau vào cùng query.
+    scoped = in_province
+    if procedure == NO_PROCEDURE:
+        scoped = {**in_province, "$and": [{"$or": [{"dossier": None}, {"dossier.procedure_label": None}]}]}
+    elif procedure:
+        scoped = {**in_province, "dossier.procedure_label": procedure}
 
     query = dict(scoped)
     if status != "all":
@@ -140,8 +151,14 @@ async def list_reports(
         query["$or"] = [{field: pattern} for field in fields]
 
     docs, total = await repo.list_page(query, skip=(page - 1) * pageSize, limit=pageSize)
-    # Số trên chip tính trên phạm vi (kèm tỉnh đang chọn), chưa áp trạng thái/từ khoá/thời gian.
+    # Số trên chip tính trên phạm vi (kèm tỉnh, thủ tục đang chọn), chưa áp trạng thái/từ khoá/thời gian;
+    # số theo thủ tục thì chưa áp chính bộ lọc thủ tục để vẫn đổi được sang thủ tục khác.
     counts = {"status": _status_counts(await repo.count_by(scoped, "status"))}
+    by_procedure = await repo.count_by(in_province, "dossier.procedure_label")
+    counts["procedures"] = sorted(
+        ({"procedure": name or NO_PROCEDURE, "count": n} for name, n in by_procedure.items()),
+        key=lambda row: (row["procedure"] == NO_PROCEDURE, -row["count"], row["procedure"]),
+    )
     if ctx.access == rules.MANAGER:
         by_province = await repo.count_by(base, "province")
         counts["provinces"] = sorted(
@@ -286,7 +303,7 @@ async def get_report(report_id: str, user: dict = Depends(require_dashboard)):
 class ReportPatch(BaseModel):
     title: str | None = None
     text: str | None = None
-    status: Literal["new", "doing", "done"] | None = None
+    status: Literal["new", "doing", "done", "notbug"] | None = None
 
 
 @router.patch("/{report_id}")

@@ -139,12 +139,6 @@ def _area(value, ocr_text: str = ""):
         recovered = _ward_after_read_name(area, remapped, ocr_text)
         if recovered:
             return recovered
-    # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
-    old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
-    new_ward = str(remapped.get("xa") or "")
-    detail = str(remapped.get("diaChi") or "").strip()
-    if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
-        remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
     # Xã không chọn được trên cổng (kể cả thôn/xóm remap đã đẩy về địa chỉ chi tiết): extension để trống mà không báo.
     # Bỏ trống xã, giữ tên đã đọc ở cuối địa chỉ chi tiết, đánh dấu để tô viền vàng.
     ward = str(remapped.get("xa") or "")
@@ -174,6 +168,10 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, st
     # None = không đủ dữ kiện đối chiếu (cổng không truyền tài khoản / không đọc được người được cấp).
     is_account = matches_account(account, *subject) if (
         (account.get("HoTen") or account.get("SoDinhDanh")) and (subject[0] or subject[1])) else None
+    # Cùng đúng 12 chữ số định danh là cùng một người, kể cả khi OCR đọc lệch họ ("Phan" / "Phạm").
+    account_id = _digits(account.get("SoDinhDanh"))
+    if len(account_id) == 12 and account_id == _digits(subject[1]):
+        is_account = True
     other_warning = "Người nộp khác người được cấp — cán bộ ghi mối quan hệ khác."
     if reasoned and _fold(reasoned) not in _SELF_RELATIONS:
         return "2", reasoned, False, ""
@@ -293,6 +291,9 @@ def _marital_status(values: dict) -> str | None:
     if declared == _NEVER_MARRIED and (has_death or has_divorce):
         # "Chưa đăng ký kết hôn" là đuôi chung của ly hôn/góa: có giấy tờ thì mã cụ thể hơn mới đúng.
         return _WIDOWED if has_death else _DIVORCED
+    if declared == _OTHER and has_death != has_divorce and not has_marriage:
+        # Lượt trích không xếp được loại nhưng hồ sơ có đúng một loại giấy chấm dứt hôn nhân → theo giấy đó.
+        return _WIDOWED if has_death else _DIVORCED
     if declared:
         return declared
     if has_death:
@@ -303,6 +304,33 @@ def _marital_status(values: dict) -> str | None:
     if marriage[0] or (marriage[1] and marriage[2]):
         return _MARRIED
     return None
+
+
+def _account_subject_values(values: dict, options: dict | None) -> dict:
+    """Các field người được cấp lấy theo tài khoản khi người nộp là chính họ; khóa nào tài khoản không gửi thì bỏ qua
+    (bản extension cũ chỉ gửi họ tên + số định danh)."""
+    account = account_context(options)
+    out = {f"NguoiDuocCap_{key}": account[key] for key in ("NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap")
+           if account.get(key)}
+    name = str(account.get("HoTen") or "").strip()
+    # Tài khoản lưu tên không dấu thì không đè lên tên có dấu đọc từ giấy.
+    if name and not (name.isascii() and not str(values.get("NguoiDuocCap_HoTen") or "x").isascii()):
+        out["NguoiDuocCap_HoTen"] = name
+    number = _digits(account.get("SoDinhDanh"))
+    if len(number) == 12:
+        out["NguoiDuocCap_SoDinhDanh"] = out["NguoiDuocCap_SoGiayTo"] = number
+    residence = account.get("NoiCuTru")
+    if isinstance(residence, dict) and residence.get("tinh") and residence.get("xa"):
+        out["NguoiDuocCap_NoiCuTru"] = {"quocGia": "Việt Nam", **residence}
+    return out
+
+
+def _court_code(value) -> str:
+    """Số quyết định / bản án của toà: ký hiệu viết bằng chữ Đ ("QĐST-HNGĐ") mà OCR hay đọc thành D; bỏ khoảng trắng
+    quanh dấu gạch chéo."""
+    text = re.sub(r"\s*/\s*", "/", " ".join(str(value or "").split()))
+    return re.sub(r"(?<![A-Za-zĐđ])QD(?=[A-Z/\-]|$)|HNGD(?![A-Za-z])|HN-GD",
+                  lambda match: match.group(0).replace("D", "Đ"), text)
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -346,6 +374,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add_choice("citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan", QUAN_HE, relation, default=guessed)
     add("citizenField13", other)
 
+    # "Bản thân": khối người được cấp là CHÍNH chủ tài khoản — cổng đổ sẵn theo tài khoản định danh. Ô nào tài khoản có
+    # giá trị thì trả đúng giá trị đó (điền đè cũng không lệch dữ liệu cổng); ô tài khoản không gửi mới theo giấy tờ.
+    if relation == "1":
+        values = {**values, **_account_subject_values(values, options)}
     # Ba ô tra cứu CSDL dân cư đi đầu (cờ lookup): cổng tra được thì tự đổ + khóa giới tính, dân tộc, giấy tờ.
     personal_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
     lookup = [
@@ -419,7 +451,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     elif status == _DIVORCED:
         # Văn bản bản án thật (BanAn_*) thắng dòng người dân tự chép lên tờ khai (DivorceDecision_*) — tờ khai hay
         # chép nhầm năm/cơ quan; ô văn bản không đọc được thì tờ khai bù.
-        add_text("citizenSoBananQuyetdinhlyhon", values.get("BanAn_Number") or values.get("DivorceDecision_Number"))
+        add_text("citizenSoBananQuyetdinhlyhon",
+                 _court_code(values.get("BanAn_Number") or values.get("DivorceDecision_Number")))
         add_date("citizenField46", values.get("BanAn_Date") or values.get("DivorceDecision_Date"))
         add_text("citizenField47", values.get("BanAn_Agency") or values.get("DivorceDecision_Agency"))
     elif status == _WIDOWED:

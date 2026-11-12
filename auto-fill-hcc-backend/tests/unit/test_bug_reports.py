@@ -276,9 +276,36 @@ def test_admin_loc_theo_tinh_trang_thai_va_tu_khoa(as_user):
     province = next(i["province"] for i in body["items"] if i["code"] == "PB-01")
     only = client.get("/api/v1/bug-reports", params={"province": province}).json()
     assert [i["code"] for i in only["items"]] == ["PB-01"]
-    assert only["counts"]["status"] == {"new": 1, "doing": 0, "done": 0}
+    assert only["counts"]["status"] == {"new": 1, "doing": 0, "done": 0, "notbug": 0}
     assert client.get("/api/v1/bug-reports", params={"q": "tệp"}).json()["total"] == 1
     assert client.get("/api/v1/bug-reports", params={"status": "done"}).json()["total"] == 0
+
+
+def test_trang_thai_khong_phai_loi(as_user):
+    report_id = _send(as_user(WARD_A)).json()["id"]
+    client = as_user(ADMIN)
+    res = client.patch(f"/api/v1/bug-reports/{report_id}", json={"status": "notbug"})
+    assert res.status_code == 200 and res.json()["log"][-1]["to"] == "notbug"
+    body = client.get("/api/v1/bug-reports", params={"status": "notbug"}).json()
+    assert body["total"] == 1 and body["counts"]["status"]["notbug"] == 1
+    assert as_user(WARD_A).get("/api/v1/bug-reports/summary").json()["open"] == 0
+
+
+def test_loc_theo_thu_tuc_va_dem_tung_thu_tuc(as_user):
+    client = as_user(WARD_A)
+    _send(client, dossier="d-a1")
+    _send(client, text="Lỗi thứ hai", dossier="d-a1")
+    _send(client, text="Không gắn hồ sơ")
+    body = client.get("/api/v1/bug-reports").json()
+    assert body["counts"]["procedures"] == [
+        {"procedure": "Đăng ký khai sinh", "count": 2},
+        {"procedure": "_none", "count": 1},
+    ]
+    only = client.get("/api/v1/bug-reports", params={"procedure": "Đăng ký khai sinh"}).json()
+    assert only["total"] == 2 and only["counts"]["status"]["new"] == 2
+    assert len(only["counts"]["procedures"]) == 2, "vẫn liệt kê thủ tục khác để đổi lựa chọn"
+    none = client.get("/api/v1/bug-reports", params={"procedure": "_none"}).json()
+    assert [i["procedureLabel"] for i in none["items"]] == [None]
 
 
 def test_xoa_mem_moi_trang_thai_va_an_khoi_moi_danh_sach(as_user, db):
