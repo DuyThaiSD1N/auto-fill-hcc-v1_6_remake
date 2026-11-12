@@ -7459,6 +7459,54 @@ PROCEDURES: list[dict] = [
             "đo lẫn bản mô tả ranh giới chỉ vào một dòng — nên tách thành hai tệp."
         ),
     },
+    {
+        "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
+        "provinceOnly": ["lamdong"],  # đặc thù Lâm Đồng: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.116366 (12/11/2026). Form Phần I-III như 1.116356 (không Phần IV); bảng đính kèm 26 dòng, Đơn + ủy
+        # quyền + CCCD → dòng 13, Giấy chứng nhận / mảnh trích đo → dòng 24 "Giấy tờ khác"; có chế độ tách giấy tờ.
+        "detect": {
+            "urlScope": ["lamdong.gov.vn"],
+            "textIncludes": ["giao đất và giao rừng; cho thuê đất và cho thuê rừng", "1.116366"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá "
+            "quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, "
+            "cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; "
+            "cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "shortLabel": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất",
+        "subtitle": "Xin giao đất, thuê đất, chuyển mục đích hoặc gia hạn sử dụng đất tại Lâm Đồng",
+        "icon": "🏞️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff5b9-eb9e-7257-a8c2-bf8e32e5c57a",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Lâm Đồng",
+        "bxdFlow": _LD_BXD_FLOW,
+        "supportsSplitDocuments": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất (Mẫu số 01) — "
+             "đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo / trích lục bản đồ địa chính thửa đất", "icon": "🗺️", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy ủy quyền (nếu nộp thay), giấy tờ miễn giảm, giấy tờ dự án (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đề nghị giao đất / cho thuê đất / cho phép chuyển mục đích sử dụng đất (Mẫu số 01) đã ký — nguồn chính "
+            "điền người nộp, chủ hồ sơ, địa điểm thửa đất.\n"
+            "2. Căn cước công dân của người đề nghị.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang), mảnh trích đo / trích lục bản đồ địa chính.\n"
+            "4. Nếu nộp thay: giấy ủy quyền. Nếu có: giấy tờ miễn giảm, giấy tờ dự án đầu tư.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn + giấy ủy quyền + CCCD → dòng 13; Giấy chứng nhận, mảnh trích đo → dòng 24 'Giấy tờ khác "
+            "có liên quan'; giấy thuế, miễn giảm, dự án, rừng → dòng riêng."
+        ),
+    },
     # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối qua core_registry. Cờ chọn cơ quan theo ke_khai_links: selectSo →
     # agencyProvinceOnly + agencySoFirst; provinceOnlyAgency → agencyProvinceOnly (+ maePortal cổng NN&MT). Cổng Bộ
@@ -9986,6 +10034,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # 12/11/2026: người dùng mở riêng cho Lâm Đồng (1.116360, 1.116356) — bản riêng tỉnh, provinceOnly ["lamdong"].
     "dang-ky-dat-dai-lan-dau-lam-dong": frozenset({"lamdong"}),
     "dang-ky-dien-tich-tang-them-lam-dong": frozenset({"lamdong"}),
+    # 12/11/2026: 1.116366 bản Lâm Đồng, provinceOnly ["lamdong"] → chỉ mở cho Lâm Đồng như hai thủ tục trên.
+    "giao-thue-dat-giao-rung-gia-han-su-dung-dat": frozenset({"lamdong"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,

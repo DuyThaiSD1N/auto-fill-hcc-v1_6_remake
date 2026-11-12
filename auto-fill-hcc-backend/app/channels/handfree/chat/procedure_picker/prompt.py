@@ -510,6 +510,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                              "xin cấp sổ cho phần đất tăng thêm", "ranh giới thửa đất thay đổi",
                                              "cấp giấy chứng nhận cho toàn bộ diện tích đất đang sử dụng",
                                              "đăng ký diện tích tăng thêm ở lâm đồng"],
+    # Bản Lâm Đồng (provinceOnly) 1.116366: xin GIAO đất / THUÊ đất / cho phép CHUYỂN MỤC ĐÍCH (vd đất vườn lên đất ở) /
+    # giao rừng, thuê rừng / gia hạn đất hết hạn — KHÁC đăng ký lần đầu (chưa có sổ) và diện tích tăng thêm (đo lại rộng hơn).
+    "giao-thue-dat-giao-rung-gia-han-su-dung-dat": ["chuyển mục đích sử dụng đất", "chuyển đất vườn lên đất ở",
+                                                    "xin chuyển đất trồng cây lâu năm sang đất ở", "xin giao đất",
+                                                    "xin thuê đất", "gia hạn sử dụng đất hết thời hạn",
+                                                    "giao đất giao rừng, thuê đất thuê rừng",
+                                                    "chuyển mục đích sử dụng đất ở lâm đồng"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",

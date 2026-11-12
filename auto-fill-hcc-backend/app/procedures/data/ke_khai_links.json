@@ -1678,7 +1678,7 @@
     {
       "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
       "code": "1.116366",
-      "label": "[Lâm Đồng] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng; giao đất, cho thuê đất đồng thời giao khu vực biển để thực hiện hoạt động lấn biển",
+      "label": "[Lâm Đồng] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff5b9-eb9e-7257-a8c2-bf8e32e5c57a",
       "needsAgencySelect": true,
       "autoConfirm": true

@@ -72,8 +72,8 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # Bảng thu-tuc-20261111-0856.xlsx (khớp Excel 100%, không còn ghi đè tay). 12/11 người dùng mở thêm cấp lại
         # GCN bị mất Bắc Ninh 1.115465 (STT 50) cho Bắc Ninh, đính chính GCN Khánh Hòa 1.012790 (STT 103) cho Khánh Hòa.
         # 12/11: +1 mọi tỉnh khai-sinh-nuoc-ngoai (_TAT_CA); Lâm Đồng +2 bản riêng 1.116360 / 1.116356;
-        # +1 mọi tỉnh thẻ HDV quốc tế 1.004628 (người dùng mở lại toàn quốc).
-        "laichau": 122, "bacninh": 127, "lamdong": 114, "danang": 119, "quangninh": 123, "ninhbinh": 112,
+        # +1 mọi tỉnh thẻ HDV quốc tế 1.004628 (người dùng mở lại toàn quốc); Lâm Đồng +1 bản riêng 1.116366.
+        "laichau": 122, "bacninh": 127, "lamdong": 115, "danang": 119, "quangninh": 123, "ninhbinh": 112,
         "quangngai": 113, "laocai": 112, "quangtri": 113, "khanhhoa": 118, "tuyenquang": 113,
     }
 
@@ -94,7 +94,8 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     # 1.004628: vắng bảng 11/11, 12/11 người dùng mở lại cả 11 tỉnh.
     assert all("cap-the-huong-dan-vien-du-lich-quoc-te" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # 12/11: 1.116360 + 1.116356 bản Lâm Đồng mở riêng cho Lâm Đồng.
-    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"):
+    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
+                "giao-thue-dat-giao-rung-gia-han-su-dung-dat"):
         assert key in _card_keys("lamdong") and key not in _card_keys("khanhhoa"), key
     # 1.013997: STT 230, cả 11 tỉnh
     assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)

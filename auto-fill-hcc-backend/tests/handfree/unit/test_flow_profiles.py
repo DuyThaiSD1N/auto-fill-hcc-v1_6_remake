@@ -614,7 +614,8 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     # Cổng iGate Lâm Đồng (12/11): 1.116360 / 1.116356 do UBND cấp xã giải quyết → DVCQG chọn đủ Tỉnh + Xã, rồi luồng
     # chung "xay-dung" như Khánh Hòa; cờ extension riêng supportsBxdFlowLamDong.
-    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"):
+    for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
+                "giao-thue-dat-giao-rung-gia-han-su-dung-dat"):
         ld = procedures.pop(key)
         assert ld["provinceOnly"] == ["lamdong"], key
         assert ld["flowProfile"] == "xay-dung" and ld["maePortal"] is True, key
@@ -831,7 +832,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 hộ tịch Cổng DVC quốc gia mới (12/11) "khai-sinh-nuoc-ngoai" (2.000528, luồng "tu-phap-moi").
     # +2 cổng iGate Lâm Đồng (12/11) "dang-ky-dat-dai-lan-dau-lam-dong" (1.116360),
     # "dang-ky-dien-tich-tang-them-lam-dong" (1.116356), luồng "xay-dung".
-    assert len(procedures) == 160
+    # +1 cổng iGate Lâm Đồng (12/11) "giao-thue-dat-giao-rung-gia-han-su-dung-dat" (1.116366), luồng "xay-dung".
+    assert len(procedures) == 161
 
     for procedure in procedures:
         key = procedure["key"]

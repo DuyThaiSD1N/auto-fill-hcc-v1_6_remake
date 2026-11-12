@@ -38,6 +38,8 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_lam_dong.attach import plan as ch
 from app.pipelines.chuyen_muc_dich_su_dung_dat_lam_dong.process import run as chuyen_muc_dich_su_dung_dat_lam_dong_process
 from app.pipelines.dang_ky_dien_tich_tang_them_lam_dong.attach import plan as dang_ky_dien_tich_tang_them_lam_dong_attach
 from app.pipelines.dang_ky_dien_tich_tang_them_lam_dong.process import run as dang_ky_dien_tich_tang_them_lam_dong_process
+from app.pipelines.giao_thue_dat_giao_rung_gia_han_su_dung_dat.attach import plan as giao_thue_dat_giao_rung_gia_han_su_dung_dat_attach
+from app.pipelines.giao_thue_dat_giao_rung_gia_han_su_dung_dat.process import run as giao_thue_dat_giao_rung_gia_han_su_dung_dat_process
 from app.pipelines.dang_ky_kinh_doanh.attach import plan as dang_ky_kinh_doanh_attach
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.attach import plan as dang_ky_thay_doi_kinh_doanh_attach
 from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.attach import plan as cham_dut_hoat_dong_ho_kinh_doanh_attach
@@ -2004,6 +2006,45 @@ PROCEDURES: list[dict] = [
             "dòng Đơn Mẫu 18. Nếu một tệp quét gộp cả mảnh đo đạc lẫn bản mô tả ranh giới thì tệp đó chỉ "
             "vào một dòng và hệ thống cảnh báo dòng còn lại đang trống — nên TÁCH thành hai tệp.\n"
             "Tỉnh/Phường (3 khối địa chỉ) là select cascade Choices.js — extension tự chọn theo tên MỚI."
+        ),
+    },
+    {
+        "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
+        # Cổng dichvucong.lamdong.gov.vn (Form.io apply-online, crawl 12/11/2026) — key trùng ke_khai_links.json (link
+        # DVCQG 019ff5b9-…). Form kê khai cùng khuôn ô 1.116365 nhưng KHÔNG có Phần IV Giấy chứng nhận (file mapping
+        # chỉ có Phần I-III). URL chỉ mang ObjectId theo phường → detect theo VĂN BẢN: cụm "giao rừng … thuê rừng"
+        # (có trong cả tên quốc gia lẫn tên cổng tỉnh, bản cổng đuôi "…lấn biển") + MÃ "1.116366" (mã quốc gia, không
+        # hậu tố .H36) → urlScope Lâm Đồng là chốt chống cướp trang cùng tên ở Khánh Hòa / Tuyên Quang / Đà Nẵng…
+        "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
+            "giao đất và giao rừng; cho thuê đất và cho thuê rừng",
+            "1.116366",
+        ]},
+        "label": (
+            "[Tỉnh Lâm Đồng] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê "
+            "đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; "
+            "trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; "
+            "giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Đơn đề nghị giao đất / cho thuê đất / cho phép chuyển mục đích sử dụng đất (Mẫu số 01 Phụ lục VI QĐ "
+            "40/2026/QĐ-UBND) đã ký — người đề nghị, địa chỉ, số điện thoại, địa điểm thửa đất.\n"
+            "2. Căn cước công dân của người đề nghị — ngày sinh, giới tính, số, ngày cấp, nơi cấp.\n"
+            "3. Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang, kể cả mục 'Những thay đổi sau khi cấp').\n"
+            "4. Mảnh trích đo / trích lục bản đồ địa chính thửa đất; nếu nộp thay: Giấy ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Điền đơn (Form.io): Phần I Người nộp, Phần II Thửa đất (chỉ Tỉnh + Phường/Xã), Phần III Chủ hồ sơ. Tự nộp: "
+            "bấm 'Người nộp là chủ hồ sơ'; nộp thay: điền cả hai khối. Ô Ghi chú và Cơ quan/tổ chức (hồ sơ cá nhân) để "
+            "trống.\n"
+            "Đính kèm (bảng 26 dòng): Đơn Mẫu số 01 + Giấy ủy quyền + CCCD → dòng 13; Giấy chứng nhận, mảnh trích đo, "
+            "giấy chưa rõ loại → dòng 24 'Giấy tờ khác có liên quan'; giấy thuế / miễn giảm / dự án / rừng → dòng riêng. "
+            "Không tách (mặc định): mỗi file đính nguyên một lần vào dòng của giấy chính. Bật 'Tách giấy tờ': mỗi giấy "
+            "cắt thành tệp riêng vào dòng của nó."
         ),
     },
     {
@@ -10517,6 +10558,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
+    "giao-thue-dat-giao-rung-gia-han-su-dung-dat": giao_thue_dat_giao_rung_gia_han_su_dung_dat_process,
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_process,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_process,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_process,
@@ -10790,6 +10832,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_attach,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_attach,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_attach,
+    "giao-thue-dat-giao-rung-gia-han-su-dung-dat": giao_thue_dat_giao_rung_gia_han_su_dung_dat_attach,
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_attach,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_attach,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_attach,

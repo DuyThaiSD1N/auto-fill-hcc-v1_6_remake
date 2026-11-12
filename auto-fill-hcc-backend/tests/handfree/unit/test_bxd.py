@@ -252,7 +252,8 @@ def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
 _KH_CAPS = {**CAPS, "supportsBxdFlowKhanhHoa": True}
 
 
-@pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong"])
+@pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
+                                 "giao-thue-dat-giao-rung-gia-han-su-dung-dat"])
 def test_cong_lam_dong_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Lâm Đồng (dichvucong.lamdong.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
     này → thiếu supportsBxdFlowLamDong thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa không mở được)."""

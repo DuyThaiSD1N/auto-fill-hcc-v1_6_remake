@@ -73,6 +73,8 @@ PROCEDURE_HMONG = {
     # "loj ntxiv" (rộng thêm).
     "dang-ky-dat-dai-lan-dau-lam-dong": "Cuv npe av, muab daim ntawv av thawj zaug (Lâm Đồng)",
     "dang-ky-dien-tich-tang-them-lam-dong": "Cuv npe daim av loj ntxiv, muab daim ntawv av (Lâm Đồng)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ giao đất, chuyển mục đích Khánh Hòa / Tuyên Quang ("hloov daim av"), đổi tỉnh.
+    "giao-thue-dat-giao-rung-gia-han-su-dung-dat": "Hloov daim av (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
     "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
