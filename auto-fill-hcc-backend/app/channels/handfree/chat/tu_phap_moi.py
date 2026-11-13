@@ -549,8 +549,10 @@ _POSTAL_NEG = re.compile(
     r"|(?:bo|huy)\s+(?:tich|chon|o|nhan)|dung\s+(?:gui|nhan|tich|chon)"
     r"|(?:buu dien|buu chinh|vnpost)\s+(?:thi\s+)?(?:khong|thoi)\s+(?:can|nhan|nua|dau|lay))(?:\s|$)")
 _POSTAL_QUESTION = re.compile(r"(?:^|\s)(?:bao lau|bao nhieu|the nao|la gi|tai sao|vi sao|o dau|khi nao|phi)(?:\s|$)")
-_POSTAL_DOI_Y = re.compile(r"(?:(?:toi|em|minh|thoi|muon|cho)\s+)*doi y(?:\s+(?:roi|lai|nhe|nha))*")
-_POSTAL_FILLER = frozenset({"a", "da", "nhe", "nha", "oi", "em", "anh", "chi"})
+# Không liệt kê đại từ em ở hai bảng dưới: test_tro_ly_xung_toi quét mọi chuỗi của file này (trợ lý xưng tôi); câu
+# kiểu "em đổi ý" không khớp thì để bộ phân loại chung lo như trước.
+_POSTAL_DOI_Y = re.compile(r"(?:(?:toi|minh|thoi|muon|cho)\s+)*doi y(?:\s+(?:roi|lai|nhe|nha))*")
+_POSTAL_FILLER = frozenset({"a", "da", "nhe", "nha", "oi", "anh", "chi"})
 _POSTAL_YES_BARE = frozenset({"co", "vang", "vang co", "co nhan", "dong y", "co dong y", "u", "ok"})
 _POSTAL_NO_BARE = frozenset({"khong", "khong nhan", "khong can", "khong co", "khong dong y", "thoi khong"})
 _POSTAL_MAX_WORDS = 20

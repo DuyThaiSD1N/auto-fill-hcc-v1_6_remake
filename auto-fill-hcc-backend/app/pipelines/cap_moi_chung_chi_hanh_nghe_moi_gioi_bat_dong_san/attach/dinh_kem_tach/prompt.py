@@ -46,6 +46,9 @@ Nhiệm vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đo
 - Đơn nhắc "Chứng chỉ cũ (nếu có)" / "Tôi đã được cấp Chứng chỉ số ..." → vẫn là don_dang_ky.
 - Giấy chứng nhận hoàn thành khóa học MÔI GIỚI BĐS → gcn_khoa_hoc; chứng chỉ hành nghề (đã được cấp) →
   chung_chi_cu; văn bằng học vấn → bang_tot_nghiep.
+- Ảnh chân dung không có chữ: OCR_TEXT của tệp/trang CHỈ có chữ app scan in đè ("Scanned with CamScanner", "CS
+  CamScanner") hoặc vài mẩu chữ vụn không thành câu → anh_the. Watermark CamScanner ở cuối trang của giấy CÓ nội dung
+  văn bản (đơn, bằng, CCCD…) không biến giấy đó thành ảnh.
 </disambiguation>
 
 <output_contract>

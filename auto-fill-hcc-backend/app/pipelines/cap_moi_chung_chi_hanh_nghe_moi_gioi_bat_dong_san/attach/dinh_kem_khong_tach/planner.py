@@ -9,7 +9,8 @@ Bảng 6 dòng, ánh xạ loại → dòng, loại bản, rule vá loại theo t
 (`dinh_kem_tach.planner`) nên hai chế độ đặt giấy cùng dòng. Tệp gộp nhiều giấy có dòng riêng → cảnh báo cán bộ. LLM
 lỗi / trả other → rule OCR vá theo tiêu đề đầu tệp; vẫn không rõ (OCR rỗng) → dòng 3 (Đơn), giữ tên gốc.
 
-Khác chế độ tách: thiếu ảnh 4x6 rời thì KHÔNG đính lại tệp Đơn vào dòng 6 (mỗi tệp chỉ một lần) — chỉ cảnh báo.
+Khác chế độ tách: thiếu ảnh 4x6 rời thì KHÔNG đính lại tệp Đơn vào dòng 4 (mỗi tệp chỉ một lần) — chỉ cảnh báo.
+Ảnh thẻ scan thành PDF (OCR chỉ ra "Scanned with CamScanner") mà LLM trả other → rule nhận ảnh rời, vào dòng 4.
 
 Các hàm OCR / gọi LLM / chọn giấy chính (`ocr_files`, `llm_documents`, `classify_files`, `pick_primary`,
 `plan_result`) dùng chung cho chế độ không tách của các thủ tục cùng khuôn planner.
@@ -37,6 +38,8 @@ from ..dinh_kem_tach.planner import (
     _OTHER,
     _REQUIRED,
     _ROUTE,
+    _ROW_ANH,
+    _ROW_NUOC_NGOAI,
     _ROWS,
     _TO_CHUC,
     _certified,
@@ -228,9 +231,9 @@ def build_plan_items(
 
     attachments = [item for _, _, item in sorted(own, key=lambda p: (p[0], p[1], p[2]["fileIndex"]))] + extra
 
-    # Dòng 4 chỉ dành cho người có chứng chỉ do nước ngoài cấp — không có tệp ở dòng 4 thì bỏ tick.
-    if attachments and not any(item["componentIndex"] == 4 for item in attachments):
-        attachments[0]["untickRows"] = [_ROWS[4]["componentName"]]
+    # Dòng 5 chỉ dành cho người có chứng chỉ do nước ngoài cấp — không có tệp ở dòng 5 thì bỏ tick.
+    if attachments and not any(item["componentIndex"] == _ROW_NUOC_NGOAI for item in attachments):
+        attachments[0]["untickRows"] = [_ROWS[_ROW_NUOC_NGOAI]["componentName"]]
 
     # --- Cảnh báo (cùng nội dung chế độ tách) ---
     for row_idx, label in _REQUIRED:
@@ -239,13 +242,13 @@ def build_plan_items(
     if "cap lai" in don_text:
         warnings.append("Đơn trong hồ sơ là ĐƠN XIN CẤP LẠI chứng chỉ — dòng 3 yêu cầu Đơn đăng ký dự thi sát hạch "
                         "(Phụ lục XXI NĐ 96/2024/NĐ-CP); đã đính tạm vào dòng 3, kiểm tra lại thủ tục.")
-    if 6 not in found_rows:
+    if _ROW_ANH not in found_rows:
         if _DON in found_types:
-            warnings.append("Hồ sơ không có ảnh 4x6 chụp rời — chế độ không tách không đính lại tệp Đơn vào dòng 6; "
-                            "còn thiếu 02 ảnh 4x6 và 02 phong bì có dán tem ghi rõ họ tên, số điện thoại, địa chỉ "
-                            "người nhận.")
+            warnings.append(f"Hồ sơ không có ảnh 4x6 chụp rời — chế độ không tách không đính lại tệp Đơn vào dòng "
+                            f"{_ROW_ANH}; còn thiếu 02 ảnh 4x6 và 02 phong bì có dán tem ghi rõ họ tên, số điện "
+                            "thoại, địa chỉ người nhận.")
         else:
-            warnings.append("Chưa có 02 ảnh 4x6 và 02 phong bì có dán tem (dòng 6) — cần bổ sung.")
+            warnings.append(f"Chưa có 02 ảnh 4x6 và 02 phong bì có dán tem (dòng {_ROW_ANH}) — cần bổ sung.")
     if cccd_texts and not any(_certified(t) for t in cccd_texts):
         warnings.append("Bản CCCD trong hồ sơ chưa thấy dấu chứng thực — dòng 2 yêu cầu bản sao chứng thực (hoặc bản "
                         "sao kèm bản chính để đối chiếu).")

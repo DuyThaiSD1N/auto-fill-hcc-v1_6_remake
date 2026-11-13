@@ -6,13 +6,14 @@ TRANG + loại cho từng đoạn → hậu xử lý tất định → MỖI ĐO
 dòng (dòng attp-row nhận nhiều tệp); đoạn chỉ là một phần tệp thì gửi `sourceSegments` để FE cắt trang. Hồ sơ hay là
 một PDF gộp Đơn (trang 1) + CCCD 2 mặt (trang 2) → mỗi trang về đúng dòng của nó.
 
-Bảng 6 dòng:
-  1. Bằng tốt nghiệp THPT trở lên (Bản sao)          4. Chứng chỉ do nước ngoài cấp + bản dịch (Bản sao)
-  2. CCCD / thẻ căn cước / hộ chiếu (Bản sao)        5. GCN hoàn thành khóa học môi giới BĐS (Bản sao)
-  3. Đơn đăng ký dự thi có dán ảnh 4x6 (Bản chính)  6. 02 ảnh 4x6 + 02 phong bì dán tem (Bản chính)
-Không có ảnh rời → dòng 6 đính CHUNG trang đơn (ảnh dán trên đơn). Không có chứng chỉ nước ngoài → gửi `untickRows`
-để FE bỏ tick dòng 4 (chỉ áp dụng người nước ngoài / người có chứng chỉ nước ngoài). Chứng chỉ cũ trong nước, giấy tờ
-của tổ chức, đoạn chưa rõ loại không có dòng → MỖI ĐOẠN một tệp riêng đính chung dòng 3 (Đơn), kèm cảnh báo.
+Bảng 6 dòng (đúng thứ tự trên cổng DVCQG):
+  1. Bằng tốt nghiệp THPT trở lên (Bản sao)          4. 02 ảnh 4x6 + 02 phong bì dán tem (Bản chính)
+  2. CCCD / thẻ căn cước / hộ chiếu (Bản sao)        5. Chứng chỉ do nước ngoài cấp + bản dịch (Bản sao)
+  3. Đơn đăng ký dự thi có dán ảnh 4x6 (Bản chính)  6. GCN hoàn thành khóa học môi giới BĐS (Bản sao)
+Không có ảnh rời → dòng 4 đính CHUNG trang đơn (ảnh dán trên đơn). Ảnh thẻ scan thành PDF (CamScanner) cũng là ảnh
+rời: OCR chỉ ra chữ app scan. Không có chứng chỉ nước ngoài → gửi `untickRows` để FE bỏ tick dòng 5 (chỉ áp dụng người
+nước ngoài / người có chứng chỉ nước ngoài). Chứng chỉ cũ trong nước, giấy tờ của tổ chức, đoạn chưa rõ loại không có
+dòng → MỖI ĐOẠN một tệp riêng đính chung dòng 3 (Đơn), kèm cảnh báo.
 """
 
 import re
@@ -57,7 +58,7 @@ _ALLOWED = {_DON, _CCCD, _BANG, _GCN, _NUOC_NGOAI, _ANH, _CC_CU, _TO_CHUC, _OTHE
 _FALLBACK_ROW = 3
 
 # componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold); componentIndex = STT dòng (1-based).
-# ⚠ Dòng 3 cũng chứa "ảnh mầu cỡ 4x6cm chụp trong thời gian 06 tháng" → dòng 6 khớp theo cụm "phong bì".
+# ⚠ Dòng 3 cũng chứa "ảnh mầu cỡ 4x6cm chụp trong thời gian 06 tháng" → dòng 4 khớp theo cụm "phong bì".
 _ROWS: dict[int, dict[str, str]] = {
     1: {"componentName": "Bản sao chứng thực bằng tốt nghiệp từ trung học phổ thông hoặc tương đương trở lên",
         "documentName": "Bằng tốt nghiệp", "loaiBan": "Bản sao"},
@@ -65,14 +66,16 @@ _ROWS: dict[int, dict[str, str]] = {
         "documentName": "Căn cước công dân", "loaiBan": "Bản sao"},
     3: {"componentName": "Đơn đăng ký dự thi có dán ảnh",
         "documentName": "Đơn đăng ký dự thi sát hạch", "loaiBan": "Bản chính"},
-    4: {"componentName": "Bản sao và bản dịch có chứng thực chứng chỉ do nước ngoài cấp",
-        "documentName": "Chứng chỉ do nước ngoài cấp và bản dịch", "loaiBan": "Bản sao"},
-    5: {"componentName": "Giấy chứng nhận đã hoàn thành khóa học về đào tạo bồi dưỡng kiến thức hành nghề môi giới",
-        "documentName": "Giấy chứng nhận hoàn thành khóa học", "loaiBan": "Bản sao"},
-    6: {"componentName": "phong bì có dán tem ghi rõ họ tên, số điện thoại, địa chỉ người nhận",
+    4: {"componentName": "phong bì có dán tem ghi rõ họ tên, số điện thoại, địa chỉ người nhận",
         "documentName": "Ảnh 4x6", "loaiBan": "Bản chính"},
+    5: {"componentName": "Bản sao và bản dịch có chứng thực chứng chỉ do nước ngoài cấp",
+        "documentName": "Chứng chỉ do nước ngoài cấp và bản dịch", "loaiBan": "Bản sao"},
+    6: {"componentName": "Giấy chứng nhận đã hoàn thành khóa học về đào tạo bồi dưỡng kiến thức hành nghề môi giới",
+        "documentName": "Giấy chứng nhận hoàn thành khóa học", "loaiBan": "Bản sao"},
 }
-_ROUTE = {_BANG: 1, _CCCD: 2, _DON: 3, _NUOC_NGOAI: 4, _GCN: 5, _ANH: 6}
+_ROUTE = {_BANG: 1, _CCCD: 2, _DON: 3, _ANH: 4, _NUOC_NGOAI: 5, _GCN: 6}
+_ROW_ANH = _ROUTE[_ANH]
+_ROW_NUOC_NGOAI = _ROUTE[_NUOC_NGOAI]
 # Thứ tự các item trong CÙNG một dòng.
 _ORDER = [_DON, _ANH, _CCCD, _BANG, _GCN, _NUOC_NGOAI]
 
@@ -80,11 +83,14 @@ _REQUIRED = [
     (1, "Bản sao chứng thực bằng tốt nghiệp THPT hoặc tương đương trở lên"),
     (2, "Bản sao chứng thực CCCD / thẻ căn cước / hộ chiếu"),
     (3, "Đơn đăng ký dự thi có dán ảnh 4x6 (Phụ lục XXI NĐ 96/2024/NĐ-CP)"),
-    (5, "Bản sao chứng thực Giấy chứng nhận hoàn thành khóa học đào tạo, bồi dưỡng kiến thức hành nghề môi giới BĐS"),
+    (6, "Bản sao chứng thực Giấy chứng nhận hoàn thành khóa học đào tạo, bồi dưỡng kiến thức hành nghề môi giới BĐS"),
 ]
 
 # Ảnh chân dung chụp rời: OCR gần như không ra chữ.
 _PHOTO_MAX_TEXT = 40
+# Chữ không thuộc nội dung giấy: mốc trang OCR tự thêm, chữ app scan in đè ("Scanned with CamScanner", "CS CamScanner").
+_PAGE_MARK_RE = re.compile(r"[─—=\-]*[ \t]*trang\s*\d+\s*/\s*\d+[ \t]*[─—=\-]*", re.I)
+_SCAN_MARK_RE = re.compile(r"scanned\s+(?:with|by)|camscanner", re.I)
 
 
 def _normalize_type(value: str) -> str:
@@ -204,7 +210,14 @@ def _inherit_continuations(typed: list[tuple[dict, str]],
 
 
 def _is_photo(file: dict, text: str) -> bool:
-    return str(file.get("type") or "").lower() in _IMAGE_TYPES and len(re.sub(r"\s+", "", text)) <= _PHOTO_MAX_TEXT
+    """Ảnh 4x6 / phong bì chụp rời: bỏ chữ app scan và mốc trang thì OCR gần như không còn chữ. `text` là OCR CẢ tệp
+    (trang gần trắng giữa một PDF giấy tờ vẫn là trang nối tiếp, không phải ảnh). Tệp ảnh: OCR rỗng cũng tính. PDF (ảnh
+    thẻ scan qua CamScanner): OCR phải đọc ra chữ (dòng chữ app scan) — PDF rỗng hẳn chưa đủ bằng chứng, về dòng Đơn."""
+    kind = str(file.get("type") or "").lower()
+    body = _PAGE_MARK_RE.sub("", text)
+    if kind not in _IMAGE_TYPES and not (kind == "application/pdf" and body.strip()):
+        return False
+    return len(re.sub(r"\s+", "", _SCAN_MARK_RE.sub("", body))) <= _PHOTO_MAX_TEXT
 
 
 def _certified(text: str) -> bool:
@@ -226,7 +239,8 @@ def build_plan_items(
         # LLM là chính; rule OCR chỉ vá khi LLM trả other/không rõ.
         if doc_type == _OTHER:
             doc_type = _rule_type(text)
-        if doc_type == _OTHER and _is_photo(raw_files[segment["fileIndex"]], text):
+        file_text = "\n".join((pages_by_file.get(segment["fileIndex"]) or {}).values())
+        if doc_type == _OTHER and _is_photo(raw_files[segment["fileIndex"]], file_text):
             doc_type = _ANH
         typed.append((segment, doc_type))
     typed = _merge_adjacent(_inherit_continuations(typed, pages_by_file))
@@ -251,16 +265,16 @@ def build_plan_items(
         by_row.setdefault(row_idx, []).append((segment, doc_type))
         classified.append({**base, "componentIndex": row_idx})
 
-    # --- Không có ảnh rời: dòng 6 đính chung trang đơn (ảnh 4x6 dán trên đơn) ---
+    # --- Không có ảnh rời: dòng ảnh (4) đính chung trang đơn (ảnh 4x6 dán trên đơn) ---
     anh_from_don = False
-    if 6 not in by_row and 3 in by_row:
+    if _ROW_ANH not in by_row and 3 in by_row:
         anh_from_don = True
-        by_row[6] = [(segment, _DON) for segment, _ in by_row[3]]
+        by_row[_ROW_ANH] = [(segment, _DON) for segment, _ in by_row[3]]
         for segment, _ in by_row[3]:
             classified.append({"fileIndex": segment["fileIndex"],
                                "fileName": raw_files[segment["fileIndex"]].get("name"),
                                "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": _DON,
-                               "componentIndex": 6, "shared": True})
+                               "componentIndex": _ROW_ANH, "shared": True})
 
     order = {t: i for i, t in enumerate(_ORDER)}
     attachments: list[dict] = []
@@ -290,7 +304,7 @@ def build_plan_items(
         parts = sorted(by_row[row_idx], key=lambda p: (order.get(p[1], 99), p[0]["fileIndex"], p[0]["pageFrom"]))
         for segment, doc_type in parts:
             base_name = segment.get("documentName") or row["documentName"]
-            if anh_from_don and row_idx == 6:
+            if anh_from_don and row_idx == _ROW_ANH:
                 base_name = "Ảnh 4x6 dán trên đơn"
             attachments.append({**segment_item(segment, doc_type, base_name, row), "componentIndex": row_idx})
 
@@ -303,9 +317,9 @@ def build_plan_items(
             "componentIndex": _FALLBACK_ROW,
         })
 
-    # Dòng 4 chỉ dành cho người có chứng chỉ do nước ngoài cấp — cổng tick sẵn thì bỏ tick.
-    if attachments and 4 not in by_row:
-        attachments[0]["untickRows"] = [_ROWS[4]["componentName"]]
+    # Dòng 5 chỉ dành cho người có chứng chỉ do nước ngoài cấp — cổng tick sẵn thì bỏ tick.
+    if attachments and _ROW_NUOC_NGOAI not in by_row:
+        attachments[0]["untickRows"] = [_ROWS[_ROW_NUOC_NGOAI]["componentName"]]
 
     # --- Cảnh báo ---
     for row_idx, label in _REQUIRED:
@@ -316,10 +330,11 @@ def build_plan_items(
         warnings.append("Đơn trong hồ sơ là ĐƠN XIN CẤP LẠI chứng chỉ — dòng 3 yêu cầu Đơn đăng ký dự thi sát hạch "
                         "(Phụ lục XXI NĐ 96/2024/NĐ-CP); đã đính tạm vào dòng 3, kiểm tra lại thủ tục.")
     if anh_from_don:
-        warnings.append("Hồ sơ không có ảnh 4x6 chụp rời — dòng 6 đính chung trang đơn (ảnh dán trên đơn); còn thiếu "
-                        "02 ảnh 4x6 và 02 phong bì có dán tem ghi rõ họ tên, số điện thoại, địa chỉ người nhận.")
-    elif 6 not in by_row:
-        warnings.append("Chưa có 02 ảnh 4x6 và 02 phong bì có dán tem (dòng 6) — cần bổ sung.")
+        warnings.append(f"Hồ sơ không có ảnh 4x6 chụp rời — dòng {_ROW_ANH} đính chung trang đơn (ảnh dán trên đơn); "
+                        "còn thiếu 02 ảnh 4x6 và 02 phong bì có dán tem ghi rõ họ tên, số điện thoại, địa chỉ người "
+                        "nhận.")
+    elif _ROW_ANH not in by_row:
+        warnings.append(f"Chưa có 02 ảnh 4x6 và 02 phong bì có dán tem (dòng {_ROW_ANH}) — cần bổ sung.")
     cccd_segments = [s for s, t in typed if t == _CCCD]
     if cccd_segments and not any(_certified(_segment_text(s, pages_by_file)) for s in cccd_segments):
         warnings.append("Bản CCCD trong hồ sơ chưa thấy dấu chứng thực — dòng 2 yêu cầu bản sao chứng thực (hoặc bản "

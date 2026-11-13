@@ -272,10 +272,10 @@ async def test_moi_gioi_bat_tach_pdf_gop_tach_dung_dong_khong_sot_trang(monkeypa
     items = res["attachments"]
     AttachmentPlanResp.model_validate({"attachments": items})
     assert calls == {"tach": 1, "khong_tach": 0}
-    # Dòng 6 nhận chung trang đơn (ảnh dán trên đơn) ở chế độ tách.
-    assert _pages_by_row(items, 0) == {3: [0], 2: [1], 1: [2], 6: [0]}
+    # Dòng 4 (ảnh 4x6) nhận chung trang đơn (ảnh dán trên đơn) ở chế độ tách.
+    assert _pages_by_row(items, 0) == {3: [0], 2: [1], 1: [2], 4: [0]}
     assert {p for i in items if i["fileIndex"] == 0 for p in i["sourceSegments"][0]["pageIndexes"]} == {0, 1, 2}
-    assert _pages_by_row(items, 1) == {5: None}
+    assert _pages_by_row(items, 1) == {6: None}
 
 
 @pytest.mark.asyncio
@@ -291,8 +291,8 @@ async def test_moi_gioi_tat_tach_moi_tep_mot_muc_dung_dong_giay_chinh(monkeypatc
     assert by[0]["componentIndex"] == 3 and by[0]["componentName"] == moi_gioi._ROWS[3]["componentName"]
     assert by[0]["loaiBan"] == "Bản chính" and by[0]["target"] == "attp-row" and by[0]["documentName"] == "hoso"
     assert by[0]["includedTypes"] == ["don_dang_ky", "cccd", "bang_tot_nghiep"]
-    assert by[1]["componentIndex"] == 5 and by[1]["documentName"] == moi_gioi._ROWS[5]["documentName"]
-    assert items[0]["untickRows"] == [moi_gioi._ROWS[4]["componentName"]]
+    assert by[1]["componentIndex"] == 6 and by[1]["documentName"] == moi_gioi._ROWS[6]["documentName"]
+    assert items[0]["untickRows"] == [moi_gioi._ROWS[5]["componentName"]]
     assert any("hoso.pdf" in e and "gộp nhiều giấy" in e and "dòng 1, 2" in e for e in res["errors"])
     assert not any(e.startswith("Chưa có Bản sao chứng thực bằng") for e in res["errors"])
 
@@ -303,7 +303,7 @@ async def test_moi_gioi_bat_tach_ma_llm_chia_giay_loi_thi_dinh_nguyen_tep(monkey
     res = await moi_gioi_dieu_phoi.plan(_mg_files(), {"splitDocuments": True}, None)
     assert calls == {"tach": 1, "khong_tach": 1}
     _assert_nguyen_tep(res["attachments"], 2)
-    assert {i["fileIndex"]: i["componentIndex"] for i in res["attachments"]} == {0: 3, 1: 5}
+    assert {i["fileIndex"]: i["componentIndex"] for i in res["attachments"]} == {0: 3, 1: 6}
     assert res["errors"][0] == "attachment_agent (tách): LLM sập"
 
 
@@ -319,6 +319,62 @@ async def test_moi_gioi_khong_tach_llm_loi_rule_va_dong_don_giu_ten_goc(monkeypa
     assert by[1]["componentIndex"] == 2 and by[1]["detectedType"] == "cccd"
     assert "attachment_agent: hết hạn" in res["errors"]
     assert any("trong.pdf" in e and "đính chung dòng" in e for e in res["errors"])
+
+
+# Bảng dòng đúng thứ tự cổng DVCQG: 4 = ảnh 4x6 + phong bì, 5 = chứng chỉ nước ngoài, 6 = GCN khóa học.
+_MG_PORTAL_ROWS = [
+    "Bản sao chứng thực bằng tốt nghiệp từ trung học phổ thông hoặc tương đương trở lên.",
+    "01 Bản sao chứng thực Giấy chứng minh nhân dân hoặc Căn cước công dân hoặc Thẻ căn cước theo quy định của pháp "
+    "luật về căn cước, giấy tờ chứng minh quốc tịch Việt Nam hoặc giấy xác nhận là người gốc Việt Nam theo quy định "
+    "của pháp luật quốc tịch hoặc hộ chiếu (hoặc bản sao có bản chính để đối chiếu)",
+    "01 Đơn đăng ký dự thi có dán ảnh mầu cỡ 4x6cm chụp trong thời gian 06 tháng tính đến ngày đăng ký dự thi (theo "
+    "mẫu tại Phụ lục XXI của Nghị định số 96/2024/NĐ-CP ngày 24/7/2024 của Chính phủ quy định chi tiết một số điều của "
+    "Luật Kinh doanh bất động sản).",
+    "02 ảnh màu cỡ 4x6cm chụp trong thời gian 06 tháng tính đến ngày đăng ký dự thi, 02 phong bì có dán tem ghi rõ họ "
+    "tên, số điện thoại, địa chỉ người nhận.",
+    "Bản sao và bản dịch có chứng thực chứng chỉ do nước ngoài cấp (đối với người nước ngoài và người Việt Nam có "
+    "chứng chỉ hành nghề môi giới bất động sản do nước ngoài cấp đang còn giá trị).",
+    "01 Bản sao chứng thực Giấy chứng nhận đã hoàn thành khóa học về đào tạo bồi dưỡng kiến thức hành nghề môi giới "
+    "bất động sản.",
+]
+
+
+def test_moi_gioi_bang_dong_khop_dung_stt_tren_cong():
+    for stt, row in moi_gioi._ROWS.items():
+        assert row["componentName"] in _MG_PORTAL_ROWS[stt - 1], stt
+
+
+_MG_ANH_TEXTS = {
+    "anh.pdf": "Scanned with CamScanner",
+    "don.pdf": "ĐƠN ĐĂNG KÝ DỰ THI SÁT HẠCH CẤP CHỨNG CHỈ HÀNH NGHỀ MÔI GIỚI BẤT ĐỘNG SẢN Kính gửi: Sở Xây dựng "
+               "Scanned with CamScanner",
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("options", [{}, {"splitDocuments": True}])
+async def test_moi_gioi_anh_the_pdf_camscanner_vao_dong_anh(monkeypatch, options):
+    # Ảnh thẻ scan thành PDF: OCR chỉ ra chữ app scan, LLM trả other → rule nhận ảnh rời, vào dòng 4 (không về Đơn).
+    segments = [{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "other", "documentName": ""},
+                {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "don_dang_ky", "documentName": ""}]
+    _mock_llm(monkeypatch, moi_gioi, moi_gioi_khong_tach, _MG_ANH_TEXTS, segments, {0: ["other"], 1: ["don_dang_ky"]})
+    res = await moi_gioi_dieu_phoi.plan([_pdf_file("anh.pdf", 1), _pdf_file("don.pdf", 1)], options, None)
+    by = {i["fileIndex"]: i for i in res["attachments"]}
+    assert len(res["attachments"]) == 2
+    assert by[0]["componentIndex"] == 4 and by[0]["detectedType"] == "anh_the"
+    assert by[0]["componentName"] in _MG_PORTAL_ROWS[3] and by[0]["documentName"] == "Ảnh 4x6"
+    assert by[1]["componentIndex"] == 3
+    assert not any("ảnh 4x6" in e.lower() and ("chưa có" in e.lower() or "không có" in e.lower())
+                   for e in res["errors"])
+
+
+def test_moi_gioi_pdf_trang_hoac_van_ban_co_watermark_khong_phai_anh():
+    pdf = {"type": _PDF}
+    assert moi_gioi._is_photo(pdf, "───── Trang 1/2 ─────\nScanned with CamScanner\n───── Trang 2/2 ─────\nCS")
+    assert not moi_gioi._is_photo(pdf, "")
+    assert not moi_gioi._is_photo(pdf, "───── Trang 1/2 ─────\n\n───── Trang 2/2 ─────\n")
+    assert not moi_gioi._is_photo(pdf, _MG_ANH_TEXTS["don.pdf"])
+    assert moi_gioi._is_photo({"type": "image/jpeg"}, "")
 
 
 _DKL_TEXTS = {
