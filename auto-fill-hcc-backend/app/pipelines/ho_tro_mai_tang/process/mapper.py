@@ -44,20 +44,25 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
-# Cấu hình theo tài khoản: phường Nha Trang (Khánh Hòa) khai NGƯỜI ĐỀ NGHỊ trên tờ khai làm chủ hồ sơ thay vì
-# người chết. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# Cấu hình theo tài khoản: một số phường khai NGƯỜI ĐỀ NGHỊ trên tờ khai làm chủ hồ sơ thay vì người chết.
+# Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được.
 PROCEDURE_KEYS = ("ho-tro-mai-tang-1116910",)
 REQUESTER_AS_OWNER_OPTION = "requesterAsOwner"
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+# (tỉnh, phường) đã bỏ dấu + bỏ tiền tố, khớp ĐÚNG tên phường (Bắc/Nam/Tây Nha Trang không bật).
+_REQUESTER_OWNER_WARDS = (
+    ("khanh hoa", "nha trang"),  # 2026-11-04
+    ("bac ninh", "tien du"),  # 2026-11-13
+)
 
 
 def is_requester_owner(options: dict | None) -> bool:
     return (options or {}).get(REQUESTER_AS_OWNER_OPTION) is True
 
 
-def is_khanh_hoa_nha_trang(user: dict | None) -> bool:
-    """True khi tài khoản thuộc phường Nha Trang, tỉnh Khánh Hòa (ĐÚNG tên phường, không gồm Bắc/Nam/Tây Nha Trang)."""
+def is_requester_owner_account(user: dict | None) -> bool:
+    """True khi tài khoản thuộc một phường trong _REQUESTER_OWNER_WARDS (phường Nha Trang, phường Tiên Du)."""
     if not user:
         return False
     tinh = _norm_text(user.get("tinh"))
@@ -66,14 +71,14 @@ def is_khanh_hoa_nha_trang(user: dict | None) -> bool:
         if xa.startswith(prefix):
             xa = xa[len(prefix):].strip()
             break
-    return "khanh hoa" in tinh and xa == "nha trang"
+    return any(tinh_key in tinh and xa == xa_key for tinh_key, xa_key in _REQUESTER_OWNER_WARDS)
 
 
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
     """Trả bản sao options với cờ requesterAsOwner do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(REQUESTER_AS_OWNER_OPTION, None)
-    if procedure in PROCEDURE_KEYS and is_khanh_hoa_nha_trang(user):
+    if procedure in PROCEDURE_KEYS and is_requester_owner_account(user):
         result[REQUESTER_AS_OWNER_OPTION] = True
     return result
 
@@ -279,7 +284,7 @@ def _fill_requester_owner(
     context: dict,
     options: dict | None,
 ) -> list[str]:
-    """Cờ requesterAsOwner (phường Nha Trang): khối chủ hồ sơ = người đề nghị trên tờ khai (ChuHoSo_*).
+    """Cờ requesterAsOwner (phường Nha Trang, phường Tiên Du): khối chủ hồ sơ = người đề nghị trên tờ khai (ChuHoSo_*).
 
     Người đề nghị cũng là người nộp (khớp mỏ neo UI, hoặc toggle owner_as_submitter) thì tick "Người nộp là
     chủ hồ sơ"; NguoiNop_* khác người khớp UI thì vào khối người nộp, chủ hồ sơ vẫn là người đề nghị.

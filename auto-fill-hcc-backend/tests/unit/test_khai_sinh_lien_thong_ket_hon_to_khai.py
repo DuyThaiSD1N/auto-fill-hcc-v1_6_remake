@@ -27,6 +27,94 @@ def _by_name(values: dict) -> dict:
     return {f["name"]: f.get("value") for f in enrich([{"name": k, "value": v} for k, v in values.items()])}
 
 
+# ── Trích lục kết hôn (bản sao) thay giấy chứng nhận kết hôn ──
+# Số "…/TLKH-BS" và ngày ký dưới quốc hiệu là của bản trích lục; số/ngày đăng ký kết hôn nằm dưới "Đăng ký kết hôn tại".
+_OCR_TRICH_LUC = """===== hoso.pdf (tiengnoi) =====
+───── Trang 2/3 ─────
+TỜ KHAI ĐĂNG KÝ KHAI SINH
+Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ (nếu cha, mẹ trẻ đã ĐKKH):
+Số: 40..., Quyền số: ..., đăng ký ngày 05 tháng 08 năm 2014 tại Xã A
+───── Trang 3/3 ─────
+UBND XÃ A
+Số:40/2024/TLKH-BS
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Xã A, ngày 20 tháng 09 năm 2024
+TRÍCH LỤC KẾT HÔN
+(BẢN SAO)
+Họ, chữ đệm, tên vợ:
+TRẦN THỊ MAI
+Giấy tờ tùy thân: Thẻ căn cước số
+001190000001, Bộ Công an cấp ngày
+01/02/2021
+Đăng ký kết hôn tại: Ủy ban nhân dân xã A, tỉnh B
+Số: 25/2024 ngày 05 tháng 03 năm 2024
+Ghi chú:
+Họ, chữ đệm, tên chồng:
+NGUYỄN VĂN AN
+"""
+# LLM bỏ qua trích lục, chỉ trả dòng tờ khai mà OCR đọc sai tháng/năm.
+_LLM_CHI_CO_TO_KHAI = {"Tk_GcnKetHon_So": "40", "Tk_GcnKetHon_NgayCap": "05/08/2014", "Tk_GcnKetHon_NoiCap": "Xã A"}
+
+
+def _gcn_ocr(values: dict, ocr_text: str) -> dict:
+    out = enrich([{"name": k, "value": v} for k, v in values.items()], ocr_text=ocr_text)
+    return {f["name"]: f.get("value") for f in out if f["name"].startswith("GiayCNKH")}
+
+
+def test_trich_luc_ket_hon_thang_dong_to_khai_ocr_doc_sai():
+    out = _gcn_ocr(_LLM_CHI_CO_TO_KHAI, _OCR_TRICH_LUC)
+    assert out == {"GiayCNKHSo": "25/2024", "GiayCNKHNgayCap": "05/03/2024",
+                   "GiayCNKHNoiCap": "Ủy ban nhân dân xã A, tỉnh B"}
+
+
+def test_trich_luc_khong_lay_so_va_ngay_cua_ban_trich_luc():
+    # Thiếu dòng "Số: … ngày …" dưới nơi đăng ký → không vớ "40/2024/TLKH-BS" hay ngày ký 20/09/2024; tờ khai bù.
+    ocr = _OCR_TRICH_LUC.replace("Số: 25/2024 ngày 05 tháng 03 năm 2024\n", "")
+    out = _gcn_ocr(_LLM_CHI_CO_TO_KHAI, ocr)
+    assert out == {"GiayCNKHSo": "40", "GiayCNKHNgayCap": "05/08/2014",
+                   "GiayCNKHNoiCap": "Ủy ban nhân dân xã A, tỉnh B"}
+
+
+def test_trich_luc_ngay_dang_ky_viet_so_va_co_quyen_so():
+    ocr = _OCR_TRICH_LUC.replace("Số: 25/2024 ngày 05 tháng 03 năm 2024",
+                                 "Số: 25/2024, Quyển số: 01/2024, ngày 5/3/2024")
+    out = _gcn_ocr({}, ocr)
+    assert out == {"GiayCNKHSo": "25/2024", "GiayCNKHQuyenSo": "01/2024", "GiayCNKHNgayCap": "05/03/2024",
+                   "GiayCNKHNoiCap": "Ủy ban nhân dân xã A, tỉnh B"}
+
+
+def test_trich_luc_mau_so_dang_ky_khong_co_dau_hai_cham():
+    # Trích lục từ sổ cũ: "Đăng ký kết hôn tại UBND …" / "Số 25/2024 ngày …", số bản trích lục đuôi TLHT.
+    ocr = (_OCR_TRICH_LUC.replace("Số:40/2024/TLKH-BS", "Số: 40/2024/TLHT-BS")
+           .replace("Đăng ký kết hôn tại: Ủy ban nhân dân xã A, tỉnh B", "Đăng ký kết hôn tại UBND Xã A, Huyện C, Tỉnh B")
+           .replace("Số: 25/2024 ngày", "Số 25/2024 ngày"))
+    out = _gcn_ocr(_LLM_CHI_CO_TO_KHAI, ocr)
+    assert out == {"GiayCNKHSo": "25/2024", "GiayCNKHNgayCap": "05/03/2024",
+                   "GiayCNKHNoiCap": "UBND Xã A, Huyện C, Tỉnh B"}
+    assert _gcn({"GcnKetHon_So": "40/2024/TLHT-BS", "Tk_GcnKetHon_So": "25"}) == {"GiayCNKHSo": "25"}
+
+
+def test_trich_luc_khong_vo_so_va_ngay_cap_cccd_cua_khoi_chong_ngay_duoi():
+    # OCR hai cột đẩy khối chồng lên ngay dưới nơi đăng ký, dòng "Số … ngày …" bị mất.
+    ocr = _OCR_TRICH_LUC.replace(
+        "Số: 25/2024 ngày 05 tháng 03 năm 2024",
+        "Giấy tờ tùy thân: Thẻ căn cước công dân số 001085000001, Bộ Công an cấp ngày 01/02/2021")
+    out = _gcn_ocr(_LLM_CHI_CO_TO_KHAI, ocr)
+    assert out == {"GiayCNKHSo": "40", "GiayCNKHNgayCap": "05/08/2014",
+                   "GiayCNKHNoiCap": "Ủy ban nhân dân xã A, tỉnh B"}
+
+
+def test_llm_lay_so_ban_trich_luc_thi_bo_dung_so_to_khai():
+    out = _gcn({"GcnKetHon_So": "40/2024/TLKH-BS", "Tk_GcnKetHon_So": "25"})
+    assert out == {"GiayCNKHSo": "25"}
+
+
+def test_khong_co_trich_luc_giu_nguyen_giay_ket_hon_llm_tra():
+    out = _gcn_ocr({"GcnKetHon_So": "12", "GcnKetHon_NgayCap": "01/02/2020", **_LLM_CHI_CO_TO_KHAI},
+                   _OCR_CHONG_NUOC_NGOAI)
+    assert out == {"GiayCNKHSo": "12", "GiayCNKHNgayCap": "01/02/2020", "GiayCNKHNoiCap": "Xã A"}
+
+
 def test_me_chi_co_nam_sinh_lay_ngay_day_du_tu_giay_ket_hon_khi_trung_ten():
     out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI", "ThongTinMe_SoDinhDanh": "001190000001",
                     "ThongTinMe_NgaySinh": "1990", "GcnKetHon_Vo_HoTen": "Trần Thị Mai",
@@ -380,7 +468,8 @@ def test_bang_benh_vien_khanh_hoa_khong_keo_benh_vien_tinh_khac():
     from app.pipelines._shared.hospital_lookup import lookup_hospital
     assert lookup_hospital("Bệnh viện Đa khoa Sài Gòn", "Thành phố Hồ Chí Minh") is None
     assert lookup_hospital("Bệnh viện Đa khoa Tâm Trí", "Tỉnh Đồng Tháp") is None
-    assert lookup_hospital("Trung tâm Y tế huyện Hàm Thuận Bắc", "Tỉnh Lâm Đồng") is None
+    # Hàm Thuận Bắc (Bình Thuận cũ) lấy theo bv_lam_dong.json, không phải một dòng Khánh Hòa.
+    assert lookup_hospital("Trung tâm Y tế huyện Hàm Thuận Bắc", "Tỉnh Lâm Đồng")["tinh"] == "Tỉnh Lâm Đồng"
 
 
 def test_bang_benh_vien_khanh_hoa_chi_dung_xa_hien_hanh():
@@ -465,6 +554,43 @@ def test_bang_benh_vien_quang_tri_dong_nai_chi_dung_xa_hien_hanh():
     for name in ("bv_quang_tri.json", "bv_dong_nai.json"):
         rows = json.loads((Path(hl.__file__).parent / "data_bv" / name).read_text(encoding="utf-8"))
         assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
+
+
+def test_benh_vien_lam_dong_ca_ba_tinh_cu_va_ten_viet_tat():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    # Tờ khai ghi tên bệnh viện kèm số nhà, không có chữ "tỉnh" (trước đây không tra ra).
+    assert lookup_hospital("Bệnh viện Sản Nhi Lâm Đồng, số 57 Thánh Mẫu")["xa"] == "Phường Lang Biang - Đà Lạt"
+    assert lookup_hospital("Bệnh viện Nhi Lâm Đồng")["xa"] == "Phường Lang Biang - Đà Lạt"
+    assert lookup_hospital("Bệnh viện Đa khoa Lâm Đồng, số 01 Phạm Ngọc Thạch")["xa"] == "Phường Cam Ly - Đà Lạt"
+    assert lookup_hospital("Bệnh viện 2 Lâm Đồng")["xa"] == "Phường B'Lao"
+    # Lâm Đồng cũ: TTYT huyện → TTYT khu vực (7/2025).
+    assert lookup_hospital("TTYT TP Đà Lạt")["xa"] == "Phường Xuân Hương - Đà Lạt"
+    assert lookup_hospital("TTYT TP Bảo Lộc")["xa"] == "Phường 1 Bảo Lộc"
+    assert lookup_hospital("TTYT huyện Lâm Hà")["xa"] == "Xã Đinh Văn Lâm Hà"
+    assert lookup_hospital("TTYTKV Lạc Dương")["xa"] == "Phường Lang Biang - Đà Lạt"
+    # Đắk Nông cũ: TTYT Đắk Mil nay ở Thuận An (TT Đắk Mil cũ là Xã Đức Lập), Krông Nô ở Nam Đà.
+    assert lookup_hospital("TTYT huyện Đắk Mil")["xa"] == "Xã Thuận An"
+    assert lookup_hospital("TTYTKV Krông Nô")["xa"] == "Xã Nam Đà"
+    assert lookup_hospital("TTYT Đăk Rlấp")["xa"] == "Xã Kiến Đức"
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Đắk Nông")["xa"] == "Phường Đông Gia Nghĩa"
+    # Bình Thuận cũ.
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Bình Thuận")["xa"] == "Phường Bình Thuận"
+    assert lookup_hospital("BVĐKKV phía Nam Bình Thuận")["xa"] == "Xã Đức Linh"
+    assert lookup_hospital("TTYT huyện Hàm Thuận Bắc")["xa"] == "Xã Hàm Thuận"
+    assert lookup_hospital("TTYT Quân dân y Phú Quý")["xa"] == "Đặc khu Phú Quý"
+    # Huyện Bảo Lâm có cả ở Cao Bằng; "Bệnh viện Đà Lạt" không rõ bệnh viện nào.
+    assert lookup_hospital("Trung tâm Y tế huyện Bảo Lâm", "Tỉnh Cao Bằng") is None
+    assert lookup_hospital("Bệnh viện Đà Lạt") is None
+
+
+def test_bang_benh_vien_lam_dong_chi_dung_xa_hien_hanh():
+    import json
+    from pathlib import Path
+
+    from app.pipelines._shared.area_remap import is_current_area
+    import app.pipelines._shared.hospital_lookup as hl
+    rows = json.loads((Path(hl.__file__).parent / "data_bv" / "bv_lam_dong.json").read_text(encoding="utf-8"))
+    assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
 
 
 def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():

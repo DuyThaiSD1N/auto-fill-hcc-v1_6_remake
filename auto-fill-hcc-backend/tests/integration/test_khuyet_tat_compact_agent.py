@@ -141,6 +141,75 @@ def test_khuyet_tat_self_applicant_can_fill_missing_nkt_fields_from_owner():
     assert values["data[NktNgaySinh]"] == "02/02/1990"
 
 
+def _area_field(name, tinh, xa, dia_chi):
+    return {"name": name, "value": {"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": dia_chi}}
+
+
+def test_khuyet_tat_old_city_in_province_slot_maps_to_current_ward():
+    """Đơn chỉ ghi "phường X NT - KH" / "Phường Tây Nha Trang": LLM đặt thành phố cũ vào ô tỉnh, có lúc chẻ tên
+    phường mới thành xã "Tây" + tỉnh "Nha Trang" → ô tỉnh và phường/xã đều trượt option."""
+    values = _mapped_values([
+        {"name": "ChuHoSo_HoTen", "value": "TRẦN VĂN BÌNH"},
+        _area_field("ChuHoSo_NoiCuTru", "Nha Trang", "Vĩnh Phước", "Tổ 5 Đường Số 2"),
+        {"name": "Nkt_HoTen", "value": "TRẦN VĂN BÌNH"},
+        _area_field("Nkt_ThuongTru", "Nha Trang", "Vĩnh Phước", "Tổ 5 Đường Số 2"),
+        _area_field("Nkt_NoiOHienNay", "Nha Trang", "Tây", "Tổ 3"),
+        {"name": "Ndd_HoTen", "value": "LÊ THỊ HOA"},
+        _area_field("Ndd_NoiCuTru", "Thành phố Nha Trang", "Phường Vĩnh Phước", "Tổ 5"),
+    ])
+
+    assert values["data[ownerProvince]"] == "Khánh Hòa"
+    assert values["data[ownerDistrict]"] == "Phường Bắc Nha Trang"
+    assert values["data[NktMaTinh]"] == "Khánh Hòa"
+    assert values["data[NktMaXa]"] == "Phường Bắc Nha Trang"
+    assert values["data[NktDiachi]"] == "Tổ 5 Đường Số 2"
+    assert values["data[NktNOHTMaTinh]"] == "Khánh Hòa"
+    assert values["data[NktNOHTMaXa]"] == "Phường Tây Nha Trang"
+    assert values["data[NktNOHTDiaChi]"] == "Tổ 3"
+    assert values["data[NddMaTinh]"] == "Khánh Hòa"
+    assert values["data[NddMaXa]"] == "Phường Bắc Nha Trang"
+
+
+async def test_khuyet_tat_truncated_ward_is_recovered_from_ocr(monkeypatch):
+    """LLM trả đúng tỉnh nhưng cắt cụt phường ("Nam"): runner đưa OCR cho mapper dò lại cụm có nhãn trên giấy."""
+    monkeypatch.setattr(vision, "ENABLED", False)
+
+    async def fake_run(files_by_role, **kwargs):
+        return {
+            "fields": [
+                {"name": "Nkt_HoTen", "comp": "x-input", "value": "TRẦN VĂN BÌNH"},
+                {"name": "Nkt_NoiOHienNay", "comp": "x-select-area",
+                 "value": {"quocGia": "Việt Nam", "tinh": "Khánh Hòa", "xa": "Nam", "diaChi": "Tổ 7"}},
+            ],
+            "ocr_text": "I. THÔNG TIN NGƯỜI KHUYẾT TẬT\n- Nơi ở hiện nay: Tổ 7 Phường Nam Nha Trang\n",
+            "errors": [],
+        }
+
+    monkeypatch.setattr(process_runner.runner, "run", fake_run)
+    res = await agent.run({"doc": [_file("don.pdf")]}, {})
+    d = {f["name"]: f for f in res["fields"]}
+
+    assert d["data[NktNOHTMaTinh]"]["value"] == "Khánh Hòa"
+    assert d["data[NktNOHTMaXa]"]["value"] == "Phường Nam Nha Trang"
+    assert d["data[NktNOHTDiaChi]"]["value"] == "Tổ 7"
+    assert "default" not in d["data[NktNOHTDiaChi]"]
+
+
+def test_khuyet_tat_unselectable_ward_is_left_blank_and_flagged():
+    """Không dò được phường/xã hiện hành: không phát tên trượt danh mục (extension vớ nhầm option gần giống), giữ tên
+    đã đọc cuối địa chỉ chi tiết và tô vàng."""
+    mapped = mapper.enrich([
+        {"name": "Nkt_HoTen", "value": "TRẦN VĂN BÌNH"},
+        _area_field("Nkt_ThuongTru", "Khánh Hòa", "Tây", "Tổ 3"),
+    ], {})
+    d = {f["name"]: f for f in mapped}
+
+    assert d["data[NktMaTinh]"]["value"] == "Khánh Hòa"
+    assert "data[NktMaXa]" not in d
+    assert d["data[NktDiachi]"]["value"] == "Tổ 3, Tây"
+    assert d["data[NktDiachi]"]["default"] is True
+
+
 @respx.mock
 async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     _disable_external_fallbacks(monkeypatch)

@@ -39,6 +39,21 @@ def test_ten_gon_bo_ca_phan_duoi_giong_nhau():
     assert flow._mae_dialog_short_labels(labels) == ["nhà ở riêng lẻ", "công trình"]
 
 
+def test_ten_gon_lay_chu_trong_ngoac_khi_phan_ngoai_ngoac_trung_nhau():
+    # Thẩm định BCNCKT: ba lựa chọn chỉ khác nhóm dự án trong ngoặc → không được ra "chỉnh · chỉnh · chỉnh".
+    body = (" Thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng/Báo cáo nghiên cứu khả thi đầu tư xây dựng "
+            "điều chỉnh")
+    labels = [f"({days} ngày - Dự án Nhóm {group}){body}" for days, group in (("35", "A"), ("25", "B"), ("15", "C"))]
+    assert flow._mae_dialog_short_labels(labels) == ["Dự án Nhóm A", "Dự án Nhóm B", "Dự án Nhóm C"]
+    # Trong ngoặc chỉ có thời gian → giữ thời gian làm tên gọn.
+    assert flow._mae_dialog_short_labels(["(10 ngày) Cấp phép", "(15 ngày) Cấp phép"]) == ["10 ngày", "15 ngày"]
+    conv = _conv()
+    conv["mae_dialog_options"]["process"] = {"options": labels, "current": labels[0]}
+    reply = flow._to_choose_mae_dialog(conv)
+    assert "**Dự án Nhóm A** · **Dự án Nhóm B** · **Dự án Nhóm C**" in reply.display_md
+    assert "chỉnh** ·" not in reply.display_md
+
+
 def test_cau_hoi_chi_liet_ke_ten_gon_the_van_nguyen_van():
     conv = _conv()
     reply = flow._to_choose_mae_dialog(conv)

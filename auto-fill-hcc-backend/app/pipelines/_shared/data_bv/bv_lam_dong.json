@@ -113,5 +113,560 @@
         "ten": "Trung tâm Y tế khu vực Đơn Dương",
         "xa": "Xã Đơn Dương",
         "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lâm Đồng",
+        "xa": "Phường Cam Ly - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Sản Nhi Lâm Đồng",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Nhi tỉnh Lâm Đồng",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Nhi Lâm Đồng",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện 2 Lâm Đồng",
+        "xa": "Phường B'Lao",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Nhà hộ sinh khu vực thành phố Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Nhà hộ sinh Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Bảo Lộc",
+        "xa": "Phường 1 Bảo Lộc",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Bảo Lộc",
+        "xa": "Phường 1 Bảo Lộc",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bảo Lộc",
+        "xa": "Phường 1 Bảo Lộc",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lạc Dương",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Lạc Dương",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Lạc Dương",
+        "xa": "Phường Lang Biang - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đức Trọng",
+        "xa": "Xã Đức Trọng",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đức Trọng",
+        "xa": "Xã Đức Trọng",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đức Trọng",
+        "xa": "Xã Đức Trọng",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lâm Hà",
+        "xa": "Xã Đinh Văn Lâm Hà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Lâm Hà",
+        "xa": "Xã Đinh Văn Lâm Hà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Lâm Hà",
+        "xa": "Xã Đinh Văn Lâm Hà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đam Rông",
+        "xa": "Xã Đam Rông 2",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đam Rông",
+        "xa": "Xã Đam Rông 2",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đam Rông",
+        "xa": "Xã Đam Rông 2",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đơn Dương",
+        "xa": "Xã Đơn Dương",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Di Linh",
+        "xa": "Xã Di Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Di Linh",
+        "xa": "Xã Di Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Di Linh",
+        "xa": "Xã Di Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đạ Tẻh",
+        "xa": "Xã Đạ Tẻh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đạ Tẻh",
+        "xa": "Xã Đạ Tẻh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cát Tiên",
+        "xa": "Xã Cát Tiên",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Cát Tiên",
+        "xa": "Xã Cát Tiên",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cư Jút",
+        "xa": "Xã Cư Jút",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Cư Jút",
+        "xa": "Xã Cư Jút",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Cư Jút",
+        "xa": "Xã Cư Jút",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Cư Jút",
+        "xa": "Xã Cư Jút",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đắk Mil",
+        "xa": "Xã Thuận An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đắk Mil",
+        "xa": "Xã Thuận An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đắk Mil",
+        "xa": "Xã Thuận An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Krông Nô",
+        "xa": "Xã Nam Đà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Krông Nô",
+        "xa": "Xã Nam Đà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Krông Nô",
+        "xa": "Xã Nam Đà",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đắk Song",
+        "xa": "Xã Đức An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đắk Song",
+        "xa": "Xã Đức An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đắk Song",
+        "xa": "Xã Đức An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đắk Song",
+        "xa": "Xã Đức An",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đắk R'Lấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đắk R'Lấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đắk R'Lấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đắk Rlấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đắk Rlấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đắk Rlấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đắk R'Lấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đắk Rlấp",
+        "xa": "Xã Kiến Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đắk Glong",
+        "xa": "Xã Quảng Khê",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Đắk Glong",
+        "xa": "Xã Quảng Khê",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đắk Glong",
+        "xa": "Xã Quảng Khê",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đắk Glong",
+        "xa": "Xã Quảng Khê",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tuy Đức",
+        "xa": "Xã Tuy Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Tuy Đức",
+        "xa": "Xã Tuy Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Tuy Đức",
+        "xa": "Xã Tuy Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Tuy Đức",
+        "xa": "Xã Tuy Đức",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Bình Thuận",
+        "xa": "Phường Bình Thuận",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Nam Bình Thuận",
+        "xa": "Xã Đức Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thị xã La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Lagi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Phan Thiết",
+        "xa": "Phường Phan Thiết",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Phan Thiết",
+        "xa": "Phường Phan Thiết",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Phan Thiết",
+        "xa": "Phường Phan Thiết",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tuy Phong",
+        "xa": "Xã Liên Hương",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Tuy Phong",
+        "xa": "Xã Liên Hương",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Tuy Phong",
+        "xa": "Xã Liên Hương",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Bắc Bình",
+        "xa": "Xã Bắc Bình",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Bắc Bình",
+        "xa": "Xã Bắc Bình",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bắc Bình",
+        "xa": "Xã Bắc Bình",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hàm Thuận Bắc",
+        "xa": "Xã Hàm Thuận",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Hàm Thuận Bắc",
+        "xa": "Xã Hàm Thuận",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hàm Thuận Bắc",
+        "xa": "Xã Hàm Thuận",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hàm Thuận Nam",
+        "xa": "Xã Hàm Thuận Nam",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Hàm Thuận Nam",
+        "xa": "Xã Hàm Thuận Nam",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hàm Thuận Nam",
+        "xa": "Xã Hàm Thuận Nam",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hàm Tân",
+        "xa": "Xã Hàm Tân",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Hàm Tân",
+        "xa": "Xã Hàm Tân",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hàm Tân",
+        "xa": "Xã Hàm Tân",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tánh Linh",
+        "xa": "Xã Tánh Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Tánh Linh",
+        "xa": "Xã Tánh Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Tánh Linh",
+        "xa": "Xã Tánh Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Quân dân y huyện Phú Quý",
+        "xa": "Đặc khu Phú Quý",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Quân dân y Phú Quý",
+        "xa": "Đặc khu Phú Quý",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Quân dân y Đặc khu Phú Quý",
+        "xa": "Đặc khu Phú Quý",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Phú Quý",
+        "xa": "Đặc khu Phú Quý",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế Phú Quý",
+        "xa": "Đặc khu Phú Quý",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Nhà hộ sinh khu vực TP Đà Lạt",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Bảo Lộc",
+        "xa": "Phường 1 Bảo Lộc",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TX Gia Nghĩa",
+        "xa": "Phường Nam Gia Nghĩa",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Phan Thiết",
+        "xa": "Phường Phan Thiết",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Y tế TX La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "BVĐKKV Bắc Bình Thuận",
+        "xa": "Xã Bắc Bình",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "BVĐKKV phía Nam Bình Thuận",
+        "xa": "Xã Đức Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "BVĐKKV Nam Bình Thuận",
+        "xa": "Xã Đức Linh",
+        "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "BVĐKKV La Gi",
+        "xa": "Phường La Gi",
+        "tinh": "Tỉnh Lâm Đồng"
     }
 ]

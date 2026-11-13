@@ -15,8 +15,8 @@ Cấu hình theo tài khoản (planner không biết tài khoản nên router (A
   - phường Nghĩa Lộ (Quảng Ngãi) — cờ ``omitBirthDeclaration``: KHÔNG đính Tờ khai đăng ký khai
     sinh; các giấy tờ khác vẫn đính như thường.
   - phường Song Liễu (Bắc Ninh) — cờ ``onlyBirthProof``: CHỈ đính Giấy chứng sinh (hoặc văn bản
-    người làm chứng / giấy cam đoan về việc sinh) vào STT1; tờ khai khai sinh, tờ khai cư trú
-    CT01, CCCD, giấy kết hôn… vẫn dùng để OCR điền form nhưng không đính.
+    người làm chứng / giấy cam đoan về việc sinh) vào STT1 và Tờ khai thay đổi thông tin cư trú
+    (CT01) vào STT2; tờ khai khai sinh, CCCD, giấy kết hôn… vẫn dùng để OCR điền form nhưng không đính.
 Tài khoản khác: không có cờ, hành vi giữ y hệt.
 
 Nén tệp trên 2 MB như 4 thủ tục Cổng DVC quốc gia mới (dùng chung ``shrink_oversized`` của
@@ -60,7 +60,9 @@ PROCEDURE_KEY = "khai-sinh-dang-ky"
 OMIT_BIRTH_DECLARATION_OPTION = "omitBirthDeclaration"
 OMITTED_DECLARATION_NOTE = "Không đính kèm Tờ khai đăng ký khai sinh theo cấu hình phường Nghĩa Lộ"
 ONLY_BIRTH_PROOF_OPTION = "onlyBirthProof"
-ONLY_BIRTH_PROOF_NOTE = "Chỉ đính kèm Giấy chứng sinh theo cấu hình phường Song Liễu, không đính"
+ONLY_BIRTH_PROOF_NOTE = (
+    "Chỉ đính kèm Giấy chứng sinh và Tờ khai thay đổi thông tin cư trú theo cấu hình phường Song Liễu, không đính"
+)
 
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 
@@ -418,9 +420,14 @@ async def plan_khai_sinh_attachments(
             classification_sources[idx] = "rule_omit_declaration"
         elif only_birth_proof and _is_birth_declaration_text(text) and not _has_birth_form_markers(text):
             # Tờ khai có câu "cam đoan ... khai sinh" nên rule chứng sinh nhận nhầm → chỉ đính nó khi
-            # là tệp ghép có trang giấy chứng sinh thật (còn ô của mẫu chứng sinh).
-            final_types[idx] = _DOC_OTHER
-            classification_sources[idx] = "rule_declaration_other"
+            # là tệp ghép có trang giấy chứng sinh thật (còn ô của mẫu chứng sinh), hoặc tệp ghép có
+            # tờ khai cư trú CT01 (đính vào STT2).
+            if _is_residence_form_text(text):
+                final_types[idx] = _DOC_RESIDENCE
+                classification_sources[idx] = "rule_declaration_residence"
+            else:
+                final_types[idx] = _DOC_OTHER
+                classification_sources[idx] = "rule_declaration_other"
         elif _is_birth_proof_text(text):
             final_types[idx] = _DOC_BIRTH
             classification_sources[idx] = "rule_fallback" if llm_type != _DOC_BIRTH else "llm"
@@ -461,12 +468,12 @@ async def plan_khai_sinh_attachments(
         i for i in range(len(raw_files))
         if i not in birth_indices and i not in residence_indices and i not in declaration_indices
     ]
-    # Song Liễu (cờ onlyBirthProof): chỉ giấy chứng sinh vào STT1. Giấy tờ khác và tờ khai cư trú
-    # không đính (vẫn đã dùng để OCR điền form); chưa có chứng sinh thì không đính gì.
+    # Song Liễu (cờ onlyBirthProof): chỉ giấy chứng sinh vào STT1 + tờ khai thay đổi thông tin cư trú
+    # (CT01) vào STT2. Giấy tờ khác không đính (vẫn đã dùng để OCR điền form).
     only_omitted_indices: list[int] = []
     if only_birth_proof:
-        only_omitted_indices = sorted(other_indices + residence_indices)
-        other_indices, residence_indices = [], []
+        only_omitted_indices = list(other_indices)
+        other_indices = []
         if only_omitted_indices:
             errors.append(
                 f"{ONLY_BIRTH_PROOF_NOTE}: " + ", ".join(raw_files[i]["name"] for i in only_omitted_indices)

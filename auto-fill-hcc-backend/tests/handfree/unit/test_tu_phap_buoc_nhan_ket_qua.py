@@ -12,10 +12,10 @@ TU_PHAP_CU = [
     "ket-hon", "ket-hon-nuoc-ngoai", "dang-ky-lai-ket-hon", "khai-sinh-dang-ky-lai", "khai-tu-dang-ky-lai",
     "dang-ky-nhan-cha-me-con", "dang-ky-giam-ho",
     "chung-thuc-giao-dich-tai-san", "chung-thuc-phan-chia-di-san", "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
-    "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-chu-ky",
+    "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-chu-ky", "khai-sinh-nuoc-ngoai",
 ]
 TU_PHAP_MOI = ["khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-               "xac-nhan-tinh-trang-hon-nhan", "khai-sinh-nuoc-ngoai"]
+               "xac-nhan-tinh-trang-hon-nhan"]
 CLIENT = {"supportsGuidedSteps": True, "supportsResultMethod": True}
 
 

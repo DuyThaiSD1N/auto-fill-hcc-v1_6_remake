@@ -17,7 +17,7 @@ _MUC_I = {
     "Nkt_SoDinhDanh": "001220000001",
     "Nkt_NgaySinh": "01/02/2020",
     "Nkt_GioiTinh": "Nam",
-    "Nkt_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Giả", "diaChi": "Tổ 1"},
+    "Nkt_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Hải Châu", "diaChi": "Tổ 1"},
 }
 _MUC_II = {
     "Ndd_HoTen": "Nguyễn Văn Cha",
@@ -25,7 +25,7 @@ _MUC_II = {
     "Ndd_NgaySinh": "03/04/1980",
     "Ndd_NgayCap": "05/06/2022",
     "Ndd_SoDienThoai": "0900000002",
-    "Ndd_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Giả", "diaChi": "Tổ 2"},
+    "Ndd_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Hải Châu", "diaChi": "Tổ 2"},
 }
 
 
@@ -70,7 +70,7 @@ def test_to_khai_nguoi_nop_la_nguoi_dai_dien_bo_qua_tai_khoan():
     assert d["data[identityNumber]"] == "001080000002"
     assert d["data[birthday]"] == "03/04/1980"
     assert d["data[identityDate]"] == "05/06/2022"
-    assert d["data[address]"] == "Tổ 2"
+    assert d["data[district]"] == "Phường Hải Châu" and d["data[address]"] == "Tổ 2"
     assert d["data[phoneNumber]"] == "0900000002"
     locked = {f["name"]: f.get("enableInput") for f in out if f["name"] in ("data[fullname]", "data[identityNumber]")}
     assert locked == {"data[fullname]": True, "data[identityNumber]": True}

@@ -66,7 +66,7 @@ QUY TẮC FIELD:
 - Không tạo field không có bằng chứng OCR."""
 
 
-# Nối sau EXTRA_RULES khi tài khoản bật cờ requesterAsOwner (phường Nha Trang).
+# Nối sau EXTRA_RULES khi tài khoản bật cờ requesterAsOwner (phường Nha Trang, phường Tiên Du).
 REQUESTER_OWNER_RULES = """
 
 CẤU HÌNH TÀI KHOẢN: NGƯỜI ĐỀ NGHỊ LÀ CHỦ HỒ SƠ TRÊN CỔNG

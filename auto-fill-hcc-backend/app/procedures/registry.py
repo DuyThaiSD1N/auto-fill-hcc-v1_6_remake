@@ -1538,17 +1538,11 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-sinh-nuoc-ngoai",
-        # Mã 2.000528, Cổng DVC quốc gia bản mới (/nop-ho-so, SurveyJS) — cùng tờ khai điện tử với 1.001193. Tiêu đề
-        # "Thủ tục đăng ký khai sinh có yếu tố nước ngoài" CHỨA cụm nhận diện của 1.001193 → khai cả cụm dài: bước
-        # textPriority chọn rule có tổng độ dài cụm lớn nhất nên thủ tục này thắng trên trang của nó. formalityId
-        # (UUID trang thủ tục trong ke_khai_links) khớp URL thì nhận ngay.
-        "detect": {
-            "urlIncludes": ["formalityId=019d2bfd-8662-763f-927f-dc039ede198c"],
-            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
-            "textIncludes": ["thủ tục đăng ký khai sinh có yếu tố nước ngoài", "người được đăng ký khai sinh"],
-            "textPriority": True,
-            "headingDisabled": True,
-        },
+        # Mã 2.000528. Trang chi tiết DVCQG chọn cơ quan xong chuyển sang cổng Bộ Tư pháp
+        # dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/<id>?maThuTuc=2.000528 (wizard 4 bước như kết hôn), bước kê khai là
+        # eForm khai sinh mẫu 2093. Bản 12/11 tưởng là trang SurveyJS /nop-ho-so của DVCQG (formalityId + urlScope
+        # dichvucong.gov.vn) nên trên cổng thật không tự nhận diện (13/11 sửa theo ca Khánh Hòa).
+        "detect": {"urlIncludes": ["maThuTuc=2.000528"]},
         "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -1565,10 +1559,11 @@ PROCEDURES: list[dict] = [
             "3. Giấy chứng nhận kết hôn của cha mẹ; CCCD của cha/mẹ Việt Nam; hộ chiếu / giấy tờ tùy thân của cha/mẹ "
             "người nước ngoài kèm bản dịch.\n"
             "4. Nếu có: kết quả ADN, giấy tờ nước ngoài xác nhận việc sinh ở nước ngoài, văn bản ủy quyền.\n"
-            "Khối người nộp giữ nguyên theo tài khoản. Địa chỉ ở nước ngoài chọn 'Khác' + Quốc gia; người mang quốc "
-            "tịch nước ngoài chọn dân tộc 'Người nước ngoài'.\n"
+            "Họ tên, giấy tờ người yêu cầu giữ nguyên theo tài khoản; nơi cư trú người yêu cầu lấy theo mẹ/cha "
+            "(người nộp là mẹ/cha) hoặc địa chỉ thường trú của tài khoản. Địa chỉ ở nước ngoài chọn 'Khác' + Quốc "
+            "gia; người mang quốc tịch nước ngoài chọn dân tộc 'Người nước ngoài'.\n"
             "Đính kèm: giấy chứng sinh, văn bản thay giấy chứng sinh, giấy tờ sinh ở nước ngoài, thỏa thuận quốc tịch, "
-            "ủy quyền vào đúng dòng; giấy kết hôn, hộ chiếu, bản dịch, ADN đính chung dòng Giấy chứng sinh."
+            "ủy quyền vào đúng dòng; giấy kết hôn, hộ chiếu, CCCD, bản dịch, ADN thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -7275,8 +7270,9 @@ PROCEDURES: list[dict] = [
         # Mã TTHC 1.116910 (DVCQG /thu-tuc-hanh-chinh/01a0f66e-…), thay mã cũ 1.001731, dùng chung CẢ NƯỚC cho cả
         # Auto Fill lẫn trợ lý (cùng key). 5/11/2026 gộp entry trùng "ho-tro-mai-tang" vào đây và bỏ tiền tố
         # "[Tỉnh Ninh Bình]": tiền tố khoá Auto Fill về Ninh Bình và làm báo cáo hồ sơ trợ lý tỉnh khác hiện tên Ninh Bình.
-        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT; người đứng ra mai táng là người nộp. Riêng phường Nha Trang
-        # (cờ requesterAsOwner, ho_tro_mai_tang/process/mapper.py): chủ hồ sơ = người đề nghị trên tờ khai.
+        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT; người đứng ra mai táng là người nộp. Riêng phường Nha Trang (Khánh Hòa)
+        # và phường Tiên Du (Bắc Ninh) (cờ requesterAsOwner, ho_tro_mai_tang/process/mapper.py): chủ hồ sơ = người
+        # đề nghị trên tờ khai.
         "detect": {
             "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],

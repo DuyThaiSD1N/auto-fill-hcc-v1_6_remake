@@ -134,6 +134,18 @@ def _full_address(value: Any) -> str | None:
     return joined or _text(value)
 
 
+def _hq_from_site(value: Any) -> dict | None:
+    """Địa điểm xây dựng làm địa chỉ trụ sở DỰ PHÒNG khi Tờ trình không ghi trụ sở chủ đầu tư. Bỏ cụm "Thửa đất số …",
+    "tờ bản đồ số …" (vị trí thửa, không phải địa chỉ doanh nghiệp)."""
+    area = _area(value)
+    if not area:
+        return None
+    parts = [p.strip() for p in re.split(r"[,;]", str(area.get("diaChi") or "")) if p.strip()]
+    keep = [p for p in parts if not re.match(r"(thua dat|thua so|so thua|to ban do|so to)\b", _fold(p))]
+    out = {**area, "diaChi": ", ".join(keep)}
+    return out if out.get("tinh") or out.get("xa") or out.get("diaChi") else None
+
+
 def _identity(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -293,15 +305,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(item)
         seen.add(seen_key)
 
-    def add_area(province_name, ward_name, address_name, area, *, occurrence=None) -> None:
+    def add_area(province_name, ward_name, address_name, area, *, occurrence=None, default=False) -> None:
         if not area:
             return
         # ⚠ CẢ 3 cấp (province/district/address) đều TRÙNG 2× trong DOM (Phần I occ0 / dự án occ1) → ward
         # cũng phải mang occurrence, nếu không occ1 bị chặn bởi occ0 (cùng key+None). Với Phần II doanh
         # nghiệp (province1/district1/address1 — key riêng) thì occurrence=None, không ảnh hưởng.
-        add(province_name, _province_label(area.get("tinh")), occurrence=occurrence)
-        add(ward_name, _commune_label(area.get("xa")), occurrence=occurrence)
-        add(address_name, _text(area.get("diaChi")), occurrence=occurrence)
+        add(province_name, _province_label(area.get("tinh")), occurrence=occurrence, default=default)
+        add(ward_name, _commune_label(area.get("xa")), occurrence=occurrence, default=default)
+        add(address_name, _text(area.get("diaChi")), occurrence=occurrence, default=default)
 
     # ===== Phần I: NGƯỜI NỘP (occurrence 0) — từ CCCD, xác định qua VNeID =====
     nguoi_nop = _nguoi_nop(values)
@@ -333,22 +345,39 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     cdt_phone = _phone(values.get("ChuDauTu_DienThoai"))
     cdt_area = _area(values.get("ChuDauTu_DiaChi"))
     cdt_diachi_full = _full_address(values.get("ChuDauTu_DiaChi"))
+    # Tờ trình không ghi trụ sở (chỉ tên chủ đầu tư + địa điểm xây dựng) → tạm điền theo địa điểm xây dựng, ô vàng
+    # để người nộp soát; không bao giờ lấy địa chỉ nhà thầu (runner.drop_contractor_contacts đã bỏ).
+    cdt_area_from_site = False
+    if cdt_ten and not cdt_area:
+        cdt_area = _hq_from_site(values.get("DuAn_DiaDiem"))
+        if cdt_area:
+            cdt_area_from_site = True
+            cdt_diachi_full = ", ".join(
+                str(p).strip() for p in (cdt_area.get("diaChi"), cdt_area.get("xa"), cdt_area.get("tinh"))
+                if str(p or "").strip()
+            ) or None
 
     if not cdt_ten:
         warnings.append("Không đọc được tên chủ đầu tư từ Tờ trình (mục I.5).")
+    elif cdt_area_from_site:
+        warnings.append("Tờ trình không ghi địa chỉ trụ sở chủ đầu tư — tạm điền địa chỉ doanh nghiệp/chủ đầu tư theo "
+                        "địa điểm xây dựng, người nộp soát lại.")
+    elif not cdt_area:
+        warnings.append("Tờ trình không ghi địa chỉ trụ sở chủ đầu tư — để trống địa chỉ doanh nghiệp/chủ đầu tư "
+                        "cho người nộp tự nhập.")
 
     # Phần II: doanh nghiệp (hiện khi Tổ chức).
     add("data[organization]", cdt_ten)
     add("data[taxCode]", cdt_mst)
     add("data[nation1]", "Việt Nam", default=True)
     add("data[organizationPhoneNumber]", cdt_phone)
-    add_area("data[province1]", "data[district1]", "data[address1]", cdt_area)
+    add_area("data[province1]", "data[district1]", "data[address1]", cdt_area, default=cdt_area_from_site)
 
     # Phần III: chủ đầu tư.
     add("data[nguoiQuyetDinhDauTu]", _text(values.get("ChuDauTu_NguoiQuyetDinhDauTu")))
     add("data[chuDauTu]", cdt_ten)
     add("data[maChuDauTu]", cdt_mst)
-    add("data[diaChiChuDauTu]", cdt_diachi_full)
+    add("data[diaChiChuDauTu]", cdt_diachi_full, default=cdt_area_from_site)
     add("data[soDienThoaiChuDauTu]", cdt_phone)
 
     # ===== Phần IV: THÔNG TIN CHUNG DỰ ÁN (địa điểm = occurrence 1) =====

@@ -166,8 +166,9 @@ _KINH_DOANH = [
 
 KEY_FIELDS_BY_PROCEDURE: dict[str, list] = {
     "khai-sinh-dang-ky-thuong": _KHAI_SINH_DVC,
-    # Cùng tờ khai điện tử với 1.001193 (2.000528); quê quán / nơi sinh ở nước ngoài mang tên ô "_NuocNgoai".
-    "khai-sinh-nuoc-ngoai": _KHAI_SINH_DVC,
+    # 2.000528 trên cổng Bộ Tư pháp: cùng eForm khai sinh mẫu 2093; quê quán / nơi sinh ở nước ngoài mang tên ô
+    # "_NuocNgoai" thay cho "_TrongNuoc".
+    "khai-sinh-nuoc-ngoai": _KHAI_SINH_THUONG,
     "khai-sinh-ket-hop-nhan-cha-me-con": _KHAI_SINH_THUONG,
     "khai-sinh-dang-ky-lai": _DANG_KY_LAI,
     # Cùng bộ trường then chốt với khai sinh thường: thủ tục này KHÔNG có khối "đăng ký trước đây".

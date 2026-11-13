@@ -246,13 +246,11 @@ def _area(value, ocr_text: str = ""):
         if found:
             remapped = {**remapped, "tinh": found[0], "xa": found[1]}
     # Xã không chọn được trên cổng: extension sẽ vớ nhầm option gần giống hoặc để trống mà không báo.
-    # Bỏ trống xã, giữ tên đã đọc ở cuối địa chỉ chi tiết, đánh dấu để tô viền vàng.
+    # Bỏ trống xã, đánh dấu để tô viền vàng + cảnh báo cán bộ chọn lại. Không nối tên xã đã đọc vào địa chỉ chi
+    # tiết: ô đó chỉ ghi số nhà / đường / thôn, xã cũ nằm thêm ở đó là thừa (người dùng báo 13/11).
     ward = str(remapped.get("xa") or "")
     if ward and not is_current_area(str(remapped.get("tinh") or ""), ward):
-        detail = str(remapped.get("diaChi") or "").strip()
-        if _fold(ward) not in _fold(detail):
-            detail = f"{detail}, {ward}" if detail else ward
-        remapped = {**remapped, "xa": "", "diaChi": detail, "_xaChuaChon": True}
+        remapped = {**remapped, "xa": "", "_xaChuaChon": True}
     return remapped
 
 

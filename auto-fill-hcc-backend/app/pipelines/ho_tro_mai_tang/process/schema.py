@@ -117,7 +117,7 @@ FIELDS += [
     },
 ]
 
-# Cờ requesterAsOwner (phường Nha Trang): ChuHoSo_* là NGƯỜI ĐỀ NGHỊ (người khai) và là chủ hồ sơ trên cổng.
+# Cờ requesterAsOwner (phường Nha Trang, phường Tiên Du): ChuHoSo_* là NGƯỜI ĐỀ NGHỊ (người khai) và là chủ hồ sơ trên cổng.
 # Cùng tên field, chỉ đổi mô tả nguồn: mục 1 Mẫu số 02/03 là nguồn chính, mục 3.1 cùng người chỉ bổ sung.
 _REQUESTER_OWNER_DESC = {
     "ChuHoSo_HoTen": 'Họ tên NGƯỜI ĐỀ NGHỊ (người khai): mục 1 "Thông tin người đề nghị" Mẫu số 02/03, mục II.2.a Mẫu số 04. Không lấy họ tên người chết.',

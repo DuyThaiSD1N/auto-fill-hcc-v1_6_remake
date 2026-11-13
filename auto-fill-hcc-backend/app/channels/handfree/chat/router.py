@@ -502,6 +502,11 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
+        # Cổng Bộ VHTTDL, chặng ô VNPost: câu trả lời / đổi ý ("tôi muốn đổi, nhận qua bưu điện") bắt tất định TRƯỚC vòng
+        # hỏi ô và bộ phân loại LLM — LLM từng hiểu chữ "đổi" là Điều chỉnh giấy tờ (13/11).
+        if intent is None and message and not message.startswith("__"):
+            intent = flow.tpm.liz_postal_by_text(conv, get_procedure(conv.get("procedure_key") or ""), message,
+                                                 typed=req.source == "text")
         # Đang hỏi một ô trên tờ khai: câu gõ/nói là câu trả lời cho ô đó — vòng bổ sung tự hiểu bằng
         # LLM riêng (biết nhãn ô, danh sách lựa chọn), không qua bộ phân loại ý định chung.
         if intent is None and field_review.asking(conv) and message and not message.startswith("__"):

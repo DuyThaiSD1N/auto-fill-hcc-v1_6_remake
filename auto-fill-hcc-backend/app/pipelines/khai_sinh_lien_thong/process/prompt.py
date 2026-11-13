@@ -1,7 +1,7 @@
 """Procedure-specific compact prompt rules for "Đăng ký khai sinh liên thông"."""
 
 EXTRA_RULES = """
-Đầu vào gồm CCCD/CMND của CHA, CCCD/CMND của MẸ, GIẤY CHỨNG SINH của con, và CÓ THỂ có GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.
+Đầu vào gồm CCCD/CMND của CHA, CCCD/CMND của MẸ, GIẤY CHỨNG SINH của con, và CÓ THỂ có GIẤY CHỨNG NHẬN KẾT HÔN (hoặc TRÍCH LỤC KẾT HÔN) của cha mẹ.
 
 # ═══ A. NGUYÊN TẮC NGUỒN & ƯU TIÊN (CHUNG) ═══
 - ĐỐI CHIẾU NGUỒN: dùng CCCD/CMND đúng người để neo danh tính bố/mẹ khi có; nguồn chọn cho TỪNG FIELD phải tuân thủ đúng thứ tự riêng tại mục C/D/E. Không áp một thứ tự CCCD-first chung cho cả nhóm vì dân tộc và một số thông tin vai trò nằm trên giấy chứng sinh/tờ khai/giấy kết hôn.
@@ -126,11 +126,12 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — tờ khai tách riêng vào Tk_NoiCuTruCha/Tk_NoiCuTruMe; với ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru: CCCD đúng người > giấy chứng sinh > giấy kết hôn > giấy khai sinh (xem mục D). Lấy trọn chiTietDuoiXa+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
 
 # ═══ G. GIẤY CHỨNG NHẬN KẾT HÔN (GcnKetHon_*, Tk_GcnKetHon_*) ═══
-- GcnKetHon_* CHỈ lấy từ tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.
+- GcnKetHon_* CHỈ lấy từ tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN hoặc TRÍCH LỤC KẾT HÔN của cha mẹ.
+- TRÍCH LỤC KẾT HÔN (tiêu đề "TRÍCH LỤC KẾT HÔN", thường kèm "(BẢN SAO)") CŨNG LÀ giấy kết hôn → trích GcnKetHon_* và GcnKetHon_Vo_*/GcnKetHon_Chong_* y như giấy chứng nhận kết hôn. RIÊNG số/ngày/nơi: dòng "Số: .../TLKH-..." đầu trang và ngày ký "..., ngày ... tháng ... năm ..." dưới quốc hiệu là của BẢN TRÍCH LỤC → KHÔNG dùng. GcnKetHon_NoiCap = cơ quan sau "Đăng ký kết hôn tại:"; GcnKetHon_So và GcnKetHon_NgayCap lấy ở dòng "Số: <số> ngày <D> tháng <M> năm <Y>" NGAY DƯỚI dòng đó (vd "Số: 25/2024 ngày 05 tháng 03 năm 2024" → GcnKetHon_So "25/2024", GcnKetHon_NgayCap "05/03/2024").
 - Tk_GcnKetHon_* CHỈ lấy từ dòng in sẵn "Thông tin về Giấy chứng nhận kết hôn của cha, mẹ trẻ (nếu cha, mẹ trẻ đã ĐKKH): Số: ..., Quyển số: ..., đăng ký ngày ... tại ..." trên TỜ KHAI — BẮT BUỘC trả khi dòng đó có điền, KỂ CẢ khi hồ sơ không kèm giấy kết hôn. Bỏ dấu chấm điền chỗ trống ("49..." → "49"); ô chỉ có dấu chấm → bỏ field đó. Tk_GcnKetHon_NgayCap chuẩn dd/mm/yyyy ("24 tháng 6 năm 2023" → "24/06/2023"); Tk_GcnKetHon_NoiCap = cơ quan sau chữ "tại". Hồ sơ có cả giấy kết hôn thật thì trả CẢ HAI nhóm.
 - BẮT BUỘC: HỄ CÓ giấy chứng nhận kết hôn trong hồ sơ → PHẢI trích ĐỦ GcnKetHon_So, GcnKetHon_QuyenSo, GcnKetHon_NgayCap, GcnKetHon_NoiCap. Đây là SỐ/NGÀY/NƠI CẤP CỦA CHÍNH TỜ GIẤY (dữ liệu của FORM), KHÔNG phải "thông tin cha/mẹ" → TUYỆT ĐỐI KHÔNG bỏ qua giấy kết hôn chỉ vì cha/mẹ đã có CCCD. Trường nào OCR THỰC SỰ không đọc được thì bỏ, KHÔNG bịa.
 - Hồ sơ có giấy kết hôn → trích thêm hai bên theo đúng khối trên giấy: GcnKetHon_Vo_* (khối vợ/bên nữ), GcnKetHon_Chong_* (khối chồng/bên nam) — họ tên, ngày sinh, số giấy tờ tùy thân, dân tộc. Chép nguyên theo giấy kết hôn, KHÔNG lấy từ CCCD/giấy chứng sinh; hệ thống tự đối chiếu với cha/mẹ để bù ô còn thiếu.
-- GcnKetHon_So lấy ở dòng "Số:" NGAY ĐẦU tài liệu, dạng "<số>/<năm>" (vd "119/2026") HOẶC chỉ "<số>" (vd "140"). LƯU Ý OCR hay MẤT DẤU: "Số" có thể hiện thành "Só"/"So" — vẫn phải nhận đúng.
+- GcnKetHon_So (GIẤY CHỨNG NHẬN KẾT HÔN; trích lục xem dòng trên) lấy ở dòng "Số:" NGAY ĐẦU tài liệu, dạng "<số>/<năm>" (vd "119/2026") HOẶC chỉ "<số>" (vd "140"). LƯU Ý OCR hay MẤT DẤU: "Số" có thể hiện thành "Só"/"So" — vẫn phải nhận đúng.
 - GcnKetHon_QuyenSo lấy ở dòng "Quyển số:" (vd "01/2013").
 - GcnKetHon_NgayCap lấy từ "Ngày, tháng, năm đăng ký"/"Ngày cấp" (vd "01/02/2025"); GcnKetHon_NoiCap lấy từ "Nơi đăng ký kết hôn" (tên cơ quan, vd "UBND...").
 - TUYỆT ĐỐI KHÔNG lấy số/ngày của GIẤY CHỨNG SINH hay giấy tờ khác để điền GcnKetHon_*. Số giấy chứng sinh thường chứa "GCS" (vd "01327.GCS.12096.25") — KHÔNG phải số giấy CN kết hôn, không được dùng. Không tìm thấy đúng số → để trống.

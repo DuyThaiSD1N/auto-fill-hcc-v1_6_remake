@@ -3,6 +3,16 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.27.11",
+    date: "13/11/2026",
+    items: [
+      "Xác nhận tình trạng hôn nhân trên Cổng dịch vụ công quốc gia mới: điền xong, hệ thống soát lại biểu mẫu và tự ghi lại các ô cần sửa.",
+      "Đính kèm theo cài đặt \"Có tách hồ sơ khi đính kèm\" cho thêm 16 thủ tục (hội cấp tỉnh; đất đai Đà Nẵng; môi giới bất động sản, đăng ký phương tiện của Bộ Xây dựng; nuôi con nuôi trong nước; kinh doanh dược; nội quy lao động; thẻ hướng dẫn viên du lịch; hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật; hỗ trợ chi phí học tập): tắt cài đặt thì đính nguyên tệp vào đúng thành phần hồ sơ, bật thì tách theo trang như trước.",
+      "Khai sinh liên thông: chọn đúng cơ sở y tế nơi sinh ở Quảng Trị và Đồng Nai, kể cả tên cơ sở trước khi sáp nhập tỉnh.",
+      "Đăng ký biến động chuyển nhượng, thừa kế, tặng cho tại Khánh Hòa: Đơn đứng tên chung vợ chồng thì số điện thoại lấy đúng của chủ hồ sơ.",
+    ],
+  },
+  {
     version: "1.27.10",
     date: "12/11/2026",
     items: [

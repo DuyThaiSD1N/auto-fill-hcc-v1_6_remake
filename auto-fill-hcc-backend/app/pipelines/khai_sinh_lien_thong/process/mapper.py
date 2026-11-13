@@ -761,6 +761,57 @@ def _marriage_sides(ocr_text: str) -> dict:
     return sides
 
 
+# TRÍCH LỤC KẾT HÔN (bản sao): dòng "Số: …/TLKH-…" và ngày ký dưới quốc hiệu là của BẢN TRÍCH LỤC. Số, ngày, nơi đăng ký
+# kết hôn nằm ở "Đăng ký kết hôn tại: <cơ quan>" + "Số: <số> ngày <D> tháng <M> năm <Y>" ngay dưới. Khối dừng ở trang/tệp kế.
+_TRICH_LUC_KH = re.compile(r"TR[IÍ]CH L[UỤ]C K[EẾ]T H[OÔ]N(.*?)(?=\n=====|\n─────|\Z)", re.DOTALL)
+_TLKH_NOI = re.compile(r"(?:Đăng ký kết hôn tại|Nơi đăng ký kết hôn)\s*:?[ \t]*([^\n]*)", re.IGNORECASE)
+_TLKH_SO = re.compile(r"(?<![Qq]uyển )(?<![Qq]uyen )\bS[ốóo]\s*:?\s*([0-9][0-9A-Za-z/.\-]*)", re.IGNORECASE)
+_TLKH_QUYEN = re.compile(r"Quy[ểe]n\s+s[ốóo]\s*:?\s*([0-9][0-9A-Za-z/.\-]*)", re.IGNORECASE)
+_TLKH_NGAY = re.compile(
+    r"(\d{1,2})\s*(?:tháng|/|-|\.)\s*(\d{1,2})\s*(?:năm|/|-|\.)\s*(\d{4})", re.IGNORECASE
+)
+
+
+def _is_extract_serial(value) -> bool:
+    """Số của bản TRÍCH LỤC (vd "40/2024/TLKH-BS", "12/2004/TLHT-BS") — không phải số đăng ký kết hôn."""
+    text = str(value or "").upper()
+    return "TLKH" in text or "TLHT" in text or bool(re.search(r"/\s*TL", text))
+
+
+def _trich_luc_ket_hon(ocr_text: str) -> dict:
+    """Đọc thẳng số/quyển số/ngày/nơi đăng ký kết hôn trên TRÍCH LỤC KẾT HÔN trong OCR.
+
+    LLM hay bỏ qua trích lục vì không phải "giấy chứng nhận kết hôn", lúc đó form lấy dòng viết tay trên tờ khai
+    mà OCR dễ đọc sai ngày. Chỉ đọc vài dòng ngay sau nhãn "Đăng ký kết hôn tại" để không vớ số/ngày của bản trích lục;
+    ngày chỉ nhận khi cùng dòng số đăng ký (hoặc dòng có chữ "đăng ký") để không vớ "cấp ngày" CCCD của khối chồng."""
+    block = _TRICH_LUC_KH.search(str(ocr_text or ""))
+    if not block:
+        return {}
+    label = _TLKH_NOI.search(block.group(1))
+    if not label:
+        return {}
+    noi_cap = re.split(r"\s+(?:Quy[ểe]n\s+)?S[ốóo]\s*:?\s*(?=\d)", label.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
+    facts = {"NoiCap": noi_cap.strip(" .,;:")}
+    window = "\n".join(block.group(1)[label.start():].split("\n")[:4])
+    so = _TLKH_SO.search(window)
+    so_value = so.group(1).strip(" .,;") if so else ""
+    # Số trơn từ 9 chữ số trở lên là số CMND/CCCD ("Thẻ căn cước số …"), không phải số đăng ký kết hôn.
+    if so_value and not _is_extract_serial(so_value) and not re.fullmatch(r"\d{9,}", so_value):
+        facts["So"] = so_value
+        rest = window[so.end():].split("\n")
+        date_zone = rest[0] + ("\n" + rest[1] if len(rest) > 1 and _fold(rest[1]).startswith("ngay") else "")
+    else:
+        date_zone = "\n".join(line for line in window.split("\n") if "dang ky" in _fold(line))
+    quyen = _TLKH_QUYEN.search(window)
+    if quyen:
+        facts["QuyenSo"] = quyen.group(1).strip(" .,;")
+    for day, month, year in _TLKH_NGAY.findall(date_zone):
+        if 1 <= int(day) <= 31 and 1 <= int(month) <= 12:
+            facts["NgayCap"] = f"{int(day):02d}/{int(month):02d}/{year}"
+            break
+    return {key: value for key, value in facts.items() if value}
+
+
 def _fill_foreign_facts(values: dict, role: str, facts: dict) -> None:
     """Bù quốc tịch, hộ chiếu, nơi cư trú của người nước ngoài từ giấy kết hôn; ô LLM đã trả thì giữ."""
     quoc_tich = facts.get("QuocTich")
@@ -823,7 +874,8 @@ def _fill_from_marriage_cert(values: dict, role: str, side: str, facts: dict | N
 def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "") -> list[dict]:
     """Derive deterministic Angular form fields from compact source facts.
 
-    ocr_text: văn bản OCR gộp mọi file — chỉ dùng để đọc thẳng thẻ CCCD bù ứng viên người yêu cầu."""
+    ocr_text: văn bản OCR gộp mọi file — dùng để đọc thẳng thẻ CCCD bù ứng viên người yêu cầu, hai bên giấy kết hôn
+    và số/ngày/nơi đăng ký trên trích lục kết hôn."""
     options = options or {}
     values = _by_name(fields)
     for name_field in (
@@ -1065,12 +1117,21 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
                 add("QqDiaChi", que_quan_cha)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
-    # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.
-    # Giấy kết hôn thật thắng dòng người dân chép lên tờ khai; ô giấy thật không đọc được thì tờ khai bù.
-    gcn = {key: _blank_dots(values.get(f"GcnKetHon_{key}")) or _blank_dots(values.get(f"Tk_GcnKetHon_{key}"))
-           for key in ("So", "QuyenSo", "NgayCap", "NoiCap")}
-    if gcn["So"] and _is_birth_cert_serial(gcn["So"]):
-        gcn["So"] = ""
+    # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") và số bản trích lục ("…/TLKH-BS")
+    # KHÔNG phải số kết hôn. Thứ tự: trích lục kết hôn đọc thẳng từ OCR > giấy kết hôn LLM trích > dòng người dân
+    # chép lên tờ khai (viết tay, OCR hay đọc sai ngày); ô nguồn trên không có thì nguồn dưới bù.
+    trich_luc = _trich_luc_ket_hon(ocr_text)
+
+    def gcn_value(key: str) -> str:
+        for raw in (trich_luc.get(key), values.get(f"GcnKetHon_{key}"), values.get(f"Tk_GcnKetHon_{key}")):
+            value = _blank_dots(raw)
+            if key == "So" and (_is_birth_cert_serial(value) or _is_extract_serial(value)):
+                continue
+            if value:
+                return value
+        return ""
+
+    gcn = {key: gcn_value(key) for key in ("So", "QuyenSo", "NgayCap", "NoiCap")}
     if any(gcn.values()):
         add("GiayCNKHSo", gcn["So"])
         add("GiayCNKHQuyenSo", gcn["QuyenSo"])

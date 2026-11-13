@@ -768,7 +768,7 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
                 if f.get("doc_key") in owner_keys
             ]
         # Tài khoản chủ phiên quyết các cấu hình theo xã (STT1 ảo Hải Châu, bỏ Tờ khai Nghĩa Hưng,
-        # bỏ Tờ khai khai sinh Nghĩa Lộ, chỉ đính Giấy chứng sinh Song Liễu).
+        # bỏ Tờ khai khai sinh Nghĩa Lộ, chỉ đính Giấy chứng sinh + tờ khai cư trú Song Liễu).
         with mon.span("pre.prepare"):
             owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
             attach_options = with_account_attach_options(attach_options, owner_user, procedure_key)

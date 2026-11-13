@@ -2557,7 +2557,18 @@ def _mae_dialog_short_labels(labels: list[str]) -> list[str]:
         while all(len(w) > common + tail + 1 and w[-1 - tail].lower() == words[0][-1 - tail].lower() for w in words):
             tail += 1
     short = [" ".join(w[common:len(w) - tail][:_MAE_SHORT_MAX_WORDS]).strip(" ,.;-–") for w in words]
-    return [s or b or label for s, b, label in zip(short, bare, labels)]
+    short = [s or b or label for s, b, label in zip(short, bare, labels)]
+    if len({fold(s) for s in short}) == len(short):
+        return short
+    # Phần ngoài ngoặc giống hệt nhau, chỗ khác nằm TRONG ngoặc (thẩm định BCNCKT: "(35 ngày - Dự án Nhóm A) Thẩm định
+    # Báo cáo …" chỉ khác nhóm dự án) → bỏ phần chung còn sót đúng chữ cuối ("chỉnh · chỉnh · chỉnh"). Lấy chữ trong
+    # ngoặc bỏ thời gian ("Dự án Nhóm A"); bỏ thời gian mà vẫn trùng thì giữ cả thời gian.
+    inner = [" ".join(re.findall(r"\(([^)]*)\)", label)) for label in labels]
+    for notes in ([_MAE_DIALOG_DURATION_RE.sub(" ", text) for text in inner], inner):
+        notes = [" ".join(text.split()[:_MAE_SHORT_MAX_WORDS]).strip(" ,.;-–") for text in notes]
+        if all(notes) and len({fold(n) for n in notes}) == len(notes):
+            return notes
+    return short
 
 
 def _mae_dialog_lists(conv: dict) -> tuple[str, str]:

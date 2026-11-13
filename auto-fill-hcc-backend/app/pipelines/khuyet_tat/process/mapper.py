@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import is_current_area, province_for_ward, remap_area
 from app.pipelines.khuyet_tat.process.schema import (
     DISABILITY_RADIO_FIELDS,
     MUC_DO_RADIO_FIELDS,
@@ -75,7 +75,39 @@ def _strip_admin_prefix(value):
     return text
 
 
-def _area(value):
+def _selectable(area: dict) -> bool:
+    """Cặp tỉnh/xã chọn được trên cổng. Tỉnh trống thì không có gì để kiểm → coi như chọn được."""
+    return is_current_area(str(area.get("tinh") or ""), str(area.get("xa") or ""))
+
+
+def _ward_from_ocr(area: dict, read_ward: str, ocr_text: str) -> dict | None:
+    """LLM cắt cụt tên phường/xã mới ("Phường Bắc Nha Trang" → xã "Bắc"): tìm trên giấy cụm có nhãn xã/phường bắt
+    đầu bằng tên đã đọc, cụm dài nhất ra đơn vị hiện hành (cùng tỉnh nếu đã biết tỉnh) là xã thật."""
+    name = " ".join(str(read_ward or "").split())
+    if not name or not ocr_text:
+        return None
+    pattern = re.compile(
+        rf"(?<!\w)(?:xã|phường|thị trấn)\s+({re.escape(name)}(?:[ \t]+[^\s,;.:()\-–]+){{0,3}})",
+        re.IGNORECASE,
+    )
+    province = str(area.get("tinh") or "")
+    for match in pattern.finditer(unicodedata.normalize("NFC", ocr_text)):
+        words = match.group(1).split()
+        for size in range(len(words), len(name.split()), -1):
+            candidate = " ".join(words[:size])
+            if province:
+                found = remap_area({**area, "xa": candidate})
+                if (isinstance(found, dict) and found.get("xa") and _selectable(found)
+                        and _norm_text(found.get("tinh")) == _norm_text(province)):
+                    return {**area, "tinh": found["tinh"], "xa": found["xa"]}
+            else:
+                hit = province_for_ward(candidate)
+                if hit:
+                    return {**area, "tinh": hit[0], "xa": hit[1]}
+    return None
+
+
+def _area(value, ocr_text: str = ""):
     if not isinstance(value, dict):
         return None
     out = {
@@ -86,7 +118,27 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    remapped = remap_area(out)
+    if not isinstance(remapped, dict) or _norm_text(remapped.get("quocGia")) not in ("viet nam", "vn"):
+        return remapped
+    # Ô tỉnh ghi thành phố/huyện cũ ("Nha Trang", "NT - KH") hay phường/xã viết tắt: remap_area() chung đã đổi.
+    xa = out["xa"]
+    if not remapped.get("tinh") and remapped.get("xa"):
+        # Giấy chỉ ghi phường/xã → tỉnh DUY NHẤT có đơn vị tên này; lấy đủ nhãn danh mục để khớp option.
+        found = province_for_ward(remapped["xa"])
+        if found:
+            remapped = {**remapped, "tinh": found[0], "xa": found[1]}
+    if xa and (not remapped.get("tinh") or not _selectable(remapped)):
+        remapped = _ward_from_ocr(remapped, xa, ocr_text) or remapped
+    # Xã không có trong danh mục hiện hành: extension để trống hoặc vớ nhầm option gần giống ("Vĩnh Hải" cũ của
+    # Nha Trang trúng "Xã Vĩnh Hải" của Ninh Thuận cũ). Bỏ trống xã, giữ tên đã đọc ở cuối địa chỉ chi tiết, tô vàng.
+    ward = str(remapped.get("xa") or "")
+    if ward and not _selectable(remapped):
+        detail = str(remapped.get("diaChi") or "").strip()
+        if _norm_text(ward) not in _norm_text(detail):
+            detail = f"{detail}, {ward}" if detail else ward
+        remapped = {**remapped, "xa": "", "diaChi": detail, "_xaChuaChon": True}
+    return remapped
 
 
 def _phone(value) -> str:
@@ -184,7 +236,7 @@ def _compact_code(value) -> str:
     return folded
 
 
-def _owner_profile(values: dict) -> dict:
+def _owner_profile(values: dict, ocr_text: str = "") -> dict:
     """Hồ sơ CHỦ HỒ SƠ = người được xác định mức độ khuyết tật (mục I Mẫu số 01).
 
     LLM có lúc chỉ trả ``Nkt_*`` mà bỏ trống nhóm ``ChuHoSo_*`` vì thấy thông tin đã có
@@ -200,7 +252,7 @@ def _owner_profile(values: dict) -> dict:
         "gender": values.get("ChuHoSo_GioiTinh"),
         "identityDate": values.get("ChuHoSo_NgayCap"),
         "issuer": values.get("ChuHoSo_NoiCap"),
-        "area": _area(values.get("ChuHoSo_NoiCuTru")),
+        "area": _area(values.get("ChuHoSo_NoiCuTru"), ocr_text),
         "phone": values.get("ChuHoSo_DienThoai"),
         "nation": values.get("ChuHoSo_QuocTich"),
     }
@@ -213,12 +265,12 @@ def _owner_profile(values: dict) -> dict:
         profile["identity"] = nkt_identity
         profile["birthday"] = profile["birthday"] or values.get("Nkt_NgaySinh")
         profile["gender"] = profile["gender"] or values.get("Nkt_GioiTinh")
-        profile["area"] = profile["area"] or _area(values.get("Nkt_ThuongTru"))
+        profile["area"] = profile["area"] or _area(values.get("Nkt_ThuongTru"), ocr_text)
 
     return profile
 
 
-def _representative_profile(values: dict) -> dict | None:
+def _representative_profile(values: dict, ocr_text: str = "") -> dict | None:
     """Người đại diện hợp pháp (mục II) — người nộp ở chế độ theo tờ khai."""
     name = values.get("Ndd_HoTen")
     identity = _identity(values.get("Ndd_SoDinhDanh"))
@@ -231,7 +283,7 @@ def _representative_profile(values: dict) -> dict | None:
         "gender": values.get("Ndd_GioiTinh"),
         "identityDate": values.get("Ndd_NgayCap"),
         "issuer": values.get("Ndd_NoiCap"),
-        "area": _area(values.get("Ndd_NoiCuTru")),
+        "area": _area(values.get("Ndd_NoiCuTru"), ocr_text),
         "phone": values.get("Ndd_SoDienThoai"),
     }
 
@@ -255,6 +307,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(item)
         seen.add(name)
 
+    def add_area(province: str, ward: str, detail: str, area: dict | None) -> None:
+        if not area:
+            return
+        add(province, area.get("tinh"))
+        add(ward, area.get("xa"))
+        # Phường/xã bỏ trống vì không có trong danh mục: tên đã đọc nằm cuối địa chỉ chi tiết, tô vàng để cán bộ chọn.
+        add(detail, area.get("diaChi"), default=bool(area.get("_xaChuaChon")))
+
+    ocr_text = str((options or {}).get("_ocr_text") or "")
     context = (options or {}).get("formContext") or {}
     applicant_name = str(context.get("applicantFullname") or context.get("fullname") or "").strip()
     applicant_identity = _identity(
@@ -270,12 +331,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         requester_identity,
     )
     requester_area = (
-        _area(values.get("NguoiNop_NoiCuTru"))
+        _area(values.get("NguoiNop_NoiCuTru"), ocr_text)
         if requester_matches_applicant
         else None
     )
 
-    owner = _owner_profile(values)
+    owner = _owner_profile(values, ocr_text)
     owner_name = owner["name"]
     owner_identity = owner["identity"]
     owner_area = owner["area"]
@@ -292,7 +353,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if theo_to_khai:
         # THEO TỜ KHAI: bỏ mỏ neo tài khoản. Người nộp = người đại diện hợp pháp (mục II);
         # mục II trống tức người khuyết tật tự đứng đơn → người nộp là chủ hồ sơ.
-        submitter = _representative_profile(values)
+        submitter = _representative_profile(values, ocr_text)
         self_submit = submitter is None
         if self_submit:
             submitter = owner if owner_present else None
@@ -314,10 +375,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("data[identityNumber]", submitter["identity"], extra=unlock)
             add("data[identityDate]", submitter["identityDate"])
             add("data[idIssuePlace]", submitter["issuer"])
-            if submitter["area"]:
-                add("data[province]", submitter["area"].get("tinh"))
-                add("data[district]", submitter["area"].get("xa"))
-                add("data[address]", submitter["area"].get("diaChi"))
+            add_area("data[province]", "data[district]", "data[address]", submitter["area"])
             add("data[phoneNumber]", _phone(submitter["phone"]))
     else:
         # Checkbox phải phát trước hai khối. Cổng có side effect copy/reset Chủ hồ sơ
@@ -334,10 +392,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("data[gender]", values.get("NguoiNop_GioiTinh"))
         add("data[identityDate]", values.get("NguoiNop_NgayCap"))
         add("data[idIssuePlace]", values.get("NguoiNop_NoiCap"))
-        if requester_area:
-            add("data[province]", requester_area.get("tinh"))
-            add("data[district]", requester_area.get("xa"))
-            add("data[address]", requester_area.get("diaChi"))
+        add_area("data[province]", "data[district]", "data[address]", requester_area)
         add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
     if not theo_to_khai:
         # Giấy tờ không ghi giới tính người nộp → suy từ số định danh tài khoản (mỏ neo UI có thẩm quyền).
@@ -352,10 +407,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("data[ownerIdentityNumber]", owner_identity)
         add("data[ownerIdentityDate]", owner["identityDate"])
         add("data[ownerIdIssuePlace]", owner_issuer)
-        if owner_area:
-            add("data[ownerProvince]", owner_area.get("tinh"))
-            add("data[ownerDistrict]", owner_area.get("xa"))
-            add("data[ownerAddress]", owner_area.get("diaChi"))
+        add_area("data[ownerProvince]", "data[ownerDistrict]", "data[ownerAddress]", owner_area)
         add("data[ownerPhoneNumber]", _phone(owner["phone"]))
         add("data[ownerNation]", owner["nation"] or "Việt Nam")
 
@@ -396,19 +448,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         or (owner["gender"] if owner_is_nkt else None),
     )
 
-    nkt_tt = _area(values.get("Nkt_ThuongTru"))
+    nkt_tt = _area(values.get("Nkt_ThuongTru"), ocr_text)
     if not nkt_tt and owner_is_nkt:
         nkt_tt = owner_area
-    if nkt_tt:
-        add("data[NktMaTinh]", nkt_tt.get("tinh"))
-        add("data[NktMaXa]", nkt_tt.get("xa"))
-        add("data[NktDiachi]", nkt_tt.get("diaChi"))
+    add_area("data[NktMaTinh]", "data[NktMaXa]", "data[NktDiachi]", nkt_tt)
 
-    nkt_now = _area(values.get("Nkt_NoiOHienNay")) or nkt_tt
-    if nkt_now:
-        add("data[NktNOHTMaTinh]", nkt_now.get("tinh"))
-        add("data[NktNOHTMaXa]", nkt_now.get("xa"))
-        add("data[NktNOHTDiaChi]", nkt_now.get("diaChi"))
+    nkt_now = _area(values.get("Nkt_NoiOHienNay"), ocr_text) or nkt_tt
+    add_area("data[NktNOHTMaTinh]", "data[NktNOHTMaXa]", "data[NktNOHTDiaChi]", nkt_now)
 
     # II. Người đại diện hợp pháp. Cùng số định danh với tài khoản VNeID đang nộp → họ tên theo tài khoản (chữ viết
     # tay mục II hay mất dấu khi OCR).
@@ -417,11 +463,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("data[NddSoDinhdanh]", values.get("Ndd_SoDinhDanh"))
     add("data[NddQuanheNkt]", _relation(values.get("Ndd_QuanHe")))
     add("data[NddSodienthoai]", phone)
-    ndd_area = _area(values.get("Ndd_NoiCuTru"))
-    if ndd_area:
-        add("data[NddMaTinh]", ndd_area.get("tinh"))
-        add("data[NddMaXa]", ndd_area.get("xa"))
-        add("data[NddDiachi]", ndd_area.get("diaChi"))
+    add_area("data[NddMaTinh]", "data[NddMaXa]", "data[NddDiachi]", _area(values.get("Ndd_NoiCuTru"), ocr_text))
 
     # III. Dạng khuyết tật: parent trước child để Form.io mở các radio con.
     categories = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_DanhMuc"))}

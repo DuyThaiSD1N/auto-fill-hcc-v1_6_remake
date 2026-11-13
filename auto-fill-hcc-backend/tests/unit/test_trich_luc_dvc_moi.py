@@ -509,9 +509,21 @@ def test_noi_cu_tru_xa_khong_chon_duoc_thi_bo_trong_va_bao():
     out, warnings = _enrich(values, _context())
     area = _area_fields(out)
     assert "citizenNDK_PhuongXa" not in area
-    assert area["citizenField38"]["value"] == "Số 1, Xã Khongcothat"
+    # Ô chi tiết chỉ giữ số nhà / đường, không nối thêm tên xã đã đọc.
+    assert area["citizenField38"]["value"] == "Số 1"
     assert area["citizenField38"].get("default") is True
     assert any("Phường/Xã" in w for w in warnings)
+
+
+def test_noi_cu_tru_phuong_so_co_so_0_dau_van_doi_sang_don_vi_moi():
+    # CMND cũ in "Phường 06" (không ghi thành phố trong ô huyện): vẫn ra phường mới, chi tiết không kèm phường cũ.
+    values = {**SUBJECT, "NguoiDuocCap_NoiCuTru": {"tinh": "Lâm Đồng", "xa": "Phường 06", "diaChi": "Số 1 - Đường A"}}
+    out, warnings = _enrich(values, _context())
+    area = _area_fields(out)
+    assert area["citizenNDK_PhuongXa"]["value"] == "Phường Cam Ly - Đà Lạt"
+    assert area["citizenField38"]["value"] == "Số 1 - Đường A"
+    assert area["citizenField38"].get("default") is not True
+    assert not any("Phường/Xã" in w for w in warnings)
 
 
 # Giấy chứng nhận kết hôn mẫu cũ: ô "Số:" góc trên viết tay OCR không ra chữ số, LLM vớ dòng "Số:" của khối CMND.

@@ -297,21 +297,15 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
-        # Khai sinh có yếu tố nước ngoài (2.000528) — cùng trang nộp một trang SurveyJS với khai sinh 1.001193.
+        # Khai sinh có yếu tố nước ngoài (2.000528) — DVCQG chọn cơ quan xong sang cổng Bộ Tư pháp (wizard 4 bước như
+        # kết hôn, eForm khai sinh mẫu 2093). Detect giống hệt lõi (test_flow_profiles so bằng ==).
         "key": "khai-sinh-nuoc-ngoai",
-        "detect": {
-            # Detect giống hệt lõi (test_flow_profiles so bằng ==).
-            "urlIncludes": ["formalityId=019d2bfd-8662-763f-927f-dc039ede198c"],
-            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
-            "textIncludes": ["thủ tục đăng ký khai sinh có yếu tố nước ngoài", "người được đăng ký khai sinh"],
-            "textPriority": True,
-            "headingDisabled": True,
-        },
+        "detect": {"urlIncludes": ["maThuTuc=2.000528"]},
         "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
         "shortLabel": "Khai sinh có yếu tố nước ngoài",
         "subtitle": "Cha hoặc mẹ là người nước ngoài, hoặc con sinh ở nước ngoài",
         "icon": "🌏",
-        "flowProfile": "tu-phap-moi",
+        "flowProfile": "tu-phap",
         "supportsSplitDocuments": True,
         # URL kê khai trong ke_khai_links.json (mã TTHC 2.000528).
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8662-763f-927f-dc039ede198c",
@@ -338,7 +332,9 @@ PROCEDURES: list[dict] = [
             "2. Văn bản thỏa thuận của cha mẹ về việc lựa chọn quốc tịch cho con.\n"
             "3. CCCD của cha/mẹ người Việt Nam; hộ chiếu / giấy tờ tùy thân của cha/mẹ người nước ngoài kèm bản dịch.\n"
             "4. Giấy chứng nhận kết hôn của cha mẹ (nếu có).\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt cha/mẹ/con theo nội dung."
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt cha/mẹ/con theo nội dung.\n"
+            "Bước 3: giấy chứng sinh, thỏa thuận quốc tịch, ủy quyền vào đúng dòng có sẵn; giấy kết hôn, hộ chiếu, "
+            "CCCD, bản dịch được thêm thành phần hồ sơ mới."
         ),
     },
     {

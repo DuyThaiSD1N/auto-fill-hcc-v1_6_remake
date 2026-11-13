@@ -1,4 +1,5 @@
-"""Pipeline đăng ký khai sinh có yếu tố nước ngoài: phân vai (dùng chung khai sinh 1.001193) → trích → mapper."""
+"""Pipeline đăng ký khai sinh có yếu tố nước ngoài: phân vai (dùng chung khai sinh 1.001193) → trích → mapper ra ô
+eForm 2093 của cổng Bộ Tư pháp."""
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.khai_sinh_dvc_moi.process import reason

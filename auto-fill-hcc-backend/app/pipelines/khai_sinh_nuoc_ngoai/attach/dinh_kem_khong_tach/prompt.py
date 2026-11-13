@@ -1,10 +1,11 @@
-"""Prompt phân loại tài liệu đính kèm khai sinh có yếu tố nước ngoài (Cổng DVC quốc gia mới)."""
+"""Prompt phân loại tài liệu đính kèm khai sinh có yếu tố nước ngoài (cổng Bộ Tư pháp)."""
 
 import json
 from typing import Any
 
 # Loại giấy ↔ dòng thành phần hồ sơ; dùng chung cho cả chế độ tách (prompt chia trang chèn nguyên khối này).
 DOC_TYPES = """
+   - birth_certificate: GIẤY CHỨNG SINH do cơ sở y tế (bệnh viện, trạm y tế...) ở VIỆT NAM cấp.
    - birth_witness: văn bản của NGƯỜI LÀM CHỨNG xác nhận về việc sinh, hoặc văn bản / giấy CAM ĐOAN về việc sinh
      (nộp thay giấy chứng sinh).
    - foreign_birth_doc: giấy chứng sinh hoặc giấy tờ do cơ quan có thẩm quyền NƯỚC NGOÀI cấp, xác nhận trẻ được
@@ -16,9 +17,9 @@ DOC_TYPES = """
      tiếng nước ngoài của chính giấy đó.
    - authorization: giấy / hợp đồng / văn bản ỦY QUYỀN thực hiện việc đăng ký khai sinh (có bên ủy quyền và bên
      được ủy quyền), kể cả khi kèm trang chứng thực chữ ký.
-   - other: mọi tài liệu khác — giấy chứng sinh của cơ sở y tế Việt Nam, tờ khai đăng ký khai sinh, giấy chứng nhận
-     kết hôn, CCCD / hộ chiếu / giấy tờ tùy thân nước ngoài và bản dịch, phiếu kết quả phân tích ADN, trích lục
-     khai tử... Tờ khai có dòng "người được ủy quyền" vẫn là other."""
+   - other: mọi tài liệu khác — tờ khai đăng ký khai sinh, giấy chứng nhận kết hôn, CCCD / hộ chiếu / giấy tờ tùy
+     thân nước ngoài và bản dịch, phiếu kết quả phân tích ADN, trích lục khai tử... Tờ khai có dòng "người được ủy
+     quyền" vẫn là other."""
 
 SYSTEM_PROMPT = f"""
 <persona>
@@ -44,7 +45,7 @@ nào, tên giấy tờ là gì.
 </critical_rules>
 
 <output_contract>
-{{"documents":[{{"index":0,"docType":"other","documentName":"Giấy chứng sinh","matThe":"","chuThe":""}}]}}
+{{"documents":[{{"index":0,"docType":"birth_certificate","documentName":"Giấy chứng sinh","matThe":"","chuThe":""}}]}}
 </output_contract>
 """.strip()
 

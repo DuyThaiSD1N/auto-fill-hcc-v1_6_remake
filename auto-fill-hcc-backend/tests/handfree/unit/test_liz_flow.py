@@ -438,6 +438,82 @@ def test_noi_khong_dong_y_qua_flow_khong_bi_bang_chinh_sach_chan(monkeypatch):
     assert "Lưu và nộp hồ sơ" in r.display_md and conv["field_review"]["liz_postal"] == "no"
 
 
+# ── Đổi ý câu trả lời ô VNPost bằng câu gõ / nói (user 13/11, ảnh: trả lời Không rồi gõ "Tôi muốn đổi, nhận qua bưu điện"
+# thì bộ phân loại hỏi "muốn Điều chỉnh giấy tờ đúng không"; gõ "Không" trơn bị hỏi lại câu VNPost) ──
+def _by_text(conv, text, typed=True):
+    return tpm.liz_postal_by_text(conv, get_procedure(conv["procedure_key"]), text, typed=typed)
+
+
+@pytest.mark.parametrize("text", ["Tôi muốn đổi, nhận qua bưu điện", "Không, tôi muốn nhận qua bưu điện",
+                                  "đổi sang nhận qua Bưu chính công ích", "cho tôi nhận tại nhà", "Tôi đổi ý"])
+def test_tra_loi_khong_roi_doi_y_nhan_qua_buu_dien(text):
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": False})
+    intent = _by_text(conv, text)
+    assert (intent.kind, intent.value, intent.payload) == ("action", "liz_postal", {"post": True})
+    r = _turn(conv, intent.kind, intent.value, intent.payload)
+    assert r.actions[0]["type"] == "select_result_method" and r.actions[0]["postOffice"] is True
+    assert r.actions[0]["fillRecipient"] is False and conv["field_review"]["liz_postal"] == "yes"
+
+
+@pytest.mark.parametrize("text", ["Tôi đổi ý, không nhận qua bưu điện nữa", "thôi khỏi gửi bưu điện",
+                                  "bỏ tích ô bưu điện", "tôi đến lấy trực tiếp", "Đổi ý rồi"])
+def test_tra_loi_co_roi_doi_y_khong_nhan_thi_bo_tich(text):
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": True})
+    intent = _by_text(conv, text)
+    assert intent.payload == {"post": False}
+    r = _turn(conv, intent.kind, intent.value, intent.payload)
+    assert "Lưu và nộp hồ sơ" in r.display_md and conv["field_review"]["liz_postal"] == "no"
+    assert r.actions[0]["type"] == "select_result_method" and r.actions[0]["postOffice"] is False, "bỏ tích ô VNPost"
+
+
+def test_doi_y_qua_flow_khong_hoi_dieu_chinh_giay_to(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.channels.handfree.chat import flow
+
+    monkeypatch.setattr(flow.conv_store, "save", AsyncMock())
+    conv = _postal_asked()
+    asyncio.run(flow.handle_turn(conv, Intent("action", "liz_postal", {"post": False}), dict(LIZ_PAGE)))
+    intent = _by_text(conv, "Tôi muốn đổi, nhận qua bưu điện")
+    r = asyncio.run(flow.handle_turn(conv, intent, dict(LIZ_PAGE), free_text=True))
+    assert "Điều chỉnh giấy tờ" not in r.display_md and not conv.get("voice_submit_confirm")
+    assert [a["postOffice"] for a in r.actions if a.get("type") == "select_result_method"] == [True]
+
+
+@pytest.mark.parametrize("text,post", [("Không", False), ("dạ không ạ", False), ("Có", True), ("vâng", True)])
+def test_go_co_khong_tron_luc_dang_hoi_vnpost(text, post):
+    conv = _postal_asked()
+    assert _by_text(conv, text).payload == {"post": post}
+    assert _by_text(conv, text, typed=False) is None, "lời nói ngắn để lớp cách nói xét (tạp âm qua ASR)"
+    _turn(conv, "action", "liz_postal", {"post": not post})
+    assert _by_text(conv, text) is None, "đã trả lời rồi: có / không trơn không đủ để đổi"
+
+
+def test_cau_khong_chon_cach_nhan_thi_de_bo_phan_loai_chung():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": False})
+    for text in ["tôi muốn bổ sung giấy tờ", "nhận qua bưu điện mất bao lâu", "phí bưu điện bao nhiêu", "Tôi muốn đổi"]:
+        assert _by_text(conv, text) is None, text
+    fresh = _ready_conv(LIZ_KEYS[0])
+    _conclude(fresh)
+    assert _by_text(fresh, "nhận qua bưu điện") is None, "chưa tới câu hỏi VNPost (chưa tích ô cam kết)"
+    conv["submit_clicked_at"] = "2026-11-13T00:00:00Z"
+    assert _by_text(conv, "nhận qua bưu điện") is None, "đã nộp"
+    other = _conv(SELF, "trich-luc-ks", field_review={"liz_commit_ok": True, "liz_postal": "no"})
+    assert tpm.liz_postal_by_text(other, get_procedure("trich-luc-ks"), "nhận qua bưu điện", typed=True) is None
+
+
+def test_dang_hoi_o_nguoi_nhan_thi_dia_chi_co_chu_buu_dien_van_la_cau_tra_loi():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": True})
+    conv["field_review"].update(running=True, current={"key": "recipient_address", "label": "Địa chỉ người nhận"})
+    assert field_review.asking(conv)
+    assert _by_text(conv, "số 5 đường Bưu Điện, phường Nha Trang") is None
+    assert _by_text(conv, "thôi tôi không nhận qua bưu điện nữa").payload == {"post": False}
+
+
 def test_bo_tich_cam_ket_roi_tich_lai_sau_khi_tra_loi_thi_khong_hoi_lai():
     conv = _postal_asked()
     _turn(conv, "action", "liz_postal", {"post": False})

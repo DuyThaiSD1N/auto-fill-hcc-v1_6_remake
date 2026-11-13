@@ -71,7 +71,7 @@ def _proposer_section(text: str) -> str:
 
 
 def _owner_scope(text: str, options: dict | None) -> str:
-    """Cờ requesterAsOwner (phường Nha Trang): chủ hồ sơ = người đề nghị nên ghép mục 1 trước khối người đứng
+    """Cờ requesterAsOwner (phường Nha Trang, phường Tiên Du): chủ hồ sơ = người đề nghị nên ghép mục 1 trước khối người đứng
     ra mai táng (mục 3.1 cùng người còn bổ sung ngày sinh, giới tính, số điện thoại)."""
     owner = _owner_section(text)
     if not mapper.is_requester_owner(options):
@@ -237,7 +237,7 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper lấy người đứng ra mai táng làm người nộp.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
-    # Cờ theo tài khoản (phường Nha Trang): ChuHoSo_* = người đề nghị và là chủ hồ sơ trên cổng.
+    # Cờ theo tài khoản (phường Nha Trang, phường Tiên Du): ChuHoSo_* = người đề nghị và là chủ hồ sơ trên cổng.
     requester_owner = mapper.is_requester_owner(options)
     res = await runner.run(
         files_by_role,

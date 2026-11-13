@@ -2,7 +2,8 @@
 
 Hồ sơ hay dồn cả bộ vào một PDF (tờ khai + giấy chứng sinh + thỏa thuận quốc tịch + giấy kết hôn + hộ chiếu + bản
 dịch + kết quả ADN). LLM đọc theo TRANG trong MỘT lượt, chia thành từng giấy; mỗi giấy thành một mục có
-`sourceSegments` (extension cắt đúng trang) đặt vào ĐÚNG dòng có sẵn theo bảng của chế độ không tách. Cơ chế chia
+`sourceSegments` (extension cắt đúng trang) đặt vào ĐÚNG dòng có sẵn của cổng Bộ Tư pháp theo bảng của chế độ không
+tách (giấy không có dòng riêng → thêm thành phần hồ sơ mới). Cơ chế chia
 trang (tiêu đề từng trang, xác nhận ranh giới mâu thuẫn, không sót trang, ghép hai mặt CCCD) dùng chung với khai sinh
 1.001193; chỉ prompt và bảng dòng là riêng. OCR / LLM lỗi → quay về chế độ không tách.
 """
@@ -33,8 +34,8 @@ from app.pipelines.khai_sinh_dvc_moi.attach.dinh_kem_tach.planner import (
 from app.process.schemas import FileItem
 from app.services.llm import client
 
+from ..dinh_kem_khong_tach.planner import live_rows, plan_item, promote_birth_row
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
-from ..dinh_kem_khong_tach.planner import plan_item
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 
@@ -64,8 +65,9 @@ async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
     return _by_page_titles(documents, titles, {(f, p) for f, p, _ in disputed} - confirmed)
 
 
-def _item(file_index: int, file_name: str, document_name: str, doc_type: str, sources: list[dict] | None) -> dict:
-    item = plan_item(file_index, file_name, document_name, doc_type if doc_type != _BLANK else "")
+def _item(file_index: int, file_name: str, document_name: str, doc_type: str, sources: list[dict] | None,
+          rows: dict[str, dict]) -> dict:
+    item = plan_item(file_index, file_name, document_name, doc_type if doc_type != _BLANK else "", rows)
     if sources is not None:
         item["sourceSegments"] = sources
     return item
@@ -113,7 +115,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
                     "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
 
+    rows = live_rows(options)
     attachments: list[dict] = []
+    cards: set[int] = set()  # vị trí mục là thẻ CCCD / CMND — không đôn lên dòng Giấy chứng sinh
     seen: dict[str, int] = {}
     # Hai mặt thẻ của CÙNG một người (dù khác trang, khác tệp) luôn gộp thành MỘT giấy.
     for group in pair_card_sides([s["doc"] for s in segments]):
@@ -129,8 +133,12 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         # Nhóm phủ đúng mọi phần của MỘT tệp → đính nguyên tệp, không dựng lại PDF.
         whole = {p["fileIndex"] for p in parts} == {file_index} and parts_of_file[file_index] == len(parts)
         sources = None if whole else [{"fileIndex": p["fileIndex"], "pageIndexes": p["pages"]} for p in parts]
-        attachments.append(_item(file_index, name, document_name, str(doc.get("docType") or "").strip(), sources))
+        if doc.get("matThe") or doc.get("_matTheOcr"):
+            cards.add(len(attachments))
+        attachments.append(_item(file_index, name, document_name, str(doc.get("docType") or "").strip(), sources,
+                                 rows))
 
+    promote_birth_row(attachments, cards, rows)
     await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
@@ -138,7 +146,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "extracted": {
             "documents": [f["name"] for f in raw_files],
             "segments": [
-                {"fileName": item["fileName"], "documentName": item["documentName"], "slotIndex": item["slotIndex"],
+                {"fileName": item["fileName"], "documentName": item["documentName"], "target": item["target"],
+                 "componentIndex": item["componentIndex"],
                  "pages": [[s["fileIndex"], [p + 1 for p in s["pageIndexes"] or []] or "cả tệp"]
                            for s in item.get("sourceSegments") or []] or "cả tệp"}
                 for item in attachments

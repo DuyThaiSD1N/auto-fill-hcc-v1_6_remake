@@ -686,7 +686,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
     for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-                "xac-nhan-tinh-trang-hon-nhan", "khai-sinh-nuoc-ngoai"):
+                "xac-nhan-tinh-trang-hon-nhan"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True
@@ -839,7 +839,7 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ VHTTDL chọn Sở (10/11): thẻ HDV quốc tế "cap-the-huong-dan-vien-du-lich-quoc-te" (1.004628).
     # +1 cổng Bắc Ninh (10/11) "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh" (1.115465).
     # +1 cổng iGate Khánh Hòa (10/11) "dinh-chinh-gcn-da-cap-khanh-hoa" (1.012790, luồng "xay-dung").
-    # +1 hộ tịch Cổng DVC quốc gia mới (12/11) "khai-sinh-nuoc-ngoai" (2.000528, luồng "tu-phap-moi").
+    # +1 hộ tịch (12/11) "khai-sinh-nuoc-ngoai" (2.000528; 13/11 chuyển sang luồng "tu-phap" — cổng thật là Bộ Tư pháp).
     # +2 cổng iGate Lâm Đồng (12/11) "dang-ky-dat-dai-lan-dau-lam-dong" (1.116360),
     # "dang-ky-dien-tich-tang-them-lam-dong" (1.116356), luồng "xay-dung".
     # +1 cổng iGate Lâm Đồng (12/11) "giao-thue-dat-giao-rung-gia-han-su-dung-dat" (1.116366), luồng "xay-dung".

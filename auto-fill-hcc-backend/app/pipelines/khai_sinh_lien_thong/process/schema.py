@@ -47,10 +47,11 @@ FIELDS: list[dict] = [
     {"name": "Gcs_NoiThuongTruMe", "desc": "Dòng 'Nơi đăng ký thường trú'/'Nơi thường trú'/'Nơi cư trú' trong KHỐI MẸ của GIẤY CHỨNG SINH, object {tinh,xa,chiTietDuoiXa} (tách theo mục F). BẮT BUỘC trả khi giấy chứng sinh có dòng này, kể cả khi đã trả ThongTinMe_NoiCuTru. Không có tỉnh thì suy từ thành phố/xã ghi trên dòng."},
 
     # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
-    {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026".'},
+    # TRÍCH LỤC KẾT HÔN (bản sao) tính như giấy kết hôn; số/ngày/nơi lấy ở dòng đăng ký kết hôn, không lấy số/ngày của bản trích lục.
+    {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026". TRÍCH LỤC KẾT HÔN: số ở dòng "Số: <số> ngày ..." dưới "Đăng ký kết hôn tại", KHÔNG lấy số "…/TLKH-…" đầu trang.'},
     {"name": "GcnKetHon_QuyenSo", "desc": "Quyển số trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ nếu ghi riêng, ở mục 'Quyển số: ...'. Nếu không có không cần ghi vào"},
-    {"name": "GcnKetHon_NgayCap", "desc": "Ngày đăng ký/cấp giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, dd/mm/yyyy."},
-    {"name": "GcnKetHon_NoiCap", "desc": "Nơi đăng ký/cấp giấy chứng nhận kết hôn (tên cơ quan) trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, nếu có phải ghi rõ."},
+    {"name": "GcnKetHon_NgayCap", "desc": "Ngày đăng ký/cấp giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, dd/mm/yyyy. TRÍCH LỤC KẾT HÔN: ngày ở dòng 'Số: <số> ngày <D> tháng <M> năm <Y>' dưới 'Đăng ký kết hôn tại', KHÔNG lấy ngày ký bản trích lục dưới quốc hiệu."},
+    {"name": "GcnKetHon_NoiCap", "desc": "Nơi đăng ký/cấp giấy chứng nhận kết hôn (tên cơ quan) trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, nếu có phải ghi rõ. TRÍCH LỤC KẾT HÔN: cơ quan sau 'Đăng ký kết hôn tại:'."},
     # Hai bên ghi trên GIẤY CHỨNG NHẬN KẾT HÔN — chép NGUYÊN theo giấy, mapper tự đối chiếu (trùng số giấy tờ
     # hoặc trùng họ tên) với cha/mẹ để bù ô còn thiếu (vd giấy chứng sinh chỉ ghi năm sinh mẹ).
     {"name": "GcnKetHon_Vo_HoTen", "desc": "Họ tên VỢ (bên nữ) trên GIẤY CHỨNG NHẬN KẾT HÔN. CHỈ lấy từ giấy kết hôn, BẮT BUỘC trả khi hồ sơ có giấy kết hôn."},

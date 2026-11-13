@@ -512,9 +512,9 @@ _TO_KHAI_KHAI_SINH = (
 )
 
 
-async def test_song_lieu_chi_dinh_giay_chung_sinh_vao_stt1(monkeypatch):
-    """Cờ onlyBirthProof: chỉ giấy chứng sinh lên STT1; tờ khai khai sinh, CT01, CCCD, kết hôn không đính,
-    không báo "Bỏ qua file" mà ghi chú theo cấu hình."""
+async def test_song_lieu_chi_dinh_giay_chung_sinh_va_to_khai_cu_tru(monkeypatch):
+    """Cờ onlyBirthProof: giấy chứng sinh lên STT1, CT01 lên STT2; tờ khai khai sinh, CCCD, kết hôn không
+    đính, không báo "Bỏ qua file" mà ghi chú theo cấu hình."""
     async def fake_ocr_per_file(files):
         return [
             {"name": "cccd-me.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên: NGUYỄN THỊ B"},
@@ -540,13 +540,15 @@ async def test_song_lieu_chi_dinh_giay_chung_sinh_vao_stt1(monkeypatch):
     res = await khai_sinh.plan_khai_sinh_attachments([_file(n) for n in names], {_ONLY: True}, _session())
 
     items = res["attachments"]
-    assert [(it["fileName"], it["slotIndex"]) for it in items] == [("chung-sinh.pdf", 0)]
+    assert [(it["fileName"], it["slotIndex"]) for it in items] == [("chung-sinh.pdf", 0), ("ct01.pdf", 1)]
     assert "fallbackSlotIndex" not in items[0]
+    assert items[1]["slotKey"] == "residence_form"
     assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
-    assert res["extracted"]["onlyBirthProofOmitted"] == ["cccd-me.pdf", "to-khai.pdf", "ct01.pdf", "ket-hon.pdf"]
+    assert res["extracted"]["residenceForm"] == "ct01.pdf"
+    assert res["extracted"]["onlyBirthProofOmitted"] == ["cccd-me.pdf", "to-khai.pdf", "ket-hon.pdf"]
     assert res["extracted"]["skipped"] == []
     assert [e for e in res["errors"] if e.startswith(khai_sinh.ONLY_BIRTH_PROOF_NOTE)] == [
-        f"{khai_sinh.ONLY_BIRTH_PROOF_NOTE}: cccd-me.pdf, to-khai.pdf, ct01.pdf, ket-hon.pdf"
+        f"{khai_sinh.ONLY_BIRTH_PROOF_NOTE}: cccd-me.pdf, to-khai.pdf, ket-hon.pdf"
     ]
     assert not [e for e in res["errors"] if e.startswith("Bỏ qua file")]
     # Mọi tệp vẫn có trong classified → extension không báo "chưa vào hồ sơ" vì vượt dung lượng.
@@ -569,22 +571,44 @@ async def test_song_lieu_tep_ghep_to_khai_va_chung_sinh_van_dinh(monkeypatch):
     assert res["extracted"]["onlyBirthProofOmitted"] == []
 
 
-async def test_song_lieu_khong_co_chung_sinh_thi_khong_dinh_gi(monkeypatch):
+async def test_song_lieu_tep_ghep_to_khai_khai_sinh_va_ct01_dinh_stt2(monkeypatch):
+    """Tệp ghép tờ khai khai sinh + CT01 (không có trang chứng sinh) → đính như tờ khai cư trú vào STT2."""
     async def fake_ocr_per_file(files):
         return [
-            {"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
-            {"name": "to-khai.pdf", "text": _TO_KHAI_KHAI_SINH},
+            {"name": "chung-sinh.pdf", "text": "GIẤY CHỨNG SINH"},
+            {"name": "ghep.pdf", "text": _TO_KHAI_KHAI_SINH + "\nTỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\nMẫu CT01"},
         ]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [{"index": 0, "docType": "other"}, {"index": 1, "docType": "other"}]})
+        return json.dumps({"documents": [{"index": 0, "docType": "birth_proof"}, {"index": 1, "docType": "other"}]})
 
     monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
     res = await khai_sinh.plan_khai_sinh_attachments(
-        [_file("cccd-bo.pdf"), _file("to-khai.pdf")], {_ONLY: True}, _session())
+        [_file("chung-sinh.pdf"), _file("ghep.pdf")], {_ONLY: True}, _session())
 
-    assert res["attachments"] == []
+    assert [(it["fileName"], it["slotIndex"]) for it in res["attachments"]] == [
+        ("chung-sinh.pdf", 0), ("ghep.pdf", 1)]
+    assert res["extracted"]["onlyBirthProofOmitted"] == []
+
+
+async def test_song_lieu_khong_co_chung_sinh_chi_dinh_ct01(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
+            {"name": "to-khai.pdf", "text": _TO_KHAI_KHAI_SINH},
+            {"name": "ct01.pdf", "text": "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\nMẫu CT01"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": i, "docType": "other"} for i in range(3)]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments(
+        [_file("cccd-bo.pdf"), _file("to-khai.pdf"), _file("ct01.pdf")], {_ONLY: True}, _session())
+
+    assert [(it["fileName"], it["slotIndex"]) for it in res["attachments"]] == [("ct01.pdf", 1)]
     assert res["extracted"]["birthProof"] is None
     assert res["extracted"]["onlyBirthProofOmitted"] == ["cccd-bo.pdf", "to-khai.pdf"]
     assert any(e.startswith("Không tìm thấy giấy chứng sinh") for e in res["errors"])

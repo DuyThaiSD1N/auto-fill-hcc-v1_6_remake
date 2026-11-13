@@ -124,5 +124,6 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     elif vision.ENABLED:
         # Kết quả dự phòng từ OCR văn bản hay mất cột Có/Không của bảng tích.
         res.setdefault("errors", []).append(vision.SECTION_III_WARNING)
-    res["fields"] = mapper.enrich(res["fields"], options)
+    # OCR để mapper dò lại tên phường/xã khi LLM cắt cụt ("Phường Bắc Nha Trang" → "Bắc").
+    res["fields"] = mapper.enrich(res["fields"], {**(options or {}), "_ocr_text": res.get("ocr_text") or ""})
     return res

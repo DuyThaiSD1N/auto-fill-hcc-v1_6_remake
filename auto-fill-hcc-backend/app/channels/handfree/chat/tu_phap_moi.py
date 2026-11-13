@@ -30,6 +30,8 @@ Extension khai thêm supportsLizCommitSelf (yêu cầu 10/11/2026, mọi thủ t
             không → "nhấn Lưu và nộp hồ sơ" + CHỈ nút cam [Lưu và nộp hồ sơ]
             có → trợ lý tích ô VNPost (không điền hộ khối người nhận) → dặn điền thông tin người nhận + chọn cách thanh
                  toán lệ phí → nút cam [Lưu và nộp hồ sơ]
+            đổi ý sau khi đã trả lời (gõ / nói "tôi muốn đổi, nhận qua bưu điện", "không nhận qua bưu điện nữa", "đổi ý")
+                 → router bắt tất định (liz_postal_by_text) rồi chạy như bấm nút trả lời kia: tích / bỏ tích ô VNPost
 Nút nộp không tích hộ: chưa thấy ô được tích thì không bấm, trả commit=False → dặn bấm [Tích ô cam kết].
 """
 
@@ -39,7 +41,7 @@ from app.channels.handfree.chat import attach_files
 from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_vi as vi
-from app.channels.handfree.chat.intents import Intent
+from app.channels.handfree.chat.intents import Intent, fold
 
 PROFILE = "tu-phap-moi"
 CAPABILITY = "supportsTuPhapMoi"
@@ -531,6 +533,62 @@ def liz_postal_waiting(conv: dict, proc: dict | None) -> bool:
     st = conv.get("field_review") or {}
     return (liz_commit_self(conv, proc) and conv.get("state") == "done" and bool(st.get("liz_commit_ok"))
             and not _liz_postal_answered(st) and not st.get("running") and not _submitted(conv))
+
+
+# ── Câu gõ / nói ở chặng ô VNPost ──
+# Bắt tất định ở router, TRƯỚC vòng hỏi ô và bộ phân loại LLM (user 13/11): công dân đã trả lời Không rồi gõ "Tôi muốn
+# đổi, nhận qua bưu điện" thì LLM hiểu chữ "đổi" là Điều chỉnh giấy tờ; chữ "Không" gõ trơn ra câu chưa rõ (hỏi lại).
+# Câu có chữ bưu điện / bưu chính / VNPost / giao tận nhà (hoặc nhận trực tiếp, một cửa) là chọn cách nhận; có phủ định
+# đi liền ("không nhận", "khỏi gửi", "bỏ tích") là Không. Câu hỏi (bao lâu, phí…) để LLM trả lời như cũ.
+_POSTAL_SAID = re.compile(
+    r"(?:^|\s)(?:buu dien|buu chinh|buu cuc|vnpost|vn post"
+    r"|(?:gui|giao|chuyen|ship|nhan|mang)\s+(?:(?:ve|tai|o|toi|den|tan)\s+){1,2}nha)(?:\s|$)")
+_COUNTER_SAID = re.compile(r"(?:^|\s)(?:nhan truc tiep|lay truc tiep|den (?:lay|nhan)|tu (?:den|lay)|mot cua)(?:\s|$)")
+_POSTAL_NEG = re.compile(
+    r"(?:^|\s)(?:(?:khong|khoi)\s+(?:nhan|gui|qua|can|muon|lay|chon|tich|dung|phai|di|buu|giao)"
+    r"|(?:bo|huy)\s+(?:tich|chon|o|nhan)|dung\s+(?:gui|nhan|tich|chon)"
+    r"|(?:buu dien|buu chinh|vnpost)\s+(?:thi\s+)?(?:khong|thoi)\s+(?:can|nhan|nua|dau|lay))(?:\s|$)")
+_POSTAL_QUESTION = re.compile(r"(?:^|\s)(?:bao lau|bao nhieu|the nao|la gi|tai sao|vi sao|o dau|khi nao|phi)(?:\s|$)")
+_POSTAL_DOI_Y = re.compile(r"(?:(?:toi|em|minh|thoi|muon|cho)\s+)*doi y(?:\s+(?:roi|lai|nhe|nha))*")
+_POSTAL_FILLER = frozenset({"a", "da", "nhe", "nha", "oi", "em", "anh", "chi"})
+_POSTAL_YES_BARE = frozenset({"co", "vang", "vang co", "co nhan", "dong y", "co dong y", "u", "ok"})
+_POSTAL_NO_BARE = frozenset({"khong", "khong nhan", "khong can", "khong co", "khong dong y", "thoi khong"})
+_POSTAL_MAX_WORDS = 20
+
+
+def _postal_choice(words: list[str], current: str, bare: bool) -> bool | None:
+    said = " ".join(words)
+    postal = bool(_POSTAL_SAID.search(said))
+    if postal or _COUNTER_SAID.search(said):
+        return postal and not _POSTAL_NEG.search(said)
+    if bare:
+        core = " ".join(w for w in words if w not in _POSTAL_FILLER)
+        if core in _POSTAL_YES_BARE:
+            return True
+        if core in _POSTAL_NO_BARE:
+            return False
+    if current in ("yes", "no") and _POSTAL_DOI_Y.fullmatch(said):
+        return current == "no"  # chỉ hai lựa chọn: "đổi ý" là chọn cái còn lại
+    return None
+
+
+def liz_postal_by_text(conv: dict, proc: dict | None, message: str, *, typed: bool = False) -> Intent | None:
+    """Câu gõ / nói trả lời hoặc ĐỔI Ý câu hỏi ô VNPost (đã tích ô cam kết, chưa nộp) → lệnh liz_postal như bấm nút
+    Có / Không; None = câu không nói về việc đó, để bộ phân loại chung lo. "Có" / "Không" trơn chỉ nhận khi đang chờ trả
+    lời và là câu GÕ (lời nói ngắn có thể là tạp âm qua ASR — để lớp cách nói xét). Đang hỏi ô người nhận mà câu không
+    đổi câu trả lời (vd địa chỉ có chữ "bưu điện") thì để vòng hỏi hiểu."""
+    st = conv.get("field_review") or {}
+    current = str(st.get("liz_postal") or "")
+    if (current not in ("asked", "yes", "no") or conv.get("state") != "done" or not st.get("liz_commit_ok")
+            or _submitted(conv) or not liz_commit_self(conv, proc)):
+        return None
+    words = re.findall(r"[a-z0-9]+", fold(message))
+    if not words or len(words) > _POSTAL_MAX_WORDS or _POSTAL_QUESTION.search(" ".join(words)):
+        return None
+    post = _postal_choice(words, current, bare=typed and liz_postal_waiting(conv, proc))
+    if post is None or (field_review.asking(conv) and post == (current == "yes")):
+        return None
+    return Intent("action", "liz_postal", {"post": post})
 
 
 def _liz_postal_action(proc: dict, conv: dict, post: bool) -> dict | None:

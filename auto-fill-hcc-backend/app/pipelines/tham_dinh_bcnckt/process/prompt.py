@@ -14,6 +14,12 @@ VAI:
 - NguoiNop_NoiCuTru = nơi thường trú CÁ NHÂN người nộp (CCCD).
 - ChuDauTu_DiaChi = địa chỉ TRỤ SỞ chủ đầu tư (Tờ trình I.5).
 - DuAn_DiaDiem = ĐỊA ĐIỂM XÂY DỰNG dự án (khu vực/địa điểm dự án trong Tờ trình) — KHÁC trụ sở chủ đầu tư.
+- "Địa chỉ"/"Điện thoại" ghi dưới tên NHÀ THẦU (khảo sát/lập dự án/thiết kế/thẩm tra, phần "Hồ sơ năng lực của
+  các nhà thầu") là của nhà thầu — KHÔNG BAO GIỜ đưa vào ChuDauTu_DiaChi/ChuDauTu_DienThoai. Nhiều Tờ trình chỉ
+  ghi TÊN chủ đầu tư, không ghi trụ sở/điện thoại → BỎ hai field này; cũng không lấy địa điểm xây dựng thay.
+- ChuDauTu_MaSoThue: Tờ trình không có dòng "Mã số thuế" cạnh tên chủ đầu tư thì lấy số "Giấy chứng nhận đăng ký
+  doanh nghiệp số …" của chủ đầu tư ở mục "Văn bản pháp lý" (danh mục hồ sơ gửi kèm). Số GCN ghi dưới tên nhà thầu
+  KHÔNG phải MST chủ đầu tư.
 Tách mỗi địa chỉ object {quocGia,tinh,xa,chiTietDuoiXa}: tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=chi tiết
 (KHÔNG lặp phường/xã/tỉnh).
 

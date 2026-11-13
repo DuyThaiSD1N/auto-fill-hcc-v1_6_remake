@@ -1,4 +1,4 @@
-"""Prompt chia giấy tờ theo trang khi TÁCH đính kèm khai sinh có yếu tố nước ngoài (Cổng DVC quốc gia mới).
+"""Prompt chia giấy tờ theo trang khi TÁCH đính kèm khai sinh có yếu tố nước ngoài (cổng Bộ Tư pháp).
 
 Khung chia trang giống 1.001193; khác ở danh mục loại giấy (chung với chế độ không tách) và luật gom bản dịch /
 lời chứng / bản gốc tiếng nước ngoài vào cùng một giấy.
@@ -49,6 +49,6 @@ từng giấy tờ.
 </critical_rules>
 
 <output_contract>
-{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Tờ khai đăng ký khai sinh","Giấy chứng sinh"]}}],"documents":[{{"fileIndex":0,"pages":[1],"docType":"other","documentName":"Tờ khai đăng ký khai sinh","matThe":"","chuThe":""}},{{"fileIndex":0,"pages":[2],"docType":"other","documentName":"Giấy chứng sinh","matThe":"","chuThe":""}}]}}
+{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Tờ khai đăng ký khai sinh","Giấy chứng sinh"]}}],"documents":[{{"fileIndex":0,"pages":[1],"docType":"other","documentName":"Tờ khai đăng ký khai sinh","matThe":"","chuThe":""}},{{"fileIndex":0,"pages":[2],"docType":"birth_certificate","documentName":"Giấy chứng sinh","matThe":"","chuThe":""}}]}}
 </output_contract>
 """.strip()

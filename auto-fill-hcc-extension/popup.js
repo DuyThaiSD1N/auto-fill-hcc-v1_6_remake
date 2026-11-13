@@ -5238,6 +5238,8 @@ ocrBtn.addEventListener("click", async () => {
       // Khai sinh trên Cổng DVC quốc gia mới: khối người nộp khóa theo tài khoản → cần tên + số định danh để
       // tính quan hệ Cha / Mẹ / Khác với người được khai sinh.
       cfg.key === "khai-sinh-dang-ky-thuong" ||
+      // Khai sinh có yếu tố nước ngoài (eForm Bộ Tư pháp): mốc tài khoản tính ô Quan hệ + nơi cư trú mục I.
+      cfg.key === "khai-sinh-nuoc-ngoai" ||
       cfg.key === "xac-nhan-thong-tin-ho-tich" ||
       cfg.key === "xet-tuyen-vien-chuc" ||
       cfg.key === "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" ||

@@ -1,17 +1,23 @@
-"""Đính kèm khai sinh có yếu tố nước ngoài (2.000528, Cổng DVC quốc gia mới) — chế độ KHÔNG tách giấy tờ.
+"""Đính kèm khai sinh có yếu tố nước ngoài (2.000528, cổng Bộ Tư pháp) — chế độ KHÔNG tách giấy tờ.
 
-Bảng thành phần hồ sơ: STT 1 là mẫu hộ tịch điện tử cổng tự sinh từ tờ khai (không đính); 5 dòng có nút "Tải lên
-file": giấy chứng sinh / văn bản thay giấy chứng sinh (người làm chứng, cam đoan) / giấy tờ nước ngoài xác nhận việc
-sinh ở nước ngoài / văn bản thỏa thuận lựa chọn quốc tịch / văn bản ủy quyền. LLM đọc từng tệp để xếp đúng dòng; giấy
-không có dòng riêng (tờ khai giấy, giấy kết hôn, hộ chiếu, giấy tờ tùy thân nước ngoài + bản dịch, kết quả ADN) đính
-chung dòng giấy chứng sinh — engine SurveyJS của extension chưa bấm được "Thêm thành phần hồ sơ". LLM lỗi / OCR hụt →
-dòng giấy chứng sinh. Khớp dòng theo tên dòng (slotName), slotIndex chỉ là dự phòng.
+Bước "Thành phần hồ sơ" của cổng Bộ Tư pháp: STT 1 là mẫu hộ tịch điện tử sinh từ tờ khai (không đính), các dòng có
+sẵn theo danh mục TTHC: giấy chứng sinh / văn bản thay giấy chứng sinh (người làm chứng, cam đoan) / giấy tờ nước
+ngoài xác nhận việc sinh ở nước ngoài / văn bản thỏa thuận lựa chọn quốc tịch / văn bản ủy quyền. LLM đọc từng tệp để
+xếp đúng dòng; giấy không có dòng riêng (tờ khai giấy, giấy kết hôn, hộ chiếu, CCCD, giấy tờ tùy thân nước ngoài + bản
+dịch, kết quả ADN) → "Thêm thành phần hồ sơ" mới mang tên giấy. Hồ sơ không có giấy nào vào dòng Giấy chứng sinh (bắt
+buộc) thì giấy "khác" đầu tiên không phải thẻ lên dòng đó, như bản SurveyJS trước đây dồn mọi giấy vào dòng này.
 
-Tệp trên 2 MB nén bằng thang của cải chính (cùng cổng), trả ở `replaceFiles`; ghép hai mặt CCCD giống 1.001193.
+Số thứ tự + tên dòng lấy từ bảng thật trên trang (`options.attachmentContext.components`, extension gửi kèm); không
+có bảng → số thứ tự 2..6 + đoạn tên theo danh mục TTHC (SUY, chưa chụp bảng thật của 2.000528). Extension khớp dòng
+theo tên trước, số thứ tự chỉ là gợi ý.
+
+Tệp trên 2 MB nén bằng thang của cải chính, trả ở `replaceFiles`; ghép hai mặt CCCD giống 1.001193.
 """
 
 import asyncio
+import re
 import time
+import unicodedata
 
 from app.config import settings
 from app.pipelines._shared.identity_merge import ho_ten_co_dau, mat_the, so_dinh_danh_the
@@ -31,36 +37,89 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
-ROW_CHUNG_SINH = {"slotKey": "ks_nn_chung_sinh", "slotIndex": 0, "slotName": "Giấy chứng sinh"}
+BIRTH_CERTIFICATE = "birth_certificate"
+# Loại giấy → dòng có sẵn: số thứ tự mặc định + đoạn tên dòng (extension tìm dòng chứa đoạn này).
 ROWS = {
-    "birth_witness": {"slotKey": "ks_nn_thay_chung_sinh", "slotIndex": 1,
-                      "slotName": "Trường hợp không có Giấy chứng sinh thì thay thế bằng"},
-    "foreign_birth_doc": {"slotKey": "ks_nn_sinh_nuoc_ngoai", "slotIndex": 2,
-                          "slotName": "Trường hợp trẻ em sinh ra tại nước ngoài"},
-    "nationality_agreement": {"slotKey": "ks_nn_thoa_thuan_quoc_tich", "slotIndex": 3,
-                              "slotName": "Trường hợp cha hoặc mẹ hoặc cả cha, mẹ là người nước ngoài"},
-    "authorization": {"slotKey": "ks_nn_uy_quyen", "slotIndex": 4,
-                      "slotName": "Văn bản ủy quyền (được chứng thực)"},
+    BIRTH_CERTIFICATE: {"componentIndex": 2, "componentName": "Giấy chứng sinh"},
+    "birth_witness": {"componentIndex": 3,
+                      "componentName": "Trường hợp không có Giấy chứng sinh thì thay thế bằng"},
+    "foreign_birth_doc": {"componentIndex": 4, "componentName": "Trường hợp trẻ em sinh ra tại nước ngoài"},
+    "nationality_agreement": {"componentIndex": 5,
+                              "componentName": "Trường hợp cha hoặc mẹ hoặc cả cha, mẹ là người nước ngoài"},
+    "authorization": {"componentIndex": 6, "componentName": "Văn bản ủy quyền"},
 }
+# Nhận dòng trên trang theo chữ đã bỏ dấu; xét theo thứ tự này vì dòng "không có Giấy chứng sinh thì thay thế" và dòng
+# "sinh ra tại nước ngoài thì nộp Giấy chứng sinh" đều chứa chữ "giấy chứng sinh".
+_ROW_MARKERS = (
+    ("authorization", ("uy quyen",)),
+    ("foreign_birth_doc", ("sinh ra tai nuoc ngoai", "sinh ra o nuoc ngoai", "sinh tai nuoc ngoai")),
+    ("nationality_agreement", ("quoc tich", "nguoi nuoc ngoai")),
+    ("birth_witness", ("thay the", "lam chung", "cam doan")),
+    (BIRTH_CERTIFICATE, ("giay chung sinh",)),
+)
 
 
-def plan_item(file_index: int, file_name: str, document_name: str, doc_type: str) -> dict:
-    row = ROWS.get(doc_type, ROW_CHUNG_SINH)
-    return {
+def _fold(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def live_rows(options: dict | None) -> dict[str, dict]:
+    """{loại giấy: {componentIndex, componentName}} theo bảng thật trên trang; dòng không thấy giữ mặc định."""
+    rows = {key: dict(row) for key, row in ROWS.items()}
+    found: set[str] = set()
+    components = ((options or {}).get("attachmentContext") or {}).get("components") or []
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        try:
+            index = int(component.get("index"))
+        except (TypeError, ValueError):
+            continue
+        name = str(component.get("componentName") or "").strip()
+        folded = _fold(name)
+        if index <= 0 or not folded or folded.startswith("to khai"):
+            continue
+        doc_type = next((key for key, markers in _ROW_MARKERS if any(m in folded for m in markers)), "")
+        if doc_type and doc_type not in found:
+            found.add(doc_type)
+            rows[doc_type] = {"componentIndex": index, "componentName": name}
+    return rows
+
+
+def plan_item(file_index: int, file_name: str, document_name: str, doc_type: str,
+              rows: dict[str, dict] | None = None) -> dict:
+    row = (rows or ROWS).get(doc_type)
+    item = {
         "fileIndex": file_index,
         "fileName": file_name,
         "documentName": document_name,
-        "componentName": row["slotName"],
-        "target": "fixed-slot",
-        "needsAddComponent": False,
         "detectedType": doc_type if doc_type in ROWS else "other",
-        "noChooserClick": True,
-        **row,
     }
+    if row:
+        return {**item, "target": "existing", "componentIndex": row["componentIndex"],
+                "componentName": row["componentName"], "needsAddComponent": False}
+    return {**item, "target": "new", "componentIndex": None, "componentName": document_name,
+            "needsAddComponent": True}
+
+
+def promote_birth_row(items: list[dict], cards: set[int], rows: dict[str, dict] | None = None) -> list[dict]:
+    """Dòng Giấy chứng sinh bắt buộc: không mục nào vào dòng đó thì mục "khác" đầu tiên không phải thẻ (``cards`` =
+    vị trí trong ``items`` của mục là thẻ CCCD / CMND) lên dòng — như bản SurveyJS trước đây dồn giấy vào dòng này."""
+    if any(item["detectedType"] == BIRTH_CERTIFICATE for item in items):
+        return items
+    row = (rows or ROWS)[BIRTH_CERTIFICATE]
+    for position, item in enumerate(items):
+        if item["target"] == "new" and position not in cards:
+            item.update(target="existing", componentIndex=row["componentIndex"], componentName=row["componentName"],
+                        needsAddComponent=False)
+            break
+    return items
 
 
 def build_plan_items(file_names: list[str], doc_types: dict[int, str],
-                     doc_names: dict[int, str] | None = None) -> list[dict]:
+                     doc_names: dict[int, str] | None = None, rows: dict[str, dict] | None = None) -> list[dict]:
     items = []
     seen: dict[str, int] = {}
     for index, name in enumerate(file_names):
@@ -69,7 +128,7 @@ def build_plan_items(file_names: list[str], doc_types: dict[int, str],
         seen[document_name.lower()] = seen.get(document_name.lower(), 0) + 1
         if seen[document_name.lower()] > 1:
             document_name = f"{document_name} {seen[document_name.lower()]}"
-        items.append(plan_item(index, name, document_name, doc_types.get(index, "")))
+        items.append(plan_item(index, name, document_name, doc_types.get(index, ""), rows))
     return items
 
 
@@ -120,7 +179,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     if texts:
         try:
             answers = await _classify_all(texts)
-        except Exception as exc:  # noqa: BLE001 — LLM lỗi → mọi tệp về dòng giấy chứng sinh, giữ tên gốc
+        except Exception as exc:  # noqa: BLE001 — LLM lỗi → thành phần mới theo tên gốc, tệp đầu lên dòng GCS
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
     doc_types = {i: str(a.get("docType") or "").strip() for i, a in answers.items()}
@@ -138,7 +197,11 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
 
     replace_files = await shrink_task
     names = [replace_files[str(i)]["name"] if str(i) in replace_files else f["name"] for i, f in enumerate(raw_files)]
-    attachments = _merge_groups(build_plan_items(names, doc_types, doc_names), groups)
+    rows = live_rows(options)
+    card_files = {i for i, a in answers.items() if a.get("matThe") or a.get("_matTheOcr")}
+    attachments = _merge_groups(build_plan_items(names, doc_types, doc_names, rows), groups)
+    promote_birth_row(attachments, {pos for pos, item in enumerate(attachments) if item["fileIndex"] in card_files},
+                      rows)
     await shrink_merged(raw_files, attachments, replace_files, errors)
     return {
         "attachments": attachments,
@@ -146,7 +209,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "extracted": {
             "documents": [f["name"] for f in raw_files],
             "classified": [
-                {"fileName": item["fileName"], "docType": item["detectedType"], "slotIndex": item["slotIndex"]}
+                {"fileName": item["fileName"], "docType": item["detectedType"], "target": item["target"],
+                 "componentIndex": item["componentIndex"]}
                 for item in attachments
             ],
             "shrunk": [

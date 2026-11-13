@@ -41,10 +41,14 @@ FIELDS: list[dict] = [{"name": f"NguoiNop_{n}", "desc": d} for n, d in _NOP]
 FIELDS += [
     {"name": "ChuDauTu_Ten", "desc": "Tên CHỦ ĐẦU TƯ (tổ chức) — Tờ trình mục I.5 'Chủ đầu tư'. Chép đầy đủ."},
     {"name": "ChuDauTu_MaSoThue", "desc": "Mã số thuế/mã doanh nghiệp CHỦ ĐẦU TƯ — Tờ trình I.5 'Mã số "
-        "thuế'. Chỉ chữ số."},
+        "thuế'; không có dòng đó thì lấy số 'Giấy chứng nhận đăng ký doanh nghiệp số …' của chủ đầu tư ở mục "
+        "'Văn bản pháp lý' (danh mục hồ sơ gửi kèm). Chỉ chữ số (10 số, chi nhánh 13 số). KHÔNG lấy số GCN của "
+        "nhà thầu."},
     {"name": "ChuDauTu_DiaChi", "desc": "Địa chỉ trụ sở CHỦ ĐẦU TƯ, object {quocGia,tinh,xa,chiTietDuoiXa} — Tờ "
-        "trình I.5 'Địa chỉ'. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số nhà/thôn/đường."},
-    {"name": "ChuDauTu_DienThoai", "desc": "Điện thoại CHỦ ĐẦU TƯ — Tờ trình I.5 'Điện thoại'. Chỉ chữ số."},
+        "trình I.5 'Địa chỉ' ghi CẠNH tên chủ đầu tư. tinh='Tỉnh/Thành phố …', xa=phường/xã, chiTietDuoiXa=số "
+        "nhà/thôn/đường. KHÔNG lấy địa chỉ của nhà thầu hay địa điểm xây dựng; Tờ trình không ghi → BỎ."},
+    {"name": "ChuDauTu_DienThoai", "desc": "Điện thoại CHỦ ĐẦU TƯ — Tờ trình I.5 'Điện thoại' ghi CẠNH tên chủ "
+        "đầu tư. Chỉ chữ số. KHÔNG lấy SĐT của nhà thầu; không ghi → BỎ."},
     {"name": "ChuDauTu_NguoiQuyetDinhDauTu", "desc": "Người quyết định đầu tư — Tờ trình mục I.4 'Người "
         "quyết định đầu tư' (vd 'Chủ tịch HĐQT Công ty …'). Chép nguyên văn."},
 ]

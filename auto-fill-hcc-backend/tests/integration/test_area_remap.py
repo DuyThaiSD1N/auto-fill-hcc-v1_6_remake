@@ -357,3 +357,65 @@ def test_khanh_hoa_ten_trung_phuong_nha_trang_xa_van_ninh():
     assert _dia_chi("Khánh Hòa", "Vạn Thạnh", huyen="Vạn Ninh") == ("Khánh Hòa", "Xã Đại Lãnh")
     assert _dia_chi("Khánh Hòa", "Vạn Thạnh", dia_chi="Tổ 2, TP Nha Trang") == ("Khánh Hòa", "Phường Nha Trang")
     assert _dia_chi("Khánh Hòa", "Vạn Thạnh") == ("Khánh Hòa", "")
+
+
+def test_o_tinh_ghi_thanh_pho_huyen_cu():
+    """Đơn viết tay ghi "phường X NT - KH", "TP Cam Ranh", "Q.1": LLM đặt thành phố/huyện cũ vào ô tỉnh → trước đây
+    lọt nguyên ra ngoài, ô Tỉnh lẫn Phường/Xã trên cổng đều không chọn được."""
+    assert _dia_chi("Nha Trang", "Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("TP. Nha Trang", "Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("TP Cam Ranh", "Cam Phú") == ("Khánh Hòa", "Phường Cam Ranh")
+    assert _dia_chi("H. Diên Khánh", "Diên Phú")[0] == "Khánh Hòa"
+    assert _dia_chi("Q. Hoàn Kiếm", "Hàng Bạc") == ("Hà Nội", "Phường Hoàn Kiếm")
+    # Cấp huyện không còn tên đơn vị nào: xã cũ chỉ có ở một tỉnh → tỉnh đó.
+    assert _dia_chi("Q.1", "Bến Nghé")[1] == "Phường Sài Gòn"
+    # Cụm "thành phố - tỉnh", tỉnh viết tắt.
+    assert _dia_chi("NT - KH", "Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("Nha Trang, Khánh Hòa", "Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    # LLM chẻ tên phường mới mang tên thành phố: xã "Tây" + tỉnh "Nha Trang".
+    assert _dia_chi("Nha Trang", "Tây") == ("Khánh Hòa", "Phường Tây Nha Trang")
+
+
+def test_o_tinh_thanh_pho_cu_tra_theo_tinh_cu_cua_thanh_pho():
+    """Tỉnh mới gộp nhiều tỉnh cũ: tra xã cũ theo tỉnh cũ của thành phố, không theo tỉnh mới — "Phường 1" Vũng Tàu
+    (Bà Rịa - Vũng Tàu cũ) không phải "Phường 1" của TP.HCM/Bình Dương cũ."""
+    assert _dia_chi("Vũng Tàu", "Phường 1")[1] == "Phường Vũng Tàu"
+    assert _dia_chi("Pleiku", "Hội Thương") == ("Gia Lai", "Phường Pleiku")
+
+
+def test_o_tinh_thanh_pho_cu_khong_bi_sua_chinh_ta_sang_tinh_khac():
+    """correct_area() từng "sửa" tên thành phố lạ sang tỉnh có xã trùng tên ("Quy Nhơn" → "Ninh Bình")."""
+    assert _dia_chi("Quy Nhơn", "Lý Thường Kiệt")[0] == "Gia Lai"
+
+
+def test_thanh_pho_trong_bang_giu_lam_goi_y_huyen():
+    """Phường đánh số trùng ở Đà Lạt và Bảo Lộc cũ: ô tỉnh đã ghi thành phố thì đủ căn cứ, không bỏ trống."""
+    assert _dia_chi("Đà Lạt", "Phường 1") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
+    assert _dia_chi("Bảo Lộc", "Phường 1") == ("Lâm Đồng", "Phường 1 Bảo Lộc")
+    # Không ghi thành phố thì vẫn để trống như cũ.
+    assert _dia_chi("Lâm Đồng", "Phường 1") == ("Lâm Đồng", "")
+
+
+def test_phuong_xa_viet_tat():
+    assert _dia_chi("Khánh Hòa", "P. Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("Khánh Hòa", "P.Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("Khánh Hòa", "Ph. Vĩnh Phước") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    # Phần đuôi mang tên thành phố cũ viết tắt.
+    assert _dia_chi("Khánh Hòa", "Bắc NT") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    assert _dia_chi("KH", "P. Tây N.Trang") == ("Khánh Hòa", "Phường Tây Nha Trang")
+    assert _dia_chi("Lâm Đồng", "Xuân Hương ĐL") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
+    # Một chữ số / tên trần không bị coi là viết tắt.
+    assert _dia_chi("Lâm Đồng", "1") == ("Lâm Đồng", "")
+    assert area_remap._expand_abbrev("Phan Rang") == "Phan Rang"
+    assert area_remap._expand_abbrev("Xuân Hương") == "Xuân Hương"
+    # Số phường / xã có số 0 đầu (CMND cũ).
+    assert area_remap._expand_abbrev("Phường 06") == "Phường 6"
+    assert area_remap._expand_abbrev("P.06") == "Phường 6"
+    assert area_remap._expand_abbrev("Phường 10") == "Phường 10"
+    assert _dia_chi("Lâm Đồng", "Phường 06") == ("Lâm Đồng", "Phường Cam Ly - Đà Lạt")
+
+
+def test_dia_chi_dung_va_nuoc_ngoai_khong_doi():
+    assert _dia_chi("Khánh Hòa", "Phường Bắc Nha Trang") == ("Khánh Hòa", "Phường Bắc Nha Trang")
+    out = area_remap.remap_area({"quocGia": "Lào", "tinh": "Viêng Chăn", "xa": "P. Sisattanak", "diaChi": ""})
+    assert (out["tinh"], out["xa"]) == ("Viêng Chăn", "P. Sisattanak")
