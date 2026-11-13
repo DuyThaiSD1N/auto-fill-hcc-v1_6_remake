@@ -42,6 +42,9 @@ EXTRA_RULES = """
    số mới hay số khác (hệ thống tự đối chiếu với giấy tờ in).
 12b. Số điện thoại di động Việt Nam có đúng 10 chữ số. Số đọc được dư/thiếu chữ số thì đối chiếu các tờ khai khác; không
    có nguồn nào đủ 10 số thì vẫn trả số đọc được (hệ thống sẽ cảnh báo), không tự thêm/bớt chữ số.
+12c. Đơn mục I có thể đứng tên CHUNG vợ chồng: dòng "Tên" chỉ ghi một người (kể cả bên tặng cho) nhưng dòng giấy tờ
+   nhân thân kê thêm CCCD của chủ hồ sơ, hoặc chủ hồ sơ cùng ký Đơn. Khi đó "Điện thoại liên hệ"/"Hộp thư điện tử" ở
+   mục I là của CHỦ HỒ SƠ -> trả ChuHoSo_DienThoai/ChuHoSo_Email, không bỏ trống.
 13. Địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; không đưa huyện/thành phố cũ vào xa hay chiTietDuoiXa,
    không lặp tỉnh/xã trong chiTietDuoiXa.
 14. Chỉ trả các key trong schema, không trả tên control UI data[...]. Bỏ field không có chứng cứ, thà thiếu còn

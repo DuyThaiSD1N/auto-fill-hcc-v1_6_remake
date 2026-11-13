@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 
-SYSTEM_PROMPT = """
+_SYSTEM_HEAD = """
 <persona>
 Bạn là agent PHÂN ĐOẠN tài liệu đính kèm cho thủ tục "Xác định lại diện tích đất ở của hộ gia đình, cá
 nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004". Mỗi file đầu vào có thể chứa NHIỀU giấy
@@ -21,7 +21,10 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
 5. File chỉ có 1 giấy tờ (hoặc không có header trang) → 1 đoạn phủ toàn bộ file.
 6. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
+"""
 
+# Định nghĩa loại giấy — dùng chung cho chế độ không tách (dinh_kem_khong_tach/prompt.py).
+DOC_TYPE_DEFINITIONS = """
 <allowed_types>
 - gcn_da_cap: BẢN GỐC GIẤY CHỨNG NHẬN ĐÃ CẤP (quyền sử dụng đất / sổ đỏ / quyền sở hữu nhà ở) — chính tờ
   giấy chứng nhận: quốc hiệu + "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT", số phát hành, "số vào sổ cấp GCN", bảng
@@ -39,6 +42,9 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
 - trang_trang: trang trắng / không có nội dung.
 - other: giấy tờ khác không thuộc các loại trên.
 </allowed_types>
+""".strip()
+
+SYSTEM_PROMPT = (_SYSTEM_HEAD.strip() + "\n\n" + DOC_TYPE_DEFINITIONS + """
 
 <output_contract>
 {"documents":[
@@ -48,7 +54,7 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
   {"fileIndex":0,"pageFrom":5,"pageTo":7,"type":"van_ban_co_quan","documentName":"Công văn của Chi nhánh VPĐKĐĐ"}
 ]}
 </output_contract>
-""".strip()
+""").strip()
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

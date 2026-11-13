@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 
-SYSTEM_PROMPT = """
+_SYSTEM_HEAD = """
 <persona>
 Bạn là agent PHÂN ĐOẠN tài liệu đính kèm cho thủ tục "Đăng ký đất đai lần đầu đối với trường hợp được Nhà nước giao
 đất để quản lý". Hồ sơ hay là MỘT PDF scan gộp vài chục trang (mỗi trang có header "Trang n/m"). Nhiệm vụ: chia mỗi
@@ -22,7 +22,10 @@ file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đoạn là MỘT giấy t�
    tiêu đề mới; mặt sau trắng; trang ký, đóng dấu) thuộc CÙNG đoạn với trang mở đầu của nó.
 5. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
+"""
 
+# Định nghĩa loại giấy — dùng chung cho chế độ không tách (dinh_kem_khong_tach/prompt.py).
+DOC_TYPE_DEFINITIONS = """
 <allowed_types>
 - don_mau_15: ĐƠN ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT (Mẫu số 15) — "Kính gửi", "Người sử dụng đất, chủ sở
   hữu tài sản gắn liền với đất, người quản lý đất", "Thửa đất đăng ký", "Đề nghị của người sử dụng đất", "Những
@@ -58,6 +61,9 @@ file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đoạn là MỘT giấy t�
 - Thông báo của Cục / Chi cục Thuế về đơn giá thuê đất → nghia_vu_tai_chinh, không phải quyet_dinh.
 - Phiếu đo đạc chỉnh lý → phieu_do_dac; trích lục bản đồ / sơ đồ / mảnh trích đo → trich_luc_ban_do.
 </disambiguation>
+""".strip()
+
+SYSTEM_PROMPT = (_SYSTEM_HEAD.strip() + "\n\n" + DOC_TYPE_DEFINITIONS + """
 
 <output_contract>
 {"documents":[
@@ -68,7 +74,7 @@ file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đoạn là MỘT giấy t�
   {"fileIndex":0,"pageFrom":13,"pageTo":15,"type":"quyet_dinh","documentName":"Quyết định chủ trương đầu tư"}
 ]}
 </output_contract>
-""".strip()
+""").strip()
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

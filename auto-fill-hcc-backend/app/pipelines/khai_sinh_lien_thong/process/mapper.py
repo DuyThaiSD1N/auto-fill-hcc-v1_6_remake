@@ -129,6 +129,9 @@ def _blank_dots(value) -> str:
     return text if re.search(r"\w", text) else ""
 
 
+_FACILITY_KEYS = ("benh vien", "trung tam y te", "tram y te", "phong kham", "nha ho sinh")
+
+
 def _norm_birth_place(area):
     """Nơi sinh là cơ sở y tế tuyến tỉnh (vd "Bệnh viện đa khoa TỈNH") mà OCR ghi tắt, thiếu tên
     tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>"."""
@@ -143,7 +146,7 @@ def _norm_birth_place(area):
     if not (tinh and dia):
         return area
     out = dict(area)
-    is_facility = any(k in low for k in ("benh vien", "trung tam y te", "tram y te", "phong kham", "nha ho sinh"))
+    is_facility = any(k in low for k in _FACILITY_KEYS)
     if is_facility and _fold(tinh) not in low and re.search(r"(tinh|thanh pho)$", low):
         dia = f"{dia} {tinh}"
         out["diaChi"] = dia
@@ -226,6 +229,31 @@ def _fix_tk_birth_province(tk, gcs):
         if key and key != tk_key and key in folded_dia:
             return {**tk, "tinh": tinh}
     return tk
+
+
+def _tk_unknown_facility_use_gcs(tk, gcs):
+    """Tờ khai ghi một cơ sở y tế mà bảng bệnh viện KHÔNG nhận ra, giấy chứng sinh ghi cơ sở bảng nhận ra,
+    cùng tỉnh → nơi sinh lấy theo giấy chứng sinh.
+
+    Dòng "Nơi sinh" trên tờ khai viết tay hay bị OCR đọc sai tên cơ sở (ảnh 13/11: "Bệnh viện Sắt nhị Tỉnh
+    Lâm Đồng, số 57 thanh mưu" cho "Bệnh viện Sản Nhi …, số 57 Thánh Mẫu") → không tra được xã, ô
+    Phường/Xã bắt buộc để trống. Dòng "Tại:" của giấy chứng sinh là chữ in, đọc đúng tên. Tờ khai ghi địa
+    chỉ nhà (sinh ngoài cơ sở y tế) hoặc cơ sở bảng đã biết thì giữ tờ khai.
+    """
+    if not (isinstance(tk, dict) and isinstance(gcs, dict)):
+        return tk
+    tk_tinh = tk.get("tinh") or tk.get("tỉnh")
+    tk_dia = str(tk.get("diaChi") or tk.get("dia_chi") or tk.get("diachi") or "")
+    if not any(k in _fold(tk_dia) for k in _FACILITY_KEYS) or lookup_hospital(tk_dia, tk_tinh):
+        return tk
+    gcs_tinh = gcs.get("tinh") or gcs.get("tỉnh")
+    hospital = lookup_hospital(gcs.get("diaChi") or gcs.get("dia_chi") or gcs.get("diachi"), gcs_tinh or tk_tinh)
+    if not hospital:
+        return tk
+    tk_key = _province_key(tk_tinh)
+    if tk_key and tk_key not in (_province_key(hospital["tinh"]), _province_key(gcs_tinh)):
+        return tk
+    return {**gcs, "tinh": gcs_tinh or tk_tinh}
 
 
 def _is_birth_cert_serial(value) -> bool:
@@ -910,7 +938,9 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
     # lẫn tờ khai — has_child = False — chạy tới phần quê quán là nổ UnboundLocalError
     # "cannot access local variable 'is_lam_dong'", công dân chỉ thấy "Xử lý giấy tờ chưa xong".
-    ns_raw = _fix_tk_birth_province(values.get("Tk_NoiSinh"), values.get("Gcs_NoiSinh")) or values.get("Gcs_NoiSinh")
+    ns_raw = _tk_unknown_facility_use_gcs(
+        _fix_tk_birth_province(values.get("Tk_NoiSinh"), values.get("Gcs_NoiSinh")), values.get("Gcs_NoiSinh")
+    ) or values.get("Gcs_NoiSinh")
     ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
     birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
     is_lam_dong = "lam dong" in birth_province

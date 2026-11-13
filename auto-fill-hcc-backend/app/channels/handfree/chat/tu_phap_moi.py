@@ -25,7 +25,11 @@ Extension khai thêm supportsLizCommitSelf (yêu cầu 10/11/2026, mọi thủ t
     điền + đính xong (kể cả còn ô bắt buộc trống) → dặn cần tích ô cam kết + nút cam [Tích ô cam kết]
         (extension theo dõi ô — liz_commit_watch — công dân tự tích trên trang cũng được)
         → bấm nút: trợ lý tích ô trên trang (liz_commit_tick)
-        → __action:liz_commit_report → "nhấn Lưu và nộp hồ sơ" + CHỈ nút cam [Lưu và nộp hồ sơ]
+        → __action:liz_commit_report → hỏi ô "Đề nghị nhận kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)"
+          (user 13/11/2026): [Có, nhận qua bưu điện] [Không]
+            không → "nhấn Lưu và nộp hồ sơ" + CHỈ nút cam [Lưu và nộp hồ sơ]
+            có → trợ lý tích ô VNPost (không điền hộ khối người nhận) → dặn điền thông tin người nhận + chọn cách thanh
+                 toán lệ phí → nút cam [Lưu và nộp hồ sơ]
 Nút nộp không tích hộ: chưa thấy ô được tích thì không bấm, trả commit=False → dặn bấm [Tích ô cam kết].
 """
 
@@ -174,10 +178,35 @@ def _liz_commit_chip() -> dict:
     return {"label": vi.LIZ_COMMIT_CHIP, "send": "__action:liz_commit_tick", "solid": True, "cta": True}
 
 
+LIZ_POSTAL_YES_SEND = '__action:liz_postal:{"post":true}'
+LIZ_POSTAL_NO_SEND = '__action:liz_postal:{"post":false}'
+
+
+def _liz_postal_chips() -> list[dict]:
+    """Hai nút trả lời câu hỏi ô VNPost (sau khi tích ô cam kết)."""
+    return [
+        {"label": vi.LIZ_POSTAL_YES_CHIP, "send": LIZ_POSTAL_YES_SEND, "solid": True},
+        {"label": vi.LIZ_POSTAL_NO_CHIP, "send": LIZ_POSTAL_NO_SEND, "solid": True},
+    ]
+
+
+def _liz_postal_answered(st: dict) -> bool:
+    return st.get("liz_postal") in ("yes", "no")
+
+
+def _liz_go_now(conv: dict) -> list[dict]:
+    """Nút đi tiếp của chặng cuối liz (công dân tự tích): chưa tích ô cam kết → nút cam Tích ô cam kết; đã tích, chưa
+    trả lời ô VNPost → hai nút Có / Không; trả lời rồi → nút cam Lưu và nộp hồ sơ."""
+    st = conv.get("field_review") or {}
+    if not st.get("liz_commit_ok"):
+        return [_liz_commit_chip()]
+    return [_submit_cta()] if _liz_postal_answered(st) else _liz_postal_chips()
+
+
 def _liz_go_chips(proc: dict | None, conv: dict | None) -> list[dict]:
     if not liz_commit_self(conv, proc):
         return [_liz_next_cta()]
-    return [_submit_cta()] if (conv.get("field_review") or {}).get("liz_commit_ok") else [_liz_commit_chip()]
+    return _liz_go_now(conv)
 
 
 def _final_chips(proc: dict | None = None, conv: dict | None = None) -> list[dict]:
@@ -453,25 +482,133 @@ def _liz_commit_st(conv: dict) -> dict:
     return conv.setdefault("field_review", {})
 
 
-def _liz_swap_go(st: dict, ok: bool) -> None:
-    """Bộ nút đã lưu của lượt điền (hiện lại khi hỏi xong vòng bổ sung / công dân tự gõ đủ ô): nút "Tôi đã tích ô cam
-    kết" ↔ nút nộp theo trạng thái ô cam kết."""
-    old, new = (_liz_commit_chip(), _submit_cta()) if ok else (_submit_cta(), _liz_commit_chip())
-    if st.get("chips"):
-        st["chips"] = [dict(new) if c.get("send") == old["send"] else c for c in st["chips"]]
+_LIZ_GO_SENDS = frozenset({"__action:liz_commit_tick", "__action:tpm_submit", LIZ_POSTAL_YES_SEND, LIZ_POSTAL_NO_SEND})
+
+
+def _liz_refresh_go(conv: dict) -> None:
+    """Bộ nút đã lưu của lượt điền (hiện lại khi hỏi xong vòng bổ sung / công dân tự gõ đủ ô): thay nút đi tiếp cũ bằng
+    nút đúng chặng hiện tại (Tích ô cam kết → Có / Không nhận qua bưu điện → Lưu và nộp hồ sơ)."""
+    st = _liz_commit_st(conv)
+    if not st.get("chips"):
+        return
+    out, placed = [], False
+    for chip in st["chips"]:
+        if chip.get("send") not in _LIZ_GO_SENDS:
+            out.append(chip)
+        elif not placed:
+            out.extend(dict(c) for c in _liz_go_now(conv))
+            placed = True
+    st["chips"] = out
+
+
+def _liz_required_note(st: dict) -> str:
+    required = int((st.get("stats") or {}).get("required") or 0)
+    return vi.LIZ_COMMIT_REQUIRED_NOTE.format(required=required) if required else ""
 
 
 def _liz_commit_ok_reply(conv: dict, proc: dict):
-    """Ô cam kết đã được tích → dặn nhấn Lưu và nộp hồ sơ, chỉ một nút cam nộp (user 10/11: không thẻ cách nhận kết quả,
-    không nút khác). Tờ khai còn ô bắt buộc trống thì nhắc điền nốt."""
+    """Ô cam kết đã được tích → hỏi có đề nghị nhận kết quả bản giấy qua VNPost không (user 13/11) + hai nút Có / Không.
+    Đã trả lời câu đó (ô cam kết bị bỏ tích rồi tích lại) → dặn nhấn Lưu và nộp hồ sơ, chỉ một nút cam nộp. Tờ khai còn
+    ô bắt buộc trống thì nhắc điền nốt."""
     from app.channels.handfree.chat import flow
 
     st = _liz_commit_st(conv)
     st["liz_commit_ok"] = True
-    _liz_swap_go(st, True)
-    required = int((st.get("stats") or {}).get("required") or 0)
-    note = vi.LIZ_COMMIT_REQUIRED_NOTE.format(required=required) if required else ""
-    r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_OK, required_note=note))
+    _liz_refresh_go(conv)
+    note = _liz_required_note(st)
+    if _liz_postal_answered(st):
+        r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_OK, required_note=note))
+        r.chips = [_submit_cta()]
+        return r
+    st["liz_postal"] = "asked"
+    r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_ASK, required_note=note))
+    r.chips = _liz_postal_chips()
+    return r
+
+
+def liz_postal_waiting(conv: dict, proc: dict | None) -> bool:
+    """Đang chờ công dân trả lời có nhận kết quả qua VNPost không (đã tích ô cam kết, chưa trả lời, chưa nộp)."""
+    st = conv.get("field_review") or {}
+    return (liz_commit_self(conv, proc) and conv.get("state") == "done" and bool(st.get("liz_commit_ok"))
+            and not _liz_postal_answered(st) and not st.get("running") and not _submitted(conv))
+
+
+def _liz_postal_action(proc: dict, conv: dict, post: bool) -> dict | None:
+    """Lệnh gạt ô VNPost. fillRecipient=False: tích xong không điền hộ khối người nhận, công dân tự điền (user 13/11) —
+    extension chỉ trả các ô người nhận còn trống để trợ lý kể tên."""
+    key = "postal" if post else "counter"
+    action = _liz_page_action(proc, guided.select_result_method_action(proc, key), key, conv)
+    if not action:
+        return None
+    conv["result_method"] = key
+    return {**action, "fillRecipient": False}
+
+
+def _liz_postal_reply(conv: dict, proc: dict, post: bool):
+    """Công dân trả lời câu hỏi ô VNPost. Có → trợ lý tích ô (câu dặn điền khối người nhận nói khi extension báo lại);
+    Không → nhấn Lưu và nộp hồ sơ (ô đã lỡ tích theo lần trả lời trước thì bỏ tích)."""
+    from app.channels.handfree.chat import flow
+
+    if _submitted(conv):
+        return flow.Reply()
+    st = _liz_commit_st(conv)
+    before = st.get("liz_postal")
+    st["liz_postal"] = "yes" if post else "no"
+    _liz_refresh_go(conv)
+    if post:
+        r = flow.Reply()
+        action = _liz_postal_action(proc, conv, True)
+        r.actions = [action] if action else []
+        return r
+    r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_NO, required_note=_liz_required_note(st)))
+    r.chips = [_submit_cta()]
+    if before == "yes":
+        action = _liz_postal_action(proc, conv, False)
+        r.actions = [action] if action else []
+    else:
+        conv["result_method"] = "counter"
+    return r
+
+
+async def _liz_recipient_ask_reply(conv: dict, proc: dict):
+    """Vừa tích ô VNPost: mở luôn vòng hỏi từng ô còn trống (như nút "Bổ sung các thông tin còn thiếu") — trợ lý hỏi
+    Tên / Số điện thoại / Địa chỉ người nhận, Đơn vị hành chính…; công dân nói hoặc gõ ("tên người nhận: …"), LLM của
+    vòng bổ sung hiểu rồi extension điền đúng ô. Câu mở đầu đã nói cách làm → bỏ câu giới thiệu chung của vòng hỏi."""
+    from app.channels.handfree.chat import flow
+
+    started = await field_review.handle(conv, proc, Intent("action", "field_review_start", {}))
+    st = _liz_commit_st(conv)
+    st["intro"] = False
+    st["loop_started_now"] = True  # finalize không dừng vòng vừa mở trong lượt result_method_report
+    r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_YES_ASK))
+    r.actions = list((started or flow.Reply()).actions)
+    return r
+
+
+async def _liz_postal_report_reply(conv: dict, proc: dict, payload: dict):
+    """Extension báo đã gạt ô VNPost theo câu trả lời. Có: trợ lý hỏi lần lượt ô người nhận còn trống (vòng bổ sung),
+    extension không có vòng bổ sung thì kể tên ô + dặn chọn cách thanh toán lệ phí; Không: đã nói ở lượt trả lời, chỉ
+    lên tiếng khi bỏ tích không được."""
+    from app.channels.handfree.chat import flow
+
+    st = _liz_commit_st(conv)
+    post = st.get("liz_postal") == "yes"
+    if str(payload.get("method") or "") != ("postal" if post else "counter"):
+        return flow.Reply()  # báo muộn của câu trả lời trước (công dân vừa đổi ý)
+    if not payload.get("ok"):
+        r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_FAILED if post else vi.LIZ_POSTAL_UNTICK_FAILED))
+    elif not post:
+        return flow.Reply()
+    elif field_review.active(conv, proc) and not st.get("running") and _missing_labels(payload):
+        return await _liz_recipient_ask_reply(conv, proc)
+    else:
+        missing = _missing_labels(payload)
+        filled = [str(x).strip() for x in (payload.get("filled") or []) if str(x).strip()]
+        if not missing and filled:
+            r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_YES_FILLED))  # extension bản cũ tự điền theo người nộp
+        else:
+            r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_YES,
+                                    missing=", ".join(missing) if missing else vi.LIZ_POSTAL_RECIPIENT_DEFAULT))
     r.chips = [_submit_cta()]
     return r
 
@@ -492,7 +629,7 @@ def _liz_commit_wait_reply(conv: dict, proc: dict, template: dict):
     st = _liz_commit_st(conv)
     st["liz_commit_ok"] = False
     st["liz_commit_asked"] = True
-    _liz_swap_go(st, False)
+    _liz_refresh_go(conv)
     r = flow.Reply(*_v2_say(template, commit=field_review.liz_commit_label(proc)))
     r.actions = [field_review.liz_commit_watch_action(proc)]
     r.chips = [_liz_commit_chip()]
@@ -519,11 +656,17 @@ def _liz_commit_report_reply(conv: dict, proc: dict, payload: dict):
     source = str(payload.get("source") or "manual")
     checked = payload.get("checked") is True
     if source in ("manual", "tick") and payload.get("found") is False:
-        # Cổng đổi chữ ô cam kết → không chặn công dân: tự tích rồi nộp.
+        # Cổng đổi chữ ô cam kết → không chặn công dân: tự tích rồi nộp (vẫn hỏi ô VNPost nếu chưa hỏi).
         st["liz_commit_ok"] = True
-        _liz_swap_go(st, True)
-        r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_NOT_FOUND, commit=field_review.liz_commit_label(proc)))
-        r.chips = [_submit_cta()]
+        _liz_refresh_go(conv)
+        commit = field_review.liz_commit_label(proc)
+        if _liz_postal_answered(st):
+            r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_NOT_FOUND, commit=commit))
+            r.chips = [_submit_cta()]
+            return r
+        st["liz_postal"] = "asked"
+        r = flow.Reply(*_v2_say(vi.LIZ_COMMIT_NOT_FOUND_POSTAL, commit=commit))
+        r.chips = _liz_postal_chips()
         return r
     if checked:
         if st.get("liz_commit_ok") and source == "change":
@@ -554,6 +697,21 @@ async def _handle_liz_commit(conv: dict, proc: dict, intent: Intent):
         return _liz_commit_tick_reply(proc)
     if intent.kind == "action" and intent.value == "liz_commit_done":
         return _liz_commit_check_reply(proc)
+    if intent.kind == "action" and intent.value == "liz_postal":
+        return _liz_postal_reply(conv, proc, (intent.payload or {}).get("post") is True)
+    if (intent.kind == "action" and intent.value == "result_method_report" and conv.get("state") == "done"
+            and _liz_postal_answered(conv.get("field_review") or {})):
+        if _submitted(conv):
+            return flow.Reply()
+        return await _liz_postal_report_reply(conv, proc, intent.payload or {})
+    if liz_postal_waiting(conv, proc):
+        # Đang chờ trả lời ô VNPost: "có" / "không đồng ý" nói hoặc gõ → trả lời câu đó; câu khác không rõ → hỏi lại.
+        if intent.kind in ("confirm", "deny"):
+            return _liz_postal_reply(conv, proc, intent.kind == "confirm")
+        if intent.kind == "unknown":
+            r = flow.Reply(*_v2_say(vi.LIZ_POSTAL_REASK))
+            r.chips = _liz_postal_chips()
+            return r
     st = conv.get("field_review") or {}
     waiting = (conv.get("state") == "done" and st.get("liz_commit_asked") and not st.get("liz_commit_ok")
                and not st.get("running") and not _submitted(conv))

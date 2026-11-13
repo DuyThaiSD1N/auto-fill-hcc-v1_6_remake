@@ -36,6 +36,8 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
 4. Công dân tự sửa lời ("không phải X, là Y", "à nhầm, Y", "X… à không, Y") → lấy giá trị SAU CÙNG (Y).
 5. Ô có danh sách lựa chọn: chỉ được chọn một dòng CÓ TRONG <danh_sach_lua_chon>; không tự đặt ra lựa chọn ngoài
    danh sách.
+6. Công dân có thể nhắc lại tên ô đang hỏi trước giá trị, kể cả gõ kèm dấu hai chấm ("tên người nhận: X",
+   "số điện thoại người nhận là X", "địa chỉ: X") → đó là trả lời cho ô này: bỏ phần nhắc tên ô, giá trị là X.
 </critical_rules>
 
 <action_rules>

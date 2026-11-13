@@ -2003,6 +2003,77 @@ LIZ_COMMIT_OK = {
     "tts": "Dạ đã tích ô cam kết. Công dân nhấn Lưu và nộp hồ sơ để nộp hồ sơ ạ.",
 }
 LIZ_COMMIT_REQUIRED_NOTE = "\n\n⚠️ Tờ khai còn **{required} ô bắt buộc** trống (tô đỏ) — công dân điền nốt trước khi nộp ạ."
+# Tích xong ô cam kết → hỏi ô "Đề nghị nhận kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)" (user 13/11/2026).
+# Không → nhấn Lưu và nộp hồ sơ; Có → trợ lý tích ô VNPost, công dân điền khối người nhận + chọn cách thanh toán lệ phí.
+LIZ_POSTAL_LABEL = "Đề nghị nhận kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)"
+LIZ_POSTAL_YES_CHIP = "📮 Có, nhận qua bưu điện"
+LIZ_POSTAL_NO_CHIP = "🏢 Không, không nhận qua bưu điện"
+_LIZ_POSTAL_Q_MD = ("Công dân có **" + LIZ_POSTAL_LABEL + "** không ạ? Có thì tôi tích ô đó trên trang; không thì công "
+                    "dân nộp hồ sơ luôn.")
+_LIZ_POSTAL_Q_TTS = "Công dân có đề nghị nhận kết quả bản giấy tại nhà qua bưu điện không ạ?"
+LIZ_POSTAL_ASK = {
+    "md": "✓ Đã tích ô cam kết.\n\n" + _LIZ_POSTAL_Q_MD + "{required_note}",
+    "tts": "Dạ đã tích ô cam kết. " + _LIZ_POSTAL_Q_TTS,
+}
+LIZ_POSTAL_READY_ASK = {
+    "md": "✓ Công dân đã {done} các thông tin bắt buộc và đã tích ô cam kết.\n\n" + _LIZ_POSTAL_Q_MD,
+    "tts": " Công dân đã {done} các thông tin bắt buộc và đã tích ô cam kết. " + _LIZ_POSTAL_Q_TTS,
+}
+LIZ_COMMIT_NOT_FOUND_POSTAL = {
+    "md": "Tôi chưa tìm thấy ô cam kết trên trang. Công dân tự tích ô **{commit}** ở cuối trang.\n\n" + _LIZ_POSTAL_Q_MD,
+    "tts": "Dạ tôi chưa tìm thấy ô cam kết. Công dân tự tích ô cam kết ở cuối trang. " + _LIZ_POSTAL_Q_TTS,
+}
+LIZ_POSTAL_REASK = {
+    "md": _LIZ_POSTAL_Q_MD + " Công dân bấm một trong hai nút bên dưới ạ.",
+    "tts": "Dạ " + _LIZ_POSTAL_Q_TTS[0].lower() + _LIZ_POSTAL_Q_TTS[1:] + " Công dân bấm Có hoặc Không ạ.",
+}
+LIZ_POSTAL_NO = {
+    "md": "✓ Không nhận kết quả qua bưu điện.\n\nCông dân nhấn **Lưu và nộp hồ sơ** để nộp hồ sơ ạ.{required_note}",
+    "tts": "Dạ không nhận qua bưu điện. Công dân nhấn Lưu và nộp hồ sơ để nộp hồ sơ ạ.",
+}
+_LIZ_POSTAL_PAY_MD = ("chọn cách **Thanh toán lệ phí khi hồ sơ được giải quyết** (Nộp tại nơi nộp hồ sơ, Sử dụng dịch vụ "
+                      "bưu chính công ích hoặc Thanh toán trực tuyến), xong nhấn **Lưu và nộp hồ sơ** ạ.")
+LIZ_POSTAL_YES = {
+    "md": ("✓ Tôi đã tích ô **" + LIZ_POSTAL_LABEL + "**.\n\nCông dân điền phần thông tin người nhận: **{missing}**, rồi "
+           + _LIZ_POSTAL_PAY_MD),
+    "tts": ("Dạ tôi đã tích ô nhận kết quả qua bưu điện. Công dân điền thông tin người nhận: {missing}, rồi chọn cách "
+            "thanh toán lệ phí, xong nhấn Lưu và nộp hồ sơ ạ."),
+}
+# Tích ô VNPost xong trợ lý mở vòng hỏi từng ô còn trống (như "Bổ sung các thông tin còn thiếu"): câu mở đầu vòng.
+LIZ_POSTAL_YES_ASK = {
+    "md": ("✓ Tôi đã tích ô **" + LIZ_POSTAL_LABEL + "**.\n\nTôi hỏi lần lượt thông tin người nhận còn trống, công dân "
+           "nói hoặc gõ giúp tôi (vd *tên người nhận: Nguyễn Văn A*). Ô nào không có thì nói **bỏ qua**. Trước khi nộp "
+           "công dân chọn cách **Thanh toán lệ phí khi hồ sơ được giải quyết** trên trang ạ."),
+    "tts": ("Dạ tôi đã tích ô nhận kết quả qua bưu điện. Tôi hỏi lần lượt thông tin người nhận, công dân nói hoặc gõ "
+            "giúp tôi ạ. "),
+}
+# Hỏi xong ô người nhận, tờ khai đủ ô bắt buộc: nhắc chọn cách thanh toán lệ phí rồi nộp.
+LIZ_POSTAL_READY_SUBMIT = {
+    "md": ("✓ Công dân đã {done} các thông tin bắt buộc, đã tích ô cam kết và ô nhận kết quả qua bưu điện.\n\nCông dân "
+           + _LIZ_POSTAL_PAY_MD),
+    "tts": (" Công dân đã {done} các thông tin bắt buộc. Công dân chọn cách thanh toán lệ phí rồi nhấn Lưu và nộp hồ "
+            "sơ ạ."),
+}
+# Bản extension cũ tự điền khối người nhận theo người nộp → không còn ô trống để kể tên.
+LIZ_POSTAL_YES_FILLED = {
+    "md": ("✓ Tôi đã tích ô **" + LIZ_POSTAL_LABEL + "**.\n\nCông dân kiểm tra phần thông tin người nhận (tên, số điện "
+           "thoại, địa chỉ, đơn vị hành chính), rồi " + _LIZ_POSTAL_PAY_MD),
+    "tts": ("Dạ tôi đã tích ô nhận kết quả qua bưu điện. Công dân kiểm tra thông tin người nhận, rồi chọn cách thanh "
+            "toán lệ phí, xong nhấn Lưu và nộp hồ sơ ạ."),
+}
+LIZ_POSTAL_RECIPIENT_DEFAULT = "Tên người nhận, Số điện thoại người nhận, Địa chỉ người nhận, Đơn vị hành chính"
+LIZ_POSTAL_FAILED = {
+    "md": ("⚠️ Tôi chưa tích được ô **" + LIZ_POSTAL_LABEL + "**. Công dân tự tích ô đó trên trang, điền phần thông tin "
+           "người nhận (" + LIZ_POSTAL_RECIPIENT_DEFAULT + "), rồi " + _LIZ_POSTAL_PAY_MD),
+    "tts": ("Dạ tôi chưa tích được ô nhận kết quả qua bưu điện. Công dân tự tích ô đó trên trang, điền thông tin người "
+            "nhận, chọn cách thanh toán lệ phí rồi nhấn Lưu và nộp hồ sơ ạ."),
+}
+LIZ_POSTAL_UNTICK_FAILED = {
+    "md": ("⚠️ Tôi chưa bỏ tích được ô **" + LIZ_POSTAL_LABEL + "**. Công dân bỏ tích ô đó trên trang rồi nhấn **Lưu và "
+           "nộp hồ sơ** ạ."),
+    "tts": ("Dạ tôi chưa bỏ tích được ô nhận kết quả qua bưu điện. Công dân bỏ tích ô đó trên trang rồi nhấn Lưu và nộp "
+            "hồ sơ ạ."),
+}
 LIZ_COMMIT_READY_SUBMIT = {
     "md": ("✓ Công dân đã {done} các thông tin bắt buộc và đã tích ô cam kết.\n\nCông dân nhấn **Lưu và nộp hồ sơ** để "
            "nộp hồ sơ ạ."),

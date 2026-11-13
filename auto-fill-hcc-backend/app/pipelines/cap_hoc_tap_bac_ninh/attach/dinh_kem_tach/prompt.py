@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from . import catalog
+from .. import catalog
 
 SYSTEM_PROMPT = f"""
 <persona>

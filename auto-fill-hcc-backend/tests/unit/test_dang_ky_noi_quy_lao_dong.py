@@ -1,6 +1,16 @@
 """Đăng ký nội quy lao động của doanh nghiệp (Bộ Nội vụ, 2.001955)."""
 
-from app.pipelines.dang_ky_noi_quy_lao_dong.attach import planner
+import asyncio
+import base64
+import json
+
+import fitz
+import pytest
+
+from app.attachments.schemas import AttachmentPlanResp
+from app.pipelines.dang_ky_noi_quy_lao_dong.attach import planner as dieu_phoi
+from app.pipelines.dang_ky_noi_quy_lao_dong.attach.dinh_kem_tach import planner
+from app.process.schemas import FileItem
 from app.pipelines.dang_ky_noi_quy_lao_dong.process import mapper
 from app.pipelines.dang_ky_noi_quy_lao_dong.process.runner import find_submitter_mention, trim_rule_pages
 from app.pipelines.dang_ky_noi_quy_lao_dong.process.schema import UI_COMP_BY_NAME
@@ -218,3 +228,99 @@ def test_neo_nguoi_nop_vao_doan_ben_b_giay_uy_quyen():
     idx, scope = find_submitter_mention(docs, "trần văn bình", "")
     assert idx == 2 and "Bên B" in scope
     assert find_submitter_mention(docs, "Phạm Văn Khác", "001090000009") is None
+
+
+# ---------------- Đính kèm: hai chế độ theo cài đặt "Tách giấy tờ" (gọi qua bộ điều phối) ----------------
+# Tệp 0 gộp Văn bản đề nghị (tr.1) + Quyết định ban hành (tr.2) + Nội quy (tr.3–5); tệp 1 Giấy ủy quyền; tệp 2 ảnh CCCD.
+_NQ_PAGES = [
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nSố: 34/MX-TCNS V/v đăng ký Nội quy lao động\nKính gửi: Sở Nội vụ",
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nQUYẾT ĐỊNH Về việc ban hành Nội quy lao động\nĐiều 1. Ban hành kèm theo",
+    "CÔNG TY TNHH MẪU XANH\nNỘI QUY LAO ĐỘNG\nChương I NHỮNG QUY ĐỊNH CHUNG",
+    "Điều 10. Thời giờ làm việc 8 giờ một ngày",
+    "Điều 30. Trách nhiệm vật chất. Nơi nhận: như trên",
+]
+_NQ_TEXTS = {
+    "ho-so-gop.pdf": "\n".join(f"───── Trang {p}/5 ─────\n{t}" for p, t in enumerate(_NQ_PAGES, start=1)),
+    "uy-quyen.pdf": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nGIẤY ỦY QUYỀN\nBên ủy quyền (Bên A) Bên được ủy quyền (Bên B)",
+    "cccd.png": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 001090000002\nHọ và tên: TRẦN VĂN BÌNH",
+}
+_NQ_SEGMENTS = [
+    {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "van_ban_de_nghi"},
+    {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "quyet_dinh_ban_hanh"},
+    {"fileIndex": 0, "pageFrom": 3, "pageTo": 5, "type": "noi_quy_lao_dong"},
+    {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "giay_uy_quyen"},
+    {"fileIndex": 2, "pageFrom": 1, "pageTo": 1, "type": "cccd"},
+]
+_NQ_TYPES = [
+    {"index": 0, "docTypes": ["van_ban_de_nghi", "quyet_dinh_ban_hanh", "noi_quy_lao_dong"]},
+    {"index": 1, "docTypes": ["giay_uy_quyen"]},
+    {"index": 2, "docTypes": ["cccd"]},
+]
+
+
+def _pdf(name, pages):
+    doc = fitz.open()
+    for _ in range(pages):
+        doc.new_page()
+    data = base64.b64encode(doc.tobytes()).decode()
+    doc.close()
+    return FileItem(name=name, type="application/pdf", role="doc", dataUrl=f"data:application/pdf;base64,{data}")
+
+
+def _plan_dinh_kem(monkeypatch, options, split_fails=False):
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": _NQ_TEXTS[f["name"]]} for f in files]
+
+    async def fake_chat(messages, **_kwargs):
+        if "docTypes" in messages[0]["content"]:  # prompt chế độ không tách
+            return json.dumps({"documents": _NQ_TYPES})
+        if split_fails:
+            raise RuntimeError("LLM hết giờ")
+        return json.dumps({"documents": _NQ_SEGMENTS})
+
+    monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr)
+    monkeypatch.setattr("app.services.llm.client.chat", fake_chat)
+    files = [_pdf("ho-so-gop.pdf", 5), _pdf("uy-quyen.pdf", 1),
+             FileItem(name="cccd.png", type="image/png", role="doc", dataUrl="data:image/png;base64,AAAA")]
+    out = asyncio.run(dieu_phoi.plan(files, options))
+    AttachmentPlanResp.model_validate(out)
+    return out
+
+
+def test_dinh_kem_bat_tach_cat_pdf_gop_dung_dong_khong_sot_trang(monkeypatch):
+    attachments = _plan_dinh_kem(monkeypatch, {"splitDocuments": True})["attachments"]
+    gop = [a for a in attachments if a["fileIndex"] == 0]
+    assert [(a["componentIndex"], a["detectedType"], a["sourceSegments"][0]["pageIndexes"]) for a in gop] == [
+        (1, "quyet_dinh_ban_hanh", [1]), (1, "noi_quy_lao_dong", [2, 3, 4]), (4, "van_ban_de_nghi", [0]),
+    ]
+    assert sorted(p for a in gop for s in a["sourceSegments"] for p in s["pageIndexes"]) == [0, 1, 2, 3, 4]
+    dialog = next(a for a in attachments if a["target"] == "add-document-dialog")
+    assert dialog["fileIndex"] == 1 and dialog["componentName"] == "Giấy ủy quyền"
+    cccd = next(a for a in attachments if a["fileIndex"] == 2)
+    assert cccd["componentIndex"] == 1 and not cccd.get("sourceSegments")
+
+
+@pytest.mark.parametrize("options", [{}, None, {"splitDocuments": False}])
+def test_dinh_kem_tat_tach_moi_tep_nguyen_mot_lan_dung_dong_giay_chinh(monkeypatch, options):
+    out = _plan_dinh_kem(monkeypatch, options)
+    attachments = out["attachments"]
+    assert sorted(a["fileIndex"] for a in attachments) == [0, 1, 2]
+    assert not any(a.get("sourceSegments") or a.get("sourceFileIndexes") for a in attachments)
+    by_file = {a["fileIndex"]: a for a in attachments}
+    # Văn bản đề nghị là giấy chính của tệp gộp → dòng 4; CCCD không có dòng → dòng 1.
+    assert (by_file[0]["target"], by_file[0]["componentIndex"]) == ("attp-row", 4)
+    assert (by_file[2]["target"], by_file[2]["componentIndex"]) == ("attp-row", 1)
+    dialog = by_file[1]
+    assert dialog["target"] == "add-document-dialog" and dialog["componentName"] == "Giấy ủy quyền"
+    assert dialog["needsAddComponent"] is True and dialog["quantity"] == 1 and dialog["loaiBan"] == "Bản chính"
+    assert dialog["fallbackComponentName"] == "Văn bản đề nghị đăng ký nội quy lao động"
+    assert any("ho-so-gop.pdf" in w and "dòng 1" in w for w in out["errors"])
+    assert not any("Chưa có toàn văn Nội quy" in w for w in out["errors"]), "giấy trong tệp gộp không báo thiếu"
+
+
+def test_dinh_kem_bat_tach_ma_chia_giay_loi_thi_dinh_nguyen_tep(monkeypatch):
+    out = _plan_dinh_kem(monkeypatch, {"splitDocuments": True}, split_fails=True)
+    assert out["errors"][0].startswith("attachment_agent (tách)")
+    assert sorted(a["fileIndex"] for a in out["attachments"]) == [0, 1, 2]
+    assert not any(a.get("sourceSegments") for a in out["attachments"])
+    assert {a["fileIndex"]: a.get("componentIndex") for a in out["attachments"]} == {0: 4, 1: None, 2: 1}

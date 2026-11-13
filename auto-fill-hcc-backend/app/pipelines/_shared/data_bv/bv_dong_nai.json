@@ -1,0 +1,772 @@
+[
+    {
+        "ten": "Bệnh viện Đa khoa Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thành phố Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐK Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐK tỉnh Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thống Nhất Đồng Nai",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thống Nhất tỉnh Đồng Nai",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thống Nhất thành phố Đồng Nai",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐK Thống Nhất Đồng Nai",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Nhi đồng Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Nhi đồng tỉnh Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Nhi đồng thành phố Đồng Nai",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Long Khánh",
+        "xa": "Phường Bình Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Long Khánh",
+        "xa": "Phường Bình Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Long Thành",
+        "xa": "Phường Long Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Long Thành",
+        "xa": "Phường Long Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Định Quán",
+        "xa": "Xã Định Quán",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Định Quán",
+        "xa": "Xã Định Quán",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Phổi Đồng Nai",
+        "xa": "Phường Phước Tân",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Phổi tỉnh Đồng Nai",
+        "xa": "Phường Phước Tân",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Phổi thành phố Đồng Nai",
+        "xa": "Phường Phước Tân",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Da liễu Đồng Nai",
+        "xa": "Phường Trảng Dài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Da liễu tỉnh Đồng Nai",
+        "xa": "Phường Trảng Dài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Da liễu thành phố Đồng Nai",
+        "xa": "Phường Trảng Dài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Y dược cổ truyền Đồng Nai",
+        "xa": "Phường Tân Triều",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Y dược cổ truyền tỉnh Đồng Nai",
+        "xa": "Phường Tân Triều",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Y dược cổ truyền thành phố Đồng Nai",
+        "xa": "Phường Tân Triều",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Bình Phước",
+        "xa": "Phường Đồng Xoài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bình Phước",
+        "xa": "Phường Đồng Xoài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐK tỉnh Bình Phước",
+        "xa": "Phường Đồng Xoài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền tỉnh Bình Phước",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền Bình Phước",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Biên Hòa",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Long Khánh",
+        "xa": "Phường Long Khánh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Long Khánh",
+        "xa": "Phường Long Khánh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Long Khánh",
+        "xa": "Phường Long Khánh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Long Khánh",
+        "xa": "Phường Long Khánh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Long Khánh",
+        "xa": "Phường Long Khánh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Long Thành",
+        "xa": "Phường Long Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Long Thành",
+        "xa": "Phường Long Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Long Thành",
+        "xa": "Phường Long Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Nhơn Trạch",
+        "xa": "Phường Nhơn Trạch",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Nhơn Trạch",
+        "xa": "Phường Nhơn Trạch",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Nhơn Trạch",
+        "xa": "Phường Nhơn Trạch",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Nhơn Trạch",
+        "xa": "Phường Nhơn Trạch",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Nhơn Trạch",
+        "xa": "Phường Nhơn Trạch",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Trảng Bom",
+        "xa": "Phường Trảng Bom",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Trảng Bom",
+        "xa": "Phường Trảng Bom",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Trảng Bom",
+        "xa": "Phường Trảng Bom",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Trảng Bom",
+        "xa": "Phường Trảng Bom",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Trảng Bom",
+        "xa": "Phường Trảng Bom",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Thống Nhất",
+        "xa": "Phường Dầu Giây",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Thống Nhất",
+        "xa": "Phường Dầu Giây",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Thống Nhất",
+        "xa": "Phường Dầu Giây",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Thống Nhất",
+        "xa": "Phường Dầu Giây",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Thống Nhất",
+        "xa": "Phường Dầu Giây",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Vĩnh Cửu",
+        "xa": "Phường Trị An",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Vĩnh Cửu",
+        "xa": "Phường Trị An",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Vĩnh Cửu",
+        "xa": "Phường Trị An",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Vĩnh Cửu",
+        "xa": "Phường Trị An",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Vĩnh Cửu",
+        "xa": "Phường Trị An",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Định Quán",
+        "xa": "Xã Định Quán",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Định Quán",
+        "xa": "Xã Định Quán",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Định Quán",
+        "xa": "Xã Định Quán",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Tân Phú",
+        "xa": "Phường Tân Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Tân Phú",
+        "xa": "Phường Tân Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Tân Phú",
+        "xa": "Phường Tân Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Tân Phú",
+        "xa": "Phường Tân Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Tân Phú",
+        "xa": "Phường Tân Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Xuân Lộc",
+        "xa": "Phường Xuân Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Xuân Lộc",
+        "xa": "Phường Xuân Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Xuân Lộc",
+        "xa": "Phường Xuân Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Xuân Lộc",
+        "xa": "Phường Xuân Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Xuân Lộc",
+        "xa": "Phường Xuân Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cẩm Mỹ",
+        "xa": "Xã Cẩm Mỹ",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Cẩm Mỹ",
+        "xa": "Xã Cẩm Mỹ",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Cẩm Mỹ",
+        "xa": "Xã Cẩm Mỹ",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Cẩm Mỹ",
+        "xa": "Xã Cẩm Mỹ",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Cẩm Mỹ",
+        "xa": "Xã Cẩm Mỹ",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Đồng Xoài",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Đồng Xoài",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Đồng Xoài",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đồng Xoài",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Đồng Xoài",
+        "xa": "Phường Bình Phước",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Phước Long",
+        "xa": "Phường Phước Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Phước Long",
+        "xa": "Phường Phước Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Phước Long",
+        "xa": "Phường Phước Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Phước Long",
+        "xa": "Phường Phước Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Phước Long",
+        "xa": "Phường Phước Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Chơn Thành",
+        "xa": "Phường Chơn Thành",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đồng Phú",
+        "xa": "Phường Đồng Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đồng Phú",
+        "xa": "Phường Đồng Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Đồng Phú",
+        "xa": "Phường Đồng Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Đồng Phú",
+        "xa": "Phường Đồng Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Đồng Phú",
+        "xa": "Phường Đồng Phú",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hớn Quản",
+        "xa": "Phường Tân Khai",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hớn Quản",
+        "xa": "Phường Tân Khai",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Hớn Quản",
+        "xa": "Phường Tân Khai",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Hớn Quản",
+        "xa": "Phường Tân Khai",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Hớn Quản",
+        "xa": "Phường Tân Khai",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Lộc Ninh",
+        "xa": "Phường Lộc Ninh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Lộc Ninh",
+        "xa": "Phường Lộc Ninh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Lộc Ninh",
+        "xa": "Phường Lộc Ninh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Lộc Ninh",
+        "xa": "Phường Lộc Ninh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Lộc Ninh",
+        "xa": "Phường Lộc Ninh",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Bù Đốp",
+        "xa": "Xã Thiện Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bù Đốp",
+        "xa": "Xã Thiện Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Bù Đốp",
+        "xa": "Xã Thiện Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bù Đốp",
+        "xa": "Xã Thiện Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Bù Đốp",
+        "xa": "Xã Thiện Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Bù Gia Mập",
+        "xa": "Xã Phú Nghĩa",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bù Gia Mập",
+        "xa": "Xã Phú Nghĩa",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Bù Gia Mập",
+        "xa": "Xã Phú Nghĩa",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Phú Riềng",
+        "xa": "Xã Phú Riềng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Phú Riềng",
+        "xa": "Xã Phú Riềng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Phú Riềng",
+        "xa": "Xã Phú Riềng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Bù Đăng",
+        "xa": "Xã Bù Đăng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Bù Đăng",
+        "xa": "Xã Bù Đăng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "TTYT khu vực Bù Đăng",
+        "xa": "Xã Bù Đăng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bù Đăng",
+        "xa": "Xã Bù Đăng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "BVĐKKV Bù Đăng",
+        "xa": "Xã Bù Đăng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đồng Nai-2",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đồng Nai 2",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đồng Nai 2",
+        "xa": "Phường Tam Hiệp",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Âu Cơ Biên Hòa",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản Âu Cơ Biên Hòa",
+        "xa": "Phường Long Bình",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đại học Y Dược Shing Mark",
+        "xa": "Phường Long Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đại học Y Dược Shingmark",
+        "xa": "Phường Long Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Shing Mark",
+        "xa": "Phường Long Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Shingmark",
+        "xa": "Phường Long Hưng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tâm Hồng Phước",
+        "xa": "Phường Trảng Dài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Tâm Hồng Phước",
+        "xa": "Phường Trảng Dài",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Cao su Đồng Nai",
+        "xa": "Phường Bình Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Cao su Đồng Nai",
+        "xa": "Phường Bình Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Cao su Suối Tre",
+        "xa": "Phường Bình Lộc",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Cao su Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Cao su Bình Long",
+        "xa": "Phường Bình Long",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Cao su Phú Riềng",
+        "xa": "Xã Phú Riềng",
+        "tinh": "Thành phố Đồng Nai"
+    },
+    {
+        "ten": "Bệnh viện Cao su Phú Riềng",
+        "xa": "Xã Phú Riềng",
+        "tinh": "Thành phố Đồng Nai"
+    }
+]

@@ -61,7 +61,8 @@ FIELDS: list[dict] = [
     {
         "name": "ChuHoSo_DienThoai",
         "desc": "Số điện thoại của CHỦ HỒ SƠ, chỉ chữ số: Đơn mục I 'Điện thoại liên hệ' -> tờ khai LPTB [11] -> tờ khai "
-        "TNCN [04.8] CHỈ khi dòng đó ghi đúng tên chủ hồ sơ.",
+        "TNCN [04.8] CHỈ khi dòng đó ghi đúng tên chủ hồ sơ. Đơn mục I đứng chung vợ chồng (có CCCD của chủ hồ sơ dù "
+        "dòng Tên ghi người kia) thì số ở Đơn vẫn là của chủ hồ sơ.",
     },
     {
         "name": "ChuHoSo_Email",

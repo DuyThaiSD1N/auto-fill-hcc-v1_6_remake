@@ -324,3 +324,80 @@ test("nút xoá tệp liz nhận theo icon thùng rác, không phải class warn
   assert.match(fn.slice(0, 600), /querySelector\("i\.fa-trash-alt, i\.fa-trash"\)\?\.closest\("button"\)/);
   assert.match(attachCore, /async function clearPreviousAttachments\(\) \{\s*if \(isLizAttachPage\(\)\) return await clearLizAttachedFiles\(\);/);
 });
+
+// ── Câu hỏi VNPost sau ô cam kết (BE 13/11/2026): công dân "có" → trợ lý tích ô VNPost, KHÔNG điền hộ khối người nhận
+// (fillRecipient=false), cuộn tới khối đó, báo ô người nhận còn trống để trợ lý kể tên. ──
+function lizPostalPage({ recipientValues = {} } = {}) {
+  let onMessage = null;
+  const filled = [];
+  const scrolled = [];
+  const fields = {};
+  const field = (name, label, isSelect) => {
+    const mf = {
+      label,
+      scrollIntoView: () => { scrolled.push(label); },
+      querySelector: (sel) => {
+        if (sel === "mat-label") return { textContent: `${label}*` };
+        if (sel === "mat-select") return isSelect ? control : null;
+        if (sel.includes("select-value-text")) return { textContent: recipientValues[name] || "" };
+        if (sel === "input, textarea" || sel === "input") return isSelect ? null : control;
+        return null;
+      },
+    };
+    const control = { value: recipientValues[name] || "", validity: { valid: true }, closest: () => mf };
+    fields[name] = control;
+    return control;
+  };
+  let shownRecipient = false;
+  const recipient = {
+    'input[name="recipient_name"]': field("recipient_name", "Tên người nhận"),
+    'input[name="recipient_phone"]': field("recipient_phone", "Số điện thoại người nhận"),
+    'input[name="recipient_address"]': field("recipient_address", "Địa chỉ người nhận"),
+    'mat-select[name="recipient_commune_id"]': field("recipient_commune_id", "Đơn vị hành chính", true),
+  };
+  const postBox = { type: "checkbox", checked: false, click() { this.checked = !this.checked; shownRecipient = this.checked; } };
+  const ctx = {
+    console, setTimeout, Promise,
+    window: {},
+    location: { hostname: "dichvucong.bvhttdl.gov.vn" },
+    document: {
+      querySelectorAll: () => [],
+      querySelector: (sel) => {
+        if (sel === 'input[type="checkbox"][name="post_office"]') return postBox;
+        return shownRecipient ? recipient[sel] || null : null;
+      },
+      addEventListener: () => {},
+    },
+    chrome: { runtime: { onMessage: { addListener: (fn) => { onMessage = fn; } }, sendMessage: () => {} } },
+  };
+  ctx.window.__TLND__ = {
+    detectFormKind: () => "liz",
+    fillLizFieldElement: async (mf, value) => { filled.push([mf.label, value]); return "ok"; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(read("content/liz/one-page.js"), ctx);
+  const call = (msg) => new Promise((resolve) => { onMessage(msg, {}, resolve); });
+  return { postBox, filled, scrolled, call };
+}
+
+test("sidebar chuyển cờ fillRecipient=false của BE xuống trang", () => {
+  assert.match(sidebar, /\.\.\.\(a\.fillRecipient === false \? \{ fillRecipient: false \} : \{\}\)/);
+});
+
+test("VNPost fillRecipient=false: tích ô, không điền hộ người nhận, cuộn tới khối người nhận, báo ô còn trống", async () => {
+  const page = lizPostalPage({ recipientValues: { recipient_phone: "0900000000" } });
+  const res = await page.call({ action: "selectResultMethod", postOffice: true, fillRecipient: false });
+  assert.equal(page.postBox.checked, true);
+  assert.equal(res.ok, true);
+  assert.deepEqual([...res.filled], []);
+  assert.deepEqual([...res.missing], ["Tên người nhận", "Địa chỉ người nhận", "Đơn vị hành chính"]);
+  assert.deepEqual(page.filled, [], "không điền hộ khối người nhận");
+  assert.deepEqual(page.scrolled, ["Tên người nhận"]);
+});
+
+test("VNPost không có cờ fillRecipient: vẫn điền người nhận theo người nộp như luồng cũ", async () => {
+  const page = lizPostalPage();
+  await page.call({ action: "selectResultMethod", postOffice: true });
+  assert.equal(page.postBox.checked, true);
+  assert.deepEqual(page.scrolled, []);
+});

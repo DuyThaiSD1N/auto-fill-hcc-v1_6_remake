@@ -1645,6 +1645,8 @@
       // Cổng liz: tích ô cam kết + trạng thái cần có của ô VNPost (không có = engine không đụng ô đó).
       commitLabel: a.commitLabel || "",
       ...(typeof a.postOffice === "boolean" ? { postOffice: a.postOffice } : {}),
+      // Cổng liz, câu hỏi VNPost sau ô cam kết: tích ô rồi để công dân tự điền khối người nhận (không điền hộ).
+      ...(a.fillRecipient === false ? { fillRecipient: false } : {}),
     });
     setStatus("");
     await ask(`__action:result_method_report:${JSON.stringify({

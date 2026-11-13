@@ -887,6 +887,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-nuoi-con-nuoi-trong-nuoc",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         "detect": {"textIncludes": ["Đăng ký việc nuôi con nuôi trong nước"], "headingDisabled": True},
         "label": "Đăng ký việc nuôi con nuôi trong nước",
         "shortLabel": "Nuôi con nuôi trong nước",
@@ -2129,6 +2130,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013997, giải quyết ở UBND CẤP XÃ (lõi ghi): DVCQG chọn đủ Tỉnh + Phường/Xã rồi sang cổng ngành
         # NN&MT — cùng khuôn cấp xã với "cap-gcn-attp-nong-lam-thuy-san" (maePortal + maeAgencyLevel "ward").
         # Key TRÙNG lõi và ke_khai_links → process/attach tự nối. Planner lõi (attp-row 1 dòng, tách/gộp trang
@@ -2633,6 +2635,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.014104, cổng Bộ Y tế (CÙNG wizard iGate/Form.io với ATTP ngay trên) nhưng nộp tại
         # SỞ Y tế: ke_khai_links đặt selectSo → DVCQG chọn Tỉnh → gạt toggle "Sở" (KHÔNG chọn sở cụ
         # thể) → Đồng ý → "Nộp trực tuyến" kết quả ĐẦU TIÊN (agencyProvinceOnly + agencySoFirst).
@@ -4812,6 +4815,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "gia-han-luu-hanh-phuong-tien-lao",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.002063, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io key PHẲNG + attach attp-row 2 dòng, engine tách
         # trang sourceSegments). Key TRÙNG lõi → process/attach tự nối. ke_khai_links ghi key khác
         # ("gia-han-luu-hanh-phuong-tien-lao-tai-viet-nam") nên uuid + mã phải khai tay ở đây; ke_khai khai
@@ -4866,6 +4870,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.004002, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 4 dòng, engine tách/gộp
         # trang sourceSegments). Key TRÙNG lõi và ke_khai_links → process/attach + URL kê khai tự nối. ke_khai khai
         # selectSo → agencyProvinceOnly + agencySoFirst + "Sở Xây dựng".
@@ -4972,6 +4977,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012906, Sở Xây dựng (Form.io dom-* + attach attp-row 6 dòng, engine tách trang sourceSegments).
         # Key TRÙNG lõi và ke_khai_links → process/attach + URL tự nối. ke_khai khai selectSo → agencyProvinceOnly +
         # agencySoFirst + "Sở Xây dựng", luồng chung "xay-dung". Lõi không khai urlScope; đặt dvc.moc.gov.vn như các
@@ -6356,6 +6362,7 @@ PROCEDURES: list[dict] = [
     # ── Đợt 26/10: 5 thủ tục, CHƯA chạy thử trên cổng thật. Cổng / cấp cơ quan suy từ code lõi; kiểm khi chạy. ──
     {
         "key": "dang-ky-noi-quy-lao-dong",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 2.001955, cổng Bộ Nội vụ (Form.io + bảng attp-row 4 dòng cố định + dòng "Giấy ủy quyền" tạo qua
         # modal "+ Thêm giấy tờ" — target add-document-dialog, extension trợ lý có engine từ 1.13.6). Key TRÙNG lõi →
         # process/attach tự nối. Văn bản đề nghị gửi Sở Nội vụ → chọn cơ quan cấp Sở như "sua-doi-thong-tin-ho-so-
@@ -8108,6 +8115,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.004614 (QT-122), cùng cổng Bộ VHTTDL (liz-*) và cùng cơ chế 2 trang với cấp đổi ngay trên.
         # ke_khai_links đặt selectSo → DVCQG chọn Tỉnh rồi gạt "Sở". Key TRÙNG lõi → process/attach tự nối.
         "detect": {
@@ -8718,6 +8726,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012945, Sở Nội vụ (ke_khai selectSo). Form.io + attp-row 7 dòng, engine tách/gộp trang
         # (sourceSegments) → có thể scan cả bộ hồ sơ vào một PDF.
         "detect": {
@@ -8830,6 +8839,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012943, Sở Nội vụ (ke_khai selectSo). Form.io + attp-row 7 dòng, engine tách/gộp trang.
         "detect": {
             "urlIncludes": ["019d2bfb-138a-761e-a8e5-014dbed4f2be"],

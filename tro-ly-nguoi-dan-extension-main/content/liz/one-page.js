@@ -3,6 +3,7 @@
 //   - selectResultMethod: tích ô cam kết (nút "Lưu và nộp hồ sơ" của cổng chỉ mở sau khi tích), gạt ô "Đề nghị nhận
 //     kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)" theo postOffice; tích thì cổng mọc khối người nhận
 //     (recipient_*) → điền theo khối "Thông tin người nộp hồ sơ", báo ô đã điền / ô bắt buộc còn trống;
+//     fillRecipient=false (câu hỏi VNPost sau ô cam kết): không điền, chỉ cuộn tới khối người nhận + báo ô còn trống;
 //   - guidedSubmit: tích lại ô cam kết, soát ô bắt buộc đang hiện, chờ nút nộp mở rồi bấm, đọc thông báo lỗi của cổng;
 //   - chặng ô cam kết riêng (sidebar khai supportsLizCommitSelf):
 //       lizCommitWatch: đọc ô cam kết + theo dõi — công dân tự tích / bỏ tích thì báo sidebar (lizCommitChanged);
@@ -164,6 +165,11 @@
     return out.filter(Boolean);
   }
 
+  function recipientMissing() {
+    return RECIPIENT.map((spec) => fieldOf(document.querySelector(spec.selector)))
+      .filter((mf) => mf && (!valueOf(mf) || invalid(mf))).map(labelOf).filter(Boolean);
+  }
+
   async function fillRecipient() {
     const filled = [];
     const fields = [];
@@ -197,6 +203,12 @@
     const appeared = await waitFor(() => document.querySelector('input[name="recipient_name"]'), 3000);
     if (!appeared) return { ok: true, commit, filled: [], missing: [] };
     await sleep(300);
+    if (msg.fillRecipient === false) {
+      // Câu hỏi VNPost sau ô cam kết (BE 13/11): công dân tự điền khối người nhận + chọn cách thanh toán lệ phí →
+      // chỉ cuộn tới khối đó, trả các ô người nhận còn trống để trợ lý kể tên.
+      (fieldOf(appeared) || appeared).scrollIntoView?.({ block: "center", behavior: "smooth" });
+      return { ok: true, commit, filled: [], missing: recipientMissing() };
+    }
     return { ok: true, commit, ...(await fillRecipient()) };
   }
 

@@ -1027,7 +1027,11 @@ async def handle_turn(
         r.actions = [{"type": "press_chip", "send": voice_send}]
         return r
     # Bảng chính sách theo (bước × cách nói): câu không hiểu / ngoài luồng / đi tiếp / quay lại / làm lại / xác nhận trống.
-    reply = await cn_policy.intercept(conv, intent, client_page_context)
+    # Riêng lúc trợ lý đang hỏi ô VNPost của cổng Bộ VHTTDL: "có" / "không đồng ý" là câu trả lời, để chặng đó xử lý.
+    reply = None
+    if not (intent.kind in {"confirm", "deny", "unknown"}
+            and tpm.liz_postal_waiting(conv, get_procedure(conv.get("procedure_key") or ""))):
+        reply = await cn_policy.intercept(conv, intent, client_page_context)
     if reply is None:
         reply = await _handle_turn_inner(conv, intent, client_page_context, client_url)
     reply = await resume.after_turn(conv, intent, reply, client_page_context)

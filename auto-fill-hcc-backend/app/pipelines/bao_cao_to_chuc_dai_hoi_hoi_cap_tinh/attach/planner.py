@@ -34,13 +34,13 @@ from app.pipelines._shared import fold as _fold
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.kinh_doanh_tach_giay_to import split_requested
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.attach import prompt
-from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach.planner import (
+from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach.dinh_kem_tach.planner import (
     _page_subset,
     _segment_text,
     _source_segment,
     _split_ocr_pages,
 )
-from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.attach.planner import (
+from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.attach.dinh_kem_tach.planner import (
     _coerce_int,
     _fallback_segment,
     _merge_adjacent,

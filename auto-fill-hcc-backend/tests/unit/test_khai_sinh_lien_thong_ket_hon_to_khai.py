@@ -317,6 +317,32 @@ def test_benh_vien_co_trong_bang_lay_xa_theo_bang_de_xa_ocr_doc_sai():
     assert out["NsDiaChi"]["tinh"] == "Lâm Đồng"
 
 
+def test_to_khai_ocr_sai_ten_benh_vien_lay_noi_sinh_theo_giay_chung_sinh():
+    # Ảnh 13/11: tờ khai viết tay OCR ra "Sắt nhị … thanh mưu" → bảng không nhận ra, ô Phường/Xã trống.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Tỉnh Lâm Đồng", "xa": "", "diaChi": "Bệnh viện Sắt nhị Tỉnh Lâm Đồng, số 57 thanh mưu"},
+        "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "BỆNH VIỆN SẢN NHI LÂM ĐỒNG"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Lang Biang - Đà Lạt"
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản Nhi Lâm Đồng"
+
+
+def test_to_khai_noi_sinh_khong_phai_co_so_y_te_hoac_khac_tinh_giu_to_khai():
+    gcs = {"tinh": "Lâm Đồng", "diaChi": "Bệnh viện Sản Nhi Lâm Đồng"}
+    # Sinh ở nhà: tờ khai ghi địa chỉ, không phải cơ sở y tế.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt", "diaChi": "Số 5 đường A"}, "Gcs_NoiSinh": gcs})
+    assert out["NsDiaChi"]["diaChi"] == "Số 5 đường A"
+    # Tờ khai ghi cơ sở ở tỉnh khác giấy chứng sinh.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Hà Nội", "xa": "Phường Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}, "Gcs_NoiSinh": gcs})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Phụ sản Hà Nội"
+    # Giấy chứng sinh cũng không nhận ra → giữ tờ khai.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Lâm Đồng", "xa": "", "diaChi": "Bệnh viện Sắt nhị"},
+        "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "Bệnh viện Sắt nhị"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sắt nhị"
+
+
 def test_benh_vien_ten_cu_the_hon_thang_ten_goc():
     from app.pipelines._shared.hospital_lookup import lookup_hospital
     assert lookup_hospital("Bệnh viện Sản Nhi Bắc Ninh số 2, đường X")["xa"] == "Phường Võ Cường"
@@ -394,6 +420,51 @@ def test_bang_benh_vien_bac_ninh_chi_dung_xa_hien_hanh():
     import app.pipelines._shared.hospital_lookup as hl
     rows = json.loads((Path(hl.__file__).parent / "data_bv" / "bv_bac_ninh.json").read_text(encoding="utf-8"))
     assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
+
+
+def test_benh_vien_quang_tri_ca_hai_tinh_cu_va_ba_doi_ten():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Quảng Trị", "xa": "Phường Đông Lường", "diaChi": "Bệnh viện Đa khoa tỉnh Quảng Trị, 266 Hùng Vương"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Nam Đông Hà"
+    assert lookup_hospital("Bệnh viện Hữu nghị Việt Nam Cu Ba Đồng Hới")["xa"] == "Phường Đồng Hới"
+    assert lookup_hospital("BV đa khoa huyện Bố Trạch")["xa"] == "Xã Hoàn Lão"
+    # TTYT huyện → TTYT khu vực (7/2025) → BVĐKKV (QĐ 936/QĐ-UBND 19/3/2026).
+    assert lookup_hospital("TTYT huyện Hải Lăng")["xa"] == "Xã Diên Sanh"
+    assert lookup_hospital("TTYTKV Thạch Hãn")["xa"] == "Phường Quảng Trị"
+    assert lookup_hospital("BVĐKKV Đakrông")["xa"] == "Xã Hướng Hiệp"
+    assert lookup_hospital("TTYT huyện Triệu Phong")["xa"] == "Xã Triệu Phong"
+    assert lookup_hospital("TTYT huyện Triệu Phong cơ sở 2")["xa"] == "Xã Nam Cửa Việt"
+    # Huyện Quảng Ninh (Quảng Bình cũ) không được kéo BVĐK tỉnh Quảng Ninh về.
+    assert lookup_hospital("Bệnh viện Đa khoa Quảng Ninh", "Tỉnh Quảng Ninh") is None
+
+
+def test_benh_vien_dong_nai_ca_hai_tinh_cu_va_ten_de_nham():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Đồng Nai", "xa": "", "diaChi": "Bệnh viện Đa khoa Đồng Nai"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Tam Hiệp"
+    assert lookup_hospital("BVĐK Thống Nhất Đồng Nai")["xa"] == "Phường Long Bình"
+    # TTYT Thống Nhất ở Bàu Hàm 2 (Dầu Giây); BVĐKKV và TTYT KV Long Khánh là hai nơi.
+    assert lookup_hospital("TTYT huyện Thống Nhất")["xa"] == "Phường Dầu Giây"
+    assert lookup_hospital("BVĐKKV Long Khánh")["xa"] == "Phường Bình Lộc"
+    assert lookup_hospital("TTYT KV Long Khánh")["xa"] == "Phường Long Khánh"
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Bình Phước")["xa"] == "Phường Đồng Xoài"
+    assert lookup_hospital("TTYT huyện Bù Gia Mập")["xa"] == "Xã Phú Nghĩa"
+    assert lookup_hospital("Bệnh viện Thống Nhất", "Thành phố Hồ Chí Minh") is None
+    assert lookup_hospital("Bệnh viện Nhi đồng 1", "Thành phố Hồ Chí Minh") is None
+    assert lookup_hospital("Trung tâm Y tế quận Tân Phú", "Thành phố Hồ Chí Minh") is None
+
+
+def test_bang_benh_vien_quang_tri_dong_nai_chi_dung_xa_hien_hanh():
+    import json
+    from pathlib import Path
+
+    from app.pipelines._shared.area_remap import is_current_area
+    import app.pipelines._shared.hospital_lookup as hl
+    for name in ("bv_quang_tri.json", "bv_dong_nai.json"):
+        rows = json.loads((Path(hl.__file__).parent / "data_bv" / name).read_text(encoding="utf-8"))
+        assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
 
 
 def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():

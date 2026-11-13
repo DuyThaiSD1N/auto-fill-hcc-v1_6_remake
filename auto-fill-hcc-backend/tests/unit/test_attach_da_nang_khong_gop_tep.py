@@ -7,7 +7,11 @@ from app.attachments.schemas import AttachmentPlanResp
 
 
 def _planner(pkg: str):
-    return importlib.import_module(f"app.pipelines.{pkg}.attach.planner")
+    # Thủ tục có hai chế độ đính kèm: hàm/bảng nằm ở dinh_kem_tach, attach/planner.py chỉ điều phối.
+    try:
+        return importlib.import_module(f"app.pipelines.{pkg}.attach.dinh_kem_tach.planner")
+    except ModuleNotFoundError:
+        return importlib.import_module(f"app.pipelines.{pkg}.attach.planner")
 
 
 def _assert_khong_gop(items: list[dict]) -> None:

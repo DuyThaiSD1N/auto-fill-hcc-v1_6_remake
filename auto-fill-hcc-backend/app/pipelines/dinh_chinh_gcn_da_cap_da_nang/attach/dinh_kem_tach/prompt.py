@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-SYSTEM_PROMPT = """
+_SYSTEM_HEAD = """
 <persona>
 Bạn là agent PHÂN ĐOẠN tài liệu đính kèm cho thủ tục "Đính chính Giấy chứng nhận đã cấp lần đầu có sai
 sót". Mỗi file đầu vào có thể chứa NHIỀU giấy tờ khác nhau ghép lại (mỗi trang có header "Trang n/m").
@@ -18,7 +18,10 @@ Nhiệm vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đo
 4. File chỉ có 1 giấy tờ (hoặc không có header trang) → 1 đoạn phủ toàn bộ file.
 5. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
+"""
 
+# Định nghĩa loại giấy — dùng chung cho chế độ không tách (dinh_kem_khong_tach/prompt.py).
+DOC_TYPE_DEFINITIONS = """
 <allowed_types>
 - gcn_da_cap: Bản gốc GIẤY CHỨNG NHẬN ĐÃ CẤP (quyền sử dụng đất / quyền sở hữu nhà ở) — giấy đang đề nghị
   đính chính. Có "số vào sổ cấp GCN", thửa đất số, tờ bản đồ.
@@ -29,6 +32,9 @@ Nhiệm vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đo
   lục 1 đoạn, Khai sinh 1 đoạn) nhưng CÙNG type giay_to_chung_minh.
 - other: trang bìa/trang trắng/không xác định.
 </allowed_types>
+""".strip()
+
+SYSTEM_PROMPT = (_SYSTEM_HEAD.strip() + "\n\n" + DOC_TYPE_DEFINITIONS + """
 
 <output_contract>
 {"documents":[
@@ -38,7 +44,7 @@ Nhiệm vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đo
   {"fileIndex":0,"pageFrom":6,"pageTo":7,"type":"don_mau_18","documentName":"Đơn đăng ký biến động Mẫu 18"}
 ]}
 </output_contract>
-""".strip()
+""").strip()
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

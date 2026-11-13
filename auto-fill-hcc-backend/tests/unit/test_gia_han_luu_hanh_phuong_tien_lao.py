@@ -7,7 +7,9 @@ from pathlib import Path
 import fitz
 import pytest
 
-from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.attach import planner
+from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.attach import planner as dieu_phoi
+from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.attach.dinh_kem_khong_tach import planner as khong_tach
+from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.attach.dinh_kem_tach import planner
 from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.process import mapper
 from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.process.schema import UI_COMP_BY_NAME
 from app.process.schemas import FileItem
@@ -118,3 +120,99 @@ def test_day_so_dai_ma_tem_khong_dien_vao_bien_so():
     assert any("mã tem" in w for w in warnings)
     ui, _ = _run({**_FACTS, "DeNghi_BienSo": "NN-5889"})
     assert ui["data[BienSoXeGiaHan]"]["value"] == "NN-5889"
+
+
+# ---------------- Hai chế độ đính kèm theo cài đặt "Tách giấy tờ" ----------------
+def _named_pdf(name: str, pages: int) -> FileItem:
+    return _pdf(pages).model_copy(update={"name": name})
+
+
+_HAI_CHE_DO_TEXTS = {
+    "hoso.pdf": "\n".join(f"───── Trang {i}/6 ─────\nx" for i in range(1, 7)),
+    "de_nghi.pdf": "GIẤY ĐỀ NGHỊ GIA HẠN thời gian lưu hành của phương tiện tại Việt Nam",
+}
+_HAI_CHE_DO_SEGMENTS = [
+    {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "giay_to_chung_minh", "documentName": "Báo giá sửa chữa xe"},
+    {"fileIndex": 0, "pageFrom": 2, "pageTo": 6, "type": "giay_phep_lien_van", "documentName": "Giấy phép liên vận"},
+    {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "giay_de_nghi", "documentName": ""},
+]
+_HAI_CHE_DO_TYPES = {0: ["giay_to_chung_minh", "giay_phep_lien_van"], 1: ["giay_de_nghi"]}
+
+
+def _hai_che_do(monkeypatch, segments, doc_types):
+    """OCR + LLM chia giấy (chế độ tách) + LLM liệt kê loại (chế độ không tách) giả; Exception = raise."""
+    calls = {"tach": 0, "khong_tach": 0}
+
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": _HAI_CHE_DO_TEXTS[f["name"]]} for f in files]
+
+    async def fake_tach(documents):
+        calls["tach"] += 1
+        if isinstance(segments, Exception):
+            raise segments
+        return segments
+
+    async def fake_khong_tach(documents):
+        calls["khong_tach"] += 1
+        if isinstance(doc_types, Exception):
+            raise doc_types
+        return {d["index"]: doc_types[d["index"]] for d in documents}
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_with_llm", fake_tach)
+    monkeypatch.setattr(khong_tach, "_classify_with_llm", fake_khong_tach)
+    return calls, [_named_pdf("hoso.pdf", 6), _named_pdf("de_nghi.pdf", 1)]
+
+
+def _assert_nguyen_tep(items):
+    assert sorted(i["fileIndex"] for i in items) == [0, 1]
+    assert not any(i.get("sourceSegments") or i.get("sourceFileIndexes") for i in items)
+    assert all(i["target"] == "attp-row" and i["untickUnplannedRows"] is True and i["loaiBan"] == "Bản chính"
+               for i in items)
+
+
+@pytest.mark.asyncio
+async def test_bat_tach_pdf_gop_tach_dung_dong_khong_sot_trang(monkeypatch):
+    calls, files = _hai_che_do(monkeypatch, _HAI_CHE_DO_SEGMENTS, AssertionError("không gọi"))
+    res = await dieu_phoi.plan(files, {"splitDocuments": True}, None)
+    assert calls == {"tach": 1, "khong_tach": 0}
+    hoso = [i for i in res["attachments"] if i["fileIndex"] == 0]
+    pages = [(i["componentIndex"], i["sourceSegments"][0]["pageIndexes"]) for i in hoso]
+    assert pages == [(1, [0]), (2, [1, 2, 3, 4, 5])]
+    de_nghi = next(i for i in res["attachments"] if i["fileIndex"] == 1)
+    assert de_nghi["componentIndex"] == 1 and "sourceSegments" not in de_nghi
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("options", [{}, None, {"splitDocuments": False}])
+async def test_tat_tach_moi_tep_mot_muc_dung_dong_giay_chinh(monkeypatch, options):
+    calls, files = _hai_che_do(monkeypatch, AssertionError("không gọi"), _HAI_CHE_DO_TYPES)
+    res = await dieu_phoi.plan(files, options, None)
+    assert calls == {"tach": 0, "khong_tach": 1}
+    _assert_nguyen_tep(res["attachments"])
+    by = {i["fileIndex"]: i for i in res["attachments"]}
+    # Báo giá + giấy phép liên vận cùng tệp → giấy có dòng riêng (liên vận, dòng 2) thắng; giữ tên gốc.
+    assert by[0]["componentIndex"] == 2 and by[0]["detectedType"] == "giay_phep_lien_van"
+    assert by[0]["documentName"] == "hoso"
+    assert by[1]["componentIndex"] == 1 and by[1]["documentName"] == planner._ROWS["giay_de_nghi"]["documentName"]
+    assert not any("Chưa nhận ra" in e for e in res["errors"])
+
+
+@pytest.mark.asyncio
+async def test_bat_tach_ma_llm_chia_giay_loi_thi_dinh_nguyen_tep(monkeypatch):
+    calls, files = _hai_che_do(monkeypatch, RuntimeError("LLM sập"), _HAI_CHE_DO_TYPES)
+    res = await dieu_phoi.plan(files, {"splitDocuments": True}, None)
+    assert calls == {"tach": 1, "khong_tach": 1}
+    _assert_nguyen_tep(res["attachments"])
+    assert {i["fileIndex"]: i["componentIndex"] for i in res["attachments"]} == {0: 2, 1: 1}
+    assert res["errors"][0] == "attachment_agent (tách): LLM sập"
+
+
+@pytest.mark.asyncio
+async def test_khong_tach_llm_loi_moi_tep_ve_dong_1_giu_ten_goc(monkeypatch):
+    _, files = _hai_che_do(monkeypatch, AssertionError("không gọi"), RuntimeError("hết hạn"))
+    res = await dieu_phoi.plan(files, {}, None)
+    _assert_nguyen_tep(res["attachments"])
+    assert [(i["componentIndex"], i["documentName"]) for i in res["attachments"]] == [(1, "hoso"), (1, "de_nghi")]
+    assert "attachment_agent: hết hạn" in res["errors"]
+    assert any("Chưa nhận ra loại giấy tờ" in e and "hoso.pdf" in e and "de_nghi.pdf" in e for e in res["errors"])

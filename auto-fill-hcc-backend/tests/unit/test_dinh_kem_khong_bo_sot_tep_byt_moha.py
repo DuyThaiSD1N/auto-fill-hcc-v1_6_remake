@@ -1,8 +1,12 @@
 """Đính kèm không bỏ sót tệp (thủ tục Bộ Y tế / MOHA): giấy chưa rõ loại và CCCD không có dòng riêng vẫn ra một mục ở
 dòng cố định (thường là dòng Đơn / Tờ khai), giữ tên tệp gốc + một cảnh báo liệt kê các tệp đã đính chung."""
 
+import asyncio
+import json
+
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.attach import planner as cchn_duoc
-from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import planner as gcn_duoc
+from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import planner as gcn_duoc_attach
+from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach.dinh_kem_tach import planner as gcn_duoc
 from app.pipelines.cap_lai_to_quoc_ghi_cong.attach import planner as tqgc
 from app.pipelines.cap_moi_giay_phep_hoat_dong_kham_benh_chua_benh.attach import planner as kcb
 from app.pipelines.cong_bo_du_dk_tiem_chung.attach import planner as tiem_chung
@@ -12,6 +16,9 @@ from app.pipelines.khuyet_tat.attach import planner as khuyet_tat
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.attach import planner as sua_doi
 from app.pipelines.tro_cap_tho_cung_liet_si.attach import planner as tho_cung
 from app.pipelines.uu_dai_ncc_tu_tran.attach import planner as tu_tran
+from app.process.schemas import FileItem
+from app.services import ocr
+from app.services.llm import client as llm_client
 
 _LA = "Noi dung giay to khong khop mau nao trong bang thanh phan ho so cua thu tuc nay"
 _CCCD = "CĂN CƯỚC CÔNG DÂN Citizen Identity Card số 001000000001 họ và tên NGUYEN VAN A"
@@ -153,3 +160,88 @@ def test_tu_tran_tach_tep_toan_trang_trang_dinh_nguyen_vao_o_ban_khai():
 def test_tu_tran_tep_la_va_cccd_vao_o_ban_khai():
     items, _, _ = tu_tran.build_plan_items(_files("la.pdf", "cccd.pdf"), _ocr(la=_LA, cccd=_CCCD), {0: "other"})
     assert [(i["fileName"], i["slotKey"]) for i in items] == [("la.pdf", "ban_khai"), ("cccd.pdf", "ban_khai")]
+
+# ── GCN đủ ĐKKD dược: hai chế độ đính kèm theo cài đặt "Tách giấy tờ" (gọi qua bộ điều phối) ──
+
+_DUOC_PAGES = [
+    "ĐƠN ĐỀ NGHỊ ĐIỀU CHỈNH GIẤY CHỨNG NHẬN ĐỦ ĐIỀU KIỆN KINH DOANH DƯỢC Kính gửi: Sở Y tế. Nội dung xin điều chỉnh",
+    "GIẤY CHỨNG NHẬN ĐĂNG KÝ HỘ KINH DOANH Tên hộ kinh doanh: NHÀ THUỐC MINH AN",
+    "CHỨNG CHỈ HÀNH NGHỀ DƯỢC Số: 000001/CCHN-D-SYT Họ và tên: NGUYEN VAN A",
+    _CCCD,
+]
+_DUOC_GOP = "\n".join(f"───── Trang {i + 1}/{len(_DUOC_PAGES)} ─────\n{t}" for i, t in enumerate(_DUOC_PAGES))
+
+
+def _duoc_patch(monkeypatch, texts, segments=None, doc_types=None, split_raises=False):
+    """OCR theo tên tệp; LLM trả `segments` cho lượt chia giấy, `doc_types` cho lượt phân loại không tách."""
+    calls = []
+
+    async def fake_ocr(files, **_):
+        return [{"name": f["name"], "text": texts.get(f["name"], "")} for f in files]
+
+    async def fake_chat(messages, **_):
+        system = messages[0]["content"]
+        mode = "tach" if "PHÂN ĐOẠN" in system else "khong_tach"
+        calls.append(mode)
+        if mode == "tach":
+            if split_raises:
+                raise RuntimeError("llm chia giấy hỏng")
+            return json.dumps({"documents": segments or []})
+        return json.dumps({"documents": [{"index": i, "docTypes": t} for i, t in (doc_types or {}).items()]})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_client, "chat", fake_chat)
+    return calls
+
+
+def _duoc_files(*names):
+    return [FileItem(name=n, type="image/jpeg" if n.endswith(".jpg") else "application/pdf", dataUrl="", role="")
+            for n in names]
+
+
+def test_gcn_duoc_bat_tach_pdf_gop_tach_dung_dong_khong_sot_trang(monkeypatch):
+    calls = _duoc_patch(monkeypatch, {"hoso.pdf": _DUOC_GOP}, segments=[
+        {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "don_dieu_chinh"},
+        {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "giay_to_phap_ly"},
+        {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "cchn_duoc"},
+        # trang 4 (CCCD) LLM bỏ sót → hậu xử lý bù đoạn, rule OCR nhận CCCD → dòng Đơn điều chỉnh.
+    ])
+    res = asyncio.run(gcn_duoc_attach.plan(_duoc_files("hoso.pdf"), {"splitDocuments": True}))
+    got = [(i["componentIndex"], i["detectedType"], i["sourceSegments"][0]["pageIndexes"]) for i in res["attachments"]]
+    assert got == [(3, "don_dieu_chinh", [0]), (5, "giay_to_phap_ly", [1]), (4, "cchn_duoc", [2]), (3, "cccd", [3])]
+    pages = sorted(p for i in res["attachments"] for s in i["sourceSegments"] for p in s["pageIndexes"])
+    assert pages == [0, 1, 2, 3]
+    assert all(i["target"] == "attp-row" and i["loaiBan"] == "Bản chính" for i in res["attachments"])
+    assert calls == ["tach"]
+
+
+def test_gcn_duoc_tat_tach_moi_tep_mot_muc_dung_dong_giay_chinh(monkeypatch):
+    texts = {"don.pdf": "ĐƠN ĐỀ NGHỊ CẤP LẠI GIẤY CHỨNG NHẬN ĐỦ ĐIỀU KIỆN KINH DOANH DƯỢC",
+             "gop.pdf": _DUOC_GOP, "cccd.jpg": _CCCD, "la.pdf": _LA}
+    doc_types = {0: ["don_cap_lai"], 1: ["giay_to_phap_ly", "cchn_duoc", "cccd"], 2: ["cccd"]}  # la.pdf LLM bỏ sót
+    for options in ({}, None, {"splitDocuments": False}, {"splitDocuments": "true"}):
+        calls = _duoc_patch(monkeypatch, texts, doc_types=doc_types)
+        res = asyncio.run(gcn_duoc_attach.plan(_duoc_files("don.pdf", "gop.pdf", "cccd.jpg", "la.pdf"), options))
+        items = res["attachments"]
+        assert sorted(i["fileIndex"] for i in items) == [0, 1, 2, 3]
+        assert all("sourceSegments" not in i and i["target"] == "attp-row" and i["loaiBan"] == "Bản chính"
+                   and i["needsAddComponent"] is False for i in items)
+        by = _by_file(items)
+        assert {n: by[n]["componentIndex"] for n in by} == {"don.pdf": 1, "gop.pdf": 4, "cccd.jpg": 1, "la.pdf": 1}
+        assert by["don.pdf"]["componentName"] == "Đơn đề nghị cấp lại Giấy chứng nhận đủ điều kiện kinh doanh dược"
+        assert by["gop.pdf"]["detectedType"] == "cchn_duoc"
+        assert by["gop.pdf"]["documentName"] == "gop" and by["la.pdf"]["documentName"] == "la"
+        assert any("gop.pdf" in e and "dòng 5" in e for e in res["errors"])
+        assert any("cccd.jpg, la.pdf" in e for e in res["errors"])
+        assert calls == ["khong_tach"]
+
+
+def test_gcn_duoc_tach_loi_quay_ve_dinh_nguyen_tep(monkeypatch):
+    calls = _duoc_patch(monkeypatch, {"hoso.pdf": _DUOC_GOP}, split_raises=True,
+                        doc_types={0: ["giay_to_phap_ly", "don_dieu_chinh", "cchn_duoc"]})
+    res = asyncio.run(gcn_duoc_attach.plan(_duoc_files("hoso.pdf"), {"splitDocuments": True}))
+    assert [(i["fileName"], i["componentIndex"], i["detectedType"]) for i in res["attachments"]] == [
+        ("hoso.pdf", 3, "don_dieu_chinh")]
+    assert "sourceSegments" not in res["attachments"][0]
+    assert any("(tách)" in e for e in res["errors"])
+    assert calls == ["tach", "khong_tach"]

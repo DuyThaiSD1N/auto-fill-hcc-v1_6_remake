@@ -1,6 +1,7 @@
 """Cổng dvc.moc.gov.vn (Bộ Xây dựng) tick sẵn mọi dòng thành phần hồ sơ → mọi thủ tục của cổng gửi
 untickUnplannedRows để FE bỏ chọn tất cả trước khi đính. Dữ liệu giả."""
 
+import importlib
 import inspect
 
 from app.attachments.schemas import AttachmentPlanResp
@@ -17,11 +18,23 @@ def _moc_attach_planners():
                 yield proc["key"], inspect.getmodule(fn)
 
 
+def _mode_modules(module):
+    """Thủ tục có hai chế độ đính kèm: attach/planner.py chỉ điều phối → kiểm cả planner tách lẫn không tách."""
+    modes = []
+    for name in ("dinh_kem_tach", "dinh_kem_khong_tach"):
+        try:
+            modes.append(importlib.import_module(f"{module.__package__}.{name}.planner"))
+        except ModuleNotFoundError:
+            pass
+    return modes or [module]
+
+
 def test_moi_planner_cong_bo_xay_dung_gui_co_bo_tick():
     planners = list(_moc_attach_planners())
     assert len(planners) >= 8
     for key, module in planners:
-        assert '"untickUnplannedRows": True' in inspect.getsource(module), key
+        for mode in _mode_modules(module):
+            assert '"untickUnplannedRows": True' in inspect.getsource(mode), (key, mode.__name__)
 
 
 def test_co_di_qua_response_model_cua_auto_fill():

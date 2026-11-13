@@ -335,6 +335,33 @@ def test_parcel_address_taken_verbatim_from_don_toa_lac_tai():
     assert apply_printed_fallback(raw, [{"text": no_ward}]) == raw
 
 
+def test_owner_phone_from_joint_don_when_name_line_shows_spouse():
+    """Vợ chồng cùng đứng Đơn: dòng Tên ghi chồng (bên tặng cho), dòng giấy tờ kê cả CCCD của vợ (chủ hồ sơ) -> LLM bỏ
+    SĐT; số "Điện thoại liên hệ" của mục I vẫn là của chủ hồ sơ."""
+    don = (
+        "ĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT\n1. Người sử dụng đất:\n"
+        "a) Tên(2): Ông: Trần Văn Bình; - Sinh ngày: 01/02/1985\n"
+        "b) Giấy tờ nhân thân/pháp nhân(2): 0560 8500 1111 cấp ngày 01/01/2021 + 0561 9000 2222 cấp ngày 01/01/2021\n"
+        "c) Địa chỉ(2): 12 Đường Số 5, phường Nam Nha Trang, tỉnh Khánh Hòa\n"
+        "d) Điện thoại liên hệ (nếu có): 0905123456... Hộp thư điện tử (nếu có): ...\n"
+        "2. Nội dung biến động (3):\n- Tặng cho ½ quyền sử dụng đất\nNgười viết đơn\nLê Thị Hoa\nTrần Văn Bình\n"
+    )
+    raw = {"ChuHoSo_HoTen": "Lê Thị Hoa", "ChuHoSo_SoDinhDanh": "056190002222", "NguoiNop_HoTen": "Lê Thị Hoa"}
+    fields = apply_printed_fallback(raw, [{"text": don}])
+    assert fields["ChuHoSo_DienThoai"] == "0905123456"
+    facts = {key: value for key, value in fields.items() if key != "ThuaDat_DiaChiDayDu"}
+    values = _values(mapper.enrich(_facts(**facts, **_PARCEL))[0])
+    assert values["data[phoneNumber]"] == values["data[ownerPhoneNumber]"] == "0905123456"
+    # LLM đã có số -> giữ; mục I không có tên/CCCD của chủ hồ sơ (Đơn của người khác) -> không bù.
+    assert apply_printed_fallback(dict(raw, ChuHoSo_DienThoai="0912000111"), [{"text": don}])[
+        "ChuHoSo_DienThoai"] == "0912000111"
+    other = dict(raw, ChuHoSo_HoTen="Phạm Văn Nam", ChuHoSo_SoDinhDanh="001090003333")
+    assert "ChuHoSo_DienThoai" not in apply_printed_fallback(other, [{"text": don}])
+    # Dòng điện thoại để chấm trống -> không bù.
+    blank = don.replace("0905123456...", "....")
+    assert "ChuHoSo_DienThoai" not in apply_printed_fallback(raw, [{"text": blank}])
+
+
 def test_schema_and_prompt_cover_transfer_traps():
     assert {"ThuaDat_SoThuaCu", "ThuaDat_SoToCu", "Don_NoiDungBienDong", "ChuHoSo_NguoiCungSuDung"} <= ALLOWED
     for phrase in ("BÊN NHẬN", "THỬA ĐẤT KHÁC", "MỚI NHẤT", "[04.x]", "Nam Nha Trang"):

@@ -1,0 +1,467 @@
+[
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Quảng Trị",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quảng Trị",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐK tỉnh Quảng Trị",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Nam - Cu Ba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Nam - Cuba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Việt Nam - Cu Ba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Việt Nam - Cuba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Cu Ba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Cuba Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Triệu Hải",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Triệu Hải",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bắc Quảng Bình",
+        "xa": "Phường Bắc Gianh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bắc Quảng Trị",
+        "xa": "Phường Bắc Gianh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Bắc Quảng Bình",
+        "xa": "Phường Bắc Gianh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Bắc Quảng Trị",
+        "xa": "Phường Bắc Gianh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Vĩnh Linh",
+        "xa": "Xã Vĩnh Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Vĩnh Linh",
+        "xa": "Xã Vĩnh Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Vĩnh Linh",
+        "xa": "Xã Vĩnh Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Vĩnh Linh",
+        "xa": "Xã Vĩnh Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Gio Linh",
+        "xa": "Xã Gio Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Gio Linh",
+        "xa": "Xã Gio Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Gio Linh",
+        "xa": "Xã Gio Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Gio Linh",
+        "xa": "Xã Gio Linh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế thành phố Đông Hà",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế TP Đông Hà",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đông Hà",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Đông Hà",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Đông Hà",
+        "xa": "Phường Nam Đông Hà",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cam Lộ",
+        "xa": "Xã Cam Lộ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Cam Lộ",
+        "xa": "Xã Cam Lộ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Cam Lộ",
+        "xa": "Xã Cam Lộ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Cam Lộ",
+        "xa": "Xã Cam Lộ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Triệu Phong",
+        "xa": "Xã Triệu Phong",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Triệu Phong",
+        "xa": "Xã Triệu Phong",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Triệu Phong",
+        "xa": "Xã Triệu Phong",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Triệu Phong",
+        "xa": "Xã Triệu Phong",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Triệu Phong cơ sở 2",
+        "xa": "Xã Nam Cửa Việt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Triệu Phong cơ sở 2",
+        "xa": "Xã Nam Cửa Việt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Triệu Phong cơ sở 2",
+        "xa": "Xã Nam Cửa Việt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Phòng khám Đa khoa khu vực Bồ Bản",
+        "xa": "Xã Nam Cửa Việt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế thị xã Quảng Trị",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế TX Quảng Trị",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Thạch Hãn",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Thạch Hãn",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Thạch Hãn",
+        "xa": "Phường Quảng Trị",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hải Lăng",
+        "xa": "Xã Diên Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hải Lăng",
+        "xa": "Xã Diên Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Hải Lăng",
+        "xa": "Xã Diên Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Hải Lăng",
+        "xa": "Xã Diên Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Hướng Hóa",
+        "xa": "Xã Khe Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Hướng Hóa",
+        "xa": "Xã Khe Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Hướng Hóa",
+        "xa": "Xã Khe Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Hướng Hóa",
+        "xa": "Xã Khe Sanh",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đakrông",
+        "xa": "Xã Hướng Hiệp",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đa Krông",
+        "xa": "Xã Hướng Hiệp",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đakrông",
+        "xa": "Xã Hướng Hiệp",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Đakrông",
+        "xa": "Xã Hướng Hiệp",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Đakrông",
+        "xa": "Xã Hướng Hiệp",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Đakrông cơ sở 2",
+        "xa": "Xã Tà Rụt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Đakrông cơ sở 2",
+        "xa": "Xã Tà Rụt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Đakrông cơ sở 2",
+        "xa": "Xã Tà Rụt",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế Quân - Dân y huyện đảo Cồn Cỏ",
+        "xa": "Đặc khu Cồn Cỏ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế Quân dân y Cồn Cỏ",
+        "xa": "Đặc khu Cồn Cỏ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Cồn Cỏ",
+        "xa": "Đặc khu Cồn Cỏ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế đặc khu Cồn Cỏ",
+        "xa": "Đặc khu Cồn Cỏ",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa thành phố Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa TP Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Đồng Hới",
+        "xa": "Phường Đồng Hới",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Lệ Thủy",
+        "xa": "Xã Lệ Thủy",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lệ Thủy",
+        "xa": "Xã Lệ Thủy",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Lệ Thủy",
+        "xa": "Xã Lệ Thủy",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Lệ Thủy",
+        "xa": "Xã Lệ Thủy",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Quảng Ninh",
+        "xa": "Xã Ninh Châu",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Quảng Ninh",
+        "xa": "Xã Ninh Châu",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Quảng Ninh",
+        "xa": "Xã Ninh Châu",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Bố Trạch",
+        "xa": "Xã Hoàn Lão",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bố Trạch",
+        "xa": "Xã Hoàn Lão",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Bố Trạch",
+        "xa": "Xã Hoàn Lão",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Bố Trạch",
+        "xa": "Xã Hoàn Lão",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Tuyên Hóa",
+        "xa": "Xã Đồng Lê",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tuyên Hóa",
+        "xa": "Xã Đồng Lê",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Tuyên Hóa",
+        "xa": "Xã Đồng Lê",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Tuyên Hóa",
+        "xa": "Xã Đồng Lê",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Minh Hóa",
+        "xa": "Xã Minh Hóa",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Minh Hóa",
+        "xa": "Xã Minh Hóa",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Minh Hóa",
+        "xa": "Xã Minh Hóa",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Minh Hóa",
+        "xa": "Xã Minh Hóa",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế huyện Quảng Trạch",
+        "xa": "Xã Quảng Trạch",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Trung tâm Y tế khu vực Quảng Trạch",
+        "xa": "Xã Quảng Trạch",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa khu vực Quảng Trạch",
+        "xa": "Xã Quảng Trạch",
+        "tinh": "Tỉnh Quảng Trị"
+    },
+    {
+        "ten": "BVĐKKV Quảng Trạch",
+        "xa": "Xã Quảng Trạch",
+        "tinh": "Tỉnh Quảng Trị"
+    }
+]

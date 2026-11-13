@@ -246,9 +246,15 @@ def test_tich_xong_ma_con_o_bat_buoc_thi_van_hien_nut_nop_kem_nhac_dien_not():
     conv = _conv(SELF, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 1, "empty": 1}})
     _conclude(conv)
     r = _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True, "found": True})
-    assert "Lưu và nộp hồ sơ" in r.display_md and "1 ô bắt buộc" in r.display_md
-    assert _sends(r) == ["__action:tpm_submit"] and r.chips[0]["cta"] is True, "chỉ nút Lưu và nộp hồ sơ"
+    assert "VNPost" in r.display_md and "1 ô bắt buộc" in r.display_md
+    assert _sends(r) == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
     assert not r.cards
+    # Đang chờ trả lời VNPost mà hỏi xong vòng bổ sung: vẫn là hai nút Có / Không.
+    chips = field_review.next_chips(conv, get_procedure(LIZ_KEYS[0]), conv["field_review"]["chips"])
+    assert tpm.LIZ_POSTAL_YES_SEND in [c["send"] for c in chips]
+    no = _turn(conv, "action", "liz_postal", {"post": False})
+    assert "Lưu và nộp hồ sơ" in no.display_md and "1 ô bắt buộc" in no.display_md
+    assert _sends(no) == ["__action:tpm_submit"] and no.chips[0]["cta"] is True, "chỉ nút Lưu và nộp hồ sơ"
     # Hỏi xong vòng bổ sung mà ô vẫn trống: nút nộp vẫn còn.
     chips = field_review.next_chips(conv, get_procedure(LIZ_KEYS[0]), conv["field_review"]["chips"])
     assert [c["send"] for c in chips][:2] == ["__action:field_review_start", "__action:tpm_submit"]
@@ -281,18 +287,164 @@ def test_con_o_khong_bat_buoc_thi_van_dan_tich_o_cam_ket():
 
 
 @pytest.mark.parametrize("source", ["tick", "change", "watch", "manual"])
-def test_o_cam_ket_da_tich_thi_chi_con_nut_luu_va_nop(source):
+def test_o_cam_ket_da_tich_thi_hoi_vnpost(source):
+    # User 13/11: tích xong ô cam kết thì hỏi ô "Đề nghị nhận kết quả bản giấy tại nhà qua Bưu chính công ích (VNPost)".
     conv = _ready_conv(LIZ_KEYS[0])
     _conclude(conv)
     r = _turn(conv, "action", "liz_commit_report", {"source": source, "checked": True, "found": True})
-    assert "Lưu và nộp hồ sơ" in r.display_md and "Đã tích ô cam kết" in r.display_md
-    assert "nhận kết quả" not in r.display_md
-    assert r.chips == [tpm._submit_cta()] and r.chips[0]["cta"] is True and r.chips[0]["label"] == vi.TPM_SUBMIT_CTA
-    assert not r.cards, "user 10/11: bỏ thẻ cách nhận kết quả, chỉ nút Lưu và nộp hồ sơ"
-    assert not r.actions, "không gạt gì trên trang"
+    assert "Đã tích ô cam kết" in r.display_md and vi.LIZ_POSTAL_LABEL in r.display_md
+    assert _sends(r) == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
+    assert not any(c.get("cta") for c in r.chips), "chưa có nút cam nộp khi chưa trả lời"
+    assert not r.cards, "user 10/11: bỏ thẻ cách nhận kết quả"
+    assert not r.actions, "chưa gạt gì trên trang"
     st = conv["field_review"]
-    assert st["liz_commit_ok"] and st["chips"][-1] == tpm._submit_cta()
+    assert st["liz_commit_ok"] and st["liz_postal"] == "asked"
+    assert [c["send"] for c in st["chips"]][-2:] == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
     assert _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True}).display_md == ""
+
+
+def _postal_asked(key=None):
+    conv = _ready_conv(key or LIZ_KEYS[0])
+    _conclude(conv)
+    _turn(conv, "action", "liz_commit_report", {"source": "tick", "checked": True, "found": True})
+    return conv
+
+
+@pytest.mark.parametrize("how", [("action", "liz_postal", {"post": False}), ("deny", "", {})])
+def test_khong_nhan_qua_buu_dien_thi_nhan_luu_va_nop(how):
+    conv = _postal_asked()
+    r = _turn(conv, *how)
+    assert "Lưu và nộp hồ sơ" in r.display_md and r.chips == [tpm._submit_cta()]
+    assert not r.actions, "ô VNPost chưa tích thì không đụng trang"
+    st = conv["field_review"]
+    assert st["liz_postal"] == "no" and st["chips"][-1] == tpm._submit_cta()
+    assert not tpm.liz_postal_waiting(conv, get_procedure(LIZ_KEYS[0]))
+
+
+@pytest.mark.parametrize("how", [("action", "liz_postal", {"post": True}), ("confirm", "", {})])
+def test_co_nhan_qua_buu_dien_thi_tro_ly_tich_o_vnpost(how):
+    conv = _postal_asked()
+    r = _turn(conv, *how)
+    assert r.display_md == "" and len(r.actions) == 1
+    action = r.actions[0]
+    assert action["type"] == "select_result_method" and action["method"] == "postal"
+    assert action["postOffice"] is True and action["fillRecipient"] is False, "không điền hộ khối người nhận"
+    assert "commitLabel" not in action, "ô cam kết công dân đã tích, không đụng"
+    assert conv["field_review"]["liz_postal"] == "yes"
+
+
+RECIPIENT_MISSING = ["Tên người nhận", "Số điện thoại người nhận", "Địa chỉ người nhận", "Đơn vị hành chính"]
+
+
+def test_extension_khong_co_vong_bo_sung_thi_ke_ten_o_nguoi_nhan():
+    caps = {k: v for k, v in SELF.items() if k != "supportsFieldReview"}
+    conv = _conv(caps, LIZ_KEYS[0], field_review={"stats": {"filled": 19, "optional": 0, "required": 0, "empty": 0},
+                                                  "liz_commit_ok": True, "liz_postal": "yes"})
+    rep = _turn(conv, "action", "result_method_report", {"method": "postal", "ok": True, "filled": [],
+                                                         "missing": RECIPIENT_MISSING})
+    assert ", ".join(RECIPIENT_MISSING) in rep.display_md
+    assert "Thanh toán lệ phí khi hồ sơ được giải quyết" in rep.display_md and "Lưu và nộp hồ sơ" in rep.display_md
+    assert rep.chips == [tpm._submit_cta()] and not rep.cards and not rep.actions
+
+
+def test_tich_vnpost_xong_tro_ly_hoi_tung_o_nguoi_nhan_noi_go_la_dien(monkeypatch):
+    # User 13/11 (ảnh): gõ / nói "tên người nhận: Nguyễn Văn A" thì trợ lý hiểu để điền, như vòng bổ sung toàn trình.
+    from unittest.mock import AsyncMock
+
+    from app.channels.handfree.chat import flow
+    from app.channels.handfree.chat.field_review import agent
+
+    monkeypatch.setattr(flow.conv_store, "save", AsyncMock())
+    conv = _postal_asked()
+    asyncio.run(flow.handle_turn(conv, Intent("action", "liz_postal", {"post": True}), dict(LIZ_PAGE)))
+
+    def turn(kind, value, payload=None):
+        return asyncio.run(flow.handle_turn(conv, Intent(kind, value, payload or {}), dict(LIZ_PAGE)))
+
+    rep = turn("action", "result_method_report", {"method": "postal", "ok": True, "filled": [],
+                                                  "missing": RECIPIENT_MISSING})
+    assert vi.LIZ_POSTAL_LABEL in rep.display_md and "tên người nhận:" in rep.display_md
+    assert "Thanh toán lệ phí khi hồ sơ được giải quyết" in rep.display_md
+    assert [a["type"] for a in rep.actions] == ["field_review_next"], "mở vòng hỏi, finalize không dừng"
+    assert conv["field_review"]["running"] is True
+    focus = turn("event", "field_review_focus", {"field": {
+        "key": "recipient_name", "name": "recipient_name", "label": "Tên người nhận*", "kind": "text",
+        "required": True, "value": ""}})
+    assert "Tên người nhận" in focus.display_md
+    assert "từ trên xuống" not in focus.display_md, "câu giới thiệu vòng hỏi đã nói ở câu mở đầu"
+    assert flow.field_review.asking(conv), "câu gõ / nói tiếp theo đi thẳng vào vòng hỏi (router)"
+    seen = []
+
+    async def fake_interpret(text, field, visited=None):
+        seen.append((text, field["label"]))
+        return agent.Answer("value", "Nguyễn Văn A")
+
+    monkeypatch.setattr(agent, "interpret", fake_interpret)
+    filled = turn("action", "field_review_answer", {"text": "tên người nhận: Nguyễn Văn A"})
+    assert seen == [("tên người nhận: Nguyễn Văn A", "Tên người nhận")]
+    assert filled.actions[0]["type"] == "field_review_next"
+    assert filled.actions[0]["apply"] == {"key": "recipient_name", "value": "Nguyễn Văn A"}
+    # Hết ô trống: chốt bằng câu nhắc chọn cách thanh toán lệ phí + nút cam nộp.
+    end = turn("event", "field_review_focus", {"field": None, "applied": {"ok": True},
+                                               "stats": {"filled": 20, "optional": 0, "required": 0}})
+    assert "Thanh toán lệ phí" in end.display_md and "Lưu và nộp hồ sơ" in end.display_md
+    assert end.chips[-1] == tpm._submit_cta()
+
+
+def test_tich_o_vnpost_khong_duoc_thi_dan_cong_dan_tu_tich():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": True})
+    r = _turn(conv, "action", "result_method_report", {"method": "postal", "ok": False, "error": "x"})
+    assert "chưa tích được" in r.display_md and "Thanh toán lệ phí" in r.display_md
+    assert r.chips == [tpm._submit_cta()]
+
+
+def test_extension_cu_tu_dien_nguoi_nhan_thi_dan_kiem_tra():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": True})
+    r = _turn(conv, "action", "result_method_report", {"method": "postal", "ok": True,
+                                                        "filled": ["Tên người nhận"], "missing": []})
+    assert "kiểm tra phần thông tin người nhận" in r.display_md and "Thanh toán lệ phí" in r.display_md
+
+
+def test_doi_y_khong_nhan_sau_khi_da_tich_vnpost_thi_bo_tich():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": True})
+    r = _turn(conv, "action", "liz_postal", {"post": False})
+    assert "Lưu và nộp hồ sơ" in r.display_md
+    assert r.actions[0]["type"] == "select_result_method" and r.actions[0]["postOffice"] is False
+    # Báo muộn của lượt "có" bị bỏ qua; bỏ tích được thì im (đã nói ở lượt trả lời).
+    assert _turn(conv, "action", "result_method_report", {"method": "postal", "ok": True}).display_md == ""
+    assert _turn(conv, "action", "result_method_report", {"method": "counter", "ok": True}).display_md == ""
+    failed = _turn(conv, "action", "result_method_report", {"method": "counter", "ok": False})
+    assert "chưa bỏ tích được" in failed.display_md
+
+
+def test_cau_khong_ro_luc_hoi_vnpost_thi_hoi_lai():
+    conv = _postal_asked()
+    r = _turn(conv, "unknown", "")
+    assert "VNPost" in r.display_md and _sends(r) == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
+
+
+def test_noi_khong_dong_y_qua_flow_khong_bi_bang_chinh_sach_chan(monkeypatch):
+    # Lời nói "không đồng ý" ra deny có _voice: bảng chính sách (cach_noi) không được nuốt mất câu trả lời.
+    from unittest.mock import AsyncMock
+
+    from app.channels.handfree.chat import flow
+
+    monkeypatch.setattr(flow.conv_store, "save", AsyncMock())
+    conv = _postal_asked()
+    r = asyncio.run(flow.handle_turn(conv, Intent("deny", "", {"_voice": True, "do_chac": "cao"}), dict(LIZ_PAGE)))
+    assert "Lưu và nộp hồ sơ" in r.display_md and conv["field_review"]["liz_postal"] == "no"
+
+
+def test_bo_tich_cam_ket_roi_tich_lai_sau_khi_tra_loi_thi_khong_hoi_lai():
+    conv = _postal_asked()
+    _turn(conv, "action", "liz_postal", {"post": False})
+    _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": False})
+    r = _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True})
+    assert "Lưu và nộp hồ sơ" in r.display_md and "VNPost" not in r.display_md
+    assert r.chips == [tpm._submit_cta()]
 
 
 def test_tich_truoc_khi_tro_ly_dan_thi_im_den_luot_dan():
@@ -317,7 +469,7 @@ def test_tich_khong_duoc_thi_dan_cong_dan_tich_tay_va_hien_lai_nut_cam():
     assert "chưa tích được" in r.display_md and _sends(r) == ["__action:liz_commit_tick"]
     assert r.actions[0]["type"] == "liz_commit_watch", "công dân tích tay thì vẫn nhận ra"
     gone = _turn(conv, "action", "liz_commit_report", {"source": "tick", "checked": False, "found": False})
-    assert _sends(gone) == ["__action:tpm_submit"], "không thấy ô thì không chặn công dân"
+    assert _sends(gone) == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND], "không thấy ô thì không chặn công dân"
 
 
 def test_nut_toi_da_tich_cua_ban_truoc_van_doc_o():
@@ -352,7 +504,8 @@ def test_khong_tim_thay_o_cam_ket_thi_khong_chan_cong_dan():
     conv = _ready_conv(LIZ_KEYS[0])
     _conclude(conv)
     r = _turn(conv, "action", "liz_commit_report", {"source": "manual", "checked": False, "found": False})
-    assert _sends(r) == ["__action:tpm_submit"]
+    assert "tự tích" in r.display_md and "VNPost" in r.display_md
+    assert _sends(r) == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
 
 
 def test_nop_khong_tich_ho_o_cam_ket():
@@ -412,13 +565,19 @@ def test_xuyen_luong_dien_dinh_dan_tich_roi_nut_nop(monkeypatch, required):
     tick = turn("action", "liz_commit_tick")
     assert tick.actions == [{"type": "liz_commit_tick", "commitLabel": get_procedure(key)["lizFlow"]["commitLabel"]}]
     done = turn("action", "liz_commit_report", {"source": "tick", "checked": True, "found": True})
-    assert "Lưu và nộp hồ sơ" in done.display_md and done.chips == [tpm._submit_cta()] and not done.cards
+    assert "VNPost" in done.display_md and not done.cards
+    assert [c["send"] for c in done.chips] == [tpm.LIZ_POSTAL_YES_SEND, tpm.LIZ_POSTAL_NO_SEND]
+    no = turn("action", "liz_postal", {"post": False})
+    assert "Lưu và nộp hồ sơ" in no.display_md and no.chips == [tpm._submit_cta()]
 
 
 def test_da_tich_roi_hoi_xong_vong_bo_sung_thi_nut_nop():
     conv = _ready_conv(LIZ_KEYS[0])
     _conclude(conv)
     _turn(conv, "action", "liz_commit_report", {"source": "change", "checked": True})
+    md, _ = field_review._ready(get_procedure(LIZ_KEYS[0]), conv["field_review"], conv)
+    assert "đã tích ô cam kết" in md and "VNPost" in md, "chưa trả lời ô VNPost thì hỏi"
+    _turn(conv, "action", "liz_postal", {"post": True})
     md, _ = field_review._ready(get_procedure(LIZ_KEYS[0]), conv["field_review"], conv)
     assert "đã tích ô cam kết" in md and "Lưu và nộp hồ sơ" in md
     assert "liz_commit_point" not in conv["field_review"]

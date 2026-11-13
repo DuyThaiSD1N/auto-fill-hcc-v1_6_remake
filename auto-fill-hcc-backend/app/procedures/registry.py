@@ -1391,6 +1391,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-nuoi-con-nuoi-trong-nuoc",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 2.001263. Cổng DVCQG, tờ khai là eForm hộ tịch "NCNV5" (tokhaidientu.moj.gov.vn,
         # id 2081) — engine legacy x-*. Thông tin cha/mẹ nuôi nằm TRONG khối x-select-area
         # (VoChongNhanNuoi khi vợ chồng cùng nhận, MeNuoi/ChaNuoi khi đơn thân).
@@ -2330,6 +2331,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Cùng cổng Bộ VHTTDL và CÙNG giao diện với cấp đổi / thẻ nội địa / tại điểm ở trên (liz-*, engine
         # content/fill-liz.js), nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-122). matthc=1.004614 được ghép
         # tự động từ ke_khai_links.json (key trùng). Cụm tên lấy từ ô Thủ tục ("QT-122 - Thủ tục cấp lại thẻ
@@ -5258,7 +5260,7 @@ PROCEDURES: list[dict] = [
         # SINH/SINH VIÊN (chủ hồ sơ) vì HSSV chưa có VNeID nên cha/mẹ nộp thay; (2) ĐÍNH KÈM.
         # mode "attach" → nút chính "Đính kèm vào hồ sơ"; nút phụ "Điền thông tin người ủy quyền"
         # (popup.js BAC_NINH_AUTHORIZED_PERSON_CONFIG). KHÔNG vào BAC_NINH_THREE_STEP (không có đơn).
-        # supportsSplitDocuments: BE luôn tách file gộp theo trang → route vào 4 mã KQ + fileDinhKem.
+        # supportsSplitDocuments: bật tách → BE cắt file gộp theo trang, route vào 4 mã KQ + fileDinhKem; tắt → đính nguyên tệp.
         # Khóa host + mã QG 1.014581 (mã hiển thị trùng trên cổng khác).
         "detect": {
             "urlScope": ["dichvucong.bacninh.gov.vn"],
@@ -8225,6 +8227,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.014104, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Cổng Bộ Y tế — Form.io, engine
         # fillFormStandard dom-* + attach attp-row tách PDF gộp theo trang (field-key trùng #101). URL SPA
         # là ObjectId → detect theo cụm tên; URL DVCQG + MaTTHC do with_ke_khai_detect_urls ghép thêm.
@@ -9035,6 +9038,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-gcn-da-cap-da-nang",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
         # attp-row. CÙNG cổng + field-key contact block Y HỆT #110 (cap-gcn-so-nha-da-nang); THÊM Phần II
         # thửa đất (diaChiThuaDat/SoToBanDo/SoThuaDat/province2/district2). noidungyeucaugiaiquyet = nội
@@ -9070,6 +9074,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # 1.012817 — Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn (Form.io, field-key Y HỆT dang-ky-dat-dai-
         # lan-dau-da-nang: khối "Thông tin chung" 2 vai + panel thửa đất) + attach attp-row 3 dòng. Key trùng
         # ke_khai_links.json; mapping theo "Mapping_XacDinhLaiDienTichDatO_DVC_DaNang.xlsx".
@@ -9207,6 +9212,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013995. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với #75) + attach attp-row 8 dòng, tách PDF gộp theo
         # trang (Đơn trang 1 / GCN trang 2-3). Họ tên + CCCD + ngày sinh người nộp khoá theo tài khoản → mốc
@@ -9248,6 +9254,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013977. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với 1.013995) + attach attp-row 9 dòng: PDF gộp nhiều chục
         # trang được tách theo trang rồi GOM mỗi dòng thành MỘT file (giấy tờ chính trước, đính kèm chung sau).
@@ -9290,6 +9297,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012945. Cổng DVCQG — Form.io, engine fillFormStandard dom-* + attach attp-row 7 dòng. Eform
         # chung: "Chọn mẫu đơn" (data[ChonTruongHop]) mở MỘT trong 4 fieldset chia / tách / sáp nhập / hợp nhất,
         # mỗi fieldset một bộ field-key; mẫu tách TRÙNG field-key Phần I → mapper gắn scope fieldset2. Họ tên +
@@ -9366,6 +9374,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012943. Cổng DVCQG — Form.io, engine fillFormStandard dom-* + attach attp-row 7 dòng. Form có mẫu
         # khai "Văn bản báo cáo kết quả đại hội" (tên hội, số văn bản, ngày đại hội, loại đại hội, nhiệm kỳ, địa điểm,
         # toàn văn quyết nghị, datagrid hồ sơ gửi kèm, TM. BCH). Họ tên + CCCD + ngày sinh người nộp khoá theo tài
@@ -9403,6 +9412,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012906 (Sở Xây dựng). Form.io, engine fillFormStandard dom-* + attach attp-row 6 dòng (tách
         # theo trang: Đơn trang 1 + CCCD trang 2 của cùng một PDF về 2 dòng). Phần I người nộp khoá họ tên/ngày
         # sinh/CCCD theo tài khoản → mốc formContext; Đơn đăng ký dự thi (panel brokerExamRegistrationForm) dùng
@@ -9433,6 +9443,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012756 (Văn phòng Đăng ký đất đai). Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io,
         # engine fillFormStandard dom-* (CÙNG field-key panel "Thông tin chung" với 1.013977) + attach attp-row 2
         # dòng: KHÔNG tách file — PDF gộp đính nguyên vào dòng 1 (Đơn). Họ tên + CCCD + ngày sinh người nộp khoá
@@ -9815,6 +9826,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "gia-han-luu-hanh-phuong-tien-lao",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.002063 (chỉ nằm trong option data[dichVu]). Cổng Bộ Xây dựng dvc.moc.gov.vn — Form.io key
         # PHẲNG (khác liên vận Việt–Lào key lồng), engine fill standard dom-* + attach attp-row 2 dòng.
         # URL chỉ ObjectId → detect theo tên thủ tục.
@@ -9901,6 +9913,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.004002 (Sở Xây dựng, dvc.moc.gov.vn). Form.io, engine fillFormStandard dom-* + attach attp-row 4
         # dòng: PDF gộp cả bộ được tách theo trang, dòng 3 gộp Hợp đồng → Hóa đơn → GCN đăng ký cũ, dòng 4 gộp Đơn 07
         # → Đơn xóa 10. Phần I = người đại diện của CHỦ MỚI (không khoá theo tài khoản, chỉ ngày sinh đổ sẵn). Không
@@ -9969,6 +9982,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013997 (UBND cấp xã). Đi từ link kê khai DVCQG, chọn tỉnh + phường/xã như bình thường rồi sang
         # cổng ngành Nông nghiệp và Môi trường: Form.io (Phần I người nộp khoá theo tài khoản, Phần II chủ hồ sơ,
         # ô Ghi chú) + bảng Angular MỘT dòng Đơn đề nghị Mẫu 2a/2b, engine attp-row. Không urlScope: mã ghép từ
@@ -10221,6 +10235,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-noi-quy-lao-dong",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 2.001955 — cổng DVCQG (Bộ Nội vụ), Form.io (engine fillFormStandard dom-*) theo
         # Mapping_DangKy_NoiQuyLaoDong_BoNoiVu.xlsx. Phần I người nộp khoá họ tên/CCCD/ngày sinh theo tài khoản →
         # mốc formContext. Chủ hồ sơ LUÔN là doanh nghiệp: bỏ tích "Người nộp là chủ hồ sơ", chọn chonDoiTuong1 =

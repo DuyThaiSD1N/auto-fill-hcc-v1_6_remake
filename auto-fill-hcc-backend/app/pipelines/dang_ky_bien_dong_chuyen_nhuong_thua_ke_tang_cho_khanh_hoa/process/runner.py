@@ -10,6 +10,7 @@ import re
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.cap_doi_gcn_khanh_hoa.process.runner import (
+    _DON_END,
     _DON_TITLE,
     _WARD_IN_TEXT,
     _as_dict,
@@ -25,6 +26,7 @@ from .schema import ALIASES, ALLOWED, COMPACT_COMP_BY_NAME, FIELDS
 _PROVINCE = "Khánh Hòa"
 _TOA_LAC = re.compile(r"tọa\s+lạc\s+tại\s*:?\s*", re.IGNORECASE)
 _TOA_LAC_END = re.compile(r"\.(?:\s|$)|\n\s*(?:có\s+nhu\s+cầu|III\.|IV\.)", re.IGNORECASE)
+_DON_PHONE = re.compile(r"điện\s*thoại[^:\n]*:\s*(\d[\d\s.\-]{7,18}\d)", re.IGNORECASE)
 
 
 def _don_parcel_address(text: str) -> str | None:
@@ -42,9 +44,35 @@ def _don_parcel_address(text: str) -> str | None:
     return address if address and _WARD_IN_TEXT.search(address) else None
 
 
+def _don_owner_phone(text: str, owner_name: object, owner_id: object) -> str | None:
+    """Số "Điện thoại liên hệ" ở mục I của Đơn khi mục đó có tên hoặc số CCCD của chủ hồ sơ.
+
+    Vợ chồng cùng đứng Đơn: dòng "Tên" chỉ ghi người chồng (bên tặng cho) nhưng dòng giấy tờ nhân thân kê cả CCCD của
+    người vợ (bên nhận = chủ hồ sơ) — LLM thấy tên khác nên bỏ số điện thoại dù OCR đọc rõ."""
+    title = _DON_TITLE.search(text)
+    if not title:
+        return None
+    end = _DON_END.search(text, title.end())
+    section = text[title.end():end.start() if end else title.end() + 2000]
+    owner_digits = re.sub(r"\D", "", str(owner_id or ""))
+    compact = re.sub(r"[\s.\-]", "", section)
+    name = _fold(owner_name) if owner_name else ""
+    if not ((len(owner_digits) >= 9 and owner_digits in compact) or (name and name in _fold(section))):
+        return None
+    match = _DON_PHONE.search(section)
+    if not match:
+        return None
+    digits = re.sub(r"\D", "", match.group(1))
+    return digits if len(digits) >= 9 else None
+
+
 def apply_printed_fallback(raw_fields, documents: list[dict]) -> dict:
     fields = _as_dict(raw_fields)
     text = "\n".join(document.get("text") or "" for document in documents)
+    if not fields.get("ChuHoSo_DienThoai"):
+        phone = _don_owner_phone(text, fields.get("ChuHoSo_HoTen"), fields.get("ChuHoSo_SoDinhDanh"))
+        if phone:
+            fields["ChuHoSo_DienThoai"] = phone
     parcel_address = _don_parcel_address(text)
     if parcel_address:
         fields["ThuaDat_DiaChiDayDu"] = parcel_address

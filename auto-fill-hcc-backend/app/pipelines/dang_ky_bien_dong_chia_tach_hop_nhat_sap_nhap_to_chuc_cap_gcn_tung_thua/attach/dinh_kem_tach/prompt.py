@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 
-SYSTEM_PROMPT = """
+_SYSTEM_HEAD = """
 <persona>
 Bạn là agent PHÂN ĐOẠN tài liệu đính kèm cho thủ tục "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản
 gắn liền với đất do chia, tách, hợp nhất, sáp nhập tổ chức, chuyển đổi mô hình tổ chức, chuyển đổi loại hình
@@ -22,7 +22,10 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
    trang phụ lục/bản vẽ đi kèm giấy phép) là MỘT đoạn. File chỉ có 1 giấy tờ → 1 đoạn phủ toàn bộ file.
 5. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
+"""
 
+# Định nghĩa loại giấy — dùng chung cho chế độ không tách (dinh_kem_khong_tach/prompt.py).
+DOC_TYPE_DEFINITIONS = """
 <allowed_types>
 - don_mau_18: ĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT (Mẫu số 18) — "Kính gửi", "Người sử
   dụng đất, chủ sở hữu tài sản", "Nội dung biến động", "Tên cũ/Tên mới", "Giấy tờ liên quan ... nộp kèm",
@@ -70,6 +73,9 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
   qd_to_chuc_lai, không phải gcn_dang_ky_doanh_nghiep.
 - Giấy phép xây dựng có nhắc quy hoạch 1/500 → vẫn là giay_to_tai_san, KHÔNG phải qd_quy_hoach_chi_tiet.
 </disambiguation>
+""".strip()
+
+SYSTEM_PROMPT = (_SYSTEM_HEAD.strip() + "\n\n" + DOC_TYPE_DEFINITIONS + """
 
 <output_contract>
 {"documents":[
@@ -79,7 +85,7 @@ mỗi đoạn là MỘT giấy tờ, và gán loại cho nó.
   {"fileIndex":0,"pageFrom":7,"pageTo":12,"type":"gcn_dang_ky_doanh_nghiep","documentName":"Giấy chứng nhận đăng ký doanh nghiệp"}
 ]}
 </output_contract>
-""".strip()
+""").strip()
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

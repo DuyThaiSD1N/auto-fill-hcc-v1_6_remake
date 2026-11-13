@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 
-SYSTEM_PROMPT = """
+_SYSTEM_HEAD = """
 <persona>
 Bạn là agent PHÂN ĐOẠN tài liệu đính kèm cho thủ tục "Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy
 chứng nhận hoặc đăng ký thay đổi về tài sản gắn liền với đất". Mỗi file đầu vào có thể chứa NHIỀU giấy tờ ghép
@@ -21,7 +21,10 @@ MỘT giấy tờ, và gán loại cho nó.
    MỘT đoạn. File chỉ có 1 giấy tờ (hoặc không có header trang) → 1 đoạn phủ toàn bộ file.
 5. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
+"""
 
+# Định nghĩa loại giấy — dùng chung cho chế độ không tách (dinh_kem_khong_tach/prompt.py).
+DOC_TYPE_DEFINITIONS = """
 <allowed_types>
 - don_mau_18: ĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT (Mẫu số 18) — "Kính gửi", "Người sử
   dụng đất, chủ sở hữu tài sản", "Nội dung biến động", "Cam đoan", chữ ký người viết đơn.
@@ -49,6 +52,9 @@ MỘT giấy tờ, và gán loại cho nó.
   đầu tư, quy hoạch 1/500 → vẫn là ho_so_thiet_ke (một đoạn cho cả văn bản).
 - Đơn Mẫu 18 có dòng "(1) Giấy chứng nhận đã cấp" trong mục 3 → vẫn là don_mau_18, không phải gcn_da_cap.
 </disambiguation>
+""".strip()
+
+SYSTEM_PROMPT = (_SYSTEM_HEAD.strip() + "\n\n" + DOC_TYPE_DEFINITIONS + """
 
 <output_contract>
 {"documents":[
@@ -57,7 +63,7 @@ MỘT giấy tờ, và gán loại cho nó.
   {"fileIndex":1,"pageFrom":1,"pageTo":17,"type":"ho_so_thiet_ke","documentName":"Thông báo kết quả thẩm định"}
 ]}
 </output_contract>
-""".strip()
+""").strip()
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

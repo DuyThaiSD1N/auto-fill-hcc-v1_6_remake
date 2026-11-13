@@ -318,7 +318,15 @@ def _ready(proc: dict | None, st: dict, conv: dict | None = None) -> tuple[str, 
     done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
     if liz(proc) and liz_commit_self(conv, proc):
         if st.get("liz_commit_ok"):
-            return _say(vi.LIZ_READY_SUBMIT if st.get("liz_result_step") else vi.LIZ_COMMIT_READY_SUBMIT, done=done)
+            if st.get("liz_result_step"):
+                return _say(vi.LIZ_READY_SUBMIT, done=done)
+            if st.get("liz_postal") == "yes":
+                return _say(vi.LIZ_POSTAL_READY_SUBMIT, done=done)
+            if st.get("liz_postal") == "no":
+                return _say(vi.LIZ_COMMIT_READY_SUBMIT, done=done)
+            # Đã tích ô cam kết mà chưa trả lời ô VNPost (user 13/11): hỏi luôn, nút Có / Không nằm trong bộ nút đã lưu.
+            st["liz_postal"] = "asked"
+            return _say(vi.LIZ_POSTAL_READY_ASK, done=done)
         _ask_commit(st)
         return _say(vi.LIZ_COMMIT_ASK, done=done, commit=liz_commit_label(proc))
     if liz(proc):
@@ -1223,6 +1231,8 @@ def finalize(conv: dict, intent, reply) -> None:
         from app.channels.handfree.procedure_registry import get_procedure
 
         reply.actions = [*reply.actions, liz_commit_watch_action(get_procedure(conv.get("procedure_key") or ""))]
+    if st.pop("loop_started_now", False):
+        return  # vòng hỏi vừa mở trong chính lượt này (cổng liz: tích ô VNPost xong hỏi ô người nhận) — không dừng
     if not st.get("running") or _ours(intent):
         return
     # Trang một trang không rời bước Kê khai: page_status chỉ là trang đổi DOM (ô mới hiện ra sau câu trả lời).

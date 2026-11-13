@@ -3,7 +3,7 @@
 from app.attachments.schemas import AttachmentPlanResp
 from app.pipelines.cap_gcn_diem_tro_choi_dien_tu.attach import planner as tro_choi
 from app.pipelines.cung_cap_thong_tin_quy_hoach.attach import planner as quy_hoach
-from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.attach import planner as ho_tro_sx
+from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.attach.dinh_kem_tach import planner as ho_tro_sx
 from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.attach import planner as mien_giam
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.attach import planner as dien_tich_nha_o
 from app.pipelines.xet_tuyen_vien_chuc_lai_chau.attach import planner as xet_tuyen_lai_chau
