@@ -15,7 +15,7 @@ _LLM_KEEP = ("n", "t0", "purpose", "caller", "fn", "max_tokens", "thinking", "pr
              "finish_reason", "model", "target")
 _OCR_KEEP = ("idx", "type", "sha256", "bytes", "cache", "reason", "pages", "chars", "provider")
 
-_PREQ_FIELDS = ("options", "fields", "extracted")
+_PREQ_FIELDS = ("options", "fields", "extracted", "second_pass")
 _PREQ_FILE_KEEP = ("type", "role", "size", "sha256")
 
 _DOSSIER_FIELDS = ("applicant_name", "portal_dossier_ref")

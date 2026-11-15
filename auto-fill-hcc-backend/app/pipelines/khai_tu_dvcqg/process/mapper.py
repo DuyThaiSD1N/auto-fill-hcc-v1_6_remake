@@ -9,7 +9,13 @@ import unicodedata
 from datetime import date
 
 from app.pipelines._shared.area_remap import city_province_area, remap_area
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import (
+    default_issuer,
+    id_doc_type,
+    issuer_by_issue_date,
+    normalize_issuer,
+    short_issuer,
+)
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 
@@ -243,11 +249,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
         issuer = normalize_issuer(values.get("NguoiMat_NoiCap")) or (
             default_issuer(issue_date) if len(_digits(number)) == 12 and issue_date else "")
+        # Chốt lại theo ngày cấp trước khi suy loại giấy tờ: tờ khai in sẵn tên Cục, thẻ cấp từ 01/7/2024 là thẻ căn cước.
+        issuer = issuer_by_issue_date(issuer, issue_date)
         add_choice("citizenLoaiGiaytotuythan_NgdcKT",
                    _snap(LOAI_GIAY_TO, _id_doc_type_with_number(number, values.get("NguoiMat_LoaiGiayTo"), issuer)))
         add("citizenSogiaytotuythan_NgdcKT", number)
         add_date("citizenField19", issue_date)
-        add("citizenNoicapgiaytotuythan_NgdcKT", issuer)
+        # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
+        add("citizenNoicapgiaytotuythan_NgdcKT", short_issuer(issuer))
 
     add("citizenField56", _ngay(values.get("NguoiMat_NgayMat")))
     gio = re.match(r"^\s*(\d{1,2})\s*[:hg]\s*(\d{1,2})", str(values.get("NguoiMat_GioMat") or ""))

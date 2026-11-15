@@ -90,13 +90,39 @@ def test_ui_keys_exist_in_snapshot():
         assert name in data_names, name
 
 
-def test_self_by_identity_skips_subject_block():
-    out, warnings = _enrich({**SUBJECT, "NguoiThayDoi_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}, _context())
-    assert out[0] == {"name": "citizenNycNoicutru", "comp": "sjs-radio", "value": "Trong Nước",
-                      "default": True, "onlyIfEmpty": True}
+def _subject_block(out):
+    return [f for f in out if f["name"].startswith("citizenNDK")]
+
+
+def test_ban_than_tra_khoi_nguoi_thay_doi_theo_tai_khoan_va_chi_ghi_khi_o_con_trong():
+    values = {**SUBJECT, "NguoiThayDoi_HoTen": "Nguyễn Văn A",
+              "NguoiThayDoi_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}
+    out, warnings = _enrich(values, _context())
+    by = {f["name"]: f["value"] for f in out}
     assert out[1] == {"name": RELATION, "comp": "sjs-radio", "value": "Bản thân"}
-    assert not [n for n in _names(out) if n.startswith("citizenNDK")]
-    assert {"citizenViecDangKy", "citizenTTNoidungdk", "citizenLydothaydoi"} <= set(_names(out))
+    # Số giấy tờ lượt trích đọc ra số khác → theo tài khoản; tài khoản lưu tên không dấu → giữ tên có dấu trên giấy.
+    assert by["citizenNDKSodinhdanh"] == by["citizenNDKSogiaytotuythan"] == ACCOUNT["applicantIdentityNumber"]
+    assert by["citizenNDKHoTen"] == "NGUYỄN VĂN A"
+    # Tài khoản không gửi ngày sinh → theo giấy tờ của chính người đó.
+    assert by["citizenNDK_NgaySinh"] == "01/02/1990"
+    # Ô địa chỉ gộp không có chế độ "chỉ ghi khi còn trống" → không trả địa chỉ đọc từ giấy đè lên địa chỉ cổng chép.
+    assert "citizenNDKNoiCuTru_TrongNuoc" not in by and "citizenNDKNoiCuTru" not in by
+    block = _subject_block(out)
+    assert block and all(f.get("onlyIfEmpty") is True for f in block)
+    assert {"citizenViecDangKy", "citizenTTNoidungdk", "citizenLydothaydoi"} <= set(by)
+    assert not any(f.get("onlyIfEmpty") for f in out if f not in block and f["name"] != "citizenNycNoicutru")
+    assert not warnings
+
+
+def test_ban_than_ma_giay_doc_ra_nguoi_khac_thi_chi_tra_o_lay_tu_tai_khoan():
+    """Số trùng tài khoản nhưng nhân thân lượt trích là của người khác: không ghép hai người vào một khối."""
+    out, warnings = _enrich({**SUBJECT, "NguoiThayDoi_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}, _context())
+    by = {f["name"]: f["value"] for f in out}
+    assert by[RELATION] == "Bản thân"
+    assert by["citizenNDKHoTen"] == "NGUYEN VAN A" and by["citizenNDKSodinhdanh"] == ACCOUNT["applicantIdentityNumber"]
+    assert not {"citizenNDK_NgaySinh", "citizenNDKGioitinh", "citizenNDKNgaycapgiaytotuythan"} & set(by)
+    # Không có ngày cấp thì loại thẻ / nơi cấp chỉ là suy đoán → chỉ trả số.
+    assert "citizenNDKLoaiGiaytotuythan" not in by and "citizenNDKCoquancap" not in by
     assert not warnings
 
 
@@ -108,29 +134,14 @@ def test_only_account_documents_means_self_marked_default():
     out, warnings = _enrich({}, context)
     relation = next(f for f in out if f["name"] == RELATION)
     assert relation["value"] == "Bản thân" and relation["default"] is True
-    assert not [n for n in _names(out) if n.startswith("citizenNDK")]
+    assert {f["name"] for f in _subject_block(out)} == {
+        "citizenNDKHoTen", "citizenNDKSodinhdanh", "citizenNDKSogiaytotuythan", "citizenNDKLoaicutru", "citizenNDKQuocTich"}
     assert not warnings
 
 
-def test_other_person_fills_subject_block_in_order():
-    out, _ = _enrich(SUBJECT, _context())
-    by = {f["name"]: f for f in out}
-    names = _names(out)
-    assert by[RELATION]["value"] == "Khác" and not by[RELATION].get("default")
-    assert names.index(RELATION) < names.index("citizenNDKHoTen")
-    assert by["citizenNDKQuocTich"]["value"] == "Trung Quốc" and not by["citizenNDKQuocTich"].get("default")
-    assert names.index("citizenNDKNoiCuTru") < names.index("citizenNDKNoiCuTru_TrongNuoc")
-    assert by["citizenNDKNoiCuTru_TrongNuoc"]["radio"] == "citizenNDKNoiCuTru"
-    assert by["citizenViecDangKy"]["value"] == "Cải chính thông tin hộ tịch"
-    assert by["citizenLoainghiepvu"]["value"] == "Giấy khai sinh"
-    assert by["citizenSoluongbansao"]["value"] == "3"
-
-
-def test_birth_date_uses_current_portal_key_as_text():
-    out, _ = _enrich(SUBJECT, _context())
-    birth = next(f for f in out if f["name"] == "citizenNDK_NgaySinh")
-    assert birth == {"name": "citizenNDK_NgaySinh", "comp": "sjs-text", "value": SUBJECT["NguoiThayDoi_NgaySinh"]}
-    assert "citizenNDKNgaysinh" not in _names(out)
+def test_nguoi_khac_thi_khoi_nguoi_thay_doi_ghi_de_nhu_cu():
+    out, _ = _enrich(SUBJECT, _context(relation="Khác"))
+    assert _subject_block(out) and not any(f.get("onlyIfEmpty") for f in _subject_block(out))
 
 
 def test_relation_by_name_when_no_identity_is_marked_default():

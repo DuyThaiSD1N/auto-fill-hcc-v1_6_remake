@@ -66,6 +66,8 @@ _WARD_PREFIX_RE = re.compile(r"(xa|phuong|thi tran|tt|p|x)\s+\S|p\d+$")
 _UNIT_BREAK_RE = re.compile(
     r"(?<!thị)\s+(?=(?:xã|phường|thị trấn|huyện|quận|thị xã|thành phố|tỉnh)\s|(?:TT|TX|TP|[PXHQT])\.\s*\S)",
     re.IGNORECASE)
+# Ô chi tiết chỉ có chữ tiền tố ("Thôn", "Bản") hoặc chỉ một con số ("131"): tên thôn / tên đường đã bị cắt đi.
+_BARE_DETAIL_RE = re.compile(r"(thon|ban|xom|ap|khu|khu pho|to dan pho|tdp|to|so nha|so|duong|pho)|\d+[a-z]?")
 _PREFIX_WORDS = frozenset("tinh thanh pho tp quan huyen thi xa tran phuong tx tt q h p x t".split())
 # Nhãn họ tên của khối cha / mẹ trên giấy hộ tịch.
 _PARENT_LABEL_RE = re.compile(r"ten (me|cha|bo)\b|nguoi (me|cha)\b")
@@ -283,7 +285,20 @@ def split_fault(parts: dict, text: str) -> str:
         for (_, stop), (begin, _) in zip(admin, admin[1:] + [(len(flat), len(flat))]):
             if any(word not in _PREFIX_WORDS for word in flat[stop:begin].split()):
                 return "dòng viết liền mà còn chữ giữa các cấp chưa xếp vào cấp nào"
+    if _BARE_DETAIL_RE.fullmatch(detail):
+        return "chi tiết chỉ còn chữ tiền tố hoặc một con số, phần tên đã bị cắt sang cấp khác"
     return ""
+
+
+def _detail_spans_lines(parts: dict, item: dict) -> bool:
+    """Địa chỉ in hai dòng (thẻ căn cước: thôn / số nhà ở dòng trên, "xã, huyện, tỉnh" ở dòng dưới) mà ô chi tiết lấy
+    chữ của cả hai dòng: chỗ xuống dòng là ranh giới giữa chi tiết và xã, không biết cụm đầu dòng dưới thuộc bên nào."""
+    detail = _flat(parts.get("diaChi"))
+    if not detail or item["text"] == item["line"]:
+        return False
+    upper = _flat(item["line"].split(":", 1)[-1])
+    lower = _flat(item["text"][len(item["line"]):])
+    return detail not in upper and detail not in lower
 
 
 def _is_post_merger(parts: dict) -> bool:
@@ -316,9 +331,13 @@ def current_faults(current: dict, best: dict, lines: list[dict], labels: dict, c
     xa = _bare(current.get("xa"))
     detail = _flat(current.get("diaChi"))
     district = _bare(best.get("huyen"))
-    if _level_prefix(current.get("xa")) == "huyen" or (district and xa == district and xa != _bare(best.get("xa"))):
+    # Sau sáp nhập nhiều xã / phường mới mang đúng tên huyện cũ: ô xã trùng tên huyện của dòng nguồn chỉ là lỗi khi
+    # lượt trích lấy CHÍNH dòng đó; lấy từ một dòng khác (dòng ba cấp mới) thì tên ấy là tên xã thật.
+    same_line = not sources or chosen in sources
+    if _level_prefix(current.get("xa")) == "huyen" or (
+            same_line and district and xa == district and xa != _bare(best.get("xa"))):
         faults.append("đưa tên cấp huyện vào ô xã")
-    elif _bare(best.get("tinh")) and xa == _bare(best.get("tinh")) and xa != _bare(best.get("xa")):
+    elif same_line and _bare(best.get("tinh")) and xa == _bare(best.get("tinh")) and xa != _bare(best.get("xa")):
         faults.append("đưa tên tỉnh vào ô xã")
     for level, name in (("xa", "xã"), ("huyen", "huyện"), ("tinh", "tỉnh")):
         needle = _bare(best.get(level))
@@ -329,15 +348,17 @@ def current_faults(current: dict, best: dict, lines: list[dict], labels: dict, c
     return faults
 
 
-async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
+async def read_lines(inspector: Inspector, case: Case, title: str) -> dict | None:
+    """Bước đọc dùng chung: chắt dòng địa chỉ, model trả lời từng dòng thuộc về ai / loại gì / tách cấp thế nào.
+    → {lines, labels, splits, owner_of, llm_choice, subject}; None khi hồ sơ không có dòng địa chỉ nào."""
     lines = address_lines(case)
     if not lines:
-        return []
+        return None
     listing = []
     for number, item in enumerate(lines, start=1):
         above = " | ".join(item["above"])
         listing.append(f"Tài liệu {item['doc']}, phía trên: {above}\n[{number}] {item['text']}")
-    task = _TASK.format(rules=RULES.strip(), owners="\n".join(f'- "{owner}"' for owner in _OWNERS),
+    task = _TASK.format(rules=inspector.rules.strip(), owners="\n".join(f'- "{owner}"' for owner in _OWNERS),
                         kinds="\n".join(f'- "{kind}"' for kind in _KINDS))
     raw = await client.chat(
         [{"role": "system", "content": _SYSTEM.format(title=title)},
@@ -383,6 +404,16 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         llm_choice = int(answer.get("chon"))
     except (TypeError, ValueError):
         llm_choice = 0
+    return {"lines": lines, "labels": labels, "splits": splits, "owner_of": owner_of, "llm_choice": llm_choice,
+            "subject": subject}
+
+
+async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
+    read = await read_lines(inspector, case, title)
+    if not read:
+        return []
+    lines, labels, splits, owner_of = read["lines"], read["labels"], read["splits"], read["owner_of"]
+    llm_choice, subject = read["llm_choice"], read["subject"]
     # Các dòng nơi cư trú của CHÍNH người được cấp có cách tách đúng cấu trúc.
     own = [number for number in sorted(splits) if 1 <= number <= len(lines)
            and fold(owner_of(number)) == fold(_OWNERS[0]) and not _two_columns(lines[number - 1]["text"])
@@ -396,7 +427,7 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     else:
         return []
     item, best = lines[chosen - 1], splits[chosen]
-    if split_fault(best, item["text"]) or _two_columns(item["text"]):
+    if split_fault(best, item["text"]) or _two_columns(item["text"]) or _detail_spans_lines(best, item):
         return []
     current = case.values.get(FIELD)
     faults = []
@@ -413,7 +444,7 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     evidence = tuple(f"địa chỉ của A {fault}" for fault in faults) + (
         "cách tách của B khớp từng cụm và đúng thứ tự cấp trên chính dòng nguồn",)
     kind = labels.get(chosen, ("", ""))[1]
-    return [Finding(INSPECTOR, UNITS[0], {FIELD: best}, item["line"], item["doc"],
+    return [Finding(inspector, UNITS[0], {FIELD: best}, item["line"], item["doc"],
                     f"dòng [{chosen}] là {kind or '?'}", owner_of(chosen), backed=bool(faults), evidence=evidence)]
 
 

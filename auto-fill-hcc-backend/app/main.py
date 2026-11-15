@@ -27,9 +27,11 @@ from app.pipelines.dang_ky_kinh_doanh.giay_de_nghi.router import router as giay_
 from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
+from app.second_pass.router import router as second_pass_router
 from app.reports.router import router as reports_router
 from app.dashboard.router import router as dashboard_router
 from app.bug_reports.router import router as bug_reports_router
+from app.daily_reports.router import router as daily_reports_router
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
 from app.upload_session.ws import relay_events_forever
@@ -103,6 +105,7 @@ app.include_router(auth_router)
 app.include_router(account_settings_router)  # cài đặt theo tài khoản cho cả hai extension
 app.include_router(procedures_router)
 app.include_router(process_router)
+app.include_router(second_pass_router)  # extension hỏi kết quả điền đợt 2
 app.include_router(review_router)
 app.include_router(attachments_router)
 app.include_router(monitor_router)  # web Monitor (super_admin)
@@ -111,6 +114,7 @@ app.include_router(form_snapshots_router)
 app.include_router(traces_router)
 app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)
 app.include_router(bug_reports_router)  # báo lỗi trên web thống kê
+app.include_router(daily_reports_router)  # báo cáo hằng ngày trên web thống kê
 app.include_router(reports_router)
 app.include_router(users_router)
 app.include_router(locations_router)

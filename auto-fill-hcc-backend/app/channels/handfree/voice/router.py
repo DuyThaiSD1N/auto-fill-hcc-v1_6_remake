@@ -4,6 +4,7 @@ Cho phép deploy nơi chưa có dịch vụ voice: để trống env → extensi
 """
 from fastapi import APIRouter, Depends
 
+from app.channels.handfree import privacy_notice
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import fold
@@ -74,4 +75,6 @@ async def voice_config(user: dict = Depends(require_auth)):
         },
         # Chuyển bước: đọc hết câu đang đọc rồi mới đọc câu mới, thay vì cắt ngang.
         "finishSentenceBeforeNext": _finish_sentence_before_next(user),
+        # Thông báo bảo vệ dữ liệu cá nhân hiện trước khi mở phiên; extension cũ không đọc khoá này.
+        "privacyNotice": privacy_notice.NOTICE,
     }

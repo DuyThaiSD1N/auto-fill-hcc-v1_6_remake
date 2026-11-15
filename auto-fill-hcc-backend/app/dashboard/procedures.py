@@ -13,22 +13,33 @@ import re
 
 from app.channels.handfree.procedure_registry import is_ready_in_province, public_list
 from app.locations.catalog import find_province, province_by_slug
+from app.procedures.ke_khai_links import KE_KHAI_LINKS
 from app.reports.integration import fold
 
-# Mã TTHC nằm trong URL kê khai hoặc điều kiện nhận diện ("maThuTuc=1.004772", "#/ke-khai/2.000987").
+# Mã TTHC lấy từ nguồn ĐẦU TIÊN có mã: trường `code` → URL kê khai ("#/ke-khai/2.000987") → link kê khai cùng key
+# ở ke_khai_links → điều kiện nhận diện ("maThuTuc=1.004772"). Nhận diện để cuối vì có thể liệt kê thêm mã của
+# biến thể chỉ dùng để bắt trang (vd liên thông khai sinh bắt cả 2.000986) — không phải mã của thủ tục.
 _TTHC_CODE = re.compile(r"(?<![\d.])([123]\.\d{6})(?!\d)")
+_LINK_CODES: dict[str, list[str]] = {}
+for _link in KE_KHAI_LINKS:
+    if _link.get("key") and _link.get("code"):
+        _LINK_CODES.setdefault(str(_link["key"]), []).append(str(_link["code"]))
 
 
 def _codes(proc: dict) -> list[str]:
-    sources = [proc.get("keKhaiUrl")]
+    detect: list = []
     for value in (proc.get("detect") or {}).values():
-        sources.extend(value if isinstance(value, list) else [value])
-    codes: list[str] = []
-    for source in sources:
-        for match in _TTHC_CODE.finditer(str(source or "")):
-            if match.group(1) not in codes:
-                codes.append(match.group(1))
-    return codes
+        detect.extend(value if isinstance(value, list) else [value])
+    groups = [[proc.get("code")], [proc.get("keKhaiUrl")], _LINK_CODES.get(str(proc.get("key") or ""), []), detect]
+    for sources in groups:
+        codes: list[str] = []
+        for source in sources:
+            for match in _TTHC_CODE.finditer(str(source or "")):
+                if match.group(1) not in codes:
+                    codes.append(match.group(1))
+        if codes:
+            return codes
+    return []
 
 
 def _province_name(slug: str) -> str:

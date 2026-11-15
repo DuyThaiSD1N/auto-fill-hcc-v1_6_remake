@@ -48,6 +48,9 @@ def normalize_issuer(place) -> str:
         # OCR/LLM hay đọc nhầm viết tắt "CCSQLHC" thành "CCSVLHC"/"CCSGLHC"... (Q↔V/G). Bắt chung chữ
         # ký: bắt đầu "ccs"/"cs" (Cục Cảnh Sát) + có "lhc" (quản lý hành chính) + "ttxh" (trật tự xã hội).
         or ("ccs" in compact and "lhc" in compact and "ttxh" in compact)
+        # Chữ viết tay đọc rơi "cảnh sát" / lệch "trật tự" ("cục quản lý trái tự xã hội"): chỉ Cục Cảnh sát QLHC về
+        # TTXH mang đủ "cục" + "quản lý" + "... tự xã hội" trong tên.
+        or (folded.startswith("cuc") and "quan ly" in folded and re.search(r"\b(trat|trai|chat) tu xa hoi\b", folded))
     ):
         return ISSUER_CUC
     if "bo cong an" in folded or "ministry of public security" in folded:
@@ -63,6 +66,25 @@ def default_issuer(ngay_cap) -> str:
         if (year, month, day) >= (2024, 7, 1):
             return ISSUER_BO_CONG_AN
     return ISSUER_CUC
+
+
+ISSUER_CUC_SHORT = "Cục Cảnh sát QLHC về TTXH"
+
+
+def issuer_by_issue_date(issuer: str, ngay_cap) -> str:
+    """Chốt lại cơ quan cấp theo NGÀY CẤP: thẻ cấp từ 01/7/2024 là thẻ căn cước do Bộ Công an cấp.
+
+    Mẫu tờ khai in sẵn "Cục Cảnh sát QLHC về TTXH" ngay trước chỗ ghi ngày cấp, người dân chỉ điền được ngày nên thẻ
+    mới vẫn mang tên Cục trên giấy. Chỉ đổi chiều này; ngày cấp không đọc được đủ ngày/tháng/năm thì giữ nguyên."""
+    m = re.match(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$", str(ngay_cap or ""))
+    if issuer == ISSUER_CUC and m and (int(m.group(3)), int(m.group(2)), int(m.group(1))) >= (2024, 7, 1):
+        return ISSUER_BO_CONG_AN
+    return issuer
+
+
+def short_issuer(issuer: str) -> str:
+    """Tên Cục viết tắt như trên thẻ và trên mẫu tờ khai, dùng cho biểu mẫu có ô cơ quan cấp là ô chữ tự do."""
+    return ISSUER_CUC_SHORT if issuer == ISSUER_CUC else issuer
 
 
 def id_doc_type(loai_hint, issuer: str = "") -> str:

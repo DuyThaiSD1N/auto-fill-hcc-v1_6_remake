@@ -4,9 +4,16 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import (
+    default_issuer,
+    id_doc_type,
+    issuer_by_issue_date,
+    normalize_issuer,
+    short_issuer,
+)
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.tai_khoan import account_context, matches_account
 
 from .reason import labeled_value, requester_context, section
 from .schema import UI_COMP_BY_NAME
@@ -182,6 +189,36 @@ def _declared_relation(context: str, options: dict | None) -> str:
     return ""
 
 
+def _self_subject_values(values: dict, options: dict | None) -> dict:
+    """Field của khối người có nội dung thay đổi khi quan hệ là "Bản thân": khóa nào tài khoản gửi thì lấy theo tài
+    khoản (form SurveyJS chỉ đọc được họ tên + số định danh của khối người nộp), khóa còn lại theo giấy tờ.
+
+    Lượt trích có thể đọc khối này theo người KHÁC chủ tài khoản → chỉ giữ giá trị đọc từ giấy khi đó đúng là chủ tài
+    khoản, không ghép nhân thân hai người vào một khối."""
+    account = account_context(options)
+    same_person = matches_account(account, values.get("NguoiThayDoi_HoTen"), values.get("NguoiThayDoi_SoDinhDanh"),
+                                  values.get("NguoiThayDoi_NgaySinh"))
+    if not same_person:
+        values = {key: value for key, value in values.items() if not key.startswith("NguoiThayDoi_")}
+    out = {**values, **{f"NguoiThayDoi_{key}": account[key]
+                        for key in ("NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap") if account.get(key)}}
+    name = str(account.get("HoTen") or "").strip()
+    # Tài khoản lưu tên không dấu thì không đè lên tên có dấu đọc từ giấy.
+    if name and not (name.isascii() and not str(values.get("NguoiThayDoi_HoTen") or "x").isascii()):
+        out["NguoiThayDoi_HoTen"] = name
+    number = _digits(account.get("SoDinhDanh"))
+    if len(number) == 12:
+        out["NguoiThayDoi_SoDinhDanh"] = out["NguoiThayDoi_SoGiayTo"] = number
+    residence = account.get("NoiCuTru")
+    if isinstance(residence, dict) and residence.get("tinh") and residence.get("xa"):
+        out["NguoiThayDoi_NoiCuTru"] = {"quocGia": "Việt Nam", **residence}
+    else:
+        # Ô nơi cư trú là ô địa chỉ gộp, engine điền không có chế độ "chỉ ghi khi còn trống": địa chỉ đọc từ giấy
+        # sẽ đè lên địa chỉ cổng vừa chép từ tài khoản → không trả.
+        out.pop("NguoiThayDoi_NoiCuTru", None)
+    return out
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
@@ -216,40 +253,56 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         declared = _declared_relation(context, options)
         add("citizenMqhkhac", "" if _fold(declared) in {"khac", "ban than"} else declared)
 
-    if relation != _SELF:
-        name = values.get("NguoiThayDoi_HoTen")
-        if not name:
-            warnings.append("Không đọc được người có nội dung thay đổi — cán bộ nhập khối này.")
-        add("citizenNDKHoTen", upper_person_name(name))
-        personal_id = _digits(values.get("NguoiThayDoi_SoDinhDanh"))
-        add("citizenNDKSodinhdanh", personal_id if len(personal_id) == 12 else "")
-        add("citizenNDK_NgaySinh", values.get("NguoiThayDoi_NgaySinh"))
+    # "Bản thân": cổng tự chép khối người có nội dung thay đổi từ khối người nộp. Vẫn trả khối này để đối chiếu được
+    # dữ liệu: ô nào tài khoản có giá trị thì lấy theo tài khoản, ô tài khoản không gửi mới theo giấy tờ; các ô của
+    # khối chỉ ghi khi còn trống (onlyIfEmpty) nên không đè lên dữ liệu cổng vừa chép.
+    self_filing = relation == _SELF
+    if self_filing:
+        values = _self_subject_values(values, options)
+    block_start = len(out)
+    name = values.get("NguoiThayDoi_HoTen")
+    if not name and not self_filing:
+        warnings.append("Không đọc được người có nội dung thay đổi — cán bộ nhập khối này.")
+    add("citizenNDKHoTen", upper_person_name(name))
+    personal_id = _digits(values.get("NguoiThayDoi_SoDinhDanh"))
+    add("citizenNDKSodinhdanh", personal_id if len(personal_id) == 12 else "")
+    add("citizenNDK_NgaySinh", values.get("NguoiThayDoi_NgaySinh"))
 
-        issue_date = values.get("NguoiThayDoi_NgayCap")
-        card_number = _digits(values.get("NguoiThayDoi_SoGiayTo")) or (personal_id if issue_date else "")
-        if card_number:
-            # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số; CMND do công an tỉnh cấp.
-            issuer = normalize_issuer(values.get("NguoiThayDoi_NoiCap")) or (
-                default_issuer(issue_date) if len(card_number) == 12 else "")
+    issue_date = values.get("NguoiThayDoi_NgayCap")
+    card_number = _digits(values.get("NguoiThayDoi_SoGiayTo")) or (personal_id if issue_date else "")
+    if card_number:
+        # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số; CMND do công an tỉnh cấp.
+        issuer = normalize_issuer(values.get("NguoiThayDoi_NoiCap")) or (
+            default_issuer(issue_date) if len(card_number) == 12 else "")
+        # Chốt lại theo ngày cấp trước khi suy loại giấy tờ: tờ khai in sẵn tên Cục, thẻ cấp từ 01/7/2024 là thẻ căn cước.
+        issuer = issuer_by_issue_date(issuer, issue_date)
+        # "Bản thân" mà không có ngày cấp: số là của tài khoản, còn loại thẻ / nơi cấp chỉ là suy đoán → không trả.
+        known_card = not self_filing or bool(issue_date)
+        if known_card:
             add("citizenNDKLoaiGiaytotuythan",
                 _id_doc_type_with_number(card_number, values.get("NguoiThayDoi_LoaiGiayTo"), issuer))
-            add("citizenNDKSogiaytotuythan", card_number)
-            add("citizenNDKNgaycapgiaytotuythan", issue_date)
-            add("citizenNDKCoquancap", issuer)
+        add("citizenNDKSogiaytotuythan", card_number)
+        add("citizenNDKNgaycapgiaytotuythan", issue_date)
+        if known_card:
+            # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
+            add("citizenNDKCoquancap", short_issuer(issuer))
 
-        add("citizenNDKLoaicutru", "Thường trú", default=True)
-        add("citizenNDKGioitinh", values.get("NguoiThayDoi_GioiTinh"))
-        quoc_tich = values.get("NguoiThayDoi_QuocTich")
-        add("citizenNDKQuocTich", quoc_tich or "Việt Nam", default=not quoc_tich)
-        # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
-        add("citizenNDKDantoc", co_ho_local_group(values.get("NguoiThayDoi_DanToc")))
-        area = _area(values.get("NguoiThayDoi_NoiCuTru"))
-        if area:
-            # Radio "Trong Nước" phải chọn trước: các ô địa chỉ chỉ hiện sau khi chọn.
-            add("citizenNDKNoiCuTru", "Trong Nước")
-            area_field = add("citizenNDKNoiCuTru_TrongNuoc", area)
-            if area_field:
-                area_field["radio"] = "citizenNDKNoiCuTru"
+    add("citizenNDKLoaicutru", "Thường trú", default=True)
+    add("citizenNDKGioitinh", values.get("NguoiThayDoi_GioiTinh"))
+    quoc_tich = values.get("NguoiThayDoi_QuocTich")
+    add("citizenNDKQuocTich", quoc_tich or "Việt Nam", default=not quoc_tich)
+    # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+    add("citizenNDKDantoc", co_ho_local_group(values.get("NguoiThayDoi_DanToc")))
+    area = _area(values.get("NguoiThayDoi_NoiCuTru"))
+    if area:
+        # Radio "Trong Nước" phải chọn trước: các ô địa chỉ chỉ hiện sau khi chọn.
+        add("citizenNDKNoiCuTru", "Trong Nước")
+        area_field = add("citizenNDKNoiCuTru_TrongNuoc", area)
+        if area_field:
+            area_field["radio"] = "citizenNDKNoiCuTru"
+    if self_filing:
+        for field in out[block_start:]:
+            field["onlyIfEmpty"] = True
 
     viec = values.get("ViecDangKy") or labeled_value(section(context, "viec_dang_ky"), "Loại việc")
     add("citizenViecDangKy", _option(viec, _VIEC_OPTIONS))

@@ -58,7 +58,8 @@ def test_admin_thay_het_va_co_danh_sach_tinh():
 def test_ma_tthc_lay_tu_url_ke_khai_va_nhan_dien_khong_trung():
     items = {i["key"]: i for i in dashboard_procedures.catalog(_scope("all"))["items"]}
     assert items["chung"]["codes"] == ["1.004772"]
-    assert items["lien-thong"]["codes"] == ["2.000987", "2.000986"]
+    # URL kê khai có mã thì không lấy thêm mã của biến thể chỉ dùng để nhận diện trang.
+    assert items["lien-thong"]["codes"] == ["2.000987"]
     assert items["rieng-lai-chau"]["codes"] == []
 
 
@@ -74,3 +75,37 @@ def test_registry_that_khop_luat_cua_tro_ly(monkeypatch):
 
     body = dashboard_procedures.catalog(_scope("unit", "Tỉnh Lai Châu"))
     assert _keys(body) == [p["key"] for p in public_list_for("laichau")]
+
+
+def test_registry_that_thu_tuc_nao_co_ma_cung_tra_ma(monkeypatch):
+    """Mã ở trường `code` hoặc ở link kê khai cùng key cũng phải lên danh mục, không chỉ mã trong URL."""
+    monkeypatch.undo()
+    items = {i["key"]: i for i in dashboard_procedures.catalog(_scope("all"))["items"]}
+    assert "1.115820" in items["dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao"]["codes"]
+    assert "1.013229" in items["sua-chua-cai-tao-gpxd-nha-o-rieng-le"]["codes"]
+    assert sum(1 for i in items.values() if not i["codes"]) <= 1
+    assert items["khai-sinh-dang-ky"]["codes"] == ["2.000987"]
+
+
+def test_xuat_excel_dung_dong_dang_loc_va_trong_pham_vi():
+    import io
+    from datetime import datetime, timezone
+
+    from openpyxl import load_workbook
+
+    from app.dashboard.export import build_catalog_workbook
+
+    items = dashboard_procedures.catalog(_scope("unit", "Tỉnh Lai Châu"))["items"]
+    by_key = {i["key"]: i for i in items}
+    picked = [by_key[k] for k in ["lien-thong", "chung", "rieng-lai-chau"]]
+    raw = build_catalog_workbook(picked, "Dùng chung", datetime(2026, 11, 13, tzinfo=timezone.utc))
+    ws = load_workbook(io.BytesIO(raw)).active
+    rows = [r for r in ws.iter_rows(min_row=4, values_only=True)]
+    assert rows[0] == ("STT", "Tên thủ tục", "Mã TTHC", "Áp dụng")
+    assert rows[1:] == [
+        (1, "Liên thông", "2.000987", "Dùng chung"),
+        (2, "Thủ tục chung", "1.004772", "Dùng chung"),
+        (3, "Riêng Lai Châu", None, "Riêng · Lai Châu"),
+    ]
+    assert "Dùng chung" in ws["A2"].value and "3 thủ tục" in ws["A2"].value
+

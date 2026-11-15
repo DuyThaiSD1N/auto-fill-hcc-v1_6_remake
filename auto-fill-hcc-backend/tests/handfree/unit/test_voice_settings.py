@@ -281,3 +281,14 @@ async def test_ban_moi_nhan_tan_so_rieng_cua_giong(db, monkeypatch):
     await asyncio.wait_for(ws_tts.ws_tts(_ClientWs([]), lang="vi", voice="", tempo="", sr="1"), timeout=5)
     cfg = json.loads(up.sent[0])["voice_settings"]
     assert cfg["voiceId"] == "thanhtruc-south" and cfg["tempo"] == 1.2 and cfg["resample_rate"] == 24000
+
+
+def test_voice_config_gui_thong_bao_bao_ve_du_lieu(db):
+    app = FastAPI()
+    app.include_router(router.router)
+    app.dependency_overrides[require_auth] = lambda: {"id": "u1"}
+    notice = TestClient(app).get("/api/v1/voice/config").json()["privacyNotice"]
+    assert len(notice["summary"]) == 5 and len(notice["items"]) == 6
+    assert notice["ok_label"] and notice["version"] and notice["version_line"]
+    # Chỉ một nút xác nhận đã đọc — không có lựa chọn đồng ý / không dùng.
+    assert not {"accept_label", "decline_label"} & notice.keys()

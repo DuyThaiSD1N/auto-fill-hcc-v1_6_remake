@@ -213,6 +213,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # supportsGuidedSteps: bản khai guided steps mà chưa có engine sẽ nhận action lạ rồi
         # im lặng, công dân ngồi chờ một cú bấm không bao giờ xảy ra.
         "supportsResultMethod": raw.get("supportsResultMethod") is True,
+        # Sau khi điền biết hỏi kết quả điền đợt 2 rồi ghi lại các ô lớp soát sửa (khoá secondPass của lệnh
+        # fill_fields). Thiếu cờ → BE không chạy lớp soát, lệnh điền y như cũ.
+        "supportsSecondPass": raw.get("supportsSecondPass") is True,
         # Báo lại lời cổng nháy ở toast cảnh báo / lỗi (sự kiện portal_alert). Thiếu cờ → BE bỏ qua như cũ.
         "supportsPortalAlert": raw.get("supportsPortalAlert") is True,
         # Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước Hình thức nhận kết quả + chọn ô receivingKind

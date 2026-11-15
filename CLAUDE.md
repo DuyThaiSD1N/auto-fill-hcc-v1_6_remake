@@ -178,6 +178,13 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-13, sau khi kéo BE thai_dev dab5931e1 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`16 failed, 4982 passed, 41 skipped, 9 errors`. Như bản 2026-11-12 cộng 1 đỏ
+`tests/unit/test_dashboard_danh_muc_thu_tuc.py::test_xuat_excel_dung_dong_dang_loc_va_trong_pham_vi` (cùng lỗi `strftime` locale
+Windows) và 2 lỗi collect thiếu `mongomock`: `tests/unit/test_second_pass.py`, `tests/unit/test_bao_cao_hang_ngay.py` (cài
+`mongomock` tạm bằng `pip install --target <scratchpad>` rồi thêm vào PYTHONPATH thì hai file này pass; `test_bug_reports.py`
+khi đó còn 7 đỏ 422 / 206 do fastapi + python-multipart local cũ).
+
 Baseline ngày 2026-11-12, sau khi kéo BE thai_dev 0d6416f8 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `15 failed, 4672 passed, 41 skipped, 7 errors`. 13 đỏ môi trường như cũ (4 heic + 9 v2 422) + 2 đỏ
 `tests/unit/test_dashboard_chon_nhieu_don_vi.py` (main thêm: `strftime` có chữ tiếng Việt vỡ locale trên Windows, trong Docker

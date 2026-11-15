@@ -78,15 +78,36 @@ def test_detect_phrases_and_ui_keys_exist_in_snapshot():
         assert name in data_names, name
 
 
-def test_self_by_identity_skips_subject_block():
+_SUBJECT_BLOCK = ("citizenField13", "citizenField32", "citizenField21", "citizenField38")
+
+
+def _subject_block(out):
+    return [f for f in out if f["name"].startswith("citizenNDK_") or f["name"] in _SUBJECT_BLOCK]
+
+
+def test_ban_than_tra_khoi_nguoi_duoc_cap_theo_tai_khoan_va_chi_ghi_khi_o_con_trong():
     context = _context("Mẹ đẻ", subject_id=ACCOUNT["applicantIdentityNumber"]).replace("TRAN THI B", "NGUYEN VAN A")
-    out, warnings = _enrich({**SUBJECT, "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}, context)
-    names = _names(out)
-    assert names[0] == "citizenQuanhe"
-    assert out[0]["value"] == "Bản thân"
-    assert not [n for n in names if n.startswith("citizenNDK_") or n in ("citizenField13", "citizenField32")]
-    assert "citizenLoaiViecYeuCau" in names and "citizencauhoi3" in names
+    values = {**SUBJECT, "NguoiDuocCap_HoTen": "Nguyễn Văn A",
+              "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]}
+    out, warnings = _enrich(values, context)
+    by = {f["name"]: f["value"] for f in out}
+    assert out[0]["name"] == "citizenQuanhe" and out[0]["value"] == "Bản thân"
+    # Số giấy tờ lượt trích đọc ra số khác → theo tài khoản; tài khoản lưu tên không dấu → giữ tên có dấu trên giấy.
+    assert by["citizenNDK_SoDinhDanh"] == by["citizenNDK_SoGiayToTuyThan"] == ACCOUNT["applicantIdentityNumber"]
+    assert by["citizenNDK_HoVaTen"] == "NGUYỄN VĂN A"
+    # Tài khoản không gửi ngày sinh, nơi cư trú → theo giấy tờ của chính người đó.
+    assert by["citizenNDK_NgaySinh"] == "01/02/1990" and by["citizenNDK_PhuongXa"] == "Phường Xuân Hương"
+    # Cổng tự chép khối này từ người nộp: mọi ô của khối chỉ ghi khi còn trống, ô ngoài khối ghi như thường.
+    block = _subject_block(out)
+    assert all(f.get("onlyIfEmpty") is True for f in block)
+    assert not any(f.get("onlyIfEmpty") for f in out if f not in block)
+    assert "citizenLoaiViecYeuCau" in by and "citizencauhoi3" in by
     assert not warnings
+
+
+def test_nguoi_khac_thi_khoi_nguoi_duoc_cap_ghi_de_nhu_cu():
+    out, _ = _enrich(SUBJECT, _context("Mẹ đẻ"))
+    assert _subject_block(out) and not any(f.get("onlyIfEmpty") for f in out)
 
 
 def test_kinh_gui_and_tai_left_to_extension_tool_account():
@@ -339,11 +360,28 @@ def test_can_cu_ten_nguoi_nop_lech_mot_ky_tu_do_ocr_van_nhan():
 
 
 @pytest.mark.parametrize("relation", ["Vợ", "Chồng"])
-def test_trich_luc_ket_hon_nguoi_nop_la_vo_chong_thi_ban_than(relation):
-    out, _ = _enrich({**SUBJECT, "GiayTo_LoaiSuKien": "marriage"}, _context(relation, event="kết hôn"))
+def test_trich_luc_ket_hon_to_khai_xin_cho_vo_chong_giu_quan_he(relation):
+    # Tờ khai xin cấp cho người kia trên giấy kết hôn → người được cấp là người kia, quan hệ theo tờ khai.
+    out, _ = _enrich({**SUBJECT, "GiayTo_LoaiSuKien": "marriage"},
+                     _context(relation, subject_id=SUBJECT["NguoiDuocCap_SoDinhDanh"], event="kết hôn"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhe"] == relation
+    assert by["citizenNDK_SoDinhDanh"] == SUBJECT["NguoiDuocCap_SoDinhDanh"]
+
+
+def test_ban_than_ma_luot_trich_doc_nguoi_khac_khong_ghep_hai_nguoi():
+    out, _ = _enrich({**SUBJECT, "GiayTo_LoaiSuKien": "marriage"},
+                     _context("Bản thân", subject_id=ACCOUNT["applicantIdentityNumber"], event="kết hôn"))
     by = {f["name"]: f["value"] for f in out}
     assert by["citizenQuanhe"] == "Bản thân"
-    assert not [n for n in by if n.startswith("citizenNDK_")]
+    # Lượt trích đọc khối người được cấp theo người kia trên giấy kết hôn: chỉ trả ô lấy được từ tài khoản, không
+    # ghép ngày sinh / giới tính / nơi cư trú của người kia vào.
+    assert by["citizenNDK_HoVaTen"] == "NGUYEN VAN A"
+    assert by["citizenNDK_SoDinhDanh"] == ACCOUNT["applicantIdentityNumber"]
+    assert not {"citizenNDK_NgaySinh", "citizenField13", "citizenNDK_NgayCap", "citizenNDK_PhuongXa"} & set(by)
+    # Không có ngày cấp thì loại thẻ / nơi cấp chỉ là suy đoán → chỉ trả số.
+    assert by["citizenNDK_SoGiayToTuyThan"] == ACCOUNT["applicantIdentityNumber"]
+    assert "citizenNDK_LoaiGiayToTuyThan" not in by and "citizenNDK_NoiCap" not in by
 
 
 def test_khai_tu_vo_chong_van_giu_nhan():

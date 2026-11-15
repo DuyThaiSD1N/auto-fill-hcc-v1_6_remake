@@ -50,6 +50,7 @@ from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
 from app.procedures.registry import get_pipeline, get_procedure
 from app.review.access import create_review_capability
+from app.second_pass import service as second_pass
 from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
@@ -129,6 +130,11 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         prepared.pipeline_options = with_khuyet_tat_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
+    # Điền đợt 2: chỉ bản extension khai `fillSupports: ["secondPass"]` mới chạy. Luôn gán lại để client không tự
+    # bật được bằng cách gửi sẵn khoá nội bộ này trong options.
+    fill_supports = (body.options or {}).get("fillSupports")
+    prepared.pipeline_options["_secondPass"] = second_pass.wanted(
+        user, isinstance(fill_supports, list) and "secondPass" in fill_supports)
     total_bytes = prepared.total_bytes
     ocr_provider = prepared.ocr_provider
     if rec is not None:
@@ -154,6 +160,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     # Pop dữ liệu rà soát khỏi result để không lọt ra FE (lưu ở nền bên dưới).
     review_data = result.pop("_review", None)
     review_token = create_review_capability(request_id) if review_data else None
+    # Lượt soát chạy nền sau khi trả lượt điền đầu; trạng thái "đang soát" ghi trước để lượt hỏi đầu tiên đã thấy.
+    second = result.pop("_second_pass", None)
+    if second:
+        await second_pass.start(request_id, user["id"], second, result["fields"])
 
     # TẤT CẢ việc lưu vết (disk + 4 lượt Mongo) đẩy sang NỀN: fields đã sẵn sàng ngay đây,
     # người dùng KHÔNG cần chờ audit/trace/finish ghi xong. Cắt phần "im lặng" sau OCR+LLM.

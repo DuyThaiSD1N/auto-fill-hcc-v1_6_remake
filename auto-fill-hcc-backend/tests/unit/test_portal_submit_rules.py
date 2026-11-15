@@ -314,6 +314,21 @@ def test_lien_thong_nhan_duoc_man_ket_qua_that():
     assert re.match(rule["urlPattern"], "/#/ke-khai/2.000987")
 
 
+def test_lien_thong_nhan_man_luu_ho_so_cua_toi_sau_hoan_thanh():
+    """Bấm Hoàn thành xong cổng quay về khung 6 bước, chỉ báo hồ sơ đã lưu ở Hồ sơ của tôi (ảnh quầy 13/11)."""
+    rule = PORTAL_SUBMIT["lienthong.dichvucong.gov.vn"]
+    page = _fold_like_extension(
+        "Hồ sơ được lưu trữ tại mục Hồ sơ của tôi nhưng chưa gửi đi các cơ quan khác. Hồ sơ lưu tạm sẽ bị xóa "
+        "sau 05 ngày nếu không hoàn thiện. Công dân có thể tìm kiếm và hoàn thiện, thay đổi thông tin hồ sơ tại "
+        "Hồ sơ của tôi."
+    )
+    assert any(all(p in page for p in group) for group in rule["successText"])
+    # Các bước trước khi nộp chỉ có khung 6 bước, không có câu báo lưu.
+    step = _fold_like_extension("01 Lựa chọn cơ quan thực hiện 05 Lựa chọn hình thức nhận kết quả 06 Hoàn thành "
+                                "Hủy Quay lại bước trước Hoàn thành Lưu nháp")
+    assert not any(all(p in step for p in group) for group in rule["successText"])
+
+
 # ── HkdOnline: nộp xong quay về trang Khối dữ liệu, chỉ đổi trạng thái + cấp số hồ sơ ─────
 _HKD_HOST = "hokinhdoanh.dkkd.gov.vn"
 _HKD_DOC = "/HkdOnline/Forms/APP/DW_DOCUMENTEdit.aspx"

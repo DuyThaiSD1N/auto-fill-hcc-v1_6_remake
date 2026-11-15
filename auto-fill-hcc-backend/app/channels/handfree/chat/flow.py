@@ -602,6 +602,7 @@ _ADJUSTMENT_KEYS = ("state", "doc_method", "docs_target", "documents_adjustment_
                     "pipeline_error", "awaiting_events", "supplementing_documents", "supplement_reuse_session",
                     "owner_info_done", "owner_fields", "owner_review", "hkd", "hkd_checked", "business_action_started",
                     "business_result", "business_refill_only", "fields", "fill_report", "trace_request_id",
+                    "second_pass",
                     "attach_action_in_progress", "attach_action_dispatch_id", "attach_action_lease_until")
 
 
@@ -4093,6 +4094,9 @@ def _fill_fields_reply(conv: dict) -> Reply:
     r.actions = [{"type": "fill_fields", "fields": _with_refill_cleanup(conv, fields)}]
     if conv.get("trace_request_id"):
         r.actions[0]["formSnapshot"] = form_snapshot_config(conv["trace_request_id"])
+        if conv.get("second_pass"):
+            # Điền xong sidebar hỏi kết quả điền đợt 2 của lượt này rồi ghi lại các ô lớp soát sửa.
+            r.actions[0]["secondPass"] = {"requestId": conv["trace_request_id"]}
     proc = get_procedure(conv.get("procedure_key") or "")
     if tpm.is_active(proc, conv):
         r.actions[0]["toolAccount"] = tpm.tool_account(conv)

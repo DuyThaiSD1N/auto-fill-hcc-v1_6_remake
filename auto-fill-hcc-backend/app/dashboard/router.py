@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from app.core.deps import require_dashboard
@@ -28,7 +29,7 @@ from app.dashboard.combine import (
 )
 from app.dashboard import procedures as dashboard_procedures
 from app.dashboard import ratings as dashboard_ratings
-from app.dashboard.export import build_dashboard_workbook, export_filename
+from app.dashboard.export import build_catalog_workbook, build_dashboard_workbook, export_filename
 from app.dashboard.scope import narrow_to_province, province_options, resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
 from app.dossiers import stats as dossier_stats
@@ -105,6 +106,31 @@ async def scope(user: dict = Depends(require_dashboard), province: str | None = 
 async def procedures(user: dict = Depends(require_dashboard)):
     """Danh mục thủ tục của Trợ lý (handfree): dùng chung + riêng của tỉnh tài khoản; admin xem hết."""
     return dashboard_procedures.catalog(await resolve_dashboard_scope(user))
+
+
+class _CatalogExportBody(BaseModel):
+    keys: list[str] = Field(default_factory=list, max_length=2000)
+    note: str = Field("", max_length=300)
+
+
+@router.post("/procedures/export")
+async def procedures_export(body: _CatalogExportBody, user: dict = Depends(require_dashboard)):
+    """Excel danh mục theo đúng các dòng web đang lọc (web gửi key theo thứ tự hiển thị).
+
+    Bộ lọc tỉnh/phạm vi/từ khoá nằm ở web nên web gửi danh sách key; backend vẫn lọc lại theo phạm vi
+    tài khoản để không xuất được thủ tục ngoài phạm vi.
+    """
+    by_key = {item["key"]: item for item in dashboard_procedures.catalog(await resolve_dashboard_scope(user))["items"]}
+    items = [by_key[key] for key in dict.fromkeys(body.keys) if key in by_key]
+    now = datetime.now(timezone.utc)
+    content = build_catalog_workbook(items, body.note.strip(), now)
+    day = now.astimezone(timezone(timedelta(hours=7))).strftime("%Y-%m-%d")
+    quoted = urllib.parse.quote(f"Danh muc thu tuc - {day}.xlsx")
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quoted}"},
+    )
 
 
 @router.get("/summary")

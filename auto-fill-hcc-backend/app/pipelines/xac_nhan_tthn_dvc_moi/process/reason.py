@@ -76,7 +76,12 @@ Không có"; TUYỆT ĐỐI không tự đặt mục đích. Câu VIẾT TAY, OC
   thúc gần "kết hôn" → chính là cụm pháp lý. Người xin giấy ĐỂ đăng ký kết hôn thì KHÔNG có cụm này — tuyệt đối
   không thêm, sẽ lật ngược nghĩa.
 - Phần việc hay đọc lệch: "tặng cho" thành "tăng cho"; "mua bán" thành "mua hàng"; "bổ sung" thành "bố xung"/"bỏ
-  sung"; "chế độ" thành "chỗ để"; "trước thời kỳ hôn nhân" thành "thời hạn là hôn nhân".
+  sung"; "chế độ" thành "chỗ để"; "trước thời kỳ hôn nhân" thành "thời hạn là hôn nhân"; "nhà đất" thành "nhà đăng";
+  "xuất khẩu lao động" thành "xử lý khẩu lao động".
+- Chữ "giao dịch" đứng trước "dân sự" / "đất đai" / "tài sản" hay bị đọc thành chữ khác: "giáo dịch", "giao định danh",
+  "qua dịch vụ", "chia dịch". Cụm đứng ngay trước "dân sự" / "đất đai" mà là một trong các dạng này → "giao dịch".
+- Chữ mở đầu câu chép ĐÚNG như giấy: giấy không có "Để" thì không thêm "Để"; giấy có "Rút hồ sơ", "Làm thủ tục"... thì
+  giữ nguyên, không đổi sang mở đầu khác. Không chép nhãn đứng trước câu ("Mục đích", "Giấy này được sử dụng để:").
 - Khôi phục TỪNG CỤM: cụm giống dạng hỏng đã nêu → về cụm chuẩn; cụm có nghĩa → giữ nguyên chữ (chỉ sửa chính tả rõ
   ràng); bỏ chữ rác chen vào. KHÔNG xoá cụm có nghĩa, KHÔNG bỏ tên riêng, nước đến, số, ngày; KHÔNG thêm ý không có
   dấu vết trên OCR. Viết đúng chính tả, hoa chữ đầu câu. GIỮ TRỌN câu, kể cả cụm "không có giá trị ...".

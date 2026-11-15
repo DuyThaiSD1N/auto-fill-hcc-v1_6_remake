@@ -100,11 +100,20 @@ PORTAL_SUBMIT: dict[str, dict] = {
         # Đã soát cả 10 snapshot bước 1→5: không bước nào chứa cụm nào trong ba cụm này.
         # Bắt buộc ĐỦ cả ba. "Ngày hẹn trả dự kiến" là mỏ neo chặt nhất: chỉ hồ sơ ĐÃ tiếp nhận
         # mới có ngày hẹn trả — lưu nháp nếu có hiện "ghi nhớ… số hồ sơ" cũng không có dòng này.
-        "successText": [[
-            "vui long ghi nho cac thong tin ben duoi",
-            "so ho so",
-            "ngay hen tra du kien",
-        ]],
+        # Nhóm 2: bấm "Hoàn thành" xong cổng có lúc không hiện màn số hồ sơ mà quay về khung 6 bước kèm câu
+        # "Hồ sơ được lưu trữ tại mục Hồ sơ của tôi nhưng chưa gửi đi các cơ quan khác…" — vẫn là đã nộp xong.
+        # Snapshot bước 1, kê khai, đính kèm, bước 5 đều không có câu này.
+        "successText": [
+            [
+                "vui long ghi nho cac thong tin ben duoi",
+                "so ho so",
+                "ngay hen tra du kien",
+            ],
+            [
+                "ho so duoc luu tru tai muc ho so cua toi",
+                "chua gui di cac co quan khac",
+            ],
+        ],
     },
     # Bắc Ninh (Liferay portlet). Cả 4 tab nằm sẵn trong DOM, chỉ ẩn/hiện — nhưng ta bắt CLICK
     # nên tab ẩn không bấm được, không cần gác thêm bước.

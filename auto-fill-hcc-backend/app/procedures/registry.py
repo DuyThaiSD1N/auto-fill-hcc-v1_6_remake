@@ -1769,6 +1769,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
         "supportsSplitDocuments": True,
+        # Có điền đợt 2 (app/second_pass): bản extension biết thì khai fillSupports=["secondPass"] khi gọi /process
+        # rồi hỏi kết quả soát sau khi điền. Bản cũ bỏ qua khoá này.
+        "secondPass": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

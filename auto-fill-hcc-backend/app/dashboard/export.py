@@ -347,6 +347,28 @@ def build_dashboard_workbook(data: dict, logs: list[dict] | None = None) -> byte
     return buffer.getvalue()
 
 
+def build_catalog_workbook(items: list[dict], note: str, now: datetime) -> bytes:
+    """Danh mục thủ tục đúng các dòng đang lọc trên trang: STT, tên, mã TTHC, áp dụng (dùng chung / tỉnh)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Danh mục thủ tục"
+    ws.sheet_view.showGridLines = False
+    ws.cell(row=1, column=1, value="Danh mục thủ tục Trợ lý đang hỗ trợ").font = _TITLE_FONT
+    meta = f"{note} · {len(items)} thủ tục · Xuất lúc {_fmt_now(now)}" if note else f"{len(items)} thủ tục · Xuất lúc {_fmt_now(now)}"
+    ws.cell(row=2, column=1, value=meta).font = _META_VALUE
+    _write_header(ws, 4, [("STT", "c", 7), ("Tên thủ tục", "l", 100), ("Mã TTHC", "c", 16), ("Áp dụng", "l", 30)])
+    for i, item in enumerate(items, start=1):
+        row = 4 + i
+        _body_cell(ws, row, 1, i, "c")
+        _body_cell(ws, row, 2, item.get("label") or item.get("key"), "l")
+        _body_cell(ws, row, 3, ", ".join(item.get("codes") or []), "c")
+        provinces = [p["name"] for p in item.get("provinces") or []]
+        _body_cell(ws, row, 4, f"Riêng · {', '.join(provinces)}" if provinces else "Dùng chung", "l")
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 def export_filename(data: dict) -> str:
     scope = data.get("scope") or {}
     selected = data.get("selected") or {}

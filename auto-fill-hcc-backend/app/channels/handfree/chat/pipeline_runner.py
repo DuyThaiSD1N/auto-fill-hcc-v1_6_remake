@@ -22,6 +22,7 @@ from app.db.mongo import get_db
 from app.traces import repo as traces_repo
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
+from app.second_pass import service as second_pass
 from app.channels.handfree.procedure_registry import (
     case_pipeline_options,
     get_attach_pipeline,
@@ -394,6 +395,8 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
             # form cho mapper thay vì để nó tự đoán từ giấy tờ.
             options.update(case_pipeline_options(proc, conv))
+            options["_secondPass"] = second_pass.wanted(
+                owner_user, ((conv or {}).get("client_capabilities") or {}).get("supportsSecondPass") is True)
             authorized = _bac_ninh_authorized_block(proc, conv)
             from app.channels.handfree.chat import bac_ninh
 
@@ -427,6 +430,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
                 rec.close_gap("agent_end", "post.mapper")
         pipe_ms = int((time.monotonic() - t_pipe) * 1000)
         _note_result(rec, result)
+        second = result.pop("_second_pass", None)
 
         # Bbox review (docs/06 §2.2): lưu theo conversation_id để FE xem lại vùng ảnh.
         review_data = result.pop("_review", None)
@@ -453,6 +457,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             conv["trace_request_id"] = await tracing.record_process(
                 conv, procedure_key, proc, files, result, pipe_ms, rec=rec,
             )
+            # Điền đợt 2: lượt soát chạy nền, lệnh fill_fields báo sidebar hỏi kết quả theo đúng mã lượt này.
+            conv["second_pass"] = bool(second) and await second_pass.start(
+                conv["trace_request_id"], (conv.get("auth_user") or {}).get("id"), second, conv["fields"])
             await conv_store.save(conv)
         await broadcast(sid, {"type": "fields_ready", "count": len(conv["fields"])})
         _finish_recorder(rec, conv["trace_request_id"])

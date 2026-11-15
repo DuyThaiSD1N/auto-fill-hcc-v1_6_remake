@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # trong lời xin phép thành "Trợ lý nhân dân".
 # v1.2 (2026-08-07): "Mục đích xử lý" → "Mục đích chia sẻ, xử lý dữ liệu" + nói rõ dữ liệu
 # chia sẻ lên Cổng DVC để nộp hồ sơ. v1.1: thêm phạm vi LƯU TRỮ hồ sơ phục vụ đối soát.
-VERSION = "1.3"  # đổi khi SỬA nội dung xin phép (scope/checks) — log cũ giữ version cũ
+VERSION = "1.4"  # đổi khi SỬA nội dung xin phép (scope/checks) — log cũ giữ version cũ
 
 # Việt Nam không có giờ mùa hè — offset cứng an toàn, khỏi phụ thuộc tzdata.
 _VN_TZ = timezone(timedelta(hours=7))

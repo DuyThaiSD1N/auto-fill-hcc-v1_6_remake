@@ -171,6 +171,34 @@ def test_khoang_thoi_gian_ma_khong_co_hon_nhan_hien_tai_thi_chua_ket_hon():
     assert v["citizenTinhtranghonnhan"]["code"] == "1" and "citizenField56" not in v
 
 
+@pytest.mark.parametrize("noi_dung", ["Giấy này được sử dụng để: Bổ sung hồ sơ vay vốn ngân hàng",
+                                      "Giấy được sử dụng để:Bổ sung hồ sơ vay vốn ngân hàng"])
+def test_muc_dich_bo_nhan_cua_giay_xnttthn_cu(noi_dung):
+    v, _ = _enrich(BASE, _context(noi_dung=noi_dung))
+    assert v["citizenField69"]["value"] == "Bổ sung hồ sơ vay vốn ngân hàng"
+
+
+def test_so_giay_to_doc_nham_dong_mrz_thi_lay_lai_so_dinh_danh():
+    """MRZ thẻ căn cước: "IDVNM" + số hiệu thẻ (9 số cuối số định danh) + số định danh 12 số."""
+    v, _ = _enrich({**BASE, "NguoiDuocCap_SoDinhDanh": "001090000002", "NguoiDuocCap_SoGiayTo": "IDVNM090000002",
+                    "NguoiDuocCap_LoaiGiayTo": "Căn cước", "NguoiDuocCap_NgayCap": "20/10/2024"}, _context(relation="Con"))
+    assert v["citizenNDKSogiaytotuythan"]["value"] == "001090000002"
+    assert v["citizenNDKLoaigiayto"]["value"] != "Chứng minh nhân dân"
+    # CMND 9 số thật (không trùng đuôi số định danh) giữ nguyên.
+    cmnd, _ = _enrich({**BASE, "NguoiDuocCap_SoDinhDanh": "001090000002", "NguoiDuocCap_SoGiayTo": "123456789",
+                       "NguoiDuocCap_LoaiGiayTo": "Chứng minh nhân dân", "NguoiDuocCap_NgayCap": "02/07/2010"},
+                      _context(relation="Con"))
+    assert cmnd["citizenNDKSogiaytotuythan"]["value"] == "123456789"
+
+
+def test_ten_xa_chi_lech_dau_thanh_thi_chon_xa_hien_hanh():
+    from app.pipelines._shared.area_remap import accent_only_ward
+    assert accent_only_ward("Quảng Ngãi", "Phường Đăk Cẩm") == "Phường Đăk Cấm"
+    assert accent_only_ward("Quảng Ngãi", "Phường Không Có") == ""
+    area = mapper._area({"quocGia": "Việt Nam", "tinh": "Quảng Ngãi", "xa": "Đăk Cẩm", "diaChi": "Tổ dân phố 8"})
+    assert (area["xa"], area["diaChi"], area.get("_xaChuaChon")) == ("Phường Đăk Cấm", "Tổ dân phố 8", None)
+
+
 def test_khong_xac_dinh_muc_dich_thi_mac_dinh_muc_dich_khac():
     v, _ = _enrich(BASE, _context(loai="không xác định", noi_dung="Không có"))
     assert (v["citizenField60"]["code"], v["citizenField60"]["default"]) == ("3", True)
@@ -194,9 +222,22 @@ def test_cong_tra_khong_ra_thi_van_dien_gioi_tinh_giay_to_theo_giay():
     assert (v["citizenField20"]["code"], v["citizenField20"]["default"]) == ("VN", True)
     assert v["citizenNDKLoaigiayto"]["code"] in ("5", "9") and v["citizenNDKSogiaytotuythan"]["value"] == "001090000002"
     assert v["citizenNDKNgaycap"]["code"] == "2021-07-02"
-    assert v["citizenNDKNocap"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert v["citizenNDKNocap"]["value"] == "Cục Cảnh sát QLHC về TTXH"  # ô chữ tự do: ghi tên Cục dạng viết tắt
     names = list(v)
     assert names.index("citizenNDKSoDinhDanh") < names.index("citizenNDKGioitinh")  # sau 3 ô tra cứu
+
+
+def test_to_khai_in_san_cuc_ma_ngay_cap_tu_01_07_2024_thi_co_quan_cap_la_bo_cong_an():
+    """Mẫu tờ khai in sẵn tên Cục trước chỗ ghi ngày cấp, người dân chỉ điền được ngày → chốt lại theo ngày cấp."""
+    card = {**BASE, "NguoiDuocCap_SoGiayTo": "001090000002", "NguoiDuocCap_LoaiGiayTo": "Căn cước",
+            "NguoiDuocCap_NoiCap": "Cục CSQLHC về TTXH"}
+    new, _ = _enrich({**card, "NguoiDuocCap_NgayCap": "01/07/2024"}, _context(relation="Con"))
+    old, _ = _enrich({**card, "NguoiDuocCap_NgayCap": "30/06/2024"}, _context(relation="Con"))
+    assert new["citizenNDKNocap"]["value"] == "Bộ Công an"
+    assert old["citizenNDKNocap"]["value"] == "Cục Cảnh sát QLHC về TTXH"
+    # Loại thẻ đi cùng cơ quan cấp: từ 01/7/2024 là thẻ căn cước, trước đó là căn cước công dân.
+    assert new["citizenNDKLoaigiayto"]["value"] == "Thẻ căn cước"
+    assert old["citizenNDKLoaigiayto"]["value"] == "Căn cước công dân"
 
 
 def test_dan_toc_lay_tu_giay_to_khac_khi_to_khai_khong_ghi():
@@ -334,6 +375,50 @@ def test_cccd_va_trich_luc_khai_tu_llm_bo_sot_thi_goa_theo_giay():
     assert v["citizenSogiaychungtuTrichluckhaituBanan"]["value"] == "25/TLKT"
     assert v["citizenField50"]["value"] == "07/05/2022"
     assert v["citizenField51"]["value"] == "Ủy ban nhân dân phường Đông Mai"
+
+
+def test_trich_luc_khai_tu_co_dong_dang_ky_goc_thi_bu_theo_dong_do():
+    values = {**BASE, "NguoiDuocCap_HoTen": "Lê Thị M", "NguoiDuocCap_GioiTinh": "Nữ"}
+    body = ("Đã được đăng ký khai tử tại: UBND xã Đông Mai, huyện Yên Phong, tỉnh Bắc Ninh\n"
+            "Số: 12/2020 ngày 3 tháng 4 năm 2020\n")
+    found = mapper._death_cert_from_ocr(_ocr(("a.jpg", TRICH_LUC_KHAI_TU + body)), values)
+    assert found == {"DeathCert_Number": "12/2020", "DeathCert_Date": "3/4/2020",
+                     "DeathCert_Agency": "Ủy ban nhân dân xã Đông Mai, huyện Yên Phong, tỉnh Bắc Ninh"}
+    # Dòng đăng ký gốc không ghi ngày → ngày lấy ở đầu giấy, không để trống.
+    partial = mapper._death_cert_from_ocr(_ocr(("a.jpg", TRICH_LUC_KHAI_TU + body.replace(" ngày 3 tháng 4 năm 2020", ""))), values)
+    assert partial["DeathCert_Number"] == "12/2020" and partial["DeathCert_Date"] == "7/5/2022"
+
+
+@pytest.mark.parametrize("raw,number", [
+    ("12/2020", "12/2020"), ("27/TLKT-BS", "27/TLKT-BS"), ("05/04/2021", ""), ("UBND xã A", ""), (None, ""),
+])
+def test_so_giay_khai_tu_phai_la_so_khong_phai_ngay_hay_co_quan(raw, number):
+    assert mapper._document_number(raw) == number
+
+
+def test_co_quan_cap_giay_khai_tu_viet_du_chu_uy_ban_nhan_dan():
+    v, _ = _enrich({**BASE, "TinhTrangHonNhan": "goa", "DeathCert_Number": "12/2020", "DeathCert_Date": "07/11/2024",
+                    "DeathCert_Agency": "UBND xã A, huyện B, tỉnh C"}, _context())
+    assert v["citizenField51"]["value"] == "Ủy ban nhân dân xã A, huyện B, tỉnh C"
+
+
+def test_dong_dang_ky_goc_dang_cap_so_ngay_dang_ky():
+    text = "Đã đăng ký khai tử tại: UBND xã A, TP B, tỉnh C\nCấp số: 08/2008 Quyển số: 01/2008 Ngày đăng ký: 22/5/2008\n"
+    assert mapper._death_registration(text) == {"DeathCert_Number": "08/2008", "DeathCert_Date": "22/05/2008",
+                                                "DeathCert_Agency": "Ủy ban nhân dân xã A, TP B, tỉnh C"}
+
+
+def test_dong_dang_ky_goc_dang_noi_ghi_so_dang_ky_khai_tu():
+    text = ("Đã được ghi vào Sổ đăng ký khai tử\n"
+            "Nơi ghi: Ủy ban nhân dân Xã A, tỉnh C, Sổ đăng ký khai tử, quyển số 01/2025, số 09/2025, ngày 11/07/2025\n")
+    assert mapper._death_registration(text) == {"DeathCert_Number": "09/2025", "DeathCert_Date": "11/07/2025",
+                                                "DeathCert_Agency": "Ủy ban nhân dân Xã A, tỉnh C"}
+
+
+def test_so_ly_hon_khong_co_chu_so_thi_bo():
+    v, _ = _enrich({**BASE, "TinhTrangHonNhan": "ly_hon", "BanAn_Number": "Không xác định", "BanAn_Date": "02/03/2019"},
+                   _context())
+    assert "citizenSoBananQuyetdinhlyhon" not in v and v["citizenField46"]["value"] == "02/03/2019"
 
 
 def test_giay_khai_tu_cung_gioi_hoac_llm_da_tra_thi_khong_bu():

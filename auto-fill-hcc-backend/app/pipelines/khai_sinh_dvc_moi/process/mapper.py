@@ -10,7 +10,9 @@ from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_CUC,
     default_issuer,
     id_doc_type,
+    issuer_by_issue_date,
     normalize_issuer,
+    short_issuer,
 )
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
@@ -301,10 +303,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
             issuer = card_issuer or normalize_issuer(values.get(f"{prefix}_NoiCap")) or (
                 default_issuer(issue_date) if len(_digits(number)) == 12 and issue_date else "")
+            # Chốt lại theo ngày cấp trước khi suy loại giấy tờ: tờ khai in sẵn tên Cục, thẻ cấp từ 01/7/2024 là thẻ căn cước.
+            issuer = issuer_by_issue_date(issuer, issue_date)
             add(ui["doc"], _id_doc_type_with_number(number, hint, issuer))
             add(ui["number"], number)
             add(ui["issued"], issue_date)
-            add(ui["issuer"], issuer)
+            # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
+            add(ui["issuer"], short_issuer(issuer))
         if values.get(f"{prefix}_DaChet") is True or _fold(values.get(f"{prefix}_DaChet")) == "true":
             warnings.append(f"Theo giấy tờ, {label} đã chết — cán bộ chọn ô nơi cư trú của {label} theo hướng dẫn cổng.")
             continue

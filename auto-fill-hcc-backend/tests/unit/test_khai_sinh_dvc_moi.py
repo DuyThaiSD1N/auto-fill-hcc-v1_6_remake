@@ -251,7 +251,7 @@ def test_the_chup_chung_vo_chong_lay_ngay_cap_noi_cap_theo_mrz():
     assert by["citizenCoquancap_me"] == "Bộ Công an"
     assert by["citizenField24"] == "Căn cước công dân"
     assert by["citizenNgaythangnamcap__cha"] == "10/05/2021"
-    assert by["citizenCoquancap_cha"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert by["citizenCoquancap_cha"] == "Cục Cảnh sát QLHC về TTXH"
 
 
 def test_khong_co_mat_sau_khop_mrz_thi_giu_ngay_cap_llm():

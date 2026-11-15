@@ -34,8 +34,8 @@ a. TỜ KHAI cấp bản sao: người ở khối sau câu "cho người có tê
 b. GIẤY ỦY QUYỀN xin cấp bản sao: BÊN ỦY QUYỀN là người được cấp (trừ khi giấy ghi rõ xin cho người khác).
 c. Giấy hộ tịch trong hồ sơ: giấy khai sinh → người được khai sinh (CON, không phải cha/mẹ/người đi khai);
    trích lục khai tử → người đã chết; giấy chứng nhận kết hôn có hai chủ thể và là giấy CHUNG của hai vợ chồng
-   → người nộp là vợ hoặc chồng trên giấy thì LUÔN chọn người nộp (kể cả khi tờ khai nêu tên người kia), không
-   thì người tờ khai nêu tên, cuối cùng mới mặc định người chồng.
+   → không có tờ khai / giấy ủy quyền nêu tên (mục a, b) thì người nộp là vợ hoặc chồng trên giấy → chọn người
+   nộp, không thì mặc định người chồng.
    Có giấy hộ tịch thì LUÔN xác định được người được cấp theo mục này, không cần tờ khai: chỉ có giấy hộ tịch
    của người nộp (vd khai sinh của chính người nộp, kể cả kèm CCCD người nộp) → người nộp.
    Riêng khi có GIẤY KHAI SINH của người nộp kèm trích lục khai tử / kết hôn của CHA hoặc MẸ ghi trên giấy khai

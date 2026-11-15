@@ -914,6 +914,20 @@ def near_match_ward(tinh: str, xa: str) -> str:
     return targets.pop() if len(targets) == 1 else ""
 
 
+def accent_only_ward(tinh: str, xa: str) -> str:
+    """Ten xa/phuong HIEN HANH khi ten doc duoc chi lech DAU so voi ten that ("Đăk Cẩm" / "Phường Đăk Cấm").
+
+    OCR chu viet tay hay doc nham dau thanh; cac bang tra so ten CON DAU nen truot, con near_match_ward()
+    bo qua cap trung khoa khong dau. Chi tra ve khi trong PHAM VI MOT TINH, khoa khong dau trung DUNG MOT
+    xa hien hanh; khong thi "".
+    """
+    if not tinh or not xa:
+        return ""
+    xa_folded = _fold(xa)
+    targets = {xa_moi for name, xa_moi in _ward_candidates(tinh) if name == xa_folded}
+    return targets.pop() if len(targets) == 1 else ""
+
+
 def province_for_ward(xa: str) -> Optional[tuple[str, str]]:
     """Tinh DUY NHAT dang co phuong/xa ten nay -> (ten tinh, ten xa day du).
 

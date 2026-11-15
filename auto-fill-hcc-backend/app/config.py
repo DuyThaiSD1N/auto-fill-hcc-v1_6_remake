@@ -124,6 +124,15 @@ class Settings(BaseSettings):
     scanic_base_url_fallback: str = ""
     scanic_enabled: bool = True
 
+    # Điền đợt 2 (app/second_pass): sau lượt điền đầu, lớp soát chạy nền rồi extension lấy các ô cần ghi lại. Chỉ
+    # chạy cho extension khai biết áp bản vá và thủ tục có lớp soát. second_pass_usernames: danh sách username thí
+    # điểm cách nhau dấu phẩy, trống = mọi tài khoản. Quá second_pass_max_running lượt đang soát trên một worker
+    # thì lượt mới bỏ đợt 2 (không xếp hàng) để không dồn tải lên máy chủ LLM.
+    second_pass_enabled: bool = False
+    second_pass_usernames: str = ""
+    second_pass_timeout_seconds: int = 20
+    second_pass_max_running: int = 3
+
     # Bật dần channel Handfree sau khi staging đã qua test; Auto Fill không phụ thuộc cờ này.
     handfree_enabled: bool = False
 

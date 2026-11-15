@@ -516,11 +516,24 @@ def test_dia_chi_ma_tach_dong_viet_lien_va_chu_viet_tat(line, expected):
     ({"tinh": "Lâm Đồng", "huyen": "Tân Lập", "xa": "An Phú", "diaChi": "Tổ An"}, "dùng chung chữ"),
     # Bỏ sót một chữ giữa xã và huyện trên dòng viết liền.
     ({"tinh": "Lâm Đồng", "huyen": "Tân Lập", "xa": "An", "diaChi": "Tổ"}, "chữ giữa các cấp"),
-    ({"tinh": "Lâm Đồng", "huyen": "Tân Lập", "xa": "An Phú", "diaChi": "Tổ"}, ""),
+    # Các cụm nối tiếp đúng nhưng ô chi tiết chỉ còn chữ tiền tố: tên tổ đã bị cắt sang ô xã.
+    ({"tinh": "Lâm Đồng", "huyen": "Tân Lập", "xa": "An Phú", "diaChi": "Tổ"}, "chỉ còn chữ tiền tố"),
 ])
 def test_dia_chi_dong_viet_lien_cac_cum_phai_noi_tiep_khong_chong_chu(split, fault):
     result = dia_chi.split_fault(split, "Nơi cư trú: Tổ An Phú Tân Lập Lâm Đồng")
     assert fault in result if fault else result == ""
+
+
+def test_dia_chi_dong_viet_lien_tach_dung_thi_khong_bao_loi():
+    split = {"tinh": "Lâm Đồng", "huyen": "Tân Lập", "xa": "An Phú", "diaChi": "Tổ 5"}
+    assert dia_chi.split_fault(split, "Nơi cư trú: Tổ 5 An Phú Tân Lập Lâm Đồng") == ""
+
+
+def test_dia_chi_in_hai_dong_ma_chi_tiet_lan_sang_dong_duoi_thi_khong_dung():
+    item = {"line": "Nơi thường trú / Place of residence: Thôn Hạ", "text": "Nơi thường trú / Place of residence: Thôn Hạ Yên Trung, Yên Phong, Bắc Ninh"}
+    assert dia_chi._detail_spans_lines({"diaChi": "Thôn Hạ Yên Trung", "xa": "Yên Phong", "tinh": "Bắc Ninh"}, item)
+    assert not dia_chi._detail_spans_lines({"diaChi": "Thôn Hạ", "xa": "Yên Trung", "huyen": "Yên Phong", "tinh": "Bắc Ninh"}, item)
+    assert not dia_chi._detail_spans_lines({"diaChi": "Thôn Hạ Yên Trung"}, {"line": item["text"], "text": item["text"]})
 
 
 def test_dia_chi_o_huyen_mang_tien_to_viet_tat_cap_xa_thi_sai_cau_truc():

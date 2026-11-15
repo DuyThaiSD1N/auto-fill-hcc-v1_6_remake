@@ -7,8 +7,14 @@ lỗi validate.
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import is_current_area, remap_area
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.area_remap import accent_only_ward, is_current_area, remap_area
+from app.pipelines._shared.compact_agent.issuer import (
+    default_issuer,
+    id_doc_type,
+    issuer_by_issue_date,
+    normalize_issuer,
+    short_issuer,
+)
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.nationality import normalize_nationality
@@ -36,6 +42,8 @@ _NOW_MARRIED_MARKERS = (
 _WIDOW_MARKERS = ("da chet", "da qua doi", "da mat", "goa")
 _NEVER_MARRIED_MARKERS = ("chua dang ky ket hon", "chua ket hon", "chua co vo", "chua co chong", "doc than")
 _SELF_RELATIONS = {"ban than", "tu khai", "chinh minh"}
+# Nhãn của dòng mục đích trên Giấy XNTTHN cũ ("Giấy này được sử dụng để: ...") đôi khi bị chép cùng nội dung.
+_PURPOSE_LABEL_RE = re.compile(r"^\s*gi[aấ]y\s+(?:n[aà]y\s+)?(?:đ|d)ược\s+s[uử]\s+d[uụ]ng\s+(?:đ|d)[eể]\s*:\s*", re.IGNORECASE)
 _PURPOSE_BY_KEY = {"ket_hon_co_quan_dai_dien": "1", "ket_hon_nuoc_ngoai": "2", "khac": "3"}
 
 
@@ -136,6 +144,10 @@ def _area(value, ocr_text: str = ""):
     if not isinstance(remapped, dict):
         return area
     if area["xa"] and not _selectable(remapped):
+        # Tên xã chỉ lệch dấu thanh với một xã hiện hành của tỉnh (OCR chữ viết tay đọc nhầm dấu) → xã đó.
+        ward = accent_only_ward(str(remapped.get("tinh") or ""), str(remapped.get("xa") or ""))
+        if ward:
+            return {**remapped, "xa": ward}
         recovered = _ward_after_read_name(area, remapped, ocr_text)
         if recovered:
             return recovered
@@ -234,10 +246,43 @@ def _death_agency(header: str) -> str:
     return f"Ủy ban nhân dân {rest}"
 
 
+_DEATH_REGISTRATION_RE = re.compile(
+    r"Đã (?:được )?đăng ký khai tử tại\s*:?\s*(?:\(\d+\)\s*:?\s*)?(?P<agency>[^\n]*?(?:\n(?!\s*(?:Cấp\s+)?Số\b)[^\n]*?)?)[\s.,]*"
+    r"(?:\bCấp\s+)?\bSố\s*:?\s*(?P<number>\d[\w/\-]*)(?P<tail>[^\n]*)", re.IGNORECASE)
+
+
+# Trích lục lập từ cơ sở dữ liệu hộ tịch điện tử: "Nơi ghi: <cơ quan>, Sổ đăng ký khai tử, quyển số <Q>, số <N>, ngày <D>".
+_DEATH_REGISTER_BOOK_RE = re.compile(
+    r"Nơi ghi\s*:\s*(?P<agency>[^\n]*?)[\s.,]*Sổ đăng ký khai tử(?P<middle>[^\n]*?)(?<!quyển )\bsố\s*:?\s*"
+    r"(?P<number>\d[\w/\-]*)(?P<tail>[^\n]*)", re.IGNORECASE)
+
+
+def _death_registration(text: str) -> dict:
+    """Số / ngày / cơ quan của lần đăng ký khai tử, ở dòng thân "Đã (được) đăng ký khai tử tại: <cơ quan> Số: <N>
+    ngày <D>" của trích lục khai tử. Field nào dòng không ghi thì không trả."""
+    match = _DEATH_REGISTRATION_RE.search(text) or _DEATH_REGISTER_BOOK_RE.search(text)
+    if not match:
+        return {}
+    date = _WORD_DATE_RE.search(_fold(match.group("tail")))
+    agency = re.sub(r"^(?:UBND|[ỦU]Y BAN NHÂN DÂN)\b", "Ủy ban nhân dân", " ".join(match.group("agency").split()).strip(" .,;"),
+                    flags=re.IGNORECASE)
+    found = {"DeathCert_Number": match.group("number"),
+             "DeathCert_Date": "/".join(date.groups()) if date else _full_date(match.group("tail")),
+             "DeathCert_Agency": agency}
+    return {key: value for key, value in found.items() if value}
+
+
+def _document_number(value) -> str:
+    """Số của một giấy phải có chữ số và không phải một ngày tháng: giấy không ghi số thì model đôi khi chép cơ quan
+    cấp hoặc ngày cấp vào field số."""
+    text = " ".join(str(value or "").split())
+    return "" if not re.search(r"\d", text) or _DATE_RE.fullmatch(text) else text
+
+
 def _death_cert_from_ocr(ocr_text: str, values: dict) -> dict:
     """LLM bỏ sót giấy khai tử khi giấy không ghi người chết là vợ/chồng (hồ sơ chỉ CCCD + trích lục khai tử): đọc
-    số / ngày / cơ quan ở ĐẦU giấy khai tử của người KHÁC người được cấp. Người chết cùng giới với người được cấp thì
-    không phải vợ/chồng → bỏ."""
+    số / ngày / cơ quan của giấy khai tử của người KHÁC người được cấp — theo dòng đăng ký khai tử ở thân giấy, field
+    nào dòng đó không ghi thì theo ĐẦU giấy. Người chết cùng giới với người được cấp thì không phải vợ/chồng → bỏ."""
     subject_name = _fold(values.get("NguoiDuocCap_HoTen"))
     subject_gender = _fold(values.get("NguoiDuocCap_GioiTinh"))
     for text in _OCR_DOC_HEADER_RE.split(ocr_text or ""):
@@ -261,6 +306,7 @@ def _death_cert_from_ocr(ocr_text: str, values: dict) -> dict:
             "DeathCert_Date": "/".join(date.groups()) if date else _full_date(header),
             "DeathCert_Agency": _death_agency(header),
         }
+        found.update(_death_registration(text))
         if found["DeathCert_Number"] or found["DeathCert_Date"]:
             return found
     return {}
@@ -400,6 +446,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenNDKDantoc", normalize_ethnic(co_ho_local_group(ethnic)) or None)
     number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (
         personal_id if values.get("NguoiDuocCap_NgayCap") else "")
+    # Dòng mã máy đọc (MRZ) mặt sau thẻ căn cước mang số hiệu thẻ = 9 chữ số cuối của số định danh; đọc nhầm dòng này thì
+    # số giấy tờ còn 9 số và bị coi là CMND → lấy lại số định danh 12 số.
+    if len(number) == 9 and len(personal_id) == 12 and personal_id.endswith(number):
+        number = personal_id
     nationality = values.get("NguoiDuocCap_QuocTich")
     if nationality or number:
         # Có thẻ căn cước/CMND mà giấy không ghi quốc tịch → công dân Việt Nam, tô vàng.
@@ -411,12 +461,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
         issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
             default_issuer(issue_date) if len(number) == 12 and issue_date else "")
+        # Chốt lại theo ngày cấp trước khi suy loại giấy tờ: tờ khai in sẵn tên Cục, thẻ cấp từ 01/7/2024 là thẻ căn cước.
+        issuer = issuer_by_issue_date(issuer, issue_date)
         id_type = _snap(LOAI_GIAY_TO, _id_doc_type_with_number(number, values.get("NguoiDuocCap_LoaiGiayTo"), issuer))
         if id_type:
             add_choice("citizenNDKLoaigiayto", LOAI_GIAY_TO, id_type[0])
         add("citizenNDKSogiaytotuythan", number)
         add_date("citizenNDKNgaycap", issue_date)
-        add("citizenNDKNocap", issuer)
+        # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
+        add("citizenNDKNocap", short_issuer(issuer))
 
     # Loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra nên đi trước. Loại cư trú không in trên giấy tờ nào →
     # mặc định Thường trú, tô vàng.
@@ -451,14 +504,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     elif status == _DIVORCED:
         # Văn bản bản án thật (BanAn_*) thắng dòng người dân tự chép lên tờ khai (DivorceDecision_*) — tờ khai hay
         # chép nhầm năm/cơ quan; ô văn bản không đọc được thì tờ khai bù.
-        add_text("citizenSoBananQuyetdinhlyhon",
-                 _court_code(values.get("BanAn_Number") or values.get("DivorceDecision_Number")))
+        add_text("citizenSoBananQuyetdinhlyhon", _court_code(
+            _document_number(values.get("BanAn_Number")) or _document_number(values.get("DivorceDecision_Number"))))
         add_date("citizenField46", values.get("BanAn_Date") or values.get("DivorceDecision_Date"))
         add_text("citizenField47", values.get("BanAn_Agency") or values.get("DivorceDecision_Agency"))
     elif status == _WIDOWED:
-        add_text("citizenSogiaychungtuTrichluckhaituBanan", values.get("DeathCert_Number"))
+        add_text("citizenSogiaychungtuTrichluckhaituBanan", _document_number(values.get("DeathCert_Number")))
         add_date("citizenField50", values.get("DeathCert_Date"))
-        add_text("citizenField51", values.get("DeathCert_Agency"))
+        add_text("citizenField51", re.sub(r"^\s*UBND\b", "Ủy ban nhân dân", str(values.get("DeathCert_Agency") or "")))
     elif status == _PERIOD_MARRIED:
         add("citizenField531", upper_person_name(values.get("Marriage_SpouseName")))
         add_text("citizenField53", values.get("Marriage_Agency"))
@@ -471,7 +524,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # Mục đích đã được bước phân vai khôi phục câu chữ; không chắc thì vẫn điền nhưng tô vàng cho cán bộ soát.
     purpose_block = section(context, "muc_dich")
-    purpose_text = labeled_value(purpose_block, "Nội dung")
+    purpose_text = _PURPOSE_LABEL_RE.sub("", labeled_value(purpose_block, "Nội dung"))
     purpose = _PURPOSE_BY_KEY.get(_fold(labeled_value(purpose_block, "Loại")).replace(" ", "_"))
     # Không xác định được loại → mặc định "Sử dụng vào mục đích khác" (trường hợp phổ biến nhất), tô vàng.
     add_choice("citizenField60", MUC_DICH, purpose or "3", default=not purpose)

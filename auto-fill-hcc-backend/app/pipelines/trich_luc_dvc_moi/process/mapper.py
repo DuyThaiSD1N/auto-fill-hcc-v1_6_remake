@@ -6,9 +6,16 @@ from datetime import date
 
 from app.pipelines._shared.area_remap import drop_fabricated_province, is_current_area, province_for_ward, remap_area
 from app.pipelines._shared.cccd import id_birth_year, id_gender
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import (
+    default_issuer,
+    id_doc_type,
+    issuer_by_issue_date,
+    normalize_issuer,
+    short_issuer,
+)
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.tai_khoan import account_context, matches_account
 
 from .reason import QUAN_HE_OPTIONS, labeled_value, name_match, requester_context, section
 from .schema import UI_COMP_BY_NAME
@@ -373,9 +380,6 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
         relation = _quan_he_option(declared) or _OTHER
         other = declared if relation == _OTHER and _quan_he_option(declared) != _OTHER else other
 
-    # Trích lục kết hôn là giấy chung của hai vợ chồng: người nộp là vợ / chồng trên giấy thì chính là người được cấp.
-    if event == "marriage" and relation in ("Vợ", "Chồng"):
-        return _SELF, "", ""
     # Số trùng tài khoản chỉ tự chốt "Bản thân" khi cùng tên tài khoản (khác tên là thẻ người nộp bị ghép sang
     # người khác), và số của lượt trích chỉ dùng khi phân vai đã xác định được người được cấp (hoặc không chạy):
     # hồ sơ chỉ có CCCD người nộp thì phân vai để trống mà lượt trích vẫn chép thẻ đó vào.
@@ -394,6 +398,32 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
         return _OTHER, "", ("Chưa xác định được quan hệ của người nộp với người được cấp (tờ khai không ghi) — "
                             "đã chọn \"Khác\", cán bộ kiểm tra lại ô Quan hệ.")
     return relation, other if relation == _OTHER else "", ""
+
+
+def _self_subject_values(values: dict, options: dict | None) -> dict:
+    """Field của khối người được cấp khi quan hệ là "Bản thân": khóa nào tài khoản gửi thì lấy theo tài khoản (form
+    SurveyJS chỉ đọc được họ tên + số định danh của khối người nộp), khóa còn lại theo giấy tờ.
+
+    Lượt trích có thể đọc khối này theo người KHÁC chủ tài khoản (trích lục kết hôn: vợ nộp, giấy đọc ra chồng) →
+    chỉ giữ giá trị đọc từ giấy khi đó đúng là chủ tài khoản, không ghép nhân thân hai người vào một khối."""
+    account = account_context(options)
+    same_person = matches_account(account, values.get("NguoiDuocCap_HoTen"), values.get("NguoiDuocCap_SoDinhDanh"),
+                                  values.get("NguoiDuocCap_NgaySinh"))
+    if not same_person:
+        values = {key: value for key, value in values.items() if not key.startswith("NguoiDuocCap_")}
+    out = {**values, **{f"NguoiDuocCap_{key}": account[key]
+                        for key in ("NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap") if account.get(key)}}
+    name = str(account.get("HoTen") or "").strip()
+    # Tài khoản lưu tên không dấu thì không đè lên tên có dấu đọc từ giấy.
+    if name and not (name.isascii() and not str(values.get("NguoiDuocCap_HoTen") or "x").isascii()):
+        out["NguoiDuocCap_HoTen"] = name
+    number = _digits(account.get("SoDinhDanh"))
+    if len(number) == 12:
+        out["NguoiDuocCap_SoDinhDanh"] = out["NguoiDuocCap_SoGiayTo"] = number
+    residence = account.get("NoiCuTru")
+    if isinstance(residence, dict) and residence.get("tinh") and residence.get("xa"):
+        out["NguoiDuocCap_NoiCuTru"] = {"quocGia": "Việt Nam", **residence}
+    return out
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -435,71 +465,89 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenQuanhe", relation, default=relation == _OTHER and not other)
     add("citizenField8", other)
 
-    if relation != _SELF:
-        name = values.get("NguoiDuocCap_HoTen")
-        if not name:
-            warnings.append("Không đọc được người được cấp bản sao — cán bộ nhập khối người được cấp.")
-        add("citizenNDK_HoVaTen", upper_person_name(name))
-        personal_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
-        issue_date = values.get("NguoiDuocCap_NgayCap")
-        # Số căn cước/CCCD chính là số định danh 12 số → thiếu số giấy tờ thì lấy số định danh (trẻ dưới 14 tuổi
-        # chưa có thẻ được chặn ở dưới).
-        card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if len(personal_id) == 12 else "")
-        # Số trùng tài khoản mà người được cấp đã chết hoặc khác tên chủ tài khoản → thẻ của người nộp bị gán nhầm
-        # (hay gặp: trích lục khai tử kèm CCCD người thân, giấy hộ tịch để trống giấy tờ tùy thân) → bỏ cả cụm.
-        account_name, account_id = requester_context(options)
-        other_person = event == "death" or _fold(account_name) != _fold(name)
-        if account_id and account_id in {card_number, personal_id} and other_person:
-            warnings.append("Số giấy tờ đọc ra cho người được cấp trùng số của người nộp — đã bỏ trống, cán bộ "
-                            "nhập giấy tờ tùy thân của người được cấp.")
-            card_number = personal_id = ""
-        birth = values.get("NguoiDuocCap_NgaySinh")
-        on_declaration = _card_on_declaration(context, name, card_number or personal_id)
-        if (card_number or personal_id) and _card_not_recipient(
-            card_number or personal_id, birth, values.get("NguoiDuocCap_GioiTinh"), issue_date, event,
-            values.get("GiayTo_NgayDangKy"), on_declaration,
-        ):
-            warnings.append("Giấy tờ tùy thân đọc ra không khớp người được cấp (giới tính/năm sinh trong số thẻ, "
-                            "hoặc thẻ cấp sau ngày khai tử) — đã bỏ trống, cán bộ nhập giấy tờ tùy thân của người "
-                            "được cấp.")
-            card_number = personal_id = ""
-        elif on_declaration and _card_birth_year_mismatch(card_number or personal_id, birth):
-            warnings.append("Năm sinh mã hoá trong số căn cước lệch ngày sinh người được cấp trên giấy tờ — cán bộ "
-                            "kiểm tra lại ngày sinh.")
-        add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else "")
-        add("citizenNDK_NgaySinh", birth)
+    # "Bản thân": cổng tự chép khối người được cấp từ khối người nộp. Vẫn trả khối này để đối chiếu được dữ liệu: ô nào
+    # tài khoản có giá trị thì lấy theo tài khoản, ô tài khoản không gửi mới theo giấy tờ; mọi ô của khối chỉ ghi khi
+    # còn trống (onlyIfEmpty) nên không đè lên dữ liệu cổng vừa chép.
+    self_filing = relation == _SELF
+    if self_filing:
+        values = _self_subject_values(values, options)
+    block_start = len(out)
+    name = values.get("NguoiDuocCap_HoTen")
+    if not name and not self_filing:
+        warnings.append("Không đọc được người được cấp bản sao — cán bộ nhập khối người được cấp.")
+    add("citizenNDK_HoVaTen", upper_person_name(name))
+    personal_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
+    issue_date = values.get("NguoiDuocCap_NgayCap")
+    # Số căn cước/CCCD chính là số định danh 12 số → thiếu số giấy tờ thì lấy số định danh (trẻ dưới 14 tuổi
+    # chưa có thẻ được chặn ở dưới).
+    card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if len(personal_id) == 12 else "")
+    # Số trùng tài khoản mà người được cấp đã chết hoặc khác tên chủ tài khoản → thẻ của người nộp bị gán nhầm
+    # (hay gặp: trích lục khai tử kèm CCCD người thân, giấy hộ tịch để trống giấy tờ tùy thân) → bỏ cả cụm.
+    account_name, account_id = requester_context(options)
+    other_person = event == "death" or _fold(account_name) != _fold(name)
+    if not self_filing and account_id and account_id in {card_number, personal_id} and other_person:
+        warnings.append("Số giấy tờ đọc ra cho người được cấp trùng số của người nộp — đã bỏ trống, cán bộ "
+                        "nhập giấy tờ tùy thân của người được cấp.")
+        card_number = personal_id = ""
+    birth = values.get("NguoiDuocCap_NgaySinh")
+    on_declaration = _card_on_declaration(context, name, card_number or personal_id)
+    # "Bản thân": số là của chính chủ tài khoản → không lấy ngày sinh / giới tính đọc từ giấy để loại số đó.
+    doubted = "" if self_filing else card_number or personal_id
+    if doubted and _card_not_recipient(
+        doubted, birth, values.get("NguoiDuocCap_GioiTinh"), issue_date, event,
+        values.get("GiayTo_NgayDangKy"), on_declaration,
+    ):
+        warnings.append("Giấy tờ tùy thân đọc ra không khớp người được cấp (giới tính/năm sinh trong số thẻ, "
+                        "hoặc thẻ cấp sau ngày khai tử) — đã bỏ trống, cán bộ nhập giấy tờ tùy thân của người "
+                        "được cấp.")
+        card_number = personal_id = ""
+    elif doubted and on_declaration and _card_birth_year_mismatch(doubted, birth):
+        warnings.append("Năm sinh mã hoá trong số căn cước lệch ngày sinh người được cấp trên giấy tờ — cán bộ "
+                        "kiểm tra lại ngày sinh.")
+    add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else "")
+    add("citizenNDK_NgaySinh", birth)
 
-        # Trẻ dưới 14 tuổi không có thẻ thật (không có ngày cấp) thì bỏ cả cụm giấy tờ tùy thân.
-        if card_number and not (_is_under_14(birth) and not issue_date):
-            # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số; CMND do công an tỉnh cấp.
-            issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
-                default_issuer(issue_date) if len(card_number) == 12 else "")
+    # Trẻ dưới 14 tuổi không có thẻ thật (không có ngày cấp) thì bỏ cả cụm giấy tờ tùy thân.
+    if card_number and not (_is_under_14(birth) and not issue_date):
+        # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số; CMND do công an tỉnh cấp.
+        issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
+            default_issuer(issue_date) if len(card_number) == 12 else "")
+        # Chốt lại theo ngày cấp trước khi suy loại giấy tờ: tờ khai in sẵn tên Cục, thẻ cấp từ 01/7/2024 là thẻ căn cước.
+        issuer = issuer_by_issue_date(issuer, issue_date)
+        # "Bản thân" mà không có ngày cấp: số là của tài khoản, còn loại thẻ / nơi cấp chỉ là suy đoán → không trả.
+        known_card = not self_filing or bool(issue_date)
+        if known_card:
             add("citizenNDK_LoaiGiayToTuyThan",
                 _id_doc_type_with_number(card_number, values.get("NguoiDuocCap_LoaiGiayTo"), issuer))
-            add("citizenNDK_SoGiayToTuyThan", card_number)
-            add("citizenNDK_NoiCap", issuer)
-            add("citizenNDK_NgayCap", issue_date)
+        add("citizenNDK_SoGiayToTuyThan", card_number)
+        if known_card:
+            # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
+            add("citizenNDK_NoiCap", short_issuer(issuer))
+        add("citizenNDK_NgayCap", issue_date)
 
-        add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
-        # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
-        add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
-        raw_area = values.get("NguoiDuocCap_NoiCuTru")
-        # Nơi chết không phải nơi cư trú: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
-        if event == "death" and _copied_from_death_place(raw_area, ocr_text):
-            area = {"quocGia": raw_area.get("quocGia") or "Việt Nam"}
-        else:
-            area = _area(raw_area, ocr_text)
-        if area:
-            add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
-            # Radio "Trong nước" phải chọn trước: bốn ô địa chỉ chỉ hiện sau khi chọn.
-            add("citizenNDK_Noicutru", "1")
-            add("citizenField21", area.get("quocGia") or "Việt Nam")
-            add("citizenNDK_TinhThanh", area.get("tinh"))
-            add("citizenNDK_PhuongXa", area.get("xa"))
-            add("citizenField38", area.get("diaChi"), default=bool(area.get("_xaChuaChon")))
-            if area.get("_xaChuaChon") or not area.get("tinh"):
-                warnings.append("Chưa chọn được tỉnh/phường, xã nơi cư trú của người được cấp theo danh mục hiện hành — "
-                                "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
+    add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
+    # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+    add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
+    raw_area = values.get("NguoiDuocCap_NoiCuTru")
+    # Nơi chết không phải nơi cư trú: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
+    if event == "death" and _copied_from_death_place(raw_area, ocr_text):
+        area = {"quocGia": raw_area.get("quocGia") or "Việt Nam"}
+    else:
+        area = _area(raw_area, ocr_text)
+    if area:
+        add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
+        # Radio "Trong nước" phải chọn trước: bốn ô địa chỉ chỉ hiện sau khi chọn.
+        add("citizenNDK_Noicutru", "1")
+        add("citizenField21", area.get("quocGia") or "Việt Nam")
+        add("citizenNDK_TinhThanh", area.get("tinh"))
+        add("citizenNDK_PhuongXa", area.get("xa"))
+        add("citizenField38", area.get("diaChi"), default=bool(area.get("_xaChuaChon")))
+        if area.get("_xaChuaChon") or not area.get("tinh"):
+            warnings.append("Chưa chọn được tỉnh/phường, xã nơi cư trú của người được cấp theo danh mục hiện hành — "
+                            "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
+    if self_filing:
+        for field in out[block_start:]:
+            field["onlyIfEmpty"] = True
 
     add("citizenLoaiViecYeuCau", _EVENT_TO_OPTION.get(event))
     registrar = values.get("GiayTo_CoQuanDangKy")

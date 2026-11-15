@@ -67,15 +67,30 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
 </tinh_trang_hon_nhan>
 
 <giay_khai_tu>
-- DeathCert_* lấy từ tài liệu khai tử thật của VỢ/CHỒNG (giấy chứng tử, trích lục khai tử, giấy báo tử), HOẶC từ dòng
-  tình trạng hôn nhân trên tờ khai / giấy XNTTHN cũ ("Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>").
-- Cổng hỏi Số / Ngày cấp / Cơ quan cấp của CHÍNH TỜ GIẤY ĐANG NỘP:
-  + DeathCert_Number = số ở nhãn "Số:" ĐẦU trang, GIỮ NGUYÊN hậu tố ("167/TLKT-BS"). KHÔNG lấy số ở dòng thân "Đã
-    được đăng ký khai tử tại ... Số: <N> ngày <D>" (số đăng ký gốc trong sổ), trừ khi đầu trang không có số nào.
-  + DeathCert_Date = ngày cấp/ký chính tài liệu (dòng địa danh + ngày đầu văn bản hoặc khối ký). KHÔNG lấy ngày chết,
-    ngày sinh. Số và ngày phải CÙNG một nguồn.
-  + DeathCert_Agency = cơ quan cấp/ký chính tài liệu (khối "UBND XÃ ..."); "UBND" → "Ủy ban nhân dân".
-- Hồ sơ kèm giấy thật thì lấy theo giấy thật; tờ khai chỉ bù field giấy thật không đọc được.
+- Nguồn của DeathCert_*, theo thứ tự: (1) GIẤY KHAI TỬ THẬT của vợ/chồng có trong hồ sơ (trích lục khai tử, giấy
+  chứng tử, giấy báo tử); (2) CHỈ KHI hồ sơ không có giấy khai tử thật mới lấy từ dòng tình trạng hôn nhân trên tờ
+  khai / giấy XNTTHN cũ ("Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>"). Hồ sơ có giấy thật mà tờ khai cũng nhắc số,
+  ngày khai tử → lấy theo GIẤY THẬT, bỏ qua số và ngày trên tờ khai: chữ viết tay trên tờ khai hay bị đọc lệch, và tờ
+  khai thường chép số của bản trích lục chứ không phải số đăng ký.
+- Cổng hỏi Số / Ngày / Cơ quan của LẦN ĐĂNG KÝ KHAI TỬ. Trích lục khai tử ghi lần đăng ký đó ở dòng thân "Đã (được)
+  đăng ký khai tử tại: <cơ quan> ... Số: <N> ... ngày <D>", có giấy in "Cấp số: <N> Quyển số: ... Ngày đăng ký: <D>"
+  (số và ngày có thể nằm ở dòng kế tiếp); trích lục lập từ cơ sở dữ liệu hộ tịch điện tử ghi ở dòng "Nơi ghi: <cơ
+  quan>, Sổ đăng ký khai tử, quyển số <Q>, số <N>, ngày <D>". Giấy CÓ một trong các dòng này → cả ba field lấy từ
+  CHÍNH dòng đó (cơ quan là phần đứng trước "Sổ đăng ký khai tử", số là <N> chứ không phải quyển số <Q>):
+  + DeathCert_Number = số đứng sau chữ "Số" / "Cấp số" của dòng đó, chép đúng như giấy (kèm "/<năm>" nếu có). KHÔNG
+    lấy số quyển, KHÔNG lấy số ở nhãn "Số:" đầu trang (số của bản trích lục, dạng "<N>/TLKT-BS").
+  + DeathCert_Date = ngày đứng sau số đó (ngày đăng ký). KHÔNG lấy ngày cấp bản trích lục ở đầu trang, ngày chết,
+    ngày sinh.
+  + DeathCert_Agency = cơ quan đứng sau "tại:", chép ĐỦ mọi cấp mà dòng đó ghi (xã/phường, huyện, tỉnh), không cắt
+    bớt, không tự thêm cấp giấy không ghi.
+  Field nào dòng đó không ghi hoặc không đọc được → field đó lấy ở đầu trang như mục dưới, không để trống.
+- Giấy khai tử thật KHÔNG có dòng "Đã (được) đăng ký khai tử tại" hay "Nơi ghi: ..." (giấy chứng tử, giấy báo tử, trích lục thiếu dòng đó)
+  → lấy của chính tờ giấy đang nộp, không để trống: DeathCert_Number = số ở nhãn "Số:" ĐẦU trang, GIỮ NGUYÊN hậu tố
+  ("<N>/TLKT-BS"); DeathCert_Date = ngày ở dòng địa danh + ngày đầu văn bản hoặc khối ký; DeathCert_Agency = cơ quan
+  cấp ở khối "UBND XÃ ..." đầu trang.
+- DeathCert_Agency viết "Ủy ban nhân dân" thay cho chữ tắt "UBND".
+- Không giấy nào trong hồ sơ ghi SỐ của giấy khai tử (tờ khai chỉ viết "đã có giấy khai tử do ... cấp ngày ...") →
+  DeathCert_Number để trống; không lấy ngày, không tự đặt số.
 - Hồ sơ cấp Giấy XNTTHN kèm giấy khai tử của một người KHÁC người được cấp → đó là giấy khai tử của vợ/chồng, KỂ CẢ khi
   giấy không ghi quan hệ: BẮT BUỘC trả DeathCert_* theo giấy đó; không có tờ khai / giấy XNTTHN cũ thì TinhTrangHonNhan
   = "goa".
@@ -90,6 +105,10 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
     dòng đó → bỏ cả nhóm.
 - BanAn_Number: số ở nhãn "Số:" NGAY ĐẦU văn bản. KHÔNG lấy số ở cụm DẪN CHIẾU ("Tại quyết định số ...", "theo bản án
   số ..."), số thụ lý, số biên lai, số án phí.
+- Riêng TRÍCH LỤC bản án / quyết định ly hôn (tiêu đề "TRÍCH LỤC BẢN ÁN", "TRÍCH LỤC QUYẾT ĐỊNH"): văn bản gốc là bản án
+  / quyết định được nêu ở dòng thân "Tại Bản án / Quyết định ... số <N> ngày <D>, Tòa án <CQ> ..." → BanAn_Number = <N>,
+  BanAn_Date = <D>, BanAn_Agency = <CQ> của dòng đó. Số, ngày, Tòa án ở ĐẦU bản trích lục (số thường có ký hiệu "TL")
+  là của chính bản trích lục, không lấy cho BanAn_*.
 - BanAn_Date: ngày ban hành ở dòng địa danh + ngày đầu văn bản, hoặc nhãn "Ngày:" ngay dưới "Bản án số:"/"Quyết định
   số:". Không lấy ngày hòa giải, ngày thụ lý, ngày hiệu lực.
 - BanAn_Agency: cơ quan ban hành; "TAND" → "Tòa án nhân dân".

@@ -464,8 +464,7 @@ CONSENT_CARD_HMONG = {
     "purpose_md": (
         "Lub hom phiaj: nyeem ntawv ntawm duab (OCR), kho kom raug, piv tus tswv ntaub ntawv, "
         "sau kiag daim foos thiab npaj cov file tso. Cov ntaub ntawv tsuas xa mus rau "
-        "Cổng Dịch vụ công raws yam pej xeem thov xwb; cov ua tiav raug khaws hauv "
-        "hệ thống los saib xyuas rov qab."
+        "Cổng Dịch vụ công raws yam pej xeem thov xwb."
     ),
     "checks": [
         "Kuv nyeem thiab nkag siab lawm; kuv pom zoo cia Tus pab pej xeem nyeem, siv thiab "

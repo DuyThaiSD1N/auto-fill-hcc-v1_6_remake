@@ -154,6 +154,8 @@ async def ensure_indexes() -> None:
     await _ensure_ttl(db, "bac_ninh_prefill", "at", archive_settings.archive_after_minutes * 60 + archive_grace)
     # Câu trả lời LLM để lượt khác cùng prompt dùng lại (compact_agent/runner.py) — runner chỉ đọc bản dưới 30 phút.
     await _ensure_ttl(db, "llm_reuse", "at", 30 * 60)
+    # Kết quả điền đợt 2 chờ extension lấy: mang giá trị trường của người dân nên chỉ giữ ngắn.
+    await _ensure_ttl(db, "second_pass", "at", 30 * 60)
     # Hồ sơ handfree đang làm dở chờ khôi phục (chat/resume/store.py): bản ghi tự mang expires_at.
     await _ensure_ttl(db, "dossier_resume", "expires_at", 0)
     await db.dossier_resume.create_index([("user_id", 1), ("procedure_key", 1), ("last_activity_at", -1)])
@@ -198,3 +200,8 @@ async def ensure_indexes() -> None:
     await db.bug_reports.create_index([("unit_id", 1), ("created_at", -1)])
     await db.bug_reports.create_index([("province", 1), ("created_at", -1)])
     await db.bug_reports.create_index([("status", 1), ("created_at", -1)])
+    # Báo cáo hằng ngày: mỗi tài khoản đơn vị 1 báo cáo/ngày; tỉnh lọc theo đơn vị, admin theo tỉnh.
+    await db.daily_reports.create_index([("user_id", 1), ("date", 1)], unique=True)
+    await db.daily_reports.create_index([("unit_id", 1), ("date", -1)])
+    await db.daily_reports.create_index([("province", 1), ("date", -1)])
+    await db.daily_reports.create_index([("date", -1)])
