@@ -445,6 +445,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "dieu-chinh-thong-tin-ve-cu-tru": ["đổi chủ hộ", "thay đổi chủ hộ", "bố mất muốn đứng tên chủ hộ",
                                        "chủ hộ qua đời đổi người làm chủ hộ", "điều chỉnh thông tin cư trú",
                                        "sửa thông tin chủ hộ trong hộ khẩu"],
+    # Phân biệt "dieu-chinh-thong-tin-ve-cu-tru" (SỬA thông tin / đổi chủ hộ) và "dang-ky-thuong-tru" (chuyển đến ở):
+    # thủ tục này chỉ XIN GIẤY xác nhận nơi thường trú / thông tin cư trú (thay sổ hộ khẩu), không thay đổi gì.
+    "xac-nhan-thong-tin-ve-cu-tru": ["xin giấy xác nhận cư trú", "xác nhận nơi thường trú", "xin xác nhận cư trú",
+                                     "giấy xác nhận thông tin về cư trú", "xin giấy CT07",
+                                     "cần giấy xác nhận hộ khẩu để nộp hồ sơ đi học", "xác nhận thường trú"],
     # Phân biệt "cap-the-can-cuoc-duoi-14-tuoi" (trẻ dưới 14) và "cap-doi-the-can-cuoc" (đã có thẻ, đổi thẻ): người từ
     # đủ 14 tuổi CHƯA từng có thẻ căn cước (làm lần đầu, hoặc chỉ có CMND cũ) → thủ tục này.
     "cap-the-can-cuoc-tu-du-14-tuoi": ["con vừa đủ 14 tuổi làm căn cước lần đầu", "làm căn cước lần đầu",

@@ -6462,6 +6462,52 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # CÙNG trang + cùng bộ id với "dang-ky-thuong-tru" (chỉ khác TT=THUONGTRU_09) → cùng cờ supportsBcaThuongTru,
+        # cùng ô cam kết chkRULE. Thủ tục KHÔNG đính kèm (mapping 16/11/2026): điền xong là nhắc tích cam kết rồi nộp.
+        # Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi (mã TTHC 1.010041).
+        "key": "xac-nhan-thong-tin-ve-cu-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_09"],
+            "headingDisabled": True,
+        },
+        "label": "Xác nhận thông tin về cư trú",
+        "shortLabel": "Xác nhận thông tin cư trú",
+        "subtitle": "Xin giấy xác nhận nơi thường trú — kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🏠",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222"
+            "&TT=THUONGTRU_09&TT_NAME=X%C3%A1c%20nh%E1%BA%ADn%20th%C3%B4ng%20tin%20v%E1%BB%81%20c%C6%B0%20tr%C3%BA"
+            "&MaTTHC=1.010041&MaCoQuanThucHien=BCA_CAX&MaDVC=1.010041.01&MaTTHCDP=1.010041&vneid=1"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi thường trú",
+        "requiresCapability": "supportsBcaThuongTru",
+        "hasAttachmentStep": False,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkRULE",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền (nếu người khác nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
+            "2. Giấy ủy quyền (nếu người khác nộp thay).\n"
+            "3. CCCD của người đề nghị (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an như "dang-ky-tam-tru" (bcaPortal: chọn thẻ là mở thẳng trang kê khai, trợ lý chọn hộ
         # Tỉnh + Xã ở khối "Cơ quan thực hiện" rồi mới xin giấy tờ). Trang KHÔNG có mục đính kèm. Người lưu trú thêm
         # từng người qua modal "Thêm mới người lưu trú" (bcaGuestList, comp bca-guest-list) — bản Trợ lý chưa khai
@@ -10448,6 +10494,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-thuong-tru": _TAT_CA,
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang thường trú.
     "dieu-chinh-thong-tin-ve-cu-tru": _TAT_CA,
+    # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang thường trú.
+    "xac-nhan-thong-tin-ve-cu-tru": _TAT_CA,
     # Toàn quốc (user 16/11/2026).
     "cap-doi-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mặc định toàn quốc như cấp đổi căn cước (cùng trang Bộ Công an), 16/11/2026.

@@ -550,6 +550,13 @@ def test_registered_procedures_use_their_declared_flow_family():
                   "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
         assert bca_dieu_chinh.get(field) == bca_thuong_tru.get(field), field
     assert bca_dieu_chinh["detect"]["urlIncludes"] == ["TT=THUONGTRU_08"]
+    # Xác nhận thông tin về cư trú: CÙNG trang thường trú (TT=THUONGTRU_09), cùng cờ extension nhưng KHÔNG đính kèm.
+    bca_xac_nhan = procedures.pop("xac-nhan-thong-tin-ve-cu-tru")
+    for field in ("flowProfile", "bcaPortal", "requiresCapability", "submitCommitCheckbox", "wizard", "maePortal",
+                  "provinceOnly"):
+        assert bca_xac_nhan.get(field) == bca_thuong_tru.get(field), field
+    assert bca_xac_nhan["hasAttachmentStep"] is False and "samePageAttach" not in bca_xac_nhan
+    assert bca_xac_nhan["detect"]["urlIncludes"] == ["TT=THUONGTRU_09"]
     # Thông báo lưu trú (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, người lưu trú thêm qua modal.
     bca_luu_tru = procedures.pop("thong-bao-luu-tru")
     assert bca_luu_tru.get("flowProfile") is None
@@ -900,7 +907,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an (16/11) "cap-lai-the-can-cuoc" (2.001194).
     # +1 cổng Bộ Công an (16/11) "cap-the-can-cuoc-tu-du-14-tuoi" (2.000200 / 1.014061).
     # +1 cổng Bộ Công an (16/11) "dieu-chinh-thong-tin-ve-cu-tru" (1.010039).
-    assert len(procedures) == 170
+    # +1 cổng Bộ Công an (16/11) "xac-nhan-thong-tin-ve-cu-tru" (1.010041).
+    assert len(procedures) == 171
 
     for procedure in procedures:
         key = procedure["key"]

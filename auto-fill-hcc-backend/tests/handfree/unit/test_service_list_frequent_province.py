@@ -82,8 +82,9 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 16/11: +1 mọi tỉnh Bộ Công an cap-lai-the-can-cuoc (2.001194) (_TAT_CA, mặc định toàn quốc).
         # 16/11: +1 mọi tỉnh Bộ Công an cap-the-can-cuoc-tu-du-14-tuoi (2.000200 / 1.014061) (_TAT_CA, mặc định).
         # 16/11: +1 mọi tỉnh Bộ Công an dieu-chinh-thong-tin-ve-cu-tru (1.010039) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 130, "bacninh": 136, "lamdong": 123, "danang": 127, "quangninh": 131, "ninhbinh": 120,
-        "quangngai": 121, "laocai": 119, "quangtri": 121, "khanhhoa": 126, "tuyenquang": 121,
+        # 16/11: +1 mọi tỉnh Bộ Công an xac-nhan-thong-tin-ve-cu-tru (1.010041) (_TAT_CA, mặc định toàn quốc).
+        "laichau": 131, "bacninh": 137, "lamdong": 124, "danang": 128, "quangninh": 132, "ninhbinh": 121,
+        "quangngai": 122, "laocai": 120, "quangtri": 122, "khanhhoa": 127, "tuyenquang": 122,
     }
 
 

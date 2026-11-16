@@ -3574,6 +3574,14 @@
       "autoConfirm": false
     },
     {
+      "key": "xac-nhan-thong-tin-ve-cu-tru",
+      "code": "1.010041",
+      "label": "Xác nhận thông tin về cư trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222&TT=THUONGTRU_09&TT_NAME=X%C3%A1c%20nh%E1%BA%ADn%20th%C3%B4ng%20tin%20v%E1%BB%81%20c%C6%B0%20tr%C3%BA&MaTTHC=1.010041&MaCoQuanThucHien=BCA_CAX&MaDVC=1.010041.01&MaTTHCDP=1.010041&vneid=1",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "cap-doi-the-can-cuoc",
       "code": "2.001195",
       "label": "Cấp đổi thẻ căn cước",

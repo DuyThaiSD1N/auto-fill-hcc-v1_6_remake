@@ -72,6 +72,7 @@ from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_p
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process import run as dieu_chinh_thong_tin_ve_cu_tru_process
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.attach import plan as dieu_chinh_thong_tin_ve_cu_tru_attach
+from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process import run as xac_nhan_thong_tin_ve_cu_tru_process
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -10608,6 +10609,30 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Cổng DVC Bộ Công an: CÙNG trang dang-ky-thuong-tru.html với "dang-ky-thuong-tru" (cùng bộ id ô), chỉ khác
+        # TT=THUONGTRU_09 trên URL → entry này PHẢI đứng TRƯỚC "dang-ky-thuong-tru" (popup lấy rule urlIncludes khớp
+        # đầu tiên). Link kê khai + mã 1.010041 ở ke_khai_links.json. Trường hợp "Cấp cho NK thường trú trên / khác
+        # địa bàn quản lý" chọn theo nơi thường trú so với cơ quan tiếp nhận. Không đính kèm (mapping 16/11/2026).
+        "key": "xac-nhan-thong-tin-ve-cu-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_09"],
+            "headingDisabled": True,
+        },
+        "label": "Xác nhận thông tin về cư trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người đề nghị xác nhận, chủ hộ, nội dung "
+            "đề nghị.\n"
+            "2. Giấy ủy quyền (nếu người khác nộp thay).\n"
+            "3. CCCD của người đề nghị hoặc người được ủy quyền (nếu có) để đối chiếu."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name) — bộ id KHÁC trang đăng ký tạm trú dù cùng cổng. Link kê
         # khai + mã 1.004222 ở ke_khai_links.json. Cơ quan thực hiện (Tỉnh → Xã) chọn đầu tiên: cổng mới nạp Thủ tục,
         # Trường hợp và nhóm giấy tờ đính kèm.
@@ -10963,6 +10988,7 @@ _PIPELINE = {
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_process,
+    "xac-nhan-thong-tin-ve-cu-tru": xac_nhan_thong_tin_ve_cu_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,

@@ -99,6 +99,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "hloov" (thay đổi) đã có; TỪ MỚI "tus tswv tsev" (chủ hộ). Thủ tục điều chỉnh
     # thông tin cư trú, trường hợp thay đổi chủ hộ.
     "dieu-chinh-thong-tin-ve-cu-tru": "Hloov tus tswv tsev",
+    # BẢN NHÁP chờ anh Dư soát — "lees paub" (xác nhận) + "qhov chaw nyob" (chỗ ở) đã có; TỪ MỚI "ruaj" (cố định, thường trú).
+    "xac-nhan-thong-tin-ve-cu-tru": "Lees paub qhov chaw nyob ruaj",
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
