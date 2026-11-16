@@ -212,6 +212,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Có engine trang Cấp đổi thẻ căn cước (cơ quan Công an tỉnh → xã → địa chỉ trạm, option "Công an …").
         # Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
         "supportsBcaCanCuoc": raw.get("supportsBcaCanCuoc") is True,
+        # Cổng dichvucong.bocongan.gov.vn (đăng ký xe lần đầu): trang chọn trường hợp không tính là form kê khai, ô
+        # Tỉnh/Xã nhận kết quả điền theo cascade. Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
+        "supportsBcaDangKyXe": raw.get("supportsBcaDangKyXe") is True,
         # Biết tự bấm "Khai tờ khai" ở đúng dòng Thành phần hồ sơ (lệnh open_eform) rồi tự gửi fill_eform khi tờ khai
         # mở ra. Thiếu cờ → bảo công dân tự bấm như cũ.
         "supportsOpenEform": raw.get("supportsOpenEform") is True,

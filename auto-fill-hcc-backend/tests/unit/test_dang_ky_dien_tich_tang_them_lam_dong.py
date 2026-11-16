@@ -408,3 +408,16 @@ def test_tro_ly_mo_rieng_lam_dong_cung_key_voi_loi():
     assert "1.116356" in proc["detect"]["textIncludes"] and proc["detect"]["urlScope"] == ["lamdong.gov.vn"]
     assert handfree.is_visible_in_province(proc, "lamdong")
     assert not handfree.is_visible_in_province(proc, "khanhhoa")
+
+
+def test_prompt_ban_ve_ocr_meo_van_la_manh_do_dac_va_planner_dua_vao_dong_4():
+    # Bản vẽ đo đạc chỉnh lý hiện trạng: OCR ngắn, méo chữ, lặp dòng → LLM từng trả "other" rồi file
+    # rơi về dòng Đơn. Prompt phải dặn rõ kiểu OCR này là manh_do_dac.
+    assert "BẢN VẼ ĐỌC OCR RẤT TỆ" in SYSTEM_PROMPT
+    assert "BẢN VẼ\n  ĐO ĐẠC CHỈNH LÝ THỬA ĐẤT HIỆN TRẠNG" in SYSTEM_PROMPT
+    files = [{"name": "ban-ve.pdf"}, {"name": "don.pdf"}]
+    attachments, _, _ = planner.build_plan_items(files, None, {0: "manh_do_dac", 1: "don_bien_dong"})
+    by_file = {item["fileIndex"]: item for item in attachments}
+    assert by_file[0]["componentIndex"] == 4
+    assert by_file[0]["componentName"] == "Mảnh trích đo bản đồ địa chính thửa đất"
+    assert by_file[1]["componentIndex"] == 1

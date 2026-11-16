@@ -556,6 +556,25 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_can_cuoc["bcaPortal"] is True and bca_can_cuoc["requiresCapability"] == "supportsBcaCanCuoc"
     assert bca_can_cuoc["hasAttachmentStep"] is False and "samePageAttach" not in bca_can_cuoc
     assert "wizard" not in bca_can_cuoc and "maePortal" not in bca_can_cuoc
+    # Cấp thẻ căn cước cho người dưới 14 tuổi (Cổng DVC Bộ Công an): cùng khuôn cấp đổi, cha/mẹ kê khai thay.
+    bca_duoi_14 = procedures.pop("cap-the-can-cuoc-duoi-14-tuoi")
+    for field in ("flowProfile", "bcaPortal", "bcaAgencyFromDocs", "requiresCapability", "hasAttachmentStep",
+                  "samePageAttach", "wizard", "maePortal", "provinceOnly"):
+        assert bca_duoi_14.get(field) == bca_can_cuoc.get(field), field
+    # Cấp lại thẻ căn cước: CÙNG trang với cấp đổi (chỉ khác TT=CAP_LAI), cùng khuôn luồng.
+    bca_cap_lai = procedures.pop("cap-lai-the-can-cuoc")
+    for field in ("flowProfile", "bcaPortal", "bcaAgencyFromDocs", "requiresCapability", "hasAttachmentStep",
+                  "samePageAttach", "wizard", "maePortal", "provinceOnly"):
+        assert bca_cap_lai.get(field) == bca_can_cuoc.get(field), field
+    assert bca_cap_lai["detect"]["urlScope"] == bca_can_cuoc["detect"]["urlScope"]
+    assert bca_cap_lai["detect"]["urlIncludes"] == ["TT=CAP_LAI"]
+    # Đăng ký xe lần đầu (cổng dichvucong.bocongan.gov.vn, eForm Nth — KHÔNG phải cổng căn cước): luồng chung một trang,
+    # không đính kèm, cờ riêng của extension; toàn quốc.
+    bca_xe = procedures.pop("dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc")
+    assert bca_xe.get("flowProfile") is None and bca_xe["requiresCapability"] == "supportsBcaDangKyXe"
+    assert bca_xe["hasAttachmentStep"] is False and "bcaPortal" not in bca_xe and "provinceOnly" not in bca_xe
+    assert "wizard" not in bca_xe and "maePortal" not in bca_xe and "needsAgencySelect" not in bca_xe
+    assert bca_xe["detect"]["urlScope"] == ["dichvucong.bocongan.gov.vn"]
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -865,7 +884,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an (16/11) "thong-bao-luu-tru" (2.001159).
     # +1 cổng Bộ Công an (16/11) "dang-ky-thuong-tru" (1.004222).
     # +1 cổng Bộ Công an (16/11) "cap-doi-the-can-cuoc" (2.001195).
-    assert len(procedures) == 165
+    # +1 cổng Bộ Công an (16/11) "cap-the-can-cuoc-duoi-14-tuoi" (1.012549 / 1.014062).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (16/11) "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc" (1.012575).
+    # +1 cổng Bộ Công an (16/11) "cap-lai-the-can-cuoc" (2.001194).
+    assert len(procedures) == 168
 
     for procedure in procedures:
         key = procedure["key"]

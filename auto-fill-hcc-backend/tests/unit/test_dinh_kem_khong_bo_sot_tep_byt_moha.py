@@ -95,14 +95,14 @@ def test_tiem_chung_tep_la_va_cccd_vao_dong_duy_nhat():
     assert any("la.pdf, cccd.pdf" in w for w in warnings)
 
 
-def test_khuyet_tat_tep_la_va_cccd_vao_o_don():
+def test_khuyet_tat_tep_la_vao_o_don_cccd_vao_dong_1():
     items, warnings, classified = khuyet_tat.build_plan_items(_files("la.pdf", "cccd.pdf"), _ocr(la=_LA, cccd=_CCCD), {})
-    assert [(i["fileName"], i["slotKey"], i["detectedType"], i["documentName"]) for i in items] == [
-        ("la.pdf", "disability_application_form", "other", "la.pdf"),
-        ("cccd.pdf", "disability_application_form", "cccd", "cccd.pdf")]
+    assert [(i["fileName"], i["slotKey"], i["slotIndex"], i["detectedType"], i["documentName"]) for i in items] == [
+        ("la.pdf", "disability_application_form", 3, "other", "la.pdf"),
+        ("cccd.pdf", "disability_related_docs", 0, "cccd", "Căn cước công dân")]
     assert all(i["target"] == "fixed-slot" for i in items)
-    assert [c["routedTo"] for c in classified] == ["disability_application_form"] * 2
-    assert len(warnings) == 1 and "la.pdf, cccd.pdf" in warnings[0]
+    assert [c["routedTo"] for c in classified] == ["disability_application_form", "disability_related_docs"]
+    assert len(warnings) == 1 and "la.pdf" in warnings[0] and "cccd.pdf" not in warnings[0]
 
 
 def test_tqgc_tep_la_vao_o_don_cccd_vao_giay_to_khac():

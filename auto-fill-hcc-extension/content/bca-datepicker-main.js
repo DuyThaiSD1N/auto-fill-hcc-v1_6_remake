@@ -27,7 +27,11 @@
       el.value = value;
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }
+    // blur() trên ô CHƯA focus không bắn sự kiện → ô có onblur (vd txtBIRTHDATE_NCC trang cấp căn cước dưới 14 tuổi:
+    // onChangeBirthDate() tính ô bắt buộc "Loại hồ sơ") phải phát blur tay.
+    const focused = document.activeElement === el;
     el.blur();
+    if (!focused && el.hasAttribute("onblur")) el.dispatchEvent(new FocusEvent("blur"));
     return { id, ok: el.value === value, value: el.value };
   }
 

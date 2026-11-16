@@ -462,6 +462,10 @@ def test_benh_vien_khanh_hoa_ten_cu_ten_moi_va_viet_tat():
     assert lookup_hospital("TTYT TX Ninh Hòa")["xa"] == "Phường Đông Ninh Hòa"
     assert lookup_hospital("TTYT TP Phan Rang Tháp Chàm")["xa"] == "Phường Phan Rang"
     assert lookup_hospital("Bệnh viện Ninh Hòa", "Khánh Hòa") is None
+    # Lô 10 đường 19/5, KDC Vĩnh Điềm Trung — phường Vĩnh Hiệp cũ, nay là Phường Tây Nha Trang.
+    assert lookup_hospital("Bệnh viện Đa khoa Sài Gòn Nha Trang")["xa"] == "Phường Tây Nha Trang"
+    assert lookup_hospital("BVĐK Sài Gòn - Nha Trang", "Khánh Hòa")["xa"] == "Phường Tây Nha Trang"
+    assert lookup_hospital("Bệnh viện Sài Gòn Nha Trang", "Khánh Hòa")["xa"] == "Phường Tây Nha Trang"
 
 
 def test_bang_benh_vien_khanh_hoa_khong_keo_benh_vien_tinh_khac():

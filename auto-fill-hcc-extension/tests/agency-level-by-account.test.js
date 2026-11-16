@@ -52,6 +52,35 @@ for (const [role, ward, so, card] of [
   });
 }
 
+// Lào Cai cấp Sở: luôn tick Sở; HCC tỉnh bấm thẻ Sở NN&MT, tài khoản xã bấm thẻ "Chi nhánh VPĐKĐĐ khu vực …" của xã.
+// BE đã trải nhánh "xa" của tài khoản xã vào trường cũ → nhánh "so" phải xoá bảng theo xã bằng {}.
+const LAO_CAI_SO = "Sở Nông nghiệp và Môi trường tỉnh Lào Cai";
+const LAO_CAI_BY_WARD = { "Xã Mường Lai": "khu vực Lục Yên", "Phường Cam Đường": "khu vực Lào Cai - Cam Đường" };
+const LAO_CAI_LINK = {
+  key: "giao-dat-cho-thue-dat-lao-cai",
+  selectSo: true,
+  submitCardIncludes: LAO_CAI_SO,
+  submitCardIncludesByWard: LAO_CAI_BY_WARD,
+  agencyLevelByAccount: {
+    so: { submitCardIncludesByWard: {} },
+    xa: { submitCardIncludesByWard: LAO_CAI_BY_WARD },
+  },
+};
+
+for (const [role, ward, card] of [
+  ["province", "Phường Cam Đường", LAO_CAI_SO],
+  ["province", "", LAO_CAI_SO],
+  ["commune", "Xã Mường Lai", "khu vực Lục Yên"],
+  ["commune", "Phường Cam Đường", "khu vực Lào Cai - Cam Đường"],
+  ["commune", "", LAO_CAI_SO],
+]) {
+  test(`Lào Cai: ${role} + xã "${ward}" → ${card}`, () => {
+    const fns = load(role, ward);
+    assert.strictEqual(fns.selectSoFor(LAO_CAI_LINK), true);
+    assert.strictEqual(fns.submitCardIncludesFor(LAO_CAI_LINK), card);
+  });
+}
+
 test("thủ tục không khai agencyLevelByAccount giữ nguyên cấu hình", () => {
   const fns = load("commune", "Xã B");
   const link = { selectSo: true, submitCardIncludes: "Cơ quan thực hiện: Sở X" };

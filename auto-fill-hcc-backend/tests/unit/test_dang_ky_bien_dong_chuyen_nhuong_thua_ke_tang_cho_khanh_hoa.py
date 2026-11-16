@@ -86,28 +86,28 @@ def _values(fields: list[dict]) -> dict:
 
 
 # --------------------------------------------------------------------------------------
-# ĐÍNH KÈM (attp-row 13 dòng + nút Thêm giấy tờ)
+# ĐÍNH KÈM (attp-row 13 dòng)
 # --------------------------------------------------------------------------------------
 def test_sample_bundle_routes_like_attachment_mapping():
     """Ánh xạ hồ sơ: phiếu đo đạc -> dòng 1, GCN -> dòng 3, file văn bản thừa kế + hợp đồng tặng cho -> dòng 4 nguyên
-    khối, Đơn -> dòng 7; tờ khai thuế và file giấy nộp tiền + quyết định xử phạt -> hai dòng qua Thêm giấy tờ."""
+    khối, Đơn -> dòng 7; tờ khai thuế và file giấy nộp tiền + quyết định xử phạt -> cũng dòng 4 (người dùng chốt
+    16/11/2026), không tạo dòng qua nút Thêm giấy tờ."""
     attachments, warnings, classified = planner.build_plan_items(
         _files(["td.pdf", "g.pdf", "vb.pdf", "d.pdf", "tk.pdf", "nt.pdf"]), None,
         {0: ["manh_trich_do"], 1: ["gcn"], 2: ["hop_dong_chuyen_quyen"], 3: ["don_bien_dong"], 4: ["to_khai_thue"],
          5: ["chung_tu_nop_tien", "quyet_dinh_xu_phat"]},
     )
-    rows = attachments[:4]
-    assert [(item["componentIndex"], item["fileName"]) for item in rows] == [
-        (1, "td.pdf"), (3, "g.pdf"), (4, "vb.pdf"), (_DON_ROW, "d.pdf")]
-    assert all(item["target"] == "attp-row" and "loaiBan" not in item for item in rows)
-    assert [_fe_find_row(item["componentName"], item["componentIndex"]) for item in rows] == [1, 3, 4, _DON_ROW]
-    added = attachments[4:]
-    assert [item["target"] for item in added] == ["add-document-dialog"] * 2
-    assert len({item["componentName"] for item in added}) == 2
-    assert all("componentIndex" not in item and item["needsAddComponent"] is True for item in added)
-    assert all(_fe_find_row(item["fallbackComponentName"], _DON_ROW) == _DON_ROW for item in added)
-    assert [item.get("addDocument") for item in classified[4:]] == [True, True]
-    # Giấy nộp tiền + quyết định xử phạt chung một dòng Thêm giấy tờ: không phải "gộp nhiều chỗ".
+    assert [(item["componentIndex"], item["fileName"]) for item in attachments] == [
+        (1, "td.pdf"), (3, "g.pdf"), (4, "vb.pdf"), (_DON_ROW, "d.pdf"), (4, "tk.pdf"), (4, "nt.pdf")]
+    assert all(item["target"] == "attp-row" and item["needsAddComponent"] is False and "loaiBan" not in item
+               for item in attachments)
+    assert all("fallbackComponentName" not in item and "formOptionHints" not in item for item in attachments)
+    assert [_fe_find_row(item["componentName"], item["componentIndex"]) for item in attachments] == [
+        1, 3, 4, _DON_ROW, 4, 4]
+    # Cán bộ phân biệt ba file chung dòng 4 qua documentName.
+    assert len({item["documentName"] for item in attachments[2:3] + attachments[4:]}) == 3
+    assert [item["componentIndex"] for item in classified[4:]] == [4, 4]
+    # Giấy nộp tiền + quyết định xử phạt chung một dòng: không phải "gộp nhiều chỗ".
     assert warnings == []
 
 
@@ -118,8 +118,8 @@ def test_component_name_resolves_to_its_own_row_on_fe():
         assert _fe_find_row(route["name"], route["row"]) == route["row"], doc_type
         # FE lệch STT thì dò theo tên vẫn ra đúng dòng (tên dòng 3 cũng nằm trong chữ dòng 12, 13 nhưng dòng 3 đứng trước).
         assert _fe_find_row(route["name"], 99) == route["row"], doc_type
-    for group in planner._ADD_DOCUMENTS.values():
-        assert _fe_find_row(group["componentName"], 99) is None
+    for doc_type in ("to_khai_thue", "chung_tu_nop_tien", "quyet_dinh_xu_phat"):
+        assert planner._ROUTES[doc_type]["row"] == 4, doc_type
 
 
 def test_authorization_has_its_own_row():
@@ -139,7 +139,10 @@ def test_bundle_file_stays_whole_on_highest_priority_place():
     assert classified[0]["docTypes"] == ["hop_dong_chuyen_quyen", "gcn", "identity", "to_khai_thue"]
     bundled = [warning for warning in warnings if "gộp nhiều giấy tờ" in warning]
     assert len(bundled) == 1
-    assert "dòng 4" in bundled[0] and "Thêm giấy tờ" in bundled[0] and "nhân thân" not in bundled[0]
+    # File nằm ở dòng 3 (GCN): báo cán bộ cả hợp đồng lẫn tờ khai thuế thuộc dòng 4, không nhắc nút Thêm giấy tờ.
+    assert "Hợp đồng/văn bản chuyển quyền sử dụng đất (dòng 4)" in bundled[0]
+    assert "Tờ khai lệ phí trước bạ, thuế thu nhập cá nhân (dòng 4)" in bundled[0]
+    assert "Thêm giấy tờ" not in bundled[0] and "nhân thân" not in bundled[0]
     # Thiếu Đơn -> nhắc; GCN và hợp đồng đã có trong file gộp -> không nhắc.
     assert [warning for warning in warnings if "chưa có" in warning] == [planner._REQUIRED_DOCS[2][1]]
 
@@ -162,7 +165,7 @@ def test_unknown_routed_to_don_row_with_original_name():
 
 
 def test_attach_prompt_lists_every_type():
-    for doc_type in list(planner._ROUTES) + list(planner._ADD_GROUP) + ["other"]:
+    for doc_type in list(planner._ROUTES) + ["other"]:
         assert doc_type in SYSTEM_PROMPT
     assert '"docTypes"' in SYSTEM_PROMPT and "THÀNH VIÊN HỘ GIA ĐÌNH" in SYSTEM_PROMPT and "KT. CHỦ TỊCH" in SYSTEM_PROMPT
 
@@ -180,8 +183,8 @@ def test_plan_parses_llm_doc_type_lists(monkeypatch):
 
     result = asyncio.run(planner.plan(files))
 
-    assert [item["target"] for item in result["attachments"]] == ["attp-row", "add-document-dialog"]
-    assert result["attachments"][0]["componentIndex"] == 3
+    assert [item["target"] for item in result["attachments"]] == ["attp-row", "attp-row"]
+    assert [item["componentIndex"] for item in result["attachments"]] == [3, 4]
     assert any("Đơn đăng ký biến động" in error for error in result["errors"])
 
 

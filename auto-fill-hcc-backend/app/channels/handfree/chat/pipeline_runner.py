@@ -67,6 +67,12 @@ from app.pipelines.khuyet_tat.process.mapper import (
 from app.pipelines.cap_doi_the_can_cuoc.process.mapper import (
     with_account_process_options as with_cap_doi_the_can_cuoc_account_process_options,
 )
+from app.pipelines.cap_the_can_cuoc_duoi_14_tuoi.process.mapper import (
+    with_account_process_options as with_cap_the_can_cuoc_duoi_14_tuoi_account_process_options,
+)
+from app.pipelines.cap_lai_the_can_cuoc.process.mapper import (
+    with_account_process_options as with_cap_lai_the_can_cuoc_account_process_options,
+)
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.mapper import (
     with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
 )
@@ -395,6 +401,8 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_khuyet_tat_account_process_options(options, owner_user, procedure_key)
             # Cấp đổi căn cước: trợ lý không hỏi nơi → giấy không ghi cơ quan thì lấy xã/tỉnh tài khoản (tô vàng).
             options = with_cap_doi_the_can_cuoc_account_process_options(options, owner_user, procedure_key)
+            options = with_cap_the_can_cuoc_duoi_14_tuoi_account_process_options(options, owner_user, procedure_key)
+            options = with_cap_lai_the_can_cuoc_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"

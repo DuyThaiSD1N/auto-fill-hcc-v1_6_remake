@@ -3,6 +3,18 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.11",
+    date: "16/11/2026",
+    items: [
+      "Thêm thủ tục Cấp lại thẻ căn cước và Cấp thẻ căn cước cho người dưới 14 tuổi (Cổng dịch vụ công Bộ Công an): ô \"Mối quan hệ của người kê khai với người cần cấp căn cước\" chọn theo cha, mẹ ghi trên giấy tờ (không trùng ai thì chọn Người đại diện hợp pháp); điền ngày sinh xong cổng tự tính ô Loại hồ sơ.",
+      "Thêm thủ tục Đăng ký xe lần đầu đối với xe sản xuất, lắp ráp trong nước (Cổng dịch vụ công Bộ Công an): điền thông tin chủ xe và chọn Tỉnh, Phường/xã nhận kết quả.",
+      "Thêm thủ tục Đăng ký biến động đất đai trên cổng dịch vụ công mới của Lào Cai (1.115668), có tách giấy tờ khi đính kèm.",
+      "Xác định mức độ khuyết tật: Căn cước công dân được đính vào thành phần \"Bản sao các giấy tờ liên quan đến khuyết tật\" thay vì đính chung với Đơn đề nghị.",
+      "Đăng ký biến động chuyển nhượng, thừa kế, tặng cho tại Khánh Hòa: tờ khai thuế, giấy nộp tiền, quyết định xử phạt được đính vào thành phần hợp đồng chuyển quyền sử dụng đất.",
+      "Khai sinh liên thông: điền xong, hệ thống soát lại biểu mẫu và tự ghi lại các ô cần sửa.",
+    ],
+  },
+  {
     version: "1.28.9",
     date: "16/11/2026",
     items: [

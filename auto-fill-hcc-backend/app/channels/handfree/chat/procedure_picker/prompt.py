@@ -431,6 +431,21 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                              "đủ 25 tuổi phải đổi căn cước", "làm lại căn cước khi đủ 40 tuổi",
                              "thẻ căn cước bị hỏng, gãy chíp", "đổi căn cước vì đổi tên",
                              "cấp đổi CCCD", "đổi căn cước gắn chíp sang thẻ căn cước mới"],
+    # Phân biệt "cap-doi-the-can-cuoc": thẻ MẤT / thất lạc, hoặc được trở lại quốc tịch Việt Nam → cấp lại; thẻ vẫn còn
+    # mà đến tuổi đổi / đổi thông tin → cấp đổi. Thẻ hư hỏng: cổng có ở cả hai, người dân nói "làm lại" thì cấp lại.
+    "cap-lai-the-can-cuoc": ["mất thẻ căn cước", "làm lại căn cước bị mất", "đánh rơi căn cước",
+                             "thất lạc thẻ căn cước", "cấp lại CCCD", "căn cước bị mất cắp",
+                             "làm lại thẻ căn cước bị hỏng", "trở lại quốc tịch Việt Nam làm căn cước"],
+    # Phân biệt "cap-doi-the-can-cuoc": trẻ CHƯA có thẻ, làm lần đầu → thủ tục này; con đủ 14 tuổi đổi thẻ cũ → cấp đổi.
+    "cap-the-can-cuoc-duoi-14-tuoi": ["làm căn cước cho con", "làm căn cước cho bé", "cấp căn cước cho trẻ em",
+                                      "con dưới 14 tuổi làm thẻ căn cước", "làm CCCD cho con lần đầu",
+                                      "làm căn cước cho cháu học sinh", "bé chưa có căn cước"],
+    # Phân biệt thủ tục phương tiện THỦY / xe tập lái / phù hiệu xe / lưu hành phương tiện Lào (cổng Bộ Xây dựng) và
+    # đăng ký lại khi mua xe cũ: thủ tục này chỉ cho xe máy / ô tô MỚI mua, sản xuất lắp ráp trong nước, đăng ký lần đầu.
+    "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": ["đăng ký xe máy mới mua", "làm biển số xe mới",
+                                                       "đăng ký xe lần đầu", "bấm biển số xe máy mới",
+                                                       "đăng ký ô tô mới mua lắp ráp trong nước",
+                                                       "mua xe mới cần đăng ký cấp biển"],
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": ["cấp lại giấy chứng nhận hộ kinh doanh",
                                           "mất giấy phép kinh doanh hộ gia đình", "làm lại giấy phép kinh doanh",
                                           "giấy đăng ký kinh doanh bị rách, hỏng",

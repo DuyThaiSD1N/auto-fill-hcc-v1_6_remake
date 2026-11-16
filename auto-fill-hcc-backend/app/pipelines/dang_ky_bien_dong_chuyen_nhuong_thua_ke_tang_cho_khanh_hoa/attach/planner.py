@@ -1,4 +1,4 @@
-"""Lập kế hoạch đính kèm cho 13 dòng thành phần hồ sơ trên cổng iGate Khánh Hòa (1.013831) + nút "Thêm giấy tờ".
+"""Lập kế hoạch đính kèm cho 13 dòng thành phần hồ sơ trên cổng iGate Khánh Hòa (1.013831).
 
 Bảng 13 dòng (mat-checkbox + radio Bản chính/Bản sao + "Chọn tệp tin", engine FE `attp-row`), thứ tự DOM theo file
 mapping; chỉ dòng 3 (Bản gốc GCN) cổng tick sẵn:
@@ -7,6 +7,7 @@ mapping; chỉ dòng 3 (Bản gốc GCN) cổng tick sẵn:
   STT2 : Văn bản của bên nhận thế chấp đồng ý chuyển nhượng …       -> van_ban_the_chap
   STT3 : Bản gốc Giấy chứng nhận đã cấp.                            -> gcn
   STT4 : Hợp đồng hoặc văn bản về việc chuyển quyền …               -> hop_dong_chuyen_quyen (HĐ, văn bản thừa kế)
+                                                                       + to_khai_thue, chung_tu_nop_tien, quyet_dinh_xu_phat
   STT5 : Văn bản thỏa thuận cấp chung một Giấy chứng nhận           -> thoa_thuan_cap_chung
   STT6 : … tài sản gắn liền với đất thuê trả tiền hằng năm          -> dat_thue_hang_nam
   STT7 : Đơn đăng ký biến động … theo Mẫu số 18                     -> don_bien_dong (+ CCCD, giấy tờ nhân thân)
@@ -16,8 +17,8 @@ mapping; chỉ dòng 3 (Bản gốc GCN) cổng tick sẵn:
   STT11: Bản vẽ tách thửa, hợp thửa theo Mẫu số 22                  -> ban_ve_tach_hop_thua
   STT12: Văn bản tặng cho/biên bản họp với đại diện thôn, tổ dân phố -> tang_cho_cong_dong (tặng cho Nhà nước/cộng đồng)
   STT13: Ghi chú "biên bản họp với UBND cấp xã … chỉ nộp bản gốc GCN" -> KHÔNG route (câu hướng dẫn, không phải giấy)
-  "+ Thêm giấy tờ": tờ khai lệ phí trước bạ/thuế TNCN (một dòng); giấy nộp tiền, quyết định xử phạt (một dòng khác)
-                    -> add-document-dialog, không tạo được dòng thì đính chung dòng Đơn.
+  Tờ khai lệ phí trước bạ/thuế TNCN, giấy nộp tiền, quyết định xử phạt: đính dòng 4 (người dùng chốt 16/11/2026), KHÔNG
+  tạo dòng qua nút "Thêm giấy tờ" (cổng thật hay không có nút đó -> extension rơi về dòng Đơn).
 
 componentIndex = STT (FE thử rows[componentIndex - 1] trước rồi mới dò tên — tên dòng 3 cũng nằm trong chữ dòng 12, 13).
 MỖI FILE ĐÍNH NGUYÊN KHỐI, KHÔNG TÁCH TRANG (ánh xạ hồ sơ: file 26 trang gộp văn bản thỏa thuận phân chia di sản + hợp
@@ -60,6 +61,8 @@ _CHUNG_TU_NOP_TIEN = "chung_tu_nop_tien"
 _QUYET_DINH_XU_PHAT = "quyet_dinh_xu_phat"
 _OTHER = "other"
 
+_HOP_DONG_ROW = 4
+_HOP_DONG_NAME = "Hợp đồng hoặc văn bản về việc chuyển quyền sử dụng đất"
 _DON_ROW = 7
 _DON_NAME = "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 18"
 
@@ -76,9 +79,26 @@ _ROUTES: dict[str, dict[str, Any]] = {
     },
     _GCN: {"row": 3, "name": "Bản gốc Giấy chứng nhận đã cấp", "documentName": "Bản gốc Giấy chứng nhận đã cấp"},
     _HOP_DONG: {
-        "row": 4,
-        "name": "Hợp đồng hoặc văn bản về việc chuyển quyền sử dụng đất",
+        "row": _HOP_DONG_ROW,
+        "name": _HOP_DONG_NAME,
         "documentName": "Hợp đồng/văn bản chuyển quyền sử dụng đất",
+    },
+    # Giấy thuế/nộp tiền không có dòng riêng -> đính chung dòng hợp đồng chuyển quyền (người dùng chốt 16/11/2026),
+    # documentName để cán bộ phân biệt.
+    _TO_KHAI_THUE: {
+        "row": _HOP_DONG_ROW,
+        "name": _HOP_DONG_NAME,
+        "documentName": "Tờ khai lệ phí trước bạ, thuế thu nhập cá nhân",
+    },
+    _CHUNG_TU_NOP_TIEN: {
+        "row": _HOP_DONG_ROW,
+        "name": _HOP_DONG_NAME,
+        "documentName": "Giấy nộp tiền, quyết định xử phạt vi phạm hành chính",
+    },
+    _QUYET_DINH_XU_PHAT: {
+        "row": _HOP_DONG_ROW,
+        "name": _HOP_DONG_NAME,
+        "documentName": "Giấy nộp tiền, quyết định xử phạt vi phạm hành chính",
     },
     _CAP_CHUNG: {
         "row": 5,
@@ -124,29 +144,12 @@ _ROUTES: dict[str, dict[str, Any]] = {
     _IDENTITY: {"row": _DON_ROW, "name": _DON_NAME, "documentName": "Giấy tờ nhân thân, hộ tịch"},
 }
 
-# Giấy không có dòng trong bảng -> tạo dòng qua modal "Thêm giấy tờ" (ánh xạ hồ sơ). FE thử lần lượt formOptionHints
-# (cụ thể -> chung) rồi componentName; không tạo được dòng thì đính chung dòng Đơn (fallbackComponentName).
-_ADD_DOCUMENTS: dict[str, dict[str, Any]] = {
-    _TO_KHAI_THUE: {
-        "componentName": "Tờ khai lệ phí trước bạ, tờ khai thuế thu nhập cá nhân",
-        "formOptionHints": ["Tờ khai lệ phí trước bạ", "Tờ khai thuế thu nhập cá nhân", "Tờ khai thuế", "Giấy tờ khác"],
-        "documentName": "Tờ khai lệ phí trước bạ, thuế thu nhập cá nhân",
-    },
-    _CHUNG_TU_NOP_TIEN: {
-        "componentName": "Chứng từ nộp tiền, quyết định xử phạt vi phạm hành chính",
-        "formOptionHints": ["Chứng từ thực hiện nghĩa vụ tài chính", "Giấy nộp tiền", "Biên lai", "Giấy tờ khác"],
-        "documentName": "Giấy nộp tiền, quyết định xử phạt vi phạm hành chính",
-    },
-}
-_ADD_GROUP = {_TO_KHAI_THUE: _TO_KHAI_THUE, _CHUNG_TU_NOP_TIEN: _CHUNG_TU_NOP_TIEN,
-              _QUYET_DINH_XU_PHAT: _CHUNG_TU_NOP_TIEN}
-
 # File gộp nhiều giấy: chỗ của giấy ĐỨNG TRƯỚC nhận nguyên file.
 _PRIORITY: tuple[str, ...] = (
     _DON, _GCN, _HOP_DONG, _MANH_TRICH_DO, _BAN_VE, _VB_THE_CHAP, _CAP_CHUNG, _DAT_THUE, _CHO_THUE, _DONG_Y_TAI_SAN,
     _TANG_CHO_CONG_DONG, _AUTHORIZATION, _TO_KHAI_THUE, _CHUNG_TU_NOP_TIEN, _QUYET_DINH_XU_PHAT, _IDENTITY,
 )
-_ALLOWED = set(_ROUTES) | set(_ADD_GROUP) | {_OTHER}
+_ALLOWED = set(_ROUTES) | {_OTHER}
 
 # Giấy cốt lõi của thủ tục -> lời nhắc khi hồ sơ không có (dòng 3 cổng tick sẵn).
 _REQUIRED_DOCS: tuple[tuple[str, str], ...] = (
@@ -186,16 +189,8 @@ def _primary(doc_types: list[str]) -> str:
     return _OTHER
 
 
-def _place_key(doc_type: str) -> tuple[str, Any]:
-    if doc_type in _ADD_GROUP:
-        return ("add", _ADD_GROUP[doc_type])
-    return ("row", _ROUTES[doc_type]["row"])
-
-
 def _place(doc_type: str) -> str:
     """Chỗ đính của một loại giấy, để báo cán bộ khi giấy đó nằm chung file với giấy chính."""
-    if doc_type in _ADD_GROUP:
-        return f"{_ADD_DOCUMENTS[_ADD_GROUP[doc_type]]['documentName']} (nút Thêm giấy tờ)"
     route = _ROUTES[doc_type]
     return f"{route['documentName']} (dòng {route['row']})"
 
@@ -237,24 +232,7 @@ def build_plan_items(
         doc_type = _primary(doc_types)
         present.update(doc_types)
 
-        if doc_type in _ADD_GROUP:
-            group = _ADD_DOCUMENTS[_ADD_GROUP[doc_type]]
-            attachments.append({
-                "fileIndex": index,
-                "fileName": file_name,
-                "documentName": group["documentName"],
-                "componentName": group["componentName"],
-                "formOptionHints": list(group["formOptionHints"]),
-                "loaiBan": "Bản chính",
-                "quantity": 1,
-                "target": "add-document-dialog",
-                "needsAddComponent": True,
-                "fallbackComponentName": _DON_NAME,
-                "detectedType": doc_type,
-            })
-            classified.append({"fileName": file_name, "docType": doc_type, "docTypes": doc_types, "source": "llm",
-                               "addDocument": True})
-        elif doc_type in _ROUTES:
+        if doc_type in _ROUTES:
             route = _ROUTES[doc_type]
             attachments.append({
                 "fileIndex": index,
@@ -289,12 +267,12 @@ def build_plan_items(
             continue
 
         # Giấy có chỗ RIÊNG nhưng nằm chung file với giấy chính: đính nguyên file một lần, báo cán bộ không đính lại.
-        place = _place_key(doc_type)
+        row = _ROUTES[doc_type]["row"]
         bundled = []
         for other in doc_types:
             if other == doc_type or other not in _PRIORITY or other == _IDENTITY:
                 continue  # giấy nhân thân không có dòng riêng, đi kèm file nào cũng được
-            if _place_key(other) != place and _place(other) not in bundled:
+            if _ROUTES[other]["row"] != row and _place(other) not in bundled:
                 bundled.append(_place(other))
         if bundled:
             warnings.append(f"'{file_name}' gộp nhiều giấy tờ — đính nguyên file một lần, không tách sang: "

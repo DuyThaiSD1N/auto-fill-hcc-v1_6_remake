@@ -140,6 +140,10 @@
     // Có engine trang Cấp đổi thẻ căn cước (cơ quan Công an tỉnh cboORGTinh → xã cboORGXa → địa chỉ trạm cboDiaChiTram,
     // option "Công an …"). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
     supportsBcaCanCuoc: true,
+    // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký xe lần đầu): trang "chọn trường hợp hồ sơ" không tính là
+    // form kê khai, ô Tỉnh/Xã nhận kết quả (CongDan__fsTinhNhanKQ/XaNhanKQ) điền theo cascade. Thiếu cờ → BE báo thủ tục
+    // cần cập nhật Trợ lý.
+    supportsBcaDangKyXe: true,
     // Biết tự bấm "Khai tờ khai" ở đúng dòng bảng Thành phần hồ sơ (lệnh open_eform → guided-steps.js) rồi tự gửi lệnh
     // điền khi tờ khai mở ra. Thiếu cờ → BE bảo công dân tự bấm như cũ.
     supportsOpenEform: true,

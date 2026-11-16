@@ -76,8 +76,12 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # Bắc Ninh +1 bản riêng 1.011442 (đăng ký thay đổi BPBĐ, chưa có trong bảng — tạm mở Bắc Ninh).
         # 16/11: +2 mọi tỉnh Bộ Công an thong-bao-luu-tru (2.001159) + dang-ky-thuong-tru (1.004222) (_TAT_CA).
         # 16/11: +1 mọi tỉnh Bộ Công an cap-doi-the-can-cuoc (2.001195) (_TAT_CA, người dùng: toàn quốc).
-        "laichau": 125, "bacninh": 131, "lamdong": 118, "danang": 122, "quangninh": 126, "ninhbinh": 115,
-        "quangngai": 116, "laocai": 115, "quangtri": 116, "khanhhoa": 121, "tuyenquang": 116,
+        # 16/11: +1 mọi tỉnh Bộ Công an cap-the-can-cuoc-duoi-14-tuoi (1.012549 / 1.014062) (_TAT_CA).
+        # 16/11: +1 mọi tỉnh dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc (1.012575) (_TAT_CA, mặc định toàn quốc).
+        # 16/11: Lào Cai -1 tro-cap-xa-hoi-hang-thang (1.001776), người dùng ẩn cho Cam Đường.
+        # 16/11: +1 mọi tỉnh Bộ Công an cap-lai-the-can-cuoc (2.001194) (_TAT_CA, mặc định toàn quốc).
+        "laichau": 128, "bacninh": 134, "lamdong": 121, "danang": 125, "quangninh": 129, "ninhbinh": 118,
+        "quangngai": 119, "laocai": 117, "quangtri": 119, "khanhhoa": 124, "tuyenquang": 119,
     }
 
 
@@ -93,6 +97,8 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng
     assert "cap-phep-long-duong-via-he" not in _card_keys("laichau")
     assert "cap-gcn-dang-ky-tau-ca" not in _card_keys("bacninh")  # STT 118: Bắc Ninh Pending
+    assert "tro-cap-xa-hoi-hang-thang" not in _card_keys("laocai")  # 16/11: ẩn 1.001776 cho Cam Đường
+    assert "tro-cap-xa-hoi-hang-thang" in _card_keys("bacninh")
     assert "hoa-giai-tranh-chap-dat-dai" in _card_keys("lamdong")  # STT 231
     # 1.004628: vắng bảng 11/11, 12/11 người dùng mở lại cả 11 tỉnh.
     assert all("cap-the-huong-dan-vien-du-lich-quoc-te" in _card_keys(s) for s in registry._TINH_THEO_DOI)

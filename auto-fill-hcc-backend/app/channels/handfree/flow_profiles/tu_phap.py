@@ -4,8 +4,23 @@ Registry usage: ``"flowProfile": "tu-phap"``. A procedure may override only the
 keys whose real portal contract differs; all remaining capabilities stay here.
 """
 
+# Thủ tục hộ tịch / chứng thực mà cả UBND xã lẫn Sở Tư pháp cùng nhận (DVCQG ra hai thẻ "Nộp trực tuyến"): tài khoản
+# HCC tỉnh hoặc tài khoản không có xã → gạt "Sở" rồi bấm thẻ Sở Tư pháp; tài khoản có xã giữ luồng chọn Phường/Xã cũ.
+# Luật chọn cấp ở app/procedures/agency_level.py; bản Auto Fill khai cùng nhánh trong ke_khai_links.json. Thủ tục chỉ
+# cấp xã (hòa giải) hoặc vốn đã nộp Sở Tư pháp khai ``"agencyLevelByAccount": None`` để tắt.
+TU_PHAP_AGENCY_LEVEL: dict = {
+    "xa": {},
+    "so": {
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        "agencyCardIncludes": "Cơ quan thực hiện: Sở Tư pháp",
+    },
+}
+
 TU_PHAP_FLOW: dict = {
     "needsAgencySelect": True,
+    "agencyLevelByAccount": TU_PHAP_AGENCY_LEVEL,
     "hasAttachmentStep": True,
     # Backend là nguồn sự thật cho lựa chọn hiển thị ở sidebar và giá trị cần chọn
     # trong modal "Thông tin chung". Extension chỉ render/thao tác theo contract này.

@@ -59,7 +59,9 @@ TUYỆT ĐỐI KHÔNG trả hai docType cho một tệp, không tách tệp thà
   thửa đất (Phụ lục 12); công văn/thông báo công khai bản mô tả ranh giới; văn bản xác nhận không có
   đơn thư tranh chấp, khiếu nại về ranh giới.
 - manh_do_dac: mảnh trích đo / mảnh đo đạc chỉnh lý bản đồ địa chính thửa đất — bản vẽ thửa đất kèm
-  số tờ, số thửa, tỷ lệ, bảng thống kê diện tích do Văn phòng đăng ký đất đai lập.
+  số tờ, số thửa, tỷ lệ, bảng thống kê diện tích do Văn phòng đăng ký đất đai lập. Gồm cả "BẢN VẼ
+  ĐO ĐẠC CHỈNH LÝ THỬA ĐẤT HIỆN TRẠNG", "bản vẽ hiện trạng thửa đất", "sơ đồ thửa đất", "trích đo địa
+  chính" do đơn vị đo đạc lập.
 - to_khai_thue: tờ khai thuế/lệ phí trước bạ theo pháp luật thuế hiện hành.
 - van_ban_dai_dien: văn bản ủy quyền / văn bản về việc đại diện theo pháp luật dân sự để nộp thay.
 - cccd: Căn cước công dân, thẻ căn cước, CMND, hộ chiếu đứng riêng thành một file.
@@ -73,6 +75,11 @@ TUYỆT ĐỐI KHÔNG trả hai docType cho một tệp, không tách tệp thà
   biệt bằng việc có BẢN VẼ + bảng thống kê diện tích (mảnh đo đạc) hay chỉ có văn bản chữ.
 - Giấy chứng nhận đã cấp cũng có sơ đồ thửa đất ở trang trong — nhưng nó là GCN (có số phát hành,
   quốc hiệu "GIẤY CHỨNG NHẬN..."), không phải mảnh đo đạc.
+- ⚑ BẢN VẼ ĐỌC OCR RẤT TỆ: chữ trên bản vẽ nhỏ, xen nét vẽ nên OCR_TEXT thường NGẮN, MÉO chữ (vd "ĐO
+  ĐẶC CHỈNH Ý", "THỰC ĐẤT" thay cho "THỬA ĐẤT", "HIỆN TRANG"), và LẶP đi lặp lại một dòng địa danh /
+  "Địa chỉ" nhiều lần. Văn bản chữ (đơn, công văn, ủy quyền, GCN) không bao giờ ra kiểu này. Gặp tiêu đề
+  có cụm ĐO ĐẠC / ĐO ĐẶC / CHỈNH LÝ / TRÍCH ĐO / BẢN VẼ / HIỆN TRẠNG đi với THỬA ĐẤT (kể cả bị méo) mà
+  KHÔNG có tiêu đề đơn, quốc hiệu GCN, chữ "ủy quyền" → trả "manh_do_dac", KHÔNG trả "other".
 </traps>
 
 <output_contract>

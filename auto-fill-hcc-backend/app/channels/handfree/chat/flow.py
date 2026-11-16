@@ -1948,7 +1948,15 @@ def _agency_level_proc(conv: dict, proc: dict) -> dict:
     """Thủ tục "Sở hoặc UBND xã" (agencyLevelByAccount): gộp nhánh theo vai trò tài khoản + xã đang chọn, để mọi bước
     chọn cơ quan phía sau (câu dẫn, select_agency, thẻ cần bấm) đọc đúng một cấu hình."""
     loc = conv.get("location") or {}
-    return with_agency_level(proc, (conv.get("auth_user") or {}).get("role"), proc.get("agencyWard") or loc.get("ward"))
+    proc = with_agency_level(proc, (conv.get("auth_user") or {}).get("role"), proc.get("agencyWard") or loc.get("ward"))
+    # agencyByProvince = {slug tỉnh: cờ chọn cơ quan}: cùng mã TTHC nhưng tỉnh này nộp ở cấp khác (vd Quảng Ngãi
+    # 1.002693 nộp UBND xã, tỉnh khác nộp Sở Xây dựng) → gộp đè theo tỉnh đang chọn ở khối cơ quan.
+    by_province = proc.get("agencyByProvince") or {}
+    if by_province:
+        found = find_province(_agency_province(proc, loc)) or province_by_slug(str(loc.get("province_slug") or ""))
+        if found and by_province.get(found["slug"]):
+            proc = {**proc, **by_province[found["slug"]]}
+    return proc
 
 
 def _agency_ward_display(proc: dict, loc: dict) -> str:

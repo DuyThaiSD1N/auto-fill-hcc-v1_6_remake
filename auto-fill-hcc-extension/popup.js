@@ -5376,6 +5376,9 @@ ocrBtn.addEventListener("click", async () => {
       // vợ chồng cùng đứng tên / bên được ủy quyền.
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai" ||
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai-test" ||
+      // 1.115668 cổng iGate mới: Họ tên/CCCD người nộp khoá theo tài khoản → mốc chọn người nộp trong hồ sơ.
+      cfg.key === "dang-ky-bien-dong-dat-dai-igate-lao-cai" ||
+      cfg.key === "dang-ky-bien-dong-dat-dai-igate-lao-cai-test" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
       // [Lào Cai - cổng iGate mới] 1.115651: data[fullname]/data[identityNumber] khoá theo tài khoản → mốc chọn

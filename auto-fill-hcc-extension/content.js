@@ -6587,7 +6587,9 @@
     // diachihoatdong][tinhthanh|xaphuong: Tỉnh/Phường-xã của đơn vị KDVT (Bộ XD, cấp phù hiệu).
     // phuongxaaa/tinhthanhqwaasa: Phường/xã của lô đất (con cascade của data[province] lần 2) và Tỉnh nơi làm
     //   đơn ở tờ đơn Gia hạn GPXD (Bộ XD dvc.moc) — key đặt bừa, không chứa mẫu nào ở trên.
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|phuongxaaa|tinhthanhqwaasa/.test(String(name || "").toLowerCase());
+    // tinhnhankq/xanhankq: Tỉnh / Phường-xã nhận kết quả của form đăng ký xe cổng DVC Bộ Công an
+    //   (CongDan__fsTinhNhanKQ → CongDan__fsXaNhanKQ, bootstrap-select, danh mục xã nạp theo tỉnh).
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|phuongxaaa|tinhthanhqwaasa|tinhnhankq|xanhankq/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {
@@ -8620,6 +8622,44 @@
     }
   }
 
+  // "Mối quan hệ của người kê khai với người cần cấp căn cước" (comp "bca-relation", trang cấp căn cước dưới 14 tuổi):
+  // người kê khai là TÀI KHOẢN VNeID đang đăng nhập (Phần I, cổng đổ sẵn và khoá), giấy tờ chỉ cho biết ai là cha, mẹ.
+  // value {target, people: [{relation, name, id}], fallback}: so số định danh rồi họ tên Phần I với từng người trên giấy
+  // (hai bên cùng có số mà khác số = người trùng tên, không tính) → trùng thì chọn relation; không trùng ai → fallback
+  // ("Người đại diện hợp pháp"), chọn như ô thường (user 16/11: không tô vàng). Phần I chưa đổ tên/số → không chọn.
+  // Bản copy ở tro-ly-nguoi-dan-extension/content/fill-core.js (fillBcaRelationField) — sửa một bên thì port bên kia.
+  async function fillBcaRelationField(f, result) {
+    const v = f.value || {};
+    const label = "Mối quan hệ của người kê khai với người cần cấp căn cước";
+    const select = document.getElementById(v.target || f.name);
+    const nameEl = document.getElementById(v.accountNameId || "txtFULLNAME_NDN");
+    const idEl = document.getElementById(v.accountIdId || "txtIDENTIFY_NUMBER_NDN");
+    if (!select || !nameEl) {
+      result.notFound.push(label);
+      return;
+    }
+    await waitFor(() => String(nameEl.value || "").trim() || String(idEl?.value || "").trim(), 6000, 200);
+    const accountName = bcaGuestFold(nameEl.value);
+    const accountId = String(idEl?.value || "").replace(/\D/g, "");
+    if (!accountName && !accountId) {
+      result.notFound.push(`${label} (chưa đọc được tài khoản đăng nhập ở Phần I)`);
+      return;
+    }
+    const people = (Array.isArray(v.people) ? v.people : []).filter((p) => p && p.relation);
+    const sameId = (p) => !!accountId && !!p.id && String(p.id) === accountId;
+    const otherId = (p) => !!accountId && !!p.id && String(p.id) !== accountId;
+    const match = people.find(sameId)
+      || people.find((p) => !!accountName && !!p.name && bcaGuestFold(p.name) === accountName && !otherId(p));
+    const relation = match ? match.relation : v.fallback;
+    console.log(`[AutoFill-STD] BCA quan hệ người kê khai: tài khoản "${nameEl.value}" → ${relation || "(không chọn)"}`
+      + (match ? "" : " (không trùng cha/mẹ trên giấy)"));
+    if (!relation || !fillStandardSelect(select, relation)) {
+      result.notFound.push(label);
+      return;
+    }
+    result.filled++;
+  }
+
   // Bảng dòng lặp của cổng Bộ Công an (comp "bca-rows", value {addSelector, rows: [[{id, comp, value}]]}): ô dòng n có
   // id <tiền tố><n>; dòng chưa có thì bấm nút "thêm" ở dòng cuối (addSelector) rồi chờ ô của dòng đó hiện.
   async function fillBcaRows(f, result) {
@@ -8712,6 +8752,10 @@
       }
       if (f.comp === "bca-rows") {
         await fillBcaRows(f, result);
+        continue;
+      }
+      if (f.comp === "bca-relation") {
+        await fillBcaRelationField(f, result);
         continue;
       }
       // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound (xem standardScopeRoot).

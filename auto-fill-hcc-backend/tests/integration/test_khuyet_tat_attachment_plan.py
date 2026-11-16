@@ -9,7 +9,7 @@ def _file(name: str) -> FileItem:
     return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
 
 
-async def test_khuyet_tat_attach_maps_three_fixed_slots_and_cccd_to_application_slot(monkeypatch):
+async def test_khuyet_tat_attach_maps_three_fixed_slots_and_cccd_to_related_docs_slot(monkeypatch):
     async def fake_ocr_per_file(files):
         return [
             {"name": "don.pdf", "text": "ĐƠN ĐỀ NGHỊ XÁC ĐỊNH MỨC ĐỘ KHUYẾT TẬT VÀ CẤP GIẤY XÁC NHẬN KHUYẾT TẬT\nMẫu số 01"},
@@ -47,10 +47,11 @@ async def test_khuyet_tat_attach_maps_three_fixed_slots_and_cccd_to_application_
     assert by_file["ket-luan.pdf"]["slotKey"] == "medical_assessment_conclusion"
     assert by_file["don.pdf"]["slotIndex"] == 3
     assert by_file["don.pdf"]["slotKey"] == "disability_application_form"
-    assert by_file["cccd.pdf"]["slotKey"] == "disability_application_form"
+    assert by_file["cccd.pdf"]["slotKey"] == "disability_related_docs"
+    assert by_file["cccd.pdf"]["slotIndex"] == 0
     assert by_file["cccd.pdf"]["detectedType"] == "cccd"
-    assert by_file["cccd.pdf"]["documentName"] == "cccd.pdf"
-    assert any("đính chung" in err and "cccd.pdf" in err for err in res["errors"])
+    assert by_file["cccd.pdf"]["documentName"] == "Căn cước công dân"
+    assert not any("cccd.pdf" in err for err in res["errors"])
 
 
 async def test_khuyet_tat_attach_rule_fallback_when_llm_fails(monkeypatch):

@@ -2,8 +2,9 @@
 
 Form bước Thành phần hồ sơ có các ô upload cố định. Pipeline này OCR + LLM để
 phân loại file vào đúng slot rồi trả target="fixed-slot" cho extension.
-Giấy tờ tùy thân và giấy chưa rõ loại không có ô riêng → đính chung ô Đơn đề nghị (FE gom nhiều tệp cùng
-slotKey vào một ô), giữ tên tệp gốc + cảnh báo; không bỏ tệp nào.
+CCCD / giấy tờ tùy thân không có ô riêng → đính dòng 1 "Bản sao các giấy tờ liên quan đến khuyết tật".
+Giấy chưa rõ loại → đính chung ô Đơn đề nghị (FE gom nhiều tệp cùng slotKey vào một ô), giữ tên tệp gốc +
+cảnh báo; không bỏ tệp nào.
 """
 
 import time
@@ -187,16 +188,29 @@ def build_plan_items(
         llm_type = llm_types.get(idx, "")
         doc_type = llm_type if llm_type in _SLOT_BY_KEY else rule_type
 
-        if not doc_type:
-            real_type = "cccd" if _is_identity_text(text) else _DOC_OTHER
-            item = _build_item(file, idx, _DOC_APPLICATION)
-            item["documentName"] = file_name
-            item["detectedType"] = real_type
+        if not doc_type and _is_identity_text(text):
+            # CCCD không có dòng riêng → đính dòng 1 "Bản sao các giấy tờ liên quan" (người dùng chốt 16/11/2026).
+            item = _build_item(file, idx, _DOC_RELATED)
+            item["documentName"] = "Căn cước công dân"
+            item["detectedType"] = "cccd"
             items.append(item)
             classified.append({
                 "fileName": file_name,
-                "docType": real_type,
-                "source": "identity" if real_type == "cccd" else "unknown",
+                "docType": "cccd",
+                "source": "identity",
+                "routedTo": _DOC_RELATED,
+            })
+            continue
+
+        if not doc_type:
+            item = _build_item(file, idx, _DOC_APPLICATION)
+            item["documentName"] = file_name
+            item["detectedType"] = _DOC_OTHER
+            items.append(item)
+            classified.append({
+                "fileName": file_name,
+                "docType": _DOC_OTHER,
+                "source": "unknown",
                 "routedTo": _DOC_APPLICATION,
             })
             extra_files.append(file_name)

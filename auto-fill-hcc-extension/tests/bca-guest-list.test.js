@@ -83,3 +83,54 @@ test("đính kèm bca-row (tạm trú / thường trú) có ở Auto Fill, mở 
     assert.ok(content.includes(name) && main.includes(name), name);
   }
 });
+
+const RELATION_SRC = fs.readFileSync(path.join(root, "content.js"), "utf8");
+
+// Cấp căn cước dưới 14 tuổi: ô "Mối quan hệ của người kê khai…" chọn theo TÀI KHOẢN đăng nhập (Phần I), không theo giấy.
+function runRelation(src, account, value) {
+  const fn = src.slice(src.indexOf("async function fillBcaRelationField("), src.indexOf("// Bảng dòng lặp của cổng Bộ Công an"));
+  const classes = new Set(["autofill-filled"]);
+  const select = { classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c) } };
+  const els = { cboRELATIONSHIP_WITH_NDN: select, txtFULLNAME_NDN: { value: account.name },
+    txtIDENTIFY_NUMBER_NDN: { value: account.id } };
+  const picked = [];
+  const deps = {
+    document: { getElementById: (id) => els[id] || null },
+    waitFor: async (cond) => cond(),
+    bcaGuestFold: (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD")
+      .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(),
+    fillStandardSelect: (_el, v) => { picked.push(v); return true; },
+    standardMarkTarget: (el) => el,
+    console: { log() {} },
+  };
+  const run = new Function(...Object.keys(deps), `${fn}; return fillBcaRelationField;`)(...Object.values(deps));
+  const result = { filled: 0, notFound: [] };
+  return run({ name: "cboRELATIONSHIP_WITH_NDN", comp: "bca-relation", value }, result)
+    .then(() => ({ picked: picked[0], yellow: classes.has("autofill-default"), result }));
+}
+
+const RELATION_VALUE = {
+  target: "cboRELATIONSHIP_WITH_NDN", fallback: "Người đại diện hợp pháp",
+  people: [{ relation: "Mẹ", name: "TRẦN THỊ HOA", id: "012190000002" },
+    { relation: "Cha", name: "LÊ VĂN NAM", id: "012088000003" }],
+};
+
+test("bca-relation: tài khoản không phải cha/mẹ trên giấy → Người đại diện hợp pháp, không tô vàng", async () => {
+  const r = await runRelation(RELATION_SRC, { name: "PHẠM VĂN KHÁCH", id: "001204000001" }, RELATION_VALUE);
+  assert.strictEqual(r.picked, "Người đại diện hợp pháp");
+  assert.ok(!r.yellow);
+});
+
+test("bca-relation: trùng số định danh / họ tên tài khoản → Mẹ / Cha; trùng tên khác số thì không tính", async () => {
+  let r = await runRelation(RELATION_SRC, { name: "Ai Đó", id: "012190000002" }, RELATION_VALUE);
+  assert.strictEqual(r.picked, "Mẹ");
+  assert.ok(!r.yellow);
+  r = await runRelation(RELATION_SRC, { name: "Lê Văn Nam", id: "" }, RELATION_VALUE);
+  assert.strictEqual(r.picked, "Cha");
+  r = await runRelation(RELATION_SRC, { name: "Lê Văn Nam", id: "012088999999" }, RELATION_VALUE);
+  assert.strictEqual(r.picked, "Người đại diện hợp pháp");
+  // Phần I chưa đổ tài khoản → không chọn bừa.
+  r = await runRelation(RELATION_SRC, { name: "", id: "" }, RELATION_VALUE);
+  assert.strictEqual(r.picked, undefined);
+  assert.strictEqual(r.result.notFound.length, 1);
+});

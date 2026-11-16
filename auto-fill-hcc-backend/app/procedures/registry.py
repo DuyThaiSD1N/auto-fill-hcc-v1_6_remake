@@ -62,6 +62,11 @@ from app.pipelines.dang_ky_tam_tru.process import run as dang_ky_tam_tru_process
 from app.pipelines.dang_ky_tam_tru.attach import plan as dang_ky_tam_tru_attach
 from app.pipelines.thong_bao_luu_tru.process import run as thong_bao_luu_tru_process
 from app.pipelines.cap_doi_the_can_cuoc.process import run as cap_doi_the_can_cuoc_process
+from app.pipelines.cap_lai_the_can_cuoc.process import run as cap_lai_the_can_cuoc_process
+from app.pipelines.cap_the_can_cuoc_duoi_14_tuoi.process import run as cap_the_can_cuoc_duoi_14_tuoi_process
+from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import (
+    run as dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
+)
 from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
@@ -71,6 +76,8 @@ from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
 from app.pipelines.cap_gcn_nhan_chuyen_nhuong_igate_lao_cai.attach import plan as cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_attach
 from app.pipelines.cap_gcn_nhan_chuyen_nhuong_igate_lao_cai.process import run as cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_process
+from app.pipelines.dang_ky_bien_dong_dat_dai_igate_lao_cai.attach import plan as dang_ky_bien_dong_dat_dai_igate_lao_cai_attach
+from app.pipelines.dang_ky_bien_dong_dat_dai_igate_lao_cai.process import run as dang_ky_bien_dong_dat_dai_igate_lao_cai_process
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.attach import plan as chuyen_doi_md_sd_dat_lao_cai_attach
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.process import run as chuyen_doi_md_sd_dat_lao_cai_process
 from app.pipelines.chuyen_doi_md_sd_dat_igate_lao_cai.attach import plan as chuyen_doi_md_sd_dat_igate_lao_cai_attach
@@ -5968,6 +5975,48 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-dat-dai-igate-lao-cai",
+        # 1.115668 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
+        # "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là
+        # /dich-vu-cong/…), mã TTHC bắt màn "Chọn trường hợp giải quyết", id apply-online (crawl 16/11/2026 ở cổng test,
+        # Chi nhánh VPĐKĐĐ khu vực Yên Bái) bắt stepper; cụm "dồn điền" của mục cũ tự chép sang (_IGATE_LAO_CAI). Bản cổng
+        # TEST sinh ngay sau. PHẢI đứng trước mục cũ ngay dưới: mục cũ có urlScope "laocai.gov.vn" (cả cổng test).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
+            "urlIncludes": ["apply-online/6ac9ff79f601110158ee2a44", "matthc=1.115668", "madvc=1.115668."],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai - Cổng DVC mới] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong "
+            "các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển "
+            "nhượng, thừa kế, tặng cho, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, "
+            "cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để "
+            "thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước; chuyển nhượng quyền khai thác khoáng "
+            "sản"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24).\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
+            "3. Hợp đồng/văn bản chuyển quyền (chuyển nhượng, thừa kế, tặng cho, góp vốn) đã công chứng.\n"
+            "4. Nếu có: Giấy ủy quyền, GCN đăng ký doanh nghiệp (chủ hồ sơ là tổ chức), mảnh trích đo, văn bản bên nhận "
+            "thế chấp đồng ý; biên bản tặng cho QSDĐ cho Nhà nước/cộng đồng (trường hợp b).\n"
+            "5. CCCD của chủ hồ sơ (cá nhân) và của người đi nộp (để đọc nhân thân).\n"
+            "⚠ ĐÍNH KÈM: bảng 14 dòng, cổng TÍCH SẴN cả 14 — trợ lý bỏ chọn tất cả rồi chỉ tích dòng có tệp. Dòng 1–12 "
+            "cho trường hợp chuyển nhượng, thừa kế, tặng cho… (mặc định); 2 dòng cuối khi tặng cho QSDĐ cho Nhà nước/"
+            "cộng đồng (GCN đi cùng dòng biên bản). Không có dòng giấy tờ khác: CCCD, hóa đơn, tờ khai thuế đính chung "
+            "dòng Đơn. Cổng giới hạn 6 MB. Bật cài đặt \"Tách giấy tờ\" thì tệp scan gộp được chia theo từng giấy.\n"
+            "⚠ ĐIỀN FORM: Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — trợ lý chỉ "
+            "điền giới tính, ngày/nơi cấp, địa chỉ, SĐT theo giấy tờ của CHÍNH người đăng nhập. Khối chủ hồ sơ là bên "
+            "NHẬN quyền (cá nhân hoặc tổ chức). Trợ lý KHÔNG tích \"Người nộp hồ sơ là chủ hồ sơ\"."
+        ),
+    },
+    {
         "key": "dang-ky-bien-dong-dat-dai-lao-cai",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667 (engine dom-*), đính kèm fixed-slot theo nhánh a/b + "Giấy tờ khác" (attach/catalog.py).
@@ -10593,6 +10642,88 @@ PROCEDURES: list[dict] = [
             "Dân cư'. Tự tích ô cam đoan và chọn lịch thu nhận sinh trắc học trước khi nộp."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an, CÙNG trang dvc-CCCD-cap-doi-hoac-cap-lai.html với cấp đổi (2.001195) → urlIncludes chốt
+        # TT=CAP_LAI. Cùng bộ ô, khác nhãn radio người kê khai + 3 lý do cấp lại. Link kê khai + mã 2.001194 ở
+        # ke_khai_links.json. Không có mục đính kèm (giấy tờ thu nhận trực tiếp khi lấy sinh trắc học).
+        "key": "cap-lai-the-can-cuoc",
+        "detect": {
+            "urlScope": ["dvc-CCCD-cap-doi-hoac-cap-lai.html"],
+            "urlIncludes": ["TT=CAP_LAI"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp lại thẻ căn cước (thực hiện tại cấp tỉnh)",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đề nghị giải quyết thủ tục về căn cước (Mẫu DC02) — nguồn chính: cơ quan tiếp nhận, lý do cấp "
+            "lại (mất thẻ / hư hỏng / trở lại quốc tịch), người đại diện (nếu có), địa chỉ nhận kết quả.\n"
+            "2. Phiếu thu nhận thông tin căn cước (Mẫu CC01) — số điện thoại, thư điện tử.\n"
+            "Cha/mẹ/người đại diện kê khai thay: sau khi điền phải tự bấm 'Kiểm tra thông tin trong CSDL Quốc Gia về "
+            "Dân cư'. Tự tích ô cam đoan và chọn lịch thu nhận sinh trắc học trước khi nộp."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an, cùng bộ ô với cấp đổi căn cước. Một trang cho cả hai mã 1.012549 (cấp tỉnh) / 1.014062
+        # (cấp xã) — radio "Cơ quan thực hiện" chọn theo cơ quan tiếp nhận trên giấy. Link kê khai ở ke_khai_links.json.
+        # Không có mục đính kèm (giấy tờ thu nhận trực tiếp khi lấy sinh trắc học).
+        "key": "cap-the-can-cuoc-duoi-14-tuoi",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["dvc-CCCD-duoi-14-tuoi.html"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp thẻ căn cước cho người dưới 14 tuổi",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu thu nhận thông tin căn cước (Mẫu CC01) của trẻ — nguồn chính: nhân thân trẻ, cha mẹ, người đại "
+            "diện hợp pháp, đơn vị lập.\n"
+            "2. Phiếu thu thập thông tin dân cư (Mẫu DC01) (nếu có).\n"
+            "3. Giấy khai sinh của trẻ.\n"
+            "4. Thẻ căn cước của cha/mẹ/người đại diện hợp pháp kê khai thay.\n"
+            "Sau khi điền phải tự bấm 'Kiểm tra thông tin trong CSDL Quốc Gia về Dân cư'. Tự tích ô cam đoan và chọn "
+            "lịch thu nhận sinh trắc học trước khi nộp."
+        ),
+    },
+    {
+        # 1.012575, Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn). Link kê khai ở ke_khai_links.json là trang "chọn
+        # trường hợp hồ sơ" (?ma-thu-tuc-public=56952, urlIncludes ghép lúc trả API); trang nhập thông tin
+        # tiep-nhan-online/nhap-thong-tin-nguoi-nop-ho-so?sid=<phiên> không mang mã → khớp tên thủ tục trong urlScope
+        # cổng Bộ Công an. Form-builder jQuery (ô CongDan__fs*), xe máy và ô tô chung một bộ ô. Không có bước đính kèm
+        # (ảnh xe / chứng từ nguồn gốc người dân tự tải). Chưa chạy thử trên cổng thật.
+        "key": "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "đăng ký xe lần đầu",
+                "lắp ráp trong nước",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký xe lần đầu trực tuyến toàn trình đối với xe sản xuất lắp ráp trong nước",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
+            "1. Giấy khai đăng ký xe (Mẫu ĐKX10/79) — số điện thoại, địa chỉ chủ xe, mã chứng từ lệ phí trước bạ.\n"
+            "2. Phiếu kiểm tra chất lượng xuất xưởng — số seri phiếu dùng để Tra cứu, đặc điểm xe.\n"
+            "3. Hóa đơn giá trị gia tăng điện tử bán xe.\n"
+            "4. Thông báo nộp lệ phí trước bạ và Giấy nộp tiền vào ngân sách nhà nước — mã hồ sơ LPTB dùng để Tra cứu.\n"
+            "5. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp, giới tính).\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; tự tải ảnh phương tiện và ảnh hai mặt Phiếu kiểm tra chất "
+            "lượng xuất xưởng; nhập Email nếu giấy tờ không có."
+        ),
+    },
 ]
 
 # Mục iGate Lào Cai → mục eForm cũ cùng mã TTHC (mục cũ luôn đứng SAU mục iGate).
@@ -10603,6 +10734,7 @@ _IGATE_LAO_CAI = {
     "dieu-chinh-quyet-dinh-giao-dat-igate-lao-cai": "dieu-chinh-quyet-dinh-giao-dat-lao-cai",
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai":
         "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai",
+    "dang-ky-bien-dong-dat-dai-igate-lao-cai": "dang-ky-bien-dong-dat-dai-lao-cai",
     "dang-ky-gcn-chuyen-quyen-truoc-2024-igate-lao-cai": "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai",
     "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai": "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai",
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-igate-lao-cai": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep",
@@ -10764,6 +10896,9 @@ _PIPELINE = {
     "dang-ky-tam-tru": dang_ky_tam_tru_process,
     "thong-bao-luu-tru": thong_bao_luu_tru_process,
     "cap-doi-the-can-cuoc": cap_doi_the_can_cuoc_process,
+    "cap-lai-the-can-cuoc": cap_lai_the_can_cuoc_process,
+    "cap-the-can-cuoc-duoi-14-tuoi": cap_the_can_cuoc_duoi_14_tuoi_process,
+    "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
@@ -10790,6 +10925,8 @@ _PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai": cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai-test": cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
+    "dang-ky-bien-dong-dat-dai-igate-lao-cai": dang_ky_bien_dong_dat_dai_igate_lao_cai_process,
+    "dang-ky-bien-dong-dat-dai-igate-lao-cai-test": dang_ky_bien_dong_dat_dai_igate_lao_cai_process,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_process,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai-test": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_process,
@@ -10940,6 +11077,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai": cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai-test": cap_gcn_nhan_chuyen_nhuong_igate_lao_cai_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
+    "dang-ky-bien-dong-dat-dai-igate-lao-cai": dang_ky_bien_dong_dat_dai_igate_lao_cai_attach,
+    "dang-ky-bien-dong-dat-dai-igate-lao-cai-test": dang_ky_bien_dong_dat_dai_igate_lao_cai_attach,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_attach,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai-test": dang_ky_bien_dong_thoa_thuan_igate_lao_cai_attach,

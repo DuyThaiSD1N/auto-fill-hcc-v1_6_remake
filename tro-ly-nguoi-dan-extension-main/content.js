@@ -1823,6 +1823,11 @@
       // ĐỀU Angular + đều nhắc "chọn cơ quan thực hiện" (agencyBlock) — trang CHỌN CƠ QUAN
       // KHÔNG có marker này, trang KÊ KHAI thì có → dùng để phân biệt (chống kích hoạt sớm).
       const keKhaiForm = body.includes("ke khai thong tin");
+      // Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn, eForm Nth như Lai Châu): trang "Trường hợp nộp hồ sơ"
+      // (chon-truong-hop-ho-so) có ô chọn mang name → detectFormKind dương tính giả, trợ lý xin giấy tờ / điền ngay ở
+      // trang chọn trường hợp. Chỉ trang nhập thông tin sau nút "Đồng ý và tiếp tục" mới là form kê khai.
+      const bcaCasePage = location.hostname === "dichvucong.bocongan.gov.vn"
+        && location.pathname.includes("/chon-truong-hop-ho-so");
       // Trang CHỦ cổng liên thông (thẻ thủ tục có id mã TTHC, vd "2_000987"): đăng nhập VNeID xong cổng đưa về đây
       // chứ không quay lại link kê khai đang mở dở → báo BE để BE mở lại đúng link kê khai của thủ tục.
       const lienThongHome = location.hostname === "lienthong.dichvucong.gov.vn" && !keKhaiForm
@@ -1948,7 +1953,7 @@
         // "standard" (ô tìm kiếm) luôn null khi có agencyBlock. loginPage/infoModal/wizard≠2 null mọi loại.
         // Trang chọn cơ quan MAE có 3 input radio mang name → detectFormKind dương tính giả
         // "standard"; maeAgencyBlock null formKind để BE không tưởng đã vào kê khai.
-        formKind: (loginPage || infoModal || maeAgencyBlock || (wizardStep && wizardStep !== 2)
+        formKind: (loginPage || infoModal || maeAgencyBlock || bcaCasePage || (wizardStep && wizardStep !== 2)
           || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
         agencyBlock,
         maeAgencyBlock,

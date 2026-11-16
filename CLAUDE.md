@@ -155,9 +155,14 @@ dich-benh-dong-vat`; iGate tỉnh → bản Khánh Hòa/Tuyên Quang). Các ch�
 1. `app/channels/handfree/procedure_registry.py`: entry cùng key với lõi (`detect`, `label`, `shortLabel`,
    `subtitle`, `icon`, `keKhaiUrl` = url trong ke_khai_links, cờ chọn cơ quan, `wizard`, `bxdFlow` nếu là cổng iGate
    các bộ, `requiredDocs`, `uploadHint`). Thủ tục riêng của tỉnh thì thêm `provinceOnly`. Cùng file thêm một dòng vào
-   `_HOAN_THIEN_THEO_TINH` (tỉnh nào bảng theo dõi thủ tục ghi "Hoàn thiện phần mềm"; chưa có trong bảng thì hỏi
-   người dùng): vắng dòng thì tài khoản 11 tỉnh theo dõi không thấy thủ tục, test
-   `test_service_list_frequent_province.py` đỏ. Bảng chép từ file Excel theo dõi ngày 10/11/2026.
+   `_HOAN_THIEN_THEO_TINH` (tỉnh nào bảng theo dõi thủ tục ghi "Hoàn thiện phần mềm"): vắng dòng thì tài khoản 11 tỉnh
+   theo dõi không thấy thủ tục, test `test_service_list_frequent_province.py` đỏ (nhớ cộng số đếm từng tỉnh trong
+   test đó). Bảng chép từ file Excel theo dõi ngày 10/11/2026.
+
+   **Mặc định toàn quốc** (người dùng chốt 16/11/2026): người dùng không nói gì về tỉnh / phạm vi áp dụng thì thủ tục
+   mở cho TOÀN QUỐC — không khai `provinceOnly`, dòng `_HOAN_THIEN_THEO_TINH` ghi `_TAT_CA`, không cần hỏi lại. Chỉ
+   giới hạn tỉnh khi người dùng nói rõ, hoặc thủ tục là bản riêng của một tỉnh (key / label / link mang tên tỉnh, cổng
+   tỉnh, mã thủ tục địa phương).
 2. `app/channels/handfree/chat/procedure_picker/prompt.py`: câu người dân hay nói để agent chọn đúng thủ tục, kèm
    chú thích phân biệt với thủ tục dễ nhầm.
 3. `app/channels/handfree/chat/script_mong.py`: tên tiếng Mông, ghi "BẢN NHÁP chờ anh Dư soát".

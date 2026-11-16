@@ -103,5 +103,28 @@ def test_khong_thay_the_dung_thi_dan_bam_dung_the_theo_cap(role, card):
     assert "thẻ đầu tiên" in r.display_md
 
 
+CHAT_HA = "cap-giay-phep-chat-ha-cay-xanh"
+
+
+def test_chat_ha_cay_xanh_quang_ngai_chon_xa_khong_gat_so():
+    """1.002693 (16/11/2026): Quảng Ngãi nộp UBND Phường/Xã → chọn đủ Tỉnh + Xã, không gạt "Sở"."""
+    loc = {"province": "Tỉnh Quảng Ngãi", "province_slug": "quangngai", "ward": "Phường Cẩm Thành"}
+    r = _on_agency_page(_conv(NEW_CLIENT, key=CHAT_HA, role="commune", loc=loc))
+    assert len(r.actions) == 1
+    action = r.actions[0]
+    assert action["type"] == "select_agency" and action["ward"], "phải chọn cả xã"
+    assert "soMode" not in action
+    assert "Quảng Ngãi" in action["province"]
+
+
+@pytest.mark.parametrize("role", ["province", "commune"])
+def test_chat_ha_cay_xanh_tinh_khac_van_chon_so(role):
+    loc = {"province": "Thành phố Đà Nẵng", "province_slug": "danang", "ward": "Phường Hải Châu"}
+    r = _on_agency_page(_conv(NEW_CLIENT, key=CHAT_HA, role=role, loc=loc))
+    assert len(r.actions) == 1
+    action = r.actions[0]
+    assert action["soMode"] is True and action["ward"] == ""
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

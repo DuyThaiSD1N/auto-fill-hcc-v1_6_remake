@@ -171,17 +171,17 @@ def _area(province: Any, ward: Any) -> tuple[str | None, str | None]:
     return _portal_province(_text(area.get("tinh")) or province), _text(area.get("xa")) or ward
 
 
-def _reason(values: dict) -> str | None:
+def _reason(values: dict, reasons=REASONS) -> str | None:
     """Nhãn option "Lý do cấp": nhãn LLM chép đúng → nhận luôn; lệch chữ → dò cụm đặc trưng (LLM trước, rồi nội dung đề
     nghị mục III.7 DC02)."""
     for raw in (values.get("LyDoCap"), values.get("NoiDungDeNghi")):
         said = _words(raw)
         if not said:
             continue
-        exact = next((label for label, _ in REASONS if _words(label) == said), None)
+        exact = next((label for label, _ in reasons if _words(label) == said), None)
         if exact:
             return exact
-        for label, keys in REASONS:
+        for label, keys in reasons:
             if any(key in said for key in keys):
                 return label
     return None
@@ -219,7 +219,10 @@ def _receipt_mode(value: Any) -> str | None:
     return None
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
+def enrich(fields: list[dict], options: dict | None = None, *, reasons=REASONS, declarant_self: str = DECLARANT_SELF,
+           declarant_other: str = DECLARANT_OTHER) -> list[dict]:
+    """reasons / declarant_*: cấp lại căn cước (cùng trang ?TT=CAP_LAI, cùng bộ ô) truyền bảng lý do và nhãn radio
+    "…người cần cấp lại căn cước" của trang đó."""
     values = _by_name(fields)
     picked: dict[str, Any] = {}
     defaults: set[str] = set()
@@ -230,7 +233,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if _by_representative(values, subject_name, subject_id):
         # Phần I là tài khoản của cha/mẹ/người đại diện (cổng khoá) → khai người cần cấp ở Phần II; SĐT/email Phần I
         # là của người kê khai (mục II.5 DC02). Nút "Kiểm tra thông tin trong CSDL…" công dân tự bấm.
-        picked["radIsNCC"] = DECLARANT_OTHER
+        picked["radIsNCC"] = declarant_other
         picked["txtFULLNAME_NCC"] = subject_name
         picked["txtBIRTHDATE_NCC"] = _date(values.get("NguoiCanCap_NgaySinh"))
         picked["cboGENDER_ID_NCC"] = _gender(values.get("NguoiCanCap_GioiTinh"), subject_id)
@@ -239,10 +242,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         picked["txtPHONE_NUMBER_NDN"] = _phone(values.get("NguoiDaiDien_SoDienThoai"))
         picked["txtEMAIL_ADDRESS_NDN"] = _email(values.get("NguoiDaiDien_Email"))
     else:
-        picked["radIsNCC"] = DECLARANT_SELF
+        picked["radIsNCC"] = declarant_self
         picked["txtPHONE_NUMBER_NDN"] = subject_phone
         picked["txtEMAIL_ADDRESS_NDN"] = _email(values.get("NguoiCanCap_Email"))
-    picked["cboLyDoCap"] = _reason(values)
+    picked["cboLyDoCap"] = _reason(values, reasons)
 
     province, ward = _area(values.get("CoQuan_Tinh"), values.get("CoQuan_Xa"))
     if not province:

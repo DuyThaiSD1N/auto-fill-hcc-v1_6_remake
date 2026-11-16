@@ -99,6 +99,13 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
+    # BẢN NHÁP chờ anh Dư soát — chép khuôn cấp lại sẵn có "Muab … dua tshiab" + "daim npav Căn cước", không thêm từ mới.
+    "cap-lai-the-can-cuoc": "Muab daim npav Căn cước dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "daim npav Căn cước" (thẻ căn cước) + "rau me nyuam yaus" (cho trẻ
+    # nhỏ) + "hnub nyoog qis dua 14 xyoo" (dưới 14 tuổi).
+    "cap-the-can-cuoc-duoi-14-tuoi": "Ua daim npav Căn cước rau me nyuam yaus hnub nyoog qis dua 14 xyoo",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "tsheb" (xe) + "thawj zaug" (lần đầu).
+    "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": "Cuv npe tsheb thawj zaug",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
