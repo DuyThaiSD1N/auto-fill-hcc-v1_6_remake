@@ -99,6 +99,10 @@ _ETHNIC_MAP: dict[str, str] = {
 
     # ===== CO HO =====
     "co ho": "Cơ Ho",
+
+    # ===== CHU RU ===== (giấy hay viết liền "Churu")
+    "chu ru": "Chu Ru",
+    "churu": "Chu Ru",
     "coho": "Cơ Ho",
     "co ho kho": "Cơ Ho",
     "coho kho": "Cơ Ho",

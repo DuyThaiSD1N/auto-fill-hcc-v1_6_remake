@@ -33,9 +33,10 @@ function detectFormKind() {
     document.querySelectorAll("liz-form-component, liz-input, liz-datepicker, liz-select").length >= 3 &&
     document.querySelectorAll("[formcontrolname]").length === 0
   ) return "liz";
-  // Cổng DVC Bộ Công an (jQuery + select2, id = name): form cư trú nhận theo ô họ tên đặc trưng, không phụ
-  // thuộc ô có nằm trong <form> hay không.
-  if (location.hostname === "dichvucong.dancuquocgia.gov.vn" && document.getElementById("txtFULLNAME")) {
+  // Cổng DVC Bộ Công an (jQuery + select2, id = name): form cư trú nhận theo ô họ tên đặc trưng (Thông báo lưu trú:
+  // nút thêm người lưu trú), không phụ thuộc ô có nằm trong <form> hay không.
+  if (location.hostname === "dichvucong.dancuquocgia.gov.vn"
+    && (document.getElementById("txtFULLNAME") || document.getElementById("btnAddPersonLT"))) {
     return "standard";
   }
   const ngCount = document.querySelectorAll("[formcontrolname]").length;
@@ -754,6 +755,10 @@ function pickFlatpickrCalendarDate(el, dateObj) {
     inputs.find((n) => n.type !== "hidden") || el;
   if (visible.disabled) return false;
 
+  const close = () => document.body?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  // Lịch đang mở sẵn (cán bộ vừa bấm vào ô, lịch lượt trước chưa đóng) bị loại khỏi "lịch vừa mở" bên dưới, kể cả
+  // khi đó là lịch của chính ô này → rơi xuống gõ chữ, flatpickr xoá lại khi lịch đóng. Đóng hết rồi mới mở.
+  if (document.querySelector(".flatpickr-calendar.open")) close();
   const openBefore = new Set(document.querySelectorAll(".flatpickr-calendar.open"));
   visible.dispatchEvent(new FocusEvent("focus"));
   visible.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -763,7 +768,6 @@ function pickFlatpickrCalendarDate(el, dateObj) {
     Array.from(document.querySelectorAll(".flatpickr-calendar.open")).find((c) => !openBefore.has(c));
   if (!calendar) return false;
 
-  const close = () => document.body?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   const year = calendar.querySelector(".cur-year");
   const month = calendar.querySelector("select.flatpickr-monthDropdown-months");
   if (!year || !month) {
@@ -1840,6 +1844,18 @@ async function fillFormStandard(fields) {
       result.filled++;
       continue;
     }
+    if (f.comp === "bca-guest-list") {
+      await fillBcaGuestList(f, result);
+      continue;
+    }
+    if (f.comp === "bca-agency") {
+      await fillBcaAgencyField(f, result);
+      continue;
+    }
+    if (f.comp === "bca-rows") {
+      await fillBcaRows(f, result);
+      continue;
+    }
     // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound. Khối render TRỄ → chờ khối.
     let root = await standardScopeRootWaiting(f);
     // Chốt chặn cuối: vùng dò của ô khai scope lại nằm trong khối cấm ghi → BỎ ô, thà để trống còn hơn ghép
@@ -1989,6 +2005,233 @@ async function settleBcaDatepickers(fields) {
       el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, which: 27, bubbles: true }));
       el?.blur?.();
     }
+  }
+}
+
+// ── Cổng DVC Bộ Công an — Thông báo lưu trú: thêm người lưu trú qua modal (comp "bca-guest-list") ──
+// value = [{hoTen, soDinhDanh, fields: [{id, comp, value}]}], mỗi người một lượt: bấm "THÊM MỚI NGƯỜI LƯU TRÚ" →
+// modal #addpersonLT → điền theo id (guest_*) đúng thứ tự BE gửi → "Lưu". Trang chỉ thêm dòng vào bảng
+// #listTTNguoiLuuTru khi hợp lệ; lỗi thì hiện toastr đỏ và GIỮ modal → dừng ở người đó cho công dân sửa tay, không
+// mở thêm modal chồng lên. Người khai (tài khoản) cũng là người lưu trú → tích "Người khai thông tin là Người lưu
+// trú" để cổng tự đổ dữ liệu VNeID và khoá ô nhân thân; ô bị khoá thì không ghi đè.
+const BCA_GUEST_MODAL = "addpersonLT";
+
+function bcaGuestFold(s) {
+  return String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function bcaVisible(el) {
+  return !!el && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0;
+}
+
+function bcaGuestListed(guest) {
+  const table = document.getElementById("listTTNguoiLuuTru");
+  const text = bcaGuestFold(table?.textContent);
+  if (!text) return false;
+  const id = String(guest.soDinhDanh || "");
+  return id ? text.includes(bcaGuestFold(id)) : text.includes(bcaGuestFold(guest.hoTen));
+}
+
+function bcaToastError() {
+  const toasts = Array.from(document.querySelectorAll("#toast-container .toast-error .toast-message"));
+  return toasts.map((t) => t.textContent.trim()).filter(Boolean).pop() || "";
+}
+
+async function bcaSetPickerDates(dates) {
+  if (!dates.length) return null;
+  return await new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ action: "bcaSetDatepickers", dates }, (r) => {
+        void chrome.runtime.lastError;
+        resolve(r || null);
+      });
+    } catch (_) { resolve(null); }
+  });
+}
+
+// Tích "Người khai thông tin là Người lưu trú": cổng thiếu dữ liệu VNeID thì bật hộp #Noti_Miss_Info và tự bỏ tích
+// → đóng hộp đó, điền đủ ô như người thường.
+async function bcaTickSelfGuest() {
+  const box = document.getElementById("chkIS_CHANGED_PERSON");
+  if (!box || box.disabled) return false;
+  if (!box.checked) box.click();
+  await sleep(600);
+  const miss = document.getElementById("Noti_Miss_Info");
+  if (bcaVisible(miss)) {
+    miss.querySelector("[data-dismiss='modal'] button, [data-dismiss='modal']")?.click();
+    await sleep(300);
+  }
+  return box.checked;
+}
+
+async function bcaFillGuestField(sub) {
+  const value = String(sub.value ?? "");
+  if (sub.comp === "dom-radio") {
+    const radio = document.querySelector(`#${BCA_GUEST_MODAL} input[type="radio"][name="${CSS.escape(sub.id)}"][value="${CSS.escape(value)}"]`);
+    if (!radio || radio.disabled) return !!radio;
+    if (!radio.checked) radio.click();
+    return radio.checked;
+  }
+  const el = document.getElementById(sub.id);
+  if (!el) return false;
+  if (sub.comp === "dom-select") {
+    // Ô bị khoá chờ cổng mở (chọn quốc tịch Việt Nam mới mở Tỉnh/Xã) hoặc chờ danh sách con nạp theo ô cha.
+    const ready = () => !el.disabled && Array.from(el.options || []).some((o) => o.value && o.value !== "-1");
+    if (!ready()) await waitFor(ready, 3000, 100);
+    if (el.disabled) return true; // ô cổng khoá theo dữ liệu VNeID (đã tích người khai là người lưu trú)
+    return fillStandardSelect(el, value);
+  }
+  if (el.disabled) return true;
+  return fillStandardInput(el, value);
+}
+
+async function fillBcaGuest(guest) {
+  const opener = document.querySelector("#btnAddPersonLT button") || document.getElementById("btnAddPersonLT");
+  const modal = document.getElementById(BCA_GUEST_MODAL);
+  if (!opener || !modal) return { ok: false, reason: "không thấy nút Thêm mới người lưu trú" };
+  if (bcaVisible(modal)) return { ok: false, reason: "hộp Thêm mới người lưu trú đang mở dở" };
+  opener.click();
+  if (!await waitFor(() => bcaVisible(document.getElementById("guest_txtCITIZENNAME")), 4000, 100)) {
+    return { ok: false, reason: "không mở được hộp Thêm mới người lưu trú" };
+  }
+  await sleep(300);
+  const notifierId = String(document.getElementById("txtIDENTIFIER_NUMBER")?.value || "").replace(/\D/g, "");
+  if (notifierId && notifierId === String(guest.soDinhDanh || "")) await bcaTickSelfGuest();
+
+  const dates = [];
+  const missing = [];
+  for (const sub of guest.fields || []) {
+    if (sub.comp === "dom-date") {
+      const el = document.getElementById(sub.id);
+      if (el && !el.disabled) dates.push({ id: sub.id, value: String(sub.value) });
+      continue;
+    }
+    try {
+      if (!await bcaFillGuestField(sub)) missing.push(sub.id);
+    } catch (e) {
+      console.warn(`[AutoFill-STD] BCA người lưu trú: lỗi ô ${sub.id}:`, e);
+      missing.push(sub.id);
+    }
+    // Quốc tịch / Tỉnh đổi là cổng mở khối địa chỉ / nạp lại danh sách Xã.
+    await sleep(sub.id === "guest_mulNATIONALITY" || sub.id === "guest_cboRDPROVINCE_ID" ? 400 : 60);
+  }
+  await bcaSetPickerDates(dates);
+  if (missing.length) console.warn(`[AutoFill-STD] BCA người lưu trú ${guest.hoTen}: chưa điền được`, missing);
+
+  document.getElementById("btnSaveNLT")?.click();
+  const saved = await waitFor(() => !bcaVisible(modal) && bcaGuestListed(guest), 5000, 150);
+  if (saved) return { ok: true, missing };
+  return { ok: false, reason: bcaToastError() || "cổng chưa nhận, kiểm tra các ô báo đỏ trong hộp" };
+}
+
+// Cơ quan thực hiện (comp "bca-agency", value {province, ward}): chọn Tỉnh (accomStay_cboPROVINCE_ID) rồi CHỜ danh
+// sách Xã (accomStay_cboADDRESS_ID) nạp theo tỉnh mới chọn Xã — danh sách cũ còn nằm đó tới khi cổng nạp xong, khớp
+// sớm là chọn nhầm xã trùng tên của tỉnh cũ. Khớp trọn tên (bỏ dấu) → tên bỏ tiền tố nếu chỉ một dòng khớp.
+// onlyIfEmpty: Tỉnh và Xã đã chọn sẵn (handfree chọn hộ trên thẻ / cán bộ chọn tay) thì giữ nguyên.
+async function fillBcaAgencyField(f, result) {
+  // Mỗi trang đặt id riêng cho cặp Tỉnh → Xã (BE gửi kèm); thiếu thì là trang Thông báo lưu trú.
+  const city = document.getElementById(f.value?.cityId || "accomStay_cboPROVINCE_ID");
+  const ward = document.getElementById(f.value?.wardId || "accomStay_cboADDRESS_ID");
+  const province = String(f.value?.province || "");
+  const wardName = String(f.value?.ward || "");
+  const picked = (sel) => !!sel?.value && sel.value !== "-1";
+  if (!city || !ward) {
+    result.notFound.push("Cơ quan thực hiện");
+    return;
+  }
+  if (f.onlyIfEmpty && picked(city) && picked(ward)) return;
+  const bare = (s) => bcaGuestFold(s).replace(/^(tinh|thanh pho|phuong|xa|dac khu|thi tran)\s+/, "");
+  const pick = (sel, name) => {
+    const options = Array.from(sel.options || []).filter((o) => o.value && o.value !== "-1");
+    const full = options.filter((o) => bcaGuestFold(o.text) === bcaGuestFold(name));
+    if (full.length === 1) return full[0];
+    const loose = options.filter((o) => bare(o.text) === bare(name));
+    return loose.length === 1 ? loose[0] : null;
+  };
+  const cityOpt = pick(city, province);
+  if (!cityOpt) {
+    result.notFound.push(`Tỉnh/Thành phố cơ quan thực hiện (${province})`);
+    return;
+  }
+  const signature = () => Array.from(ward.options).map((o) => o.value).join("|");
+  const before = signature();
+  const changed = city.value !== cityOpt.value;
+  fillStandardSelect(city, cityOpt.value);
+  const wardOpt = await waitFor(() => ((!changed || signature() !== before) ? pick(ward, wardName) : null), 8000, 250);
+  if (!wardOpt) {
+    result.notFound.push(`Xã/Phường/Đặc khu cơ quan thực hiện (${wardName})`);
+    return;
+  }
+  fillStandardSelect(ward, wardOpt.value);
+  result.filled++;
+  if (f.default) {
+    for (const el of [city, ward]) {
+      const target = standardMarkTarget(el);
+      target?.classList?.remove("autofill-filled");
+      target?.classList?.add("autofill-default");
+    }
+  }
+  // Cổng tự chọn ô "Cơ quan thực hiện" sau setTimeout 100ms và chép xã sang khối cơ sở lưu trú.
+  await sleep(300);
+  // readySelect: ô cổng nạp SAU khi chọn xong cơ quan (vd Trường hợp của trang thường trú) — chờ có option thật rồi
+  // mới điền tiếp, kẻo ô kế tiếp chọn trên danh sách rỗng.
+  const ready = f.value?.readySelect && document.getElementById(f.value.readySelect);
+  if (ready) {
+    await waitFor(() => Array.from(ready.options || []).some((o) => o.value && !["0", "-1"].includes(o.value)), 10000, 250);
+  }
+}
+
+// Bảng dòng lặp của cổng Bộ Công an (comp "bca-rows", value {addSelector, rows: [[{id, comp, value}]]}): ô dòng n có
+// id <tiền tố><n>; dòng chưa có thì bấm nút "thêm" ở dòng cuối (addSelector) rồi chờ ô của dòng đó hiện.
+async function fillBcaRows(f, result) {
+  const rows = Array.isArray(f.value?.rows) ? f.value.rows : [];
+  for (let i = 0; i < rows.length; i++) {
+    const cells = Array.isArray(rows[i]) ? rows[i] : [];
+    if (!cells.length) continue;
+    const firstId = cells[0].id;
+    if (!document.getElementById(firstId)) {
+      const buttons = Array.from(document.querySelectorAll(f.value.addSelector || "")).filter(bcaVisible);
+      buttons[buttons.length - 1]?.click();
+      if (!await waitFor(() => document.getElementById(firstId), 3000, 100)) {
+        result.notFound.push(`Dòng ${i + 1} bảng ${f.name}`);
+        return;
+      }
+      await sleep(200);
+    }
+    for (const sub of cells) {
+      try {
+        if (await bcaFillGuestField(sub)) result.filled++;
+        else result.notFound.push(sub.id);
+      } catch (e) {
+        console.warn(`[AutoFill-STD] BCA bảng: lỗi ô ${sub.id}:`, e);
+        result.notFound.push(sub.id);
+      }
+      await sleep(60);
+    }
+  }
+}
+
+async function fillBcaGuestList(field, result) {
+  const guests = Array.isArray(field.value) ? field.value : [];
+  for (let i = 0; i < guests.length; i++) {
+    const guest = guests[i] || {};
+    const label = `Người lưu trú ${guest.hoTen || i + 1}`;
+    if (bcaGuestListed(guest)) {
+      result.filled++;
+      continue;
+    }
+    const res = await fillBcaGuest(guest);
+    console.log(`[AutoFill-STD] BCA ${label}:`, res);
+    if (res.ok) {
+      result.filled++;
+      await sleep(400);
+      continue;
+    }
+    result.notFound.push(`${label} (${res.reason})`);
+    // Hộp còn mở với lỗi của người này: dừng, những người sau công dân tự thêm.
+    for (const rest of guests.slice(i + 1)) result.notFound.push(`Người lưu trú ${rest?.hoTen || ""}`.trim());
+    return;
   }
 }
 
@@ -2915,6 +3158,29 @@ function handleFillMessage(msg, _sender, sendResponse) {
       .catch(() => sendResponse({ ok: true, formContext }));
     return true;
   }
+  // Điền đợt 2: sidebar hoãn ảnh chụp form của lượt điền tới sau bước này, nên frame chứa form luôn bắt đầu
+  // theo dõi ở đây kể cả khi không có ô nào cần ghi lại.
+  if (msg.action === "patchFields") {
+    H.formSnapshot?.arm?.(msg.formSnapshot);
+    const formKind = detectFormKind();
+    if (!formKind) return;
+    const patch = Array.isArray(msg.fields) ? msg.fields : [];
+    const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
+    const known = new Set(base.map((f) => f?.name));
+    // Form SurveyJS và form cũ (x-*) mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
+    const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs : (formKind === "legacy" ? H.patchFormLegacy : null);
+    const canPatch = patch.length && typeof patcher === "function";
+    Promise.resolve().then(() => (canPatch ? patcher(patch) : { filled: 0, skipped: [] }))
+      .catch((e) => {
+        console.warn("[TLND] điền đợt 2 lỗi:", e);
+        return { filled: 0, skipped: [] };
+      })
+      .then((res) => {
+        H.formSnapshot?.track?.(msg.formSnapshot, [...base, ...patch.filter((f) => !known.has(f?.name))], formKind);
+        sendResponse(res);
+      });
+    return true;
+  }
   if (msg.action !== "fillFields") return;
   H.formSnapshot?.arm?.(msg.formSnapshot);
   const formKind = detectFormKind();
@@ -2935,7 +3201,10 @@ function handleFillMessage(msg, _sender, sendResponse) {
     if (!fields.length) return;
   }
   const forceStandard = fields.some(isStandardField);
-  const trackSnapshot = (res) => { if (!res?.error) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind); };
+  // deferSnapshot: còn điền đợt 2 phía sau, lệnh patchFields mới bắt đầu theo dõi.
+  const trackSnapshot = (res) => {
+    if (!res?.error && !msg.deferSnapshot) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind);
+  };
   // Bắc Ninh engine riêng (khớp theo NHÃN) — ưu tiên trước mọi nhánh khác.
   if (formKind === "surveyjs") {
     if (typeof H.fillFormSurveyJs !== "function") {

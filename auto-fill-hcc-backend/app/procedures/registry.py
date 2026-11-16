@@ -60,6 +60,9 @@ from app.pipelines.chung_thuc_tu_choi_di_san.attach import plan as chung_thuc_tu
 from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
 from app.pipelines.dang_ky_tam_tru.process import run as dang_ky_tam_tru_process
 from app.pipelines.dang_ky_tam_tru.attach import plan as dang_ky_tam_tru_attach
+from app.pipelines.thong_bao_luu_tru.process import run as thong_bao_luu_tru_process
+from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
+from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -1234,6 +1237,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Option chỉ được bật khi client gửi boolean true; extension cũ tiếp tục giữ nguyên file.
         "supportsSplitDocuments": True,
+        # Điền đợt 2 (app/second_pass) trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai fillSupports có
+        # "secondPassLegacy" (bản biết ghi lại ô trên form cũ). Bản khác bỏ qua khoá này.
+        "secondPass": "legacy",
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1276,6 +1282,9 @@ PROCEDURES: list[dict] = [
         # Cho phép người dùng chọn có tách các giấy tờ nằm chung một file hay không. Client cũ hoặc
         # không gửi option luôn đi nhánh giữ nguyên file để không làm thay đổi hồ sơ ngoài ý muốn.
         "supportsSplitDocuments": True,
+        # Có điền đợt 2 (app/second_pass) trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai
+        # fillSupports có "secondPassLegacy" (bản biết ghi lại ô trên form cũ). Bản khác bỏ qua khoá này.
+        "secondPass": "legacy",
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1312,6 +1321,8 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
         "supportsSplitDocuments": True,
+        # Điền đợt 2 trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai fillSupports có "secondPassLegacy".
+        "secondPass": "legacy",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -1455,6 +1466,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
         "supportsSplitDocuments": True,
+        # Có điền đợt 2 (app/second_pass): bản extension biết thì khai fillSupports=["secondPass"] khi gọi /process
+        # rồi hỏi kết quả soát sau khi điền. Bản cũ bỏ qua khoá này.
+        "secondPass": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1662,6 +1676,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
         "supportsSplitDocuments": True,
+        # Có điền đợt 2 (app/second_pass): bản extension biết thì khai fillSupports=["secondPass"] khi gọi /process
+        # rồi hỏi kết quả soát sau khi điền. Bản cũ bỏ qua khoá này.
+        "secondPass": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -10504,6 +10521,52 @@ PROCEDURES: list[dict] = [
             "3. CCCD của người đăng ký tạm trú (nếu có) để đối chiếu nhân thân."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an (jQuery + select2, ô id = name) — bộ id KHÁC trang đăng ký tạm trú dù cùng cổng. Link kê
+        # khai + mã 1.004222 ở ke_khai_links.json. Cơ quan thực hiện (Tỉnh → Xã) chọn đầu tiên: cổng mới nạp Thủ tục,
+        # Trường hợp và nhóm giấy tờ đính kèm.
+        "key": "dang-ky-thuong-tru",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["dang-ky-thuong-tru.html"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký thường trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) có ý kiến của chủ hộ / chủ sở hữu chỗ ở — nguồn chính.\n"
+            "2. Giấy tờ chứng minh chỗ ở hợp pháp hoặc quan hệ nhân thân với chủ hộ (giấy chứng nhận kết hôn, giấy "
+            "khai sinh…), hợp đồng thuê/mượn/ở nhờ nếu có.\n"
+            "3. CCCD của người đăng ký (nếu có)."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 2.001159 ở ke_khai_links.json.
+        # Trang không có mục đính kèm. Khối "Cơ quan thực hiện" chọn trước khi điền; khối người thông báo cổng khoá
+        # theo tài khoản. Người lưu trú thêm từng người qua modal "Thêm mới người lưu trú" (comp bca-guest-list).
+        "key": "thong-bao-luu-tru",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["thong-bao-luu-tru.html"],
+            "headingDisabled": True,
+        },
+        "label": "Thông báo lưu trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu thông báo lưu trú (Mẫu CT14) — nguồn chính: danh sách người lưu trú, địa chỉ, thời gian, lý do.\n"
+            "2. Thẻ căn cước / CCCD / hộ chiếu của từng người lưu trú (nếu có) để bổ sung quốc tịch, nơi cư trú.\n"
+            "Chọn Tỉnh + Xã ở khối 'Cơ quan thực hiện' TRƯỚC khi điền. Mỗi người lưu trú được thêm qua nút "
+            "'Thêm mới người lưu trú'; kiểm tra bảng danh sách rồi tích ô cam kết trước khi nộp."
+        ),
+    },
 ]
 
 # Mục iGate Lào Cai → mục eForm cũ cùng mã TTHC (mục cũ luôn đứng SAU mục iGate).
@@ -10673,6 +10736,8 @@ _PIPELINE = {
     "dinh-chinh-gcn-da-cap-1115476-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_process,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_process,
     "dang-ky-tam-tru": dang_ky_tam_tru_process,
+    "thong-bao-luu-tru": thong_bao_luu_tru_process,
+    "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
@@ -11124,6 +11189,7 @@ _ATTACH_PIPELINE = {
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
     "dang-ky-tam-tru": dang_ky_tam_tru_attach,
+    "dang-ky-thuong-tru": dang_ky_thuong_tru_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,

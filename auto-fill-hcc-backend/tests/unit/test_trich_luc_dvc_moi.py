@@ -630,29 +630,48 @@ def _so_dang_ky(values: dict, ocr: str, event="khai tử") -> str:
     return {f["name"]: f["value"] for f in out}.get("citizencauhoi3", "")
 
 
-@pytest.mark.parametrize("llm_value", ["9/2021", "9", "9 ngày 02/03/2021", ""])
-def test_so_dang_ky_trich_luc_lay_so_dau_giay(llm_value):
-    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": llm_value}, _OCR_TRICH_LUC_KHAI_TU) == "27/TLKT-BS"
+@pytest.mark.parametrize("llm_value,expected", [
+    ("27/TLKT-BS", "9"), ("9", "9"), ("9 ngày 02/03/2021", "9"), ("", "9"),
+    ("9/2021", "9/2021"),  # cách ghi "<số>/<năm>" cán bộ quen dùng → giữ
+])
+def test_so_dang_ky_trich_luc_lay_so_goc_trong_than(llm_value, expected):
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": llm_value}, _OCR_TRICH_LUC_KHAI_TU) == expected
 
 
 @pytest.mark.parametrize("line,expected", [
-    ("Số: 32 /TLKT-BS", "32/TLKT-BS"),
-    ("Số: 35/TLKT", "35/TLKT"),
-    ("Số: 2575/2026/TLKT-BS Phường X, ngày 05 tháng 10 năm 2026", "2575/2026/TLKT-BS"),
+    ("Số: 32 ngày 02 tháng 3 năm 2021", "32"),
+    ("Số: 35/2021 ngày 02/3/2021", "35/2021"),
+    ("Cấp số: 7 Quyển số: 01 Ngày đăng ký: 02/3/2021", "7"),
 ])
-def test_so_dang_ky_trich_luc_cac_dang_in(line, expected):
-    ocr = _OCR_TRICH_LUC_KHAI_TU.replace("Số: 27/TLKT-BS", line)
-    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == expected
+def test_so_dang_ky_trich_luc_cac_dang_dong_goc(line, expected):
+    ocr = _OCR_TRICH_LUC_KHAI_TU.replace("Số: 9 ngày 02 tháng 3 năm 2021", line)
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "27/TLKT-BS"}, ocr) == expected
+
+
+def test_so_dang_ky_trich_luc_dang_noi_ghi():
+    ocr = ("Số: 328/2023/TLKT-BS\nTRÍCH LỤC KHAI TỬ\n"
+           "Nơi ghi: UBND xã X, Sổ đăng ký khai tử, quyển số 02, số 33/2023, ngày 05/01/2023")
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "328/2023/TLKT-BS"}, ocr) == "33/2023"
+
+
+def test_trich_luc_khong_co_dong_goc_thi_giu_so_dau_giay():
+    ocr = "Số: 27/TLKT-BS\nTRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: TRAN THI B"
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "27/TLKT-BS"}, ocr) == "27/TLKT-BS"
 
 
 def test_so_dang_ky_trich_luc_khai_sinh():
     ocr = "Số: 64 /TLKS-BS\nTRÍCH LỤC KHAI SINH\nĐăng ký khai sinh tại: UBND phường X\nSố: 140 ngày: 17/4/2013"
-    assert _so_dang_ky({**SUBJECT, "GiayTo_So": "140/2013"}, ocr, event="khai sinh") == "64/TLKS-BS"
+    assert _so_dang_ky({**SUBJECT, "GiayTo_So": "64/TLKS-BS"}, ocr, event="khai sinh") == "140"
 
 
-def test_ho_so_co_to_khai_thi_so_theo_to_khai():
+def test_so_lech_han_dong_goc_thi_giu_luot_trich():
+    # Lượt trích đọc số từ nguồn khác (tờ khai) khác hẳn số dòng gốc: không tự đổi, để thanh tra / cán bộ xử.
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "15"}, _OCR_TRICH_LUC_KHAI_TU) == "15"
+
+
+def test_ho_so_co_to_khai_cung_so_goc():
     ocr = _OCR_TO_KHAI + "\n" + _OCR_TRICH_LUC_KHAI_TU
-    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == "9/2021"
+    assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "27/TLKT-BS"}, ocr) == "9"
 
 
 def test_trich_luc_khac_loai_khong_lay_so_dau_giay():
@@ -660,8 +679,26 @@ def test_trich_luc_khac_loai_khong_lay_so_dau_giay():
 
 
 def test_nhieu_trich_luc_cung_loai_giu_so_luot_trich():
-    ocr = _OCR_TRICH_LUC_KHAI_TU + "\n" + _OCR_TRICH_LUC_KHAI_TU.replace("27/TLKT-BS", "28/TLKT-BS")
+    other = _OCR_TRICH_LUC_KHAI_TU.replace("27/TLKT-BS", "28/TLKT-BS").replace("Số: 9 ngày", "Số: 10 ngày")
+    ocr = _OCR_TRICH_LUC_KHAI_TU + "\n" + other
     assert _so_dang_ky({**_KHAI_TU, "GiayTo_So": "9/2021"}, ocr) == "9/2021"
+
+
+def _co_quan(values: dict, ocr: str, event="khai tử") -> str:
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_ocr_text": ocr,
+                                    "_reasoning_context": _context("Không xác định", event=event)})
+    return {f["name"]: f["value"] for f in out}.get("citizenHoSo_CoQuanDangKy", "")
+
+
+@pytest.mark.parametrize("llm_value,expected", [
+    ("UBND phường X", "UBND phường X, huyện Y, tỉnh Z"),       # cắt mất huyện, tỉnh → lấy đủ dòng
+    ("UBND xã Khác", "UBND xã Khác"),                          # cơ quan khác hẳn → giữ lượt trích
+])
+def test_co_quan_dang_ky_chep_du_cap_nhu_dong_goc(llm_value, expected):
+    ocr = ("Số: 64 /TLKS-BS\nTRÍCH LỤC KHAI SINH\nĐăng ký khai sinh tại: UBND phường X, huyện Y, tỉnh Z\n"
+           "Số: 140 ngày: 17/4/2013")
+    assert _co_quan({**SUBJECT, "GiayTo_CoQuanDangKy": llm_value}, ocr, event="khai sinh") == expected
 
 
 def test_ma_trich_luc_khac_khong_thay_so_dang_ky():
@@ -797,3 +834,34 @@ def test_noi_cu_tru_xa_cu_doi_sang_don_vi_moi_thi_chi_tiet_khong_kem_ten_xa_cu()
     area = _area_fields(out)
     assert area["citizenNDK_PhuongXa"]["value"] == "Phường Lâm Viên - Đà Lạt"
     assert area["citizenField38"]["value"] == "Số 1"
+
+
+@pytest.mark.parametrize("llm_value,number,book", [("359/Q.S: 03", "359", "03"), ("359, QS: 03", "359", "03"),
+                                                   ("20/2014", "20/2014", "")])
+def test_so_dang_ky_dinh_quyen_so_thi_tach(llm_value, number, book):
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in {**_KHAI_TU, "GiayTo_So": llm_value}.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_ocr_text": "",
+                                    "_reasoning_context": _context("Không xác định", event="khai tử")})
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizencauhoi3") == number and by.get("citizencauhoi4", "") == book
+
+
+def test_dan_toc_chuan_hoa_theo_danh_muc():
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in {**SUBJECT, "NguoiDuocCap_DanToc": "Churu"}.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_ocr_text": "",
+                                    "_reasoning_context": _context("Không xác định", event="khai sinh")})
+    assert {f["name"]: f["value"] for f in out}["citizenField32"] == "Chu Ru"
+
+
+@pytest.mark.parametrize("ocr,expected", [
+    ("CĂN CƯỚC\nSố định danh cá nhân: 001190000002\nNGUYỄN TRINH HƯƠNG", "Bản thân"),  # số tài khoản có trên thẻ
+    ("GIẤY CHỨNG NHẬN KẾT HÔN\nHọ và tên người vợ Nguyễn Trinh Hưng", "Khác"),          # không có căn cứ trên giấy
+])
+def test_ban_than_ten_lech_mot_chu_va_so_tai_khoan_co_tren_giay(ocr, expected):
+    account = {"applicantFullname": "Nguyễn Trinh Hương", "applicantIdentityNumber": "001190000002"}
+    values = {**SUBJECT, "NguoiDuocCap_HoTen": "Nguyễn Trinh Hưng", "NguoiDuocCap_SoDinhDanh": "250199202",
+              "NguoiDuocCap_SoGiayTo": "250199202"}
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    context = _context("Bản thân", subject_id="250199202").replace("Họ tên: TRAN THI B", "Họ tên: Nguyễn Trinh Hưng")
+    out, _ = mapper.enrich(fields, {"formContext": account, "_ocr_text": ocr, "_reasoning_context": context})
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == expected

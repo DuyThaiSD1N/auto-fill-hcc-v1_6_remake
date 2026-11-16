@@ -87,10 +87,28 @@ THỨ TỰ PHÂN VAI — TỜ KHAI TRƯỚC, GIẤY TỜ KHÁC CHỈ LÀ NGUỒN
    Tờ khai ghi "Nơi cư trú: Đã chết" cho cha/mẹ → Trạng thái của vai đó là "đã chết".
 1. Không có tờ khai thì mới xét nhãn rõ trên giấy khai sinh cũ hoặc trích lục khai sinh:
    "người được khai sinh/con", "mẹ", "cha".
+   ĐĂNG KÝ LẠI khai sinh là cho người đã MẤT giấy khai sinh / sổ gốc (thường đăng ký đã lâu). Giấy khai sinh
+   còn nguyên trong hồ sơ KHÔNG tự động là giấy của người được đăng ký lại: rất hay là giấy của con, cháu,
+   hoặc của cha/mẹ họ nộp kèm để chứng minh họ tên, quan hệ. Giấy khai sinh ghi chú "Đăng ký lại việc sinh" là
+   KẾT QUẢ của một lần đăng ký lại ĐÃ XONG — người trên giấy đó đã có giấy, KHÔNG phải người đang xin đăng ký lại. Người được đăng ký lại thường là người có thẻ CCCD/CMND của CHÍNH MÌNH và là
+   người mà các giấy khác xoay quanh: giấy khai tử / thẻ của cha mẹ họ, giấy chứng nhận kết hôn của họ, giấy
+   khai sinh các con ghi họ là cha/mẹ. Cân nhắc cả hồ sơ, không chốt chỉ vì người đó có giấy khai sinh.
+   Hồ sơ hay nộp kèm giấy khai sinh / trích lục khai sinh của CON người được đăng ký lại (để chứng minh
+   họ tên của họ): người có thẻ CCCD/CMND trong hồ sơ, hoặc người được nhắc trong bản cam đoan / đơn, mà
+   đứng tên ở mục "người cha" / "người mẹ" của giấy đó thì giấy đó là giấy của CON họ — người được khai
+   sinh trên giấy đó KHÔNG phải <con>, cha/mẹ trên giấy đó KHÔNG phải <cha>/<me>.
+1b. CĂN CỨ CHỈ ĐÍCH DANH người được đăng ký lại (xét TRƯỚC quy tắc thế hệ mục 3 và mục 4b):
+   - bản cam đoan / đơn / văn bản xác nhận mà người lập xin đăng ký lại khai sinh cho CHÍNH MÌNH, hoặc
+     ghi rõ đăng ký lại khai sinh cho người có tên;
+   - giấy ủy quyền có nội dung đăng ký lại khai sinh: bên ỦY QUYỀN ủy quyền làm thủ tục cho chính mình
+     thì bên ủy quyền là <con>; bên được ủy quyền chỉ là người đi nộp hộ.
+   Có căn cứ này thì theo đúng căn cứ, không suy theo thế hệ.
 2. Giấy khai tử chỉ chứng minh danh tính, năm sinh, giới tính và trạng thái đã chết của người trên giấy.
    KHÔNG mặc định người trong giấy khai tử là cha/mẹ. Chỉ gán cha/mẹ khi có quan hệ rõ hoặc khi quy tắc
-   thế hệ tại mục 3 xác định được duy nhất.
-3. Khi không có nhãn quan hệ nhưng hồ sơ thể hiện đúng một gia đình hợp lý:
+   thế hệ tại mục 3 xác định được duy nhất. Giấy chứng tử, giấy báo tử, ảnh bia mộ dùng y như giấy khai
+   tử (họ tên, năm sinh, năm mất, trạng thái đã chết); bản cam đoan nói bia mộ / giấy đó là của cha/mẹ
+   thì gán đúng vai. Giấy chứng sinh là nguồn nhân thân của người được sinh và người mẹ ghi trên giấy.
+3. Khi không có nhãn quan hệ, không có căn cứ mục 1b, nhưng hồ sơ thể hiện đúng một gia đình hợp lý:
    - người có năm sinh lớn nhất/gần hiện tại nhất là con;
    - người nam lớn hơn con ít nhất khoảng 15 tuổi là cha;
    - người nữ lớn hơn con ít nhất khoảng 15 tuổi là mẹ.
@@ -99,12 +117,17 @@ THỨ TỰ PHÂN VAI — TỜ KHAI TRƯỚC, GIẤY TỜ KHÁC CHỈ LÀ NGUỒN
    Người trẻ nhất KHÔNG trùng họ với người nam nào lớn hơn thì chưa chắc là con (thường là người đi nộp
    hộ): khi đó con là người CÒN SỐNG có thẻ, trùng họ với đúng một người nam lớn hơn ≥15 tuổi (kể cả
    người trong giấy khai tử) — người nam đó là cha.
+   Người trẻ nhất mà giấy khai sinh của họ ghi một người có thẻ trong hồ sơ là cha/mẹ thì là CON/CHÁU của
+   người được đăng ký lại (xem mục 1), không phải <con>.
 4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
    phụ, không đủ để tự gán vai.
 4b. Hồ sơ KHÔNG có tờ khai, chỉ có ĐÚNG MỘT thẻ căn cước/CMND và không tài liệu nào chỉ đích danh
    người được đăng ký lại khai sinh: người trên thẻ đó CHÍNH LÀ CON (người được đăng ký lại khai sinh) — người lớn tự
    đi đăng ký lại cho mình. Đổ TOÀN BỘ nhân thân đọc được trên thẻ vào <con>. Từ HAI thẻ trở lên thì
    KHÔNG áp dụng quy tắc này, phải phân vai theo nhãn hoặc theo thế hệ ở mục 3.
+   NGOẠI LỆ: hồ sơ có giấy khai tử / chứng tử / bia mộ của một người CÙNG THẾ HỆ với người trên thẻ (năm sinh
+   cách nhau dưới 15 năm) → hai người đó là vợ chồng, tức CHA và MẸ (theo giới tính) của người được đăng ký
+   lại: người trên thẻ vào <cha>/<me>, KHÔNG vào <con>; <con> theo giấy khác, không có thì Không xác định.
 5. Người yêu cầu:
    - CÓ TỜ KHAI/ĐƠN đăng ký lại khai sinh: lấy ĐÚNG người ghi ở mục người yêu cầu trên tờ khai.
      TUYỆT ĐỐI KHÔNG lấy theo requester_context — đó chỉ là tài khoản VNeID đang đăng nhập cổng,
@@ -128,12 +151,14 @@ a. CÓ TỜ KHAI/ĐƠN đăng ký lại khai sinh: lấy đúng dòng "Quan hệ
 b. Tờ khai KHÔNG ghi rõ quan hệ nhưng có họ tên người yêu cầu: so họ tên + số định danh của người
    yêu cầu với <con>, <cha>, <me>. Trùng <con> → bản thân; trùng <cha> → cha; trùng <me> → mẹ;
    không trùng ai → khác.
-c. KHÔNG CÓ TỜ KHAI/ĐƠN, hồ sơ chỉ có CCCD/CMND (kèm hoặc không kèm giấy khai sinh cũ):
-   KẾT LUẬN "khác". Không có giấy tờ nào nói ai đang đi nộp hồ sơ, nên không được suy người yêu cầu
-   là con/cha/mẹ. Cổng đã tự điền khối người yêu cầu từ tài khoản VNeID đăng nhập; phần mềm chỉ tích
-   ô "Khác" rồi đổ dữ liệu quét được vào các khối con/cha/mẹ.
-d. Không dùng nhãn "không xác định" khi hồ sơ không có tờ khai — trường hợp đó luôn là "khác".
+c. KHÔNG CÓ TỜ KHAI/ĐƠN đăng ký lại: chỉ kết luận bản thân / cha / mẹ khi CHÍNH giấy tờ nói ai đi làm
+   thủ tục (bản cam đoan / đơn viết ngôi thứ nhất do chính người được đăng ký lại, hoặc cha / mẹ của họ
+   đứng tên xin đăng ký lại). Giấy tờ không nói ai đi nộp → kết luận "khác"; KHÔNG suy người yêu cầu là
+   con/cha/mẹ chỉ vì hồ sơ có CCCD của họ. Phần mềm tự đối chiếu với tài khoản VNeID đăng nhập cổng.
 
+Khối <con> là NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI KHAI SINH — KHÔNG phải con của người yêu cầu. Người tự đăng ký lại cho
+mình thì <con> chính là người đó (trùng <nguoi_yeu_cau>); con cái của họ không vào khối nào. <me>/<cha> là mẹ/cha
+của người trong <con>.
 Chỉ trả TEXT theo đúng năm khối sau, không markdown/code fence và không thêm JSON:
 Mỗi nhãn đúng một dòng; "Căn cứ phân vai" tối đa 20 từ. Chỉ ghi KẾT LUẬN, không trình bày chuỗi suy luận.
 <nguoi_yeu_cau>
@@ -297,7 +322,18 @@ def _self_card_name(requester_section: str, subject_section: str, documents: lis
         and person.get("is_identity")
         and person.get("id") in ids
     }
-    return next(iter(names.values())) if len(names) == 1 else ""
+    if len(names) != 1:
+        return ""
+    card_name = next(iter(names.values()))
+    # Số trùng mà tên trên thẻ khác người (tờ khai chép nhầm số thẻ của mẹ vào dòng của con) hoặc rụng cả tiếng
+    # (OCR mặt thẻ bỏ tên đệm) thì không phải bằng chứng: chỉ nhận khi cùng số tiếng, cùng họ, cùng tên.
+    declared = [_role_name(requester_section), _role_name(subject_section)]
+    return card_name if any(_same_name_shape(card_name, name) for name in declared if name) else ""
+
+
+def _same_name_shape(a, b) -> bool:
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    return len(words_a) == len(words_b) >= 2 and words_a[0] == words_b[0] and words_a[-1] == words_b[-1]
 
 
 def _section(text: str, tag: str) -> str:
@@ -740,8 +776,32 @@ def _person_from_document(document: dict) -> dict | None:
         "id": _digits(id_number) if is_identity else "",
         "issue_date": _card_issue_date(block) if is_identity else "",
         "issue_place": _card_issue_place(block) if is_identity else "",
+        # Giấy tờ tùy thân CỦA NGƯỜI CHẾT chép trên giấy khai tử (cha / mẹ đã mất không còn thẻ để nộp).
+        "death_id": _death_id_facts(block, id_number) if is_death else {},
         "source": str(document.get("name") or "(không tên)"),
     }
+
+
+_DEATH_DECLARANT_RE = re.compile(r"ng[uư][oờ]i\s+đi\s+(?:khai\s+tử|đăng\s+ký)", re.IGNORECASE)
+
+
+def _death_id_facts(block: str, id_number: str) -> dict:
+    """Số / ngày cấp / nơi cấp giấy tờ tùy thân của người chết, đọc ở dòng "Giấy tờ tùy thân" của phần người được khai tử
+    ("…Căn cước công dân số X, Cục CS QLHC về TTXH cấp ngày dd/mm/yyyy"). Chỉ đọc TRƯỚC phần người đi khai tử: dòng
+    giấy tờ phía sau là của người đi khai."""
+    stop = _DEATH_DECLARANT_RE.search(block)
+    part = block[:stop.start()] if stop else block
+    line = _first_match(part, (r"Gi[aấ]y\s*t[oờ]\s*t[uù]y\s*th[aâ]n\s*:?\s*([^\n\r]+)",))
+    number = re.search(r"(?<!\d)(\d{12}|\d{9})(?!\d)", line)
+    number = number.group(1) if number else _digits(id_number)
+    date = re.search(r"c[aấ]p\s*ng[aà]y\s*:?\s*(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})", line, flags=re.IGNORECASE)
+    place = ""
+    if number and date:
+        between = line[line.find(number) + len(number):date.start()] if number in line else ""
+        place = _card_issue_place(between.strip(" ,.;:-")) if between.strip(" ,.;:-") else ""
+    if len(number) not in {9, 12}:
+        return {}
+    return {"id": number, "issue_date": re.sub(r"\s+", "", date.group(1)) if date else "", "issue_place": place}
 
 
 # ---------------------------------------------------------------------------
@@ -785,10 +845,13 @@ _DEATH_NOTE_RE = re.compile(r"\b(?:da\s+chet|da\s+mat|chet|mat|tu\s+tran|qua\s+d
 
 
 def split_name_note(value) -> tuple[str, str]:
-    """Tách "Hồ Bá Thích (Mất)" thành ("Hồ Bá Thích", "Mất")."""
+    """Tách "Hồ Bá Thích (Mất)" thành ("Hồ Bá Thích", "Mất").
+
+    Ghi chú còn được viết trong ngoặc nhọn / ngoặc vuông ("<Đã chết>"); để dính vào họ tên thì mọi phép so tên với
+    trích lục khai tử, CCCD của chính người đó đều trượt."""
     text = str(value or "").strip()
-    note = " ".join(found.strip() for found in re.findall(r"\(([^)]*)\)", text))
-    name = re.sub(r"\s*\([^)]*\)", " ", text)
+    note = " ".join(found.strip() for found in re.findall(r"[(<\[]([^)>\]]*)[)>\]]", text))
+    name = re.sub(r"\s*[(<\[][^)>\]]*[)>\]]", " ", text)
     return re.sub(r"\s+", " ", name).strip(" .,;:-"), note.strip()
 
 
@@ -1608,6 +1671,55 @@ def _child_is_authorized(family: dict | None, documents: list[dict]) -> bool:
     )
 
 
+def _has_own_card(section: str, documents: list[dict]) -> bool:
+    return any(
+        person.get("is_identity") and _same_role_person(section, person) for person in _people_from_documents(documents)
+    )
+
+
+def _subject_from_relation_block(raw: str, sections: dict[str, str], documents: list[dict]) -> dict[str, str]:
+    """Agent tự kết luận người được đăng ký lại CHÍNH LÀ người yêu cầu nhưng lại ghi khối <con> là người khác.
+
+    Agent hay hiểu thẻ <con> theo nghĩa đen "con của người yêu cầu" và đặt con cái của người lập bản cam đoan vào
+    đó, trong khi chính khối quan hệ của nó ghi người được đăng ký lại là người yêu cầu. Theo kết luận đó của agent.
+    """
+    if _declaration_source_names(documents):
+        return sections
+    relation = _section(raw, "quan_he_nguoi_yeu_cau")
+    subject_name = _labeled_value(relation, "Người được đăng ký lại khai sinh")
+    requester = _section(raw, "nguoi_yeu_cau")
+    requester_name = _role_name(requester)
+    child = sections.get("con") or ""
+    if not (
+        subject_name and requester_name and _names_align(subject_name, requester_name)
+        and not _names_align(subject_name, _role_name(child))
+    ):
+        return sections
+    lines = [line for line in requester.splitlines() if not line.startswith(("Vai trò đồng thời", "Căn cứ phân vai"))]
+    section = "\n".join(lines + ["Trạng thái: còn sống"])
+    return {**sections, "con": _as_family_section(section, "Agent kết luận người yêu cầu tự đăng ký lại cho mình.")}
+
+
+def _agent_family_plausible(sections: dict[str, str]) -> bool:
+    """Agent đã có <con> còn sống và mọi cha/mẹ đã chốt đều đúng giới tính, khác người, đủ một thế hệ với con."""
+    child = sections.get("con") or ""
+    if _is_unknown(child) or "da chet" in _fold(_labeled_value(child, "Trạng thái")):
+        return False
+    child_year = _role_year(child)
+    for tag, wrong_gender in (("cha", {"nu", "female"}), ("me", {"nam", "male"})):
+        parent = sections.get(tag) or ""
+        if _is_unknown(parent):
+            continue
+        if _fold(_labeled_value(parent, "Giới tính")) in wrong_gender:
+            return False
+        if _role_id(parent) and _role_id(parent) == _role_id(child):
+            return False
+        parent_year = _role_year(parent)
+        if child_year and parent_year and child_year - parent_year < 15:
+            return False
+    return True
+
+
 def _override_family_by_generation(
     sections: dict[str, str],
     documents: list[dict],
@@ -1636,6 +1748,18 @@ def _override_family_by_generation(
     )
     # Luật thế hệ xếp người được ủy quyền làm con → không đủ căn cứ đè, giữ phân vai của agent.
     if not family or _child_is_authorized(family, documents):
+        return sections
+    # Agent đã chốt người được đăng ký lại theo giấy tờ (bản cam đoan, giấy ủy quyền, giấy khai sinh của con
+    # họ...) KHÁC người luật thế hệ chọn, và gia đình của agent không tự mâu thuẫn → luật thế hệ chỉ còn là dự
+    # phòng: "người trẻ nhất là con" chọn nhầm con/cháu của người được đăng ký lại khi hồ sơ kèm giấy tờ của họ.
+    # Người agent chọn phải có thẻ của CHÍNH MÌNH: người chỉ có tên trên giấy khai sinh còn nguyên (con của chủ thẻ)
+    # thì không đủ căn cứ thắng một gia đình đọc thẳng từ thẻ + giấy khai tử.
+    if (
+        "con" in family
+        and _agent_family_plausible(sections)
+        and not _same_role_person(sections.get("con") or "", family["con"])
+        and _has_own_card(sections.get("con") or "", documents)
+    ):
         return sections
     result = dict(sections)
     for tag, person in family.items():
@@ -1720,6 +1844,54 @@ def _repair_family_by_generation(
     }
 
 
+_SPOUSE_BASIS = "Thẻ duy nhất đi cùng giấy khai tử của người cùng thế hệ (cách dưới 15 năm): hai người là cha mẹ."
+
+
+def _single_card_spouse(documents: list[dict]) -> tuple[dict, dict] | None:
+    """(chủ thẻ, người đã chết cùng thế hệ) khi hồ sơ không tờ khai chỉ có đúng một thẻ của người còn sống."""
+    if _declaration_source_names(documents):
+        return None
+    people = _people_from_documents(documents)
+    cards = [p for p in people if p.get("is_identity") and not _is_dead(p)]
+    if len(cards) != 1 or not cards[0].get("year"):
+        return None
+    card = cards[0]
+    dead = [
+        p for p in people
+        if _is_dead(p) and p.get("year") and abs(p["year"] - card["year"]) < 15 and not _same_document_person(p, card)
+    ]
+    return (card, dead[0]) if len(dead) == 1 else None
+
+
+def _demote_single_card_spouse(sections: dict[str, str], documents: list[dict]) -> dict[str, str]:
+    """Agent xếp chủ thẻ duy nhất vào <con> dù hồ sơ có giấy khai tử của người cùng thế hệ → chủ thẻ là cha/mẹ.
+
+    Hồ sơ người con tự đăng ký lại không kèm giấy khai tử của người cùng lứa với mình; người góa đi đăng ký lại cho con
+    thì kèm thẻ của mình + khai tử của vợ/chồng. Agent hay áp máy móc "một thẻ → người được đăng ký lại" bất chấp
+    ngoại lệ trong prompt, rồi khối cha/mẹ thật rỗng.
+    """
+    pair = _single_card_spouse(documents)
+    if not pair or not _same_role_person(sections.get("con") or "", pair[0]):
+        return sections
+    result = dict(sections)
+    placed = False
+    for person in pair:
+        gender = _fold(_labeled_value(person["section"], "Giới tính"))
+        tag = "cha" if gender in {"nam", "male"} else "me" if gender in {"nu", "female"} else ""
+        if not tag:
+            continue
+        existing = result.get(tag) or ""
+        if _is_unknown(existing):
+            result[tag] = _as_family_section(person["section"], _SPOUSE_BASIS)
+            placed = placed or person is pair[0]
+        elif _same_role_person(existing, person):
+            placed = placed or person is pair[0]
+    if not placed:
+        return sections
+    result["con"] = _unknown_role_section(_SPOUSE_BASIS)
+    return result
+
+
 def _repair_single_identity_as_subject(
     sections: dict[str, str],
     documents: list[dict],
@@ -1741,6 +1913,9 @@ def _repair_single_identity_as_subject(
         if (person := _person_from_document(document)) and person.get("is_identity")
     ]
     if len(cards) != 1:
+        return sections
+    # Thẻ duy nhất đi cùng giấy khai tử của người CÙNG THẾ HỆ: chủ thẻ là cha/mẹ, không phải người được đăng ký lại.
+    if _single_card_spouse(documents):
         return sections
     basis = "Hồ sơ chỉ có một thẻ căn cước/CMND và không có vai nào khác được xác định."
     return {**sections, "con": _as_family_section(cards[0]["section"], basis)}
@@ -2091,9 +2266,24 @@ def _validated_relation(
                 "Hồ sơ không có tờ khai, nhưng người đang đăng nhập cổng trùng người được đăng ký "
                 "lại khai sinh → chính chủ tự đi làm cho mình."
             )
-        return "khác", (
-            "Hồ sơ không có tờ khai đăng ký lại khai sinh và người đăng nhập cổng không phải người "
-            "được đăng ký lại khai sinh; giữ nguyên khối người yêu cầu do cổng điền từ VNeID."
+        if applicant[0] or applicant[1]:
+            return "khác", (
+                "Hồ sơ không có tờ khai đăng ký lại khai sinh và người đăng nhập cổng không phải người "
+                "được đăng ký lại khai sinh; giữ nguyên khối người yêu cầu do cổng điền từ VNeID."
+            )
+        # Không có mốc tài khoản (cổng chưa đổ khối người yêu cầu lúc chạy): không biết ai đang đăng nhập nên KHÔNG
+        # được suy ra "khác". Chỉ nhận kết luận agent đọc từ giấy (bản cam đoan / đơn ngôi thứ nhất...), không có thì
+        # để trống cho người dùng chọn.
+        section = _section(raw, "quan_he_nguoi_yeu_cau")
+        relation = _normalized_relation(_labeled_value(section, "Kết luận"))
+        tag = {"cha": "cha", "mẹ": "me"}.get(relation)
+        if relation in {"bản thân", "cha", "mẹ"} and not (tag and _is_unknown(sections.get(tag, ""))):
+            return relation, (
+                "Không có mốc tài khoản đăng nhập; theo giấy tờ: "
+                + (_labeled_value(section, "Căn cứ") or "agent không nêu căn cứ.")
+            )
+        return "không xác định", (
+            "Hồ sơ không có tờ khai, không có mốc tài khoản đăng nhập, giấy tờ không cho biết ai đi làm thủ tục."
         )
 
     section = _section(raw, "quan_he_nguoi_yeu_cau")
@@ -2140,7 +2330,11 @@ def _source_hints(documents: list[dict], options: dict | None) -> str:
         "Không xác định.\n"
         f'Họ tên trên cổng: "{requester_name or "không có"}"\n'
         f'Số định danh trên cổng: "{requester_id or "không có"}"\n'
-        "</requester_context>\n"
+        + ("" if requester_name or requester_id else
+           "Không có tài khoản: <quan_he_nguoi_yeu_cau> chỉ kết luận bản thân / cha / mẹ khi CHÍNH giấy tờ nói ai "
+           "đi làm thủ tục (bản cam đoan / đơn đề nghị viết ngôi thứ nhất do chính người được đăng ký lại hoặc cha / "
+           "mẹ đứng tên); không có thì Kết luận: không xác định.\n")
+        + "</requester_context>\n"
         "<declaration_source_check>\n"
         "Tờ khai đăng ký lại khai sinh được Python nhận diện: "
         + (", ".join(declaration_sources) if declaration_sources else "Không có")
@@ -2385,6 +2579,20 @@ def _validate_family_sections(sections: dict[str, str], documents=(), llm_sectio
         declared = split_name_note(_labeled_value(result.get(tag, ""), "Họ tên"))[0]
         if _fold(declared) in _UNKNOWN_NAME_VALUES:
             result[tag] = _unknown_role_section('Tờ khai ghi mục này là "Không có".')
+
+    # Số định danh của cha/mẹ trùng số của con mà họ tên là hai người khác nhau: người dân chép nhầm số
+    # của con xuống dòng giấy tờ của cha/mẹ (hoặc trích lục khai tử ghi số của người đi khai). Sai là ở
+    # con số, không phải ở người → chỉ bỏ số; giới tính bù theo tấm thẻ mang số đó cũng là của con.
+    child_id = _role_id(result.get("con", ""))
+    child_name = _role_name(result.get("con", ""))
+    for tag, wrong_gender in (("cha", {"nu", "female"}), ("me", {"nam", "male"})):
+        section = result.get(tag, "")
+        name = _role_name(section)
+        if child_id and _role_id(section) == child_id and name and child_name and not _names_align(name, child_name):
+            section = _blank_identity_line(section)
+            if _fold(_labeled_value(section, "Giới tính")) in wrong_gender:
+                section = _set_role_label(section, "Giới tính", "Không xác định")
+            result[tag] = section
 
     # Cha/mẹ phải phù hợp giới tính khi OCR đã xác định rõ.
     if _fold(_labeled_value(result.get("cha", ""), "Giới tính")) in {"nu", "female"}:
@@ -2755,8 +2963,12 @@ def _apply_identity_card_facts(
         # nhãn nào nó có ghi. Khớp nhiều người thì không ai chốt được, giữ nguyên tờ khai.
         if len(matched) == 1:
             section = _merge_role_section(section, matched[0]["section"])
-        # Ba ô giấy tờ tùy thân chỉ CCCD/CMND mới cấp được; trích lục khai tử không chen vào.
         own_cards = [person for person in matched if person.get("is_identity")]
+        # Không có thẻ của chính người đó (cha / mẹ đã mất): ba ô giấy tờ tùy thân theo dòng giấy tờ của người chết
+        # chép trên giấy khai tử. Có thẻ thì thẻ thắng.
+        deaths = [person for person in matched if person.get("death_id")]
+        if not own_cards and len(deaths) == 1:
+            section = _stamp_identity_card(section, {**deaths[0]["death_id"], "source": deaths[0]["source"]})
         if len(own_cards) == 1:
             if _labeled_value(section, _SAME_ID_LABEL):
                 section = _stamp_identity_card(
@@ -3287,6 +3499,7 @@ def _apply_mrz_issue_overrides(fields: list[dict], context: str) -> list[dict]:
 def _render_context(raw: str, options: dict | None, documents: list[dict]) -> str:
     """Kiểm tra tất định kết quả LLM rồi ghim vào prompt trích xuất."""
     sections = {tag: _section(raw, tag) for tag in _FAMILY_TAGS}
+    sections = _subject_from_relation_block(raw, sections, documents)
 
     # TỜ KHAI TRƯỚC, CCCD SAU: nhãn quan hệ in sẵn trên tờ khai là căn cứ mạnh nhất và Python
     # đọc được tất định, nên chốt vai từ đó trước mọi suy luận dựa trên thẻ căn cước bên dưới.
@@ -3310,6 +3523,9 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
 
     # Còn vai trống → bù theo quy tắc thế hệ, chỉ khi kết quả không ngược với vai đã chốt.
     sections = _fill_missing_roles_by_generation(raw, sections, documents)
+
+    # Thẻ duy nhất đi cùng giấy khai tử của người cùng thế hệ → chủ thẻ là cha/mẹ, không phải người được đăng ký lại.
+    sections = _demote_single_card_spouse(sections, documents)
 
     # Vẫn chưa có người được đăng ký lại mà hồ sơ chỉ có đúng một thẻ → thẻ đó chính là người đó.
     if _is_unknown(sections.get("con") or ""):

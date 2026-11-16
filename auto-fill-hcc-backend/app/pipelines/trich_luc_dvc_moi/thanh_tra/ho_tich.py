@@ -13,6 +13,7 @@ from app.pipelines._shared.thanh_tra import engine
 from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, alnum, fold, parse_date
 from app.services.llm import client
 
+from ..process.mapper import _COPY_NO_RE
 from ..process.reason import requester_context
 
 RULES = """
@@ -24,13 +25,19 @@ Trang CHỨNG THỰC ("Số chứng thực: ... quyển số ... SCT", ngày ch�
 </giay_can_cap>
 
 <tung_muc>
-- Cơ quan đăng ký: chép ĐÚNG NGUYÊN chữ sau nhãn "Đã đăng ký tại" / "Nơi đăng ký ..." (kể cả huyện, tỉnh nếu
-  cùng dòng); giấy không có nhãn thì chép dòng cơ quan ở tiêu đề đầu văn bản hoặc khối ký tên cuối ("TM. UBND
-  ..."). Không tự ghép chữ từ nhiều dòng, không đổi cách viết. Không lấy cơ quan cấp thẻ căn cước, không lấy
-  nơi chứng thực.
-- Số đăng ký: dòng "Số: <mã>/<năm>" sát tiêu đề giấy khai sinh / trích lục, GIỮ NGUYÊN mã và năm; giấy mẫu cũ là
-  ô "Số:" ở góc trên bên phải, ngay dưới "Mẫu ..." và trên "Quyển số". Chỉ chép phần số / mã, không kèm chữ
-  "Số", không kèm ngày. KHÔNG lấy số căn cước, số định danh, số trang, số chứng thực. Dòng "Số:" nằm dưới
+- Cơ quan đăng ký: chép ĐÚNG NGUYÊN chữ sau nhãn "Đã đăng ký tại" / "Đã được đăng ký ... tại" / "Đăng ký ...
+  tại" / "Nơi đăng ký ..." / "Nơi ghi:", ĐỦ mọi cấp mà dòng đó ghi (xã / phường, huyện, tỉnh); giấy không có
+  nhãn thì chép dòng cơ quan ở tiêu đề đầu văn bản hoặc khối ký tên cuối ("TM. UBND ..."). TRÍCH LỤC (bản sao)
+  có dòng đăng ký gốc trong thân → cơ quan ở dòng đó, không phải cơ quan đầu giấy (nơi cấp bản trích lục). Không
+  tự ghép chữ từ nhiều dòng, không đổi cách viết. Không lấy cơ quan cấp thẻ căn cước, không lấy nơi chứng thực.
+  A chỉ là phần đầu của B (cắt mất huyện / tỉnh mà dòng trên giấy có ghi) → chọn B.
+- Số đăng ký = số của LẦN ĐĂNG KÝ GỐC. TRÍCH LỤC (bản sao) in hai số: số của bản trích lục ở đầu giấy
+  ("<N>/TL..-BS", "<N>/<năm>/TLKT-BS") và số đăng ký gốc ở dòng thân ngay dưới nơi đăng ký ("Đã được đăng ký ...
+  tại: ..." rồi "Số: <N> ngày ..."; "Nơi ghi: ..., Sổ đăng ký ..., quyển số <Q>, số <N>, ngày ...") → số ở dòng
+  thân; trích lục không có dòng thân đó mới lấy số đầu giấy. A là số "-BS" đầu giấy, B là số ở dòng đăng ký gốc
+  của cùng giấy → chọn B. Giấy khai sinh / giấy chứng nhận kết hôn bản chính: dòng "Số: <mã>/<năm>" sát tiêu
+  đề, GIỮ NGUYÊN mã và năm; giấy mẫu cũ là ô "Số:" ở góc trên bên phải, ngay dưới "Mẫu ..." và trên "Quyển số".
+  Chỉ chép phần số / mã, không kèm chữ "Số", không kèm ngày. KHÔNG lấy số căn cước, số định danh, số trang, số chứng thực. Dòng "Số:" nằm dưới
   "Giấy CMND / Giấy tờ hợp lệ thay thế" / "Giấy tờ tùy thân" trong thân giấy là số thẻ của vợ / chồng / người
   đi khai. Ô đọc ra không phải chữ số → null, không lấy dòng "Số:" khác thay vào.
 - Quyển số: chỉ khi nhãn "Quyển số" có giá trị thật ngay sau nhãn. "Số bộ", "sổ bộ", "số hiệu", "Trang số"
@@ -49,16 +56,14 @@ def _authority(value) -> str:
     return alnum(re.sub(r"\bubnd\b", "uy ban nhan dan", fold(value)))
 
 
-def _same_authority(a: str, b: str) -> bool:
-    # Cùng cơ quan ghi kèm hay không kèm huyện / tỉnh ("UBND xã X" / "UBND xã X, huyện Y, tỉnh Z"): cán bộ dùng cả
-    # hai cách → không soát.
-    return a.startswith(b) or b.startswith(a)
+def _authority_words(value) -> list[str]:
+    return re.sub(r"\bubnd\b", "uy ban nhan dan", fold(value)).replace(",", " ").split()
 
 
-def _copy_no(a: str, b: str) -> bool:
-    # Trích lục bản sao in hai số: số của bản trích lục ở đầu giấy ("27/TLKT-BS") và số đăng ký gốc trong thân
-    # giấy. Mapper đã có quy tắc riêng cho cặp này và cán bộ dùng cả hai → không soát.
-    return any(re.search(r"tl[a-z]*bs$", value) for value in (a, b))
+def _fuller_authority(ours, theirs) -> bool:
+    """B là chính cơ quan A nhưng ghi đủ thêm cấp (A cắt mất huyện / tỉnh)."""
+    a, b = _authority_words(ours), _authority_words(theirs)
+    return bool(a) and len(b) > len(a) and b[:len(a)] == a
 
 
 def _register_no(value) -> str:
@@ -69,8 +74,8 @@ def _register_no(value) -> str:
 UNITS = (
     Unit("co_quan", "Cơ quan đã đăng ký",
          (Field("GiayTo_CoQuanDangKy", "cơ quan đã đăng ký sự kiện hộ tịch, chép đúng chữ trên giấy", "literal",
-                canon=_authority, same=_same_authority),)),
-    Unit("so", "Số đăng ký", (Field("GiayTo_So", "số đăng ký", "code", canon=_register_no, same=_copy_no),)),
+                canon=_authority),)),
+    Unit("so", "Số đăng ký", (Field("GiayTo_So", "số đăng ký", "code", canon=_register_no),)),
     Unit("quyen_so", "Quyển số", (Field("GiayTo_QuyenSo", "quyển số", "code", canon=_register_no),)),
     Unit("ngay_dang_ky", "Ngày đăng ký", (Field("GiayTo_NgayDangKy", "ngày đăng ký dd/mm/yyyy", "date"),)),
 )
@@ -87,6 +92,8 @@ def check(unit: Unit, values: dict, case: Case) -> str:
                  requester_context(case.options)[1]} - {""}
         if number and number in cards:
             return "số đăng ký trùng số CMND / căn cước trong hồ sơ"
+        if re.search(r"\b(ngay|quyen|so|thang|nam)\b", fold(values.get("GiayTo_So"))):
+            return "số đăng ký lẫn chữ của nhãn khác (ngày / quyển số)"
     if unit.key == "ngay_dang_ky":
         registered = parse_date(values.get("GiayTo_NgayDangKy"))
         born = parse_date(case.values.get("NguoiDuocCap_NgaySinh"))
@@ -125,8 +132,11 @@ _FIND_TASK = """<nghiep_vu>
 <dinh_dang_tra_ve>
 Chỉ trả MỘT object JSON phẳng, không markdown, đủ bốn khóa:
 {{"co_quan": {{"dong": <số thứ tự dòng>, "value": "<cơ quan đã đăng ký>", "thuoc_ve": "<một lựa chọn>"}} hoặc null,
-"so": ..., "quyen_so": ..., "ngay_dang_ky": ...}}
-"thuoc_ve" = dòng đó thuộc giấy nào; chọn ĐÚNG MỘT lựa chọn dưới đây và chép nguyên chữ, trả lời thật:
+"so": {{"dong": <số>, "value": "<số đăng ký>", "thuoc_ve": "<một lựa chọn>"}} hoặc null,
+"quyen_so": {{"dong": <số>, "value": "<quyển số>", "thuoc_ve": "<một lựa chọn>"}} hoặc null,
+"ngay_dang_ky": {{"dong": <số>, "value": "dd/mm/yyyy", "thuoc_ve": "<một lựa chọn>"}} hoặc null}}
+"thuoc_ve" BẮT BUỘC ở MỌI mục khác null = dòng đó thuộc giấy nào; chọn ĐÚNG MỘT lựa chọn dưới đây và chép nguyên
+chữ, trả lời thật:
 {owners}
 </dinh_dang_tra_ve>"""
 
@@ -171,8 +181,24 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         except (TypeError, ValueError, IndexError):
             continue
         findings.append(Finding(INSPECTOR, unit, {unit.fields[0].name: answer["value"]}, line, index,
-                                owner=str(answer.get("thuoc_ve") or "").strip()[:80]))
+                                owner=str(answer.get("thuoc_ve") or "").strip()[:80],
+                                **_code_basis(unit, case.values.get(unit.fields[0].name), answer["value"], line)))
     return findings
+
+
+def _code_basis(unit: Unit, ours, theirs, line: str) -> dict:
+    """Căn cứ bằng MÃ để thay lượt trích: A là số của bản trích lục ("-BS") còn B là số khác in trên dòng chứng cứ
+    (dòng đăng ký gốc); hoặc A chỉ là phần đầu của cơ quan B ghi đủ cấp trên dòng chứng cứ."""
+    if not ours or not theirs:
+        return {}
+    if unit.key == "so" and _COPY_NO_RE.search(str(ours)) and not _COPY_NO_RE.search(str(theirs)) and (
+            alnum(theirs) and alnum(theirs) in alnum(line)):
+        return {"backed": True, "evidence": ("A là số của bản trích lục in ở đầu giấy (dạng .../TL..-BS); B là số "
+                                             "in trên dòng chứng cứ",)}
+    if unit.key == "co_quan" and _fuller_authority(ours, theirs) and _authority(theirs) in _authority(line):
+        return {"backed": True, "evidence": ("A chỉ là phần đầu của B: B ghi đủ thêm cấp hành chính có trên dòng "
+                                             "chứng cứ",)}
+    return {}
 
 
 _OWNERS = ("giấy hộ tịch cần cấp của người được cấp", "mục Đã đăng ký tại của tờ khai",

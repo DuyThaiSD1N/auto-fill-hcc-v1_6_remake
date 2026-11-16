@@ -3,23 +3,23 @@
 from app.pipelines.ket_hon_lai.process import mapper
 
 _VO = {  # bên nữ
-    "CccdNu_HoTen": "MÁ THỊ SỐ",
-    "CccdNu_SoDinhDanh": "012189003303",
-    "CccdNu_NgaySinh": "01/01/1989",
-    "CccdNu_NgayCap": "16/03/2026",
-    "CccdNu_NoiCap": "BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY",
-    "CccdNu_DanToc": "H'Mông",
-    "CccdNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
+    "BenNu_HoTen": "MÁ THỊ SỐ",
+    "BenNu_SoDinhDanh": "012189003303",
+    "BenNu_NgaySinh": "01/01/1989",
+    "BenNu_NgayCap": "16/03/2026",
+    "BenNu_NoiCap": "BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY",
+    "BenNu_DanToc": "H'Mông",
+    "BenNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
                                   "diaChi": "Tổ dân phố Cư Nhà La"},
 }
 _CHONG = {  # bên nam
-    "CccdNam_HoTen": "SÙNG A CỦ",
-    "CccdNam_SoDinhDanh": "012086005221",
-    "CccdNam_NgaySinh": "01/01/1986",
-    "CccdNam_NgayCap": "06/01/2026",
-    "CccdNam_NoiCap": "Bộ Công an",
-    "CccdNam_DanToc": "H'Mông",
-    "CccdNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
+    "BenNam_HoTen": "SÙNG A CỦ",
+    "BenNam_SoDinhDanh": "012086005221",
+    "BenNam_NgaySinh": "01/01/1986",
+    "BenNam_NgayCap": "06/01/2026",
+    "BenNam_NoiCap": "Bộ Công an",
+    "BenNam_DanToc": "H'Mông",
+    "BenNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
                                    "diaChi": "Tổ dân phố Cư Nhà La"},
 }
 _HOSO = {
@@ -44,7 +44,7 @@ def _by_name(out):
 def test_missing_wife_cccd_falls_back_to_marriage_cert():
     """Thiếu CCCD vợ → LLM đã lấy CccdNu_* từ giấy CN kết hôn; mapper vẫn map đủ bên nữ."""
     out = _by_name(mapper.enrich(_fields(_CHONG, _HOSO,
-                                         {"CccdNu_HoTen": "MÁ THỊ SỐ", "CccdNu_NgaySinh": "01/01/1989"})))
+                                         {"BenNu_HoTen": "MÁ THỊ SỐ", "BenNu_NgaySinh": "01/01/1989"})))
     assert out["HoTenBenNu"]["value"] == "MÁ THỊ SỐ"
     assert out["NgaySinhBenNu"]["value"] == "01/01/1989"
     assert out["HoTenBenNam"]["value"] == "SÙNG A CỦ"

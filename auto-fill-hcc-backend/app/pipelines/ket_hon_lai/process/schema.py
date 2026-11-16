@@ -1,90 +1,94 @@
 """Compact schema cho "Đăng ký lại kết hôn".
 
-LLM chỉ trả sự thật OCR: cặp CCCD nam/nữ + metadata hồ sơ gốc (giấy CN kết hôn cũ).
-Tên field UI, field trùng lặp và các mặc định tất định được suy trong Python (mapper).
+LLM chỉ trả sự thật OCR, mỗi nhóm field gắn với MỘT loại giấy: thẻ của từng bên (BenNam_* / BenNu_*), khối vợ / chồng
+trên tờ khai (ToKhaiNam_* / ToKhaiNu_*), lần đăng ký kết hôn trước đây (KetHonCu_*). Mapper quyết định ưu tiên nguồn
+và dựng field UI.
 """
 
+
+def _the(side: str, ten: str) -> list[dict]:
+    """Nhân thân của một bên đọc trên THẺ CCCD/CMND (hoặc giấy thay thẻ) — cặp ghim nguồn với ToKhai*_ cùng tên.
+    Tiền tố Ben{side} chung với dân tộc trên giấy khác: tên "Cccd" khiến model không ghi nhân thân đọc từ giấy thay thẻ."""
+    p, ben = f"Ben{side}", f"bên {ten.lower()}"
+    return [
+        {"name": f"{p}_HoTen", "desc": f"Họ tên trên CCCD/CMND có giới tính {ten} (không có cả thẻ lẫn tờ khai → theo "
+                                       "NGOẠI LỆ ở <giay_to>)."},
+        {"name": f"{p}_SoDinhDanh",
+         "desc": f"Số định danh/CCCD {ben}, 12 số (CMND cũ 9 số); CHỈ đọc ở MẶT TRƯỚC thẻ, dãy số sau nhãn 'Số / No.'. "
+                 "TUYỆT ĐỐI không đọc, ghép hoặc suy ra từ MRZ/IDVNM ở mặt sau; không đọc rõ thì bỏ."},
+        {"name": f"{p}_NgaySinh", "desc": f"Ngày sinh trên thẻ {ben}, dd/mm/yyyy."},
+        {"name": f"{p}_NgayCap",
+         "desc": f"Ngày cấp thẻ {ben}, dd/mm/yyyy, đọc ở mặt sau có đúng số định danh của người này (không lấy ngày "
+                 "hết hạn)."},
+        {"name": f"{p}_NoiCap",
+         "desc": f"Nơi cấp thẻ {ben} theo đúng loại thẻ: Căn cước mới → \"Bộ Công an\"; CCCD gắn chip có \"CỤC TRƯỞNG "
+                 "CỤC CẢNH SÁT...\" → \"Cục Cảnh sát quản lý hành chính về trật tự xã hội\"."},
+        {"name": f"{p}_QuocTich", "desc": f"Quốc tịch {ben}, CHỈ khi giấy tờ không phải của Việt Nam."},
+        {"name": f"{p}_NoiCuTru_TrongNuoc",
+         "desc": f"Nơi thường trú/cư trú CHỈ lấy từ CCCD/CMND của {ben} (đúng thẻ có số định danh của người này), "
+                 "object {quocGia,tinh,xa,chiTietDuoiXa}; không có cả thẻ lẫn tờ khai → theo NGOẠI LỆ ở <giay_to>."},
+        {"name": f"{p}_DanToc",
+         "desc": f"Dân tộc {ben} trên giấy KHÁC tờ khai và thẻ (giấy chứng nhận kết hôn cũ, khối cha/mẹ trên giấy "
+                 "khai sinh của con, bản cam đoan, xác nhận / phiếu thông tin cư trú...), chép nguyên văn. Không suy từ "
+                 "họ tên, địa chỉ, quê quán; thiếu nhãn thì bỏ field."},
+    ]
+
+
+def _to_khai(side: str, ten: str, khoi: str) -> list[dict]:
+    """Khối vợ / chồng của TỜ KHAI — nguồn dự phòng cho nhân thân, nguồn ưu tiên cho nơi cư trú."""
+    p, o = f"ToKhai{side}", f"khối \"Họ, chữ đệm, tên của {khoi}\" (bên {ten}) trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN"
+    return [
+        {"name": f"{p}_HoTen", "desc": f"Họ tên ở {o}. CHỈ lấy từ tờ khai, không lấy CCCD."},
+        {"name": f"{p}_NgaySinh", "desc": f"Ngày sinh ở {o}, dd/mm/yyyy."},
+        {"name": f"{p}_DanToc", "desc": f"Dân tộc ở {o}, chép nguyên văn (bỏ số chú thích in sẵn); tờ khai không ghi thì bỏ."},
+        {"name": f"{p}_NoiCuTru_TrongNuoc",
+         "desc": f"Nơi cư trú ở {o}, object {{quocGia,tinh,xa,chiTietDuoiXa}}; hồ sơ không có tờ khai hoặc tờ khai bỏ "
+                 f"trống dòng này → nơi cư trú của đúng người đó tự khai trên BẢN CAM ĐOAN. Không lấy CCCD, giấy chứng "
+                 "nhận kết hôn cũ hay giấy khác."},
+        {"name": f"{p}_SoDinhDanh", "desc": f"Số giấy tờ tùy thân ghi ở dòng \"Giấy tờ tùy thân\" của {o}."},
+        {"name": f"{p}_NgayCap", "desc": f"Ngày cấp giấy tờ tùy thân CHỈ khi ghi ở dòng \"Giấy tờ tùy thân\" của {o}, "
+                                         "dd/mm/yyyy."},
+        {"name": f"{p}_NoiCap",
+         "desc": f"Nơi cấp giấy tờ tùy thân CHỈ khi ghi ở dòng \"Giấy tờ tùy thân\" của {o}, chép nguyên văn; cụm in sẵn "
+                 "liệt kê nhiều cơ quan ngăn bằng \"/\" mà không đánh dấu cơ quan nào thì bỏ."},
+    ]
+
+
 FIELDS: list[dict] = [
-    # CCCD/CMND bên nam (chồng).
-    {"name": "CccdNam_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nam (nếu thiếu CCCD nam thì lấy 'Chồng' trên giấy CN kết hôn)."},
-    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh/CCCD bên nam, 12 số; đọc MRZ mặt sau hoặc 'Số thẻ căn cước công dân' của chồng trên giấy CN kết hôn."},
-    {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh bên nam, dd/mm/yyyy."},
-    {"name": "CccdNam_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân bên nam, dd/mm/yyyy."},
-    {"name": "CccdNam_NoiCap",
-     "desc": 'Nơi cấp giấy tờ tùy thân bên nam. Thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → trả "Bộ Công an"; '
-             'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người cha' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
-    {"name": "CccdNam_QuocTich", "desc": "Quốc tịch bên nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_NoiCuTru_TrongNuoc",
-     "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN mục 'Nơi cư trú' của khối chồng/bên nam "
-             "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
-             "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
-
-    # CCCD/CMND bên nữ (vợ).
-    {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ (nếu thiếu CCCD nữ thì lấy 'Vợ' trên giấy CN kết hôn)."},
-    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh/CCCD bên nữ, 12 số; đọc MRZ mặt sau hoặc 'Số thẻ căn cước công dân' của vợ trên giấy CN kết hôn."},
-    {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh bên nữ, dd/mm/yyyy."},
-    {"name": "CccdNu_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân bên nữ, dd/mm/yyyy."},
-    {"name": "CccdNu_NoiCap",
-     "desc": 'Nơi cấp giấy tờ tùy thân bên nữ. Thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → trả "Bộ Công an"; '
-             'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai/văn bản cam đoan/khối 'người mẹ' trên giấy khai sinh của con, đối chiếu đúng người. Không có thì để trống."},
-    {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNu_NoiCuTru_TrongNuoc",
-     "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,chiTietDuoiXa}. ƯU TIÊN mục 'Nơi cư trú' của khối vợ/bên nữ "
-             "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
-             "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
-
-    # Nhân thân ghi trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN — tách nguồn để mapper đối chiếu với CCCD:
-    # CCCD trùng số tờ khai → theo thẻ; CCCD lệch cả tên lẫn số → thẻ của người khác, theo tờ khai.
-    {"name": "ToKhaiNam_HoTen",
-     "desc": "Họ tên ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
-    {"name": "ToKhaiNam_SoDinhDanh",
-     "desc": "Số định danh/CCCD ghi ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
-    {"name": "ToKhaiNam_NgaySinh",
-     "desc": "Ngày sinh ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
-    {"name": "ToKhaiNam_DanToc",
-     "desc": "Dân tộc ở dòng 'Dân tộc' trong khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. "
-             "CHỈ lấy từ tờ khai; tờ khai ghi thì BẮT BUỘC trả, kể cả khi đã có CCCD."},
-    {"name": "ToKhaiNu_HoTen",
-     "desc": "Họ tên ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
-    {"name": "ToKhaiNu_SoDinhDanh",
-     "desc": "Số định danh/CCCD ghi ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
-    {"name": "ToKhaiNu_NgaySinh",
-     "desc": "Ngày sinh ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
-    {"name": "ToKhaiNu_DanToc",
-     "desc": "Dân tộc ở dòng 'Dân tộc' trong khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. "
-             "CHỈ lấy từ tờ khai; tờ khai ghi thì BẮT BUỘC trả, kể cả khi đã có CCCD."},
-
-    # Lần đăng ký kết hôn TRƯỚC ĐÂY. Chỉ đọc từ tờ khai đăng ký lại hoặc giấy CN kết hôn cũ.
+    *_the("Nam", "Nam"),
+    *_the("Nu", "Nữ"),
+    *_to_khai("Nam", "nam", "chồng"),
+    *_to_khai("Nu", "nữ", "vợ"),
+    # Lần đăng ký kết hôn TRƯỚC ĐÂY — xem <ket_hon_cu> trong EXTRA_RULES.
     {"name": "KetHonCu_So",
-     "desc": "Số Giấy chứng nhận kết hôn/Số đăng ký kết hôn trước đây. Chỉ lấy khi GIẤY CHỨNG NHẬN KẾT HÔN cũ "
-             "hoặc TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN ghi rõ giá trị; ưu tiên giấy chứng nhận cũ. Không lấy số/quyển/ngày từ giấy khai sinh, "
-             "CCCD hay giấy tờ khác. Dòng nhãn có chỗ trống hoặc OCR không rõ thì bỏ field."},
+     "desc": "Số Giấy chứng nhận kết hôn / số đăng ký kết hôn trước đây, chỉ khi có giá trị thật ghi ngay sau nhãn. "
+             "Số chú thích in sẵn trong ngoặc như \"(5)\" là ô TRỐNG → bỏ."},
     {"name": "KetHonCu_QuyenSo",
-     "desc": "Quyển số đăng ký kết hôn trước đây. Chỉ lấy giá trị ghi rõ ngay sau nhãn 'Quyển số' trên giấy chứng nhận "
-             "kết hôn cũ hoặc tờ khai đăng ký lại; ưu tiên giấy chứng nhận cũ. Không tự tính từ số đăng ký. Trống/không rõ thì bỏ field."},
+     "desc": "Quyển số đăng ký kết hôn trước đây, chỉ khi có giá trị thật ngay sau nhãn \"Quyển số\" của lần đăng ký "
+             "đó. Số chú thích in sẵn trong ngoặc như \"(5)\" là ô TRỐNG → bỏ."},
     {"name": "KetHonCu_NgayDangKy",
-     "desc": "Ngày đăng ký kết hôn trước đây, dd/mm/yyyy. Ưu tiên ngày đăng ký trên GIẤY CHỨNG NHẬN KẾT HÔN cũ; "
-             "nếu giấy cũ không rõ thì lấy dòng 'Đã đăng ký kết hôn tại ... ngày ... tháng ... năm ...' trên tờ khai đăng ký lại. "
-             "Không lấy ngày đăng ký khai sinh, ngày cấp CCCD hoặc ngày lập tờ khai."},
-    {"name": "KetHonCu_TinhDangKy",
-     "desc": "Tỉnh/thành phố của cơ quan đăng ký kết hôn trước đây. Chỉ lấy từ cơ quan trên giấy chứng nhận kết hôn cũ "
-             "hoặc mục 'Đã đăng ký kết hôn tại' trên tờ khai đăng ký lại; ưu tiên giấy chứng nhận cũ. Không rõ thì bỏ field."},
+     "desc": "Ngày đăng ký kết hôn trước đây, dd/mm/yyyy; chỉ ghi năm hoặc tháng/năm thì bỏ."},
+    {"name": "KetHonCu_TinhDangKy", "desc": "Tỉnh/thành phố của cơ quan đăng ký kết hôn trước đây, chép như giấy ghi."},
     {"name": "KetHonCu_XaDangKy",
-     "desc": "Tên PHƯỜNG/XÃ/THỊ TRẤN đăng ký kết hôn trước đây, giữ tiền tố đơn vị và bỏ 'UBND'. Chỉ lấy từ cơ quan "
-             "trên giấy chứng nhận kết hôn cũ hoặc mục 'Đã đăng ký kết hôn tại' trên tờ khai đăng ký lại; ưu tiên giấy "
-             "chứng nhận cũ. Không lấy 'Nơi đăng ký' của giấy khai sinh; không rõ thì bỏ field."},
+     "desc": "Tên PHƯỜNG/XÃ/THỊ TRẤN của cơ quan đăng ký kết hôn trước đây, giữ tiền tố đơn vị, bỏ \"UBND\" và phần "
+             "huyện / tỉnh ghi sau; chính cơ quan là UBND cấp huyện thì bỏ field."},
+    {"name": "CopyRequest_WantsCopy",
+     "desc": "\"Có\"/\"Không\" theo ô được tích ở dòng \"Đề nghị cấp bản sao\" trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; cả "
+             "hai ô trống và không có số lượng thì bỏ."},
+    {"name": "CopyRequest_Quantity",
+     "desc": "Số lượng bản sao dương ghi ở dòng \"Số lượng: ... bản\" trên TỜ KHAI (\"02 bản\" → \"2\"); để chấm, "
+             "chỉ có số chú thích in sẵn như \"(6)\", \"(7)\" hoặc 0 thì bỏ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("CccdNam_NgaySinh", "CccdNam_NgayCap", "CccdNu_NgaySinh", "CccdNu_NgayCap", "KetHonCu_NgayDangKy",
-              "ToKhaiNam_NgaySinh", "ToKhaiNu_NgaySinh"):
+for _name in ("BenNam_NgaySinh", "BenNam_NgayCap", "BenNu_NgaySinh", "BenNu_NgayCap", "KetHonCu_NgayDangKy",
+              "ToKhaiNam_NgaySinh", "ToKhaiNam_NgayCap", "ToKhaiNu_NgaySinh", "ToKhaiNu_NgayCap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("CccdNam_NoiCuTru_TrongNuoc", "CccdNu_NoiCuTru_TrongNuoc"):
+for _name in ("BenNam_NoiCuTru_TrongNuoc", "BenNu_NoiCuTru_TrongNuoc",
+              "ToKhaiNam_NoiCuTru_TrongNuoc", "ToKhaiNu_NoiCuTru_TrongNuoc"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {

@@ -92,7 +92,10 @@ def test_procedure_hmong_khop_registry_key():
     visible = {p["key"] for p in public_list() if not p.get("hiddenFromList")}
     for key in mong.PROCEDURE_HMONG:
         assert key in visible, f"PROCEDURE_HMONG có key lạ: {key}"
-    missing = visible - set(mong.PROCEDURE_HMONG)
+    # NỢ DỊCH (16/11/2026): hai thủ tục Bộ Công an mở cho mọi tỉnh trước khi có tên tiếng Mông — có bản dịch thì thêm vào
+    # PROCEDURE_HMONG và bỏ khỏi đây.
+    not_in_hmong = {"thong-bao-luu-tru", "dang-ky-thuong-tru"}
+    missing = visible - set(mong.PROCEDURE_HMONG) - not_in_hmong
     assert not missing, f"Thủ tục hiện trên card chưa có tên tiếng Mông: {missing}"
 
 

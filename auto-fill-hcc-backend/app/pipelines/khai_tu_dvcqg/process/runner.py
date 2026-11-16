@@ -1,5 +1,6 @@
 """Pipeline đăng ký khai tử (Cổng DVC quốc gia mới): phân vai → trích → mapper."""
 
+import copy
 import re
 
 from app.pipelines._shared.compact_agent import runner
@@ -97,6 +98,14 @@ def _compact_field_fallback(raw_fields, documents: list[dict]):
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        return await reason.build_context(documents, opts)
+
     result = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -106,10 +115,17 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         compact_field_fallback=_compact_field_fallback,
         options=options,
-        context_builder=reason.build_context,
+        context_builder=build_context,
     )
+    raw_fields = copy.deepcopy(result["fields"]) if second_pass else []
     enrich_options = {**(options or {}), "_reasoning_context": result.get("reasoning_context") or ""}
     result["fields"], warnings = mapper.enrich(result["fields"], enrich_options)
     if warnings:
         result.setdefault("errors", []).extend(warnings)
+    if raw_fields and read.get("documents"):
+        from ..thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        result["_second_pass"] = lambda base_fields: dot_hai.patch(
+            read["documents"], enrich_options["_reasoning_context"], raw_fields, base_fields, enrich_options)
     return result

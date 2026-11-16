@@ -1073,8 +1073,10 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-kinh-doanh",
         # Cán bộ hay scan cả bộ hồ sơ thành một PDF → planner tách theo cài đặt "Tách tệp có nhiều giấy tờ".
         "supportsSplitDocuments": True,
-        # Trang DVCQG chỉ là điểm vào. Sau đăng nhập, hồ sơ chạy trên HkdOnline WebForms
-        # và reload toàn trang sau gần như mọi thao tác; extension nhận diện bằng DOM + domain.
+        # Mọi thủ tục HKD mở thẳng trang chủ cổng hộ kinh doanh (/HkdOnline/Default.aspx), không qua
+        # DVCQG nên không có khối chọn cơ quan. uuid DVCQG giữ trong detect cho ai còn vào từ trang cũ.
+        # Sau đăng nhập, hồ sơ chạy trên HkdOnline WebForms và reload toàn trang sau gần như mọi
+        # thao tác; extension nhận diện bằng DOM + domain.
         "detect": {
             "urlIncludes": [
                 "019d2bfb-d76d-737f-81b9-69258b07240b",
@@ -1086,8 +1088,8 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Đăng ký thành lập hộ kinh doanh",
         "subtitle": "Tạo mới hộ kinh doanh và tự điền toàn bộ hồ sơ",
         "icon": "🏪",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
-        "needsAgencySelect": True,
+        "keKhaiUrl": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+        "needsAgencySelect": False,
         "businessWorkflow": "create",
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
@@ -5051,9 +5053,9 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Thay đổi nội dung hộ kinh doanh",
         "subtitle": "Đổi tên, địa chỉ, ngành nghề, chủ hộ, vốn... của hộ kinh doanh đang hoạt động",
         "icon": "🔁",
-        # Cùng điểm vào DVCQG với thành lập mới (đích là HkdOnline); rẽ nhánh ở wizard chọn loại.
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
-        "needsAgencySelect": True,
+        # Cùng trang chủ cổng hộ kinh doanh với thành lập mới; rẽ nhánh ở wizard chọn loại.
+        "keKhaiUrl": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+        "needsAgencySelect": False,
         "businessWorkflow": "change",
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
@@ -5116,8 +5118,8 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Chấm dứt hộ kinh doanh",
         "subtitle": "Đóng, chấm dứt hoạt động hộ kinh doanh đang hoạt động",
         "icon": "🛑",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d748-72d1-848f-3607bc86e647",
-        "needsAgencySelect": True,
+        "keKhaiUrl": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+        "needsAgencySelect": False,
         "businessWorkflow": "dissolution",
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
@@ -5173,8 +5175,8 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Tạm ngừng hộ kinh doanh",
         "subtitle": "Tạm ngừng hộ kinh doanh trong một thời gian rồi kinh doanh lại",
         "icon": "⏸️",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d768-7446-bd77-3bb11051041c",
-        "needsAgencySelect": True,
+        "keKhaiUrl": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+        "needsAgencySelect": False,
         "businessWorkflow": "suspension",
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
@@ -5224,8 +5226,8 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Cấp lại GCN hộ kinh doanh",
         "subtitle": "Xin cấp lại GCN hộ kinh doanh bị mất, hỏng hoặc cấp đổi sang mẫu mới",
         "icon": "📑",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9d1-7475-8e58-1aa4479901eb",
-        "needsAgencySelect": True,
+        "keKhaiUrl": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+        "needsAgencySelect": False,
         "businessWorkflow": "reissue",
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
@@ -6352,6 +6354,90 @@ PROCEDURES: list[dict] = [
             "2. Giấy tờ chứng minh chỗ ở hợp pháp: hợp đồng cho thuê/cho mượn/cho ở nhờ, Giấy chứng nhận quyền "
             "sử dụng đất…\n"
             "3. CCCD của người đăng ký tạm trú (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an như "dang-ky-tam-tru" (bcaPortal + đính kèm cùng trang, hỏi trước khi đính), nhưng bộ id
+        # của trang KHÁC: cặp Tỉnh/Xã cơ quan cboRECEIVE_ADDR_*_ID, ô cam kết chkRULE, nút nộp btn_Save_Send. Bản Trợ lý
+        # chưa khai supportsBcaThuongTru (ô cơ quan theo cặp id, bảng thành viên cùng thay đổi) thì báo cần cập nhật.
+        # URL giống hệt ke_khai_links.json (mã TTHC 1.004222) — sửa một bên phải sửa cả bên kia.
+        "key": "dang-ky-thuong-tru",
+        "label": "Đăng ký thường trú",
+        "shortLabel": "Đăng ký thường trú",
+        "subtitle": "Kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🏡",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222"
+            "&TT=THUONGTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20th%C6%B0%E1%BB%9Dng%20tr%C3%BA"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi đăng ký thường trú",
+        "requiresCapability": "supportsBcaThuongTru",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "askBeforeAttach": True,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkRULE",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh chỗ ở hợp pháp / quan hệ nhân thân với chủ hộ (giấy "
+             "kết hôn, giấy khai sinh, hợp đồng thuê…)", "icon": "🏠", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đăng ký thường trú", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) có ý kiến chủ hộ / chủ sở hữu chỗ ở — nguồn chính.\n"
+            "2. Giấy tờ chứng minh chỗ ở hợp pháp hoặc quan hệ nhân thân với chủ hộ.\n"
+            "3. CCCD của người đăng ký thường trú (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an như "dang-ky-tam-tru" (bcaPortal: chọn thẻ là mở thẳng trang kê khai, trợ lý chọn hộ
+        # Tỉnh + Xã ở khối "Cơ quan thực hiện" rồi mới xin giấy tờ). Trang KHÔNG có mục đính kèm. Người lưu trú thêm
+        # từng người qua modal "Thêm mới người lưu trú" (bcaGuestList, comp bca-guest-list) — bản Trợ lý chưa khai
+        # supportsBcaGuestList thì báo cần cập nhật, không dẫn vào trang.
+        # URL giống hệt ke_khai_links.json (mã TTHC 2.001159) — sửa một bên phải sửa cả bên kia.
+        "key": "thong-bao-luu-tru",
+        "label": "Thông báo lưu trú",
+        "shortLabel": "Thông báo lưu trú",
+        "subtitle": "Kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🛏️",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/thong-bao-luu-tru.html?ma_thu_tuc=2.001159"
+            "&MaTTHC=2.001159&MaCoQuanThucHien=BCA_CAX&MaDVC=2.001159.01&MaTTHCDP=2.001159"
+        ),
+        "bcaPortal": True,
+        "bcaGuestList": True,
+        "bcaAgencyPlace": "nơi lưu trú",
+        "requiresCapability": "supportsBcaGuestList",
+        "hasAttachmentStep": False,
+        # Điền xong nhắc tích ô cam kết cuối trang rồi mới bấm "Nộp hồ sơ" (flow._handle_filling).
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkCHECK_LIABILITY",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_luu_tru", "name": "Phiếu thông báo lưu trú (Mẫu CT14)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân / hộ chiếu của người lưu trú", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu thông báo lưu trú (Mẫu CT14) — nguồn chính: danh sách người lưu trú, địa chỉ, thời gian, lý do.\n"
+            "2. Căn cước công dân / hộ chiếu của từng người lưu trú (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -10077,6 +10163,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "ho-tro-chi-phi-hoa-tang-bac-ninh": _TAT_CA,
     "dang-ky-nha-o-xa-hoi-bac-ninh": _TAT_CA,
     "dang-ky-tam-tru": _TAT_CA,  # STT 234
+    "dang-ky-thuong-tru": _TAT_CA,
+    "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,
     "ho-tro-chi-phi-van-chuyen-nguoi-tu-vong-den-co-so-hoa-tang": _TAT_CA,

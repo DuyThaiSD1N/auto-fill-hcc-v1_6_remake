@@ -4,23 +4,23 @@ from app.pipelines.ket_hon_lai.process import mapper, schema
 from app.pipelines.ket_hon_lai.process.prompt import EXTRA_RULES
 
 _VO = {  # bên nữ
-    "CccdNu_HoTen": "MÁ THỊ SỐ",
-    "CccdNu_SoDinhDanh": "012189003303",
-    "CccdNu_NgaySinh": "01/01/1989",
-    "CccdNu_NgayCap": "16/03/2026",
-    "CccdNu_NoiCap": "BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY",
-    "CccdNu_DanToc": "H'Mông",
-    "CccdNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
+    "BenNu_HoTen": "MÁ THỊ SỐ",
+    "BenNu_SoDinhDanh": "012189003303",
+    "BenNu_NgaySinh": "01/01/1989",
+    "BenNu_NgayCap": "16/03/2026",
+    "BenNu_NoiCap": "BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY",
+    "BenNu_DanToc": "H'Mông",
+    "BenNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
                                   "diaChi": "Tổ dân phố Cư Nhà La"},
 }
 _CHONG = {  # bên nam
-    "CccdNam_HoTen": "SÙNG A CỦ",
-    "CccdNam_SoDinhDanh": "012086005221",
-    "CccdNam_NgaySinh": "01/01/1986",
-    "CccdNam_NgayCap": "06/01/2026",
-    "CccdNam_NoiCap": "Bộ Công an",
-    "CccdNam_DanToc": "H'Mông",
-    "CccdNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
+    "BenNam_HoTen": "SÙNG A CỦ",
+    "BenNam_SoDinhDanh": "012086005221",
+    "BenNam_NgaySinh": "01/01/1986",
+    "BenNam_NgayCap": "06/01/2026",
+    "BenNam_NoiCap": "Bộ Công an",
+    "BenNam_DanToc": "H'Mông",
+    "BenNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Đoàn Kết",
                                    "diaChi": "Tổ dân phố Cư Nhà La"},
 }
 _HOSO = {
@@ -66,11 +66,9 @@ def test_map_full_case():
     assert out["SoDinhDanh_BenNam"]["value"] == "012086005221"
     assert out["NoiCapDD_BenNam"]["value"] == "Bộ Công an"
 
-    # Mặc định vàng: tình trạng hôn nhân + số lần kết hôn
+    # Mặc định vàng: tình trạng hôn nhân; số lần kết hôn không có trên tờ khai đăng ký lại → không tự điền.
     for side in ("BenNu", "BenNam"):
-        assert out[f"SoLanKetHon_{side}"]["value"] == "1"
-        assert out[f"SoLanKetHon_{side}"].get("default") is True
-        assert out[f"SoLanKetHon_{side}"]["comp"] == "x-input-number"
+        assert f"SoLanKetHon_{side}" not in out
         assert out[f"LoaiTinhTrangHonNhan_{side}"]["value"] == "Hiện tại đang có vợ/chồng"
         assert out[f"LoaiTinhTrangHonNhan_{side}"].get("default") is True
 
@@ -84,27 +82,31 @@ def test_map_full_case():
     assert out["noiDangKyTruocDay_filter"]["value"] == "Lai Châu"       # tỉnh (lọc)
     assert out["noiDangKyTruocDay"]["value"] == "Phường Đoàn Kết"        # xã/phường chuẩn
 
-    # Đề nghị cấp bản sao mặc định Có + 1 bản (vàng)
-    assert out["CapBanSao"]["value"] == "Có"
-    assert out["CapBanSao"].get("default") is True
-    assert out["SoLuong"]["value"] == "1"
-    assert out["SoLuong"]["comp"] == "raw"
-    assert out["SoLuong"].get("default") is True
+    # Tờ khai không tích / không ghi số lượng bản sao → không tự điền.
+    assert "CapBanSao" not in out and "SoLuong" not in out
+
+
+def test_ban_sao_theo_to_khai():
+    out = {f["name"]: f for f in mapper.enrich([{"name": "CopyRequest_Quantity", "value": "02 bản"}])}
+    assert out["CapBanSao"]["value"] == "Có" and out["SoLuong"]["value"] == "2" and out["SoLuong"]["comp"] == "raw"
+    assert out["SoLuong"].get("default") is None
+    out = {f["name"]: f for f in mapper.enrich([{"name": "CopyRequest_WantsCopy", "value": "Không"}])}
+    assert out["CapBanSao"]["value"] == "Không" and "SoLuong" not in out
 
 
 def test_missing_wife_cccd_falls_back_to_marriage_cert():
     """Thiếu CCCD vợ → LLM đã lấy CccdNu_* từ giấy CN kết hôn; mapper vẫn map đủ bên nữ."""
     out = _by_name(mapper.enrich(_fields(_CHONG, _HOSO,
-                                         {"CccdNu_HoTen": "MÁ THỊ SỐ", "CccdNu_NgaySinh": "01/01/1989"})))
+                                         {"BenNu_HoTen": "MÁ THỊ SỐ", "BenNu_NgaySinh": "01/01/1989"})))
     assert out["HoTenBenNu"]["value"] == "MÁ THỊ SỐ"
     assert out["NgaySinhBenNu"]["value"] == "01/01/1989"
     assert out["HoTenBenNam"]["value"] == "SÙNG A CỦ"
 
 
 def test_ethnicity_falls_back_to_declaration_when_card_has_none():
-    """CCCD chip không in dân tộc → LLM bỏ Cccd*_DanToc; dân tộc ghi trên tờ khai vẫn phải lên form."""
-    vo = {k: v for k, v in _VO.items() if k != "CccdNu_DanToc"}
-    chong = {k: v for k, v in _CHONG.items() if k != "CccdNam_DanToc"}
+    """CCCD chip không in dân tộc → LLM bỏ Ben*_DanToc; dân tộc ghi trên tờ khai vẫn phải lên form."""
+    vo = {k: v for k, v in _VO.items() if k != "BenNu_DanToc"}
+    chong = {k: v for k, v in _CHONG.items() if k != "BenNam_DanToc"}
     out = _by_name(mapper.enrich(_fields(vo, chong, _HOSO, {
         "ToKhaiNu_HoTen": "MÁ THỊ SỐ", "ToKhaiNu_DanToc": "Kinh",
         "ToKhaiNam_HoTen": "SÙNG A CỦ", "ToKhaiNam_DanToc": "H'Mông",
@@ -153,17 +155,16 @@ def test_old_marriage_schema_uses_specific_fields_and_restricts_sources():
     assert not {"HoTich_So", "HoTich_NgayDangKy", "HoTich_TinhDangKy", "HoTich_XaDangKy"} & schema.ALLOWED
     assert "TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN" in EXTRA_RULES
     assert "GIẤY CHỨNG NHẬN KẾT HÔN cũ" in EXTRA_RULES
-    assert "Ưu tiên theo TỪNG FIELD: giá trị ghi rõ trên GIẤY CHỨNG NHẬN KẾT HÔN cũ" in EXTRA_RULES
-    assert "TUYỆT ĐỐI không lấy" in EXTRA_RULES
-    assert "KHÔNG tự tính từ số" in EXTRA_RULES
+    assert "theo thứ tự ưu tiên cho TỪNG field" in EXTRA_RULES
+    assert "TUYỆT ĐỐI KHÔNG lấy KetHonCu_* từ: giấy khai sinh" in EXTRA_RULES
 
 
 def test_province_upgraded_to_city_uses_city_label():
     """Quảng Ninh, Đồng Nai lên TP trực thuộc TW (2026): giấy tờ cũ ghi "Tỉnh X" phải ra "Thành phố X"
     vì ô tỉnh eForm hộ tịch không còn option "Tỉnh X"; tên trần vẫn để nguyên (khớp được option)."""
-    vo = {**_VO, "CccdNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Quảng Ninh",
+    vo = {**_VO, "BenNu_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Quảng Ninh",
                                                "xa": "Phường Bãi Cháy", "diaChi": "Tổ 1"}}
-    chong = {**_CHONG, "CccdNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Đồng Nai",
+    chong = {**_CHONG, "BenNam_NoiCuTru_TrongNuoc": {"quocGia": "Việt Nam", "tinh": "Tỉnh Đồng Nai",
                                                       "xa": "Phường Trấn Biên", "diaChi": "Tổ 2"}}
     out = _by_name(mapper.enrich(_fields(vo, chong, {**_HOSO, "KetHonCu_TinhDangKy": "Tỉnh Quảng Ninh",
                                                      "KetHonCu_XaDangKy": "Phường Bãi Cháy"})))

@@ -203,6 +203,12 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết tích ô cam kết cuối trang theo id (lệnh tick_commit, cổng DVC Bộ Công an). Thiếu cờ → không hiện nút
         # cam, công dân tự tích như cũ.
         "supportsTickCommit": raw.get("supportsTickCommit") is True,
+        # Biết thêm người lưu trú qua modal "Thêm mới người lưu trú" (comp bca-guest-list, cổng DVC Bộ Công an).
+        # Thiếu cờ → thủ tục Thông báo lưu trú báo cần cập nhật Trợ lý, không dẫn vào trang.
+        "supportsBcaGuestList": raw.get("supportsBcaGuestList") is True,
+        # Có engine trang Đăng ký thường trú (ô cơ quan theo cặp id cboRECEIVE_ADDR_*_ID, bảng thành viên cùng thay đổi
+        # comp bca-rows). Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
+        "supportsBcaThuongTru": raw.get("supportsBcaThuongTru") is True,
         # Biết tự bấm "Khai tờ khai" ở đúng dòng Thành phần hồ sơ (lệnh open_eform) rồi tự gửi fill_eform khi tờ khai
         # mở ra. Thiếu cờ → bảo công dân tự bấm như cũ.
         "supportsOpenEform": raw.get("supportsOpenEform") is True,
@@ -216,6 +222,12 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Sau khi điền biết hỏi kết quả điền đợt 2 rồi ghi lại các ô lớp soát sửa (khoá secondPass của lệnh
         # fill_fields). Thiếu cờ → BE không chạy lớp soát, lệnh điền y như cũ.
         "supportsSecondPass": raw.get("supportsSecondPass") is True,
+        # Bản biết ghi lại ô đợt 2 trên form cũ (eForm x-*): thủ tục form cũ chỉ chạy lớp soát khi có cờ này.
+        "supportsSecondPassLegacy": raw.get("supportsSecondPassLegacy") is True,
+        # Watcher báo trạng thái khối người yêu cầu trên tờ khai (page_context.taiKhoan): "cho" = tờ khai đã hiện mà
+        # cổng chưa đổ dữ liệu tài khoản. Thủ tục tư pháp form cũ chờ có mốc tài khoản rồi mới chạy lượt trích ở bước
+        # Kê khai. Thiếu cờ → chạy ngay như cũ.
+        "supportsAccountAnchorWait": raw.get("supportsAccountAnchorWait") is True,
         # Báo lại lời cổng nháy ở toast cảnh báo / lỗi (sự kiện portal_alert). Thiếu cờ → BE bỏ qua như cũ.
         "supportsPortalAlert": raw.get("supportsPortalAlert") is True,
         # Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước Hình thức nhận kết quả + chọn ô receivingKind

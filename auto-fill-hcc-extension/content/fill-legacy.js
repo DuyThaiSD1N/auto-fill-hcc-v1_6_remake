@@ -1754,10 +1754,113 @@ async function fillSelectDefault(container, f) {
   return true;
 }
 
+  // ---- Điền đợt 2 trên form cũ (x-*) ----
+  // BE soát lại sau lượt điền đầu rồi gửi RIÊNG các ô cần ghi lại, mỗi ô kèm `from` = giá trị lượt đầu. Chỉ ghi ô
+  // còn trống hoặc còn đúng giá trị lượt đầu: ô cán bộ đã sửa tay (hoặc cổng đã đổi) thì bỏ qua. Trả null khi form
+  // chưa có ô đó (khối chỉ hiện sau khi ô khác trong bản vá đổi, vd khối ly hôn sau ô tình trạng hôn nhân).
+  function legacyPatchUntouched(field) {
+    const hasFirst = field.from != null && field.from !== "";
+    if (field.comp === "raw") {
+      const input = findLegacyRawInput(field);
+      if (!input) return null;
+      const now = String(input.value || "").trim();
+      return !now || (hasFirst && legacyScalarMatches(now, field.from));
+    }
+    const found = findNamedElement(field.comp, fieldCandidates(field));
+    if (!found.el) return null;
+    const shown = readLegacyComponent(found.el);
+    if (shown === "") return true;
+    if (!hasFirst) return false;
+    if (field.comp === "x-select-area" && typeof field.from === "object" && !Array.isArray(field.from)
+        && !hasDivorceDecisionAreaValue(normalizeAreaValue(field.from))) {
+      return legacyAreaPatchUntouched(shown, field.from);
+    }
+    return !!legacyFieldState({ ...field, value: field.from, clear: false }).filled;
+  }
+
+  // Khối địa chỉ xét TỪNG phần: phần lượt đầu không ghi lên được (form còn trống — tên xã không có trong danh sách của
+  // cổng) hoặc lượt đầu không gửi (form còn chữ cổng điền sẵn theo tài khoản) thì không phải cán bộ sửa. Chỉ phần lượt
+  // đầu đã ghi rồi bị đổi mới coi là sửa tay → bỏ qua cả khối.
+  function legacyAreaPatchUntouched(shown, first) {
+    if (!shown || typeof shown !== "object") return true;
+    const from = normalizeAreaValue(first);
+    for (const role of ["quocGia", "tinh", "xa"]) {
+      if (from[role] && shown[role] && !legacyChoiceMatches(shown[role], from[role])) return false;
+    }
+    return !(from.diaChi && shown.diaChi && !legacyScalarMatches(shown.diaChi, from.diaChi));
+  }
+
+  async function patchFormLegacy(fields) {
+    injectAutofillStyles();
+    const result = { filled: 0, skipped: [] };
+    const done = [];
+    const filledNames = new Set();
+    for (const f of orderLegacyFields((fields || []).filter((x) => x && x.value != null && x.value !== ""))) {
+      const untouched = legacyPatchUntouched(f);
+      const isNew = f.from == null || f.from === "";
+      if (untouched === false || (untouched === null && !isNew)) {
+        result.skipped.push({ name: f.name, reason: untouched === false ? "changed" : "not-found" });
+        continue;
+      }
+      try {
+        let ok = false;
+        if (f.comp === "raw") {
+          const input = findLegacyRawInput(f);
+          if (input) {
+            setNativeValue(input, f.value, { typing: true, commit: true });
+            markFilled(input.parentElement || input);
+            ok = true;
+          }
+        } else {
+          let found = findNamedElement(f.comp, fieldCandidates(f));
+          // Khối động (vd khối bản án ly hôn) chỉ được cổng dựng sau khi ô tình trạng vừa ghi ở trên đổi xong.
+          if (!found.el && f.comp === "x-select-area") {
+            await waitFor(() => {
+              found = findNamedElement(f.comp, fieldCandidates(f));
+              if (!found.el) {
+                const guessed = guessDivorceDecisionContainer(f);
+                if (guessed) found = { el: guessed, usedName: f.name };
+              }
+              return !!found.el;
+            }, 3000, 100);
+          }
+          if (found.el) {
+            const ff = found.usedName === f.name ? f : { ...f, name: found.usedName };
+            const area = f.comp === "x-select-area" && f.value && typeof f.value === "object"
+              ? normalizeAreaValue(f.value) : null;
+            // Khối địa bàn đã điền ở lượt đầu: fillSelectArea coi khối xanh là xong / đã hết lượt → gọi thẳng bộ điền
+            // widget để đổi tỉnh, xã, địa chỉ chi tiết.
+            ok = area && !hasDivorceDecisionAreaValue(area) && (area.tinh || area.xa)
+              ? await fillAreaWidgets(found.el, area)
+              : await fillLegacyComponent(found.el, ff);
+          }
+        }
+        if (ok) {
+          result.filled++;
+          filledNames.add(f.name);
+          done.push(f);
+        } else {
+          result.skipped.push({ name: f.name, reason: "not-filled" });
+        }
+      } catch (e) {
+        result.skipped.push({ name: f.name, reason: String(e?.message || e) });
+      }
+    }
+    if (done.length) {
+      // eForm có thể dựng lại khối và xoá ô vừa ghi: soát một lần như sau lượt điền đầu, rồi tô theo giá trị cuối.
+      await sleep(150);
+      await repairLostLegacyFields(done, filledNames);
+      refreshRequestedLegacyMarks(done);
+      markLegacyDefaultsYellow(done);
+    }
+    return result;
+  }
+
   // Ảnh chụp form (content/form-snapshot): đọc lại ô theo đúng cách tìm ô lúc điền.
   H.readLegacyField = (f) => {
     const { el } = findNamedElement(f.comp, fieldCandidates(f));
     return el ? readLegacyComponent(el) : null;
   };
   H.fillForm = fillForm;
+  H.patchFormLegacy = patchFormLegacy;
 })();

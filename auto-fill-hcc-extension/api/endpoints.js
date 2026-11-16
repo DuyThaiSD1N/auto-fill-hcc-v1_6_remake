@@ -142,6 +142,12 @@ const api = {
     return postV2Process("fill", body);
   },
 
+  // Điền đợt 2: sau lượt điền, BE soát lại ở nền. Trả { status: "pending" | "done" | "none", fields? } — fields là
+  // các ô cần ghi lại.
+  secondPass(requestId) {
+    return apiJson(`/api/v1/process/${encodeURIComponent(requestId)}/second-pass`);
+  },
+
   // Ảnh HEIC → JPG (BE đổi; Chrome không giải mã được HEIC). BE trả JSON có dataUrl vì backendFetch đọc mọi
   // phản hồi dạng chữ (không lấy được nhị phân). Trả Blob JPG, lỗi thì ném.
   async convertHeic(file) {
@@ -227,6 +233,11 @@ const api = {
   // Chỉ khi trả 200 mới coi phiên là ĐÃ đồng ý (bằng chứng chắc chắn đã lưu).
   saveConsent(body) {
     return apiJson("/api/v1/consent", { method: "POST", body: JSON.stringify(body) });
+  },
+
+  // Nội dung thẻ xác nhận do BE cấp → {version, notice}; sửa chữ thẻ chỉ ở BE (app/consent/texts.py).
+  consentNotice() {
+    return apiJson("/api/v1/consent/notice");
   },
 
   // ===== Danh mục dùng chung (BE là nguồn duy nhất, extension KHÔNG đóng gói bản sao) =====

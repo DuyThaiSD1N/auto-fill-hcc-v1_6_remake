@@ -4727,7 +4727,8 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
 // (CHƯA fill) → "Về màn hình" → bấm lại mới điền thật. Reset khi "Tạo phiên mới".
 // v1.1 (12/09/2026): đổi tên hệ thống trong lời xin phép thành "Trợ lý nhân dân".
 // Đổi số khi SỬA nội dung xin phép (phạm vi/lời cam kết) — bằng chứng đã ký giữ số cũ.
-const CONSENT_VERSION = "v1.1";
+// Nội dung thẻ lấy từ BE (loadConsentNotice); số + chữ viết sẵn ở đây và popup.html chỉ dùng khi tải lỗi.
+const CONSENT_VERSION = "v1.2";
 // 2 kho grants: (1) theo PHIÊN/tab — reset khi "Tạo phiên mới"; (2) theo NGƯỜI (CCCD) — TOÀN CỤC, BỀN
 // qua phiên vì consent gắn theo (người + thủ tục): cùng CCCD làm lại đúng thủ tục thì không hỏi lại.
 const CONSENT_KEY = "autofill_consent_" + (EMBEDDED_TAB_ID ?? "popup");
@@ -5000,10 +5001,51 @@ async function requireConsent(triggerEl) {
   currentConsentContext = ctx;
   if (consentGrants[ctx.key]) return true;
   pendingConsentTrigger = triggerEl || null;
-  openConsent();
+  await openConsent();
   return false;
 }
 function escapeConsent(s) { const d = document.createElement("div"); d.textContent = String(s || ""); return d.innerHTML; }
+function consentRich(s) { return escapeConsent(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+
+// Nội dung thẻ do BE cấp ({version, notice}) — sửa chữ thẻ chỉ ở BE. Tải lỗi → giữ chữ viết sẵn trong
+// popup.html + hằng CONSENT_* (bản CONSENT_VERSION) để không chặn cán bộ.
+let consentNotice = null;
+async function loadConsentNotice() {
+  if (consentNotice) return consentNotice;
+  try {
+    const data = await api.consentNotice();
+    const n = data?.notice;
+    if (data?.version && n && Array.isArray(n.statements) && n.statements.length === 2) consentNotice = data;
+  } catch (e) {
+    console.warn("[Popup] Không tải được nội dung thẻ xác nhận, dùng bản có sẵn:", e);
+  }
+  return consentNotice;
+}
+function renderConsentNotice(n, label) {
+  const view = document.getElementById("view-consent");
+  if (!view) return;
+  const setRich = (sel, s) => { const el = view.querySelector(sel); if (el && s) el.innerHTML = consentRich(s); };
+  setRich(".cs-title", n.title);
+  setRich(".cs-lead", String(n.intro || "").replace("{procedure}", label ? `“${label}”` : "của thủ tục này"));
+  setRich(".cs-list-title", n.documents_title);
+  const list = document.getElementById("consentDocList");
+  if (list && Array.isArray(n.documents)) list.innerHTML = n.documents.map((d) => `<li>${consentRich(d)}</li>`).join("");
+  setRich(".cs-scope", n.scope);
+  setRich(".cs-purpose", n.purpose);
+  const ai = view.querySelector(".cs-ai");
+  if (ai) {
+    const items = Array.isArray(n.automated) ? n.automated : [];
+    ai.hidden = !items.length;
+    if (items.length) ai.innerHTML = `${consentRich(n.automated_title)}<ul>${items.map((d) => `<li>${consentRich(d)}</li>`).join("")}</ul>`;
+  }
+  setRich("#consentC0 + span", n.statements[0]);
+  setRich("#consentC1 + span", n.statements[1]);
+  const opt = view.querySelector("#consentC2 + span");
+  if (opt && n.optional_statement) opt.innerHTML = `${consentRich(n.optional_statement)} <i class="cs-opt-tag">Không bắt buộc</i>`;
+  const accept = document.getElementById("consentAcceptBtn"), decline = document.getElementById("consentDeclineBtn");
+  if (accept && n.accept_label) accept.textContent = n.accept_label;
+  if (decline && n.decline_label) decline.textContent = n.decline_label;
+}
 
 async function restoreConsent() {
   consentGrants = {};
@@ -5033,7 +5075,7 @@ async function persistConsent() {
   } catch (e) { /* ignore */ }
 }
 
-function openConsent() {
+async function openConsent() {
   const label = (currentConfig() && currentConfig().label) || "";
   const procName = document.getElementById("consentProcName");
   if (procName) procName.textContent = label ? `“${label}”` : "của thủ tục này";
@@ -5044,6 +5086,8 @@ function openConsent() {
   if (c1) c1.checked = false;
   if (c2) c2.checked = false;
   document.getElementById("consentErr")?.remove(); // bỏ lỗi cũ (nếu lần trước upload lỗi)
+  const data = await loadConsentNotice();
+  if (data) renderConsentNotice(data.notice, label);
   syncConsent();
   showView("consent");
 }
@@ -5087,27 +5131,32 @@ async function acceptConsent() {
   const at = consentStamp();
   const optimize = !!document.getElementById("consentC2")?.checked;
   // Ghi vào bằng chứng ĐÚNG những gì đã tick: 2 mục bắt buộc + mục tối ưu nếu người dùng chọn.
-  const statements = optimize ? [...CONSENT_STATEMENTS, CONSENT_OPTIMIZE_STATEMENT] : [...CONSENT_STATEMENTS];
+  // Chữ cam kết + version gửi BE phải đúng bản đang hiện trên thẻ (BE cấp, hoặc bản viết sẵn khi tải lỗi).
+  const notice = consentNotice?.notice;
+  const required = notice ? notice.statements : CONSENT_STATEMENTS;
+  const optionalStatement = notice?.optional_statement || CONSENT_OPTIMIZE_STATEMENT;
+  const acceptLabel = notice?.accept_label || "Đồng ý và tự động điền";
+  const statements = optimize ? [...required, optionalStatement] : [...required];
   // Context (key + principal) do requireConsent tính khi mở điều khoản; nếu thiếu thì tính lại tại đây.
   const ctx = currentConsentContext || await resolveConsentContext();
   if (accept) { accept.disabled = true; accept.textContent = "Đang ghi nhận…"; }
   try {
     // Chỉ khi BE lưu bằng chứng THÀNH CÔNG mới coi phiên là đã đồng ý.
     await api.saveConsent({
-      logId, version: CONSENT_VERSION,
+      logId, version: consentNotice?.version || CONSENT_VERSION,
       procedure: cfg?.key || "", procedureLabel: cfg?.label || "",
       statements, optimize, at,
       principalCccd: ctx?.principal?.cccd || null,   // chủ thể dữ liệu (VNeID) — ghi vào biên bản
       principalName: ctx?.principal?.name || null,
     });
   } catch (e) {
-    if (accept) { accept.disabled = false; accept.textContent = "Đồng ý và tự động điền"; }
+    if (accept) { accept.disabled = false; accept.textContent = acceptLabel; }
     if (e.unauthorized) { await AuthStore.clearTokens(); setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err"); showLogin(); return; }
     console.warn("[Popup] Lưu bằng chứng chấp thuận lỗi:", e);
     setConsentError("Không lưu được bằng chứng chấp thuận. Vui lòng thử lại.");
     return;
   }
-  if (accept) accept.textContent = "Đồng ý và tự động điền";
+  if (accept) accept.textContent = acceptLabel;
   // Đánh dấu ĐÚNG key (người/phiên + thủ tục) này đã đồng ý — lần sau cùng key sẽ không hỏi lại.
   consentGrants[ctx.key] = { logId, at };
   await persistConsent();
@@ -5524,6 +5573,10 @@ ocrBtn.addEventListener("click", async () => {
       refreshAttachStepUI();
     }
     options.dossierId = ensureDossierId();
+    // Thủ tục có điền đợt 2 (BE khai secondPass): báo BE bản này biết hỏi kết quả soát và ghi lại ô. Chỉ lượt điền
+    // cả biểu mẫu ở đây mới khai — lượt nào khai mà không hỏi là BE soát thừa.
+    // "secondPassLegacy": bản này ghi lại được ô trên form cũ (x-*) — thủ tục form cũ chỉ chạy lớp soát khi có.
+    if (cfg.secondPass && !page) options.fillSupports = ["secondPass", "secondPassLegacy"];
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
@@ -5817,6 +5870,32 @@ async function attachAfterFill(fillOutcome, sessionId) {
   if (res.attachFiles) renderAttachResult(res.attachFiles, res.attachRetry, details);
 }
 
+// Điền đợt 2: BE soát lại ở nền trong lúc lượt đầu đang điền, popup hỏi kết quả rồi ghi lại các ô BE sửa. Điền xong
+// chờ thêm tối đa SECOND_PASS_WAIT_MS; quá hạn thì thôi, không ghi muộn lên biểu mẫu cán bộ đang rà. Luôn gửi
+// patchFields kể cả khi không có ô nào: ảnh chụp form của lượt điền được hoãn tới bước này.
+const SECOND_PASS_WAIT_MS = 8000;
+const SECOND_PASS_POLL_MS = 1500;
+
+async function applySecondPass(requestId, baseFields, formSnapshot) {
+  let fields = [];
+  const deadline = Date.now() + SECOND_PASS_WAIT_MS;
+  try {
+    for (;;) {
+      const res = await api.secondPass(requestId);
+      if (res?.status === "done") {
+        fields = Array.isArray(res.fields) ? res.fields : [];
+        break;
+      }
+      if (res?.status !== "pending" || Date.now() + SECOND_PASS_POLL_MS > deadline) break;
+      await new Promise((resolve) => setTimeout(resolve, SECOND_PASS_POLL_MS));
+    }
+  } catch (e) {
+    console.warn("[AutoFill] Hỏi kết quả điền đợt 2 lỗi:", e);
+  }
+  const res = await sendToContent({ action: "patchFields", fields, baseFields, formSnapshot });
+  if (res?.error) console.warn("[AutoFill] Điền đợt 2 lỗi:", res.error);
+}
+
 async function dispatchFill(allFields, errors, page = null, requestId = "") {
   // errors[] từ BE có thể chứa chi tiết OCR/LLM kỹ thuật → chỉ log, KHÔNG hiện thô lên UI.
   if (errors && errors.length) console.warn("[AutoFill] Cảnh báo trích xuất:", errors);
@@ -5833,6 +5912,9 @@ async function dispatchFill(allFields, errors, page = null, requestId = "") {
     "info"
   );
   const procedure = currentConfig()?.key || "";
+  const secondPass = !!(requestId && !page && currentConfig()?.secondPass);
+  // Ảnh chụp form sau khi điền (content/form-snapshot) — gắn với lượt /process vừa xong.
+  const formSnapshot = requestId && PORTAL_STEP_RULES && !page ? { requestId, stepRules: PORTAL_STEP_RULES } : null;
   let panelMinimized = false;
   try {
     // Bắc Ninh 3 bước: trước khi điền phải mở đúng tab "Nhập đơn đăng ký".
@@ -5867,9 +5949,11 @@ async function dispatchFill(allFields, errors, page = null, requestId = "") {
       businessDefaults: page?.key ? buildBusinessDefaults(currentUser) : null,
       // Biểu mẫu Cổng DVC quốc gia mới: "Kính gửi" / "Tại" lấy theo địa bàn của tài khoản trợ lý.
       toolAccount: { tinh: currentUser?.tinh || "", xa: currentUser?.xa || "" },
-      // Ảnh chụp form sau khi điền (content/form-snapshot) — gắn với lượt /process vừa xong.
-      formSnapshot: requestId && PORTAL_STEP_RULES && !page ? { requestId, stepRules: PORTAL_STEP_RULES } : null,
+      formSnapshot,
+      // Có điền đợt 2 thì chụp sau khi đợt 2 ghi xong (applySecondPass), để ảnh là giá trị engine điền cuối cùng.
+      deferSnapshot: secondPass,
     });
+    if (secondPass && !fillRes?.error) await applySecondPass(requestId, allFields, formSnapshot);
     const filled = Math.max(0, Number(fillRes?.filled || 0));
     const details = buildFillDetails(fillRes, errors, allFields.length);
     if (fillRes?.error || filled === 0) {
@@ -6285,6 +6369,24 @@ function agencyProvinceOnly(link) {
 }
 
 /**
+ * Thủ tục "Sở hoặc UBND xã" (`agencyLevelByAccount` = {xa: {...}, so: {...}}): tài khoản HCC tỉnh luôn nộp Sở;
+ * tài khoản khác có xã đang chọn thì nộp UBND xã đó, chưa có xã thì nộp Sở. Cùng luật với BE
+ * (app/procedures/agency_level.py) — BE chỉ trải sẵn nhánh theo xã CỦA TÀI KHOẢN, còn xã chọn tay trên popup
+ * thì chỉ popup biết nên phải chọn lại ở đây.
+ */
+function agencyLevelFor(link) {
+  const ward = String(agencyLocationFor(link).ward || "").trim();
+  return currentUser?.role === "province" || !ward ? "so" : "xa";
+}
+
+/** Cấu hình thủ tục đã gộp nhánh cấp cơ quan; thủ tục không khai `agencyLevelByAccount` giữ nguyên. */
+function withAgencyLevel(link) {
+  const branches = link?.agencyLevelByAccount;
+  if (!branches || typeof branches !== "object") return link;
+  return { ...link, ...(branches[agencyLevelFor(link)] || {}) };
+}
+
+/**
  * Thủ tục này có tick radio "Sở" cho ĐỊA BÀN đang chọn không.
  *
  * `selectSo` = bật cho mọi tỉnh. `selectSoProvinces` = CHỈ bật ở những tỉnh liệt kê (slug theo
@@ -6293,6 +6395,7 @@ function agencyProvinceOnly(link) {
  */
 function selectSoFor(link) {
   if (!link) return false;
+  link = withAgencyLevel(link);
   if (link.selectSo) return true;
   const provinces = Array.isArray(link.selectSoProvinces) ? link.selectSoProvinces : [];
   return provinces.includes(agencyLocationFor(link).provinceSlug);
@@ -6317,6 +6420,7 @@ function soAgencyFor(link) {
  * xã Liên Chiểu phải vào thẻ Khu vực 5. Xã không có trong bảng giữ nguyên `submitCardIncludes`.
  */
 function submitCardIncludesFor(link) {
+  link = withAgencyLevel(link);
   const byWard = link?.submitCardIncludesByWard;
   const ward = String(agencyLocationFor(link).ward || "").normalize("NFC").trim().toLowerCase();
   if (byWard && ward) {

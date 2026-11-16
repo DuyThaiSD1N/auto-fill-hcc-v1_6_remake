@@ -623,3 +623,43 @@ def test_ben_duoc_uy_quyen_la_me_luat_the_he_van_chot_du_con_cha_me():
     family = reason._override_family_by_generation({}, docs)
     assert [reason._role_name(family[tag]) for tag in ("con", "cha", "me")] == [
         "LÊ THỊ CHI", "LÊ VĂN AN", "NGUYỄN THỊ DUNG"]
+
+
+# Không có tờ khai lẫn giấy ủy quyền: quan hệ theo người đang đăng nhập; thiếu mốc tài khoản thì theo giấy tờ.
+_KHONG_TO_KHAI = {"Subject_FullName": "TRẦN VĂN AN", "Subject_IdNumber": "001071000001",
+                  "Mother_FullName": "NGUYỄN THỊ HOA", "Mother_IdNumber": "001160000003"}
+_NO_DECL = "<to_khai_dang_ky_lai>\nCó tờ khai đăng ký lại khai sinh: Không\n</to_khai_dang_ky_lai>"
+
+
+def _run_no_decl(form_context=None, relation=""):
+    context = _NO_DECL + (f"\n<quan_he_nguoi_yeu_cau>\nKết luận: {relation}\n</quan_he_nguoi_yeu_cau>" if relation else "")
+    options = {"_reasoning_context": context, **({"formContext": form_context} if form_context else {})}
+    out = mapper.enrich([{"name": k, "value": v} for k, v in _KHONG_TO_KHAI.items()], options)
+    return {f["name"]: f for f in out}
+
+
+def test_khong_to_khai_tai_khoan_la_me_thi_tich_me_de():
+    v = _run_no_decl({"applicantFullname": "NGUYỄN THỊ HOA", "applicantIdentityNumber": "001160000003"})
+    assert v["QuanHe"]["value"] == "MeDe" and not v["QuanHe"].get("default")
+
+
+def test_khong_to_khai_tai_khoan_nguoi_khac_thi_tich_khac():
+    v = _run_no_decl({"applicantFullname": "LÊ VĂN BÌNH", "applicantIdentityNumber": "001056000002"})
+    assert v["QuanHe"]["value"] == "Khac"
+
+
+def test_khong_to_khai_khong_co_moc_tai_khoan_thi_theo_giay_hoac_de_trong():
+    assert "QuanHe" not in _run_no_decl()
+    v = _run_no_decl(relation="bản thân")
+    assert v["QuanHe"]["value"] == "BanThan" and v["QuanHe"].get("default") is True
+
+
+def test_reason_khong_to_khai_khong_tai_khoan_khong_tu_suy_ra_khac():
+    from app.pipelines.khai_sinh_dang_ky_lai.process import reason
+
+    sections = {"con": "Họ tên: TRẦN VĂN AN\nSố CCCD/CMND: 001071000001", "me": "Họ tên: NGUYỄN THỊ HOA"}
+    raw = lambda ket_luan: f"<quan_he_nguoi_yeu_cau>\nKết luận: {ket_luan}\nCăn cứ: bản cam đoan ngôi thứ nhất\n</quan_he_nguoi_yeu_cau>"
+    assert reason._validated_relation(raw("khác"), sections, False, ("", ""))[0] == "không xác định"
+    assert reason._validated_relation(raw("bản thân"), sections, False, ("", ""))[0] == "bản thân"
+    # Có mốc tài khoản mà không trùng người được đăng ký lại → vẫn là "khác" như cũ.
+    assert reason._validated_relation(raw("bản thân"), sections, False, ("LÊ VĂN BÌNH", "001056000002"))[0] == "khác"

@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from app.config import settings
+from app.pipelines._shared.cccd import id_birth_year
 from app.services.llm import client
 
 _REASON_MAX_TOKENS = 1000
@@ -27,10 +28,15 @@ a. TỜ KHAI ĐĂNG KÝ KHAI TỬ: người ở khối TRÊN câu "Đề nghị 
 b. GIẤY BÁO TỬ / trích lục khai tử / biên bản xác minh / công văn "đăng ký khai tử cho ông/bà <HỌ TÊN>" → người
    được ghi là người chết.
 c. Chỉ có đúng 2 CCCD/CMND (không tờ khai, không giấy báo tử) và không thẻ nào khớp tài khoản → người SINH TRƯỚC
-   (già hơn) là NGƯỜI MẤT, người sinh sau là người yêu cầu.
+   (năm sinh NHỎ HƠN, già hơn) là NGƯỜI MẤT, người sinh sau là người yêu cầu. Hồ sơ không có giấy khai tử vẫn áp luật
+   này, không trả "không có".
 d. Người đi khai tử trên trích lục, người ký, người nhận công văn, chủ hộ không phải người mất.
+e. Chủ tài khoản là người đang đăng nhập để nộp hồ sơ, còn sống: KHÔNG BAO GIỜ ghi chủ tài khoản vào <nguoi_mat>. Hồ sơ
+   chỉ có thẻ của chủ tài khoản và một thẻ của người khác (không giấy khai tử) → người mang thẻ kia là người mất.
 
-QUAN HỆ (người nộp là gì CỦA người mất):
+QUAN HỆ (người nộp là gì CỦA người mất) — ghi VAI CỦA NGƯỜI NỘP, không ghi vai của người mất: giấy ghi "ông nội tôi
+là ...", "bố đẻ tôi là ..." → người nộp là "Cháu nội", "Con đẻ" (không ghi "Ông nội", "Bố"); "con gái tôi là ..." →
+người nộp là "Mẹ" / "Cha".
 - Người nộp chính là người yêu cầu trên tờ khai (trùng số định danh; thiếu số thì trùng họ tên) → lấy đúng dòng
   "Quan hệ với người đã chết" của tờ khai.
 - Giấy tờ khác ghi rõ quan hệ (giấy khai sinh của người nộp ghi người mất là cha/mẹ, giấy kết hôn vợ/chồng...) →
@@ -142,8 +148,63 @@ def labeled_value(block: str, label: str) -> str:
     return "" if _fold(value) in {"", "...", "khong xac dinh", "khong co", "khong ro"} else value
 
 
-def _render_context(raw: str, options: dict | None) -> str:
+# Có giấy khai tử thì không áp luật hai thẻ; có giấy khai sinh thì số định danh trên giấy đó (trẻ nhỏ) không phải thẻ.
+_NOT_TWO_CARDS = ("to khai dang ky khai tu", "giay bao tu", "trich luc khai tu", "giay khai sinh", "trich luc khai sinh")
+
+
+def _two_card_choice(documents: list[dict], options: dict | None) -> tuple[str, str] | None:
+    """Luật c của prompt: hồ sơ không có giấy khai tử / giấy khai sinh, chỉ có đúng hai số thẻ 12 chữ số → thẻ không
+    phải của tài khoản, hoặc (không thẻ nào của tài khoản) thẻ của người sinh trước là người mất.
+    Trả (số định danh người mất, khối <nguoi_mat>)."""
+    text = "\n".join(str(document.get("text") or "") for document in documents or [])
+    if any(marker in _fold(text) for marker in _NOT_TWO_CARDS):
+        return None
+    numbers = sorted(set(re.findall(r"(?<!\d)0\d{11}(?!\d)", text)))
+    if len(numbers) != 2:
+        return None
+    _, account = requester_context(options)
+    if account in numbers:
+        number = next(n for n in numbers if n != account)
+    else:
+        years = {n: id_birth_year(n) for n in numbers}
+        if None in years.values() or len(set(years.values())) == 1:
+            return None
+        number = min(numbers, key=lambda n: years[n])
+    return number, "\n".join([
+        f"Họ tên: người mang thẻ số {number}",
+        f"Số định danh: {number}",
+        f"Năm sinh: {id_birth_year(number) or ''}",
+        "Nguồn: CCCD",
+        "Căn cứ phân vai: hồ sơ không có giấy khai tử, chỉ có hai thẻ — thẻ không phải của tài khoản / người sinh trước",
+    ])
+
+
+_TWO_CARD_BASIS = ("2 cccd", "hai cccd", "2 the", "hai the", "2 cmnd", "luat c")
+
+
+def _render_context(raw: str, options: dict | None, documents: list[dict] | None = None) -> str:
     blocks = {tag: section(raw, tag) for tag in _TAGS}
+    agent = blocks["nguoi_mat"]
+    choice = _two_card_choice(documents or [], options)
+    if choice:
+        chosen = _digits(labeled_value(agent, "Số định danh"))
+        undecided = not labeled_value(agent, "Họ tên") and not chosen
+        # Agent tự viện dẫn luật hai thẻ của prompt mà chốt người sinh sau (tự mâu thuẫn): theo đúng luật agent đã dẫn.
+        # Agent chốt vì căn cứ khác thì giữ.
+        inverted = bool(chosen) and chosen != choice[0] and any(basis in _fold(agent) for basis in _TWO_CARD_BASIS)
+        # Người đang đăng nhập nộp hồ sơ không thể là người mất (luật e).
+        _, account = requester_context(options)
+        is_account = bool(account) and chosen == account
+        if undecided or inverted or is_account:
+            blocks["nguoi_mat"] = choice[1]
+            # Khối người yêu cầu của agent đang ghi chính người mất → bỏ, để lượt trích không lấy nhầm.
+            if _digits(labeled_value(blocks["nguoi_yeu_cau"], "Số định danh")) == choice[0]:
+                blocks["nguoi_yeu_cau"] = ""
+    elif _digits(labeled_value(agent, "Số định danh")) and _digits(labeled_value(agent, "Số định danh")) == requester_context(
+            options)[1]:
+        # Agent ghi chủ tài khoản (người đang nộp) vào khối người mất: sai chắc chắn → bỏ người đó, giữ các khối khác.
+        blocks["nguoi_mat"] = ("Họ tên: chưa xác định — KHÔNG phải chủ tài khoản (người nộp); người mất là người KHÁC được "
+                               "giấy tờ ghi là đã chết hoặc được đề nghị đăng ký khai tử")
     if not blocks["nguoi_mat"]:
         return ""
     name, number = requester_context(options)
@@ -172,4 +233,4 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options)
+    return _render_context(raw, options, documents)

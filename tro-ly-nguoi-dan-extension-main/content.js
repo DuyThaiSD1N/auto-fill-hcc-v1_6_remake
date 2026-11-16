@@ -12,6 +12,7 @@
   const BUBBLE_ID = "tro-ly-nguoi-dan-bubble";
   const IFRAME_ID = "tro-ly-nguoi-dan-iframe";
   const TW_OVERRIDE_ID = "tro-ly-nguoi-dan-tw-translate-override";
+  const TOAST_SHIFT_ID = "tro-ly-nguoi-dan-toast-shift";
   const BUSINESS_PROGRESS_ID = "tro-ly-nguoi-dan-business-progress";
   const LEGACY_AUTOFILL_PROGRESS_ID = "af-fillall-progress";
   const LEGACY_AUTOFILL_CANCEL_ID = "af-fillall-progress-cancel";
@@ -162,12 +163,32 @@
     de.style.overflowX = "hidden";
     de.style.transition = "margin-right .3s cubic-bezier(.4,0,.2,1)";
     de.style.marginRight = `${SIDEBAR_WIDTH}px`;
+    ensureToastShiftStyle();
   }
   function restoreSidebarPushLayout() {
     const de = document.documentElement;
     de.style.marginRight = _origHtmlMarginRight;
     de.style.transition = _origHtmlTransition;
     de.style.overflowX = _origHtmlOverflowX;
+    document.getElementById(TOAST_SHIFT_ID)?.remove();
+  }
+  // Toast ghim góc phải màn hình (ngx-toastr của cổng iGate, Toastify, sonner…) nằm ĐÚNG dưới khung Trợ lý (khung ở
+  // lớp cao nhất) → mở Trợ lý là không thấy cổng báo lỗi. Dời khung toast sang trái đúng bề rộng khung Trợ lý; không
+  // hạ lớp Trợ lý (hạ thì hộp thoại / nền mờ của cổng đè lên khung chat). Toast căn giữa (Radix của cổng tư pháp) đã
+  // có TW_OVERRIDE bù lệch.
+  function ensureToastShiftStyle() {
+    if (document.getElementById(TOAST_SHIFT_ID)) return;
+    const st = document.createElement("style");
+    st.id = TOAST_SHIFT_ID;
+    const w = SIDEBAR_WIDTH;
+    st.textContent = `
+      #toast-container.toast-top-right,#toast-container.toast-bottom-right{right:${w + 12}px!important;}
+      .Toastify__toast-container--top-right,.Toastify__toast-container--bottom-right{right:calc(${w}px + 1em)!important;}
+      [data-sonner-toaster][data-x-position="right"]{right:${w + 24}px!important;}
+      .iziToast-wrapper-topRight,.iziToast-wrapper-bottomRight{right:${w}px!important;}
+      .ant-notification-topRight,.ant-notification-bottomRight{right:${w + 24}px!important;}
+      .p-toast.p-toast-top-right,.p-toast.p-toast-bottom-right{right:${w + 20}px!important;}`;
+    (document.head || document.documentElement).appendChild(st);
   }
   // Bù lệch dialog Tailwind căn giữa của trang (no-op với cổng không dùng Tailwind).
   function ensureTranslateOverrideStyle() {
@@ -1437,8 +1458,20 @@
   // này (cùng cách fill-bacninh.js lái select2). Khớp tên theo thứ tự: trọn tên (bỏ dấu) → tên bỏ tiền tố
   // nếu chỉ một dòng khớp. Danh mục BE có thể ghi "Tỉnh Bắc Ninh" khi cổng ghi "Thành phố Bắc Ninh", hay
   // "Xã" khi cổng đã là "Phường" — nên không đòi khớp cả tiền tố, nhưng cũng không khớp một phần tên.
-  const BCA_CITY_ID = "cboRECEIVE_ADDR_CITY_CODE";
-  const BCA_WARD_ID = "cboRECEIVE_ADDR_VILLAGE_CODE";
+  // Mỗi trang cư trú đặt id riêng cho cặp Tỉnh → Xã của khối này: đăng ký tạm trú (cboRECEIVE_ADDR_*_CODE), thông
+  // báo lưu trú (accomStay_cbo*), đăng ký thường trú (cboRECEIVE_ADDR_*_ID). Lấy cặp đầu tiên có trên trang.
+  const BCA_AGENCY_IDS = [
+    ["cboRECEIVE_ADDR_CITY_CODE", "cboRECEIVE_ADDR_VILLAGE_CODE"],
+    ["accomStay_cboPROVINCE_ID", "accomStay_cboADDRESS_ID"],
+    ["cboRECEIVE_ADDR_CITY_ID", "cboRECEIVE_ADDR_VILLAGE_ID"],
+  ];
+  const bcaAgencySelects = () => {
+    for (const [cityId, wardId] of BCA_AGENCY_IDS) {
+      const city = document.getElementById(cityId);
+      if (city) return [city, document.getElementById(wardId)];
+    }
+    return [null, null];
+  };
   const bcaFold = (s) => String(s || "")
     .replace(/Đ/g, "D").replace(/đ/g, "d")
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -1459,8 +1492,7 @@
     return true;
   }
   async function fillBcaAgency(province, ward) {
-    const city = document.getElementById(BCA_CITY_ID);
-    const village = document.getElementById(BCA_WARD_ID);
+    const [city, village] = bcaAgencySelects();
     if (!city || !village) return { ok: false, error: "no_block" };
     const cityOpt = bcaPickOption(city, province);
     if (!cityOpt) return { ok: false, error: "province_not_found" };
@@ -1768,9 +1800,8 @@
       const agencyBlock = !maeHost && body.includes("chon co quan thuc hien");
       // Cổng DVC Bộ Công an: khối "Cơ quan thực hiện" là 2 select (select2) Tỉnh + Xã/Phường/Đặc khu, chọn
       // đủ thì cổng mới hiện các mục sau. Id lấy theo crawl trang đăng ký tạm trú 27/10/2026.
-      const bcaCity = location.hostname === "dichvucong.dancuquocgia.gov.vn"
-        ? document.getElementById("cboRECEIVE_ADDR_CITY_CODE") : null;
-      const bcaWard = bcaCity ? document.getElementById("cboRECEIVE_ADDR_VILLAGE_CODE") : null;
+      const [bcaCity, bcaWard] = location.hostname === "dichvucong.dancuquocgia.gov.vn"
+        ? bcaAgencySelects() : [null, null];
       const bcaPicked = (sel) => !!sel && !!sel.value && sel.value !== "-1"
         && !["", "chon"].includes(foldTxt(sel.options[sel.selectedIndex]?.text));
       const bcaAgencyBlock = !!bcaCity;

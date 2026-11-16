@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "13/11";
+  const APP_RELEASE_DATE = "16/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1746,6 +1746,29 @@
         .catch(() => sendResponse({ error: "Không điền được thông tin người ủy quyền." }));
       return true;
     }
+    // Điền đợt 2: popup hoãn ảnh chụp form của lượt điền tới sau bước này, nên frame chứa form luôn bắt đầu
+    // theo dõi ở đây kể cả khi không có ô nào cần ghi lại.
+    if (msg.action === "patchFields") {
+      H.formSnapshot?.arm?.(msg.formSnapshot);
+      const formKind = detectFormKind();
+      if (!formKind) return;
+      const patch = Array.isArray(msg.fields) ? msg.fields : [];
+      const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
+      const known = new Set(base.map((f) => f?.name));
+      // Form SurveyJS và form cũ (x-*) mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
+      const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs : (formKind === "legacy" ? H.patchFormLegacy : null);
+      const canPatch = patch.length && typeof patcher === "function";
+      Promise.resolve().then(() => (canPatch ? patcher(patch) : { filled: 0, skipped: [] }))
+        .catch((e) => {
+          console.warn("[AutoFill] điền đợt 2 lỗi:", e);
+          return { filled: 0, skipped: [] };
+        })
+        .then((res) => {
+          H.formSnapshot?.track?.(msg.formSnapshot, [...base, ...patch.filter((f) => !known.has(f?.name))], formKind);
+          sendResponse(res);
+        });
+      return true;
+    }
     if (msg.action !== "fillFields") return;
     H.formSnapshot?.arm?.(msg.formSnapshot);
     // Content script chạy trên mọi frame; chỉ frame thật sự chứa form mới xử lý.
@@ -1794,7 +1817,8 @@
         if (msg.businessPage === "nganh-nghe-kinh-doanh" && typeof H.fillBusinessActDefault === "function") {
           try { H.fillBusinessActDefault(msg.businessDefaults); } catch (e) { /* không chặn response điền chính */ }
         }
-        if (!res?.error) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind);
+        // deferSnapshot: còn điền đợt 2 phía sau, lệnh patchFields mới bắt đầu theo dõi.
+        if (!res?.error && !msg.deferSnapshot) H.formSnapshot?.track?.(msg.formSnapshot, fields, formKind);
         sendResponse(res);
       })
       .catch((e) => {
@@ -1839,7 +1863,7 @@
       submitRules = changes[SUBMIT_WATCH_KEY].newValue?.rules || null;
     });
 
-    document.addEventListener("click", (e) => {
+    const onSubmitClick = (e) => {
       if (!submitRules) return;
       const rule = submitRules[location.hostname];
       if (!rule) return;
@@ -1877,7 +1901,15 @@
       const click = { action: "dossierSubmitClicked", host: location.hostname, ref, clickId, clickedAt: lastSubmitClickAt };
       rememberPendingSubmit(click);
       sendSubmitClick(click);
-    }, true); // capture: cổng có handler riêng có thể stopPropagation
+    };
+    // Popup nạp lại content.js vào trang đang mở khi trang chưa trả lời kịp (cổng chậm/treo). Mỗi lần nạp chạy lại cả
+    // file → phải gỡ bộ nghe của lần nạp trước, không thì MỘT cú bấm Gửi hồ sơ thành nhiều mốc nộp. Gỡ-rồi-gắn chứ không
+    // "có rồi thì thôi": sau khi extension cập nhật, bộ nghe cũ còn trên trang nhưng không gửi được gì nữa.
+    if (window.__AUTOFILL_HCC_SUBMIT_CLICK__) {
+      document.removeEventListener("click", window.__AUTOFILL_HCC_SUBMIT_CLICK__, true);
+    }
+    window.__AUTOFILL_HCC_SUBMIT_CLICK__ = onSubmitClick;
+    document.addEventListener("click", onSubmitClick, true); // capture: cổng có handler riêng có thể stopPropagation
 
     // Cổng nộp bằng TẢI LẠI CẢ TRANG (HkdOnline: confirm() rồi postback ASP.NET): sendMessage chưa
     // kịp mở kênh thì trang đã bị huỷ cùng content script → mốc nộp mất ở mọi lần. Ghi cú bấm vào
@@ -1930,7 +1962,9 @@
     // Mốc chữ thành công XUẤT HIỆN trên document này (0 = đang không hiện). Báo một lần cho mỗi
     // lần hiện; chữ biến mất rồi hiện lại (SPA sang hồ sơ khác rồi nộp tiếp) là lần mới.
     let submitSuccessShownAt = 0;
-    setInterval(() => {
+    // Cùng lý do với bộ nghe cú bấm: nạp lại content.js thì dừng vòng dò chữ của lần nạp trước.
+    if (window.__AUTOFILL_HCC_SUBMIT_SEEN_TIMER__) clearInterval(window.__AUTOFILL_HCC_SUBMIT_SEEN_TIMER__);
+    window.__AUTOFILL_HCC_SUBMIT_SEEN_TIMER__ = setInterval(() => {
       const rule = submitRules?.[location.hostname];
       // Tab ẩn: chữ vẫn nằm đó, quay lại là bắt — khỏi đọc innerText của cả chục tab nền.
       if (!rule || !document.body || document.hidden) return;
@@ -2290,6 +2324,12 @@
       document.querySelectorAll("liz-form-component, liz-input, liz-datepicker, liz-select").length >= 3 &&
       document.querySelectorAll("[formcontrolname]").length === 0
     ) return "liz";
+    // Cổng DVC Bộ Công an (jQuery + select2, id = name, gốc form là div không phải <form>): nhận theo ô họ tên đặc
+    // trưng của form cư trú / nút thêm người lưu trú.
+    if (location.hostname === "dichvucong.dancuquocgia.gov.vn"
+      && (document.getElementById("txtFULLNAME") || document.getElementById("btnAddPersonLT"))) {
+      return "standard";
+    }
     const ngCount = document.querySelectorAll("[formcontrolname]").length;
     const legacyCount = document.querySelectorAll("x-input, x-date, x-radio").length;
     const standardCount = document.querySelectorAll(
@@ -4863,8 +4903,260 @@
     return nodeText(row.querySelector('[id^="profile-component-"]') || row.cells?.[4]);
   }
 
+  // Bản copy của tro-ly-nguoi-dan-extension/content/attach-core.js (attachFilesByBcaPlan) — sửa một bên thì port bên kia;
+  // khác duy nhất: mở nhóm qua MAIN world bằng CustomEvent thay vì background.
+  // ===== Cổng DVC Bộ Công an (đăng ký tạm trú / thường trú): mục "HỒ SƠ ĐÍNH KÈM" ngay trên trang kê khai =====
+  // Mục chia 5 nhóm theo trường hợp chỗ ở; bảng giấy tờ của nhóm (#tphs_new_<i>) CHỈ nạp khi bấm vào nhóm
+  // (onclick load_table_tphs_new(i)). BE (pipelines/dang_ky_tam_tru/attach) chọn MỘT nhóm, mỗi item target
+  // "bca-row": dòng sẵn có chứa chữ `rowKey`, hoặc `newRow` → bấm "+ Thêm mới" của nhóm rồi ghi tên giấy tờ.
+  function isBcaPortal() {
+    return location.hostname === "dichvucong.dancuquocgia.gov.vn";
+  }
+
+  function bcaText(value) {
+    return foldChoiceText(String(value || "")).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function bcaGroupRows(container) {
+    return Array.from(container?.querySelectorAll("tr") || []).filter((tr) => tr.querySelector('input[type="file"]'));
+  }
+
+  // Nút mở nhóm là <a href="javascript:load_table_tphs_new(i);"><p>- Đăng ký tạm trú …</p></a> (crawl 27/10/2026):
+  // handler nằm ở HREF. Dò theo chữ thì phải leo lên <a> — bấm div.row bọc ngoài (cũng chứa đúng chữ nhóm) không làm gì.
+  function bcaGroupToggle(index, label) {
+    const call = `load_table_tphs_new(${index})`;
+    const byHandler = Array.from(document.querySelectorAll("a[href], [onclick]")).find((el) =>
+      `${el.getAttribute("href") || ""} ${el.getAttribute("onclick") || ""}`.replace(/\s+/g, "").includes(call));
+    if (byHandler) return byHandler;
+    const want = bcaText(label);
+    const hit = Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
+      const text = bcaText(el.textContent);
+      return text.includes(want) && text.length <= want.length + 20;
+    });
+    return hit?.closest("a") || null;
+  }
+
+  // Bảng của nhóm: trong #tphs_new_<i>, hoặc (cổng vẽ ra chỗ khác) bảng có ô chọn tệp MỚI xuất hiện sau cú bấm.
+  function bcaLoadedContainer(index, before) {
+    const box = document.getElementById(`tphs_new_${index}`);
+    if (bcaGroupRows(box).length) return box;
+    const fresh = Array.from(document.querySelectorAll('input[type="file"]'))
+      .find((input) => !before.has(input) && input.closest("tr"));
+    return fresh ? (fresh.closest("table")?.parentElement || fresh.closest("tr").parentElement) : null;
+  }
+
+  // Đổi sang nhóm khác khi bảng của một nhóm đang hiện (mặc định cổng nạp sẵn nhóm 0), load_table_tphs_new hỏi
+  // DlgUtil.showConfirm "Các giấy tờ công dân nộp sẽ mất nếu chọn trường hợp … khác. Công dân có đồng ý chuyển?"
+  // — phải bấm đồng ý thì bảng mới chuyển sang #tphs_new_<i>. Dò hộp theo câu hỏi rồi lấy nút đồng ý gần nhất.
+  const BCA_CONFIRM_LABELS = ["dong y", "co", "ok", "xac nhan", "yes", "chap nhan", "dong y chuyen"];
+
+  function bcaSwitchConfirmButton() {
+    const message = Array.from(document.querySelectorAll("div, p, span, td")).find((el) =>
+      isVisible(el) && String(el.textContent || "").length < 400
+      && bcaText(el.textContent).includes("giay to cong dan nop se mat"));
+    for (let scope = message?.parentElement, hops = 0; scope && hops < 8; scope = scope.parentElement, hops++) {
+      const button = Array.from(scope.querySelectorAll('button, a.btn, input[type="button"]')).filter(isVisible)
+        .find((el) => BCA_CONFIRM_LABELS.includes(bcaText(el.textContent || el.value)));
+      if (button) return button;
+    }
+    return null;
+  }
+
+  // Auto Fill không có host_permissions *.gov.vn → không executeScript từ background; nhờ content/bca-datepicker-main.js
+  // (MAIN world) gọi load_table_tphs_new(i) qua CustomEvent.
+  function bcaLoadGroupInMainWorld(index) {
+    const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return new Promise((resolve) => {
+      const onResult = (event) => {
+        let data;
+        try { data = JSON.parse(String(event.detail || "{}")); } catch { return; }
+        if (data.requestId !== requestId) return;
+        clearTimeout(timer);
+        document.removeEventListener("__HCC_BCA_LOAD_GROUP_RESULT__", onResult);
+        resolve(data);
+      };
+      const timer = setTimeout(() => {
+        document.removeEventListener("__HCC_BCA_LOAD_GROUP_RESULT__", onResult);
+        resolve(null);
+      }, 3000);
+      document.addEventListener("__HCC_BCA_LOAD_GROUP_RESULT__", onResult);
+      document.dispatchEvent(new CustomEvent("__HCC_BCA_LOAD_GROUP_REQUEST__", { detail: JSON.stringify({ requestId, index }) }));
+    });
+  }
+
+  async function bcaOpenGroup(index, label) {
+    const current = document.getElementById(`tphs_new_${index}`);
+    if (bcaGroupRows(current).length && isVisible(current)) return current; // đang mở — bấm nữa là đóng lại
+    const before = new Set(document.querySelectorAll('input[type="file"]'));
+    const loaded = () => bcaLoadedContainer(index, before);
+    const toggle = bcaGroupToggle(index, label);
+    if (toggle) {
+      toggle.scrollIntoView?.({ block: "center" });
+      toggle.click(); // MỘT lần: bấm lại là hỏi/chuyển lần nữa
+    }
+    let triggered = !!toggle;
+    let confirmed = false;
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 9000) {
+      const box = loaded();
+      if (box) return box;
+      const confirm = confirmed ? null : bcaSwitchConfirmButton();
+      if (confirm) {
+        confirm.click();
+        confirmed = true;
+        console.log("[AutoFill-Attach] BCA đồng ý chuyển nhóm giấy tờ", { index });
+      } else if (!confirmed && (!triggered || Date.now() - startedAt > 2500)
+          && !document.getElementById(`tphs_new_${index}`)?.innerHTML.trim() && !bcaSwitchConfirmButton()) {
+        // Bấm link "javascript:" từ content script có thể bị CSP của extension chặn (không hộp hỏi, khung vẫn trống)
+        // → nhờ background gọi thẳng load_table_tphs_new(i) trong MAIN world của trang. Chỉ một lần.
+        if (triggered !== "main") {
+          console.log("[AutoFill-Attach] BCA mở nhóm qua MAIN world", { index, res: await bcaLoadGroupInMainWorld(index) });
+          triggered = "main";
+        }
+      }
+      await sleep(200);
+    }
+    return null;
+  }
+
+  function bcaAddRowButton(container) {
+    // Nút "+ Thêm mới" của cổng là #btnDocument (load_table_tphs_new ẩn/hiện nó theo bảng giấy tờ của nhóm).
+    const byId = document.getElementById("btnDocument");
+    if (byId && isVisible(byId)) return byId;
+    // Trang đăng ký thường trú: nút "Thêm" (a#add_gtdk[title="Thêm"], id lặp) chỉ có ở DÒNG CUỐI của bảng.
+    const lastRowAdd = Array.from(container?.querySelectorAll('a[title="Thêm"], #add_gtdk') || []).filter(isVisible).pop();
+    if (lastRowAdd) return lastRowAdd;
+    for (let scope = container, hops = 0; scope && hops < 4; scope = scope.parentElement, hops++) {
+      const button = Array.from(scope.querySelectorAll('button, a, input[type="button"]'))
+        .find((el) => bcaText(el.textContent || el.value).includes("them moi"));
+      if (button) return button;
+    }
+    return null;
+  }
+
+  async function bcaAddRow(container, name) {
+    const button = bcaAddRowButton(container);
+    if (!button) return null;
+    const before = bcaGroupRows(container).length;
+    button.click(); // MỘT lần, bấm 2 lần là thêm 2 dòng
+    const row = await waitFor(() => {
+      const rows = bcaGroupRows(container);
+      return rows.length > before ? rows[rows.length - 1] : null;
+    }, 4000, 150);
+    if (!row) return null;
+    const nameInput = bcaRowNameInput(row);
+    if (nameInput) setNativeValue(nameInput, name, { typing: false, commit: true });
+    return row;
+  }
+
+  // Ô "Tên giấy tờ" của dòng thêm mới = ô nhập gần nhất TRƯỚC ô chọn "Hình thức giấy tờ" (cboFILE_TYPE<i>). Dòng có
+  // ô ẩn + cột STT ở đầu và ô tên không khai type="text" → đừng đoán theo số cột hay theo [type=text] (trượt sang Ghi chú).
+  function bcaRowNameInput(row) {
+    // Trang đăng ký thường trú: ô tên dòng thêm mới là input#txtNAME_FILE<i> (dòng sẵn có là <p> cùng id).
+    const named = row.querySelector('input[id^="txtNAME_FILE"]');
+    if (named) return named;
+    const cells = Array.from(row.cells || []);
+    const selectAt = cells.findIndex((td) => td.querySelector("select"));
+    const before = selectAt > 0 ? cells.slice(0, selectAt) : [];
+    for (const td of before.reverse()) {
+      const input = td.querySelector(
+        'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]), textarea');
+      if (input) return input;
+    }
+    return null;
+  }
+
+  // Cổng từ chối tên tệp có . , ~ " # % & * : < > ? / { | } ("Vui lòng chọn tệp không có ký tự đặc biệt…") → thay bằng
+  // dấu cách. Nhiều tệp cùng một dòng thì đánh số "Tên 1", "Tên 2" — chỉ thêm số, không thêm dấu.
+  const BCA_FILENAME_FORBIDDEN = /[.,~"#%&*:<>?/\\{|}]+/g;
+
+  function bcaFilesForRow(entries) {
+    const withPayload = entries.filter((e) => e.payload);
+    return withPayload.map((e, i) => {
+      const file = dataUrlToFile(e.payload, e.item.documentName || "");
+      const ext = (file.name.match(/\.[a-z0-9]{2,5}$/i) || [""])[0];
+      let base = file.name.slice(0, file.name.length - ext.length).normalize("NFC")
+        .replace(BCA_FILENAME_FORBIDDEN, " ").replace(/\s+/g, " ").trim() || "Tai lieu";
+      if (withPayload.length > 1) base = `${base} ${i + 1}`;
+      const renamed = new File([file], base + ext, { type: file.type, lastModified: Date.now() });
+      ATTACH_FILE_SOURCE.set(renamed, e.payload);
+      return renamed;
+    });
+  }
+
+  async function attachFilesByBcaPlan(payloadFiles, attachments) {
+    if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
+      return { error: "Đang có lượt đính kèm khác đang chạy, vui lòng đợi hoàn tất." };
+    }
+    window.__AUTOFILL_HCC_ATTACH_BUSY__ = true;
+    try {
+      const items = attachments.filter((item) => item?.target === "bca-row");
+      const { groupIndex, groupLabel } = items[0] || {};
+      const container = await bcaOpenGroup(groupIndex, groupLabel || "");
+      if (!container) return { error: `Không mở được nhóm giấy tờ "${groupLabel || groupIndex}" ở mục Hồ sơ đính kèm.` };
+      // Gom tệp theo dòng: nhiều tệp cùng một giấy (vd tờ khai chụp từng trang) vào chung một ô chọn tệp.
+      const rows = new Map();
+      items.forEach((item, i) => {
+        const key = item.newRow ? `new:${item.componentName}` : `row:${item.rowKey}`;
+        if (!rows.has(key)) rows.set(key, { item, entries: [] });
+        rows.get(key).entries.push({ item, payload: payloadForPlanItem(payloadFiles, item, i) });
+      });
+      const attachedNames = [];
+      const skippedNames = [];
+      const errors = [];
+      for (const { item, entries } of rows.values()) {
+        let files = bcaFilesForRow(entries);
+        // Đính kèm lại: dòng tự thêm lượt trước đã mang đủ tệp → không bấm "Thêm mới" lần nữa. Tên giấy tờ do LLM đặt có thể
+        // khác giữa hai lượt → chỉ đòi trùng tên dòng khi chưa nhớ được tệp nguồn.
+        const memory = readUploadedNames();
+        const allRemembered = files.every((f) => (memory[attachSourceKey(f)] || []).length);
+        const reusable = item.newRow && files.length && bcaGroupRows(container).find((tr) =>
+          (allRemembered || attachmentKeyEquals(bcaRowNameInput(tr)?.value, item.componentName))
+          && !filesNotOnRow(tr, files).length);
+        const row = reusable || (item.newRow
+          ? await bcaAddRow(container, item.componentName)
+          : bcaGroupRows(container).find((tr) => bcaText(tr.textContent).includes(item.rowKey)));
+        if (!row) {
+          const seen = bcaGroupRows(container).map((tr) => nodeText(tr).slice(0, 60)).join(" | ");
+          errors.push(item.newRow ? `Không thêm được dòng "${item.componentName}".`
+            : `Không thấy dòng "${item.componentName}" trong nhóm giấy tờ (đang có: ${seen || "không dòng nào"}).`);
+          continue;
+        }
+        const pending = filesNotOnRow(row, files);
+        skippedNames.push(...files.filter((f) => !pending.includes(f)).map((f) => f.name));
+        if (!pending.length) {
+          markAttachmentResult(row, true);
+          continue;
+        }
+        files = pending;
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.checked) checkbox.click(); // MỘT lần, bấm 2 lần là bỏ tick
+        const ok = setFilesOnInput(row.querySelector('input[type="file"]'), files, {
+          allowMultiple: true, assumeConsumed: true,
+        });
+        markAttachmentResult(row, ok);
+        if (ok) rememberUploadedFiles(files);
+        if (ok) attachedNames.push(...files.map((f) => f.name));
+        else errors.push(`Gán tệp thất bại cho dòng "${item.componentName}".`);
+        await sleep(400); // cổng tải tệp lên ngay khi chọn — giãn nhịp giữa các dòng
+      }
+      if (!attachedNames.length && !skippedNames.length) return { error: errors.join("; ") || "Không đính được tệp nào." };
+      return {
+        ok: true, method: "bca", attached: attachedNames.length, fileNames: attachedNames,
+        skipped: skippedNames.length, skippedNames, errors,
+      };
+    } catch (e) {
+      return { error: `Lỗi đính kèm Cổng Bộ Công an: ${e?.message || e}` };
+    } finally {
+      window.__AUTOFILL_HCC_ATTACH_BUSY__ = false;
+    }
+  }
+
   async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
     await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
+    if (isBcaPortal() && Array.isArray(attachments) && attachments.some((item) => item?.target === "bca-row")) {
+      return attachFilesByBcaPlan(payloadFiles, attachments);
+    }
     // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
     if (detectFormKind() === "bacninh" && typeof H.attachBacNinhByPlan === "function") {
       return H.attachBacNinhByPlan(payloadFiles, attachments, opts);
@@ -6085,6 +6377,10 @@
       inputs.find((n) => n.type !== "hidden") || el;
     if (visible.disabled) return false;
 
+    const close = () => document.body?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    // Lịch đang mở sẵn (cán bộ vừa bấm vào ô) bị loại khỏi "lịch vừa mở" bên dưới, kể cả khi đó là lịch của chính
+    // ô này → rơi xuống gõ chữ, flatpickr xoá lại khi lịch đóng. Đóng hết rồi mới mở.
+    if (document.querySelector(".flatpickr-calendar.open")) close();
     const openBefore = new Set(document.querySelectorAll(".flatpickr-calendar.open"));
     visible.dispatchEvent(new FocusEvent("focus"));
     visible.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -6094,7 +6390,6 @@
       Array.from(document.querySelectorAll(".flatpickr-calendar.open")).find((c) => !openBefore.has(c));
     if (!calendar) return false;
 
-    const close = () => document.body?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     const year = calendar.querySelector(".cur-year");
     const month = calendar.querySelector("select.flatpickr-monthDropdown-months");
     if (!year || !month) {
@@ -8108,6 +8403,258 @@
     }
   }
 
+  // ── Cổng DVC Bộ Công an — Thông báo lưu trú: thêm người lưu trú qua modal (comp "bca-guest-list") ──
+  // value = [{hoTen, soDinhDanh, fields: [{id, comp, value}]}], mỗi người một lượt: bấm "THÊM MỚI NGƯỜI LƯU TRÚ" →
+  // modal #addpersonLT → điền theo id (guest_*) đúng thứ tự BE gửi → "Lưu". Trang chỉ thêm dòng vào bảng
+  // #listTTNguoiLuuTru khi hợp lệ; lỗi thì hiện toastr đỏ và GIỮ modal → dừng ở người đó cho cán bộ sửa tay, không
+  // mở thêm modal chồng lên. Người khai (tài khoản) cũng là người lưu trú → tích "Người khai thông tin là Người lưu
+  // trú" để cổng tự đổ dữ liệu VNeID và khoá ô nhân thân; ô bị khoá thì không ghi đè.
+  // Bản copy của tro-ly-nguoi-dan-extension/content/fill-core.js (fillBcaGuestList) — sửa một bên thì port bên kia;
+  // khác duy nhất: ngày gán qua content/bca-datepicker-main.js (CustomEvent) thay vì background.
+  const BCA_GUEST_MODAL = "addpersonLT";
+  const BCA_DATES_REQUEST_EVENT = "__HCC_BCA_DATES_REQUEST__";
+  const BCA_DATES_RESULT_EVENT = "__HCC_BCA_DATES_RESULT__";
+
+  function bcaGuestFold(s) {
+    return String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+
+  function bcaVisible(el) {
+    return !!el && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0;
+  }
+
+  function bcaGuestListed(guest) {
+    const table = document.getElementById("listTTNguoiLuuTru");
+    const text = bcaGuestFold(table?.textContent);
+    if (!text) return false;
+    const id = String(guest.soDinhDanh || "");
+    return id ? text.includes(bcaGuestFold(id)) : text.includes(bcaGuestFold(guest.hoTen));
+  }
+
+  function bcaToastError() {
+    const toasts = Array.from(document.querySelectorAll("#toast-container .toast-error .toast-message"));
+    return toasts.map((t) => t.textContent.trim()).filter(Boolean).pop() || "";
+  }
+
+  async function bcaSetPickerDates(dates) {
+    if (!dates.length) return null;
+    const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const res = await new Promise((resolve) => {
+      const onResult = (event) => {
+        let data;
+        try { data = JSON.parse(String(event.detail || "{}")); } catch { return; }
+        if (data.requestId !== requestId) return;
+        clearTimeout(timer);
+        document.removeEventListener(BCA_DATES_RESULT_EVENT, onResult);
+        resolve(data);
+      };
+      const timer = setTimeout(() => {
+        document.removeEventListener(BCA_DATES_RESULT_EVENT, onResult);
+        resolve(null);
+      }, 3000);
+      document.addEventListener(BCA_DATES_RESULT_EVENT, onResult);
+      document.dispatchEvent(new CustomEvent(BCA_DATES_REQUEST_EVENT, { detail: JSON.stringify({ requestId, dates }) }));
+    });
+    console.log("[AutoFill-STD] BCA datepicker:", res);
+    if (!res?.ok) {
+      // Cầu nối chưa nạp: ít nhất ghi chữ và đóng lịch.
+      for (const { id, value } of dates) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        fillStandardInput(el, value);
+        el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, which: 27, bubbles: true }));
+        el.blur?.();
+      }
+    }
+    return res;
+  }
+
+  // Tích "Người khai thông tin là Người lưu trú": cổng thiếu dữ liệu VNeID thì bật hộp #Noti_Miss_Info và tự bỏ tích
+  // → đóng hộp đó, điền đủ ô như người thường.
+  async function bcaTickSelfGuest() {
+    const box = document.getElementById("chkIS_CHANGED_PERSON");
+    if (!box || box.disabled) return false;
+    if (!box.checked) box.click();
+    await sleep(600);
+    const miss = document.getElementById("Noti_Miss_Info");
+    if (bcaVisible(miss)) {
+      miss.querySelector("[data-dismiss='modal'] button, [data-dismiss='modal']")?.click();
+      await sleep(300);
+    }
+    return box.checked;
+  }
+
+  async function bcaFillGuestField(sub) {
+    const value = String(sub.value ?? "");
+    if (sub.comp === "dom-radio") {
+      const radio = document.querySelector(`#${BCA_GUEST_MODAL} input[type="radio"][name="${CSS.escape(sub.id)}"][value="${CSS.escape(value)}"]`);
+      if (!radio || radio.disabled) return !!radio;
+      if (!radio.checked) radio.click();
+      return radio.checked;
+    }
+    const el = document.getElementById(sub.id);
+    if (!el) return false;
+    if (sub.comp === "dom-select") {
+      // Ô bị khoá chờ cổng mở (chọn quốc tịch Việt Nam mới mở Tỉnh/Xã) hoặc chờ danh sách con nạp theo ô cha.
+      const ready = () => !el.disabled && Array.from(el.options || []).some((o) => o.value && o.value !== "-1");
+      if (!ready()) await waitFor(ready, 3000, 100);
+      if (el.disabled) return true; // ô cổng khoá theo dữ liệu VNeID (đã tích người khai là người lưu trú)
+      return fillStandardSelect(el, value);
+    }
+    if (el.disabled) return true;
+    return fillStandardInput(el, value);
+  }
+
+  async function fillBcaGuest(guest) {
+    const opener = document.querySelector("#btnAddPersonLT button") || document.getElementById("btnAddPersonLT");
+    const modal = document.getElementById(BCA_GUEST_MODAL);
+    if (!opener || !modal) return { ok: false, reason: "không thấy nút Thêm mới người lưu trú" };
+    if (bcaVisible(modal)) return { ok: false, reason: "hộp Thêm mới người lưu trú đang mở dở" };
+    opener.click();
+    if (!await waitFor(() => bcaVisible(document.getElementById("guest_txtCITIZENNAME")), 4000, 100)) {
+      return { ok: false, reason: "không mở được hộp Thêm mới người lưu trú" };
+    }
+    await sleep(300);
+    const notifierId = String(document.getElementById("txtIDENTIFIER_NUMBER")?.value || "").replace(/\D/g, "");
+    if (notifierId && notifierId === String(guest.soDinhDanh || "")) await bcaTickSelfGuest();
+
+    const dates = [];
+    const missing = [];
+    for (const sub of guest.fields || []) {
+      if (sub.comp === "dom-date") {
+        const el = document.getElementById(sub.id);
+        if (el && !el.disabled) dates.push({ id: sub.id, value: String(sub.value) });
+        continue;
+      }
+      try {
+        if (!await bcaFillGuestField(sub)) missing.push(sub.id);
+      } catch (e) {
+        console.warn(`[AutoFill-STD] BCA người lưu trú: lỗi ô ${sub.id}:`, e);
+        missing.push(sub.id);
+      }
+      // Quốc tịch / Tỉnh đổi là cổng mở khối địa chỉ / nạp lại danh sách Xã.
+      await sleep(sub.id === "guest_mulNATIONALITY" || sub.id === "guest_cboRDPROVINCE_ID" ? 400 : 60);
+    }
+    await bcaSetPickerDates(dates);
+    if (missing.length) console.warn(`[AutoFill-STD] BCA người lưu trú ${guest.hoTen}: chưa điền được`, missing);
+
+    document.getElementById("btnSaveNLT")?.click();
+    const saved = await waitFor(() => !bcaVisible(modal) && bcaGuestListed(guest), 5000, 150);
+    if (saved) return { ok: true, missing };
+    return { ok: false, reason: bcaToastError() || "cổng chưa nhận, kiểm tra các ô báo đỏ trong hộp" };
+  }
+
+  // Cơ quan thực hiện (comp "bca-agency", value {province, ward}): chọn Tỉnh (accomStay_cboPROVINCE_ID) rồi CHỜ danh
+  // sách Xã (accomStay_cboADDRESS_ID) nạp theo tỉnh mới chọn Xã — danh sách cũ còn nằm đó tới khi cổng nạp xong, khớp
+  // sớm là chọn nhầm xã trùng tên của tỉnh cũ. Khớp trọn tên (bỏ dấu) → tên bỏ tiền tố nếu chỉ một dòng khớp.
+  // onlyIfEmpty: Tỉnh và Xã đã chọn sẵn (handfree chọn hộ trên thẻ / cán bộ chọn tay) thì giữ nguyên.
+  async function fillBcaAgencyField(f, result) {
+    // Mỗi trang đặt id riêng cho cặp Tỉnh → Xã (BE gửi kèm); thiếu thì là trang Thông báo lưu trú.
+    const city = document.getElementById(f.value?.cityId || "accomStay_cboPROVINCE_ID");
+    const ward = document.getElementById(f.value?.wardId || "accomStay_cboADDRESS_ID");
+    const province = String(f.value?.province || "");
+    const wardName = String(f.value?.ward || "");
+    const picked = (sel) => !!sel?.value && sel.value !== "-1";
+    if (!city || !ward) {
+      result.notFound.push("Cơ quan thực hiện");
+      return;
+    }
+    if (f.onlyIfEmpty && picked(city) && picked(ward)) return;
+    const bare = (s) => bcaGuestFold(s).replace(/^(tinh|thanh pho|phuong|xa|dac khu|thi tran)\s+/, "");
+    const pick = (sel, name) => {
+      const options = Array.from(sel.options || []).filter((o) => o.value && o.value !== "-1");
+      const full = options.filter((o) => bcaGuestFold(o.text) === bcaGuestFold(name));
+      if (full.length === 1) return full[0];
+      const loose = options.filter((o) => bare(o.text) === bare(name));
+      return loose.length === 1 ? loose[0] : null;
+    };
+    const cityOpt = pick(city, province);
+    if (!cityOpt) {
+      result.notFound.push(`Tỉnh/Thành phố cơ quan thực hiện (${province})`);
+      return;
+    }
+    const signature = () => Array.from(ward.options).map((o) => o.value).join("|");
+    const before = signature();
+    const changed = city.value !== cityOpt.value;
+    fillStandardSelect(city, cityOpt.value);
+    const wardOpt = await waitFor(() => ((!changed || signature() !== before) ? pick(ward, wardName) : null), 8000, 250);
+    if (!wardOpt) {
+      result.notFound.push(`Xã/Phường/Đặc khu cơ quan thực hiện (${wardName})`);
+      return;
+    }
+    fillStandardSelect(ward, wardOpt.value);
+    result.filled++;
+    if (f.default) {
+      for (const el of [city, ward]) {
+        const target = standardMarkTarget(el);
+        target?.classList?.remove("autofill-filled");
+        target?.classList?.add("autofill-default");
+      }
+    }
+    // Cổng tự chọn ô "Cơ quan thực hiện" sau setTimeout 100ms và chép xã sang khối cơ sở lưu trú.
+    await sleep(300);
+    // readySelect: ô cổng nạp SAU khi chọn xong cơ quan (vd Trường hợp của trang thường trú) — chờ có option thật rồi
+    // mới điền tiếp, kẻo ô kế tiếp chọn trên danh sách rỗng.
+    const ready = f.value?.readySelect && document.getElementById(f.value.readySelect);
+    if (ready) {
+      await waitFor(() => Array.from(ready.options || []).some((o) => o.value && !["0", "-1"].includes(o.value)), 10000, 250);
+    }
+  }
+
+  // Bảng dòng lặp của cổng Bộ Công an (comp "bca-rows", value {addSelector, rows: [[{id, comp, value}]]}): ô dòng n có
+  // id <tiền tố><n>; dòng chưa có thì bấm nút "thêm" ở dòng cuối (addSelector) rồi chờ ô của dòng đó hiện.
+  async function fillBcaRows(f, result) {
+    const rows = Array.isArray(f.value?.rows) ? f.value.rows : [];
+    for (let i = 0; i < rows.length; i++) {
+      const cells = Array.isArray(rows[i]) ? rows[i] : [];
+      if (!cells.length) continue;
+      const firstId = cells[0].id;
+      if (!document.getElementById(firstId)) {
+        const buttons = Array.from(document.querySelectorAll(f.value.addSelector || "")).filter(bcaVisible);
+        buttons[buttons.length - 1]?.click();
+        if (!await waitFor(() => document.getElementById(firstId), 3000, 100)) {
+          result.notFound.push(`Dòng ${i + 1} bảng ${f.name}`);
+          return;
+        }
+        await sleep(200);
+      }
+      for (const sub of cells) {
+        try {
+          if (await bcaFillGuestField(sub)) result.filled++;
+          else result.notFound.push(sub.id);
+        } catch (e) {
+          console.warn(`[AutoFill-STD] BCA bảng: lỗi ô ${sub.id}:`, e);
+          result.notFound.push(sub.id);
+        }
+        await sleep(60);
+      }
+    }
+  }
+
+  async function fillBcaGuestList(field, result) {
+    const guests = Array.isArray(field.value) ? field.value : [];
+    for (let i = 0; i < guests.length; i++) {
+      const guest = guests[i] || {};
+      const label = `Người lưu trú ${guest.hoTen || i + 1}`;
+      if (bcaGuestListed(guest)) {
+        result.filled++;
+        continue;
+      }
+      const res = await fillBcaGuest(guest);
+      console.log(`[AutoFill-STD] BCA ${label}:`, res);
+      if (res.ok) {
+        result.filled++;
+        await sleep(400);
+        continue;
+      }
+      result.notFound.push(`${label} (${res.reason})`);
+      // Hộp còn mở với lỗi của người này: dừng, những người sau cán bộ tự thêm.
+      for (const rest of guests.slice(i + 1)) result.notFound.push(`Người lưu trú ${rest?.hoTen || ""}`.trim());
+      return;
+    }
+  }
+
   async function fillFormStandard(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
@@ -8135,6 +8682,18 @@
     for (const f of orderedFields) {
       if (inListedPanel(f)) {
         result.filled++;
+        continue;
+      }
+      if (f.comp === "bca-guest-list") {
+        await fillBcaGuestList(f, result);
+        continue;
+      }
+      if (f.comp === "bca-agency") {
+        await fillBcaAgencyField(f, result);
+        continue;
+      }
+      if (f.comp === "bca-rows") {
+        await fillBcaRows(f, result);
         continue;
       }
       // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound (xem standardScopeRoot).
@@ -8261,6 +8820,11 @@
 
     await retryStandardAreaSelects(fields, result, areaDeadlines, failedFieldKeys);
     await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
+    // Cổng DVC Bộ Công an: ô ngày là bootstrap-datepicker — gõ chữ thì lịch treo, giá trị không vào model của picker.
+    if (location.hostname === "dichvucong.dancuquocgia.gov.vn") {
+      await bcaSetPickerDates(fields.filter((f) => f.comp === "dom-date" && f.value && !f.clear)
+        .map((f) => ({ id: f.name, value: String(f.value) })));
+    }
     await reapplyEmptyStandardTextFields(fields);
     await reapplyOwnerDossierCopy(fields);
     // Trả lại khối cấm ghi trước khi tô đỏ, để ô vừa hoàn nguyên được đánh dấu đúng là đang trống.

@@ -2625,7 +2625,7 @@ async function clearPreviousAttachments() {
   return { removedRows, removedFiles };
 }
 
-// ===== Cổng DVC Bộ Công an (đăng ký tạm trú): mục "HỒ SƠ ĐÍNH KÈM" ngay trên trang kê khai =====
+// ===== Cổng DVC Bộ Công an (đăng ký tạm trú / thường trú): mục "HỒ SƠ ĐÍNH KÈM" ngay trên trang kê khai =====
 // Mục chia 5 nhóm theo trường hợp chỗ ở; bảng giấy tờ của nhóm (#tphs_new_<i>) CHỈ nạp khi bấm vào nhóm
 // (onclick load_table_tphs_new(i)). BE (pipelines/dang_ky_tam_tru/attach) chọn MỘT nhóm, mỗi item target
 // "bca-row": dòng sẵn có chứa chữ `rowKey`, hoặc `newRow` → bấm "+ Thêm mới" của nhóm rồi ghi tên giấy tờ.
@@ -2732,6 +2732,9 @@ function bcaAddRowButton(container) {
   // Nút "+ Thêm mới" của cổng là #btnDocument (load_table_tphs_new ẩn/hiện nó theo bảng giấy tờ của nhóm).
   const byId = document.getElementById("btnDocument");
   if (byId && isVisible(byId)) return byId;
+  // Trang đăng ký thường trú: nút "Thêm" (a#add_gtdk[title="Thêm"], id lặp) chỉ có ở DÒNG CUỐI của bảng.
+  const lastRowAdd = Array.from(container?.querySelectorAll('a[title="Thêm"], #add_gtdk') || []).filter(isVisible).pop();
+  if (lastRowAdd) return lastRowAdd;
   for (let scope = container, hops = 0; scope && hops < 4; scope = scope.parentElement, hops++) {
     const button = Array.from(scope.querySelectorAll('button, a, input[type="button"]'))
       .find((el) => bcaText(el.textContent || el.value).includes("them moi"));
@@ -2758,6 +2761,9 @@ async function bcaAddRow(container, name) {
 // Ô "Tên giấy tờ" của dòng thêm mới = ô nhập gần nhất TRƯỚC ô chọn "Hình thức giấy tờ" (cboFILE_TYPE<i>). Dòng có
 // ô ẩn + cột STT ở đầu và ô tên không khai type="text" → đừng đoán theo số cột hay theo [type=text] (trượt sang Ghi chú).
 function bcaRowNameInput(row) {
+  // Trang đăng ký thường trú: ô tên dòng thêm mới là input#txtNAME_FILE<i> (dòng sẵn có là <p> cùng id).
+  const named = row.querySelector('input[id^="txtNAME_FILE"]');
+  if (named) return named;
   const cells = Array.from(row.cells || []);
   const selectAt = cells.findIndex((td) => td.querySelector("select"));
   const before = selectAt > 0 ? cells.slice(0, selectAt) : [];

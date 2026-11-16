@@ -3,6 +3,23 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.2",
+    date: "16/11/2026",
+    items: [
+      "Thêm thủ tục Thông báo lưu trú (Cổng dịch vụ công Bộ Công an): điền cơ quan thực hiện, thông tin cơ sở lưu trú và tự thêm lần lượt từng người lưu trú vào danh sách.",
+      "Thêm thủ tục Đăng ký thường trú (Cổng dịch vụ công Bộ Công an): điền cơ quan thực hiện, trường hợp đăng ký, người đề nghị, chủ hộ, thành viên cùng thay đổi và đính kèm vào đúng nhóm giấy tờ theo trường hợp chỗ ở.",
+      "Cổng Bộ Công an: ô Cơ quan thực hiện lấy theo cơ quan ghi trên tờ khai, giấy không ghi thì lấy theo xã của tài khoản (tô vàng để kiểm tra); ô đã chọn sẵn được giữ nguyên.",
+    ],
+  },
+  {
+    version: "1.27.12",
+    date: "14/11/2026",
+    items: [
+      "Điền xong, hệ thống soát lại biểu mẫu và tự ghi lại các ô cần sửa cả trên biểu mẫu kiểu cũ của Bộ Tư pháp; ô cán bộ đã sửa tay được giữ nguyên.",
+      "Khối địa chỉ trên biểu mẫu kiểu cũ: phần lượt đầu chưa chọn được (tên xã không có trong danh sách của cổng) vẫn được ghi lại khi soát.",
+    ],
+  },
+  {
     version: "1.27.11",
     date: "13/11/2026",
     items: [

@@ -131,6 +131,12 @@
     // Biết tích ô cam kết cuối trang theo id (lệnh tick_commit → content.js::tickCommitBox, cổng DVC Bộ Công an).
     // BE chỉ hiện nút cam "Tôi xin chịu trách nhiệm…" khi thấy cờ này.
     supportsTickCommit: true,
+    // Biết thêm từng người lưu trú qua modal "Thêm mới người lưu trú" (comp bca-guest-list → fill-core.js::
+    // fillBcaGuestList, cổng DVC Bộ Công an). Thiếu cờ → BE báo Thông báo lưu trú cần cập nhật Trợ lý.
+    supportsBcaGuestList: true,
+    // Có engine trang Đăng ký thường trú (ô cơ quan theo cặp id cboRECEIVE_ADDR_*_ID, bảng thành viên comp bca-rows).
+    // Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
+    supportsBcaThuongTru: true,
     // Biết tự bấm "Khai tờ khai" ở đúng dòng bảng Thành phần hồ sơ (lệnh open_eform → guided-steps.js) rồi tự gửi lệnh
     // điền khi tờ khai mở ra. Thiếu cờ → BE bảo công dân tự bấm như cũ.
     supportsOpenEform: true,
@@ -140,6 +146,15 @@
     // Có engine gạt công tắc "cách nhận kết quả" (portal-dvc.js::selectResultMethod). BE chỉ
     // chọn sẵn hộ khi thấy cờ này; thiếu cờ → giữ câu hướng dẫn ba cách để công dân tự gạt.
     supportsResultMethod: true,
+    // Điền đợt 2: lệnh fill_fields có secondPass.requestId thì điền xong hỏi BE kết quả soát rồi ghi lại các ô
+    // BE sửa (applySecondPass). Thiếu cờ → BE không chạy lớp soát.
+    supportsSecondPass: true,
+    // Ghi lại được ô đợt 2 trên form cũ (x-*, content/fill-legacy.js::patchFormLegacy). Thủ tục form cũ chỉ chạy
+    // lớp soát khi có cờ này.
+    supportsSecondPassLegacy: true,
+    // Báo trạng thái khối người yêu cầu trên tờ khai (page_context.taiKhoan, accountAnchorState). Thủ tục tư pháp form cũ
+    // chờ cổng đổ xong dữ liệu tài khoản rồi BE mới chạy lượt trích ở bước Kê khai. Thiếu cờ → BE chạy ngay như cũ.
+    supportsAccountAnchorWait: true,
     // Cổng iGate Bộ Y tế: bấm "Tiếp tục" sang bước "Hình thức nhận kết quả" (guided-steps.js) và chọn ô
     // receivingKind (portal-mae.js::selectReceivingKind). Thiếu cờ → BE giữ câu "tự bấm Nộp hồ sơ".
     supportsIgateResultStep: true,
@@ -241,12 +256,17 @@
     supportsHkdPrepare: true,
     // Luồng hộ kinh doanh: nút "Nộp hồ sơ" — bấm nút Nộp trên Trang xác nhận (cổng tự hỏi xác nhận).
     supportsHkdSubmit: true,
+    // Nút "Tải tờ khai bản giấy (docx)": biết lệnh download_file + gửi nhân thân chủ hộ đọc lại sau khi sao chép.
+    supportsHkdDeclarationDocx: true,
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,
     // Wizard tư pháp: bấm nút "Quay lại" của cổng (guided_click_back) và đếm lại ô tờ khai khi lùi về Kê khai
     // (step_back_scan) để BE điền lại / mời bổ sung. Thiếu cờ → BE không theo khi trang lùi bước.
     supportsStepBack: true,
+    // Cổng nháy toast cảnh báo / lỗi khi công dân tự bấm (content/guided-steps.js bắt) → gửi portal_alert để BE nói
+    // lại. Thiếu cờ → BE bỏ qua sự kiện.
+    supportsPortalAlert: true,
     // Khôi phục hồ sơ đang làm dở sau khi phiên bị gián đoạn (tắt máy, cổng văng ra): BE gợi ý khi chọn lại đúng
     // thủ tục, rồi đưa lại giấy tờ + dữ liệu từng bước bằng các lệnh sẵn có. Thiếu cờ → BE giữ luồng làm mới.
     supportsResume: true,
@@ -454,7 +474,7 @@
   // Lệnh THAO TÁC trên trang (điền, chọn, bấm, đính, chuyển trang). Rảnh tay tắt mic trong lúc trợ lý đang
   // thao tác — công dân nói đè giữa lúc trang đổi thì câu nói lạc lượt. Lệnh chỉ đọc trang không tính.
   const PAGE_WORK_ACTIONS = new Set([
-    "fillFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
+    "fillFields", "patchFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "pickProvinceRow",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
     "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
@@ -562,6 +582,14 @@
     ask(`__event:field_review_status:${JSON.stringify({ stats: msg.stats })}`, "system");
   });
 
+  // Lời cổng nháy ở toast (content/guided-steps.js): BE nói lại cho công dân thấy / nghe — toast hay nằm dưới khung này.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "portalAlert" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    const text = String(msg.text || "").trim().slice(0, 200);
+    if (!text) return;
+    ask(`__event:portal_alert:${JSON.stringify({ text })}`, "system");
+  });
+
   // Cổng liz: công dân vừa tích / bỏ tích ô cam kết trên trang (content/liz/one-page.js đang theo dõi ô) → BE báo bước
   // nộp + hiện nút Lưu và nộp hồ sơ (hoặc rút nút khi bỏ tích).
   chrome.runtime.onMessage.addListener((msg, sender) => {
@@ -620,6 +648,23 @@
   // busy — chọn tỉnh/xã chờ cổng nạp danh sách, sao chép tài khoản reload cả trang; giữ busy thì câu công dân gõ ngay
   // sau câu hỏi bị submitText bỏ qua. Lưu khối chờ chuỗi này xong mới chạy máy điền.
   let hkdChain = Promise.resolve();
+  // File BE dựng theo hội thoại (vd tờ khai bản giấy .docx): tải bằng phiên đăng nhập rồi lưu về máy.
+  async function downloadBackendFile(path, filename) {
+    try {
+      const res = await window.tlndAuth.authFetch(`${BASE_URL}${path}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (e) {
+      addBotMd(`⚠️ Chưa tải được file (${String(e?.message || e)}). Công dân bấm lại nút tải giúp tôi ạ.`);
+    }
+  }
   // BE khởi động lại (deploy, vài giây tới vài chục giây): lệnh hệ thống / cú bấm nút gửi đúng lúc đó mà bỏ luôn
   // là hội thoại đứng im (BE không biết đã điền / đã đính xong). Thử lại tới khi BE lên lại, tối đa 90 giây. Câu
   // gõ / nói tự do không thử lại — công dân nói lại được. Hết hạn mà chưa vào được: nút "Thử lại".
@@ -680,6 +725,7 @@
       const effectivePageResult = {
         ...(pageResult || {}),
         ...(declarationResult?.ok ? declarationResult : {}),
+        taiKhoan: accountAnchorState(formResult),
       };
       const clientContext = {
         url: attachmentResult?.url || effectivePageResult?.url || "",
@@ -1203,7 +1249,32 @@
       || c.provinceRows || c.provinceLoginDialog
   ));
   let lastVneidSidebarDebugSignature = "";
+  // Khối người yêu cầu trên tờ khai đã có dữ liệu tài khoản chưa — mốc để BE biết ai đang đăng nhập khi phân vai.
+  // "" = không có frame tờ khai; "co" = đọc được họ tên / số; "cho" = tờ khai đã hiện mà cổng chưa đổ dữ liệu (cổng
+  // nạp mục này sau khi dựng form); "khong" = chờ quá ACCOUNT_ANCHOR_WAIT_MS (tờ khai không có mục người yêu cầu).
+  const ACCOUNT_ANCHOR_WAIT_MS = 10000;
+  let accountAnchorSince = 0;
+  function accountAnchorState(formResult) {
+    const ctx = formResult?.formContext;
+    if (!ctx) { accountAnchorSince = 0; return ""; }
+    if (String(ctx.applicantFullname || "").trim() || String(ctx.applicantIdentityNumber || "").trim()) {
+      accountAnchorSince = 0;
+      return "co";
+    }
+    if (!accountAnchorSince) accountAnchorSince = Date.now();
+    return Date.now() - accountAnchorSince >= ACCOUNT_ANCHOR_WAIT_MS ? "khong" : "cho";
+  }
+
   async function readPageContext() {
+    const [ctx, form] = await Promise.all([
+      readPageContextRaw(),
+      sendToContent({ action: "collectFormContext" }),
+    ]);
+    if (ctx && typeof ctx === "object") ctx.taiKhoan = accountAnchorState(form);
+    return ctx;
+  }
+
+  async function readPageContextRaw() {
     const [page, modal, business, declaration] = await Promise.all([
       sendToContent({ action: "getPageContext" }),
       sendToContent({ action: "getVneidModalContext" }),
@@ -1253,6 +1324,7 @@
       attachmentTarget: !!ctx?.attachmentTarget,
       businessHost: !!ctx?.businessHost,
       businessStage: String(ctx?.businessStage || ""),
+      taiKhoan: String(ctx?.taiKhoan || ""),
     };
   }
 
@@ -1344,6 +1416,8 @@
       maeAgencyBlock: !!c.maeAgencyBlock,
       // Trang chủ cổng liên thông (đăng nhập xong bị đưa về đây) — BE mở lại link kê khai của thủ tục.
       lienThongHome: !!c.lienThongHome,
+      // Khối người yêu cầu trên tờ khai đã có dữ liệu tài khoản chưa (accountAnchorState).
+      taiKhoan: String(c.taiKhoan || ""),
       // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
       bcaAgencyBlock: !!c.bcaAgencyBlock,
       bcaAgencyDone: !!c.bcaAgencyDone,
@@ -1889,7 +1963,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessPageKey || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.bnAgency || ""}|${ctx.bnAccountForm ? 1 : 0}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.lienThongHome ? 1 : 0}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.lienThongStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessPageKey || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}|${ctx.bcaAgencyBlock ? 1 : 0}|${ctx.bcaAgencyDone ? 1 : 0}|${ctx.loginQrMissing ? 1 : 0}|${ownerFormSig(ctx)}|${ctx.bnAgency || ""}|${ctx.bnAccountForm ? 1 : 0}|${ctx.provinceRows || 0}|${ctx.provinceLoginDialog ? 1 : 0}|${ctx.taiKhoan || ""}|${ctx.lienThongHome ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -2316,7 +2390,7 @@
         </div></details>
       <details class="clegal"><summary>Quyền, nghĩa vụ của chủ thể dữ liệu (Điều 4, Luật 91/2025/QH15)${hm?.legal_title
         ? ` <i class="cn-hm">${window.escapeHtml(hm.legal_title)}</i>` : ""}</summary>
-        <div class="clegal-b">${window.renderMarkdown(card.legal_md || "")}</div></details>
+        <div class="clegal-b"><div class="claw">${window.renderMarkdown(card.legal_md || "")}</div></div></details>
       <button type="button" class="chip callall">✓ Chọn tất cả${hm?.select_all
         ? ` · ${window.escapeHtml(hm.select_all)}` : ""}</button>
       ${checks}
@@ -3045,7 +3119,7 @@
     // Luồng có thẻ nhiều bước (BE gửi pipeline_steps): không dựng thêm card một dòng.
     if ((d.actions || []).some((a) => a.type === "pipeline_steps")) return;
     // Trợ lý hộ kinh doanh đi từng khối (hkd_*): hỏi đáp tại chỗ, không có pha "đang bóc tách" để chờ.
-    if ((d.actions || []).some((a) => String(a.type || "").startsWith("hkd_"))) return;
+    if ((d.actions || []).some((a) => String(a.type || "").startsWith("hkd_") || a.hkd === true)) return;
     const willFill = (d.actions || []).some((a) =>
       a.type === "fill_fields" || a.type === "fill_owner_fields");
     if ((st === "owner_filling" || st === "filling") && prev !== st && !willFill) {
@@ -5442,6 +5516,31 @@
   }
 
   // ── Thi hành actions từ BE (tuần tự) ──
+  // Điền đợt 2: BE soát lại ở nền trong lúc lượt đầu đang điền, sidebar hỏi kết quả rồi ghi lại các ô BE sửa. Điền
+  // xong chờ thêm tối đa SECOND_PASS_WAIT_MS; quá hạn thì thôi, không ghi muộn lên tờ khai đang được rà. Luôn gửi
+  // patchFields kể cả khi không có ô nào: ảnh chụp form của lượt điền được hoãn tới bước này.
+  const SECOND_PASS_WAIT_MS = 8000;
+  const SECOND_PASS_POLL_MS = 1500;
+
+  async function applySecondPass(requestId, baseFields, formSnapshot) {
+    let fields = [];
+    const deadline = Date.now() + SECOND_PASS_WAIT_MS;
+    try {
+      for (;;) {
+        const res = await api.getSecondPass(requestId);
+        if (res?.status === "done") {
+          fields = Array.isArray(res.fields) ? res.fields : [];
+          break;
+        }
+        if (res?.status !== "pending" || Date.now() + SECOND_PASS_POLL_MS > deadline) break;
+        await new Promise((resolve) => setTimeout(resolve, SECOND_PASS_POLL_MS));
+      }
+    } catch (e) {
+      console.warn("[TLND] Hỏi kết quả điền đợt 2 lỗi:", e);
+    }
+    await sendToContent({ action: "patchFields", fields, baseFields, formSnapshot });
+  }
+
   async function runActions(actions) {
     for (const a of actions) {
       if (a.type === "arm_submit_watch") {
@@ -5473,6 +5572,7 @@
             // Khối chủ hộ / người nộp: báo BE đã sao chép tài khoản (người nộp: kèm có trùng chủ hộ không).
             setTimeout(() => ask(`__event:hkd_copied:${JSON.stringify({
               page: a.page, copied: !!res.copied, same: typeof res.sameAsOwner === "boolean" ? res.sameAsOwner : null,
+              owner: res.ownerInfo || null,
             })}`, "system"), 0);
           }
           if (a.type === "hkd_open_block" && (res?.here || res?.missing)) {
@@ -5482,6 +5582,8 @@
             })}`, "system"), 0);
           }
         }).catch(() => {});
+      } else if (a.type === "download_file" && a.path) {
+        void downloadBackendFile(a.path, a.filename || "tai-lieu.docx");
       } else if (a.type === "hkd_prepare") {
         hkdChain = hkdChain.then(async () => {
           const res = await sendToContent({ action: "hkdPrepare" }).catch(() => null);
@@ -5521,6 +5623,7 @@
         }
       } else if (a.type === "start_business_registration" && a.pages) {
         await hkdChain;  // ô vừa điền ngay (hỏi đáp hộ kinh doanh) phải xong trước khi máy điền lưu khối
+        if (a.waitTts) await waitReplyTts(25000);
         pipeDone();
         setStatus("Đang chuẩn bị các khối dữ liệu và giấy tờ đính kèm…");
         try {
@@ -5669,12 +5772,17 @@
         pipeDone(); // dữ liệu về tới nơi — card tiến trình chốt ✓ dù WS có rớt
         if ($steps?.dataset.state === "running") await waitReplyTts(8000);
         setStatus("Đang điền form…");
+        const secondPassId = String(a.secondPass?.requestId || "");
         const res = await sendToContent({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
           formSnapshot: a.formSnapshot || null,
           // Cổng Bắc Ninh: tab chứa các ô của lượt điền này (khối người ủy quyền / đơn đăng ký).
           bnTab: a.bnTab || "",
+          // Có điền đợt 2 thì chụp form sau khi đợt 2 ghi xong, để ảnh là giá trị trợ lý điền cuối cùng.
+          deferSnapshot: !!secondPassId,
         });
+        // Đợt 2 ghi xong mới đếm ô / báo fill_report, nên bước bổ sung ô và đính kèm phía sau thấy giá trị cuối.
+        if (secondPassId && !res?.error) await applySecondPass(secondPassId, a.fields, a.formSnapshot || null);
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
         // Luồng bản 2: BE nói kết quả điền ở khung riêng theo số ô cổng đang hiện → không vẽ chú giải đếm từ payload.
@@ -6074,20 +6182,104 @@
 
   // spoken: câu công dân nói ở màn bắt đầu → gửi luôn làm câu đầu của phiên (BE hiểu "bắt đầu" hay tên thủ
   // tục, kèm thẻ chọn thủ tục) thay vì chào rồi mới xử lý câu nói — tránh hai lời chào chồng nhau.
-  async function beginConversation(spoken = "") {
-    if (busy || endingSession) return;
-    $startBtn.disabled = true;
-    showChatScreen(Date.now());
-    showStartHeard(""); // lần về màn bắt đầu sau (phiên mới) không còn lời cũ
-    markActivity();
-    if (spoken) {
-      addUserText(spoken, "", true);
-      await ask(spoken, "voice");
-    } else {
-      await ask("", "system"); // chỉ lúc này mới tạo conversation và phát câu chào hiện tại
+  // Thông báo bảo vệ dữ liệu cá nhân, chữ do BE gửi trong voice/config. Chỉ mở phiên từ màn bắt đầu mới gọi tới đây,
+  // mà màn bắt đầu luôn là lượt công dân mới (lần đầu, Trò chuyện mới, hết giờ, nộp xong) → hiện mỗi lần mở phiên;
+  // đổi/làm thủ tục khác cùng công dân đi thẳng vào danh sách thủ tục nên không hiện lại.
+  function renderPrivacyNotice(n) {
+    const el = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text) node.textContent = text;
+      return node;
+    };
+    document.getElementById("pdp-title").textContent = n.title || "";
+    document.getElementById("pdp-sum").replaceChildren(...n.summary.map((text, i) => {
+      const li = el("li");
+      li.append(el("span", "pdp-n", String(i + 1)), el("span", "", text));
+      return li;
+    }));
+    const items = Array.isArray(n.items) ? n.items : [];
+    const nodes = [];
+    if (n.detail_title || n.detail_intro) {
+      const head = el("p", "pdp-hd", n.detail_title || "");
+      if (n.detail_intro) head.append(document.createElement("br"), n.detail_intro);
+      nodes.push(head);
     }
-    showProcedurePicker();
-    $startBtn.disabled = false;
+    items.forEach((it, i) => {
+      const box = el("div");
+      const p = el("p");
+      p.append(el("span", "pdp-n", `${i + 1}.`), " ");
+      if (it.heading) p.append(el("b", "", it.heading), " ");
+      if (it.text) p.append(it.text);
+      box.append(p);
+      if (Array.isArray(it.bullets) && it.bullets.length) {
+        const ul = el("ul");
+        for (const [label, text] of it.bullets) {
+          const li = el("li");
+          if (label) li.append(el("b", "", label), " ");
+          li.append(text || "");
+          ul.append(li);
+        }
+        box.append(ul);
+      }
+      nodes.push(box);
+    });
+    if (n.version_line) nodes.push(el("p", "pdp-ver", n.version_line));
+    const $detail = document.getElementById("pdp-detail");
+    $detail.replaceChildren(...nodes);
+    $detail.hidden = true;
+    const $toggle = document.getElementById("pdp-toggle");
+    $toggle.hidden = !items.length;
+    const syncToggle = () => {
+      const open = !$detail.hidden;
+      $toggle.textContent = open ? (n.collapse_label || "Thu gọn") : (n.expand_label || "Xem đầy đủ");
+      $toggle.setAttribute("aria-expanded", String(open));
+    };
+    $toggle.onclick = () => {
+      $detail.hidden = !$detail.hidden;
+      syncToggle();
+      if (!$detail.hidden) $detail.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    syncToggle();
+    document.getElementById("pdp-ok").textContent = n.ok_label || "Đã hiểu";
+  }
+
+  async function showPrivacyNotice() {
+    if (!voiceCfgLoaded) await loadVoiceConfig();
+    const n = voiceCfg?.privacyNotice;
+    if (!Array.isArray(n?.summary) || !n.summary.length) return; // BE cũ không gửi → mở phiên như trước
+    renderPrivacyNotice(n);
+    const $pdp = document.getElementById("pdp");
+    const $ok = document.getElementById("pdp-ok");
+    $pdp.hidden = false;
+    document.getElementById("pdp-body").scrollTop = 0;
+    $ok.focus();
+    await new Promise((resolve) => $ok.addEventListener("click", resolve, { once: true }));
+    $pdp.hidden = true;
+  }
+
+  let beginningConversation = false;
+  async function beginConversation(spoken = "") {
+    // Chờ cán bộ bấm xác nhận thông báo có thể kéo dài → chặn lượt bấm/nói "bắt đầu" thứ hai mở phiên trùng.
+    if (busy || endingSession || beginningConversation) return;
+    beginningConversation = true;
+    $startBtn.disabled = true;
+    try {
+      await showPrivacyNotice();
+      showChatScreen(Date.now());
+      showStartHeard(""); // lần về màn bắt đầu sau (phiên mới) không còn lời cũ
+      markActivity();
+      if (spoken) {
+        addUserText(spoken, "", true);
+        await ask(spoken, "voice");
+      } else {
+        await ask("", "system"); // chỉ lúc này mới tạo conversation và phát câu chào hiện tại
+      }
+      showProcedurePicker();
+    } finally {
+      beginningConversation = false;
+      $startBtn.disabled = false;
+    }
   }
   $startBtn?.addEventListener("click", () => { void beginConversation(); });
 
@@ -6528,6 +6720,7 @@
       markActivity();
       ask(`__event:hkd_copied:${JSON.stringify({
         page: msg.page, copied: !!msg.copied, same: typeof msg.same === "boolean" ? msg.same : null,
+        owner: msg.owner || null,
       })}`, "system");
     })();
   });

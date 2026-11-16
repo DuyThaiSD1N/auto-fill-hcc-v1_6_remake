@@ -1,5 +1,6 @@
 """Compact agent process pipeline for "Đăng ký kết hôn"."""
 
+import copy
 import re
 import unicodedata
 
@@ -251,6 +252,14 @@ def _compact_field_fallback(raw_fields, documents: list[dict]):
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+
+    def field_fallback(raw_fields, documents: list[dict]):
+        read["documents"] = documents
+        return _compact_field_fallback(raw_fields, documents)
+
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -258,13 +267,19 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         comp_by_name=COMPACT_COMP_BY_NAME,
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
-        compact_field_fallback=_compact_field_fallback,
+        compact_field_fallback=field_fallback,
         system_prompt_builder=base_prompt.build_system_prompt,
         # Hồ sơ đủ thẻ + tờ khai + bản án trả tới ~50 field kèm dòng tách địa chỉ: trần chung 1800 token từng cắt
         # mất nhóm field ở cuối. Trần chỉ là giới hạn trên, không làm lượt bình thường chậm hơn.
         max_tokens=3000,
     )
+    raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
     res["fields"] = mapper.enrich(res["fields"], options)
+    if raw_fields and read.get("documents"):
+        from app.pipelines.ket_hon.thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        res["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields, options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     # Đặt sau enrich để khớp trên FIELDS CUỐI (key theo DOM name mà FE điền). Lỗi → bỏ qua,

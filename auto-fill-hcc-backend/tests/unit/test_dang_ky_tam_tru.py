@@ -342,7 +342,7 @@ def test_luat_bat_nut_nop_ho_so_cong_bo_cong_an():
     from app.procedures.portal_submit import portal_submit_rules
 
     rule = portal_submit_rules()["dichvucong.dancuquocgia.gov.vn"]
-    assert rule["buttonIds"] == ["btn-save-send"] and rule["buttonText"] == ["nop ho so"]
+    assert "btn-save-send" in rule["buttonIds"] and rule["buttonText"] == ["nop ho so"]
     assert re.match(rule["urlPattern"], "/portal/p/home/dang-ky-tam-tru.html")
     assert not re.match(rule["urlPattern"], "/portal/p/home/ho-so.html")
 

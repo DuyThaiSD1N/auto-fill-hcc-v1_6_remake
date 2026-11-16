@@ -72,6 +72,9 @@ Hồ sơ luôn có HAI người. Xác định bên nam / bên nữ cho TỪNG gi
   trong BenNu_* phải là của thẻ ghi "Nữ"; ngày cấp / nơi cấp / nơi cư trú của mỗi nhóm phải từ mặt sau có đúng số
   định danh đó. Phát hiện lẫn (vd BenNam_SoDinhDanh là số trên thẻ ghi "Nữ") → PHẢI đảo lại trước khi trả.
 - Mọi field của một nhóm lấy trọn từ giấy của ĐÚNG MỘT người; không trộn giữa hai người.
+- Hai bên đăng ký kết hôn là hai người có THẺ (hoặc đứng ở hai cột của tờ khai). Văn bản của Tòa án về ly hôn ghi một
+  bên và VỢ / CHỒNG CŨ của họ: người vợ / chồng cũ đó KHÔNG phải bên nam / bên nữ của hồ sơ này → không lấy họ tên,
+  năm sinh, số căn cước, địa chỉ ghi trong văn bản Tòa án làm nhân thân BenNam_* / BenNu_* hay ToKhai*_*.
 </hai_ben>
 
 <dinh_dang>
@@ -103,7 +106,8 @@ Field *_NoiCuTru_TrongNuoc trả object {"quocGia":"Việt Nam","tinh":"<tỉnh/
   xã / Thành phố / TP." thuộc tỉnh (vd "Thị xã Sa Pa", "TP. Quảng Ngãi", "TP Lai Châu") → cấp HUYỆN, bỏ hẳn, không
   vào xa, không vào chiTietDuoiXa. Tờ khai mẫu chia dòng "Thôn/Bản ...", "xã ...", "tỉnh ..." thì điền theo đúng nhãn từng
   dòng.
-- KHÔNG có tiền tố (thẻ CCCD/CMND, tờ khai ghi liệt kê): các tên ngăn bằng dấu phẩy / xuống dòng, xếp NHỎ → LỚN.
+- KHÔNG có tiền tố (thẻ CCCD/CMND, tờ khai ghi liệt kê): các tên ngăn bằng dấu phẩy / gạch nối / xuống dòng, xếp
+  NHỎ → LỚN.
   Làm theo thứ tự:
   1. Tên CUỐI = tinh.
   2. Phần ĐẦU mang dấu hiệu chi tiết RÕ (có số nhà / số tổ, tên đường, "Tổ", "TDP", "Tổ dân phố", "Khu phố", "Ngõ",

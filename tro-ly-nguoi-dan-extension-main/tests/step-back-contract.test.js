@@ -44,5 +44,15 @@ test("bấm nút Quay lại nằm cạnh nút đi tiếp của bước đang m�
 
 test("không bấm Quay lại hai lần liền (lùi 2 bước)", () => {
   const code = strip(guided);
-  assert.match(code, /Date\.now\(\) - lastBackAt < BACK_COOLDOWN_MS[\s\S]*?lastBackAt = Date\.now\(\);\s*clickLikeUser\(button\);/);
+  assert.match(code, /Date\.now\(\) - lastBackAt < BACK_COOLDOWN_MS[\s\S]*?lastBackAt = Date\.now\(\);\s*clickBackWithoutReload\(button\);/);
+});
+
+test("bấm Quay lại không để form submit tải lại trang (tải lại = cổng về bước Chủ hồ sơ)", () => {
+  const code = strip(guided);
+  const fn = code.match(/function clickBackWithoutReload\(button\) \{[\s\S]*?\n  \}/);
+  assert.ok(fn, "không tìm thấy clickBackWithoutReload");
+  assert.match(fn[0], /addEventListener\("submit", block, true\)/);
+  assert.match(fn[0], /e\.target === form\) e\.preventDefault\(\)/);
+  assert.match(fn[0], /button\.click\(\);[\s\S]*removeEventListener\("submit", block, true\)/);
+  assert.doesNotMatch(fn[0], /clickLikeUser/);
 });

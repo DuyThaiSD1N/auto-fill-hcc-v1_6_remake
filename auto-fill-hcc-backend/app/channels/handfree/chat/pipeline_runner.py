@@ -22,6 +22,7 @@ from app.db.mongo import get_db
 from app.traces import repo as traces_repo
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
+from app.procedures.registry import get_procedure as core_procedure
 from app.second_pass import service as second_pass
 from app.channels.handfree.procedure_registry import (
     case_pipeline_options,
@@ -395,8 +396,14 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
             # form cho mapper thay vì để nó tự đoán từ giấy tờ.
             options.update(case_pipeline_options(proc, conv))
+            # Thủ tục trên form cũ cần bản extension biết ghi lại ô trên form cũ (cờ riêng, xem second_pass.capability).
+            needed = second_pass.capability(core_procedure(procedure_key))
             options["_secondPass"] = second_pass.wanted(
-                owner_user, ((conv or {}).get("client_capabilities") or {}).get("supportsSecondPass") is True)
+                owner_user, ((conv or {}).get("client_capabilities") or {}).get(
+                    "supports" + needed[0].upper() + needed[1:]) is True)
+            # Xã / phường của tài khoản quầy: gợi ý cho lớp soát khi tên xã trên giấy viết tắt hoặc đọc lệch.
+            owner = owner_user if isinstance(owner_user, dict) else {}
+            options["counterWard"] = str(owner.get("xa") or owner.get("name") or "")
             authorized = _bac_ninh_authorized_block(proc, conv)
             from app.channels.handfree.chat import bac_ninh
 
@@ -456,6 +463,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         with mon.span("persist.db"):
             conv["trace_request_id"] = await tracing.record_process(
                 conv, procedure_key, proc, files, result, pipe_ms, rec=rec,
+                form_context=options.get("formContext"),
             )
             # Điền đợt 2: lượt soát chạy nền, lệnh fill_fields báo sidebar hỏi kết quả theo đúng mã lượt này.
             conv["second_pass"] = bool(second) and await second_pass.start(

@@ -4,7 +4,8 @@ import re
 import unicodedata
 from datetime import date
 
-from app.pipelines._shared.area_remap import drop_fabricated_province, is_current_area, province_for_ward, remap_area
+from app.pipelines._shared.area_remap import (accent_only_ward, drop_fabricated_province, is_current_area,
+                                              province_for_ward, remap_area)
 from app.pipelines._shared.cccd import id_birth_year, id_gender
 from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
@@ -13,7 +14,7 @@ from app.pipelines._shared.compact_agent.issuer import (
     normalize_issuer,
     short_issuer,
 )
-from app.pipelines._shared.ethnic_normalize import co_ho_local_group
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.tai_khoan import account_context, matches_account
 
@@ -74,11 +75,19 @@ _OTHER = "Khác"
 _ID_LABEL_RE = re.compile(r"cmnd|cccd|can cuoc|chung minh|giay to tuy than|giay to hop le|dinh danh")
 _ID_LOOKAHEAD_LINES = 3
 
-# Trích lục khai tử/khai sinh in hai dòng "Số:": số trích lục đầu giấy ("27/TLKT-BS", "2575/2026/TLKT-BS") và
-# "Số: <n> ngày ..." dưới nơi đăng ký. Ô Số đăng ký lấy số đầu giấy; LLM hay vớ dòng dưới rồi tự ghép năm, mà
-# siết prompt thì các giấy khác mất luôn phần năm → chốt ở đây.
-_EXTRACT_NO_RE = re.compile(r"(?<![\d/])(\d{1,6}(?:\s*/\s*\d{4})?\s*/\s*TLK([TS])(?:\s*-\s*[A-Z]{1,3})?)\b")
-_EXTRACT_CODE_EVENT = {"T": "death", "S": "birth"}
+# Trích lục (bản sao) in hai dòng "Số:": số của bản trích lục đầu giấy ("27/TLKT-BS", "2575/2026/TLKT-BS") và số
+# đăng ký gốc "Số: <n> ngày ..." dưới dòng "Đã được đăng ký ... tại". Ô Số đăng ký là số gốc; LLM lúc vớ số đầu giấy,
+# lúc lấy đúng dòng gốc nhưng tự ghép năm từ ngày → chốt theo dòng gốc khi dòng đó có và chỉ có một số.
+# Chỉ số có đuôi "-BS" mới là số của BẢN SAO trích lục; ".../TLCCHT", ".../TLKT" không đuôi là số của chính việc
+# đăng ký ghi trong trích lục đó.
+_COPY_NO_RE = re.compile(r"/\s*TL[A-ZĐ]{1,6}\s*-\s*BS\b", re.IGNORECASE)
+_REGISTERED_AT_RE = re.compile(
+    r"^(?:da (?:duoc )?)?dang ky (khai sinh|khai tu|ket hon|giam ho|nhan cha|nuoi con nuoi|ly hon)?[a-z ]{0,20}\btai\b"
+    r"|^noi ghi\b")
+_EVENT_WORD = {"birth": "khai sinh", "death": "khai tu", "marriage": "ket hon"}
+_BODY_NO_RE = re.compile(r"(quyển\s+)?(?<![^\W\d_])(?:cấp\s+)?số\s*:?\s*(\d{1,6}(?:\s*/\s*\d{4})?)(?![\d/])",
+                         re.IGNORECASE)
+_BODY_NO_LOOKAHEAD_LINES = 2
 
 _RESIDENCE_LABEL_RE = re.compile(r"\b(cu tru|thuong tru|tam tru)\b")
 
@@ -170,14 +179,57 @@ def _id_card_numbers(values: dict, options: dict) -> set[str]:
     return {n for n in found if len(n) in (9, 12)}
 
 
-def _extract_number(event: str, ocr_text: str) -> str:
-    """Số in đầu trích lục đúng loại cần cấp. Hồ sơ có tờ khai thì số theo tờ khai; nhiều số khác nhau (trích lục
-    của nhiều người) thì không biết của ai → trả rỗng để giữ số lượt trích đọc ra."""
-    if "to khai" in _fold(ocr_text):
-        return ""
-    found = {re.sub(r"\s+", "", match[1]) for match in _EXTRACT_NO_RE.finditer(ocr_text)
-             if _EXTRACT_CODE_EVENT[match[2]] == event}
+def _registered_lines(event: str, ocr_text: str) -> list[tuple[list[str], int]]:
+    """Các dòng "Đã (được) đăng ký <việc> tại: ..." / "Nơi ghi: ..." đúng loại việc cần cấp (dòng ghi việc khác bỏ)."""
+    lines = [line for line in ocr_text.splitlines() if line.strip()]
+    out = []
+    for index, line in enumerate(lines):
+        match = _REGISTERED_AT_RE.match(_fold(line))
+        if match and (not match.group(1) or match.group(1) == _EVENT_WORD.get(event, match.group(1))):
+            out.append((lines, index))
+    return out
+
+
+def _body_number(event: str, ocr_text: str) -> str:
+    """Số đăng ký gốc ở dòng thân trích lục (dòng "đăng ký ... tại" hoặc ngay sau nó). Nhiều số khác nhau (trích lục
+    của nhiều người, tờ khai ghi lệch) thì không biết số nào đúng → rỗng."""
+    found = set()
+    for lines, index in _registered_lines(event, ocr_text):
+        window = [lines[index].partition(":")[2] or lines[index]] + lines[index + 1:index + 1 + _BODY_NO_LOOKAHEAD_LINES]
+        for line in window:
+            match = next((m for m in _BODY_NO_RE.finditer(line) if not m.group(1)), None)
+            if match:
+                found.add(re.sub(r"\s+", "", match.group(2)))
+                break
     return found.pop() if len(found) == 1 else ""
+
+
+# Giấy mẫu cũ in số và quyển số chung một ô "Số: 359,Q.S: 03" ("Q.S" / "QS" = quyển số).
+_BOOK_IN_NO_RE = re.compile(r"\s*[,;/]?\s*(?:quyển\s*số|q\.?\s*s)\s*[:.]?\s*(\S+)\s*$", re.IGNORECASE)
+
+
+def _split_book_no(value) -> tuple[str, str]:
+    """(số đăng ký, quyển số) khi lượt trích chép cả quyển số vào ô số."""
+    text = " ".join(str(value or "").split())
+    match = _BOOK_IN_NO_RE.search(text)
+    if not match or not text[:match.start()].strip():
+        return text, ""
+    return text[:match.start()].strip(" ,;/"), match.group(1).strip(" .,;")
+
+
+def _registration_number(event: str, value, ocr_text: str) -> str:
+    """Số đăng ký gốc thay cho số lượt trích khi lượt trích bỏ trống, lấy số của bản trích lục ("-BS"), hoặc chép
+    lẫn cả chữ "ngày ..." của dòng gốc. Số khác (kể cả cách ghi "<số>/<năm>" quen dùng) thì giữ."""
+    text = " ".join(str(value or "").split())
+    body = _body_number(event, ocr_text)
+    if not body:
+        return text
+    leading = re.match(r"\d+", text)
+    if not text or _COPY_NO_RE.search(text):
+        return body
+    if leading and "ngay" in _fold(text) and leading.group(0).lstrip("0") == body.split("/")[0].lstrip("0"):
+        return body
+    return text
 
 
 def _labeled_text(lines: list[str], index: int) -> str:
@@ -213,10 +265,34 @@ def _death_registrar(ocr_text: str) -> str:
     if "to khai" in _fold(ocr_text):
         return ""
     lines = [line for line in ocr_text.splitlines() if line.strip()]
-    found = {re.sub(r"\s+", " ", _labeled_text(lines, index).partition(":")[2]).strip()
+    found = {_agency_part(_labeled_text(lines, index).partition(":")[2])
              for index, line in enumerate(lines) if _fold(line).startswith("da duoc dang ky khai tu tai")}
     found.discard("")
     return found.pop() if len(found) == 1 else ""
+
+
+def _agency_part(text: str) -> str:
+    """Phần cơ quan của dòng "đăng ký ... tại": dòng in liền / nối dòng kế "<cơ quan>. Số: <n> ngày ..." hay "Nơi ghi:
+    <cơ quan>, Sổ đăng ký ..." → dừng trước chữ "Số" / "Sổ"."""
+    text = re.split(r"(?i)\s*[,;.]?\s*(?<![^\W\d_])(?:quyển\s+số|số|sổ)\b", text)[0]
+    return " ".join(text.split()).strip(" ,.;")
+
+
+def _full_registrar(event: str, value, ocr_text: str) -> str:
+    """Cơ quan ở dòng "đăng ký ... tại" của trích lục khi lượt trích bỏ trống hoặc chỉ chép phần đầu của chính dòng
+    đó (cắt mất huyện / tỉnh). Có tờ khai, hoặc nhiều nơi khác nhau → giữ lượt trích."""
+    text = " ".join(str(value or "").split())
+    if "to khai" in _fold(ocr_text):
+        return text
+    found = set()
+    for lines, index in _registered_lines(event, ocr_text):
+        found.add(_agency_part(_labeled_text(lines, index).partition(":")[2]))
+    found.discard("")
+    if len(found) != 1:
+        return text
+    full = found.pop()
+    key = lambda v: re.sub(r"\bubnd\b", "uy ban nhan dan", _fold(v)).replace(",", " ").split()
+    return full if not text or (key(full)[:len(key(text))] == key(text) and len(key(full)) > len(key(text))) else text
 
 
 def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
@@ -252,6 +328,11 @@ def _area(value, ocr_text: str = ""):
         found = province_for_ward(remapped["xa"])
         if found:
             remapped = {**remapped, "tinh": found[0], "xa": found[1]}
+    ward = str(remapped.get("xa") or "")
+    if ward and not is_current_area(str(remapped.get("tinh") or ""), ward):
+        # Tên xã chỉ lệch dấu thanh với một xã hiện hành của tỉnh (OCR chữ viết tay đọc nhầm dấu) → xã đó.
+        ward = accent_only_ward(str(remapped.get("tinh") or ""), ward) or ward
+        remapped = {**remapped, "xa": ward}
     # Xã không chọn được trên cổng: extension sẽ vớ nhầm option gần giống hoặc để trống mà không báo.
     # Bỏ trống xã, đánh dấu để tô viền vàng + cảnh báo cán bộ chọn lại. Không nối tên xã đã đọc vào địa chỉ chi
     # tiết: ô đó chỉ ghi số nhà / đường / thôn, xã cũ nằm thêm ở đó là thừa (người dùng báo 13/11).
@@ -340,6 +421,13 @@ def _relation_evidence_ok(block: str, relation: str, account_name: str, account_
     return bool(name_match(account_name, quote)) or id_on_line
 
 
+def _number_on_paper(number: str, ocr_text: str) -> bool:
+    """Số 12 chữ số có in nguyên dãy trên giấy (bỏ dấu chấm / khoảng trắng chen giữa)."""
+    if len(number) != 12 or not ocr_text:
+        return False
+    return re.search(rf"(?<!\d){number}(?!\d)", re.sub(r"(?<=\d)[ .](?=\d)", "", ocr_text)) is not None
+
+
 def _relation(values: dict, context: str, options: dict | None, event: str) -> tuple[str, str, str]:
     """(nhãn quan hệ, quan hệ khác, cảnh báo). Số định danh hai phía quyết định "Bản thân"."""
     account_name, account_id = requester_context(options)
@@ -390,6 +478,12 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
     if relation == _SELF:
         # Phân vai đã đối chiếu người (số lệch 1 chữ số do OCR / viết tay vẫn là cùng người).
         id_matches = bool(account_id and subject_id) and _near_id(account_id, subject_id)
+        # Họ tên trên giấy cũ / viết tay lệch một chữ cái so với tài khoản, số trên giấy là CMND cũ: vẫn cùng người
+        # khi chính số định danh của tài khoản có in trên giấy tờ trong hồ sơ (thẻ căn cước của người đó).
+        near_self = bool(account_name and subject_name) and bool(name_match(account_name, str(subject_name))) and (
+            _number_on_paper(account_id, str((options or {}).get("_ocr_text") or "")))
+        if near_self:
+            id_matches = True
         if deceased or (account_id and subject_id and not id_matches) or not (id_matches or same_name):
             return _OTHER, "", ("Phân vai kết luận \"Bản thân\" nhưng người nộp không khớp người được cấp — đã "
                                 "chọn \"Khác\", cán bộ kiểm tra lại ô Quan hệ.")
@@ -527,7 +621,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
     # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
-    add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
+    add("citizenField32", normalize_ethnic(co_ho_local_group(values.get("NguoiDuocCap_DanToc"))) or None)
     raw_area = values.get("NguoiDuocCap_NoiCuTru")
     # Nơi chết không phải nơi cư trú: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
     if event == "death" and _copied_from_death_place(raw_area, ocr_text):
@@ -553,17 +647,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     registrar = values.get("GiayTo_CoQuanDangKy")
     if registrar and event == "death":
         registrar = _death_registrar(ocr_text) or registrar
+    registrar = _full_registrar(event, registrar, ocr_text)
     add("citizenHoSo_CoQuanDangKy", registrar)
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
     # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
     # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.
-    registration_no = _extract_number(event, ocr_text) or values.get("GiayTo_So")
+    registration_no, book_no = _split_book_no(values.get("GiayTo_So"))
+    registration_no = _registration_number(event, registration_no, ocr_text)
     if _digits(registration_no) in _id_card_numbers(values, options):
         warnings.append("Số đăng ký đọc ra trùng số CMND/CCCD trong hồ sơ — đã bỏ trống, cán bộ nhập ô Số đăng ký "
                         "theo dòng \"Số:\" ở đầu giấy hộ tịch.")
         registration_no = ""
     add("citizencauhoi3", registration_no)
-    add("citizencauhoi4", values.get("GiayTo_QuyenSo"))
+    add("citizencauhoi4", values.get("GiayTo_QuyenSo") or book_no)
     add("citizencauhoi5", values.get("GiayTo_NgayDangKy"))
     quantity = _digits(values.get("SoLuongBanSao"))
     add("citizenSoLuongBanSao", str(int(quantity)) if quantity and int(quantity) > 0 else "")

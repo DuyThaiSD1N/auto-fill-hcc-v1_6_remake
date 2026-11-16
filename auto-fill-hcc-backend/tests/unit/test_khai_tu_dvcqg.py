@@ -119,7 +119,7 @@ def test_full_case_order_codes_and_relation():
     assert by["citizenGioitinh_NgdcKT"]["code"] == "1" and by["citizenDantoc_NgdcKT"]["code"] == "01"
     assert by["citizenField19"]["code"] == "2021-03-02"
     assert by["citizenNoicapgiaytotuythan_NgdcKT"]["value"]       # thẻ 12 số → mặc định theo ngày cấp
-    assert by["citizenGiomat"]["value"] == "9" and by["citizenPhutmat"]["value"] == "30"
+    assert by["citizenGiomat"]["value"] == "09" and by["citizenPhutmat"]["value"] == "30"
     assert by["citizenNDKLoaidangky"]["code"] == "1"             # chết 3 ngày trước → đúng hạn
     assert names.index("citizenNDKnoicutru") < names.index("citizenNDKTinh_Thtru")
     assert by["citizenNDKXa_Thtru"]["value"] == "Xã Tam Hợp"
@@ -143,6 +143,73 @@ def test_relation_from_declaration_only_when_requester_is_account():
     assert "citizenmoiquanhe" not in _by(out) and warnings
     out, _ = _enrich(BASE, _context("Cháu nội"), account=other)
     assert _by(out)["citizenmoiquanhe"]["value"] == "Cháu nội" and _by(out)["citizenmoiquanhe"]["default"]
+
+
+def test_quan_he_to_khai_khi_so_lech_vai_chu_so_ma_trung_ten():
+    # Số tờ khai viết tay lệch 1 chữ số (OCR) với tài khoản, họ tên trùng khi bỏ dấu → người nộp chính là người yêu cầu.
+    near = {**BASE, "NguoiYeuCau_HoTen": "Nguyễn Văn B", "NguoiYeuCau_SoDinhDanh": "001090000003",
+            "NguoiYeuCau_QuanHe": "Con đẻ"}
+    by = _by(_enrich(near, _context(""))[0])
+    assert by["citizenmoiquanhe"]["value"] == "Con đẻ"
+    other = {**near, "NguoiYeuCau_HoTen": "Trần Thị C"}
+    assert "citizenmoiquanhe" not in _by(_enrich(other, _context(""))[0])
+
+
+def test_quan_he_khong_ghi_chu_khong_xac_dinh():
+    vague = {**BASE, "NguoiYeuCau_HoTen": "Nguyen Van B", "NguoiYeuCau_SoDinhDanh": "001090000002",
+             "NguoiYeuCau_QuanHe": "Không xác định"}
+    assert "citizenmoiquanhe" not in _by(_enrich(vague, _context(""))[0])
+
+
+def test_hai_the_khong_giay_khai_tu_agent_bo_trong_thi_nguoi_sinh_truoc_la_nguoi_mat():
+    docs = [{"text": "CĂN CƯỚC CÔNG DÂN\nSố định danh: 001150000011"}, {"text": "CĂN CƯỚC\nSố định danh: 001190000022"}]
+    empty = "<nguoi_mat>\nHọ tên: không có\nSố định danh: không có\n</nguoi_mat>"
+    assert "Số định danh: 001150000011" in reason._render_context(empty, {}, docs)
+    # Một thẻ là của tài khoản → thẻ còn lại là người mất.
+    account = {"formContext": {"applicantIdentityNumber": "001150000011"}}
+    assert "Số định danh: 001190000022" in reason._render_context(empty, account, docs)
+    # Có giấy báo tử hoặc agent đã chốt người mất → không đụng.
+    assert "001150000011" not in reason._render_context(empty, {}, [*docs, {"text": "GIẤY BÁO TỬ"}])
+    chosen = "<nguoi_mat>\nHọ tên: NGUYEN VAN A\n</nguoi_mat>"
+    assert "001150000011" not in reason._render_context(chosen, {}, docs)
+    # Giấy khai sinh (khai tử trẻ nhỏ): số trên giấy khai sinh không phải thẻ → không áp.
+    assert "001150000011" not in reason._render_context(empty, {}, [*docs, {"text": "GIẤY KHAI SINH"}])
+    # Agent dẫn luật hai thẻ mà chốt người sinh sau → theo luật đã dẫn; chốt vì căn cứ khác thì giữ.
+    inverted = ("<nguoi_mat>\nHọ tên: B\nSố định danh: 001190000022\n"
+                "Căn cứ phân vai: Chỉ có 2 CCCD, người sinh sau là người mất\n</nguoi_mat>")
+    assert "Số định danh: 001150000011" in reason.section(reason._render_context(inverted, {}, docs), "nguoi_mat")
+    own = inverted.replace("Chỉ có 2 CCCD, người sinh sau là người mất", "Bản cam đoan ghi người này đã chết")
+    assert "001150000011" not in reason._render_context(own, {}, docs)
+    both = "<nguoi_yeu_cau>\nHọ tên: A\nSố định danh: 001150000011\n</nguoi_yeu_cau>\n" + empty
+    assert "001150000011" not in reason.section(reason._render_context(both, {}, docs), "nguoi_yeu_cau")
+
+
+def test_nguoi_mat_trung_tai_khoan_thi_lay_the_con_lai():
+    docs = [{"text": "CĂN CƯỚC CÔNG DÂN\nSố định danh: 001150000011"}, {"text": "CĂN CƯỚC\nSố định danh: 001190000022"}]
+    account = {"formContext": {"applicantIdentityNumber": "001150000011"}}
+    agent = "<nguoi_mat>\nHọ tên: A\nSố định danh: 001150000011\nCăn cứ phân vai: CCCD\n</nguoi_mat>"
+    assert "Số định danh: 001190000022" in reason.section(reason._render_context(agent, account, docs), "nguoi_mat")
+
+
+def test_agent_ghi_chu_tai_khoan_la_nguoi_mat_thi_bo():
+    docs = [{"text": "GIẤY KHAI SINH\nHọ tên: A"}, {"text": "CĂN CƯỚC\nSố định danh: 001190000022"}]
+    account = {"formContext": {"applicantIdentityNumber": "001190000022"}}
+    agent = "<nguoi_mat>\nHọ tên: B\nSố định danh: 001190000022\n</nguoi_mat>\n<quan_he>\nKết luận: Cha\n</quan_he>"
+    out = reason._render_context(agent, account, docs)
+    assert "001190000022" not in reason.section(out, "nguoi_mat") and "Cha" in reason.section(out, "quan_he")
+
+
+def test_nguoi_mat_trung_chu_tai_khoan_thi_bo_trong():
+    own = {**BASE, "NguoiMat_HoTen": "Nguyen Van B", "NguoiMat_SoDinhDanh": "001090000002", "NguoiMat_SoGiayTo": ""}
+    out, warnings = _enrich(own, _context("Con"))
+    by = _by(out)
+    assert "citizenNDK_HoVaTen" not in by and "citizenNDK_SoDinhDanh" not in by and warnings
+    assert "citizenNDK_HoVaTen" in _by(_enrich(BASE, _context("Con"))[0])
+    # Tờ khai chép nhầm số của người yêu cầu sang dòng người mất: giữ họ tên, chỉ bỏ số giấy tờ.
+    copied = {**BASE, "NguoiMat_SoDinhDanh": "001090000002", "NguoiMat_SoGiayTo": "001090000002"}
+    by = _by(_enrich(copied, _context("Con"))[0])
+    assert by["citizenNDK_HoVaTen"]["value"] == "NGUYEN VAN A" and "citizenNDK_SoDinhDanh" not in by
+    assert "citizenSogiaytotuythan_NgdcKT" not in by
 
 
 def test_cmnd_issuer_not_defaulted_and_copies_default_zero():

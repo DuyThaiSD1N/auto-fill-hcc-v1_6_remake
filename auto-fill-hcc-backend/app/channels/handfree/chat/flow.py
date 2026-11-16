@@ -496,6 +496,18 @@ def _docs_page_context(raw: dict | None) -> dict:
     }
 
 
+def _account_anchor_pending(conv: dict, proc: dict, page_context: dict | None) -> bool:
+    """Tờ khai tư pháp form cũ đã hiện nhưng cổng chưa đổ dữ liệu tài khoản vào khối người yêu cầu (watcher báo
+    taiKhoan="cho"): chưa chạy lượt trích ở bước Kê khai. Lượt trích lấy mốc tài khoản từ form_context của lượt chat;
+    chạy lúc khối này còn trống thì phân vai không biết ai đang đăng nhập (người yêu cầu là bản thân / cha / mẹ / người
+    khác). Watcher tự báo lại khi khối có dữ liệu ("co") hoặc chờ quá lâu ("khong" — tờ khai không có mục này)."""
+    if (conv.get("client_capabilities") or {}).get("supportsAccountAnchorWait") is not True:
+        return False
+    if proc.get("flowProfile") != "tu-phap":
+        return False
+    return str((page_context or {}).get("taiKhoan") or "") == "cho"
+
+
 def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | None = None) -> str:
     """Suy ra đúng nghiệp vụ từ trang hiện tại theo flow profile của thủ tục.
 
@@ -2014,10 +2026,21 @@ def _doi_ma_thu_tuc_reply(conv: dict, proc: dict, page_url: str) -> Reply | None
     return r
 
 
+def _missing_capability(conv: dict) -> bool:
+    """Thủ tục khai `requiresCapability` mà bản extension trên máy chưa khai cờ đó."""
+    need = str((get_procedure(conv.get("procedure_key") or "") or {}).get("requiresCapability") or "")
+    return bool(need) and (conv.get("client_capabilities") or {}).get(need) is not True
+
+
 def _start_guide_login(conv: dict) -> Reply:
     if tpm.is_active(get_procedure(conv.get("procedure_key") or ""), conv) and not tpm.supported(conv):
         # Engine cũ không điền/đính được trang nộp một trang — dẫn vào là công dân kẹt giữa chừng.
         return tpm.update_required_reply(conv)
+    if _missing_capability(conv):
+        # Bản cũ chưa có engine cho trang này (vd thêm người lưu trú qua modal) — dẫn vào là công dân kẹt giữa chừng.
+        r = Reply(*_fmt(vi.BCA_UPDATE_REQUIRED, procedure=_proc_label(conv)))
+        r.chips = [{"label": "🆕 Làm thủ tục khác", "send": "__action:new_procedure"}]
+        return r
     conv["state"] = "guide_login"
     # MỐC BẮT ĐẦU HỒ SƠ. Đặt ở đây chứ không dùng conversations.created_at vì đây mới là
     # điểm "một hồ sơ mới khởi động" trong luồng: mọi đường làm thủ tục đều đi qua đây
@@ -3297,11 +3320,13 @@ def _bca_agency_ask(conv: dict) -> Reply:
     """
     conv["bca_agency_pending"] = True
     loc = conv.get("location") or {}
+    place = str((get_procedure(conv.get("procedure_key") or "") or {}).get("bcaAgencyPlace") or "")
     if loc.get("province") and loc.get("ward"):
-        r = Reply(*_fmt(vi.BCA_AGENCY_ASK_PREFILLED, ward=loc["ward"], province=loc["province"]))
+        tpl = vi.BCA_STAY_AGENCY_ASK_PREFILLED if place else vi.BCA_AGENCY_ASK_PREFILLED
+        r = Reply(*_fmt(tpl, ward=loc["ward"], province=loc["province"], place=place))
         r.chips = [dict(_BCA_FILL_AGENCY_CHIP)]
     else:
-        r = Reply(*_fmt(vi.BCA_AGENCY_ASK))
+        r = Reply(*_fmt(vi.BCA_STAY_AGENCY_ASK if place else vi.BCA_AGENCY_ASK, place=place))
     r.cards = [_bca_location_card(conv)]
     return r
 
@@ -3744,6 +3769,19 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
 
     if target == "declaration" and _eform_pending(conv, proc):
         return await _eform_start(conv, proc, files_count=files_count)
+
+    if target == "declaration" and _account_anchor_pending(conv, proc, page_context):
+        # Chờ tờ khai đổ xong dữ liệu tài khoản: đứng ở trạng thái chờ sang Kê khai để page_status kế tiếp của
+        # watcher (khi khối người yêu cầu có dữ liệu) khởi chạy lượt trích, không bắt công dân bấm lại.
+        conv["owner_phase"] = False
+        conv["state"] = "owner_waiting_next"
+        conv["pipeline_status"] = ""
+        conv["main_processing_started"] = False
+        tpl = vi.DOCS_COMPLETE_NEXT_STEP if received >= total else vi.DOCS_FORCED_MISSING
+        r = Reply(*_fmt(tpl, received=received, total=total, files_count=files_count,
+                        sid=conv.get("upload_session_id", "")))
+        r = tpm.docs_received_reply(conv, proc, r, files_count, all_received=received >= total)
+        return tu_phap_v2.docs_received_reply(conv, proc, r, files_count, all_received=received >= total)
 
     if target == "declaration":
         conv["owner_phase"] = False
@@ -4668,6 +4706,8 @@ async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
     ):
         if conv.get("main_processing_started"):
             return Reply()
+        if _account_anchor_pending(conv, proc, intent.payload):
+            return Reply()  # chờ watcher báo khối người yêu cầu đã có dữ liệu tài khoản
         from app.channels.handfree.chat import pipeline_runner
         conv["main_processing_started"] = True
         conv["auto_attach_after_fill"] = bool(
@@ -4937,6 +4977,14 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             _clear_documents_adjustment(conv)
             # Cổng Lai Châu: thêm nút cam "Đồng ý và tiếp tục" (trợ lý bấm sang Thành phần hồ sơ).
             return lai_chau.fill_report_reply(conv, proc, v2)
+        if proc.get("bcaGuestList"):
+            # Thông báo lưu trú: trang không có mục đính kèm → không mời đính, nhắc tích cam kết rồi nộp.
+            _clear_documents_adjustment(conv)
+            r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
+                            note=vi.BCA_STAY_SUBMIT_HINT, commit=str(proc.get("submitCommitLabel") or "")))
+            r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
+                       _supplement_documents_chip(), *_commit_chip(conv, proc)]
+            return r
         # Vòng bổ sung tách câu đuôi (bước tiếp theo) thành bong bóng riêng sau bong bóng số ô trống.
         reviewing = field_review.reviewing_fill(conv, proc, intent.payload.get("review"))
         r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,

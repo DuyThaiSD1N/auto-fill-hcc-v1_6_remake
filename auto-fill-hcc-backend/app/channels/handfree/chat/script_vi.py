@@ -463,6 +463,51 @@ BCA_AGENCY_ASK_PREFILLED = {
     ),
 }
 
+# Cổng Bộ Công an, thủ tục khai `bcaAgencyPlace` (Thông báo lưu trú: "nơi lưu trú", Đăng ký thường trú: "nơi đăng ký
+# thường trú"): cơ quan thực hiện là công an xã/phường của nơi đó. Câu tạm trú (BCA_AGENCY_ASK*) giữ nguyên vì đã có
+# bản Mông.
+BCA_STAY_AGENCY_ASK = {
+    "md": (
+        "Dạ, {place} ở **tỉnh/thành phố** và **xã/phường** nào ạ?\n\n"
+        "Công dân chọn **Tỉnh/Thành phố** rồi **Phường/Xã** ở thẻ bên dưới, xong bấm **Điền cơ quan thực hiện** "
+        "để tôi chọn giúp trên trang."
+    ),
+    "tts": (
+        "Dạ, công dân chọn tỉnh, thành phố rồi xã, phường {place} ở bên dưới, "
+        "xong bấm Điền cơ quan thực hiện giúp tôi ạ."
+    ),
+}
+
+BCA_STAY_AGENCY_ASK_PREFILLED = {
+    "md": (
+        "Dạ, {place} ở **{ward}, {province}** phải không ạ?\n\n"
+        "Nếu đúng, công dân bấm **Điền cơ quan thực hiện** là tôi chọn giúp trên trang. "
+        "Nếu ở nơi khác, công dân chọn lại ở thẻ bên dưới nhé."
+    ),
+    "tts": (
+        "Dạ, {place} ở {ward}, {province} phải không ạ? Nếu đúng, công dân bấm "
+        "Điền cơ quan thực hiện là tôi chọn giúp trên trang."
+    ),
+}
+
+# Điền xong Thông báo lưu trú: trang không có mục đính kèm → rà danh sách người lưu trú, tích cam kết rồi nộp.
+BCA_STAY_SUBMIT_HINT = {
+    "md": (
+        "\n\nCông dân xem lại bảng **Thông tin về người lưu trú** (đủ người, đúng thông tin), rồi bấm ô "
+        "**\"{commit}\"** và bấm **Nộp hồ sơ** ạ."
+    ),
+    "tts": " Công dân xem lại danh sách người lưu trú, rồi bấm ô cam kết và bấm Nộp hồ sơ ạ.",
+}
+
+# Bản Trợ lý trên máy chưa có engine cho trang của thủ tục (registry `requiresCapability`) — dẫn vào là kẹt ở trang.
+BCA_UPDATE_REQUIRED = {
+    "md": (
+        "⚠️ Trợ lý bản này chưa hỗ trợ **{procedure}**.\n\n"
+        "Cán bộ cập nhật Trợ lý rồi mở lại ạ. Trong lúc chờ, công dân có thể chọn thủ tục khác."
+    ),
+    "tts": "Dạ, trợ lý bản này chưa làm được thủ tục này. Nhờ cán bộ cập nhật trợ lý ạ.",
+}
+
 BCA_AGENCY_READY = {
     "md": "Đã chọn **{ward}, {province}**. Bấm **Điền cơ quan thực hiện** để tôi chọn trên trang ạ.",
     "tts": "Dạ, công dân bấm Điền cơ quan thực hiện để tôi chọn trên trang ạ.",

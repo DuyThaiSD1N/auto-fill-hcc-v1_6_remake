@@ -1,78 +1,98 @@
-"""Compact prompt rules cho "Đăng ký lại kết hôn"."""
+"""Luật trích theo TỪNG LOẠI GIẤY của thủ tục "Đăng ký lại kết hôn" — chèn vào <quy_tac_theo_giay> của base_prompt.
+
+Khung chung (vai trò, giấy nào → nhóm field nào, bên nam/bên nữ, định dạng, địa chỉ, output) nằm ở base_prompt; ở
+đây chỉ luật riêng từng giấy. Ví dụ chỉ dùng mô tả, không dùng giá trị.
+"""
 
 EXTRA_RULES = """
-Đầu vào có thể gồm: CCCD/CMND của hai bên, TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN,
-GIẤY CHỨNG NHẬN KẾT HÔN cũ và các giấy tờ hỗ trợ khác.
+<the_can_cuoc>
+- SỐ ĐỊNH DANH (BenNam_SoDinhDanh, BenNu_SoDinhDanh): CHỈ đọc ở MẶT TRƯỚC thẻ, đúng dãy 12 chữ số ngay sau nhãn
+  "Số / No." hoặc "Số định danh cá nhân / Personal identification number" (CMND cũ: 9 số). TUYỆT ĐỐI không lấy cụm số
+  nào từ dòng MRZ/IDVNM ở mặt sau — dòng mã máy chỉ dùng để biết mặt sau là của ai (xem <hai_ben>).
+- NGÀY CẤP: thẻ CĂN CƯỚC mới đọc dòng "Ngày, tháng, năm cấp / Date of issue"; thẻ CĂN CƯỚC CÔNG DÂN gắn chip đọc dòng
+  "Ngày, tháng, năm / Date, month, year" ở mặt sau (cạnh chữ ký, con dấu). KHÔNG lấy "Có giá trị đến / Date of
+  expiry" hay ngày sinh làm ngày cấp. Không thấy dòng ngày cấp → bỏ field.
+- NƠI CẤP: trả ĐÚNG cơ quan in trên CHÍNH thẻ đó:
+  + Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC" / "IDENTITY CARD"), mặt sau ghi "BỘ CÔNG AN" → "Bộ Công an".
+  + Thẻ CĂN CƯỚC CÔNG DÂN gắn chip, mặt sau có "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục
+    Cảnh sát quản lý hành chính về trật tự xã hội".
+  + CMND cũ ghi "Công an tỉnh ..." → chép nguyên cơ quan đó.
+  + Mỗi thẻ đọc riêng: hai người có thể dùng HAI loại thẻ khác nhau; không lấy nơi cấp của thẻ người này cho người kia.
+- NƠI CƯ TRÚ (BenNam_NoiCuTru_TrongNuoc / BenNu_NoiCuTru_TrongNuoc): chỉ lấy "Nơi thường trú" / "Nơi cư trú" in
+  trên thẻ của CHÍNH người đó — thẻ CCCD gắn chip in ở cuối MẶT TRƯỚC, thẻ CĂN CƯỚC mới in ở đầu MẶT SAU. Không lấy
+  từ tờ khai, bản cam đoan hay giấy khác (trừ GIẤY THAY THẺ ở <giay_to>). Tách theo <dia_chi>.
+- QUỐC TỊCH: CHỈ trả khi giấy tờ KHÔNG phải của Việt Nam. CCCD/Căn cước Việt Nam → BỎ QUA.
+</the_can_cuoc>
 
-NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự phòng):
-- Tự phân biệt hai người bằng trường GIỚI TÍNH trên chính giấy tờ: Nam → nhóm CccdNam_* (chồng), Nữ → nhóm CccdNu_* (vợ).
-- Không phân biệt nam/nữ theo tên file, thứ tự upload, hay suy đoán từ họ tên.
-- Ưu tiên lấy danh tính mỗi bên TỪ CCCD của chính người đó. Nếu THIẾU CCCD của một bên, lấy danh tính bên đó
-  từ giấy CN kết hôn: khối "Chồng"/"Bên nam" → CccdNam_*, khối "Vợ"/"Bên nữ" → CccdNu_*
-  (họ tên, ngày sinh, số thẻ căn cước công dân, ngày cấp, cơ quan cấp của đúng bên đó).
-- Có TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN thì BẮT BUỘC trả thêm ToKhaiNam_*/ToKhaiNu_* (họ tên, số định danh, ngày sinh, dân tộc)
-  chép NGUYÊN VĂN từ khối chồng/vợ trên tờ khai, KỂ CẢ khi đã có CCCD và KỂ CẢ khi tờ khai ghi khác CCCD;
-  KHÔNG chép từ CCCD sang. Python tự đối chiếu hai nguồn.
-- NGOẠI LỆ: NƠI CƯ TRÚ có thứ tự ưu tiên RIÊNG (TỜ KHAI trước, CCCD sau) — xem mục NƠI CƯ TRÚ bên dưới.
-- Họ tên/số định danh/ngày sinh/ngày-nơi cấp của mỗi nhóm phải lấy trọn từ ĐÚNG MỘT nguồn của
-  chính người đó, KHÔNG trộn thông tin giữa hai người; nơi cư trú cũng phải là của ĐÚNG người đó.
-- Nơi cấp (CccdNam_NoiCap/CccdNu_NoiCap): thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY"
-  → trả "Bộ Công an"; chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
-  TUYỆT ĐỐI không mặc định "Cục Cảnh sát..." cho thẻ Căn cước mới do Bộ Công an cấp.
+<to_khai>
+TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN chia KHỐI theo dòng, thường viết tay trên dòng chấm của mẫu in. Đọc từng khối (<hai_ben>):
+- "Họ, chữ đệm, tên của vợ / của chồng" → ToKhaiNu_HoTen / ToKhaiNam_HoTen.
+- "Ngày, tháng, năm sinh" → ToKhai*_NgaySinh.
+- "Dân tộc" → ToKhai*_DanToc (bỏ số chú thích in sẵn "(2)"; "Quốc tịch" cùng dòng không phải dân tộc).
+- "Nơi cư trú" → ToKhai*_NoiCuTru_TrongNuoc, tách theo <dia_chi>. BẮT BUỘC trả khi dòng có ghi, kể cả khi thẻ in nơi
+  thường trú khác (thôn / xã cũ trước sáp nhập): Python ưu tiên nơi cư trú người dân tự khai.
+- "Giấy tờ tùy thân" → ToKhai*_SoDinhDanh (dãy số), ToKhai*_NgayCap (sau "cấp ngày"), ToKhai*_NoiCap — CHỈ phần chính
+  dòng đó GHI. Mẫu in sẵn cụm cơ quan "Cục CSQLHC về TTXH/Bộ Công an" để người khai gạch bớt: cụm còn nguyên cả hai cơ
+  quan → BỎ ToKhai*_NoiCap; chỉ còn một cơ quan → chép cơ quan đó. KHÔNG chép ngày cấp / nơi cấp từ thẻ sang tờ khai.
+Khối NGƯỜI YÊU CẦU ở đầu tờ khai (dòng "Họ, chữ đệm, tên người yêu cầu") có thể là vợ hoặc chồng; nơi cư trú / giấy tờ
+của khối đó CHỈ dùng cho ToKhai*_ của người có ĐÚNG họ tên đó khi khối vợ / chồng tương ứng bỏ trống dòng ấy.
+Có cả tờ khai và thẻ thì BẮT BUỘC trả CẢ HAI nhóm (ToKhai*_* và BenNam_* / BenNu_*), kể cả khi giống nhau.
+Dòng "Đã đăng ký kết hôn tại" và "Theo Giấy chứng nhận kết hôn số ..., Quyển số ..." → KetHonCu_* (xem <ket_hon_cu>).
+CẤP BẢN SAO — CHỈ đọc từ dòng "Đề nghị cấp bản sao: Có ☐, Không ☐" và "Số lượng: ... bản" của tờ khai:
+- Ô "Có" được tích → CopyRequest_WantsCopy = "Có"; ô "Không" được tích → "Không".
+- CopyRequest_Quantity = số lượng bản sao DƯƠNG ghi thật ("02 bản" → "2"). Để chấm, "0", số chú thích "(6)", "(7)"
+  → KHÔNG có số lượng. Có số lượng dương thì BẮT BUỘC trả CopyRequest_WantsCopy = "Có".
+- Cả hai ô TRỐNG và không có số lượng dương → BỎ CẢ HAI field (trường hợp phổ biến nhất). TUYỆT ĐỐI không mặc định.
+</to_khai>
 
-DÂN TỘC (CccdNam_DanToc = bên nam, CccdNu_DanToc = bên nữ):
-- CCCD chip thường KHÔNG ghi dân tộc → tìm trong giấy CN kết hôn/tờ khai/văn bản cam đoan/giấy khai sinh của con
-  (khối "người cha" = bên nam, "người mẹ" = bên nữ), ĐỐI CHIẾU ĐÚNG NGƯỜI theo họ tên/số định danh.
-  CCCD không in dân tộc KHÔNG phải lý do bỏ field: giấy khác ghi thì BẮT BUỘC trả CccdNam_DanToc/CccdNu_DanToc.
-- Dòng "Dân tộc" trong khối "Họ, chữ đệm, tên của chồng" trên TỜ KHAI → ToKhaiNam_DanToc; khối "Họ, chữ đệm,
-  tên của vợ" → ToKhaiNu_DanToc. Tờ khai ghi thì BẮT BUỘC trả, chép nguyên văn, kể cả khi hai bên giống nhau.
-- Không giấy nào ghi → ĐỂ TRỐNG (không bịa, không mặc định). Không lấy dân tộc người này gán cho người kia.
-- "H'Mông"/"H Mông"/"Hmông" PHẢI trả "Mông (Hmông)"; còn "Mông" thì trả "Mông".
+<ket_hon_cu>
+Lần đăng ký kết hôn TRƯỚC ĐÂY của CHÍNH hai vợ chồng này. Nguồn được phép, theo thứ tự ưu tiên cho TỪNG field:
+(1) GIẤY CHỨNG NHẬN KẾT HÔN cũ / trích lục kết hôn của hai người: số, quyển số, ngày đăng ký, cơ quan đăng ký;
+(2) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN: dòng "Đã đăng ký kết hôn tại ..." và "Theo Giấy chứng nhận kết hôn số ..., Quyển số
+    ...";
+(3) BẢN CAM ĐOAN: câu kể ngày và cơ quan hai người đã đến đăng ký kết hôn ("Ngày ... chúng tôi đã đến UBND xã ...
+    đăng ký kết hôn").
+TUYỆT ĐỐI KHÔNG lấy KetHonCu_* từ: giấy khai sinh / trích lục khai sinh của con (số, quyển số, ngày, nơi đăng ký
+khai sinh), CCCD, ngày ký / ngày lập tờ khai hoặc bản cam đoan (dòng "..., ngày ... tháng ... năm ..." đầu / cuối
+giấy, cạnh chữ ký), "Quyển số" in ở góc giấy không thuộc lần đăng ký kết hôn cũ, số / ngày của một văn bản xác nhận khác,
+số của bản sao / trích lục cấp lại (số có đuôi "-BS", "TL.KH"; số gốc ghi ở dòng "Số đăng ký" / "đã đăng ký kết
+hôn ... số" của chính trích lục đó), giấy chứng nhận / trích lục kết hôn cấp trong CHÍNH lần đăng ký lại này (ghi
+"đăng ký lại", ngày cấp năm nay), dòng
+"Kính gửi: UBND ..." (cơ quan nhận hồ sơ lần này, không phải nơi đăng ký cũ).
+- KetHonCu_So / KetHonCu_QuyenSo: chỉ giá trị người khai GHI THẬT ngay sau nhãn. Mẫu tờ khai in sẵn số chú thích
+  "(5)" ngay sau "số:" và "Quyển số:" (chú thích "(5) Chỉ khai trong trường hợp biết rõ") → đó là ô TRỐNG, BỎ field;
+  không bao giờ trả "5" / "(5)" từ chỗ đó.
+- KetHonCu_NgayDangKy: dd/mm/yyyy. Nguồn chỉ ghi năm ("năm 1978") hoặc tháng/năm → BỎ field.
+- Nơi đăng ký: KetHonCu_XaDangKy = "Phường/Xã/Thị trấn <tên>" của cơ quan đăng ký (bỏ "UBND"); KetHonCu_TinhDangKy =
+  tỉnh / thành phố ghi trong cùng cụm cơ quan đó, chép như giấy ghi (kể cả tỉnh cũ đã giải thể / sáp nhập). Cụm "UBND
+  xã A, huyện B, tỉnh C" → XaDangKy "Xã A", TinhDangKy "C" (huyện B bỏ). CHỈ khi chính cơ quan đăng ký là UBND cấp
+  HUYỆN (cụm bắt đầu bằng "UBND huyện / quận / thị xã / thành phố ...", không có xã / phường đứng trước) → BỎ
+  KetHonCu_XaDangKy, vẫn trả tỉnh.
+- KetHonCu_So chỉ là SỐ của giấy chứng nhận / số đăng ký, không bao giờ là ngày ("ngày ... tháng ... năm ...").
+  Cụm ghi "xã A ... nay là phường / xã B ..." → KetHonCu_XaDangKy = tên SAU "nay là" (B), KetHonCu_TinhDangKy = tỉnh
+  của B nếu có ghi.
+- Nguồn ưu tiên cao hơn đọc rõ thì dùng nguồn đó; hai nguồn ghi khác nhau mà nguồn cao không rõ → nguồn kế tiếp. Không
+  có nguồn → BỎ FIELD, không đoán, không ghép số từ dòng khác.
+</ket_hon_cu>
 
-QUỐC TỊCH: chỉ trả nếu ghi rõ hoặc khác Việt Nam; Python mặc định Việt Nam.
+<dan_toc>
+CCCD/Căn cước gắn chip KHÔNG ghi dân tộc. Dân tộc CHỈ lấy khi giấy có NHÃN "Dân tộc" ghi giá trị cho đúng người:
+- Dòng "Dân tộc" trong khối vợ / chồng của TỜ KHAI → ToKhaiNu_DanToc / ToKhaiNam_DanToc. Tờ khai thường ghi CẢ HAI
+  khối → BẮT BUỘC trả ĐỦ CẢ HAI, kể cả khi giống nhau.
+- Nhãn "Dân tộc" trên giấy khác của đúng một người → BenNam_DanToc / BenNu_DanToc, BẮT BUỘC trả khi có:
+  + giấy chứng nhận kết hôn cũ (khối chồng / vợ), bản cam đoan, xác nhận / phiếu thông tin cư trú, kết quả tra cứu;
+  + giấy khai sinh / trích lục khai sinh của con: khối CHA (họ tên trùng chồng) → BenNam_DanToc, khối MẸ (họ tên
+    trùng vợ) → BenNu_DanToc. Đối chiếu họ tên trước khi gán.
+- CHÉP NGUYÊN VĂN chữ trên giấy ("H'Mông", "Hmông", "Tày", "Nùng"...) — Python tự chuẩn hoá về option dropdown.
+- Không xuất hiện nhãn "Dân tộc" → BỎ. Họ tên, quê quán, địa danh KHÔNG phải chứng cứ dân tộc. Không chép dân tộc của
+  bên này sang bên kia, không lấy dân tộc của con.
+</dan_toc>
 
-NƠI CƯ TRÚ (CccdNam_NoiCuTru_TrongNuoc/CccdNu_NoiCuTru_TrongNuoc, object {quocGia,tinh,xa,chiTietDuoiXa}):
-- THỨ TỰ ƯU TIÊN NGUỒN cho CẢ HAI BÊN: (1) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN — mục "Nơi cư trú" trong khối
-  "Họ, chữ đệm, tên của chồng" → CccdNam_*, khối "Họ, chữ đệm, tên của vợ" → CccdNu_*; (2) tờ khai KHÔNG ghi
-  nơi cư trú của bên đó (hoặc ghi mà OCR không đọc được) → lấy "Nơi thường trú"/"Nơi cư trú" trên CCCD/CMND
-  của chính người đó; (3) cuối cùng mới đến giấy CN kết hôn cũ.
-- Tờ khai và CCCD ghi KHÁC nhau thì DÙNG TỜ KHAI (địa chỉ người dân tự kê khai tại thời điểm nộp hồ sơ),
-  KHÔNG để CCCD đè lên và KHÔNG trộn hai nguồn (ví dụ KHÔNG lấy chiTietDuoiXa của CCCD ghép với xã/tỉnh của tờ khai).
-- Chỉ khi tờ khai ghi THIẾU CẤP (ví dụ có chi tiết + xã nhưng không ghi tỉnh) mới bổ sung ĐÚNG PHẦN THIẾU
-  từ CCCD, giữ nguyên các phần tờ khai đã ghi.
-- Khối "người yêu cầu" ở đầu tờ khai có thể trùng chồng hoặc vợ; đối chiếu HỌ TÊN trước khi dùng, không gán
-  nơi cư trú của người yêu cầu cho bên còn lại.
-- Địa chỉ hành chính hiện hành CHỈ 2 cấp: XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn huyện/quận).
-- xa = tên xã/phường/thị trấn (BẮT BUỘC trích khi nguồn có ghi cấp xã). tinh = tỉnh/thành phố.
-- chiTietDuoiXa = phần CHI TIẾT đứng TRƯỚC xã (bản/tổ/tổ dân phố/xóm/khu/số nhà/đường); KHÔNG nhét tên xã/huyện/tỉnh vào chiTietDuoiXa.
-- ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh;
-  phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó
-  = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì
-  bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. KHÔNG dồn xã + huyện vào chiTietDuoiXa.
-
-KẾT HÔN CŨ (lần đăng ký kết hôn TRƯỚC ĐÂY):
-- CHỈ hai loại tài liệu được phép cấp dữ liệu cho nhóm KetHonCu_*:
-  (1) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; (2) GIẤY CHỨNG NHẬN KẾT HÔN cũ.
-  TUYỆT ĐỐI không lấy "Số", "Quyển số", "Ngày đăng ký", "Nơi đăng ký" từ GIẤY KHAI SINH;
-  không lấy từ CCCD, ngày cấp giấy tờ, ngày lập tờ khai hoặc giấy tờ hỗ trợ khác.
-- Ưu tiên theo TỪNG FIELD: giá trị ghi rõ trên GIẤY CHỨNG NHẬN KẾT HÔN cũ → nếu giấy cũ trống/không rõ
-  mới lấy giá trị ghi rõ trên tờ khai đăng ký lại. Nếu hai nguồn ghi khác nhau nhưng giấy cũ đọc rõ thì dùng giấy cũ,
-  vì đây là chứng cứ chính thức của lần đăng ký trước. Cả hai nguồn đều trống, chỉ có nhãn không có giá trị, hoặc OCR mơ hồ
-  → BỎ FIELD, không đoán và không ghép số từ dòng khác.
-- KetHonCu_So = số Giấy chứng nhận kết hôn/số đăng ký kết hôn trước đây, chỉ khi có giá trị rõ ngay sau nhãn
-  "Số", "Số H-T" hoặc "Theo Giấy chứng nhận kết hôn số". Không coi số quyết định, số mẫu, số CCCD hoặc
-  một số rời không gắn đúng nhãn là số kết hôn.
-- KetHonCu_QuyenSo = giá trị ghi rõ ngay sau nhãn "Quyển số". Không có giá trị → bỏ field; KHÔNG tự tính từ số.
-- KetHonCu_NgayDangKy = ngày đăng ký kết hôn trước đây, dd/mm/yyyy. Ưu tiên ngày đăng ký trên giấy chứng nhận
-  kết hôn cũ; nếu giấy cũ không rõ thì lấy ngày trong câu "Đã đăng ký kết hôn tại ... ngày ... tháng ... năm ..."
-  trên tờ khai. Dòng ngày kết hôn vẫn hợp lệ khi OCR tên cạnh phần chữ ký bị sai; neo theo tiêu đề
-  GIẤY CHỨNG NHẬN KẾT HÔN và nhãn ngày, không lấy tên người ký để đổi vai hoặc loại bỏ ngày.
-- Nơi đăng ký trước đây:
-  + KetHonCu_TinhDangKy = tỉnh/thành phố của cơ quan đăng ký.
-  + KetHonCu_XaDangKy = "Phường/Xã/Thị trấn <tên>", giữ tiền tố đơn vị và bỏ "UBND".
-  Ưu tiên cơ quan đăng ký trên giấy chứng nhận kết hôn cũ; nếu giấy cũ không rõ mới lấy mục
-  "Đã đăng ký kết hôn tại" trên tờ khai.
-
-KHÔNG trả field UI/default: HoTenBenNam, HoTenBenNu, LoaiGiayToDinhDanh_*, SoGiayToDinhDanh_*, LoaiCuTru_*,
-NoiCuTru_*, LoaiTinhTrangHonNhan_*, SoLanKetHon_*, loaiDangKy, CapBanSao.
+<dia_chi_cccd>
+Địa chỉ CCCD/CMND không tiền tố = dãy tên ngăn dấu phẩy, xếp NHỎ→LỚN. Cấp HUYỆN/QUẬN (tên thứ 2 TỪ CUỐI, sát tỉnh)
+LUÔN bị XÓA HẲN — không cho vào xa lẫn chiTietDuoiXa. Xử lý theo ĐÚNG SỐ TÊN:
+• ĐÚNG 3 tên "A, B, C" (không có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; chiTietDuoiXa = RỖNG.
+• 4 tên "D, A, B, C" (D là chi tiết: thôn/xóm/tổ dân phố/số nhà): D = chiTietDuoiXa; A = xa; B = huyện → XÓA; C = tinh.
+• 2 tên "A, C": A = xa; C = tinh; chiTietDuoiXa rỗng.
+</dia_chi_cccd>
 """

@@ -71,6 +71,10 @@ _NOT_REACHABLE_IN_HMONG = {
     "VOICE_SUBMIT_CONFIRM", "VOICE_SUBMIT_CANCELLED",
     # Bỏ điều chỉnh giấy tờ khi nói "đi tiếp" chỉ tới được từ bảng chính sách cách nói (cach_noi/policy, chỉ tiếng Việt).
     "CN_DIEU_CHINH_HUY",
+    # NỢ DỊCH (16/11/2026): câu hỏi cơ quan của Thông báo lưu trú / Đăng ký thường trú và câu báo cần cập nhật Trợ lý —
+    # đã mở cho mọi tỉnh trước khi có bản Mông, chế độ Mông tạm hiện tiếng Việt. Có bản dịch thì thêm vào script_mong
+    # và bỏ khỏi đây.
+    "BCA_STAY_AGENCY_ASK", "BCA_UPDATE_REQUIRED",
 }
 
 

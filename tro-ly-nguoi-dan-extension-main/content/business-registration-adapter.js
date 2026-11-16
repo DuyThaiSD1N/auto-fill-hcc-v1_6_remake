@@ -449,7 +449,7 @@
       tries += 1;
       try {
         chrome.runtime.sendMessage({ type: "hkdCopied", page: saved.page, copied: res.copied,
-          same: res.sameAsOwner }, (ack) => {
+          same: res.sameAsOwner, owner: res.ownerInfo }, (ack) => {
           void chrome.runtime.lastError;
           if (!ack?.ok && tries < 60) setTimeout(send, 700);
         });
@@ -473,8 +473,19 @@
       if (copied && id && ownerId) same = id === ownerId;
       else if (copied && name && ownerName) same = name === ownerName;
     }
+    // Khối chủ hộ: đọc lại nhân thân cổng vừa chép từ tài khoản → BE in tờ khai bản giấy (không đọc điện thoại/email).
+    let ownerInfo = null;
+    if (page === "chu-ho-kinh-doanh" && copied) {
+      const gender = document.querySelector('input[name="ctl00$C$OWN_PCtl$PERSCtl$GENDER_IDFld"]:checked')?.value;
+      ownerInfo = {
+        hoTen: hkdRead("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld"),
+        ngaySinh: hkdRead("ctl00_C_OWN_PCtl_PERSCtl_DATE_OF_BIRTHFld"),
+        gioiTinh: gender === "F" ? "Nữ" : gender === "M" ? "Nam" : "",
+        soDinhDanh: hkdRead("ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld"),
+      };
+    }
     console.log("[HKD]", page, "— sao chép tài khoản:", copied, "| trùng chủ hộ:", same);
-    return { ok: true, copied, sameAsOwner: same };
+    return { ok: true, copied, sameAsOwner: same, ownerInfo };
   }
 
   // "Kiểm tra trùng tên" của cổng là AJAX (HOUSEHOLDName.aspx/GetExistName[F]) đổ HTML vào hộp thoại jQuery — gọi thẳng
@@ -584,9 +595,19 @@
     const real = list.filter((f) => f && !/^__/.test(f.name || ""));
     if (await hkdEnableEdit(real)) return { ok: true, reloading: true };
     const address = real.filter((f) => /\$ADDRC?Ctl\$/.test(f.name || ""));
-    const rest = real.filter((f) => !address.includes(f));
+    // Thuế "Giống trụ sở chính": tick Giống một lần thì cổng không chép địa chỉ trụ sở → đảo Khác → Giống (mỗi nhịp
+    // chờ khối địa chỉ dựng lại) ngay lúc chọn. Lượt chốt lúc Lưu (pageOrder trang thuế hai lần) vẫn giữ.
+    const taxSame = H.clickTaxAddressMode
+      ? real.filter((f) => H.isTaxAddressModeField(f) && String(f.value ?? "").trim() === H.TAX_ADDR_SAME) : [];
+    const rest = real.filter((f) => !address.includes(f) && !taxSame.includes(f));
     // Radio cấu trúc (loại chủ thể, địa chỉ nhận thông báo thuế) trước khối địa chỉ: cổng dựng lại khối theo radio.
     try { if (rest.length) await H.fillFormStandard(rest); } catch (e) { /* ignore */ }
+    try {
+      if (taxSame.length) {
+        await H.clickTaxAddressMode(taxSame, H.TAX_ADDR_OTHER);
+        await H.clickTaxAddressMode(taxSame, H.TAX_ADDR_SAME);
+      }
+    } catch (e) { /* ignore */ }
     try { if (address.length) await H.fillAddressCascade?.(address); } catch (e) { /* ignore */ }
     return { ok: true };
   }

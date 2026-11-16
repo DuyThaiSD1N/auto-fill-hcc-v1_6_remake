@@ -341,8 +341,8 @@
       "key": "dang-ky-kinh-doanh",
       "code": "1.001612",
       "label": "Đăng ký thành lập hộ kinh doanh",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
-      "needsAgencySelect": true,
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
       "autoConfirm": false
     },
     {
@@ -384,8 +384,8 @@
       "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
       "code": "2.000720",
       "label": "Đăng ký thay đổi nội dung đăng ký hộ kinh doanh",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9ca-768c-a8f4-cc0dff5f41ed",
-      "needsAgencySelect": true,
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
       "autoConfirm": false
     },
     {
@@ -400,17 +400,17 @@
       "key": "tam-ngung-kinh-doanh",
       "code": "1.001570",
       "label": "Tạm ngừng kinh doanh",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d768-7446-bd77-3bb11051041c",
-      "needsAgencySelect": true,
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
       "autoConfirm": false
     },
     {
       "key": "cap-lai-cap-doi-gcn-dang-ky-ho-kinh-doanh",
       "code": "2.000575",
       "label": "Cấp lại Giấy chứng nhận đăng ký hộ kinh doanh, Cấp đổi sang Giấy chứng nhận đăng ký hộ kinh doanh",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9d1-7475-8e58-1aa4479901eb",
-      "needsAgencySelect": true,
-      "autoConfirm": true
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false
     },
     {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
@@ -2474,6 +2474,22 @@
       "code": "1.004194",
       "label": "Đăng ký tạm trú",
       "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194&TT=TAMTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "dang-ky-thuong-tru",
+      "code": "1.004222",
+      "label": "Đăng ký thường trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222&TT=THUONGTRU_01&TT_NAME=%C4%90%C4%83ng%20k%C3%BD%20th%C6%B0%E1%BB%9Dng%20tr%C3%BA",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "thong-bao-luu-tru",
+      "code": "2.001159",
+      "label": "Thông báo lưu trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/thong-bao-luu-tru.html?ma_thu_tuc=2.001159&MaTTHC=2.001159&MaCoQuanThucHien=BCA_CAX&MaDVC=2.001159.01&MaTTHCDP=2.001159",
       "needsAgencySelect": false,
       "autoConfirm": false
     },

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.27.11",
+  "version": "1.28.6",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -133,6 +133,17 @@
     },
     {
       "matches": [
+        "https://dichvucong.dancuquocgia.gov.vn/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": [
+        "content/bca-datepicker-main.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://*.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
@@ -214,7 +225,8 @@
         "https://dichvucong.danang.gov.vn/*",
         "https://dvc.moet.gov.vn/*",
         "https://dichvucong.quangninh.gov.vn/*",
-        "https://dichvucong.ninhbinh.gov.vn/*"
+        "https://dichvucong.ninhbinh.gov.vn/*",
+        "https://dichvucong.dancuquocgia.gov.vn/*"
       ]
     }
   ]

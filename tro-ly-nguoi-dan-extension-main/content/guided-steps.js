@@ -98,6 +98,7 @@
 
   async function pressAndWatch(button) {
     const before = snapshotMessages();
+    ownClickUntil = Date.now() + OWN_CLICK_MS;
     button.scrollIntoView({ block: "center" });
     clickLikeUser(button);
     // Cổng validate rồi mới hiện toast; toast tự tắt nên phải rình chứ không đọc một lần.
@@ -107,6 +108,61 @@
       message = newMessage(before);
     }
     return { ok: true, clicked: true, message };
+  }
+
+  // ── Báo lại lời cổng nháy ở toast ──
+  // Công dân / cán bộ tự bấm trên cổng mà thiếu dữ liệu: cổng nháy toast vài giây rồi tắt, khung Trợ lý có thể đang che,
+  // trợ lý không biết gì. Toast mới hiện (trừ toast thành công) → báo sidebar, BE nói lại nguyên lời cổng. Toast nảy ra
+  // từ chính cú bấm của trợ lý (pressAndWatch đã đọc, báo kèm kết quả bấm) thì bỏ qua để khỏi nói hai lần.
+  // Toast luôn nằm trong lớp position:fixed — lọc theo đó để không bắt nhầm dòng lỗi dưới ô (cũng có role=alert).
+  const TOAST_SELECTORS = ['[role="region"][aria-label^="Notifications"] li', "#toast-container > *",
+                           ".Toastify__toast", "[data-sonner-toast]", ".iziToast", ".ant-message-notice",
+                           ".ant-notification-notice", ".p-toast-message", ".mat-mdc-snack-bar-container",
+                           ".mat-snack-bar-container", '[role="alert"]'];
+  // Dòng tiêu đề chung của toast — bỏ đi, chỉ giữ lời cổng báo.
+  const TOAST_TITLES = new Set(["thong bao", "canh bao", "loi", "error", "warning", "x", "×", "dong"]);
+  const OWN_CLICK_MS = 4000;
+  const SAME_TOAST_MS = 10000;
+  let ownClickUntil = 0;
+  const reportedToasts = new WeakSet();
+  const lastToastAt = new Map();
+
+  function inFixedLayer(el) {
+    for (let node = el, depth = 0; node && depth < 8; node = node.parentElement, depth++) {
+      if (getComputedStyle(node).position === "fixed") return true;
+    }
+    return false;
+  }
+
+  function toastText(el) {
+    return String(el.innerText || "").split("\n").map((line) => line.trim())
+      .filter((line) => line && !TOAST_TITLES.has(fold(line))).join(" ").slice(0, 200);
+  }
+
+  function scanToasts() {
+    if (Date.now() < ownClickUntil) return;
+    for (const el of document.querySelectorAll(TOAST_SELECTORS.join(","))) {
+      if (reportedToasts.has(el) || !el.getClientRects().length || !inFixedLayer(el)) continue;
+      reportedToasts.add(el);
+      const text = toastText(el);
+      const kind = fold(`${el.className || ""} ${el.getAttribute("data-type") || ""}`);
+      if (!text || kind.includes("success") || fold(text).includes("thanh cong")) continue;
+      const key = fold(text);
+      if (Date.now() - (lastToastAt.get(key) || 0) < SAME_TOAST_MS) continue;
+      lastToastAt.set(key, Date.now());
+      try {
+        chrome.runtime.sendMessage({ __tlnd: "portalAlert", text }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa nạp lại: bỏ qua */ }
+    }
+  }
+
+  let toastTimer = 0;
+  if (typeof MutationObserver === "function" && document.documentElement) {
+    new MutationObserver(() => {
+      // Toast dựng chữ sau khi chèn khung: đợi một nhịp rồi mới đọc.
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(scanToasts, 300);
+    }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
   // ── Bước cuối của Kê khai (eForm tư pháp): "Xem trước" → hộp thoại "Xem tờ khai điện tử" → "Xác nhận" ──
@@ -238,6 +294,21 @@
       .find((el) => isVisible(el) && fold(el.textContent) === "quay lai") || null;
   }
 
+  // Nút "Quay lại" là <button> mặc định type=submit nằm trong form: cú click kéo theo submit, form không bị chặn thì
+  // trình duyệt gửi form = tải lại trang → cổng mở lại từ bước Chủ hồ sơ. Chặn mặc định của đúng lần submit đó (submit
+  // phát đồng bộ trong click(); handler của trang vẫn chạy như cú bấm thật). Một sự kiện click duy nhất: chuỗi
+  // pointer/mouse giả có thể để cổng xử lý chuyển bước hai lần.
+  function clickBackWithoutReload(button) {
+    const form = button.form;
+    const block = (e) => { if (e.target === form) e.preventDefault(); };
+    if (form) window.addEventListener("submit", block, true);
+    try {
+      button.click();
+    } finally {
+      if (form) window.removeEventListener("submit", block, true);
+    }
+  }
+
   // Cổng vẽ bước trước ngay trong lúc xử lý cú bấm → lệnh tới lần nữa sẽ trúng nút quay lại của bước đó và lùi 2 bước.
   const BACK_COOLDOWN_MS = 3000;
   let lastBackAt = 0;
@@ -255,7 +326,7 @@
       return;
     }
     lastBackAt = Date.now();
-    clickLikeUser(button);
+    clickBackWithoutReload(button);
     sendResponse({ ok: true, clicked: true });
   });
 

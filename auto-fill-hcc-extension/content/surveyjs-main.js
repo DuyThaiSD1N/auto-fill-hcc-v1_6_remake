@@ -254,6 +254,7 @@
 
   async function setValuesOn(survey, fields) {
     installRelationGuards(survey);
+    installPhoneGuard(survey);
     const resumeAnimations = pauseAnimations(survey);
     // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.
     toolWriting = true;
@@ -262,6 +263,7 @@
     } finally {
       toolWriting = false;
       resumeAnimations?.();
+      rememberFill(survey);
     }
   }
 
@@ -332,6 +334,73 @@
       return;
     }
     if (clearedAfterSet(findQuestion(survey, r.name))) Object.assign(r, { ok: false, reason: CLEARED });
+  }
+
+  // ---- Điền đợt 2 ----
+  // Sau lượt điền đầu, lớp soát của BE có thể sửa vài ô. Ghi lại RIÊNG các ô đó, và chỉ khi ô còn đúng giá trị
+  // engine vừa điền (hoặc vẫn trống): ô cán bộ đã sửa tay hay cổng vừa tự đổ thì giữ nguyên. Ảnh model chụp ngay
+  // sau lượt điền gần nhất làm mốc so; cổng dựng model mới thì không còn mốc → ghi như thường.
+  let lastFill = null;
+  function rememberFill(survey) {
+    lastFill = { survey, values: snapshotBlock(survey.getAllQuestions(false) || []) };
+  }
+
+  const isChoiceField = (field) => field?.comp === "sjs-dropdown" || field?.comp === "sjs-radio";
+  const choiceKey = (q) => choicesOf(q).map((c) => String(c.value)).join("|");
+
+  async function patchValues(fields) {
+    const survey = findSurvey();
+    if (!survey) return { ok: false, error: "no-survey" };
+    const known = lastFill?.survey === survey ? lastFill.values : null;
+    const all = survey.getAllQuestions(false) || [];
+    const before = snapshotBlock(all);
+    const written = new Set();
+    const results = [];
+    const resumeAnimations = pauseAnimations(survey);
+    toolWriting = true;
+    try {
+      for (let i = 0; i < fields.length; i++) {
+        const field = fields[i];
+        const q = findQuestion(survey, field.name);
+        if (!q || !q.isVisible) { results.push({ name: field.name, ok: false, reason: "not-found" }); continue; }
+        if (known && !q.isEmpty?.() && !sameValue(q.value, known.get(q.name))) {
+          results.push({ name: field.name, ok: false, reason: "changed" });
+          continue;
+        }
+        // Ô chọn kế tiếp có thể lấy danh mục theo ô này (tỉnh → xã): nhớ danh mục cũ để biết lúc cổng nạp xong
+        // danh mục mới — chọn ngay trên danh mục cũ là chọn nhầm xã của tỉnh trước.
+        const next = isChoiceField(field) && isChoiceField(fields[i + 1]) ? findQuestion(survey, fields[i + 1].name) : null;
+        const nextChoices = next ? choiceKey(next) : "";
+        const old = cloneValue(q.value);
+        try {
+          const r = await setOne(survey, field);
+          if (r.ok) written.add(q.name);
+          results.push({ name: field.name, ...r, lookup: !!field.lookup });
+          if (r.ok && isChoiceField(field)) {
+            await sleep(300);
+            const t0 = Date.now();
+            while (next && !sameValue(old, q.value) && choiceKey(next) === nextChoices && Date.now() - t0 < 5000) await sleep(200);
+          }
+        } catch (e) {
+          results.push({ name: field.name, ok: false, reason: String(e?.message || e) });
+        }
+      }
+      // Ô tra cứu dân cư đổi → cổng tra lại; tra không ra thì cổng làm trống các ô nó từng đổ. Ô đang có giá trị
+      // trước lượt này mà bị làm trống theo thì ghi lại.
+      if (results.some((r) => r.ok && r.lookup)) {
+        await sleep(LOOKUP_WAIT_MS);
+        const cleared = all.filter((q) => before.has(q.name) && !written.has(q.name) &&
+          q.isVisible && !q.isReadOnly && q.isEmpty?.());
+        if (cleared.length) await restoreBlock(survey, cleared, before);
+      }
+      await sleep(400);
+      for (const r of results) verifyKept(survey, r);
+    } finally {
+      toolWriting = false;
+      resumeAnimations?.();
+    }
+    rememberFill(survey);
+    return { ok: true, results };
   }
 
   // ---- Giữ khối thông tin người được cấp khi đổi ô "Quan hệ…" ----
@@ -414,6 +483,53 @@
       });
     }
   }
+
+  // ---- Giữ khối người nộp khi đổi SĐT ----
+  // Cổng nghe mọi lần đổi ô SĐT người nộp và gọi API tra công dân (get-citizen-by-code); API trả lỗi thì cổng ghi rỗng
+  // giấy tờ, số, ngày cấp, nơi cấp, nơi cư trú của người nộp — cả khi gõ tay lẫn khi engine điền. Chụp khối ngay trước
+  // khi SĐT đổi; trong vài giây sau (chờ API về), ô nào cổng làm trống thì ghi lại đúng giá trị đã chụp, ô cổng đổ giá
+  // trị mới thì giữ nguyên.
+  const PHONE_GUARD_NAME = "citizenPhone";
+  const PHONE_CLEAR_WINDOW_MS = 8000;
+  // Tên cờ theo sự kiện riêng của từng extension: cài cả hai extension thì mỗi bên giữ bộ của mình.
+  const PHONE_GUARD_FLAG = `${REQUEST_EVENT}PHONE_GUARD`;
+
+  async function restoreClearedByPortal(survey, block, snap) {
+    const cleared = () => block.filter((q) => snap.has(q.name) && q.isEmpty?.());
+    const t0 = Date.now();
+    while (Date.now() - t0 < PHONE_CLEAR_WINDOW_MS && !cleared().length) await sleep(200);
+    if (!cleared().length) return;
+    // Cổng xoá liền một loạt ô → chờ hết loạt rồi mới ghi lại.
+    await sleep(400);
+    await restoreBlock(survey, block, new Map(cleared().map((q) => [q.name, snap.get(q.name)])));
+  }
+
+  function installPhoneGuard(survey) {
+    if (!survey || survey[PHONE_GUARD_FLAG]) return;
+    const phone = (survey.getAllQuestions(false) || []).find((q) => baseName(q.name) === PHONE_GUARD_NAME);
+    const panel = phone?.parent;
+    if (!panel?.isPanel) return;
+    survey[PHONE_GUARD_FLAG] = true;
+    const block = (panel.questions || []).filter((q) => q !== phone);
+    let snap = null;
+    survey.onValueChanging.add((_sender, opt) => {
+      if (opt.name === phone.name && !restoringBlock) snap = snapshotBlock(block);
+    });
+    survey.onValueChanged.add((_sender, opt) => {
+      if (opt.name !== phone.name || restoringBlock || !snap?.size) return;
+      const taken = snap;
+      snap = null;
+      void restoreClearedByPortal(survey, block, taken);
+    });
+  }
+
+  // Cán bộ gõ tay SĐT trước / ngoài lượt điền → cài bộ giữ ngay khi biểu mẫu có ô SĐT người nộp.
+  clearInterval(window[`${PHONE_GUARD_FLAG}_TIMER`]);
+  window[`${PHONE_GUARD_FLAG}_TIMER`] = setInterval(() => {
+    const node = document.querySelector(`[data-name^="${PHONE_GUARD_NAME}"]`);
+    const fiber = node && fiberOf(node);
+    installPhoneGuard(fiber && surveyFromFiber(fiber));
+  }, 1500);
 
   // ---- Chặn hộp thoại chọn tệp của OS ----
   let suppressPicker = false;
@@ -566,6 +682,7 @@
       const payload = JSON.parse(String(event.detail || "{}"));
       requestId = String(payload.requestId || "");
       if (payload.op === "setValues") result = await setValues(Array.isArray(payload.fields) ? payload.fields : []);
+      else if (payload.op === "patchValues") result = await patchValues(Array.isArray(payload.fields) ? payload.fields : []);
       else if (payload.op === "fillPlace") result = await fillPlace(payload.place || {});
       else if (payload.op === "emptyRequired") result = emptyRequired();
       else if (payload.op === "uploadStatus") {

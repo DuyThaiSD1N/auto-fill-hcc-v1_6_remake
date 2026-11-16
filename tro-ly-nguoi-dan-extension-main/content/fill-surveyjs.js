@@ -218,6 +218,29 @@
     return result;
   }
 
+  // Điền đợt 2: ghi lại riêng các ô lớp soát của BE sửa sau lượt điền đầu. Vẫn là engine điền nên tô như ô điền
+  // thường; khác lượt đầu ở chỗ không xoá dấu màu đang có và không cuộn trang. Ô MAIN world bỏ qua (đã được sửa
+  // tay, cổng khoá, không còn trên trang) giữ nguyên dấu cũ.
+  async function patchFormSurveyJs(fields) {
+    injectMarkStyles();
+    const result = { filled: 0, skipped: [] };
+    const res = await callMain({ op: "patchValues", fields }, 60000);
+    if (!res.ok) {
+      console.warn("[TLND-SurveyJS] không ghi được điền đợt 2:", res.error);
+      return result;
+    }
+    const byName = new Map(fields.map((f) => [f.name, f]));
+    for (const r of res.results || []) {
+      if (r.ok) {
+        result.filled++;
+        markField(byName.get(r.name) || { name: r.name }, true);
+      } else {
+        result.skipped.push(r.name);
+      }
+    }
+    return result;
+  }
+
   function uploadRows() {
     return Array.from(document.querySelectorAll("tr"))
       .filter((tr) => isVisible(tr) && tr.querySelector(UPLOAD_BUTTON));
@@ -454,7 +477,8 @@
   const readSurveyJsRequester = () => callMain({ op: "requesterInfo" }, 5000);
 
   Object.assign(H, {
-    isSurveyDossierPage, fillFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue, readSurveyJsRequester,
+    isSurveyDossierPage, fillFormSurveyJs, patchFormSurveyJs, attachSurveyJsByPlan, readSurveyJsValue,
+    readSurveyJsRequester,
     markEmptyRequired, injectSurveyJsMarkStyles: injectMarkStyles, setSurveyJsMark: setMark,
     callSurveyJs: callMain, surveyJsQuestionEl: questionEl,
   });

@@ -27,6 +27,13 @@ _KEEP_TRIES = 4
 _KEEP_WAIT_SECONDS = 3
 
 
+def capability(procedure: dict | None) -> str:
+    """Tên năng lực extension phải khai để thủ tục này chạy điền đợt 2. Thủ tục trên form cũ (eForm x-*, entry
+    registry khai ``secondPass: "legacy"``) cần bản extension biết ghi lại ô trên form cũ — bản chỉ biết form
+    SurveyJS khai "secondPass" thì không chạy."""
+    return "secondPassLegacy" if (procedure or {}).get("secondPass") == "legacy" else "secondPass"
+
+
 def wanted(user: dict | None, client_supports: bool) -> bool:
     """Chỉ chạy khi BE bật, extension khai biết áp bản vá, và tài khoản nằm trong diện thí điểm (trống = mọi tài khoản)."""
     if not settings.second_pass_enabled or not client_supports:

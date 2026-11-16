@@ -54,18 +54,27 @@ Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG tríc
    Mục (4) chỉ ghi "Bản sao" / để trống và không có giấy hộ tịch → BỎ field; KHÔNG suy loại từ tuổi, từ
    "Số chứng nhận", từ việc người được cấp còn sống hay không. Các field GiayTo_* còn lại ưu tiên khối "Đã đăng ký tại ..." của tờ khai, thiếu thì lấy trên
    CHÍNH giấy hộ tịch cùng loại và cùng người được cấp. Giấy khác loại hoặc khác người không phải nguồn.
-10. GiayTo_CoQuanDangKy: nhãn "Đã đăng ký tại" / "Nơi đăng ký"; giấy khai sinh, trích lục thường không có
-    nhãn → lấy cơ quan ở tiêu đề đầu văn bản hoặc khối ký tên cuối ("TM. UBND PHƯỜNG ..."). "UBND" viết
-    thành "Ủy ban nhân dân", ghép kèm cấp tỉnh nếu giấy có.
-11. GiayTo_So: dòng "Số: <mã>/<năm>" sát tiêu đề GIẤY KHAI SINH / TRÍCH LỤC, giữ nguyên mã và năm; giấy mẫu
-    cũ (giấy chứng nhận kết hôn, giấy khai sinh TP/HT-...) là ô "Số:" ở GÓC TRÊN BÊN PHẢI, ngay dưới "Mẫu ..."
-    và trên "Quyển số". Không lấy số CCCD, số định danh, số trang. Dòng "Số:" nằm dưới "Giấy CMND/Giấy tờ hợp lệ
+10. GiayTo_CoQuanDangKy: cơ quan đứng sau nhãn "Đã đăng ký tại" / "Đã được đăng ký ... tại" / "Đăng ký ...
+    tại" / "Nơi đăng ký"; giấy không có các nhãn này → lấy cơ quan ở tiêu đề đầu văn bản hoặc khối ký tên cuối
+    ("TM. UBND PHƯỜNG ..."). TRÍCH LỤC (bản sao) có dòng đăng ký gốc trong thân → lấy cơ quan ở dòng đó, không lấy
+    cơ quan đầu giấy (nơi cấp bản trích lục). Chép ĐỦ mọi cấp mà dòng đó ghi (xã / phường, huyện, tỉnh), không
+    cắt bớt, không tự thêm cấp giấy không ghi. "UBND" viết thành "Ủy ban nhân dân".
+11. GiayTo_So = số của LẦN ĐĂNG KÝ GỐC. TRÍCH LỤC (bản sao) in hai số: số của bản trích lục ở đầu giấy
+    ("Số: <N>/TL..-BS", "Số: <N>/<năm>/TLKT-BS") và số đăng ký gốc ở dòng thân ngay dưới nơi đăng ký ("Đã được
+    đăng ký ... tại: <cơ quan>" rồi "Số: <N> ngày ..."; hoặc "Nơi ghi: ..., Sổ đăng ký ..., quyển số <Q>, số <N>,
+    ngày ...") → lấy số ở dòng thân, không kèm chữ "ngày ..."; trích lục không có dòng thân đó thì mới lấy số
+    đầu giấy. Giấy khai sinh / giấy chứng nhận kết hôn bản
+    chính: dòng "Số: <mã>/<năm>" sát tiêu đề, giữ nguyên mã và năm; giấy mẫu cũ (giấy chứng nhận kết hôn, giấy
+    khai sinh TP/HT-...) là ô "Số:" ở GÓC TRÊN BÊN PHẢI, ngay dưới "Mẫu ..." và trên "Quyển số". Không lấy số CCCD, số định danh, số trang. Dòng "Số:" nằm dưới "Giấy CMND/Giấy tờ hợp lệ
     thay thế" / "Giấy tờ tùy thân" trong thân giấy là số thẻ của chồng/vợ/người đi khai → KHÔNG phải GiayTo_So.
     Ô góc trên đọc ra không phải chữ số (vd "...M...") → bỏ field, không lấy dòng "Số:" khác thay vào.
-12. GiayTo_QuyenSo chỉ khi nhãn "Quyển số" có giá trị thật. "Số bộ", "sổ bộ", "số hiệu" không phải quyển số.
+12. GiayTo_QuyenSo chỉ khi nhãn "Quyển số" (viết tắt "Q.S" / "QS", có khi chung ô với số: "Số: 359, Q.S: 03" →
+    GiayTo_So 359, GiayTo_QuyenSo 03) có giá trị thật. "Số bộ", "sổ bộ", "số hiệu" không phải quyển số.
 13. GiayTo_NgayDangKy: trên tờ khai lấy ngày theo mẫu "ngày D tháng M năm Y" đứng ngay trước "số ... Quyển
     số" trong mục "Đã đăng ký tại" (ngày ghi kèm chữ khác như "Số chứng nhận ngày ..." không phải ngày đăng ký
     khi mẫu đã có ngày); trên giấy hộ tịch lấy "Ngày, tháng, năm đăng ký" / "Ngày đăng ký" / ngày ở nơi ký.
+    TRÍCH LỤC (bản sao): ngày ở dòng thân cùng số đăng ký gốc; dòng "<nơi>, ngày ... tháng ... năm ..." ở đầu
+    giấy cạnh số "-BS" là ngày cấp bản trích lục, không phải ngày đăng ký.
     Đủ ngày-tháng-năm thì bắt buộc trả.
 14. Trang CHỨNG THỰC ("Số chứng thực: ... quyển số ... SCT", ngày chứng thực) là sổ chứng thực → KHÔNG
     lấy làm GiayTo_So / GiayTo_QuyenSo / GiayTo_NgayDangKy / GiayTo_CoQuanDangKy.

@@ -56,7 +56,7 @@ test("content.js chỉ tính cú bấm trên ĐÚNG trang nộp hồ sơ", () =>
   assert.match(content, /rule\.buttonIds \|\| \[\]\)\.includes/);
   assert.match(content, /rule\.buttonText \|\| \[\]\)\.some/);
   assert.match(content, /Date\.now\(\) - lastSubmitClickAt < 3000/);
-  assert.match(content, /addEventListener\("click",[\s\S]*?\}, true\)/);
+  assert.match(content, /document\.addEventListener\("click", onSubmitClick, true\)/);
   // Luật đến từ BE (portal_submit.py) qua storage — thêm cổng mới khỏi phát hành lại extension.
   assert.match(content, /chrome\.storage\.local\.get\(\[SUBMIT_WATCH_KEY\]/);
   // Popup nạp /procedures SAU khi content script chạy → phải nghe thay đổi, không thì lỡ hồ sơ đầu.

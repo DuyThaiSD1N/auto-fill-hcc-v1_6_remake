@@ -508,6 +508,15 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     read = await asyncio.gather(*(_read_page(page, title) for page in pages(case)), return_exceptions=True)
     records = [record for answer in read if not isinstance(answer, BaseException) for record in answer]
     mrz = [card for document in case.documents for card in mrz_records(document.get("text"))]
+    return findings_from(records, mrz, case)
+
+
+def findings_from(records: list[dict], mrz: list[dict], case: Case) -> list[Finding]:
+    """Đề xuất cho MỘT người (người ở ``case.values``) từ các bản ghi đã đọc sẵn — thủ tục có nhiều chủ thể đọc trang
+    một lần rồi gọi hàm này cho từng người."""
+    subject = _subject(case)
+    if not subject["name"] or not (subject["number"] or subject["birth"]):
+        return []
     weights = weigh(records, subject, mrz)
     current = {NAME: _name_key(subject["name"]), NUMBER: subject["number"], BIRTHDAY: subject["birth"]}
     findings = []

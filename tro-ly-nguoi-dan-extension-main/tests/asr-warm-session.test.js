@@ -38,7 +38,10 @@ function load() {
     lose() { this.active = false; this.opts.onLost && this.opts.onLost(); }
   }
   const window = { MicCapture: FakeMic, micSupported: () => true, hccWsBase: () => "wss://be" };
-  const ctx = { window, WebSocket: FakeWS, console, setTimeout, clearTimeout, setInterval, clearInterval };
+  // setInterval (ping WS 20 giây, canh mic 0,5 giây) không giữ process: một assert ném trước s.cool() mà để interval ref
+  // thì node --test không bao giờ thoát, CI treo tới timeout thay vì báo đỏ.
+  const unrefInterval = (fn, ms) => { const t = setInterval(fn, ms); t.unref?.(); return t; };
+  const ctx = { window, WebSocket: FakeWS, console, setTimeout, clearTimeout, setInterval: unrefInterval, clearInterval };
   vm.createContext(ctx);
   vm.runInContext(read("services/asr.js"), ctx);
   return { Warm: window.AsrWarmSession, sockets, mics, FakeMic };
@@ -187,7 +190,9 @@ test("đang nghe mà mic chỉ còn khung im lặng: tự dựng lại mic, lư�
   env.mics[0].pcm();
   await s.arm("vi"); await tick();
   assert.ok(ev.some(([k, v]) => k === "state" && v === "listening"));
-  for (let i = 0; i < 4; i++) { env.mics[0].silent(); await wait(450); }
+  // Canh mic mỗi 500 ms, dựng lại khi quá 1,5 giây không có tiếng: nhịp 1500 ms đúng biên (<=) có thể chưa dựng, phải
+  // chờ qua nhịp 2000 ms — dừng ở 1800 ms là lúc được lúc không tuỳ độ trôi timer của máy chạy CI.
+  for (let i = 0; i < 5; i++) { env.mics[0].silent(); await wait(450); }
   assert.equal(env.mics.length, 2, "mic chết giữa lượt được thay");
   assert.ok(!ev.some(([k]) => k === "error"));
   env.mics[1].pcm();

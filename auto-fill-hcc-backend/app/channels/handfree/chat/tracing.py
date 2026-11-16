@@ -56,15 +56,22 @@ def _ocr_label() -> str:
 
 
 async def _save_request(request_id: str, created_at: datetime, conv: dict,
-                        procedure_key: str, files: list[dict]) -> tuple[str | None, list[dict]]:
-    """Lưu ảnh xuống disk + bản ghi process_requests (nguồn xem file/ZIP của trang quản lý)."""
+                        procedure_key: str, files: list[dict],
+                        form_context: dict | None = None) -> tuple[str | None, list[dict]]:
+    """Lưu ảnh xuống disk + bản ghi process_requests (nguồn xem file/ZIP của trang quản lý).
+
+    ``form_context``: mốc tài khoản (khối người yêu cầu cổng điền sẵn) mà pipeline ĐÃ dùng — lưu cùng chỗ Auto Fill
+    lưu (options.formContext) để soát được vì sao phân vai chọn quan hệ. Trường ``options`` của process_requests đã
+    nằm trong nhóm archive gửi về kho rồi xoá khỏi prod."""
     files_meta = save_request_files(request_id, created_at, [FileItem(**f) for f in files])
+    options = {"channel": "sidebar", "conversation_id": conv.get("_id"),
+               "upload_session_id": conv.get("upload_session_id"),
+               "consent_id": (conv.get("consent") or {}).get("id")}
+    if form_context:
+        options["formContext"] = dict(form_context)
     doc_id = await requests_repo.create_request(
         request_id=request_id, created_at=created_at, user_id=_identity(conv)[0],
-        procedure=procedure_key,
-        options={"channel": "sidebar", "conversation_id": conv.get("_id"),
-                 "upload_session_id": conv.get("upload_session_id"),
-                 "consent_id": (conv.get("consent") or {}).get("id")},
+        procedure=procedure_key, options=options,
         files_meta=files_meta, experience="handfree",
     )
     return doc_id, files_meta
@@ -78,6 +85,7 @@ async def record_process(
     result: dict,
     pipe_ms: int,
     rec=None,
+    form_context: dict | None = None,
 ) -> str | None:
     """Trace kind=autofill sau khi pipeline trích field xong. Trả request_id để flow
     cập nhật kết quả điền THẬT (fill_report) vào đúng trace."""
@@ -91,7 +99,7 @@ async def record_process(
         created_at = datetime.now(timezone.utc)
 
         doc_id, _files_meta = await _save_request(
-            request_id, created_at, conv, procedure_key, files
+            request_id, created_at, conv, procedure_key, files, form_context
         )
         await requests_repo.finish_request(
             doc_id, status="done", stats=stats,

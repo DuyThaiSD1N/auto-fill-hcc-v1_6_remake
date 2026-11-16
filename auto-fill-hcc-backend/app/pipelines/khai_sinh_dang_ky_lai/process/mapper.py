@@ -899,6 +899,14 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         if person.get("ho_ten") or person.get("so_dinh_danh"):
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
 
+    # Người đăng nhập chính là cha / mẹ trên giấy tờ (cha mẹ làm cho con bằng tài khoản của mình) → Cha đẻ / Mẹ đẻ.
+    for role, tick in (("Mother", "MeDe"), ("Father", "ChaDe")):
+        if (applicant[0] or applicant[1]) and _same_person(
+                *applicant, values.get(f"{role}_FullName"), values.get(f"{role}_IdNumber")):
+            person = _person_from_role(values, role, context)
+            if person.get("ho_ten") or person.get("so_dinh_danh"):
+                return {**person, "quan_he": tick, "quan_he_default": False, "source": f"tai_khoan_{tick}"}
+
     # Hồ sơ kèm CCCD của chính người đăng nhập (cán bộ) → mục I theo thẻ đó.
     card = _applicant_card_requester(context)
     if card:
@@ -907,6 +915,16 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
     other = _other_declaration_requester(values, context)
     if other:
         return other
+
+    if not (applicant[0] or applicant[1]):
+        # Không có mốc tài khoản: không biết ai đang đăng nhập → theo kết luận agent đọc từ giấy (viền vàng để soát);
+        # agent không kết luận được thì để trống ô quan hệ, không tự tích "Khác".
+        relation = _relation_from_reason(context)
+        role = _ROLE_BY_RELATION_TICK.get(relation)
+        if role:
+            return {**_person_from_role(values, role, context), "quan_he": relation, "quan_he_default": True,
+                    "source": "giay_to_khong_tai_khoan"}
+        return {"quan_he": "", "quan_he_default": False, "source": "khong_tai_khoan"}
 
     return {"quan_he": "Khac", "quan_he_default": True, "source": "khong_to_khai"}
 
@@ -959,6 +977,11 @@ def _with_account(requester: dict, options: dict | None) -> dict:
     changes = []
     for key, account_key in _ACCOUNT_KEY_BY_REQUESTER.items():
         value = account.get(account_key)
+        # Ngày cấp / nơi cấp thuộc TẤM THẺ: hồ sơ đã có giấy tờ của người đó mang cùng số thì theo giấy nộp trong hồ sơ —
+        # tài khoản giữ ngày của lần cấp mới nhất, khác ngày trên thẻ cũ người dân đang nộp (cán bộ ghi theo thẻ nộp).
+        if key in ("ngay_cap", "noi_cap") and requester.get(key) and _digits(requester.get("so_dinh_danh")) == _digits(
+                account.get("SoDinhDanh")):
+            continue
         if key == "noi_cu_tru" and value:
             value = _normalize_domestic_area({"quocGia": "Việt Nam", **value})
         if not value:
@@ -969,6 +992,40 @@ def _with_account(requester: dict, options: dict | None) -> dict:
     if changes:
         mon.output("account_override", changes)
     return person
+
+
+def _ids_near(a, b) -> bool:
+    a, b = _digits(a), _digits(b)
+    return bool(a and b) and len(a) == len(b) and sum(x != y for x, y in zip(a, b)) <= 2
+
+
+def _unify_parent_requester(requester: dict, values: dict, quan_he, account_person: bool, options: dict | None) -> None:
+    """Người yêu cầu chính là mẹ / cha đã tích: mục I và mục III/IV là MỘT người nên chỉ được một họ tên, một số.
+
+    Tờ khai viết tay ghi người đó hai lần (dòng người yêu cầu + mục mẹ / cha), OCR đọc lệch một dòng là chuyện
+    thường. Khớp tài khoản đăng nhập → cả hai theo tài khoản (bản chuẩn CSDLQG); không có tài khoản → mục I theo
+    khối mẹ / cha (đã được phân vai đối chiếu với thẻ). Hai dòng lệch hẳn (khác người) thì không đụng.
+    """
+    role = {"MeDe": "Mother", "ChaDe": "Father"}.get(quan_he)
+    if not role:
+        return
+    role_name, role_id = values.get(f"{role}_FullName"), values.get(f"{role}_IdNumber")
+    # Số chỉ đủ làm căn cứ khi một bên không có họ tên: số của hai người cùng tỉnh, cùng lứa có thể chỉ lệch vài chữ số.
+    names = requester.get("ho_ten") and role_name
+    same = (_reason_mod._names_align(requester.get("ho_ten"), role_name) if names
+            else _ids_near(requester.get("so_dinh_danh"), role_id))
+    if not same:
+        return
+    if account_person:
+        account = account_context(options)
+        for key, account_key in (("FullName", "HoTen"), ("IdNumber", "SoDinhDanh"), ("Ethnicity", "DanToc")):
+            if account.get(account_key):
+                values[f"{role}_{key}"] = account[account_key]
+        return
+    if role_name:
+        requester["ho_ten"] = role_name
+    if _is_valid_id_number(role_id):
+        requester["so_dinh_danh"] = role_id
 
 
 def _previous_registration_number(values: dict) -> str:
@@ -1051,6 +1108,11 @@ def _previous_registration_agency(values: dict) -> tuple[str, str, bool]:
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields while preserving the extension response shape."""
     values = _by_name(fields)
+    # Số CCCD 12 chữ số luôn bắt đầu bằng 0 (mã tỉnh 001–096): model trả số dạng NUMBER thì rơi số 0 đầu, còn 11 chữ số
+    # bắt đầu bằng chữ số khác 0. OCR rụng một chữ số ở GIỮA thì số vẫn bắt đầu bằng 0 — không đụng (để trống còn hơn bịa).
+    for key, value in list(values.items()):
+        if key.endswith("_IdNumber") and re.fullmatch(r"[1-9]\d{10}", str(value).strip()):
+            values[key] = "0" + str(value).strip()
     # Vai cha/mẹ mà reason.py dựng lại từ tờ khai được đánh dấu default — hồ sơ đang có hai tên
     # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
     default_names = {f.get("name") for f in fields if f.get("default")}
@@ -1102,6 +1164,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             )
             if account_person:
                 requester = _with_account(requester, options)
+            _unify_parent_requester(requester, values, quan_he, account_person, options)
             req_id = requester.get("so_dinh_danh")
             add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
             add("SoDinhDanhC", req_id)

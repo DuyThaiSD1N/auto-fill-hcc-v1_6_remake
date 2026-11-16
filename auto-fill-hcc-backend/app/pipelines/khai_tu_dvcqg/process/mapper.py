@@ -132,11 +132,14 @@ def _area(value):
 
 
 def _same_person(account_name: str, account_id: str, name, number) -> tuple[bool, bool]:
-    """(cùng người, chỉ khớp họ tên). Có số hai phía thì số quyết định."""
+    """(cùng người, chỉ khớp họ tên). Có số hai phía thì số quyết định; số tờ khai viết tay lệch 1–2 chữ số (OCR) với
+    số tài khoản mà họ tên trùng (bỏ dấu) vẫn là một người."""
     digits = _digits(number)
+    same_name = bool(account_name and name and _fold(account_name) == _fold(name))
     if account_id and digits:
-        return account_id == digits, False
-    if account_name and name and _fold(account_name) == _fold(name):
+        near = len(digits) == len(account_id) and sum(a != b for a, b in zip(digits, account_id)) <= 2
+        return account_id == digits or (near and same_name), False
+    if same_name:
         return True, True
     return False, False
 
@@ -144,7 +147,8 @@ def _same_person(account_name: str, account_id: str, name, number) -> tuple[bool
 def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bool, str]:
     """(quan hệ người nộp với người mất, suy đoán, cảnh báo)."""
     account_name, account_id = requester_context(options)
-    declared = values.get("NguoiYeuCau_QuanHe")
+    # Lượt trích hay chép nguyên chữ "Không xác định" của khối phân vai vào dòng quan hệ: không phải quan hệ.
+    declared = labeled_value(f"x: {values.get('NguoiYeuCau_QuanHe') or ''}", "x")
     same, by_name = _same_person(account_name, account_id, values.get("NguoiYeuCau_HoTen"),
                                  values.get("NguoiYeuCau_SoDinhDanh"))
     if declared and (same or not (account_name or account_id)):
@@ -185,12 +189,36 @@ def _submitter_phone(value, context: str) -> str:
     return digits if re.fullmatch(r"0\d{9,10}", digits) else ""
 
 
+# Nhân thân + nơi cư trú của người mất đọc từ giấy tờ tùy thân của chính người đó.
+_DECEASED_IDENTITY = ("NguoiMat_HoTen", "NguoiMat_SoDinhDanh", "NguoiMat_NgaySinh", "NguoiMat_GioiTinh", "NguoiMat_DanToc",
+                      "NguoiMat_QuocTich", "NguoiMat_LoaiGiayTo", "NguoiMat_SoGiayTo", "NguoiMat_NgayCap", "NguoiMat_NoiCap",
+                      "NguoiMat_NoiCuTru")
+_DECEASED_ID_DOC = ("NguoiMat_SoDinhDanh", "NguoiMat_LoaiGiayTo", "NguoiMat_SoGiayTo", "NguoiMat_NgayCap", "NguoiMat_NoiCap")
+
+
+def _drop_account_from_deceased(values: dict, options: dict | None) -> dict:
+    """Người đang đăng nhập nộp hồ sơ không thể là người mất. Họ tên người mất trùng chủ tài khoản (hoặc không có họ tên mà
+    số trùng) → cả khối là của người nộp, bỏ trống. Chỉ SỐ giấy tờ trùng tài khoản mà họ tên khác (tờ khai chép nhầm số
+    của người yêu cầu sang dòng người mất) → chỉ bỏ cụm giấy tờ, giữ họ tên."""
+    account_name, account_id = requester_context(options)
+    name = values.get("NguoiMat_HoTen")
+    same_name = bool(account_name and name and _fold(account_name) == _fold(name))
+    numbers = {_digits(values.get("NguoiMat_SoDinhDanh")), _digits(values.get("NguoiMat_SoGiayTo"))} - {""}
+    same_number = bool(account_id) and account_id in numbers
+    if same_name or (same_number and not name):
+        return {key: value for key, value in values.items() if key not in _DECEASED_IDENTITY}
+    if same_number:
+        return {key: value for key, value in values.items() if key not in _DECEASED_ID_DOC}
+    return values
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
     context = str(options.get("_reasoning_context") or "")
     out: list[dict] = []
     warnings: list[str] = []
+    values = _drop_account_from_deceased(values, options)
     seen: set[str] = set()
 
     def add(name: str, value, *, code: str | None = None, default: bool = False) -> dict | None:
@@ -261,8 +289,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenField56", _ngay(values.get("NguoiMat_NgayMat")))
     gio = re.match(r"^\s*(\d{1,2})\s*[:hg]\s*(\d{1,2})", str(values.get("NguoiMat_GioMat") or ""))
     if gio and int(gio.group(1)) < 24 and int(gio.group(2)) < 60:
-        add("citizenGiomat", str(int(gio.group(1))))
-        add("citizenPhutmat", str(int(gio.group(2))))
+        # Cán bộ sửa lại "9" → "09", "0" → "00": giữ hai chữ số như cổng hiển thị.
+        add("citizenGiomat", f"{int(gio.group(1)):02d}")
+        add("citizenPhutmat", f"{int(gio.group(2)):02d}")
     loai_dang_ky, suy_luan = _loai_dang_ky(values, context)
     add_choice("citizenNDKLoaidangky", loai_dang_ky, default=suy_luan)
 

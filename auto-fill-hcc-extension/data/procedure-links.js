@@ -175,13 +175,12 @@ window.PROCEDURE_KE_KHAI_LINKS = [
     autoConfirm: true,
   },
   {
-    // Trang giới thiệu trên cổng QUỐC GIA; bấm "Nộp trực tuyến" sẽ rời sang hệ thống chuyên ngành
-    // hokinhdoanh.dkkd.gov.vn (nơi detect theo domain của registry hoạt động). Không có modal
-    // "Thông tin chung" của cổng QG ở nhánh này → autoConfirm phải để false.
+    // Mở thẳng trang chủ cổng hộ kinh doanh (không qua cổng QG → không chọn cơ quan, không có
+    // modal "Thông tin chung" → autoConfirm false). Danh mục thật do backend trả (ke_khai_links.json).
     key: "dang-ky-kinh-doanh",
     label: "Đăng ký thành lập hộ kinh doanh",
-    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
-    needsAgencySelect: true,
+    url: "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+    needsAgencySelect: false,
     autoConfirm: false,
   },
   {

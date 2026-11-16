@@ -1,13 +1,14 @@
 """Map compact marriage facts to legacy x-* UI fields."""
 
 import re
+from datetime import date, datetime
 import unicodedata
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
-from app.pipelines._shared.area_remap import city_province_area, remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.area_remap import canonical_province, canonical_ward, city_province_area, remap_area
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
-from app.pipelines._shared.tai_khoan import apply_account_marriage
+from app.pipelines._shared.tai_khoan import account_context, apply_account_marriage
 from app.pipelines._shared.foreign_id import (
     normalize_nationality,
     normalize_id_type,
@@ -102,7 +103,23 @@ def _divorce_party_matches(person_name, parties) -> bool:
     listed = re.sub(r"[^a-z0-9]+", " ", _fold(parties)).strip()
     if not person or not listed:
         return True
-    return f" {person} " in f" {listed} "
+    if f" {person} " in f" {listed} ":
+        return True
+    # Họ tên trên thẻ hay bị OCR đọc lệch một tiếng ("Hường" ra "Huỳnh"): cùng họ và chữ đệm, chỉ TÊN lệch ≤ 2 ký tự
+    # so với đúng một đương sự thì vẫn là người đó.
+    head, _, last = person.rpartition(" ")
+    near = [name for name in (re.sub(r"[^a-z0-9]+", " ", _fold(part)).strip() for part in re.split(r"[;,]", str(parties)))
+            if head and name.rpartition(" ")[0] == head and _edit_distance(name.rpartition(" ")[2], last) <= 2]
+    return len(near) == 1
+
+
+def _edit_distance(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, start=1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
 
 
 def _digits(value) -> str:
@@ -197,6 +214,13 @@ def _normalize_admin_unit(value):
     return text
 
 
+def _tach_part(value: dict, label: str) -> str | None:
+    """Một phần của dòng "_tach" ("chi tiết: ... | xã: ... | huyện (bỏ): ... | tỉnh: ..."); "" khi phần đó ghi "—",
+    None khi lượt trích không trả dòng này / không có phần đó."""
+    match = re.search(rf"(?:^|\|)\s*{re.escape(label)}:([^|]*)", str(value.get("_tach") or ""))
+    return match.group(1).strip(" —–-") if match else None
+
+
 def _area(value, nationality: str = "Việt Nam"):
     if not isinstance(value, dict):
         return None
@@ -207,6 +231,15 @@ def _area(value, nationality: str = "Việt Nam"):
         quoc_gia = nationality if is_foreign(nationality) else "Việt Nam"
 
     tinh_raw = value.get("tinh") or value.get("tỉnh") or ""
+    # Ô tinh là một tỉnh khác hẳn tỉnh chép ở dòng "_tach" của chính địa chỉ đó (model chuẩn hoá lệch): theo phần chép
+    # nguyên văn từ giấy.
+    copied = _tach_part(value, "tỉnh")
+    if copied and canonical_province(copied) and canonical_province(tinh_raw) not in (None, canonical_province(copied)):
+        tinh_raw = copied
+    if _fold(tinh_raw) in ("viet nam", "vietnam", "vn"):
+        # Ô tỉnh ghi tên nước: lấy cụm cuối chép nguyên văn ở "_tach" (tỉnh, hoặc cụm model xếp vào chỗ huyện khi tỉnh
+        # viết tắt); không có thì để trống.
+        tinh_raw = copied or _tach_part(value, "huyện (bỏ)") or ""
 
     # Normalize tên tỉnh nước ngoài nếu có trong bảng
     if is_foreign(quoc_gia) and tinh_raw:
@@ -225,7 +258,17 @@ def _area(value, nationality: str = "Việt Nam"):
         return None
     # Chỉ remap địa chỉ Việt Nam (bảng remap_lam_dong không có địa danh nước ngoài)
     if not is_foreign(quoc_gia):
-        return city_province_area(remap_area(out))
+        remapped = remap_area(out)
+        # Địa chỉ HAI CẤP (giấy không ghi huyện) mà tên xã trên giấy là xã HIỆN HÀNH của tỉnh đó: giữ tên trên giấy.
+        # Bảng sáp nhập còn mang một xã CŨ trùng tên của tỉnh cũ, đã nhập vào xã khác.
+        # Cụm chép vào chỗ huyện chính là cụm model đã dùng làm tỉnh (tỉnh viết tắt đứng cuối dòng) thì dòng không có huyện.
+        district = _tach_part(value, "huyện (bỏ)")
+        if isinstance(remapped, dict) and district is not None and (
+                not district or _fold(district) in (_fold(value.get("tinh") or ""), _fold(tinh_raw))):
+            current = canonical_ward(remapped.get("tinh"), out["xa"])
+            if current:
+                remapped = {**remapped, "xa": current}
+        return city_province_area(remapped)
     return out
 
 
@@ -293,7 +336,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         ngay_sinh, ngay_sinh_default = identity("NgaySinh")
         ngay_cap, ngay_cap_default = identity("NgayCap")
         noi_cap, noi_cap_default = identity("NoiCap")
-        issuer = noi_cap or default_issuer(ngay_cap)
+        # Tờ khai hay ghi nơi cấp viết tắt ("Cục CS QLHC về TTXH"); ô trên cổng cần tên cơ quan đầy đủ.
+        issuer = normalize_issuer(noi_cap) or default_issuer(ngay_cap)
 
         # Suy nationality: ưu tiên field QuocTich, fallback từ quocGia trong địa chỉ
         # v2: thêm fallback quocGia để xử lý khi LLM bỏ sót QuocTich
@@ -353,12 +397,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Người Việt Nam: radio "1" (Trong nước) + field TrongNuoc
                 add(f"NoiCuTru_{dst}", "1")
                 add(f"NoiCuTru_{dst}_TrongNuoc", area)
+        elif ho_ten and not is_foreign(nationality):
+            # Chưa đọc được nơi cư trú: vẫn chọn "Trong nước" để cụm địa chỉ hiện sẵn trên form và lượt soát sau khi
+            # điền bổ sung được địa chỉ (cụm chỉ được ghi lại khi ô chọn này không đổi so với lượt đầu).
+            add(f"NoiCuTru_{dst}", "1")
         # Mỗi bên xử lý độc lập: nếu cả số lần và tình trạng đều không có
         # thì giữ mặc định nghiệp vụ của form (lần 1, chưa đăng ký).
         # Nếu một trong hai có bằng chứng thì chỉ điền field có bằng chứng,
         # không suy diễn field còn thiếu.
         so_lan = str(values.get(f"{dst}_SoLanKetHon") or "").strip()
+        if so_lan.isdigit():
+            so_lan = str(int(so_lan))  # "01" → "1": ô nhận số nguyên, và nhánh "lần 1" bên dưới so đúng chữ "1"
         status_code = str(values.get(f"{dst}_TinhTrangHonNhan") or "").strip()
+        # Mã "đã ly hôn" kèm danh sách đương sự KHÔNG có tên người này: văn bản là của bên kia (vợ / chồng cũ của
+        # họ) → không có chứng cứ cho bên này, bỏ mã để về mặc định theo số lần kết hôn.
+        parties = values.get(f"{dst}_BanAnLyHon_DuongSu")
+        if status_code == "3" and parties and not _divorce_party_matches(ho_ten, parties):
+            status_code = ""
         if not so_lan and not status_code:
             add(f"SoLanKetHon_{dst}", "1", default=True)
             add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"], default=True)
@@ -390,6 +445,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     if decision:
                         add(f"TTHN_LyHon{dst}", decision)
 
+    _account_as_divorce_party(values, options)
     add_person("BenNu", "BenNu", "ToKhaiNu")
     add_person("BenNam", "BenNam", "ToKhaiNam")
 
@@ -408,5 +464,47 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     else:
         add("CapBanSao", _copy_value(values.get("CopyRequest_WantsCopy")))
 
-    return apply_account_marriage(out, options, _ui_field, _area,
+    return apply_account_marriage(out, _without_bad_issue_date(options), _ui_field, _area,
                                   lambda issuer: id_doc_type("Căn cước công dân", issuer))
+
+
+def _account_as_divorce_party(values: dict, options: dict | None) -> None:
+    """Bên chỉ có văn bản ly hôn (không thẻ, không cột tờ khai): lượt trích có khi không trả họ tên → khối cả bên bị bỏ,
+    mất luôn tình trạng ly hôn; có họ tên mà không số / ngày sinh thì bước áp tài khoản không nhận ra. Chủ tài khoản
+    cùng giới với bên đó và trùng họ tên (bỏ dấu) với đúng một đương sự của văn bản gán cho bên đó (họ tên đã đọc, nếu
+    có, cũng trùng) → chính là người của bên đó: lấy họ tên + số định danh tài khoản để bước áp tài khoản nhận ra."""
+    account = account_context(options)
+    name = re.sub(r"[^a-z0-9]+", " ", _fold(account.get("HoTen"))).strip()
+    if not name:
+        return
+    for side, gender in (("BenNam", "Nam"), ("BenNu", "Nữ")):
+        declaration = "ToKhaiNam" if side == "BenNam" else "ToKhaiNu"
+        if any(values.get(f"{prefix}_SoDinhDanh") for prefix in (side, declaration)):
+            continue
+        written = [re.sub(r"[^a-z0-9]+", " ", _fold(values.get(f"{prefix}_HoTen"))).strip() for prefix in (side, declaration)]
+        parties = [re.sub(r"[^a-z0-9]+", " ", _fold(part)).strip()
+                   for part in re.split(r"[;,]", str(values.get(f"{side}_BanAnLyHon_DuongSu") or ""))]
+        if account.get("GioiTinh") != gender or parties.count(name) != 1 or any(w and w != name for w in written):
+            continue
+        values[f"{side}_HoTen"] = account["HoTen"]
+        if account.get("SoDinhDanh"):
+            values[f"{side}_SoDinhDanh"] = account["SoDinhDanh"]
+
+
+_FIRST_CARD_YEAR = 2020  # thẻ căn cước đang lưu hành cấp từ năm này trở đi
+
+
+def _without_bad_issue_date(options: dict | None) -> dict | None:
+    """Tài khoản cổng có khi trả ngày cấp sai (trùng ngày sinh, trước năm cấp thẻ hiện hành, hoặc ở tương lai): bỏ giá
+    trị đó khỏi dữ liệu tài khoản để ô ngày cấp giữ theo giấy."""
+    context = (options or {}).get("formContext")
+    issued = str(context.get("applicantIdDate") or "").strip() if isinstance(context, dict) else ""
+    if not issued:
+        return options
+    try:
+        day = datetime.strptime(issued, "%d/%m/%Y").date()
+    except ValueError:
+        return options
+    if _FIRST_CARD_YEAR <= day.year and day <= date.today() and issued != str(context.get("applicantBirthday") or "").strip():
+        return options
+    return {**options, "formContext": {**context, "applicantIdDate": ""}}

@@ -33,6 +33,12 @@ from app.pipelines.khai_sinh_lien_thong.process.mapper import (
 from app.pipelines.khuyet_tat.process.mapper import (
     with_account_process_options as with_khuyet_tat_account_process_options,
 )
+from app.pipelines.thong_bao_luu_tru.process.mapper import (
+    with_account_process_options as with_thong_bao_luu_tru_account_process_options,
+)
+from app.pipelines.dang_ky_thuong_tru.process.mapper import (
+    with_account_process_options as with_dang_ky_thuong_tru_account_process_options,
+)
 from app.pipelines.ho_tro_mai_tang.process.mapper import (
     with_account_process_options as with_mai_tang_account_process_options,
 )
@@ -130,11 +136,20 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         prepared.pipeline_options = with_khuyet_tat_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
+        # Thông báo lưu trú: ô Cơ quan thực hiện bắt buộc — dự phòng theo xã/tỉnh tài khoản khi giấy không ghi.
+        prepared.pipeline_options = with_thong_bao_luu_tru_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_dang_ky_thuong_tru_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
     # Điền đợt 2: chỉ bản extension khai `fillSupports: ["secondPass"]` mới chạy. Luôn gán lại để client không tự
     # bật được bằng cách gửi sẵn khoá nội bộ này trong options.
     fill_supports = (body.options or {}).get("fillSupports")
     prepared.pipeline_options["_secondPass"] = second_pass.wanted(
-        user, isinstance(fill_supports, list) and "secondPass" in fill_supports)
+        user, isinstance(fill_supports, list) and second_pass.capability(proc) in fill_supports)
+    # Xã / phường của tài khoản quầy: gợi ý cho lớp soát khi tên xã trên giấy viết tắt hoặc đọc lệch.
+    prepared.pipeline_options["counterWard"] = str(user.get("xa") or user.get("name") or "")
     total_bytes = prepared.total_bytes
     ocr_provider = prepared.ocr_provider
     if rec is not None:

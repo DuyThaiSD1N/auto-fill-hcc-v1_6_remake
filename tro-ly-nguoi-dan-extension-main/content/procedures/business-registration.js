@@ -3521,6 +3521,11 @@
   // Cho adapter chèn "lượt chốt địa chỉ thuế" cuối order (hồ sơ kê "giống trụ sở chính").
   H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
   H.TAX_PAGE_KEY = "thong-tin-ve-thue";
+  // Trợ lý hộ kinh doanh: đảo radio địa chỉ thuế Khác → Giống ngay lúc công dân chọn (adapter hkdFill).
+  H.isTaxAddressModeField = isTaxAddressModeField;
+  H.clickTaxAddressMode = clickTaxAddressMode;
+  H.TAX_ADDR_SAME = TAX_ADDR_SAME;
+  H.TAX_ADDR_OTHER = TAX_ADDR_OTHER;
   // Stage GỘP cho page_status: thử luồng thành lập mới trước (home/select-registration/confirm
   // trùng marker), không ra thì thử luồng thay đổi (search-business/select-change/main thay đổi).
   H.detectBusinessAnyStage = function detectBusinessAnyStage() {

@@ -55,6 +55,18 @@
     },
     {
         "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa An",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
         "xa_cu": "Phổ Nhơn",
         "tinh_moi": "Quảng Ngãi",
         "xa_moi": "Xã Nguyễn Nghiêm"

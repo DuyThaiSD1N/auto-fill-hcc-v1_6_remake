@@ -182,8 +182,9 @@ def test_nhiem_vu_rieng_dung_sau_ocr_de_dung_lai_tien_to(monkeypatch):
 @pytest.mark.parametrize("field,a,b,same", [
     (ho_tich.UNITS[1].fields[0], "34/2013", "34", True),       # số kèm / không kèm năm
     (ho_tich.UNITS[1].fields[0], "34/2013", "43/2013", False),
-    (ho_tich.UNITS[1].fields[0], "08/2006", "88/TLKT-BS", True),  # số bản trích lục: mapper lo
-    (ho_tich.UNITS[0].fields[0], "UBND xã An Phú", "Ủy ban nhân dân xã An Phú, huyện X, tỉnh Y", True),
+    (ho_tich.UNITS[1].fields[0], "08/2006", "88/TLKT-BS", False),  # số bản trích lục khác số gốc → soát
+    (ho_tich.UNITS[0].fields[0], "UBND xã An Phú", "Ủy ban nhân dân xã An Phú", True),
+    (ho_tich.UNITS[0].fields[0], "UBND xã An Phú", "Ủy ban nhân dân xã An Phú, huyện X, tỉnh Y", False),  # thiếu cấp
     (ho_tich.UNITS[0].fields[0], "UBND xã An Phú", "UBND xã Bình Phú", False),
 ])
 def test_quy_uoc_ho_tich_khong_tinh_la_lech(field, a, b, same):
@@ -296,6 +297,19 @@ def test_ho_tich_cau_hoi_dong_tren_dong_da_chat_loc(monkeypatch):
     findings = asyncio.run(ho_tich.find(ho_tich.INSPECTOR, Case(DOCS, "", {}, {}), "thử"))
     assert "[2] Số: 12/1990" in seen[0] and "LÊ THỊ CÚC" not in seen[0]  # chỉ dòng chắt lọc được gửi đi
     assert [(f.unit.key, f.values, f.quote) for f in findings] == [("so", {"GiayTo_So": "12/1990"}, "Số: 12/1990")]
+
+
+@pytest.mark.parametrize("unit_key,ours,theirs,line,backed", [
+    ("so", "27/TLKT-BS", "9", "Số: 9 ngày 02 tháng 3 năm 2021", True),          # số bản trích lục → số gốc
+    ("so", "9", "27/TLKT-BS", "Số: 27/TLKT-BS", False),                         # ngược lại: không có căn cứ
+    ("so", "356/2026/TLCCHT", "71/1990", "Số: 71/1990", False),                  # số trích lục không phải bản sao
+    ("co_quan", "UBND phường X", "UBND phường X, huyện Y, tỉnh Z",
+     "Đã được đăng ký khai tử tại: UBND phường X, huyện Y, tỉnh Z", True),       # A cắt mất cấp
+    ("co_quan", "UBND phường X", "UBND phường W, huyện Y", "Đăng ký tại: UBND phường W, huyện Y", False),
+])
+def test_ho_tich_ma_co_can_cu_so_goc_va_co_quan_du_cap(unit_key, ours, theirs, line, backed):
+    unit = next(u for u in ho_tich.UNITS if u.key == unit_key)
+    assert bool(ho_tich._code_basis(unit, ours, theirs, line).get("backed")) is backed
 
 
 _ADDRESS_OCR = ("Họ, chữ đệm, tên người mẹ: LÊ THỊ CÚC\nNơi cư trú: Thôn 2, xã Bình Phú, huyện Tân Lập, tỉnh Lâm Đồng\n"
@@ -585,3 +599,9 @@ def test_dia_chi_dong_nguon_trong_khoi_dung_ten_thi_khong_coi_la_lay_cua_nguoi_k
     best = {"tinh": "Lâm Đồng", "xa": "P. An Phú", "diaChi": "Tổ 5"}
     assert dia_chi.current_faults(current, best, lines, labels, 2, frozenset({1})) == []
     assert dia_chi.current_faults(current, best, lines, labels, 2) == ["lấy từ dòng [1] thuộc về người khác"]
+
+
+@pytest.mark.parametrize("value,rejected", [("20 Quyền", True), ("115/TLGCKS ngày 10/04/2017", True), ("33/2023", False)])
+def test_ho_tich_so_dang_ky_lan_chu_nhan_khac_thi_bac(value, rejected):
+    reason = ho_tich.check(ho_tich.UNITS[1], {"GiayTo_So": value}, Case([], "", {}, {}))
+    assert bool(reason) is rejected

@@ -81,6 +81,13 @@
       this.conversationId = null;
     }
 
+    // GET /api/v1/process/{requestId}/second-pass — kết quả điền đợt 2 (BE soát lại ở nền sau lượt điền).
+    // Trả { status: "pending" | "done" | "none", fields? }; fields là các ô cần ghi lại.
+    async getSecondPass(requestId) {
+      const res = await this._fetchApi(`/api/v1/process/${encodeURIComponent(requestId)}/second-pass`);
+      return this._json(res);
+    }
+
     // GET/PATCH /api/v1/account/settings — cài đặt THEO TÀI KHOẢN lưu ở BE (đổi tên tệp khi đính kèm…).
     async getAccountSettings() {
       return await this._json(await this._fetchApi(`/api/v1/account/settings`));

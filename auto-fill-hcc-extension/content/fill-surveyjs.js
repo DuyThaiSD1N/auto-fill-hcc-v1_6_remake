@@ -209,6 +209,28 @@
     return result;
   }
 
+  // Điền đợt 2: ghi lại riêng các ô lớp soát của BE sửa sau lượt điền đầu. Vẫn là engine điền nên tô như ô điền
+  // thường; khác lượt đầu ở chỗ không xoá dấu màu đang có và không cuộn trang. Ô MAIN world bỏ qua (cán bộ đã
+  // sửa, cổng khoá, không còn trên trang) giữ nguyên dấu cũ.
+  async function patchFormSurveyJs(fields) {
+    injectMarkStyles();
+    const result = { filled: 0, skipped: [] };
+    const res = await callMain({ op: "patchValues", fields }, 60000);
+    if (!res.ok) {
+      console.warn("[AutoFill-SurveyJS] không ghi được điền đợt 2:", res.error);
+      return result;
+    }
+    const find = questionIndex();
+    const byName = new Map(fields.map((f) => [f.name, f]));
+    for (const r of res.results || []) {
+      const field = byName.get(r.name) || { name: r.name };
+      if (r.ok) result.filled++;
+      else result.skipped.push(r.name);
+      if (r.ok || r.reason === "cleared-after-set") markField(field, r.ok, find);
+    }
+    return result;
+  }
+
   function uploadRows() {
     return Array.from(document.querySelectorAll("tr"))
       .filter((tr) => isVisible(tr) && tr.querySelector(UPLOAD_BUTTON));
@@ -445,6 +467,7 @@
   }
 
   H.fillFormSurveyJs = fillFormSurveyJs;
+  H.patchFormSurveyJs = patchFormSurveyJs;
   H.attachSurveyJsByPlan = attachSurveyJsByPlan;
   H.readSurveyJsValue = readSurveyJsValue;
 })();

@@ -1106,6 +1106,8 @@ input, select, textarea { font-family: inherit; }
 .cs-note.cs-scope{ background:#f2f6fb; color:#3d5266; }
 .cs-note.cs-purpose{ background:#eaf4ee; color:#245c3f; }
 .cs-note.cs-purpose b{ color:#12603f; }
+.cs-note.cs-ai{ background:#f4f1fb; color:#3f3a5c; }
+.cs-note.cs-ai ul{ margin:4px 0 0; padding-left:16px; display:grid; gap:3px; }
 .cs-legal-link{ width:100%; padding:8px; border:1px solid var(--cs-blue-soft-border); border-radius:8px; background:#fff; color:var(--cs-blue); font-weight:700; font-size:12px; cursor:pointer; }
 .cs-legal-link:hover{ background:var(--cs-blue-soft); }
 

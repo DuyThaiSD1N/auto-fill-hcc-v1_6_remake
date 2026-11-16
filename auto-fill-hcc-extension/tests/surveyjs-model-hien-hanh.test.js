@@ -36,6 +36,8 @@ function loadEngine() {
   const ctx = {
     window: { addEventListener: () => {} }, document, CustomEvent, location: { hostname: "dichvucong.gov.vn" },
     HTMLInputElement: function () {}, CSS: { escape: (s) => s }, setTimeout, clearTimeout, console,
+    // Bộ giữ khối SĐT dò biểu mẫu theo chu kỳ — test không cần vòng dò thật (giữ tiến trình sống).
+    setInterval: () => 0, clearInterval: () => {},
   };
   ctx.HTMLInputElement.prototype = { click() {}, showPicker() {} };
   vm.runInNewContext(src, ctx);

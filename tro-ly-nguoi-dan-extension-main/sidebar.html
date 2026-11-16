@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="06/11/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="16/11/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -281,6 +281,21 @@
       <p id="start-heard" class="start-heard" aria-live="polite" hidden></p>
       <p class="start-note">Có thể gõ hoặc nói để trò chuyện. Phiên sẽ tự kết thúc nếu không thao tác trong 20 phút.</p>
     </section>
+
+    <!-- Thông báo bảo vệ dữ liệu cá nhân: hiện trước khi mở phiên của mỗi lượt công dân; chữ do BE gửi (voice/config). -->
+    <div class="pdp" id="pdp" role="dialog" aria-modal="true" aria-labelledby="pdp-title" hidden>
+      <div class="pdp-box">
+        <div class="pdp-body" id="pdp-body">
+          <h2 class="pdp-title" id="pdp-title"></h2>
+          <ol class="pdp-sum" id="pdp-sum"></ol>
+          <button class="pdp-toggle" id="pdp-toggle" type="button" aria-expanded="false" aria-controls="pdp-detail"></button>
+          <div class="pdp-detail" id="pdp-detail" hidden></div>
+        </div>
+        <div class="pdp-foot">
+          <button class="pdp-ok" id="pdp-ok" type="button"></button>
+        </div>
+      </div>
+    </div>
 
     <!-- Popover tài khoản (nút 👤): tên + nơi gắn acc + đăng xuất -->
     <div class="acc-pop" id="acc-pop" hidden>

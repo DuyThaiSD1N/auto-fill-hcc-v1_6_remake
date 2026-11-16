@@ -538,6 +538,18 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_tam_tru["bcaPortal"] is True and bca_tam_tru["samePageAttach"] is True
     assert bca_tam_tru["askBeforeAttach"] is True
     assert "wizard" not in bca_tam_tru and "maePortal" not in bca_tam_tru
+    # Đăng ký thường trú (Cổng DVC Bộ Công an): như tạm trú — một trang, đính kèm cùng trang, hỏi trước khi đính.
+    bca_thuong_tru = procedures.pop("dang-ky-thuong-tru")
+    assert bca_thuong_tru.get("flowProfile") is None
+    assert bca_thuong_tru["bcaPortal"] is True and bca_thuong_tru["samePageAttach"] is True
+    assert bca_thuong_tru["askBeforeAttach"] is True and bca_thuong_tru["submitCommitCheckbox"] == "chkRULE"
+    assert "wizard" not in bca_thuong_tru and "maePortal" not in bca_thuong_tru
+    # Thông báo lưu trú (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, người lưu trú thêm qua modal.
+    bca_luu_tru = procedures.pop("thong-bao-luu-tru")
+    assert bca_luu_tru.get("flowProfile") is None
+    assert bca_luu_tru["bcaPortal"] is True and bca_luu_tru["bcaGuestList"] is True
+    assert bca_luu_tru["hasAttachmentStep"] is False and "samePageAttach" not in bca_luu_tru
+    assert "wizard" not in bca_luu_tru and "maePortal" not in bca_luu_tru
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -844,7 +856,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # "dang-ky-dien-tich-tang-them-lam-dong" (1.116356), luồng "xay-dung".
     # +1 cổng iGate Lâm Đồng (12/11) "giao-thue-dat-giao-rung-gia-han-su-dung-dat" (1.116366), luồng "xay-dung".
     # +1 cổng Bắc Ninh (12/11) "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh" (1.011442).
-    assert len(procedures) == 162
+    # +1 cổng Bộ Công an (16/11) "thong-bao-luu-tru" (2.001159).
+    # +1 cổng Bộ Công an (16/11) "dang-ky-thuong-tru" (1.004222).
+    assert len(procedures) == 164
 
     for procedure in procedures:
         key = procedure["key"]

@@ -36,10 +36,11 @@ MAPPERS = [ket_hon, ket_hon_lai, ket_hon_nuoc_ngoai]
 
 
 def _fields(*dicts, mapper=None):
-    # Kết hôn có yếu tố nước ngoài đặt tên nhóm nhân thân "Nam_*"/"Nu_*", kết hôn trong nước "BenNam_*"/"BenNu_*"
-    # (không mặc định là CCCD).
+    # Kết hôn có yếu tố nước ngoài đặt tên nhóm nhân thân "Nam_*"/"Nu_*", kết hôn và đăng ký lại kết hôn
+    # "BenNam_*"/"BenNu_*" (không mặc định là CCCD).
     rename = {ket_hon_nuoc_ngoai: lambda k: k.removeprefix("Cccd"),
-              ket_hon: lambda k: "Ben" + k.removeprefix("Cccd") if k.startswith("Cccd") else k}.get(mapper, lambda k: k)
+              ket_hon: lambda k: "Ben" + k.removeprefix("Cccd") if k.startswith("Cccd") else k,
+              ket_hon_lai: lambda k: "Ben" + k.removeprefix("Cccd") if k.startswith("Cccd") else k}.get(mapper, lambda k: k)
     return [{"name": rename(k), "value": v} for d in dicts for k, v in d.items()]
 
 

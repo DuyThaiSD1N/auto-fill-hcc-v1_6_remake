@@ -175,3 +175,40 @@ test("nút Nộp hồ sơ: chỉ bấm nút Nộp trên Trang xác nhận khi BE
   assert.match(sidebar, /supportsHkdSubmit: true/);
   assert.match(sidebar, /a\.type === "hkd_submit"/);
 });
+
+test("lệnh lưu khối có waitTts thì đọc xong câu hiện tại mới thao tác trên trang (có trần thời gian)", () => {
+  assert.match(sidebar, /a\.type === "start_business_registration" && a\.pages\) \{\s*await hkdChain;[^\n]*\n\s*if \(a\.waitTts\) await waitReplyTts\(\d+\);/);
+  assert.match(sidebar, /async function waitReplyTts\(maxMs\) \{[\s\S]{0,200}replyTtsInFlight > 0 \|\| window\.__hccTTS\?\.isSpeaking\?\.\(\)/);
+});
+
+test("lệnh lưu khối của vòng hỏi đáp (hkd: true) không dựng thẻ Bóc tách thông tin", () => {
+  assert.match(sidebar, /function updatePipeFromState[\s\S]{0,700}String\(a\.type \|\| ""\)\.startsWith\("hkd_"\) \|\| a\.hkd === true\)\) return;/);
+});
+
+test("tờ khai bản giấy: khai cờ, lệnh download_file tải bằng phiên đăng nhập", () => {
+  assert.match(sidebar, /supportsHkdDeclarationDocx: true/);
+  assert.match(sidebar, /a\.type === "download_file" && a\.path\) \{\s*void downloadBackendFile\(a\.path/);
+  assert.match(sidebar, /async function downloadBackendFile\(path, filename\) \{[\s\S]{0,200}authFetch\(`\$\{BASE_URL\}\$\{path\}`\)[\s\S]{0,300}a\.download = filename/);
+});
+
+test("sao chép tài khoản ở khối chủ hộ: đọc lại nhân thân và gửi kèm hkd_copied ở cả hai đường", () => {
+  const adapter = strip(fs.readFileSync(path.join(__dirname, "..", "content", "business-registration-adapter.js"), "utf8"));
+  assert.match(adapter, /page === "chu-ho-kinh-doanh" && copied[\s\S]{0,600}hoTen: hkdRead\("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld"\)[\s\S]{0,300}soDinhDanh: hkdRead\("ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld"\)/);
+  assert.doesNotMatch(adapter, /ownerInfo = \{[^}]*(PHONE|EMAIL)/, "không đọc điện thoại / email");
+  assert.match(adapter, /type: "hkdCopied"[\s\S]{0,120}owner: res\.ownerInfo/);
+  assert.match(sidebar, /owner: res\.ownerInfo \|\| null/);
+  assert.match(sidebar, /owner: msg\.owner \|\| null/);
+});
+
+test("điền ngay thuế 'Giống trụ sở': đảo Khác → Giống lúc chọn, engine export helper chờ khối dựng lại", () => {
+  const adapter = strip(fs.readFileSync(
+    path.join(__dirname, "..", "content", "business-registration-adapter.js"), "utf8"));
+  const fill = adapter.slice(adapter.indexOf("async function hkdFill("), adapter.indexOf("function hkdSubmit"));
+  assert.match(fill, /H\.isTaxAddressModeField\(f\) && String\(f\.value \?\? ""\)\.trim\(\) === H\.TAX_ADDR_SAME/);
+  assert.match(fill, /!taxSame\.includes\(f\)/, "radio thuế không tick thẳng Giống trước khi đảo");
+  assert.match(fill, /clickTaxAddressMode\(taxSame, H\.TAX_ADDR_OTHER\);\s*await H\.clickTaxAddressMode\(taxSame, H\.TAX_ADDR_SAME\)/);
+  assert.match(business, /H\.clickTaxAddressMode = clickTaxAddressMode;/);
+  assert.match(business, /H\.isTaxAddressModeField = isTaxAddressModeField;/);
+  assert.match(business, /await waitForPanelSettle\(TAX_ADDR_WARD_FIELD/);
+  assert.match(business, /async function handleTaxAddressRetoggle/, "lượt chốt lúc Lưu vẫn giữ");
+});

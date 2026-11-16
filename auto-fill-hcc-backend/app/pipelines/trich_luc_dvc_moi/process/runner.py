@@ -6,6 +6,7 @@ Thiếu ngày đăng ký sau lượt trích → Qwen nhìn thẳng ảnh đọc 
 
 import asyncio
 import base64
+import copy
 import logging
 import re
 from contextlib import ExitStack
@@ -102,6 +103,14 @@ async def read_registration_date(files: list[dict], values: dict) -> str:
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        return await reason.build_context(documents, opts)
+
     result = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -110,7 +119,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=reason.build_context,
+        context_builder=build_context,
     )
     values = {f.get("name"): f.get("value") for f in result.get("fields") or [] if isinstance(f, dict)}
     if not values.get("GiayTo_NgayDangKy") and any(values.get(k) for k in _REGISTRATION_HINT_KEYS):
@@ -120,9 +129,16 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
             result["fields"].append({"name": "GiayTo_NgayDangKy", "comp": COMPACT_COMP_BY_NAME["GiayTo_NgayDangKy"],
                                      "value": registered})
             result.setdefault("extracted", {})["visionPatched"] = ["GiayTo_NgayDangKy"]
+    raw_fields = copy.deepcopy(result["fields"]) if second_pass else []
     enrich_options = {**(options or {}), "_reasoning_context": result.get("reasoning_context") or "",
                       "_ocr_text": result.get("ocr_text") or ""}
     result["fields"], warnings = mapper.enrich(result["fields"], enrich_options)
     if warnings:
         result.setdefault("errors", []).extend(warnings)
+    if raw_fields and read.get("documents"):
+        from ..thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        result["_second_pass"] = lambda base_fields: dot_hai.patch(
+            read["documents"], enrich_options["_reasoning_context"], raw_fields, base_fields, enrich_options)
     return result

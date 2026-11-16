@@ -147,3 +147,16 @@ def test_account_name_fallback_cho_phien_cu():
     assert tracing._account_name({  # noqa: SLF001 — kiểm tra tương thích phiên legacy
         "location": {"ward": "Phường Tân Phong", "province": "Tỉnh Lai Châu"},
     }) == "Phường Tân Phong, Tỉnh Lai Châu"
+
+
+@pytest.mark.asyncio
+async def test_record_process_luu_moc_tai_khoan_pipeline_da_dung(captured):
+    """Mốc tài khoản (khối người yêu cầu cổng điền sẵn) lưu cùng chỗ Auto Fill lưu, để soát vì sao phân vai chọn
+    quan hệ; lượt không có mốc thì options như cũ."""
+    result = {"fields": [], "extracted": {}}
+    anchor = {"applicantFullname": "NGƯỜI A", "applicantIdentityNumber": "001000000001"}
+    await tracing.record_process(_CONV, "khai-sinh-dang-ky-lai", {"label": "x"}, _FILES, result, 1,
+                                 form_context=anchor)
+    await tracing.record_process(_CONV, "khai-sinh-dang-ky-lai", {"label": "x"}, _FILES, result, 1)
+    assert captured["requests"][0]["options"]["formContext"] == anchor
+    assert "formContext" not in captured["requests"][1]["options"]
