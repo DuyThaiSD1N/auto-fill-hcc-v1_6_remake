@@ -137,6 +137,9 @@
     // Có engine trang Đăng ký thường trú (ô cơ quan theo cặp id cboRECEIVE_ADDR_*_ID, bảng thành viên comp bca-rows).
     // Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
     supportsBcaThuongTru: true,
+    // Có engine trang Cấp đổi thẻ căn cước (cơ quan Công an tỉnh cboORGTinh → xã cboORGXa → địa chỉ trạm cboDiaChiTram,
+    // option "Công an …"). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
+    supportsBcaCanCuoc: true,
     // Biết tự bấm "Khai tờ khai" ở đúng dòng bảng Thành phần hồ sơ (lệnh open_eform → guided-steps.js) rồi tự gửi lệnh
     // điền khi tờ khai mở ra. Thiếu cờ → BE bảo công dân tự bấm như cũ.
     supportsOpenEform: true,

@@ -1,0 +1,772 @@
+[
+    {
+        "ten": "Bệnh viện Bạch Mai",
+        "xa": "Phường Kim Liên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Đức",
+        "xa": "Phường Hoàn Kiếm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Việt Đức",
+        "xa": "Phường Hoàn Kiếm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Đức cơ sở Ngọc Hồi",
+        "xa": "Xã Ngọc Hồi",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Việt Đức cơ sở Ngọc Hồi",
+        "xa": "Xã Ngọc Hồi",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Nông nghiệp",
+        "xa": "Xã Ngọc Hồi",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Nông nghiệp",
+        "xa": "Xã Ngọc Hồi",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản Trung ương",
+        "xa": "Phường Cửa Nam",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản TW",
+        "xa": "Phường Cửa Nam",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Viện Bảo vệ Bà mẹ và Trẻ sơ sinh",
+        "xa": "Phường Cửa Nam",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản Trung ương cơ sở 2",
+        "xa": "Xã Kiều Phú",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản TW cơ sở 2",
+        "xa": "Xã Kiều Phú",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Nhi Trung ương",
+        "xa": "Phường Láng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện E",
+        "xa": "Phường Nghĩa Đô",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đại học Y Hà Nội",
+        "xa": "Phường Kim Liên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Trung ương Quân đội 108",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện 108",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quân y 103",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện 19-8",
+        "xa": "Phường Từ Liêm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện 198",
+        "xa": "Phường Từ Liêm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quân y 354",
+        "xa": "Phường Ngọc Hà",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện 354",
+        "xa": "Phường Ngọc Hà",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quân y 105",
+        "xa": "Phường Sơn Tây",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Viện Quân y 105",
+        "xa": "Phường Sơn Tây",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Việt Pháp Hà Nội",
+        "xa": "Phường Kim Liên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Việt Pháp",
+        "xa": "Phường Kim Liên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Nam - Cu Ba Hà Nội",
+        "xa": "Phường Cửa Nam",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hữu nghị Việt Nam - Cuba Hà Nội",
+        "xa": "Phường Cửa Nam",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Bưu điện",
+        "xa": "Phường Phương Liệt",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đại học Y Dược - Đại học Quốc gia Hà Nội",
+        "xa": "Phường Thanh Xuân",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đại học Y Dược ĐHQGHN",
+        "xa": "Phường Thanh Xuân",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Xây dựng",
+        "xa": "Phường Thanh Xuân",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đại học Quốc gia Hà Nội",
+        "xa": "Phường Thanh Xuân",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đại học Phenikaa",
+        "xa": "Phường Xuân Phương",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản Hà Nội",
+        "xa": "Phường Láng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản HN",
+        "xa": "Phường Láng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thanh Nhàn",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thanh Nhàn",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hai Bà Trưng",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Xanh Pôn",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Xanh Pôn",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Saint Paul",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Saint Paul",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đống Đa",
+        "xa": "Phường Đống Đa",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đống Đa",
+        "xa": "Phường Đống Đa",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đức Giang",
+        "xa": "Phường Việt Hưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đức Giang",
+        "xa": "Phường Việt Hưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hà Đông",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hà Đông",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Hà Tây",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện tỉnh Hà Tây",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hà Tây",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện tỉnh Hà Sơn Bình",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Sơn Tây",
+        "xa": "Phường Sơn Tây",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Sơn Tây",
+        "xa": "Phường Sơn Tây",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Bắc Thăng Long",
+        "xa": "Xã Thư Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bắc Thăng Long",
+        "xa": "Xã Thư Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Nam Thăng Long",
+        "xa": "Phường Đông Ngạc",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Nam Thăng Long",
+        "xa": "Phường Đông Ngạc",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Lão khoa Hà Nội",
+        "xa": "Phường Đông Ngạc",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hòe Nhai",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hòe Nhai",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hòe Nhai cơ sở 2",
+        "xa": "Phường Hồng Hà",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Sóc Sơn",
+        "xa": "Xã Sóc Sơn",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Sóc Sơn",
+        "xa": "Xã Sóc Sơn",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Sóc Sơn",
+        "xa": "Xã Sóc Sơn",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Sóc Sơn",
+        "xa": "Xã Sóc Sơn",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đông Anh",
+        "xa": "Xã Đông Anh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đông Anh",
+        "xa": "Xã Đông Anh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Đông Anh",
+        "xa": "Xã Đông Anh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đông Anh",
+        "xa": "Xã Đông Anh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Gia Lâm",
+        "xa": "Xã Gia Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Gia Lâm",
+        "xa": "Xã Gia Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Gia Lâm",
+        "xa": "Xã Gia Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Gia Lâm",
+        "xa": "Xã Gia Lâm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Mê Linh",
+        "xa": "Xã Yên Lãng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Mê Linh",
+        "xa": "Xã Yên Lãng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Mê Linh",
+        "xa": "Xã Yên Lãng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Mê Linh",
+        "xa": "Xã Yên Lãng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thanh Trì",
+        "xa": "Xã Thanh Trì",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Thanh Trì",
+        "xa": "Xã Thanh Trì",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Thanh Trì",
+        "xa": "Xã Thanh Trì",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thanh Trì",
+        "xa": "Xã Thanh Trì",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Ba Vì",
+        "xa": "Xã Vật Lại",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Ba Vì",
+        "xa": "Xã Vật Lại",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Ba Vì",
+        "xa": "Xã Vật Lại",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Ba Vì",
+        "xa": "Xã Vật Lại",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phúc Thọ",
+        "xa": "Xã Phúc Thọ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Phúc Thọ",
+        "xa": "Xã Phúc Thọ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Phúc Thọ",
+        "xa": "Xã Phúc Thọ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phúc Thọ",
+        "xa": "Xã Phúc Thọ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đan Phượng",
+        "xa": "Xã Đan Phượng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Đan Phượng",
+        "xa": "Xã Đan Phượng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Đan Phượng",
+        "xa": "Xã Đan Phượng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đan Phượng",
+        "xa": "Xã Đan Phượng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hoài Đức",
+        "xa": "Xã Hoài Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Hoài Đức",
+        "xa": "Xã Hoài Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Hoài Đức",
+        "xa": "Xã Hoài Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hoài Đức",
+        "xa": "Xã Hoài Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc Oai",
+        "xa": "Xã Quốc Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Quốc Oai",
+        "xa": "Xã Quốc Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Quốc Oai",
+        "xa": "Xã Quốc Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quốc Oai",
+        "xa": "Xã Quốc Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thạch Thất",
+        "xa": "Xã Thạch Thất",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Thạch Thất",
+        "xa": "Xã Thạch Thất",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Thạch Thất",
+        "xa": "Xã Thạch Thất",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thạch Thất",
+        "xa": "Xã Thạch Thất",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Chương Mỹ",
+        "xa": "Phường Chương Mỹ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Chương Mỹ",
+        "xa": "Phường Chương Mỹ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Chương Mỹ",
+        "xa": "Phường Chương Mỹ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Chương Mỹ",
+        "xa": "Phường Chương Mỹ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thanh Oai",
+        "xa": "Xã Thanh Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Thanh Oai",
+        "xa": "Xã Thanh Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Thanh Oai",
+        "xa": "Xã Thanh Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thanh Oai",
+        "xa": "Xã Thanh Oai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thường Tín",
+        "xa": "Xã Thường Tín",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Thường Tín",
+        "xa": "Xã Thường Tín",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Thường Tín",
+        "xa": "Xã Thường Tín",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thường Tín",
+        "xa": "Xã Thường Tín",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phú Xuyên",
+        "xa": "Xã Phú Xuyên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Phú Xuyên",
+        "xa": "Xã Phú Xuyên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Phú Xuyên",
+        "xa": "Xã Phú Xuyên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phú Xuyên",
+        "xa": "Xã Phú Xuyên",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Mỹ Đức",
+        "xa": "Xã Mỹ Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa huyện Mỹ Đức",
+        "xa": "Xã Mỹ Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện huyện Mỹ Đức",
+        "xa": "Xã Mỹ Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Mỹ Đức",
+        "xa": "Xã Mỹ Đức",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Vân Đình",
+        "xa": "Xã Vân Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Vân Đình",
+        "xa": "Xã Vân Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hồng Ngọc",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hồng Ngọc",
+        "xa": "Phường Ba Đình",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hồng Ngọc - Phúc Trường Minh",
+        "xa": "Phường Từ Liêm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Hồng Ngọc Phúc Trường Minh",
+        "xa": "Phường Từ Liêm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Thu Cúc",
+        "xa": "Phường Tây Hồ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thu Cúc",
+        "xa": "Phường Tây Hồ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Thu Cúc",
+        "xa": "Phường Tây Hồ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản An Thịnh",
+        "xa": "Phường Bạch Mai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phương Đông",
+        "xa": "Phường Đông Ngạc",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Phương Đông",
+        "xa": "Phường Đông Ngạc",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Vinmec Times City",
+        "xa": "Phường Vĩnh Tuy",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Vinmec Times City",
+        "xa": "Phường Vĩnh Tuy",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Vinmec Smart City",
+        "xa": "Phường Tây Mỗ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Vinmec Smart City",
+        "xa": "Phường Tây Mỗ",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tâm Anh Hà Nội",
+        "xa": "Phường Bồ Đề",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Tâm Anh Hà Nội",
+        "xa": "Phường Bồ Đề",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Bắc Hà",
+        "xa": "Phường Bồ Đề",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Mặt Trời",
+        "xa": "Phường Xuân Đỉnh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quốc tế Mặt Trời",
+        "xa": "Phường Xuân Đỉnh",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Quốc tế DoLife",
+        "xa": "Phường Từ Liêm",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quốc tế Thiên Đức",
+        "xa": "Phường Hà Đông",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa An Việt",
+        "xa": "Phường Tương Mai",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hồng Phát",
+        "xa": "Phường Hai Bà Trưng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bảo Sơn",
+        "xa": "Phường Láng",
+        "tinh": "Thành phố Hà Nội"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Bảo Sơn 2",
+        "xa": "Phường Láng",
+        "tinh": "Thành phố Hà Nội"
+    }
+]

@@ -209,6 +209,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Có engine trang Đăng ký thường trú (ô cơ quan theo cặp id cboRECEIVE_ADDR_*_ID, bảng thành viên cùng thay đổi
         # comp bca-rows). Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
         "supportsBcaThuongTru": raw.get("supportsBcaThuongTru") is True,
+        # Có engine trang Cấp đổi thẻ căn cước (cơ quan Công an tỉnh → xã → địa chỉ trạm, option "Công an …").
+        # Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
+        "supportsBcaCanCuoc": raw.get("supportsBcaCanCuoc") is True,
         # Biết tự bấm "Khai tờ khai" ở đúng dòng Thành phần hồ sơ (lệnh open_eform) rồi tự gửi fill_eform khi tờ khai
         # mở ra. Thiếu cờ → bảo công dân tự bấm như cũ.
         "supportsOpenEform": raw.get("supportsOpenEform") is True,

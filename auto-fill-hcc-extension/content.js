@@ -2325,9 +2325,10 @@
       document.querySelectorAll("[formcontrolname]").length === 0
     ) return "liz";
     // Cổng DVC Bộ Công an (jQuery + select2, id = name, gốc form là div không phải <form>): nhận theo ô họ tên đặc
-    // trưng của form cư trú / nút thêm người lưu trú.
+    // trưng của form cư trú / người kê khai cấp đổi căn cước (txtFULLNAME_NDN) / nút thêm người lưu trú.
     if (location.hostname === "dichvucong.dancuquocgia.gov.vn"
-      && (document.getElementById("txtFULLNAME") || document.getElementById("btnAddPersonLT"))) {
+      && (document.getElementById("txtFULLNAME") || document.getElementById("txtFULLNAME_NDN")
+        || document.getElementById("btnAddPersonLT"))) {
       return "standard";
     }
     const ngCount = document.querySelectorAll("[formcontrolname]").length;
@@ -8549,19 +8550,25 @@
   // sách Xã (accomStay_cboADDRESS_ID) nạp theo tỉnh mới chọn Xã — danh sách cũ còn nằm đó tới khi cổng nạp xong, khớp
   // sớm là chọn nhầm xã trùng tên của tỉnh cũ. Khớp trọn tên (bỏ dấu) → tên bỏ tiền tố nếu chỉ một dòng khớp.
   // onlyIfEmpty: Tỉnh và Xã đã chọn sẵn (handfree chọn hộ trên thẻ / cán bộ chọn tay) thì giữ nguyên.
+  // ward rỗng = nộp tại cấp TỈNH (vd cấp đổi căn cước "Cấp Tỉnh"): chỉ chọn ô Tỉnh. Option dạng "Công an Tỉnh X" /
+  // "Công an phường Y" (trang cấp đổi căn cước) khớp lỏng sau khi bỏ "Công an" + tiền tố đơn vị hành chính.
   async function fillBcaAgencyField(f, result) {
     // Mỗi trang đặt id riêng cho cặp Tỉnh → Xã (BE gửi kèm); thiếu thì là trang Thông báo lưu trú.
     const city = document.getElementById(f.value?.cityId || "accomStay_cboPROVINCE_ID");
     const ward = document.getElementById(f.value?.wardId || "accomStay_cboADDRESS_ID");
     const province = String(f.value?.province || "");
     const wardName = String(f.value?.ward || "");
+    const provinceOnly = !wardName;
     const picked = (sel) => !!sel?.value && sel.value !== "-1";
-    if (!city || !ward) {
+    if (!city || (!ward && !provinceOnly)) {
       result.notFound.push("Cơ quan thực hiện");
       return;
     }
-    if (f.onlyIfEmpty && picked(city) && picked(ward)) return;
-    const bare = (s) => bcaGuestFold(s).replace(/^(tinh|thanh pho|phuong|xa|dac khu|thi tran)\s+/, "");
+    if (f.onlyIfEmpty && picked(city) && (provinceOnly || picked(ward))) {
+      await waitBcaAgencyReady(f);
+      return;
+    }
+    const bare = (s) => bcaGuestFold(s).replace(/^cong an\s+/, "").replace(/^(tinh|thanh pho|phuong|xa|dac khu|thi tran)\s+/, "");
     const pick = (sel, name) => {
       const options = Array.from(sel.options || []).filter((o) => o.value && o.value !== "-1");
       const full = options.filter((o) => bcaGuestFold(o.text) === bcaGuestFold(name));
@@ -8574,19 +8581,21 @@
       result.notFound.push(`Tỉnh/Thành phố cơ quan thực hiện (${province})`);
       return;
     }
-    const signature = () => Array.from(ward.options).map((o) => o.value).join("|");
+    const signature = () => Array.from(ward?.options || []).map((o) => o.value).join("|");
     const before = signature();
     const changed = city.value !== cityOpt.value;
     fillStandardSelect(city, cityOpt.value);
-    const wardOpt = await waitFor(() => ((!changed || signature() !== before) ? pick(ward, wardName) : null), 8000, 250);
-    if (!wardOpt) {
-      result.notFound.push(`Xã/Phường/Đặc khu cơ quan thực hiện (${wardName})`);
-      return;
+    if (!provinceOnly) {
+      const wardOpt = await waitFor(() => ((!changed || signature() !== before) ? pick(ward, wardName) : null), 8000, 250);
+      if (!wardOpt) {
+        result.notFound.push(`Xã/Phường/Đặc khu cơ quan thực hiện (${wardName})`);
+        return;
+      }
+      fillStandardSelect(ward, wardOpt.value);
     }
-    fillStandardSelect(ward, wardOpt.value);
     result.filled++;
     if (f.default) {
-      for (const el of [city, ward]) {
+      for (const el of (provinceOnly ? [city] : [city, ward])) {
         const target = standardMarkTarget(el);
         target?.classList?.remove("autofill-filled");
         target?.classList?.add("autofill-default");
@@ -8594,11 +8603,20 @@
     }
     // Cổng tự chọn ô "Cơ quan thực hiện" sau setTimeout 100ms và chép xã sang khối cơ sở lưu trú.
     await sleep(300);
-    // readySelect: ô cổng nạp SAU khi chọn xong cơ quan (vd Trường hợp của trang thường trú) — chờ có option thật rồi
-    // mới điền tiếp, kẻo ô kế tiếp chọn trên danh sách rỗng.
+    await waitBcaAgencyReady(f);
+  }
+
+  // readySelect: ô cổng nạp SAU khi chọn xong cơ quan (vd Trường hợp của trang thường trú) — chờ có option thật rồi
+  // mới điền tiếp, kẻo ô kế tiếp chọn trên danh sách rỗng. readyPick: ô đó chỉ có MỘT lựa chọn thật và đang trống (vd
+  // "Địa chỉ cơ quan Công an tiếp nhận" của trang cấp đổi căn cước) → chọn luôn; nhiều lựa chọn thì để cán bộ chọn.
+  async function waitBcaAgencyReady(f) {
     const ready = f.value?.readySelect && document.getElementById(f.value.readySelect);
-    if (ready) {
-      await waitFor(() => Array.from(ready.options || []).some((o) => o.value && !["0", "-1"].includes(o.value)), 10000, 250);
+    if (!ready) return;
+    const realOptions = () => Array.from(ready.options || []).filter((o) => o.value && !["0", "-1"].includes(o.value));
+    await waitFor(() => realOptions().length > 0, 10000, 250);
+    const options = realOptions();
+    if (f.value?.readyPick && options.length === 1 && !options.includes(ready.selectedOptions?.[0])) {
+      fillStandardSelect(ready, options[0].value);
     }
   }
 

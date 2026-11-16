@@ -3,6 +3,16 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.9",
+    date: "16/11/2026",
+    items: [
+      "Thêm thủ tục Cấp đổi thẻ căn cước (Cổng dịch vụ công Bộ Công an): điền thông tin theo Phiếu đề nghị Mẫu DC02 và chọn cơ quan Công an tỉnh, xã theo phiếu (phiếu không ghi thì lấy theo xã của tài khoản, tô vàng để kiểm tra); nộp tại cấp tỉnh thì chỉ chọn Tỉnh; ô địa chỉ cơ quan Công an tiếp nhận chỉ có một lựa chọn thì chọn luôn.",
+      "Hộ kinh doanh: các thủ tục hộ kinh doanh mở thẳng trang chủ cổng đăng ký hộ kinh doanh, không còn qua bước chọn cơ quan trên Cổng dịch vụ công quốc gia.",
+      "Khai sinh liên thông: chọn đúng cơ sở y tế nơi sinh ở Hà Nội theo địa chỉ mới; bệnh viện trùng tên ở nhiều tỉnh được chọn theo tỉnh ghi trên giấy.",
+      "Biểu mẫu kiểu cũ của Bộ Tư pháp: ô đã được soát và ghi lại ở lượt điền thứ hai không còn bị ghi đè bằng giá trị lượt đầu hay bị tô đỏ.",
+    ],
+  },
+  {
     version: "1.28.2",
     date: "16/11/2026",
     items: [

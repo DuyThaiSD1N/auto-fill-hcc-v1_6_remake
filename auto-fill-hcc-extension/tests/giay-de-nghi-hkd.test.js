@@ -25,7 +25,7 @@ test("nút tạo tờ khai mặc định ẩn, chỉ hiện đúng thủ tục �
   const hiddenFor = (key) => vm.runInNewContext(line[1], { cfg: { key }, GIAY_DE_NGHI_HKD_KEY: "dang-ky-kinh-doanh" });
   assert.equal(hiddenFor("dang-ky-kinh-doanh"), false);
   for (const key of ["dang-ky-thay-doi-noi-dung-ho-kinh-doanh", "cham-dut-hoat-dong-ho-kinh-doanh", "tam-ngung-kinh-doanh",
-    "cap-lai-cap-doi-gcn-dang-ky-ho-kinh-doanh", "khai-sinh", undefined]) {
+    "cap-lai-cap-doi-gcn-ho-kinh-doanh", "khai-sinh", undefined]) {
     assert.equal(hiddenFor(key), true, `không được hiện ở ${key}`);
   }
 });

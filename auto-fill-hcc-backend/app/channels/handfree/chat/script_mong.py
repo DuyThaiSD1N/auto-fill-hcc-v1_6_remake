@@ -96,6 +96,9 @@ PROCEDURE_HMONG = {
     "hoa-giai-tranh-chap-dat-dai": "Sib haum xeeb kev sib cav txog av",
     # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
     "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
+    # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
+    # "daim Căn cước công dân" sẵn trong file.
+    "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
@@ -1882,4 +1885,10 @@ COMMIT_TICKED = {
 COMMIT_TICK_FAILED = {
     "md": "Kuv kos tsis tau lub thawv lees paub. Pej xeem kos lub thawv no hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
     "tts": "Kuv kos tsis tau. Pej xeem kos lub thawv lees paub hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
+}
+# BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("xyuas dua" xem lại, "kos lub thawv lees paub" tích ô cam kết, "nias"
+# bấm); tên nút giữ tiếng Việt như "Nộp hồ sơ". Bỏ vế "chọn lịch thu nhận sinh trắc học" (chưa có chữ).
+BCA_CCCD_SUBMIT_HINT = {
+    "md": " Pej xeem xyuas dua, kos lub thawv lees paub, ces nias Lưu và Tiếp tục.",
+    "tts": " Pej xeem xyuas dua, kos lub thawv lees paub, ces nias Lưu và Tiếp tục.",
 }

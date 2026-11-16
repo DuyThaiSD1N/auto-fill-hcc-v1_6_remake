@@ -550,6 +550,12 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_luu_tru["bcaPortal"] is True and bca_luu_tru["bcaGuestList"] is True
     assert bca_luu_tru["hasAttachmentStep"] is False and "samePageAttach" not in bca_luu_tru
     assert "wizard" not in bca_luu_tru and "maePortal" not in bca_luu_tru
+    # Cấp đổi thẻ căn cước (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, cơ quan Công an tỉnh → xã.
+    bca_can_cuoc = procedures.pop("cap-doi-the-can-cuoc")
+    assert bca_can_cuoc.get("flowProfile") is None
+    assert bca_can_cuoc["bcaPortal"] is True and bca_can_cuoc["requiresCapability"] == "supportsBcaCanCuoc"
+    assert bca_can_cuoc["hasAttachmentStep"] is False and "samePageAttach" not in bca_can_cuoc
+    assert "wizard" not in bca_can_cuoc and "maePortal" not in bca_can_cuoc
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -858,7 +864,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bắc Ninh (12/11) "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh" (1.011442).
     # +1 cổng Bộ Công an (16/11) "thong-bao-luu-tru" (2.001159).
     # +1 cổng Bộ Công an (16/11) "dang-ky-thuong-tru" (1.004222).
-    assert len(procedures) == 164
+    # +1 cổng Bộ Công an (16/11) "cap-doi-the-can-cuoc" (2.001195).
+    assert len(procedures) == 165
 
     for procedure in procedures:
         key = procedure["key"]

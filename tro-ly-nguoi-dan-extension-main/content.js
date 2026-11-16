@@ -1459,25 +1459,29 @@
   // nếu chỉ một dòng khớp. Danh mục BE có thể ghi "Tỉnh Bắc Ninh" khi cổng ghi "Thành phố Bắc Ninh", hay
   // "Xã" khi cổng đã là "Phường" — nên không đòi khớp cả tiền tố, nhưng cũng không khớp một phần tên.
   // Mỗi trang cư trú đặt id riêng cho cặp Tỉnh → Xã của khối này: đăng ký tạm trú (cboRECEIVE_ADDR_*_CODE), thông
-  // báo lưu trú (accomStay_cbo*), đăng ký thường trú (cboRECEIVE_ADDR_*_ID). Lấy cặp đầu tiên có trên trang.
+  // báo lưu trú (accomStay_cbo*), đăng ký thường trú (cboRECEIVE_ADDR_*_ID), cấp đổi căn cước (Công an tỉnh cboORGTinh
+  // → Công an xã cboORGXa, option dạng "Công an Tỉnh X" / "Công an phường Y"; chọn xong cổng nạp ô thứ ba
+  // cboDiaChiTram "Địa chỉ cơ quan Công an tiếp nhận" — chỉ một dòng thì chọn luôn). Lấy cặp đầu tiên có trên trang.
   const BCA_AGENCY_IDS = [
     ["cboRECEIVE_ADDR_CITY_CODE", "cboRECEIVE_ADDR_VILLAGE_CODE"],
     ["accomStay_cboPROVINCE_ID", "accomStay_cboADDRESS_ID"],
     ["cboRECEIVE_ADDR_CITY_ID", "cboRECEIVE_ADDR_VILLAGE_ID"],
+    ["cboORGTinh", "cboORGXa", "cboDiaChiTram"],
   ];
   const bcaAgencySelects = () => {
-    for (const [cityId, wardId] of BCA_AGENCY_IDS) {
+    for (const [cityId, wardId, readyId] of BCA_AGENCY_IDS) {
       const city = document.getElementById(cityId);
-      if (city) return [city, document.getElementById(wardId)];
+      if (city) return [city, document.getElementById(wardId), readyId ? document.getElementById(readyId) : null];
     }
-    return [null, null];
+    return [null, null, null];
   };
   const bcaFold = (s) => String(s || "")
     .replace(/Đ/g, "D").replace(/đ/g, "d")
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/\s*[-–—‐‑]+\s*/g, " ")
     .replace(/\s+/g, " ").trim().toLowerCase();
-  const bcaBare = (s) => bcaFold(s).replace(/^(tinh|thanh pho|tp\.?|phuong|xa|dac khu|thi tran)\s+/, "");
+  const bcaBare = (s) => bcaFold(s).replace(/^cong an\s+/, "")
+    .replace(/^(tinh|thanh pho|tp\.?|phuong|xa|dac khu|thi tran)\s+/, "");
   function bcaPickOption(select, name) {
     const options = Array.from(select?.options || []).filter((o) => o.value && o.value !== "-1");
     const full = options.filter((o) => bcaFold(o.text) === bcaFold(name));
@@ -1492,7 +1496,7 @@
     return true;
   }
   async function fillBcaAgency(province, ward) {
-    const [city, village] = bcaAgencySelects();
+    const [city, village, ready] = bcaAgencySelects();
     if (!city || !village) return { ok: false, error: "no_block" };
     const cityOpt = bcaPickOption(city, province);
     if (!cityOpt) return { ok: false, error: "province_not_found" };
@@ -1511,6 +1515,15 @@
     }
     if (!wardOpt) return { ok: false, error: "ward_not_found", province: cityOpt.text.trim() };
     bcaSetSelect(village, wardOpt);
+    if (ready) {
+      // Ô thứ ba nạp qua API sau khi chọn xã: chờ có dòng thật; đúng MỘT dòng thì chọn luôn, nhiều dòng để công dân chọn.
+      const real = () => Array.from(ready.options || []).filter((o) => o.value && !["0", "-1"].includes(o.value));
+      for (let waited = 0; waited <= 10000 && !real().length; waited += 250) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      const options = real();
+      if (options.length === 1) bcaSetSelect(ready, options[0]);
+    }
     return { ok: true, province: cityOpt.text.trim(), ward: wardOpt.text.trim() };
   }
   // Ô cam kết cuối trang ("Tôi xin chịu trách nhiệm…", #chkCHECK_LIABILITY): click thật để handler của cổng

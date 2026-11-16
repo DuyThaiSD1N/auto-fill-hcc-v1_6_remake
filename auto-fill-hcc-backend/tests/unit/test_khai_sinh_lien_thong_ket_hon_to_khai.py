@@ -551,7 +551,7 @@ def test_bang_benh_vien_quang_tri_dong_nai_chi_dung_xa_hien_hanh():
 
     from app.pipelines._shared.area_remap import is_current_area
     import app.pipelines._shared.hospital_lookup as hl
-    for name in ("bv_quang_tri.json", "bv_dong_nai.json"):
+    for name in ("bv_quang_tri.json", "bv_dong_nai.json", "bv_ha_noi.json"):
         rows = json.loads((Path(hl.__file__).parent / "data_bv" / name).read_text(encoding="utf-8"))
         assert [r["ten"] for r in rows if not is_current_area(r["tinh"], r["xa"])] == []
 
@@ -595,5 +595,41 @@ def test_bang_benh_vien_lam_dong_chi_dung_xa_hien_hanh():
 
 def test_benh_vien_khong_co_trong_bang_giu_xa_cua_giay():
     out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Hải Phòng", "xa": "Phường Lê Chân", "diaChi": "Bệnh viện Phụ sản Hải Phòng"}})
+    assert out["NsDiaChi"]["xa"] == "Phường Lê Chân"
+
+
+def test_benh_vien_ha_noi_lay_phuong_theo_dia_chi_moi():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    # 929 La Thành (Ngọc Khánh cũ bị chia) nay là Phường Láng; tờ khai OCR ghi xã khác → xã theo bảng.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
         "tinh": "Hà Nội", "xa": "Phường Hai Bà Trưng", "diaChi": "Bệnh viện Phụ sản Hà Nội"}})
-    assert out["NsDiaChi"]["xa"] == "Phường Hai Bà Trưng"
+    assert out["NsDiaChi"]["xa"] == "Phường Láng"
+    # Phường cũ bị chia mà cờ "chinh" của remap trỏ nơi khác: bảng ghi theo địa chỉ mới thật.
+    assert lookup_hospital("Bệnh viện Thanh Nhàn")["xa"] == "Phường Hai Bà Trưng"
+    assert lookup_hospital("BV Hữu nghị Việt Đức, 40 Tràng Thi")["xa"] == "Phường Hoàn Kiếm"
+    assert lookup_hospital("Bệnh viện Phụ sản Trung ương")["xa"] == "Phường Cửa Nam"
+    assert lookup_hospital("Bệnh viện Phụ sản TW cơ sở 2")["xa"] == "Xã Kiều Phú"
+    assert lookup_hospital("Bệnh viện Hồng Ngọc")["xa"] == "Phường Ba Đình"
+    assert lookup_hospital("Bệnh viện Đa khoa Hồng Ngọc - Phúc Trường Minh")["xa"] == "Phường Từ Liêm"
+    assert lookup_hospital("Bệnh viện 19-8")["xa"] == lookup_hospital("Bệnh viện 198")["xa"] == "Phường Từ Liêm"
+    # Tên cũ thời Hà Tây; bệnh viện huyện trước và sau QĐ 4318/QĐ-UBND (bỏ chữ "huyện" từ 19/8/2025).
+    assert lookup_hospital("Bệnh viện đa khoa tỉnh Hà Tây")["xa"] == "Phường Hà Đông"
+    assert lookup_hospital("BVĐK huyện Mê Linh")["xa"] == "Xã Yên Lãng"
+    assert lookup_hospital("Bệnh viện Đa khoa Ba Vì")["xa"] == "Xã Vật Lại"
+    assert lookup_hospital("Bệnh viện huyện Chương Mỹ")["xa"] == "Phường Chương Mỹ"
+    assert lookup_hospital("Bệnh viện Vân Đình")["xa"] == "Xã Vân Đình"
+
+
+def test_ten_benh_vien_trung_tinh_khac_lay_theo_tinh_cua_giay():
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+    # "Bệnh viện Đa khoa Bắc Thăng Long" có ở Lục Ngạn (Bắc Giang cũ) lẫn Đông Anh (Hà Nội).
+    assert lookup_hospital("Bệnh viện Đa khoa Bắc Thăng Long", "Thành phố Hà Nội")["xa"] == "Xã Thư Lâm"
+    assert lookup_hospital("Bệnh viện Đa khoa Bắc Thăng Long", "Tỉnh Bắc Giang")["xa"] == "Phường Chũ"
+    # Cu Ba: tỉnh cũ Quảng Bình quy về Quảng Trị.
+    assert lookup_hospital("Bệnh viện Hữu nghị Việt Nam Cu Ba", "Hà Nội")["xa"] == "Phường Cửa Nam"
+    assert lookup_hospital("Bệnh viện Hữu nghị Việt Nam Cu Ba", "Quảng Bình")["xa"] == "Phường Đồng Hới"
+    # Biết tỉnh mà tỉnh đó không có bệnh viện tên ấy → không kéo bệnh viện Hà Nội về.
+    assert lookup_hospital("Bệnh viện Xây dựng Việt Trì", "Tỉnh Phú Thọ") is None
+    assert lookup_hospital("Bệnh viện Bưu điện", "Thành phố Hồ Chí Minh") is None
+    assert lookup_hospital("Bệnh viện Phụ sản", "Thành phố Hải Phòng") is None

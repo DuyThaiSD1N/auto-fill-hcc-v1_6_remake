@@ -61,6 +61,7 @@ from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
 from app.pipelines.dang_ky_tam_tru.process import run as dang_ky_tam_tru_process
 from app.pipelines.dang_ky_tam_tru.attach import plan as dang_ky_tam_tru_attach
 from app.pipelines.thong_bao_luu_tru.process import run as thong_bao_luu_tru_process
+from app.pipelines.cap_doi_the_can_cuoc.process import run as cap_doi_the_can_cuoc_process
 from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
@@ -10567,6 +10568,31 @@ PROCEDURES: list[dict] = [
             "'Thêm mới người lưu trú'; kiểm tra bảng danh sách rồi tích ô cam kết trước khi nộp."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 2.001195 ở ke_khai_links.json. Trang
+        # dvc-CCCD-cap-doi-hoac-cap-lai.html dùng CHUNG cho cấp lại (TT=CAP_LAI) → urlScope chặn đúng trang, urlIncludes
+        # chốt TT=CAP_DOI. Không có mục đính kèm (giấy tờ thu nhận trực tiếp khi lấy sinh trắc học).
+        "key": "cap-doi-the-can-cuoc",
+        "detect": {
+            "urlScope": ["dvc-CCCD-cap-doi-hoac-cap-lai.html"],
+            "urlIncludes": ["TT=CAP_DOI"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp đổi thẻ căn cước",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đề nghị giải quyết thủ tục về căn cước (Mẫu DC02) — nguồn chính: cơ quan tiếp nhận, lý do cấp "
+            "đổi, người đại diện (nếu có), địa chỉ nhận kết quả.\n"
+            "2. Phiếu thu nhận thông tin căn cước (Mẫu CC01) — số điện thoại, thư điện tử.\n"
+            "3. Thẻ căn cước / CCCD đang sử dụng để đối chiếu nhân thân.\n"
+            "Cha/mẹ/người đại diện kê khai thay: sau khi điền phải tự bấm 'Kiểm tra thông tin trong CSDL Quốc Gia về "
+            "Dân cư'. Tự tích ô cam đoan và chọn lịch thu nhận sinh trắc học trước khi nộp."
+        ),
+    },
 ]
 
 # Mục iGate Lào Cai → mục eForm cũ cùng mã TTHC (mục cũ luôn đứng SAU mục iGate).
@@ -10737,6 +10763,7 @@ _PIPELINE = {
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_process,
     "dang-ky-tam-tru": dang_ky_tam_tru_process,
     "thong-bao-luu-tru": thong_bao_luu_tru_process,
+    "cap-doi-the-can-cuoc": cap_doi_the_can_cuoc_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,

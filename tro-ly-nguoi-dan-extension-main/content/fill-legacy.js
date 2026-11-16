@@ -348,10 +348,16 @@ function refreshRequestedLegacyMarks(fields) {
   }
 }
 
+// Ô điền đợt 2 đã ghi lại sau lượt điền gần nhất. Bộ giữ của lượt đầu bỏ qua các ô này: không thì nó tưởng ô bị cổng
+// xoá, ghi đè lại giá trị lượt đầu và tô đỏ ô đang đúng giá trị mới.
+const legacyPatchedNames = new Set();
+
 // Không chặn popup thêm thời gian: trong khoảng ngắn sau khi fill, nếu web-component render lại
 // thì chỉ sửa đúng field bị mất. Checkpoint bắt cả trường hợp cổng gán input.value mà không đổi DOM.
 function armLegacyStabilityGuard(fields, filledNames) {
   if (typeof MutationObserver !== "function" || !document.body) return;
+  legacyPatchedNames.clear();
+  const guarded = () => fields.filter((field) => !legacyPatchedNames.has(field?.name));
   let stopped = false;
   let running = false;
   let repairCount = 0;
@@ -363,13 +369,13 @@ function armLegacyStabilityGuard(fields, filledNames) {
     running = true;
     repairCount++;
     try {
-      const repaired = await repairLostLegacyFields(fields, filledNames);
+      const repaired = await repairLostLegacyFields(guarded(), filledNames);
       // Dropdown vừa sửa có thể lại reset input trong cùng khối; chốt input/date thêm một lần ngắn.
       if (repaired.size) {
         await sleep(80);
-        await repairLostLegacyFields(fields, filledNames);
+        await repairLostLegacyFields(guarded(), filledNames);
       }
-      refreshRequestedLegacyMarks(fields);
+      refreshRequestedLegacyMarks(guarded());
     } finally {
       running = false;
     }
@@ -1699,6 +1705,7 @@ async function fillSelectDefault(container, f) {
   async function patchFormLegacy(fields) {
     injectAutofillStyles();
     const result = { filled: 0, skipped: [] };
+    for (const f of fields || []) if (f?.name) legacyPatchedNames.add(f.name);
     const done = [];
     const filledNames = new Set();
     for (const f of orderLegacyFields((fields || []).filter((x) => x && x.value != null && x.value !== ""))) {

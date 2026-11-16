@@ -499,6 +499,17 @@ BCA_STAY_SUBMIT_HINT = {
     "tts": " Công dân xem lại danh sách người lưu trú, rồi bấm ô cam kết và bấm Nộp hồ sơ ạ.",
 }
 
+# Điền xong Cấp đổi thẻ căn cước: trang không có mục đính kèm; Bước 1 tích cam đoan rồi "Lưu và Tiếp tục" sang Bước 2
+# đặt lịch thu nhận sinh trắc học (công dân tự chọn ngày, giờ).
+BCA_CCCD_SUBMIT_HINT = {
+    "md": (
+        "\n\nCông dân xem lại thông tin (cha/mẹ kê khai thay thì bấm **Kiểm tra thông tin trong CSDL Quốc Gia về Dân "
+        "cư** trước), bấm ô **\"Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật\"**, rồi bấm **Lưu và "
+        "Tiếp tục** để chọn lịch thu nhận sinh trắc học ạ."
+    ),
+    "tts": " Công dân xem lại thông tin, bấm ô cam đoan, rồi bấm Lưu và tiếp tục để chọn lịch thu nhận sinh trắc học ạ.",
+}
+
 # Bản Trợ lý trên máy chưa có engine cho trang của thủ tục (registry `requiresCapability`) — dẫn vào là kẹt ở trang.
 BCA_UPDATE_REQUIRED = {
     "md": (

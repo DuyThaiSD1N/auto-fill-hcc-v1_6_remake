@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -77,6 +78,29 @@ _GENERIC_WORDS = re.compile(
 def _province_key(tinh: Optional[str]) -> str:
     """"Tỉnh Lâm Đồng" / "Lâm Đồng" -> "lam dong"."""
     return re.sub(r"^(tinh|thanh pho|tp)\s+", "", re.sub(r"[^a-z0-9]+", " ", _fold(tinh)).strip())
+
+
+@lru_cache(maxsize=1)
+def _old_to_new_province() -> dict[str, str]:
+    """Khoa tinh cu (truoc 1/7/2025) -> khoa tinh hien hanh: "quang binh" -> "quang tri"."""
+    try:
+        from app.pipelines._shared.area_remap import _TINH_ONLY
+    except Exception:  # noqa: BLE001
+        return {}
+    return {_province_key(cu): _province_key(moi) for cu, moi in _TINH_ONLY.items()}
+
+
+def _current_province_key(tinh: Optional[str]) -> str:
+    """Khoa tinh HIEN HANH cua tinh ghi tren giay; tinh cu quy ve tinh moi. Khong nhan ra -> ""."""
+    key = _province_key(tinh)
+    if not key:
+        return ""
+    try:
+        from app.pipelines._shared.area_remap import canonical_province
+        name = canonical_province(tinh)
+    except Exception:  # noqa: BLE001
+        name = None
+    return _province_key(name) if name else _old_to_new_province().get(key, "")
 
 
 def _normalize(text: str) -> str:
@@ -132,6 +156,9 @@ def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional
       2. Khop mo rong: ten lookup nam trong ten bang HOAC ten bang nam trong ten lookup
          (xu ly truong hop OCR thieu/thua chu). Lay entry khop ngan nhat (it nham nhat).
       3. Khop theo tu rieng cua ten (giay ghi tat). `tinh` (neu co) phai trung tinh cua benh vien.
+    `tinh` nhan ra duoc (ke ca tinh cu, vd "Quang Binh" -> Quang Tri) thi buoc 1-3 chi so voi benh vien
+    cua tinh do: nhieu ten trung giua cac tinh ("Benh vien Da khoa Bac Thang Long" o Luc Ngan lan Dong
+    Anh, "Benh vien Phu san" tron, "Benh vien Xay dung" o Ha Noi lan Viet Tri).
     """
     if not name:
         return None
@@ -140,8 +167,11 @@ def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional
     if not needle:
         return None
 
+    current = _current_province_key(tinh)
+    hospitals = [h for h in _HOSPITALS if _province_key(h["tinh"]) == current] if current else _HOSPITALS
+
     # Buoc 1: chinh xac
-    for h in _HOSPITALS:
+    for h in hospitals:
         if h["ten_folded"] == needle:
             return {"xa": h["xa"], "tinh": h["tinh"]}
 
@@ -149,7 +179,7 @@ def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional
     # vd "Benh vien da khoa tinh Lam Dong So 01 Pham Ngoc Thach"). Lay ten DAI nhat = cu the nhat
     # ("... so 2", "... co so 2" thang ten goc).
     padded = f" {needle} "
-    contained = [h for h in _HOSPITALS if f" {h['ten_folded']} " in padded]
+    contained = [h for h in hospitals if f" {h['ten_folded']} " in padded]
     if contained:
         best = max(contained, key=lambda h: len(h["ten_folded"]))
         return {"xa": best["xa"], "tinh": best["tinh"]}
@@ -158,7 +188,7 @@ def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional
     # ("benh vien da khoa tinh") khop qua nhieu noi → bo. Lay entry ngan nhat (it nham nhat).
     if not _GENERIC_WORDS.sub(" ", needle).strip():
         return None
-    candidates = [h for h in _HOSPITALS if f" {needle} " in f" {h['ten_folded']} "]
+    candidates = [h for h in hospitals if f" {needle} " in f" {h['ten_folded']} "]
     if candidates:
         best = min(candidates, key=lambda h: len(h["ten_folded"]))
         return {"xa": best["xa"], "tinh": best["tinh"]}
@@ -168,9 +198,9 @@ def lookup_hospital(name: Optional[str], tinh: Optional[str] = None) -> Optional
     # benh vien cung ten o tinh khac (Hoan My co o nhieu tinh) → biet tinh thi phai cung tinh, va chi
     # nhan khi khop DUNG MOT benh vien.
     words = set(_GENERIC_WORDS.sub(" ", needle).split())
-    province = _province_key(tinh)
+    province = current or _province_key(tinh)
     matches = [
-        h for h in _HOSPITALS
+        h for h in hospitals
         if words <= set(h["ten_folded"].split()) and (not province or _province_key(h["tinh"]) == province)
     ]
     if len(matches) != 1:
@@ -198,4 +228,5 @@ def hospital_area(area: Optional[dict]) -> Optional[dict]:
 def reload() -> None:
     """Reload tat ca file JSON (dung khi hot-reload trong development)."""
     _HOSPITALS.clear()
+    _old_to_new_province.cache_clear()
     _load_hospital_files()

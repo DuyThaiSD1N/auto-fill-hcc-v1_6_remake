@@ -405,7 +405,7 @@
       "autoConfirm": false
     },
     {
-      "key": "cap-lai-cap-doi-gcn-dang-ky-ho-kinh-doanh",
+      "key": "cap-lai-cap-doi-gcn-ho-kinh-doanh",
       "code": "2.000575",
       "label": "Cấp lại Giấy chứng nhận đăng ký hộ kinh doanh, Cấp đổi sang Giấy chứng nhận đăng ký hộ kinh doanh",
       "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
@@ -2490,6 +2490,14 @@
       "code": "2.001159",
       "label": "Thông báo lưu trú",
       "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/thong-bao-luu-tru.html?ma_thu_tuc=2.001159&MaTTHC=2.001159&MaCoQuanThucHien=BCA_CAX&MaDVC=2.001159.01&MaTTHCDP=2.001159",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "cap-doi-the-can-cuoc",
+      "code": "2.001195",
+      "label": "Cấp đổi thẻ căn cước",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dvc-CCCD-cap-doi-hoac-cap-lai.html?TT=CAP_DOI",
       "needsAgencySelect": false,
       "autoConfirm": false
     },

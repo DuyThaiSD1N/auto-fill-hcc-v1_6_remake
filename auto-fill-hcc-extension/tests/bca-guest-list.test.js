@@ -13,6 +13,8 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "u
 
 test("trang Bộ Công an được nhận là form standard", () => {
   assert.match(content, /document\.getElementById\("btnAddPersonLT"\)\)\)\s*\{\s*return "standard";/);
+  // Trang cấp đổi căn cước: ô họ tên người kê khai là txtFULLNAME_NDN.
+  assert.match(content, /document\.getElementById\("txtFULLNAME_NDN"\)/);
 });
 
 test("vòng điền chuẩn giao comp bca-guest-list cho engine modal", () => {
@@ -49,8 +51,19 @@ test("cơ quan thực hiện: một ô bca-agency, chọn Tỉnh rồi chờ dan
   const fn = src.slice(src.indexOf("async function fillBcaAgencyField("), src.indexOf("async function fillBcaGuestList("));
   assert.match(fn, /accomStay_cboPROVINCE_ID/);
   assert.match(fn, /accomStay_cboADDRESS_ID/);
-  assert.match(fn, /if \(f\.onlyIfEmpty && picked\(city\) && picked\(ward\)\) return;/);
+  assert.match(fn, /if \(f\.onlyIfEmpty && picked\(city\) && \(provinceOnly \|\| picked\(ward\)\)\) \{/);
   assert.match(fn, /signature\(\) !== before/);
+});
+
+test("cấp đổi căn cước: option \"Công an …\" khớp lỏng, nộp cấp tỉnh chỉ chọn Tỉnh, địa chỉ trạm một dòng thì chọn luôn", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", FILE_STD), "utf8");
+  const fn = src.slice(src.indexOf("async function fillBcaAgencyField("), src.indexOf("async function fillBcaRows("));
+  assert.match(fn, /replace\(\/\^cong an\\s\+\/, ""\)/);
+  assert.match(fn, /const provinceOnly = !wardName;/);
+  assert.match(fn, /if \(!provinceOnly\) \{[\s\S]*?fillStandardSelect\(ward, wardOpt\.value\);/);
+  // Đã chọn sẵn cơ quan vẫn phải chờ + chọn ô địa chỉ trạm.
+  assert.match(fn, /\{\s*await waitBcaAgencyReady\(f\);\s*return;\s*\}/);
+  assert.match(fn, /f\.value\?\.readyPick && options\.length === 1/);
 });
 
 test("thường trú: ô cơ quan theo cặp id BE gửi + chờ readySelect; bảng dòng bca-rows bấm Thêm ở dòng cuối", () => {

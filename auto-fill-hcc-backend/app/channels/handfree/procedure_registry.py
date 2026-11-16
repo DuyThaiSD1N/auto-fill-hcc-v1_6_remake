@@ -6441,6 +6441,51 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        # Cổng DVC Bộ Công an như "thong-bao-luu-tru" (bcaPortal, trang KHÔNG có mục đính kèm), nhưng KHÔNG hỏi nơi
+        # (bcaAgencyFromDocs, user 16/11): thấy trang là sang thẳng bước giấy tờ; khối "Cơ quan thực hiện" — Công an
+        # tỉnh cboORGTinh → Công an xã cboORGXa (option "Công an …"), địa chỉ trạm cboDiaChiTram một dòng thì chọn luôn
+        # — do pipeline điền theo "Kính gửi" Phiếu DC02 (giấy không ghi → xã/tỉnh tài khoản, tô vàng). Bản Trợ lý chưa
+        # khai supportsBcaCanCuoc thì báo cần cập nhật. Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi.
+        "key": "cap-doi-the-can-cuoc",
+        "detect": {
+            "urlScope": ["dvc-CCCD-cap-doi-hoac-cap-lai.html"],
+            "urlIncludes": ["TT=CAP_DOI"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp đổi thẻ căn cước",
+        "shortLabel": "Cấp đổi thẻ căn cước",
+        "subtitle": "Đổi thẻ khi đủ 14, 25, 40, 60 tuổi, thẻ hỏng hoặc thay đổi thông tin",
+        "icon": "🪪",
+        "keKhaiUrl": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dvc-CCCD-cap-doi-hoac-cap-lai.html?TT=CAP_DOI",
+        "bcaPortal": True,
+        "bcaAgencyFromDocs": True,
+        "requiresCapability": "supportsBcaCanCuoc",
+        "hasAttachmentStep": False,
+        # Không khai submitCommit*: câu sau khi tích (COMMIT_TICKED) bảo "bấm Nộp hồ sơ", còn trang này tích ô cam đoan
+        # xong là "Lưu và Tiếp tục" sang Bước 2 đặt lịch thu nhận sinh trắc học → nhắc bằng BCA_CCCD_SUBMIT_HINT.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_de_nghi", "name": "Phiếu đề nghị giải quyết thủ tục về căn cước (Mẫu DC02)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "phieu_thu_nhan", "name": "Phiếu thu nhận thông tin căn cước (Mẫu CC01)", "icon": "📋",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước / căn cước công dân đang sử dụng", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu đề nghị giải quyết thủ tục về căn cước (Mẫu DC02) — nguồn chính: lý do cấp đổi, người đại diện "
+            "(nếu có), địa chỉ nhận kết quả.\n"
+            "2. Phiếu thu nhận thông tin căn cước (Mẫu CC01) — số điện thoại, thư điện tử.\n"
+            "3. Thẻ căn cước / căn cước công dân đang sử dụng (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
     # ── Đợt 26/10: 5 thủ tục, CHƯA chạy thử trên cổng thật. Cổng / cấp cơ quan suy từ code lõi; kiểm khi chạy. ──
     {
         "key": "dang-ky-noi-quy-lao-dong",
@@ -10164,6 +10209,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-nha-o-xa-hoi-bac-ninh": _TAT_CA,
     "dang-ky-tam-tru": _TAT_CA,  # STT 234
     "dang-ky-thuong-tru": _TAT_CA,
+    # Toàn quốc (user 16/11/2026).
+    "cap-doi-the-can-cuoc": _TAT_CA,
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,

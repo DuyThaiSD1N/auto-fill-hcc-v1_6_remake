@@ -427,6 +427,10 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "tam-ngung-kinh-doanh": ["tạm ngừng kinh doanh", "tạm ngừng hoạt động hộ kinh doanh",
                              "tạm nghỉ kinh doanh một thời gian", "tạm đóng cửa hàng vài tháng",
                              "xin nghỉ kinh doanh có thời hạn rồi mở lại"],
+    "cap-doi-the-can-cuoc": ["đổi thẻ căn cước", "đổi căn cước công dân", "căn cước hết hạn",
+                             "đủ 25 tuổi phải đổi căn cước", "làm lại căn cước khi đủ 40 tuổi",
+                             "thẻ căn cước bị hỏng, gãy chíp", "đổi căn cước vì đổi tên",
+                             "cấp đổi CCCD", "đổi căn cước gắn chíp sang thẻ căn cước mới"],
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": ["cấp lại giấy chứng nhận hộ kinh doanh",
                                           "mất giấy phép kinh doanh hộ gia đình", "làm lại giấy phép kinh doanh",
                                           "giấy đăng ký kinh doanh bị rách, hỏng",
@@ -777,6 +781,9 @@ PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả:
   bệnh binh, người hoạt động kháng chiến…) → thủ tục người có công từ trần, KHÔNG phải hai thủ tục
   mai táng của Bộ Y tế. Xin trợ cấp cho NGƯỜI CAO TUỔI (ông bà, bố mẹ già, nêu tuổi cao)
   không có lương hưu, người đó còn sống → chọn luôn trợ cấp hưu trí xã hội, không cần hỏi lại.
+- "CẤP ĐỔI THẺ CĂN CƯỚC" = đổi chính tấm thẻ (đủ 14/25/40/60 tuổi, thẻ hết hạn, hư hỏng, đổi họ tên/ngày
+  sinh/quê quán, chuyển từ CCCD cũ). KHÁC "công chứng/chứng thực căn cước" (xin BẢN SAO có chứng thực →
+  chứng thực bản sao). MẤT thẻ căn cước = cấp LẠI, thủ tục khác không có trong danh sách → không chọn cấp đổi.
 - "XÁC ĐỊNH, XÁC ĐỊNH LẠI MỨC ĐỘ KHUYẾT TẬT và cấp Giấy xác nhận khuyết tật" là đi GIÁM ĐỊNH để được
   công nhận khuyết tật (xin giấy), KHÁC xin TIỀN trợ cấp hằng tháng — nói giấy xác nhận/giám định/xác
   định mức độ thì chọn thủ tục khuyết tật này.

@@ -39,6 +39,9 @@ from app.pipelines.thong_bao_luu_tru.process.mapper import (
 from app.pipelines.dang_ky_thuong_tru.process.mapper import (
     with_account_process_options as with_dang_ky_thuong_tru_account_process_options,
 )
+from app.pipelines.cap_doi_the_can_cuoc.process.mapper import (
+    with_account_process_options as with_cap_doi_the_can_cuoc_account_process_options,
+)
 from app.pipelines.ho_tro_mai_tang.process.mapper import (
     with_account_process_options as with_mai_tang_account_process_options,
 )
@@ -141,6 +144,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_dang_ky_thuong_tru_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_cap_doi_the_can_cuoc_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     # Điền đợt 2: chỉ bản extension khai `fillSupports: ["secondPass"]` mới chạy. Luôn gán lại để client không tự

@@ -3296,6 +3296,10 @@ def _bca_portal_on_page(conv: dict, ctx: dict) -> Reply:
     if not ctx.get("bcaAgencyBlock"):
         return Reply(*_fmt(vi.PORTAL_NOT_READY)) if manual_check else Reply()
     conv["needed_login"] = False  # đã thấy trang kê khai = qua đăng nhập; câu nhắc khi chat theo bước này
+    if (get_procedure(conv.get("procedure_key") or "") or {}).get("bcaAgencyFromDocs"):
+        # Cơ quan điền theo giấy tờ lúc điền form (comp bca-agency của pipeline, vd "Kính gửi" Phiếu DC02 cấp đổi căn
+        # cước) → không hỏi nơi, sang thẳng bước giấy tờ.
+        return _bca_to_documents(conv)
     if ctx.get("bcaAgencyDone"):
         if conv.get("bca_agency_filling"):
             return Reply()  # trợ lý đang chọn hộ — chờ bca_agency_result rồi mới sang bước giấy tờ
@@ -4984,6 +4988,13 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                             note=vi.BCA_STAY_SUBMIT_HINT, commit=str(proc.get("submitCommitLabel") or "")))
             r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip(), *_commit_chip(conv, proc)]
+            return r
+        if proc.get("bcaPortal") and proc.get("hasAttachmentStep") is False:
+            # Cấp đổi thẻ căn cước: không có mục đính kèm → không mời đính; nhắc cam đoan rồi "Lưu và Tiếp tục".
+            _clear_documents_adjustment(conv)
+            r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
+                            note=vi.BCA_CCCD_SUBMIT_HINT))
+            r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"}, _supplement_documents_chip()]
             return r
         # Vòng bổ sung tách câu đuôi (bước tiếp theo) thành bong bóng riêng sau bong bóng số ô trống.
         reviewing = field_review.reviewing_fill(conv, proc, intent.payload.get("review"))

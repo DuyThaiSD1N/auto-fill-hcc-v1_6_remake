@@ -53,7 +53,7 @@ test("cơ quan thực hiện: một ô bca-agency, chọn Tỉnh rồi chờ dan
   const fn = src.slice(src.indexOf("async function fillBcaAgencyField("), src.indexOf("async function fillBcaGuestList("));
   assert.match(fn, /accomStay_cboPROVINCE_ID/);
   assert.match(fn, /accomStay_cboADDRESS_ID/);
-  assert.match(fn, /if \(f\.onlyIfEmpty && picked\(city\) && picked\(ward\)\) return;/);
+  assert.match(fn, /if \(f\.onlyIfEmpty && picked\(city\) && \(provinceOnly \|\| picked\(ward\)\)\) \{/);
   assert.match(fn, /signature\(\) !== before/);
 });
 
@@ -64,6 +64,18 @@ test("thường trú: ô cơ quan theo cặp id BE gửi + chờ readySelect; b�
   assert.match(src, /f\.comp === "bca-rows"\)\s*\{\s*await fillBcaRows\(f, result\);\s*continue;/);
   const fn = src.slice(src.indexOf("async function fillBcaRows("), src.indexOf("async function fillBcaGuestList("));
   assert.match(fn, /buttons\[buttons\.length - 1\]\?\.click\(\)/);
+});
+
+test("cấp đổi căn cước: cặp Công an tỉnh → xã + ô địa chỉ trạm, bỏ tiền tố \"Công an\", cờ supportsBcaCanCuoc", () => {
+  assert.match(content, /\["cboORGTinh", "cboORGXa", "cboDiaChiTram"\]/);
+  assert.match(content, /const bcaBare = \(s\) => bcaFold\(s\)\.replace\(\/\^cong an\\s\+\/, ""\)/);
+  assert.match(content, /if \(options\.length === 1\) bcaSetSelect\(ready, options\[0\]\);/);
+  assert.match(sidebar, /supportsBcaCanCuoc: true/);
+  const core = read("content/fill-core.js");
+  assert.match(core, /document\.getElementById\("txtFULLNAME_NDN"\)/);
+  const fn = core.slice(core.indexOf("async function fillBcaAgencyField("), core.indexOf("async function fillBcaRows("));
+  assert.match(fn, /const provinceOnly = !wardName;/);
+  assert.match(fn, /f\.value\?\.readyPick && options\.length === 1/);
 });
 
 test("thường trú: khối cơ quan nhận cặp id _ID, cờ supportsBcaThuongTru, nút Thêm dòng cuối + ô txtNAME_FILE", () => {

@@ -75,8 +75,9 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # +1 mọi tỉnh thẻ HDV quốc tế 1.004628 (người dùng mở lại toàn quốc); Lâm Đồng +1 bản riêng 1.116366.
         # Bắc Ninh +1 bản riêng 1.011442 (đăng ký thay đổi BPBĐ, chưa có trong bảng — tạm mở Bắc Ninh).
         # 16/11: +2 mọi tỉnh Bộ Công an thong-bao-luu-tru (2.001159) + dang-ky-thuong-tru (1.004222) (_TAT_CA).
-        "laichau": 124, "bacninh": 130, "lamdong": 117, "danang": 121, "quangninh": 125, "ninhbinh": 114,
-        "quangngai": 115, "laocai": 114, "quangtri": 115, "khanhhoa": 120, "tuyenquang": 115,
+        # 16/11: +1 mọi tỉnh Bộ Công an cap-doi-the-can-cuoc (2.001195) (_TAT_CA, người dùng: toàn quốc).
+        "laichau": 125, "bacninh": 131, "lamdong": 118, "danang": 122, "quangninh": 126, "ninhbinh": 115,
+        "quangngai": 116, "laocai": 115, "quangtri": 116, "khanhhoa": 121, "tuyenquang": 116,
     }
 
 
