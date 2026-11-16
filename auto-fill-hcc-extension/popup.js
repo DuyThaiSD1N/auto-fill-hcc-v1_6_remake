@@ -5579,7 +5579,11 @@ ocrBtn.addEventListener("click", async () => {
     // Thủ tục có điền đợt 2 (BE khai secondPass): báo BE bản này biết hỏi kết quả soát và ghi lại ô. Chỉ lượt điền
     // cả biểu mẫu ở đây mới khai — lượt nào khai mà không hỏi là BE soát thừa.
     // "secondPassLegacy": bản này ghi lại được ô trên form cũ (x-*) — thủ tục form cũ chỉ chạy lớp soát khi có.
-    if (cfg.secondPass && !page) options.fillSupports = ["secondPass", "secondPassLegacy"];
+    // "secondPassAngular": ghi lại được ô trên form Angular (cổng liên thông).
+    // "secondPassArea": ghi lại được ô địa chỉ gộp SurveyJS (dò ô con theo nhãn).
+    if (cfg.secondPass && !page) {
+      options.fillSupports = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea"];
+    }
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;

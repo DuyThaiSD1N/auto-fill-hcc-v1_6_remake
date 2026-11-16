@@ -13,9 +13,9 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8").replace(/^\s*\/\
 const PREFIX = "__TLND_SJS_";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function question(name, { type = "text", choices = [], visible = true, readOnly = false } = {}) {
+function question(name, { type = "text", choices = [], visible = true, readOnly = false, title = "" } = {}) {
   const q = {
-    name, choices, isVisible: visible, isReadOnly: readOnly, onSet: null, _value: undefined,
+    name, title, choices, isVisible: visible, isReadOnly: readOnly, onSet: null, _value: undefined,
     getType: () => type,
     isEmpty() { return this._value === undefined || this._value === null || this._value === ""; },
     get value() { return this._value; },
@@ -33,6 +33,7 @@ function setup(questions) {
   };
   const nodes = questions.map((q) => ({
     getAttribute: () => q.name, offsetParent: {}, __reactFiber$x: { memoizedProps: { model: survey } },
+    querySelectorAll: () => [],
   }));
   let reply = null;
   const ctx = {
@@ -119,6 +120,28 @@ test("đổi tỉnh thì chờ cổng nạp danh mục xã của tỉnh mới r�
   assert.equal(ward.value, "b-1");
 });
 
+test("ô địa chỉ gộp: ghi lại các ô con dò theo nhãn; ô con cán bộ đã sửa thì giữ cả cụm", async () => {
+  const province = question("tinh__1", { type: "dropdown", title: "Tỉnh/ Thành phố",
+    choices: [{ value: "a", text: "Tỉnh A" }] });
+  const ward = question("xa__1", { type: "dropdown", title: "Phường/ Xã",
+    choices: [{ value: "a-1", text: "Xã Mẫu" }, { value: "a-2", text: "Xã Mới" }] });
+  const detail = question("dc__1", { title: "Địa chỉ" });
+  const { call } = setup([province, ward, detail]);
+  const area = (xa, diaChi) => ({ name: "noiCuTru_TrongNuoc", comp: "sjs-area", value: { tinh: "Tỉnh A", xa, diaChi } });
+  await call("setValues", [area("Xã Mẫu", "Thôn 1, Mẫu")]);
+  assert.equal(detail.value, "Thôn 1, Mẫu");
+  const res = await call("patchValues", [area("Xã Mới", "Thôn 1")]);
+  assert.deepEqual(reasons(res), { noiCuTru_TrongNuoc: "ok" });
+  assert.deepEqual(res.results[0].parts.map((p) => p.name), ["tinh__1", "xa__1", "dc__1"]);
+  assert.equal(ward.value, "a-2");
+  assert.equal(detail.value, "Thôn 1");
+  detail.value = "cán bộ gõ lại";
+  const again = await call("patchValues", [area("Xã Mẫu", "Thôn 2")]);
+  assert.deepEqual(reasons(again), { noiCuTru_TrongNuoc: "changed" });
+  assert.equal(ward.value, "a-2");
+  assert.equal(detail.value, "cán bộ gõ lại");
+});
+
 test("ô tra cứu dân cư đổi làm cổng xoá ô khác → ghi lại ô engine đã điền", async () => {
   const number = question("soDinhDanh__1");
   const gender = question("gioiTinh__1");
@@ -142,6 +165,7 @@ test("lượt ghi đợt 2 không xoá dấu màu, không cuộn, và hoãn ản
   assert.match(core, /if \(msg\.action === "patchFields"\) \{[\s\S]*?H\.formSnapshot\?\.track\?\.\(msg\.formSnapshot,[\s\S]*?sendResponse\(res\);/);
   const sidebar = read("sidebar.js");
   assert.match(sidebar, /supportsSecondPass: true,/);
+  assert.match(sidebar, /supportsSecondPassArea: true,/);
   assert.match(sidebar, /deferSnapshot: !!secondPassId,/);
   assert.match(core, /if \(!res\?\.error && !msg\.deferSnapshot\) H\.formSnapshot\?\.track\?\./);
   // Ghi đợt 2 xong mới tô 3 màu và báo fill_report → bước bổ sung ô / đính kèm thấy giá trị cuối.

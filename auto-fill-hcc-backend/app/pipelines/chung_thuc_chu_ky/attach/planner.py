@@ -287,7 +287,6 @@ def build_plan_items(
             "fileName": file_name,
             "detectedType": detected,
             "documentName": llm_info["documentName"] or normalize_document_name(file_name, detected),
-            "componentBaseName": llm_info["documentName"] or detected,
             "isIdentity": _is_identity(detected, ocr_text, file_name),
             "ocrText": ocr_text,
         })
@@ -297,7 +296,6 @@ def build_plan_items(
     id_bucket = [d for d in docs if d["isIdentity"]]
 
     used_document_names: set[str] = set()
-    used_component_names: set[str] = set()
     items: list[dict] = []
 
     def _emit_unit(unit: list[dict], *, existing_index: int | None, existing_component: str) -> None:
@@ -314,18 +312,11 @@ def build_plan_items(
             component_index: int | None = existing_index
             needs_add = False
         else:
-            base = primary.get("componentBaseName") or document_name
-            if _fold(base) == _fold(_GENERIC_DOCUMENT_TYPE):
-                # OCR trống/không phân loại được → base = "Tài liệu chứng thực" cho MỌI file. Đánh số tên
-                # THÀNH PHẦN bằng bộ đếm RIÊNG sẽ lệch pha với documentName và sinh tên trần "Tài liệu
-                # chứng thực" — bị FE (khớp substring 2 chiều ở attachmentKeyMatches) coi là trùng của
-                # "Tài liệu chứng thực 2/3…" nên bỏ sót file. Dùng THẲNG documentName đã đánh số duy nhất.
-                component_name = document_name
-                used_component_names.add(_fold(component_name))
-            else:
-                component_name = _unique_document_name(
-                    base, used_component_names, primary["detectedType"]
-                )
+            # Đánh số tên THÀNH PHẦN bằng bộ đếm RIÊNG thì lệch pha với documentName (văn bản đầu vào STT1 đã
+            # chiếm tên trần) → thành phần mới mang tên trần "Giấy ủy quyền" cho tệp "Giấy ủy quyền 2". FE khớp
+            # dòng bằng substring 2 chiều nên dòng trần đó bị coi là dòng của "Giấy ủy quyền 2/3…" → tệp sau
+            # bị bỏ qua như đã đính. Dùng THẲNG documentName đã đánh số duy nhất.
+            component_name = document_name
             target = "new"
             component_index = None
             needs_add = True
@@ -849,7 +840,6 @@ def build_segment_plan_items(
         )
 
     used_document_names: set[str] = set()
-    used_component_names: set[str] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
 
@@ -876,9 +866,8 @@ def build_segment_plan_items(
             component_index = 1
             needs_add = False
         else:
-            component_name = _unique_document_name(
-                primary["documentName"], used_component_names, detected
-            )
+            # Cùng lý do với nhánh giữ nguyên file: bộ đếm riêng lệch pha với documentName.
+            component_name = document_name
             target = "new"
             component_index = None
             needs_add = True

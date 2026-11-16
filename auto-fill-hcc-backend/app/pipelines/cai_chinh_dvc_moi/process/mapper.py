@@ -15,7 +15,7 @@ from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.tai_khoan import account_context, matches_account
 
-from .reason import labeled_value, requester_context, section
+from .reason import _one_edit_apart, labeled_value, requester_context, section
 from .schema import UI_COMP_BY_NAME
 
 _SELF = "Bản thân"
@@ -110,15 +110,8 @@ def _area(value):
         return None
     huyen = str(value.get("huyen") or "").strip()
     remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
-    if not isinstance(remapped, dict):
-        return area
-    # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
-    old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
-    new_ward = str(remapped.get("xa") or "")
-    detail = str(remapped.get("diaChi") or "").strip()
-    if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
-        remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
-    return remapped
+    # Ô chi tiết chỉ gồm phần dưới xã: không ghép lại tên xã cũ đã sáp nhập (cán bộ phải xoá tay).
+    return remapped if isinstance(remapped, dict) else area
 
 
 _FROM_TO_RE = re.compile(r"\btừ\s+(.+?)\s+(?:thành|sang)\s+(.+?)\s*$", re.I)
@@ -135,6 +128,21 @@ def _drop_no_change(text):
             continue
         kept.append(part)
     return "; ".join(kept) if kept else text
+
+
+def _renamed_to(noi_dung, name) -> bool:
+    """Nội dung đề nghị đổi tên CỦA CHÍNH người có nội dung thay đổi sang đúng ``name`` (giá trị MỚI của một mục
+    "từ … thành …"); mục sửa tên cha / mẹ / con không tính. Mục "tên vợ / chồng" vẫn tính: trên giấy kết hôn vợ,
+    chồng chính là chủ giấy."""
+    target = _fold(name)
+    for part in str(noi_dung or "").split(";"):
+        match = _FROM_TO_RE.search(part.strip().rstrip("."))
+        head = _fold(part[:match.start()]) if match else ""
+        if re.search(r"\b(cha|me|bo|con)\b", head):
+            continue
+        if match and target and target in _fold(match.group(2)):
+            return True
+    return False
 
 
 def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bool, str]:
@@ -159,9 +167,13 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bo
         return (_SELF if account_id == subject_id and not deceased else _OTHER), from_account_docs, ""
     if account_name and subject_name:
         # Cải chính / thay đổi TÊN: tên đang ghi trong sổ vốn khác tên hiện tại của chủ tài khoản, so tên sẽ ra
-        # "Khác" oan → bước phân vai (đã đọc dòng quan hệ của tờ khai, số định danh) kết luận "Bản thân" thì theo nó.
-        # Tờ khai do chính chủ tài khoản khai ghi quan hệ "Bản thân" cũng đủ chốt.
-        same = (_fold(account_name) == _fold(subject_name) or reasoned == "ban than" or declared_self) and not deceased
+        # "Khác" oan → tên mới trong nội dung là tên tài khoản thì là "Bản thân". Kết luận "Bản thân" của bước phân
+        # vai chỉ tin khi hai tên lệch một ký tự (OCR / sửa một chữ): cha mẹ nộp cho con, model hay so nhầm người nộp
+        # với người đi khai rồi kết luận "Bản thân" dù tên khác hẳn. Tờ khai do chính chủ tài khoản khai ghi quan hệ
+        # "Bản thân" cũng đủ chốt.
+        near = _one_edit_apart(_fold(account_name), _fold(subject_name))
+        same = (_fold(account_name) == _fold(subject_name) or (reasoned == "ban than" and near) or declared_self
+                or _renamed_to(values.get("NoiDung"), account_name)) and not deceased
         # Chỉ khớp họ tên (thiếu số định danh) → tô vàng để cán bộ rà.
         return (_SELF if same else _OTHER), True, ""
     if reasoned == "khac" or (reasoned == "ban than" and not deceased):

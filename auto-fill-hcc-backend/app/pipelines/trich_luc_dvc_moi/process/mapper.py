@@ -494,6 +494,22 @@ def _relation(values: dict, context: str, options: dict | None, event: str) -> t
     return relation, other if relation == _OTHER else "", ""
 
 
+def _only_account_documents(values: dict, context: str, options: dict | None) -> bool:
+    """Hồ sơ không có tờ khai, giấy ủy quyền hay giấy hộ tịch, chỉ có giấy tờ của chủ tài khoản: phân vai khai "Nguồn:
+    giấy tờ chủ tài khoản"; hoặc phân vai để trống người được cấp mà thẻ lượt trích đọc ra trùng đúng số định danh và
+    họ tên tài khoản."""
+    subject = section(context, "nguoi_duoc_cap")
+    if _fold(labeled_value(subject, "Nguồn")) == "giay to chu tai khoan":
+        return True
+    papers = section(context, "giay_to_ho_tich")
+    if labeled_value(subject, "Họ tên") or labeled_value(papers, "Loại ghi trên tờ khai") or labeled_value(
+            papers, "Tài liệu nguồn"):
+        return False
+    account_name, account_id = requester_context(options)
+    number = _digits(values.get("NguoiDuocCap_SoDinhDanh") or values.get("NguoiDuocCap_SoGiayTo"))
+    return bool(account_id) and number == account_id and _fold(account_name) == _fold(values.get("NguoiDuocCap_HoTen"))
+
+
 def _self_subject_values(values: dict, options: dict | None) -> dict:
     """Field của khối người được cấp khi quan hệ là "Bản thân": khóa nào tài khoản gửi thì lấy theo tài khoản (form
     SurveyJS chỉ đọc được họ tên + số định danh của khối người nộp), khóa còn lại theo giấy tờ.
@@ -545,18 +561,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         values = {k: v for k, v in values.items() if k not in _GIAY_TO_DETAIL_KEYS}
         warnings.append("Thông tin đăng ký hộ tịch đọc ra thuộc giấy khác loại tờ khai yêu cầu — đã bỏ trống, "
                         "cán bộ nhập số, ngày, nơi đăng ký theo tờ khai.")
-    # Phân vai không xác định được người được cấp (vd hồ sơ chỉ có CCCD người nộp) mà lượt trích vẫn điền khối
-    # NguoiDuocCap_* → đó là thẻ của người nộp chép sang, không phải người được cấp.
+    # Hồ sơ chỉ có giấy tờ của chủ tài khoản (không tờ khai / ủy quyền / giấy hộ tịch) → xin bản sao cho bản thân.
+    only_account = event != "death" and _only_account_documents(values, context, options)
+    # Phân vai không xác định được người được cấp mà lượt trích vẫn điền khối NguoiDuocCap_* (hồ sơ có giấy của người
+    # khác) → đó là thẻ của người nộp chép sang, không phải người được cấp.
     subject_block = section(context, "nguoi_duoc_cap")
-    if subject_block and not labeled_value(subject_block, "Họ tên"):
+    if subject_block and not labeled_value(subject_block, "Họ tên") and not only_account:
         values = {k: v for k, v in values.items() if not k.startswith("NguoiDuocCap_")}
     # Quan hệ phải chốt TRƯỚC: chọn "Bản thân" thì cổng tự đổ khối người được cấp từ người nộp,
     # chọn khác thì cổng dựng lại khối đó — điền nhân thân trước sẽ bị xóa.
     relation, other, warning = _relation(values, context, options, event)
+    if only_account:
+        relation, other = _SELF, ""
+        warning = ("Hồ sơ chỉ có giấy tờ của người nộp — đã chọn \"Bản thân\", cán bộ kiểm tra lại ô Quan hệ.")
     if warning:
         warnings.append(warning)
-    # "Khác" không kèm chữ là lựa chọn mặc định, không đọc từ giấy → viền vàng.
-    add("citizenQuanhe", relation, default=relation == _OTHER and not other)
+    # "Khác" không kèm chữ / "Bản thân" suy từ giấy tờ của chính người nộp: không đọc từ giấy → viền vàng.
+    add("citizenQuanhe", relation, default=(relation == _OTHER and not other) or only_account)
     add("citizenField8", other)
 
     # "Bản thân": cổng tự chép khối người được cấp từ khối người nộp. Vẫn trả khối này để đối chiếu được dữ liệu: ô nào

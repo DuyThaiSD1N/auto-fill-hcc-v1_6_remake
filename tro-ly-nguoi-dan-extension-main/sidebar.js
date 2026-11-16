@@ -159,6 +159,12 @@
     // Ghi lại được ô đợt 2 trên form cũ (x-*, content/fill-legacy.js::patchFormLegacy). Thủ tục form cũ chỉ chạy
     // lớp soát khi có cờ này.
     supportsSecondPassLegacy: true,
+    // Ghi lại được ô đợt 2 trên form Angular (cổng liên thông, content/fill-angular.js::patchFormAngular). Thủ tục form
+    // Angular chỉ chạy lớp soát khi có cờ này.
+    supportsSecondPassAngular: true,
+    // Ghi lại được ô địa chỉ gộp SurveyJS ở đợt 2 (content/surveyjs-main.js::patchValues → setArea). Thiếu cờ → bản vá
+    // của BE bỏ ô địa chỉ.
+    supportsSecondPassArea: true,
     // Báo trạng thái khối người yêu cầu trên tờ khai (page_context.taiKhoan, accountAnchorState). Thủ tục tư pháp form cũ
     // chờ cổng đổ xong dữ liệu tài khoản rồi BE mới chạy lượt trích ở bước Kê khai. Thiếu cờ → BE chạy ngay như cũ.
     supportsAccountAnchorWait: true,

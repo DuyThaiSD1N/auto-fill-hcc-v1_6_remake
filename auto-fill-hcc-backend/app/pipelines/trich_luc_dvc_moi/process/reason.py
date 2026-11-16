@@ -43,8 +43,9 @@ c. Giấy hộ tịch trong hồ sơ: giấy khai sinh → người được kha
    hôn mà người nộp là vợ / chồng vẫn theo quy tắc giấy kết hôn ở trên.)
 d. Chỉ có giấy chứng sinh / tờ khai cư trú CT01 → người con trên giấy chứng sinh / người ở mục 1 CT01.
 e. Hồ sơ KHÔNG có tờ khai, giấy ủy quyền hay giấy hộ tịch nào, chỉ có thẻ CCCD/CMND: có đúng một thẻ của người
-   KHÁC người nộp → người đó; chỉ có thẻ của người nộp → "Không xác định" (thẻ người nộp chỉ chứng minh người
-   đi làm thủ tục).
+   KHÁC người nộp → người đó; chỉ có giấy tờ của CHỦ TÀI KHOẢN (tài liệu chứa đúng số định danh trong
+   <requester_context>) → chủ tài khoản xin bản sao cho BẢN THÂN: người được cấp = chủ tài khoản, lấy họ tên / số
+   định danh / ngày sinh từ giấy tờ đó, ghi đúng "Nguồn: giấy tờ chủ tài khoản".
 </xac_dinh_nguoi_duoc_cap>
 
 <xac_dinh_loai>

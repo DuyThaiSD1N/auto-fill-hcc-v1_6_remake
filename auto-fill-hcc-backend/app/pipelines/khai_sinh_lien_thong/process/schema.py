@@ -212,7 +212,8 @@ STATIC_DEFAULTS: list[dict] = [
     # default=True → extension đánh dấu VIỀN VÀNG (giá trị mặc định, không phải từ giấy tờ).
     # Mục đăng ký thường trú: CHỈ điền khi có tờ khai CT01 (xem mapper).
     # Không mặc định VNeID vì nhiều nơi dùng mẫu hệ (bà/mẹ là chủ hộ), bỏ mặc định tránh sai.
-    {"name": "NguoiGiamHo", "comp": "select", "value": "Thông tin cha", "default": True},
+    # Giám hộ trên thẻ BHYT của trẻ: cán bộ chọn mẹ nhiều hơn cha.
+    {"name": "NguoiGiamHo", "comp": "select", "value": "Thông tin mẹ", "default": True},
 ]
 
 # Field ĐÁNG rà soát bbox (name → nhãn). Đọc từ giấy chứng sinh/tờ khai + CCCD cha/mẹ. Tên con/mẹ

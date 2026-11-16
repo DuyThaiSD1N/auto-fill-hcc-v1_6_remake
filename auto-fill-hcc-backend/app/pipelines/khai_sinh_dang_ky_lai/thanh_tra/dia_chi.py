@@ -9,10 +9,11 @@ viết / tự gõ, đo trên hồ sơ thật đúng ngang sai. Chỉ thay TÊN, 
 """
 
 import re
+from dataclasses import replace
 
 from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, fold
 
-from . import chu_the
+from . import chu_the, ten_xa
 from .chu_the import ROLE_BY_KEY
 from .dinh_danh import _edit, declaration_lines
 
@@ -52,6 +53,15 @@ xã hiện tại của A (tính cả dòng trên tờ khai đăng ký lại khô
 tiết của A bỏ trống, hoặc là tên đơn vị khác hẳn chỉ có trên dòng ghi xã khác (địa chỉ cũ trước sáp nhập, nơi khác) → chọn B (tên đơn vị đúng như dòng đó, giữ tỉnh / xã của
 A). Dòng trích dẫn không có nhãn đó → KHONG_DU_CAN_CU.
 </noi_sinh_que_quan>
+
+<ten_xa>
+Vụ có tín hiệu "ô xã của A không có trong danh mục hiện hành": tên xã của A là chữ OCR đọc lệch (tờ khai viết tay) hoặc
+cụm khác (tên thôn, tổ) bị lấy nhầm làm tên xã, cổng không chọn được nên ô xã TRỐNG. B là tên xã trong danh mục hiện hành
+của tỉnh (tỉnh của B là tỉnh hiện hành sau sáp nhập, không phải đổi nơi ở). Dòng trích dẫn có tên B (cho lệch OCR vài chữ)
+và là địa chỉ của chính ô đang xét, giấy tờ của chính người đó (CCCD, giấy khai sinh...), hoặc dòng "Kính gửi: UBND ..."
+với nơi cư trú người yêu cầu → chọn B. Tên xã của A có nguyên văn trên dòng KHÔNG phải lý do giữ A: tên đó không có
+trong danh mục, giữ A là để ô xã trống. Dòng trích dẫn là địa chỉ của người khác / nơi khác → KHONG_DU_CAN_CU.
+</ten_xa>
 """
 
 
@@ -210,12 +220,30 @@ def declared_detail_finding(name: str, value, documents: list[dict]) -> Finding 
                              f"ghi xã); chi tiết của A {'bỏ trống' if not detail else 'không có trên dòng nào như thế'}",))
 
 
+def _ward_evidence(fix: dict, before) -> str:
+    read = str((before or {}).get("xa") or "") if isinstance(before, dict) else ""
+    return (f"ô xã của A ({f'“{read}”' if read else 'bỏ trống'}) không có trong danh mục hiện hành nên trên cổng sẽ TRỐNG; "
+            f"B là tên xã trong danh mục hiện hành của "
+            f"tỉnh {fix['value'].get('tinh')}, có trên dòng trích dẫn ({'model chọn' if fix['by'] == 'llm' else 'mã chọn'}"
+            f": {fix['why']})")
+
+
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     lines = printed_lines(case.documents)
+    wards = await ten_xa.fixes(case.values, tuple(name for name, _, _ in _TARGETS), case.documents, case.options)
     findings = []
     for name, _, _ in _TARGETS:
-        finding = declared_detail_finding(name, case.values.get(name), case.documents) or address_finding(
-            name, case.values.get(name), case.documents, lines)
+        fix = wards.get(name)
+        # Tên thôn / tổ soát trên địa chỉ đã sửa xã: một vụ cho cả địa chỉ, không để hai đề xuất ghi đè nhau.
+        value = fix["value"] if fix else case.values.get(name)
+        finding = declared_detail_finding(name, value, case.documents) or address_finding(
+            name, value, case.documents, lines)
+        if finding and fix:
+            finding = replace(finding, evidence=(*finding.evidence, _ward_evidence(fix, case.values.get(name))))
+        elif fix:
+            finding = Finding(INSPECTOR, _UNIT_BY_NAME[name], {name: fix["value"]}, fix["quote"], fix["doc"],
+                              "dòng giấy ghi tên xã của địa chỉ", _OWNER_BY_NAME[name], backed=True,
+                              evidence=(_ward_evidence(fix, case.values.get(name)),))
         if finding:
             findings.append(finding)
     return findings

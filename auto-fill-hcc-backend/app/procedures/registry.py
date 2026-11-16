@@ -1217,6 +1217,9 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "review": False,  
+        # Điền đợt 2 (app/second_pass) trên form ANGULAR của cổng liên thông: chỉ chạy khi extension khai fillSupports có
+        # "secondPassAngular" (bản biết ghi lại ô trên form Angular). Bản khác bỏ qua khoá này.
+        "secondPass": "angular",
         "label": (
             "Liên thông thủ tục hành chính về đăng ký khai sinh, đăng ký thường trú, "
             "cấp thẻ bảo hiểm y tế cho trẻ em dưới 6 tuổi"
@@ -1514,6 +1517,10 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
         "supportsSplitDocuments": True,
+        # Có điền đợt 2 (app/second_pass): bản extension biết thì khai fillSupports=["secondPass"] khi gọi /process
+        # rồi hỏi kết quả soát sau khi điền. Bản cũ bỏ qua khoá này. Ô địa chỉ gộp chỉ ghi lại khi extension khai thêm
+        # "secondPassArea".
+        "secondPass": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,

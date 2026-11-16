@@ -1755,8 +1755,9 @@
       const patch = Array.isArray(msg.fields) ? msg.fields : [];
       const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
       const known = new Set(base.map((f) => f?.name));
-      // Form SurveyJS và form cũ (x-*) mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
-      const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs : (formKind === "legacy" ? H.patchFormLegacy : null);
+      // Form SurveyJS, form cũ (x-*) và form Angular mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
+      const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs
+        : formKind === "legacy" ? H.patchFormLegacy : formKind === "angular" ? H.patchFormAngular : null;
       const canPatch = patch.length && typeof patcher === "function";
       Promise.resolve().then(() => (canPatch ? patcher(patch) : { filled: 0, skipped: [] }))
         .catch((e) => {

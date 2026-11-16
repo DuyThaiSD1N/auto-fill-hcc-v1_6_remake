@@ -347,3 +347,88 @@ def test_tai_khoan_cua_con_khong_ap_cho_cha_khi_khong_trung_so():
     requester = {"name": "VŨ ĐÌNH DỦNG", "number": "", "birth": "", "ethnic": ""}
     finding = dinh_danh.account_finding(chu_the.ROLE_BY_KEY["nyc"], requester, docs)
     assert finding.values == {"Requester_FullName": "VŨ ĐÌNH DŨNG"}
+
+
+# --- tên xã của địa chỉ mà ô xã trên cổng sẽ trống (ten_xa) ---
+
+from app.pipelines.khai_sinh_dang_ky_lai.thanh_tra import ten_xa  # noqa: E402
+
+
+def test_xa_ngoai_danh_muc_la_o_trong():
+    assert ten_xa.blank_ward("Requester_ResidenceDomestic",
+                             {"tinh": "Bắc Ninh", "xa": "Phường Hinh Bắtz", "diaChi": "Thôn A"})
+    assert ten_xa.blank_ward("Requester_ResidenceDomestic",
+                             {"tinh": "Bắc Ninh", "xa": "Phường Kinh Bắc", "diaChi": "Thôn A"}) is None
+    assert ten_xa.blank_ward("Father_ResidenceDomestic", {"tinh": "", "xa": "", "diaChi": "Đã chết"}) is None
+
+
+def test_rule_ten_xa_sau_chu_phuong_tren_dong_cua_o():
+    docs = [{"name": "tk.pdf", "text": "Nơi cư trú: TDP(thôn). Tổ Một phường(xã). Kinh Bắc tỉnh(1) Bắc Ninh"}]
+    value = {"tinh": "Bắc Ninh", "xa": "Tổ Một", "diaChi": "TDP(thôn)"}
+    province, wards = ten_xa.blank_ward("Requester_ResidenceDomestic", value)
+    assert ten_xa.rule_ward("Requester_ResidenceDomestic", value, province, wards, docs)[0] == "Phường Kinh Bắc"
+
+
+def test_rule_cum_thu_hai_chi_khi_luot_trich_khong_co_chi_tiet():
+    docs = [{"name": "tk.pdf", "text": "Nơi sinh: Bản Nậm Xyzt, Bình Lư, Lai Châu"}]
+    value = {"tinh": "Lai Châu", "xa": "Bản Nậm Xyzt", "diaChi": ""}
+    province, wards = ten_xa.blank_ward("Subject_BirthPlaceDomestic", value)
+    assert ten_xa.rule_ward("Subject_BirthPlaceDomestic", value, province, wards, docs)[0] == "Xã Bình Lư"
+    # Có chi tiết: cụm lượt trích lấy làm xã là cấp xã đọc lệch, cụm sau là cấp huyện → không lấy.
+    docs = [{"name": "tk.pdf", "text": "Nơi sinh: Thôn Hai - Bản Nậm Xyzt - Bình Lư - Lai Châu"}]
+    value = {"tinh": "Lai Châu", "xa": "Bản Nậm Xyzt", "diaChi": "Thôn Hai"}
+    assert ten_xa.rule_ward("Subject_BirthPlaceDomestic", value, province, wards, docs) == ("", "")
+
+
+def test_rule_khong_lay_thi_xa_va_dong_cua_nguoi_khac():
+    docs = [{"name": "tk.pdf", "text": "Nơi cư trú: Thôn A - xã Tam Đa\nNơi cư trú: Thôn B - phường Kinh Bắc"}]
+    value = {"tinh": "Bắc Ninh", "xa": "Tổ Ba", "diaChi": "Thôn B"}
+    province, wards = ten_xa.blank_ward("Mother_ResidenceDomestic", value)
+    assert ten_xa.rule_ward("Mother_ResidenceDomestic", value, province, wards, docs)[0] == "Phường Kinh Bắc"
+    docs = [{"name": "cc.pdf", "text": "Quê quán: Thôn C, Thị xã Kinh Bắc"}]
+    value = {"tinh": "Bắc Ninh", "xa": "", "diaChi": "Thôn C"}
+    province, wards = ten_xa.blank_ward("Subject_HometownDomestic", value)
+    assert ten_xa.rule_ward("Subject_HometownDomestic", value, province, wards, docs) == ("", "")
+
+
+def test_llm_chon_xa_phai_co_tren_dong_trich(monkeypatch):
+    docs = [{"name": "tk.pdf", "text": "Kính gửi: UBND phường Kinh Bắc\nNơi cư trú: Thôn A - phường Hinh Bắtz"}]
+    value = {"tinh": "Bắc Ninh", "xa": "Phường Hinh Bắtz", "diaChi": "Thôn A"}
+
+    async def answer(xa, line):
+        async def chat(*args, **kwargs):
+            return '{"xa": "%s", "dong_dia_chi": "%s", "dong_phu": ""}' % (xa, line)
+        monkeypatch.setattr(ten_xa.base.client, "chat", chat)
+        return await ten_xa.fixes({"Requester_ResidenceDomestic": value}, ("Requester_ResidenceDomestic",), docs,
+                                  {"counterWard": "HCC phường Kinh Bắc"})
+
+    fixed = asyncio.run(answer("Phường Kinh Bắc", "Kính gửi: UBND phường Kinh Bắc"))
+    assert fixed["Requester_ResidenceDomestic"]["value"]["xa"] == "Phường Kinh Bắc"
+    assert fixed["Requester_ResidenceDomestic"]["by"] == "llm"
+    # Tên không có trên dòng LLM trích → không nhận; mã cũng không có căn cứ → không sửa.
+    assert asyncio.run(answer("Phường Võ Cường", "Kính gửi: UBND phường Kinh Bắc")) == {}
+
+
+def test_thanh_tra_dia_chi_de_xuat_xa_cho_o_trong(monkeypatch):
+    docs = [{"name": "tk.pdf", "text": "Nơi cư trú: TDP(thôn). Tổ Một phường(xã). Kinh Bắc tỉnh(1) Bắc Ninh"}]
+    value = {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Tổ Một", "diaChi": "TDP(thôn)"}
+
+    async def chat(*args, **kwargs):
+        return '{"xa": ""}'
+    monkeypatch.setattr(ten_xa.base.client, "chat", chat)
+    case = dia_chi.Case(docs, "", {"Requester_ResidenceDomestic": value}, {})
+    findings = asyncio.run(dia_chi.find(dia_chi.INSPECTOR, case, ""))
+    assert [f.values["Requester_ResidenceDomestic"]["xa"] for f in findings] == ["Phường Kinh Bắc"]
+    assert findings[0].backed and "danh mục hiện hành" in findings[0].evidence[0]
+
+
+def test_rule_ten_xa_doc_lech_lay_theo_dong_kinh_gui():
+    docs = [{"name": "tk.pdf", "text": "Kính gửi: (1)UBND Phường Kinh Bắc\nNơi cư trú: Thôn A - Phường Hinh Bắt - TP Bắc Ninh\n"
+                                       "Nơi cư trú: Thôn B - phường Võ Cường"}]
+    value = {"tinh": "Bắc Ninh", "xa": "Phường Hinh Bắt", "diaChi": "Thôn A"}
+    province, wards = ten_xa.blank_ward("Requester_ResidenceDomestic", value)
+    assert ten_xa.rule_ward("Requester_ResidenceDomestic", value, province, wards, docs) == (
+        "Phường Kinh Bắc", "Kính gửi: (1)UBND Phường Kinh Bắc")
+    # Tên gần giống chỉ có ở dòng địa chỉ khác (nơi ở của người khác) → không lấy.
+    docs = [{"name": "tk.pdf", "text": "Nơi cư trú: Thôn B - phường Kinh Bắc\nNơi cư trú: Thôn A - Phường Hinh Bắt"}]
+    assert ten_xa.rule_ward("Requester_ResidenceDomestic", value, province, wards, docs) == ("", "")

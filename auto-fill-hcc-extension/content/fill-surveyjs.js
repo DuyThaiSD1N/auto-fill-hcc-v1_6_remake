@@ -226,7 +226,9 @@
       const field = byName.get(r.name) || { name: r.name };
       if (r.ok) result.filled++;
       else result.skipped.push(r.name);
-      if (r.ok || r.reason === "cleared-after-set") markField(field, r.ok, find);
+      // Ô địa chỉ gộp: tô từng ô con thật (tên ô gộp của BE không có trên trang).
+      if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok, find));
+      else if (r.ok || r.reason === "cleared-after-set") markField(field, r.ok, find);
     }
     return result;
   }

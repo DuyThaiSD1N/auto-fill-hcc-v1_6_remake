@@ -26,7 +26,9 @@ Bạn là agent PHÂN VAI hồ sơ THAY ĐỔI, CẢI CHÍNH, BỔ SUNG THÔNG T
 
 XÁC ĐỊNH NGƯỜI CÓ NỘI DUNG THAY ĐỔI, theo thứ tự:
 a. TỜ KHAI: người ở khối sau câu "... cho người có tên dưới đây". Họ tên là tên ĐANG CÓ trong sổ hộ tịch,
-   KHÔNG phải tên mới nêu ở dòng "Nội dung".
+   KHÔNG phải tên mới nêu ở dòng "Nội dung". Có tờ khai thì LUÔN theo người này, kể cả khi hồ sơ kèm giấy khai
+   sinh / trích lục khai tử / CCCD của chính cha, mẹ, vợ, chồng: các giấy đó là GIẤY CĂN CỨ ghi giá trị đúng của
+   thông tin cần sửa, không phải giấy cần sửa. "Giấy hộ tịch cần sửa" khi đó là giấy của người ở tờ khai.
 b. Giấy ủy quyền: BÊN ỦY QUYỀN — kể cả khi thông tin cần sửa là tên / năm sinh của CHA, MẸ ghi trên giấy của
    bên ủy quyền (cha, mẹ khi đó chỉ là nội dung bị sửa).
 c. Không có tờ khai, có BẢN CAM ĐOAN viết "trong giấy khai sinh (giấy hộ tịch) CỦA TÔI ...": NGƯỜI CAM ĐOAN — chủ
@@ -155,8 +157,64 @@ def _one_edit_apart(a: str, b: str) -> bool:
     return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
 
 
+
+# Họ tên / tên riêng ngắn thì thêm / bớt 1 ký tự đã là tên khác (Văn A / Văn An) → chỉ nhận gần đúng với họ tên đủ
+# dài; tên riêng 2 chữ cái chỉ nhận thay 1 chữ cái, từ 3 chữ cái mới nhận cả thêm / bớt.
+_NEAR_NAME_MIN_CHARS = 12
+_NEAR_GIVEN_NAME_MIN_CHARS = 3
+
+
+def name_match(name: str, text: str) -> str:
+    """Họ tên có trong một dòng chữ không: "exact" (bỏ dấu, nguyên từ), "near" (lệch 1 ký tự — OCR đọc nhầm một chữ
+    cái), "" (không có). Lớp soát dùng để biết một dòng / một thẻ có phải của người có nội dung thay đổi."""
+    target = _fold(name).split()
+    words = re.findall(r"[a-z0-9]+", _fold(text))
+    if len(target) < 2 or not words:
+        return ""
+    joined = " ".join(target)
+    long_enough = len(joined) >= _NEAR_NAME_MIN_CHARS
+    given = len(target[-1])
+    near = False
+    for size in (len(target), len(target) - 1, len(target) + 1):
+        for start in range(0, len(words) - size + 1):
+            window = " ".join(words[start:start + size])
+            if window == joined:
+                return "exact"
+            if not long_enough or near or not _one_edit_apart(window, joined):
+                continue
+            near = given >= _NEAR_GIVEN_NAME_MIN_CHARS or (given == 2 and len(window) == len(joined))
+    return "near" if near else ""
+
+_SUBJECT_ANCHOR_RE = re.compile(r"cho\s+người\s+có\s+tên\s+dưới\s+đây", re.IGNORECASE)
+_NAME_LABEL_RE = re.compile(r"Họ,?\s*chữ\s*đệm,?\s*(?:và\s+)?tên\s*:\s*(.*)", re.IGNORECASE)
+_BIRTH_LABEL_RE = re.compile(r"Ngày,?\s*tháng,?\s*năm\s*sinh\s*:\s*([0-9][0-9/.\-\s]*[0-9])", re.IGNORECASE)
+_NEXT_LABEL_RE = re.compile(r"\s*(?:Ngày,?\s*tháng|Giới\s*tính|Dân\s*tộc|Quốc\s*tịch|Nơi\s*cư\s*trú|Giấy\s*tờ)",
+                            re.IGNORECASE)
+_ANCHOR_SPAN = 400
+
+
+def _declaration_subjects(documents: list[dict]) -> list[str]:
+    """Họ tên + ngày sinh ở khối "cho người có tên dưới đây" của tờ khai — chép bằng mã để model không lẫn với chủ của
+    giấy căn cứ (giấy khai sinh / khai tử / CCCD của cha, mẹ, vợ, chồng) kèm trong hồ sơ."""
+    out = []
+    for index, document in enumerate(documents, start=1):
+        text = str(document.get("text") or "")
+        for anchor in _SUBJECT_ANCHOR_RE.finditer(text):
+            span = text[anchor.end():anchor.end() + _ANCHOR_SPAN]
+            name = _NAME_LABEL_RE.search(span)
+            value = _NEXT_LABEL_RE.split(name.group(1))[0].strip(" .:,;…-") if name else ""
+            if not value:
+                continue
+            birth = _BIRTH_LABEL_RE.search(span)
+            line = f'tài liệu {index}: "{value[:60]}"' + (f', sinh "{birth.group(1).strip()}"' if birth else "")
+            if line not in out:
+                out.append(line)
+    return out
+
+
 def _document_hints(documents: list[dict], options: dict | None) -> str:
-    """Mỏ neo tất định: tài liệu nào chứa đúng (hoặc gần đúng, OCR lệch một chữ số) số định danh của tài khoản."""
+    """Mỏ neo tất định: tài liệu nào chứa đúng (hoặc gần đúng, OCR lệch một chữ số) số định danh của tài khoản; người
+    ở khối "cho người có tên dưới đây" của tờ khai."""
     name, number = requester_context(options)
     hits, near = [], []
     for index, document in enumerate(documents, start=1):
@@ -165,6 +223,7 @@ def _document_hints(documents: list[dict], options: dict | None) -> str:
             hits.append(str(index))
         elif len(number) == 12 and any(_one_edit_apart(number, run) for run in re.findall(r"\d{11,13}", text)):
             near.append(str(index))
+    subjects = _declaration_subjects(documents)
     return "\n".join([
         "<requester_context>",
         f'Họ tên chủ tài khoản (người nộp): "{name or "không có"}".',
@@ -174,7 +233,14 @@ def _document_hints(documents: list[dict], options: dict | None) -> str:
         + (", ".join(near) if near else "không có") + ".",
         "Tài khoản là MỐC để tính quan hệ, không phải dữ liệu của người có nội dung thay đổi.",
         "</requester_context>",
-    ])
+    ] + ([
+        # Chỉ thêm khi có tờ khai: hồ sơ không tờ khai giữ nguyên ngữ cảnh cũ.
+        "<to_khai_context>",
+        "Khối \"cho người có tên dưới đây\" của tờ khai ghi: " + "; ".join(subjects) + ".",
+        "Người có nội dung thay đổi là người đó (quy tắc a; dòng chép bằng mã, đọc lại OCR nếu tên chép lệch chữ), dù "
+        "thông tin cần sửa là của cha, mẹ, vợ, chồng.",
+        "</to_khai_context>",
+    ] if subjects else []))
 
 
 def _build_user_content(documents: list[dict], options: dict | None) -> str:

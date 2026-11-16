@@ -47,7 +47,9 @@ giấy ngoài tờ khai — không lấy các lý do này để giữ A. Chọn 
 
 <so_ngay>
 Số định danh / ngày sinh lấy ở vùng MRZ mặt sau thẻ mang họ tên (không dấu) của người chết, năm sinh trong số khớp ngày
-sinh in ở MRZ → chọn B: ba dòng MRZ in máy đọc ổn định hơn chữ số viết tay. Ngày cấp đọc ở mặt sau thẻ, trong khối kết
+sinh in ở MRZ → chọn B: ba dòng MRZ in máy đọc ổn định hơn chữ số viết tay. Tín hiệu "thẻ nhận theo ngày sinh": tờ khai
+viết tay bị đọc sai cả tên nên mã nhận thẻ của người chết bằng ngày sinh MRZ trùng đủ ngày sinh và số chỉ lệch 1–2 chữ
+số → số, ngày cấp, và HỌ TÊN in trên thẻ (B) thay cho A chỉ có trên tờ khai, kể cả khi B khác chữ cái A. Ngày cấp đọc ở mặt sau thẻ, trong khối kết
 thúc bằng dải MRZ mang đúng số định danh của người chết → chọn B (mã đã bỏ qua khi ngày của A có trên tờ khai / giấy báo
 tử / trích lục khai tử). Ngày hết
 hạn ("Có giá trị đến") không phải ngày cấp.
@@ -66,6 +68,11 @@ def _line_with(case: Case, test) -> tuple[str, int]:
             if line.strip() and test(line):
                 return line.strip(), index
     return "", 0
+
+
+def _marked(name: str) -> bool:
+    """Cách viết còn dấu thanh / dấu mũ / nét "Đ" ở ít nhất một chữ."""
+    return fold(name) != " ".join(str(name).lower().split())
 
 
 def name_finding(case: Case, page_list: list[dict]) -> Finding | None:
@@ -100,8 +107,11 @@ def name_finding(case: Case, page_list: list[dict]) -> Finding | None:
                            for page in page_list if page["kind"] != "to_khai" for line in page["lines"])
     winners = []
     for key, cand in candidates.items():
-        if not cand["letters"] and (base._adds_marks(key, ours) or base._lost_stroke(key, ours)):
-            continue  # đề xuất chỉ là bản rơi dấu / mất nét "Đ" của lượt trích
+        # Đề xuất là bản rơi dấu / mất nét "Đ" của lượt trích → chặn (OCR rơi dấu cả dòng: "DINH VAN HE"). Trừ khi chính
+        # cách viết đó còn dấu ở chữ khác ("Võ Thị Giai": dòng không bị rơi dấu, tên viết đúng là "Giai").
+        if not cand["letters"] and (base._adds_marks(key, ours) or base._lost_stroke(key, ours)) \
+                and not _marked(cand["name"]):
+            continue
         if cand["letters"] and letters_on_paper:
             continue
         stat = trang.support(cand["name"], page_list)
@@ -120,14 +130,43 @@ def name_finding(case: Case, page_list: list[dict]) -> Finding | None:
 
 
 def _card(case: Case) -> dict | None:
-    """Thẻ của người mất: MRZ mang họ tên (không dấu) của người mất, năm sinh trong số khớp năm sinh in ở MRZ."""
+    """Thẻ của người mất: MRZ mang họ tên (không dấu) của người mất, năm sinh trong số khớp năm sinh in ở MRZ. Không thẻ
+    nào trùng tên (tờ khai viết tay đọc sai cả tên) → thẻ có ngày sinh MRZ trùng ĐỦ ngày sinh của lượt trích và số chỉ lệch
+    1–2 chữ số với số của lượt trích (OCR đọc lệch chữ số) — đánh dấu "by_birth"."""
     name = " ".join(fold(case.values.get(NAME)).split())
-    if not name:
-        return None
     cards = [card for document in case.documents for card in mrz_records(document.get("text"))]
-    cards = [card for card in cards if card.get("name") == name and card.get("birth")
-             and (id_birth_year(card["id"]) or 0) % 100 == card["birth"][0]]
-    return cards[0] if len({card["id"] for card in cards}) == 1 else None
+    cards = [card for card in cards if card.get("birth") and (id_birth_year(card["id"]) or 0) % 100 == card["birth"][0]]
+    named = [card for card in cards if name and card.get("name") == name]
+    if named:
+        return named[0] if len({card["id"] for card in named}) == 1 else None
+    birth, ours = parse_date(case.values.get(BIRTH)), trang.digits(case.values.get(NUMBER))
+    if not birth or len(ours) != 12:
+        return None
+    near = [card for card in cards if card["birth"] == (birth.year % 100, birth.month, birth.day)
+            and id_birth_year(card["id"]) == birth.year and card.get("name")
+            and 0 < sum(a != b for a, b in zip(card["id"], ours)) <= 2]
+    return {**near[0], "by_birth": True} if len({card["id"] for card in near}) == 1 else None
+
+
+def card_name_finding(case: Case, card: dict | None, page_list: list[dict]) -> Finding | None:
+    """Thẻ nhận theo ngày sinh + số (tên lượt trích không khớp MRZ): họ tên in trên mặt thẻ (dòng có dấu, cùng chữ cái
+    với tên ở MRZ) thay cho tên lượt trích."""
+    if not card or not card.get("by_birth"):
+        return None
+    target = card["name"].split()
+    for page in page_list:
+        if page["kind"] == "to_khai":
+            continue
+        for line in page["lines"]:
+            tokens = trang.WORD_RE.findall(line)
+            for start in range(len(tokens) - len(target) + 1):
+                window = " ".join(tokens[start:start + len(target)])
+                if fold(window).split() == target and _marked(window):
+                    return _finding("ho_ten", window.upper(), line, page["doc"], "họ tên in trên thẻ của người chết",
+                                    "thẻ của người chết nhận theo ngày sinh MRZ trùng ngày sinh và số định danh chỉ lệch "
+                                    "1–2 chữ số do OCR; họ tên trên thẻ (mặt trước và vùng MRZ) khác tên lượt trích lấy ở "
+                                    "tờ khai viết tay")
+    return None
 
 
 def _on_declaration(case: Case, value) -> bool:
@@ -149,15 +188,15 @@ def card_findings(case: Case) -> list[Finding]:
     if not card:
         return []
     out = []
+    how = ("thẻ nhận theo ngày sinh MRZ trùng ngày sinh người chết, số chỉ lệch 1–2 chữ số" if card.get("by_birth") else
+           "vùng MRZ của thẻ mang họ tên người chết (không dấu), năm sinh trong số khớp ngày sinh in ở MRZ")
     quote, doc = _line_with(case, lambda line: bool(re.search(rf"I[DO]VNM\S*{card['id']}", re.sub(r"\s+", "", line))))
     if quote:
         for unit, field in (("so_dinh_danh", NUMBER), ("so_giay_to", ID_NUMBER)):
             current = trang.digits(case.values.get(field))
             # Số giấy tờ là CMND 9 số (giấy khác thẻ căn cước) thì không đụng.
             if current != card["id"] and (unit == "so_dinh_danh" or not current or len(current) == 12):
-                out.append(_finding(unit, card["id"], quote, doc, "dòng MRZ ở mặt sau thẻ của người chết",
-                                    "vùng MRZ của thẻ mang họ tên người chết (không dấu), năm sinh trong số khớp ngày "
-                                    "sinh in ở MRZ"))
+                out.append(_finding(unit, card["id"], quote, doc, "dòng MRZ ở mặt sau thẻ của người chết", how))
     year = id_birth_year(card["id"])
     yy, mm, dd = card["birth"]
     birth = f"{dd:02d}/{mm:02d}/{year}" if year and year % 100 == yy else ""
@@ -181,7 +220,7 @@ def card_findings(case: Case) -> list[Finding]:
 
 def findings_from(case: Case) -> list[Finding]:
     page_list = trang.pages(case.documents)
-    name = name_finding(case, page_list)
+    name = card_name_finding(case, _card(case), page_list) or name_finding(case, page_list)
     return [*([name] if name else []), *card_findings(case)]
 
 

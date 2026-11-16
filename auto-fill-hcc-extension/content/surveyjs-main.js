@@ -177,7 +177,8 @@
 
   // Khối địa chỉ trong nước chỉ hiện sau khi chọn radio và tên ô khác nhau giữa biểu mẫu → dò theo nhãn
   // hiển thị trong CÙNG khối (.sd-panel) với radio. Nhãn so nguyên cụm để "Giới tính" không khớp "tỉnh".
-  async function setArea(survey, field) {
+  // `isChanged(q)` (điền đợt 2): ô con nào bị cán bộ sửa sau lượt điền đầu thì không ghi cả cụm.
+  async function setArea(survey, field, isChanged = null) {
     const value = field.value || {};
     const radio = field.radio ? findQuestion(survey, field.radio) : null;
     const radioEl = radio && document.querySelector(`[data-name="${CSS.escape(radio.name)}"]`);
@@ -216,6 +217,11 @@
       [pick(/tinh thanh pho/, "dropdown"), value.tinh],
       [pick(/xa phuong|phuong xa/, "dropdown"), value.xa],
     ];
+    if (isChanged) {
+      const detailQ = value.diaChi ? pick(/chi tiet|dia chi/, "text") : null;
+      const targets = steps.filter(([q, want]) => q && want).map(([q]) => q).concat(detailQ ? [detailQ] : []);
+      if (targets.some(isChanged)) return { ok: false, reason: "changed" };
+    }
     const results = [];
     for (const [q, want] of steps) {
       if (q && want) results.push({ name: q.name, ...(await setChoice(q, want)) });
@@ -361,6 +367,18 @@
     try {
       for (let i = 0; i < fields.length; i++) {
         const field = fields[i];
+        // Ô địa chỉ gộp: tên ô của BE không có trên trang, setArea dò các ô con theo nhãn và tự kiểm ô con bị sửa.
+        if (field.comp === "sjs-area") {
+          try {
+            const changed = (q) => !!known && !q.isEmpty?.() && !sameValue(q.value, known.get(q.name));
+            const r = await setArea(survey, field, changed);
+            for (const part of r.parts || []) if (part.ok) written.add(part.name);
+            results.push({ name: field.name, ...r });
+          } catch (e) {
+            results.push({ name: field.name, ok: false, reason: String(e?.message || e) });
+          }
+          continue;
+        }
         const q = findQuestion(survey, field.name);
         if (!q || !q.isVisible) { results.push({ name: field.name, ok: false, reason: "not-found" }); continue; }
         if (known && !q.isEmpty?.() && !sameValue(q.value, known.get(q.name))) {

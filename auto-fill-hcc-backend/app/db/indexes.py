@@ -205,3 +205,5 @@ async def ensure_indexes() -> None:
     await db.daily_reports.create_index([("unit_id", 1), ("date", -1)])
     await db.daily_reports.create_index([("province", 1), ("date", -1)])
     await db.daily_reports.create_index([("date", -1)])
+    # API key đối tác: tra theo sha256 của key.
+    await db.api_keys.create_index("key_hash", unique=True)

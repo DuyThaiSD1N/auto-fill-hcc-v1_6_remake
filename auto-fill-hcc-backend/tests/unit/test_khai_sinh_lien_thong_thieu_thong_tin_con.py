@@ -190,7 +190,7 @@ def test_bhyt_me_chi_bat_dung_phuong_nha_trang():
                  {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, None):
         options = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
         assert mapper.NHA_TRANG_BHYT_OPTION not in options
-        assert _by_name_opts(options)["NguoiGiamHo"] == "Thông tin cha"
+        assert _by_name_opts(options)["NguoiGiamHo"] == "Thông tin mẹ"  # mặc định chung
     # Client tự gửi cờ cũng bị server gỡ; thủ tục khác không bật.
     assert mapper.NHA_TRANG_BHYT_OPTION not in mapper.with_account_process_options(
         {mapper.NHA_TRANG_BHYT_OPTION: True}, {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, mapper.PROCEDURE_KEY)
@@ -324,3 +324,36 @@ def test_doc_the_nguoi_thu_ba_tu_ocr_khi_llm_bo_sot():
 def test_so_dinh_danh_tren_giay_khac_khong_thanh_the():
     from app.pipelines.khai_sinh_lien_thong.process.mapper import _cards_from_ocr
     assert [c["cccd"] for c in _cards_from_ocr(_OCR_THE)] == ["001090000011", "001204000044"]
+
+
+# ── Quê quán con: giấy không có gì của cha → theo quê quán mẹ (viền vàng) ──
+def test_que_quan_con_theo_me_khi_khong_co_nguon_cua_cha():
+    out = enrich([{"name": "ThongTinMe_HoTen", "value": "Trần Thị Mẹ"},
+                  {"name": "ThongTinMe_QueQuan", "value": {"tinh": "Bắc Ninh", "xa": "Kinh Bắc", "diaChi": ""}}], {})
+    qq = next(f for f in out if f["name"] == "QqDiaChi")
+    assert qq["value"]["tinh"] == "Bắc Ninh" and qq.get("default") is True
+    out = enrich([{"name": "ThongTinMe_HoTen", "value": "Trần Thị Mẹ"},
+                  {"name": "ThongTinMe_QueQuan", "value": {"tinh": "Bắc Ninh", "xa": "Kinh Bắc", "diaChi": ""}},
+                  {"name": "ThongTinBo_HoTen", "value": "Lê Văn Cha"},
+                  {"name": "ThongTinBo_QueQuan", "value": {"tinh": "Lai Châu", "xa": "Bình Lư", "diaChi": ""}}], {})
+    qq = next(f for f in out if f["name"] == "QqDiaChi")
+    assert qq["value"]["tinh"] == "Lai Châu" and not qq.get("default")
+
+
+# ── Tên con trên giấy chứng sinh chưa đặt tên ──
+def test_ten_con_chua_dat_khong_dien():
+    for name in ("BÉ GÁI", "Bé trai", "CON BÀ TRẦN THỊ MẸ", "TE1700000000000"):
+        assert "Ten" not in _by_name({"Gcs_HoTenCon": name, "ThongTinMe_HoTen": "Trần Thị Mẹ"})
+
+
+# ── Quan hệ của trẻ với chủ hộ (CT01, chủ hộ không phải cha / mẹ) ──
+def test_quan_he_voi_chu_ho_theo_nhan_cua_form():
+    def relation(raw):
+        return _by_name({"Ct01_ChuHoHoTen": "Lê Văn Ông", "Ct01_ChuHoSoDinhDanh": "001050000001",
+                         "Ct01_QuanHeVoiChuHo": raw}).get("DkttMaQuanHe")
+    assert relation("Con") == "Con đẻ"
+    assert relation("Ông nội") == "Cháu nội"  # ghi vai của chủ hộ → vai của trẻ
+    assert relation("Bà ngoại") == "Cháu ngoại"
+    assert relation("cháu cố") == "Chắt"
+    assert relation("Cháu") == "Cháu"  # không đoán nội / ngoại
+    assert relation("Chủ hộ") is None

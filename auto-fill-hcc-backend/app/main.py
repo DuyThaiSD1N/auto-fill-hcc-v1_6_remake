@@ -32,6 +32,7 @@ from app.reports.router import router as reports_router
 from app.dashboard.router import router as dashboard_router
 from app.bug_reports.router import router as bug_reports_router
 from app.daily_reports.router import router as daily_reports_router
+from app.partner_api.app import PREFIX as partner_api_prefix, partner_app
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
 from app.upload_session.ws import relay_events_forever
@@ -125,6 +126,8 @@ app.include_router(consent_router)
 app.include_router(consents_router)
 app.include_router(v2_router)
 app.include_router(giay_de_nghi_hkd_router)  # tờ khai đăng ký hộ kinh doanh: tab riêng của Auto Fill
+# API thống kê cho đối tác (API key, docs riêng ở /partner-api/v1/docs).
+app.mount(partner_api_prefix, partner_app)
 
 # Handfree là một channel bổ sung trên cùng core procedure/process/attach. Feature flag chỉ
 # đóng/mở entrypoint hội thoại và mobile riêng; toàn bộ API Auto Fill phía trên không đổi.

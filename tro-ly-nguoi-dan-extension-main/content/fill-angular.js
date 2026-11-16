@@ -823,10 +823,69 @@ function fillNgRadio(el, value) {
 }
 
 // Ảnh chụp form (content/form-snapshot): giá trị đang hiện của ô formcontrolname.
+// ---- Điền đợt 2 trên form Angular (cổng liên thông) ----
+// BE soát lại sau lượt điền đầu rồi gửi RIÊNG các ô cần ghi lại, mỗi ô kèm `from` = giá trị lượt đầu. Chỉ ghi ô còn
+// trống hoặc còn đúng giá trị lượt đầu: ô cán bộ đã sửa tay (hoặc cổng đã đổi) thì bỏ qua. Ghi bằng chính bộ điền lượt
+// đầu (giữ viền đã tô) nên ô sửa trông như mọi ô điền khác.
+function ngShownArea(el) {
+  const read = (keys) => String(ngFindInput(el, keys)?.value || "").trim();
+  return { tinh: read(["tỉnh", "thành phố"]), xa: read(["xã", "phường"]),
+           diaChi: read(["địa chỉ", "số nhà", "chi tiết", "thôn"]) };
+}
+
+function ngSameText(shown, want) {
+  const a = norm(String(shown ?? "")), b = norm(String(want ?? ""));
+  return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+}
+
+function ngPatchUntouched(f) {
+  const el = findFormControl(fieldCandidates(f));
+  if (!el) return null;
+  const hasFirst = f.from != null && f.from !== "";
+  if (f.comp === "diachi") {
+    const shown = ngShownArea(el);
+    if (!shown.tinh && !shown.xa && !shown.diaChi) return true;
+    if (!hasFirst || typeof f.from !== "object") return false;
+    // Phần lượt đầu không ghi lên được (tên xã không có trong danh sách của cổng → ô còn trống) không phải cán bộ sửa.
+    return ["tinh", "xa", "diaChi"].every((k) => !f.from[k] || !shown[k] || ngSameText(shown[k], f.from[k]));
+  }
+  const shown = readAngularField(f);
+  if (shown == null) return null;
+  if (shown === "" || shown === false) return true;
+  return hasFirst && ngSameText(shown, f.from);
+}
+
+async function patchFormAngular(fields) {
+  injectAutofillStyles();
+  const result = { filled: 0, skipped: [] };
+  const todo = [];
+  for (const f of (fields || []).filter((x) => x && x.value != null && x.value !== "")) {
+    const untouched = ngPatchUntouched(f);
+    const isNew = f.from == null || f.from === "";
+    if (untouched === false || (untouched === null && !isNew)) {
+      result.skipped.push({ name: f.name, reason: untouched === false ? "changed" : "not-found" });
+    } else {
+      todo.push(f);
+    }
+  }
+  if (!todo.length) return result;
+  const res = await fillFormAngular(todo, { keepMarks: true });
+  result.filled = res.filled || 0;
+  for (const name of [...(res.notFound || []), ...(res.errors || [])]) result.skipped.push({ name, reason: "not-filled" });
+  return result;
+}
+
 function readAngularField(f) {
   for (const name of fieldCandidates(f)) {
     const el = document.querySelector(`[formcontrolname="${CSS.escape(name)}"]`);
     if (!el) continue;
+    // Ô ngày bọc kèm ô chọn định dạng ("Ngày/Tháng/Năm"): đọc ô nhập ngày đang hiện, không đọc chữ của ô định dạng —
+    // đọc nhầm thì bản vá đợt 2 tưởng ô đã bị sửa tay và bỏ qua.
+    if (f.comp === "date" || f.comp === "ngaysinh") {
+      const inputs = ngVisibleInputs(el);
+      const inp = inputs.find((i) => i.getAttribute("maxlength") === "10") || inputs[0];
+      if (inp) return String(inp.value || "").trim();
+    }
     if (el.matches("input[type=checkbox]")) return el.checked;
     if (el.matches("input, textarea")) return String(el.value || "").trim();
     if (el.matches("select")) return String(el.selectedOptions[0]?.textContent || "").trim();
@@ -843,6 +902,7 @@ function readAngularField(f) {
 
   H.readAngularField = readAngularField;
   H.fillFormAngular = fillFormAngular;
+  H.patchFormAngular = patchFormAngular;
   H.resolveAltNameGroups = resolveAltNameGroups; // dùng chung: legacy engine (content.js) cũng gọi
   H.chonNguoiYeuCau = chonNguoiYeuCau; // test dùng (tests/lien-thong-flow.test.js)
 

@@ -184,14 +184,19 @@ def test_khong_co_cccd_cha_lay_cha_tu_ben_chong_tren_giay_ket_hon():
     assert out["ChaHoTen"] == "NGUYỄN VĂN AN"
     assert out["ChaNgaySinh"] == "06/02/1985"
     assert out["ChaMaDanToc"] == "Kinh"
-    # Chưa có số định danh → điền số chứng minh quân đội, giữ chữ cái.
-    assert out["ChaSoGiayTo"] == "33A012345678"
+    # Ô Số định danh chỉ nhận số căn cước 12 chữ số: số chứng minh quân đội (có chữ cái) → để trống.
+    assert "ChaSoGiayTo" not in out
     assert out["NycQuanHe"]["chaTen"] == "NGUYỄN VĂN AN"
 
 
-def test_khong_co_cccd_cha_dien_so_cmnd_9_so_tren_giay_ket_hon():
+def test_so_cmnd_9_so_tren_giay_ket_hon_khong_dien_vao_so_dinh_danh():
     out = _by_name({"GcnKetHon_Chong_HoTen": "Nguyễn Văn An", "GcnKetHon_Chong_SoGiayTo": "123 456 789"})
-    assert out["ChaSoGiayTo"] == "123456789"
+    assert "ChaSoGiayTo" not in out
+    # Model trả số 12 chữ số dạng NUMBER (rơi số 0 đầu) → bù lại.
+    out = _by_name({"ThongTinBo_HoTen": "Nguyễn Văn An", "ThongTinBo_SoDinhDanh": "1085000001"})
+    assert "ChaSoGiayTo" not in out
+    out = _by_name({"ThongTinBo_HoTen": "Nguyễn Văn An", "ThongTinBo_SoDinhDanh": "12085000001"})
+    assert out["ChaSoGiayTo"] == "012085000001"
 
 
 def test_da_co_so_dinh_danh_cha_khong_bi_so_tren_giay_ket_hon_de():

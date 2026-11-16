@@ -25,9 +25,12 @@ người nộp.
 4. NguoiThayDoi_NoiCap chép đúng cơ quan cấp ghi trên giấy; chỉ đổi cách viết của CÙNG cơ quan
    ("Cục CS QLHC về TTXH" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"). CMND do "CA <tỉnh>" cấp →
    giữ nguyên. Không ghi → bỏ.
-5. NguoiThayDoi_NoiCuTru chỉ lấy dòng thuộc chính người đó (khối người có nội dung thay đổi trên tờ khai, CCCD
-   của chính họ); dòng nơi cư trú của cha/mẹ trên giấy khai sinh không phải của con. Dòng nơi cư trú trong khối
-   người có nội dung thay đổi của tờ khai BẮT BUỘC trả, kể cả khi trùng nơi cư trú người yêu cầu.
+5. NguoiThayDoi_NoiCuTru lấy dòng thuộc chính người đó (khối người có nội dung thay đổi trên tờ khai, CCCD / sổ
+   hộ khẩu của chính họ); dòng nơi cư trú của cha/mẹ trên giấy khai sinh không phải của con. Dòng nơi cư trú trong
+   khối người có nội dung thay đổi của tờ khai BẮT BUỘC trả, kể cả khi trùng nơi cư trú người yêu cầu.
+   Không có dòng nào của chính người đó (con chỉ có giấy khai sinh) → lấy nơi cư trú HIỆN TẠI (CCCD, giấy tờ mới
+   nhất) của cha hoặc mẹ đang đứng ra làm thủ tục (người yêu cầu tờ khai / người nộp / bên ủy quyền); cha mẹ cùng
+   nơi cư trú thì lấy nơi đó. Không biết cha hay mẹ đứng ra làm thủ tục mà hai người khác nơi cư trú → bỏ.
    Tách {quocGia,tinh,xa,chiTietDuoiXa}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối là
    cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là chiTietDuoiXa.
 6. Dân tộc giữ nguyên chữ trên giấy; "Mông" giữ "Mông", biến thể có "H" đứng đầu (Hmông) → "Mông (Hmông)".

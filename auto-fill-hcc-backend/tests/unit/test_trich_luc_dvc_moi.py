@@ -289,15 +289,22 @@ def _context_khong_xac_dinh_nguoi_duoc_cap():
             "Kết luận: Không xác định\n</quan_he>\n</phan_vai_da_xac_dinh>")
 
 
-def test_chi_co_the_nguoi_nop_khong_ra_ban_than_va_bo_khoi_nguoi_duoc_cap():
+def test_chi_co_the_nguoi_nop_la_ban_than_to_vang_va_giu_thong_tin_the():
+    """Hồ sơ chỉ có CCCD của chủ tài khoản (không tờ khai / ủy quyền / giấy hộ tịch) → xin bản sao cho bản thân."""
     values = {"NguoiDuocCap_HoTen": "Nguyen Van A", "NguoiDuocCap_SoDinhDanh": ACCOUNT["applicantIdentityNumber"],
               "NguoiDuocCap_SoGiayTo": ACCOUNT["applicantIdentityNumber"], "NguoiDuocCap_NgaySinh": "01/01/1990",
               "NguoiDuocCap_GioiTinh": "Nam"}
     out, warnings = _enrich(values, _context_khong_xac_dinh_nguoi_duoc_cap())
     by = {f["name"]: f for f in out}
-    assert by["citizenQuanhe"]["value"] == "Khác" and by["citizenQuanhe"].get("default") is True
-    assert not [n for n in by if n.startswith("citizenNDK_") or n in ("citizenField13", "citizenField32")]
+    assert by["citizenQuanhe"]["value"] == "Bản thân" and by["citizenQuanhe"].get("default") is True
+    assert by["citizenNDK_SoDinhDanh"]["value"] == ACCOUNT["applicantIdentityNumber"]
     assert warnings
+    # Thẻ đọc ra là của người khác (khác số tài khoản) → không suy "Bản thân", bỏ khối như cũ.
+    other = {**values, "NguoiDuocCap_SoDinhDanh": "001090000099", "NguoiDuocCap_SoGiayTo": "001090000099"}
+    out, _ = _enrich(other, _context_khong_xac_dinh_nguoi_duoc_cap())
+    by = {f["name"]: f for f in out}
+    assert by["citizenQuanhe"]["value"] == "Khác"
+    assert not [n for n in by if n.startswith("citizenNDK_") or n in ("citizenField13", "citizenField32")]
 
 
 def test_so_luot_trich_trung_tai_khoan_nhung_khac_ten_giu_quan_he_phan_vai():

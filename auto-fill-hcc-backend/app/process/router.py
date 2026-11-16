@@ -178,6 +178,8 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     fill_supports = (body.options or {}).get("fillSupports")
     prepared.pipeline_options["_secondPass"] = second_pass.wanted(
         user, isinstance(fill_supports, list) and second_pass.capability(proc) in fill_supports)
+    # Bản biết ghi lại ô địa chỉ gộp ở đợt 2 (fillSupports có "secondPassArea"); thiếu → bản vá bỏ ô địa chỉ.
+    prepared.pipeline_options["_secondPassArea"] = isinstance(fill_supports, list) and "secondPassArea" in fill_supports
     # Xã / phường của tài khoản quầy: gợi ý cho lớp soát khi tên xã trên giấy viết tắt hoặc đọc lệch.
     prepared.pipeline_options["counterWard"] = str(user.get("xa") or user.get("name") or "")
     total_bytes = prepared.total_bytes

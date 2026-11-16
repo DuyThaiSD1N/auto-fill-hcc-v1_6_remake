@@ -353,6 +353,10 @@ def _clean_child_name(value, mother_name) -> str:
         "khong co ten",
     }:
         return ""
+    # Giấy chứng sinh chưa đặt tên ghi "Bé gái / Bé trai", "Con bà <tên mẹ>" hoặc mã trẻ em "TE…" ở ô họ tên trẻ.
+    if re.fullmatch(r"(be|con) (gai|trai)( .*)?|con (ba|cua|chi|me) .*", folded) or re.fullmatch(
+            r"te\s*\d{6,}", folded):
+        return ""
     mother_folded = re.sub(r"\s+", " ", _fold(mother_name))
     if mother_folded and folded == mother_folded:
         return ""
@@ -432,6 +436,18 @@ def _digits(value) -> str:
     return re.sub(r"\D", "", str(value or ""))
 
 
+def _id12(value) -> str:
+    """Ô Số định danh của cha / mẹ chỉ nhận số căn cước 12 chữ số. Số 11 chữ số không bắt đầu bằng 0 là model trả
+    dạng số rơi mất số 0 đầu (mã tỉnh 001–096) → bù lại. Độ dài khác (CMND 9 số, OCR thừa / thiếu số) → để trống: cán
+    bộ tra số căn cước, điền số sai độ dài là ô sai. Số có chữ cái cũng để trống."""
+    if re.search(r"[^\d\s.\-]", str(value or "")):
+        return ""  # có chữ cái: số chứng minh quân đội / hộ chiếu, không phải số căn cước
+    digits = _digits(value)
+    if re.fullmatch(r"[1-9]\d{10}", digits):
+        return "0" + digits
+    return digits if len(digits) == 12 else ""
+
+
 def _is_year_only(value) -> bool:
     return bool(re.fullmatch(r"\d{4}", str(value or "").strip()))
 
@@ -455,6 +471,30 @@ def _gender(value) -> str:
 # người được khai sinh. Giấy chứng sinh hay ghi "chưa đặt tên" và không có tờ khai khai sinh → tên con
 # chỉ còn ở CT01. Người lớn hơn (cha/mẹ tự kê khai cho mình) không được coi là con.
 _CT01_CHILD_MAX_AGE = 6
+
+
+# Ô "Mối quan hệ với chủ hộ" (vai của TRẺ đối với chủ hộ). Tờ khai CT01 viết tay ghi tắt ("Con", "Cháu"), ghi vai của
+# chủ hộ thay vì vai của trẻ ("Ông nội", "Bà ngoại"), hoặc cách gọi địa phương ("Cháu cố") → nhãn của form.
+_HOUSEHOLD_RELATION = (
+    (("ong noi", "ba noi"), "Cháu nội"),
+    (("ong ngoai", "ba ngoai"), "Cháu ngoại"),
+    (("cu", "cu noi", "cu ngoai", "chau co", "chat", "chat noi", "chat ngoai", "ong co", "ba co"), "Chắt"),
+    (("chau noi",), "Cháu nội"),
+    (("chau ngoai",), "Cháu ngoại"),
+    (("chau ho",), "Cháu họ"),
+    (("bo", "cha", "me", "bo de", "cha de", "me de", "con", "con de", "con ruot", "con trai", "con gai"), "Con đẻ"),
+    (("chau", "con chau"), "Cháu"),
+)
+
+
+def _household_relation(raw) -> str:
+    """Nhãn quan hệ của trẻ với chủ hộ. "Cháu" không tự đoán nội / ngoại theo họ (cán bộ hay giữ "Cháu"). Chữ "Chủ
+    hộ" (ghi nhầm vai) → bỏ trống; cách ghi khác giữ nguyên."""
+    text = " ".join(_fold(raw).split())
+    if not text or text in ("chu ho", "chuho"):
+        return ""
+    label = next((value for keys, value in _HOUSEHOLD_RELATION if text in keys), "")
+    return label or str(raw).strip()
 
 
 def _ct01_child(values: dict, today: date | None = None) -> dict:
@@ -973,7 +1013,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
 
     def add_identity(prefix: str, role: str, quoc_tich: str) -> None:
         if not quoc_tich:
-            add(f"{prefix}SoGiayTo", values.get(f"{role}_SoDinhDanh"))
+            add(f"{prefix}SoGiayTo", _id12(values.get(f"{role}_SoDinhDanh")))
             return
         add(f"{prefix}HoChieuSo", values.get(f"{role}_SoDinhDanh"))
         add(f"{prefix}HoChieuNgayCap", _dmy(values.get(f"{role}_NgayCapHoChieu")))
@@ -1144,6 +1184,11 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
             if que_quan_cha:
                 add("QqMaQuocGia", "Việt Nam")
                 add("QqDiaChi", que_quan_cha)
+            elif has_mother and _area(values.get("ThongTinMe_QueQuan")):
+                # Giấy không có gì của cha: quê quán con theo mẹ (viền vàng, cán bộ soát — có hồ sơ theo cha tra
+                # được ở nguồn khác).
+                add("QqMaQuocGia", "Việt Nam")
+                add("QqDiaChi", _area(values.get("ThongTinMe_QueQuan")), default=True)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") và số bản trích lục ("…/TLKH-BS")
@@ -1219,7 +1264,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         # Phát 2 ô chữ TRƯỚC ô tick: form có ô tick thì tích sau cùng, cổng tự đổ lại theo khối cha/mẹ.
         if is_bo:
             add("DkttChuHo", ct01_ten or values.get("ThongTinBo_HoTen"))
-            add("DkttChuhoSoGiayTo", ct01_sdd or values.get("ThongTinBo_SoDinhDanh"))
+            add("DkttChuhoSoGiayTo", _id12(ct01_sdd) or _id12(values.get("ThongTinBo_SoDinhDanh")))
             add("DkttIsTtBo", True)
             add("DkttMaQuanHe", "Con đẻ")
             add("LoaiThanNhanXacNhan", "1")
@@ -1227,7 +1272,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
             seen.add("DkttIsTtMe")
         elif is_me:
             add("DkttChuHo", ct01_ten or values.get("ThongTinMe_HoTen"))
-            add("DkttChuhoSoGiayTo", ct01_sdd or values.get("ThongTinMe_SoDinhDanh"))
+            add("DkttChuhoSoGiayTo", _id12(ct01_sdd) or _id12(values.get("ThongTinMe_SoDinhDanh")))
             add("DkttIsTtMe", True)
             add("DkttMaQuanHe", "Con đẻ")
             add("LoaiThanNhanXacNhan", "2")
@@ -1236,8 +1281,8 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         else:  # chủ hộ là người khác → điền tay 3 ô; không đủ căn cứ chọn bố/mẹ ở hai radio xác nhận / chủ sở hữu
             seen.update({"DkttIsTtBo", "DkttIsTtMe", "LoaiThanNhanXacNhan", "LoaiChuSoHuuChoO"})
             add("DkttChuHo", ct01_ten)
-            add("DkttChuhoSoGiayTo", ct01_sdd)
-            add("DkttMaQuanHe", values.get("Ct01_QuanHeVoiChuHo"))
+            add("DkttChuhoSoGiayTo", _id12(ct01_sdd))
+            add("DkttMaQuanHe", _household_relation(values.get("Ct01_QuanHeVoiChuHo")))
             seen.add("DkttMaQuanHe")  # quan hệ trống cũng KHÔNG để default "Con đẻ" (sai cho người khác)
 
     # "Nơi đề nghị đăng ký thường trú": Tỉnh/Phường cổng tự đổ (readonly) → chỉ điền ô Chi tiết theo
@@ -1254,7 +1299,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
         add("BanSaoSoLuong", copy_quantity)
 
     # 4 phường Đà Lạt: giám hộ trên thẻ BHYT = mẹ, nơi KCB ban đầu = BV Sản - Nhi tỉnh Lâm Đồng (viền vàng).
-    # Thêm TRƯỚC STATIC_DEFAULTS để đè mặc định "Thông tin cha".
+    # Thêm TRƯỚC STATIC_DEFAULTS (giám hộ trùng mặc định "Thông tin mẹ"; giữ để nơi KCB đi cùng cấu hình tài khoản).
     if options.get(DA_LAT_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
         add("CskcbbdMa", DA_LAT_NOI_KCB, default=True)

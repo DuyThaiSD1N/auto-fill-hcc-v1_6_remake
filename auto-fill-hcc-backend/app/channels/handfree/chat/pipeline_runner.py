@@ -423,6 +423,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options["_secondPass"] = second_pass.wanted(
                 owner_user, ((conv or {}).get("client_capabilities") or {}).get(
                     "supports" + needed[0].upper() + needed[1:]) is True)
+            # Bản biết ghi lại ô địa chỉ gộp ở đợt 2; thiếu cờ → bản vá bỏ ô địa chỉ.
+            options["_secondPassArea"] = ((conv or {}).get("client_capabilities") or {}).get(
+                "supportsSecondPassArea") is True
             # Xã / phường của tài khoản quầy: gợi ý cho lớp soát khi tên xã trên giấy viết tắt hoặc đọc lệch.
             owner = owner_user if isinstance(owner_user, dict) else {}
             options["counterWard"] = str(owner.get("xa") or owner.get("name") or "")

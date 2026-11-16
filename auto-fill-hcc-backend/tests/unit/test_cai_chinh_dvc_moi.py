@@ -326,3 +326,28 @@ def test_giay_uy_quyen_khong_ghi_quan_he_thi_bo_quan_he_llm_tu_suy():
     assert "Quan hệ trên giấy ủy quyền: không có" in reason._drop_unquoted_authorization_relation(raw, docs)
     docs = [{"text": "GIẤY ỦY QUYỀN\nMối quan hệ giữa người ủy quyền và người được ủy quyền: con"}]
     assert reason._drop_unquoted_authorization_relation(raw, docs) == raw
+
+
+def test_cha_me_nop_cho_con_ten_khac_han_thi_khong_tin_ket_luan_ban_than():
+    """Thiếu số người thay đổi; phân vai kết luận "Bản thân" dù họ tên khác hẳn tài khoản (cha nộp cho con)."""
+    ctx = ("<nguoi_thay_doi>\nHọ tên: TRAN THI CON\nSố định danh:\nTrạng thái: còn sống\n</nguoi_thay_doi>\n"
+           "<quan_he>\nKết luận: Bản thân\n</quan_he>")
+    opts = {"formContext": {"applicantFullname": "Trần Văn Cha", "applicantIdentityNumber": "001080000001"}}
+    assert mapper._relation({}, ctx, opts)[0] == "Khác"
+    # Đổi tên của chính người đó sang đúng tên tài khoản → "Bản thân" dù kết luận phân vai là gì.
+    renamed = {"NoiDung": "Thay đổi tên từ Trần Thị Con thành Trần Văn Cha"}
+    assert mapper._relation(renamed, ctx.replace("Bản thân", "Khác"), opts)[0] == "Bản thân"
+    # Tên tài khoản là tên mới của CHA trong giấy khai sinh của con → vẫn "Khác".
+    father = {"NoiDung": "Cải chính tên cha từ Trần Văn Bố thành Trần Văn Cha"}
+    assert mapper._relation(father, ctx, opts)[0] == "Khác"
+
+
+def test_phan_vai_chep_san_nguoi_o_khoi_cho_nguoi_co_ten_duoi_day():
+    to_khai = ("TỜ KHAI ĐĂNG KÝ VIỆC THAY ĐỔI, CẢI CHÍNH\nHọ, chữ đệm, tên người yêu cầu: Lê Văn Con\n"
+               "Đề nghị cơ quan đăng ký việc (4)\ncho người có tên dưới đây:\nHọ, chữ đệm, tên: Lê Văn Con -\n"
+               "Ngày, tháng, năm sinh: 01-02-1980\nNội dung: Cải chính năm sinh của người cha")
+    hints = reason._document_hints([{"name": "a", "text": "TRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: LÊ VĂN CHA"},
+                                    {"name": "b", "text": to_khai}], {})
+    assert 'tài liệu 2: "Lê Văn Con", sinh "01-02-1980"' in hints
+    # Không có tờ khai → không thêm khối mỏ neo.
+    assert "to_khai_context" not in reason._document_hints([{"name": "a", "text": "GIẤY KHAI SINH"}], {})

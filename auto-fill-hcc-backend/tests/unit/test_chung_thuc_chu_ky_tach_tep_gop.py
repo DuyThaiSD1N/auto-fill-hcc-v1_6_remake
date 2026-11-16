@@ -117,3 +117,31 @@ async def test_tat_tach_giay_to_thi_giu_nguyen_tep_nhu_cu(monkeypatch):
     assert len(result["attachments"]) == 1
     assert "sourceSegments" not in result["attachments"][0]
     assert result["extracted"]["documentPromptMode"] == "preserve"
+
+
+async def test_nhieu_van_ban_cung_ten_thanh_phan_moi_trung_ten_tai_lieu(monkeypatch):
+    # Văn bản đầu vào STT1 chiếm tên trần "Giấy ủy quyền"; thành phần mới phải mang đúng tên tài liệu đã đánh số
+    # ("Giấy ủy quyền 2/3/4"). Lệch một số thì thành phần trần "Giấy ủy quyền" bị FE (khớp chứa-trong) coi là dòng của
+    # tệp sau → tệp đó bị bỏ qua như đã đính.
+    names = [f"uq{i}.pdf" for i in range(1, 5)]
+
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": "GIẤY ỦY QUYỀN Bên ủy quyền ... Bên được ủy quyền ..."} for f in files]
+
+    async def fake_preserve(_documents):
+        return [{"fileIndex": i, "pageFrom": 1, "pageTo": 1, "detectedType": "Giấy ủy quyền",
+                 "documentName": "Giấy ủy quyền", "logicalKey": f"uq-{i}"} for i in range(4)]
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_source_files_with_llm", fake_preserve)
+    monkeypatch.setattr(planner, "_pdf_page_count", lambda _file: 1)
+    files = [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc")
+             for n in names]
+
+    out = await planner.plan(files, {}, None)
+
+    items = out["attachments"]
+    assert [item["documentName"] for item in items] == [
+        "Giấy ủy quyền", "Giấy ủy quyền 2", "Giấy ủy quyền 3", "Giấy ủy quyền 4"]
+    assert items[0]["componentIndex"] == 1
+    assert [item["componentName"] for item in items[1:]] == [item["documentName"] for item in items[1:]]

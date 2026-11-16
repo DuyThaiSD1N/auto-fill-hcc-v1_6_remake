@@ -233,7 +233,9 @@
     for (const r of res.results || []) {
       if (r.ok) {
         result.filled++;
-        markField(byName.get(r.name) || { name: r.name }, true);
+        // Ô địa chỉ gộp: tô từng ô con thật (tên ô gộp của BE không có trên trang).
+        if (Array.isArray(r.parts)) r.parts.forEach((part) => part.ok && markField({ name: part.name }, true));
+        else markField(byName.get(r.name) || { name: r.name }, true);
       } else {
         result.skipped.push(r.name);
       }

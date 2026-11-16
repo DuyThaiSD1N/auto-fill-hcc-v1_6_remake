@@ -152,3 +152,29 @@ def test_quan_he_luot_trich_dao_sai_thi_theo_dong_to_khai():
     from app.pipelines.khai_tu_dvcqg.thanh_tra import quan_he
     case = _rel_case("Cháu ngoại", "19/09/2026", "TỜ KHAI ĐĂNG KÝ KHAI TỬ\nQuan hệ với người đã chết: ông ngoại")
     assert [f.values for f in quan_he.findings_from(case)] == [{"NguoiYeuCau_QuanHe": "ông ngoại"}]
+
+
+def test_ten_khong_dau_nhung_dong_con_dau_la_cach_viet_that():
+    # "Võ Thị Lan" có dấu ở chữ khác → dòng không bị OCR rơi dấu: tên viết đúng là "Lan", nhiều trang hơn thì thắng.
+    docs = [{"name": "tk.pdf", "text": "TỜ KHAI ĐĂNG KÝ KHAI TỬ\nHọ, chữ đệm, tên: VÕ THỊ LÀN"},
+            {"name": "cd.pdf", "text": "BẢN CAM ĐOAN\nMẹ tôi tên là Võ Thị Lan"},
+            {"name": "xn.pdf", "text": "GIẤY XÁC NHẬN\nTôi xác nhận bà Võ Thị Lan đã chết"}]
+    case = Case(docs, "", {"NguoiMat_HoTen": "VÕ THỊ LẢN"}, {})
+    finding = dinh_danh.name_finding(case, dinh_danh.trang.pages(docs))
+    assert finding and finding.values == {"NguoiMat_HoTen": "VÕ THỊ LAN"}
+
+
+def test_the_nhan_theo_ngay_sinh_va_so_lech_khi_to_khai_doc_sai_ca_ten():
+    # Tờ khai viết tay đọc sai cả tên + số lệch 2 chữ số: thẻ có ngày sinh MRZ trùng, số lệch ≤2 → tên, số theo thẻ.
+    front = "CĂN CƯỚC CÔNG DÂN\nSố / No.: 001060000123\nHọ và tên / Full name:\nTRẦN VĂN BÌNH"
+    back = "IDVNM0600001230001060000123<<0\n6003154M9912315VNM<<<<<<<<<<<<6\nTRAN<<VAN<BINH<<<<<<<<<<<<<<<"
+    case = _case({"NguoiMat_HoTen": "Trần Văn Bành", "NguoiMat_SoDinhDanh": "001068000123",
+                  "NguoiMat_NgaySinh": "15/03/1960"},
+                 "TỜ KHAI ĐĂNG KÝ KHAI TỬ\nHọ, chữ đệm, tên: Trần Văn Bành", f"{front}\n{back}")
+    values = [f.values for f in dinh_danh.findings_from(case)]
+    assert {"NguoiMat_HoTen": "TRẦN VĂN BÌNH"} in values
+    assert {"NguoiMat_SoDinhDanh": "001060000123"} in values
+    # Ngày sinh không trùng → không nhận thẻ đó.
+    other = _case({"NguoiMat_HoTen": "Trần Văn Bành", "NguoiMat_SoDinhDanh": "001068000123",
+                   "NguoiMat_NgaySinh": "16/03/1960"}, f"{front}\n{back}")
+    assert dinh_danh.findings_from(other) == []

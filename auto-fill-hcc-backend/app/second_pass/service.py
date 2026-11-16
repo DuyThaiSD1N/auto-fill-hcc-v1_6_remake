@@ -31,7 +31,11 @@ def capability(procedure: dict | None) -> str:
     """Tên năng lực extension phải khai để thủ tục này chạy điền đợt 2. Thủ tục trên form cũ (eForm x-*, entry
     registry khai ``secondPass: "legacy"``) cần bản extension biết ghi lại ô trên form cũ — bản chỉ biết form
     SurveyJS khai "secondPass" thì không chạy."""
-    return "secondPassLegacy" if (procedure or {}).get("secondPass") == "legacy" else "secondPass"
+    kind = (procedure or {}).get("secondPass")
+    if kind == "legacy":
+        return "secondPassLegacy"
+    # Form Angular (cổng liên thông): bản extension phải biết ghi lại ô trên form Angular.
+    return "secondPassAngular" if kind == "angular" else "secondPass"
 
 
 def wanted(user: dict | None, client_supports: bool) -> bool:
