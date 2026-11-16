@@ -22,10 +22,6 @@
       "label": "Thủ tục đăng ký kết hôn",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-a15eb239a6fe",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -34,10 +30,6 @@
       "label": "Thủ tục đăng ký lại kết hôn",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-f82cb6606242",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -46,10 +38,6 @@
       "label": "Thủ tục đăng ký kết hôn có yếu tố nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e13-728a-a0cd-635811d8432e",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -58,10 +46,6 @@
       "label": "Thủ tục ghi vào Sổ hộ tịch việc kết hôn của công dân Việt Nam đã được giải quyết tại cơ quan có thẩm quyền của nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9dec-73f6-b213-be4bfb4f911b",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -70,10 +54,6 @@
       "label": "Thủ tục đăng ký khai sinh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -82,10 +62,6 @@
       "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faf-768a-9224-9cb889436133",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -94,10 +70,6 @@
       "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con có yếu tố nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-47b0-7285-b035-456104e16436",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -106,10 +78,6 @@
       "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8662-763f-927f-dc039ede198c",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -118,10 +86,6 @@
       "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -130,10 +94,6 @@
       "label": "Thủ tục đăng ký lại khai sinh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6eac-7598-b88b-15f8a61b366a",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -142,10 +102,6 @@
       "label": "Thủ tục đăng ký khai tử",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-9c6c958f2da4",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -154,10 +110,6 @@
       "label": "Thủ tục đăng ký lại khai tử",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6ebc-709e-8678-a9f8b66738f2",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -166,10 +118,6 @@
       "label": "Thủ tục khai tử có yếu tố nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-47da-7259-b8fe-0d5327727234",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -178,10 +126,6 @@
       "label": "Thủ tục đăng ký giám hộ",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671b-75fa-82fb-8ad05a37f638",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -190,10 +134,6 @@
       "label": "Thủ tục đăng ký chấm dứt giám hộ",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6724-715f-822c-28e986912730",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -202,10 +142,6 @@
       "label": "Thủ tục đăng ký nhận cha, mẹ, con",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fa6-722f-ac1a-e949c8ce3418",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -214,10 +150,6 @@
       "label": "Đăng ký việc nuôi con nuôi trong nước",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9dae-705f-a893-0c4e1f0c32a7",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -226,10 +158,6 @@
       "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -238,10 +166,6 @@
       "label": "Thủ tục thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671e-714b-8fd6-8230c82f7867",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -250,10 +174,6 @@
       "label": "Thủ tục thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc có yếu tố nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e02-7590-b74b-fb572a57eda2",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -274,10 +194,6 @@
       "label": "Xác nhận thông tin hộ tịch",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-a586-71fe-8c10-836e09f0a879",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -286,10 +202,6 @@
       "label": "Chứng thực bản sao từ bản chính giấy tờ, văn bản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e22-77ef-819f-e49460350904",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -298,10 +210,6 @@
       "label": "Chứng thực chữ ký trong các giấy tờ, văn bản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e2e-7359-b42f-d5dc8d74741b",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -310,10 +218,6 @@
       "label": "Chứng thực giao dịch liên quan đến tài sản là động sản, quyền sử dụng đất, nhà ở",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95fa-70ca-93fd-4cab11b87897",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -322,10 +226,6 @@
       "label": "Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e59-72ab-ae1a-a2985865d253",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -334,10 +234,6 @@
       "label": "Chứng thực văn bản thỏa thuận phân chia di sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9daf-70da-8f48-223498332346",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -346,10 +242,6 @@
       "label": "Thủ tục chứng thực văn bản từ chối nhận di sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95e6-7578-ba2d-d1b4373cd174",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -358,10 +250,6 @@
       "label": "Cấp bản sao từ sổ gốc",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e5d-72f9-8cf2-c71780251483",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -379,10 +267,6 @@
       "label": "Chứng thực di chúc",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95f0-7610-845f-c097f144bd55",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -1554,10 +1438,6 @@
       "label": "Chứng thực chữ ký người dịch mà người dịch là cộng tác viên dịch thuật của Ủy ban nhân dân cấp xã, tổ chức hành nghề công chứng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d5-737d-8759-ff6dfa85c6b3",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -1574,10 +1454,6 @@
       "label": "Cấp bản sao có chứng thực từ bản chính hợp đồng, giao dịch đã được chứng thực",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d6-778f-889b-e3045003fa5e",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -1586,10 +1462,6 @@
       "label": "Chứng thực chữ ký người dịch mà người dịch không phải là cộng tác viên dịch thuật của Ủy ban nhân dân cấp xã",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d4-72d6-be00-ed0e9e5dd66a",
       "needsAgencySelect": true,
-      "agencyLevelByAccount": {
-        "xa": {},
-        "so": {"selectSo": true, "submitCardIncludes": "Cơ quan thực hiện: Sở Tư pháp"}
-      },
       "autoConfirm": true
     },
     {
@@ -3694,6 +3566,14 @@
       "autoConfirm": false
     },
     {
+      "key": "dieu-chinh-thong-tin-ve-cu-tru",
+      "code": "1.010039",
+      "label": "Điều chỉnh thông tin về cư trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222&TT=THUONGTRU_08&TT_NAME=%C4%90i%E1%BB%81u%20ch%E1%BB%89nh%20th%C3%B4ng%20tin%20v%E1%BB%81%20c%C6%B0%20tr%C3%BA",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "cap-doi-the-can-cuoc",
       "code": "2.001195",
       "label": "Cấp đổi thẻ căn cước",
@@ -3714,6 +3594,14 @@
       "code": "1.012549, 1.014062",
       "label": "Cấp thẻ căn cước cho người dưới 14 tuổi",
       "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dvc-CCCD-duoi-14-tuoi.html",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "cap-the-can-cuoc-tu-du-14-tuoi",
+      "code": "2.000200",
+      "label": "Cấp thẻ căn cước cho người từ đủ 14 tuổi trở lên",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dvc-CCCD-tren-14-tuoi.html",
       "needsAgencySelect": false,
       "autoConfirm": false
     },

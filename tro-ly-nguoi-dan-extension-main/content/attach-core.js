@@ -83,9 +83,10 @@ function hasAuthorizationAttachmentBlock() {
 
 function hasAttachmentTarget() {
   if (document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]')) return true; // Bắc Ninh
-  // Cổng Bộ Công an: bảng giấy tờ chưa nạp tới khi bấm nhóm → nhận theo khung nhóm #tphs_new_<i>.
+  // Cổng Bộ Công an: bảng giấy tờ chưa nạp tới khi bấm nhóm → nhận theo khung nhóm #tphs_new_<i>; trang một trường hợp
+  // (điều chỉnh thông tin cư trú) có sẵn bảng #tblGiayToDinhKem, ô chọn tệp ẩn trong label.btn-file.
   if (globalThis.location?.hostname === "dichvucong.dancuquocgia.gov.vn"
-    && document.querySelector('[id^="tphs_new_"]')) return true;
+    && document.querySelector('[id^="tphs_new_"], #tblGiayToDinhKem, input[type="file"][id^="fileUpload"]')) return true;
   if (findCopyCertificationAttachmentRow()) return true;
   // Cổng Bộ VHTTDL (liz): input file trong <app-upload-flie-multi>, nút upload là icon (không chữ "Chọn tệp").
   if (document.querySelector('app-upload-flie-multi input[type="file"]')) return true;
@@ -2728,6 +2729,49 @@ async function bcaOpenGroup(index, label) {
   return null;
 }
 
+// Thủ tục một trường hợp (điều chỉnh thông tin cư trú — BE gửi `bcaPlainTable`): bảng giấy tờ hiện sẵn, không có nhóm
+// để bấm → lấy bảng đang hiện có ô chọn tệp; chưa thấy thì mới thử mở nhóm như thường.
+function bcaVisibleTable() {
+  // Bảng giấy tờ của trang (crawl 16/11/2026: div#div_TPHS_OLD > table#tblGiayToDinhKem, ô chọn tệp #fileUpload<i>).
+  const known = document.getElementById("tblGiayToDinhKem");
+  if (bcaGroupRows(known).length) return known;
+  const row = Array.from(document.querySelectorAll("tr"))
+    .find((tr) => tr.querySelector('input[type="file"]') && isVisible(tr));
+  return row ? (row.closest("table") || row.parentElement) : null;
+}
+
+// Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>):
+// BE gửi `rowFields` {kind, count, note}. Ô không có trên dòng thì bỏ qua; Số lượng / Ghi chú chỉ ghi khi đang trống
+// (đính kèm lại không ghi đè chữ cán bộ đã sửa).
+function bcaFillRowFields(row, fields) {
+  if (!row || !fields) return;
+  const kind = row.querySelector('select[id^="cboKIND_OF_FILE"]');
+  if (kind && !kind.disabled && fields.kind) {
+    const want = bcaText(fields.kind);
+    const option = Array.from(kind.options || []).find((o) => bcaText(o.textContent) === want);
+    if (option && kind.value !== option.value) {
+      kind.value = option.value;
+      kind.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  for (const [prefix, value] of [["txtNUM_OF_DOC", fields.count], ["txtNOTE_OF_DOC", fields.note]]) {
+    const input = row.querySelector(`input[id^="${prefix}"], textarea[id^="${prefix}"]`);
+    // Cổng điền sẵn Số lượng "0" — coi như trống.
+    const current = String(input?.value || "").trim();
+    if (input && value && !input.disabled && (!current || current === "0")) {
+      setNativeValue(input, String(value), { typing: false, commit: true });
+    }
+  }
+}
+
+// Ô tích "Chọn giấy tờ" của dòng: cổng dùng bootstrap-table, ô đầu dòng là td.bs-checkbox ẨN (btSelectItem, dòng đã
+// "selected") — tích nhầm ô đó thì ô thật chkIS_COMPULSORY<i> vẫn trống. Có ô chkIS_COMPULSORY thì dùng nó.
+function bcaRowCheckbox(row) {
+  return row.querySelector('input[type="checkbox"][id^="chkIS_COMPULSORY"]')
+    || Array.from(row.querySelectorAll('input[type="checkbox"]')).find((box) => !box.closest("td.bs-checkbox"))
+    || row.querySelector('input[type="checkbox"]');
+}
+
 function bcaAddRowButton(container) {
   // Nút "+ Thêm mới" của cổng là #btnDocument (load_table_tphs_new ẩn/hiện nó theo bảng giấy tờ của nhóm).
   const byId = document.getElementById("btnDocument");
@@ -2800,8 +2844,8 @@ async function attachFilesByBcaPlan(payloadFiles, attachments) {
   window.__AUTOFILL_HCC_ATTACH_BUSY__ = true;
   try {
     const items = attachments.filter((item) => item?.target === "bca-row");
-    const { groupIndex, groupLabel } = items[0] || {};
-    const container = await bcaOpenGroup(groupIndex, groupLabel || "");
+    const { groupIndex, groupLabel, bcaPlainTable } = items[0] || {};
+    const container = (bcaPlainTable && bcaVisibleTable()) || await bcaOpenGroup(groupIndex, groupLabel || "");
     if (!container) return { error: `Không mở được nhóm giấy tờ "${groupLabel || groupIndex}" ở mục Hồ sơ đính kèm.` };
     // Gom tệp theo dòng: nhiều tệp cùng một giấy (vd tờ khai chụp từng trang) vào chung một ô chọn tệp.
     const rows = new Map();
@@ -2834,15 +2878,17 @@ async function attachFilesByBcaPlan(payloadFiles, attachments) {
       const pending = filesNotOnRow(row, files);
       skippedNames.push(...files.filter((f) => !pending.includes(f)).map((f) => f.name));
       if (!pending.length) {
+        bcaFillRowFields(row, item.rowFields);
         markAttachmentResult(row, true);
         continue;
       }
       files = pending;
-      const checkbox = row.querySelector('input[type="checkbox"]');
+      const checkbox = bcaRowCheckbox(row);
       if (checkbox && !checkbox.checked) checkbox.click(); // MỘT lần, bấm 2 lần là bỏ tick
       const ok = setFilesOnInput(row.querySelector('input[type="file"]'), files, {
         allowMultiple: true, assumeConsumed: true,
       });
+      if (ok) bcaFillRowFields(row, item.rowFields);
       markAttachmentResult(row, ok);
       if (ok) rememberUploadedFiles(files);
       if (ok) attachedNames.push(...files.map((f) => f.name));

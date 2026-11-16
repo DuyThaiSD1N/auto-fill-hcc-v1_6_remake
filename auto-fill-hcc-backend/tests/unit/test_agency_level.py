@@ -58,11 +58,15 @@ LAO_CAI_KEYS = (
 )
 
 
-# Thủ tục Tư pháp mà DVCQG ra cả thẻ UBND xã lẫn thẻ Sở Tư pháp: tài khoản HCC tỉnh / không có xã → Sở Tư pháp,
-# tài khoản có xã → chọn Phường/Xã như cũ (không thêm cờ gì).
+# Tư pháp: chỉ "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh" phân luồng theo tài khoản (người dùng chốt
+# 16/11/2026) — HCC tỉnh / không có xã → Sở Tư pháp, tài khoản có xã → chọn Phường/Xã như cũ. Thủ tục tư pháp khác
+# chọn cơ quan như trước, không theo nhánh.
 TU_PHAP_SO = "Cơ quan thực hiện: Sở Tư pháp"
-TU_PHAP_KEYS = ("trich-luc-ks", "khai-sinh-dang-ky-thuong", "ket-hon", "xac-nhan-tinh-trang-hon-nhan",
-                "chung-thuc-ban-sao", "chung-thuc-giao-dich-tai-san", "cap-ban-sao-so-goc")
+TU_PHAP_KEY = "trich-luc-ks"
+TU_PHAP_KHAC = ("khai-sinh-dang-ky-thuong", "ket-hon", "xac-nhan-tinh-trang-hon-nhan", "khai-tu",
+                "chung-thuc-ban-sao", "chung-thuc-giao-dich-tai-san", "cap-ban-sao-so-goc",
+                "bau-to-truong-to-hoa-giai", "yeu-cau-tro-giup-phap-ly")
+_TINH = {"role": "province", "tinh": "Tỉnh Lào Cai", "xa": ""}
 
 
 @pytest.mark.parametrize(("user", "level"), [
@@ -71,40 +75,46 @@ TU_PHAP_KEYS = ("trich-luc-ks", "khai-sinh-dang-ky-thuong", "ket-hon", "xac-nhan
     ({"role": "commune", "tinh": "Tỉnh Lào Cai", "xa": ""}, "so"),
     ({"role": "commune", "tinh": "Tỉnh Lào Cai", "xa": "Phường Yên Bái"}, "xa"),
 ])
-def test_tu_phap_tinh_vao_so_tu_phap_xa_giu_nhu_cu(user, level):
-    for key in TU_PHAP_KEYS:
-        link = _link(user, key)
-        if level == "so":
-            assert link["selectSo"] is True and link["submitCardIncludes"] == TU_PHAP_SO, key
-        else:
-            assert "selectSo" not in link and "submitCardIncludes" not in link, key
+def test_trich_luc_tinh_vao_so_tu_phap_xa_giu_nhu_cu(user, level):
+    link = _link(user, TU_PHAP_KEY)
+    if level == "so":
+        assert link["selectSo"] is True and link["submitCardIncludes"] == TU_PHAP_SO
+    else:
+        assert "selectSo" not in link and "submitCardIncludes" not in link
 
 
-def test_tu_phap_chi_cap_xa_hoac_von_cap_so_khong_doi():
+def test_tu_phap_khac_khong_phan_luong_theo_tai_khoan():
     from app.procedures.ke_khai_links import KE_KHAI_LINKS
 
     by_key = {link["key"]: link for link in KE_KHAI_LINKS}
-    for key in ("cong-nhan-hoa-giai-vien", "bau-to-truong-to-hoa-giai", "yeu-cau-tro-giup-phap-ly"):
+    for key in (*TU_PHAP_KHAC, "cong-nhan-hoa-giai-vien"):
         assert "agencyLevelByAccount" not in by_key[key], key
+    # Tài khoản tỉnh vẫn chọn cơ quan như trước (không bị gạt sang Sở Tư pháp).
+    for key in TU_PHAP_KHAC[:7]:
+        link = _link(_TINH, key)
+        assert link.get("submitCardIncludes") != TU_PHAP_SO, key
+        assert "selectSo" not in link, key
 
 
-def test_tro_ly_tu_phap_tinh_gat_so_va_bam_the_so_tu_phap():
+def test_tro_ly_chi_trich_luc_gat_so_va_bam_the_so_tu_phap():
     from app.channels.handfree.procedure_registry import get_procedure
 
-    for key in TU_PHAP_KEYS:
-        proc = get_procedure(key)
-        so = with_agency_level(proc, "province", "")
-        assert so["agencyProvinceOnly"] is True and so["agencySoFirst"] is True, key
-        assert so["agencyCardIncludes"] == TU_PHAP_SO, key
-        xa = with_agency_level(proc, "commune", "Phường Yên Bái")
-        assert not xa.get("agencyProvinceOnly") and not xa.get("agencySoFirst") and not xa.get("agencyCardIncludes"), key
-    # Hòa giải chỉ cấp xã; trợ giúp pháp lý vốn nộp Sở với mọi tài khoản → không theo nhánh.
+    proc = get_procedure(TU_PHAP_KEY)
+    so = with_agency_level(proc, "province", "")
+    assert so["agencyProvinceOnly"] is True and so["agencySoFirst"] is True
+    assert so["agencyCardIncludes"] == TU_PHAP_SO
+    xa = with_agency_level(proc, "commune", "Phường Yên Bái")
+    assert not xa.get("agencyProvinceOnly") and not xa.get("agencySoFirst") and not xa.get("agencyCardIncludes")
+    for key in TU_PHAP_KHAC[:7]:
+        other = get_procedure(key)
+        assert "agencyLevelByAccount" not in other, key
+        assert not with_agency_level(other, "province", "").get("agencyCardIncludes"), key
+    # Hòa giải chỉ cấp xã; trợ giúp pháp lý vốn nộp Sở với mọi tài khoản → giữ như trước.
     hoa_giai = get_procedure("bau-to-truong-to-hoa-giai")
     assert not with_agency_level(hoa_giai, "province", "").get("agencySoFirst")
     tro_giup = get_procedure("yeu-cau-tro-giup-phap-ly")
     assert with_agency_level(tro_giup, "commune", "Phường Yên Bái")["agencySoFirst"] is True
     assert not with_agency_level(tro_giup, "province", "").get("agencyCardIncludes")
-
 
 def _fold(value: str) -> str:
     """Bản Python của fold() trong extension content/agency-select.js (so chuỗi thẻ)."""

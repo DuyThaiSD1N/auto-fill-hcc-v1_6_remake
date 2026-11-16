@@ -96,6 +96,9 @@ PROCEDURE_HMONG = {
     "hoa-giai-tranh-chap-dat-dai": "Sib haum xeeb kev sib cav txog av",
     # BẢN NHÁP ghép từ chữ đã có ("cuv npe" = đăng ký, "nyob" = ở, "ib ntus" = tạm thời) — chờ người bản ngữ soát.
     "dang-ky-tam-tru": "Cuv npe nyob ib ntus",
+    # BẢN NHÁP chờ anh Dư soát — "hloov" (thay đổi) đã có; TỪ MỚI "tus tswv tsev" (chủ hộ). Thủ tục điều chỉnh
+    # thông tin cư trú, trường hợp thay đổi chủ hộ.
+    "dieu-chinh-thong-tin-ve-cu-tru": "Hloov tus tswv tsev",
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
@@ -104,6 +107,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "daim npav Căn cước" (thẻ căn cước) + "rau me nyuam yaus" (cho trẻ
     # nhỏ) + "hnub nyoog qis dua 14 xyoo" (dưới 14 tuổi).
     "cap-the-can-cuoc-duoi-14-tuoi": "Ua daim npav Căn cước rau me nyuam yaus hnub nyoog qis dua 14 xyoo",
+    # BẢN NHÁP chờ anh Dư soát — "ua daim npav Căn cước" như trên + "rau neeg" (cho người) + "hnub nyoog 14 xyoo" (14
+    # tuổi); TỪ MỚI "rov saum toj" (trở lên).
+    "cap-the-can-cuoc-tu-du-14-tuoi": "Ua daim npav Căn cước rau neeg hnub nyoog 14 xyoo rov saum toj",
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "tsheb" (xe) + "thawj zaug" (lần đầu).
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": "Cuv npe tsheb thawj zaug",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).

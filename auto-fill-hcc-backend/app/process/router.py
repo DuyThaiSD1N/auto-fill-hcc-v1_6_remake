@@ -39,11 +39,17 @@ from app.pipelines.thong_bao_luu_tru.process.mapper import (
 from app.pipelines.dang_ky_thuong_tru.process.mapper import (
     with_account_process_options as with_dang_ky_thuong_tru_account_process_options,
 )
+from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process.mapper import (
+    with_account_process_options as with_dieu_chinh_cu_tru_account_process_options,
+)
 from app.pipelines.cap_doi_the_can_cuoc.process.mapper import (
     with_account_process_options as with_cap_doi_the_can_cuoc_account_process_options,
 )
 from app.pipelines.cap_the_can_cuoc_duoi_14_tuoi.process.mapper import (
     with_account_process_options as with_cap_the_can_cuoc_duoi_14_tuoi_account_process_options,
+)
+from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process.mapper import (
+    with_account_process_options as with_cap_the_can_cuoc_tu_du_14_tuoi_account_process_options,
 )
 from app.pipelines.cap_lai_the_can_cuoc.process.mapper import (
     with_account_process_options as with_cap_lai_the_can_cuoc_account_process_options,
@@ -152,10 +158,16 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         prepared.pipeline_options = with_dang_ky_thuong_tru_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
+        prepared.pipeline_options = with_dieu_chinh_cu_tru_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
         prepared.pipeline_options = with_cap_doi_the_can_cuoc_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_cap_the_can_cuoc_duoi_14_tuoi_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_cap_the_can_cuoc_tu_du_14_tuoi_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_cap_lai_the_can_cuoc_account_process_options(

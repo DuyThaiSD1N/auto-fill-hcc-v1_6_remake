@@ -6,11 +6,8 @@ tin chung" (bản thân / ủy quyền), không có bước chủ hồ sơ, khô
 nằm ở ``chat/tu_phap_moi.py``.
 """
 
-from .tu_phap import TU_PHAP_AGENCY_LEVEL
-
 TU_PHAP_MOI_FLOW: dict = {
     "needsAgencySelect": True,
-    "agencyLevelByAccount": TU_PHAP_AGENCY_LEVEL,
     "hasAttachmentStep": True,
     # Không có wizard: mọi việc trên cùng một trang nên không khai số bước.
     "singlePageDossier": True,

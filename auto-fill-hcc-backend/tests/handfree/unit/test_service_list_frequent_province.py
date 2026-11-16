@@ -80,8 +80,10 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 16/11: +1 mọi tỉnh dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc (1.012575) (_TAT_CA, mặc định toàn quốc).
         # 16/11: Lào Cai -1 tro-cap-xa-hoi-hang-thang (1.001776), người dùng ẩn cho Cam Đường.
         # 16/11: +1 mọi tỉnh Bộ Công an cap-lai-the-can-cuoc (2.001194) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 128, "bacninh": 134, "lamdong": 121, "danang": 125, "quangninh": 129, "ninhbinh": 118,
-        "quangngai": 119, "laocai": 117, "quangtri": 119, "khanhhoa": 124, "tuyenquang": 119,
+        # 16/11: +1 mọi tỉnh Bộ Công an cap-the-can-cuoc-tu-du-14-tuoi (2.000200 / 1.014061) (_TAT_CA, mặc định).
+        # 16/11: +1 mọi tỉnh Bộ Công an dieu-chinh-thong-tin-ve-cu-tru (1.010039) (_TAT_CA, mặc định toàn quốc).
+        "laichau": 130, "bacninh": 136, "lamdong": 123, "danang": 127, "quangninh": 131, "ninhbinh": 120,
+        "quangngai": 121, "laocai": 119, "quangtri": 121, "khanhhoa": 126, "tuyenquang": 121,
     }
 
 

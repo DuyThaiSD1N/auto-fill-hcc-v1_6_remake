@@ -86,6 +86,22 @@ test("thường trú: khối cơ quan nhận cặp id _ID, cờ supportsBcaThuon
   assert.match(attach, /input\[id\^="txtNAME_FILE"\]/);
 });
 
+test("điều chỉnh thông tin cư trú: bcaPlainTable lấy bảng đang hiện, rowFields điền Loại / Số lượng / Ghi chú của dòng", () => {
+  const attach = read("content/attach-core.js");
+  const fn = attach.slice(attach.indexOf("async function attachFilesByBcaPlan("), attach.indexOf("async function attachFilesByPlan("));
+  assert.match(fn, /\(bcaPlainTable && bcaVisibleTable\(\)\) \|\| await bcaOpenGroup\(groupIndex, groupLabel \|\| ""\)/);
+  assert.match(fn, /if \(ok\) bcaFillRowFields\(row, item\.rowFields\);/);
+  const fill = attach.slice(attach.indexOf("function bcaFillRowFields("), attach.indexOf("function bcaAddRowButton("));
+  assert.match(fill, /select\[id\^="cboKIND_OF_FILE"\]/);
+  assert.match(fill, /\["txtNUM_OF_DOC", fields\.count\], \["txtNOTE_OF_DOC", fields\.note\]/);
+  assert.match(fill, /\(!current \|\| current === "0"\)/);
+  const gate = attach.slice(attach.indexOf("function hasAttachmentTarget("), attach.indexOf("function hasAttachmentTarget(") + 600);
+  assert.match(gate, /#tblGiayToDinhKem/);
+  assert.match(fn, /const checkbox = bcaRowCheckbox\(row\);/);
+  assert.match(attach, /input\[type="checkbox"\]\[id\^="chkIS_COMPULSORY"\]/);
+  assert.match(attach, /!box\.closest\("td\.bs-checkbox"\)/);
+});
+
 const RELATION_SRC = fs.readFileSync(path.join(__dirname, "..", "content/fill-core.js"), "utf8");
 
 // Cấp căn cước dưới 14 tuổi: ô "Mối quan hệ của người kê khai…" chọn theo TÀI KHOẢN đăng nhập (Phần I), không theo giấy.
@@ -135,4 +151,50 @@ test("bca-relation: trùng số định danh / họ tên tài khoản → Mẹ /
   r = await runRelation(RELATION_SRC, { name: "", id: "" }, RELATION_VALUE);
   assert.strictEqual(r.picked, undefined);
   assert.strictEqual(r.result.notFound.length, 1);
+});
+
+// Cấp căn cước từ đủ 14 tuổi: radio "Đối tượng kê khai" chọn theo TÀI KHOẢN đăng nhập (Phần I), không theo người ký giấy;
+// ô khai bcaOtherOnly (khối Phần II) chỉ điền khi tài khoản là người khác.
+function runDeclarant(src, account, subject) {
+  const fn = src.slice(src.indexOf("async function fillBcaDeclarantField("),
+    src.indexOf("// \"Mối quan hệ của người kê khai với người cần cấp căn cước\""));
+  const radio = (id) => ({ id, checked: false, disabled: false, click() { this.checked = true; } });
+  const els = { txtFULLNAME_NDN: { value: account.name }, txtIDENTIFY_NUMBER_NDN: { value: account.id },
+    chkIS_NCC: radio("chkIS_NCC"), chkIS_NOT_NCC: radio("chkIS_NOT_NCC"), divCheck_NDN: {} };
+  const deps = {
+    document: { getElementById: (id) => els[id] || null },
+    waitFor: async (cond) => cond(),
+    bcaVisible: (el) => !!el,
+    bcaGuestFold: (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD")
+      .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(),
+    console: { log() {} },
+  };
+  const run = new Function(...Object.keys(deps), `${fn}; return fillBcaDeclarantField;`)(...Object.values(deps));
+  const result = { filled: 0, notFound: [] };
+  const value = { selfId: "chkIS_NCC", otherId: "chkIS_NOT_NCC", otherBlock: "divCheck_NDN", subject };
+  return run({ name: "radIsNCC", comp: "bca-declarant", value }, result)
+    .then((decision) => ({ decision, self: els.chkIS_NCC.checked, other: els.chkIS_NOT_NCC.checked, result }));
+}
+
+test("bca-declarant: tài khoản là người cần cấp → radio tự khai; người khác → radio khai thay", async () => {
+  const subject = { name: "HOÀNG THỊ LAN", id: "012312000001" };
+  let r = await runDeclarant(RELATION_SRC, { name: "Hoàng Thị Lan", id: "012312000001" }, subject);
+  assert.deepStrictEqual([r.decision, r.self, r.other], ["self", true, false]);
+  r = await runDeclarant(RELATION_SRC, { name: "Hoàng Văn An", id: "012085000002" }, subject);
+  assert.deepStrictEqual([r.decision, r.self, r.other], ["other", false, true]);
+  // Trùng tên nhưng khác số định danh = người khác.
+  r = await runDeclarant(RELATION_SRC, { name: "Hoàng Thị Lan", id: "012312999999" }, subject);
+  assert.strictEqual(r.decision, "other");
+  // Giấy không có số → so họ tên.
+  r = await runDeclarant(RELATION_SRC, { name: "Hoàng Thị Lan", id: "012312000001" }, { name: "HOÀNG THỊ LAN" });
+  assert.strictEqual(r.decision, "self");
+  // Phần I chưa đổ tài khoản → không chọn bừa, ô Phần II không điền.
+  r = await runDeclarant(RELATION_SRC, { name: "", id: "" }, subject);
+  assert.strictEqual(r.decision, null);
+  assert.strictEqual(r.result.notFound.length, 1);
+});
+
+test("vòng điền chuẩn: ô bcaOtherOnly bỏ qua trừ khi bca-declarant chọn khai thay", () => {
+  assert.match(RELATION_SRC, /f\.comp === "bca-declarant"\)\s*\{\s*bcaDeclarant = await fillBcaDeclarantField\(f, result\);/);
+  assert.match(RELATION_SRC, /if \(f\.bcaOtherOnly && bcaDeclarant !== "other"\) continue;/);
 });

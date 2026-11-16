@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.12",
+    date: "16/11/2026",
+    items: [
+      "Thêm thủ tục Cấp thẻ căn cước cho người từ đủ 14 tuổi (Cổng dịch vụ công Bộ Công an): ô \"Đối tượng kê khai\" chọn theo tài khoản VNeID đang đăng nhập so với người cần cấp; kê khai thay thì điền thêm thông tin người cần cấp và mối quan hệ; ô Lý do cấp chọn theo giấy tờ (lần đầu / chuyển từ Chứng minh nhân dân).",
+      "Thêm thủ tục Điều chỉnh thông tin về cư trú (trường hợp thay đổi chủ hộ, Cổng dịch vụ công Bộ Công an): điền chủ hộ, thành viên hộ, và đính kèm vào đúng dòng giấy tờ kèm Loại giấy tờ, Số lượng, Ghi chú; có tách giấy tờ khi đính kèm.",
+      "Đăng ký tạm trú, đăng ký thường trú: sửa lỗi không đính kèm được giấy tờ vào mục \"Hồ sơ đính kèm\".",
+      "Thủ tục Tư pháp: chỉ thủ tục Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh chuyển sang Sở Tư pháp với tài khoản cấp tỉnh; các thủ tục tư pháp khác chọn cơ quan như trước.",
+      "Khai sinh liên thông: nơi sinh tại Bệnh viện Sản Nhi Lâm Đồng ghi đúng tên và địa chỉ bệnh viện.",
+    ],
+  },
+  {
     version: "1.28.11",
     date: "16/11/2026",
     items: [

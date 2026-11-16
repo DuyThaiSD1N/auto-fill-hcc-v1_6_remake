@@ -2394,6 +2394,11 @@
   }
 
   function hasAttachmentTarget() {
+    // Cổng Bộ Công an (cư trú): bảng giấy tờ #tblGiayToDinhKem (ô chọn tệp ẩn trong label.btn-file, không có nút chữ
+    // "Chọn tệp") hoặc khung nhóm #tphs_new_<i> chưa nạp. Thiếu nhánh này thì popup im lặng, không gọi BE đính kèm.
+    if (isBcaPortal() && document.querySelector('#tblGiayToDinhKem, [id^="tphs_new_"], input[type="file"][id^="fileUpload"]')) {
+      return true;
+    }
     if (dvcqgAttachmentRows().length) return true;
     // Mọi dòng đã có tệp thì cổng tư pháp không còn nút chọn tệp nào nhưng vẫn là bảng thành phần hồ sơ.
     if (findAttachmentRows().length) return true;
@@ -5020,6 +5025,49 @@
     return null;
   }
 
+  // Thủ tục một trường hợp (điều chỉnh thông tin cư trú — BE gửi `bcaPlainTable`): bảng giấy tờ hiện sẵn, không có nhóm
+  // để bấm → lấy bảng đang hiện có ô chọn tệp; chưa thấy thì mới thử mở nhóm như thường.
+  function bcaVisibleTable() {
+    // Bảng giấy tờ của trang (crawl 16/11/2026: div#div_TPHS_OLD > table#tblGiayToDinhKem, ô chọn tệp #fileUpload<i>).
+    const known = document.getElementById("tblGiayToDinhKem");
+    if (bcaGroupRows(known).length) return known;
+    const row = Array.from(document.querySelectorAll("tr"))
+      .find((tr) => tr.querySelector('input[type="file"]') && isVisible(tr));
+    return row ? (row.closest("table") || row.parentElement) : null;
+  }
+
+  // Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>):
+  // BE gửi `rowFields` {kind, count, note}. Ô không có trên dòng thì bỏ qua; Số lượng / Ghi chú chỉ ghi khi đang trống
+  // (đính kèm lại không ghi đè chữ cán bộ đã sửa).
+  function bcaFillRowFields(row, fields) {
+    if (!row || !fields) return;
+    const kind = row.querySelector('select[id^="cboKIND_OF_FILE"]');
+    if (kind && !kind.disabled && fields.kind) {
+      const want = bcaText(fields.kind);
+      const option = Array.from(kind.options || []).find((o) => bcaText(o.textContent) === want);
+      if (option && kind.value !== option.value) {
+        kind.value = option.value;
+        kind.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    for (const [prefix, value] of [["txtNUM_OF_DOC", fields.count], ["txtNOTE_OF_DOC", fields.note]]) {
+      const input = row.querySelector(`input[id^="${prefix}"], textarea[id^="${prefix}"]`);
+      // Cổng điền sẵn Số lượng "0" — coi như trống.
+      const current = String(input?.value || "").trim();
+      if (input && value && !input.disabled && (!current || current === "0")) {
+        setNativeValue(input, String(value), { typing: false, commit: true });
+      }
+    }
+  }
+
+  // Ô tích "Chọn giấy tờ" của dòng: cổng dùng bootstrap-table, ô đầu dòng là td.bs-checkbox ẨN (btSelectItem, dòng đã
+  // "selected") — tích nhầm ô đó thì ô thật chkIS_COMPULSORY<i> vẫn trống. Có ô chkIS_COMPULSORY thì dùng nó.
+  function bcaRowCheckbox(row) {
+    return row.querySelector('input[type="checkbox"][id^="chkIS_COMPULSORY"]')
+      || Array.from(row.querySelectorAll('input[type="checkbox"]')).find((box) => !box.closest("td.bs-checkbox"))
+      || row.querySelector('input[type="checkbox"]');
+  }
+
   function bcaAddRowButton(container) {
     // Nút "+ Thêm mới" của cổng là #btnDocument (load_table_tphs_new ẩn/hiện nó theo bảng giấy tờ của nhóm).
     const byId = document.getElementById("btnDocument");
@@ -5092,8 +5140,8 @@
     window.__AUTOFILL_HCC_ATTACH_BUSY__ = true;
     try {
       const items = attachments.filter((item) => item?.target === "bca-row");
-      const { groupIndex, groupLabel } = items[0] || {};
-      const container = await bcaOpenGroup(groupIndex, groupLabel || "");
+      const { groupIndex, groupLabel, bcaPlainTable } = items[0] || {};
+      const container = (bcaPlainTable && bcaVisibleTable()) || await bcaOpenGroup(groupIndex, groupLabel || "");
       if (!container) return { error: `Không mở được nhóm giấy tờ "${groupLabel || groupIndex}" ở mục Hồ sơ đính kèm.` };
       // Gom tệp theo dòng: nhiều tệp cùng một giấy (vd tờ khai chụp từng trang) vào chung một ô chọn tệp.
       const rows = new Map();
@@ -5126,15 +5174,17 @@
         const pending = filesNotOnRow(row, files);
         skippedNames.push(...files.filter((f) => !pending.includes(f)).map((f) => f.name));
         if (!pending.length) {
+          bcaFillRowFields(row, item.rowFields);
           markAttachmentResult(row, true);
           continue;
         }
         files = pending;
-        const checkbox = row.querySelector('input[type="checkbox"]');
+        const checkbox = bcaRowCheckbox(row);
         if (checkbox && !checkbox.checked) checkbox.click(); // MỘT lần, bấm 2 lần là bỏ tick
         const ok = setFilesOnInput(row.querySelector('input[type="file"]'), files, {
           allowMultiple: true, assumeConsumed: true,
         });
+        if (ok) bcaFillRowFields(row, item.rowFields);
         markAttachmentResult(row, ok);
         if (ok) rememberUploadedFiles(files);
         if (ok) attachedNames.push(...files.map((f) => f.name));
@@ -8622,6 +8672,43 @@
     }
   }
 
+  // "Đối tượng kê khai" (comp "bca-declarant", radio radIsNCC, trang cấp căn cước từ đủ 14 tuổi): người kê khai là TÀI
+  // KHOẢN VNeID đang đăng nhập (Phần I, cổng đổ sẵn và khoá), không phải người ký trên giấy. value {selfId, otherId,
+  // otherBlock, accountNameId, accountIdId, subject: {name, id}}: tài khoản trùng người cần cấp (cùng số định danh; một
+  // bên thiếu số thì so họ tên) → radio selfId; khác người → radio otherId rồi chờ khối Phần II (otherBlock) hiện.
+  // Trả "self" / "other" / null — ô khai bcaOtherOnly chỉ điền khi "other".
+  // Bản copy ở tro-ly-nguoi-dan-extension/content/fill-core.js (fillBcaDeclarantField) — sửa một bên thì port bên kia.
+  async function fillBcaDeclarantField(f, result) {
+    const v = f.value || {};
+    const label = "Đối tượng kê khai";
+    const nameEl = document.getElementById(v.accountNameId || "txtFULLNAME_NDN");
+    const idEl = document.getElementById(v.accountIdId || "txtIDENTIFY_NUMBER_NDN");
+    if (!nameEl) {
+      result.notFound.push(label);
+      return null;
+    }
+    await waitFor(() => String(nameEl.value || "").trim() || String(idEl?.value || "").trim(), 6000, 200);
+    const accountName = bcaGuestFold(nameEl.value);
+    const accountId = String(idEl?.value || "").replace(/\D/g, "");
+    const subjectName = bcaGuestFold(v.subject?.name);
+    const subjectId = String(v.subject?.id || "").replace(/\D/g, "");
+    let decision = null;
+    if (accountId && subjectId) decision = accountId === subjectId ? "self" : "other";
+    else if (accountName && subjectName) decision = accountName === subjectName ? "self" : "other";
+    console.log(`[AutoFill-STD] BCA đối tượng kê khai: tài khoản "${nameEl.value}" → ${decision || "(không chọn)"}`);
+    const radio = decision ? document.getElementById(decision === "self" ? v.selfId : v.otherId) : null;
+    if (radio && !radio.checked && !radio.disabled) radio.click();
+    if (!radio?.checked) {
+      result.notFound.push(decision ? label : `${label} (chưa đọc được tài khoản đăng nhập ở Phần I)`);
+      return null;
+    }
+    if (decision === "other" && v.otherBlock) {
+      await waitFor(() => bcaVisible(document.getElementById(v.otherBlock)), 3000, 100);
+    }
+    result.filled++;
+    return decision;
+  }
+
   // "Mối quan hệ của người kê khai với người cần cấp căn cước" (comp "bca-relation", trang cấp căn cước dưới 14 tuổi):
   // người kê khai là TÀI KHOẢN VNeID đang đăng nhập (Phần I, cổng đổ sẵn và khoá), giấy tờ chỉ cho biết ai là cha, mẹ.
   // value {target, people: [{relation, name, id}], fallback}: so số định danh rồi họ tên Phần I với từng người trên giấy
@@ -8737,11 +8824,18 @@
     const inListedPanel = (f) => (f.comp === "dom-click" && listedPanels.has(standardClickPanelPrefix(f))) ||
       Array.from(listedPanels).some((prefix) => String(f.name || "").startsWith(`${prefix}[`));
 
+    let bcaDeclarant = null;
     for (const f of orderedFields) {
       if (inListedPanel(f)) {
         result.filled++;
         continue;
       }
+      if (f.comp === "bca-declarant") {
+        bcaDeclarant = await fillBcaDeclarantField(f, result);
+        continue;
+      }
+      // Khối người cần cấp chỉ mở khi tài khoản là cha/mẹ/người đại diện (xem fillBcaDeclarantField).
+      if (f.bcaOtherOnly && bcaDeclarant !== "other") continue;
       if (f.comp === "bca-guest-list") {
         await fillBcaGuestList(f, result);
         continue;

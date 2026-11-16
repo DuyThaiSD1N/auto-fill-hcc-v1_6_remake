@@ -1844,11 +1844,18 @@ async function fillFormStandard(fields) {
   const inListedPanel = (f) => (f.comp === "dom-click" && listedPanels.has(standardClickPanelPrefix(f))) ||
     Array.from(listedPanels).some((prefix) => String(f.name || "").startsWith(`${prefix}[`));
 
+  let bcaDeclarant = null;
   for (const f of orderedFields) {
     if (inListedPanel(f)) {
       result.filled++;
       continue;
     }
+    if (f.comp === "bca-declarant") {
+      bcaDeclarant = await fillBcaDeclarantField(f, result);
+      continue;
+    }
+    // Khối người cần cấp chỉ mở khi tài khoản là cha/mẹ/người đại diện (xem fillBcaDeclarantField).
+    if (f.bcaOtherOnly && bcaDeclarant !== "other") continue;
     if (f.comp === "bca-guest-list") {
       await fillBcaGuestList(f, result);
       continue;
@@ -2207,6 +2214,43 @@ async function waitBcaAgencyReady(f) {
   if (f.value?.readyPick && options.length === 1 && !options.includes(ready.selectedOptions?.[0])) {
     fillStandardSelect(ready, options[0].value);
   }
+}
+
+// "Đối tượng kê khai" (comp "bca-declarant", radio radIsNCC, trang cấp căn cước từ đủ 14 tuổi): người kê khai là TÀI
+// KHOẢN VNeID đang đăng nhập (Phần I, cổng đổ sẵn và khoá), không phải người ký trên giấy. value {selfId, otherId,
+// otherBlock, accountNameId, accountIdId, subject: {name, id}}: tài khoản trùng người cần cấp (cùng số định danh; một
+// bên thiếu số thì so họ tên) → radio selfId; khác người → radio otherId rồi chờ khối Phần II (otherBlock) hiện.
+// Trả "self" / "other" / null — ô khai bcaOtherOnly chỉ điền khi "other".
+// Bản copy của auto-fill-hcc-extension/content.js (fillBcaDeclarantField) — sửa một bên thì port bên kia.
+async function fillBcaDeclarantField(f, result) {
+  const v = f.value || {};
+  const label = "Đối tượng kê khai";
+  const nameEl = document.getElementById(v.accountNameId || "txtFULLNAME_NDN");
+  const idEl = document.getElementById(v.accountIdId || "txtIDENTIFY_NUMBER_NDN");
+  if (!nameEl) {
+    result.notFound.push(label);
+    return null;
+  }
+  await waitFor(() => String(nameEl.value || "").trim() || String(idEl?.value || "").trim(), 6000, 200);
+  const accountName = bcaGuestFold(nameEl.value);
+  const accountId = String(idEl?.value || "").replace(/\D/g, "");
+  const subjectName = bcaGuestFold(v.subject?.name);
+  const subjectId = String(v.subject?.id || "").replace(/\D/g, "");
+  let decision = null;
+  if (accountId && subjectId) decision = accountId === subjectId ? "self" : "other";
+  else if (accountName && subjectName) decision = accountName === subjectName ? "self" : "other";
+  console.log(`[AutoFill-STD] BCA đối tượng kê khai: tài khoản "${nameEl.value}" → ${decision || "(không chọn)"}`);
+  const radio = decision ? document.getElementById(decision === "self" ? v.selfId : v.otherId) : null;
+  if (radio && !radio.checked && !radio.disabled) radio.click();
+  if (!radio?.checked) {
+    result.notFound.push(decision ? label : `${label} (chưa đọc được tài khoản đăng nhập ở Phần I)`);
+    return null;
+  }
+  if (decision === "other" && v.otherBlock) {
+    await waitFor(() => bcaVisible(document.getElementById(v.otherBlock)), 3000, 100);
+  }
+  result.filled++;
+  return decision;
 }
 
 // "Mối quan hệ của người kê khai với người cần cấp căn cước" (comp "bca-relation", trang cấp căn cước dưới 14 tuổi):

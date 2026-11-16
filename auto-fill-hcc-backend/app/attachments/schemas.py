@@ -38,7 +38,10 @@ class AttachmentPlanItem(BaseModel):
     # radio Bản chính/Bản sao + ô upload; FE khớp dòng theo componentName, tick + chọn loaiBan + set file.
     # "add-document-dialog": cổng Angular có nút "Thêm giấy tờ"; FE chọn componentName trong modal,
     # tạo dòng mới rồi dùng lại engine attp-row để upload.
-    target: Literal["existing", "new", "fixed-slot", "supplementary", "attp-row", "add-document-dialog"]
+    # "bca-row": Cổng DVC Bộ Công an (đăng ký tạm trú / thường trú / điều chỉnh thông tin cư trú) — mục "Hồ sơ đính
+    # kèm" ngay trên trang kê khai; FE (attachFilesByBcaPlan) mở nhóm theo groupIndex/groupLabel (hoặc lấy bảng hiện
+    # sẵn khi bcaPlainTable), tìm dòng chứa rowKey hoặc thêm dòng khi newRow.
+    target: Literal["existing", "new", "fixed-slot", "supplementary", "attp-row", "add-document-dialog", "bca-row"]
     componentIndex: int | None = None
     needsAddComponent: bool
     detectedType: str | None = None
@@ -92,6 +95,16 @@ class AttachmentPlanItem(BaseModel):
     # Engine attp-row: cổng tick sẵn MỌI dòng → trước khi đính FE bấm "Chọn/Bỏ chọn tất cả" cho tới khi
     # không còn dòng nào tick (chỉ khi chưa dòng nào có tệp), rồi tick lại dòng sắp đính.
     untickUnplannedRows: bool | None = None
+    # Target "bca-row" (Cổng DVC Bộ Công an). KHÔNG khai ở đây thì response_model lược mất → FE không mở được nhóm
+    # giấy tờ / không tìm được dòng.
+    groupIndex: int | None = None
+    groupLabel: str | None = None
+    rowKey: str | None = None
+    newRow: bool | None = None
+    # Thủ tục một trường hợp: bảng giấy tờ hiện sẵn (#tblGiayToDinhKem), không có nhóm để bấm.
+    bcaPlainTable: bool | None = None
+    # Ô phụ của dòng: {"kind": Loại giấy tờ, "count": Số lượng, "note": Ghi chú}.
+    rowFields: dict[str, str] | None = None
 
 
 class AttachmentPlanResp(BaseModel):

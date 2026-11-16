@@ -9,6 +9,7 @@ from copy import deepcopy
 
 from app.channels.handfree.owner_info import run as tu_phap_owner_info
 from app.channels.handfree.flow_profiles import resolve_flow_profile
+from app.channels.handfree.flow_profiles.tu_phap import TU_PHAP_AGENCY_LEVEL
 from app.procedures import agency_plans
 from app.procedures import ke_khai_links as core_ke_khai_links
 from app.procedures import portal_submit as core_portal_submit
@@ -472,6 +473,9 @@ PROCEDURES: list[dict] = [
         "icon": "📜",
         # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
         "flowProfile": "tu-phap-moi",
+        # Thủ tục tư pháp DUY NHẤT phân luồng theo tài khoản (người dùng chốt 16/11/2026): HCC tỉnh / không có xã →
+        # Sở Tư pháp, tài khoản có xã → Phường/Xã như cũ. Bản Auto Fill khai cùng nhánh ở ke_khai_links.json.
+        "agencyLevelByAccount": TU_PHAP_AGENCY_LEVEL,
         "supportsSplitDocuments": True,
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-867c-72db-b6a7-dcbd8c763807",
         # TỜ KHAI là giấy CHÍNH (chứa đủ thông tin sự kiện hộ tịch để kê khai); giấy hộ tịch
@@ -1622,8 +1626,6 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "bau-to-truong-to-hoa-giai",
-        # Tắt nhánh Sở/xã theo tài khoản của profile tư pháp: chỉ cấp xã, Sở Tư pháp không nhận.
-        "agencyLevelByAccount": None,
         # Cổng React mới (Bộ Tư pháp — hòa giải ở cơ sở), cùng khung attach-only với nhóm chứng thực
         # ngay trên: không consent. Cổng hiển thị tên "Thủ tục công nhận tổ trưởng tổ hòa giải (cấp xã)".
         "detect": {
@@ -1672,8 +1674,6 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "yeu-cau-tro-giup-phap-ly",
-        # Tắt nhánh Sở/xã theo tài khoản của profile tư pháp: vốn nộp Sở Tư pháp với mọi tài khoản.
-        "agencyLevelByAccount": None,
         # Mã TTHC 2.000829 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). DVCQG "Chọn
         # cơ quan thực hiện": chọn Tỉnh → gạt toggle "Sở" (KHÔNG chọn sở cụ thể) → Đồng ý → "Nộp
         # trực tuyến" kết quả ĐẦU TIÊN (Sở Tư pháp) — agencyProvinceOnly + agencySoFirst. Sau đó là
@@ -1746,8 +1746,6 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su",
-        # Tắt nhánh Sở/xã theo tài khoản của profile tư pháp: vốn nộp Sở Tư pháp với mọi tài khoản.
-        "agencyLevelByAccount": None,
         # Mã TTHC 1.000688 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Cùng luồng
         # chọn cơ quan cấp Sở với "yeu-cau-tro-giup-phap-ly": chọn Tỉnh → gạt toggle "Sở" → Đồng ý
         # → "Nộp trực tuyến" kết quả ĐẦU TIÊN (Sở Tư pháp). Wizard tư pháp 4 bước, bước Kê khai là
@@ -1817,8 +1815,6 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
-        # Tắt nhánh Sở/xã theo tài khoản của profile tư pháp: vốn nộp Sở Tư pháp với mọi tài khoản.
-        "agencyLevelByAccount": None,
         # Mã TTHC 1.013818 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Chọn cơ quan cấp Sở y như
         # "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực tuyến" kết
         # quả ĐẦU TIÊN). Từ 11/11/2026 bước Kê khai là eForm Mẫu TP-TSCC-10 (legacy x-*) nên chạy như thủ tục luật sư:
@@ -6414,6 +6410,58 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # CÙNG trang + cùng bộ id với "dang-ky-thuong-tru" (chỉ khác TT=THUONGTRU_08) → cùng cờ supportsBcaThuongTru,
+        # cùng ô cam kết chkRULE, đính kèm cùng trang (bảng 3 dòng hiện sẵn, extension lấy bảng đang hiện —
+        # bcaPlainTable). Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi (mã TTHC 1.010039).
+        "key": "dieu-chinh-thong-tin-ve-cu-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_08"],
+            "headingDisabled": True,
+        },
+        "label": "Điều chỉnh thông tin về cư trú",
+        "shortLabel": "Điều chỉnh thông tin cư trú",
+        "subtitle": "Thay đổi chủ hộ — kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "👨‍👩‍👧",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222"
+            "&TT=THUONGTRU_08&TT_NAME=%C4%90i%E1%BB%81u%20ch%E1%BB%89nh%20th%C3%B4ng%20tin%20v%E1%BB%81%20c%C6%B0"
+            "%20tr%C3%BA"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi thường trú của hộ",
+        "requiresCapability": "supportsBcaThuongTru",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "askBeforeAttach": True,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkRULE",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "y_kien", "name": "Văn bản thống nhất / ý kiến đồng ý của các thành viên hộ gia đình về việc "
+             "thay đổi chủ hộ", "icon": "✍️", "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh việc điều chỉnh (trích lục khai tử của chủ hộ cũ…)",
+             "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
+            "2. Văn bản thống nhất / ý kiến đồng ý của các thành viên hộ gia đình về việc thay đổi chủ hộ.\n"
+            "3. Giấy tờ chứng minh việc điều chỉnh (trích lục khai tử của chủ hộ cũ…).\n"
+            "4. CCCD của người đề nghị (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an như "dang-ky-tam-tru" (bcaPortal: chọn thẻ là mở thẳng trang kê khai, trợ lý chọn hộ
         # Tỉnh + Xã ở khối "Cơ quan thực hiện" rồi mới xin giấy tờ). Trang KHÔNG có mục đính kèm. Người lưu trú thêm
         # từng người qua modal "Thêm mới người lưu trú" (bcaGuestList, comp bca-guest-list) — bản Trợ lý chưa khai
@@ -6580,6 +6628,47 @@ PROCEDURES: list[dict] = [
             "2. Giấy khai sinh của trẻ.\n"
             "3. Phiếu thu thập thông tin dân cư (Mẫu DC01) (nếu có).\n"
             "4. Thẻ căn cước của cha/mẹ/người đại diện kê khai thay.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # Chép khuôn "cap-the-can-cuoc-duoi-14-tuoi" (cùng cổng DVC Bộ Công an, cùng bộ ô): bcaPortal, không có mục đính
+        # kèm, không hỏi nơi (bcaAgencyFromDocs). Một trang cho cả 2.000200 (cấp tỉnh) và 1.014061 (cấp xã). Radio "Đối
+        # tượng kê khai" extension chọn theo tài khoản đăng nhập (comp bca-declarant). Toàn quốc. URL + detect giống hệt
+        # ke_khai_links.json / lõi.
+        "key": "cap-the-can-cuoc-tu-du-14-tuoi",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["dvc-CCCD-tren-14-tuoi.html"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp thẻ căn cước cho người từ đủ 14 tuổi trở lên",
+        "shortLabel": "Căn cước lần đầu từ 14 tuổi",
+        "subtitle": "Làm thẻ căn cước lần đầu cho người từ đủ 14 tuổi trở lên",
+        "icon": "🪪",
+        "keKhaiUrl": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dvc-CCCD-tren-14-tuoi.html",
+        "bcaPortal": True,
+        "bcaAgencyFromDocs": True,
+        "requiresCapability": "supportsBcaCanCuoc",
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "phieu_thu_nhan", "name": "Phiếu thu nhận thông tin căn cước (Mẫu CC01)", "icon": "📋",
+             "sides": 1, "repeatable": True},
+            {"key": "giay_khai_sinh", "name": "Giấy khai sinh", "icon": "👶", "sides": 1, "optional": True,
+             "repeatable": True},
+            {"key": "phieu_dan_cu", "name": "Phiếu thu thập thông tin dân cư (Mẫu DC01)", "icon": "📄", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu thu nhận thông tin căn cước (Mẫu CC01) — nhân thân, cha mẹ, loại cấp, đơn vị lập.\n"
+            "2. Giấy khai sinh.\n"
+            "3. Phiếu thu thập thông tin dân cư (Mẫu DC01) (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -10357,12 +10446,16 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-nha-o-xa-hoi-bac-ninh": _TAT_CA,
     "dang-ky-tam-tru": _TAT_CA,  # STT 234
     "dang-ky-thuong-tru": _TAT_CA,
+    # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang thường trú.
+    "dieu-chinh-thong-tin-ve-cu-tru": _TAT_CA,
     # Toàn quốc (user 16/11/2026).
     "cap-doi-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mặc định toàn quốc như cấp đổi căn cước (cùng trang Bộ Công an), 16/11/2026.
     "cap-lai-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mở toàn quốc như cấp đổi căn cước (cùng cổng Bộ Công an), 16/11/2026.
     "cap-the-can-cuoc-duoi-14-tuoi": _TAT_CA,
+    # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026).
+    "cap-the-can-cuoc-tu-du-14-tuoi": _TAT_CA,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": _TAT_CA,  # 16/11/2026: ngoài bảng, chốt toàn quốc
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,

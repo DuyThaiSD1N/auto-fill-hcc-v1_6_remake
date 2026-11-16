@@ -544,6 +544,12 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_thuong_tru["bcaPortal"] is True and bca_thuong_tru["samePageAttach"] is True
     assert bca_thuong_tru["askBeforeAttach"] is True and bca_thuong_tru["submitCommitCheckbox"] == "chkRULE"
     assert "wizard" not in bca_thuong_tru and "maePortal" not in bca_thuong_tru
+    # Điều chỉnh thông tin về cư trú: CÙNG trang thường trú (TT=THUONGTRU_08), cùng khuôn luồng + cùng cờ extension.
+    bca_dieu_chinh = procedures.pop("dieu-chinh-thong-tin-ve-cu-tru")
+    for field in ("flowProfile", "bcaPortal", "requiresCapability", "samePageAttach", "askBeforeAttach",
+                  "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
+        assert bca_dieu_chinh.get(field) == bca_thuong_tru.get(field), field
+    assert bca_dieu_chinh["detect"]["urlIncludes"] == ["TT=THUONGTRU_08"]
     # Thông báo lưu trú (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, người lưu trú thêm qua modal.
     bca_luu_tru = procedures.pop("thong-bao-luu-tru")
     assert bca_luu_tru.get("flowProfile") is None
@@ -561,6 +567,11 @@ def test_registered_procedures_use_their_declared_flow_family():
     for field in ("flowProfile", "bcaPortal", "bcaAgencyFromDocs", "requiresCapability", "hasAttachmentStep",
                   "samePageAttach", "wizard", "maePortal", "provinceOnly"):
         assert bca_duoi_14.get(field) == bca_can_cuoc.get(field), field
+    # Cấp thẻ căn cước cho người từ đủ 14 tuổi (Cổng DVC Bộ Công an): cùng khuôn dưới 14 tuổi.
+    bca_tu_14 = procedures.pop("cap-the-can-cuoc-tu-du-14-tuoi")
+    for field in ("flowProfile", "bcaPortal", "bcaAgencyFromDocs", "requiresCapability", "hasAttachmentStep",
+                  "samePageAttach", "wizard", "maePortal", "provinceOnly"):
+        assert bca_tu_14.get(field) == bca_duoi_14.get(field), field
     # Cấp lại thẻ căn cước: CÙNG trang với cấp đổi (chỉ khác TT=CAP_LAI), cùng khuôn luồng.
     bca_cap_lai = procedures.pop("cap-lai-the-can-cuoc")
     for field in ("flowProfile", "bcaPortal", "bcaAgencyFromDocs", "requiresCapability", "hasAttachmentStep",
@@ -887,7 +898,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an (16/11) "cap-the-can-cuoc-duoi-14-tuoi" (1.012549 / 1.014062).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (16/11) "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc" (1.012575).
     # +1 cổng Bộ Công an (16/11) "cap-lai-the-can-cuoc" (2.001194).
-    assert len(procedures) == 168
+    # +1 cổng Bộ Công an (16/11) "cap-the-can-cuoc-tu-du-14-tuoi" (2.000200 / 1.014061).
+    # +1 cổng Bộ Công an (16/11) "dieu-chinh-thong-tin-ve-cu-tru" (1.010039).
+    assert len(procedures) == 170
 
     for procedure in procedures:
         key = procedure["key"]

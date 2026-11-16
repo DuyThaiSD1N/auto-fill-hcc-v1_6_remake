@@ -122,6 +122,26 @@ def _ethnicity_for_form(value) -> tuple[str, str]:
 # đọc "Đồi" thành "Đài"/"Đổi" (hoặc bỏ mất phần đuôi) → ghi cố định cả cụm thay vì chép đuôi OCR.
 _HOAN_MY_DA_LAT = "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt - Đồi Long Thọ"
 
+# Bệnh viện Sản Nhi Lâm Đồng (57 Thánh Mẫu, Phường Lang Biang - Đà Lạt; trước 7/2025 là "Bệnh viện Nhi Lâm Đồng").
+# Phường Xuân Hương 16/11: giấy có ghi địa chỉ thì chi tiết nơi sinh ghi cố định cả cụm. OCR tờ khai viết tay hay
+# đọc đuôi thành "số 57 phòng Long Biang Đà Lạt" / "số 57 thanh mưu". Chỉ có tên (không địa chỉ) thì giữ tên.
+_SAN_NHI_LAM_DONG = "Bệnh viện Sản Nhi tỉnh Lâm Đồng số 57 Thánh Mẫu"
+
+
+def _is_san_nhi_lam_dong(text) -> bool:
+    low = _fold(text)
+    if not ("benh vien" in low or re.search(r"\bbv\b", low)):
+        return False
+    if re.search(r"\b57\b", low) and re.search(r"\bthanh\s+m", low):
+        return True
+    return bool(re.search(r"\bnhi\b", low)) and ("lam dong" in low or "da lat" in low)
+
+
+def _has_street_address(text) -> bool:
+    """Chuỗi nơi sinh có phần địa chỉ (số nhà / tên đường) sau tên bệnh viện."""
+    low = _fold(text)
+    return bool(re.search(r"\d", low) or re.search(r"\bthanh\s+m", low))
+
 
 def _blank_dots(value) -> str:
     """Bỏ dấu chấm điền chỗ trống của mẫu in ("49..." → "49"); chỉ có chấm → rỗng."""
@@ -132,9 +152,12 @@ def _blank_dots(value) -> str:
 _FACILITY_KEYS = ("benh vien", "trung tam y te", "tram y te", "phong kham", "nha ho sinh")
 
 
-def _norm_birth_place(area):
+def _norm_birth_place(area, tk_area=None):
     """Nơi sinh là cơ sở y tế tuyến tỉnh (vd "Bệnh viện đa khoa TỈNH") mà OCR ghi tắt, thiếu tên
-    tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>"."""
+    tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>".
+
+    `tk_area`: nơi sinh trên tờ khai khi `area` đã được thay bằng giấy chứng sinh (giấy chứng sinh chỉ ghi tên,
+    địa chỉ nằm ở tờ khai)."""
     if not isinstance(area, dict):
         return area
     tinh = area.get("tinh") or area.get("tỉnh")
@@ -143,6 +166,12 @@ def _norm_birth_place(area):
     low = _fold(dia)
     if "hoan my" in low and "da lat" in low:
         return {**area, "diaChi": _HOAN_MY_DA_LAT}
+    if _is_san_nhi_lam_dong(dia):
+        tk_dia = ""
+        if isinstance(tk_area, dict):
+            tk_dia = str(tk_area.get("diaChi") or tk_area.get("dia_chi") or tk_area.get("diachi") or "")
+        if _has_street_address(dia) or (_is_san_nhi_lam_dong(tk_dia) and _has_street_address(tk_dia)):
+            return {**area, "diaChi": _SAN_NHI_LAM_DONG}
     if not (tinh and dia):
         return area
     out = dict(area)
@@ -993,7 +1022,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     ns_raw = _tk_unknown_facility_use_gcs(
         _fix_tk_birth_province(values.get("Tk_NoiSinh"), values.get("Gcs_NoiSinh")), values.get("Gcs_NoiSinh")
     ) or values.get("Gcs_NoiSinh")
-    ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
+    ns_area = _area(_norm_birth_place(ns_raw, values.get("Tk_NoiSinh"))) if ns_raw else None
     birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
     is_lam_dong = "lam dong" in birth_province
 

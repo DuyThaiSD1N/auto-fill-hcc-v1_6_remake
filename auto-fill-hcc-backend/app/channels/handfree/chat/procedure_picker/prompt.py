@@ -440,6 +440,16 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-the-can-cuoc-duoi-14-tuoi": ["làm căn cước cho con", "làm căn cước cho bé", "cấp căn cước cho trẻ em",
                                       "con dưới 14 tuổi làm thẻ căn cước", "làm CCCD cho con lần đầu",
                                       "làm căn cước cho cháu học sinh", "bé chưa có căn cước"],
+    # Phân biệt "dang-ky-thuong-tru" (chuyển đến ở / nhập hộ mới) và "dang-ky-thay-doi-noi-dung-ho-kinh-doanh" (chủ hộ
+    # KINH DOANH): thủ tục này đổi CHỦ HỘ gia đình trong sổ cư trú, không đổi nơi ở (chủ hộ mất, chuyển đi…).
+    "dieu-chinh-thong-tin-ve-cu-tru": ["đổi chủ hộ", "thay đổi chủ hộ", "bố mất muốn đứng tên chủ hộ",
+                                       "chủ hộ qua đời đổi người làm chủ hộ", "điều chỉnh thông tin cư trú",
+                                       "sửa thông tin chủ hộ trong hộ khẩu"],
+    # Phân biệt "cap-the-can-cuoc-duoi-14-tuoi" (trẻ dưới 14) và "cap-doi-the-can-cuoc" (đã có thẻ, đổi thẻ): người từ
+    # đủ 14 tuổi CHƯA từng có thẻ căn cước (làm lần đầu, hoặc chỉ có CMND cũ) → thủ tục này.
+    "cap-the-can-cuoc-tu-du-14-tuoi": ["con vừa đủ 14 tuổi làm căn cước lần đầu", "làm căn cước lần đầu",
+                                       "15 tuổi chưa có căn cước", "chưa có thẻ căn cước bao giờ",
+                                       "làm căn cước từ chứng minh nhân dân 9 số", "cấp mới thẻ căn cước"],
     # Phân biệt thủ tục phương tiện THỦY / xe tập lái / phù hiệu xe / lưu hành phương tiện Lào (cổng Bộ Xây dựng) và
     # đăng ký lại khi mua xe cũ: thủ tục này chỉ cho xe máy / ô tô MỚI mua, sản xuất lắp ráp trong nước, đăng ký lần đầu.
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": ["đăng ký xe máy mới mua", "làm biển số xe mới",

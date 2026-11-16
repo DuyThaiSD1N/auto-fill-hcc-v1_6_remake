@@ -64,11 +64,14 @@ from app.pipelines.thong_bao_luu_tru.process import run as thong_bao_luu_tru_pro
 from app.pipelines.cap_doi_the_can_cuoc.process import run as cap_doi_the_can_cuoc_process
 from app.pipelines.cap_lai_the_can_cuoc.process import run as cap_lai_the_can_cuoc_process
 from app.pipelines.cap_the_can_cuoc_duoi_14_tuoi.process import run as cap_the_can_cuoc_duoi_14_tuoi_process
+from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process import run as cap_the_can_cuoc_tu_du_14_tuoi_process
 from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import (
     run as dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
 )
 from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
+from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process import run as dieu_chinh_thong_tin_ve_cu_tru_process
+from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.attach import plan as dieu_chinh_thong_tin_ve_cu_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -10572,6 +10575,32 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Cổng DVC Bộ Công an: CÙNG trang dang-ky-thuong-tru.html với "dang-ky-thuong-tru" (cùng bộ id ô), chỉ khác
+        # TT=THUONGTRU_08 trên URL → entry này PHẢI đứng TRƯỚC "dang-ky-thuong-tru": popup lấy rule urlIncludes khớp
+        # đầu tiên, rule "dang-ky-thuong-tru.html" của thủ tục kia khớp cả trang này. Link kê khai + mã 1.010039 ở
+        # ke_khai_links.json. Trường hợp duy nhất "Thay đổi chủ hộ"; bảng giấy tờ 3 dòng hiện sẵn (không chọn nhóm).
+        "key": "dieu-chinh-thong-tin-ve-cu-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_08"],
+            "headingDisabled": True,
+        },
+        "label": "Điều chỉnh thông tin về cư trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người được cử làm chủ hộ mới, chủ hộ "
+            "hiện tại, nội dung đề nghị, thành viên cùng thay đổi.\n"
+            "2. Văn bản thống nhất / ý kiến đồng ý của các thành viên hộ gia đình về việc thay đổi chủ hộ.\n"
+            "3. Giấy tờ chứng minh việc điều chỉnh (trích lục khai tử của chủ hộ cũ…).\n"
+            "4. CCCD của người đề nghị (nếu có)."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name) — bộ id KHÁC trang đăng ký tạm trú dù cùng cổng. Link kê
         # khai + mã 1.004222 ở ke_khai_links.json. Cơ quan thực hiện (Tỉnh → Xã) chọn đầu tiên: cổng mới nạp Thủ tục,
         # Trường hợp và nhóm giấy tờ đính kèm.
@@ -10690,6 +10719,31 @@ PROCEDURES: list[dict] = [
             "4. Thẻ căn cước của cha/mẹ/người đại diện hợp pháp kê khai thay.\n"
             "Sau khi điền phải tự bấm 'Kiểm tra thông tin trong CSDL Quốc Gia về Dân cư'. Tự tích ô cam đoan và chọn "
             "lịch thu nhận sinh trắc học trước khi nộp."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an, cùng bộ ô với cấp căn cước dưới 14 tuổi + radio "Đối tượng kê khai" (radIsNCC, extension
+        # chọn theo tài khoản đăng nhập) + ô "Lý do cấp". Một trang cho cả hai mã 2.000200 (cấp tỉnh) / 1.014061 (cấp
+        # xã) — radio "Cơ quan thực hiện" chọn theo cơ quan tiếp nhận trên giấy. Link kê khai ở ke_khai_links.json.
+        # Không có mục đính kèm (giấy tờ thu nhận trực tiếp khi lấy sinh trắc học).
+        "key": "cap-the-can-cuoc-tu-du-14-tuoi",
+        "detect": {
+            "urlScope": ["://dichvucong.dancuquocgia.gov.vn"],
+            "urlIncludes": ["dvc-CCCD-tren-14-tuoi.html"],
+            "headingDisabled": True,
+        },
+        "label": "Cấp thẻ căn cước cho người từ đủ 14 tuổi trở lên",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu thu nhận thông tin căn cước (Mẫu CC01) — nhân thân, cha mẹ, loại cấp, đơn vị lập.\n"
+            "2. Phiếu thu thập thông tin dân cư (Mẫu DC01) (nếu có).\n"
+            "3. Giấy khai sinh của người cần cấp.\n"
+            "Cha/mẹ/người đại diện đăng nhập kê khai thay: sau khi điền phải tự bấm 'Kiểm tra thông tin trong CSDL Quốc "
+            "Gia về Dân cư'. Tự tích ô cam đoan và chọn lịch thu nhận sinh trắc học trước khi nộp."
         ),
     },
     {
@@ -10898,8 +10952,10 @@ _PIPELINE = {
     "cap-doi-the-can-cuoc": cap_doi_the_can_cuoc_process,
     "cap-lai-the-can-cuoc": cap_lai_the_can_cuoc_process,
     "cap-the-can-cuoc-duoi-14-tuoi": cap_the_can_cuoc_duoi_14_tuoi_process,
+    "cap-the-can-cuoc-tu-du-14-tuoi": cap_the_can_cuoc_tu_du_14_tuoi_process,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
+    "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
@@ -11356,6 +11412,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
     "dang-ky-tam-tru": dang_ky_tam_tru_attach,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_attach,
+    "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,

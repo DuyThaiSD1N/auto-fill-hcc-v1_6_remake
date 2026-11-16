@@ -411,7 +411,29 @@ def test_to_khai_ocr_sai_ten_benh_vien_lay_noi_sinh_theo_giay_chung_sinh():
         "tinh": "Tỉnh Lâm Đồng", "xa": "", "diaChi": "Bệnh viện Sắt nhị Tỉnh Lâm Đồng, số 57 thanh mưu"},
         "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "BỆNH VIỆN SẢN NHI LÂM ĐỒNG"}})
     assert out["NsDiaChi"]["xa"] == "Phường Lang Biang - Đà Lạt"
+    # Tờ khai có ghi địa chỉ (dù OCR sai) → chi tiết ghi đủ "… số 57 Thánh Mẫu".
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản Nhi tỉnh Lâm Đồng số 57 Thánh Mẫu"
+
+
+def test_san_nhi_lam_dong_co_dia_chi_ghi_co_dinh_57_thanh_mau():
+    # Phường Xuân Hương 16/11: OCR đọc đuôi thành "Số 57 phòng Long Biang Đà Lạt".
+    for dia in (
+        "Bệnh Viện Sản nhi tỉnh Lâm Đồng Số 57 phòng Long Biang Đà Lạt",
+        "Bệnh viện Sản Nhi Lâm Đồng, số 57 Thánh Mẫu",
+        "BỆNH VIỆN SẢN NHI LÂM ĐỒNG - 57 THÁNH MẪU, P. LANG BIANG",
+        "Bệnh viện Nhi Lâm Đồng 57 Thánh Mẫu",
+    ):
+        out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {"tinh": "Tỉnh Lâm Đồng", "xa": "", "diaChi": dia}})
+        assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản Nhi tỉnh Lâm Đồng số 57 Thánh Mẫu", dia
+        assert out["NsDiaChi"]["xa"] == "Phường Lang Biang - Đà Lạt", dia
+    # Chỉ có tên, không địa chỉ → giữ tên.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Tỉnh Lâm Đồng", "xa": "", "diaChi": "Bệnh viện Sản Nhi Lâm Đồng"}})
     assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản Nhi Lâm Đồng"
+    # Bệnh viện khác của Lâm Đồng có số nhà → không đụng.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": {
+        "tinh": "Lâm Đồng", "xa": "", "diaChi": "Bệnh viện đa khoa tỉnh Lâm Đồng Số 01 Phạm Ngọc Thạch"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện đa khoa tỉnh Lâm Đồng Số 01 Phạm Ngọc Thạch"
 
 
 def test_to_khai_noi_sinh_khong_phai_co_so_y_te_hoac_khac_tinh_giu_to_khai():
