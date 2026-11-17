@@ -135,6 +135,8 @@ class JobRequest(BaseModel):
     reproduce: bool = True
     applicant: Applicant | None = None
     mode: Literal["portal", "api"] = "portal"
+    # Sửa cho sản phẩm nào: Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend).
+    target: Literal["autofill", "troly"] = "autofill"
 
 
 def _lookup(request_id: str) -> dict:
@@ -193,6 +195,8 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         raise HTTPException(400, "Tệp gốc của req không còn trên đĩa nên không chạy lại được.")
     if not claude_runner.available():
         raise HTTPException(503, "Máy chưa có lệnh claude.")
+    if body.target == "troly" and body.mode == "portal":
+        raise HTTPException(400, "Trợ lý hồ sơ hiện chỉ chạy được ở chế độ Chỉ gọi backend: bot chưa tự lái được luồng trợ lý trên cổng.")
     if body.mode == "portal":
         problem = browser.preflight()
         if problem:
@@ -231,6 +235,7 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         settings={
             "runs": body.runs, "maxRounds": body.maxRounds, "reproduce": body.reproduce,
             "replayAccount": credentials["username"], "replayShadow": not username, "applicant": applicant, "mode": body.mode,
+            "target": body.target,
         },
         preview=preview,
         warnings=warnings,

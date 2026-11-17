@@ -1,5 +1,5 @@
 # Backend THỬ của khu làm việc trên máy local (cổng 127.0.0.1:12025). Dịch vụ agent tự build service này, kèm biến:
-#   AUTOTEST_BE_DIR    backend trong khu làm việc (auto-test-hcc/.workspace/auto-fill-hcc-backend, đặt đúng tag release)
+#   AUTOTEST_BE_DIR    backend trong khu làm việc (~/.autotest-hcc/workspace/auto-fill-hcc-backend, đặt đúng tag release)
 #   AUTOTEST_MAIN_ENV  .env của backend local (OCR, LLM, Mongo) — không chép sang khu làm việc
 #   AUTOTEST_DATA_DIR  thư mục upload riêng của backend thử (auto-test-hcc/runs/_backend_data)
 #

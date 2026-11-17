@@ -904,3 +904,48 @@ def test_khong_co_luong_chan_khi_doc_trong_luc_chay(world):
     stop.set()
     thread.join()
     assert job.data["outcome"] == "fixed"
+
+
+def troly_job(world, monkeypatch, handfree_runs):
+    """Ca trợ lý hồ sơ: bản sửa đụng app/channels/handfree/."""
+    (world.be / "app/channels/handfree").mkdir(parents=True, exist_ok=True)
+    (world.be / "app/channels/handfree/x.py").write_text("y = 1\n", encoding="utf-8")
+    world.fix_edits = [lambda: world.edit("y = 2\n", "app/channels/handfree/x.py")]
+    monkeypatch.setattr(verify, "handfree_baseline", lambda cancel: {"bad": ["FAILED cu"], "failed": 1, "passed": 9, "skipped": 0, "errors": 0})
+
+    def handfree_tests(cancel):
+        world.calls.append("handfree-tests")
+        return handfree_runs.pop(0)
+
+    monkeypatch.setattr(verify, "handfree_tests", handfree_tests)
+    job, orch = start()
+    with job.lock:
+        job.data["settings"]["target"] = "troly"
+    return job, orch
+
+
+def test_ca_tro_ly_sua_phan_handfree_thi_chay_test_handfree(world, monkeypatch):
+    ok = {"bad": ["FAILED cu"], "failed": 1, "passed": 10, "skipped": 0, "errors": 0}
+    job, orch = troly_job(world, monkeypatch, [ok])
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    assert "handfree-tests" in world.calls
+    assert job.data["rounds"][0]["tests"]["handfree"]["ok"] is True
+
+
+def test_ca_tro_ly_test_handfree_moi_do_thi_tra_lai_agent(world, monkeypatch):
+    bad = {"bad": ["FAILED cu", "FAILED moi"], "failed": 2, "passed": 9, "skipped": 0, "errors": 0}
+    ok = {"bad": ["FAILED cu"], "failed": 1, "passed": 10, "skipped": 0, "errors": 0}
+    world.fix_edits = None  # đặt trong troly_job
+    job, orch = troly_job(world, monkeypatch, [bad, ok])
+    world.fix_edits.append(lambda: world.edit("y = 3\n", "app/channels/handfree/x.py"))
+    orch.run()
+    assert world.calls.count("handfree-tests") == 2 and "fixer-resume" in world.calls
+    assert job.data["outcome"] == "fixed", job.data["error"]
+
+
+def test_ca_auto_fill_khong_chay_test_handfree(world, monkeypatch):
+    monkeypatch.setattr(verify, "handfree_baseline", lambda cancel: (_ for _ in ()).throw(AssertionError("không được đo")))
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed" and "handfree-tests" not in world.calls

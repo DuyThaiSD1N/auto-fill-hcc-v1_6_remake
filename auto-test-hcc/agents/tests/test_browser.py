@@ -255,3 +255,92 @@ def test_form_gaps_tach_khong_thay_o_va_o_trong():
 def test_bang_cho_agent_co_ca_form_lan_be():
     table = scoring.field_table([], [portal_run({"a": "1"}, {"a": ""})])
     assert table[0]["runs"] == [""] and table[0]["beRuns"] == ["1"]
+
+
+DIALOG = """
+<div id="trang"><button id="tieptuc" onclick="window.__clicked='trang'">Tiếp tục</button></div>
+<div role="dialog" class="modal show" style="display:block">
+  <button onclick="window.__clicked='nop'">Xác nhận nộp hồ sơ</button>
+  <button onclick="window.__clicked='luu'">Lưu và tiếp tục</button>
+  <button onclick="window.__clicked='huy'">Không đồng ý</button>
+  <button onclick="window.__clicked='xacnhan'">Xác nhận</button>
+</div>
+"""
+
+
+def test_tu_bam_xac_nhan_trong_hop_thoai_khong_bao_gio_bam_nop(chromium):
+    tab = chromium.new_page()
+    tab.set_content(DIALOG)
+    found = tab.evaluate(browser.ADVANCE_JS, {"allowPage": False, "click": None})
+    assert found == {"label": "Xác nhận", "inDialog": True, "clicked": False}
+    assert tab.evaluate("() => window.__clicked") is None  # chỉ dò, chưa bấm
+    tab.evaluate(browser.ADVANCE_JS, {"allowPage": False, "click": "Xác nhận"})
+    assert tab.evaluate("() => window.__clicked") == "xacnhan"
+    tab.close()
+
+
+def test_nut_ngoai_trang_chi_bam_khi_duoc_phep(chromium):
+    tab = chromium.new_page()
+    tab.set_content('<button onclick="window.__clicked=1">Tiếp tục</button><button onclick="window.__clicked=2">Nộp hồ sơ</button>')
+    assert tab.evaluate(browser.ADVANCE_JS, {"allowPage": False, "click": None}) is None
+    assert tab.evaluate(browser.ADVANCE_JS, {"allowPage": True, "click": None})["label"] == "Tiếp tục"
+    tab.close()
+
+
+def test_nhan_biet_trang_trang(chromium):
+    tab = chromium.new_page()
+    tab.set_content("<html><body></body></html>")
+    assert tab.evaluate(browser.BLANK_JS) is True
+    tab.set_content("<body><iframe></iframe></body>")
+    assert tab.evaluate(browser.BLANK_JS) is False  # form nằm trong iframe không phải trang trắng
+    tab.set_content("<body><h1>Cổng dịch vụ công quốc gia</h1><p>Đang tải tờ khai, vui lòng chờ trong giây lát…</p></body>")
+    assert tab.evaluate(browser.BLANK_JS) is False
+    tab.close()
+
+
+class _Frame:
+    def __init__(self, label):
+        self.label = label
+        self.clicks = 0
+
+    def evaluate(self, js, arg):
+        if not self.label:
+            return None
+        if arg["click"] == self.label:
+            self.clicks += 1
+        return {"label": self.label, "inDialog": True, "clicked": arg["click"] == self.label}
+
+
+def _bot(frames):
+    bot = browser.PortalBot({}, __import__("threading").Event(), lambda text: None)
+    bot.page = type("P", (), {"frames": frames})()
+    return bot
+
+
+def test_chi_bam_khi_nut_dung_yen_du_lau(monkeypatch):
+    """Extension tự xác nhận hộp thoại chọn cơ quan trong 1–2 giây: bot chỉ bấm khi nút đứng yên đủ lâu."""
+    clock = {"t": 100.0}
+    monkeypatch.setattr(browser.time, "monotonic", lambda: clock["t"])
+    frame = _Frame("Xác nhận")
+    bot = _bot([frame])
+    assert bot.auto_advance() is None and frame.clicks == 0
+    clock["t"] += 2
+    assert bot.auto_advance() is None and frame.clicks == 0
+    clock["t"] += 2.5
+    assert bot.auto_advance() == "Xác nhận" and frame.clicks == 1
+    clock["t"] += 1
+    assert bot.auto_advance() is None and frame.clicks == 1  # không bấm dồn
+
+
+def test_trang_trang_qua_8_giay_thi_tai_lai_toi_da_3_lan(monkeypatch):
+    clock = {"t": 0.0}
+    monkeypatch.setattr(browser.time, "monotonic", lambda: clock["t"])
+    reloads = []
+    bot = _bot([])
+    bot.page = type("P", (), {"reload": lambda self, **k: reloads.append(k)})()
+    since = None
+    for _ in range(60):  # 60 giây trắng liên tục
+        since = bot._reload_if_stuck(since, True, "Trang trắng")
+        clock["t"] += 1
+    assert len(reloads) == 3
+    assert bot._reload_if_stuck(None, False, "Trang trắng") is None  # hết trắng thì thôi đếm

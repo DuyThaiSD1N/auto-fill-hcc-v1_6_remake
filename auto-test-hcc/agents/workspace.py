@@ -1,6 +1,6 @@
 """Khu làm việc của agent: mỗi ca một cây code sạch, đặt đúng tag release đang chạy production.
 
-- 3 repo thật (backend, extension Auto Fill, extension trợ lý) được clone riêng vào ``auto-test-hcc/.workspace/`` (gitignore),
+- 3 repo thật (backend, extension Auto Fill, extension trợ lý) được clone riêng vào ``~/.autotest-hcc/workspace/`` (ngoài mọi repo git),
   không dùng thư mục làm việc hay các bản clone của người phát triển.
 - Đầu mỗi ca: lưu phần ca trước còn để lại (bản sửa đạt / Cần người xem) vào thư mục ca đó, rồi dọn sạch và đặt cả 3 repo
   về tag release mới nhất (hoặc ref ép trong cấu hình). Đường dẫn khu làm việc cố định: id extension unpacked của bot và
@@ -45,6 +45,19 @@ def owner() -> str | None:
         return _OWNER.read_text(encoding="utf-8").strip() or None
     except OSError:
         return None
+
+
+def enclosing_repo(path: Path) -> str | None:
+    """Repo git chứa thư mục khu làm việc (khu làm việc tự nó không phải repo, chỉ chứa 3 repo con). None = không có."""
+    probe = path
+    while not probe.exists():
+        probe = probe.parent
+    proc = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=probe, capture_output=True, timeout=30)
+    if proc.returncode != 0:
+        return None
+    top = Path(proc.stdout.decode("utf-8", "replace").strip()).resolve()
+    # cwd đang ở trong một repo con của khu làm việc thì gốc là repo con đó, không tính.
+    return None if top.parent == path.resolve() else str(top)
 
 
 def component_of(rel: str) -> str | None:
@@ -131,6 +144,12 @@ def prepare(job_id: str, log: Callable[[str], None]) -> dict:
     """Đặt cả 3 repo về tag release mới nhất, dọn sạch. Trả {thư mục: {ref, commit, url, base}}."""
     if not USE_WORKSPACE:
         return {}
+    outer = enclosing_repo(WORKSPACE)
+    if outer:
+        raise WorkspaceError(
+            f"Khu làm việc {WORKSPACE} nằm trong repo git {outer}: agent sẽ lấy repo đó làm gốc và đọc nhầm code. "
+            "Đặt AUTOTEST_WORKSPACE_DIR ra ngoài mọi repo (mặc định ~/.autotest-hcc/workspace)."
+        )
     save_leftover(log)
     info = {}
     for component in COMPONENTS:

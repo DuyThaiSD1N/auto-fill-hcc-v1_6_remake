@@ -334,6 +334,10 @@ class Orchestrator:
         self.job.log(f"Thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, {len(self.case['fields'])} field ở lượt gốc.")
 
     @property
+    def for_troly(self) -> bool:
+        return self.settings.get("target") == "troly"
+
+    @property
     def on_portal(self) -> bool:
         return self.settings.get("mode") == "portal"
 
@@ -381,7 +385,17 @@ class Orchestrator:
             runs = replay.replay(self.case, self.settings["runs"], phase, self.job.dir, self.credentials, self.job.cancel, on_run)
         if self.job.cancel.is_set():
             raise Stopped()
+        self._share_replay(phase)
         return runs
+
+    def _share_replay(self, phase: str) -> None:
+        """OCR + ảnh chụp từng lần chạy lại ghi ở thư mục ca (repo người phát triển, agent bị chặn đọc): chép sang cạnh chứng cứ
+        trong khu làm việc, đúng chỗ prompt chỉ ({chứng cứ}/../replay/<lượt>/)."""
+        source = self.job.dir / "replay" / phase
+        target = self.case_dir.parent / "replay" / phase
+        if not source.is_dir() or source.resolve() == target.resolve():
+            return
+        shutil.copytree(source, target, dirs_exist_ok=True)
 
     def _reproduce(self) -> None:
         table = scoring.field_table(self.case["fields"], [])
@@ -587,6 +601,9 @@ class Orchestrator:
         if self.on_portal:
             before["extension"] = verify.extension_baseline(job.cancel)
         before["regression"] = verify.regression_baseline(job.cancel)
+        if self.for_troly:
+            job.log("Ca trợ lý hồ sơ: đo baseline bộ test tests/handfree…")
+            before["handfree"] = verify.handfree_baseline(job.cancel)
         self.guard.take()
         brief = roles.case_brief(job.data, self.case, self.attempts)
         self.touched = []
@@ -749,7 +766,29 @@ class Orchestrator:
             return f"Bộ test sập, không có số để so:\n{compared['tail']}"
         if not compared["ok"]:
             return "Có test mới đỏ so với trước khi sửa:\n" + "\n".join(compared["new"])
+        problem = self._check_handfree(round_, baselines.get("handfree"), changes)
+        if problem:
+            return problem
         return self._check_regression(round_, baselines.get("regression") or {})
+
+    def _check_handfree(self, round_: dict, before: dict | None, changes: list[codeguard.Change]) -> str | None:
+        """Ca trợ lý hồ sơ mà bản sửa đụng phần trợ lý (kênh handfree, handfree/ của pipeline): bộ tests/handfree không được
+        có test mới đỏ. Bộ này lỗi collect sẵn trên máy local, nên so trước/sau chứ không đòi xanh hết."""
+        if not before or not codeguard.touches_handfree(changes):
+            return None
+        if before.get("broken"):
+            self._warn("Bộ tests/handfree không chạy được từ trước khi sửa (máy thiếu thư viện?), bỏ qua bước so test trợ lý.")
+            return None
+        self.job.log("Chạy bộ tests/handfree để so với trước khi sửa…")
+        compared = verify.compare(before, verify.handfree_tests(self.job.cancel))
+        with self.job.lock:
+            round_["tests"]["handfree"] = compared
+        self.job.save()
+        if compared["broken"]:
+            return f"Bộ tests/handfree sập, không có số để so:\n{compared['tail']}"
+        if not compared["ok"]:
+            return "Có test trợ lý (tests/handfree) mới đỏ so với trước khi sửa:\n" + "\n".join(compared["new"])
+        return None
 
     def _check_regression(self, round_: dict, before: dict) -> str | None:
         """Bộ ca hồi quy của các ca đã sửa trước đây: ca đang đạt mà bản sửa này làm trượt thì không được qua."""

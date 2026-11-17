@@ -3,7 +3,7 @@ import { ApiError } from "../../api";
 import Icon from "../../components/Icon";
 import { Spinner } from "../../components/Status";
 import { formatDateTime } from "../../format";
-import { agentApi, errorText, serviceDown, type JobSummary, type RequestInfo, type RunMode } from "./api";
+import { agentApi, errorText, serviceDown, type FixTarget, type JobSummary, type RequestInfo, type RunMode } from "./api";
 import JobDetail, { OutcomeTag, StatusTag } from "./JobDetail";
 
 const LIST_POLL_MS = 4000;
@@ -30,6 +30,7 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
   const [maxRounds, setMaxRounds] = useState(3);
   const [reproduce, setReproduce] = useState(true);
   const [mode, setMode] = useState<RunMode>("portal");
+  const [target, setTarget] = useState<FixTarget>("autofill");
   const [applicantName, setApplicantName] = useState("");
   const [applicantId, setApplicantId] = useState("");
   const [sending, setSending] = useState(false);
@@ -46,6 +47,10 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
     try {
       const found = await agentApi.lookup(id);
       setInfo(found);
+      // Lượt điền bằng trợ lý thì mặc định sửa cho trợ lý; trợ lý hiện chỉ chạy được ở chế độ Chỉ gọi backend.
+      const troly = found.experience === "handfree";
+      setTarget(troly ? "troly" : "autofill");
+      if (troly) setMode("api");
     } catch (reason) {
       setLookupError(errorText(reason));
     } finally {
@@ -69,6 +74,7 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
         reproduce,
         applicant: { applicantFullname: applicantName, applicantIdentityNumber: applicantId, applicantBirthday: "" },
         mode,
+        target,
       });
       onCreated(job.id);
     } catch (reason) {
@@ -123,9 +129,20 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
         />
       </label>
       <fieldset className="at-modes">
+        <legend>Sửa cho</legend>
+        <label className={target === "autofill" ? "is-on" : undefined}>
+          <input type="radio" name="target" checked={target === "autofill"} onChange={() => setTarget("autofill")} />
+          <span><b>Auto Fill</b><small>Lỗi khi điền bằng extension Auto Fill. Hội đồng sửa backend hoặc extension Auto Fill.</small></span>
+        </label>
+        <label className={target === "troly" ? "is-on" : undefined}>
+          <input type="radio" name="target" checked={target === "troly"} onChange={() => { setTarget("troly"); setMode("api"); }} />
+          <span><b>Trợ lý hồ sơ</b><small>Lỗi khi điền bằng trợ lý. Hội đồng sửa backend (gồm kênh trợ lý), bản sửa đụng phần trợ lý thì chạy thêm bộ test tests/handfree. Hiện chỉ chạy ở chế độ Chỉ gọi backend.</small></span>
+        </label>
+      </fieldset>
+      <fieldset className="at-modes">
         <legend>Chạy kiểm thử ở đâu</legend>
         <label className={mode === "portal" ? "is-on" : undefined}>
-          <input type="radio" name="mode" checked={mode === "portal"} onChange={() => setMode("portal")} />
+          <input type="radio" name="mode" checked={mode === "portal"} disabled={target === "troly"} onChange={() => setMode("portal")} />
           <span><b>Trên cổng thật</b><small>Bot mở trang chủ Cổng DVC quốc gia trên máy chạy dịch vụ, bạn chỉ cần đăng nhập VNeID. Bot tự vào thủ tục, điền bằng extension, đọc lại form rồi tải lại trang để điền lần sau. Bot không nộp hồ sơ.</small></span>
         </label>
         <label className={mode === "api" ? "is-on" : undefined}>

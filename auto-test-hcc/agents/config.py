@@ -33,7 +33,9 @@ if os.environ.get("AUTOTEST_NO_ENV_FILE") != "1":
 # (deploy/compose.local.yml, 12025). Server (cách B) giữ kiểu cũ: REPO là bản clone trên server.
 _ON_PROD_HOST = bool(os.environ.get("AUTOTEST_SOURCE_MONGO_URI")) and not os.environ.get("AUTOTEST_SOURCE_SSH")
 USE_WORKSPACE = os.environ.get("AUTOTEST_WORKSPACE", "0" if _ON_PROD_HOST else "1") == "1"
-WORKSPACE = Path(os.environ.get("AUTOTEST_WORKSPACE_DIR", str(ROOT / ".workspace"))).resolve()
+# Phải nằm NGOÀI mọi repo git: đặt trong repo của người phát triển thì Claude lấy gốc repo đó làm gốc dự án, agent đọc
+# chứng cứ / code theo đường dẫn của repo người phát triển (bị chặn, và là code khác production) — lỗi gặp ngày 17/11/2026.
+WORKSPACE = Path(os.environ.get("AUTOTEST_WORKSPACE_DIR", str(Path.home() / ".autotest-hcc" / "workspace"))).resolve()
 REPO = WORKSPACE if USE_WORKSPACE else MAIN
 BE = REPO / "auto-fill-hcc-backend"
 # Backend local của người phát triển: chỉ đọc .env (Mongo, OCR, LLM) để backend thử dùng chung cấu hình.

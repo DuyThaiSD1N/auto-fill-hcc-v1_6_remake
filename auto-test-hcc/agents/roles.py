@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from config import MODEL_ANALYST, MODEL_ARBITER, MODEL_FIXER
+from config import MODEL_ANALYST, MODEL_ARBITER, MODEL_FIXER, REPO, USE_WORKSPACE
 from scoring import OPS
 
 CAUSES = ["ocr", "mapper", "llm", "catalog", "extension", "input", "not_a_bug", "unknown"]
@@ -177,8 +177,20 @@ def _json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
+_TROLY_NOTE = [
+    "",
+    "## Ca này sửa cho TRỢ LÝ HỒ SƠ (không phải Auto Fill)",
+    "Lượt điền đi qua kênh trợ lý (handfree) của cùng backend: code riêng ở auto-fill-hcc-backend/app/channels/handfree/ và "
+    "auto-fill-hcc-backend/app/pipelines/<pipeline>/handfree/ (field_review, bxdFlow), dùng chung pipeline lõi (OCR → LLM → mapper). "
+    "Extension trợ lý là tro-ly-nguoi-dan-extension-main/ (chỉ đọc để đối chiếu, ca này không sửa extension). Test riêng của trợ lý "
+    "ở auto-fill-hcc-backend/tests/handfree/; sửa phần handfree thì thêm test vào đó.",
+    "",
+]
+
+
 def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
-    root = case["caseDir"]
+    # Đường dẫn tuyệt đối: agent không phải đoán gốc nào (ngày 17/11 nó ghép nhầm với repo của người phát triển).
+    root = (REPO / case["caseDir"]).as_posix()
     account = case.get("account") or {}
     pipeline = case.get("pipeline")
     where = f"auto-fill-hcc-backend/app/pipelines/{pipeline.replace('.', '/')}/" if pipeline else "chưa xác định, tra _PIPELINE trong app/procedures/registry.py"
@@ -190,12 +202,17 @@ def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
         f"- Tài khoản: {account.get('username')} · {account.get('xa') or '?'} · {account.get('tinh') or '?'}",
         f"- Pipeline: {where}",
         "",
+        *(_TROLY_NOTE if (job.get("settings") or {}).get("target") == "troly" else []),
         "## Người dùng báo lỗi",
         "<user_report>",
         job["description"],
         "</user_report>",
         "",
-        "## Hồ sơ chứng cứ (đường dẫn tính từ gốc repo)",
+        "## Thư mục làm việc",
+        f"- Thư mục làm việc (cwd): {REPO.as_posix()}. Đường dẫn tương đối như auto-fill-hcc-backend/... tính từ đây."
+        + (" Code backend và extension ở đây là ĐÚNG bản đang chạy production; không đọc hay sửa repo nào khác." if USE_WORKSPACE else ""),
+        "",
+        "## Hồ sơ chứng cứ (đường dẫn tuyệt đối, dùng Read để đọc)",
         f"- {root}/case.json: thông tin lượt, danh sách tệp, options, lỗi ghi nhận",
         f"- {root}/fields.json: field backend đã trả ở lượt gốc",
         f"- {root}/ocr.txt: text OCR lượt gốc",

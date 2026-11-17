@@ -47,6 +47,61 @@ _EXT_PATH_FILE = ROOT / "runs" / "_extension_path.txt"
 _FILL_TIMEOUT_S = 240
 _FORM_BACK_S = 45
 _ENTER_FORM_S = 150
+# Trang trắng / form không lên quá chừng này giây thì tự tải lại, tối đa _BLANK_RELOADS lần rồi mới nhờ người.
+_BLANK_RELOAD_S = 8
+_BLANK_RELOADS = 3
+# Cùng một nút không bấm lại trong khoảng này: cổng chưa kịp chuyển thì bấm dồn dễ mở trùng bước.
+_ADVANCE_GAP_S = 5
+# Nút phải đứng yên chừng này giây mới bấm (để extension tự xử lý trước).
+_ADVANCE_SETTLE_S = 4
+
+# Bot tự bấm nút xác nhận / chuyển bước khi đang vào tờ khai, không đợi người. Ưu tiên nút trong hộp thoại; nút ngoài trang
+# chỉ bấm khi được phép (bước Thông tin chủ hồ sơ). KHÔNG BAO GIỜ bấm nút có chữ nộp / gửi / lưu / huỷ…: lớp chặn nộp
+# (GUARD_JS + route) vẫn chặn thêm ở dưới.
+ADVANCE_JS = r"""
+({ allowPage, click }) => {
+  const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[đĐ]/g, "d").toLowerCase().replace(/\s+/g, " ").trim();
+  const OK = ["xac nhan", "dong y", "tiep tuc", "tiep theo", "buoc tiep theo", "buoc tiep", "da hieu", "toi da hieu", "chap nhan"];
+  const NEVER = ["nop", "gui", "luu", "huy", "xoa", "dang xuat", "quay lai", "tro lai", "tu choi", "khong", "thanh toan",
+                 "ky so", "in ", "tai ve", "tai len", "chon tep"];
+  const shown = (el) => {
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"
+      && !el.disabled && el.getAttribute("aria-disabled") !== "true";
+  };
+  const text = (el) => fold(el.innerText || el.value || el.getAttribute("aria-label") || "");
+  const dialogs = [...document.querySelectorAll(
+    '[role="dialog"], [role="alertdialog"], .modal.show, .modal.in, .ant-modal-wrap, .swal2-popup, .mat-dialog-container, .p-dialog'
+  )].filter(shown);
+  const scopes = dialogs.length ? dialogs : (allowPage ? [document] : []);
+  for (const scope of scopes) {
+    const buttons = [...scope.querySelectorAll('button, a.btn, a[role="button"], [role="button"], input[type="button"], input[type="submit"]')]
+      .filter(shown);
+    for (const el of buttons) {
+      const t = text(el);
+      if (!t || t.length > 40 || NEVER.some((w) => t.includes(w))) continue;
+      if (t === "ok" || OK.some((w) => t.startsWith(w))) {
+        const label = (el.innerText || el.value || "").trim().slice(0, 40);
+        if (click && click === label) el.click();
+        return { label, inDialog: scope !== document, clicked: !!click && click === label };
+      }
+    }
+  }
+  return null;
+}
+"""
+
+# Trang trắng: gần như không có chữ, không có ô nhập, không có iframe (form nằm trong iframe thì không tính là trắng).
+BLANK_JS = r"""() => {
+  const body = document.body;
+  if (!body) return true;
+  const text = (body.innerText || "").trim().length;
+  const inputs = document.querySelectorAll("input:not([type=hidden]), select, textarea").length;
+  const frames = document.querySelectorAll("iframe").length;
+  return text < 40 && inputs === 0 && frames === 0;
+}"""
 HUMAN_TIMEOUT_S = 30 * 60
 
 # Chạy ở mọi frame của cổng từ lúc tài liệu bắt đầu tải. Luật riêng của cổng luôn chặn. Chữ chung chỉ chặn SAU khi
@@ -447,6 +502,71 @@ class PortalBot:
         except (Error, RuntimeError):
             return {}  # trang đang chuyển, nhịp sau hỏi lại
 
+    def auto_advance(self, allow_page: bool = False, settle_s: float = _ADVANCE_SETTLE_S) -> str | None:
+        """Tự bấm một nút xác nhận / chuyển bước (xem ADVANCE_JS) ở mọi frame của tab làm việc. Trả chữ trên nút đã bấm.
+
+        Chỉ bấm khi nút đã hiện liên tục ``settle_s`` giây: hộp thoại chọn cơ quan do agency-select.js của extension tự chọn
+        rồi tự xác nhận trong 1–2 giây, bot bấm sớm hơn là xác nhận khi extension chưa chọn xong. Bot là lớp dự phòng."""
+        if self.page is None:
+            return None
+        seen = self.state.setdefault("advanceSeen", {})
+        clicks = self.state.setdefault("advanceAt", {})
+        now = time.monotonic()
+        for frame in self.page.frames:
+            try:
+                found = frame.evaluate(ADVANCE_JS, {"allowPage": allow_page, "click": None})
+            except Error:
+                continue  # frame đang chuyển trang
+            if not found:
+                continue
+            label = found.get("label") or "?"
+            for other in [k for k in seen if k != label]:
+                seen.pop(other)
+            first = seen.setdefault(label, now)
+            if now - first < settle_s or now - clicks.get(label, -1e9) < _ADVANCE_GAP_S:
+                return None
+            try:
+                done = frame.evaluate(ADVANCE_JS, {"allowPage": allow_page, "click": label})
+            except Error:
+                return None
+            if not (done or {}).get("clicked"):
+                return None
+            clicks[label] = now
+            seen.pop(label, None)
+            self.log(f"Bot tự bấm \"{label}\"" + (" trong hộp thoại" if found.get("inDialog") else "") + ".")
+            return label
+        seen.clear()
+        return None
+
+    def is_blank(self) -> bool:
+        if self.page is None:
+            return False
+        try:
+            return bool(self.page.evaluate(BLANK_JS))
+        except Error:
+            return False  # đang chuyển trang: chưa kết luận
+
+    def _reload_if_stuck(self, stuck_since: float | None, stuck: bool, reason: str) -> float | None:
+        """Theo dõi trang trắng / form không lên: quá _BLANK_RELOAD_S giây thì tự tải lại (tối đa _BLANK_RELOADS lần mỗi lượt).
+        Trả mốc bắt đầu kẹt mới (None = không kẹt)."""
+        now = time.monotonic()
+        if not stuck:
+            return None
+        if stuck_since is None:
+            return now
+        if now - stuck_since < _BLANK_RELOAD_S:
+            return stuck_since
+        done = self.state.get("blankReloads", 0)
+        if done >= _BLANK_RELOADS:
+            return stuck_since
+        self.state["blankReloads"] = done + 1
+        self.log(f"{reason} quá {_BLANK_RELOAD_S} giây, bot tự tải lại trang (lần {done + 1}/{_BLANK_RELOADS}).")
+        try:
+            self.page.reload(wait_until="domcontentloaded", timeout=60000)
+        except Error as error:
+            self.log(f"Tải lại trang lỗi: {error.message[:160]}")
+        return None
+
     def confirm_modal(self) -> None:
         """Modal Thông tin chung: agency-select.js tự bấm khi đang chạy luồng vào thủ tục, còn sau khi tải lại trang thì không."""
         tab = self.sw_eval(FIND_TAB_JS, self.page.url)
@@ -483,6 +603,9 @@ class PortalBot:
         """Chờ extension đi hết các bước vào tờ khai, rồi lấy tab đó làm tab làm việc."""
         end = time.monotonic() + timeout_s
         last_confirm = 0.0
+        owner_since: float | None = None
+        blank_since: float | None = None
+        self.state["blankReloads"] = 0
         while time.monotonic() < end:
             self.sleep(1000)
             if self.on_login_page():
@@ -490,12 +613,21 @@ class PortalBot:
             self._follow_busiest_tab()
             flow = self.flow_state()
             if flow.get("ownerInfo"):
-                raise RuntimeError("Cổng dừng ở bước Thông tin chủ hồ sơ.")
+                # Bước Thông tin chủ hồ sơ: bot tự bấm Tiếp tục. Bấm mãi không qua (thiếu dữ liệu bắt buộc) mới nhờ người.
+                owner_since = owner_since or time.monotonic()
+                if not self.auto_advance(allow_page=True, settle_s=2) and time.monotonic() - owner_since > 30:
+                    raise RuntimeError("Cổng dừng ở bước Thông tin chủ hồ sơ, bot bấm Tiếp tục không qua được.")
+                continue
+            owner_since = None
             if flow.get("infoModal"):
                 if time.monotonic() - last_confirm > 6:
                     self.confirm_modal()
+                    if time.monotonic() - last_confirm < 20:  # extension xác nhận không ăn: bot tự bấm nút trong hộp thoại
+                        self.auto_advance()
                     last_confirm = time.monotonic()
                 continue
+            self.auto_advance()  # hộp thoại thông báo / xác nhận bất kỳ trên đường vào tờ khai
+            blank_since = self._reload_if_stuck(blank_since, self.is_blank(), "Trang trắng")
             count = self._form_count(self.page)
             if count >= 3 and (flow.get("formReady") or flow.get("unsupported")):
                 self.sleep(1500)  # để cổng đổ xong dữ liệu theo tài khoản
@@ -647,18 +779,26 @@ class PortalBot:
             self.log(f"Tải lại trang lỗi: {reason.message[:160]}")
             return False
         need = max(1, int(self.state.get("formFields", 1) * 0.5))
-        end = time.monotonic() + _FORM_BACK_S
+        # Mỗi lần tự tải lại vì trang trắng / form không lên được cộng thêm thời gian chờ, kẻo vừa tải lại đã hết giờ.
+        end = time.monotonic() + _FORM_BACK_S + _BLANK_RELOADS * _BLANK_RELOAD_S
+        stuck_since: float | None = None
+        self.state["blankReloads"] = 0
         while time.monotonic() < end:
             if self.on_login_page():
                 return False
             if self.flow_state().get("infoModal"):
                 self.confirm_modal()
                 self.sleep(1500)
+                self.auto_advance()
                 continue
-            if self._form_count(self.page) >= need:
+            self.auto_advance()
+            count = self._form_count(self.page)
+            if count >= need:
                 self.sleep(1500)  # để cổng đổ xong dữ liệu theo tài khoản, kẻo đè lên giá trị vừa điền
                 self.mark_form_reached()
                 return True
+            # Đúng trang tờ khai mà form không lên (trắng, hoặc chưa có ô nào) quá 8 giây: tải lại.
+            stuck_since = self._reload_if_stuck(stuck_since, count == 0 or self.is_blank(), "Form không lên")
             self.sleep(800)
         return False
 

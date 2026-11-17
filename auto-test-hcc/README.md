@@ -7,7 +7,7 @@ mất phần này.
 
 ## Khu làm việc, ca hồi quy, nhánh PR (mặc định trên máy local, từ 17/11/2026)
 
-1. **Khu làm việc** (`agents/workspace.py`, thư mục `.workspace/`, gitignore): mỗi ca, agent sửa trong một cây code sạch, KHÔNG phải thư mục
+1. **Khu làm việc** (`agents/workspace.py`, thư mục `~/.autotest-hcc/workspace/`, đổi bằng `AUTOTEST_WORKSPACE_DIR`): phải nằm NGOÀI mọi repo git, nằm trong repo thì Claude lấy repo đó làm gốc và agent đọc nhầm code / chứng cứ (lỗi 17/11, `workspace.prepare` nay chặn). Mỗi ca, agent sửa trong một cây code sạch, KHÔNG phải thư mục
    làm việc của người phát triển. Ba repo thật được clone riêng (`dev-f19/auto-fill-hcc-backend`, `…/auto-fill-hcc-extension`,
    `…/tro-ly-nguoi-dan-extension`) và đặt về tag release mới nhất, tức bản đang chạy production: `v20*`, `autofill-v*`, `handfree-v*`.
    Ép ref khác bằng `AUTOTEST_BE_REF` / `_EXT_REF` / `_TROLY_REF`.
@@ -23,6 +23,15 @@ mất phần này.
    [regression/README.md](regression/README.md).
 3. **Nhánh PR** (`publish.push_components`): bản sửa đạt → nhánh `agent/<mã ca>` trên đúng repo thật của phần bị sửa, dựng trên tag release,
    kèm link "Mở PR" trên web. Không tạo PR bằng token, không bao giờ push lên main. Tắt bằng `AUTOTEST_WORKSPACE_PUSH=0`.
+4. **Agent chỉ thấy khu làm việc** (`claude_runner`): repo của người phát triển bị chặn cả Read lẫn Edit. Prompt đưa đường dẫn chứng cứ
+   tuyệt đối trong khu làm việc. OCR + ảnh chụp từng lần chạy lại được chép sang `<chứng cứ>/../replay/<lượt>/` (`_share_replay`).
+5. **Bot tự bấm trên cổng** (`browser.auto_advance`, `ADVANCE_JS`): nút xác nhận / chuyển bước ("Xác nhận", "Đồng ý", "Tiếp tục"…),
+   ưu tiên trong hộp thoại, chỉ bấm khi nút đứng yên ≥ 4 giây (để agency-select.js của extension tự chọn cơ quan trước). Bước Thông tin
+   chủ hồ sơ tự bấm Tiếp tục. Không bao giờ bấm nút có chữ nộp / gửi / lưu / huỷ / xoá / quay lại / ký số. Trang trắng hoặc form không
+   lên quá 8 giây thì tự tải lại, tối đa 3 lần, quá nữa mới nhờ người.
+6. **Sửa cho Auto Fill hay Trợ lý hồ sơ** (`settings.target`): Trợ lý hồ sơ (mặc định khi req là lượt trợ lý) báo hội đồng đây là kênh
+   handfree; bản sửa đụng phần trợ lý thì chạy thêm `tests/handfree` và so với trước khi sửa. Trợ lý hiện chỉ chạy ở chế độ Chỉ gọi
+   backend: bot chưa tự lái được luồng chat / wizard của extension trợ lý trên cổng.
 
 Quay về kiểu cũ (sửa thẳng repo người phát triển, build `compose.prod.yml`, 12005): `AUTOTEST_WORKSPACE=0`. Server (cách B) mặc định kiểu cũ.
 

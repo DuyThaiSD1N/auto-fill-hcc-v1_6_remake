@@ -185,7 +185,7 @@ export interface Job {
   description: string;
   createdAt: string;
   createdBy: string;
-  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode };
+  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget };
   human: { message: string; button: string; since: string } | null;
   approval?: PendingApproval | null;
   status: "queued" | "running" | "done" | "failed" | "stopped";
@@ -215,6 +215,9 @@ export interface Job {
 
 export type RunMode = "portal" | "api";
 
+/** Sửa cho Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend). */
+export type FixTarget = "autofill" | "troly";
+
 export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human" | "not_approved";
 
 export interface JobSummary {
@@ -241,6 +244,7 @@ export interface NewJob {
   reproduce: boolean;
   applicant?: { applicantFullname: string; applicantIdentityNumber: string; applicantBirthday: string };
   mode: RunMode;
+  target: FixTarget;
 }
 
 interface Phase {

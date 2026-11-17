@@ -35,21 +35,20 @@ _DENY_READ = [
 ]
 
 
-def _absolute_rules(path: Path, tree: bool) -> list[str]:
-    """Luật Read cho đường dẫn tuyệt đối, ghi cả dạng ổ đĩa Windows (C:/…) lẫn dạng POSIX (/c/…) cho chắc."""
+def _absolute_rules(path: Path, tree: bool, tool: str = "Read") -> list[str]:
+    """Luật cho đường dẫn tuyệt đối, ghi cả dạng ổ đĩa Windows (C:/…) lẫn dạng POSIX (/c/…) cho chắc."""
     posix = path.resolve().as_posix()
     forms = {posix.lstrip("/")}
     if len(posix) > 2 and posix[1] == ":":
         forms.add(f"{posix[0].lower()}{posix[2:]}")
-    return [f"Read(//{form}{'/**' if tree else ''})" for form in sorted(forms)]
+    return [f"{tool}(//{form}{'/**' if tree else ''})" for form in sorted(forms)]
 
 
+# Khu làm việc: agent chỉ được thấy code production trong khu làm việc. Repo của người phát triển (code khác production,
+# .env, data giấy tờ, runs mọi ca) cấm đọc lẫn sửa — ngày 17/11 trọng tài đọc nhầm mapper ở đây rồi kết luận sai.
+_DENY_EDIT_ABS = [*_absolute_rules(MAIN, True, "Edit")] if USE_WORKSPACE else []
 if USE_WORKSPACE:
-    # cwd của agent là khu làm việc: repo của người phát triển nằm ngoài nên các luật tương đối ở trên không phủ tới.
-    for _path, _tree in ((MAIN / "auto-fill-hcc-backend" / ".env", False), (MAIN / "auto-fill-hcc-backend" / "data", True),
-                         (MAIN / "auto-test-hcc" / "runs", True), (MAIN / "auto-test-hcc" / ".profile", True),
-                         (MAIN / "auto-test-hcc" / "server.env", False)):
-        _DENY_READ.extend(_absolute_rules(_path, _tree))
+    _DENY_READ.extend(_absolute_rules(MAIN, True))
 _BE_SCOPE = ["auto-fill-hcc-backend/app/**", "auto-fill-hcc-backend/tests/**"]
 _EXT_SCOPE = ["auto-fill-hcc-extension/**"]
 _TROLY_SCOPE = ["tro-ly-nguoi-dan-extension-main/**"]
@@ -135,7 +134,7 @@ def run_agent(
     tools = [*READ_TOOLS, "Edit"] if can_edit else READ_TOOLS
     paths = [*_BE_SCOPE, *(_EXT_SCOPE if edit_extension else []), *(_TROLY_SCOPE if edit_troly else [])]
     allowed = [*READ_TOOLS, *(f"Edit({path})" for path in paths)] if can_edit else READ_TOOLS
-    denied = [*_DENY_READ, *(f"Edit({path})" for path in _DENY_EDIT)] if can_edit else _DENY_READ
+    denied = [*_DENY_READ, *(f"Edit({path})" for path in _DENY_EDIT), *_DENY_EDIT_ABS] if can_edit else _DENY_READ
     cmd = [
         claude, "-p",
         "--model", model,
