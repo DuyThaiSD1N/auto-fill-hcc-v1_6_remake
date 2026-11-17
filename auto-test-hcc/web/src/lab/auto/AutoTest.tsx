@@ -26,9 +26,6 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
   const [info, setInfo] = useState<RequestInfo | null>(null);
   const [lookupError, setLookupError] = useState("");
   const [looking, setLooking] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [runs, setRuns] = useState(5);
   const [maxRounds, setMaxRounds] = useState(3);
   const [reproduce, setReproduce] = useState(true);
@@ -49,7 +46,6 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
     try {
       const found = await agentApi.lookup(id);
       setInfo(found);
-      setUsername(found.account.username);
     } catch (reason) {
       setLookupError(errorText(reason));
     } finally {
@@ -57,7 +53,7 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
     }
   }, []);
 
-  const ready = !!info && !info.missingFiles.length && description.trim().length >= 5 && !!username.trim() && !!password && !sending;
+  const ready = !!info && !info.missingFiles.length && description.trim().length >= 5 && !sending;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,15 +64,12 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
       const job = await agentApi.create({
         requestId: info.requestId,
         description: description.trim(),
-        replayUsername: username.trim(),
-        replayPassword: password,
         runs,
         maxRounds,
         reproduce,
         applicant: { applicantFullname: applicantName, applicantIdentityNumber: applicantId, applicantBirthday: "" },
         mode,
       });
-      setPassword("");
       onCreated(job.id);
     } catch (reason) {
       setError(errorText(reason));
@@ -141,19 +134,14 @@ function StartForm({ onCreated }: { onCreated: (id: string) => void }) {
         </label>
       </fieldset>
       <div className="at-start__grid at-start__grid--account">
-        <label className="field">
+        <div className="field">
           <span>Tài khoản chạy lại</span>
-          <input className="input" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>Mật khẩu tài khoản này</span>
-          <span className="field__pw">
-            <input className="input" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className="btn btn--icon btn--ghost" type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>
-              <Icon name={showPassword ? "eye-off" : "eye"} size={16} />
-            </button>
-          </span>
-        </label>
+          <p className="faint">
+            {info
+              ? `Tự dùng tài khoản test ${info.account.username}${info.account.xa ? ` · ${info.account.xa}` : ""}${info.account.tinh ? `, ${info.account.tinh}` : ""}, dựng sẵn trên backend thử. Không cần nhập.`
+              : "Tự dùng tài khoản test cùng xã, tỉnh với tài khoản đã điền req, dựng sẵn trên backend thử. Không cần nhập."}
+          </p>
+        </div>
         <label className="field">
           <span>Số lần chạy</span>
           <select className="input" value={runs} onChange={(e) => setRuns(Number(e.target.value))}>

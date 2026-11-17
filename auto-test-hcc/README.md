@@ -102,7 +102,7 @@ nhưng dịch vụ không nạp lên web.
 - Bot không nối Playwright khi đang ở màn SSO, và phải rời ra trong lúc chờ agent: Playwright đồng bộ chỉ xử lý mạng khi đang có
   lệnh gọi, nối mà ngồi chờ thì request của trang bị treo.
 - `togglePanel` là công tắc: panel thu nhỏ thành `#autofill-hcc-bubble` thì phải bấm bong bóng, toggle là đóng mất.
-- Không tự ký token bằng secret của backend. Chạy lại dùng `/auth/login` với mật khẩu người dùng nhập, chỉ giữ trong RAM.
+- Không tự ký token bằng secret của backend. Chạy lại dùng `/auth/login` thật: dịch vụ dựng tài khoản test trên Mongo của backend thử bằng `scripts.seed_user` (cùng username, xã, tỉnh với tài khoản đã điền req, cờ `autotest_shadow`, mật khẩu ngẫu nhiên chỉ giữ trong RAM). Chỉ ghi đè tài khoản có cờ đó; trùng tài khoản test của người khác thì dùng `autotest-<username>`.
 - Agent con chạy với `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`: cwd là repo nên nó dùng chung thư mục memory `~/.claude/projects/<repo>/memory`
   với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó là "sửa ngoài phạm vi" và job dừng (job 1.115590 ngày 2026-11-09).
 

@@ -127,8 +127,9 @@ class Applicant(BaseModel):
 class JobRequest(BaseModel):
     requestId: str
     description: str = Field(min_length=5, max_length=4000)
-    replayUsername: str = Field(min_length=1, max_length=200)
-    replayPassword: str = Field(min_length=1, max_length=200)
+    # Để trống: dùng tài khoản đã điền req, dịch vụ tự tạo bản chạy lại trên Mongo của backend thử (replay.shadow_account).
+    replayUsername: str = Field("", max_length=200)
+    replayPassword: str = Field("", max_length=200)
     runs: int = Field(DEFAULT_RUNS, ge=1, le=MAX_RUNS)
     maxRounds: int = Field(DEFAULT_ROUNDS, ge=1, le=MAX_ROUNDS)
     reproduce: bool = True
@@ -196,12 +197,26 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         problem = browser.preflight()
         if problem:
             raise HTTPException(400, problem)
-    # Đăng nhập thử ngay: sai mật khẩu thì báo liền, đừng để chạy được nửa đường mới hỏng.
+    # Tài khoản chạy lại luôn do dịch vụ dựng sẵn (cùng xã / tỉnh với tài khoản đã điền req), web không hỏi. API vẫn nhận
+    # cặp tài khoản + mật khẩu nếu được gửi kèm, cho script cũ.
+    username = body.replayUsername.strip()
+    if username and not body.replayPassword:
+        raise HTTPException(400, "Gửi tài khoản chạy lại thì phải kèm mật khẩu, hoặc bỏ cả hai để dịch vụ tự dựng tài khoản test.")
     try:
-        account = replay.login(body.replayUsername, body.replayPassword)["user"]
+        credentials = (
+            {"username": username, "password": body.replayPassword} if username
+            else replay.shadow_account(preview["account"])
+        )
+        # Đăng nhập thử ngay: hỏng thì báo liền, đừng để chạy được nửa đường mới hỏng.
+        account = replay.login(credentials["username"], credentials["password"])["user"]
     except replay.LoginError as reason:
         raise HTTPException(400, str(reason)) from reason
     warnings = []
+    if credentials.get("renamed"):
+        warnings.append(
+            f"Mongo local đã có tài khoản {preview['account'].get('username')} của người khác nên chạy lại bằng "
+            f"{credentials['username']} (cùng xã, tỉnh). Tuỳ chỉnh riêng theo tên tài khoản, nếu có, có thể ra khác lượt gốc."
+        )
     source = preview["account"]
     if (account.get("xa"), account.get("tinh")) != (source.get("xa"), source.get("tinh")):
         warnings.append(
@@ -215,14 +230,14 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         created_by=user.get("username", ""),
         settings={
             "runs": body.runs, "maxRounds": body.maxRounds, "reproduce": body.reproduce,
-            "replayAccount": body.replayUsername, "applicant": applicant, "mode": body.mode,
+            "replayAccount": credentials["username"], "replayShadow": not username, "applicant": applicant, "mode": body.mode,
         },
         preview=preview,
         warnings=warnings,
     )
     job_id = job.data["id"]
     service.jobs[job_id] = job
-    service.secrets[job_id] = {"username": body.replayUsername, "password": body.replayPassword}
+    service.secrets[job_id] = {"username": credentials["username"], "password": credentials["password"]}
     service.tasks.put(("run", job_id))
     return job.view()
 

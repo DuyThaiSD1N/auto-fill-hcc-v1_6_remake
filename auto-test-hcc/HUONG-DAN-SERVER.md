@@ -46,8 +46,8 @@ AUTOTEST_SOURCE_DB=autofill_hcc
 AUTOTEST_GIT_REMOTE=https://github.com/dev-f19/test-auto-test-and-fix.git
 ```
 
-Mọi thứ khác như máy local: backend thử là Docker local 12025 (khu làm việc, tag release đang chạy production), đăng nhập web 12008 bằng super_admin **local**, chạy lại bằng
-tài khoản test local đúng tỉnh và xã của req. Dịch vụ tự mở đường hầm `127.0.0.1:12024 → Mongo server` và tải tệp gốc qua
+Mọi thứ khác như máy local: backend thử là Docker local 12025 (khu làm việc, tag release đang chạy production), đăng nhập web 12008 bằng super_admin **local**. Lượt chạy lại
+dùng tài khoản test dịch vụ tự dựng trên Mongo local, cùng username, xã, tỉnh với tài khoản đã điền req trên production (`replay.shadow_account`, cờ `autotest_shadow`); trùng tài khoản test có sẵn của người khác thì dùng tên `autotest-<username>`. Dịch vụ tự mở đường hầm `127.0.0.1:12024 → Mongo server` và tải tệp gốc qua
 `read-uploads.sh` khi cần. Bật lại dịch vụ: `python auto-test-hcc/agents/server.py`.
 
 - Tệp gốc của req được tải về `auto-test-hcc/runs/` trên máy local (gitignore). Đó là giấy tờ thật của người dân.
@@ -150,7 +150,7 @@ docker compose -f compose.server.yml exec app python -m scripts.seed_user \
   --username <ten-test> --password "<mat-khau>" --name "<ten hien thi>" --tinh "Tỉnh ..." --xa "Xã ..."
 ```
 
-Đăng nhập web 12008 bằng tài khoản super_admin của **production**. Khi tạo ca, ô "tài khoản chạy lại" là tài khoản test vừa tạo trên backend thử.
+Đăng nhập web 12008 bằng tài khoản super_admin của **production**. Khi tạo ca, dịch vụ tự dựng tài khoản chạy lại trên backend thử, không cần nhập.
 
 ## 5. Mở web ra ngoài
 

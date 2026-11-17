@@ -233,8 +233,9 @@ export interface JobSummary {
 export interface NewJob {
   requestId: string;
   description: string;
-  replayUsername: string;
-  replayPassword: string;
+  /** Bỏ trống (web không gửi): dịch vụ tự dựng tài khoản test cùng xã, tỉnh với tài khoản đã điền req. */
+  replayUsername?: string;
+  replayPassword?: string;
   runs: number;
   maxRounds: number;
   reproduce: boolean;

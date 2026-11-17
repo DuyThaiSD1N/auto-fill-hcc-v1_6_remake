@@ -43,7 +43,7 @@ Trong suốt ca, người chạy làm hai việc: **đăng nhập VNeID** và **
 | Tài khoản | Dùng để | Ghi chú |
 | --- | --- | --- |
 | Tài khoản super_admin | Đăng nhập web Agent tự sửa | Tài khoản khác bị từ chối |
-| Tài khoản test theo đơn vị | Nhập ở ô "Tài khoản chạy lại" | Web tự điền theo req. Quyết định Tỉnh/Xã khi chọn cơ quan |
+| Tài khoản test theo đơn vị | Không cần nhập | Dịch vụ tự dựng trên backend thử: cùng username, xã, tỉnh với tài khoản đã điền req, mật khẩu ngẫu nhiên chỉ giữ trong RAM. Quyết định Tỉnh/Xã khi chọn cơ quan |
 | VNeID của chính tester | Đăng nhập cổng | Tester tự đăng nhập, bot không biết mật khẩu |
 
 Tài khoản chỉ tồn tại trong Mongo của từng máy, mật khẩu không ghi trong repo. Máy mới tự tạo theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md).
@@ -84,7 +84,7 @@ Tắt dịch vụ agent thì cửa sổ Chromium của bot cũng tắt. Phiên V
 1. Mở web, đăng nhập tài khoản super_admin.
 2. Nhập mã req. Web hiện tên thủ tục, tài khoản, số tệp.
 3. Nhập ô **Lỗi do đâu**: ô nào sai, đúng ra phải thế nào.
-4. Nhập mật khẩu tài khoản chạy lại, bấm **Bắt đầu**.
+4. Bấm **Bắt đầu**. Không phải nhập tài khoản chạy lại: dịch vụ tự dựng tài khoản test cùng xã, tỉnh với req.
 5. Một cửa sổ Chromium mở trang chủ cổng. Bấm **Đăng nhập** và hoàn tất VNeID.
 6. Không cần làm gì nữa. Bot tự nhận ra đã đăng nhập, tự vào thủ tục, tự xác nhận, tự điền.
 7. Theo dõi trên web. Khi xong, đọc kết luận và patch.
@@ -148,7 +148,7 @@ Tình trạng ghi ở cột cuối: **Đạt** là đã chạy và đạt, **Ch�
 | A2 | Mở form, chưa nhập gì | Nút Bắt đầu tắt | Đạt |
 | A3 | Nhập mã req không có | Báo không thấy req trong Mongo local | Đạt |
 | A4 | Nhập mô tả quá ngắn | Nút Bắt đầu vẫn tắt | Đạt |
-| A5 | Sai mật khẩu tài khoản chạy lại | Báo ngay, không tạo ca | Đạt |
+| A5 | Không dựng được tài khoản chạy lại (backend thử chưa chạy) | Báo ngay, không tạo ca | Đạt |
 | A6 | Tạo ca thứ hai khi ca đầu đang chạy | Ca hai xếp hàng, chạy sau | Đạt |
 | A7 | Bấm Dừng khi ca đang chờ đăng nhập | Ca dừng ngay | Đạt |
 | A8 | Đóng tab web khi ca đang chạy | Ca vẫn chạy, mở lại xem tiếp được | Đạt |

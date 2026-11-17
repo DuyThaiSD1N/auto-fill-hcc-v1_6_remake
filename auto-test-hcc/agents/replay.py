@@ -41,6 +41,46 @@ def login(username: str, password: str) -> dict:
     return response.json()
 
 
+_SHADOW_ROLES = {"user", "commune", "province"}
+
+
+def shadow_account(account: dict) -> dict:
+    """Tài khoản test cho mọi lượt chạy lại: đúng username / xã / tỉnh của tài khoản đã điền req, tạo trên Mongo của backend
+    thử. Người vận hành không phải nhập tài khoản nào.
+
+    Req lấy từ production thì tài khoản gốc không có ở Mongo local. Mật khẩu ngẫu nhiên, chỉ giữ trong RAM của job; mỗi
+    lần tạo ca đặt lại. Chỉ ghi đè tài khoản do chính dịch vụ tạo (cờ autotest_shadow): trùng tài khoản test có sẵn của
+    người khác thì dùng tên ``autotest-<username>`` cùng xã / tỉnh (``renamed``), không đổi mật khẩu của người ta.
+    """
+    import secrets
+
+    import verify
+
+    original = str(account.get("username") or "").strip().lower()
+    users = database().users
+    username = original or "autotest-khong-ten"
+    existing = users.find_one({"username": username}, {"autotest_shadow": 1})
+    if existing and not existing.get("autotest_shadow"):
+        # Trùng tài khoản test có sẵn của người khác ở local: không đổi mật khẩu của nó, dùng tên riêng cùng xã / tỉnh.
+        username = f"autotest-{original}"
+    password = secrets.token_urlsafe(18)
+    compose, cwd, service = verify._compose()
+    role = account.get("role") if account.get("role") in _SHADOW_ROLES else "user"
+    # Dạng --khoá=giá-trị: mật khẩu ngẫu nhiên có thể bắt đầu bằng "-", argparse sẽ hiểu nhầm là một tuỳ chọn.
+    cmd = [*compose, "exec", "-T", service, "python", "-m", "scripts.seed_user", f"--username={username}",
+           f"--password={password}", f"--name={account.get('name') or username} (auto-test)", f"--role={role}"]
+    if account.get("xa"):
+        cmd.append(f"--xa={account['xa']}")
+    if account.get("tinh"):
+        cmd.append(f"--tinh={account['tinh']}")
+    env = verify._compose_env() if verify.USE_WORKSPACE else None
+    code, output = verify.run(cmd, cwd, 180, threading.Event(), env)
+    if code != 0:
+        raise LoginError(f"Không tạo được tài khoản chạy lại {username} trên backend thử: {output.strip()[-300:]}")
+    users.update_one({"username": username}, {"$set": {"autotest_shadow": True}})
+    return {"username": username, "password": password, "renamed": username != original}
+
+
 def clear_ocr_cache(file_shas: list[str]) -> None:
     """Bỏ cache OCR của đúng các tệp này để lượt sau OCR mới thật; lượt chạy tự ghi lại cache ngay sau đó.
 
