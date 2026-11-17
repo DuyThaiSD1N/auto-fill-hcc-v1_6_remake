@@ -104,15 +104,35 @@ function StageRail({ job }: { job: Job }) {
   );
 }
 
-function HumanWait({ job, onReady, busy }: { job: Job; onReady: () => void; busy: boolean }) {
+/** Server không có màn hình: cửa sổ bot nằm trong màn hình ảo, mở qua noVNC ở tab mới (cần vé super_admin). */
+async function openBotScreen(onError: (text: string) => void) {
+  const tab = window.open("about:blank", "autotest-bot");
+  try {
+    const { url } = await agentApi.vncTicket();
+    if (tab) tab.location.href = url;
+    else window.location.assign(url);
+  } catch (reason) {
+    tab?.close();
+    onError(errorText(reason));
+  }
+}
+
+function HumanWait({ job, onReady, busy, vnc, onError }: { job: Job; onReady: () => void; busy: boolean; vnc: boolean; onError: (text: string) => void }) {
   if (!job.human) return null;
   return (
     <div className="at-human" role="alert">
       <div>
         <strong>Đang chờ bạn</strong>
         <p>{job.human.message}</p>
-        <p className="faint">Cửa sổ Chromium nằm trên máy đang chạy dịch vụ agent. Bot không nộp hồ sơ.</p>
+        <p className="faint">
+          {vnc
+            ? "Cửa sổ Chromium nằm trên server: bấm Mở màn hình bot để đăng nhập VNeID và thao tác. Bot không nộp hồ sơ."
+            : "Cửa sổ Chromium nằm trên máy đang chạy dịch vụ agent. Bot không nộp hồ sơ."}
+        </p>
       </div>
+      {vnc ? (
+        <button className="btn" type="button" onClick={() => void openBotScreen(onError)}>Mở màn hình bot</button>
+      ) : null}
       <button className="btn btn--primary" type="button" disabled={busy} onClick={onReady}>{job.human.button}</button>
     </div>
   );
@@ -519,6 +539,11 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("flow");
   const [acting, setActing] = useState(false);
+  const [vnc, setVnc] = useState(false);
+
+  useEffect(() => {
+    agentApi.health().then((h) => setVnc(!!h.vnc)).catch(() => setVnc(false));
+  }, []);
 
   const refresh = useCallback(() => {
     agentApi.get(id).then((data) => { setJob(data); setError(""); }).catch((reason) => setError(errorText(reason)));
@@ -597,7 +622,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
         </p>
       ) : null}
       {/* Dịch vụ gỡ trạng thái chờ ở nhịp sau: ẩn ngay kẻo người dùng bấm lần nữa khi tưởng chưa nhận. */}
-      <HumanWait job={job} busy={acting} onReady={() => void act(async () => ({ ...(await agentApi.ready(job.id)), human: null }))} />
+      <HumanWait job={job} busy={acting} vnc={vnc} onError={setError} onReady={() => void act(async () => ({ ...(await agentApi.ready(job.id)), human: null }))} />
       <ApprovalBox
         key={job.approval?.round ?? 0}
         job={job}
@@ -621,7 +646,14 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
             lên Docker: {job.fix.files.map((f) => f.path).join(", ")}. Không dùng thì bấm Hoàn tác bản sửa.
           </p>
         ) : (
-          <p className="muted at-note">Bản sửa đang nằm trong thư mục làm việc và chưa commit: {job.fix.files.map((f) => f.path).join(", ")}. Hãy xem lại rồi tự commit.</p>
+          job.fix.git ? (
+            <p className="muted at-note">
+              Bản sửa đã commit lên nhánh <code>{job.fix.git.branch}</code> ({job.fix.git.commit.slice(0, 10)}) trên GitHub, main không đổi. Mở PR từ
+              nhánh này nếu muốn gộp: {job.fix.files.map((f) => f.path).join(", ")}.
+            </p>
+          ) : (
+            <p className="muted at-note">Bản sửa đang nằm trong thư mục làm việc và chưa commit: {job.fix.files.map((f) => f.path).join(", ")}. Hãy xem lại rồi tự commit.</p>
+          )
         )
       ) : null}
       {job.warnings.map((w) => <p key={w} className="at-warn"><Icon name="alert" size={14} /> {w}</p>)}

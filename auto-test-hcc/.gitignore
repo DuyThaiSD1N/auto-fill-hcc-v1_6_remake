@@ -5,3 +5,8 @@ runs/
 __pycache__/
 *.pyc
 .pytest_cache/
+# Cấu hình máy server (mật khẩu Mongo chỉ đọc, token Claude) và biến compose của deploy/: không commit.
+server.env
+deploy/.env
+# venv của dịch vụ agent trên server.
+.venv/

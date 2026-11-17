@@ -8,6 +8,7 @@ import hashlib
 import json
 import queue
 import re
+import secrets
 import subprocess
 import sys
 import threading
@@ -15,23 +16,30 @@ import time
 
 import httpx
 import uvicorn
-from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 import browser
 import claude_runner
 import evidence
 import replay
-from config import BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS
+from config import (
+    AUTH_BACKEND_URL, BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, GIT_REMOTE, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS,
+    SERVER_MODE, VNC_ENABLED, server_problems,
+)
 from orchestrator import Job, Orchestrator, recover_interrupted, revert_fix
 from typing import Literal
 
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{4,64}$")
 _AUTH_TTL_S = 30
+# Vé xem màn hình bot qua noVNC: cookie HttpOnly, nginx hỏi /agent-api/vnc-check trước khi cho qua /vnc/.
+_VNC_COOKIE = "autotest_vnc"
+_VNC_TTL_S = 8 * 3600
 
 app = FastAPI(title="auto-test-hcc agents", docs_url=None, redoc_url=None, openapi_url=None)
 _auth_cache: dict[str, tuple[float, dict]] = {}
+_vnc_tickets: dict[str, float] = {}
 
 
 def require_operator(authorization: str = Header("")) -> dict:
@@ -43,7 +51,7 @@ def require_operator(authorization: str = Header("")) -> dict:
     if hit and time.monotonic() - hit[0] < _AUTH_TTL_S:
         return hit[1]
     try:
-        response = httpx.get(f"{BACKEND_URL}/auth/me", headers={"Authorization": authorization}, timeout=10)
+        response = httpx.get(f"{AUTH_BACKEND_URL}/auth/me", headers={"Authorization": authorization}, timeout=10)
     except httpx.HTTPError as reason:
         raise HTTPException(503, f"Không gọi được backend: {reason}") from reason
     if response.status_code == 401:
@@ -139,7 +147,35 @@ def _lookup(request_id: str) -> dict:
 
 @app.get("/agent-api/health")
 def health() -> dict:
-    return {"ok": True, "claude": bool(claude_runner.available()), "busy": service.busy, "queued": service.tasks.qsize()}
+    return {
+        "ok": True, "claude": bool(claude_runner.available()), "busy": service.busy, "queued": service.tasks.qsize(),
+        "server": SERVER_MODE, "vnc": VNC_ENABLED, "git": bool(GIT_REMOTE),
+    }
+
+
+@app.post("/agent-api/vnc-ticket")
+def vnc_ticket(_: dict = Depends(require_operator)) -> Response:
+    """Cửa sổ bot trên server nằm trong màn hình ảo: cấp vé để trình duyệt của người vận hành mở noVNC."""
+    if not VNC_ENABLED:
+        raise HTTPException(404, "Máy này không bật màn hình ảo, cửa sổ bot nằm ngay trên máy chạy dịch vụ.")
+    now = time.monotonic()
+    for key, expires in list(_vnc_tickets.items()):
+        if expires < now:
+            _vnc_tickets.pop(key, None)
+    ticket = secrets.token_urlsafe(32)
+    _vnc_tickets[ticket] = now + _VNC_TTL_S
+    response = JSONResponse({"url": "/vnc/vnc.html?autoconnect=1&resize=remote&reconnect=1&path=vnc/websockify"})
+    response.set_cookie(_VNC_COOKIE, ticket, max_age=_VNC_TTL_S, path="/vnc/", httponly=True, samesite="strict")
+    return response
+
+
+@app.get("/agent-api/vnc-check")
+def vnc_check(autotest_vnc: str = Cookie("")) -> Response:
+    """nginx auth_request gọi cho mọi request /vnc/: chỉ trả có/không, không lộ gì khác."""
+    expires = _vnc_tickets.get(autotest_vnc or "")
+    if not VNC_ENABLED or not expires or expires < time.monotonic():
+        return Response(status_code=401)
+    return Response(status_code=204)
 
 
 @app.get("/agent-api/requests/{request_id}")
@@ -285,8 +321,13 @@ def revert_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
 def main() -> None:
     # Console Windows mặc định cp1252, in tiếng Việt là văng UnicodeEncodeError ngay lúc khởi động.
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    problems = server_problems()
+    if problems:
+        print("Không khởi động: cấu hình server có thể đụng vào production.\n- " + "\n- ".join(problems))
+        sys.exit(2)
     version = subprocess.run([claude_runner.available() or "claude", "--version"], capture_output=True, text=True).stdout.strip()
-    print(f"Dịch vụ agent: http://{HOST}:{PORT} · claude {version}")
+    print(f"Dịch vụ agent: http://{HOST}:{PORT} · claude {version} · backend thử {BACKEND_URL}"
+          + (f" · đăng nhập qua {AUTH_BACKEND_URL}" if AUTH_BACKEND_URL != BACKEND_URL else ""))
     uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
 
 

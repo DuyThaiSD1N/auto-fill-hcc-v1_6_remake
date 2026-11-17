@@ -83,9 +83,23 @@ def test_preflight_bat_extension_tro_nham_server(tmp_path, monkeypatch):
     (tmp_path / "api").mkdir()
     config = tmp_path / "api/config.js"
     monkeypatch.setattr(browser, "EXT", tmp_path)
+    monkeypatch.setenv("DISPLAY", ":99")
     config.write_text('const BACKEND_URL = "https://may-chu-that.example";\n', encoding="utf-8")
     assert "localhost:12005" in browser.preflight()
     config.write_text('const BACKEND_URL = "http://localhost:12005";     // ghi chú\n', encoding="utf-8")
+    assert browser.preflight() is None
+
+
+def test_preflight_theo_backend_thu_cua_server(tmp_path, monkeypatch):
+    """Trên server extension của bot trỏ backend thử (12015), không phải 12005."""
+    (tmp_path / "api").mkdir()
+    config = tmp_path / "api/config.js"
+    monkeypatch.setattr(browser, "EXT", tmp_path)
+    monkeypatch.setattr(browser, "EXTENSION_BACKEND", "http://localhost:12015")
+    monkeypatch.setenv("DISPLAY", ":99")
+    config.write_text('const BACKEND_URL = "http://localhost:12005";\n', encoding="utf-8")
+    assert "localhost:12015" in browser.preflight()
+    config.write_text('const BACKEND_URL = "http://localhost:12015";\n', encoding="utf-8")
     assert browser.preflight() is None
 
 

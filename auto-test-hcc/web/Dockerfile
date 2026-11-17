@@ -12,6 +12,8 @@ FROM nginx:1.27-alpine
 
 ENV BACKEND_URL=http://app:12005
 ENV AGENT_URL=http://host.docker.internal:12009
+# Chỉ dùng trên server (màn hình ảo). Máy local không có noVNC thì /vnc/ trả 401/502, web không hiện nút.
+ENV VNC_URL=http://host.docker.internal:6080
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -19,12 +19,20 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
-from config import AGENT_BUDGET_USD, REPO
+from pathlib import Path
+
+from config import AGENT_BUDGET_USD, DENY_READ_DIRS, REPO, SOURCE_UPLOADS
 from verify import Stopped
 
 READ_TOOLS = ["Read", "Grep", "Glob"]
 # .env có secret; data/ là giấy tờ của mọi người dân, agent chỉ được đọc bản sao của đúng ca này.
-_DENY_READ = ["Read(**/.env)", "Read(**/.env.*)", "Read(auto-fill-hcc-backend/data/**)", "Read(auto-test-hcc/.profile/**)"]
+_DENY_READ = [
+    "Read(**/.env)", "Read(**/.env.*)", "Read(auto-fill-hcc-backend/data/**)", "Read(auto-test-hcc/.profile/**)",
+    "Read(auto-test-hcc/server.env)", "Read(~/.ssh/**)", "Read(~/.git-credentials)", "Read(~/.config/gh/**)",
+    # Server trolyhoso: Read đọc được cả đường dẫn tuyệt đối ngoài repo → chặn thư mục production (.env, uploads mọi
+    # người dân). "//" đầu là đường dẫn tuyệt đối trong luật quyền của Claude Code.
+    *(f"Read(//{Path(p).resolve().as_posix().lstrip('/')}/**)" for p in (*DENY_READ_DIRS, SOURCE_UPLOADS) if p),
+]
 _BE_SCOPE = ["auto-fill-hcc-backend/app/**", "auto-fill-hcc-backend/tests/**"]
 _EXT_SCOPE = ["auto-fill-hcc-extension/**"]
 _TROLY_SCOPE = ["tro-ly-nguoi-dan-extension-main/**"]

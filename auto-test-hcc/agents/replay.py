@@ -13,7 +13,7 @@ from typing import Callable
 import httpx
 
 from config import BACKEND_URL, REPLAY_CONCURRENCY, REPLAY_TIMEOUT_S, REPO
-from evidence import database
+from evidence import test_database as database
 
 # Khoá gắn với hồ sơ/phiên thật: gửi lại thì lượt thử dính vào hồ sơ của người dân.
 _DROP_OPTIONS = {"dossierId", "sessionId", "conversation_id", "upload_session_id", "consent_id", "channel"}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import threading
 import time
 import traceback
@@ -22,6 +23,7 @@ import browser
 import claude_runner
 import codeguard
 import evidence
+import publish
 import replay
 import roles
 import scoring
@@ -759,7 +761,36 @@ class Orchestrator:
             job.data["touched"] = []
             job.data["stackDirty"] = False
         job.save()
+        self._publish(round_, changes)
         return True
+
+    def _publish(self, round_: dict, changes: list[codeguard.Change]) -> None:
+        """Server: đẩy bản sửa đạt lên nhánh riêng của ca. Lỗi git không làm hỏng kết quả, bản sửa vẫn nằm trên đĩa."""
+        job = self.job
+        if not publish.GIT_REMOTE:
+            return
+        summary = (round_["fix"].get("summary") or "").strip()
+        terms = codeguard.private_terms(self.case["fields"], job.data["requestId"])
+        # leaked_terms chỉ xét dòng "+" của patch: đánh dấu từng dòng tóm tắt như dòng thêm mới.
+        if not summary or codeguard.leaked_terms("\n".join(f"+{line}" for line in summary.splitlines()), terms):
+            summary = f"sửa lỗi điền {self.case.get('procedure')}"
+        by = (round_.get("approval") or {}).get("by") or ""
+        # Không ghi mã req vào commit: mã req nối được tới hồ sơ người dân.
+        message = (f"agent: {summary.splitlines()[0][:150]}\n\nCa {job.data['id']} · thủ tục {self.case.get('procedure')} "
+                   f"· vòng {round_['n']} · chạy lại đạt.\nNgười duyệt: {by}\n")
+        try:
+            result = publish.push_fix(job.data["id"], job.dir, changes, message)
+        except (publish.PublishError, OSError, subprocess.TimeoutExpired) as reason:
+            self._warn(f"Không đẩy được bản sửa lên GitHub: {reason}. Bản sửa vẫn nằm trong thư mục làm việc trên server.")
+            return
+        if not result:
+            return
+        with job.lock:
+            job.data["fix"]["git"] = result
+        job.save()
+        job.log(f"Đã đẩy bản sửa lên nhánh {result['branch']} ({result['commit'][:10]}).")
+        if result["drift"]:
+            self._warn("File đã khác main từ trước khi sửa, commit mang cả phần khác đó: " + ", ".join(result["drift"]))
 
     def _round_failed(
         self, round_: dict, decision: dict, problem: str, evaluation: dict | None = None, regressions: list | None = None,

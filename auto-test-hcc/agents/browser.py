@@ -15,9 +15,11 @@ Quy tắc của lớp này:
 from __future__ import annotations
 
 import json
+import os
 import re
 import socket
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -31,8 +33,8 @@ from playwright.sync_api import Error, sync_playwright
 
 import replay
 import scoring
-from config import CDP_PORT, EXT, PROFILE, REPO, ROOT
-from evidence import database
+from config import CDP_PORT, EXTENSION_BACKEND, EXT, PROFILE, REPO, ROOT
+from evidence import test_database as database
 from verify import Stopped
 
 HOME_URL = "https://dichvucong.gov.vn/"
@@ -164,15 +166,24 @@ LOGGED_IN_JS = r"""() => {
 def preflight() -> str | None:
     """Câu báo lỗi nếu chưa chạy được trên cổng, None nếu ổn."""
     config = (EXT / "api/config.js").read_text(encoding="utf-8")
-    if not re.search(r'const BACKEND_URL\s*=\s*"http://localhost:12005"', config):
-        return ("Extension đang trỏ backend khác localhost:12005 nên lượt điền sẽ không chạy qua code vừa sửa. "
-                "Đổi BACKEND_URL trong auto-fill-hcc-extension/api/config.js về http://localhost:12005.")
+    if not re.search(rf'const BACKEND_URL\s*=\s*"{re.escape(EXTENSION_BACKEND)}"', config):
+        return (f"Extension đang trỏ backend khác {EXTENSION_BACKEND} nên lượt điền sẽ không chạy qua code vừa sửa. "
+                f"Đổi BACKEND_URL trong auto-fill-hcc-extension/api/config.js về {EXTENSION_BACKEND}.")
+    if sys.platform != "win32" and not os.environ.get("DISPLAY"):
+        return "Máy chưa có màn hình cho cửa sổ bot (thiếu DISPLAY). Trên server hãy bật dịch vụ màn hình ảo autotest-vnc."
     return None
 
 
 @lru_cache(maxsize=1)
 def _extension_name() -> str:
     return json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))["name"]
+
+
+def _platform_flags() -> list[str]:
+    """Linux chạy bằng root thì Chromium đòi --no-sandbox. Nên chạy dịch vụ bằng user thường để còn sandbox."""
+    if sys.platform != "win32" and hasattr(os, "geteuid") and os.geteuid() == 0:
+        return ["--no-sandbox"]
+    return []
 
 
 def _port_open(port: int) -> bool:
@@ -225,7 +236,7 @@ class PortalBot:
             subprocess.Popen(
                 [
                     self.pw.chromium.executable_path, f"--user-data-dir={PROFILE}", f"--remote-debugging-port={CDP_PORT}",
-                    "--no-first-run", "--no-default-browser-check",
+                    "--no-first-run", "--no-default-browser-check", *_platform_flags(),
                     f"--disable-extensions-except={EXT}", f"--load-extension={EXT}", "about:blank",
                 ],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

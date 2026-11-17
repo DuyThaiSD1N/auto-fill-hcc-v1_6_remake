@@ -1,4 +1,8 @@
-"""Gom chứng cứ của một req từ Mongo local + đĩa thành một thư mục để agent đọc."""
+"""Gom chứng cứ của một req từ Mongo nguồn + thư mục upload thành một thư mục để agent đọc.
+
+Nguồn là Mongo local (máy dev) hoặc Mongo production qua tài khoản chỉ đọc (server trolyhoso, AUTOTEST_SOURCE_*).
+Module này chỉ đọc nguồn, không bao giờ ghi.
+"""
 from __future__ import annotations
 
 import json
@@ -12,15 +16,23 @@ from typing import Any
 from pymongo import MongoClient
 from pymongo.database import Database
 
-from config import BE, REPO, backend_env
+from config import BE, REPO, SOURCE_DB, SOURCE_MONGO_URI, SOURCE_UPLOADS, TEST_DB, TEST_MONGO_URI, backend_env
 
 
 class CaseError(Exception):
     """Req không dùng được, có câu giải thích cho người dùng."""
 
 
+def _from_uri(uri: str, name: str) -> Database:
+    client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+    return client[name] if name else client.get_default_database(default=backend_env().get("MONGO_DB", "autofill_hcc"))
+
+
 @lru_cache(maxsize=1)
 def database() -> Database:
+    """Mongo nguồn của req. Trên server là production: chỉ đọc."""
+    if SOURCE_MONGO_URI:
+        return _from_uri(SOURCE_MONGO_URI, SOURCE_DB)
     env = backend_env()
     client = MongoClient(
         host="127.0.0.1",
@@ -31,6 +43,14 @@ def database() -> Database:
         serverSelectionTimeoutMS=5000,
     )
     return client[env.get("MONGO_DB", "autofill_hcc")]
+
+
+@lru_cache(maxsize=1)
+def test_database() -> Database:
+    """Mongo của backend chạy code đang sửa: xoá cache OCR và đọc trace lượt chạy lại ở đây, không đụng nguồn."""
+    if TEST_MONGO_URI:
+        return _from_uri(TEST_MONGO_URI, TEST_DB)
+    return database()
 
 
 def _plain(value: Any) -> Any:
@@ -50,6 +70,8 @@ def _write_json(path: Path, data: Any) -> None:
 
 
 def _storage_dir() -> Path:
+    if SOURCE_UPLOADS:
+        return Path(SOURCE_UPLOADS)
     return BE / backend_env().get("STORAGE_DIR", "data/uploads")
 
 
@@ -72,7 +94,7 @@ def lookup(request_id: str) -> dict:
     request = db.process_requests.find_one({"request_id": request_id})
     trace = db.traces.find_one({"request_id": request_id})
     if not request and not trace:
-        raise CaseError(f"Không thấy {request_id} trong Mongo local. Lượt chạy trên server khác chưa đọc được ở đây.")
+        raise CaseError(f"Không thấy {request_id} trong Mongo nguồn. Lượt chạy trên server khác chưa đọc được ở đây.")
     kind = (trace or {}).get("kind") or "autofill"
     if kind != "autofill":
         raise CaseError(f"{request_id} là lượt {kind}, không phải lượt điền. Hãy đưa mã req của bước điền.")
@@ -80,7 +102,7 @@ def lookup(request_id: str) -> dict:
         raise CaseError(f"{request_id} có trace nhưng không có process_requests nên không biết tệp gốc.")
     user = db.users.find_one({"_id": _object_id(request.get("user_id"))}, {"username": 1, "name": 1, "xa": 1, "tinh": 1})
     if not user:
-        raise CaseError("Tài khoản của req không còn trong Mongo local nên không chạy lại đúng xã/tỉnh được.")
+        raise CaseError("Tài khoản của req không còn trong Mongo nguồn nên không chạy lại đúng xã/tỉnh được.")
     files = request.get("files") or []
     missing = [f.get("name") for f in files if not f.get("path") or not (_storage_dir() / f["path"]).is_file()]
     context = _form_context(db, request)

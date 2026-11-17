@@ -1,0 +1,19 @@
+# Dịch vụ agent (127.0.0.1:12009). Đọc cấu hình ở auto-test-hcc/server.env (setup.sh sinh, gitignore).
+# Không restart khi đang có ca chạy: job dở sẽ bị hoàn tác (xem README, mục Duyệt bản sửa).
+[Unit]
+Description=auto-test-hcc: dịch vụ agent tự sửa
+After=network.target docker.service autotest-vnc.service
+Wants=autotest-vnc.service
+
+[Service]
+User=__USER__
+WorkingDirectory=__APP_DIR__
+Environment=PYTHONUTF8=1
+Environment=DISPLAY=:99
+Environment=PATH=__APP_DIR__/auto-test-hcc/.venv/bin:/home/__USER__/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=__APP_DIR__/auto-test-hcc/.venv/bin/python auto-test-hcc/agents/server.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

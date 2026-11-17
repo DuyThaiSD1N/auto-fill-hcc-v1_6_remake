@@ -119,6 +119,11 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền
   5 lần, chấm trên giá trị đọc từ form. Bot KHÔNG được nộp hồ sơ: không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
 - Tab "Thêm thủ tục mới" (`agents/devjob.py`) đã gỡ ngày 2026-11-09 theo yêu cầu người dùng; web chỉ còn job sửa lỗi một ca.
+- Server trolyhoso (người dùng chốt 17/11/2026, cài theo `auto-test-hcc/HUONG-DAN-SERVER.md`): req lấy từ Mongo + uploads PRODUCTION
+  qua tài khoản chỉ đọc; bản sửa build và chạy lại trên backend THỬ `auto-test-hcc/deploy/compose.server.yml` (127.0.0.1:12015, Mongo
+  riêng 12014), không bao giờ build `compose.prod.yml` trên server (`config.server_problems()` chặn); bản sửa đạt commit lên nhánh
+  `agent/<mã ca>` của repo `dev-f19/test-auto-test-and-fix` (`agents/publish.py`), không đẩy lên main; cửa sổ bot xem qua noVNC
+  `/vnc/` có vé super_admin. Máy local không đặt biến `AUTOTEST_*` thì chạy như cũ.
 
 ## Thêm thủ tục mới
 

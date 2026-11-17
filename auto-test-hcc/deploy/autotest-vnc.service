@@ -1,0 +1,21 @@
+# Màn hình ảo :99 cho cửa sổ Chromium của bot + noVNC 127.0.0.1:6080 (web 12008 proxy /vnc/ kèm vé super_admin).
+# setup.sh thay __USER__ / __APP_DIR__ rồi chép vào /etc/systemd/system/.
+# x11vnc và websockify chỉ nghe loopback: đi từ ngoài vào bắt buộc qua nginx của web 12008.
+[Unit]
+Description=auto-test-hcc: màn hình ảo cho bot (Xvfb + x11vnc + noVNC)
+After=network.target
+
+[Service]
+User=__USER__
+Environment=DISPLAY=:99
+ExecStart=/bin/bash -c '\
+  Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp & \
+  sleep 1; fluxbox >/dev/null 2>&1 & \
+  x11vnc -display :99 -localhost -rfbport 5900 -forever -shared -nopw -quiet & \
+  websockify --web /usr/share/novnc 127.0.0.1:6080 127.0.0.1:5900 & \
+  wait -n; exit 1'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

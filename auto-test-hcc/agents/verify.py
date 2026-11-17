@@ -17,11 +17,19 @@ from pathlib import Path
 
 import httpx
 
-from config import BACKEND_URL, BE, EXT, RUNS, SUPPORT
+from config import BACKEND_URL, BE, COMPOSE_FILE, COMPOSE_SERVICE, EXT, RUNS, SUPPORT, server_problems
 
 _TREES = ("app", "tests")
 _SUMMARY = re.compile(r"(\d+) (failed|passed|skipped|errors?)\b")
-_COMPOSE = ["docker", "compose", "-f", "compose.prod.yml"]
+def _compose() -> tuple[list[str], Path, str]:
+    """Lệnh compose, thư mục chạy, tên service. Máy local: compose.prod.yml của backend như CLAUDE.md. Server: compose.server.yml
+    (backend thử, project riêng, cổng riêng): compose.prod.yml trên server trolyhoso là build đè backend production."""
+    if COMPOSE_FILE:
+        path = Path(COMPOSE_FILE).resolve()
+        return ["docker", "compose", "-f", str(path)], path.parent, COMPOSE_SERVICE
+    if server_problems():
+        raise RuntimeError("Cấu hình server thiếu AUTOTEST_COMPOSE_FILE: không build, kẻo đè backend production.")
+    return ["docker", "compose", "-f", "compose.prod.yml"], BE, "app"
 # Chỉ hai cây này; tests/handfree lỗi collect sẵn.
 _FULL_ARGS = [
     "tests/unit", "tests/integration", "-q", "--continue-on-collection-errors",
@@ -231,11 +239,13 @@ def healthz() -> tuple[bool, str]:
 
 
 def deploy(cancel: threading.Event) -> dict:
-    """Bước 3–5. Luôn -f compose.prod.yml: compose mặc định đá app sang network khác làm web trace 502."""
-    code, output = run([*_COMPOSE, "up", "-d", "--build", "--remove-orphans", "app"], BE, 1500, cancel)
+    """Bước 3–5. Luôn chỉ rõ file compose: compose mặc định đá app sang network khác làm web trace 502."""
+    compose, cwd, service = _compose()
+    extra = [] if COMPOSE_FILE else ["--remove-orphans"]
+    code, output = run([*compose, "up", "-d", "--build", *extra, service], cwd, 1500, cancel)
     if code != 0:
         return {"ok": False, "step": "build", "output": output[-4000:]}
-    _, ps = run([*_COMPOSE, "ps", "app", "--format", "{{.Name}} {{.Status}}"], BE, 60, cancel)
+    _, ps = run([*compose, "ps", service, "--format", "{{.Name}} {{.Status}}"], cwd, 60, cancel)
     deadline = time.monotonic() + 120
     health = ""
     while time.monotonic() < deadline:

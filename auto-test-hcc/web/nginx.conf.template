@@ -31,6 +31,29 @@ server {
         proxy_read_timeout 120s;
     }
 
+    # Màn hình ảo cửa sổ bot trên server (noVNC qua websockify). Mọi request phải có vé do /agent-api/vnc-ticket cấp
+    # cho super_admin: cửa sổ này đang giữ phiên VNeID.
+    location /vnc/ {
+        auth_request /_vnc_auth;
+        set $vnc "${VNC_URL}";
+        rewrite ^/vnc/(.*)$ /$1 break;
+        proxy_pass $vnc;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    location = /_vnc_auth {
+        internal;
+        set $agent "${AGENT_URL}";
+        proxy_pass $agent/agent-api/vnc-check;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Cookie $http_cookie;
+    }
+
     location /assets/ {
         expires 30d;
         add_header Cache-Control "public, immutable";

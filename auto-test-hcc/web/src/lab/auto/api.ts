@@ -174,6 +174,8 @@ export interface Job {
   fix: {
     files: FileRecord[]; patch: string; summary?: string; reverted: boolean; reverting?: boolean; revertedFiles?: string[]; keptFiles?: string[];
     unverified?: boolean; round?: number;
+    /** Server: bản sửa đạt đã commit lên nhánh riêng của ca trên GitHub. */
+    git?: { branch: string; commit: string; base: string; remote: string; drift: string[] };
   } | null;
   report: { outcome: Outcome; headline: string; reason: string; finishedAt: string } | null;
   cost: { usd: number; calls: number };
@@ -221,7 +223,9 @@ const json = (body: unknown): RequestInit => ({
 });
 
 export const agentApi = {
-  health: () => request<{ ok: boolean; claude: boolean; busy: string | null; queued: number }>("/agent-api/health"),
+  health: () => request<{ ok: boolean; claude: boolean; busy: string | null; queued: number; server?: boolean; vnc?: boolean; git?: boolean }>("/agent-api/health"),
+  /** Đặt cookie vé (HttpOnly) cho /vnc/ rồi trả đường dẫn noVNC. */
+  vncTicket: () => request<{ url: string }>("/agent-api/vnc-ticket", { method: "POST" }),
   lookup: (id: string) => request<RequestInfo>(`/agent-api/requests/${encodeURIComponent(id)}`),
   list: () => request<{ items: JobSummary[]; busy: string | null }>("/agent-api/jobs"),
   get: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}`),
@@ -249,7 +253,7 @@ export function serviceDown(reason: unknown): boolean {
 }
 
 export function errorText(reason: unknown): string {
-  if (serviceDown(reason)) return "Dịch vụ agent chưa chạy. Mở terminal ở gốc repo và chạy: python auto-test-hcc/agents/server.py";
+  if (serviceDown(reason)) return "Dịch vụ agent chưa chạy. Máy local: python auto-test-hcc/agents/server.py · server: sudo systemctl start autotest-agent";
   return reason instanceof Error ? reason.message : String(reason);
 }
 
