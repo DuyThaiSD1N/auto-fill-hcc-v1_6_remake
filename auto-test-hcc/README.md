@@ -13,6 +13,7 @@ local cũ: Mongo 12004 + `data/uploads` của backend local, build `compose.prod
 | Biến | Server trolyhoso | Việc |
 | --- | --- | --- |
 | `AUTOTEST_SOURCE_MONGO_URI`, `_SOURCE_DB`, `_SOURCE_UPLOADS` | Mongo production (tài khoản `read`), uploads production | Nguồn req, chỉ đọc. Có biến này là chế độ server |
+| `AUTOTEST_SOURCE_SSH`, `_SOURCE_SSH_KEY`, `_SOURCE_TUNNEL` | (máy local đọc trolysoao) `nlp@<ip-trolysoao>`, khoá riêng, `12024:127.0.0.1:12004` | `remote.py`: đường hầm tới Mongo + tải tệp qua `deploy/read-uploads.sh`. Vẫn là chế độ local |
 | `AUTOTEST_BACKEND`, `AUTOTEST_TEST_MONGO_URI` | 127.0.0.1:12015, Mongo 12014 | Backend thử: chạy lại, xoá cache OCR, đọc trace |
 | `AUTOTEST_COMPOSE_FILE` | `deploy/compose.server.yml` | Build backend thử. `config.server_problems()` chặn khởi động nếu thiếu hoặc là `compose.prod.yml` |
 | `AUTOTEST_AUTH_BACKEND` | backend production | Kiểm super_admin của web |

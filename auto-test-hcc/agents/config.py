@@ -58,7 +58,13 @@ TEST_DB = os.environ.get("AUTOTEST_TEST_DB", "")
 # vì compose.prod.yml trên server trolyhoso sẽ build đè backend production.
 COMPOSE_FILE = os.environ.get("AUTOTEST_COMPOSE_FILE", "")
 COMPOSE_SERVICE = os.environ.get("AUTOTEST_COMPOSE_SERVICE", "app")
-SERVER_MODE = bool(SOURCE_MONGO_URI)
+# Nguồn req trên máy khác (trolysoao) đọc từ máy local qua SSH: user@host + khoá bị giới hạn (remote.py). Khi đặt,
+# AUTOTEST_SOURCE_MONGO_URI trỏ đầu local của đường hầm (cổng thứ nhất của AUTOTEST_SOURCE_TUNNEL).
+SOURCE_SSH = os.environ.get("AUTOTEST_SOURCE_SSH", "")
+SOURCE_SSH_KEY = os.environ.get("AUTOTEST_SOURCE_SSH_KEY", "")
+SOURCE_TUNNEL = os.environ.get("AUTOTEST_SOURCE_TUNNEL", "12024:127.0.0.1:12004")
+# Chế độ server = dịch vụ chạy NGAY TRÊN máy production (uploads trên đĩa). Đọc từ xa qua SSH thì vẫn là máy local.
+SERVER_MODE = bool(SOURCE_MONGO_URI) and not SOURCE_SSH
 
 # Bản sửa đạt: commit vào nhánh <tiền tố><mã ca> rồi push lên remote này. Trống = không commit (máy local).
 GIT_REMOTE = os.environ.get("AUTOTEST_GIT_REMOTE", "")

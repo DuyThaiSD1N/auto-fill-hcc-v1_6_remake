@@ -1,6 +1,7 @@
 """Gom chứng cứ của một req từ Mongo nguồn + thư mục upload thành một thư mục để agent đọc.
 
-Nguồn là Mongo local (máy dev) hoặc Mongo production qua tài khoản chỉ đọc (server trolyhoso, AUTOTEST_SOURCE_*).
+Nguồn là Mongo local (máy dev), hoặc Mongo production qua tài khoản chỉ đọc (AUTOTEST_SOURCE_*): ngay trên server,
+hoặc từ máy local qua đường hầm SSH + lệnh đọc uploads bị giới hạn (remote.py, AUTOTEST_SOURCE_SSH).
 Module này chỉ đọc nguồn, không bao giờ ghi.
 """
 from __future__ import annotations
@@ -16,6 +17,7 @@ from typing import Any
 from pymongo import MongoClient
 from pymongo.database import Database
 
+import remote
 from config import BE, REPO, SOURCE_DB, SOURCE_MONGO_URI, SOURCE_UPLOADS, TEST_DB, TEST_MONGO_URI, backend_env
 
 
@@ -28,11 +30,25 @@ def _from_uri(uri: str, name: str) -> Database:
     return client[name] if name else client.get_default_database(default=backend_env().get("MONGO_DB", "autofill_hcc"))
 
 
-@lru_cache(maxsize=1)
 def database() -> Database:
-    """Mongo nguồn của req. Trên server là production: chỉ đọc."""
+    """Mongo nguồn của req. Trên server, hoặc đọc từ xa qua SSH, là production: chỉ đọc."""
+    try:
+        remote.ensure_tunnel()  # đường hầm rớt giữa chừng thì mở lại; MongoClient tự nối lại cùng cổng
+    except remote.RemoteError as reason:
+        raise CaseError(str(reason)) from reason
+    return _source_db()
+
+
+@lru_cache(maxsize=1)
+def _source_db() -> Database:
     if SOURCE_MONGO_URI:
         return _from_uri(SOURCE_MONGO_URI, SOURCE_DB)
+    return _local_db()
+
+
+@lru_cache(maxsize=1)
+def _local_db() -> Database:
+    """Mongo của backend local (theo .env của backend)."""
     env = backend_env()
     client = MongoClient(
         host="127.0.0.1",
@@ -50,7 +66,8 @@ def test_database() -> Database:
     """Mongo của backend chạy code đang sửa: xoá cache OCR và đọc trace lượt chạy lại ở đây, không đụng nguồn."""
     if TEST_MONGO_URI:
         return _from_uri(TEST_MONGO_URI, TEST_DB)
-    return database()
+    # Mặc định là Mongo của backend local, KHÔNG bao giờ rơi về nguồn: nguồn có thể là production đọc từ xa.
+    return _local_db()
 
 
 def _plain(value: Any) -> Any:
@@ -73,6 +90,29 @@ def _storage_dir() -> Path:
     if SOURCE_UPLOADS:
         return Path(SOURCE_UPLOADS)
     return BE / backend_env().get("STORAGE_DIR", "data/uploads")
+
+
+def _missing_files(files: list[dict]) -> list[str]:
+    """Tên các tệp gốc không còn: trên đĩa máy này, hoặc trên server khi đọc từ xa qua SSH."""
+    paths = [f.get("path") for f in files if f.get("path")]
+    if remote.enabled():
+        try:
+            gone = remote.missing(paths)
+        except remote.RemoteError as reason:
+            raise CaseError(str(reason)) from reason
+    else:
+        gone = {p for p in paths if not (_storage_dir() / p).is_file()}
+    return [f.get("name") for f in files if not f.get("path") or f["path"] in gone]
+
+
+def _copy_file(rel: str, target: Path) -> None:
+    if remote.enabled():
+        try:
+            remote.fetch(rel, target)
+        except remote.RemoteError as reason:
+            raise CaseError(str(reason)) from reason
+    else:
+        shutil.copy2(_storage_dir() / rel, target)
 
 
 def pipeline_folder(procedure: str) -> str | None:
@@ -104,7 +144,7 @@ def lookup(request_id: str) -> dict:
     if not user:
         raise CaseError("Tài khoản của req không còn trong Mongo nguồn nên không chạy lại đúng xã/tỉnh được.")
     files = request.get("files") or []
-    missing = [f.get("name") for f in files if not f.get("path") or not (_storage_dir() / f["path"]).is_file()]
+    missing = _missing_files(files)
     context = _form_context(db, request)
     return {
         "requestId": request_id,
@@ -186,9 +226,8 @@ def collect(request_id: str, case_dir: Path) -> dict:
     files_dir.mkdir(exist_ok=True)
     stored = []
     for index, item in enumerate(request.get("files") or []):
-        source = _storage_dir() / item["path"]
-        target = files_dir / source.name
-        shutil.copy2(source, target)
+        target = files_dir / Path(item["path"]).name
+        _copy_file(item["path"], target)
         stored.append({
             "index": index,
             "name": item.get("name"),

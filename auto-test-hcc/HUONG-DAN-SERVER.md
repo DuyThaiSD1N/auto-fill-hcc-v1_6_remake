@@ -1,4 +1,62 @@
-# Chạy web Agent tự sửa trên server trolyhoso
+# Chạy web Agent tự sửa với req của trolysoao
+
+Có hai cách. Người dùng chốt ngày 17/11/2026 dùng **cách A**.
+
+- **A. Máy local đọc req từ server qua SSH.** Web, agent, Claude, cửa sổ bot và backend thử (Docker local 12005) đều nằm trên máy local.
+  Server chỉ cần một khoá SSH bị giới hạn và một tài khoản Mongo chỉ đọc. Không cài gì, không deploy gì lên server.
+- **B. Cài cả hệ thống lên server.** Xem từ mục "Sơ đồ" trở xuống.
+
+## A. Đọc req trolysoao từ máy local
+
+Server trolysoao: `nlp@<ip-trolysoao>` (IP Tailscale, hỏi người phụ trách; không ghi IP vào repo), production ở `/home/nlp/hcc` (app 12005, Mongo `127.0.0.1:12004`, container `hcc-mongo-1`).
+
+**A1. Trên máy local (PowerShell), tạo khoá riêng:**
+
+```powershell
+ssh-keygen -t ed25519 -N '""' -C "auto-test-hcc local" -f $HOME\.ssh\autotest_trolysoao
+Get-Content $HOME\.ssh\autotest_trolysoao.pub
+scp auto-test-hcc/deploy/read-uploads.sh nlp@<ip-trolysoao>:/tmp/read-uploads.sh
+```
+
+**A2. Trên server (`ssh nlp@<ip-trolysoao>`):**
+
+```bash
+mkdir -p ~/.autotest && install -m 755 /tmp/read-uploads.sh ~/.autotest/read-uploads.sh
+cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak-autotest
+# Thay <PUB> bằng dòng in ra ở A1. Khoá này chỉ mở được đường hầm tới Mongo và đọc uploads, không có shell.
+echo 'restrict,port-forwarding,permitopen="127.0.0.1:12004",command="/home/nlp/.autotest/read-uploads.sh" <PUB>' >> ~/.ssh/authorized_keys
+
+# Tài khoản Mongo CHỈ ĐỌC. Ghi lại mật khẩu in ra.
+cd /home/nlp/hcc
+U=$(grep -E '^MONGO_USERNAME=' .env | cut -d= -f2- | tr -d "\"'"); P=$(grep -E '^MONGO_PASSWORD=' .env | cut -d= -f2- | tr -d "\"'")
+RO=$(openssl rand -hex 24); echo "Mật khẩu autotest_ro: $RO"
+docker exec -i hcc-mongo-1 mongosh --quiet -u "${U:-root}" -p "$P" --authenticationDatabase admin admin \
+  --eval "db.createUser({user:'autotest_ro',pwd:'$RO',roles:[{role:'read',db:'autofill_hcc'}]})"
+```
+
+**A3. Trên máy local, tạo `auto-test-hcc/server.env` (gitignore):**
+
+```ini
+AUTOTEST_SOURCE_SSH=nlp@<ip-trolysoao>
+AUTOTEST_SOURCE_SSH_KEY=C:/Users/<ten-may>/.ssh/autotest_trolysoao
+AUTOTEST_SOURCE_TUNNEL=12024:127.0.0.1:12004
+AUTOTEST_SOURCE_MONGO_URI=mongodb://autotest_ro:<mat-khau-A2>@127.0.0.1:12024/?authSource=admin&directConnection=true
+AUTOTEST_SOURCE_DB=autofill_hcc
+# Tuỳ chọn: bản sửa đạt lên nhánh agent/<mã ca> của repo test (dùng quyền git của máy này)
+AUTOTEST_GIT_REMOTE=https://github.com/dev-f19/test-auto-test-and-fix.git
+```
+
+Mọi thứ khác giữ như máy local cũ: backend thử là Docker local 12005, đăng nhập web 12008 bằng super_admin **local**, chạy lại bằng
+tài khoản test local đúng tỉnh và xã của req. Dịch vụ tự mở đường hầm `127.0.0.1:12024 → Mongo server` và tải tệp gốc qua
+`read-uploads.sh` khi cần. Bật lại dịch vụ: `python auto-test-hcc/agents/server.py`.
+
+- Tệp gốc của req được tải về `auto-test-hcc/runs/` trên máy local (gitignore). Đó là giấy tờ thật của người dân.
+- Uploads trên server chỉ giữ vài ngày gần nhất: req cũ hơn sẽ báo "Tệp gốc của req không còn trên đĩa".
+- Gỡ quyền: xoá dòng `autotest` trong `~/.ssh/authorized_keys` trên server và chạy `db.dropUser('autotest_ro')`.
+
+---
+
+Từ đây trở xuống là **cách B**: cài cả hệ thống lên server.
 
 Tài liệu cho người cài đặt. Cài trên máy đang chạy backend production (`/opt/autofill-hcc`). Hệ thống lấy req thật từ production, nhưng mọi bản sửa đều build và chạy thử trên một backend riêng. Backend production không bị build lại hay đổi code.
 
