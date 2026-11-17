@@ -32,6 +32,13 @@ def as_user(monkeypatch):
     monkeypatch.setattr(tdp_rollup, "load_tdp_parents", _links)
     monkeypatch.setattr(daily_router, "resolve_dashboard_scope", _resolve)
     monkeypatch.setattr(rules, "today_vn", lambda now=None: TODAY)
+    # Tài khoản có phát sinh hồ sơ (mỗi tài khoản 1 hồ sơ Auto Fill trong bất kỳ khoảng nào được hỏi).
+    active = {"ua", "ub", "uc", "ul", "ua2"}
+
+    async def _daily(user_ids, date_from, date_to, experience):
+        return [{"userId": u, "date": TODAY, "count": 1} for u in user_ids if u in active and experience == "autofill"]
+
+    monkeypatch.setattr(daily_router.cutover, "daily_dossier_counts", _daily)
     current = {"user": WARD_A}
     app = FastAPI()
     app.add_exception_handler(AppError, app_error_handler)
@@ -44,6 +51,7 @@ def as_user(monkeypatch):
         return client
 
     _switch.db = fake
+    _switch.active = active
     return _switch
 
 
@@ -103,7 +111,8 @@ def test_tinh_khong_gui_duoc_va_chi_xem_don_vi_trong_tinh(as_user):
     assert _send(client).status_code == 403
     body = client.get("/api/v1/daily-reports").json()
     assert [i["unitId"] for i in body["items"]] == ["ua"]
-    assert body["unitCount"] == 2 and [u["unitId"] for u in body["missingToday"]] == ["ub"]
+    assert body["todayUnitCount"] == 2 and [u["unitId"] for u in body["missingToday"]] == ["ub"]
+    assert body["unitCount"] == 2 and {u["unitId"] for u in body["activeUnits"]} == {"ua", "ub"}
     assert body["totals"] == {"reports": 1, "assistant": 5, "actual": 6, "units": 1, "firstDate": TODAY}
     assert client.get("/api/v1/daily-reports", params={"unit": "uc"}).status_code == 403
 
@@ -155,8 +164,17 @@ def test_chua_bao_cao_gop_tai_khoan_cung_xa_va_bo_tai_khoan_khoa(as_user, monkey
     _send(as_user(WARD_A))
     client = as_user(PROVINCE)
     body = client.get("/api/v1/daily-reports").json()
-    assert body["unitCount"] == 2, "Bắc Giang (2 tài khoản) + Phú Bình; bỏ tài khoản khoá"
+    assert body["todayUnitCount"] == 2, "Bắc Giang (2 tài khoản) + Phú Bình; bỏ tài khoản khoá"
     assert [u["unitIds"] for u in body["missingToday"]] == [["ub"]]
-    summary = client.get("/api/v1/daily-reports/summary").json()
-    assert (summary["unitCount"], summary["reportedToday"]) == (2, 1)
+
+
+def test_chi_nhac_don_vi_co_ho_so_hom_nay(as_user):
+    """Phú Bình không có hồ sơ → không phải báo cáo, không vào danh sách lẫn mẫu số. Đơn vị không có hồ sơ
+    mà vẫn gửi thì vẫn tính đã báo cáo (mẫu số không bị nhỏ hơn số đã gửi)."""
+    as_user.active.discard("ub")
+    as_user.active.discard("ua")
+    _send(as_user(WARD_A), tl=0, tt=0)
+    body = as_user(PROVINCE).get("/api/v1/daily-reports", params={"dateFrom": TODAY, "dateTo": TODAY}).json()
+    assert body["missingToday"] == [] and body["todayUnitCount"] == 1
+    assert [u["unitId"] for u in body["activeUnits"]] == ["ua"] and body["unitCount"] == 1
 

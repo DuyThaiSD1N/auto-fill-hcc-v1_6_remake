@@ -11,6 +11,7 @@ from app.pipelines.khuyet_tat.process.schema import (
     UI_COMP_BY_NAME,
 )
 
+_UPPER_NAMES = {"data[ownerFullname]", "data[NktHoTen]", "data[NddHoTen]"}
 _VALID_MUC_DO = {"THD", "CTG", "KTHD", "KXD"}
 
 # Cấu hình theo tài khoản: tỉnh Khánh Hòa ghi sẵn ô "Ghi chú" (data[ghiChu]) bằng câu cố định; nơi khác để cổng/cán
@@ -351,19 +352,55 @@ def _owner_profile(values: dict, ocr_text: str = "") -> dict:
     return profile
 
 
+def _date_lines(value, ocr_text: str) -> list[str]:
+    """Dòng OCR ghi ngày này ("dd/mm/yyyy", "d.m.yyyy", "ngày d tháng m năm yyyy" — có / không số 0 đầu)."""
+    match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(value or "").strip())
+    if not match:
+        return []
+    day, month, year = (int(part) for part in match.groups())
+    numeric = re.compile(rf"(?<!\d)0?{day}\s*[/.\-]\s*0?{month}\s*[/.\-]\s*{year}(?!\d)")
+    worded = re.compile(rf"ngay\W*0?{day}\W*thang\W*0?{month}\W*nam\W*{year}(?!\d)")
+    return [line for line in str(ocr_text or "").splitlines()
+            if numeric.search(line) or worded.search(_norm_text(line))]
+
+
+def _own_issue_date(value, identity: str, others: set[str], ocr_text: str) -> bool:
+    """Ngày cấp thuộc đúng người: có trên giấy, và ít nhất một dòng ghi ngày đó không phải dòng của người khác — dòng mang
+    số định danh của người khuyết tật / chủ hồ sơ (``others``, lệch OCR ≤2 chữ số) mà không mang số của chính người này
+    ("Số CCCD: <số người khuyết tật> Ngày cấp: …" trên giấy ra viện là ngày cấp thẻ người khuyết tật). Số lạ khác (số
+    của chính người này mà lượt trích đọc lệch) không làm bỏ ngày."""
+    for line in _date_lines(value, ocr_text):
+        numbers = {re.sub(r"\D", "", n) for n in re.findall(r"(?<!\d)\d(?:[ .]?\d){8,11}(?!\d)", line)}
+        mine = any(identity and _edit_distance(n, identity) <= _NEAR_EDITS for n in numbers)
+        theirs = any(_edit_distance(n, other) <= _NEAR_EDITS for n in numbers for other in others if other)
+        if mine or not theirs:
+            return True
+    return False
+
+
 def _representative_profile(values: dict, ocr_text: str = "") -> dict | None:
-    """Người đại diện hợp pháp (mục II) — người nộp ở chế độ theo tờ khai."""
+    """Người đại diện hợp pháp (mục II) — người nộp ở chế độ theo tờ khai. Mục II không có dòng ngày sinh / ngày cấp /
+    nơi cấp, hồ sơ hay không kèm CCCD người đại diện: model từng ghép "01/01/<năm suy từ số CCCD>" và ngày cấp thẻ của
+    người khuyết tật (giấy ra viện) → ngày sinh phải có trên giấy, ngày cấp phải là của chính số người này (bỏ cả nơi cấp
+    đi cùng). Không có OCR (gọi trực tiếp) thì không kiểm."""
     name = values.get("Ndd_HoTen")
     identity = _identity(values.get("Ndd_SoDinhDanh"))
     if not name and not identity:
         return None
+    birthday, issued, issuer = values.get("Ndd_NgaySinh"), values.get("Ndd_NgayCap"), values.get("Ndd_NoiCap")
+    if ocr_text:
+        if birthday and not _date_lines(_full_date(birthday), ocr_text):
+            birthday = None
+        others = {_identity(values.get(name)) for name in ("Nkt_SoDinhDanh", "ChuHoSo_SoDinhDanh")} - {identity, ""}
+        if issued and not _own_issue_date(_full_date(issued), identity, others, ocr_text):
+            issued = issuer = None
     return {
         "name": name,
         "identity": identity,
-        "birthday": values.get("Ndd_NgaySinh"),
+        "birthday": birthday,
         "gender": values.get("Ndd_GioiTinh"),
-        "identityDate": values.get("Ndd_NgayCap"),
-        "issuer": values.get("Ndd_NoiCap"),
+        "identityDate": issued,
+        "issuer": issuer,
         "area": _area(values.get("Ndd_NoiCuTru"), ocr_text),
         "phone": values.get("Ndd_SoDienThoai"),
     }
@@ -589,4 +626,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             if value in _VALID_MUC_DO:
                 add(MUC_DO_RADIO_FIELDS[idx], value)
 
+    # Họ tên người trong hồ sơ ghi IN HOA (như giấy tờ tùy thân). Họ tên người nộp theo tài khoản là chữ cổng đổ từ VNeID
+    # → giữ nguyên; theo tờ khai thì người nộp là người trên đơn → in hoa.
+    upper = _UPPER_NAMES | ({"data[fullname]"} if theo_to_khai else set())
+    for item in out:
+        if item["name"] in upper and isinstance(item.get("value"), str):
+            item["value"] = item["value"].upper()
     return out

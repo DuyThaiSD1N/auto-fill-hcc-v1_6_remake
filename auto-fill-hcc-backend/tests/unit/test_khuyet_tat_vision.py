@@ -55,7 +55,7 @@ def test_doc_anh_hop_le_thay_ket_qua_llm(monkeypatch):
     assert d["data[khuyetTat2Obj][khuyetTatRadio1]"] == "co"
     assert d["data[khuyetTat5Obj][khuyetTatRadio3]"] == "co"
     assert d["data[mucDoKhuyetTatObj][mucDoRadio1]"] == "THD"
-    assert d["data[NktHoTen]"] == "Nguyễn Văn Con"
+    assert d["data[NktHoTen]"] == "NGUYỄN VĂN CON"
 
 
 def test_doc_anh_loi_giu_ket_qua_llm(monkeypatch):
@@ -190,16 +190,24 @@ def test_muc_iii_bo_trong_thi_khong_tich_gi():
     assert _enrich_iii([], []) == {}
 
 
-def test_luot_muc_do_lay_muc_tu_4_o_da_chep(monkeypatch):
+def test_luot_muc_do_lay_muc_tu_4_o_cuoi_cua_dong_ocr_that(monkeypatch):
+    """Model chỉ chỉ ra dòng; mã tách 4 ô cuối của chính dòng OCR (hàng tiêu đề chéo bị tách thêm 1 ô ở đầu). Model chép
+    lệch ô / "muc" lệch thì vẫn theo dòng OCR; dòng 2 dấu hoặc vỡ dòng → bỏ; dòng "1.1" của bảng dạng khuyết tật không phải
+    hoạt động 1."""
     import json
 
     from app.pipelines.khuyet_tat.process import muc_do
 
+    ocr = ("| 1.1 | Mềm nhão hoặc co cứng toàn thân | X | |\n"
+           "| 1. Đi lại | | | | X | |\n"
+           "| 3. Tiểu tiện, đại tiện | | | | | X |\n"
+           "| 4. Vệ sinh cá nhân | X | | X | |\n"
+           "| 5. Mặc, cởi quần áo | | X |\n")
     rows = [
-        {"so": "1", "o_danh_dau": ["", "X", "", ""], "muc": "THD"},  # "muc" lệch với ô đã chép → tin ô
+        {"so": "1", "dong_ocr": "| 1. Đi lại | | | X |", "o_danh_dau": ["", "", "", "X"], "muc": "KXD"},
         {"so": "3", "o_danh_dau": ["", "", "", "X"], "muc": "KXD"},
-        {"so": "4", "o_danh_dau": ["X", "", "X", ""], "muc": "THD"},  # 2 ô có dấu → bỏ
-        {"so": "5", "o_danh_dau": ["", "X", ""], "muc": "CTG"},  # vỡ dòng → bỏ
+        {"so": "4", "o_danh_dau": ["X", "", "X", ""], "muc": "THD"},
+        {"so": "5", "o_danh_dau": ["", "X", ""], "muc": "CTG"},
     ]
 
     async def fake_chat(messages, **kwargs):
@@ -207,8 +215,8 @@ def test_luot_muc_do_lay_muc_tu_4_o_da_chep(monkeypatch):
         return json.dumps({"dong": rows})
 
     monkeypatch.setattr(muc_do.client, "chat", fake_chat)
-    out = asyncio.run(muc_do.read_activity_levels([{"text": "bảng"}]))
-    assert out == {"1": "CTG", "3": "KXD"}
+    out = asyncio.run(muc_do.read_activity_levels([{"text": ocr}]))
+    assert out == {"1": "KTHD", "3": "KXD"}
 
 
 def test_luot_muc_do_thay_ket_qua_luot_chinh():

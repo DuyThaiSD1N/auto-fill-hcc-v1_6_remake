@@ -20,7 +20,7 @@ from app.core.deps import require_dashboard
 from app.core.errors import AppError
 from app.dashboard.scope import resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
-from app.reports.integration import province_name
+from app.reports.integration import fold, province_name
 from app.traces.date_range import parse_stats_range
 from app.users import tdp_rollup
 
@@ -28,6 +28,10 @@ router = APIRouter(prefix="/api/v1/bug-reports", tags=["bug-reports"])
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 _RECENT_DOSSIERS = 10
+# Tìm hồ sơ theo tên thủ tục: lọc trong chừng này hồ sơ mới nhất (so khớp không dấu ở Python vì regex Mongo
+# không bỏ dấu được), trả tối đa _SEARCH_RESULTS hồ sơ.
+_SEARCH_SCAN = 2000
+_SEARCH_RESULTS = 20
 
 
 class _Context:
@@ -85,11 +89,32 @@ async def summary(user: dict = Depends(require_dashboard)):
 
 
 @router.get("/recent-dossiers")
-async def recent_dossiers(user: dict = Depends(require_dashboard)):
-    """10 hồ sơ gần nhất của tài khoản (gồm tổ dân phố trực thuộc) để gắn vào báo lỗi."""
+async def recent_dossiers(user: dict = Depends(require_dashboard), q: str | None = Query(None, max_length=100)):
+    """10 hồ sơ gần nhất của tài khoản (gồm tổ dân phố trực thuộc) để gắn vào báo lỗi.
+
+    Có `q`: tìm hồ sơ cũ hơn theo tên thủ tục (không phân biệt dấu) — lỗi thường báo sau khi đã làm thêm
+    vài hồ sơ nên hồ sơ gặp lỗi có thể đã rơi khỏi 10 hồ sơ gần nhất.
+    """
     ctx = await _context(user)
     _require(ctx, rules.REPORTER)
     rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), [ctx.user_id])
+    term = fold(q)
+    if term:
+        docs = await repo.latest_dossiers(rollup.expand([ctx.user_id]), _SEARCH_SCAN)
+        hits = [
+            d for d in docs
+            if term in fold(f"{d.get('procedure_label') or ''} {d.get('procedure') or ''}")
+        ][:_SEARCH_RESULTS]
+        return {"items": [
+            {
+                "dossierId": str(d["_id"]),
+                "procedure": d.get("procedure"),
+                "procedureLabel": d.get("procedure_label") or d.get("procedure"),
+                "startedAt": rules.iso(d.get("started_at")),
+                "experience": d.get("experience"),
+            }
+            for d in hits
+        ]}
     result = await dossiers_repo.list_for_dashboard(
         user_ids=rollup.expand([ctx.user_id]), date_from=_EPOCH,
         date_to=datetime.now(timezone.utc) + timedelta(days=1),
@@ -134,12 +159,12 @@ async def list_reports(
     elif procedure:
         scoped = {**in_province, "dossier.procedure_label": procedure}
 
-    query = dict(scoped)
+    filters: dict = {}
     if status != "all":
-        query["status"] = status
+        filters["status"] = status
     start, end = parse_stats_range(dateFrom, dateTo)
     if start or end:
-        query["created_at"] = {k: v for k, v in (("$gte", start), ("$lt", end)) if v}
+        filters["created_at"] = {k: v for k, v in (("$gte", start), ("$lt", end)) if v}
     term = (q or "").strip()
     if term:
         fields = ["code", "title", "dossier.procedure_label"]
@@ -148,13 +173,15 @@ async def list_reports(
         if ctx.access == rules.MANAGER:
             fields += ["text", "province", "dossier.dossier_id"]
         pattern = {"$regex": re.escape(term), "$options": "i"}
-        query["$or"] = [{field: pattern} for field in fields]
+        filters["$or"] = [{field: pattern} for field in fields]
+    query = {**scoped, **filters}
 
     docs, total = await repo.list_page(query, skip=(page - 1) * pageSize, limit=pageSize)
-    # Số trên chip tính trên phạm vi (kèm tỉnh, thủ tục đang chọn), chưa áp trạng thái/từ khoá/thời gian;
-    # số theo thủ tục thì chưa áp chính bộ lọc thủ tục để vẫn đổi được sang thủ tục khác.
+    # Số trên chip trạng thái: phạm vi (kèm tỉnh, thủ tục đang chọn), chưa áp trạng thái/từ khoá/thời gian.
+    # Số theo thủ tục: áp MỌI bộ lọc đang chọn (trạng thái, thời gian, từ khoá) trừ chính bộ lọc thủ tục —
+    # chọn "Chưa xử lý" thì ô thủ tục đếm lỗi chưa xử lý, và vẫn đổi được sang thủ tục khác.
     counts = {"status": _status_counts(await repo.count_by(scoped, "status"))}
-    by_procedure = await repo.count_by(in_province, "dossier.procedure_label")
+    by_procedure = await repo.count_by({**in_province, **filters}, "dossier.procedure_label")
     counts["procedures"] = sorted(
         ({"procedure": name or NO_PROCEDURE, "count": n} for name, n in by_procedure.items()),
         key=lambda row: (row["procedure"] == NO_PROCEDURE, -row["count"], row["procedure"]),

@@ -140,6 +140,13 @@ def lookup(request_id: str) -> dict:
         raise CaseError(f"{request_id} là lượt {kind}, không phải lượt điền. Hãy đưa mã req của bước điền.")
     if not request:
         raise CaseError(f"{request_id} có trace nhưng không có process_requests nên không biết tệp gốc.")
+    if request.get("archived_at") and not request.get("fields"):
+        # Worker archive của backend gửi lượt sang vault rồi xoá tệp gốc, OCR, fields, câu trả lời LLM khỏi Mongo + đĩa,
+        # khoảng archive_after_minutes (mặc định 30) phút sau lượt cuối.
+        raise CaseError(
+            f"{request_id} đã được backend chuyển sang kho lưu trữ (vault): tệp gốc, OCR và kết quả điền không còn ở Mongo "
+            "và đĩa nên không chạy lại được. Backend xoá khoảng 30 phút sau lượt cuối, hãy tạo ca ngay sau khi điền."
+        )
     user = db.users.find_one({"_id": _object_id(request.get("user_id"))}, {"username": 1, "name": 1, "xa": 1, "tinh": 1})
     if not user:
         raise CaseError("Tài khoản của req không còn trong Mongo nguồn nên không chạy lại đúng xã/tỉnh được.")

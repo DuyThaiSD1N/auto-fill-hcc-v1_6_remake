@@ -8,6 +8,7 @@ nghĩ. Trả ``None`` khi lỗi/không đọc được để runner giữ kết 
 
 import asyncio
 import logging
+import re
 
 from app.services.llm import client
 
@@ -89,6 +90,28 @@ async def read_activity_levels(documents: list[dict]) -> dict | None:
     except Exception as exc:  # noqa: BLE001
         logger.warning("Đọc bảng mức độ khuyết tật lỗi, giữ kết quả lượt chính: %s", exc)
         return None
+    return levels_from(data, text)
+
+
+def _squeeze(text) -> str:
+    return re.sub(r"\s+", "", str(text or ""))
+
+
+def _row_line(key: str, copied: str, ocr_text: str) -> str:
+    """Dòng OCR của hoạt động số ``key``: dòng bảng "| <số>. …|" trong OCR; nhiều dòng như thế (hồ sơ quét trùng trang)
+    thì lấy dòng model đã chép nguyên văn. Không tin dòng model tự chép khi không có trong OCR."""
+    pattern = re.compile(rf"^\|\s*{re.escape(key)}\s*[.)](?!\d)")
+    lines = [line.strip() for line in str(ocr_text or "").splitlines() if pattern.match(line.strip())]
+    lines = [line for line in lines if line.endswith("|")]
+    if len(lines) == 1:
+        return lines[0]
+    same = [line for line in lines if _squeeze(line) == _squeeze(copied)]
+    return same[0] if same else ""
+
+
+def levels_from(data, ocr_text: str) -> dict | None:
+    """JSON model → {số hoạt động: mức}. Model chỉ chỉ ra DÒNG; 4 ô đánh dấu do MÃ tách từ chính dòng OCR (4 ô cuối sau tên
+    hoạt động) — model từng chép lệch ô làm cả 10 dòng "Không thực hiện được" thành "Không xác định được"."""
     rows = data.get("dong") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         return None
@@ -96,12 +119,15 @@ async def read_activity_levels(documents: list[dict]) -> dict | None:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        key = str(row.get("so") or "").strip()
-        cells = row.get("o_danh_dau")
-        if key not in {str(i) for i in range(1, 11)} or not isinstance(cells, list) or len(cells) != 4:
+        key = str(row.get("so") or "").strip().rstrip(".")
+        if key not in {str(i) for i in range(1, 11)}:
             continue
-        marked = [i for i, cell in enumerate(cells) if str(cell or "").strip()]
-        # Mức suy từ chính 4 ô model đã chép; lệch với "muc" model ghi thì tin ô đã chép.
+        line = _row_line(key, str(row.get("dong_ocr") or ""), ocr_text)
+        parts = [part.strip() for part in line[1:-1].split("|")] if line else []
+        cells = parts[1:][-4:]
+        if len(cells) != 4:
+            continue
+        marked = [i for i, cell in enumerate(cells) if cell]
         if len(marked) == 1:
             out[key] = _LEVELS[marked[0]]
     return out or None

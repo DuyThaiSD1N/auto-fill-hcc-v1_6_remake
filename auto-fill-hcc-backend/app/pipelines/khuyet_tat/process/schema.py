@@ -68,9 +68,9 @@ FIELDS: list[dict] = [
     # Người đại diện hợp pháp.
     {"name": "Ndd_HoTen", "desc": "Họ tên người đại diện hợp pháp trên đơn đề nghị."},
     {"name": "Ndd_SoDinhDanh", "desc": "Số CMND/CCCD của người đại diện hợp pháp."},
-    {"name": "Ndd_NgaySinh", "desc": "Ngày sinh người đại diện hợp pháp tại mục II hoặc CCCD đúng người này, dd/mm/yyyy; chỉ có năm thì bỏ."},
+    {"name": "Ndd_NgaySinh", "desc": "Ngày sinh người đại diện hợp pháp tại mục II hoặc CCCD đúng người này, dd/mm/yyyy; chỉ có năm thì bỏ. Giấy không ghi ngày sinh của người này thì bỏ: KHÔNG suy năm từ số CCCD, KHÔNG ghép \"01/01/<năm>\"."},
     {"name": "Ndd_GioiTinh", "desc": 'Mặc định BỎ field này: mục II Mẫu số 01 không có dòng giới tính. Chỉ trả "Nam"/"Nữ" khi OCR có CCCD/CMND mang đúng số Ndd_SoDinhDanh ghi giới tính; không suy từ họ tên, quan hệ hay chữ "Người viết đơn".'},
-    {"name": "Ndd_NgayCap", "desc": "Ngày cấp CMND/CCCD của người đại diện tại mục II hoặc mặt sau CCCD đúng người này, dd/mm/yyyy."},
+    {"name": "Ndd_NgayCap", "desc": "Ngày cấp CMND/CCCD của người đại diện tại mục II hoặc mặt sau CCCD đúng người này, dd/mm/yyyy. Ngày cấp ghi cạnh số CCCD của người khác (giấy ra viện, bệnh án, thẻ của người khuyết tật) KHÔNG phải của người đại diện → bỏ."},
     {"name": "Ndd_NoiCap", "desc": "Nơi cấp CMND/CCCD của người đại diện CHỈ khi mục II hoặc CCCD đúng người này ghi rõ; không có thì bỏ, không lấy nơi cấp của thẻ người khác."},
     {"name": "Ndd_QuanHe", "desc": "Chép NGUYÊN chữ đứng sau nhãn \"Mối quan hệ với người được xác định khuyết tật\" ở mục II, không đổi chiều, không chuẩn hóa; sau nhãn trống hoặc chỉ có dấu chấm thì bỏ."},
     {"name": "Ndd_SoDienThoai", "desc": "Số điện thoại người đại diện hợp pháp, số di động VN nếu có."},

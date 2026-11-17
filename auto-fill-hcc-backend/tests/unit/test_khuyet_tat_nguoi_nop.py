@@ -42,7 +42,7 @@ def _values(out):
 
 def test_chu_ho_so_du_phong_tu_muc_i_khong_lay_nguoi_dai_dien():
     d = _values(mapper.enrich(_fields(_MUC_I, _MUC_II), {}))
-    assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
+    assert d["data[ownerFullname]"] == "NGUYỄN VĂN CON"
     assert d["data[ownerIdentityNumber]"] == "001220000001"
     assert d["data[ownerBirthday]"] == "01/02/2020"
 
@@ -54,20 +54,20 @@ def test_tai_khoan_nguoi_dai_dien_bo_tich_chu_ho_so_la_nguoi_khuyet_tat():
     d = _values(out)
     assert d["data[isOwnerDossierCheck]"] is False
     assert d["data[fullname]"] == "NGUYỄN VĂN CHA"
-    assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
+    assert d["data[ownerFullname]"] == "NGUYỄN VĂN CON"
 
 
 def test_tai_khoan_la_nguoi_khuyet_tat_thi_tich():
     d = _values(mapper.enrich(_fields(_MUC_I), _TK_NKT))
     assert d["data[isOwnerDossierCheck]"] is True
-    assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
+    assert d["data[ownerFullname]"] == "NGUYỄN VĂN CON"
 
 
 def test_to_khai_nguoi_nop_la_nguoi_dai_dien_bo_qua_tai_khoan():
     out = mapper.enrich(_fields(_MUC_I, _MUC_II), {**_TO_KHAI, **_TK_NKT})
     d = _values(out)
     assert out[0]["name"] == "data[isOwnerDossierCheck]" and out[0]["value"] is False
-    assert d["data[fullname]"] == "Nguyễn Văn Cha"
+    assert d["data[fullname]"] == "NGUYỄN VĂN CHA"
     assert d["data[identityNumber]"] == "001080000002"
     assert d["data[birthday]"] == "03/04/1980"
     assert d["data[identityDate]"] == "05/06/2022"
@@ -78,7 +78,7 @@ def test_to_khai_nguoi_nop_la_nguoi_dai_dien_bo_qua_tai_khoan():
     # Mục II không ghi giới tính → suy từ số định danh người đại diện (chữ số thứ 4: chẵn → Nam); nơi cấp không có
     # nguồn → để trống, không bịa.
     assert d["data[gender]"] == "Nam" and "data[idIssuePlace]" not in d
-    assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
+    assert d["data[ownerFullname]"] == "NGUYỄN VĂN CON"
 
 
 def test_to_khai_nguoi_dai_dien_khong_ngay_sinh_thi_xoa_trong():
@@ -87,16 +87,16 @@ def test_to_khai_nguoi_dai_dien_khong_ngay_sinh_thi_xoa_trong():
     birthday = [f for f in out if f["name"] == "data[birthday]"]
     assert len(birthday) == 1
     assert birthday[0]["value"] == "" and birthday[0]["clear"] is True and birthday[0]["markEmpty"] is True
-    assert _values(out)["data[fullname]"] == "Nguyễn Văn Cha"
+    assert _values(out)["data[fullname]"] == "NGUYỄN VĂN CHA"
 
 
 def test_to_khai_muc_ii_trong_thi_nguoi_khuyet_tat_tu_nop():
     out = mapper.enrich(_fields(_MUC_I), _TO_KHAI)
     d = _values(out)
     assert out[0]["name"] == "data[isOwnerDossierCheck]" and out[0]["value"] is True
-    assert d["data[fullname]"] == "Nguyễn Văn Con"
+    assert d["data[fullname]"] == "NGUYỄN VĂN CON"
     assert d["data[identityNumber]"] == "001220000001"
-    assert d["data[ownerFullname]"] == "Nguyễn Văn Con"
+    assert d["data[ownerFullname]"] == "NGUYỄN VĂN CON"
 
 
 def test_to_khai_khong_dua_moc_tai_khoan_vao_prompt():
@@ -121,7 +121,7 @@ def test_ho_ten_nguoi_dai_dien_theo_tai_khoan_khi_cung_so_dinh_danh():
     d = _values(mapper.enrich(_fields(_MUC_I, {**_MUC_II, "Ndd_HoTen": "Nguyễn Văn Cha Mất Dấu"}), _TK_DAI_DIEN))
     assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA"
     d = _values(mapper.enrich(_fields(_MUC_I, {**_MUC_II, "Ndd_HoTen": "Nguyễn Văn Cha Mất Dấu"}), _TK_NKT))
-    assert d["data[NddHoTen]"] == "Nguyễn Văn Cha Mất Dấu"
+    assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA MẤT DẤU"
 
 
 def test_gioi_tinh_nguoi_nop_suy_tu_so_dinh_danh_khi_giay_khong_ghi():
@@ -220,3 +220,30 @@ def test_theo_tai_khoan_luon_bo_khoa_hai_o_ho_ten_cccd_nguoi_nop():
     by = {f["name"]: f for f in mapper.enrich(_fields(_MUC_I, _MUC_II), {})}
     for name in ("data[fullname]", "data[identityNumber]"):
         assert by[name] == {"name": name, "comp": "dom-expect", "value": "", "enableInput": True}
+
+
+def test_to_khai_ngay_sinh_ngay_cap_nguoi_dai_dien_phai_cua_chinh_nguoi_do_tren_giay():
+    """Mục II không ghi ngày sinh / ngày cấp: model từng ghép "01/01/<năm suy từ số CCCD>" và lấy ngày cấp thẻ người khuyết
+    tật trên giấy ra viện cho người đại diện → bỏ (ngày sinh xoá ô cổng đổ sẵn), giữ cho chủ hồ sơ."""
+    ocr = ("II. Thông tin người đại diện hợp pháp\n- Họ và tên: Nguyễn Văn Cha\n"
+           "- Số CMND hoặc căn cước công dân: 001080000002\n"
+           "Số CCCD/CMND: 001220000001 Ngày cấp: 05/06/2022\n")
+    muc_ii = {**_MUC_II, "Ndd_NgaySinh": "01/01/1980", "Ndd_NgayCap": "05/06/2022", "Ndd_NoiCap": "Cục Cảnh sát"}
+    out = {f["name"]: f for f in mapper.enrich(_fields(_MUC_I, muc_ii), {**_TO_KHAI, "_ocr_text": ocr})}
+    assert out["data[birthday]"]["value"] == "" and out["data[birthday]"]["clear"] is True
+    assert "data[identityDate]" not in out and "data[idIssuePlace]" not in out
+    # Ngày có trên giấy, cùng dòng với số của chính người đại diện → giữ.
+    ocr_ok = ocr + "Họ tên: Nguyễn Văn Cha, sinh ngày 03/04/1980, CCCD 001080000002 cấp ngày 07/08/2021\n"
+    muc_ii = {**muc_ii, "Ndd_NgaySinh": "03/04/1980", "Ndd_NgayCap": "07/08/2021"}
+    out = {f["name"]: f["value"] for f in mapper.enrich(_fields(_MUC_I, muc_ii), {**_TO_KHAI, "_ocr_text": ocr_ok})}
+    assert out["data[birthday]"] == "03/04/1980" and out["data[identityDate]"] == "07/08/2021"
+    assert out["data[idIssuePlace]"] == "Cục Cảnh sát"
+
+
+def test_ho_ten_nguoi_trong_ho_so_in_hoa_nguoi_nop_theo_tai_khoan_giu_nguyen():
+    tk = {"formContext": {"applicantFullname": "Nguyễn Văn Cha", "applicantIdentityNumber": "001080000002"}}
+    d = _values(mapper.enrich(_fields(_MUC_I, _MUC_II), tk))
+    assert d["data[ownerFullname]"] == d["data[NktHoTen]"] == "NGUYỄN VĂN CON"
+    assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA"
+    assert d["data[fullname]"] == "Nguyễn Văn Cha"  # tên VNeID cổng đổ sẵn
+    assert _values(mapper.enrich(_fields(_MUC_I, _MUC_II), _TO_KHAI))["data[fullname]"] == "NGUYỄN VĂN CHA"

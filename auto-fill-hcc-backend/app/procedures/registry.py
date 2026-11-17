@@ -7674,6 +7674,9 @@ PROCEDURES: list[dict] = [
         "label": "Đổi, cấp lại Giấy xác nhận khuyết tật",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Điền đợt 2 trên form Form.io (data[...]), dùng thanh tra của xac-dinh-muc-do-khuyet-tat (cùng eForm Mẫu số 01):
+        # chỉ chạy khi extension khai fillSupports có "secondPassFormio". Bản khác bỏ qua khoá này.
+        "secondPass": "formio",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

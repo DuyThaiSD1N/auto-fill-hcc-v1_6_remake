@@ -76,6 +76,17 @@ def _cells(line: str) -> list[str] | None:
     return parts[-2:] if len(parts) >= 4 else None
 
 
+def _row_line(key: str, copied: str, ocr_text: str) -> str:
+    """Dòng bảng "| <STT> | …|" trong OCR: chỉ một dòng mang STT đó thì lấy dòng đó; nhiều dòng (hồ sơ quét trùng trang)
+    thì lấy dòng model đã chép nguyên văn. Không tin dòng model tự chép khi không có trong OCR."""
+    pattern = re.compile(rf"^\|\s*{re.escape(key)}\.?\s*\|")
+    lines = [line.strip() for line in str(ocr_text or "").splitlines() if pattern.match(line.strip())]
+    if len(lines) == 1:
+        return lines[0]
+    same = [line for line in lines if _squeeze(line) == _squeeze(copied)]
+    return same[0] if same else ""
+
+
 def rows_from(data, ocr_text: str = "") -> dict[str, str] | None:
     """JSON model → {STT: "co" | "khong" | "trong"}; None khi không có dòng nào của bảng. Model chỉ chỉ ra DÒNG: dòng
     phải có nguyên văn trong OCR và đúng STT, hai ô Có / Không do MÃ tách từ chính dòng đó (model từng bịa "Có" cho cả
@@ -83,17 +94,16 @@ def rows_from(data, ocr_text: str = "") -> dict[str, str] | None:
     rows = data.get("dong") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         return None
-    paper = _squeeze(ocr_text)
     out: dict[str, str] = {}
     for row in rows:
         if not isinstance(row, dict):
             continue
         key = str(row.get("so") or "").strip().rstrip(".")
-        line = str(row.get("dong_ocr") or "")
-        cells = _cells(line)
-        if key not in ROWS or cells is None or not _squeeze(line) or _squeeze(line) not in paper:
+        if key not in ROWS:
             continue
-        if not re.match(rf"^\|\s*{re.escape(key)}\.?\s*\|", line.strip()):
+        line = _row_line(key, str(row.get("dong_ocr") or ""), ocr_text)
+        cells = _cells(line) if line else None
+        if cells is None:
             continue
         co, khong = (_marked(cell) for cell in cells)
         # Dấu ở cả hai ô: không biết bên nào → coi như trống.

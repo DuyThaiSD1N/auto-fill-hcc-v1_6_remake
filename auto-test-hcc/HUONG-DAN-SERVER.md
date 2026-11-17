@@ -51,7 +51,12 @@ tài khoản test local đúng tỉnh và xã của req. Dịch vụ tự mở �
 `read-uploads.sh` khi cần. Bật lại dịch vụ: `python auto-test-hcc/agents/server.py`.
 
 - Tệp gốc của req được tải về `auto-test-hcc/runs/` trên máy local (gitignore). Đó là giấy tờ thật của người dân.
-- Uploads trên server chỉ giữ vài ngày gần nhất: req cũ hơn sẽ báo "Tệp gốc của req không còn trên đĩa".
+- **Chỉ chạy được req vừa điền, trong khoảng 30 phút.** Worker `archive` của backend production gửi mỗi lượt sang kho lưu trữ (vault),
+  rồi khoảng `ARCHIVE_AFTER_MINUTES` (mặc định 30) phút sau lượt cuối thì xoá tệp gốc khỏi đĩa và xoá `fields`, `options`, OCR, câu trả
+  lời LLM khỏi Mongo. Kiểm ngày 17/11/2026: 3.943 req trong 24 giờ, không req nào còn `fields`. Req đã archive thì web báo "đã được
+  backend chuyển sang kho lưu trữ". Cách dùng: tester điền xong thấy lỗi thì tạo ca ngay; dịch vụ chép chứng cứ về máy lúc tạo ca nên
+  các bước sau không bị ảnh hưởng. Đọc req từ vault thì chưa hỗ trợ.
+- Có `server.env` này thì mọi mã req đều tra trên trolysoao, không tra Mongo local nữa. Muốn quay lại req local thì đổi tên tệp rồi bật lại dịch vụ.
 - Gỡ quyền: xoá dòng `autotest` trong `~/.ssh/authorized_keys` trên server và chạy `db.dropUser('autotest_ro')`.
 
 ---

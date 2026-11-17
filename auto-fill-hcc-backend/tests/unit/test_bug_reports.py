@@ -293,7 +293,7 @@ def test_trang_thai_khong_phai_loi(as_user):
 
 def test_loc_theo_thu_tuc_va_dem_tung_thu_tuc(as_user):
     client = as_user(WARD_A)
-    _send(client, dossier="d-a1")
+    first_id = _send(client, dossier="d-a1").json()["id"]
     _send(client, text="Lỗi thứ hai", dossier="d-a1")
     _send(client, text="Không gắn hồ sơ")
     body = client.get("/api/v1/bug-reports").json()
@@ -304,6 +304,10 @@ def test_loc_theo_thu_tuc_va_dem_tung_thu_tuc(as_user):
     only = client.get("/api/v1/bug-reports", params={"procedure": "Đăng ký khai sinh"}).json()
     assert only["total"] == 2 and only["counts"]["status"]["new"] == 2
     assert len(only["counts"]["procedures"]) == 2, "vẫn liệt kê thủ tục khác để đổi lựa chọn"
+    as_user(ADMIN).patch(f"/api/v1/bug-reports/{first_id}", json={"status": "done"})
+    pending = client.get("/api/v1/bug-reports", params={"status": "new"}).json()["counts"]["procedures"]
+    assert pending == [{"procedure": "Đăng ký khai sinh", "count": 1}, {"procedure": "_none", "count": 1}], \
+        "số theo thủ tục đi theo bộ lọc trạng thái"
     none = client.get("/api/v1/bug-reports", params={"procedure": "_none"}).json()
     assert [i["procedureLabel"] for i in none["items"]] == [None]
 
@@ -445,3 +449,13 @@ def test_tinh_khong_thay_video_trong_danh_sach(as_user, small_chunks):
     item = as_user(PROVINCE).get("/api/v1/bug-reports").json()["items"][0]
     assert "video" not in item
     assert as_user(WARD_A).get("/api/v1/bug-reports").json()["items"][0]["video"]["type"] == "video/mp4"
+
+
+def test_tim_ho_so_cu_theo_ten_thu_tuc_khong_dau(as_user, db):
+    """Hồ sơ gặp lỗi có thể đã rơi khỏi 10 hồ sơ gần nhất → tìm theo tên thủ tục, gõ không dấu vẫn ra."""
+    client = as_user(WARD_A)
+    assert [i["dossierId"] for i in client.get("/api/v1/bug-reports/recent-dossiers", params={"q": "ket hon"}).json()["items"]] == ["d-t1"]
+    found = client.get("/api/v1/bug-reports/recent-dossiers", params={"q": "Khai sinh"}).json()["items"]
+    assert [i["dossierId"] for i in found] == ["d-a1"] and found[0]["procedureLabel"] == "Đăng ký khai sinh"
+    assert client.get("/api/v1/bug-reports/recent-dossiers", params={"q": "khai tu"}).json()["items"] == [], "hồ sơ xã khác"
+

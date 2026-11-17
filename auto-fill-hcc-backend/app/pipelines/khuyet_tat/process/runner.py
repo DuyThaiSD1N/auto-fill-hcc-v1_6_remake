@@ -5,6 +5,7 @@ import copy
 import re
 import unicodedata
 
+from app.pipelines._shared.area_remap import province_for_ward
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.khuyet_tat.process import dang_khuyet_tat, mapper, muc_do, vision
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
@@ -88,6 +89,16 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     )
 
 
+def _counter_context(options: dict) -> str:
+    """Xã / phường của tài khoản quầy (nơi nhận hồ sơ) cho quy tắc địa chỉ "gần giống xã quầy thì lấy xã quầy"."""
+    raw = re.sub(r"^\s*(hcc|tt\s*hcc|ubnd)\s+", "", str((options or {}).get("counterWard") or "").strip(), flags=re.I)
+    hit = province_for_ward(re.split(r"\s*[-–,]\s*|\s+tỉnh\s+", raw)[0].strip()) if raw else None
+    if not hit:
+        return ""
+    province, ward = hit
+    return f"\n\n<xa_quay>\nXã / phường của tài khoản quầy đang nhận hồ sơ: {ward}, {province}.\n</xa_quay>"
+
+
 async def _owner_only_context(documents: list[dict], options: dict) -> str:
     """Chế độ THEO TỜ KHAI: không đưa mỏ neo tài khoản vào prompt; mapper lấy người nộp từ mục II."""
     _ = documents, options
@@ -113,7 +124,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         read["documents"] = documents
         # Bảng dạng khuyết tật (mục III.1) đọc riêng song song lượt trích chính, như bảng mức độ.
         types_tasks.append(asyncio.create_task(dang_khuyet_tat.read_disability_types(documents)))
-        return await requester_context(documents, opts)
+        return await requester_context(documents, opts) + _counter_context(opts)
 
     # Mục III đọc thẳng từ ảnh song song với OCR + LLM; luôn chờ cả hai xong.
     res, section_iii = await asyncio.gather(runner.run(

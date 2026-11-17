@@ -84,3 +84,21 @@ def test_mongo_thu_khong_roi_ve_nguon(monkeypatch):
         assert evidence.test_database() == "local"
     finally:
         evidence.test_database.cache_clear()
+
+
+def test_req_da_archive_thi_bao_ro_ly_do(monkeypatch):
+    """Backend production xoá tệp, OCR, fields khoảng 30 phút sau lượt cuối: báo đúng lý do thay vì 'thiếu tệp'."""
+    class Coll:
+        def __init__(self, doc):
+            self.doc = doc
+
+        def find_one(self, *args, **kwargs):
+            return self.doc
+
+    class Db:
+        process_requests = Coll({"request_id": "rq_x", "archived_at": "2026-11-17", "files": [{"name": "a.jpg"}]})
+        traces = Coll({"request_id": "rq_x", "kind": "autofill"})
+
+    monkeypatch.setattr(evidence, "database", lambda: Db())
+    with pytest.raises(evidence.CaseError, match="kho lưu trữ"):
+        evidence.lookup("rq_x")

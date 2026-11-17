@@ -10,6 +10,7 @@ Quyền LUÔN phân giải từ token qua phạm vi thống kê (app/dashboard/s
 """
 import io
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -21,9 +22,13 @@ from app.daily_reports import repo, rules
 from app.daily_reports.export import build_workbook
 from app.dashboard.scope import narrow_to_province, resolve_dashboard_scope
 from app.reports.integration import fold, province_name
+from app.stats import cutover
+from app.traces.date_range import parse_stats_range
 from app.users import tdp_rollup
 
 router = APIRouter(prefix="/api/v1/daily-reports", tags=["daily-reports"])
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 class _Context:
@@ -85,11 +90,29 @@ def _filters(ctx: _Context, date_from: str | None, date_to: str | None, province
     return query, units
 
 
-def _today_status(units: list[dict], reported: list[dict]) -> tuple[int, list[list[dict]]]:
-    """(số đơn vị, đơn vị chưa gửi hôm nay — mỗi đơn vị là danh sách tài khoản của nó).
+async def _active_ids(units: list[dict], date_from: str | None, date_to: str | None) -> set[str]:
+    """Tài khoản có phát sinh hồ sơ trong khoảng ngày (Auto Fill + Handfree, cùng cách đếm bảng thống kê,
+    hồ sơ tổ dân phố tính vào xã cha). Đơn vị không có hồ sơ thì không cần báo cáo."""
+    ids = [u["unitId"] for u in units]
+    if not ids:
+        return set()
+    start, end = parse_stats_range(date_from, date_to)
+    start = start or _EPOCH
+    end = end or datetime.now(timezone.utc) + timedelta(days=1)
+    active: set[str] = set()
+    for experience in ("autofill", "handfree"):
+        for row in await cutover.daily_dossier_counts(user_ids=ids, date_from=start, date_to=end, experience=experience):
+            if int(row.get("count") or 0) > 0:
+                active.add(str(row["userId"]))
+    return active
 
-    Một xã có thể có nhiều tài khoản (hoặc tài khoản cũ còn sót): đếm theo ĐƠN VỊ = tỉnh + tên xã, xã có
-    một tài khoản đã gửi là xong. Tài khoản tạm khoá không đăng nhập được nên không tính là phải gửi.
+
+def _today_status(units: list[dict], reported: list[dict], active: set[str]) -> tuple[int, list[list[dict]]]:
+    """(số đơn vị phải báo cáo hôm nay, đơn vị chưa gửi — mỗi đơn vị là danh sách tài khoản của nó).
+
+    Chỉ đơn vị CÓ PHÁT SINH hồ sơ hôm nay mới phải báo cáo (`active`); đơn vị không có hồ sơ mà vẫn gửi thì
+    tính vào mẫu số như đã báo cáo. Một xã có thể có nhiều tài khoản (hoặc tài khoản cũ còn sót): đếm theo
+    ĐƠN VỊ = tỉnh + tên xã, xã có một tài khoản đã gửi là xong. Tài khoản tạm khoá không tính.
     """
     def key(province, name) -> tuple[str, str]:
         return fold(province_name(province)), fold(name)
@@ -100,11 +123,14 @@ def _today_status(units: list[dict], reported: list[dict]) -> tuple[int, list[li
     for u in units:
         if not u.get("accessDisabled"):
             groups.setdefault(key(u.get("tinh"), _unit_name(u)), []).append(u)
-    missing = [
-        accounts for k, accounts in groups.items()
-        if k not in done_keys and not any(a["unitId"] in done_ids for a in accounts)
-    ]
-    return len(groups), missing
+    count, missing = 0, []
+    for k, accounts in groups.items():
+        done = k in done_keys or any(a["unitId"] in done_ids for a in accounts)
+        if done or any(a["unitId"] in active for a in accounts):
+            count += 1
+            if not done:
+                missing.append(accounts)
+    return count, missing
 
 
 @router.get("/summary")
@@ -114,14 +140,7 @@ async def summary(user: dict = Depends(require_dashboard)):
     today = rules.today_vn()
     if ctx.access == rules.REPORTER:
         return {"access": ctx.access, "today": today, "sentToday": await repo.find_day(ctx.user_id, today) is not None}
-    query, units = _filters(ctx, None, None, None, None)
-    unit_count, missing = _today_status(units, await repo.reported_on(query, today))
-    return {
-        "access": ctx.access,
-        "today": today,
-        "unitCount": unit_count,
-        "reportedToday": unit_count - len(missing),
-    }
+    return {"access": ctx.access, "today": today}
 
 
 @router.get("/today")
@@ -197,10 +216,21 @@ async def list_reports(
         "byDay": await repo.by_day(query),
     }
     if ctx.access != rules.REPORTER:
-        # Đơn vị chưa gửi báo cáo HÔM NAY trong phạm vi đang lọc (không phụ thuộc khoảng ngày).
+        # Đơn vị "trong báo cáo" của khoảng ngày = có phát sinh hồ sơ hoặc đã gửi báo cáo. Tính trên toàn
+        # phạm vi tài khoản (mọi tỉnh) để web dựng ô chọn tỉnh/đơn vị; mẫu số "Từ x/y" theo bộ lọc hiện tại.
+        all_units = ctx.scope.get("units") or []
+        range_query, _ = _filters(ctx, dateFrom, dateTo, None, None)
+        involved = await _active_ids(all_units, dateFrom, dateTo) | await repo.unit_ids(range_query)
+        out["activeUnits"] = [
+            {"unitId": u["unitId"], "name": u.get("name"), "xa": u.get("xa"), "tinh": u.get("tinh")}
+            for u in all_units if u["unitId"] in involved
+        ]
+        out["unitCount"] = sum(1 for u in units if u["unitId"] in involved)
+        # Đơn vị CÓ HỒ SƠ HÔM NAY mà chưa gửi báo cáo hôm nay, trong phạm vi đang lọc (không theo khoảng ngày).
         scope_query = {k: v for k, v in query.items() if k != "date"}
-        unit_count, missing = _today_status(units, await repo.reported_on(scope_query, today))
-        out["unitCount"] = unit_count
+        active_today = await _active_ids(units, today, today)
+        today_count, missing = _today_status(units, await repo.reported_on(scope_query, today), active_today)
+        out["todayUnitCount"] = today_count
         out["missingToday"] = sorted(
             (
                 {

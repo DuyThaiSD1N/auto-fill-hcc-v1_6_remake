@@ -45,8 +45,11 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 - Mọi địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước.
 - Địa chỉ hành chính hiện hành chỉ dùng 2 cấp: xã/phường/thị trấn và tỉnh/thành phố.
 - Nếu OCR có dạng cũ "[chi tiết], xã/phường, huyện/quận/thị xã, tỉnh" thì bỏ cấp huyện/quận/thị xã.
-- "tinh" chỉ ghi khi chính dòng địa chỉ đó ghi tỉnh/thành phố; dòng chỉ ghi tới xã/phường thì để "tinh" rỗng, KHÔNG
-  đoán tỉnh theo tên xã hay theo địa chỉ của người khác (Python tự tra tỉnh theo tên xã/phường).
+- KHÔNG BỊA TỈNH: "tinh" chỉ ghi khi chính dòng địa chỉ đó ghi tỉnh/thành phố; dòng chỉ ghi tới xã/phường thì để "tinh"
+  rỗng. Không suy tỉnh từ quận/huyện (OCR hay đọc lệch chữ viết tay thành "Quận 1", "Q.1"...), từ tên xã hay từ địa chỉ của
+  người khác (Python tự tra tỉnh theo tên xã/phường).
+- Có khối <xa_quay>: tên xã/phường trên dòng địa chỉ TRÙNG hoặc GẦN GIỐNG (lệch dấu, lệch 1–2 chữ cái do OCR) xã/phường
+  của quầy → ghi đúng tên xã/phường và tỉnh của quầy trong <xa_quay>. Tên khác hẳn thì chép theo giấy.
 - chiTietDuoiXa chỉ giữ phần chi tiết đứng trước xã/phường: số nhà, đường/phố, tổ, tổ dân phố, bản, thôn, xóm, khu.
   Không lặp xã/huyện/tỉnh vào chiTietDuoiXa.
 - Ví dụ: "Số nhà 003, phố Yết Kiêu, Tổ 16, phường Tân Phong, Lai Châu"

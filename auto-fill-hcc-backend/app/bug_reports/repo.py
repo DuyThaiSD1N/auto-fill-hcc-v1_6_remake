@@ -52,6 +52,16 @@ async def find_dossier(dossier_id: str, user_ids: list[str]) -> dict | None:
     )
 
 
+async def latest_dossiers(user_ids: list[str], limit: int) -> list[dict]:
+    """Hồ sơ mới nhất của các tài khoản (cả Auto Fill lẫn Handfree), chỉ trường cần để gắn vào báo lỗi."""
+    return await (
+        get_db().dossiers.find(
+            {"user_id": {"$in": user_ids}},
+            {"procedure": 1, "procedure_label": 1, "started_at": 1, "experience": 1},
+        ).sort("started_at", -1).limit(limit).to_list(length=limit)
+    )
+
+
 async def list_page(query: dict, *, skip: int, limit: int) -> tuple[list[dict], int]:
     db = get_db()
     total = await db.bug_reports.count_documents(query)

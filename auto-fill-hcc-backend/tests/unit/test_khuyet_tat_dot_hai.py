@@ -77,8 +77,8 @@ def test_ban_va_chi_ghi_o_phan_quyet_lam_doi_va_khong_doi_o_chu_ho_so(monkeypatc
     before = {**_MUC_I, **_MUC_II}
     after = thanh_tra.sync(before, {**before, "Nkt_HoTen": "Nguyễn Văn Con", "Ndd_QuanHe": "con"})
     fields = {f["name"]: f for f in _patch(monkeypatch, before, after, _TK_CHA)}
-    assert fields["data[NktHoTen]"]["value"] == "Nguyễn Văn Con" and fields["data[NktHoTen]"]["by"] == "dinh_danh"
-    assert fields["data[ownerFullname]"]["value"] == "Nguyễn Văn Con"
+    assert fields["data[NktHoTen]"]["value"] == "NGUYỄN VĂN CON" and fields["data[NktHoTen]"]["by"] == "dinh_danh"
+    assert fields["data[ownerFullname]"]["value"] == "NGUYỄN VĂN CON"
     assert fields["data[NddQuanheNkt]"]["value"] == "Con"
     assert "data[isOwnerDossierCheck]" not in fields and "data[NktSoDinhdanh]" not in fields
 
@@ -118,3 +118,39 @@ def test_runner_chi_tra_dot_hai_khi_extension_khai_biet(monkeypatch):
 def test_ho_so_khong_co_the_chi_soat_quan_he():
     found = dinh_danh.findings_from(Case([{"name": "don.pdf", "text": _DON}], "", {**_MUC_I, **_MUC_II}, {}))
     assert [f.unit.key for f in found] == ["ndd.quan_he"]
+
+
+_DON_DIA_CHI = (
+    "ĐƠN ĐỀ NGHỊ XÁC ĐỊNH, XÁC ĐỊNH LẠI MỨC ĐỘ KHUYẾT TẬT\n"
+    "I. Thông tin người được xác định mức độ khuyết tật\n- Họ và tên: Nguyễn Văn Con\n"
+    "- Nơi ở hiện nay: Tổ 1 - Phường Đông Hà - Quận 1\n"
+    "II. Thông tin người đại diện hợp pháp\n- Họ và tên: Nguyễn Văn Cha\n"
+    "- Hộ khẩu thường trú: Tổ 2\n"
+    "III. Thông tin về tình trạng khuyết tật\n"
+)
+
+
+def test_dia_chi_cat_dung_dong_cua_tung_o_tren_don():
+    from app.pipelines.khuyet_tat.thanh_tra import dia_chi
+
+    lines = dia_chi.lines_of([{"name": "don.pdf", "text": _DON_DIA_CHI}])
+    assert lines["Nkt_NoiOHienNay"][0].endswith("Quận 1") and lines["Ndd_NoiCuTru"][0].endswith("Tổ 2")
+    assert "Nkt_ThuongTru" not in lines
+
+
+def test_dia_chi_khong_bia_tinh_va_loi_cua_luot_trich_do_ma_chi_ra():
+    """Dòng không ghi tỉnh: tỉnh model ghi bị bỏ, lấy tỉnh duy nhất có xã đó. Lượt trích bị đem ra toà khi tỉnh / xã của nó
+    không có trên giấy nào (tỉnh tự suy từ "Quận 1", xã khớp gần sang tên khác)."""
+    from app.pipelines.khuyet_tat.thanh_tra import dia_chi
+
+    line = "- Nơi ở hiện nay: Tổ 1 - Phường Đông Hà - Quận 1"
+    got = dia_chi.check("Nkt_NoiOHienNay", {"tinh": "TP Hồ Chí Minh", "xa": "Phường Đông Hà", "chiTietDuoiXa": "Tổ 1"},
+                        line, None)
+    assert (got["tinh"], got["xa"], got["diaChi"]) == ("Quảng Trị", "Phường Đông Hà", "Tổ 1")
+    # Chi tiết không có trên dòng → không nhận.
+    assert dia_chi.check("Nkt_NoiOHienNay", {"xa": "Phường Đông Hà", "chiTietDuoiXa": "Tổ 9"}, line, None) is None
+    ours = {"quocGia": "Việt Nam", "tinh": "TP Hồ Chí Minh", "xa": "Phường Đông Hà", "diaChi": "Tổ 1"}
+    reasons = dia_chi.faults(ours, got, _DON_DIA_CHI)
+    assert any("tỉnh" in r for r in reasons) and any("xã" in r for r in reasons)
+    # Lượt trích đã đúng tỉnh / xã có trên giấy → không có lỗi để đem ra toà.
+    assert dia_chi.faults(got, got, _DON_DIA_CHI) == []
