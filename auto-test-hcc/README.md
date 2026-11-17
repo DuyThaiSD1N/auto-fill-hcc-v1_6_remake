@@ -3,6 +3,11 @@
 Web Agent tự sửa (cổng 12008) và dịch vụ agent (cổng 12009). Tách riêng khỏi `auto-fill-hcc-backend`, nên bản BE dán đè không xoá
 mất phần này.
 
+**Từ 18/11/2026 không còn chạy trên cổng thật.** Bỏ hẳn Chromium (bot trên cổng, trình chạy bot, màn hình ảo / noVNC). Mọi lần chạy lại
+gọi backend thử với giấy tờ của req (OCR mới mỗi lần) và chấm trên các trường backend trả. Tab "Kết quả điền" hiện trường nào nhận giá
+trị gì, mô phỏng trên form đã khai của thủ tục (`web/src/simulations`) như web trace, có thêm "Lượt gốc (req)" để so. Agent chỉ sửa
+backend: lỗi ở extension (backend trả đúng mà form không nhận) thì báo cáo, vì không chạy extension nên không kiểm chứng được.
+
 Đội tester đọc [KE-HOACH.md](KE-HOACH.md): cách bật hệ thống, cách chạy một ca, kịch bản kiểm thử. Team F19 cài máy mới theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Cài lên server trolyhoso theo [HUONG-DAN-SERVER.md](HUONG-DAN-SERVER.md). File này dành cho người sửa code.
 
 ## Khu làm việc, ca hồi quy, nhánh PR (mặc định trên máy local, từ 17/11/2026)
@@ -17,21 +22,15 @@ mất phần này.
      `autotest-app`. Không đặt tên `app`, vì trùng alias với stack 12005. Dùng chung Mongo local nên tài khoản test như cũ. 12005 của người
      phát triển và 12015 (stack toàn trình) không bị đụng. Cây khu làm việc đổi thì `verify.ensure_stack` build lại trước khi chạy lại req.
    - Baseline test khoá theo commit git, nên mọi ca cùng tag dùng chung một baseline.
-   - Cửa sổ bot nạp extension của khu làm việc. Cửa sổ cũ nạp extension ở chỗ khác thì bot tự đóng và mở lại; profile giữ nguyên.
 2. **Ca hồi quy** (`agents/regression_case.py`, `regression/`): ca đạt có đụng backend → ca ẩn danh trong `regression/cases`, chỉ khi phát lại
    đạt trên bản sửa. Mỗi bản sửa sau phải giữ đạt các ca đang đạt (`verify.compare_regression`). Chạy được trong CI, xem
    [regression/README.md](regression/README.md).
 3. **Nhánh PR** (`publish.push_components`): bản sửa đạt → nhánh `agent/<mã ca>` trên đúng repo thật của phần bị sửa, dựng trên tag release,
    kèm link "Mở PR" trên web. Không tạo PR bằng token, không bao giờ push lên main. Tắt bằng `AUTOTEST_WORKSPACE_PUSH=0`.
 4. **Agent chỉ thấy khu làm việc** (`claude_runner`): repo của người phát triển bị chặn cả Read lẫn Edit. Prompt đưa đường dẫn chứng cứ
-   tuyệt đối trong khu làm việc. OCR + ảnh chụp từng lần chạy lại được chép sang `<chứng cứ>/../replay/<lượt>/` (`_share_replay`).
-5. **Bot tự bấm trên cổng** (`browser.auto_advance`, `ADVANCE_JS`): nút xác nhận / chuyển bước ("Xác nhận", "Đồng ý", "Tiếp tục"…),
-   ưu tiên trong hộp thoại, chỉ bấm khi nút đứng yên ≥ 4 giây (để agency-select.js của extension tự chọn cơ quan trước). Bước Thông tin
-   chủ hồ sơ tự bấm Tiếp tục. Không bao giờ bấm nút có chữ nộp / gửi / lưu / huỷ / xoá / quay lại / ký số. Trang trắng hoặc form không
-   lên quá 8 giây thì tự tải lại, tối đa 3 lần, quá nữa mới nhờ người.
-6. **Sửa cho Auto Fill hay Trợ lý hồ sơ** (`settings.target`): Trợ lý hồ sơ (mặc định khi req là lượt trợ lý) báo hội đồng đây là kênh
-   handfree; bản sửa đụng phần trợ lý thì chạy thêm `tests/handfree` và so với trước khi sửa. Trợ lý hiện chỉ chạy ở chế độ Chỉ gọi
-   backend: bot chưa tự lái được luồng chat / wizard của extension trợ lý trên cổng.
+   tuyệt đối trong khu làm việc. OCR + kế hoạch từng lần chạy lại được chép sang `<chứng cứ>/../replay/<lượt>/` (`_share_replay`).
+5. **Sửa cho Auto Fill hay Trợ lý hồ sơ** (`settings.target`): Trợ lý hồ sơ (mặc định khi req là lượt trợ lý) báo hội đồng đây là kênh
+   handfree; bản sửa đụng phần trợ lý thì chạy thêm `tests/handfree` và so với trước khi sửa.
 
 Quay về kiểu cũ (sửa thẳng repo người phát triển, build `compose.prod.yml`, 12005): `AUTOTEST_WORKSPACE=0`. Server (cách B) mặc định kiểu cũ.
 
@@ -48,17 +47,15 @@ Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 | `AUTOTEST_BACKEND`, `AUTOTEST_TEST_MONGO_URI` | 127.0.0.1:12015, Mongo 12014 | Backend thử: chạy lại, xoá cache OCR, đọc trace |
 | `AUTOTEST_COMPOSE_FILE` | `deploy/compose.server.yml` | Build backend thử. `config.server_problems()` chặn khởi động nếu thiếu hoặc là `compose.prod.yml` |
 | `AUTOTEST_AUTH_BACKEND` | backend production | Kiểm super_admin của web |
-| `AUTOTEST_EXTENSION_BACKEND` | `http://localhost:12015` | `browser.preflight` đối chiếu `api/config.js` |
+| `AUTOTEST_EXTENSION_BACKEND` | `http://localhost:12015` | `workspace.point_extension` trỏ extension khu làm việc về backend thử |
 | `AUTOTEST_GIT_REMOTE` | `origin` | `publish.py` commit bản sửa đạt lên nhánh `agent/<mã ca>` bằng index tạm, không đụng thư mục làm việc |
-| `AUTOTEST_VNC`, `DISPLAY` | `1`, `:99` | Nút Mở màn hình bot, vé `/agent-api/vnc-ticket` cho nginx `auth_request` |
 | `AUTOTEST_DENY_READ_DIRS` | `/opt/autofill-hcc` | Agent không được Read, dù ngoài repo |
 
 | Thư mục | Nội dung |
 | --- | --- |
 | `web/` | Trang web, chạy trong Docker. `src/lab/auto/` là tab chính, `src/lab/Results.tsx` là tab Kết quả điền. |
-| `agents/` | Dịch vụ điều phối, chạy trên máy host vì cần `claude`, repo, `docker` và cửa sổ trình duyệt. |
+| `agents/` | Dịch vụ điều phối, chạy trên máy host vì cần `claude`, repo và `docker`. |
 | `runs/` | Dữ liệu từng job. Có giấy tờ, đã gitignore, không commit. |
-| `.profile/` | Profile Chromium của bot, giữ phiên VNeID. Đã gitignore, agent bị chặn đọc. |
 
 ## File trong `agents/`
 
@@ -66,14 +63,13 @@ Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 | --- | --- |
 | `server.py` | API, xác thực super_admin, hàng đợi một luồng |
 | `orchestrator.py` | Máy trạng thái của một job |
-| `browser.py` | Điều khiển Chromium và panel extension, lớp chặn nộp |
 | `claude_runner.py` | Chạy agent bằng `claude -p`, giới hạn tool và phạm vi sửa |
 | `roles.py` | Prompt và schema từng vai |
 | `scoring.py` | Chấm tiêu chí, dò hồi quy |
 | `codeguard.py` | Ảnh chụp, hoàn tác, phạm vi sửa, quét dữ liệu thật trong patch |
 | `verify.py` | Test BE, test extension, build Docker, healthz |
 | `evidence.py` | Gom chứng cứ của req từ Mongo local |
-| `replay.py` | Đăng nhập backend, xoá cache OCR, chế độ Chỉ gọi backend |
+| `replay.py` | Đăng nhập backend, xoá cache OCR, chạy lại req qua `/api/v2/process` (điền hoặc đính kèm) |
 | `publish.py` | Commit bản sửa đạt lên nhánh `agent/<mã ca>` (mỗi repo thật một nhánh), push, link mở PR |
 | `workspace.py` | Khu làm việc: clone riêng, đặt tag release, dọn sạch, trỏ extension sang backend thử |
 | `regression_case.py` | Dựng ca hồi quy ẩn danh từ một lượt chạy lại đạt |
@@ -87,24 +83,6 @@ Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 Job "Thêm thủ tục mới" (`devjob.py`, tab cùng tên trên web) đã gỡ ngày 2026-11-09. Job cũ loại này trong `runs/` vẫn nằm trên đĩa
 nhưng dịch vụ không nạp lên web.
 
-## Chromium của bot trên máy người dùng (trình chạy bot, từ 17/11/2026)
-
-Ca Cổng thật có `settings.runner` thì Chromium chạy trên máy người tạo ca, không trên máy dịch vụ:
-
-- `runner/bot_runner.py` (người dùng tải từ `GET /agent-api/runner/script`, cần `playwright` + `websockets`): tải extension khu làm
-  việc (`GET /agent-api/runner/extension?token=`, zip bỏ tệp thừa như `build-zip.sh`, `If-None-Match` theo băm), mở Chromium của
-  Playwright với profile `~/.autotest-hcc-runner/profile`, cổng debug 127.0.0.1:9341, rồi giữ WebSocket điều khiển
-  `/agent-api/runner/ws?token=`. Lệnh `open` thì mở `/agent-api/runner/stream/<id>` nối với cổng debug; nghe 127.0.0.1:12025 và mỗi
-  kết nối mở `/agent-api/runner/backend` (extension giữ nguyên cấu hình backend thử). Lệnh `sync` thì tải lại extension nếu băm đổi.
-- `agents/runner_hub.py`: token (chỉ lưu băm ở `runs/_runners.json`, sống 14 ngày), mỗi trình chạy đang nối có một cổng
-  127.0.0.1:<ngẫu nhiên> giả cổng debug; `cdp_port()` / `sync_extension()` gọi từ luồng job sang vòng lặp uvicorn.
-- `browser.PortalBot` có `runner` thì không tự mở Chromium: `connect_over_cdp` vào cổng giả (địa chỉ WebSocket lấy từ `/json/version`,
-  thay cổng), gửi giấy tờ bằng nội dung tệp (Playwright giới hạn 50 MB / lần), đồng bộ extension trước mỗi đợt chạy và khi mở cổng.
-- `POST /agent-api/runners` (super_admin) cấp token; `GET /agent-api/runners/{id}` trạng thái; `JobRequest.runnerId`. nginx có
-  location `/agent-api/runner/` nâng cấp WebSocket, timeout 1 giờ. Dịch vụ chạy uvicorn với `ws="wsproto"`.
-- Test: `agents/tests/test_runner_hub.py` dựng máy chủ thu nhỏ + trình chạy thật + Chromium thật, kiểm hai chiều, đồng bộ extension,
-  Playwright điều khiển qua đường nối.
-
 ## Test lượt đính kèm (từ 17/11/2026)
 
 Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hiện sau khi đính), tự nhận loại lượt, không có ô chọn.
@@ -117,17 +95,11 @@ Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hi�
   độ giống lượt gốc dùng nguyên máy chấm của lượt điền. Khoá: `dòng: <tên dòng>` (giấy + trang `[#tệp:trang]`), `loại: <detectedType>`,
   `tệp #n` (trang nào vào dòng nào), `tổng: số mục | trang thiếu | trang trùng | lỗi`. Dòng extension tự thêm mang tên giấy LLM đặt
   gom chung khoá `dòng: Thêm mới` để khoá không đổi giữa các lần chạy.
-- Chỉ gọi backend: `replay.run_once` gửi `/api/v2/process` với `action=attach`, bỏ `sessionId` / `dossierId`, giữ `attachmentContext`,
+- Chạy lại: `replay.run_once` gửi `/api/v2/process` với `action=attach`, bỏ `sessionId` / `dossierId`, giữ `attachmentContext`,
   `splitDocuments`; bỏ `replaceFiles` (tệp nén cỡ MB) khỏi kết quả, kế hoạch từng lần ở `replay/<lượt>/run<n>_plan.json`.
-- Cổng thật (`browser.run_attach_once`): đặt cài đặt Tách giấy tờ của extension như lượt gốc, tải giấy tờ THẬT lên panel; cổng điền
-  và đính cùng trang thì bấm `#fillAttachBtn` (hoặc `#ocrBtn` với thủ tục tự đính sau khi điền), cổng nhiều bước thì điền, tự bấm sang
-  bước đính kèm (không bấm nút có chữ lưu / nộp, không được thì nhờ người) rồi bấm `#attachStepBtn`. Bot đọc lại bảng đính kèm
-  (`ATTACH_ROWS_JS`, đoán theo DOM cho mọi cổng) trước / sau khi đính và tệp extension báo lỗi, ghi `run<n>_portal.json`;
-  `scoring.attach_portal_values` dựng ô ảo theo cái thật sự nằm trên cổng (`cổng: chưa lên`, `(lạ) <tệp>`), lượt trace lấy theo
-  tài khoản chạy lại + thời điểm bấm. Tệp tải lên nằm trong hồ sơ nháp của tài khoản VNeID đang đăng nhập (người dùng đã chấp nhận
-  ngày 17/11/2026); lớp chặn nộp giữ nguyên.
 - Ca đính kèm không sinh ca hồi quy: bộ phát lại thay tệp bằng ảnh giả 1 trang, planner lại chia giấy theo trang của tệp thật.
-- Chưa làm: Tách hồ sơ đa tab (`splitMode`, chứng thực) trên cổng thật, lượt đính kèm của Trợ lý hồ sơ.
+- Tab "Kết quả đính kèm" dựng bảng thành phần hồ sơ từ kế hoạch từng lần (`AttachSimulation`), có cả lượt gốc.
+- Chưa làm: lượt đính kèm của Trợ lý hồ sơ.
 
 ## Duyệt kế hoạch sửa (trước khi agent sửa code)
 
@@ -142,9 +114,9 @@ Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hi�
 ## Duyệt bản sửa
 
 - Bản sửa qua test thì `Orchestrator._await_approval` dừng ở giai đoạn `approve` và ghi `job.approval` (vòng, file, `canRetry`,
-  `timeoutMin`). Chưa build Docker, chưa đánh dấu nạp lại extension. Web hiện khung duyệt và gọi
+  `timeoutMin`). Chưa build Docker. Web hiện khung duyệt và gọi
   `POST /agent-api/jobs/{id}/approval` với `{round, decision: approve | retry | reject, note}`.
-- `approve`: build, nạp extension, chạy kiểm. `retry`: hoàn tác, góp ý vào `attempts[].gop_y_nguoi_duyet`, hội đồng đọc ở vòng sau
+- `approve`: build backend thử, chạy kiểm. `retry`: hoàn tác, góp ý vào `attempts[].gop_y_nguoi_duyet`, hội đồng đọc ở vòng sau
   (bắt buộc có góp ý, vòng cuối không cho). `reject` hoặc quá `AUTOTEST_APPROVAL_TIMEOUT_MIN` (60) phút: hoàn tác, kết luận `not_approved`.
 - API từ chối khi `round` không khớp vòng đang chờ, để trang cũ không duyệt nhầm patch của vòng sau. Ai duyệt ghi ở `rounds[].approval.by`.
 - Người duyệt sửa tay file trong lúc chờ thì mã build theo nội dung trên đĩa, giữ patch lúc duyệt ở `fix.approvedPatch` và cảnh báo.
@@ -159,12 +131,8 @@ Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hi�
 
 ## Quy tắc khi sửa
 
-- Không nới lớp chặn nộp trong `browser.py`, không thêm cờ tắt.
 - Mọi việc quyết định kết quả do mã chạy, không để agent tự báo. Agent không có Bash.
-- Vào thủ tục phải đi qua cơ chế của extension (`#destGoBtn`, `agency-select.js`), không viết thao tác bấm nút cổng riêng.
-- Bot không nối Playwright khi đang ở màn SSO, và phải rời ra trong lúc chờ agent: Playwright đồng bộ chỉ xử lý mạng khi đang có
-  lệnh gọi, nối mà ngồi chờ thì request của trang bị treo.
-- `togglePanel` là công tắc: panel thu nhỏ thành `#autofill-hcc-bubble` thì phải bấm bong bóng, toggle là đóng mất.
+- Agent không được sửa extension (`claude_runner` không cấp quyền, `codeguard` coi là ngoài phạm vi): không có lượt chạy nào kiểm được.
 - Không tự ký token bằng secret của backend. Chạy lại dùng `/auth/login` thật: dịch vụ dựng tài khoản test trên Mongo của backend thử bằng `scripts.seed_user` (cùng username, xã, tỉnh với tài khoản đã điền req, cờ `autotest_shadow`, mật khẩu ngẫu nhiên chỉ giữ trong RAM). Chỉ ghi đè tài khoản có cờ đó; trùng tài khoản test của người khác thì dùng `autotest-<username>`.
 - Agent con chạy với `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`: cwd là repo nên nó dùng chung thư mục memory `~/.claude/projects/<repo>/memory`
   với phiên Claude Code của người dùng; tự ghi ghi nhớ vào đó là "sửa ngoài phạm vi" và job dừng (job 1.115590 ngày 2026-11-09).
@@ -175,8 +143,6 @@ Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hi�
 cd auto-test-hcc/agents
 python -m pytest tests -q -p no:cacheprovider
 ```
-
-`tests/test_browser.py` kiểm lớp chặn nộp bằng cú click thật trong Chromium headless.
 
 ## Đồng bộ mô phỏng form
 

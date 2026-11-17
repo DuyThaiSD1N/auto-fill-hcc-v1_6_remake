@@ -1,6 +1,6 @@
 // API của dịch vụ agent (auto-test-hcc/agents/server.py), đi qua nginx ở /agent-api/.
 import { ApiError } from "../../api";
-import { labSession, request } from "../api";
+import { request } from "../api";
 import type { Batch, LabRun } from "../engine";
 
 export interface Opinion {
@@ -56,15 +56,6 @@ export interface RunBrief {
   requestId?: string;
   error?: string;
   ocrFresh?: boolean | null;
-  screenshot?: string;
-  portalWrites?: number;
-}
-
-export interface FormGap {
-  field: string;
-  be: string;
-  notFound: number;
-  empty: number;
 }
 
 export interface Regression {
@@ -113,7 +104,7 @@ export interface Round {
     regression?: RegressionTests } | null;
   approval?: ApprovalResult | null;
   deploy: { ok: boolean; step?: string | null; ps?: string; health?: string } | null;
-  retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number; formGaps?: FormGap[] } | null;
+  retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number } | null;
   /** kept: hết vòng mà chưa đạt, code của vòng này được để lại trong thư mục làm việc cho người xem. */
   result: { ok: boolean; reason?: string; kept?: boolean } | null;
 }
@@ -207,8 +198,7 @@ export interface Job {
   description: string;
   createdAt: string;
   createdBy: string;
-  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget; kind?: "autofill" | "attach"; runner?: string | null; runnerMachine?: string | null };
-  human: { message: string; button: string; since: string } | null;
+  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget; kind?: "autofill" | "attach" };
   approval?: PendingApproval | null;
   planApproval?: PendingPlan | null;
   status: "queued" | "running" | "done" | "failed" | "stopped";
@@ -217,7 +207,7 @@ export interface Job {
   error: string | null;
   warnings: string[];
   case: Partial<RequestInfo>;
-  reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; formGaps?: FormGap[]; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean }[] } | null;
+  reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean }[] } | null;
   rounds: Round[];
   /** unverified: code của vòng chưa đạt, để lại cho người xem (Cần người xem), chưa build lên Docker. */
   fix: {
@@ -236,6 +226,7 @@ export interface Job {
   events: { t: string; level: string; who: string | null; text: string }[];
 }
 
+/** Chỉ còn chạy lại qua backend: bỏ Chromium / cổng thật ngày 18/11/2026. Job cũ có thể còn "portal". */
 export type RunMode = "portal" | "api";
 
 /** Sửa cho Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend). */
@@ -268,22 +259,6 @@ export interface NewJob {
   applicant?: { applicantFullname: string; applicantIdentityNumber: string; applicantBirthday: string };
   mode: RunMode;
   target: FixTarget;
-  /** Cổng thật: Chromium chạy trên máy người dùng qua trình chạy bot. Không gửi = trên máy chạy dịch vụ. */
-  runnerId?: string;
-}
-
-/** Một máy chạy Chromium của bot (runner/bot_runner.py). token chỉ có khi vừa tạo. */
-export interface RunnerInfo {
-  id: string;
-  createdBy: string;
-  createdAt: string | null;
-  expiresAt: string | null;
-  connected: boolean;
-  machine?: string | null;
-  chromium?: string | null;
-  connectedAt?: string | null;
-  lastSeen?: string | null;
-  token?: string;
 }
 
 interface Phase {
@@ -298,9 +273,7 @@ const json = (body: unknown): RequestInit => ({
 });
 
 export const agentApi = {
-  health: () => request<{ ok: boolean; claude: boolean; busy: string | null; queued: number; server?: boolean; vnc?: boolean; git?: boolean }>("/agent-api/health"),
-  /** Đặt cookie vé (HttpOnly) cho /vnc/ rồi trả đường dẫn noVNC. */
-  vncTicket: () => request<{ url: string }>("/agent-api/vnc-ticket", { method: "POST" }),
+  health: () => request<{ ok: boolean; claude: boolean; busy: string | null; queued: number; server?: boolean; git?: boolean }>("/agent-api/health"),
   lookup: (id: string) => request<RequestInfo>(`/agent-api/requests/${encodeURIComponent(id)}`),
   list: () => request<{ items: JobSummary[]; busy: string | null }>("/agent-api/jobs"),
   get: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}`),
@@ -313,19 +286,9 @@ export const agentApi = {
     request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/plan`, json(body)),
   approve: (id: string, body: { round: number; decision: Verdict; note: string }) =>
     request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/approval`, json(body)),
-  createRunner: () => request<RunnerInfo>("/agent-api/runners", { method: "POST" }),
-  runner: (id: string) => request<RunnerInfo>(`/agent-api/runners/${encodeURIComponent(id)}`),
 };
 
 /** Ảnh cần Bearer token nên không gắn thẳng vào <img src>. */
-export async function loadShot(id: string, phase: string, n: number): Promise<string> {
-  const response = await fetch(`/agent-api/jobs/${encodeURIComponent(id)}/shots/${phase}/${n}`, {
-    headers: { Authorization: `Bearer ${labSession.access}` },
-  });
-  if (!response.ok) throw new ApiError(response.status, "Không tải được ảnh.");
-  return URL.createObjectURL(await response.blob());
-}
-
 /** nginx trả 502/504 khi dịch vụ trên máy host chưa bật. */
 export function serviceDown(reason: unknown): boolean {
   return reason instanceof ApiError && (reason.status === 502 || reason.status === 504);
@@ -337,6 +300,7 @@ export function errorText(reason: unknown): string {
 }
 
 function phaseName(phase: string): string {
+  if (phase === "original") return "Lượt gốc (req)";
   if (phase === "reproduce") return "Trước khi sửa";
   const round = /^round(\d+)$/.exec(phase);
   return round ? `Sau sửa, vòng ${round[1]}` : phase;
@@ -345,12 +309,14 @@ function phaseName(phase: string): string {
 /** Đổi kết quả chạy lại sang Batch để dùng lại nguyên màn Results của web Kiểm thử. */
 export function toBatch(job: Job, phases: Phase[]): Batch {
   const files = (job.case.files ?? []).map((f) => f.name);
+  const attach = job.settings.kind === "attach";
   const runs: LabRun[] = phases.flatMap((phase, set) => phase.runs.map((r) => ({
     set,
     run: r.n - 1,
     status: "done" as const,
     startedAt: r.startedAt,
-    fill: { status: r.status, ms: r.ms ?? 0, requestId: r.requestId, response: r.response, error: r.error },
+    // Lượt đính kèm: kết quả nằm ở bước đính kèm để tab Mô phỏng đính kèm dựng bảng thành phần hồ sơ.
+    [attach ? "attach" : "fill"]: { status: r.status, ms: r.ms ?? 0, requestId: r.requestId, response: r.response, error: r.error },
   })));
   return {
     version: 1,
@@ -359,7 +325,7 @@ export function toBatch(job: Job, phases: Phase[]): Batch {
     label: job.case.label ?? job.requestId,
     account: job.settings.replayAccount,
     createdAt: job.createdAt,
-    settings: { fill: true, attach: false, split: false, variant: "" },
+    settings: { fill: !attach, attach, split: false, variant: "" },
     sets: phases.map((p) => ({ name: phaseName(p.phase), files })),
     runs,
   };

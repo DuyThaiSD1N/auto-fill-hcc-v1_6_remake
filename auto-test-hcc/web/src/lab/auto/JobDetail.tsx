@@ -6,8 +6,8 @@ import { formatClock, formatDateTime } from "../../format";
 import type { Batch } from "../engine";
 import Results from "../Results";
 import {
-  agentApi, errorText, loadShot, toBatch,
-  type ApprovalResult, type Check, type Decision, type Evaluation, type ExtensionTests, type FormGap, type FullTests, type Job, type Opinion,
+  agentApi, errorText, toBatch,
+  type ApprovalResult, type Check, type Decision, type Evaluation, type ExtensionTests, type FullTests, type Job, type Opinion,
   type Outcome, type Round, type RunBrief, type Verdict,
 } from "./api";
 
@@ -15,7 +15,6 @@ const POLL_MS = 2000;
 
 const STAGES: { key: string; label: string; visited: (job: Job) => boolean }[] = [
   { key: "collect", label: "Thu thập", visited: () => true },
-  { key: "portal", label: "Mở cổng", visited: (j) => j.settings.mode === "portal" && !!j.reproduce },
   { key: "reproduce", label: "Chạy lại", visited: (j) => !!j.reproduce },
   { key: "meeting", label: "Họp", visited: (j) => j.rounds.length > 0 },
   { key: "arbiter", label: "Trọng tài", visited: (j) => j.rounds.some((r) => r.decision) },
@@ -88,7 +87,7 @@ export function StatusTag({ status, stage }: { status: Job["status"]; stage: str
 
 function StageRail({ job }: { job: Job }) {
   const live = job.status === "running" || job.status === "queued";
-  const relevant = STAGES.filter((s) => s.key !== "portal" || job.settings.mode === "portal");
+  const relevant = STAGES;
   // Ca đã xong: chỉ giữ các bước đã đi qua (ca Chỉ báo cáo không hiện Sửa / Test / Duyệt / Build rỗng).
   const stages = live ? relevant : relevant.filter((s) => s.visited(job) || s.key === job.stage);
   const index = stages.findIndex((s) => s.key === job.stage);
@@ -105,40 +104,6 @@ function StageRail({ job }: { job: Job }) {
         );
       })}
     </ol>
-  );
-}
-
-/** Server không có màn hình: cửa sổ bot nằm trong màn hình ảo, mở qua noVNC ở tab mới (cần vé super_admin). */
-async function openBotScreen(onError: (text: string) => void) {
-  const tab = window.open("about:blank", "autotest-bot");
-  try {
-    const { url } = await agentApi.vncTicket();
-    if (tab) tab.location.href = url;
-    else window.location.assign(url);
-  } catch (reason) {
-    tab?.close();
-    onError(errorText(reason));
-  }
-}
-
-function HumanWait({ job, onReady, busy, vnc, onError }: { job: Job; onReady: () => void; busy: boolean; vnc: boolean; onError: (text: string) => void }) {
-  if (!job.human) return null;
-  return (
-    <div className="at-human" role="alert">
-      <div>
-        <strong>Đang chờ bạn</strong>
-        <p>{job.human.message}</p>
-        <p className="faint">
-          {vnc
-            ? "Cửa sổ Chromium nằm trên server: bấm Mở màn hình bot để đăng nhập VNeID và thao tác. Bot không nộp hồ sơ."
-            : "Cửa sổ Chromium nằm trên máy đang chạy dịch vụ agent. Bot không nộp hồ sơ."}
-        </p>
-      </div>
-      {vnc ? (
-        <button className="btn" type="button" onClick={() => void openBotScreen(onError)}>Mở màn hình bot</button>
-      ) : null}
-      <button className="btn btn--primary" type="button" disabled={busy} onClick={onReady}>{job.human.button}</button>
-    </div>
   );
 }
 
@@ -376,53 +341,6 @@ function OpinionCard({ item }: { item: Opinion }) {
   );
 }
 
-function Gaps({ gaps }: { gaps?: FormGap[] }) {
-  if (!gaps?.length) return null;
-  return (
-    <div className="at-regress">
-      <b className="ef-red">Backend có giá trị nhưng form không nhận</b>
-      <ul>
-        {gaps.map((g) => (
-          <li key={g.field}>
-            <span className="mono">{g.field}</span>: {g.be}
-            <span className="faint"> ({g.notFound ? `không thấy ô ${g.notFound} lần` : `ô trống ${g.empty} lần`})</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Shots({ job, phase, runs }: { job: Job; phase: string; runs: RunBrief[] }) {
-  const [open, setOpen] = useState<number | null>(null);
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState("");
-  const list = runs.filter((r) => r.screenshot);
-
-  useEffect(() => {
-    if (open === null) return;
-    let alive = true;
-    let made = "";
-    setError("");
-    loadShot(job.id, phase, open)
-      .then((u) => { made = u; if (alive) setUrl(u); else URL.revokeObjectURL(u); })
-      .catch((reason) => { if (alive) setError(errorText(reason)); });
-    return () => { alive = false; if (made) URL.revokeObjectURL(made); setUrl(""); };
-  }, [job.id, phase, open]);
-
-  if (!list.length) return null;
-  return (
-    <div className="at-shots">
-      <span className="muted">Ảnh cổng sau khi điền:</span>
-      {list.map((r) => (
-        <button key={r.n} type="button" className="btn btn--sm" aria-pressed={open === r.n} onClick={() => setOpen(open === r.n ? null : r.n)}>Lần {r.n}</button>
-      ))}
-      {error ? <p className="form-error">{error}</p> : null}
-      {open !== null && url ? <img className="at-shot" src={url} alt={`Cổng sau khi điền lần ${open}`} /> : null}
-    </div>
-  );
-}
-
 function checkText(check: Check): string {
   const needsValue = !["empty", "not_empty"].includes(check.op);
   return `${OPS[check.op] ?? check.op}${needsValue ? ` "${check.expected}"` : ""}`;
@@ -612,8 +530,6 @@ function RoundView({ job, round, single }: { job: Job; round: Round; single: boo
         <div className="at-retest">
           <h3 className="section-title">Chạy lại với bản sửa <RunDots runs={retest.runs} total={retest.total} /></h3>
           {retest.evaluation ? <CheckMatrix evaluation={retest.evaluation} caption="Tiêu chí sau khi sửa" /> : null}
-          <Gaps gaps={retest.formGaps} />
-          {retest.phase ? <Shots job={job} phase={retest.phase} runs={retest.runs} /> : null}
           {retest.regressions?.length ? (
             <div className="at-regress">
               <b className="ef-red">Field đổi giá trị ngoài dự kiến</b>
@@ -672,11 +588,6 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("flow");
   const [acting, setActing] = useState(false);
-  const [vnc, setVnc] = useState(false);
-
-  useEffect(() => {
-    agentApi.health().then((h) => setVnc(!!h.vnc)).catch(() => setVnc(false));
-  }, []);
 
   const refresh = useCallback(() => {
     agentApi.get(id).then((data) => { setJob(data); setError(""); }).catch((reason) => setError(errorText(reason)));
@@ -710,7 +621,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
   const account = job.case.account;
   const tabs: { key: Tab; label: string }[] = [
     { key: "flow", label: "Diễn biến" },
-    { key: "fields", label: "Kết quả điền" },
+    { key: "fields", label: job.settings.kind === "attach" ? "Kết quả đính kèm" : "Kết quả điền" },
     { key: "log", label: "Nhật ký" },
   ];
 
@@ -745,7 +656,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
         {account ? <span>{account.username}{account.xa ? ` · ${account.xa}` : ""}{account.tinh ? `, ${account.tinh}` : ""}</span> : null}
         <span>Sửa cho {job.settings.target === "troly" ? "Trợ lý hồ sơ" : "Auto Fill"}</span>
         <span>{job.settings.kind === "attach" ? "Lượt đính kèm" : "Lượt điền"}</span>
-        <span>{job.settings.mode === "api" ? "Chỉ gọi backend" : job.settings.runner ? `Cổng thật · Chromium trên máy ${job.settings.runnerMachine || "người dùng"}` : "Cổng thật · Chromium trên máy dịch vụ"}</span>
+        {job.settings.mode === "portal" ? <span>Cổng thật (chế độ cũ)</span> : null}
         <span>Chạy lại bằng {job.settings.replayAccount}</span>
         {job.workspace?.["auto-fill-hcc-backend"] ? <span className="mono">BE {job.workspace["auto-fill-hcc-backend"].ref}</span> : null}
         <span>Bắt đầu {formatDateTime(job.createdAt)}</span>
@@ -759,8 +670,6 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
           <Spinner label={job.status === "queued" ? "Đang chờ ca trước chạy xong" : lastEvent ? `${lastEvent.who ? `${lastEvent.who}: ` : ""}${lastEvent.text}` : "Đang chạy"} />
         </p>
       ) : null}
-      {/* Dịch vụ gỡ trạng thái chờ ở nhịp sau: ẩn ngay kẻo người dùng bấm lần nữa khi tưởng chưa nhận. */}
-      <HumanWait job={job} busy={acting} vnc={vnc} onError={setError} onReady={() => void act(async () => ({ ...(await agentApi.ready(job.id)), human: null }))} />
       <PlanBox
         key={`plan-${job.planApproval?.round ?? 0}-${job.planApproval?.revision ?? 0}`}
         job={job}
@@ -849,8 +758,6 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
               {job.reproduce.coverage ? <span className={job.reproduce.faithful === false ? "ef-red" : "faint"}> · ra {job.reproduce.coverage.matched}/{job.reproduce.coverage.original} {job.settings.kind === "attach" ? "ô đính kèm" : "field"} của lượt gốc</span> : null}
             </p>
           ) : null}
-          {job.reproduce ? <Gaps gaps={job.reproduce.formGaps} /> : null}
-          {job.reproduce ? <Shots job={job} phase="reproduce" runs={job.reproduce.runs} /> : null}
           {job.rounds.map((round) => <RoundView key={round.n} job={job} round={round} single={job.rounds.length === 1} />)}
         </div>
       ) : null}

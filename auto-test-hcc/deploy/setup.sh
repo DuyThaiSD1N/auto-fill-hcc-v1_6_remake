@@ -6,7 +6,7 @@
 #   bash setup.sh update    # kéo main mới nhất (khi agent rảnh), build lại web + backend thử, restart dịch vụ
 #   bash setup.sh check     # kiểm tra mọi thứ đã sống
 #
-# Chạy bằng user thường có sudo và thuộc nhóm docker (KHÔNG chạy bằng root: Chromium của bot cần sandbox).
+# Chạy bằng user thường có sudo và thuộc nhóm docker (KHÔNG chạy bằng root).
 # Script KHÔNG sửa gì trong thư mục production (PROD_DIR): chỉ đọc .env để lấy cổng / Mongo / uploads, và tạo một
 # tài khoản Mongo role "read" trong Mongo production.
 # =============================================================================
@@ -55,10 +55,9 @@ preflight() {
 }
 
 install_packages() {
-  say "Cài gói hệ thống (git, python venv, node, màn hình ảo, noVNC)"
+  say "Cài gói hệ thống (git, python venv, node)"
   sudo apt-get update -y
-  sudo apt-get install -y git curl ca-certificates python3 python3-venv python3-pip \
-    xvfb fluxbox x11vnc novnc websockify fonts-noto-core
+  sudo apt-get install -y git curl ca-certificates python3 python3-venv python3-pip
   if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     sudo apt-get install -y nodejs
@@ -81,14 +80,13 @@ clone_repo() {
 }
 
 python_env() {
-  say "Tạo venv Python + thư viện backend, Playwright Chromium"
+  say "Tạo venv Python + thư viện backend"
   local py
   py="$(command -v python3.11 || command -v python3.12 || command -v python3)"
   [ -d "$AT/.venv" ] || "$py" -m venv "$AT/.venv"
   PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q --upgrade pip
   PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q -r "$APP_DIR/auto-fill-hcc-backend/requirements.txt" \
-    playwright pytest mongomock
-  "$AT/.venv/bin/python" -m playwright install --with-deps chromium
+    pytest mongomock
 }
 
 backend_env() {
@@ -158,15 +156,15 @@ server_env() {
 }
 
 systemd_units() {
-  say "Cài systemd: autotest-vnc (màn hình ảo + noVNC) và autotest-agent (dịch vụ agent)"
+  say "Cài systemd: autotest-agent (dịch vụ agent)"
   local user
   user="$(whoami)"
-  for unit in autotest-vnc autotest-agent; do
+  for unit in autotest-agent; do
     sed -e "s#__USER__#$user#g" -e "s#__APP_DIR__#$APP_DIR#g" "$DEPLOY/$unit.service" \
       | sudo tee "/etc/systemd/system/$unit.service" >/dev/null
   done
   sudo systemctl daemon-reload
-  sudo systemctl enable autotest-vnc autotest-agent >/dev/null
+  sudo systemctl enable autotest-agent >/dev/null
 }
 
 compose_up() {
@@ -175,7 +173,6 @@ compose_up() {
 }
 
 restart_services() {
-  sudo systemctl restart autotest-vnc
   sudo systemctl restart autotest-agent
 }
 
@@ -188,8 +185,6 @@ check() {
     && echo "  dịch vụ agent 12009: sống, có claude" || { echo "  dịch vụ agent 12009: CHƯA sống hoặc chưa có claude (journalctl -u autotest-agent)"; ok=0; }
   curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:12008/ | grep -q 200 \
     && echo "  web 12008: sống" || { echo "  web 12008: CHƯA sống"; ok=0; }
-  curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:6080/vnc.html | grep -q 200 \
-    && echo "  noVNC 6080: sống" || { echo "  noVNC 6080: CHƯA sống (journalctl -u autotest-vnc)"; ok=0; }
   [ -n "$(env_get "$AT/server.env" CLAUDE_CODE_OAUTH_TOKEN)" ] \
     || echo "  [CẦN LÀM] Chưa có CLAUDE_CODE_OAUTH_TOKEN trong $AT/server.env: chạy 'claude setup-token', dán token, rồi 'sudo systemctl restart autotest-agent'."
   [ "$ok" = 1 ] && echo "  Tất cả đã sống." || return 1

@@ -2,7 +2,7 @@
 #   docker compose -f auto-test-hcc/deploy/compose.server.yml up -d --build
 #
 # Gồm 3 service, KHÔNG đụng stack production (/opt/autofill-hcc, mạng autofill_hcc_net, volume autofill_hcc_mongo_data):
-#   test-fe   web 12008, mạng host: nginx gọi được dịch vụ agent (127.0.0.1:12009) và noVNC (127.0.0.1:6080) chỉ nghe
+#   test-fe   web 12008, mạng host: nginx gọi được dịch vụ agent (127.0.0.1:12009) chỉ nghe
 #             loopback. /auth/ đi tới backend production để đăng nhập super_admin.
 #   app       backend THỬ dựng từ bản clone GitHub, chạy code agent đang sửa, chỉ nghe 127.0.0.1:12015. Dịch vụ agent build
 #             lại service này sau khi người duyệt đồng ý. Tên image riêng (autotest) để không đè image production.
@@ -19,7 +19,6 @@ services:
     environment:
       - BACKEND_URL=${AUTH_BACKEND_URL:-http://127.0.0.1:12005}
       - AGENT_URL=http://127.0.0.1:12009
-      - VNC_URL=http://127.0.0.1:6080
     restart: unless-stopped
 
   be-mongo:

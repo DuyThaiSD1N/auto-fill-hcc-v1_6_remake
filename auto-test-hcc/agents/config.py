@@ -77,9 +77,6 @@ WORKSPACE_PUSH = os.environ.get("AUTOTEST_WORKSPACE_PUSH", "1") == "1"
 SUPPORT = AGENTS_DIR / "support"
 EXT = REPO / "auto-fill-hcc-extension"
 TROLY = REPO / "tro-ly-nguoi-dan-extension-main"
-# Profile Chromium của bot: giữ phiên VNeID qua các lần chạy, đã gitignore, agent bị chặn đọc.
-PROFILE = ROOT / ".profile"
-CDP_PORT = int(os.environ.get("AUTOTEST_CDP_PORT", "9339"))
 
 # Chỉ nghe 127.0.0.1: dịch vụ này sửa được code, không được lộ ra mạng LAN. Web vào qua nginx của test-fe.
 HOST = "127.0.0.1"
@@ -92,7 +89,7 @@ BACKEND_URL = os.environ.get("AUTOTEST_BACKEND", f"http://127.0.0.1:{_TEST_PORT}
 # Backend kiểm tài khoản super_admin của web. Server: backend production (trolyhoso). Máy local: backend 12005 của người
 # phát triển (cùng Mongo với backend thử nên cùng tài khoản).
 AUTH_BACKEND_URL = os.environ.get("AUTOTEST_AUTH_BACKEND", "http://127.0.0.1:12005").rstrip("/")
-# Extension trong cửa sổ bot phải trỏ đúng backend chạy code đang sửa (đối chiếu với api/config.js).
+# Extension trong khu làm việc trỏ backend thử (workspace.point_extension), để ai nạp nó thủ công cũng gọi đúng code đang sửa.
 EXTENSION_BACKEND = os.environ.get("AUTOTEST_EXTENSION_BACKEND", f"http://localhost:{_TEST_PORT}").rstrip("/")
 
 # Nguồn req: Mongo + thư mục upload của backend thật. Để trống = Mongo local đọc theo .env của backend (máy local).
@@ -128,8 +125,6 @@ SERVER_MODE = bool(SOURCE_MONGO_URI) and not SOURCE_SSH
 # Bản sửa đạt: commit vào nhánh <tiền tố><mã ca> rồi push lên remote này. Trống = không commit (máy local).
 GIT_REMOTE = os.environ.get("AUTOTEST_GIT_REMOTE", "")
 GIT_BRANCH_PREFIX = os.environ.get("AUTOTEST_GIT_BRANCH_PREFIX", "agent/")
-# noVNC của màn hình ảo cửa sổ bot (server không có màn hình). Trống = cửa sổ nằm trên máy đang chạy dịch vụ.
-VNC_ENABLED = os.environ.get("AUTOTEST_VNC", "") == "1"
 
 
 def server_problems() -> list[str]:

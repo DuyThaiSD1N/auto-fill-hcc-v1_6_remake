@@ -47,10 +47,7 @@ def run_values(fields: Iterable[dict] | None) -> dict[str, str]:
 
 
 def actual_values(run: dict) -> dict[str, str]:
-    """Giá trị để chấm: chạy trên cổng thì lấy cái thật sự hiện trên form, không thì lấy cái backend trả."""
-    form = run.get("form")
-    if form is not None:
-        return {key: value_text(value) for key, value in form.items()}
+    """Giá trị để chấm: các trường backend trả (lượt đính kèm: ô ảo dựng từ kế hoạch)."""
     return run_values((run.get("response") or {}).get("fields"))
 
 
@@ -114,47 +111,18 @@ def known_fields(original: list[dict] | None, runs: list[dict]) -> set[str]:
 
 
 def field_table(original: list[dict] | None, runs: list[dict]) -> list[dict]:
-    """Field × lần cho agent đọc: giá trị lượt gốc, từng lần chạy lại, có ổn định không.
-
-    Chạy trên cổng thì ``runs`` là giá trị trên form, ``beRuns`` là giá trị backend trả.
-    """
+    """Field × lần cho agent đọc: giá trị lượt gốc, từng lần chạy lại, có ổn định không."""
     base = run_values(original)
     per_run = [actual_values(r) if run_ok(r) else None for r in runs]
-    per_be = [run_values((r.get("response") or {}).get("fields")) if run_ok(r) else None for r in runs]
-    on_portal = any(r.get("form") is not None for r in runs)
     keys: list[str] = list(base)
-    for values in (*per_run, *per_be):
+    for values in per_run:
         keys.extend(k for k in (values or {}) if k not in keys)
     table = []
     for key in keys:
         values = [None if v is None else v.get(key, "") for v in per_run]
         seen = {v for v in values if v is not None}
-        row = {"field": key, "original": base.get(key, ""), "runs": values, "stable": len(seen) <= 1}
-        if on_portal:
-            row["beRuns"] = [None if v is None else v.get(key, "") for v in per_be]
-        table.append(row)
+        table.append({"field": key, "original": base.get(key, ""), "runs": values, "stable": len(seen) <= 1})
     return table
-
-
-def form_gaps(runs: list[dict]) -> list[dict]:
-    """Field backend có giá trị mà form không nhận: dấu hiệu lỗi ở extension hoặc tên ô, không phải ở pipeline."""
-    gaps: dict[str, dict] = {}
-    for run in runs:
-        form = run.get("form")
-        if form is None or not run_ok(run):
-            continue
-        for key, value in run_values((run.get("response") or {}).get("fields")).items():
-            if value in ("", "false"):
-                continue
-            if key not in form or form[key] is None:
-                reason = "notFound"
-            elif value_text(form[key]) == "":
-                reason = "empty"
-            else:
-                continue
-            gap = gaps.setdefault(key, {"field": key, "be": value, "notFound": 0, "empty": 0})
-            gap[reason] += 1
-    return list(gaps.values())
 
 
 def find_regressions(baseline_values: list[dict[str, str]], after_runs: list[dict], targets: set[str]) -> list[dict]:
@@ -205,10 +173,6 @@ def ocr_fresh_count(runs: list[dict]) -> int:
 #   loại: <detectedType>   dòng mà loại giấy đó được xếp vào
 #   tệp #<n>               từng trang của tệp thứ n (đếm từ 1) vào dòng nào: "1→Tờ khai; 2→Căn cước; 3→(không đính)"
 #   tổng: số mục | tổng: trang thiếu | tổng: trang trùng | tổng: lỗi
-#   cổng: chưa lên | cổng: tệp lỗi | cổng: đọc bảng   (chỉ khi chạy trên cổng thật, bot đọc lại bảng đính kèm)
-
-_FILE_EXT = re.compile(r"\.(pdf|jpe?g|png|gif|bmp|tiff?|heic|docx?|xlsx?|xml|zip|rar|mp3|mp4|wav)$", re.I)
-
 
 def _clip(text: Any, limit: int = 90) -> str:
     text = re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(text or ""))).strip()
@@ -216,14 +180,14 @@ def _clip(text: Any, limit: int = 90) -> str:
 
 
 def fold(text: Any) -> str:
-    """Bỏ dấu, chữ thường, chỉ còn chữ số và khoảng trắng: so tên dòng / tên tệp trên cổng với kế hoạch."""
+    """Bỏ dấu, chữ thường, chỉ còn chữ số và khoảng trắng."""
     text = unicodedata.normalize("NFD", str(text or "")).replace("đ", "d").replace("Đ", "D")
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower()
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
 def attach_row_name(item: dict) -> str:
-    """Tên dòng đích như trên cổng, chưa có tiền tố."""
+    """Tên dòng đích trong bảng thành phần hồ sơ, chưa có tiền tố."""
     if item.get("target") == "supplementary":
         return "Đính kèm bổ sung"
     keywords = " / ".join(str(k) for k in item.get("slotKeywords") or [])
@@ -342,99 +306,3 @@ def attach_fields(plan: list[dict] | None, page_counts: list[int | None] | None,
         {"name": "tổng: lỗi", "value": "; ".join(_clip(e, 200) for e in errors or [] if e)},
     ]
     return fields
-
-
-def _name_key(name: Any) -> str:
-    return fold(_FILE_EXT.sub("", str(name or "").strip()))
-
-
-def _label_key(label: Any) -> str:
-    return re.sub(r"^(\d+\s+)+", "", fold(label))
-
-
-def same_row(portal_label: Any, planned: Any) -> bool:
-    """Dòng đọc trên cổng có phải dòng kế hoạch nhắm tới không. Nhãn trên cổng hay kèm STT, "(bắt buộc)", số bản."""
-    a, b = _label_key(portal_label), _label_key(planned)
-    if not a or not b:
-        return False
-    if a == b or (min(len(a), len(b)) >= 6 and (a in b or b in a)):
-        return True
-    ta, tb = set(a.split()), set(b.split())
-    return len(ta & tb) / min(len(ta), len(tb)) >= 0.8
-
-
-def _same_file(portal_name: Any, candidates: list[Any]) -> bool:
-    """Extension đổi tên tệp theo tên giấy (thêm " 2" khi trùng) hoặc giữ tên gốc, tuỳ cài đặt của tài khoản."""
-    name = _name_key(portal_name)
-    if len(name) < 3:
-        return False
-    for candidate in candidates:
-        key = _name_key(candidate)
-        if len(key) >= 3 and (key == name or key in name or name in key):
-            return True
-    return False
-
-
-def attach_portal_values(
-    plan: list[dict] | None,
-    page_counts: list[int | None] | None,
-    file_names: list[str],
-    rows_after: list[dict] | None,
-    rows_before: list[dict] | None = None,
-    failed: list[str] | None = None,
-    errors: list | None = None,
-) -> dict[str, str]:
-    """Ô ảo theo cái THẬT SỰ nằm trên cổng sau khi extension đính: cùng khoá với attach_fields để chấm chung tiêu chí.
-
-    Mỗi mục kế hoạch được tìm theo tên tệp trên mọi dòng bot đọc được (ưu tiên dòng đích). Thấy ở dòng đích thì giữ khoá
-    "dòng: <dòng đích>", thấy ở dòng khác thì nằm dưới tên dòng đó, không thấy thì vào "cổng: chưa lên". Tệp mới xuất hiện
-    mà không thuộc mục nào ghi "(lạ) <tên>". Không đọc được bảng nào thì dựa vào danh sách tệp lỗi extension báo.
-    Các khoá "tệp #", "loại:", "tổng:" vẫn là của kế hoạch backend.
-    """
-    items = [item for item in plan or [] if isinstance(item, dict)]
-    values = {f["name"]: f["value"] for f in attach_fields(items, page_counts, errors)}
-    rows = [r for r in rows_after or [] if isinstance(r, dict)]
-    failed = [str(line) for line in failed or [] if line]
-    for key in [k for k in values if k.startswith("dòng: ")]:
-        values[key] = ""
-    landed: dict[str, list[str]] = {}
-    missing: list[str] = []
-    claimed: set[tuple[int, int]] = set()
-    planned_rows = {attach_row_name(item): attach_row(item) for item in items}
-
-    def row_key(label: Any) -> str:
-        """Dòng trên cổng trùng một dòng kế hoạch thì dùng khoá của dòng kế hoạch, không thì dùng nhãn đọc được."""
-        return next((planned_rows[p] for p in planned_rows if same_row(label, p)), None) or _clip(label) or "(dòng không tên)"
-
-    for item in items:
-        candidates = [item.get("documentName"), item.get("fileName")]
-        candidates += [file_names[i] for i, _ in attach_refs(item) if 0 <= i < len(file_names)]
-        target = attach_row_name(item)
-        if not rows:
-            if any(_same_file(line.split(" — ")[0], candidates) for line in failed):
-                missing.append(_entry(item))
-            else:
-                landed.setdefault(attach_row(item), []).append(_entry(item))
-            continue
-        order = sorted(range(len(rows)), key=lambda k: not same_row(rows[k].get("label"), target))
-        hit = next(((k, j) for k in order for j, name in enumerate(rows[k].get("files") or [])
-                    if (k, j) not in claimed and _same_file(name, candidates)), None)
-        if hit is None:
-            missing.append(_entry(item))
-            continue
-        claimed.add(hit)
-        label = rows[hit[0]].get("label")
-        landed.setdefault(attach_row(item) if same_row(label, target) else row_key(label), []).append(_entry(item))
-    before = {(_label_key(r.get("label")), _name_key(name))
-              for r in rows_before or [] if isinstance(r, dict) for name in r.get("files") or []}
-    for k, row in enumerate(rows):
-        for j, name in enumerate(row.get("files") or []):
-            if (k, j) in claimed or (_label_key(row.get("label")), _name_key(name)) in before:
-                continue
-            landed.setdefault(row_key(row.get("label")), []).append(f"(lạ) {_clip(name, 80)}")
-    for key, entries in landed.items():
-        values[f"dòng: {key}"] = " | ".join(sorted(entries))
-    values["cổng: chưa lên"] = " | ".join(sorted(missing))
-    values["cổng: tệp lỗi"] = "; ".join(_clip(line, 160) for line in failed)
-    values["cổng: đọc bảng"] = f"{len(rows)} dòng" if rows else "không đọc được bảng, dựa vào báo cáo của extension"
-    return values

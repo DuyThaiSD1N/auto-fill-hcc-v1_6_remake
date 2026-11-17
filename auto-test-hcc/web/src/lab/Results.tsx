@@ -165,7 +165,7 @@ function RunDetailView({ batch, run, cons, tab, setTab }: { batch: Batch; run: L
   const hasAttach = batch.settings.attach;
   const detail = useMemo(() => asRunDetail(batch, run), [batch, run]);
   const tabs: { key: Tab; label: string; show: boolean }[] = [
-    { key: "form", label: "Mô phỏng form", show: true },
+    { key: "form", label: "Mô phỏng form", show: batch.settings.fill },
     { key: "attach", label: "Mô phỏng đính kèm", show: hasAttach },
     { key: "compare", label: `So sánh các lần của ${batch.sets[run.set]?.name ?? "bộ"}`, show: true },
     { key: "json", label: "Output máy chủ", show: true },
@@ -211,7 +211,7 @@ export default function Results({ batch }: { batch: Batch }) {
   const [scorerError, setScorerError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   // Tab giữ nguyên khi chuyển lượt → bấm lần lượt các ô để so cùng một góc nhìn.
-  const [tab, setTab] = useState<Tab>("form");
+  const [tab, setTab] = useState<Tab>(batch.settings.fill ? "form" : "attach");
 
   useEffect(() => {
     let active = true;

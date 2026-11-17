@@ -110,7 +110,7 @@ def test_mat_field_la_hoi_quy():
 
 # ---- Đính kèm: kế hoạch quy thành ô ảo ---------------------------------------------------------------------------
 
-from scoring import attach_fields, attach_portal_values, same_row  # noqa: E402
+from scoring import attach_fields  # noqa: E402
 
 PLAN = [
     {"fileIndex": 0, "sourceSegments": [{"fileIndex": 0, "pageIndexes": [0, 1]}], "documentName": "Tờ khai",
@@ -181,51 +181,3 @@ def test_tieu_chi_dinh_kem_cham_nhu_field():
     result = evaluate(checks, [good, bad])
     assert [cell["ok"] for cell in result["rows"][0]["cells"]] == [True, False]
     assert result["passed"] == 1
-
-
-def test_dong_tren_cong_kem_stt_va_bat_buoc():
-    assert same_row("1. Tờ khai đăng ký (bắt buộc)", "Tờ khai đăng ký")
-    assert same_row("2 Giấy tờ tùy thân", "Giấy tờ tùy thân")
-    assert not same_row("Giấy tờ khác", "Giấy tờ tùy thân")
-
-
-def test_cong_doc_lai_dung_dong_sai_dong_va_chua_len():
-    rows = [
-        {"label": "1. Tờ khai đăng ký (bắt buộc)", "files": ["Tờ khai.pdf"]},
-        {"label": "2 Giấy tờ tùy thân", "files": ["cu.pdf"]},
-        {"label": "3 Giấy tờ khác", "files": ["Căn cước.pdf"]},
-    ]
-    before = [{"label": "2 Giấy tờ tùy thân", "files": ["cu.pdf"]}]
-    got = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], rows, before, [])
-    assert got["dòng: Tờ khai đăng ký"] == "Tờ khai [#1:1-2]"
-    assert got["dòng: Giấy tờ tùy thân"] == ""  # căn cước lên nhầm dòng Giấy tờ khác; cu.pdf có từ trước, không tính
-    assert got["dòng: Thêm mới: Giấy tờ khác"] == "Căn cước [#1:4 + #2]"
-    assert got["cổng: chưa lên"] == "Giấy khác [#3]"
-    assert got["cổng: đọc bảng"] == "3 dòng"
-    assert got["tổng: trang thiếu"] == "#1:3"  # khoá tổng / tệp vẫn là của kế hoạch backend
-
-
-def test_cong_co_tep_la_va_ten_goc():
-    plan = [{"fileIndex": 0, "documentName": "Đơn đề nghị", "componentName": "Đơn đề nghị", "target": "existing"}]
-    rows = [{"label": "Đơn đề nghị", "files": ["scan_001.pdf", "anh_la.jpg"]}]
-    got = attach_portal_values(plan, [1], ["scan_001.pdf"], rows, [], [])
-    assert got["dòng: Đơn đề nghị"] == "(lạ) anh_la.jpg | Đơn đề nghị [#1]"  # tắt đổi tên: nhận theo tên tệp gốc
-    assert got["cổng: chưa lên"] == ""
-
-
-def test_khong_doc_duoc_bang_thi_theo_tep_extension_bao_loi():
-    got = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], [], [],
-                               ["c.docx (Giấy khác) — Tệp quá dung lượng cổng cho phép"])
-    assert got["dòng: Tờ khai đăng ký"] == "Tờ khai [#1:1-2]"
-    assert got["dòng: Thêm mới: Giấy tờ khác"] == ""
-    assert got["cổng: chưa lên"] == "Giấy khác [#3]"
-    assert got["cổng: tệp lỗi"].startswith("c.docx")
-    assert got["cổng: đọc bảng"].startswith("không đọc được")
-
-
-def test_bang_o_ao_cho_agent_co_ca_cong_lan_be():
-    portal = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], [{"label": "Tờ khai đăng ký", "files": ["Tờ khai.pdf"]}])
-    run_ = {"status": "ok", "response": {"fields": attach_fields(PLAN, [4, 1, None])}, "form": portal}
-    table = {row["field"]: row for row in field_table(attach_fields(PLAN, [4, 1, None]), [run_])}
-    assert table["dòng: Giấy tờ tùy thân"]["runs"] == [""]
-    assert table["dòng: Giấy tờ tùy thân"]["beRuns"] == ["Căn cước [#1:4 + #2]"]

@@ -4,12 +4,10 @@ Phải chạy ngoài Docker vì cần claude, repo và docker. Web gọi vào qu
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import queue
 import re
-import secrets
 import subprocess
 import sys
 import threading
@@ -17,34 +15,27 @@ import time
 
 import httpx
 import uvicorn
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, WebSocket
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-import browser
 import claude_runner
 import evidence
 import remote
 import replay
-import runner_hub
 import workspace
 from config import (
     PUBLISH_WEB,
     AUTH_BACKEND_URL, BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, GIT_REMOTE, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS,
-    ROOT, SERVER_MODE, USE_WORKSPACE, VNC_ENABLED, WORKSPACE_PUSH, server_problems,
+    CASES, SERVER_MODE, USE_WORKSPACE, WORKSPACE_PUSH, server_problems,
 )
 from orchestrator import Job, Orchestrator, recover_interrupted, revert_fix
 from typing import Literal
 
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{4,64}$")
 _AUTH_TTL_S = 30
-# Vé xem màn hình bot qua noVNC: cookie HttpOnly, nginx hỏi /agent-api/vnc-check trước khi cho qua /vnc/.
-_VNC_COOKIE = "autotest_vnc"
-_VNC_TTL_S = 8 * 3600
 
 app = FastAPI(title="auto-test-hcc agents", docs_url=None, redoc_url=None, openapi_url=None)
 _auth_cache: dict[str, tuple[float, dict]] = {}
-_vnc_tickets: dict[str, float] = {}
 
 
 def require_operator(authorization: str = Header("")) -> dict:
@@ -138,11 +129,10 @@ class JobRequest(BaseModel):
     maxRounds: int = Field(DEFAULT_ROUNDS, ge=1, le=MAX_ROUNDS)
     reproduce: bool = True
     applicant: Applicant | None = None
-    mode: Literal["portal", "api"] = "portal"
+    # Chỉ còn chạy lại qua backend (bỏ Chromium / cổng thật ngày 18/11/2026). Giữ trường để client cũ gửi "api" vẫn hợp lệ.
+    mode: Literal["api"] = "api"
     # Sửa cho sản phẩm nào: Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend).
     target: Literal["autofill", "troly"] = "autofill"
-    # Cổng thật: Chromium chạy trên máy người dùng qua trình chạy bot (runner/bot_runner.py). Trống = trên máy dịch vụ.
-    runnerId: str = Field("", max_length=40)
 
 
 def _lookup(request_id: str) -> dict:
@@ -159,90 +149,10 @@ def _lookup(request_id: str) -> dict:
 def health() -> dict:
     return {
         "ok": True, "claude": bool(claude_runner.available()), "busy": service.busy, "queued": service.tasks.qsize(),
-        "server": SERVER_MODE, "vnc": VNC_ENABLED, "git": bool(GIT_REMOTE) or (USE_WORKSPACE and WORKSPACE_PUSH),
+        "server": SERVER_MODE, "git": bool(GIT_REMOTE) or (USE_WORKSPACE and WORKSPACE_PUSH),
         "workspace": USE_WORKSPACE, "workspaceOwner": workspace.owner() if USE_WORKSPACE else None,
         "publish": remote.publishing() if PUBLISH_WEB else None,
-        "runners": runner_hub.connected_count(),
     }
-
-
-# ---- trình chạy bot trên máy người dùng (runner_hub.py) ------------------------------------------------------------
-
-@app.on_event("startup")
-async def _remember_loop() -> None:
-    runner_hub.LOOP = asyncio.get_running_loop()
-
-
-@app.post("/agent-api/runners")
-def create_runner(user: dict = Depends(require_operator)) -> dict:
-    """Cấp token cho máy của người vận hành chạy Chromium của bot. Token chỉ hiện một lần, web giữ trong trình duyệt."""
-    runner, token = runner_hub.create(user.get("username", ""))
-    return {**runner.view(), "token": token}
-
-
-@app.get("/agent-api/runners/{runner_id}")
-def runner_status(runner_id: str, _: dict = Depends(require_operator)) -> dict:
-    runner = runner_hub.get(runner_id)
-    if not runner:
-        raise HTTPException(404, "Không có máy chạy bot này, hoặc token đã hết hạn.")
-    return runner.view()
-
-
-@app.get("/agent-api/runner/script")
-def runner_script() -> Response:
-    """Script trình chạy, không có gì bí mật: token người dùng tự dán vào lệnh."""
-    return FileResponse(ROOT / "runner" / "bot_runner.py", media_type="text/x-python", filename="bot_runner.py")
-
-
-@app.get("/agent-api/runner/extension")
-def runner_extension(token: str = "", if_none_match: str = Header("")) -> Response:
-    """Bản extension khu làm việc (đang test, đã trỏ backend thử) cho máy chạy bot. Chỉ trả khi token hợp lệ."""
-    if runner_hub.find_by_token(token) is None:
-        raise HTTPException(401, "Token không hợp lệ hoặc đã hết hạn.")
-    digest, data = runner_hub.ext_bundle()
-    if if_none_match and if_none_match == digest:
-        return Response(status_code=304, headers={"X-Extension-Hash": digest})
-    return Response(data, media_type="application/zip", headers={"X-Extension-Hash": digest})
-
-
-@app.websocket("/agent-api/runner/ws")
-async def runner_control(ws: WebSocket, token: str = "") -> None:
-    await runner_hub.control(ws, token)
-
-
-@app.websocket("/agent-api/runner/stream/{stream_id}")
-async def runner_stream(ws: WebSocket, stream_id: str, token: str = "") -> None:
-    await runner_hub.stream(ws, stream_id, token)
-
-
-@app.websocket("/agent-api/runner/backend")
-async def runner_backend(ws: WebSocket, token: str = "") -> None:
-    await runner_hub.backend(ws, token)
-
-
-@app.post("/agent-api/vnc-ticket")
-def vnc_ticket(_: dict = Depends(require_operator)) -> Response:
-    """Cửa sổ bot trên server nằm trong màn hình ảo: cấp vé để trình duyệt của người vận hành mở noVNC."""
-    if not VNC_ENABLED:
-        raise HTTPException(404, "Máy này không bật màn hình ảo, cửa sổ bot nằm ngay trên máy chạy dịch vụ.")
-    now = time.monotonic()
-    for key, expires in list(_vnc_tickets.items()):
-        if expires < now:
-            _vnc_tickets.pop(key, None)
-    ticket = secrets.token_urlsafe(32)
-    _vnc_tickets[ticket] = now + _VNC_TTL_S
-    response = JSONResponse({"url": "/vnc/vnc.html?autoconnect=1&resize=remote&reconnect=1&path=vnc/websockify"})
-    response.set_cookie(_VNC_COOKIE, ticket, max_age=_VNC_TTL_S, path="/vnc/", httponly=True, samesite="strict")
-    return response
-
-
-@app.get("/agent-api/vnc-check")
-def vnc_check(autotest_vnc: str = Cookie("")) -> Response:
-    """nginx auth_request gọi cho mọi request /vnc/: chỉ trả có/không, không lộ gì khác."""
-    expires = _vnc_tickets.get(autotest_vnc or "")
-    if not VNC_ENABLED or not expires or expires < time.monotonic():
-        return Response(status_code=401)
-    return Response(status_code=204)
 
 
 @app.get("/agent-api/requests/{request_id}")
@@ -257,15 +167,6 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         raise HTTPException(400, "Tệp gốc của req không còn trên đĩa nên không chạy lại được.")
     if not claude_runner.available():
         raise HTTPException(503, "Máy chưa có lệnh claude.")
-    if body.target == "troly" and body.mode == "portal":
-        raise HTTPException(400, "Trợ lý hồ sơ hiện chỉ chạy được ở chế độ Chỉ gọi backend: bot chưa tự lái được luồng trợ lý trên cổng.")
-    runner = runner_hub.get(body.runnerId) if body.runnerId and body.mode == "portal" else None
-    if body.runnerId and body.mode == "portal" and not (runner and runner.connected):
-        raise HTTPException(400, "Trình chạy bot trên máy của bạn chưa nối. Chạy lệnh trình chạy trên máy đó rồi tạo ca lại.")
-    if body.mode == "portal":
-        problem = browser.preflight(remote=runner is not None)
-        if problem:
-            raise HTTPException(400, problem)
     # Tài khoản chạy lại luôn do dịch vụ dựng sẵn (cùng xã / tỉnh với tài khoản đã điền req), web không hỏi. API vẫn nhận
     # cặp tài khoản + mật khẩu nếu được gửi kèm, cho script cũ.
     username = body.replayUsername.strip()
@@ -301,7 +202,6 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
             "runs": body.runs, "maxRounds": body.maxRounds, "reproduce": body.reproduce,
             "replayAccount": credentials["username"], "replayShadow": not username, "applicant": applicant, "mode": body.mode,
             "target": body.target, "kind": preview.get("kind") or "autofill",
-            "runner": runner.id if runner else None, "runnerMachine": runner.info.get("machine") if runner else None,
         },
         preview=preview,
         warnings=warnings,
@@ -329,32 +229,31 @@ def get_runs(job_id: str, _: dict = Depends(require_operator)) -> dict:
     """Output đầy đủ của các lần chạy lại — nặng nên tách khỏi API thăm dò mỗi 2 giây."""
     job = service.get(job_id)
     phases = []
+    original = _original_run(job)
+    if original:
+        phases.append({"phase": "original", "runs": [original]})
     for path in sorted((job.dir / "replay").glob("*/runs.json")):
         phases.append({"phase": path.parent.name, "runs": json.loads(path.read_text(encoding="utf-8"))})
-    phases.sort(key=lambda item: (item["phase"] != "reproduce", item["phase"]))
+    order = {"original": 0, "reproduce": 1}
+    phases.sort(key=lambda item: (order.get(item["phase"], 2), item["phase"]))
     return {"phases": phases}
 
 
-@app.get("/agent-api/jobs/{job_id}/shots/{phase}/{number}")
-def get_shot(job_id: str, phase: str, number: int, _: dict = Depends(require_operator)) -> FileResponse:
-    """Ảnh chụp cổng thật sau một lần điền."""
-    job = service.get(job_id)
-    if not re.fullmatch(r"reproduce|round\d+", phase):
-        raise HTTPException(400, "Sai tên lượt")
-    path = job.dir / "replay" / phase / f"run{number}.png"
-    if not path.is_file():
-        raise HTTPException(404, "Không có ảnh")
-    return FileResponse(path, media_type="image/png")
-
-
-@app.post("/agent-api/jobs/{job_id}/ready")
-def job_ready(job_id: str, _: dict = Depends(require_operator)) -> dict:
-    """Người dùng đã đăng nhập và mở tới tờ khai trên cửa sổ bot."""
-    job = service.get(job_id)
-    if not job.data.get("human"):
-        raise HTTPException(409, "Job không chờ thao tác nào")
-    job.ready.set()
-    return job.view()
+def _original_run(job: Job) -> dict | None:
+    """Lượt gốc của req dưới dạng một lần chạy, để tab trường so ngay với các lần chạy lại (giống web trace)."""
+    case_dir = CASES / job.data["id"] / "case"
+    try:
+        fields = json.loads((case_dir / "fields.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    response: dict = {"fields": fields, "requestId": job.data["requestId"]}
+    plan_file = case_dir / "attach_plan.json"
+    if plan_file.is_file():
+        try:
+            response["attachments"] = json.loads(plan_file.read_text(encoding="utf-8")).get("plan") or []
+        except ValueError:
+            pass
+    return {"n": 1, "status": "ok", "requestId": job.data["requestId"], "response": response, "startedAt": job.data["case"].get("createdAt")}
 
 
 class Approval(BaseModel):
@@ -469,12 +368,7 @@ def main() -> None:
     version = subprocess.run([claude_runner.available() or "claude", "--version"], capture_output=True, text=True).stdout.strip()
     print(f"Dịch vụ agent: http://{HOST}:{PORT} · claude {version} · backend thử {BACKEND_URL}"
           + (f" · đăng nhập qua {AUTH_BACKEND_URL}" if AUTH_BACKEND_URL != BACKEND_URL else ""))
-    try:
-        import wsproto  # noqa: F401 — uvicorn 0.29 chưa hợp websockets 14+, wsproto ổn định cho WebSocket của trình chạy bot
-        ws_impl = "wsproto"
-    except ImportError:
-        ws_impl = "auto"
-    uvicorn.run(app, host=HOST, port=PORT, log_level="warning", ws=ws_impl)
+    uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
 
 
 if __name__ == "__main__":

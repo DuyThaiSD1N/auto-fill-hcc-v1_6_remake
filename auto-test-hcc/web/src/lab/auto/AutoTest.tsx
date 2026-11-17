@@ -3,7 +3,7 @@ import { ApiError } from "../../api";
 import Icon from "../../components/Icon";
 import { Spinner } from "../../components/Status";
 import { formatDateTime } from "../../format";
-import { agentApi, errorText, serviceDown, type FixTarget, type JobSummary, type RequestInfo, type RunMode, type RunnerInfo } from "./api";
+import { agentApi, errorText, serviceDown, type FixTarget, type JobSummary, type RequestInfo } from "./api";
 import JobDetail, { OutcomeTag, StatusTag } from "./JobDetail";
 
 const LIST_POLL_MS = 4000;
@@ -20,154 +20,8 @@ const FILTERS: { key: Filter; label: string; match: (job: JobSummary) => boolean
 
 const TARGETS: { value: FixTarget; label: string; hint: string }[] = [
   { value: "autofill", label: "Auto Fill", hint: "Sửa backend hoặc extension Auto Fill." },
-  { value: "troly", label: "Trợ lý hồ sơ", hint: "Sửa backend, gồm kênh trợ lý; chạy thêm tests/handfree. Chỉ chạy kiểu gọi backend." },
+  { value: "troly", label: "Trợ lý hồ sơ", hint: "Sửa backend, gồm kênh trợ lý; chạy thêm tests/handfree." },
 ];
-
-const MODES: { value: RunMode; label: string; hint: string }[] = [
-  { value: "portal", label: "Cổng thật", hint: "Bot tự vào thủ tục và điền trên Cổng DVC, bạn chỉ đăng nhập VNeID. Bot không nộp hồ sơ." },
-  { value: "api", label: "Chỉ gọi backend", hint: "Nhanh, không cần VNeID, nhưng không kiểm được extension." },
-];
-
-type BotHost = "mine" | "service";
-
-const BOT_HOSTS: { value: BotHost; label: string; hint: string }[] = [
-  { value: "mine", label: "Máy của tôi", hint: "Chromium của bot mở trên máy bạn đang dùng, bạn đăng nhập VNeID ngay ở đây." },
-  { value: "service", label: "Máy chạy dịch vụ", hint: "Chromium mở trên máy chạy dịch vụ agent. Chỉ chọn khi bạn đang ngồi ở máy đó." },
-];
-
-const RUNNER_KEY = "autotest_runner";
-
-function loadRunner(): { id: string; token: string } | null {
-  try {
-    const saved = JSON.parse(localStorage.getItem(RUNNER_KEY) || "null");
-    return saved && typeof saved.id === "string" && typeof saved.token === "string" ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeRunner(value: { id: string; token: string } | null) {
-  try {
-    if (value) localStorage.setItem(RUNNER_KEY, JSON.stringify(value));
-    else localStorage.removeItem(RUNNER_KEY);
-  } catch {
-    /* trình duyệt chặn lưu: lệnh vẫn hiện trên trang, chỉ mất khi tải lại */
-  }
-}
-
-/** Nối máy người dùng làm nơi chạy Chromium của bot: cấp token, hiện lệnh chạy trình chạy, theo dõi trạng thái nối. */
-function RunnerBox({ onReady }: { onReady: (runner: RunnerInfo | null) => void }) {
-  const [saved, setSaved] = useState(loadRunner);
-  const [info, setInfo] = useState<RunnerInfo | null>(null);
-  const [error, setError] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!saved) {
-      setInfo(null);
-      onReady(null);
-      return undefined;
-    }
-    let alive = true;
-    const tick = async () => {
-      try {
-        const found = await agentApi.runner(saved.id);
-        if (!alive) return;
-        setInfo(found);
-        setError("");
-        onReady(found.connected ? found : null);
-      } catch (reason) {
-        if (!alive) return;
-        onReady(null);
-        if (reason instanceof ApiError && reason.status === 404) {
-          storeRunner(null);
-          setSaved(null);
-          setError("Token cũ đã hết hạn, bấm Nối máy này để lấy lệnh mới.");
-        } else {
-          setError(errorText(reason));
-        }
-      }
-    };
-    void tick();
-    const timer = window.setInterval(() => void tick(), 3000);
-    return () => { alive = false; window.clearInterval(timer); };
-  }, [saved, onReady]);
-
-  const create = async () => {
-    setCreating(true);
-    setError("");
-    try {
-      const made = await agentApi.createRunner();
-      const value = { id: made.id, token: made.token ?? "" };
-      storeRunner(value);
-      setSaved(value);
-      setInfo(made);
-    } catch (reason) {
-      setError(errorText(reason));
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const command = saved ? `python bot_runner.py --server ${window.location.origin} --token ${saved.token}` : "";
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setError("Trình duyệt không cho chép, hãy bôi đen lệnh rồi chép tay.");
-    }
-  };
-
-  return (
-    <div className="at-runner">
-      {info?.connected ? (
-        <p className="at-runner__state">
-          <span className="at-tag at-tag--ok">Đã nối</span>
-          <span>Máy <strong>{info.machine || "?"}</strong>{info.chromium ? ` · ${info.chromium}` : ""}. Giữ cửa sổ dòng lệnh trình chạy mở trong lúc chạy ca.</span>
-        </p>
-      ) : saved ? (
-        <p className="at-runner__state">
-          <span className="at-tag at-tag--warn">Chờ máy nối</span>
-          <span className="faint">Chạy lệnh dưới đây trên máy này. Trang tự nhận khi trình chạy nối xong.</span>
-        </p>
-      ) : (
-        <p className="at-runner__state faint">Máy này chưa nối làm nơi chạy Chromium của bot.</p>
-      )}
-      {saved && !info?.connected ? (
-        <ol className="at-runner__steps">
-          <li>
-            Cài một lần (Python 3.10 trở lên): <code>pip install playwright websockets</code> rồi <code>python -m playwright install chromium</code>
-          </li>
-          <li>
-            Tải <a href="/agent-api/runner/script" download="bot_runner.py">bot_runner.py</a> về máy.
-          </li>
-          <li>
-            Mở dòng lệnh ở thư mục chứa tệp vừa tải, chạy:
-            <span className="at-runner__cmd">
-              <code className="mono">{command}</code>
-              <button className="btn btn--sm" type="button" onClick={() => void copy()}>{copied ? "Đã chép" : "Chép"}</button>
-            </span>
-          </li>
-        </ol>
-      ) : null}
-      <div className="at-runner__actions">
-        {!saved ? (
-          <button className="btn btn--sm btn--primary" type="button" disabled={creating} onClick={() => void create()}>
-            {creating ? <Spinner label="Đang tạo" /> : "Nối máy này"}
-          </button>
-        ) : (
-          <button className="btn btn--sm" type="button" onClick={() => { storeRunner(null); setSaved(null); setInfo(null); }}>
-            Tạo lệnh mới
-          </button>
-        )}
-      </div>
-      {error ? <p className="form-error">{error}</p> : null}
-    </div>
-  );
-}
 
 function ServiceNotice({ message }: { message: string }) {
   return (
@@ -237,7 +91,6 @@ function LookupCard({ info, looking, error, onPick }: {
           <>
             <span>{info.fieldsCount ?? 0} mục đính kèm</span>
             <span>Tách giấy tờ: {info.splitDocuments === true ? "bật" : "tắt"}</span>
-            {info.portalRows ? <span>{info.portalRows} dòng trên cổng</span> : null}
           </>
         ) : <span>{info.fieldsCount ?? 0} field</span>}
         {info.createdAt ? <span>{formatDateTime(info.createdAt)}</span> : null}
@@ -266,10 +119,6 @@ function StartForm({ onCreated, onCancel }: { onCreated: (id: string) => void; o
   const [runs, setRuns] = useState(5);
   const [maxRounds, setMaxRounds] = useState(3);
   const [reproduce, setReproduce] = useState(true);
-  const [mode, setMode] = useState<RunMode>("portal");
-  const [botHost, setBotHost] = useState<BotHost>("mine");
-  const [runner, setRunner] = useState<RunnerInfo | null>(null);
-  const onRunner = useCallback((value: RunnerInfo | null) => setRunner(value), []);
   const [target, setTarget] = useState<FixTarget>("autofill");
   const [applicantName, setApplicantName] = useState("");
   const [applicantId, setApplicantId] = useState("");
@@ -290,7 +139,6 @@ function StartForm({ onCreated, onCancel }: { onCreated: (id: string) => void; o
       // Lượt điền bằng trợ lý thì mặc định sửa cho trợ lý; trợ lý hiện chỉ chạy được ở chế độ Chỉ gọi backend.
       const troly = found.experience === "handfree";
       setTarget(troly ? "troly" : "autofill");
-      if (troly) setMode("api");
     } catch (reason) {
       setLookupError(errorText(reason));
     } finally {
@@ -300,11 +148,9 @@ function StartForm({ onCreated, onCancel }: { onCreated: (id: string) => void; o
 
   const pickTarget = (value: FixTarget) => {
     setTarget(value);
-    if (value === "troly") setMode("api");
   };
 
-  const needsRunner = mode === "portal" && botHost === "mine";
-  const ready = !!info && !info.missingFiles.length && description.trim().length >= 5 && !sending && (!needsRunner || !!runner);
+  const ready = !!info && !info.missingFiles.length && description.trim().length >= 5 && !sending;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -319,9 +165,8 @@ function StartForm({ onCreated, onCancel }: { onCreated: (id: string) => void; o
         maxRounds,
         reproduce,
         applicant: { applicantFullname: applicantName, applicantIdentityNumber: applicantId, applicantBirthday: "" },
-        mode,
+        mode: "api",
         target,
-        runnerId: needsRunner && runner ? runner.id : undefined,
       });
       onCreated(job.id);
     } catch (reason) {
@@ -372,16 +217,12 @@ function StartForm({ onCreated, onCancel }: { onCreated: (id: string) => void; o
       </label>
       <div className="at-new__choices">
         <Choice label="Sửa cho" value={target} options={TARGETS} onChange={pickTarget} />
-        <Choice label="Chạy kiểm" value={mode} options={MODES} onChange={setMode} disabled={(v) => v === "portal" && target === "troly"} />
       </div>
-      {mode === "portal" ? (
-        <fieldset className="at-runner-box">
-          <legend>Chromium của bot chạy trên</legend>
-          <Choice label="" value={botHost} options={BOT_HOSTS} onChange={setBotHost} />
-          {botHost === "mine" ? <RunnerBox onReady={onRunner} /> : null}
-        </fieldset>
-      ) : null}
-      {info?.needsApplicant && mode === "api" ? (
+      <p className="faint at-mode-note">
+        Chạy lại bằng cách gọi backend thử với giấy tờ của req (OCR mới mỗi lần), không mở cổng, không cần VNeID. Kết quả xem ở tab
+        Kết quả điền: trường nào nhận giá trị gì, mô phỏng trên form của thủ tục như web trace.
+      </p>
+      {info?.needsApplicant ? (
         <fieldset className="at-applicant">
           <legend>Mốc người nộp</legend>
           <p className="faint">Ngữ cảnh của lượt trợ lý đã hết hạn. Thiếu mốc người nộp thì nhiều thủ tục không phân được vai.</p>

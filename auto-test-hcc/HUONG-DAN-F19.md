@@ -13,7 +13,6 @@ Làm theo tài liệu này để dựng hệ thống trên máy của team, dùn
 | Claude Code đã đăng nhập | Chi phí agent tính vào tài khoản này, xem mục 9 |
 | Tailscale, cùng mạng với máy OCR và LLM | Thiếu mạng này thì OCR và LLM không chạy. Xin người phụ trách mời vào |
 | File `.env` | Xin người phụ trách, xem bước 2 |
-| Tài khoản VNeID của người chạy | Dùng để đăng nhập cổng thật |
 
 ## 2. Lấy code và `.env`
 
@@ -29,8 +28,7 @@ git checkout web-kiem-thu
 
 ```powershell
 $env:PYTHONUTF8="1"
-pip install -r auto-fill-hcc-backend/requirements.txt playwright
-python -m playwright install chromium
+pip install -r auto-fill-hcc-backend/requirements.txt
 ```
 
 Thiếu dòng `PYTHONUTF8` thì `pip` báo `UnicodeDecodeError`, vì `requirements.txt` có chú thích tiếng Việt.
@@ -104,8 +102,8 @@ Bản sửa đạt nằm trong thư mục làm việc, chưa commit. Người ch
 
 ## 9. Quy tắc khi dùng
 
-- Không commit `.env`, `auto-test-hcc/runs/` và `auto-test-hcc/.profile/`. `runs/` chứa giấy tờ, `.profile/` chứa phiên VNeID.
-- Bot không được nộp hồ sơ. Không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
+- Không commit `.env` và `auto-test-hcc/runs/`: `runs/` chứa giấy tờ.
+- Web không còn chạy trên cổng thật (từ 18/11/2026): không mở Chromium, không cần VNeID.
 - Một ca thường tốn 2 đến 6 USD theo giá niêm yết, trần 30 USD.
 
 ## 10. Lỗi hay gặp

@@ -90,11 +90,10 @@ Tài liệu cho người cài đặt. Cài trên máy đang chạy backend produ
 
 | Thành phần | Cổng | Chạy ở đâu | Việc |
 | --- | --- | --- | --- |
-| Web Agent tự sửa (`test-fe`) | 12008 | Docker, mạng host | Giao diện; `/auth/` đi tới backend production để đăng nhập super_admin; `/vnc/` mở màn hình bot (cần vé) |
+| Web Agent tự sửa (`test-fe`) | 12008 | Docker, mạng host | Giao diện; `/auth/` đi tới backend production để đăng nhập super_admin |
 | Dịch vụ agent | 127.0.0.1:12009 | systemd `autotest-agent` | Hội đồng agent, chạy test, build backend thử, đẩy nhánh lên GitHub |
 | Backend thử (`app`) | 127.0.0.1:12015 | Docker, `deploy/compose.server.yml` | Chạy code agent đang sửa; chạy lại 5 lần trên đây |
 | Mongo thử (`be-mongo`) | 127.0.0.1:12014 | Docker | Dữ liệu và tài khoản test của backend thử |
-| Màn hình ảo + noVNC | 127.0.0.1:6080 | systemd `autotest-vnc` | Cửa sổ Chromium của bot, bạn đăng nhập VNeID qua web |
 | Mongo production | 127.0.0.1:12004 | Stack production | Dịch vụ chỉ ĐỌC req (tài khoản `autotest_ro`, role `read`) |
 | Uploads production | `/opt/autofill-hcc/data/uploads` | Đĩa | Dịch vụ chỉ đọc tệp gốc của req |
 
@@ -105,14 +104,14 @@ Code được sửa nằm trong bản clone `~/test-auto-test-and-fix` của rep
 - Dịch vụ từ chối khởi động nếu cấu hình server có thể đụng vào production: build bằng `compose.prod.yml`, Mongo thử trùng Mongo production, backend thử trùng backend production.
 - Backend thử dùng image `autofill-hcc-be:autotest`, project compose riêng, volume riêng, JWT secret riêng, tắt vault form snapshot.
 - Agent không có Bash. Ngoài các luật cũ, agent còn bị chặn Read `/opt/autofill-hcc/**` (`.env` production, uploads của mọi người dân), `server.env`, `~/.ssh`.
-- Bot không nộp hồ sơ: lớp chặn nộp trong `agents/browser.py` giữ nguyên.
+- Không mở cổng, không chạy Chromium (từ 18/11/2026): mọi lần chạy lại gọi backend thử, không có gì gửi lên cổng dịch vụ công.
 
 **Lưu ý dữ liệu:** req lấy từ production là hồ sơ thật của người dân. Mỗi ca, agent gửi OCR và ảnh giấy tờ của req đó lên Anthropic qua tài khoản Claude cắm vào server. Đơn vị phải cho phép việc này trước khi dùng.
 
 ## 1. Chuẩn bị (làm một lần, có quyền sudo)
 
 ```bash
-# User riêng cho dịch vụ, KHÔNG dùng root (Chromium của bot cần sandbox)
+# User riêng cho dịch vụ, KHÔNG dùng root
 sudo adduser autotest
 sudo usermod -aG docker,sudo autotest
 # Cho đọc tệp gốc của req (chỉ đọc)
@@ -143,11 +142,11 @@ bash ~/test-auto-test-and-fix/auto-test-hcc/deploy/setup.sh install
 Production nằm ở thư mục khác thì thêm `PROD_DIR=/duong/dan` trước lệnh. Script lần lượt:
 
 1. Cài gói hệ thống, Node 22, Claude Code.
-2. Tạo venv và Chromium cho Playwright.
+2. Tạo venv Python.
 3. Chép `.env` production cho backend thử.
-4. Đổi extension của bot sang `localhost:12015`, chỉ trên server, không commit.
+4. Đổi extension trong bản clone sang `localhost:12015`, chỉ trên server, không commit.
 5. Tạo tài khoản Mongo chỉ đọc và sinh `auto-test-hcc/server.env`.
-6. Build và bật compose, cài và bật hai dịch vụ systemd.
+6. Build và bật compose, cài và bật dịch vụ systemd `autotest-agent`.
 7. Chạy kiểm tra.
 
 ## 3. Cắm tài khoản Claude của bạn
@@ -180,8 +179,7 @@ Web nghe cổng 12008 trên mọi giao diện mạng. Chỉ mở cho mạng nộ
 ## 6. Chạy một ca
 
 1. Mở web, đăng nhập super_admin, nhập mã req của production và mô tả lỗi.
-2. Khi khung vàng "Đang chờ bạn" hiện lên, bấm **Mở màn hình bot**. Tab noVNC mở ra cửa sổ Chromium trên server. Đăng nhập VNeID ở đó rồi quay lại web bấm nút trong khung vàng.
-3. Duyệt patch như ở máy local. Đạt thì web hiện tên nhánh `agent/<mã ca>` trên GitHub.
+2. Duyệt kế hoạch và patch như ở máy local. Đạt thì web hiện tên nhánh `agent/<mã ca>` trên GitHub.
 
 ## 7. Cập nhật code mới
 
@@ -201,6 +199,4 @@ Lệnh này kéo `main` mới nhất, build lại web và backend thử, restart
 | Web báo "Không thấy req trong Mongo nguồn" | Kiểm tra `AUTOTEST_SOURCE_MONGO_URI` và `AUTOTEST_SOURCE_DB`; chạy lại `setup.sh install` để tạo lại tài khoản chỉ đọc |
 | "Tệp gốc của req không còn trên đĩa" | User `autotest` chưa đọc được uploads: chạy lại lệnh `setfacl` ở mục 1 |
 | Không push được nhánh | Deploy key chưa tích Allow write access; thử `git -C ~/test-auto-test-and-fix push --dry-run origin HEAD:refs/heads/agent/thu` |
-| Nút Mở màn hình bot báo 404 | `AUTOTEST_VNC=1` chưa có trong `server.env` |
-| Tab noVNC trắng hoặc báo 502 | `sudo systemctl status autotest-vnc` |
 | Xem log | `journalctl -u autotest-agent -f`, `docker compose -f deploy/compose.server.yml logs -f app` |

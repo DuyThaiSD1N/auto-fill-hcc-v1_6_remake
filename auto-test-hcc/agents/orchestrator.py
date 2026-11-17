@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-import browser
 import claude_runner
 import codeguard
 import evidence
@@ -28,7 +27,6 @@ import publish
 import regression_case
 import replay
 import roles
-import runner_hub
 import scoring
 import verify
 import workspace
@@ -95,7 +93,6 @@ class Job:
         self.dir: Path = RUNS / data["id"]
         self.lock = threading.RLock()
         self.cancel = threading.Event()
-        self.ready = threading.Event()  # người dùng bấm "Đã tới tờ khai" trên web
         self.decided = threading.Event()  # người duyệt đã bấm một nút ở khung duyệt bản sửa
         self.verdict: dict | None = None
         self._saved_at = 0.0
@@ -115,7 +112,6 @@ class Job:
             "outcome": None,
             "error": None,
             "warnings": warnings,
-            "human": None,
             "approval": None,
             "case": preview,
             "reproduce": None,
@@ -195,8 +191,6 @@ class Orchestrator:
         self.denied: list[str] = []
         # Code của vòng trượt gần nhất (đã hoàn tác để vòng sau làm lại từ code gốc): hết vòng mà chưa đạt thì đặt lại cho người xem.
         self.kept: dict | None = None
-        # Cổng thật: runner = trình chạy bot trên máy người dùng (runner_hub), Chromium chạy ở máy đó thay vì máy dịch vụ.
-        self.portal_state: dict = {"runner": job.data["settings"]["runner"]} if job.data["settings"].get("runner") else {}
         # Chứng cứ nằm trong cây agent đọc được: khu làm việc (mục 1) hoặc repo người phát triển (kiểu cũ).
         self.case_dir = CASES / job.data["id"] / "case"
         self.last_runs: list[dict] = []
@@ -315,12 +309,10 @@ class Orchestrator:
     def _rollback(self) -> None:
         if not self.guard.taken or not self.touched:
             return
-        changes, _ = self.guard.changes(self.touched, self.on_portal)
+        changes, _ = self.guard.changes(self.touched, extension=False)
         self.guard.restore(changes)
         if changes:
             self.job.log(f"Đã hoàn tác {len(changes)} file: {', '.join(c.rel for c in changes)}")
-        if codeguard.touches_extension(changes):
-            self.portal_state["extensionStale"] = True
         self.touched = []
         self.job.update(touched=[])
 
@@ -338,8 +330,6 @@ class Orchestrator:
 
     def _measure_baselines(self, cancel) -> dict:
         before = {"backend": verify.baseline(cancel)}
-        if self.on_portal:
-            before["extension"] = verify.extension_baseline(cancel)
         before["regression"] = verify.regression_baseline(cancel)
         if self.for_troly:
             before["handfree"] = verify.handfree_baseline(cancel)
@@ -393,8 +383,6 @@ class Orchestrator:
         if replay.is_attach(self.case):
             self.job.log(f"Lượt ĐÍNH KÈM · thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, "
                          f"{len(self.case.get('plan') or [])} mục trong kế hoạch lượt gốc.")
-            if self.on_portal and (self.case.get("options") or {}).get("splitMode") is True:
-                self._warn("Lượt gốc bật Tách hồ sơ (mỗi tệp một tab). Bot chỉ đính trong một tab nên kết quả trên cổng có thể khác lượt gốc.")
         else:
             self.job.log(f"Thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, {len(self.case['fields'])} field ở lượt gốc.")
 
@@ -402,60 +390,8 @@ class Orchestrator:
     def for_troly(self) -> bool:
         return self.settings.get("target") == "troly"
 
-    @property
-    def on_portal(self) -> bool:
-        return self.settings.get("mode") == "portal"
-
-    def _wait_human(self, message: str, button: str = "Đã tới tờ khai, chạy tiếp", done: Callable[[], bool] | None = None) -> None:
-        """Chờ người dùng làm trên cửa sổ bot. Có ``done`` thì tự đi tiếp khi điều kiện đúng, nút trên web chỉ là đường dự phòng."""
-        job = self.job
-        job.ready.clear()
-        job.update(human={"message": message, "button": button, "since": now()})
-        job.log(f"Chờ bạn: {message}", level="warn")
-        deadline = time.monotonic() + browser.HUMAN_TIMEOUT_S
-        try:
-            while not job.ready.wait(3):
-                if job.cancel.is_set():
-                    raise Stopped()
-                if done and done():
-                    return
-                if time.monotonic() > deadline:
-                    raise JobError(f"Quá {browser.HUMAN_TIMEOUT_S // 60} phút không thấy bấm tiếp.")
-        finally:
-            job.update(human=None)
-
-    def _open_portal(self) -> None:
-        """Người dùng chỉ đăng nhập, mọi việc còn lại bot làm. Bot kẹt thì nhờ người bấm hộ đoạn đó rồi chạy tiếp."""
-        job = self.job
-        runner = self.portal_state.get("runner")
-        where = f"trên {runner_hub.describe(runner)} (trình chạy bot)" if runner else "trên máy chạy dịch vụ"
-        if runner and not runner_hub.connected(runner):
-            self._wait_human(
-                f"Trình chạy bot {where} chưa nối. Mở lại cửa sổ dòng lệnh trình chạy trên máy đó (cùng lệnh đã dùng), bot tự đi tiếp khi nối xong.",
-                button="Trình chạy đã nối",
-                done=lambda: runner_hub.connected(runner),
-            )
-        self._stage("portal", "Mở trang chủ Cổng DVC quốc gia…")
-        browser.open_home(self.portal_state, job.cancel, job.log)
-        self._wait_human(
-            f"Trên cửa sổ Chromium của bot ({where}), bấm Đăng nhập và hoàn tất VNeID. Xong bot tự vào thủ tục và tự điền.",
-            button="Tôi đã đăng nhập xong",
-            done=lambda: browser.is_logged_in(self.portal_state, job.cancel, job.log),
-        )
-        job.log("Đã đăng nhập, bot tự vào thủ tục…")
-        try:
-            browser.enter_form(self.case["procedure"], self.credentials, self.portal_state, job.cancel, job.log)
-        except (RuntimeError, browser.Error) as reason:
-            self._wait_human(f"Bot chưa tự vào được tờ khai: {str(reason)[:200]} Hãy bấm tới tờ khai giúp rồi bấm nút bên dưới.")
-
     def _replay(self, phase: str, on_run: Callable[[dict], None]) -> list[dict]:
-        if self.on_portal:
-            runs = browser.replay_on_portal(
-                self.case, self.settings["runs"], phase, self.job.dir, self.credentials, self.portal_state,
-                self.job.cancel, self._wait_human, on_run, self.job.log,
-            )
-        else:
-            runs = replay.replay(self.case, self.settings["runs"], phase, self.job.dir, self.credentials, self.job.cancel, on_run)
+        runs = replay.replay(self.case, self.settings["runs"], phase, self.job.dir, self.credentials, self.job.cancel, on_run)
         if self.job.cancel.is_set():
             raise Stopped()
         self._share_replay(phase)
@@ -472,8 +408,6 @@ class Orchestrator:
 
     def _reproduce(self) -> None:
         table = scoring.field_table(self.case["fields"], [])
-        if self.on_portal:
-            self._open_portal()
         if self.settings["reproduce"]:
             self._stage("reproduce", f"Chạy lại {self.settings['runs']} lần với code hiện tại để xem lỗi có lặp lại không…")
             live: list[dict] = []
@@ -499,8 +433,7 @@ class Orchestrator:
                 )
             with self.job.lock:
                 self.job.data["reproduce"].update(
-                    table=table, ocrFresh=fresh, coverage=coverage, faithful=faithful,
-                    formGaps=scoring.form_gaps(self.pre_runs), phase="reproduce",
+                    table=table, ocrFresh=fresh, coverage=coverage, faithful=faithful, phase="reproduce",
                 )
             self.job.save()
         (self.case_dir / "reproduce.json").write_text(
@@ -516,17 +449,6 @@ class Orchestrator:
             self._warn(f"Chỉ {fresh}/{len(done)} lần xác nhận được OCR mới, các lần còn lại có thể trúng cache.")
         if any(r.get("llmReused") for r in runs):
             self._warn("Thủ tục này dùng lại câu trả lời LLM trong 30 phút, nên các lần chạy không đo được độ dao động của LLM.")
-        if not self.on_portal:
-            return
-        unread = [r["n"] for r in done if r.get("form") is None]
-        if unread:
-            self._warn(f"Lần {unread} không đọc lại được form, các lần đó được chấm trên giá trị backend trả.")
-        no_table = [r["n"] for r in done if r.get("kind") == "attach" and not r.get("portalRows")]
-        if no_table:
-            self._warn(f"Lần {no_table} bot không đọc được bảng đính kèm trên cổng, các lần đó chấm theo danh sách tệp lỗi extension báo.")
-        other = {r["wrongProcedure"] for r in runs if r.get("wrongProcedure")}
-        if other:
-            self._warn(f"Panel nhận diện sang thủ tục khác ({', '.join(other)}), kết quả không so được với req. Kiểm tra lại trang đang mở.")
 
     def _warn(self, text: str) -> None:
         with self.job.lock:
@@ -566,8 +488,8 @@ class Orchestrator:
                     model=model, effort=effort, system=system, prompt=prompt, schema=schema,
                     timeout=FIXER_TIMEOUT_S if can_edit else AGENT_TIMEOUT_S,
                     cancel=self.job.cancel, on_event=on_event, can_edit=can_edit, resume=resume,
-                    # Chỉ gọi backend thì extension không chạy, sửa extension là không kiểm chứng được.
-                    edit_extension=can_edit and self.on_portal,
+                    # Chỉ gọi backend, extension không chạy: sửa extension là không kiểm chứng được nên không cho sửa.
+                    edit_extension=False,
                     touched=self.touched if can_edit else None,
                 )
                 break
@@ -705,7 +627,7 @@ class Orchestrator:
                 round_["fix"].update(output, repairs=repair + 1)
             job.save()
 
-        changes, _ = self.guard.changes(self.touched, self.on_portal)
+        changes, _ = self.guard.changes(self.touched, extension=False)
         verdict = self._await_approval(round_, changes)
         if verdict["decision"] != APPROVE:
             note = verdict.get("note") or ""
@@ -719,8 +641,6 @@ class Orchestrator:
                 return False
             raise NotApproved(problem + " Code đã trả về như trước khi sửa.")
         changes = self._changes_after_approval(round_)
-        if codeguard.touches_extension(changes):
-            self.portal_state["extensionStale"] = True  # lượt chạy kiểm sau đây nạp lại trước khi điền
         # stackDirty: vòng trước đã build bản sửa nay bị hoàn tác, nên dù vòng này chỉ đổi test vẫn phải build lại.
         if codeguard.touches_backend_app(changes) or job.data.get("stackDirty"):
             self._stage("deploy", "Build lại backend thử với bản sửa…")
@@ -808,7 +728,7 @@ class Orchestrator:
 
     def _changes_after_approval(self, round_: dict) -> list[codeguard.Change]:
         """Lúc chờ duyệt người vận hành có thể sửa tay file agent đã sửa: build đúng nội dung đang có trên đĩa và ghi lại patch."""
-        changes, _ = self.guard.changes(self.touched, self.on_portal)
+        changes, _ = self.guard.changes(self.touched, extension=False)
         patch = codeguard.make_patch(changes)
         if patch != round_["fix"].get("patch"):
             with self.job.lock:
@@ -821,7 +741,7 @@ class Orchestrator:
         None nếu đạt. Chỉ chạy bộ test của phía bị đổi."""
         job = self.job
         self._stage("test", "Kiểm tra bản sửa…")
-        changes, outside = self.guard.changes(self.touched, self.on_portal)
+        changes, outside = self.guard.changes(self.touched, extension=False)
         escaped = [path for path in outside if path not in self.denied]
         if escaped:
             raise JobError(f"Agent sửa ngoài phạm vi cho phép: {', '.join(escaped)}. Hãy xem lại các file này.")
@@ -935,7 +855,7 @@ class Orchestrator:
         regressions = scoring.find_regressions(self._baseline_values(), runs, targets)
         with job.lock:
             round_["retest"].update(
-                evaluation=evaluation, regressions=regressions, ocrFresh=scoring.ocr_fresh_count(runs), formGaps=scoring.form_gaps(runs),
+                evaluation=evaluation, regressions=regressions, ocrFresh=scoring.ocr_fresh_count(runs),
             )
         job.save()
         job.log(f"Chấm: đạt {evaluation['passed']}/{evaluation['total']} lần, {len(regressions)} field hồi quy.")
@@ -1106,7 +1026,7 @@ class Orchestrator:
         job = self.job
         job.log(f"Vòng {round_['n']} không đạt: {problem[:300]}", level="warn")
         if keep and self.guard.taken and self.touched:
-            changes, _ = self.guard.changes(self.touched, self.on_portal)
+            changes, _ = self.guard.changes(self.touched, extension=False)
             if changes:
                 self.kept = {"round": round_["n"], "changes": changes, "summary": (round_.get("fix") or {}).get("summary")}
         patch = (round_.get("fix") or {}).get("patch") or ""
@@ -1165,8 +1085,6 @@ class Orchestrator:
                     round_["result"]["kept"] = True
         job.save()
         job.log(f"Để lại code của vòng {kept['round']} ({len(records)} file) cho người xem, chưa build.", level="warn")
-        if codeguard.touches_extension(changes):
-            self.portal_state["extensionStale"] = True
         return kept["round"]
 
 
@@ -1193,8 +1111,6 @@ def revert_fix(job: Job) -> None:
     if any(path.startswith(f"{codeguard.BE_DIR}/app/") for path in reverted):
         job.log("Build lại backend sau khi hoàn tác…")
         deployed = verify.deploy(threading.Event())
-    if any(path.startswith(f"{codeguard.EXT_DIR}/") for path in reverted):
-        browser.reload_if_open(job.log)
     with job.lock:
         fix.update(reverting=False, reverted=True, revertedFiles=reverted, keptFiles=skipped, revertDeploy=deployed)
     job.log(f"Đã hoàn tác {len(reverted)} file" + (f", giữ nguyên {len(skipped)} file đã bị sửa tiếp" if skipped else "") + ".")
