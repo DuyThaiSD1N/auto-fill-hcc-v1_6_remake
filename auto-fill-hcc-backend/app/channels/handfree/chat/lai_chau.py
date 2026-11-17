@@ -15,6 +15,14 @@ Trợ lý bấm hay công dân tự bấm đều được: sang trang là sideba
 
 Bật khi thủ tục khai `laiChauFeeStep` và extension khai supportsLaiChauFeeStep; chế độ Mông giữ luồng cũ (câu chỉ có
 bản tiếng Việt). flow.py chỉ gọi các hàm ở đây; mỗi hàm tự trả lại reply cũ khi luồng không bật.
+
+Cổng khác cùng nền eForm Nth (Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn — đăng ký xe) dùng lại trang 1 qua các khoá
+của `laiChauFeeStep`:
+  - `capability`: cờ extension riêng (bản cũ đã khai supportsLaiChauFeeStep nhưng engine chỉ chạy trên host Lai Châu);
+  - `caseOnly`: chỉ dẫn trang "Chọn trường hợp hồ sơ" (các trang sau đi luồng chung — không nút "Đồng ý và tiếp tục"
+    sau điền / đính kèm, không bước Lệ phí);
+  - `caseGroups: "auto"`: không biết trước tên ô → extension tự đọc MỌI ô chọn đang hiện trong khung chọn trường hợp
+    (Loại xe, rồi các ô cổng hiện thêm sau khi chọn), nhãn + dấu (*) lấy trên trang.
 """
 import re
 
@@ -26,7 +34,7 @@ from app.channels.handfree.chat.intents import Intent, asks_next_step
 CAPABILITY = "supportsLaiChauFeeStep"
 CASE, DECLARATION, ATTACHMENT, FEE = 1, 2, 3, 4
 NEXT_SEND = "__action:lc_next"
-_COMMANDS = {"lc_next", "lc_step_report", "lc_result_report", "lc_result_pick"}
+_COMMANDS = {"lc_next", "lc_step_report", "lc_result_report", "lc_result_pick", "lc_case_changed"}
 # Nhãn hiển thị trên thẻ; name = name ô trên cổng. Ô không có trên trang (vd nơi nộp chỉ hiện khi trường hợp đòi) thì
 # extension báo present=false, thẻ bỏ dòng đó.
 DEFAULT_CASE_GROUPS = [
@@ -54,13 +62,42 @@ def is_active(proc: dict | None) -> bool:
 
 def enabled(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    return is_active(proc) and caps.get(CAPABILITY) is True and (conv.get("lang") or "vi") != "hmong"
+    extra = _config(proc).get("capability")
+    return (is_active(proc) and caps.get(CAPABILITY) is True and (not extra or caps.get(extra) is True)
+            and (conv.get("lang") or "vi") != "hmong")
+
+
+def case_only(proc: dict | None) -> bool:
+    """Cổng chỉ dùng trang chọn trường hợp của luồng này (Bộ Công an): các bước sau đi luồng chung."""
+    return bool(_config(proc).get("caseOnly"))
+
+
+# Ô "*" = extension tự dò mọi ô chọn đang hiện trong khung chọn trường hợp.
+_AUTO = [{"name": "*"}]
+
+
+def _auto(proc: dict | None, page: int) -> bool:
+    return page == CASE and _config(proc).get("caseGroups") == "auto"
 
 
 def _groups(proc: dict | None, page: int = FEE) -> list[dict]:
+    if _auto(proc, page):
+        return [dict(g) for g in _AUTO]
     key, default = ("caseGroups", DEFAULT_CASE_GROUPS) if page == CASE else ("groups", DEFAULT_FEE_GROUPS)
     groups = _config(proc).get(key) or default
     return [dict(g) for g in groups if isinstance(g, dict) and g.get("name")]
+
+
+def _read_configs(proc: dict | None, page: int, read) -> list[dict]:
+    """Dòng thẻ theo registry; chế độ tự dò thì theo đúng các ô extension đọc được (tên + nhãn trên trang)."""
+    if not _auto(proc, page):
+        return _groups(proc, page)
+    out = []
+    for got in read or []:
+        if isinstance(got, dict) and _clean(got.get("name"), 120):
+            label = _clean(got.get("label"), 80).rstrip(" :*") or _clean(got.get("name"), 120)
+            out.append({"name": _clean(got.get("name"), 120), "label": label})
+    return out
 
 
 def _st(conv: dict) -> dict:
@@ -102,7 +139,7 @@ def next_chip() -> dict:
 
 def fill_report_reply(conv: dict, proc: dict | None, reply):
     """Điền xong bước Thông tin người nộp: thêm nút cam "Đồng ý và tiếp tục" để trợ lý bấm sang Thành phần hồ sơ."""
-    if not enabled(conv, proc) or reply is None:
+    if not enabled(conv, proc) or reply is None or case_only(proc):
         return reply
     _st(conv)["at"] = DECLARATION
     if not any(isinstance(c, dict) and c.get("cta") for c in reply.chips or []):
@@ -116,7 +153,7 @@ def attach_done_reply(conv: dict, proc: dict | None, reply, *, attached: int, sk
     """Đính kèm xong: thay lời "tự bấm nộp" bằng nút "Đồng ý và tiếp tục" sang bước Lệ phí hồ sơ."""
     from app.channels.handfree.chat import flow
 
-    if not enabled(conv, proc):
+    if not enabled(conv, proc) or case_only(proc):
         return reply
     _st(conv)["at"] = ATTACHMENT
     card = tu_phap_v2._card(conv, "attach", vi.FLOW2_ATTACH_STEPS, active=1, done=not errors, failed=bool(errors))
@@ -144,7 +181,7 @@ def next_reply(conv: dict):
     return r
 
 
-def _step_report(conv: dict, payload: dict):
+def _step_report(conv: dict, proc: dict | None, payload: dict):
     """Chỉ tới đây khi cổng KHÔNG sang trang (sang trang thì sidebar tải lại, watcher báo trang mới)."""
     message = _clean(payload.get("message"))
     if payload.get("clicked") and not message:
@@ -152,6 +189,9 @@ def _step_report(conv: dict, payload: dict):
     note = f": *{message}*" if message else ""
     r = _reply(_say(vi.LC_BLOCKED, message=note))
     r.chips = [{"label": vi.LC_RETRY_CHIP, "send": NEXT_SEND, "solid": True}]
+    if _at(conv) == CASE and _auto(proc, CASE):
+        # Trang chọn trường hợp tự dò: đọc lại các ô (không làm sẵn gì) để thẻ chọn hiện đúng ô cổng đang đòi.
+        r.actions = [{"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False}]
     return r
 
 
@@ -165,6 +205,9 @@ def _on_page(conv: dict, proc: dict | None, payload: dict):
         # phép xử lý dữ liệu NGAY ở đây (state consent không được theo dõi trang: sang bước 2 là treo). Im lặng (reply
         # rỗng không đè last_reply) cho tới khi trang thật sự sang bước 2.
         return _reply()
+    if case_only(proc) and step != CASE:
+        st["at"] = step  # rời trang chọn trường hợp: các trang sau đi luồng chung
+        return None
     if not step or step == before:
         return None
     st["at"] = step
@@ -193,10 +236,11 @@ def _summary(rows: list[dict]) -> tuple[str, str]:
 
 def _result_report(conv: dict, proc: dict | None, payload: dict):
     page = CASE if _at(conv) == CASE else FEE
-    rows = lien_thong.result_rows(_groups(proc, page), payload.get("groups"))
+    rows = lien_thong.result_rows(_read_configs(proc, page, payload.get("groups")), payload.get("groups"))
     _st(conv)["result_rows"] = rows
     if not rows:
-        r = _reply(_say(vi.LC_CASE_UNREAD if page == CASE else vi.LC_RESULT_UNREAD))
+        unread = vi.LC_CASE_UNREAD_AUTO if _auto(proc, page) else vi.LC_CASE_UNREAD if page == CASE else vi.LC_RESULT_UNREAD
+        r = _reply(_say(unread))
         r.chips = [next_chip()]
         return r
     changed = payload.get("changed") if isinstance(payload.get("changed"), dict) else None
@@ -213,6 +257,8 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         notes.append(vi.LC_FEE_AUTO)
     if f"auto:{_CASE}" in prepared:
         notes.append(vi.LC_CASE_AUTO)
+    elif _auto(proc, page) and any(x.startswith("auto:") for x in prepared):
+        notes.append(vi.LC_SINGLE_AUTO)
     for note in notes:
         md, tts = md + note["md"], tts + note["tts"]
     missing = ", ".join(_clean(x, 60) for x in payload.get("missing") or [] if _clean(x, 60))[:200]
@@ -221,11 +267,22 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         md, tts = md + hint_md, tts + hint_tts
     must = _CASE if page == CASE else _FEE
     pending = next((row for row in rows if row["name"] == must and not row["value"] and row["options"]), None)
-    if page == CASE:
-        guide = vi.LC_CASE_ASK if pending else vi.LC_CASE_GUIDE
+    if _auto(proc, page):
+        # Tự dò: ô bắt buộc (dấu (*) trên trang) còn trống mà có lựa chọn → mời chọn đúng các ô đó.
+        required = {str(g.get("name")) for g in payload.get("groups") or [] if isinstance(g, dict) and g.get("required")}
+        empty = [row["label"] for row in rows if row["name"] in required and not row["value"] and row["options"]]
+        guide_md, guide_tts = _say(vi.LC_CASE_ASK_AUTO, fields_md=", ".join(f"**{x}**" for x in empty),
+                                   fields_tts=", ".join(empty)) if empty else _say(vi.LC_CASE_GUIDE)
+        # Ô bắt buộc còn trống mà trợ lý không đọc được lựa chọn (danh sách cổng chỉ nạp khi gõ tìm) → chọn tay.
+        stuck = [row["label"] for row in rows if row["name"] in required and not row["value"] and not row["options"]]
+        if stuck:
+            stuck_md, stuck_tts = _say(vi.LC_CASE_STUCK, fields_md=", ".join(f"**{x}**" for x in stuck),
+                                       fields_tts=", ".join(stuck))
+            guide_md, guide_tts = stuck_md + guide_md, stuck_tts + guide_tts
+    elif page == CASE:
+        guide_md, guide_tts = _say(vi.LC_CASE_ASK if pending else vi.LC_CASE_GUIDE)
     else:
-        guide = vi.LC_FEE_ASK if pending else vi.LC_CONTINUE_GUIDE
-    guide_md, guide_tts = _say(guide)
+        guide_md, guide_tts = _say(vi.LC_FEE_ASK if pending else vi.LC_CONTINUE_GUIDE)
     r = _reply((md, tts))
     r.cards = [lien_thong.result_card(rows, "lc_result_pick")]
     r.actions = [{"type": "trail_message", "md": guide_md}]
@@ -245,6 +302,16 @@ def _result_pick(conv: dict, proc: dict | None, payload: dict):
     return r
 
 
+def _case_changed(conv: dict, proc: dict | None):
+    """Trang chọn trường hợp tự dò: ô trên trang đổi sau lượt đọc (cổng tải chậm, công dân tự chọn trên trang) → đọc lại
+    (không làm sẵn gì), kết quả về lc_result_report dựng thẻ mới. Rời trang rồi thì im."""
+    if _at(conv) != CASE or not _auto(proc, CASE):
+        return _reply()
+    r = _reply()
+    r.actions = [{"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False}]
+    return r
+
+
 # ── Điều phối ──
 
 def handle(conv: dict, proc: dict | None, intent):
@@ -259,7 +326,9 @@ def handle(conv: dict, proc: dict | None, intent):
     if intent.value == "lc_next":
         return next_reply(conv)
     if intent.value == "lc_step_report":
-        return _step_report(conv, payload)
+        return _step_report(conv, proc, payload)
+    if intent.value == "lc_case_changed":
+        return _case_changed(conv, proc)
     if intent.value == "lc_result_report":
         return _result_report(conv, proc, payload)
     return _result_pick(conv, proc, payload)
@@ -273,6 +342,8 @@ def voice_intent(conv: dict, message: str, page_context: dict | None) -> Intent 
     if not enabled(conv, proc):
         return None
     at = _page_step(page_context) or _at(conv)
+    if case_only(proc) and _page_step(page_context) != CASE and at != CASE:
+        return None
     ready = (
         at in (CASE, FEE)
         or (at == ATTACHMENT and conv.get("state") == "done")

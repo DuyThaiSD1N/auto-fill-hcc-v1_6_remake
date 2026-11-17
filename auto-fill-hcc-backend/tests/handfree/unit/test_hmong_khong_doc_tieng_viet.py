@@ -75,6 +75,11 @@ _NOT_REACHABLE_IN_HMONG = {
     # đã mở cho mọi tỉnh trước khi có bản Mông, chế độ Mông tạm hiện tiếng Việt. Có bản dịch thì thêm vào script_mong
     # và bỏ khỏi đây.
     "BCA_STAY_AGENCY_ASK", "BCA_UPDATE_REQUIRED",
+    # NỢ DỊCH (18/11/2026): ô cam đoan + nút Nộp hồ sơ của trợ lý trên Cổng DVC Bộ Công an (cờ supportsBcaFlow) — khung
+    # kết luận field_review của luồng này vốn chỉ có tiếng Việt. Có bản dịch thì thêm vào script_mong và bỏ khỏi đây.
+    "BCA_COMMIT_TICKED", "BCA_COMMIT_TICKED_SELF", "BCA_COMMIT_UNTICKED", "BCA_SUBMITTING", "BCA_SUBMIT_COMMIT",
+    "BCA_SUBMIT_CONFIRM_ON_PAGE", "BCA_SUBMIT_FAILED", "BCA_SUBMIT_NEXT_PAGE", "BCA_SUBMIT_NO_BUTTON",
+    "BCA_SUBMIT_RELOAD", "BCA_SUBMIT_REQUIRED",
 }
 
 

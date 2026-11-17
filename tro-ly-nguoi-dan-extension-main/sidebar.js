@@ -144,6 +144,12 @@
     // form kê khai, ô Tỉnh/Xã nhận kết quả (CongDan__fsTinhNhanKQ/XaNhanKQ) điền theo cascade. Thiếu cờ → BE báo thủ tục
     // cần cập nhật Trợ lý.
     supportsBcaDangKyXe: true,
+    // Cổng DVC Bộ Công an (dancuquocgia): sau khi điền tô ô xanh / cam / đỏ, vòng "Bổ sung các thông tin còn thiếu" và nút
+    // Nộp hồ sơ (lệnh bca_submit → content/bca/field-review.js). Thiếu cờ → BE giữ luồng cũ (công dân tự soát, tự nộp).
+    supportsBcaFlow: true,
+    // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký xe): trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn như trang 1
+    // của Lai Châu — content/laichau/portal.js chạy thêm host này, tự dò ô chọn. Thiếu cờ → công dân tự chọn như cũ.
+    supportsBcaCaseStep: true,
     // Biết tự bấm "Khai tờ khai" ở đúng dòng bảng Thành phần hồ sơ (lệnh open_eform → guided-steps.js) rồi tự gửi lệnh
     // điền khi tờ khai mở ra. Thiếu cờ → BE bảo công dân tự bấm như cũ.
     supportsOpenEform: true,
@@ -493,7 +499,7 @@
     "fillFields", "patchFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "pickProvinceRow",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox",
+    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox", "bcaSubmit",
     "prepareBusinessRegistration", "startBusinessRegistration", "bnShowTab", "bnAgency", "bnResult", "bnSubmit", "bnAccountSave",
   ]);
   let pageWorkInFlight = 0;
@@ -612,6 +618,20 @@
     if (msg?.__tlnd !== "lizCommitChanged" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
     ask(`__action:liz_commit_report:${JSON.stringify({ source: "change", checked: !!msg.checked, found: true })}`,
       "system");
+  });
+
+  // Cổng Bộ Công an: công dân tự tích / bỏ tích ô cam kết trên trang (content/bca/field-review.js theo dõi ô) → BE hiện
+  // nút Nộp hồ sơ (hoặc nút tích lại khi bỏ tích).
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "bcaCommitChanged" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    ask(`__event:commit_result:${JSON.stringify({ ok: !!msg.checked, source: "page" })}`, "system");
+  });
+
+  // Trang "Chọn trường hợp hồ sơ" tự dò ô (cổng Bộ Công an): ô trên trang đổi sau lượt đọc (cổng tải chậm, công dân tự chọn)
+  // → content/laichau/portal.js báo, BE đọc lại và hiện thẻ chọn đúng các ô đang có.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "lcCaseChanged" || String(sender?.tab?.id || "") !== String(TAB_ID)) return;
+    ask("__action:lc_case_changed", "system");
   });
 
   function sendToBackground(payload) {
@@ -1338,6 +1358,8 @@
       formKind: String(ctx?.formKind || ""),
       declarationTarget: !!ctx?.declarationTarget,
       attachmentTarget: !!ctx?.attachmentTarget,
+      // Cổng DVC Bộ Công an: trang có khối "Cơ quan thực hiện" chính là trang kê khai (form + cơ quan cùng trang).
+      bcaAgencyBlock: !!ctx?.bcaAgencyBlock,
       businessHost: !!ctx?.businessHost,
       businessStage: String(ctx?.businessStage || ""),
       taiKhoan: String(ctx?.taiKhoan || ""),
@@ -1844,10 +1866,11 @@
   // ── Cổng Lai Châu (mỗi bước một trang): bước Lệ phí hồ sơ + nút "Đồng ý và tiếp tục" ──
   async function runLcResult(a) {
     const set = a.type === "lc_result_set";
-    setStatus(set ? "Đang chọn trên trang…" : "Đang đọc cách nhận kết quả và mức lệ phí…");
+    setStatus(set ? "Đang chọn trên trang…" : "Đang đọc các ô chọn trên trang…");
     const res = await sendToContent(set
       ? { action: "lcResultSet", name: a.name, value: a.value, groups: a.groups || [] }
-      : { action: "lcResultScan", groups: a.groups || [] });
+      // prepare:false = chỉ đọc lại (vd sau khi cổng chặn "Đồng ý và tiếp tục"), không làm sẵn gì thêm.
+      : { action: "lcResultScan", groups: a.groups || [], ...(a.prepare === false ? { prepare: false } : {}) });
     setStatus("");
     const report = { groups: res?.groups || [], missing: res?.missing || [], prepared: res?.prepared || [] };
     if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
@@ -1862,6 +1885,19 @@
     if (res?.clicked && !res?.message) return;
     await ask(`__action:lc_step_report:${JSON.stringify({
       clicked: !!res?.clicked, message: res?.message || res?.error || "",
+    })}`, "system");
+  }
+
+  // ── Cổng DVC Bộ Công an: nút Nộp hồ sơ — soát ô bắt buộc + ô cam kết rồi bấm nút nộp của trang (content/bca/field-review.js)
+  async function runBcaSubmit(a) {
+    setStatus("Đang nộp hồ sơ…");
+    const res = await sendToContent({ ...a, action: "bcaSubmit" });
+    setStatus("");
+    await ask(`__action:bca_submit_report:${JSON.stringify({
+      clicked: !!res?.clicked, stage: res?.stage || "", button: res?.button || "", confirm: !!res?.confirm,
+      missing: res?.missing || [], stats: res?.stats || null, message: res?.message || res?.error || "",
+      // Trang không trả lời lệnh (content/bca/field-review.js chưa nạp vào tab) → BE nhắc Tải lại extension + F5.
+      noEngine: !res,
     })}`, "system");
   }
 
@@ -5739,6 +5775,8 @@
         setTimeout(() => { void runBxdResult(a); }, 0);
       } else if (a.type === "bxd_submit") {
         setTimeout(() => { void runBxdSubmit(); }, 0);
+      } else if (a.type === "bca_submit") {
+        setTimeout(() => { void runBcaSubmit(a); }, 0);
       } else if (a.type === "lc_result_scan" || a.type === "lc_result_set") {
         setTimeout(() => { void runLcResult(a); }, 0);
       } else if (a.type === "lc_next") {
@@ -5811,6 +5849,8 @@
           // Gửi nguyên bộ quy tắc ô của thủ tục (required, noAsk, zeroIsEmpty…) để thêm quy tắc không phải sửa sidebar.
           const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
           if (marked?.stats) report.review = marked.stats;
+          // Không bộ đọc ô nào trả lời (script mới chưa nạp vào tab: phải Tải lại extension + F5) → BE nhắc tải lại.
+          else report.reviewMissing = true;
         }
         ask(`__action:fill_report:${JSON.stringify(report)}`, "system");
       } else if (a.type === "pipeline_steps") {
@@ -5866,8 +5906,9 @@
         const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
         setStatus("");
         ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
-      } else if (a.type === "tick_commit" && a.id) {
-        // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id, báo lại để BE nhắc bấm Nộp hồ sơ.
+      } else if (a.type === "tick_commit" && (a.id || a.label)) {
+        // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id (không có id / không thấy id thì theo
+        // nhãn — trang căn cước), báo lại để BE hiện nút Nộp hồ sơ.
         const res = await sendToContent({ action: "tickCommitBox", id: a.id, label: a.label || "" });
         ask(`__event:commit_result:${JSON.stringify({ ok: res?.ok === true, error: res?.error || "" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {

@@ -6571,6 +6571,15 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "bcaAgencyFromDocs": True,
         "requiresCapability": "supportsBcaCanCuoc",
+        # Nút Nộp hồ sơ của trợ lý (supportsBcaFlow): Bước 1 cổng chỉ hiện "Lưu và Tiếp tục" (btnSaveNextToPage2) sang
+        # Bước 2 đặt lịch thu nhận sinh trắc học; "Lưu và nộp hồ sơ" (btnFinishPage1) ẩn tới khi cổng cho nộp. Ô cam
+        # đoan #chkRULE (thấy trên trang 17/11/2026), không thấy id thì extension tìm theo nhãn.
+        "bcaSubmit": {
+            "buttonIds": ["btnFinishPage1"],
+            "nextIds": ["btnSaveNextToPage2"],
+            "commitId": "chkRULE",
+            "commitLabel": "Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật",
+        },
         "hasAttachmentStep": False,
         # Không khai submitCommit*: câu sau khi tích (COMMIT_TICKED) bảo "bấm Nộp hồ sơ", còn trang này tích ô cam đoan
         # xong là "Lưu và Tiếp tục" sang Bước 2 đặt lịch thu nhận sinh trắc học → nhắc bằng BCA_CCCD_SUBMIT_HINT.
@@ -6615,6 +6624,15 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "bcaAgencyFromDocs": True,
         "requiresCapability": "supportsBcaCanCuoc",
+        # Nút Nộp hồ sơ của trợ lý (supportsBcaFlow): Bước 1 cổng chỉ hiện "Lưu và Tiếp tục" (btnSaveNextToPage2) sang
+        # Bước 2 đặt lịch thu nhận sinh trắc học; "Lưu và nộp hồ sơ" (btnFinishPage1) ẩn tới khi cổng cho nộp. Ô cam
+        # đoan #chkRULE (thấy trên trang 17/11/2026), không thấy id thì extension tìm theo nhãn.
+        "bcaSubmit": {
+            "buttonIds": ["btnFinishPage1"],
+            "nextIds": ["btnSaveNextToPage2"],
+            "commitId": "chkRULE",
+            "commitLabel": "Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật",
+        },
         "hasAttachmentStep": False,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6655,6 +6673,15 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "bcaAgencyFromDocs": True,
         "requiresCapability": "supportsBcaCanCuoc",
+        # Nút Nộp hồ sơ của trợ lý (supportsBcaFlow): Bước 1 cổng chỉ hiện "Lưu và Tiếp tục" (btnSaveNextToPage2) sang
+        # Bước 2 đặt lịch thu nhận sinh trắc học; "Lưu và nộp hồ sơ" (btnFinishPage1) ẩn tới khi cổng cho nộp. Ô cam
+        # đoan #chkRULE (thấy trên trang 17/11/2026), không thấy id thì extension tìm theo nhãn.
+        "bcaSubmit": {
+            "buttonIds": ["btnFinishPage1"],
+            "nextIds": ["btnSaveNextToPage2"],
+            "commitId": "chkRULE",
+            "commitLabel": "Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật",
+        },
         "hasAttachmentStep": False,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6699,6 +6726,15 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "bcaAgencyFromDocs": True,
         "requiresCapability": "supportsBcaCanCuoc",
+        # Nút Nộp hồ sơ của trợ lý (supportsBcaFlow): Bước 1 cổng chỉ hiện "Lưu và Tiếp tục" (btnSaveNextToPage2) sang
+        # Bước 2 đặt lịch thu nhận sinh trắc học; "Lưu và nộp hồ sơ" (btnFinishPage1) ẩn tới khi cổng cho nộp. Ô cam
+        # đoan #chkRULE (thấy trên trang 17/11/2026), không thấy id thì extension tìm theo nhãn.
+        "bcaSubmit": {
+            "buttonIds": ["btnFinishPage1"],
+            "nextIds": ["btnSaveNextToPage2"],
+            "commitId": "chkRULE",
+            "commitLabel": "Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật",
+        },
         "hasAttachmentStep": False,
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -6744,6 +6780,11 @@ PROCEDURES: list[dict] = [
         "icon": "🏍️",
         "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=56952",
         "requiresCapability": "supportsBcaDangKyXe",
+        # Trang "Chọn trường hợp hồ sơ" cùng nền eForm Nth với Lai Châu (chat/lai_chau.py): trợ lý đọc mọi ô chọn đang
+        # hiện (Loại xe, rồi các ô cổng hiện thêm sau khi chọn — tên ô chưa biết nên tự dò), hiện thẻ chọn + nút cam
+        # "Đồng ý và tiếp tục". Chỉ trang này (caseOnly); trang nhập thông tin đi luồng chung. Extension cờ riêng
+        # supportsBcaCaseStep (content/laichau/portal.js chạy thêm host bocongan).
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
         "hasAttachmentStep": False,
         "hideRepeatableHint": True,
         "requiredDocs": [

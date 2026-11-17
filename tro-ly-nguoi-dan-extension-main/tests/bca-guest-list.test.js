@@ -198,3 +198,64 @@ test("vòng điền chuẩn: ô bcaOtherOnly bỏ qua trừ khi bca-declarant ch
   assert.match(RELATION_SRC, /f\.comp === "bca-declarant"\)\s*\{\s*bcaDeclarant = await fillBcaDeclarantField\(f, result\);/);
   assert.match(RELATION_SRC, /if \(f\.bcaOtherOnly && bcaDeclarant !== "other"\) continue;/);
 });
+
+
+// ── Luồng có vòng bổ sung ô + nút Nộp hồ sơ (cờ supportsBcaFlow, content/bca/field-review.js) ──
+const bcaReview = read("content/bca/field-review.js");
+
+test("sidebar khai cờ supportsBcaFlow và chuyển lệnh bca_submit xuống trang rồi báo bca_submit_report", () => {
+  assert.match(sidebar, /supportsBcaFlow: true/);
+  assert.match(sidebar, /a\.type === "bca_submit"\)\s*\{\s*setTimeout\(\(\) => \{ void runBcaSubmit\(a\); \}, 0\);/);
+  assert.match(sidebar, /action: "bcaSubmit"/);
+  assert.match(sidebar, /__action:bca_submit_report:/);
+});
+
+test("manifest nạp bộ đọc ô Bộ Công an sau engine điền và con trỏ dùng chung", () => {
+  const manifest = fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8");
+  const at = (file) => manifest.indexOf(`"${file}"`);
+  assert.ok(at("content/bca/field-review.js") > at("content/fill-core.js"));
+  assert.ok(at("content/bca/field-review.js") > at("content/field-review.js"));
+});
+
+test("bộ đọc ô Bộ Công an: chỉ trang chính dancuquocgia, cùng giao thức fieldReview*, điền bằng engine chuẩn", () => {
+  assert.match(bcaReview, /const HOST = "dichvucong\.dancuquocgia\.gov\.vn"/);
+  assert.match(bcaReview, /window\.top === window/);
+  for (const action of ["fieldReviewMark", "fieldReviewNext", "fieldReviewStop", "bcaSubmit"]) {
+    assert.ok(bcaReview.includes(`"${action}"`), action);
+  }
+  assert.match(bcaReview, /H\.fillFormStandard\(\[field\]\)/);
+  // select2: tô ô công dân thấy, không tô <select> gốc bị ẩn.
+  assert.match(bcaReview, /classList\?\.contains\("select2"\)/);
+});
+
+test("nút nộp: còn ô bắt buộc hoặc chưa tích cam kết thì không bấm; cổng hỏi xác nhận thì để công dân tự bấm", () => {
+  const fn = bcaReview.slice(bcaReview.indexOf("async function submit("), bcaReview.indexOf("chrome.runtime.onMessage"));
+  assert.match(fn, /if \(stats\.required\) return \{ clicked: false, missing: \["required"\]/);
+  assert.match(fn, /!box\.checked\) \{[\s\S]*missing: \["commit"\]/);
+  assert.match(fn, /isConfirm\(shownAlert\)\) return \{ clicked: true, stage: pick\.stage, button, confirm: true \}/);
+  // Không tự bấm nút trong hộp xác nhận của cổng.
+  assert.doesNotMatch(fn, /shownAlert\.el\.querySelector\([^)]*\)\.click/);
+});
+
+
+test("nút tích ô cam đoan chạy cả khi BE chỉ gửi nhãn ô (trang căn cước), trợ lý tích thì đặt cờ để không báo trùng", () => {
+  assert.match(sidebar, /a\.type === "tick_commit" && \(a\.id \|\| a\.label\)/);
+  const tick = content.slice(content.indexOf('msg?.action !== "tickCommitBox"'), content.indexOf('msg?.action !== "fillBcaAgency"'));
+  assert.match(tick, /window\.__TLND_COMMIT_BY_ASSISTANT__ = true;[\s\S]*box\.click\(\)[\s\S]*__TLND_COMMIT_BY_ASSISTANT__ = false/);
+});
+
+test("công dân tự tích / bỏ tích ô cam kết trên trang → sidebar báo commit_result source page", () => {
+  assert.match(bcaReview, /__tlnd: "bcaCommitChanged"/);
+  assert.match(bcaReview, /window\.__TLND_COMMIT_BY_ASSISTANT__/);
+  assert.match(sidebar, /msg\?\.__tlnd !== "bcaCommitChanged"/);
+  assert.match(sidebar, /__event:commit_result:\$\{JSON\.stringify\(\{ ok: !!msg\.checked, source: "page" \}\)\}/);
+});
+
+
+test("trang căn cước khác bộ id người kê khai vẫn là form standard; câu chọn cơ quan không làm rỗng formKind", () => {
+  // 18/11/2026: cấp căn cước từ đủ 14 tuổi — formKind rỗng → trợ lý nói "chưa biết trang đang ở bước nào".
+  assert.match(core, /document\.getElementById\("cboORGTinh"\)\s*\|\| document\.querySelectorAll\('input\[id\^="txt"\], select\[id\^="cbo"\]'\)\.length >= 3/);
+  assert.match(content, /const agencyBlock = !maeHost && location\.hostname !== "dichvucong\.dancuquocgia\.gov\.vn"/);
+  // Lượt bấm "Đã đưa đủ" mang cờ khối cơ quan → BE coi là bước kê khai.
+  assert.match(sidebar, /bcaAgencyBlock: !!ctx\?\.bcaAgencyBlock,/);
+});

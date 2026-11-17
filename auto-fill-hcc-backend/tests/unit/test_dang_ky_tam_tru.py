@@ -343,8 +343,12 @@ def test_luat_bat_nut_nop_ho_so_cong_bo_cong_an():
     from app.procedures.portal_submit import portal_submit_rules
 
     rule = portal_submit_rules()["dichvucong.dancuquocgia.gov.vn"]
-    assert "btn-save-send" in rule["buttonIds"] and rule["buttonText"] == ["nop ho so"]
+    assert "btn-save-send" in rule["buttonIds"] and "nop ho so" in rule["buttonText"]
     assert re.match(rule["urlPattern"], "/portal/p/home/dang-ky-tam-tru.html")
+    # Trang căn cước: chỉ "Lưu và nộp hồ sơ" là nộp; "Lưu và Tiếp tục" (sang đặt lịch sinh trắc học) không phải.
+    assert re.match(rule["urlPattern"], "/portal/p/home/dvc-CCCD-cap-doi-hoac-cap-lai.html")
+    assert "btnFinishPage1" in rule["buttonIds"] and "btnSaveNextToPage2" not in rule["buttonIds"]
+    assert "luu va tiep tuc" not in rule["buttonText"]
     assert not re.match(rule["urlPattern"], "/portal/p/home/ho-so.html")
 
 
@@ -355,3 +359,52 @@ def test_cong_dan_tu_chon_tren_trang_cung_sang_buoc_giay_to():
     conv["consent"] = {"accepted": True}
     r = flow._to_ask_doc_method(conv)
     assert conv["state"] == "ask_doc_method" and r.cards[0]["kind"] == "doc_options"
+
+
+# ── Trợ lý, luồng có vòng bổ sung ô (extension cờ supportsBcaFlow) ──
+BCA_FLOW_CAPS = {"supportsFieldReview": True, "supportsBcaFlow": True, "supportsTickCommit": True}
+
+
+def _bca_fill(review):
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import pipeline_runner, tracing
+
+    conv = {"_id": "c1", "state": "filling", "procedure_key": KEY, "docs_target": "declaration",
+            "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {},
+            "client_capabilities": dict(BCA_FLOW_CAPS)}
+    with mock.patch.object(pipeline_runner, "spawn") as spawn, \
+            mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+        r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 7, "review": review})))
+    assert not spawn.called and conv["state"] == "reviewing"
+    return conv, r
+
+
+def test_bca_flow_con_o_bat_buoc_moi_bo_sung_van_cho_dinh_kem():
+    import asyncio
+
+    from app.channels.handfree.chat import field_review
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    conv, r = _bca_fill({"filled": 7, "optional": 1, "required": 2})
+    assert [c["send"] for c in r.chips[:2]] == ["__action:field_review_start", "__action:confirm_review"]
+    assert not r.chips[1].get("cta") and "__action:bca_submit" not in [c["send"] for c in r.chips]
+    # Nút "Đính kèm giấy tờ" là của luồng đính kèm: vòng bổ sung ô không giành lấy để mở Xem trước.
+    assert asyncio.run(field_review.handle(conv, get_procedure(KEY), Intent("action", "confirm_review"))) is None
+
+
+def test_bca_flow_du_o_thi_dinh_kem_roi_tich_cam_ket_va_nop():
+    conv, r = _bca_fill({"filled": 9, "optional": 0, "required": 0})
+    assert r.chips[0]["send"] == "__action:confirm_review" and r.chips[0]["cta"]
+    trail = " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+    assert "đủ các ô bắt buộc" in trail and "**Đính kèm giấy tờ ▶**" in trail
+    conv.update(state="attaching", attach_plan=[{}, {}, {}])
+    r = _attach_report(conv)
+    # Đính xong: chỉ nút tích ô cam kết, tích xong mới hiện Nộp hồ sơ.
+    assert [c["send"] for c in r.chips if c.get("cta")] == ["__action:tick_commit"]
+    # Đính xong mà tờ khai còn ô trống → mời bổ sung trước các nút.
+    conv, _ = _bca_fill({"filled": 9, "optional": 2, "required": 0})
+    conv.update(state="attaching", attach_plan=[{}])
+    r = _attach_report(conv)
+    assert r.chips[0]["send"] == "__action:field_review_start" and "__action:tick_commit" in [c["send"] for c in r.chips]

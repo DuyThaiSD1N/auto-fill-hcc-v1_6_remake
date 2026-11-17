@@ -38,6 +38,10 @@ function detectFormKind() {
   // trong <form> hay không.
   if (location.hostname === "dichvucong.dancuquocgia.gov.vn"
     && (document.getElementById("txtFULLNAME") || document.getElementById("txtFULLNAME_NDN")
+      // Trang căn cước khác bộ id người kê khai (cấp căn cước từ đủ 14 tuổi, 18/11/2026: không nhận ra form → trợ lý
+      // không biết đang ở bước kê khai): có khối cơ quan Công an tỉnh → xã, hoặc từ 3 ô theo kiểu id txt* / cbo* của cổng.
+      || document.getElementById("cboORGTinh")
+      || document.querySelectorAll('input[id^="txt"], select[id^="cbo"]').length >= 3
       || document.getElementById("btnAddPersonLT"))) {
     return "standard";
   }
@@ -1354,7 +1358,10 @@ async function fillStandardRadio(el, value) {
   }
   if (!target.checked) {
     const label = target.id ? document.querySelector(`label[for="${CSS.escape(target.id)}"]`) : null;
-    (label || target).click();
+    // iCheck (cổng DVC Bộ Công an): ô gốc trong suốt, lớp ins.iCheck-helper phủ trên và iCheck chặn click vào ô gốc →
+    // bấm lớp phủ để iCheck tự tích, đổi giao diện, bắn sự kiện cho cổng.
+    const iCheckHelper = target.parentElement?.querySelector("ins.iCheck-helper");
+    (iCheckHelper || label || target).click();
     await sleep(250);
   }
   if (!target.checked) {

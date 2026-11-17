@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.18.8",
+  "version": "1.18.12",
   "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -102,6 +102,7 @@
         "content/laichau/portal.js",
         "content/liz/field-review.js",
         "content/liz/one-page.js",
+        "content/bca/field-review.js",
         "content/business-registration-adapter.js",
         "content/procedures/business-registration.js",
         "content/portal-dvc.js",

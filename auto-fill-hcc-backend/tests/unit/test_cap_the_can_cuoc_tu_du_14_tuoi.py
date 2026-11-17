@@ -187,3 +187,21 @@ def test_tro_ly_ten_mong_va_cau_chon_thu_tuc():
 
     assert script_mong.PROCEDURE_HMONG[KEY]
     assert "làm căn cước lần đầu" in PROCEDURE_HINTS[KEY]
+
+
+def test_tro_ly_trang_ke_khai_khong_nhan_ra_form_van_la_buoc_ke_khai():
+    """18/11/2026: bấm "Đã đưa đủ giấy tờ" mà extension báo formKind rỗng → trợ lý nói "chưa biết trang đang ở bước
+    nào". Khối cơ quan (bcaAgencyBlock) chỉ có trên trang kê khai của cổng Bộ Công an → coi là bước kê khai."""
+    from app.channels.handfree import procedure_registry as hf
+
+    proc = hf.get_procedure(KEY)
+    assert flow._resolve_docs_target(proc, {"formKind": "", "bcaAgencyBlock": True}) == "declaration"
+    # Sidebar cũ không gửi bcaAgencyBlock: đã qua khối cơ quan (agency_done) thì vẫn là kê khai.
+    assert flow._resolve_docs_target(proc, {"formKind": ""}, {"agency_done": True}) == "declaration"
+    assert flow._resolve_docs_target(proc, {"formKind": ""}, {"agency_done": False}) == ""
+    # Thủ tục cổng khác không bị ảnh hưởng.
+    other = hf.get_procedure("dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc")
+    assert flow._resolve_docs_target(other, {"formKind": "", "bcaAgencyBlock": True}, {"agency_done": True}) == ""
+    conv = {"procedure_key": KEY, "state": "collecting_docs", "agency_done": True, "docs_target": ""}
+    assert flow._remember_docs_target(conv, proc, {"formKind": "", "bcaAgencyBlock": True})[0] == "declaration"
+    assert conv["docs_target"] == "declaration"

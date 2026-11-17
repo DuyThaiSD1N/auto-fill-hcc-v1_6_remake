@@ -39,7 +39,7 @@ test("content.js đưa lcStep vào ngữ cảnh trang", () => {
 });
 
 test("portal: chỉ trang tiếp nhận online của cổng Lai Châu, ô theo name cổng, nút lấy địa chỉ + nút đi tiếp", () => {
-  assert.match(portal, /const HOST = "dichvucong\.laichau\.gov\.vn";/);
+  assert.match(portal, /const HOSTS = \["dichvucong\.laichau\.gov\.vn", "dichvucong\.bocongan\.gov\.vn"\];/);
   assert.match(portal, /location\.pathname\.includes\("\/tiep-nhan-online\/"\)/);
   assert.match(portal, /select\[name\^="\$\{FEE\}_"\]/);
   assert.match(portal, /button\[data-action="get-address-from-user"\]/);
@@ -77,4 +77,42 @@ test("portal: số bước đọc từ tiêu đề \"Bước N - …\" của tra
   // Trang chọn trường hợp không ghi "Bước N" trên tiêu đề → nhận theo đường dẫn, là bước 1.
   assert.equal(runPortal({ title: "Trường hợp nộp hồ sơ",
     pathname: "/dich-vu-cong/tiep-nhan-online/chon-truong-hop-ho-so" }), 1);
+  // Cổng DVC Bộ Công an cùng nền eForm Nth (đăng ký xe): trang chọn trường hợp cũng là bước 1.
+  assert.equal(runPortal({ title: "Bộ công an", hostname: "dichvucong.bocongan.gov.vn",
+    pathname: "/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so" }), 1);
+});
+
+test("portal: nhóm ô \"*\" = tự dò mọi ô chọn đang hiện trong khung có nút Đồng ý và tiếp tục (nhãn #_lbl_<name>)", () => {
+  assert.match(portal, /const AUTO = "\*";/);
+  assert.match(portal, /const resolve = \(groups\) => \(\(groups \|\| \[\]\)\.some\(\(g\) => g\?\.name === AUTO\) \? discover\(\)/);
+  assert.match(portal, /document\.getElementById\(`_lbl_\$\{name\}`\)/);
+  assert.match(portal, /\.querySelector\("\.mandatory"\)/);
+  // Ô bị bootstrap-select / select2 che vẫn tính là đang hiện.
+  assert.match(portal, /closest\?\.\("\.bootstrap-select"\)/);
+  assert.match(sidebar, /supportsBcaCaseStep: true/);
+});
+
+
+test("portal (Bộ Công an): dò cả nhóm radio, chờ khung chọn trường hợp đứng yên, select2 nạp khi mở, lưới đỡ đọc lại", () => {
+  assert.match(portal, /querySelectorAll\("select\[name\], input\[type='radio'\]\[name\]"\)/);
+  // Chọn xong chờ DOM khung chọn trường hợp đứng yên (cổng tải thêm ô qua AJAX), không chờ mốc cố định.
+  assert.match(portal, /new MutationObserver\(\(\) => \{ lastChange = Date\.now\(\); \}\)/);
+  assert.match(portal, /if \(ok\) await settle\(\);/);
+  assert.match(portal, /async function loadLazy\(/);
+  assert.match(portal, /\.select2-container--open \.select2-results__option/);
+  // Bị chặn mà cổng không nói gì → báo đúng ô bắt buộc còn trống.
+  assert.match(portal, /message: `Còn trống: \$\{missing\.join\(", "\)\}`/);
+  assert.match(portal, /__tlnd: "lcCaseChanged"/);
+  assert.match(sidebar, /ask\("__action:lc_case_changed", "system"\)/);
+});
+
+
+test("portal (Bộ Công an): radio iCheck — bấm lớp phủ ins.iCheck-helper, nhãn lựa chọn ở khối riêng, nhãn nhóm phía trước", () => {
+  assert.match(portal, /radio\.parentElement\?\.querySelector\("ins\.iCheck-helper"\)/);
+  assert.match(portal, /for \(const target of \[helper, label, radio\]\)/);
+  assert.match(portal, /function optionBox\(radio\)/);
+  assert.match(portal, /function radioGroupLabel\(radio\)/);
+  const core = read("content/fill-core.js");
+  assert.match(core, /const iCheckHelper = target\.parentElement\?\.querySelector\("ins\.iCheck-helper"\);/);
+  assert.match(core, /\(iCheckHelper \|\| label \|\| target\)\.click\(\);/);
 });

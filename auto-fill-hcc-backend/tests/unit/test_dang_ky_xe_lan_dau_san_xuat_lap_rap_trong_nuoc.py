@@ -183,3 +183,114 @@ def test_tro_ly_cung_key_url_detect_hien_moi_tinh_va_chi_xin_giay_o_trang_nhap_t
     # Trang nhập thông tin: form kê khai → xin giấy tờ.
     flow._handle_guide_login(conv, Intent("event", "page_status", {"loggedIn": True, "formKind": "standard"}))
     assert conv["state"] in ("ask_doc_method", "consent")
+
+
+# ── Trợ lý: trang "Chọn trường hợp hồ sơ" (Loại xe…) — thẻ chọn + nút "Đồng ý và tiếp tục" (luồng trang 1 Lai Châu) ──
+CASE_CAPS = {"supportsBcaDangKyXe": True, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
+LOAI_XE = {"name": "maLoaiXe", "present": True, "value": "", "options": ["Ô tô", "Xe mô tô"], "fixed": False,
+           "label": "Loại xe", "required": True}
+
+
+def _case_conv(caps=None):
+    conv = {"_id": "c1", "state": "greet", "procedure_key": None, "client_capabilities": dict(caps or CASE_CAPS),
+            "location": {"province": "Tỉnh Khánh Hòa", "province_slug": "khanhhoa", "ward": "Phường Ba Ngòi"}}
+    flow._to_confirm_procedure(conv, KEY)
+    flow._start_guide_login(conv)
+    return conv
+
+
+def _turn(conv, kind, value, payload=None):
+    import asyncio
+
+    return asyncio.run(flow._handle_turn_inner(conv, Intent(kind, value, payload or {})))
+
+
+def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
+    from app.channels.handfree.chat import lai_chau
+    from app.channels.handfree import procedure_registry as hf
+
+    proc = hf.get_procedure(KEY)
+    assert proc["laiChauFeeStep"] == {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"}
+    conv = _case_conv()
+    # Sang trang chọn trường hợp (lcStep 1): trợ lý đọc mọi ô chọn đang hiện, không xin giấy tờ.
+    r = _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    assert "Chọn trường hợp hồ sơ" in r.display_md
+    assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}]}] and conv["state"] == "guide_login"
+    # Đọc được ô Loại xe (bắt buộc, chưa chọn) → thẻ chọn + mời chọn Loại xe + nút cam Đồng ý và tiếp tục.
+    r = _turn(conv, "action", "lc_result_report", {"groups": [LOAI_XE], "prepared": []})
+    rows = r.cards[0]["rows"]
+    assert [row["label"] for row in rows] == ["Loại xe"]
+    assert [o["label"] for o in rows[0]["options"]] == ["Ô tô", "Xe mô tô"]
+    trail = r.actions[0]["md"]
+    assert "**Loại xe**" in trail and "Đồng ý và tiếp tục" in trail
+    assert r.chips == [lai_chau.next_chip()]
+    # Bấm "Xe mô tô" trên thẻ → extension chọn ô đó (tự dò lại ô sau khi chọn).
+    r = _turn(conv, "action", "lc_result_pick", {"name": "maLoaiXe", "value": "Xe mô tô"})
+    assert r.actions == [{"type": "lc_result_set", "name": "maLoaiXe", "value": "Xe mô tô", "groups": [{"name": "*"}]}]
+    # Cổng hiện thêm ô: ô một lựa chọn trợ lý chọn sẵn, ô "Trường hợp đăng ký" còn phải chọn.
+    groups = [{**LOAI_XE, "value": "Xe mô tô"},
+              {"name": "maCoQuan", "present": True, "value": "Phòng CSGT", "options": ["Phòng CSGT"], "label":
+               "Cơ quan giải quyết", "required": True},
+              {"name": "maTruongHop", "present": True, "value": "", "options": ["Đăng ký lần đầu", "Tạm thời"],
+               "label": "Trường hợp đăng ký", "required": True}]
+    r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": ["auto:maCoQuan"],
+                                                    "changed": {"name": "maLoaiXe", "value": "Xe mô tô", "ok": True}})
+    assert [row["label"] for row in r.cards[0]["rows"]] == ["Loại xe", "Cơ quan giải quyết", "Trường hợp đăng ký"]
+    assert "chọn sẵn" in r.display_md and "**Trường hợp đăng ký**" in r.actions[0]["md"]
+    assert "**Loại xe**" not in r.actions[0]["md"]
+    # Đủ ô → câu hướng dẫn bấm Đồng ý và tiếp tục; bấm nút cam → trợ lý bấm nút cổng.
+    groups[2]["value"] = "Đăng ký lần đầu"
+    r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
+    assert "Thông tin người" in r.actions[0]["md"]
+    assert _turn(conv, "action", "lc_next").actions == [{"type": "lc_next"}]
+    # Nói "bước tiếp theo" ở trang này cũng bấm Đồng ý và tiếp tục.
+    assert flow.next_step_by_voice(conv, "bước tiếp theo", {"lcStep": 1}).value == "lc_next"
+    # Sang trang nhập thông tin: luồng chung xin giấy tờ như cũ; các bước sau không có nút Lai Châu.
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "standard", "lcStep": 0})
+    assert conv["state"] in ("ask_doc_method", "consent")
+    assert lai_chau.voice_intent(conv, "bước tiếp theo", {"lcStep": 0}) is None
+    reply = flow.Reply("x", "x")
+    assert lai_chau.fill_report_reply(conv, proc, reply) is reply and not reply.chips
+
+
+def test_tro_ly_ban_cu_chua_co_co_trang_chon_truong_hop_thi_giu_luong_cu():
+    from app.channels.handfree.chat import lai_chau
+    from app.channels.handfree import procedure_registry as hf
+
+    conv = _case_conv({"supportsBcaDangKyXe": True, "supportsLaiChauFeeStep": True})
+    assert not lai_chau.enabled(conv, hf.get_procedure(KEY))
+    r = _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    assert not any(a.get("type") == "lc_result_scan" for a in r.actions) and conv["state"] == "guide_login"
+
+
+def test_tro_ly_trang_chon_truong_hop_cong_hien_them_o_va_chan_nut_tiep_tuc():
+    conv = _case_conv()
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    # Ảnh 17/11: chọn Xe máy → cổng hiện Loại biển số (radio), Điểm đăng ký theo địa chỉ, Tỉnh/Thành phố (khoá), Điểm
+    # đăng ký (select2 nạp khi mở; không đọc được thì nhắc chọn tay).
+    groups = [{**LOAI_XE, "value": "Xe máy"},
+              {"name": "loaiBienSo", "present": True, "value": "Biển số định danh đã được cấp/Cấp mới",
+               "options": ["Biển số định danh đã được cấp/Cấp mới", "Biển số trúng đấu giá"], "fixed": False,
+               "label": "Loại biển số", "required": True},
+              {"name": "tinh", "present": True, "value": "Công an Thành phố Hà Nội", "options": [], "fixed": True,
+               "label": "Tỉnh/Thành phố", "required": True},
+              {"name": "diemDangKy", "present": True, "value": "", "options": [], "fixed": True,
+               "label": "Điểm đăng ký", "required": True}]
+    r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
+    rows = {row["name"]: row for row in r.cards[0]["rows"]}
+    assert [o["label"] for o in rows["loaiBienSo"]["options"]] == groups[1]["options"]
+    assert rows["tinh"]["fixed"] and rows["tinh"]["value"] == "Công an Thành phố Hà Nội"
+    assert "**Điểm đăng ký**" in r.actions[0]["md"] and "chọn trực tiếp trên trang" in r.actions[0]["md"]
+    # Có danh sách → mời chọn trên thẻ.
+    groups[3] = {**groups[3], "options": ["Đội CSGT số 1", "Công an phường Từ Liêm"], "fixed": False}
+    r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
+    assert "Công dân chọn **Điểm đăng ký**" in r.actions[0]["md"]
+    # Bấm Đồng ý và tiếp tục mà cổng chặn → báo lời chặn + đọc lại thẻ (không làm sẵn gì).
+    r = _turn(conv, "action", "lc_step_report", {"clicked": True, "message": "Còn trống: Điểm đăng ký"})
+    assert "Còn trống: Điểm đăng ký" in r.display_md
+    assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}], "prepare": False}]
+    # Ô trên trang đổi sau lượt đọc (cổng tải chậm / công dân tự chọn) → đọc lại.
+    assert _turn(conv, "action", "lc_case_changed").actions == r.actions
+    # Đã rời trang chọn trường hợp → im.
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "standard", "lcStep": 0})
+    assert not _turn(conv, "action", "lc_case_changed").actions

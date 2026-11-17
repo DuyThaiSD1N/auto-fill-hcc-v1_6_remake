@@ -493,6 +493,8 @@ def _docs_page_context(raw: dict | None) -> dict:
         "declarationTarget": raw.get("declarationTarget") is True,
         "attachmentTarget": raw.get("attachmentTarget") is True,
         "attachmentComponentCount": min(100, max(0, attachment_component_count)),
+        # Cổng DVC Bộ Công an: có khối "Cơ quan thực hiện" = đang ở trang kê khai (form + cơ quan cùng trang).
+        "bcaAgencyBlock": raw.get("bcaAgencyBlock") is True,
     }
 
 
@@ -522,6 +524,10 @@ def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | Non
         # Cổng Bộ VHTTDL (liz): form và bảng Thành phần hồ sơ CHUNG một trang nên trang luôn báo attachmentTarget.
         # Giấy tờ chốt ở đây phải điền trước — luồng trang một trang tự đính kèm ngay sau khi điền xong.
         return "declaration"
+    if not target and conv is not None and proc.get("bcaPortal") and conv.get("agency_done"):
+        # Cổng Bộ Công an: chỉ sang bước giấy tờ khi đã thấy khối cơ quan trên trang kê khai (_bca_portal_on_page), form
+        # + cơ quan + đính kèm cùng một trang → trang không báo được bước (extension cũ) thì vẫn là kê khai.
+        return "declaration"
     return target
 
 
@@ -537,6 +543,10 @@ def _resolve_page_docs_target(proc: dict, page_context: dict | None) -> str:
         return "attachment"
     if (step == _wizard_step(proc, "declarationStep", 2)
             or ctx["declarationTarget"] or ctx["formKind"]):
+        return "declaration"
+    if proc.get("bcaPortal") and ctx["bcaAgencyBlock"]:
+        # Trang căn cước "từ đủ 14 tuổi" (18/11/2026): extension không nhận ra form (formKind rỗng) dù đang ở trang kê
+        # khai — khối cơ quan chỉ có trên trang kê khai của cổng này.
         return "declaration"
     if step == _wizard_step(proc, "ownerStep", 1):
         return "owner"
@@ -1075,7 +1085,7 @@ _VOICE_BLOCKED_SENDS = {
 # nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
 # nhận chưa có bản dịch).
 _VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND,
-                        bac_ninh.SUBMIT_SEND, hkd_tro_ly.SUBMIT_SEND}
+                        bac_ninh.SUBMIT_SEND, hkd_tro_ly.SUBMIT_SEND, "__action:bca_submit"}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
 # Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
 # extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
@@ -1342,6 +1352,9 @@ async def _handle_turn_inner(
     bxd_reply = bxd.handle(conv, current_proc, intent)
     if bxd_reply is not None:
         return bxd_reply
+    bca_reply = _bca_flow_handle(conv, current_proc, intent)
+    if bca_reply is not None:
+        return bca_reply
     bac_ninh_reply = bac_ninh.handle(conv, current_proc, intent)
     if bac_ninh_reply is not None:
         return bac_ninh_reply
@@ -4331,7 +4344,8 @@ def next_step_by_voice(conv: dict, message: str, page_context: dict | None) -> I
     family_intent = (lien_thong.voice_intent(conv, message, page_context)
                      or bxd.voice_intent(conv, message, page_context)
                      or bac_ninh.voice_intent(conv, message, page_context)
-                     or lai_chau.voice_intent(conv, message, page_context))
+                     or lai_chau.voice_intent(conv, message, page_context)
+                     or _bca_voice_intent(conv, message))
     if family_intent is not None:
         return family_intent
     proc = get_procedure(conv.get("procedure_key") or "") or {}
@@ -4989,12 +5003,23 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             _clear_documents_adjustment(conv)
             # Cổng Lai Châu: thêm nút cam "Đồng ý và tiếp tục" (trợ lý bấm sang Thành phần hồ sơ).
             return lai_chau.fill_report_reply(conv, proc, v2)
+        bca_fill = _bca_fill_report_reply(conv, proc, rep, intent.payload.get("review"))
+        if bca_fill is not None:
+            _clear_documents_adjustment(conv)
+            return bca_fill
         if proc.get("bcaGuestList"):
             _clear_documents_adjustment(conv)
             return _bca_stay_review_reply(conv, proc, rep["filled"], note)
         if proc.get("bcaPortal") and proc.get("hasAttachmentStep") is False:
             # Cấp đổi thẻ căn cước: không có mục đính kèm → không mời đính; nhắc cam đoan rồi "Lưu và Tiếp tục".
             _clear_documents_adjustment(conv)
+            if _bca_flow(conv, proc):
+                # Luồng mới mà trang không trả số ô tô màu (script đọc ô chưa nạp: extension chưa Tải lại + F5) → vẫn có
+                # nút tích ô cam đoan + Nộp hồ sơ; báo cán bộ tải lại để có tô ô và nút bổ sung.
+                hint = vi.BCA_COMMIT_SUBMIT_HINT_RELOAD if intent.payload.get("reviewMissing") else vi.BCA_COMMIT_SUBMIT_HINT
+                r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=hint))
+                r.chips = _bca_keep_chips(conv, proc)
+                return r
             r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
                             note=vi.BCA_CCCD_SUBMIT_HINT))
             r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"}, _supplement_documents_chip()]
@@ -5253,7 +5278,8 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         return _tick_commit(conv)
     if intent.kind == "event" and intent.value == "commit_result":
         return _commit_result(conv, intent.payload or {})
-    if proc.get("bcaGuestList"):
+    if proc.get("bcaGuestList") or (_bca_flow(conv, proc) and proc.get("hasAttachmentStep") is False
+                                    and (conv.get("field_review") or {}).get("stats")):
         # Trang không có mục đính kèm: "đúng rồi" hay câu lạ đều nhắc lại tích cam kết rồi nộp, không chuyển đính kèm.
         return _bca_stay_review_reply(conv, proc, (conv.get("fill_report") or {}).get("filled", 0))
     # "Đúng rồi" ở bước này là trả lời câu hỏi đang chờ: đã rà soát xong form.
@@ -5516,6 +5542,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             r = bac_ninh.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors)
         elif lai_chau.enabled(conv, proc_done):
             r = lai_chau.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors)
+        elif _bca_flow(conv, proc_done):
+            r = _bca_attach_done_reply(conv, proc_done, r, errors=errors)
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
@@ -5807,17 +5835,187 @@ def _attach_done_template(proc: dict) -> tuple[dict, str]:
 _TICK_COMMIT_SEND = "__action:tick_commit"
 
 
+def _commit_box(proc: dict) -> tuple[str, str]:
+    """(id, nhãn) ô cam kết cuối trang. Trang căn cước không khai submitCommit* (câu cũ COMMIT_TICKED bảo "bấm Nộp hồ
+    sơ" mà nút trang đó là "Lưu và Tiếp tục") → nhãn lấy ở bcaSubmit.commitLabel, extension tìm ô theo nhãn."""
+    cfg = _bca_submit_config(proc)
+    label = str(proc.get("submitCommitLabel") or cfg.get("commitLabel") or "")
+    return str(proc.get("submitCommitCheckbox") or cfg.get("commitId") or ""), label
+
+
 def _commit_chip(conv: dict, proc: dict) -> list[dict]:
     """Nút cam (cta) mang đúng nhãn ô cam kết: bấm là trợ lý tích ô đó trên trang (lệnh tick_commit)."""
-    if not (proc.get("submitCommitLabel") and proc.get("submitCommitCheckbox")):
+    box, label = _commit_box(proc)
+    # Ô chỉ có nhãn (không id) chỉ dùng ở luồng Bộ Công an có vòng bổ sung ô (extension mới tìm ô theo nhãn).
+    bca_flow = _bca_flow(conv, proc)
+    if not label or not (box or bca_flow):
         return []
     if not (conv.get("client_capabilities") or {}).get("supportsTickCommit"):
         return []
-    return [{"label": str(proc["submitCommitLabel"]), "send": _TICK_COMMIT_SEND, "solid": True, "cta": True}]
+    # Luồng Bộ Công an: dấu ☑️ cho rõ đây là nút tích ô (nhãn trơn trông như câu chữ).
+    return [{"label": f"{_BCA_COMMIT_MARK}{label}" if bca_flow else label, "send": _TICK_COMMIT_SEND, "solid": True,
+             "cta": True}]
+
+
+# ── Cổng DVC Bộ Công an (registry bcaPortal) — luồng có vòng bổ sung ô (extension cờ supportsBcaFlow) ──
+# Điền xong extension (content/bca/field-review.js) tô ô xanh / cam / đỏ và đếm → field_review.conclusion: còn ô bắt
+# buộc trống thì nút "Bổ sung các thông tin còn thiếu"; đủ thì nút đi tiếp: "Đính kèm giấy tờ" (trang có mục đính kèm,
+# askBeforeAttach) hoặc ô cam kết + "Nộp hồ sơ". Đính xong: ô cam kết + "Nộp hồ sơ". Nút nộp (lệnh bca_submit): extension
+# soát lại ô bắt buộc + ô cam kết, đủ thì bấm nút nộp của cổng (trang căn cước Bước 1 là "Lưu và Tiếp tục" sang đặt
+# lịch sinh trắc học — nextIds), cổng báo lỗi thì đọc lại. Nộp thành công do watcher báo (submitted) như mọi cổng.
+# Chế độ Mông, extension cũ giữ luồng cũ (field_review.active).
+_BCA_SUBMIT_SEND = "__action:bca_submit"
+_BCA_COMMANDS = {"bca_submit", "bca_submit_report"}
+_BCA_COMMIT_MARK = "☑️ "
+# Nút nộp của các trang cư trú (cùng bộ id với app/procedures/portal_submit.py); trang khác khai thêm ở bcaSubmit.
+_BCA_SUBMIT_IDS = ("btn-save-send", "btnSaveSend", "btn_Save_Send")
+_BCA_SUBMIT_TEXTS = ("nop ho so", "luu va nop ho so", "gui ho so")
+
+
+def _bca_flow(conv: dict, proc: dict | None) -> bool:
+    return field_review.bca(proc) and field_review.flow_v2(conv, proc)
+
+
+def _bca_submit_config(proc: dict | None) -> dict:
+    cfg = (proc or {}).get("bcaSubmit")
+    return cfg if isinstance(cfg, dict) else {}
+
+
+def _bca_submit_chip() -> dict:
+    return {"label": vi.BCA_SUBMIT_CHIP, "send": _BCA_SUBMIT_SEND, "solid": True, "cta": True}
+
+
+def _bca_keep_chips(conv: dict, proc: dict) -> list[dict]:
+    """Bộ nút sau điền: nút đi tiếp (cta) + nút sửa nhỏ. Trang có mục đính kèm thì đi tiếp là đính kèm (hỏi trước khi
+    đính); không thì ô cam kết + Nộp hồ sơ."""
+    small = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"}, _supplement_documents_chip()]
+    if proc.get("hasAttachmentStep") is not False:
+        return [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True, "cta": True},
+                *small]
+    return [*_bca_commit_or_submit(conv, proc), *small]
+
+
+def _bca_commit_or_submit(conv: dict, proc: dict) -> list[dict]:
+    """Nút đi tiếp cuối trang: còn ô cam kết thì CHỈ nút tích ô (tích xong — trợ lý tích hay công dân tự tích trên
+    trang — mới hiện Nộp hồ sơ, user 17/11/2026); extension không biết tích ô thì hiện thẳng Nộp hồ sơ."""
+    return _commit_chip(conv, proc) or [_bca_submit_chip()]
+
+
+def _bca_fill_report_reply(conv: dict, proc: dict, rep: dict, review) -> Reply | None:
+    """Khung kết quả điền + khung kết luận (ô đỏ → Bổ sung; đủ → nút đi tiếp). None = luồng cũ."""
+    if not _bca_flow(conv, proc) or not isinstance(review, dict):
+        return None
+    stats = field_review.begin(conv, review)
+    r = Reply(*tpm.fill_result(conv, rep, stats))
+    field_review.conclusion_trail(conv, proc, r, _bca_keep_chips(conv, proc))
+    return r
+
+
+def _bca_conclusion_reply(conv: dict, proc: dict) -> Reply:
+    """Câu lạ / "đúng rồi" ở bước rà sau điền: nhắc lại kết luận hiện tại (số ô đỏ hoặc nút đi tiếp)."""
+    st = conv.get("field_review") or {}
+    md, tts, chips = field_review.conclusion(conv, proc, st.get("chips") or _bca_keep_chips(conv, proc))
+    r = Reply(md, tts.strip())
+    r.chips = chips
+    return r
+
+
+def _bca_attach_done_reply(conv: dict, proc: dict, reply: Reply, *, errors: list[str]) -> Reply:
+    """Đính xong: nút tích ô cam kết (tích xong mới hiện Nộp hồ sơ); tờ khai còn ô trống thì mời bổ sung."""
+    if not errors and not any(c.get("send") == _TICK_COMMIT_SEND for c in reply.chips):
+        reply.chips = [*reply.chips, _bca_submit_chip()]
+    field_review.offer_after_attach(conv, proc, reply)
+    return reply
+
+
+def _bca_submit_reply(conv: dict, proc: dict) -> Reply:
+    cfg = _bca_submit_config(proc)
+    box, label = _commit_box(proc)
+    ids = [str(i) for i in [*(cfg.get("buttonIds") or []), *_BCA_SUBMIT_IDS] if str(i or "").strip()]
+    r = Reply(*_fmt(vi.BCA_SUBMITTING))
+    r.actions = [{
+        "type": "bca_submit",
+        "buttonIds": list(dict.fromkeys(ids)),
+        "buttonText": list(_BCA_SUBMIT_TEXTS),
+        # Nút sang bước sau của cùng trang (căn cước: "Lưu và Tiếp tục" sang đặt lịch) — bấm khi chưa có nút nộp.
+        "nextIds": [str(i) for i in cfg.get("nextIds") or [] if str(i or "").strip()],
+        "commitId": box,
+        "commitLabel": label,
+        # Soát ô bắt buộc bằng đúng quy tắc của lượt điền trước khi bấm.
+        "fieldReview": field_review.fill_action_extra(conv, proc) or {},
+    }]
+    return r
+
+
+def _bca_submit_report(conv: dict, proc: dict, payload: dict) -> Reply:
+    missing = [str(x) for x in payload.get("missing") or []]
+    if "required" in missing:
+        if isinstance(payload.get("stats"), dict):
+            field_review.update_stats(conv, payload["stats"])
+        required = ((conv.get("field_review") or {}).get("stats") or {}).get("required") or 1
+        r = Reply(*_fmt(vi.BCA_SUBMIT_REQUIRED, required=required))
+        r.chips = [*field_review.start_chips(conv, proc, _bca_keep_chips(conv, proc)),
+                   {**_bca_submit_chip(), "solid": False, "cta": False}]
+        return r
+    if "commit" in missing:
+        _box, label = _commit_box(proc)
+        r = Reply(*_fmt(vi.BCA_SUBMIT_COMMIT, commit=label or "cam kết"))
+        r.chips = _bca_commit_or_submit(conv, proc)
+        return r
+    if payload.get("noEngine"):
+        r = Reply(*_fmt(vi.BCA_SUBMIT_RELOAD))  # trang không trả lời lệnh bcaSubmit: script chưa nạp
+        r.chips = [_bca_submit_chip()]
+        return r
+    if not payload.get("clicked"):
+        r = Reply(*_fmt(vi.BCA_SUBMIT_NO_BUTTON))
+        r.chips = [_bca_submit_chip()]
+        return r
+    if payload.get("confirm"):
+        return Reply(*_fmt(vi.BCA_SUBMIT_CONFIRM_ON_PAGE))  # cổng hỏi lại "chắc chắn nộp?" → công dân tự bấm Đồng ý
+    message = re.sub(r"\s+", " ", str(payload.get("message") or "")).strip()[:200]
+    if message:
+        r = Reply(*_fmt(vi.BCA_SUBMIT_FAILED, message=f": *{message}*"))
+        r.chips = [*field_review.start_chips(conv, proc, _bca_keep_chips(conv, proc)), _bca_submit_chip()]
+        return r
+    if payload.get("stage") == "next":
+        button = re.sub(r"\s+", " ", str(payload.get("button") or "")).strip().rstrip(" >›»")[:60]
+        r = Reply(*_fmt(vi.BCA_SUBMIT_NEXT_PAGE, button=button or "Lưu và Tiếp tục"))
+        r.chips = [_bca_submit_chip()]
+        return r
+    return Reply()  # đã bấm nút nộp: cổng sang màn nộp thành công → watcher báo submitted như mọi lần nộp
+
+
+def _bca_flow_handle(conv: dict, proc: dict | None, intent: Intent) -> Reply | None:
+    """Lệnh nút Nộp hồ sơ của luồng Bộ Công an → Reply; không phải → None (flow cũ xử lý)."""
+    if (intent.kind == "event" and intent.value == "commit_result" and (intent.payload or {}).get("source") == "page"
+            and _bca_flow(conv, proc)):
+        # Công dân tự tích trên trang: xử lý ở mọi bước (bước khác thì im), không để state lạ nói câu thừa.
+        return _commit_result(conv, intent.payload or {})
+    if intent.kind != "action" or intent.value not in _BCA_COMMANDS or not _bca_flow(conv, proc):
+        return None
+    payload = intent.payload if isinstance(intent.payload, dict) else {}
+    if intent.value == "bca_submit":
+        if payload.get("voice") and not payload.get("voiceConfirmed"):
+            return _voice_submit_confirm(conv, _BCA_SUBMIT_SEND)
+        return _bca_submit_reply(conv, proc)
+    return _bca_submit_report(conv, proc, payload)
+
+
+def _bca_voice_intent(conv: dict, message: str) -> Intent | None:
+    """Câu "nộp hồ sơ" sau khi điền trên cổng Bộ Công an → lệnh nộp (hỏi xác nhận trước), không qua LLM."""
+    from app.channels.handfree.chat.intents import asks_submit
+
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if (not _bca_flow(conv, proc) or conv.get("state") not in {"reviewing", "done"} or field_review.asking(conv)
+            or not asks_submit(message)):
+        return None
+    return Intent("action", "bca_submit", {"voice": True})
 
 
 def _bca_stay_review_reply(conv: dict, proc: dict, filled, missing_note: str = "") -> Reply:
     """Thông báo lưu trú: trang không có mục đính kèm → không mời đính, nhắc tích cam kết rồi nộp."""
+    if _bca_flow(conv, proc) and (conv.get("field_review") or {}).get("stats"):
+        return _bca_conclusion_reply(conv, proc)
     r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=filled, missing_note=missing_note,
                     note=vi.BCA_STAY_SUBMIT_HINT, commit=str(proc.get("submitCommitLabel") or "")))
     r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
@@ -5827,25 +6025,66 @@ def _bca_stay_review_reply(conv: dict, proc: dict, filled, missing_note: str = "
 
 def _tick_commit(conv: dict) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
-    box = str(proc.get("submitCommitCheckbox") or "")
+    box, label = _commit_box(proc)
     r = Reply()
-    if box:
+    if box or (label and _bca_flow(conv, proc)):
         # Kèm nhãn: id ô có thể khác giữa các trang cổng, extension tìm theo nhãn khi không thấy id.
-        r.actions = [{"type": "tick_commit", "id": box, "label": str(proc.get("submitCommitLabel") or "")}]
+        r.actions = [{"type": "tick_commit", "id": box, "label": label}]
     return r
 
 
 def _commit_result(conv: dict, payload: dict) -> Reply:
     proc = get_procedure(conv.get("procedure_key") or "") or {}
-    commit = str(proc.get("submitCommitLabel") or "")
+    _box, commit = _commit_box(proc)
     if not commit:
         return Reply()
+    bca_flow = _bca_flow(conv, proc)
+    if bca_flow and payload.get("source") == "page":
+        return _bca_commit_on_page(conv, proc, commit, checked=payload.get("ok") is True)
     if payload.get("ok") is True:
-        r = Reply(*_fmt(vi.COMMIT_TICKED, commit=commit))
+        r = Reply(*_fmt(vi.BCA_COMMIT_TICKED if bca_flow else vi.COMMIT_TICKED, commit=commit))
         r.actions = [{"type": "chip_used", "send": _TICK_COMMIT_SEND}]
+        if bca_flow:
+            _bca_swap_saved_chips(conv, proc, ticked=True)
+            r.chips = [_bca_submit_chip()]
         return r
     r = Reply(*_fmt(vi.COMMIT_TICK_FAILED, commit=commit))
     r.chips = _commit_chip(conv, proc)
+    return r
+
+
+def _bca_swap_saved_chips(conv: dict, proc: dict, *, ticked: bool) -> None:
+    """Bộ nút đã lưu của lượt điền (field_review hiện lại khi công dân tự điền đủ ô / hỏi xong): ô cam kết đã tích thì
+    nút tích thay bằng Nộp hồ sơ, bỏ tích thì ngược lại."""
+    st = conv.get("field_review")
+    if not isinstance(st, dict) or not st.get("chips"):
+        return
+    commit = _commit_chip(conv, proc)
+    old, new = ((_TICK_COMMIT_SEND, [_bca_submit_chip()]) if ticked else (_BCA_SUBMIT_SEND, commit))
+    if not new:
+        return
+    chips = []
+    for chip in st["chips"]:
+        if chip.get("send") == old:
+            chips.extend(dict(c) for c in new)
+        elif chip.get("send") not in {_TICK_COMMIT_SEND, _BCA_SUBMIT_SEND}:
+            chips.append(chip)
+    st["chips"] = chips
+
+
+def _bca_commit_on_page(conv: dict, proc: dict, commit: str, *, checked: bool) -> Reply:
+    """Công dân tự tích / bỏ tích ô cam kết trên trang (extension theo dõi ô): tích → hiện Nộp hồ sơ; bỏ tích → nút
+    tích lại. Chỉ ở bước rà sau điền / sau đính kèm."""
+    if conv.get("state") not in {"reviewing", "done"} or field_review.asking(conv):
+        return Reply()
+    _bca_swap_saved_chips(conv, proc, ticked=checked)
+    if checked:
+        r = Reply(*_fmt(vi.BCA_COMMIT_TICKED_SELF, commit=commit))
+        r.actions = [{"type": "chip_used", "send": _TICK_COMMIT_SEND}]
+        r.chips = [_bca_submit_chip()]
+        return r
+    r = Reply(*_fmt(vi.BCA_COMMIT_UNTICKED, commit=commit))
+    r.chips = _bca_commit_or_submit(conv, proc)
     return r
 
 

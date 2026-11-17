@@ -208,3 +208,162 @@ def test_tro_ly_ten_mong_va_cau_chon_thu_tuc():
 
     assert script_mong.PROCEDURE_HMONG[KEY] and script_mong.BCA_CCCD_SUBMIT_HINT["tts"]
     assert "đổi thẻ căn cước" in PROCEDURE_HINTS[KEY]
+
+
+# ── Trợ lý, luồng có vòng bổ sung ô (extension cờ supportsBcaFlow): tô ô, "Bổ sung các thông tin còn thiếu", Nộp hồ sơ ──
+BCA_FLOW_CAPS = {"supportsBcaCanCuoc": True, "supportsFieldReview": True, "supportsBcaFlow": True,
+                 "supportsTickCommit": True}
+CAM_DOAN = "Tôi xin cam đoan những thông tin kê khai trên là đúng sự thật"
+
+
+def _bca_fill(review: dict, caps: dict | None = None):
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import tracing
+
+    conv = {"_id": "c1", "state": "filling", "procedure_key": KEY, "docs_target": "declaration",
+            "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {},
+            "client_capabilities": dict(caps or BCA_FLOW_CAPS)}
+    with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+        r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 9, "review": review})))
+    return conv, r
+
+
+def _trail(r) -> str:
+    return " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+
+
+def test_tro_ly_bca_flow_dien_xong_con_o_bat_buoc_thi_moi_bo_sung_chua_cho_nop():
+    import asyncio
+
+    from app.channels.handfree.chat import field_review
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    proc = get_procedure(KEY)
+    conv, r = _bca_fill({"filled": 9, "optional": 2, "required": 3})
+    sends = [c["send"] for c in r.chips]
+    assert sends[0] == "__action:field_review_start" and "Bổ sung các thông tin còn thiếu" in r.chips[0]["label"]
+    assert "__action:bca_submit" not in sends and "__action:tick_commit" not in sends
+    assert "3 ô bắt buộc" in _trail(r) and "🟥" in _trail(r)
+    # Lệnh điền mang quy tắc ô → extension tô xanh / cam / đỏ ngay sau khi điền (ô bắt buộc theo dấu * của cổng).
+    assert field_review.fill_action_extra(conv, proc) == {"required": [], "commitId": "chkRULE",
+                                                         "commitLabel": CAM_DOAN}
+    # Bấm "Bổ sung…" → extension tìm ô trống đầu tiên (bắt buộc trước).
+    r = asyncio.run(field_review.handle(conv, proc, Intent("action", "field_review_start")))
+    assert r.actions[0]["type"] == "field_review_next" and r.actions[0]["requiredFirst"] is True
+    # Công dân tự điền đủ trên trang → extension đếm lại → trợ lý hiện nút cam kết + Nộp hồ sơ.
+    conv["field_review"]["running"] = False
+    r = asyncio.run(field_review.handle(conv, proc, Intent("event", "field_review_status",
+                                                           {"stats": {"filled": 12, "optional": 2, "required": 0}})))
+    assert "đủ các ô bắt buộc" in r.display_md and "Nộp hồ sơ" in r.display_md
+    assert [c["send"] for c in r.chips if c.get("cta")] == ["__action:tick_commit"]
+
+
+def test_tro_ly_bca_flow_du_o_thi_nut_tich_cam_doan_va_nop_ho_so():
+    conv, r = _bca_fill({"filled": 12, "optional": 0, "required": 0})
+    cta = [c for c in r.chips if c.get("cta")]
+    # Chỉ nút tích ô cam đoan; tích xong mới hiện Nộp hồ sơ.
+    assert [c["send"] for c in cta] == ["__action:tick_commit"] and cta[0]["label"] == "☑️ " + CAM_DOAN
+    assert "đủ các ô bắt buộc" in _trail(r) and "tích xong tôi hiện nút **Nộp hồ sơ**" in _trail(r)
+    # Còn ô không bắt buộc: mời bổ sung (nút thường) nhưng vẫn cho nộp.
+    conv, r = _bca_fill({"filled": 12, "optional": 3, "required": 0})
+    assert r.chips[0]["send"] == "__action:field_review_start" and not r.chips[0].get("solid")
+    assert "__action:tick_commit" in [c["send"] for c in r.chips] and "3 ô không bắt buộc" in _trail(r)
+    # Extension cũ: giữ câu cũ (Lưu và Tiếp tục), không nút nộp.
+    conv, r = _bca_fill({"filled": 12, "optional": 0, "required": 0}, CAPS)
+    assert "__action:bca_submit" not in [c["send"] for c in r.chips] and "Lưu và Tiếp tục" in r.display_md
+
+
+def test_tro_ly_bca_flow_trang_khong_tra_so_o_van_co_nut_tich_cam_doan_va_nop():
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import tracing
+
+    for payload, reload_note in (({"filled": 5}, False), ({"filled": 5, "reviewMissing": True}, True)):
+        conv = {"_id": "c1", "state": "filling", "procedure_key": KEY, "docs_target": "declaration",
+                "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {},
+                "client_capabilities": dict(BCA_FLOW_CAPS)}
+        with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+            r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", payload)))
+        cta = [c for c in r.chips if c.get("cta")]
+        assert [c["send"] for c in cta] == ["__action:tick_commit"]
+        assert cta[0]["label"] == "☑️ " + CAM_DOAN and "Lưu và Tiếp tục" not in r.display_md
+        assert ("chrome://extensions" in r.display_md) is reload_note
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    r = flow._bca_flow_handle(conv, get_procedure(KEY), Intent("action", "bca_submit_report", {"noEngine": True}))
+    assert "Tải lại" in r.display_md and r.chips == [flow._bca_submit_chip()]
+
+
+def test_tro_ly_bca_flow_tich_o_cam_doan_theo_nhan_roi_moi_nop():
+    import asyncio
+
+    conv, _ = _bca_fill({"filled": 12, "optional": 0, "required": 0})
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("action", "tick_commit")))
+    assert r.actions == [{"type": "tick_commit", "id": "chkRULE", "label": CAM_DOAN}]
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("event", "commit_result", {"ok": True})))
+    assert "Nộp hồ sơ" in r.display_md and r.chips == [flow._bca_submit_chip()]
+    # Bộ nút đã lưu: nút tích thay bằng Nộp hồ sơ (hiện lại khi công dân tự điền đủ ô / hỏi xong).
+    saved = [c["send"] for c in conv["field_review"]["chips"] if c.get("cta")]
+    assert saved == ["__action:bca_submit"]
+
+
+def test_tro_ly_bca_flow_cong_dan_tu_tich_tren_trang_thi_hien_nut_nop():
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    proc = get_procedure(KEY)
+    conv, _ = _bca_fill({"filled": 12, "optional": 0, "required": 0})
+    tick = Intent("event", "commit_result", {"ok": True, "source": "page"})
+    r = flow._bca_flow_handle(conv, proc, tick)
+    assert "Công dân đã tích" in r.display_md and r.chips == [flow._bca_submit_chip()]
+    r = flow._bca_flow_handle(conv, proc, Intent("event", "commit_result", {"ok": False, "source": "page"}))
+    assert "bỏ tích" in r.display_md and [c["send"] for c in r.chips] == ["__action:tick_commit"]
+    assert [c["send"] for c in conv["field_review"]["chips"] if c.get("cta")] == ["__action:tick_commit"]
+    # Chưa tới bước rà (đang nhận giấy tờ) → im.
+    assert flow._bca_flow_handle({**conv, "state": "collecting_docs"}, proc, tick).display_md == ""
+
+
+def test_tro_ly_bca_flow_nut_nop_soat_o_roi_bam_nut_cua_cong():
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    proc = get_procedure(KEY)
+    conv, _ = _bca_fill({"filled": 12, "optional": 0, "required": 0})
+    r = flow._bca_flow_handle(conv, proc, Intent("action", "bca_submit"))
+    action = r.actions[0]
+    assert action["type"] == "bca_submit" and action["buttonIds"][0] == "btnFinishPage1"
+    assert "btn-save-send" in action["buttonIds"] and action["nextIds"] == ["btnSaveNextToPage2"]
+    assert action["commitId"] == "chkRULE" and action["commitLabel"] == CAM_DOAN
+    assert action["fieldReview"]["commitId"] == "chkRULE"
+
+    def report(**payload):
+        return flow._bca_flow_handle(conv, proc, Intent("action", "bca_submit_report", payload))
+
+    r = report(clicked=False, missing=["required"], stats={"filled": 10, "optional": 0, "required": 2})
+    assert "2 ô bắt buộc" in r.display_md and r.chips[0]["send"] == "__action:field_review_start"
+    assert conv["field_review"]["stats"]["required"] == 2
+    r = report(clicked=False, missing=["commit"])
+    assert CAM_DOAN in r.display_md and [c["send"] for c in r.chips] == ["__action:tick_commit"]
+    r = report(clicked=True, stage="next", button="Lưu và Tiếp tục >")
+    assert "**Lưu và Tiếp tục**" in r.display_md and "sinh trắc học" in r.display_md
+    assert r.chips == [flow._bca_submit_chip()]
+    assert "Đồng ý" in report(clicked=True, stage="submit", confirm=True).display_md
+    r = report(clicked=True, stage="submit", message="Vui lòng chọn lịch hẹn")
+    assert "chưa nộp được" in r.display_md and "Vui lòng chọn lịch hẹn" in r.display_md
+    assert report(clicked=True, stage="submit").display_md == ""  # đã bấm nộp: chờ watcher báo submitted
+    assert "chưa thấy nút" in report(clicked=False).display_md
+    # Extension cũ không có lệnh này.
+    assert flow._bca_flow_handle({**conv, "client_capabilities": CAPS}, proc,
+                                 Intent("action", "bca_submit")) is None
+
+
+def test_tro_ly_bca_flow_noi_nop_ho_so_thi_hoi_xac_nhan():
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    conv, _ = _bca_fill({"filled": 12, "optional": 0, "required": 0})
+    intent = flow._bca_voice_intent(conv, "nộp hồ sơ")
+    assert intent.value == "bca_submit" and intent.payload == {"voice": True}
+    r = flow._bca_flow_handle(conv, get_procedure(KEY), intent)
+    assert r.chips[0]["send"] == "__action:bca_submit" + flow._VOICE_CONFIRMED
+    assert flow._bca_voice_intent({**conv, "client_capabilities": CAPS}, "nộp hồ sơ") is None

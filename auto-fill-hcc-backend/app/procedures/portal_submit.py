@@ -172,10 +172,12 @@ PORTAL_SUBMIT: dict[str, dict] = {
     # (Thông báo lưu trú: id="btnSaveSend"; Đăng ký thường trú: id="btn_Save_Send"); cùng hàng có "Lưu nháp"
     # (btn-save / btnAdd / btn_Save), "In CT01", "Quay lại" —
     # khớp id/NGUYÊN nhãn "nộp hồ sơ" nên không dính các nút đó.
+    # Các trang căn cước dvc-CCCD-*.html: Bước 1 "Lưu và Tiếp tục" (btnSaveNextToPage2, KHÔNG phải nộp — chỉ sang đặt
+    # lịch sinh trắc học) và "Lưu và nộp hồ sơ" (btnFinishPage1) → chỉ khai nút nộp.
     "dichvucong.dancuquocgia.gov.vn": {
-        "urlPattern": r"^/portal/p/home/(?:dang-ky|thong-bao)-[a-z0-9-]+\.html$",
-        "buttonIds": ["btn-save-send", "btnSaveSend", "btn_Save_Send"],
-        "buttonText": ["nop ho so"],
+        "urlPattern": r"^/portal/p/home/(?:(?:dang-ky|thong-bao)-[a-z0-9-]+|dvc-CCCD-[A-Za-z0-9-]+)\.html$",
+        "buttonIds": ["btn-save-send", "btnSaveSend", "btn_Save_Send", "btnFinishPage1"],
+        "buttonText": ["nop ho so", "luu va nop ho so"],
     },
     # Mười cổng dưới đây chạy CÙNG nền Form.io/iGate, mỗi cổng đã đối chiếu snapshot màn cuối riêng.
     "dichvucong.danang.gov.vn": _FORMIO,

@@ -558,6 +558,95 @@ BCA_QR_LOGIN_GUIDE = {
     "tts": "Dạ, công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã trên màn hình ạ.",
 }
 
+# ── Cổng DVC Bộ Công an, luồng có vòng bổ sung ô (extension cờ supportsBcaFlow, flow.py nhánh _bca_*) ──
+# Sau khi điền: ô tô xanh / cam / đỏ, còn ô bắt buộc trống thì mời "Bổ sung các thông tin còn thiếu"; đủ thì nút đi
+# tiếp (Đính kèm giấy tờ, hoặc ô cam kết + Nộp hồ sơ). {next_md}: "bấm **A** rồi **B**" dựng từ chính các nút đó.
+BCA_NEXT_NONE = {"md": "bấm nút nộp hồ sơ cuối trang", "tts": "bấm nút nộp hồ sơ cuối trang"}
+BCA_NEXT_COMMIT = {
+    "md": "bấm nút **☑️ {label}** để tôi tích ô cam đoan; tích xong tôi hiện nút **Nộp hồ sơ**",
+    "tts": "bấm nút tích ô cam đoan để tôi tích, tích xong tôi hiện nút Nộp hồ sơ",
+}
+BCA_FILL_READY = {
+    "md": "✓ Tờ khai đã đủ các ô bắt buộc{optional_md}.\n\nCông dân rà lại thông tin trên trang rồi {next_md} ạ.",
+    "tts": " Tờ khai đã đủ các ô bắt buộc{optional_tts}. Công dân rà lại thông tin rồi {next_tts} ạ.",
+}
+BCA_OPTIONAL_ONLY = {
+    "md": ("✓ Tờ khai đã đủ các ô bắt buộc, còn **{optional} ô không bắt buộc** để trống (viền cam).\n\nCông dân muốn "
+           "bổ sung thì bấm **Bổ sung các thông tin còn thiếu**; không thì {next_md} ạ."),
+    "tts": (" Tờ khai đã đủ các ô bắt buộc, còn {optional} ô không bắt buộc để trống. Công dân muốn bổ sung thì bấm Bổ "
+            "sung các thông tin còn thiếu, không thì {next_tts} ạ."),
+}
+BCA_OPTIONAL_PHASE = {
+    "md": ("✓ Đã đủ các ô bắt buộc. Tôi hỏi tiếp **{optional} ô không bắt buộc**; công dân muốn đi tiếp luôn thì bấm "
+           "nút bên dưới ạ."),
+    "tts": ("Dạ đã đủ các ô bắt buộc. Tôi hỏi tiếp các ô không bắt buộc, công dân muốn đi tiếp luôn thì bấm nút bên "
+            "dưới ạ. "),
+}
+BCA_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+# Điền xong (trang không có mục đính kèm) mà trang không trả số ô tô màu: vẫn dẫn bằng nút tích cam đoan rồi Nộp hồ sơ.
+BCA_COMMIT_SUBMIT_HINT = {
+    "md": ("\n\nCông dân rà lại thông tin, rồi bấm nút **☑️ tích ô cam đoan** bên dưới để tôi tích; tích xong tôi hiện "
+           "nút **Nộp hồ sơ** ạ."),
+    "tts": " Công dân rà lại thông tin, rồi bấm nút tích ô cam đoan bên dưới, tích xong tôi hiện nút Nộp hồ sơ ạ.",
+}
+BCA_COMMIT_SUBMIT_HINT_RELOAD = {
+    "md": (BCA_COMMIT_SUBMIT_HINT["md"] + "\n\n⚠️ Trợ lý chưa tô được ô trống trên trang: cán bộ vào "
+           "**chrome://extensions** bấm **Tải lại** Trợ lý nhân dân rồi **F5** trang này để có tô ô và nút **Bổ sung các "
+           "thông tin còn thiếu**."),
+    "tts": BCA_COMMIT_SUBMIT_HINT["tts"],
+}
+BCA_SUBMIT_RELOAD = {
+    "md": ("⚠️ Trợ lý chưa bấm được nút nộp: phần điều khiển trang chưa nạp. Cán bộ vào **chrome://extensions** bấm "
+           "**Tải lại** Trợ lý nhân dân rồi **F5** trang; hoặc công dân tự bấm **Lưu và nộp hồ sơ** cuối trang ạ."),
+    "tts": "Dạ trợ lý chưa bấm được nút nộp. Công dân tự bấm Lưu và nộp hồ sơ cuối trang giúp tôi ạ.",
+}
+BCA_SUBMITTING = {
+    "md": "Dạ tôi soát lại tờ khai rồi bấm nút nộp trên trang ạ.",
+    "tts": "Dạ tôi soát lại tờ khai rồi bấm nút nộp trên trang ạ.",
+}
+BCA_SUBMIT_REQUIRED = {
+    "md": ("⚠️ Tôi **chưa nộp**: tờ khai còn **{required} ô bắt buộc** (viền đỏ) chưa có thông tin.\n\nCông dân điền "
+           "thẳng trên trang, hoặc bấm **Bổ sung các thông tin còn thiếu** để tôi hỏi từng ô ạ."),
+    "tts": ("Dạ tôi chưa nộp, tờ khai còn {required} ô bắt buộc chưa có thông tin. Công dân bấm Bổ sung các thông tin "
+            "còn thiếu để tôi hỏi từng ô ạ."),
+}
+BCA_SUBMIT_COMMIT = {
+    "md": ("⚠️ Tôi **chưa nộp**: công dân chưa tích ô **\"{commit}\"** cuối trang.\n\nCông dân tích ô đó trên trang "
+           "(hoặc bấm nút cam kết bên dưới để tôi tích), rồi bấm **Nộp hồ sơ** lại ạ."),
+    "tts": "Dạ tôi chưa nộp, công dân chưa tích ô cam kết cuối trang. Công dân tích ô đó rồi bấm Nộp hồ sơ lại ạ.",
+}
+BCA_SUBMIT_NO_BUTTON = {
+    "md": "⚠️ Tôi chưa thấy nút nộp hồ sơ trên trang. Công dân kéo xuống cuối trang và bấm nút nộp giúp tôi ạ.",
+    "tts": "Dạ tôi chưa thấy nút nộp hồ sơ trên trang. Công dân bấm nút nộp ở cuối trang giúp tôi ạ.",
+}
+BCA_SUBMIT_CONFIRM_ON_PAGE = {
+    "md": "Cổng đang hỏi xác nhận nộp hồ sơ. Công dân đọc lại rồi tự bấm **Đồng ý** trên trang để nộp ạ.",
+    "tts": "Dạ cổng đang hỏi xác nhận nộp hồ sơ. Công dân đọc lại rồi tự bấm Đồng ý trên trang để nộp ạ.",
+}
+BCA_SUBMIT_FAILED = {
+    "md": ("⚠️ Hồ sơ **chưa nộp được**{message}.\n\nCông dân sửa theo lời cổng báo (ô viền đỏ trên trang) rồi bấm "
+           "**Nộp hồ sơ** lại ạ."),
+    "tts": "Dạ hồ sơ chưa nộp được. Công dân sửa theo lời cổng báo trên trang rồi bấm Nộp hồ sơ lại ạ.",
+}
+# Trang căn cước: nút cuối Bước 1 là "Lưu và Tiếp tục" sang Bước 2 đặt lịch thu nhận sinh trắc học (chưa phải nộp).
+BCA_SUBMIT_NEXT_PAGE = {
+    "md": ("✓ Tôi đã bấm **{button}**.\n\nCông dân chọn **ngày, giờ thu nhận sinh trắc học** trên trang, xong bấm "
+           "**Nộp hồ sơ** để tôi nộp ạ."),
+    "tts": "Dạ tôi đã bấm {button}. Công dân chọn ngày giờ thu nhận sinh trắc học trên trang, xong bấm Nộp hồ sơ ạ.",
+}
+BCA_COMMIT_TICKED_SELF = {
+    "md": "✓ Công dân đã tích ô **\"{commit}\"**. Công dân rà lại lần cuối rồi bấm **Nộp hồ sơ** ạ.",
+    "tts": "Dạ công dân đã tích ô cam đoan. Công dân rà lại lần cuối rồi bấm Nộp hồ sơ ạ.",
+}
+BCA_COMMIT_UNTICKED = {
+    "md": "Công dân vừa bỏ tích ô **\"{commit}\"**. Tích lại ô này thì mới nộp hồ sơ được ạ.",
+    "tts": "Dạ công dân vừa bỏ tích ô cam đoan. Tích lại ô này thì mới nộp hồ sơ được ạ.",
+}
+BCA_COMMIT_TICKED = {
+    "md": "✓ Đã tích ô **\"{commit}\"**. Công dân rà lại lần cuối rồi bấm **Nộp hồ sơ** ạ.",
+    "tts": "Dạ, tôi tích xong rồi. Công dân rà lại lần cuối rồi bấm Nộp hồ sơ ạ.",
+}
+
 GUIDE_LOGIN_NO_URL = {
     "md": (
         "Dạ, tôi chưa có đường dẫn **{procedure}**. "
@@ -2425,6 +2514,25 @@ LC_CASE_UNREAD = {
     "md": ("⚠️ Tôi chưa đọc được ô **Trường hợp giải quyết** trên trang, công dân chọn tay rồi bấm **Đồng ý và tiếp "
            "tục** giúp tôi ạ."),
     "tts": "Dạ tôi chưa đọc được ô trường hợp giải quyết, công dân chọn tay rồi bấm Đồng ý và tiếp tục giúp tôi ạ.",
+}
+# Trang chọn trường hợp tự dò ô (Cổng DVC Bộ Công an — đăng ký xe): nhãn ô lấy trên trang (Loại xe…).
+LC_CASE_UNREAD_AUTO = {
+    "md": ("⚠️ Tôi chưa đọc được ô chọn nào trên trang **Chọn trường hợp hồ sơ**, công dân chọn tay rồi bấm **Đồng ý "
+           "và tiếp tục** giúp tôi ạ."),
+    "tts": "Dạ tôi chưa đọc được ô chọn trên trang, công dân chọn tay rồi bấm Đồng ý và tiếp tục giúp tôi ạ.",
+}
+LC_CASE_ASK_AUTO = {
+    "md": ("Công dân chọn {fields_md} ở thẻ trên (cổng bắt buộc chọn; chọn xong cổng có thể hiện thêm ô, tôi đọc lại "
+           "ngay), rồi bấm **Đồng ý và tiếp tục** ạ."),
+    "tts": " Công dân chọn {fields_tts} ở thẻ trên, rồi bấm Đồng ý và tiếp tục ạ.",
+}
+LC_CASE_STUCK = {
+    "md": "Ô {fields_md} tôi chưa đọc được danh sách lựa chọn, công dân chọn trực tiếp trên trang giúp tôi. ",
+    "tts": " Ô {fields_tts} tôi chưa đọc được danh sách, công dân chọn trực tiếp trên trang giúp tôi.",
+}
+LC_SINGLE_AUTO = {
+    "md": "\n\n📌 Ô nào cổng chỉ cho một lựa chọn thì tôi đã chọn sẵn.",
+    "tts": " Ô nào cổng chỉ cho một lựa chọn thì tôi đã chọn sẵn.",
 }
 LC_CASE_AUTO = {
     "md": "\n\n📌 Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",

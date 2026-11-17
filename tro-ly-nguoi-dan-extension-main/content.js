@@ -1546,7 +1546,13 @@
     const box = findCommitBox(String(msg.id || ""), String(msg.label || ""));
     if (!box) { sendResponse({ ok: false, error: "not_found" }); return; }
     box.scrollIntoView({ block: "center", behavior: "smooth" });
-    if (!box.checked) box.click();
+    // Cờ cho bộ theo dõi ô cam kết (content/bca/field-review.js): cú tích này của trợ lý, không báo "công dân tự tích".
+    window.__TLND_COMMIT_BY_ASSISTANT__ = true;
+    try {
+      if (!box.checked) box.click();
+    } finally {
+      window.__TLND_COMMIT_BY_ASSISTANT__ = false;
+    }
     sendResponse(box.checked ? { ok: true } : { ok: false, error: "not_checked" });
   });
 
@@ -1823,7 +1829,10 @@
       // Trang thủ tục đang hiện khối "Chọn cơ quan thực hiện" (khớp text fold dấu,
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.
-      const agencyBlock = !maeHost && body.includes("chon co quan thuc hien");
+      // Cổng DVC Bộ Công an (dancuquocgia): khối cơ quan nằm CHUNG trang với form kê khai (tín hiệu riêng bcaAgencyBlock) —
+      // câu "… lựa chọn cơ quan thực hiện" trên trang căn cước không được làm rỗng formKind như trang chọn cơ quan liên thông.
+      const agencyBlock = !maeHost && location.hostname !== "dichvucong.dancuquocgia.gov.vn"
+        && body.includes("chon co quan thuc hien");
       // Cổng DVC Bộ Công an: khối "Cơ quan thực hiện" là 2 select (select2) Tỉnh + Xã/Phường/Đặc khu, chọn
       // đủ thì cổng mới hiện các mục sau. Id lấy theo crawl trang đăng ký tạm trú 27/10/2026.
       const [bcaCity, bcaWard] = location.hostname === "dichvucong.dancuquocgia.gov.vn"
