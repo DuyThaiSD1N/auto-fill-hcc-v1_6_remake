@@ -106,3 +106,126 @@ def test_luot_goc_rong_thi_khong_canh_bao():
 def test_mat_field_la_hoi_quy():
     baseline = [run_values([f("a", "1"), f("b", "x")])]
     assert [r["field"] for r in find_regressions(baseline, [run([f("a", "1")])], set())] == ["b"]
+
+
+# ---- Đính kèm: kế hoạch quy thành ô ảo ---------------------------------------------------------------------------
+
+from scoring import attach_fields, attach_portal_values, same_row  # noqa: E402
+
+PLAN = [
+    {"fileIndex": 0, "sourceSegments": [{"fileIndex": 0, "pageIndexes": [0, 1]}], "documentName": "Tờ khai",
+     "componentName": "Tờ khai đăng ký", "target": "existing", "detectedType": "to_khai"},
+    {"fileIndex": 0, "sourceSegments": [{"fileIndex": 0, "pageIndexes": [3]}, {"fileIndex": 1, "pageIndexes": None}],
+     "documentName": "Căn cước", "componentName": "Giấy tờ tùy thân", "target": "existing"},
+    {"fileIndex": 2, "documentName": "Giấy khác", "componentName": "Giấy tờ khác", "target": "new", "needsAddComponent": True},
+]
+
+
+def values(fields):
+    return {f["name"]: f["value"] for f in fields}
+
+
+def test_ke_hoach_dinh_kem_thanh_o_ao():
+    got = values(attach_fields(PLAN, [4, 1, None], ["Thiếu giấy X"]))
+    assert got["dòng: Tờ khai đăng ký"] == "Tờ khai [#1:1-2]"
+    assert got["dòng: Giấy tờ tùy thân"] == "Căn cước [#1:4 + #2]"
+    assert got["dòng: Thêm mới: Giấy tờ khác"] == "Giấy khác [#3]"
+    assert got["loại: to_khai"] == "Tờ khai đăng ký"
+    assert got["tệp #1"] == "1→Tờ khai đăng ký; 2→Tờ khai đăng ký; 3→(không đính); 4→Giấy tờ tùy thân"
+    assert got["tệp #3"] == "cả tệp→Thêm mới: Giấy tờ khác"
+    assert got["tổng: số mục"] == "3"
+    assert got["tổng: trang thiếu"] == "#1:3"
+    assert got["tổng: trang trùng"] == ""
+    assert got["tổng: lỗi"] == "Thiếu giấy X"
+
+
+def test_dong_them_moi_mang_ten_giay_gom_chung_mot_khoa():
+    plan = [
+        {"fileIndex": 0, "documentName": "Bằng tốt nghiệp", "componentName": "Bằng tốt nghiệp", "target": "new", "needsAddComponent": True},
+        {"fileIndex": 1, "documentName": "Chứng chỉ tin học", "target": "new", "needsAddComponent": True},
+    ]
+    got = values(attach_fields(plan, [1, 1]))
+    # Tên giấy LLM đặt đổi giữa các lần chạy: khoá dòng và ô tệp #n không được đổi theo.
+    assert got["dòng: Thêm mới"] == "Bằng tốt nghiệp [#1] | Chứng chỉ tin học [#2]"
+    assert got["tệp #1"] == "1→Thêm mới" and got["tệp #2"] == "1→Thêm mới"
+
+
+def test_trang_trung_va_tep_khong_dinh():
+    plan = [
+        {"fileIndex": 0, "documentName": "A", "componentName": "Dòng 1", "target": "existing"},
+        {"fileIndex": 0, "sourceSegments": [{"fileIndex": 0, "pageIndexes": [1]}], "documentName": "B", "componentName": "Dòng 2",
+         "target": "existing"},
+    ]
+    got = values(attach_fields(plan, [2, 1]))
+    assert got["tổng: trang trùng"] == "#1:2"  # cả tệp 1 vào dòng 1, trang 2 lại vào dòng 2
+    assert got["tệp #2"] == "1→(không đính)"
+    assert got["tổng: trang thiếu"] == "#2:1"
+
+
+def test_khong_biet_so_trang_thi_danh_dau_chua_ro():
+    plan = [{"fileIndex": 0, "sourceSegments": [{"fileIndex": 0, "pageIndexes": [0]}], "documentName": "A", "componentName": "D",
+             "target": "existing"}]
+    got = values(attach_fields(plan, [None]))
+    assert got["tệp #1"] == "1→D"
+    assert got["tổng: trang thiếu"] == "#1:?"  # có thể đủ, có thể sót: tiêu chí "trang thiếu rỗng" không tự đạt
+
+
+def test_tieu_chi_dinh_kem_cham_nhu_field():
+    good = {"status": "ok", "response": {"fields": attach_fields(PLAN, [3, 1, None])}}
+    wrong = [dict(PLAN[0]), dict(PLAN[1], componentName="Giấy tờ khác"), PLAN[2]]
+    bad = {"status": "ok", "response": {"fields": attach_fields(wrong, [3, 1, None])}}
+    checks = [
+        {"field": "dòng: Giấy tờ tùy thân", "op": "contains", "expected": "Căn cước"},
+        {"field": "tổng: số mục", "op": "equals", "expected": "3"},
+    ]
+    result = evaluate(checks, [good, bad])
+    assert [cell["ok"] for cell in result["rows"][0]["cells"]] == [True, False]
+    assert result["passed"] == 1
+
+
+def test_dong_tren_cong_kem_stt_va_bat_buoc():
+    assert same_row("1. Tờ khai đăng ký (bắt buộc)", "Tờ khai đăng ký")
+    assert same_row("2 Giấy tờ tùy thân", "Giấy tờ tùy thân")
+    assert not same_row("Giấy tờ khác", "Giấy tờ tùy thân")
+
+
+def test_cong_doc_lai_dung_dong_sai_dong_va_chua_len():
+    rows = [
+        {"label": "1. Tờ khai đăng ký (bắt buộc)", "files": ["Tờ khai.pdf"]},
+        {"label": "2 Giấy tờ tùy thân", "files": ["cu.pdf"]},
+        {"label": "3 Giấy tờ khác", "files": ["Căn cước.pdf"]},
+    ]
+    before = [{"label": "2 Giấy tờ tùy thân", "files": ["cu.pdf"]}]
+    got = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], rows, before, [])
+    assert got["dòng: Tờ khai đăng ký"] == "Tờ khai [#1:1-2]"
+    assert got["dòng: Giấy tờ tùy thân"] == ""  # căn cước lên nhầm dòng Giấy tờ khác; cu.pdf có từ trước, không tính
+    assert got["dòng: Thêm mới: Giấy tờ khác"] == "Căn cước [#1:4 + #2]"
+    assert got["cổng: chưa lên"] == "Giấy khác [#3]"
+    assert got["cổng: đọc bảng"] == "3 dòng"
+    assert got["tổng: trang thiếu"] == "#1:3"  # khoá tổng / tệp vẫn là của kế hoạch backend
+
+
+def test_cong_co_tep_la_va_ten_goc():
+    plan = [{"fileIndex": 0, "documentName": "Đơn đề nghị", "componentName": "Đơn đề nghị", "target": "existing"}]
+    rows = [{"label": "Đơn đề nghị", "files": ["scan_001.pdf", "anh_la.jpg"]}]
+    got = attach_portal_values(plan, [1], ["scan_001.pdf"], rows, [], [])
+    assert got["dòng: Đơn đề nghị"] == "(lạ) anh_la.jpg | Đơn đề nghị [#1]"  # tắt đổi tên: nhận theo tên tệp gốc
+    assert got["cổng: chưa lên"] == ""
+
+
+def test_khong_doc_duoc_bang_thi_theo_tep_extension_bao_loi():
+    got = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], [], [],
+                               ["c.docx (Giấy khác) — Tệp quá dung lượng cổng cho phép"])
+    assert got["dòng: Tờ khai đăng ký"] == "Tờ khai [#1:1-2]"
+    assert got["dòng: Thêm mới: Giấy tờ khác"] == ""
+    assert got["cổng: chưa lên"] == "Giấy khác [#3]"
+    assert got["cổng: tệp lỗi"].startswith("c.docx")
+    assert got["cổng: đọc bảng"].startswith("không đọc được")
+
+
+def test_bang_o_ao_cho_agent_co_ca_cong_lan_be():
+    portal = attach_portal_values(PLAN, [4, 1, None], ["a.pdf", "b.jpg", "c.docx"], [{"label": "Tờ khai đăng ký", "files": ["Tờ khai.pdf"]}])
+    run_ = {"status": "ok", "response": {"fields": attach_fields(PLAN, [4, 1, None])}, "form": portal}
+    table = {row["field"]: row for row in field_table(attach_fields(PLAN, [4, 1, None]), [run_])}
+    assert table["dòng: Giấy tờ tùy thân"]["runs"] == [""]
+    assert table["dòng: Giấy tờ tùy thân"]["beRuns"] == ["Căn cước [#1:4 + #2]"]

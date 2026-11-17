@@ -4990,13 +4990,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             # Cổng Lai Châu: thêm nút cam "Đồng ý và tiếp tục" (trợ lý bấm sang Thành phần hồ sơ).
             return lai_chau.fill_report_reply(conv, proc, v2)
         if proc.get("bcaGuestList"):
-            # Thông báo lưu trú: trang không có mục đính kèm → không mời đính, nhắc tích cam kết rồi nộp.
             _clear_documents_adjustment(conv)
-            r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note,
-                            note=vi.BCA_STAY_SUBMIT_HINT, commit=str(proc.get("submitCommitLabel") or "")))
-            r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
-                       _supplement_documents_chip(), *_commit_chip(conv, proc)]
-            return r
+            return _bca_stay_review_reply(conv, proc, rep["filled"], note)
         if proc.get("bcaPortal") and proc.get("hasAttachmentStep") is False:
             # Cấp đổi thẻ căn cước: không có mục đính kèm → không mời đính; nhắc cam đoan rồi "Lưu và Tiếp tục".
             _clear_documents_adjustment(conv)
@@ -5253,6 +5248,14 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         if conv.get("docs_target") != "declaration":
             return Reply(*_fmt(vi.REFILL_WRONG_PAGE))
         return await _start_documents_adjustment(conv, "declaration")
+    # Nút cam ô cam kết hiện ngay sau khi điền (thông báo lưu trú không có bước đính kèm, conv còn ở reviewing).
+    if intent.kind == "action" and intent.value == "tick_commit":
+        return _tick_commit(conv)
+    if intent.kind == "event" and intent.value == "commit_result":
+        return _commit_result(conv, intent.payload or {})
+    if proc.get("bcaGuestList"):
+        # Trang không có mục đính kèm: "đúng rồi" hay câu lạ đều nhắc lại tích cam kết rồi nộp, không chuyển đính kèm.
+        return _bca_stay_review_reply(conv, proc, (conv.get("fill_report") or {}).get("filled", 0))
     # "Đúng rồi" ở bước này là trả lời câu hỏi đang chờ: đã rà soát xong form.
     if (intent.kind == "action" and intent.value in {"confirm_review", "request_attach"}) \
             or intent.kind == "confirm":
@@ -5813,11 +5816,22 @@ def _commit_chip(conv: dict, proc: dict) -> list[dict]:
     return [{"label": str(proc["submitCommitLabel"]), "send": _TICK_COMMIT_SEND, "solid": True, "cta": True}]
 
 
+def _bca_stay_review_reply(conv: dict, proc: dict, filled, missing_note: str = "") -> Reply:
+    """Thông báo lưu trú: trang không có mục đính kèm → không mời đính, nhắc tích cam kết rồi nộp."""
+    r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=filled, missing_note=missing_note,
+                    note=vi.BCA_STAY_SUBMIT_HINT, commit=str(proc.get("submitCommitLabel") or "")))
+    r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
+               _supplement_documents_chip(), *_commit_chip(conv, proc)]
+    return r
+
+
 def _tick_commit(conv: dict) -> Reply:
-    box = str((get_procedure(conv.get("procedure_key") or "") or {}).get("submitCommitCheckbox") or "")
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    box = str(proc.get("submitCommitCheckbox") or "")
     r = Reply()
     if box:
-        r.actions = [{"type": "tick_commit", "id": box}]
+        # Kèm nhãn: id ô có thể khác giữa các trang cổng, extension tìm theo nhãn khi không thấy id.
+        r.actions = [{"type": "tick_commit", "id": box, "label": str(proc.get("submitCommitLabel") or "")}]
     return r
 
 

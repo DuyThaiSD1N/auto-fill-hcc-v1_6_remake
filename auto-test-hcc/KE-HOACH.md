@@ -13,7 +13,7 @@ Khi một ô điền sai trên cổng dịch vụ công, người dùng nhập m
 5. Test qua thì **dừng chờ người duyệt**: người chạy đọc patch rồi bấm đồng ý thì mới build Docker, nạp extension và chạy lại 5 lần trên cổng.
 6. Đạt cả 5 lần thì giữ bản sửa, chưa commit. Không đạt thì tự hoàn tác và họp lại, tối đa 3 vòng.
 
-Trong suốt ca, người chạy làm hai việc: **đăng nhập VNeID** và **duyệt bản sửa** trước khi build.
+Trong suốt ca, người chạy làm ba việc: **đăng nhập VNeID**, **duyệt kế hoạch sửa** của trọng tài trước khi agent sửa code, và **duyệt bản sửa** trước khi build.
 
 ### Ca thật đầu tiên
 
@@ -62,6 +62,22 @@ Req phải là lượt **điền**, không phải lượt đính kèm, và tệp
 
 Cần một máy Windows có repo, Docker Desktop, Python 3.11, Node, Claude Code đã đăng nhập, Playwright và mạng Tailscale tới OCR, LLM. Cài từ đầu theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Agent không sửa repo trên máy: mỗi ca nó sửa trong khu làm việc `~/.autotest-hcc/workspace/` (ngoài mọi repo git, clone riêng 3 repo thật, đặt đúng tag release đang chạy production), cửa sổ bot nạp extension của khu làm việc, đã trỏ backend thử 12025. Ca đầu tiên clone 3 repo, mất vài phút. Bản sửa đạt được đẩy lên nhánh `agent/<mã ca>` của repo thật, có link Mở PR trên web; ca có đụng backend còn để lại một ca hồi quy trong `auto-test-hcc/regression/cases` (soát rồi mới commit).
 
+### Chromium của bot chạy trên máy của bạn (trình chạy bot)
+
+Ca **Cổng thật** mặc định mở Chromium trên máy **của người tạo ca**, không mở trên máy chạy dịch vụ. Máy bạn cần Tailscale (để vào web
+100.x) và Python 3.10 trở lên. Lần đầu:
+
+1. Cài: `pip install playwright websockets` rồi `python -m playwright install chromium`.
+2. Trên web, Tạo ca mới → Chạy kiểm **Cổng thật** → khung "Chromium của bot chạy trên" chọn **Máy của tôi** → bấm **Nối máy này**.
+3. Tải `bot_runner.py` theo link trên web, mở dòng lệnh ở thư mục chứa tệp, dán lệnh web hiện (có `--server` và `--token`).
+4. Trình chạy tải bản extension đang test, mở một cửa sổ Chromium riêng, web chuyển sang **Đã nối**. Giữ cửa sổ dòng lệnh và cửa sổ
+   Chromium đó mở trong lúc chạy ca; đăng nhập VNeID trên chính cửa sổ Chromium này khi web nhắc.
+
+Lần sau chỉ cần chạy lại đúng lệnh cũ (token giữ 14 ngày, web nhớ trong trình duyệt). Máy bạn không mở cổng nào ra ngoài: trình chạy
+tự nối ra web qua WebSocket; cổng debug Chromium và cổng 12025 cho extension chỉ nghe ở 127.0.0.1. Phiên VNeID giữ ở
+`~/.autotest-hcc-runner/profile`. Agent sửa extension thì trình chạy tự tải bản mới trước lượt chạy kiểm. Chỉ chọn **Máy chạy dịch vụ**
+khi bạn đang ngồi ở máy đó.
+
 ### Bật hệ thống
 
 Chạy ở gốc repo, lệnh 3 để mở một terminal riêng:
@@ -93,6 +109,20 @@ Từ lúc bot tới tờ khai đến lúc kết thúc, **đừng thao tác trên
 
 Bot kẹt thì web hiện khung vàng ghi rõ cần làm gì. Làm trên cửa sổ bot rồi bấm nút trong khung, bot chạy tiếp.
 
+### Ca lỗi đính kèm
+
+1. Lấy **Mã hỗ trợ** extension hiện sau bước đính kèm (khác mã của bước điền). Nhập mã lượt điền thì web gợi ý các mã đính kèm cùng
+   hồ sơ, bấm vào mã để tra.
+2. Web hiện nhãn **Lượt đính kèm**, số mục, cài đặt Tách giấy tờ lúc đó.
+3. Ô **Lỗi người dùng báo** ghi rõ giấy nào vào sai dòng và đúng ra phải vào dòng nào, hoặc trang nào bị sót / bị đính hai lần.
+4. Chạy kiểm:
+   - **Chạy trên cổng thật**: bot tải giấy tờ thật của req lên cổng và đính như cán bộ, rồi đọc lại tên tệp trên từng dòng. Cổng nhiều
+     bước thì bot tự điền rồi tự sang bước đính kèm; nút chuyển bước có chữ "Lưu" thì bot nhờ bạn bấm. Tệp đã tải nằm lại trong hồ sơ
+     nháp của tài khoản VNeID của bạn, bot không nộp.
+   - **Chỉ gọi backend**: nhanh, chỉ chấm kế hoạch backend (giấy nào vào dòng nào), không biết tệp có lên được cổng không.
+5. Bảng kết quả ghi theo dòng: `dòng: <tên dòng>` là giấy + trang vào dòng đó, `tệp #n` là từng trang của tệp n vào dòng nào,
+   `tổng: trang thiếu` rỗng là không sót trang; chạy trên cổng thêm `cổng: chưa lên` (giấy không thấy trên cổng).
+
 ## 4. Luồng chi tiết
 
 | Bước | Ai làm | Trên web thấy gì |
@@ -106,6 +136,7 @@ Bot kẹt thì web hiện khung vàng ghi rõ cần làm gì. Làm trên cửa s
 | Trọng tài quyết định | Agent | Thẻ Trọng tài |
 | Sửa code | Agent | Thẻ Sửa code, patch |
 | Test | Hệ thống | Danh sách kiểm tra |
+| Duyệt kế hoạch | **Tester** | Khung vàng "Chờ bạn duyệt kế hoạch sửa": nguyên nhân, kế hoạch, tiêu chí chấm, 3 nút |
 | Duyệt bản sửa | **Tester** | Khung vàng "Chờ bạn duyệt bản sửa": patch, kết quả test, 3 nút |
 | Build Docker, nạp extension | Hệ thống | Dòng Docker trong danh sách kiểm tra |
 | Điền lại 5 lần | Bot | Bảng tiêu chí × lần, ảnh cổng |
@@ -121,6 +152,16 @@ Bot kẹt thì web hiện khung vàng ghi rõ cần làm gì. Làm trên cửa s
 | Không tái hiện | Code hiện tại đã đạt 5/5 | Không |
 | Cần người xem | Hết số vòng mà chưa đạt | Có: code của vòng trượt gần nhất để lại cho người xem, chưa build lên Docker; không dùng thì bấm Hoàn tác bản sửa. Code người duyệt đã bác hoặc lộ dữ liệu thật thì không để lại |
 | Không được duyệt | Người duyệt bấm dừng, hoặc quá 60 phút không ai duyệt | Không, đã tự hoàn tác |
+
+### Duyệt kế hoạch sửa
+
+Khi trọng tài quyết định sửa code, khung vàng **Chờ bạn duyệt kế hoạch sửa** hiện ra trước khi agent đụng vào code. Đọc nguyên nhân, các bước, file sẽ sửa và tiêu chí máy sẽ chấm, rồi chọn:
+
+- **Đồng ý, cho sửa**: agent sửa theo đúng kế hoạch.
+- **Lập lại kế hoạch theo góp ý**: ghi góp ý (bắt buộc), trọng tài lập kế hoạch mới rồi hỏi lại. Tối đa 3 lần mỗi vòng.
+- **Không sửa, dừng**: ca kết thúc ở trạng thái Không được duyệt, chưa có dòng code nào bị đổi.
+
+Quá 60 phút không ai duyệt thì ca tự dừng.
 
 ### Duyệt bản sửa
 
@@ -220,7 +261,7 @@ Mỗi lỗi ghi: mã kịch bản, mã job (thư mục trong `auto-test-hcc/runs
 ## 7. Giới hạn đã biết
 
 - **Mốc người nộp:** trên cổng, người nộp là tài khoản VNeID của tester, không phải người trong hồ sơ. Thủ tục phân vai theo mốc này có thể điền khác lượt gốc. Web cảnh báo khi chạy lại ra dưới 70% field của lượt gốc.
-- **Chỉ lỗi điền:** chưa xử lý lỗi đính kèm.
+- **Lỗi đính kèm:** chưa chạy Tách hồ sơ nhiều tab (chứng thực) trên cổng thật, chưa test lượt đính kèm của Trợ lý hồ sơ. Bot đọc bảng đính kèm theo DOM chung cho mọi cổng; cổng nào bot không đọc được thì chấm theo danh sách tệp lỗi extension báo (web có cảnh báo).
 - **Chỉ req nội bộ:** không đọc được req trên server.
 - **Vào thủ tục tự động** chỉ áp dụng cho thủ tục có trong danh sách "Mở trang thủ tục" của panel. Thủ tục khác bot sẽ nhờ tester mở tay.
 - **Bước Thông tin chủ hồ sơ** của wizard cũ, nếu gặp, bot dừng và nhờ tester bấm qua.

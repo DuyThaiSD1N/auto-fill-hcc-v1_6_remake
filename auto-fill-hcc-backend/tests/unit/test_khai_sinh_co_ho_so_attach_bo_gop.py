@@ -255,3 +255,161 @@ def test_context_ghim_so_dinh_danh_tai_khoan():
     context = co_ho_so_reason._render_context(raw, _ACCOUNT, docs)
     assert "<tai_khoan_dang_nhap>" in context and "001204000003" in context
     assert "<tai_khoan_dang_nhap>" not in co_ho_so_reason._render_context(raw, {}, docs)
+
+
+# Hồ sơ CHỈ có tờ khai (không CCCD nào), cha ghi "Nơi cư trú: (chết)": agent trích xuất bỏ sót cả vai
+# cha thì vẫn phải dựng lại cha theo tờ khai, nơi cư trú "Đã chết", không rơi về "Chưa xác định được cha".
+_TO_KHAI_CHA_CHET = "\n".join([
+    "TỜ KHAI ĐĂNG KÝ KHAI SINH",
+    "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN NAM",
+    "Quan hệ với người được khai sinh: Bản thân",
+    "Đề nghị cơ quan đăng ký khai sinh cho người dưới đây:",
+    "Họ, chữ đệm, tên: TRẦN VĂN NAM",
+    "Ngày, tháng, năm sinh: 02/03/1970",
+    "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA",
+    "Năm sinh: (5) 1940 Dân tộc: (2) Quốc tịch: (2)",
+    "Nơi cư trú: (2) (Chết)",
+    "Họ, chữ đệm, tên người cha: TRẦN VĂN BA",
+    "Năm sinh: (5) Dân tộc: (2) Quốc tịch: (2)",
+    "Nơi cư trú: (2) (chết)",
+    "Giấy tờ tùy thân: (3)",
+    "Tôi cam đoan nội dung đề nghị đăng ký khai sinh trên đây là đúng sự thật",
+])
+
+
+def test_chi_co_to_khai_cha_da_chet_bi_bo_sot_van_dung_lai_cha():
+    raw = (
+        "<con>\nHọ tên: TRẦN VĂN NAM\nNgày sinh: 02/03/1970\nGiới tính: Nam\nTrạng thái: còn sống\n</con>\n"
+        "<me>\nHọ tên: LÊ THỊ HOA\nNgày sinh: 1940\nGiới tính: Nữ\nTrạng thái: đã chết\n</me>\n"
+        "<cha>\nHọ tên: TRẦN VĂN BA\nGiới tính: Nam\nTrạng thái: không xác định\n</cha>"
+    )
+    context = co_ho_so_reason._render_context(raw, {}, [{"name": "tk.pdf", "text": _TO_KHAI_CHA_CHET}])
+    cha = co_ho_so_reason._section(context, "cha")
+    assert "Trạng thái: đã chết" in cha and "Đối chiếu CCCD:" in cha
+
+    # Agent trích xuất trả mẹ nhưng bỏ sót toàn bộ Father_*.
+    extracted = [
+        {"name": "Subject_FullName", "comp": "x-input", "value": "TRẦN VĂN NAM"},
+        {"name": "Mother_FullName", "comp": "x-input", "value": "LÊ THỊ HOA"},
+        {"name": "Mother_BirthDateOrYear", "comp": "x-input", "value": "1940"},
+    ]
+    fields = co_ho_so_reason.sanitize_extracted_fields(extracted, context)
+    father = {f["name"]: f for f in fields if f["name"].startswith("Father_")}
+    assert father["Father_FullName"]["value"] == "TRẦN VĂN BA" and father["Father_FullName"].get("default")
+
+    ui = {f["name"]: f["value"] for f in mapper.enrich(fields, {"_reasoning_context": context})}
+    assert ui["HoTenChaKS"] == "TRẦN VĂN BA"
+    assert ui["ChaNoiCuTru"] == "Khác" and ui["ChaNoiCuTru_NuocNgoai"] == "Đã chết"
+    assert ui["nksLoaiKhaiSinh"] == "Đã xác định được cả cha lẫn mẹ"
+
+
+# Thẻ cha + thẻ mẹ scan chung MỘT trang; tờ khai ghi số mẹ ở "Giấy tờ tùy thân: (3) <số>" và viết sai năm
+# sinh mẹ (1965, thẻ 1945 → chỉ cách con 10 năm). Trước đây Python chỉ đọc thẻ đầu trang, không đọc số
+# trên dòng "Giấy tờ tùy thân" → khối mẹ giữ năm tờ khai, bị xoá vì sai thế hệ, form ra "Chưa xác định được mẹ".
+def _mat_truoc(so, ten, ngay_sinh, gioi_tinh):
+    return "\n".join([
+        "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+        "Độc lập - Tự do - Hạnh phúc",
+        "CĂN CƯỚC CÔNG DÂN",
+        "Citizen Identity Card",
+        f"Số / No.: {so}",
+        "Họ và tên / Full name:",
+        ten,
+        f"Ngày sinh / Date of birth: {ngay_sinh}",
+        f"Giới tính / Sex: {gioi_tinh} Quốc tịch / Nationality: Việt Nam",
+        "Có giá trị đến:",
+        "Không thời hạn",
+    ])
+
+
+_HO_SO_HAI_THE_MOT_TRANG = "\n".join([
+    "───── Trang 1/2 ─────",
+    _mat_truoc("001045000001", "PHẠM VĂN AN", "10/10/1945", "Nam"),
+    "",
+    _mat_truoc("001145000002", "ĐỖ THỊ BÌNH", "03/03/1945", "Nữ"),
+    "",
+    "───── Trang 2/2 ─────",
+    "Đặc điểm nhận dạng / Personal identification:",
+    "Ngày, tháng, năm / Date, month, year: 01/01/2021",
+    "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI",
+])
+
+_TO_KHAI_ME_SAI_NAM = "\n".join([
+    "TỜ KHAI ĐĂNG KÝ KHAI SINH",
+    "Họ, chữ đệm, tên người yêu cầu: PHẠM VĂN CƯỜNG",
+    "Quan hệ với người được khai sinh:",
+    "Đề nghị cơ quan đăng ký khai sinh cho người dưới đây:",
+    "Họ, chữ đệm, tên: PHẠM VĂN CƯỜNG",
+    "Ngày, tháng, năm sinh: 05/05/1975",
+    "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam",
+    "Họ, chữ đệm, tên người mẹ: Đỗ Thị Bình",
+    "Ngày, tháng, năm sinh: (5) 03/03/1965 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam",
+    "Nơi cư trú: (2) Thôn 1 xã Hòa Bình",
+    "Giấy tờ tùy thân: (3) 001145000002",
+    "Họ, chữ đệm, tên người cha: Phạm Văn An",
+    "Ngày, tháng, năm sinh: (5) 10/10/1945 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam",
+    "Nơi cư trú: (2) Đã chết",
+    "Giấy tờ tùy thân: (3)",
+    "Tôi cam đoan nội dung đề nghị đăng ký khai sinh trên đây là đúng sự thật",
+])
+
+
+def test_the_me_chung_trang_the_cha_va_to_khai_sai_nam_van_dien_me():
+    docs = [
+        {"name": "ho-so.pdf", "text": _HO_SO_HAI_THE_MOT_TRANG},
+        {"name": "tk.pdf", "text": _TO_KHAI_ME_SAI_NAM},
+    ]
+    cards = [
+        person["id"]
+        for unit in co_ho_so_reason._identity_units(docs)
+        if co_ho_so_reason._is_card_unit(unit) and (person := co_ho_so_reason._person_from_document(unit))
+    ]
+    assert cards == ["001045000001", "001145000002"]
+
+    raw = (
+        "<con>\nHọ tên: PHẠM VĂN CƯỜNG\nNgày sinh: 05/05/1975\nGiới tính: Nam\nTrạng thái: còn sống\n</con>\n"
+        "<me>\nHọ tên: ĐỖ THỊ BÌNH\nSố CCCD/CMND: 001145000002\nNgày sinh: 03/03/1945\nGiới tính: Nữ\n</me>\n"
+        "<cha>\nHọ tên: PHẠM VĂN AN\nNgày sinh: 10/10/1945\nGiới tính: Nam\nTrạng thái: đã chết\n</cha>"
+    )
+    context = co_ho_so_reason._render_context(raw, {}, docs)
+    me = co_ho_so_reason._section(context, "me")
+    assert "Số CCCD/CMND: 001145000002" in me and "Ngày sinh: 03/03/1945" in me
+    assert "Đối chiếu CCCD trùng số" in me
+
+    extracted = [
+        {"name": "Subject_FullName", "comp": "x-input", "value": "PHẠM VĂN CƯỜNG"},
+        {"name": "Mother_FullName", "comp": "x-input", "value": "Đỗ Thị Bình"},
+        {"name": "Mother_IdNumber", "comp": "x-input", "value": "001145000002"},
+        {"name": "Mother_BirthDateOrYear", "comp": "x-input", "value": "03/03/1965"},
+        {"name": "Father_FullName", "comp": "x-input", "value": "PHẠM VĂN AN"},
+    ]
+    fields = co_ho_so_reason.sanitize_extracted_fields(extracted, context)
+    ui = {f["name"]: f["value"] for f in mapper.enrich(fields, {"_reasoning_context": context})}
+    assert ui["HoTenMeKS"] == "ĐỖ THỊ BÌNH" and ui["SoDinhDanhMe"] == "001145000002"
+    assert ui["NamSinhMeKS"] == "03/03/1945"
+    assert ui["nksLoaiKhaiSinh"] == "Đã xác định được cả cha lẫn mẹ"
+
+
+# Tờ khai để trống dân tộc cha/mẹ ("Dân tộc: (2) Quốc tịch: (2)"), LLM chép "Kinh" của con sang: không gửi gì
+# cho DanTocMeKS/DanTocChaKS — kể cả lệnh clear, vì mở dropdown dân tộc là cổng tự chọn "Kinh" đầu danh sách.
+def test_dan_toc_cha_me_de_trong_tren_to_khai_thi_khong_cham_o():
+    raw = (
+        "<con>\nHọ tên: TRẦN VĂN NAM\nNgày sinh: 02/03/1970\nGiới tính: Nam\nDân tộc: Kinh\n</con>\n"
+        "<me>\nHọ tên: LÊ THỊ HOA\nNgày sinh: 1940\nGiới tính: Nữ\nDân tộc: Kinh\nTrạng thái: đã chết\n</me>\n"
+        "<cha>\nHọ tên: TRẦN VĂN BA\nGiới tính: Nam\nDân tộc: Kinh\nTrạng thái: đã chết\n</cha>"
+    )
+    context = co_ho_so_reason._render_context(raw, {}, [{"name": "tk.pdf", "text": _TO_KHAI_CHA_CHET}])
+    assert "Dân tộc: Kinh" not in co_ho_so_reason._section(context, "me")
+    assert "Dân tộc: Kinh" not in co_ho_so_reason._section(context, "cha")
+
+    extracted = [
+        {"name": "Subject_FullName", "comp": "x-input", "value": "TRẦN VĂN NAM"},
+        {"name": "Mother_FullName", "comp": "x-input", "value": "LÊ THỊ HOA"},
+        {"name": "Mother_Ethnicity", "comp": "x-input", "value": "Kinh"},
+        {"name": "Father_FullName", "comp": "x-input", "value": "TRẦN VĂN BA"},
+        {"name": "Father_Ethnicity", "comp": "x-input", "value": "Kinh"},
+    ]
+    fields = co_ho_so_reason.sanitize_extracted_fields(extracted, context)
+    names = {f["name"] for f in mapper.enrich(fields, {"_reasoning_context": context})}
+    assert "HoTenMeKS" in names and "HoTenChaKS" in names
+    assert "DanTocMeKS" not in names and "DanTocChaKS" not in names

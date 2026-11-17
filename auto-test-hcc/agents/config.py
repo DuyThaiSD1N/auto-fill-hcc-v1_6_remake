@@ -114,6 +114,14 @@ COMPOSE_SERVICE = os.environ.get("AUTOTEST_COMPOSE_SERVICE", "autotest-app" if U
 SOURCE_SSH = os.environ.get("AUTOTEST_SOURCE_SSH", "")
 SOURCE_SSH_KEY = os.environ.get("AUTOTEST_SOURCE_SSH_KEY", "")
 SOURCE_TUNNEL = os.environ.get("AUTOTEST_SOURCE_TUNNEL", "12024:127.0.0.1:12004")
+# Đưa web 12008 của máy này lên server qua đường hầm ngược (ssh -R, cùng khoá): "<cổng loopback server>:<host>:<cổng local>",
+# vd 12018:127.0.0.1:12008. Trên server một container socat mở cổng đó ra IP Tailscale của server (HUONG-DAN-SERVER.md mục A).
+PUBLISH_WEB = os.environ.get("AUTOTEST_PUBLISH_WEB", "")
+# Kho lưu trữ "Quản lý nội bộ" (archive.py): đọc req mà backend production đã xoá sau ~30 phút. Tài khoản viewer, chỉ đặt trong
+# server.env (gitignore), không bao giờ ghi vào code / tài liệu.
+ARCHIVE_URL = os.environ.get("AUTOTEST_ARCHIVE_URL", "")
+ARCHIVE_USER = os.environ.get("AUTOTEST_ARCHIVE_USER", "")
+ARCHIVE_PASSWORD = os.environ.get("AUTOTEST_ARCHIVE_PASSWORD", "")
 # Chế độ server = dịch vụ chạy NGAY TRÊN máy production (uploads trên đĩa). Đọc từ xa qua SSH thì vẫn là máy local.
 SERVER_MODE = bool(SOURCE_MONGO_URI) and not SOURCE_SSH
 

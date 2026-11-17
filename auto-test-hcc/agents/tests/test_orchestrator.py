@@ -157,7 +157,7 @@ def world(tmp_path, monkeypatch):
     return world
 
 
-REVIEWER = {"verdicts": [], "seen": []}
+REVIEWER = {"verdicts": [], "seen": [], "plans": [], "plans_seen": []}
 
 
 @pytest.fixture(autouse=True)
@@ -165,6 +165,8 @@ def reviewer():
     """Người duyệt giả: thấy khung duyệt thì bấm theo REVIEWER["verdicts"], hết danh sách thì đồng ý."""
     REVIEWER["verdicts"] = []
     REVIEWER["seen"] = []
+    REVIEWER["plans"] = []  # câu trả lời ở khung duyệt kế hoạch, hết danh sách thì đồng ý
+    REVIEWER["plans_seen"] = []
     return REVIEWER
 
 
@@ -172,7 +174,17 @@ def answer_approvals(job):
     def loop():
         answered = None
         deadline = time_module.monotonic() + 30
+        planned = None
         while job.data["status"] not in ("done", "failed", "stopped") and time_module.monotonic() < deadline:
+            plan = job.data.get("planApproval")
+            if plan and (plan["round"], plan["revision"]) != planned and not job.decided.is_set():
+                planned = (plan["round"], plan["revision"])
+                REVIEWER["plans_seen"].append(dict(plan))
+                verdict = REVIEWER["plans"].pop(0) if REVIEWER["plans"] else {"decision": "approve", "note": ""}
+                if verdict is not None:
+                    with job.lock:
+                        job.verdict = {"by": "nguoi-duyet", **verdict}
+                        job.decided.set()
             pending = job.data.get("approval")
             if pending and pending["round"] != answered and not job.decided.is_set():
                 answered = pending["round"]
@@ -949,3 +961,89 @@ def test_ca_auto_fill_khong_chay_test_handfree(world, monkeypatch):
     job, orch = start()
     orch.run()
     assert job.data["outcome"] == "fixed" and "handfree-tests" not in world.calls
+
+
+def test_baseline_do_nen_tu_dau_ca_truoc_khi_trong_tai_quyet(world, monkeypatch):
+    def baseline(cancel):
+        world.calls.append("baseline")
+        return {"bad": [], "failed": 0, "passed": 10, "skipped": 0, "errors": 0}
+
+    monkeypatch.setattr(verify, "baseline", baseline)
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    assert world.calls.count("baseline") == 1
+    assert world.calls.index("baseline") < world.calls.index("arbiter")  # không còn đợi trọng tài xong mới đo
+
+
+def test_ca_ket_thuc_som_thi_dung_phan_do_nen(world, monkeypatch):
+    seen = {}
+
+    def slow_baseline(cancel):
+        while not cancel.is_set():  # giả lập bộ test dài: chỉ dừng khi được báo
+            time_module.sleep(0.01)
+        seen["stopped"] = True
+        raise verify.Stopped()
+
+    monkeypatch.setattr(verify, "baseline", slow_baseline)
+    world.opinions = {r: opinion("ocr") for r in world.opinions}
+    world.decisions = [{"decision": "skip_ocr", "cause": "ocr", "reason": "OCR đọc sai"}]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "skipped_ocr"
+    orch._baselines.exception(timeout=5)  # luồng đo nền đã thoát
+    assert seen.get("stopped") is True
+
+
+
+def test_ke_hoach_phai_duoc_dong_y_truoc_khi_sua(world, reviewer):
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    assert len(reviewer["plans_seen"]) == 1 and reviewer["plans_seen"][0]["revision"] == 1
+    assert world.calls.index("arbiter") < world.calls.index("fixer")
+    assert job.data["rounds"][0]["planReviews"][0]["decision"] == "approve"
+    assert job.data.get("planApproval") is None
+
+
+def test_khong_dong_y_ke_hoach_thi_dung_chua_sua_code(world, reviewer):
+    reviewer["plans"] = [{"decision": "reject", "note": "đừng sửa mapper chung"}]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "not_approved"
+    assert "đừng sửa mapper chung" in job.data["report"]["reason"]
+    assert "fixer" not in world.calls and world.code() == "x = 1\n" and world.deploys == 0
+
+
+def test_gop_y_thi_trong_tai_lap_lai_ke_hoach(world, reviewer):
+    revised = {**world.decisions[0], "reason": "kế hoạch mới", "plan": {**PLAN, "summary": "khoanh riêng thủ tục"}}
+    world.decisions = [world.decisions[0], revised]
+    reviewer["plans"] = [{"decision": "retry", "note": "khoanh riêng thủ tục này"}, {"decision": "approve", "note": ""}]
+    prompts = []
+    real = world.run_agent
+
+    def spy(**kwargs):
+        if kwargs.get("schema") is roles.DECISION_SCHEMA:
+            prompts.append(kwargs["prompt"])
+        return real(**kwargs)
+
+    claude_runner.run_agent = spy
+    try:
+        job, orch = start()
+        orch.run()
+    finally:
+        claude_runner.run_agent = real
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    assert world.calls.count("arbiter") == 2 and [p["revision"] for p in reviewer["plans_seen"]] == [1, 2]
+    assert "khoanh riêng thủ tục này" in prompts[1] and "plan_note" in prompts[1]
+    round_ = job.data["rounds"][0]
+    assert round_["decision"]["plan"]["summary"] == "khoanh riêng thủ tục" and len(round_["planHistory"]) == 1
+
+
+def test_qua_gio_khong_ai_duyet_ke_hoach_thi_dung(world, reviewer, monkeypatch):
+    monkeypatch.setattr(orchestrator, "APPROVAL_TIMEOUT_S", 0)
+    reviewer["plans"] = [None]
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "not_approved" and "không ai duyệt kế hoạch" in job.data["report"]["reason"]
+    assert "fixer" not in world.calls

@@ -196,3 +196,245 @@ def replay_coverage(original: list[dict] | None, runs: list[dict]) -> dict:
 
 def ocr_fresh_count(runs: list[dict]) -> int:
     return sum(1 for r in runs if r.get("ocrFresh") is True)
+
+
+# ---- Đính kèm ----------------------------------------------------------------------------------------------------
+# Lượt đính kèm không có field. Kế hoạch đính kèm được quy thành "ô ảo" để mọi thứ ở trên (bảng ô × lần, tiêu chí của
+# trọng tài, hồi quy, độ giống lượt gốc) dùng nguyên. Khoá của ô ảo:
+#   dòng: <tên dòng>       giấy nào vào dòng đó, kèm trang: "Giấy khai sinh [#1:1-2] | Căn cước [#2]"
+#   loại: <detectedType>   dòng mà loại giấy đó được xếp vào
+#   tệp #<n>               từng trang của tệp thứ n (đếm từ 1) vào dòng nào: "1→Tờ khai; 2→Căn cước; 3→(không đính)"
+#   tổng: số mục | tổng: trang thiếu | tổng: trang trùng | tổng: lỗi
+#   cổng: chưa lên | cổng: tệp lỗi | cổng: đọc bảng   (chỉ khi chạy trên cổng thật, bot đọc lại bảng đính kèm)
+
+_FILE_EXT = re.compile(r"\.(pdf|jpe?g|png|gif|bmp|tiff?|heic|docx?|xlsx?|xml|zip|rar|mp3|mp4|wav)$", re.I)
+
+
+def _clip(text: Any, limit: int = 90) -> str:
+    text = re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(text or ""))).strip()
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def fold(text: Any) -> str:
+    """Bỏ dấu, chữ thường, chỉ còn chữ số và khoảng trắng: so tên dòng / tên tệp trên cổng với kế hoạch."""
+    text = unicodedata.normalize("NFD", str(text or "")).replace("đ", "d").replace("Đ", "D")
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def attach_row_name(item: dict) -> str:
+    """Tên dòng đích như trên cổng, chưa có tiền tố."""
+    if item.get("target") == "supplementary":
+        return "Đính kèm bổ sung"
+    keywords = " / ".join(str(k) for k in item.get("slotKeywords") or [])
+    name = item.get("componentName") or item.get("slotName") or keywords or item.get("documentName") or "?"
+    if item.get("sectionHeader"):
+        name = f"{item['sectionHeader']} › {name}"
+    return _clip(name)
+
+
+def attach_row(item: dict) -> str:
+    """Khoá dòng của ô ảo. Dòng extension tự thêm thường mang chính tên giấy LLM đặt, tên đó đổi giữa các lần chạy, nên gom chung
+    một khoá "Thêm mới"; chỉ giữ tên khi planner đặt tên dòng riêng khác tên giấy (vd "Giấy tờ khác")."""
+    if item.get("target") == "new" or item.get("needsAddComponent"):
+        component = item.get("componentName")
+        if component and fold(component) != fold(item.get("documentName")):
+            return _clip(f"Thêm mới: {component}")
+        return "Thêm mới"
+    return attach_row_name(item)
+
+
+def attach_refs(item: dict) -> list[tuple[int, int | None]]:
+    """(chỉ số tệp, chỉ số trang 0-based) mục này lấy. Trang None = cả tệp. Ưu tiên sourceSegments > sourceFileIndexes > fileIndex."""
+    refs: list[tuple[int, int | None]] = []
+    for segment in item.get("sourceSegments") or []:
+        if not isinstance(segment, dict) or not isinstance(segment.get("fileIndex"), int):
+            continue
+        pages = segment.get("pageIndexes")
+        if pages is None:
+            refs.append((segment["fileIndex"], None))
+        else:
+            refs.extend((segment["fileIndex"], p) for p in pages if isinstance(p, int))
+    if refs:
+        return refs
+    sources = [i for i in item.get("sourceFileIndexes") or [] if isinstance(i, int)]
+    if sources:
+        return [(i, None) for i in sources]
+    return [(item["fileIndex"], None)] if isinstance(item.get("fileIndex"), int) else []
+
+
+def _ranges(pages: list[int]) -> str:
+    spans: list[list[int]] = []
+    for page in sorted(set(pages)):
+        if spans and page == spans[-1][1] + 1:
+            spans[-1][1] = page
+        else:
+            spans.append([page, page])
+    return ",".join(f"{a + 1}" if a == b else f"{a + 1}-{b + 1}" for a, b in spans)
+
+
+def _refs_text(refs: list[tuple[int, int | None]]) -> str:
+    by_file: dict[int, list[int] | None] = {}
+    for index, page in refs:
+        if page is None:
+            by_file[index] = None
+        elif by_file.get(index, []) is not None:
+            by_file.setdefault(index, []).append(page)
+    return " + ".join(f"#{i + 1}" if pages is None else f"#{i + 1}:{_ranges(pages)}" for i, pages in sorted(by_file.items()))
+
+
+def _covered(refs: list[tuple[int, int | None]], counts: list[int | None]) -> list[tuple[int, int | None]]:
+    """Cả tệp mà biết số trang thì bung ra từng trang, để so được với mục chỉ lấy vài trang của cùng tệp."""
+    out: list[tuple[int, int | None]] = []
+    for index, page in refs:
+        count = counts[index] if 0 <= index < len(counts) else None
+        out.extend(((index, p) for p in range(count)) if page is None and count else [(index, page)])
+    return out
+
+
+def _entry(item: dict) -> str:
+    doc = _clip(item.get("documentName") or item.get("fileName") or "?", 80)
+    return f"{doc} [{_refs_text(attach_refs(item)) or '?'}]"
+
+
+def attach_fields(plan: list[dict] | None, page_counts: list[int | None] | None, errors: list | None = None) -> list[dict]:
+    """Ô ảo của một kế hoạch đính kèm, dạng [{name, value}] như field backend trả."""
+    counts = list(page_counts or [])
+    items = [item for item in plan or [] if isinstance(item, dict)]
+    rows: dict[str, list[str]] = {}
+    kinds: dict[str, set[str]] = {}
+    owners: dict[tuple[int, int | None], list[str]] = {}
+    for item in items:
+        row = attach_row(item)
+        rows.setdefault(row, []).append(_entry(item))
+        if item.get("detectedType"):
+            kinds.setdefault(_clip(item["detectedType"], 60), set()).add(row)
+        for ref in dict.fromkeys(_covered(attach_refs(item), counts)):
+            owners.setdefault(ref, []).append(row)
+    fields = [{"name": f"dòng: {row}", "value": " | ".join(sorted(entries))} for row, entries in sorted(rows.items())]
+    fields += [{"name": f"loại: {kind}", "value": " | ".join(sorted(where))} for kind, where in sorted(kinds.items())]
+    missing: list[str] = []
+    for index, count in enumerate(counts):
+        if count:
+            parts = []
+            for page in range(count):
+                where = owners.get((index, page))
+                parts.append(f"{page + 1}→{' + '.join(sorted(set(where))) if where else '(không đính)'}")
+                if not where:
+                    missing.append(f"#{index + 1}:{page + 1}")
+            value = "; ".join(parts)
+        else:
+            whole = owners.get((index, None))
+            pages = sorted(p for (i, p) in owners if i == index and p is not None)
+            parts = [f"cả tệp→{' + '.join(sorted(set(whole)))}"] if whole else []
+            parts += [f"{p + 1}→{' + '.join(sorted(set(owners[(index, p)])))}" for p in pages]
+            value = "; ".join(parts) or "(không đính)"
+            if not parts:
+                missing.append(f"#{index + 1}")
+            elif not whole:
+                missing.append(f"#{index + 1}:?")  # không biết số trang nên không biết có sót trang nào không
+        fields.append({"name": f"tệp #{index + 1}", "value": value})
+    duplicate = sorted((ref for ref, where in owners.items() if len(where) > 1), key=lambda r: (r[0], -1 if r[1] is None else r[1]))
+    fields += [
+        {"name": "tổng: số mục", "value": str(len(items))},
+        {"name": "tổng: trang thiếu", "value": ", ".join(missing)},
+        {"name": "tổng: trang trùng", "value": ", ".join(f"#{i + 1}" if p is None else f"#{i + 1}:{p + 1}" for i, p in duplicate)},
+        {"name": "tổng: lỗi", "value": "; ".join(_clip(e, 200) for e in errors or [] if e)},
+    ]
+    return fields
+
+
+def _name_key(name: Any) -> str:
+    return fold(_FILE_EXT.sub("", str(name or "").strip()))
+
+
+def _label_key(label: Any) -> str:
+    return re.sub(r"^(\d+\s+)+", "", fold(label))
+
+
+def same_row(portal_label: Any, planned: Any) -> bool:
+    """Dòng đọc trên cổng có phải dòng kế hoạch nhắm tới không. Nhãn trên cổng hay kèm STT, "(bắt buộc)", số bản."""
+    a, b = _label_key(portal_label), _label_key(planned)
+    if not a or not b:
+        return False
+    if a == b or (min(len(a), len(b)) >= 6 and (a in b or b in a)):
+        return True
+    ta, tb = set(a.split()), set(b.split())
+    return len(ta & tb) / min(len(ta), len(tb)) >= 0.8
+
+
+def _same_file(portal_name: Any, candidates: list[Any]) -> bool:
+    """Extension đổi tên tệp theo tên giấy (thêm " 2" khi trùng) hoặc giữ tên gốc, tuỳ cài đặt của tài khoản."""
+    name = _name_key(portal_name)
+    if len(name) < 3:
+        return False
+    for candidate in candidates:
+        key = _name_key(candidate)
+        if len(key) >= 3 and (key == name or key in name or name in key):
+            return True
+    return False
+
+
+def attach_portal_values(
+    plan: list[dict] | None,
+    page_counts: list[int | None] | None,
+    file_names: list[str],
+    rows_after: list[dict] | None,
+    rows_before: list[dict] | None = None,
+    failed: list[str] | None = None,
+    errors: list | None = None,
+) -> dict[str, str]:
+    """Ô ảo theo cái THẬT SỰ nằm trên cổng sau khi extension đính: cùng khoá với attach_fields để chấm chung tiêu chí.
+
+    Mỗi mục kế hoạch được tìm theo tên tệp trên mọi dòng bot đọc được (ưu tiên dòng đích). Thấy ở dòng đích thì giữ khoá
+    "dòng: <dòng đích>", thấy ở dòng khác thì nằm dưới tên dòng đó, không thấy thì vào "cổng: chưa lên". Tệp mới xuất hiện
+    mà không thuộc mục nào ghi "(lạ) <tên>". Không đọc được bảng nào thì dựa vào danh sách tệp lỗi extension báo.
+    Các khoá "tệp #", "loại:", "tổng:" vẫn là của kế hoạch backend.
+    """
+    items = [item for item in plan or [] if isinstance(item, dict)]
+    values = {f["name"]: f["value"] for f in attach_fields(items, page_counts, errors)}
+    rows = [r for r in rows_after or [] if isinstance(r, dict)]
+    failed = [str(line) for line in failed or [] if line]
+    for key in [k for k in values if k.startswith("dòng: ")]:
+        values[key] = ""
+    landed: dict[str, list[str]] = {}
+    missing: list[str] = []
+    claimed: set[tuple[int, int]] = set()
+    planned_rows = {attach_row_name(item): attach_row(item) for item in items}
+
+    def row_key(label: Any) -> str:
+        """Dòng trên cổng trùng một dòng kế hoạch thì dùng khoá của dòng kế hoạch, không thì dùng nhãn đọc được."""
+        return next((planned_rows[p] for p in planned_rows if same_row(label, p)), None) or _clip(label) or "(dòng không tên)"
+
+    for item in items:
+        candidates = [item.get("documentName"), item.get("fileName")]
+        candidates += [file_names[i] for i, _ in attach_refs(item) if 0 <= i < len(file_names)]
+        target = attach_row_name(item)
+        if not rows:
+            if any(_same_file(line.split(" — ")[0], candidates) for line in failed):
+                missing.append(_entry(item))
+            else:
+                landed.setdefault(attach_row(item), []).append(_entry(item))
+            continue
+        order = sorted(range(len(rows)), key=lambda k: not same_row(rows[k].get("label"), target))
+        hit = next(((k, j) for k in order for j, name in enumerate(rows[k].get("files") or [])
+                    if (k, j) not in claimed and _same_file(name, candidates)), None)
+        if hit is None:
+            missing.append(_entry(item))
+            continue
+        claimed.add(hit)
+        label = rows[hit[0]].get("label")
+        landed.setdefault(attach_row(item) if same_row(label, target) else row_key(label), []).append(_entry(item))
+    before = {(_label_key(r.get("label")), _name_key(name))
+              for r in rows_before or [] if isinstance(r, dict) for name in r.get("files") or []}
+    for k, row in enumerate(rows):
+        for j, name in enumerate(row.get("files") or []):
+            if (k, j) in claimed or (_label_key(row.get("label")), _name_key(name)) in before:
+                continue
+            landed.setdefault(row_key(row.get("label")), []).append(f"(lạ) {_clip(name, 80)}")
+    for key, entries in landed.items():
+        values[f"dòng: {key}"] = " | ".join(sorted(entries))
+    values["cổng: chưa lên"] = " | ".join(sorted(missing))
+    values["cổng: tệp lỗi"] = "; ".join(_clip(line, 160) for line in failed)
+    values["cổng: đọc bảng"] = f"{len(rows)} dòng" if rows else "không đọc được bảng, dựa vào báo cáo của extension"
+    return values

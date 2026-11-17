@@ -146,7 +146,7 @@ def test_nhan_biet_man_dang_nhap(url, expected):
 
 
 def test_dang_o_man_sso_thi_khong_noi_vao_trinh_duyet(monkeypatch):
-    monkeypatch.setattr(browser, "_open_urls", lambda: ["https://sso.dancuquocgia.gov.vn/auth"])
+    monkeypatch.setattr(browser, "_open_urls", lambda port=None: ["https://sso.dancuquocgia.gov.vn/auth"])
 
     def forbidden(*_args, **_kwargs):
         raise AssertionError("không được nối Playwright khi đang ở màn đăng nhập")
@@ -344,3 +344,109 @@ def test_trang_trang_qua_8_giay_thi_tai_lai_toi_da_3_lan(monkeypatch):
         clock["t"] += 1
     assert len(reloads) == 3
     assert bot._reload_if_stuck(None, False, "Trang trắng") is None  # hết trắng thì thôi đếm
+
+
+import threading  # noqa: E402
+
+# ---- Đính kèm trên cổng thật -------------------------------------------------------------------------------------
+
+ATTACH_TABLE = """
+<h3>Thành phần hồ sơ</h3>
+<table>
+  <tr><th>STT</th><th>Tên giấy tờ</th><th>Tệp</th><th></th></tr>
+  <tr><td>1</td><td>Tờ khai đăng ký (bắt buộc)</td><td><a title="Tờ khai.pdf">Tờ khai.pdf</a></td>
+      <td><button>Chọn tệp</button><input type="file" style="display:none"></td></tr>
+  <tr><td>2</td><td>Giấy tờ tùy thân</td><td></td><td><button>Chọn tệp</button></td></tr>
+  <tr><td>3</td><td>Giấy tờ khác</td><td><span>Căn cước.pdf</span><span>anh 2.jpg</span></td><td><label>Tải lên</label></td></tr>
+</table>
+<form><input name="data[hoTen]"><button>Tiếp tục</button></form>
+"""
+
+
+def test_doc_bang_dinh_kem_tren_cong(chromium):
+    tab = chromium.new_page()
+    tab.set_content(ATTACH_TABLE)
+    rows = tab.evaluate(browser.ATTACH_ROWS_JS)
+    tab.close()
+    assert [r["label"] for r in rows] == ["Tờ khai đăng ký (bắt buộc)", "Giấy tờ tùy thân", "Giấy tờ khác"]
+    assert rows[0]["files"] == ["Tờ khai.pdf"]
+    assert rows[1]["files"] == []
+    assert sorted(rows[2]["files"]) == ["Căn cước.pdf", "anh 2.jpg"]
+
+
+def test_to_khai_co_o_anh_khong_tinh_la_buoc_dinh_kem(monkeypatch):
+    bot = browser.PortalBot({}, threading.Event(), lambda _: None)
+    monkeypatch.setattr(bot, "read_attach_rows", lambda: [{"label": "Ảnh chân dung", "files": []}])
+    assert not bot.on_attach_step(["Tờ khai đăng ký", "Giấy tờ tùy thân"])
+    monkeypatch.setattr(bot, "read_attach_rows", lambda: [{"label": "2 Giấy tờ tùy thân", "files": []}])
+    assert bot.on_attach_step(["Tờ khai đăng ký", "Giấy tờ tùy thân"])
+
+
+def test_dong_mong_doi_lay_tu_cong_va_ke_hoach_luot_goc():
+    case = {
+        "options": {"attachmentContext": {"components": [{"componentName": "Tờ khai"}, {"componentName": "Giấy tờ tùy thân"}]}},
+        "plan": [{"componentName": "Tờ khai", "target": "existing"}, {"slotName": "Ô cố định", "target": "fixed-slot"}],
+    }
+    assert browser.expected_attach_rows(case) == ["Tờ khai", "Giấy tờ tùy thân", "Ô cố định"]
+
+
+class _AttachBot:
+    """Bot giả cho run_attach_once: cổng nhiều bước, phải điền rồi sang bước đính kèm."""
+
+    def __init__(self, rows_after):
+        self.clicked = []
+        self.split = None
+        self.step = False
+        self.rows_after = rows_after
+        self.pressed = None
+
+    def ensure_panel(self): pass
+    def login_panel(self, credentials): pass
+    def select_procedure(self, key): pass
+    def upload(self, files): pass
+    def sleep(self, ms): pass
+    def set_split_documents(self, on): self.split = on
+    def attach_controls(self): return {"attachStep": True, "fillAttach": False, "failed": []}
+    def on_attach_step(self, expected): return self.step
+    def fill(self):
+        self.clicked.append("#ocrBtn")
+        return {"status": "Đã điền", "statusClass": "ok"}
+    def advance_to_attach(self, expected):
+        self.step = True
+        return True
+    def read_attach_rows(self): return self.rows_after if self.pressed else []
+    def press(self, selector, timeout_s):
+        self.pressed = selector
+        return {"status": "Đã đính kèm 2/2", "statusClass": "ok", "details": []}
+    def screenshot(self, path): return False
+
+
+def test_mot_lan_dinh_kem_tren_cong(monkeypatch, tmp_path):
+    import replay
+
+    plan = [{"fileIndex": 0, "documentName": "Tờ khai", "componentName": "Tờ khai đăng ký", "target": "existing"}]
+    monkeypatch.setattr(browser, "_attach_trace", lambda username, since: {"request_id": "req_moi", "llm_output": {"attachments": plan}})
+    monkeypatch.setattr(replay, "clear_ocr_cache", lambda shas: None)
+    monkeypatch.setattr(replay, "read_trace", lambda rid, kind="autofill": {"ocrText": "", "ocrFresh": True, "llmReused": False})
+    bot = _AttachBot([{"label": "1 Tờ khai đăng ký", "files": ["Tờ khai.pdf"]}])
+    case = {"procedure": "thu-tuc-mau", "kind": "attach", "options": {"splitDocuments": True}, "plan": plan, "pageCounts": [1],
+            "storedFiles": [{"name": "scan.pdf", "sha256": "x"}]}
+    run = browser.run_attach_once(bot, case, 1, {"username": "autotest-x"}, [], tmp_path, lambda *a: None)
+    assert bot.split is True and bot.clicked == ["#ocrBtn"] and bot.pressed == "#attachStepBtn"
+    assert run["status"] == "ok" and run["requestId"] == "req_moi" and run["portalRows"] == 1
+    assert run["form"]["dòng: Tờ khai đăng ký"] == "Tờ khai [#1]"
+    assert run["response"]["fields"][0] == {"name": "dòng: Tờ khai đăng ký", "value": "Tờ khai [#1]"}
+    assert (tmp_path / "run1_portal.json").is_file() and (tmp_path / "run1_plan.json").is_file()
+
+
+def test_panel_khong_goi_backend_dinh_kem_thi_bao_loi(monkeypatch, tmp_path):
+    import replay
+
+    monkeypatch.setattr(browser, "_attach_trace", lambda username, since: None)
+    monkeypatch.setattr(replay, "clear_ocr_cache", lambda shas: None)
+    bot = _AttachBot([])
+    bot.step = True
+    case = {"procedure": "p", "kind": "attach", "options": {}, "plan": [], "storedFiles": []}
+    run = browser.run_attach_once(bot, case, 2, {"username": "u"}, [], tmp_path, lambda *a: None)
+    assert run["status"] == "error" and "không gọi backend đính kèm" in run["error"]
+    assert bot.clicked == []  # đã ở bước đính kèm thì không điền lại

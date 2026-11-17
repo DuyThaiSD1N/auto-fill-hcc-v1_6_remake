@@ -1,3 +1,9 @@
+# Request thường đi tiếp với Connection: close, chỉ WebSocket mới nâng cấp (trình chạy bot).
+map $http_upgrade $runner_connection {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 12008;
     server_name _;
@@ -19,6 +25,23 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Trình chạy bot trên máy người dùng (runner/bot_runner.py): WebSocket giữ lâu, chở luồng điều khiển Chromium và lượt gọi
+    # backend thử của extension. Token kiểm ở dịch vụ agent.
+    location /agent-api/runner/ {
+        set $agent "${AGENT_URL}";
+        proxy_pass $agent$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $runner_connection;
+        proxy_set_header Host $host;
+        proxy_set_header If-None-Match $http_if_none_match;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+        client_max_body_size 0;
     }
 
     # Dịch vụ agent chạy trên máy host (cần claude, repo, docker) nên không nằm trong mạng compose.

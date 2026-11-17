@@ -55,9 +55,30 @@ dùng tài khoản test dịch vụ tự dựng trên Mongo local, cùng usernam
   rồi khoảng `ARCHIVE_AFTER_MINUTES` (mặc định 30) phút sau lượt cuối thì xoá tệp gốc khỏi đĩa và xoá `fields`, `options`, OCR, câu trả
   lời LLM khỏi Mongo. Kiểm ngày 17/11/2026: 3.943 req trong 24 giờ, không req nào còn `fields`. Req đã archive thì web báo "đã được
   backend chuyển sang kho lưu trữ". Cách dùng: tester điền xong thấy lỗi thì tạo ca ngay; dịch vụ chép chứng cứ về máy lúc tạo ca nên
-  các bước sau không bị ảnh hưởng. Đọc req từ vault thì chưa hỗ trợ.
+  các bước sau không bị ảnh hưởng. Req cũ hơn: khai kho lưu trữ "Quản lý nội bộ" trong `server.env` (`AUTOTEST_ARCHIVE_URL`, `AUTOTEST_ARCHIVE_USER`, `AUTOTEST_ARCHIVE_PASSWORD`, tài khoản viewer) thì dịch vụ tự lấy req đã archive từ kho, không giới hạn thời gian.
 - Có `server.env` này thì mọi mã req đều tra trên trolysoao, không tra Mongo local nữa. Muốn quay lại req local thì đổi tên tệp rồi bật lại dịch vụ.
 - Gỡ quyền: xoá dòng `autotest` trong `~/.ssh/authorized_keys` trên server và chạy `db.dropUser('autotest_ro')`.
+
+**A4. Vào web bằng IP Tailscale của server (`http://<ip-trolysoao>:12008`).** Web vẫn chạy trên máy local; máy local không có quyền
+admin để mở firewall cho máy khác gọi vào, nên đi đường ngược:
+
+1. Máy local: thêm `AUTOTEST_PUBLISH_WEB=12018:127.0.0.1:12008` vào `server.env`. Dịch vụ agent tự giữ `ssh -R` bằng khoá
+   `autotest_trolysoao`, đưa web 12008 lên `127.0.0.1:12018` trên server, rớt thì tự nối lại (`/agent-api/health` có `"publish": true`).
+2. Server (chạy một lần): container chỉ nghe trên IP Tailscale, tự lên lại khi server khởi động lại:
+
+   ```bash
+   docker run -d --name autotest-web-proxy --restart unless-stopped --network host alpine/socat:latest \
+     TCP-LISTEN:12008,bind=<ip-trolysoao>,fork,reuseaddr TCP:127.0.0.1:12018
+   ```
+3. Nên siết khoá: dòng `port-forwarding` hiện cho khoá mở đường hầm ngược tới mọi cổng loopback của server. Thêm `permitlisten` để
+   chỉ còn đúng cổng 12018:
+
+   ```bash
+   cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak-autotest-listen
+   sed -i '/read-uploads.sh/ s/permitopen="127.0.0.1:12004",/permitopen="127.0.0.1:12004",permitlisten="127.0.0.1:12018",/' ~/.ssh/authorized_keys
+   ```
+
+Máy local tắt hoặc dịch vụ agent dừng thì địa chỉ này trả lỗi. Gỡ: `docker rm -f autotest-web-proxy` và bỏ dòng trong `server.env`.
 
 ---
 

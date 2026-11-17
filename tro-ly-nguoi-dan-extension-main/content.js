@@ -1528,10 +1528,23 @@
   }
   // Ô cam kết cuối trang ("Tôi xin chịu trách nhiệm…", #chkCHECK_LIABILITY): click thật để handler của cổng
   // (bật nút nộp) chạy như công dân tự tích; đã tích sẵn thì không click (click nữa là bỏ tích).
+  // Không thấy id (trang khác của cổng đặt id khác) → tìm ô checkbox có nhãn chứa đúng câu cam kết.
+  function findCommitBox(id, label) {
+    const byId = id ? document.getElementById(id) : null;
+    if (byId?.type === "checkbox") return byId;
+    const want = bcaFold(label);
+    if (!want) return null;
+    for (const box of document.querySelectorAll('input[type="checkbox"]')) {
+      const texts = [...(box.labels || [])].map((l) => l.textContent);
+      texts.push(box.closest("label")?.textContent, box.parentElement?.textContent);
+      if (texts.some((t) => bcaFold(t).includes(want))) return box;
+    }
+    return null;
+  }
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "tickCommitBox" || !IS_TOP_FRAME) return;
-    const box = document.getElementById(String(msg.id || ""));
-    if (!box || box.type !== "checkbox") { sendResponse({ ok: false, error: "not_found" }); return; }
+    const box = findCommitBox(String(msg.id || ""), String(msg.label || ""));
+    if (!box) { sendResponse({ ok: false, error: "not_found" }); return; }
     box.scrollIntoView({ block: "center", behavior: "smooth" });
     if (!box.checked) box.click();
     sendResponse(box.checked ? { ok: true } : { ok: false, error: "not_checked" });

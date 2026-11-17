@@ -43,6 +43,8 @@ Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 | --- | --- | --- |
 | `AUTOTEST_SOURCE_MONGO_URI`, `_SOURCE_DB`, `_SOURCE_UPLOADS` | Mongo production (tài khoản `read`), uploads production | Nguồn req, chỉ đọc. Có biến này là chế độ server |
 | `AUTOTEST_SOURCE_SSH`, `_SOURCE_SSH_KEY`, `_SOURCE_TUNNEL` | (máy local đọc trolysoao) `nlp@<ip-trolysoao>`, khoá riêng, `12024:127.0.0.1:12004` | `remote.py`: đường hầm tới Mongo + tải tệp qua `deploy/read-uploads.sh`. Vẫn là chế độ local |
+| `AUTOTEST_ARCHIVE_URL`, `_USER`, `_PASSWORD` | kho "Quản lý nội bộ" (tài khoản viewer, chỉ trong server.env) | `archive.py`: req mà production đã xoá sau ~30 phút thì lấy từ kho (`/api/runs/<mã req>`, tệp theo sha256) |
+| `AUTOTEST_PUBLISH_WEB` | `12018:127.0.0.1:12008` | Đường hầm ngược đưa web lên server; dịch vụ ghi PID ở `runs/_tunnel_pids.txt`, khởi động thì dọn đường hầm mồ côi |
 | `AUTOTEST_BACKEND`, `AUTOTEST_TEST_MONGO_URI` | 127.0.0.1:12015, Mongo 12014 | Backend thử: chạy lại, xoá cache OCR, đọc trace |
 | `AUTOTEST_COMPOSE_FILE` | `deploy/compose.server.yml` | Build backend thử. `config.server_problems()` chặn khởi động nếu thiếu hoặc là `compose.prod.yml` |
 | `AUTOTEST_AUTH_BACKEND` | backend production | Kiểm super_admin của web |
@@ -84,6 +86,58 @@ Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 
 Job "Thêm thủ tục mới" (`devjob.py`, tab cùng tên trên web) đã gỡ ngày 2026-11-09. Job cũ loại này trong `runs/` vẫn nằm trên đĩa
 nhưng dịch vụ không nạp lên web.
+
+## Chromium của bot trên máy người dùng (trình chạy bot, từ 17/11/2026)
+
+Ca Cổng thật có `settings.runner` thì Chromium chạy trên máy người tạo ca, không trên máy dịch vụ:
+
+- `runner/bot_runner.py` (người dùng tải từ `GET /agent-api/runner/script`, cần `playwright` + `websockets`): tải extension khu làm
+  việc (`GET /agent-api/runner/extension?token=`, zip bỏ tệp thừa như `build-zip.sh`, `If-None-Match` theo băm), mở Chromium của
+  Playwright với profile `~/.autotest-hcc-runner/profile`, cổng debug 127.0.0.1:9341, rồi giữ WebSocket điều khiển
+  `/agent-api/runner/ws?token=`. Lệnh `open` thì mở `/agent-api/runner/stream/<id>` nối với cổng debug; nghe 127.0.0.1:12025 và mỗi
+  kết nối mở `/agent-api/runner/backend` (extension giữ nguyên cấu hình backend thử). Lệnh `sync` thì tải lại extension nếu băm đổi.
+- `agents/runner_hub.py`: token (chỉ lưu băm ở `runs/_runners.json`, sống 14 ngày), mỗi trình chạy đang nối có một cổng
+  127.0.0.1:<ngẫu nhiên> giả cổng debug; `cdp_port()` / `sync_extension()` gọi từ luồng job sang vòng lặp uvicorn.
+- `browser.PortalBot` có `runner` thì không tự mở Chromium: `connect_over_cdp` vào cổng giả (địa chỉ WebSocket lấy từ `/json/version`,
+  thay cổng), gửi giấy tờ bằng nội dung tệp (Playwright giới hạn 50 MB / lần), đồng bộ extension trước mỗi đợt chạy và khi mở cổng.
+- `POST /agent-api/runners` (super_admin) cấp token; `GET /agent-api/runners/{id}` trạng thái; `JobRequest.runnerId`. nginx có
+  location `/agent-api/runner/` nâng cấp WebSocket, timeout 1 giờ. Dịch vụ chạy uvicorn với `ws="wsproto"`.
+- Test: `agents/tests/test_runner_hub.py` dựng máy chủ thu nhỏ + trình chạy thật + Chromium thật, kiểm hai chiều, đồng bộ extension,
+  Playwright điều khiển qua đường nối.
+
+## Test lượt đính kèm (từ 17/11/2026)
+
+Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hiện sau khi đính), tự nhận loại lượt, không có ô chọn.
+Đưa mã lượt điền thì ô tra req gợi ý các lượt đính kèm cùng hồ sơ (`traces.kind=attach` cùng `dossier_id`).
+
+- `evidence.lookup` / `collect` nhận `kind=attach` từ Mongo nguồn và kho lưu trữ (`runs.attach`). Lượt extension tự đính
+  (`clientAttachmentCase`) bị từ chối: không có kế hoạch backend để chạy lại. Chứng cứ thêm `attach_plan.json` (kế hoạch, tệp #n
+  kèm số trang đếm bằng PyMuPDF / pypdf, `splitDocuments`, `portalRows` = dòng extension đọc trên cổng lúc đó).
+- Kế hoạch quy thành **ô ảo** (`scoring.attach_fields`) đặt vào `fields`, nên bảng ô × lần, tiêu chí của trọng tài, hồi quy và
+  độ giống lượt gốc dùng nguyên máy chấm của lượt điền. Khoá: `dòng: <tên dòng>` (giấy + trang `[#tệp:trang]`), `loại: <detectedType>`,
+  `tệp #n` (trang nào vào dòng nào), `tổng: số mục | trang thiếu | trang trùng | lỗi`. Dòng extension tự thêm mang tên giấy LLM đặt
+  gom chung khoá `dòng: Thêm mới` để khoá không đổi giữa các lần chạy.
+- Chỉ gọi backend: `replay.run_once` gửi `/api/v2/process` với `action=attach`, bỏ `sessionId` / `dossierId`, giữ `attachmentContext`,
+  `splitDocuments`; bỏ `replaceFiles` (tệp nén cỡ MB) khỏi kết quả, kế hoạch từng lần ở `replay/<lượt>/run<n>_plan.json`.
+- Cổng thật (`browser.run_attach_once`): đặt cài đặt Tách giấy tờ của extension như lượt gốc, tải giấy tờ THẬT lên panel; cổng điền
+  và đính cùng trang thì bấm `#fillAttachBtn` (hoặc `#ocrBtn` với thủ tục tự đính sau khi điền), cổng nhiều bước thì điền, tự bấm sang
+  bước đính kèm (không bấm nút có chữ lưu / nộp, không được thì nhờ người) rồi bấm `#attachStepBtn`. Bot đọc lại bảng đính kèm
+  (`ATTACH_ROWS_JS`, đoán theo DOM cho mọi cổng) trước / sau khi đính và tệp extension báo lỗi, ghi `run<n>_portal.json`;
+  `scoring.attach_portal_values` dựng ô ảo theo cái thật sự nằm trên cổng (`cổng: chưa lên`, `(lạ) <tệp>`), lượt trace lấy theo
+  tài khoản chạy lại + thời điểm bấm. Tệp tải lên nằm trong hồ sơ nháp của tài khoản VNeID đang đăng nhập (người dùng đã chấp nhận
+  ngày 17/11/2026); lớp chặn nộp giữ nguyên.
+- Ca đính kèm không sinh ca hồi quy: bộ phát lại thay tệp bằng ảnh giả 1 trang, planner lại chia giấy theo trang của tệp thật.
+- Chưa làm: Tách hồ sơ đa tab (`splitMode`, chứng thực) trên cổng thật, lượt đính kèm của Trợ lý hồ sơ.
+
+## Duyệt kế hoạch sửa (trước khi agent sửa code)
+
+- Trọng tài chọn `fix_code` và tiêu chí chưa đạt trên code hiện tại thì `Orchestrator._await_plan` dừng ở giai đoạn `plan`, ghi
+  `job.planApproval` (`round`, `revision`, `canRevise`, `timeoutMin`). Web hiện khung duyệt kế hoạch và gọi
+  `POST /agent-api/jobs/{id}/plan` với `{round, revision, decision: approve | retry | reject, note}`.
+- `approve`: agent sửa theo kế hoạch. `retry`: trọng tài lập lại kế hoạch có góp ý (`roles.arbiter_prompt(..., plan_notes, previous)`),
+  rồi hỏi lại; tối đa `_PLAN_REVISIONS` (3) lần mỗi vòng, kế hoạch cũ lưu ở `rounds[].planHistory`. `reject` hoặc quá giờ: kết luận
+  `not_approved`, chưa đụng dòng code nào. Kết quả từng lần duyệt ở `rounds[].planReviews`.
+- API từ chối khi `round` / `revision` không khớp: trang cũ không duyệt nhầm kế hoạch đã lập lại.
 
 ## Duyệt bản sửa
 

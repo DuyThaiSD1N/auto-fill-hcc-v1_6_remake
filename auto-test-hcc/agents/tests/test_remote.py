@@ -1,5 +1,6 @@
 """Đọc req từ máy khác qua SSH: chỉ gọi đúng hai lệnh exists/cat, đường dẫn mã hoá base64, lỗi không để tệp cụt."""
 import base64
+import json
 import subprocess
 
 import pytest
@@ -98,7 +99,183 @@ def test_req_da_archive_thi_bao_ro_ly_do(monkeypatch):
     class Db:
         process_requests = Coll({"request_id": "rq_x", "archived_at": "2026-11-17", "files": [{"name": "a.jpg"}]})
         traces = Coll({"request_id": "rq_x", "kind": "autofill"})
+        trace_steps = Coll(None)
 
     monkeypatch.setattr(evidence, "database", lambda: Db())
+    monkeypatch.setattr(evidence.archive, "enabled", lambda: False)
     with pytest.raises(evidence.CaseError, match="kho lưu trữ"):
         evidence.lookup("rq_x")
+
+
+def test_duong_ham_web_noi_lai_khi_rot(monkeypatch, tmp_path):
+    """Đường hầm ngược đưa web lên server: ssh dừng thì tự mở lại, lệnh chỉ mở cổng loopback của server."""
+    started = []
+    monkeypatch.setattr(remote, "_PID_FILE", tmp_path / "pids.txt")
+
+    class Proc:
+        returncode = 255
+        pid = 4242
+
+        def __init__(self, cmd, **kwargs):
+            started.append(cmd)
+            self.stderr = __import__("io").BytesIO(b"connection reset")
+
+        def wait(self):
+            return 255
+
+        def poll(self):
+            return 255
+
+    monkeypatch.setattr(remote, "SOURCE_SSH", "nlp@may-chu")
+    monkeypatch.setattr(remote, "PUBLISH_WEB", "12018:127.0.0.1:12008")
+    monkeypatch.setattr(remote.shutil, "which", lambda name: "/usr/bin/ssh")
+    monkeypatch.setattr(remote.subprocess, "Popen", Proc)
+    monkeypatch.setattr(remote.time, "sleep", lambda s: None)
+    remote.keep_publishing(rounds=3)
+    assert len(started) == 3
+    assert started[0][-3:] == ["-R", "127.0.0.1:12018:127.0.0.1:12008", "nlp@may-chu"]
+    assert "ExitOnForwardFailure=yes" in started[0] and not remote.publishing()
+
+
+ARCHIVED_RUN = {
+    "bundleId": "b" * 64,
+    "files": [{"name": "giay.pdf", "sha256": "s1", "path": "2026-11-10/giay.pdf", "role": "doc", "size": 3}],
+    "ocrTexts": {"s1": "TEXT OCR KHO"},
+    "runs": {"autofill": {
+        "trace": {"procedure_label": "Thủ tục mẫu", "llm_output": {"fields": {"A": "1"}}},
+        "steps": {"ocr": [{"name": "giay.pdf", "sha256": "s1"}], "llm": [{"n": 1, "purpose": "extract", "raw": "RAW KHO"}],
+                  "outputs": {"response": {}}},
+    }},
+    "processRequests": [{
+        "request_id": "rq_cu", "procedure": "thu-tuc-mau", "user_id": "u1", "experience": "autofill",
+        "files": [{"name": "giay.pdf", "sha256": "s1", "path": "2026-11-10/giay.pdf", "type": "application/pdf", "role": "doc"}],
+        "fields": [{"name": "A", "value": "1"}], "options": {"formContext": {"applicantFullname": "x"}},
+    }],
+    "formReview": {"rows": [{"name": "A", "be": "1", "final": "1"}]},
+}
+
+
+class _ArchivedDb:
+    """Mongo production: lượt đã archive (không còn fields), tài khoản vẫn còn."""
+
+    class _C:
+        def __init__(self, doc):
+            self.doc = doc
+
+        def find_one(self, *args, **kwargs):
+            return self.doc
+
+    def __init__(self):
+        self.process_requests = self._C({"request_id": "rq_cu", "archived_at": "2026-11-10", "files": [{"name": "giay.pdf"}]})
+        self.traces = self._C(None)
+        self.trace_steps = self._C(None)
+        self.users = self._C({"_id": "u1", "username": "xaA", "xa": "Xã A", "tinh": "Tỉnh B"})
+        self.conversations = self._C(None)
+
+
+def test_lay_req_cu_tu_kho_luu_tru(monkeypatch, tmp_path):
+    monkeypatch.setattr(evidence, "database", lambda: _ArchivedDb())
+    monkeypatch.setattr(evidence.archive, "enabled", lambda: True)
+    monkeypatch.setattr(evidence.archive, "get_run", lambda rid: ARCHIVED_RUN if rid == "rq_cu" else None)
+    downloads = []
+
+    def fake_download(bundle, sha, target):
+        downloads.append((bundle, sha))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"pdf")
+
+    monkeypatch.setattr(evidence.archive, "download", fake_download)
+    monkeypatch.setattr(evidence, "REPO", tmp_path)
+    monkeypatch.setattr(evidence, "pipeline_folder", lambda procedure: "thu_tuc_mau")
+    monkeypatch.setattr(evidence, "_procedure_link", lambda procedure: None)
+    evidence._ARCHIVE_CACHE.clear()
+
+    info = evidence.lookup("rq_cu")
+    assert info["source"] == "archive" and info["missingFiles"] == [] and info["account"]["xa"] == "Xã A"
+    case = evidence.collect("rq_cu", tmp_path / "case")
+    assert downloads == [("b" * 64, "s1")]
+    assert "TEXT OCR KHO" in (tmp_path / "case/ocr.txt").read_text(encoding="utf-8")
+    assert "RAW KHO" in (tmp_path / "case/llm_raw.txt").read_text(encoding="utf-8")
+    assert "formReview" in (tmp_path / "case/form_report.json").read_text(encoding="utf-8")
+    assert case["fields"] == [{"name": "A", "value": "1"}] and case["options"]["formContext"] == {"applicantFullname": "x"}
+
+
+def test_kho_khong_co_req_thi_bao_ro(monkeypatch):
+    monkeypatch.setattr(evidence, "database", lambda: _ArchivedDb())
+    monkeypatch.setattr(evidence.archive, "enabled", lambda: True)
+    monkeypatch.setattr(evidence.archive, "get_run", lambda rid: None)
+    evidence._ARCHIVE_CACHE.clear()
+    with pytest.raises(evidence.CaseError, match="kho lưu trữ"):
+        evidence.lookup("rq_cu")
+
+
+def test_don_duong_ham_mo_coi_chi_tat_dung_ssh(monkeypatch, tmp_path):
+    monkeypatch.setattr(remote, "_PID_FILE", tmp_path / "pids.txt")
+    (tmp_path / "pids.txt").write_text("111\n222\n", encoding="utf-8")
+    monkeypatch.setattr(remote, "_is_ssh", lambda pid: pid == 111)  # 222 đã thành tiến trình khác: không đụng
+    killed = []
+    monkeypatch.setattr(remote.subprocess, "run", lambda cmd, **k: killed.append(cmd))
+    monkeypatch.setattr(remote.os, "kill", lambda pid, sig: killed.append(pid))
+    assert remote.cleanup_orphans() == 1
+    assert len(killed) == 1 and ("111" in killed[0] if isinstance(killed[0], list) else killed[0] == 111)
+    assert not (tmp_path / "pids.txt").exists()
+
+
+ARCHIVED_ATTACH = {
+    "bundleId": "c" * 64,
+    "files": [{"name": "anh.jpg", "sha256": "s2", "path": "2026-11-10/anh.jpg", "role": "attachment", "size": 3}],
+    "ocrTexts": {"s2": "TEXT OCR DINH KEM"},
+    "runs": {"attach": {
+        "trace": {"procedure_label": "Thủ tục mẫu", "llm_output": {"attachments": [
+            {"fileIndex": 0, "documentName": "Căn cước", "componentName": "Giấy tờ tùy thân", "target": "existing"},
+        ]}},
+        "steps": {"ocr": [{"name": "anh.jpg", "sha256": "s2"}], "llm": [{"n": 1, "purpose": "plan", "raw": "RAW CHIA GIAY"}],
+                  "outputs": {"plan": []}},
+    }},
+    "processRequests": [{
+        "request_id": "rq_dk", "procedure": "thu-tuc-mau", "user_id": "u1", "experience": "autofill",
+        "files": [{"name": "anh.jpg", "sha256": "s2", "path": "2026-11-10/anh.jpg", "type": "image/jpeg", "role": "attachment"}],
+        "options": {"splitDocuments": True, "sessionId": "rq_dien",
+                    "attachmentContext": {"components": [{"index": 1, "componentName": "Giấy tờ tùy thân"}]}},
+    }],
+}
+
+
+def test_luot_dinh_kem_trong_kho_luu_tru(monkeypatch, tmp_path):
+    monkeypatch.setattr(evidence, "database", lambda: _ArchivedDb())
+    monkeypatch.setattr(evidence.archive, "enabled", lambda: True)
+    monkeypatch.setattr(evidence.archive, "get_run", lambda rid: ARCHIVED_ATTACH if rid == "rq_dk" else None)
+
+    def fake_download(bundle, sha, target):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"jpg")
+
+    monkeypatch.setattr(evidence.archive, "download", fake_download)
+    monkeypatch.setattr(evidence, "REPO", tmp_path)
+    monkeypatch.setattr(evidence, "pipeline_folder", lambda procedure: "thu_tuc_mau")
+    monkeypatch.setattr(evidence, "_procedure_link", lambda procedure: None)
+    evidence._ARCHIVE_CACHE.clear()
+
+    info = evidence.lookup("rq_dk")
+    assert info["kind"] == "attach" and info["fieldsCount"] == 1 and info["splitDocuments"] is True and info["portalRows"] == 1
+    assert info["needsApplicant"] is False and info["attachRuns"] == []
+    case = evidence.collect("rq_dk", tmp_path / "case")
+    assert case["pageCounts"] == [1] and len(case["plan"]) == 1
+    fields = {f["name"]: f["value"] for f in case["fields"]}
+    assert fields["dòng: Giấy tờ tùy thân"] == "Căn cước [#1]" and fields["tổng: trang thiếu"] == ""
+    plan_file = json.loads((tmp_path / "case/attach_plan.json").read_text(encoding="utf-8"))
+    assert plan_file["files"] == [{"so": "#1", "name": "anh.jpg", "pages": 1}] and plan_file["portalRows"][0]["componentName"] == "Giấy tờ tùy thân"
+    assert "RAW CHIA GIAY" in (tmp_path / "case/llm_raw.txt").read_text(encoding="utf-8")
+
+
+def test_luot_extension_tu_dinh_thi_khong_chay_lai(monkeypatch):
+    class Db(_ArchivedDb):
+        def __init__(self):
+            super().__init__()
+            self.process_requests = self._C({"request_id": "rq_ctv", "user_id": "u1", "files": [{"name": "a.pdf", "path": "x"}]})
+            self.traces = self._C({"kind": "attach", "llm_output": {"attachments": [], "extracted": {"clientAttachmentCase": "single-row"}}})
+
+    monkeypatch.setattr(evidence, "database", lambda: Db())
+    monkeypatch.setattr(evidence.archive, "enabled", lambda: False)
+    with pytest.raises(evidence.CaseError, match="extension tự đính"):
+        evidence.lookup("rq_ctv")

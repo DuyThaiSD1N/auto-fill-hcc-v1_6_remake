@@ -276,7 +276,8 @@ _PARENT_CLEARABLE_FIELDS = {
     "IdIssueDate": ("NgayCapDD{0}",),
     "IdIssuePlace": ("NoiCapDD{0}",),
     "BirthDateOrYear": ("NamSinh{0}KS",),
-    "Ethnicity": ("DanToc{0}KS",),
+    # Không có "Ethnicity": dropdown dân tộc không có dòng "-- Chọn --", extension mở ra để xoá là cổng
+    # tự chọn "Kinh" ở đầu danh sách. Hồ sơ không ghi dân tộc thì không gửi gì, để ô trống cho người dùng.
 }
 
 # Thứ tự đọc dân tộc người yêu cầu theo ô tích đã chốt (không có "Khac": người thứ ba

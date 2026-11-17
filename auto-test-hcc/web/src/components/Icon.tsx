@@ -24,7 +24,9 @@ export type IconName =
   | "menu"
   | "x"
   | "alert"
-  | "clock";
+  | "clock"
+  | "play"
+  | "plus";
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -48,6 +50,8 @@ export default function Icon({ name, size = 18, ...props }: Props) {
   const paths: Record<IconName, React.ReactNode> = {
     "arrow-left": <><path d="m15 18-6-6 6-6" /><path d="M9 12h10" /></>,
     check: <path d="m5 12 4 4L19 6" />,
+    play: <path d="M7 5v14l11-7Z" />,
+    plus: <path d="M12 5v14M5 12h14" />,
     "chevron-left": <path d="m15 18-6-6 6-6" />,
     "chevron-right": <path d="m9 18 6-6-6-6" />,
     copy: <><rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></>,

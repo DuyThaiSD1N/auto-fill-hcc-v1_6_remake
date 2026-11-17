@@ -120,6 +120,31 @@ async def test_vao_trang_hoi_co_quan_tiep_nhan_truoc_chon_trong_chat():
     assert r.display_md == vi.BN_AGENCY_FAILED["md"] and r.cards
 
 
+async def test_tai_khoan_kinh_bac_tu_chon_chi_nhanh_lien_phuong_bac_ninh():
+    lien_phuong_bn = f"Chi nhánh Văn phòng đăng ký đất đai liên phường Bắc Ninh{SUFFIX}"
+    options = [AGENCIES[0], lien_phuong_bn, AGENCIES[1]]
+    kinh_bac = {"id": "u1", "tinh": "Tỉnh Bắc Ninh", "xa": "Phường Kinh Bắc"}
+    conv = _conv("guide_login", auth_user=kinh_bac)
+    await _arrive_page(conv, agency="")
+    r = await _turn(conv, "action", "bn_agency_report", {"options": options, "selected": ""})
+    assert r.actions == [{"type": "bn_agency", "value": lien_phuong_bn}] and not r.cards
+    r = await _turn(conv, "action", "bn_agency_report",
+                    {"options": options, "selected": lien_phuong_bn, "changed": {"value": lien_phuong_bn, "ok": True}})
+    assert r.display_md.startswith("✓ Đã chọn cơ quan tiếp nhận") and ASK_MD in r.display_md
+    # Chọn hỏng trên trang → hỏi như cũ, không tự chọn lại vòng vòng.
+    conv2 = _conv("guide_login", auth_user=kinh_bac)
+    r = await _turn(conv2, "action", "bn_agency_report",
+                    {"options": options, "selected": "", "changed": {"value": lien_phuong_bn, "ok": False}})
+    assert r.display_md == vi.BN_AGENCY_FAILED["md"]
+    # Danh sách không có dòng đó (thủ tục không phải đất đai) hoặc tài khoản phường khác → hỏi như cũ.
+    conv3 = _conv("guide_login", auth_user=kinh_bac)
+    r = await _turn(conv3, "action", "bn_agency_report", {"options": AGENCIES, "selected": ""})
+    assert r.display_md == vi.BN_AGENCY_ASK["md"]
+    conv4 = _conv("guide_login", auth_user={"id": "u1", "tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"})
+    r = await _turn(conv4, "action", "bn_agency_report", {"options": options, "selected": ""})
+    assert r.display_md == vi.BN_AGENCY_ASK["md"]
+
+
 async def test_cong_dan_tu_chon_co_quan_tren_trang_thi_hoi_tiep_uy_quyen():
     conv = _conv("guide_login")
     await _arrive_page(conv, agency="")

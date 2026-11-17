@@ -5868,7 +5868,7 @@
         ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
       } else if (a.type === "tick_commit" && a.id) {
         // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id, báo lại để BE nhắc bấm Nộp hồ sơ.
-        const res = await sendToContent({ action: "tickCommitBox", id: a.id });
+        const res = await sendToContent({ action: "tickCommitBox", id: a.id, label: a.label || "" });
         ask(`__event:commit_result:${JSON.stringify({ ok: res?.ok === true, error: res?.error || "" })}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan

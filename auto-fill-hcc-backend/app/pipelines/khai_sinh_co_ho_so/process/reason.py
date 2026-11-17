@@ -518,13 +518,18 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
     identity = _digits(_first_match(block, (
         r"S[oố]\s+[dđ][iị]nh\s+danh[^:\n]*:?\s*([0-9][0-9 ]{8,})",
         r"(?:CCCD|CMND|C[aă]n\s+c[uư][oớ]c|Ch[uứ]ng\s+minh)[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
+        # Mẫu tờ khai chỉ in "Giấy tờ tùy thân: (3) <số>": không nhận thì vai mất số định danh, thẻ mang
+        # đúng số đó không được đối chiếu và ngày sinh viết tay sai năm của tờ khai thắng ngày in trên thẻ.
+        r"Gi[aấ]y\s+t[oờ]\s+t[uù]y\s+th[aâ]n\s*:?\s*(?:\(\s*\d{1,2}\s*\)\s*)?[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
     )))
     residence = _strip_marker(_first_match(block, (r"N[oơ]i\s+c[uư]\s+tr[uú]\s*:?\s*([^\n\r]+)",)))
 
     # "Nơi cư trú: Đã chết" là cách tờ khai ghi cha/mẹ đã mất (biểu mẫu không có ô trạng thái).
     if tag == "con":
         status = "còn sống"
-    elif any(keyword in _fold(residence) for keyword in ("da chet", "da mat", "tu tran")):
+    elif any(keyword in _fold(residence) for keyword in ("da chet", "da mat", "tu tran")) or re.search(
+        r"^\(?\s*chet\s*\)?$", _fold(residence)
+    ):
         status = "đã chết"
     else:
         status = "không xác định"
@@ -540,7 +545,12 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
         f"Nguồn: {source}\n"
         "Căn cứ phân vai: Nhãn quan hệ in sẵn trên tờ khai đăng ký khai sinh."
     )
-    return {"section": section, "name": name, "id": identity}
+    # Tờ khai in nhãn "Dân tộc:" mà để trống ("Dân tộc: (2) Quốc tịch: (2)"): LLM hay chép dân tộc của
+    # con sang cha/mẹ. Không được bù từ LLM; chỉ giấy Python đọc thật (trích lục khai tử…) mới được bù.
+    blank_labels = (
+        {"Dân tộc"} if not ethnicity and re.search(r"D[aâ]n\s*t[oộ]c", block, flags=re.IGNORECASE) else set()
+    )
+    return {"section": section, "name": name, "id": identity, "blank_labels": blank_labels}
 
 
 def _blank_identity_line(section: str) -> str:
@@ -628,15 +638,23 @@ def _same_role_person(section: str, person: dict) -> bool:
 _MERGE_PROTECTED_LABELS = {"Họ tên", "Nguồn", "Căn cứ phân vai"}
 
 
-def _merge_role_section(primary: str, secondary: str) -> str:
-    """Giữ nguyên giá trị tờ khai; chỉ nhãn còn trống mới lấy bù từ nguồn phụ (CCCD/khai tử)."""
+def _merge_role_section(primary: str, secondary: str, keep_blank=frozenset()) -> str:
+    """Giữ nguyên giá trị tờ khai; chỉ nhãn còn trống mới lấy bù từ nguồn phụ (CCCD/khai tử).
+
+    `keep_blank`: nhãn tờ khai cố ý để trống, nguồn phụ này không được bù.
+    """
     if not secondary:
         return primary
     merged: list[str] = []
     for line in primary.splitlines():
         label, separator, value = line.partition(":")
         label = label.strip()
-        if separator and label not in _MERGE_PROTECTED_LABELS and "khong xac dinh" in _fold(value):
+        if (
+            separator
+            and label not in _MERGE_PROTECTED_LABELS
+            and label not in keep_blank
+            and "khong xac dinh" in _fold(value)
+        ):
             fallback = _labeled_value(secondary, label)
             if fallback and "khong xac dinh" not in _fold(fallback):
                 line = f"{label}: {fallback}"
@@ -655,9 +673,10 @@ def _repair_family_from_declaration(
 
     # Nguồn bù: nhân thân LLM đã phân vai + nhân thân Python đọc thẳng từ CCCD/trích lục khai tử.
     # Chỉ được dùng cho đúng người mà tờ khai đã chốt vai, không dùng để đổi vai.
-    fallbacks = [section for section in sections.values() if section and not _is_unknown(section)]
+    # Cặp (khối, do LLM viết?): nhãn tờ khai cố ý để trống chỉ được bù từ giấy Python đọc thật.
+    fallbacks = [(section, True) for section in sections.values() if section and not _is_unknown(section)]
     fallbacks += [
-        person["section"]
+        (person["section"], False)
         for document in documents
         if (person := _person_from_document(document))
     ]
@@ -671,12 +690,13 @@ def _repair_family_from_declaration(
         # thì bỏ hẳn kết quả đó — tờ khai là nguồn số 1.
         ordered = fallbacks
         if not _is_unknown(existing) and _same_role_person(existing, person):
-            ordered = [existing, *fallbacks]
+            ordered = [(existing, True), *fallbacks]
 
         merged = person["section"]
-        for candidate in ordered:
+        blank = frozenset(person.get("blank_labels") or ())
+        for candidate, from_llm in ordered:
             if _same_role_person(candidate, person):
-                merged = _merge_role_section(merged, candidate)
+                merged = _merge_role_section(merged, candidate, blank if from_llm else frozenset())
         result[tag] = merged
     return result
 
@@ -691,6 +711,31 @@ _UNIT_NAME_LINE_RE = re.compile(
     r"^\s*H[oọ][,.]?\s*(?:v[aà]\s+)?(?:ch[uữ]\s*[dđ][eệ]m[,.]?\s*(?:v[aà]\s+)?)?t[eê]n",
     flags=re.IGNORECASE | re.MULTILINE,
 )
+
+
+_CARD_FRONT_ID_RE = re.compile(r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})", flags=re.IGNORECASE)
+_CARD_FRONT_HEADER_RE = re.compile(r"^\s*C[OỘ]NG\s+H[OÒ]A\s+X[AÃ]\s+H[OỘ]I", flags=re.IGNORECASE | re.MULTILINE)
+
+
+def _split_card_fronts(unit: dict) -> list[dict]:
+    """Một trang scan nhiều mặt trước CCCD (thẻ cha + thẻ mẹ chụp chung) → mỗi thẻ một giấy.
+
+    Không tách thì `_person_from_document` chỉ đọc thẻ ĐẦU trang, thẻ sau không được đối chiếu với tờ
+    khai; vai đó giữ ngày sinh viết tay của tờ khai, sai năm là cả vai bị xoá ở bước kiểm tra thế hệ.
+    """
+    text = str(unit.get("text") or "")
+    ids = list(_CARD_FRONT_ID_RE.finditer(text))
+    if len({_digits(match.group(1)) for match in ids}) < 2:
+        return [unit]
+    starts = [0]
+    for previous, match in zip(ids, ids[1:]):
+        headers = [header.start() for header in _CARD_FRONT_HEADER_RE.finditer(text, previous.end(), match.start())]
+        starts.append(headers[-1] if headers else match.start())
+    name = unit.get("name") or "(không tên)"
+    return [
+        {**unit, "name": f"{name} (thẻ {index})", "text": text[start:end].strip()}
+        for index, (start, end) in enumerate(zip(starts, starts[1:] + [len(text)]), start=1)
+    ]
 
 
 def _identity_units(documents: list[dict]) -> list[dict]:
@@ -712,7 +757,7 @@ def _identity_units(documents: list[dict]) -> list[dict]:
                 continue
             pages.append({**document, "name": f"{name} (trang {page})", "text": body})
         units.extend(pages or [document])
-    return units
+    return [card for unit in units for card in _split_card_fronts(unit)]
 
 
 def _set_role_label(section: str, label: str, value: str) -> str:
@@ -925,14 +970,17 @@ def _apply_identity_card_facts(sections: dict[str, str], documents: list[dict]) 
         and (person := _person_from_document(document))
         and person.get("id")
     ]
-    if not cards:
-        return sections
     result = dict(sections)
     for tag in ("cha", "me"):
         section = result.get(tag) or ""
         if not section or _is_unknown(section):
             continue
         if _DECLARATION_ROLE_BASIS not in _labeled_value(section, "Căn cứ phân vai"):
+            continue
+        # Hồ sơ chỉ có tờ khai (cha/mẹ đã mất, không CCCD): vẫn là TH1 — vai theo tờ khai, để
+        # sanitize dựng lại khi agent trích xuất bỏ sót cả vai.
+        if not cards:
+            result[tag] = f"{section}\n{_NO_CARD_MATCH_LABEL}: {_NO_CARD_MATCH_VALUE}"
             continue
         declared_id = _role_id(section)
         same_id = [card for card in cards if declared_id and card["id"] == declared_id]

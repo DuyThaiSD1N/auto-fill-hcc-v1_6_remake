@@ -564,7 +564,10 @@
       "label": "Cung cấp thông tin quy hoạch",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9852-71ed-96f2-8110da8fd4f0",
       "needsAgencySelect": true,
-      "selectSo": true,
+      "agencyLevelByAccount": {
+        "xa": {},
+        "so": {"selectSo": true}
+      },
       "autoConfirm": true
     },
     {
@@ -706,9 +709,10 @@
       "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
       "needsAgencySelect": true,
-      "selectSoProvinces": [
-        "danang"
-      ],
+      "agencyLevelByAccount": {
+        "xa": {},
+        "so": {"selectSo": true}
+      },
       "autoConfirm": false
     },
     {

@@ -28,6 +28,7 @@ import publish
 import regression_case
 import replay
 import roles
+import runner_hub
 import scoring
 import verify
 import workspace
@@ -57,6 +58,16 @@ HEADLINES = {
 }
 
 
+class _AnyEvent:
+    """Huỷ khi một trong các cờ được bật: dừng job, hoặc job xong không cần baseline nữa."""
+
+    def __init__(self, *events: threading.Event):
+        self.events = events
+
+    def is_set(self) -> bool:
+        return any(e.is_set() for e in self.events)
+
+
 class JobError(Exception):
     pass
 
@@ -67,6 +78,8 @@ class NotApproved(Exception):
 
 # Quyết định của người duyệt (POST /agent-api/jobs/{id}/approval).
 APPROVE, RETRY, REJECT = "approve", "retry", "reject"
+# Số lần tối đa người dùng được yêu cầu trọng tài lập lại kế hoạch trong một vòng (mỗi lần là một lượt agent tốn tiền).
+_PLAN_REVISIONS = 3
 VERDICTS = (APPROVE, RETRY, REJECT)
 
 
@@ -182,11 +195,14 @@ class Orchestrator:
         self.denied: list[str] = []
         # Code của vòng trượt gần nhất (đã hoàn tác để vòng sau làm lại từ code gốc): hết vòng mà chưa đạt thì đặt lại cho người xem.
         self.kept: dict | None = None
-        self.portal_state: dict = {}
+        # Cổng thật: runner = trình chạy bot trên máy người dùng (runner_hub), Chromium chạy ở máy đó thay vì máy dịch vụ.
+        self.portal_state: dict = {"runner": job.data["settings"]["runner"]} if job.data["settings"].get("runner") else {}
         # Chứng cứ nằm trong cây agent đọc được: khu làm việc (mục 1) hoặc repo người phát triển (kiểu cũ).
         self.case_dir = CASES / job.data["id"] / "case"
         self.last_runs: list[dict] = []
         self.last_evaluation: dict = {}
+        self._baselines = None
+        self._baseline_stop = threading.Event()
 
     # ---- vòng đời ------------------------------------------------------------------------------------------
 
@@ -208,35 +224,53 @@ class Orchestrator:
             job.log(traceback.format_exc()[-1500:], level="error")
             job.update(status="failed", error=f"{type(reason).__name__}: {reason}")
         finally:
+            self._baseline_stop.set()  # ca kết thúc không cần sửa: dừng phần đo nền còn chạy
             self.guard.discard_snapshot()
             job.save()
 
     def _run(self) -> None:
         self._prepare_workspace()
         self._collect()
+        self._start_baselines()
         self._reproduce()
         for number in range(1, self.settings["maxRounds"] + 1):
             round_ = self._new_round(number)
             self._meeting(round_)
             decision = self._arbiter(round_)
-            kind = decision.get("decision")
-            if kind == "skip_ocr":
-                return self._finish("skipped_ocr", decision.get("reason", ""))
-            if kind == "report_only":
-                return self._finish("report_only", decision.get("reason", ""))
-            problem = self._decision_problem(decision)
+            plan_notes: list[str] = []
+            while True:
+                kind = decision.get("decision")
+                if kind == "skip_ocr":
+                    return self._finish("skipped_ocr", decision.get("reason", ""))
+                if kind == "report_only":
+                    return self._finish("report_only", decision.get("reason", ""))
+                problem = self._decision_problem(decision)
+                if problem:
+                    break
+                precheck = scoring.evaluate(decision["acceptance"], self._precheck_runs())
+                with self.job.lock:
+                    round_["precheck"] = precheck
+                if precheck["allPass"]:
+                    return self._finish(
+                        "not_reproduced",
+                        f"Tiêu chí của trọng tài đã đạt {precheck['passed']}/{precheck['total']} lần với code hiện tại, nên không sửa gì. "
+                        "Lỗi có thể đã được sửa từ sau lượt gốc, hoặc chỉ thỉnh thoảng mới xảy ra.",
+                    )
+                # Kế hoạch sửa phải có người đồng ý trước khi agent đụng vào code.
+                verdict = self._await_plan(round_, decision, revision=len(plan_notes) + 1)
+                if verdict["decision"] == APPROVE:
+                    break
+                if verdict["decision"] == REJECT:
+                    note = verdict.get("note") or ""
+                    reason = verdict.get("timeoutNote") or ("Người dùng không đồng ý kế hoạch sửa" + (f": {note}" if note else "."))
+                    return self._finish("not_approved", reason + " Chưa sửa dòng code nào.")
+                plan_notes.append(verdict["note"])
+                with self.job.lock:
+                    round_.setdefault("planHistory", []).append(round_["decision"])
+                decision = self._arbiter(round_, plan_notes)
             if problem:
                 self._round_failed(round_, decision, problem)
                 continue
-            precheck = scoring.evaluate(decision["acceptance"], self._precheck_runs())
-            with self.job.lock:
-                round_["precheck"] = precheck
-            if precheck["allPass"]:
-                return self._finish(
-                    "not_reproduced",
-                    f"Tiêu chí của trọng tài đã đạt {precheck['passed']}/{precheck['total']} lần với code hiện tại, nên không sửa gì. "
-                    "Lỗi có thể đã được sửa từ sau lượt gốc, hoặc chỉ thỉnh thoảng mới xảy ra.",
-                )
             try:
                 if self._attempt(round_, decision):
                     return self._finish("fixed", decision.get("reason", ""))
@@ -300,6 +334,31 @@ class Orchestrator:
             raise JobError(f"Build lại sau khi hoàn tác bị lỗi ở bước {result.get('step')}")
         self.job.update(stackDirty=False)
 
+    # ---- baseline đo nền ------------------------------------------------------------------------------------
+
+    def _measure_baselines(self, cancel) -> dict:
+        before = {"backend": verify.baseline(cancel)}
+        if self.on_portal:
+            before["extension"] = verify.extension_baseline(cancel)
+        before["regression"] = verify.regression_baseline(cancel)
+        if self.for_troly:
+            before["handfree"] = verify.handfree_baseline(cancel)
+        return before
+
+    def _start_baselines(self) -> None:
+        """Đo baseline test ngay khi có cây code, song song với chạy lại + họp (trước đây đợi trọng tài xong mới đo, người dùng
+        chờ thêm vài phút). Cây code không đổi tới lúc agent sửa nên kết quả vẫn đúng; ca kết thúc sớm thì dừng."""
+        stop = self._baseline_stop
+        cancel = _AnyEvent(self.job.cancel, stop)
+        self._baselines = ThreadPoolExecutor(max_workers=1, thread_name_prefix="baseline").submit(self._measure_baselines, cancel)
+
+    def _baseline_result(self) -> dict:
+        if self._baselines is None:
+            return self._measure_baselines(self.job.cancel)
+        if not self._baselines.done():
+            self.job.log("Baseline test vẫn đang đo nền, chờ xong rồi mới sửa…")
+        return self._baselines.result()
+
     # ---- khu làm việc ----------------------------------------------------------------------------------------
 
     def _prepare_workspace(self) -> None:
@@ -329,9 +388,15 @@ class Orchestrator:
         if applicant:
             options = self.case["options"]
             options["formContext"] = {**(options.get("formContext") or {}), **applicant}
-        public = {k: v for k, v in self.case.items() if k not in ("options", "storedFiles", "fields", "caseDir")}
+        public = {k: v for k, v in self.case.items() if k not in ("options", "storedFiles", "fields", "caseDir", "plan")}
         self.job.update(case=public)
-        self.job.log(f"Thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, {len(self.case['fields'])} field ở lượt gốc.")
+        if replay.is_attach(self.case):
+            self.job.log(f"Lượt ĐÍNH KÈM · thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, "
+                         f"{len(self.case.get('plan') or [])} mục trong kế hoạch lượt gốc.")
+            if self.on_portal and (self.case.get("options") or {}).get("splitMode") is True:
+                self._warn("Lượt gốc bật Tách hồ sơ (mỗi tệp một tab). Bot chỉ đính trong một tab nên kết quả trên cổng có thể khác lượt gốc.")
+        else:
+            self.job.log(f"Thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, {len(self.case['fields'])} field ở lượt gốc.")
 
     @property
     def for_troly(self) -> bool:
@@ -362,10 +427,18 @@ class Orchestrator:
     def _open_portal(self) -> None:
         """Người dùng chỉ đăng nhập, mọi việc còn lại bot làm. Bot kẹt thì nhờ người bấm hộ đoạn đó rồi chạy tiếp."""
         job = self.job
+        runner = self.portal_state.get("runner")
+        where = f"trên {runner_hub.describe(runner)} (trình chạy bot)" if runner else "trên máy chạy dịch vụ"
+        if runner and not runner_hub.connected(runner):
+            self._wait_human(
+                f"Trình chạy bot {where} chưa nối. Mở lại cửa sổ dòng lệnh trình chạy trên máy đó (cùng lệnh đã dùng), bot tự đi tiếp khi nối xong.",
+                button="Trình chạy đã nối",
+                done=lambda: runner_hub.connected(runner),
+            )
         self._stage("portal", "Mở trang chủ Cổng DVC quốc gia…")
         browser.open_home(self.portal_state, job.cancel, job.log)
         self._wait_human(
-            "Trên cửa sổ Chromium của bot, bấm Đăng nhập và hoàn tất VNeID. Xong bot tự vào thủ tục và tự điền.",
+            f"Trên cửa sổ Chromium của bot ({where}), bấm Đăng nhập và hoàn tất VNeID. Xong bot tự vào thủ tục và tự điền.",
             button="Tôi đã đăng nhập xong",
             done=lambda: browser.is_logged_in(self.portal_state, job.cancel, job.log),
         )
@@ -448,6 +521,9 @@ class Orchestrator:
         unread = [r["n"] for r in done if r.get("form") is None]
         if unread:
             self._warn(f"Lần {unread} không đọc lại được form, các lần đó được chấm trên giá trị backend trả.")
+        no_table = [r["n"] for r in done if r.get("kind") == "attach" and not r.get("portalRows")]
+        if no_table:
+            self._warn(f"Lần {no_table} bot không đọc được bảng đính kèm trên cổng, các lần đó chấm theo danh sách tệp lỗi extension báo.")
         other = {r["wrongProcedure"] for r in runs if r.get("wrongProcedure")}
         if other:
             self._warn(f"Panel nhận diện sang thủ tục khác ({', '.join(other)}), kết quả không so được với req. Kiểm tra lại trang đang mở.")
@@ -525,8 +601,8 @@ class Orchestrator:
         brief = roles.case_brief(self.job.data, self.case, self.attempts)
         self._stage("meeting", f"Vòng {round_['n']}: hội đồng phân tích độc lập…")
         tasks = []
-        for role, spec in roles.ANALYSTS.items():
-            system, prompt = roles.analyst_prompt(role, brief)
+        for role, spec in roles.analysts(self.case.get("kind")).items():
+            system, prompt = roles.analyst_prompt(role, brief, self.case.get("kind"))
             tasks.append(lambda r=role, l=spec["label"], s=system, p=prompt: self._ask(r, l, s, p, roles.OPINION_SCHEMA))
         opinions = self._together(tasks)
         with self.job.lock:
@@ -547,7 +623,7 @@ class Orchestrator:
         tasks = []
         for opinion in valid:
             others = [p for p in public if p["role"] != opinion["role"]]
-            system, _ = roles.analyst_prompt(opinion["role"], brief)
+            system, _ = roles.analyst_prompt(opinion["role"], brief, self.case.get("kind"))
             tasks.append(lambda o=opinion, s=system, x=others: self._ask(
                 o["role"], o["label"], s, roles.review_prompt(x), roles.REVIEW_SCHEMA, resume=o.get("sessionId"),
             ))
@@ -570,12 +646,13 @@ class Orchestrator:
     def _public_opinion(opinion: dict) -> dict:
         return {k: v for k, v in opinion.items() if k not in ("sessionId", "cost")}
 
-    def _arbiter(self, round_: dict) -> dict:
-        self._stage("arbiter", "Trọng tài xem xét và ra quyết định…")
+    def _arbiter(self, round_: dict, plan_notes: list[str] | None = None) -> dict:
+        self._stage("arbiter", "Trọng tài lập lại kế hoạch theo góp ý…" if plan_notes else "Trọng tài xem xét và ra quyết định…")
         brief = roles.case_brief(self.job.data, self.case, self.attempts)
         opinions = [self._public_opinion(o) for o in round_["opinions"] if not o.get("error")]
         reviews = [self._public_opinion(o) for o in round_["reviews"] if not o.get("error")]
-        result = self._agent("Trọng tài", "arbiter", roles.ARBITER_SYSTEM, roles.arbiter_prompt(brief, opinions, reviews), roles.DECISION_SCHEMA)
+        prompt = roles.arbiter_prompt(brief, opinions, reviews, plan_notes=plan_notes, previous=round_.get("decision"))
+        result = self._agent("Trọng tài", "arbiter", roles.ARBITER_SYSTEM, prompt, roles.DECISION_SCHEMA)
         with self.job.lock:
             round_["decision"] = {**result.output, "cost": result.cost}
         self.job.save()
@@ -594,16 +671,10 @@ class Orchestrator:
 
     def _attempt(self, round_: dict, decision: dict) -> bool:
         job = self.job
-        self._stage("fix", "Đo baseline test trước khi sửa…")
-        before = {"backend": verify.baseline(job.cancel)}
+        self._stage("fix", "Chờ baseline test (đã đo nền từ đầu ca)…" if self._baselines else "Đo baseline test trước khi sửa…")
+        before = self._baseline_result()
         if before["backend"].get("broken"):
             raise JobError("Bộ test đang hỏng từ trước khi sửa, không có mốc để so: " + before["backend"].get("tail", "")[-300:])
-        if self.on_portal:
-            before["extension"] = verify.extension_baseline(job.cancel)
-        before["regression"] = verify.regression_baseline(job.cancel)
-        if self.for_troly:
-            job.log("Ca trợ lý hồ sơ: đo baseline bộ test tests/handfree…")
-            before["handfree"] = verify.handfree_baseline(job.cancel)
         self.guard.take()
         brief = roles.case_brief(job.data, self.case, self.attempts)
         self.touched = []
@@ -661,6 +732,43 @@ class Orchestrator:
             if not deployed["ok"]:
                 return self._round_failed(round_, decision, f"Build hoặc healthz lỗi ở bước {deployed.get('step')}: {deployed.get('output', deployed.get('health', ''))[-500:]}")
         return self._retest(round_, decision, changes)
+
+    def _await_plan(self, round_: dict, decision: dict, revision: int) -> dict:
+        """Trọng tài chọn sửa: dừng chờ người dùng đọc kế hoạch. approve = sửa theo kế hoạch; retry = trọng tài lập lại theo góp ý
+        (tối đa _PLAN_REVISIONS lần mỗi vòng); reject hoặc quá giờ = kết thúc, chưa đụng dòng code nào."""
+        job = self.job
+        can_revise = revision <= _PLAN_REVISIONS
+        self._stage("plan", "Trọng tài đã lập kế hoạch sửa. Chờ bạn xác nhận trước khi agent sửa code…")
+        with job.lock:
+            job.verdict = None
+            job.decided.clear()
+        job.update(planApproval={"round": round_["n"], "revision": revision, "since": now(), "canRevise": can_revise,
+                                 "timeoutMin": APPROVAL_TIMEOUT_S // 60})
+        job.log(f"Chờ duyệt kế hoạch sửa vòng {round_['n']}" + (f" (bản {revision})" if revision > 1 else "") + ".", level="warn")
+        deadline = time.monotonic() + APPROVAL_TIMEOUT_S
+        verdict: dict | None = None
+        try:
+            while verdict is None:
+                if job.cancel.is_set():
+                    raise Stopped()
+                if time.monotonic() > deadline:
+                    verdict = {"decision": REJECT, "timeout": True,
+                               "timeoutNote": f"Quá {APPROVAL_TIMEOUT_S // 60} phút không ai duyệt kế hoạch sửa."}
+                elif job.decided.wait(1):
+                    with job.lock:
+                        verdict = dict(job.verdict or {})
+        finally:
+            job.update(planApproval=None)
+        if verdict.get("decision") not in VERDICTS or (verdict["decision"] == RETRY and not (can_revise and verdict.get("note"))):
+            verdict["decision"] = REJECT if verdict.get("decision") not in (APPROVE,) else APPROVE
+        verdict["at"] = now()
+        verdict["revision"] = revision
+        with job.lock:
+            round_.setdefault("planReviews", []).append(verdict)
+        job.save()
+        said = {APPROVE: "đồng ý kế hoạch, cho sửa", RETRY: "yêu cầu lập lại kế hoạch", REJECT: "không đồng ý kế hoạch, dừng"}
+        job.log(said[verdict["decision"]] + (f" · {verdict['note']}" if verdict.get("note") else ""), who=verdict.get("by") or "Người duyệt")
+        return verdict
 
     def _await_approval(self, round_: dict, changes: list[codeguard.Change]) -> dict:
         """Bản sửa đã qua test nhưng chưa build, chưa nạp extension: dừng lại chờ người đọc patch và bấm duyệt."""
@@ -938,6 +1046,10 @@ class Orchestrator:
         job = self.job
         if not codeguard.touches_backend(changes):
             raise regression_case.Skip("Bản sửa không đụng backend: ca hồi quy phát lại ở tầng backend nên không bắt được.")
+        if replay.is_attach(self.case):
+            # Bộ phát lại thay tệp bằng ảnh giả 1 trang, mà planner đính kèm chia giấy theo trang của tệp thật.
+            raise regression_case.Skip("Ca đính kèm chưa có ca hồi quy: planner chia giấy theo trang của tệp thật, bộ phát lại "
+                                       "chỉ có chữ OCR. Test unit fixer thêm vào pipeline là chốt chặn hồi quy.")
         request_id = self._passing_request()
         if not request_id:
             raise regression_case.Skip("Không có lượt chạy lại đạt nào có mã req để lấy trace.")
@@ -1101,4 +1213,5 @@ def recover_interrupted(job: Job) -> None:
         job.log("Khởi động lại: build lại backend về code trước khi sửa…", level="warn")
         verify.deploy(threading.Event())
     guard.discard_snapshot()
-    job.update(status="failed", error="Dịch vụ agent bị tắt giữa chừng.", touched=[], stackDirty=False, approval=None)
+    job.update(status="failed", error="Dịch vụ agent bị tắt giữa chừng.", touched=[], stackDirty=False, approval=None,
+               planApproval=None)

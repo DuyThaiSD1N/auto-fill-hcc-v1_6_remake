@@ -86,3 +86,34 @@ def test_dung_tai_khoan_loi_thi_bao(monkeypatch):
     monkeypatch.setattr(verify, "run", lambda *a, **k: (1, "container không chạy"))
     with pytest.raises(replay.LoginError, match="container không chạy"):
         replay.shadow_account({"username": "phuonga"})
+
+
+def test_chay_lai_luot_dinh_kem_goi_action_attach(monkeypatch, tmp_path):
+    import types
+
+    import config
+
+    sent = {}
+
+    def fake_post(url, data=None, files=None, headers=None, timeout=None):
+        sent.update(url=url, data=data)
+        body = {
+            "action": "attach", "requestId": "req_moi", "errors": [],
+            "attachments": [{"fileIndex": 0, "documentName": "Tờ khai", "componentName": "Tờ khai đăng ký", "target": "existing"}],
+            "replaceFiles": [{"fileIndex": 0, "name": "scan.pdf", "dataUrl": "data:application/pdf;base64," + "A" * 5000}],
+        }
+        return types.SimpleNamespace(status_code=200, json=lambda: body, text="")
+
+    monkeypatch.setattr(replay.httpx, "post", fake_post)
+    monkeypatch.setattr(replay, "read_trace", lambda rid, kind="autofill": {"ocrText": "", "ocrFresh": True, "llmReused": False, "kind": kind})
+    monkeypatch.setattr(replay, "REPO", tmp_path)
+    (tmp_path / "scan.pdf").write_bytes(b"%PDF-1.4")
+    case = {"procedure": "thu-tuc-mau", "kind": "attach", "pageCounts": [1], "options": {"sessionId": "req_dien", "splitDocuments": True},
+            "storedFiles": [{"name": "scan.pdf", "path": "scan.pdf", "type": "application/pdf"}]}
+    run = replay.run_once(case, 1, "reproduce:1", "token", tmp_path)
+    assert sent["data"]["action"] == "attach"
+    assert '"sessionId"' not in sent["data"]["options"] and '"splitDocuments": true' in sent["data"]["options"]
+    assert run["kind"] == "attach"  # trace đọc đúng trace_steps <req>:attach
+    assert run["response"]["fields"][0] == {"name": "dòng: Tờ khai đăng ký", "value": "Tờ khai [#1]"}
+    assert "replaceFiles" not in run["response"] and run["response"]["replacedFiles"] == ["scan.pdf"]
+    assert (tmp_path / "run1_plan.json").is_file()

@@ -329,7 +329,8 @@ def test_bam_nut_cam_thi_tich_o_tren_trang_roi_nhac_nop_ho_so():
     conv = _conv_attaching({"supportsTickCommit": True})
     _attach_report(conv)
     r = asyncio.run(flow._handle_done(conv, Intent("action", "tick_commit")))
-    assert r.actions == [{"type": "tick_commit", "id": "chkCHECK_LIABILITY"}] and not r.display_md
+    assert r.actions == [{"type": "tick_commit", "id": "chkCHECK_LIABILITY",
+                          "label": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên"}] and not r.display_md
     r = asyncio.run(flow._handle_done(conv, Intent("event", "commit_result", {"ok": True})))
     assert "Nộp hồ sơ" in r.display_md and r.actions == [{"type": "chip_used", "send": "__action:tick_commit"}]
     r = asyncio.run(flow._handle_done(conv, Intent("event", "commit_result", {"ok": False})))

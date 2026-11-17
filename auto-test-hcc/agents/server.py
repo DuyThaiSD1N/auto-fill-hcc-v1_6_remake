@@ -4,6 +4,7 @@ Phải chạy ngoài Docker vì cần claude, repo và docker. Web gọi vào qu
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import queue
@@ -16,18 +17,21 @@ import time
 
 import httpx
 import uvicorn
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, WebSocket
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 import browser
 import claude_runner
 import evidence
+import remote
 import replay
+import runner_hub
 import workspace
 from config import (
+    PUBLISH_WEB,
     AUTH_BACKEND_URL, BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, GIT_REMOTE, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS,
-    SERVER_MODE, USE_WORKSPACE, VNC_ENABLED, WORKSPACE_PUSH, server_problems,
+    ROOT, SERVER_MODE, USE_WORKSPACE, VNC_ENABLED, WORKSPACE_PUSH, server_problems,
 )
 from orchestrator import Job, Orchestrator, recover_interrupted, revert_fix
 from typing import Literal
@@ -137,6 +141,8 @@ class JobRequest(BaseModel):
     mode: Literal["portal", "api"] = "portal"
     # Sửa cho sản phẩm nào: Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend).
     target: Literal["autofill", "troly"] = "autofill"
+    # Cổng thật: Chromium chạy trên máy người dùng qua trình chạy bot (runner/bot_runner.py). Trống = trên máy dịch vụ.
+    runnerId: str = Field("", max_length=40)
 
 
 def _lookup(request_id: str) -> dict:
@@ -155,7 +161,63 @@ def health() -> dict:
         "ok": True, "claude": bool(claude_runner.available()), "busy": service.busy, "queued": service.tasks.qsize(),
         "server": SERVER_MODE, "vnc": VNC_ENABLED, "git": bool(GIT_REMOTE) or (USE_WORKSPACE and WORKSPACE_PUSH),
         "workspace": USE_WORKSPACE, "workspaceOwner": workspace.owner() if USE_WORKSPACE else None,
+        "publish": remote.publishing() if PUBLISH_WEB else None,
+        "runners": runner_hub.connected_count(),
     }
+
+
+# ---- trình chạy bot trên máy người dùng (runner_hub.py) ------------------------------------------------------------
+
+@app.on_event("startup")
+async def _remember_loop() -> None:
+    runner_hub.LOOP = asyncio.get_running_loop()
+
+
+@app.post("/agent-api/runners")
+def create_runner(user: dict = Depends(require_operator)) -> dict:
+    """Cấp token cho máy của người vận hành chạy Chromium của bot. Token chỉ hiện một lần, web giữ trong trình duyệt."""
+    runner, token = runner_hub.create(user.get("username", ""))
+    return {**runner.view(), "token": token}
+
+
+@app.get("/agent-api/runners/{runner_id}")
+def runner_status(runner_id: str, _: dict = Depends(require_operator)) -> dict:
+    runner = runner_hub.get(runner_id)
+    if not runner:
+        raise HTTPException(404, "Không có máy chạy bot này, hoặc token đã hết hạn.")
+    return runner.view()
+
+
+@app.get("/agent-api/runner/script")
+def runner_script() -> Response:
+    """Script trình chạy, không có gì bí mật: token người dùng tự dán vào lệnh."""
+    return FileResponse(ROOT / "runner" / "bot_runner.py", media_type="text/x-python", filename="bot_runner.py")
+
+
+@app.get("/agent-api/runner/extension")
+def runner_extension(token: str = "", if_none_match: str = Header("")) -> Response:
+    """Bản extension khu làm việc (đang test, đã trỏ backend thử) cho máy chạy bot. Chỉ trả khi token hợp lệ."""
+    if runner_hub.find_by_token(token) is None:
+        raise HTTPException(401, "Token không hợp lệ hoặc đã hết hạn.")
+    digest, data = runner_hub.ext_bundle()
+    if if_none_match and if_none_match == digest:
+        return Response(status_code=304, headers={"X-Extension-Hash": digest})
+    return Response(data, media_type="application/zip", headers={"X-Extension-Hash": digest})
+
+
+@app.websocket("/agent-api/runner/ws")
+async def runner_control(ws: WebSocket, token: str = "") -> None:
+    await runner_hub.control(ws, token)
+
+
+@app.websocket("/agent-api/runner/stream/{stream_id}")
+async def runner_stream(ws: WebSocket, stream_id: str, token: str = "") -> None:
+    await runner_hub.stream(ws, stream_id, token)
+
+
+@app.websocket("/agent-api/runner/backend")
+async def runner_backend(ws: WebSocket, token: str = "") -> None:
+    await runner_hub.backend(ws, token)
 
 
 @app.post("/agent-api/vnc-ticket")
@@ -197,8 +259,11 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         raise HTTPException(503, "Máy chưa có lệnh claude.")
     if body.target == "troly" and body.mode == "portal":
         raise HTTPException(400, "Trợ lý hồ sơ hiện chỉ chạy được ở chế độ Chỉ gọi backend: bot chưa tự lái được luồng trợ lý trên cổng.")
+    runner = runner_hub.get(body.runnerId) if body.runnerId and body.mode == "portal" else None
+    if body.runnerId and body.mode == "portal" and not (runner and runner.connected):
+        raise HTTPException(400, "Trình chạy bot trên máy của bạn chưa nối. Chạy lệnh trình chạy trên máy đó rồi tạo ca lại.")
     if body.mode == "portal":
-        problem = browser.preflight()
+        problem = browser.preflight(remote=runner is not None)
         if problem:
             raise HTTPException(400, problem)
     # Tài khoản chạy lại luôn do dịch vụ dựng sẵn (cùng xã / tỉnh với tài khoản đã điền req), web không hỏi. API vẫn nhận
@@ -235,7 +300,8 @@ def create_job(body: JobRequest, user: dict = Depends(require_operator)) -> dict
         settings={
             "runs": body.runs, "maxRounds": body.maxRounds, "reproduce": body.reproduce,
             "replayAccount": credentials["username"], "replayShadow": not username, "applicant": applicant, "mode": body.mode,
-            "target": body.target,
+            "target": body.target, "kind": preview.get("kind") or "autofill",
+            "runner": runner.id if runner else None, "runnerMachine": runner.info.get("machine") if runner else None,
         },
         preview=preview,
         warnings=warnings,
@@ -318,6 +384,34 @@ def approve_fix(job_id: str, body: Approval, user: dict = Depends(require_operat
     return job.view()
 
 
+class PlanReview(BaseModel):
+    round: int = Field(ge=1)
+    revision: int = Field(ge=1)
+    decision: Literal["approve", "retry", "reject"]
+    note: str = Field("", max_length=3000)
+
+
+@app.post("/agent-api/jobs/{job_id}/plan")
+def review_plan(job_id: str, body: PlanReview, user: dict = Depends(require_operator)) -> dict:
+    """Người vận hành duyệt kế hoạch sửa của trọng tài, trước khi agent đụng vào code."""
+    job = service.get(job_id)
+    note = body.note.strip()
+    with job.lock:
+        pending = job.data.get("planApproval")
+        if not pending or job.decided.is_set():
+            raise HTTPException(409, "Job không chờ duyệt kế hoạch nào")
+        # Trang cũ còn hiện kế hoạch trước thì không được duyệt nhầm kế hoạch mới.
+        if (pending["round"], pending["revision"]) != (body.round, body.revision):
+            raise HTTPException(409, "Kế hoạch đã được lập lại: tải lại trang và đọc kế hoạch mới")
+        if body.decision == "retry" and not pending.get("canRevise"):
+            raise HTTPException(400, "Đã hết lượt yêu cầu lập lại kế hoạch trong vòng này: chọn đồng ý hoặc dừng.")
+        if body.decision == "retry" and not note:
+            raise HTTPException(400, "Yêu cầu lập lại thì cần ghi góp ý để trọng tài biết phải đổi kế hoạch thế nào.")
+        job.verdict = {"decision": body.decision, "note": note, "by": user.get("username", "")}
+        job.decided.set()
+    return job.view()
+
+
 @app.post("/agent-api/jobs/{job_id}/stop")
 def stop_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
     job = service.get(job_id)
@@ -343,6 +437,16 @@ def revert_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
     return job.view()
 
 
+def port_taken(host: str, port: int) -> bool:
+    import socket
+
+    try:
+        socket.create_connection((host, port), timeout=0.5).close()
+        return True
+    except OSError:
+        return False
+
+
 def main() -> None:
     # Console Windows mặc định cp1252, in tiếng Việt là văng UnicodeEncodeError ngay lúc khởi động.
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -350,10 +454,27 @@ def main() -> None:
     if problems:
         print("Không khởi động: cấu hình server có thể đụng vào production.\n- " + "\n- ".join(problems))
         sys.exit(2)
+    if port_taken("127.0.0.1" if HOST in ("", "0.0.0.0", "::") else HOST, PORT):
+        # Kiểm TRƯỚC khi dọn đường hầm: bản đang chạy giữ đường hầm của nó, dọn là cắt web và Mongo nguồn của bản đó.
+        print(f"Không khởi động: cổng {PORT} đã có dịch vụ agent khác đang chạy (xem http://{HOST}:{PORT}/agent-api/health). "
+              "Muốn chạy code mới thì tắt bản đó trước, khi nó không bận ca nào.")
+        sys.exit(3)
+    if remote.enabled():
+        killed = remote.cleanup_orphans()
+        if killed:
+            print(f"Đã tắt {killed} đường hầm ssh còn sót của lần chạy trước.", flush=True)
+    if PUBLISH_WEB and remote.enabled():
+        # Đưa web 12008 lên server qua đường hầm ngược; rớt thì luồng này tự nối lại.
+        threading.Thread(target=remote.keep_publishing, daemon=True, name="publish-web").start()
     version = subprocess.run([claude_runner.available() or "claude", "--version"], capture_output=True, text=True).stdout.strip()
     print(f"Dịch vụ agent: http://{HOST}:{PORT} · claude {version} · backend thử {BACKEND_URL}"
           + (f" · đăng nhập qua {AUTH_BACKEND_URL}" if AUTH_BACKEND_URL != BACKEND_URL else ""))
-    uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
+    try:
+        import wsproto  # noqa: F401 — uvicorn 0.29 chưa hợp websockets 14+, wsproto ổn định cho WebSocket của trình chạy bot
+        ws_impl = "wsproto"
+    except ImportError:
+        ws_impl = "auto"
+    uvicorn.run(app, host=HOST, port=PORT, log_level="warning", ws=ws_impl)
 
 
 if __name__ == "__main__":

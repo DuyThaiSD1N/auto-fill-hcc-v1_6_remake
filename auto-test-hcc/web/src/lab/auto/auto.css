@@ -730,3 +730,490 @@
     padding-inline: 16px;
   }
 }
+
+/* ── Trang chính gọn (17/11/2026) ─────────────────────────────────────────── */
+
+.at-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.at-head__title h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.at-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.at-stats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.at-stats b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.at-stats .is-warn {
+  border-color: transparent;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.at-stats .is-warn b {
+  color: var(--warn);
+}
+
+.at-new {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+}
+
+.at-new__head h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.at-new__head p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.at-new__req {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.at-lookup {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.at-lookup--empty {
+  border-style: dashed;
+}
+
+.at-lookup--bad {
+  border-color: transparent;
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.at-lookup__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.at-lookup__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.at-lookup .form-error {
+  margin: 0;
+}
+
+.at-new__choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.at-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.at-choice__label {
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.at-seg {
+  align-self: flex-start;
+}
+
+.at-seg button {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.at-seg button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.at-choice__hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.at-applicant__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.at-new__more summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.at-new__opts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 200px)) 1fr;
+  gap: 12px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.at-new__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-2);
+}
+
+.at-new__foot p {
+  margin: 0 auto 0 0;
+  font-size: 12.5px;
+}
+
+.at-new__foot .btn--primary {
+  min-width: 120px;
+}
+
+.at-filter {
+  margin-bottom: 10px;
+}
+
+.at-filter__n {
+  margin-left: 4px;
+  opacity: 0.7;
+  font-size: 11.5px;
+}
+
+.at-jobs__row {
+  cursor: pointer;
+}
+
+.at-jobs__row:hover td {
+  background: var(--surface-2);
+}
+
+.at-jobs__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.at-jobs__main .at-link {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.at-jobs__main .mono {
+  font-size: 11.5px;
+}
+
+.at-nowrap {
+  white-space: nowrap;
+}
+
+/* ── Trang ca ─────────────────────────────────────────────────────────────── */
+
+.at-conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.at-conf__bar {
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.at-conf__bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.at-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.at-more-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.at-more-btn:hover {
+  text-decoration: underline;
+}
+
+.at-deliver {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ok);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.at-deliver p,
+.at-deliver ul {
+  margin: 0;
+}
+
+.at-warns summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.at-warns .at-warn {
+  margin: 6px 0 0;
+}
+
+@media (max-width: 720px) {
+  .at-new__req,
+  .at-new__choices,
+  .at-applicant__grid,
+  .at-new__opts {
+    grid-template-columns: 1fr;
+  }
+
+  .at-new__foot {
+    flex-wrap: wrap;
+  }
+
+  .at-new__foot p {
+    flex-basis: 100%;
+  }
+
+  .at-filter {
+    max-width: 100%;
+  }
+}
+
+.at-jobs__time {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .at-jobs .at-col-desc,
+  .at-jobs .at-col-rounds,
+  .at-jobs .at-col-time {
+    display: none;
+  }
+
+  .at-jobs__time {
+    display: inline;
+  }
+
+  .at-jobs__main {
+    min-width: 0;
+  }
+}
+
+.at-plan-box__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.at-plan-box__body p {
+  margin: 0;
+}
+
+.at-plan-box__checks {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.at-plan-box__checks li {
+  margin: 2px 0;
+}
+
+/* Ô góp ý + nút duyệt dính đáy màn hình khi kế hoạch / patch dài, khỏi phải cuộn tìm nút. */
+.at-decide-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 -14px -12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--surface);
+  box-shadow: 0 -8px 16px rgb(0 0 0 / 0.12);
+}
+
+.at-decide-bar .at-textarea {
+  min-height: 0;
+}
+
+.at-jobs__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Lượt điền có lượt đính kèm cùng hồ sơ: bấm mã để tra luôn lượt đính kèm. */
+.at-lookup__related {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+}
+
+.at-linkbtn {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent, inherit);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.at-linkbtn:hover {
+  border-color: currentColor;
+}
+
+/* Máy chạy Chromium của bot (trình chạy bot trên máy người dùng). */
+.at-runner-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.at-runner-box legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.at-runner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.at-runner__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.at-runner__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.at-runner__steps code {
+  word-break: break-all;
+}
+
+.at-runner__cmd {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.at-runner__cmd code {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2, transparent);
+  font-size: 12px;
+}
+
+.at-runner__actions {
+  display: flex;
+  gap: 8px;
+}

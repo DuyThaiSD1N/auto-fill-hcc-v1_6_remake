@@ -4610,9 +4610,13 @@ PROCEDURES: list[dict] = [
         "subtitle": "Xin thông tin quy hoạch của thửa đất, khu vực",
         "icon": "🗺️",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9852-71ed-96f2-8110da8fd4f0",
-        "agencyProvinceOnly": True,
-        "agencySoFirst": True,
         "agencyDeptLabel": "Sở Xây dựng",
+        # 17/11/2026 người dùng chốt (như 1.002693 chặt hạ cây xanh): tài khoản HCC tỉnh (hoặc chưa có xã) → chỉ
+        # chọn Tỉnh, gạt "Sở" rồi chọn Sở; tài khoản cấp phường/xã → chọn Tỉnh + Phường/Xã như bình thường.
+        "agencyLevelByAccount": {
+            "xa": {},
+            "so": {"agencyProvinceOnly": True, "agencySoFirst": True},
+        },
         "requiredDocs": [
             {"key": "don", "name": "Đơn (văn bản) đề nghị cung cấp thông tin quy hoạch — đã ký",
              "icon": "📄", "sides": 1, "repeatable": True},
@@ -4709,8 +4713,7 @@ PROCEDURES: list[dict] = [
         # Mã TTHC 1.002693, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io dom-* + attach attp-row 2 dòng: Đơn
         # Mẫu 01 / Ảnh hiện trạng cây). Key TRÙNG lõi → process/attach tự nối. Bảng kê cây là datagrid
         # data[panel][tbantest][i][...], fill-core.js đã có nhánh datagrid (bấm "Thêm dòng").
-        # ke_khai_links khai selectSoProvinces ["danang"] (tỉnh khác chọn cấp xã) + autoConfirm false.
-        # Trợ lý mặc định chọn Sở như NOXH Bộ Xây dựng; tỉnh nộp cấp xã khai ở agencyByProvince (Quảng Ngãi).
+        # ke_khai_links khai agencyLevelByAccount (tỉnh → Sở, xã → Phường/Xã) + autoConfirm false.
         "flowProfile": "xay-dung",
         # Cổng Bộ Xây dựng iGate (stepper 4 bước, tờ khai Form.io) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
         "bxdFlow": {
@@ -4733,13 +4736,13 @@ PROCEDURES: list[dict] = [
         "subtitle": "Xin phép chặt hạ hoặc di dời cây xanh đô thị (Sở Xây dựng)",
         "icon": "🌳",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
-        "agencyProvinceOnly": True,
-        "agencySoFirst": True,
         "agencyDeptLabel": "Sở Xây dựng",
-        # 16/11/2026 theo yêu cầu người dùng: Quảng Ngãi nộp ở UBND Phường/Xã → chọn đủ Tỉnh + Xã, không gạt "Sở"
-        # (Auto Fill đã vậy vì ke_khai_links chỉ khai selectSoProvinces ["danang"]).
-        "agencyByProvince": {
-            "quangngai": {"agencyProvinceOnly": False, "agencySoFirst": False},
+        # 17/11/2026 người dùng chốt: tài khoản HCC tỉnh (hoặc chưa có xã) → chỉ chọn Tỉnh, gạt "Sở" rồi chọn Sở;
+        # tài khoản cấp phường/xã → chọn Tỉnh + Phường/Xã như bình thường. Cùng luật agencyLevelByAccount của
+        # ke_khai_links (Auto Fill). Thay bảng agencyByProvince theo tỉnh (Quảng Ngãi) của 16/11.
+        "agencyLevelByAccount": {
+            "xa": {},
+            "so": {"agencyProvinceOnly": True, "agencySoFirst": True},
         },
         "requiredDocs": [
             {"key": "don", "name": "Đơn đề nghị cấp giấy phép chặt hạ, dịch chuyển cây xanh (Mẫu số 01) "

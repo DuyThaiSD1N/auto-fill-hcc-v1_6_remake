@@ -116,6 +116,31 @@ def test_tro_ly_chi_trich_luc_gat_so_va_bam_the_so_tu_phap():
     assert with_agency_level(tro_giup, "commune", "Phường Yên Bái")["agencySoFirst"] is True
     assert not with_agency_level(tro_giup, "province", "").get("agencyCardIncludes")
 
+CHAT_HA_KEY = "cap-giay-phep-chat-ha-cay-xanh"
+QUY_HOACH_KEY = "cung-cap-thong-tin-quy-hoach"
+
+
+@pytest.mark.parametrize("key", [CHAT_HA_KEY, QUY_HOACH_KEY])
+@pytest.mark.parametrize(("user", "select_so"), [
+    ({"role": "province", "tinh": "Thành phố Đà Nẵng", "xa": ""}, True),
+    ({"role": "province", "tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Cẩm Thành"}, True),
+    ({"role": "commune", "tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"}, False),
+    ({"role": "commune", "tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Cẩm Thành"}, False),
+])
+def test_xay_dung_tinh_vao_so_xa_chon_xa(key, user, select_so):
+    """1.002693 chặt hạ cây xanh + 1.014159 cung cấp thông tin quy hoạch (17/11/2026): HCC tỉnh tick "Sở", tài khoản
+    cấp phường/xã chọn Phường/Xã — mọi tỉnh, cả hai kênh."""
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    link = _link(user, key)
+    assert bool(link.get("selectSo")) is select_so
+    assert "selectSoProvinces" not in link, "không còn chốt theo tỉnh"
+    proc = with_agency_level(get_procedure(key), user["role"], user["xa"])
+    assert bool(proc.get("agencySoFirst")) is select_so
+    assert bool(proc.get("agencyProvinceOnly")) is select_so
+    assert "agencyByProvince" not in proc
+
+
 def _fold(value: str) -> str:
     """Bản Python của fold() trong extension content/agency-select.js (so chuỗi thẻ)."""
     import re

@@ -352,6 +352,24 @@ async def match_agency(conv: dict, text: str) -> str:
     return options[index - 1] if 1 <= index <= len(options) else ""
 
 
+# Tài khoản theo phường/xã → cơ quan tiếp nhận tự chọn, không hỏi (người dùng chốt 17/11/2026: tài khoản phường Kinh
+# Bắc, thủ tục đất đai riêng Bắc Ninh → Chi nhánh VPĐKĐĐ liên phường Bắc Ninh). Khớp phần trước " - <cơ quan cấp
+# trên>" của dòng đọc từ trang, nên chỉ thủ tục có dòng đó (đất đai) mới tự chọn; thủ tục khác vẫn hỏi như cũ.
+_AGENCY_BY_ACCOUNT_WARD = {"kinh bac": "Chi nhánh Văn phòng đăng ký đất đai liên phường Bắc Ninh"}
+
+
+def _account_agency(conv: dict, options: list[str]) -> str:
+    """Cơ quan tiếp nhận định sẵn cho tài khoản (tỉnh Bắc Ninh + phường/xã trong bảng) có trong danh sách trang."""
+    user = conv.get("auth_user") or {}
+    if "bac ninh" not in fold(user.get("tinh") or ""):
+        return ""
+    ward = re.sub(r"^(phuong|xa|thi tran|dac khu)\s+", "", fold(user.get("xa") or ""))
+    want = fold(_AGENCY_BY_ACCOUNT_WARD.get(ward) or "")
+    if not want:
+        return ""
+    return next((o for o in options if fold(o.split(" - ", 1)[0]) == want), "")
+
+
 def _agency_report(conv: dict, proc: dict | None, payload: dict):
     st = _st(conv)
     options = [o for o in (_clean(x) for x in payload.get("options") or []) if o][:60]
@@ -359,6 +377,12 @@ def _agency_report(conv: dict, proc: dict | None, payload: dict):
     if options:
         st["agency_options"] = options
     changed = payload.get("changed") if isinstance(payload.get("changed"), dict) else None
+    preset = _account_agency(conv, options) if not selected and changed is None and not st.get("agency") else ""
+    if preset:
+        # Chọn trên trang rồi extension báo lại (changed) → đi tiếp như công dân bấm thẻ; chọn hỏng thì hỏi như cũ.
+        r = _reply()
+        r.actions = [{"type": "bn_agency", "value": preset}]
+        return r
     if selected and (changed is None or changed.get("ok")):
         before = st.get("agency")
         st["agency"] = selected

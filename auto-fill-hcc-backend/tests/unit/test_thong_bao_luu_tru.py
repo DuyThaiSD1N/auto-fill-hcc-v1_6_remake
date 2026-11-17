@@ -145,6 +145,22 @@ def test_dien_xong_khong_moi_dinh_kem_ma_nhac_cam_ket_roi_nop():
     assert "người lưu trú" in r.display_md and "Tôi xin chịu trách nhiệm" in r.display_md
     assert "Đính kèm" not in r.display_md
 
+    # Bấm nút cam ngay ở bước rà soát (không có bước đính kèm nên conv chưa sang done) → phát lệnh tích ô.
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("action", "tick_commit")))
+    assert r.actions == [{"type": "tick_commit", "id": "chkCHECK_LIABILITY",
+                          "label": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên"}]
+    assert not r.display_md
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("event", "commit_result", {"ok": True})))
+    assert "Nộp hồ sơ" in r.display_md and r.actions == [{"type": "chip_used", "send": "__action:tick_commit"}]
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("event", "commit_result", {"ok": False})))
+    assert "chưa tích được" in r.display_md and r.chips[0]["send"] == "__action:tick_commit"
+
+    # "Đúng rồi" ở bước rà soát: không chuyển sang đính kèm, nhắc lại tích cam kết rồi nộp.
+    r = asyncio.run(flow._handle_reviewing(conv, Intent("confirm")))
+    sends = [c["send"] for c in r.chips]
+    assert conv["state"] == "reviewing" and "__action:confirm_review" not in sends
+    assert sends[-1] == "__action:tick_commit" and "Đính kèm" not in r.display_md
+
 
 def test_luat_bat_nut_nop_nhan_trang_thong_bao_luu_tru():
     import re

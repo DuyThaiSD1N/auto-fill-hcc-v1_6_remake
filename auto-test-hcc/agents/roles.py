@@ -116,6 +116,40 @@ vì sao ô không được điền, kèm cách sửa.""",
     },
 }
 
+# Lượt đính kèm: cùng ba vai nhưng đường đi dữ liệu khác (OCR → LLM chia / phân loại giấy → planner gán dòng → extension
+# đính lên bảng thành phần hồ sơ của cổng).
+ANALYSTS_ATTACH = {
+    "ocr": {
+        "label": "Thẩm định OCR",
+        "task": """Việc của bạn: xác định OCR có đọc sai đến mức làm phân loại / chia trang sai hay không.
+Dùng Read mở chính ảnh/PDF gốc trong files/ (tệp #n theo attach_plan.json), đối chiếu từng trang liên quan với ocr.txt và
+run*_ocr.txt. Chỉ kết luận cause=ocr khi chữ trên giấy KHÁC chữ OCR tới mức không thể nhận ra loại giấy, nêu rõ tệp nào trang nào.
+OCR đọc đủ để nhận ra giấy mà kế hoạch vẫn sai thì lỗi ở tầng sau: nói rõ OCR đúng.""",
+    },
+    "mapper": {
+        "label": "Phân tích planner đính kèm",
+        "task": """Việc của bạn: lần theo ocr.txt → llm_raw.txt (lượt LLM chia / phân loại giấy) → llm_output.json / outputs.json → kế
+hoạch trong attach_plan.json, rồi đọc code đính kèm của pipeline (app/pipelines/<pipeline>/attach/: planner, dinh_kem_tach/,
+dinh_kem_khong_tach/, prompt chia trang, bảng dòng) và chỉ ra TẦNG ĐẦU TIÊN làm sai, kèm path:dòng.
+Phân biệt cause=llm (OCR đủ mà LLM xếp nhầm loại giấy / chia sai trang: sửa prompt hoặc thêm luật tất định) với cause=mapper
+(code gán dòng, bảng tên dòng, gộp CCCD hai mặt, bỏ trang, chọn tách / không tách sai). Đề xuất cách sửa nhỏ nhất.""",
+    },
+    "form": {
+        "label": "Đối chiếu dòng trên cổng",
+        "task": """Việc của bạn: đối chiếu kế hoạch với bảng thành phần hồ sơ của cổng. attach_plan.json có portalRows (các dòng
+extension đọc trên cổng lúc đó) và componentName / componentIndex / slot của từng mục. Chạy trên cổng thì đọc thêm
+replay/<lượt>/run*_portal.json (tên tệp bot thấy trên từng dòng trước / sau khi đính, tệp extension báo lỗi) và ảnh run*.png.
+Xác định: kế hoạch đúng mà tệp không lên đúng dòng (cause=extension, đọc engine đính trong auto-fill-hcc-extension/content.js,
+popup.js runAttachmentPlanForCurrentFiles và chỉ ra path:dòng); tên dòng trong bảng của planner lệch tên dòng trên cổng
+(cause=mapper); giấy tờ không có loại giấy đó (cause=input); người dùng kỳ vọng sai (cause=not_a_bug).""",
+    },
+}
+
+
+def analysts(kind: str | None) -> dict:
+    return ANALYSTS_ATTACH if kind == "attach" else ANALYSTS
+
+
 CRITIC = {
     "label": "Phản biện",
     "task": """Việc của bạn: tìm chỗ yếu trong các ý kiến của hội đồng, không đề xuất lại từ đầu. Soi các điểm:
@@ -188,6 +222,37 @@ _TROLY_NOTE = [
 ]
 
 
+def _attach_note(on_portal: bool) -> list[str]:
+    """Giải thích ô ảo của lượt đính kèm (scoring.attach_fields) để trọng tài viết được acceptance máy chấm được."""
+    lines = [
+        "",
+        "## Ca này là lượt ĐÍNH KÈM",
+        "Backend không trả field mà trả kế hoạch đính kèm. Máy quy kế hoạch thành các ô ảo (cột field trong reproduce.json):",
+        "- `dòng: <tên dòng>`: các giấy vào dòng đó, mỗi giấy kèm trang dạng `[#tệp:trang]`, ví dụ `Căn cước [#2:1-2]`; `[#3]` là cả tệp 3. "
+        "Giấy extension phải thêm dòng mới nằm chung ở `dòng: Thêm mới` (tên dòng chính là tên giấy, dao động giữa các lần), "
+        "trừ khi planner đặt tên dòng riêng thì là `dòng: Thêm mới: <tên dòng>`.",
+        "- `loại: <detectedType>`: dòng mà loại giấy đó được xếp vào.",
+        "- `tệp #n`: từng trang của tệp n (đếm từ 1) vào dòng nào, ví dụ `1→Tờ khai; 2→Giấy tờ tùy thân; 3→(không đính)`.",
+        "- `tổng: số mục`, `tổng: trang thiếu` (rỗng = không sót trang), `tổng: trang trùng`, `tổng: lỗi`.",
+    ]
+    if on_portal:
+        lines += [
+            "- Chạy trên cổng thật: `dòng: …` là cái bot ĐỌC TRÊN CỔNG sau khi extension đính (cột runs), cột beRuns là kế hoạch backend. "
+            "`cổng: chưa lên` = mục kế hoạch không thấy trên cổng, `cổng: tệp lỗi` = tệp extension báo chưa đính được. "
+            "`(lạ) <tên tệp>` là tệp mới xuất hiện ở dòng đó mà không thuộc mục nào.",
+        ]
+    lines += [
+        "Viết acceptance trên đúng các khoá này, ví dụ {\"field\": \"dòng: Giấy tờ tùy thân\", \"op\": \"contains\", \"expected\": \"Căn cước\"}, "
+        "{\"field\": \"tổng: trang thiếu\", \"op\": \"empty\", \"expected\": \"\"}, {\"field\": \"tệp #1\", \"op\": \"contains\", "
+        "\"expected\": \"3→Giấy tờ tùy thân\"}. Chấm theo dòng và trang, đừng chấm theo tên giấy LLM tự đặt nếu tên đó dao động giữa các lần.",
+        "Code đính kèm: auto-fill-hcc-backend/app/pipelines/<pipeline>/attach/ (planner, dinh_kem_tach/, dinh_kem_khong_tach/, prompt chia trang, "
+        "bảng dòng), router app/attachments/router.py, cờ supportsSplitDocuments trong app/procedures/registry.py. Engine đính của extension: "
+        "auto-fill-hcc-extension/content.js, popup.js (runAttachmentPlanForCurrentFiles). Quy tắc tách giấy trong CLAUDE.md "
+        "(mục Thủ tục mới có đính kèm) vẫn áp dụng: test của pipeline phải có ca tách đúng dòng + không sót trang khi sửa phần tách.",
+    ]
+    return lines
+
+
 def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
     # Đường dẫn tuyệt đối: agent không phải đoán gốc nào (ngày 17/11 nó ghép nhầm với repo của người phát triển).
     root = (REPO / case["caseDir"]).as_posix()
@@ -197,7 +262,7 @@ def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
     has_replay = bool((job.get("reproduce") or {}).get("runs"))
     lines = [
         "# Ca lỗi",
-        f"- Mã req: {job['requestId']}",
+        f"- Mã req: {job['requestId']}" + (" (lượt ĐÍNH KÈM)" if case.get("kind") == "attach" else ""),
         f"- Thủ tục: {case.get('label')} (key {case.get('procedure')})",
         f"- Tài khoản: {account.get('username')} · {account.get('xa') or '?'} · {account.get('tinh') or '?'}",
         f"- Pipeline: {where}",
@@ -213,20 +278,45 @@ def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
         + (" Code backend và extension ở đây là ĐÚNG bản đang chạy production; không đọc hay sửa repo nào khác." if USE_WORKSPACE else ""),
         "",
         "## Hồ sơ chứng cứ (đường dẫn tuyệt đối, dùng Read để đọc)",
-        f"- {root}/case.json: thông tin lượt, danh sách tệp, options, lỗi ghi nhận",
-        f"- {root}/fields.json: field backend đã trả ở lượt gốc",
-        f"- {root}/ocr.txt: text OCR lượt gốc",
-        f"- {root}/llm_raw.txt, {root}/llm_output.json: câu trả lời LLM",
-        f"- {root}/outputs.json: output từng tầng (field bị loại khi validate...)",
-        f"- {root}/form_report.json: kết quả điền thật extension gửi về, nếu có",
-        f"- {root}/files/: ẢNH/PDF GỐC, dùng Read để xem trực tiếp",
     ]
+    attach = case.get("kind") == "attach"
+    if attach:
+        lines += [
+            f"- {root}/case.json: thông tin lượt, danh sách tệp, options (splitDocuments, attachmentContext), lỗi ghi nhận",
+            f"- {root}/attach_plan.json: KẾ HOẠCH ĐÍNH KÈM lượt gốc (mục nào lấy trang nào của tệp #n nào, vào dòng nào), "
+            "danh sách tệp #n kèm số trang, cài đặt Tách giấy tờ, portalRows = các dòng extension đọc trên cổng lúc đó",
+            f"- {root}/fields.json: ô ảo dựng từ kế hoạch lượt gốc (giải thích ở mục Ca đính kèm bên dưới)",
+            f"- {root}/ocr.txt: text OCR lượt gốc",
+            f"- {root}/llm_raw.txt, {root}/llm_output.json: câu trả lời LLM khi chia / phân loại giấy, kế hoạch backend trả",
+            f"- {root}/outputs.json: output từng tầng của planner (plan, extracted, response)",
+            f"- {root}/files/: ẢNH/PDF GỐC, dùng Read để xem trực tiếp",
+        ]
+    else:
+        lines += [
+            f"- {root}/case.json: thông tin lượt, danh sách tệp, options, lỗi ghi nhận",
+            f"- {root}/fields.json: field backend đã trả ở lượt gốc",
+            f"- {root}/ocr.txt: text OCR lượt gốc",
+            f"- {root}/llm_raw.txt, {root}/llm_output.json: câu trả lời LLM",
+            f"- {root}/outputs.json: output từng tầng (field bị loại khi validate...)",
+            f"- {root}/form_report.json: kết quả điền thật extension gửi về, nếu có",
+            f"- {root}/files/: ẢNH/PDF GỐC, dùng Read để xem trực tiếp",
+        ]
     if has_replay:
         lines += [
-            f"- {root}/reproduce.json: field × lần khi chạy lại với code hiện tại, OCR mới mỗi lần",
+            f"- {root}/reproduce.json: {'ô ảo' if attach else 'field'} × lần khi chạy lại với code hiện tại, OCR mới mỗi lần",
             f"- {root}/../replay/reproduce/run*_ocr.txt: text OCR từng lần chạy lại",
         ]
-    if job.get("settings", {}).get("mode") == "portal" and has_replay:
+        if attach:
+            lines.append(f"- {root}/../replay/reproduce/run*_plan.json: kế hoạch đính kèm backend trả ở từng lần chạy lại")
+    if attach and job.get("settings", {}).get("mode") == "portal" and has_replay:
+        lines += [
+            f"- {root}/../replay/reproduce/run*_portal.json: dòng + tên tệp bot đọc trên CỔNG THẬT trước / sau khi extension đính, "
+            "tệp extension báo chưa đính được",
+            f"- {root}/../replay/reproduce/run*.png: ẢNH CHỤP CỔNG THẬT sau khi đính, dùng Read để xem",
+        ]
+    if attach:
+        lines += _attach_note(job.get("settings", {}).get("mode") == "portal")
+    elif job.get("settings", {}).get("mode") == "portal" and has_replay:
         lines += [
             f"- {root}/../replay/reproduce/run*.png: ẢNH CHỤP CỔNG THẬT sau khi điền, dùng Read để xem",
             "",
@@ -239,6 +329,8 @@ def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
             "## Giới hạn của lần chạy này",
             "Ca này chỉ gọi backend, không chạy extension, nên không kiểm chứng được bản sửa extension. Lỗi ở extension thì chọn report_only.",
         ]
+        if attach:
+            lines.append("Với lượt đính kèm, máy chỉ chấm KẾ HOẠCH backend trả (giấy nào vào dòng nào), không chấm việc tệp có lên cổng không.")
     reproduce = job.get("reproduce") or {}
     if reproduce.get("faithful") is False:
         coverage = reproduce.get("coverage") or {}
@@ -268,8 +360,8 @@ def case_brief(job: dict, case: dict, attempts: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def analyst_prompt(role: str, brief: str) -> tuple[str, str]:
-    return _COMMON + "\n\n" + ANALYSTS[role]["task"], brief + "\n\nHãy phân tích ca này và trả kết quả theo đúng schema."
+def analyst_prompt(role: str, brief: str, kind: str | None = None) -> tuple[str, str]:
+    return _COMMON + "\n\n" + analysts(kind)[role]["task"], brief + "\n\nHãy phân tích ca này và trả kết quả theo đúng schema."
 
 
 def review_prompt(opinions: list[dict]) -> str:
@@ -280,10 +372,18 @@ def critic_prompt(brief: str, opinions: list[dict]) -> tuple[str, str]:
     return _COMMON + "\n\n" + CRITIC["task"], brief + "\n\n" + _REVIEW_TASK.format(opinions=_json(opinions))
 
 
-def arbiter_prompt(brief: str, opinions: list[dict], reviews: list[dict]) -> str:
+def arbiter_prompt(brief: str, opinions: list[dict], reviews: list[dict], plan_notes: list[str] | None = None,
+                   previous: dict | None = None) -> str:
     parts = [brief, "\n## Ý kiến vòng đầu\n" + _json(opinions)]
     if reviews:
         parts.append("\n## Phản biện\n" + _json(reviews))
+    if plan_notes:
+        # Người vận hành đã đọc kế hoạch trước và không cho sửa như vậy: lập lại kế hoạch đáp ứng góp ý.
+        parts.append("\n## Kế hoạch trước (người vận hành chưa đồng ý)\n"
+                     + _json({k: (previous or {}).get(k) for k in ("decision", "cause", "plan", "acceptance", "risk")}))
+        parts.append("\n## Góp ý của người vận hành về kế hoạch\nKế hoạch mới phải đáp ứng các góp ý này; không làm được thì "
+                     "chọn report_only và nói rõ vì sao.")
+        parts.extend(f"<plan_note lan=\"{i}\">\n{note}\n</plan_note>" for i, note in enumerate(plan_notes, 1))
     parts.append("\nHãy tự kiểm chứng điểm còn tranh cãi rồi ra quyết định.")
     return "\n".join(parts)
 

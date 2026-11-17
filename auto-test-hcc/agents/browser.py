@@ -15,6 +15,7 @@ Quy tắc của lớp này:
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 import socket
@@ -32,6 +33,7 @@ import httpx
 from playwright.sync_api import Error, sync_playwright
 
 import replay
+import runner_hub
 import scoring
 from config import CDP_PORT, EXTENSION_BACKEND, EXT, PROFILE, REPO, ROOT
 from evidence import test_database as database
@@ -209,6 +211,71 @@ FORM_PROBE_JS = r"""() => document.querySelectorAll(
 ).length"""
 
 
+# Đọc bảng đính kèm trên trang: mỗi dòng có ô / nút tải tệp → {label, files}. Dùng chung cho mọi cổng nên đoán theo DOM:
+# nhãn là ô nhiều chữ nhất không phải tên tệp / nút, tệp là phần tử có chữ kết thúc bằng đuôi tệp (hoặc title/download).
+ATTACH_ROWS_JS = r"""() => {
+  const EXT = /\.(pdf|jpe?g|png|gif|bmp|tiff?|heic|docx?|xlsx?|xml|zip|rar|mp3|mp4|wav)$/i;
+  const FILE = /[^\\/:*?"<>|\r\n\t]{1,160}?\.(pdf|jpe?g|png|gif|bmp|tiff?|heic|docx?|xlsx?|xml|zip|rar|mp3|mp4|wav)(?![a-z0-9])/gi;
+  const UPLOAD = /chon tep|chon file|tai len|tai tep|dinh kem|upload|them tep|them file|browse/;
+  const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase().trim();
+  const shown = (el) => el.getClientRects().length > 0;
+  const marks = new Set(document.querySelectorAll("input[type=file]"));
+  for (const el of document.querySelectorAll("button, a, label, [role=button]")) {
+    const t = fold(el.innerText || el.title || el.getAttribute("aria-label"));
+    if (t && t.length <= 40 && UPLOAD.test(t)) marks.add(el);
+  }
+  const rows = new Set();
+  for (const el of marks) {
+    const row = el.closest("tr, .sd-question, .sd-row, li, [class*=row], [class*=item]");
+    if (row && row !== document.body && row !== document.documentElement) rows.add(row);
+  }
+  // Bảng lồng bảng: hàng ngoài chứa cả bảng con, chỉ giữ hàng trong cùng.
+  const inner = [...rows].filter((r) => ![...rows].some((o) => o !== r && r.contains(o)));
+  return inner.filter(shown).slice(0, 80).map((row) => {
+    const names = new Set();
+    for (const el of row.querySelectorAll("a, span, div, li, p, td, label")) {
+      const own = (el.innerText || "").trim();
+      if (own && own.length <= 200 && !own.includes("\n") && EXT.test(own)) names.add(own);
+      for (const attr of ["title", "download"]) {
+        const v = (el.getAttribute(attr) || "").trim();
+        if (v && v.length <= 200 && EXT.test(v)) names.add(v);
+      }
+    }
+    if (!names.size) for (const m of (row.innerText || "").matchAll(FILE)) names.add(m[0].trim());
+    // Ô chứa nhiều tệp liền nhau cho ra một chuỗi dính ("a.pdfb.jpg"): bỏ chuỗi chứa trọn một tên tệp khác.
+    const files = [...names].filter((n) => ![...names].some((o) => o !== n && n.includes(o)));
+    let label = "";
+    const parts = row.matches("tr") ? [...row.cells].map((c) => c.innerText || "") : (row.innerText || "").split("\n");
+    for (const part of parts) {
+      const t = part.replace(FILE, " ").replace(/\s+/g, " ").trim();
+      if (!t || (t.length < 40 && UPLOAD.test(fold(t)))) continue;
+      if (row.matches("tr") ? t.length > label.length : !label) label = t;
+    }
+    return { label: label.slice(0, 240), files: files.slice(0, 40) };
+  });
+}"""
+
+# Nút đính kèm của panel + danh sách tệp extension báo chưa đính được (mục "Chưa đính kèm được" trong Xem chi tiết).
+POPUP_ATTACH_JS = r"""() => {
+  const $ = (id) => document.getElementById(id);
+  const shown = (el) => !!el && !el.hidden && getComputedStyle(el).display !== "none";
+  const failed = [];
+  for (const h of document.querySelectorAll("#attachResultList h3.err")) {
+    const list = h.nextElementSibling;
+    if (list) for (const li of list.querySelectorAll("li")) failed.push(li.textContent.trim());
+  }
+  return {
+    attachStep: shown($("attachStepBtn")) && !$("attachStepBtn").disabled,
+    fillAttach: shown($("fillAttachBtn")),
+    failed,
+  };
+}"""
+
+_ATTACH_TIMEOUT_S = 420
+_ATTACH_STEP_S = 90
+_SPLIT_DOCUMENTS_KEY = "autofill_attach_split_documents"
+
+
 # Cùng tiêu chí với content/portal-login.js. Chạy thẳng trên trang để không phải đánh thức service worker của extension:
 # đánh thức là mở một tab mới, mà đang lúc người dùng đăng nhập thì không được làm phiền.
 LOGGED_IN_JS = r"""() => {
@@ -220,13 +287,13 @@ LOGGED_IN_JS = r"""() => {
 }"""
 
 
-def preflight() -> str | None:
-    """Câu báo lỗi nếu chưa chạy được trên cổng, None nếu ổn."""
+def preflight(remote: bool = False) -> str | None:
+    """Câu báo lỗi nếu chưa chạy được trên cổng, None nếu ổn. ``remote``: Chromium chạy trên máy người dùng (runner_hub)."""
     config = (EXT / "api/config.js").read_text(encoding="utf-8")
     if not re.search(rf'const BACKEND_URL\s*=\s*"{re.escape(EXTENSION_BACKEND)}"', config):
         return (f"Extension đang trỏ backend khác {EXTENSION_BACKEND} nên lượt điền sẽ không chạy qua code vừa sửa. "
                 f"Đổi BACKEND_URL trong auto-fill-hcc-extension/api/config.js về {EXTENSION_BACKEND}.")
-    if sys.platform != "win32" and not os.environ.get("DISPLAY"):
+    if not remote and sys.platform != "win32" and not os.environ.get("DISPLAY"):
         return "Máy chưa có màn hình cho cửa sổ bot (thiếu DISPLAY). Trên server hãy bật dịch vụ màn hình ảo autotest-vnc."
     return None
 
@@ -280,10 +347,22 @@ def _is_auth(url: str) -> bool:
     return bool(_AUTH_HOST.search(urlsplit(url).netloc))
 
 
-def _open_urls() -> list[str]:
+def _cdp_port(state: dict) -> int:
+    """Cổng debug Chromium của bot: trên máy dịch vụ, hoặc cổng giả runner_hub mở dẫn tới Chromium trên máy người dùng."""
+    runner = state.get("runner")
+    return runner_hub.cdp_port(runner) if runner else CDP_PORT
+
+
+def _ws_endpoint(port: int) -> str:
+    """Địa chỉ WebSocket của Chromium qua cổng giả: Chromium trả địa chỉ theo cổng debug THẬT trên máy người dùng, phải thay cổng."""
+    data = httpx.get(f"http://127.0.0.1:{port}/json/version", timeout=20).json()
+    return f"ws://127.0.0.1:{port}{urlsplit(data['webSocketDebuggerUrl']).path}"
+
+
+def _open_urls(port: int = CDP_PORT) -> list[str]:
     """Danh sách tab đọc từ cổng debug: xem được đang ở đâu mà không cần nối Playwright vào trình duyệt."""
     try:
-        pages = httpx.get(f"http://127.0.0.1:{CDP_PORT}/json/list", timeout=2).json()
+        pages = httpx.get(f"http://127.0.0.1:{port}/json/list", timeout=5).json()
     except (httpx.HTTPError, ValueError):
         return []
     return [p.get("url", "") for p in pages if p.get("type") == "page"]
@@ -304,10 +383,27 @@ class PortalBot:
         self.armed = False  # lớp chặn mạng: chỉ bật khi đã tới tờ khai, extension còn phải bấm Nộp trực tuyến để vào
         self.requests: list[dict] = []
         self.blocked: list[dict] = []
+        # Chromium trên máy người dùng (trình chạy bot): không tự mở trình duyệt, id extension giải nén ở máy đó khác máy này.
+        self.runner = state.get("runner")
+        self.ext_id_file = ROOT / "runs" / f"_extension_id_{self.runner}.txt" if self.runner else _EXT_ID_FILE
 
     # ---- vòng đời ------------------------------------------------------------------------------------------
 
     def attach(self, guard: bool = True) -> None:
+        if self.runner:
+            endpoint = _ws_endpoint(_cdp_port(self.state))  # trình chạy đã ngắt thì báo ngay, chưa khởi động Playwright
+            self.pw = sync_playwright().start()
+            self.browser = self.pw.chromium.connect_over_cdp(endpoint)
+        else:
+            self._attach_local()
+        self.closed = False
+        self.browser.on("disconnected", lambda _: setattr(self, "closed", True))
+        self.context = self.browser.contexts[0]
+        if guard:
+            self.context.add_init_script(GUARD_JS)
+            self.context.route(_is_portal, self._route)
+
+    def _attach_local(self) -> None:
         self.pw = sync_playwright().start()
         if _port_open(CDP_PORT) and _loaded_extension() != str(EXT):
             # Cửa sổ cũ nạp extension ở chỗ khác (vd repo người phát triển, trỏ 12005): điền qua nó là gọi nhầm backend.
@@ -332,12 +428,6 @@ class PortalBot:
                     break
                 time.sleep(0.2)
         self.browser = self.pw.chromium.connect_over_cdp(f"http://127.0.0.1:{CDP_PORT}")
-        self.closed = False
-        self.browser.on("disconnected", lambda _: setattr(self, "closed", True))
-        self.context = self.browser.contexts[0]
-        if guard:
-            self.context.add_init_script(GUARD_JS)
-            self.context.route(_is_portal, self._route)
 
     def detach(self) -> None:
         try:
@@ -392,8 +482,8 @@ class PortalBot:
 
     def _remember(self, worker):
         self.state["extId"] = urlsplit(worker.url).netloc
-        _EXT_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _EXT_ID_FILE.write_text(self.state["extId"], encoding="utf-8")
+        self.ext_id_file.parent.mkdir(parents=True, exist_ok=True)
+        self.ext_id_file.write_text(self.state["extId"], encoding="utf-8")
         return worker
 
     def _sw(self):
@@ -401,7 +491,10 @@ class PortalBot:
         if worker:
             return self._remember(worker)
         # Service worker MV3 tự ngủ sau ~30 giây, mở trang của extension để đánh thức.
-        known = self.state.get("extId") or (_EXT_ID_FILE.read_text(encoding="utf-8").strip() if _EXT_ID_FILE.is_file() else "")
+        known = self.state.get("extId") or (self.ext_id_file.read_text(encoding="utf-8").strip() if self.ext_id_file.is_file() else "")
+        if not known and self.runner:
+            remote_runner = runner_hub.get(self.runner)
+            known = remote_runner.info.get("extId", "") if remote_runner else ""  # trình chạy báo id lúc nối
         if known:
             wake = self.context.new_page()
             try:
@@ -427,6 +520,16 @@ class PortalBot:
         self._sw()
         self.state["extensionStale"] = False
         self.log("Đã nạp lại extension trên cửa sổ bot.")
+
+    def sync_extension(self) -> bool:
+        """Chromium trên máy người dùng: chép bản extension khu làm việc sang máy đó nếu khác (sau khi agent sửa / hoàn tác).
+        True = vừa đổi, phải nạp lại extension. Chromium trên máy này đọc thẳng thư mục khu làm việc nên không cần."""
+        if not self.runner:
+            return False
+        changed = runner_hub.sync_extension(self.runner)
+        if changed:
+            self.log(f"Đã chép bản extension mới sang {runner_hub.describe(self.runner)}.")
+        return changed
 
     def sw_eval(self, js: str, arg=None):
         return self._sw().evaluate(js, arg)
@@ -673,18 +776,28 @@ class PortalBot:
     def upload(self, files: list[Path]) -> None:
         if self.popup_state().get("files", 0) == len(files):
             return
-        self.popup().set_input_files("#fileInput", [str(p) for p in files])
+        if self.runner:
+            # Trình duyệt ở máy khác: đường dẫn trên máy này vô nghĩa với nó, gửi nội dung tệp (Playwright giới hạn 50 MB / lần).
+            payload = [{"name": p.name, "mimeType": mimetypes.guess_type(p.name)[0] or "application/octet-stream", "buffer": p.read_bytes()}
+                       for p in files]
+            self.popup().set_input_files("#fileInput", payload)
+        else:
+            self.popup().set_input_files("#fileInput", [str(p) for p in files])
         end = time.monotonic() + 45
         while time.monotonic() < end and self.popup_state().get("files", 0) < len(files):
             self.sleep(500)
 
     def fill(self) -> dict:
+        return self.press("#ocrBtn", _FILL_TIMEOUT_S)
+
+    def press(self, selector: str, timeout_s: float) -> dict:
+        """Bấm một nút chạy việc của panel (điền / đính kèm), tự đồng ý xử lý dữ liệu nếu panel hỏi, chờ tới khi panel rảnh."""
         self.sw_eval(SW_HOOK_JS)
-        self.popup_click("#ocrBtn")
+        self.popup_click(selector)
         started = consented = False
         began = time.monotonic()
         state: dict = {}
-        while time.monotonic() - began < _FILL_TIMEOUT_S:
+        while time.monotonic() - began < timeout_s:
             self.sleep(1000)
             state = self.popup_state() or state
             if state.get("consent") and not consented:
@@ -702,7 +815,75 @@ class PortalBot:
                 return state
             elif time.monotonic() - began > 25 and re.search(r"\b(err|warn)\b", state.get("statusClass", "")):
                 return state  # dừng trước khi gọi BE: chưa có file, chưa chọn thủ tục…
-        raise RuntimeError(f"Quá {_FILL_TIMEOUT_S} giây vẫn chưa điền xong.")
+        raise RuntimeError(f"Quá {int(timeout_s)} giây panel vẫn chưa chạy xong.")
+
+    # ---- đính kèm --------------------------------------------------------------------------------------------
+
+    def read_attach_rows(self) -> list[dict]:
+        """Các dòng đính kèm trên tab làm việc (mọi frame của cổng) cùng tên tệp đang hiện ở mỗi dòng."""
+        rows: list[dict] = []
+        if self.page is None:
+            return rows
+        for frame in self.page.frames:
+            if frame.url.startswith("chrome-extension://"):
+                continue
+            try:
+                rows += frame.evaluate(ATTACH_ROWS_JS) or []
+            except Error:
+                continue  # frame đang chuyển trang
+        return rows
+
+    def on_attach_step(self, expected: list[str]) -> bool:
+        """Đang ở bước đính kèm: có dòng tải tệp trùng tên dòng lượt gốc đọc được. Ô ảnh trên tờ khai không tính."""
+        rows = self.read_attach_rows()
+        if not expected:
+            return len(rows) >= 2
+        return any(scoring.same_row(row.get("label"), name) for row in rows for name in expected)
+
+    def attach_controls(self) -> dict:
+        frame = self.popup()
+        if not frame:
+            return {}
+        try:
+            return frame.evaluate(POPUP_ATTACH_JS) or {}
+        except Error:
+            return {}
+
+    def set_split_documents(self, on: bool) -> None:
+        """Cài đặt "Tách giấy tờ" của extension, đặt đúng như lượt gốc. Panel nghe storage.onChanged nên nhận ngay."""
+        self.sw_eval(f"(v) => chrome.storage.local.set({{ {_SPLIT_DOCUMENTS_KEY}: v }})", bool(on))
+
+    def advance_to_attach(self, expected: list[str], timeout_s: float = _ATTACH_STEP_S) -> bool:
+        """Cổng nhiều bước: tự bấm Tiếp tục / Bước tiếp theo tới khi thấy bảng đính kèm. Không bao giờ bấm nút có chữ lưu / nộp
+        (ADVANCE_JS), nên cổng chỉ có nút "Lưu và tiếp tục" thì trả False để nhờ người."""
+        end = time.monotonic() + timeout_s
+        while time.monotonic() < end:
+            self._follow_busiest_attach_tab(expected)
+            if self.on_attach_step(expected):
+                self.sleep(1500)
+                return True
+            self.auto_advance(allow_page=True, settle_s=2)
+            self.sleep(1500)
+        return self.on_attach_step(expected)
+
+    def _follow_busiest_attach_tab(self, expected: list[str]) -> None:
+        """Cổng có thể mở bước đính kèm ở tab mới: chuyển sang tab có bảng đính kèm."""
+        current = self.page
+        for page in [p for p in self.context.pages if not p.url.startswith("chrome-extension://")]:
+            self.page = page
+            if self.on_attach_step(expected):
+                return
+        self.page = current
+
+    def pick_attach_page(self, expected: list[str]) -> bool:
+        pages = [p for p in self.context.pages if not p.url.startswith("chrome-extension://")]
+        for page in pages:
+            self.page = page
+            if self.on_attach_step(expected):
+                self.mark_form_reached()
+                return True
+        self.page = pages[0] if pages else None
+        return False
 
     def snapshot(self, request_id: str) -> dict | None:
         """Ảnh chụp form của đúng lượt này. Tracker tự chụp 1,5 giây sau khi điền; không thấy thì yêu cầu chụp."""
@@ -873,6 +1054,111 @@ def run_once(bot: PortalBot, case: dict, number: int, credentials: dict, files: 
     return result
 
 
+def expected_attach_rows(case: dict) -> list[str]:
+    """Tên các dòng đính kèm extension đọc được ở lượt gốc: để nhận ra đã tới bước đính kèm, không nhầm ô ảnh trên tờ khai."""
+    components = ((case.get("options") or {}).get("attachmentContext") or {}).get("components") or []
+    names = [str(c.get("componentName") or "") for c in components if isinstance(c, dict)]
+    names += [scoring.attach_row_name(item) for item in case.get("plan") or [] if isinstance(item, dict)]
+    return [name for name in dict.fromkeys(names) if name and name != "?"]
+
+
+def _attach_trace(username: str, since: datetime) -> dict | None:
+    """Lượt đính kèm vừa chạy trên backend thử: trace kind=attach mới nhất của tài khoản chạy lại kể từ lúc bấm.
+
+    Không dựa vào mã hỗ trợ trên panel: thủ tục điền kèm đính kèm hiện mã của lượt điền."""
+    end = time.monotonic() + 10
+    while True:
+        trace = database().traces.find_one(
+            {"kind": "attach", "username": username, "created_at": {"$gte": since}},
+            {"request_id": 1, "llm_output.attachments": 1, "errors": 1},
+            sort=[("created_at", -1)],
+        )
+        if trace or time.monotonic() > end:
+            return trace
+        time.sleep(1)
+
+
+def _wait_attach_step(bot: PortalBot, wait_human: Callable[..., None], expected: list[str], message: str) -> None:
+    """Nhờ người bấm sang bước đính kèm. Rời trình duyệt trong lúc chờ (Playwright đồng bộ giữ request của trang)."""
+    while True:
+        bot.detach()
+        wait_human(message, "Đã tới bước đính kèm, chạy tiếp")
+        bot.attach()
+        if bot.pick_attach_page(expected):
+            bot.ensure_panel()
+            return
+        message = "Bot chưa thấy bảng đính kèm trên cửa sổ bot. Hãy mở tới bước Thành phần hồ sơ (bảng có nút chọn tệp)."
+
+
+def run_attach_once(
+    bot: PortalBot, case: dict, number: int, credentials: dict, files: list[Path], out_dir: Path, wait_human: Callable[..., None],
+) -> dict:
+    """Một lần đính kèm trên cổng thật bằng giấy tờ thật của req: panel đính như cán bộ dùng, bot đọc lại tên tệp trên từng dòng.
+
+    Cổng điền và đính cùng trang (nút "Điền biểu mẫu và đính kèm" hoặc thủ tục tự đính sau khi điền) thì bấm một nút. Cổng nhiều
+    bước thì điền tờ khai, tự bấm sang bước đính kèm (không bấm nút có chữ lưu / nộp), rồi bấm "Đính kèm" của panel.
+    Tệp tải lên nằm trong hồ sơ nháp của tài khoản VNeID đang đăng nhập; không bao giờ nộp.
+    """
+    began = time.monotonic()
+    result: dict = {"n": number, "startedAt": datetime.now(timezone.utc).isoformat(), "mode": "portal", "kind": "attach"}
+    expected = expected_attach_rows(case)
+    bot.ensure_panel()
+    bot.login_panel(credentials)
+    bot.select_procedure(case["procedure"])
+    bot.set_split_documents((case.get("options") or {}).get("splitDocuments") is True)
+    bot.upload(files)
+    controls = bot.attach_controls()
+    if not controls.get("fillAttach") and controls.get("attachStep") and not bot.on_attach_step(expected):
+        state = bot.fill()
+        result["fill"] = {k: state.get(k) for k in ("status", "statusClass")}
+        if not bot.advance_to_attach(expected):
+            _wait_attach_step(
+                bot, wait_human, expected,
+                "Bot không tự sang được bước đính kèm (nút chuyển bước có chữ Lưu bot không bấm, hoặc tờ khai còn ô bắt buộc). "
+                "Hãy bấm sang bước Thành phần hồ sơ trên cửa sổ bot.",
+            )
+        controls = bot.attach_controls()
+    button = "#fillAttachBtn" if controls.get("fillAttach") else "#attachStepBtn" if controls.get("attachStep") else "#ocrBtn"
+    rows_before = bot.read_attach_rows()
+    replay.clear_ocr_cache([f.get("sha256") for f in case["storedFiles"]])
+    since = datetime.now(timezone.utc)
+    state = bot.press(button, _ATTACH_TIMEOUT_S)
+    result["ms"] = int((time.monotonic() - began) * 1000)
+    result["panel"] = {k: state.get(k) for k in ("status", "statusClass", "details")}
+    result["button"] = button
+    bot.sleep(2500)  # cổng hiện tên tệp sau khi tải xong
+    rows_after = bot.read_attach_rows()
+    failed = bot.attach_controls().get("failed") or []
+    trace = _attach_trace(credentials["username"], since)
+    shot = bot.screenshot(out_dir / f"run{number}.png")
+    if shot:
+        result["screenshot"] = f"run{number}.png"
+    (out_dir / f"run{number}_portal.json").write_text(
+        json.dumps({"button": button, "rowsBefore": rows_before, "rowsAfter": rows_after, "failed": failed}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    if not trace:
+        result.update(status="error", error=f"Panel không gọi backend đính kèm: {state.get('status') or 'không có thông báo'}")
+        return result
+    request_id = trace["request_id"]
+    plan = [item for item in (trace.get("llm_output") or {}).get("attachments") or [] if isinstance(item, dict)]
+    errors = trace.get("errors") or []
+    (out_dir / f"run{number}_plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    names = [f.get("name") or "" for f in case["storedFiles"]]
+    counts = case.get("pageCounts")
+    details = replay.read_trace(request_id, "attach")
+    (out_dir / f"run{number}_ocr.txt").write_text(details.pop("ocrText"), encoding="utf-8")
+    result.update(details)
+    result.update(
+        requestId=request_id,
+        status="partial" if errors else "ok",
+        response={"fields": scoring.attach_fields(plan, counts, errors), "attachments": plan, "errors": errors, "requestId": request_id},
+        form=scoring.attach_portal_values(plan, counts, names, rows_after, rows_before, failed, errors),
+        portalRows=len(rows_after),
+    )
+    return result
+
+
 def _back_to_form(bot: PortalBot, wait_human: Callable[[str], None], message: str) -> None:
     """Nhờ người đưa cửa sổ về tờ khai, tới khi thật sự thấy tờ khai. Rời hẳn trình duyệt trong lúc chờ để người dùng
     đăng nhập lại trên Chromium bình thường. Lỡ đóng cửa sổ thì lần nối sau tự mở lại."""
@@ -926,7 +1212,7 @@ def replay_on_portal(
     bot = PortalBot(state, cancel, log)
     bot.attach()
     try:
-        if state.get("extensionStale"):
+        if bot.sync_extension() or state.get("extensionStale"):
             bot.reload_extension()
         for number in range(1, count + 1):
             if cancel.is_set():
@@ -940,7 +1226,10 @@ def replay_on_portal(
                 if not _reenter(bot, case, credentials, log):
                     _back_to_form(bot, wait_human, "Bot không tự vào lại được tờ khai, có thể hết phiên VNeID hoặc cửa sổ đã đóng. Đăng nhập lại và mở tới tờ khai.")
             try:
-                run = run_once(bot, case, number, credentials, files, out_dir)
+                if replay.is_attach(case):
+                    run = run_attach_once(bot, case, number, credentials, files, out_dir, wait_human)
+                else:
+                    run = run_once(bot, case, number, credentials, files, out_dir)
             except Stopped:
                 raise
             except (Error, RuntimeError) as reason:
@@ -978,9 +1267,10 @@ def reload_if_open(log: Callable[[str], None]) -> None:
 def open_home(state: dict, cancel: threading.Event, log: Callable[[str], None]) -> None:
     """Mở trang chủ cổng rồi rời ra ngay, không để lại route hay script nào trên trang."""
     bot = PortalBot(state, cancel, log)
-    was_open = _port_open(CDP_PORT)
+    was_open = bool(bot.runner) or _port_open(CDP_PORT)
     bot.attach(guard=False)
     try:
+        bot.sync_extension()
         if was_open:
             # Cửa sổ của ca trước có thể đang giữ code extension cũ, ví dụ ca đó vừa hoàn tác bản sửa.
             bot.reload_extension()
@@ -996,7 +1286,10 @@ def open_home(state: dict, cancel: threading.Event, log: Callable[[str], None]) 
 
 def is_logged_in(state: dict, cancel: threading.Event, log: Callable[[str], None]) -> bool:
     """Đang ở màn đăng nhập thì không nối vào. Chỉ nối thoáng qua khi đã về cổng, để đọc xem có tài khoản chưa."""
-    urls = _open_urls()
+    try:
+        urls = _open_urls(_cdp_port(state))
+    except RuntimeError:
+        return False  # trình chạy bot trên máy người dùng vừa ngắt: chờ nó nối lại
     if any(_is_auth(url) for url in urls) or not any(_is_portal(url) for url in urls):
         return False
     bot = PortalBot(state, cancel, log)

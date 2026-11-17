@@ -19,6 +19,7 @@ const STAGES: { key: string; label: string; visited: (job: Job) => boolean }[] =
   { key: "reproduce", label: "Chạy lại", visited: (j) => !!j.reproduce },
   { key: "meeting", label: "Họp", visited: (j) => j.rounds.length > 0 },
   { key: "arbiter", label: "Trọng tài", visited: (j) => j.rounds.some((r) => r.decision) },
+  { key: "plan", label: "Duyệt kế hoạch", visited: (j) => j.rounds.some((r) => r.planReviews?.length) },
   { key: "fix", label: "Sửa", visited: (j) => j.rounds.some((r) => r.fix) },
   { key: "test", label: "Test", visited: (j) => j.rounds.some((r) => r.tests) },
   { key: "approve", label: "Duyệt", visited: (j) => j.rounds.some((r) => r.approval) },
@@ -79,14 +80,17 @@ export function OutcomeTag({ outcome }: { outcome: Outcome }) {
 
 export function StatusTag({ status, stage }: { status: Job["status"]; stage: string }) {
   if (status === "running" && stage === "approve") return <span className="at-tag at-tag--warn">Chờ bạn duyệt bản sửa</span>;
+  if (status === "running" && stage === "plan") return <span className="at-tag at-tag--warn">Chờ bạn duyệt kế hoạch</span>;
   const tone = status === "failed" ? "bad" : "plain";
   const name = STAGES.find((s) => s.key === stage)?.label;
   return <span className={`at-tag at-tag--${tone}`}>{STATUS_LABEL[status]}{status === "running" && name ? `: ${name}` : ""}</span>;
 }
 
 function StageRail({ job }: { job: Job }) {
-  const live = job.status === "running";
-  const stages = STAGES.filter((s) => s.key !== "portal" || job.settings.mode === "portal");
+  const live = job.status === "running" || job.status === "queued";
+  const relevant = STAGES.filter((s) => s.key !== "portal" || job.settings.mode === "portal");
+  // Ca đã xong: chỉ giữ các bước đã đi qua (ca Chỉ báo cáo không hiện Sửa / Test / Duyệt / Build rỗng).
+  const stages = live ? relevant : relevant.filter((s) => s.visited(job) || s.key === job.stage);
   const index = stages.findIndex((s) => s.key === job.stage);
   return (
     <ol className="at-rail" aria-label="Tiến trình">
@@ -138,6 +142,86 @@ function HumanWait({ job, onReady, busy, vnc, onError }: { job: Job; onReady: ()
   );
 }
 
+/** Trọng tài chọn sửa code: dừng lại để người dùng đọc kế hoạch, đồng ý thì agent mới sửa. */
+function PlanBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (decision: Verdict, note: string) => void }) {
+  const [note, setNote] = useState("");
+  const pending = job.planApproval;
+  if (!pending || job.status !== "running") return null;
+  const decision = job.rounds.find((r) => r.n === pending.round)?.decision;
+  if (!decision) return null;
+  const deadline = new Date(new Date(pending.since).getTime() + pending.timeoutMin * 60_000).toISOString();
+  const text = note.trim();
+  return (
+    <section className="at-approve at-plan-box" role="alert" aria-label="Duyệt kế hoạch sửa">
+      <div>
+        <strong>Chờ bạn duyệt kế hoạch sửa vòng {pending.round}{pending.revision > 1 ? ` · bản lập lại lần ${pending.revision - 1}` : ""}</strong>
+        <p>Trọng tài đề nghị sửa code theo kế hoạch dưới đây. Agent chỉ bắt đầu sửa khi bạn đồng ý; chưa có dòng code nào bị đổi.</p>
+        <p className="faint">Quá {formatClock(deadline)} không ai duyệt thì ca tự dừng.</p>
+      </div>
+      <div className="at-plan-box__body">
+        <p className="at-plan-box__cause">
+          <span className="at-tag at-tag--plain">{CAUSES[decision.cause] ?? decision.cause}</span>
+        </p>
+        <Clamp text={decision.reason} />
+        {decision.plan ? (
+          <div className="at-plan">
+            <b>Kế hoạch:</b> {decision.plan.summary}
+            <ol>{decision.plan.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+            {decision.plan.files.length ? <p className="mono at-refs">{decision.plan.files.join("  ")}</p> : null}
+            {decision.plan.test ? <p className="muted"><b>Test:</b> {decision.plan.test}</p> : null}
+          </div>
+        ) : null}
+        {decision.acceptance?.length ? (
+          <div>
+            <b>Tiêu chí máy sẽ chấm sau khi sửa</b>
+            <ul className="at-plan-box__checks">
+              {decision.acceptance.map((c, i) => (
+                <li key={i}><span className="mono">{c.field}</span> {OPS[c.op] ?? c.op} {c.expected ? <b>{c.expected}</b> : null}{c.why ? <span className="faint"> · {c.why}</span> : null}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {decision.risk ? <p className="muted"><b>Rủi ro:</b> {decision.risk}</p> : null}
+      </div>
+      <div className="at-decide-bar">
+      <label className="field">
+        <span>Góp ý cho trọng tài (bắt buộc khi yêu cầu lập lại)</span>
+        <textarea
+          className="input at-textarea"
+          rows={2}
+          maxLength={3000}
+          placeholder="Ví dụ: chỉ sửa mapper của thủ tục này, không đụng engine điền chung"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </label>
+      <div className="at-approve__actions">
+        <button className="btn btn--primary" type="button" disabled={busy} onClick={() => onDecide("approve", text)}>
+          <Icon name="check" size={14} /> Đồng ý kế hoạch vòng {pending.round}, cho sửa
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy || !pending.canRevise || !text}
+          title={!pending.canRevise ? "Đã hết lượt lập lại trong vòng này" : !text ? "Ghi góp ý trước" : undefined}
+          onClick={() => onDecide("retry", text)}
+        >
+          <Icon name="refresh" size={14} /> Lập lại kế hoạch theo góp ý
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy}
+          onClick={() => { if (window.confirm("Không sửa theo kế hoạch này và dừng ca?")) onDecide("reject", text); }}
+        >
+          <Icon name="x" size={14} /> Không sửa, dừng
+        </button>
+      </div>
+      </div>
+    </section>
+  );
+}
+
 /** Bản sửa đã qua test nhưng chưa build, chưa nạp extension: phải có người đọc patch và bấm một trong ba nút. */
 function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (decision: Verdict, note: string) => void }) {
   const [note, setNote] = useState("");
@@ -160,6 +244,7 @@ function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecid
       <p className="mono at-refs">{pending.files.join("  ")}</p>
       {round ? <Checks round={round} /> : null}
       {round?.fix?.patch ? <Patch patch={round.fix.patch} /> : null}
+      <div className="at-decide-bar">
       <label className="field">
         <span>Góp ý cho hội đồng (bắt buộc khi chọn làm lại)</span>
         <textarea
@@ -192,6 +277,7 @@ function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecid
         >
           <Icon name="x" size={14} /> Không đồng ý, dừng
         </button>
+      </div>
       </div>
       {!pending.canRetry ? <p className="faint">Đây là vòng cuối nên không còn lượt làm lại.</p> : null}
     </section>
@@ -235,6 +321,20 @@ function Banner({ job }: { job: Job }) {
   return null;
 }
 
+/** Đoạn chữ dài: thu gọn còn vài dòng, có nút xem thêm. */
+function Clamp({ text, className }: { text: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 280;
+  return (
+    <div className={className}>
+      <p className={long && !open ? "at-clamp" : undefined}>{text}</p>
+      {long ? (
+        <button className="at-more-btn" type="button" onClick={() => setOpen((v) => !v)}>{open ? "Thu gọn" : "Xem thêm"}</button>
+      ) : null}
+    </div>
+  );
+}
+
 function OpinionCard({ item }: { item: Opinion }) {
   if (item.error) {
     return (
@@ -250,10 +350,15 @@ function OpinionCard({ item }: { item: Opinion }) {
         <strong>{item.label}</strong>
         <span className="at-tag at-tag--plain">{CAUSES[item.cause ?? "unknown"] ?? item.cause}</span>
         {item.stance ? <span className={`at-tag at-tag--${item.stance === "agree" ? "ok" : item.stance === "disagree" ? "bad" : "warn"}`}>{STANCES[item.stance]}</span> : null}
-        <span className="faint num at-card__conf">{item.confidence}%</span>
+        {typeof item.confidence === "number" ? (
+          <span className="at-conf" title={`Độ tin cậy ${item.confidence}%`}>
+            <span className="at-conf__bar"><span style={{ width: `${Math.max(0, Math.min(100, item.confidence))}%` }} /></span>
+            <span className="num faint">{item.confidence}%</span>
+          </span>
+        ) : null}
       </header>
-      <p>{item.summary}</p>
-      {item.rebuttal ? <p className="at-rebuttal">{item.rebuttal}</p> : null}
+      {item.summary ? <Clamp text={item.summary} /> : null}
+      {item.rebuttal ? <Clamp className="at-rebuttal" text={item.rebuttal} /> : null}
       {item.evidence?.length ? (
         <details className="at-more">
           <summary>Bằng chứng ({item.evidence.length})</summary>
@@ -261,7 +366,12 @@ function OpinionCard({ item }: { item: Opinion }) {
           {item.codeRefs?.length ? <p className="mono at-refs">{item.codeRefs.join("  ")}</p> : null}
         </details>
       ) : null}
-      {item.proposal ? <p className="muted at-proposal"><b>Đề xuất:</b> {item.proposal}</p> : null}
+      {item.proposal ? (
+        <details className="at-more">
+          <summary>Đề xuất</summary>
+          <p className="muted at-proposal">{item.proposal}</p>
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -347,7 +457,7 @@ function CheckMatrix({ evaluation, caption }: { evaluation: Evaluation; caption:
   );
 }
 
-function DecisionCard({ decision }: { decision: Decision }) {
+function DecisionCard({ decision, shownAbove }: { decision: Decision; shownAbove?: boolean }) {
   return (
     <article className="at-card at-card--arbiter">
       <header className="at-card__head">
@@ -355,7 +465,7 @@ function DecisionCard({ decision }: { decision: Decision }) {
         <span className="at-tag at-tag--plain">{CAUSES[decision.cause] ?? decision.cause}</span>
         <span className={`at-tag at-tag--${decision.decision === "fix_code" ? "ok" : decision.decision === "skip_ocr" ? "warn" : "plain"}`}>{DECISIONS[decision.decision]}</span>
       </header>
-      <p>{decision.reason}</p>
+      {shownAbove ? <p className="faint">Lý do: xem khung kết luận ở trên.</p> : <Clamp text={decision.reason} />}
       {decision.dissent ? <p className="muted"><b>Ý kiến bị bác:</b> {decision.dissent}</p> : null}
       {decision.plan ? (
         <div className="at-plan">
@@ -467,7 +577,23 @@ function RoundView({ job, round, single }: { job: Job; round: Round; single: boo
           <div className="at-cards">{round.reviews.map((o) => <OpinionCard key={o.role} item={o} />)}</div>
         </div>
       ) : null}
-      {round.decision ? <DecisionCard decision={round.decision} /> : null}
+      {round.planHistory?.length ? (
+        <details className="at-more">
+          <summary>{round.planHistory.length} kế hoạch trước đã được yêu cầu lập lại</summary>
+          {round.planHistory.map((d, i) => <DecisionCard key={i} decision={d} />)}
+        </details>
+      ) : null}
+      {round.decision && job.planApproval?.round !== round.n ? (
+        <DecisionCard decision={round.decision} shownAbove={!!job.report && job.report.reason === round.decision.reason} />
+      ) : null}
+      {round.planReviews?.map((r) => (
+        <p key={r.revision} className={`at-verdict is-${r.decision}`}>
+          <b>{r.timeout ? "Hết giờ, không ai duyệt kế hoạch" : r.decision === "approve" ? "Đồng ý kế hoạch" : r.decision === "retry" ? "Yêu cầu lập lại kế hoạch" : "Không đồng ý kế hoạch"}</b>
+          {r.by ? <span className="faint"> · {r.by}</span> : null}
+          {r.at ? <span className="faint num"> · {formatClock(r.at)}</span> : null}
+          {r.note ? <span>: {r.note}</span> : null}
+        </p>
+      ))}
       {round.precheck ? <CheckMatrix evaluation={round.precheck} caption="Tiêu chí trên code trước khi sửa" /> : null}
       {round.fix ? (
         <article className="at-card">
@@ -593,6 +719,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
       <div className="page-head">
         <button className="btn btn--sm" type="button" onClick={onBack}><Icon name="arrow-left" size={14} /> Trở lại</button>
         <h1>{job.case.label ?? job.requestId}</h1>
+        {job.outcome ? <OutcomeTag outcome={job.outcome} /> : <StatusTag status={job.status} stage={job.stage} />}
         <span className="mono faint">{job.requestId}</span>
         <CopyButton text={job.requestId} label="Chép mã" />
         <div className="page-head__actions">
@@ -616,9 +743,13 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
 
       <div className="at-meta faint">
         {account ? <span>{account.username}{account.xa ? ` · ${account.xa}` : ""}{account.tinh ? `, ${account.tinh}` : ""}</span> : null}
+        <span>Sửa cho {job.settings.target === "troly" ? "Trợ lý hồ sơ" : "Auto Fill"}</span>
+        <span>{job.settings.kind === "attach" ? "Lượt đính kèm" : "Lượt điền"}</span>
+        <span>{job.settings.mode === "api" ? "Chỉ gọi backend" : job.settings.runner ? `Cổng thật · Chromium trên máy ${job.settings.runnerMachine || "người dùng"}` : "Cổng thật · Chromium trên máy dịch vụ"}</span>
         <span>Chạy lại bằng {job.settings.replayAccount}</span>
+        {job.workspace?.["auto-fill-hcc-backend"] ? <span className="mono">BE {job.workspace["auto-fill-hcc-backend"].ref}</span> : null}
         <span>Bắt đầu {formatDateTime(job.createdAt)}</span>
-        <span className="num">{job.cost.calls} lượt agent · ${job.cost.usd.toFixed(2)}</span>
+        <span className="num">{job.cost.calls} lượt agent</span>
       </div>
 
       <blockquote className="at-quote">{job.description}</blockquote>
@@ -630,6 +761,15 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
       ) : null}
       {/* Dịch vụ gỡ trạng thái chờ ở nhịp sau: ẩn ngay kẻo người dùng bấm lần nữa khi tưởng chưa nhận. */}
       <HumanWait job={job} busy={acting} vnc={vnc} onError={setError} onReady={() => void act(async () => ({ ...(await agentApi.ready(job.id)), human: null }))} />
+      <PlanBox
+        key={`plan-${job.planApproval?.round ?? 0}-${job.planApproval?.revision ?? 0}`}
+        job={job}
+        busy={acting}
+        onDecide={(decision, note) => void act(async () => ({
+          ...(await agentApi.plan(job.id, { round: job.planApproval?.round ?? 0, revision: job.planApproval?.revision ?? 0, decision, note })),
+          planApproval: null,
+        }))}
+      />
       <ApprovalBox
         key={job.approval?.round ?? 0}
         job={job}
@@ -654,8 +794,9 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
           </p>
         ) : (
           job.fix.pushes?.length ? (
-            <div className="muted at-note">
-              <p>Bản sửa đã đẩy lên nhánh riêng của ca trên repo thật, dựng trên tag đang chạy production; main không đổi:</p>
+            <div className="at-deliver">
+              <strong>Bàn giao</strong>
+              <p className="faint">Bản sửa nằm trên nhánh riêng của ca, dựng trên tag đang chạy production; main không đổi.</p>
               <ul>
                 {job.fix.pushes.map((p) => (
                   <li key={p.component}>
@@ -688,12 +829,12 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
           </p>
         ) : <p className="muted at-note">Không lưu ca hồi quy: {job.regression.reason}</p>
       ) : null}
-      {job.workspace ? (
-        <p className="faint at-note">
-          Khu làm việc: {Object.entries(job.workspace).map(([dir, w]) => `${dir} @ ${w.ref}`).join(" · ")}
-        </p>
-      ) : null}
-      {job.warnings.map((w) => <p key={w} className="at-warn"><Icon name="alert" size={14} /> {w}</p>)}
+      {job.warnings.length > 2 ? (
+        <details className="at-warns">
+          <summary><Icon name="alert" size={14} /> {job.warnings.length} cảnh báo</summary>
+          {job.warnings.map((w) => <p key={w} className="at-warn">{w}</p>)}
+        </details>
+      ) : job.warnings.map((w) => <p key={w} className="at-warn"><Icon name="alert" size={14} /> {w}</p>)}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 
       <div className="tabs" role="tablist" aria-label="Chi tiết job">
@@ -705,7 +846,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
             <p className="muted">
               Chạy lại với code hiện tại <RunDots runs={job.reproduce.runs} total={job.reproduce.total} />
               {typeof job.reproduce.ocrFresh === "number" ? <span className="faint"> {job.reproduce.ocrFresh}/{job.reproduce.total} lần xác nhận OCR mới</span> : null}
-              {job.reproduce.coverage ? <span className={job.reproduce.faithful === false ? "ef-red" : "faint"}> · ra {job.reproduce.coverage.matched}/{job.reproduce.coverage.original} field của lượt gốc</span> : null}
+              {job.reproduce.coverage ? <span className={job.reproduce.faithful === false ? "ef-red" : "faint"}> · ra {job.reproduce.coverage.matched}/{job.reproduce.coverage.original} {job.settings.kind === "attach" ? "ô đính kèm" : "field"} của lượt gốc</span> : null}
             </p>
           ) : null}
           {job.reproduce ? <Gaps gaps={job.reproduce.formGaps} /> : null}

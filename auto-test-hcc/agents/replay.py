@@ -12,6 +12,7 @@ from typing import Callable
 
 import httpx
 
+import scoring
 from config import BACKEND_URL, REPLAY_CONCURRENCY, REPLAY_TIMEOUT_S, REPO
 from evidence import test_database as database
 
@@ -92,12 +93,12 @@ def clear_ocr_cache(file_shas: list[str]) -> None:
         database().ocr_cache.delete_many({"_id": {"$regex": f":({'|'.join(map(re.escape, shas))})$"}})
 
 
-def read_trace(request_id: str) -> dict:
+def read_trace(request_id: str, kind: str = "autofill") -> dict:
     """Trace ghi nền sau khi trả kết quả nên phải chờ. ocrFresh=None nghĩa là không xác minh được."""
     db = database()
     deadline = time.monotonic() + _TRACE_WAIT_S
     while True:
-        steps = db.trace_steps.find_one({"_id": f"{request_id}:autofill"}, {"ocr.cache": 1, "timing.f": 1})
+        steps = db.trace_steps.find_one({"_id": f"{request_id}:{kind}"}, {"ocr.cache": 1, "timing.f": 1})
         trace = db.traces.find_one({"request_id": request_id}, {"ocr_text": 1})
         if steps and trace:
             caches = [ref.get("cache") for ref in steps.get("ocr") or []]
@@ -112,6 +113,23 @@ def read_trace(request_id: str) -> dict:
         time.sleep(0.5)
 
 
+def is_attach(case: dict) -> bool:
+    return case.get("kind") == "attach"
+
+
+def attach_result(case: dict, body: dict, number: int, out_dir: Path) -> dict:
+    """Lượt đính kèm: kế hoạch backend trả quy thành ô ảo (scoring.attach_fields) đặt vào response.fields để chấm như lượt
+    điền. Kế hoạch đầy đủ ghi ra run<n>_plan.json cho agent đọc."""
+    plan = [item for item in body.get("attachments") or [] if isinstance(item, dict)]
+    (out_dir / f"run{number}_plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    # replaceFiles là tệp nén base64 (cỡ MB) cho cổng giới hạn dung lượng: chỉ giữ tên, kẻo runs.json phình.
+    replaced = [item.get("name") or item.get("fileIndex") for item in body.get("replaceFiles") or [] if isinstance(item, dict)]
+    body = {k: v for k, v in body.items() if k != "replaceFiles"}
+    if replaced:
+        body["replacedFiles"] = replaced
+    return {**body, "fields": scoring.attach_fields(plan, case.get("pageCounts"), body.get("errors"))}
+
+
 def run_once(case: dict, number: int, tag: str, token: str, out_dir: Path) -> dict:
     files = []
     metadata = []
@@ -120,7 +138,7 @@ def run_once(case: dict, number: int, tag: str, token: str, out_dir: Path) -> di
         files.append(("files", (item["name"], (REPO / item["path"]).read_bytes(), mime)))
         metadata.append({"name": item["name"], "type": mime, "role": item.get("role") or "doc"})
     data = {
-        "action": "fill",
+        "action": "attach" if is_attach(case) else "fill",
         "procedure": case["procedure"],
         "options": json.dumps(replay_options(case.get("options") or {}, tag), ensure_ascii=False),
         "fileMetadata": json.dumps(metadata, ensure_ascii=False),
@@ -142,9 +160,11 @@ def run_once(case: dict, number: int, tag: str, token: str, out_dir: Path) -> di
         body = response.json()
         errors = body.get("errors") if isinstance(body.get("errors"), list) else []
         request_id = body.get("requestId")
+        if is_attach(case):
+            body = attach_result(case, body, number, out_dir)
         result.update(status="partial" if errors else "ok", requestId=request_id, response=body)
         if request_id:
-            trace = read_trace(request_id)
+            trace = read_trace(request_id, "attach" if is_attach(case) else "autofill")
             (out_dir / f"run{number}_ocr.txt").write_text(trace.pop("ocrText"), encoding="utf-8")
             result.update(trace)
     except httpx.HTTPError as reason:

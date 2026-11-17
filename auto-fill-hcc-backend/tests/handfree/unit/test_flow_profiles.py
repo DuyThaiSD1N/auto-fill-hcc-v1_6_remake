@@ -835,7 +835,7 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bắc Ninh "ho-tro-chi-phi-hoa-tang-bac-ninh" (1.014582): điền đơn + đính kèm.
     # +1 cổng Bắc Ninh "dang-ky-nha-o-xa-hoi-bac-ninh" (1.014632): điền đơn Mẫu 02 + đính kèm.
     # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" (1.012289).
-    # +1 cổng Bộ Xây dựng chọn Sở "cap-giay-phep-chat-ha-cay-xanh" (1.002693), chỉ Đà Nẵng.
+    # +1 cổng Bộ Xây dựng "cap-giay-phep-chat-ha-cay-xanh" (1.002693): tỉnh → Sở, xã → Phường/Xã.
     # +1 cổng Bộ Y tế cấp Sở "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh" (1.012278).
     # +1 cổng Bộ NN&MT cấp xã "cap-gcn-attp-nong-lam-thuy-san" (2.001827).
     # +1 cổng Bộ Xây dựng "sua-chua-cai-tao-gpxd-cong-trinh" (1.013229, nhánh công trình).

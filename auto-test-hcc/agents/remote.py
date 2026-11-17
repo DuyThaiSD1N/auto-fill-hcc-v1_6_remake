@@ -9,18 +9,61 @@ from __future__ import annotations
 
 import atexit
 import base64
+import os
 import shutil
+import signal
 import socket
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
 
-from config import SOURCE_SSH, SOURCE_SSH_KEY, SOURCE_TUNNEL
+from config import PUBLISH_WEB, RUNS, SOURCE_SSH, SOURCE_SSH_KEY, SOURCE_TUNNEL
 
 _TIMEOUT_S = 120
 _lock = threading.Lock()
 _tunnel: subprocess.Popen | None = None
+# PID các đường hầm ssh dịch vụ đã mở. Dịch vụ bị dừng cứng (Stop-Process) thì ssh con không chết theo, vẫn giữ cổng: lần
+# khởi động sau dọn đúng các PID này (chỉ khi tiến trình đó vẫn là ssh), kẻo đường hầm mới báo "port forwarding failed".
+_PID_FILE = RUNS / "_tunnel_pids.txt"
+
+
+def _remember(proc: subprocess.Popen) -> None:
+    try:
+        _PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with _PID_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(f"{proc.pid}\n")
+    except OSError:
+        pass
+
+
+def _is_ssh(pid: int) -> bool:
+    if sys.platform == "win32":
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, text=True).stdout
+        return out.lower().startswith('"ssh.exe"')
+    try:
+        return Path(f"/proc/{pid}/comm").read_text().strip() == "ssh"
+    except OSError:
+        return False
+
+
+def cleanup_orphans() -> int:
+    """Tắt các đường hầm ssh mồ côi của lần chạy trước. Trả số tiến trình đã tắt."""
+    try:
+        pids = {int(line) for line in _PID_FILE.read_text(encoding="utf-8").split() if line.strip().isdigit()}
+    except OSError:
+        return 0
+    killed = 0
+    for pid in pids:
+        if _is_ssh(pid):
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+            killed += 1
+    _PID_FILE.unlink(missing_ok=True)
+    return killed
 
 
 class RemoteError(Exception):
@@ -69,6 +112,7 @@ def ensure_tunnel() -> None:
             [*_ssh_base(), "-N", "-o", "ExitOnForwardFailure=yes", "-L", f"127.0.0.1:{SOURCE_TUNNEL}", SOURCE_SSH],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
         )
+        _remember(_tunnel)
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             if _port_open(port):
@@ -80,10 +124,42 @@ def ensure_tunnel() -> None:
         raise RemoteError(f"Đường hầm SSH tới {SOURCE_SSH} không lên sau 20 giây.")
 
 
+_publish: subprocess.Popen | None = None
+
+
+def keep_publishing(retry_s: float = 10, rounds: int | None = None) -> None:
+    """Giữ đường hầm ngược đưa web của máy này lên server (PUBLISH_WEB). Rớt thì nối lại sau ``retry_s`` giây. Chạy trong một
+    luồng nền của dịch vụ; ``rounds`` chỉ dùng cho test."""
+    global _publish
+    done = 0
+    while rounds is None or done < rounds:
+        done += 1
+        try:
+            proc = subprocess.Popen(
+                [*_ssh_base(), "-N", "-o", "ExitOnForwardFailure=yes", "-R", f"127.0.0.1:{PUBLISH_WEB}", SOURCE_SSH],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            )
+        except (OSError, RemoteError) as reason:
+            print(f"[đường hầm web] không mở được: {reason}", flush=True)
+            time.sleep(retry_s)
+            continue
+        _publish = proc
+        _remember(proc)
+        error = (proc.stderr.read() or b"").decode("utf-8", "replace").strip()
+        proc.wait()
+        print(f"[đường hầm web] ssh -R dừng (mã {proc.returncode}): {error[:200]} · nối lại sau {retry_s:.0f} giây", flush=True)
+        time.sleep(retry_s)
+
+
+def publishing() -> bool:
+    return _publish is not None and _publish.poll() is None
+
+
 @atexit.register
 def _close() -> None:
-    if _tunnel and _tunnel.poll() is None:
-        _tunnel.kill()
+    for proc in (_tunnel, _publish):
+        if proc and proc.poll() is None:
+            proc.kill()
 
 
 def _encode(rel: str) -> str:

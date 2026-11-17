@@ -103,6 +103,10 @@ export interface Round {
   reviews: Opinion[];
   debate: { skipped: boolean; reason?: string } | null;
   decision: Decision | null;
+  /** Các kế hoạch trước mà người dùng yêu cầu trọng tài lập lại. */
+  planHistory?: Decision[];
+  /** Người dùng duyệt kế hoạch sửa (mỗi lần lập lại một mục). */
+  planReviews?: (ApprovalResult & { revision: number })[];
   precheck?: Evaluation;
   fix: { summary: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
   tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests;
@@ -126,6 +130,15 @@ export interface ApprovalResult {
 }
 
 /** Bản sửa đã qua test, đang chờ người duyệt trước khi build Docker và nạp extension. */
+/** Trọng tài đã lập kế hoạch sửa, đang chờ người dùng xác nhận trước khi agent sửa code. */
+export interface PendingPlan {
+  round: number;
+  revision: number;
+  since: string;
+  canRevise: boolean;
+  timeoutMin: number;
+}
+
 export interface PendingApproval {
   round: number;
   since: string;
@@ -152,6 +165,15 @@ export interface RequestInfo {
   pipeline?: string | null;
   experience?: string;
   needsApplicant?: boolean;
+  /** mongo: còn trên production; archive: production đã xoá, lấy từ kho lưu trữ. */
+  source?: "mongo" | "archive";
+  /** autofill: lượt điền; attach: lượt đính kèm (chấm kế hoạch giấy nào vào dòng nào). */
+  kind?: "autofill" | "attach";
+  /** Lượt đính kèm: cài đặt Tách giấy tờ lúc đó, số dòng đính kèm extension đọc trên cổng. */
+  splitDocuments?: boolean | null;
+  portalRows?: number | null;
+  /** Lượt điền: các lượt đính kèm cùng hồ sơ. */
+  attachRuns?: { requestId: string; createdAt?: string }[];
 }
 
 /** Bộ ca hồi quy (auto-test-hcc/regression/cases) phát lại trên bản sửa, so với trước khi sửa. */
@@ -185,9 +207,10 @@ export interface Job {
   description: string;
   createdAt: string;
   createdBy: string;
-  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget };
+  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget; kind?: "autofill" | "attach"; runner?: string | null; runnerMachine?: string | null };
   human: { message: string; button: string; since: string } | null;
   approval?: PendingApproval | null;
+  planApproval?: PendingPlan | null;
   status: "queued" | "running" | "done" | "failed" | "stopped";
   stage: string;
   outcome: Outcome | null;
@@ -245,6 +268,22 @@ export interface NewJob {
   applicant?: { applicantFullname: string; applicantIdentityNumber: string; applicantBirthday: string };
   mode: RunMode;
   target: FixTarget;
+  /** Cổng thật: Chromium chạy trên máy người dùng qua trình chạy bot. Không gửi = trên máy chạy dịch vụ. */
+  runnerId?: string;
+}
+
+/** Một máy chạy Chromium của bot (runner/bot_runner.py). token chỉ có khi vừa tạo. */
+export interface RunnerInfo {
+  id: string;
+  createdBy: string;
+  createdAt: string | null;
+  expiresAt: string | null;
+  connected: boolean;
+  machine?: string | null;
+  chromium?: string | null;
+  connectedAt?: string | null;
+  lastSeen?: string | null;
+  token?: string;
 }
 
 interface Phase {
@@ -270,8 +309,12 @@ export const agentApi = {
   stop: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/stop`, { method: "POST" }),
   revert: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/revert`, { method: "POST" }),
   ready: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/ready`, { method: "POST" }),
+  plan: (id: string, body: { round: number; revision: number; decision: Verdict; note: string }) =>
+    request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/plan`, json(body)),
   approve: (id: string, body: { round: number; decision: Verdict; note: string }) =>
     request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/approval`, json(body)),
+  createRunner: () => request<RunnerInfo>("/agent-api/runners", { method: "POST" }),
+  runner: (id: string) => request<RunnerInfo>(`/agent-api/runners/${encodeURIComponent(id)}`),
 };
 
 /** Ảnh cần Bearer token nên không gắn thẳng vào <img src>. */
