@@ -6,14 +6,16 @@ bộ giấy tờ (Đơn · Giấy tờ đất đai · [giấy đặc thù] · B�
 
   dòng  1– 5  Công trình KHÔNG THEO TUYẾN (dự án)   : đơn 1,  đất 2,  bản vẽ 4
   dòng  6–11  TÍN NGƯỠNG, TÔN GIÁO                  : đơn 6,  đất 7,  bản vẽ 10
-  dòng 12–16  NHÀ Ở RIÊNG LẺ                        : đơn 12, đất 13, bản vẽ 16
+  dòng 12–16  bản vẽ "kèm theo" + cam kết liền kề  : đơn 12, đất 13, bản vẽ 16
   dòng 17–22  TƯỢNG ĐÀI, TRANH HOÀNH TRÁNG          : đơn 17, đất 18, bản vẽ 20
   dòng 23–27  THEO GIAI ĐOẠN / DỰ ÁN                : đơn 23, đất 24, bản vẽ 26
   dòng 28     Đơn điều chỉnh/gia hạn/cấp lại (Mẫu 02)
   dòng 29     Hiệp định/thỏa thuận với Chính phủ VN
 
-Chốt nghiệp vụ (BA, 2026-09-14): hồ sơ NHÀ Ở RIÊNG LẺ cấp III/IV phải vào **12, 13, 16**; công trình
-tín ngưỡng/tôn giáo (nhà chùa…) vào **6, 7, 10**. Trước đây kế hoạch đính vào 1, 2, 27 → SAI khối.
+Chốt nghiệp vụ: từ 17/11/2026 (người dùng yêu cầu) hồ sơ NHÀ Ở RIÊNG LẺ cấp III/IV đính vào khối đầu bảng
+**1, 2, 4** cho MỌI tài khoản (trước đó BA 2026-09-14 chốt 12, 13, 16; riêng Lào Cai đã đi 1/2/4 theo cờ tài
+khoản). Công trình tín ngưỡng/tôn giáo (nhà chùa…) vẫn vào **6, 7, 10**. Bản crawl cổng thật 17/11/2026
+(dvc.moc.gov.vn, tài khoản Hiệp Hòa) vẫn đúng 29 dòng = 29 input[type=file].
 
 ⚑ VÌ SAO PHẢI ĐỔI slotKey (đọc kỹ trước khi sửa):
 Engine FE `attachFilesByFixedSlot` tìm ô upload theo THỨ TỰ ƯU TIÊN: (1) khớp KEYWORD theo
@@ -93,10 +95,6 @@ _C_DAT = (
     "Một trong những giấy tờ hợp pháp về đất đai chứng minh sự phù hợp mục đích sử dụng đất và "
     "sở hữu công trình để cấp phép xây dựng theo quy định tại Điều 55 của Nghị định số 217/2026/NĐ-CP"
 )
-_C_BANVE_NRL = (
-    "Bộ bản vẽ thiết kế xây dựng kèm theo; kết quả thực hiện thủ tục hành chính theo quy định của "
-    "pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ (nếu có yêu cầu)"
-)
 _C_BANVE_DUAN = (
     "Bộ bản vẽ thiết kế xây dựng trong hồ sơ thiết kế xây dựng triển khai sau khi dự án được phê duyệt"
 )
@@ -109,8 +107,8 @@ _LABEL_BANVE = "Hồ sơ thiết kế xây dựng"
 # slotIndex = STT − 1 (0-based, vị trí input[type=file] trong DOM) — thứ FE thực sự dùng.
 _NHANH_NHA_O_RIENG_LE = "nha_o_rieng_le"
 _NHANH_TIN_NGUONG_TON_GIAO = "tin_nguong_ton_giao"
-# Khối 1–5 (công trình không theo tuyến): LLM không chọn khối này; chỉ server bật theo tài khoản (xem
-# with_account_attach_options) cho đơn vị đính hồ sơ nhà ở riêng lẻ vào khối đầu bảng.
+# Khối 1–5 (công trình không theo tuyến): LLM không chọn khối này; cờ tài khoản Lào Cai (with_account_attach_options)
+# đổi nhà ở riêng lẻ sang đây. Từ 17/11/2026 nhà ở riêng lẻ mặc định đã vào cùng dòng 1/2/4 nên cờ chỉ còn đổi slotKey.
 _NHANH_KHONG_THEO_TUYEN = "khong_theo_tuyen"
 
 def _slot(key: str, stt: int, component: str, label: str) -> dict[str, Any]:
@@ -125,10 +123,11 @@ def _slot(key: str, stt: int, component: str, label: str) -> dict[str, Any]:
 
 # ⚠ slotKey CỐ Ý không trùng FIXED_SLOT_KEYWORDS của extension (xem docstring đầu file).
 _SLOTS_BY_NHANH: dict[str, dict[str, dict[str, Any]]] = {
+    # 17/11/2026: người dùng chuyển nhà ở riêng lẻ từ 12/13/16 lên khối đầu bảng 1/2/4 (mọi tài khoản).
     _NHANH_NHA_O_RIENG_LE: {
-        "don": _slot("gpxd_nrl_don", 12, _C_DON, _LABEL_DON),
-        "dat": _slot("gpxd_nrl_dat", 13, _C_DAT, _LABEL_DAT),
-        "banve": _slot("gpxd_nrl_banve", 16, _C_BANVE_NRL, _LABEL_BANVE),
+        "don": _slot("gpxd_nrl_don", 1, _C_DON, _LABEL_DON),
+        "dat": _slot("gpxd_nrl_dat", 2, _C_DAT, _LABEL_DAT),
+        "banve": _slot("gpxd_nrl_banve", 4, _C_BANVE_DUAN, _LABEL_BANVE),
     },
     _NHANH_KHONG_THEO_TUYEN: {
         "don": _slot("gpxd_ktt_don", 1, _C_DON, _LABEL_DON),
@@ -157,12 +156,11 @@ _TYPES_BY_GROUP = {
 }
 
 
-# Nhóm riêng theo khối: bản cam kết bảo đảm an toàn công trình liền kề nằm trong dòng BẢN VẼ của khối
-# nhà ở riêng lẻ (STT 16 "…; bản cam kết bảo đảm an toàn đối với công trình liền kề"). Khối tín ngưỡng,
-# tôn giáo không có dòng nào nhắc bản cam kết → giữ ở nhóm Đơn.
+# Nhóm riêng theo khối: bản cam kết bảo đảm an toàn công trình liền kề thuộc bộ hồ sơ thiết kế của nhà ở riêng
+# lẻ (dòng 16 cũ ghi "…; bản cam kết bảo đảm an toàn đối với công trình liền kề"). Khối 1–5 không có dòng cam
+# kết → cam kết đi cùng bản vẽ (STT 4). Khối tín ngưỡng, tôn giáo không nhắc cam kết → giữ ở nhóm Đơn.
 _GROUP_OVERRIDE_BY_NHANH: dict[str, dict[str, str]] = {
     _NHANH_NHA_O_RIENG_LE: {_DOC_SAFETY_COMMITMENT: _GROUP_BANVE},
-    # Khối 1–5 không có dòng cam kết; hồ sơ vẫn là nhà ở riêng lẻ nên cam kết đi cùng bản vẽ (STT 4).
     _NHANH_KHONG_THEO_TUYEN: {_DOC_SAFETY_COMMITMENT: _GROUP_BANVE},
 }
 
@@ -502,7 +500,7 @@ KHONG_THEO_TUYEN_OPTION = "_gpxdKhoiKhongTheoTuyen"
 
 def with_account_attach_options(options: dict | None, user: dict | None, procedure: str) -> dict:
     """Tài khoản tỉnh Lào Cai đính hồ sơ nhà ở riêng lẻ vào khối 1–5 (STT 1/2/4). Cờ do server đặt theo
-    tài khoản, client không tự bật được."""
+    tài khoản, client không tự bật được. Từ 17/11/2026 mọi tài khoản đã vào 1/2/4 nên cờ không đổi dòng nữa."""
     result = dict(options or {})
     result.pop(KHONG_THEO_TUYEN_OPTION, None)
     if procedure == PROCEDURE_KEY and user and "lao cai" in fold(user.get("tinh") or ""):

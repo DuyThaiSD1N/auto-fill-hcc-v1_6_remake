@@ -12,7 +12,7 @@ Nhiệm vụ: đọc OCR_TEXT của từng file và phân loại vào đúng m�
 <boi_canh>
 Thủ tục có các thành phần hồ sơ:
 - Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — do công dân tự khai.
-- CCCD/CMND/Thẻ căn cước của người yêu cầu (đính kèm CHUNG nhóm với Đơn Mẫu 18).
+- CCCD/CMND/Thẻ căn cước của người yêu cầu (đính vào ô "File đính kèm khác").
 - Bản gốc Giấy chứng nhận QSDĐ/quyền sở hữu tài sản đã cấp (giấy đỏ/giấy hồng).
 - Giấy tờ chứng minh sai sót thông tin (giấy khai sinh, CCCD cũ, quyết định... chứng minh sai lệch).
 - Văn bản ủy quyền (nếu nộp qua người đại diện).

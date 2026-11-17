@@ -42,6 +42,8 @@ SSO_HOST = "sso.dancuquocgia.gov.vn"
 _AUTH_HOST = re.compile(r"xacthuc|vneid|sso|dancuquocgia")
 # Id extension unpacked: service worker ngủ thì không đọc được, mà muốn đánh thức lại cần chính id này.
 _EXT_ID_FILE = ROOT / "runs" / "_extension_id.txt"
+# Thư mục extension cửa sổ bot đã nạp: khu làm việc và repo người phát triển là 2 extension khác nhau (id khác, backend khác).
+_EXT_PATH_FILE = ROOT / "runs" / "_extension_path.txt"
 _FILL_TIMEOUT_S = 240
 _FORM_BACK_S = 45
 _ENTER_FORM_S = 150
@@ -179,6 +181,27 @@ def _extension_name() -> str:
     return json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))["name"]
 
 
+def _loaded_extension() -> str | None:
+    """Thư mục extension mà cửa sổ bot đang chạy đã nạp lúc mở (ghi khi bot tự mở cửa sổ). None = không rõ."""
+    try:
+        return _EXT_PATH_FILE.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def _close_browser(pw) -> None:
+    try:
+        browser = pw.chromium.connect_over_cdp(f"http://127.0.0.1:{CDP_PORT}")
+        session = browser.new_browser_cdp_session()
+        session.send("Browser.close")
+    except Error:
+        pass
+    for _ in range(50):
+        if not _port_open(CDP_PORT):
+            return
+        time.sleep(0.2)
+
+
 def _platform_flags() -> list[str]:
     """Linux chạy bằng root thì Chromium đòi --no-sandbox. Nên chạy dịch vụ bằng user thường để còn sandbox."""
     if sys.platform != "win32" and hasattr(os, "geteuid") and os.geteuid() == 0:
@@ -231,8 +254,16 @@ class PortalBot:
 
     def attach(self, guard: bool = True) -> None:
         self.pw = sync_playwright().start()
+        if _port_open(CDP_PORT) and _loaded_extension() != str(EXT):
+            # Cửa sổ cũ nạp extension ở chỗ khác (vd repo người phát triển, trỏ 12005): điền qua nó là gọi nhầm backend.
+            self.log("Cửa sổ bot đang nạp extension khác thư mục hiện tại: đóng để mở lại đúng extension (phiên VNeID giữ trong profile).")
+            _close_browser(self.pw)
         if not _port_open(CDP_PORT):
             PROFILE.mkdir(parents=True, exist_ok=True)
+            _EXT_PATH_FILE.parent.mkdir(parents=True, exist_ok=True)
+            if _loaded_extension() != str(EXT):
+                _EXT_ID_FILE.unlink(missing_ok=True)  # id unpacked tính theo đường dẫn: đổi thư mục là đổi id
+            _EXT_PATH_FILE.write_text(str(EXT), encoding="utf-8")
             subprocess.Popen(
                 [
                     self.pw.chromium.executable_path, f"--user-data-dir={PROFILE}", f"--remote-debugging-port={CDP_PORT}",

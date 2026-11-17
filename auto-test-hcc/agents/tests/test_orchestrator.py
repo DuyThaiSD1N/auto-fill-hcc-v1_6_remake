@@ -129,6 +129,15 @@ def world(tmp_path, monkeypatch):
     runs = tmp_path / "runs"
     monkeypatch.setattr(codeguard, "REPO", be.parent)
     monkeypatch.setattr(orchestrator, "RUNS", runs)
+    monkeypatch.setattr(orchestrator, "CASES", runs)  # chứng cứ giả không được rơi vào runs/ thật
+    monkeypatch.setattr(orchestrator, "REGRESSION_CASES", tmp_path / "regression")
+    monkeypatch.setattr(verify, "regression_baseline", lambda cancel: {"results": {}, "total": 0})
+    monkeypatch.setattr(verify, "regression_cases", lambda: [])
+
+    def no_regression(self, round_, changes):
+        raise orchestrator.regression_case.Skip("test: không dựng ca hồi quy")
+
+    monkeypatch.setattr(Orchestrator, "_build_regression", no_regression)
     world = World(be)
     monkeypatch.setattr(claude_runner, "run_agent", world.run_agent)
     monkeypatch.setattr(replay, "replay", world.replay)

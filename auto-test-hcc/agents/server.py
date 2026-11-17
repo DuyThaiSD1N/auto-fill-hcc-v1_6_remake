@@ -24,9 +24,10 @@ import browser
 import claude_runner
 import evidence
 import replay
+import workspace
 from config import (
     AUTH_BACKEND_URL, BACKEND_URL, DEFAULT_ROUNDS, DEFAULT_RUNS, GIT_REMOTE, HOST, MAX_ROUNDS, MAX_RUNS, PORT, RUNS,
-    SERVER_MODE, VNC_ENABLED, server_problems,
+    SERVER_MODE, USE_WORKSPACE, VNC_ENABLED, WORKSPACE_PUSH, server_problems,
 )
 from orchestrator import Job, Orchestrator, recover_interrupted, revert_fix
 from typing import Literal
@@ -149,7 +150,8 @@ def _lookup(request_id: str) -> dict:
 def health() -> dict:
     return {
         "ok": True, "claude": bool(claude_runner.available()), "busy": service.busy, "queued": service.tasks.qsize(),
-        "server": SERVER_MODE, "vnc": VNC_ENABLED, "git": bool(GIT_REMOTE),
+        "server": SERVER_MODE, "vnc": VNC_ENABLED, "git": bool(GIT_REMOTE) or (USE_WORKSPACE and WORKSPACE_PUSH),
+        "workspace": USE_WORKSPACE, "workspaceOwner": workspace.owner() if USE_WORKSPACE else None,
     }
 
 
@@ -312,6 +314,9 @@ def revert_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
     fix = job.data.get("fix")
     if not fix or fix.get("reverted") or fix.get("reverting"):
         raise HTTPException(409, "Không có bản sửa nào để hoàn tác")
+    if USE_WORKSPACE and workspace.owner() != job_id:
+        raise HTTPException(409, "Khu làm việc đã đặt lại cho ca sau, code của ca này không còn trên máy. Bản sửa vẫn ở nhánh "
+                                 "GitHub của ca (nếu đã đẩy) và tệp fix.patch: không gộp nhánh đó là đủ.")
     with job.lock:
         fix["reverting"] = True
     service.tasks.put(("revert", job_id))

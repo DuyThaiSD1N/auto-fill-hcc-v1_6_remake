@@ -439,3 +439,62 @@ def test_dinh_chinh_sai_sot_uy_quyen_khong_doan_gioi_tinh_theo_ten():
     # Có CCCD ghi giới tính, hoặc danh xưng riêng "Ông …" → giữ.
     assert apply_authorized_fallback(raw, [{"text": mau}, {"text": "Giới tính / Sex: Nam"}])["ChuHoSo_GioiTinh"] == "Nam"
     assert apply_authorized_fallback(raw, [{"text": "Bên ủy quyền: Ông Trần Văn An"}])["ChuHoSo_GioiTinh"] == "Nam"
+
+
+# Đính kèm đính chính GCN Bắc Ninh: ô Bản chính mỗi nhóm chỉ nhận 1 tệp → mỗi nhóm giữ 1 tệp, CCCD,
+# đơn xin cấp GCN cũ và tệp thừa vào ô "File đính kèm khác" (supplementary). Dữ liệu OCR bịa.
+_DC_OCR = {
+    "a.pdf": "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT Số: 000001 Hộ ông Trần Văn An",
+    "b.pdf": "Mẫu số 18. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất. Kính gửi: UBND phường Y",
+    "c.pdf": ("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc ĐƠN XIN ĐĂNG KÝ "
+              "CẤP GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT Họ và tên chủ hộ: Trần Văn An"),
+    "d.pdf": "CĂN CƯỚC CÔNG DÂN Số định danh cá nhân 027060001111 Họ và tên Trần Văn An",
+    "e.pdf": "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT Số: 000002 trang sau",
+}
+
+
+async def _dc_plan(monkeypatch, names, llm_types=None):
+    from app.pipelines.dinh_chinh_sai_sot_bac_ninh.attach import planner as dc_planner
+    from app.process.schemas import FileItem
+    from app.services import ocr as ocr_mod
+
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": _DC_OCR.get(f["name"], "")} for f in files]
+
+    async def fake_llm(docs):
+        return llm_types or {}
+
+    monkeypatch.setattr(ocr_mod, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(dc_planner, "_classify_with_llm", fake_llm)
+    files = [FileItem(name=n, role="doc", type="application/pdf", dataUrl="data:application/pdf;base64,AA==") for n in names]
+    return (await dc_planner.plan(files, {}))["attachments"]
+
+
+async def test_dinh_chinh_sai_sot_moi_nhom_mot_tep_con_lai_vao_dinh_kem_khac(monkeypatch):
+    items = await _dc_plan(monkeypatch, ["a.pdf", "b.pdf", "c.pdf", "d.pdf"],
+                           {2: {"type": "application", "documentName": "Đơn xin cấp GCN cũ"}})
+    by = {i["fileName"]: i for i in items}
+    assert by["a.pdf"]["componentName"] == "Bản gốc Giấy chứng nhận đã cấp"
+    assert by["a.pdf"]["target"] == "existing" and by["a.pdf"]["slotKey"] == "banChinh"
+    assert by["b.pdf"]["componentName"] == "Đơn đăng ký biến động đất đai"
+    # Đơn xin cấp GCN lần trước không phải GCN, LLM nói "application" cũng không được chiếm ô Đơn.
+    for name in ("c.pdf", "d.pdf"):
+        assert by[name]["target"] == "supplementary" and by[name]["componentName"] == ""
+        assert "slotKey" not in by[name]
+    existing = [i["componentName"] for i in items if i["target"] == "existing"]
+    assert len(existing) == len(set(existing))
+    assert sorted(i["fileIndex"] for i in items) == [0, 1, 2, 3]
+
+
+async def test_dinh_chinh_sai_sot_hai_gcn_tep_sau_vao_dinh_kem_khac(monkeypatch):
+    items = await _dc_plan(monkeypatch, ["a.pdf", "e.pdf"])
+    assert [i["target"] for i in items] == ["existing", "supplementary"]
+    assert items[0]["componentName"] == "Bản gốc Giấy chứng nhận đã cấp"
+
+
+async def test_dinh_chinh_sai_sot_tep_route_chac_giu_o_nhom(monkeypatch):
+    # Tệp đầu chỉ đoán theo tên file là đơn, tệp sau có "Mẫu số 18" trong OCR → tệp sau giữ ô Đơn.
+    items = await _dc_plan(monkeypatch, ["don dang ky bien dong.pdf", "b.pdf"])
+    by = {i["fileName"]: i for i in items}
+    assert by["b.pdf"]["componentName"] == "Đơn đăng ký biến động đất đai"
+    assert by["don dang ky bien dong.pdf"]["target"] == "supplementary"

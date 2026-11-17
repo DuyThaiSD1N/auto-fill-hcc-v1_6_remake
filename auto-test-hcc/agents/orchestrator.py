@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import threading
 import time
@@ -24,12 +25,17 @@ import claude_runner
 import codeguard
 import evidence
 import publish
+import regression_case
 import replay
 import roles
 import scoring
 import verify
+import workspace
 from claude_runner import AgentError, AgentResult
-from config import AGENT_TIMEOUT_S, APPROVAL_TIMEOUT_S, FIXER_TIMEOUT_S, JOB_BUDGET_USD, MAX_REPAIRS, RUNS
+from config import (
+    AGENT_TIMEOUT_S, APPROVAL_TIMEOUT_S, CASES, FIXER_TIMEOUT_S, JOB_BUDGET_USD, MAIN, MAX_REPAIRS, REGRESSION_CASES, RUNS,
+    USE_WORKSPACE,
+)
 from verify import Stopped
 
 _EVENT_LIMIT = 500
@@ -177,6 +183,10 @@ class Orchestrator:
         # Code của vòng trượt gần nhất (đã hoàn tác để vòng sau làm lại từ code gốc): hết vòng mà chưa đạt thì đặt lại cho người xem.
         self.kept: dict | None = None
         self.portal_state: dict = {}
+        # Chứng cứ nằm trong cây agent đọc được: khu làm việc (mục 1) hoặc repo người phát triển (kiểu cũ).
+        self.case_dir = CASES / job.data["id"] / "case"
+        self.last_runs: list[dict] = []
+        self.last_evaluation: dict = {}
 
     # ---- vòng đời ------------------------------------------------------------------------------------------
 
@@ -202,6 +212,7 @@ class Orchestrator:
             job.save()
 
     def _run(self) -> None:
+        self._prepare_workspace()
         self._collect()
         self._reproduce()
         for number in range(1, self.settings["maxRounds"] + 1):
@@ -289,11 +300,31 @@ class Orchestrator:
             raise JobError(f"Build lại sau khi hoàn tác bị lỗi ở bước {result.get('step')}")
         self.job.update(stackDirty=False)
 
+    # ---- khu làm việc ----------------------------------------------------------------------------------------
+
+    def _prepare_workspace(self) -> None:
+        """Cây code sạch, đúng tag release đang chạy production; backend thử build đúng cây đó trước khi chạy lại req."""
+        if not USE_WORKSPACE:
+            return
+        job = self.job
+        self._stage("workspace", "Đặt khu làm việc về tag release đang chạy production…")
+        try:
+            info = workspace.prepare(job.data["id"], job.log)
+        except (workspace.WorkspaceError, subprocess.TimeoutExpired, OSError) as reason:
+            raise JobError(f"Không dựng được khu làm việc: {reason}") from reason
+        job.update(workspace=info)
+        built = verify.ensure_stack(job.cancel)
+        if built is not None:
+            job.log("Backend thử đã build theo khu làm việc." if built["ok"] else "Build backend thử lỗi.")
+            if not built["ok"]:
+                raise JobError(f"Không build được backend thử ở bước {built.get('step')}: "
+                               f"{(built.get('output') or built.get('health') or '')[-400:]}")
+
     # ---- thu thập + chạy lại trước khi sửa -----------------------------------------------------------------
 
     def _collect(self) -> None:
         self._stage("collect", "Thu thập chứng cứ của req…")
-        self.case = evidence.collect(self.job.data["requestId"], self.job.dir / "case")
+        self.case = evidence.collect(self.job.data["requestId"], self.case_dir)
         applicant = self.settings.get("applicant")
         if applicant:
             options = self.case["options"]
@@ -385,7 +416,7 @@ class Orchestrator:
                     formGaps=scoring.form_gaps(self.pre_runs), phase="reproduce",
                 )
             self.job.save()
-        (self.job.dir / "case" / "reproduce.json").write_text(
+        (self.case_dir / "reproduce.json").write_text(
             json.dumps({"runs": [replay.strip_response(r) for r in self.pre_runs], "table": table}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
@@ -555,6 +586,7 @@ class Orchestrator:
             raise JobError("Bộ test đang hỏng từ trước khi sửa, không có mốc để so: " + before["backend"].get("tail", "")[-300:])
         if self.on_portal:
             before["extension"] = verify.extension_baseline(job.cancel)
+        before["regression"] = verify.regression_baseline(job.cancel)
         self.guard.take()
         brief = roles.case_brief(job.data, self.case, self.attempts)
         self.touched = []
@@ -603,7 +635,7 @@ class Orchestrator:
             self.portal_state["extensionStale"] = True  # lượt chạy kiểm sau đây nạp lại trước khi điền
         # stackDirty: vòng trước đã build bản sửa nay bị hoàn tác, nên dù vòng này chỉ đổi test vẫn phải build lại.
         if codeguard.touches_backend_app(changes) or job.data.get("stackDirty"):
-            self._stage("deploy", "Build lại backend bằng compose.prod.yml…")
+            self._stage("deploy", "Build lại backend thử với bản sửa…")
             job.update(stackDirty=True)
             deployed = verify.deploy(job.cancel)
             with job.lock:
@@ -690,11 +722,12 @@ class Orchestrator:
             if not compared["ok"]:
                 return "Có test extension mới đỏ so với trước khi sửa:\n" + "\n".join(compared["new"])
         if codeguard.touches_backend(changes):
-            return self._check_backend(round_, output, before["backend"], changes)
+            return self._check_backend(round_, output, before, changes)
         return None
 
-    def _check_backend(self, round_: dict, output: dict, before: dict, changes: list[codeguard.Change]) -> str | None:
+    def _check_backend(self, round_: dict, output: dict, baselines: dict, changes: list[codeguard.Change]) -> str | None:
         job = self.job
+        before = baselines["backend"]
         prefix = f"{codeguard.BE_DIR}/"
         changed_tests = [c.rel for c in changes if c.rel.startswith(f"{prefix}tests/")]
         test_files = verify.find_test_files(self.case.get("pipeline"), [*output.get("testFiles", []), *changed_tests])
@@ -716,6 +749,23 @@ class Orchestrator:
             return f"Bộ test sập, không có số để so:\n{compared['tail']}"
         if not compared["ok"]:
             return "Có test mới đỏ so với trước khi sửa:\n" + "\n".join(compared["new"])
+        return self._check_regression(round_, baselines.get("regression") or {})
+
+    def _check_regression(self, round_: dict, before: dict) -> str | None:
+        """Bộ ca hồi quy của các ca đã sửa trước đây: ca đang đạt mà bản sửa này làm trượt thì không được qua."""
+        job = self.job
+        if not verify.regression_cases():
+            return None
+        job.log("Phát lại bộ ca hồi quy để so với trước khi sửa…")
+        compared = verify.compare_regression(before, verify.regression_run(job.cancel))
+        with job.lock:
+            round_["tests"]["regression"] = compared
+        job.save()
+        if compared["broken"]:
+            return f"Trình phát lại ca hồi quy sập:\n{compared['tail']}"
+        if not compared["ok"]:
+            detail = "\n".join(f"- {k}: {compared['errors'].get(k, '')}" for k in compared["new"])
+            return "Bản sửa làm trượt ca hồi quy của lần sửa trước (auto-test-hcc/regression/cases):\n" + detail
         return None
 
     def _retest(self, round_: dict, decision: dict, changes: list[codeguard.Change]) -> bool:
@@ -743,6 +793,7 @@ class Orchestrator:
         job.save()
         job.log(f"Chấm: đạt {evaluation['passed']}/{evaluation['total']} lần, {len(regressions)} field hồi quy.")
         if evaluation["allPass"] and not regressions:
+            self.last_runs, self.last_evaluation = runs, evaluation
             return self._accept(round_, changes)
         reason = f"Đạt {evaluation['passed']}/{evaluation['total']} lần."
         if regressions:
@@ -762,22 +813,17 @@ class Orchestrator:
             job.data["stackDirty"] = False
         job.save()
         self._publish(round_, changes)
+        self._save_regression(round_, changes)
         return True
 
     def _publish(self, round_: dict, changes: list[codeguard.Change]) -> None:
-        """Server: đẩy bản sửa đạt lên nhánh riêng của ca. Lỗi git không làm hỏng kết quả, bản sửa vẫn nằm trên đĩa."""
+        """Đẩy bản sửa đạt lên nhánh riêng của ca. Lỗi git không làm hỏng kết quả, bản sửa vẫn nằm trên đĩa + fix.patch."""
         job = self.job
-        if not publish.GIT_REMOTE:
+        if not publish.GIT_REMOTE and not (USE_WORKSPACE and publish.WORKSPACE_PUSH):
             return
-        summary = (round_["fix"].get("summary") or "").strip()
-        terms = codeguard.private_terms(self.case["fields"], job.data["requestId"])
-        # leaked_terms chỉ xét dòng "+" của patch: đánh dấu từng dòng tóm tắt như dòng thêm mới.
-        if not summary or codeguard.leaked_terms("\n".join(f"+{line}" for line in summary.splitlines()), terms):
-            summary = f"sửa lỗi điền {self.case.get('procedure')}"
-        by = (round_.get("approval") or {}).get("by") or ""
-        # Không ghi mã req vào commit: mã req nối được tới hồ sơ người dân.
-        message = (f"agent: {summary.splitlines()[0][:150]}\n\nCa {job.data['id']} · thủ tục {self.case.get('procedure')} "
-                   f"· vòng {round_['n']} · chạy lại đạt.\nNgười duyệt: {by}\n")
+        message = self._commit_message(round_)
+        if USE_WORKSPACE:
+            return self._publish_components(changes, message)
         try:
             result = publish.push_fix(job.data["id"], job.dir, changes, message)
         except (publish.PublishError, OSError, subprocess.TimeoutExpired) as reason:
@@ -791,6 +837,116 @@ class Orchestrator:
         job.log(f"Đã đẩy bản sửa lên nhánh {result['branch']} ({result['commit'][:10]}).")
         if result["drift"]:
             self._warn("File đã khác main từ trước khi sửa, commit mang cả phần khác đó: " + ", ".join(result["drift"]))
+
+    def _publish_components(self, changes: list[codeguard.Change], message: str) -> None:
+        """Mục 3: mỗi repo thật bị sửa một nhánh agent/<mã ca> dựng trên tag release, kèm link mở PR."""
+        job = self.job
+        pushes = publish.push_components(job.data["id"], job.dir, changes, message, job.data.get("workspace") or {})
+        with job.lock:
+            job.data["fix"]["pushes"] = pushes
+        job.save()
+        for item in pushes:
+            if item.get("error"):
+                self._warn(f"Không đẩy được bản sửa {item['component']} lên GitHub: {item['error']} "
+                           "Bản sửa vẫn nằm trong khu làm việc và fix.patch của ca.")
+            else:
+                job.log(f"Đã đẩy {item['component']} lên nhánh {item['branch']} ({item['commit'][:10]}), dựng trên "
+                        f"{item.get('ref')}. Mở PR: {item.get('compare') or item['remote']}")
+
+    def _commit_message(self, round_: dict) -> str:
+        job = self.job
+        summary = (round_["fix"].get("summary") or "").strip()
+        terms = codeguard.private_terms(self.case["fields"], job.data["requestId"])
+        # leaked_terms chỉ xét dòng "+" của patch: đánh dấu từng dòng tóm tắt như dòng thêm mới.
+        if not summary or codeguard.leaked_terms("\n".join(f"+{line}" for line in summary.splitlines()), terms):
+            summary = f"sửa lỗi điền {self.case.get('procedure')}"
+        by = (round_.get("approval") or {}).get("by") or ""
+        # Không ghi mã req vào commit: mã req nối được tới hồ sơ người dân.
+        return (f"agent: {summary.splitlines()[0][:150]}\n\nCa {job.data['id']} · thủ tục {self.case.get('procedure')} "
+                f"· vòng {round_['n']} · chạy lại đạt {self.settings['runs']}/{self.settings['runs']} lần.\nNgười duyệt: {by}\n")
+
+    # ---- ca hồi quy (mục 2) ----------------------------------------------------------------------------------
+
+    def _passing_request(self) -> str | None:
+        """requestId của một lượt chạy lại đạt mọi tiêu chí (lượt đó có trace OCR + LLM để phát lại)."""
+        rows = self.last_evaluation.get("rows") or []
+        for index, run in enumerate(self.last_runs):
+            if run.get("requestId") and rows and all(row["cells"][index]["ok"] for row in rows):
+                return run["requestId"]
+        return None
+
+    def _save_regression(self, round_: dict, changes: list[codeguard.Change]) -> None:
+        """Ca đạt → ca hồi quy ẩn danh. Chỉ ghi khi phát lại ĐẠT trên code đã sửa; trượt trên code production = bắt được lỗi cũ.
+        Lỗi ở bước này không làm hỏng kết quả của ca."""
+        job = self.job
+        report: dict = {"saved": False}
+        try:
+            report = self._build_regression(round_, changes)
+        except regression_case.Skip as reason:
+            report = {"saved": False, "reason": str(reason)}
+        except Exception as reason:  # noqa: BLE001
+            report = {"saved": False, "reason": f"{type(reason).__name__}: {str(reason)[:300]}"}
+        with job.lock:
+            job.data["regression"] = report
+        job.save()
+        if report.get("saved"):
+            job.log(f"Đã lưu ca hồi quy {report['path']}" + ("" if report.get("catchesOldBug") else
+                    " (phát lại trên code production cũng đạt: ca này chưa bắt được lỗi cũ)") + ". Soát rồi commit.")
+        else:
+            job.log(f"Không lưu ca hồi quy: {report.get('reason')}", level="warn")
+
+    def _build_regression(self, round_: dict, changes: list[codeguard.Change]) -> dict:
+        job = self.job
+        if not codeguard.touches_backend(changes):
+            raise regression_case.Skip("Bản sửa không đụng backend: ca hồi quy phát lại ở tầng backend nên không bắt được.")
+        request_id = self._passing_request()
+        if not request_id:
+            raise regression_case.Skip("Không có lượt chạy lại đạt nào có mã req để lấy trace.")
+        db = evidence.test_database()
+        account = db.users.find_one({"username": self.credentials.get("username")}, {"username": 1, "xa": 1, "tinh": 1}) or {}
+        case = regression_case.build(
+            job=job.data, case=self.case, decision=round_["decision"] or {}, run_request_id=request_id, db=db,
+            account=account, options=replay.replay_options(self.case.get("options") or {}, "regression"),
+        )
+        draft = job.dir / "regression-case.json"
+        draft.write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8")
+        fixed = verify.regression_run(threading.Event(), cases=[draft])
+        result = fixed.get("results", {}).get(case["id"]) or {}
+        if fixed.get("broken") or not result.get("ok"):
+            raise regression_case.Skip("Phát lại ca vừa dựng trên code đã sửa không đạt "
+                                       f"({result.get('error') or fixed.get('tail', '')[-200:]}), nên không lưu.")
+        old = self._regression_on_production(draft, case["id"])
+        target = regression_case.path_for(REGRESSION_CASES, case)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        case["catchesOldBug"] = old is False
+        target.write_text(json.dumps(case, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        try:
+            shown = target.relative_to(MAIN).as_posix()
+        except ValueError:
+            shown = str(target)
+        return {"saved": True, "path": shown, "catchesOldBug": old is False, "oldResult": old}
+
+    def _regression_on_production(self, draft: Path, case_id: str) -> bool | None:
+        """Phát lại trên đúng commit production (cây tạm từ HEAD của khu làm việc). True = đạt, False = trượt, None = không đo."""
+        if not USE_WORKSPACE:
+            return None
+        repo = codeguard.REPO / codeguard.BE_DIR
+        old = repo.parent / ".old-be"
+        try:
+            if old.exists():  # lần trước dừng giữa chừng
+                shutil.rmtree(old, ignore_errors=True)
+            workspace.git(repo, "worktree", "prune")
+            workspace.git(repo, "worktree", "add", "--force", "--detach", str(old), "HEAD", timeout=600)
+            result = verify.regression_run(threading.Event(), be=old, cases=[draft])
+            item = result.get("results", {}).get(case_id)
+            return None if result.get("broken") or item is None else bool(item["ok"])
+        except (workspace.WorkspaceError, subprocess.TimeoutExpired, OSError):
+            return None
+        finally:
+            try:
+                workspace.git(repo, "worktree", "remove", "--force", str(old), timeout=300)
+            except (workspace.WorkspaceError, subprocess.TimeoutExpired):
+                pass
 
     def _round_failed(
         self, round_: dict, decision: dict, problem: str, evaluation: dict | None = None, regressions: list | None = None,
@@ -874,6 +1030,13 @@ def revert_fix(job: Job) -> None:
         fix = job.data["fix"]
         fix["reverting"] = True
     job.save()
+    if USE_WORKSPACE and workspace.owner() != job.data["id"]:
+        # Khu làm việc đã đặt lại cho ca sau: code của ca này không còn trên máy (vẫn có trên nhánh GitHub + fix.patch).
+        with job.lock:
+            fix.update(reverting=False, reverted=True, revertedFiles=[], keptFiles=[], superseded=True)
+        job.log("Khu làm việc đã chuyển sang ca khác nên không còn gì để hoàn tác trên máy.")
+        job.save()
+        return
     reverted, skipped = guard.revert(fix["files"])
     deployed = None
     if any(path.startswith(f"{codeguard.BE_DIR}/app/") for path in reverted):

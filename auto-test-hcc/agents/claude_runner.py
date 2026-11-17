@@ -21,7 +21,7 @@ from typing import Callable
 
 from pathlib import Path
 
-from config import AGENT_BUDGET_USD, DENY_READ_DIRS, REPO, SOURCE_UPLOADS
+from config import AGENT_BUDGET_USD, DENY_READ_DIRS, MAIN, REPO, SOURCE_UPLOADS, USE_WORKSPACE
 from verify import Stopped
 
 READ_TOOLS = ["Read", "Grep", "Glob"]
@@ -33,6 +33,23 @@ _DENY_READ = [
     # người dân). "//" đầu là đường dẫn tuyệt đối trong luật quyền của Claude Code.
     *(f"Read(//{Path(p).resolve().as_posix().lstrip('/')}/**)" for p in (*DENY_READ_DIRS, SOURCE_UPLOADS) if p),
 ]
+
+
+def _absolute_rules(path: Path, tree: bool) -> list[str]:
+    """Luật Read cho đường dẫn tuyệt đối, ghi cả dạng ổ đĩa Windows (C:/…) lẫn dạng POSIX (/c/…) cho chắc."""
+    posix = path.resolve().as_posix()
+    forms = {posix.lstrip("/")}
+    if len(posix) > 2 and posix[1] == ":":
+        forms.add(f"{posix[0].lower()}{posix[2:]}")
+    return [f"Read(//{form}{'/**' if tree else ''})" for form in sorted(forms)]
+
+
+if USE_WORKSPACE:
+    # cwd của agent là khu làm việc: repo của người phát triển nằm ngoài nên các luật tương đối ở trên không phủ tới.
+    for _path, _tree in ((MAIN / "auto-fill-hcc-backend" / ".env", False), (MAIN / "auto-fill-hcc-backend" / "data", True),
+                         (MAIN / "auto-test-hcc" / "runs", True), (MAIN / "auto-test-hcc" / ".profile", True),
+                         (MAIN / "auto-test-hcc" / "server.env", False)):
+        _DENY_READ.extend(_absolute_rules(_path, _tree))
 _BE_SCOPE = ["auto-fill-hcc-backend/app/**", "auto-fill-hcc-backend/tests/**"]
 _EXT_SCOPE = ["auto-fill-hcc-extension/**"]
 _TROLY_SCOPE = ["tro-ly-nguoi-dan-extension-main/**"]

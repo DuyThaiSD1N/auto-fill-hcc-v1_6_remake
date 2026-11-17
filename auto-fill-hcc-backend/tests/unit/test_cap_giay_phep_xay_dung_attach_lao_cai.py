@@ -24,9 +24,12 @@ def test_khoi_khong_theo_tuyen_stt_1_2_4_cam_ket_vao_ban_ve():
     assert all(it["slotKey"].startswith("gpxd_ktt_") for it in items)
 
 
-def test_nha_o_rieng_le_giu_12_13_16():
-    stt, _ = _stt("nha_o_rieng_le")
-    assert stt == {"don.pdf": 12, "gcn.pdf": 13, "banve.pdf": 16, "camket.pdf": 16}
+def test_nha_o_rieng_le_moi_tai_khoan_vao_1_2_4():
+    """17/11/2026: nhà ở riêng lẻ chuyển từ 12/13/16 lên 1/2/4 cho mọi tài khoản, không cần cờ Lào Cai."""
+    stt, items = _stt("nha_o_rieng_le")
+    assert stt == {"don.pdf": 1, "gcn.pdf": 2, "banve.pdf": 4, "camket.pdf": 4}
+    assert all(it["slotIndex"] == it["componentIndex"] - 1 for it in items)
+    assert all(it["slotKey"].startswith("gpxd_nrl_") for it in items)
 
 
 def test_ten_don_kem_ho_ten_chu_dau_tu_chi_cho_don():

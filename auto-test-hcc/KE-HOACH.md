@@ -33,7 +33,8 @@ Trong suốt ca, người chạy làm hai việc: **đăng nhập VNeID** và **
 | --- | --- | --- |
 | Web Agent tự sửa | http://localhost:12008 | Giao diện chính |
 | Dịch vụ agent | http://127.0.0.1:12009/agent-api/health | Chỉ mở trên máy chạy, trả `{"ok":true,...}` là sống |
-| Backend | http://localhost:12005/healthz | Phải trả `{"ok":true,...}` |
+| Backend | http://localhost:12005/healthz | Phải trả `{"ok":true,...}`. Web đăng nhập super_admin qua backend này |
+| Backend thử | http://127.0.0.1:12025/healthz | Dịch vụ tự build từ khu làm việc (tag release đang chạy production), bản sửa chạy kiểm ở đây |
 | Web Monitor | http://localhost:12007 | Xem trace của một req |
 | Cổng thử | https://dichvucong.gov.vn/ | Cổng thật, không có môi trường thử riêng |
 
@@ -59,7 +60,7 @@ Req phải là lượt **điền**, không phải lượt đính kèm, và tệp
 
 ### Máy chạy
 
-Cần một máy Windows có repo, Docker Desktop, Python 3.11, Node, Claude Code đã đăng nhập, Playwright và mạng Tailscale tới OCR, LLM. Cài từ đầu theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Extension `auto-fill-hcc-extension/api/config.js` phải trỏ `http://localhost:12005`, sai thì web từ chối tạo ca.
+Cần một máy Windows có repo, Docker Desktop, Python 3.11, Node, Claude Code đã đăng nhập, Playwright và mạng Tailscale tới OCR, LLM. Cài từ đầu theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Agent không sửa repo trên máy: mỗi ca nó sửa trong khu làm việc `auto-test-hcc/.workspace/` (clone riêng 3 repo thật, đặt đúng tag release đang chạy production), cửa sổ bot nạp extension của khu làm việc, đã trỏ backend thử 12025. Ca đầu tiên clone 3 repo, mất vài phút. Bản sửa đạt được đẩy lên nhánh `agent/<mã ca>` của repo thật, có link Mở PR trên web; ca có đụng backend còn để lại một ca hồi quy trong `auto-test-hcc/regression/cases` (soát rồi mới commit).
 
 ### Bật hệ thống
 

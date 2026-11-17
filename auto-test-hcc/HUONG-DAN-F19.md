@@ -73,7 +73,7 @@ Tỉnh và xã quyết định thủ tục nhìn thấy và cơ quan được ch
 
 ## 6. Tạo req đầu tiên
 
-1. Mở `chrome://extensions`, bật **Developer mode**, bấm **Load unpacked**, chọn thư mục `auto-fill-hcc-extension`. Extension đã trỏ `http://localhost:12005`, không sửa `api/config.js`.
+1. Mở `chrome://extensions`, bật **Developer mode**, bấm **Load unpacked**, chọn thư mục `auto-fill-hcc-extension`. Extension đã trỏ `http://localhost:12005`, không sửa `api/config.js`. Đây là extension để bạn tạo req; cửa sổ bot dùng bản riêng trong khu làm việc, tự trỏ backend thử 12025.
 2. Đăng nhập panel extension bằng tài khoản test.
 3. Vào thủ tục Cấp bản sao trích lục hộ tịch, tải giấy tờ lên và bấm điền.
 4. Chép mã req ở ô **Mã hỗ trợ** của panel, hoặc tra ở web Monitor http://localhost:12007.
@@ -116,7 +116,9 @@ Bản sửa đạt nằm trong thư mục làm việc, chưa commit. Người ch
 | `/agent-api/health` có `"claude":false` | Cài Claude Code, đăng nhập, rồi bật lại dịch vụ agent |
 | Web Monitor báo `INVALID_CREDENTIALS` | `monitor-fe` đang trỏ server. Chạy lại lệnh `$env:BACKEND_URL` ở bước 4 |
 | Tài khoản tạo ở bước 5 không đăng nhập được web quản lý 12006 | Đúng như thiết kế: 12006 trỏ server theo `.env`, không đọc Mongo trên máy |
-| Web từ chối tạo ca, báo extension sai địa chỉ | `auto-fill-hcc-extension/api/config.js` phải trỏ `http://localhost:12005` |
+| Web từ chối tạo ca, báo extension sai địa chỉ | Khu làm việc chưa dựng xong: chạy một ca (bước khu làm việc tự trỏ extension sang 12025), hoặc với `AUTOTEST_WORKSPACE=0` thì `auto-fill-hcc-extension/api/config.js` phải trỏ `http://localhost:12005` |
+| Ca dừng ở bước khu làm việc, báo không clone / không có tag | Máy phải `git ls-remote` được 3 repo dev-f19 bằng tài khoản GitHub của mình |
+| Không đẩy được nhánh `agent/<mã ca>` | Tài khoản GitHub trên máy cần quyền ghi repo đó; bản sửa vẫn có trong `runs/<mã ca>/fix.patch` |
 | Extension báo mất kết nối dù `healthz` vẫn tốt | `wslrelay` giữ cổng 12005. Dừng tiến trình này, khởi động lại Docker là chưa đủ |
 | Docker build treo hoặc báo lỗi 500 | Tắt Docker Desktop, chạy `wsl --shutdown`, mở lại |
 | Bot kẹt, web hiện khung vàng | Làm đúng việc khung vàng ghi trên cửa sổ bot, rồi bấm nút trong khung |

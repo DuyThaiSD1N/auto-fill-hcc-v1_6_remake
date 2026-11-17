@@ -117,7 +117,7 @@ def test_lien_van_cccd_va_tep_la_vao_dong_giay_de_nghi_cua_nhom(thuong_mai, row)
     _check_routed(items, warnings, classified, "la.pdf", "other", row)
 
 
-@pytest.mark.parametrize("nhanh,stt", [("nha_o_rieng_le", 12), ("tin_nguong_ton_giao", 6), ("khong_theo_tuyen", 1)])
+@pytest.mark.parametrize("nhanh,stt", [("nha_o_rieng_le", 1), ("tin_nguong_ton_giao", 6), ("khong_theo_tuyen", 1)])
 def test_gpxd_giay_khong_co_dong_vao_o_don_cua_khoi(nhanh, stt):
     files = [{"name": n, "type": _PDF} for n in ("don.pdf", "cccd.pdf", "la.pdf", "gp_cu.pdf", "trang.pdf")]
     llm = {

@@ -1,0 +1,42 @@
+# Backend THỬ của khu làm việc trên máy local (cổng 127.0.0.1:12025). Dịch vụ agent tự build service này, kèm biến:
+#   AUTOTEST_BE_DIR    backend trong khu làm việc (auto-test-hcc/.workspace/auto-fill-hcc-backend, đặt đúng tag release)
+#   AUTOTEST_MAIN_ENV  .env của backend local (OCR, LLM, Mongo) — không chép sang khu làm việc
+#   AUTOTEST_DATA_DIR  thư mục upload riêng của backend thử (auto-test-hcc/runs/_backend_data)
+#
+# Không đụng stack 12005 của người phát triển: project riêng, image tag riêng (autotest), service tên `autotest-app` (KHÔNG
+# đặt `app`: cùng mạng autofill_hcc_net mà trùng alias thì nginx của fe/monitor-fe 12005 sẽ chia request sang bản thử).
+# Dùng chung Mongo local (service `mongo` của stack 12005) để có sẵn tài khoản test; Mongo phải đang chạy.
+name: auto-test-hcc-be
+
+services:
+  autotest-app:
+    build: ${AUTOTEST_BE_DIR:?dịch vụ agent truyền đường dẫn backend trong khu làm việc}
+    image: autofill-hcc-be:autotest
+    env_file: ${AUTOTEST_MAIN_ENV:?dịch vụ agent truyền .env của backend local}
+    environment:
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - PORT=12025
+      - WEB_CONCURRENCY=2
+      # Không đẩy form snapshot của lượt thử sang vault.
+      - VAULT_URL=
+      - VAULT_TOKEN=
+      # Extension của bot nạp dạng unpacked, id khác bản cài.
+      - ALLOWED_EXTENSION_IDS=
+    ports:
+      - "127.0.0.1:12025:12025"
+    volumes:
+      - ${AUTOTEST_DATA_DIR:?dịch vụ agent truyền thư mục dữ liệu}:/app/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - autofill
+
+networks:
+  autofill:
+    external: true
+    name: autofill_hcc_net

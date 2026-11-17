@@ -7,7 +7,9 @@ from pathlib import Path
 
 AGENTS_DIR = Path(__file__).resolve().parent
 ROOT = AGENTS_DIR.parent  # auto-test-hcc/
-REPO = ROOT.parent
+# Repo người phát triển đang làm (chứa auto-test-hcc, .env của backend local). Agent KHÔNG sửa code ở đây khi bật khu
+# làm việc: REPO dưới đây là khu làm việc riêng.
+MAIN = ROOT.parent
 
 
 def _load_env_file(path: Path) -> None:
@@ -23,9 +25,53 @@ def _load_env_file(path: Path) -> None:
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
-_load_env_file(ROOT / "server.env")
+if os.environ.get("AUTOTEST_NO_ENV_FILE") != "1":
+    _load_env_file(ROOT / "server.env")
+
+# Khu làm việc (mặc định trên máy local): mỗi ca agent sửa trong một cây code sạch, đặt đúng tag release đang chạy
+# production của 3 repo thật, không đụng thư mục làm việc của người phát triển; build và chạy lại trên backend thử riêng
+# (deploy/compose.local.yml, 12025). Server (cách B) giữ kiểu cũ: REPO là bản clone trên server.
+_ON_PROD_HOST = bool(os.environ.get("AUTOTEST_SOURCE_MONGO_URI")) and not os.environ.get("AUTOTEST_SOURCE_SSH")
+USE_WORKSPACE = os.environ.get("AUTOTEST_WORKSPACE", "0" if _ON_PROD_HOST else "1") == "1"
+WORKSPACE = Path(os.environ.get("AUTOTEST_WORKSPACE_DIR", str(ROOT / ".workspace"))).resolve()
+REPO = WORKSPACE if USE_WORKSPACE else MAIN
 BE = REPO / "auto-fill-hcc-backend"
+# Backend local của người phát triển: chỉ đọc .env (Mongo, OCR, LLM) để backend thử dùng chung cấu hình.
+MAIN_BE = MAIN / "auto-fill-hcc-backend"
 RUNS = ROOT / "runs"
+# Chứng cứ của ca phải nằm trong cây agent đọc được (cwd = REPO). Máy cũ: trùng RUNS.
+CASES = REPO / "auto-test-hcc" / "runs"
+# Bộ ca hồi quy (mục 2): ẩn danh, commit được, chạy được trong CI bằng regression/run.py.
+REGRESSION = ROOT / "regression"
+REGRESSION_CASES = Path(os.environ.get("AUTOTEST_REGRESSION_CASES", str(REGRESSION / "cases")))
+
+# 3 repo thật. tags = mẫu tag release (mới nhất theo số phiên bản = đang chạy production); ref = ép một ref khác
+# (vd origin/main); base = nhánh để mở PR cho nhánh agent/<mã ca>.
+COMPONENTS = [
+    {
+        "dir": "auto-fill-hcc-backend",
+        "url": os.environ.get("AUTOTEST_BE_GIT_URL", "https://github.com/dev-f19/auto-fill-hcc-backend.git"),
+        "tags": os.environ.get("AUTOTEST_BE_TAGS", "v20*"),
+        "ref": os.environ.get("AUTOTEST_BE_REF", ""),
+        "base": os.environ.get("AUTOTEST_BE_BASE", "main"),
+    },
+    {
+        "dir": "auto-fill-hcc-extension",
+        "url": os.environ.get("AUTOTEST_EXT_GIT_URL", "https://github.com/dev-f19/auto-fill-hcc-extension.git"),
+        "tags": os.environ.get("AUTOTEST_EXT_TAGS", "autofill-v*"),
+        "ref": os.environ.get("AUTOTEST_EXT_REF", ""),
+        "base": os.environ.get("AUTOTEST_EXT_BASE", "main"),
+    },
+    {
+        "dir": "tro-ly-nguoi-dan-extension-main",
+        "url": os.environ.get("AUTOTEST_TROLY_GIT_URL", "https://github.com/dev-f19/tro-ly-nguoi-dan-extension.git"),
+        "tags": os.environ.get("AUTOTEST_TROLY_TAGS", "handfree-v*"),
+        "ref": os.environ.get("AUTOTEST_TROLY_REF", ""),
+        "base": os.environ.get("AUTOTEST_TROLY_BASE", "main"),
+    },
+]
+# Khu làm việc: bản sửa đạt → nhánh agent/<mã ca> trên đúng repo thật của phần bị sửa (mục 3). 0 = không push.
+WORKSPACE_PUSH = os.environ.get("AUTOTEST_WORKSPACE_PUSH", "1") == "1"
 SUPPORT = AGENTS_DIR / "support"
 EXT = REPO / "auto-fill-hcc-extension"
 TROLY = REPO / "tro-ly-nguoi-dan-extension-main"
@@ -38,11 +84,14 @@ HOST = "127.0.0.1"
 PORT = int(os.environ.get("AUTOTEST_PORT", "12009"))
 # Backend chạy code đang sửa: chạy lại 5 lần, healthz sau build. Dùng 127.0.0.1, không dùng localhost: [::1]:12005 có
 # thể treo do wslrelay. Trên server đây là backend thử (compose.server.yml), KHÔNG phải backend production.
-BACKEND_URL = os.environ.get("AUTOTEST_BACKEND", "http://127.0.0.1:12005").rstrip("/")
-# Backend kiểm tài khoản super_admin của web. Trên server là backend production (trolyhoso), máy local trùng BACKEND_URL.
-AUTH_BACKEND_URL = os.environ.get("AUTOTEST_AUTH_BACKEND", BACKEND_URL).rstrip("/")
+# Khu làm việc: backend thử 12025 build từ khu làm việc (12015 là stack toàn trình); 12005 của người phát triển giữ nguyên.
+_TEST_PORT = "12025" if USE_WORKSPACE else "12005"
+BACKEND_URL = os.environ.get("AUTOTEST_BACKEND", f"http://127.0.0.1:{_TEST_PORT}").rstrip("/")
+# Backend kiểm tài khoản super_admin của web. Server: backend production (trolyhoso). Máy local: backend 12005 của người
+# phát triển (cùng Mongo với backend thử nên cùng tài khoản).
+AUTH_BACKEND_URL = os.environ.get("AUTOTEST_AUTH_BACKEND", "http://127.0.0.1:12005").rstrip("/")
 # Extension trong cửa sổ bot phải trỏ đúng backend chạy code đang sửa (đối chiếu với api/config.js).
-EXTENSION_BACKEND = os.environ.get("AUTOTEST_EXTENSION_BACKEND", "http://localhost:12005").rstrip("/")
+EXTENSION_BACKEND = os.environ.get("AUTOTEST_EXTENSION_BACKEND", f"http://localhost:{_TEST_PORT}").rstrip("/")
 
 # Nguồn req: Mongo + thư mục upload của backend thật. Để trống = Mongo local đọc theo .env của backend (máy local).
 # Trên server trolyhoso: Mongo production qua tài khoản CHỈ ĐỌC, uploads production chỉ đọc.
@@ -56,8 +105,8 @@ TEST_MONGO_URI = os.environ.get("AUTOTEST_TEST_MONGO_URI", "")
 TEST_DB = os.environ.get("AUTOTEST_TEST_DB", "")
 # Build backend thử. Trống = compose.prod.yml của backend (máy local). Trên server bắt buộc là compose.server.yml,
 # vì compose.prod.yml trên server trolyhoso sẽ build đè backend production.
-COMPOSE_FILE = os.environ.get("AUTOTEST_COMPOSE_FILE", "")
-COMPOSE_SERVICE = os.environ.get("AUTOTEST_COMPOSE_SERVICE", "app")
+COMPOSE_FILE = os.environ.get("AUTOTEST_COMPOSE_FILE", str(ROOT / "deploy" / "compose.local.yml") if USE_WORKSPACE else "")
+COMPOSE_SERVICE = os.environ.get("AUTOTEST_COMPOSE_SERVICE", "autotest-app" if USE_WORKSPACE else "app")
 # Nguồn req trên máy khác (trolysoao) đọc từ máy local qua SSH: user@host + khoá bị giới hạn (remote.py). Khi đặt,
 # AUTOTEST_SOURCE_MONGO_URI trỏ đầu local của đường hầm (cổng thứ nhất của AUTOTEST_SOURCE_TUNNEL).
 SOURCE_SSH = os.environ.get("AUTOTEST_SOURCE_SSH", "")
@@ -74,7 +123,15 @@ VNC_ENABLED = os.environ.get("AUTOTEST_VNC", "") == "1"
 
 
 def server_problems() -> list[str]:
-    """Cấu hình thiếu khiến dịch vụ trên server đụng vào production. Có lỗi thì không khởi động."""
+    """Cấu hình khiến dịch vụ đụng vào production (server) hoặc vào backend của người phát triển (khu làm việc).
+    Có lỗi thì không khởi động."""
+    if USE_WORKSPACE and not SERVER_MODE:
+        problems = []
+        if not COMPOSE_FILE or Path(COMPOSE_FILE).name == "compose.prod.yml":
+            problems.append("Khu làm việc phải build bằng deploy/compose.local.yml: compose.prod.yml là stack 12005 của người phát triển.")
+        if BACKEND_URL == AUTH_BACKEND_URL:
+            problems.append("AUTOTEST_BACKEND (backend thử) đang trùng backend 12005 của người phát triển.")
+        return problems
     if not SERVER_MODE:
         return []
     problems = []
@@ -115,7 +172,7 @@ REPLAY_TIMEOUT_S = 300
 @lru_cache(maxsize=1)
 def backend_env() -> dict[str, str]:
     env: dict[str, str] = {}
-    path = BE / ".env"
+    path = MAIN_BE / ".env"  # khu làm việc không có .env: luôn đọc .env của backend local
     if not path.is_file():
         return env
     for line in path.read_text(encoding="utf-8").splitlines():

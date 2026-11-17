@@ -105,7 +105,8 @@ export interface Round {
   decision: Decision | null;
   precheck?: Evaluation;
   fix: { summary: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
-  tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests } | null;
+  tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests;
+    regression?: RegressionTests } | null;
   approval?: ApprovalResult | null;
   deploy: { ok: boolean; step?: string | null; ps?: string; health?: string } | null;
   retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number; formGaps?: FormGap[] } | null;
@@ -153,6 +154,31 @@ export interface RequestInfo {
   needsApplicant?: boolean;
 }
 
+/** Bộ ca hồi quy (auto-test-hcc/regression/cases) phát lại trên bản sửa, so với trước khi sửa. */
+export interface RegressionTests {
+  ok: boolean;
+  new: string[];
+  errors: Record<string, string>;
+  fixed: string[];
+  total: number;
+  passed: number;
+  broken: boolean;
+}
+
+/** Một repo thật bị sửa: nhánh agent/<mã ca> dựng trên tag release, link mở PR. */
+export interface PushResult {
+  component: string;
+  branch: string;
+  ref?: string;
+  base: string;
+  remote: string;
+  files: string[];
+  commit?: string;
+  compare?: string | null;
+  drift?: string[];
+  error?: string;
+}
+
 export interface Job {
   id: string;
   requestId: string;
@@ -176,7 +202,12 @@ export interface Job {
     unverified?: boolean; round?: number;
     /** Server: bản sửa đạt đã commit lên nhánh riêng của ca trên GitHub. */
     git?: { branch: string; commit: string; base: string; remote: string; drift: string[] };
+    pushes?: PushResult[];
+    superseded?: boolean;
   } | null;
+  /** Khu làm việc: tag release đang chạy production của từng repo mà ca này sửa trên đó. */
+  workspace?: Record<string, { ref: string; commit: string; url: string; base: string }>;
+  regression?: { saved: boolean; path?: string; catchesOldBug?: boolean; reason?: string };
   report: { outcome: Outcome; headline: string; reason: string; finishedAt: string } | null;
   cost: { usd: number; calls: number };
   events: { t: string; level: string; who: string | null; text: string }[];

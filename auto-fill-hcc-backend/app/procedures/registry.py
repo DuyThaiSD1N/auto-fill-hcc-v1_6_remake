@@ -1875,8 +1875,8 @@ PROCEDURES: list[dict] = [
             "Bước điền đơn: khớp ô theo class eform (Kính gửi, Tên, Giấy tờ nhân thân, Địa chỉ, MST, SĐT, "
             "Email, II. Nội dung biến động, III. miễn giảm, (2)(3) giấy tờ nộp kèm, cam kết (1)(2)(3)) + "
             "khối người nhận kết quả (họ tên, CCCD, SĐT, địa chỉ).\n"
-            "Bước đính kèm: Đơn + CCCD vào nhóm 'Đơn đăng ký biến động Mẫu số 18'; bản gốc GCN vào nhóm "
-            "'Bản gốc Giấy chứng nhận đã cấp'."
+            "Bước đính kèm: Đơn vào nhóm 'Đơn đăng ký biến động Mẫu số 18'; bản gốc GCN vào nhóm "
+            "'Bản gốc Giấy chứng nhận đã cấp'; mỗi nhóm một tệp, CCCD và tệp thừa vào 'File đính kèm khác'."
         ),
     },
     {
@@ -5676,8 +5676,8 @@ PROCEDURES: list[dict] = [
             "chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế nếu có.\n"
             "Bước thành phần hồ sơ: bảng của cổng (Nghị định 217/2026) chia 29 dòng thành 5 KHỐI theo "
             "LOẠI CÔNG TRÌNH, mỗi khối lặp lại gần như y hệt bộ giấy tờ — phải đính đúng khối.\n"
-            "• Nhà ở riêng lẻ: Đơn + CCCD + Bản cam kết vào STT 12; Sổ đỏ/GCN QSDĐ vào STT 13; "
-            "Bản vẽ + kê khai + chứng chỉ thiết kế vào STT 16.\n"
+            "• Nhà ở riêng lẻ: Đơn + CCCD vào STT 1; Sổ đỏ/GCN QSDĐ vào STT 2; "
+            "Bản vẽ + kê khai + chứng chỉ thiết kế + Bản cam kết vào STT 4.\n"
             "• Công trình tín ngưỡng, tôn giáo (chùa, nhà thờ, đình, đền…): lần lượt STT 6, 7, 10.\n"
             "Hệ thống tự nhận loại công trình từ đơn/bản vẽ, mặc định là nhà ở riêng lẻ."
         ),

@@ -107,29 +107,28 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     for item in items:
         by_slot.setdefault(item["slotKey"], []).append(item)
 
-    # Bảng NĐ 217/2026 chia 5 khối theo loại công trình; hồ sơ nhà ở riêng lẻ phải vào 12, 13, 16
-    # (chốt BA 2026-09-14). Trước đây rơi vào 1, 2, 27 = khối "không theo tuyến"/BIM → sai hoàn toàn.
+    # Bảng NĐ 217/2026 chia 5 khối theo loại công trình; từ 17/11/2026 hồ sơ nhà ở riêng lẻ vào khối đầu
+    # bảng 1, 2, 4 (người dùng chuyển từ 12, 13, 16 của chốt BA 2026-09-14).
     assert res["extracted"]["congTrinhNhanh"] == "nha_o_rieng_le"
 
     app_items = by_slot["gpxd_nrl_don"]
     assert [item["fileIndex"] for item in app_items] == [1, 0]
-    assert {item["componentIndex"] for item in app_items} == {12}
-    assert {item["slotIndex"] for item in app_items} == {11}
+    assert {item["componentIndex"] for item in app_items} == {1}
+    assert {item["slotIndex"] for item in app_items} == {0}
     assert "Đơn đề nghị cấp giấy phép xây dựng" in app_items[0]["componentName"]
 
     land_items = by_slot["gpxd_nrl_dat"]
     assert [item["fileIndex"] for item in land_items] == [7]
-    assert land_items[0]["componentIndex"] == 13
-    assert land_items[0]["slotIndex"] == 12
+    assert land_items[0]["componentIndex"] == 2
+    assert land_items[0]["slotIndex"] == 1
     assert "giấy tờ hợp pháp về đất đai" in land_items[0]["componentName"].lower()
 
     design_items = by_slot["gpxd_nrl_banve"]
-    # Bản cam kết (file 2) vào dòng 16 cùng bản vẽ: dòng 16 của cổng ghi "…; bản cam kết bảo đảm an toàn
-    # đối với công trình liền kề".
+    # Bản cam kết (file 2) đi cùng bản vẽ ở dòng 4 (khối 1–5 không có dòng cam kết riêng).
     assert [item["fileIndex"] for item in design_items] == [4, 3, 2, 5, 6]
-    assert {item["componentIndex"] for item in design_items} == {16}
-    assert {item["slotIndex"] for item in design_items} == {15}
-    assert "Bộ bản vẽ thiết kế xây dựng kèm theo" in design_items[0]["componentName"]
+    assert {item["componentIndex"] for item in design_items} == {4}
+    assert {item["slotIndex"] for item in design_items} == {3}
+    assert "Bộ bản vẽ thiết kế xây dựng trong hồ sơ thiết kế" in design_items[0]["componentName"]
     assert not res["errors"]
 
     # slotKey phải KHÁC các key cũ: extension khớp keyword theo slotKey TRƯỚC slotIndex, mà text đơn/
@@ -141,14 +140,14 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     assert by_name["Đơn đề nghị cấp phép xây nhà 2026.pdf"]["docType"] == "building_permit_application"
     assert by_name["Căn cươc CD Chinh.pdf"]["docType"] == "identity_document"
     assert by_name["Bản cam ket xây nhà 2026.pdf"]["docType"] == "safety_commitment"
-    assert by_name["Sổ đỏ 1.jpg"]["componentIndex"] == 13
-    assert by_name["Bản vẽ xin cấp phép xây dựng.pdf"]["componentIndex"] == 16
-    assert by_name["Bản cam ket xây nhà 2026.pdf"]["componentIndex"] == 16
+    assert by_name["Sổ đỏ 1.jpg"]["componentIndex"] == 2
+    assert by_name["Bản vẽ xin cấp phép xây dựng.pdf"]["componentIndex"] == 4
+    assert by_name["Bản cam ket xây nhà 2026.pdf"]["componentIndex"] == 4
 
 
 async def test_cap_giay_phep_xay_dung_ocr_rong_dinh_chung_o_don_khong_doan_theo_ten_file(monkeypatch):
-    """OCR rỗng + LLM trả "other" → KHÔNG suy loại giấy tờ từ TÊN FILE (không vào ô đất STT 13) nhưng cũng
-    không bỏ tệp: đính chung ô Đơn của khối (STT 12) kèm cảnh báo."""
+    """OCR rỗng + LLM trả "other" → KHÔNG suy loại giấy tờ từ TÊN FILE (không vào ô đất STT 2) nhưng cũng
+    không bỏ tệp: đính chung ô Đơn của khối (STT 1) kèm cảnh báo."""
     async def fake_ocr_per_file(files):
         return [{"name": f["name"], "text": "", "provider": "tiengnoi"} for f in files]
 
@@ -161,7 +160,7 @@ async def test_cap_giay_phep_xay_dung_ocr_rong_dinh_chung_o_don_khong_doan_theo_
     res = await planner.plan([_file("Sổ đỏ 1.jpg", "image/jpeg")], {}, None)
 
     [item] = res["attachments"]
-    assert item["target"] == "fixed-slot" and item["componentIndex"] == 12 and item["slotIndex"] == 11
+    assert item["target"] == "fixed-slot" and item["componentIndex"] == 1 and item["slotIndex"] == 0
     assert item["detectedType"] == "other"
     assert res["extracted"]["classified"][0]["routedTo"] == "don"
     assert any("Sổ đỏ 1.jpg" in err and "đính chung" in err for err in res["errors"])
@@ -174,9 +173,11 @@ def test_cap_giay_phep_xay_dung_registry_has_process_and_attach():
     assert proc is not None
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
-    # uploadHint phải nêu ĐÚNG dòng của từng khối loại công trình (chốt BA 2026-09-14).
-    assert "STT 12" in proc["uploadHint"] and "STT 13" in proc["uploadHint"] and "STT 16" in proc["uploadHint"]
-    assert "STT 6, 7, 10" in proc["uploadHint"]
+    # uploadHint phải nêu ĐÚNG dòng của từng khối loại công trình (nhà ở riêng lẻ 1/2/4 từ 17/11/2026).
+    hint = proc["uploadHint"]
+    assert "vào STT 1;" in hint and "vào STT 2;" in hint and "vào STT 4." in hint
+    assert "STT 12" not in hint and "STT 13" not in hint and "STT 16" not in hint
+    assert "STT 6, 7, 10" in hint
     assert get_pipeline(key) is not None
     assert get_attach_pipeline(key) is not None
 
@@ -207,7 +208,7 @@ def test_cap_giay_phep_xay_dung_prompt_uses_ocr_text_only():
 
 def test_khoi_ton_giao_va_nha_o_rieng_le_dung_dong_theo_chot_ba():
     """Bảng NĐ 217/2026 lặp gần như y hệt bộ giấy tờ ở 5 khối → chọn sai khối là đính sai chỗ.
-    Chốt BA 2026-09-14: nhà ở riêng lẻ = 12/13/16, tín ngưỡng tôn giáo = 6/7/10."""
+    Từ 17/11/2026: nhà ở riêng lẻ = 1/2/4 (trước là 12/13/16), tín ngưỡng tôn giáo = 6/7/10."""
     files = [
         {"name": "don.pdf", "type": "application/pdf"},
         {"name": "so-do.pdf", "type": "application/pdf"},
@@ -219,7 +220,7 @@ def test_khoi_ton_giao_va_nha_o_rieng_le_dung_dong_theo_chot_ba():
         2: {"type": "construction_design_drawings", "title": "Bản vẽ"},
     }
 
-    for nhanh, expected in (("nha_o_rieng_le", [12, 13, 16]), ("tin_nguong_ton_giao", [6, 7, 10])):
+    for nhanh, expected in (("nha_o_rieng_le", [1, 2, 4]), ("tin_nguong_ton_giao", [6, 7, 10])):
         items, warnings, _ = planner.build_plan_items(files, None, llm, nhanh)
         assert [item["componentIndex"] for item in items] == expected, nhanh
         # slotIndex là vị trí 0-based FE dùng để tìm ô upload → luôn phải là STT - 1.
@@ -271,7 +272,7 @@ def test_cau_truc_bang_29_dong_va_slot_index_khop_snapshot_cong():
     # Bản vẽ của NHÀ Ở RIÊNG LẺ là loại RIÊNG ("Bộ bản vẽ… kèm theo"), chỉ xuất hiện ĐÚNG 1 lần.
     assert [i + 1 for i, kind in enumerate(_ROW_KINDS) if kind == "ban_ve_nha_o_rieng_le"] == [16]
 
-    for nhanh, expected in (("nha_o_rieng_le", [12, 13, 16]), ("tin_nguong_ton_giao", [6, 7, 10])):
+    for nhanh, expected in (("nha_o_rieng_le", [1, 2, 4]), ("tin_nguong_ton_giao", [6, 7, 10])):
         slots = planner.slots_for(nhanh)
         stts = [slots[g]["componentIndex"] for g in ("don", "dat", "banve")]
         assert stts == expected, nhanh
@@ -290,7 +291,7 @@ def test_chi_co_don_thi_dinh_don_va_khong_canh_bao_dong_trong():
 
     items, warnings, _ = planner.build_plan_items(files, None, llm, "nha_o_rieng_le")
 
-    assert [item["componentIndex"] for item in items] == [12]
+    assert [item["componentIndex"] for item in items] == [1]
     assert items[0]["untickUnplannedRows"] is True
     assert warnings == []
 
@@ -318,17 +319,17 @@ def test_prompt_chot_thu_tu_uu_tien_khi_tep_quet_gop():
     assert "Dòng 11" not in SYSTEM_PROMPT and "Dòng 27" not in SYSTEM_PROMPT
 
 
-def test_ban_cam_ket_nha_o_rieng_le_vao_dong_16_ton_giao_giu_dong_don():
-    """Nhà ở riêng lẻ: bản cam kết an toàn công trình liền kề thuộc dòng 16 (dòng bản vẽ ghi rõ "bản cam
-    kết"). Khối tín ngưỡng không có dòng nào nhắc cam kết → giữ dòng Đơn (6)."""
+def test_ban_cam_ket_nha_o_rieng_le_vao_dong_ban_ve_ton_giao_giu_dong_don():
+    """Nhà ở riêng lẻ: bản cam kết an toàn công trình liền kề đi cùng bản vẽ (dòng 4 từ 17/11/2026). Khối tín
+    ngưỡng không có dòng nào nhắc cam kết → giữ dòng Đơn (6)."""
     files = [{"name": "cam-ket.pdf", "type": "application/pdf"}]
     llm = {0: {"type": "safety_commitment", "title": "Bản cam kết"}}
 
     items, _, _ = planner.build_plan_items(files, None, llm, "nha_o_rieng_le")
-    assert [(item["componentIndex"], item["slotIndex"]) for item in items] == [(16, 15)]
+    assert [(item["componentIndex"], item["slotIndex"]) for item in items] == [(4, 3)]
 
     items, _, _ = planner.build_plan_items(files, None, llm, "khong_ro")
-    assert [item["componentIndex"] for item in items] == [16], "khối lạ về mặc định nhà ở riêng lẻ"
+    assert [item["componentIndex"] for item in items] == [4], "khối lạ về mặc định nhà ở riêng lẻ"
 
     items, _, _ = planner.build_plan_items(files, None, llm, "tin_nguong_ton_giao")
     assert [item["componentIndex"] for item in items] == [6]

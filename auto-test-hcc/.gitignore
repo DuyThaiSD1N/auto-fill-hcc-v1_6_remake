@@ -10,3 +10,5 @@ server.env
 deploy/.env
 # venv của dịch vụ agent trên server.
 .venv/
+# Khu làm việc của agent: clone riêng 3 repo thật, đặt đúng tag release (agents/workspace.py).
+.workspace/

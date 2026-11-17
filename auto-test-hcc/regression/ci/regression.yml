@@ -1,0 +1,51 @@
+# Mẫu workflow cho repo dev-f19/auto-fill-hcc-backend: chép vào .github/workflows/ của repo đó.
+# Phát lại bộ ca hồi quy của Agent tự sửa (auto-test-hcc/regression) trên code của mỗi PR. Không gọi OCR/LLM/Mongo.
+# Cần secret AUTOTEST_REPO_TOKEN: token chỉ đọc repo dev-f19/test-auto-test-and-fix (private).
+name: Ca hồi quy Agent tự sửa
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code backend của PR
+        uses: actions/checkout@v4
+
+      - name: Bộ ca hồi quy
+        uses: actions/checkout@v4
+        with:
+          repository: dev-f19/test-auto-test-and-fix
+          token: ${{ secrets.AUTOTEST_REPO_TOKEN }}
+          path: autotest
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            auto-test-hcc/regression
+            auto-test-hcc/agents/scoring.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Cài thư viện backend
+        run: pip install -r requirements.txt
+
+      - name: Phát lại
+        env:
+          PYTHONUTF8: "1"
+        run: python autotest/auto-test-hcc/regression/run.py --be . --json regression-result.json
+
+      - name: Lưu kết quả
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-result
+          path: regression-result.json
+          if-no-files-found: ignore

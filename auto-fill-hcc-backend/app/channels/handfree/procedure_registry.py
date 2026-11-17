@@ -2525,9 +2525,9 @@ PROCEDURES: list[dict] = [
             "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
         },
         "hasAttachmentStep": True,
-        # Bảng thành phần hồ sơ chỉ có MỘT dòng "A. Thành phần hồ sơ: a)…e)" gom cả năm loại giấy →
-        # planner core dồn mọi tệp vào dòng đó (fixed-slot attp_dossier, upload lặp). Các ô dưới đây
-        # chỉ để công dân biết cần mang gì, không phải đích đến riêng.
+        # Bảng thành phần hồ sơ có 5 dòng a)–e) (Đơn, GCN ĐKKD, thuyết minh, sức khỏe, tập huấn): planner core
+        # phân loại theo nội dung rồi đính từng tệp vào đúng dòng (fixed-slot + slotKeywords, upload lặp);
+        # CCCD / giấy khác không có dòng riêng → dòng a) Đơn. Các ô dưới đây chỉ để công dân biết cần mang gì.
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "don", "name": "Đơn đề nghị cấp Giấy chứng nhận (Mẫu số 1 Phụ lục I, Nghị định "
@@ -2558,8 +2558,8 @@ PROCEDURES: list[dict] = [
             "4. Bản thuyết minh cơ sở vật chất, trang thiết bị; giấy xác nhận đủ sức khỏe; danh "
             "sách người đã tập huấn kiến thức an toàn thực phẩm.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
-            "Bước Thành phần hồ sơ: cổng chỉ có MỘT dòng 'A. Thành phần hồ sơ' gom mọi loại giấy "
-            "nên mọi tệp đều được đính vào dòng đó."
+            "Bước Thành phần hồ sơ: mỗi giấy được đính vào đúng dòng a)–e) của nó; CCCD và giấy tờ "
+            "khác đính chung dòng a) Đơn đề nghị."
         ),
     },
     {

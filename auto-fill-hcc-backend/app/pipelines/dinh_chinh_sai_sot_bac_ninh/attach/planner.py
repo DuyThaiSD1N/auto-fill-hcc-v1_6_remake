@@ -6,10 +6,14 @@ NHÓM theo `componentName` (substring nhãn dòng đã fold dấu), tick checkbo
 gán file vào ô Bản chính.
 
 Gom file theo CHÚ GIẢI hồ sơ mẫu:
-- Đơn Mẫu 18 + CCCD người yêu cầu → nhóm "Đơn đăng ký biến động đất đai... Mẫu số 18".
+- Đơn Mẫu 18 → nhóm "Đơn đăng ký biến động đất đai... Mẫu số 18".
 - Bản gốc GCN → nhóm "Bản gốc Giấy chứng nhận đã cấp".
 - Giấy tờ chứng minh sai sót → nhóm "Giấy tờ chứng minh sai sót".
 - Văn bản ủy quyền → nhóm "Văn bản về việc ủy quyền".
+- CCCD, đơn xin cấp GCN cũ, giấy khác → ô "File đính kèm khác" (target "supplementary").
+
+Ô Bản chính của mỗi nhóm CHỈ NHẬN 1 FILE: dồn 2 file vào cùng một ô thì file thứ hai không lên.
+Mỗi nhóm giữ đúng 1 file (file route chắc nhất), file thừa chuyển sang "File đính kèm khác".
 
 Route TẤT ĐỊNH theo nội dung OCR; LLM chỉ dùng để đặt documentName hiển thị.
 """
@@ -37,14 +41,17 @@ _COMP_LAND_CERT = "Bản gốc Giấy chứng nhận đã cấp"
 _COMP_ERROR_PROOF = "Giấy tờ chứng minh sai sót"
 _COMP_AUTHORIZATION = "Văn bản về việc ủy quyền"
 
-# type → (componentName, nhãn hiển thị mặc định)
+# type → (componentName, nhãn hiển thị mặc định). componentName rỗng = ô "File đính kèm khác".
 _ROUTE = {
     "application": (_COMP_APPLICATION, "Đơn đăng ký biến động Mẫu số 18"),
-    "identity": (_COMP_APPLICATION, "Căn cước công dân"),
+    "identity": ("", "Căn cước công dân"),
     "land_certificate": (_COMP_LAND_CERT, "Giấy chứng nhận QSDĐ"),
     "authorization": (_COMP_AUTHORIZATION, "Văn bản ủy quyền"),
     "error_proof": (_COMP_ERROR_PROOF, "Giấy tờ chứng minh sai sót"),
+    "other": ("", "Giấy tờ kèm theo đơn"),
 }
+# Nguồn route chắc hơn được giữ ô nhóm trước khi hai file cùng nhóm.
+_SRC_RANK = {"ocr": 0, "llm": 1, "filename": 2, "default": 3}
 
 
 def _truncate_text(text: str, limit: int = 3000) -> str:
@@ -79,6 +86,10 @@ def _detect_route_type(ocr_text: str) -> str | None:
         return "application"
     if "giay uy quyen" in haystack or "van ban uy quyen" in haystack or "hop dong uy quyen" in haystack:
         return "authorization"
+    # Đơn xin (đăng ký) cấp GCN của lần cấp trước: có cụm "giấy chứng nhận quyền sử dụng đất" nhưng
+    # KHÔNG phải GCN → không được chiếm ô "Bản gốc GCN" / ô Đơn Mẫu 18.
+    if re.search(r"\bdon (xin|de nghi)\b", haystack[:400]):
+        return "other"
     # GCN QSDĐ (sổ đỏ/hồng).
     if ("quyen su dung dat" in haystack or "quyen so huu" in haystack) and "giay chung nhan" in haystack:
         return "land_certificate"
@@ -160,18 +171,19 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     return out
 
 
-def _build_item(file: dict, idx: int, doc_type: str, document_name: str) -> dict:
-    component_name, _ = _ROUTE.get(doc_type, _ROUTE["error_proof"])
-    return {
+def _build_item(file: dict, idx: int, component_name: str, document_name: str) -> dict:
+    item = {
         "fileIndex": idx,
         "fileName": str(file.get("name") or f"file-{idx + 1}"),
         "documentName": document_name,
         "componentName": component_name,
-        "target": "existing",
-        "slotKey": "banChinh",  # gán vào ô Bản chính (không ký số) của nhóm
+        "target": "existing" if component_name else "supplementary",
         "needsAddComponent": False,
         "detectedType": document_name,
     }
+    if component_name:
+        item["slotKey"] = "banChinh"  # gán vào ô Bản chính (không ký số) của nhóm
+    return item
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
@@ -204,9 +216,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments: list[dict] = []
-    classified: list[dict] = []
-    used_names: set[str] = set()
+    routed: list[tuple[int, dict, str, str, dict]] = []
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "", "documentName": ""}
         ocr_text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
@@ -227,7 +237,24 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if doc_type is None:
             doc_type = "error_proof"
             route_src = "default"
+        routed.append((idx, file, doc_type, route_src, detected))
 
+    # Ô Bản chính chỉ nhận 1 file → mỗi nhóm giữ 1 file (route chắc nhất, rồi theo thứ tự tệp);
+    # file thừa sang "File đính kèm khác" thay vì rơi mất.
+    component_of: dict[int, str] = {}
+    taken: set[str] = set()
+    for idx, _file, doc_type, route_src, _d in sorted(routed, key=lambda r: (_SRC_RANK[r[3]], r[0])):
+        component_name, _ = _ROUTE.get(doc_type, _ROUTE["error_proof"])
+        if component_name and component_name in taken:
+            component_name = ""
+        if component_name:
+            taken.add(component_name)
+        component_of[idx] = component_name
+
+    attachments: list[dict] = []
+    classified: list[dict] = []
+    used_names: set[str] = set()
+    for idx, file, doc_type, route_src, detected in routed:
         _, fallback_label = _ROUTE.get(doc_type, _ROUTE["error_proof"])
         # documentName: chỉ tin LLM khi route theo nội dung/LLM chắc chắn; route theo tên file/mặc
         # định thì dùng nhãn nhóm (LLM đoán mù, tên dễ lệch).
@@ -237,13 +264,14 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             base_name = fallback_label
         document_name = _unique_document_name(base_name, used_names, fallback_label)
 
-        item = _build_item(file, idx, doc_type, document_name)
+        item = _build_item(file, idx, component_of[idx], document_name)
         attachments.append(item)
         classified.append({
             "fileName": file.get("name"),
             "type": doc_type,
             "documentName": document_name,
             "componentName": item["componentName"],
+            "target": item["target"],
         })
 
     return {

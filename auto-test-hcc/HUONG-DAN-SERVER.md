@@ -2,7 +2,7 @@
 
 Có hai cách. Người dùng chốt ngày 17/11/2026 dùng **cách A**.
 
-- **A. Máy local đọc req từ server qua SSH.** Web, agent, Claude, cửa sổ bot và backend thử (Docker local 12005) đều nằm trên máy local.
+- **A. Máy local đọc req từ server qua SSH.** Web, agent, Claude, cửa sổ bot và backend thử (Docker local 12025, build từ khu làm việc) đều nằm trên máy local.
   Server chỉ cần một khoá SSH bị giới hạn và một tài khoản Mongo chỉ đọc. Không cài gì, không deploy gì lên server.
 - **B. Cài cả hệ thống lên server.** Xem từ mục "Sơ đồ" trở xuống.
 
@@ -46,7 +46,7 @@ AUTOTEST_SOURCE_DB=autofill_hcc
 AUTOTEST_GIT_REMOTE=https://github.com/dev-f19/test-auto-test-and-fix.git
 ```
 
-Mọi thứ khác giữ như máy local cũ: backend thử là Docker local 12005, đăng nhập web 12008 bằng super_admin **local**, chạy lại bằng
+Mọi thứ khác như máy local: backend thử là Docker local 12025 (khu làm việc, tag release đang chạy production), đăng nhập web 12008 bằng super_admin **local**, chạy lại bằng
 tài khoản test local đúng tỉnh và xã của req. Dịch vụ tự mở đường hầm `127.0.0.1:12024 → Mongo server` và tải tệp gốc qua
 `read-uploads.sh` khi cần. Bật lại dịch vụ: `python auto-test-hcc/agents/server.py`.
 

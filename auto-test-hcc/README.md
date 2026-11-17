@@ -5,10 +5,30 @@ mất phần này.
 
 Đội tester đọc [KE-HOACH.md](KE-HOACH.md): cách bật hệ thống, cách chạy một ca, kịch bản kiểm thử. Team F19 cài máy mới theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Cài lên server trolyhoso theo [HUONG-DAN-SERVER.md](HUONG-DAN-SERVER.md). File này dành cho người sửa code.
 
-## Máy local và server
+## Khu làm việc, ca hồi quy, nhánh PR (mặc định trên máy local, từ 17/11/2026)
 
-Cùng một mã, khác nhau ở biến môi trường. Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có. Không đặt biến nào thì chạy như máy
-local cũ: Mongo 12004 + `data/uploads` của backend local, build `compose.prod.yml`, extension trỏ `localhost:12005`.
+1. **Khu làm việc** (`agents/workspace.py`, thư mục `.workspace/`, gitignore): mỗi ca, agent sửa trong một cây code sạch, KHÔNG phải thư mục
+   làm việc của người phát triển. Ba repo thật được clone riêng (`dev-f19/auto-fill-hcc-backend`, `…/auto-fill-hcc-extension`,
+   `…/tro-ly-nguoi-dan-extension`) và đặt về tag release mới nhất, tức bản đang chạy production: `v20*`, `autofill-v*`, `handfree-v*`.
+   Ép ref khác bằng `AUTOTEST_BE_REF` / `_EXT_REF` / `_TROLY_REF`.
+   - Đầu ca: lưu phần ca trước để lại vào `runs/<ca trước>/workspace-left.patch`, dọn sạch, đặt lại tag, xoá chứng cứ của ca khác khỏi khu
+     làm việc. Extension trong khu làm việc trỏ backend thử; hai file đó codeguard cấm sửa nên không bao giờ vào commit.
+   - Backend thử: `deploy/compose.local.yml`, `127.0.0.1:12025`, project `auto-test-hcc-be`, image `autofill-hcc-be:autotest`, service
+     `autotest-app`. Không đặt tên `app`, vì trùng alias với stack 12005. Dùng chung Mongo local nên tài khoản test như cũ. 12005 của người
+     phát triển và 12015 (stack toàn trình) không bị đụng. Cây khu làm việc đổi thì `verify.ensure_stack` build lại trước khi chạy lại req.
+   - Baseline test khoá theo commit git, nên mọi ca cùng tag dùng chung một baseline.
+   - Cửa sổ bot nạp extension của khu làm việc. Cửa sổ cũ nạp extension ở chỗ khác thì bot tự đóng và mở lại; profile giữ nguyên.
+2. **Ca hồi quy** (`agents/regression_case.py`, `regression/`): ca đạt có đụng backend → ca ẩn danh trong `regression/cases`, chỉ khi phát lại
+   đạt trên bản sửa. Mỗi bản sửa sau phải giữ đạt các ca đang đạt (`verify.compare_regression`). Chạy được trong CI, xem
+   [regression/README.md](regression/README.md).
+3. **Nhánh PR** (`publish.push_components`): bản sửa đạt → nhánh `agent/<mã ca>` trên đúng repo thật của phần bị sửa, dựng trên tag release,
+   kèm link "Mở PR" trên web. Không tạo PR bằng token, không bao giờ push lên main. Tắt bằng `AUTOTEST_WORKSPACE_PUSH=0`.
+
+Quay về kiểu cũ (sửa thẳng repo người phát triển, build `compose.prod.yml`, 12005): `AUTOTEST_WORKSPACE=0`. Server (cách B) mặc định kiểu cũ.
+
+## Biến môi trường
+
+Dịch vụ đọc thêm `auto-test-hcc/server.env` (gitignore) nếu có.
 
 | Biến | Server trolyhoso | Việc |
 | --- | --- | --- |
@@ -43,7 +63,15 @@ local cũ: Mongo 12004 + `data/uploads` của backend local, build `compose.prod
 | `verify.py` | Test BE, test extension, build Docker, healthz |
 | `evidence.py` | Gom chứng cứ của req từ Mongo local |
 | `replay.py` | Đăng nhập backend, xoá cache OCR, chế độ Chỉ gọi backend |
-| `publish.py` | Server: commit bản sửa đạt lên nhánh `agent/<mã ca>` và push |
+| `publish.py` | Commit bản sửa đạt lên nhánh `agent/<mã ca>` (mỗi repo thật một nhánh), push, link mở PR |
+| `workspace.py` | Khu làm việc: clone riêng, đặt tag release, dọn sạch, trỏ extension sang backend thử |
+| `regression_case.py` | Dựng ca hồi quy ẩn danh từ một lượt chạy lại đạt |
+| `remote.py` | Đọc req từ server qua SSH (đường hầm Mongo + `deploy/read-uploads.sh`) |
+
+| Thư mục ngoài `agents/` | Việc |
+| --- | --- |
+| `regression/` | `run.py` + `harness.py` phát lại ca hồi quy trên một cây backend bất kỳ; `cases/` bộ ca; `ci/regression.yml` mẫu CI |
+| `deploy/` | `compose.local.yml` (backend thử local), `compose.server.yml` + `setup.sh` (cách B), `read-uploads.sh` (cách A) |
 
 Job "Thêm thủ tục mới" (`devjob.py`, tab cùng tên trên web) đã gỡ ngày 2026-11-09. Job cũ loại này trong `runs/` vẫn nằm trên đĩa
 nhưng dịch vụ không nạp lên web.

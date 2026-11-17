@@ -1,6 +1,6 @@
 """Prompt phân loại tài liệu đính kèm cho thủ tục "Cấp Giấy chứng nhận cơ sở đủ điều kiện ATTP".
 
-Cổng gom mọi giấy tờ vào MỘT dòng nên phân loại chỉ để đặt tên tài liệu theo loại giấy, không để chọn dòng.
+Loại giấy quyết định dòng a)–e) của bảng thành phần hồ sơ (planner.py) và tên tài liệu khi đính.
 """
 
 import json
@@ -11,7 +11,7 @@ SYSTEM_PROMPT = """
 <persona>
 Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn
 thực phẩm" (cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm). Đọc OCR_TEXT của từng tài liệu
-và xếp vào đúng MỘT loại giấy tờ để đặt tên tài liệu khi nộp hồ sơ.
+và xếp vào đúng MỘT loại giấy tờ để đính vào đúng dòng thành phần hồ sơ khi nộp.
 </persona>
 
 <critical_rules>

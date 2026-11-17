@@ -432,6 +432,13 @@ function Checks({ round }: { round: Pick<Round, "tests" | "deploy"> & { tests: (
       ) : null}
       {full ? <SuiteCheck name="Toàn bộ test" result={full} /> : null}
       {tests?.handfree ? <SuiteCheck name="Test trợ lý (tests/handfree)" result={tests.handfree} /> : null}
+      {tests?.regression ? (
+        <li className={tests.regression.ok ? "" : "is-bad"}>
+          <b>Ca hồi quy</b> {tests.regression.broken ? "trình phát lại sập" : `${tests.regression.passed}/${tests.regression.total} đạt`}
+          {tests.regression.new.length ? <span> · mới trượt: {tests.regression.new.join(", ")}</span> : null}
+          {tests.regression.fixed.length ? <span className="faint"> · nay đạt: {tests.regression.fixed.join(", ")}</span> : null}
+        </li>
+      ) : null}
       {deploy ? (
         <li className={deploy.ok ? "" : "is-bad"}>
           <b>Docker</b> {deploy.ok ? (deploy.ps || "đã Up") : `lỗi ở bước ${deploy.step}`}
@@ -646,7 +653,23 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
             lên Docker: {job.fix.files.map((f) => f.path).join(", ")}. Không dùng thì bấm Hoàn tác bản sửa.
           </p>
         ) : (
-          job.fix.git ? (
+          job.fix.pushes?.length ? (
+            <div className="muted at-note">
+              <p>Bản sửa đã đẩy lên nhánh riêng của ca trên repo thật, dựng trên tag đang chạy production; main không đổi:</p>
+              <ul>
+                {job.fix.pushes.map((p) => (
+                  <li key={p.component}>
+                    <b>{p.component}</b> {p.error ? <span className="is-bad">không đẩy được: {p.error}</span> : (
+                      <>
+                        nhánh <code>{p.branch}</code> trên {p.ref ?? "?"}{" "}
+                        {p.compare ? <a href={p.compare} target="_blank" rel="noreferrer">Mở PR vào {p.base}</a> : <span className="mono faint">{p.remote}</span>}
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : job.fix.git ? (
             <p className="muted at-note">
               Bản sửa đã commit lên nhánh <code>{job.fix.git.branch}</code> ({job.fix.git.commit.slice(0, 10)}) trên GitHub, main không đổi. Mở PR từ
               nhánh này nếu muốn gộp: {job.fix.files.map((f) => f.path).join(", ")}.
@@ -655,6 +678,20 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
             <p className="muted at-note">Bản sửa đang nằm trong thư mục làm việc và chưa commit: {job.fix.files.map((f) => f.path).join(", ")}. Hãy xem lại rồi tự commit.</p>
           )
         )
+      ) : null}
+      {job.regression ? (
+        job.regression.saved ? (
+          <p className="muted at-note">
+            Đã lưu ca hồi quy <code>{job.regression.path}</code>
+            {job.regression.catchesOldBug ? ": trượt trên code production, đạt trên bản sửa." : ": chưa bắt được lỗi cũ (code production phát lại cũng đạt)."}
+            {" "}Dữ liệu đã ẩn danh, soát lại rồi mới commit.
+          </p>
+        ) : <p className="muted at-note">Không lưu ca hồi quy: {job.regression.reason}</p>
+      ) : null}
+      {job.workspace ? (
+        <p className="faint at-note">
+          Khu làm việc: {Object.entries(job.workspace).map(([dir, w]) => `${dir} @ ${w.ref}`).join(" · ")}
+        </p>
       ) : null}
       {job.warnings.map((w) => <p key={w} className="at-warn"><Icon name="alert" size={14} /> {w}</p>)}
       {error ? <p className="form-error" role="alert">{error}</p> : null}

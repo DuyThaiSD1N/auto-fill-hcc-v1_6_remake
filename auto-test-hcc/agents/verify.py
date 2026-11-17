@@ -17,10 +17,24 @@ from pathlib import Path
 
 import httpx
 
-from config import BACKEND_URL, BE, COMPOSE_FILE, COMPOSE_SERVICE, EXT, RUNS, SUPPORT, server_problems
+from config import (
+    BACKEND_URL, BE, COMPOSE_FILE, COMPOSE_SERVICE, EXT, MAIN_BE, REGRESSION, REGRESSION_CASES, RUNS, SUPPORT, USE_WORKSPACE,
+    server_problems,
+)
 
 _TREES = ("app", "tests")
 _SUMMARY = re.compile(r"(\d+) (failed|passed|skipped|errors?)\b")
+# Backend thử đang chạy code nào: khoá cây code lúc build gần nhất. Khu làm việc đổi tag / ca khác → build lại trước khi chạy.
+_STACK_MARK = RUNS / "_stack.json"
+
+
+def _compose_env() -> dict:
+    """Biến cho deploy/compose.local.yml: build từ khu làm việc, dùng .env của backend local, dữ liệu upload riêng."""
+    env = dict(os.environ)
+    env.update(AUTOTEST_BE_DIR=str(BE), AUTOTEST_MAIN_ENV=str(MAIN_BE / ".env"), AUTOTEST_DATA_DIR=str(RUNS / "_backend_data"))
+    return env
+
+
 def _compose() -> tuple[list[str], Path, str]:
     """Lệnh compose, thư mục chạy, tên service. Máy local: compose.prod.yml của backend như CLAUDE.md. Server: compose.server.yml
     (backend thử, project riêng, cổng riêng): compose.prod.yml trên server trolyhoso là build đè backend production."""
@@ -117,12 +131,31 @@ def find_test_files(pipeline: str | None, extra: list[str]) -> list[str]:
 
 
 def tree_key(base: Path = BE, trees: tuple[str, ...] = _TREES) -> str:
+    """Khoá nội dung cây code. Repo git (khu làm việc): commit + phần chưa commit, nên mọi ca cùng tag dùng chung baseline
+    dù checkout lại làm đổi mtime. Thư mục thường (máy cũ): theo kích thước + mtime."""
+    if (base / ".git").exists():
+        return _git_tree_key(base, trees)
     digest = hashlib.sha1()
     for tree in trees:
         for path in sorted((base / tree).rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts and ".git" not in path.parts:
                 stat = path.stat()
                 digest.update(f"{path.relative_to(base)}|{stat.st_size}|{stat.st_mtime_ns}\n".encode())
+    return digest.hexdigest()
+
+
+def _git_tree_key(base: Path, trees: tuple[str, ...]) -> str:
+    def git(*args: str) -> bytes:
+        return subprocess.run(["git", "-c", "core.autocrlf=false", *args], cwd=base, capture_output=True, timeout=120).stdout
+
+    paths = [t for t in trees if t != "."] or ["."]
+    digest = hashlib.sha1(b"git|" + git("rev-parse", "HEAD").strip())
+    digest.update(git("diff", "HEAD", "--binary", "--", *paths))
+    for rel in sorted(git("ls-files", "--others", "--exclude-standard", "--", *paths).decode("utf-8", "replace").splitlines()):
+        file = base / rel
+        digest.update(f"\n+{rel}\n".encode())
+        if file.is_file():
+            digest.update(file.read_bytes())
     return digest.hexdigest()
 
 
@@ -242,10 +275,12 @@ def deploy(cancel: threading.Event) -> dict:
     """Bước 3–5. Luôn chỉ rõ file compose: compose mặc định đá app sang network khác làm web trace 502."""
     compose, cwd, service = _compose()
     extra = [] if COMPOSE_FILE else ["--remove-orphans"]
-    code, output = run([*compose, "up", "-d", "--build", *extra, service], cwd, 1500, cancel)
+    env = _compose_env() if USE_WORKSPACE else None
+    key = tree_key() if USE_WORKSPACE else None
+    code, output = run([*compose, "up", "-d", "--build", *extra, service], cwd, 1500, cancel, env)
     if code != 0:
         return {"ok": False, "step": "build", "output": output[-4000:]}
-    _, ps = run([*compose, "ps", service, "--format", "{{.Name}} {{.Status}}"], cwd, 60, cancel)
+    _, ps = run([*compose, "ps", service, "--format", "{{.Name}} {{.Status}}"], cwd, 60, cancel, env)
     deadline = time.monotonic() + 120
     health = ""
     while time.monotonic() < deadline:
@@ -253,6 +288,81 @@ def deploy(cancel: threading.Event) -> dict:
             raise Stopped()
         alive, health = healthz()
         if alive:
+            if key:
+                _STACK_MARK.parent.mkdir(parents=True, exist_ok=True)
+                _STACK_MARK.write_text(json.dumps({"key": key, "at": time.time()}), encoding="utf-8")
             return {"ok": True, "ps": ps.strip(), "health": health}
         time.sleep(2)
     return {"ok": False, "step": "healthz", "ps": ps.strip(), "health": health}
+
+
+def stack_current() -> bool:
+    """Backend thử đang sống và chạy đúng cây code hiện có trong khu làm việc."""
+    try:
+        mark = json.loads(_STACK_MARK.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return mark.get("key") == tree_key() and healthz()[0]
+
+
+def ensure_stack(cancel: threading.Event) -> dict | None:
+    """Khu làm việc vừa đặt lại tag (hoặc backend thử chưa bật): build lại trước khi chạy lại req. None = đã khớp sẵn."""
+    if not USE_WORKSPACE or stack_current():
+        return None
+    return deploy(cancel)
+
+
+# ---- bộ ca hồi quy (regression/) --------------------------------------------------------------------------------------
+
+def regression_cases() -> list[Path]:
+    return sorted(REGRESSION_CASES.rglob("*.json")) if REGRESSION_CASES.is_dir() else []
+
+
+def regression_run(cancel: threading.Event, be: Path = BE, cases: list[Path] | None = None) -> dict:
+    """Phát lại các ca hồi quy trên cây backend ``be`` (OCR/LLM đã ghi, không mạng). {id: {ok, error}}, broken nếu runner sập."""
+    cases = regression_cases() if cases is None else cases
+    if not cases:
+        return {"results": {}, "total": 0}
+    out = RUNS / "_regression_out.json"
+    out.unlink(missing_ok=True)
+    cmd = [sys.executable, str(REGRESSION / "run.py"), "--be", str(be), "--json", str(out), *map(str, cases)]
+    code, output = run(cmd, be, 900, cancel, _pytest_env())
+    try:
+        data = json.loads(out.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"results": {}, "total": len(cases), "broken": True, "tail": output[-3000:]}
+    results = {item["id"]: {"ok": bool(item.get("ok")), "error": item.get("error")} for item in data.get("results", [])}
+    return {"results": results, "total": len(results)}
+
+
+def regression_baseline(cancel: threading.Event) -> dict:
+    cases = regression_cases()
+    digest = hashlib.sha1(tree_key().encode())
+    for path in cases:
+        digest.update(path.name.encode() + path.read_bytes())
+    cache = RUNS / "_baseline"
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / f"reg-{digest.hexdigest()}.json"
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    result = regression_run(cancel, cases=cases)
+    if not result.get("broken"):
+        path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
+    return result
+
+
+def compare_regression(before: dict, after: dict) -> dict:
+    """Ca đang đạt trước khi sửa mà nay trượt = hồi quy. Ca trượt sẵn không tính (code production chưa có bản sửa đó)."""
+    passed_before = {k for k, v in before.get("results", {}).items() if v["ok"]}
+    now = after.get("results", {})
+    new = sorted(k for k in passed_before if k in now and not now[k]["ok"])
+    return {
+        "ok": not after.get("broken") and not new,
+        "new": new,
+        "errors": {k: now[k]["error"] for k in new if now[k].get("error")},
+        "fixed": sorted(k for k, v in now.items() if v["ok"] and k not in passed_before),
+        "total": after.get("total", 0),
+        "passed": sum(1 for v in now.values() if v["ok"]),
+        "broken": bool(after.get("broken")),
+        "tail": after.get("tail", ""),
+    }
