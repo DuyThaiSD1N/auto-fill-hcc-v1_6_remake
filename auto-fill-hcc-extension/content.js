@@ -1755,9 +1755,15 @@
       const patch = Array.isArray(msg.fields) ? msg.fields : [];
       const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
       const known = new Set(base.map((f) => f?.name));
-      // Form SurveyJS, form cũ (x-*) và form Angular mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
+      // Form SurveyJS, form cũ (x-*), form Angular và form Form.io (data[...]) mỗi bên một bộ ghi lại ô; nền tảng khác
+      // chưa có thì bỏ qua bản vá. Cổng Form.io bọc trong khung Angular (Bộ Y tế…) bị nhận là "angular" — ô data[...] / dom-*
+      // vẫn đi bộ ghi Form.io, như lượt điền đầu (forceStandard của fillFields).
+      const standardPatch = patch.some((f) =>
+        String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data["));
       const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs
-        : formKind === "legacy" ? H.patchFormLegacy : formKind === "angular" ? H.patchFormAngular : null;
+        : formKind === "legacy" ? H.patchFormLegacy
+          : formKind === "standard" || (formKind === "angular" && standardPatch) ? H.patchFormStandard
+            : formKind === "angular" ? H.patchFormAngular : null;
       const canPatch = patch.length && typeof patcher === "function";
       Promise.resolve().then(() => (canPatch ? patcher(patch) : { filled: 0, skipped: [] }))
         .catch((e) => {
@@ -1765,6 +1771,7 @@
           return { filled: 0, skipped: [] };
         })
         .then((res) => {
+          console.info("[AutoFill] Điền đợt 2:", { formKind, patcher: !!patcher, fields: patch.length, ...res });
           H.formSnapshot?.track?.(msg.formSnapshot, [...base, ...patch.filter((f) => !known.has(f?.name))], formKind);
           sendResponse(res);
         });
@@ -8801,9 +8808,10 @@
     }
   }
 
-  async function fillFormStandard(fields) {
+  // keepMarks: điền đợt 2 ghi thêm vài ô lên form lượt đầu đã tô màu — giữ màu các ô lượt đầu.
+  async function fillFormStandard(fields, { keepMarks = false } = {}) {
     injectAutofillStyles();
-    clearAutofillMarks();
+    if (!keepMarks) clearAutofillMarks();
     await expandCollapsedFormioPanels();
     await ensureStandardDatagridRows(fields);
     // Chụp khối nhân thân cấm ghi TRƯỚC khi điền ô nào (xem standardForbiddenRoots).
@@ -8993,6 +9001,43 @@
     scheduleBusinessLineCodeSubmit(fields, result);
     publishStandardFillReport(result, scopeLog);
     console.log("[AutoFill-STD] Kết quả:", result);
+    return result;
+  }
+
+  // Điền đợt 2 trên form Form.io (data[...]): chỉ ghi ô còn đúng như lượt đầu đã điền (hoặc đang trống). Ô cán bộ đã sửa
+  // tay (khác giá trị lượt đầu, khoá "from" của bản vá) thì bỏ qua. Đọc giá trị đang hiện bằng chính bộ đọc ảnh chụp form.
+  function standardPatchSame(shown, first) {
+    const clean = (v) => foldChoiceText(stripAdminPrefix(String(v ?? "")));
+    const a = clean(shown);
+    const b = clean(first);
+    return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+  }
+
+  function standardPatchUntouched(f) {
+    const read = H.formSnapshot?.readFields?.([f], "standard")?.[0];
+    const shown = read ? read.value : null;
+    if (shown == null) return null;
+    if (shown === "" || shown === false || (Array.isArray(shown) && !shown.length)) return true;
+    const hasFirst = f.from != null && f.from !== "";
+    return hasFirst && standardPatchSame(Array.isArray(shown) ? shown.join(" ") : shown, f.from);
+  }
+
+  async function patchFormStandard(fields) {
+    const result = { filled: 0, skipped: [] };
+    const todo = [];
+    for (const f of (fields || []).filter((x) => x && x.value != null && x.value !== "")) {
+      const untouched = standardPatchUntouched(f);
+      const isNew = f.from == null || f.from === "";
+      if (untouched === false || (untouched === null && !isNew)) {
+        result.skipped.push({ name: f.name, reason: untouched === false ? "changed" : "not-found" });
+      } else {
+        todo.push(f);
+      }
+    }
+    if (!todo.length) return result;
+    const res = await fillFormStandard(todo, { keepMarks: true });
+    result.filled = res.filled || 0;
+    for (const name of [...(res.notFound || []), ...(res.errors || [])]) result.skipped.push({ name, reason: "not-filled" });
     return result;
   }
 
@@ -9271,7 +9316,7 @@
     fieldCandidates, findFormControl, markFilled, markUnfilled, markDefaultsYellow,
     clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles, markAllEmptyFieldsRed,
     FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS,
-    fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
+    fillFormStandard, patchFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
     isOwnerDossierCheckboxField, standardCheckboxWantsTrue, orderStandardFields,
     readAcctContact, dataUrlToFile, dataUrlFilesForBatch, setFilesOnInput, payloadForPlanItem,
   });

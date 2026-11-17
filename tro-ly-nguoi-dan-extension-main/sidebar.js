@@ -162,6 +162,9 @@
     // Ghi lại được ô đợt 2 trên form Angular (cổng liên thông, content/fill-angular.js::patchFormAngular). Thủ tục form
     // Angular chỉ chạy lớp soát khi có cờ này.
     supportsSecondPassAngular: true,
+    // Ghi lại được ô đợt 2 trên form Form.io (data[...], content/fill-core.js::patchFormStandard). Thủ tục form Form.io
+    // chỉ chạy lớp soát khi có cờ này.
+    supportsSecondPassFormio: true,
     // Ghi lại được ô địa chỉ gộp SurveyJS ở đợt 2 (content/surveyjs-main.js::patchValues → setArea). Thiếu cờ → bản vá
     // của BE bỏ ô địa chỉ.
     supportsSecondPassArea: true,
@@ -5541,6 +5544,7 @@
     try {
       for (;;) {
         const res = await api.getSecondPass(requestId);
+        console.info("[TLND] Kết quả soát đợt 2:", res?.status, Array.isArray(res?.fields) ? res.fields.length : res);
         if (res?.status === "done") {
           fields = Array.isArray(res.fields) ? res.fields : [];
           break;

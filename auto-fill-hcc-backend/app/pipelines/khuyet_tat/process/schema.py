@@ -72,7 +72,7 @@ FIELDS: list[dict] = [
     {"name": "Ndd_GioiTinh", "desc": 'Mặc định BỎ field này: mục II Mẫu số 01 không có dòng giới tính. Chỉ trả "Nam"/"Nữ" khi OCR có CCCD/CMND mang đúng số Ndd_SoDinhDanh ghi giới tính; không suy từ họ tên, quan hệ hay chữ "Người viết đơn".'},
     {"name": "Ndd_NgayCap", "desc": "Ngày cấp CMND/CCCD của người đại diện tại mục II hoặc mặt sau CCCD đúng người này, dd/mm/yyyy."},
     {"name": "Ndd_NoiCap", "desc": "Nơi cấp CMND/CCCD của người đại diện CHỈ khi mục II hoặc CCCD đúng người này ghi rõ; không có thì bỏ, không lấy nơi cấp của thẻ người khác."},
-    {"name": "Ndd_QuanHe", "desc": 'Quan hệ với người khuyết tật, trả theo nhãn gốc nếu có: "bố đẻ", "mẹ đẻ", "cha", "mẹ"...'},
+    {"name": "Ndd_QuanHe", "desc": "Chép NGUYÊN chữ đứng sau nhãn \"Mối quan hệ với người được xác định khuyết tật\" ở mục II, không đổi chiều, không chuẩn hóa; sau nhãn trống hoặc chỉ có dấu chấm thì bỏ."},
     {"name": "Ndd_SoDienThoai", "desc": "Số điện thoại người đại diện hợp pháp, số di động VN nếu có."},
     {"name": "Ndd_NoiCuTru", "desc": "Địa chỉ thường trú/nơi ở người đại diện, object {quocGia,tinh,xa,chiTietDuoiXa}."},
 

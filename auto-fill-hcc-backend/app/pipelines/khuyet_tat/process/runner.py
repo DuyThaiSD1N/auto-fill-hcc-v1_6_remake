@@ -1,11 +1,12 @@
 """Compact agent process pipeline for "Xác định mức độ khuyết tật"."""
 
 import asyncio
+import copy
 import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.khuyet_tat.process import mapper, muc_do, vision
+from app.pipelines.khuyet_tat.process import dang_khuyet_tat, mapper, muc_do, vision
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
 from app.pipelines.khuyet_tat.process.schema import (
     ALIASES,
@@ -101,6 +102,19 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     levels_tasks: list = []
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+    requester_context = _owner_only_context if owner_mode else _requester_context
+
+    types_tasks: list = []
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        # Bảng dạng khuyết tật (mục III.1) đọc riêng song song lượt trích chính, như bảng mức độ.
+        types_tasks.append(asyncio.create_task(dang_khuyet_tat.read_disability_types(documents)))
+        return await requester_context(documents, opts)
+
     # Mục III đọc thẳng từ ảnh song song với OCR + LLM; luôn chờ cả hai xong.
     res, section_iii = await asyncio.gather(runner.run(
         files_by_role,
@@ -110,20 +124,30 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=muc_do.context_with_levels(
-            _owner_only_context if owner_mode else _requester_context, levels_tasks
-        ),
+        context_builder=muc_do.context_with_levels(build_context, levels_tasks),
         max_tokens=2200,
     ), vision.read_section_iii(runner.flatten(files_by_role)) if vision.ENABLED else asyncio.sleep(0))
     await muc_do.apply_levels(res, levels_tasks)
     if section_iii is not None:
+        for task in types_tasks:
+            task.cancel()
         # Bảng tích ✓ viết tay: kết quả đọc ảnh thay hẳn phần LLM bóc từ OCR văn bản (kể cả khi rỗng).
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
             {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
         ]
-    elif vision.ENABLED:
-        # Kết quả dự phòng từ OCR văn bản hay mất cột Có/Không của bảng tích.
-        res.setdefault("errors", []).append(vision.SECTION_III_WARNING)
+    else:
+        if vision.ENABLED:
+            # Kết quả dự phòng từ OCR văn bản hay mất cột Có/Không của bảng tích.
+            res.setdefault("errors", []).append(vision.SECTION_III_WARNING)
+        dang_khuyet_tat.apply(res, await types_tasks[0] if types_tasks else None)
     # OCR để mapper dò lại tên phường/xã khi LLM cắt cụt ("Phường Bắc Nha Trang" → "Bắc").
-    res["fields"] = mapper.enrich(res["fields"], {**(options or {}), "_ocr_text": res.get("ocr_text") or ""})
+    enrich_options = {**(options or {}), "_ocr_text": res.get("ocr_text") or ""}
+    raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
+    res["fields"] = mapper.enrich(res["fields"], enrich_options)
+    if raw_fields and read.get("documents"):
+        from ..thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        res["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields,
+                                                                enrich_options)
     return res

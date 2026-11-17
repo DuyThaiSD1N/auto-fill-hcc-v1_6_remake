@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from datetime import date
 
 from app.pipelines._shared.area_remap import is_current_area, province_for_ward, remap_area
 from app.pipelines.khuyet_tat.process.schema import (
@@ -156,10 +157,34 @@ def _identity(value) -> str:
 
 
 def _full_date(value) -> str | None:
-    """Ô ngày sinh cổng cần đủ ngày/tháng/năm: chỉ có năm (LLM hay suy năm từ số CCCD) là ghi đè sai ngày tài
-    khoản đổ sẵn → bỏ."""
+    """Ngày dd/mm/yyyy có thật và không sau hôm nay (mọi ô ngày ở đây là ngày sinh / ngày cấp); "yyyy-mm-dd" đổi về
+    dd/mm/yyyy (trừ "yyyy-01-01"). Ô ngày cổng tự diễn giải chuỗi khác định dạng thành ngày vô nghĩa ("1988" →
+    19/04/2033, "2022-03-18" → 20/10/0319), chỉ có năm còn ghi đè ngày tài khoản đổ sẵn → bỏ."""
     text = str(value or "").strip()
-    return text if re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", text) else None
+    iso = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", text)
+    if iso and int(iso.group(2)) == 1 and int(iso.group(3)) == 1:
+        # "yyyy-01-01" là cách model điền khi giấy chỉ có năm, không phải ngày đọc được.
+        return None
+    parts = (iso.group(3), iso.group(2), iso.group(1)) if iso else None
+    if not parts:
+        match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", text)
+        parts = match.groups() if match else None
+    if not parts:
+        return None
+    try:
+        day = date(int(parts[2]), int(parts[1]), int(parts[0]))
+    except ValueError:
+        return None
+    return day.strftime("%d/%m/%Y") if date(1900, 1, 1) <= day <= date.today() else None
+
+
+def _birth_fits_identity(birthday: str | None, identity: str | None) -> str | None:
+    """Số định danh 12 số mã hoá năm sinh (chữ số thứ 4 = thế kỷ + giới tính, chữ số 5–6 = hai số cuối năm; TT
+    59/2021/TT-BCA). Ngày sinh lệch năm với số của chính người đó là ngày khác lạc vào (ngày ký đơn, ngày cấp) → bỏ."""
+    if not birthday or not identity or len(identity) != 12 or not identity.isdigit():
+        return birthday
+    year = 1900 + 100 * (int(identity[3]) // 2) + int(identity[4:6])
+    return birthday if birthday.endswith(f"/{year}") else None
 
 
 def _gender_from_identity(identity: str | None) -> str | None:
@@ -185,21 +210,77 @@ def _same_person(context_name, context_identity, owner_name, owner_identity) -> 
     return True
 
 
-def _relation(value) -> str:
-    raw = str(value or "").strip()
-    folded = _norm_text(raw)
-    if any(word in folded.split() for word in ("bo", "cha")):
-        return "Cha"
-    if "me" in folded.split():
-        return "Mẹ"
-    if folded.startswith("ong") or " ong " in f" {folded} ":
-        return "Ông"
-    if folded.startswith("ba") or " ba " in f" {folded} ":
-        return "Bà"
-    for label in ("Vợ", "Chồng", "Con", "Anh", "Chị", "Em", "Cháu ruột", "Chủ hộ", "Khác"):
-        if _norm_text(label) in folded:
-            return label
-    return raw
+def _edit_distance(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+# Chữ viết tay trên đơn OCR hay lệch 1–2 chữ cái / chữ số so với tài khoản VNeID của chính người đó.
+_NEAR_EDITS = 2
+
+
+def _is_account(context_name, context_identity, name, identity) -> bool:
+    """Người trên giấy là chủ tài khoản VNeID đang nộp: trùng mọi mỏ neo, hoặc (khi tài khoản có đủ tên + số) trùng
+    hẳn MỘT mỏ neo và mỏ neo kia chỉ lệch ít — tên cùng số chữ, số định danh dài ít nhất 9 số. Lệch cả hai thì không
+    nhận (có thể là người nhà cùng họ, cùng nơi đăng ký)."""
+    if _same_person(context_name, context_identity, name, identity):
+        return True
+    ctx_name, ctx_identity = _norm_text(context_name), _identity(context_identity)
+    own_name, own_identity = _norm_text(name), _identity(identity)
+    if not (ctx_name and ctx_identity and own_name and own_identity):
+        return False
+    near_name = (len(ctx_name.split()) == len(own_name.split())
+                 and _edit_distance(ctx_name, own_name) <= _NEAR_EDITS)
+    near_identity = len(own_identity) >= 9 and _edit_distance(ctx_identity, own_identity) <= _NEAR_EDITS
+    return (ctx_name == own_name and near_identity) or (ctx_identity == own_identity and near_name)
+
+
+# Danh sách "Mối quan hệ với người khuyết tật" của cổng: Ông, Bà, Cha, Mẹ, Vợ, Chồng, Con, Anh, Chị, Em, Cháu ruột,
+# Khác (và "Chưa có thông tin", "Chủ hộ" — không phải quan hệ để chọn). Khoá = chữ đầu của nhãn trên đơn, GIỮ dấu.
+# "Ba" (cha, tiếng Nam Bộ) không nhận: OCR mất dấu của "Bà" cũng ra "ba".
+_RELATION_HEAD = {
+    "ông": "Ông", "bà": "Bà", "cha": "Cha", "bố": "Cha", "tía": "Cha", "mẹ": "Mẹ", "má": "Mẹ",
+    "vợ": "Vợ", "chồng": "Chồng", "con": "Con", "anh": "Anh", "chị": "Chị", "em": "Em", "cháu": "Cháu ruột",
+}
+# Họ hàng không có dòng riêng trong danh sách → "Khác".
+_RELATION_OTHER = {"cô", "dì", "chú", "bác", "cậu", "thím", "mợ", "dượng", "người", "khác", "khac"}
+# OCR mất dấu: chỉ nhận chữ không dấu không lẫn được giữa hai dòng.
+_RELATION_HEAD_ASCII = {
+    "ong": "Ông", "cha": "Cha", "bo": "Cha", "me": "Mẹ", "vo": "Vợ", "chong": "Chồng", "con": "Con",
+    "anh": "Anh", "chi": "Chị", "em": "Em", "chau": "Cháu ruột",
+}
+
+
+def _account_spelling(person: dict, account_name: str, account_identity: str, identity_enough: bool = False) -> dict:
+    """Người trên giấy là chủ tài khoản VNeID → họ tên + số định danh theo tài khoản (nguồn đúng chữ, đúng số).
+    Tên chỉ khác hoa/thường thì giữ chữ trên giấy; tài khoản không dấu thì không thay tên có dấu.
+    identity_enough: trùng hẳn số định danh là đủ (mục II — số người đại diện ghi cạnh tên, không lẫn với ai)."""
+    own_identity = _identity(person.get("identity"))
+    same_identity = bool(account_identity) and own_identity == account_identity
+    if not (_is_account(account_name, account_identity, person.get("name"), own_identity)
+            or (identity_enough and same_identity)):
+        return person
+    name = str(person.get("name") or "")
+    account = str(account_name or "").strip()
+    keep_name = (not account or account.casefold() == name.casefold()
+                 or (account.isascii() and _norm_text(account) == _norm_text(name)))
+    return {**person, "name": name if keep_name else account, "identity": account_identity or own_identity}
+
+
+def _relation(value) -> str | None:
+    words = re.findall(r"\w+", unicodedata.normalize("NFC", str(value or "")).lower())
+    if not words:
+        return None
+    head = words[0]
+    if head in _RELATION_HEAD:
+        return _RELATION_HEAD[head]
+    if head in _RELATION_OTHER:
+        return "Khác"
+    return _RELATION_HEAD_ASCII.get(head)
 
 
 def _as_list(value) -> list[str]:
@@ -324,7 +405,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     requester_name = values.get("NguoiNop_HoTen")
     requester_identity = _identity(values.get("NguoiNop_SoDinhDanh"))
-    requester_matches_applicant = _same_person(
+    requester_matches_applicant = _is_account(
         applicant_name,
         applicant_identity,
         requester_name,
@@ -336,13 +417,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         else None
     )
 
-    owner = _owner_profile(values, ocr_text)
+    owner = _account_spelling(_owner_profile(values, ocr_text), applicant_name, applicant_identity)
     owner_name = owner["name"]
     owner_identity = owner["identity"]
     owner_area = owner["area"]
     owner_issuer = owner["issuer"]
     owner_present = bool(owner_name or owner_identity)
-    owner_matches_applicant = owner_present and _same_person(
+    owner_matches_applicant = owner_present and _is_account(
         applicant_name,
         applicant_identity,
         owner_name,
@@ -354,6 +435,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # THEO TỜ KHAI: bỏ mỏ neo tài khoản. Người nộp = người đại diện hợp pháp (mục II);
         # mục II trống tức người khuyết tật tự đứng đơn → người nộp là chủ hồ sơ.
         submitter = _representative_profile(values, ocr_text)
+        if submitter is not None:
+            submitter = _account_spelling(submitter, applicant_name, applicant_identity, identity_enough=True)
         self_submit = submitter is None
         if self_submit:
             submitter = owner if owner_present else None
@@ -373,7 +456,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 seen.add("data[birthday]")
             add("data[gender]", submitter["gender"] or _gender_from_identity(submitter["identity"]))
             add("data[identityNumber]", submitter["identity"], extra=unlock)
-            add("data[identityDate]", submitter["identityDate"])
+            add("data[identityDate]", _full_date(submitter["identityDate"]))
             add("data[idIssuePlace]", submitter["issuer"])
             add_area("data[province]", "data[district]", "data[address]", submitter["area"])
             add("data[phoneNumber]", _phone(submitter["phone"]))
@@ -385,12 +468,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
         # Tên + CCCD UI là mỏ neo có thẩm quyền. Các field nhân thân còn lại chỉ
         # được nhận từ NguoiNop_* sau khi LLM trả lại đúng cả hai mỏ neo OCR.
-        add("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None))
-        add("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None))
+        # Cổng khoá (disabled) hai ô này theo tài khoản VNeID, có khi để trống → luôn kèm enableInput để cán bộ sửa / nhập
+        # được. Không có giá trị thì phát "dom-expect": extension chỉ bỏ khoá + tô đỏ ô trống, không ghi gì.
+        unlock = {"enableInput": True}
+        for name, value in (
+            ("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None)),
+            ("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None)),
+        ):
+            add(name, value, extra=unlock)
+            if name not in seen:
+                out.append({"name": name, "comp": "dom-expect", "value": "", **unlock})
+                seen.add(name)
     if requester_matches_applicant and not theo_to_khai:
-        add("data[birthday]", _full_date(values.get("NguoiNop_NgaySinh")))
+        add("data[birthday]", _birth_fits_identity(_full_date(values.get("NguoiNop_NgaySinh")), applicant_identity))
         add("data[gender]", values.get("NguoiNop_GioiTinh"))
-        add("data[identityDate]", values.get("NguoiNop_NgayCap"))
+        add("data[identityDate]", _full_date(values.get("NguoiNop_NgayCap")))
         add("data[idIssuePlace]", values.get("NguoiNop_NoiCap"))
         add_area("data[province]", "data[district]", "data[address]", requester_area)
         add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
@@ -402,10 +494,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Luôn phát Chủ hồ sơ tường minh, kể cả tự nộp. Một số Form.io không copy
         # ngày sinh/ngày cấp sau khi tick nên không được phụ thuộc vào mirror của cổng.
         add("data[ownerFullname]", owner_name)
-        add("data[ownerBirthday]", owner["birthday"])
+        add("data[ownerBirthday]", _full_date(owner["birthday"]))
         add("data[ownerGender]", owner["gender"])
         add("data[ownerIdentityNumber]", owner_identity)
-        add("data[ownerIdentityDate]", owner["identityDate"])
+        add("data[ownerIdentityDate]", _full_date(owner["identityDate"]))
         add("data[ownerIdIssuePlace]", owner_issuer)
         add_area("data[ownerProvince]", "data[ownerDistrict]", "data[ownerAddress]", owner_area)
         add("data[ownerPhoneNumber]", _phone(owner["phone"]))
@@ -424,8 +516,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # I. Người khuyết tật là khối nghiệp vụ riêng. Chỉ dùng Chủ hồ sơ để bù
     # field khi hai nhóm đã khớp tất định; không đổ CCCD người đại diện vào trẻ.
-    nkt_name = values.get("Nkt_HoTen")
-    nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
+    nkt = _account_spelling(
+        {"name": values.get("Nkt_HoTen"), "identity": _identity(values.get("Nkt_SoDinhDanh"))},
+        applicant_name,
+        applicant_identity,
+    )
+    nkt_name = nkt["name"]
+    nkt_identity = nkt["identity"]
     owner_is_nkt = owner_present and _same_person(
         nkt_name,
         nkt_identity,
@@ -435,8 +532,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("data[NktHoTen]", nkt_name or (owner_name if owner_is_nkt else None))
     add(
         "data[NktNgaySinh]",
-        values.get("Nkt_NgaySinh")
-        or (owner["birthday"] if owner_is_nkt else None),
+        _full_date(values.get("Nkt_NgaySinh"))
+        or (_full_date(owner["birthday"]) if owner_is_nkt else None),
     )
     add(
         "data[NktSoDinhdanh]",
@@ -456,11 +553,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     nkt_now = _area(values.get("Nkt_NoiOHienNay"), ocr_text) or nkt_tt
     add_area("data[NktNOHTMaTinh]", "data[NktNOHTMaXa]", "data[NktNOHTDiaChi]", nkt_now)
 
-    # II. Người đại diện hợp pháp. Cùng số định danh với tài khoản VNeID đang nộp → họ tên theo tài khoản (chữ viết
-    # tay mục II hay mất dấu khi OCR).
-    ndd_is_applicant = bool(applicant_identity) and _identity(values.get("Ndd_SoDinhDanh")) == applicant_identity
-    add("data[NddHoTen]", (applicant_name if ndd_is_applicant else None) or values.get("Ndd_HoTen"))
-    add("data[NddSoDinhdanh]", values.get("Ndd_SoDinhDanh"))
+    # II. Người đại diện hợp pháp. Là chủ tài khoản VNeID đang nộp → họ tên + số theo tài khoản (chữ viết tay mục II
+    # hay mất dấu / lệch số khi OCR).
+    ndd = _account_spelling(
+        {"name": values.get("Ndd_HoTen"), "identity": _identity(values.get("Ndd_SoDinhDanh"))},
+        applicant_name,
+        applicant_identity,
+        identity_enough=True,
+    )
+    add("data[NddHoTen]", ndd["name"])
+    add("data[NddSoDinhdanh]", ndd["identity"])
     add("data[NddQuanheNkt]", _relation(values.get("Ndd_QuanHe")))
     add("data[NddSodienthoai]", phone)
     add_area("data[NddMaTinh]", "data[NddMaXa]", "data[NddDiachi]", _area(values.get("Ndd_NoiCuTru"), ocr_text))

@@ -20,7 +20,7 @@ from app.core.errors import AppError
 from app.daily_reports import repo, rules
 from app.daily_reports.export import build_workbook
 from app.dashboard.scope import narrow_to_province, resolve_dashboard_scope
-from app.reports.integration import province_name
+from app.reports.integration import fold, province_name
 from app.users import tdp_rollup
 
 router = APIRouter(prefix="/api/v1/daily-reports", tags=["daily-reports"])
@@ -85,6 +85,28 @@ def _filters(ctx: _Context, date_from: str | None, date_to: str | None, province
     return query, units
 
 
+def _today_status(units: list[dict], reported: list[dict]) -> tuple[int, list[list[dict]]]:
+    """(số đơn vị, đơn vị chưa gửi hôm nay — mỗi đơn vị là danh sách tài khoản của nó).
+
+    Một xã có thể có nhiều tài khoản (hoặc tài khoản cũ còn sót): đếm theo ĐƠN VỊ = tỉnh + tên xã, xã có
+    một tài khoản đã gửi là xong. Tài khoản tạm khoá không đăng nhập được nên không tính là phải gửi.
+    """
+    def key(province, name) -> tuple[str, str]:
+        return fold(province_name(province)), fold(name)
+
+    done_ids = {str(d.get("unit_id")) for d in reported}
+    done_keys = {key(d.get("province"), d.get("unit_name")) for d in reported}
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for u in units:
+        if not u.get("accessDisabled"):
+            groups.setdefault(key(u.get("tinh"), _unit_name(u)), []).append(u)
+    missing = [
+        accounts for k, accounts in groups.items()
+        if k not in done_keys and not any(a["unitId"] in done_ids for a in accounts)
+    ]
+    return len(groups), missing
+
+
 @router.get("/summary")
 async def summary(user: dict = Depends(require_dashboard)):
     """Vai trò + trạng thái hôm nay cho menu. Web dựa vào `access` để dựng mục Báo cáo hằng ngày."""
@@ -93,12 +115,12 @@ async def summary(user: dict = Depends(require_dashboard)):
     if ctx.access == rules.REPORTER:
         return {"access": ctx.access, "today": today, "sentToday": await repo.find_day(ctx.user_id, today) is not None}
     query, units = _filters(ctx, None, None, None, None)
-    reported = await repo.units_on(query, today)
+    unit_count, missing = _today_status(units, await repo.reported_on(query, today))
     return {
         "access": ctx.access,
         "today": today,
-        "unitCount": len(units),
-        "reportedToday": sum(1 for u in units if u["unitId"] in reported),
+        "unitCount": unit_count,
+        "reportedToday": unit_count - len(missing),
     }
 
 
@@ -177,12 +199,18 @@ async def list_reports(
     if ctx.access != rules.REPORTER:
         # Đơn vị chưa gửi báo cáo HÔM NAY trong phạm vi đang lọc (không phụ thuộc khoảng ngày).
         scope_query = {k: v for k, v in query.items() if k != "date"}
-        reported = await repo.units_on(scope_query, today)
-        out["unitCount"] = len(units)
+        unit_count, missing = _today_status(units, await repo.reported_on(scope_query, today))
+        out["unitCount"] = unit_count
         out["missingToday"] = sorted(
             (
-                {"unitId": u["unitId"], "name": _unit_name(u), "province": province_name(u.get("tinh")) or None}
-                for u in units if u["unitId"] not in reported
+                {
+                    "unitId": accounts[0]["unitId"],
+                    # Mọi tài khoản của đơn vị: web lọc "báo cáo cũ" theo cả nhóm.
+                    "unitIds": [a["unitId"] for a in accounts],
+                    "name": _unit_name(accounts[0]),
+                    "province": province_name(accounts[0].get("tinh")) or None,
+                }
+                for accounts in missing
             ),
             key=lambda u: (u["province"] or "", u["name"]),
         )

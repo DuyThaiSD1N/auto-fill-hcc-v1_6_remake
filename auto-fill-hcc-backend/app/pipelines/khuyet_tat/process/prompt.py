@@ -45,6 +45,8 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 - Mọi địa chỉ trả object {quocGia,tinh,xa,chiTietDuoiXa}; quocGia mặc định "Việt Nam" nếu là địa chỉ trong nước.
 - Địa chỉ hành chính hiện hành chỉ dùng 2 cấp: xã/phường/thị trấn và tỉnh/thành phố.
 - Nếu OCR có dạng cũ "[chi tiết], xã/phường, huyện/quận/thị xã, tỉnh" thì bỏ cấp huyện/quận/thị xã.
+- "tinh" chỉ ghi khi chính dòng địa chỉ đó ghi tỉnh/thành phố; dòng chỉ ghi tới xã/phường thì để "tinh" rỗng, KHÔNG
+  đoán tỉnh theo tên xã hay theo địa chỉ của người khác (Python tự tra tỉnh theo tên xã/phường).
 - chiTietDuoiXa chỉ giữ phần chi tiết đứng trước xã/phường: số nhà, đường/phố, tổ, tổ dân phố, bản, thôn, xóm, khu.
   Không lặp xã/huyện/tỉnh vào chiTietDuoiXa.
 - Ví dụ: "Số nhà 003, phố Yết Kiêu, Tổ 16, phường Tân Phong, Lai Châu"
@@ -67,8 +69,9 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 </proposal_rules>
 
 <representative_rules>
-- Ndd_QuanHe giữ theo OCR nhưng nên chuẩn hóa nhẹ về quan hệ phổ biến:
-  "bố", "bố đẻ", "cha đẻ" -> "Cha"; "mẹ", "mẹ đẻ" -> "Mẹ"; "ông nội/ông ngoại" -> "Ông"; "bà nội/bà ngoại" -> "Bà".
+- Ndd_QuanHe là người đại diện LÀ GÌ của người khuyết tật, đúng như chữ đơn ghi sau nhãn "Mối quan hệ với người được xác
+  định khuyết tật": chép nguyên chữ đó (Python tự chuẩn hóa), KHÔNG đảo chiều (đơn ghi "con" là người đại diện là con của
+  người khuyết tật). Sau nhãn trống / chỉ có dấu chấm → bỏ field, không suy từ tuổi, họ hay giới tính.
 - Không lấy người ký đơn nếu khác với mục II người đại diện hợp pháp.
 - Số điện thoại chỉ lấy số liên hệ ở mục người đại diện hoặc thông tin liên hệ rõ ràng, không lấy số hồ sơ/phiếu.
 </representative_rules>
@@ -84,6 +87,8 @@ Nhóm mã:
 - kt6 = Khuyết tật khác.
 Mục con trả dạng ktX_Y, ví dụ kt5_1, kt5_3.
 Không suy luận một mục "Không" chỉ vì ô trống; nếu không có đánh dấu rõ thì không trả mục đó.
+KHÔNG suy dạng khuyết tật từ chẩn đoán, bệnh án, giấy ra viện hay giấy tờ khác: bảng của đơn không có dấu nào → không
+trả KhuyetTat_DanhMuc / KhuyetTat_ChiTiet.
 Nếu thấy mục con ktX_Y được đánh dấu thì cũng trả nhóm cha ktX trong KhuyetTat_DanhMuc.
 OCR bảng có thể bị vỡ dòng/mất ký tự kẻ bảng. Khi một chữ "X" tách riêng xuất hiện trong cùng dòng OCR hoặc ngay sau nội dung của mục con,
 trước khi sang mục số tiếp theo, hãy coi đó là dấu chọn "Có" cho mục đó dù không có ký tự "|".

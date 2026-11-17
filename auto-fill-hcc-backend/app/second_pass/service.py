@@ -35,7 +35,10 @@ def capability(procedure: dict | None) -> str:
     if kind == "legacy":
         return "secondPassLegacy"
     # Form Angular (cổng liên thông): bản extension phải biết ghi lại ô trên form Angular.
-    return "secondPassAngular" if kind == "angular" else "secondPass"
+    if kind == "angular":
+        return "secondPassAngular"
+    # Form Form.io (data[...], cổng Bộ Y tế…): bản extension phải biết ghi lại ô trên form Form.io.
+    return "secondPassFormio" if kind == "formio" else "secondPass"
 
 
 def wanted(user: dict | None, client_supports: bool) -> bool:

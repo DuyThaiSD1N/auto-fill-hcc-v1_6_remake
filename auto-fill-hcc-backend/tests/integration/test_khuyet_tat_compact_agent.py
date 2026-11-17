@@ -37,8 +37,9 @@ def test_khuyet_tat_requester_is_omitted_without_ui_context():
         {"name": "ChuHoSo_SoDinhDanh", "value": "012084000160"},
     ])
 
-    assert "data[fullname]" not in values
-    assert "data[identityNumber]" not in values
+    # Không có mỏ neo UI → không ghi giá trị người nộp (chỉ bỏ khoá + tô đỏ hai ô bằng dom-expect giá trị rỗng).
+    assert values.get("data[fullname]", "") == ""
+    assert values.get("data[identityNumber]", "") == ""
     assert values["data[isOwnerDossierCheck]"] is False
     assert values["data[ownerFullname]"] == "LẠI NGỌC MINH"
     assert values["data[ownerIdentityNumber]"] == "012084000160"

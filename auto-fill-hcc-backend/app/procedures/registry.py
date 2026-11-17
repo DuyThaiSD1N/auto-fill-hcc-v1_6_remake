@@ -7205,12 +7205,19 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-gcn-attp-nong-lam-thuy-san",
+        # Cổng NN&MT cấp mã apply-online/<id> + process=<id> RIÊNG cho từng cơ quan/quy trình (UBND xã, Chi cục…):
+        # hai mã dưới chỉ là của một cơ quan, xã khác ra mã khác → không nhận diện. Thêm cụm tên (hai cụm AND, cụm
+        # sau chặn nhầm với ATTP Bộ Y tế "cơ sở kinh doanh dịch vụ ăn uống") + textPriority, khoá trong cổng NN&MT
+        # bằng urlScope — cùng khuôn detect bản trợ lý (channels/handfree/procedure_registry.py).
         "detect": {
+            "urlScope": ["dichvucongnnmt.mae.gov.vn"],
             "urlIncludes": [
                 "apply-online/693a99efda87c4718ece1bc7",
                 "process=695dbb6de184634c1f3648af",
             ],
+            "textIncludes": ["cơ sở đủ điều kiện an toàn thực phẩm", "nông, lâm, thủy sản"],
             "headingDisabled": True,
+            "textPriority": True,
         },
         "label": (
             "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, "
@@ -7640,6 +7647,9 @@ PROCEDURES: list[dict] = [
         "label": "Xác định, xác định lại mức độ khuyết tật và cấp Giấy xác nhận khuyết tật",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Điền đợt 2 trên form Form.io (data[...]): chỉ chạy khi extension khai fillSupports có "secondPassFormio"
+        # (bản biết ghi lại ô trên form Form.io). Bản khác bỏ qua khoá này.
+        "secondPass": "formio",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

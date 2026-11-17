@@ -5581,8 +5581,9 @@ ocrBtn.addEventListener("click", async () => {
     // "secondPassLegacy": bản này ghi lại được ô trên form cũ (x-*) — thủ tục form cũ chỉ chạy lớp soát khi có.
     // "secondPassAngular": ghi lại được ô trên form Angular (cổng liên thông).
     // "secondPassArea": ghi lại được ô địa chỉ gộp SurveyJS (dò ô con theo nhãn).
+    // "secondPassFormio": ghi lại được ô trên form Form.io (data[...], content.js::patchFormStandard).
     if (cfg.secondPass && !page) {
-      options.fillSupports = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea"];
+      options.fillSupports = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio"];
     }
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });
@@ -5889,6 +5890,7 @@ async function applySecondPass(requestId, baseFields, formSnapshot) {
   try {
     for (;;) {
       const res = await api.secondPass(requestId);
+      console.info("[AutoFill] Kết quả soát đợt 2:", res?.status, Array.isArray(res?.fields) ? res.fields.length : res);
       if (res?.status === "done") {
         fields = Array.isArray(res.fields) ? res.fields : [];
         break;

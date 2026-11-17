@@ -1821,9 +1821,10 @@ async function standardScopeRootWaiting(field) {
   return await waitFor(() => standardScopeRoot(field), 3000, 100);
 }
 
-async function fillFormStandard(fields) {
+// keepMarks: điền đợt 2 ghi thêm vài ô lên form lượt đầu đã tô màu — giữ màu các ô lượt đầu.
+async function fillFormStandard(fields, { keepMarks = false } = {}) {
   injectAutofillStyles();
-  clearAutofillMarks();
+  if (!keepMarks) clearAutofillMarks();
   await ensureStandardDatagridRows(fields);
   // Chụp khối nhân thân cấm ghi TRƯỚC khi điền ô nào (xem standardForbiddenRoots).
   const forbiddenRoots = standardForbiddenRoots(fields);
@@ -1916,7 +1917,16 @@ async function fillFormStandard(fields) {
         const el = findStandardRadio(candidates, root) || await waitFor(() => findStandardRadio(candidates, root), 1500, 80);
         ok = await fillStandardRadio(el, f.value);
       } else if (f.comp === "dom-select") {
-        if (isAreaSelectField(f)) {
+        // Ô Tỉnh/Xã giữ luồng cascade + ngân sách riêng; ô khác hỏi cầu nối MAIN world trước, bỏ qua thì đi đường cũ.
+        let viaMain = null;
+        if (!isAreaSelectField(f)) {
+          const el = findStandardSelect(candidates, occurrence, root)
+            || (f.searchOnce ? await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100) : null);
+          if (el) viaMain = await fillFormioRemoteSelectViaMain(el, f.value);
+        }
+        if (viaMain?.handled) {
+          ok = !!viaMain.ok;
+        } else if (isAreaSelectField(f)) {
           const deadline = standardFieldDeadline(areaDeadlines, f);
           const cascade = snapshotStandardAreaCascade(candidates, occurrence, root);
           ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
@@ -1979,6 +1989,43 @@ async function fillFormStandard(fields) {
   markStandardDefaultsYellow(fields);
   scheduleBusinessLineCodeSubmit(fields, result);
   console.log("[AutoFill-STD] Kết quả:", result);
+  return result;
+}
+
+// Điền đợt 2 trên form Form.io (data[...]): chỉ ghi ô còn đúng như lượt đầu đã điền (hoặc đang trống). Ô cán bộ đã sửa
+// tay (khác giá trị lượt đầu, khoá "from" của bản vá) thì bỏ qua. Đọc giá trị đang hiện bằng chính bộ đọc ảnh chụp form.
+function standardPatchSame(shown, first) {
+  const clean = (v) => foldChoiceText(stripAdminPrefix(String(v ?? "")));
+  const a = clean(shown);
+  const b = clean(first);
+  return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+}
+
+function standardPatchUntouched(f) {
+  const read = H.formSnapshot?.readFields?.([f], "standard")?.[0];
+  const shown = read ? read.value : null;
+  if (shown == null) return null;
+  if (shown === "" || shown === false || (Array.isArray(shown) && !shown.length)) return true;
+  const hasFirst = f.from != null && f.from !== "";
+  return hasFirst && standardPatchSame(Array.isArray(shown) ? shown.join(" ") : shown, f.from);
+}
+
+async function patchFormStandard(fields) {
+  const result = { filled: 0, skipped: [] };
+  const todo = [];
+  for (const f of (fields || []).filter((x) => x && x.value != null && x.value !== "")) {
+    const untouched = standardPatchUntouched(f);
+    const isNew = f.from == null || f.from === "";
+    if (untouched === false || (untouched === null && !isNew)) {
+      result.skipped.push({ name: f.name, reason: untouched === false ? "changed" : "not-found" });
+    } else {
+      todo.push(f);
+    }
+  }
+  if (!todo.length) return result;
+  const res = await fillFormStandard(todo, { keepMarks: true });
+  result.filled = res.filled || 0;
+  for (const name of [...(res.notFound || []), ...(res.errors || [])]) result.skipped.push({ name, reason: "not-filled" });
   return result;
 }
 
@@ -2846,6 +2893,52 @@ function formioOptionToValue(option, comp = null) {
   return option.value !== undefined ? option.value : option;
 }
 
+// Ô select Form.io: nhờ content/formio-select-main.js (MAIN world) gọi chính API component. Isolated world không
+// thấy instance Form.io (__ngContext__ là expando của trang) nên fillFormioSelectComponent bên dưới không tìm được
+// component, đường gõ DOM chỉ đoán thời gian chờ và khớp lỏng ("Chồng" trúng "Ông", "Cô" trúng "Chưa có thông tin").
+// handled=false (không phải Form.io, cầu nối chưa nạp — vd tab tiêm lại chưa F5) → bên gọi đi đường DOM cũ.
+// handled=true, ok=false → đã có danh sách mà không option nào khớp: để trống, KHÔNG thử đường DOM khớp lỏng.
+const FORMIO_SELECT_REQUEST_EVENT = "__TLND_FORMIO_SELECT_REQUEST__";
+const FORMIO_SELECT_RESULT_EVENT = "__TLND_FORMIO_SELECT_RESULT__";
+const FORMIO_SELECT_READY_ATTR = "data-tlnd-formio-select-ready";
+const FORMIO_SELECT_TARGET_ATTR = "data-tlnd-formio-select-target";
+
+async function fillFormioRemoteSelectViaMain(select, value) {
+  if (!select?.closest?.(".formio-component") || !String(value ?? "").trim()) return { handled: false };
+  if (document.documentElement?.getAttribute(FORMIO_SELECT_READY_ATTR) !== "1") {
+    return { handled: false, reason: "bridge-not-ready" };
+  }
+  const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  select.setAttribute(FORMIO_SELECT_TARGET_ATTR, requestId);
+  try {
+    const result = await new Promise((resolve) => {
+      let timer = null;
+      const onResult = (event) => {
+        let data;
+        try { data = JSON.parse(String(event.detail || "{}")); } catch { return; }
+        if (data.requestId !== requestId) return;
+        clearTimeout(timer);
+        document.removeEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+        resolve(data);
+      };
+      // Lớn hơn ngân sách bên MAIN (20s) để không bỏ cuộc trong lúc MAIN vẫn đang setValue.
+      timer = setTimeout(() => {
+        document.removeEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+        resolve({ handled: false, reason: "timeout" });
+      }, 23000);
+      document.addEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+      document.dispatchEvent(new CustomEvent(FORMIO_SELECT_REQUEST_EVENT, {
+        detail: JSON.stringify({ requestId, value: String(value ?? "") }),
+      }));
+    });
+    if (result.handled && result.ok) markFilled(standardMarkTarget(select));
+    else if (result.handled) console.warn(`[TLND-STD] ${select.name}: không có option khớp "${value}" (${result.reason || "?"}) → để trống.`);
+    return result;
+  } finally {
+    select.removeAttribute(FORMIO_SELECT_TARGET_ATTR);
+  }
+}
+
 async function fillFormioSelectComponent(select, value, names = [], deadline = 0) {
   if (!select) return false;
   const key = formioKeyFromSelect(select, names);
@@ -3276,9 +3369,15 @@ function handleFillMessage(msg, _sender, sendResponse) {
     const patch = Array.isArray(msg.fields) ? msg.fields : [];
     const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
     const known = new Set(base.map((f) => f?.name));
-    // Form SurveyJS, form cũ (x-*) và form Angular mỗi bên một bộ ghi lại ô; nền tảng khác chưa có thì bỏ qua bản vá.
+    // Form SurveyJS, form cũ (x-*), form Angular và form Form.io (data[...]) mỗi bên một bộ ghi lại ô; nền tảng khác
+    // chưa có thì bỏ qua bản vá. Cổng Form.io bọc trong khung Angular (Bộ Y tế…) bị nhận là "angular" — ô data[...] / dom-*
+    // vẫn đi bộ ghi Form.io, như lượt điền đầu (forceStandard của fillFields).
+    const standardPatch = patch.some((f) =>
+      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data["));
     const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs
-      : formKind === "legacy" ? H.patchFormLegacy : formKind === "angular" ? H.patchFormAngular : null;
+      : formKind === "legacy" ? H.patchFormLegacy
+        : formKind === "standard" || (formKind === "angular" && standardPatch) ? H.patchFormStandard
+          : formKind === "angular" ? H.patchFormAngular : null;
     const canPatch = patch.length && typeof patcher === "function";
     Promise.resolve().then(() => (canPatch ? patcher(patch) : { filled: 0, skipped: [] }))
       .catch((e) => {
@@ -3286,6 +3385,7 @@ function handleFillMessage(msg, _sender, sendResponse) {
         return { filled: 0, skipped: [] };
       })
       .then((res) => {
+        console.info("[TLND] Điền đợt 2:", { formKind, patcher: !!patcher, fields: patch.length, ...res });
         H.formSnapshot?.track?.(msg.formSnapshot, [...base, ...patch.filter((f) => !known.has(f?.name))], formKind);
         sendResponse(res);
       });
@@ -3362,7 +3462,7 @@ Object.assign(H, {
   fieldCandidates, findFormControl, markFilled, markUnfilled, markDefaultsYellow,
   clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles, markAllEmptyFieldsRed,
   FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS,
-  fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
+  fillFormStandard, patchFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
   detectFormKind, collectFormContext, readInputLikeValue, foldChoiceText, nodeText,
 });
 

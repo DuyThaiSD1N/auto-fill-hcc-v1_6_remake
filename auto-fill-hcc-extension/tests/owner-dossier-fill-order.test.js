@@ -5,7 +5,7 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "content.js"), "utf8");
 const start = source.indexOf("function isOwnerDossierCheckboxField(field)");
-const end = source.indexOf("\n  async function fillFormStandard(fields)", start);
+const end = source.indexOf("\n  async function fillFormStandard(fields", start);
 
 assert.ok(start >= 0 && end > start, "Không tách được helper sắp thứ tự người nộp/chủ hồ sơ");
 

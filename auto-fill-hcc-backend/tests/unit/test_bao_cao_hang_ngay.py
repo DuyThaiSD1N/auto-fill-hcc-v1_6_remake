@@ -139,3 +139,24 @@ def test_xuat_excel(as_user):
     assert units["Phường Bắc Giang"][2:] == (1, 3, 4, 1, 75)
     own = load_workbook(io.BytesIO(as_user(WARD_A).get("/api/v1/daily-reports/export").content))
     assert own.sheetnames == ["Báo cáo"]
+
+
+def test_chua_bao_cao_gop_tai_khoan_cung_xa_va_bo_tai_khoan_khoa(as_user, monkeypatch):
+    """Xã có 2 tài khoản: một tài khoản gửi là xã đã báo cáo. Tài khoản tạm khoá không bị nhắc."""
+    twin = {**_scope(WARD_A)["self"], "unitId": "ua2"}
+    locked = {"unitId": "ul", "name": "HCC Xã Khoá", "xa": "Xã Khoá", "tinh": "Tỉnh T", "role": "commune",
+              "accessDisabled": True}
+
+    async def _resolve(user):
+        scope = _scope(user)
+        return {**scope, "units": scope["units"] + [twin, locked]} if user is PROVINCE else scope
+
+    monkeypatch.setattr(daily_router, "resolve_dashboard_scope", _resolve)
+    _send(as_user(WARD_A))
+    client = as_user(PROVINCE)
+    body = client.get("/api/v1/daily-reports").json()
+    assert body["unitCount"] == 2, "Bắc Giang (2 tài khoản) + Phú Bình; bỏ tài khoản khoá"
+    assert [u["unitIds"] for u in body["missingToday"]] == [["ub"]]
+    summary = client.get("/api/v1/daily-reports/summary").json()
+    assert (summary["unitCount"], summary["reportedToday"]) == (2, 1)
+

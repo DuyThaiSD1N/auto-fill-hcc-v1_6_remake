@@ -31,7 +31,7 @@ test("khối địa bàn đã điền ở lượt đầu được ghi lại bằ
 test("engine xuất bộ ghi lại ô và handler patchFields gọi đúng bộ theo nền tảng form", () => {
   assert.match(legacy, /H\.patchFormLegacy = patchFormLegacy;/);
   const handler = read("content/fill-core.js");
-  assert.match(handler, /const patcher = formKind === "surveyjs" \? H\.patchFormSurveyJs\s*: formKind === "legacy" \? H\.patchFormLegacy : formKind === "angular" \? H\.patchFormAngular : null;/);
+  assert.match(handler, /const patcher = formKind === "surveyjs" \? H\.patchFormSurveyJs\s*: formKind === "legacy" \? H\.patchFormLegacy\s*: formKind === "standard" \|\| \(formKind === "angular" && standardPatch\) \? H\.patchFormStandard\s*: formKind === "angular" \? H\.patchFormAngular : null;/);
   assert.match(handler, /Promise\.resolve\(\)\.then\(\(\) => \(canPatch \? patcher\(patch\) : \{ filled: 0, skipped: \[\] \}\)\)/);
 });
 

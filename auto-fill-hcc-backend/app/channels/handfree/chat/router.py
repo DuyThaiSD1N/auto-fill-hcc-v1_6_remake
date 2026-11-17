@@ -232,6 +232,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsSecondPassLegacy": raw.get("supportsSecondPassLegacy") is True,
         # Bản biết ghi lại ô đợt 2 trên form Angular (cổng liên thông): thủ tục form Angular chỉ chạy lớp soát khi có cờ này.
         "supportsSecondPassAngular": raw.get("supportsSecondPassAngular") is True,
+        # Bản biết ghi lại ô đợt 2 trên form Form.io (data[...]): thủ tục form Form.io chỉ chạy lớp soát khi có cờ này.
+        "supportsSecondPassFormio": raw.get("supportsSecondPassFormio") is True,
         # Bản biết ghi lại ô địa chỉ gộp (SurveyJS, dò theo nhãn) ở đợt 2. Thiếu cờ → bản vá bỏ ô địa chỉ.
         "supportsSecondPassArea": raw.get("supportsSecondPassArea") is True,
         # Watcher báo trạng thái khối người yêu cầu trên tờ khai (page_context.taiKhoan): "cho" = tờ khai đã hiện mà

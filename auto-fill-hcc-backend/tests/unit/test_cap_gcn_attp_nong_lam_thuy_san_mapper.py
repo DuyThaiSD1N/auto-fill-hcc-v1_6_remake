@@ -227,3 +227,13 @@ def test_ngay_cap_cua_nguoi_lao_dong_khac_khong_ghep_sang_dai_dien():
                       DaiDien_NgaySinh="1973")
     assert "data[ownerIdentityDate]" not in d and "data[ownerIdIssuePlace]" not in d
     assert "data[ownerBirthday]" not in d  # chỉ có năm → bỏ
+
+
+def test_detect_nhan_dien_theo_ten_khi_xa_khac_ma_apply_online():
+    # Cổng NN&MT cấp mã apply-online/process riêng cho từng cơ quan → phải nhận theo tên thủ tục, khoá trong cổng.
+    detect = get_procedure("cap-gcn-attp-nong-lam-thuy-san")["detect"]
+    assert detect["urlScope"] == ["dichvucongnnmt.mae.gov.vn"]
+    assert detect["textPriority"] is True
+    assert detect["textIncludes"] == ["cơ sở đủ điều kiện an toàn thực phẩm", "nông, lâm, thủy sản"]
+    label = get_procedure("cap-gcn-attp-nong-lam-thuy-san")["label"].lower()
+    assert all(phrase in label for phrase in detect["textIncludes"])

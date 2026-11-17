@@ -89,9 +89,11 @@ async def by_day(query: dict) -> list[dict]:
     ]
 
 
-async def units_on(query: dict, day: str) -> set[str]:
-    ids = await get_db().daily_reports.distinct("unit_id", {**query, "date": day})
-    return {str(i) for i in ids if i}
+async def reported_on(query: dict, day: str) -> list[dict]:
+    """Đơn vị đã gửi trong ngày: mã đơn vị + tên + tỉnh lưu trên báo cáo (để gộp nhiều tài khoản cùng xã)."""
+    return await get_db().daily_reports.find(
+        {**query, "date": day}, {"unit_id": 1, "unit_name": 1, "province": 1},
+    ).to_list(length=None)
 
 
 async def for_export(query: dict) -> list[dict]:

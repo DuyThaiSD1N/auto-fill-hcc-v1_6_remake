@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.18.6",
+  "version": "1.18.8",
   "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -136,6 +136,36 @@
       "matches": ["https://dichvucong.bacninh.gov.vn/*"],
       "js": ["content/bacninh/tabs-main.js"],
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.gov.vn/*",
+        "https://sso.dancuquocgia.gov.vn/*",
+        "https://dichvucongnganhtuphap.moj.gov.vn/*",
+        "https://tokhaidientu.moj.gov.vn/*",
+        "https://dichvucongbyt.moh.gov.vn/*",
+        "https://hokinhdoanh.dkkd.gov.vn/*",
+        "https://lienthong.dichvucong.gov.vn/*",
+        "https://dichvucong.gov.vn/*",
+        "https://*.laichau.gov.vn/*",
+        "https://dichvucongbnv.moha.gov.vn/*",
+        "https://dichvucong-tthc.moit.gov.vn/*",
+        "https://dvc.moc.gov.vn/*",
+        "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*",
+        "https://dichvucong.quangngai.gov.vn/*",
+        "https://dichvucong.khanhhoa.gov.vn/*",
+        "https://dichvucong.lamdong.gov.vn/*",
+        "https://dichvucong.bvhttdl.gov.vn/*",
+        "https://dichvucongnnmt.mae.gov.vn/*",
+        "https://dichvucong.danang.gov.vn/*",
+        "https://dvc.moet.gov.vn/*",
+        "https://dichvucong.quangninh.gov.vn/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": ["content/formio-select-main.js"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
