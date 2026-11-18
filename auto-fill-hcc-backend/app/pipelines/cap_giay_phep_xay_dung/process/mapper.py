@@ -756,9 +756,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_identity = _identity(_pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")))
     owner_phone = _phone(_pick(values.get("ChuHo_DienThoai"), values.get("Applicant_DienThoai")))
 
+    # Cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode="owner_as_submitter", Auto Fill + trợ lý): bỏ
+    # so khớp tài khoản đăng nhập, khối người nộp ghi theo người đứng Đơn (người được ủy quyền nếu có, không thì
+    # chủ hộ). Hai ô họ tên + CCCD cổng khoá theo VNeID được mở bằng enableInput ở lớp chung (locked_submitter).
+    owner_mode = (options or {}).get("submitterMode") == "owner_as_submitter"
+
     # Đơn đứng tên NHIỀU chủ đầu tư (vd vợ chồng): cổng gắn hồ sơ với tài khoản VNeID đang đăng nhập →
     # người đó vừa là người nộp vừa là chủ hộ. Không khớp ai trong danh sách → giữ cách cũ.
-    if _has_context_anchor(context) and _looks_individual_owner(values):
+    if not owner_mode and _has_context_anchor(context) and _looks_individual_owner(values):
         account = next((p for p in _co_owners(values) if _same_person(
             p["soDinhDanh"], p["hoTen"], context.get("applicant_identity"), context.get("applicant_name"))), None)
         if account:
@@ -771,10 +776,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                 values = {k: v for k, v in values.items() if k not in _APPLICANT_PERSONAL}
 
     # Chỉ điền khối người nộp khi trùng tài khoản đăng nhập (tránh đè thông tin người đang đăng nhập).
-    can_fill_applicant = (
-        not _has_context_anchor(context)
-        or _same_person(submitter_identity, submitter_name, context.get("applicant_identity"), context.get("applicant_name"))
-    )
+    same_as_account = _same_person(
+        submitter_identity, submitter_name, context.get("applicant_identity"), context.get("applicant_name"))
+    can_fill_applicant = owner_mode or not _has_context_anchor(context) or same_as_account
+    if owner_mode and _has_context_anchor(context) and not same_as_account and (submitter_name or submitter_identity):
+        warnings.append(
+            f"Đang bật \"Lấy người nộp theo tờ khai\": khối người nộp ghi theo người đứng Đơn "
+            f"({submitter_name or submitter_identity}), khác tài khoản đăng nhập. Soát lại trước khi nộp."
+        )
 
     # Form luôn có 2 cặp Tỉnh/Phường: cặp 0 = khối người nộp, cặp 1 = địa điểm công trình. FE chọn ô
     # theo thứ tự này nên địa điểm công trình LUÔN ở cặp 1, kể cả khi bỏ qua khối người nộp.
@@ -911,23 +920,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[tenCaNhanLapThietKe]", _text(values.get("ThietKe_CaNhan_HoTen")))
         add("data[maSoChungChiCaNhanLapThietKe]", _text(values.get("ThietKe_CaNhan_ChungChi")))
 
-    appraisal_kind = _fold(values.get("ThamTra_Loai"))
-    if values.get("ThamTra_ToChuc_Ten") or values.get("ThamTra_ToChuc_MaSo") or "to chuc" in appraisal_kind:
-        add("data[toChucCaNhanThamTraThietKe]", "toChuc")
-        add("data[tenDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_Ten")))
-        add("data[maSoDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_MaSo")))
-        add("data[tenChuNhiemThamTraThietKeThietKe]", _text(values.get("ThamTra_ChuNhiem_HoTen")))
-        add("data[maSoChungChiChuNhiemThamTraThietKe]", _text(values.get("ThamTra_ChuNhiem_ChungChi")))
-    elif values.get("ThamTra_CaNhan_HoTen") or values.get("ThamTra_CaNhan_ChungChi"):
-        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
-        add("data[tenCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_HoTen")))
-        add("data[maSoChungChiCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_ChungChi")))
-    else:
-        # Giấy tờ KHÔNG có thông tin thẩm tra (nhà ở riêng lẻ thường không bắt buộc thẩm tra) →
-        # mặc định chọn "Cá nhân": nhánh cá nhân không bắt buộc điền tên/mã số chứng chỉ nên vẫn
-        # qua được bước sau; nếu để trống radio thì form chặn validate.
-        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
-
     # Top-level "Loại hình công trình" không còn được mặc định. Hai panel có bộ
     # field khác nhau nên phải xác định nhánh trước khi phát mapping.
     construction_branch = _construction_branch(values, options)
@@ -937,7 +929,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # hiện ra. Phát MÃ số ("7") → search "7" không khớp nhãn nào → "No results found". Phải phát ĐÚNG
         # NHÃN option "Nhà ở riêng lẻ" (value 7) để FE lọc & chọn được.
         add("data[loaiCongTrinh]", "Nhà ở riêng lẻ")
-        add("data[tenCongTrinhNhaO]", _text(values.get("CongTrinh_Ten")) or "Nhà ở riêng lẻ")
+        # Người dùng chốt 18/11/2026: tên công trình nhánh nhà ở LUÔN là "Nhà ở riêng lẻ", không chép tên trên
+        # Đơn ("Nhà ở gia đình", "Nhà ở 3 tầng"…).
+        add("data[tenCongTrinhNhaO]", "Nhà ở riêng lẻ")
         add("data[capCongTrinhNhaO]", _cap(values.get("CongTrinh_Cap")))
         add("data[khoangLuiNhaO]", _number(values.get("CongTrinh_KhoangLui")))
         add("data[cotXayDungNhaO]", _number(values.get("CongTrinh_CotXayDung")))
@@ -968,6 +962,35 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         _add_other_branch(add, construction_branch, values)
     else:
         warnings.append("Chưa xác định được nhánh loại hình công trình; không tự chọn mặc định.")
+
+    # Radio thẩm tra phát SAU "Loại hình công trình": req thật 18/11/2026 BE gửi "caNhan" trước ô loại hình,
+    # trên form vẫn ra "Tổ chức" (chọn loại hình xong cổng đặt lại radio về mặc định).
+    appraisal_kind = _fold(values.get("ThamTra_Loai"))
+    if construction_branch == "nha_o_rieng_le":
+        # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN tích "Cá nhân" thẩm tra (không bắt buộc thẩm tra, nhánh
+        # cá nhân không bắt buộc tên/mã chứng chỉ). Giấy ghi đơn vị thẩm tra thì lấy chủ nhiệm thẩm tra làm cá nhân.
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
+        appraiser_name = _text(values.get("ThamTra_CaNhan_HoTen"))
+        appraiser_certificate = _text(values.get("ThamTra_CaNhan_ChungChi"))
+        if not appraiser_name and not appraiser_certificate:
+            appraiser_name = _text(values.get("ThamTra_ChuNhiem_HoTen"))
+            appraiser_certificate = _text(values.get("ThamTra_ChuNhiem_ChungChi"))
+        add("data[tenCaNhanThamTraThietKe]", appraiser_name)
+        add("data[maSoChungChiCaNhanThamTraThietKe]", appraiser_certificate)
+    elif values.get("ThamTra_ToChuc_Ten") or values.get("ThamTra_ToChuc_MaSo") or "to chuc" in appraisal_kind:
+        add("data[toChucCaNhanThamTraThietKe]", "toChuc")
+        add("data[tenDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_Ten")))
+        add("data[maSoDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_MaSo")))
+        add("data[tenChuNhiemThamTraThietKeThietKe]", _text(values.get("ThamTra_ChuNhiem_HoTen")))
+        add("data[maSoChungChiChuNhiemThamTraThietKe]", _text(values.get("ThamTra_ChuNhiem_ChungChi")))
+    elif values.get("ThamTra_CaNhan_HoTen") or values.get("ThamTra_CaNhan_ChungChi"):
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
+        add("data[tenCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_HoTen")))
+        add("data[maSoChungChiCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_ChungChi")))
+    else:
+        # Giấy tờ KHÔNG có thông tin thẩm tra → mặc định chọn "Cá nhân": nhánh cá nhân không bắt buộc điền
+        # tên/mã số chứng chỉ nên vẫn qua được bước sau; nếu để trống radio thì form chặn validate.
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
 
     if not owner_name or not owner_identity:
         warnings.append("Thiếu thông tin chủ hộ/người nộp từ đơn hoặc CCCD.")

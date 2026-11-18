@@ -7,15 +7,16 @@ Chọn người GIỮ NGUYÊN mapper cổng cũ (su_dung_dat_ket_hop_da_muc_dich
   • Giữ các cảnh báo nghiệp vụ: lệch diện tích kết hợp Đơn/Thuyết minh, vượt 50% diện tích thửa, nơi thường trú trùng
     khít địa chỉ thửa đất, số định danh sai độ dài.
 Ở đây ĐỔI TÊN ô CongDan_* / ChuHoSo_* sang data[...]:
-  • Họ tên / CCCD / Ngày sinh / Dân tộc / Tên đơn vị + MST người nộp: cổng mới KHOÁ theo tài khoản hoặc ẩn.
+  • Họ tên / CCCD / Ngày sinh / Dân tộc / Tên đơn vị + MST người nộp: cổng mới KHOÁ theo tài khoản hoặc ẩn. Riêng
+    Họ tên / CCCD / Ngày sinh: chế độ theo tờ khai mà khác tài khoản → phát kèm enableInput (_igate.o_khoa_tu_cong_cu).
   • Nơi cấp: chỉ 2 option (Bộ Công An / Cục CS QLHC về TTXH) → nơi cấp khác để trống + cảnh báo.
   • Đối tượng "Cá nhân" giữ nguyên; "Tổ chức" → "Doanh nghiệp" (công ty, HTX…) hoặc "Tổ chức" theo tên.
   • Lệnh XOÁ ô nhân thân tài khoản của chế độ theo tờ khai (_shared/lao_cai_nguoi_nop) bỏ đi: cổng mới không đổ sẵn.
   • Đơn theo QĐ 47/2026 là Mẫu số 20 (cổng cũ ghi Mẫu số 13 của NĐ 102) → không cảnh báo sai mẫu với Mẫu 20.
 `doi_ten_o(goc, …)` là phần đổi tên ô, dùng chung với 1.115685 (xac_dinh_lai_dien_tich_dat_o_igate_lao_cai) vì mapper
 cổng cũ của hai thủ tục cùng một khuôn.
-Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ trống khối người nộp + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG
-tích "Người nộp hồ sơ là chủ hồ sơ".
+Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ khoá Họ tên/CCCD/Ngày sinh rồi ghi cả khối người nộp theo tờ
+khai + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG tích "Người nộp hồ sơ là chủ hồ sơ".
 """
 
 import re
@@ -109,20 +110,17 @@ def doi_ten_o(goc, fields: list[dict], options: dict | None = None) -> tuple[lis
     ctx_name = ctx.get("applicantFullname")
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
 
-    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → lệch thì không điền khối này.
-    bo_nguoi_nop = False
+    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → khác tài khoản (hoặc không có
+    # mốc) thì bỏ khoá ba ô Họ tên/CCCD/Ngày sinh rồi ghi đè (_igate.o_khoa_tu_cong_cu).
     to_khai_ten, to_khai_so = old_values.get("CongDan_tenCongDan"), old_values.get("CongDan_soCmnd")
-    if theo_to_khai and to_khai_ten and (_goc._digits(ctx_id) or _goc._fold(ctx_name)) and not _cung_nguoi(
-        to_khai_so, to_khai_ten, ctx_id, ctx_name
-    ):
-        bo_nguoi_nop = True
-        warnings = [w for w in warnings if "theo TỜ KHAI" not in w]
-        warnings.append(
-            "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là " + (ctx_name or "người khác")
-            + ", không phải " + to_khai_ten + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản "
-            "nên không sửa được — đăng nhập đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của khối "
-            "người nộp."
-        )
+    co_moc = bool(_goc._digits(ctx_id) or _goc._fold(ctx_name))
+    mo_khoa = bool(theo_to_khai and to_khai_ten) and not (
+        co_moc and _cung_nguoi(to_khai_so, to_khai_ten, ctx_id, ctx_name)
+    )
+    if mo_khoa:
+        if co_moc:
+            warnings = [w for w in warnings if "theo TỜ KHAI" not in w]
+        warnings.append(_igate.canh_bao_mo_khoa(to_khai_ten, ctx_name))
     warnings = [_sua_canh_bao(w) for w in warnings]
 
     out: list[dict] = []
@@ -138,8 +136,6 @@ def doi_ten_o(goc, fields: list[dict], options: dict | None = None) -> tuple[lis
         name = _TEN_O.get(field["name"])
         value = field.get("value")
         if not name or field.get("clear") or value in (None, ""):
-            continue
-        if bo_nguoi_nop and field["name"].startswith("CongDan_"):
             continue
         if field["name"] in _NOI_CAP:
             label = _igate._noi_cap(value)
@@ -157,6 +153,8 @@ def doi_ten_o(goc, fields: list[dict], options: dict | None = None) -> tuple[lis
                 old_values.get("ChuHoSo_tenCoQuanToChucCHS") or ""
             )
         add(name, value)
+    if mo_khoa:
+        _igate.ghi_o_khoa(out, seen, _igate.o_khoa_tu_cong_cu(old))
 
     expect = list(_EXPECT_NGUOI_NOP)
     to_chuc = _goc._fold(old_values.get("ChuHoSo_maDoiTuongNopHS")) not in ("", "ca nhan")

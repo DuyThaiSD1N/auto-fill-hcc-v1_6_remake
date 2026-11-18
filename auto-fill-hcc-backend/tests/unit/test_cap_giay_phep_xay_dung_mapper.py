@@ -115,7 +115,7 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[thietKeXayDung][3][hoVaTenChuTriThietKe]"] == "Nguyễn Văn An"
     assert d["data[thietKeXayDung][3][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00109462"
     assert d["data[loaiCongTrinh]"] == "Nhà ở riêng lẻ"
-    assert d["data[tenCongTrinhNhaO]"] == "NHÀ Ở GIA ĐÌNH"
+    assert d["data[tenCongTrinhNhaO]"] == "Nhà ở riêng lẻ"
     assert d["data[capCongTrinhNhaO]"] == "III"
     assert d["data[dienTichXayDungTang1NhaO]"] == "106"
     assert d["data[cotXayDungNhaO]"] == "0.45"
@@ -234,7 +234,7 @@ def test_cap_giay_phep_xay_dung_detects_house_from_shared_form_section():
 
     assert not any("nhánh loại hình công trình" in warning for warning in warnings)
     assert d["data[loaiCongTrinh]"] == "Nhà ở riêng lẻ"
-    assert d["data[tenCongTrinhNhaO]"] == "NHÀ Ở GIA ĐÌNH"
+    assert d["data[tenCongTrinhNhaO]"] == "Nhà ở riêng lẻ"
     assert d["data[capCongTrinhNhaO]"] == "III"
     assert "data[tenCongTrinhKhongTheoTuyen]" not in d
 
@@ -592,6 +592,47 @@ def test_duoc_uy_quyen_nhung_dang_nhap_tai_khoan_chu_ho():
     assert d["data[soDinhDanhChuHo]"] == "001090000001"
     assert _theo_cap(out, "data[province]") == {1: "Tỉnh Lâm Đồng"}
     assert _theo_cap(out, "data[district]") == {1: "Phường Lâm Viên - Đà Lạt"}
+
+
+def test_lay_nguoi_nop_theo_to_khai_bo_so_khop_tai_khoan():
+    # Bật "Lấy người nộp theo tờ khai": tài khoản khác người đứng Đơn vẫn điền khối người nộp theo Đơn.
+    options = {**_dang_nhap(_DUOC_UY_QUYEN), "submitterMode": "owner_as_submitter"}
+    out, warnings = mapper.enrich(_chu_ho(_CHU_HO) + _cong_trinh(), options)
+    d = _values(out)
+
+    assert d["data[chonDoiTuong]"] == "Cá nhân"
+    assert d["data[fullname]"] == d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[identityNumber]"] == "001090000001"
+    assert d["data[phoneNumber]"] == "0901000001"
+    assert _theo_cap(out, "data[district]") == {0: "Phường Lâm Viên - Đà Lạt", 1: "Phường Lâm Viên - Đà Lạt"}
+    assert any("Lấy người nộp theo tờ khai" in w for w in warnings)
+
+    # Có ủy quyền → người nộp vẫn là người được ủy quyền đứng Đơn, không phải tài khoản.
+    out, _ = mapper.enrich(_nguoi_nop(_DUOC_UY_QUYEN) + _chu_ho(_CHU_HO) + _cong_trinh(),
+                           {**_dang_nhap(_CHU_HO), "submitterMode": "owner_as_submitter"})
+    d = _values(out)
+    assert d["data[fullname]"] == "LÊ THỊ BÌNH"
+    assert d["data[tenChuHo]"] == "TRẦN VĂN AN"
+
+
+def test_nha_o_rieng_le_ten_cong_trinh_va_tham_tra_ca_nhan():
+    # Người dùng chốt 18/11/2026: tên luôn "Nhà ở riêng lẻ"; thẩm tra luôn "Cá nhân", phát SAU ô loại hình.
+    tham_tra_to_chuc = [
+        _field("ThamTra_Loai", "Tổ chức"),
+        _field("ThamTra_ToChuc_Ten", "CÔNG TY TƯ VẤN MẪU"),
+        _field("ThamTra_ChuNhiem_HoTen", "Đỗ Văn Mẫu"),
+        _field("ThamTra_ChuNhiem_ChungChi", "BXD-00000001"),
+    ]
+    out, _ = mapper.enrich(_chu_ho(_CHU_HO) + _cong_trinh() + tham_tra_to_chuc, _dang_nhap(_CHU_HO))
+    d = _values(out)
+    names = [f["name"] for f in out]
+
+    assert d["data[tenCongTrinhNhaO]"] == "Nhà ở riêng lẻ"
+    assert d["data[toChucCaNhanThamTraThietKe]"] == "caNhan"
+    assert d["data[tenCaNhanThamTraThietKe]"] == "Đỗ Văn Mẫu"
+    assert d["data[maSoChungChiCaNhanThamTraThietKe]"] == "BXD-00000001"
+    assert "data[tenDoanhNghiepThamTraThietKe]" not in d
+    assert names.index("data[toChucCaNhanThamTraThietKe]") > names.index("data[loaiCongTrinh]")
 
 
 def test_to_chuc_chu_dau_tu_uy_quyen_cho_nhan_vien_nop():

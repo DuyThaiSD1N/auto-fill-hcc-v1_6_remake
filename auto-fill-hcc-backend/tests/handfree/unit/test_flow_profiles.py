@@ -248,7 +248,7 @@ def test_registered_procedures_use_their_declared_flow_family():
                 "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
                 "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", "cap-lai-giay-phep-hanh-nghe-truoc-2024",
                 "dieu-chinh-giay-phep-hoat-dong-kcb", "cap-chung-chi-hanh-nghe-duoc",
-                "cong-bo-co-so-du-dieu-kien-tiem-chung"):
+                "cong-bo-co-so-du-dieu-kien-tiem-chung", "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te"):
         byt_so = procedures.pop(key)
         assert byt_so["flowProfile"] == "xay-dung", key
         assert byt_so["agencyProvinceOnly"] is True, key
@@ -908,7 +908,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an (16/11) "cap-the-can-cuoc-tu-du-14-tuoi" (2.000200 / 1.014061).
     # +1 cổng Bộ Công an (16/11) "dieu-chinh-thong-tin-ve-cu-tru" (1.010039).
     # +1 cổng Bộ Công an (16/11) "xac-nhan-thong-tin-ve-cu-tru" (1.010041).
-    assert len(procedures) == 171
+    # +1 tư pháp chọn Sở (18/11) "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat" (1.000627, eForm TP-TVPL-01-sđ).
+    # +1 tư pháp chọn Sở (18/11) "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan" (1.002153, eForm TP-LS-05-sđ).
+    # +1 cổng Bộ Y tế cấp Sở (18/11) "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" (1.014076, luồng "xay-dung").
+    assert len(procedures) == 174
 
     for procedure in procedures:
         key = procedure["key"]

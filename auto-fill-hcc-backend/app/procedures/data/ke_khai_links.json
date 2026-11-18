@@ -3991,6 +3991,33 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat",
+      "code": "1.000627",
+      "label": "Đăng ký hoạt động của Trung tâm tư vấn pháp luật",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fa9-7372-90fd-8901c2e22177",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan",
+      "code": "1.002153",
+      "label": "Đăng ký hành nghề luật sư với tư cách cá nhân",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-4f99-779f-9381-738c68a0cb41",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+      "code": "1.014076",
+      "label": "Cấp giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3520-75d8-af1f-89a0f0359cf9",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }

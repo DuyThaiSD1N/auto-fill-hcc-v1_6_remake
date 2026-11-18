@@ -1,7 +1,7 @@
 """Map dữ kiện nguồn → ô Form.io bước 1 cho thủ tục 1.115652 (Lào Cai, cổng iGate mới).
 
 Dữ kiện cùng dạng 1.115650 và form bước 1 y hệt → khối người nộp / chủ hồ sơ dùng NGUYÊN mapper của
-giao_thue_dat_igate_lao_cai (chọn người nộp theo tài khoản, không ghi ô bị khoá, tổ chức → trụ sở, dom-expect ô (*)).
+giao_thue_dat_igate_lao_cai (chọn người nộp theo tài khoản / tờ khai, ô khoá chỉ ghi khi theo tờ khai, tổ chức → trụ sở, dom-expect ô (*)).
 Riêng thủ tục này thêm:
   • ô "Ghi chú" (data[tenHoSo]) = trích yếu hồ sơ — cổng cũ ghi vào "Về việc", cổng mới không còn ô đó;
   • cảnh báo khi địa chỉ chủ hồ sơ ghi theo xã/phường CŨ (quyết định gốc hay ghi địa danh trước sáp nhập).

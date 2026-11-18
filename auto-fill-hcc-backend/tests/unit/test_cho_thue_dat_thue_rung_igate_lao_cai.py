@@ -142,6 +142,26 @@ def test_tai_khoan_nguoi_thu_ba_de_trong_khoi_nguoi_nop():
     assert any("không phải chủ hồ sơ cũng không phải người được ủy quyền" in w for w in warnings)
 
 
+def test_theo_to_khai_nguoi_thu_ba_mo_khoa_ghi_de():
+    fields, warnings = mapper.enrich(_NOP_THAY, {"submitterMode": "owner_as_submitter", **_ctx("LÊ VĂN C", _KHAC)})
+    by_name = {f["name"]: f for f in fields}
+    assert [f["name"] for f in fields[:3]] == ["data[fullname]", "data[identityNumber]", "data[birthday]"]
+    assert all(by_name[n]["enableInput"] is True for n in ("data[fullname]", "data[identityNumber]", "data[birthday]"))
+    assert by_name["data[fullname]"]["value"] == "TRẦN THỊ B"
+    assert by_name["data[identityNumber]"]["value"] == _UQ
+    # Giấy tờ không ghi ngày sinh bên được ủy quyền → xoá ngày sinh tài khoản cổng đổ sẵn + tô đỏ.
+    assert by_name["data[birthday]"]["clear"] is True and by_name["data[birthday]"]["markEmpty"] is True
+    values = _values(fields)
+    assert values["data[gender]"] == "Nữ" and values["data[address]"] == "Tổ 5"
+    assert any("mở khoá" in w for w in warnings)
+
+
+def test_theo_to_khai_trung_tai_khoan_khong_dong_o_khoa():
+    fields, _ = mapper.enrich(_NOP_THAY, {"submitterMode": "owner_as_submitter", **_ctx("TRẦN THỊ B", _UQ)})
+    assert not any(f.get("enableInput") for f in fields)
+    assert _values(fields)["data[district]"] == "Phường Yên Bái"
+
+
 def test_tai_khoan_la_chu_ho_so_du_giay_to_co_uy_quyen():
     values = _values(mapper.enrich(_NOP_THAY, _ctx("NGUYỄN VĂN A", _CHU))[0])
     assert values["data[gender]"] == "Nam"

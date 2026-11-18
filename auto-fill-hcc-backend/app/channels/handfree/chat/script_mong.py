@@ -222,6 +222,11 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) và "lees paub" (chứng thực/công chứng) đã có; TỪ MỚI "xeem"
     # (kiểm tra), "kawm ua haujlwm" (tập sự).
     "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": "Cuv npe xeem kev kawm ua haujlwm lees paub",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("cuv npe", "kev cai lij choj"); TỪ MỚI "chaw" (nơi/trung tâm),
+    # "sab laj" (tư vấn).
+    "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat": "Cuv npe chaw sab laj txog kev cai lij choj",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("cuv npe", "ua kws lij choj"); TỪ MỚI "ib leeg" (cá nhân).
+    "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan": "Cuv npe ua kws lij choj ib leeg",
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": "Lees paub kho, ntxiv, rho daim ntawv cog lus",
     "chung-thuc-chu-ky-nguoi-dich-ctv": "Lees paub kos npe tus neeg txhais lus",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có; "tsis yog" (không phải) để tách khỏi bản CTV.
@@ -267,6 +272,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "khw muag tshuaj" = nhà thuốc, ghép với "kho ... dua tshiab" đã có.
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te":
         "Kho, muab ntawv lees paub khw muag tshuaj dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — "thov" (xin, đã có ở trợ giúp pháp lý) + "ntawv lees paub khw muag tshuaj" (giấy chứng
+    # nhận nhà thuốc, ghép từ dòng cấp lại / điều chỉnh ngay trên).
+    "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": "Thov ntawv lees paub khw muag tshuaj",
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" = đăng ký đã có; TỪ MỚI "ua haujlwm kho mob" = làm nghề
     # khám chữa bệnh: soát kỹ hơn.
     "dang-ky-hanh-nghe": "Cuv npe ua haujlwm kho mob",
@@ -647,6 +655,18 @@ GUIDE_LOGIN = {
     "tts": (
         "Pej xeem qhib app VNeID hauv xov tooj, xaiv luam QR, ces luam tus QR ntawm npo kom nkag tau. "
         "Nkag tau lawm kuv qhia ntxiv."
+    ),
+}
+
+# BẢN NHÁP chờ anh Dư soát: cổng hộ kinh doanh chưa đăng nhập → bấm nút ĐĂNG NHẬP góc trên bên phải.
+HKD_GUIDE_LOGIN = {
+    "md": (
+        "Yog nplooj ntawv tseem tsis tau nkag, pej xeem nias lub khawm ĐĂNG NHẬP nyob ces kaum sab xis "
+        "saum npo, ces nkag nrog VNeID."
+    ),
+    "tts": (
+        "Yog nplooj ntawv tseem tsis tau nkag, pej xeem nias lub khawm Đăng nhập nyob ces kaum sab xis "
+        "saum npo, ces nkag nrog vi en ai đi."
     ),
 }
 

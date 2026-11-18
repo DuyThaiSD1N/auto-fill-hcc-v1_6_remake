@@ -9,7 +9,8 @@ doanh nghiệp); địa chỉ Đơn → văn bản căn cứ → GCN ĐKDN → C
   • Đối tượng CN → "Cá nhân", DN → "Doanh nghiệp", CQ/TC → "Tổ chức" (ChuHS mới chỉ có 3 lựa chọn).
   • Cổng cũ tự đổ địa chỉ người nộp từ tài khoản nên mapper cũ không phát; cổng mới để trống → lấy nơi cư trú trên
     CCCD của CHÍNH người nộp, SĐT mục 1.d Đơn chỉ khi người nộp chính là chủ hồ sơ cá nhân.
-Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ trống khối người nộp + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG
+Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ khoá Họ tên/CCCD/Ngày sinh (enableInput,
+_igate.o_khoa_tu_cong_cu) rồi ghi cả khối người nộp theo tờ khai + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG
 tích "Người nộp hồ sơ là chủ hồ sơ".
 """
 
@@ -74,20 +75,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     ctx_name = ctx.get("applicantFullname")
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
 
-    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → lệch thì không điền khối này.
-    bo_nguoi_nop = False
+    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → khác tài khoản (hoặc không có
+    # mốc) thì bỏ khoá ba ô Họ tên/CCCD/Ngày sinh rồi ghi đè (_igate.o_khoa_tu_cong_cu).
     to_khai_nguoi = {"HoTen": old_values.get("CongDan_tenCongDan"), "SoDinhDanh": old_values.get("CongDan_soCmnd")}
-    if theo_to_khai and to_khai_nguoi["HoTen"] and (ctx_id or ctx_name) and not _cung_nguoi(
-        to_khai_nguoi, ctx_id, ctx_name
-    ):
-        bo_nguoi_nop = True
-        warnings = [w for w in warnings if "đang điền nhân thân theo TỜ KHAI" not in w]
-        warnings.append(
-            "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là " + (ctx_name or "người khác")
-            + ", không phải " + to_khai_nguoi["HoTen"] + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo "
-            "tài khoản nên không sửa được — đăng nhập đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của "
-            "khối người nộp."
-        )
+    co_moc = bool(ctx_id or ctx_name)
+    mo_khoa = bool(theo_to_khai and to_khai_nguoi["HoTen"]) and not (
+        co_moc and _cung_nguoi(to_khai_nguoi, ctx_id, ctx_name)
+    )
+    if mo_khoa:
+        if co_moc:
+            warnings = [w for w in warnings if "đang điền nhân thân theo TỜ KHAI" not in w]
+        warnings.append(_igate.canh_bao_mo_khoa(to_khai_nguoi["HoTen"], ctx_name))
 
     out: list[dict] = []
     seen: set[str] = set()
@@ -103,8 +101,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         value = field.get("value")
         if not name or field.get("clear") or value in (None, ""):
             continue
-        if bo_nguoi_nop and field["name"].startswith("CongDan_"):
-            continue
         if field["name"] in _NOI_CAP:
             label = _igate._noi_cap(value)
             if not label:
@@ -119,23 +115,24 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(name, value)
 
     # Địa chỉ / SĐT người nộp: cổng cũ tự đổ từ tài khoản, cổng mới không → lấy từ CCCD của CHÍNH người nộp.
-    if not bo_nguoi_nop:
-        cards = _goc._people(values, "DanhSachCccd")
-        if theo_to_khai and to_khai_nguoi["HoTen"]:
-            nop_so, nop_ten = to_khai_nguoi["SoDinhDanh"], to_khai_nguoi["HoTen"]
-        else:
-            nop_so, nop_ten = ctx_id, ctx_name
-        card = _goc._find_person(cards, nop_so, nop_ten) if (nop_so or nop_ten) else None
-        area = _area((card or {}).get("NoiCuTru"))
-        if area:
-            # Tỉnh TRƯỚC Phường/Xã: đổi tỉnh là cổng reset Phường/Xã.
-            add("data[province]", province_label(area.get("tinh")))
-            add("data[district]", _goc._plain(area.get("xa")))
-            add("data[address]", _goc._plain(area.get("diaChi")))
-        chu = {"HoTen": old_values.get("ChuHoSo_tenChuHoSo"), "SoDinhDanh": old_values.get("ChuHoSo_soCMNDChuHoSo")}
-        if chu["HoTen"] and (nop_so or nop_ten) and _cung_nguoi(chu, nop_so, nop_ten):
-            add("data[phoneNumber]", _goc._phone(values.get("Don_DienThoai")))
-            add("data[email]", _goc._email(values.get("Don_Email")))
+    cards = _goc._people(values, "DanhSachCccd")
+    if theo_to_khai and to_khai_nguoi["HoTen"]:
+        nop_so, nop_ten = to_khai_nguoi["SoDinhDanh"], to_khai_nguoi["HoTen"]
+    else:
+        nop_so, nop_ten = ctx_id, ctx_name
+    card = _goc._find_person(cards, nop_so, nop_ten) if (nop_so or nop_ten) else None
+    area = _area((card or {}).get("NoiCuTru"))
+    if area:
+        # Tỉnh TRƯỚC Phường/Xã: đổi tỉnh là cổng reset Phường/Xã.
+        add("data[province]", province_label(area.get("tinh")))
+        add("data[district]", _goc._plain(area.get("xa")))
+        add("data[address]", _goc._plain(area.get("diaChi")))
+    chu = {"HoTen": old_values.get("ChuHoSo_tenChuHoSo"), "SoDinhDanh": old_values.get("ChuHoSo_soCMNDChuHoSo")}
+    if chu["HoTen"] and (nop_so or nop_ten) and _cung_nguoi(chu, nop_so, nop_ten):
+        add("data[phoneNumber]", _goc._phone(values.get("Don_DienThoai")))
+        add("data[email]", _goc._email(values.get("Don_Email")))
+    if mo_khoa:
+        _igate.ghi_o_khoa(out, seen, _igate.o_khoa_tu_cong_cu(old))
 
     expect = list(_EXPECT_NGUOI_NOP)
     to_chuc = old_values.get("ChuHoSo_maDoiTuongNopHS") not in (None, _goc._DOI_TUONG_CA_NHAN)

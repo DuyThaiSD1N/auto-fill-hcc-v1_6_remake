@@ -124,6 +124,27 @@ def test_lech_tai_khoan_bo_trong_nguoi_nop():
     assert any("CHÍNH người đang đăng nhập" in w for w in warnings)
 
 
+def test_theo_to_khai_lech_tai_khoan_mo_khoa_ghi_de():
+    # Đơn chỉ ghi năm sinh "1980" nhưng CCCD của chính chủ hồ sơ có ngày đủ → ô ngày sinh lấy theo CCCD.
+    fields, warnings = mapper.enrich(
+        _FACTS, {"submitterMode": "owner_as_submitter", **_ctx("PHẠM VĂN D", "001099000099")})
+    by_name = {f["name"]: f for f in fields}
+    assert [f["name"] for f in fields[:3]] == ["data[fullname]", "data[identityNumber]", "data[birthday]"]
+    assert all(by_name[n]["enableInput"] is True for n in ("data[fullname]", "data[identityNumber]", "data[birthday]"))
+    assert by_name["data[fullname]"]["value"] == "TRẦN VĂN B"
+    assert by_name["data[identityNumber]"]["value"] == _SO_CHU
+    assert by_name["data[birthday]"]["value"] == "02/04/1980"
+    assert _values(fields)["data[gender]"] == "Nam"
+    assert any("mở khoá" in w for w in warnings)
+
+
+def test_theo_to_khai_trung_tai_khoan_khong_dong_o_khoa():
+    fields, warnings = mapper.enrich(_FACTS, {"submitterMode": "owner_as_submitter", **_ctx("TRẦN VĂN B", _SO_CHU)})
+    assert not any(f["name"] in ("data[fullname]", "data[identityNumber]", "data[birthday]") for f in fields)
+    assert not any(f.get("enableInput") for f in fields)
+    assert not any("mở khoá" in w for w in warnings)
+
+
 def test_to_chuc_nhan_chuyen_nhuong():
     facts = [
         {"name": "ChuHoSo_LoaiDoiTuong", "value": "Tổ chức"},

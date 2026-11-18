@@ -146,6 +146,36 @@ def clear_blank_fields(out: list[dict], seen: set[str], options: dict | None, ap
     return keep_part_one
 
 
+# Ô "Nội dung yêu cầu giải quyết" ghi theo cách cán bộ Khánh Hòa nhập (người dùng chốt 18/11/2026):
+# "<tên thủ tục> tại TĐ <số thửa> TBĐ <số tờ> địa chỉ <địa chỉ thửa> - <HỌ TÊN CHỦ HỒ SƠ IN HOA>".
+# Mapper tự ghép từ các ô đã đọc, không để LLM viết; chỉ ghi MỘT người (chủ hồ sơ), Đơn có nhiều người cùng sử dụng đất
+# cũng chỉ lấy người đầu.
+NOI_DUNG_THU_TUC = (
+    "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền "
+    "với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài"
+)
+
+
+def _first_person(name: str | None) -> str | None:
+    """"Phạm Văn A – Nguyễn Thị B" / "A, B" / "A và B" -> "Phạm Văn A"."""
+    if not name:
+        return None
+    first = re.split(r"\s+[-–—]\s+|\s*[,;]\s*|\s+và\s+", name, maxsplit=1)[0]
+    return _text(first)
+
+
+def _noi_dung_yeu_cau(so_thua: str | None, so_to: str | None, dia_chi: str | None, owner: str | None) -> str:
+    parts = [NOI_DUNG_THU_TUC]
+    vi_tri = " ".join(part for part in (f"TĐ {so_thua}" if so_thua else "", f"TBĐ {so_to}" if so_to else "") if part)
+    if vi_tri:
+        parts.append(f"tại {vi_tri}")
+    if dia_chi:
+        parts.append(f"địa chỉ {dia_chi}")
+    text = " ".join(parts)
+    person = _first_person(owner)
+    return f"{text} - {person.upper()}" if person else text
+
+
 def _is_to_chuc(loai: Any, name: Any) -> bool:
     folded = _fold(loai)
     if "to chuc" in folded:
@@ -215,7 +245,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         _area(values.get("ChuHoSo_DiaChi")) or _area(values.get("NguoiNop_DiaChi"))
     )
     add_person_area("data[province]", "data[village]", "data[address]", applicant_area)
-    add("data[noidungyeucaugiaiquyet]", _text(values.get("Don_NoiDungDeNghi")))
 
     # --- Phần II: chủ hồ sơ ---
     if _is_to_chuc(values.get("ChuHoSo_LoaiChuThe"), owner_name):
@@ -233,17 +262,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add_person_area("data[province1]", "data[village1]", "data[ownerAddress]", _area(owner_val("DiaChi")))
 
     # --- Phần III: thửa đất — chỉ từ nguồn thửa đất riêng, KHÔNG bao giờ lấy nơi cư trú thay thế ---
-    add("data[SoThuaDat]", _parcel_number(values.get("ThuaDat_SoThua")))
-    add("data[SoToBanDo]", _parcel_number(values.get("ThuaDat_SoTo")))
+    so_thua = _parcel_number(values.get("ThuaDat_SoThua"))
+    so_to = _parcel_number(values.get("ThuaDat_SoTo"))
+    add("data[SoThuaDat]", so_thua)
+    add("data[SoToBanDo]", so_to)
     parcel_area = _area(values.get("ThuaDat_DiaChi"))
+    detail = None
     if parcel_area:
         parcel_ward = _ward(parcel_area)
         # Ô "Địa chỉ thửa đất/ địa chỉ xây dựng" là textarea: ghi chi tiết + phường/xã như dòng địa chỉ trên Đơn.
-        detail = ", ".join(part for part in (_text(parcel_area.get("diaChi")), parcel_ward) if part)
-        add("data[diaChiThuaDat]", detail or None)
+        detail = ", ".join(part for part in (_text(parcel_area.get("diaChi")), parcel_ward) if part) or None
+        add("data[diaChiThuaDat]", detail)
         add("data[province2]", _province(parcel_area))
         add("data[nation2]", parcel_area.get("quocGia") or "Việt Nam", default=True)
         add("data[village2]", parcel_ward)
+
+    # Ô Nội dung yêu cầu (Phần I) ghép sau khi đã có thửa đất; thứ tự trong `out` không ảnh hưởng điền.
+    add("data[noidungyeucaugiaiquyet]", _noi_dung_yeu_cau(so_thua, so_to, detail, owner_name))
 
     clear_blank_fields(out, seen, options, applicant_val("SoDinhDanh"))
     return out, warnings

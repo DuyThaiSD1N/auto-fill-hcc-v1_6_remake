@@ -53,7 +53,9 @@ def _sends(r):
 
 @pytest.mark.parametrize("key", ["ket-hon", "dang-ky-giam-ho", "khai-sinh-dang-ky-lai",
                                  "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su",
-                                 "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung"])
+                                 "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung",
+                                 "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat",
+                                 "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan"])
 def test_bat_cho_thu_tuc_tu_phap_form_cu(key):
     proc = get_procedure(key)
     assert owner_review.enabled(_conv(key=key), proc)

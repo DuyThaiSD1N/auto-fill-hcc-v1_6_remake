@@ -151,7 +151,7 @@ async def test_buoc_chu_ho_so_client_cu_khong_doi():
 # ── Cổng Bộ Y tế (stepper iGate): bước 3 "Hình thức nhận kết quả" là ô chọn, cam đoan + mã xác nhận công dân tự làm ──
 BYT = [
     "dieu-chinh-huu-tri-xa-hoi", "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
-    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", "dang-ky-hanh-nghe",
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep", "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", "xac-dinh-muc-do-khuyet-tat", "doi-cap-lai-giay-xac-nhan-khuyet-tat",
     "ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi", "tro-cap-xa-hoi-hang-thang",

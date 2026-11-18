@@ -5,11 +5,12 @@ Chọn người GIỮ NGUYÊN mapper cổng cũ (xac_nhan_tiep_tuc_dat_nong_nghi
 khai; chủ hồ sơ = người đứng tên ĐẦU TIÊN mục 1 Đơn (CCCD → Đơn → giấy tờ khác), tổ chức → tên + MST + trụ sở. Ở đây
 chỉ ĐỔI TÊN ô CongDan_* / ChuHoSo_* sang data[...] của form "FORM NGUOI NOP":
   • Họ tên / Số CCCD / Ngày sinh / Dân tộc / Tên tổ chức + MST người nộp: cổng mới KHOÁ theo tài khoản hoặc không có
-    ô → không phát. Lệnh XOÁ ô (chế độ tờ khai của cổng cũ) cũng bỏ.
+    ô → không phát; riêng Họ tên / CCCD / Ngày sinh ở chế độ theo tờ khai mà khác tài khoản → phát kèm enableInput
+    (lệnh xoá của cổng cũ thành xoá + tô đỏ ô đó, _igate.o_khoa_tu_cong_cu).
   • Nơi cấp CCCD: ô mới chỉ có Bộ Công An / Cục CS QLHC về TTXH → nơi cấp khác thì để trống + cảnh báo.
   • Đối tượng chủ hồ sơ CN/DN → ChuHS "Cá nhân" / "Doanh nghiệp" hoặc "Tổ chức" theo tên tổ chức.
-Chế độ THEO TỜ KHAI mà người theo tờ khai KHÁC tài khoản: cổng mới không sửa được Họ tên/CCCD → bỏ trống cả khối người
-nộp + cảnh báo (cổng cũ ghi đè được nên chỉ cảnh báo). Ô (*) thiếu dữ liệu → dom-expect. KHÔNG tích "Người nộp hồ sơ
+Chế độ THEO TỜ KHAI mà người theo tờ khai KHÁC tài khoản: bỏ khoá Họ tên/CCCD/Ngày sinh rồi ghi cả khối người nộp theo
+tờ khai + cảnh báo. Ô (*) thiếu dữ liệu → dom-expect. KHÔNG tích "Người nộp hồ sơ
 là chủ hồ sơ".
 """
 
@@ -55,23 +56,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     old_values = {f["name"]: f.get("value") for f in old if not f.get("clear")}
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
 
-    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → lệch thì không điền khối này.
-    bo_nguoi_nop = False
-    if theo_to_khai and (old_values.get("CongDan_tenCongDan") or old_values.get("CongDan_soCmnd")):
+    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → khác tài khoản (hoặc không có
+    # mốc) thì bỏ khoá ba ô Họ tên/CCCD/Ngày sinh rồi ghi đè (_igate.o_khoa_tu_cong_cu).
+    mo_khoa = False
+    if theo_to_khai and old_values.get("CongDan_tenCongDan"):
         ctx = (options or {}).get("formContext") or {}
         ctx_id = _goc._id_number(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
         ctx_name = _goc._person_name(ctx.get("applicantFullname"))
         nguoi = {"HoTen": old_values.get("CongDan_tenCongDan"), "SoDinhDanh": old_values.get("CongDan_soCmnd")}
-        lech = _goc._canh_bao_lech_tai_khoan(nguoi, ctx_id, ctx_name)
-        if lech:
-            bo_nguoi_nop = True
+        lech = _goc._canh_bao_lech_tai_khoan(nguoi, ctx_id, ctx_name) if (ctx_id or ctx_name) else None
+        mo_khoa = bool(lech) or not (ctx_id or ctx_name)
+        if mo_khoa:
             warnings = [w for w in warnings if w != lech]
-            warnings.append(
-                "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là " + (ctx_name or "người khác")
-                + ", không phải " + (_goc._person_name(nguoi["HoTen"]) or "người nộp trong hồ sơ")
-                + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản nên không sửa được — đăng nhập "
-                "đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của khối người nộp."
-            )
+            warnings.append(_igate.canh_bao_mo_khoa(_goc._person_name(nguoi["HoTen"]), ctx_name))
 
     out: list[dict] = []
     seen: set[str] = set()
@@ -79,8 +76,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         name = _TEN_O.get(field["name"])
         value = field.get("value")
         if not name or field.get("clear") or value in (None, ""):
-            continue
-        if bo_nguoi_nop and field["name"].startswith("CongDan_"):
             continue
         if field["name"] in _NOI_CAP:
             label = _igate._noi_cap(value)
@@ -100,6 +95,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             continue
         out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": value})
         seen.add(name)
+    if mo_khoa:
+        _igate.ghi_o_khoa(out, seen, _igate.o_khoa_tu_cong_cu(old))
 
     expect = list(_EXPECT_NGUOI_NOP)
     to_chuc = old_values.get("ChuHoSo_maDoiTuongNopHS") == _goc._DOI_TUONG_TO_CHUC

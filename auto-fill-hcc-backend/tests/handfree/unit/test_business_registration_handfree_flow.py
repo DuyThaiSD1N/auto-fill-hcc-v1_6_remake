@@ -48,6 +48,26 @@ def test_hkdonline_home_starts_bootstrap_once():
     assert second.display_md == ""
 
 
+def test_mo_cong_hkd_dan_bam_nut_dang_nhap_goc_tren():
+    # HkdLogOn.aspx không có mã QR: phải bấm nút ĐĂNG NHẬP góc trên bên phải, không dặn quét QR.
+    conv = _conversation(state="confirm_procedure")
+
+    reply = flow._start_guide_login(conv)
+
+    assert "ĐĂNG NHẬP" in reply.display_md and "góc trên bên phải" in reply.display_md
+    assert "Quét QR" not in reply.display_md
+    assert reply.actions[0]["type"] == "navigate"
+    assert "hokinhdoanh.dkkd.gov.vn" in reply.actions[0]["url"]
+
+
+def test_thu_tuc_thuong_van_dan_quet_qr():
+    conv = _conversation(state="confirm_procedure", procedure_key="xac-nhan-tinh-trang-hon-nhan")
+
+    reply = flow._start_guide_login(conv)
+
+    assert "ĐĂNG NHẬP" not in reply.display_md
+
+
 def test_home_guidance_does_not_claim_a_draft_exists_yet():
     assert "Thành lập mới hộ kinh doanh" in vi.BUSINESS_PREPARING["md"]
     assert "hồ sơ nháp" not in vi.BUSINESS_PREPARING["md"]

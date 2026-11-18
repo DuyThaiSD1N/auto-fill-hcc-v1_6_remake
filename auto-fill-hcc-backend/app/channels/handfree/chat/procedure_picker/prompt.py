@@ -156,6 +156,19 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đăng ký kiểm tra kết quả tập sự hành nghề công chứng", "đăng ký thi tập sự công chứng",
         "hoàn thành tập sự công chứng muốn dự kiểm tra", "nộp hồ sơ dự kiểm tra tập sự công chứng",
         "đăng ký dự kỳ kiểm tra công chứng viên tập sự"],
+    # TỔ CHỨC (hội luật gia, tổ chức xã hội - nghề nghiệp) vừa lập Trung tâm tư vấn pháp luật, đăng ký cho Trung tâm
+    # được hoạt động — KHÁC trợ giúp pháp lý (người dân xin tư vấn/luật sư giúp mình) và chứng chỉ luật sư (cá nhân).
+    "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat": [
+        "đăng ký hoạt động trung tâm tư vấn pháp luật", "trung tâm tư vấn pháp luật mới thành lập",
+        "xin giấy đăng ký hoạt động cho trung tâm tư vấn pháp luật",
+        "hội luật gia lập trung tâm tư vấn pháp luật muốn đăng ký"],
+    # LUẬT SƯ ĐÃ CÓ THẺ, làm theo hợp đồng lao động cho một công ty / cơ quan (không qua văn phòng, công ty luật), đăng
+    # ký hành nghề với tư cách cá nhân tại Sở Tư pháp — KHÁC xin chứng chỉ hành nghề luật sư (chưa có chứng chỉ) và
+    # trợ giúp pháp lý (người dân xin luật sư giúp mình).
+    "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan": [
+        "đăng ký hành nghề luật sư với tư cách cá nhân", "luật sư đăng ký hành nghề cá nhân",
+        "luật sư làm pháp chế theo hợp đồng lao động cho công ty muốn đăng ký hành nghề",
+        "có thẻ luật sư rồi đăng ký hành nghề tại Sở Tư pháp"],
     # Hướng dẫn viên ĐÃ CÓ THẺ (nội địa/quốc tế) đăng ký học lớp cập nhật kiến thức do Sở VHTTDL mở theo thông báo —
     # KHÁC cấp thẻ hướng dẫn viên lần đầu (chưa có thẻ) và cấp đổi/cấp lại thẻ (thẻ hết hạn, mất, hỏng).
     "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich": [
@@ -245,6 +258,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "điều chỉnh giấy chứng nhận đủ điều kiện kinh doanh dược", "cấp lại giấy chứng nhận kinh doanh dược",
         "nhà thuốc đổi tên, đổi địa chỉ", "quầy thuốc thay đổi người phụ trách chuyên môn",
         "giấy chứng nhận kinh doanh dược bị ghi sai", "điều chỉnh giấy phép nhà thuốc",
+    ],
+    # Cơ sở xin GCN đủ điều kiện kinh doanh dược LẦN ĐẦU (mở nhà thuốc, quầy thuốc, công ty bán buôn thuốc). Đã có GCN, nay
+    # đổi tên / địa chỉ / người phụ trách → "cap-lai-dieu-chinh-…"; dược sĩ xin chứng chỉ → "cap-chung-chi-hanh-nghe-duoc".
+    "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": [
+        "xin giấy chứng nhận đủ điều kiện kinh doanh dược", "mở nhà thuốc cần giấy phép kinh doanh dược",
+        "mở quầy thuốc xin giấy chứng nhận", "công ty bán buôn thuốc xin giấy đủ điều kiện kinh doanh dược",
+        "cấp giấy đủ điều kiện kinh doanh thuốc lần đầu", "xin giấy phép kinh doanh dược cho cơ sở mới",
     ],
     # Cơ sở khám bệnh, chữa bệnh (phòng khám, nha khoa…) báo Sở Y tế danh sách người hành nghề. KHÁC
     # xin giấy phép / chứng chỉ hành nghề cho MỘT cá nhân và khác hành nghề luật sư, công chứng.

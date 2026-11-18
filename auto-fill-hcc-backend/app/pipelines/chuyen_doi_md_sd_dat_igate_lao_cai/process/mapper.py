@@ -2,7 +2,7 @@
 
 Cùng ma trận nguồn với pipeline cổng cũ (chuyen_doi_md_sd_dat_lao_cai/process/mapper.py) — dùng lại các hàm
 chọn người/chuẩn hoá của file đó — nhưng phát sang bộ ô data[...] của form "FORM NGUOI NOP":
-  Người nộp : Họ tên/CCCD/Ngày sinh cổng KHOÁ theo tài khoản → không bao giờ phát.
+  Người nộp : Họ tên/CCCD/Ngày sinh cổng KHOÁ theo tài khoản → chỉ phát (kèm enableInput) ở chế độ theo tờ khai.
               Giới tính, ngày cấp, nơi cấp, Tỉnh → Phường/Xã → Địa chỉ → giấy tờ CỦA CHÍNH người nộp (CCCD khớp
               số/họ tên tài khoản; ngày/nơi cấp còn bù từ đơn/giấy ủy quyền ghi đúng số đó).
               SĐT/Email → chỉ khi người nộp CHÍNH LÀ chủ hồ sơ (số trên Đơn là của người sử dụng đất).
@@ -12,8 +12,10 @@ chọn người/chuẩn hoá của file đó — nhưng phát sang bộ ô data[
               Địa chỉ: tổ chức → GCN ĐKDN → Đơn; cá nhân → CCCD → Đơn; cuối cùng vị trí khu đất.
               Di động/Email → Đơn → GCN ĐKDN.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (`options.submitterMode`) như cổng cũ, nhưng cổng mới khoá Họ tên/CCCD/Ngày sinh nên chế
-độ THEO TỜ KHAI chỉ bù được các ô còn lại theo chủ hồ sơ cá nhân, và cảnh báo khi tài khoản là người khác.
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (`options.submitterMode`) như cổng cũ. Cổng mới khoá (disabled) Họ tên/CCCD/Ngày sinh theo tài
+khoản; chế độ THEO TỜ KHAI mà người nộp KHÁC tài khoản (hoặc không có mốc tài khoản) thì phát ba ô đó kèm
+`enableInput` — extension bỏ disabled rồi ghi đè, như cổng cũ ghi đè hai ô readonly (`o_khoa_theo_to_khai`, mọi
+pipeline cổng mới Lào Cai dùng chung) — và cảnh báo cán bộ kiểm tra lại.
 """
 
 from app.pipelines._shared.area_remap import province_label
@@ -65,6 +67,71 @@ def _cung_nguoi(left_id, left_name, right_id, right_name) -> bool:
     return bool(_goc._fold(left_name)) and _goc._fold(left_name) == _goc._fold(right_name)
 
 
+# Ô người nộp cổng KHOÁ theo tài khoản VNeID (logic "checkProtected" khi URL có apply-online). Không khai trong
+# UI_COMP_BY_NAME: chỉ chế độ theo tờ khai mới phát, qua o_khoa_theo_to_khai.
+O_KHOA_NGUOI_NOP = {"data[fullname]": "dom-input", "data[identityNumber]": "dom-input", "data[birthday]": "dom-date"}
+# Ô readonly / ngày sinh của khối người nộp cổng cũ → ô khoá cổng mới (pipeline đổi tên ô từ mapper cổng cũ).
+_O_KHOA_CONG_CU = {
+    "CongDan_tenCongDan": "data[fullname]",
+    "CongDan_soCmnd": "data[identityNumber]",
+    "CongDan_ngaySinhCongDan": "data[birthday]",
+}
+
+
+def o_khoa_theo_to_khai(ho_ten, so_dinh_danh, *ngay_sinh) -> list[dict]:
+    """Chế độ theo tờ khai, người nộp KHÁC tài khoản: Họ tên → Số CCCD → Ngày sinh kèm `enableInput` (extension bỏ
+    disabled rồi ghi). Ô hồ sơ không có thì XOÁ + tô đỏ — để nguyên là khối nửa tài khoản nửa người trong hồ sơ.
+    Không có họ tên thì không phát gì: ghi riêng số căn cước là ghép tên tài khoản với số của người khác.
+    `ngay_sinh`: các nguồn của CÙNG người đó (khối gộp, CCCD…) — lấy ngày đủ dd/mm/yyyy đầu tiên ("1980" bị bỏ)."""
+    ten = _goc._plain(str(ho_ten)) if ho_ten not in (None, "") else None
+    if not ten:
+        return []
+    values = {
+        "data[fullname]": upper_person_name(ten),
+        "data[identityNumber]": _goc._id_number(so_dinh_danh),
+        "data[birthday]": next(
+            (d for d in (_goc._full_date(str(v)) for v in ngay_sinh if v not in (None, "")) if d), None
+        ),
+    }
+    out = []
+    for name, value in values.items():
+        field = {"name": name, "comp": O_KHOA_NGUOI_NOP[name], "value": value or "", "enableInput": True}
+        if not value:
+            field.update(clear=True, markEmpty=True)
+        out.append(field)
+    return out
+
+
+def o_khoa_tu_cong_cu(old: list[dict]) -> list[dict]:
+    """o_khoa_theo_to_khai từ output mapper cổng cũ (ô CongDan_*; lệnh xoá = hồ sơ không có)."""
+    by_name = {f.get("name"): f for f in old if f.get("name") in _O_KHOA_CONG_CU}
+
+    def value(name: str):
+        field = by_name.get(name) or {}
+        return None if field.get("clear") else field.get("value")
+
+    return o_khoa_theo_to_khai(
+        value("CongDan_tenCongDan"), value("CongDan_soCmnd"), value("CongDan_ngaySinhCongDan")
+    )
+
+
+def canh_bao_mo_khoa(ten_to_khai, ten_tai_khoan) -> str:
+    return (
+        "Bật \"Lấy người nộp theo tờ khai\": Họ tên/Số CCCD/Ngày sinh người nộp (cổng khoá theo tài khoản) đã được mở "
+        "khoá và ghi theo " + (_goc._plain(str(ten_to_khai or "")) or "người trong hồ sơ")
+        + (", khác tài khoản đang đăng nhập (" + _goc._plain(str(ten_tai_khoan)) + ")"
+           if _goc._plain(str(ten_tai_khoan or "")) else "")
+        + ". Cán bộ kiểm tra lại khối \"Thông tin người nộp hồ sơ\" trước khi nộp."
+    )
+
+
+def ghi_o_khoa(out: list[dict], seen: set[str], fields: list[dict]) -> None:
+    """Chèn ô khoá vào ĐẦU khối người nộp (khối người nộp luôn phát trước khối chủ hồ sơ)."""
+    fields = [f for f in fields if f["name"] not in seen]
+    out[:0] = fields
+    seen.update(f["name"] for f in fields)
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     return enrich_with_warnings(fields, options)[0]
 
@@ -114,19 +181,22 @@ def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tup
     # ----- Khối người nộp. -----
     applicant_id = ctx.get("applicantIdentityNumber") or ctx.get("identityNumber")
     applicant_name = ctx.get("applicantFullname")
+    o_khoa: list[dict] = []
     if theo_to_khai:
         nguoi_nop = None if is_org else _goc._merge_person(_goc._owner_person(values), cards, named)
         nop_la_chu = nguoi_nop is not None
-        if nguoi_nop and (_goc._digits(applicant_id) or _goc._fold(applicant_name)) and not _cung_nguoi(
-            applicant_id, applicant_name, _goc._get(nguoi_nop, "SoDinhDanh"), _goc._get(nguoi_nop, "HoTen")
-        ):
-            warnings.append(
-                "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là "
-                + (_goc._plain(applicant_name) or "người khác")
-                + ", không phải " + (_goc._plain(_goc._get(nguoi_nop, "HoTen")) or "chủ hồ sơ")
-                + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản nên không sửa được — đăng "
-                "nhập đúng tài khoản người đi nộp. Các ô còn lại của khối người nộp đang điền theo chủ hồ sơ."
+        if nguoi_nop and not (
+            (_goc._digits(applicant_id) or _goc._fold(applicant_name)) and _cung_nguoi(
+                applicant_id, applicant_name, _goc._get(nguoi_nop, "SoDinhDanh"), _goc._get(nguoi_nop, "HoTen")
             )
+        ):
+            the = _goc._find_person(cards, _goc._get(nguoi_nop, "SoDinhDanh"), _goc._get(nguoi_nop, "HoTen"))
+            o_khoa = o_khoa_theo_to_khai(
+                _goc._get(nguoi_nop, "HoTen"), _goc._get(nguoi_nop, "SoDinhDanh"),
+                _goc._get(nguoi_nop, "NgaySinh"), (the or {}).get("NgaySinh"),
+            )
+            if o_khoa:
+                warnings.append(canh_bao_mo_khoa(_goc._get(nguoi_nop, "HoTen"), applicant_name))
         elif not nguoi_nop:
             warnings.append(
                 "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng "
@@ -163,6 +233,7 @@ def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tup
     if nop_la_chu:
         add("data[phoneNumber]", _goc._phone(values.get("Don_DienThoai")))
         add("data[email]", _goc._email(values.get("Don_Email")))
+    ghi_o_khoa(out, seen, o_khoa)
     expect(*_EXPECT_NGUOI_NOP)
 
     # ----- Khối chủ hồ sơ. -----

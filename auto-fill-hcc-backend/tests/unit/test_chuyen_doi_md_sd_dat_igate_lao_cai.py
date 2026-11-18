@@ -136,13 +136,22 @@ def test_noi_cap_ngoai_hai_option_thi_canh_bao():
     assert any("Nơi cấp" in w for w in warnings)
 
 
-def test_theo_to_khai_canh_bao_khi_tai_khoan_khac():
+def test_theo_to_khai_khac_tai_khoan_mo_khoa_ghi_de():
+    # Theo tờ khai mà khác tài khoản: bỏ khoá Họ tên/CCCD/Ngày sinh (enableInput) rồi ghi theo người trong hồ sơ,
+    # ba ô đứng đầu khối người nộp; ngày sinh hồ sơ không có thì xoá + tô đỏ, không giữ ngày của tài khoản.
     fields, warnings = mapper.enrich_with_warnings(
         _FACTS, {"submitterMode": "owner_as_submitter", **_ctx("TRẦN THỊ B", _NGUOI_KHAC)})
+    by_name = {f["name"]: f for f in fields}
+    assert [f["name"] for f in fields[:3]] == ["data[fullname]", "data[identityNumber]", "data[birthday]"]
+    assert all(by_name[n]["enableInput"] is True for n in ("data[fullname]", "data[identityNumber]", "data[birthday]"))
+    assert by_name["data[fullname]"]["value"] == "NGUYỄN VĂN A"
+    assert by_name["data[identityNumber]"]["value"] == "001099000001"
+    assert by_name["data[birthday]"]["value"] == "01/02/1980" and not by_name["data[birthday]"].get("clear")
+    assert any("mở khoá" in w for w in warnings)
+    assert not any("Cổng mới KHOÁ" in w for w in warnings)
     values = _values(fields)
     assert values["data[gender]"] == "Nam"
     assert values["data[phoneNumber]"] == "0912345678"
-    assert any("KHOÁ" in w for w in warnings)
 
 
 # ---- Đính kèm ----

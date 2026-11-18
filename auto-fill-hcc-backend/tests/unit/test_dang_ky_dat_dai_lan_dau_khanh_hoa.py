@@ -262,9 +262,27 @@ def test_self_submit_fills_both_person_blocks_from_owner():
     assert values["data[village]"] == "Phường Nam Nha Trang"
     assert values["data[address]"] == "Tổ dân phố 3"
     assert values["data[chonDoiTuong]"] == "Cá nhân"
+    # Nội dung yêu cầu ghi theo cách cán bộ nhập, không chép mục 4 của Đơn.
     assert values["data[noidungyeucaugiaiquyet]"] == (
-        "Đề nghị đăng ký đất đai, tài sản gắn liền với đất; Đề nghị cấp Giấy chứng nhận"
+        f"{mapper.NOI_DUNG_THU_TUC} tại TĐ 120 TBĐ 12 địa chỉ Tổ dân phố 3, Phường Nam Nha Trang - TRẦN THỊ BÌNH"
     )
+
+
+def test_noi_dung_yeu_cau_one_owner_and_missing_parcel():
+    # Đơn có hai người cùng sử dụng đất: chỉ ghi MỘT người (người đầu), in hoa.
+    fields, _warnings = mapper.enrich(_facts(
+        **{**_OWNER, "ChuHoSo_HoTen": "Trần Thị Bình – Lê Văn An"},
+        **_PARCEL,
+    ))
+    noi_dung = _values(fields)["data[noidungyeucaugiaiquyet]"]
+    assert noi_dung.endswith("địa chỉ Tổ dân phố 3, Phường Nam Nha Trang - TRẦN THỊ BÌNH")
+    assert "LÊ VĂN AN" not in noi_dung
+    assert mapper._first_person("Trần Thị Bình, Lê Văn An") == "Trần Thị Bình"
+    assert mapper._first_person("Trần Thị Bình và Lê Văn An") == "Trần Thị Bình"
+
+    # Thiếu thửa đất: không ghi "tại TĐ"/"địa chỉ" rỗng, chỉ còn tên thủ tục + tên chủ hồ sơ.
+    fields, _warnings = mapper.enrich(_facts(**_OWNER))
+    assert _values(fields)["data[noidungyeucaugiaiquyet]"] == f"{mapper.NOI_DUNG_THU_TUC} - TRẦN THỊ BÌNH"
 
 
 def test_authorized_submitter_never_borrows_owner_facts():

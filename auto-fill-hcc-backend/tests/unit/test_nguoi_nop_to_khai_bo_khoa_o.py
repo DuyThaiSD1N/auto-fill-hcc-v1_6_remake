@@ -84,3 +84,42 @@ def test_quy_hoach_to_khai_bo_khoa_ho_ten_va_cccd():
         assert fields[("data[fullname]", occ)]["enableInput"] is True
         assert fields[("data[identityNumber]", occ)]["enableInput"] is True
         assert "enableInput" not in fields[("data[birthday]", occ)]
+
+
+# ---- Lào Cai cổng iGate mới ("FORM NGUOI NOP"): helper dùng chung của mọi pipeline *_igate_lao_cai ----
+def test_lao_cai_cong_moi_o_khoa_du_ba_o():
+    from app.pipelines.chuyen_doi_md_sd_dat_igate_lao_cai.process import mapper
+
+    fields = mapper.o_khoa_theo_to_khai("Lê thị  c", "0010 9900 0009", "1990", "9/3/1990")
+    assert [(f["name"], f["comp"], f["value"]) for f in fields] == [
+        ("data[fullname]", "dom-input", "LÊ THỊ C"),
+        ("data[identityNumber]", "dom-input", "001099000009"),
+        ("data[birthday]", "dom-date", "09/03/1990"),  # bỏ "1990", lấy ngày đủ của nguồn sau
+    ]
+    assert all(f["enableInput"] is True and not f.get("clear") for f in fields)
+
+
+def test_lao_cai_cong_moi_o_khoa_thieu_thi_xoa_va_to_do():
+    from app.pipelines.chuyen_doi_md_sd_dat_igate_lao_cai.process import mapper
+
+    fields = {f["name"]: f for f in mapper.o_khoa_theo_to_khai("Lê Thị C", "12345", None)}
+    for name in ("data[identityNumber]", "data[birthday]"):
+        assert fields[name]["value"] == "" and fields[name]["clear"] is True and fields[name]["markEmpty"] is True
+        assert fields[name]["enableInput"] is True
+    # Không có họ tên → không đụng ô nào (ghi riêng số là ghép tên tài khoản với số người khác).
+    assert mapper.o_khoa_theo_to_khai(None, "001099000009", "09/03/1990") == []
+
+
+def test_lao_cai_cong_moi_o_khoa_tu_mapper_cong_cu():
+    from app.pipelines.chuyen_doi_md_sd_dat_igate_lao_cai.process import mapper
+
+    old = [
+        {"name": "CongDan_tenCongDan", "comp": "dom-input", "value": "Hà Văn E"},
+        {"name": "CongDan_soCmnd", "comp": "dom-input", "value": "001099000082"},
+        {"name": "CongDan_ngaySinhCongDan", "comp": "dom-input", "value": "", "clear": True, "markEmpty": True},
+        {"name": "CongDan_diaChi", "comp": "dom-input", "value": "Tổ 5"},
+    ]
+    fields = {f["name"]: f for f in mapper.o_khoa_tu_cong_cu(old)}
+    assert set(fields) == {"data[fullname]", "data[identityNumber]", "data[birthday]"}
+    assert fields["data[fullname]"]["value"] == "HÀ VĂN E"
+    assert fields["data[birthday]"]["clear"] is True

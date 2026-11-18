@@ -8,7 +8,8 @@ CCCD → Đơn → Giấy uỷ quyền → GCN → vị trí thửa đất. Ở 
   • Nơi cấp: chỉ 2 option (Bộ Công An / Cục CS QLHC về TTXH) → nơi cấp khác để trống + cảnh báo.
   • Đối tượng CN → "Cá nhân", DN → "Doanh nghiệp", CQ/TC → "Tổ chức" (ChuHS mới chỉ có 3 lựa chọn).
   • Lệnh XOÁ ô nhân thân tài khoản của chế độ theo tờ khai (_shared/lao_cai_nguoi_nop) bỏ đi: cổng mới không đổ sẵn.
-Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ trống khối người nộp + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG
+Theo tờ khai mà người theo tờ khai KHÁC tài khoản → bỏ khoá Họ tên/CCCD/Ngày sinh (enableInput,
+_igate.o_khoa_tu_cong_cu) rồi ghi cả khối người nộp theo tờ khai + cảnh báo. Ô (*) thiếu → dom-expect. KHÔNG
 tích "Người nộp hồ sơ là chủ hồ sơ".
 """
 
@@ -82,20 +83,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     ctx_name = ctx.get("applicantFullname")
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
 
-    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → lệch thì không điền khối này.
-    bo_nguoi_nop = False
+    # Theo tờ khai: cổng cũ ghi đè Họ tên/CCCD người nộp; cổng mới khoá theo tài khoản → khác tài khoản (hoặc không có
+    # mốc) thì bỏ khoá ba ô Họ tên/CCCD/Ngày sinh rồi ghi đè (_igate.o_khoa_tu_cong_cu).
     to_khai_ten, to_khai_so = old_values.get("CongDan_tenCongDan"), old_values.get("CongDan_soCmnd")
-    if theo_to_khai and to_khai_ten and (_goc._digits(ctx_id) or _goc._fold(ctx_name)) and not _cung_nguoi(
-        to_khai_so, to_khai_ten, ctx_id, ctx_name
-    ):
-        bo_nguoi_nop = True
-        warnings = [w for w in warnings if "đang điền theo TỜ KHAI" not in w and "điền theo TỜ KHAI nhưng" not in w]
-        warnings.append(
-            "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là " + (ctx_name or "người khác")
-            + ", không phải " + to_khai_ten + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản "
-            "nên không sửa được — đăng nhập đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của khối "
-            "người nộp."
-        )
+    co_moc = bool(_goc._digits(ctx_id) or _goc._fold(ctx_name))
+    mo_khoa = bool(theo_to_khai and to_khai_ten) and not (
+        co_moc and _cung_nguoi(to_khai_so, to_khai_ten, ctx_id, ctx_name)
+    )
+    if mo_khoa:
+        if co_moc:
+            warnings = [w for w in warnings if "đang điền theo TỜ KHAI" not in w and "điền theo TỜ KHAI nhưng" not in w]
+        warnings.append(_igate.canh_bao_mo_khoa(to_khai_ten, ctx_name))
     warnings = [w.replace("sáu ô có dấu (*) ở khối này", "các ô có dấu (*) ở khối này") for w in warnings]
 
     out: list[dict] = []
@@ -111,8 +109,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         name = _TEN_O.get(field["name"])
         value = field.get("value")
         if not name or field.get("clear") or value in (None, ""):
-            continue
-        if bo_nguoi_nop and field["name"].startswith("CongDan_"):
             continue
         if field["name"] in _NOI_CAP:
             label = _igate._noi_cap(value)
@@ -130,10 +126,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Giới tính người nộp mặc định "Nam" trên cổng mới: người nộp chính là chủ hồ sơ mà hồ sơ chỉ có xưng hô Ông/Bà ở
     # Đơn (mapper cũ chỉ suy cho chủ hồ sơ) → dùng lại giới tính chủ hồ sơ.
     nop_so, nop_ten = (to_khai_so, to_khai_ten) if theo_to_khai and to_khai_ten else (ctx_id, ctx_name)
-    if not bo_nguoi_nop and "data[gender]" not in seen and _cung_nguoi(
+    if "data[gender]" not in seen and _cung_nguoi(
         nop_so, nop_ten, old_values.get("ChuHoSo_soCMNDChuHoSo"), old_values.get("ChuHoSo_tenChuHoSo")
     ):
         add("data[gender]", old_values.get("ChuHoSo_gioiTinhChuHoSo"))
+    if mo_khoa:
+        _igate.ghi_o_khoa(out, seen, _igate.o_khoa_tu_cong_cu(old))
 
     expect = list(_EXPECT_NGUOI_NOP)
     to_chuc = old_values.get("ChuHoSo_maDoiTuongNopHS") not in (None, _goc._DOI_TUONG_CA_NHAN)

@@ -106,6 +106,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-lai-giay-phep-hanh-nghe-truoc-2024", ("ghiChu",)),
     ("cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh", ("ghiChu",)), ("dieu-chinh-giay-phep-hoat-dong-kcb", ("ghiChu",)),
     ("cap-chung-chi-hanh-nghe-duoc", ("ghiChu",)), ("cong-bo-co-so-du-dieu-kien-tiem-chung", ("ghiChu",)),
+    ("cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", ("ghiChu",)),
     # Cổng Bộ GD&ĐT (dvc.moet.gov.vn), cùng nền iGate.
     ("cap-ban-sao-van-bang-so-goc", ("tenHoSo",)), ("mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc", ("tenHoSo",)),
     # Cổng Bộ Xây dựng, nộp tại Sở Xây dựng / UBND xã.

@@ -5,7 +5,8 @@ của file đó), nhưng phát sang bộ ô data[...] của form "FORM NGUOI NOP
   Người nộp : theo tài khoản → ứng viên (CCCD → người ghi trong giấy tờ → bên được ủy quyền → chủ hồ sơ) KHỚP mốc tài
               khoản; nhiều người trùng tên mà không đối chiếu được số → không đoán. Theo tờ khai → bên được ủy quyền →
               chủ hồ sơ cá nhân. Cổng KHOÁ Họ tên/CCCD/Ngày sinh theo tài khoản nên chỉ điền Giới tính, Ngày/Nơi cấp,
-              Tỉnh → Phường/Xã → Địa chỉ, SĐT, Email; người theo tờ khai lệch tài khoản → để trống + cảnh báo.
+              Tỉnh → Phường/Xã → Địa chỉ, SĐT, Email; theo tờ khai mà lệch tài khoản
+              → bỏ khoá ba ô đó (enableInput) rồi ghi theo người trong hồ sơ + cảnh báo.
   Chủ hồ sơ : bên NHẬN quyền. Tổ chức → Doanh nghiệp/Tổ chức + tên + MST. Cá nhân → họ tên, số, ngày sinh, giới tính
               theo CCCD (bù bằng ChuHoSo_*/giấy tờ ghi tên); ngày/nơi cấp CCCD → hợp đồng/Đơn. Địa chỉ hợp đồng → Đơn
               → GCN ĐKDN (tổ chức) → CCCD. SĐT Đơn → hợp đồng → GCN ĐKDN; Email Đơn → GCN ĐKDN. ChuHS là driver →
@@ -81,19 +82,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # ----- Khối NGƯỜI NỘP -----
     nguoi_nop = None
+    o_khoa: list[dict] = []
     if theo_to_khai:
         # Chủ hồ sơ là TỔ CHỨC thì tổ chức không tự đi nộp — chỉ nhận người được ủy quyền.
         base = proxy or owner_person
         nguoi_nop = next(iter(_goc._merge_candidates([base], candidates)), None) if base else None
-        if nguoi_nop and has_anchor and not _goc._match_anchor(nguoi_nop, anchor_id, anchor_name):
-            warnings.append(
-                "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập là "
-                + (_goc._plain(ctx.get("applicantFullname")) or "người khác")
-                + ", không phải " + (_goc._plain(_goc._get(nguoi_nop, "HoTen")) or "người nộp trong hồ sơ")
-                + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản nên không sửa được — đăng nhập "
-                "đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của khối người nộp."
+        if nguoi_nop and not (has_anchor and _goc._match_anchor(nguoi_nop, anchor_id, anchor_name)):
+            # Khác tài khoản (hoặc không có mốc): bỏ khoá Họ tên/CCCD/Ngày sinh rồi ghi theo người trong hồ sơ.
+            # Khối gộp có thể chỉ mang "1980" (Đơn) trong khi CCCD của chính người đó có ngày đủ.
+            nop_so = _goc._digits(_goc._get(nguoi_nop, "SoDinhDanh"))
+            nop_ten = _goc._fold(_goc._get(nguoi_nop, "HoTen"))
+            o_khoa = _igate.o_khoa_theo_to_khai(
+                _goc._get(nguoi_nop, "HoTen"), _goc._get(nguoi_nop, "SoDinhDanh"), _goc._get(nguoi_nop, "NgaySinh"),
+                *(_goc._get(p, "NgaySinh") for p in cards + named
+                  if _goc._match_anchor(p, nop_so, nop_ten)),
             )
-            nguoi_nop = None
+            if o_khoa:
+                warnings.append(_igate.canh_bao_mo_khoa(_goc._get(nguoi_nop, "HoTen"), ctx.get("applicantFullname")))
         elif not nguoi_nop:
             warnings.append(
                 "Bật \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không ghi người được ủy quyền / bên nhận quyền (cá "
@@ -141,6 +146,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             owner_person, _goc._digits(_goc._get(nguoi_nop, "SoDinhDanh")), _goc._fold(_goc._get(nguoi_nop, "HoTen"))
         ):
             add("data[email]", _goc._email(values.get("Don_Email")))
+    _igate.ghi_o_khoa(out, seen, o_khoa)
     expect(*_EXPECT_NGUOI_NOP)
 
     # ----- Khối CHỦ HỒ SƠ = bên nhận quyền. ChuHS là driver → phát trước. -----

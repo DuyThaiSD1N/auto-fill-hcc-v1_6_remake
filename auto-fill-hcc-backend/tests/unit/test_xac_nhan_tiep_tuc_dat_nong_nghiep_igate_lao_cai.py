@@ -103,12 +103,20 @@ def test_vo_di_nop_dung_dia_chi_chung_cua_ho():
     assert all(f["name"].startswith("data[") for f in fields)
 
 
-def test_theo_to_khai_lech_tai_khoan_bo_trong_khoi_nguoi_nop():
+def test_theo_to_khai_lech_tai_khoan_mo_khoa_ghi_de():
+    # Theo tờ khai mà khác tài khoản: bỏ khoá Họ tên/CCCD/Ngày sinh (enableInput) rồi ghi theo người trong hồ sơ,
+    # ba ô đứng đầu khối người nộp; ngày sinh hồ sơ không có thì xoá + tô đỏ, không giữ ngày của tài khoản.
     fields, warnings = mapper.enrich(_FACTS, _ctx("PHẠM VĂN X", "001099000099", **_TO_KHAI))
+    by_name = {f["name"]: f for f in fields}
+    assert [f["name"] for f in fields[:3]] == ["data[fullname]", "data[identityNumber]", "data[birthday]"]
+    assert all(by_name[n]["enableInput"] is True for n in ("data[fullname]", "data[identityNumber]", "data[birthday]"))
+    assert by_name["data[fullname]"]["value"] == "LÊ THỊ D"
+    assert by_name["data[identityNumber]"]["value"] == "001099000052"
+    assert by_name["data[birthday]"]["value"] == "05/06/1972" and not by_name["data[birthday]"].get("clear")
+    assert any("mở khoá" in w for w in warnings)
+    assert not any("Cổng mới KHOÁ" in w for w in warnings)
     values = _values(fields)
-    assert not any(k in values for k in ("data[gender]", "data[identityDate]", "data[province]", "data[phoneNumber]"))
-    assert any(f["comp"] == "dom-expect" and f["name"] == "data[phoneNumber]" for f in fields)
-    assert any("Cổng mới KHOÁ" in w for w in warnings)
+    assert values["data[phoneNumber]"] == "0987000111"
     assert values["data[ownerFullname]"] == "NGUYỄN VĂN A"
 
 

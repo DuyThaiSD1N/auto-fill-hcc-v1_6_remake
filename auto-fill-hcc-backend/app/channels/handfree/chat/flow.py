@@ -2113,6 +2113,10 @@ def _start_guide_login(conv: dict) -> Reply:
         r = Reply(*_fmt(vi.GUIDE_AGENCY_SELECT, procedure=_proc_label(conv),
                         ward=loc.get("ward") or "(chưa chọn xã)", province=loc.get("province") or ""))
         r.actions = [{"type": "navigate", "url": url}]
+    elif url and _is_business_flow(proc):
+        # Cổng hộ kinh doanh chưa đăng nhập hiện trang chào, không có mã QR → dặn bấm nút ĐĂNG NHẬP góc trên.
+        r = Reply(*_fmt(vi.HKD_GUIDE_LOGIN))
+        r.actions = [{"type": "navigate", "url": url}]
     elif url:
         r = Reply(*_fmt(vi.GUIDE_LOGIN))
         r.actions = [{"type": "navigate", "url": url}]

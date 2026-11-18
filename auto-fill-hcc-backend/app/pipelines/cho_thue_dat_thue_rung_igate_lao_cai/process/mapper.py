@@ -2,11 +2,12 @@
 
 Chốt người nộp như pipeline cổng cũ (cho_thue_dat_thue_rung/process/mapper.py — dùng lại các hàm đối chiếu của file
 đó): mốc là TÀI KHOẢN đang đăng nhập; trùng chủ hồ sơ → tự nộp (hai khối bổ khuyết cho nhau), khác → nộp thay (không
-chép chéo). Khác cổng cũ ở chỗ cổng mới KHOÁ Họ tên/CCCD/Ngày sinh người nộp theo tài khoản (không ghi được ở chế độ
-nào), nên:
-  • Khối người nộp chỉ điền Giới tính, Ngày/Nơi cấp, Tỉnh → Phường/Xã → Địa chỉ, SĐT, Email — và CHỈ khi biết chắc
-    các mục đó là của người đang đăng nhập (trùng chủ hồ sơ hoặc trùng bên được ủy quyền). Tài khoản là người thứ
-    ba → để trống + cảnh báo, không gắn nhân thân người khác vào khối đã khoá tên tài khoản.
+chép chéo). Khác cổng cũ ở chỗ cổng mới KHOÁ Họ tên/CCCD/Ngày sinh người nộp theo tài khoản, nên:
+  • Theo tài khoản: khối người nộp chỉ điền Giới tính, Ngày/Nơi cấp, Tỉnh → Phường/Xã → Địa chỉ, SĐT, Email — và CHỈ
+    khi biết chắc các mục đó là của người đang đăng nhập (trùng chủ hồ sơ hoặc trùng bên được ủy quyền). Tài khoản
+    là người thứ ba → để trống + cảnh báo, không gắn nhân thân người khác vào khối đã khoá tên tài khoản.
+  • Theo tờ khai: điền cả khối theo người trong hồ sơ; khác tài khoản thì bỏ khoá ba ô Họ tên/CCCD/Ngày sinh
+    (`_igate.o_khoa_theo_to_khai`, enableInput) rồi ghi đè + cảnh báo.
   • Khối chủ hồ sơ điền thẳng từ giấy tờ; KHÔNG tích "Người nộp hồ sơ là chủ hồ sơ" (tích là cổng chép đè).
 Ô (*) không có dữ liệu → dom-expect (tô đỏ cho cán bộ gõ tay).
 """
@@ -97,15 +98,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # ----- Khối NGƯỜI NỘP: chỉ khi biết chắc người trong giấy tờ CHÍNH LÀ tài khoản đang đăng nhập. -----
     co_nguoi_nop = bool(nop_so or nop_ten_fold)
     khop_tai_khoan = _goc._match(ctx_id, ctx_name, nop_so, nop_ten_fold) if co_moc else None
-    dien_nguoi_nop = co_nguoi_nop and khop_tai_khoan is not False
-    if theo_to_khai and co_nguoi_nop and khop_tai_khoan is False:
-        warnings.append(
-            "Bật \"Lấy người nộp theo tờ khai\" nhưng tài khoản đang đăng nhập không phải "
-            + (_goc._plain(nop_ten) or "người nộp trong hồ sơ")
-            + ". Cổng mới KHOÁ Họ tên/Số CCCD/Ngày sinh người nộp theo tài khoản nên không sửa được — đăng nhập "
-            "đúng tài khoản người đi nộp. Trợ lý để trống phần còn lại của khối người nộp."
-        )
-    elif not theo_to_khai and co_nguoi_nop and khop_tai_khoan is False:
+    # Theo tờ khai: luôn điền theo người trong hồ sơ; khác tài khoản (hoặc không có mốc) thì bỏ khoá
+    # Họ tên/CCCD/Ngày sinh rồi ghi đè.
+    dien_nguoi_nop = co_nguoi_nop and (theo_to_khai or khop_tai_khoan is not False)
+    o_khoa: list[dict] = []
+    if theo_to_khai and co_nguoi_nop and khop_tai_khoan is not True:
+        o_khoa = _igate.o_khoa_theo_to_khai(nop_ten, nop_so_raw, nop_ngay_sinh)
+        if o_khoa:
+            ctx = (options or {}).get("formContext") or {}
+            warnings.append(_igate.canh_bao_mo_khoa(nop_ten, ctx.get("applicantFullname")))
+    if not theo_to_khai and co_nguoi_nop and khop_tai_khoan is False:
         warnings.append(
             "⚠ Tài khoản đang đăng nhập không phải chủ hồ sơ cũng không phải người được ủy quyền ghi trong hồ sơ"
             + (f" ({_goc._plain(nop_ten)})" if _goc._plain(nop_ten) else "")
@@ -151,6 +153,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "Chưa đọc được tài khoản định danh đang đăng nhập trên cổng, nên vai người nộp chỉ là suy đoán từ giấy "
             "tờ. Cán bộ kiểm tra lại khối \"Thông tin người nộp hồ sơ\" trước khi nộp."
         )
+    _igate.ghi_o_khoa(out, seen, o_khoa)
     expect(*_EXPECT_NGUOI_NOP)
 
     # ----- Khối CHỦ HỒ SƠ: ChuHS là driver → phát trước. -----

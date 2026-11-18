@@ -96,6 +96,19 @@ GUIDE_LOGIN = {
     "tts": "Nếu trang hiện mã, công dân mở ứng dụng vi en ai đi, chọn Quét quy rờ, rồi quét mã ạ.",
 }
 
+# Hệ thống Đăng ký hộ kinh doanh (hokinhdoanh.dkkd.gov.vn): chưa đăng nhập thì cổng mở trang chào
+# HkdLogOn.aspx, KHÔNG có mã QR — phải bấm nút "ĐĂNG NHẬP" ở góc trên bên phải mới sang VNeID.
+HKD_GUIDE_LOGIN = {
+    "md": (
+        "Nếu trang chưa đăng nhập: công dân bấm nút **ĐĂNG NHẬP** ở **góc trên bên phải** màn hình "
+        "→ đăng nhập bằng **VNeID** ạ."
+    ),
+    "tts": (
+        "Nếu trang chưa đăng nhập, công dân bấm nút Đăng nhập ở góc trên bên phải màn hình, "
+        "rồi đăng nhập bằng vi en ai đi ạ."
+    ),
+}
+
 # Máy quét / chọn tệp từ máy: công dân chủ động bấm "Đã đưa đủ" khi xong. Câu này NỐI vào SCAN_PICK.
 SCAN_AUTO_RUN_NOTE = {
     "md": " Xong hết → bấm **Đã đưa đủ giấy tờ** ạ.",

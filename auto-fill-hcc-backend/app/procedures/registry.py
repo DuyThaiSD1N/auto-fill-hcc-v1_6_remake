@@ -555,6 +555,8 @@ from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.a
 from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.process import (
     run as cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
 )
+from app.pipelines.cap_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import plan as cap_gcn_dkkd_duoc_attach
+from app.pipelines.cap_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.process import run as cap_gcn_dkkd_duoc_process
 from app.pipelines.cap_van_ban_chap_thuan_tau_ca.attach import plan as cap_vb_chap_thuan_tau_ca_attach
 from app.pipelines.cap_van_ban_chap_thuan_tau_ca.process import run as cap_vb_chap_thuan_tau_ca_process
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp_khai_thac_ts_attach
@@ -669,6 +671,10 @@ from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.
 from app.pipelines.dang_ky_tham_du_kiem_tra_ket_qua_tap_su_hanh_nghe_cong_chung.process import (
     run as kiem_tra_tap_su_cong_chung_process,
 )
+from app.pipelines.dang_ky_hoat_dong_trung_tam_tu_van_phap_luat.attach import plan as dkhd_trung_tam_tvpl_attach
+from app.pipelines.dang_ky_hoat_dong_trung_tam_tu_van_phap_luat.process import run as dkhd_trung_tam_tvpl_process
+from app.pipelines.dang_ky_hanh_nghe_luat_su_voi_tu_cach_ca_nhan.attach import plan as dkhn_luat_su_ca_nhan_attach
+from app.pipelines.dang_ky_hanh_nghe_luat_su_voi_tu_cach_ca_nhan.process import run as dkhn_luat_su_ca_nhan_process
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cchn_di_tich_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.process import run as cchn_di_tich_process
 from app.pipelines.cap_lai_chung_chi_hanh_nghe_bao_quan_tu_bo_phuc_hoi_di_tich.attach import plan as cap_lai_cchn_di_tich_attach
@@ -8354,6 +8360,46 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
+        # Mã TTHC 1.014076, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Cổng Bộ Y tế — Form.io, engine
+        # fillFormStandard dom-* + attach attp-row 5 dòng (field-key trùng 1.014104 ngay trên). URL SPA là ObjectId →
+        # detect theo cụm tên; URL DVCQG + MaTTHC do with_ke_khai_detect_urls ghép thêm. Trang cấp lại / điều chỉnh
+        # không có cụm này (chữ "cấp lại, điều chỉnh giấy chứng nhận"); có trùng thì cụm dài hơn của 1.014104 thắng.
+        # Hỗ trợ cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode, xem process/mapper.py).
+        "detect": {
+            "textIncludes": [
+                "cấp giấy chứng nhận đủ điều kiện kinh doanh dược",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn "
+                 "thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế "
+                 "xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị cấp Giấy chứng nhận đủ điều kiện kinh doanh dược (Mẫu số 10) — đã ký.\n"
+            "2. Giấy chứng nhận đăng ký doanh nghiệp / hộ kinh doanh.\n"
+            "3. Tài liệu kỹ thuật về cơ sở vật chất, chuyên môn, nhân sự theo GDP/GPP (kèm Danh mục hồ sơ nếu có).\n"
+            "4. Chứng chỉ hành nghề dược của người chịu trách nhiệm chuyên môn.\n"
+            "5. Tài liệu thuyết minh bảo đảm an ninh thuốc phải kiểm soát đặc biệt (Mẫu số 11) — nếu có kinh doanh "
+            "thuốc phải kiểm soát đặc biệt.\n"
+            "6. CCCD của người đại diện theo pháp luật (để điền ngày cấp, nơi cấp); nếu người KHÁC nộp thay: tải "
+            "kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension bỏ tích 'Người nộp hồ sơ là chủ hồ sơ' và điền Thông tin chủ hồ sơ theo người đại diện theo "
+            "pháp luật; ô Ghi chú tóm tắt cơ sở đề nghị. Họ tên + CCCD người nộp giữ theo tài khoản — bật cài đặt "
+            "'Lấy người nộp theo tờ khai' thì người nộp ghi theo người đại diện.\n"
+            "Bước đính kèm: mỗi giấy vào đúng dòng, loại '1 Bản chính' (Đơn → dòng 1, Danh mục hồ sơ + Tài liệu "
+            "kỹ thuật → chung một tệp ở dòng 2, GCN đăng ký doanh nghiệp → dòng 3, Mẫu 11 → dòng 4, CCHN → dòng 5)."
+        ),
+    },
+    {
         "key": "cap-van-ban-chap-thuan-tau-ca",
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #92/#101). Có thêm nội dung tờ khai
@@ -10431,6 +10477,73 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat",
+        # Mã TTHC 1.000627 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Key TRÙNG ke_khai_links nên mã +
+        # URL kê khai được ghép tự động. Wizard tư pháp 4 bước như hai thủ tục ngay trên: bước Kê khai là eForm "ĐƠN
+        # ĐĂNG KÝ HOẠT ĐỘNG CỦA TRUNG TÂM TƯ VẤN PHÁP LUẬT" Mẫu TP-TVPL-01-sđ (tokhaidientu.moj.gov.vn, legacy x-*, 39
+        # ô) — xem process/; planner xếp vào dòng 1–3 (dòng 4 Đơn là Tờ khai cổng tự sinh), có chế độ tách giấy.
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.000627"],
+            "textIncludes": ["đăng ký hoạt động của trung tâm tư vấn pháp luật"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hoạt động của Trung tâm tư vấn pháp luật",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký hoạt động của Trung tâm tư vấn pháp luật (Mẫu TP-TVPL-01-sđ) bản giấy — nguồn chính của tờ "
+            "khai (Kính gửi, phạm vi hoạt động, danh sách nhân sự, ngày ký).\n"
+            "2. Quyết định của tổ chức chủ quản về việc thành lập Trung tâm và về việc cử Giám đốc Trung tâm.\n"
+            "3. Dự thảo Quy chế tổ chức, hoạt động của Trung tâm.\n"
+            "4. Danh sách kèm hồ sơ của người được đề nghị cấp Thẻ tư vấn viên pháp luật, của luật sư làm việc theo hợp "
+            "đồng lao động.\n"
+            "5. Căn cước của Giám đốc (nếu có) để đối chiếu nhân thân.\n"
+            "Mục 3 (Giám đốc) cổng đổ theo tài khoản VNeID — nên đăng nhập bằng tài khoản của chính Giám đốc; hệ thống "
+            "ghi đè theo giấy tờ và cảnh báo khi lệch. Mục 5 trên tờ khai chỉ có 3 dòng.\n"
+            "Bước Thành phần hồ sơ: danh sách nhân sự → dòng 1; Quy chế → dòng 2; hai quyết định → dòng 3 (chung một "
+            "tệp); dòng 4 là Tờ khai cổng tự sinh nên Đơn bản giấy không đính lại; Danh mục hồ sơ và căn cước không "
+            "đính. Nhiều giấy cùng dòng gộp một PDF; bật \"Tách giấy tờ\" thì tệp gộp được cắt trang theo từng dòng."
+        ),
+    },
+    {
+        "key": "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan",
+        # Mã TTHC 1.002153 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Key TRÙNG ke_khai_links nên mã +
+        # URL kê khai được ghép tự động. Wizard tư pháp 4 bước như 1.000627 ngay trên: bước Kê khai là eForm "ĐƠN ĐỀ
+        # NGHỊ ĐĂNG KÝ HÀNH NGHỀ LUẬT SƯ VỚI TƯ CÁCH CÁ NHÂN" Mẫu TP-LS-05-sđ (tokhaidientu.moj.gov.vn, legacy x-*, 30
+        # ô) — xem process/; planner xếp vào dòng 1–4 (Thẻ luật sư đính chung dòng 2 + 4; dòng 5 Đơn là Tờ khai cổng tự
+        # sinh), có chế độ tách giấy.
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.002153"],
+            "textIncludes": ["đăng ký hành nghề luật sư với tư cách cá nhân"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hành nghề luật sư với tư cách cá nhân",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị đăng ký hành nghề luật sư với tư cách cá nhân (Mẫu TP-LS-05-sđ) bản giấy — nguồn của Kính "
+            "gửi, điện thoại, email, nơi ở hiện tại, mục 2, ngày ký.\n"
+            "2. Bản sao Hợp đồng lao động ký kết với cơ quan, tổ chức (kèm lời chứng chứng thực).\n"
+            "3. Thẻ luật sư; Chứng chỉ hành nghề luật sư (nếu có).\n"
+            "4. Căn cước của luật sư để đối chiếu nhân thân.\n"
+            "Mục (1)–(5) cổng đổ theo tài khoản VNeID — nên đăng nhập bằng tài khoản của chính luật sư; hệ thống ghi đè "
+            "theo giấy tờ và cảnh báo khi lệch.\n"
+            "Bước Thành phần hồ sơ: Chứng chỉ → dòng 1 và 2; Thẻ luật sư → dòng 2 và 4 (chung một tệp); Hợp đồng lao "
+            "động → dòng 3; dòng 5 là Tờ khai cổng tự sinh nên Đơn bản giấy không đính lại; căn cước không đính. Thiếu "
+            "Chứng chỉ thì dòng 1 để trống kèm cảnh báo. Bật \"Tách giấy tờ\" thì tệp gộp được cắt trang theo từng dòng."
+        ),
+    },
+    {
         "key": "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
         # Mã TTHC 1.001822 (QT-09), nộp tại Sở VHTTDL tỉnh. Key TRÙNG ke_khai_links (selectSo) nên URL trang chi
         # tiết DVCQG + matthc=/madvc=1.001822 được ghép tự động; khai lại ở đây như thủ tục quảng cáo băng-rôn để
@@ -11096,6 +11209,7 @@ _PIPELINE = {
     "dieu-chinh-giay-phep-hoat-dong-kcb": dieu_chinh_gphd_kcb_process,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_process,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
+    "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_gcn_dkkd_duoc_process,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
@@ -11164,6 +11278,8 @@ _PIPELINE = {
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_process,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_process,
     "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": kiem_tra_tap_su_cong_chung_process,
+    "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat": dkhd_trung_tam_tvpl_process,
+    "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan": dkhn_luat_su_ca_nhan_process,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_process,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_process,
     "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_process,
@@ -11407,6 +11523,7 @@ _ATTACH_PIPELINE = {
     "dieu-chinh-giay-phep-hoat-dong-kcb": dieu_chinh_gphd_kcb_attach,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_attach,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_attach,
+    "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_gcn_dkkd_duoc_attach,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
@@ -11484,6 +11601,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-noi-quy-lao-dong": dang_ky_noi_quy_lao_dong_attach,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": cchn_luat_su_attach,
     "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": kiem_tra_tap_su_cong_chung_attach,
+    "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat": dkhd_trung_tam_tvpl_attach,
+    "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan": dkhn_luat_su_ca_nhan_attach,
     "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cchn_di_tich_attach,
     "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich": cap_lai_cchn_di_tich_attach,
     "to-chuc-bieu-dien-nghe-thuat": bieu_dien_nghe_thuat_attach,

@@ -139,11 +139,19 @@ def test_khong_nhan_ra_nguoi_dang_nhap_bo_trong_khoi_nguoi_nop():
     assert warnings
 
 
-def test_theo_to_khai_lech_tai_khoan_bo_khoi_nguoi_nop():
+def test_theo_to_khai_lech_tai_khoan_mo_khoa_ghi_de():
+    # Theo tờ khai mà khác tài khoản: bỏ khoá Họ tên/CCCD/Ngày sinh (enableInput) rồi ghi theo người trong hồ sơ,
+    # ba ô đứng đầu khối người nộp; ngày sinh hồ sơ không có thì xoá + tô đỏ, không giữ ngày của tài khoản.
     fields, warnings = mapper.enrich(_FACTS, _ctx("TRẦN THỊ B", _CHU, submitterMode="owner_as_submitter"))
-    values = _values(fields)
-    assert not any(k.startswith("data[") and not k.startswith("data[owner") and k != "data[ChuHS]" for k in values)
-    assert any("Cổng mới KHOÁ" in w for w in warnings)
+    by_name = {f["name"]: f for f in fields}
+    assert [f["name"] for f in fields[:3]] == ["data[fullname]", "data[identityNumber]", "data[birthday]"]
+    assert all(by_name[n]["enableInput"] is True for n in ("data[fullname]", "data[identityNumber]", "data[birthday]"))
+    assert by_name["data[fullname]"]["value"] == "NGUYỄN VĂN A"
+    assert by_name["data[identityNumber]"]["value"] == "001088000002"
+    assert by_name["data[birthday]"]["value"] == "05/06/1966" and not by_name["data[birthday]"].get("clear")
+    assert any("mở khoá" in w for w in warnings)
+    assert not any("Cổng mới KHOÁ" in w for w in warnings)
+    assert _values(fields)["data[gender]"] == "Nam"
 
 
 _DONG = ("Văn bản tặng cho quyền sử dụng đất hoặc biên bản họp giữa đại diện thôn, làng, bản, tổ dân phố, điểm dân cư "

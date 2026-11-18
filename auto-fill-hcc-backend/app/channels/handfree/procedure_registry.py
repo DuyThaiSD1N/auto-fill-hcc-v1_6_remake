@@ -1875,6 +1875,126 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat",
+        # Mã TTHC 1.000627 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Chọn cơ quan cấp Sở y như
+        # "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực
+        # tuyến" kết quả ĐẦU TIÊN). Bước Kê khai là eForm Mẫu TP-TVPL-01-sđ (legacy x-*) → mode agent, điền tờ khai từ
+        # Đơn + hai quyết định + CCCD Giám đốc, ô còn trống hỏi bổ sung (handfree/field_review.py). Planner lõi xếp
+        # vào dòng 1–3 (dòng 4 Đơn là Tờ khai cổng tự sinh), có chế độ tách giấy.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-3fa9-7372-90fd-8901c2e22177",
+                "maThuTuc=1.000627",
+            ],
+            "textIncludes": ["đăng ký hoạt động của trung tâm tư vấn pháp luật"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hoạt động của Trung tâm tư vấn pháp luật",
+        "shortLabel": "Đăng ký hoạt động Trung tâm tư vấn pháp luật",
+        "subtitle": "Trung tâm tư vấn pháp luật mới thành lập đăng ký hoạt động tại Sở Tư pháp",
+        "icon": "⚖️",
+        "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fa9-7372-90fd-8901c2e22177",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        "infoModalFields": [
+            {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"},
+            {"label": "Thủ tục", "value": "đăng ký hoạt động của Trung tâm tư vấn pháp luật"},
+            {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
+        ],
+        # Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc tải lên; planner lõi tự phân loại lại theo OCR lúc
+        # đính. Danh sách nhân sự để optional: thiếu thì dòng 1 để trống kèm cảnh báo, không chặn người dân.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký hoạt động của Trung tâm tư vấn pháp luật (Mẫu TP-TVPL-01-sđ)",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "quyet_dinh", "name": "Quyết định thành lập Trung tâm và quyết định cử Giám đốc của tổ chức chủ "
+             "quản", "icon": "📃", "sides": 1, "repeatable": True},
+            {"key": "quy_che", "name": "Dự thảo Quy chế tổ chức, hoạt động của Trung tâm", "icon": "📘",
+             "sides": 1, "repeatable": True},
+            {"key": "danh_sach", "name": "Danh sách kèm hồ sơ tư vấn viên pháp luật, luật sư làm việc theo hợp đồng "
+             "lao động", "icon": "👥", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của Giám đốc Trung tâm", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký hoạt động của Trung tâm tư vấn pháp luật (Mẫu TP-TVPL-01-sđ) — nguồn chính của tờ khai.\n"
+            "2. Quyết định thành lập Trung tâm và quyết định cử Giám đốc của tổ chức chủ quản.\n"
+            "3. Dự thảo Quy chế tổ chức, hoạt động của Trung tâm.\n"
+            "4. Danh sách kèm hồ sơ tư vấn viên pháp luật, luật sư làm việc theo hợp đồng lao động.\n"
+            "5. Căn cước của Giám đốc (nếu có) để đối chiếu nhân thân.\n"
+            "Nên đăng nhập cổng bằng tài khoản VNeID của chính Giám đốc Trung tâm. Bước Thành phần hồ sơ: danh sách "
+            "→ dòng 1; Quy chế → dòng 2; hai quyết định → dòng 3; dòng 4 là Tờ khai cổng tự sinh nên Đơn bản giấy "
+            "không đính lại."
+        ),
+    },
+    {
+        "key": "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan",
+        # Mã TTHC 1.002153 (Bộ Tư pháp), nộp tại Sở Tư pháp (ke_khai_links: selectSo). Chọn cơ quan cấp Sở y như
+        # "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat" ngay trên (Tỉnh → toggle "Sở" → "Nộp trực tuyến" kết quả ĐẦU
+        # TIÊN). Bước Kê khai là eForm Mẫu TP-LS-05-sđ (legacy x-*) → mode agent, điền tờ khai từ Đơn + HĐLĐ + Thẻ luật
+        # sư + CCCD, ô còn trống hỏi bổ sung (handfree/field_review.py). Planner lõi xếp vào dòng 1–4 (Thẻ luật sư
+        # đính chung dòng 2 + 4; dòng 5 Đơn là Tờ khai cổng tự sinh), có chế độ tách giấy.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-4f99-779f-9381-738c68a0cb41",
+                "maThuTuc=1.002153",
+            ],
+            "textIncludes": ["đăng ký hành nghề luật sư với tư cách cá nhân"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hành nghề luật sư với tư cách cá nhân",
+        "shortLabel": "Đăng ký hành nghề luật sư cá nhân",
+        "subtitle": "Luật sư làm theo hợp đồng lao động cho cơ quan, tổ chức đăng ký hành nghề tại Sở Tư pháp",
+        "icon": "⚖️",
+        "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-4f99-779f-9381-738c68a0cb41",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Tư pháp",
+        "infoModalFields": [
+            {"label": "Cấp thực hiện", "value": "Cấp Tỉnh"},
+            {"label": "Thủ tục", "value": "đăng ký hành nghề luật sư với tư cách cá nhân"},
+            {"label": "Cơ quan thực hiện", "value": "Sở Tư pháp"},
+        ],
+        # Không có bộ phân loại riêng: LLM chung xếp theo tên ô lúc tải lên; planner lõi tự phân loại lại theo OCR lúc
+        # đính. Chứng chỉ hành nghề để optional: thiếu thì dòng 1 để trống kèm cảnh báo, không chặn người dân.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị đăng ký hành nghề luật sư với tư cách cá nhân (Mẫu TP-LS-05-sđ)",
+             "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Bản sao Hợp đồng lao động ký kết với cơ quan, tổ chức", "icon": "📃",
+             "sides": 1, "repeatable": True},
+            {"key": "the_luat_su", "name": "Thẻ luật sư", "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "chung_chi", "name": "Chứng chỉ hành nghề luật sư", "icon": "📜", "sides": 1, "optional": True,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của luật sư", "icon": "🪪", "sides": 2, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị đăng ký hành nghề luật sư với tư cách cá nhân (Mẫu TP-LS-05-sđ) — nguồn chính của tờ khai.\n"
+            "2. Bản sao Hợp đồng lao động ký kết với cơ quan, tổ chức.\n"
+            "3. Thẻ luật sư; Chứng chỉ hành nghề luật sư (nếu có).\n"
+            "4. Căn cước của luật sư (nếu có) để đối chiếu nhân thân.\n"
+            "Nên đăng nhập cổng bằng tài khoản VNeID của chính luật sư. Bước Thành phần hồ sơ: Chứng chỉ → dòng 1 và 2; "
+            "Thẻ luật sư → dòng 2 và 4; Hợp đồng lao động → dòng 3; dòng 5 là Tờ khai cổng tự sinh nên Đơn bản giấy "
+            "không đính lại."
+        ),
+    },
+    {
         "key": "cap-giay-phep-khai-thac-thuy-san",
         # Mở dần theo tỉnh thí điểm: Đà Nẵng, rồi Quảng Trị (danh mục TTHC cấp tỉnh thí điểm trợ lý, 02/11).
         "provinceOnly": ["danang", "quangtri"],
@@ -2704,6 +2824,76 @@ PROCEDURES: list[dict] = [
             "Chủ hồ sơ là chủ cơ sở kinh doanh dược; ô Ghi chú điền nội dung xin điều chỉnh / lý do cấp lại.\n"
             "Bước Thành phần hồ sơ: mỗi giấy tờ vào đúng dòng (Đơn Mẫu 12 → dòng 3, giấy đăng ký hộ kinh "
             "doanh + GPP → dòng 5...); căn cước chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
+        "key": "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
+        # Mã TTHC 1.014076, CÙNG khung entry cấp lại / điều chỉnh (1.014104) ngay trên: cổng Bộ Y tế, nộp tại SỞ Y tế
+        # (ke_khai_links đặt selectSo) → agencyProvinceOnly + agencySoFirst, rồi trang nps/apply "Chọn trường hợp giải
+        # quyết" → luồng chung "xay-dung". Key TRÙNG lõi → pipeline process/attach tự nối (kể cả cài đặt "Lấy người
+        # nộp theo tờ khai" — pipeline_runner gửi options.submitterMode). Cụm tên không có chữ "cấp lại, điều chỉnh"
+        # nên không lẫn 1.014104 (trùng thì cụm dài hơn của 1.014104 thắng).
+        "flowProfile": "xay-dung",
+        # Cổng Bộ Y tế cùng nền iGate với cổng Bộ Xây dựng → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.014076",
+                "MaTTHC=1.014076",
+                "019d2bff-3520-75d8-af1f-89a0f0359cf9",
+            ],
+            "textIncludes": ["cấp giấy chứng nhận đủ điều kiện kinh doanh dược"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn "
+                 "thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế "
+                 "xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",
+        "shortLabel": "Cấp giấy chứng nhận đủ điều kiện kinh doanh dược",
+        "subtitle": "Cho nhà thuốc, quầy thuốc, cơ sở bán buôn thuốc xin giấy chứng nhận lần đầu (Sở Y tế)",
+        "icon": "💊",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3520-75d8-af1f-89a0f0359cf9",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Y tế",
+        # Bảng thành phần hồ sơ 5 dòng cố định (planner lõi attp-row): Đơn Mẫu 10 / Tài liệu kỹ thuật (+ Danh mục hồ sơ)
+        # / GCN đăng ký doanh nghiệp / thuyết minh an ninh Mẫu 11 / CCHN dược → tắt hideRepeatableHint mà profile
+        # "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp Giấy chứng nhận đủ điều kiện kinh doanh dược (Mẫu số 10) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "dkkd", "name": "Giấy chứng nhận đăng ký doanh nghiệp / hộ kinh doanh", "icon": "🏪", "sides": 1,
+             "repeatable": True},
+            {"key": "ky_thuat", "name": "Tài liệu kỹ thuật về cơ sở vật chất, chuyên môn, nhân sự (GDP / GPP), kèm "
+             "Danh mục hồ sơ nếu có", "icon": "📚", "sides": 1, "repeatable": True},
+            {"key": "cchn", "name": "Chứng chỉ hành nghề dược của người chịu trách nhiệm chuyên môn", "icon": "🎓",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đại diện theo pháp luật, thêm CCCD người nộp nếu nộp "
+             "thay", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "thuyet_minh", "name": "Tài liệu thuyết minh bảo đảm an ninh thuốc phải kiểm soát đặc biệt (Mẫu "
+             "số 11) — nếu có kinh doanh thuốc kiểm soát đặc biệt", "icon": "🔒", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị cấp Giấy chứng nhận đủ điều kiện kinh doanh dược (Mẫu số 10), đã ký — nguồn chính để điền "
+            "form.\n"
+            "2. Giấy chứng nhận đăng ký doanh nghiệp / hộ kinh doanh.\n"
+            "3. Tài liệu kỹ thuật về cơ sở vật chất, chuyên môn, nhân sự theo GDP / GPP (kèm Danh mục hồ sơ nếu có).\n"
+            "4. Chứng chỉ hành nghề dược của người chịu trách nhiệm chuyên môn.\n"
+            "5. Tài liệu thuyết minh bảo đảm an ninh (Mẫu số 11) nếu có kinh doanh thuốc phải kiểm soát đặc biệt.\n"
+            "6. Căn cước công dân của người đại diện theo pháp luật; nếu người khác nộp thay: thêm căn cước của "
+            "người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người đại diện theo pháp luật của cơ sở; ô Ghi chú tóm tắt cơ sở đề nghị cấp. Bật cài đặt "
+            "'Lấy người nộp theo tờ khai' thì phần người nộp cũng ghi theo người đại diện.\n"
+            "Bước Thành phần hồ sơ: Đơn → dòng 1, Danh mục hồ sơ + Tài liệu kỹ thuật → chung một tệp ở dòng 2, giấy "
+            "đăng ký doanh nghiệp → dòng 3, Mẫu 11 → dòng 4, chứng chỉ hành nghề → dòng 5."
         ),
     },
     {
@@ -10458,6 +10648,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "yeu-cau-tro-giup-phap-ly": _TAT_CA,
     "cap-chung-chi-hanh-nghe-luat-su-mien-dao-tao-tap-su": _TAT_CA,
     "dang-ky-tham-du-kiem-tra-ket-qua-tap-su-hanh-nghe-cong-chung": _TAT_CA,
+    "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat": _TAT_CA,
+    "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan": _TAT_CA,
     "cap-giay-phep-khai-thac-thuy-san": _TAT_CA,
     # STT 118: Bắc Ninh Pending; Khánh Hòa, Tuyên Quang Chưa cập nhật
     "cap-gcn-dang-ky-tau-ca": _TAT_CA - {"bacninh", "khanhhoa", "tuyenquang"},
@@ -10473,6 +10665,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": _TAT_CA,
     "cap-gcn-attp-nong-lam-thuy-san": _TAT_CA,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": _TAT_CA,
+    "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": _TAT_CA,
     "dang-ky-hanh-nghe": _TAT_CA,
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA,
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": _TAT_CA,  # STT 64
